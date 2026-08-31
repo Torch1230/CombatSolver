@@ -56,6 +56,7 @@ internal sealed class PredictionModHookSubscriberCapture
             ValidateSubscriber(subscriber, "run");
         foreach (AbstractModel subscriber in combatSubscribers)
             ValidateSubscriber(subscriber, "combat");
+        PredictionModPatchAudit.ValidateCardOnPlay(EnumerateAuditableCards(runState, combat));
 
         Dictionary<Player, int> maxHandSizes = [];
         foreach (Player player in combat.Players)
@@ -125,6 +126,24 @@ internal sealed class PredictionModHookSubscriberCapture
         return result;
     }
 
+    /// <summary>
+    /// Every card type the root can reach without in-combat generation. Generated card types are not knowable at
+    /// capture time, so they stay outside this audit.
+    /// </summary>
+    private static IEnumerable<CardModel> EnumerateAuditableCards(RunState runState, CombatState combat)
+    {
+        foreach (Player player in combat.Players)
+        {
+            foreach (CardModel card in player.PlayerCombatState?.AllCards ?? [])
+                yield return card;
+        }
+        foreach (Player player in runState.Players)
+        {
+            foreach (CardModel card in player.Deck.Cards)
+                yield return card;
+        }
+    }
+
     private static void ValidateSubscriber(
         AbstractModel subscriber,
         string scope)
@@ -144,7 +163,7 @@ internal sealed class PredictionModHookSubscriberCapture
             throw new IncompatibleGameplayModException(
                 modId,
                 mod.manifest.name ?? string.Empty,
-                type.FullName ?? type.Name,
+                $"ModHelper subscriber {type.FullName ?? type.Name}",
                 scope);
         }
         throw new PredictionUnsupportedException(
