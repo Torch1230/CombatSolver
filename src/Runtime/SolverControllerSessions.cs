@@ -30,6 +30,12 @@ internal sealed class SolverCombatSession
     public SolverResult? ContinuationSource { get; set; }
     public bool FullAutoEnabled { get; set; }
     public SolverTheftPolicy? TheftPolicy { get; set; }
+
+    /// <summary>
+    /// Potion slots the player has taken off the table for this combat. Keyed by slot, not by potion id, because
+    /// a player can carry two of the same potion and may well want to spend exactly one of them.
+    /// </summary>
+    public HashSet<int> BannedPotionSlots { get; } = [];
     public CompleteProjectionBaseline? PendingCompleteProjectionBaseline { get; set; }
     public ManualProjectionBaseline? PendingManualProjectionBaseline { get; set; }
     public ManualProjectionComparison? LastManualProjectionComparison { get; set; }

@@ -181,6 +181,7 @@ internal static class SolverController
             UnattendedTestRunner.DeepSearchBudgetOverrideMilliseconds,
             includeTurnSetup,
             theftPolicy,
+            _combat.BannedPotionSlots.ToHashSet(),
             new SearchDiagnosticsSink(
                 message => Entry.Logger.Info(message),
                 message => Entry.Logger.Debug(message)),
@@ -961,6 +962,33 @@ internal static class SolverController
         _combat.PendingCompleteProjectionBaseline = null;
         Entry.Logger.Info(
             $"[CombatSolver/Test] THEFT_POLICY_CHANGED previous={previous?.ToString() ?? "-"} current={policy}");
+        SolverOverlay.RefreshControls();
+        RequestSearch(host, state, SearchReason.Manual);
+    }
+
+    public static IReadOnlySet<int> BannedPotionSlots => _combat.BannedPotionSlots;
+
+    /// <summary>
+    /// Turns one potion slot on or off for this combat. Clearing the continuation is what makes the change take
+    /// effect: without it a matching cross-turn state would reuse the route that was planned under the old
+    /// constraint, and the setting would look like it did nothing.
+    /// </summary>
+    public static void TogglePotionSlotBan(NGame host, CombatState state, int slot)
+    {
+        AssertMainThread();
+        if (_deployment != null)
+        {
+            Entry.Logger.Info("[CombatSolver/Test] POTION_BAN_REJECT reason=deploying");
+            return;
+        }
+        bool banned = !_combat.BannedPotionSlots.Remove(slot);
+        if (banned)
+            _combat.BannedPotionSlots.Add(slot);
+        _combat.ContinuationSource = null;
+        _combat.PendingCompleteProjectionBaseline = null;
+        Entry.Logger.Info(
+            $"[CombatSolver/Test] POTION_BAN_CHANGED slot={slot} banned={banned} " +
+            $"all={string.Join(',', _combat.BannedPotionSlots.Order())}");
         SolverOverlay.RefreshControls();
         RequestSearch(host, state, SearchReason.Manual);
     }

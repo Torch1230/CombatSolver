@@ -597,6 +597,7 @@ internal sealed partial class CombatBeamSolver
         {
             PotionModel? potion = simulatedCombat.GetPotionAtSlot(_player, potionSlot);
             if (potion == null
+                || _bannedPotionSlots.Contains(potionSlot)
                 || !simulatedCombat.IsPotionAvailable(_player, potionSlot)
                 || !PotionOnUseSupport.CanSearch(potion)
                 || PotionUsePolicy.RequiresOpeningUse(potion)

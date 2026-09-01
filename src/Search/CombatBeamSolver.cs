@@ -48,6 +48,7 @@ internal sealed partial class CombatBeamSolver(
     private readonly bool _detailedDiagnostics = policy.DetailedDiagnostics;
     private readonly int? _maximumPotionUses = maximumPotionUses;
     private readonly SolverTheftPolicy? _theftPolicy = policy.TheftPolicy;
+    private readonly IReadOnlySet<int> _bannedPotionSlots = policy.BannedPotionSlots;
     private readonly SolverPotionPolicy _potionPolicy = potionPolicyOverride
         ?? (policy.TheftPolicy == SolverTheftPolicy.PreserveResources
             ? SolverPotionPolicy.Smart

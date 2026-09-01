@@ -1,5 +1,7 @@
 using Godot;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Context;
+using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Localization.Fonts;
 using MegaCrit.Sts2.Core.Nodes;
 
@@ -49,6 +51,8 @@ internal static class SolverOverlay
     private static PanelContainer? _feedbackBanner;
     private static Label? _feedbackBannerLabel;
     private static HBoxContainer? _theftPolicyControls;
+    private static HFlowContainer? _potionBanControls;
+    private static string? _renderedPotionBanState;
     private static Button? _preserveResourcesButton;
     private static Button? _letEscapeButton;
     private static bool _collapsed;
@@ -500,6 +504,7 @@ internal static class SolverOverlay
         }
 
         CombatState? combat = CombatManager.Instance.DebugOnlyGetState();
+        RefreshPotionBanControls(combat, solverDisabled);
         bool showTheftPolicy = combat != null
             && CombatManager.Instance.IsInProgress
             && TheftEncounterStrategy.IsApplicable(combat);
@@ -528,6 +533,75 @@ internal static class SolverOverlay
                     : SolverButtonStyle.Secondary);
             _renderedTheftPolicy = policy;
         }
+    }
+
+    /// <summary>
+    /// One toggle per occupied potion slot, letting the player take a specific bottle off the table for this
+    /// combat. Keyed by slot because two copies of the same potion must be distinguishable.
+    /// </summary>
+    private static void RefreshPotionBanControls(CombatState? combat, bool solverDisabled)
+    {
+        if (_potionBanControls == null || !GodotObject.IsInstanceValid(_potionBanControls))
+            return;
+        Player? player = combat == null ? null : LocalContext.GetMe(combat);
+        bool show = player != null && CombatManager.Instance.IsInProgress;
+        _potionBanControls.Visible = show;
+        if (!show)
+        {
+            _renderedPotionBanState = null;
+            return;
+        }
+
+        IReadOnlySet<int> banned = SolverController.BannedPotionSlots;
+        List<(int Slot, string Title)> slots = [];
+        for (int slot = 0; slot < player!.PotionSlots.Count; slot++)
+        {
+            if (player.GetPotionAtSlotIndex(slot) is { } potion)
+                slots.Add((slot, potion.Title.GetFormattedText()));
+        }
+        string state = string.Join(
+            '|',
+            slots.Select(item => $"{item.Slot}:{item.Title}:{banned.Contains(item.Slot)}"));
+        bool disabled = solverDisabled || SolverController.IsDeploying;
+        if (_renderedPotionBanState == state)
+        {
+            foreach (Node child in _potionBanControls.GetChildren())
+            {
+                if (child is Button existing)
+                    existing.Disabled = disabled;
+            }
+            return;
+        }
+        _renderedPotionBanState = state;
+        foreach (Node child in _potionBanControls.GetChildren())
+        {
+            _potionBanControls.RemoveChild(child);
+            child.QueueFree();
+        }
+        foreach ((int slot, string title) in slots)
+        {
+            bool isBanned = banned.Contains(slot);
+            Button button = CreateButton(isBanned ? $"✕ {title}" : title, false);
+            button.CustomMinimumSize = new Vector2(0, SolverUiTokens.Size.ButtonHeight);
+            button.TooltipText = isBanned
+                ? "本场禁止使用这瓶药水，点击解除"
+                : "点击后本场不再考虑这瓶药水";
+            button.Disabled = disabled;
+            int captured = slot;
+            button.Pressed += () => OnPotionBanPressed(captured);
+            SolverUiTokens.ApplyButtonStyle(
+                button,
+                isBanned ? SolverButtonStyle.Danger : SolverButtonStyle.Secondary);
+            _potionBanControls.AddChild(button);
+        }
+    }
+
+    private static void OnPotionBanPressed(int slot)
+    {
+        CombatState? combat = CombatManager.Instance.DebugOnlyGetState();
+        if (combat == null || NGame.Instance is not { } host)
+            return;
+        SolverController.TogglePotionSlotBan(host, combat, slot);
     }
 
     public static void Hide()
@@ -1029,6 +1103,16 @@ internal static class SolverOverlay
         _letEscapeButton.Pressed += () => OnTheftPolicyPressed(SolverTheftPolicy.LetEscape);
         _theftPolicyControls.AddChild(_letEscapeButton);
         footer.AddChild(_theftPolicyControls);
+
+        _potionBanControls = new HFlowContainer
+        {
+            Name = "PotionBans",
+            Visible = false,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            MouseFilter = Control.MouseFilterEnum.Pass,
+        };
+        _potionBanControls.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Xs);
+        footer.AddChild(_potionBanControls);
 
         _recalculateButton = CreateButton("重新计算", false);
         _recalculateButton.CustomMinimumSize = new Vector2(112, SolverUiTokens.Size.ButtonHeight);
