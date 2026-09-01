@@ -24,6 +24,9 @@ internal sealed partial class CombatBeamSolver
         private int ScalePotionCost(int strategicHpCost)
             => PotionUsePolicy.SmartRequiredHpSaved(strategicHpCost, bossHpRelief);
 
+        /// <summary>Distinct potion sets reported as alternatives. Enough to compare, few enough to read.</summary>
+        private const int MaximumWorldLines = 6;
+
         public FinalPlanSelection Select(
             IReadOnlyList<(SearchNode Node, SimulationSnapshot Snapshot)> evaluated,
             int initialHp,
@@ -264,6 +267,30 @@ internal sealed partial class CombatBeamSolver
                         : "本场药水策略没有可执行路线。");
             }
             var selectedCandidate = selected[0];
+            // Every distinct potion set already present in the final candidate set, so the player can see what
+            // spending or holding a specific bottle is worth without paying for another full search.
+            List<RouteWorldLine> worldLines = [];
+            string SelectedPotionKey(int index) => string.Join(
+                '+',
+                selected[index].Node.Actions
+                    .Where(action => action.Kind == PlanActionKind.UsePotion)
+                    .Select(action => action.PotionTitle)
+                    .OrderBy(title => title, StringComparer.Ordinal));
+            string selectedKey = SelectedPotionKey(0);
+            HashSet<string> seenPotionKeys = [];
+            int firstPotionFreeIndex = -1;
+            for (int index = 0; index < selected.Count; index++)
+            {
+                string key = SelectedPotionKey(index);
+                if (key.Length == 0 && firstPotionFreeIndex < 0)
+                    firstPotionFreeIndex = index;
+                if (!seenPotionKeys.Add(key) || worldLines.Count >= MaximumWorldLines)
+                    continue;
+                worldLines.Add(BuildWorldLine(index, key));
+            }
+            // The no-potion line is the one comparison a player always wants, so keep it even if the cap hit first.
+            if (firstPotionFreeIndex >= 0 && !worldLines.Any(line => line.PotionCount == 0))
+                worldLines.Add(BuildWorldLine(firstPotionFreeIndex, string.Empty));
             int potionBranchesRejected = policyCandidates.Count(candidate => candidate.PotionCount > 0)
                 - policyEligibleCandidates.Count(candidate => candidate.PotionCount > 0);
             int potionHpSaved = selectedCandidate.PotionCount == 0
@@ -301,7 +328,19 @@ internal sealed partial class CombatBeamSolver
                     selectedCandidate.Score),
                 potionBranchesRejected,
                 potionHpSaved,
-                potionHpRequired);
+                potionHpRequired,
+                worldLines);
+
+            RouteWorldLine BuildWorldLine(int index, string key) => new(
+                selected[index].Node.Actions
+                    .Where(action => action.Kind == PlanActionKind.UsePotion)
+                    .Select(action => action.PotionTitle)
+                    .OrderBy(title => title, StringComparer.Ordinal)
+                    .ToArray(),
+                selected[index].StrategicHpDeficit,
+                selected[index].PotionCount,
+                selected[index].Features.AllEnemiesDead,
+                string.Equals(key, selectedKey, StringComparison.Ordinal));
         }
     }
 
