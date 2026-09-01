@@ -486,6 +486,7 @@ internal static class SolverController
             settings.ActTransitionBossHpStrategy,
             settings.FinalBossHpStrategy,
             settings.AcceptableBattleHpLoss,
+            settings.PursuedLongTermGoals,
             new SearchDiagnosticsSink(
                 message => Entry.Logger.Info(message),
                 message => Entry.Logger.Debug(message)),

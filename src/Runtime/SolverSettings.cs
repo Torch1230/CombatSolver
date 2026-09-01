@@ -76,6 +76,13 @@ internal sealed record SolverSettingsData
     public BossHpStrategy ActTransitionBossHpStrategy { get; init; } = BossHpStrategy.ProgressionFirst;
     public BossHpStrategy FinalBossHpStrategy { get; init; } = BossHpStrategy.ProgressionFirst;
     public int AcceptableBattleHpLoss { get; init; }
+
+    /// <summary>Prefer routes that land a fatal kill with Hand of Greed, The Hunt or Feed.</summary>
+    public bool PursueFatalKillBonus { get; init; }
+
+    /// <summary>Prefer routes that play a permanently growing deck card: Genetic Algorithm, The Scythe, Royalties.</summary>
+    public bool PursuePersistentGrowth { get; init; }
+
     public int PerformanceMigrationVersion { get; init; }
     public SolverPerformancePreset? PerformancePreset { get; init; } = SolverPerformancePreset.Medium;
     public int? SearchMaxDegreeOfParallelism { get; init; }
@@ -119,6 +126,7 @@ internal sealed record SolverSettingsSnapshot(
     BossHpStrategy ActTransitionBossHpStrategy,
     BossHpStrategy FinalBossHpStrategy,
     int AcceptableBattleHpLoss,
+    LongTermGoals PursuedLongTermGoals,
     int SearchMaxDegreeOfParallelism,
     SolverSearchProfile ShortProfile,
     SolverSearchProfile DeepProfile,
@@ -242,6 +250,7 @@ internal static class SolverSettings
             $"search_notification_mode={migrated.SearchCompletionNotificationMode} " +
             $"potion_policy={migrated.PotionPolicy} " +
             $"potion_directives={migrated.PotionDirectives.Length} " +
+            $"pursued_long_term_goals={ResolvePursuedLongTermGoals(migrated)} " +
             $"performance_preset={ResolvePerformancePreset(migrated)} " +
             $"max_dop={Capture().SearchMaxDegreeOfParallelism} " +
             $"short_budget_ms={Capture().ShortProfile.SoftTimeBudgetMilliseconds} " +
@@ -275,6 +284,7 @@ internal static class SolverSettings
             data.ActTransitionBossHpStrategy,
             data.FinalBossHpStrategy,
             data.AcceptableBattleHpLoss,
+            ResolvePursuedLongTermGoals(data),
             data.SearchMaxDegreeOfParallelism
                 ?? SolverWeights.DefaultSearchMaxDegreeOfParallelism,
             shortProfile,
@@ -283,6 +293,16 @@ internal static class SolverSettings
             noGcBytes,
             data.DeploymentFastMode,
             data.DeploymentInterActionDelaySeconds ?? 0d);
+    }
+
+    public static LongTermGoals ResolvePursuedLongTermGoals(SolverSettingsData data)
+    {
+        LongTermGoals goals = LongTermGoals.None;
+        if (data.PursueFatalKillBonus)
+            goals |= LongTermGoals.FatalKillBonus;
+        if (data.PursuePersistentGrowth)
+            goals |= LongTermGoals.PersistentGrowth;
+        return goals;
     }
 
     public static SolverPerformancePreset ResolvePerformancePreset(SolverSettingsData data)

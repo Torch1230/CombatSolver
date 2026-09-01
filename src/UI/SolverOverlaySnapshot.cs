@@ -192,15 +192,26 @@ internal sealed record SolverOverlaySnapshot(
             || unmirrored.Count > 0
             || compensated.Count > 0;
         string confidence = ConfidenceText(result);
+        bool goalOverridden = result.LongTermGoalOutcome
+            is LongTermGoalOutcome.NoCompliantRoute
+            or LongTermGoalOutcome.CompliantRouteWouldDie;
         SolverOverlayTone statusTone = pendingTurnSetup
             ? SolverOverlayTone.Accent
+            : goalOverridden
+            ? SolverOverlayTone.Danger
             : result.ProjectedBattleHpLossIncrease > 0
             ? SolverOverlayTone.Danger
             : result.WasReused
                 ? SolverOverlayTone.Success
                 : SolverOverlayTone.Accent;
+        // The HP increase still shows in hpOutcomeText, so the status line is free to carry the stronger news:
+        // the player switched something on and the route did the opposite.
         string statusText = pendingTurnSetup
             ? "等待回合开始选择"
+            : goalOverridden
+            ? result.LongTermGoalOutcome == LongTermGoalOutcome.CompliantRouteWouldDie
+                ? "强制跨战斗收益未执行：留牌会死"
+                : "强制跨战斗收益未执行：无可行留牌路线"
             : result.ProjectedBattleHpLossIncrease > 0
             ? "重算后战损上升"
             : result.WasReused
@@ -378,6 +389,18 @@ internal sealed record SolverOverlaySnapshot(
         return $"{source}：{effect} {string.Join('、', choice.Cards.Select(card => card.Title))}";
     }
 
+    private static string FormatGoals(LongTermGoals goals)
+    {
+        if (goals == LongTermGoals.None)
+            return "无";
+        List<string> parts = [];
+        if (goals.HasFlag(LongTermGoals.FatalKillBonus))
+            parts.Add("斩杀收尾");
+        if (goals.HasFlag(LongTermGoals.PersistentGrowth))
+            parts.Add("成长牌");
+        return string.Join('、', parts);
+    }
+
     private static string BuildDetails(
         SolverResult result,
         int displayedTurn,
@@ -397,6 +420,25 @@ internal sealed record SolverOverlaySnapshot(
             $"[color={SolverUiTokens.Palette.TextMutedHex}]防守[/color]  本回合最高可起防 {result.MaxBlockByTurn.GetValueOrDefault(displayedTurn)}  │  路线实际起防 {result.ActualBlockByTurn.GetValueOrDefault(displayedTurn)}  │  卖血 {result.SoldHpByTurn.GetValueOrDefault(displayedTurn)}",
             $"[color={SolverUiTokens.Palette.TextMutedHex}]边界[/color]  {BoundaryText(result.BoundaryReason)}  │  停止洗牌分支 {result.ShuffleBranchesPruned}  │  不可避免战损 {result.UnavoidableHpLost}",
         ];
+        if (result.LongTermGoalOutcome != LongTermGoalOutcome.Off)
+        {
+            detailLines.Insert(4, result.LongTermGoalOutcome switch
+            {
+                LongTermGoalOutcome.CompliantRouteWouldDie =>
+                    $"[color={SolverUiTokens.Palette.DangerHex}][b]强制跨战斗收益未执行[/b][/color]  " +
+                    $"留着这些牌的 {result.CompliantRouteCount} 条路线全部会死亡，已改为正常使用",
+                LongTermGoalOutcome.NoCompliantRoute =>
+                    $"[color={SolverUiTokens.Palette.DangerHex}][b]强制跨战斗收益未执行[/b][/color]  " +
+                    "候选路线里没有「要么斩杀、要么留牌」的走法，已改为正常使用",
+                _ =>
+                    $"[color={SolverUiTokens.Palette.TextMutedHex}]跨战斗收益[/color]  " +
+                    $"已拿到 {FormatGoals(result.BankedLongTermGoals)}  │  " +
+                    $"代价 {result.LongTermGoalHpPrice} HP" +
+                    (result.LongTermGoalPotionPrice > 0
+                        ? $" + {result.LongTermGoalPotionPrice} 瓶药水"
+                        : string.Empty),
+            });
+        }
         if (result.TheftPolicy is { } theftPolicy)
         {
             detailLines.Insert(

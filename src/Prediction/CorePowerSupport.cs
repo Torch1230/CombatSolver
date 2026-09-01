@@ -35,6 +35,8 @@ internal static class CorePowerSupport
             || combat.EffectivePowers()
                 .Where(power => power.Owner == target)
                 .All(power => power.ShouldOwnerDeathTriggerFatal());
+        if (card is TheHunt or HandOfGreed or Feed)
+            combat.RecordLongTermGoalCardPlayed(LongTermGoals.FatalKillBonus);
         MonologuePower[] pendingMonologues = combat.CapturePendingMonologues(owner);
         CardOnPlaySupport.Apply(
             simulator,
@@ -131,6 +133,8 @@ internal static class CorePowerSupport
                 SimCreatureState ownerState = simulator.State.GetCreature(owner);
                 ownerState.SetMaxHp(ownerState.MaxHp + maxHpGain);
                 simulator.Heal(owner, maxHpGain);
+                // The max HP already scores through HealthResourceCost, so only the goal flag is recorded.
+                combat.RecordLongTermGoal(LongTermGoals.FatalKillBonus);
                 break;
             }
             case HandOfGreed when target != null && WasFatalKill(
@@ -143,6 +147,7 @@ internal static class CorePowerSupport
                 int gold = card.DynamicVars["Gold"].IntValue;
                 combat.GainPlayerGold(card.Owner, gold);
                 combat.RecordLongTermResource(gold);
+                combat.RecordLongTermGoal(LongTermGoals.FatalKillBonus);
                 break;
             }
             case KnockoutBlow when target != null && WasCardKill(simulator, playedCard, target, historyEntryStart):
@@ -162,6 +167,7 @@ internal static class CorePowerSupport
                 {
                     combat.Apply<TheHuntPower>(owner, 1, owner);
                     combat.RecordLongTermResource(TheHuntLongTermResourceValue);
+                    combat.RecordLongTermGoal(LongTermGoals.FatalKillBonus);
                 }
                 break;
             }

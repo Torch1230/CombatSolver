@@ -297,7 +297,10 @@ internal static class CardEffectSpecRegistry
                 int increase = geneticAlgorithm.DynamicVars["Increase"].IntValue;
                 ((GeneticAlgorithm)playedCard.MutablePreview).BuffFromPlay(increase);
                 if (playedCard.MutablePreview.DeckVersion != null)
+                {
                     combat.RecordLongTermResource(increase);
+                    combat.RecordLongTermGoal(LongTermGoals.PersistentGrowth);
+                }
                 applied = true;
                 break;
             }
