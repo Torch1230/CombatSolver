@@ -17,11 +17,49 @@ internal static class PotionUsePolicy
     public static int AdditionalRequiredUseStrategicHpCost(int strategicHpCost)
         => Math.Max(0, strategicHpCost - SolverWeights.PotionMinimumHpSaved);
 
+    /// <summary>
+    /// Potions the solver must be clearly rewarded for spending, because their effect is hard to replace.
+    /// </summary>
+    /// <remarks>
+    /// Ambergris is deliberately absent: <see cref="MeetsAmbergrisRestriction"/> already holds it to a far higher
+    /// bar (a fraction of maximum HP), and that calculation is written against the baseline cost.
+    /// </remarks>
+    private static readonly HashSet<string> HighValuePotionIds =
+    [
+        "GLOWWATER_POTION",
+        "SWIFT_POTION",
+        "GAMBLERS_BREW",
+        "DUPLICATOR",
+        "OROBIC_ACID",
+        "POT_OF_GHOULS",
+    ];
+
+    private static readonly HashSet<string> ElevatedValuePotionIds =
+    [
+        "DISTILLED_CHAOS",
+        "CLARITY",
+        "RADIANT_TINCTURE",
+        "CURE_ALL",
+        "LIQUID_MEMORIES",
+        "BOTTLED_POTENTIAL",
+        "TOUCH_OF_INSANITY",
+    ];
+
+    /// <summary>
+    /// The HP a route must save to justify spending this potion. Token potions are free to spend; everything else
+    /// costs at least the baseline, and the two value tiers cost more so a cheap potion is spent before a scarce one.
+    /// </summary>
     public static int StrategicHpCost(PotionModel potion, bool renewablePotionShapedRock = false)
-        => potion.Rarity == PotionRarity.Token
-            || renewablePotionShapedRock && potion is PotionShapedRock
-                ? 0
-                : SolverWeights.PotionMinimumHpSaved;
+    {
+        if (potion.Rarity == PotionRarity.Token || renewablePotionShapedRock && potion is PotionShapedRock)
+            return 0;
+        string id = potion.Id.Entry;
+        if (HighValuePotionIds.Contains(id))
+            return SolverWeights.PotionHighValueHpSaved;
+        if (ElevatedValuePotionIds.Contains(id))
+            return SolverWeights.PotionElevatedValueHpSaved;
+        return SolverWeights.PotionMinimumHpSaved;
+    }
 
     public static bool RequiresOpeningUse(PotionModel potion)
         => potion is DexterityPotion
