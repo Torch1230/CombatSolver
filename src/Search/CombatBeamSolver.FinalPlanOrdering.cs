@@ -279,9 +279,9 @@ internal sealed partial class CombatBeamSolver
             for (int index = 0; index < selected.Count; index++)
             {
                 var candidate = selected[index];
-                // Bank every goal that some route can reach, and never spend a pursued goal's card without
-                // banking it. Holding Hand of Greed is what the player asked for; throwing it away as a plain
-                // attack is the outcome they complained about.
+                // Bank every goal that some route can reach, and never destroy a pursued goal's Exhaust card
+                // without banking it. Playing The Hunt as a plain attack is the outcome players complained
+                // about: the card is gone and the reward with it.
                 bool banksRequired =
                     (candidate.Features.LongTermGoals & requiredGoals) == requiredGoals;
                 bool wastesNothing = (candidate.Features.LongTermGoalCardsPlayed

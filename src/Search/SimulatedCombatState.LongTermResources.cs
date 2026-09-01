@@ -13,7 +13,7 @@ internal enum LongTermGoals
 {
     None = 0,
 
-    /// <summary>A fatal kill landed with a card that pays a bonus for it: Hand of Greed, The Hunt, Feed.</summary>
+    /// <summary>A fatal kill landed with a card that pays a bonus for it: The Hunt, Feed, Hand of Greed.</summary>
     FatalKillBonus = 1,
 
     /// <summary>A deck card that grows permanently was played: Genetic Algorithm, The Scythe, Royalties.</summary>
@@ -32,9 +32,12 @@ internal sealed partial class SimulatedCombatState
     public LongTermGoals LongTermGoals => _longTermGoals;
 
     /// <summary>
-    /// Goal categories whose card was played at all, banked or wasted. Requiring a goal means the card must not be
-    /// spent without banking it, which cannot be told from <see cref="LongTermGoals"/> alone: a route that never
-    /// draws Hand of Greed and a route that throws it away as a plain attack both bank nothing.
+    /// Goal categories whose Exhaust card was played without banking the goal, which cannot be told from
+    /// <see cref="LongTermGoals"/> alone: a route that never draws The Hunt and a route that plays it as a plain
+    /// attack both bank nothing, but only the second one destroyed the card.
+    ///
+    /// Only Exhaust cards are tracked here. Hand of Greed pays gold on a fatal kill but does not Exhaust, so
+    /// playing it early is not a waste: it returns to the discard pile and stays in the deck either way.
     /// </summary>
     public LongTermGoals LongTermGoalCardsPlayed => _longTermGoalCardsPlayed;
 

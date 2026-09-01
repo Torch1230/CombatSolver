@@ -35,7 +35,10 @@ internal static class CorePowerSupport
             || combat.EffectivePowers()
                 .Where(power => power.Owner == target)
                 .All(power => power.ShouldOwnerDeathTriggerFatal());
-        if (card is TheHunt or HandOfGreed or Feed)
+        // Only the Exhaust cards. Playing The Hunt or Feed without a kill destroys the card, so that play is
+        // an irreversible waste. Hand of Greed does not Exhaust: it goes to the discard pile, can be drawn again
+        // this combat, and is still in the deck for the next one, so an early play costs nothing permanent.
+        if (card is TheHunt or Feed)
             combat.RecordLongTermGoalCardPlayed(LongTermGoals.FatalKillBonus);
         MonologuePower[] pendingMonologues = combat.CapturePendingMonologues(owner);
         CardOnPlaySupport.Apply(
