@@ -72,6 +72,7 @@ internal sealed partial class CombatBeamSolver(
         minimumPotionUses,
         fixedPrefixActions);
     private readonly SolverTheftPolicy? _theftPolicy = policy.TheftPolicy;
+    private readonly LongTermGoals _pursuedLongTermGoals = policy.PursuedLongTermGoals;
     private readonly PotionStrategySnapshot _potionStrategy = policy.PotionStrategy;
     private readonly bool _forceAllPotionsDisabled = potionPolicyOverride == SolverPotionPolicy.Disabled;
     private readonly bool _enforcePotionDirectives = potionPolicyOverride == null;
@@ -108,6 +109,7 @@ internal sealed partial class CombatBeamSolver(
         _theftPolicy,
         _strategicBossHpRelief,
         root.PostCombatRelicHeal,
+        _pursuedLongTermGoals,
         _potionFreePolicyBaseline,
         root.InitialPlayerMaxHp,
         _minimumPotionUses,

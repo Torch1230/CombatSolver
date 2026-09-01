@@ -156,6 +156,7 @@ internal static class BespokeCardMirrors
             && context.CombatState is SimulatedCombatState combat)
         {
             combat.RecordLongTermResource(increase);
+            combat.RecordLongTermGoal(LongTermGoals.PersistentGrowth);
         }
     }
 

@@ -196,6 +196,7 @@ internal static partial class CardPowerOnPlaySupport
                 int gold = card.DynamicVars.Gold.IntValue;
                 combat.Apply<RoyaltiesPower>(owner, gold, owner);
                 combat.RecordLongTermResource(gold);
+                combat.RecordLongTermGoal(LongTermGoals.PersistentGrowth);
                 break;
             }
             case Rupture:

@@ -179,6 +179,8 @@ internal sealed partial class CombatBeamSolver
         int realizedLongTermResourceValue = combat.LongTermResourceValue;
         int longTermResourceValue = realizedLongTermResourceValue
             - missedTheHuntRewards * CorePowerSupport.TheHuntLongTermResourceValue;
+        LongTermGoals longTermGoals = combat.LongTermGoals;
+        LongTermGoals longTermGoalCardsPlayed = combat.LongTermGoalCardsPlayed;
         score += realizedLongTermResourceValue * SolverWeights.LongTermResourceBeamValue;
         int angerCopiesGenerated = combat.AngerCopiesGenerated;
         score += angerCopiesGenerated * SolverWeights.AngerCopyBeamPenalty;
@@ -409,6 +411,8 @@ internal sealed partial class CombatBeamSolver
             recoveredPlayerHp,
             deathSaveRelicHpRestored,
             longTermResourceValue,
+            longTermGoals,
+            longTermGoalCardsPlayed,
             angerCopiesGenerated,
             projectedHp,
             player.Block,

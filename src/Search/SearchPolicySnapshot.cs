@@ -17,6 +17,7 @@ internal sealed record SearchPolicySnapshot(
     BossHpStrategy ActTransitionBossHpStrategy,
     BossHpStrategy FinalBossHpStrategy,
     int AcceptableBattleHpLoss,
+    LongTermGoals PursuedLongTermGoals,
     SearchDiagnosticsSink Diagnostics,
     SearchFramePressureSignal FramePressureSignal,
     SearchMemoryPressureSignal MemoryPressureSignal)
