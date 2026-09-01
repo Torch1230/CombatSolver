@@ -304,7 +304,8 @@ internal sealed partial class CombatBeamSolver
         FinalPlanCandidate Candidate,
         int PotionBranchesRejected,
         int PotionHpSaved,
-        int PotionHpRequired);
+        int PotionHpRequired,
+        IReadOnlyList<RouteWorldLine> WorldLines);
 
     private sealed record PendingTurnOutcome(
         SearchNode Node,

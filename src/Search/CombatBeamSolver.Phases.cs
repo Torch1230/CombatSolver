@@ -635,6 +635,7 @@ internal sealed partial class CombatBeamSolver
                 ExplicitPotionCount = annotatedActions.Count(action =>
                     action.Kind == PlanActionKind.UsePotion),
                 PotionHpSaved = potionHpSaved,
+                WorldLines = ordering.WorldLines,
                 PotionHpRequired = potionHpRequired,
                 PotionBranchesRejected = potionBranchesRejected,
                 TheftPolicy = _theftPolicy,

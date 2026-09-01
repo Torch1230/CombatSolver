@@ -184,6 +184,10 @@ internal static class SolverDiagnostics
             .Append(" potion_hp_saved=").Append(result.PotionHpSaved)
             .Append(" potion_hp_required=").Append(result.PotionHpRequired)
             .Append(" potion_branches_rejected=").Append(result.PotionBranchesRejected)
+            .Append(" world_lines=").Append(string.Join(
+                ",",
+                result.WorldLines.Select(line =>
+                    $"{(line.PotionCount == 0 ? "-" : string.Join('+', line.PotionTitles))}:{line.HpLost}")))
             .Append(" theft_policy=").Append(result.TheftPolicy?.ToString() ?? "-")
             .Append(" outstanding_stolen_resource=").Append(result.OutstandingStolenResource)
             .Append(" elapsed_ms=").Append(result.Elapsed.TotalMilliseconds.ToString("F0"))
