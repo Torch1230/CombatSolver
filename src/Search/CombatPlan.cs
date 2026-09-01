@@ -282,6 +282,8 @@ internal sealed class SimulationSnapshot(
     int playerMaxHp,
     int cumulativePlayerHpLost,
     int longTermResourceValue,
+    LongTermGoals longTermGoals,
+    LongTermGoals longTermGoalCardsPlayed,
     int angerCopiesGenerated,
     int projectedPlayerHp,
     int playerBlock,
@@ -350,6 +352,8 @@ internal sealed class SimulationSnapshot(
     public int PlayerMaxHp { get; } = playerMaxHp;
     public int CumulativePlayerHpLost { get; } = cumulativePlayerHpLost;
     public int LongTermResourceValue { get; } = longTermResourceValue;
+    public LongTermGoals LongTermGoals { get; } = longTermGoals;
+    public LongTermGoals LongTermGoalCardsPlayed { get; } = longTermGoalCardsPlayed;
     public int AngerCopiesGenerated { get; } = angerCopiesGenerated;
     public int ProjectedPlayerHp { get; } = projectedPlayerHp;
     public int PlayerBlock { get; } = playerBlock;
@@ -435,6 +439,42 @@ internal sealed record SelectedSearchPlan(
     double Score);
 
 /// <summary>最终路线的只读标量摘要；不持有 CombatPredictionSimulator。</summary>
+/// <summary>
+/// Whether the pursued cross-combat goals were honoured, and if not, why not.
+/// </summary>
+internal enum LongTermGoalOutcome
+{
+    /// <summary>No goal was pursued.</summary>
+    Off,
+
+    /// <summary>Honoured at no extra cost.</summary>
+    Free,
+
+    /// <summary>Honoured; the price is reported.</summary>
+    Paid,
+
+    /// <summary>No route both banked the goals and refrained from wasting their cards.</summary>
+    NoCompliantRoute,
+
+    /// <summary>Compliant routes existed but every one of them killed the player.</summary>
+    CompliantRouteWouldDie,
+}
+
+/// <summary>
+/// One alternative the search already found: the best route among those using exactly this set of potions.
+/// </summary>
+/// <remarks>
+/// These come from the final candidate set of the search that just ran, so each line is the best route the beam
+/// <em>kept</em> for that potion set, not the best route that exists for it. Treat the numbers as a floor on how
+/// well that world line can go, not as an authoritative comparison.
+/// </remarks>
+internal sealed record RouteWorldLine(
+    IReadOnlyList<string> PotionTitles,
+    int HpLost,
+    int PotionCount,
+    bool Won,
+    bool IsSelected);
+
 internal sealed record SolverSnapshot(
     bool HasRisk,
     bool PlayerDead,
@@ -443,6 +483,7 @@ internal sealed record SolverSnapshot(
     int PlayerMaxHp,
     int CumulativePlayerHpLost,
     int LongTermResourceValue,
+    LongTermGoals LongTermGoals,
     int AngerCopiesGenerated,
     int ProjectedPlayerHp,
     int PlayerBlock,
@@ -559,6 +600,13 @@ internal sealed class SolverResult
     public required int PotionCount { get; init; }
     public int ProjectedBattlePotionCount => BattlePotionsUsedSoFar + PotionCount;
     public required int PotionHpSaved { get; internal set; }
+    public required LongTermGoals RequiredLongTermGoals { get; init; }
+    public required LongTermGoals BankedLongTermGoals { get; init; }
+    public required int LongTermGoalHpPrice { get; init; }
+    public required int LongTermGoalPotionPrice { get; init; }
+    public required IReadOnlyList<RouteWorldLine> WorldLines { get; init; }
+    public required LongTermGoalOutcome LongTermGoalOutcome { get; init; }
+    public required int CompliantRouteCount { get; init; }
     public required int PotionHpRequired { get; init; }
     public required int PotionBranchesRejected { get; init; }
     public required SolverTheftPolicy? TheftPolicy { get; init; }
@@ -576,6 +624,7 @@ internal sealed class SolverResult
     public required int? DeathTurn { get; init; }
     public required bool OnlyDeathRoutesFound { get; init; }
     public required bool IsActEndingBoss { get; init; }
+    public required BossHpRelief BossHpRelief { get; init; }
     public required TimeSpan Elapsed { get; init; }
     public required IReadOnlyList<CachedContinuation> Continuations { get; init; }
     public bool WasReused { get; init; }
@@ -671,6 +720,13 @@ internal sealed class SolverResult
             BattlePotionsUsedSoFar = battleDamage.PotionsUsedSoFar,
             PotionCount = remainingPotionCount,
             PotionHpSaved = remainingPotionCount == 0 ? 0 : PotionHpSaved,
+            RequiredLongTermGoals = RequiredLongTermGoals,
+            BankedLongTermGoals = BankedLongTermGoals,
+            LongTermGoalHpPrice = LongTermGoalHpPrice,
+            LongTermGoalPotionPrice = LongTermGoalPotionPrice,
+            WorldLines = WorldLines,
+            LongTermGoalOutcome = LongTermGoalOutcome,
+            CompliantRouteCount = CompliantRouteCount,
             PotionHpRequired = remainingPotionCost,
             PotionBranchesRejected = 0,
             TheftPolicy = TheftPolicy,
@@ -688,6 +744,7 @@ internal sealed class SolverResult
             DeathTurn = DeathTurn,
             OnlyDeathRoutesFound = OnlyDeathRoutesFound,
             IsActEndingBoss = IsActEndingBoss,
+            BossHpRelief = BossHpRelief,
             Elapsed = TimeSpan.Zero,
             Continuations = Continuations.Where(item => item.StartTurnNumber > cached.StartTurnNumber).ToList(),
             WasReused = true,

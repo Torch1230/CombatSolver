@@ -5,12 +5,38 @@ internal sealed partial class CombatBeamSolver
     private sealed class FinalPlanOrdering(
         SolverPotionPolicy potionPolicy,
         SolverTheftPolicy? theftPolicy,
+        LongTermGoals pursuedLongTermGoals,
+        BossHpRelief bossHpRelief,
         PotionFreePolicyBaseline? potionFreePolicyBaseline,
         int initialPlayerMaxHp,
         SearchDiagnosticsSink diagnostics,
         bool detailedDiagnostics,
         BattleDamageSnapshot battleDamage)
     {
+        /// <summary>
+        /// Quarters of a normal fight's HP weight. A boss whose act clear refunds most of the damage is worth a
+        /// quarter; the run's last fight is worth nothing beyond surviving it.
+        /// </summary>
+        private readonly int _hpWeightQuarters = bossHpRelief switch
+        {
+            BossHpRelief.RunEnding => 0,
+            BossHpRelief.ActClearHeal => 1,
+            _ => 4,
+        };
+
+        /// <summary>
+        /// The HP a potion must save to be worth spending, scaled by how much HP is worth in this fight. When HP
+        /// buys nothing, no amount of saved HP justifies a potion and only the win/lose escape in
+        /// <see cref="PotionUsePolicy.IsEligible"/> can still admit one.
+        /// </summary>
+        private int ScalePotionCost(int strategicHpCost)
+            => _hpWeightQuarters == 0
+                ? int.MaxValue / 4
+                : strategicHpCost * 4 / _hpWeightQuarters;
+
+        /// <summary>Distinct potion sets reported as alternatives. Enough to compare, few enough to read.</summary>
+        private const int MaximumWorldLines = 6;
+
         public FinalPlanSelection Select(
             IReadOnlyList<(SearchNode Node, SimulationSnapshot Snapshot, RouteAnnotations Annotations)> evaluated,
             int initialHp,
@@ -136,7 +162,7 @@ internal sealed partial class CombatBeamSolver
                          potionPolicy,
                          candidate.PotionCount,
                          candidate.Snapshot.AutomaticPotionUseCount,
-                         candidate.PotionStrategicCost,
+                         ScalePotionCost(candidate.PotionStrategicCost),
                          potionFreeWon,
                          potionFreeStrategicHpDeficit,
                          anyRouteWon,
@@ -153,11 +179,17 @@ internal sealed partial class CombatBeamSolver
                         potionFreePlayerHp,
                         candidate.Snapshot.PlayerHp))
                 .OrderByDescending(candidate => candidate.Features.AllEnemiesDead)
+                // Survival used to be implied by the HP deficit being maximal on a death route. Once HP can be
+                // weighted down to nothing it has to be stated, or a run-ending boss would rank a lethal route.
+                .ThenBy(candidate => candidate.Snapshot.PlayerDead
+                    || candidate.Snapshot.ProjectedPlayerHp <= 0
+                        ? 1
+                        : 0)
                 .ThenBy(candidate => theftPolicy == SolverTheftPolicy.PreserveResources
                     ? candidate.Features.OutstandingStolenResource
                     : 0)
-                .ThenBy(candidate => candidate.PolicyHpDeficit)
-                .ThenBy(candidate => candidate.HealthResourceCost)
+                .ThenBy(candidate => candidate.PolicyHpDeficit * _hpWeightQuarters)
+                .ThenBy(candidate => candidate.HealthResourceCost * _hpWeightQuarters)
                 .ThenByDescending(candidate => candidate.Features.LongTermResourceValue)
                 .ThenBy(candidate => candidate.Features.AngerCopiesGenerated)
                 .ThenBy(candidate => CombatBeamSolver.PolicyBoundaryRank(candidate.Features.BoundaryReason))
@@ -174,14 +206,99 @@ internal sealed partial class CombatBeamSolver
                         ? "本场药水策略要求至少使用一瓶，但搜索没有找到可执行的用药路线。"
                         : "本场药水策略没有可执行路线。");
             }
-            var selectedCandidate = selected[0];
+            // The ordering is a total order that does not depend on the goal constraint, so the best route that
+            // banks the required goals is simply the first ordered route that banks them. No second ranking, and
+            // no second search: the price of insisting is the gap between that route and the unconstrained best.
+            LongTermGoals reachableGoals = LongTermGoals.None;
+            foreach (var candidate in selected)
+                reachableGoals |= candidate.Features.LongTermGoals;
+            LongTermGoals requiredGoals = pursuedLongTermGoals & reachableGoals;
+            var unconstrainedCandidate = selected[0];
+            bool unconstrainedLethal = unconstrainedCandidate.Snapshot.PlayerDead
+                || unconstrainedCandidate.Snapshot.ProjectedPlayerHp <= 0;
+            int compliantCount = 0;
+            int selectableIndex = -1;
+            for (int index = 0; index < selected.Count; index++)
+            {
+                var candidate = selected[index];
+                // Bank every goal that some route can reach, and never spend a pursued goal's card without
+                // banking it. Holding Hand of Greed is what the player asked for; throwing it away as a plain
+                // attack is the outcome they complained about.
+                bool banksRequired =
+                    (candidate.Features.LongTermGoals & requiredGoals) == requiredGoals;
+                bool wastesNothing = (candidate.Features.LongTermGoalCardsPlayed
+                    & pursuedLongTermGoals
+                    & ~candidate.Features.LongTermGoals) == LongTermGoals.None;
+                if (!banksRequired || !wastesNothing)
+                    continue;
+                compliantCount++;
+                // Only the player's life is off limits. Deliberately NOT AllEnemiesDead: that means "finished
+                // inside the searched horizon", not "won", and holding a finisher usually pushes the kill past
+                // the horizon. Rejecting those was why the card kept getting spent anyway.
+                // A compliant route may be lethal only when the unconstrained best already is. Equality here was
+                // backwards: it also rejected a compliant route that survives while the unconstrained best dies.
+                bool lethal = candidate.Snapshot.PlayerDead || candidate.Snapshot.ProjectedPlayerHp <= 0;
+                if (selectableIndex < 0 && (!lethal || unconstrainedLethal))
+                    selectableIndex = index;
+            }
+            LongTermGoalOutcome goalOutcome = pursuedLongTermGoals == LongTermGoals.None
+                ? LongTermGoalOutcome.Off
+                : selectableIndex < 0
+                    ? compliantCount == 0
+                        ? LongTermGoalOutcome.NoCompliantRoute
+                        : LongTermGoalOutcome.CompliantRouteWouldDie
+                    : selectableIndex == 0
+                        ? LongTermGoalOutcome.Free
+                        : LongTermGoalOutcome.Paid;
+            int selectedIndex = pursuedLongTermGoals == LongTermGoals.None || selectableIndex < 0
+                ? 0
+                : selectableIndex;
+            var selectedCandidate = selected[selectedIndex];
+            List<RouteWorldLine> worldLines = [];
+            string SelectedPotionKey(int index) => string.Join(
+                '+',
+                selected[index].Node.Actions
+                    .Where(action => action.Kind == PlanActionKind.UsePotion)
+                    .Select(action => action.PotionTitle)
+                    .OrderBy(title => title, StringComparer.Ordinal));
+            string selectedKey = SelectedPotionKey(selectedIndex);
+            HashSet<string> seenPotionKeys = [];
+            int firstPotionFreeIndex = -1;
+            for (int index = 0; index < selected.Count; index++)
+            {
+                string key = SelectedPotionKey(index);
+                if (key.Length == 0 && firstPotionFreeIndex < 0)
+                    firstPotionFreeIndex = index;
+                if (!seenPotionKeys.Add(key) || worldLines.Count >= MaximumWorldLines)
+                    continue;
+                worldLines.Add(BuildWorldLine(index, key));
+            }
+            // The no-potion line is the one comparison a player always wants, so keep it even if the cap hit first.
+            if (firstPotionFreeIndex >= 0 && !worldLines.Any(line => line.PotionCount == 0))
+                worldLines.Add(BuildWorldLine(firstPotionFreeIndex, string.Empty));
+            int longTermGoalHpPrice = Math.Max(
+                0,
+                selectedCandidate.StrategicHpDeficit - unconstrainedCandidate.StrategicHpDeficit);
+            int longTermGoalPotionPrice = Math.Max(
+                0,
+                selectedCandidate.PotionCount - unconstrainedCandidate.PotionCount);
+            if (pursuedLongTermGoals != LongTermGoals.None)
+            {
+                diagnostics.Info(
+                    $"[CombatSolver/Test] LONG_TERM_GOAL_PRICE pursued={pursuedLongTermGoals} " +
+                    $"reachable={reachableGoals} required={requiredGoals} " +
+                    $"banked={selectedCandidate.Features.LongTermGoals} " +
+                    $"cards_played={selectedCandidate.Features.LongTermGoalCardsPlayed} " +
+                    $"candidates={selected.Count} compliant={compliantCount} outcome={goalOutcome} " +
+                    $"hp_price={longTermGoalHpPrice} potion_price={longTermGoalPotionPrice}");
+            }
             int potionBranchesRejected = policyCandidates.Count(candidate =>
                 candidate.PotionCount > 0
                 && (!(PotionUsePolicy.IsEligible(
                           potionPolicy,
                           candidate.PotionCount,
                           candidate.Snapshot.AutomaticPotionUseCount,
-                          candidate.PotionStrategicCost,
+                          ScalePotionCost(candidate.PotionStrategicCost),
                           potionFreeWon,
                           potionFreeStrategicHpDeficit,
                           anyRouteWon,
@@ -224,7 +341,25 @@ internal sealed partial class CombatBeamSolver
                     selectedCandidate.Score),
                 potionBranchesRejected,
                 potionHpSaved,
-                potionHpRequired);
+                potionHpRequired,
+                requiredGoals,
+                selectedCandidate.Features.LongTermGoals,
+                longTermGoalHpPrice,
+                longTermGoalPotionPrice,
+                worldLines,
+                goalOutcome,
+                compliantCount);
+
+            RouteWorldLine BuildWorldLine(int index, string key) => new(
+                selected[index].Node.Actions
+                    .Where(action => action.Kind == PlanActionKind.UsePotion)
+                    .Select(action => action.PotionTitle)
+                    .OrderBy(title => title, StringComparer.Ordinal)
+                    .ToArray(),
+                selected[index].StrategicHpDeficit,
+                selected[index].PotionCount,
+                selected[index].Features.AllEnemiesDead,
+                string.Equals(key, selectedKey, StringComparison.Ordinal));
         }
     }
 }
