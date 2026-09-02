@@ -234,6 +234,14 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidOperationException("手动 GC 按钮没有归属性能设置页。");
         if (!SolverOverlay.NoGcControlsConfiguredForTesting)
             throw new InvalidOperationException("NoGC 开关或预算输入没有归属性能设置页。");
+        bool memoryUsageBarConfigured = SolverOverlay.MemoryUsageBarConfiguredForTesting;
+        bool memoryUsageBarFormatting = SolverOverlay.ExerciseMemoryUsageBarForTesting();
+        if (!memoryUsageBarConfigured || !memoryUsageBarFormatting)
+        {
+            throw new InvalidOperationException(
+                $"主界面内存占用条没有按搜索 GC 回收边界建立：" +
+                $"configured={memoryUsageBarConfigured} formatting={memoryUsageBarFormatting}。");
+        }
         if (!SolverOverlay.ExercisePerformanceHintForTesting())
             throw new InvalidOperationException("战损结果没有可用的性能预设重试胶囊提示。");
         if (strategyPotion is { } potionEntry)
@@ -367,9 +375,11 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidOperationException("搜索结束通知的默认值或前台判断不正确。");
         }
         if (notificationDefaults.OverlayTheme != SolverOverlayTheme.Dark
-            || Math.Abs(notificationDefaults.OverlayOpacity - 1f) > 0.001f)
+            || Math.Abs(notificationDefaults.OverlayOpacity - 0.65f) > 0.001f
+            || notificationDefaults.OverlayWidth != 1200f
+            || notificationDefaults.OverlayHeight != 700f)
         {
-            throw new InvalidOperationException("界面默认值不是深色主题和 100% 透明度。");
+            throw new InvalidOperationException("界面默认值不是深色主题、65% 透明度和 1200×700 尺寸。");
         }
         SolverSettingsData originalNotificationSettings = SolverSettings.Current;
         try

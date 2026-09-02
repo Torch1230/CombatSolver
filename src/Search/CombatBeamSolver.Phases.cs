@@ -921,7 +921,7 @@ internal sealed partial class CombatBeamSolver
                         playDepth,
                         active.Count,
                         ended.Count,
-                        "回收内存",
+                        "内存回收中",
                         force: true);
                     // Preserve coordinator transposition order across a GC-only safe point.
                     // Rebuilding it from a mid-search subset would change which later branches win.
@@ -1063,7 +1063,7 @@ internal sealed partial class CombatBeamSolver
                         playDepth,
                         Math.Max(0, active.Count - activeIndex) + nextPlays.Count,
                         ended.Count,
-                        "回收内存",
+                        "内存回收中",
                         force: true);
                     _run.ResetReclaimableCaches();
                     parallelExpansionExecutor?.ResetRebuildableCaches();

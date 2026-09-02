@@ -135,6 +135,8 @@ internal static class PlayerTurnSetupCoordinator
         public SolverResult? Result { get; set; }
         public SearchInteractionState Interaction { get; } =
             initialSearch?.SearchPolicy.Interaction ?? new SearchInteractionState();
+        public SearchMemoryPressureSignal? MemoryPressureSignal =
+            initialSearch?.SearchPolicy.MemoryPressureSignal;
         public int SearchState;
         public TaskCompletionSource ManualRecalculationRequested { get; set; } = new(
             TaskCreationOptions.RunContinuationsAsynchronously);
@@ -312,6 +314,15 @@ internal static class PlayerTurnSetupCoordinator
         => _deferredSetupCancellation != null
            || _active is { InitialSearch: not null, Result: null, SearchState: 1 }
            || _active is { ManualSearchState: 1 };
+
+    public static SearchMemoryPressureSignal? CurrentMemoryPressureSignal
+    {
+        get
+        {
+            ActivePlan? active = Volatile.Read(ref _active);
+            return active == null ? null : Volatile.Read(ref active.MemoryPressureSignal);
+        }
+    }
 
     public static bool CanApplyCurrentTurn
         => _active is { } active
@@ -1052,6 +1063,7 @@ internal static class PlayerTurnSetupCoordinator
                 theftPolicy: SolverController.ResolveTheftPolicy(active.Combat),
                 interaction: active.Interaction),
             original.RootSnapshot);
+        Volatile.Write(ref active.MemoryPressureSignal, refreshed.SearchPolicy.MemoryPressureSignal);
         int turn = active.Player.PlayerCombatState!.TurnNumber;
         active.Interaction.ResetForSearch();
         Interlocked.Exchange(ref active.ManualSearchState, 1);

@@ -33,6 +33,7 @@ Entry / turn hooks
 | `src/Runtime/PowerDynamicVarMaterializationGuardPatch.cs` | 搜索模拟惰性创建 Power 显示变量时立即报告根捕获缺失 | Power 语义、显示内容与搜索阶段串行化 |
 | `src/Runtime/SearchGcPolicy.cs` | 管理玩家显式开关的进程级 GC 模式：开启时按原样预算建立战斗级 NoGC、执行搜索内安全检查点与引用释放后的压力回收；稳定关闭时使用 CLR 常规分代 GC 且不新增自动补账压力，从开启切换时仍结清此前义务；模式切换和手动回收与活动搜索计数共用安全边界 | Beam 剪枝、候选评分、模拟语义与同步阻塞 UI |
 | `src/Runtime/SearchMemoryPressureSignal.cs` | 将 Runtime 的进程分配边界和回收入口注入搜索；不让 Search 直接操作 GC 模式 | 设置读取与搜索评分 |
+| `src/Runtime/SolverControllerSessions.cs` | 除会话状态外，向 UI 提供当前进程占用与活动搜索分配检查点的只读快照 | UI 样式与搜索内存政策 |
 | `src/Runtime/SolverSettings.cs` | 持久化性能、执行、搜索并行度、NoGC 开关与独立预算、逐槽药水策略和搜索结束通知设置，并在主线程捕获不可变搜索 snapshot | 搜索期读取全局设置 |
 | `src/Runtime/PlayerTurnSetupPatches.cs` | 首回合原生页面出现后的 Start 根搜索；后续回合观察上一轮 `EndTurn.TurnStartChoices` 的原生页面，全自动直接可见重放，单步默认交还玩家并允许执行/全自动入口接管既有选择；进入 Play 后交给 continuation 核对；跨 Reset 的 Setup/部署延迟由 lifecycle token 取消 | 普通 Play 阶段搜索与动作部署 |
 | `src/Runtime/NativeChoiceRuntime.cs` | 观测原版战斗选择请求，按卡牌语义状态匹配计划实例，并锁定、驱动真实页面控件 | 选择分支枚举和战斗结算 |
@@ -51,7 +52,7 @@ Entry / turn hooks
 - `SearchDiagnosticsSink.cs`：搜索日志出口。
 - `SearchFramePressureSignal.cs`：Runtime 向 worker 提供的帧压力信号；以最近 `31` 个非搜索帧中位数建立基线，压力阈值为 `max(33 ms, baseline × 1.5)`，无显示服务的 headless 请求旁路帧恢复等待。
 - `SearchRequestWorkTotals.cs`：一次请求内所有正常、失败和取消 solver 的展开、转移与选牌工作量精确记账一次；不把被取消的部分工作误记为零，也不承担结果质量排序。
-- `CombatSearchCoordinator.cs`：一次请求的搜索编排；Smart 从无药基线按恰好 `N` 瓶逐层搜索，同层药水共同竞争并在首个合格层停止；跨 solver 合并严格单调改善的完整获胜结果，并透传当前 solver 已完成回合的候选路线。玩家可采用已显示路线或只执行当前回合。Disabled/RequireAtLeastOne 保持各自政策。所有层共享请求级时间余量并合并总指标。
+- `CombatSearchCoordinator.cs`：一次请求的搜索编排；Smart 从无药基线按恰好 `N` 瓶逐层搜索，同层药水共同竞争并在首个合格层停止。每个用药梯度结束后只保留轻量路线与统计，在进入下一梯度前回收上一层搜索图并重建 NoGC 区域。跨 solver 合并严格单调改善的完整获胜结果，并透传当前 solver 已完成回合的候选路线。玩家可采用已显示路线或只执行当前回合。Disabled/RequireAtLeastOne 保持各自政策。所有层共享请求级时间余量并合并总指标。
 - `CombatPlan.cs`：Runtime 消费的计划、结果和续用数据。结果不得保留历史 Simulator 对象图。
 
 ### 3.2 CombatBeamSolver 分片
@@ -141,6 +142,8 @@ renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或
 `BossHpRelief` 只描述战斗事实：第一、二幕战后回复 80%，最终 Boss 后无后续战斗。`BossHpStrategy` 决定搜索如何使用该事实；通关优先沿用实际回复折算，最低战损把对应战斗恢复为普通 HP 权重。最终排序、智能药水开层和卖血阈值必须消费同一个有效策略，结果与诊断仍保留真实 `BossHpRelief`。
 
 `SolverPotionStrategyPanel` 是主界面右侧独立窄浮层的逐瓶药水策略控件所有者。它只在主线程按当前槽位读取图标、标题和可搜索性，紧凑按钮在智能、保护和强制使用间循环；`SolverController` 以槽位和药水 ID 捕获不可变 `PotionStrategySnapshot`，自动计算开启时策略变化会废弃旧 continuation 并启动新搜索。新进入槽位的药水没有旧身份覆盖，默认按智能使用处理。
+
+`SolverMemoryUsageBar` 在底栏显示游戏进程当前工作集；活动 NoGC 搜索期间，进度使用 `SearchMemoryPressureSignal` 的本次分配量和实际回收检查点上限，接近满格即表示搜索将暂停并执行回收。UI 不用配置的 NoGC 区域大小冒充实际占用或回收触发线。
 
 `SolverSettingsPanel.BugReports` 持有问题包导出/上传的单实例 UI 生命周期、取消令牌、进度条和线程安全完成邮箱，并把文件发送和服务端确认显示为两个阶段。后台任务只向完成邮箱发布一次 `Succeeded / Canceled / Failed`；面板自己的 `_Process` 每帧先消费终态，再处理字节进度或取消等待，并在同一次终态消费中释放令牌、收起进度条、替换状态消息和恢复按钮。上传生命周期不依赖搜索使用的 `SolverDispatcher`。`CombatBugReportUploader` 不持有 Godot 控件，后台传输只通过 `IProgress<CombatBugReportUploadProgress>` 发布字节计数。进度到达文件总字节数只代表请求正文已经写出，只有服务端回执同时确认反馈编号和实收字节数才算上传成功。
 

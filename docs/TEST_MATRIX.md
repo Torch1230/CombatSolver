@@ -8,6 +8,12 @@
 
 性能指标口径：`selected_*` 只描述最终选中的单个 solver；请求级 `total_expanded_nodes / total_transitions / total_choice_branches` 对正常、失败和取消的每个 solver 精确记录一次。`total_solver_ms`、solver 分配与 GC 累计只覆盖正常返回并被 coordinator 合并的层，不包含取消中的部分工作，因此完整耗时使用请求/阶段墙钟，内存使用进程峰值工作集。Smart 多层的取消时点可能令请求总工作量小幅波动，语义验收优先比较胜负、战损、回合和动作路线。峰值工作集是瞬时进程峰值，不能跨阶段相加；`16 GB` NoGC 是运行时请求预算，不等于实际占用或硬上限；NoGC 活跃时 `GC.GetTotalMemory(false)` 不是严格 live-set 测量。
 
+## 下一版本（开发中，版本号待定）
+
+| 场景 | 结果 | 验证内容 | 日期 |
+| --- | --- | --- | --- |
+| `UI-MEMORY-GC-WALL-DEFAULTS` | 通过（headless UI、控制器生命周期、DOP4） | 底栏显示进程当前工作集，活动 NoGC 搜索按实际回收检查点变色并显示“内存回收中”；Smart 药水梯度切换时仅保留轻量路线，回收上一层搜索图并从新检查点计量。待机和常规 GC 不显示虚假比例。新默认尺寸 `1200 × 700`、透明度 `65%`。runId `58dc28581d2f4e6285758a831fee01d0`。 | 2026-09-02 |
+
 ## 0.27.0（已发布）
 
 | 场景 | 结果 | 验证内容 | 日期 |

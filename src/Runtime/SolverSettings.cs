@@ -101,11 +101,11 @@ internal sealed record SolverSettingsData
     public double? DeploymentInterActionDelaySeconds { get; init; }
     public float? OverlayPositionX { get; init; }
     public float? OverlayPositionY { get; init; }
-    public float? OverlayWidth { get; init; }
-    public float? OverlayHeight { get; init; }
+    public float? OverlayWidth { get; init; } = 1200f;
+    public float? OverlayHeight { get; init; } = 700f;
     public string? ReporterContactQq { get; init; }
     public SolverOverlayTheme OverlayTheme { get; init; } = SolverOverlayTheme.Dark;
-    public float OverlayOpacity { get; init; } = 1f;
+    public float OverlayOpacity { get; init; } = 0.65f;
 }
 
 internal sealed record SolverSettingsSnapshot(

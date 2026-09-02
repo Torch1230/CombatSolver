@@ -69,6 +69,7 @@ internal static class SolverOverlay
     private static Button? _potionStrategyButton;
     private static Button? _performanceHintButton;
     private static Button? _bossHpStrategyHintButton;
+    private static SolverMemoryUsageBar? _memoryUsageBar;
     private static SolverPotionStrategyPanel? _potionStrategyPanel;
     private static Control? _rightResizeHandle;
     private static Control? _bottomResizeHandle;
@@ -153,6 +154,12 @@ internal static class SolverOverlay
         => _settingsPanel?.ManualGcButtonConfiguredForTesting == true;
     internal static bool NoGcControlsConfiguredForTesting
         => _settingsPanel?.NoGcControlsConfiguredForTesting == true;
+    internal static bool MemoryUsageBarConfiguredForTesting
+        => _memoryUsageBar != null
+            && GodotObject.IsInstanceValid(_memoryUsageBar)
+            && _memoryUsageBar.IsInsideTree();
+    internal static bool ExerciseMemoryUsageBarForTesting()
+        => SolverMemoryUsageBar.ExerciseFormattingForTesting();
     internal static bool VisualSettingsConfiguredForTesting
         => _settingsPanel?.VisualSettingsConfiguredForTesting == true;
     internal static bool BossHpStrategySettingsConfiguredForTesting
@@ -522,9 +529,10 @@ internal static class SolverOverlay
         string routeContext = _searchBestSnapshot is { Turns.Count: > 0 } routeSnapshot
             ? $"已规划至第 {routeSnapshot.Turns[^1].Turn} 回合"
             : "等待候选路线";
+        bool reclaimingMemory = progress.Phase == "内存回收中";
         SetStatus(
-            "后台计算中",
-            Accent,
+            reclaimingMemory ? "内存回收中" : "后台计算中",
+            reclaimingMemory ? Warning : Accent,
             deployWhenReady ? $"{routeContext}    已排队执行" : routeContext);
         if (_routeHeadingLabel != null)
             _routeHeadingLabel.Text = "求解器当前考虑（尚未验证）";
@@ -534,8 +542,9 @@ internal static class SolverOverlay
             _progressText.Text = $"已用 {progress.ElapsedMilliseconds / 1000d:F1} s";
         }
         string potionSearchPhase = progress.Phase.StartsWith("正在搜索", StringComparison.Ordinal)
-            ? progress.Phase
-            : string.Empty;
+            || reclaimingMemory
+                ? progress.Phase
+                : string.Empty;
         string reviewedWorldlinesText =
             $"已查阅 {reviewedWorldlinesBeforeSearch + progress.ReviewedWorldlines:N0} 条世界线";
         SetReviewText(potionSearchPhase);
@@ -1696,6 +1705,12 @@ internal static class SolverOverlay
         _fullAutoButton.CustomMinimumSize = new Vector2(124, SolverUiTokens.Size.ButtonHeight);
         _fullAutoButton.Pressed += OnFullAutoPressed;
         footer.AddChild(_fullAutoButton);
+
+        _memoryUsageBar = new SolverMemoryUsageBar
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        footer.AddChild(_memoryUsageBar);
 
         return footer;
     }

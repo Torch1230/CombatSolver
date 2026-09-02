@@ -171,6 +171,19 @@ internal static class SolverController
         => _combat.LastManualProjectionComparison;
     internal static int NoGcRegionRolloverCountForTesting
         => SearchGcPolicy.RolloverCountForTesting;
+    internal static SearchMemoryUsageSnapshot CaptureSearchMemoryUsage()
+    {
+        SearchMemoryPressureSignal? signal = _search?.MemoryPressureSignal
+            ?? PlayerTurnSetupCoordinator.CurrentMemoryPressureSignal;
+        SearchMemoryPressureUsage pressure = signal?.CaptureUsage()
+            ?? SearchMemoryPressureUsage.Disabled;
+        return new SearchMemoryUsageSnapshot(
+            System.Environment.WorkingSet,
+            IsSearching,
+            pressure.AllocatedBytes,
+            pressure.AllocationLimitBytes,
+            pressure.Reclaiming);
+    }
     internal static long LastDeployedActionStartedAtMillisecondsForTesting { get; private set; }
     internal static Task LastCombatReferenceReleaseForTesting { get; private set; } = Task.CompletedTask;
     internal static int CombatLifecycleGeneration
@@ -981,6 +994,7 @@ internal static class SolverController
                 theftPolicy: theftPolicy,
                 interaction: search.Interaction);
             search.MaxDegreeOfParallelism = searchPolicy.MaxDegreeOfParallelism;
+            search.MemoryPressureSignal = searchPolicy.MemoryPressureSignal;
             setupStage = "combat_root_snapshot";
             long rootCaptureAllocatedAtStart = GC.GetTotalAllocatedBytes(precise: false);
             CombatRootSnapshot rootSnapshot;

@@ -22,6 +22,19 @@ internal sealed record ManualProjectionComparison(
     public int Difference => CurrentProjectedBattleHpLost - PreviousProjectedBattleHpLost;
 }
 
+internal readonly record struct SearchMemoryUsageSnapshot(
+    long ProcessWorkingSetBytes,
+    bool SearchActive,
+    long SearchAllocatedBytes,
+    long SearchAllocationLimitBytes,
+    bool Reclaiming)
+{
+    public bool HasGcWall => SearchAllocationLimitBytes != long.MaxValue;
+    public double GcWallRatio => HasGcWall
+        ? Math.Clamp(SearchAllocatedBytes / (double)Math.Max(1, SearchAllocationLimitBytes), 0d, 1d)
+        : 0d;
+}
+
 internal sealed class SearchProgressDisplayState(long startedAtTick)
 {
     public SearchProgressDisplayState() : this(Environment.TickCount64)
@@ -116,6 +129,7 @@ internal sealed class SolverSearchSession(
     public int CancellationDisposeState;
     public bool DeployWhenReady { get; set; } = deployWhenReady;
     public int MaxDegreeOfParallelism { get; set; } = 1;
+    public SearchMemoryPressureSignal? MemoryPressureSignal { get; set; }
     public SearchInteractionState Interaction { get; } = new();
     public int FrameCount { get; private set; }
     public int FramesOver33Milliseconds { get; private set; }

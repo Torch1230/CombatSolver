@@ -1253,6 +1253,14 @@ internal static class CombatSearchCoordinator
         List<SolverResult> searches = [potionFree];
         for (int potionCount = 1; potionCount <= maximumPotionUses; potionCount++)
         {
+            ReclaimAtPotionGradientBoundary(
+                policy,
+                cancellationToken,
+                progressCallback,
+                profile,
+                potionFree,
+                potionCount - 1,
+                potionCount);
             SolverResult candidate;
             try
             {
@@ -1326,6 +1334,67 @@ internal static class CombatSearchCoordinator
             $"[CombatSolver/Test] SMART_POTION_GRADIENT result " +
             $"stop=no_acceptable_potion maximum={maximumPotionUses} selected=potion_free");
         return potionFree;
+    }
+
+    private static void ReclaimAtPotionGradientBoundary(
+        SearchPolicySnapshot policy,
+        CancellationToken cancellationToken,
+        Action<SolverProgress>? progressCallback,
+        SolverSearchProfile profile,
+        SolverResult totalsCarrier,
+        int completedPotionCount,
+        int nextPotionCount)
+    {
+        SearchMemoryPressureSignal signal = policy.MemoryPressureSignal;
+        if (!signal.IsEnabled || signal.AllocatedBytes == 0)
+            return;
+
+        cancellationToken.ThrowIfCancellationRequested();
+        long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+        int gen0Before = GC.CollectionCount(0);
+        int gen1Before = GC.CollectionCount(1);
+        int gen2Before = GC.CollectionCount(2);
+        TimeSpan pauseBefore = GC.GetTotalPauseDuration();
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        progressCallback?.Invoke(new SolverProgress(
+            totalsCarrier.StartTurnNumber,
+            totalsCarrier.StartTurnNumber + Math.Max(0, totalsCarrier.SearchedTurns - 1),
+            totalsCarrier.SearchedTurns,
+            PlayDepth: 0,
+            ExpandedNodes: totalsCarrier.ExpandedNodes,
+            ReviewedWorldlines: totalsCarrier.ExpandedNodes,
+            MaxNodes: profile.MaxExpandedNodes,
+            FrontierNodes: 0,
+            EndedNodes: 1,
+            ElapsedMilliseconds: (long)totalsCarrier.TotalSearchElapsed.TotalMilliseconds,
+            Phase: "内存回收中"));
+        long pressureBefore = signal.AllocatedBytes;
+        long limitBefore = signal.AllocationLimitBytes;
+        signal.ReclaimAndContinue(cancellationToken);
+        stopwatch.Stop();
+
+        TimeSpan gcPause = GC.GetTotalPauseDuration() - pauseBefore;
+        totalsCarrier.TotalWorkerAllocatedBytes = checked(
+            totalsCarrier.TotalWorkerAllocatedBytes
+            + Math.Max(0, GC.GetAllocatedBytesForCurrentThread() - allocatedBefore));
+        totalsCarrier.TotalGen0Collections += GC.CollectionCount(0) - gen0Before;
+        totalsCarrier.TotalGen1Collections += GC.CollectionCount(1) - gen1Before;
+        totalsCarrier.TotalGen2Collections += GC.CollectionCount(2) - gen2Before;
+        totalsCarrier.TotalGcPauseDuration += gcPause;
+        if (gcPause > totalsCarrier.TotalMaxObservedGcPause)
+            totalsCarrier.TotalMaxObservedGcPause = gcPause;
+        totalsCarrier.TotalSearchElapsed += stopwatch.Elapsed;
+        if (totalsCarrier.SearchPhase == SolverSearchPhase.Deep)
+            totalsCarrier.DeepSearchElapsed += stopwatch.Elapsed;
+        else
+            totalsCarrier.ShortSearchElapsed += stopwatch.Elapsed;
+
+        policy.Diagnostics.Info(
+            $"[CombatSolver/Test] POTION_GRADIENT_MEMORY_RESET " +
+            $"completed_layer={completedPotionCount} next_layer={nextPotionCount} " +
+            $"allocated_before={pressureBefore} limit_before={limitBefore} " +
+            $"allocated_after={signal.AllocatedBytes} limit_after={signal.AllocationLimitBytes} " +
+            $"gc_pause_ms={gcPause.TotalMilliseconds:F1} elapsed_ms={stopwatch.Elapsed.TotalMilliseconds:F1}");
     }
 
     private static SolverInterimResult BuildInterimResult(
