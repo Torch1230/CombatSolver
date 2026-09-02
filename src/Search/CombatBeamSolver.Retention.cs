@@ -835,39 +835,10 @@ internal sealed partial class CombatBeamSolver
                 }
             }
 
-            List<SearchNode> band = [];
             SearchNode? continuing = FindBestCrossTurnCandidate(inFlight, bestMaxHp);
-            if (continuing != null)
-                band.Add(continuing);
-            SearchNode? newest = FindBestCrossTurnCandidate(newFamilies, bestMaxHp);
-            if (newest != null)
-                band.Add(newest);
-
-            SearchNode? fallbackFirst = null;
-            SearchNode? fallbackSecond = null;
-            foreach (SearchNode candidate in inFlight)
-            {
-                AddCrossTurnFallbackCandidate(
-                    candidate,
-                    band,
-                    bestMaxHp,
-                    ref fallbackFirst,
-                    ref fallbackSecond);
-            }
-            foreach (SearchNode candidate in newFamilies)
-            {
-                AddCrossTurnFallbackCandidate(
-                    candidate,
-                    band,
-                    bestMaxHp,
-                    ref fallbackFirst,
-                    ref fallbackSecond);
-            }
-            if (band.Count < 2 && fallbackFirst != null)
-                band.Add(fallbackFirst);
-            if (band.Count < 2 && fallbackSecond != null)
-                band.Add(fallbackSecond);
-            foreach (SearchNode candidate in band)
+            SearchNode? candidate = continuing
+                ?? FindBestCrossTurnCandidate(newFamilies, bestMaxHp);
+            if (candidate != null)
                 retained.Add(candidate);
         }
 
@@ -922,27 +893,6 @@ internal sealed partial class CombatBeamSolver
                 best = candidate;
         }
         return best;
-    }
-
-    private static void AddCrossTurnFallbackCandidate(
-        SearchNode candidate,
-        IReadOnlyList<SearchNode> alreadySelected,
-        int bestMaxHp,
-        ref SearchNode? first,
-        ref SearchNode? second)
-    {
-        if (ContainsReference(alreadySelected, candidate))
-            return;
-        if (first == null || CompareCrossTurnCandidates(candidate, first, bestMaxHp) < 0)
-        {
-            second = first;
-            first = candidate;
-        }
-        else if (second == null
-                 || CompareCrossTurnCandidates(candidate, second, bestMaxHp) < 0)
-        {
-            second = candidate;
-        }
     }
 
     private static int CompareCrossTurnCandidates(
