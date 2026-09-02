@@ -1437,7 +1437,7 @@ internal sealed partial class CombatBeamSolver
         {
             finalPool.Add(RefreshReleasedFallback(potionBoundaryFallback));
         }
-        List<SearchNode> finalCandidates = Retention.RankBest(finalPool, _profile.BeamWidth * 4);
+        List<SearchNode> finalCandidates = Retention.RankFinal(finalPool);
         ReleaseDroppedSnapshots(finalPool, finalCandidates);
         ValidateHistoricalSimulatorsReleased(finalCandidates);
         PublishProgress(_startTurnNumber + searchedTurnLayers, searchedTurnLayers, 0,

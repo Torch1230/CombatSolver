@@ -305,7 +305,11 @@ internal sealed partial class CombatBeamSolver
                 energy[outcome.Turn] = outcome.EnergyLeft;
             }
             if (combatEndedTurn == null
-                && node.Snapshot.AllEnemiesDead
+                && SolverInterimResultOrdering.IsCompleteVictory(
+                    node.ActionCount,
+                    node.Snapshot.AllEnemiesDead,
+                    node.Snapshot.PlayerDead,
+                    node.Snapshot.ProjectedPlayerHp)
                 && node.Snapshot.BoundaryReason != SearchBoundaryReason.UnsupportedEffect)
             {
                 combatEndedTurn = action.Turn;

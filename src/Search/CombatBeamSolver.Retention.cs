@@ -48,6 +48,7 @@ internal sealed partial class CombatBeamSolver
 
     private readonly record struct CrossTurnProbeFamilyKey(
         StateFingerprint ShapeKey,
+        StateFingerprint SemanticStateKey,
         int PotionCount,
         CrossTurnProbeTracker? Tracker);
 
@@ -221,62 +222,97 @@ internal sealed partial class CombatBeamSolver
                 node.CycleProbeLease = null;
             }
         }
-        List<SearchNode> eligible = pool
-            .Where(node => node.CycleProbeLease != null
-                || RequiresBoundedCyclePlanning(node))
-            .ToList();
+        List<SearchNode> eligible = [];
+        int bestMaxHp = int.MinValue;
+        foreach (SearchNode node in pool)
+        {
+            if (node.CycleProbeLease == null && !RequiresBoundedCyclePlanning(node))
+                continue;
+            eligible.Add(node);
+            bestMaxHp = Math.Max(bestMaxHp, node.Snapshot.PlayerMaxHp);
+        }
         if (eligible.Count == 0)
             return;
 
-        int bestMaxHp = eligible.Max(node => node.Snapshot.PlayerMaxHp);
-        long minimumHealthRisk = eligible.Min(node => CycleHealthRisk(node, bestMaxHp));
+        long minimumHealthRisk = long.MaxValue;
+        foreach (SearchNode node in eligible)
+            minimumHealthRisk = Math.Min(minimumHealthRisk, CycleHealthRisk(node, bestMaxHp));
         int familyQuotaPerBand = Math.Clamp(_profile.BeamWidth / 12, 1, 2);
         int totalFamilyQuota = familyQuotaPerBand * 2;
         List<SearchNode> leased = [];
         foreach (bool investmentBand in new[] { false, true })
         {
-            IEnumerable<SearchNode> inFlight = RankCycleProbeCandidates(
-                eligible
-                    // An exact pattern that is mid-period gets priority only inside its
-                    // current health band. A newly arrived lower-risk family can therefore
-                    // pre-empt excess high-risk probes immediately.
-                    .Where(node => node.CycleProbeLease is { NextActionIndex: > 0 }
-                        && (CycleHealthRisk(node, bestMaxHp) > minimumHealthRisk)
-                            == investmentBand)
-                    .GroupBy(BuildCycleProbeFamilyKey)
-                    .Select(group => RankCycleProbeCandidates(group, bestMaxHp).First()),
-                bestMaxHp);
-            leased.AddRange(inFlight.Take(familyQuotaPerBand));
+            Dictionary<CycleProbeFamilyKey, int> familyIndexes = [];
+            List<SearchNode> familyBest = [];
+            foreach (SearchNode node in eligible)
+            {
+                // An exact pattern that is mid-period gets priority only inside its
+                // current health band. A newly arrived lower-risk family can therefore
+                // pre-empt excess high-risk probes immediately.
+                if (node.CycleProbeLease is not { NextActionIndex: > 0 }
+                    || (CycleHealthRisk(node, bestMaxHp) > minimumHealthRisk)
+                        != investmentBand)
+                {
+                    continue;
+                }
+                AddCycleProbeFamilyBest(familyIndexes, familyBest, node, bestMaxHp);
+            }
+            AddTopCycleProbeCandidates(
+                familyBest,
+                familyQuotaPerBand,
+                bestMaxHp,
+                leased);
         }
-        HashSet<(CycleProbeFamilyKey Family, bool InvestmentBand)> leasedFamilies = leased
-            .Select(node => (
+        HashSet<(CycleProbeFamilyKey Family, bool InvestmentBand)> leasedFamilies = [];
+        foreach (SearchNode node in leased)
+        {
+            leasedFamilies.Add((
                 BuildCycleProbeFamilyKey(node),
-                CycleHealthRisk(node, bestMaxHp) > minimumHealthRisk))
-            .ToHashSet();
+                CycleHealthRisk(node, bestMaxHp) > minimumHealthRisk));
+        }
         foreach (bool investmentBand in new[] { false, true })
         {
             if (leased.Count >= totalFamilyQuota)
                 break;
-            int activeInBand = leased.Count(node =>
-                (CycleHealthRisk(node, bestMaxHp) > minimumHealthRisk) == investmentBand);
+            int activeInBand = 0;
+            foreach (SearchNode node in leased)
+            {
+                if ((CycleHealthRisk(node, bestMaxHp) > minimumHealthRisk) == investmentBand)
+                    activeInBand++;
+            }
             int openBandSlots = Math.Max(0, familyQuotaPerBand - activeInBand);
             if (openBandSlots == 0)
                 continue;
-            IEnumerable<SearchNode> newFamilies = RankCycleProbeCandidates(
-                eligible
-                    .Where(node =>
-                        node.CycleProbeLease is not { NextActionIndex: > 0 }
-                        && (CycleHealthRisk(node, bestMaxHp) > minimumHealthRisk)
-                            == investmentBand)
-                    .GroupBy(BuildCycleProbeFamilyKey)
-                    .Where(group => !leasedFamilies.Contains((group.Key, investmentBand)))
-                    .Select(group => RankCycleProbeCandidates(group, bestMaxHp).First()),
-                bestMaxHp);
-            foreach (SearchNode candidate in newFamilies.Take(Math.Min(
-                         openBandSlots,
-                         totalFamilyQuota - leased.Count)))
+
+            Dictionary<CycleProbeFamilyKey, int> familyIndexes = [];
+            List<SearchNode> familyBest = [];
+            foreach (SearchNode node in eligible)
             {
-                leased.Add(candidate);
+                if (node.CycleProbeLease is { NextActionIndex: > 0 }
+                    || (CycleHealthRisk(node, bestMaxHp) > minimumHealthRisk)
+                        != investmentBand)
+                {
+                    continue;
+                }
+                CycleProbeFamilyKey family = BuildCycleProbeFamilyKey(node);
+                if (leasedFamilies.Contains((family, investmentBand)))
+                    continue;
+                AddCycleProbeFamilyBest(
+                    familyIndexes,
+                    familyBest,
+                    family,
+                    node,
+                    bestMaxHp);
+            }
+            int previousCount = leased.Count;
+            AddTopCycleProbeCandidates(
+                familyBest,
+                Math.Min(openBandSlots, totalFamilyQuota - leased.Count),
+                bestMaxHp,
+                leased);
+            for (int index = previousCount; index < leased.Count; index++)
+            {
+                SearchNode candidate = leased[index];
                 leasedFamilies.Add((BuildCycleProbeFamilyKey(candidate), investmentBand));
             }
         }
@@ -310,39 +346,110 @@ internal sealed partial class CombatBeamSolver
             + node.FutureSoldHp
             + Math.Max(0, bestMaxHp - node.Snapshot.PlayerMaxHp);
 
+    private static void AddCycleProbeFamilyBest(
+        Dictionary<CycleProbeFamilyKey, int> familyIndexes,
+        List<SearchNode> familyBest,
+        SearchNode candidate,
+        int bestMaxHp)
+        => AddCycleProbeFamilyBest(
+            familyIndexes,
+            familyBest,
+            BuildCycleProbeFamilyKey(candidate),
+            candidate,
+            bestMaxHp);
+
+    private static void AddCycleProbeFamilyBest(
+        Dictionary<CycleProbeFamilyKey, int> familyIndexes,
+        List<SearchNode> familyBest,
+        CycleProbeFamilyKey family,
+        SearchNode candidate,
+        int bestMaxHp)
+    {
+        if (!familyIndexes.TryGetValue(family, out int index))
+        {
+            familyIndexes.Add(family, familyBest.Count);
+            familyBest.Add(candidate);
+            return;
+        }
+        if (CompareCycleProbeCandidates(candidate, familyBest[index], bestMaxHp) < 0)
+            familyBest[index] = candidate;
+    }
+
+    private static void AddTopCycleProbeCandidates(
+        IReadOnlyList<SearchNode> candidates,
+        int limit,
+        int bestMaxHp,
+        List<SearchNode> destination)
+    {
+        SearchNode? first = null;
+        SearchNode? second = null;
+        foreach (SearchNode candidate in candidates)
+        {
+            if (first == null
+                || CompareCycleProbeCandidates(candidate, first, bestMaxHp) < 0)
+            {
+                second = first;
+                first = candidate;
+            }
+            else if (second == null
+                     || CompareCycleProbeCandidates(candidate, second, bestMaxHp) < 0)
+            {
+                second = candidate;
+            }
+        }
+        if (limit > 0 && first != null)
+            destination.Add(first);
+        if (limit > 1 && second != null)
+            destination.Add(second);
+    }
+
     private void AddCycleExitPortfolio(
         IReadOnlyList<SearchNode> pool,
         List<SearchNode> selected,
         HashSet<SearchNode> selectedSet)
     {
-        List<SearchNode> eligible = pool
-            .Where(node => node.CycleExitProbe is { RemainingActions: > 0 })
-            .ToList();
+        List<SearchNode> eligible = [];
+        int bestMaxHp = int.MinValue;
+        foreach (SearchNode node in pool)
+        {
+            if (node.CycleExitProbe is not { RemainingActions: > 0 })
+                continue;
+            eligible.Add(node);
+            bestMaxHp = Math.Max(bestMaxHp, node.Snapshot.PlayerMaxHp);
+        }
         if (eligible.Count == 0)
             return;
-        int bestMaxHp = eligible.Max(node => node.Snapshot.PlayerMaxHp);
-        long minimumHealthRisk = eligible.Min(node => CycleHealthRisk(node, bestMaxHp));
+        long minimumHealthRisk = long.MaxValue;
+        foreach (SearchNode node in eligible)
+            minimumHealthRisk = Math.Min(minimumHealthRisk, CycleHealthRisk(node, bestMaxHp));
         int rank = 0;
+        List<SearchNode> leased = [];
         foreach (bool investmentBand in new[] { false, true })
         {
-            List<SearchNode> representatives = eligible
-                .Where(node => (CycleHealthRisk(node, bestMaxHp) > minimumHealthRisk)
-                        == investmentBand)
-                .GroupBy(BuildCycleExitProbeFamilyKey)
-                .Select(group => group
-                    .OrderBy(node => node.CycleExitProbe is
-                        { LeaseIssued: true, RemainingActions: < MaximumCycleExitProbeActions }
-                            ? 0
-                            : 1)
-                    .ThenBy(node => node.CycleExitProbe?.RemainingActions ?? int.MaxValue)
-                    .ThenBy(node => CycleHealthRisk(node, bestMaxHp))
-                    .ThenBy(node => node.PotionStrategicCost)
-                    .ThenBy(node => node.Turn)
-                    .ThenBy(node => node.ActionCount)
-                    .ThenByDescending(node => node.Snapshot.ProjectedPlayerHp)
-                    .ThenByDescending(node => node.Score)
-                    .First())
-                .ToList();
+            Dictionary<CycleExitProbeFamilyKey, int> familyIndexes = [];
+            List<SearchNode> representatives = [];
+            foreach (SearchNode node in eligible)
+            {
+                if ((CycleHealthRisk(node, bestMaxHp) > minimumHealthRisk)
+                    != investmentBand)
+                {
+                    continue;
+                }
+                CycleExitProbeFamilyKey family = BuildCycleExitProbeFamilyKey(node);
+                if (!familyIndexes.TryGetValue(family, out int index))
+                {
+                    familyIndexes.Add(family, representatives.Count);
+                    representatives.Add(node);
+                    continue;
+                }
+                if (CompareCycleExitFamilyCandidates(
+                        node,
+                        representatives[index],
+                        bestMaxHp) < 0)
+                {
+                    representatives[index] = node;
+                }
+            }
             if (representatives.Count == 0)
                 continue;
 
@@ -350,54 +457,30 @@ internal sealed partial class CombatBeamSolver
             // lookahead while one preserves the newest exact origin. A later generation can
             // therefore expose a hidden N-th-cycle payoff without cancelling the older probe.
             List<SearchNode> bandLeases = [];
-            SearchNode? inFlight = representatives
-                .Where(node => !selectedSet.Contains(node)
-                    && node.CycleExitProbe is { LeaseIssued: true })
-                .OrderBy(node => node.CycleExitProbe?.RemainingActions ?? int.MaxValue)
-                .ThenBy(node => CycleHealthRisk(node, bestMaxHp))
-                .ThenBy(node => node.PotionStrategicCost)
-                .ThenBy(node => node.Turn)
-                .ThenBy(node => node.ActionCount)
-                .ThenByDescending(node => node.Snapshot.ProjectedPlayerHp)
-                .ThenByDescending(node => node.Score)
-                .FirstOrDefault();
+            SearchNode? inFlight = FindActiveCycleExitCandidate(
+                representatives,
+                bandLeases,
+                bestMaxHp,
+                CycleExitCandidateRank.InFlight);
             if (inFlight != null)
                 bandLeases.Add(inFlight);
 
-            SearchNode? newest = representatives
-                .Where(node => !selectedSet.Contains(node)
-                    && node.CycleExitProbe is { LeaseIssued: false }
-                    && !bandLeases.Contains(node, ReferenceEqualityComparer.Instance))
-                .OrderBy(node => CycleHealthRisk(node, bestMaxHp))
-                .ThenBy(node => node.PotionStrategicCost)
-                .ThenByDescending(node => node.CycleExitProbe?.OriginNode.ActionCount ?? 0)
-                .ThenByDescending(node => node.CycleExitProbe?.OriginGeneration ?? 0)
-                .ThenBy(node => node.Turn)
-                .ThenBy(node => node.ActionCount)
-                .ThenByDescending(node => node.Snapshot.ProjectedPlayerHp)
-                .ThenByDescending(node => node.Score)
-                .FirstOrDefault();
+            SearchNode? newest = FindActiveCycleExitCandidate(
+                representatives,
+                bandLeases,
+                bestMaxHp,
+                CycleExitCandidateRank.Newest);
             if (newest != null)
                 bandLeases.Add(newest);
 
-            foreach (SearchNode candidate in representatives
-                         .Where(node => !selectedSet.Contains(node)
-                             && !bandLeases.Contains(
-                                 node,
-                                 ReferenceEqualityComparer.Instance))
-                         .OrderBy(node => CycleHealthRisk(node, bestMaxHp))
-                         .ThenBy(node => node.PotionStrategicCost)
-                         .ThenBy(node => node.CycleExitProbe?.RemainingActions ?? int.MaxValue)
-                         .ThenByDescending(node => node.CycleExitProbe?.OriginNode.ActionCount ?? 0)
-                         .ThenByDescending(node => node.Score))
-            {
-                if (bandLeases.Count >= 2)
-                    break;
-                bandLeases.Add(candidate);
-            }
+            AddActiveCycleExitFallbacks(
+                representatives,
+                bandLeases,
+                bestMaxHp);
 
             foreach (SearchNode candidate in bandLeases)
             {
+                leased.Add(candidate);
                 candidate.CycleExitRetentionRank = _profile.BeamWidth + 4 + rank++;
                 if (!selectedSet.Add(candidate))
                     continue;
@@ -408,35 +491,266 @@ internal sealed partial class CombatBeamSolver
             }
         }
 
-        HashSet<CycleExitProbeTicketKey> survivingTickets = eligible
-            .Where(selectedSet.Contains)
-            .Select(BuildCycleExitProbeTicketKey)
-            .ToHashSet();
-        foreach (SearchNode retained in eligible.Where(selectedSet.Contains))
+        HashSet<SearchNode> leasedSet = new(leased, ReferenceEqualityComparer.Instance);
+        HashSet<CycleExitProbeTicketKey> survivingTickets = [];
+        foreach (SearchNode retained in leased)
         {
-            if (retained.CycleExitProbe is not { } probe)
+            if (retained.CycleExitProbe == null)
                 continue;
-            probe.OriginTracker.MarkExitProbeIssued(
+            survivingTickets.Add(BuildCycleExitProbeTicketKey(retained));
+        }
+
+        HashSet<CycleExitProbeTicketKey> settledTickets = [];
+        foreach (SearchNode dropped in eligible)
+        {
+            if (leasedSet.Contains(dropped))
+                continue;
+            if (dropped.CycleExitProbe is { LeaseIssued: true } probe)
+            {
+                CycleExitProbeTicketKey ticket = BuildCycleExitProbeTicketKey(dropped);
+                if (!survivingTickets.Contains(ticket) && settledTickets.Add(ticket))
+                {
+                    // Settle one whole ticket, not each sibling. Losing one branch while
+                    // another survives must never mint duplicate generations.
+                    probe.OriginTracker.RetryAbandonedExitProbe(
+                        probe.OriginPhaseIndex,
+                        probe.ExitActionKey,
+                        probe.OriginGeneration);
+                }
+            }
+            // Ordinary Beam/long-term retention does not bypass the fixed two-per-band
+            // cycle-exit lease portfolio. It may retain the route, but not the probe lease.
+            dropped.CycleExitProbe = null;
+        }
+    }
+
+    private enum CycleExitCandidateRank : byte
+    {
+        InFlight,
+        Newest,
+        Fallback,
+    }
+
+    private static SearchNode? FindActiveCycleExitCandidate(
+        IReadOnlyList<SearchNode> representatives,
+        IReadOnlyList<SearchNode> bandLeases,
+        int bestMaxHp,
+        CycleExitCandidateRank rank)
+    {
+        while (true)
+        {
+            SearchNode? best = null;
+            foreach (SearchNode candidate in representatives)
+            {
+                if (ContainsReference(bandLeases, candidate)
+                    || candidate.CycleExitProbe is not { } probe
+                    || rank == CycleExitCandidateRank.InFlight && !probe.LeaseIssued
+                    || rank == CycleExitCandidateRank.Newest && probe.LeaseIssued)
+                {
+                    continue;
+                }
+                if (best == null
+                    || CompareCycleExitCandidates(candidate, best, bestMaxHp, rank) < 0)
+                {
+                    best = candidate;
+                }
+            }
+            if (best == null || TryLeaseCycleExitCandidate(best))
+                return best;
+            // A newer pending generation can supersede siblings created in the same wave.
+            // Never let that stale ticket consume one of the two bounded portfolio slots.
+        }
+    }
+
+    private static void AddActiveCycleExitFallbacks(
+        IReadOnlyList<SearchNode> representatives,
+        List<SearchNode> bandLeases,
+        int bestMaxHp)
+    {
+        while (bandLeases.Count < 2)
+        {
+            SearchNode? candidate = FindActiveCycleExitCandidate(
+                representatives,
+                bandLeases,
+                bestMaxHp,
+                CycleExitCandidateRank.Fallback);
+            if (candidate == null)
+                break;
+            bandLeases.Add(candidate);
+        }
+    }
+
+    private static bool TryLeaseCycleExitCandidate(SearchNode candidate)
+    {
+        CycleExitProbeState probe = candidate.CycleExitProbe
+            ?? throw new InvalidOperationException("循环出口探测候选缺少票据。");
+        // Once a ticket has been issued, every exact simulator child produced from that
+        // branch owns an independent bounded continuation. One sibling may reach a terminal
+        // or budget boundary before another; settling the tracker generation must not revoke
+        // the already-issued lease carried by the latter sibling.
+        if (probe.LeaseIssued)
+            return true;
+        if (!probe.OriginTracker.TryMarkExitProbeIssued(
                 probe.OriginPhaseIndex,
                 probe.ExitActionKey,
-                probe.OriginGeneration);
-            retained.CycleExitProbe = probe with { LeaseIssued = true };
-        }
-        foreach (IGrouping<CycleExitProbeTicketKey, SearchNode> issuedTicket in eligible
-                     .Where(node => node.CycleExitProbe is { LeaseIssued: true })
-                     .GroupBy(BuildCycleExitProbeTicketKey))
+                probe.OriginGeneration))
         {
-            if (survivingTickets.Contains(issuedTicket.Key))
-                continue;
-            SearchNode dropped = issuedTicket.First();
-            CycleExitProbeState probe = dropped.CycleExitProbe!;
-            // Settle one whole ticket, not each sibling. Losing one branch while another
-            // survives must never mint duplicate generations.
-            probe.OriginTracker.RetryAbandonedExitProbe(
-                probe.OriginPhaseIndex,
-                probe.ExitActionKey,
-                probe.OriginGeneration);
+            candidate.CycleExitProbe = null;
+            return false;
         }
+        candidate.CycleExitProbe = probe with { LeaseIssued = true };
+        return true;
+    }
+
+    private static bool ContainsReference(
+        IReadOnlyList<SearchNode> candidates,
+        SearchNode target)
+    {
+        foreach (SearchNode candidate in candidates)
+        {
+            if (ReferenceEquals(candidate, target))
+                return true;
+        }
+        return false;
+    }
+
+    private static int CompareCycleExitFamilyCandidates(
+        SearchNode left,
+        SearchNode right,
+        int bestMaxHp)
+    {
+        int leftLeasePriority = left.CycleExitProbe is
+            { LeaseIssued: true, RemainingActions: < MaximumCycleExitProbeActions }
+                ? 0
+                : 1;
+        int rightLeasePriority = right.CycleExitProbe is
+            { LeaseIssued: true, RemainingActions: < MaximumCycleExitProbeActions }
+                ? 0
+                : 1;
+        int comparison = leftLeasePriority.CompareTo(rightLeasePriority);
+        if (comparison != 0)
+            return comparison;
+        comparison = (left.CycleExitProbe?.RemainingActions ?? int.MaxValue)
+            .CompareTo(right.CycleExitProbe?.RemainingActions ?? int.MaxValue);
+        if (comparison != 0)
+            return comparison;
+        comparison = CycleHealthRisk(left, bestMaxHp)
+            .CompareTo(CycleHealthRisk(right, bestMaxHp));
+        if (comparison != 0)
+            return comparison;
+        comparison = left.PotionStrategicCost.CompareTo(right.PotionStrategicCost);
+        if (comparison != 0)
+            return comparison;
+        comparison = left.Turn.CompareTo(right.Turn);
+        if (comparison != 0)
+            return comparison;
+        comparison = left.ActionCount.CompareTo(right.ActionCount);
+        if (comparison != 0)
+            return comparison;
+        comparison = right.Snapshot.ProjectedPlayerHp.CompareTo(
+            left.Snapshot.ProjectedPlayerHp);
+        return comparison != 0 ? comparison : right.Score.CompareTo(left.Score);
+    }
+
+    private static int CompareCycleExitCandidates(
+        SearchNode left,
+        SearchNode right,
+        int bestMaxHp,
+        CycleExitCandidateRank rank)
+        => rank switch
+        {
+            CycleExitCandidateRank.InFlight => CompareCycleExitInFlightCandidates(
+                left,
+                right,
+                bestMaxHp),
+            CycleExitCandidateRank.Newest => CompareCycleExitNewestCandidates(
+                left,
+                right,
+                bestMaxHp),
+            CycleExitCandidateRank.Fallback => CompareCycleExitFallbackCandidates(
+                left,
+                right,
+                bestMaxHp),
+            _ => throw new ArgumentOutOfRangeException(nameof(rank), rank, null),
+        };
+
+    private static int CompareCycleExitInFlightCandidates(
+        SearchNode left,
+        SearchNode right,
+        int bestMaxHp)
+    {
+        int comparison = (left.CycleExitProbe?.RemainingActions ?? int.MaxValue)
+            .CompareTo(right.CycleExitProbe?.RemainingActions ?? int.MaxValue);
+        if (comparison != 0)
+            return comparison;
+        comparison = CycleHealthRisk(left, bestMaxHp)
+            .CompareTo(CycleHealthRisk(right, bestMaxHp));
+        if (comparison != 0)
+            return comparison;
+        comparison = left.PotionStrategicCost.CompareTo(right.PotionStrategicCost);
+        if (comparison != 0)
+            return comparison;
+        comparison = left.Turn.CompareTo(right.Turn);
+        if (comparison != 0)
+            return comparison;
+        comparison = left.ActionCount.CompareTo(right.ActionCount);
+        if (comparison != 0)
+            return comparison;
+        comparison = right.Snapshot.ProjectedPlayerHp.CompareTo(
+            left.Snapshot.ProjectedPlayerHp);
+        return comparison != 0 ? comparison : right.Score.CompareTo(left.Score);
+    }
+
+    private static int CompareCycleExitNewestCandidates(
+        SearchNode left,
+        SearchNode right,
+        int bestMaxHp)
+    {
+        int comparison = CycleHealthRisk(left, bestMaxHp)
+            .CompareTo(CycleHealthRisk(right, bestMaxHp));
+        if (comparison != 0)
+            return comparison;
+        comparison = left.PotionStrategicCost.CompareTo(right.PotionStrategicCost);
+        if (comparison != 0)
+            return comparison;
+        comparison = (right.CycleExitProbe?.OriginNode.ActionCount ?? 0)
+            .CompareTo(left.CycleExitProbe?.OriginNode.ActionCount ?? 0);
+        if (comparison != 0)
+            return comparison;
+        comparison = (right.CycleExitProbe?.OriginGeneration ?? 0)
+            .CompareTo(left.CycleExitProbe?.OriginGeneration ?? 0);
+        if (comparison != 0)
+            return comparison;
+        comparison = left.Turn.CompareTo(right.Turn);
+        if (comparison != 0)
+            return comparison;
+        comparison = left.ActionCount.CompareTo(right.ActionCount);
+        if (comparison != 0)
+            return comparison;
+        comparison = right.Snapshot.ProjectedPlayerHp.CompareTo(
+            left.Snapshot.ProjectedPlayerHp);
+        return comparison != 0 ? comparison : right.Score.CompareTo(left.Score);
+    }
+
+    private static int CompareCycleExitFallbackCandidates(
+        SearchNode left,
+        SearchNode right,
+        int bestMaxHp)
+    {
+        int comparison = CycleHealthRisk(left, bestMaxHp)
+            .CompareTo(CycleHealthRisk(right, bestMaxHp));
+        if (comparison != 0)
+            return comparison;
+        comparison = left.PotionStrategicCost.CompareTo(right.PotionStrategicCost);
+        if (comparison != 0)
+            return comparison;
+        comparison = (left.CycleExitProbe?.RemainingActions ?? int.MaxValue)
+            .CompareTo(right.CycleExitProbe?.RemainingActions ?? int.MaxValue);
+        if (comparison != 0)
+            return comparison;
+        comparison = (right.CycleExitProbe?.OriginNode.ActionCount ?? 0)
+            .CompareTo(left.CycleExitProbe?.OriginNode.ActionCount ?? 0);
+        return comparison != 0 ? comparison : right.Score.CompareTo(left.Score);
     }
 
     private static CycleExitProbeFamilyKey BuildCycleExitProbeFamilyKey(SearchNode node)
@@ -469,15 +783,21 @@ internal sealed partial class CombatBeamSolver
         List<SearchNode> selected,
         HashSet<SearchNode> selectedSet)
     {
-        List<SearchNode> eligible = pool
-            .Where(node => node.CrossTurnProbe != null
-                || RequiresCrossTurnPlanning(node))
-            .ToList();
+        List<SearchNode> eligible = [];
+        int bestMaxHp = int.MinValue;
+        foreach (SearchNode node in pool)
+        {
+            if (node.CrossTurnProbe == null && !RequiresCrossTurnPlanning(node))
+                continue;
+            eligible.Add(node);
+            bestMaxHp = Math.Max(bestMaxHp, node.Snapshot.PlayerMaxHp);
+        }
         if (eligible.Count == 0)
             return;
 
-        int bestMaxHp = eligible.Max(node => node.Snapshot.PlayerMaxHp);
-        long minimumHealthRisk = eligible.Min(node => CycleHealthRisk(node, bestMaxHp));
+        long minimumHealthRisk = long.MaxValue;
+        foreach (SearchNode node in eligible)
+            minimumHealthRisk = Math.Min(minimumHealthRisk, CycleHealthRisk(node, bestMaxHp));
         int availableFutureSoldHp = Math.Max(
             0,
             SoldHpThreshold() - battleDamage.SoldHpCommitted);
@@ -489,38 +809,66 @@ internal sealed partial class CombatBeamSolver
                         || CycleHealthRisk(node, bestMaxHp) > minimumHealthRisk)
                     == investmentBand;
 
-            List<SearchNode> inFlight = eligible
-                .Where(node => InBand(node) && node.CrossTurnProbe != null)
-                .GroupBy(BuildCrossTurnProbeFamilyKey)
-                .Select(group => RankCrossTurnCandidates(group, bestMaxHp).First())
-                .ToList();
-            List<SearchNode> newFamilies = eligible
-                .Where(node => InBand(node) && node.CrossTurnProbe == null)
-                .GroupBy(BuildCrossTurnProbeFamilyKey)
-                .Select(group => RankCrossTurnCandidates(group, bestMaxHp).First())
-                .ToList();
+            Dictionary<CrossTurnProbeFamilyKey, int> inFlightIndexes = [];
+            List<SearchNode> inFlight = [];
+            Dictionary<CrossTurnProbeFamilyKey, int> newFamilyIndexes = [];
+            List<SearchNode> newFamilies = [];
+            foreach (SearchNode node in eligible)
+            {
+                if (!InBand(node))
+                    continue;
+                if (node.CrossTurnProbe != null)
+                {
+                    AddCrossTurnFamilyBest(
+                        inFlightIndexes,
+                        inFlight,
+                        node,
+                        bestMaxHp);
+                }
+                else
+                {
+                    AddCrossTurnFamilyBest(
+                        newFamilyIndexes,
+                        newFamilies,
+                        node,
+                        bestMaxHp);
+                }
+            }
 
             List<SearchNode> band = [];
-            SearchNode? continuing = RankCrossTurnCandidates(inFlight, bestMaxHp)
-                .FirstOrDefault();
+            SearchNode? continuing = FindBestCrossTurnCandidate(inFlight, bestMaxHp);
             if (continuing != null)
                 band.Add(continuing);
-            SearchNode? newest = RankCrossTurnCandidates(newFamilies, bestMaxHp)
-                .FirstOrDefault();
+            SearchNode? newest = FindBestCrossTurnCandidate(newFamilies, bestMaxHp);
             if (newest != null)
                 band.Add(newest);
-            foreach (SearchNode candidate in RankCrossTurnCandidates(
-                         inFlight.Concat(newFamilies)
-                             .Where(node => !band.Contains(
-                                 node,
-                                 ReferenceEqualityComparer.Instance)),
-                         bestMaxHp))
+
+            SearchNode? fallbackFirst = null;
+            SearchNode? fallbackSecond = null;
+            foreach (SearchNode candidate in inFlight)
             {
-                if (band.Count >= 2)
-                    break;
-                band.Add(candidate);
+                AddCrossTurnFallbackCandidate(
+                    candidate,
+                    band,
+                    bestMaxHp,
+                    ref fallbackFirst,
+                    ref fallbackSecond);
             }
-            retained.AddRange(band);
+            foreach (SearchNode candidate in newFamilies)
+            {
+                AddCrossTurnFallbackCandidate(
+                    candidate,
+                    band,
+                    bestMaxHp,
+                    ref fallbackFirst,
+                    ref fallbackSecond);
+            }
+            if (band.Count < 2 && fallbackFirst != null)
+                band.Add(fallbackFirst);
+            if (band.Count < 2 && fallbackSecond != null)
+                band.Add(fallbackSecond);
+            foreach (SearchNode candidate in band)
+                retained.Add(candidate);
         }
 
         HashSet<SearchNode> retainedSet = new(retained, ReferenceEqualityComparer.Instance);
@@ -546,44 +894,156 @@ internal sealed partial class CombatBeamSolver
         }
     }
 
-    private static IOrderedEnumerable<SearchNode> RankCrossTurnCandidates(
-        IEnumerable<SearchNode> candidates,
+    private static void AddCrossTurnFamilyBest(
+        Dictionary<CrossTurnProbeFamilyKey, int> familyIndexes,
+        List<SearchNode> familyBest,
+        SearchNode candidate,
         int bestMaxHp)
-        => candidates
-            .OrderBy(node => CycleHealthRisk(node, bestMaxHp))
-            .ThenBy(node => node.PotionStrategicCost)
-            .ThenByDescending(node => node.CrossTurnProbe?.CompletedTurnTransitions ?? 0)
-            .ThenByDescending(node => node.CombatProgress.TurnsWithoutProgress)
-            .ThenByDescending(node => node.CrossTurnProbe?.BestKnownProgressMagnitude ?? 0)
-            .ThenBy(node => node.Turn)
-            .ThenBy(node => node.ActionCount)
-            .ThenByDescending(node => node.Snapshot.ProjectedPlayerHp)
-            .ThenByDescending(node => node.Score);
+    {
+        CrossTurnProbeFamilyKey family = BuildCrossTurnProbeFamilyKey(candidate);
+        if (!familyIndexes.TryGetValue(family, out int index))
+        {
+            familyIndexes.Add(family, familyBest.Count);
+            familyBest.Add(candidate);
+            return;
+        }
+        if (CompareCrossTurnCandidates(candidate, familyBest[index], bestMaxHp) < 0)
+            familyBest[index] = candidate;
+    }
+
+    private static SearchNode? FindBestCrossTurnCandidate(
+        IReadOnlyList<SearchNode> candidates,
+        int bestMaxHp)
+    {
+        SearchNode? best = null;
+        foreach (SearchNode candidate in candidates)
+        {
+            if (best == null || CompareCrossTurnCandidates(candidate, best, bestMaxHp) < 0)
+                best = candidate;
+        }
+        return best;
+    }
+
+    private static void AddCrossTurnFallbackCandidate(
+        SearchNode candidate,
+        IReadOnlyList<SearchNode> alreadySelected,
+        int bestMaxHp,
+        ref SearchNode? first,
+        ref SearchNode? second)
+    {
+        if (ContainsReference(alreadySelected, candidate))
+            return;
+        if (first == null || CompareCrossTurnCandidates(candidate, first, bestMaxHp) < 0)
+        {
+            second = first;
+            first = candidate;
+        }
+        else if (second == null
+                 || CompareCrossTurnCandidates(candidate, second, bestMaxHp) < 0)
+        {
+            second = candidate;
+        }
+    }
+
+    private static int CompareCrossTurnCandidates(
+        SearchNode left,
+        SearchNode right,
+        int bestMaxHp)
+    {
+        int comparison = CycleHealthRisk(left, bestMaxHp)
+            .CompareTo(CycleHealthRisk(right, bestMaxHp));
+        if (comparison != 0)
+            return comparison;
+        comparison = left.PotionStrategicCost.CompareTo(right.PotionStrategicCost);
+        if (comparison != 0)
+            return comparison;
+        bool leftChanged = left.CrossTurnProbe?.LastTurnChangedSemanticState
+            ?? left.CrossTurnSemanticStateChanged;
+        bool rightChanged = right.CrossTurnProbe?.LastTurnChangedSemanticState
+            ?? right.CrossTurnSemanticStateChanged;
+        comparison = rightChanged.CompareTo(leftChanged);
+        if (comparison != 0)
+            return comparison;
+        int leftConsecutiveChanges =
+            left.CrossTurnProbe?.ConsecutiveSemanticStateChangeTransitions
+                ?? (left.CrossTurnSemanticStateChanged ? 1 : 0);
+        int rightConsecutiveChanges =
+            right.CrossTurnProbe?.ConsecutiveSemanticStateChangeTransitions
+                ?? (right.CrossTurnSemanticStateChanged ? 1 : 0);
+        comparison = rightConsecutiveChanges.CompareTo(leftConsecutiveChanges);
+        if (comparison != 0)
+            return comparison;
+        int leftChanges = left.CrossTurnProbe?.SemanticStateChangeTransitions
+            ?? (left.CrossTurnSemanticStateChanged ? 1 : 0);
+        int rightChanges = right.CrossTurnProbe?.SemanticStateChangeTransitions
+            ?? (right.CrossTurnSemanticStateChanged ? 1 : 0);
+        comparison = rightChanges.CompareTo(leftChanges);
+        if (comparison != 0)
+            return comparison;
+        comparison = (right.CrossTurnProbe?.CompletedTurnTransitions ?? 0)
+            .CompareTo(left.CrossTurnProbe?.CompletedTurnTransitions ?? 0);
+        if (comparison != 0)
+            return comparison;
+        comparison = right.CombatProgress.TurnsWithoutProgress.CompareTo(
+            left.CombatProgress.TurnsWithoutProgress);
+        if (comparison != 0)
+            return comparison;
+        comparison = (right.CrossTurnProbe?.BestKnownProgressMagnitude ?? 0)
+            .CompareTo(left.CrossTurnProbe?.BestKnownProgressMagnitude ?? 0);
+        if (comparison != 0)
+            return comparison;
+        comparison = left.Turn.CompareTo(right.Turn);
+        if (comparison != 0)
+            return comparison;
+        comparison = left.ActionCount.CompareTo(right.ActionCount);
+        if (comparison != 0)
+            return comparison;
+        comparison = right.Snapshot.ProjectedPlayerHp.CompareTo(
+            left.Snapshot.ProjectedPlayerHp);
+        return comparison != 0 ? comparison : right.Score.CompareTo(left.Score);
+    }
+
+    private static int CompareCycleProbeCandidates(
+        SearchNode left,
+        SearchNode right,
+        int bestMaxHp)
+    {
+        // Finish an already-issued exact phase lease before rotating to another family.
+        // The lease remains bounded by the repetition budget and never affects final quality.
+        int comparison = CycleHealthRisk(left, bestMaxHp)
+            .CompareTo(CycleHealthRisk(right, bestMaxHp));
+        if (comparison != 0)
+            return comparison;
+        comparison = left.PotionStrategicCost.CompareTo(right.PotionStrategicCost);
+        if (comparison != 0)
+            return comparison;
+        comparison = left.Turn.CompareTo(right.Turn);
+        if (comparison != 0)
+            return comparison;
+        comparison = left.ActionCount.CompareTo(right.ActionCount);
+        if (comparison != 0)
+            return comparison;
+        comparison = right.Snapshot.ProjectedPlayerHp.CompareTo(
+            left.Snapshot.ProjectedPlayerHp);
+        if (comparison != 0)
+            return comparison;
+        comparison = (right.Cycle?.TotalStructuralRepetitions ?? 0)
+            .CompareTo(left.Cycle?.TotalStructuralRepetitions ?? 0);
+        return comparison != 0 ? comparison : right.Score.CompareTo(left.Score);
+    }
 
     private static CrossTurnProbeFamilyKey BuildCrossTurnProbeFamilyKey(SearchNode node)
         => node.CrossTurnProbe is { } probe
             ? new CrossTurnProbeFamilyKey(
                 probe.Tracker.OriginShapeKey,
+                probe.Tracker.OriginNode.StateKey,
                 node.PotionCount,
                 probe.Tracker)
             : new CrossTurnProbeFamilyKey(
                 node.Snapshot.CycleShapeKey,
+                node.StateKey,
                 node.PotionCount,
                 null);
-
-    private static IOrderedEnumerable<SearchNode> RankCycleProbeCandidates(
-        IEnumerable<SearchNode> candidates,
-        int bestMaxHp)
-        // Finish an already-issued exact phase lease before rotating to another family.
-        // The lease remains bounded by the repetition budget and never affects final quality.
-        => candidates
-            .OrderBy(node => CycleHealthRisk(node, bestMaxHp))
-            .ThenBy(node => node.PotionStrategicCost)
-            .ThenBy(node => node.Turn)
-            .ThenBy(node => node.ActionCount)
-            .ThenByDescending(node => node.Snapshot.ProjectedPlayerHp)
-            .ThenByDescending(node => node.Cycle?.TotalStructuralRepetitions ?? 0)
-            .ThenByDescending(node => node.Score);
 
     private static CycleProbeFamilyKey BuildCycleProbeFamilyKey(SearchNode node)
     {

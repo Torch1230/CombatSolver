@@ -676,11 +676,12 @@ internal sealed class CycleProbeTracker(
 
     private readonly Dictionary<StateFingerprint, ExitEnvelope>?[] _exitEnvelopes =
         new Dictionary<StateFingerprint, ExitEnvelope>?[actionKeys.Length];
+    private readonly StateFingerprint[] _actionKeys = actionKeys;
 
     public StateFingerprint ShapeKey { get; } = shapeKey;
     public StateFingerprint SequenceKey { get; } = sequenceKey;
-    public IReadOnlyList<StateFingerprint> ActionKeys { get; } = actionKeys;
-    public int PeriodActions => actionKeys.Length;
+    public IReadOnlyList<StateFingerprint> ActionKeys => _actionKeys;
+    public int PeriodActions => _actionKeys.Length;
 
     public long ObserveExit(
         int phaseIndex,
@@ -707,7 +708,7 @@ internal sealed class CycleProbeTracker(
         return LatestPendingGeneration(prior);
     }
 
-    public void MarkExitProbeIssued(
+    public bool TryMarkExitProbeIssued(
         int phaseIndex,
         StateFingerprint actionKey,
         long generation)
@@ -716,11 +717,13 @@ internal sealed class CycleProbeTracker(
             == true
             && envelope.ActiveTickets.TryGetValue(
                 generation,
-                out ExitProbeTicketStatus status)
-            && status == ExitProbeTicketStatus.Pending)
+                out ExitProbeTicketStatus status))
         {
-            envelope.ActiveTickets[generation] = ExitProbeTicketStatus.Issued;
+            if (status == ExitProbeTicketStatus.Pending)
+                envelope.ActiveTickets[generation] = ExitProbeTicketStatus.Issued;
+            return true;
         }
+        return false;
     }
 
     public void CompleteExitProbe(
@@ -773,7 +776,7 @@ internal sealed class CycleProbeTracker(
         CycleProbeTracker clone = new(
             ShapeKey,
             SequenceKey,
-            ActionKeys.ToArray());
+            _actionKeys);
         for (int phaseIndex = 0; phaseIndex < _exitEnvelopes.Length; phaseIndex++)
         {
             if (_exitEnvelopes[phaseIndex] is not { } source)
@@ -801,6 +804,9 @@ internal sealed class CycleProbeTracker(
 
     private static long CreatePendingGeneration(ExitEnvelope envelope)
     {
+        long previousPendingGeneration = LatestPendingGeneration(envelope);
+        if (previousPendingGeneration != 0)
+            envelope.ActiveTickets.Remove(previousPendingGeneration);
         long generation = checked(envelope.LastGeneration + 1);
         envelope.LastGeneration = generation;
         envelope.ActiveTickets.Add(generation, ExitProbeTicketStatus.Pending);
@@ -871,13 +877,20 @@ internal sealed record CycleExitProbeState(
     int RemainingTurnTransitions,
     bool LeaseIssued = false);
 
-internal readonly record struct CycleExitObservation(
+internal sealed record CycleExitObservation(
     CycleProbeTracker OriginTracker,
     int OriginPhaseIndex,
     StateFingerprint ExitActionKey,
     long OriginGeneration,
     CycleExitQuality Quality,
     bool CompletesProbe);
+
+internal sealed record PendingCycleExitObservation(
+    CycleProbeTracker OriginTracker,
+    SearchNode OriginNode,
+    int OriginPhaseIndex,
+    StateFingerprint ExitActionKey,
+    CycleExitQuality Quality);
 
 internal sealed class CrossTurnProbeTracker(
     SearchNode originNode,
@@ -890,8 +903,11 @@ internal sealed class CrossTurnProbeTracker(
 internal readonly record struct CrossTurnProbeState(
     CrossTurnProbeTracker Tracker,
     int CompletedTurnTransitions,
+    int SemanticStateChangeTransitions,
+    int ConsecutiveSemanticStateChangeTransitions,
     long BestKnownProgressMagnitude,
-    bool LastTurnImproved);
+    bool LastTurnImproved,
+    bool LastTurnChangedSemanticState);
 
 /// <summary>
 /// A cycle candidate is evidence for search scheduling, never a proof that a route is infinite.
@@ -945,7 +961,11 @@ internal sealed record SearchNode(
     public CycleProbeLease? CycleProbeLease { get; set; }
     public CycleExitProbeState? CycleExitProbe { get; set; }
     public CycleExitObservation? CycleExitObservation { get; set; }
+    public PendingCycleExitObservation? PendingCycleExitObservation { get; set; }
     public CrossTurnProbeState? CrossTurnProbe { get; set; }
+    public IReadOnlyList<StateFingerprint>? CrossTurnStandPatStateKeys { get; set; }
+    public bool CrossTurnSemanticStateChanged { get; set; }
+    public bool CrossTurnSemanticEvidenceAttached { get; set; }
     public bool IsCycleProbeLane => CycleProbeLease != null;
     public IReadOnlyList<PlanAction> Actions => _actions ??= MaterializeActions();
 

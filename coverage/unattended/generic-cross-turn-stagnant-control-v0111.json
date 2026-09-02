@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "GENERIC-CROSS-TURN-STAGNANT-CONTROL-V0111",
+  "description": "A harmless route can change neither enemy durability nor hidden semantic state; bounded cross-turn planning must stop instead of running forever.",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "CROSSTURNSTAGNANTCONTROL0111",
+  "enemyCurrentHp": 57,
+  "initialPlayerHp": 999,
+  "initialPlayerMaxHp": 999,
+  "initialPlayerEnergy": 3,
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    {
+      "cardId": "DEFEND_IRONCLAD",
+      "pile": "Hand",
+      "treatAsDeckCard": true
+    }
+  ],
+  "powers": [
+    {
+      "powerId": "BUFFER_POWER",
+      "target": "Player",
+      "amount": 64
+    }
+  ],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 5000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "expectedInitialAbsentActionCardId": "DEFEND_IRONCLAD",
+  "expectedInitialProjectedBattleHpLost": 0,
+  "expectedInitialRepeatableNoProgressBranchesPrunedAtLeast": 1,
+  "expectedInitialCrossTurnCandidatesProtectedAtLeast": 1,
+  "expectedInitialCrossTurnContinuationsStoppedAtLeast": 1,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120
+}

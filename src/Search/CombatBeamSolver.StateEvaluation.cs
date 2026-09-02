@@ -468,17 +468,21 @@ internal sealed partial class CombatBeamSolver
         // Cycle detection deliberately uses structural card identity only. Full card state
         // remains in StateKey and in every replayed PlanAction; ignoring mutable counters here
         // lets a bounded probe observe setup loops whose payoff appears only after N plays.
-        ulong first = 0;
-        ulong second = 0;
-        foreach (PredictedCard card in pile.Cards)
+        if (!pile.TryGetCachedCycleShapeFingerprint(out ulong first, out ulong second))
         {
-            CardModel preview = card.Preview;
-            StateFingerprintBuilder cardKeyBuilder = new();
-            cardKeyBuilder.Add(preview.Id.Entry);
-            cardKeyBuilder.Add(preview.CurrentUpgradeLevel);
-            StateFingerprint cardKey = cardKeyBuilder.Finish();
-            first += StateFingerprintBuilder.MixFirst(cardKey.First);
-            second += StateFingerprintBuilder.MixSecond(cardKey.Second);
+            first = 0;
+            second = 0;
+            foreach (PredictedCard card in pile.Cards)
+            {
+                CardModel preview = card.Preview;
+                StateFingerprintBuilder cardKeyBuilder = new();
+                cardKeyBuilder.Add(preview.Id.Entry);
+                cardKeyBuilder.Add(preview.CurrentUpgradeLevel);
+                StateFingerprint cardKey = cardKeyBuilder.Finish();
+                first += StateFingerprintBuilder.MixFirst(cardKey.First);
+                second += StateFingerprintBuilder.MixSecond(cardKey.Second);
+            }
+            pile.SetCachedCycleShapeFingerprint(first, second);
         }
         key.Add(marker);
         key.Add(pile.Cards.Count);

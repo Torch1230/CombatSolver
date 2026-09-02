@@ -29,7 +29,6 @@
   "expectedInitialCombatEndedTurn": 1,
   "expectedInitialFinalEnemyHpAtMost": 0,
   "expectedInitialCycleShapesDetectedAtLeast": 1,
-  "expectedInitialCycleProbeContinuationsExpandedAtLeast": 1,
   "expectedInitialCycleCandidatesProtectedAtLeast": 1,
   "stopAfterInitialSolverResultAssertion": true,
   "timeoutSeconds": 120

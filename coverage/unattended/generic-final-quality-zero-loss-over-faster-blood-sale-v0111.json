@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "GENERIC-FINAL-QUALITY-ZERO-LOSS-OVER-FASTER-BLOOD-SALE-V0111",
+  "description": "A run-ending fight offers a one-turn HP-sale victory and a two-turn zero-loss victory; lower battle loss must rank first.",
+  "characterId": "IRONCLAD",
+  "encounterId": "AEONGLASS_BOSS",
+  "seed": "FINALQUALITYLOSSBEFORESPEED0111",
+  "actIndexForTest": 2,
+  "markEncounterAsSecondBossForTest": true,
+  "enemyCurrentHp": 6,
+  "initialPlayerHp": 80,
+  "initialPlayerMaxHp": 80,
+  "initialPlayerEnergy": 0,
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    {
+      "cardId": "BLOODLETTING",
+      "pile": "Hand",
+      "treatAsDeckCard": true
+    },
+    {
+      "cardId": "STRIKE_IRONCLAD",
+      "pile": "Hand",
+      "treatAsDeckCard": true
+    }
+  ],
+  "powers": [
+    {
+      "powerId": "BUFFER_POWER",
+      "target": "Player",
+      "amount": 64
+    }
+  ],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 5000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "expectedInitialBossHpRelief": "RunEnding",
+  "expectedInitialActEndingBoss": true,
+  "expectedInitialAbsentActionCardId": "BLOODLETTING",
+  "expectedInitialProjectedBattleHpLost": 0,
+  "expectedInitialCombatEndedTurn": 2,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120
+}

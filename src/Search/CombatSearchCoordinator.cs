@@ -527,18 +527,8 @@ internal static class CombatSearchCoordinator
             bool posteriorWon = posterior.Snapshot.AllEnemiesDead
                 && !posterior.Snapshot.PlayerDead
                 && posterior.Snapshot.ProjectedPlayerHp > 0;
-            bool selectedWon = selected.Snapshot.AllEnemiesDead
-                && !selected.Snapshot.PlayerDead
-                && selected.Snapshot.ProjectedPlayerHp > 0;
             int posteriorDeficit = StrategicHpDeficit(root, posterior);
-            int selectedDeficit = StrategicHpDeficit(root, selected);
-            if (posteriorWon
-                && (!selectedWon
-                    || posteriorDeficit < selectedDeficit
-                    || posteriorDeficit == selectedDeficit
-                        && (posterior.PotionCount < selected.PotionCount
-                            || posterior.PotionCount == selected.PotionCount
-                                && posterior.BestNode.Score > selected.BestNode.Score)))
+            if (IsBetterCompletedResult(root, posterior, selected))
             {
                 selected = posterior;
             }
@@ -589,18 +579,8 @@ internal static class CombatSearchCoordinator
             bool linkedWon = linkedPosterior.Snapshot.AllEnemiesDead
                 && !linkedPosterior.Snapshot.PlayerDead
                 && linkedPosterior.Snapshot.ProjectedPlayerHp > 0;
-            selectedWon = selected.Snapshot.AllEnemiesDead
-                && !selected.Snapshot.PlayerDead
-                && selected.Snapshot.ProjectedPlayerHp > 0;
             int linkedDeficit = StrategicHpDeficit(root, linkedPosterior);
-            selectedDeficit = StrategicHpDeficit(root, selected);
-            if (linkedWon
-                && (!selectedWon
-                    || linkedDeficit < selectedDeficit
-                    || linkedDeficit == selectedDeficit
-                        && (linkedPosterior.PotionCount < selected.PotionCount
-                            || linkedPosterior.PotionCount == selected.PotionCount
-                                && linkedPosterior.BestNode.Score > selected.BestNode.Score)))
+            if (IsBetterCompletedResult(root, linkedPosterior, selected))
             {
                 selected = linkedPosterior;
             }
@@ -700,18 +680,8 @@ internal static class CombatSearchCoordinator
             bool resourceWon = resourcePosterior.Snapshot.AllEnemiesDead
                 && !resourcePosterior.Snapshot.PlayerDead
                 && resourcePosterior.Snapshot.ProjectedPlayerHp > 0;
-            bool selectedWon = selected.Snapshot.AllEnemiesDead
-                && !selected.Snapshot.PlayerDead
-                && selected.Snapshot.ProjectedPlayerHp > 0;
             int resourceDeficit = StrategicHpDeficit(root, resourcePosterior);
-            int selectedDeficit = StrategicHpDeficit(root, selected);
-            if (resourceWon
-                && (!selectedWon
-                    || resourceDeficit < selectedDeficit
-                    || resourceDeficit == selectedDeficit
-                        && (resourcePosterior.PotionCount < selected.PotionCount
-                            || resourcePosterior.PotionCount == selected.PotionCount
-                                && resourcePosterior.BestNode.Score > selected.BestNode.Score)))
+            if (IsBetterCompletedResult(root, resourcePosterior, selected))
             {
                 selected = resourcePosterior;
             }
@@ -767,19 +737,9 @@ internal static class CombatSearchCoordinator
             bool jointWon = jointPosterior.Snapshot.AllEnemiesDead
                 && !jointPosterior.Snapshot.PlayerDead
                 && jointPosterior.Snapshot.ProjectedPlayerHp > 0;
-            bool selectedWon = selected.Snapshot.AllEnemiesDead
-                && !selected.Snapshot.PlayerDead
-                && selected.Snapshot.ProjectedPlayerHp > 0;
             int jointDeficit = StrategicHpDeficit(root, jointPosterior);
-            int selectedDeficit = StrategicHpDeficit(root, selected);
-            int comparisonDeficit = selectedDeficit;
-            if (jointWon
-                && (!selectedWon
-                    || jointDeficit < selectedDeficit
-                    || jointDeficit == selectedDeficit
-                        && (jointPosterior.PotionCount < selected.PotionCount
-                            || jointPosterior.PotionCount == selected.PotionCount
-                                && jointPosterior.BestNode.Score > selected.BestNode.Score)))
+            int comparisonDeficit = StrategicHpDeficit(root, selected);
+            if (IsBetterCompletedResult(root, jointPosterior, selected))
             {
                 selected = jointPosterior;
             }
@@ -848,18 +808,8 @@ internal static class CombatSearchCoordinator
             bool defensiveWon = defensivePosterior.Snapshot.AllEnemiesDead
                 && !defensivePosterior.Snapshot.PlayerDead
                 && defensivePosterior.Snapshot.ProjectedPlayerHp > 0;
-            selectedWon = selected.Snapshot.AllEnemiesDead
-                && !selected.Snapshot.PlayerDead
-                && selected.Snapshot.ProjectedPlayerHp > 0;
             int defensiveDeficit = StrategicHpDeficit(root, defensivePosterior);
-            selectedDeficit = StrategicHpDeficit(root, selected);
-            if (defensiveWon
-                && (!selectedWon
-                    || defensiveDeficit < selectedDeficit
-                    || defensiveDeficit == selectedDeficit
-                        && (defensivePosterior.PotionCount < selected.PotionCount
-                            || defensivePosterior.PotionCount == selected.PotionCount
-                                && defensivePosterior.BestNode.Score > selected.BestNode.Score)))
+            if (IsBetterCompletedResult(root, defensivePosterior, selected))
             {
                 selected = defensivePosterior;
             }
@@ -921,9 +871,7 @@ internal static class CombatSearchCoordinator
             shortCheckpointMilliseconds ?? profile.SoftTimeBudgetMilliseconds,
             auditDeepTriggered);
 
-        bool potionFreeWon = potionFree.Snapshot.AllEnemiesDead
-            && !potionFree.Snapshot.PlayerDead
-            && potionFree.Snapshot.ProjectedPlayerHp > 0;
+        bool potionFreeWon = IsCompleteVictory(potionFree);
         if (!potionFreeWon)
         {
             List<SolverResult> searches = [primary, potionFree];
@@ -973,16 +921,8 @@ internal static class CombatSearchCoordinator
                 bool posteriorWon = posterior.Snapshot.AllEnemiesDead
                     && !posterior.Snapshot.PlayerDead
                     && posterior.Snapshot.ProjectedPlayerHp > 0;
-                bool selectedWon = selected.Snapshot.AllEnemiesDead
-                    && !selected.Snapshot.PlayerDead
-                    && selected.Snapshot.ProjectedPlayerHp > 0;
                 int posteriorDeficit = StrategicHpDeficit(root, posterior);
-                int selectedDeficit = StrategicHpDeficit(root, selected);
-                if (posteriorWon
-                    && (!selectedWon
-                        || posteriorDeficit < selectedDeficit
-                        || posteriorDeficit == selectedDeficit
-                            && posterior.BestNode.Score > selected.BestNode.Score))
+                if (IsBetterCompletedResult(root, posterior, selected))
                 {
                     selected = posterior;
                 }
@@ -1040,16 +980,8 @@ internal static class CombatSearchCoordinator
                     bool pairWon = pairPosterior.Snapshot.AllEnemiesDead
                         && !pairPosterior.Snapshot.PlayerDead
                         && pairPosterior.Snapshot.ProjectedPlayerHp > 0;
-                    selectedWon = selected.Snapshot.AllEnemiesDead
-                        && !selected.Snapshot.PlayerDead
-                        && selected.Snapshot.ProjectedPlayerHp > 0;
                     int pairDeficit = StrategicHpDeficit(root, pairPosterior);
-                    selectedDeficit = StrategicHpDeficit(root, selected);
-                    if (pairWon
-                        && (!selectedWon
-                            || pairDeficit < selectedDeficit
-                            || pairDeficit == selectedDeficit
-                                && pairPosterior.BestNode.Score > selected.BestNode.Score))
+                    if (IsBetterCompletedResult(root, pairPosterior, selected))
                     {
                         selected = pairPosterior;
                     }
@@ -1060,7 +992,7 @@ internal static class CombatSearchCoordinator
                         $"won={pairWon} hp_deficit={pairDeficit} " +
                         $"selected={ReferenceEquals(selected, pairPosterior)}");
 
-                    selectedDeficit = StrategicHpDeficit(root, selected);
+                    int selectedDeficit = StrategicHpDeficit(root, selected);
                     if (!pairWon || pairDeficit > selectedDeficit + 1)
                         continue;
 
@@ -1111,16 +1043,8 @@ internal static class CombatSearchCoordinator
                     bool defensiveWon = defensivePosterior.Snapshot.AllEnemiesDead
                         && !defensivePosterior.Snapshot.PlayerDead
                         && defensivePosterior.Snapshot.ProjectedPlayerHp > 0;
-                    selectedWon = selected.Snapshot.AllEnemiesDead
-                        && !selected.Snapshot.PlayerDead
-                        && selected.Snapshot.ProjectedPlayerHp > 0;
                     int defensiveDeficit = StrategicHpDeficit(root, defensivePosterior);
-                    selectedDeficit = StrategicHpDeficit(root, selected);
-                    if (defensiveWon
-                        && (!selectedWon
-                            || defensiveDeficit < selectedDeficit
-                            || defensiveDeficit == selectedDeficit
-                                && defensivePosterior.BestNode.Score > selected.BestNode.Score))
+                    if (IsBetterCompletedResult(root, defensivePosterior, selected))
                     {
                         selected = defensivePosterior;
                     }
@@ -1304,9 +1228,7 @@ internal static class CombatSearchCoordinator
             searches.Add(candidate);
             interimResultCallback?.Invoke(candidate);
 
-            bool candidateWon = candidate.Snapshot.AllEnemiesDead
-                && !candidate.Snapshot.PlayerDead
-                && candidate.Snapshot.ProjectedPlayerHp > 0;
+            bool candidateWon = IsCompleteVictory(candidate);
             int candidateDeficit = StrategicHpDeficit(root, candidate);
             int hpSaved = potionFreeWon
                 ? Math.Max(0, potionFreeDeficit - candidateDeficit)
@@ -1316,8 +1238,13 @@ internal static class CombatSearchCoordinator
             int hpRequired = SmartPotionHpRequired(root, policy, candidate);
             bool protectsLoot = policy.TheftPolicy == SolverTheftPolicy.PreserveResources
                 && candidate.OutstandingStolenResource < potionFree.OutstandingStolenResource;
-            bool acceptable = protectsLoot
-                || candidateWon && (!potionFreeWon || hpSaved >= hpRequired);
+            int primaryQuality = CompareCompletedResultPrimaryQuality(
+                root,
+                candidate,
+                potionFree);
+            bool acceptable = candidateWon
+                && (primaryQuality < 0
+                    || primaryQuality == 0 && protectsLoot);
             policy.Diagnostics.Info(
                 $"[CombatSolver/Test] SMART_POTION_GRADIENT layer={potionCount} " +
                 $"won={candidateWon} hp_deficit={candidateDeficit} saved={hpSaved} " +
@@ -1404,9 +1331,7 @@ internal static class CombatSearchCoordinator
         SearchPolicySnapshot policy,
         SolverResult result)
         => new(
-            Won: result.Snapshot.AllEnemiesDead
-                && !result.Snapshot.PlayerDead
-                && result.Snapshot.ProjectedPlayerHp > 0,
+            Won: IsCompleteVictory(result),
             OutstandingStolenResource: result.OutstandingStolenResource,
             ProjectedBattleHpLost: result.ProjectedBattleHpLost,
             StrategicHpDeficit: StrategicHpDeficit(root, result),
@@ -1422,25 +1347,32 @@ internal static class CombatSearchCoordinator
         SolverResult candidate,
         SolverResult current)
     {
-        bool candidateWon = candidate.Snapshot.AllEnemiesDead
-            && !candidate.Snapshot.PlayerDead
-            && candidate.Snapshot.ProjectedPlayerHp > 0;
-        if (!candidateWon)
-            return false;
-        bool currentWon = current.Snapshot.AllEnemiesDead
-            && !current.Snapshot.PlayerDead
-            && current.Snapshot.ProjectedPlayerHp > 0;
-        if (!currentWon)
-            return true;
-
-        int candidateDeficit = StrategicHpDeficit(root, candidate);
-        int currentDeficit = StrategicHpDeficit(root, current);
-        return candidateDeficit < currentDeficit
-            || candidateDeficit == currentDeficit
-                && (candidate.PotionCount < current.PotionCount
-                    || candidate.PotionCount == current.PotionCount
-                        && candidate.BestNode.Score > current.BestNode.Score);
+        int primaryQuality = CompareCompletedResultPrimaryQuality(root, candidate, current);
+        if (primaryQuality != 0)
+            return primaryQuality < 0;
+        return candidate.PotionCount < current.PotionCount
+            || candidate.PotionCount == current.PotionCount
+                && candidate.BestNode.Score > current.BestNode.Score;
     }
+
+    private static int CompareCompletedResultPrimaryQuality(
+        CombatRootSnapshot root,
+        SolverResult candidate,
+        SolverResult current)
+        => SolverInterimResultOrdering.ComparePrimaryQuality(
+            IsCompleteVictory(candidate),
+            StrategicHpDeficit(root, candidate),
+            candidate.CombatEndedTurn,
+            IsCompleteVictory(current),
+            StrategicHpDeficit(root, current),
+            current.CombatEndedTurn);
+
+    private static bool IsCompleteVictory(SolverResult result)
+        => SolverInterimResultOrdering.IsCompleteVictory(
+            result.BestNode.ActionCount,
+            result.Snapshot.AllEnemiesDead,
+            result.Snapshot.PlayerDead,
+            result.Snapshot.ProjectedPlayerHp);
 
     private static SolverResult? SolveOptionalPotionPosterior(
         CombatBeamSolver solver,

@@ -192,7 +192,7 @@ internal sealed partial class CombatBeamSolver
             fallbackActionCount,
             1,
             fallbackDelta,
-            true)
+            false)
         {
             PriorProjectedPlayerHp = fallbackAncestor.Snapshot.ProjectedPlayerHp,
             EnemyDurabilityFloor = fallbackEnemyFloor,
@@ -277,24 +277,14 @@ internal sealed partial class CombatBeamSolver
             return;
         }
         StateFingerprint actionKey = BuildCycleActionKey(action);
-        long exitGeneration = lease.Tracker.ObserveExit(
-            lease.NextActionIndex,
-            actionKey,
-            MeasureCycleExitQuality(parent, child));
-        if (exitGeneration <= 0)
-            return;
-        parent.CycleProbeLease = lease with { ImprovedSinceWrap = true };
-        child.CycleExitProbe = new CycleExitProbeState(
+        // Expansion workers must not mutate a tracker shared by sibling lanes. The
+        // coordinator commits this immutable observation in deterministic child order.
+        child.PendingCycleExitObservation = new PendingCycleExitObservation(
             lease.Tracker,
             parent,
             lease.NextActionIndex,
-            lease.Tracker.ShapeKey,
-            lease.Tracker.SequenceKey,
-            lease.Tracker.PeriodActions,
             actionKey,
-            exitGeneration,
-            MaximumCycleExitProbeActions,
-            MaximumCycleExitProbeTurnTransitions);
+            MeasureCycleExitQuality(parent, child));
     }
 
     private static void AttachPropagatedCycleExitProbe(SearchNode child)
@@ -332,20 +322,53 @@ internal sealed partial class CombatBeamSolver
 
     private static void CommitCycleExitObservation(SearchNode child)
     {
-        if (child.CycleExitObservation is not { } observation)
-            return;
-        _ = observation.OriginTracker.ObserveExit(
-            observation.OriginPhaseIndex,
-            observation.ExitActionKey,
-            observation.Quality);
-        if (observation.CompletesProbe)
+        if (child.PendingCycleExitObservation is { } pending)
         {
-            observation.OriginTracker.CompleteExitProbe(
+            if (pending.OriginNode.CycleProbeLease is { } currentLease
+                && ReferenceEquals(currentLease.Tracker, pending.OriginTracker)
+                && currentLease.NextActionIndex == pending.OriginPhaseIndex)
+            {
+                long exitGeneration = pending.OriginTracker.ObserveExit(
+                    pending.OriginPhaseIndex,
+                    pending.ExitActionKey,
+                    pending.Quality);
+                if (exitGeneration > 0)
+                {
+                    pending.OriginNode.CycleProbeLease = currentLease with
+                    {
+                        ImprovedSinceWrap = true,
+                    };
+                    child.CycleExitProbe = new CycleExitProbeState(
+                        pending.OriginTracker,
+                        pending.OriginNode,
+                        pending.OriginPhaseIndex,
+                        pending.OriginTracker.ShapeKey,
+                        pending.OriginTracker.SequenceKey,
+                        pending.OriginTracker.PeriodActions,
+                        pending.ExitActionKey,
+                        exitGeneration,
+                        MaximumCycleExitProbeActions,
+                        MaximumCycleExitProbeTurnTransitions);
+                }
+            }
+            child.PendingCycleExitObservation = null;
+        }
+
+        if (child.CycleExitObservation is { } observation)
+        {
+            _ = observation.OriginTracker.ObserveExit(
                 observation.OriginPhaseIndex,
                 observation.ExitActionKey,
-                observation.OriginGeneration);
+                observation.Quality);
+            if (observation.CompletesProbe)
+            {
+                observation.OriginTracker.CompleteExitProbe(
+                    observation.OriginPhaseIndex,
+                    observation.ExitActionKey,
+                    observation.OriginGeneration);
+            }
+            child.CycleExitObservation = null;
         }
-        child.CycleExitObservation = null;
     }
 
     private static CycleExitQuality MeasureCycleExitQuality(

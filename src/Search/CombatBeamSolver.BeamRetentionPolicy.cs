@@ -91,7 +91,10 @@ internal sealed partial class CombatBeamSolver
 
         public List<SearchNode> RankFinal(IEnumerable<SearchNode> nodes)
         {
-            return RankBest(nodes, _profile.BeamWidth * 4);
+            return RankBest(
+                nodes,
+                _profile.BeamWidth * 4,
+                finalQualityFirst: true);
         }
 
         public List<SearchNode> RankLongTermResource(
@@ -112,24 +115,38 @@ internal sealed partial class CombatBeamSolver
         public List<SearchNode> RankBest(
             IEnumerable<SearchNode> nodes,
             int limit,
-            bool preserveDefensiveRoute = false)
+            bool preserveDefensiveRoute = false,
+            bool finalQualityFirst = false)
         {
-            Dictionary<StateFingerprint, SearchNode> bestByState = [];
-            foreach (SearchNode node in nodes)
+            List<SearchNode> ranked;
+            if (finalQualityFirst)
             {
-                if (!bestByState.TryGetValue(node.StateKey, out SearchNode? current)
-                    || IsBetterSearchNode(node, current))
+                // Equal simulator states can still have different cumulative battle loss or
+                // policy-relevant action histories. Do not erase those distinctions before the
+                // final policy pass has inspected them.
+                ranked = nodes.ToList();
+            }
+            else
+            {
+                Dictionary<StateFingerprint, SearchNode> bestByState = [];
+                foreach (SearchNode node in nodes)
                 {
-                    bestByState[node.StateKey] = node;
+                    if (!bestByState.TryGetValue(node.StateKey, out SearchNode? current)
+                        || IsBetterSearchNode(node, current))
+                    {
+                        bestByState[node.StateKey] = node;
+                    }
                 }
+                ranked = [.. bestByState.Values];
             }
 
-            List<SearchNode> ranked = [.. bestByState.Values];
-            ranked.Sort((left, right) =>
-            {
-                int byScore = BeamRankScore(right).CompareTo(BeamRankScore(left));
-                return byScore != 0 ? byScore : left.ActionCount.CompareTo(right.ActionCount);
-            });
+            ranked.Sort(finalQualityFirst
+                ? CompareFinalCandidates
+                : (left, right) =>
+                {
+                    int byScore = BeamRankScore(right).CompareTo(BeamRankScore(left));
+                    return byScore != 0 ? byScore : left.ActionCount.CompareTo(right.ActionCount);
+                });
             List<SearchNode> routingChoices = [];
             if (preserveDefensiveRoute)
             {
@@ -486,7 +503,7 @@ internal sealed partial class CombatBeamSolver
 
             List<SearchNode> required = [];
             foreach (IGrouping<int, SearchNode> victoryGroup in ranked
-                         .Where(node => node.Snapshot.AllEnemiesDead)
+                         .Where(IsCompleteVictory)
                          .GroupBy(node => node.PotionCount)
                          .OrderBy(group => group.Key))
             {
@@ -936,11 +953,13 @@ internal sealed partial class CombatBeamSolver
                 EnforcePotionUseQuota(ranked, quotaPool, required, usesPotion: true, usedPotionQuota);
                 EnforcePotionUseQuota(ranked, quotaPool, required, usesPotion: false, unusedPotionQuota);
             }
-            ranked.Sort((left, right) =>
-            {
-                int byScore = BeamRankScore(right).CompareTo(BeamRankScore(left));
-                return byScore != 0 ? byScore : left.ActionCount.CompareTo(right.ActionCount);
-            });
+            ranked.Sort(finalQualityFirst
+                ? CompareFinalCandidates
+                : (left, right) =>
+                {
+                    int byScore = BeamRankScore(right).CompareTo(BeamRankScore(left));
+                    return byScore != 0 ? byScore : left.ActionCount.CompareTo(right.ActionCount);
+                });
             AssignRetentionRanks(ranked, required);
             return ranked;
         }
@@ -1430,54 +1449,91 @@ internal sealed partial class CombatBeamSolver
                                             && candidate.Score > current.Score)));
 
         private bool IsBetterCompletedVictory(SearchNode candidate, SearchNode? current)
+            => current == null || CompareFinalCandidates(candidate, current) < 0;
+
+        private int CompareFinalCandidates(SearchNode left, SearchNode right)
         {
-            if (current == null)
-                return true;
-            SimulationSnapshot candidateSnapshot = candidate.Snapshot;
-            SimulationSnapshot currentSnapshot = current.Snapshot;
-            int candidateOutstanding = _theftPolicy == SolverTheftPolicy.PreserveResources
-                ? candidateSnapshot.OutstandingStolenResource
+            SimulationSnapshot leftSnapshot = left.Snapshot;
+            SimulationSnapshot rightSnapshot = right.Snapshot;
+            bool leftWon = IsCompleteVictory(left);
+            bool rightWon = IsCompleteVictory(right);
+            if (!leftWon && !rightWon)
+            {
+                bool leftSurvives = !leftSnapshot.PlayerDead
+                    && leftSnapshot.ProjectedPlayerHp > 0;
+                bool rightSurvives = !rightSnapshot.PlayerDead
+                    && rightSnapshot.ProjectedPlayerHp > 0;
+                int comparison = rightSurvives.CompareTo(leftSurvives);
+                if (comparison != 0)
+                    return comparison;
+            }
+
+            int comparison = SolverInterimResultOrdering.ComparePrimaryQuality(
+                leftWon,
+                StrategicHpDeficit(leftSnapshot),
+                leftWon ? CompletedCombatTurn(left) : null,
+                rightWon,
+                StrategicHpDeficit(rightSnapshot),
+                rightWon ? CompletedCombatTurn(right) : null);
+            if (comparison != 0)
+                return comparison;
+
+            int leftOutstanding = _theftPolicy == SolverTheftPolicy.PreserveResources
+                ? leftSnapshot.OutstandingStolenResource
                 : 0;
-            int currentOutstanding = _theftPolicy == SolverTheftPolicy.PreserveResources
-                ? currentSnapshot.OutstandingStolenResource
+            int rightOutstanding = _theftPolicy == SolverTheftPolicy.PreserveResources
+                ? rightSnapshot.OutstandingStolenResource
                 : 0;
-            int byOutstanding = candidateOutstanding.CompareTo(currentOutstanding);
-            if (byOutstanding != 0)
-                return byOutstanding < 0;
-            int candidateStrategicHpDeficit = candidateSnapshot.CumulativePlayerHpLost
-                + Math.Max(0, _initialPlayerMaxHp - candidateSnapshot.PlayerMaxHp);
-            int currentStrategicHpDeficit = currentSnapshot.CumulativePlayerHpLost
-                + Math.Max(0, _initialPlayerMaxHp - currentSnapshot.PlayerMaxHp);
-            int byStrategicHpDeficit = candidateStrategicHpDeficit
-                .CompareTo(currentStrategicHpDeficit);
-            if (byStrategicHpDeficit != 0)
-                return byStrategicHpDeficit < 0;
-            int candidateHealthResourceCost = _initialPlayerHp - candidateSnapshot.PlayerHp
-                + _initialPlayerMaxHp - candidateSnapshot.PlayerMaxHp;
-            int currentHealthResourceCost = _initialPlayerHp - currentSnapshot.PlayerHp
-                + _initialPlayerMaxHp - currentSnapshot.PlayerMaxHp;
-            int byHealthResourceCost = candidateHealthResourceCost
-                .CompareTo(currentHealthResourceCost);
-            if (byHealthResourceCost != 0)
-                return byHealthResourceCost < 0;
-            int byCombatEndTurn = CompletedCombatTurn(candidate)
-                .CompareTo(CompletedCombatTurn(current));
-            if (byCombatEndTurn != 0)
-                return byCombatEndTurn < 0;
-            int byLongTerm = candidateSnapshot.LongTermResourceValue
-                .CompareTo(currentSnapshot.LongTermResourceValue);
-            if (byLongTerm != 0)
-                return byLongTerm > 0;
-            int byAnger = candidateSnapshot.AngerCopiesGenerated
-                .CompareTo(currentSnapshot.AngerCopiesGenerated);
-            if (byAnger != 0)
-                return byAnger < 0;
-            int byPotionCost = candidate.PotionStrategicCost.CompareTo(current.PotionStrategicCost);
-            if (byPotionCost != 0)
-                return byPotionCost < 0;
-            int bySoldHp = candidate.FutureSoldHp.CompareTo(current.FutureSoldHp);
-            return bySoldHp != 0 ? bySoldHp < 0 : IsBetterSearchNode(candidate, current);
+            comparison = leftOutstanding.CompareTo(rightOutstanding);
+            if (comparison != 0)
+                return comparison;
+            comparison = HealthResourceCost(leftSnapshot).CompareTo(HealthResourceCost(rightSnapshot));
+            if (comparison != 0)
+                return comparison;
+            comparison = rightSnapshot.LongTermResourceValue.CompareTo(leftSnapshot.LongTermResourceValue);
+            if (comparison != 0)
+                return comparison;
+            comparison = leftSnapshot.AngerCopiesGenerated.CompareTo(rightSnapshot.AngerCopiesGenerated);
+            if (comparison != 0)
+                return comparison;
+            comparison = left.PotionStrategicCost.CompareTo(right.PotionStrategicCost);
+            if (comparison != 0)
+                return comparison;
+            comparison = left.PotionCount.CompareTo(right.PotionCount);
+            if (comparison != 0)
+                return comparison;
+            comparison = left.FutureSoldHp.CompareTo(right.FutureSoldHp);
+            if (comparison != 0)
+                return comparison;
+            comparison = leftSnapshot.EnemyHp.CompareTo(rightSnapshot.EnemyHp);
+            if (comparison != 0)
+                return comparison;
+            comparison = right.Score.CompareTo(left.Score);
+            if (comparison != 0)
+                return comparison;
+            comparison = left.ActionCount.CompareTo(right.ActionCount);
+            if (comparison != 0)
+                return comparison;
+            comparison = left.StateKey.First.CompareTo(right.StateKey.First);
+            return comparison != 0
+                ? comparison
+                : left.StateKey.Second.CompareTo(right.StateKey.Second);
         }
+
+        private bool IsCompleteVictory(SearchNode node)
+            => SolverInterimResultOrdering.IsCompleteVictory(
+                node.ActionCount,
+                node.Snapshot.AllEnemiesDead,
+                node.Snapshot.PlayerDead,
+                node.Snapshot.ProjectedPlayerHp);
+
+        private int StrategicHpDeficit(SimulationSnapshot snapshot)
+            => snapshot.CumulativePlayerHpLost
+                + Math.Max(0, _initialPlayerMaxHp - snapshot.PlayerMaxHp);
+
+        private int HealthResourceCost(SimulationSnapshot snapshot)
+            => _initialPlayerHp - snapshot.PlayerHp
+                + _initialPlayerMaxHp - snapshot.PlayerMaxHp;
 
         private static int CompletedCombatTurn(SearchNode node)
             => node.Action?.Turn ?? node.Turn;
