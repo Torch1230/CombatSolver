@@ -67,6 +67,8 @@ internal static class SolverOverlay
     private static Button? _collapseButton;
     private static Button? _settingsButton;
     private static Button? _potionStrategyButton;
+    private static PanelContainer? _searchLimitHint;
+    private static Label? _searchLimitHintLabel;
     private static Button? _performanceHintButton;
     private static Button? _bossHpStrategyHintButton;
     private static SolverMemoryUsageBar? _memoryUsageBar;
@@ -181,6 +183,7 @@ internal static class SolverOverlay
                 IsSlimForTesting: true,
             };
     internal static bool PerformanceHintVisibleForTesting => _performanceHintButton?.Visible == true;
+    internal static bool SearchLimitHintVisibleForTesting => _searchLimitHint?.Visible == true;
     internal static bool BossHpStrategyHintVisibleForTesting
         => _bossHpStrategyHintButton?.Visible == true;
     internal static string? BossHpStrategyHintTextForTesting => _bossHpStrategyHintButton?.Text;
@@ -217,6 +220,30 @@ internal static class SolverOverlay
         {
             SolverSettings.ApplyForTesting(originalSettings);
             SetPerformanceHintVisible(original);
+        }
+    }
+
+    internal static bool ExerciseSearchLimitHintForTesting()
+    {
+        if (_searchLimitHint == null || _searchLimitHintLabel == null)
+            return false;
+        string? original = _lastSnapshot?.SearchLimitWarningText;
+        try
+        {
+            SetSearchLimitHint(SolverOverlaySnapshot.BuildSearchLimitWarning(SearchBoundaryReason.TimeLimit));
+            bool timeLimit = SearchLimitHintVisibleForTesting
+                && _searchLimitHintLabel.Text.Contains("搜索尚未收敛", StringComparison.Ordinal)
+                && _searchLimitHintLabel.Text.Contains("时间上限", StringComparison.Ordinal)
+                && _searchLimitHintLabel.Text.Contains("设置 > 性能", StringComparison.Ordinal);
+            SetSearchLimitHint(SolverOverlaySnapshot.BuildSearchLimitWarning(SearchBoundaryReason.NodeLimit));
+            bool nodeLimit = SearchLimitHintVisibleForTesting
+                && _searchLimitHintLabel.Text.Contains("节点上限", StringComparison.Ordinal);
+            SetSearchLimitHint(SolverOverlaySnapshot.BuildSearchLimitWarning(SearchBoundaryReason.None));
+            return timeLimit && nodeLimit && !SearchLimitHintVisibleForTesting;
+        }
+        finally
+        {
+            SetSearchLimitHint(original);
         }
     }
 
@@ -444,6 +471,7 @@ internal static class SolverOverlay
         EnsureCreated(host);
         _deployQueued = false;
         SetStatus("求解器消息", TextMuted);
+        SetSearchLimitHint(null);
         SetPerformanceHintVisible(false);
         SetCurrentBossHpStrategyHint();
         SetReviewText(null);
@@ -460,6 +488,7 @@ internal static class SolverOverlay
         EnsureCreated(host);
         _deployQueued = false;
         SetStatus("求解器已禁用", TextMuted);
+        SetSearchLimitHint(null);
         SetPerformanceHintVisible(false);
         SetBossHpStrategyHint(BossHpRelief.None);
         SetReviewText(null);
@@ -474,6 +503,7 @@ internal static class SolverOverlay
         EnsureCreated(host);
         _deployQueued = false;
         SetStatus("计算已停止", Danger);
+        SetSearchLimitHint(null);
         SetPerformanceHintVisible(false);
         SetCurrentBossHpStrategyHint();
         SetReviewText(null);
@@ -500,6 +530,7 @@ internal static class SolverOverlay
         EnsureCreated(host);
         _deployQueued = false;
         SetStatus("等待手动计算", TextMuted);
+        SetSearchLimitHint(null);
         SetPerformanceHintVisible(false);
         SetCurrentBossHpStrategyHint();
         SetReviewText(null);
@@ -588,6 +619,7 @@ internal static class SolverOverlay
         _lastReviewedWorldlinesBeforeSearch = reviewedWorldlinesBeforeSearch;
         _lastSearchProgressRatio = 0d;
         EnsureCreated(host);
+        SetSearchLimitHint(null);
         SetCurrentBossHpStrategyHint();
         _deployQueued = deployWhenReady;
         SetStatus(
@@ -650,6 +682,7 @@ internal static class SolverOverlay
         _lastMessageText = null;
         EnsureCreated(host);
         _deployQueued = false;
+        SetSearchLimitHint(snapshot.SearchLimitWarningText);
         Color statusColor = snapshot.StatusTone switch
         {
             SolverOverlayTone.Danger => Danger,
@@ -1196,6 +1229,7 @@ internal static class SolverOverlay
         panel.AddChild(root);
 
         root.AddChild(CreateHeader());
+        root.AddChild(CreateSearchLimitHint());
         root.AddChild(CreatePerformanceHint());
         root.AddChild(CreateBossHpStrategyHint());
 
@@ -1518,6 +1552,33 @@ internal static class SolverOverlay
             SolverUiTokens.Spacing.Xxs));
         _performanceHintButton.Pressed += DismissPerformanceHint;
         return _performanceHintButton;
+    }
+
+    private static Control CreateSearchLimitHint()
+    {
+        _searchLimitHint = new PanelContainer
+        {
+            Name = "SearchLimitHint",
+            Visible = false,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(0, 44),
+        };
+        _searchLimitHint.AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
+            SolverUiTokens.IsLightTheme ? Warning.Lightened(0.82f) : Warning.Darkened(0.78f),
+            Warning,
+            SolverUiTokens.Radius.Large,
+            SolverUiTokens.Spacing.Md,
+            SolverUiTokens.Spacing.Xxs));
+        _searchLimitHintLabel = CreateTextLabel(
+            string.Empty,
+            SolverUiTokens.Type.Body,
+            Warning,
+            FontType.Bold);
+        _searchLimitHintLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _searchLimitHintLabel.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        _searchLimitHint.AddChild(_searchLimitHintLabel);
+        return _searchLimitHint;
     }
 
     private static Control CreateBossHpStrategyHint()
@@ -2006,6 +2067,19 @@ internal static class SolverOverlay
             return;
         _performanceHintButton.Visible = visible;
         QueueResponsiveLayout();
+    }
+
+    private static void SetSearchLimitHint(string? text)
+    {
+        if (_searchLimitHint == null || _searchLimitHintLabel == null)
+            return;
+        bool visible = !string.IsNullOrEmpty(text);
+        bool changed = _searchLimitHint.Visible != visible
+            || !string.Equals(_searchLimitHintLabel.Text, text, StringComparison.Ordinal);
+        _searchLimitHintLabel.Text = text ?? string.Empty;
+        _searchLimitHint.Visible = visible;
+        if (changed)
+            QueueResponsiveLayout();
     }
 
     private static void ToggleDetails()

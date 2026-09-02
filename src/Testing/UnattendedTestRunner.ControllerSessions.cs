@@ -244,6 +244,8 @@ internal sealed partial class UnattendedTestRunner
         }
         if (!SolverOverlay.ExercisePerformanceHintForTesting())
             throw new InvalidOperationException("战损结果没有可用的性能预设重试胶囊提示。");
+        if (!SolverOverlay.ExerciseSearchLimitHintForTesting())
+            throw new InvalidOperationException("时间或节点上限停止后没有显示不可关闭的顶部提示。");
         if (strategyPotion is { } potionEntry)
         {
             if (!SolverOverlay.PotionStrategyUiConfiguredForTesting

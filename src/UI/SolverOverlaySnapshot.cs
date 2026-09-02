@@ -51,7 +51,8 @@ internal sealed record SolverOverlaySnapshot(
     bool OnlyDeathRoutesFound,
     IReadOnlyList<SolverOverlayTurnSnapshot> Turns,
     string DetailsText,
-    bool HasRisk)
+    bool HasRisk,
+    string? SearchLimitWarningText)
 {
     public static SolverOverlaySnapshot Capture(SolverResult result, bool unexpectedReplan)
         => CaptureWithReviewedWorldlines(result, unexpectedReplan, reviewedWorldlinesTotal: 0);
@@ -115,7 +116,8 @@ internal sealed record SolverOverlaySnapshot(
             OnlyDeathRoutesFound: false,
             turns,
             DetailsText: string.Empty,
-            HasRisk: false);
+            HasRisk: false,
+            SearchLimitWarningText: null);
     }
 
     public static SolverOverlaySnapshot CaptureSpeculativeRoute(
@@ -143,7 +145,8 @@ internal sealed record SolverOverlaySnapshot(
             preview.OnlyDeathRoutesFound,
             turns,
             DetailsText: string.Empty,
-            HasRisk: preview.HasRisk);
+            HasRisk: preview.HasRisk,
+            SearchLimitWarningText: null);
     }
 
     private static SolverOverlayTurnSnapshot BuildOverlayTurn(SolverFrontierTurn frontier)
@@ -225,7 +228,8 @@ internal sealed record SolverOverlaySnapshot(
             result.OnlyDeathRoutesFound,
             turns,
             BuildDetails(result, startTurnNumber, unmirrored, compensated, unexpectedReplan),
-            hasRisk);
+            hasRisk,
+            BuildSearchLimitWarning(result.BoundaryReason));
     }
 
     private static SolverOverlayTurnSnapshot CaptureTurn(SolverResult result, int turn)
@@ -394,6 +398,15 @@ internal sealed record SolverOverlaySnapshot(
         }
         return result.Forecast.IsExactForModeledDamage ? "高可信度" : "中等可信度";
     }
+
+    internal static string? BuildSearchLimitWarning(SearchBoundaryReason reason) => reason switch
+    {
+        SearchBoundaryReason.TimeLimit
+            => "搜索尚未收敛，已达到当前性能设置的时间上限；这是上限触发的停止，现展示目前找到的最佳路线。可在 设置 > 性能 中提高时间上限后重新计算。",
+        SearchBoundaryReason.NodeLimit
+            => "搜索尚未收敛，已达到当前性能设置的节点上限；这是上限触发的停止，现展示目前找到的最佳路线。可在 设置 > 性能 中提高节点上限后重新计算。",
+        _ => null,
+    };
 
     private static string BoundaryText(SearchBoundaryReason reason) => reason switch
     {
