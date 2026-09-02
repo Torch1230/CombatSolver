@@ -475,6 +475,12 @@ if ! is_blank "${option_value[run-snapshot-path]}"; then
         runtime_error "run snapshot not found: ${option_value[run-snapshot-path]}"
 fi
 
+resolved_replay_state_path=""
+if ! is_blank "${option_value[replay-state-path]}"; then
+    resolved_replay_state_path="$(realpath -e -- "${option_value[replay-state-path]}")" || \
+        runtime_error "replay state not found: ${option_value[replay-state-path]}"
+fi
+
 json_array_from_text() {
     local label="$1" source_json="$2" result
     if ! result="$(jq -ce 'if type == "array" then . else [.] end' <<<"$source_json")"; then
@@ -648,6 +654,7 @@ request="$(jq -cn \
     --argjson types "$wire_types" \
     --arg runId "$run_id" \
     --arg runSnapshotPath "$resolved_run_snapshot_path" \
+    --arg replayStatePath "$resolved_replay_state_path" \
     --argjson initialEnemyCurrentHps "$initial_enemy_current_hps" \
     --argjson initialEnemyMoveIds "$initial_enemy_move_ids" \
     --argjson initialEnemyStateLogs "$initial_enemy_state_logs" \
@@ -686,6 +693,7 @@ request="$(jq -cn \
         schemaVersion: 1,
         runId: $runId,
         runSnapshotPath: (if ($runSnapshotPath | blank) then null else $runSnapshotPath end),
+        replayStatePath: (if ($replayStatePath | blank) then null else $replayStatePath end),
         initialEnemyCurrentHps: $initialEnemyCurrentHps,
         initialEnemyMoveIds: $initialEnemyMoveIds,
         initialEnemyStateLogs: $initialEnemyStateLogs,
