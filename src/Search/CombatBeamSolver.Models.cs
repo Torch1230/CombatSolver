@@ -104,6 +104,12 @@ internal sealed partial class CombatBeamSolver
         public int ReusedNodeSnapshots;
         public int TranspositionBranchesPruned;
         public int RepeatableNoProgressBranchesPruned;
+        public int CycleShapesDetected;
+        public int CycleProbeContinuationsExpanded;
+        public int CycleCandidatesProtected;
+        public int CycleContinuationsStopped;
+        public int CrossTurnCandidatesProtected;
+        public int CrossTurnContinuationsStopped;
         public int StandPatProbes;
         public long OffThreadAllocatedBytes;
         public int ParallelExpansionWaves;

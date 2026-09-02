@@ -64,6 +64,8 @@ internal sealed partial class CombatBeamSolver
         SolverSearchProfile _profile,
         bool _isActEndingBoss,
         int _initialEnemyCount,
+        int _initialPlayerHp,
+        int _initialPlayerMaxHp,
         bool _preserveReplayAllocatorOpening,
         SolverTheftPolicy? _theftPolicy,
         SolverPotionPolicy _potionPolicy,
@@ -1439,16 +1441,29 @@ internal sealed partial class CombatBeamSolver
             int currentOutstanding = _theftPolicy == SolverTheftPolicy.PreserveResources
                 ? currentSnapshot.OutstandingStolenResource
                 : 0;
-            int byHpLost = candidateSnapshot.CumulativePlayerHpLost
-                .CompareTo(currentSnapshot.CumulativePlayerHpLost);
-            if (byHpLost != 0)
-                return byHpLost < 0;
-            int byMaxHp = candidateSnapshot.PlayerMaxHp.CompareTo(currentSnapshot.PlayerMaxHp);
-            if (byMaxHp != 0)
-                return byMaxHp > 0;
             int byOutstanding = candidateOutstanding.CompareTo(currentOutstanding);
             if (byOutstanding != 0)
                 return byOutstanding < 0;
+            int candidateStrategicHpDeficit = candidateSnapshot.CumulativePlayerHpLost
+                + Math.Max(0, _initialPlayerMaxHp - candidateSnapshot.PlayerMaxHp);
+            int currentStrategicHpDeficit = currentSnapshot.CumulativePlayerHpLost
+                + Math.Max(0, _initialPlayerMaxHp - currentSnapshot.PlayerMaxHp);
+            int byStrategicHpDeficit = candidateStrategicHpDeficit
+                .CompareTo(currentStrategicHpDeficit);
+            if (byStrategicHpDeficit != 0)
+                return byStrategicHpDeficit < 0;
+            int candidateHealthResourceCost = _initialPlayerHp - candidateSnapshot.PlayerHp
+                + _initialPlayerMaxHp - candidateSnapshot.PlayerMaxHp;
+            int currentHealthResourceCost = _initialPlayerHp - currentSnapshot.PlayerHp
+                + _initialPlayerMaxHp - currentSnapshot.PlayerMaxHp;
+            int byHealthResourceCost = candidateHealthResourceCost
+                .CompareTo(currentHealthResourceCost);
+            if (byHealthResourceCost != 0)
+                return byHealthResourceCost < 0;
+            int byCombatEndTurn = CompletedCombatTurn(candidate)
+                .CompareTo(CompletedCombatTurn(current));
+            if (byCombatEndTurn != 0)
+                return byCombatEndTurn < 0;
             int byLongTerm = candidateSnapshot.LongTermResourceValue
                 .CompareTo(currentSnapshot.LongTermResourceValue);
             if (byLongTerm != 0)
@@ -1463,6 +1478,9 @@ internal sealed partial class CombatBeamSolver
             int bySoldHp = candidate.FutureSoldHp.CompareTo(current.FutureSoldHp);
             return bySoldHp != 0 ? bySoldHp < 0 : IsBetterSearchNode(candidate, current);
         }
+
+        private static int CompletedCombatTurn(SearchNode node)
+            => node.Action?.Turn ?? node.Turn;
 
         private static bool IsBetterUtilityDefensive(SearchNode candidate, SearchNode? current)
             => current == null

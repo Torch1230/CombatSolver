@@ -89,8 +89,4 @@ internal static class SolverWeights
     public const int BackgroundWorkSliceMilliseconds = 4;
     public const int BackgroundYieldCheckInterval = 16;
     public const int ProgressUiIntervalMilliseconds = 200;
-    // This is a cycle guard, not a turn action cap. A free card that returns to the same hand may
-    // keep searching while it deals damage; only consecutive resource-neutral plays with no enemy
-    // progress count toward this limit.
-    public const int MaxRepeatableNoProgressPlays = 16;
 }

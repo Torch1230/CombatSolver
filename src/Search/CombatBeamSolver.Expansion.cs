@@ -566,6 +566,15 @@ internal sealed partial class CombatBeamSolver
         _run.Expanded++;
         CombatPredictionSimulator simulator = (CombatPredictionSimulator)snapshot.Simulator;
         SimulatedCombatState simulatedCombat = (SimulatedCombatState)simulator.State.CombatState;
+        using ExpansionBatch? cycleExitBatch = node.CycleProbeLease == null
+            && node.CycleExitProbe == null
+            ? null
+            : new ExpansionBatch();
+        if (cycleExitBatch != null)
+        {
+            GenerateRawPotionCandidates(node, cycleExitBatch);
+            GenerateRawEndTurnCandidates(node, cycleExitBatch);
+        }
 
         SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(_player);
         List<ActionCandidate> nonDominated = new(16);
@@ -669,21 +678,6 @@ internal sealed partial class CombatBeamSolver
                     double score = ApplySoldHpPenalty(
                         finalSnapshot.Score,
                         node.FutureSoldHp);
-                    bool repeatableNoProgress = IsRepeatableNoProgressStep(
-                        snapshot,
-                        finalSnapshot,
-                        card.Original);
-                    string? repeatableCardId = repeatableNoProgress
-                        ? card.Preview.Id.Entry
-                        : null;
-                    int repeatableCount = repeatableNoProgress
-                        ? string.Equals(
-                            node.RepeatableNoProgressCardId,
-                            repeatableCardId,
-                            StringComparison.Ordinal)
-                            ? node.RepeatableNoProgressCount + 1
-                            : 1
-                        : 0;
                     SearchNode child = new(
                         nodeAction,
                         node.ActionCount + 1,
@@ -701,14 +695,13 @@ internal sealed partial class CombatBeamSolver
                         finalSnapshot,
                         forcedTurnEnd
                             ? node.CombatProgress.Advance(finalSnapshot)
-                            : node.CombatProgress,
-                        RepeatableNoProgressCardId: repeatableCardId,
-                        RepeatableNoProgressCount: repeatableCount)
+                            : node.CombatProgress)
                     {
                         CumulativeEnemyHpLost = AccumulateEnemyHpLost(node, finalSnapshot),
                     };
-                    if (ShouldPruneRepeatableNoProgress(child)
-                        || ShouldPruneCrossTurnNoProgress(child))
+                    child = AttachCycleSchedulingEvidence(child);
+                    CommitCycleExitObservation(child);
+                    if (ShouldPruneCrossTurnNoProgress(child))
                     {
                         _run.RepeatableNoProgressBranchesPruned++;
                         finalSnapshot.ReleaseSimulator();
@@ -731,7 +724,30 @@ internal sealed partial class CombatBeamSolver
             }
         }
 
+        if (cycleExitBatch != null)
+        {
+            PruneCommittedCrossTurnCandidates(cycleExitBatch.Potions, cycleExitBatch);
+            PruneCommittedCrossTurnCandidates(cycleExitBatch.EndTurns, cycleExitBatch);
+        }
+        SearchNode[] directChildren = nonDominated.Select(candidate => candidate.Node)
+            .Concat(cycleExitBatch?.Potions ?? [])
+            .Concat(cycleExitBatch?.EndTurns ?? [])
+            .ToArray();
+        foreach (SearchNode directChild in directChildren)
+            CommitCycleExitObservation(directChild);
+        AnnotateCycleExitProgress(node, directChildren);
         List<ActionCandidate> queuedCandidates = SelectActionCandidates(node, nonDominated);
+        AdmitCycleProbeCandidate(nonDominated, queuedCandidates);
+        AdmitCycleExitProbeCandidate(nonDominated, queuedCandidates);
+        for (int index = queuedCandidates.Count - 1; index >= 0; index--)
+        {
+            ActionCandidate candidate = queuedCandidates[index];
+            if (!ShouldRejectCycleCandidate(candidate.Node))
+                continue;
+            queuedCandidates.RemoveAt(index);
+            nonDominated.RemoveAll(item => ReferenceEquals(item.Node, candidate.Node));
+            candidate.Node.Snapshot.ReleaseSimulator();
+        }
         _run.TopQueueActionsDropped += nonDominated.Count - queuedCandidates.Count;
         foreach (ActionCandidate candidate in nonDominated)
         {
@@ -752,6 +768,33 @@ internal sealed partial class CombatBeamSolver
         {
             for (; yieldedCandidateCount < queuedCandidates.Count; yieldedCandidateCount++)
                 queuedCandidates[yieldedCandidateCount].Node.Snapshot.ReleaseSimulator();
+        }
+
+        if (cycleExitBatch != null)
+        {
+            foreach (SearchNode child in cycleExitBatch.Potions)
+            {
+                EnsureBoundedCycleProbeLease(child);
+                if (ShouldRejectCycleCandidate(child)
+                    || !TryAcceptTransposition(child))
+                {
+                    cycleExitBatch.Release(child.Snapshot);
+                    continue;
+                }
+                cycleExitBatch.Transfer(child.Snapshot);
+                yield return child;
+            }
+            foreach (SearchNode child in cycleExitBatch.EndTurns)
+            {
+                if (!TryAcceptTransposition(child))
+                {
+                    cycleExitBatch.Release(child.Snapshot);
+                    continue;
+                }
+                cycleExitBatch.Transfer(child.Snapshot);
+                yield return child;
+            }
+            yield break;
         }
 
         if (_detailedDiagnostics && node.ActionCount == 0)
@@ -870,6 +913,14 @@ internal sealed partial class CombatBeamSolver
                         {
                             CumulativeEnemyHpLost = AccumulateEnemyHpLost(node, finalSnapshot),
                         };
+                        child = AttachCycleSchedulingEvidence(child);
+                        CommitCycleExitObservation(child);
+                        EnsureBoundedCycleProbeLease(child);
+                        if (ShouldRejectCycleCandidate(child))
+                        {
+                            finalSnapshot.ReleaseSimulator();
+                            continue;
+                        }
                         bool accepted = TryAcceptTransposition(child);
                         if (_detailedDiagnostics && node.ActionCount == 0)
                         {
@@ -894,55 +945,6 @@ internal sealed partial class CombatBeamSolver
             yield return endNode;
     }
 
-    private bool IsRepeatableNoProgressStep(
-        SimulationSnapshot before,
-        SimulationSnapshot after,
-        CardModel originalCard)
-    {
-        if (after.BoundaryReason != SearchBoundaryReason.None
-            || after.PlayerDead
-            || after.AllEnemiesDead
-            || after.Turn != before.Turn
-            || after.EnemyHp != before.EnemyHp
-            || after.AliveEnemyCount != before.AliveEnemyCount
-            || after.PlayerHp != before.PlayerHp
-            || after.Energy != before.Energy
-            || after.Stars != before.Stars
-            || after.HandCount != before.HandCount)
-        {
-            return false;
-        }
-
-        CombatPredictionSimulator simulator = (CombatPredictionSimulator)after.Simulator;
-        SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(_player);
-        PredictedCard? returned = playerState.Hand.Cards.FirstOrDefault(card =>
-            card.References(originalCard));
-        return returned != null
-            && returned.GetEnergyCostWithModifiers(simulator, playerState) == 0
-            && returned.GetStarCostWithModifiers(simulator, playerState) == 0;
-    }
-
-    private bool ShouldPruneRepeatableNoProgress(SearchNode node)
-    {
-        if (node.RepeatableNoProgressCount <= 0)
-            return false;
-
-        int limit = SolverWeights.MaxRepeatableNoProgressPlays;
-        CombatPredictionSimulator simulator = (CombatPredictionSimulator)node.Snapshot.Simulator;
-        SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(_player);
-        bool hasLinearKillPayoff = playerState.Hand.Cards.Any(card =>
-            card.Preview is BodySlam or LunarBlast or GoldAxe);
-        SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
-        bool canScaleAttackWithSlow = playerState.Hand.Cards.Any(card => card.Preview.Type == CardType.Attack)
-            && combat.EffectivePowers().Any(power =>
-                power is SlowPower
-                && power.Amount > 0
-                && simulator.State.GetCreature(power.Owner).IsAlive);
-        if (hasLinearKillPayoff || canScaleAttackWithSlow)
-            limit = Math.Max(limit, node.Snapshot.EnemyHp + 1);
-        return node.RepeatableNoProgressCount > limit;
-    }
-
     private bool ShouldPruneCrossTurnNoProgress(SearchNode node)
     {
         if (node.Parent == null
@@ -952,6 +954,13 @@ internal sealed partial class CombatBeamSolver
         {
             return false;
         }
+        if (node.CycleExitProbe is { RemainingActions: > 0, RemainingTurnTransitions: >= 0 })
+            return false;
+        // A forced-turn action can be materialized before the direct EndTurn branches from
+        // its turn start. Until turn-outcome annotation has the complete branch-aware baseline,
+        // absence of scalar progress is not sufficient evidence for pruning.
+        if (!node.CrossTurnSemanticEvidenceAttached)
+            return false;
 
         CombatPredictionSimulator simulator = (CombatPredictionSimulator)node.Snapshot.Simulator;
         SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
@@ -967,7 +976,28 @@ internal sealed partial class CombatBeamSolver
         int noProgressLimit = Math.Max(
             SolverWeights.SetupValueHorizonTurns,
             deckCycleTurns * 2);
-        return node.CombatProgress.TurnsWithoutProgress >= noProgressLimit;
+        if (node.CombatProgress.TurnsWithoutProgress < noProgressLimit)
+            return false;
+        if (node.CrossTurnProbe is { } probe)
+        {
+            int boundedProbeTurns = Math.Clamp(
+                checked(noProgressLimit + 1),
+                SolverWeights.SetupValueHorizonTurns + 1,
+                SolverWeights.SetupValueHorizonTurns * 4);
+            if (probe.LastTurnImproved)
+                boundedProbeTurns = checked(boundedProbeTurns * 2);
+            if (probe.LastTurnChangedSemanticState)
+            {
+                // Repeated divergence from the exact stand-pat outcome is generic evidence
+                // of hidden state movement (mutable counters, powers, RNG, etc.). Give that
+                // one tiny portfolio lane a longer, still-hard-bounded horizon.
+                boundedProbeTurns = SolverWeights.SetupValueHorizonTurns * 4;
+            }
+            if (probe.CompletedTurnTransitions <= boundedProbeTurns)
+                return false;
+            _run.CrossTurnContinuationsStopped++;
+        }
+        return true;
     }
 
     private IEnumerable<(PlanAction Action, SimulationSnapshot Snapshot)> BuildEndTurnBranches(
@@ -988,8 +1018,16 @@ internal sealed partial class CombatBeamSolver
 
     private IEnumerable<SearchNode> BuildAcceptedEndTurnNodes(SearchNode node)
     {
+        List<StateFingerprint>? directStandPatKeys = ReferenceEquals(FindTurnStart(node), node)
+            ? []
+            : null;
         foreach ((PlanAction endAction, SimulationSnapshot endSnapshot) in BuildEndTurnBranches(node, []))
         {
+            if (directStandPatKeys != null
+                && IsComparableCrossTurnOutcome(endSnapshot.BoundaryReason))
+            {
+                directStandPatKeys.Add(endSnapshot.StateKey);
+            }
             bool combatEnded = endSnapshot.PlayerDead || endSnapshot.AllEnemiesDead;
             SearchNode endNode = new(
                 endAction,
@@ -1010,6 +1048,8 @@ internal sealed partial class CombatBeamSolver
             {
                 CumulativeEnemyHpLost = AccumulateEnemyHpLost(node, endSnapshot),
             };
+            endNode = AttachCycleSchedulingEvidence(endNode);
+            CommitCycleExitObservation(endNode);
             if (ShouldPruneCrossTurnNoProgress(endNode))
             {
                 _run.RepeatableNoProgressBranchesPruned++;
@@ -1020,6 +1060,8 @@ internal sealed partial class CombatBeamSolver
             else
                 endSnapshot.ReleaseSimulator();
         }
+        if (directStandPatKeys != null)
+            PublishCrossTurnStandPatBaselines(node, directStandPatKeys);
     }
 
     private readonly record struct PrimaryChoiceMatch(
@@ -2742,9 +2784,20 @@ internal sealed partial class CombatBeamSolver
 
     private static bool Dominates(ActionCandidate left, ActionCandidate right)
     {
+        bool leftHasCycleEvidence = left.Node.CycleProbeLease != null || left.Node.Cycle != null;
+        bool rightHasCycleEvidence = right.Node.CycleProbeLease != null || right.Node.Cycle != null;
+        bool leftHasCycleExitProbe = left.Node.CycleExitProbe != null;
+        bool rightHasCycleExitProbe = right.Node.CycleExitProbe != null;
         if (ReferenceEquals(left.Node, right.Node)
             || !left.IsPure
             || !right.IsPure
+            || leftHasCycleEvidence != rightHasCycleEvidence
+            || leftHasCycleEvidence
+                && BuildCycleProbeFamilyKey(left.Node) != BuildCycleProbeFamilyKey(right.Node)
+            || leftHasCycleExitProbe != rightHasCycleExitProbe
+            || leftHasCycleExitProbe
+                && BuildCycleExitProbeFamilyKey(left.Node)
+                    != BuildCycleExitProbeFamilyKey(right.Node)
             || left.CardType != right.CardType
             || left.TargetCombatId != right.TargetCombatId
             || left.OptionFamilies != right.OptionFamilies
@@ -2793,6 +2846,13 @@ internal sealed partial class CombatBeamSolver
 
     private bool TryAcceptTransposition(SearchNode candidate)
     {
+        // Scheduling obligations are deliberately bounded elsewhere. A normal route at the
+        // same simulator state cannot inherit their exact pattern/envelope history, so it must
+        // not erase the probe before the obligation reaches the frontier.
+        if (candidate.CycleProbeLease != null
+            || candidate.CycleExitProbe != null
+            || RequiresBoundedCyclePlanning(candidate))
+            return true;
         TranspositionLabel next = new(
             candidate.PotionCount,
             candidate.PotionStrategicCost,
@@ -2823,6 +2883,10 @@ internal sealed partial class CombatBeamSolver
 
     private bool TryMarkExpandedState(SearchNode node)
     {
+        if (node.CycleProbeLease != null
+            || node.CycleExitProbe != null
+            || RequiresBoundedCyclePlanning(node))
+            return true;
         TranspositionLabel next = new(
             node.PotionCount,
             node.PotionStrategicCost,

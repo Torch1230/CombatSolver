@@ -175,6 +175,7 @@ internal sealed partial class UnattendedTestRunner
                     StrategicHpDeficit: 9,
                     PotionStrategicCost: 0,
                     ProjectedBattlePotionCount: 0,
+                    CombatEndedTurn: null,
                     EnemyHp: 1,
                     Score: 0d),
                 SpeculativeRoutePreview: progressPreview),

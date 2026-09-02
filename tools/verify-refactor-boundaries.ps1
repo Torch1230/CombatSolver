@@ -16,11 +16,50 @@ $violations = [System.Collections.Generic.List[string]]::new()
 $searchFiles = Get-ChildItem -LiteralPath $searchRoot -Filter *.cs -File -Recurse
 $beamFiles = Get-ChildItem -LiteralPath $searchRoot -Filter "CombatBeamSolver*.cs" -File
 $beamPaths = @($beamFiles.FullName)
+$cyclePlanningPath = Join-Path $searchRoot "CombatBeamSolver.CyclePlanning.cs"
+$legacyLoopGuardPaths = @(
+    (Join-Path $searchRoot "CombatBeamSolver.Expansion.cs"),
+    (Join-Path $searchRoot "CombatBeamSolver.ParallelExpansion.cs"),
+    (Join-Path $searchRoot "SolverWeights.cs")
+)
 foreach ($file in $searchFiles) {
     foreach ($reference in $forbiddenSearchReferences) {
         foreach ($match in Select-String -LiteralPath $file.FullName -SimpleMatch $reference) {
             $violations.Add("$($file.FullName):$($match.LineNumber): forbidden Search reference '$reference'")
         }
+    }
+}
+
+# Cycle planning must infer recurrence and payoff from generic simulated-state deltas. Keeping
+# scenario names out of this policy file prevents a regression to card/power/relic/enemy allowlists.
+$scenarioSpecificCycleModelPattern = '\b(?:Body[\s_.-]*Slam|Lunar[\s_.-]*Blast|Gold[\s_.-]*Axe|Slow[\s_.-]*Power|Hellraiser|Pillage|Bloodletting|Particle[\s_.-]*Wall|Pale[\s_.-]*Blue[\s_.-]*Dot|Flash[\s_.-]*Of[\s_.-]*Steel|Finesse|Speedster|Black[\s_.-]*Hole|Glow|Alignment|Spoils[\s_.-]*Of[\s_.-]*Battle)\b'
+foreach ($match in Select-String -LiteralPath $cyclePlanningPath -Pattern $scenarioSpecificCycleModelPattern) {
+    $violations.Add("$($match.Path):$($match.LineNumber): generic cycle planning contains a scenario-specific model name or ID")
+}
+foreach ($directModelLookupPattern in @(
+    '\bModelDb\.(?:Card|Power|Relic|Monster)\b',
+    '\bGetAmount<[A-Za-z_][A-Za-z0-9_]*(?:Power|Relic|Monster)>',
+    '\btypeof\([A-Za-z_][A-Za-z0-9_]*(?:Card|Power|Relic|Monster)\)')) {
+    foreach ($match in Select-String -LiteralPath $cyclePlanningPath -Pattern $directModelLookupPattern) {
+        $violations.Add("$($match.Path):$($match.LineNumber): generic cycle planning performs a direct concrete-model lookup")
+    }
+}
+
+# PR #28's fixed repeat count and named payoff exceptions are retired. These checks intentionally
+# stay scoped to expansion and policy files so unrelated combat-semantic mirrors remain legal.
+foreach ($legacyLoopGuardPath in $legacyLoopGuardPaths) {
+    foreach ($retiredLoopGuard in @(
+        'MaxRepeatableNoProgressPlays',
+        'IsRepeatableNoProgressStep',
+        'ShouldPruneRepeatableNoProgress',
+        'RepeatableNoProgressCardId',
+        'RepeatableNoProgressCount')) {
+        foreach ($match in Select-String -LiteralPath $legacyLoopGuardPath -SimpleMatch $retiredLoopGuard) {
+            $violations.Add("$($match.Path):$($match.LineNumber): retired fixed repeatable-no-progress guard '$retiredLoopGuard' returned")
+        }
+    }
+    foreach ($match in Select-String -LiteralPath $legacyLoopGuardPath -Pattern '\b(?:Body[\s_.-]*Slam|Lunar[\s_.-]*Blast|Gold[\s_.-]*Axe|Slow[\s_.-]*Power)\b') {
+        $violations.Add("$($match.Path):$($match.LineNumber): retired named loop-payoff exception returned")
     }
 }
 
@@ -200,6 +239,8 @@ foreach ($check in $rootSnapshotChecks) {
 $expectedBeamFiles = @(
     "CombatBeamSolver.cs",
     "CombatBeamSolver.BeamRetentionPolicy.cs",
+    "CombatBeamSolver.CrossTurnPlanning.cs",
+    "CombatBeamSolver.CyclePlanning.cs",
     "CombatBeamSolver.Expansion.cs",
     "CombatBeamSolver.FinalPlanOrdering.cs",
     "CombatBeamSolver.Models.cs",

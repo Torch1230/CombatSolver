@@ -88,6 +88,13 @@ internal sealed class UnattendedTestRequest
     public int? ExpectedInitialMainThreadFramesOver100MillisecondsAtMost { get; init; }
     public int? ExpectedInitialTransitionCacheHitsAtLeast { get; init; }
     public int? ExpectedInitialRepeatableNoProgressBranchesPrunedAtLeast { get; init; }
+    public int? ExpectedInitialCycleShapesDetectedAtLeast { get; init; }
+    public int? ExpectedInitialCycleProbeContinuationsExpandedAtLeast { get; init; }
+    public int? ExpectedInitialCycleCandidatesProtectedAtLeast { get; init; }
+    public int? ExpectedInitialCycleContinuationsStoppedAtLeast { get; init; }
+    public int? ExpectedInitialCrossTurnCandidatesProtectedAtLeast { get; init; }
+    public int? ExpectedInitialCrossTurnContinuationsStoppedAtLeast { get; init; }
+    public int? ExpectedInitialNodeLimitSnapshotsReleasedAtLeast { get; init; }
     public int? ExpectedInitialChoiceBranchesEvaluatedAtLeast { get; init; }
     public int? ExpectedInitialExecutableActionCountAtLeast { get; init; }
     public int? ExpectedInitialSoldHp { get; init; }

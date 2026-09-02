@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "GENERIC-LOOP-REGENT-BLACK-HOLE-STARTUP-POSITIVE-V0111",
+  "characterId": "REGENT",
+  "encounterId": "AEONGLASS_BOSS",
+  "seed": "LOOPREGENTSTART0111",
+  "actIndexForTest": 2,
+  "enemyCurrentHp": 60,
+  "initialPlayerHp": 75,
+  "initialPlayerMaxHp": 75,
+  "initialPlayerEnergy": 3,
+  "initialPlayerStars": 0,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    { "cardId": "BLACK_HOLE", "pile": "Hand" },
+    { "cardId": "GLOW", "pile": "Hand", "upgradeLevels": 1 },
+    { "cardId": "SPOILS_OF_BATTLE", "pile": "Hand" },
+    { "cardId": "ALIGNMENT", "pile": "Draw" }
+  ],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 5000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "expectedInitialExecutableActionCountAtLeast": 19,
+  "expectedInitialProjectedBattleHpLost": 0,
+  "expectedInitialCombatEndedTurn": 1,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120
+}

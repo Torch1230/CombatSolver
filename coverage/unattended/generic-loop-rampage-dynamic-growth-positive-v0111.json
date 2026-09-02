@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "GENERIC-LOOP-RAMPAGE-DYNAMIC-GROWTH-POSITIVE-V0111",
+  "description": "Hidden-setup and card-internal growth regression: eight enemy Buffer charges make the first eight Rampage plays deal no HP damage while the same card instance grows from 10 toward 50 damage; after Buffer expires, the route must continue the zero-cost draw loop and defeat Aeonglass at its native 512 HP. Fixed 10-damage replays can deal at most 430 HP before the 100-card simulation draw boundary.",
+  "characterId": "IRONCLAD",
+  "encounterId": "AEONGLASS_BOSS",
+  "seed": "LOOPRAMPAGEDYNAMIC0111",
+  "actIndexForTest": 2,
+  "enemyCurrentHp": 512,
+  "initialPlayerHp": 80,
+  "initialPlayerMaxHp": 80,
+  "initialPlayerEnergy": 0,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    { "cardId": "RAMPAGE", "pile": "Hand" },
+    { "cardId": "IMPATIENCE", "pile": "Hand" },
+    { "cardId": "IMPATIENCE", "pile": "Discard" }
+  ],
+  "powers": [
+    { "powerId": "BUFFER_POWER", "target": "Enemy", "targetIndex": 0, "amount": 8 }
+  ],
+  "potions": [
+    { "potionId": "TouchOfInsanity" }
+  ],
+  "potionPolicyForTest": "RequireAtLeastOne",
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 5000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "expectedInitialFirstActionPotionId": "TOUCH_OF_INSANITY",
+  "expectedInitialPotionCount": 1,
+  "expectedInitialCycleShapesDetectedAtLeast": 1,
+  "expectedInitialExecutableActionCountAtLeast": 32,
+  "expectedInitialShufflesCrossedAtLeast": 15,
+  "expectedInitialProjectedBattleHpLost": 0,
+  "expectedInitialCombatEndedTurn": 1,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120
+}

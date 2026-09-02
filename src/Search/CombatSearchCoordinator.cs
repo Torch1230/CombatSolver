@@ -1412,6 +1412,7 @@ internal static class CombatSearchCoordinator
             StrategicHpDeficit: StrategicHpDeficit(root, result),
             PotionStrategicCost: SmartPotionHpRequired(root, policy, result),
             ProjectedBattlePotionCount: result.ProjectedBattlePotionCount,
+            CombatEndedTurn: result.CombatEndedTurn,
             EnemyHp: result.Snapshot.EnemyHp,
             Score: result.BestNode.Score);
 

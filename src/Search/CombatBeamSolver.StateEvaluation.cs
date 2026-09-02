@@ -42,11 +42,14 @@ internal sealed partial class CombatBeamSolver
         SimCreatureState player = simulator.State.GetCreature(_player.Creature);
         SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
         int enemyHp = 0;
+        int enemyBlock = 0;
         int rawEnemyHp = 0;
         int maxCurrentEnemyHp = 0;
         int revivingEnemyCount = 0;
         int aliveEnemyCount = 0;
         ulong aliveEnemyMask = 0;
+        EnemyDurabilityVectorBuilder enemyDurabilityBuilder =
+            new(combat.KnownEnemies.Count);
         StateFingerprintBuilder enemyCombatDistribution = new();
         for (int index = 0; index < combat.KnownEnemies.Count; index++)
         {
@@ -58,7 +61,12 @@ internal sealed partial class CombatBeamSolver
             enemyCombatDistribution.Add(enemy.Block);
             enemyCombatDistribution.Add(effectiveHp);
             enemyCombatDistribution.Add(combat.ContainsCreature(creature));
+            enemyDurabilityBuilder.Set(index, new EnemyDurabilityEntry(
+                creature.CombatId ?? uint.MaxValue,
+                Math.Max(0, effectiveHp) + Math.Max(0, enemy.Block)));
             enemyHp += effectiveHp;
+            if (effectiveHp > 0 && combat.ContainsCreature(creature))
+                enemyBlock += Math.Max(0, enemy.Block);
             rawEnemyHp += Math.Max(0, enemy.CurrentHp);
             maxCurrentEnemyHp = Math.Max(maxCurrentEnemyHp, Math.Max(0, enemy.CurrentHp));
             if (enemy.CurrentHp <= 0 && effectiveHp > 0)
@@ -96,6 +104,7 @@ internal sealed partial class CombatBeamSolver
             shufflesCrossed,
             processedEnemyDeaths);
         StateFingerprint unorderedPileKey = BuildUnorderedPileKey(playerState);
+        StateFingerprint cyclePileShapeKey = BuildCyclePileShapeKey(playerState);
         SearchMeasurement projectedShuffleMeasurement = _run.Performance.Begin();
         // Projected shuffle needs these piles in this exact pre-sort order. The remaining
         // snapshot metrics are order-independent, so they can reuse the shuffled list instead
@@ -344,10 +353,17 @@ internal sealed partial class CombatBeamSolver
         int automaticPotionUseCount = combat.PotionUses.Count(use => use.Automatic);
         (int reachableHandValue, int zeroCostPlayableCount) =
             CalculateReachableHandPotential(simulator, combat, playerState);
+        StateFingerprint potionInventoryKey = BuildPotionInventoryKey(combat);
+        StateFingerprint cycleShapeKey = BuildCycleShapeKey(
+            cyclePileShapeKey,
+            aliveEnemyMask,
+            potionInventoryKey,
+            boundary);
         return new SimulationSnapshot(
             score,
             key,
             unorderedPileKey,
+            cycleShapeKey,
             projectedShuffleOrderKey,
             projectedShuffleOrderValue,
             risk,
@@ -361,11 +377,13 @@ internal sealed partial class CombatBeamSolver
             projectedHp,
             player.Block,
             enemyHp,
+            enemyBlock,
             aliveEnemyCount,
             aliveEnemyMask,
             rawEnemyHp,
             maxCurrentEnemyHp,
             enemyCombatDistributionKey,
+            enemyDurabilityBuilder.Build(),
             revivingEnemyCount,
             persistentBuffValue,
             strategicEffects,
@@ -413,6 +431,72 @@ internal sealed partial class CombatBeamSolver
             boundary,
             predictionGaps,
             simulator);
+    }
+
+    private static StateFingerprint BuildCycleShapeKey(
+        StateFingerprint pileShapeKey,
+        ulong aliveEnemyMask,
+        StateFingerprint potionInventoryKey,
+        SearchBoundaryReason boundary)
+    {
+        StateFingerprintBuilder key = new();
+        key.Add(pileShapeKey.First);
+        key.Add(pileShapeKey.Second);
+        key.Add(aliveEnemyMask);
+        key.Add(potionInventoryKey.First);
+        key.Add(potionInventoryKey.Second);
+        key.Add((int)boundary);
+        return key.Finish();
+    }
+
+    private static StateFingerprint BuildCyclePileShapeKey(
+        SimPlayerCombatState playerState)
+    {
+        StateFingerprintBuilder key = new();
+        AppendCyclePileShape(ref key, playerState.Hand, 'H');
+        AppendCyclePileShape(ref key, playerState.DrawPile, 'D');
+        AppendCyclePileShape(ref key, playerState.DiscardPile, 'C');
+        AppendCyclePileShape(ref key, playerState.ExhaustPile, 'X');
+        return key.Finish();
+    }
+
+    private static void AppendCyclePileShape(
+        ref StateFingerprintBuilder key,
+        SimCardPile pile,
+        char marker)
+    {
+        // Cycle detection deliberately uses structural card identity only. Full card state
+        // remains in StateKey and in every replayed PlanAction; ignoring mutable counters here
+        // lets a bounded probe observe setup loops whose payoff appears only after N plays.
+        ulong first = 0;
+        ulong second = 0;
+        foreach (PredictedCard card in pile.Cards)
+        {
+            CardModel preview = card.Preview;
+            StateFingerprintBuilder cardKeyBuilder = new();
+            cardKeyBuilder.Add(preview.Id.Entry);
+            cardKeyBuilder.Add(preview.CurrentUpgradeLevel);
+            StateFingerprint cardKey = cardKeyBuilder.Finish();
+            first += StateFingerprintBuilder.MixFirst(cardKey.First);
+            second += StateFingerprintBuilder.MixSecond(cardKey.Second);
+        }
+        key.Add(marker);
+        key.Add(pile.Cards.Count);
+        key.Add(first);
+        key.Add(second);
+    }
+
+    private StateFingerprint BuildPotionInventoryKey(SimulatedCombatState combat)
+    {
+        StateFingerprintBuilder key = new();
+        key.Add(root.PotionSlotCount);
+        for (int slot = 0; slot < root.PotionSlotCount; slot++)
+        {
+            PotionModel? potion = combat.GetPotionAtSlot(_player, slot);
+            key.Add(potion?.Id.Entry ?? "-");
+            key.Add(potion != null && combat.IsPotionAvailable(_player, slot));
+        }
+        return key.Finish();
     }
 
     private static (int Value, int ZeroCostPlayableCount) CalculateReachableHandPotential(

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "GENERIC-LOOP-PALE-BLUE-DOT-THRESHOLD-CROSS-TURN-V0111",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "LOOPPALEBLUETHRESHOLD0111",
+  "enemyCurrentHp": 40,
+  "initialEnemyMoveIds": ["FIRST_ACID_GOOP"],
+  "initialPlayerHp": 80,
+  "initialPlayerMaxHp": 80,
+  "initialPlayerEnergy": 0,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    { "cardId": "PARTICLE_WALL", "pile": "Hand" },
+    { "cardId": "STRIKE_IRONCLAD", "pile": "Draw", "count": 7 }
+  ],
+  "powers": [
+    { "powerId": "PALE_BLUE_DOT_POWER", "target": "Player", "amount": 2 },
+    { "powerId": "HELLRAISER_POWER", "target": "Player", "amount": 1 }
+  ],
+  "potions": [
+    { "potionId": "TouchOfInsanity" }
+  ],
+  "potionPolicyForTest": "RequireAtLeastOne",
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 5000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "expectedInitialFirstActionPotionId": "TOUCH_OF_INSANITY",
+  "expectedInitialPotionCount": 1,
+  "expectedInitialExecutableActionCountAtLeast": 6,
+  "expectedInitialMaxBlockAtLeast": 45,
+  "expectedInitialActualBlockAtLeast": 45,
+  "expectedInitialProjectedBattleHpLost": 0,
+  "expectedInitialCombatEndedTurn": 1,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120
+}

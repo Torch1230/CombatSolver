@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "GENERIC-LOOP-CROSS-TURN-PURITY-PILLAGE-POSITIVE-V0111",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "CROSS_TURN_PURITY_PILLAGE",
+  "enemyCurrentHp": 200,
+  "initialEnemyMoveIds": ["INHALE"],
+  "initialPlayerHp": 80,
+  "initialPlayerMaxHp": 80,
+  "initialPlayerEnergy": 0,
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    { "cardId": "PURITY", "pile": "Hand", "treatAsDeckCard": true },
+    {
+      "cardId": "DEFEND_IRONCLAD",
+      "pile": "Hand",
+      "count": 3,
+      "treatAsDeckCard": true
+    },
+    { "cardId": "BLOODLETTING", "pile": "Draw", "treatAsDeckCard": true },
+    { "cardId": "PILLAGE", "pile": "Draw", "treatAsDeckCard": true },
+    {
+      "cardId": "STRIKE_IRONCLAD",
+      "pile": "Draw",
+      "count": 3,
+      "treatAsDeckCard": true
+    },
+    { "cardId": "PILLAGE", "pile": "Draw", "treatAsDeckCard": true },
+    { "cardId": "STRIKE_IRONCLAD", "pile": "Draw", "treatAsDeckCard": true }
+  ],
+  "powers": [
+    { "powerId": "HELLRAISER_POWER", "target": "Player", "amount": 1 }
+  ],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 5000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "expectedInitialFirstActionCardId": "PURITY",
+  "expectedInitialProjectedBattleHpLost": 0,
+  "expectedInitialCombatEndedTurn": 2,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120
+}

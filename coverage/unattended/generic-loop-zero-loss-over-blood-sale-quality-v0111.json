@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "GENERIC-LOOP-ZERO-LOSS-OVER-BLOOD-SALE-QUALITY-V0111",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "LOOPZEROLOSSQUALITY0111",
+  "enemyCurrentHp": 13,
+  "initialPlayerHp": 80,
+  "initialPlayerMaxHp": 80,
+  "initialPlayerEnergy": 0,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    { "cardId": "FLASH_OF_STEEL", "pile": "Hand" },
+    { "cardId": "BLOODLETTING", "pile": "Hand" },
+    { "cardId": "UPPERCUT", "pile": "Hand" },
+    { "cardId": "FINESSE", "pile": "Discard" }
+  ],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 5000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "expectedInitialFirstActionCardId": "FLASH_OF_STEEL",
+  "expectedInitialAbsentActionCardId": "BLOODLETTING",
+  "expectedInitialExecutableActionCountAtLeast": 5,
+  "expectedInitialProjectedBattleHpLost": 0,
+  "expectedInitialCombatEndedTurn": 1,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120
+}

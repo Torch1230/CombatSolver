@@ -22,6 +22,10 @@ internal static class SolverInterimResultOrdering
             return true;
         if (IsResourceTradeImprovement(current, candidate))
             return false;
+        int candidateEndTurn = candidate.CombatEndedTurn ?? int.MaxValue;
+        int currentEndTurn = current.CombatEndedTurn ?? int.MaxValue;
+        if (candidateEndTurn != currentEndTurn)
+            return candidateEndTurn < currentEndTurn;
         if (candidate.ProjectedBattlePotionCount != current.ProjectedBattlePotionCount)
             return candidate.ProjectedBattlePotionCount < current.ProjectedBattlePotionCount;
         if (candidate.EnemyHp != current.EnemyHp)

@@ -68,13 +68,42 @@ internal sealed partial class CombatBeamSolver
         foreach (IGrouping<(int Turn, StateFingerprint State, ulong PotionSlotsUsed), PendingTurnOutcome> group in pending.GroupBy(
                      item => (item.Turn, item.TurnStart.StateKey, item.PotionSlotsUsed)))
         {
-            PendingTurnOutcome[] comparable = group.Where(item => item.IsComparable).ToArray();
+            PendingTurnOutcome[] groupOutcomes = group.ToArray();
+            IReadOnlyList<StateFingerprint> publishedStandPatKeys =
+                groupOutcomes[0].TurnStart.CrossTurnStandPatStateKeys ?? [];
+            StateFingerprint[] standPatKeys = groupOutcomes
+                .Where(item => item.IsComparable
+                    && ReferenceEquals(item.Node.Parent, item.TurnStart)
+                    && item.Node.Action is { Kind: PlanActionKind.EndTurn })
+                .Select(item => item.Node.StateKey)
+                .Concat(publishedStandPatKeys)
+                .Distinct()
+                .ToArray();
+            foreach (PendingTurnOutcome outcome in groupOutcomes)
+            {
+                AttachCrossTurnSemanticStateEvidence(outcome.Node, standPatKeys);
+            }
+
+            PendingTurnOutcome[] retained = groupOutcomes
+                .Where(outcome =>
+                {
+                    if (!ShouldPruneCrossTurnNoProgress(outcome.Node))
+                        return true;
+                    _run.RepeatableNoProgressBranchesPruned++;
+                    return false;
+                })
+                .ToArray();
+            if (retained.Length == 0)
+                continue;
+
+            PendingTurnOutcome[] comparable = retained.Where(item => item.IsComparable).ToArray();
             int minimumHpLost = comparable.Length == 0 ? 0 : comparable.Min(item => item.HpLost);
             PendingTurnOutcome[] conservative = comparable
                 .Where(item => item.HpLost == minimumHpLost)
                 .ToArray();
-            int maxBlock = group.Max(item => item.ActualBlock);
-            foreach (PendingTurnOutcome outcome in group)
+            int maxBlock = retained.Max(item => item.ActualBlock);
+            List<(PendingTurnOutcome Outcome, int FutureSold)> deferredInvestments = [];
+            foreach (PendingTurnOutcome outcome in retained)
             {
                 int soldThisTurn = outcome.IsComparable
                     ? Math.Max(0, outcome.HpLost - minimumHpLost)
@@ -84,38 +113,103 @@ internal sealed partial class CombatBeamSolver
                 bool exceedsPolicyThreshold = futureSold > availableFutureSoldHp;
                 bool protectsInvestment = exceedsPolicyThreshold
                     && HasStrategicInvestmentPayoff(outcome, conservative);
-                if (futureSold > absoluteFutureSoldHp
-                    || exceedsPolicyThreshold && !protectsInvestment)
+                if (futureSold > absoluteFutureSoldHp)
                 {
                     _run.SoldHpBranchesPruned++;
                     continue;
                 }
+                if (exceedsPolicyThreshold && !protectsInvestment)
+                {
+                    deferredInvestments.Add((outcome, futureSold));
+                    continue;
+                }
                 if (protectsInvestment)
                     _run.HpInvestmentBranchesProtected++;
+                annotated.Add(AnnotateTurnOutcome(
+                    outcome,
+                    soldThisTurn,
+                    futureSold,
+                    maxBlock,
+                    exceedsPolicyThreshold));
+            }
 
-                double scoreWithoutSoldPenalty = outcome.Node.Score
-                    - outcome.Node.FutureSoldHp * SoldHpPenalty();
-                SearchNode annotatedNode = outcome.Node with
-                {
-                    FutureSoldHp = futureSold,
-                    Score = ApplySoldHpPenalty(scoreWithoutSoldPenalty, futureSold),
-                    Traits = exceedsPolicyThreshold
-                        ? outcome.Node.Traits | SearchRouteTraits.HpInvestment
-                        : outcome.Node.Traits,
-                    Outcome = new TurnOutcome(
-                        outcome.Turn,
-                        outcome.HpLost,
-                        outcome.Node.CumulativeEnemyHpLost
-                            - outcome.TurnStart.CumulativeEnemyHpLost,
-                        soldThisTurn,
-                        maxBlock,
-                        outcome.ActualBlock,
-                        outcome.EnergyLeft),
-                };
-                annotated.Add(annotatedNode);
+            // Immediate scalar payoff is not a proof that a route is worthwhile, and its
+            // absence is not a proof that it is useless. Preserve a tiny structural portfolio
+            // for delayed HP investments; the cross-turn lease supplies the hard time bound.
+            List<(PendingTurnOutcome Outcome, int FutureSold)> deferredRepresentatives =
+                deferredInvestments
+                    .GroupBy(item => (
+                        item.Outcome.Node.Snapshot.CycleShapeKey,
+                        item.Outcome.Node.StateKey))
+                    .Select(family => family
+                        .OrderBy(item => item.FutureSold)
+                        .ThenByDescending(item => item.Outcome.Node.ActionCount)
+                        .ThenByDescending(item => item.Outcome.Node.Snapshot.ProjectedPlayerHp)
+                        .ThenByDescending(item => item.Outcome.Node.Score)
+                        .First())
+                    .ToList();
+            List<(PendingTurnOutcome Outcome, int FutureSold)> retainedDeferred = [];
+            (PendingTurnOutcome Outcome, int FutureSold)? safest = deferredRepresentatives
+                .OrderBy(item => item.FutureSold)
+                .ThenByDescending(item => item.Outcome.Node.Snapshot.ProjectedPlayerHp)
+                .ThenByDescending(item => item.Outcome.Node.ActionCount)
+                .ThenByDescending(item => item.Outcome.Node.Score)
+                .Select(item => ((PendingTurnOutcome, int)?)item)
+                .FirstOrDefault();
+            if (safest is { } safeInvestment)
+                retainedDeferred.Add(safeInvestment);
+            (PendingTurnOutcome Outcome, int FutureSold)? furthest = deferredRepresentatives
+                .Where(item => !retainedDeferred.Contains(item))
+                .OrderByDescending(item => item.Outcome.Node.ActionCount)
+                .ThenBy(item => item.FutureSold)
+                .ThenByDescending(item => item.Outcome.Node.Snapshot.ProjectedPlayerHp)
+                .ThenByDescending(item => item.Outcome.Node.Score)
+                .Select(item => ((PendingTurnOutcome, int)?)item)
+                .FirstOrDefault();
+            if (furthest is { } furthestInvestment)
+                retainedDeferred.Add(furthestInvestment);
+            _run.SoldHpBranchesPruned += deferredInvestments.Count - retainedDeferred.Count;
+            foreach ((PendingTurnOutcome outcome, int futureSold) in retainedDeferred)
+            {
+                int soldThisTurn = Math.Max(0, futureSold - outcome.Node.Parent!.FutureSoldHp);
+                _run.HpInvestmentBranchesProtected++;
+                annotated.Add(AnnotateTurnOutcome(
+                    outcome,
+                    soldThisTurn,
+                    futureSold,
+                    maxBlock,
+                    isInvestment: true));
             }
         }
         return annotated;
+    }
+
+    private SearchNode AnnotateTurnOutcome(
+        PendingTurnOutcome outcome,
+        int soldThisTurn,
+        int futureSold,
+        int maxBlock,
+        bool isInvestment)
+    {
+        double scoreWithoutSoldPenalty = outcome.Node.Score
+            - outcome.Node.FutureSoldHp * SoldHpPenalty();
+        return outcome.Node with
+        {
+            FutureSoldHp = futureSold,
+            Score = ApplySoldHpPenalty(scoreWithoutSoldPenalty, futureSold),
+            Traits = isInvestment
+                ? outcome.Node.Traits | SearchRouteTraits.HpInvestment
+                : outcome.Node.Traits,
+            Outcome = new TurnOutcome(
+                outcome.Turn,
+                outcome.HpLost,
+                outcome.Node.CumulativeEnemyHpLost
+                    - outcome.TurnStart.CumulativeEnemyHpLost,
+                soldThisTurn,
+                maxBlock,
+                outcome.ActualBlock,
+                outcome.EnergyLeft),
+        };
     }
 
     private static bool HasStrategicInvestmentPayoff(
@@ -125,38 +219,16 @@ internal sealed partial class CombatBeamSolver
         SimulationSnapshot candidate = outcome.Node.Snapshot;
         if (candidate.PlayerDead || candidate.ProjectedPlayerHp <= 0 || conservative.Count == 0)
             return false;
-        int bestAliveEnemyCount = conservative.Min(item => item.Node.Snapshot.AliveEnemyCount);
-        int bestEnemyHp = conservative.Min(item => item.Node.Snapshot.EnemyHp);
-        int bestDelayedDamage = conservative.Max(item => item.Node.Snapshot.DelayedDamageValue);
-        int bestFutureResource = conservative.Max(item => item.Node.Snapshot.FutureResourceValue);
-        int bestLongTermResource = conservative.Max(item => item.Node.Snapshot.LongTermResourceValue);
-        int bestDeckClutter = conservative.Min(item => item.Node.Snapshot.LiveDeckClutter);
-        int bestStrengthSuppression = conservative.Max(
-            item => item.Node.Snapshot.EnemyStrengthSuppression);
-        int bestWeakTurns = conservative.Max(item => item.Node.Snapshot.EnemyWeakTurns);
-        int bestStrategicDamage = conservative.Max(
-            item => item.Node.Snapshot.StrategicEffects.DamagePotential);
-        int bestStrategicPrevention = conservative.Max(
-            item => item.Node.Snapshot.StrategicEffects.PreventionPotential);
-        int bestStrategicResource = conservative.Max(
-            item => item.Node.Snapshot.StrategicEffects.ResourcePotential);
-        int bestStrategicCardAccess = conservative.Max(
-            item => item.Node.Snapshot.StrategicEffects.CardAccessPotential);
-        int bestStrategicScaling = conservative.Max(
-            item => item.Node.Snapshot.StrategicEffects.ScalingPotential);
-        return candidate.AliveEnemyCount < bestAliveEnemyCount
-            || candidate.EnemyHp < bestEnemyHp
-            || candidate.DelayedDamageValue > bestDelayedDamage
-            || candidate.FutureResourceValue > bestFutureResource
-            || candidate.LongTermResourceValue > bestLongTermResource
-            || candidate.LiveDeckClutter < bestDeckClutter
-            || candidate.EnemyStrengthSuppression > bestStrengthSuppression
-            || candidate.EnemyWeakTurns > bestWeakTurns
-            || candidate.StrategicEffects.DamagePotential > bestStrategicDamage
-            || candidate.StrategicEffects.PreventionPotential > bestStrategicPrevention
-            || candidate.StrategicEffects.ResourcePotential > bestStrategicResource
-            || candidate.StrategicEffects.CardAccessPotential > bestStrategicCardAccess
-            || candidate.StrategicEffects.ScalingPotential > bestStrategicScaling;
+        CycleExitQuality candidateQuality = MeasureCycleExitQuality(
+            outcome.TurnStart,
+            outcome.Node);
+        // Compare against real conservative routes one by one. Combining each route's best
+        // coordinate into an unattainable synthetic baseline incorrectly deletes Pareto-safe
+        // investments.
+        return !conservative.Any(item => MeasureCycleExitQuality(
+                item.TurnStart,
+                item.Node)
+            .DominatesOrEquals(candidateQuality));
     }
 
     private static ulong CurrentTurnPotionSlotsUsed(SearchNode turnStart, SearchNode outcome)

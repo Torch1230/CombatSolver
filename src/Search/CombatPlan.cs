@@ -173,10 +173,232 @@ internal sealed record TurnOutcome(
     int ActualBlock,
     int EnergyLeft);
 
-internal readonly record struct CombatProgressState(
+internal readonly record struct EnemyDurabilityEntry(uint CombatId, int Durability);
+
+/// <summary>
+/// Small enemy groups stay entirely inside the snapshot object. Encounters with more than three
+/// known enemies fall back to one array, preserving arbitrary modded encounters without creating
+/// a Gen0 array for every ordinary one-to-three-enemy transition.
+/// </summary>
+internal readonly struct EnemyDurabilityVector
+{
+    private const int InlineCapacity = 3;
+    private readonly ulong _first;
+    private readonly ulong _second;
+    private readonly ulong _third;
+    private readonly EnemyDurabilityEntry[]? _overflow;
+
+    internal EnemyDurabilityVector(
+        int count,
+        ulong first,
+        ulong second,
+        ulong third,
+        EnemyDurabilityEntry[]? overflow)
+    {
+        Count = count;
+        _first = first;
+        _second = second;
+        _third = third;
+        _overflow = overflow;
+    }
+
+    public int Count { get; }
+
+    public EnemyDurabilityEntry this[int index]
+    {
+        get
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(index);
+            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, Count);
+            if (_overflow != null)
+                return _overflow[index];
+            return Unpack(index switch
+            {
+                0 => _first,
+                1 => _second,
+                2 => _third,
+                _ => throw new InvalidOperationException("内联敌方耐久索引越界。"),
+            });
+        }
+    }
+
+    internal static ulong Pack(EnemyDurabilityEntry entry)
+        => ((ulong)entry.CombatId << 32) | unchecked((uint)entry.Durability);
+
+    private static EnemyDurabilityEntry Unpack(ulong value)
+        => new((uint)(value >> 32), unchecked((int)(uint)value));
+
+    internal const int MaximumInlineCount = InlineCapacity;
+}
+
+internal struct EnemyDurabilityVectorBuilder
+{
+    private readonly int _count;
+    private ulong _first;
+    private ulong _second;
+    private ulong _third;
+    private readonly EnemyDurabilityEntry[]? _overflow;
+
+    public EnemyDurabilityVectorBuilder(int count)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
+        _count = count;
+        _first = 0;
+        _second = 0;
+        _third = 0;
+        _overflow = count > EnemyDurabilityVector.MaximumInlineCount
+            ? new EnemyDurabilityEntry[count]
+            : null;
+    }
+
+    public void Set(int index, EnemyDurabilityEntry entry)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(index);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, _count);
+        if (_overflow != null)
+        {
+            _overflow[index] = entry;
+            return;
+        }
+        ulong packed = EnemyDurabilityVector.Pack(entry);
+        switch (index)
+        {
+            case 0:
+                _first = packed;
+                break;
+            case 1:
+                _second = packed;
+                break;
+            case 2:
+                _third = packed;
+                break;
+            default:
+                throw new InvalidOperationException("内联敌方耐久索引越界。");
+        }
+    }
+
+    public EnemyDurabilityVector Build()
+        => new(_count, _first, _second, _third, _overflow);
+}
+
+internal static class EnemyDurabilityProgress
+{
+    public static int PositiveReduction(
+        EnemyDurabilityVector before,
+        EnemyDurabilityVector after)
+    {
+        long reduction = 0;
+        for (int beforeIndex = 0; beforeIndex < before.Count; beforeIndex++)
+        {
+            EnemyDurabilityEntry previous = before[beforeIndex];
+            int currentDurability = previous.Durability;
+            for (int afterIndex = 0; afterIndex < after.Count; afterIndex++)
+            {
+                EnemyDurabilityEntry current = after[afterIndex];
+                if (current.CombatId != previous.CombatId)
+                    continue;
+                currentDurability = current.Durability;
+                break;
+            }
+            reduction += Math.Max(0, previous.Durability - currentDurability);
+        }
+        return (int)Math.Min(int.MaxValue, reduction);
+    }
+
+    public static EnemyDurabilityVector MergeMinimum(
+        EnemyDurabilityVector historicalFloor,
+        EnemyDurabilityVector current,
+        out bool improved)
+    {
+        improved = false;
+        int additional = 0;
+        for (int currentIndex = 0; currentIndex < current.Count; currentIndex++)
+        {
+            uint combatId = current[currentIndex].CombatId;
+            bool found = false;
+            for (int priorIndex = 0; priorIndex < historicalFloor.Count; priorIndex++)
+            {
+                if (historicalFloor[priorIndex].CombatId != combatId)
+                    continue;
+                found = true;
+                break;
+            }
+            if (!found)
+                additional++;
+        }
+        for (int priorIndex = 0; priorIndex < historicalFloor.Count; priorIndex++)
+        {
+            EnemyDurabilityEntry previous = historicalFloor[priorIndex];
+            for (int currentIndex = 0; currentIndex < current.Count; currentIndex++)
+            {
+                EnemyDurabilityEntry candidate = current[currentIndex];
+                if (candidate.CombatId != previous.CombatId)
+                    continue;
+                improved |= candidate.Durability < previous.Durability;
+                break;
+            }
+        }
+        if (!improved && additional == 0)
+            return historicalFloor;
+
+        EnemyDurabilityVectorBuilder merged = new(historicalFloor.Count + additional);
+        for (int index = 0; index < historicalFloor.Count; index++)
+        {
+            EnemyDurabilityEntry previous = historicalFloor[index];
+            int minimum = previous.Durability;
+            for (int currentIndex = 0; currentIndex < current.Count; currentIndex++)
+            {
+                EnemyDurabilityEntry candidate = current[currentIndex];
+                if (candidate.CombatId != previous.CombatId)
+                    continue;
+                minimum = Math.Min(minimum, candidate.Durability);
+                break;
+            }
+            merged.Set(index, new EnemyDurabilityEntry(previous.CombatId, minimum));
+        }
+        int writeIndex = historicalFloor.Count;
+        for (int currentIndex = 0; currentIndex < current.Count; currentIndex++)
+        {
+            EnemyDurabilityEntry candidate = current[currentIndex];
+            bool found = false;
+            for (int priorIndex = 0; priorIndex < historicalFloor.Count; priorIndex++)
+            {
+                if (historicalFloor[priorIndex].CombatId != candidate.CombatId)
+                    continue;
+                found = true;
+                break;
+            }
+            if (found)
+                continue;
+            merged.Set(writeIndex++, candidate);
+        }
+        return merged.Build();
+    }
+}
+
+internal sealed record CombatProgressState(
     int BestEnemyHp,
+    long BestEnemyDurability,
+    EnemyDurabilityVector BestEnemyDurabilityByCombatId,
     int BestAliveEnemyCount,
     int BestOffensiveProgressValue,
+    int BestPersistentBuffValue,
+    int BestStrategicRetentionValue,
+    int BestFutureResourceValue,
+    int BestDelayedDamageValue,
+    int BestReplayPotentialValue,
+    int BestRetainedAttackValue,
+    int BestPlayerMaxHp,
+    int BestLongTermResourceValue,
+    int LowestPlayerHp,
+    int BestPlayerHpRecovery,
+    int LowestProjectedPlayerHp,
+    int BestProjectedPlayerHpRecovery,
+    int BestEnemyStrengthSuppression,
+    int BestEnemyWeakTurns,
+    int BestEnemyVulnerableTurns,
+    int BestOstyHp,
+    int BestOstyMaxHp,
     int BestLiveDeckClutter,
     int BestLiveDeckSize,
     int BestOutstandingStolenResource,
@@ -187,8 +409,27 @@ internal readonly record struct CombatProgressState(
     public static CombatProgressState Capture(SimulationSnapshot snapshot)
         => new(
             snapshot.EnemyHp,
+            (long)snapshot.EnemyHp + snapshot.EnemyBlock,
+            snapshot.EnemyDurabilityByCombatId,
             snapshot.AliveEnemyCount,
             snapshot.OffensiveProgressValue,
+            snapshot.PersistentBuffValue,
+            snapshot.StrategicEffects.RetentionValue,
+            snapshot.FutureResourceValue,
+            snapshot.DelayedDamageValue,
+            snapshot.ReplayPotentialValue,
+            snapshot.RetainedAttackValue,
+            snapshot.PlayerMaxHp,
+            snapshot.LongTermResourceValue,
+            snapshot.PlayerHp,
+            0,
+            snapshot.ProjectedPlayerHp,
+            0,
+            snapshot.EnemyStrengthSuppression,
+            snapshot.EnemyWeakTurns,
+            snapshot.EnemyVulnerableTurns,
+            snapshot.OstyHp,
+            snapshot.OstyMaxHp,
             snapshot.LiveDeckClutter,
             snapshot.LiveDeckSize,
             snapshot.OutstandingStolenResource,
@@ -198,9 +439,37 @@ internal readonly record struct CombatProgressState(
 
     public CombatProgressState Advance(SimulationSnapshot snapshot)
     {
+        long enemyDurability = (long)snapshot.EnemyHp + snapshot.EnemyBlock;
+        int lowestPlayerHp = Math.Min(LowestPlayerHp, snapshot.PlayerHp);
+        int playerHpRecovery = snapshot.PlayerHp - lowestPlayerHp;
+        int lowestProjectedPlayerHp = Math.Min(
+            LowestProjectedPlayerHp,
+            snapshot.ProjectedPlayerHp);
+        int projectedPlayerHpRecovery = snapshot.ProjectedPlayerHp - lowestProjectedPlayerHp;
+        EnemyDurabilityVector enemyDurabilityFloor = EnemyDurabilityProgress.MergeMinimum(
+            BestEnemyDurabilityByCombatId,
+            snapshot.EnemyDurabilityByCombatId,
+            out bool perEnemyDurabilityProgressed);
         bool progressed = snapshot.EnemyHp < BestEnemyHp
+            || enemyDurability < BestEnemyDurability
+            || perEnemyDurabilityProgressed
             || snapshot.AliveEnemyCount < BestAliveEnemyCount
             || snapshot.OffensiveProgressValue > BestOffensiveProgressValue
+            || snapshot.PersistentBuffValue > BestPersistentBuffValue
+            || snapshot.StrategicEffects.RetentionValue > BestStrategicRetentionValue
+            || snapshot.FutureResourceValue > BestFutureResourceValue
+            || snapshot.DelayedDamageValue > BestDelayedDamageValue
+            || snapshot.ReplayPotentialValue > BestReplayPotentialValue
+            || snapshot.RetainedAttackValue > BestRetainedAttackValue
+            || snapshot.PlayerMaxHp > BestPlayerMaxHp
+            || snapshot.LongTermResourceValue > BestLongTermResourceValue
+            || playerHpRecovery > BestPlayerHpRecovery
+            || projectedPlayerHpRecovery > BestProjectedPlayerHpRecovery
+            || snapshot.EnemyStrengthSuppression > BestEnemyStrengthSuppression
+            || snapshot.EnemyWeakTurns > BestEnemyWeakTurns
+            || snapshot.EnemyVulnerableTurns > BestEnemyVulnerableTurns
+            || snapshot.OstyHp > BestOstyHp
+            || snapshot.OstyMaxHp > BestOstyMaxHp
             || snapshot.LiveDeckClutter < BestLiveDeckClutter
             || snapshot.LiveDeckSize < BestLiveDeckSize
             || snapshot.OutstandingStolenResource < BestOutstandingStolenResource
@@ -208,8 +477,27 @@ internal readonly record struct CombatProgressState(
             || snapshot.ProcessedEnemyDeaths.Count > MostProcessedEnemyDeaths;
         return new CombatProgressState(
             Math.Min(BestEnemyHp, snapshot.EnemyHp),
+            Math.Min(BestEnemyDurability, enemyDurability),
+            enemyDurabilityFloor,
             Math.Min(BestAliveEnemyCount, snapshot.AliveEnemyCount),
             Math.Max(BestOffensiveProgressValue, snapshot.OffensiveProgressValue),
+            Math.Max(BestPersistentBuffValue, snapshot.PersistentBuffValue),
+            Math.Max(BestStrategicRetentionValue, snapshot.StrategicEffects.RetentionValue),
+            Math.Max(BestFutureResourceValue, snapshot.FutureResourceValue),
+            Math.Max(BestDelayedDamageValue, snapshot.DelayedDamageValue),
+            Math.Max(BestReplayPotentialValue, snapshot.ReplayPotentialValue),
+            Math.Max(BestRetainedAttackValue, snapshot.RetainedAttackValue),
+            Math.Max(BestPlayerMaxHp, snapshot.PlayerMaxHp),
+            Math.Max(BestLongTermResourceValue, snapshot.LongTermResourceValue),
+            lowestPlayerHp,
+            Math.Max(BestPlayerHpRecovery, playerHpRecovery),
+            lowestProjectedPlayerHp,
+            Math.Max(BestProjectedPlayerHpRecovery, projectedPlayerHpRecovery),
+            Math.Max(BestEnemyStrengthSuppression, snapshot.EnemyStrengthSuppression),
+            Math.Max(BestEnemyWeakTurns, snapshot.EnemyWeakTurns),
+            Math.Max(BestEnemyVulnerableTurns, snapshot.EnemyVulnerableTurns),
+            Math.Max(BestOstyHp, snapshot.OstyHp),
+            Math.Max(BestOstyMaxHp, snapshot.OstyMaxHp),
             Math.Min(BestLiveDeckClutter, snapshot.LiveDeckClutter),
             Math.Min(BestLiveDeckSize, snapshot.LiveDeckSize),
             Math.Min(BestOutstandingStolenResource, snapshot.OutstandingStolenResource),
@@ -217,6 +505,412 @@ internal readonly record struct CombatProgressState(
             Math.Max(MostProcessedEnemyDeaths, snapshot.ProcessedEnemyDeaths.Count),
             progressed ? 0 : TurnsWithoutProgress + 1);
     }
+}
+
+internal readonly record struct CycleTransitionDelta(
+    int EnemyHp,
+    int EnemyBlock,
+    int AliveEnemyCount,
+    int PlayerHp,
+    int PlayerMaxHp,
+    int CumulativePlayerHpLost,
+    int PlayerBlock,
+    int Energy,
+    int Stars,
+    int LongTermResourceValue,
+    int PersistentBuffValue,
+    int StrategicRetentionValue,
+    int FutureResourceValue,
+    int DelayedDamageValue,
+    int ReplayPotentialValue,
+    int RetainedAttackValue,
+    int EnemyStrengthSuppression,
+    int EnemyWeakTurns,
+    int EnemyVulnerableTurns,
+    int OutstandingStolenResource,
+    int SandpitRemaining,
+    int OstyHp,
+    int OstyMaxHp,
+    int OffensiveProgressValue)
+{
+    public static CycleTransitionDelta Between(
+        SimulationSnapshot before,
+        SimulationSnapshot after)
+        => new(
+            after.EnemyHp - before.EnemyHp,
+            after.EnemyBlock - before.EnemyBlock,
+            after.AliveEnemyCount - before.AliveEnemyCount,
+            after.PlayerHp - before.PlayerHp,
+            after.PlayerMaxHp - before.PlayerMaxHp,
+            after.CumulativePlayerHpLost - before.CumulativePlayerHpLost,
+            after.PlayerBlock - before.PlayerBlock,
+            after.Energy - before.Energy,
+            after.Stars - before.Stars,
+            after.LongTermResourceValue - before.LongTermResourceValue,
+            after.PersistentBuffValue - before.PersistentBuffValue,
+            after.StrategicEffects.RetentionValue - before.StrategicEffects.RetentionValue,
+            after.FutureResourceValue - before.FutureResourceValue,
+            after.DelayedDamageValue - before.DelayedDamageValue,
+            after.ReplayPotentialValue - before.ReplayPotentialValue,
+            after.RetainedAttackValue - before.RetainedAttackValue,
+            after.EnemyStrengthSuppression - before.EnemyStrengthSuppression,
+            after.EnemyWeakTurns - before.EnemyWeakTurns,
+            after.EnemyVulnerableTurns - before.EnemyVulnerableTurns,
+            after.OutstandingStolenResource - before.OutstandingStolenResource,
+            after.SandpitRemaining - before.SandpitRemaining,
+            after.OstyHp - before.OstyHp,
+            after.OstyMaxHp - before.OstyMaxHp,
+            after.OffensiveProgressValue - before.OffensiveProgressValue);
+}
+
+internal readonly record struct CycleExitQuality(
+    long EnemyDurabilityProgress,
+    long OffensiveProgressGain,
+    long DelayedDamageGain,
+    long PersistentBuffGain,
+    long StrategicRetentionGain,
+    long FutureResourceGain,
+    long LongTermResourceGain,
+    long ReplayPotentialGain,
+    long RetainedAttackGain,
+    long ProjectedPlayerHpGain,
+    long PlayerBlockGain,
+    long PlayerHpGain,
+    long EnergyGain,
+    long StarsGain,
+    long EnemyStrengthSuppressionGain,
+    long EnemyWeakTurnsGain,
+    long EnemyVulnerableTurnsGain,
+    long OutstandingStolenResourceRecovery,
+    long SandpitProgress,
+    long OstyHpGain,
+    long OstyMaxHpGain,
+    long DeckClutterReduction,
+    long DeckSizeReduction,
+    long StrategicHpCost,
+    long HealthResourceCost,
+    long ProjectedHpCost,
+    long FutureSoldHpCost,
+    long PotionStrategicCost,
+    long PotionUseCost)
+{
+    public bool DominatesOrEquals(CycleExitQuality other)
+        => EnemyDurabilityProgress >= other.EnemyDurabilityProgress
+            && OffensiveProgressGain >= other.OffensiveProgressGain
+            && DelayedDamageGain >= other.DelayedDamageGain
+            && PersistentBuffGain >= other.PersistentBuffGain
+            && StrategicRetentionGain >= other.StrategicRetentionGain
+            && FutureResourceGain >= other.FutureResourceGain
+            && LongTermResourceGain >= other.LongTermResourceGain
+            && ReplayPotentialGain >= other.ReplayPotentialGain
+            && RetainedAttackGain >= other.RetainedAttackGain
+            && ProjectedPlayerHpGain >= other.ProjectedPlayerHpGain
+            && PlayerBlockGain >= other.PlayerBlockGain
+            && PlayerHpGain >= other.PlayerHpGain
+            && EnergyGain >= other.EnergyGain
+            && StarsGain >= other.StarsGain
+            && EnemyStrengthSuppressionGain >= other.EnemyStrengthSuppressionGain
+            && EnemyWeakTurnsGain >= other.EnemyWeakTurnsGain
+            && EnemyVulnerableTurnsGain >= other.EnemyVulnerableTurnsGain
+            && OutstandingStolenResourceRecovery >= other.OutstandingStolenResourceRecovery
+            && SandpitProgress >= other.SandpitProgress
+            && OstyHpGain >= other.OstyHpGain
+            && OstyMaxHpGain >= other.OstyMaxHpGain
+            && DeckClutterReduction >= other.DeckClutterReduction
+            && DeckSizeReduction >= other.DeckSizeReduction
+            && StrategicHpCost <= other.StrategicHpCost
+            && HealthResourceCost <= other.HealthResourceCost
+            && ProjectedHpCost <= other.ProjectedHpCost
+            && FutureSoldHpCost <= other.FutureSoldHpCost
+            && PotionStrategicCost <= other.PotionStrategicCost
+            && PotionUseCost <= other.PotionUseCost;
+
+    public long ProgressMagnitude
+        => EnemyDurabilityProgress
+            + OffensiveProgressGain
+            + DelayedDamageGain
+            + PersistentBuffGain
+            + StrategicRetentionGain
+            + FutureResourceGain
+            + LongTermResourceGain
+            + ReplayPotentialGain
+            + RetainedAttackGain
+            + ProjectedPlayerHpGain
+            + PlayerBlockGain
+            + PlayerHpGain
+            + EnergyGain
+            + StarsGain
+            + EnemyStrengthSuppressionGain
+            + EnemyWeakTurnsGain
+            + EnemyVulnerableTurnsGain
+            + OutstandingStolenResourceRecovery
+            + SandpitProgress
+            + OstyHpGain
+            + OstyMaxHpGain
+            + DeckClutterReduction
+            + DeckSizeReduction;
+}
+
+internal sealed class CycleProbeTracker(
+    StateFingerprint shapeKey,
+    StateFingerprint sequenceKey,
+    StateFingerprint[] actionKeys)
+{
+    private const int MaximumExitParetoQualities = 8;
+
+    private enum ExitProbeTicketStatus : byte
+    {
+        Pending,
+        Issued,
+    }
+
+    private sealed class ExitEnvelope(CycleExitQuality quality)
+    {
+        public List<CycleExitQuality> Qualities { get; } = [quality];
+        public long LastGeneration { get; set; } = 1;
+        public Dictionary<long, ExitProbeTicketStatus> ActiveTickets { get; } = new()
+        {
+            [1] = ExitProbeTicketStatus.Pending,
+        };
+    }
+
+    private readonly Dictionary<StateFingerprint, ExitEnvelope>?[] _exitEnvelopes =
+        new Dictionary<StateFingerprint, ExitEnvelope>?[actionKeys.Length];
+
+    public StateFingerprint ShapeKey { get; } = shapeKey;
+    public StateFingerprint SequenceKey { get; } = sequenceKey;
+    public IReadOnlyList<StateFingerprint> ActionKeys { get; } = actionKeys;
+    public int PeriodActions => actionKeys.Length;
+
+    public long ObserveExit(
+        int phaseIndex,
+        StateFingerprint actionKey,
+        CycleExitQuality quality)
+    {
+        Dictionary<StateFingerprint, ExitEnvelope> envelope =
+            _exitEnvelopes[phaseIndex] ??= [];
+        if (!envelope.TryGetValue(actionKey, out ExitEnvelope? prior))
+        {
+            envelope.Add(actionKey, new ExitEnvelope(quality));
+            // A newly available exact action is itself bounded-lookahead evidence, even when
+            // its first edge is only setup for a later payoff.
+            return 1;
+        }
+        if (prior.Qualities.Any(candidate => candidate.DominatesOrEquals(quality)))
+            return LatestPendingGeneration(prior);
+
+        prior.Qualities.RemoveAll(candidate => quality.DominatesOrEquals(candidate));
+        prior.Qualities.Add(quality);
+        TrimExitParetoFrontier(prior.Qualities);
+        if (prior.Qualities.Contains(quality))
+            return CreatePendingGeneration(prior);
+        return LatestPendingGeneration(prior);
+    }
+
+    public void MarkExitProbeIssued(
+        int phaseIndex,
+        StateFingerprint actionKey,
+        long generation)
+    {
+        if (_exitEnvelopes[phaseIndex]?.TryGetValue(actionKey, out ExitEnvelope? envelope)
+            == true
+            && envelope.ActiveTickets.TryGetValue(
+                generation,
+                out ExitProbeTicketStatus status)
+            && status == ExitProbeTicketStatus.Pending)
+        {
+            envelope.ActiveTickets[generation] = ExitProbeTicketStatus.Issued;
+        }
+    }
+
+    public void CompleteExitProbe(
+        int phaseIndex,
+        StateFingerprint actionKey,
+        long generation)
+    {
+        if (_exitEnvelopes[phaseIndex]?.TryGetValue(actionKey, out ExitEnvelope? envelope)
+            == true)
+        {
+            envelope.ActiveTickets.Remove(generation);
+        }
+    }
+
+    public void RetryAbandonedExitProbe(
+        int phaseIndex,
+        StateFingerprint actionKey,
+        long generation)
+    {
+        if (_exitEnvelopes[phaseIndex] is not { } phase
+            || !phase.TryGetValue(actionKey, out ExitEnvelope? envelope)
+            || !envelope.ActiveTickets.TryGetValue(
+                generation,
+                out ExitProbeTicketStatus status)
+            || status != ExitProbeTicketStatus.Issued)
+        {
+            return;
+        }
+        envelope.ActiveTickets.Remove(generation);
+        if (LatestPendingGeneration(envelope) == 0)
+            _ = CreatePendingGeneration(envelope);
+    }
+
+    public void RearmExitProbes()
+    {
+        foreach (Dictionary<StateFingerprint, ExitEnvelope>? phase in _exitEnvelopes)
+        {
+            if (phase == null)
+                continue;
+            foreach (ExitEnvelope envelope in phase.Values)
+            {
+                if (LatestPendingGeneration(envelope) == 0)
+                    _ = CreatePendingGeneration(envelope);
+            }
+        }
+    }
+
+    public CycleProbeTracker Clone()
+    {
+        CycleProbeTracker clone = new(
+            ShapeKey,
+            SequenceKey,
+            ActionKeys.ToArray());
+        for (int phaseIndex = 0; phaseIndex < _exitEnvelopes.Length; phaseIndex++)
+        {
+            if (_exitEnvelopes[phaseIndex] is not { } source)
+                continue;
+            clone._exitEnvelopes[phaseIndex] = source.ToDictionary(
+                item => item.Key,
+                item => CloneExitEnvelope(item.Value));
+        }
+        return clone;
+    }
+
+    private static ExitEnvelope CloneExitEnvelope(ExitEnvelope source)
+    {
+        ExitEnvelope clone = new(source.Qualities[0])
+        {
+            LastGeneration = source.LastGeneration,
+        };
+        clone.Qualities.Clear();
+        clone.Qualities.AddRange(source.Qualities);
+        clone.ActiveTickets.Clear();
+        foreach ((long generation, ExitProbeTicketStatus status) in source.ActiveTickets)
+            clone.ActiveTickets.Add(generation, status);
+        return clone;
+    }
+
+    private static long CreatePendingGeneration(ExitEnvelope envelope)
+    {
+        long generation = checked(envelope.LastGeneration + 1);
+        envelope.LastGeneration = generation;
+        envelope.ActiveTickets.Add(generation, ExitProbeTicketStatus.Pending);
+        return generation;
+    }
+
+    private static long LatestPendingGeneration(ExitEnvelope envelope)
+    {
+        long latest = 0;
+        foreach ((long generation, ExitProbeTicketStatus status) in envelope.ActiveTickets)
+        {
+            if (status == ExitProbeTicketStatus.Pending && generation > latest)
+                latest = generation;
+        }
+        return latest;
+    }
+
+    private static void TrimExitParetoFrontier(List<CycleExitQuality> qualities)
+    {
+        if (qualities.Count <= MaximumExitParetoQualities)
+            return;
+        CycleExitQuality[] safest = qualities
+            .OrderBy(quality => quality.StrategicHpCost)
+            .ThenBy(quality => quality.FutureSoldHpCost)
+            .ThenBy(quality => quality.PotionStrategicCost)
+            .ThenBy(quality => quality.PotionUseCost)
+            .ThenBy(quality => quality.HealthResourceCost)
+            .ThenBy(quality => quality.ProjectedHpCost)
+            .ThenByDescending(quality => quality.ProgressMagnitude)
+            .Take(MaximumExitParetoQualities / 2)
+            .ToArray();
+        CycleExitQuality[] strongest = qualities
+            .OrderByDescending(quality => quality.EnemyDurabilityProgress)
+            .ThenByDescending(quality => quality.ProgressMagnitude)
+            .ThenBy(quality => quality.StrategicHpCost)
+            .ThenBy(quality => quality.FutureSoldHpCost)
+            .Take(MaximumExitParetoQualities)
+            .ToArray();
+        qualities.Clear();
+        qualities.AddRange(safest);
+        foreach (CycleExitQuality quality in strongest)
+        {
+            if (!qualities.Contains(quality))
+                qualities.Add(quality);
+            if (qualities.Count == MaximumExitParetoQualities)
+                break;
+        }
+    }
+}
+
+internal readonly record struct CycleProbeLease(
+    CycleProbeTracker Tracker,
+    int NextActionIndex,
+    int CompletedRepetitions,
+    bool ImprovedSinceWrap,
+    bool LastCompletedRepetitionImproved);
+
+internal sealed record CycleExitProbeState(
+    CycleProbeTracker OriginTracker,
+    SearchNode OriginNode,
+    int OriginPhaseIndex,
+    StateFingerprint OriginShapeKey,
+    StateFingerprint OriginSequenceKey,
+    int OriginPeriodActions,
+    StateFingerprint ExitActionKey,
+    long OriginGeneration,
+    int RemainingActions,
+    int RemainingTurnTransitions,
+    bool LeaseIssued = false);
+
+internal readonly record struct CycleExitObservation(
+    CycleProbeTracker OriginTracker,
+    int OriginPhaseIndex,
+    StateFingerprint ExitActionKey,
+    long OriginGeneration,
+    CycleExitQuality Quality,
+    bool CompletesProbe);
+
+internal sealed class CrossTurnProbeTracker(
+    SearchNode originNode,
+    StateFingerprint originShapeKey)
+{
+    public SearchNode OriginNode { get; } = originNode;
+    public StateFingerprint OriginShapeKey { get; } = originShapeKey;
+}
+
+internal readonly record struct CrossTurnProbeState(
+    CrossTurnProbeTracker Tracker,
+    int CompletedTurnTransitions,
+    long BestKnownProgressMagnitude,
+    bool LastTurnImproved);
+
+/// <summary>
+/// A cycle candidate is evidence for search scheduling, never a proof that a route is infinite.
+/// Every edge is still replayed exactly once by the simulator before it can enter the frontier.
+/// </summary>
+internal sealed record CycleSearchState(
+    StateFingerprint ShapeKey,
+    StateFingerprint SequenceKey,
+    int PeriodActions,
+    int Repetitions,
+    CycleTransitionDelta LastDelta,
+    bool HasConsistentDelta)
+{
+    public SearchNode? PriorCycleEndpoint { get; init; }
+    public int PriorProjectedPlayerHp { get; init; }
+    public EnemyDurabilityVector EnemyDurabilityFloor { get; init; }
+    public bool HasNewEnemyDurabilityProgress { get; init; }
+    public bool HasExactStateChange { get; init; }
+    public int TotalStructuralRepetitions { get; init; } = Repetitions;
 }
 
 internal sealed record SearchNode(
@@ -236,8 +930,7 @@ internal sealed record SearchNode(
     SimulationSnapshot Snapshot,
     CombatProgressState CombatProgress,
     TurnOutcome? Outcome = null,
-    string? RepeatableNoProgressCardId = null,
-    int RepeatableNoProgressCount = 0,
+    CycleSearchState? Cycle = null,
     IReadOnlyList<PlanCardChoice>? TurnSetupChoices = null,
     ContinuationStamp? TurnSetupPlayState = null)
 {
@@ -246,6 +939,14 @@ internal sealed record SearchNode(
     public int RetentionRank { get; set; } = int.MaxValue;
     public int LongTermResourceRetentionRank { get; set; } = int.MaxValue;
     public int CumulativeEnemyHpLost { get; init; }
+    public int CycleRetentionRank { get; set; } = int.MaxValue;
+    public int CycleExitRetentionRank { get; set; } = int.MaxValue;
+    public int CrossTurnRetentionRank { get; set; } = int.MaxValue;
+    public CycleProbeLease? CycleProbeLease { get; set; }
+    public CycleExitProbeState? CycleExitProbe { get; set; }
+    public CycleExitObservation? CycleExitObservation { get; set; }
+    public CrossTurnProbeState? CrossTurnProbe { get; set; }
+    public bool IsCycleProbeLane => CycleProbeLease != null;
     public IReadOnlyList<PlanAction> Actions => _actions ??= MaterializeActions();
 
     public IReadOnlyList<PlanCardChoice> GetTurnSetupChoices()
@@ -284,6 +985,7 @@ internal sealed class SimulationSnapshot(
     double score,
     StateFingerprint stateKey,
     StateFingerprint unorderedPileKey,
+    StateFingerprint cycleShapeKey,
     StateFingerprint projectedShuffleOrderKey,
     int projectedShuffleOrderValue,
     bool hasRisk,
@@ -297,11 +999,13 @@ internal sealed class SimulationSnapshot(
     int projectedPlayerHp,
     int playerBlock,
     int enemyHp,
+    int enemyBlock,
     int aliveEnemyCount,
     ulong aliveEnemyMask,
     int rawEnemyHp,
     int maxCurrentEnemyHp,
     StateFingerprint enemyCombatDistributionKey,
+    EnemyDurabilityVector enemyDurabilityByCombatId,
     int revivingEnemyCount,
     int persistentBuffValue,
     StrategicEffectVector strategicEffects,
@@ -357,6 +1061,7 @@ internal sealed class SimulationSnapshot(
     public double Score { get; } = score;
     public StateFingerprint StateKey { get; } = stateKey;
     public StateFingerprint UnorderedPileKey { get; } = unorderedPileKey;
+    public StateFingerprint CycleShapeKey { get; } = cycleShapeKey;
     public StateFingerprint ProjectedShuffleOrderKey { get; } = projectedShuffleOrderKey;
     public int ProjectedShuffleOrderValue { get; } = projectedShuffleOrderValue;
     public bool HasRisk { get; } = hasRisk;
@@ -370,11 +1075,14 @@ internal sealed class SimulationSnapshot(
     public int ProjectedPlayerHp { get; } = projectedPlayerHp;
     public int PlayerBlock { get; } = playerBlock;
     public int EnemyHp { get; } = enemyHp;
+    public int EnemyBlock { get; } = enemyBlock;
     public int AliveEnemyCount { get; } = aliveEnemyCount;
     public ulong AliveEnemyMask { get; } = aliveEnemyMask;
     public int RawEnemyHp { get; } = rawEnemyHp;
     public int MaxCurrentEnemyHp { get; } = maxCurrentEnemyHp;
     public StateFingerprint EnemyCombatDistributionKey { get; } = enemyCombatDistributionKey;
+    public EnemyDurabilityVector EnemyDurabilityByCombatId { get; } =
+        enemyDurabilityByCombatId;
     public int RevivingEnemyCount { get; } = revivingEnemyCount;
     public int PersistentBuffValue { get; } = persistentBuffValue;
     public StrategicEffectVector StrategicEffects { get; } = strategicEffects;
@@ -560,6 +1268,12 @@ internal sealed class SolverResult
     public required int ReusedNodeSnapshots { get; init; }
     public required int TranspositionBranchesPruned { get; init; }
     public required int RepeatableNoProgressBranchesPruned { get; init; }
+    public int CycleShapesDetected { get; init; }
+    public int CycleProbeContinuationsExpanded { get; init; }
+    public int CycleCandidatesProtected { get; init; }
+    public int CycleContinuationsStopped { get; init; }
+    public int CrossTurnCandidatesProtected { get; init; }
+    public int CrossTurnContinuationsStopped { get; init; }
     public required int StandPatProbes { get; init; }
     public int ParallelExpansionWaves { get; init; }
     public int ParallelExpansionWorkItems { get; init; }
@@ -700,6 +1414,12 @@ internal sealed class SolverResult
             ReusedNodeSnapshots = 1,
             TranspositionBranchesPruned = 0,
             RepeatableNoProgressBranchesPruned = 0,
+            CycleShapesDetected = 0,
+            CycleProbeContinuationsExpanded = 0,
+            CycleCandidatesProtected = 0,
+            CycleContinuationsStopped = 0,
+            CrossTurnCandidatesProtected = 0,
+            CrossTurnContinuationsStopped = 0,
             StandPatProbes = 0,
             TransitionCacheHits = 0,
             WorkerAllocatedBytes = 0,

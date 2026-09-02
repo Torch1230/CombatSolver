@@ -134,6 +134,13 @@ beam_files=("$search_root"/CombatBeamSolver*.cs)
 runtime_files=("$repository_root"/src/Runtime/*.cs)
 shopt -u nullglob
 
+cycle_planning_path="$search_root/CombatBeamSolver.CyclePlanning.cs"
+legacy_loop_guard_paths=(
+    "$search_root/CombatBeamSolver.Expansion.cs"
+    "$search_root/CombatBeamSolver.ParallelExpansion.cs"
+    "$search_root/SolverWeights.cs"
+)
+
 ((${#search_files[@]} > 0)) || {
     echo "verify-refactor-boundaries.sh: no Search source files were found" >&2
     exit 1
@@ -142,6 +149,43 @@ shopt -u nullglob
     echo "verify-refactor-boundaries.sh: no CombatBeamSolver source files were found" >&2
     exit 1
 }
+
+# Cycle planning must infer recurrence and payoff from generic simulated-state deltas. Keeping
+# scenario names out of this policy file prevents a regression to card/power/relic/enemy allowlists.
+scenario_specific_cycle_model_pattern='\b(?:Body[[:space:]_.-]*Slam|Lunar[[:space:]_.-]*Blast|Gold[[:space:]_.-]*Axe|Slow[[:space:]_.-]*Power|Hellraiser|Pillage|Bloodletting|Particle[[:space:]_.-]*Wall|Pale[[:space:]_.-]*Blue[[:space:]_.-]*Dot|Flash[[:space:]_.-]*Of[[:space:]_.-]*Steel|Finesse|Speedster|Black[[:space:]_.-]*Hole|Glow|Alignment|Spoils[[:space:]_.-]*Of[[:space:]_.-]*Battle)\b'
+forbid_regex \
+    "$cycle_planning_path" \
+    "$scenario_specific_cycle_model_pattern" \
+    'generic cycle planning contains a scenario-specific model name or ID:'
+for direct_model_lookup_pattern in \
+    '\bModelDb\.(?:Card|Power|Relic|Monster)\b' \
+    '\bGetAmount<[A-Za-z_][A-Za-z0-9_]*(?:Power|Relic|Monster)>' \
+    '\btypeof\([A-Za-z_][A-Za-z0-9_]*(?:Card|Power|Relic|Monster)\)'; do
+    forbid_regex \
+        "$cycle_planning_path" \
+        "$direct_model_lookup_pattern" \
+        'generic cycle planning performs a direct concrete-model lookup:'
+done
+
+# PR #28's fixed repeat count and named payoff exceptions are retired. These checks intentionally
+# stay scoped to expansion and policy files so unrelated combat-semantic mirrors remain legal.
+for legacy_loop_guard_path in "${legacy_loop_guard_paths[@]}"; do
+    for retired_loop_guard in \
+        'MaxRepeatableNoProgressPlays' \
+        'IsRepeatableNoProgressStep' \
+        'ShouldPruneRepeatableNoProgress' \
+        'RepeatableNoProgressCardId' \
+        'RepeatableNoProgressCount'; do
+        forbid_fixed \
+            "$legacy_loop_guard_path" \
+            "$retired_loop_guard" \
+            'retired fixed repeatable-no-progress guard returned:'
+    done
+    forbid_regex \
+        "$legacy_loop_guard_path" \
+        '\b(?:Body[[:space:]_.-]*Slam|Lunar[[:space:]_.-]*Blast|Gold[[:space:]_.-]*Axe|Slow[[:space:]_.-]*Power)\b' \
+        'retired named loop-payoff exception returned:'
+done
 
 for file in "${search_files[@]}"; do
     for reference in \
@@ -267,6 +311,8 @@ done
 expected_beam_files=(
     CombatBeamSolver.cs
     CombatBeamSolver.BeamRetentionPolicy.cs
+    CombatBeamSolver.CrossTurnPlanning.cs
+    CombatBeamSolver.CyclePlanning.cs
     CombatBeamSolver.Expansion.cs
     CombatBeamSolver.FinalPlanOrdering.cs
     CombatBeamSolver.Models.cs

@@ -1,0 +1,6 @@
+[
+  { "cardId": "BLOODLETTING", "pile": "Hand", "count": 1, "treatAsDeckCard": true },
+  { "cardId": "PILLAGE", "pile": "Hand", "count": 1, "treatAsDeckCard": true },
+  { "cardId": "PILLAGE", "pile": "Draw", "count": 1, "treatAsDeckCard": true },
+  { "cardId": "STRIKE_IRONCLAD", "pile": "Draw", "count": 8, "treatAsDeckCard": true }
+]

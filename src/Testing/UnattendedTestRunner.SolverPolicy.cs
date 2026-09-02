@@ -133,6 +133,13 @@ internal sealed partial class UnattendedTestRunner
             || _request.ExpectedInitialMainThreadFramesOver100MillisecondsAtMost.HasValue
             || _request.ExpectedInitialTransitionCacheHitsAtLeast.HasValue
             || _request.ExpectedInitialRepeatableNoProgressBranchesPrunedAtLeast.HasValue
+            || _request.ExpectedInitialCycleShapesDetectedAtLeast.HasValue
+            || _request.ExpectedInitialCycleProbeContinuationsExpandedAtLeast.HasValue
+            || _request.ExpectedInitialCycleCandidatesProtectedAtLeast.HasValue
+            || _request.ExpectedInitialCycleContinuationsStoppedAtLeast.HasValue
+            || _request.ExpectedInitialCrossTurnCandidatesProtectedAtLeast.HasValue
+            || _request.ExpectedInitialCrossTurnContinuationsStoppedAtLeast.HasValue
+            || _request.ExpectedInitialNodeLimitSnapshotsReleasedAtLeast.HasValue
             || _request.ExpectedInitialChoiceBranchesEvaluatedAtLeast.HasValue
             || _request.ExpectedInitialExecutableActionCountAtLeast.HasValue
             || _request.ExpectedInitialOnlyDeathRoutesFound.HasValue
@@ -458,6 +465,48 @@ internal sealed partial class UnattendedTestRunner
         {
             throw new InvalidOperationException(
                 $"首轮无进展循环剪枝为 {result.RepeatableNoProgressBranchesPruned}，低于预期下限 {minimumLoopPruned}。");
+        }
+        if (_request.ExpectedInitialCycleShapesDetectedAtLeast is { } minimumCycleShapes
+            && result.CycleShapesDetected < minimumCycleShapes)
+        {
+            throw new InvalidOperationException(
+                $"首轮检测到的循环形状为 {result.CycleShapesDetected}，低于预期下限 {minimumCycleShapes}。");
+        }
+        if (_request.ExpectedInitialCycleProbeContinuationsExpandedAtLeast is { } minimumCycleProbes
+            && result.CycleProbeContinuationsExpanded < minimumCycleProbes)
+        {
+            throw new InvalidOperationException(
+                $"首轮展开的循环探测延续为 {result.CycleProbeContinuationsExpanded}，低于预期下限 {minimumCycleProbes}。");
+        }
+        if (_request.ExpectedInitialCycleCandidatesProtectedAtLeast is { } minimumCycleCandidates
+            && result.CycleCandidatesProtected < minimumCycleCandidates)
+        {
+            throw new InvalidOperationException(
+                $"首轮保护的循环候选为 {result.CycleCandidatesProtected}，低于预期下限 {minimumCycleCandidates}。");
+        }
+        if (_request.ExpectedInitialCycleContinuationsStoppedAtLeast is { } minimumCycleStops
+            && result.CycleContinuationsStopped < minimumCycleStops)
+        {
+            throw new InvalidOperationException(
+                $"首轮停止的循环延续为 {result.CycleContinuationsStopped}，低于预期下限 {minimumCycleStops}。");
+        }
+        if (_request.ExpectedInitialCrossTurnCandidatesProtectedAtLeast is { } minimumCrossTurnCandidates
+            && result.CrossTurnCandidatesProtected < minimumCrossTurnCandidates)
+        {
+            throw new InvalidOperationException(
+                $"首轮保护的跨回合候选为 {result.CrossTurnCandidatesProtected}，低于预期下限 {minimumCrossTurnCandidates}。");
+        }
+        if (_request.ExpectedInitialCrossTurnContinuationsStoppedAtLeast is { } minimumCrossTurnStops
+            && result.CrossTurnContinuationsStopped < minimumCrossTurnStops)
+        {
+            throw new InvalidOperationException(
+                $"首轮停止的跨回合延续为 {result.CrossTurnContinuationsStopped}，低于预期下限 {minimumCrossTurnStops}。");
+        }
+        if (_request.ExpectedInitialNodeLimitSnapshotsReleasedAtLeast is { } minimumReleasedSnapshots
+            && result.NodeLimitSnapshotsReleased < minimumReleasedSnapshots)
+        {
+            throw new InvalidOperationException(
+                $"首轮节点上限释放的快照为 {result.NodeLimitSnapshotsReleased}，低于预期下限 {minimumReleasedSnapshots}。");
         }
         if (_request.ExpectedInitialChoiceBranchesEvaluatedAtLeast is { } minimumChoiceBranches
             && result.ChoiceBranchesEvaluated < minimumChoiceBranches)

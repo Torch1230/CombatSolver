@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "GENERIC-LOOP-LETTER-OPENER-HIDDEN-PHASE-V0111",
+  "description": "Generic hidden-phase regression: two zero-cost draw skills restore the same pile shape twice before Letter Opener converts the third skill into damage.",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "LOOPLETTEROPENERPHASE0111",
+  "enemyCurrentHp": 10,
+  "initialPlayerHp": 80,
+  "initialPlayerMaxHp": 80,
+  "initialPlayerEnergy": 0,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    { "cardId": "IMPATIENCE", "pile": "Hand" },
+    { "cardId": "IMPATIENCE", "pile": "Discard" }
+  ],
+  "relics": [
+    { "relicId": "LETTER_OPENER" }
+  ],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 5000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "expectedInitialFirstActionCardId": "IMPATIENCE",
+  "expectedInitialExecutableActionCountAtLeast": 6,
+  "expectedInitialShufflesCrossedAtLeast": 6,
+  "expectedInitialProjectedBattleHpLost": 0,
+  "expectedInitialCombatEndedTurn": 1,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "expectedInitialCycleShapesDetectedAtLeast": 1,
+  "expectedInitialCycleProbeContinuationsExpandedAtLeast": 1,
+  "expectedInitialCycleCandidatesProtectedAtLeast": 1,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120
+}

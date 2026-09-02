@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "GENERIC-LOOP-HELLRAISER-STARTUP-POSITIVE-V0111",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "LOOPHELLRAISERSTART0111",
+  "enemyCurrentHp": 50,
+  "initialPlayerHp": 80,
+  "initialPlayerMaxHp": 80,
+  "initialPlayerEnergy": 2,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    { "cardId": "HELLRAISER", "pile": "Hand" },
+    { "cardId": "BLOODLETTING", "pile": "Hand" },
+    { "cardId": "PILLAGE", "pile": "Hand" },
+    { "cardId": "PILLAGE", "pile": "Draw" },
+    { "cardId": "STRIKE_IRONCLAD", "pile": "Draw" }
+  ],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 5000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "expectedInitialExecutableActionCountAtLeast": 2,
+  "expectedInitialProjectedBattleHpLostAtMost": 15,
+  "expectedInitialCombatEndedTurn": 1,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120
+}
