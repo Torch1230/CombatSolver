@@ -38,6 +38,7 @@ internal sealed class SearchMemoryPressureSignal
     private Action<CancellationToken>? _reclaimAndContinue;
     private Func<bool>? _unexpectedNoGcLossProbe;
     private int _reclaiming;
+    private int _conservativeParallelismRequired;
 
     public int ReclaimCount { get; private set; }
 
@@ -73,6 +74,14 @@ internal sealed class SearchMemoryPressureSignal
     }
 
     public bool IsEnabled => AllocationLimitBytes != long.MaxValue;
+
+    /// <summary>
+    /// Keeps allocation-heavy waves narrow while a NoGC request is either active or has
+    /// fallen back because the runtime could not reserve safe system headroom. A user who
+    /// explicitly selects normal GC does not opt into this restriction.
+    /// </summary>
+    public bool ConservativeParallelismRequired
+        => IsEnabled || Volatile.Read(ref _conservativeParallelismRequired) != 0;
 
     public long RemainingBytes
     {
@@ -124,6 +133,7 @@ internal sealed class SearchMemoryPressureSignal
         Volatile.Write(ref _systemMemoryLimitBytes, systemMemoryLimitBytes);
         Volatile.Write(ref _reclaimAndContinue, reclaimAndContinue);
         Volatile.Write(ref _unexpectedNoGcLossProbe, unexpectedNoGcLossProbe);
+        Volatile.Write(ref _conservativeParallelismRequired, 1);
         Volatile.Write(ref _allocationLimitBytes, allocationLimitBytes);
     }
 
@@ -165,5 +175,12 @@ internal sealed class SearchMemoryPressureSignal
         Volatile.Write(ref _systemMemoryLimitBytes, long.MaxValue);
         Volatile.Write(ref _reclaimAndContinue, null);
         Volatile.Write(ref _unexpectedNoGcLossProbe, null);
+        Volatile.Write(ref _conservativeParallelismRequired, 0);
+    }
+
+    public void UseDefaultGcFallback()
+    {
+        Disable();
+        Volatile.Write(ref _conservativeParallelismRequired, 1);
     }
 }

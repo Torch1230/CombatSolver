@@ -545,6 +545,7 @@ internal sealed partial class UnattendedTestRunner
             if (SearchGcPolicy.CurrentNoGcRegionBudgetBytesForTesting != 0
                 || GCSettings.LatencyMode != initialLatencyMode
                 || disabledSignal.AllocationLimitBytes != long.MaxValue
+                || disabledSignal.ConservativeParallelismRequired
                 || disabledCheckpointInvoked)
             {
                 throw new InvalidOperationException(
@@ -552,6 +553,27 @@ internal sealed partial class UnattendedTestRunner
                     $"budget={SearchGcPolicy.CurrentNoGcRegionBudgetBytesForTesting} " +
                     $"latency={GCSettings.LatencyMode} " +
                     $"limit={disabledSignal.AllocationLimitBytes}。");
+            }
+
+            SearchMemoryPressureSignal fallbackSignal = new();
+            fallbackSignal.Configure(
+                GC.GetTotalAllocatedBytes(precise: false),
+                allocationLimitBytes: 1,
+                memoryLoadBytesAtStart: 0,
+                systemMemoryLimitBytes: long.MaxValue,
+                _ => { });
+            fallbackSignal.UseDefaultGcFallback();
+            if (fallbackSignal.IsEnabled
+                || !fallbackSignal.ConservativeParallelismRequired)
+            {
+                throw new InvalidOperationException(
+                    "NoGC 低余量回退没有关闭区域检查点并保留保守并行准入。");
+            }
+            fallbackSignal.Disable();
+            if (fallbackSignal.ConservativeParallelismRequired)
+            {
+                throw new InvalidOperationException(
+                    "普通 CLR GC 模式意外继承了 NoGC 低余量并行限制。");
             }
             try
             {

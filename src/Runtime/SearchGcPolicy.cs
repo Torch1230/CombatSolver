@@ -480,7 +480,7 @@ internal static class SearchGcPolicy
                             }
                             else
                             {
-                                memoryPressureSignal.Disable();
+                                memoryPressureSignal.UseDefaultGcFallback();
                             }
                             _activeSearches++;
                             return new SearchScope(allocatedBytesAtEntry, memoryPressureSignal);
@@ -1419,56 +1419,71 @@ internal static class SearchGcPolicy
                 GCSettings.LatencyMode = previousMode;
             CollectGeneration2ForSearch();
             collectionCompleted = true;
-            cancellationToken.ThrowIfCancellationRequested();
 
             lock (Gate)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                _previousMode = GCSettings.LatencyMode;
-                _latencyModeOwned = true;
-                EffectiveNoGcRegionBudget effectiveBudget = ResolveEffectiveNoGcRegionBudget(
-                    configuredRegionBudgetBytes,
-                    configuredLohBudgetBytes);
-                if (endNoGcRegion)
+                if (cancellationToken.IsCancellationRequested)
                 {
-                    restartOutcome = effectiveBudget.CanStart
-                        ? TryStartNoGcRegion(
-                            effectiveBudget.TotalBytes,
-                            effectiveBudget.LohBytes)
-                        : NoGcRegionStartOutcome.SystemHeadroomInsufficient;
-                }
-                _noGcRegionActive = restartOutcome == NoGcRegionStartOutcome.Started;
-                if (_noGcRegionActive)
-                    _lastEstablishedNoGcRegionBudgetBytesForTesting = effectiveBudget.TotalBytes;
-                _noGcRegionAllocatedBytesAtStart = GC.GetTotalAllocatedBytes(precise: false);
-                if (!_noGcRegionActive)
-                {
+                    // The blocking Gen2 already ended the old region. A deadline observed here
+                    // must publish a coherent default-GC state before the coordinator returns
+                    // its best completed Smart layer.
                     _configuredNoGcRegionBudgetBytes = 0;
                     _configuredNoGcRegionLohBudgetBytes = 0;
                     _noGcRegionBudgetBytes = 0;
                     _noGcRegionLohBudgetBytes = 0;
+                    _noGcRegionAllocatedBytesAtStart = 0;
                     RestoreLatencyModeLocked();
-                    // The runtime may terminate a region for memory pressure or an external
-                    // collection. Retrying the same reservation during this search recreates the
-                    // failure loop, so fall back once and let the CLR collect normally.
-                    signal.Disable();
+                    signal.UseDefaultGcFallback();
                 }
                 else
                 {
-                    _configuredNoGcRegionBudgetBytes = configuredRegionBudgetBytes;
-                    _configuredNoGcRegionLohBudgetBytes = configuredLohBudgetBytes;
-                    _noGcRegionBudgetBytes = effectiveBudget.TotalBytes;
-                    _noGcRegionLohBudgetBytes = effectiveBudget.LohBytes;
-                    ConfigureSearchMemoryLimit(
-                        signal,
-                        _noGcRegionAllocatedBytesAtStart,
-                        effectiveBudget.TotalBytes,
-                        effectiveBudget.TotalBytes,
-                        effectiveBudget.LohBytes,
+                    _previousMode = GCSettings.LatencyMode;
+                    _latencyModeOwned = true;
+                    EffectiveNoGcRegionBudget effectiveBudget = ResolveEffectiveNoGcRegionBudget(
                         configuredRegionBudgetBytes,
                         configuredLohBudgetBytes);
+                    if (endNoGcRegion)
+                    {
+                        restartOutcome = effectiveBudget.CanStart
+                            ? TryStartNoGcRegion(
+                                effectiveBudget.TotalBytes,
+                                effectiveBudget.LohBytes)
+                            : NoGcRegionStartOutcome.SystemHeadroomInsufficient;
+                    }
+                    _noGcRegionActive = restartOutcome == NoGcRegionStartOutcome.Started;
+                    if (_noGcRegionActive)
+                        _lastEstablishedNoGcRegionBudgetBytesForTesting = effectiveBudget.TotalBytes;
+                    _noGcRegionAllocatedBytesAtStart = GC.GetTotalAllocatedBytes(precise: false);
+                    if (!_noGcRegionActive)
+                    {
+                        _configuredNoGcRegionBudgetBytes = 0;
+                        _configuredNoGcRegionLohBudgetBytes = 0;
+                        _noGcRegionBudgetBytes = 0;
+                        _noGcRegionLohBudgetBytes = 0;
+                        RestoreLatencyModeLocked();
+                        // The runtime may terminate a region for memory pressure or an external
+                        // collection. Retrying the same reservation during this search recreates the
+                        // failure loop, so fall back once and let the CLR collect normally.
+                        signal.UseDefaultGcFallback();
+                    }
+                    else
+                    {
+                        _configuredNoGcRegionBudgetBytes = configuredRegionBudgetBytes;
+                        _configuredNoGcRegionLohBudgetBytes = configuredLohBudgetBytes;
+                        _noGcRegionBudgetBytes = effectiveBudget.TotalBytes;
+                        _noGcRegionLohBudgetBytes = effectiveBudget.LohBytes;
+                        ConfigureSearchMemoryLimit(
+                            signal,
+                            _noGcRegionAllocatedBytesAtStart,
+                            effectiveBudget.TotalBytes,
+                            effectiveBudget.TotalBytes,
+                            effectiveBudget.LohBytes,
+                            configuredRegionBudgetBytes,
+                            configuredLohBudgetBytes);
+                    }
                 }
             }
+            cancellationToken.ThrowIfCancellationRequested();
         }
         catch (Exception ex)
         {

@@ -733,7 +733,11 @@ internal sealed partial class CombatBeamSolver
             int capacity = Math.Min(DegreeOfParallelism, remainingBranches);
             SearchMemoryPressureSignal signal = _coordinator.SearchMemoryPressure;
             if (!signal.IsEnabled)
-                return capacity;
+            {
+                return signal.ConservativeParallelismRequired
+                    ? Math.Min(capacity, 2)
+                    : capacity;
+            }
 
             if (!_roundChoiceReplayAllocationObserved)
                 capacity = Math.Min(capacity, 2);
@@ -772,7 +776,11 @@ internal sealed partial class CombatBeamSolver
             int capacity = Math.Min(DegreeOfParallelism, remainingActions);
             SearchMemoryPressureSignal signal = _coordinator.SearchMemoryPressure;
             if (!signal.IsEnabled)
-                return capacity;
+            {
+                return signal.ConservativeParallelismRequired
+                    ? Math.Min(capacity, 2)
+                    : capacity;
+            }
 
             if (!_actionReplayAllocationObserved)
                 capacity = Math.Min(capacity, 2);

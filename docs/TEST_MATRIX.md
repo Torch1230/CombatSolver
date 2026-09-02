@@ -6,7 +6,7 @@
 
 维护时默认使用分层快速回归：普通语义改动跑单效果严格差分；Fork、跨回合历史和续用改动补一个最小两回合或最早复用边界；搜索/部署改动的最终候选才运行必要的完整自动场。快速 unattended 请求总超时不超过 `120` 秒，超时后缩小 fixture 或记为未验证，不在同一轮延长等待。下方完整矩阵是发布门禁和专项审计入口，不是每次修复都要执行的默认清单。
 
-性能指标口径：`selected_*` 只描述最终选中的单个 solver；请求级 `total_expanded_nodes / total_transitions / total_choice_branches`、`total_solver_ms`、solver 分配与 GC 累计对正常、失败和取消的每个 solver 工作区间精确记录一次，包括取消前已发生的部分工作。这些总值是 solver 区间之和，不是 coordinator 外层墙钟或进程峰值，也不包含建立开局、层间比较等 solver 之外的编排工作；因此端到端耗时以请求/阶段外层墙钟为准，峰值内存以进程 `VmHWM` 为准。Smart 多层的取消时点可能令请求总工作量小幅波动，语义验收优先比较胜负、战损、回合和动作路线。峰值工作集是瞬时进程峰值，不能跨阶段相加；`16 GB` NoGC 是运行时请求预算，不等于实际占用或硬上限；NoGC 活跃时 `GC.GetTotalMemory(false)` 不是严格 live-set 测量。
+性能指标口径：`selected_*` 只描述最终选中的单个 solver；请求级 `total_expanded_nodes / total_transitions / total_choice_branches`、`total_solver_ms`、分配与 GC 累计对正常、失败和取消的每个 solver 工作区间精确记录一次，包括取消前已发生的部分工作。Smart 有限药水层之间由 coordinator 主动执行的内存整理也计入时间、分配与 GC，但不增加 solver 数；建立开局、层间比较等其他编排工作仍不在这些总值中。因此端到端耗时以请求/阶段外层墙钟为准，峰值内存以进程 `VmHWM` 为准。Smart 多层的取消时点可能令请求总工作量小幅波动，语义验收优先比较胜负、战损、回合和动作路线。峰值工作集是瞬时进程峰值，不能跨阶段相加；`16 GB` NoGC 是运行时请求预算，不等于实际占用或硬上限；NoGC 活跃时 `GC.GetTotalMemory(false)` 不是严格 live-set 测量。
 
 ## 下一版本（开发中）：通用周期与跨回合收益
 
@@ -15,12 +15,14 @@
 | 场景 | 当前结果 | 验证内容 | 日期 |
 | --- | --- | --- | --- |
 | `GENERIC-LOOP-LETTER-OPENER-HIDDEN-PHASE-DOP1/2` | 开发中定向通过；最终候选复测待填 | 两次表面回到同一牌堆形状后，隐藏相位在后续重复中兑现；DOP1/DOP2 都为 `6/12` 展开/转移、`6` 次洗牌、第 `1` 回合结束。runId `87c6bc90f39c477a90223f8042cbe744` / `d2db40a217184d18a73ae0a041461be4`。 | 2026-09-02 |
-| `GENERIC-CROSS-TURN-HIDDEN-BUFFER-DOP1/2` | 开发中定向通过；最终候选复测待填 | 表面进展长期停滞但精确状态仍跨回合推进；DOP1/DOP2 都为 `513/770` 展开/转移、第 `17` 回合结束，证明基础观察期不会截断延迟兑现。runId `00f445e5bd8c4b73b26a1953e1ecb84c` / `79e8266763e3492494794cf85456788d`。 | 2026-09-02 |
-| `GENERIC-CROSS-TURN-STAGNANT-CONTROL` | 开发中定向通过；最终候选复测待填 | 无伤害手段的停滞场在 `76/114` 展开/转移后有界停止，最终路线不采用纯防御空转；与隐藏缓冲场共同约束“不能早停、也不能无限续期”。runId `d51dde07172c45e7aa3d9a3ac9c99f82`。 | 2026-09-02 |
+| `GENERIC-CROSS-TURN-HIDDEN-BUFFER-DOP1/2` | `v0.27.1` 合并后定向通过；最终候选复测待填 | 表面进展长期停滞但精确状态仍跨回合推进；DOP1/DOP2 都为 `513/770` 展开/转移、第 `17` 回合结束，证明基础观察期不会截断延迟兑现。runId `937c26285fbd486186db1443ef3e26dc` / `be92e6c9448241439df7217e38fc36f1`。 | 2026-09-02 |
+| `GENERIC-CROSS-TURN-STAGNANT-CONTROL` | `v0.27.1` 合并后定向通过；最终候选复测待填 | 无伤害手段的停滞场在 `78/117` 展开/转移后有界停止，最终路线不采用纯防御空转；与隐藏缓冲场共同约束“不能早停、也不能无限续期”。runId `fbba8ab4c2724a3d8fa2585b448dd713`。 | 2026-09-02 |
 | `GENERIC-CROSS-TURN-PURITY-PILLAGE` | 开发中定向通过；最终候选复测待填 | 先净化牌库、下一回合兑现，`123/340` 展开/转移、第 `2` 回合结束。runId `c4e37ee3249d4a819c27a99e0d15fb8a`。 | 2026-09-02 |
-| `GENERIC-LOOP-RAMPAGE-DYNAMIC-GROWTH-DOP1/2` | 开发中定向通过；最终候选复测待填 | 动态成长值不写入循环特判；DOP1/DOP2 都为 `2400/5377` 展开/转移、`32` 动作、第 `1` 回合结束，动作和全部非时序工作量一致，DOP2 实际最大并发至少为 `2`。runId `6e7be70084ab46d4a49bc26a1953acb6` / `94d8c9c56da848b5aa6909d7735397d2`。 | 2026-09-02 |
+| `GENERIC-LOOP-RAMPAGE-DYNAMIC-GROWTH-DOP1/2` | `v0.27.1` 合并后定向通过；最终候选复测待填 | 动态成长值不写入循环特判；DOP1/DOP2 都为 `2400/5354/344` 展开/转移/选牌、`344` 次 replay、零预算耗尽、`32` 动作、第 `1` 回合结束，动作和全部非时序工作量一致；DOP2 最大并发为 `2`。runId `11b3a54366144b0db884177404a890d5` / `4874a30371ee47478d31ba20886553d5`。 | 2026-09-02 |
 | `GENERIC-FINAL-QUALITY-ZERO-LOSS-OVER-FASTER-BLOOD-SALE` | 开发中定向通过；最终候选复测待填 | 最终质量不受循环保路覆盖：无药路线为 `24/52` 展开/转移、零战损、第 `3` 回合结束，且不采用卖血动作。runId `fde8e1f6d494404485586a3c08dbbd61`。 | 2026-09-02 |
 | `GENERIC-SMART-POTION-SAME-LOSS-FASTER` | 开发中定向通过；最终候选复测待填 | 无药与用药均零战损时，Smart 比较全部已完成精确用药层并选择第 `1` 回合能量药路线，而非第 `3` 回合无药路线；请求累计 `94/229`，选中层 `70/177` 展开/转移。runId `9212248603ec4d9094de008cb5e0d444`。 | 2026-09-02 |
+| `GENERIC-SMART-POTION-THREE-LAYER-PROGRESS-REBASE` | `v0.27.1` 合并后通过 | 同一质量根增加第二瓶药，真实完成无药、恰好一药、恰好两药三层，并在两次层间内存整理后仍选择零战损 T1 的一药路线；请求累计 `52/140`、选中层 `7/19` 展开/转移，Gen0/1/2 均 `4` 次。runId `9456a84f8e1549909ec145b86f59bb4d`。 | 2026-09-02 |
+| `GENERIC-SEARCH-POLICY-BRANCHING-REBASE` | `v0.27.1` 合并后通过 | 工作量三层聚合、coordinator 内存整理、预取消与已开始精确药层取消各记一次、NoGC 双向生命周期、低余量回退标记、DOP1/2 全字段等价、真实并发及节点上限快照释放通过。最终修复后 runId `4fea6b94754e498a951e0ff229284334`。 | 2026-09-02 |
 | `INFESTED-PRISMS-GENERIC-QUALITY-INTERMEDIATE-BASELINE` | 中间性能基线；最终复测待填 | 同根 VeryHigh、Smart、DOP8、NoGC `16 GB`：累计 `80,009/537,025/213,213` 展开/转移/选牌分支，选中一药层 `31,379/221,729/89,561`；搜索阶段墙钟约 `57,095.8 ms`、solver/worker 累计 `56,960.246 ms / 36,093,863,040 B`，选中层 `22,590.567 ms / 15,068,779,864 B`，`VmHWM=11,835,868 kB`（约 `11.29 GiB`）。结果 `52 HP`、预计战损 `8`、主动卖血 `2`、第 `6` 回合结束，质量优于旧 42 HP/战损 18/T7，但当前速度和工作量明显退化，因此只作为后续优化的起点。Gen0/1/2 均 `6` 次，GC 暂停累计/最大 `4,971.917/1,840.010 ms`，搜索内存检查点 `3` 个。runId `f234bd8a4c0f4f2a87cb6a27458515e4`。 | 2026-09-02 |
 | `INFESTED-PRISMS-GENERIC-QUALITY-FINAL` | 待执行 | 性能收敛后以同一 run-state/replay-state、VeryHigh、Smart、DOP8、NoGC `16 GB` 补填最终时间、`VmHWM`、累计/选中层节点与转移、GC 检查点、战损、结束回合和完整动作路线；不得用上面的中间基线宣称最终优化完成。 | 2026-09-02 |
 
@@ -35,6 +37,7 @@
 | `coverage/unattended/generic-loop-rampage-dynamic-growth-positive-v0111.json` | 动态成长循环、32 动作路线与 DOP 等价 |
 | `coverage/unattended/generic-final-quality-zero-loss-over-faster-blood-sale-v0111.json` | 低战损优先；同战损才比较结束回合 |
 | `coverage/unattended/generic-smart-potion-same-loss-faster-v0111.json` | Smart 全局比较精确药量层；同战损选择更少回合 |
+| `coverage/unattended/generic-smart-potion-three-layer-progress-v0111.json` | Smart 真实 0/1/2 药层、层间内存整理与请求累计 |
 | `coverage/unattended/generic-loop-speedster-discard-draw-positive-v0111.json` | 多动作抽弃循环、洗牌与零损击杀 |
 | `coverage/unattended/generic-loop-speedster-startup-positive-v0111.json` | 先建立能力再进入循环 |
 | `coverage/unattended/generic-loop-hellraiser-pillage-bloodletting-positive-v0111.json` | 卖血/能量启动后兑现 |

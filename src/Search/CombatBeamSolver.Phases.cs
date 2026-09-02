@@ -129,6 +129,14 @@ internal sealed partial class CombatBeamSolver
                 policy.MaxDegreeOfParallelism,
                 1,
                 Math.Max(1, Environment.ProcessorCount));
+        if (!policy.MemoryPressureSignal.IsEnabled
+            && policy.MemoryPressureSignal.ConservativeParallelismRequired)
+        {
+            // A requested NoGC region that could not be established means system/runtime
+            // headroom is already constrained. Do not allocate idle worker lanes above the
+            // same two-way cap used by fallback parent/action/choice microbatches.
+            expansionParallelism = Math.Min(2, expansionParallelism);
+        }
 
         long allocatedBytesAtStart = GC.GetAllocatedBytesForCurrentThread();
         int gen0AtStart = GC.CollectionCount(0);
@@ -1072,7 +1080,7 @@ internal sealed partial class CombatBeamSolver
                 }
 
                 int activeIndex = 0;
-                int parallelWaveCapacity = policy.MemoryPressureSignal.IsEnabled
+                int parallelWaveCapacity = policy.MemoryPressureSignal.ConservativeParallelismRequired
                     ? Math.Min(2, expansionParallelism)
                     : expansionParallelism;
 
@@ -1097,7 +1105,11 @@ internal sealed partial class CombatBeamSolver
                 {
                     SearchMemoryPressureSignal signal = policy.MemoryPressureSignal;
                     if (!signal.IsEnabled)
-                        return desiredCapacity;
+                    {
+                        return signal.ConservativeParallelismRequired
+                            ? Math.Min(2, desiredCapacity)
+                            : desiredCapacity;
+                    }
                     long parentReserve = ParentAllocationReserve();
                     long capacity = signal.AllocationLimitBytes / Math.Max(1, parentReserve);
                     return Math.Max(

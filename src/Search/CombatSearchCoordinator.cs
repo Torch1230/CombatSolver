@@ -1205,14 +1205,24 @@ internal static class CombatSearchCoordinator
                 deadlineExpired = true;
                 break;
             }
-            ReclaimAtPotionGradientBoundary(
-                policy,
-                callerCancellationToken,
-                progressCallback,
-                profile,
-                potionFree,
-                potionCount - 1,
-                potionCount);
+            try
+            {
+                ReclaimAtPotionGradientBoundary(
+                    policy,
+                    searchCancellationToken,
+                    progressCallback,
+                    profile,
+                    potionFree,
+                    potionCount - 1,
+                    potionCount);
+            }
+            catch (OperationCanceledException)
+                when (searchCancellationToken.IsCancellationRequested
+                    && !callerCancellationToken.IsCancellationRequested)
+            {
+                deadlineExpired = true;
+                break;
+            }
             PrimarySearchIncumbent? primaryIncumbent = BuildPrimarySearchIncumbent(
                 root,
                 selected);
@@ -1339,55 +1349,67 @@ internal static class CombatSearchCoordinator
             totalsCarrier.StartTurnNumber + Math.Max(0, totalsCarrier.SearchedTurns - 1),
             totalsCarrier.SearchedTurns,
             PlayDepth: 0,
-            ExpandedNodes: totalsCarrier.ExpandedNodes,
-            ReviewedWorldlines: totalsCarrier.ExpandedNodes,
+            // A memory reset is a coordinator-owned interval between solvers. Publish a
+            // zero-based interval so the request progress accumulator closes the preceding
+            // solver exactly once and does not count potionFree again before every layer.
+            ExpandedNodes: 0,
+            ReviewedWorldlines: 0,
             MaxNodes: profile.MaxExpandedNodes,
             FrontierNodes: 0,
             EndedNodes: 1,
-            ElapsedMilliseconds: (long)totalsCarrier.TotalSearchElapsed.TotalMilliseconds,
+            ElapsedMilliseconds: 0,
             Phase: "切换用药路线，正在整理内存"));
         long pressureBefore = signal.AllocatedBytes;
         long limitBefore = signal.AllocationLimitBytes;
-        signal.ReclaimAndContinue(cancellationToken);
-        stopwatch.Stop();
+        try
+        {
+            signal.ReclaimAndContinue(cancellationToken);
+        }
+        finally
+        {
+            // ReclaimWithinSearch can observe a deadline after completing its blocking Gen2.
+            // Retain that completed work in request totals even when cancellation then unwinds.
+            stopwatch.Stop();
+            TimeSpan gcPause = GC.GetTotalPauseDuration() - pauseBefore;
+            long allocatedBytes = Math.Max(
+                0,
+                GC.GetAllocatedBytesForCurrentThread() - allocatedBefore);
+            int gen0Collections = GC.CollectionCount(0) - gen0Before;
+            int gen1Collections = GC.CollectionCount(1) - gen1Before;
+            int gen2Collections = GC.CollectionCount(2) - gen2Before;
+            totalsCarrier.TotalWorkerAllocatedBytes = checked(
+                totalsCarrier.TotalWorkerAllocatedBytes
+                + allocatedBytes);
+            totalsCarrier.TotalGen0Collections += gen0Collections;
+            totalsCarrier.TotalGen1Collections += gen1Collections;
+            totalsCarrier.TotalGen2Collections += gen2Collections;
+            totalsCarrier.TotalGcPauseDuration += gcPause;
+            if (gcPause > totalsCarrier.TotalMaxObservedGcPause)
+                totalsCarrier.TotalMaxObservedGcPause = gcPause;
+            totalsCarrier.TotalSearchElapsed += stopwatch.Elapsed;
+            if (totalsCarrier.SearchPhase == SolverSearchPhase.Deep)
+                totalsCarrier.DeepSearchElapsed += stopwatch.Elapsed;
+            else
+                totalsCarrier.ShortSearchElapsed += stopwatch.Elapsed;
+            policy.RequestWorkTotals?.RecordCoordinatorOverhead(
+                stopwatch.Elapsed,
+                totalsCarrier.SearchPhase == SolverSearchPhase.Deep,
+                allocatedBytes,
+                gen0Collections,
+                gen1Collections,
+                gen2Collections,
+                gcPause,
+                gcPause);
 
-        TimeSpan gcPause = GC.GetTotalPauseDuration() - pauseBefore;
-        long allocatedBytes = Math.Max(
-            0,
-            GC.GetAllocatedBytesForCurrentThread() - allocatedBefore);
-        int gen0Collections = GC.CollectionCount(0) - gen0Before;
-        int gen1Collections = GC.CollectionCount(1) - gen1Before;
-        int gen2Collections = GC.CollectionCount(2) - gen2Before;
-        totalsCarrier.TotalWorkerAllocatedBytes = checked(
-            totalsCarrier.TotalWorkerAllocatedBytes
-            + allocatedBytes);
-        totalsCarrier.TotalGen0Collections += gen0Collections;
-        totalsCarrier.TotalGen1Collections += gen1Collections;
-        totalsCarrier.TotalGen2Collections += gen2Collections;
-        totalsCarrier.TotalGcPauseDuration += gcPause;
-        if (gcPause > totalsCarrier.TotalMaxObservedGcPause)
-            totalsCarrier.TotalMaxObservedGcPause = gcPause;
-        totalsCarrier.TotalSearchElapsed += stopwatch.Elapsed;
-        if (totalsCarrier.SearchPhase == SolverSearchPhase.Deep)
-            totalsCarrier.DeepSearchElapsed += stopwatch.Elapsed;
-        else
-            totalsCarrier.ShortSearchElapsed += stopwatch.Elapsed;
-        policy.RequestWorkTotals?.RecordCoordinatorOverhead(
-            stopwatch.Elapsed,
-            totalsCarrier.SearchPhase == SolverSearchPhase.Deep,
-            allocatedBytes,
-            gen0Collections,
-            gen1Collections,
-            gen2Collections,
-            gcPause,
-            gcPause);
-
-        policy.Diagnostics.Info(
-            $"[CombatSolver/Test] POTION_GRADIENT_MEMORY_RESET " +
-            $"completed_layer={completedPotionCount} next_layer={nextPotionCount} " +
-            $"allocated_before={pressureBefore} limit_before={limitBefore} " +
-            $"allocated_after={signal.AllocatedBytes} limit_after={signal.AllocationLimitBytes} " +
-            $"gc_pause_ms={gcPause.TotalMilliseconds:F1} elapsed_ms={stopwatch.Elapsed.TotalMilliseconds:F1}");
+            policy.Diagnostics.Info(
+                $"[CombatSolver/Test] POTION_GRADIENT_MEMORY_RESET " +
+                $"completed_layer={completedPotionCount} next_layer={nextPotionCount} " +
+                $"allocated_before={pressureBefore} limit_before={limitBefore} " +
+                $"allocated_after={signal.AllocatedBytes} limit_after={signal.AllocationLimitBytes} " +
+                $"gc_pause_ms={gcPause.TotalMilliseconds:F1} " +
+                $"elapsed_ms={stopwatch.Elapsed.TotalMilliseconds:F1} " +
+                $"canceled={cancellationToken.IsCancellationRequested.ToString().ToLowerInvariant()}");
+        }
     }
 
     private static SolverInterimResult BuildInterimResult(
