@@ -10,6 +10,8 @@ internal sealed partial class UnattendedTestRunner
 {
     private static async Task AssertSearchPolicySnapshotAsync(CombatState combat)
     {
+        AssertBeamRankOffensiveProgressTieBreak();
+
         if (Environment.ProcessorCount < 2)
         {
             throw new PlatformNotSupportedException(
@@ -110,6 +112,58 @@ internal sealed partial class UnattendedTestRunner
         {
             SolverSettings.ApplyForTesting(originalSettings);
         }
+    }
+
+    private static void AssertBeamRankOffensiveProgressTieBreak()
+    {
+        const double tiedScore = 1234.5d;
+        double nextScore = Math.BitIncrement(tiedScore);
+
+        static void AssertEarlier(
+            (double Score, int OffensiveProgress, int ActionCount) expected,
+            (double Score, int OffensiveProgress, int ActionCount) other,
+            string failure)
+        {
+            int forward = CombatBeamSolver.CompareBeamRankOrder(
+                expected.Score,
+                expected.OffensiveProgress,
+                expected.ActionCount,
+                other.Score,
+                other.OffensiveProgress,
+                other.ActionCount);
+            int reverse = CombatBeamSolver.CompareBeamRankOrder(
+                other.Score,
+                other.OffensiveProgress,
+                other.ActionCount,
+                expected.Score,
+                expected.OffensiveProgress,
+                expected.ActionCount);
+            if (forward >= 0 || reverse <= 0)
+                throw new InvalidOperationException(failure);
+        }
+
+        AssertEarlier(
+            (nextScore, OffensiveProgress: 0, ActionCount: 99),
+            (tiedScore, OffensiveProgress: int.MaxValue, ActionCount: 0),
+            "Beam 排序在 BeamRankScore 不相等时错误地让进攻进度覆盖了原评分顺序。");
+        AssertEarlier(
+            (tiedScore, OffensiveProgress: 55, ActionCount: 99),
+            (tiedScore, OffensiveProgress: 50, ActionCount: 0),
+            "Beam 完全同分时没有优先保留更高进攻进度路线。");
+        AssertEarlier(
+            (tiedScore, OffensiveProgress: 55, ActionCount: 3),
+            (tiedScore, OffensiveProgress: 55, ActionCount: 4),
+            "Beam 同分同进攻进度时没有保持较短路线优先。");
+
+        int exactTie = CombatBeamSolver.CompareBeamRankOrder(
+            tiedScore,
+            leftOffensiveProgressValue: 55,
+            leftActionCount: 3,
+            tiedScore,
+            rightOffensiveProgressValue: 55,
+            rightActionCount: 3);
+        if (exactTie != 0)
+            throw new InvalidOperationException("Beam 完全相同的排序键没有保持相等。");
     }
 
     private static void AssertFullRngStateIdentity(CombatState combat)

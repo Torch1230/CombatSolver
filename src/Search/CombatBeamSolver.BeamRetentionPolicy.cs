@@ -24,6 +24,24 @@ namespace CombatSolver;
 
 internal sealed partial class CombatBeamSolver
 {
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static int CompareBeamRankOrder(
+        double leftBeamRankScore,
+        int leftOffensiveProgressValue,
+        int leftActionCount,
+        double rightBeamRankScore,
+        int rightOffensiveProgressValue,
+        int rightActionCount)
+    {
+        int byScore = rightBeamRankScore.CompareTo(leftBeamRankScore);
+        if (byScore != 0)
+            return byScore;
+        int byOffensiveProgress = rightOffensiveProgressValue.CompareTo(leftOffensiveProgressValue);
+        return byOffensiveProgress != 0
+            ? byOffensiveProgress
+            : leftActionCount.CompareTo(rightActionCount);
+    }
+
     private readonly record struct RoutingChoiceSignature(
         int Turn,
         string SourceId,
@@ -123,11 +141,13 @@ internal sealed partial class CombatBeamSolver
             }
 
             List<SearchNode> ranked = [.. bestByState.Values];
-            ranked.Sort((left, right) =>
-            {
-                int byScore = BeamRankScore(right).CompareTo(BeamRankScore(left));
-                return byScore != 0 ? byScore : left.ActionCount.CompareTo(right.ActionCount);
-            });
+            ranked.Sort((left, right) => CompareBeamRankOrder(
+                BeamRankScore(left),
+                left.Snapshot.OffensiveProgressValue,
+                left.ActionCount,
+                BeamRankScore(right),
+                right.Snapshot.OffensiveProgressValue,
+                right.ActionCount));
             List<SearchNode> routingChoices = [];
             if (preserveDefensiveRoute)
             {
@@ -908,11 +928,13 @@ internal sealed partial class CombatBeamSolver
                 EnforcePotionUseQuota(ranked, quotaPool, required, usesPotion: true, usedPotionQuota);
                 EnforcePotionUseQuota(ranked, quotaPool, required, usesPotion: false, unusedPotionQuota);
             }
-            ranked.Sort((left, right) =>
-            {
-                int byScore = BeamRankScore(right).CompareTo(BeamRankScore(left));
-                return byScore != 0 ? byScore : left.ActionCount.CompareTo(right.ActionCount);
-            });
+            ranked.Sort((left, right) => CompareBeamRankOrder(
+                BeamRankScore(left),
+                left.Snapshot.OffensiveProgressValue,
+                left.ActionCount,
+                BeamRankScore(right),
+                right.Snapshot.OffensiveProgressValue,
+                right.ActionCount));
             AssignRetentionRanks(ranked, required);
             return ranked;
         }
