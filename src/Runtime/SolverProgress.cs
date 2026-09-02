@@ -197,6 +197,7 @@ internal sealed record SolverSpeculativeRoutePreview(
     int StartTurnNumber,
     int ProjectedBattlePotionCount,
     int ProjectedBattleHpLost,
+    bool CombatEnded,
     bool OnlyDeathRoutesFound,
     bool HasRisk,
     IReadOnlyList<SolverFrontierTurn> Turns)
@@ -209,6 +210,7 @@ internal sealed record SolverSpeculativeRoutePreview(
             result.StartTurnNumber,
             result.ProjectedBattlePotionCount,
             result.ProjectedBattleHpLost,
+            result.CombatEndedTurn.HasValue,
             result.OnlyDeathRoutesFound,
             result.Snapshot.HasRisk,
             SolverFrontierTurn.FromResult(result));

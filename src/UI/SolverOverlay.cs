@@ -709,7 +709,10 @@ internal static class SolverOverlay
             _progressText.Visible = false;
         SetReviewText(snapshot.ReviewSummaryText);
         bool hasRouteDetails = !string.IsNullOrEmpty(snapshot.DetailsText);
-        SetPerformanceHintVisible(hasRouteDetails && snapshot.ProjectedBattleHpLost > 0);
+        SetPerformanceHintVisible(
+            hasRouteDetails
+            && snapshot.ProjectedBattleHpLossKnown
+            && snapshot.ProjectedBattleHpLost > 0);
         SetCurrentBossHpStrategyHint();
         if (_searchProgressBar != null)
             _searchProgressBar.Visible = false;
@@ -770,7 +773,11 @@ internal static class SolverOverlay
             _hpOutcomeLabel.Text = snapshot.HpOutcomeText;
             _hpOutcomeLabel.AddThemeColorOverride(
                 "font_color",
-                snapshot.ProjectedBattleHpLost > 0 ? Danger : Success);
+                !snapshot.ProjectedBattleHpLossKnown
+                    ? TextMuted
+                    : snapshot.ProjectedBattleHpLost > 0
+                        ? Danger
+                        : Success);
         }
     }
 
@@ -1953,7 +1960,12 @@ internal static class SolverOverlay
             _settingsPanel?.Reload();
         ApplyContentVisibility();
         SetPerformanceHintVisible(
-            !_settingsVisible && _lastSnapshot?.ProjectedBattleHpLost > 0);
+            !_settingsVisible
+            && _lastSnapshot is
+            {
+                ProjectedBattleHpLossKnown: true,
+                ProjectedBattleHpLost: > 0,
+            });
         QueueResponsiveLayout();
         Entry.Logger.Info($"[CombatSolver/Test] UI_ACTION action=settings visible={_settingsVisible}");
     }
@@ -1969,7 +1981,12 @@ internal static class SolverOverlay
         _potionStrategyPanel?.Invalidate();
         RefreshControls();
         ApplyContentVisibility();
-        SetPerformanceHintVisible(_lastSnapshot?.ProjectedBattleHpLost > 0);
+        SetPerformanceHintVisible(
+            _lastSnapshot is
+            {
+                ProjectedBattleHpLossKnown: true,
+                ProjectedBattleHpLost: > 0,
+            });
         QueueResponsiveLayout();
         Entry.Logger.Info(
             $"[CombatSolver/Test] UI_ACTION action=potion_strategy visible={_potionStrategyVisible}");

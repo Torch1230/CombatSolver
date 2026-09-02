@@ -47,6 +47,7 @@ internal sealed record SolverOverlaySnapshot(
     string ReviewSummaryText,
     int ProjectedBattlePotionCount,
     int ProjectedBattleHpLost,
+    bool ProjectedBattleHpLossKnown,
     string HpOutcomeText,
     bool OnlyDeathRoutesFound,
     IReadOnlyList<SolverOverlayTurnSnapshot> Turns,
@@ -99,11 +100,13 @@ internal sealed record SolverOverlaySnapshot(
         int furthestTurn = preview.FrontierTurns is { Count: > 0 } frontierTurns
             ? frontierTurns[^1].Turn
             : preview.Turn;
-        string outcome = preview.CombatEnded
-            ? "本回合结束战斗"
-            : preview.HpLost > 0
-                ? $"本回合预计掉血 {preview.HpLost} HP"
-                : "本回合预计掉血 0 HP";
+        bool combatEnded = turns.Any(turn => turn.CombatEnded);
+        int projectedBattleHpLost = combatEnded
+            ? turns.Sum(turn => turn.HpLoss)
+            : 0;
+        string outcome = combatEnded
+            ? $"预计战损 {projectedBattleHpLost} HP"
+            : "预计战损 未知";
         return new SolverOverlaySnapshot(
             preview.Turn,
             $"搜索前沿预览 · 已规划至第 {furthestTurn} 回合",
@@ -111,7 +114,8 @@ internal sealed record SolverOverlaySnapshot(
             $"[color={SolverUiTokens.Palette.TextSecondaryHex}]搜索前沿预览，尚未验证完整胜利  │  {outcome}[/color]",
             string.Empty,
             preview.Actions.Count(action => action.Kind == PlanActionKind.UsePotion),
-            preview.HpLost,
+            projectedBattleHpLost,
+            combatEnded,
             outcome,
             OnlyDeathRoutesFound: false,
             turns,
@@ -129,9 +133,9 @@ internal sealed record SolverOverlaySnapshot(
             .Select(BuildOverlayTurn)
             .ToArray();
         int furthestTurn = turns[^1].Turn;
-        string hpOutcomeText = preview.ProjectedBattleHpLost > 0
-            ? $"当前候选累计预计掉血 {preview.ProjectedBattleHpLost} HP（尚未验证）"
-            : "当前候选累计预计掉血 0 HP（尚未验证）";
+        string hpOutcomeText = preview.CombatEnded
+            ? $"预计战损 {preview.ProjectedBattleHpLost} HP"
+            : "预计战损 未知";
         return new SolverOverlaySnapshot(
             preview.StartTurnNumber,
             $"求解器当前考虑 · 已演化至第 {furthestTurn} 回合",
@@ -141,6 +145,7 @@ internal sealed record SolverOverlaySnapshot(
             string.Empty,
             preview.ProjectedBattlePotionCount,
             preview.ProjectedBattleHpLost,
+            preview.CombatEnded,
             hpOutcomeText,
             preview.OnlyDeathRoutesFound,
             turns,
@@ -207,11 +212,14 @@ internal sealed record SolverOverlaySnapshot(
         string reviewSummaryText = result.WasReused
             ? $"路线已复用，共查阅了 {reviewedWorldlinesTotal:N0} 条世界线"
             : $"花费了 {result.TotalSearchElapsed.TotalSeconds:F1} 秒，共查阅了 {reviewedWorldlinesTotal:N0} 条世界线";
-        string hpOutcomeText = result.ProjectedBattleHpLost > 0
-            ? result.ProjectedBattleHpLossIncrease > 0
-                ? $"本局扣血  已 {result.BattleHpLostSoFar}    预计 {result.ProjectedBattleHpLost} HP    重算增加 {result.ProjectedBattleHpLossIncrease} HP"
-                : $"本局扣血  已 {result.BattleHpLostSoFar}    预计 {result.ProjectedBattleHpLost} HP"
-            : "本局扣血  0 HP";
+        bool projectedBattleHpLossKnown = result.CombatEndedTurn.HasValue;
+        string hpOutcomeText = !projectedBattleHpLossKnown
+            ? "预计战损 未知"
+            : result.ProjectedBattleHpLost > 0
+                ? result.ProjectedBattleHpLossIncrease > 0
+                    ? $"本局扣血  已 {result.BattleHpLostSoFar}    预计 {result.ProjectedBattleHpLost} HP    重算增加 {result.ProjectedBattleHpLossIncrease} HP"
+                    : $"本局扣血  已 {result.BattleHpLostSoFar}    预计 {result.ProjectedBattleHpLost} HP"
+                : "本局扣血  0 HP";
 
         SolverOverlayTurnSnapshot[] turns = Enumerable.Range(0, searchedTurns)
             .Select(index => CaptureTurn(result, startTurnNumber + index))
@@ -224,6 +232,7 @@ internal sealed record SolverOverlaySnapshot(
             reviewSummaryText,
             result.ProjectedBattlePotionCount,
             result.ProjectedBattleHpLost,
+            projectedBattleHpLossKnown,
             hpOutcomeText,
             result.OnlyDeathRoutesFound,
             turns,

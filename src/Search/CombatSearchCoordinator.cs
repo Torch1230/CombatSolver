@@ -31,7 +31,9 @@ internal static class CombatSearchCoordinator
             {
                 if (candidate == currentDisplayedResult)
                     return true;
-                if (!SolverInterimResultOrdering.IsBetter(candidate, currentDisplayedResult))
+                if (!SolverInterimResultOrdering.CanPromoteDisplayedResult(
+                        candidate,
+                        currentDisplayedResult))
                     return false;
             }
             currentDisplayedResult = candidate;

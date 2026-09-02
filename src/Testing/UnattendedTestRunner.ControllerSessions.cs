@@ -124,6 +124,7 @@ internal sealed partial class UnattendedTestRunner
             StartTurnNumber: progressTurn,
             ProjectedBattlePotionCount: 0,
             ProjectedBattleHpLost: 9,
+            CombatEnded: false,
             OnlyDeathRoutesFound: false,
             HasRisk: false,
             Turns:
@@ -188,7 +189,7 @@ internal sealed partial class UnattendedTestRunner
                 "求解器当前考虑",
                 StringComparison.Ordinal) != true
             || SolverOverlay.HpOutcomeTextForTesting?.Contains(
-                "9 HP",
+                "预计战损 未知",
                 StringComparison.Ordinal) != true)
         {
             throw new InvalidOperationException("药水补查开始后搜索进度条倒退。");
@@ -883,6 +884,34 @@ internal sealed partial class UnattendedTestRunner
                 currentPotionCost: 0))
         {
             throw new InvalidOperationException("搜索中间路线没有按每瓶 9 HP 成本保持严格递增优。");
+        }
+        SolverInterimResult displayedVictory = new(
+            Won: true,
+            OutstandingStolenResource: 0,
+            ProjectedBattleHpLost: 10,
+            StrategicHpDeficit: 10,
+            PotionStrategicCost: 0,
+            ProjectedBattlePotionCount: 0,
+            EnemyHp: 0,
+            Score: 0d);
+        SolverInterimResult higherDamageVictory = displayedVictory with
+        {
+            ProjectedBattleHpLost = 11,
+            StrategicHpDeficit = 8,
+        };
+        SolverInterimResult lowerDamageVictory = displayedVictory with
+        {
+            ProjectedBattleHpLost = 9,
+            StrategicHpDeficit = 9,
+        };
+        if (SolverInterimResultOrdering.CanPromoteDisplayedResult(
+                higherDamageVictory,
+                displayedVictory)
+            || !SolverInterimResultOrdering.CanPromoteDisplayedResult(
+                lowerDamageVictory,
+                displayedVictory))
+        {
+            throw new InvalidOperationException("完整路线的动态预计战损没有保持单调递减。");
         }
         if (SolverInterimResultOrdering.IsCompleteVictory(
                 actionCount: 1,

@@ -629,6 +629,7 @@ internal sealed partial class CombatBeamSolver
                 _startTurnNumber,
                 battleDamage.PotionsUsedSoFar + selected.Node.PotionCount,
                 battleDamage.HpLostSoFar + selected.Snapshot.CumulativePlayerHpLost,
+                annotations.CombatEndedTurn.HasValue,
                 onlyDeathRoutesFound,
                 selected.Snapshot.HasRisk,
                 turns);

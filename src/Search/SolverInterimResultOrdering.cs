@@ -34,6 +34,14 @@ internal static class SolverInterimResultOrdering
         return candidate.Score > current.Score;
     }
 
+    public static bool CanPromoteDisplayedResult(
+        SolverInterimResult candidate,
+        SolverInterimResult current)
+        => (!candidate.Won
+                || !current.Won
+                || candidate.ProjectedBattleHpLost <= current.ProjectedBattleHpLost)
+            && IsBetter(candidate, current);
+
     internal static bool IsResourceTradeImprovement(
         int candidateHpDeficit,
         int candidatePotionCost,
