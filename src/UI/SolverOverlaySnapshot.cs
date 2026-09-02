@@ -402,9 +402,9 @@ internal sealed record SolverOverlaySnapshot(
     internal static string? BuildSearchLimitWarning(SearchBoundaryReason reason) => reason switch
     {
         SearchBoundaryReason.TimeLimit
-            => "搜索尚未收敛，已达到当前性能设置的时间上限；这是上限触发的停止，现展示目前找到的最佳路线。可在 设置 > 性能 中提高时间上限后重新计算。",
+            => "计算尚未彻底穷尽，已达到当前设置的【时间上限】；现展示目前找到的最佳路线。若想探索更优世界线，可在 设置 > 性能 中提高上限后重新计算。",
         SearchBoundaryReason.NodeLimit
-            => "搜索尚未收敛，已达到当前性能设置的节点上限；这是上限触发的停止，现展示目前找到的最佳路线。可在 设置 > 性能 中提高节点上限后重新计算。",
+            => "计算尚未彻底穷尽，已达到当前设置的【节点上限】；现展示目前找到的最佳路线。若想探索更优世界线，可在 设置 > 性能 中提高上限后重新计算。",
         _ => null,
     };
 

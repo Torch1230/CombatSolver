@@ -232,7 +232,7 @@ internal static class SolverOverlay
         {
             SetSearchLimitHint(SolverOverlaySnapshot.BuildSearchLimitWarning(SearchBoundaryReason.TimeLimit));
             bool timeLimit = SearchLimitHintVisibleForTesting
-                && _searchLimitHintLabel.Text.Contains("搜索尚未收敛", StringComparison.Ordinal)
+                && _searchLimitHintLabel.Text.Contains("计算尚未彻底穷尽", StringComparison.Ordinal)
                 && _searchLimitHintLabel.Text.Contains("时间上限", StringComparison.Ordinal)
                 && _searchLimitHintLabel.Text.Contains("设置 > 性能", StringComparison.Ordinal);
             SetSearchLimitHint(SolverOverlaySnapshot.BuildSearchLimitWarning(SearchBoundaryReason.NodeLimit));

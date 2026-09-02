@@ -24,11 +24,14 @@ internal sealed partial class SolverMemoryUsageBar : PanelContainer
     public SolverMemoryUsageBar()
     {
         Name = "MemoryUsage";
-        CustomMinimumSize = new Vector2(220f, SolverUiTokens.Size.ButtonHeight);
+        CustomMinimumSize = new Vector2(0f, SolverUiTokens.Size.ButtonHeight);
         MouseFilter = MouseFilterEnum.Pass;
         TooltipText =
-            "搜索中按本轮 GC 回收检查点显示进度；待机和常规 GC 时按设置中的内存预算显示进程占用。" +
-            "后台回收运行时会在这里显示状态。";
+            "求解器内存与性能监视\n" +
+            "- 左侧数值：游戏进程当前占用的物理内存（RAM）。\n" +
+            "- 搜索计算时：进度条显示本次搜索的内存缓冲负荷。达到 100% 时，求解器会短暂整理内存，然后自动继续计算。\n" +
+            "- 待机或自动管理时：进度条显示当前内存占设置中内存预算的比例。\n" +
+            "- 正在整理或后台清理属于正常的内存释放阶段。";
         AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
             SolverUiTokens.Palette.SurfaceRaised,
             SolverUiTokens.Palette.Border,
@@ -81,7 +84,8 @@ internal sealed partial class SolverMemoryUsageBar : PanelContainer
     }
 
     internal bool LayoutConfiguredForTesting
-        => Math.Abs(CustomMinimumSize.X - 220f) < 0.01f
+        => Math.Abs(CustomMinimumSize.X) < 0.01f
+            && SizeFlagsHorizontal == SizeFlags.ExpandFill
             && Math.Abs(_progress.CustomMinimumSize.Y - 8f) < 0.01f;
 
     internal static bool ExerciseFormattingForTesting()
@@ -118,14 +122,14 @@ internal sealed partial class SolverMemoryUsageBar : PanelContainer
             SearchAllocationLimitBytes: long.MaxValue,
             Reclaiming: false,
             BackgroundReclaiming: true));
-        return active.Text == "内存 6.4 GB  ·  距 GC 90%"
+        return active.Text == "目前内存占用 6.4 GB  ·  即将整理 90%"
             && Math.Abs(active.Ratio - 0.9d) < 0.001d
             && active.Tone == MemoryPressureTone.Danger
-            && reclaiming.Text == "内存 6.1 GB  ·  内存回收中"
+            && reclaiming.Text == "目前内存占用 6.1 GB  ·  正在整理…"
             && reclaiming.Ratio == 1d
-            && idle.Text == "内存 2.0 GB  ·  待机 13%"
+            && idle.Text == "目前内存占用 2.0 GB  ·  占用 13%"
             && Math.Abs(idle.Ratio - 0.125d) < 0.001d
-            && background.Text == "内存 8.0 GB  ·  后台回收中"
+            && background.Text == "目前内存占用 8.0 GB  ·  后台清理中"
             && Math.Abs(background.Ratio - 0.5d) < 0.001d
             && background.Tone == MemoryPressureTone.Warning;
     }
@@ -153,7 +157,7 @@ internal sealed partial class SolverMemoryUsageBar : PanelContainer
         if (snapshot.Reclaiming)
         {
             return new MemoryBarDisplay(
-                "内存 " + memory + "  ·  内存回收中",
+                "目前内存占用 " + memory + "  ·  正在整理…",
                 1d,
                 MemoryPressureTone.Warning);
         }
@@ -161,28 +165,29 @@ internal sealed partial class SolverMemoryUsageBar : PanelContainer
         if (snapshot.BackgroundReclaiming)
         {
             return new MemoryBarDisplay(
-                "内存 " + memory + "  ·  后台回收中",
+                "目前内存占用 " + memory + "  ·  后台清理中",
                 configuredBudgetRatio,
                 MemoryPressureTone.Warning);
         }
         if (!snapshot.SearchActive)
         {
             return new MemoryBarDisplay(
-                "内存 " + memory + "  ·  待机 " + FormatPercentage(configuredBudgetRatio),
+                "目前内存占用 " + memory + "  ·  占用 " + FormatPercentage(configuredBudgetRatio),
                 configuredBudgetRatio,
                 ToneForRatio(configuredBudgetRatio));
         }
         if (!snapshot.HasGcWall)
         {
             return new MemoryBarDisplay(
-                "内存 " + memory + "  ·  常规 GC",
+                "目前内存占用 " + memory + "  ·  自动管理",
                 configuredBudgetRatio,
                 ToneForRatio(configuredBudgetRatio));
         }
 
         double ratio = snapshot.GcWallRatio;
+        string pressure = ratio >= 0.9d ? "即将整理 " : "负荷 ";
         return new MemoryBarDisplay(
-            "内存 " + memory + "  ·  距 GC " + FormatPercentage(ratio),
+            "目前内存占用 " + memory + "  ·  " + pressure + FormatPercentage(ratio),
             ratio,
             ToneForRatio(ratio));
     }
