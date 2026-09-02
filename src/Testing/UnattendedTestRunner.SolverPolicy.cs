@@ -66,13 +66,17 @@ internal sealed partial class UnattendedTestRunner
         SolverSettingsSnapshot configured = SolverSettings.Capture();
         bool actualActive = GCSettings.LatencyMode == GCLatencyMode.NoGCRegion;
         long actualBudget = SearchGcPolicy.CurrentNoGcRegionBudgetBytesForTesting;
+        long establishedBudget = SearchGcPolicy.LastEstablishedNoGcRegionBudgetBytesForTesting;
         if (configured.EnableNoGcRegion)
         {
-            if (!actualActive || actualBudget != configured.NoGcRegionBudgetBytes)
+            if (actualActive
+                || actualBudget != 0
+                || establishedBudget != configured.NoGcRegionBudgetBytes)
             {
                 throw new InvalidOperationException(
-                    $"No-GC 设置没有原值应用到运行时区域：" +
+                    $"No-GC 搜索没有按配置建立并在结果返回后退出：" +
                     $"configured_enabled=true configured_budget={configured.NoGcRegionBudgetBytes} " +
+                    $"established_budget={establishedBudget} " +
                     $"actual_active={actualActive} actual_budget={actualBudget} " +
                     $"latency={GCSettings.LatencyMode}。");
             }
@@ -88,7 +92,8 @@ internal sealed partial class UnattendedTestRunner
 
         _completedChecks.Add(
             $"NoGcConfigurationApplied:Configured={configured.EnableNoGcRegion}/" +
-            $"{configured.NoGcRegionBudgetBytes}:Actual={actualActive}/{actualBudget}:" +
+            $"{configured.NoGcRegionBudgetBytes}:Established={establishedBudget}:" +
+            $"Actual={actualActive}/{actualBudget}:" +
             $"Latency={GCSettings.LatencyMode}");
     }
 

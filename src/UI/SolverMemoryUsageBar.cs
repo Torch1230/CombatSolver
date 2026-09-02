@@ -129,7 +129,7 @@ internal sealed partial class SolverMemoryUsageBar : PanelContainer
             && reclaiming.Ratio == 1d
             && idle.Text == "目前内存占用 2.0 GB  ·  占用 13%"
             && Math.Abs(idle.Ratio - 0.125d) < 0.001d
-            && background.Text == "目前内存占用 8.0 GB  ·  后台清理中"
+            && background.Text == "目前内存占用 8.0 GB  ·  待机 · 后台清理中"
             && Math.Abs(background.Ratio - 0.5d) < 0.001d
             && background.Tone == MemoryPressureTone.Warning;
     }
@@ -165,7 +165,7 @@ internal sealed partial class SolverMemoryUsageBar : PanelContainer
         if (snapshot.BackgroundReclaiming)
         {
             return new MemoryBarDisplay(
-                "目前内存占用 " + memory + "  ·  后台清理中",
+                "目前内存占用 " + memory + "  ·  待机 · 后台清理中",
                 configuredBudgetRatio,
                 MemoryPressureTone.Warning);
         }
