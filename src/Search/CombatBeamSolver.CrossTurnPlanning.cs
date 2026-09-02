@@ -44,29 +44,31 @@ internal sealed partial class CombatBeamSolver
 
     private static void PublishCrossTurnStandPatBaselines(
         SearchNode turnStart,
-        IReadOnlyList<StateFingerprint> stateKeys)
+        IReadOnlyList<CrossTurnStandPatBaseline> baselines)
     {
         if (!ReferenceEquals(FindTurnStart(turnStart), turnStart))
             throw new InvalidOperationException("跨回合 stand-pat 基线只能属于回合起点节点。");
 
-        if (stateKeys.Count == 0)
+        if (baselines.Count == 0)
         {
-            turnStart.CrossTurnStandPatStateKeys = [];
+            turnStart.CrossTurnStandPatBaselines = [];
             return;
         }
 
-        List<StateFingerprint> distinct = new(stateKeys.Count);
-        foreach (StateFingerprint stateKey in stateKeys)
+        List<CrossTurnStandPatBaseline> distinct = new(baselines.Count);
+        foreach (CrossTurnStandPatBaseline baseline in baselines)
         {
-            if (!distinct.Contains(stateKey))
-                distinct.Add(stateKey);
+            if (!distinct.Contains(baseline))
+                distinct.Add(baseline);
         }
-        turnStart.CrossTurnStandPatStateKeys = distinct.ToArray();
+        turnStart.CrossTurnStandPatBaselines = distinct.ToArray();
     }
 
     private static void AttachCrossTurnSemanticStateEvidence(
         SearchNode node,
-        IReadOnlyList<StateFingerprint> standPatKeys)
+        SearchNode turnStart,
+        IReadOnlyList<StateFingerprint> standPatKeys,
+        IReadOnlyList<CrossTurnStandPatBaseline> standPatBaselines)
     {
         if (node.CrossTurnSemanticEvidenceAttached || standPatKeys.Count == 0)
             return;
@@ -84,8 +86,28 @@ internal sealed partial class CombatBeamSolver
         }
         node.CrossTurnSemanticEvidenceAttached = true;
         node.CrossTurnSemanticStateChanged = changed;
+        CycleExitQuality candidateQuality = MeasureCycleExitQuality(turnStart, node);
+        bool modeledQualityDominatedByStandPat = false;
+        foreach (CrossTurnStandPatBaseline standPat in standPatBaselines)
+        {
+            if (!standPat.Quality.DominatesOrEquals(candidateQuality))
+                continue;
+            modeledQualityDominatedByStandPat = true;
+            break;
+        }
+        // Exact semantic divergence only needs exceptional retention when the choice added no
+        // gain visible to the modeled quality vector beyond an equivalent direct stand-pat.
+        node.CrossTurnSemanticInvisibleToModeledQuality =
+            changed && modeledQualityDominatedByStandPat;
         if (node.CrossTurnProbe is not { } probe)
             return;
+        if (!modeledQualityDominatedByStandPat)
+        {
+            // A non-dominated modeled gain can now compete in the ordinary beam. Do not keep
+            // paying for the earlier invisible-payoff lease after the gain has materialized.
+            node.CrossTurnProbe = null;
+            return;
+        }
         node.CrossTurnProbe = probe with
         {
             SemanticStateChangeTransitions = checked(
@@ -125,7 +147,7 @@ internal sealed partial class CombatBeamSolver
             0,
             SoldHpThreshold() - battleDamage.SoldHpCommitted);
         return node.CombatProgress.TurnsWithoutProgress > 0
-            || node.CrossTurnSemanticStateChanged
+            || node.CrossTurnSemanticInvisibleToModeledQuality
             || node.FutureSoldHp > availableFutureSoldHp;
     }
 }

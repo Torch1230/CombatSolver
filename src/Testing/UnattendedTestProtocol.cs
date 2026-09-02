@@ -450,6 +450,8 @@ internal sealed class UnattendedSolverMetrics
     public int SelectedExpanded { get; init; }
     public int SelectedTransitions { get; init; }
     public int SelectedChoiceBranches { get; init; }
+    public int ChoiceReplayAttempts { get; init; }
+    public int ChoiceReplayBudgetExhaustions { get; init; }
     public long TotalExpanded { get; init; }
     public long TotalTransitions { get; init; }
     public long TotalChoiceBranches { get; init; }

@@ -909,6 +909,10 @@ internal readonly record struct CrossTurnProbeState(
     bool LastTurnImproved,
     bool LastTurnChangedSemanticState);
 
+internal readonly record struct CrossTurnStandPatBaseline(
+    StateFingerprint StateKey,
+    CycleExitQuality Quality);
+
 /// <summary>
 /// A cycle candidate is evidence for search scheduling, never a proof that a route is infinite.
 /// Every edge is still replayed exactly once by the simulator before it can enter the frontier.
@@ -963,9 +967,10 @@ internal sealed record SearchNode(
     public CycleExitObservation? CycleExitObservation { get; set; }
     public PendingCycleExitObservation? PendingCycleExitObservation { get; set; }
     public CrossTurnProbeState? CrossTurnProbe { get; set; }
-    public IReadOnlyList<StateFingerprint>? CrossTurnStandPatStateKeys { get; set; }
+    public IReadOnlyList<CrossTurnStandPatBaseline>? CrossTurnStandPatBaselines { get; set; }
     public bool CrossTurnSemanticStateChanged { get; set; }
     public bool CrossTurnSemanticEvidenceAttached { get; set; }
+    public bool CrossTurnSemanticInvisibleToModeledQuality { get; set; }
     public bool IsCycleProbeLane => CycleProbeLease != null;
     public IReadOnlyList<PlanAction> Actions => _actions ??= MaterializeActions();
 
@@ -1278,6 +1283,8 @@ internal sealed class SolverResult
     public required int DuplicateCardBranchesPruned { get; init; }
     public required int ChoiceBranchesEvaluated { get; init; }
     public long TotalChoiceBranchesEvaluated { get; internal set; }
+    public int ChoiceReplayAttempts { get; init; }
+    public int ChoiceReplayBudgetExhaustions { get; init; }
     public required int ShuffleBranchesPruned { get; init; }
     public required int SoldHpBranchesPruned { get; init; }
     public required int HpInvestmentBranchesProtected { get; init; }
@@ -1294,6 +1301,8 @@ internal sealed class SolverResult
     public int CycleContinuationsStopped { get; init; }
     public int CrossTurnCandidatesProtected { get; init; }
     public int CrossTurnContinuationsStopped { get; init; }
+    public int PrimaryIncumbentBranchesPruned { get; init; }
+    public int PrimaryIncumbentUpdates { get; init; }
     public required int StandPatProbes { get; init; }
     public int ParallelExpansionWaves { get; init; }
     public int ParallelExpansionWorkItems { get; init; }
@@ -1440,6 +1449,8 @@ internal sealed class SolverResult
             CycleContinuationsStopped = 0,
             CrossTurnCandidatesProtected = 0,
             CrossTurnContinuationsStopped = 0,
+            PrimaryIncumbentBranchesPruned = 0,
+            PrimaryIncumbentUpdates = 0,
             StandPatProbes = 0,
             TransitionCacheHits = 0,
             WorkerAllocatedBytes = 0,

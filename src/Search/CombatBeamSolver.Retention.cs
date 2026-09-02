@@ -133,9 +133,9 @@ internal sealed partial class CombatBeamSolver
             AddCrossTurnPortfolio(pool, selected, selectedSet);
             SortRetained(selected);
             if (_profile.Phase != SolverSearchPhase.Deep || pool.Count <= _profile.BeamWidth)
-                return selected;
+                return ApplyPrimaryIncumbentBound(selected);
             if (!root.HasUnusedCardReplayAllocator)
-                return selected;
+                return ApplyPrimaryIncumbentBound(selected);
 
             int channelWidth = Math.Clamp(_profile.BeamWidth / 12, 6, 12);
             List<List<SearchNode>> openingChannels = pool
@@ -157,7 +157,7 @@ internal sealed partial class CombatBeamSolver
                     preserveDefensiveRoute: true))
                 .ToList();
             if (openingChannels.Count == 0)
-                return selected;
+                return ApplyPrimaryIncumbentBound(selected);
 
             int expandedLimit = Math.Min(
                 pool.Count,
@@ -176,12 +176,163 @@ internal sealed partial class CombatBeamSolver
                 }
             }
             SortRetained(selected);
-            return selected;
+            return ApplyPrimaryIncumbentBound(selected);
         }
         finally
         {
             _run.Performance.End(SearchMetricPhase.Prune, measurement);
         }
+    }
+
+    private List<SearchNode> ApplyPrimaryIncumbentBound(List<SearchNode> retained)
+    {
+        if (_primaryIncumbent is not { } incumbent)
+            return retained;
+
+        List<SearchNode>? bounded = null;
+        for (int index = 0; index < retained.Count; index++)
+        {
+            SearchNode node = retained[index];
+            if (ShouldPruneByPrimaryIncumbent(
+                    node.Snapshot.CumulativePlayerHpLost,
+                    node.Turn,
+                    incumbent))
+            {
+                bounded ??= new List<SearchNode>(retained.Count);
+                if (bounded.Count == 0 && index > 0)
+                    bounded.AddRange(retained.GetRange(0, index));
+                _run.PrimaryIncumbentBranchesPruned++;
+                continue;
+            }
+            bounded?.Add(node);
+        }
+        return bounded ?? retained;
+    }
+
+    internal static bool ShouldPruneByPrimaryIncumbent(
+        int cumulativePlayerHpLost,
+        int turn,
+        PrimarySearchIncumbent incumbent)
+        => cumulativePlayerHpLost > incumbent.StrategicHpDeficit
+            || cumulativePlayerHpLost == incumbent.StrategicHpDeficit
+                && turn > incumbent.CombatEndedTurn;
+
+    internal static bool TryTightenPrimarySearchIncumbent(
+        PotionFreePolicyBaseline? auditedPotionFreeBaseline,
+        int minimumPotionUses,
+        int? maximumPotionUses,
+        bool candidateCompleteVictory,
+        bool candidateSatisfiesHardRules,
+        int candidateExplicitPotionUses,
+        int candidateStrategicHpDeficit,
+        int? candidateCombatEndedTurn,
+        ref PrimarySearchIncumbent? incumbent)
+    {
+        if (auditedPotionFreeBaseline is not { } baseline
+            || minimumPotionUses <= 0
+            || maximumPotionUses != minimumPotionUses
+            || !candidateCompleteVictory
+            || !candidateSatisfiesHardRules
+            || candidateExplicitPotionUses != minimumPotionUses
+            || candidateCombatEndedTurn is not { } combatEndedTurn
+            || SolverInterimResultOrdering.ComparePrimaryQuality(
+                candidateCompleteVictory: true,
+                candidateStrategicHpDeficit,
+                candidateCombatEndedTurn,
+                currentCompleteVictory: baseline.Won,
+                currentStrategicHpDeficit: baseline.HpDeficit,
+                currentCombatEndedTurn: baseline.CombatEndedTurn) >= 0)
+        {
+            return false;
+        }
+
+        PrimarySearchIncumbent candidate = new(
+            candidateStrategicHpDeficit,
+            combatEndedTurn);
+        if (incumbent is { } current
+            && SolverInterimResultOrdering.ComparePrimaryQuality(
+                candidateCompleteVictory: true,
+                candidate.StrategicHpDeficit,
+                candidate.CombatEndedTurn,
+                currentCompleteVictory: true,
+                currentStrategicHpDeficit: current.StrategicHpDeficit,
+                currentCombatEndedTurn: current.CombatEndedTurn) >= 0)
+        {
+            return false;
+        }
+
+        incumbent = candidate;
+        return true;
+    }
+
+    private bool TightenPrimarySearchIncumbentAtTurnLayer(
+        IReadOnlyList<SearchNode> retained,
+        int completedTurnLayers)
+    {
+        if (_potionFreePolicyBaseline == null
+            || _minimumPotionUses <= 0
+            || _maximumPotionUses != _minimumPotionUses
+            // The strict-primary escape in FinalPlanOrdering is guaranteed to make an
+            // exact-layer victory policy-eligible only when every explicit use is optional.
+            // Smart-gradient exact layers use a policy override and therefore do not enforce
+            // per-slot directives here. Future forced-directive exact solvers must prove their
+            // optional-use facts separately before they may tighten this bound.
+            || _enforcePotionDirectives)
+        {
+            return false;
+        }
+
+        PrimarySearchIncumbent? tightened = _primaryIncumbent;
+        foreach (SearchNode node in retained)
+        {
+            int explicitPotionUses = ExplicitPotionUseCount(node);
+            bool completeVictory = SolverInterimResultOrdering.IsCompleteVictory(
+                node.ActionCount,
+                node.Snapshot.AllEnemiesDead,
+                node.Snapshot.PlayerDead,
+                node.Snapshot.ProjectedPlayerHp);
+            if (!completeVictory
+                || explicitPotionUses != _minimumPotionUses
+                || _enforcePotionDirectives
+                    && !_potionStrategy.EvaluateForcedUses(
+                            node.Actions,
+                            root.HasRenewablePotionShapedRock)
+                        .AllForcedUsesSatisfied)
+            {
+                continue;
+            }
+
+            // PlayerMaxHp is part of the incumbent only after combat has actually ended.
+            // ApplyPrimaryIncumbentBound deliberately keeps using cumulative HP loss alone
+            // as the lower bound for incomplete nodes because max HP may still recover.
+            int strategicHpDeficit = node.Snapshot.CumulativePlayerHpLost
+                + Math.Max(0, root.InitialPlayerMaxHp - node.Snapshot.PlayerMaxHp);
+            TryTightenPrimarySearchIncumbent(
+                _potionFreePolicyBaseline,
+                _minimumPotionUses,
+                _maximumPotionUses,
+                candidateCompleteVictory: true,
+                candidateSatisfiesHardRules: true,
+                explicitPotionUses,
+                strategicHpDeficit,
+                node.Action?.Turn,
+                ref tightened);
+        }
+
+        if (Nullable.Equals(tightened, _primaryIncumbent))
+            return false;
+
+        PrimarySearchIncumbent? previous = _primaryIncumbent;
+        _primaryIncumbent = tightened;
+        _run.PrimaryIncumbentUpdates++;
+        policy.Diagnostics.Info(
+            $"[CombatSolver/Test] PRIMARY_INCUMBENT_UPDATE " +
+            $"completed_turns={completedTurnLayers} " +
+            $"previous_deficit={previous?.StrategicHpDeficit.ToString() ?? "-"} " +
+            $"previous_turn={previous?.CombatEndedTurn.ToString() ?? "-"} " +
+            $"deficit={tightened!.Value.StrategicHpDeficit} " +
+            $"turn={tightened.Value.CombatEndedTurn}");
+        return true;
     }
 
     private static void SortRetained(List<SearchNode> selected)
@@ -835,10 +986,39 @@ internal sealed partial class CombatBeamSolver
                 }
             }
 
+            List<SearchNode> band = [];
             SearchNode? continuing = FindBestCrossTurnCandidate(inFlight, bestMaxHp);
-            SearchNode? candidate = continuing
-                ?? FindBestCrossTurnCandidate(newFamilies, bestMaxHp);
-            if (candidate != null)
+            if (continuing != null)
+                band.Add(continuing);
+            SearchNode? newest = FindBestCrossTurnCandidate(newFamilies, bestMaxHp);
+            if (newest != null)
+                band.Add(newest);
+
+            SearchNode? fallbackFirst = null;
+            SearchNode? fallbackSecond = null;
+            foreach (SearchNode candidate in inFlight)
+            {
+                AddCrossTurnFallbackCandidate(
+                    candidate,
+                    band,
+                    bestMaxHp,
+                    ref fallbackFirst,
+                    ref fallbackSecond);
+            }
+            foreach (SearchNode candidate in newFamilies)
+            {
+                AddCrossTurnFallbackCandidate(
+                    candidate,
+                    band,
+                    bestMaxHp,
+                    ref fallbackFirst,
+                    ref fallbackSecond);
+            }
+            if (band.Count < 2 && fallbackFirst != null)
+                band.Add(fallbackFirst);
+            if (band.Count < 2 && fallbackSecond != null)
+                band.Add(fallbackSecond);
+            foreach (SearchNode candidate in band)
                 retained.Add(candidate);
         }
 
@@ -893,6 +1073,27 @@ internal sealed partial class CombatBeamSolver
                 best = candidate;
         }
         return best;
+    }
+
+    private static void AddCrossTurnFallbackCandidate(
+        SearchNode candidate,
+        IReadOnlyList<SearchNode> alreadySelected,
+        int bestMaxHp,
+        ref SearchNode? first,
+        ref SearchNode? second)
+    {
+        if (ContainsReference(alreadySelected, candidate))
+            return;
+        if (first == null || CompareCrossTurnCandidates(candidate, first, bestMaxHp) < 0)
+        {
+            second = first;
+            first = candidate;
+        }
+        else if (second == null
+                 || CompareCrossTurnCandidates(candidate, second, bestMaxHp) < 0)
+        {
+            second = candidate;
+        }
     }
 
     private static int CompareCrossTurnCandidates(

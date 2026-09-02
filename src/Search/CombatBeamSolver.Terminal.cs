@@ -69,19 +69,31 @@ internal sealed partial class CombatBeamSolver
                      item => (item.Turn, item.TurnStart.StateKey, item.PotionSlotsUsed)))
         {
             PendingTurnOutcome[] groupOutcomes = group.ToArray();
-            IReadOnlyList<StateFingerprint> publishedStandPatKeys =
-                groupOutcomes[0].TurnStart.CrossTurnStandPatStateKeys ?? [];
-            StateFingerprint[] standPatKeys = groupOutcomes
+            IReadOnlyList<CrossTurnStandPatBaseline> publishedStandPatBaselines =
+                groupOutcomes[0].TurnStart.CrossTurnStandPatBaselines ?? [];
+            CrossTurnStandPatBaseline[] directStandPatBaselines = groupOutcomes
                 .Where(item => item.IsComparable
                     && ReferenceEquals(item.Node.Parent, item.TurnStart)
                     && item.Node.Action is { Kind: PlanActionKind.EndTurn })
-                .Select(item => item.Node.StateKey)
-                .Concat(publishedStandPatKeys)
+                .Select(item => new CrossTurnStandPatBaseline(
+                    item.Node.StateKey,
+                    MeasureCycleExitQuality(item.TurnStart, item.Node)))
+                .ToArray();
+            CrossTurnStandPatBaseline[] standPatBaselines = directStandPatBaselines
+                .Concat(publishedStandPatBaselines)
+                .Distinct()
+                .ToArray();
+            StateFingerprint[] standPatKeys = standPatBaselines
+                .Select(baseline => baseline.StateKey)
                 .Distinct()
                 .ToArray();
             foreach (PendingTurnOutcome outcome in groupOutcomes)
             {
-                AttachCrossTurnSemanticStateEvidence(outcome.Node, standPatKeys);
+                AttachCrossTurnSemanticStateEvidence(
+                    outcome.Node,
+                    outcome.TurnStart,
+                    standPatKeys,
+                    standPatBaselines);
             }
 
             PendingTurnOutcome[] retained = groupOutcomes

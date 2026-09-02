@@ -6,7 +6,45 @@
 
 维护时默认使用分层快速回归：普通语义改动跑单效果严格差分；Fork、跨回合历史和续用改动补一个最小两回合或最早复用边界；搜索/部署改动的最终候选才运行必要的完整自动场。快速 unattended 请求总超时不超过 `120` 秒，超时后缩小 fixture 或记为未验证，不在同一轮延长等待。下方完整矩阵是发布门禁和专项审计入口，不是每次修复都要执行的默认清单。
 
-性能指标口径：`selected_*` 只描述最终选中的单个 solver；请求级 `total_expanded_nodes / total_transitions / total_choice_branches` 对正常、失败和取消的每个 solver 精确记录一次。`total_solver_ms`、solver 分配与 GC 累计只覆盖正常返回并被 coordinator 合并的层，不包含取消中的部分工作，因此完整耗时使用请求/阶段墙钟，内存使用进程峰值工作集。Smart 多层的取消时点可能令请求总工作量小幅波动，语义验收优先比较胜负、战损、回合和动作路线。峰值工作集是瞬时进程峰值，不能跨阶段相加；`16 GB` NoGC 是运行时请求预算，不等于实际占用或硬上限；NoGC 活跃时 `GC.GetTotalMemory(false)` 不是严格 live-set 测量。
+性能指标口径：`selected_*` 只描述最终选中的单个 solver；请求级 `total_expanded_nodes / total_transitions / total_choice_branches`、`total_solver_ms`、solver 分配与 GC 累计对正常、失败和取消的每个 solver 工作区间精确记录一次，包括取消前已发生的部分工作。这些总值是 solver 区间之和，不是 coordinator 外层墙钟或进程峰值，也不包含建立开局、层间比较等 solver 之外的编排工作；因此端到端耗时以请求/阶段外层墙钟为准，峰值内存以进程 `VmHWM` 为准。Smart 多层的取消时点可能令请求总工作量小幅波动，语义验收优先比较胜负、战损、回合和动作路线。峰值工作集是瞬时进程峰值，不能跨阶段相加；`16 GB` NoGC 是运行时请求预算，不等于实际占用或硬上限；NoGC 活跃时 `GC.GetTotalMemory(false)` 不是严格 live-set 测量。
+
+## 下一版本（开发中）：通用周期与跨回合收益
+
+> 这里记录当前开发工作树的定向证据，最终性能候选和 PR 门禁仍待复测。生产算法只使用控制形状、精确动作相位、分支相对 stand-pat 状态和通用收益向量；fixture 中的卡牌、药水或遗物名称只是输入，不是生产特判。周期识别窗口最多 `32` 个动作；跨回合基础观察期为 `max(16, 两个完整牌堆周期所需回合)`，语义变化探针最多 `64` 次回合转移，最近一回合确有通用改善的探针最多 `128` 次。
+
+| 场景 | 当前结果 | 验证内容 | 日期 |
+| --- | --- | --- | --- |
+| `GENERIC-LOOP-LETTER-OPENER-HIDDEN-PHASE-DOP1/2` | 开发中定向通过；最终候选复测待填 | 两次表面回到同一牌堆形状后，隐藏相位在后续重复中兑现；DOP1/DOP2 都为 `6/12` 展开/转移、`6` 次洗牌、第 `1` 回合结束。runId `87c6bc90f39c477a90223f8042cbe744` / `d2db40a217184d18a73ae0a041461be4`。 | 2026-09-02 |
+| `GENERIC-CROSS-TURN-HIDDEN-BUFFER-DOP1/2` | 开发中定向通过；最终候选复测待填 | 表面进展长期停滞但精确状态仍跨回合推进；DOP1/DOP2 都为 `513/770` 展开/转移、第 `17` 回合结束，证明基础观察期不会截断延迟兑现。runId `00f445e5bd8c4b73b26a1953e1ecb84c` / `79e8266763e3492494794cf85456788d`。 | 2026-09-02 |
+| `GENERIC-CROSS-TURN-STAGNANT-CONTROL` | 开发中定向通过；最终候选复测待填 | 无伤害手段的停滞场在 `76/114` 展开/转移后有界停止，最终路线不采用纯防御空转；与隐藏缓冲场共同约束“不能早停、也不能无限续期”。runId `d51dde07172c45e7aa3d9a3ac9c99f82`。 | 2026-09-02 |
+| `GENERIC-CROSS-TURN-PURITY-PILLAGE` | 开发中定向通过；最终候选复测待填 | 先净化牌库、下一回合兑现，`123/340` 展开/转移、第 `2` 回合结束。runId `c4e37ee3249d4a819c27a99e0d15fb8a`。 | 2026-09-02 |
+| `GENERIC-LOOP-RAMPAGE-DYNAMIC-GROWTH-DOP1/2` | 开发中定向通过；最终候选复测待填 | 动态成长值不写入循环特判；DOP1/DOP2 都为 `2400/5377` 展开/转移、`32` 动作、第 `1` 回合结束，动作和全部非时序工作量一致，DOP2 实际最大并发至少为 `2`。runId `6e7be70084ab46d4a49bc26a1953acb6` / `94d8c9c56da848b5aa6909d7735397d2`。 | 2026-09-02 |
+| `GENERIC-FINAL-QUALITY-ZERO-LOSS-OVER-FASTER-BLOOD-SALE` | 开发中定向通过；最终候选复测待填 | 最终质量不受循环保路覆盖：无药路线为 `24/52` 展开/转移、零战损、第 `3` 回合结束，且不采用卖血动作。runId `fde8e1f6d494404485586a3c08dbbd61`。 | 2026-09-02 |
+| `GENERIC-SMART-POTION-SAME-LOSS-FASTER` | 开发中定向通过；最终候选复测待填 | 无药与用药均零战损时，Smart 比较全部已完成精确用药层并选择第 `1` 回合能量药路线，而非第 `3` 回合无药路线；请求累计 `94/229`，选中层 `70/177` 展开/转移。runId `9212248603ec4d9094de008cb5e0d444`。 | 2026-09-02 |
+| `INFESTED-PRISMS-GENERIC-QUALITY-INTERMEDIATE-BASELINE` | 中间性能基线；最终复测待填 | 同根 VeryHigh、Smart、DOP8、NoGC `16 GB`：累计 `80,009/537,025/213,213` 展开/转移/选牌分支，选中一药层 `31,379/221,729/89,561`；搜索阶段墙钟约 `57,095.8 ms`、solver/worker 累计 `56,960.246 ms / 36,093,863,040 B`，选中层 `22,590.567 ms / 15,068,779,864 B`，`VmHWM=11,835,868 kB`（约 `11.29 GiB`）。结果 `52 HP`、预计战损 `8`、主动卖血 `2`、第 `6` 回合结束，质量优于旧 42 HP/战损 18/T7，但当前速度和工作量明显退化，因此只作为后续优化的起点。Gen0/1/2 均 `6` 次，GC 暂停累计/最大 `4,971.917/1,840.010 ms`，搜索内存检查点 `3` 个。runId `f234bd8a4c0f4f2a87cb6a27458515e4`。 | 2026-09-02 |
+| `INFESTED-PRISMS-GENERIC-QUALITY-FINAL` | 待执行 | 性能收敛后以同一 run-state/replay-state、VeryHigh、Smart、DOP8、NoGC `16 GB` 补填最终时间、`VmHWM`、累计/选中层节点与转移、GC 检查点、战损、结束回合和完整动作路线；不得用上面的中间基线宣称最终优化完成。 | 2026-09-02 |
+
+### 新增 fixture 清单
+
+| Fixture | 主要边界 |
+| --- | --- |
+| `coverage/unattended/generic-loop-letter-opener-hidden-phase-v0111.json` | 同牌堆形状的隐藏相位收益、DOP 等价 |
+| `coverage/unattended/generic-cross-turn-hidden-buffer-positive-v0111.json` | 晚于基础观察期兑现的精确隐藏状态、DOP 等价 |
+| `coverage/unattended/generic-cross-turn-stagnant-control-v0111.json` | 真正无收益跨回合路线有界停止 |
+| `coverage/unattended/generic-loop-cross-turn-purity-pillage-positive-v0111.json` | 先净化牌库、下一回合兑现的跨回合收益 |
+| `coverage/unattended/generic-loop-rampage-dynamic-growth-positive-v0111.json` | 动态成长循环、32 动作路线与 DOP 等价 |
+| `coverage/unattended/generic-final-quality-zero-loss-over-faster-blood-sale-v0111.json` | 低战损优先；同战损才比较结束回合 |
+| `coverage/unattended/generic-smart-potion-same-loss-faster-v0111.json` | Smart 全局比较精确药量层；同战损选择更少回合 |
+| `coverage/unattended/generic-loop-speedster-discard-draw-positive-v0111.json` | 多动作抽弃循环、洗牌与零损击杀 |
+| `coverage/unattended/generic-loop-speedster-startup-positive-v0111.json` | 先建立能力再进入循环 |
+| `coverage/unattended/generic-loop-hellraiser-pillage-bloodletting-positive-v0111.json` | 卖血/能量启动后兑现 |
+| `coverage/unattended/generic-loop-hellraiser-startup-positive-v0111.json` | 先打能力牌再启动 |
+| `coverage/unattended/generic-loop-hellraiser-pillage-defend-breaker-v0111.json` | 循环被非攻击抽牌打断并跨回合求解 |
+| `coverage/unattended/generic-loop-pale-blue-dot-threshold-cross-turn-v0111.json` | 阈值状态、药水入口与跨回合/出口收益 |
+| `coverage/unattended/generic-loop-regent-star-energy-positive-v0111.json` | 星能与能量循环 |
+| `coverage/unattended/generic-loop-regent-black-hole-startup-positive-v0111.json` | 储君能力启动与循环 |
+
+`coverage/unattended/generic-loop-hellraiser-pillage-bloodletting-cards.json` 只是可复用牌堆输入，不是独立场景。未在上表列出 runId 的 fixture 仍须复测，不能因文件存在就宣称当前工作树通过。
 
 ## 下一版本（开发中，版本号待定）
 
@@ -91,95 +129,7 @@
 | `MONSTER-INITIAL-ROLL-ISOLATION-0252` | 通过（Fork 边界、DOP4） | 搜索从分支快照解析怪物初始行动，不再进入实机 `RollMove` 及外部预测补丁；Search/Prediction 结构检查无残留调用。runId `78f1a80afe664d1cbc97a80b70e131ed`。 | 2026-09-02 |
 | `FORCED-POTION-INTERIM-ADOPTION-0252` | 通过（控制器生命周期、DOP4） | 强制用药时，中间展示与采用路线必须已使用指定槽位的指定药水；零药完整胜利线不能提前收束搜索。runId `ce7406b333034a61b75c75ee4a5dac75`。 | 2026-09-02 |
 | `AEONGLASS-TURN-START-DEPLOY-QUEUE-0252` | 结构验证（Release 编译） | 回合准备 `Start` 阶段的执行请求按战斗回合排队，进入 `Play` 后由同回合搜索消费，不再进入普通部署拒绝路径；问题包依赖真人点击时机，未声称自动复现。 | 2026-09-02 |
-## 下一版本（开发中）：通用周期与跨回合收益
 
-> 下表 runId 是当前开发工作树的定向证据，最终 PR 复测尚未填入，因此不能替代发布门禁。算法只使用控制形状、精确动作相位和通用收益向量；fixture 中出现具体内容名称只是测试输入，不是生产特判。
-
-| 场景 | 当前结果 | 验证内容 | 日期 |
-| --- | --- | --- | --- |
-| `GENERIC-LOOP-LETTER-OPENER-HIDDEN-PHASE-DOP1/2` | 开发中定向通过；最终复测待填 | 两次表面回到同一牌堆形状后，第三次技能的隐藏相位才兑现伤害；DOP1/DOP2 都为 `6` 动作、`0` 战损、第 `1` 回合结束。runId `b45f4b96e831476d916541ce6056a564` / `ba2489070de945808d8c035f887f341b`。 | 2026-09-02 |
-| `GENERIC-LOOP-SPEEDSTER-DISCARD-DRAW-DOP1/2` | 开发中定向通过；最终复测待填 | 多动作抽弃循环的并行确定性；DOP1/DOP2 都为 `20` 动作、跨 `19` 次洗牌、`0` 战损、第 `1` 回合结束。runId `2e1b006693ff4e7187d6312d05a222a5` / `963e6b2c55b84130beef87c0d6f1c7cf`。 | 2026-09-02 |
-| `GENERIC-LOOP-HELLRAISER-PILLAGE-BLOODLETTING` | 开发中定向通过；最终复测待填 | 允许低分生命投资启动：首动作卖血，`3` 动作、`3` 战损、第 `1` 回合结束。runId `3cd14cf8ab3d413b9f92726884bf0072`。 | 2026-09-02 |
-| `GENERIC-LOOP-ZERO-LOSS-OVER-BLOOD-SALE-QUALITY` | 开发中定向通过；最终复测待填 | 同一搜索中存在零损与卖血启动路线时，最终词典序仍选择零损；首动作过牌、卖血动作缺席、`5` 动作、第 `1` 回合结束。runId `037c48a0866c4cd4a1140cb437290b1e`。 | 2026-09-02 |
-
-### 新增 fixture 清单
-
-| Fixture | 主要边界 |
-| --- | --- |
-| `coverage/unattended/generic-loop-letter-opener-hidden-phase-v0111.json` | 同牌堆形状的隐藏三相位收益、DOP 等价 |
-| `coverage/unattended/generic-loop-speedster-discard-draw-positive-v0111.json` | 多动作抽弃循环、洗牌与零损击杀 |
-| `coverage/unattended/generic-loop-speedster-startup-positive-v0111.json` | 先建立能力再进入循环 |
-| `coverage/unattended/generic-loop-hellraiser-pillage-bloodletting-positive-v0111.json` | 卖血/能量启动后兑现 |
-| `coverage/unattended/generic-loop-hellraiser-startup-positive-v0111.json` | 先打能力牌再启动 |
-| `coverage/unattended/generic-loop-hellraiser-pillage-defend-breaker-v0111.json` | 循环被非攻击抽牌打断并跨回合求解 |
-| `coverage/unattended/generic-loop-zero-loss-over-blood-sale-quality-v0111.json` | 低战损优先、同战损再比较战斗回合 |
-| `coverage/unattended/generic-loop-cross-turn-purity-pillage-positive-v0111.json` | 先净化牌库、下一回合兑现的跨回合收益 |
-| `coverage/unattended/generic-loop-pale-blue-dot-threshold-cross-turn-v0111.json` | 阈值状态、药水入口与跨回合/出口收益 |
-| `coverage/unattended/generic-loop-regent-star-energy-positive-v0111.json` | 星能与能量循环 |
-| `coverage/unattended/generic-loop-regent-black-hole-startup-positive-v0111.json` | 储君能力启动与循环 |
-
-`coverage/unattended/generic-loop-hellraiser-pillage-bloodletting-cards.json` 只是可复用的牌堆输入片段，不是独立场景。所有独立 fixture 都应包含场景、角色、遭遇、生命/资源、清理策略、预算和终局断言；不能只抽取 `cards` 后在启动器默认场景下宣称通过。
-
-### Linux 定向命令（隐藏相位，分别跑 DOP1/DOP2）
-
-```bash
-fixture=coverage/unattended/generic-loop-letter-opener-hidden-phase-v0111.json
-for dop in 1 2; do
-  ./tools/run-unattended-test.sh \
-    --scenario-id "$(jq -r '.scenarioId' "$fixture")-DOP${dop}" \
-    --character-id "$(jq -r '.characterId' "$fixture")" \
-    --encounter-id "$(jq -r '.encounterId' "$fixture")" \
-    --seed "$(jq -r '.seed' "$fixture")" \
-    --enemy-current-hp "$(jq -r '.enemyCurrentHp' "$fixture")" \
-    --initial-player-hp "$(jq -r '.initialPlayerHp' "$fixture")" \
-    --initial-player-max-hp "$(jq -r '.initialPlayerMaxHp' "$fixture")" \
-    --initial-player-energy "$(jq -r '.initialPlayerEnergy' "$fixture")" \
-    --clear-player-piles --clear-all-powers \
-    --cards-json "$(jq -c '.cards' "$fixture")" \
-    --relics-json "$(jq -c '.relics' "$fixture")" \
-    --force-short-search-only --short-search-budget-override-milliseconds 5000 \
-    --search-max-degree-of-parallelism-for-test "$dop" --measure-search-phases \
-    --expected-initial-first-action-card-id IMPATIENCE \
-    --expected-initial-executable-action-count-at-least 6 \
-    --expected-initial-shuffles-crossed-at-least 6 \
-    --expected-initial-projected-battle-hp-lost 0 \
-    --expected-initial-combat-ended-turn 1 \
-    --expected-initial-final-enemy-hp-at-most 0 \
-    --expected-initial-cycle-shapes-detected-at-least 1 \
-    --stop-after-initial-solver-result-assertion --timeout-seconds 120 --exit-on-complete
-done
-```
-
-### Windows 定向命令（隐藏相位，分别跑 DOP1/DOP2）
-
-```powershell
-$fixturePath = "coverage\unattended\generic-loop-letter-opener-hidden-phase-v0111.json"
-$fixture = Get-Content -Raw $fixturePath | ConvertFrom-Json
-$cardsJson = ConvertTo-Json -InputObject @($fixture.cards) -Compress -Depth 8
-$relicsJson = ConvertTo-Json -InputObject @($fixture.relics) -Compress -Depth 8
-foreach ($dop in 1, 2) {
-    pwsh -NoProfile -File tools\run-unattended-test.ps1 `
-        -ScenarioId "$($fixture.scenarioId)-DOP$dop" `
-        -CharacterId $fixture.characterId -EncounterId $fixture.encounterId `
-        -Seed $fixture.seed -EnemyCurrentHp $fixture.enemyCurrentHp `
-        -InitialPlayerHp $fixture.initialPlayerHp `
-        -InitialPlayerMaxHp $fixture.initialPlayerMaxHp `
-        -InitialPlayerEnergy $fixture.initialPlayerEnergy `
-        -ClearPlayerPiles -ClearAllPowers `
-        -CardsJson $cardsJson -RelicsJson $relicsJson `
-        -ForceShortSearchOnly -ShortSearchBudgetOverrideMilliseconds 5000 `
-        -SearchMaxDegreeOfParallelismForTest $dop -MeasureSearchPhases `
-        -ExpectedInitialFirstActionCardId IMPATIENCE `
-        -ExpectedInitialExecutableActionCountAtLeast 6 `
-        -ExpectedInitialShufflesCrossedAtLeast 6 `
-        -ExpectedInitialProjectedBattleHpLost 0 `
-        -ExpectedInitialCombatEndedTurn 1 `
-        -ExpectedInitialFinalEnemyHpAtMost 0 `
-        -ExpectedInitialCycleShapesDetectedAtLeast 1 `
-        -StopAfterInitialSolverResultAssertion -TimeoutSeconds 120 `
-        -HeadlessFastModeForTest Instant -ExitOnComplete
-}
-```
 ## 0.25.1（已发布）
 
 | 场景 | 结果 | 验证内容 | 日期 |

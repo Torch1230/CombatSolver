@@ -36,6 +36,8 @@ internal sealed partial class UnattendedTestRunner
                 SelectedExpanded = result.ExpandedNodes,
                 SelectedTransitions = result.TransitionCount,
                 SelectedChoiceBranches = result.ChoiceBranchesEvaluated,
+                ChoiceReplayAttempts = result.ChoiceReplayAttempts,
+                ChoiceReplayBudgetExhaustions = result.ChoiceReplayBudgetExhaustions,
                 TotalExpanded = result.TotalExpandedNodes,
                 TotalTransitions = result.TotalTransitionCount,
                 TotalChoiceBranches = result.TotalChoiceBranchesEvaluated,

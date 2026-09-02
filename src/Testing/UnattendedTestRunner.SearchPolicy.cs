@@ -50,8 +50,14 @@ internal sealed partial class UnattendedTestRunner
         SolverDisplayNames displayNames = SolverDisplayNames.Capture(combat);
         BattleDamageSnapshot battleDamage = BattleDamageTracker.Observe(combat);
         AssertFullRngStateIdentity(combat);
+        AssertRequiredPotionAuditSelectionAndTotals();
         CombatRootSnapshot rootSnapshot = CombatRootSnapshot.Capture(combat);
         await AssertCanceledSearchWorkRecordedOnceAsync(
+            rootSnapshot,
+            displayNames,
+            battleDamage,
+            capturedPolicy);
+        await AssertInProgressCanceledExactLayerWorkRecordedOnceAsync(
             rootSnapshot,
             displayNames,
             battleDamage,
@@ -1199,6 +1205,16 @@ internal sealed partial class UnattendedTestRunner
             "cross_turn_continuations_stopped",
             expected.CrossTurnContinuationsStopped,
             actual.CrossTurnContinuationsStopped);
+        AddMismatch(
+            mismatches,
+            "primary_incumbent_pruned",
+            expected.PrimaryIncumbentBranchesPruned,
+            actual.PrimaryIncumbentBranchesPruned);
+        AddMismatch(
+            mismatches,
+            "primary_incumbent_updates",
+            expected.PrimaryIncumbentUpdates,
+            actual.PrimaryIncumbentUpdates);
         AddMismatch(mismatches, "stand_pat", expected.StandPatProbes, actual.StandPatProbes);
         AddMismatch(mismatches, "searched_turns", expected.SearchedTurns, actual.SearchedTurns);
         AddMismatch(mismatches, "boundary", expected.BoundaryReason, actual.BoundaryReason);

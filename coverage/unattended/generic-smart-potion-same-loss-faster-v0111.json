@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "scenarioId": "GENERIC-FINAL-QUALITY-ZERO-LOSS-OVER-FASTER-BLOOD-SALE-V0111",
-  "description": "A run-ending fight offers a one-turn HP-sale victory and a three-turn zero-loss victory; lower battle loss must rank first.",
+  "scenarioId": "GENERIC-SMART-POTION-SAME-LOSS-FASTER-V0111",
+  "description": "Smart must search a paid potion even when the potion-free route loses zero HP, because equal loss with an earlier victory is primary-quality improvement.",
   "characterId": "IRONCLAD",
   "encounterId": "AEONGLASS_BOSS",
-  "seed": "FINALQUALITYLOSSBEFORESPEED0111",
+  "seed": "SMARTSAMELOSSFASTER0111",
   "actIndexForTest": 2,
   "markEncounterAsSecondBossForTest": true,
   "enemyCurrentHp": 6,
@@ -34,6 +34,12 @@
       "amount": 1
     }
   ],
+  "potions": [
+    {
+      "potionId": "EnergyPotion"
+    }
+  ],
+  "potionPolicyForTest": "Smart",
   "forceShortSearchOnly": true,
   "shortSearchBudgetOverrideMilliseconds": 5000,
   "searchMaxDegreeOfParallelismForTest": 1,
@@ -42,7 +48,8 @@
   "expectedInitialActEndingBoss": true,
   "expectedInitialAbsentActionCardId": "BLOODLETTING",
   "expectedInitialProjectedBattleHpLost": 0,
-  "expectedInitialCombatEndedTurn": 3,
+  "expectedInitialPotionCount": 1,
+  "expectedInitialCombatEndedTurn": 1,
   "expectedInitialFinalEnemyHpAtMost": 0,
   "stopAfterInitialSolverResultAssertion": true,
   "timeoutSeconds": 120
