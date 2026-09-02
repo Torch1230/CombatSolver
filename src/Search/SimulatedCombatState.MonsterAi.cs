@@ -104,6 +104,8 @@ internal sealed partial class SimulatedCombatState
         Creature enemy,
         MoveState? performedMove)
     {
+        if (!ContainsCreature(enemy) || !CanPerformMonsterMove(simulator, enemy))
+            return;
         if (enemy.Monster == null)
             return;
         BranchMonsterAiState current = GetMonsterAiState(enemy);

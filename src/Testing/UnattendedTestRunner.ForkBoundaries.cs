@@ -14,6 +14,7 @@ using MegaCrit.Sts2.Core.Models.Orbs;
 using MegaCrit.Sts2.Core.Models.Potions;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Models.Relics;
+using MegaCrit.Sts2.Core.MonsterMoves.MonsterMoveStateMachine;
 using STS2RitsuLib.Models.Capabilities;
 using System.Collections;
 using System.Reflection;
@@ -57,7 +58,7 @@ internal sealed partial class UnattendedTestRunner
         AssertReplayCardIdentityDistinguishesGeneratedCopies(simulator, player);
         AssertDeploymentCardIdentitySurvivesEarlierCopyLeavingHand(card);
         AssertMissingSandpitIsACompletedFranticEscape(combat, player);
-        AssertTerminalMonsterMovesStopForecasting();
+        AssertTerminalMonsterMovesStopScheduling(combat, player);
         AssertRevivingCreatureRejectsNewPowers(combat, player);
         AssertRosterSinkRemovalUsesUpdatedRoster(combat);
 
@@ -644,7 +645,9 @@ internal sealed partial class UnattendedTestRunner
         simulatedCombat.IncrementSandpitTargeting(player.Creature);
     }
 
-    private static void AssertTerminalMonsterMovesStopForecasting()
+    private static void AssertTerminalMonsterMovesStopScheduling(
+        CombatState combat,
+        Player player)
     {
         MonsterModel gasBomb = ModelDb.Monster<MegaCrit.Sts2.Core.Models.Monsters.GasBomb>();
         if (!MonsterMoveEffects.RemovesOwner(gasBomb, "EXPLODE_MOVE")
@@ -652,6 +655,40 @@ internal sealed partial class UnattendedTestRunner
         {
             throw new InvalidOperationException("终止型怪物行动分类不正确。");
         }
+
+        SimulatedCombatState simulatedCombat = new(combat)
+        {
+            CurrentSide = CombatSide.Enemy,
+        };
+        CombatPredictionSimulator simulator = new(simulatedCombat);
+        Creature source = simulatedCombat.Enemies.First();
+        Creature spawned = MonsterSpawnSupport.Spawn<MegaCrit.Sts2.Core.Models.Monsters.GasBomb>(
+            simulator,
+            simulatedCombat,
+            source,
+            slot: null);
+        simulatedCombat.ForceMonsterMove(spawned, "EXPLODE_MOVE");
+        ForecastMove explode = simulatedCombat.CurrentMonsterMove(spawned);
+        if (!MonsterMoveEffects.Apply(
+                simulator,
+                simulatedCombat,
+                explode,
+                player.Creature,
+                out bool killedOwner)
+            || !killedOwner
+            || simulatedCombat.ContainsCreature(spawned))
+        {
+            throw new InvalidOperationException("毒气弹自爆没有从活动怪物阵容移除自身。");
+        }
+
+        if (simulatedCombat.GetPredictedMoveId(spawned) != "EXPLODE_MOVE")
+            throw new InvalidOperationException("终局行动结束时提前删除了怪物 AI 快照。");
+
+        simulatedCombat.PrepareMonsterMovesForNextRound(
+            simulator,
+            new Dictionary<Creature, MoveState> { [spawned] = explode.Move });
+        if (simulatedCombat.GetPredictedMoveId(spawned) != "EXPLODE_MOVE")
+            throw new InvalidOperationException("已经离场的怪物仍推进了下一行动。");
     }
 
     private static void AssertRosterSinkRemovalUsesUpdatedRoster(CombatState combat)

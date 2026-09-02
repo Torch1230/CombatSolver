@@ -17,6 +17,7 @@
 | `OVERLAY-RESIZE-PERSISTENCE-NEXT` | 通过（headless 真实重排） | 宽/高成对持久化、右/下/右下三向缩放、三斜线抓手、`16 ms` 拖动节流、内容最小尺寸、紧凑收起和展开恢复通过；独立药水浮层不改变主面板持久宽度。可见观感未检查。 | 2026-09-02 |
 | `BOSS-HP-STRATEGY-SETTINGS-NEXT` | 通过（headless 设置/UI/搜索策略，DOP4） | 第一、二幕与最终 Boss 两项策略独立 JSON 往返；通关优先分别保留 `45 HP/瓶`、`75 HP` 卖血阈值和最终 Boss 存活边界，最低战损独立恢复 `9 HP/瓶` 与普通 Boss 卖血阈值；两类提示文案和关闭状态互不串联。runId `e52f2ec763ac4361a9a09992ab8ae7d5`。 | 2026-09-02 |
 | `PR32-DYNAMIC-PREVIEW-EARLY-FINISH` | 结构验证（Release 编译） | 动态演化预览约每 `100 ms` 更新，当前回合预览与可采用推演路线分离；等价获胜路线在敌方状态之后、总评分之前比较结束回合。零警告；按用户要求未运行行为回归。 | 2026-09-02 |
+| `LIVING-FOG-GAS-BOMB-TERMINAL-MOVE` | 通过（headless 最小生命周期） | 毒气弹执行 `EXPLODE_MOVE` 后离开活动阵容；回合收尾保留其 AI 快照但不再解析不存在的后继行动。runId `0450d8534bce46e0b329a22f562d95a5`。 | 2026-09-02 |
 
 ## 0.26.0（已发布）
 
