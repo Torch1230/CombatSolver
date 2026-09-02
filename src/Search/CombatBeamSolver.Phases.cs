@@ -609,7 +609,7 @@ internal sealed partial class CombatBeamSolver
                         group.Key,
                         out int annotatedEnemyHpLost)
                             ? annotatedEnemyHpLost
-                            : Math.Max(0, first.Parent!.Snapshot.EnemyHp - last.Snapshot.EnemyHp);
+                            : last.CumulativeEnemyHpLost - first.Parent!.CumulativeEnemyHpLost;
                     int energyLeft = annotations.EnergyLeftByTurn.TryGetValue(
                         group.Key,
                         out int annotatedEnergyLeft)
@@ -1500,7 +1500,10 @@ internal sealed partial class CombatBeamSolver
                 terminal,
                 node,
                 snapshot,
-                node.CombatProgress);
+                node.CombatProgress)
+            {
+                CumulativeEnemyHpLost = AccumulateEnemyHpLost(node, snapshot),
+            };
             node.Parent!.Snapshot.ReleaseSimulator();
         }
         return node;

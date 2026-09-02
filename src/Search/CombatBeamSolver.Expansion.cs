@@ -320,7 +320,10 @@ internal sealed partial class CombatBeamSolver
                 false,
                 seed,
                 powerSnapshot,
-                CombatProgressState.Capture(powerSnapshot));
+                CombatProgressState.Capture(powerSnapshot))
+            {
+                CumulativeEnemyHpLost = AccumulateEnemyHpLost(seed, powerSnapshot),
+            };
             followUps.AddRange(Expand(powerNode).Where(node =>
                 node.Action is { Kind: PlanActionKind.PlayCard, Turn: var turn }
                 && turn == _startTurnNumber));
@@ -700,7 +703,10 @@ internal sealed partial class CombatBeamSolver
                             ? node.CombatProgress.Advance(finalSnapshot)
                             : node.CombatProgress,
                         RepeatableNoProgressCardId: repeatableCardId,
-                        RepeatableNoProgressCount: repeatableCount);
+                        RepeatableNoProgressCount: repeatableCount)
+                    {
+                        CumulativeEnemyHpLost = AccumulateEnemyHpLost(node, finalSnapshot),
+                    };
                     if (ShouldPruneRepeatableNoProgress(child)
                         || ShouldPruneCrossTurnNoProgress(child))
                     {
@@ -860,7 +866,10 @@ internal sealed partial class CombatBeamSolver
                             terminal,
                             node,
                             finalSnapshot,
-                            node.CombatProgress);
+                            node.CombatProgress)
+                        {
+                            CumulativeEnemyHpLost = AccumulateEnemyHpLost(node, finalSnapshot),
+                        };
                         bool accepted = TryAcceptTransposition(child);
                         if (_detailedDiagnostics && node.ActionCount == 0)
                         {
@@ -997,7 +1006,10 @@ internal sealed partial class CombatBeamSolver
                 combatEnded || endSnapshot.BoundaryReason != SearchBoundaryReason.None,
                 node,
                 endSnapshot,
-                node.CombatProgress.Advance(endSnapshot));
+                node.CombatProgress.Advance(endSnapshot))
+            {
+                CumulativeEnemyHpLost = AccumulateEnemyHpLost(node, endSnapshot),
+            };
             if (ShouldPruneCrossTurnNoProgress(endNode))
             {
                 _run.RepeatableNoProgressBranchesPruned++;

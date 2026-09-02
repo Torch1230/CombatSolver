@@ -24,6 +24,12 @@ namespace CombatSolver;
 
 internal sealed partial class CombatBeamSolver
 {
+    private static int AccumulateEnemyHpLost(
+        SearchNode parent,
+        SimulationSnapshot childSnapshot)
+        => checked(parent.CumulativeEnemyHpLost
+            + Math.Max(0, parent.Snapshot.RawEnemyHp - childSnapshot.RawEnemyHp));
+
     private List<SearchNode> AnnotateTurnOutcomes(List<SearchNode> ended)
     {
         if (ended.Count == 0)
@@ -99,10 +105,8 @@ internal sealed partial class CombatBeamSolver
                     Outcome = new TurnOutcome(
                         outcome.Turn,
                         outcome.HpLost,
-                        Math.Max(
-                            0,
-                            outcome.TurnStart.Snapshot.EnemyHp
-                            - outcome.Node.Snapshot.EnemyHp),
+                        outcome.Node.CumulativeEnemyHpLost
+                            - outcome.TurnStart.CumulativeEnemyHpLost,
                         soldThisTurn,
                         maxBlock,
                         outcome.ActualBlock,

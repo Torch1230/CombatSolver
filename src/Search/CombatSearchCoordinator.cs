@@ -27,10 +27,12 @@ internal static class CombatSearchCoordinator
 
         bool TryPromoteDisplayedResult(SolverInterimResult candidate)
         {
-            if (currentDisplayedResult != null
-                && !SolverInterimResultOrdering.IsBetter(candidate, currentDisplayedResult))
+            if (currentDisplayedResult != null)
             {
-                return false;
+                if (candidate == currentDisplayedResult)
+                    return true;
+                if (!SolverInterimResultOrdering.IsBetter(candidate, currentDisplayedResult))
+                    return false;
             }
             currentDisplayedResult = candidate;
             return true;
@@ -85,22 +87,35 @@ internal static class CombatSearchCoordinator
             : progress =>
             {
                 lastProgress = progress;
+                // Supplemental searches publish their own local previews. Once a global best exists,
+                // keep those previews and their adoption seed together unless that local result wins globally.
+                bool acceptsRouteUpdate = currentDisplayedResult == null;
                 if (progress.CurrentBestResult is { } candidate)
-                    TryPromoteDisplayedResult(candidate);
-                if (progress.CurrentTurnPreview is { } current)
                 {
-                    currentTurnPreview = current;
-                    currentTurnPreviewVersion = Math.Max(
-                        currentTurnPreviewVersion,
-                        current.CandidateVersion);
+                    acceptsRouteUpdate = TryPromoteDisplayedResult(candidate);
                 }
-                if (progress.SpeculativeRoutePreview is { } speculative)
+                else if (currentDisplayedResult != null)
                 {
-                    speculativeRoutePreview = speculative;
-                    currentRouteAdoptionSeed = progress.RouteAdoptionSeed;
-                    speculativeRouteVersion = Math.Max(
-                        speculativeRouteVersion,
-                        speculative.CandidateVersion);
+                    acceptsRouteUpdate = false;
+                }
+
+                if (acceptsRouteUpdate)
+                {
+                    if (progress.CurrentTurnPreview is { } current)
+                    {
+                        currentTurnPreview = current;
+                        currentTurnPreviewVersion = Math.Max(
+                            currentTurnPreviewVersion,
+                            current.CandidateVersion);
+                    }
+                    if (progress.SpeculativeRoutePreview is { } speculative)
+                    {
+                        speculativeRoutePreview = speculative;
+                        currentRouteAdoptionSeed = progress.RouteAdoptionSeed;
+                        speculativeRouteVersion = Math.Max(
+                            speculativeRouteVersion,
+                            speculative.CandidateVersion);
+                    }
                 }
                 progressCallback(progress with
                 {

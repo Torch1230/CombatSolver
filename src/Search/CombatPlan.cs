@@ -245,6 +245,7 @@ internal sealed record SearchNode(
 
     public int RetentionRank { get; set; } = int.MaxValue;
     public int LongTermResourceRetentionRank { get; set; } = int.MaxValue;
+    public int CumulativeEnemyHpLost { get; init; }
     public IReadOnlyList<PlanAction> Actions => _actions ??= MaterializeActions();
 
     public IReadOnlyList<PlanCardChoice> GetTurnSetupChoices()

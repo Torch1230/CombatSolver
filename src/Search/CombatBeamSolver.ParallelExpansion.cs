@@ -1517,7 +1517,10 @@ internal sealed partial class CombatBeamSolver
                     ? node.CombatProgress.Advance(finalSnapshot)
                     : node.CombatProgress,
                 RepeatableNoProgressCardId: repeatableCardId,
-                RepeatableNoProgressCount: repeatableCount);
+                RepeatableNoProgressCount: repeatableCount)
+            {
+                CumulativeEnemyHpLost = AccumulateEnemyHpLost(node, finalSnapshot),
+            };
             if (ShouldPruneRepeatableNoProgress(child)
                 || ShouldPruneCrossTurnNoProgress(child))
             {
@@ -1913,7 +1916,10 @@ internal sealed partial class CombatBeamSolver
                             terminal,
                             node,
                             finalSnapshot,
-                            node.CombatProgress);
+                            node.CombatProgress)
+                        {
+                            CumulativeEnemyHpLost = AccumulateEnemyHpLost(node, finalSnapshot),
+                        };
                         batch.AddPotion(child);
                     }
                 }
@@ -1947,7 +1953,10 @@ internal sealed partial class CombatBeamSolver
                 endTerminal,
                 node,
                 endSnapshot,
-                node.CombatProgress.Advance(endSnapshot));
+                node.CombatProgress.Advance(endSnapshot))
+            {
+                CumulativeEnemyHpLost = AccumulateEnemyHpLost(node, endSnapshot),
+            };
             if (ShouldPruneCrossTurnNoProgress(endNode))
             {
                 _run.RepeatableNoProgressBranchesPruned++;
