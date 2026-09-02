@@ -179,14 +179,22 @@ internal static class SolverController
         SearchMemoryPressureUsage pressure = signal?.CaptureUsage()
             ?? SearchMemoryPressureUsage.Disabled;
         SolverSettingsSnapshot settings = SolverSettings.Capture();
+        GCMemoryInfo memory = GC.GetGCMemoryInfo();
+        PhysicalMemoryUsage physicalMemory = PhysicalMemoryUsage.Capture(memory);
+        long systemMemoryLimit = pressure.SystemMemoryLimitBytes == long.MaxValue
+            ? SearchGcPolicy.ResolveSystemMemoryLimit(memory)
+            : pressure.SystemMemoryLimitBytes;
+        if (physicalMemory.TotalBytes > 0)
+            systemMemoryLimit = Math.Min(systemMemoryLimit, physicalMemory.TotalBytes);
         return new SearchMemoryUsageSnapshot(
             System.Environment.WorkingSet,
+            physicalMemory.UsedBytes,
             settings.NoGcRegionBudgetBytes,
             IsSearching,
             pressure.AllocatedBytes,
             pressure.AllocationLimitBytes,
             pressure.ProjectedMemoryLoadBytes,
-            pressure.SystemMemoryLimitBytes,
+            systemMemoryLimit,
             pressure.Reclaiming,
             SearchGcPolicy.IsBackgroundReclaiming);
     }
@@ -206,6 +214,12 @@ internal static class SolverController
             $"search_allocated={snapshot.SearchAllocatedBytes} search_limit={snapshot.SearchAllocationLimitBytes} " +
             $"projected_memory_load={snapshot.ProjectedSystemMemoryLoadBytes} " +
             $"system_memory_limit={snapshot.SystemMemoryLimitBytes} " +
+            $"physical_memory_used={snapshot.PhysicalMemoryUsedBytes} " +
+            $"system_occupied={snapshot.SystemOccupiedBytes} " +
+            $"process_memory_limit={snapshot.ProcessMemoryLimitBytes} " +
+            $"system_segment={snapshot.SystemSegmentRatio:F3} " +
+            $"process_segment={snapshot.ProcessSegmentRatio:F3} " +
+            $"process_pressure={snapshot.ProcessMemoryPressureRatio:F3} " +
             $"allocation_pressure={snapshot.AllocationPressureRatio:F3} " +
             $"system_pressure={snapshot.SystemPressureRatio:F3} " +
             $"system_pressure_dominates={snapshot.SystemPressureDominates.ToString().ToLowerInvariant()} " +

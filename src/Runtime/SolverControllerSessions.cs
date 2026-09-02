@@ -24,6 +24,7 @@ internal sealed record ManualProjectionComparison(
 
 internal readonly record struct SearchMemoryUsageSnapshot(
     long ProcessWorkingSetBytes,
+    long PhysicalMemoryUsedBytes,
     long ConfiguredMemoryBudgetBytes,
     bool SearchActive,
     long SearchAllocatedBytes,
@@ -43,10 +44,35 @@ internal readonly record struct SearchMemoryUsageSnapshot(
             0d,
             1d)
         : 0d;
-    public double EffectivePressureRatio => Math.Max(AllocationPressureRatio, SystemPressureRatio);
     public bool SystemPressureDominates => SystemPressureRatio > AllocationPressureRatio;
-    public double ConfiguredBudgetRatio
-        => Math.Clamp(ProcessWorkingSetBytes / (double)Math.Max(1, ConfiguredMemoryBudgetBytes), 0d, 1d);
+    public long EffectiveSystemMemoryLimitBytes
+        => SystemMemoryLimitBytes == long.MaxValue
+            ? Math.Max(1, PhysicalMemoryUsedBytes)
+            : Math.Max(1, SystemMemoryLimitBytes);
+    public long SystemOccupiedBytes
+        => Math.Clamp(
+            PhysicalMemoryUsedBytes - ProcessWorkingSetBytes,
+            0,
+            EffectiveSystemMemoryLimitBytes);
+    public long ProcessMemoryLimitBytes
+        => Math.Max(1, EffectiveSystemMemoryLimitBytes - SystemOccupiedBytes);
+    public double ProcessMemoryPressureRatio
+        => Math.Clamp(
+            ProcessWorkingSetBytes / (double)ProcessMemoryLimitBytes,
+            0d,
+            1d);
+    public double SystemSegmentRatio
+        => Math.Clamp(
+            SystemOccupiedBytes / (double)EffectiveSystemMemoryLimitBytes,
+            0d,
+            1d);
+    public double ProcessSegmentRatio
+        => Math.Min(
+            1d - SystemSegmentRatio,
+            Math.Clamp(
+                ProcessWorkingSetBytes / (double)EffectiveSystemMemoryLimitBytes,
+                0d,
+                1d));
 }
 
 internal sealed class SearchProgressDisplayState(long startedAtTick)

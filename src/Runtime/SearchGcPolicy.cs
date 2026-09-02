@@ -1603,7 +1603,7 @@ internal static class SearchGcPolicy
             effectiveBudget < configuredBudgetBytes);
     }
 
-    private static long ResolveSystemMemoryLimit(GCMemoryInfo memory)
+    internal static long ResolveSystemMemoryLimit(GCMemoryInfo memory)
     {
         long highMemoryThreshold = memory.HighMemoryLoadThresholdBytes;
         return highMemoryThreshold <= 0
