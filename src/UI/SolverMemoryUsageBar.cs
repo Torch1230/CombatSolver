@@ -14,12 +14,24 @@ internal sealed partial class SolverMemoryUsageBar : PanelContainer
         Danger,
     }
 
+    private enum MemoryDisplayState
+    {
+        Search,
+        SearchNearLimit,
+        ForegroundReclaim,
+        BackgroundCleanup,
+        Idle,
+        AutomaticManagement,
+    }
+
     private const double RefreshIntervalSeconds = 0.25d;
     private const long BytesPerGigabyte = 1_000_000_000L;
 
     private readonly Label _label;
     private readonly ProgressBar _progress;
     private double _elapsedSinceRefresh = RefreshIntervalSeconds;
+    private MemoryDisplayState? _lastLoggedState;
+    private int _lastLoggedSearchLoadDecile = -1;
 
     public SolverMemoryUsageBar()
     {
@@ -136,7 +148,8 @@ internal sealed partial class SolverMemoryUsageBar : PanelContainer
 
     private void RefreshDisplay()
     {
-        MemoryBarDisplay display = BuildDisplay(SolverController.CaptureSearchMemoryUsage());
+        SearchMemoryUsageSnapshot snapshot = SolverController.CaptureSearchMemoryUsage();
+        MemoryBarDisplay display = BuildDisplay(snapshot);
         Color color = ToneColor(display.Tone);
         _label.Text = display.Text;
         _label.AddThemeColorOverride("font_color", color);
@@ -148,6 +161,28 @@ internal sealed partial class SolverMemoryUsageBar : PanelContainer
             0,
             0,
             borderWidth: 0));
+        LogDisplayTransition(snapshot, display);
+    }
+
+    private void LogDisplayTransition(
+        SearchMemoryUsageSnapshot snapshot,
+        MemoryBarDisplay display)
+    {
+        int searchLoadDecile = display.State is MemoryDisplayState.Search
+            or MemoryDisplayState.SearchNearLimit
+                ? Math.Min(10, (int)Math.Floor(display.Ratio * 10d))
+                : -1;
+        if (_lastLoggedState == display.State
+            && _lastLoggedSearchLoadDecile == searchLoadDecile)
+        {
+            return;
+        }
+        _lastLoggedState = display.State;
+        _lastLoggedSearchLoadDecile = searchLoadDecile;
+        SolverController.LogSearchMemoryDisplayState(
+            snapshot,
+            DisplayStateToken(display.State),
+            display.Ratio);
     }
 
     private static MemoryBarDisplay BuildDisplay(SearchMemoryUsageSnapshot snapshot)
@@ -159,7 +194,8 @@ internal sealed partial class SolverMemoryUsageBar : PanelContainer
             return new MemoryBarDisplay(
                 "目前内存占用 " + memory + "  ·  正在整理…",
                 1d,
-                MemoryPressureTone.Warning);
+                MemoryPressureTone.Warning,
+                MemoryDisplayState.ForegroundReclaim);
         }
         double configuredBudgetRatio = snapshot.ConfiguredBudgetRatio;
         if (snapshot.BackgroundReclaiming)
@@ -167,21 +203,24 @@ internal sealed partial class SolverMemoryUsageBar : PanelContainer
             return new MemoryBarDisplay(
                 "目前内存占用 " + memory + "  ·  待机 · 后台清理中",
                 configuredBudgetRatio,
-                MemoryPressureTone.Warning);
+                MemoryPressureTone.Warning,
+                MemoryDisplayState.BackgroundCleanup);
         }
         if (!snapshot.SearchActive)
         {
             return new MemoryBarDisplay(
                 "目前内存占用 " + memory + "  ·  占用 " + FormatPercentage(configuredBudgetRatio),
                 configuredBudgetRatio,
-                ToneForRatio(configuredBudgetRatio));
+                ToneForRatio(configuredBudgetRatio),
+                MemoryDisplayState.Idle);
         }
         if (!snapshot.HasGcWall)
         {
             return new MemoryBarDisplay(
                 "目前内存占用 " + memory + "  ·  自动管理",
                 configuredBudgetRatio,
-                ToneForRatio(configuredBudgetRatio));
+                ToneForRatio(configuredBudgetRatio),
+                MemoryDisplayState.AutomaticManagement);
         }
 
         double ratio = snapshot.GcWallRatio;
@@ -189,7 +228,8 @@ internal sealed partial class SolverMemoryUsageBar : PanelContainer
         return new MemoryBarDisplay(
             "目前内存占用 " + memory + "  ·  " + pressure + FormatPercentage(ratio),
             ratio,
-            ToneForRatio(ratio));
+            ToneForRatio(ratio),
+            ratio >= 0.9d ? MemoryDisplayState.SearchNearLimit : MemoryDisplayState.Search);
     }
 
     private static string FormatPercentage(double ratio)
@@ -212,8 +252,20 @@ internal sealed partial class SolverMemoryUsageBar : PanelContainer
             _ => SolverUiTokens.Palette.TextMuted,
         };
 
+    private static string DisplayStateToken(MemoryDisplayState state) => state switch
+    {
+        MemoryDisplayState.Search => "search_load",
+        MemoryDisplayState.SearchNearLimit => "search_near_cleanup",
+        MemoryDisplayState.ForegroundReclaim => "foreground_cleanup",
+        MemoryDisplayState.BackgroundCleanup => "idle_background_cleanup",
+        MemoryDisplayState.Idle => "idle",
+        MemoryDisplayState.AutomaticManagement => "automatic_management",
+        _ => throw new ArgumentOutOfRangeException(nameof(state), state, null),
+    };
+
     private readonly record struct MemoryBarDisplay(
         string Text,
         double Ratio,
-        MemoryPressureTone Tone);
+        MemoryPressureTone Tone,
+        MemoryDisplayState State);
 }

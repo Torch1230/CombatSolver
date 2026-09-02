@@ -56,6 +56,8 @@ internal static class SearchGcPolicy
     private static int _noGcRegionExitWithoutCollectionCountForTesting;
     private static long _lastBackgroundReclaimManagedLiveBeforeForTesting;
     private static long _lastBackgroundReclaimManagedLiveAfterForTesting;
+    private static long _nextReclaimSequence;
+    private static long _activeReclaimSequence;
     internal static int RolloverCountForTesting
     {
         get
@@ -897,9 +899,15 @@ internal static class SearchGcPolicy
         {
             _reclaimRequested = true;
             _reclaimReason = reason;
+            _activeReclaimSequence = checked(++_nextReclaimSequence);
             _reclaimCompletion = new TaskCompletionSource(
                 TaskCreationOptions.RunContinuationsAsynchronously);
             _reclaimTask = _reclaimCompletion.Task;
+            Entry.Logger.Info(
+                $"[CombatSolver/Test] MEMORY_RECLAIM stage=requested " +
+                $"id={_activeReclaimSequence} reason={reason} active_searches={_activeSearches} " +
+                $"gen2_required={_reclaimRequired.ToString().ToLowerInvariant()} " +
+                DescribeProcessMemory());
         }
         if (!_reclaimActive
             && _activeSearches == 0
@@ -934,11 +942,19 @@ internal static class SearchGcPolicy
             _reclaimRequired = true;
         }
         string reason = _reclaimReason;
+        long reclaimSequence = _activeReclaimSequence;
         bool endNoGcRegion = _noGcRegionActive
             && GCSettings.LatencyMode == GCLatencyMode.NoGCRegion;
         bool restoreLatencyMode = _latencyModeOwned;
         GCLatencyMode previousMode = _previousMode;
         bool collectGeneration2 = _reclaimRequired;
+        long regionAllocatedBytes = _noGcRegionAllocatedBytesAtStart == 0
+            ? 0
+            : Math.Max(
+                0,
+                GC.GetTotalAllocatedBytes(precise: false) - _noGcRegionAllocatedBytesAtStart);
+        long regionBudgetBytes = _noGcRegionBudgetBytes;
+        long largestSearchAllocatedBytes = _largestSearchAllocatedBytes;
         _reclaimRequested = false;
         _reclaimActive = true;
         _regionExitRequired = false;
@@ -956,6 +972,13 @@ internal static class SearchGcPolicy
             _backgroundReclaimStartedCountForTesting++;
         else
             _noGcRegionExitWithoutCollectionCountForTesting++;
+        Entry.Logger.Info(
+            $"[CombatSolver/Test] MEMORY_RECLAIM stage=started " +
+            $"id={reclaimSequence} reason={reason} gen2_required={collectGeneration2.ToString().ToLowerInvariant()} " +
+            $"end_no_gc={endNoGcRegion.ToString().ToLowerInvariant()} " +
+            $"region_allocated={regionAllocatedBytes} region_budget={regionBudgetBytes} " +
+            $"largest_search_allocated={largestSearchAllocatedBytes} " +
+            DescribeProcessMemory());
 
         _ = Task.Run(async () =>
         {
@@ -973,6 +996,10 @@ internal static class SearchGcPolicy
                     GC.EndNoGCRegion();
                 if (restoreLatencyMode)
                     GCSettings.LatencyMode = previousMode;
+                Entry.Logger.Info(
+                    $"[CombatSolver/Test] MEMORY_RECLAIM stage=region_exited " +
+                    $"id={reclaimSequence} reason={reason} " +
+                    DescribeProcessMemory());
 
                 BackgroundGen2Completion completedCollection = default;
                 int generation2CollectionsBefore = GC.CollectionCount(GC.MaxGeneration);
@@ -988,6 +1015,10 @@ internal static class SearchGcPolicy
                         collectionCoverageEpoch = _referenceReleaseEpoch;
                         _activeGeneration2CoverageEpoch = collectionCoverageEpoch;
                     }
+                    Entry.Logger.Info(
+                        $"[CombatSolver/Test] MEMORY_RECLAIM stage=gen2_started " +
+                        $"id={reclaimSequence} reason={reason} coverage_epoch={collectionCoverageEpoch} " +
+                        DescribeProcessMemory());
                     await PauseGeneration2CoverageForTestingAsync(
                         afterCoverageCapture: true);
                     completedCollection = await CollectGeneration2InBackgroundAsync();
@@ -1018,6 +1049,7 @@ internal static class SearchGcPolicy
                 {
                     Entry.Logger.Info(
                         $"[CombatSolver/Test] HEAP_RECLAIM reason={reason} " +
+                        $"reclaim_id={reclaimSequence} " +
                         $"mode=background_non_compacting no_gc_region_ended={endNoGcRegion} " +
                         $"forced_gen2=true gen2_delta={generation2Collections} " +
                         $"elapsed_ms={stopwatch.Elapsed.TotalMilliseconds:F1} " +
@@ -1034,6 +1066,7 @@ internal static class SearchGcPolicy
                 {
                     Entry.Logger.Info(
                         $"[CombatSolver/Test] HEAP_RECLAIM_SKIPPED reason={reason} " +
+                        $"reclaim_id={reclaimSequence} " +
                         $"no_gc_region_ended={endNoGcRegion} forced_gen2=false " +
                         $"gen2_delta={generation2Collections} " +
                         $"elapsed_ms={stopwatch.Elapsed.TotalMilliseconds:F1} " +
@@ -1059,6 +1092,7 @@ internal static class SearchGcPolicy
                     _generation2CoveragePauseStageForTesting = 0;
                     _generation2CoverageReachedForTesting = null;
                     _generation2CoverageResumeForTesting = null;
+                    _activeReclaimSequence = 0;
                     if (failure != null
                         && collectGeneration2
                         && _requiredReferenceReleaseCollectionEpoch != 0)
@@ -1070,6 +1104,10 @@ internal static class SearchGcPolicy
                     if (failure == null && (_regionExitRequired || _reclaimRequired))
                         RequestReclaimLocked(_reclaimReason);
                 }
+                Entry.Logger.Info(
+                    $"[CombatSolver/Test] MEMORY_RECLAIM stage=finished " +
+                    $"id={reclaimSequence} reason={reason} success={(failure == null).ToString().ToLowerInvariant()} " +
+                    DescribeProcessMemory());
                 if (failure == null)
                 {
                     completion.SetResult();
@@ -1424,6 +1462,20 @@ internal static class SearchGcPolicy
             GCCollectionMode.Forced,
             blocking: true,
             compacting: false);
+    }
+
+    private static string DescribeProcessMemory()
+    {
+        GCMemoryInfo memory = GC.GetGCMemoryInfo();
+        using Process process = Process.GetCurrentProcess();
+        process.Refresh();
+        return $"working_set={process.WorkingSet64} private_bytes={process.PrivateMemorySize64} " +
+               $"managed_live={GC.GetTotalMemory(forceFullCollection: false)} " +
+               $"managed_heap={memory.HeapSizeBytes} fragmented={memory.FragmentedBytes} " +
+               $"memory_load={memory.MemoryLoadBytes} high_memory_threshold={memory.HighMemoryLoadThresholdBytes} " +
+               $"total_available={memory.TotalAvailableMemoryBytes} " +
+               $"gen0={GC.CollectionCount(0)} gen1={GC.CollectionCount(1)} gen2={GC.CollectionCount(2)} " +
+               $"latency={GCSettings.LatencyMode} tick_ms={Environment.TickCount64}";
     }
 
     private static NoGcRegionStartOutcome TryStartNoGcRegion(

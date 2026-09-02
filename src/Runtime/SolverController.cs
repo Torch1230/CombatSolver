@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime;
 using Godot;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
@@ -186,6 +187,29 @@ internal static class SolverController
             pressure.AllocationLimitBytes,
             pressure.Reclaiming,
             SearchGcPolicy.IsBackgroundReclaiming);
+    }
+    internal static void LogSearchMemoryDisplayState(
+        SearchMemoryUsageSnapshot snapshot,
+        string displayState,
+        double displayRatio)
+    {
+        GCMemoryInfo memory = GC.GetGCMemoryInfo();
+        using Process process = Process.GetCurrentProcess();
+        process.Refresh();
+        Entry.Logger.Info(
+            $"[CombatSolver/Test] MEMORY_MONITOR_DISPLAY state={displayState} " +
+            $"display_ratio={displayRatio:F3} search_active={snapshot.SearchActive.ToString().ToLowerInvariant()} " +
+            $"foreground_reclaim={snapshot.Reclaiming.ToString().ToLowerInvariant()} " +
+            $"background_reclaim={snapshot.BackgroundReclaiming.ToString().ToLowerInvariant()} " +
+            $"search_allocated={snapshot.SearchAllocatedBytes} search_limit={snapshot.SearchAllocationLimitBytes} " +
+            $"configured_budget={snapshot.ConfiguredMemoryBudgetBytes} " +
+            $"working_set={process.WorkingSet64} private_bytes={process.PrivateMemorySize64} " +
+            $"managed_live={GC.GetTotalMemory(forceFullCollection: false)} " +
+            $"managed_heap={memory.HeapSizeBytes} fragmented={memory.FragmentedBytes} " +
+            $"memory_load={memory.MemoryLoadBytes} high_memory_threshold={memory.HighMemoryLoadThresholdBytes} " +
+            $"total_available={memory.TotalAvailableMemoryBytes} " +
+            $"gen0={GC.CollectionCount(0)} gen1={GC.CollectionCount(1)} gen2={GC.CollectionCount(2)} " +
+            $"latency={GCSettings.LatencyMode} tick_ms={System.Environment.TickCount64}");
     }
     internal static long LastDeployedActionStartedAtMillisecondsForTesting { get; private set; }
     internal static Task LastCombatReferenceReleaseForTesting { get; private set; } = Task.CompletedTask;
