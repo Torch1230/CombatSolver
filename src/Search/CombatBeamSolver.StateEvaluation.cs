@@ -256,6 +256,9 @@ internal sealed partial class CombatBeamSolver
             + delayedDamageValue
             + reactiveDamageValue
             + (hasBlockDamagePayoff ? Math.Max(0, player.Block) : 0);
+        int blockDamagePayoffValue = hasBlockDamagePayoff
+            ? Math.Max(0, player.Block)
+            : 0;
         int enemyStrengthSuppression = 0;
         int enemyWeakTurns = 0;
         int vulnerable = 0;
@@ -364,6 +367,7 @@ internal sealed partial class CombatBeamSolver
             liveCards.Count,
             outstandingStolenResource,
             offensiveProgressValue,
+            blockDamagePayoffValue,
             playerState.Energy,
             playerState.Stars,
             simulator.History.Entries.Count,

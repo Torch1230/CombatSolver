@@ -321,6 +321,7 @@ internal sealed class SimulationSnapshot(
     int liveDeckSize,
     int outstandingStolenResource,
     int offensiveProgressValue,
+    int blockDamagePayoffValue,
     int energy,
     int stars,
     int historyEntryCount,
@@ -396,6 +397,7 @@ internal sealed class SimulationSnapshot(
     public int LiveDeckSize { get; } = liveDeckSize;
     public int OutstandingStolenResource { get; } = outstandingStolenResource;
     public int OffensiveProgressValue { get; } = offensiveProgressValue;
+    public int BlockDamagePayoffValue { get; } = blockDamagePayoffValue;
     public int Energy { get; } = energy;
     public int Stars { get; } = stars;
     public int HistoryEntryCount { get; } = historyEntryCount;

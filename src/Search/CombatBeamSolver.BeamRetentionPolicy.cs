@@ -27,19 +27,19 @@ internal sealed partial class CombatBeamSolver
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static int CompareBeamRankOrder(
         double leftBeamRankScore,
-        int leftOffensiveProgressValue,
+        int leftBlockDamagePayoffValue,
         int leftActionCount,
         double rightBeamRankScore,
-        int rightOffensiveProgressValue,
+        int rightBlockDamagePayoffValue,
         int rightActionCount)
     {
         int byScore = rightBeamRankScore.CompareTo(leftBeamRankScore);
         if (byScore != 0)
             return byScore;
-        int byOffensiveProgress = rightOffensiveProgressValue.CompareTo(leftOffensiveProgressValue);
-        return byOffensiveProgress != 0
-            ? byOffensiveProgress
-            : leftActionCount.CompareTo(rightActionCount);
+        int byActionCount = leftActionCount.CompareTo(rightActionCount);
+        return byActionCount != 0
+            ? byActionCount
+            : rightBlockDamagePayoffValue.CompareTo(leftBlockDamagePayoffValue);
     }
 
     private readonly record struct RoutingChoiceSignature(
@@ -143,10 +143,10 @@ internal sealed partial class CombatBeamSolver
             List<SearchNode> ranked = [.. bestByState.Values];
             ranked.Sort((left, right) => CompareBeamRankOrder(
                 BeamRankScore(left),
-                left.Snapshot.OffensiveProgressValue,
+                left.Snapshot.BlockDamagePayoffValue,
                 left.ActionCount,
                 BeamRankScore(right),
-                right.Snapshot.OffensiveProgressValue,
+                right.Snapshot.BlockDamagePayoffValue,
                 right.ActionCount));
             List<SearchNode> routingChoices = [];
             if (preserveDefensiveRoute)
@@ -930,10 +930,10 @@ internal sealed partial class CombatBeamSolver
             }
             ranked.Sort((left, right) => CompareBeamRankOrder(
                 BeamRankScore(left),
-                left.Snapshot.OffensiveProgressValue,
+                left.Snapshot.BlockDamagePayoffValue,
                 left.ActionCount,
                 BeamRankScore(right),
-                right.Snapshot.OffensiveProgressValue,
+                right.Snapshot.BlockDamagePayoffValue,
                 right.ActionCount));
             AssignRetentionRanks(ranked, required);
             return ranked;

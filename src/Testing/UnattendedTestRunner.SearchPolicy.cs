@@ -10,7 +10,7 @@ internal sealed partial class UnattendedTestRunner
 {
     private static async Task AssertSearchPolicySnapshotAsync(CombatState combat)
     {
-        AssertBeamRankOffensiveProgressTieBreak();
+        AssertBeamRankBlockDamagePayoffTieBreak();
 
         if (Environment.ProcessorCount < 2)
         {
@@ -114,53 +114,53 @@ internal sealed partial class UnattendedTestRunner
         }
     }
 
-    private static void AssertBeamRankOffensiveProgressTieBreak()
+    private static void AssertBeamRankBlockDamagePayoffTieBreak()
     {
         const double tiedScore = 1234.5d;
         double nextScore = Math.BitIncrement(tiedScore);
 
         static void AssertEarlier(
-            (double Score, int OffensiveProgress, int ActionCount) expected,
-            (double Score, int OffensiveProgress, int ActionCount) other,
+            (double Score, int BlockDamagePayoff, int ActionCount) expected,
+            (double Score, int BlockDamagePayoff, int ActionCount) other,
             string failure)
         {
             int forward = CombatBeamSolver.CompareBeamRankOrder(
                 expected.Score,
-                expected.OffensiveProgress,
+                expected.BlockDamagePayoff,
                 expected.ActionCount,
                 other.Score,
-                other.OffensiveProgress,
+                other.BlockDamagePayoff,
                 other.ActionCount);
             int reverse = CombatBeamSolver.CompareBeamRankOrder(
                 other.Score,
-                other.OffensiveProgress,
+                other.BlockDamagePayoff,
                 other.ActionCount,
                 expected.Score,
-                expected.OffensiveProgress,
+                expected.BlockDamagePayoff,
                 expected.ActionCount);
             if (forward >= 0 || reverse <= 0)
                 throw new InvalidOperationException(failure);
         }
 
         AssertEarlier(
-            (nextScore, OffensiveProgress: 0, ActionCount: 99),
-            (tiedScore, OffensiveProgress: int.MaxValue, ActionCount: 0),
-            "Beam 排序在 BeamRankScore 不相等时错误地让进攻进度覆盖了原评分顺序。");
+            (nextScore, BlockDamagePayoff: 0, ActionCount: 99),
+            (tiedScore, BlockDamagePayoff: int.MaxValue, ActionCount: 0),
+            "Beam 排序在 BeamRankScore 不相等时错误地让格挡伤害收益覆盖了原评分顺序。");
         AssertEarlier(
-            (tiedScore, OffensiveProgress: 55, ActionCount: 99),
-            (tiedScore, OffensiveProgress: 50, ActionCount: 0),
-            "Beam 完全同分时没有优先保留更高进攻进度路线。");
+            (tiedScore, BlockDamagePayoff: 0, ActionCount: 3),
+            (tiedScore, BlockDamagePayoff: int.MaxValue, ActionCount: 4),
+            "Beam 同分时没有先保持较短路线优先。");
         AssertEarlier(
-            (tiedScore, OffensiveProgress: 55, ActionCount: 3),
-            (tiedScore, OffensiveProgress: 55, ActionCount: 4),
-            "Beam 同分同进攻进度时没有保持较短路线优先。");
+            (tiedScore, BlockDamagePayoff: 55, ActionCount: 3),
+            (tiedScore, BlockDamagePayoff: 50, ActionCount: 3),
+            "Beam 同分且动作数相同时没有优先保留可转化为伤害的更高格挡路线。");
 
         int exactTie = CombatBeamSolver.CompareBeamRankOrder(
             tiedScore,
-            leftOffensiveProgressValue: 55,
+            leftBlockDamagePayoffValue: 55,
             leftActionCount: 3,
             tiedScore,
-            rightOffensiveProgressValue: 55,
+            rightBlockDamagePayoffValue: 55,
             rightActionCount: 3);
         if (exactTie != 0)
             throw new InvalidOperationException("Beam 完全相同的排序键没有保持相等。");

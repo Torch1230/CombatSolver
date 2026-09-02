@@ -112,6 +112,9 @@ internal sealed partial class CombatBeamSolver
                     : 0)
                 .ThenBy(item => item.Candidate.StrategicHpDeficit)
                 .ThenBy(item => item.Candidate.HealthResourceCost)
+                .ThenBy(item => item.Candidate.Features.AllEnemiesDead
+                    ? item.Candidate.Node.Turn
+                    : int.MaxValue)
                 .ThenByDescending(item => item.Candidate.Features.LongTermResourceValue)
                 .ThenBy(item => item.Candidate.Features.AngerCopiesGenerated)
                 .ThenBy(item => CombatBeamSolver.PolicyBoundaryRank(item.Candidate.Features.BoundaryReason))
@@ -197,6 +200,9 @@ internal sealed partial class CombatBeamSolver
                     : 0)
                 .ThenBy(candidate => candidate.PolicyHpDeficit)
                 .ThenBy(candidate => candidate.HealthResourceCost)
+                .ThenBy(candidate => candidate.Features.AllEnemiesDead
+                    ? candidate.Node.Turn
+                    : int.MaxValue)
                 .ThenByDescending(candidate => candidate.Features.LongTermResourceValue)
                 .ThenBy(candidate => candidate.Features.AngerCopiesGenerated)
                 .ThenBy(candidate => CombatBeamSolver.PolicyBoundaryRank(candidate.Features.BoundaryReason))
