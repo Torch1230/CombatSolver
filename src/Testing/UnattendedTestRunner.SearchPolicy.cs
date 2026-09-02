@@ -505,6 +505,8 @@ internal sealed partial class UnattendedTestRunner
         disabledSignal.Configure(
             GC.GetTotalAllocatedBytes(precise: false),
             allocationLimitBytes: 1,
+            memoryLoadBytesAtStart: 0,
+            systemMemoryLimitBytes: long.MaxValue,
             _ => disabledCheckpointInvoked = true);
         Task<IDisposable> disabledScopeTask = Task.Run(() =>
             SearchGcPolicy.EnterLowLatencySearch(

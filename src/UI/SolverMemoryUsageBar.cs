@@ -108,6 +108,8 @@ internal sealed partial class SolverMemoryUsageBar : PanelContainer
             SearchActive: true,
             SearchAllocatedBytes: 9_000_000_000L,
             SearchAllocationLimitBytes: 10_000_000_000L,
+            ProjectedSystemMemoryLoadBytes: 8_000_000_000L,
+            SystemMemoryLimitBytes: 10_000_000_000L,
             Reclaiming: false,
             BackgroundReclaiming: false));
         MemoryBarDisplay reclaiming = BuildDisplay(new SearchMemoryUsageSnapshot(
@@ -116,6 +118,8 @@ internal sealed partial class SolverMemoryUsageBar : PanelContainer
             SearchActive: true,
             SearchAllocatedBytes: 10_000_000_000L,
             SearchAllocationLimitBytes: 10_000_000_000L,
+            ProjectedSystemMemoryLoadBytes: 10_000_000_000L,
+            SystemMemoryLimitBytes: 10_000_000_000L,
             Reclaiming: true,
             BackgroundReclaiming: false));
         MemoryBarDisplay idle = BuildDisplay(new SearchMemoryUsageSnapshot(
@@ -124,6 +128,8 @@ internal sealed partial class SolverMemoryUsageBar : PanelContainer
             SearchActive: false,
             SearchAllocatedBytes: 0L,
             SearchAllocationLimitBytes: long.MaxValue,
+            ProjectedSystemMemoryLoadBytes: 0L,
+            SystemMemoryLimitBytes: long.MaxValue,
             Reclaiming: false,
             BackgroundReclaiming: false));
         MemoryBarDisplay background = BuildDisplay(new SearchMemoryUsageSnapshot(
@@ -132,8 +138,20 @@ internal sealed partial class SolverMemoryUsageBar : PanelContainer
             SearchActive: false,
             SearchAllocatedBytes: 0L,
             SearchAllocationLimitBytes: long.MaxValue,
+            ProjectedSystemMemoryLoadBytes: 0L,
+            SystemMemoryLimitBytes: long.MaxValue,
             Reclaiming: false,
             BackgroundReclaiming: true));
+        MemoryBarDisplay systemLimited = BuildDisplay(new SearchMemoryUsageSnapshot(
+            7_200_000_000L,
+            16_000_000_000L,
+            SearchActive: true,
+            SearchAllocatedBytes: 2_000_000_000L,
+            SearchAllocationLimitBytes: 10_000_000_000L,
+            ProjectedSystemMemoryLoadBytes: 9_600_000_000L,
+            SystemMemoryLimitBytes: 10_000_000_000L,
+            Reclaiming: false,
+            BackgroundReclaiming: false));
         return active.Text == "目前内存占用 6.4 GB  ·  即将整理 90%"
             && Math.Abs(active.Ratio - 0.9d) < 0.001d
             && active.Tone == MemoryPressureTone.Danger
@@ -143,7 +161,9 @@ internal sealed partial class SolverMemoryUsageBar : PanelContainer
             && Math.Abs(idle.Ratio - 0.125d) < 0.001d
             && background.Text == "目前内存占用 8.0 GB  ·  待机 · 后台清理中"
             && Math.Abs(background.Ratio - 0.5d) < 0.001d
-            && background.Tone == MemoryPressureTone.Warning;
+            && background.Tone == MemoryPressureTone.Warning
+            && systemLimited.Text == "目前内存占用 7.2 GB  ·  即将整理 96%"
+            && Math.Abs(systemLimited.Ratio - 0.96d) < 0.001d;
     }
 
     private void RefreshDisplay()
@@ -223,7 +243,7 @@ internal sealed partial class SolverMemoryUsageBar : PanelContainer
                 MemoryDisplayState.AutomaticManagement);
         }
 
-        double ratio = snapshot.GcWallRatio;
+        double ratio = snapshot.EffectivePressureRatio;
         string pressure = ratio >= 0.9d ? "即将整理 " : "负荷 ";
         return new MemoryBarDisplay(
             "目前内存占用 " + memory + "  ·  " + pressure + FormatPercentage(ratio),

@@ -561,9 +561,14 @@ internal static class SolverOverlay
         string routeContext = _searchBestSnapshot is { Turns.Count: > 0 } routeSnapshot
             ? $"已规划至第 {routeSnapshot.Turns[^1].Turn} 回合"
             : "等待候选路线";
-        bool reclaimingMemory = progress.Phase == "内存回收中";
+        bool reclaimingMemory = progress.Phase.EndsWith("正在整理内存", StringComparison.Ordinal);
+        bool changingPotionGradient = progress.Phase.StartsWith(
+            "切换用药路线",
+            StringComparison.Ordinal);
         SetStatus(
-            reclaimingMemory ? "内存回收中" : "后台计算中",
+            reclaimingMemory
+                ? changingPotionGradient ? "切换用药路线" : "正在整理内存"
+                : "后台计算中",
             reclaimingMemory ? Warning : Accent,
             deployWhenReady ? $"{routeContext}    已排队执行" : routeContext);
         if (_routeHeadingLabel != null)

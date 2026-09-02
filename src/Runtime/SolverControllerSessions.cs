@@ -28,13 +28,23 @@ internal readonly record struct SearchMemoryUsageSnapshot(
     bool SearchActive,
     long SearchAllocatedBytes,
     long SearchAllocationLimitBytes,
+    long ProjectedSystemMemoryLoadBytes,
+    long SystemMemoryLimitBytes,
     bool Reclaiming,
     bool BackgroundReclaiming)
 {
     public bool HasGcWall => SearchAllocationLimitBytes != long.MaxValue;
-    public double GcWallRatio => HasGcWall
+    public double AllocationPressureRatio => HasGcWall
         ? Math.Clamp(SearchAllocatedBytes / (double)Math.Max(1, SearchAllocationLimitBytes), 0d, 1d)
         : 0d;
+    public double SystemPressureRatio => SystemMemoryLimitBytes != long.MaxValue
+        ? Math.Clamp(
+            ProjectedSystemMemoryLoadBytes / (double)Math.Max(1, SystemMemoryLimitBytes),
+            0d,
+            1d)
+        : 0d;
+    public double EffectivePressureRatio => Math.Max(AllocationPressureRatio, SystemPressureRatio);
+    public bool SystemPressureDominates => SystemPressureRatio > AllocationPressureRatio;
     public double ConfiguredBudgetRatio
         => Math.Clamp(ProcessWorkingSetBytes / (double)Math.Max(1, ConfiguredMemoryBudgetBytes), 0d, 1d);
 }

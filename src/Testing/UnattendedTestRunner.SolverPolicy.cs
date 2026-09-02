@@ -71,7 +71,8 @@ internal sealed partial class UnattendedTestRunner
         {
             if (actualActive
                 || actualBudget != 0
-                || establishedBudget != configured.NoGcRegionBudgetBytes)
+                || establishedBudget <= 0
+                || establishedBudget > configured.NoGcRegionBudgetBytes)
             {
                 throw new InvalidOperationException(
                     $"No-GC 搜索没有按配置建立并在结果返回后退出：" +

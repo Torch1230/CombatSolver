@@ -75,7 +75,7 @@ Entry / turn hooks
 
 普通搜索按进程可用逻辑处理器数量选择初始展开 lane：至少 4 个时默认 DOP4，2–3 个时默认 DOP2，只有 1 个时使用 DOP1；用户显式设置始终优先。设置中的“关闭（单线程）”映射 DOP1，数值项为 `2..16`，实际值还会按进程可用逻辑处理器钳制。coordinator 自己执行 lane 0，其余低优先级后台 lane 在一次 `Solve` 内复用 solver、缓存和 `SearchWorkPacer`。worker 不写全局 transposition、dominance 或 fallback：它们只物化原始候选，coordinator 仍按父节点输入顺序提交，因此固定节点预算下 DOP 不改变搜索语义。详细诊断和增量严格回放强制 DOP1。
 
-父节点外层 wave 不按手牌数强制拆成 singleton。NoGC 开启时从 2 个父节点开始，只有已完成的 multi-parent wave 未超出预约才按 `2 → 4 → 8 → DOP` 自适应扩宽；singleton 不会替尚未观测的宽 wave 提前放大容量。安全准入把全搜索已观测的最坏父节点分配量加 `1.5×` 余量，并为 wave 中每个并发父节点完整预约；实际宽度不超过 `floor(allocationLimit / perParentReserve)`。连单个父节点都无法放入内部预约时退回纯串行，不借 inner replay 冒险。每轮提交前和提交后只在已提交边界检查内存，必要时释放可重建缓存、退出 NoGC、回收并重新建立区域。自然只剩一个且预约可容纳的并行父节点时，才借用同一组空闲 lane 并发执行该父节点的 card action/target 初始 probe，不与外层并发嵌套。
+父节点外层 wave 不按手牌数强制拆成 singleton。NoGC 开启时从 2 个父节点开始，只有已完成的 multi-parent wave 未超出预约才按 `2 → 4 → 8 → DOP` 自适应扩宽；singleton 不会替尚未观测的宽 wave 提前放大容量。Runtime 把玩家配置视为区域上限，并按 CLR 高内存阈值的 `95%` 安全线动态缩小实际 NoGC 申请；安全准入同时使用本轮分配余量和“区域建立时系统内存负载 + 本轮分配”的预测余量。全搜索已观测的最坏父节点分配量另加 `1.5×` 余量，并为 wave 中每个并发父节点完整预约。任一余量不足就在已提交边界释放可重建缓存、退出 NoGC、回收并按新系统余量建立区域；连单个父节点都无法放入预约时退回纯串行，不借 inner replay 冒险。自然只剩一个且预约可容纳的并行父节点时，才借用同一组空闲 lane 并发执行该父节点的 card action/target 初始 probe，不与外层并发嵌套。
 
 某个 action 到达 `PendingChoice` 时，worker 只移交该 probe 的唯一所有权；action wave 全部到达 barrier 后，coordinator 按原 action index 构造 direct primary、Knowledge Demon 或 TurnStart/nested 的选择层，串行穿过宽度一的层，并把首个宽度至少二的可独立 frontier 独占调度到同一组 lane。direct-primary 的有限下游配额属于各自独立分支，可以并行；在 primary 之前已经出现 PendingChoice 且带有限共享配额的层仍保持原序串行。各 lane 从 coordinator 串行准备的 parent Fork seed 完整回放 resolved action，再串行处理后续选择；NoGC 剩余预算不足或只剩一个分支时也保持原序串行。结果、异常和提交均按 action index、再按 choice branch index 合并。NoGC 冷启动微批最多两个 outcome；round-choice 后续容量按单 outcome 分配高水位的至少 `1.5×` 安全余量计算，内部不建立 GC checkpoint。
 
@@ -143,7 +143,7 @@ renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或
 
 `SolverPotionStrategyPanel` 是主界面右侧独立窄浮层的逐瓶药水策略控件所有者。它只在主线程按当前槽位读取图标、标题和可搜索性，紧凑按钮在智能、保护和强制使用间循环；`SolverController` 以槽位和药水 ID 捕获不可变 `PotionStrategySnapshot`，自动计算开启时策略变化会废弃旧 continuation 并启动新搜索。新进入槽位的药水没有旧身份覆盖，默认按智能使用处理。
 
-`SolverMemoryUsageBar` 在底栏显示游戏进程当前工作集；活动 NoGC 搜索期间，进度使用 `SearchMemoryPressureSignal` 的本次分配量和实际回收检查点上限，接近满格即表示搜索将暂停并执行回收。每次 NoGC 搜索结束都退出本轮区域并启动后台 Gen2，期间显示“待机 · 后台清理中”，完成后回到待机占用；玩家关闭 NoGC 时继续由 CLR 自动管理。配置预算比例只表示待机占用，不冒充搜索中的实际回收触发线。
+`SolverMemoryUsageBar` 在底栏显示游戏进程当前工作集；活动 NoGC 搜索期间，进度取本轮分配额度压力与系统安全线预测压力的较大值，与 Search 实际回收判断同源。每次 NoGC 搜索结束都退出本轮区域并启动后台 Gen2，期间显示“待机 · 后台清理中”，完成后回到待机占用；玩家关闭 NoGC 或系统余量不足以安全建立区域时由 CLR 自动管理。配置预算比例只表示待机占用，不冒充搜索中的实际回收触发线。
 
 `SolverSettingsPanel.BugReports` 持有问题包导出/上传的单实例 UI 生命周期、取消令牌、进度条和线程安全完成邮箱，并把文件发送和服务端确认显示为两个阶段。后台任务只向完成邮箱发布一次 `Succeeded / Canceled / Failed`；面板自己的 `_Process` 每帧先消费终态，再处理字节进度或取消等待，并在同一次终态消费中释放令牌、收起进度条、替换状态消息和恢复按钮。上传生命周期不依赖搜索使用的 `SolverDispatcher`。`CombatBugReportUploader` 不持有 Godot 控件，后台传输只通过 `IProgress<CombatBugReportUploadProgress>` 发布字节计数。进度到达文件总字节数只代表请求正文已经写出，只有服务端回执同时确认反馈编号和实收字节数才算上传成功。
 

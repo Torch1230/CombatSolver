@@ -914,6 +914,9 @@ internal sealed partial class CombatBeamSolver
                         $"[CombatSolver/Test] SEARCH_MEMORY_CHECKPOINT " +
                         $"allocated={policy.MemoryPressureSignal.AllocatedBytes} " +
                         $"limit={policy.MemoryPressureSignal.AllocationLimitBytes} " +
+                        $"projected_memory_load={policy.MemoryPressureSignal.ProjectedMemoryLoadBytes} " +
+                        $"system_memory_limit={policy.MemoryPressureSignal.SystemMemoryLimitBytes} " +
+                        $"system_pressure_dominates={policy.MemoryPressureSignal.SystemPressureDominates.ToString().ToLowerInvariant()} " +
                         $"expanded={_run.Expanded} turn_layer={searchedTurnLayers} play_depth={playDepth}");
                     PublishProgress(
                         _startTurnNumber + searchedTurnLayers,
@@ -921,7 +924,7 @@ internal sealed partial class CombatBeamSolver
                         playDepth,
                         active.Count,
                         ended.Count,
-                        "内存回收中",
+                        "内存压力较高，正在整理内存",
                         force: true);
                     // Preserve coordinator transposition order across a GC-only safe point.
                     // Rebuilding it from a mid-search subset would change which later branches win.
@@ -1055,6 +1058,9 @@ internal sealed partial class CombatBeamSolver
                         $"[CombatSolver/Test] SEARCH_MEMORY_CHECKPOINT " +
                         $"reason={reason} allocated={allocated} " +
                         $"limit={signal.AllocationLimitBytes} " +
+                        $"projected_memory_load={signal.ProjectedMemoryLoadBytes} " +
+                        $"system_memory_limit={signal.SystemMemoryLimitBytes} " +
+                        $"system_pressure_dominates={signal.SystemPressureDominates.ToString().ToLowerInvariant()} " +
                         $"parent_reserve={ParentAllocationReserve()} expanded={_run.Expanded} " +
                         $"turn_layer={searchedTurnLayers} play_depth={playDepth}");
                     PublishProgress(
@@ -1063,7 +1069,7 @@ internal sealed partial class CombatBeamSolver
                         playDepth,
                         Math.Max(0, active.Count - activeIndex) + nextPlays.Count,
                         ended.Count,
-                        "内存回收中",
+                        "内存压力较高，正在整理内存",
                         force: true);
                     _run.ResetReclaimableCaches();
                     parallelExpansionExecutor?.ResetRebuildableCaches();

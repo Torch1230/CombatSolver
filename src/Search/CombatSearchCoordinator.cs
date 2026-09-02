@@ -1367,7 +1367,7 @@ internal static class CombatSearchCoordinator
             FrontierNodes: 0,
             EndedNodes: 1,
             ElapsedMilliseconds: (long)totalsCarrier.TotalSearchElapsed.TotalMilliseconds,
-            Phase: "内存回收中"));
+            Phase: "切换用药路线，正在整理内存"));
         long pressureBefore = signal.AllocatedBytes;
         long limitBefore = signal.AllocationLimitBytes;
         signal.ReclaimAndContinue(cancellationToken);

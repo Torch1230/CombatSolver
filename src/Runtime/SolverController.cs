@@ -185,6 +185,8 @@ internal static class SolverController
             IsSearching,
             pressure.AllocatedBytes,
             pressure.AllocationLimitBytes,
+            pressure.ProjectedMemoryLoadBytes,
+            pressure.SystemMemoryLimitBytes,
             pressure.Reclaiming,
             SearchGcPolicy.IsBackgroundReclaiming);
     }
@@ -202,6 +204,11 @@ internal static class SolverController
             $"foreground_reclaim={snapshot.Reclaiming.ToString().ToLowerInvariant()} " +
             $"background_reclaim={snapshot.BackgroundReclaiming.ToString().ToLowerInvariant()} " +
             $"search_allocated={snapshot.SearchAllocatedBytes} search_limit={snapshot.SearchAllocationLimitBytes} " +
+            $"projected_memory_load={snapshot.ProjectedSystemMemoryLoadBytes} " +
+            $"system_memory_limit={snapshot.SystemMemoryLimitBytes} " +
+            $"allocation_pressure={snapshot.AllocationPressureRatio:F3} " +
+            $"system_pressure={snapshot.SystemPressureRatio:F3} " +
+            $"system_pressure_dominates={snapshot.SystemPressureDominates.ToString().ToLowerInvariant()} " +
             $"configured_budget={snapshot.ConfiguredMemoryBudgetBytes} " +
             $"working_set={process.WorkingSet64} private_bytes={process.PrivateMemorySize64} " +
             $"managed_live={GC.GetTotalMemory(forceFullCollection: false)} " +

@@ -11,6 +11,8 @@ internal static class SearchGcPolicy
     private const int ReclaimReferenceReleaseDelayMilliseconds = 250;
     private const int ReclaimCompletionTimeoutMilliseconds = 30_000;
     private const int ConcurrentSearchExitPollMilliseconds = 10;
+    private const int SystemMemoryPressureLimitPercent = 95;
+    private const long MinimumNoGcRegionBudgetBytes = 512L * 1024 * 1024;
     private static readonly Lock Gate = new();
     private static int _activeSearches;
     private static int _defaultGcSearches;
@@ -44,6 +46,8 @@ internal static class SearchGcPolicy
     private static long _noGcRegionAllocatedBytesAtStart;
     private static long _noGcRegionBudgetBytes;
     private static long _noGcRegionLohBudgetBytes;
+    private static long _configuredNoGcRegionBudgetBytes;
+    private static long _configuredNoGcRegionLohBudgetBytes;
     private static long _largestSearchAllocatedBytes;
     private static long _combatLifecycleAllocatedBytes;
     private static int _rolloverCountForTesting;
@@ -179,6 +183,17 @@ internal static class SearchGcPolicy
         InsufficientMemory,
         RegionSizeUnsupported,
         PlatformUnsupported,
+        SystemHeadroomInsufficient,
+    }
+
+    private readonly record struct EffectiveNoGcRegionBudget(
+        long TotalBytes,
+        long LohBytes,
+        long MemoryLoadBytes,
+        long SystemMemoryLimitBytes,
+        bool Capped)
+    {
+        public bool CanStart => TotalBytes >= MinimumNoGcRegionBudgetBytes;
     }
 
     private readonly record struct BackgroundGen2Completion(
@@ -323,8 +338,8 @@ internal static class SearchGcPolicy
                 {
                     long allocatedBytesAtEntry = GC.GetTotalAllocatedBytes(precise: false);
                     requestedBudgetDiffers = (_noGcRegionActive || _activeSearches > 0)
-                        && (_noGcRegionBudgetBytes != noGcRegionBudgetBytes
-                            || _noGcRegionLohBudgetBytes != noGcRegionLohBudgetBytes);
+                        && (_configuredNoGcRegionBudgetBytes != noGcRegionBudgetBytes
+                            || _configuredNoGcRegionLohBudgetBytes != noGcRegionLohBudgetBytes);
                     if (_activeSearches > 0)
                     {
                         // In-search checkpoints temporarily end the process-wide No-GC region. Sharing
@@ -344,7 +359,9 @@ internal static class SearchGcPolicy
                                     _reclaimRequired = true;
                                     Entry.Logger.Info(
                                         $"[CombatSolver/Test] GC_NO_GC_REGION_BUDGET_CHANGED " +
-                                        $"previous={_noGcRegionBudgetBytes} requested={noGcRegionBudgetBytes} " +
+                                        $"previous_configured={_configuredNoGcRegionBudgetBytes} " +
+                                        $"previous_effective={_noGcRegionBudgetBytes} " +
+                                        $"requested={noGcRegionBudgetBytes} " +
                                         "reclaim=background_non_compacting");
                                     reclaimTask = RequestReclaimLocked("no_gc_region_budget_changed");
                                 }
@@ -373,7 +390,9 @@ internal static class SearchGcPolicy
                                             allocatedBytesAtEntry,
                                             remaining,
                                             _noGcRegionBudgetBytes,
-                                            _noGcRegionLohBudgetBytes);
+                                            _noGcRegionLohBudgetBytes,
+                                            _configuredNoGcRegionBudgetBytes,
+                                            _configuredNoGcRegionLohBudgetBytes);
                                         _lastEstablishedNoGcRegionBudgetBytesForTesting =
                                             _noGcRegionBudgetBytes;
                                         _activeSearches++;
@@ -404,29 +423,48 @@ internal static class SearchGcPolicy
                         {
                             _previousMode = GCSettings.LatencyMode;
                             _latencyModeOwned = true;
-                            NoGcRegionStartOutcome startOutcome = TryStartNoGcRegion(
+                            EffectiveNoGcRegionBudget effectiveBudget = ResolveEffectiveNoGcRegionBudget(
                                 noGcRegionBudgetBytes,
                                 noGcRegionLohBudgetBytes);
+                            NoGcRegionStartOutcome startOutcome = effectiveBudget.CanStart
+                                ? TryStartNoGcRegion(
+                                    effectiveBudget.TotalBytes,
+                                    effectiveBudget.LohBytes)
+                                : NoGcRegionStartOutcome.SystemHeadroomInsufficient;
                             _noGcRegionActive = startOutcome == NoGcRegionStartOutcome.Started;
-                            _noGcRegionBudgetBytes = noGcRegionBudgetBytes;
-                            _noGcRegionLohBudgetBytes = noGcRegionLohBudgetBytes;
                             if (_noGcRegionActive)
                             {
+                                _configuredNoGcRegionBudgetBytes = noGcRegionBudgetBytes;
+                                _configuredNoGcRegionLohBudgetBytes = noGcRegionLohBudgetBytes;
+                                _noGcRegionBudgetBytes = effectiveBudget.TotalBytes;
+                                _noGcRegionLohBudgetBytes = effectiveBudget.LohBytes;
                                 _noGcRegionAllocatedBytesAtStart = GC.GetTotalAllocatedBytes(precise: false);
                                 _lastEstablishedNoGcRegionBudgetBytesForTesting =
-                                    noGcRegionBudgetBytes;
+                                    effectiveBudget.TotalBytes;
                                 Entry.Logger.Info(
                                     $"[CombatSolver/Test] GC_LATENCY policy=combat_scoped_no_gc_region " +
-                                    $"budget={noGcRegionBudgetBytes} loh_budget={noGcRegionLohBudgetBytes} " +
+                                    $"configured_budget={noGcRegionBudgetBytes} " +
+                                    $"effective_budget={effectiveBudget.TotalBytes} " +
+                                    $"effective_loh_budget={effectiveBudget.LohBytes} " +
+                                    $"system_memory_load={effectiveBudget.MemoryLoadBytes} " +
+                                    $"system_memory_limit={effectiveBudget.SystemMemoryLimitBytes} " +
+                                    $"capped={effectiveBudget.Capped.ToString().ToLowerInvariant()} " +
                                     $"current={GCSettings.LatencyMode}");
                             }
                             else
                             {
-                                GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
+                                _configuredNoGcRegionBudgetBytes = 0;
+                                _configuredNoGcRegionLohBudgetBytes = 0;
+                                _noGcRegionBudgetBytes = 0;
+                                _noGcRegionLohBudgetBytes = 0;
+                                RestoreLatencyModeLocked();
                                 Entry.Logger.Info(
                                     $"[CombatSolver/Test] GC_LATENCY policy=no_gc_region_unavailable " +
                                     $"reason={FormatStartOutcome(startOutcome)} " +
-                                    $"budget={noGcRegionBudgetBytes} loh_budget={noGcRegionLohBudgetBytes} " +
+                                    $"configured_budget={noGcRegionBudgetBytes} " +
+                                    $"effective_budget={effectiveBudget.TotalBytes} " +
+                                    $"system_memory_load={effectiveBudget.MemoryLoadBytes} " +
+                                    $"system_memory_limit={effectiveBudget.SystemMemoryLimitBytes} " +
                                     $"fallback={GCSettings.LatencyMode}");
                             }
                             if (_noGcRegionActive)
@@ -434,7 +472,9 @@ internal static class SearchGcPolicy
                                 ConfigureSearchMemoryLimit(
                                     memoryPressureSignal,
                                     allocatedBytesAtEntry,
-                                    noGcRegionBudgetBytes,
+                                    effectiveBudget.TotalBytes,
+                                    effectiveBudget.TotalBytes,
+                                    effectiveBudget.LohBytes,
                                     noGcRegionBudgetBytes,
                                     noGcRegionLohBudgetBytes);
                             }
@@ -573,6 +613,8 @@ internal static class SearchGcPolicy
         _noGcRegionAllocatedBytesAtStart = 0;
         _noGcRegionBudgetBytes = 0;
         _noGcRegionLohBudgetBytes = 0;
+        _configuredNoGcRegionBudgetBytes = 0;
+        _configuredNoGcRegionLohBudgetBytes = 0;
         _largestSearchAllocatedBytes = 0;
         _noGcRegionExitWithoutCollectionCountForTesting++;
 
@@ -967,6 +1009,8 @@ internal static class SearchGcPolicy
         _noGcRegionAllocatedBytesAtStart = 0;
         _noGcRegionBudgetBytes = 0;
         _noGcRegionLohBudgetBytes = 0;
+        _configuredNoGcRegionBudgetBytes = 0;
+        _configuredNoGcRegionLohBudgetBytes = 0;
         _largestSearchAllocatedBytes = 0;
         if (collectGeneration2)
             _backgroundReclaimStartedCountForTesting++;
@@ -1275,25 +1319,33 @@ internal static class SearchGcPolicy
         long allocatedBytesAtEntry,
         long remainingRegionBytes,
         long regionBudgetBytes,
-        long lohBudgetBytes)
+        long lohBudgetBytes,
+        long configuredRegionBudgetBytes,
+        long configuredLohBudgetBytes)
     {
         long smallObjectBudgetBytes = Math.Max(1, regionBudgetBytes - lohBudgetBytes);
         long smallObjectLimitBytes = smallObjectBudgetBytes / 5 * 4;
         long remainingLimitBytes = Math.Max(1, remainingRegionBytes / 4 * 3);
         long allocationLimitBytes = Math.Max(1, Math.Min(smallObjectLimitBytes, remainingLimitBytes));
+        GCMemoryInfo memory = GC.GetGCMemoryInfo();
+        long systemMemoryLimitBytes = ResolveSystemMemoryLimit(memory);
         signal.Configure(
             allocatedBytesAtEntry,
             allocationLimitBytes,
+            Math.Max(0, memory.MemoryLoadBytes),
+            systemMemoryLimitBytes,
             cancellationToken => ReclaimWithinSearch(
                 signal,
-                regionBudgetBytes,
-                lohBudgetBytes,
+                configuredRegionBudgetBytes,
+                configuredLohBudgetBytes,
                 cancellationToken),
             HasUnexpectedNoGcLoss);
         Entry.Logger.Info(
             $"[CombatSolver/Test] GC_SEARCH_ALLOCATION_LIMIT limit={allocationLimitBytes} " +
             $"remaining_region={remainingRegionBytes} region_budget={regionBudgetBytes} " +
-            $"loh_budget={lohBudgetBytes}");
+            $"loh_budget={lohBudgetBytes} configured_budget={configuredRegionBudgetBytes} " +
+            $"system_memory_load={memory.MemoryLoadBytes} " +
+            $"system_memory_limit={systemMemoryLimitBytes}");
     }
 
     private static bool HasUnexpectedNoGcLoss()
@@ -1307,8 +1359,8 @@ internal static class SearchGcPolicy
 
     private static void ReclaimWithinSearch(
         SearchMemoryPressureSignal signal,
-        long regionBudgetBytes,
-        long lohBudgetBytes,
+        long configuredRegionBudgetBytes,
+        long configuredLohBudgetBytes,
         CancellationToken cancellationToken)
     {
         TaskCompletionSource checkpointCompletion;
@@ -1376,21 +1428,28 @@ internal static class SearchGcPolicy
                 cancellationToken.ThrowIfCancellationRequested();
                 _previousMode = GCSettings.LatencyMode;
                 _latencyModeOwned = true;
+                EffectiveNoGcRegionBudget effectiveBudget = ResolveEffectiveNoGcRegionBudget(
+                    configuredRegionBudgetBytes,
+                    configuredLohBudgetBytes);
                 if (endNoGcRegion)
                 {
-                    restartOutcome = TryStartNoGcRegion(
-                        regionBudgetBytes,
-                        lohBudgetBytes);
+                    restartOutcome = effectiveBudget.CanStart
+                        ? TryStartNoGcRegion(
+                            effectiveBudget.TotalBytes,
+                            effectiveBudget.LohBytes)
+                        : NoGcRegionStartOutcome.SystemHeadroomInsufficient;
                 }
                 _noGcRegionActive = restartOutcome == NoGcRegionStartOutcome.Started;
                 if (_noGcRegionActive)
-                    _lastEstablishedNoGcRegionBudgetBytesForTesting = regionBudgetBytes;
+                    _lastEstablishedNoGcRegionBudgetBytesForTesting = effectiveBudget.TotalBytes;
                 _noGcRegionAllocatedBytesAtStart = GC.GetTotalAllocatedBytes(precise: false);
-                _noGcRegionBudgetBytes = regionBudgetBytes;
-                _noGcRegionLohBudgetBytes = lohBudgetBytes;
                 if (!_noGcRegionActive)
                 {
-                    GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
+                    _configuredNoGcRegionBudgetBytes = 0;
+                    _configuredNoGcRegionLohBudgetBytes = 0;
+                    _noGcRegionBudgetBytes = 0;
+                    _noGcRegionLohBudgetBytes = 0;
+                    RestoreLatencyModeLocked();
                     // The runtime may terminate a region for memory pressure or an external
                     // collection. Retrying the same reservation during this search recreates the
                     // failure loop, so fall back once and let the CLR collect normally.
@@ -1398,12 +1457,18 @@ internal static class SearchGcPolicy
                 }
                 else
                 {
+                    _configuredNoGcRegionBudgetBytes = configuredRegionBudgetBytes;
+                    _configuredNoGcRegionLohBudgetBytes = configuredLohBudgetBytes;
+                    _noGcRegionBudgetBytes = effectiveBudget.TotalBytes;
+                    _noGcRegionLohBudgetBytes = effectiveBudget.LohBytes;
                     ConfigureSearchMemoryLimit(
                         signal,
                         _noGcRegionAllocatedBytesAtStart,
-                        regionBudgetBytes,
-                        regionBudgetBytes,
-                        lohBudgetBytes);
+                        effectiveBudget.TotalBytes,
+                        effectiveBudget.TotalBytes,
+                        effectiveBudget.LohBytes,
+                        configuredRegionBudgetBytes,
+                        configuredLohBudgetBytes);
                 }
             }
         }
@@ -1508,8 +1573,45 @@ internal static class SearchGcPolicy
             NoGcRegionStartOutcome.InsufficientMemory => "insufficient_memory",
             NoGcRegionStartOutcome.RegionSizeUnsupported => "region_size_unsupported",
             NoGcRegionStartOutcome.PlatformUnsupported => "platform_unsupported",
+            NoGcRegionStartOutcome.SystemHeadroomInsufficient => "system_headroom_insufficient",
             _ => throw new ArgumentOutOfRangeException(nameof(outcome)),
         };
+
+    private static EffectiveNoGcRegionBudget ResolveEffectiveNoGcRegionBudget(
+        long configuredBudgetBytes,
+        long configuredLohBudgetBytes)
+    {
+        GCMemoryInfo memory = GC.GetGCMemoryInfo();
+        long systemLimit = ResolveSystemMemoryLimit(memory);
+        long memoryLoad = Math.Max(0, memory.MemoryLoadBytes);
+        long headroom = systemLimit == long.MaxValue
+            ? configuredBudgetBytes
+            : Math.Max(0, systemLimit - memoryLoad);
+        long effectiveBudget = Math.Min(configuredBudgetBytes, headroom);
+        if (effectiveBudget < MinimumNoGcRegionBudgetBytes)
+            effectiveBudget = 0;
+        long effectiveLohBudget = effectiveBudget == 0
+            ? 0
+            : Math.Min(
+                configuredLohBudgetBytes,
+                Math.Max(1, effectiveBudget / 6));
+        return new EffectiveNoGcRegionBudget(
+            effectiveBudget,
+            effectiveLohBudget,
+            memoryLoad,
+            systemLimit,
+            effectiveBudget < configuredBudgetBytes);
+    }
+
+    private static long ResolveSystemMemoryLimit(GCMemoryInfo memory)
+    {
+        long highMemoryThreshold = memory.HighMemoryLoadThresholdBytes;
+        return highMemoryThreshold <= 0
+            ? long.MaxValue
+            : Math.Max(
+                1,
+                highMemoryThreshold / 100 * SystemMemoryPressureLimitPercent);
+    }
 
     private static void RestoreLatencyModeLocked()
     {
