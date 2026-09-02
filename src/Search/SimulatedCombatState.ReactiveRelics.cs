@@ -248,11 +248,7 @@ internal sealed partial class SimulatedCombatState
                     break;
                 }
                 case LunarPastry value:
-                    PowerLifecycleSupport.GainStars(
-                        simulator,
-                        this,
-                        value.Owner,
-                        value.DynamicVars.Stars.IntValue);
+                    simulator.GainStars(value.Owner, value.DynamicVars.Stars.IntValue);
                     break;
                 case ParryingShield value
                     when simulator.State.GetCreature(value.Owner.Creature).Block >= value.DynamicVars.Block.IntValue:

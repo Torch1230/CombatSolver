@@ -16,6 +16,7 @@ using CombatSolver.Engine.InCombat.Mirrors.Hooks.Card;
 using CombatSolver.Engine.InCombat.Mirrors.Hooks.Damage;
 using CombatSolver.Engine.InCombat.Mirrors.Hooks.Death;
 using CombatSolver.Engine.InCombat.Mirrors.Hooks.Orb;
+using CombatSolver.Engine.InCombat.Mirrors.Hooks.Resources;
 using CombatSolver.Engine.InCombat.Mirrors.Hooks.TurnEnd;
 using CombatSolver.Engine.InCombat.Simulation;
 
@@ -167,6 +168,25 @@ internal static class HookMirrors
         foreach (var listener in IterateCombatHookListeners(simulator))
         {
             AfterBlockGainedMirrors.Invoke(listener, context);
+        }
+    }
+
+    // Mirrors Hook.AfterStarsGained.
+    public static void AfterStarsGained(
+        CombatPredictionSimulator simulator,
+        int amount,
+        Player gainer)
+    {
+        var context = new AfterStarsGainedMirrorContext
+        {
+            Simulator = simulator,
+            Amount = amount,
+            Gainer = gainer
+        };
+
+        foreach (var listener in IterateCombatHookListeners(simulator))
+        {
+            AfterStarsGainedMirrors.Invoke(listener, context);
         }
     }
 

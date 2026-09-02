@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "GENERIC-LOOP-HELLRAISER-POMMEL-FINITE-CURRENT-V0111",
+  "description": "Current-rule finite-chain control: a full inert hand prevents setup-time draws. Manually playing one upgraded Pommel Strike draws the other twice for exactly three total hits, which must not be promoted to a turn-one infinite.",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "LOOPHELLRAISERPOMMELFINITE0111",
+  "enemyCurrentHp": 31,
+  "initialEnemyMoveIds": ["INHALE"],
+  "initialPlayerHp": 57,
+  "initialPlayerMaxHp": 57,
+  "initialPlayerEnergy": 1,
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    {
+      "cardId": "POMMEL_STRIKE",
+      "pile": "Hand",
+      "upgradeLevels": 1,
+      "treatAsDeckCard": true
+    },
+    {
+      "cardId": "WOUND",
+      "pile": "Hand",
+      "count": 9,
+      "treatAsDeckCard": true
+    },
+    {
+      "cardId": "POMMEL_STRIKE",
+      "pile": "Discard",
+      "upgradeLevels": 1,
+      "treatAsDeckCard": true
+    }
+  ],
+  "powers": [
+    { "powerId": "HELLRAISER_POWER", "target": "Player", "amount": 1 }
+  ],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 5000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "expectedInitialFirstActionCardId": "POMMEL_STRIKE",
+  "expectedInitialShufflesCrossedAtLeast": 2,
+  "expectedInitialProjectedBattleHpLost": 11,
+  "expectedInitialCombatEndedTurn": 2,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120
+}

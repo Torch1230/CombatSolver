@@ -302,11 +302,7 @@ internal static class PotionOnUseSupport
                 }
                 break;
             case StarPotion value:
-                PowerLifecycleSupport.GainStars(
-                    simulator,
-                    combat,
-                    PlayerTarget(),
-                    value.DynamicVars.Stars.IntValue);
+                simulator.GainStars(PlayerTarget(), value.DynamicVars.Stars.IntValue);
                 break;
             case StrengthPotion value:
                 combat.Apply<StrengthPower>(playerTarget, value.DynamicVars.Strength.IntValue, owner);

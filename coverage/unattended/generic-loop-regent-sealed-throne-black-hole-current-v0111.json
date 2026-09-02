@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "GENERIC-LOOP-REGENT-SEALED-THRONE-BLACK-HOLE-CURRENT-V0111",
+  "description": "Current-rule two-resource loop: two Sealed Throne stacks refund Particle Wall's two spent Stars, while Black Hole converts both the gain event and the completed spend event into damage. The card returns to hand and the resource state repeats.",
+  "characterId": "REGENT",
+  "encounterId": "AEONGLASS_BOSS",
+  "actIndexForTest": 2,
+  "seed": "LOOPREGENTSEALED0111",
+  "enemyCurrentHp": 60,
+  "initialPlayerHp": 75,
+  "initialPlayerMaxHp": 75,
+  "initialPlayerEnergy": 0,
+  "initialPlayerStars": 2,
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    { "cardId": "PARTICLE_WALL", "pile": "Hand", "treatAsDeckCard": true }
+  ],
+  "powers": [
+    { "powerId": "THE_SEALED_THRONE_POWER", "target": "Player", "amount": 2 },
+    { "powerId": "BLACK_HOLE_POWER", "target": "Player", "amount": 3 }
+  ],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 5000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "expectedInitialFirstActionCardId": "PARTICLE_WALL",
+  "expectedInitialCycleShapesDetectedAtLeast": 1,
+  "expectedInitialExecutableActionCountAtLeast": 10,
+  "expectedInitialActualBlockAtLeast": 81,
+  "expectedInitialProjectedBattleHpLost": 0,
+  "expectedInitialCombatEndedTurn": 1,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120
+}

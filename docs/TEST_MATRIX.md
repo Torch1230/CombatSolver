@@ -10,26 +10,36 @@
 
 ## 下一版本（开发中）：通用周期与跨回合收益
 
-> 这里记录当前开发工作树的定向证据，最终性能候选和 PR 门禁仍待复测。生产算法只使用控制形状、精确动作相位、分支相对 stand-pat 状态和通用收益向量；fixture 中的卡牌、药水或遗物名称只是输入，不是生产特判。周期识别窗口最多 `32` 个动作；跨回合基础观察期为 `max(16, 两个完整牌堆周期所需回合)`，语义变化探针最多 `64` 次回合转移，最近一回合确有通用改善的探针最多 `128` 次。
+> 这里记录基于上游 `0.27.2` 的最终定向与性能证据。生产算法只使用控制形状、精确动作相位、分支相对 stand-pat 状态和通用收益向量；fixture 中的卡牌、药水或遗物名称只是输入，不是生产特判。周期识别窗口最多 `32` 个动作；跨回合基础观察期为 `max(16, 两个完整牌堆周期所需回合)`，语义变化探针最多 `64` 次回合转移，最近一回合确有通用改善的探针最多 `128` 次。命中节点上限的场景只证明预算内找到路线，不称穷尽或数学全局最优。
 
 | 场景 | 当前结果 | 验证内容 | 日期 |
 | --- | --- | --- | --- |
-| `GENERIC-LOOP-LETTER-OPENER-HIDDEN-PHASE-DOP1/2` | 开发中定向通过；最终候选复测待填 | 两次表面回到同一牌堆形状后，隐藏相位在后续重复中兑现；DOP1/DOP2 都为 `6/12` 展开/转移、`6` 次洗牌、第 `1` 回合结束。runId `87c6bc90f39c477a90223f8042cbe744` / `d2db40a217184d18a73ae0a041461be4`。 | 2026-09-02 |
-| `GENERIC-CROSS-TURN-HIDDEN-BUFFER-DOP1/2` | `v0.27.1` 合并后定向通过；最终候选复测待填 | 表面进展长期停滞但精确状态仍跨回合推进；DOP1/DOP2 都为 `513/770` 展开/转移、第 `17` 回合结束，证明基础观察期不会截断延迟兑现。runId `937c26285fbd486186db1443ef3e26dc` / `be92e6c9448241439df7217e38fc36f1`。 | 2026-09-02 |
-| `GENERIC-CROSS-TURN-STAGNANT-CONTROL` | `v0.27.1` 合并后定向通过；最终候选复测待填 | 无伤害手段的停滞场在 `78/117` 展开/转移后有界停止，最终路线不采用纯防御空转；与隐藏缓冲场共同约束“不能早停、也不能无限续期”。runId `fbba8ab4c2724a3d8fa2585b448dd713`。 | 2026-09-02 |
-| `GENERIC-CROSS-TURN-PURITY-PILLAGE` | 开发中定向通过；最终候选复测待填 | 先净化牌库、下一回合兑现，`123/340` 展开/转移、第 `2` 回合结束。runId `c4e37ee3249d4a819c27a99e0d15fb8a`。 | 2026-09-02 |
-| `GENERIC-LOOP-RAMPAGE-DYNAMIC-GROWTH-DOP1/2` | `v0.27.1` 合并后定向通过；最终候选复测待填 | 动态成长值不写入循环特判；DOP1/DOP2 都为 `2400/5354/344` 展开/转移/选牌、`344` 次 replay、零预算耗尽、`32` 动作、第 `1` 回合结束，动作和全部非时序工作量一致；DOP2 最大并发为 `2`。runId `11b3a54366144b0db884177404a890d5` / `4874a30371ee47478d31ba20886553d5`。 | 2026-09-02 |
-| `GENERIC-FINAL-QUALITY-ZERO-LOSS-OVER-FASTER-BLOOD-SALE` | 开发中定向通过；最终候选复测待填 | 最终质量不受循环保路覆盖：无药路线为 `24/52` 展开/转移、零战损、第 `3` 回合结束，且不采用卖血动作。runId `fde8e1f6d494404485586a3c08dbbd61`。 | 2026-09-02 |
-| `GENERIC-SMART-POTION-SAME-LOSS-FASTER` | 开发中定向通过；最终候选复测待填 | 无药与用药均零战损时，Smart 比较全部已完成精确用药层并选择第 `1` 回合能量药路线，而非第 `3` 回合无药路线；请求累计 `94/229`，选中层 `70/177` 展开/转移。runId `9212248603ec4d9094de008cb5e0d444`。 | 2026-09-02 |
-| `GENERIC-SMART-POTION-THREE-LAYER-PROGRESS-REBASE` | `v0.27.1` 合并后通过 | 同一质量根增加第二瓶药，真实完成无药、恰好一药、恰好两药三层，并在两次层间内存整理后仍选择零战损 T1 的一药路线；请求累计 `52/140`、选中层 `7/19` 展开/转移，Gen0/1/2 均 `4` 次。runId `9456a84f8e1549909ec145b86f59bb4d`。 | 2026-09-02 |
-| `GENERIC-SEARCH-POLICY-BRANCHING-REBASE` | `v0.27.1` 合并后通过 | 工作量三层聚合、coordinator 内存整理、预取消与已开始精确药层取消各记一次、NoGC 双向生命周期、低余量回退标记、DOP1/2 全字段等价、真实并发及节点上限快照释放通过。最终修复后 runId `4fea6b94754e498a951e0ff229284334`。 | 2026-09-02 |
-| `INFESTED-PRISMS-GENERIC-QUALITY-INTERMEDIATE-BASELINE` | 中间性能基线；最终复测待填 | 同根 VeryHigh、Smart、DOP8、NoGC `16 GB`：累计 `80,009/537,025/213,213` 展开/转移/选牌分支，选中一药层 `31,379/221,729/89,561`；搜索阶段墙钟约 `57,095.8 ms`、solver/worker 累计 `56,960.246 ms / 36,093,863,040 B`，选中层 `22,590.567 ms / 15,068,779,864 B`，`VmHWM=11,835,868 kB`（约 `11.29 GiB`）。结果 `52 HP`、预计战损 `8`、主动卖血 `2`、第 `6` 回合结束，质量优于旧 42 HP/战损 18/T7，但当前速度和工作量明显退化，因此只作为后续优化的起点。Gen0/1/2 均 `6` 次，GC 暂停累计/最大 `4,971.917/1,840.010 ms`，搜索内存检查点 `3` 个。runId `f234bd8a4c0f4f2a87cb6a27458515e4`。 | 2026-09-02 |
-| `INFESTED-PRISMS-GENERIC-QUALITY-FINAL` | 待执行 | 性能收敛后以同一 run-state/replay-state、VeryHigh、Smart、DOP8、NoGC `16 GB` 补填最终时间、`VmHWM`、累计/选中层节点与转移、GC 检查点、战损、结束回合和完整动作路线；不得用上面的中间基线宣称最终优化完成。 | 2026-09-02 |
+| `AFTER-STARS-GAINED-ENGINE-MIRROR-0111` | 通过 | 通用 `GainStars` 在状态变更后分发 `AfterStarsGained`；5 层黑洞配合发光严格对比原版与预测完整状态，并显式断言获得 `1` 星、敌人生命变化 `-5`。最终 runId `b4c281152e5b4468b59f10c665d68d`。 | 2026-09-03 |
+| `GENERIC-LOOP-LETTER-OPENER-HIDDEN-PHASE-DOP1/2` | 通过 | 两次表面回到同一牌堆形状后，隐藏相位在后续重复中兑现；DOP1/DOP2 都为 `6/12` 展开/转移、`6` 次洗牌、T1。runId `1ae74fcaf14648a19a773e9be602fa34` / `28d3a383cb3c4fd4944ffcc923f76e7a`。 | 2026-09-03 |
+| `GENERIC-CROSS-TURN-HIDDEN-BUFFER-DOP1/2` | 通过 | 表面进展长期停滞但精确状态仍跨回合推进；DOP1/DOP2 都为 `513/770` 展开/转移、`16` 次洗牌、T17；DOP2 最大并发为 `2`。runId `e1aac2f411fa4d58b91466022f5edde7` / `d38be6387ddd4aadb13a1adcdc3864cf`。 | 2026-09-03 |
+| `GENERIC-CROSS-TURN-STAGNANT-CONTROL` | 通过（上游合并后定向证据） | 无伤害手段的停滞场在 `78/117` 展开/转移后有界停止，最终路线不采用纯防御空转；与隐藏缓冲场共同约束“不能早停、也不能无限续期”。runId `fbba8ab4c2724a3d8fa2585b448dd713`。 | 2026-09-02 |
+| `GENERIC-CROSS-TURN-PURITY-PILLAGE` | 通过（定向证据） | 先净化牌库、下一回合兑现，`123/340` 展开/转移、T2。runId `c4e37ee3249d4a819c27a99e0d15fb8a`。 | 2026-09-02 |
+| `GENERIC-LOOP-RAMPAGE-DYNAMIC-GROWTH-DOP1/2` | 通过 | 动态成长值不写入循环特判；DOP1/DOP2 都为 `2400/5354/344` 展开/转移/选牌、`32` 动作、T1，动作和全部非时序工作量一致；DOP2 搜索与动作重放最大并发均为 `2`。runId `2d33c3a4eaee44d5b06004758e8cefb4` / `5100ca05213f455ba6f1dd57f0916fef`。 | 2026-09-03 |
+| `GENERIC-SMART-POTION-SAME-LOSS-FASTER` | 通过 | 同为零战损时，Smart 选择 T1 的一药路线；请求累计 `31/74`、选中层 `7/22` 展开/转移。runId `02c81917a3284c269a90e2fec5b65d4e`。 | 2026-09-03 |
+| `GENERIC-SMART-POTION-THREE-LAYER-PROGRESS-REBASE` | 通过 | 完成无药、恰好一药、恰好两药三层，两次层间整理后仍选择零战损 T1 的一药路线；请求累计 `52/140`、选中层 `7/19`，Gen0/1/2 均 `4` 次。runId `8e01068bacc049b89acacd66e218f73f`。 | 2026-09-03 |
+| `GENERIC-SEARCH-POLICY-BRANCHING-REBASE` | 通过 | 控制器生命周期、三层聚合、NoGC 生命周期、DOP 等价、快照释放及同父节点唯一循环租约/转置边界断言通过。runId `328dbe4322a54815a83f3946563d73b6`。 | 2026-09-03 |
+| `GENERIC-CURRENT-RULE-PILLAGE-SINGLE` | 通过 | 单张掠夺触发自动转移内连锁；`1/2` 展开/转移、T1、零损、一个显式动作。该机制不是循环规划器证明出的数学无限。runId `aed2647646d645abb18e1ef94bf53283`。 | 2026-09-03 |
+| `GENERIC-CURRENT-RULE-POMMEL-FINITE` | 通过 | 有限链控制场为 `6/7`、两次洗牌、T2、战损 `11`，首动剑柄打击；没有被误判为 T1 无限。runId `eb6084633d3744399a3e3422e13e2e8a`。 | 2026-09-03 |
+| `GENERIC-CURRENT-RULE-BLOODLETTING-QUALITY` | 通过 | `186/464`、四次洗牌、T2、战损 `3`；最终排序选择少卖血的 T2，而非战损 `6` 的 T1。runId `b57b545ed9c7415cb6644af2df7e89cc`。 | 2026-09-03 |
+| `GENERIC-CURRENT-RULE-SILENT-DISCARD` | 通过 | 准备/战术大师抽弃链为 `301/837/261` 展开/转移/选牌、16 个动作、T1、零损。runId `1991d55b153f44c8b722546214e57f0a`。 | 2026-09-03 |
+| `GENERIC-CURRENT-RULE-DEFECT-RETRIEVAL` | 节点上限内找到解 | 万物一心/全息影像取回链在 `2400/6584/1714` 后命中 NodeLimit，找到 29 动作、T1、零损路线；不称全量穷尽。runId `a7a3fda4781e4f329a00b39aecdf079b`。 | 2026-09-03 |
+| `GENERIC-CURRENT-RULE-REGENT-PARTICLE-WALL` | 节点上限内找到解 | 粒子墙/照我说的做链在 `2400/6037/2` 后命中 NodeLimit，找到 38 动作、T1、零损路线，实际/路线最大格挡 `243/1125`；不称全量穷尽。runId `5859c64bb16d4a0c8bf1134f45d23861`。 | 2026-09-03 |
+| `GENERIC-CURRENT-RULE-REGENT-SEALED-BLACK-HOLE` | 通过 | 封印王座/黑洞资源链为 `10/20`、10 个动作、90 格挡、T1、零损。runId `3bb92f0684d7414d9d0660f83edb992b`。 | 2026-09-03 |
+| `INFESTED-PRISMS-GENERIC-QUALITY-INTERMEDIATE-BASELINE` | 已被最终候选取代 | 历史中间候选为 `80,009/537,025/213,213`、约 `57.10 s`、约 `11.29 GiB`、52 HP/战损 8/T6；它暴露了质量保路导致的工作量膨胀，仅保留作优化过程证据。runId `f234bd8a4c0f4f2a87cb6a27458515e4`。 | 2026-09-02 |
+| `INFESTED-PRISMS-GENERIC-QUALITY-FINAL` | 通过（配置搜索完整结束） | 同根 VeryHigh/Smart/DOP8/NoGC 16 GB：累计 `13,516/80,477/33,664`，选中层 `4,437/23,810/8,337`；搜索 `10,548.215 ms`、累计分配 `4,920,306,312 B`、`VmHWM=3,715,840 kB`（约 `3.54 GiB`）。结果 43 HP/战损 17/T5/两药，优于旧 42 HP/战损 18/T7；两次层间 NoGC 回收重建成功，Gen0/1/2 均 `4`，GC 暂停累计/最大 `640.203/404.340 ms`。runId `1e9c735a5c9e42889ab46c6389a66b16`。 | 2026-09-03 |
+| `AEONGLASS-LONGLINE-NOGC4` | 通过 | 长线同根累计 `27,905/173,477/74,998`、选中层 `8,687/59,910/26,619`，战损 9/56 HP/T9/两药；`72,151.169 ms`、`VmHWM=4,396,804 kB`（约 `4.19 GiB`），Gen0/1/2 均 `30`，GC 暂停 `4,822.405 ms`。13 个压力检查点和 2 次层间整理全部重建 NoGC，无回退。runId `5f75b1cd2b604f34874be9e6243590db`。 | 2026-09-03 |
+| `AEONGLASS-LONGLINE-NOGC-OFF` | 通过（A/B） | 与 NoGC4 节点、路线、战损和回合完全一致；`97,927.457 ms`、`VmHWM=2,745,000 kB`（约 `2.62 GiB`），Gen0/1/2=`3522/1695/88`，GC 暂停 `29,712.935 ms`。关闭 NoGC 省约 `1.57 GiB` 峰值内存，但慢约 `35.7%`（反向口径：NoGC 快约 `26.3%`）。runId `6c187605b7a8451bbd163a800d9f25c4`。 | 2026-09-03 |
 
 ### 新增 fixture 清单
 
 | Fixture | 主要边界 |
 | --- | --- |
+| `coverage/unattended/after-stars-gained-black-hole-glow-0111.json` | 通用星能增加 Hook 分发、黑洞单次伤害与完整状态严格差分 |
 | `coverage/unattended/generic-loop-letter-opener-hidden-phase-v0111.json` | 同牌堆形状的隐藏相位收益、DOP 等价 |
 | `coverage/unattended/generic-cross-turn-hidden-buffer-positive-v0111.json` | 晚于基础观察期兑现的精确隐藏状态、DOP 等价 |
 | `coverage/unattended/generic-cross-turn-stagnant-control-v0111.json` | 真正无收益跨回合路线有界停止 |
@@ -46,13 +56,15 @@
 | `coverage/unattended/generic-loop-pale-blue-dot-threshold-cross-turn-v0111.json` | 阈值状态、药水入口与跨回合/出口收益 |
 | `coverage/unattended/generic-loop-regent-star-energy-positive-v0111.json` | 星能与能量循环 |
 | `coverage/unattended/generic-loop-regent-black-hole-startup-positive-v0111.json` | 储君能力启动与循环 |
+| `coverage/unattended/generic-loop-hellraiser-pillage-single-current-v0111.json` | 当前规则单张掠夺的自动转移内连锁；不是数学无限 |
+| `coverage/unattended/generic-loop-hellraiser-pommel-finite-current-v0111.json` | 当前规则有限链负例；不得误判为 T1 无限 |
+| `coverage/unattended/generic-loop-bloodletting-double-pommel-quality-v0111.json` | 卖血启动质量排序；低战损优先于少回合 |
+| `coverage/unattended/generic-loop-silent-prepared-tactician-current-v0111.json` | 当前规则抽弃重复链 |
+| `coverage/unattended/generic-loop-defect-all-for-one-hologram-current-v0111.json` | 当前规则取回重复链；NodeLimit 内有解 |
+| `coverage/unattended/generic-loop-regent-particle-wall-make-it-so-current-v0111.json` | 当前规则技能/格挡重复链；NodeLimit 内有解 |
+| `coverage/unattended/generic-loop-regent-sealed-throne-black-hole-current-v0111.json` | 当前规则双资源重复链 |
 
 `coverage/unattended/generic-loop-hellraiser-pillage-bloodletting-cards.json` 只是可复用牌堆输入，不是独立场景。未在上表列出 runId 的 fixture 仍须复测，不能因文件存在就宣称当前工作树通过。
-
-## 下一版本（开发中，版本号待定）
-
-| 场景 | 结果 | 验证内容 | 日期 |
-| --- | --- | --- | --- |
 
 ## 0.27.2（已发布）
 

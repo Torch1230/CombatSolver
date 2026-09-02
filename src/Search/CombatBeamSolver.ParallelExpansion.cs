@@ -2058,6 +2058,7 @@ internal sealed partial class CombatBeamSolver
         Action<SearchNode> acceptChild)
     {
         List<ActionCandidate> nonDominated = new(16);
+        List<ActionCandidate>? deferredCycleCandidates = null;
         foreach (RawCardCandidate raw in batch.Cards)
         {
             CommitCycleExitObservation(raw.Node);
@@ -2065,6 +2066,19 @@ internal sealed partial class CombatBeamSolver
             {
                 _run.RepeatableNoProgressBranchesPruned++;
                 batch.Release(raw.Node.Snapshot);
+                continue;
+            }
+            bool deferTransposition = ShouldDeferCycleTranspositionUntilActionAdmission(
+                raw.Node);
+            if (deferTransposition)
+            {
+                deferredCycleCandidates ??= [];
+                deferredCycleCandidates.Add(BuildCandidate(
+                    parent.Snapshot,
+                    raw.Node.Snapshot,
+                    raw.Node,
+                    raw.CardType,
+                    raw.TargetCombatId));
                 continue;
             }
             if (!TryAcceptTransposition(raw.Node))
@@ -2085,6 +2099,10 @@ internal sealed partial class CombatBeamSolver
 
         PruneCommittedCrossTurnCandidates(batch.Potions, batch);
         PruneCommittedCrossTurnCandidates(batch.EndTurns, batch);
+        CommitDeferredCycleCandidates(
+            nonDominated,
+            deferredCycleCandidates,
+            batch);
         if (parent.CycleProbeLease != null)
         {
             SearchNode[] directChildren = nonDominated.Select(candidate => candidate.Node)

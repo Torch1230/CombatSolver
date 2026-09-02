@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "GENERIC-LOOP-BLOODLETTING-DOUBLE-POMMEL-QUALITY-V0111",
+  "description": "Current-rule HP-bounded repeated draw chain: Bloodletting plus two upgraded Pommel Strikes can kill immediately by paying 6 HP, but waiting one safe setup turn should need only one 3 HP payment. Loss outranks turn count.",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "LOOPBLOODPOMMELQUALITY0111",
+  "enemyCurrentHp": 40,
+  "initialEnemyMoveIds": ["INHALE"],
+  "initialPlayerHp": 57,
+  "initialPlayerMaxHp": 57,
+  "initialPlayerEnergy": 0,
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    { "cardId": "BLOODLETTING", "pile": "Hand", "treatAsDeckCard": true },
+    {
+      "cardId": "POMMEL_STRIKE",
+      "pile": "Hand",
+      "count": 2,
+      "upgradeLevels": 1,
+      "treatAsDeckCard": true
+    }
+  ],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 5000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "expectedInitialCycleShapesDetectedAtLeast": 1,
+  "expectedInitialShufflesCrossedAtLeast": 1,
+  "expectedInitialProjectedBattleHpLost": 3,
+  "expectedInitialCombatEndedTurn": 2,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120
+}

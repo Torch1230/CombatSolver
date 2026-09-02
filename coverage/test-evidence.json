@@ -1958,5 +1958,45 @@
     "expected": "未解决选择只阻止同一个 CardPlay 内的后续重放层；同一卡牌在以后再次打出时必须生成新的随机候选和计划选牌。",
     "observed": "生命周期 runId 7fcf4d2c016f40a6aeeaf6f314b9cf3e Passed；探寻打击严格差分 runId cac18e0431be4bc2a06b474da84460dc Passed。",
     "evidence": "coverage/unattended/seeker-strike-choice-audit-308.json；src/Engine/InCombat/Mirrors/Cards/OnPlay/CardSelectionCardMirrors.cs；上述 runId；验证日期 2026-08-30。"
+  },
+  "AFTER-STARS-GAINED-ENGINE-MIRROR-0111": {
+    "status": "Passed",
+    "level": "HeadlessExactAfterStarsGainedDifferential",
+    "procedure": "清空牌堆、遗物与 Power，注入 5 层黑洞和发光；从同一实机根分别执行原版出牌与生产模拟，比较完整状态，并显式断言星能与敌人生命变化。",
+    "expected": "GainStars 通过结束状态与 ShouldGainStars 检查并增加星能后统一分发 AfterStarsGained；发光获得 1 星且黑洞只触发一次，对敌人造成 5 点无力量伤害。",
+    "observed": "修复前 runId 30c2cc98d7644b15aea44dfdecebbca8 在完整状态严格差分失败；最终候选 runId b4c281152e5b4468b59f10c665d68d Passed，获得 1 星、敌人生命变化 -5，完整状态一致。",
+    "evidence": "coverage/unattended/after-stars-gained-black-hole-glow-0111.json；游戏 0.111.0 PlayerCmd.GainStars 与 BlackHolePower 源码；上述两个 runId；验证日期 2026-09-03。"
+  },
+  "GENERIC-CYCLE-PLANNING-V0272-FINAL": {
+    "status": "Passed",
+    "level": "HeadlessGenericBoundedCycleCrossTurnAndTranspositionPolicyRegression",
+    "procedure": "在上游 0.27.2 最终候选上运行隐藏三相位、隐藏跨回合缓冲、动态成长 DOP1/DOP2、Smart 一/三层以及控制器转置租约生命周期断言。",
+    "expected": "搜索不得读取具体卡牌、Power、遗物或敌人 ID 判定循环；DOP 不改变动作和非时序工作量；延迟收益不被早停；同父节点只签发一个新的循环探测租约，普通兄弟仍受转置表约束。",
+    "observed": "隐藏三相位 DOP1/DOP2 均为 6/12、T1；隐藏缓冲均为 513/770、T17；Rampage 均为 2400/5354/344、32 动作、T1，DOP2 实际并发；Smart 三层为 52/140、选中层 7/19；控制器内部策略断言通过。",
+    "evidence": "coverage/unattended/generic-loop-letter-opener-hidden-phase-v0111.json；coverage/unattended/generic-cross-turn-hidden-buffer-positive-v0111.json；coverage/unattended/generic-loop-rampage-dynamic-growth-positive-v0111.json；coverage/unattended/generic-smart-potion-three-layer-progress-v0111.json；runId 1ae74fcaf14648a19a773e9be602fa34、28d3a383cb3c4fd4944ffcc923f76e7a、e1aac2f411fa4d58b91466022f5edde7、d38be6387ddd4aadb13a1adcdc3864cf、2d33c3a4eaee44d5b06004758e8cefb4、5100ca05213f455ba6f1dd57f0916fef、8e01068bacc049b89acacd66e218f73f、328dbe4322a54815a83f3946563d73b6；验证日期 2026-09-03。"
+  },
+  "GENERIC-CURRENT-RULE-LOOPS-V0272": {
+    "status": "Passed",
+    "level": "HeadlessCurrentRulesGenericFiniteRepeatableAndQualityRegression",
+    "procedure": "用当前规则分别运行单张掠夺自动连锁、有限剑柄控制、卖血质量、无声猎手抽弃、故障机器人取回、储君粒子墙和封印王座/黑洞七个 fixture。",
+    "expected": "有限链不得被当作数学无限；重复链必须在通用预算内找到路线；最终排序先比较战损、战损相同才比较结束回合；命中 NodeLimit 时只报告预算内有解。",
+    "observed": "七场均产生符合断言的路线；卖血质量场选择战损 3/T2 而不是战损 6/T1；取回链和粒子墙链在 2400 节点上限内找到 T1 零损路线，其余场景正常完成。",
+    "evidence": "coverage/unattended/generic-loop-*-current-v0111.json；coverage/unattended/generic-loop-bloodletting-double-pommel-quality-v0111.json；runId aed2647646d645abb18e1ef94bf53283、eb6084633d3744399a3e3422e13e2e8a、b57b545ed9c7415cb6644af2df7e89cc、1991d55b153f44c8b722546214e57f0a、a7a3fda4781e4f329a00b39aecdf079b、5859c64bb16d4a0c8bf1134f45d23861、3bb92f0684d7414d9d0660f83edb992b；验证日期 2026-09-03。"
+  },
+  "INFESTED-PRISMS-GENERIC-QUALITY-FINAL": {
+    "status": "Passed",
+    "level": "HeadlessExactIssueBundleFullConfiguredSmartSearchQualityAndPerformance",
+    "procedure": "从用户 INFESTED_PRISMS 问题包恢复同一 run-state/replay-state，以 VeryHigh、Smart、DOP8、NoGC 16 GB 完整运行配置搜索，记录请求/选中层工作量、墙钟、分配、进程高水位、GC 和最终动作路线。",
+    "expected": "配置搜索正常结束；最终质量至少不劣于旧 42 HP、战损 18、T7；不以固定旧节点数作为语义门槛。",
+    "observed": "runId 1e9c735a5c9e42889ab46c6389a66b16 正常完成：累计 13516/80477/33664，选中层 4437/23810/8337，10548.215 ms，分配 4920306312 B，VmHWM 3715840 kB；43 HP、战损 17、T5、两药。Gen0/1/2 均 4，暂停累计/最大 640.203/404.340 ms，两次层间 NoGC 回收重建成功。",
+    "evidence": "用户问题包 CombatSolver-INFESTED_PRISMS_ELITE-20260901-210228-701.zip；docs/TEST_MATRIX.md；上述 runId；验证日期 2026-09-03。"
+  },
+  "AEONGLASS-LONGLINE-NOGC-AB-V0272": {
+    "status": "Passed",
+    "level": "HeadlessExactLongLineNoGcEnabledDisabledPerformanceAndLifecycleComparison",
+    "procedure": "从用户 AEONGLASS_BOSS 问题包恢复同一 Silent 396 长线根，保持全部搜索参数一致，分别以 4 GB NoGC 和关闭 NoGC 完整运行三层 Smart 搜索。",
+    "expected": "开关不得改变节点、选中路线、战损或回合；启用时每个压力/层间回收点应安全退出、回收并重建 NoGC，关闭时由 CLR 常规 GC 管理。",
+    "observed": "两次均为累计 27905/173477/74998、选中层 8687/59910/26619、战损 9、56 HP、T9、两药。4 GB NoGC 为 72151.169 ms、VmHWM 4396804 kB、GC 暂停 4822.405 ms；关闭为 97927.457 ms、VmHWM 2745000 kB、GC 暂停 29712.935 ms。NoGC 快约 26.3%，峰值多约 1.57 GiB；13 个压力检查点和 2 次层间整理均成功重建且无回退。",
+    "evidence": "用户问题包 CombatSolver-AEONGLASS_BOSS-20260902-011550-694.zip；docs/TEST_MATRIX.md；runId 5f75b1cd2b604f34874be9e6243590db、6c187605b7a8451bbd163a800d9f25c4；验证日期 2026-09-03。"
   }
 }

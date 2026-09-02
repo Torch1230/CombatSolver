@@ -726,6 +726,19 @@ internal sealed class CycleProbeTracker(
         return false;
     }
 
+    public bool HasPendingExitProbe(
+        int phaseIndex,
+        StateFingerprint actionKey,
+        long generation)
+        => (uint)phaseIndex < (uint)_exitEnvelopes.Length
+            && _exitEnvelopes[phaseIndex]?.TryGetValue(
+                actionKey,
+                out ExitEnvelope? envelope) == true
+            && envelope.ActiveTickets.TryGetValue(
+                generation,
+                out ExitProbeTicketStatus status)
+            && status == ExitProbeTicketStatus.Pending;
+
     public void CompleteExitProbe(
         int phaseIndex,
         StateFingerprint actionKey,

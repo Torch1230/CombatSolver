@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "GENERIC-LOOP-SILENT-PREPARED-TACTICIAN-CURRENT-V0111",
+  "description": "Current-rule discard loop: upgraded Prepared and Acrobatics repeatedly discard upgraded Tactician; Speedster converts the otherwise structural draw loop into damage.",
+  "characterId": "SILENT",
+  "encounterId": "AEONGLASS_BOSS",
+  "actIndexForTest": 2,
+  "seed": "LOOPSILENTPREPARED0111",
+  "enemyCurrentHp": 80,
+  "initialPlayerHp": 70,
+  "initialPlayerMaxHp": 70,
+  "initialPlayerEnergy": 1,
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    {
+      "cardId": "PREPARED",
+      "pile": "Hand",
+      "upgradeLevels": 1,
+      "treatAsDeckCard": true
+    },
+    {
+      "cardId": "DEFEND_SILENT",
+      "pile": "Hand",
+      "treatAsDeckCard": true
+    },
+    {
+      "cardId": "TACTICIAN",
+      "pile": "Discard",
+      "upgradeLevels": 1,
+      "treatAsDeckCard": true
+    },
+    {
+      "cardId": "ACROBATICS",
+      "pile": "Discard",
+      "upgradeLevels": 1,
+      "treatAsDeckCard": true
+    }
+  ],
+  "powers": [
+    { "powerId": "SPEEDSTER_POWER", "target": "Player", "amount": 2 }
+  ],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 5000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "expectedInitialFirstActionCardId": "PREPARED",
+  "expectedInitialChoiceBranchesEvaluatedAtLeast": 1,
+  "expectedInitialCycleShapesDetectedAtLeast": 1,
+  "expectedInitialShufflesCrossedAtLeast": 1,
+  "expectedInitialExecutableActionCountAtLeast": 8,
+  "expectedInitialProjectedBattleHpLost": 0,
+  "expectedInitialCombatEndedTurn": 1,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120
+}

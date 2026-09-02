@@ -578,6 +578,7 @@ internal sealed partial class CombatBeamSolver
 
         SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(_player);
         List<ActionCandidate> nonDominated = new(16);
+        List<ActionCandidate>? deferredCycleCandidates = null;
         IReadOnlyList<PredictedCard> hand = playerState.Hand.Cards;
         HandFingerprintBuffer seenCards = default;
         int seenCardCount = 0;
@@ -707,7 +708,19 @@ internal sealed partial class CombatBeamSolver
                         finalSnapshot.ReleaseSimulator();
                         continue;
                     }
-                    if (TryAcceptTransposition(child))
+                    bool deferTransposition = ShouldDeferCycleTranspositionUntilActionAdmission(
+                        child);
+                    if (deferTransposition)
+                    {
+                        deferredCycleCandidates ??= [];
+                        deferredCycleCandidates.Add(BuildCandidate(
+                            snapshot,
+                            finalSnapshot,
+                            child,
+                            card.Preview.Type,
+                            target?.CombatId));
+                    }
+                    else if (TryAcceptTransposition(child))
                     {
                         AddNonDominatedCandidate(nonDominated, BuildCandidate(
                             snapshot,
@@ -729,6 +742,10 @@ internal sealed partial class CombatBeamSolver
             PruneCommittedCrossTurnCandidates(cycleExitBatch.Potions, cycleExitBatch);
             PruneCommittedCrossTurnCandidates(cycleExitBatch.EndTurns, cycleExitBatch);
         }
+        CommitDeferredCycleCandidates(
+            nonDominated,
+            deferredCycleCandidates,
+            batch: null);
         if (node.CycleProbeLease != null)
         {
             SearchNode[] directChildren = nonDominated.Select(candidate => candidate.Node)
@@ -2933,7 +2950,9 @@ internal sealed partial class CombatBeamSolver
         return noWorse && strictlyBetter;
     }
 
-    private void AddNonDominatedCandidate(List<ActionCandidate> candidates, ActionCandidate candidate)
+    private void AddNonDominatedCandidate(
+        List<ActionCandidate> candidates,
+        ActionCandidate candidate)
     {
         for (int index = candidates.Count - 1; index >= 0; index--)
         {
@@ -2953,14 +2972,349 @@ internal sealed partial class CombatBeamSolver
         candidates.Add(candidate);
     }
 
+    private static bool HasValidCycleProbeLease(SearchNode candidate)
+    {
+        if (candidate.CycleProbeLease is not { } lease
+            || lease.Tracker == null
+            || lease.Tracker.PeriodActions <= 0
+            || lease.NextActionIndex < 0
+            || lease.NextActionIndex >= lease.Tracker.PeriodActions
+            || lease.CompletedRepetitions < 0)
+        {
+            return false;
+        }
+        return true;
+    }
+
+    private static bool HasValidCycleExitProbe(
+        SearchNode candidate,
+        bool requireIssuedTicket)
+    {
+        if (candidate.CycleExitProbe is not { } probe
+            || probe.OriginTracker == null
+            || probe.OriginGeneration <= 0
+            || probe.OriginPeriodActions <= 0
+            || probe.OriginPeriodActions != probe.OriginTracker.PeriodActions
+            || probe.OriginShapeKey != probe.OriginTracker.ShapeKey
+            || probe.OriginSequenceKey != probe.OriginTracker.SequenceKey
+            || probe.OriginPhaseIndex < 0
+            || probe.OriginPhaseIndex >= probe.OriginPeriodActions
+            || probe.RemainingActions <= 0
+            || probe.RemainingActions > MaximumCycleExitProbeActions
+            || probe.RemainingTurnTransitions < 0
+            || probe.RemainingTurnTransitions > MaximumCycleExitProbeTurnTransitions)
+        {
+            return false;
+        }
+        if (probe.LeaseIssued)
+        {
+            // Issued siblings own independent bounded continuations. Another sibling may
+            // settle the shared tracker generation without revoking this embedded ticket.
+            return true;
+        }
+        return !requireIssuedTicket
+            && probe.OriginTracker.HasPendingExitProbe(
+                probe.OriginPhaseIndex,
+                probe.ExitActionKey,
+                probe.OriginGeneration);
+    }
+
+    private static bool HasCycleAdmissionTranspositionLease(SearchNode candidate)
+        => HasValidCycleProbeLease(candidate)
+            || HasValidCycleExitProbe(candidate, requireIssuedTicket: false);
+
+    private static bool HasCycleExpansionTranspositionLease(SearchNode candidate)
+        => HasValidCycleProbeLease(candidate)
+            || HasValidCycleExitProbe(candidate, requireIssuedTicket: true);
+
+    private static bool ShouldDeferCycleTranspositionUntilActionAdmission(
+        SearchNode candidate)
+        => !HasCycleAdmissionTranspositionLease(candidate)
+            && RequiresBoundedCyclePlanning(candidate);
+
+    private static bool TryIssueSingleDeferredCycleProbeLease(
+        IReadOnlyList<ActionCandidate> admitted,
+        IReadOnlyList<ActionCandidate> deferred,
+        ActionCandidate preferred)
+    {
+        foreach (ActionCandidate candidate in admitted)
+        {
+            if (HasValidCycleProbeLease(candidate.Node))
+                return false;
+        }
+        bool containsPreferred = false;
+        foreach (ActionCandidate candidate in deferred)
+        {
+            containsPreferred |= ReferenceEquals(candidate.Node, preferred.Node);
+            if (HasValidCycleProbeLease(candidate.Node))
+                return false;
+        }
+        if (!containsPreferred
+            || preferred.Node.CycleProbeLease != null
+            || preferred.Node.CycleExitProbe != null
+            || !RequiresBoundedCyclePlanning(preferred.Node))
+        {
+            return false;
+        }
+        StartCycleProbeLease(preferred.Node);
+        return HasValidCycleProbeLease(preferred.Node);
+    }
+
+    private void CommitDeferredCycleCandidates(
+        List<ActionCandidate> nonDominated,
+        IReadOnlyList<ActionCandidate>? deferred,
+        ExpansionBatch? batch)
+    {
+        if (deferred == null || deferred.Count == 0)
+            return;
+        int bestMaxHp = deferred[0].Node.Snapshot.PlayerMaxHp;
+        foreach (ActionCandidate candidate in nonDominated)
+            bestMaxHp = Math.Max(bestMaxHp, candidate.Node.Snapshot.PlayerMaxHp);
+        foreach (ActionCandidate candidate in deferred)
+            bestMaxHp = Math.Max(bestMaxHp, candidate.Node.Snapshot.PlayerMaxHp);
+
+        ActionCandidate? leaseCandidate = nonDominated.Any(candidate =>
+                HasValidCycleProbeLease(candidate.Node))
+            ? null
+            : SelectPreferredCycleAdmissionCandidate(
+                deferred.Where(candidate => candidate.Node.CycleProbeLease == null
+                    && candidate.Node.CycleExitProbe == null
+                    && RequiresBoundedCyclePlanning(candidate.Node)),
+                bestMaxHp);
+        if (leaseCandidate is { } preferred)
+        {
+            if (!TryIssueSingleDeferredCycleProbeLease(
+                    nonDominated,
+                    deferred,
+                    preferred))
+            {
+                throw new InvalidOperationException(
+                    "动作 admission 选中的循环候选未取得有效探测租约。");
+            }
+            _run.CycleCandidatesProtected++;
+        }
+
+        // Only the single preferred recurrence owns a lease before the global table. Every
+        // sibling first proves it is independently non-dominated in the exact-state frontier.
+        ActionCandidate? protectedCandidate = null;
+        foreach (ActionCandidate candidate in deferred)
+        {
+            if (!TryAcceptTransposition(candidate.Node))
+            {
+                if (batch == null)
+                    candidate.Node.Snapshot.ReleaseSimulator();
+                else
+                    batch.Release(candidate.Node.Snapshot);
+                continue;
+            }
+            if (leaseCandidate is { } leased
+                && ReferenceEquals(candidate.Node, leased.Node))
+            {
+                protectedCandidate = candidate;
+                continue;
+            }
+            if (batch == null)
+                AddNonDominatedCandidate(nonDominated, candidate);
+            else
+                AddNonDominatedParallelCandidate(nonDominated, candidate, batch);
+        }
+        // This is the one explicit cycle lane. It neither removes ordinary candidates nor
+        // participates in their pairwise dominance pruning; final action admission decides
+        // whether it also wins a normal slot and otherwise appends the issued lease once.
+        if (protectedCandidate is { } protectedCycle)
+            nonDominated.Add(protectedCycle);
+    }
+
+    internal static void VerifyCycleTranspositionLeasePolicyForTesting()
+    {
+        StateFingerprint shapeKey = new(1, 2);
+        StateFingerprint sequenceKey = new(3, 4);
+        StateFingerprint actionKey = new(5, 6);
+        CycleSearchState coarseCycle = new(
+            shapeKey,
+            sequenceKey,
+            PeriodActions: 1,
+            Repetitions: 1,
+            LastDelta: default,
+            HasConsistentDelta: false);
+        SearchNode candidate = new(
+            Action: null,
+            ActionCount: 2,
+            PotionCount: 0,
+            PotionStrategicCost: 0,
+            Turn: 1,
+            Traits: SearchRouteTraits.None,
+            FutureSoldHp: 0,
+            Score: 9,
+            StateKey: new StateFingerprint(7, 8),
+            HasPredictionRisk: false,
+            BoundaryReason: SearchBoundaryReason.None,
+            IsTerminal: false,
+            Parent: null,
+            Snapshot: null!,
+            CombatProgress: null!,
+            Cycle: coarseCycle);
+        TranspositionLabel dominating = new(0, 0, 0, 0, 1, 10);
+        TranspositionLabel dominated = new(0, 0, 0, 0, 2, 9);
+
+        if (!ShouldDeferCycleTranspositionUntilActionAdmission(candidate)
+            || HasCycleAdmissionTranspositionLease(candidate)
+            || new TranspositionFrontier(dominating).TryAccept(dominated))
+        {
+            throw new InvalidOperationException(
+                "没有租约的循环元数据未重新受到转置支配约束。");
+        }
+
+        SearchNode testRoot = new(
+            Action: null,
+            ActionCount: 0,
+            PotionCount: 0,
+            PotionStrategicCost: 0,
+            Turn: 1,
+            Traits: SearchRouteTraits.None,
+            FutureSoldHp: 0,
+            Score: 0,
+            StateKey: default,
+            HasPredictionRisk: false,
+            BoundaryReason: SearchBoundaryReason.None,
+            IsTerminal: false,
+            Parent: null,
+            Snapshot: null!,
+            CombatProgress: null!);
+        SearchNode firstRecurrence = new(
+            Action: new PlanAction(PlanActionKind.PlayCard, 1),
+            ActionCount: 1,
+            PotionCount: 0,
+            PotionStrategicCost: 0,
+            Turn: 1,
+            Traits: SearchRouteTraits.None,
+            FutureSoldHp: 0,
+            Score: 0,
+            StateKey: new StateFingerprint(9, 10),
+            HasPredictionRisk: false,
+            BoundaryReason: SearchBoundaryReason.None,
+            IsTerminal: false,
+            Parent: testRoot,
+            Snapshot: null!,
+            CombatProgress: null!,
+            Cycle: coarseCycle);
+        SearchNode secondRecurrence = firstRecurrence with
+        {
+            StateKey = new StateFingerprint(11, 12),
+        };
+        ActionCandidate firstAction = new(
+            Node: firstRecurrence,
+            CardType: CardType.Attack,
+            TargetCombatId: null,
+            EnergySpent: 0,
+            StarsSpent: 0,
+            Damage: 0,
+            Block: 0,
+            Hp: 0,
+            MaxHp: 0,
+            CumulativeHpLost: 0,
+            LongTermResourceValue: 0,
+            AngerCopiesGenerated: 0,
+            OptionFamilies: ActionOptionFamily.ResourceAndCycle,
+            IsPure: true,
+            NormalizedValue: 0);
+        ActionCandidate secondAction = firstAction with { Node = secondRecurrence };
+        ActionCandidate[] multipleRecurrences = [firstAction, secondAction];
+        List<ActionCandidate> ordinarySelected = [secondAction];
+        if (!TryIssueSingleDeferredCycleProbeLease(
+                Array.Empty<ActionCandidate>(),
+                multipleRecurrences,
+                firstAction)
+            || TryIssueSingleDeferredCycleProbeLease(
+                Array.Empty<ActionCandidate>(),
+                multipleRecurrences,
+                secondAction)
+            || !AdmitExistingCycleProbeLease(
+                multipleRecurrences,
+                ordinarySelected,
+                bestMaxHp: 0)
+            || ordinarySelected.Count != 2
+            || !ReferenceEquals(ordinarySelected[1].Node, firstRecurrence)
+            || !HasValidCycleProbeLease(firstRecurrence)
+            || HasValidCycleProbeLease(secondRecurrence)
+            || !HasCycleAdmissionTranspositionLease(firstRecurrence)
+            || HasCycleAdmissionTranspositionLease(secondRecurrence)
+            || multipleRecurrences.Count(item => HasValidCycleProbeLease(item.Node)) != 1)
+        {
+            throw new InvalidOperationException(
+                "同一父节点的循环 admission 没有保持并复用唯一探测租约。");
+        }
+
+        SearchNode deferredAfterInheritedLease = secondRecurrence with
+        {
+            StateKey = new StateFingerprint(13, 14),
+        };
+        ActionCandidate deferredAfterInheritedAction = secondAction with
+        {
+            Node = deferredAfterInheritedLease,
+        };
+        if (TryIssueSingleDeferredCycleProbeLease(
+                [firstAction],
+                [deferredAfterInheritedAction],
+                deferredAfterInheritedAction)
+            || !HasValidCycleProbeLease(firstRecurrence)
+            || HasValidCycleProbeLease(deferredAfterInheritedLease))
+        {
+            throw new InvalidOperationException(
+                "父节点已有继承循环租约时仍给 deferred recurrence 签发了第二租约。");
+        }
+
+        CycleProbeTracker tracker = new(shapeKey, sequenceKey, [actionKey]);
+        candidate.CycleProbeLease = new CycleProbeLease(
+            tracker,
+            NextActionIndex: 0,
+            CompletedRepetitions: 0,
+            ImprovedSinceWrap: false,
+            LastCompletedRepetitionImproved: false);
+        if (!HasCycleAdmissionTranspositionLease(candidate)
+            || !HasCycleExpansionTranspositionLease(candidate))
+        {
+            throw new InvalidOperationException("有效循环探测租约没有绕过转置约束。");
+        }
+
+        candidate.CycleProbeLease = null;
+        if (HasCycleAdmissionTranspositionLease(candidate)
+            || new TranspositionFrontier(dominating).TryAccept(dominated))
+        {
+            throw new InvalidOperationException("被剥离的循环探测租约仍然绕过转置约束。");
+        }
+
+        long generation = tracker.ObserveExit(0, actionKey, default);
+        candidate.CycleExitProbe = new CycleExitProbeState(
+            OriginTracker: tracker,
+            OriginNode: candidate,
+            OriginPhaseIndex: 0,
+            OriginShapeKey: shapeKey,
+            OriginSequenceKey: sequenceKey,
+            OriginPeriodActions: 1,
+            ExitActionKey: actionKey,
+            OriginGeneration: generation,
+            RemainingActions: MaximumCycleExitProbeActions,
+            RemainingTurnTransitions: MaximumCycleExitProbeTurnTransitions);
+        if (!HasCycleAdmissionTranspositionLease(candidate)
+            || HasCycleExpansionTranspositionLease(candidate))
+        {
+            throw new InvalidOperationException(
+                "待签发的循环出口票据没有被限制在 admission 阶段。");
+        }
+        if (!tracker.TryMarkExitProbeIssued(0, actionKey, generation))
+            throw new InvalidOperationException("循环出口测试票据无法签发。");
+        candidate.CycleExitProbe = candidate.CycleExitProbe with { LeaseIssued = true };
+        if (!HasCycleExpansionTranspositionLease(candidate))
+            throw new InvalidOperationException("已签发的循环出口票据无法继续推进。");
+    }
+
     private bool TryAcceptTransposition(SearchNode candidate)
     {
         // Scheduling obligations are deliberately bounded elsewhere. A normal route at the
         // same simulator state cannot inherit their exact pattern/envelope history, so it must
         // not erase the probe before the obligation reaches the frontier.
-        if (candidate.CycleProbeLease != null
-            || candidate.CycleExitProbe != null
-            || RequiresBoundedCyclePlanning(candidate))
+        if (HasCycleAdmissionTranspositionLease(candidate))
             return true;
         TranspositionLabel next = new(
             candidate.PotionCount,
@@ -2992,9 +3346,7 @@ internal sealed partial class CombatBeamSolver
 
     private bool TryMarkExpandedState(SearchNode node)
     {
-        if (node.CycleProbeLease != null
-            || node.CycleExitProbe != null
-            || RequiresBoundedCyclePlanning(node))
+        if (HasCycleExpansionTranspositionLease(node))
             return true;
         TranspositionLabel next = new(
             node.PotionCount,

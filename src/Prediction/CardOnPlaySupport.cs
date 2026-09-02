@@ -114,11 +114,7 @@ internal static partial class CardOnPlaySupport
                     combat.Apply<WeakPower>(enemy, card.DynamicVars.Weak.IntValue, owner);
                 break;
             case HiddenCache:
-                PowerLifecycleSupport.GainStars(
-                    simulator,
-                    combat,
-                    card.Owner,
-                    card.DynamicVars.Stars.IntValue);
+                simulator.GainStars(card.Owner, card.DynamicVars.Stars.IntValue);
                 combat.Apply<StarNextTurnPower>(
                     owner,
                     card.DynamicVars["StarNextTurnPower"].IntValue,
@@ -151,11 +147,7 @@ internal static partial class CardOnPlaySupport
                 combat.Apply<BlockNextTurnPower>(owner, simulator.State.GetCreature(owner).Block, owner);
                 break;
             case RoyalGamble:
-                PowerLifecycleSupport.GainStars(
-                    simulator,
-                    combat,
-                    card.Owner,
-                    card.DynamicVars.Stars.IntValue);
+                simulator.GainStars(card.Owner, card.DynamicVars.Stars.IntValue);
                 break;
             case SeekingEdge:
                 PersistentPowerSupport.Forge(simulator, card.Owner, card.DynamicVars.Forge.IntValue);
@@ -202,11 +194,7 @@ internal static partial class CardOnPlaySupport
                 break;
             }
             case Venerate:
-                PowerLifecycleSupport.GainStars(
-                    simulator,
-                    combat,
-                    card.Owner,
-                    card.DynamicVars.Stars.IntValue);
+                simulator.GainStars(card.Owner, card.DynamicVars.Stars.IntValue);
                 break;
         }
         ApplyBatch042(simulator, combat, playedCard, cardPlay, target, processedEnemyDeaths);

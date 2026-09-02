@@ -5694,10 +5694,10 @@
     "testId": "POWER-LIFECYCLE-BATCH-051"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.BlackHolePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterStarsGained(System.Int32,MegaCrit.Sts2.Core.Entities.Players.Player)": {
-    "status": "SolverCompensation",
-    "source": "src/Prediction/PowerLifecycleSupport.cs",
-    "notes": "Every positive simulated star gain deals unpowered damage equal to Amount to each hittable enemy of the owner.",
-    "testId": "POWER-LIFECYCLE-BATCH-051"
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/Resources/AfterStarsGainedMirrors.cs",
+    "notes": "The central GainStars command dispatches the native hook after the accepted state mutation; every positive gain event deals unpowered damage equal to Black Hole's Amount to each hittable enemy of the owner.",
+    "testId": "AFTER-STARS-GAINED-ENGINE-MIRROR-0111"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.BurrowedPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterBlockBroken(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
     "status": "SolverCompensation",

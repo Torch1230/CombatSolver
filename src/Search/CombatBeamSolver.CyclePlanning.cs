@@ -544,66 +544,87 @@ internal sealed partial class CombatBeamSolver
         return false;
     }
 
+    private static ActionCandidate? SelectPreferredCycleAdmissionCandidate(
+        IEnumerable<ActionCandidate> candidates,
+        int bestMaxHp)
+        => candidates
+            .OrderBy(candidate => CycleHealthRisk(candidate.Node, bestMaxHp))
+            .ThenBy(candidate => candidate.Node.PotionStrategicCost)
+            .ThenBy(candidate => candidate.Node.Turn)
+            .ThenBy(candidate => candidate.Node.ActionCount)
+            .ThenByDescending(candidate => candidate.Node.Snapshot.ProjectedPlayerHp)
+            .ThenByDescending(candidate => candidate.Node.Score)
+            .Select(candidate => (ActionCandidate?)candidate)
+            .FirstOrDefault();
+
+    private static bool AdmitExistingCycleProbeLease(
+        IReadOnlyList<ActionCandidate> candidates,
+        List<ActionCandidate> selected,
+        int bestMaxHp)
+    {
+        if (selected.Any(candidate => HasValidCycleProbeLease(candidate.Node)))
+            return true;
+        ActionCandidate single = default;
+        int count = 0;
+        foreach (ActionCandidate candidate in candidates)
+        {
+            if (selected.Any(current => ReferenceEquals(current.Node, candidate.Node))
+                || !HasValidCycleProbeLease(candidate.Node))
+            {
+                continue;
+            }
+            single = candidate;
+            count++;
+        }
+        if (count == 0)
+            return false;
+        ActionCandidate leased = count == 1
+            ? single
+            : SelectPreferredCycleAdmissionCandidate(
+                candidates.Where(candidate =>
+                    !selected.Any(current => ReferenceEquals(current.Node, candidate.Node))
+                    && HasValidCycleProbeLease(candidate.Node)),
+                bestMaxHp)
+                ?? throw new InvalidOperationException("循环 admission 无法选择现有租约。");
+        selected.Add(leased);
+        return true;
+    }
+
     private void AdmitCycleProbeCandidate(
         IReadOnlyList<ActionCandidate> candidates,
         List<ActionCandidate> selected)
     {
         if (candidates.Count == 0)
             return;
-        if (selected.Any(candidate => candidate.Node.CycleProbeLease != null))
-            return;
         int bestMaxHp = candidates.Max(candidate => candidate.Node.Snapshot.PlayerMaxHp);
+
+        // A lease issued before transposition owns the one bounded cycle lane for this
+        // parent. Preserve that exact candidate instead of minting a second lease for a
+        // different recurrence that happened to win an ordinary action slot.
+        if (AdmitExistingCycleProbeLease(candidates, selected, bestMaxHp))
+            return;
 
         // A recurrence that already won an ordinary action slot still needs its bounded
         // continuation lease. Small frontiers do not necessarily reach the later global
         // portfolio pass, so merely leaving the node in `selected` can make the next
         // structurally identical (but internally changed) phase look disposable.
-        ActionCandidate? selectedEvidence = selected
-            .Where(candidate => candidate.Node.CycleExitProbe == null
-                && RequiresBoundedCyclePlanning(candidate.Node))
-            .OrderBy(candidate => CycleHealthRisk(candidate.Node, bestMaxHp))
-            .ThenBy(candidate => candidate.Node.PotionStrategicCost)
-            .ThenBy(candidate => candidate.Node.Turn)
-            .ThenBy(candidate => candidate.Node.ActionCount)
-            .ThenByDescending(candidate => candidate.Node.Snapshot.ProjectedPlayerHp)
-            .ThenByDescending(candidate => candidate.Node.Score)
-            .Select(candidate => (ActionCandidate?)candidate)
-            .FirstOrDefault();
+        ActionCandidate? selectedEvidence = SelectPreferredCycleAdmissionCandidate(
+            selected.Where(candidate => candidate.Node.CycleExitProbe == null
+                && RequiresBoundedCyclePlanning(candidate.Node)),
+            bestMaxHp);
         if (selectedEvidence is { } alreadyRetained)
         {
             EnsureBoundedCycleProbeLease(alreadyRetained.Node);
             return;
         }
 
-        ActionCandidate? evidence = candidates
-            .Where(candidate =>
+        ActionCandidate? evidence = SelectPreferredCycleAdmissionCandidate(
+            candidates.Where(candidate =>
                 !selected.Any(current => ReferenceEquals(current.Node, candidate.Node))
-                && candidate.Node.CycleProbeLease != null)
-            .OrderBy(candidate => CycleHealthRisk(candidate.Node, bestMaxHp))
-            .ThenBy(candidate => candidate.Node.PotionStrategicCost)
-            .ThenBy(candidate => candidate.Node.Turn)
-            .ThenBy(candidate => candidate.Node.ActionCount)
-            .ThenByDescending(candidate => candidate.Node.Snapshot.ProjectedPlayerHp)
-            .ThenByDescending(candidate => candidate.Node.Score)
-            .Select(candidate => (ActionCandidate?)candidate)
-            .FirstOrDefault();
-        if (evidence is not { })
-        {
-            evidence = candidates
-                .Where(candidate =>
-                    !selected.Any(current => ReferenceEquals(current.Node, candidate.Node))
-                    && candidate.Node.Cycle != null
-                    && candidate.Node.CycleExitProbe == null
-                    && RequiresBoundedCyclePlanning(candidate.Node))
-                .OrderBy(candidate => CycleHealthRisk(candidate.Node, bestMaxHp))
-                .ThenBy(candidate => candidate.Node.PotionStrategicCost)
-                .ThenBy(candidate => candidate.Node.Turn)
-                .ThenBy(candidate => candidate.Node.ActionCount)
-                .ThenByDescending(candidate => candidate.Node.Snapshot.ProjectedPlayerHp)
-                .ThenByDescending(candidate => candidate.Node.Score)
-                .Select(candidate => (ActionCandidate?)candidate)
-                .FirstOrDefault();
-        }
+                && candidate.Node.Cycle != null
+                && candidate.Node.CycleExitProbe == null
+                && RequiresBoundedCyclePlanning(candidate.Node)),
+            bestMaxHp);
         if (evidence is not { } retained)
             return;
 

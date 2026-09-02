@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "GENERIC-LOOP-HELLRAISER-PILLAGE-SINGLE-CURRENT-V0111",
+  "description": "Current-rule automatic reshuffle chain: one Pillage remains in play while Hellraiser auto-plays the only Strike through repeated reshuffles. This validates exact transition-internal execution on a finite enemy, not mathematical infinity; a second Pillage is intentionally not required.",
+  "characterId": "IRONCLAD",
+  "encounterId": "AEONGLASS_BOSS",
+  "actIndexForTest": 2,
+  "seed": "LOOPHELLRAISERSINGLE0111",
+  "enemyCurrentHp": 300,
+  "initialPlayerHp": 80,
+  "initialPlayerMaxHp": 80,
+  "initialPlayerEnergy": 1,
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    { "cardId": "PILLAGE", "pile": "Hand", "treatAsDeckCard": true },
+    { "cardId": "STRIKE_IRONCLAD", "pile": "Draw", "treatAsDeckCard": true }
+  ],
+  "powers": [
+    { "powerId": "HELLRAISER_POWER", "target": "Player", "amount": 1 }
+  ],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 5000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "expectedInitialFirstActionCardId": "PILLAGE",
+  "expectedInitialExecutableActionCountAtLeast": 1,
+  "expectedInitialShufflesCrossedAtLeast": 1,
+  "expectedInitialProjectedBattleHpLost": 0,
+  "expectedInitialCombatEndedTurn": 1,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120
+}
