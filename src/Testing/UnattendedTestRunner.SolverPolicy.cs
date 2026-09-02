@@ -69,13 +69,14 @@ internal sealed partial class UnattendedTestRunner
         long establishedBudget = SearchGcPolicy.LastEstablishedNoGcRegionBudgetBytesForTesting;
         if (configured.EnableNoGcRegion)
         {
-            if (actualActive
-                || actualBudget != 0
+            if (!actualActive
+                || actualBudget <= 0
+                || actualBudget > configured.NoGcRegionBudgetBytes
                 || establishedBudget <= 0
                 || establishedBudget > configured.NoGcRegionBudgetBytes)
             {
                 throw new InvalidOperationException(
-                    $"No-GC 搜索没有按配置建立并在结果返回后退出：" +
+                    $"No-GC 搜索没有按配置建立并保留战斗级区域：" +
                     $"configured_enabled=true configured_budget={configured.NoGcRegionBudgetBytes} " +
                     $"established_budget={establishedBudget} " +
                     $"actual_active={actualActive} actual_budget={actualBudget} " +

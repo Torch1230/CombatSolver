@@ -85,7 +85,7 @@ internal sealed partial class SolverSettingsPanel
             budgetGrid,
             "启用 NoGC 区域",
             _noGcRegionEnabled,
-            "开启时按下方预算为每次搜索建立 NoGC 区域，在安全分配检查点整理内存后继续，并在搜索结束后后台清理；关闭时搜索期间使用 CLR 常规分代 GC。切换在下次搜索生效。");
+            "开启时按下方预算建立战斗级 NoGC 区域，在安全分配检查点整理内存后继续；最终搜索完成后保留区域，战斗结束后延时清理。关闭时搜索期间使用 CLR 常规分代 GC。切换在下次搜索生效。");
         _noGcRegionBudget = CreateRequiredDoubleInput(
             data => data.NoGcRegionBudgetGigabytes
                 ?? SolverSettings.DefaultNoGcRegionBudgetGigabytes,
@@ -96,7 +96,7 @@ internal sealed partial class SolverSettingsPanel
             budgetGrid,
             "搜索内存预算（GB）",
             _noGcRegionBudget,
-            "这是独立于性能预设的单次搜索 NoGC 区域请求上限，不是进程总内存上限，也不等于实际驻留内存。求解器会按系统当前安全余量自动下调实际区域；提高后可容纳更多并行分支并减少长搜索中的整理次数，但会增加内存占用与系统换页风险。搜索接近分配额度或系统内存安全线时，会保留活动 Beam、整理后继续；搜索结束后会在后台清理本轮对象。");
+            "这是独立于性能预设的战斗级 NoGC 区域请求上限，不是进程总内存上限，也不等于实际驻留内存。求解器会按系统当前安全余量自动下调实际区域；提高后可容纳更多并行分支并减少长搜索中的整理次数，但会增加内存占用与系统换页风险。搜索接近分配额度或系统内存安全线时，会保留活动 Beam、整理后继续；最终搜索完成后保留区域，战斗结束后延时清理。");
         _manualGcButton = SolverUiTokens.CreateButton(
             "手动 GC",
             SolverButtonStyle.Secondary);

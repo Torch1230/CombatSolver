@@ -169,17 +169,17 @@ internal sealed partial class SolverMemoryUsageBar : PanelContainer
             SystemMemoryLimitBytes: 22_000_000_000L,
             Reclaiming: false,
             BackgroundReclaiming: false));
-        return active.Text == "当前占用 6.4 / 7.0 GB  ·  系统占用 15.0 GB  ·  即将整理"
+        return active.Text == "当前内存占用 6.4 / 7.0 GB  ·  即将整理"
             && Math.Abs(active.PressureRatio - 6.4d / 7d) < 0.001d
             && active.Tone == MemoryPressureTone.Danger
-            && reclaiming.Text == "当前占用 6.1 / 8.1 GB  ·  系统占用 13.9 GB  ·  正在整理…"
+            && reclaiming.Text == "当前内存占用 6.1 / 8.1 GB  ·  正在整理…"
             && Math.Abs(reclaiming.PressureRatio - 6.1d / 8.1d) < 0.001d
-            && idle.Text == "当前占用 2.0 / 6.0 GB  ·  系统占用 6.0 GB"
+            && idle.Text == "当前内存占用 2.0 / 6.0 GB"
             && Math.Abs(idle.PressureRatio - 1d / 3d) < 0.001d
-            && background.Text == "当前占用 8.0 / 12.0 GB  ·  系统占用 10.0 GB  ·  后台清理中"
+            && background.Text == "当前内存占用 8.0 / 12.0 GB  ·  后台清理中"
             && Math.Abs(background.PressureRatio - 2d / 3d) < 0.001d
             && background.Tone == MemoryPressureTone.Warning
-            && systemLimited.Text == "当前占用 7.2 / 8.0 GB  ·  系统占用 14.0 GB  ·  即将整理"
+            && systemLimited.Text == "当前内存占用 7.2 / 8.0 GB  ·  即将整理"
             && Math.Abs(systemLimited.PressureRatio - 0.9d) < 0.001d;
     }
 
@@ -223,9 +223,8 @@ internal sealed partial class SolverMemoryUsageBar : PanelContainer
     private static MemoryBarDisplay BuildDisplay(SearchMemoryUsageSnapshot snapshot)
     {
         string summary =
-            "当前占用 " + FormatGigabytes(snapshot.ProcessWorkingSetBytes) +
-            " / " + FormatGigabytes(snapshot.ProcessMemoryLimitBytes) + " GB" +
-            "  ·  系统占用 " + FormatGigabytes(snapshot.SystemOccupiedBytes) + " GB";
+            "当前内存占用 " + FormatGigabytes(snapshot.ProcessWorkingSetBytes) +
+            " / " + FormatGigabytes(snapshot.ProcessMemoryLimitBytes) + " GB";
         double pressureRatio = snapshot.ProcessMemoryPressureRatio;
         double systemRatio = snapshot.SystemSegmentRatio;
         double processRatio = snapshot.ProcessSegmentRatio;

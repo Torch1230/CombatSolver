@@ -1285,10 +1285,8 @@ internal static class SearchGcPolicy
             }
             if (_noGcRegionActive)
             {
-                _reclaimRequired = true;
                 Entry.Logger.Info(
-                    "[CombatSolver/Test] GC_LATENCY search_completed_reclaim=background_non_compacting");
-                RequestReclaimLocked("search_completed");
+                    "[CombatSolver/Test] GC_LATENCY no_gc_region_retained_until_combat_reset=true");
                 return;
             }
             RestoreLatencyModeLocked();

@@ -482,11 +482,11 @@ internal sealed partial class UnattendedTestRunner
                     "unattended_manual_gc_checkpoint_cleanup")
                 .ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
         }
-        if (SearchGcPolicy.BackgroundReclaimStartedCountForTesting != 1
-            || SearchGcPolicy.BackgroundGen2CompletedCountForTesting != 1)
+        if (SearchGcPolicy.BackgroundReclaimStartedCountForTesting != 0
+            || SearchGcPolicy.BackgroundGen2CompletedCountForTesting != 0)
         {
             throw new InvalidOperationException(
-                "搜索内检查点完成后，搜索退出没有执行最终后台 Gen2 清理。");
+                "搜索内检查点满足手动 GC 后又重复安排了后台 Gen2。");
         }
     }
 
