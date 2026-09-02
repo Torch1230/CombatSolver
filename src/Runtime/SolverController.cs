@@ -177,12 +177,15 @@ internal static class SolverController
             ?? PlayerTurnSetupCoordinator.CurrentMemoryPressureSignal;
         SearchMemoryPressureUsage pressure = signal?.CaptureUsage()
             ?? SearchMemoryPressureUsage.Disabled;
+        SolverSettingsSnapshot settings = SolverSettings.Capture();
         return new SearchMemoryUsageSnapshot(
             System.Environment.WorkingSet,
+            settings.NoGcRegionBudgetBytes,
             IsSearching,
             pressure.AllocatedBytes,
             pressure.AllocationLimitBytes,
-            pressure.Reclaiming);
+            pressure.Reclaiming,
+            SearchGcPolicy.IsBackgroundReclaiming);
     }
     internal static long LastDeployedActionStartedAtMillisecondsForTesting { get; private set; }
     internal static Task LastCombatReferenceReleaseForTesting { get; private set; } = Task.CompletedTask;

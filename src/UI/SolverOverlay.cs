@@ -157,7 +157,8 @@ internal static class SolverOverlay
     internal static bool MemoryUsageBarConfiguredForTesting
         => _memoryUsageBar != null
             && GodotObject.IsInstanceValid(_memoryUsageBar)
-            && _memoryUsageBar.IsInsideTree();
+            && _memoryUsageBar.IsInsideTree()
+            && _memoryUsageBar.LayoutConfiguredForTesting;
     internal static bool ExerciseMemoryUsageBarForTesting()
         => SolverMemoryUsageBar.ExerciseFormattingForTesting();
     internal static bool VisualSettingsConfiguredForTesting

@@ -24,15 +24,19 @@ internal sealed record ManualProjectionComparison(
 
 internal readonly record struct SearchMemoryUsageSnapshot(
     long ProcessWorkingSetBytes,
+    long ConfiguredMemoryBudgetBytes,
     bool SearchActive,
     long SearchAllocatedBytes,
     long SearchAllocationLimitBytes,
-    bool Reclaiming)
+    bool Reclaiming,
+    bool BackgroundReclaiming)
 {
     public bool HasGcWall => SearchAllocationLimitBytes != long.MaxValue;
     public double GcWallRatio => HasGcWall
         ? Math.Clamp(SearchAllocatedBytes / (double)Math.Max(1, SearchAllocationLimitBytes), 0d, 1d)
         : 0d;
+    public double ConfiguredBudgetRatio
+        => Math.Clamp(ProcessWorkingSetBytes / (double)Math.Max(1, ConfiguredMemoryBudgetBytes), 0d, 1d);
 }
 
 internal sealed class SearchProgressDisplayState(long startedAtTick)

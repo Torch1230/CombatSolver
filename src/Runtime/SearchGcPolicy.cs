@@ -161,6 +161,15 @@ internal static class SearchGcPolicy
         }
     }
 
+    internal static bool IsBackgroundReclaiming
+    {
+        get
+        {
+            lock (Gate)
+                return _reclaimActive && _activeSearches == 0;
+        }
+    }
+
     private enum NoGcRegionStartOutcome
     {
         Started,
