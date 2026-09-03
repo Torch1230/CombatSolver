@@ -343,14 +343,50 @@ internal sealed partial class CombatBeamSolver
         {
             if (nodes.Count == 0)
                 return [];
-            int highestValue = nodes.Max(node => node.Snapshot.LongTermResourceValue);
-            if (nodes.All(node => node.Snapshot.LongTermResourceValue == highestValue))
+            // Max / All / Where 三次遍历外加三个委托，合成一次扫描：最高值、命中数与命中集合
+            // 全部按原顺序一次算出，筛选结果与 Where 的产出逐条相同。
+            int highestValue = int.MinValue;
+            int highestCount = 0;
+            for (int index = 0; index < nodes.Count; index++)
+            {
+                int value = nodes[index].Snapshot.LongTermResourceValue;
+                if (value > highestValue)
+                {
+                    highestValue = value;
+                    highestCount = 1;
+                }
+                else if (value == highestValue)
+                {
+                    highestCount++;
+                }
+            }
+            if (highestCount == nodes.Count)
                 return [];
+            List<SearchNode> highest = new(highestCount);
+            for (int index = 0; index < nodes.Count; index++)
+            {
+                if (nodes[index].Snapshot.LongTermResourceValue == highestValue)
+                    highest.Add(nodes[index]);
+            }
             return RankBest(
-                nodes.Where(node => node.Snapshot.LongTermResourceValue == highestValue),
+                highest,
                 limit,
                 preserveDefensiveRoute: true);
         }
+
+        // 两处 Sort 用的都是同一个比较：捕获 this 的 lambda 每次转委托都要分配，缓存起来。
+        private Comparison<SearchNode>? _beamRankComparison;
+        private Comparison<SearchNode>? _finalCandidateComparison;
+
+        private Comparison<SearchNode> BeamRankComparison
+            => _beamRankComparison ??= (left, right) =>
+            {
+                int byScore = BeamRankScore(right).CompareTo(BeamRankScore(left));
+                return byScore != 0 ? byScore : left.ActionCount.CompareTo(right.ActionCount);
+            };
+
+        private Comparison<SearchNode> FinalCandidateComparison
+            => _finalCandidateComparison ??= CompareFinalCandidates;
 
         public List<SearchNode> RankBest(
             IEnumerable<SearchNode> nodes,
@@ -380,13 +416,7 @@ internal sealed partial class CombatBeamSolver
                 ranked = [.. bestByState.Values];
             }
 
-            ranked.Sort(finalQualityFirst
-                ? CompareFinalCandidates
-                : (left, right) =>
-                {
-                    int byScore = BeamRankScore(right).CompareTo(BeamRankScore(left));
-                    return byScore != 0 ? byScore : left.ActionCount.CompareTo(right.ActionCount);
-                });
+            ranked.Sort(finalQualityFirst ? FinalCandidateComparison : BeamRankComparison);
             List<SearchNode> routingChoices = [];
             if (preserveDefensiveRoute)
             {
@@ -1193,13 +1223,7 @@ internal sealed partial class CombatBeamSolver
                 EnforcePotionUseQuota(ranked, quotaPool, required, usesPotion: true, usedPotionQuota);
                 EnforcePotionUseQuota(ranked, quotaPool, required, usesPotion: false, unusedPotionQuota);
             }
-            ranked.Sort(finalQualityFirst
-                ? CompareFinalCandidates
-                : (left, right) =>
-                {
-                    int byScore = BeamRankScore(right).CompareTo(BeamRankScore(left));
-                    return byScore != 0 ? byScore : left.ActionCount.CompareTo(right.ActionCount);
-                });
+            ranked.Sort(finalQualityFirst ? FinalCandidateComparison : BeamRankComparison);
             AssignRetentionRanks(ranked, required);
             return ranked;
         }
@@ -1302,8 +1326,12 @@ internal sealed partial class CombatBeamSolver
             List<IGrouping<StateFingerprint, SearchNode>> selected,
             IGrouping<StateFingerprint, SearchNode> candidate)
         {
-            if (!selected.Any(group => ReferenceEquals(group, candidate)))
-                selected.Add(candidate);
+            foreach (IGrouping<StateFingerprint, SearchNode> group in selected)
+            {
+                if (ReferenceEquals(group, candidate))
+                    return;
+            }
+            selected.Add(candidate);
         }
 
         private static void AddRoutingCandidate(List<SearchNode> selected, SearchNode? candidate)
@@ -1657,9 +1685,11 @@ internal sealed partial class CombatBeamSolver
 
         private static void AddRequired(List<SearchNode> required, SearchNode? candidate, int limit)
         {
+            // 原来的 Any(lambda) 捕获 candidate，每次调用都要建闭包与委托；
+            // ContainsReference 是同样的顺序扫描 + 短路，只是不分配。
             if (candidate == null
                 || required.Count >= limit
-                || required.Any(node => ReferenceEquals(node, candidate)))
+                || ContainsReference(required, candidate))
             {
                 return;
             }
