@@ -387,12 +387,27 @@ internal static class HookMirrors
             return originalCost;
         }
 
-        var context = new ModifyEnergyCostInCombatMirrorContext
+        // 费用查询是最热的 hook 之一（每次可玩性判定都要为手里每张牌跑一遍）。这个 context
+        // 调用返回后无人持有，按模拟器复用一份即可；绑在模拟器上是因为 Simulator 是 required
+        // init，复用范围不能跨模拟器。取用时先摘空槽位，万一某个游戏侧 hook 递归回到这里，
+        // 内层会自建一份，两层互不干扰。
+        ModifyEnergyCostInCombatMirrorContext context;
+        if (simulator.EnergyCostMirrorScratch is { } scratch)
         {
-            Simulator = simulator,
-            Card = card,
-            Cost = originalCost
-        };
+            simulator.EnergyCostMirrorScratch = null;
+            scratch.Card = card;
+            scratch.Cost = originalCost;
+            context = scratch;
+        }
+        else
+        {
+            context = new ModifyEnergyCostInCombatMirrorContext
+            {
+                Simulator = simulator,
+                Card = card,
+                Cost = originalCost
+            };
+        }
 
         foreach (var listener in IterateCombatHookListeners(simulator))
         {
@@ -411,7 +426,9 @@ internal static class HookMirrors
             context.Cost = 0m;
         }
 
-        return context.Cost;
+        decimal cost = context.Cost;
+        simulator.EnergyCostMirrorScratch = context;
+        return cost;
     }
 
     /// <summary>

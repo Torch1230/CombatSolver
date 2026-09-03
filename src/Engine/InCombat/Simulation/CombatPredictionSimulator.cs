@@ -30,6 +30,15 @@ internal sealed partial class CombatPredictionSimulator
     public PredictionTraceFrame? CurrentFrame => _trace.Current;
 
     /// <summary>
+    /// Reusable mirror context for <see cref="Mirrors.HookMirrors.ModifyEnergyCostInCombat"/>.
+    /// </summary>
+    /// <remarks>
+    /// 该 context 在调用返回后没有任何持有者，可以复用；它的 <c>Simulator</c> 是 required init，
+    /// 所以复用范围绑定在单个模拟器上。取用方负责先摘空这个槽位以防重入。
+    /// </remarks>
+    internal Mirrors.Hooks.Card.ModifyEnergyCostInCombatMirrorContext? EnergyCostMirrorScratch;
+
+    /// <summary>
     /// Mirrors <see cref="CombatTurnState.IsInProgress"/>.
     /// </summary>
     public bool IsInProgress { get; private set; } = true;
