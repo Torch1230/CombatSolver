@@ -1,3 +1,4 @@
+using System.Globalization;
 using Godot;
 using MegaCrit.Sts2.Core.Localization.Fonts;
 
@@ -12,6 +13,7 @@ internal sealed partial class SolverSettingsPanel
     private CheckButton _stopOnWorseRecalculation = null!;
     private OptionButton _actTransitionBossHpStrategy = null!;
     private OptionButton _finalBossHpStrategy = null!;
+    private LineEdit _acceptableBattleHpLoss = null!;
     private OptionButton _searchCompletionNotificationPolicy = null!;
     private OptionButton _overlayTheme = null!;
     private HSlider _overlayOpacity = null!;
@@ -31,6 +33,27 @@ internal sealed partial class SolverSettingsPanel
                == (int)SolverSettings.Current.ActTransitionBossHpStrategy
            && _finalBossHpStrategy.GetItemId(_finalBossHpStrategy.Selected)
                == (int)SolverSettings.Current.FinalBossHpStrategy;
+
+    internal bool AcceptableBattleHpLossSettingsConfiguredForTesting
+        => _acceptableBattleHpLoss.Text
+           == SolverSettings.Current.AcceptableBattleHpLoss.ToString(CultureInfo.InvariantCulture);
+
+    internal bool ExerciseAcceptableBattleHpLossSettingsForTesting()
+    {
+        SolverSettingsData original = SolverSettings.Current;
+        try
+        {
+            SolverSettings.ApplyForTesting(SolverSettings.RoundTripForTesting(
+                original with { AcceptableBattleHpLoss = 17 }));
+            Reload();
+            return AcceptableBattleHpLossSettingsConfiguredForTesting;
+        }
+        finally
+        {
+            SolverSettings.ApplyForTesting(original);
+            Reload();
+        }
+    }
 
     internal bool ExerciseBossHpStrategySettingsForTesting()
     {
@@ -147,6 +170,12 @@ internal sealed partial class SolverSettingsPanel
             "搜索结束通知",
             _searchCompletionNotificationPolicy,
             "搜索成功、失败、停止或结果过期时发送 Windows 系统通知和提示音。可关闭、仅在游戏不处于前台时通知，或始终通知；其他平台不会调用 Windows 接口。");
+        _acceptableBattleHpLoss = CreateAcceptableBattleHpLossInput();
+        AddBasicRow(
+            solverGrid,
+            "可接受战损上限（HP）",
+            _acceptableBattleHpLoss,
+            "完整胜利路线的预计本局战损小于等于此值时停止继续搜索；默认 0，只在零战损路线出现后停止。死亡或未完成路线不会触发。重新计算后生效。");
         content.AddChild(solverGrid);
 
         content.AddChild(CreateSectionHeading("幕末 Boss"));
@@ -258,6 +287,34 @@ internal sealed partial class SolverSettingsPanel
             SolverOverlay.RefreshBossHpStrategyHint();
             SetStatus("已保存，重新计算后生效", SolverUiTokens.Palette.Success);
         };
+        return input;
+    }
+
+    private LineEdit CreateAcceptableBattleHpLossInput()
+    {
+        LineEdit input = CreateInput("0");
+        _reloadInputs.Add(data => input.Text = data.AcceptableBattleHpLoss
+            .ToString(CultureInfo.InvariantCulture));
+        bool Commit()
+        {
+            string text = input.Text.Trim();
+            if (!int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int value)
+                || value < 0
+                || value > SolverSettings.MaximumAcceptableBattleHpLoss)
+            {
+                ShowInvalid(input, $"请输入 0–{SolverSettings.MaximumAcceptableBattleHpLoss} 的整数");
+                return false;
+            }
+            if (SolverSettings.Current.AcceptableBattleHpLoss == value)
+                return KeepUnchanged(input);
+            return SaveSetting(
+                input,
+                SolverSettings.Current with { AcceptableBattleHpLoss = value },
+                "已保存，下次搜索生效");
+        }
+        input.FocusExited += () => Commit();
+        input.TextSubmitted += _ => Commit();
+        _commitInputs.Add(Commit);
         return input;
     }
 

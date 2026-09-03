@@ -172,6 +172,8 @@ internal static class SolverOverlay
         => _settingsPanel?.VisualSettingsConfiguredForTesting == true;
     internal static bool BossHpStrategySettingsConfiguredForTesting
         => _settingsPanel?.BossHpStrategySettingsConfiguredForTesting == true;
+    internal static bool AcceptableBattleHpLossSettingsConfiguredForTesting
+        => _settingsPanel?.AcceptableBattleHpLossSettingsConfiguredForTesting == true;
     internal static bool ResizeUiConfiguredForTesting
         => _rightResizeHandle != null
             && _bottomResizeHandle != null
@@ -326,6 +328,8 @@ internal static class SolverOverlay
         => _settingsPanel?.ExerciseVisualSettingsForTesting() == true;
     internal static bool ExerciseBossHpStrategySettingsForTesting()
         => _settingsPanel?.ExerciseBossHpStrategySettingsForTesting() == true;
+    internal static bool ExerciseAcceptableBattleHpLossSettingsForTesting()
+        => _settingsPanel?.ExerciseAcceptableBattleHpLossSettingsForTesting() == true;
 
     internal static async Task<bool> ExerciseOverlayResizePersistenceForTestingAsync()
     {

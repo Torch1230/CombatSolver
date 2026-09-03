@@ -485,6 +485,7 @@ internal static class SolverController
             theftPolicy,
             settings.ActTransitionBossHpStrategy,
             settings.FinalBossHpStrategy,
+            settings.AcceptableBattleHpLoss,
             new SearchDiagnosticsSink(
                 message => Entry.Logger.Info(message),
                 message => Entry.Logger.Debug(message)),

@@ -57,6 +57,7 @@ internal sealed partial class CombatBeamSolver(
         root.BossHpRelief,
         policy.ActTransitionBossHpStrategy,
         policy.FinalBossHpStrategy);
+    private readonly int _acceptableBattleHpLoss = policy.AcceptableBattleHpLoss;
     private readonly bool _detailedDiagnostics = policy.DetailedDiagnostics;
     private readonly int? _maximumPotionUses = maximumPotionUses;
     private readonly int _minimumPotionUses = minimumPotionUses ?? 0;

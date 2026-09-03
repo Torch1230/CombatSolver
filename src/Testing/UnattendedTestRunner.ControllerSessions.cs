@@ -227,6 +227,11 @@ internal sealed partial class UnattendedTestRunner
         {
             throw new InvalidOperationException("第一、二幕与最终 Boss 的血量策略没有独立持久化。");
         }
+        if (!SolverOverlay.AcceptableBattleHpLossSettingsConfiguredForTesting
+            || !SolverOverlay.ExerciseAcceptableBattleHpLossSettingsForTesting())
+        {
+            throw new InvalidOperationException("可接受战损上限没有按持久化设置加载。");
+        }
         if (!SolverOverlay.ExerciseBossHpStrategyHintForTesting())
             throw new InvalidOperationException("幕末 Boss 血量策略提示没有按战斗类型独立显示和关闭。");
         bool resizeUiConfigured = SolverOverlay.ResizeUiConfiguredForTesting;
@@ -731,6 +736,27 @@ internal sealed partial class UnattendedTestRunner
         };
         CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
         SolverDisplayNames displayNames = SolverDisplayNames.Capture(combat);
+        SearchPolicySnapshot thresholdPolicy = policy with
+        {
+            AcceptableBattleHpLoss = SolverSettings.MaximumAcceptableBattleHpLoss,
+            ShortProfile = policy.ShortProfile with
+            {
+                BeamWidth = 1,
+                MaxExpandedNodes = Math.Min(500, policy.ShortProfile.MaxExpandedNodes),
+                SoftTimeBudgetMilliseconds = 1_000,
+            },
+        };
+        SolverResult thresholdResult = new CombatBeamSolver(
+                root,
+                displayNames,
+                BattleDamageTracker.Observe(combat),
+                thresholdPolicy,
+                searchProfile: thresholdPolicy.ShortProfile)
+            .Solve();
+        if (!CombatSearchCoordinator.HasReachedAcceptableBattleHpLoss(thresholdPolicy, thresholdResult))
+        {
+            throw new InvalidOperationException("可接受战损上限早停夹具没有返回满足阈值的完整胜利路线。");
+        }
         Player player = LocalContext.GetMe(combat)
             ?? throw new InvalidOperationException("药水阶段文案测试找不到本地玩家。");
         (int Slot, PotionModel Potion) potion = Enumerable.Range(0, player.PotionSlots.Count)
@@ -969,6 +995,25 @@ internal sealed partial class UnattendedTestRunner
                 theftPolicy: null) != SolverWeights.BossSoldHpThreshold)
         {
             throw new InvalidOperationException("两类幕末 Boss 的最低战损策略没有独立恢复正常血量权重。");
+        }
+        if (!CombatSearchCoordinator.HasReachedAcceptableBattleHpLoss(
+                completeVictory: true,
+                projectedBattleHpLost: 0,
+                acceptableBattleHpLoss: 0)
+            || !CombatSearchCoordinator.HasReachedAcceptableBattleHpLoss(
+                completeVictory: true,
+                projectedBattleHpLost: 5,
+                acceptableBattleHpLoss: 5)
+            || CombatSearchCoordinator.HasReachedAcceptableBattleHpLoss(
+                completeVictory: false,
+                projectedBattleHpLost: 0,
+                acceptableBattleHpLoss: 5)
+            || CombatSearchCoordinator.HasReachedAcceptableBattleHpLoss(
+                completeVictory: true,
+                projectedBattleHpLost: 6,
+                acceptableBattleHpLoss: 5))
+        {
+            throw new InvalidOperationException("可接受战损上限只应在完整胜利且战损不超过阈值时触发。");
         }
         SearchablePotionSlotSnapshot[] allowedPotions = root.SearchablePotions
             .Where(potion => policy.PotionStrategy.AllowsExplicitUse(

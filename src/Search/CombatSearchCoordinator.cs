@@ -244,6 +244,8 @@ internal static class CombatSearchCoordinator
                 return shortTakeoverResult;
             if (!policy.PotionStrategy.HasForcedDirectives)
             {
+                if (HasReachedAcceptableBattleHpLoss(policy, shortResult))
+                    return shortResult;
                 shortResult = RunSupplementalAudits(
                     root,
                     displayNames,
@@ -298,6 +300,8 @@ internal static class CombatSearchCoordinator
             return takeoverResult;
         if (!policy.PotionStrategy.HasForcedDirectives)
         {
+            if (HasReachedAcceptableBattleHpLoss(policy, result))
+                return result;
             result = RunSupplementalAudits(
                 root,
                 displayNames,
@@ -358,6 +362,8 @@ internal static class CombatSearchCoordinator
                 selected);
             if (ResolveTakeoverResult(selected, policy.Interaction) is { } requiredTakeoverResult)
                 return requiredTakeoverResult;
+            if (HasReachedAcceptableBattleHpLoss(policy, selected))
+                return selected;
             selected = AuditSmartPotionUse(
                 root,
                 displayNames,
@@ -370,6 +376,8 @@ internal static class CombatSearchCoordinator
                 shortCheckpointMilliseconds,
                 selected,
                 interimResultCallback);
+            if (HasReachedAcceptableBattleHpLoss(policy, selected))
+                return selected;
             if (policy.PotionPolicy != SolverPotionPolicy.Smart)
             {
                 selected = AuditOpeningPowerUse(
@@ -382,6 +390,8 @@ internal static class CombatSearchCoordinator
                     profile,
                     shortCheckpointMilliseconds,
                     selected);
+                if (HasReachedAcceptableBattleHpLoss(policy, selected))
+                    return selected;
             }
         }
         catch (OperationCanceledException)
@@ -1507,6 +1517,20 @@ internal static class CombatSearchCoordinator
             result.Snapshot.AllEnemiesDead,
             result.Snapshot.PlayerDead,
             result.Snapshot.ProjectedPlayerHp);
+
+    internal static bool HasReachedAcceptableBattleHpLoss(
+        SearchPolicySnapshot policy,
+        SolverResult result)
+        => HasReachedAcceptableBattleHpLoss(
+            IsCompleteVictory(result),
+            result.ProjectedBattleHpLost,
+            policy.AcceptableBattleHpLoss);
+
+    internal static bool HasReachedAcceptableBattleHpLoss(
+        bool completeVictory,
+        int projectedBattleHpLost,
+        int acceptableBattleHpLoss)
+        => completeVictory && projectedBattleHpLost <= acceptableBattleHpLoss;
 
     private static bool HasReachedProvablePrimaryQualityLowerBound(
         CombatRootSnapshot root,

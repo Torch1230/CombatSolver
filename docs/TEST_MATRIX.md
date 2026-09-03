@@ -8,6 +8,12 @@
 
 性能指标口径：`selected_*` 只描述最终选中的单个 solver；请求级 `total_expanded_nodes / total_transitions / total_choice_branches`、`total_solver_ms`、分配与 GC 累计对正常、失败和取消的每个 solver 工作区间精确记录一次，包括取消前已发生的部分工作。Smart 有限药水层之间由 coordinator 主动执行的内存整理也计入时间、分配与 GC，但不增加 solver 数；建立开局、层间比较等其他编排工作仍不在这些总值中。因此端到端耗时以请求/阶段外层墙钟为准，峰值内存以进程 `VmHWM` 为准。Smart 多层的取消时点可能令请求总工作量小幅波动，语义验收优先比较胜负、战损、回合和动作路线。峰值工作集是瞬时进程峰值，不能跨阶段相加；`16 GB` NoGC 是运行时请求预算，不等于实际占用或硬上限；NoGC 活跃时 `GC.GetTotalMemory(false)` 不是严格 live-set 测量。
 
+## 未发布：可接受战损上限
+
+| 场景 | 当前结果 | 验证内容 | 日期 |
+| --- | --- | --- | --- |
+| `ACCEPTABLE-BATTLE-HP-LOSS-THRESHOLD` | 通过（headless 控制器/UI/搜索生命周期，DOP1） | 设置页阈值 JSON 往返、默认 `0`、完整胜利且预计本局战损 `<=` 阈值才触发早停的边界断言通过；独立短搜在允许范围上限下返回满足阈值的完整胜利路线。runId `aca83616becd422e99558a0d07b970d0`。 | 2026-09-03 |
+
 ## 0.28.2（已发布）：搜索热路径与 NoGC 回退
 
 | 场景 | 当前结果 | 验证内容 | 日期 |

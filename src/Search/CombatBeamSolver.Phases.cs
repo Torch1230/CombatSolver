@@ -167,6 +167,7 @@ internal sealed partial class CombatBeamSolver
         int initialHp = root.InitialPlayerHp;
         int searchedTurnLayers = 0;
         bool timeBudgetReached = false;
+        bool acceptableBattleHpLossReached = false;
 
         SolverInterimResult SummarizeCandidate(SearchNode node, bool won)
         {
@@ -273,6 +274,15 @@ internal sealed partial class CombatBeamSolver
             }
 
             SolverInterimResult candidate = SummarizeCandidate(node, won: true);
+            if (candidate.ProjectedBattleHpLost <= _acceptableBattleHpLoss)
+            {
+                acceptableBattleHpLossReached = true;
+                policy.Diagnostics.Info(
+                    $"[CombatSolver/Test] ACCEPTABLE_BATTLE_HP_LOSS_REACHED " +
+                    $"projected_battle_hp_lost={candidate.ProjectedBattleHpLost} " +
+                    $"threshold={_acceptableBattleHpLoss} " +
+                    $"turn={candidate.CombatEndedTurn?.ToString() ?? "-"}");
+            }
             if (currentBestResult != null
                 && !SolverInterimResultOrdering.IsBetter(candidate, currentBestResult))
             {
@@ -1447,6 +1457,13 @@ internal sealed partial class CombatBeamSolver
                 adoptionReached = true;
                 currentTurnAdoptionReached = currentBestNode == null;
                 timeBudgetReached = true;
+                break;
+            }
+            if (acceptableBattleHpLossReached)
+            {
+                foreach (SearchNode node in frontier)
+                    node.Snapshot.ReleaseSimulator();
+                frontier = [];
                 break;
             }
             if (completed.Any(node =>

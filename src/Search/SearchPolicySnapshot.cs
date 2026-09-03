@@ -16,6 +16,7 @@ internal sealed record SearchPolicySnapshot(
     SolverTheftPolicy? TheftPolicy,
     BossHpStrategy ActTransitionBossHpStrategy,
     BossHpStrategy FinalBossHpStrategy,
+    int AcceptableBattleHpLoss,
     SearchDiagnosticsSink Diagnostics,
     SearchFramePressureSignal FramePressureSignal,
     SearchMemoryPressureSignal MemoryPressureSignal)
