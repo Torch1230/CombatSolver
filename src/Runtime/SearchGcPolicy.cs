@@ -429,9 +429,7 @@ internal static class SearchGcPolicy
                                 noGcRegionBudgetBytes,
                                 noGcRegionLohBudgetBytes);
                             NoGcRegionStartOutcome startOutcome = effectiveBudget.CanStart
-                                ? TryStartNoGcRegion(
-                                    effectiveBudget.TotalBytes,
-                                    effectiveBudget.LohBytes)
+                                ? TryStartNoGcRegionWithSizeFallback(ref effectiveBudget)
                                 : NoGcRegionStartOutcome.SystemHeadroomInsufficient;
                             _noGcRegionActive = startOutcome == NoGcRegionStartOutcome.Started;
                             if (_noGcRegionActive)
@@ -482,7 +480,8 @@ internal static class SearchGcPolicy
                             }
                             else
                             {
-                                memoryPressureSignal.UseDefaultGcFallback();
+                                memoryPressureSignal.UseDefaultGcFallback(
+                                    IsSystemHeadroomOutcome(startOutcome));
                             }
                             _activeSearches++;
                             return new SearchScope(allocatedBytesAtEntry, memoryPressureSignal);
@@ -1496,7 +1495,7 @@ internal static class SearchGcPolicy
                     _noGcRegionLohBudgetBytes = 0;
                     _noGcRegionAllocatedBytesAtStart = 0;
                     RestoreLatencyModeLocked();
-                    signal.UseDefaultGcFallback();
+                    signal.UseDefaultGcFallback(systemHeadroomConstrained: false);
                 }
                 else
                 {
@@ -1508,9 +1507,7 @@ internal static class SearchGcPolicy
                     if (endNoGcRegion)
                     {
                         restartOutcome = effectiveBudget.CanStart
-                            ? TryStartNoGcRegion(
-                                effectiveBudget.TotalBytes,
-                                effectiveBudget.LohBytes)
+                            ? TryStartNoGcRegionWithSizeFallback(ref effectiveBudget)
                             : NoGcRegionStartOutcome.SystemHeadroomInsufficient;
                     }
                     _noGcRegionActive = restartOutcome == NoGcRegionStartOutcome.Started;
@@ -1527,7 +1524,7 @@ internal static class SearchGcPolicy
                         // The runtime may terminate a region for memory pressure or an external
                         // collection. Retrying the same reservation during this search recreates the
                         // failure loop, so fall back once and let the CLR collect normally.
-                        signal.UseDefaultGcFallback();
+                        signal.UseDefaultGcFallback(IsSystemHeadroomOutcome(restartOutcome));
                     }
                     else
                     {
@@ -1640,6 +1637,44 @@ internal static class SearchGcPolicy
             return NoGcRegionStartOutcome.RegionSizeUnsupported;
         }
     }
+
+    /// <summary>
+    /// 运行时对单个 No-GC 区域的 SOH 预留上限没有公开查询接口（macOS/regions GC 下远低于
+    /// 16 GB）。首次尝试遇到 totalSize 越界时按二分逐级缩小预算，直到成功或低于最小预算。
+    /// </summary>
+    private static NoGcRegionStartOutcome TryStartNoGcRegionWithSizeFallback(
+        ref EffectiveNoGcRegionBudget budget)
+    {
+        NoGcRegionStartOutcome outcome = TryStartNoGcRegion(budget.TotalBytes, budget.LohBytes);
+        int attempts = 0;
+        long requested = budget.TotalBytes;
+        while (outcome == NoGcRegionStartOutcome.RegionSizeUnsupported && attempts < 12)
+        {
+            long halved = budget.TotalBytes / 2;
+            if (halved < MinimumNoGcRegionBudgetBytes)
+                break;
+            attempts++;
+            budget = budget with
+            {
+                TotalBytes = halved,
+                LohBytes = Math.Min(budget.LohBytes, Math.Max(1, halved / 6)),
+                Capped = true,
+            };
+            outcome = TryStartNoGcRegion(budget.TotalBytes, budget.LohBytes);
+        }
+        if (attempts > 0)
+        {
+            Entry.Logger.Info(
+                $"[CombatSolver/Test] GC_NO_GC_REGION_SIZE_FALLBACK attempts={attempts} " +
+                $"requested={requested} final_budget={budget.TotalBytes} " +
+                $"final_loh_budget={budget.LohBytes} outcome={FormatStartOutcome(outcome)}");
+        }
+        return outcome;
+    }
+
+    private static bool IsSystemHeadroomOutcome(NoGcRegionStartOutcome outcome)
+        => outcome is NoGcRegionStartOutcome.SystemHeadroomInsufficient
+            or NoGcRegionStartOutcome.InsufficientMemory;
 
     private static string FormatStartOutcome(NoGcRegionStartOutcome outcome)
         => outcome switch

@@ -76,12 +76,13 @@ internal sealed class SearchMemoryPressureSignal
     public bool IsEnabled => AllocationLimitBytes != long.MaxValue;
 
     /// <summary>
-    /// Keeps allocation-heavy waves narrow while a NoGC request is either active or has
-    /// fallen back because the runtime could not reserve safe system headroom. A user who
-    /// explicitly selects normal GC does not opt into this restriction.
+    /// Keeps allocation-heavy waves narrow only when the runtime reported that system
+    /// headroom itself is constrained. An active NoGC region already sizes waves against its
+    /// remaining allocation budget, and a region that merely failed for runtime size limits
+    /// says nothing about system memory, so neither case caps the user's requested parallelism.
     /// </summary>
     public bool ConservativeParallelismRequired
-        => IsEnabled || Volatile.Read(ref _conservativeParallelismRequired) != 0;
+        => Volatile.Read(ref _conservativeParallelismRequired) != 0;
 
     public long RemainingBytes
     {
@@ -133,7 +134,7 @@ internal sealed class SearchMemoryPressureSignal
         Volatile.Write(ref _systemMemoryLimitBytes, systemMemoryLimitBytes);
         Volatile.Write(ref _reclaimAndContinue, reclaimAndContinue);
         Volatile.Write(ref _unexpectedNoGcLossProbe, unexpectedNoGcLossProbe);
-        Volatile.Write(ref _conservativeParallelismRequired, 1);
+        Volatile.Write(ref _conservativeParallelismRequired, 0);
         Volatile.Write(ref _allocationLimitBytes, allocationLimitBytes);
     }
 
@@ -178,9 +179,9 @@ internal sealed class SearchMemoryPressureSignal
         Volatile.Write(ref _conservativeParallelismRequired, 0);
     }
 
-    public void UseDefaultGcFallback()
+    public void UseDefaultGcFallback(bool systemHeadroomConstrained)
     {
         Disable();
-        Volatile.Write(ref _conservativeParallelismRequired, 1);
+        Volatile.Write(ref _conservativeParallelismRequired, systemHeadroomConstrained ? 1 : 0);
     }
 }
