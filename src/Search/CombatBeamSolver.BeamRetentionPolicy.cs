@@ -374,6 +374,47 @@ internal sealed partial class CombatBeamSolver
                 preserveDefensiveRoute: true);
         }
 
+        // RankBest 每次调用都要重建的六张路由选择表。桶数组按 policy 实例复用；
+        // 键与内容每次都从空表开始重新填，所以聚合结果与每次新建完全一致。
+        private sealed class RoutingChoiceScratch
+        {
+            public Dictionary<RoutingChoiceSignature, SearchNode> BestScore { get; } = [];
+            public Dictionary<RoutingChoiceSignature, SearchNode> BestOffense { get; } = [];
+            public Dictionary<RoutingChoiceSignature, SearchNode> BestDefense { get; } = [];
+            public Dictionary<RoutingChoiceSignature, SearchNode> BestSetup { get; } = [];
+            public Dictionary<RoutingChoiceSignature, SearchNode> BestPileOrder { get; } = [];
+            public Dictionary<RoutingChoiceSignature, List<SearchNode>> NodesByChoice { get; } = [];
+
+            public void Clear()
+            {
+                BestScore.Clear();
+                BestOffense.Clear();
+                BestDefense.Clear();
+                BestSetup.Clear();
+                BestPileOrder.Clear();
+                NodesByChoice.Clear();
+            }
+        }
+
+        private RoutingChoiceScratch? _routingChoiceScratch;
+
+        private RoutingChoiceScratch RentRoutingChoiceScratch()
+        {
+            RoutingChoiceScratch? scratch = _routingChoiceScratch;
+            if (scratch is null)
+                return new RoutingChoiceScratch();
+            _routingChoiceScratch = null;
+            scratch.Clear();
+            return scratch;
+        }
+
+        private void ReturnRoutingChoiceScratch(RoutingChoiceScratch scratch)
+        {
+            // 归还时清空，避免把这一轮的 SearchNode 一直钉在缓冲里。
+            scratch.Clear();
+            _routingChoiceScratch = scratch;
+        }
+
         // 两处 Sort 用的都是同一个比较：捕获 this 的 lambda 每次转委托都要分配，缓存起来。
         private Comparison<SearchNode>? _beamRankComparison;
         private Comparison<SearchNode>? _finalCandidateComparison;
@@ -420,12 +461,16 @@ internal sealed partial class CombatBeamSolver
             List<SearchNode> routingChoices = [];
             if (preserveDefensiveRoute)
             {
-                Dictionary<RoutingChoiceSignature, SearchNode> bestScoreByRoutingChoice = [];
-                Dictionary<RoutingChoiceSignature, SearchNode> bestOffenseByRoutingChoice = [];
-                Dictionary<RoutingChoiceSignature, SearchNode> bestDefenseByRoutingChoice = [];
-                Dictionary<RoutingChoiceSignature, SearchNode> bestSetupByRoutingChoice = [];
-                Dictionary<RoutingChoiceSignature, SearchNode> bestPileOrderByRoutingChoice = [];
-                Dictionary<RoutingChoiceSignature, List<SearchNode>> nodesByRoutingChoice = [];
+                // 这六张表每次剪枝都重建一次，条目数与保留表同量级。它们只在本块内使用，
+                // 块末就没有任何引用逃逸，所以按 policy 实例复用桶数组：取用时先摘空字段
+                // （万一将来出现嵌套调用，内层自建一套），块末清空后归还。
+                RoutingChoiceScratch scratch = RentRoutingChoiceScratch();
+                Dictionary<RoutingChoiceSignature, SearchNode> bestScoreByRoutingChoice = scratch.BestScore;
+                Dictionary<RoutingChoiceSignature, SearchNode> bestOffenseByRoutingChoice = scratch.BestOffense;
+                Dictionary<RoutingChoiceSignature, SearchNode> bestDefenseByRoutingChoice = scratch.BestDefense;
+                Dictionary<RoutingChoiceSignature, SearchNode> bestSetupByRoutingChoice = scratch.BestSetup;
+                Dictionary<RoutingChoiceSignature, SearchNode> bestPileOrderByRoutingChoice = scratch.BestPileOrder;
+                Dictionary<RoutingChoiceSignature, List<SearchNode>> nodesByRoutingChoice = scratch.NodesByChoice;
                 foreach (SearchNode node in ranked)
                 {
                     RoutingChoiceSignature? signature = RetainedRoutingChoice(node);
@@ -585,6 +630,7 @@ internal sealed partial class CombatBeamSolver
                     }
                     routingRound++;
                 }
+                ReturnRoutingChoiceScratch(scratch);
             }
             if (ranked.Count <= limit)
             {
@@ -1570,14 +1616,16 @@ internal sealed partial class CombatBeamSolver
                  cursor?.Action is { } action;
                  cursor = cursor.Parent)
             {
-                if (action.TurnStartChoices is { Count: > 0 })
+                // Enumerable.Reverse 先把整段选择缓冲成一个数组再倒着走。这两段本来就是可按
+                // 下标访问的只读列表，直接倒序索引给出同样的访问序列与同样的首个命中即返回。
+                if (action.TurnStartChoices is { Count: > 0 } turnStartChoices)
                 {
-                    foreach (PlanCardChoice choice in action.TurnStartChoices.Reverse())
+                    for (int index = turnStartChoices.Count - 1; index >= 0; index--)
                     {
                         if (TryBuildRoutingChoice(
                                 node,
                                 cursor,
-                                choice,
+                                turnStartChoices[index],
                                 action.Turn + 1,
                                 minimumChoiceTurn,
                                 out RoutingChoiceSignature turnStartSignature))
@@ -1589,14 +1637,14 @@ internal sealed partial class CombatBeamSolver
                     }
                 }
 
-                if (action.NestedChoices is { Count: > 0 })
+                if (action.NestedChoices is { Count: > 0 } nestedChoices)
                 {
-                    foreach (PlanCardChoice choice in action.NestedChoices.Reverse())
+                    for (int index = nestedChoices.Count - 1; index >= 0; index--)
                     {
                         if (TryBuildRoutingChoice(
                                 node,
                                 cursor,
-                                choice,
+                                nestedChoices[index],
                                 action.Turn,
                                 minimumChoiceTurn,
                                 out RoutingChoiceSignature nestedSignature))
