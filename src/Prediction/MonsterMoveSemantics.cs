@@ -110,7 +110,11 @@ internal static class MonsterMoveSemantics
 
         try
         {
-            return simulator.Damage(player, baseDamage, ValueProp.Move, attacker);
+            using (simulator.PushDamageSource(
+                CombatDamageSource.For(CombatDamageSourceKind.MonsterMove, attacker.Monster?.Id.Entry)))
+            {
+                return simulator.Damage(player, baseDamage, ValueProp.Move, attacker);
+            }
         }
         finally
         {

@@ -20,6 +20,32 @@ internal enum CardGenerationResultKind
     Fixed
 }
 
+/// <summary>Identifies the gameplay source that caused a damage event.</summary>
+internal enum CombatDamageSourceKind
+{
+    Unknown,
+    Card,
+    Potion,
+    Power,
+    Relic,
+    Poison,
+    Thorns,
+    Orb,
+    MonsterMove,
+}
+
+/// <summary>
+/// Immutable provenance retained with damage history. The id is the model id for model-backed sources and is
+/// intentionally scalar so history forks do not retain mutable simulator objects.
+/// </summary>
+internal readonly record struct CombatDamageSource(CombatDamageSourceKind Kind, string? Id)
+{
+    public static CombatDamageSource Unknown => new(CombatDamageSourceKind.Unknown, null);
+
+    public static CombatDamageSource For(CombatDamageSourceKind kind, string? id = null)
+        => new(kind, id);
+}
+
 /// <summary>
 /// Immutable card data retained by prediction history. History consumers only need these
 /// scalar fields; retaining a PredictedCard would keep its owner pile and simulator graph alive.
@@ -84,6 +110,7 @@ internal sealed class CombatPredictionDamageReceivedEntry : CombatPredictionHist
     public required DamageResult Result { get; init; }
     public required Creature? Dealer { get; init; }
     public required PredictedCard? CardSource { get; init; }
+    public required CombatDamageSource Source { get; init; }
 }
 
 internal sealed class CombatPredictionCreatureAttackedEntry : CombatPredictionHistoryEntry

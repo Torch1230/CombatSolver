@@ -38,7 +38,11 @@ internal static partial class EndTurnPowerSupport
                     combat.SetAmount<CorrosiveWavePower>(owner, 0);
                     break;
                 case DemisePower when ownerParticipates && simulator.State.GetCreature(owner).IsAlive:
-                    simulator.Damage(owner, power.Amount, ValueProp.Unblockable | ValueProp.Unpowered, null);
+                    using (simulator.PushDamageSource(
+                        CombatDamageSource.For(CombatDamageSourceKind.Power, nameof(DemisePower))))
+                    {
+                        simulator.Damage(owner, power.Amount, ValueProp.Unblockable | ValueProp.Unpowered, null);
+                    }
                     break;
                 case EscapeArtistPower when ownerParticipates && power.Amount > 1:
                     combat.SetAmount<EscapeArtistPower>(owner, power.Amount - 1);
@@ -149,7 +153,11 @@ internal static partial class EndTurnPowerSupport
                 simulator.State.GetCreature(owner).IsAlive
                 && combat.GetAmount<DoomPower>(owner) >= simulator.State.GetCreature(owner).CurrentHp)
             .ToArray();
-        combat.DoomKill(simulator, doomed);
+        using (simulator.PushDamageSource(
+            CombatDamageSource.For(CombatDamageSourceKind.Power, nameof(DoomPower))))
+        {
+            combat.DoomKill(simulator, doomed);
+        }
     }
 
     public static void TriggerLate(
@@ -161,7 +169,13 @@ internal static partial class EndTurnPowerSupport
         {
             int amount = combat.GetAmount<DisintegrationPower>(owner);
             if (amount > 0 && simulator.State.GetCreature(owner).IsAlive)
-                simulator.Damage(owner, amount, ValueProp.Unpowered, owner);
+            {
+                using (simulator.PushDamageSource(
+                    CombatDamageSource.For(CombatDamageSourceKind.Power, nameof(DisintegrationPower))))
+                {
+                    simulator.Damage(owner, amount, ValueProp.Unpowered, owner);
+                }
+            }
         }
     }
 

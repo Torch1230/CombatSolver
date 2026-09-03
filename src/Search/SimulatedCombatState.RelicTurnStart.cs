@@ -178,11 +178,15 @@ internal sealed partial class SimulatedCombatState
                     TriggerEmotionChip(simulator, value);
                     break;
                 case FestivePopper when turn <= 1:
-                    simulator.Damage(
-                        LivingOpponents(simulator, player.Creature),
-                        relic.DynamicVars.Damage.BaseValue,
-                        ValueProp.Unpowered,
-                        player.Creature);
+                    using (simulator.PushDamageSource(
+                        CombatDamageSource.For(CombatDamageSourceKind.Relic, relic.Id.Entry)))
+                    {
+                        simulator.Damage(
+                            LivingOpponents(simulator, player.Creature),
+                            relic.DynamicVars.Damage.BaseValue,
+                            ValueProp.Unpowered,
+                            player.Creature);
+                    }
                     break;
                 case GamblingChip when turn <= 1:
                     if (!TurnStartChoiceSupport.ResolveDiscardAndDraw(
@@ -197,11 +201,15 @@ internal sealed partial class SimulatedCombatState
                     }
                     break;
                 case MercuryHourglass:
-                    simulator.Damage(
-                        LivingOpponents(simulator, player.Creature),
-                        relic.DynamicVars.Damage.BaseValue,
-                        ValueProp.Unpowered,
-                        player.Creature);
+                    using (simulator.PushDamageSource(
+                        CombatDamageSource.For(CombatDamageSourceKind.Relic, relic.Id.Entry)))
+                    {
+                        simulator.Damage(
+                            LivingOpponents(simulator, player.Creature),
+                            relic.DynamicVars.Damage.BaseValue,
+                            ValueProp.Unpowered,
+                            player.Creature);
+                    }
                     break;
                 case RoyalPoison when turn <= 1:
                     simulator.Damage(
@@ -211,11 +219,15 @@ internal sealed partial class SimulatedCombatState
                         null);
                     break;
                 case MrStruggles:
-                    simulator.Damage(
-                        LivingOpponents(simulator, player.Creature),
-                        turn,
-                        ValueProp.Unpowered,
-                        player.Creature);
+                    using (simulator.PushDamageSource(
+                        CombatDamageSource.For(CombatDamageSourceKind.Relic, relic.Id.Entry)))
+                    {
+                        simulator.Damage(
+                            LivingOpponents(simulator, player.Creature),
+                            turn,
+                            ValueProp.Unpowered,
+                            player.Creature);
+                    }
                     break;
                 case ToastyMittens:
                     if (!simulator.State.GetPlayerCombatState(player).Hand.IsEmpty

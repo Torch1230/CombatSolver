@@ -89,7 +89,7 @@ internal sealed record SolverOverlaySnapshot(
             preview.Turn,
             TurnStartChoices: [],
             actions,
-            endTurn == null ? null : CaptureAction(endTurn, []),
+            endTurn == null ? null : CaptureAction(endTurn, [], actions.Length == 0),
             EnemyHpDamageLost: preview.EnemyHpLost,
             preview.HpLost,
             preview.EnergyLeft,
@@ -166,7 +166,7 @@ internal sealed record SolverOverlaySnapshot(
             frontier.Turn,
             TurnStartChoices: [],
             frontierActions,
-            frontierEndTurn == null ? null : CaptureAction(frontierEndTurn, []),
+            frontierEndTurn == null ? null : CaptureAction(frontierEndTurn, [], frontierActions.Length == 0),
             EnemyHpDamageLost: frontier.EnemyHpLost,
             frontier.HpLost,
             frontier.EnergyLeft,
@@ -264,8 +264,23 @@ internal sealed record SolverOverlaySnapshot(
                 return CaptureAction(item.Action, kills ?? []);
             })
             .ToArray();
-        PlanAction? endTurn = result.BestNode.Actions
-            .LastOrDefault(action => action.Turn == turn && action.Kind == PlanActionKind.EndTurn);
+        int endTurnIndex = -1;
+        for (int index = result.BestNode.Actions.Count - 1; index >= 0; index--)
+        {
+            if (result.BestNode.Actions[index].Turn == turn
+                && result.BestNode.Actions[index].Kind == PlanActionKind.EndTurn)
+            {
+                endTurnIndex = index;
+                break;
+            }
+        }
+        PlanAction? endTurn = endTurnIndex >= 0
+            ? result.BestNode.Actions[endTurnIndex]
+            : null;
+        IReadOnlyList<string> endTurnKills = endTurnIndex >= 0
+            && result.KillsAfterAction.TryGetValue(endTurnIndex, out IReadOnlyList<string>? recordedKills)
+                ? recordedKills
+                : [];
         int? enemyHpLost = result.EnemyHpLostByTurn.TryGetValue(turn, out int materializedEnemyHpLost)
             ? materializedEnemyHpLost
             : null;
@@ -273,7 +288,7 @@ internal sealed record SolverOverlaySnapshot(
             turn,
             turnStartChoices,
             actions,
-            endTurn == null ? null : CaptureAction(endTurn, []),
+            endTurn == null ? null : CaptureAction(endTurn, endTurnKills, actions.Length == 0),
             enemyHpLost,
             result.HpLostByTurn.GetValueOrDefault(turn),
             result.EnergyLeftByTurn.GetValueOrDefault(turn),
@@ -282,7 +297,8 @@ internal sealed record SolverOverlaySnapshot(
 
     private static SolverOverlayActionSnapshot CaptureAction(
         PlanAction action,
-        IReadOnlyList<string> kills)
+        IReadOnlyList<string> kills,
+        bool isDirectEndTurn = false)
     {
         string? choiceText = action.Choice == null
             ? null
@@ -295,7 +311,9 @@ internal sealed record SolverOverlaySnapshot(
         string tooltip = SolverResult.Describe(action)
             + (copiedKills.Length > 0 ? $"，击杀 {string.Join("、", copiedKills)}" : string.Empty);
         return new SolverOverlayActionSnapshot(
-            action.Kind == PlanActionKind.EndTurn ? "直接结束" : action.ActionTitle,
+            action.Kind == PlanActionKind.EndTurn
+                ? isDirectEndTurn ? "直接结束" : "结束回合"
+                : action.ActionTitle,
             action.TargetName,
             choiceText,
             relicLabels,

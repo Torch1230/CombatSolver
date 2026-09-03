@@ -141,11 +141,15 @@ internal static class PowerLifecycleSupport
                             && change.Power.Owner.IsEnemy
                             && ReferenceEquals(change.Applier, listener.Owner)
                             && change.Power is not ITemporaryPower:
-                            simulator.Damage(
-                                change.Power.Owner,
-                                listener.Amount,
-                                ValueProp.Unpowered,
-                                listener.Owner);
+                            using (simulator.PushDamageSource(
+                                CombatDamageSource.For(CombatDamageSourceKind.Power, nameof(SleightOfFleshPower))))
+                            {
+                                simulator.Damage(
+                                    change.Power.Owner,
+                                    listener.Amount,
+                                    ValueProp.Unpowered,
+                                    listener.Owner);
+                            }
                             break;
                         case ViciousPower when change.Delta > 0
                                                 && change.Power is VulnerablePower

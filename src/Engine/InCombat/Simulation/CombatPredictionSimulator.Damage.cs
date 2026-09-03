@@ -66,14 +66,15 @@ internal sealed partial class CombatPredictionSimulator
             return [];
         }
 
+        CombatDamageSource source = ResolveDamageSource(cardSource);
         var results = new List<DamageResult>();
 
         foreach (var originalTarget in targets)
         {
-            results.AddRange(DamageTarget(originalTarget, amount, props, dealer, cardSource, cardPlay));
+            results.AddRange(DamageTarget(originalTarget, amount, props, dealer, cardSource, cardPlay, source));
         }
 
-        ProcessDamageResults(results, dealer, cardSource);
+        ProcessDamageResults(results, dealer, cardSource, source);
         return results;
     }
 
@@ -87,14 +88,16 @@ internal sealed partial class CombatPredictionSimulator
     {
         if (dealer?.IsDead == true)
             return [];
+        CombatDamageSource source = ResolveDamageSource(cardSource);
         IReadOnlyList<DamageResult> results = DamageTarget(
             target,
             amount,
             props,
             dealer,
             cardSource,
-            cardPlay);
-        ProcessDamageResults(results, dealer, cardSource);
+            cardPlay,
+            source);
+        ProcessDamageResults(results, dealer, cardSource, source);
         return results;
     }
 
@@ -105,7 +108,8 @@ internal sealed partial class CombatPredictionSimulator
         ValueProp props,
         Creature? dealer,
         PredictedCard? cardSource,
-        CardPlay? cardPlay)
+        CardPlay? cardPlay,
+        CombatDamageSource source)
     {
         var originalTargetState = State.GetCreature(originalTarget);
         if (originalTargetState.IsDead)
@@ -177,7 +181,8 @@ internal sealed partial class CombatPredictionSimulator
                 unblockedDamageResult.Receiver,
                 dealer,
                 unblockedDamageResult,
-                cardSource);
+                cardSource,
+                source);
             if (State.CombatState is ICombatPredictionCardEventSink directEventSink)
                 directEventSink.RecordDamageReceived(unblockedDamageResult.Receiver, dealer, unblockedDamageResult);
             return [unblockedDamageResult];
@@ -204,21 +209,27 @@ internal sealed partial class CombatPredictionSimulator
             unblockedDamageResult.Receiver,
             dealer,
             unblockedDamageResult,
-            cardSource);
+            cardSource,
+            source);
         if (State.CombatState is ICombatPredictionCardEventSink eventSink)
             eventSink.RecordDamageReceived(unblockedDamageResult.Receiver, dealer, unblockedDamageResult);
         History.DamageReceived(
             damageResult.Receiver,
             dealer,
             damageResult,
-            cardSource);
+            cardSource,
+            source);
         if (State.CombatState is ICombatPredictionCardEventSink redirectedEventSink)
             redirectedEventSink.RecordDamageReceived(damageResult.Receiver, dealer, damageResult);
         return [unblockedDamageResult, damageResult];
     }
 
     // Mirrors the post-target DamageResult processing in CreatureCmd.Damage.
-    private void ProcessDamageResults(IEnumerable<DamageResult> results, Creature? dealer, PredictedCard? cardSource)
+    private void ProcessDamageResults(
+        IEnumerable<DamageResult> results,
+        Creature? dealer,
+        PredictedCard? cardSource,
+        CombatDamageSource source)
     {
         List<Creature>? killedCreatures = null;
         foreach (var damageResult in results)
@@ -256,6 +267,13 @@ internal sealed partial class CombatPredictionSimulator
             else
             {
                 (killedCreatures ??= []).Add(originalTarget);
+                if (originalTarget.Side == CombatSide.Enemy
+                    && originalTarget.CombatId is uint combatId)
+                {
+                    string targetId = originalTarget.Monster?.Id.Entry
+                        ?? throw new InvalidOperationException("敌方伤害击杀缺少怪物模型 ID。");
+                    ActionRelicTriggers?.RecordKill(combatId, targetId, source);
+                }
             }
         }
 
@@ -294,6 +312,7 @@ internal sealed partial class CombatPredictionSimulator
     {
         var creatureState = State.GetCreature(creature);
         var currentHp = creatureState.CurrentHp;
+        bool wasAlive = creatureState.IsAlive;
         if (currentHp > 0)
         {
             creatureState.LoseHp(currentHp, ValueProp.Unblockable | ValueProp.Unpowered);
@@ -304,6 +323,14 @@ internal sealed partial class CombatPredictionSimulator
 
         if (force || creatureState.MaxHp <= 0 || HookMirrors.ShouldDie(this, creature, out var preventer))
         {
+            if (wasAlive
+                && creature.Side == CombatSide.Enemy
+                && creature.CombatId is uint combatId)
+            {
+                string targetId = creature.Monster?.Id.Entry
+                    ?? throw new InvalidOperationException("直接击杀缺少怪物模型 ID。");
+                ActionRelicTriggers?.RecordKill(combatId, targetId, ResolveDamageSource(null));
+            }
             bool shouldRemoveFromCombat = State.CombatState is ICombatPredictionCreatureSemantics semantics
                 ? semantics.ShouldRemoveAfterDeath(creature)
                 : Hook.ShouldCreatureBeRemovedFromCombatAfterDeath(State.CombatState, creature);

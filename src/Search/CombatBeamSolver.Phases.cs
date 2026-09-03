@@ -468,6 +468,8 @@ internal sealed partial class CombatBeamSolver
                     $"enemy_hp={finalSnapshot.EnemyHp}/{annotationReplay.EnemyHp} " +
                     $"boundary={finalSnapshot.BoundaryReason}/{annotationReplay.BoundaryReason}。");
             }
+            RouteAnnotations replayAnnotations = BuildRouteAnnotations(best, relicTriggerRecorder);
+            annotations = annotations with { KillsAfterAction = replayAnnotations.KillsAfterAction };
             annotationReplay.ReleaseSimulator();
             IReadOnlyList<PlanAction> annotatedActions = resultScope == SolverResultScope.RouteAdoption
                 && routeAdoptionActions != null

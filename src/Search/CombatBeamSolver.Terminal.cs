@@ -263,7 +263,9 @@ internal sealed partial class CombatBeamSolver
         return slots;
     }
 
-    private RouteAnnotations BuildRouteAnnotations(SearchNode best)
+    private RouteAnnotations BuildRouteAnnotations(
+        SearchNode best,
+        ActionRelicTriggerRecorder? killRecorder = null)
     {
         List<SearchNode> path = [];
         for (SearchNode? node = best; node?.Parent != null; node = node.Parent)
@@ -329,6 +331,36 @@ internal sealed partial class CombatBeamSolver
             if (deathTurn == null && node.Snapshot.PlayerDead)
                 deathTurn = action.Turn;
         }
+        if (killRecorder != null)
+        {
+            Dictionary<int, IReadOnlyList<string>> attributedKills = [];
+            foreach (SearchNode node in path)
+            {
+                int actionIndex = node.ActionCount - 1;
+                IReadOnlyList<RecordedKill> recorded = killRecorder.KillsForAction(actionIndex);
+                if (recorded.Count > 0)
+                {
+                    attributedKills[actionIndex] = recorded
+                        .Select(kill =>
+                        {
+                            Creature? enemy = root.Enemies.FirstOrDefault(candidate => candidate.CombatId == kill.CombatId);
+                            string targetName = enemy is null ? displayNames.Monster(kill.TargetId) : displayNames.Creature(enemy);
+                            if (string.IsNullOrEmpty(targetName))
+                                targetName = kill.TargetId;
+                            return $"{targetName}（{displayNames.DamageSource(kill.Source)}）";
+                        })
+                        .ToArray();
+                }
+                else if (kills.TryGetValue(actionIndex, out IReadOnlyList<string>? fallback))
+                {
+                    attributedKills[actionIndex] = fallback
+                        .Select(name => $"{name}（未知效果）")
+                        .ToArray();
+                }
+            }
+            kills = attributedKills;
+        }
+
         return new RouteAnnotations(
             losses,
             enemyHpLosses,

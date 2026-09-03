@@ -257,11 +257,15 @@ internal sealed partial class SimulatedCombatState
                         HittableEnemies.Where(simulator.State.IsHittable));
                     if (target != null)
                     {
-                        simulator.Damage(
-                            target,
-                            value.DynamicVars.Damage.BaseValue,
-                            ValueProp.Unpowered,
-                            value.Owner.Creature);
+                        using (simulator.PushDamageSource(
+                            CombatDamageSource.For(CombatDamageSourceKind.Relic, value.Id.Entry)))
+                        {
+                            simulator.Damage(
+                                target,
+                                value.DynamicVars.Damage.BaseValue,
+                                ValueProp.Unpowered,
+                                value.Owner.Creature);
+                        }
                     }
                     break;
                 }

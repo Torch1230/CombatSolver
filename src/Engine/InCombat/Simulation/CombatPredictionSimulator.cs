@@ -1,4 +1,5 @@
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Hooks;
 using MegaCrit.Sts2.Core.Models;
@@ -10,6 +11,7 @@ namespace CombatSolver.Engine.InCombat.Simulation;
 internal sealed partial class CombatPredictionSimulator
 {
     private readonly PredictionTrace _trace;
+    private CombatDamageSource? _damageSource;
 
     public CombatPredictionState State { get; }
 
@@ -28,6 +30,45 @@ internal sealed partial class CombatPredictionSimulator
     public bool IsRecordingActionRelicTriggers => ActionRelicTriggers != null;
 
     public PredictionTraceFrame? CurrentFrame => _trace.Current;
+
+    /// <summary>Temporarily overrides trace inference for effects such as poison and reflected thorns damage.</summary>
+    public DamageSourceScope PushDamageSource(CombatDamageSource source)
+    {
+        CombatDamageSource? previous = _damageSource;
+        _damageSource = source;
+        return new DamageSourceScope(this, previous);
+    }
+
+    internal CombatDamageSource ResolveDamageSource(PredictedCard? cardSource)
+    {
+        if (_damageSource is { } explicitSource)
+            return explicitSource;
+        if (cardSource is { } card)
+            return CombatDamageSource.For(CombatDamageSourceKind.Card, card.Preview.Id.Entry);
+
+        for (PredictionTraceFrame? frame = CurrentFrame; frame is not null; frame = frame.Parent)
+        {
+            if (frame.Invocation.Action == PredictionActionKind.PotionUse)
+                return CombatDamageSource.For(CombatDamageSourceKind.Potion, frame.Source.Id.Entry);
+            if (frame.Invocation.Action == PredictionActionKind.CardPlay)
+                return CombatDamageSource.For(CombatDamageSourceKind.Card, frame.Source.Id.Entry);
+
+            CombatDamageSourceKind? kind = frame.Source switch
+            {
+                CardModel => CombatDamageSourceKind.Card,
+                PotionModel => CombatDamageSourceKind.Potion,
+                PowerModel => CombatDamageSourceKind.Power,
+                RelicModel => CombatDamageSourceKind.Relic,
+                OrbModel => CombatDamageSourceKind.Orb,
+                MonsterModel => CombatDamageSourceKind.MonsterMove,
+                _ => null,
+            };
+            if (kind is { } modelKind)
+                return CombatDamageSource.For(modelKind, frame.Source.Id.Entry);
+        }
+
+        return CombatDamageSource.Unknown;
+    }
 
     /// <summary>
     /// Mirrors <see cref="CombatTurnState.IsInProgress"/>.
@@ -109,6 +150,8 @@ internal sealed partial class CombatPredictionSimulator
     {
         if (_trace.Current is not null)
             throw new InvalidOperationException("Combat prediction can only be forked between completed actions.");
+        if (_damageSource is not null)
+            throw new InvalidOperationException("Combat prediction cannot be forked while a damage source is active.");
         if (ActionRelicTriggers is not null)
             throw new InvalidOperationException("Combat prediction cannot be forked while action relic triggers are being recorded.");
         if (State.CombatState is IPredictionForkBoundary combatBoundary)
@@ -162,6 +205,22 @@ internal sealed partial class CombatPredictionSimulator
     public PredictionTrace.TraceScope PushMethodSource(AbstractModel model, MirrorMethodSpec method)
     {
         return _trace.Push(model, PredictionInvocation.ForMethod(method.BaseMethod));
+    }
+
+    public struct DamageSourceScope(CombatPredictionSimulator simulator, CombatDamageSource? previous)
+        : IDisposable
+    {
+        private readonly CombatPredictionSimulator _simulator = simulator;
+        private readonly CombatDamageSource? _previous = previous;
+        private bool _disposed;
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+            _simulator._damageSource = _previous;
+            _disposed = true;
+        }
     }
 
     private bool IsCombatEnding()

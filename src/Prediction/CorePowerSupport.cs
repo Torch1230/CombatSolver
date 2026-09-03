@@ -435,7 +435,11 @@ internal static class CorePowerSupport
             for (int trigger = 0; trigger < triggerCount; trigger++)
             {
                 int current = combat.GetAmount<PoisonPower>(creature);
-                simulator.Damage(creature, current, ValueProp.Unblockable | ValueProp.Unpowered, null);
+                using (simulator.PushDamageSource(
+                    CombatDamageSource.For(CombatDamageSourceKind.Poison, nameof(PoisonPower))))
+                {
+                    simulator.Damage(creature, current, ValueProp.Unblockable | ValueProp.Unpowered, null);
+                }
                 if (simulator.State.GetCreature(creature).IsDead)
                     break;
                 combat.SetAmount<PoisonPower>(creature, current - 1);

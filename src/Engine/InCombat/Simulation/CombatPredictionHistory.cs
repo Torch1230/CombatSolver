@@ -326,14 +326,20 @@ internal sealed class CombatPredictionHistory(PredictionTrace trace)
         });
     }
 
-    public void DamageReceived(Creature receiver, Creature? dealer, DamageResult result, PredictedCard? cardSource)
+    public CombatPredictionDamageReceivedEntry DamageReceived(
+        Creature receiver,
+        Creature? dealer,
+        DamageResult result,
+        PredictedCard? cardSource,
+        CombatDamageSource source)
     {
-        Record(new CombatPredictionDamageReceivedEntry
+        return Record(new CombatPredictionDamageReceivedEntry
         {
             Receiver = receiver,
             Result = result,
             Dealer = dealer,
-            CardSource = cardSource
+            CardSource = cardSource,
+            Source = source,
         });
     }
 

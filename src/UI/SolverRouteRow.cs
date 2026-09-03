@@ -139,6 +139,13 @@ internal sealed partial class SolverRouteRow : PanelContainer
             ActionFlow.AddChild(pill);
             _deploymentActions.Add(pill);
         }
+
+        if (turn.EndTurnAction is { Kills.Count: > 0 } endTurnAction)
+        {
+            Control endTurn = SolverActionPill.Create(endTurnAction);
+            ActionFlow.AddChild(endTurn);
+            _endTurnAction = endTurn;
+        }
     }
 
     public void SetDeploymentProgress(int completedActions, int? activeActionIndex)

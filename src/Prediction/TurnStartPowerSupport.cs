@@ -268,7 +268,11 @@ internal static class TurnStartPowerSupport
                         simulator.OrbPassive(queue.Orbs[0]);
                     break;
                 case RollingBoulderPower rolling:
-                    simulator.Damage(combat.HittableEnemies, rolling.Amount, ValueProp.Unpowered, owner);
+                    using (simulator.PushDamageSource(
+                        CombatDamageSource.For(CombatDamageSourceKind.Power, nameof(RollingBoulderPower))))
+                    {
+                        simulator.Damage(combat.HittableEnemies, rolling.Amount, ValueProp.Unpowered, owner);
+                    }
                     combat.SetPowerAmount(rolling, rolling.Amount + rolling.DynamicVars.Damage.IntValue);
                     break;
                 case SummonNextTurnPower:
@@ -344,11 +348,21 @@ internal static class TurnStartPowerSupport
             {
                 continue;
             }
-            simulator.Kill(target, force: true);
+            using (simulator.PushDamageSource(
+                CombatDamageSource.For(CombatDamageSourceKind.Power, nameof(SandpitPower))))
+            {
+                simulator.Kill(target, force: true);
+            }
             if (target.Player is { } player
                 && simulator.State.GetOsty(player) is { } osty
                 && simulator.State.GetCreature(osty).IsAlive)
-                simulator.Kill(osty, force: true);
+            {
+                using (simulator.PushDamageSource(
+                    CombatDamageSource.For(CombatDamageSourceKind.Power, nameof(SandpitPower))))
+                {
+                    simulator.Kill(osty, force: true);
+                }
+            }
         }
     }
 }

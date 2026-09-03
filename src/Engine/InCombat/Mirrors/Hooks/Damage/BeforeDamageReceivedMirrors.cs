@@ -6,6 +6,7 @@ using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.ValueProps;
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.Common.Mirrors;
+using CombatSolver.Engine.InCombat.Simulation;
 
 namespace CombatSolver.Engine.InCombat.Mirrors.Hooks.Damage;
 
@@ -47,11 +48,15 @@ internal static class BeforeDamageReceivedMirrors
             context.Dealer != null &&
             (context.Props.IsPoweredAttack() || context.Source?.Original is Omnislice))
         {
-            context.Simulator.Damage(
-                context.Dealer,
-                power.Amount,
-                ValueProp.Unpowered | ValueProp.SkipHurtAnim,
-                power.Owner);
+            using (context.Simulator.PushDamageSource(
+                CombatDamageSource.For(CombatDamageSourceKind.Thorns, nameof(ThornsPower))))
+            {
+                context.Simulator.Damage(
+                    context.Dealer,
+                    power.Amount,
+                    ValueProp.Unpowered | ValueProp.SkipHurtAnim,
+                    power.Owner);
+            }
         }
     }
 }

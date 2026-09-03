@@ -2380,7 +2380,13 @@ internal sealed partial class CombatBeamSolver
                                 move.Owner,
                                 _player.Creature,
                                 forcedDamage);
-                            simulator.Kill(move.Owner, force: true);
+                            using (simulator.PushDamageSource(
+                                CombatDamageSource.For(
+                                    CombatDamageSourceKind.MonsterMove,
+                                    move.Owner.Monster?.Id.Entry)))
+                            {
+                                simulator.Kill(move.Owner, force: true);
+                            }
                             CorePowerSupport.ApplyEnemyDeathPowers(
                                 simulator, simulatedCombat, simulatedCombat.KnownEnemies, processedEnemyDeaths);
                             if (simulatedCombat.HasPendingChoice)
@@ -2647,6 +2653,15 @@ internal sealed partial class CombatBeamSolver
             selected.Add(candidate);
         }
 
+        // A stolen-resource carrier can have no immediate attack threat while it is
+        // preparing to flee. Preserve at least one actionable branch against it before
+        // the ordinary action-family quota fills the node.
+        if (_theftPolicy == SolverTheftPolicy.PreserveResources)
+        {
+            foreach (ActionCandidate candidate in candidates.Where(IsStolenResourceRecoveryTarget))
+                Add(candidate);
+        }
+
         // A resolved routing choice and a revival window are semantic branch boundaries. Preserve
         // the previous overflow behavior for them; the ordinary family portfolio remains inside the
         // configured per-node card branch budget.
@@ -2718,6 +2733,25 @@ internal sealed partial class CombatBeamSolver
                     $"{candidate.Node.Score:F0}/{candidate.NormalizedValue:F1}"))}");
         }
         return selected;
+    }
+
+    private bool IsStolenResourceRecoveryTarget(ActionCandidate candidate)
+    {
+        if (candidate.TargetCombatId is not uint targetCombatId)
+            return false;
+
+        SearchNode parent = candidate.Node.Parent
+            ?? throw new InvalidOperationException("资源追回动作缺少父节点。");
+        CombatPredictionSimulator simulator = (CombatPredictionSimulator)parent.Snapshot.Simulator;
+        SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
+        Creature? target = combat.Enemies.FirstOrDefault(enemy => enemy.CombatId == targetCombatId);
+        return target != null
+            && combat.ContainsCreature(target)
+            && simulator.State.GetCreature(target).IsAlive
+            && combat.EffectivePowers().Any(power =>
+                power.Owner == target
+                && (power is HeistPower { Amount: > 0 }
+                    || power is SwipePower { StolenCard: not null }));
     }
 
     private static ActionOptionFamily ClassifyActionOptionFamilies(

@@ -389,7 +389,11 @@ internal static partial class MonsterMoveEffects
                 Debuff<FrailPower>(combat, player, 2, move.Owner);
                 return true;
             case ("GasBomb", "EXPLODE_MOVE"):
-                simulator.Kill(move.Owner, force: true);
+                using (simulator.PushDamageSource(
+                    CombatDamageSource.For(CombatDamageSourceKind.MonsterMove, move.Owner.Monster?.Id.Entry)))
+                {
+                    simulator.Kill(move.Owner, force: true);
+                }
                 killedOwner = true;
                 return true;
             case ("GlobeHead", "SHOCKING_SLAP"):
@@ -888,7 +892,11 @@ internal static partial class MonsterMoveEffects
                 combat.PrepareSteamEruption(move.Owner);
                 return true;
             case ("WaterfallGiant", "EXPLODE_MOVE"):
-                simulator.Kill(move.Owner, force: true);
+                using (simulator.PushDamageSource(
+                    CombatDamageSource.For(CombatDamageSourceKind.MonsterMove, move.Owner.Monster?.Id.Entry)))
+                {
+                    simulator.Kill(move.Owner, force: true);
+                }
                 killedOwner = true;
                 return true;
             case ("DecimillipedeSegmentBack", "BULK_MOVE"):

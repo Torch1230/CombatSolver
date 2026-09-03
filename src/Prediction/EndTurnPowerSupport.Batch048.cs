@@ -33,7 +33,11 @@ internal static partial class EndTurnPowerSupport
                 case MagicBombPower when ownerParticipates
                     && power.Applier is { } bombApplier
                     && simulator.State.GetCreature(bombApplier).IsAlive:
-                    simulator.Damage(owner, power.Amount, ValueProp.Unpowered, owner);
+                    using (simulator.PushDamageSource(
+                        CombatDamageSource.For(CombatDamageSourceKind.Power, nameof(MagicBombPower))))
+                    {
+                        simulator.Damage(owner, power.Amount, ValueProp.Unpowered, owner);
+                    }
                     combat.SetPowerAmount(power, 0);
                     break;
                 case MonologuePower monologue when ownerParticipates:
