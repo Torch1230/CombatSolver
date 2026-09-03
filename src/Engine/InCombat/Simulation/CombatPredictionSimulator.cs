@@ -107,7 +107,8 @@ internal sealed partial class CombatPredictionSimulator
 
     internal void AssertForkable()
     {
-        if (_trace.Current is not null)
+        // 只是判断有没有活动作用域，不需要把帧物化出来。
+        if (_trace.HasCurrentFrame)
             throw new InvalidOperationException("Combat prediction can only be forked between completed actions.");
         if (ActionRelicTriggers is not null)
             throw new InvalidOperationException("Combat prediction cannot be forked while action relic triggers are being recorded.");
