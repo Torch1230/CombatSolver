@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "scenarioId": "GENERIC-SMART-POTION-THREE-LAYER-PROGRESS-V0111",
-  "description": "A finite Smart request must search exact zero-, one-, and two-potion layers without counting the potion-free interval again at either coordinator memory boundary.",
+  "scenarioId": "GENERIC-SMART-POTION-ZERO-LOSS-STOPS-V0111",
+  "description": "A zero-loss run-ending victory must stop at the potion-free layer instead of searching paid potion layers for a faster finish.",
   "characterId": "IRONCLAD",
   "encounterId": "AEONGLASS_BOSS",
   "seed": "SMARTSAMELOSSFASTER0111",
@@ -53,8 +53,7 @@
   "expectedInitialActEndingBoss": true,
   "expectedInitialAbsentActionCardId": "BLOODLETTING",
   "expectedInitialProjectedBattleHpLost": 0,
-  "expectedInitialPotionCount": 1,
-  "expectedInitialCombatEndedTurn": 1,
+  "expectedInitialPotionCount": 0,
   "expectedInitialFinalEnemyHpAtMost": 0,
   "stopAfterInitialSolverResultAssertion": true,
   "timeoutSeconds": 120

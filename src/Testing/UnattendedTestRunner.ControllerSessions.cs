@@ -970,23 +970,43 @@ internal sealed partial class UnattendedTestRunner
         {
             throw new InvalidOperationException("两类幕末 Boss 的最低战损策略没有独立恢复正常血量权重。");
         }
-        if (root.SearchablePotionCount >= 3
-            && new[]
+        SearchablePotionSlotSnapshot[] allowedPotions = root.SearchablePotions
+            .Where(potion => policy.PotionStrategy.AllowsExplicitUse(
+                potion.Slot,
+                potion.PotionId,
+                SolverPotionPolicy.Smart,
+                forceAllDisabled: false))
+            .ToArray();
+        BossHpRelief strategicBossHpRelief = ActEndingBossPolicy.ResolveStrategicHpRelief(
+            root.BossHpRelief,
+            policy.ActTransitionBossHpStrategy,
+            policy.FinalBossHpStrategy);
+        int paidPotionHpRequired = PotionUsePolicy.SmartRequiredHpSaved(
+            SolverWeights.PotionMinimumHpSaved,
+            strategicBossHpRelief);
+        int freePotionCount = allowedPotions.Count(potion => potion.StrategicHpCost == 0);
+        if (new[]
             {
-                Math.Max(0, expectedMinimumPotionHpSaved - 1),
-                expectedMinimumPotionHpSaved,
-                expectedMinimumPotionHpSaved * 2 - 1,
-                expectedMinimumPotionHpSaved * 2,
-                expectedMinimumPotionHpSaved * 3 - 1,
-                expectedMinimumPotionHpSaved * 3,
+                0,
+                Math.Max(0, paidPotionHpRequired - 1),
+                paidPotionHpRequired,
+                paidPotionHpRequired >= int.MaxValue / 8
+                    ? paidPotionHpRequired
+                    : paidPotionHpRequired * 2,
             }.Any(hpDeficit => CombatSearchCoordinator.MaximumSmartPotionUses(
                 root,
                 policy,
                 potionFreeWon: true,
-                potionFreeHpDeficit: hpDeficit) != searchablePotions.Length))
+                potionFreeHpDeficit: hpDeficit) != (policy.TheftPolicy == SolverTheftPolicy.PreserveResources
+                    ? allowedPotions.Length
+                    : Math.Min(
+                        allowedPotions.Length,
+                        freePotionCount + (paidPotionHpRequired >= int.MaxValue / 4
+                            ? 0
+                            : hpDeficit / paidPotionHpRequired)))))
         {
             throw new InvalidOperationException(
-                "Smart 药水补查仍按 HP headroom 截断了合法的精确用药层。");
+                "Smart 药水梯度没有按每瓶战略 HP 成本限制搜索层数。");
         }
         if (searchablePotions.Length >= 2)
         {
@@ -1042,6 +1062,46 @@ internal sealed partial class UnattendedTestRunner
                 currentPotionCost: 0))
         {
             throw new InvalidOperationException("搜索中间路线没有按每瓶 9 HP 成本保持严格递增优。");
+        }
+        SolverInterimResult noPotionTrade = new(
+            Won: true,
+            OutstandingStolenResource: 0,
+            ProjectedBattleHpLost: 10,
+            StrategicHpDeficit: 10,
+            PotionStrategicCost: 0,
+            ProjectedBattlePotionCount: 0,
+            EnemyHp: 0,
+            Score: 0d,
+            CombatEndedTurn: 3);
+        SolverInterimResult underpaidPotionTrade = noPotionTrade with
+        {
+            ProjectedBattleHpLost = 2,
+            StrategicHpDeficit = 2,
+            PotionStrategicCost = 9,
+            ProjectedBattlePotionCount = 1,
+            CombatEndedTurn = 1,
+        };
+        SolverInterimResult qualifiedPotionTrade = underpaidPotionTrade with
+        {
+            ProjectedBattleHpLost = 1,
+            StrategicHpDeficit = 1,
+        };
+        if (SolverInterimResultOrdering.IsBetter(underpaidPotionTrade, noPotionTrade)
+            || !SolverInterimResultOrdering.IsBetter(qualifiedPotionTrade, noPotionTrade)
+            || CombatSearchCoordinator.IsSmartPotionGradientCandidateAcceptable(
+                potionFreeWon: true,
+                candidateWon: true,
+                hpSaved: 8,
+                hpRequired: 9,
+                protectsLoot: false)
+            || !CombatSearchCoordinator.IsSmartPotionGradientCandidateAcceptable(
+                potionFreeWon: true,
+                candidateWon: true,
+                hpSaved: 9,
+                hpRequired: 9,
+                protectsLoot: false))
+        {
+            throw new InvalidOperationException("Smart 药水梯度或动态展示绕过了每瓶 9 HP 门槛。");
         }
         SolverInterimResult displayedVictory = new(
             Won: true,

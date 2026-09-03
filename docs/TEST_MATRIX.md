@@ -8,11 +8,12 @@
 
 性能指标口径：`selected_*` 只描述最终选中的单个 solver；请求级 `total_expanded_nodes / total_transitions / total_choice_branches`、`total_solver_ms`、分配与 GC 累计对正常、失败和取消的每个 solver 工作区间精确记录一次，包括取消前已发生的部分工作。Smart 有限药水层之间由 coordinator 主动执行的内存整理也计入时间、分配与 GC，但不增加 solver 数；建立开局、层间比较等其他编排工作仍不在这些总值中。因此端到端耗时以请求/阶段外层墙钟为准，峰值内存以进程 `VmHWM` 为准。Smart 多层的取消时点可能令请求总工作量小幅波动，语义验收优先比较胜负、战损、回合和动作路线。峰值工作集是瞬时进程峰值，不能跨阶段相加；`16 GB` NoGC 是运行时请求预算，不等于实际占用或硬上限；NoGC 活跃时 `GC.GetTotalMemory(false)` 不是严格 live-set 测量。
 
-## 下一版本（开发中）：手动深度释放系统内存
+## 下一版本（开发中）：Smart 药水门槛与手动深度释放系统内存
 
 | 场景 | 当前结果 | 验证内容 | 日期 |
 | --- | --- | --- | --- |
 | `MANUAL-SYSTEM-MEMORY-RELEASE` | 待实机确认 | 等待搜索退出后压缩托管堆并修剪游戏进程工作集；UAC 辅助程序清空系统工作集与待机列表，不清空修改页列表。 | 2026-09-03 |
+| `GENERIC-SMART-POTION-SAME-LOSS-CONSERVE-V0111` | 通过 | 无药零损获胜时，付费药即使更早结束也不绕过每瓶 `9 HP` 门槛；结果为 `24/52` 展开/转移、`0` 药、`0` 战损、T3，且未打出卖血牌。runId `c91f29fcaa9a40129e6f67adfe06a8b9`。 | 2026-09-03 |
 
 ## 0.28.0（已发布）：通用周期与跨回合收益
 
@@ -52,8 +53,8 @@
 | `coverage/unattended/generic-loop-cross-turn-purity-pillage-positive-v0111.json` | 先净化牌库、下一回合兑现的跨回合收益 |
 | `coverage/unattended/generic-loop-rampage-dynamic-growth-positive-v0111.json` | 动态成长循环、32 动作路线与 DOP 等价 |
 | `coverage/unattended/generic-final-quality-zero-loss-over-faster-blood-sale-v0111.json` | 低战损优先；同战损才比较结束回合 |
-| `coverage/unattended/generic-smart-potion-same-loss-faster-v0111.json` | Smart 全局比较精确药量层；同战损选择更少回合 |
-| `coverage/unattended/generic-smart-potion-three-layer-progress-v0111.json` | Smart 真实 0/1/2 药层、层间内存整理与请求累计 |
+| `coverage/unattended/generic-smart-potion-same-loss-faster-v0111.json` | Smart 付费药未省足战略 HP 时保留无药路线 |
+| `coverage/unattended/generic-smart-potion-three-layer-progress-v0111.json` | 零损终局不启动无收益的付费药梯度 |
 | `coverage/unattended/generic-loop-speedster-discard-draw-positive-v0111.json` | 多动作抽弃循环、洗牌与零损击杀 |
 | `coverage/unattended/generic-loop-speedster-startup-positive-v0111.json` | 先建立能力再进入循环 |
 | `coverage/unattended/generic-loop-hellraiser-pillage-bloodletting-positive-v0111.json` | 卖血/能量启动后兑现 |

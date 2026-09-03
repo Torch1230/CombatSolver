@@ -38,21 +38,19 @@ internal static class SolverInterimResultOrdering
 
     public static bool IsBetter(SolverInterimResult candidate, SolverInterimResult current)
     {
-        int primaryQuality = ComparePrimaryQuality(
-            candidate.Won,
-            candidate.StrategicHpDeficit,
-            candidate.CombatEndedTurn,
-            current.Won,
-            current.StrategicHpDeficit,
-            current.CombatEndedTurn);
-        if (primaryQuality != 0)
-            return primaryQuality < 0;
+        int comparison = current.Won.CompareTo(candidate.Won);
+        if (comparison != 0)
+            return comparison < 0;
         if (candidate.OutstandingStolenResource != current.OutstandingStolenResource)
             return candidate.OutstandingStolenResource < current.OutstandingStolenResource;
         if (IsResourceTradeImprovement(candidate, current))
             return true;
         if (IsResourceTradeImprovement(current, candidate))
             return false;
+        comparison = (candidate.CombatEndedTurn ?? int.MaxValue)
+            .CompareTo(current.CombatEndedTurn ?? int.MaxValue);
+        if (comparison != 0)
+            return comparison < 0;
         if (candidate.ProjectedBattlePotionCount != current.ProjectedBattlePotionCount)
             return candidate.ProjectedBattlePotionCount < current.ProjectedBattlePotionCount;
         if (candidate.EnemyHp != current.EnemyHp)

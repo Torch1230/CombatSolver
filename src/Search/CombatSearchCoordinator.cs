@@ -1197,6 +1197,7 @@ internal static class CombatSearchCoordinator
         List<SolverResult> searches = [potionFree];
         SolverResult selected = potionFree;
         bool deadlineExpired = false;
+        bool acceptablePotionLayerFound = false;
         for (int potionCount = 1; potionCount <= maximumPotionUses; potionCount++)
         {
             if (searchCancellationToken.IsCancellationRequested)
@@ -1285,26 +1286,24 @@ internal static class CombatSearchCoordinator
             int hpRequired = SmartPotionHpRequired(root, policy, candidate);
             bool protectsLoot = policy.TheftPolicy == SolverTheftPolicy.PreserveResources
                 && candidate.OutstandingStolenResource < potionFree.OutstandingStolenResource;
-            int primaryQuality = CompareCompletedResultPrimaryQuality(
-                root,
-                candidate,
-                potionFree);
-            bool acceptable = candidateWon
-                && (primaryQuality < 0
-                    || primaryQuality == 0 && protectsLoot);
-            bool selectedCandidate = acceptable
-                && IsBetterPotionPolicyResult(root, policy, candidate, selected);
-            if (selectedCandidate)
+            bool acceptable = IsSmartPotionGradientCandidateAcceptable(
+                potionFreeWon,
+                candidateWon,
+                hpSaved,
+                hpRequired,
+                protectsLoot);
+            if (acceptable)
             {
                 candidate.PotionHpSaved = hpSaved;
                 candidate.PotionHpRequired = hpRequired;
                 selected = candidate;
+                acceptablePotionLayerFound = true;
             }
             policy.Diagnostics.Info(
                 $"[CombatSolver/Test] SMART_POTION_GRADIENT layer={potionCount} " +
                 $"won={candidateWon} hp_deficit={candidateDeficit} saved={hpSaved} " +
                 $"required={hpRequired} protects_loot={protectsLoot} acceptable={acceptable} " +
-                $"selected={selectedCandidate} " +
+                $"selected={acceptable} " +
                 $"expanded={candidate.ExpandedNodes} transitions={candidate.TransitionCount} " +
                 $"choice_branches={candidate.ChoiceBranchesEvaluated} " +
                 $"elapsed_ms={candidate.Elapsed.TotalMilliseconds:F1} " +
@@ -1313,16 +1312,28 @@ internal static class CombatSearchCoordinator
                 $"incumbent_turn={primaryIncumbent?.CombatEndedTurn.ToString() ?? "-"} " +
                 $"incumbent_pruned={candidate.PrimaryIncumbentBranchesPruned} " +
                 $"incumbent_updates={candidate.PrimaryIncumbentUpdates}");
+            if (acceptable)
+                break;
         }
 
         callerCancellationToken.ThrowIfCancellationRequested();
         MergeAuditTotals(selected, [.. searches]);
         policy.Diagnostics.Info(
             $"[CombatSolver/Test] SMART_POTION_GRADIENT result " +
-            $"stop={(deadlineExpired ? "deadline" : "complete")} maximum={maximumPotionUses} " +
+            $"stop={(deadlineExpired ? "deadline" : acceptablePotionLayerFound ? "threshold_met" : "complete")} " +
+            $"maximum={maximumPotionUses} " +
             $"selected_potions={selected.PotionCount}");
         return selected;
     }
+
+    internal static bool IsSmartPotionGradientCandidateAcceptable(
+        bool potionFreeWon,
+        bool candidateWon,
+        int hpSaved,
+        int hpRequired,
+        bool protectsLoot)
+        => candidateWon
+            && (!potionFreeWon || hpSaved >= hpRequired || protectsLoot);
 
     private static void ReclaimAtPotionGradientBoundary(
         SearchPolicySnapshot policy,
@@ -1591,10 +1602,17 @@ internal static class CombatSearchCoordinator
                 SolverPotionPolicy.Smart,
                 forceAllDisabled: false))
             .ToArray();
-        // HP-loss headroom is not a valid search bound: a paid potion can keep the
-        // same loss while ending combat earlier, and several potions can have a joint
-        // primary-quality benefit. The finite inventory is the generic hard bound.
-        return allowedPotions.Length;
+        if (!potionFreeWon || policy.TheftPolicy == SolverTheftPolicy.PreserveResources)
+            return allowedPotions.Length;
+        int paidPotionHpRequired = PotionUsePolicy.SmartRequiredHpSaved(
+            SolverWeights.PotionMinimumHpSaved,
+            StrategicBossHpRelief(root, policy));
+        int paidPotionCapacity = paidPotionHpRequired >= int.MaxValue / 4
+            ? 0
+            : Math.Max(0, potionFreeHpDeficit) / paidPotionHpRequired;
+        return Math.Min(
+            allowedPotions.Length,
+            allowedPotions.Count(potion => potion.StrategicHpCost == 0) + paidPotionCapacity);
     }
 
     private static BossHpRelief StrategicBossHpRelief(

@@ -1970,10 +1970,18 @@
   "GENERIC-CYCLE-PLANNING-V0272-FINAL": {
     "status": "Passed",
     "level": "HeadlessGenericBoundedCycleCrossTurnAndTranspositionPolicyRegression",
-    "procedure": "在上游 0.27.2 最终候选上运行隐藏三相位、隐藏跨回合缓冲、动态成长 DOP1/DOP2、Smart 一/三层以及控制器转置租约生命周期断言。",
+    "procedure": "在上游 0.27.2 最终候选上运行隐藏三相位、隐藏跨回合缓冲、动态成长 DOP1/DOP2 以及控制器转置租约生命周期断言。",
     "expected": "搜索不得读取具体卡牌、Power、遗物或敌人 ID 判定循环；DOP 不改变动作和非时序工作量；延迟收益不被早停；同父节点只签发一个新的循环探测租约，普通兄弟仍受转置表约束。",
-    "observed": "隐藏三相位 DOP1/DOP2 均为 6/12、T1；隐藏缓冲均为 513/770、T17；Rampage 均为 2400/5354/344、32 动作、T1，DOP2 实际并发；Smart 三层为 52/140、选中层 7/19；控制器内部策略断言通过。",
-    "evidence": "coverage/unattended/generic-loop-letter-opener-hidden-phase-v0111.json；coverage/unattended/generic-cross-turn-hidden-buffer-positive-v0111.json；coverage/unattended/generic-loop-rampage-dynamic-growth-positive-v0111.json；coverage/unattended/generic-smart-potion-three-layer-progress-v0111.json；runId 1ae74fcaf14648a19a773e9be602fa34、28d3a383cb3c4fd4944ffcc923f76e7a、e1aac2f411fa4d58b91466022f5edde7、d38be6387ddd4aadb13a1adcdc3864cf、2d33c3a4eaee44d5b06004758e8cefb4、5100ca05213f455ba6f1dd57f0916fef、8e01068bacc049b89acacd66e218f73f、328dbe4322a54815a83f3946563d73b6；验证日期 2026-09-03。"
+    "observed": "隐藏三相位 DOP1/DOP2 均为 6/12、T1；隐藏缓冲均为 513/770、T17；Rampage 均为 2400/5354/344、32 动作、T1，DOP2 实际并发；控制器内部策略断言通过。",
+    "evidence": "coverage/unattended/generic-loop-letter-opener-hidden-phase-v0111.json；coverage/unattended/generic-cross-turn-hidden-buffer-positive-v0111.json；coverage/unattended/generic-loop-rampage-dynamic-growth-positive-v0111.json；runId 1ae74fcaf14648a19a773e9be602fa34、28d3a383cb3c4fd4944ffcc923f76e7a、e1aac2f411fa4d58b91466022f5edde7、d38be6387ddd4aadb13a1adcdc3864cf、2d33c3a4eaee44d5b06004758e8cefb4、5100ca05213f455ba6f1dd57f0916fef、328dbe4322a54815a83f3946563d73b6；验证日期 2026-09-03。"
+  },
+  "SMART-POTION-HP-THRESHOLD-NEXT": {
+    "status": "Passed",
+    "level": "HeadlessSmartPotionGradientThresholdRegression",
+    "procedure": "构造无药可零损获胜、付费能量药只能提前结束的终局场，运行 Smart 短搜并断言未卖血、零用药、零战损和完整胜利。",
+    "expected": "付费药仅缩短回合时不得绕过每瓶 9 HP 战略门槛；无药已胜的终局不启动无收益用药层。",
+    "observed": "runId c91f29fcaa9a40129e6f67adfe06a8b9 Passed；24/52 展开/转移，0 药、0 战损、T3，未打出放血。",
+    "evidence": "coverage/unattended/generic-smart-potion-same-loss-faster-v0111.json；上述 runId；验证日期 2026-09-03。"
   },
   "GENERIC-CURRENT-RULE-LOOPS-V0272": {
     "status": "Passed",

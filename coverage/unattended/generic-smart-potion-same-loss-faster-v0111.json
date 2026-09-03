@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "scenarioId": "GENERIC-SMART-POTION-SAME-LOSS-FASTER-V0111",
-  "description": "Smart must search a paid potion even when the potion-free route loses zero HP, because equal loss with an earlier victory is primary-quality improvement.",
+  "scenarioId": "GENERIC-SMART-POTION-SAME-LOSS-CONSERVE-V0111",
+  "description": "Smart must keep the zero-potion victory when a paid potion only ends the fight earlier without saving the required HP.",
   "characterId": "IRONCLAD",
   "encounterId": "AEONGLASS_BOSS",
   "seed": "SMARTSAMELOSSFASTER0111",
@@ -48,8 +48,7 @@
   "expectedInitialActEndingBoss": true,
   "expectedInitialAbsentActionCardId": "BLOODLETTING",
   "expectedInitialProjectedBattleHpLost": 0,
-  "expectedInitialPotionCount": 1,
-  "expectedInitialCombatEndedTurn": 1,
+  "expectedInitialPotionCount": 0,
   "expectedInitialFinalEnemyHpAtMost": 0,
   "stopAfterInitialSolverResultAssertion": true,
   "timeoutSeconds": 120
