@@ -8,7 +8,7 @@ internal sealed partial class SolverSettingsPanel
     private OptionButton _performancePreset = null!;
     private CheckButton _noGcRegionEnabled = null!;
     private LineEdit _noGcRegionBudget = null!;
-    private Button _manualGcButton = null!;
+    private Button _manualMemoryReleaseButton = null!;
     private Control _advancedParameters = null!;
     private Button _advancedParametersToggle = null!;
     private bool _advancedParametersExpanded;
@@ -97,17 +97,17 @@ internal sealed partial class SolverSettingsPanel
             "搜索内存预算（GB）",
             _noGcRegionBudget,
             "这是独立于性能预设的战斗级 NoGC 区域请求上限，不是进程总内存上限，也不等于实际驻留内存。求解器会按系统当前安全余量自动下调实际区域；提高后可容纳更多并行分支并减少长搜索中的整理次数，但会增加内存占用与系统换页风险。搜索接近分配额度或系统内存安全线时，会保留活动 Beam、整理后继续；最终搜索完成后保留区域，战斗结束后延时清理。");
-        _manualGcButton = SolverUiTokens.CreateButton(
-            "手动 GC",
+        _manualMemoryReleaseButton = SolverUiTokens.CreateButton(
+            "强制释放内存",
             SolverButtonStyle.Secondary);
-        _manualGcButton.Name = "ManualGcButton";
-        _manualGcButton.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        _manualGcButton.Pressed += OnManualGcPressed;
+        _manualMemoryReleaseButton.Name = "ManualMemoryReleaseButton";
+        _manualMemoryReleaseButton.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        _manualMemoryReleaseButton.Pressed += OnManualMemoryReleasePressed;
         AddBasicRow(
             budgetGrid,
             "内存维护",
-            _manualGcButton,
-            "排队执行一次生命周期托管的完整内存回收；若搜索仍在运行，会等待搜索退出或下一个安全内存检查点，不阻塞当前 UI 点击。");
+            _manualMemoryReleaseButton,
+            "等待当前搜索退出后，压缩并回收托管堆；Windows 上还会把游戏进程暂时不用的物理页归还系统。之后再次访问这些页面时会重新载入，可能短暂卡顿。只处理当前游戏进程，不清理系统待机列表或其他程序。");
         content.AddChild(budgetGrid);
 
         _advancedParametersToggle = SolverUiTokens.CreateButton(
@@ -181,9 +181,9 @@ internal sealed partial class SolverSettingsPanel
         return CreatePageScroll(content);
     }
 
-    internal bool ManualGcButtonConfiguredForTesting
-        => _manualGcButton.Text == "手动 GC"
-           && _performancePage.IsAncestorOf(_manualGcButton);
+    internal bool ManualMemoryReleaseButtonConfiguredForTesting
+        => _manualMemoryReleaseButton.Text == "强制释放内存"
+           && _performancePage.IsAncestorOf(_manualMemoryReleaseButton);
 
     internal bool NoGcControlsConfiguredForTesting
         => _performancePage.IsAncestorOf(_noGcRegionEnabled)
@@ -194,11 +194,11 @@ internal sealed partial class SolverSettingsPanel
                ?? SolverSettings.DefaultNoGcRegionBudgetGigabytes)
            && _noGcRegionBudget.Editable == SolverSettings.Current.EnableNoGcRegion;
 
-    private void OnManualGcPressed()
+    private void OnManualMemoryReleasePressed()
     {
-        Entry.Logger.Info("[CombatSolver/Test] UI_ACTION action=manual_gc");
-        _ = SearchGcPolicy.ForceManualGc();
-        SetStatus("内存回收已安排", SolverUiTokens.Palette.Success);
+        Entry.Logger.Info("[CombatSolver/Test] UI_ACTION action=manual_memory_release");
+        _ = SearchGcPolicy.ForceManualMemoryRelease();
+        SetStatus("内存释放已安排，将在搜索退出后执行", SolverUiTokens.Palette.Success);
     }
 
     private void ReloadPerformancePage(SolverSettingsData data)

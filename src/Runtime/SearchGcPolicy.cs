@@ -24,6 +24,8 @@ internal static class SearchGcPolicy
     private static bool _reclaimRequired;
     private static bool _reclaimRequested;
     private static bool _reclaimActive;
+    private static bool _workingSetTrimRequested;
+    private static bool _activeReclaimTrimsWorkingSet;
     private static bool _manualReclaimRequested;
     private static string _reclaimReason = "unspecified";
     private static TaskCompletionSource? _reclaimCompletion;
@@ -794,6 +796,36 @@ internal static class SearchGcPolicy
         return reclaim;
     }
 
+    internal static Task ForceManualMemoryRelease()
+    {
+        Task reclaim;
+        lock (Gate)
+        {
+            if (_workingSetTrimRequested || _activeReclaimTrimsWorkingSet)
+            {
+                reclaim = WaitForReclaimChainAsync(_reclaimTask);
+            }
+            else
+            {
+                _workingSetTrimRequested = true;
+                reclaim = ReclaimIfPendingLocked(
+                    "manual_memory_release",
+                    forceCollection: true,
+                    includeCombatLifecyclePressure: false,
+                    requiredCoverageEpoch: null);
+            }
+        }
+        _ = reclaim.ContinueWith(
+            task => Entry.Logger.Error(
+                $"[CombatSolver/Test] MANUAL_MEMORY_RELEASE_FAILED exception={task.Exception?.GetBaseException()}"),
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+        Entry.Logger.Info(
+            $"[CombatSolver/Test] MANUAL_MEMORY_RELEASE queued=true completed={reclaim.IsCompleted.ToString().ToLowerInvariant()}");
+        return reclaim;
+    }
+
     private static Task ReclaimAfterReferenceReleaseBoundaryAsync(
         string reason,
         bool forceCollection,
@@ -990,6 +1022,7 @@ internal static class SearchGcPolicy
         bool restoreLatencyMode = _latencyModeOwned;
         GCLatencyMode previousMode = _previousMode;
         bool collectGeneration2 = _reclaimRequired;
+        bool trimWorkingSet = _workingSetTrimRequested;
         long regionAllocatedBytes = _noGcRegionAllocatedBytesAtStart == 0
             ? 0
             : Math.Max(
@@ -1001,6 +1034,8 @@ internal static class SearchGcPolicy
         _reclaimActive = true;
         _regionExitRequired = false;
         _reclaimRequired = false;
+        _workingSetTrimRequested = false;
+        _activeReclaimTrimsWorkingSet = trimWorkingSet;
         _activeReclaimCollectsGeneration2 = collectGeneration2;
         _activeGeneration2CollectionStarted = false;
         _activeGeneration2CoverageEpoch = 0;
@@ -1065,7 +1100,9 @@ internal static class SearchGcPolicy
                         DescribeProcessMemory());
                     await PauseGeneration2CoverageForTestingAsync(
                         afterCoverageCapture: true);
-                    completedCollection = await CollectGeneration2InBackgroundAsync();
+                    completedCollection = trimWorkingSet
+                        ? CollectGeneration2ForManualMemoryRelease()
+                        : await CollectGeneration2InBackgroundAsync();
                     lock (Gate)
                     {
                         _backgroundGen2CompletedCountForTesting++;
@@ -1076,6 +1113,16 @@ internal static class SearchGcPolicy
                             _requiredReferenceReleaseCollectionEpoch = 0;
                         }
                     }
+                }
+                WorkingSetTrimResult workingSetTrim = default;
+                if (trimWorkingSet)
+                {
+                    workingSetTrim = ProcessWorkingSetTrimmer.TrimCurrentProcess();
+                    Entry.Logger.Info(
+                        $"[CombatSolver/Test] WORKING_SET_TRIM " +
+                        $"supported={workingSetTrim.Supported.ToString().ToLowerInvariant()} " +
+                        $"working_set_before={workingSetTrim.WorkingSetBeforeBytes} " +
+                        $"working_set_after={workingSetTrim.WorkingSetAfterBytes}");
                 }
                 stopwatch.Stop();
                 GCMemoryInfo memory = GC.GetGCMemoryInfo();
@@ -1094,7 +1141,8 @@ internal static class SearchGcPolicy
                     Entry.Logger.Info(
                         $"[CombatSolver/Test] HEAP_RECLAIM reason={reason} " +
                         $"reclaim_id={reclaimSequence} " +
-                        $"mode=background_non_compacting no_gc_region_ended={endNoGcRegion} " +
+                        $"mode={(trimWorkingSet ? "blocking_compacting_working_set_trim" : "background_non_compacting")} " +
+                        $"no_gc_region_ended={endNoGcRegion} " +
                         $"forced_gen2=true gen2_delta={generation2Collections} " +
                         $"elapsed_ms={stopwatch.Elapsed.TotalMilliseconds:F1} " +
                         $"gc_pause_delta_ms={(GC.GetTotalPauseDuration() - pauseBefore).TotalMilliseconds:F1} " +
@@ -1131,6 +1179,7 @@ internal static class SearchGcPolicy
                     _reclaimActive = false;
                     _reclaimCompletion = null;
                     _activeReclaimCollectsGeneration2 = false;
+                    _activeReclaimTrimsWorkingSet = false;
                     _activeGeneration2CollectionStarted = false;
                     _activeGeneration2CoverageEpoch = 0;
                     _generation2CoveragePauseStageForTesting = 0;
@@ -1217,6 +1266,20 @@ internal static class SearchGcPolicy
             }
             await Task.Delay(25);
         }
+    }
+
+    private static BackgroundGen2Completion CollectGeneration2ForManualMemoryRelease()
+    {
+        GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+        GC.Collect(
+            GC.MaxGeneration,
+            GCCollectionMode.Forced,
+            blocking: true,
+            compacting: true);
+        return new BackgroundGen2Completion(
+            "full_blocking_compacting",
+            GC.GetGCMemoryInfo(GCKind.FullBlocking).Index,
+            Requests: 1);
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
