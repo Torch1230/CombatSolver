@@ -152,8 +152,8 @@ internal static class SolverOverlay
         => _settingsPanel?.SearchCompletionNotificationSettingsConfiguredForTesting == true;
     internal static bool SettingsTabsConfiguredForTesting
         => _settingsPanel?.SettingsTabsConfiguredForTesting == true;
-    internal static bool ManualMemoryReleaseButtonConfiguredForTesting
-        => _settingsPanel?.ManualMemoryReleaseButtonConfiguredForTesting == true;
+    internal static bool ManualSystemMemoryReleaseButtonConfiguredForTesting
+        => _settingsPanel?.ManualSystemMemoryReleaseButtonConfiguredForTesting == true;
     internal static bool NoGcControlsConfiguredForTesting
         => _settingsPanel?.NoGcControlsConfiguredForTesting == true;
     internal static bool MemoryUsageBarConfiguredForTesting

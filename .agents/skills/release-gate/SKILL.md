@@ -58,6 +58,7 @@ dotnet clean -c Release
 
 - `CombatSolver.json`；
 - 刚完成的 Release `CombatSolver.dll`；
+- Windows 发布还包括同次构建的 `CombatSolver.MemoryCleaner.exe`；
 - 根目录 `THIRD_PARTY_NOTICES.md`；
 - manifest 将来明确要求的其他资产。
 
@@ -83,7 +84,7 @@ Linux 不使用上述 Windows 路径。上传前必须设置 `COMBATSOLVER_MOD_U
 
 上传前只做一次本地暂存：
 
-1. 用当前 release source 的 `CombatSolver.json`、刚完成的 Release DLL 和根目录 `THIRD_PARTY_NOTICES.md` 覆盖 `CombatSolverWorkshop/content/`；
+1. 用当前 release source 的 `CombatSolver.json`、刚完成的 Release DLL、Windows `CombatSolver.MemoryCleaner.exe` 和根目录 `THIRD_PARTY_NOTICES.md` 覆盖 `CombatSolverWorkshop/content/`；
 2. 保留标题、长描述、作者、封面、效果图、标签、依赖和可见性，除非用户明确要求修改或兼容性事实已经变化；
 3. 将该版本玩家更新日志提炼为 `workshop.json` 的 `changeNote`；
 4. Windows 执行一次 `ModUploader.exe upload -w .\CombatSolverWorkshop`；Linux 执行一次 `"$COMBATSOLVER_MOD_UPLOADER" upload -w "$COMBATSOLVER_WORKSHOP_DIR"`。

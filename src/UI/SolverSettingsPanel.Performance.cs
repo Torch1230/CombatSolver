@@ -8,7 +8,7 @@ internal sealed partial class SolverSettingsPanel
     private OptionButton _performancePreset = null!;
     private CheckButton _noGcRegionEnabled = null!;
     private LineEdit _noGcRegionBudget = null!;
-    private Button _manualMemoryReleaseButton = null!;
+    private Button _manualSystemMemoryReleaseButton = null!;
     private Control _advancedParameters = null!;
     private Button _advancedParametersToggle = null!;
     private bool _advancedParametersExpanded;
@@ -97,17 +97,17 @@ internal sealed partial class SolverSettingsPanel
             "搜索内存预算（GB）",
             _noGcRegionBudget,
             "这是独立于性能预设的战斗级 NoGC 区域请求上限，不是进程总内存上限，也不等于实际驻留内存。求解器会按系统当前安全余量自动下调实际区域；提高后可容纳更多并行分支并减少长搜索中的整理次数，但会增加内存占用与系统换页风险。搜索接近分配额度或系统内存安全线时，会保留活动 Beam、整理后继续；最终搜索完成后保留区域，战斗结束后延时清理。");
-        _manualMemoryReleaseButton = SolverUiTokens.CreateButton(
-            "强制释放内存",
+        _manualSystemMemoryReleaseButton = SolverUiTokens.CreateButton(
+            "强制释放系统内存",
             SolverButtonStyle.Secondary);
-        _manualMemoryReleaseButton.Name = "ManualMemoryReleaseButton";
-        _manualMemoryReleaseButton.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        _manualMemoryReleaseButton.Pressed += OnManualMemoryReleasePressed;
+        _manualSystemMemoryReleaseButton.Name = "ManualSystemMemoryReleaseButton";
+        _manualSystemMemoryReleaseButton.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        _manualSystemMemoryReleaseButton.Pressed += OnManualSystemMemoryReleasePressed;
         AddBasicRow(
             budgetGrid,
             "内存维护",
-            _manualMemoryReleaseButton,
-            "等待当前搜索退出后，压缩并回收托管堆；Windows 上还会把游戏进程暂时不用的物理页归还系统。之后再次访问这些页面时会重新载入，可能短暂卡顿。只处理当前游戏进程，不清理系统待机列表或其他程序。");
+            _manualSystemMemoryReleaseButton,
+            "等待当前搜索退出并回收求解器内存后，请求 Windows 管理员权限，清空系统工作集与待机列表。可一次释放大量物理内存，但其他程序之后重新载入页面时可能短暂卡顿；只在玩家点击时执行，不清空修改页列表。");
         content.AddChild(budgetGrid);
 
         _advancedParametersToggle = SolverUiTokens.CreateButton(
@@ -181,9 +181,9 @@ internal sealed partial class SolverSettingsPanel
         return CreatePageScroll(content);
     }
 
-    internal bool ManualMemoryReleaseButtonConfiguredForTesting
-        => _manualMemoryReleaseButton.Text == "强制释放内存"
-           && _performancePage.IsAncestorOf(_manualMemoryReleaseButton);
+    internal bool ManualSystemMemoryReleaseButtonConfiguredForTesting
+        => _manualSystemMemoryReleaseButton.Text == "强制释放系统内存"
+           && _performancePage.IsAncestorOf(_manualSystemMemoryReleaseButton);
 
     internal bool NoGcControlsConfiguredForTesting
         => _performancePage.IsAncestorOf(_noGcRegionEnabled)
@@ -194,11 +194,25 @@ internal sealed partial class SolverSettingsPanel
                ?? SolverSettings.DefaultNoGcRegionBudgetGigabytes)
            && _noGcRegionBudget.Editable == SolverSettings.Current.EnableNoGcRegion;
 
-    private void OnManualMemoryReleasePressed()
+    private async void OnManualSystemMemoryReleasePressed()
     {
-        Entry.Logger.Info("[CombatSolver/Test] UI_ACTION action=manual_memory_release");
-        _ = SearchGcPolicy.ForceManualMemoryRelease();
-        SetStatus("内存释放已安排，将在搜索退出后执行", SolverUiTokens.Palette.Success);
+        Entry.Logger.Info("[CombatSolver/Test] UI_ACTION action=manual_system_memory_release");
+        SetStatus("系统内存释放已安排，搜索退出后将请求管理员权限", SolverUiTokens.Palette.Success);
+        try
+        {
+            await SystemMemoryReleaseService.ReleaseAsync();
+            SetStatus("系统内存释放完成", SolverUiTokens.Palette.Success);
+        }
+        catch (OperationCanceledException)
+        {
+            SetStatus("已取消管理员授权", SolverUiTokens.Palette.TextMuted);
+        }
+        catch (Exception ex)
+        {
+            Entry.Logger.Error(
+                $"[CombatSolver/Test] SYSTEM_MEMORY_RELEASE_FAILED exception={ex}");
+            SetStatus("系统内存释放失败，详情已写入日志", SolverUiTokens.Palette.Danger);
+        }
     }
 
     private void ReloadPerformancePage(SolverSettingsData data)

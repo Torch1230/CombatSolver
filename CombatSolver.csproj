@@ -20,6 +20,8 @@
     <ModOutputDir>$(Sts2Dir)/mods/CombatSolver</ModOutputDir>
     <CopyModOnBuild Condition="'$(CopyModOnBuild)' == ''">true</CopyModOnBuild>
     <NoWarn>$(NoWarn);CS0436</NoWarn>
+    <MemoryCleanerProject>$(MSBuildProjectDirectory)/tools/CombatSolver.MemoryCleaner/CombatSolver.MemoryCleaner.csproj</MemoryCleanerProject>
+    <MemoryCleanerOutput>$(MSBuildProjectDirectory)/tools/CombatSolver.MemoryCleaner/bin/$(Configuration)/net48/CombatSolver.MemoryCleaner.exe</MemoryCleanerOutput>
   </PropertyGroup>
 
   <ItemGroup>
@@ -40,9 +42,19 @@
     <Error Condition="!Exists('$(RitsuLibDir)/STS2-RitsuLib.dll')" Text="找不到当前游戏版本的 RitsuLib。请检查 SteamRoot 或 local.props。" />
   </Target>
 
+  <Target Name="BuildMemoryCleaner" BeforeTargets="Build" Condition="'$(OS)' == 'Windows_NT'">
+    <MSBuild Projects="$(MemoryCleanerProject)" Targets="Restore" Properties="Configuration=$(Configuration)" />
+    <MSBuild Projects="$(MemoryCleanerProject)" Targets="Build" Properties="Configuration=$(Configuration)" />
+  </Target>
+
+  <Target Name="CleanMemoryCleaner" BeforeTargets="Clean" Condition="'$(OS)' == 'Windows_NT'">
+    <MSBuild Projects="$(MemoryCleanerProject)" Targets="Clean" Properties="Configuration=$(Configuration)" />
+  </Target>
+
   <Target Name="CopyMod" AfterTargets="Build" Condition="'$(CopyModOnBuild)' == 'true'">
     <MakeDir Directories="$(ModOutputDir)" />
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModOutputDir)" />
     <Copy SourceFiles="$(MSBuildProjectDirectory)/CombatSolver.json" DestinationFolder="$(ModOutputDir)" />
+    <Copy SourceFiles="$(MemoryCleanerOutput)" DestinationFolder="$(ModOutputDir)" Condition="'$(OS)' == 'Windows_NT'" />
   </Target>
 </Project>

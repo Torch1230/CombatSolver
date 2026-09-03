@@ -796,7 +796,7 @@ internal static class SearchGcPolicy
         return reclaim;
     }
 
-    internal static Task ForceManualMemoryRelease()
+    internal static Task ForceManualProcessMemoryRelease()
     {
         Task reclaim;
         lock (Gate)
@@ -817,12 +817,12 @@ internal static class SearchGcPolicy
         }
         _ = reclaim.ContinueWith(
             task => Entry.Logger.Error(
-                $"[CombatSolver/Test] MANUAL_MEMORY_RELEASE_FAILED exception={task.Exception?.GetBaseException()}"),
+                $"[CombatSolver/Test] MANUAL_PROCESS_MEMORY_RELEASE_FAILED exception={task.Exception?.GetBaseException()}"),
             CancellationToken.None,
             TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
             TaskScheduler.Default);
         Entry.Logger.Info(
-            $"[CombatSolver/Test] MANUAL_MEMORY_RELEASE queued=true completed={reclaim.IsCompleted.ToString().ToLowerInvariant()}");
+            $"[CombatSolver/Test] MANUAL_PROCESS_MEMORY_RELEASE queued=true completed={reclaim.IsCompleted.ToString().ToLowerInvariant()}");
         return reclaim;
     }
 
