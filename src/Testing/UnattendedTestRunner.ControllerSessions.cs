@@ -243,7 +243,7 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidOperationException("设置页没有按常规、性能、反馈三页独立切换。");
         }
         if (!SolverOverlay.ManualSystemMemoryReleaseButtonConfiguredForTesting)
-            throw new InvalidOperationException("强制释放系统内存按钮没有归属性能设置页。");
+            throw new InvalidOperationException("强制释放内存按钮没有位于主界面内存条右侧。");
         if (!SolverOverlay.NoGcControlsConfiguredForTesting)
             throw new InvalidOperationException("NoGC 开关或预算输入没有归属性能设置页。");
         bool memoryUsageBarConfigured = SolverOverlay.MemoryUsageBarConfiguredForTesting;

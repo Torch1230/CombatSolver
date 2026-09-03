@@ -64,6 +64,7 @@ internal static class SolverOverlay
     private static Button? _adoptRouteButton;
     private static Button? _executeButton;
     private static Button? _fullAutoButton;
+    private static Button? _systemMemoryReleaseButton;
     private static Button? _collapseButton;
     private static Button? _settingsButton;
     private static Button? _potionStrategyButton;
@@ -153,7 +154,11 @@ internal static class SolverOverlay
     internal static bool SettingsTabsConfiguredForTesting
         => _settingsPanel?.SettingsTabsConfiguredForTesting == true;
     internal static bool ManualSystemMemoryReleaseButtonConfiguredForTesting
-        => _settingsPanel?.ManualSystemMemoryReleaseButtonConfiguredForTesting == true;
+        => _systemMemoryReleaseButton is { Text: "强制释放内存" } button
+            && GodotObject.IsInstanceValid(button)
+            && button.IsInsideTree()
+            && _memoryUsageBar?.GetParent() == button.GetParent()
+            && _memoryUsageBar.GetIndex() < button.GetIndex();
     internal static bool NoGcControlsConfiguredForTesting
         => _settingsPanel?.NoGcControlsConfiguredForTesting == true;
     internal static bool MemoryUsageBarConfiguredForTesting
@@ -1786,7 +1791,49 @@ internal static class SolverOverlay
         };
         footer.AddChild(_memoryUsageBar);
 
+        _systemMemoryReleaseButton = CreateButton("强制释放内存", false);
+        SolverUiTokens.ApplyButtonStyle(_systemMemoryReleaseButton, SolverButtonStyle.Secondary);
+        _systemMemoryReleaseButton.Name = "SystemMemoryReleaseButton";
+        _systemMemoryReleaseButton.CustomMinimumSize = new Vector2(
+            144,
+            SolverUiTokens.Size.ButtonHeight);
+        _systemMemoryReleaseButton.TooltipText =
+            "等待搜索退出并回收求解器内存后，请求 Windows 管理员权限，" +
+            "清空系统工作集与待机列表。其他程序之后重新载入页面时可能短暂卡顿。";
+        _systemMemoryReleaseButton.Pressed += OnSystemMemoryReleasePressed;
+        footer.AddChild(_systemMemoryReleaseButton);
+
         return footer;
+    }
+
+    private static async void OnSystemMemoryReleasePressed()
+    {
+        if (_systemMemoryReleaseButton is not { Disabled: false } button)
+            return;
+
+        button.Disabled = true;
+        Entry.Logger.Info("[CombatSolver/Test] UI_ACTION action=manual_system_memory_release");
+        SetStatus("系统内存释放已安排，搜索退出后将请求管理员权限", Success);
+        try
+        {
+            await SystemMemoryReleaseService.ReleaseAsync();
+            SetStatus("系统内存释放完成", Success);
+        }
+        catch (OperationCanceledException)
+        {
+            SetStatus("已取消管理员授权", TextMuted);
+        }
+        catch (Exception ex)
+        {
+            Entry.Logger.Error(
+                $"[CombatSolver/Test] SYSTEM_MEMORY_RELEASE_FAILED exception={ex}");
+            SetStatus("系统内存释放失败，详情已写入日志", Danger);
+        }
+        finally
+        {
+            if (GodotObject.IsInstanceValid(button))
+                button.Disabled = false;
+        }
     }
 
     private static PanelContainer CreateSectionPanel(string name)
