@@ -3,7 +3,7 @@
   "name": "战斗路线求解器",
   "author": "Torch",
   "description": "异步搜索单场战斗路线，支持三态药水策略、路线复用和连续全自动执行。",
-  "version": "0.27.2",
+  "version": "0.28.0",
   "has_pck": false,
   "has_dll": true,
   "affects_gameplay": false,
