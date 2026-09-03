@@ -31,6 +31,35 @@ namespace CombatSolver;
 
 internal sealed partial class CombatBeamSolver
 {
+    // 每个节点的快照都要一份牌组大小的临时牌表。这张表只在 Snapshot 内部被读、排序和洗牌，
+    // SimulationSnapshot 只收下它的 Count，没有任何出口持有它，所以可以按 solver 实例复用。
+    // 每个 CombatBeamSolver 实例只被一条线程使用（协调者跑主线程，每条 lane 有自己的 worker
+    // 和专属线程），取用时又先把字段摘空，万一出现嵌套调用内层会自己新建，不会共享同一块。
+    private List<PredictedCard>? _liveCardBuffer;
+
+    private List<PredictedCard> RentLiveCardBuffer()
+    {
+        List<PredictedCard>? buffer = _liveCardBuffer;
+        if (buffer is null)
+            return [];
+        _liveCardBuffer = null;
+        buffer.Clear();
+        return buffer;
+    }
+
+    private static bool HasUncompensatedDeathGap(IReadOnlyList<PredictionGap> gaps)
+    {
+        for (int index = 0; index < gaps.Count; index++)
+        {
+            if (!gaps[index].Compensated
+                && gaps[index].Method.Contains("Death", StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private SimulationSnapshot Snapshot(
         CombatPredictionSimulator simulator,
         int turn,
@@ -88,8 +117,7 @@ internal sealed partial class CombatBeamSolver
         CoverageSummary coverage = GetCoverageSummary(simulator);
         IReadOnlyList<PredictionGap> predictionGaps = coverage.Gaps;
         bool risk = coverage.HasUncompensatedRisk;
-        bool uncertainVictory = won && predictionGaps.Any(gap =>
-            !gap.Compensated && gap.Method.Contains("Death", StringComparison.Ordinal));
+        bool uncertainVictory = won && HasUncompensatedDeathGap(predictionGaps);
         if (uncertainVictory)
             boundary = SearchBoundaryReason.UnsupportedEffect;
 
@@ -109,13 +137,13 @@ internal sealed partial class CombatBeamSolver
         // Projected shuffle needs these piles in this exact pre-sort order. The remaining
         // snapshot metrics are order-independent, so they can reuse the shuffled list instead
         // of materializing a second deck-sized backing array.
-        List<PredictedCard> liveCards = [
-            .. playerState.DiscardPile.Cards,
-            .. playerState.DrawPile.Cards,
-            .. playerState.Hand.Cards,
-        ];
+        List<PredictedCard> liveCards = RentLiveCardBuffer();
+        liveCards.AddRange(playerState.DiscardPile.Cards);
+        liveCards.AddRange(playerState.DrawPile.Cards);
+        liveCards.AddRange(playerState.Hand.Cards);
         (StateFingerprint projectedShuffleOrderKey, int projectedShuffleOrderValue) =
             BuildProjectedShuffleOrder(simulator, liveCards);
+        int liveCardCount = liveCards.Count;
         _run.Performance.End(
             SearchMetricPhase.ProjectedShuffle,
             projectedShuffleMeasurement);
@@ -359,6 +387,10 @@ internal sealed partial class CombatBeamSolver
             aliveEnemyMask,
             potionInventoryKey,
             boundary);
+        // 到这里 liveCards 的最后一个读者已经走完，快照只收 Count。归还缓冲；若上面任何一步
+        // 抛出，缓冲只是被丢弃，下一次 Snapshot 重新分配一块，正确性不受影响。
+        liveCards.Clear();
+        _liveCardBuffer = liveCards;
         return new SimulationSnapshot(
             score,
             key,
@@ -409,7 +441,7 @@ internal sealed partial class CombatBeamSolver
             enemyControlDistributionKey,
             sandpitRemaining,
             liveDeckClutter,
-            liveCards.Count,
+            liveCardCount,
             outstandingStolenResource,
             offensiveProgressValue,
             playerState.Energy,
