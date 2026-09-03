@@ -425,9 +425,12 @@ internal static class CorePowerSupport
             int poison = combat.GetAmount<PoisonPower>(creature);
             if (poison <= 0 || simulator.State.GetCreature(creature).IsDead)
                 continue;
-            int accelerant = combat.GetOpponentsOf(creature)
-                .Where(opponent => simulator.State.GetCreature(opponent).IsAlive)
-                .Sum(opponent => combat.GetAmount<AccelerantPower>(opponent));
+            int accelerant = 0;
+            foreach (Creature opponent in combat.GetOpponentsOf(creature))
+            {
+                if (simulator.State.GetCreature(opponent).IsAlive)
+                    accelerant += combat.GetAmount<AccelerantPower>(opponent);
+            }
             int triggerCount = Math.Min(poison, 1 + accelerant);
             for (int trigger = 0; trigger < triggerCount; trigger++)
             {

@@ -183,7 +183,7 @@ internal static partial class CardOnPlaySupport
             {
                 simulator.State.GetPlayerCombatState(card.Owner).GainEnergy(card.DynamicVars.Energy.IntValue);
                 PredictedCard generated = PredictedCard.Create(
-                    ModelDb.Card<MegaCrit.Sts2.Core.Models.Cards.Void>(),
+                    CanonicalModels.Card<MegaCrit.Sts2.Core.Models.Cards.Void>(),
                     card.Owner);
                 simulator.AddGeneratedCardToCombat(
                     generated,

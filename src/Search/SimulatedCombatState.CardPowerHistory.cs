@@ -105,7 +105,7 @@ internal sealed partial class SimulatedCombatState
                 continue;
             SlowPower mutable = (SlowPower)GetOrCreatePower(
                 creature,
-                ModelDb.Power<SlowPower>(),
+                CanonicalModels.Power<SlowPower>(),
                 slow.Applier);
             mutable.DynamicVars["SlowAmount"].BaseValue++;
             mutable.DynamicVars["DisplayAmount"].BaseValue =

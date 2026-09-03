@@ -142,7 +142,7 @@ internal static class RelicPredictionStateSupport
         {
             case BeatingRemnant value:
                 simulator.StateStore
-                    .Get((AbstractModel)value, () => new BeatingRemnantPredictionState(value))
+                    .Get(value, static model => new BeatingRemnantPredictionState(model))
                     .DamageReceivedThisTurn = 0m;
                 break;
             case BrilliantScarf value:
@@ -150,7 +150,7 @@ internal static class RelicPredictionStateSupport
                 break;
             case DemonTongue value:
                 simulator.StateStore
-                    .Get((AbstractModel)value, () => new DemonTonguePredictionState(value))
+                    .Get(value, static model => new DemonTonguePredictionState(model))
                     .TriggeredThisTurn = false;
                 break;
             case Kunai value:
@@ -159,7 +159,7 @@ internal static class RelicPredictionStateSupport
             case MusicBox value:
                 {
                     MusicBoxPredictionState state = simulator.StateStore
-                        .Get((AbstractModel)value, () => new MusicBoxPredictionState(value));
+                        .Get(value, static model => new MusicBoxPredictionState(model));
                     state.WasUsedThisTurn = false;
                     state.CardBeingPlayed = null;
                     break;
@@ -170,7 +170,7 @@ internal static class RelicPredictionStateSupport
             case RainbowRing value:
                 {
                     RainbowRingPredictionState state = simulator.StateStore
-                        .Get((AbstractModel)value, () => new RainbowRingPredictionState(value));
+                        .Get(value, static model => new RainbowRingPredictionState(model));
                     state.AttacksPlayedThisTurn = 0;
                     state.SkillsPlayedThisTurn = 0;
                     state.PowersPlayedThisTurn = 0;
@@ -179,7 +179,7 @@ internal static class RelicPredictionStateSupport
                 }
             case Regalite value:
                 simulator.StateStore
-                    .Get((AbstractModel)value, () => new RegalitePredictionState(value))
+                    .Get(value, static model => new RegalitePredictionState(model))
                     .UsedThisTurn = false;
                 break;
             case Shuriken value:
@@ -204,7 +204,7 @@ internal static class RelicPredictionStateSupport
             case PaelsLegion value:
                 {
                     PaelsLegionPredictionState state = simulator.StateStore
-                        .Get((AbstractModel)value, () => new PaelsLegionPredictionState(value));
+                        .Get(value, static model => new PaelsLegionPredictionState(model));
                     state.Cooldown--;
                     state.TriggeredBlockLastTurn = false;
                     break;

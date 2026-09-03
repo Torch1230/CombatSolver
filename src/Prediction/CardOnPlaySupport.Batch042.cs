@@ -97,7 +97,7 @@ internal static partial class CardOnPlaySupport
                 CardChoiceSupport.TransformCards(
                     simulator,
                     attacks,
-                    ModelDb.Card<GiantRock>(),
+                    CanonicalModels.Card<GiantRock>(),
                     card.IsUpgraded);
                 break;
             }
@@ -146,7 +146,7 @@ internal static partial class CardOnPlaySupport
 
         List<PredictedCard> souls = new(card.DynamicVars.Cards.IntValue);
         for (int index = 0; index < card.DynamicVars.Cards.IntValue; index++)
-            souls.Add(PredictedCard.Create(ModelDb.Card<Soul>(), card.Owner));
+            souls.Add(PredictedCard.Create(CanonicalModels.Card<Soul>(), card.Owner));
         simulator.AddGeneratedCardsToCombat(
             souls,
             PileType.Draw,

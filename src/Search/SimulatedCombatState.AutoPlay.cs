@@ -50,7 +50,7 @@ internal sealed partial class SimulatedCombatState
             if (!AutoPlayWithChoice(
                     simulator,
                     card,
-                    MegaCrit.Sts2.Core.Models.ModelDb.Power<MegaCrit.Sts2.Core.Models.Powers.MayhemPower>().Id.Entry,
+                    CanonicalModels.Power<MegaCrit.Sts2.Core.Models.Powers.MayhemPower>().Id.Entry,
                     $"{card.Preview.Id.Entry}+{card.Preview.CurrentUpgradeLevel}#{index}",
                     choices,
                     processedEnemyDeaths))

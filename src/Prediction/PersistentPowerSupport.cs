@@ -274,7 +274,7 @@ internal static class PersistentPowerSupport
             && !state.ExhaustPile.Cards.Contains(card));
         if (!hasUnexhaustedBlade)
         {
-            PredictedCard created = PredictedCard.Create(ModelDb.Card<SovereignBlade>(), player);
+            PredictedCard created = PredictedCard.Create(CanonicalModels.Card<SovereignBlade>(), player);
             ((SovereignBlade)created.MutablePreview).CreatedThroughForge = true;
             simulator.AddGeneratedCardToCombat(
                 created,

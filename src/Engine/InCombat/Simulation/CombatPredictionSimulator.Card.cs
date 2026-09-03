@@ -482,7 +482,7 @@ internal sealed partial class CombatPredictionSimulator
     // Mirrors CardModel.Afflict<T>.
     public T? Afflict<T>(PredictedCard card, decimal amount) where T : AfflictionModel
     {
-        return Afflict(ModelDb.Affliction<T>().ToMutable(), card, amount) as T;
+        return Afflict(CanonicalModels.Affliction<T>().ToMutable(), card, amount) as T;
     }
 
     /// <summary>

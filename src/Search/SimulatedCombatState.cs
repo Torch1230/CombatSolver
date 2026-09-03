@@ -670,7 +670,7 @@ internal sealed partial class SimulatedCombatState
         T? power = GetPower<T>(target);
         if (power?.SkipNextDurationTick == true)
         {
-            T mutable = (T)GetOrCreatePower(target, ModelDb.Power<T>(), power.Applier);
+            T mutable = (T)GetOrCreatePower(target, CanonicalModels.Power<T>(), power.Applier);
             mutable.SkipNextDurationTick = false;
             return;
         }
@@ -684,7 +684,7 @@ internal sealed partial class SimulatedCombatState
         int current = GetAmount<T>(target);
         if (current == amount)
             return;
-        T canonical = ModelDb.Power<T>();
+        T canonical = CanonicalModels.Power<T>();
         PowerModel simulated = GetOrCreatePower(target, canonical, null);
         int previousAmount = simulated._amount;
         simulated._amount = Math.Clamp(amount, -999_999_999, 999_999_999);
@@ -787,7 +787,7 @@ internal sealed partial class SimulatedCombatState
         RecordStolenGold(simulator, stolen);
         ThieveryPower simulated = (ThieveryPower)GetOrCreatePower(
             owner,
-            ModelDb.Power<ThieveryPower>(),
+            CanonicalModels.Power<ThieveryPower>(),
             source.Applier);
         simulated._target = source.Target;
         simulated.DynamicVars.Gold.BaseValue += stolen;
@@ -824,7 +824,7 @@ internal sealed partial class SimulatedCombatState
     private static T CreatePowerForApplication<T>(Creature owner, Creature target, Creature? applier)
         where T : PowerModel
     {
-        T incoming = PredictionUtils.CloneModelForSimulation(ModelDb.Power<T>());
+        T incoming = PredictionUtils.CloneModelForSimulation(CanonicalModels.Power<T>());
         incoming._owner = owner;
         incoming._applier = applier;
         incoming._target = target;
@@ -1101,28 +1101,12 @@ internal sealed partial class SimulatedCombatState
             if (ownerPlayer.Osty is { } osty)
             {
                 (_creatureAttacksThisTurn ??= [])[osty] = 0;
-                if (_poweredAttackHitsThisTurn != null)
-                {
-                    foreach ((Creature Dealer, Creature Receiver) key in _poweredAttackHitsThisTurn.Keys
-                                 .Where(key => key.Dealer == osty)
-                                 .ToArray())
-                    {
-                        _poweredAttackHitsThisTurn.Remove(key);
-                    }
-                }
+                RemovePoweredAttackHitsDealtBy(osty);
             }
         }
         _doomAppliersThisTurn?.Remove(owner);
         _unblockedDamageThisTurn?.Remove(owner);
-        if (_poweredAttackHitsThisTurn != null)
-        {
-            foreach ((Creature Dealer, Creature Receiver) key in _poweredAttackHitsThisTurn.Keys
-                         .Where(key => key.Dealer == owner)
-                         .ToArray())
-            {
-                _poweredAttackHitsThisTurn.Remove(key);
-            }
-        }
+        RemovePoweredAttackHitsDealtBy(owner);
         TickDuration<BlurPower>(owner);
         if (GetAmount<DrawCardsNextTurnPower>(owner) > 0)
             SetAmount<DrawCardsNextTurnPower>(owner, 0);
@@ -1152,12 +1136,28 @@ internal sealed partial class SimulatedCombatState
 
     }
 
+    private void RemovePoweredAttackHitsDealtBy(Creature dealer)
+    {
+        if (_poweredAttackHitsThisTurn is not { Count: > 0 })
+            return;
+        List<(Creature Dealer, Creature Receiver)>? stale = null;
+        foreach ((Creature Dealer, Creature Receiver) key in _poweredAttackHitsThisTurn.Keys)
+        {
+            if (key.Dealer == dealer)
+                (stale ??= []).Add(key);
+        }
+        if (stale is null)
+            return;
+        foreach ((Creature Dealer, Creature Receiver) key in stale)
+            _poweredAttackHitsThisTurn.Remove(key);
+    }
+
     public bool ConsumeRitualApplicationDelay(Creature owner)
     {
         RitualPower? ritual = GetPower<RitualPower>(owner);
         if (ritual is not { Amount: > 0 })
             return false;
-        RitualPower mutable = (RitualPower)GetOrCreatePower(owner, ModelDb.Power<RitualPower>(), ritual.Applier);
+        RitualPower mutable = (RitualPower)GetOrCreatePower(owner, CanonicalModels.Power<RitualPower>(), ritual.Applier);
         if (!mutable._wasJustAppliedByEnemy)
             return false;
         mutable._wasJustAppliedByEnemy = false;
@@ -1910,7 +1910,8 @@ internal sealed partial class SimulatedCombatState
         ulong dynamicFirst = 0;
         ulong dynamicSecond = 0;
         int dynamicCount = 0;
-        foreach (var dynamicVar in power.DynamicVars)
+        // DynamicVarSet.GetEnumerator 会装箱内部字典的枚举器；直接枚举已 publicize 的 _vars。
+        foreach (var dynamicVar in power.DynamicVars._vars)
         {
             if (!SemanticStateFieldPolicy.IsSemantic(power, dynamicVar.Key, dynamicVar.Value))
                 continue;
@@ -2254,7 +2255,7 @@ internal sealed partial class SimulatedCombatState
     }
 
     public T CreateCard<T>(Player owner) where T : CardModel
-        => (T)PredictionUtils.CreateCard(ModelDb.Card<T>(), owner);
+        => (T)PredictionUtils.CreateCard(CanonicalModels.Card<T>(), owner);
     public CardModel CreateCard(CardModel canonicalCard, Player owner)
         => PredictionUtils.CreateCard(canonicalCard, owner);
     public CardModel CloneCard(CardModel mutableCard)

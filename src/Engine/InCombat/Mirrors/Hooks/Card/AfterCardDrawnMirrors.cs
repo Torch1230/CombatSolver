@@ -157,7 +157,7 @@ internal static class AfterCardDrawnMirrors
             context.CombatState.CurrentSide == power.Owner.Side &&
             // CanAfflict only checks card type, existing affliction, and Unplayable.
             // Vanilla currently has no global hook that adds Unplayable, so preview keywords are sufficient here.
-            ModelDb.Affliction<Bound>().CanAfflict(context.PreviewCard))
+            CanonicalModels.Affliction<Bound>().CanAfflict(context.PreviewCard))
         {
             ChainsOfBindingPredictionState state = context.StateStore.Get(
                 power,

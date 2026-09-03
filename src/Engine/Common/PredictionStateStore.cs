@@ -6,6 +6,9 @@ internal sealed class PredictionStateStore
 {
     private readonly Dictionary<(AbstractModel Model, Type StateType), StateEntry> _states;
     private readonly Dictionary<AbstractModel, AbstractModel> _modelAliases;
+    // 每种状态类型当前的条目数。ReadEntries<TState> 是热路径（每次动作后都要同步 Power 数量），
+    // 绝大多数调用时该类型根本没有条目，用计数直接短路，避免整表扫描。
+    private readonly Dictionary<Type, int> _countByType = new();
 
     public PredictionStateStore()
         : this(0, 0)
@@ -61,6 +64,7 @@ internal sealed class PredictionStateStore
                 ?? throw new InvalidOperationException("Prediction state factory returned null.");
             entry = new OwnedStateEntry(state);
             _states[key] = entry;
+            IncrementCount(typeof(TState));
         }
 
         return (TState)entry.Materialize();
@@ -88,6 +92,7 @@ internal sealed class PredictionStateStore
                 ?? throw new InvalidOperationException("Prediction state factory returned null.");
             entry = new OwnedStateEntry(state);
             _states[key] = entry;
+            IncrementCount(typeof(TState));
         }
         return (TState)entry.Read();
     }
@@ -132,6 +137,8 @@ internal sealed class PredictionStateStore
     public IEnumerable<(AbstractModel Model, TState State)> ReadEntries<TState>()
         where TState : class, IPredictionStateForkable
     {
+        if (!_countByType.TryGetValue(typeof(TState), out int count) || count == 0)
+            yield break;
         foreach (((AbstractModel model, Type stateType), StateEntry entry) in _states)
         {
             if (stateType == typeof(TState))
@@ -141,7 +148,15 @@ internal sealed class PredictionStateStore
 
     public bool Remove<TState>(AbstractModel model)
         where TState : class, IPredictionStateForkable
-        => _states.Remove((ResolveModel(model), typeof(TState)));
+    {
+        if (!_states.Remove((ResolveModel(model), typeof(TState))))
+            return false;
+        _countByType[typeof(TState)]--;
+        return true;
+    }
+
+    private void IncrementCount(Type stateType)
+        => _countByType[stateType] = _countByType.GetValueOrDefault(stateType) + 1;
 
     public void RemapModel(AbstractModel source, AbstractModel replacement)
     {
@@ -196,6 +211,11 @@ internal sealed class PredictionStateStore
                 context.Register(state, forkedState);
             }
             fork._states.Add((forkedModel, stateType), new OwnedStateEntry(forkedState));
+        }
+        foreach ((Type stateType, int count) in _countByType)
+        {
+            if (count != 0)
+                fork._countByType[stateType] = count;
         }
         foreach ((AbstractModel source, AbstractModel replacement) in _modelAliases)
         {

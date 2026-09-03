@@ -138,10 +138,10 @@ internal static partial class CardChoiceSupport
     {
         CardModel replacement = source switch
         {
-            Begone => ModelDb.Card<MinionStrike>(),
-            Charge => ModelDb.Card<MinionDiveBomb>(),
-            Guards => ModelDb.Card<MinionSacrifice>(),
-            Seance => ModelDb.Card<Soul>(),
+            Begone => CanonicalModels.Card<MinionStrike>(),
+            Charge => CanonicalModels.Card<MinionDiveBomb>(),
+            Guards => CanonicalModels.Card<MinionSacrifice>(),
+            Seance => CanonicalModels.Card<Soul>(),
             _ => throw new InvalidOperationException($"卡牌 {source.Id.Entry} 没有选牌变换定义。"),
         };
         bool upgrade = source.IsUpgraded && source is Begone or Charge or Guards;

@@ -167,7 +167,7 @@ internal sealed partial class CombatPredictionSimulator
         List<PredictedCard> cards = [];
         for (var i = 0; i < count; i++)
         {
-            cards.Add(PredictedCard.Create(ModelDb.Card<TCard>(), player));
+            cards.Add(PredictedCard.Create(CanonicalModels.Card<TCard>(), player));
         }
 
         return AddGeneratedCardsToCombat(cards, pileType, creator, position, CardGenerationResultKind.Fixed);
