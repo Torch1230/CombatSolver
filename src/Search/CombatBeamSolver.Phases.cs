@@ -1392,7 +1392,8 @@ internal sealed partial class CombatBeamSolver
             foreach (SearchNode node in frontier)
                 CaptureContinuation(node);
             List<SearchNode> retainedAfterRound = [.. completed, .. frontier];
-            ReleaseDroppedSnapshots(ended, retainedAfterRound);            foreach (SearchNode candidate in retainedAfterRound)
+            ReleaseDroppedSnapshots(ended, retainedAfterRound);
+            foreach (SearchNode candidate in retainedAfterRound)
             {
                 ConsiderCompleteVictory(candidate);
                 ConsiderCurrentTurnCandidate(candidate);
