@@ -71,7 +71,10 @@ internal static class TurnStartPowerSupport
                 .ToArray();
             foreach (PredictedCard card in selected)
             {
-                simulator.AddToPile([card], PileType.Hand);
+                // 单张牌走单张重载：多张重载对 N==1 的两阶段流程与它逐步等价（同样的所有者
+                // 解析、同样的合法性判定、同样的手牌上限溢出改投弃牌堆、同一次 Shuffle 取位、
+                // 同样的入场事件），但会额外分配一个单元素数组和一张结果表。
+                simulator.AddToPile(card, PileType.Hand);
                 if (card.Preview.IsUpgradable)
                     card.Upgrade();
             }
