@@ -150,8 +150,10 @@ internal sealed partial class SimulatedCombatState
                 vitalSparkAmount = checked(vitalSparkAmount + vitalSpark.Amount);
         }
         bool hasVitalSpark = vitalSparkAmount > 0;
-        foreach (Player player in Players)
+        IReadOnlyList<Player> players = Players;
+        for (int playerIndex = 0; playerIndex < players.Count; playerIndex++)
         {
+            Player player = players[playerIndex];
             Creature owner = player.Creature;
             // Vital Spark is owned by Infested Prism but its vanilla hooks afflict every player
             // Skill, not creatures on the Power owner's side.
@@ -208,8 +210,10 @@ internal sealed partial class SimulatedCombatState
     private void NormalizeSwordSageReplays(CombatPredictionSimulator simulator)
     {
         _swordSageReplayBonuses ??= [];
-        foreach (Player player in Players)
+        IReadOnlyList<Player> players = Players;
+        for (int playerIndex = 0; playerIndex < players.Count; playerIndex++)
         {
+            Player player = players[playerIndex];
             int desired = GetAmount<SwordSagePower>(player.Creature);
             int liveAmount = player.Creature.GetPower<SwordSagePower>()?.Amount ?? 0;
             foreach (PredictedCard card in simulator.State.GetPlayerCombatState(player).AllCards)

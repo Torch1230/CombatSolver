@@ -199,8 +199,18 @@ internal static class CombatPredictedCardExtensions
 
         try
         {
-            foreach (CardKeyword localKeyword in card.Preview.LocalKeywords)
-                keywords.Add(localKeyword);
+            // LocalKeywords 以接口类型暴露一个数组，foreach 会为每次查询装箱一个枚举器。
+            // 这里只往集合里塞元素再问 Contains，插入顺序不影响结果。
+            if (card.Preview.LocalKeywords is IReadOnlyList<CardKeyword> indexableKeywords)
+            {
+                for (int index = 0; index < indexableKeywords.Count; index++)
+                    keywords.Add(indexableKeywords[index]);
+            }
+            else
+            {
+                foreach (CardKeyword localKeyword in card.Preview.LocalKeywords)
+                    keywords.Add(localKeyword);
+            }
             Hook.ModifyKeywordsInCombat(state.CombatState, card.Preview, keywords);
             return keywords.Contains(keyword);
         }
