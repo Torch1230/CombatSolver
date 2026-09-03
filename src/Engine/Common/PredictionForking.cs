@@ -306,11 +306,32 @@ internal sealed class PredictionForkContext : IDisposable
     private const int IndexedLookupThreshold = 64;
     private const int HashLoadNumerator = 3;
     private const int HashLoadDenominator = 4;
-    private object[] _sources = ArrayPool<object>.Shared.Rent(40);
-    private object[] _forks = ArrayPool<object>.Shared.Rent(40);
+    private const int MinimumEntryCapacity = 40;
+
+    // 同一条搜索线程上相邻两次 Fork 登记的条目数几乎相同。用上一次的实际条目数预估容量，
+    // 让第一次 Register 就落在最终大小的条目数组与身份哈希索引上：既省掉线性扫描阶段的
+    // O(n²) 比较，也省掉跨过阈值后按 3/4 装载率反复重建索引的开销。命中与否只影响容量，
+    // 查找结果只由引用身份决定，因此映射结果与原实现逐条相同。
+    [ThreadStatic]
+    private static int _entryCountHint;
+
+    private object[] _sources;
+    private object[] _forks;
     private int[]? _buckets;
     private int _bucketResizeThreshold;
     private int _count;
+
+    public PredictionForkContext()
+    {
+        int capacity = Math.Max(MinimumEntryCapacity, _entryCountHint);
+        _sources = ArrayPool<object>.Shared.Rent(capacity);
+        _forks = ArrayPool<object>.Shared.Rent(capacity);
+        if (capacity >= IndexedLookupThreshold)
+            BuildHashIndex(BucketCountFor(capacity));
+    }
+
+    private static int BucketCountFor(int entryCapacity)
+        => checked((int)((long)entryCapacity * HashLoadDenominator / HashLoadNumerator) + 1);
 
     public void Register<T>(T source, T fork)
         where T : class
@@ -444,6 +465,7 @@ internal sealed class PredictionForkContext : IDisposable
 
     public void Dispose()
     {
+        _entryCountHint = _count;
         object[] sources = _sources;
         object[] forks = _forks;
         int[]? buckets = _buckets;
