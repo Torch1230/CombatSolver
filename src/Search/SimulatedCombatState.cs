@@ -94,7 +94,7 @@ internal sealed partial class SimulatedCombatState
     // 元素与顺序和把两段拷进同一个 List 完全一致。
     private sealed class ConcatenatedListenerView(
         IReadOnlyList<AbstractModel> prefix,
-        IReadOnlyList<AbstractModel> suffix) : IReadOnlyList<AbstractModel>
+        IReadOnlyList<AbstractModel> suffix) : IReadOnlyList<AbstractModel>, ISegmentedModelList
     {
         public IReadOnlyList<AbstractModel> Prefix { get; } = prefix;
         public IReadOnlyList<AbstractModel> Suffix { get; } = suffix;

@@ -16,6 +16,17 @@ internal interface ICombatPredictionHookListenerSource
     IReadOnlyList<MegaCrit.Sts2.Core.Models.AbstractModel> RunHookListeners { get; }
 }
 
+/// <summary>
+/// 由两段只读列表逐条同序拼接而成的监听表。hook 分发按段迭代，避免在最热循环里为每个元素
+/// 多付一次接口调用和一次分支（视图自己的索引器每次都要判断落在前缀还是后缀）。
+/// </summary>
+internal interface ISegmentedModelList
+{
+    IReadOnlyList<MegaCrit.Sts2.Core.Models.AbstractModel> Prefix { get; }
+
+    IReadOnlyList<MegaCrit.Sts2.Core.Models.AbstractModel> Suffix { get; }
+}
+
 internal interface ICombatPredictionRunSnapshot
 {
     MegaCrit.Sts2.Core.Entities.Cards.CardMultiplayerConstraint CardMultiplayerConstraint { get; }
