@@ -78,7 +78,12 @@ internal sealed partial class SimulatedCombatState
         };
 
         if (_addedPowerInstances is not null)
-            fork._addedPowerInstances = _addedPowerInstances.Select(power => ForkPower(power, context)).ToList();
+        {
+            List<PowerModel> addedPowerInstances = new(_addedPowerInstances.Count);
+            foreach (PowerModel power in _addedPowerInstances)
+                addedPowerInstances.Add(ForkPower(power, context));
+            fork._addedPowerInstances = addedPowerInstances;
+        }
         if (_rootMultiInstancePowerClones is not null)
         {
             fork._rootMultiInstancePowerClones = new(
@@ -110,11 +115,18 @@ internal sealed partial class SimulatedCombatState
         fork._dampenOriginalUpgrades = ForkDampenCards(context);
         fork._lastAttackThisTurn = ForkHistoryCourseCards(_lastAttackThisTurn, context);
         fork._lastAttackPreviousTurn = ForkHistoryCourseCards(_lastAttackPreviousTurn, context);
-        fork._registeredCombatCards = ForkCardList(_registeredCombatCards, context);
-        if (fork._registeredCombatCards is not null)
+        if (_registeredCombatCards is not null)
         {
-            foreach (PredictedCard card in fork._registeredCombatCards)
-                fork.ObserveCardMutations(card);
+            // 观察者只往卡上写一个回调，不读也不写任何被 ForkCard 改动的状态，
+            // 所以可以和分叉同一趟走完：卡的顺序、ForkCard 的调用序列都不变。
+            List<PredictedCard> registeredCombatCards = new(_registeredCombatCards.Count);
+            foreach (PredictedCard card in _registeredCombatCards)
+            {
+                PredictedCard forkedCard = ForkCard(card, context);
+                registeredCombatCards.Add(forkedCard);
+                fork.ObserveCardMutations(forkedCard);
+            }
+            fork._registeredCombatCards = registeredCombatCards;
         }
         fork._generatedCombatCards = ForkCardList(_generatedCombatCards, context);
 
