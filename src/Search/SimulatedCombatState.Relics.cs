@@ -309,11 +309,26 @@ internal sealed partial class SimulatedCombatState
     {
         if (_statefulRelicStates?.TryGetValue(relic, out StatefulRelicState state) == true)
             return state;
-        if (_rootMaterialized && _rootRelics.Values.Any(relics => relics.Contains(relic)))
+        // Any(lambda) 捕获参数 relic，Roslyn 会把参数提升进方法入口就分配的闭包对象里 ——
+        // 连命中缓存的快路径也要付这一次分配。换成显式扫描，判定结果不变。
+        if (_rootMaterialized && IsCapturedRootRelic(relic))
             throw new InvalidOperationException($"Root relic state was not captured for {relic.Id.Entry}.");
         state = CaptureLiveState(_rootRelicSources?.GetValueOrDefault(relic, relic) ?? relic);
         (_statefulRelicStates ??= [])[relic] = state;
         return state;
+    }
+
+    private bool IsCapturedRootRelic(RelicModel relic)
+    {
+        foreach (RelicModel[] relics in _rootRelics.Values)
+        {
+            for (int index = 0; index < relics.Length; index++)
+            {
+                if (EqualityComparer<RelicModel>.Default.Equals(relics[index], relic))
+                    return true;
+            }
+        }
+        return false;
     }
 
     private StatefulRelicState PeekStatefulRelicState(RelicModel relic)
@@ -341,17 +356,7 @@ internal sealed partial class SimulatedCombatState
                 (bool)BeltBuckleDexterityAppliedField.GetValue(buckle)! ? 1 : 0,
                 0),
             BoneTea tea => new StatefulRelicState(tea.CombatsLeft, 0),
-            EmotionChip chip => new StatefulRelicState(
-                CombatManager.Instance.History.Entries
-                    .OfType<DamageReceivedEntry>()
-                    .Any(entry => ReferenceEquals(entry.Receiver, chip.Owner.Creature)
-                                  && !entry.Result.WasFullyBlocked
-                                  && entry.HappenedLastPlayerTurn(chip.Owner)) ? 1 : 0,
-                CombatManager.Instance.History.Entries
-                    .OfType<DamageReceivedEntry>()
-                    .Any(entry => ReferenceEquals(entry.Receiver, chip.Owner.Creature)
-                                  && !entry.Result.WasFullyBlocked
-                                  && entry.HappenedThisTurn(chip.Owner.Creature.CombatState)) ? 1 : 0),
+            EmotionChip chip => CaptureEmotionChipState(chip),
             FakeHappyFlower flower => new StatefulRelicState(flower.TurnsSeen, 0),
             FakeVenerableTeaSet tea => new StatefulRelicState(tea.GainEnergyInNextCombat ? 1 : 0, 0),
             HappyFlower flower => new StatefulRelicState(flower.TurnsSeen, 0),
@@ -371,6 +376,39 @@ internal sealed partial class SimulatedCombatState
             VenerableTeaSet tea => new StatefulRelicState(tea.GainEnergyInNextCombat ? 1 : 0, 0),
             _ => default,
         };
+
+    // 原来这一段挂在 CaptureLiveState 的 switch 分支里，两条 OfType().Any() 各带一个捕获
+    // chip 的闭包，闭包对象随分支作用域在方法里被提升分配。搬成独立方法后 CaptureLiveState
+    // 本身不再有任何闭包，两个判定改成同序短路扫描，结果不变。
+    private static StatefulRelicState CaptureEmotionChipState(EmotionChip chip)
+    {
+        Creature receiver = chip.Owner.Creature;
+        bool lastPlayerTurn = false;
+        foreach (var entry in CombatManager.Instance.History.Entries)
+        {
+            if (entry is DamageReceivedEntry damage
+                && ReferenceEquals(damage.Receiver, receiver)
+                && !damage.Result.WasFullyBlocked
+                && damage.HappenedLastPlayerTurn(chip.Owner))
+            {
+                lastPlayerTurn = true;
+                break;
+            }
+        }
+        bool thisTurn = false;
+        foreach (var entry in CombatManager.Instance.History.Entries)
+        {
+            if (entry is DamageReceivedEntry damage
+                && ReferenceEquals(damage.Receiver, receiver)
+                && !damage.Result.WasFullyBlocked
+                && damage.HappenedThisTurn(receiver.CombatState))
+            {
+                thisTurn = true;
+                break;
+            }
+        }
+        return new StatefulRelicState(lastPlayerTurn ? 1 : 0, thisTurn ? 1 : 0);
+    }
 
     private static bool IsStatefulRelic(RelicModel relic)
         => relic is ArtOfWar
