@@ -95,6 +95,8 @@ internal sealed partial class CombatBeamSolver
         public int ActionAdmissionRepresentativesProtected;
         public int DuplicateCardBranchesPruned;
         public int ChoiceBranchesEvaluated;
+        public int ChoiceReplayAttempts;
+        public int ChoiceReplayBudgetExhaustions;
         public int ShuffleBranchesPruned = 0;
         public int SoldHpBranchesPruned;
         public int HpInvestmentBranchesProtected;
@@ -104,6 +106,14 @@ internal sealed partial class CombatBeamSolver
         public int ReusedNodeSnapshots;
         public int TranspositionBranchesPruned;
         public int RepeatableNoProgressBranchesPruned;
+        public int CycleShapesDetected;
+        public int CycleProbeContinuationsExpanded;
+        public int CycleCandidatesProtected;
+        public int CycleContinuationsStopped;
+        public int CrossTurnCandidatesProtected;
+        public int CrossTurnContinuationsStopped;
+        public int PrimaryIncumbentBranchesPruned;
+        public int PrimaryIncumbentUpdates;
         public int StandPatProbes;
         public long OffThreadAllocatedBytes;
         public int ParallelExpansionWaves;

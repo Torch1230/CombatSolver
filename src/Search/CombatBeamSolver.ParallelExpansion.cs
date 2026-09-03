@@ -21,7 +21,6 @@ internal sealed partial class CombatBeamSolver
 
     private readonly record struct PreparedCardAction(
         PlanAction Action,
-        CardModel OriginalCard,
         CardType CardType,
         uint? TargetCombatId,
         bool RequiresUnsupportedExistingChoice,
@@ -734,7 +733,11 @@ internal sealed partial class CombatBeamSolver
             int capacity = Math.Min(DegreeOfParallelism, remainingBranches);
             SearchMemoryPressureSignal signal = _coordinator.SearchMemoryPressure;
             if (!signal.IsEnabled)
-                return capacity;
+            {
+                return signal.ConservativeParallelismRequired
+                    ? Math.Min(capacity, 2)
+                    : capacity;
+            }
 
             if (!_roundChoiceReplayAllocationObserved)
                 capacity = Math.Min(capacity, 2);
@@ -773,7 +776,11 @@ internal sealed partial class CombatBeamSolver
             int capacity = Math.Min(DegreeOfParallelism, remainingActions);
             SearchMemoryPressureSignal signal = _coordinator.SearchMemoryPressure;
             if (!signal.IsEnabled)
-                return capacity;
+            {
+                return signal.ConservativeParallelismRequired
+                    ? Math.Min(capacity, 2)
+                    : capacity;
+            }
 
             if (!_actionReplayAllocationObserved)
                 capacity = Math.Min(capacity, 2);
@@ -1222,7 +1229,7 @@ internal sealed partial class CombatBeamSolver
             searchProfile: _profile,
             shortCheckpointMilliseconds: _shortCheckpointMilliseconds,
             potionPolicyOverride: _potionPolicy,
-            potionFreePolicyBaseline: potionFreePolicyBaseline,
+            potionFreePolicyBaseline: _potionFreePolicyBaseline,
             maximumPotionUses: _maximumPotionUses);
         worker._run.InitialPersistentBuffValue = _run.InitialPersistentBuffValue;
         worker._run.InitialEnemyStrengthSuppression = _run.InitialEnemyStrengthSuppression;
@@ -1393,7 +1400,6 @@ internal sealed partial class CombatBeamSolver
                     CardStateOccurrence: cardStateOccurrence);
                 actions.Add(new PreparedCardAction(
                     planAction,
-                    card.Original,
                     card.Preview.Type,
                     target?.CombatId,
                     requiresUnsupportedExistingChoice,
@@ -1483,21 +1489,6 @@ internal sealed partial class CombatBeamSolver
             bool terminal = finalSnapshot.PlayerDead
                 || finalSnapshot.AllEnemiesDead
                 || finalSnapshot.BoundaryReason != SearchBoundaryReason.None;
-            bool repeatableNoProgress = IsRepeatableNoProgressStep(
-                snapshot,
-                finalSnapshot,
-                action.OriginalCard);
-            string? repeatableCardId = repeatableNoProgress
-                ? action.Action.CardId
-                : null;
-            int repeatableCount = repeatableNoProgress
-                ? string.Equals(
-                    node.RepeatableNoProgressCardId,
-                    repeatableCardId,
-                    StringComparison.Ordinal)
-                    ? node.RepeatableNoProgressCount + 1
-                    : 1
-                : 0;
             SearchNode child = new(
                 nodeAction,
                 node.ActionCount + 1,
@@ -1515,19 +1506,11 @@ internal sealed partial class CombatBeamSolver
                 finalSnapshot,
                 forcedTurnEnd
                     ? node.CombatProgress.Advance(finalSnapshot)
-                    : node.CombatProgress,
-                RepeatableNoProgressCardId: repeatableCardId,
-                RepeatableNoProgressCount: repeatableCount)
+                    : node.CombatProgress)
             {
                 CumulativeEnemyHpLost = AccumulateEnemyHpLost(node, finalSnapshot),
             };
-            if (ShouldPruneRepeatableNoProgress(child)
-                || ShouldPruneCrossTurnNoProgress(child))
-            {
-                _run.RepeatableNoProgressBranchesPruned++;
-                finalSnapshot.ReleaseSimulator();
-                continue;
-            }
+            child = AttachCycleSchedulingEvidence(child);
             batch.Add(new RawCardCandidate(
                 child,
                 action.CardType,
@@ -1586,7 +1569,8 @@ internal sealed partial class CombatBeamSolver
                             node,
                             layer,
                             unresolvedPrimaryChoice,
-                            maxFinalBranches),
+                            maxFinalBranches,
+                            CreateChoiceReplayBudget(maxFinalBranches)),
                         completedBatch);
                     return null;
                 }
@@ -1668,7 +1652,6 @@ internal sealed partial class CombatBeamSolver
                         completedBatch);
                     return null;
                 }
-
                 PlanCardChoice? onlyChoice = layer.Choices[0];
                 currentAction = currentAction with { Choice = onlyChoice };
                 if (onlyChoice != null)
@@ -1759,6 +1742,10 @@ internal sealed partial class CombatBeamSolver
     {
         foreach (PendingChoiceReplayBranch branch in branches)
         {
+            ChoiceReplayBudget replayBudget = CreateChoiceReplayBudget(
+                frontier.MaxFinalBranchesPerBranch);
+            if (!TrySpendChoiceReplayBudget(replayBudget))
+                continue;
             SimulationSnapshot? branchSnapshot = ReplayPendingChoiceBranch(node, branch);
             if (branchSnapshot == null)
                 continue;
@@ -1768,7 +1755,8 @@ internal sealed partial class CombatBeamSolver
                          branch.Action,
                          branchSnapshot,
                          frontier.UnresolvedPrimaryChoice,
-                         frontier.MaxFinalBranchesPerBranch))
+                         frontier.MaxFinalBranchesPerBranch,
+                         replayBudget))
             {
                 yield return (finalAction, finalSnapshot);
             }
@@ -1789,7 +1777,11 @@ internal sealed partial class CombatBeamSolver
         bool completed = false;
         try
         {
-            SimulationSnapshot? branchSnapshot = ReplayPendingChoiceBranch(node, branch, seed);
+            ChoiceReplayBudget replayBudget = CreateChoiceReplayBudget(
+                frontier.MaxFinalBranchesPerBranch);
+            SimulationSnapshot? branchSnapshot = TrySpendChoiceReplayBudget(replayBudget)
+                ? ReplayPendingChoiceBranch(node, branch, seed)
+                : null;
             if (branchSnapshot != null)
             {
                 AddResolvedCardCandidates(
@@ -1800,7 +1792,8 @@ internal sealed partial class CombatBeamSolver
                         branch.Action,
                         branchSnapshot,
                         frontier.UnresolvedPrimaryChoice,
-                        frontier.MaxFinalBranchesPerBranch),
+                        frontier.MaxFinalBranchesPerBranch,
+                        replayBudget),
                     batch);
             }
             completed = true;
@@ -1852,6 +1845,7 @@ internal sealed partial class CombatBeamSolver
                     PotionTitle: displayNames.Potion(potion));
                 SimulationSnapshot? probeSnapshot = null;
                 IReadOnlyList<PlanCardChoice?> choices;
+                CardChoiceSpec? choiceSpec = null;
                 if (PotionChoiceSupport.RequiresChoice(potion))
                 {
                     CombatPredictionSimulator choiceSimulator = simulator;
@@ -1860,9 +1854,9 @@ internal sealed partial class CombatBeamSolver
                         probeSnapshot = ReplayAction(node, baseAction);
                         choiceSimulator = (CombatPredictionSimulator)probeSnapshot.Simulator;
                     }
-                    CardChoiceSpec spec = PotionChoiceSupport.GetSpec(choiceSimulator, potion);
+                    choiceSpec = PotionChoiceSupport.GetSpec(choiceSimulator, potion);
                     choices = CardChoiceSupport.BuildChoices(
-                            spec,
+                            choiceSpec,
                             displayNames,
                             _profile.MaxPileChoiceBranchesPerAction,
                             _profile.MaxHandChoiceBranchesPerAction)
@@ -1877,6 +1871,10 @@ internal sealed partial class CombatBeamSolver
                     probeSnapshot = ReplayAction(node, baseAction);
                     choices = [null];
                 }
+                int maxFinalBranches = ResolveWholeActionChoiceBranchLimit(
+                    baseAction,
+                    choiceSpec);
+                ChoiceReplayBudget replayBudget = CreateChoiceReplayBudget(maxFinalBranches);
 
                 foreach (PlanCardChoice? choice in choices)
                 {
@@ -1889,6 +1887,8 @@ internal sealed partial class CombatBeamSolver
                     }
                     else
                     {
+                        if (!TrySpendChoiceReplayBudget(replayBudget))
+                            break;
                         SimulationSnapshot? replayedChoice = ReplayPlannedChoiceBranch(node, action);
                         if (replayedChoice == null)
                             continue;
@@ -1896,7 +1896,12 @@ internal sealed partial class CombatBeamSolver
                     }
 
                     foreach ((PlanAction finalAction, SimulationSnapshot finalSnapshot) in
-                             ResolveRoundChoiceBranches(node, action, childSnapshot))
+                             ResolveRoundChoiceBranches(
+                                 node,
+                                 action,
+                                 childSnapshot,
+                                 maxFinalBranches: maxFinalBranches,
+                                 replayBudget: replayBudget))
                     {
                         bool terminal = finalSnapshot.PlayerDead
                             || finalSnapshot.AllEnemiesDead
@@ -1920,6 +1925,7 @@ internal sealed partial class CombatBeamSolver
                         {
                             CumulativeEnemyHpLost = AccumulateEnemyHpLost(node, finalSnapshot),
                         };
+                        child = AttachCycleSchedulingEvidence(child);
                         batch.AddPotion(child);
                     }
                 }
@@ -1933,6 +1939,10 @@ internal sealed partial class CombatBeamSolver
         if (snapshot.PlayerDead || snapshot.AllEnemiesDead)
             return;
 
+        List<CrossTurnStandPatBaseline>? directStandPatBaselines =
+            ReferenceEquals(FindTurnStart(node), node)
+            ? []
+            : null;
         foreach ((PlanAction endAction, SimulationSnapshot endSnapshot) in BuildEndTurnBranches(node, []))
         {
             int nextTurn = node.Turn + 1;
@@ -1957,14 +1967,18 @@ internal sealed partial class CombatBeamSolver
             {
                 CumulativeEnemyHpLost = AccumulateEnemyHpLost(node, endSnapshot),
             };
-            if (ShouldPruneCrossTurnNoProgress(endNode))
+            endNode = AttachCycleSchedulingEvidence(endNode);
+            if (directStandPatBaselines != null
+                && IsComparableCrossTurnOutcome(endSnapshot.BoundaryReason))
             {
-                _run.RepeatableNoProgressBranchesPruned++;
-                endSnapshot.ReleaseSimulator();
-                continue;
+                directStandPatBaselines.Add(new CrossTurnStandPatBaseline(
+                    endNode.StateKey,
+                    MeasureCycleExitQuality(node, endNode)));
             }
             batch.AddEndTurn(endNode);
         }
+        if (directStandPatBaselines != null)
+            PublishCrossTurnStandPatBaselines(node, directStandPatBaselines);
     }
 
     private void MergeExpansionWorker(ExpansionWorkerOutcome outcome)
@@ -1980,6 +1994,8 @@ internal sealed partial class CombatBeamSolver
         _run.ActionAdmissionRepresentativesProtected +=
             source.ActionAdmissionRepresentativesProtected;
         _run.ChoiceBranchesEvaluated += source.ChoiceBranchesEvaluated;
+        _run.ChoiceReplayAttempts += source.ChoiceReplayAttempts;
+        _run.ChoiceReplayBudgetExhaustions += source.ChoiceReplayBudgetExhaustions;
         _run.ShuffleBranchesPruned += source.ShuffleBranchesPruned;
         _run.SoldHpBranchesPruned += source.SoldHpBranchesPruned;
         _run.HpInvestmentBranchesProtected += source.HpInvestmentBranchesProtected;
@@ -1988,10 +2004,30 @@ internal sealed partial class CombatBeamSolver
         _run.TransitionCount += source.TransitionCount;
         _run.RepeatableNoProgressBranchesPruned +=
             source.RepeatableNoProgressBranchesPruned;
+        _run.CycleShapesDetected += source.CycleShapesDetected;
+        _run.CycleProbeContinuationsExpanded += source.CycleProbeContinuationsExpanded;
+        _run.CycleCandidatesProtected += source.CycleCandidatesProtected;
+        _run.CycleContinuationsStopped += source.CycleContinuationsStopped;
+        _run.CrossTurnCandidatesProtected += source.CrossTurnCandidatesProtected;
+        _run.CrossTurnContinuationsStopped += source.CrossTurnContinuationsStopped;
         _run.StandPatProbes += source.StandPatProbes;
+        _run.DeferredRoundChoiceActions += source.DeferredRoundChoiceActions;
+        _run.DeferredRoundChoiceLayerWidthTotal +=
+            source.DeferredRoundChoiceLayerWidthTotal;
+        _run.MaxDeferredRoundChoiceLayerWidth = Math.Max(
+            _run.MaxDeferredRoundChoiceLayerWidth,
+            source.MaxDeferredRoundChoiceLayerWidth);
+        _run.DeferredRoundChoiceFiniteQuotaFallbacks +=
+            source.DeferredRoundChoiceFiniteQuotaFallbacks;
+        _run.DeferredRoundChoiceFinitePrimaryLayers +=
+            source.DeferredRoundChoiceFinitePrimaryLayers;
+        _run.DeferredRoundChoiceFinitePendingFallbacks +=
+            source.DeferredRoundChoiceFinitePendingFallbacks;
         source.DuplicateCardBranchesPruned = 0;
         source.ActionAdmissionRepresentativesProtected = 0;
         source.ChoiceBranchesEvaluated = 0;
+        source.ChoiceReplayAttempts = 0;
+        source.ChoiceReplayBudgetExhaustions = 0;
         source.ShuffleBranchesPruned = 0;
         source.SoldHpBranchesPruned = 0;
         source.HpInvestmentBranchesProtected = 0;
@@ -1999,7 +2035,19 @@ internal sealed partial class CombatBeamSolver
         source.ForkCount = 0;
         source.TransitionCount = 0;
         source.RepeatableNoProgressBranchesPruned = 0;
+        source.CycleShapesDetected = 0;
+        source.CycleProbeContinuationsExpanded = 0;
+        source.CycleCandidatesProtected = 0;
+        source.CycleContinuationsStopped = 0;
+        source.CrossTurnCandidatesProtected = 0;
+        source.CrossTurnContinuationsStopped = 0;
         source.StandPatProbes = 0;
+        source.DeferredRoundChoiceActions = 0;
+        source.DeferredRoundChoiceLayerWidthTotal = 0;
+        source.MaxDeferredRoundChoiceLayerWidth = 0;
+        source.DeferredRoundChoiceFiniteQuotaFallbacks = 0;
+        source.DeferredRoundChoiceFinitePrimaryLayers = 0;
+        source.DeferredRoundChoiceFinitePendingFallbacks = 0;
         _run.Performance.DrainFrom(source.Performance);
         _run.WorkPacer.DrainFrom(source.WorkPacer);
     }
@@ -2010,8 +2058,29 @@ internal sealed partial class CombatBeamSolver
         Action<SearchNode> acceptChild)
     {
         List<ActionCandidate> nonDominated = new(16);
+        List<ActionCandidate>? deferredCycleCandidates = null;
         foreach (RawCardCandidate raw in batch.Cards)
         {
+            CommitCycleExitObservation(raw.Node);
+            if (ShouldPruneCrossTurnNoProgress(raw.Node))
+            {
+                _run.RepeatableNoProgressBranchesPruned++;
+                batch.Release(raw.Node.Snapshot);
+                continue;
+            }
+            bool deferTransposition = ShouldDeferCycleTranspositionUntilActionAdmission(
+                raw.Node);
+            if (deferTransposition)
+            {
+                deferredCycleCandidates ??= [];
+                deferredCycleCandidates.Add(BuildCandidate(
+                    parent.Snapshot,
+                    raw.Node.Snapshot,
+                    raw.Node,
+                    raw.CardType,
+                    raw.TargetCombatId));
+                continue;
+            }
             if (!TryAcceptTransposition(raw.Node))
             {
                 batch.Release(raw.Node.Snapshot);
@@ -2028,7 +2097,32 @@ internal sealed partial class CombatBeamSolver
                 batch);
         }
 
+        PruneCommittedCrossTurnCandidates(batch.Potions, batch);
+        PruneCommittedCrossTurnCandidates(batch.EndTurns, batch);
+        CommitDeferredCycleCandidates(
+            nonDominated,
+            deferredCycleCandidates,
+            batch);
+        if (parent.CycleProbeLease != null)
+        {
+            SearchNode[] directChildren = nonDominated.Select(candidate => candidate.Node)
+                .Concat(batch.Potions)
+                .Concat(batch.EndTurns)
+                .ToArray();
+            AnnotateCycleExitProgress(parent, directChildren);
+        }
         List<ActionCandidate> queuedCandidates = SelectActionCandidates(parent, nonDominated);
+        AdmitCycleProbeCandidate(nonDominated, queuedCandidates);
+        AdmitCycleExitProbeCandidate(nonDominated, queuedCandidates);
+        for (int index = queuedCandidates.Count - 1; index >= 0; index--)
+        {
+            ActionCandidate candidate = queuedCandidates[index];
+            if (!ShouldRejectCycleCandidate(candidate.Node))
+                continue;
+            queuedCandidates.RemoveAt(index);
+            nonDominated.RemoveAll(item => ReferenceEquals(item.Node, candidate.Node));
+            batch.Release(candidate.Node.Snapshot);
+        }
         _run.TopQueueActionsDropped += nonDominated.Count - queuedCandidates.Count;
         foreach (ActionCandidate candidate in nonDominated)
         {
@@ -2043,7 +2137,9 @@ internal sealed partial class CombatBeamSolver
 
         foreach (SearchNode child in batch.Potions)
         {
-            if (!TryAcceptTransposition(child))
+            EnsureBoundedCycleProbeLease(child);
+            if (ShouldRejectCycleCandidate(child)
+                || !TryAcceptTransposition(child))
             {
                 batch.Release(child.Snapshot);
                 continue;
@@ -2062,6 +2158,27 @@ internal sealed partial class CombatBeamSolver
             batch.Transfer(child.Snapshot);
             acceptChild(child);
         }
+    }
+
+    private void PruneCommittedCrossTurnCandidates(
+        List<SearchNode> candidates,
+        ExpansionBatch batch)
+    {
+        int writeIndex = 0;
+        for (int readIndex = 0; readIndex < candidates.Count; readIndex++)
+        {
+            SearchNode child = candidates[readIndex];
+            CommitCycleExitObservation(child);
+            if (ShouldPruneCrossTurnNoProgress(child))
+            {
+                _run.RepeatableNoProgressBranchesPruned++;
+                batch.Release(child.Snapshot);
+                continue;
+            }
+            candidates[writeIndex++] = child;
+        }
+        if (writeIndex < candidates.Count)
+            candidates.RemoveRange(writeIndex, candidates.Count - writeIndex);
     }
 
     private void AddNonDominatedParallelCandidate(

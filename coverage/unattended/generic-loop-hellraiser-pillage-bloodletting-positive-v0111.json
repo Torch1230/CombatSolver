@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "GENERIC-LOOP-HELLRAISER-PILLAGE-BLOODLETTING-POSITIVE-V0111",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "LOOPHELLRAISERPOS0111",
+  "enemyCurrentHp": 50,
+  "initialPlayerHp": 80,
+  "initialPlayerMaxHp": 80,
+  "initialPlayerEnergy": 0,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    { "cardId": "BLOODLETTING", "pile": "Hand" },
+    { "cardId": "PILLAGE", "pile": "Hand" },
+    { "cardId": "PILLAGE", "pile": "Draw" },
+    { "cardId": "STRIKE_IRONCLAD", "pile": "Draw" }
+  ],
+  "powers": [
+    { "powerId": "HELLRAISER_POWER", "target": "Player", "amount": 1 }
+  ],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 5000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "expectedInitialFirstActionCardId": "BLOODLETTING",
+  "expectedInitialExecutableActionCountAtLeast": 2,
+  "expectedInitialProjectedBattleHpLostAtMost": 15,
+  "expectedInitialCombatEndedTurn": 1,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120
+}

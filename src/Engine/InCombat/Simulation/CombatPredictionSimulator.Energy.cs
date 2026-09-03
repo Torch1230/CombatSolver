@@ -1,6 +1,7 @@
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Hooks;
 using CombatSolver.Engine.Common;
+using CombatSolver.Engine.InCombat.Mirrors;
 
 namespace CombatSolver.Engine.InCombat.Simulation;
 
@@ -35,8 +36,7 @@ internal sealed partial class CombatPredictionSimulator
         State.GetPlayerCombatState(player).LoseEnergy(amount);
     }
 
-    // Mirrors PlayerCmd.GainStars's ending guard, read-only predicate, and state mutation.
-    // AfterStarsGained remains outside the current hook-mirror coverage.
+    // Mirrors PlayerCmd.GainStars, including AfterStarsGained after the state mutation.
     public void GainStars(Player player, decimal amount)
     {
         if (IsEnding || !Hook.ShouldGainStars(State.CombatState, amount, player))
@@ -47,5 +47,6 @@ internal sealed partial class CombatPredictionSimulator
         State.GetPlayerCombatState(player).GainStars(amount);
         if (State.CombatState is ICombatPredictionCardEventSink eventSink)
             eventSink.RecordStarsGained(player, (int)amount);
+        HookMirrors.AfterStarsGained(this, (int)amount, player);
     }
 }

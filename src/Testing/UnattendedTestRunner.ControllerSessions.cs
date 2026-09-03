@@ -13,6 +13,7 @@ internal sealed partial class UnattendedTestRunner
 {
     private async Task AssertControllerSessionLifecycleAsync(CombatState combat)
     {
+        CombatBeamSolver.VerifyCycleTranspositionLeasePolicyForTesting();
         NGame host = NGame.Instance
             ?? throw new InvalidOperationException("控制器会话测试找不到 NGame。");
         if (SolverController.SolverDisabled)
@@ -76,6 +77,15 @@ internal sealed partial class UnattendedTestRunner
                 CombatRootSnapshot forcedRoot = CombatRootSnapshot.Capture(combat);
                 SolverDisplayNames forcedDisplayNames = SolverDisplayNames.Capture(combat);
                 BattleDamageSnapshot forcedBattleDamage = BattleDamageTracker.Observe(combat);
+                new CombatBeamSolver(
+                    forcedRoot,
+                    forcedDisplayNames,
+                    forcedBattleDamage,
+                    forcedPolicy,
+                    searchProfile: forcedPolicy.ShortProfile with { BeamWidth = 1 })
+                    .VerifyFinalPolicyQualificationRetentionForTesting(
+                        forcedPotion.Potion.Id.Entry,
+                        forcedPotion.Slot);
                 bool forcedAdoptionRequested = false;
                 SolverResult forcedResult = await Task.Run(() => CombatSearchCoordinator.Solve(
                     forcedRoot,
@@ -175,6 +185,7 @@ internal sealed partial class UnattendedTestRunner
                     StrategicHpDeficit: 9,
                     PotionStrategicCost: 0,
                     ProjectedBattlePotionCount: 0,
+                    CombatEndedTurn: null,
                     EnemyHp: 1,
                     Score: 0d),
                 SpeculativeRoutePreview: progressPreview),
@@ -745,7 +756,7 @@ internal sealed partial class UnattendedTestRunner
             expectedMinimumPotionCost,
             root.BossHpRelief);
         if (root.MinimumSearchablePotionStrategicCost != expectedMinimumPotionCost
-            || CombatSearchCoordinator.CanAnySmartPotionQualify(
+            || !CombatSearchCoordinator.CanAnySmartPotionQualify(
                 root,
                 policy,
                 potionFreeWon: true,
@@ -756,7 +767,170 @@ internal sealed partial class UnattendedTestRunner
                 potionFreeWon: true,
                 potionFreeHpDeficit: expectedMinimumPotionHpSaved))
         {
-            throw new InvalidOperationException("Smart 药水补查没有按最大可能省血收束。");
+            throw new InvalidOperationException(
+                "Smart 药水补查错误地用当前血量空间排除了可能缩短战斗的路线。");
+        }
+        if (CombatSearchCoordinator.HasReachedProvablePrimaryQualityLowerBound(
+                completeVictory: false,
+                strategicHpDeficit: 0,
+                combatEndedTurn: null,
+                earliestPossibleCombatEndedTurn: 1)
+            || CombatSearchCoordinator.HasReachedProvablePrimaryQualityLowerBound(
+                completeVictory: true,
+                strategicHpDeficit: 0,
+                combatEndedTurn: 2,
+                earliestPossibleCombatEndedTurn: 1)
+            || CombatSearchCoordinator.HasReachedProvablePrimaryQualityLowerBound(
+                completeVictory: true,
+                strategicHpDeficit: 0,
+                combatEndedTurn: 1,
+                earliestPossibleCombatEndedTurn: null)
+            || !CombatSearchCoordinator.HasReachedProvablePrimaryQualityLowerBound(
+                completeVictory: true,
+                strategicHpDeficit: 0,
+                combatEndedTurn: 1,
+                earliestPossibleCombatEndedTurn: 1))
+        {
+            throw new InvalidOperationException(
+                "开局能力补查错误地把未胜、较慢的零战损结果或未知回合下界当成可停止条件。");
+        }
+        PrimarySearchIncumbent incumbent = new(
+            StrategicHpDeficit: 5,
+            CombatEndedTurn: 3);
+        if (!CombatBeamSolver.ShouldPruneByPrimaryIncumbent(
+                cumulativePlayerHpLost: 6,
+                turn: 2,
+                incumbent: incumbent)
+            || !CombatBeamSolver.ShouldPruneByPrimaryIncumbent(
+                cumulativePlayerHpLost: 5,
+                turn: 4,
+                incumbent: incumbent)
+            || CombatBeamSolver.ShouldPruneByPrimaryIncumbent(
+                cumulativePlayerHpLost: 5,
+                turn: 3,
+                incumbent: incumbent)
+            // Even far past the incumbent turn, a branch below the incumbent's loss
+            // remains eligible. Its current max-HP deficit is deliberately not an input:
+            // later effects may recover max HP before combat ends.
+            || CombatBeamSolver.ShouldPruneByPrimaryIncumbent(
+                cumulativePlayerHpLost: 4,
+                turn: 99,
+                incumbent: incumbent))
+        {
+            throw new InvalidOperationException(
+                "主结果下界剪枝没有严格限制为不可逆累计战损与回合字典序。");
+        }
+        PotionFreePolicyBaseline auditedPotionFreeBaseline = new(
+            Won: true,
+            HpDeficit: 5,
+            PlayerHp: 75,
+            CombatEndedTurn: 3);
+        PrimarySearchIncumbent? dynamicIncumbent = null;
+        if (CombatBeamSolver.TryTightenPrimarySearchIncumbent(
+                auditedPotionFreeBaseline: null,
+                minimumPotionUses: 1,
+                maximumPotionUses: 1,
+                candidateCompleteVictory: true,
+                candidateSatisfiesHardRules: true,
+                candidateExplicitPotionUses: 1,
+                candidateStrategicHpDeficit: 5,
+                candidateCombatEndedTurn: 2,
+                incumbent: ref dynamicIncumbent)
+            || CombatBeamSolver.TryTightenPrimarySearchIncumbent(
+                auditedPotionFreeBaseline,
+                minimumPotionUses: 0,
+                maximumPotionUses: 0,
+                candidateCompleteVictory: true,
+                candidateSatisfiesHardRules: true,
+                candidateExplicitPotionUses: 0,
+                candidateStrategicHpDeficit: 4,
+                candidateCombatEndedTurn: 2,
+                incumbent: ref dynamicIncumbent)
+            || CombatBeamSolver.TryTightenPrimarySearchIncumbent(
+                auditedPotionFreeBaseline,
+                minimumPotionUses: 1,
+                maximumPotionUses: 2,
+                candidateCompleteVictory: true,
+                candidateSatisfiesHardRules: true,
+                candidateExplicitPotionUses: 1,
+                candidateStrategicHpDeficit: 5,
+                candidateCombatEndedTurn: 2,
+                incumbent: ref dynamicIncumbent)
+            || CombatBeamSolver.TryTightenPrimarySearchIncumbent(
+                auditedPotionFreeBaseline,
+                minimumPotionUses: 1,
+                maximumPotionUses: 1,
+                candidateCompleteVictory: false,
+                candidateSatisfiesHardRules: true,
+                candidateExplicitPotionUses: 1,
+                candidateStrategicHpDeficit: 4,
+                candidateCombatEndedTurn: null,
+                incumbent: ref dynamicIncumbent)
+            || CombatBeamSolver.TryTightenPrimarySearchIncumbent(
+                auditedPotionFreeBaseline,
+                minimumPotionUses: 1,
+                maximumPotionUses: 1,
+                candidateCompleteVictory: true,
+                candidateSatisfiesHardRules: false,
+                candidateExplicitPotionUses: 1,
+                candidateStrategicHpDeficit: 4,
+                candidateCombatEndedTurn: 2,
+                incumbent: ref dynamicIncumbent)
+            || CombatBeamSolver.TryTightenPrimarySearchIncumbent(
+                auditedPotionFreeBaseline,
+                minimumPotionUses: 1,
+                maximumPotionUses: 1,
+                candidateCompleteVictory: true,
+                candidateSatisfiesHardRules: true,
+                candidateExplicitPotionUses: 0,
+                candidateStrategicHpDeficit: 4,
+                candidateCombatEndedTurn: 2,
+                incumbent: ref dynamicIncumbent)
+            || CombatBeamSolver.TryTightenPrimarySearchIncumbent(
+                auditedPotionFreeBaseline,
+                minimumPotionUses: 1,
+                maximumPotionUses: 1,
+                candidateCompleteVictory: true,
+                candidateSatisfiesHardRules: true,
+                candidateExplicitPotionUses: 1,
+                candidateStrategicHpDeficit: 5,
+                candidateCombatEndedTurn: 4,
+                incumbent: ref dynamicIncumbent)
+            || !CombatBeamSolver.TryTightenPrimarySearchIncumbent(
+                auditedPotionFreeBaseline,
+                minimumPotionUses: 1,
+                maximumPotionUses: 1,
+                candidateCompleteVictory: true,
+                candidateSatisfiesHardRules: true,
+                candidateExplicitPotionUses: 1,
+                candidateStrategicHpDeficit: 5,
+                candidateCombatEndedTurn: 2,
+                incumbent: ref dynamicIncumbent)
+            || dynamicIncumbent != new PrimarySearchIncumbent(5, 2)
+            || !CombatBeamSolver.TryTightenPrimarySearchIncumbent(
+                auditedPotionFreeBaseline,
+                minimumPotionUses: 1,
+                maximumPotionUses: 1,
+                candidateCompleteVictory: true,
+                candidateSatisfiesHardRules: true,
+                candidateExplicitPotionUses: 1,
+                candidateStrategicHpDeficit: 4,
+                candidateCombatEndedTurn: 9,
+                incumbent: ref dynamicIncumbent)
+            || dynamicIncumbent != new PrimarySearchIncumbent(4, 9)
+            || CombatBeamSolver.TryTightenPrimarySearchIncumbent(
+                auditedPotionFreeBaseline,
+                minimumPotionUses: 1,
+                maximumPotionUses: 1,
+                candidateCompleteVictory: true,
+                candidateSatisfiesHardRules: true,
+                candidateExplicitPotionUses: 1,
+                candidateStrategicHpDeficit: 5,
+                candidateCombatEndedTurn: 1,
+                incumbent: ref dynamicIncumbent))
+        {
+            throw new InvalidOperationException(
+                "动态主结果下界没有限制为精确用药层中满足硬规则且严格优于无药审计的完整胜利。");
         }
         if (PotionUsePolicy.SmartRequiredHpSaved(
                 SolverWeights.PotionMinimumHpSaved,
@@ -796,39 +970,23 @@ internal sealed partial class UnattendedTestRunner
         {
             throw new InvalidOperationException("两类幕末 Boss 的最低战损策略没有独立恢复正常血量权重。");
         }
-        if (root.ZeroCostSearchablePotionCount == 0 && root.SearchablePotionCount >= 3
-            && (CombatSearchCoordinator.MaximumSmartPotionUses(
-                    root,
-                    policy,
-                    potionFreeWon: true,
-                    potionFreeHpDeficit: expectedMinimumPotionHpSaved - 1) != 0
-                || CombatSearchCoordinator.MaximumSmartPotionUses(
-                    root,
-                    policy,
-                    potionFreeWon: true,
-                    potionFreeHpDeficit: expectedMinimumPotionHpSaved) != 1
-                || CombatSearchCoordinator.MaximumSmartPotionUses(
-                    root,
-                    policy,
-                    potionFreeWon: true,
-                    potionFreeHpDeficit: expectedMinimumPotionHpSaved * 2 - 1) != 1
-                || CombatSearchCoordinator.MaximumSmartPotionUses(
-                    root,
-                    policy,
-                    potionFreeWon: true,
-                    potionFreeHpDeficit: expectedMinimumPotionHpSaved * 2) != 2
-                || CombatSearchCoordinator.MaximumSmartPotionUses(
-                    root,
-                    policy,
-                    potionFreeWon: true,
-                    potionFreeHpDeficit: expectedMinimumPotionHpSaved * 3 - 1) != 2
-                || CombatSearchCoordinator.MaximumSmartPotionUses(
-                    root,
-                    policy,
-                    potionFreeWon: true,
-                    potionFreeHpDeficit: expectedMinimumPotionHpSaved * 3) != 3))
+        if (root.SearchablePotionCount >= 3
+            && new[]
+            {
+                Math.Max(0, expectedMinimumPotionHpSaved - 1),
+                expectedMinimumPotionHpSaved,
+                expectedMinimumPotionHpSaved * 2 - 1,
+                expectedMinimumPotionHpSaved * 2,
+                expectedMinimumPotionHpSaved * 3 - 1,
+                expectedMinimumPotionHpSaved * 3,
+            }.Any(hpDeficit => CombatSearchCoordinator.MaximumSmartPotionUses(
+                root,
+                policy,
+                potionFreeWon: true,
+                potionFreeHpDeficit: hpDeficit) != searchablePotions.Length))
         {
-            throw new InvalidOperationException("Smart 药水补查没有按当前战斗的药水价值限制多药层数。");
+            throw new InvalidOperationException(
+                "Smart 药水补查仍按 HP headroom 截断了合法的精确用药层。");
         }
         if (searchablePotions.Length >= 2)
         {

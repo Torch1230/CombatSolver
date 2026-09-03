@@ -120,6 +120,13 @@ for name in \
     expected-initial-main-thread-frames-over100-milliseconds-at-most \
     expected-initial-transition-cache-hits-at-least \
     expected-initial-repeatable-no-progress-branches-pruned-at-least \
+    expected-initial-cycle-shapes-detected-at-least \
+    expected-initial-cycle-probe-continuations-expanded-at-least \
+    expected-initial-cycle-candidates-protected-at-least \
+    expected-initial-cycle-continuations-stopped-at-least \
+    expected-initial-cross-turn-candidates-protected-at-least \
+    expected-initial-cross-turn-continuations-stopped-at-least \
+    expected-initial-node-limit-snapshots-released-at-least \
     expected-initial-choice-branches-evaluated-at-least \
     expected-initial-executable-action-count-at-least \
     expected-initial-sold-hp expected-initial-sold-hp-at-most \

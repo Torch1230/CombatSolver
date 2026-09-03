@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "GENERIC-CROSS-TURN-HIDDEN-BUFFER-POSITIVE-V0111",
+  "description": "A future-state counter changes for sixteen turns without enemy HP progress; bounded cross-turn planning must reach the seventeenth attack.",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "CROSSTURNHIDDENBUFFER0111",
+  "enemyCurrentHp": 6,
+  "initialPlayerHp": 999,
+  "initialPlayerMaxHp": 999,
+  "initialPlayerEnergy": 3,
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    { "cardId": "STRIKE_IRONCLAD", "pile": "Hand", "treatAsDeckCard": true }
+  ],
+  "powers": [
+    { "powerId": "BUFFER_POWER", "target": "Enemy", "targetIndex": 0, "amount": 16 },
+    { "powerId": "BUFFER_POWER", "target": "Player", "amount": 64 }
+  ],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 5000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "expectedInitialFirstActionCardId": "STRIKE_IRONCLAD",
+  "expectedInitialCombatEndedTurn": 17,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "expectedInitialCrossTurnCandidatesProtectedAtLeast": 1,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120
+}

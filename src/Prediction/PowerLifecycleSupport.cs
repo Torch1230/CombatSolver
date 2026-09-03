@@ -41,22 +41,6 @@ internal static class PowerLifecycleSupport
         }
     }
 
-    public static void GainStars(
-        CombatPredictionSimulator simulator,
-        SimulatedCombatState combat,
-        Player player,
-        int amount)
-    {
-        if (amount <= 0)
-            return;
-        simulator.GainStars(player, amount);
-        foreach (BlackHolePower power in combat.EffectivePowers().OfType<BlackHolePower>())
-        {
-            if (power.Amount > 0 && ReferenceEquals(power.Owner.Player, player))
-                simulator.Damage(combat.HittableEnemies, power.Amount, ValueProp.Unpowered, power.Owner);
-        }
-    }
-
     public static void AfterCardPlayed(
         CombatPredictionSimulator simulator,
         SimulatedCombatState combat,

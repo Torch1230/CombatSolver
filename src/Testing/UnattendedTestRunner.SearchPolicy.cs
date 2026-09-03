@@ -50,8 +50,14 @@ internal sealed partial class UnattendedTestRunner
         SolverDisplayNames displayNames = SolverDisplayNames.Capture(combat);
         BattleDamageSnapshot battleDamage = BattleDamageTracker.Observe(combat);
         AssertFullRngStateIdentity(combat);
+        AssertRequiredPotionAuditSelectionAndTotals();
         CombatRootSnapshot rootSnapshot = CombatRootSnapshot.Capture(combat);
         await AssertCanceledSearchWorkRecordedOnceAsync(
+            rootSnapshot,
+            displayNames,
+            battleDamage,
+            capturedPolicy);
+        await AssertInProgressCanceledExactLayerWorkRecordedOnceAsync(
             rootSnapshot,
             displayNames,
             battleDamage,
@@ -539,6 +545,7 @@ internal sealed partial class UnattendedTestRunner
             if (SearchGcPolicy.CurrentNoGcRegionBudgetBytesForTesting != 0
                 || GCSettings.LatencyMode != initialLatencyMode
                 || disabledSignal.AllocationLimitBytes != long.MaxValue
+                || disabledSignal.ConservativeParallelismRequired
                 || disabledCheckpointInvoked)
             {
                 throw new InvalidOperationException(
@@ -546,6 +553,27 @@ internal sealed partial class UnattendedTestRunner
                     $"budget={SearchGcPolicy.CurrentNoGcRegionBudgetBytesForTesting} " +
                     $"latency={GCSettings.LatencyMode} " +
                     $"limit={disabledSignal.AllocationLimitBytes}。");
+            }
+
+            SearchMemoryPressureSignal fallbackSignal = new();
+            fallbackSignal.Configure(
+                GC.GetTotalAllocatedBytes(precise: false),
+                allocationLimitBytes: 1,
+                memoryLoadBytesAtStart: 0,
+                systemMemoryLimitBytes: long.MaxValue,
+                _ => { });
+            fallbackSignal.UseDefaultGcFallback();
+            if (fallbackSignal.IsEnabled
+                || !fallbackSignal.ConservativeParallelismRequired)
+            {
+                throw new InvalidOperationException(
+                    "NoGC 低余量回退没有关闭区域检查点并保留保守并行准入。");
+            }
+            fallbackSignal.Disable();
+            if (fallbackSignal.ConservativeParallelismRequired)
+            {
+                throw new InvalidOperationException(
+                    "普通 CLR GC 模式意外继承了 NoGC 低余量并行限制。");
             }
             try
             {
@@ -1173,6 +1201,42 @@ internal sealed partial class UnattendedTestRunner
         AddMismatch(mismatches, "reused", expected.ReusedNodeSnapshots, actual.ReusedNodeSnapshots);
         AddMismatch(mismatches, "tt_pruned", expected.TranspositionBranchesPruned, actual.TranspositionBranchesPruned);
         AddMismatch(mismatches, "repeatable", expected.RepeatableNoProgressBranchesPruned, actual.RepeatableNoProgressBranchesPruned);
+        AddMismatch(mismatches, "cycle_shapes", expected.CycleShapesDetected, actual.CycleShapesDetected);
+        AddMismatch(
+            mismatches,
+            "cycle_probe_continuations",
+            expected.CycleProbeContinuationsExpanded,
+            actual.CycleProbeContinuationsExpanded);
+        AddMismatch(
+            mismatches,
+            "cycle_candidates_protected",
+            expected.CycleCandidatesProtected,
+            actual.CycleCandidatesProtected);
+        AddMismatch(
+            mismatches,
+            "cycle_continuations_stopped",
+            expected.CycleContinuationsStopped,
+            actual.CycleContinuationsStopped);
+        AddMismatch(
+            mismatches,
+            "cross_turn_candidates_protected",
+            expected.CrossTurnCandidatesProtected,
+            actual.CrossTurnCandidatesProtected);
+        AddMismatch(
+            mismatches,
+            "cross_turn_continuations_stopped",
+            expected.CrossTurnContinuationsStopped,
+            actual.CrossTurnContinuationsStopped);
+        AddMismatch(
+            mismatches,
+            "primary_incumbent_pruned",
+            expected.PrimaryIncumbentBranchesPruned,
+            actual.PrimaryIncumbentBranchesPruned);
+        AddMismatch(
+            mismatches,
+            "primary_incumbent_updates",
+            expected.PrimaryIncumbentUpdates,
+            actual.PrimaryIncumbentUpdates);
         AddMismatch(mismatches, "stand_pat", expected.StandPatProbes, actual.StandPatProbes);
         AddMismatch(mismatches, "searched_turns", expected.SearchedTurns, actual.SearchedTurns);
         AddMismatch(mismatches, "boundary", expected.BoundaryReason, actual.BoundaryReason);

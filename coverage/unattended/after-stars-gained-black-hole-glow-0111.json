@@ -1,0 +1,35 @@
+[
+  {
+    "coveredPowerHooks": [
+      {
+        "powerId": "BLACK_HOLE_POWER",
+        "hook": "AfterStarsGained"
+      }
+    ],
+    "monsterId": "BigDummy",
+    "moveId": "NOTHING",
+    "enemyHpBefore": 999,
+    "playerEnergyBefore": 99,
+    "playerStarsBefore": 0,
+    "clearAllRelicsBeforeMove": true,
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "powerBeforeMove": {
+      "powerId": "BLACK_HOLE_POWER",
+      "target": "Player",
+      "amount": 5
+    },
+    "cardBeforeMove": {
+      "cardId": "GLOW",
+      "pile": "Hand"
+    },
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "GLOW",
+        "target": "None"
+      }
+    ],
+    "expectedEnemyHpGain": -5,
+    "expectedPlayerStars": 1
+  }
+]

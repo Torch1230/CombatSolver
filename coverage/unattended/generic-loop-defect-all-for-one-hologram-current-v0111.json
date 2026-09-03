@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "GENERIC-LOOP-DEFECT-ALL-FOR-ONE-HOLOGRAM-CURRENT-V0111",
+  "description": "Current-rule repeatable retrieval chain: Touch of Insanity makes upgraded Hologram free this combat, TURBO funds All for One, and the two retrieval effects rebuild the same hand until lethal. The bounded fixture validates recurrence until lethal, not mathematical infinity.",
+  "characterId": "DEFECT",
+  "encounterId": "AEONGLASS_BOSS",
+  "actIndexForTest": 2,
+  "seed": "LOOPDEFECTAFOHOLO0111",
+  "enemyCurrentHp": 100,
+  "initialPlayerHp": 75,
+  "initialPlayerMaxHp": 75,
+  "initialPlayerEnergy": 2,
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    { "cardId": "ALL_FOR_ONE", "pile": "Hand", "treatAsDeckCard": true },
+    {
+      "cardId": "HOLOGRAM",
+      "pile": "Hand",
+      "upgradeLevels": 1,
+      "treatAsDeckCard": true
+    },
+    { "cardId": "TURBO", "pile": "Hand", "treatAsDeckCard": true }
+  ],
+  "potions": [
+    { "potionId": "TouchOfInsanity" }
+  ],
+  "potionPolicyForTest": "RequireAtLeastOne",
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 5000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "expectedInitialPotionCount": 1,
+  "expectedInitialChoiceBranchesEvaluatedAtLeast": 1,
+  "expectedInitialCycleShapesDetectedAtLeast": 1,
+  "expectedInitialExecutableActionCountAtLeast": 15,
+  "expectedInitialProjectedBattleHpLost": 0,
+  "expectedInitialCombatEndedTurn": 1,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120
+}

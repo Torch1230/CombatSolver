@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "GENERIC-LOOP-REGENT-PARTICLE-WALL-MAKE-IT-SO-CURRENT-V0111",
+  "description": "Current-rule repeatable zero-cost Skill chain: Touch of Insanity makes returning Particle Wall free; every third Skill returns zero-cost Make It So to deal damage while the loop also accumulates Block. The bounded fixture validates cycle handling until lethal, not mathematical infinity.",
+  "characterId": "REGENT",
+  "encounterId": "AEONGLASS_BOSS",
+  "actIndexForTest": 2,
+  "seed": "LOOPREGENTWALLMAKEITSO0111",
+  "enemyCurrentHp": 60,
+  "initialPlayerHp": 75,
+  "initialPlayerMaxHp": 75,
+  "initialPlayerEnergy": 0,
+  "initialPlayerStars": 0,
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    { "cardId": "PARTICLE_WALL", "pile": "Hand", "treatAsDeckCard": true },
+    { "cardId": "MAKE_IT_SO", "pile": "Hand", "treatAsDeckCard": true }
+  ],
+  "potions": [
+    { "potionId": "TouchOfInsanity" }
+  ],
+  "potionPolicyForTest": "RequireAtLeastOne",
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 5000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "expectedInitialPotionCount": 1,
+  "expectedInitialCycleShapesDetectedAtLeast": 1,
+  "expectedInitialCycleProbeContinuationsExpandedAtLeast": 1,
+  "expectedInitialCycleCandidatesProtectedAtLeast": 1,
+  "expectedInitialExecutableActionCountAtLeast": 35,
+  "expectedInitialActualBlockAtLeast": 240,
+  "expectedInitialProjectedBattleHpLost": 0,
+  "expectedInitialCombatEndedTurn": 1,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120
+}

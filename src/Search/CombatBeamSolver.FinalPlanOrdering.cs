@@ -17,17 +17,6 @@ internal sealed partial class CombatBeamSolver
         BattleDamageSnapshot battleDamage)
     {
         /// <summary>
-        /// Fifths of a normal fight's HP weight. Clearing acts one and two restores 80% of combat HP loss, while
-        /// the run's last fight only needs a surviving route.
-        /// </summary>
-        private readonly int _hpWeightFifths = bossHpRelief switch
-        {
-            BossHpRelief.RunEnding => 0,
-            BossHpRelief.ActClearHeal => 1,
-            _ => 5,
-        };
-
-        /// <summary>
         /// The HP a potion must save to be worth spending, scaled by how much HP is worth in this fight. When HP
         /// buys nothing, no amount of saved HP justifies a potion and only the win/lose escape in
         /// <see cref="PotionUsePolicy.IsEligible"/> can still admit one.
@@ -50,10 +39,6 @@ internal sealed partial class CombatBeamSolver
                     int explicitPotionCount = PotionUsePolicy.ExplicitUseCount(
                         potionCount,
                         candidate.Snapshot.AutomaticPotionUseCount);
-                    int? combatEndedTurn = features.AllEnemiesDead
-                        && features.BoundaryReason != SearchBoundaryReason.UnsupportedEffect
-                            ? candidate.Node.Action?.Turn
-                            : null;
                     int ambergrisCount = candidate.Node.Actions.Count(action =>
                         action.Kind == PlanActionKind.UsePotion
                         && string.Equals(action.PotionId, "AMBERGRIS", StringComparison.Ordinal));
@@ -93,9 +78,15 @@ internal sealed partial class CombatBeamSolver
                             ? PotionUsePolicy.AdditionalRequiredUseStrategicHpCost(
                                 optionalPotionStrategicCost)
                             : 0);
+                    bool completeVictory = SolverInterimResultOrdering.IsCompleteVictory(
+                        candidate.Node.ActionCount,
+                        features.AllEnemiesDead,
+                        candidate.Snapshot.PlayerDead,
+                        features.ProjectedPlayerHp);
                     return (candidate.Node, candidate.Snapshot, Features: features,
+                        CompleteVictory: completeVictory,
+                        CombatEndedTurn: completeVictory ? candidate.Node.Action?.Turn : null,
                         FutureSold: sold, BattleSold: battleSold, PotionCount: potionCount,
-                        CombatEndedTurn: combatEndedTurn,
                         ExplicitPotionCount: explicitPotionCount, HpDeficit: hpDeficit,
                         StrategicHpDeficit: strategicHpDeficit, PolicyHpDeficit: policyHpDeficit,
                         MaxHpDeficit: maxHpDeficit, HealthResourceCost: healthResourceCost,
@@ -115,48 +106,47 @@ internal sealed partial class CombatBeamSolver
                              .OrderBy(group => group.Key))
                 {
                     var diagnostic = potionGroup
-                        .OrderByDescending(candidate => candidate.Features.AllEnemiesDead)
+                        .OrderByDescending(candidate => candidate.CompleteVictory)
                         .ThenByDescending(candidate => candidate.Features.ProjectedPlayerHp)
                         .ThenBy(candidate => candidate.Features.EnemyHp)
                         .ThenByDescending(candidate => candidate.Score)
                         .First();
                     diagnostics.Info(
                         $"[CombatSolver/Debug] POTION_FINAL_CANDIDATE count={potionGroup.Key} " +
-                        $"won={diagnostic.Features.AllEnemiesDead} hp={diagnostic.Snapshot.PlayerHp} " +
+                        $"won={diagnostic.CompleteVictory} hp={diagnostic.Snapshot.PlayerHp} " +
                         $"projected_hp={diagnostic.Features.ProjectedPlayerHp} " +
                         $"enemy_hp={diagnostic.Features.EnemyHp} " +
                         $"actions={string.Join(',', diagnostic.Node.Actions.Select(CombatBeamSolver.PolicyActionToken))}");
                 }
             }
-            int potionFreeBaselineIndex = policyCandidates
-                .Select((candidate, index) => (Candidate: candidate, Index: index))
-                .Where(item => item.Candidate.ExplicitPotionCount == 0)
-                .OrderByDescending(item => item.Candidate.Features.AllEnemiesDead)
-                .ThenBy(item => theftPolicy == SolverTheftPolicy.PreserveResources
-                    ? item.Candidate.Features.OutstandingStolenResource
-                    : 0)
-                .ThenBy(item => item.Candidate.StrategicHpDeficit)
-                .ThenBy(item => item.Candidate.HealthResourceCost)
-                .ThenByDescending(item => item.Candidate.Features.LongTermResourceValue)
-                .ThenBy(item => item.Candidate.Features.AngerCopiesGenerated)
-                .ThenBy(item => CombatBeamSolver.PolicyBoundaryRank(item.Candidate.Features.BoundaryReason))
-                .ThenBy(item => item.Candidate.Features.EnemyHp)
-                .ThenBy(item => item.Candidate.CombatEndedTurn ?? int.MaxValue)
-                .ThenByDescending(item => item.Candidate.Score)
-                .ThenBy(item => item.Candidate.StrategicSold)
-                .ThenBy(item => item.Candidate.Features.ActionCount)
-                .Select(item => item.Index)
-                .DefaultIfEmpty(-1)
-                .First();
+            int potionFreeBaselineIndex = -1;
+            for (int index = 0; index < policyCandidates.Count; index++)
+            {
+                if (policyCandidates[index].ExplicitPotionCount != 0
+                    || potionFreeBaselineIndex >= 0
+                        && ComparePotionFreePolicyBaselines(
+                            policyCandidates[index].Node,
+                            policyCandidates[potionFreeBaselineIndex].Node,
+                            initialHp,
+                            initialPlayerMaxHp,
+                            theftPolicy) >= 0)
+                {
+                    continue;
+                }
+                potionFreeBaselineIndex = index;
+            }
             bool hasPotionFreeBaseline = potionFreeBaselineIndex >= 0;
             bool potionFreeWon = hasPotionFreeBaseline
-                && policyCandidates[potionFreeBaselineIndex].Features.AllEnemiesDead;
+                && policyCandidates[potionFreeBaselineIndex].CompleteVictory;
             int potionFreeStrategicHpDeficit = hasPotionFreeBaseline
                 ? policyCandidates[potionFreeBaselineIndex].StrategicHpDeficit
                 : initialHp;
             int potionFreePlayerHp = hasPotionFreeBaseline
                 ? policyCandidates[potionFreeBaselineIndex].Snapshot.PlayerHp
                 : 0;
+            int? potionFreeCombatEndedTurn = hasPotionFreeBaseline
+                ? policyCandidates[potionFreeBaselineIndex].CombatEndedTurn
+                : null;
             int potionFreeOutstandingResource = hasPotionFreeBaseline
                 ? policyCandidates[potionFreeBaselineIndex].Features.OutstandingStolenResource
                 : int.MaxValue;
@@ -166,9 +156,10 @@ internal sealed partial class CombatBeamSolver
                 potionFreeWon = auditedBaseline.Won;
                 potionFreeStrategicHpDeficit = auditedBaseline.HpDeficit;
                 potionFreePlayerHp = auditedBaseline.PlayerHp;
+                potionFreeCombatEndedTurn = auditedBaseline.CombatEndedTurn;
             }
             bool anyRouteWon = potionFreeWon
-                || policyCandidates.Any(candidate => candidate.Features.AllEnemiesDead);
+                || policyCandidates.Any(candidate => candidate.CompleteVictory);
             if (emitDiagnostics)
             {
                 if (potionFreeBaselineIndex >= 0)
@@ -194,48 +185,72 @@ internal sealed partial class CombatBeamSolver
                         $"won={baselineOverride.Won} hp_deficit={baselineOverride.HpDeficit}");
                 }
             }
-            var selected = policyCandidates
+            var policyEligibleCandidates = policyCandidates
                 .Where(candidate =>
-                    candidate.ForcedUsesSatisfied
-                    && candidate.ExplicitPotionCount >= minimumPotionUses
-                    && (PotionUsePolicy.IsEligible(
-                         candidate.EffectivePotionPolicy,
-                         candidate.OptionalPotionCount,
-                         ScalePotionCost(candidate.OptionalPotionStrategicCost),
-                         potionFreeWon,
-                         potionFreeStrategicHpDeficit,
-                         anyRouteWon,
-                         candidate.Features.AllEnemiesDead,
-                         candidate.StrategicHpDeficit)
-                     || theftPolicy == SolverTheftPolicy.PreserveResources
-                        && candidate.PotionCount > 0
-                        && candidate.Features.OutstandingStolenResource < potionFreeOutstandingResource)
-                    && PotionUsePolicy.MeetsAmbergrisRestriction(
-                        hasPotionFreeBaseline,
-                        candidate.OptionalAmbergrisCount,
-                        candidate.OptionalPotionStrategicCost,
-                        initialPlayerMaxHp,
-                        potionFreePlayerHp,
-                        candidate.Snapshot.PlayerHp))
-                .OrderByDescending(candidate => candidate.Features.AllEnemiesDead)
-                // Survival used to be implied by the HP deficit being maximal on a death route. Once HP can be
-                // weighted down to nothing it has to be stated, or a run-ending boss would rank a lethal route.
-                .ThenBy(candidate => candidate.Snapshot.PlayerDead
-                    || candidate.Snapshot.ProjectedPlayerHp <= 0
+                {
+                    bool strictPrimaryImprovement = hasPotionFreeBaseline
+                        && potionPolicy != SolverPotionPolicy.Disabled
+                        && candidate.OptionalPotionCount > 0
+                        && SolverInterimResultOrdering.ComparePrimaryQuality(
+                            candidate.CompleteVictory,
+                            candidate.StrategicHpDeficit,
+                            candidate.CombatEndedTurn,
+                            potionFreeWon,
+                            potionFreeStrategicHpDeficit,
+                            potionFreeCombatEndedTurn) < 0;
+                    bool passesSoftPotionPolicy = PotionUsePolicy.IsEligible(
+                            candidate.EffectivePotionPolicy,
+                            candidate.OptionalPotionCount,
+                            ScalePotionCost(candidate.OptionalPotionStrategicCost),
+                            potionFreeWon,
+                            potionFreeStrategicHpDeficit,
+                            anyRouteWon,
+                            candidate.CompleteVictory,
+                            candidate.StrategicHpDeficit)
+                        || strictPrimaryImprovement
+                        || theftPolicy == SolverTheftPolicy.PreserveResources
+                            && candidate.PotionCount > 0
+                            && candidate.Features.OutstandingStolenResource
+                                < potionFreeOutstandingResource;
+                    bool passesAmbergrisPolicy = strictPrimaryImprovement
+                        || PotionUsePolicy.MeetsAmbergrisRestriction(
+                            hasPotionFreeBaseline,
+                            candidate.OptionalAmbergrisCount,
+                            candidate.OptionalPotionStrategicCost,
+                            initialPlayerMaxHp,
+                            potionFreePlayerHp,
+                            candidate.Snapshot.PlayerHp);
+                    return candidate.ForcedUsesSatisfied
+                        && candidate.ExplicitPotionCount >= minimumPotionUses
+                        && passesSoftPotionPolicy
+                        && passesAmbergrisPolicy;
+                })
+                .ToList();
+            var selected = policyEligibleCandidates
+                .OrderByDescending(candidate => candidate.CompleteVictory)
+                // A live incomplete fallback is always preferable to a dead fallback. For
+                // complete victories this key is uniformly zero and cannot weaken the
+                // requested loss-then-duration ordering.
+                .ThenBy(candidate => !candidate.CompleteVictory
+                    && (candidate.Snapshot.PlayerDead
+                        || candidate.Snapshot.ProjectedPlayerHp <= 0)
                         ? 1
                         : 0)
+                // Final quality is lexicographic: any lower strategic battle loss wins;
+                // combat duration is the immediate tie-breaker, including run-ending fights.
+                .ThenBy(candidate => candidate.StrategicHpDeficit)
+                .ThenBy(candidate => candidate.CombatEndedTurn ?? int.MaxValue)
                 .ThenBy(candidate => theftPolicy == SolverTheftPolicy.PreserveResources
                     ? candidate.Features.OutstandingStolenResource
                     : 0)
-                .ThenBy(candidate => candidate.PolicyHpDeficit * _hpWeightFifths)
-                .ThenBy(candidate => candidate.HealthResourceCost * _hpWeightFifths)
+                .ThenBy(candidate => candidate.PolicyHpDeficit)
+                .ThenBy(candidate => candidate.HealthResourceCost)
                 .ThenByDescending(candidate => candidate.Features.LongTermResourceValue)
                 .ThenBy(candidate => candidate.Features.AngerCopiesGenerated)
                 .ThenBy(candidate => CombatBeamSolver.PolicyBoundaryRank(candidate.Features.BoundaryReason))
                 .ThenBy(candidate => candidate.OptionalPotionCount)
                 .ThenBy(candidate => candidate.StrategicSold)
                 .ThenBy(candidate => candidate.Features.EnemyHp)
-                .ThenBy(candidate => candidate.CombatEndedTurn ?? int.MaxValue)
                 .ThenByDescending(candidate => candidate.Score)
                 .ThenBy(candidate => candidate.Features.ActionCount)
                 .ToList();
@@ -249,28 +264,8 @@ internal sealed partial class CombatBeamSolver
                         : "本场药水策略没有可执行路线。");
             }
             var selectedCandidate = selected[0];
-            int potionBranchesRejected = policyCandidates.Count(candidate =>
-                candidate.PotionCount > 0
-                && (!candidate.ForcedUsesSatisfied
-                    || candidate.ExplicitPotionCount < minimumPotionUses
-                    || !(PotionUsePolicy.IsEligible(
-                          candidate.EffectivePotionPolicy,
-                          candidate.OptionalPotionCount,
-                          ScalePotionCost(candidate.OptionalPotionStrategicCost),
-                          potionFreeWon,
-                          potionFreeStrategicHpDeficit,
-                          anyRouteWon,
-                          candidate.Features.AllEnemiesDead,
-                          candidate.StrategicHpDeficit)
-                      || theftPolicy == SolverTheftPolicy.PreserveResources
-                         && candidate.Features.OutstandingStolenResource < potionFreeOutstandingResource)
-                    || !PotionUsePolicy.MeetsAmbergrisRestriction(
-                        hasPotionFreeBaseline,
-                        candidate.OptionalAmbergrisCount,
-                        candidate.OptionalPotionStrategicCost,
-                        initialPlayerMaxHp,
-                        potionFreePlayerHp,
-                        candidate.Snapshot.PlayerHp)));
+            int potionBranchesRejected = policyCandidates.Count(candidate => candidate.PotionCount > 0)
+                - policyEligibleCandidates.Count(candidate => candidate.PotionCount > 0);
             int potionHpSaved = selectedCandidate.PotionCount == 0
                 ? 0
                 : selectedCandidate.AmbergrisCount > 0
@@ -308,5 +303,86 @@ internal sealed partial class CombatBeamSolver
                 potionHpSaved,
                 potionHpRequired);
         }
+    }
+
+    private static int ComparePotionFreePolicyBaselines(
+        SearchNode left,
+        SearchNode right,
+        int initialPlayerHp,
+        int initialPlayerMaxHp,
+        SolverTheftPolicy? theftPolicy)
+    {
+        SimulationSnapshot leftSnapshot = left.Snapshot;
+        SimulationSnapshot rightSnapshot = right.Snapshot;
+        bool leftWon = SolverInterimResultOrdering.IsCompleteVictory(
+            left.ActionCount,
+            leftSnapshot.AllEnemiesDead,
+            leftSnapshot.PlayerDead,
+            leftSnapshot.ProjectedPlayerHp);
+        bool rightWon = SolverInterimResultOrdering.IsCompleteVictory(
+            right.ActionCount,
+            rightSnapshot.AllEnemiesDead,
+            rightSnapshot.PlayerDead,
+            rightSnapshot.ProjectedPlayerHp);
+        int comparison = rightWon.CompareTo(leftWon);
+        if (comparison != 0)
+            return comparison;
+        if (!leftWon && !rightWon)
+        {
+            bool leftSurvives = !leftSnapshot.PlayerDead && leftSnapshot.ProjectedPlayerHp > 0;
+            bool rightSurvives = !rightSnapshot.PlayerDead && rightSnapshot.ProjectedPlayerHp > 0;
+            comparison = rightSurvives.CompareTo(leftSurvives);
+            if (comparison != 0)
+                return comparison;
+        }
+        comparison = (leftSnapshot.CumulativePlayerHpLost
+                + Math.Max(0, initialPlayerMaxHp - leftSnapshot.PlayerMaxHp))
+            .CompareTo(rightSnapshot.CumulativePlayerHpLost
+                + Math.Max(0, initialPlayerMaxHp - rightSnapshot.PlayerMaxHp));
+        if (comparison != 0)
+            return comparison;
+        comparison = (leftWon ? left.Action?.Turn ?? int.MaxValue : int.MaxValue)
+            .CompareTo(rightWon ? right.Action?.Turn ?? int.MaxValue : int.MaxValue);
+        if (comparison != 0)
+            return comparison;
+        if (theftPolicy == SolverTheftPolicy.PreserveResources)
+        {
+            comparison = leftSnapshot.OutstandingStolenResource.CompareTo(
+                rightSnapshot.OutstandingStolenResource);
+            if (comparison != 0)
+                return comparison;
+        }
+        comparison = (initialPlayerHp - leftSnapshot.PlayerHp
+                + initialPlayerMaxHp - leftSnapshot.PlayerMaxHp)
+            .CompareTo(initialPlayerHp - rightSnapshot.PlayerHp
+                + initialPlayerMaxHp - rightSnapshot.PlayerMaxHp);
+        if (comparison != 0)
+            return comparison;
+        comparison = rightSnapshot.LongTermResourceValue.CompareTo(leftSnapshot.LongTermResourceValue);
+        if (comparison != 0)
+            return comparison;
+        comparison = leftSnapshot.AngerCopiesGenerated.CompareTo(rightSnapshot.AngerCopiesGenerated);
+        if (comparison != 0)
+            return comparison;
+        comparison = PolicyBoundaryRank(leftSnapshot.BoundaryReason)
+            .CompareTo(PolicyBoundaryRank(rightSnapshot.BoundaryReason));
+        if (comparison != 0)
+            return comparison;
+        comparison = leftSnapshot.EnemyHp.CompareTo(rightSnapshot.EnemyHp);
+        if (comparison != 0)
+            return comparison;
+        comparison = right.Score.CompareTo(left.Score);
+        if (comparison != 0)
+            return comparison;
+        comparison = left.FutureSoldHp.CompareTo(right.FutureSoldHp);
+        if (comparison != 0)
+            return comparison;
+        comparison = left.ActionCount.CompareTo(right.ActionCount);
+        if (comparison != 0)
+            return comparison;
+        comparison = left.StateKey.First.CompareTo(right.StateKey.First);
+        return comparison != 0
+            ? comparison
+            : left.StateKey.Second.CompareTo(right.StateKey.Second);
     }
 }

@@ -26,21 +26,75 @@ internal sealed partial class CombatBeamSolver
 {
     public SolverResult Solve()
     {
+        SearchRequestWorkTotals? requestWorkTotals = policy.RequestWorkTotals;
+        long startedTimestamp = requestWorkTotals == null ? 0 : Stopwatch.GetTimestamp();
+        long allocatedBytesAtStart = requestWorkTotals == null
+            ? 0
+            : GC.GetAllocatedBytesForCurrentThread();
+        int gen0AtStart = requestWorkTotals == null ? 0 : GC.CollectionCount(0);
+        int gen1AtStart = requestWorkTotals == null ? 0 : GC.CollectionCount(1);
+        int gen2AtStart = requestWorkTotals == null ? 0 : GC.CollectionCount(2);
+        TimeSpan gcPauseAtStart = requestWorkTotals == null
+            ? TimeSpan.Zero
+            : GC.GetTotalPauseDuration();
         try
         {
             return SolveCore();
         }
         finally
         {
-            RecordRequestWork();
+            if (requestWorkTotals != null)
+            {
+                RecordRequestWork(
+                    requestWorkTotals,
+                    startedTimestamp,
+                    allocatedBytesAtStart,
+                    gen0AtStart,
+                    gen1AtStart,
+                    gen2AtStart,
+                    gcPauseAtStart);
+            }
         }
     }
 
-    private void RecordRequestWork()
-        => policy.RequestWorkTotals?.Record(
+    private void RecordRequestWork(
+        SearchRequestWorkTotals requestWorkTotals,
+        long startedTimestamp,
+        long allocatedBytesAtStart,
+        int gen0AtStart,
+        int gen1AtStart,
+        int gen2AtStart,
+        TimeSpan gcPauseAtStart)
+    {
+        TimeSpan elapsed = Stopwatch.GetElapsedTime(startedTimestamp);
+        bool deepTriggered = false;
+        TimeSpan shortElapsed = elapsed;
+        if (_shortCheckpointMilliseconds is { } checkpointMilliseconds
+            && elapsed.TotalMilliseconds > checkpointMilliseconds)
+        {
+            deepTriggered = true;
+            shortElapsed = TimeSpan.FromMilliseconds(checkpointMilliseconds);
+        }
+        TimeSpan gcPauseDuration = GC.GetTotalPauseDuration() - gcPauseAtStart;
+        requestWorkTotals.Record(new SearchSolverWorkContribution(
             _run.Expanded,
             _run.TransitionCount,
-            _run.ChoiceBranchesEvaluated);
+            _run.ChoiceBranchesEvaluated,
+            shortElapsed,
+            elapsed - shortElapsed,
+            Math.Max(0, GC.GetAllocatedBytesForCurrentThread() - allocatedBytesAtStart)
+                + _run.OffThreadAllocatedBytes,
+            deepTriggered ? 0 : _run.Expanded,
+            deepTriggered ? _run.Expanded : 0,
+            deepTriggered ? 0 : _run.TransitionCount,
+            deepTriggered ? _run.TransitionCount : 0,
+            Math.Max(0, GC.CollectionCount(0) - gen0AtStart),
+            Math.Max(0, GC.CollectionCount(1) - gen1AtStart),
+            Math.Max(0, GC.CollectionCount(2) - gen2AtStart),
+            gcPauseDuration < TimeSpan.Zero ? TimeSpan.Zero : gcPauseDuration,
+            _run.WorkPacer.MaxObservedGcPause,
+            deepTriggered));
+    }
 
     private SolverResult SolveCore()
     {
@@ -75,6 +129,14 @@ internal sealed partial class CombatBeamSolver
                 policy.MaxDegreeOfParallelism,
                 1,
                 Math.Max(1, Environment.ProcessorCount));
+        if (!policy.MemoryPressureSignal.IsEnabled
+            && policy.MemoryPressureSignal.ConservativeParallelismRequired)
+        {
+            // A requested NoGC region that could not be established means system/runtime
+            // headroom is already constrained. Do not allocate idle worker lanes above the
+            // same two-way cap used by fallback parent/action/choice microbatches.
+            expansionParallelism = Math.Min(2, expansionParallelism);
+        }
 
         long allocatedBytesAtStart = GC.GetAllocatedBytesForCurrentThread();
         int gen0AtStart = GC.CollectionCount(0);
@@ -498,6 +560,8 @@ internal sealed partial class CombatBeamSolver
                 DuplicateCardBranchesPruned = _run.DuplicateCardBranchesPruned,
                 ChoiceBranchesEvaluated = _run.ChoiceBranchesEvaluated,
                 TotalChoiceBranchesEvaluated = _run.ChoiceBranchesEvaluated,
+                ChoiceReplayAttempts = _run.ChoiceReplayAttempts,
+                ChoiceReplayBudgetExhaustions = _run.ChoiceReplayBudgetExhaustions,
                 ShuffleBranchesPruned = _run.ShuffleBranchesPruned,
                 SoldHpBranchesPruned = _run.SoldHpBranchesPruned,
                 HpInvestmentBranchesProtected = _run.HpInvestmentBranchesProtected,
@@ -508,6 +572,14 @@ internal sealed partial class CombatBeamSolver
                 ReusedNodeSnapshots = _run.ReusedNodeSnapshots,
                 TranspositionBranchesPruned = _run.TranspositionBranchesPruned,
                 RepeatableNoProgressBranchesPruned = _run.RepeatableNoProgressBranchesPruned,
+                CycleShapesDetected = _run.CycleShapesDetected,
+                CycleProbeContinuationsExpanded = _run.CycleProbeContinuationsExpanded,
+                CycleCandidatesProtected = _run.CycleCandidatesProtected,
+                CycleContinuationsStopped = _run.CycleContinuationsStopped,
+                CrossTurnCandidatesProtected = _run.CrossTurnCandidatesProtected,
+                CrossTurnContinuationsStopped = _run.CrossTurnContinuationsStopped,
+                PrimaryIncumbentBranchesPruned = _run.PrimaryIncumbentBranchesPruned,
+                PrimaryIncumbentUpdates = _run.PrimaryIncumbentUpdates,
                 StandPatProbes = _run.StandPatProbes,
                 ParallelExpansionWaves = _run.ParallelExpansionWaves,
                 ParallelExpansionWorkItems = _run.ParallelExpansionWorkItems,
@@ -660,9 +732,7 @@ internal sealed partial class CombatBeamSolver
             List<SearchNode> candidates;
             try
             {
-                candidates = Retention.RankBest(
-                    viable,
-                    _profile.BeamWidth * 4);
+                candidates = Retention.RankFinal(viable);
             }
             finally
             {
@@ -1010,7 +1080,7 @@ internal sealed partial class CombatBeamSolver
                 }
 
                 int activeIndex = 0;
-                int parallelWaveCapacity = policy.MemoryPressureSignal.IsEnabled
+                int parallelWaveCapacity = policy.MemoryPressureSignal.ConservativeParallelismRequired
                     ? Math.Min(2, expansionParallelism)
                     : expansionParallelism;
 
@@ -1035,7 +1105,11 @@ internal sealed partial class CombatBeamSolver
                 {
                     SearchMemoryPressureSignal signal = policy.MemoryPressureSignal;
                     if (!signal.IsEnabled)
-                        return desiredCapacity;
+                    {
+                        return signal.ConservativeParallelismRequired
+                            ? Math.Min(2, desiredCapacity)
+                            : desiredCapacity;
+                    }
                     long parentReserve = ParentAllocationReserve();
                     long capacity = signal.AllocationLimitBytes / Math.Max(1, parentReserve);
                     return Math.Max(
@@ -1323,6 +1397,15 @@ internal sealed partial class CombatBeamSolver
                 ConsiderCompleteVictory(candidate);
                 ConsiderCurrentTurnCandidate(candidate);
             }
+            if (TightenPrimarySearchIncumbentAtTurnLayer(
+                    retainedAfterRound,
+                    searchedTurnLayers + 1))
+            {
+                List<SearchNode> boundedFrontier = ApplyPrimaryIncumbentBound(frontier);
+                ReleaseDroppedSnapshots(frontier, boundedFrontier);
+                frontier = boundedFrontier;
+                retainedAfterRound = [.. completed, .. frontier];
+            }
             RefreshCurrentTurnPreview();
             PublishRoutePreview(retainedAfterRound, force: true);
             searchedTurnLayers++;
@@ -1431,7 +1514,7 @@ internal sealed partial class CombatBeamSolver
         {
             finalPool.Add(RefreshReleasedFallback(potionBoundaryFallback));
         }
-        List<SearchNode> finalCandidates = Retention.RankBest(finalPool, _profile.BeamWidth * 4);
+        List<SearchNode> finalCandidates = Retention.RankFinal(finalPool);
         ReleaseDroppedSnapshots(finalPool, finalCandidates);
         ValidateHistoricalSimulatorsReleased(finalCandidates);
         PublishProgress(_startTurnNumber + searchedTurnLayers, searchedTurnLayers, 0,

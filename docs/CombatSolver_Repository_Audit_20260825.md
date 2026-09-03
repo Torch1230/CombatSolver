@@ -5,6 +5,8 @@
 源码版本声明：`CombatSolver.csproj` / `CombatSolver.json` 均为 `0.13.23`  
 ZIP 注释：`d56f8bd461f928d59ade6ccbcbcc06e79d32e604`，仅记录为“压缩包声明的标识”，本快照没有 `.git` 元数据，未独立证明它是可解析的 Git commit。
 
+> 2026-09-02 增补：第 7.4/7.6 节的循环与跨回合边界已按当前通用周期开发分支更新，避免继续把已撤回的固定次数/命名例外当作现行架构；其余审计结论仍以 2026-08-25 快照为边界。本次动态证据单列于 `docs/TEST_MATRIX.md`，不倒填为旧快照已执行的测试。
+
 ## 0. 审计范围、方法与结论边界
 
 本轮实际解包并静态核对了根项目文件、`README.md`、`src`、`tools`、`coverage`、`docs` 中与入口、状态、镜像、搜索、续用、部署、测试、覆盖和发布有关的文件。压缩包共 837 个条目，包含 237 个 C# 文件；`src` 下 236 个 C# 文件、约 48,605 行。目录分布为：Engine 125 文件 / 16,186 行，Prediction 37 / 7,340，Runtime 18 / 4,842，Search 39 / 12,440，Testing 11 / 5,392，UI 6 / 2,405。
@@ -287,7 +289,10 @@ Steam 可见性能路径由 `tools/run-visible-steam-benchmark.ps1` 写固定 Me
 - 根节点可用 live `CanPlayTargeting` 过滤，深层使用 mirror 版本，防止真实不可打牌反复入选。
 - 目标、pile choice、hand choice 和嵌套选择分别展开，受 profile 上限控制。
 - 纯动作可做 dominance；候选按局部价值排序，仅保留 short/deep top 10/16，同时保留特殊语义 lane；EndTurn 始终存在。
-- `MaxRepeatableNoProgressPlays=16` 是连续资源中性且无敌方进展的 cycle guard，不是回合内动作上限。
+- 当前同回合循环调度不再使用固定 `16` 次 guard，也不按具体卡牌、Power、遗物或敌人名称增加例外。它在最多 `8` 个动作内比较控制形状、有序动作相位和一致转移；证据相同的候选才共享一个周期族，dominance 也不会跨周期相位误合并。
+- 暂无即时收益的周期只能得到有限调度租约：最低生命风险与有限生命投资两个带各至多 `2` 个族，总计至多 `4` 个；动作预算由节点上限折算并按周期长度归一。所有租约边仍精确模拟，不是把一轮效果乘以重复次数的宏边。
+- 每个相位的非周期出口按通用质量向量观察；改善出口可继续至多 `8` 个动作和 `2` 次回合转换。逐敌人耐久、真实/预计生命、资源、持久/延迟收益、控制、牌库净化和特殊目标均可构成进展，不存在命名兑现牌白名单。
+- 以上只是 Beam 内的有界调度策略，不是“已证明无限”或“必然找到最优路线”。周期长度 `>8`、更晚才兑现、隐藏状态尚未进入通用向量、候选或 Beam 已截断，仍会漏解。
 
 ### 7.5 Pareto / 状态支配
 
@@ -295,7 +300,7 @@ Steam 可见性能路径由 `tools/run-visible-steam-benchmark.ps1` 写固定 Me
 
 ### 7.6 跨回合终止条件
 
-确定胜利、玩家死亡、unsupported/pending choice、时间/节点预算、精确状态循环、无进展循环可终止。当前生产代码没有固定洗牌上限；`SearchBoundaryReason.Shuffle`、`NoCards`、`DynamicResolution` 看起来是历史遗留，未见当前赋值。`PolicyBoundaryRank` 没有 `DynamicResolution` 分支，若它重新可达会抛 `ArgumentOutOfRangeException`。
+确定胜利、玩家死亡、unsupported/pending choice、时间/节点预算、精确状态置换、有界周期停止和跨回合无进展窗口可终止。跨回合窗口是 `max(16, 两个完整抽牌循环所需回合)`，通用进展刷新后重新计数；`16` 不是总回合数或同回合重复上限。当前生产代码没有固定洗牌上限；`SearchBoundaryReason.Shuffle`、`NoCards`、`DynamicResolution` 看起来是历史遗留，未见当前赋值。`PolicyBoundaryRank` 没有 `DynamicResolution` 分支，若它重新可达会抛 `ArgumentOutOfRangeException`。
 
 ### 7.7 药水策略
 

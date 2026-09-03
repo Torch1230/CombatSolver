@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "GENERIC-LOOP-SPEEDSTER-STARTUP-POSITIVE-V0111",
+  "characterId": "SILENT",
+  "encounterId": "AEONGLASS_BOSS",
+  "seed": "LOOPSPEEDSTERSTART0111",
+  "actIndexForTest": 2,
+  "enemyCurrentHp": 60,
+  "initialPlayerHp": 70,
+  "initialPlayerMaxHp": 70,
+  "initialPlayerEnergy": 3,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    { "cardId": "SPEEDSTER", "pile": "Hand" },
+    { "cardId": "ACROBATICS", "pile": "Hand" },
+    { "cardId": "TACTICIAN", "pile": "Draw", "upgradeLevels": 1 },
+    { "cardId": "BACKFLIP", "pile": "Draw" }
+  ],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 5000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "expectedInitialExecutableActionCountAtLeast": 9,
+  "expectedInitialProjectedBattleHpLost": 0,
+  "expectedInitialCombatEndedTurn": 1,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120
+}

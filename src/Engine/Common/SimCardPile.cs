@@ -9,6 +9,9 @@ internal sealed class SimCardPile
     private bool _hasCachedFingerprint;
     private ulong _cachedFingerprintFirst;
     private ulong _cachedFingerprintSecond;
+    private bool _hasCachedCycleShapeFingerprint;
+    private ulong _cachedCycleShapeFingerprintFirst;
+    private ulong _cachedCycleShapeFingerprintSecond;
     private bool _fingerprintCacheDisabled;
 
     public PileType Type { get; }
@@ -89,6 +92,9 @@ internal sealed class SimCardPile
         fork._hasCachedFingerprint = _hasCachedFingerprint;
         fork._cachedFingerprintFirst = _cachedFingerprintFirst;
         fork._cachedFingerprintSecond = _cachedFingerprintSecond;
+        fork._hasCachedCycleShapeFingerprint = _hasCachedCycleShapeFingerprint;
+        fork._cachedCycleShapeFingerprintFirst = _cachedCycleShapeFingerprintFirst;
+        fork._cachedCycleShapeFingerprintSecond = _cachedCycleShapeFingerprintSecond;
         context.Register(this, fork);
         return fork;
     }
@@ -109,15 +115,33 @@ internal sealed class SimCardPile
         _hasCachedFingerprint = true;
     }
 
+    internal bool TryGetCachedCycleShapeFingerprint(out ulong first, out ulong second)
+    {
+        first = _cachedCycleShapeFingerprintFirst;
+        second = _cachedCycleShapeFingerprintSecond;
+        return !_fingerprintCacheDisabled && _hasCachedCycleShapeFingerprint;
+    }
+
+    internal void SetCachedCycleShapeFingerprint(ulong first, ulong second)
+    {
+        if (_fingerprintCacheDisabled)
+            return;
+        _cachedCycleShapeFingerprintFirst = first;
+        _cachedCycleShapeFingerprintSecond = second;
+        _hasCachedCycleShapeFingerprint = true;
+    }
+
     internal void InvalidateFingerprint()
     {
         _hasCachedFingerprint = false;
+        _hasCachedCycleShapeFingerprint = false;
     }
 
     internal void DisableFingerprintCache()
     {
         _fingerprintCacheDisabled = true;
         _hasCachedFingerprint = false;
+        _hasCachedCycleShapeFingerprint = false;
     }
 
     private void AttachCards()

@@ -11187,7 +11187,7 @@
       "hook": "AfterStarsGained(System.Int32,MegaCrit.Sts2.Core.Entities.Players.Player)",
       "phase": "FutureLifecycle",
       "effectiveStatus": "Exact",
-      "capability": "SolverCompensation",
+      "capability": "EngineMirror",
       "requiresRuntimeEvidence": true,
       "runtimeVerified": true,
       "writes": [

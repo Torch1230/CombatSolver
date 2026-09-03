@@ -12,10 +12,41 @@ internal static class SolverInterimResultOrdering
             && !playerDead
             && projectedPlayerHp > 0;
 
+    /// <summary>
+    /// Compares the result-quality prefix shared by in-session selection, final candidate
+    /// retention, and cross-session audits. A negative value means <paramref name="candidate"/>
+    /// is better. Policy/resource preferences are deliberately excluded: callers may use them
+    /// only after complete victory, strategic battle loss, and combat duration are equal.
+    /// </summary>
+    public static int ComparePrimaryQuality(
+        bool candidateCompleteVictory,
+        int candidateStrategicHpDeficit,
+        int? candidateCombatEndedTurn,
+        bool currentCompleteVictory,
+        int currentStrategicHpDeficit,
+        int? currentCombatEndedTurn)
+    {
+        int comparison = currentCompleteVictory.CompareTo(candidateCompleteVictory);
+        if (comparison != 0)
+            return comparison;
+        comparison = candidateStrategicHpDeficit.CompareTo(currentStrategicHpDeficit);
+        if (comparison != 0)
+            return comparison;
+        return (candidateCombatEndedTurn ?? int.MaxValue)
+            .CompareTo(currentCombatEndedTurn ?? int.MaxValue);
+    }
+
     public static bool IsBetter(SolverInterimResult candidate, SolverInterimResult current)
     {
-        if (candidate.Won != current.Won)
-            return candidate.Won;
+        int primaryQuality = ComparePrimaryQuality(
+            candidate.Won,
+            candidate.StrategicHpDeficit,
+            candidate.CombatEndedTurn,
+            current.Won,
+            current.StrategicHpDeficit,
+            current.CombatEndedTurn);
+        if (primaryQuality != 0)
+            return primaryQuality < 0;
         if (candidate.OutstandingStolenResource != current.OutstandingStolenResource)
             return candidate.OutstandingStolenResource < current.OutstandingStolenResource;
         if (IsResourceTradeImprovement(candidate, current))
@@ -26,11 +57,6 @@ internal static class SolverInterimResultOrdering
             return candidate.ProjectedBattlePotionCount < current.ProjectedBattlePotionCount;
         if (candidate.EnemyHp != current.EnemyHp)
             return candidate.EnemyHp < current.EnemyHp;
-        if (candidate.Won && candidate.CombatEndedTurn != current.CombatEndedTurn)
-        {
-            return (candidate.CombatEndedTurn ?? int.MaxValue)
-                < (current.CombatEndedTurn ?? int.MaxValue);
-        }
         return candidate.Score > current.Score;
     }
 

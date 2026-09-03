@@ -64,9 +64,14 @@ internal sealed partial class CombatBeamSolver
         SolverSearchProfile _profile,
         bool _isActEndingBoss,
         int _initialEnemyCount,
+        int _initialPlayerHp,
+        int _initialPlayerMaxHp,
         bool _preserveReplayAllocatorOpening,
         SolverTheftPolicy? _theftPolicy,
         SolverPotionPolicy _potionPolicy,
+        PotionStrategySnapshot _potionStrategy,
+        bool _enforcePotionDirectives,
+        bool _renewablePotionShapedRock,
         SearchRunContext _run,
         Func<SearchNode, StandPatEvaluation> _evaluateStandPat)
     {
@@ -86,10 +91,250 @@ internal sealed partial class CombatBeamSolver
             int RetainedAttackGrowth,
             bool TriggeredLastTurn,
             bool CanTriggerThisTurn);
+        private readonly record struct FinalPolicyQualificationFacts(
+            bool ForcedUsesSatisfied,
+            int ExplicitPotionUseCount,
+            SolverPotionPolicy EffectivePotionPolicy,
+            int OptionalPotionUseCount,
+            int OptionalPotionStrategicCost,
+            int OptionalAmbergrisCount);
+        private readonly record struct FinalPolicyQualificationSignature(
+            bool ForcedUsesSatisfied,
+            int ExplicitPotionUseCount,
+            SolverPotionPolicy EffectivePotionPolicy,
+            int OptionalPotionUseCount,
+            int OptionalPotionStrategicCost,
+            int OptionalAmbergrisCount,
+            bool TheftEscapeEligible,
+            int OptionalAmbergrisFinalPlayerHpCohort);
 
         public List<SearchNode> RankFinal(IEnumerable<SearchNode> nodes)
         {
-            return RankBest(nodes, _profile.BeamWidth * 4);
+            List<SearchNode> candidates = nodes.ToList();
+            List<SearchNode> ranked = RankBest(
+                candidates,
+                _profile.BeamWidth * 4,
+                finalQualityFirst: true);
+
+            // FinalPlanOrdering has policy eligibility dimensions that are not monotone in
+            // ordinary final quality (forced directives, Ambergris HP and theft recovery).
+            // Preserve one representative per compact eligibility cohort, not per ordered
+            // potion history: order and exact automatic-use count do not affect the policy.
+            FinalPolicyQualificationFacts[] facts = new FinalPolicyQualificationFacts[candidates.Count];
+            SearchNode? potionFreeBaseline = null;
+            for (int index = 0; index < candidates.Count; index++)
+            {
+                SearchNode candidate = candidates[index];
+                facts[index] = BuildFinalPolicyQualificationFacts(candidate);
+                if (facts[index].ExplicitPotionUseCount == 0
+                    && (potionFreeBaseline == null
+                        || ComparePotionFreePolicyBaselines(
+                            candidate,
+                            potionFreeBaseline,
+                            _initialPlayerHp,
+                            _initialPlayerMaxHp,
+                            _theftPolicy) < 0))
+                {
+                    potionFreeBaseline = candidate;
+                }
+            }
+            int potionFreeOutstandingResource = potionFreeBaseline?.Snapshot.OutstandingStolenResource
+                ?? int.MaxValue;
+
+            Dictionary<FinalPolicyQualificationSignature, SearchNode> qualificationLeaders = [];
+            Dictionary<SearchNode, FinalPolicyQualificationSignature> signatures =
+                new(ReferenceEqualityComparer.Instance);
+            for (int index = 0; index < candidates.Count; index++)
+            {
+                SearchNode candidate = candidates[index];
+                FinalPolicyQualificationSignature signature = BuildFinalPolicyQualificationSignature(
+                    facts[index],
+                    candidate,
+                    potionFreeOutstandingResource);
+                signatures.Add(candidate, signature);
+                if (!qualificationLeaders.TryGetValue(signature, out SearchNode? current)
+                    || CompareFinalCandidates(candidate, current) < 0)
+                {
+                    qualificationLeaders[signature] = candidate;
+                }
+            }
+            foreach (SearchNode leader in qualificationLeaders.Values)
+            {
+                if (!ContainsReference(ranked, leader))
+                    ranked.Add(leader);
+            }
+            if (potionFreeBaseline != null && !ContainsReference(ranked, potionFreeBaseline))
+                ranked.Add(potionFreeBaseline);
+            ranked.Sort((left, right) =>
+            {
+                int comparison = CompareFinalCandidates(left, right);
+                return comparison != 0
+                    ? comparison
+                    : CompareFinalPolicyQualificationSignatures(
+                        signatures[left],
+                        signatures[right]);
+            });
+            AssignRetentionRanks(ranked, []);
+            return ranked;
+        }
+
+        private FinalPolicyQualificationFacts BuildFinalPolicyQualificationFacts(SearchNode node)
+        {
+            int explicitPotionStrategicCost = 0;
+            int explicitAmbergrisCount = 0;
+            for (SearchNode? cursor = node; cursor?.Action is { } action; cursor = cursor.Parent)
+            {
+                if (action.Kind != PlanActionKind.UsePotion)
+                    continue;
+                if (string.IsNullOrEmpty(action.PotionId))
+                    throw new InvalidOperationException("用药动作缺少药水 ID。");
+                explicitPotionStrategicCost += PotionUsePolicy.StrategicHpCost(
+                    action.PotionId,
+                    _renewablePotionShapedRock);
+                if (string.Equals(action.PotionId, "AMBERGRIS", StringComparison.Ordinal))
+                    explicitAmbergrisCount++;
+            }
+
+            int forcedUseCount = 0;
+            int forcedStrategicHpCost = 0;
+            int forcedAmbergrisCount = 0;
+            bool forcedUsesSatisfied = true;
+            if (_enforcePotionDirectives)
+            {
+                foreach (PotionSlotDirective directive in _potionStrategy.Directives)
+                {
+                    if (directive.Directive != SolverPotionDirective.Force)
+                        continue;
+                    bool used = false;
+                    for (SearchNode? cursor = node; cursor?.Action is { } action; cursor = cursor.Parent)
+                    {
+                        if (action.Kind != PlanActionKind.UsePotion
+                            || action.PotionSlot != directive.Slot
+                            || !string.Equals(
+                                action.PotionId,
+                                directive.PotionId,
+                                StringComparison.Ordinal))
+                        {
+                            continue;
+                        }
+                        used = true;
+                        break;
+                    }
+                    if (!used)
+                    {
+                        forcedUsesSatisfied = false;
+                        continue;
+                    }
+                    forcedUseCount++;
+                    forcedStrategicHpCost += PotionUsePolicy.StrategicHpCost(
+                        directive.PotionId,
+                        _renewablePotionShapedRock);
+                    if (string.Equals(directive.PotionId, "AMBERGRIS", StringComparison.Ordinal))
+                        forcedAmbergrisCount++;
+                }
+            }
+
+            int explicitPotionUseCount = ExplicitPotionUseCount(node);
+            int optionalPotionUseCount = Math.Max(0, explicitPotionUseCount - forcedUseCount);
+            int optionalPotionStrategicCost = Math.Max(
+                0,
+                explicitPotionStrategicCost - forcedStrategicHpCost);
+            int optionalAmbergrisCount = Math.Max(0, explicitAmbergrisCount - forcedAmbergrisCount);
+            SolverPotionPolicy effectivePotionPolicy = _potionPolicy switch
+            {
+                SolverPotionPolicy.RequireAtLeastOne when forcedUseCount > 0
+                    => SolverPotionPolicy.Smart,
+                SolverPotionPolicy.Disabled when optionalPotionUseCount > 0
+                    => SolverPotionPolicy.Smart,
+                _ => _potionPolicy,
+            };
+            return new FinalPolicyQualificationFacts(
+                forcedUsesSatisfied,
+                explicitPotionUseCount,
+                effectivePotionPolicy,
+                optionalPotionUseCount,
+                optionalPotionStrategicCost,
+                optionalAmbergrisCount);
+        }
+
+        private FinalPolicyQualificationSignature BuildFinalPolicyQualificationSignature(
+            FinalPolicyQualificationFacts facts,
+            SearchNode candidate,
+            int potionFreeOutstandingResource)
+        {
+            if (!facts.ForcedUsesSatisfied)
+            {
+                // Every partial forced-use history is rejected by the same hard rule.
+                return new FinalPolicyQualificationSignature(
+                    false,
+                    0,
+                    default,
+                    0,
+                    0,
+                    0,
+                    false,
+                    int.MinValue);
+            }
+
+            bool theftEscapeEligible = FinalPolicyTheftEscapeEligible(
+                _theftPolicy,
+                candidate.PotionCount,
+                candidate.Snapshot.OutstandingStolenResource,
+                potionFreeOutstandingResource);
+            return new FinalPolicyQualificationSignature(
+                true,
+                facts.ExplicitPotionUseCount,
+                facts.EffectivePotionPolicy,
+                facts.OptionalPotionUseCount,
+                facts.OptionalPotionStrategicCost,
+                facts.OptionalAmbergrisCount,
+                theftEscapeEligible,
+                FinalPolicyOptionalAmbergrisPlayerHpCohort(
+                    facts.OptionalAmbergrisCount,
+                    candidate.Snapshot.PlayerHp));
+        }
+
+        internal static int FinalPolicyOptionalAmbergrisPlayerHpCohort(
+            int optionalAmbergrisCount,
+            int playerHp)
+            => optionalAmbergrisCount > 0 ? playerHp : int.MinValue;
+
+        internal static bool FinalPolicyTheftEscapeEligible(
+            SolverTheftPolicy? theftPolicy,
+            int potionCount,
+            int outstandingStolenResource,
+            int potionFreeOutstandingResource)
+            => theftPolicy == SolverTheftPolicy.PreserveResources
+                && potionCount > 0
+                && outstandingStolenResource < potionFreeOutstandingResource;
+
+        private static int CompareFinalPolicyQualificationSignatures(
+            FinalPolicyQualificationSignature left,
+            FinalPolicyQualificationSignature right)
+        {
+            int comparison = right.ForcedUsesSatisfied.CompareTo(left.ForcedUsesSatisfied);
+            if (comparison != 0)
+                return comparison;
+            comparison = left.ExplicitPotionUseCount.CompareTo(right.ExplicitPotionUseCount);
+            if (comparison != 0)
+                return comparison;
+            comparison = left.EffectivePotionPolicy.CompareTo(right.EffectivePotionPolicy);
+            if (comparison != 0)
+                return comparison;
+            comparison = left.OptionalPotionUseCount.CompareTo(right.OptionalPotionUseCount);
+            if (comparison != 0)
+                return comparison;
+            comparison = left.OptionalPotionStrategicCost.CompareTo(right.OptionalPotionStrategicCost);
+            if (comparison != 0)
+                return comparison;
+            comparison = left.OptionalAmbergrisCount.CompareTo(right.OptionalAmbergrisCount);
+            if (comparison != 0)
+                return comparison;
+            comparison = right.TheftEscapeEligible.CompareTo(left.TheftEscapeEligible);
+            return comparison != 0
+                ? comparison
+                : left.OptionalAmbergrisFinalPlayerHpCohort.CompareTo(
+                    right.OptionalAmbergrisFinalPlayerHpCohort);
         }
 
         public List<SearchNode> RankLongTermResource(
@@ -110,24 +355,38 @@ internal sealed partial class CombatBeamSolver
         public List<SearchNode> RankBest(
             IEnumerable<SearchNode> nodes,
             int limit,
-            bool preserveDefensiveRoute = false)
+            bool preserveDefensiveRoute = false,
+            bool finalQualityFirst = false)
         {
-            Dictionary<StateFingerprint, SearchNode> bestByState = [];
-            foreach (SearchNode node in nodes)
+            List<SearchNode> ranked;
+            if (finalQualityFirst)
             {
-                if (!bestByState.TryGetValue(node.StateKey, out SearchNode? current)
-                    || IsBetterSearchNode(node, current))
+                // Equal simulator states can still have different cumulative battle loss or
+                // policy-relevant action histories. Do not erase those distinctions before the
+                // final policy pass has inspected them.
+                ranked = nodes.ToList();
+            }
+            else
+            {
+                Dictionary<StateFingerprint, SearchNode> bestByState = [];
+                foreach (SearchNode node in nodes)
                 {
-                    bestByState[node.StateKey] = node;
+                    if (!bestByState.TryGetValue(node.StateKey, out SearchNode? current)
+                        || IsBetterSearchNode(node, current))
+                    {
+                        bestByState[node.StateKey] = node;
+                    }
                 }
+                ranked = [.. bestByState.Values];
             }
 
-            List<SearchNode> ranked = [.. bestByState.Values];
-            ranked.Sort((left, right) =>
-            {
-                int byScore = BeamRankScore(right).CompareTo(BeamRankScore(left));
-                return byScore != 0 ? byScore : left.ActionCount.CompareTo(right.ActionCount);
-            });
+            ranked.Sort(finalQualityFirst
+                ? CompareFinalCandidates
+                : (left, right) =>
+                {
+                    int byScore = BeamRankScore(right).CompareTo(BeamRankScore(left));
+                    return byScore != 0 ? byScore : left.ActionCount.CompareTo(right.ActionCount);
+                });
             List<SearchNode> routingChoices = [];
             if (preserveDefensiveRoute)
             {
@@ -484,7 +743,7 @@ internal sealed partial class CombatBeamSolver
 
             List<SearchNode> required = [];
             foreach (IGrouping<int, SearchNode> victoryGroup in ranked
-                         .Where(node => node.Snapshot.AllEnemiesDead)
+                         .Where(IsCompleteVictory)
                          .GroupBy(node => node.PotionCount)
                          .OrderBy(group => group.Key))
             {
@@ -934,11 +1193,13 @@ internal sealed partial class CombatBeamSolver
                 EnforcePotionUseQuota(ranked, quotaPool, required, usesPotion: true, usedPotionQuota);
                 EnforcePotionUseQuota(ranked, quotaPool, required, usesPotion: false, unusedPotionQuota);
             }
-            ranked.Sort((left, right) =>
-            {
-                int byScore = BeamRankScore(right).CompareTo(BeamRankScore(left));
-                return byScore != 0 ? byScore : left.ActionCount.CompareTo(right.ActionCount);
-            });
+            ranked.Sort(finalQualityFirst
+                ? CompareFinalCandidates
+                : (left, right) =>
+                {
+                    int byScore = BeamRankScore(right).CompareTo(BeamRankScore(left));
+                    return byScore != 0 ? byScore : left.ActionCount.CompareTo(right.ActionCount);
+                });
             AssignRetentionRanks(ranked, required);
             return ranked;
         }
@@ -1428,41 +1689,95 @@ internal sealed partial class CombatBeamSolver
                                             && candidate.Score > current.Score)));
 
         private bool IsBetterCompletedVictory(SearchNode candidate, SearchNode? current)
+            => current == null || CompareFinalCandidates(candidate, current) < 0;
+
+        private int CompareFinalCandidates(SearchNode left, SearchNode right)
         {
-            if (current == null)
-                return true;
-            SimulationSnapshot candidateSnapshot = candidate.Snapshot;
-            SimulationSnapshot currentSnapshot = current.Snapshot;
-            int candidateOutstanding = _theftPolicy == SolverTheftPolicy.PreserveResources
-                ? candidateSnapshot.OutstandingStolenResource
+            SimulationSnapshot leftSnapshot = left.Snapshot;
+            SimulationSnapshot rightSnapshot = right.Snapshot;
+            bool leftWon = IsCompleteVictory(left);
+            bool rightWon = IsCompleteVictory(right);
+            if (!leftWon && !rightWon)
+            {
+                bool leftSurvives = !leftSnapshot.PlayerDead
+                    && leftSnapshot.ProjectedPlayerHp > 0;
+                bool rightSurvives = !rightSnapshot.PlayerDead
+                    && rightSnapshot.ProjectedPlayerHp > 0;
+                int survivalComparison = rightSurvives.CompareTo(leftSurvives);
+                if (survivalComparison != 0)
+                    return survivalComparison;
+            }
+
+            int comparison = SolverInterimResultOrdering.ComparePrimaryQuality(
+                leftWon,
+                StrategicHpDeficit(leftSnapshot),
+                leftWon ? CompletedCombatTurn(left) : null,
+                rightWon,
+                StrategicHpDeficit(rightSnapshot),
+                rightWon ? CompletedCombatTurn(right) : null);
+            if (comparison != 0)
+                return comparison;
+
+            int leftOutstanding = _theftPolicy == SolverTheftPolicy.PreserveResources
+                ? leftSnapshot.OutstandingStolenResource
                 : 0;
-            int currentOutstanding = _theftPolicy == SolverTheftPolicy.PreserveResources
-                ? currentSnapshot.OutstandingStolenResource
+            int rightOutstanding = _theftPolicy == SolverTheftPolicy.PreserveResources
+                ? rightSnapshot.OutstandingStolenResource
                 : 0;
-            int byHpLost = candidateSnapshot.CumulativePlayerHpLost
-                .CompareTo(currentSnapshot.CumulativePlayerHpLost);
-            if (byHpLost != 0)
-                return byHpLost < 0;
-            int byMaxHp = candidateSnapshot.PlayerMaxHp.CompareTo(currentSnapshot.PlayerMaxHp);
-            if (byMaxHp != 0)
-                return byMaxHp > 0;
-            int byOutstanding = candidateOutstanding.CompareTo(currentOutstanding);
-            if (byOutstanding != 0)
-                return byOutstanding < 0;
-            int byLongTerm = candidateSnapshot.LongTermResourceValue
-                .CompareTo(currentSnapshot.LongTermResourceValue);
-            if (byLongTerm != 0)
-                return byLongTerm > 0;
-            int byAnger = candidateSnapshot.AngerCopiesGenerated
-                .CompareTo(currentSnapshot.AngerCopiesGenerated);
-            if (byAnger != 0)
-                return byAnger < 0;
-            int byPotionCost = candidate.PotionStrategicCost.CompareTo(current.PotionStrategicCost);
-            if (byPotionCost != 0)
-                return byPotionCost < 0;
-            int bySoldHp = candidate.FutureSoldHp.CompareTo(current.FutureSoldHp);
-            return bySoldHp != 0 ? bySoldHp < 0 : IsBetterSearchNode(candidate, current);
+            comparison = leftOutstanding.CompareTo(rightOutstanding);
+            if (comparison != 0)
+                return comparison;
+            comparison = HealthResourceCost(leftSnapshot).CompareTo(HealthResourceCost(rightSnapshot));
+            if (comparison != 0)
+                return comparison;
+            comparison = rightSnapshot.LongTermResourceValue.CompareTo(leftSnapshot.LongTermResourceValue);
+            if (comparison != 0)
+                return comparison;
+            comparison = leftSnapshot.AngerCopiesGenerated.CompareTo(rightSnapshot.AngerCopiesGenerated);
+            if (comparison != 0)
+                return comparison;
+            comparison = PolicyBoundaryRank(leftSnapshot.BoundaryReason)
+                .CompareTo(PolicyBoundaryRank(rightSnapshot.BoundaryReason));
+            if (comparison != 0)
+                return comparison;
+            comparison = ExplicitPotionUseCount(left).CompareTo(ExplicitPotionUseCount(right));
+            if (comparison != 0)
+                return comparison;
+            comparison = left.FutureSoldHp.CompareTo(right.FutureSoldHp);
+            if (comparison != 0)
+                return comparison;
+            comparison = leftSnapshot.EnemyHp.CompareTo(rightSnapshot.EnemyHp);
+            if (comparison != 0)
+                return comparison;
+            comparison = right.Score.CompareTo(left.Score);
+            if (comparison != 0)
+                return comparison;
+            comparison = left.ActionCount.CompareTo(right.ActionCount);
+            if (comparison != 0)
+                return comparison;
+            comparison = left.StateKey.First.CompareTo(right.StateKey.First);
+            return comparison != 0
+                ? comparison
+                : left.StateKey.Second.CompareTo(right.StateKey.Second);
         }
+
+        private bool IsCompleteVictory(SearchNode node)
+            => SolverInterimResultOrdering.IsCompleteVictory(
+                node.ActionCount,
+                node.Snapshot.AllEnemiesDead,
+                node.Snapshot.PlayerDead,
+                node.Snapshot.ProjectedPlayerHp);
+
+        private int StrategicHpDeficit(SimulationSnapshot snapshot)
+            => snapshot.CumulativePlayerHpLost
+                + Math.Max(0, _initialPlayerMaxHp - snapshot.PlayerMaxHp);
+
+        private int HealthResourceCost(SimulationSnapshot snapshot)
+            => _initialPlayerHp - snapshot.PlayerHp
+                + _initialPlayerMaxHp - snapshot.PlayerMaxHp;
+
+        private static int CompletedCombatTurn(SearchNode node)
+            => node.Action?.Turn ?? node.Turn;
 
         private static bool IsBetterUtilityDefensive(SearchNode candidate, SearchNode? current)
             => current == null
@@ -2040,5 +2355,166 @@ internal sealed partial class CombatBeamSolver
                 SolverWeights.RetainedAttackGrowthBeamCap,
                 Math.Max(0, snapshot.RetainedAttackValue - _run.InitialRetainedAttackValue));
 
+    }
+
+    internal void VerifyFinalPolicyQualificationRetentionForTesting(string potionId, int forcedSlot)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(potionId);
+        const int cohortHp = 37;
+        if (BeamRetentionPolicy.FinalPolicyOptionalAmbergrisPlayerHpCohort(
+                optionalAmbergrisCount: 1,
+                playerHp: cohortHp) != cohortHp
+            || BeamRetentionPolicy.FinalPolicyOptionalAmbergrisPlayerHpCohort(
+                optionalAmbergrisCount: 0,
+                playerHp: cohortHp) != int.MinValue
+            || !BeamRetentionPolicy.FinalPolicyTheftEscapeEligible(
+                SolverTheftPolicy.PreserveResources,
+                potionCount: 1,
+                outstandingStolenResource: 2,
+                potionFreeOutstandingResource: 3)
+            || BeamRetentionPolicy.FinalPolicyTheftEscapeEligible(
+                SolverTheftPolicy.PreserveResources,
+                potionCount: 1,
+                outstandingStolenResource: 3,
+                potionFreeOutstandingResource: 3)
+            || BeamRetentionPolicy.FinalPolicyTheftEscapeEligible(
+                theftPolicy: null,
+                potionCount: 1,
+                outstandingStolenResource: 2,
+                potionFreeOutstandingResource: 3))
+        {
+            throw new InvalidOperationException(
+                "最终策略资格的 Ambergris 或偷窃分组不符合终局政策。 ");
+        }
+        using IDisposable notificationIsolation = SimulationNotificationIsolation.Enter();
+        SimulationSnapshot snapshot = Replay([]);
+        try
+        {
+            int limit = checked(_profile.BeamWidth * 4);
+            int potionCount = checked(snapshot.PotionUseCount + 1);
+            CombatProgressState combatProgress = CombatProgressState.Capture(snapshot);
+            bool terminal = snapshot.PlayerDead
+                || snapshot.AllEnemiesDead
+                || snapshot.BoundaryReason != SearchBoundaryReason.None;
+            SearchNode rootNode = new(
+                null,
+                0,
+                snapshot.PotionUseCount,
+                snapshot.PotionStrategicCost,
+                _startTurnNumber,
+                SearchRouteTraits.None,
+                0,
+                snapshot.Score,
+                snapshot.StateKey,
+                snapshot.HasRisk,
+                snapshot.BoundaryReason,
+                terminal,
+                null,
+                snapshot,
+                combatProgress);
+
+            SearchNode MakeNode(
+                SearchNode parent,
+                PlanAction action,
+                int actionCount,
+                int candidatePotionCount)
+                => new(
+                    action,
+                    actionCount,
+                    candidatePotionCount,
+                    snapshot.PotionStrategicCost,
+                    _startTurnNumber,
+                    SearchRouteTraits.None,
+                    0,
+                    snapshot.Score,
+                    snapshot.StateKey,
+                    snapshot.HasRisk,
+                    snapshot.BoundaryReason,
+                    terminal,
+                    parent,
+                    snapshot,
+                    combatProgress);
+
+            SearchNode sharedPrefix = MakeNode(
+                rootNode,
+                new PlanAction(
+                    PlanActionKind.PlayCard,
+                    _startTurnNumber,
+                    CardId: "TEST.FINAL_POLICY_PREFIX"),
+                1,
+                snapshot.PotionUseCount);
+            int ordinarySlot = forcedSlot == 0 ? 1 : 0;
+            List<SearchNode> candidates = new(limit + 2);
+            for (int index = 0; index <= limit; index++)
+            {
+                candidates.Add(MakeNode(
+                    sharedPrefix,
+                    new PlanAction(
+                        PlanActionKind.UsePotion,
+                        _startTurnNumber,
+                        PotionSlot: ordinarySlot,
+                        PotionId: potionId),
+                    2,
+                    potionCount));
+            }
+            SearchNode forcedPrefix = MakeNode(
+                sharedPrefix,
+                new PlanAction(
+                    PlanActionKind.PlayCard,
+                    _startTurnNumber,
+                    CardId: "TEST.FINAL_POLICY_DELAY"),
+                2,
+                snapshot.PotionUseCount);
+            SearchNode forcedCandidate = MakeNode(
+                forcedPrefix,
+                new PlanAction(
+                    PlanActionKind.UsePotion,
+                    _startTurnNumber,
+                    PotionSlot: forcedSlot,
+                    PotionId: potionId),
+                3,
+                potionCount);
+            candidates.Add(forcedCandidate);
+
+            List<SearchNode> ordinaryTop = Retention.RankBest(
+                candidates,
+                limit,
+                finalQualityFirst: true);
+            if (ordinaryTop.Any(node => ReferenceEquals(node, forcedCandidate)))
+            {
+                throw new InvalidOperationException(
+                    "最终策略历史保留回归的普通 Top-N 截断前置条件没有成立。");
+            }
+
+            List<SearchNode> retained = Retention.RankFinal(candidates);
+            if (!retained.Any(node => ReferenceEquals(node, forcedCandidate)))
+            {
+                throw new InvalidOperationException(
+                    "最终候选截断丢失了同药水不同槽位的策略历史代表。");
+            }
+            if (retained.Count > limit + 2)
+            {
+                throw new InvalidOperationException(
+                    "未满足的强制用药历史没有折叠为有界资格分组。");
+            }
+
+            PotionStrategySnapshot forcedStrategy = new(
+                SolverPotionPolicy.Smart,
+                [new PotionSlotDirective(forcedSlot, potionId, SolverPotionDirective.Force)]);
+            if (!forcedStrategy.EvaluateForcedUses(
+                    forcedCandidate.Actions,
+                    renewablePotionShapedRock: false).AllForcedUsesSatisfied
+                || forcedStrategy.EvaluateForcedUses(
+                    candidates[0].Actions,
+                    renewablePotionShapedRock: false).AllForcedUsesSatisfied)
+            {
+                throw new InvalidOperationException(
+                    "最终策略历史保留回归没有维持精确槽位的强制用药资格。");
+            }
+        }
+        finally
+        {
+            snapshot.ReleaseSimulator();
+        }
     }
 }

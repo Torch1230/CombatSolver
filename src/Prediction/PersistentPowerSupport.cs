@@ -126,7 +126,7 @@ internal static class PersistentPowerSupport
 
         int genesis = combat.GetAmount<GenesisPower>(owner);
         if (genesis > 0)
-            PowerLifecycleSupport.GainStars(simulator, combat, player, genesis);
+            simulator.GainStars(player, genesis);
 
         int lightningRod = combat.GetAmount<LightningRodPower>(owner);
         if (lightningRod > 0)
@@ -150,7 +150,7 @@ internal static class PersistentPowerSupport
         int starsNextTurn = combat.GetAmount<StarNextTurnPower>(owner);
         if (starsNextTurn > 0)
         {
-            PowerLifecycleSupport.GainStars(simulator, combat, player, starsNextTurn);
+            simulator.GainStars(player, starsNextTurn);
             combat.SetAmount<StarNextTurnPower>(owner, 0);
         }
     }
