@@ -1,3 +1,4 @@
+using CombatSolver.Engine.Common;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Models;
@@ -16,9 +17,9 @@ internal static class KnowledgeDemonChoiceSupport
 {
     private static readonly string[][] OptionsByCounter =
     [
-        [ModelDb.Card<Disintegration>().Id.Entry, ModelDb.Card<MindRot>().Id.Entry],
-        [ModelDb.Card<Disintegration>().Id.Entry, ModelDb.Card<Sloth>().Id.Entry],
-        [ModelDb.Card<Disintegration>().Id.Entry, ModelDb.Card<WasteAway>().Id.Entry],
+        [CanonicalModels.Card<Disintegration>().Id.Entry, CanonicalModels.Card<MindRot>().Id.Entry],
+        [CanonicalModels.Card<Disintegration>().Id.Entry, CanonicalModels.Card<Sloth>().Id.Entry],
+        [CanonicalModels.Card<Disintegration>().Id.Entry, CanonicalModels.Card<WasteAway>().Id.Entry],
     ];
 
     public static void Resolve(
@@ -52,13 +53,13 @@ internal static class KnowledgeDemonChoiceSupport
         if (!optionIds.Contains(selectedId, StringComparer.Ordinal))
             throw new InvalidOperationException($"知识恶魔当前不能选择 {selectedId}。");
 
-        if (selectedId == ModelDb.Card<Disintegration>().Id.Entry)
+        if (selectedId == CanonicalModels.Card<Disintegration>().Id.Entry)
             combat.Apply<DisintegrationPower>(player, 6 + counter, player);
-        else if (selectedId == ModelDb.Card<MindRot>().Id.Entry)
+        else if (selectedId == CanonicalModels.Card<MindRot>().Id.Entry)
             combat.Apply<MindRotPower>(player, 1, player);
-        else if (selectedId == ModelDb.Card<Sloth>().Id.Entry)
+        else if (selectedId == CanonicalModels.Card<Sloth>().Id.Entry)
             combat.Apply<SlothPower>(player, 3, player);
-        else if (selectedId == ModelDb.Card<WasteAway>().Id.Entry)
+        else if (selectedId == CanonicalModels.Card<WasteAway>().Id.Entry)
             combat.Apply<WasteAwayPower>(player, 1, player);
         else
             throw new InvalidOperationException($"知识恶魔诅咒 {selectedId} 没有模拟效果。");

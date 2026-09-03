@@ -36,12 +36,15 @@ internal readonly record struct StrategicEffectVector(
 {
     public static StrategicEffectVector Zero { get; } = new(0, 0, 0, 0, 0);
 
-    public int RetentionValue => SaturatingSum(
-        DamagePotential,
-        PreventionPotential,
-        ResourcePotential,
-        CardAccessPotential,
-        ScalingPotential);
+    // 快照与剪枝每个节点都读这个值；固定五项直接累加，不走 params 数组分配。
+    public int RetentionValue => (int)Math.Clamp(
+        (long)DamagePotential
+            + PreventionPotential
+            + ResourcePotential
+            + CardAccessPotential
+            + ScalingPotential,
+        0L,
+        int.MaxValue);
 
     public static StrategicEffectVector operator +(
         StrategicEffectVector left,
@@ -177,16 +180,17 @@ internal readonly record struct StrategicEffectContext(
             bool hasDebuffDynamicVar = false;
             if ((needsBlockSkillCount && cardType == CardType.Skill) || needsDebuffCount)
             {
-                foreach (KeyValuePair<string, MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar> dynamicVar
-                         in card.DynamicVars)
+                // DynamicVarSet 的 GetEnumerator 会把内部 Dictionary 的结构体枚举器装箱，
+                // 每张牌每次快照都要跑一遍；直接枚举其（已 publicize 的）内部字典。
+                foreach (KeyValuePair<string, MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar> dynamicVar in card.DynamicVars._vars)
                 {
-                    string key = dynamicVar.Key;
-                    if (needsBlockSkillCount && !hasBlockDynamicVar && cardType == CardType.Skill)
-                        hasBlockDynamicVar = IsBlockDynamicVar(key);
-                    if (needsDebuffCount && !hasDebuffDynamicVar)
-                        hasDebuffDynamicVar = IsDebuffDynamicVar(key);
-                    if ((!needsDebuffCount || hasDebuffDynamicVar)
-                        && (!needsBlockSkillCount || cardType != CardType.Skill || hasBlockDynamicVar))
+                    if (ObserveDynamicVarKey(
+                            dynamicVar.Key,
+                            cardType,
+                            needsBlockSkillCount,
+                            needsDebuffCount,
+                            ref hasBlockDynamicVar,
+                            ref hasDebuffDynamicVar))
                     {
                         break;
                     }
@@ -302,6 +306,23 @@ internal readonly record struct StrategicEffectContext(
         => matchingCards == 0
             ? 0
             : Math.Max(1, (int)Math.Ceiling((double)matchingCards * reachableCards / deckSize));
+
+    /// <summary>返回 true 表示需要的标记都已确定，可以停止扫描。</summary>
+    private static bool ObserveDynamicVarKey(
+        string key,
+        CardType cardType,
+        bool needsBlockSkillCount,
+        bool needsDebuffCount,
+        ref bool hasBlockDynamicVar,
+        ref bool hasDebuffDynamicVar)
+    {
+        if (needsBlockSkillCount && !hasBlockDynamicVar && cardType == CardType.Skill)
+            hasBlockDynamicVar = IsBlockDynamicVar(key);
+        if (needsDebuffCount && !hasDebuffDynamicVar)
+            hasDebuffDynamicVar = IsDebuffDynamicVar(key);
+        return (!needsDebuffCount || hasDebuffDynamicVar)
+            && (!needsBlockSkillCount || cardType != CardType.Skill || hasBlockDynamicVar);
+    }
 
     private static bool IsDebuffDynamicVar(string key)
         => key.Contains("Weak", StringComparison.OrdinalIgnoreCase)

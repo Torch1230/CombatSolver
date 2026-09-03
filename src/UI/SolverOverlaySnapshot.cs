@@ -305,20 +305,37 @@ internal sealed record SolverOverlaySnapshot(
             action.ReplayCount);
     }
 
+    // ModelDb.AllCards 是惰性 LINQ 查询，每次枚举都重跑 SelectMany/Distinct 并分配整套 HashSet；
+    // 进度刷新会对路线里每个动作各查一次。按牌 Id 建一次只读索引即可（ModelDb 在 Init 后不变）。
+    private static Dictionary<string, SolverOverlayActionVisualKind>? _visualKindsByCardId;
+
     private static SolverOverlayActionVisualKind ResolveVisualKind(PlanAction action)
     {
         if (action.Kind == PlanActionKind.UsePotion)
             return SolverOverlayActionVisualKind.Potion;
-        CardModel? card = ModelDb.AllCards.FirstOrDefault(candidate =>
-            candidate.Id.Entry.Equals(action.CardId, StringComparison.Ordinal));
-        return card?.Type.ToString() switch
+        Dictionary<string, SolverOverlayActionVisualKind> index =
+            _visualKindsByCardId ??= BuildVisualKindIndex();
+        return action.CardId is { } cardId && index.TryGetValue(cardId, out SolverOverlayActionVisualKind kind)
+            ? kind
+            : SolverOverlayActionVisualKind.Other;
+    }
+
+    private static Dictionary<string, SolverOverlayActionVisualKind> BuildVisualKindIndex()
+    {
+        Dictionary<string, SolverOverlayActionVisualKind> index = new(StringComparer.Ordinal);
+        foreach (CardModel card in ModelDb.AllCards)
         {
-            "Attack" => SolverOverlayActionVisualKind.Attack,
-            "Skill" => SolverOverlayActionVisualKind.Skill,
-            "Power" => SolverOverlayActionVisualKind.Power,
-            "Curse" or "Status" => SolverOverlayActionVisualKind.Negative,
-            _ => SolverOverlayActionVisualKind.Other,
-        };
+            // 与原实现 FirstOrDefault 一致：同名 Id 只保留首个匹配。
+            index.TryAdd(card.Id.Entry, card.Type.ToString() switch
+            {
+                "Attack" => SolverOverlayActionVisualKind.Attack,
+                "Skill" => SolverOverlayActionVisualKind.Skill,
+                "Power" => SolverOverlayActionVisualKind.Power,
+                "Curse" or "Status" => SolverOverlayActionVisualKind.Negative,
+                _ => SolverOverlayActionVisualKind.Other,
+            });
+        }
+        return index;
     }
 
     private static string FormatTurnStartChoice(PlanCardChoice choice)

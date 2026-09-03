@@ -91,7 +91,7 @@ internal static partial class CardOnPlaySupport
         List<PredictedCard> souls = new(xValue);
         for (int index = 0; index < xValue; index++)
         {
-            PredictedCard soul = PredictedCard.Create(ModelDb.Card<Soul>(), card.Owner);
+            PredictedCard soul = PredictedCard.Create(CanonicalModels.Card<Soul>(), card.Owner);
             if (card.IsUpgraded)
                 soul.Upgrade();
             souls.Add(soul);

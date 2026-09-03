@@ -17,13 +17,43 @@ namespace CombatSolver;
 
 internal sealed partial class SimulatedCombatState
 {
+    /// <summary>
+    /// 每个回合开始都要枚举一遍参与方的遗物；用普通循环替代 SelectMany/Where/Contains，
+    /// 避免迭代器、闭包与 ForkableList 的装箱枚举器分配。顺序与原实现一致：按玩家顺序、再按遗物顺序。
+    /// </summary>
+    private List<RelicModel> RelicsParticipatingInSideTurn(IReadOnlyList<Creature> participants)
+    {
+        List<RelicModel> relics = [];
+        for (int playerIndex = 0; playerIndex < Players.Count; playerIndex++)
+        {
+            IReadOnlyList<RelicModel> owned = RelicsOf(Players[playerIndex]);
+            for (int relicIndex = 0; relicIndex < owned.Count; relicIndex++)
+            {
+                RelicModel relic = owned[relicIndex];
+                if (relic.IsMelted)
+                    continue;
+                Creature ownerCreature = relic.Owner.Creature;
+                bool participating = false;
+                for (int index = 0; index < participants.Count; index++)
+                {
+                    if (ReferenceEquals(participants[index], ownerCreature))
+                    {
+                        participating = true;
+                        break;
+                    }
+                }
+                if (participating)
+                    relics.Add(relic);
+            }
+        }
+        return relics;
+    }
+
     public void PrepareRelicsBeforeSideTurnStart(
         CombatPredictionSimulator simulator,
         IReadOnlyList<Creature> participants)
     {
-        foreach (RelicModel relic in Players
-                     .SelectMany(RelicsOf)
-                     .Where(relic => !relic.IsMelted && participants.Contains(relic.Owner.Creature)))
+        foreach (RelicModel relic in RelicsParticipatingInSideTurn(participants))
         {
             RelicPredictionStateSupport.ResetBeforeSideTurnStart(simulator, relic);
             switch (relic)
@@ -234,9 +264,7 @@ internal sealed partial class SimulatedCombatState
         CombatSide side,
         IReadOnlyList<Creature> participants)
     {
-        foreach (RelicModel relic in Players
-                     .SelectMany(RelicsOf)
-                     .Where(relic => !relic.IsMelted && participants.Contains(relic.Owner.Creature)))
+        foreach (RelicModel relic in RelicsParticipatingInSideTurn(participants))
         {
             int turn = GetPlayerTurnNumber(relic.Owner);
             RelicPredictionStateSupport.ResetAfterSideTurnStart(simulator, relic, turn);

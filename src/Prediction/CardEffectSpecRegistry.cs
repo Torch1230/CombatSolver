@@ -267,7 +267,7 @@ internal static class CardEffectSpecRegistry
                 CardChoiceSupport.TransformCards(
                     simulator,
                     statuses,
-                    ModelDb.Card<Fuel>(),
+                    CanonicalModels.Card<Fuel>(),
                     card.IsUpgraded);
                 applied = true;
                 break;
@@ -425,7 +425,7 @@ internal static class CardEffectSpecRegistry
                 List<PredictedCard> souls = new(count);
                 for (int index = 0; index < count; index++)
                 {
-                    PredictedCard soul = PredictedCard.Create(ModelDb.Card<Soul>(), card.Owner);
+                    PredictedCard soul = PredictedCard.Create(CanonicalModels.Card<Soul>(), card.Owner);
                     if (card.IsUpgraded)
                         soul.Upgrade();
                     souls.Add(soul);

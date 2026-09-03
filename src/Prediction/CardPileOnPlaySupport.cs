@@ -98,7 +98,7 @@ internal static class CardPileOnPlaySupport
     {
         IReadOnlyList<PredictedCard> shivs = GenerateShivs(simulator, owner, count, upgraded: false);
         foreach (PredictedCard shiv in shivs)
-            shiv.Enchant(ModelDb.Enchantment<Inky>().ToMutable(), 1m);
+            shiv.Enchant(CanonicalModels.Enchantment<Inky>().ToMutable(), 1m);
     }
 
     internal static IReadOnlyList<PredictedCard> GenerateShivs(
@@ -110,7 +110,7 @@ internal static class CardPileOnPlaySupport
         List<PredictedCard> shivs = new(count);
         for (int index = 0; index < count; index++)
         {
-            PredictedCard shiv = PredictedCard.Create(ModelDb.Card<Shiv>(), owner);
+            PredictedCard shiv = PredictedCard.Create(CanonicalModels.Card<Shiv>(), owner);
             if (upgraded)
                 shiv.Upgrade();
             shivs.Add(shiv);

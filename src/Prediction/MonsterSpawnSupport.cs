@@ -1,3 +1,4 @@
+using CombatSolver.Engine.Common;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Models;
@@ -32,7 +33,7 @@ internal static class MonsterSpawnSupport
         Action<T>? configure = null)
         where T : MonsterModel
     {
-        T monster = (T)ModelDb.Monster<T>().ToMutable();
+        T monster = (T)CanonicalModels.Monster<T>().ToMutable();
         configure?.Invoke(monster);
         return combat.CreatePredictedMonster(simulator, monster, CombatSide.Enemy, slot);
     }

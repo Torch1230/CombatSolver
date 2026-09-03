@@ -236,7 +236,7 @@ internal static class PotionOnUseSupport
             {
                 List<PredictedCard> souls = new(value.DynamicVars.Cards.IntValue);
                 for (int index = 0; index < value.DynamicVars.Cards.IntValue; index++)
-                    souls.Add(PredictedCard.Create(ModelDb.Card<Soul>(), PlayerTarget()));
+                    souls.Add(PredictedCard.Create(CanonicalModels.Card<Soul>(), PlayerTarget()));
                 simulator.AddGeneratedCardsToCombat(
                     souls,
                     PileType.Hand,

@@ -118,12 +118,22 @@ internal sealed partial class SimulatedCombatState
     private void AppendPotionFingerprint(ref StateFingerprintBuilder fingerprint)
     {
         fingerprint.Add('p');
-        foreach (Player player in Players.OrderBy(player => player.NetId))
+        // 单人战斗是唯一支持的模式；只有多名玩家时才需要按 NetId 排序，避免每次快照都走 LINQ。
+        if (Players.Count == 1)
         {
-            fingerprint.Add((long)player.NetId);
-            fingerprint.Add(PotionSlotCount(player));
-            for (int slot = 0; slot < PotionSlotCount(player); slot++)
-                fingerprint.Add(GetPotionAtSlot(player, slot)?.Id.Entry ?? "-");
+            AppendPlayerPotionFingerprint(ref fingerprint, Players[0]);
+            return;
         }
+        foreach (Player player in Players.OrderBy(player => player.NetId))
+            AppendPlayerPotionFingerprint(ref fingerprint, player);
+    }
+
+    private void AppendPlayerPotionFingerprint(ref StateFingerprintBuilder fingerprint, Player player)
+    {
+        fingerprint.Add((long)player.NetId);
+        int slotCount = PotionSlotCount(player);
+        fingerprint.Add(slotCount);
+        for (int slot = 0; slot < slotCount; slot++)
+            fingerprint.Add(GetPotionAtSlot(player, slot)?.Id.Entry ?? "-");
     }
 }

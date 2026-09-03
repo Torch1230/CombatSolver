@@ -43,7 +43,7 @@ internal sealed partial class CombatPredictionSimulator
     {
         for (var i = 0; i < count; i++)
         {
-            if (!OrbChannel(player, ModelDb.Orb<T>().ToMutable()))
+            if (!OrbChannel(player, CanonicalModels.Orb<T>().ToMutable()))
             {
                 break;
             }

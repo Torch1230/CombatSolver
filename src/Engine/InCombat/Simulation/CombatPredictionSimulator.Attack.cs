@@ -35,13 +35,31 @@ internal sealed partial class CombatPredictionSimulator
         attackContext.AddResultsInternal(results);
     }
 
+    /// <summary>把多次命中的结果展平成一个列表；热路径上避免 SelectMany/ToArray 的迭代器与两次拷贝。</summary>
+    private static DamageResult[] FlattenAttackResults(AttackCommand attackCommand)
+    {
+        int total = 0;
+        foreach (List<DamageResult> hit in attackCommand.Results)
+            total += hit.Count;
+        if (total == 0)
+            return [];
+        DamageResult[] flattened = new DamageResult[total];
+        int index = 0;
+        foreach (List<DamageResult> hit in attackCommand.Results)
+        {
+            hit.CopyTo(flattened, index);
+            index += hit.Count;
+        }
+        return flattened;
+    }
+
     public void EndAttackContext(AttackCommand attackContext)
     {
         Creature attacker = attackContext.Attacker
             ?? throw new InvalidOperationException("Attack context must have an attacker.");
         History.CreatureAttacked(
             attacker,
-            attackContext.Results.SelectMany(results => results).ToArray());
+            FlattenAttackResults(attackContext));
         if (State.CombatState is ICombatPredictionCardEventSink eventSink)
             eventSink.RecordCreatureAttacked(attacker);
         HookMirrors.AfterAttack(this, attackContext);
@@ -125,7 +143,7 @@ internal sealed partial class CombatPredictionSimulator
 
         History.CreatureAttacked(
             attacker,
-            attackCommand.Results.SelectMany(results => results).ToArray());
+            FlattenAttackResults(attackCommand));
         if (State.CombatState is ICombatPredictionCardEventSink eventSink)
             eventSink.RecordCreatureAttacked(attacker);
 

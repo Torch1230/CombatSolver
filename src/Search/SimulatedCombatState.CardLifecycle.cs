@@ -43,7 +43,7 @@ internal sealed partial class SimulatedCombatState
     public T AddPowerInstance<T>(Creature owner, int amount, Creature? applier = null)
         where T : PowerModel
     {
-        T power = (T)ModelDb.Power<T>().ToMutable();
+        T power = (T)CanonicalModels.Power<T>().ToMutable();
         power._owner = owner;
         power._applier = applier;
         power._target = owner;
@@ -65,7 +65,7 @@ internal sealed partial class SimulatedCombatState
         Creature osty;
         if (created)
         {
-            Osty model = (Osty)ModelDb.Monster<Osty>().ToMutable();
+            Osty model = (Osty)CanonicalModels.Monster<Osty>().ToMutable();
             osty = CreatePredictedMonster(simulator, model, player.Creature.Side, slot: null);
             osty.PetOwner = player;
             AddPredictedMonster(osty);
@@ -374,8 +374,8 @@ internal sealed partial class SimulatedCombatState
                 continue;
             CardModel? canonical = power switch
             {
-                InfiniteBladesPower => ModelDb.Card<Shiv>(),
-                SentryModePower => ModelDb.Card<SweepingGaze>(),
+                InfiniteBladesPower => CanonicalModels.Card<Shiv>(),
+                SentryModePower => CanonicalModels.Card<SweepingGaze>(),
                 _ => null,
             };
             if (canonical == null)
