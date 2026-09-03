@@ -78,12 +78,35 @@ internal sealed partial class SimulatedCombatState
     {
         public int Count => first.Count + second.Count;
         public Creature this[int index] => index < first.Count ? first[index] : second[index - first.Count];
+        // 原来内层用 foreach 走两个接口类型的 IReadOnlyList，除了迭代器状态机自身还各装箱一个
+        // ForkableList 枚举器。按下标推进给出完全相同的序列，只留状态机一个对象。
         public IEnumerator<Creature> GetEnumerator()
         {
-            foreach (Creature creature in first)
-                yield return creature;
-            foreach (Creature creature in second)
-                yield return creature;
+            for (int index = 0; index < first.Count; index++)
+                yield return first[index];
+            for (int index = 0; index < second.Count; index++)
+                yield return second[index];
+        }
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
+    // 只读拼接视图：把两段已经算好的监听器快照按 前缀→后缀 的顺序对外呈现为一个序列，
+    // 元素与顺序和把两段拷进同一个 List 完全一致。
+    private sealed class ConcatenatedListenerView(
+        IReadOnlyList<AbstractModel> prefix,
+        IReadOnlyList<AbstractModel> suffix) : IReadOnlyList<AbstractModel>
+    {
+        public IReadOnlyList<AbstractModel> Prefix { get; } = prefix;
+        public IReadOnlyList<AbstractModel> Suffix { get; } = suffix;
+        public int Count => Prefix.Count + Suffix.Count;
+        public AbstractModel this[int index]
+            => index < Prefix.Count ? Prefix[index] : Suffix[index - Prefix.Count];
+        public IEnumerator<AbstractModel> GetEnumerator()
+        {
+            for (int index = 0; index < Prefix.Count; index++)
+                yield return Prefix[index];
+            for (int index = 0; index < Suffix.Count; index++)
+                yield return Suffix[index];
         }
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
     }
@@ -1468,10 +1491,13 @@ internal sealed partial class SimulatedCombatState
             _effectiveRunHookListeners = combatListeners;
             return _effectiveRunHookListeners;
         }
-        List<AbstractModel> listeners = new(_rootRunHookListeners.Length + combatListeners.Count);
-        listeners.AddRange(_rootRunHookListeners);
-        listeners.AddRange(combatListeners);
-        _effectiveRunHookListeners = listeners;
+        // 运行级监听表 = 不可变的根牌组前缀 + 战斗监听表。两段都是已经算好的只读快照，
+        // 原来每次失效都要把它们拷进一个牌组大小的新 List；改用只读拼接视图给出逐条同序的
+        // 同一序列，把整表拷贝降成一个两字段对象。消费方（HookListenerEnumerable、无人测试
+        // 的下标断言）全部按 Count/索引访问，看到的元素与顺序完全一致。
+        _effectiveRunHookListeners = new ConcatenatedListenerView(
+            _rootRunHookListeners,
+            combatListeners);
         return _effectiveRunHookListeners;
     }
 
@@ -1605,8 +1631,12 @@ internal sealed partial class SimulatedCombatState
                 listeners.Add(listener);
             }
         }
-        foreach (Player player in Players)
+        // 下面几处原来用接口类型 foreach / LINQ Where 走 Players、Creatures 与已注册卡表，
+        // 每次重建都要装箱枚举器并新建闭包。改成按下标推进，遍历顺序与筛选条件都不变。
+        IReadOnlyList<Player> players = Players;
+        for (int playerIndex = 0; playerIndex < players.Count; playerIndex++)
         {
+            Player player = players[playerIndex];
             for (int slot = 0; slot < PotionSlotCount(player); slot++)
             {
                 PotionModel? potion = GetPotionAtSlot(player, slot);
@@ -1614,23 +1644,29 @@ internal sealed partial class SimulatedCombatState
                     listeners.Add(potion);
             }
         }
-        foreach (Creature creature in Creatures.Where(creature => !_rootCreatures.Contains(creature)))
+        IReadOnlyList<Creature> creatures = Creatures;
+        for (int creatureIndex = 0; creatureIndex < creatures.Count; creatureIndex++)
         {
+            Creature creature = creatures[creatureIndex];
+            if (_rootCreatures.Contains(creature))
+                continue;
             listeners.AddRange(creature.Powers);
             if (creature.Monster != null)
                 listeners.Add(creature.Monster);
         }
         CombatPredictionState predictionState = _predictionState
             ?? throw new InvalidOperationException("Combat prediction state is not attached.");
-        foreach (Player player in Players)
-            listeners.AddRange(predictionState.GetPlayerCombatState(player).OrbQueue.Orbs);
+        for (int playerIndex = 0; playerIndex < players.Count; playerIndex++)
+            listeners.AddRange(predictionState.GetPlayerCombatState(players[playerIndex]).OrbQueue.Orbs);
         if (_registeredCombatCards != null)
         {
             List<CardModel>? cardAttachedListenerOwners =
                 _modHookSubscribers.HasBaseLibCardModifiers ? [] : null;
-            foreach (PredictedCard card in _registeredCombatCards
-                         .Where(card => !card.Preview.HasBeenRemovedFromState))
+            for (int cardIndex = 0; cardIndex < _registeredCombatCards.Count; cardIndex++)
             {
+                PredictedCard card = _registeredCombatCards[cardIndex];
+                if (card.Preview.HasBeenRemovedFromState)
+                    continue;
                 CardModel preview = card.Preview;
                 listeners.Add(preview);
                 if (preview.Affliction != null)

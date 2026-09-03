@@ -176,11 +176,28 @@ internal sealed partial class SimulatedCombatState
 
         if (_effectiveRunHookListeners is not null)
         {
-            fork._effectiveRunHookListeners = ReferenceEquals(
-                _effectiveRunHookListeners,
-                _effectiveHookListeners)
-                ? fork._effectiveHookListeners
-                : RemapCachedModels(_effectiveRunHookListeners, context);
+            if (ReferenceEquals(_effectiveRunHookListeners, _effectiveHookListeners))
+            {
+                fork._effectiveRunHookListeners = fork._effectiveHookListeners;
+            }
+            else if (_effectiveRunHookListeners is ConcatenatedListenerView view
+                && ReferenceEquals(view.Suffix, _effectiveHookListeners)
+                && fork._effectiveHookListeners is { } forkedSuffix)
+            {
+                // 逐元素重映射对拼接是可分配的：remap(前缀 ++ 后缀) == remap(前缀) ++ remap(后缀)。
+                // 后缀就是刚刚重映射好的战斗监听表，前缀是根牌组快照（只含 CardModel/Enchantment，
+                // 从不作为 Fork 源登记），两段都没变时连视图对象一起复用。
+                IReadOnlyList<AbstractModel> forkedPrefix = RemapCachedModels(view.Prefix, context);
+                fork._effectiveRunHookListeners =
+                    ReferenceEquals(forkedPrefix, view.Prefix)
+                        && ReferenceEquals(forkedSuffix, view.Suffix)
+                        ? _effectiveRunHookListeners
+                        : new ConcatenatedListenerView(forkedPrefix, forkedSuffix);
+            }
+            else
+            {
+                fork._effectiveRunHookListeners = RemapCachedModels(_effectiveRunHookListeners, context);
+            }
         }
 
     }
