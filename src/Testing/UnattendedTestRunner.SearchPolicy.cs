@@ -562,7 +562,7 @@ internal sealed partial class UnattendedTestRunner
                 memoryLoadBytesAtStart: 0,
                 systemMemoryLimitBytes: long.MaxValue,
                 _ => { });
-            fallbackSignal.UseDefaultGcFallback();
+            fallbackSignal.UseDefaultGcFallback(systemHeadroomConstrained: true);
             if (fallbackSignal.IsEnabled
                 || !fallbackSignal.ConservativeParallelismRequired)
             {

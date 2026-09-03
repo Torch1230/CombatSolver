@@ -1334,15 +1334,16 @@ internal sealed partial class CombatBeamSolver
                             foreach (ExpansionWorkerOutcome outcome in outcomes)
                                 ObserveParentAllocation(outcome.AllocatedBytes);
                         }
-                        if (workerNodes.Count > 1 && waveStayedWithinReserve)
+                        if (workerNodes.Count > 1)
                         {
-                            parallelWaveCapacity = Math.Min(
-                                expansionParallelism,
-                                parallelWaveCapacity * 2);
-                        }
-                        else
-                        {
-                            parallelWaveCapacity = Math.Min(2, expansionParallelism);
+                            // Multiplicative increase / multiplicative decrease. Collapsing straight
+                            // back to two lanes after a single heavy wave left most of the user's
+                            // requested lanes idle for the following waves.
+                            parallelWaveCapacity = waveStayedWithinReserve
+                                ? Math.Min(expansionParallelism, parallelWaveCapacity * 2)
+                                : Math.Max(
+                                    Math.Min(2, expansionParallelism),
+                                    parallelWaveCapacity / 2);
                         }
                         ReclaimAfterCommittedWork("after_parallel_wave");
                     }
@@ -1391,8 +1392,7 @@ internal sealed partial class CombatBeamSolver
             foreach (SearchNode node in frontier)
                 CaptureContinuation(node);
             List<SearchNode> retainedAfterRound = [.. completed, .. frontier];
-            ReleaseDroppedSnapshots(ended, retainedAfterRound);
-            foreach (SearchNode candidate in retainedAfterRound)
+            ReleaseDroppedSnapshots(ended, retainedAfterRound);            foreach (SearchNode candidate in retainedAfterRound)
             {
                 ConsiderCompleteVictory(candidate);
                 ConsiderCurrentTurnCandidate(candidate);
