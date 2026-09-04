@@ -2653,6 +2653,19 @@ internal static class SolverController
                 SearchReason.DeploymentDrift,
                 deployWhenReady: !_combat.FullAutoEnabled);
         }
+        catch (InvalidOperationException ex) when (IsDeploymentTurnDrift(ex))
+        {
+            _combat.ContinuationSource = null;
+            CompleteDeployment(deployment);
+            Entry.Logger.Warn(
+                $"[CombatSolver/Test] DEPLOY_REPLAN turn={turn} reason=turn_drift " +
+                $"message={ex.Message}");
+            RequestSearch(
+                host,
+                state,
+                SearchReason.DeploymentDrift,
+                deployWhenReady: !_combat.FullAutoEnabled);
+        }
         catch (NativeChoicePlanMismatchException ex)
         {
             _combat.ContinuationSource = null;
@@ -2741,6 +2754,12 @@ internal static class SolverController
     private static bool IsMissingDeploymentCard(InvalidOperationException exception)
         => exception.Message.StartsWith("部署时找不到计划中的手牌状态 ", StringComparison.Ordinal)
             || exception.Message.StartsWith("部署时找不到手牌 ", StringComparison.Ordinal);
+
+    private static bool IsDeploymentTurnDrift(InvalidOperationException exception)
+        => string.Equals(
+            exception.Message,
+            "部署途中已不再是原玩家回合。",
+            StringComparison.Ordinal);
 
     private static async Task<GameAction> EnqueueAndCaptureActionAsync(
         Func<GameAction, bool> matches,
