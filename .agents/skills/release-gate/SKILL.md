@@ -93,6 +93,12 @@ Linux 不使用上述 Windows 路径。上传前必须设置 `COMBATSOLVER_MOD_U
 
 上传命令报告成功就是远端完成证据。不要打开创意工坊页面、重新下载订阅内容、再次读取版本或重复上传。失败时只修正命令明确报告的原因，再重试一次；原因不明则原样报告。
 
+### Steam 工坊 `FileNotFound` 排查
+
+- `k_EItemUpdateStatusInvalid` 与 `k_EResultFileNotFound` 不一定表示暂存目录缺文件。若工作区的 `image.png`、`workshop.json`、`content/` 和 `mod_id.txt` 已通过一次本地读取确认存在，先读取 Steam 客户端日志 `D:\Steam\logs\workshop_log.txt` 中对应时间和 AppID 的记录。
+- 如果日志写明 `Getting Workshop info for item <id> failed : File Not Found`，而工坊页面和条目仍存在，根因是 Steam 客户端当前无法查询条目，通常与 Steam CM/网络连接状态有关，不要改名、删除或重建暂存文件。等待客户端恢复登录连接后，按第 5 节的原命令重试一次。
+- 这类重试期间以 Steam 日志中的 `Uploaded new content ...` 和 `Upload finished for workshop item <id> : OK` 作为实际成功证据；上传器末尾若同时打印中间状态 `k_EItemUpdateStatusInvalid`，以最终成功行和 Steam 日志为准，不再重复上传。
+
 ## 6. GitHub 干净提交与推送
 
 - 读取一次 `git status --short --branch`、当前分支、远端和领先关系。显式暂存本任务的跟踪文件；保留并排除用户其他改动、发布 ZIP、构建产物、日志和创意工坊暂存内容。
