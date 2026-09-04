@@ -62,8 +62,11 @@ internal sealed record NativeChoiceTrace(
 internal class NativeChoicePlanMismatchException(string message)
     : InvalidOperationException(message);
 
-internal sealed class NativeChoiceSurfaceMismatchException(string message)
+internal class NativeChoiceSurfaceMismatchException(string message)
     : InvalidOperationException(message);
+
+internal sealed class NativeChoiceSurfaceTimeoutException(string message)
+    : NativeChoiceSurfaceMismatchException(message);
 
 internal sealed class NativeChoicePlanNotRequestedException(string message)
     : NativeChoicePlanMismatchException(message);
@@ -674,7 +677,7 @@ internal static class NativeChoiceSurface
             }
             if (System.Environment.TickCount64 >= deadline)
             {
-                throw new TimeoutException(
+                throw new NativeChoiceSurfaceTimeoutException(
                     $"30 秒内没有出现原生选牌页面 {request.Surface}（来源 {request.SourceId}）。");
             }
             await host.ToSignal(host.GetTree(), SceneTree.SignalName.ProcessFrame);
@@ -856,7 +859,7 @@ internal static class NativeChoiceSurface
             if (!surfaceIsActive())
                 throw new NativeChoiceSurfaceMismatchException(closedMessage);
             if (System.Environment.TickCount64 >= deadline)
-                throw new TimeoutException(timeoutMessage);
+                throw new NativeChoiceSurfaceTimeoutException(timeoutMessage);
             await host.ToSignal(host.GetTree(), SceneTree.SignalName.ProcessFrame);
         }
     }
