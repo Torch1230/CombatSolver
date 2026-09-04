@@ -83,6 +83,13 @@ internal interface ICombatPredictionCardEventSink
         MegaCrit.Sts2.Core.Entities.Creatures.Creature? dealer,
         MegaCrit.Sts2.Core.Entities.Creatures.DamageResult result);
 
+    /// <summary>
+    /// HP that a heal actually restored, already clamped by max HP so overheal reports nothing.
+    /// </summary>
+    void RecordHpRecovered(
+        MegaCrit.Sts2.Core.Entities.Creatures.Creature receiver,
+        int amount);
+
     void RecordCardDiscarded(MegaCrit.Sts2.Core.Entities.Creatures.Creature actor);
 
     void RecordCreatureAttacked(MegaCrit.Sts2.Core.Entities.Creatures.Creature actor);

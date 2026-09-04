@@ -508,6 +508,7 @@ internal sealed partial class CombatBeamSolver
                 finalSnapshot.PlayerHp,
                 finalSnapshot.PlayerMaxHp,
                 finalSnapshot.CumulativePlayerHpLost,
+                finalSnapshot.RecoveredPlayerHp,
                 finalSnapshot.LongTermResourceValue,
                 finalSnapshot.AngerCopiesGenerated,
                 finalSnapshot.ProjectedPlayerHp,
@@ -1473,7 +1474,11 @@ internal sealed partial class CombatBeamSolver
                     && ExplicitPotionUseCount(node) == 0
                     && node.FutureSoldHp == 0
                     && node.Snapshot.CumulativePlayerHpLost == 0
-                    && node.Snapshot.PlayerMaxHp >= root.InitialPlayerMaxHp))
+                    && node.Snapshot.PlayerMaxHp >= root.InitialPlayerMaxHp
+                    // Zero damage is only provably best once there is nothing left to heal. A wounded
+                    // player holding a heal can still end the fight strictly higher, so stopping here
+                    // would discard the better route before it is ever expanded.
+                    && node.Snapshot.PlayerHp >= node.Snapshot.PlayerMaxHp))
             {
                 foreach (SearchNode node in frontier)
                     node.Snapshot.ReleaseSimulator();

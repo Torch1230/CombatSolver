@@ -48,6 +48,41 @@ internal static class ActEndingBossPolicy
         };
     }
 
+    /// <summary>
+    /// What HP a route restored during this fight is worth once the fight is over, in the same units as the
+    /// strategic HP deficit it offsets.
+    /// </summary>
+    /// <remarks>
+    /// This is the exact inverse of <see cref="RawHpRequiredForPersistentValue"/>, and is derived from it so the
+    /// two cannot drift apart. Clearing an act gives 80% of the damage back for free, so healing during that
+    /// boss only keeps the remaining fifth; nothing follows the run's last fight, so healing there buys nothing.
+    /// </remarks>
+    public static int PersistentValueOfRecoveredHp(int recoveredHp, BossHpRelief bossHpRelief)
+        => recoveredHp <= 0
+            ? 0
+            : recoveredHp / RawHpRequiredForPersistentValue(1, bossHpRelief);
+
+    /// <summary>
+    /// Battle HP loss net of what the route healed back, which is the quantity route quality is ranked on.
+    /// </summary>
+    /// <remarks>
+    /// Gross damage alone cannot see a heal: <c>CumulativePlayerHpLost</c> only ever accumulates unblocked
+    /// damage. Without this correction a route that ends the fight ten HP higher ranks behind one that ends a
+    /// turn sooner, even though those ten HP carry into every fight that follows.
+    ///
+    /// The result is bounded below by the HP the player was already missing when the fight started, because
+    /// current HP is capped by max HP: a route can at most heal back to full, so no amount of extra turns can
+    /// farm this axis indefinitely.
+    /// </remarks>
+    public static int StrategicHpDeficit(
+        int cumulativeHpLost,
+        int maxHpDeficit,
+        int recoveredHp,
+        BossHpRelief bossHpRelief)
+        => cumulativeHpLost
+            + maxHpDeficit
+            - PersistentValueOfRecoveredHp(recoveredHp, bossHpRelief);
+
     public static BossHpRelief ResolveHpRelief(CombatState combatState)
     {
         if (combatState.Encounter?.RoomType != RoomType.Boss)
