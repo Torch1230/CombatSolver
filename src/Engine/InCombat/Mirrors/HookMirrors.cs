@@ -311,7 +311,11 @@ internal static class HookMirrors
 
         foreach (var listener in IterateCombatHookListeners(simulator))
         {
+            if (simulator.HasPendingChoice)
+                break;
             AfterShuffleMirrors.Invoke(listener, context);
+            if (simulator.HasPendingChoice)
+                break;
         }
     }
 

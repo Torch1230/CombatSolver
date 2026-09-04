@@ -21,6 +21,7 @@
 | `ISSUE-20260903-NATIVE-CHOICE-DRIFT-RECOVERY` | 已修复，待可见漂移夹具 | 原生选牌候选/页面生命周期不一致现在关闭当前页面并请求 `DeploymentDrift` 重捕获；确认按钮等待布局完成后再提交。尚未有专用可见页面先漂移再重捕获的 unattended 证据。 | 2026-09-04 |
 | `ISSUE-20260903-NATIVE-CHOICE-PLAN-SEQUENCE` | 已修复，部分通过 | 原生选牌驱动器在收到计划外请求或计划提前结束时现在报告选择计划漂移，并由部署层关闭页面后请求 `DeploymentDrift` 重捕获；重复计划/数量错误仍显式失败。`SCULPTING-STRIKE-CHOICE-151` 严格增量回放和第 2 回合复用通过，runId `a35708eb3bae4aa49ef7769230d59bfa`。 | 2026-09-04 |
 | `ISSUE-20260903-DEPLOYMENT-TURN-DRIFT` | 已修复，待专用时序夹具 | 部署动作检测到玩家回合已结束时现在清理旧路线并按 `DeploymentDrift` 重捕获，不再记为自动执行失败；其他部署异常仍显式失败。 | 2026-09-04 |
+| `ISSUE-20260903-PENDING-CHOICE-HOOK-BOUNDARY` | 已修复，待双监听器夹具 | 洗牌 Hook 在已有待处理选择时停止继续调用监听器，分支消费后再继续；避免同一模拟事件创建冲突选择。 | 2026-09-04 |
 
 性能指标口径：`selected_*` 只描述最终选中的单个 solver；请求级 `total_expanded_nodes / total_transitions / total_choice_branches`、`total_solver_ms`、分配与 GC 累计对正常、失败和取消的每个 solver 工作区间精确记录一次，包括取消前已发生的部分工作。Smart 有限药水层之间由 coordinator 主动执行的内存整理也计入时间、分配与 GC，但不增加 solver 数；建立开局、层间比较等其他编排工作仍不在这些总值中。因此端到端耗时以请求/阶段外层墙钟为准，峰值内存以进程 `VmHWM` 为准。Smart 多层的取消时点可能令请求总工作量小幅波动，语义验收优先比较胜负、战损、回合和动作路线。峰值工作集是瞬时进程峰值，不能跨阶段相加；`16 GB` NoGC 是运行时请求预算，不等于实际占用或硬上限；NoGC 活跃时 `GC.GetTotalMemory(false)` 不是严格 live-set 测量。
 
