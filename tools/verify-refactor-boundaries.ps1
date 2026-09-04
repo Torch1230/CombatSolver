@@ -199,6 +199,68 @@ $rootSnapshotChecks = @(
     }
 )
 
+$preCombatApiChecks = @(
+    @{
+        Path = Join-Path $repositoryRoot "src\Api\PreCombatForecastApi.cs"
+        Text = "public static class PreCombatForecastApi"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Api\PreCombatLiveStateSnapshot.cs"
+        Text = "RunManager.Instance.ToSave(null)"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Api\PreCombatRunSerialization.cs"
+        Text = 'point["can_modify"] = false'
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Api\PreCombatRunSerialization.cs"
+        Text = 'eventChoice["variables"] is JsonObject { Count: 0 }'
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Api\PreCombatForecastWorker.cs"
+        Text = "COMBATSOLVER_PRECOMBAT_WORKER"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Api\PreCombatForecastWorker.cs"
+        Text = "ExpectedLoadedMods = expectedMods"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Api\PreCombatForecastWorker.cs"
+        Text = "EnableNoGcRegionForTest = false"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Api\PreCombatForecastWorker.cs"
+        Text = "PreCombatInterveningMapPoints = options.InterveningMapPoints"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Testing\UnattendedTestRunner.ScenarioBuilder.cs"
+        Text = "EnterMapCoordDebug"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Testing\UnattendedTestRunner.ScenarioBuilder.cs"
+        Text = "PreCombatPlayerHp:"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Testing\UnattendedTestRunner.ScenarioBuilder.cs"
+        Text = "DirectRunSnapshot:ExactStateRestored"
+    }
+)
+foreach ($check in $preCombatApiChecks) {
+    if (-not (Select-String -LiteralPath $check.Path -SimpleMatch $check.Text -Quiet)) {
+        $violations.Add("$($check.Path): missing pre-combat isolation boundary '$($check.Text)'")
+    }
+}
+foreach ($apiFile in Get-ChildItem (Join-Path $repositoryRoot "src\Api") -Filter "*.cs" -File) {
+    foreach ($forbiddenCall in @(
+        "SolverController.RequestSearch",
+        "CombatManager.Instance.SetUpCombat",
+        "RunManager.Instance.EnterRoomDebug")) {
+        foreach ($match in Select-String -LiteralPath $apiFile.FullName -SimpleMatch $forbiddenCall) {
+            $violations.Add("$($apiFile.FullName):$($match.LineNumber): pre-combat API directly mutates live combat via '$forbiddenCall'")
+        }
+    }
+}
+
 $nativeChoiceRuntimePath = Join-Path $repositoryRoot "src\Runtime\NativeChoiceRuntime.cs"
 $turnSetupPath = Join-Path $repositoryRoot "src\Runtime\PlayerTurnSetupPatches.cs"
 foreach ($check in @(

@@ -11,6 +11,7 @@ using MegaCrit.Sts2.Core.Runs;
 using STS2RitsuLib;
 using STS2RitsuLib.Interop;
 using STS2RitsuLib.Patching.Core;
+using CombatSolver.Api;
 using CombatSolver.Engine.InCombat.Simulation;
 
 namespace CombatSolver;
@@ -26,6 +27,15 @@ public static class Entry
     public static void Initialize()
     {
         Logger = RitsuLibFramework.CreateLogger(ModId);
+        try
+        {
+            PreCombatForecastWorker.PinMainProcessModSources();
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn(
+                $"[CombatSolver/PreCombatApi] MOD_SOURCE_PINNING_UNAVAILABLE error={ex}");
+        }
         SolverSettings.Load();
         SolverUiTokens.ConfigureTheme(SolverSettings.Current.OverlayTheme);
         SolverController.ApplyPersistentSettings(SolverSettings.Capture());

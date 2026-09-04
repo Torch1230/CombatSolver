@@ -25,6 +25,31 @@ Combat Solver 是一个面向《杀戮尖塔 2》单人模式的战斗路线求�
 
 这一设计把“预测”和“实机执行”分开：后台线程不能读取持续变化的实机值，模拟分支也不能修改真实战斗。
 
+## 战前预测 API（开发接口）
+
+`CombatSolver.Api.PreCombatForecastApi` 为地图信息类 Mod 提供公开的战前预测入口。调用方在游戏主线程提交当前单人跑局、已确定的 `EncounterModel`、目标楼层及房间/地图节点类型；API 返回预计整场战损、所选路线中的药水动作、搜索边界、可信度、结束回合和诊断日志位置。
+
+该入口不会在当前游戏进程中建立战斗。它先序列化完整跑局并生成不透明状态令牌，再启动 Combat Solver 独占的 Windows headless 游戏进程；子进程加载与主进程完全一致的 Mod 集合，在独立用户目录中精确恢复跑局、核对规范化快照、进入目标战斗并复用现有求解器。Combat Solver 会在主进程初始化期间用硬链接钉住本次会话实际选择的 Mod 文件；Steam 在游戏运行中更新工坊目录时，worker 仍加载主进程已经载入的版本。API v5 会在每次请求完整回到主菜单且后台活动归零后复用同一进程；默认空闲两分钟后关闭，调用方也可把期限改为其他值、用 `null` 一直维持、调用 `StopWorkerAsync()` 立即关闭，或要求请求完成后自动关闭。调用方可以读取 PID、工作集和私有内存，手动重启/预热，并在 worker 已经待命时立即重设空闲期限。隔离设置会把主音量、BGM、音效与环境音强制为零。结果返回前，主进程再次比较活动跑局、战斗状态和完整令牌；任一状态或 RNG 变化都会返回 `LiveStateChanged`，不会发布过期结果。
+
+`SimulateAsync` 提供独立的纯模拟入口：调用方从当前幕原生遭遇池选择怪组并提供样本种子，worker 在精确恢复当前跑局之后，只在隔离进程中替换怪物组成/生命、开局洗牌、怪物行动和其他战斗相关 RNG。它使用当前牌组、遗物、药水与生命评估假设战斗，不代表尚未确定的远处战斗结果。
+
+最小调用方式：
+
+```csharp
+if (PreCombatForecastApi.IsAvailable)
+{
+    PreCombatForecastResult result = await PreCombatForecastApi.ForecastAsync(
+        run,
+        encounter,
+        targetActFloor,
+        targetMapColumn,
+        PreCombatRoomKind.Normal,
+        PreCombatMapPointKind.Normal);
+}
+```
+
+当前 API 版本为 `5`，仅支持 Windows、单人跑局和未处于战斗中的状态。首次请求需要建立隔离游戏镜像并启动进程，适合由地图信息类 Mod 异步调用。相同状态与目标的确定请求会复用运行中任务或已完成结果；显式假设样本不进入确定结果缓存。`SetWorkerIdleTimeoutAsync()` 与请求选项中的 `WorkerIdleTimeoutMilliseconds` 控制当前及后续 worker 的空闲期限，`null` 表示不自动关闭。
+
 ## 安装与兼容性
 
 运行要求：
