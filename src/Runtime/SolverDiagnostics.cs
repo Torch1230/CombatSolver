@@ -177,6 +177,7 @@ internal static class SolverDiagnostics
             .Append(" sold_hp_threshold=").Append(result.SoldHpThreshold)
             .Append(" battle_hp_lost_so_far=").Append(result.BattleHpLostSoFar)
             .Append(" projected_battle_hp_lost=").Append(result.ProjectedBattleHpLost)
+            .Append(" recovered_hp=").Append(result.Snapshot.RecoveredPlayerHp)
             .Append(" long_term_resource=").Append(result.Snapshot.LongTermResourceValue)
             .Append(" anger_copies=").Append(result.Snapshot.AngerCopiesGenerated)
             .Append(" battle_potions_used_so_far=").Append(result.BattlePotionsUsedSoFar)

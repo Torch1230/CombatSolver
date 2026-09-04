@@ -203,6 +203,7 @@ internal sealed partial class CombatBeamSolver
 
     private sealed record RouteAnnotations(
         IReadOnlyDictionary<int, int> HpLostByTurn,
+        IReadOnlyDictionary<int, int> HpRecoveredByTurn,
         IReadOnlyDictionary<int, int> EnemyHpLostByTurn,
         IReadOnlyDictionary<int, int> SoldHpByTurn,
         IReadOnlyDictionary<int, int> MaxBlockByTurn,
@@ -220,6 +221,7 @@ internal sealed partial class CombatBeamSolver
         int PlayerHp,
         int PlayerMaxHp,
         int CumulativePlayerHpLost,
+        int RecoveredPlayerHp,
         int LongTermResourceValue,
         int AngerCopiesGenerated,
         int PlayerBlock,
@@ -259,6 +261,7 @@ internal sealed partial class CombatBeamSolver
                 snapshot.PlayerHp,
                 snapshot.PlayerMaxHp,
                 snapshot.CumulativePlayerHpLost,
+                snapshot.RecoveredPlayerHp,
                 snapshot.LongTermResourceValue,
                 snapshot.AngerCopiesGenerated,
                 snapshot.PlayerBlock,

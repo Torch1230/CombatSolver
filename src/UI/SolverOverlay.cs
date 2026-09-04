@@ -57,6 +57,7 @@ internal static class SolverOverlay
     private static Label? _deathOutcomeLabel;
     private static Label? _potionOutcomeLabel;
     private static Label? _hpOutcomeLabel;
+    private static Label? _hpRecoveredOutcomeLabel;
     private static RichTextLabel? _detailsText;
     private static SolverDetailsButton? _detailsButton;
     private static Button? _recalculateButton;
@@ -662,6 +663,8 @@ internal static class SolverOverlay
             _potionOutcomeLabel.Visible = false;
         if (_hpOutcomeLabel != null)
             _hpOutcomeLabel.Visible = false;
+        if (_hpRecoveredOutcomeLabel != null)
+            _hpRecoveredOutcomeLabel.Visible = false;
         if (_deathOutcomeLabel != null)
             _deathOutcomeLabel.Visible = false;
         for (int index = 0; index < SolverWeights.UiTurnRows; index++)
@@ -751,6 +754,11 @@ internal static class SolverOverlay
         }
         if (_hpOutcomeLabel != null)
             _hpOutcomeLabel.Visible = true;
+        if (_hpRecoveredOutcomeLabel != null)
+        {
+            _hpRecoveredOutcomeLabel.Visible = snapshot.RouteHpRecovered > 0;
+            _hpRecoveredOutcomeLabel.Text = $"路线回血  {snapshot.RouteHpRecovered} HP";
+        }
         if (_deathOutcomeLabel != null)
             _deathOutcomeLabel.Visible = snapshot.OnlyDeathRoutesFound;
         for (int index = 0; index < SolverWeights.UiTurnRows; index++)
@@ -761,14 +769,17 @@ internal static class SolverOverlay
             SolverOverlayTurnSnapshot turn = snapshot.Turns[index];
             RouteRows[index].TurnLabel.Text = $"第 {turn.Turn} 回合";
             RouteRows[index].Populate(turn);
+            // Damage alone reads wrong on a turn that also heals: the player wants the number the
+            // turn actually leaves them at, not the hits they took on the way there.
+            int netHpChange = turn.HpRecovered - turn.HpLoss;
             string outcome = turn.CombatEnded
                 ? "战斗结束"
-                : turn.HpLoss > 0
-                    ? $"-{turn.HpLoss} HP"
+                : netHpChange != 0
+                    ? $"{HpChangeText.Signed(netHpChange)} HP"
                     : "0 HP";
             RouteRows[index].SetOutcome(
                 outcome,
-                turn.CombatEnded ? Success : turn.HpLoss > 0 ? Danger : TextMuted,
+                turn.CombatEnded ? Success : netHpChange < 0 ? Danger : netHpChange > 0 ? Success : TextMuted,
                 energyText: $"余 {turn.EnergyLeft} 费",
                 enemyDamageText: turn.EnemyHpDamageLost is { } damage
                     ? $"对敌伤害 {damage}"
@@ -1336,6 +1347,16 @@ internal static class SolverOverlay
         _hpOutcomeLabel.SizeFlagsHorizontal = Control.SizeFlags.ShrinkEnd;
         _hpOutcomeLabel.HorizontalAlignment = HorizontalAlignment.Right;
         _routeHeadingRow.AddChild(_hpOutcomeLabel);
+        // Healing keeps its own label so it stays green while the loss label turns red.
+        _hpRecoveredOutcomeLabel = CreateTextLabel(
+            "路线回血  0 HP",
+            SolverUiTokens.Type.Body,
+            Success,
+            FontType.Bold);
+        _hpRecoveredOutcomeLabel.Visible = false;
+        _hpRecoveredOutcomeLabel.SizeFlagsHorizontal = Control.SizeFlags.ShrinkEnd;
+        _hpRecoveredOutcomeLabel.HorizontalAlignment = HorizontalAlignment.Right;
+        _routeHeadingRow.AddChild(_hpRecoveredOutcomeLabel);
         _body.AddChild(_routeHeadingRow);
         VBoxContainer routes = new()
         {
