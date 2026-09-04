@@ -86,6 +86,8 @@ internal sealed partial class CombatBeamSolver(
     private BeamRetentionPolicy Retention => _retention ??= new BeamRetentionPolicy(
         _profile,
         _isActEndingBoss,
+        _strategicBossHpRelief,
+        root.PostCombatRelicHeal,
         _initialEnemyCount,
         root.InitialPlayerHp,
         root.InitialPlayerMaxHp,
@@ -105,6 +107,7 @@ internal sealed partial class CombatBeamSolver(
         root.HasRenewablePotionShapedRock,
         _theftPolicy,
         _strategicBossHpRelief,
+        root.PostCombatRelicHeal,
         _potionFreePolicyBaseline,
         root.InitialPlayerMaxHp,
         _minimumPotionUses,

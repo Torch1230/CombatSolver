@@ -36,6 +36,7 @@ internal sealed record SolverOverlayTurnSnapshot(
     SolverOverlayActionSnapshot? EndTurnAction,
     int? EnemyHpDamageLost,
     int HpLoss,
+    int HpRecovered,
     int EnergyLeft,
     bool CombatEnded);
 
@@ -49,6 +50,8 @@ internal sealed record SolverOverlaySnapshot(
     int ProjectedBattleHpLost,
     bool ProjectedBattleHpLossKnown,
     string HpOutcomeText,
+    int RouteHpRecovered,
+    int RoutePostCombatRelicHeal,
     bool OnlyDeathRoutesFound,
     IReadOnlyList<SolverOverlayTurnSnapshot> Turns,
     string DetailsText,
@@ -92,6 +95,7 @@ internal sealed record SolverOverlaySnapshot(
             endTurn == null ? null : CaptureAction(endTurn, [], actions.Length == 0),
             EnemyHpDamageLost: preview.EnemyHpLost,
             preview.HpLost,
+            preview.HpRecovered,
             preview.EnergyLeft,
             preview.CombatEnded);
         SolverOverlayTurnSnapshot[] turns = preview.FrontierTurns is { Count: > 0 } frontier
@@ -117,6 +121,8 @@ internal sealed record SolverOverlaySnapshot(
             projectedBattleHpLost,
             combatEnded,
             outcome,
+            RouteHpRecovered: turns.Sum(turn => turn.HpRecovered),
+            RoutePostCombatRelicHeal: 0,
             OnlyDeathRoutesFound: false,
             turns,
             DetailsText: string.Empty,
@@ -147,6 +153,8 @@ internal sealed record SolverOverlaySnapshot(
             preview.ProjectedBattleHpLost,
             preview.CombatEnded,
             hpOutcomeText,
+            RouteHpRecovered: turns.Sum(turn => turn.HpRecovered),
+            RoutePostCombatRelicHeal: 0,
             preview.OnlyDeathRoutesFound,
             turns,
             DetailsText: string.Empty,
@@ -169,6 +177,7 @@ internal sealed record SolverOverlaySnapshot(
             frontierEndTurn == null ? null : CaptureAction(frontierEndTurn, [], frontierActions.Length == 0),
             EnemyHpDamageLost: frontier.EnemyHpLost,
             frontier.HpLost,
+            frontier.HpRecovered,
             frontier.EnergyLeft,
             frontier.CombatEnded);
     }
@@ -213,6 +222,7 @@ internal sealed record SolverOverlaySnapshot(
             ? $"路线已复用，共查阅了 {reviewedWorldlinesTotal:N0} 条世界线"
             : $"花费了 {result.TotalSearchElapsed.TotalSeconds:F1} 秒，共查阅了 {reviewedWorldlinesTotal:N0} 条世界线";
         bool projectedBattleHpLossKnown = result.CombatEndedTurn.HasValue;
+        int routeHpRecovered = result.HpRecoveredByTurn.Values.Sum();
         string hpOutcomeText = !projectedBattleHpLossKnown
             ? "预计战损 未知"
             : result.ProjectedBattleHpLost > 0
@@ -234,6 +244,8 @@ internal sealed record SolverOverlaySnapshot(
             result.ProjectedBattleHpLost,
             projectedBattleHpLossKnown,
             hpOutcomeText,
+            routeHpRecovered,
+            result.PostCombatRelicHeal,
             result.OnlyDeathRoutesFound,
             turns,
             BuildDetails(result, startTurnNumber, unmirrored, compensated, unexpectedReplan),
@@ -291,6 +303,7 @@ internal sealed record SolverOverlaySnapshot(
             endTurn == null ? null : CaptureAction(endTurn, endTurnKills, actions.Length == 0),
             enemyHpLost,
             result.HpLostByTurn.GetValueOrDefault(turn),
+            result.HpRecoveredByTurn.GetValueOrDefault(turn),
             result.EnergyLeftByTurn.GetValueOrDefault(turn),
             result.CombatEndedTurn == turn);
     }

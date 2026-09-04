@@ -1,6 +1,7 @@
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models;
 using CombatSolver.Engine.InCombat.Simulation;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 
 namespace CombatSolver;
@@ -164,9 +165,30 @@ internal sealed record PlanAction(
     }
 }
 
+internal static class HpChangeText
+{
+    /// <summary>
+    /// Renders a net HP change the way a player reads it: a gain keeps its plus sign, a loss keeps its minus.
+    /// </summary>
+    public static string Signed(int netHpChange)
+        => netHpChange > 0
+            ? $"+{netHpChange}"
+            : netHpChange.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>Same value, wrapped in the gain or loss colour used elsewhere in the route details.</summary>
+    public static string SignedColored(int netHpChange)
+        => netHpChange switch
+        {
+            > 0 => $"[color=#73c991]{Signed(netHpChange)}[/color]",
+            < 0 => $"[color=#ef6b6b]{Signed(netHpChange)}[/color]",
+            _ => Signed(netHpChange),
+        };
+}
+
 internal sealed record TurnOutcome(
     int Turn,
     int HpLost,
+    int HpRecovered,
     int EnemyHpLost,
     int SoldHp,
     int MaxBlock,
@@ -1032,6 +1054,7 @@ internal sealed class SimulationSnapshot(
     int playerHp,
     int playerMaxHp,
     int cumulativePlayerHpLost,
+    int recoveredPlayerHp,
     int longTermResourceValue,
     int angerCopiesGenerated,
     int projectedPlayerHp,
@@ -1108,6 +1131,7 @@ internal sealed class SimulationSnapshot(
     public int PlayerHp { get; } = playerHp;
     public int PlayerMaxHp { get; } = playerMaxHp;
     public int CumulativePlayerHpLost { get; } = cumulativePlayerHpLost;
+    public int RecoveredPlayerHp { get; } = recoveredPlayerHp;
     public int LongTermResourceValue { get; } = longTermResourceValue;
     public int AngerCopiesGenerated { get; } = angerCopiesGenerated;
     public int ProjectedPlayerHp { get; } = projectedPlayerHp;
@@ -1209,6 +1233,7 @@ internal sealed record SolverSnapshot(
     int PlayerHp,
     int PlayerMaxHp,
     int CumulativePlayerHpLost,
+    int RecoveredPlayerHp,
     int LongTermResourceValue,
     int AngerCopiesGenerated,
     int ProjectedPlayerHp,
@@ -1362,6 +1387,16 @@ internal sealed class SolverResult
     public required int SoldHpThreshold { get; init; }
     public required IReadOnlyDictionary<int, int> SoldHpByTurn { get; init; }
     public required IReadOnlyDictionary<int, int> HpLostByTurn { get; init; }
+    public required IReadOnlyDictionary<int, int> HpRecoveredByTurn { get; init; }
+    /// <summary>
+    /// HP the player's relics restore right after this fight is won, which is what the player will see happen.
+    /// </summary>
+    /// <remarks>
+    /// Reported in full, including the threshold relic that route ranking deliberately leaves out. Reporting
+    /// less than the game will actually restore would put the overlay back at odds with the fight it describes,
+    /// which is the problem the net HP display set out to fix.
+    /// </remarks>
+    public required int PostCombatRelicHeal { get; init; }
     public required IReadOnlyDictionary<int, int> EnemyHpLostByTurn { get; init; }
     public required IReadOnlyDictionary<int, int> MaxBlockByTurn { get; init; }
     public required IReadOnlyDictionary<int, int> ActualBlockByTurn { get; init; }
@@ -1490,6 +1525,8 @@ internal sealed class SolverResult
             SoldHpThreshold = SoldHpThreshold,
             SoldHpByTurn = soldByTurn,
             HpLostByTurn = HpLostByTurn,
+            HpRecoveredByTurn = HpRecoveredByTurn,
+            PostCombatRelicHeal = PostCombatRelicHeal,
             EnemyHpLostByTurn = EnemyHpLostByTurn,
             MaxBlockByTurn = MaxBlockByTurn,
             ActualBlockByTurn = ActualBlockByTurn,
@@ -1543,14 +1580,25 @@ internal sealed class SolverResult
             string playText = indexedActions.Count == 0
                 ? "直接结束"
                 : string.Join(" | ", indexedActions.Select(item => DescribeWithKills(item.Action, item.Index)));
-            string hpLoss = HpLostByTurn.GetValueOrDefault(turn) > 0
-                ? $"　[color=#ef6b6b]预计掉血 {HpLostByTurn[turn]}[/color]"
-                : string.Empty;
+            int turnHpLost = HpLostByTurn.GetValueOrDefault(turn);
+            int turnHpRecovered = HpRecoveredByTurn.GetValueOrDefault(turn);
+            string hpLoss = (turnHpLost, turnHpRecovered) switch
+            {
+                (> 0, > 0) => $"　[color=#ef6b6b]预计掉血 {turnHpLost}[/color]" +
+                    $"　[color=#73c991]回血 {turnHpRecovered}[/color]" +
+                    $"　净 {HpChangeText.SignedColored(turnHpRecovered - turnHpLost)} HP",
+                (> 0, _) => $"　[color=#ef6b6b]预计掉血 {turnHpLost}[/color]",
+                (_, > 0) => $"　[color=#73c991]预计回血 {turnHpRecovered}[/color]",
+                _ => string.Empty,
+            };
             string combatEnd = CombatEndedTurn == turn
                 ? "　[color=#73c991][b]战斗结束[/b][/color]"
                 : string.Empty;
             lines.Add($"[b]第 {turn} 回合[/b]　{playText}{hpLoss}{combatEnd}");
         }
+
+        if (PostCombatRelicHeal > 0)
+            lines.Add($"[color=#73c991]战斗结束后遗物回血 {PostCombatRelicHeal} HP[/color]");
 
         lines.Add("");
         lines.Add("[color=#d5b46a]评分：不死优先；区分不可避免战损与主动卖血，并综合击杀、输出、易伤、能力牌和费用利用。[/color]");
