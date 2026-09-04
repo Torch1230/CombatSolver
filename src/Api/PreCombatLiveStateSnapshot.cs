@@ -51,10 +51,15 @@ internal sealed record PreCombatLiveStateSnapshot(
             "SlayTheSpire2");
         PreCombatModSnapshot[] mods = ModManager.GetLoadedMods()
             .Where(static mod => mod.manifest?.id != null)
-            .Select(static mod => new PreCombatModSnapshot(
-                mod.manifest!.id!,
-                mod.manifest.version ?? "unknown",
-                Path.GetFullPath(mod.path)))
+            .Select(static mod =>
+            {
+                string id = mod.manifest!.id!;
+                string version = mod.manifest.version ?? "unknown";
+                return new PreCombatModSnapshot(
+                    id,
+                    version,
+                    PreCombatForecastWorker.ResolvePinnedModSource(id, version, mod.path));
+            })
             .OrderBy(static mod => mod.Id, StringComparer.Ordinal)
             .ToArray();
 

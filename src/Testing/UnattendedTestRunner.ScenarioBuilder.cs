@@ -523,6 +523,45 @@ internal sealed partial class UnattendedTestRunner
                     "战前快照规范化未正确删除空事件变量，或误删了非空事件变量。");
             }
             runner._completedChecks.Add("PreCombatSnapshotNormalization:EmptyEventVariablesRemoved:PopulatedRetained");
+            VerifyPreCombatModSourcePinning();
+        }
+
+        private void VerifyPreCombatModSourcePinning()
+        {
+            if (!OperatingSystem.IsWindows())
+                return;
+
+            string root = Path.Combine(
+                Path.GetTempPath(),
+                $"combatsolver-precombat-pin-test-{Guid.NewGuid():N}");
+            string sourceRoot = Path.Combine(root, "source");
+            string pinnedRoot = Path.Combine(root, "pinned");
+            string sourceFile = Path.Combine(sourceRoot, "ExampleMod.dll");
+            string pinnedFile = Path.Combine(pinnedRoot, "ExampleMod.dll");
+            try
+            {
+                Directory.CreateDirectory(sourceRoot);
+                File.WriteAllText(sourceFile, "loaded-version");
+                PreCombatForecastWorker.MirrorDirectoryForTesting(sourceRoot, pinnedRoot);
+
+                string replacement = Path.Combine(sourceRoot, "replacement.tmp");
+                File.WriteAllText(replacement, "workshop-update");
+                File.Move(replacement, sourceFile, overwrite: true);
+
+                if (File.ReadAllText(sourceFile) != "workshop-update"
+                    || File.ReadAllText(pinnedFile) != "loaded-version")
+                {
+                    throw new InvalidOperationException(
+                        "启动期 Mod 文件快照未能隔离运行中的工坊原子更新。");
+                }
+                runner._completedChecks.Add(
+                    "PreCombatModSourcePinning:AtomicWorkshopUpdatePreservesLoadedFiles");
+            }
+            finally
+            {
+                if (Directory.Exists(root))
+                    Directory.Delete(root, recursive: true);
+            }
         }
 
         private static int ResolveNextMapColumn(RunState runState)

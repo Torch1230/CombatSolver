@@ -1,6 +1,6 @@
 # CombatSolver 测试清单
 
-> 基线：CombatSolver 本地扩展版 `0.29.4`（基于当前创意工坊稳定版 `0.29.1`，保留隔离战前预测 API v5）、塔 2 `0.111.0`、RitsuLib 实测 `0.5.18`（清单最低 `0.5.13`）、CombatSolver 内置战斗模拟引擎。无人测试运行隔离的原版 `--headless` 游戏进程，不使用自建 STS CLI；性能最终门槛另由 Steam 可见会话验证。完整战斗基准使用 `Instant / 0 秒` 部署。
+> 基线：CombatSolver 本地扩展版 `0.29.5`（基于当前创意工坊稳定版 `0.29.1`，保留隔离战前预测 API v5）、塔 2 `0.111.0`、RitsuLib 实测 `0.5.18`（清单最低 `0.5.13`）、CombatSolver 内置战斗模拟引擎。无人测试运行隔离的原版 `--headless` 游戏进程，不使用自建 STS CLI；性能最终门槛另由 Steam 可见会话验证。完整战斗基准使用 `Instant / 0 秒` 部署。
 
 单项启动器未请求退出时会保留各平台 marker 精确持有的 headless 游戏进程，供后续身份兼容的请求复用；完整矩阵始终遵守文档命令声明的有界生命周期组。两端都核对请求与实际可执行文件、进程启动身份、隔离数据目录以及 Mod DLL/manifest 的 SHA-256，而不仅依赖 PID；Linux 还通过 `/proc` 核对 starttime 和进程环境。重编译后会安全重启，不会复用内存中的旧程序集；marker 损坏、来自旧协议或无法证明已失效且可能仍有活进程时封闭失败，保留现场并拒绝冒险接管。Windows 通过独立 `APPDATA / LOCALAPPDATA`、Linux 通过独立 XDG 数据目录隔离测试数据；两端都关闭 Steam，只在隔离设置中确认允许加载 Mod，并在 headless 生命周期内临时投影对应平台创意工坊中的 RitsuLib。只有当当前请求的异步工作静稳、主线程稳定并收到匹配 `schemaVersion/runId/held` 的 ready ACK 后，启动器才会复用进程；任何 `Failed`、静稳/ACK 超时或中断都会清理已精确认领的进程。Linux Bash 启动器默认把测试内游戏速度设为 `Instant`，可用 `--headless-fast-mode-for-test` 覆盖；Windows PowerShell 启动器保留既有默认值，可用 `-HeadlessFastModeForTest Instant` 显式启用。同一战斗能容纳的行动继续合并到一个批次夹具中连续执行。
 
@@ -17,6 +17,12 @@
 | `SPITE-REPEAT-DYNAMIC-VAR-0291` | 已修复，待专用复跑 | `Spite` 缺失 `Repeat` 时按原版固定公式和升级等级恢复重复攻击次数，针对 `Repeat` KeyNotFound 问题包完成根因修复。 | 2026-09-04 |
 | `ROOT-HOOK-NULL-0291` | 已修复，待专用复跑 | 根监听器快照过滤空项，针对 Queen `BeforeAttack` 钩子中的 NullReferenceException 完成根因修复。 | 2026-09-04 |
 | `POTION-SLOT-DRIFT-0291` | 已修复，待专用漂移夹具 | 部署前药水槽位为空或内容不符时转入 `DeploymentDrift` 重算；未使用宽泛异常吞掉真实执行错误。 | 2026-09-04 |
+
+## 0.29.5（本地扩展）：主进程 Mod 版本钉住
+
+| 场景 | 当前结果 | 验证内容 | 日期 |
+| --- | --- | --- | --- |
+| `PRECOMBAT-MOD-PIN-015` | 通过 | 十 Mod 组合加载 Combat Solver `0.29.5`、Seed Oracle `0.1.18`、HowlFromBeyondBgm `1.1.5` 等主进程版本；工坊式原子替换后，启动期硬链接快照仍保留旧内容。两次确定预测和一次假设样本复用同一 worker，计数 `starts=1 / reuses=3`；战损 `5`、内存可见、隔离音频静音、2/10/30 分钟与一直维持、自动关闭及 live 状态不变均通过。runId `8382cbd40ce74a44ac2cac7e444f6403`。 | 2026-09-05 |
 
 ## 0.29.4（本地扩展）：作者 0.29.1 基线与可配置 worker 期限
 

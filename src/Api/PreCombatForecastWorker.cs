@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Rooms;
 
 namespace CombatSolver.Api;
@@ -14,6 +15,9 @@ internal static class PreCombatForecastWorker
     private const string RuntimeMarkerContents = "CombatSolver PreCombat API v1";
     private const int KeepAliveIndefinitely = -1;
     private static readonly SemaphoreSlim Gate = new(1, 1);
+    private static readonly object PinnedModSourcesSync = new();
+    private static readonly Dictionary<string, PinnedModSource> PinnedModSources =
+        new(StringComparer.Ordinal);
     private static WorkerSession? _session;
     private static CancellationTokenSource? _idleShutdown;
     private static int _idleWorkerLifetimeMilliseconds = PreCombatForecastApi.DefaultWorkerIdleTimeoutMilliseconds;
@@ -29,6 +33,87 @@ internal static class PreCombatForecastWorker
     internal static int WorkerStartCountForTesting => Volatile.Read(ref _workerStartCount);
 
     internal static int WorkerReuseCountForTesting => Volatile.Read(ref _workerReuseCount);
+
+    internal static void PinMainProcessModSources()
+    {
+        if (!OperatingSystem.IsWindows()
+            || string.Equals(
+                Environment.GetEnvironmentVariable("COMBATSOLVER_PRECOMBAT_WORKER"),
+                "1",
+                StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        lock (PinnedModSourcesSync)
+        {
+            if (PinnedModSources.Count > 0)
+                return;
+
+            string executablePath = Godot.OS.GetExecutablePath();
+            string gameRoot = Path.GetDirectoryName(executablePath)
+                ?? throw new InvalidOperationException("The game executable has no parent directory.");
+            string runtimeRoot = Path.Combine(gameRoot, RuntimeDirectoryName);
+            string pinnedRoot = Path.Combine(runtimeRoot, "startup-mods");
+            EnsureRuntimeRoot(runtimeRoot, gameRoot);
+            ResetOwnedDirectory(runtimeRoot, pinnedRoot);
+
+            Mod[] candidates = ModManager.Mods
+                .Where(static mod => mod.manifest?.id != null
+                                     && mod.state is ModLoadState.None or ModLoadState.Loaded)
+                .ToArray();
+            int sourceIndex = 0;
+            foreach (IGrouping<string, Mod> sourceGroup in candidates.GroupBy(
+                         static mod => Path.GetFullPath(mod.path),
+                         StringComparer.OrdinalIgnoreCase))
+            {
+                Mod[] sourceMods = sourceGroup.ToArray();
+                string label = string.Join("_", sourceMods.Select(static mod => Sanitize(mod.manifest!.id!)));
+                string target = Path.Combine(pinnedRoot, $"{sourceIndex++:D2}_{label}");
+                try
+                {
+                    MirrorDirectory(sourceGroup.Key, target);
+                    foreach (Mod mod in sourceMods)
+                    {
+                        string id = mod.manifest!.id!;
+                        PinnedModSources[id] = new PinnedModSource(
+                            mod.manifest.version ?? "unknown",
+                            sourceGroup.Key,
+                            target);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Entry.Logger.Warn(
+                        $"[CombatSolver/PreCombatApi] MOD_SOURCE_PIN_FAILED " +
+                        $"source={sourceGroup.Key} error={ex.Message}");
+                }
+            }
+
+            Entry.Logger.Info(
+                $"[CombatSolver/PreCombatApi] MOD_SOURCES_PINNED " +
+                $"mods={PinnedModSources.Count} sources={sourceIndex} root={pinnedRoot}");
+        }
+    }
+
+    internal static string ResolvePinnedModSource(string id, string version, string sourcePath)
+    {
+        string fullSourcePath = Path.GetFullPath(sourcePath);
+        lock (PinnedModSourcesSync)
+        {
+            if (PinnedModSources.TryGetValue(id, out PinnedModSource? pinned)
+                && pinned.Version.Equals(version, StringComparison.Ordinal)
+                && pinned.OriginalSourcePath.Equals(fullSourcePath, StringComparison.OrdinalIgnoreCase)
+                && Directory.Exists(pinned.PinnedSourcePath))
+            {
+                return pinned.PinnedSourcePath;
+            }
+        }
+        return fullSourcePath;
+    }
+
+    internal static void MirrorDirectoryForTesting(string sourceRoot, string targetRoot) =>
+        MirrorDirectory(sourceRoot, targetRoot);
 
     internal static PreCombatWorkerStatus GetStatus()
     {
@@ -835,6 +920,11 @@ internal static class PreCombatForecastWorker
         string ReadyPath,
         string LogPath,
         bool AudioMuted);
+
+    private sealed record PinnedModSource(
+        string Version,
+        string OriginalSourcePath,
+        string PinnedSourcePath);
 
     private sealed class WorkerReady
     {
