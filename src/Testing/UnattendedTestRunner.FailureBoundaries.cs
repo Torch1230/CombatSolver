@@ -82,6 +82,7 @@ internal sealed partial class UnattendedTestRunner
         {
             throw new InvalidOperationException("第三方玩法 Mod 初始化失败日志缺少 Mod 或订阅器上下文。");
         }
+        AssertModHookSubscriberInertness();
 
         bool firstInferredActionRan = false;
         InvalidOperationException inferredFailure = new("inferred-action-failure");
@@ -112,6 +113,108 @@ internal sealed partial class UnattendedTestRunner
             PotionSlot: 0,
             PotionId: "FAILURE_POTION"));
         AssertExpectedSearchTransitionExceptionsPassThrough();
+    }
+
+    // 只覆写战斗外 hook 的订阅器（例如通过 RitsuLib HookedSingletonModel(HookType.Run) 注册、
+    // 只做地图恢复的模型）必须被视为与战斗无关；任何战斗 hook 覆写，包括从基类继承来的，
+    // 都必须继续被拒绝。
+    private class MapOnlySubscriber : AbstractModel
+    {
+        public override bool ShouldReceiveCombatHooks => false;
+        public override MegaCrit.Sts2.Core.Map.ActMap ModifyGeneratedMapLate(
+            MegaCrit.Sts2.Core.Runs.IRunState runState,
+            MegaCrit.Sts2.Core.Map.ActMap map,
+            int actIndex) => map;
+        public override Task AfterMapGenerated(MegaCrit.Sts2.Core.Map.ActMap map, int actIndex) => Task.CompletedTask;
+    }
+
+    private sealed class MapAndCombatSubscriber : MapOnlySubscriber
+    {
+        public override Task AfterCardPlayed(
+            MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext choiceContext,
+            MegaCrit.Sts2.Core.Entities.Cards.CardPlay cardPlay) => Task.CompletedTask;
+    }
+
+    private class CombatBaseSubscriber : AbstractModel
+    {
+        public override bool ShouldReceiveCombatHooks => true;
+        public override Task AfterCardPlayed(
+            MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext choiceContext,
+            MegaCrit.Sts2.Core.Entities.Cards.CardPlay cardPlay) => Task.CompletedTask;
+    }
+
+    private sealed class MapOnlyOverCombatBaseSubscriber : CombatBaseSubscriber
+    {
+        public override Task AfterMapGenerated(MegaCrit.Sts2.Core.Map.ActMap map, int actIndex) => Task.CompletedTask;
+    }
+
+    // 战斗开始 hook 早于根捕获执行且从不被镜像；这个形状就是 RitsuLib HookedSingletonModel(HookType.Combat)
+    // 常见的"只在自定义遭遇战开始时布置一次"的泛型基类 + 具体子类。
+    private abstract class CombatStartOnlyBase<TMarker> : AbstractModel
+    {
+        public override bool ShouldReceiveCombatHooks => true;
+        public sealed override Task BeforeCombatStart() => Task.CompletedTask;
+    }
+
+    private sealed class CombatStartOnlySubscriber : CombatStartOnlyBase<string>
+    {
+    }
+
+    private sealed class CombatStartAndVictorySubscriber : CombatStartOnlyBase<long>
+    {
+        public override Task AfterCombatVictory(MegaCrit.Sts2.Core.Rooms.CombatRoom room) => Task.CompletedTask;
+    }
+
+    private sealed class CombatStartAndTurnSubscriber : CombatStartOnlyBase<int>
+    {
+        public override Task AfterPlayerTurnStart(
+            MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext choiceContext,
+            MegaCrit.Sts2.Core.Entities.Players.Player player) => Task.CompletedTask;
+    }
+
+    private sealed class RoomEnteredSubscriber : AbstractModel
+    {
+        public override bool ShouldReceiveCombatHooks => false;
+        public override Task AfterRoomEntered(MegaCrit.Sts2.Core.Rooms.AbstractRoom room) => Task.CompletedTask;
+    }
+
+    private sealed class NoOverrideSubscriber : AbstractModel
+    {
+        public override bool ShouldReceiveCombatHooks => true;
+    }
+
+    private abstract class AbstractSubscriber : AbstractModel
+    {
+        public override bool ShouldReceiveCombatHooks => false;
+    }
+
+    private static void AssertModHookSubscriberInertness()
+    {
+        AssertInert(typeof(MapOnlySubscriber), expected: true, "只覆写地图 hook 的订阅器应视为与战斗无关");
+        AssertInert(typeof(NoOverrideSubscriber), expected: true, "没有覆写任何 hook 的订阅器应视为与战斗无关");
+        AssertInert(typeof(MapAndCombatSubscriber), expected: false, "同时覆写战斗 hook 的订阅器必须被拒绝");
+        AssertInert(typeof(MapOnlyOverCombatBaseSubscriber), expected: false, "从基类继承战斗 hook 覆写的订阅器必须被拒绝");
+        AssertInert(typeof(RoomEnteredSubscriber), expected: false, "AfterRoomEntered 在战斗房也会触发，必须被拒绝");
+        AssertInert(typeof(CombatStartOnlySubscriber), expected: true, "只覆写战斗开始 hook 的泛型基类子类应视为与预测无关");
+        AssertInert(typeof(CombatStartAndVictorySubscriber), expected: true, "战斗开始加战斗胜利 hook 都在搜索窗口之外，应视为与预测无关");
+        AssertInert(typeof(CombatStartAndTurnSubscriber), expected: false, "战斗开始之外还覆写回合 hook 的订阅器必须被拒绝");
+        AssertInert(typeof(AbstractSubscriber), expected: false, "抽象类型无法判定，必须被拒绝");
+        AssertInert(typeof(string), expected: false, "非 AbstractModel 类型必须被拒绝");
+
+        if (!PredictionModHookSubscriberInertness.IsCombatInert(typeof(MapOnlySubscriber), out string hooks)
+            || hooks != "AfterMapGenerated,ModifyGeneratedMapLate")
+        {
+            throw new InvalidOperationException($"订阅器覆写清单不正确：{hooks}");
+        }
+        PredictionModHookSubscriberInertness.IsCombatInert(typeof(MapOnlyOverCombatBaseSubscriber), out hooks);
+        if (hooks != "AfterCardPlayed,AfterMapGenerated")
+            throw new InvalidOperationException($"继承的覆写没有被收集：{hooks}");
+    }
+
+    private static void AssertInert(Type type, bool expected, string message)
+    {
+        if (PredictionModHookSubscriberInertness.IsCombatInert(type, out string hooks) != expected)
+            throw new InvalidOperationException($"{message}（{type.Name}，覆写：{hooks}）。");
     }
 
     private static void AssertSearchTransitionFailure(PlanAction action)
