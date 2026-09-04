@@ -16,6 +16,7 @@
 | `ISSUE-20260903-QUEEN-HAZE-MISMATCH-CURRENT` | 通过 | 复用 `0.28.2` Queen/Haze 问题包的精确根和 RNG；当前源码完成短搜并返回候选，没有再次出现卡牌状态标注差异。runId `5bfc15213c444b449161c1b216ab256d`。 | 2026-09-04 |
 | `ISSUE-20260903-SPITE-REPEAT-CURRENT` | 通过 | 当前原版卡牌严格差分覆盖失血后 Spite 的重复攻击语义，13 个动作检查全部通过。runId `cd97d0160dec44d3b35cae9b05ca328f`。 | 2026-09-04 |
 | `ISSUE-20260903-DEPLOYMENT-DRIFT-RECOVERY` | 已修复，待实时漂移夹具 | 部署时普通计划手牌缺失现在归类为 `DeploymentDrift` 并重新捕获当前根；保留真实执行失败的显式错误。现有 Fork/部署身份边界通过，尚缺在可见游戏中先改动手牌再部署的专用夹具。 | 2026-09-04 |
+| `ISSUE-20260903-OBSCURA-SPAWN-CURRENT` | 通过 | 原生 `THE_OBSCURA_NORMAL` 生成路径短搜覆盖 8 回合和 3 次洗牌；生成新怪物前固定敌人列表快照，没有再次出现 `Collection was modified`。runId `faeec097dee647af8453f9aa00f2c6ab`。 | 2026-09-04 |
 
 性能指标口径：`selected_*` 只描述最终选中的单个 solver；请求级 `total_expanded_nodes / total_transitions / total_choice_branches`、`total_solver_ms`、分配与 GC 累计对正常、失败和取消的每个 solver 工作区间精确记录一次，包括取消前已发生的部分工作。Smart 有限药水层之间由 coordinator 主动执行的内存整理也计入时间、分配与 GC，但不增加 solver 数；建立开局、层间比较等其他编排工作仍不在这些总值中。因此端到端耗时以请求/阶段外层墙钟为准，峰值内存以进程 `VmHWM` 为准。Smart 多层的取消时点可能令请求总工作量小幅波动，语义验收优先比较胜负、战损、回合和动作路线。峰值工作集是瞬时进程峰值，不能跨阶段相加；`16 GB` NoGC 是运行时请求预算，不等于实际占用或硬上限；NoGC 活跃时 `GC.GetTotalMemory(false)` 不是严格 live-set 测量。
 

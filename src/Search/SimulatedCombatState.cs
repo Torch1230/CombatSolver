@@ -2289,7 +2289,8 @@ internal sealed partial class SimulatedCombatState
             int minimum = monster.MinInitialHp;
             int maximumExclusive = monster.MaxInitialHp + 1;
             HashSet<int> available = Enumerable.Range(minimum, maximumExclusive - minimum).ToHashSet();
-            available.ExceptWith(_enemies.Select(enemy => simulator.State.GetCreature(enemy).MaxHp));
+            Creature[] existingEnemies = _enemies.ToArray();
+            available.ExceptWith(existingEnemies.Select(enemy => simulator.State.GetCreature(enemy).MaxHp));
             int baseHp = available.Count == 0
                 ? simulator.Rng.Niche.NextInt(minimum, maximumExclusive)
                 : simulator.Rng.Niche.NextItem(available);
