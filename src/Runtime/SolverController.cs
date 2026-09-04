@@ -2386,10 +2386,9 @@ internal static class SolverController
                 // next-turn choices belong to this native UI session.
                 if (action.EndsPlayerTurn && action.TurnStartChoices is { Count: > 0 })
                 {
-                    // Knowledge Demon curses are consumed directly by the enemy-turn resolver,
-                    // not by the native choice cursor used for card deployment.
-                    actionChoices.AddRange(action.TurnStartChoices
-                        .Where(choice => choice.Effect != PlanChoiceEffect.ApplyKnowledgeCurse));
+                    // Keep the session open through the enemy turn so Knowledge Demon's
+                    // Choose A Card page is driven by the same planned sequence.
+                    actionChoices.AddRange(action.TurnStartChoices);
                 }
                 if (actionChoices.Count > 0)
                 {
@@ -2412,12 +2411,34 @@ internal static class SolverController
                 Task actionCompletion;
                 if (action.Kind == PlanActionKind.UsePotion)
                 {
-                    PotionModel potion = player.GetPotionAtSlotIndex(action.PotionSlot)
-                        ?? throw new InvalidOperationException($"部署时药水槽位 {action.PotionSlot} 为空。");
+                    PotionModel? potion = player.GetPotionAtSlotIndex(action.PotionSlot);
+                    if (potion is null)
+                    {
+                        Entry.Logger.Warn(
+                            $"[CombatSolver/Test] DEPLOY_REPLAN turn={turn} reason=potion_missing " +
+                            $"potion={action.PotionId} slot={action.PotionSlot}");
+                        _combat.ContinuationSource = null;
+                        CompleteDeployment(deployment);
+                        RequestSearch(
+                            host,
+                            state,
+                            SearchReason.DeploymentDrift,
+                            deployWhenReady: !_combat.FullAutoEnabled);
+                        return;
+                    }
                     if (!string.Equals(potion.Id.Entry, action.PotionId, StringComparison.Ordinal))
                     {
-                        throw new InvalidOperationException(
-                            $"部署时药水槽位 {action.PotionSlot} 为 {potion.Id.Entry}，预期 {action.PotionId}。");
+                        Entry.Logger.Warn(
+                            $"[CombatSolver/Test] DEPLOY_REPLAN turn={turn} reason=potion_mismatch " +
+                            $"slot={action.PotionSlot} actual={potion.Id.Entry} expected={action.PotionId}");
+                        _combat.ContinuationSource = null;
+                        CompleteDeployment(deployment);
+                        RequestSearch(
+                            host,
+                            state,
+                            SearchReason.DeploymentDrift,
+                            deployWhenReady: !_combat.FullAutoEnabled);
+                        return;
                     }
                     GameAction queuedAction = await EnqueueAndCaptureActionAsync(
                         candidate => candidate is UsePotionAction usePotion
@@ -2573,7 +2594,6 @@ internal static class SolverController
                 token.ThrowIfCancellationRequested();
                 PlanCardChoice[] endTurnChoices = plannedEndTurn.TurnStartChoices?
                     .Where(choice => choice.Timing is PlanChoiceTiming.PlayerTurnEnd or PlanChoiceTiming.EnemyTurn)
-                    .Where(choice => choice.Effect != PlanChoiceEffect.ApplyKnowledgeCurse)
                     .ToArray() ?? [];
                 if (endTurnChoices.Length > 0)
                 {

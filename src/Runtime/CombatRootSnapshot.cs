@@ -120,6 +120,7 @@ internal sealed class CombatRootSnapshot
         Stopwatch stopwatch = Stopwatch.StartNew();
 
         PowerDynamicVarWarmup.EnsureMaterialized(state);
+        CardDynamicVarWarmup.EnsureMaterialized(state);
 
         // Listener enumeration and third-party owner discovery are part of root capture.
         // Take the baseline first so any semantic mutation in those callbacks is rejected by

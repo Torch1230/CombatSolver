@@ -216,6 +216,8 @@ internal static class TurnStartChoiceSupport
             simulator.Discard(selected);
             simulator.Draw(player, selected.Count);
         }
+        if (combat.HasPendingChoice)
+            return false;
         combat.ClearPendingTurnStartChoice();
         return true;
     }
@@ -274,6 +276,8 @@ internal static class TurnStartChoiceSupport
         {
             case PlanChoiceEffect.Discard:
                 simulator.Discard(selected);
+                if (combat.HasPendingChoice)
+                    return false;
                 break;
             case PlanChoiceEffect.Exhaust:
                 foreach (PredictedCard card in selected)

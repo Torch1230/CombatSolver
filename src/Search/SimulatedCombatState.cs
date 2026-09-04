@@ -334,6 +334,7 @@ internal sealed partial class SimulatedCombatState
         _rootHookListeners = liveCombatHookListeners
             .Take(standardCombatListenerCount)
             .Select(listener => rootModelClones.GetValueOrDefault(listener, listener))
+            .Where(listener => listener is not null)
             .Where(listener => listener is not CardModel
                 and not AfflictionModel
                 and not EnchantmentModel
@@ -1045,9 +1046,9 @@ internal sealed partial class SimulatedCombatState
     {
         Player player = owner.Player
             ?? throw new InvalidOperationException("玩家回合开始钩子的持有者没有 Player。");
-        if (TurnStartRelicSupport.TriggerAfterPlayerTurnStart(simulator, this, player, choices))
-            return true;
         if (TurnStartPowerSupport.TriggerAfterPlayerTurnStart(simulator, this, player, choices))
+            return true;
+        if (TurnStartRelicSupport.TriggerAfterPlayerTurnStart(simulator, this, player, choices))
             return true;
         return false;
     }

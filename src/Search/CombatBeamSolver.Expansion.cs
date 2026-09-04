@@ -1672,8 +1672,8 @@ internal sealed partial class CombatBeamSolver
         if (PersistentRelicSupport.ShouldPlayerResetEnergy(simulatedCombat, _player))
             playerState.LoseEnergy(playerState.Energy);
         playerState.GainEnergy(PersistentPowerSupport.GetModifiedMaxEnergy(simulatedCombat, _player));
-        TurnStartRelicSupport.TriggerAfterEnergyReset(simulator, simulatedCombat, _player);
         PersistentPowerSupport.TriggerAfterEnergyReset(simulator, simulatedCombat, _player);
+        TurnStartRelicSupport.TriggerAfterEnergyReset(simulator, simulatedCombat, _player);
         TurnStartRelicSupport.TriggerAfterEnergyResetLate(simulator, simulatedCombat, _player);
         simulatedCombat.ClearPendingTurnStartChoice();
         bool sideTurnStartTriggeredEarly = false;
@@ -2494,8 +2494,8 @@ internal sealed partial class CombatBeamSolver
                 playerState.LoseEnergy(playerState.Energy);
             playerState.GainEnergy(PersistentPowerSupport.GetModifiedMaxEnergy(simulatedCombat, _player)
                 + simulatedCombat.ConsumeEnergyNextTurn(_player));
-            TurnStartRelicSupport.TriggerAfterEnergyReset(simulator, simulatedCombat, _player);
             PersistentPowerSupport.TriggerAfterEnergyReset(simulator, simulatedCombat, _player);
+            TurnStartRelicSupport.TriggerAfterEnergyReset(simulator, simulatedCombat, _player);
             TurnStartRelicSupport.TriggerAfterEnergyResetLate(simulator, simulatedCombat, _player);
             simulatedCombat.ClearPendingTurnStartChoice();
             int beforeHandDrawShuffleEvents = simulator.ShuffleEventCount;

@@ -1,6 +1,7 @@
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
+using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Powers;
@@ -93,9 +94,16 @@ internal static class BespokeCardMirrors
     {
         SimulatedCombatState combat = context.CombatState as SimulatedCombatState
             ?? throw new InvalidOperationException("恶意缺少分支回合受伤状态。");
-        int hitCount = combat.HasLostHpThisTurn(card.Owner.Creature)
-            ? card.DynamicVars.Repeat.IntValue
-            : 1;
+        int hitCount = 1;
+        if (combat.HasLostHpThisTurn(card.Owner.Creature))
+        {
+            // Spite's RepeatVar is canonical (2, plus one per upgrade). A few live cards can
+            // carry a stale DynamicVarSet after an in-run card-state rewrite; recover this
+            // card-specific canonical value instead of failing the whole search.
+            hitCount = card.DynamicVars.TryGetValue("Repeat", out DynamicVar? repeat)
+                ? repeat.IntValue
+                : 2 + card.CurrentUpgradeLevel;
+        }
         DamageCmd.Attack(card.DynamicVars.Damage.BaseValue)
             .WithHitCount(hitCount)
             .FromCard(card, context.CardPlay)

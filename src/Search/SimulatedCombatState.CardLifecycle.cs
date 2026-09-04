@@ -340,9 +340,9 @@ internal sealed partial class SimulatedCombatState
         Player player,
         TurnStartChoiceCursor choices)
     {
-        if (PrepareRelicsBeforeHandDraw(simulator, player, choices))
-            return true;
         if (TurnStartPowerSupport.TriggerBeforeHandDraw(simulator, this, player, choices))
+            return true;
+        if (PrepareRelicsBeforeHandDraw(simulator, player, choices))
             return true;
 
         if (_nightmareSelections != null)

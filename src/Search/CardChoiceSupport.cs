@@ -543,6 +543,7 @@ internal static partial class CardChoiceSupport
     {
         string vars = string.Join(';', card.DynamicVars
             .OrderBy(item => item.Key)
+            .Where(item => SemanticStateFieldPolicy.IsSemantic(card, item.Key, item.Value))
             .Select(item => $"{item.Key}={item.Value.BaseValue}"));
         string keywords = string.Join(',', card.GetKeywordsWithSources(KeywordSources.Local).Order());
         StringBuilder key = new();
