@@ -26,6 +26,16 @@
 
 性能指标口径：`selected_*` 只描述最终选中的单个 solver；请求级 `total_expanded_nodes / total_transitions / total_choice_branches`、`total_solver_ms`、分配与 GC 累计对正常、失败和取消的每个 solver 工作区间精确记录一次，包括取消前已发生的部分工作。Smart 有限药水层之间由 coordinator 主动执行的内存整理也计入时间、分配与 GC，但不增加 solver 数；建立开局、层间比较等其他编排工作仍不在这些总值中。因此端到端耗时以请求/阶段外层墙钟为准，峰值内存以进程 `VmHWM` 为准。Smart 多层的取消时点可能令请求总工作量小幅波动，语义验收优先比较胜负、战损、回合和动作路线。峰值工作集是瞬时进程峰值，不能跨阶段相加；`16 GB` NoGC 是运行时请求预算，不等于实际占用或硬上限；NoGC 活跃时 `GC.GetTotalMemory(false)` 不是严格 live-set 测量。
 
+## 下一版本（开发中）：战后回血遗物计入战损
+
+| 场景 | 当前结果 | 验证内容 | 日期 |
+| --- | --- | --- | --- |
+| `POST-COMBAT-RELIC-HEAL-ASSERTIONS` | 通过（无人测试静态断言） | 无条件回血按剩余生命上限裁剪：`6` 点回血在 `70/80` 得 `6`、`78/80` 得 `2`、`80/80` 得 `0`。带阈值的一件按原版截断判定：`75` 点最大生命下停在 `37` 得 `18`、停在 `38` 只得 `6`，`70/75` 受上限裁剪得 `5`。排序口径 `MonotoneHealFor` 在同一输入下只给 `6`，阈值部分不进排序。未获胜或阵亡的路线一律得 `0`。 | 2026-09-04 |
+| `POST-COMBAT-RELIC-HEAL-VANILLA-GROUND-TRUTH` | 通过（反编译核对） | 全量反编译 `sts2.dll` 后交叉筛选，胜利后回血的遗物恰好是燃烧之血、黑暗之血、带骨肉三件；其余用 `AfterCombatVictory` 的遗物不回血，其余会回血的遗物挂在进房间、回合开始等别的时点。带骨肉走 `AfterCombatVictoryEarly`，先于两件血遗物结算，阈值判定读的是未回血前的终局生命。 | 2026-09-04 |
+| `POST-COMBAT-RELIC-HEAL-LIVE-RUN` | 未验证 | 实机整局观察尚未进行，headless fixture 仍因缺少非 Steam `default` 存档配置无法建立。 | 2026-09-04 |
+
+> 带骨肉只显示不排序是本批的已知取舍，不是遗漏。要让它进排序，需要先把 `MultiObjectiveDominates` 和 `TranspositionLabel.Dominates` 改成比较战后终局生命而不是原始生命与原始掉血，并为阈值附近的支配关系补专门夹具。
+
 ## 下一版本（开发中）：路线回血计入战损
 
 | 场景 | 当前结果 | 验证内容 | 日期 |
