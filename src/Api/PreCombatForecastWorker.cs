@@ -12,10 +12,11 @@ internal static class PreCombatForecastWorker
     private const string RuntimeDirectoryName = ".combatsolver-precombat";
     private const string RuntimeMarkerName = ".combatsolver-precombat-owner";
     private const string RuntimeMarkerContents = "CombatSolver PreCombat API v1";
-    private const int IdleWorkerLifetimeMilliseconds = 120_000;
+    private const int KeepAliveIndefinitely = -1;
     private static readonly SemaphoreSlim Gate = new(1, 1);
     private static WorkerSession? _session;
     private static CancellationTokenSource? _idleShutdown;
+    private static int _idleWorkerLifetimeMilliseconds = PreCombatForecastApi.DefaultWorkerIdleTimeoutMilliseconds;
     private static int _workerStartCount;
     private static int _workerReuseCount;
     private static int _workerBusy;
@@ -49,7 +50,7 @@ internal static class PreCombatForecastWorker
                 PrivateMemoryBytes = session.Process.PrivateMemorySize64,
                 PeakWorkingSetBytes = session.Process.PeakWorkingSet64,
                 AudioMuted = session.AudioMuted,
-                IdleTimeoutMilliseconds = IdleWorkerLifetimeMilliseconds,
+                IdleTimeoutMilliseconds = GetIdleTimeoutMilliseconds(),
             };
         }
         catch (InvalidOperationException)
@@ -93,6 +94,7 @@ internal static class PreCombatForecastWorker
             gateEntered = true;
             Interlocked.Exchange(ref _workerBusy, 1);
             CancelIdleShutdown();
+            SetIdleWorkerLifetime(options.WorkerIdleTimeoutMilliseconds);
 
             string runtimeRoot = Path.Combine(snapshot.GameRoot, RuntimeDirectoryName);
             string requestRoot = Path.Combine(runtimeRoot, "requests", requestId);
@@ -291,6 +293,7 @@ internal static class PreCombatForecastWorker
 
     public static async Task<PreCombatWorkerStatus> RestartSessionAsync(
         PreCombatLiveStateSnapshot snapshot,
+        int? idleTimeoutMilliseconds,
         CancellationToken cancellationToken)
     {
         await Gate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -298,6 +301,7 @@ internal static class PreCombatForecastWorker
         {
             Interlocked.Exchange(ref _workerBusy, 1);
             CancelIdleShutdown();
+            SetIdleWorkerLifetime(idleTimeoutMilliseconds);
             StopCurrentSession();
             string runtimeRoot = Path.Combine(snapshot.GameRoot, RuntimeDirectoryName);
             EnsureRuntimeRoot(runtimeRoot, snapshot.GameRoot);
@@ -313,6 +317,24 @@ internal static class PreCombatForecastWorker
             Gate.Release();
         }
         return GetStatus();
+    }
+
+    public static async Task ConfigureIdleTimeoutAsync(int? idleTimeoutMilliseconds)
+    {
+        await Gate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            SetIdleWorkerLifetime(idleTimeoutMilliseconds);
+            WorkerSession? session = Volatile.Read(ref _session);
+            if (session is not null && !session.Process.HasExited)
+                ScheduleIdleShutdown(session);
+            else
+                CancelIdleShutdown();
+        }
+        finally
+        {
+            Gate.Release();
+        }
     }
 
     public static async Task StopSessionAsync()
@@ -388,19 +410,22 @@ internal static class PreCombatForecastWorker
         IsRunning = false,
         IsBusy = busy,
         AudioMuted = false,
-        IdleTimeoutMilliseconds = IdleWorkerLifetimeMilliseconds,
+        IdleTimeoutMilliseconds = GetIdleTimeoutMilliseconds(),
     };
 
     private static void ScheduleIdleShutdown(WorkerSession session)
     {
         CancelIdleShutdown();
+        int idleTimeoutMilliseconds = Volatile.Read(ref _idleWorkerLifetimeMilliseconds);
+        if (idleTimeoutMilliseconds == KeepAliveIndefinitely)
+            return;
         CancellationTokenSource cancellation = new();
         _idleShutdown = cancellation;
         _ = Task.Run(async () =>
         {
             try
             {
-                await Task.Delay(IdleWorkerLifetimeMilliseconds, cancellation.Token).ConfigureAwait(false);
+                await Task.Delay(idleTimeoutMilliseconds, cancellation.Token).ConfigureAwait(false);
                 await Gate.WaitAsync(cancellation.Token).ConfigureAwait(false);
                 try
                 {
@@ -408,7 +433,7 @@ internal static class PreCombatForecastWorker
                     {
                         Entry.Logger.Info(
                             $"[CombatSolver/PreCombatApi] WORKER_IDLE_STOP pid={session.Process.Id} " +
-                            $"idle_ms={IdleWorkerLifetimeMilliseconds}");
+                            $"idle_ms={idleTimeoutMilliseconds}");
                         StopCurrentSession();
                     }
                 }
@@ -432,6 +457,17 @@ internal static class PreCombatForecastWorker
             }
         });
     }
+
+    private static int? GetIdleTimeoutMilliseconds()
+    {
+        int value = Volatile.Read(ref _idleWorkerLifetimeMilliseconds);
+        return value == KeepAliveIndefinitely ? null : value;
+    }
+
+    private static void SetIdleWorkerLifetime(int? idleTimeoutMilliseconds) =>
+        Interlocked.Exchange(
+            ref _idleWorkerLifetimeMilliseconds,
+            idleTimeoutMilliseconds ?? KeepAliveIndefinitely);
 
     private static void CancelIdleShutdown()
     {

@@ -14,7 +14,10 @@ namespace CombatSolver.Api;
 /// </summary>
 public static class PreCombatForecastApi
 {
-    public const int ApiVersion = 4;
+    public const int ApiVersion = 5;
+    public const int DefaultWorkerIdleTimeoutMilliseconds = 120_000;
+    public const int MinimumWorkerIdleTimeoutMilliseconds = 1_000;
+    public const int MaximumWorkerIdleTimeoutMilliseconds = 86_400_000;
 
     private static readonly ConcurrentDictionary<string, Task<PreCombatForecastResult>> Active = new();
     private static readonly ConcurrentDictionary<string, PreCombatForecastResult> Completed = new();
@@ -38,20 +41,41 @@ public static class PreCombatForecastApi
     public static PreCombatWorkerStatus GetWorkerStatus() => PreCombatForecastWorker.GetStatus();
 
     /// <summary>
+    /// Changes the idle lifetime for the current and future retained worker. Null disables automatic idle shutdown.
+    /// If a worker is already idle, its countdown is restarted with the new value.
+    /// </summary>
+    public static Task SetWorkerIdleTimeoutAsync(int? idleTimeoutMilliseconds)
+    {
+        ValidateWorkerIdleTimeoutOrThrow(idleTimeoutMilliseconds);
+        return PreCombatForecastWorker.ConfigureIdleTimeoutAsync(idleTimeoutMilliseconds);
+    }
+
+    /// <summary>
     /// Stops any existing isolated worker and starts a fresh compatible process so its game startup can overlap with
     /// the player's UI choices. The supplied run is captured only to establish the isolated runtime and Mod set.
     /// </summary>
     public static Task<PreCombatWorkerStatus> RestartWorkerAsync(
         RunState run,
+        CancellationToken cancellationToken = default) =>
+        RestartWorkerAsync(run, DefaultWorkerIdleTimeoutMilliseconds, cancellationToken);
+
+    /// <summary>
+    /// Stops any existing worker and prewarms a fresh process with the requested idle lifetime. Null keeps it alive
+    /// until explicitly stopped.
+    /// </summary>
+    public static Task<PreCombatWorkerStatus> RestartWorkerAsync(
+        RunState run,
+        int? idleTimeoutMilliseconds,
         CancellationToken cancellationToken = default)
     {
         if (!IsAvailable)
             throw new PlatformNotSupportedException("The isolated pre-combat worker is currently available on Windows only.");
         if (!NGame.IsMainThread())
             throw new InvalidOperationException("RestartWorkerAsync must be called on the game main thread.");
+        ValidateWorkerIdleTimeoutOrThrow(idleTimeoutMilliseconds);
         PreCombatLiveStateSnapshot snapshot = PreCombatLiveStateSnapshot.Capture(run);
         return Task.Run(
-            () => PreCombatForecastWorker.RestartSessionAsync(snapshot, cancellationToken),
+            () => PreCombatForecastWorker.RestartSessionAsync(snapshot, idleTimeoutMilliseconds, cancellationToken),
             CancellationToken.None);
     }
 
@@ -99,6 +123,7 @@ public static class PreCombatForecastApi
             CancelWorkerWhenCallerCancels = true,
             ForceRefresh = true,
             CloseWorkerAfterRequest = simulationOptions.CloseWorkerAfterRequest,
+            WorkerIdleTimeoutMilliseconds = simulationOptions.WorkerIdleTimeoutMilliseconds,
             SimulationSeed = simulationOptions.SampleSeed,
         };
         MapCoord target = ResolveImmediateSimulationTarget(run);
@@ -446,6 +471,8 @@ public static class PreCombatForecastApi
         }
         if (options.MaxDegreeOfParallelism is < 1 or > 16)
             return "MaxDegreeOfParallelism must be between 1 and 16.";
+        if (WorkerIdleTimeoutError(options.WorkerIdleTimeoutMilliseconds) is { } idleTimeoutError)
+            return idleTimeoutError;
         bool roomMatchesMapPoint = (mapPointKind, roomKind) switch
         {
             (PreCombatMapPointKind.Unknown, _) => true,
@@ -460,6 +487,17 @@ public static class PreCombatForecastApi
         }
         return null;
     }
+
+    private static void ValidateWorkerIdleTimeoutOrThrow(int? idleTimeoutMilliseconds)
+    {
+        if (WorkerIdleTimeoutError(idleTimeoutMilliseconds) is { } error)
+            throw new ArgumentOutOfRangeException(nameof(idleTimeoutMilliseconds), error);
+    }
+
+    private static string? WorkerIdleTimeoutError(int? idleTimeoutMilliseconds) =>
+        idleTimeoutMilliseconds is < MinimumWorkerIdleTimeoutMilliseconds or > MaximumWorkerIdleTimeoutMilliseconds
+            ? $"Worker idle timeout must be null or between {MinimumWorkerIdleTimeoutMilliseconds} and {MaximumWorkerIdleTimeoutMilliseconds} milliseconds."
+            : null;
 
     private static string? ValidateInterveningMapPoints(
         RunState run,

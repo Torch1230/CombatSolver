@@ -347,23 +347,39 @@ internal sealed partial class UnattendedTestRunner
             int forecastEntryHp = Math.Max(1, runState.Players.Single().Creature.CurrentHp - 1);
             string before = PreCombatForecastApi.CaptureLiveStateToken(runState);
             await PreCombatForecastApi.StopWorkerAsync();
-            if (PreCombatForecastApi.GetWorkerStatus().IsRunning)
+            PreCombatWorkerStatus stopped = PreCombatForecastApi.GetWorkerStatus();
+            if (stopped.IsRunning)
                 throw new InvalidOperationException("显式关闭后战前 worker 仍在运行。");
+            await PreCombatForecastApi.SetWorkerIdleTimeoutAsync(120_000);
+            if (PreCombatForecastApi.GetWorkerStatus().IdleTimeoutMilliseconds != 120_000)
+                throw new InvalidOperationException("战前 worker 未接受 2 分钟保活设置。");
+            await PreCombatForecastApi.SetWorkerIdleTimeoutAsync(600_000);
+            if (PreCombatForecastApi.GetWorkerStatus().IdleTimeoutMilliseconds != 600_000)
+                throw new InvalidOperationException("战前 worker 未接受 10 分钟保活设置。");
+            await PreCombatForecastApi.SetWorkerIdleTimeoutAsync(null);
+            if (PreCombatForecastApi.GetWorkerStatus().IdleTimeoutMilliseconds is not null)
+                throw new InvalidOperationException("战前 worker 未接受一直维持设置。");
             int startsBefore = PreCombatForecastWorker.WorkerStartCountForTesting;
             int reusesBefore = PreCombatForecastWorker.WorkerReuseCountForTesting;
             PreCombatForecastResult result;
             try
             {
-                PreCombatWorkerStatus prewarmed = await PreCombatForecastApi.RestartWorkerAsync(runState);
+                PreCombatWorkerStatus prewarmed = await PreCombatForecastApi.RestartWorkerAsync(
+                    runState,
+                    idleTimeoutMilliseconds: null);
                 if (!prewarmed.IsRunning
                     || prewarmed.ProcessId is null
                     || prewarmed.WorkingSetBytes is null
                     || prewarmed.PrivateMemoryBytes is null
-                    || !prewarmed.AudioMuted)
+                    || !prewarmed.AudioMuted
+                    || prewarmed.IdleTimeoutMilliseconds is not null)
                 {
                     throw new InvalidOperationException(
                         $"战前 worker 预热状态不完整：{prewarmed}。");
                 }
+                await PreCombatForecastApi.SetWorkerIdleTimeoutAsync(1_800_000);
+                if (PreCombatForecastApi.GetWorkerStatus().IdleTimeoutMilliseconds != 1_800_000)
+                    throw new InvalidOperationException("运行中的战前 worker 未切换到 30 分钟保活设置。");
                 var options = new PreCombatForecastOptions
                 {
                     SearchBudgetMilliseconds = 3_000,
@@ -372,6 +388,7 @@ internal sealed partial class UnattendedTestRunner
                     PlayerCurrentHpOverride = forecastEntryHp,
                     CancelWorkerWhenCallerCancels = true,
                     ForceRefresh = true,
+                    WorkerIdleTimeoutMilliseconds = 1_800_000,
                 };
                 int targetActFloor = Math.Max(1, runState.ActFloor + 1);
                 int targetMapColumn = ResolveNextMapColumn(runState);
@@ -423,6 +440,7 @@ internal sealed partial class UnattendedTestRunner
                         MaxDegreeOfParallelism = 1,
                         SampleSeed = simulationSeed,
                         CloseWorkerAfterRequest = true,
+                        WorkerIdleTimeoutMilliseconds = 1_800_000,
                     });
                 if (!simulated.IsSuccess)
                 {
@@ -452,7 +470,7 @@ internal sealed partial class UnattendedTestRunner
                     $"PreCombatForecastApi:EntryHp={forecastEntryHp}:HpLoss={result.ProjectedHpLoss}:Potions={result.PotionUses.Count}:" +
                     $"Boundary={result.SearchBoundary}:LiveStateUnchanged=1:WorkerStarts={workerStarts}:" +
                     $"WorkerReuses={workerReuses}:PrewarmMemoryVisible=1:AudioMuted=1:" +
-                    $"SimulationSeed={simulationSeed}:AutoClose=1");
+                    $"KeepAliveModes=2m,10m,30m,Indefinite:SimulationSeed={simulationSeed}:AutoClose=1");
             }
             finally
             {

@@ -97,6 +97,13 @@ public sealed record PreCombatForecastOptions
     /// </summary>
     public bool CloseWorkerAfterRequest { get; init; }
 
+    /// <summary>
+    /// Idle lifetime for a retained worker. Null disables automatic idle shutdown. This changes only worker lifetime
+    /// and is deliberately excluded from deterministic forecast cache keys.
+    /// </summary>
+    public int? WorkerIdleTimeoutMilliseconds { get; init; } =
+        PreCombatForecastApi.DefaultWorkerIdleTimeoutMilliseconds;
+
     internal ulong? SimulationSeed { get; init; }
 }
 
@@ -122,6 +129,10 @@ public sealed record PreCombatSimulationOptions
 
     /// <summary>Stop the isolated worker after this sample has returned to its reusable barrier.</summary>
     public bool CloseWorkerAfterRequest { get; init; }
+
+    /// <summary>Idle lifetime for a retained worker. Null keeps it alive until explicitly stopped.</summary>
+    public int? WorkerIdleTimeoutMilliseconds { get; init; } =
+        PreCombatForecastApi.DefaultWorkerIdleTimeoutMilliseconds;
 }
 
 /// <summary>Read-only process and memory information for the reusable isolated worker.</summary>
@@ -134,7 +145,8 @@ public sealed record PreCombatWorkerStatus
     public long? PrivateMemoryBytes { get; init; }
     public long? PeakWorkingSetBytes { get; init; }
     public bool AudioMuted { get; init; }
-    public int IdleTimeoutMilliseconds { get; init; }
+    /// <summary>Configured idle lifetime. Null means automatic idle shutdown is disabled.</summary>
+    public int? IdleTimeoutMilliseconds { get; init; }
 }
 
 /// <summary>A potion action present in the selected route.</summary>
