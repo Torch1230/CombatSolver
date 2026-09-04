@@ -50,6 +50,7 @@ internal sealed record SolverOverlaySnapshot(
     int ProjectedBattleHpLost,
     bool ProjectedBattleHpLossKnown,
     string HpOutcomeText,
+    int RouteHpRecovered,
     bool OnlyDeathRoutesFound,
     IReadOnlyList<SolverOverlayTurnSnapshot> Turns,
     string DetailsText,
@@ -119,6 +120,7 @@ internal sealed record SolverOverlaySnapshot(
             projectedBattleHpLost,
             combatEnded,
             outcome,
+            RouteHpRecovered: turns.Sum(turn => turn.HpRecovered),
             OnlyDeathRoutesFound: false,
             turns,
             DetailsText: string.Empty,
@@ -149,6 +151,7 @@ internal sealed record SolverOverlaySnapshot(
             preview.ProjectedBattleHpLost,
             preview.CombatEnded,
             hpOutcomeText,
+            RouteHpRecovered: turns.Sum(turn => turn.HpRecovered),
             preview.OnlyDeathRoutesFound,
             turns,
             DetailsText: string.Empty,
@@ -217,16 +220,13 @@ internal sealed record SolverOverlaySnapshot(
             : $"花费了 {result.TotalSearchElapsed.TotalSeconds:F1} 秒，共查阅了 {reviewedWorldlinesTotal:N0} 条世界线";
         bool projectedBattleHpLossKnown = result.CombatEndedTurn.HasValue;
         int routeHpRecovered = result.HpRecoveredByTurn.Values.Sum();
-        string recoveredText = routeHpRecovered > 0
-            ? $"    路线回血 {routeHpRecovered} HP"
-            : string.Empty;
         string hpOutcomeText = !projectedBattleHpLossKnown
             ? "预计战损 未知"
             : result.ProjectedBattleHpLost > 0
                 ? result.ProjectedBattleHpLossIncrease > 0
-                    ? $"本局扣血  已 {result.BattleHpLostSoFar}    预计 {result.ProjectedBattleHpLost} HP    重算增加 {result.ProjectedBattleHpLossIncrease} HP{recoveredText}"
-                    : $"本局扣血  已 {result.BattleHpLostSoFar}    预计 {result.ProjectedBattleHpLost} HP{recoveredText}"
-                : $"本局扣血  0 HP{recoveredText}";
+                    ? $"本局扣血  已 {result.BattleHpLostSoFar}    预计 {result.ProjectedBattleHpLost} HP    重算增加 {result.ProjectedBattleHpLossIncrease} HP"
+                    : $"本局扣血  已 {result.BattleHpLostSoFar}    预计 {result.ProjectedBattleHpLost} HP"
+                : "本局扣血  0 HP";
 
         SolverOverlayTurnSnapshot[] turns = Enumerable.Range(0, searchedTurns)
             .Select(index => CaptureTurn(result, startTurnNumber + index))
@@ -241,6 +241,7 @@ internal sealed record SolverOverlaySnapshot(
             result.ProjectedBattleHpLost,
             projectedBattleHpLossKnown,
             hpOutcomeText,
+            routeHpRecovered,
             result.OnlyDeathRoutesFound,
             turns,
             BuildDetails(result, startTurnNumber, unmirrored, compensated, unexpectedReplan),

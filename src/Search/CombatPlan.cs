@@ -174,6 +174,15 @@ internal static class HpChangeText
         => netHpChange > 0
             ? $"+{netHpChange}"
             : netHpChange.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>Same value, wrapped in the gain or loss colour used elsewhere in the route details.</summary>
+    public static string SignedColored(int netHpChange)
+        => netHpChange switch
+        {
+            > 0 => $"[color=#73c991]{Signed(netHpChange)}[/color]",
+            < 0 => $"[color=#ef6b6b]{Signed(netHpChange)}[/color]",
+            _ => Signed(netHpChange),
+        };
 }
 
 internal sealed record TurnOutcome(
@@ -1567,7 +1576,7 @@ internal sealed class SolverResult
             {
                 (> 0, > 0) => $"　[color=#ef6b6b]预计掉血 {turnHpLost}[/color]" +
                     $"　[color=#73c991]回血 {turnHpRecovered}[/color]" +
-                    $"　净 {HpChangeText.Signed(turnHpRecovered - turnHpLost)} HP",
+                    $"　净 {HpChangeText.SignedColored(turnHpRecovered - turnHpLost)} HP",
                 (> 0, _) => $"　[color=#ef6b6b]预计掉血 {turnHpLost}[/color]",
                 (_, > 0) => $"　[color=#73c991]预计回血 {turnHpRecovered}[/color]",
                 _ => string.Empty,
