@@ -216,6 +216,7 @@ internal sealed partial class CombatBeamSolver
                     actions.Key,
                     actions.Select(WithDisplayNames).ToArray(),
                     materialized.Outcome.HpLost,
+                    materialized.Outcome.HpRecovered,
                     materialized.Outcome.EnemyHpLost,
                     materialized.Outcome.EnergyLeft,
                     materialized.CombatEnded));
@@ -365,6 +366,7 @@ internal sealed partial class CombatBeamSolver
                 _startTurnNumber,
                 actions.Select(WithDisplayNames).ToArray(),
                 outcome.HpLost,
+                outcome.HpRecovered,
                 outcome.EnemyHpLost,
                 outcome.EnergyLeft,
                 combatEnded,
@@ -643,6 +645,7 @@ internal sealed partial class CombatBeamSolver
                 SoldHpThreshold = sellThreshold,
                 SoldHpByTurn = annotations.SoldHpByTurn,
                 HpLostByTurn = annotations.HpLostByTurn,
+                HpRecoveredByTurn = annotations.HpRecoveredByTurn,
                 EnemyHpLostByTurn = annotations.EnemyHpLostByTurn,
                 MaxBlockByTurn = annotations.MaxBlockByTurn,
                 ActualBlockByTurn = annotations.ActualBlockByTurn,
@@ -704,6 +707,7 @@ internal sealed partial class CombatBeamSolver
                         group.Key,
                         nodes.Select(node => WithDisplayNames(node.Action!)).ToArray(),
                         hpLost,
+                        annotations.HpRecoveredByTurn.GetValueOrDefault(group.Key),
                         enemyHpLost,
                         energyLeft,
                         annotations.CombatEndedTurn == group.Key);

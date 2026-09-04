@@ -215,6 +215,10 @@ internal sealed partial class CombatBeamSolver
             Outcome = new TurnOutcome(
                 outcome.Turn,
                 outcome.HpLost,
+                Math.Max(
+                    0,
+                    outcome.Node.Snapshot.RecoveredPlayerHp
+                        - outcome.TurnStart.Snapshot.RecoveredPlayerHp),
                 outcome.Node.CumulativeEnemyHpLost
                     - outcome.TurnStart.CumulativeEnemyHpLost,
                 soldThisTurn,
@@ -277,6 +281,7 @@ internal sealed partial class CombatBeamSolver
         Dictionary<int, int> sold = [];
         Dictionary<int, int> maxBlock = [];
         Dictionary<int, int> actualBlock = [];
+        Dictionary<int, int> recoveries = [];
         Dictionary<int, int> energy = [];
         Dictionary<int, int> potionCounts = [];
         Dictionary<int, int> potionCosts = [];
@@ -312,6 +317,7 @@ internal sealed partial class CombatBeamSolver
             if (node.Outcome is { } outcome)
             {
                 losses[outcome.Turn] = outcome.HpLost;
+                recoveries[outcome.Turn] = outcome.HpRecovered;
                 enemyHpLosses[outcome.Turn] = outcome.EnemyHpLost;
                 actualBlock[outcome.Turn] = outcome.ActualBlock;
                 maxBlock[outcome.Turn] = outcome.MaxBlock;
@@ -363,6 +369,7 @@ internal sealed partial class CombatBeamSolver
 
         return new RouteAnnotations(
             losses,
+            recoveries,
             enemyHpLosses,
             sold,
             maxBlock,

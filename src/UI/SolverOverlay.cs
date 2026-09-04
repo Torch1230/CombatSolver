@@ -761,14 +761,17 @@ internal static class SolverOverlay
             SolverOverlayTurnSnapshot turn = snapshot.Turns[index];
             RouteRows[index].TurnLabel.Text = $"第 {turn.Turn} 回合";
             RouteRows[index].Populate(turn);
+            // Damage alone reads wrong on a turn that also heals: the player wants the number the
+            // turn actually leaves them at, not the hits they took on the way there.
+            int netHpChange = turn.HpRecovered - turn.HpLoss;
             string outcome = turn.CombatEnded
                 ? "战斗结束"
-                : turn.HpLoss > 0
-                    ? $"-{turn.HpLoss} HP"
+                : netHpChange != 0
+                    ? $"{HpChangeText.Signed(netHpChange)} HP"
                     : "0 HP";
             RouteRows[index].SetOutcome(
                 outcome,
-                turn.CombatEnded ? Success : turn.HpLoss > 0 ? Danger : TextMuted,
+                turn.CombatEnded ? Success : netHpChange < 0 ? Danger : netHpChange > 0 ? Success : TextMuted,
                 energyText: $"余 {turn.EnergyLeft} 费",
                 enemyDamageText: turn.EnemyHpDamageLost is { } damage
                     ? $"对敌伤害 {damage}"

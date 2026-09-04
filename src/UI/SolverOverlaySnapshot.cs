@@ -36,6 +36,7 @@ internal sealed record SolverOverlayTurnSnapshot(
     SolverOverlayActionSnapshot? EndTurnAction,
     int? EnemyHpDamageLost,
     int HpLoss,
+    int HpRecovered,
     int EnergyLeft,
     bool CombatEnded);
 
@@ -92,6 +93,7 @@ internal sealed record SolverOverlaySnapshot(
             endTurn == null ? null : CaptureAction(endTurn, [], actions.Length == 0),
             EnemyHpDamageLost: preview.EnemyHpLost,
             preview.HpLost,
+            preview.HpRecovered,
             preview.EnergyLeft,
             preview.CombatEnded);
         SolverOverlayTurnSnapshot[] turns = preview.FrontierTurns is { Count: > 0 } frontier
@@ -169,6 +171,7 @@ internal sealed record SolverOverlaySnapshot(
             frontierEndTurn == null ? null : CaptureAction(frontierEndTurn, [], frontierActions.Length == 0),
             EnemyHpDamageLost: frontier.EnemyHpLost,
             frontier.HpLost,
+            frontier.HpRecovered,
             frontier.EnergyLeft,
             frontier.CombatEnded);
     }
@@ -213,13 +216,17 @@ internal sealed record SolverOverlaySnapshot(
             ? $"路线已复用，共查阅了 {reviewedWorldlinesTotal:N0} 条世界线"
             : $"花费了 {result.TotalSearchElapsed.TotalSeconds:F1} 秒，共查阅了 {reviewedWorldlinesTotal:N0} 条世界线";
         bool projectedBattleHpLossKnown = result.CombatEndedTurn.HasValue;
+        int routeHpRecovered = result.HpRecoveredByTurn.Values.Sum();
+        string recoveredText = routeHpRecovered > 0
+            ? $"    路线回血 {routeHpRecovered} HP"
+            : string.Empty;
         string hpOutcomeText = !projectedBattleHpLossKnown
             ? "预计战损 未知"
             : result.ProjectedBattleHpLost > 0
                 ? result.ProjectedBattleHpLossIncrease > 0
-                    ? $"本局扣血  已 {result.BattleHpLostSoFar}    预计 {result.ProjectedBattleHpLost} HP    重算增加 {result.ProjectedBattleHpLossIncrease} HP"
-                    : $"本局扣血  已 {result.BattleHpLostSoFar}    预计 {result.ProjectedBattleHpLost} HP"
-                : "本局扣血  0 HP";
+                    ? $"本局扣血  已 {result.BattleHpLostSoFar}    预计 {result.ProjectedBattleHpLost} HP    重算增加 {result.ProjectedBattleHpLossIncrease} HP{recoveredText}"
+                    : $"本局扣血  已 {result.BattleHpLostSoFar}    预计 {result.ProjectedBattleHpLost} HP{recoveredText}"
+                : $"本局扣血  0 HP{recoveredText}";
 
         SolverOverlayTurnSnapshot[] turns = Enumerable.Range(0, searchedTurns)
             .Select(index => CaptureTurn(result, startTurnNumber + index))
@@ -291,6 +298,7 @@ internal sealed record SolverOverlaySnapshot(
             endTurn == null ? null : CaptureAction(endTurn, endTurnKills, actions.Length == 0),
             enemyHpLost,
             result.HpLostByTurn.GetValueOrDefault(turn),
+            result.HpRecoveredByTurn.GetValueOrDefault(turn),
             result.EnergyLeftByTurn.GetValueOrDefault(turn),
             result.CombatEndedTurn == turn);
     }
