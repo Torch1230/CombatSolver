@@ -59,11 +59,14 @@ internal sealed record NativeChoiceTrace(
     int Turn,
     long OccurredAtMilliseconds);
 
-internal sealed class NativeChoicePlanMismatchException(string message)
+internal class NativeChoicePlanMismatchException(string message)
     : InvalidOperationException(message);
 
 internal sealed class NativeChoiceSurfaceMismatchException(string message)
     : InvalidOperationException(message);
+
+internal sealed class NativeChoicePlanNotRequestedException(string message)
+    : NativeChoicePlanMismatchException(message);
 
 internal static class NativeChoiceRuntime
 {
@@ -454,7 +457,7 @@ internal sealed class NativeChoiceSession : IDisposable
 
             if (planIndex >= plans.Count)
             {
-                throw new InvalidOperationException(
+                throw new NativeChoicePlanNotRequestedException(
                     $"原生选牌会话 {Owner} 收到计划外选择：{request.SourceId}/{request.Surface}。");
             }
 
@@ -506,7 +509,7 @@ internal sealed class NativeChoiceSession : IDisposable
         if (planIndex != plans.Count)
         {
             PlanCardChoice next = plans[planIndex];
-            throw new InvalidOperationException(
+            throw new NativeChoicePlanNotRequestedException(
                 $"原生选牌会话 {Owner} 仍有 {plans.Count - planIndex} 个计划没有被游戏请求；" +
                 $"下一个={next.SourceId}/{next.Effect}/{next.ContextId}。");
         }
@@ -543,13 +546,13 @@ internal sealed class NativeChoiceSession : IDisposable
                     $"当前候选={string.Join(',', request.Options.Select(CardChoiceSupport.ChoiceCardKey))}。");
             }
             if (selected.Contains(card))
-                throw new NativeChoicePlanMismatchException($"原生选牌计划重复选择了 {token.CardId}。");
+                throw new InvalidOperationException($"原生选牌计划重复选择了 {token.CardId}。");
             selected.Add(card);
         }
 
         if (selected.Count < request.MinSelect || selected.Count > request.MaxSelect)
         {
-            throw new NativeChoicePlanMismatchException(
+            throw new InvalidOperationException(
                 $"原生选牌计划选择 {selected.Count} 张，页面要求 {request.MinSelect}..{request.MaxSelect} 张。");
         }
         return selected;

@@ -2468,20 +2468,20 @@ internal static class SolverController
                     DeployedCardIdsForTesting.Add(card.Id.Entry);
                     Entry.Logger.Info($"[CombatSolver/Test] DEPLOY_ACTION turn={turn} card={action.CardId} target_index={action.TargetIndex} target_combat_id={action.TargetCombatId?.ToString() ?? "-"} choice={action.Choice?.Effect.ToString() ?? "-"}");
                 }
-                    try
-                    {
-                        await choiceSession.AwaitProducerAndCompleteAsync(actionCompletion);
-                    }
-                    catch (NativeChoicePlanMismatchException)
-                    {
-                        choiceSession.CancelVisibleSurfaceForReplan();
-                        throw;
-                    }
-                    catch (NativeChoiceSurfaceMismatchException)
-                    {
-                        choiceSession.CancelVisibleSurfaceForReplan();
-                        throw;
-                    }
+                try
+                {
+                    await choiceSession.AwaitProducerAndCompleteAsync(actionCompletion);
+                }
+                catch (NativeChoicePlanMismatchException)
+                {
+                    choiceSession.CancelVisibleSurfaceForReplan();
+                    throw;
+                }
+                catch (NativeChoiceSurfaceMismatchException)
+                {
+                    choiceSession.CancelVisibleSurfaceForReplan();
+                    throw;
+                }
                 if (measureDeploymentTiming)
                 {
                     Entry.Logger.Info(
@@ -2587,7 +2587,20 @@ internal static class SolverController
                     choiceSession.SetPlanAndStartDriving(host, endTurnChoices, token);
                     CombatManager.Instance.OnEndedTurnLocally();
                     RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(new EndPlayerTurnAction(player, turn));
-                    await choiceSession.WaitForAllPlansConsumedAsync(token);
+                    try
+                    {
+                        await choiceSession.WaitForAllPlansConsumedAsync(token);
+                    }
+                    catch (NativeChoicePlanMismatchException)
+                    {
+                        choiceSession.CancelVisibleSurfaceForReplan();
+                        throw;
+                    }
+                    catch (NativeChoiceSurfaceMismatchException)
+                    {
+                        choiceSession.CancelVisibleSurfaceForReplan();
+                        throw;
+                    }
                     await choiceSession.CompleteAndDetachAsync();
                 }
                 else
