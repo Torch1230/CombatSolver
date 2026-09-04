@@ -203,6 +203,7 @@ internal sealed partial class CombatBeamSolver
 
     private sealed record RouteAnnotations(
         IReadOnlyDictionary<int, int> HpLostByTurn,
+        IReadOnlyDictionary<int, int> HpRecoveredByTurn,
         IReadOnlyDictionary<int, int> EnemyHpLostByTurn,
         IReadOnlyDictionary<int, int> SoldHpByTurn,
         IReadOnlyDictionary<int, int> MaxBlockByTurn,

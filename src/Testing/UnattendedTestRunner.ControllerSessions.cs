@@ -143,6 +143,7 @@ internal sealed partial class UnattendedTestRunner
                     progressTurn,
                     Actions: [],
                     HpLost: 9,
+                    HpRecovered: 0,
                     EnemyHpLost: 1,
                     EnergyLeft: 0,
                     CombatEnded: false),
