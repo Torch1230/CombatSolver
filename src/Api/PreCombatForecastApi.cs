@@ -14,7 +14,7 @@ namespace CombatSolver.Api;
 /// </summary>
 public static class PreCombatForecastApi
 {
-    public const int ApiVersion = 3;
+    public const int ApiVersion = 4;
 
     private static readonly ConcurrentDictionary<string, Task<PreCombatForecastResult>> Active = new();
     private static readonly ConcurrentDictionary<string, PreCombatForecastResult> Completed = new();
@@ -33,6 +33,145 @@ public static class PreCombatForecastApi
     /// Stops the reusable isolated worker, if one is active. Callers may use this when their forecast UI closes.
     /// </summary>
     public static Task StopWorkerAsync() => PreCombatForecastWorker.StopSessionAsync();
+
+    /// <summary>Returns the current isolated worker process and memory state without starting it.</summary>
+    public static PreCombatWorkerStatus GetWorkerStatus() => PreCombatForecastWorker.GetStatus();
+
+    /// <summary>
+    /// Stops any existing isolated worker and starts a fresh compatible process so its game startup can overlap with
+    /// the player's UI choices. The supplied run is captured only to establish the isolated runtime and Mod set.
+    /// </summary>
+    public static Task<PreCombatWorkerStatus> RestartWorkerAsync(
+        RunState run,
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsAvailable)
+            throw new PlatformNotSupportedException("The isolated pre-combat worker is currently available on Windows only.");
+        if (!NGame.IsMainThread())
+            throw new InvalidOperationException("RestartWorkerAsync must be called on the game main thread.");
+        PreCombatLiveStateSnapshot snapshot = PreCombatLiveStateSnapshot.Capture(run);
+        return Task.Run(
+            () => PreCombatForecastWorker.RestartSessionAsync(snapshot, cancellationToken),
+            CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Runs one explicitly hypothetical combat sample at the next map row using the supplied current-act encounter.
+    /// The caller chooses the sample seed; the live run and its RNG streams are captured and revalidated but never
+    /// mutated.
+    /// </summary>
+    public static Task<PreCombatForecastResult> SimulateAsync(
+        RunState run,
+        EncounterModel encounter,
+        PreCombatRoomKind roomKind,
+        PreCombatSimulationOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        string requestId = Guid.NewGuid().ToString("N");
+        if (!IsAvailable)
+        {
+            return Task.FromResult(Failure(
+                PreCombatForecastStatus.Unsupported,
+                requestId,
+                "The isolated pre-combat worker is currently available on Windows only."));
+        }
+        if (!NGame.IsMainThread())
+        {
+            return Task.FromResult(Failure(
+                PreCombatForecastStatus.Unsupported,
+                requestId,
+                "SimulateAsync must be called on the game main thread."));
+        }
+        if (!run.Act.AllEncounters.Any(candidate => candidate.Id == encounter.Id))
+        {
+            return Task.FromResult(Failure(
+                PreCombatForecastStatus.Unsupported,
+                requestId,
+                $"Encounter {encounter.Id} does not belong to the current act."));
+        }
+
+        PreCombatSimulationOptions simulationOptions = options ?? PreCombatSimulationOptions.Default;
+        PreCombatForecastOptions workerOptions = new()
+        {
+            SearchBudgetMilliseconds = simulationOptions.SearchBudgetMilliseconds,
+            OverallTimeoutMilliseconds = simulationOptions.OverallTimeoutMilliseconds,
+            MaxDegreeOfParallelism = simulationOptions.MaxDegreeOfParallelism,
+            CancelWorkerWhenCallerCancels = true,
+            ForceRefresh = true,
+            CloseWorkerAfterRequest = simulationOptions.CloseWorkerAfterRequest,
+            SimulationSeed = simulationOptions.SampleSeed,
+        };
+        MapCoord target = ResolveImmediateSimulationTarget(run);
+        if (run.Map.GetPoint(target) is null)
+        {
+            return Task.FromResult(Failure(
+                PreCombatForecastStatus.Unsupported,
+                requestId,
+                $"The current map has no point at the hypothetical combat coordinate {target}."));
+        }
+        PreCombatMapPointKind simulatedMapPointKind = roomKind switch
+        {
+            PreCombatRoomKind.Normal => PreCombatMapPointKind.Normal,
+            PreCombatRoomKind.Elite => PreCombatMapPointKind.Elite,
+            PreCombatRoomKind.Boss => PreCombatMapPointKind.Boss,
+            _ => throw new ArgumentOutOfRangeException(nameof(roomKind), roomKind, null),
+        };
+        string? optionError = ValidateOptions(
+            workerOptions,
+            target.row + 1,
+            target.col,
+            roomKind,
+            simulatedMapPointKind);
+        if (optionError is not null)
+            return Task.FromResult(Failure(PreCombatForecastStatus.Unsupported, requestId, optionError));
+
+        PreCombatRoomKind encounterRoomKind = encounter.RoomType switch
+        {
+            RoomType.Monster => PreCombatRoomKind.Normal,
+            RoomType.Elite => PreCombatRoomKind.Elite,
+            RoomType.Boss => PreCombatRoomKind.Boss,
+            _ => roomKind,
+        };
+        if (encounterRoomKind != roomKind)
+        {
+            return Task.FromResult(Failure(
+                PreCombatForecastStatus.Unsupported,
+                requestId,
+                $"Encounter room kind {encounterRoomKind} does not match requested kind {roomKind}."));
+        }
+
+        PreCombatLiveStateSnapshot snapshot;
+        try
+        {
+            snapshot = PreCombatLiveStateSnapshot.Capture(run);
+        }
+        catch (NotSupportedException ex)
+        {
+            return Task.FromResult(Failure(PreCombatForecastStatus.Unsupported, requestId, ex.Message));
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult(Failure(PreCombatForecastStatus.Failed, requestId, ex.Message));
+        }
+
+        Task<PreCombatForecastResult> worker = Task.Run(
+            () => PreCombatForecastWorker.RunAsync(
+                snapshot,
+                encounter.Id.Entry,
+                target.row + 1,
+                target.col,
+                roomKind,
+                simulatedMapPointKind,
+                isSecondBoss: false,
+                workerOptions,
+                cancellationToken),
+            CancellationToken.None);
+        return CompleteAfterLiveValidation(
+            snapshot,
+            worker,
+            cancellationToken,
+            awaitOwnedWorkerCancellation: true);
+    }
 
     public static Task<PreCombatForecastResult> ForecastAsync(
         RunState run,
@@ -355,6 +494,19 @@ public static class PreCombatForecastApi
         if (previousRow + 1 != target.row)
             return "InterveningMapPoints must include every map row between the live position and the target.";
         return null;
+    }
+
+    private static MapCoord ResolveImmediateSimulationTarget(RunState run)
+    {
+        int targetRow = Math.Max(0, run.ActFloor);
+        int targetColumn = run.CurrentMapPoint?.Children
+                               .OrderBy(static point => point.coord.col)
+                               .FirstOrDefault()?.coord.col
+                           ?? run.Map.GetPointsInRow(targetRow)
+                               .OrderBy(static point => point.coord.col)
+                               .FirstOrDefault()?.coord.col
+                           ?? run.Map.BossMapPoint.coord.col;
+        return new MapCoord(targetColumn, targetRow);
     }
 
     internal static PreCombatForecastResult Failure(

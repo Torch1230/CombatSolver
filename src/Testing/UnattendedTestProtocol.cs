@@ -29,6 +29,7 @@ internal sealed class UnattendedTestRequest
     public RoomType TargetRoomType { get; init; } = RoomType.Monster;
     public MapPointType TargetMapPointType { get; init; } = MapPointType.Unassigned;
     public int? PreCombatPlayerCurrentHpOverride { get; init; }
+    public ulong? PreCombatSimulationSeed { get; init; }
     public UnattendedPreCombatMapStep[] PreCombatInterveningMapPoints { get; init; } = [];
     public string[] ExpectedLoadedMods { get; init; } = [];
     public string? ReplayStatePath { get; init; }

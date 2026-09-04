@@ -90,6 +90,51 @@ public sealed record PreCombatForecastOptions
     /// action where the caller exposes the cost and progress to the player.
     /// </summary>
     public bool ForceRefresh { get; init; }
+
+    /// <summary>
+    /// Stop the isolated worker after this request has returned to its reusable barrier. This changes only worker
+    /// lifetime; it does not participate in forecast caching or combat semantics.
+    /// </summary>
+    public bool CloseWorkerAfterRequest { get; init; }
+
+    internal ulong? SimulationSeed { get; init; }
+}
+
+/// <summary>Request-level limits for one explicitly hypothetical combat sample.</summary>
+public sealed record PreCombatSimulationOptions
+{
+    public static PreCombatSimulationOptions Default { get; } = new();
+
+    /// <summary>Search time inside the isolated worker.</summary>
+    public int SearchBudgetMilliseconds { get; init; } = 8_000;
+
+    /// <summary>Wall-clock deadline including worker startup.</summary>
+    public int OverallTimeoutMilliseconds { get; init; } = 60_000;
+
+    /// <summary>Optional worker search parallelism. Null follows the user's Combat Solver setting.</summary>
+    public int? MaxDegreeOfParallelism { get; init; }
+
+    /// <summary>
+    /// Caller-owned sample seed used only inside the isolated worker for encounter composition, monster HP,
+    /// opening shuffle, monster AI, and the other combat RNG streams.
+    /// </summary>
+    public ulong SampleSeed { get; init; }
+
+    /// <summary>Stop the isolated worker after this sample has returned to its reusable barrier.</summary>
+    public bool CloseWorkerAfterRequest { get; init; }
+}
+
+/// <summary>Read-only process and memory information for the reusable isolated worker.</summary>
+public sealed record PreCombatWorkerStatus
+{
+    public required bool IsRunning { get; init; }
+    public required bool IsBusy { get; init; }
+    public int? ProcessId { get; init; }
+    public long? WorkingSetBytes { get; init; }
+    public long? PrivateMemoryBytes { get; init; }
+    public long? PeakWorkingSetBytes { get; init; }
+    public bool AudioMuted { get; init; }
+    public int IdleTimeoutMilliseconds { get; init; }
 }
 
 /// <summary>A potion action present in the selected route.</summary>

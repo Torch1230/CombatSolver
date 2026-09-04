@@ -9,6 +9,7 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Multiplayer;
 using MegaCrit.Sts2.Core.Entities.Players;
+using MegaCrit.Sts2.Core.Entities.Rngs;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Modding;
@@ -16,6 +17,7 @@ using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Rooms;
+using MegaCrit.Sts2.Core.Random;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.Saves;
 using CombatSolver.Api;
@@ -120,6 +122,8 @@ internal sealed partial class UnattendedTestRunner
 
             runner.SetStage("enter_encounter");
             EncounterModel mutableEncounter = encounter.ToMutable();
+            if (request.PreCombatSimulationSeed is { } simulationSeed)
+                ApplyPreCombatSimulationRng(runState, mutableEncounter, simulationSeed);
             MapPointType targetMapPointType = request.TargetMapPointType != MapPointType.Unassigned
                 ? request.TargetMapPointType
                 : request.TargetRoomType switch
@@ -343,11 +347,23 @@ internal sealed partial class UnattendedTestRunner
             int forecastEntryHp = Math.Max(1, runState.Players.Single().Creature.CurrentHp - 1);
             string before = PreCombatForecastApi.CaptureLiveStateToken(runState);
             await PreCombatForecastApi.StopWorkerAsync();
+            if (PreCombatForecastApi.GetWorkerStatus().IsRunning)
+                throw new InvalidOperationException("显式关闭后战前 worker 仍在运行。");
             int startsBefore = PreCombatForecastWorker.WorkerStartCountForTesting;
             int reusesBefore = PreCombatForecastWorker.WorkerReuseCountForTesting;
             PreCombatForecastResult result;
             try
             {
+                PreCombatWorkerStatus prewarmed = await PreCombatForecastApi.RestartWorkerAsync(runState);
+                if (!prewarmed.IsRunning
+                    || prewarmed.ProcessId is null
+                    || prewarmed.WorkingSetBytes is null
+                    || prewarmed.PrivateMemoryBytes is null
+                    || !prewarmed.AudioMuted)
+                {
+                    throw new InvalidOperationException(
+                        $"战前 worker 预热状态不完整：{prewarmed}。");
+                }
                 var options = new PreCombatForecastOptions
                 {
                     SearchBudgetMilliseconds = 3_000,
@@ -395,16 +411,34 @@ internal sealed partial class UnattendedTestRunner
                     throw new InvalidOperationException("相同跑局快照的复用 worker 返回了不同的战前预测结果。");
                 }
 
+                const ulong simulationSeed = 0x5EED_2026_0904UL;
+                PreCombatForecastResult simulated = await PreCombatForecastApi.SimulateAsync(
+                    runState,
+                    encounter,
+                    PreCombatRoomKind.Normal,
+                    new PreCombatSimulationOptions
+                    {
+                        SearchBudgetMilliseconds = 3_000,
+                        OverallTimeoutMilliseconds = 45_000,
+                        MaxDegreeOfParallelism = 1,
+                        SampleSeed = simulationSeed,
+                        CloseWorkerAfterRequest = true,
+                    });
+                if (!simulated.IsSuccess)
+                {
+                    throw new InvalidOperationException(
+                        $"纯模拟 API 返回 {simulated.Status}: {simulated.Error} log={simulated.DiagnosticLogPath}");
+                }
+                if (PreCombatForecastApi.GetWorkerStatus().IsRunning)
+                    throw new InvalidOperationException("自动关闭选项没有在模拟样本完成后释放 worker。");
+
                 int workerStarts = PreCombatForecastWorker.WorkerStartCountForTesting - startsBefore;
                 int workerReuses = PreCombatForecastWorker.WorkerReuseCountForTesting - reusesBefore;
-                if (workerStarts != 1 || workerReuses != 1)
+                if (workerStarts != 1 || workerReuses != 3)
                 {
                     throw new InvalidOperationException(
                         $"战前 worker 生命周期不符合预期：starts={workerStarts}, reuses={workerReuses}。");
                 }
-                if (!PreCombatForecastWorker.ActiveSessionAudioMutedForTesting)
-                    throw new InvalidOperationException("隔离战前 worker 没有应用静音用户设置。");
-
                 string after = PreCombatForecastApi.CaptureLiveStateToken(runState);
                 if (!before.Equals(after, StringComparison.Ordinal))
                     throw new InvalidOperationException("战前 API 调用改变了主进程跑局状态或 RNG。");
@@ -417,7 +451,8 @@ internal sealed partial class UnattendedTestRunner
                 runner._completedChecks.Add(
                     $"PreCombatForecastApi:EntryHp={forecastEntryHp}:HpLoss={result.ProjectedHpLoss}:Potions={result.PotionUses.Count}:" +
                     $"Boundary={result.SearchBoundary}:LiveStateUnchanged=1:WorkerStarts={workerStarts}:" +
-                    $"WorkerReuses={workerReuses}:AudioMuted=1");
+                    $"WorkerReuses={workerReuses}:PrewarmMemoryVisible=1:AudioMuted=1:" +
+                    $"SimulationSeed={simulationSeed}:AutoClose=1");
             }
             finally
             {
@@ -482,6 +517,39 @@ internal sealed partial class UnattendedTestRunner
                        .OrderBy(static point => point.coord.col)
                        .FirstOrDefault()?.coord.col
                    ?? runState.Map.BossMapPoint.coord.col;
+        }
+
+        private void ApplyPreCombatSimulationRng(
+            RunState runState,
+            EncounterModel encounter,
+            ulong sampleSeed)
+        {
+            RunRngType[] combatStreams =
+            [
+                RunRngType.Shuffle,
+                RunRngType.CombatCardGeneration,
+                RunRngType.CombatPotionGeneration,
+                RunRngType.CombatCardSelection,
+                RunRngType.CombatEnergyCosts,
+                RunRngType.CombatTargets,
+                RunRngType.MonsterAi,
+                RunRngType.Niche,
+                RunRngType.CombatOrbs,
+            ];
+            ulong state = sampleSeed;
+            foreach (RunRngType stream in combatStreams)
+                runState.Rng.MockRng(stream, NextSimulationSeed(ref state));
+            encounter._rng = new Rng(NextSimulationSeed(ref state));
+            runner._completedChecks.Add($"PreCombatSimulationRng:{sampleSeed}");
+        }
+
+        private static ulong NextSimulationSeed(ref ulong state)
+        {
+            state += 0x9E3779B97F4A7C15UL;
+            ulong value = state;
+            value = (value ^ (value >> 30)) * 0xBF58476D1CE4E5B9UL;
+            value = (value ^ (value >> 27)) * 0x94D049BB133111EBUL;
+            return value ^ (value >> 31);
         }
 
         private void ApplyPreCombatInterveningMapPoints(
