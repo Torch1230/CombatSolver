@@ -46,6 +46,18 @@ Entry / turn hooks
 
 `SolverCombatSession` 持有本场路线、续用和重算状态；`SolverSearchSession` 持有 generation、取消、进度和帧观测；`SolverDeploymentSession` 持有部署取消。旧回调只能写回创建它的 search session。
 
+### 2.1 战前预测 API 隔离边界
+
+`src/Api` 是供伴生 Mod 使用的公开战前边界。它只暴露不可变请求选项、枚举和结果，不暴露 `SolverController`、live `CombatState` 或搜索内部类型。
+
+- `PreCombatLiveStateSnapshot` 只能在主线程捕获当前单人跑局。它用 `RunManager.ToSave` 获取完整 `SerializableRun`、记录精确加载的 Mod 集合和游戏/用户目录，并生成包含规范化存档与当前房间身份的 SHA-256 状态令牌。
+- `PreCombatRunSerialization` 清除墙钟、平台和地图涂鸦等非语义字段；同时显式写出游戏序列化器会省略、但反序列化默认成 `true` 的 `can_modify:false`，使子进程恢复后的全量快照能够逐字节核对。
+- `PreCombatForecastApi` 负责参数验证、相同状态请求去重/缓存和返回前主线程复核。活动跑局、战斗状态或令牌发生变化时只返回 `LiveStateChanged`。
+- `PreCombatForecastWorker` 串行拥有一个 Windows 子进程请求。它在游戏目录下带所有权标记的 `.combatsolver-precombat` 中硬链接游戏文件，按来源镜像主进程实际加载的全部 Mod，复制必要配置，并使用独立的 `APPDATA` / `LOCALAPPDATA`、关闭 Steam 和 NoGC。
+- 子进程由 `ScenarioBuilder` 直接恢复完整跑局，加载资源和地图后再次规范化序列化并核对精确哈希；只有通过后才用目标房间/节点类型进入遭遇，沿用正常的开战 Hook、首回合初始化和搜索流程。所有开战、RNG 推进及求解器会话都只存在于子进程。
+
+`src/Api` 禁止直接调用 `SolverController.RequestSearch`、`CombatManager.SetUpCombat` 或 `RunManager.EnterRoomDebug`。这些静态边界由 Windows/Linux 两份 `verify-refactor-boundaries` 脚本共同检查。隔离 worker 内通过 `COMBATSOLVER_PRECOMBAT_WORKER=1` 关闭 API，避免加载伴生 Mod 后递归创建 worker。
+
 ## 3. Search
 
 ### 3.1 请求级编排
@@ -160,7 +172,7 @@ renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或
 | 组件 | 职责 |
 |---|---|
 | `ProtocolHost` | 请求文件循环、协议校验、进程复用、每请求测试开关、漂移注入与 reset |
-| `ScenarioBuilder` | 建立跑局/遭遇、加载快照、注入牌/Power/遗物/药水/球/RNG，返回 `ScenarioContext` |
+| `ScenarioBuilder` | 建立跑局/遭遇、加载快照、注入牌/Power/遗物/药水/球/RNG；战前 API 模式直接恢复完整跑局并在进入目标战斗前核对规范化快照，返回 `ScenarioContext` |
 | `Executor` | 分派严格差分、应用临时设置、启动搜索/全自动、等待复用/暂停/结束并恢复设置 |
 | `Assertions` | 执行前边界检查和执行后的回合、生命、出牌、药水、Power 断言 |
 | `Writer` | Passed/Held/Failed 公共协议字段、内存采集和结果文件原子替换 |

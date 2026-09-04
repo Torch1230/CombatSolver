@@ -2,6 +2,8 @@ using System.Runtime;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Godot;
+using MegaCrit.Sts2.Core.Map;
+using MegaCrit.Sts2.Core.Rooms;
 
 namespace CombatSolver;
 
@@ -21,6 +23,11 @@ internal sealed class UnattendedTestRequest
     public string[] ModifierIds { get; init; } = [];
     public string Seed { get; init; } = "COMBATSOLVER";
     public string? RunSnapshotPath { get; init; }
+    public bool LoadRunSnapshotDirectly { get; init; }
+    public int? TargetActFloor { get; init; }
+    public RoomType TargetRoomType { get; init; } = RoomType.Monster;
+    public MapPointType TargetMapPointType { get; init; } = MapPointType.Unassigned;
+    public string[] ExpectedLoadedMods { get; init; } = [];
     public string? ReplayStatePath { get; init; }
     public int Ascension { get; init; }
     public int ActIndexForTest { get; init; }
@@ -66,6 +73,7 @@ internal sealed class UnattendedTestRequest
     public bool VerifyControllerSessionLifecycle { get; init; }
     public bool VerifyForkBoundaries { get; init; }
     public bool VerifyCombatRootSnapshot { get; init; }
+    public bool VerifyPreCombatForecastApi { get; init; }
     public bool VerifyBaseLibCardModifierBoundary { get; init; }
     public bool StopAfterCombatRootSnapshotAssertion { get; init; }
     public bool VerifyIncrementalSearch { get; init; }
@@ -482,6 +490,7 @@ internal sealed class UnattendedSolverMetrics
     public double Score { get; init; }
     public int ProjectedBattleHpLost { get; init; }
     public int PotionCount { get; init; }
+    public UnattendedPotionUse[] PotionUses { get; init; } = [];
     public bool OnlyDeathRoutes { get; init; }
     public int FinalHp { get; init; }
     public int FinalEnemyHp { get; init; }
@@ -498,6 +507,14 @@ internal sealed class UnattendedSolverMetrics
     public bool NoGcRegionActive { get; init; }
     public long NoGcRegionBudgetBytes { get; init; }
     public int NoGcRegionRolloverCount { get; init; }
+}
+
+internal sealed class UnattendedPotionUse
+{
+    public string Id { get; init; } = string.Empty;
+    public string Title { get; init; } = string.Empty;
+    public int Turn { get; init; }
+    public int Slot { get; init; }
 }
 
 internal sealed class UnattendedStageTiming

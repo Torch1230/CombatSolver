@@ -253,6 +253,27 @@ src/Engine/InCombat/Mirrors/Hooks/Card/CardPlayHookPredictionStates.cs	Cannot fo
 src/Engine/InCombat/Mirrors/Hooks/Card/AfterCardPlayedMirrors.cs	Cannot fork Curl Up
 EOF
 
+while IFS=$'\t' read -r relative_path text; do
+    require_fixed "$repository_root/$relative_path" "$text" 'missing pre-combat isolation boundary'
+done <<'EOF'
+src/Api/PreCombatForecastApi.cs	public static class PreCombatForecastApi
+src/Api/PreCombatLiveStateSnapshot.cs	RunManager.Instance.ToSave(null)
+src/Api/PreCombatRunSerialization.cs	point["can_modify"] = false
+src/Api/PreCombatForecastWorker.cs	COMBATSOLVER_PRECOMBAT_WORKER
+src/Api/PreCombatForecastWorker.cs	ExpectedLoadedMods = expectedMods
+src/Api/PreCombatForecastWorker.cs	EnableNoGcRegionForTest = false
+src/Testing/UnattendedTestRunner.ScenarioBuilder.cs	DirectRunSnapshot:ExactStateRestored
+EOF
+
+while IFS= read -r -d '' api_file; do
+    for forbidden_call in \
+        'SolverController.RequestSearch' \
+        'CombatManager.Instance.SetUpCombat' \
+        'RunManager.Instance.EnterRoomDebug'; do
+        forbid_fixed "$api_file" "$forbidden_call" 'pre-combat API directly mutates live combat via'
+    done
+done < <(find "$repository_root/src/Api" -type f -name '*.cs' -print0 | sort -z)
+
 search_gc_policy_path="$repository_root/src/Runtime/SearchGcPolicy.cs"
 for gc_chain_rule in \
     'return WaitForReclaimChainAsync(_reclaimTask)' \

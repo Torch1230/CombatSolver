@@ -72,6 +72,16 @@ internal sealed partial class UnattendedTestRunner
                 Score = result.BestNode.Score,
                 ProjectedBattleHpLost = result.ProjectedBattleHpLost,
                 PotionCount = result.PotionCount,
+                PotionUses = result.BestNode.Actions
+                    .Where(static action => action.Kind == PlanActionKind.UsePotion)
+                    .Select(static action => new UnattendedPotionUse
+                    {
+                        Id = action.PotionId,
+                        Title = action.PotionTitle,
+                        Turn = action.Turn,
+                        Slot = action.PotionSlot,
+                    })
+                    .ToArray(),
                 OnlyDeathRoutes = result.OnlyDeathRoutesFound,
                 FinalHp = result.Snapshot.PlayerHp,
                 FinalEnemyHp = result.Snapshot.EnemyHp,

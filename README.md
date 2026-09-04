@@ -25,6 +25,28 @@ Combat Solver 是一个面向《杀戮尖塔 2》单人模式的战斗路线求�
 
 这一设计把“预测”和“实机执行”分开：后台线程不能读取持续变化的实机值，模拟分支也不能修改真实战斗。
 
+## 战前预测 API（开发接口）
+
+`CombatSolver.Api.PreCombatForecastApi` 为地图信息类 Mod 提供公开的战前预测入口。调用方在游戏主线程提交当前单人跑局、已确定的 `EncounterModel`、目标楼层及房间/地图节点类型；API 返回预计整场战损、所选路线中的药水动作、搜索边界、可信度、结束回合和诊断日志位置。
+
+该入口不会在当前游戏进程中建立战斗。它先序列化完整跑局并生成不透明状态令牌，再启动 Combat Solver 独占的 Windows headless 游戏进程；子进程加载与主进程完全一致的 Mod 集合，在独立用户目录中精确恢复跑局、核对规范化快照、进入目标战斗并复用现有求解器。结果返回前，主进程再次比较活动跑局、战斗状态和完整令牌；任一状态或 RNG 变化都会返回 `LiveStateChanged`，不会发布过期结果。
+
+最小调用方式：
+
+```csharp
+if (PreCombatForecastApi.IsAvailable)
+{
+    PreCombatForecastResult result = await PreCombatForecastApi.ForecastAsync(
+        run,
+        encounter,
+        targetActFloor,
+        PreCombatRoomKind.Normal,
+        PreCombatMapPointKind.Normal);
+}
+```
+
+当前 API 版本为 `1`，仅支持 Windows、单人跑局和未处于战斗中的状态。首次请求需要建立隔离游戏镜像并启动进程，适合对“下一步即可进入且遭遇已经唯一确定”的节点异步调用。相同状态与目标的请求会复用运行中任务或已完成结果；调用方取消等待不会中断其他调用方共享的计算。
+
 ## 安装与兼容性
 
 运行要求：
