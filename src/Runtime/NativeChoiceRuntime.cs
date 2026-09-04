@@ -552,8 +552,9 @@ internal sealed class NativeChoiceSession : IDisposable
 
         if (selected.Count < request.MinSelect || selected.Count > request.MaxSelect)
         {
-            throw new InvalidOperationException(
-                $"原生选牌计划选择 {selected.Count} 张，页面要求 {request.MinSelect}..{request.MaxSelect} 张。");
+            throw new NativeChoicePlanMismatchException(
+                $"原生选牌页面要求选择 {request.MinSelect}..{request.MaxSelect} 张，" +
+                $"当前计划选择 {selected.Count} 张。");
         }
         return selected;
     }
