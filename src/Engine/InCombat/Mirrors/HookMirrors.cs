@@ -247,6 +247,7 @@ internal static class HookMirrors
         {
             Simulator = simulator,
             Card = card,
+            InitialCard = card.Preview,
             FromHandDraw = fromHandDraw
         };
 

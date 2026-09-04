@@ -1913,8 +1913,16 @@ internal sealed partial class CombatBeamSolver
             }
 
             SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(_player);
-            PredictedCard? card = FindCardForReplay(playerState.Hand.Cards, action)
-                ?? throw new InvalidOperationException($"回放时找不到手牌 {action.CardId}#{action.CardOccurrence}。");
+            PredictedCard? card = FindCardForReplay(playerState.Hand.Cards, action);
+            if (card is null)
+            {
+                string hand = string.Join(',', playerState.Hand.Cards.Select(candidate =>
+                    $"{candidate.Preview.Id.Entry}#{candidate.Preview.CurrentUpgradeLevel}:{CardChoiceSupport.ChoiceCardKey(candidate)}"));
+                throw new InvalidOperationException(
+                    $"回放时找不到手牌 {action.CardId}#{action.CardOccurrence}：turn={turn} " +
+                    $"action_index={priorActionCount + actionOffset} " +
+                    $"state_occurrence={action.CardStateOccurrence} state_key={action.CardStateKey} hand={hand}。");
+            }
             Creature? target = simulatedCombat.GetCreature(action.TargetCombatId);
             if (!simulatedCombat.CanPlayCard(simulator, card))
             {

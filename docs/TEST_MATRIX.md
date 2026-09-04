@@ -6,6 +6,13 @@
 
 维护时默认使用分层快速回归：普通语义改动跑单效果严格差分；Fork、跨回合历史和续用改动补一个最小两回合或最早复用边界；搜索/部署改动的最终候选才运行必要的完整自动场。快速 unattended 请求总超时不超过 `120` 秒，超时后缩小 fixture 或记为未验证，不在同一轮延长等待。下方完整矩阵是发布门禁和专项审计入口，不是每次修复都要执行的默认清单。
 
+## 0.29.0（开发中）：2026-09-03 问题包硬逻辑修复
+
+| 场景 | 当前结果 | 验证内容 | 日期 |
+| --- | --- | --- | --- |
+| `ISSUE-20260903-MANGLE-COW-FIX` | 通过 | MANGLE + SLITHER 问题包在 `VerifyIncrementalSearch` 下完整回放通过；增量/完整回放的费用 RNG、牌面状态和搜索结果一致。runId `f25dee83d9ba4b039318a4cdef20fbe3`。 | 2026-09-04 |
+| `ISSUE-20260903-MANGLE-CARD-DIFFERENTIAL-FIX` | 通过 | MANGLE 单卡严格差分，验证抽牌后带 SLITHER 的攻击牌仍可正确打出并产生预期效果。runId `b7e5d32dff794ef695c93dbc3123b689`。 | 2026-09-04 |
+
 性能指标口径：`selected_*` 只描述最终选中的单个 solver；请求级 `total_expanded_nodes / total_transitions / total_choice_branches`、`total_solver_ms`、分配与 GC 累计对正常、失败和取消的每个 solver 工作区间精确记录一次，包括取消前已发生的部分工作。Smart 有限药水层之间由 coordinator 主动执行的内存整理也计入时间、分配与 GC，但不增加 solver 数；建立开局、层间比较等其他编排工作仍不在这些总值中。因此端到端耗时以请求/阶段外层墙钟为准，峰值内存以进程 `VmHWM` 为准。Smart 多层的取消时点可能令请求总工作量小幅波动，语义验收优先比较胜负、战损、回合和动作路线。峰值工作集是瞬时进程峰值，不能跨阶段相加；`16 GB` NoGC 是运行时请求预算，不等于实际占用或硬上限；NoGC 活跃时 `GC.GetTotalMemory(false)` 不是严格 live-set 测量。
 
 ## 0.28.3（已发布）：战损停止与路线信息

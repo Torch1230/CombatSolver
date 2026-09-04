@@ -204,6 +204,12 @@ internal sealed class PredictedCard : IComparable<PredictedCard>
             _previewStorage.SetCachedChoiceKey(key);
     }
 
+    internal void InvalidateCaches()
+    {
+        _ownerPile?.InvalidateFingerprint();
+        _previewStorage.InvalidateCaches();
+    }
+
     internal void SetOwnerPile(SimCardPile? pile)
     {
         _ownerPile = pile;

@@ -62,6 +62,7 @@ internal static class CardOnPlayMirrors
         var registry = new Registry(OnPlay);
 
         registry.Register<HowlFromBeyond>(GeneralCardMirrors.GeneralAttackOnPlay);
+        registry.Register<Mangle>(GeneralCardMirrors.GeneralAttackOnPlay);
         registry.Register<IAmInvincible>(GeneralCardMirrors.GeneralBlockOnPlay);
         registry.Register<AstralPulse>(BespokeCardMirrors.AstralPulseOnPlay);
         registry.Register<DaggerSpray>(BespokeCardMirrors.DaggerSprayOnPlay);

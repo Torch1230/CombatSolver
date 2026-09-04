@@ -122,8 +122,10 @@ internal static class AfterCardDrawnMirrors
 
     private static void HandleSlither(Slither slither, AfterCardDrawnMirrorContext context)
     {
-        if (context.Card.References(slither.Card) &&
-            context.State.GetPlayerCombatState(context.PreviewCard.Owner).Hand.Cards.Contains(context.Card))
+        bool cardMatches = ReferenceEquals(context.InitialCard, slither.Card)
+            || context.Card.References(slither.Card);
+        bool cardInHand = context.State.GetPlayerCombatState(context.PreviewCard.Owner).Hand.Cards.Contains(context.Card);
+        if (cardMatches && cardInHand)
         {
             SetRandomEnergyCost(context);
         }
@@ -278,6 +280,7 @@ internal static class AfterCardDrawnMirrors
 
 internal sealed class AfterCardDrawnMirrorContext : CombatCardMirrorContext
 {
+    public required CardModel InitialCard { get; init; }
     public required bool FromHandDraw { get; init; }
     public bool IntrinsicCardHandled { get; set; }
 }

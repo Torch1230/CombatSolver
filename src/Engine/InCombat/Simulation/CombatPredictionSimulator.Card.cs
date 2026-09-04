@@ -473,6 +473,7 @@ internal sealed partial class CombatPredictionSimulator
 
         previewCard.EnergyCost.AfterCardPlayedCleanup();
         previewCard._temporaryStarCosts.RemoveAll(cost => cost.ClearsWhenCardIsPlayed);
+        card.InvalidateCaches();
 
         previewCard.CurrentTarget = null;
         previewCard.CurrentPlayIndex = 0;
