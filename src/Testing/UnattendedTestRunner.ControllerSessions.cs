@@ -854,6 +854,38 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidOperationException(
                 "回复生命的跨战斗计价没有按幕末 Boss 的战后回复折算。");
         }
+        PostCombatRelicHealProfile bloodOnly = new(
+            UnconditionalHeal: 6,
+            WoundedHeal: 0,
+            WoundedHpPercent: 0);
+        PostCombatRelicHealProfile bloodAndMeat = new(
+            UnconditionalHeal: 6,
+            WoundedHeal: 12,
+            WoundedHpPercent: 50);
+        if (bloodOnly.HealFor(finalHp: 70, finalMaxHp: 80) != 6
+            || bloodOnly.HealFor(finalHp: 78, finalMaxHp: 80) != 2
+            || bloodOnly.HealFor(finalHp: 80, finalMaxHp: 80) != 0
+            || PostCombatRelicHealProfile.None.HealFor(finalHp: 10, finalMaxHp: 80) != 0)
+        {
+            throw new InvalidOperationException("无条件战后遗物回血没有被剩余生命上限裁剪。");
+        }
+        // Vanilla truncates the threshold, so half of 75 max HP is 37 and ending on 38 misses the heal.
+        if (bloodAndMeat.HealFor(finalHp: 37, finalMaxHp: 75) != 18
+            || bloodAndMeat.HealFor(finalHp: 38, finalMaxHp: 75) != 6
+            || bloodAndMeat.HealFor(finalHp: 70, finalMaxHp: 75) != 5
+            || bloodAndMeat.MonotoneHealFor(finalHp: 37, finalMaxHp: 75) != 6)
+        {
+            throw new InvalidOperationException("带阈值的战后遗物回血没有按原版截断判定，或进入了排序口径。");
+        }
+        if (ActEndingBossPolicy.RankedPostCombatRelicHeal(
+                bloodAndMeat, completeVictory: true, finalHp: 37, finalMaxHp: 75) != 6
+            || ActEndingBossPolicy.RankedPostCombatRelicHeal(
+                bloodAndMeat, completeVictory: false, finalHp: 37, finalMaxHp: 75) != 0
+            || ActEndingBossPolicy.RankedPostCombatRelicHeal(
+                bloodOnly, completeVictory: true, finalHp: 0, finalMaxHp: 75) != 0)
+        {
+            throw new InvalidOperationException("战后遗物回血没有只在活着获胜的路线上计入。");
+        }
         PrimarySearchIncumbent incumbent = new(
             StrategicHpDeficit: 5,
             CombatEndedTurn: 3);

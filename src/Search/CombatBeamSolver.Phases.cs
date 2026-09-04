@@ -646,6 +646,15 @@ internal sealed partial class CombatBeamSolver
                 SoldHpByTurn = annotations.SoldHpByTurn,
                 HpLostByTurn = annotations.HpLostByTurn,
                 HpRecoveredByTurn = annotations.HpRecoveredByTurn,
+                PostCombatRelicHeal = SolverInterimResultOrdering.IsCompleteVictory(
+                    best.ActionCount,
+                    finalSnapshot.AllEnemiesDead,
+                    finalSnapshot.PlayerDead,
+                    finalSnapshot.ProjectedPlayerHp)
+                    ? root.PostCombatRelicHeal.HealFor(
+                        finalSnapshot.PlayerHp,
+                        finalSnapshot.PlayerMaxHp)
+                    : 0,
                 EnemyHpLostByTurn = annotations.EnemyHpLostByTurn,
                 MaxBlockByTurn = annotations.MaxBlockByTurn,
                 ActualBlockByTurn = annotations.ActualBlockByTurn,

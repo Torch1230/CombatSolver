@@ -1388,6 +1388,15 @@ internal sealed class SolverResult
     public required IReadOnlyDictionary<int, int> SoldHpByTurn { get; init; }
     public required IReadOnlyDictionary<int, int> HpLostByTurn { get; init; }
     public required IReadOnlyDictionary<int, int> HpRecoveredByTurn { get; init; }
+    /// <summary>
+    /// HP the player's relics restore right after this fight is won, which is what the player will see happen.
+    /// </summary>
+    /// <remarks>
+    /// Reported in full, including the threshold relic that route ranking deliberately leaves out. Reporting
+    /// less than the game will actually restore would put the overlay back at odds with the fight it describes,
+    /// which is the problem the net HP display set out to fix.
+    /// </remarks>
+    public required int PostCombatRelicHeal { get; init; }
     public required IReadOnlyDictionary<int, int> EnemyHpLostByTurn { get; init; }
     public required IReadOnlyDictionary<int, int> MaxBlockByTurn { get; init; }
     public required IReadOnlyDictionary<int, int> ActualBlockByTurn { get; init; }
@@ -1517,6 +1526,7 @@ internal sealed class SolverResult
             SoldHpByTurn = soldByTurn,
             HpLostByTurn = HpLostByTurn,
             HpRecoveredByTurn = HpRecoveredByTurn,
+            PostCombatRelicHeal = PostCombatRelicHeal,
             EnemyHpLostByTurn = EnemyHpLostByTurn,
             MaxBlockByTurn = MaxBlockByTurn,
             ActualBlockByTurn = ActualBlockByTurn,
@@ -1586,6 +1596,9 @@ internal sealed class SolverResult
                 : string.Empty;
             lines.Add($"[b]第 {turn} 回合[/b]　{playText}{hpLoss}{combatEnd}");
         }
+
+        if (PostCombatRelicHeal > 0)
+            lines.Add($"[color=#73c991]战斗结束后遗物回血 {PostCombatRelicHeal} HP[/color]");
 
         lines.Add("");
         lines.Add("[color=#d5b46a]评分：不死优先；区分不可避免战损与主动卖血，并综合击杀、输出、易伤、能力牌和费用利用。[/color]");

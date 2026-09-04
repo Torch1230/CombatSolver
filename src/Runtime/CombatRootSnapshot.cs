@@ -50,6 +50,7 @@ internal sealed class CombatRootSnapshot
     public bool CapturedBaseLibCardModifiers { get; }
     public bool HasUnusedCardReplayAllocator { get; }
     public bool HasRenewablePotionShapedRock { get; }
+    public PostCombatRelicHealProfile PostCombatRelicHeal { get; }
 
     private CombatRootSnapshot(
         Player playerIdentity,
@@ -77,7 +78,8 @@ internal sealed class CombatRootSnapshot
         int capturedCombatModSubscriberCount,
         bool capturedBaseLibCardModifiers,
         bool hasUnusedCardReplayAllocator,
-        bool hasRenewablePotionShapedRock)
+        bool hasRenewablePotionShapedRock,
+        PostCombatRelicHealProfile postCombatRelicHeal)
     {
         PlayerIdentity = playerIdentity;
         Enemies = enemies;
@@ -111,6 +113,7 @@ internal sealed class CombatRootSnapshot
         CapturedBaseLibCardModifiers = capturedBaseLibCardModifiers;
         HasUnusedCardReplayAllocator = hasUnusedCardReplayAllocator;
         HasRenewablePotionShapedRock = hasRenewablePotionShapedRock;
+        PostCombatRelicHeal = postCombatRelicHeal;
     }
 
     public static CombatRootSnapshot Capture(CombatState state)
@@ -155,6 +158,8 @@ internal sealed class CombatRootSnapshot
         bool hasRenewablePotionShapedRock = simulatedCombat.RelicsOf(player)
             .OfType<PetrifiedToad>()
             .Any(relic => !relic.IsMelted);
+        PostCombatRelicHealProfile postCombatRelicHeal = CapturePostCombatRelicHeal(
+            simulatedCombat.RelicsOf(player));
         SearchablePotionSlotSnapshot[] searchablePotions = player.PotionSlots
             .Select((potion, slot) => (Potion: potion, Slot: slot))
             .Where(item => item.Potion != null && PotionOnUseSupport.CanSearch(item.Potion))
@@ -224,7 +229,42 @@ internal sealed class CombatRootSnapshot
             simulatedCombat.RootCombatModSubscriberCount,
             simulatedCombat.RootHasBaseLibCardModifiers,
             hasUnusedCardReplayAllocator,
-            hasRenewablePotionShapedRock);
+            hasRenewablePotionShapedRock,
+            postCombatRelicHeal);
+    }
+
+    /// <summary>
+    /// Reads how much HP the player's relics will restore once this fight is won.
+    /// </summary>
+    /// <remarks>
+    /// Melted relics are dropped from the hook listener list by the game, so they heal nothing. The heal
+    /// amounts come from the live models rather than hard-coded constants so a data-layer rebalance of these
+    /// relics is followed without a code change here.
+    /// </remarks>
+    private static PostCombatRelicHealProfile CapturePostCombatRelicHeal(
+        IEnumerable<RelicModel> relics)
+    {
+        int unconditionalHeal = 0;
+        int woundedHeal = 0;
+        int woundedHpPercent = 0;
+        foreach (RelicModel relic in relics)
+        {
+            if (relic.IsMelted)
+                continue;
+            switch (relic)
+            {
+                case BurningBlood or BlackBlood:
+                    unconditionalHeal += relic.DynamicVars.Heal.IntValue;
+                    break;
+                case MeatOnTheBone:
+                    woundedHeal += relic.DynamicVars.Heal.IntValue;
+                    woundedHpPercent = Math.Max(
+                        woundedHpPercent,
+                        relic.DynamicVars[MeatOnTheBone._hpThresholdKey].IntValue);
+                    break;
+            }
+        }
+        return new PostCombatRelicHealProfile(unconditionalHeal, woundedHeal, woundedHpPercent);
     }
 
     public CombatPredictionSimulator ForkSimulator() => _rootSimulator.Fork();

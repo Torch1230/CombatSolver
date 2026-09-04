@@ -756,8 +756,19 @@ internal static class SolverOverlay
             _hpOutcomeLabel.Visible = true;
         if (_hpRecoveredOutcomeLabel != null)
         {
-            _hpRecoveredOutcomeLabel.Visible = snapshot.RouteHpRecovered > 0;
-            _hpRecoveredOutcomeLabel.Text = $"路线回血  {snapshot.RouteHpRecovered} HP";
+            // Post-combat relic healing is reported next to route healing rather than folded into it:
+            // it lands after the last action, so attributing it to a turn would misplace it.
+            _hpRecoveredOutcomeLabel.Visible = snapshot.RouteHpRecovered > 0
+                || snapshot.RoutePostCombatRelicHeal > 0;
+            _hpRecoveredOutcomeLabel.Text =
+                (snapshot.RouteHpRecovered, snapshot.RoutePostCombatRelicHeal) switch
+                {
+                    ( > 0, > 0) => $"路线回血  {snapshot.RouteHpRecovered} HP" +
+                        $"　战后遗物  {snapshot.RoutePostCombatRelicHeal} HP",
+                    ( > 0, _) => $"路线回血  {snapshot.RouteHpRecovered} HP",
+                    (_, > 0) => $"战后遗物回血  {snapshot.RoutePostCombatRelicHeal} HP",
+                    _ => string.Empty,
+                };
         }
         if (_deathOutcomeLabel != null)
             _deathOutcomeLabel.Visible = snapshot.OnlyDeathRoutesFound;
