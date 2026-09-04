@@ -1,6 +1,6 @@
 # CombatSolver 测试清单
 
-> 基线：CombatSolver `0.28.3`（当前创意工坊稳定版）、塔 2 `0.111.0`、RitsuLib 实测 `0.5.18`（清单最低 `0.5.13`）、CombatSolver 内置战斗模拟引擎。无人测试运行隔离的原版 `--headless` 游戏进程，不使用自建 STS CLI；性能最终门槛另由 Steam 可见会话验证。完整战斗基准使用 `Instant / 0 秒` 部署。
+> 基线：CombatSolver 本地扩展版 `0.29.1`（基于当前创意工坊稳定版 `0.29.1`，保留隔离战前预测 API v2）、塔 2 `0.111.0`、RitsuLib 实测 `0.5.18`（清单最低 `0.5.13`）、CombatSolver 内置战斗模拟引擎。无人测试运行隔离的原版 `--headless` 游戏进程，不使用自建 STS CLI；性能最终门槛另由 Steam 可见会话验证。完整战斗基准使用 `Instant / 0 秒` 部署。
 
 单项启动器未请求退出时会保留各平台 marker 精确持有的 headless 游戏进程，供后续身份兼容的请求复用；完整矩阵始终遵守文档命令声明的有界生命周期组。两端都核对请求与实际可执行文件、进程启动身份、隔离数据目录以及 Mod DLL/manifest 的 SHA-256，而不仅依赖 PID；Linux 还通过 `/proc` 核对 starttime 和进程环境。重编译后会安全重启，不会复用内存中的旧程序集；marker 损坏、来自旧协议或无法证明已失效且可能仍有活进程时封闭失败，保留现场并拒绝冒险接管。Windows 通过独立 `APPDATA / LOCALAPPDATA`、Linux 通过独立 XDG 数据目录隔离测试数据；两端都关闭 Steam，只在隔离设置中确认允许加载 Mod，并在 headless 生命周期内临时投影对应平台创意工坊中的 RitsuLib。只有当当前请求的异步工作静稳、主线程稳定并收到匹配 `schemaVersion/runId/held` 的 ready ACK 后，启动器才会复用进程；任何 `Failed`、静稳/ACK 超时或中断都会清理已精确认领的进程。Linux Bash 启动器默认把测试内游戏速度设为 `Instant`，可用 `--headless-fast-mode-for-test` 覆盖；Windows PowerShell 启动器保留既有默认值，可用 `-HeadlessFastModeForTest Instant` 显式启用。同一战斗能容纳的行动继续合并到一个批次夹具中连续执行。
 
@@ -18,7 +18,7 @@
 | `ROOT-HOOK-NULL-0291` | 已修复，待专用复跑 | 根监听器快照过滤空项，针对 Queen `BeforeAttack` 钩子中的 NullReferenceException 完成根因修复。 | 2026-09-04 |
 | `POTION-SLOT-DRIFT-0291` | 已修复，待专用漂移夹具 | 部署前药水槽位为空或内容不符时转入 `DeploymentDrift` 重算；未使用宽泛异常吞掉真实执行错误。 | 2026-09-04 |
 
-## 0.29.0（历史开发记录）：2026-09-03 问题包硬逻辑修复
+## 本地扩展：基于作者 0.29.1 的战前预测 API v2 与历史验证
 
 | 场景 | 当前结果 | 验证内容 | 日期 |
 | --- | --- | --- | --- |
@@ -40,6 +40,7 @@
 | `PRECOMBAT-POTION-METRICS-006` | 通过 | 强制至少使用一瓶药水的短搜索把非空动作写入公共结果协议：`FIRE_POTION` / “火焰药水”、第 `3` 回合、槽位 `0`；战斗第 `3` 回合结束。runId `5e281451a3534051b605577cd51c9038`。 | 2026-09-04 |
 | `PRECOMBAT-REMOTE-CAMPFIRE-007` | 通过 | 从含历史事件选择的完整跑局精确恢复；按目标路线补记第 9 层篝火与第 10 层宝箱，用目标列坐标进入第 11 层 `SLIMES_NORMAL`，在开战 Hook 前覆盖为休息后的 `66 HP`。3 秒 DOP1 短搜返回战损 `12`、最终 `54 HP`；完成项包含 `DirectRunSnapshot:ExactStateRestored`、`PreCombatInterveningMapPoints:2`、`PreCombatPlayerHp:66`。runId `fe93b060ada64e78864fca8d825aeb85`。 | 2026-09-04 |
 | `PRECOMBAT-API-MANUAL-V2-008` | 通过 | public API v2 双进程往返使用目标坐标、独占可取消 worker、强制重算和入战 HP 覆盖；空事件历史变量被规范化、非空变量保留，返回 `EntryHp=79`、战损 `1`、药水 `0`、边界 `None`，调用前后 live 状态令牌一致。runId `f8db7c03ea9444cc89483495c985f221`。 | 2026-09-04 |
+| `PRECOMBAT-API-SEED-STACK-0.29.1-FINAL` | 通过 | API v2 改动重放到作者 `0.29.0` 后的四 Mod 组合回归；Combat Solver 以 `0.29.1.0` 加载，外层 Seed Oracle 记录 `precombat_public_api_v2=true`，公开 API 返回 `EntryHp=79`、战损 `5`、药水 `0`、边界 `None`，调用前后 live 状态令牌一致。runId `2e038fa1be6b45a19a7a5096c9be0f16`。 | 2026-09-04 |
 
 性能指标口径：`selected_*` 只描述最终选中的单个 solver；请求级 `total_expanded_nodes / total_transitions / total_choice_branches`、`total_solver_ms`、分配与 GC 累计对正常、失败和取消的每个 solver 工作区间精确记录一次，包括取消前已发生的部分工作。Smart 有限药水层之间由 coordinator 主动执行的内存整理也计入时间、分配与 GC，但不增加 solver 数；建立开局、层间比较等其他编排工作仍不在这些总值中。因此端到端耗时以请求/阶段外层墙钟为准，峰值内存以进程 `VmHWM` 为准。Smart 多层的取消时点可能令请求总工作量小幅波动，语义验收优先比较胜负、战损、回合和动作路线。峰值工作集是瞬时进程峰值，不能跨阶段相加；`16 GB` NoGC 是运行时请求预算，不等于实际占用或硬上限；NoGC 活跃时 `GC.GetTotalMemory(false)` 不是严格 live-set 测量。
 
