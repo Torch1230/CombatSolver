@@ -12,7 +12,23 @@ internal static class PreCombatForecastWorker
     private const string RuntimeDirectoryName = ".combatsolver-precombat";
     private const string RuntimeMarkerName = ".combatsolver-precombat-owner";
     private const string RuntimeMarkerContents = "CombatSolver PreCombat API v1";
+    private const int IdleWorkerLifetimeMilliseconds = 120_000;
     private static readonly SemaphoreSlim Gate = new(1, 1);
+    private static WorkerSession? _session;
+    private static CancellationTokenSource? _idleShutdown;
+    private static int _workerStartCount;
+    private static int _workerReuseCount;
+
+    static PreCombatForecastWorker()
+    {
+        AppDomain.CurrentDomain.ProcessExit += static (_, _) => StopSessionAtProcessExit();
+    }
+
+    internal static int WorkerStartCountForTesting => Volatile.Read(ref _workerStartCount);
+
+    internal static int WorkerReuseCountForTesting => Volatile.Read(ref _workerReuseCount);
+
+    internal static bool ActiveSessionAudioMutedForTesting => _session?.AudioMuted == true;
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -39,27 +55,57 @@ internal static class PreCombatForecastWorker
         {
             await Gate.WaitAsync(cancellationToken).ConfigureAwait(false);
             gateEntered = true;
+            CancelIdleShutdown();
 
             string runtimeRoot = Path.Combine(snapshot.GameRoot, RuntimeDirectoryName);
-            string workerGameRoot = Path.Combine(runtimeRoot, "game");
             string requestRoot = Path.Combine(runtimeRoot, "requests", requestId);
-            string roamingRoot = Path.Combine(requestRoot, "Roaming");
-            string localRoot = Path.Combine(requestRoot, "Local");
-            string workerDataRoot = Path.Combine(roamingRoot, "SlayTheSpire2");
             string snapshotPath = Path.Combine(requestRoot, "run.save.json");
-            string logPath = Path.Combine(requestRoot, "worker.log");
-            diagnosticLogPath = logPath;
-            string requestPath = Path.Combine(workerDataRoot, "combat_solver_test_request.json");
-            string resultPath = Path.Combine(workerDataRoot, "combat_solver_test_result.json");
-
             EnsureRuntimeRoot(runtimeRoot, snapshot.GameRoot);
-            EnsureGameMirror(runtimeRoot, snapshot.GameRoot, workerGameRoot);
-            MirrorLoadedMods(runtimeRoot, workerGameRoot, snapshot.Mods);
-            PrepareWorkerUserData(snapshot.UserDataRoot, workerDataRoot);
-            Directory.CreateDirectory(localRoot);
             Directory.CreateDirectory(requestRoot);
             await File.WriteAllBytesAsync(snapshotPath, snapshot.SerializedRun, cancellationToken)
                 .ConfigureAwait(false);
+
+            string sessionSignature = BuildSessionSignature(snapshot);
+            WorkerSession? session = TryGetReusableSession(sessionSignature);
+            bool reusedWorker = session is not null;
+            if (session is null)
+            {
+                StopCurrentSession();
+                string workerGameRoot = Path.Combine(runtimeRoot, "game");
+                string sessionRoot = Path.Combine(runtimeRoot, "session");
+                string roamingRoot = Path.Combine(sessionRoot, "Roaming");
+                string localRoot = Path.Combine(sessionRoot, "Local");
+                string workerDataRoot = Path.Combine(roamingRoot, "SlayTheSpire2");
+                string logPath = Path.Combine(sessionRoot, "worker.log");
+                ResetOwnedDirectory(runtimeRoot, sessionRoot);
+                EnsureGameMirror(runtimeRoot, snapshot.GameRoot, workerGameRoot);
+                MirrorLoadedMods(runtimeRoot, workerGameRoot, snapshot.Mods);
+                bool audioMuted = PrepareWorkerUserData(snapshot.UserDataRoot, workerDataRoot);
+                Directory.CreateDirectory(localRoot);
+
+                string workerExe = Path.Combine(
+                    workerGameRoot,
+                    Path.GetFileName(Path.Combine(snapshot.GameRoot, "SlayTheSpire2.exe")));
+                if (!File.Exists(workerExe))
+                    throw new FileNotFoundException("The mirrored game executable is missing.", workerExe);
+                session = new WorkerSession(
+                    sessionSignature,
+                    StartWorker(workerExe, workerGameRoot, roamingRoot, localRoot, logPath),
+                    Path.Combine(workerDataRoot, "combat_solver_test_request.json"),
+                    Path.Combine(workerDataRoot, "combat_solver_test_result.json"),
+                    Path.Combine(workerDataRoot, "combat_solver_test_ready.json"),
+                    logPath,
+                    audioMuted);
+                _session = session;
+                Interlocked.Increment(ref _workerStartCount);
+            }
+            else
+            {
+                Interlocked.Increment(ref _workerReuseCount);
+            }
+            diagnosticLogPath = session.LogPath;
+            DeleteIfExists(session.ResultPath);
+            DeleteIfExists(session.ReadyPath);
 
             string[] expectedMods = snapshot.Mods
                 .Select(static mod => $"{mod.Id}@{mod.Version}")
@@ -99,59 +145,63 @@ internal static class PreCombatForecastWorker
                 EnableNoGcRegionForTest = false,
                 HeadlessFastModeForTest = SolverDeploymentFastMode.Instant,
                 StopAfterInitialSolverResultAssertion = true,
-                ExitOnComplete = true,
+                ExitOnComplete = false,
                 TimeoutSeconds = Math.Max(
                     15,
                     (options.OverallTimeoutMilliseconds - 5_000) / 1_000d),
             };
-            await WriteJsonAtomicallyAsync(requestPath, request, cancellationToken).ConfigureAwait(false);
-
-            string workerExe = Path.Combine(
-                workerGameRoot,
-                Path.GetFileName(Path.Combine(snapshot.GameRoot, "SlayTheSpire2.exe")));
-            if (!File.Exists(workerExe))
-                throw new FileNotFoundException("The mirrored game executable is missing.", workerExe);
-
-            using Process process = StartWorker(workerExe, workerGameRoot, roamingRoot, localRoot, logPath);
+            await WriteJsonAtomicallyAsync(session.RequestPath, request, cancellationToken).ConfigureAwait(false);
+            Entry.Logger.Info(
+                $"[CombatSolver/PreCombatApi] WORKER_REQUEST request_id={requestId} " +
+                $"pid={session.Process.Id} reused={reusedWorker} audio_muted={session.AudioMuted}");
             using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             deadline.CancelAfter(options.OverallTimeoutMilliseconds);
-            UnattendedTestResult? workerResult;
+            UnattendedTestResult workerResult;
             try
             {
                 workerResult = await WaitForResultAsync(
-                    process,
-                    resultPath,
+                    session.Process,
+                    session.ResultPath,
+                    requestId,
+                    deadline.Token).ConfigureAwait(false);
+                if (!workerResult.Status.Equals("Passed", StringComparison.OrdinalIgnoreCase)
+                    || workerResult.SolverMetrics == null)
+                {
+                    InvalidateSession(session);
+                    return PreCombatForecastApi.Failure(
+                        PreCombatForecastStatus.Failed,
+                        requestId,
+                        workerResult.Error ?? $"Worker stopped at stage {workerResult.Stage}.",
+                        session.LogPath);
+                }
+                await WaitForReadyAsync(
+                    session.Process,
+                    session.ReadyPath,
                     requestId,
                     deadline.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
-                StopOwnedProcess(process);
+                InvalidateSession(session);
                 return PreCombatForecastApi.Failure(
                     PreCombatForecastStatus.TimedOut,
                     requestId,
                     $"The isolated worker exceeded {options.OverallTimeoutMilliseconds} ms.",
-                    logPath);
+                    session.LogPath);
             }
             catch (OperationCanceledException)
             {
-                StopOwnedProcess(process);
+                InvalidateSession(session);
                 return PreCombatForecastApi.Failure(
                     PreCombatForecastStatus.Cancelled,
                     requestId,
                     "The isolated pre-combat request was cancelled.",
-                    logPath);
+                    session.LogPath);
             }
-
-            await StopAfterResultAsync(process).ConfigureAwait(false);
-            if (!workerResult.Status.Equals("Passed", StringComparison.OrdinalIgnoreCase)
-                || workerResult.SolverMetrics == null)
+            catch
             {
-                return PreCombatForecastApi.Failure(
-                    PreCombatForecastStatus.Failed,
-                    requestId,
-                    workerResult.Error ?? $"Worker stopped at stage {workerResult.Stage}.",
-                    logPath);
+                InvalidateSession(session);
+                throw;
             }
 
             UnattendedSolverMetrics metrics = workerResult.SolverMetrics;
@@ -180,6 +230,7 @@ internal static class PreCombatForecastWorker
                 TotalElapsedMilliseconds = workerResult.ElapsedMilliseconds,
             };
             TryDeleteOwnedRequestDirectory(runtimeRoot, requestRoot);
+            ScheduleIdleShutdown(session);
             return result;
         }
         catch (OperationCanceledException)
@@ -204,6 +255,128 @@ internal static class PreCombatForecastWorker
             if (gateEntered)
                 Gate.Release();
         }
+    }
+
+    public static async Task StopSessionAsync()
+    {
+        await Gate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            CancelIdleShutdown();
+            StopCurrentSession();
+        }
+        finally
+        {
+            Gate.Release();
+        }
+    }
+
+    private static WorkerSession? TryGetReusableSession(string signature)
+    {
+        WorkerSession? session = _session;
+        if (session is null)
+            return null;
+        if (!signature.Equals(session.Signature, StringComparison.Ordinal)
+            || session.Process.HasExited)
+        {
+            InvalidateSession(session);
+            return null;
+        }
+        return session;
+    }
+
+    private static string BuildSessionSignature(PreCombatLiveStateSnapshot snapshot) => string.Join(
+        '|',
+        Path.GetFullPath(snapshot.GameRoot),
+        Path.GetFullPath(snapshot.UserDataRoot),
+        string.Join(';', snapshot.Mods.Select(static mod =>
+            $"{mod.Id}@{mod.Version}@{Path.GetFullPath(mod.SourcePath)}")));
+
+    private static void ScheduleIdleShutdown(WorkerSession session)
+    {
+        CancelIdleShutdown();
+        CancellationTokenSource cancellation = new();
+        _idleShutdown = cancellation;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(IdleWorkerLifetimeMilliseconds, cancellation.Token).ConfigureAwait(false);
+                await Gate.WaitAsync(cancellation.Token).ConfigureAwait(false);
+                try
+                {
+                    if (ReferenceEquals(_session, session))
+                    {
+                        Entry.Logger.Info(
+                            $"[CombatSolver/PreCombatApi] WORKER_IDLE_STOP pid={session.Process.Id} " +
+                            $"idle_ms={IdleWorkerLifetimeMilliseconds}");
+                        StopCurrentSession();
+                    }
+                }
+                finally
+                {
+                    Gate.Release();
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // A new request or explicit panel close owns the next session transition.
+            }
+            catch (Exception ex)
+            {
+                Entry.Logger.Error($"[CombatSolver/PreCombatApi] WORKER_IDLE_STOP_FAILED exception={ex}");
+            }
+            finally
+            {
+                Interlocked.CompareExchange(ref _idleShutdown, null, cancellation);
+                cancellation.Dispose();
+            }
+        });
+    }
+
+    private static void CancelIdleShutdown()
+    {
+        CancellationTokenSource? cancellation = Interlocked.Exchange(ref _idleShutdown, null);
+        if (cancellation is null)
+            return;
+        cancellation.Cancel();
+    }
+
+    private static void InvalidateSession(WorkerSession session)
+    {
+        if (ReferenceEquals(_session, session))
+            _session = null;
+        StopOwnedProcess(session.Process);
+    }
+
+    private static void StopCurrentSession()
+    {
+        WorkerSession? session = _session;
+        _session = null;
+        if (session is not null)
+            StopOwnedProcess(session.Process);
+    }
+
+    private static void StopSessionAtProcessExit()
+    {
+        try
+        {
+            CancelIdleShutdown();
+            WorkerSession? session = _session;
+            _session = null;
+            if (session is not null && !session.Process.HasExited)
+                session.Process.Kill(entireProcessTree: true);
+        }
+        catch
+        {
+            // Process shutdown is already in progress; there is no caller to report to.
+        }
+    }
+
+    private static void DeleteIfExists(string path)
+    {
+        if (File.Exists(path))
+            File.Delete(path);
     }
 
     private static RoomType ToRoomType(PreCombatRoomKind kind) => kind switch
@@ -273,7 +446,7 @@ internal static class PreCombatForecastWorker
         }
     }
 
-    private static void PrepareWorkerUserData(string sourceRoot, string workerRoot)
+    private static bool PrepareWorkerUserData(string sourceRoot, string workerRoot)
     {
         Directory.CreateDirectory(workerRoot);
         foreach (string directoryName in new[] { "default", "ModConfig", "mod_configs" })
@@ -300,7 +473,21 @@ internal static class PreCombatForecastWorker
             ["mods_enabled"] = true,
             ["mod_list"] = new JsonArray(),
         };
+        string[] volumeKeys =
+        [
+            "volume_master",
+            "volume_bgm",
+            "volume_sfx",
+            "volume_ambience",
+        ];
+        foreach (string key in volumeKeys)
+            settings[key] = 0f;
         File.WriteAllText(settingsPath, settings.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+        JsonObject savedSettings = JsonNode.Parse(File.ReadAllText(settingsPath))?.AsObject()
+            ?? throw new InvalidDataException("The muted worker settings file is empty.");
+        if (!volumeKeys.All(key => savedSettings[key]?.GetValue<float>() == 0f))
+            throw new InvalidDataException("The isolated worker audio settings could not be muted.");
+        return true;
     }
 
     private static Process StartWorker(
@@ -359,18 +546,35 @@ internal static class PreCombatForecastWorker
         }
     }
 
-    private static async Task StopAfterResultAsync(Process process)
+    private static async Task WaitForReadyAsync(
+        Process process,
+        string readyPath,
+        string requestId,
+        CancellationToken cancellationToken)
     {
-        if (process.HasExited)
-            return;
-        using CancellationTokenSource exitDeadline = new(TimeSpan.FromSeconds(5));
-        try
+        while (true)
         {
-            await process.WaitForExitAsync(exitDeadline.Token).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            StopOwnedProcess(process);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (File.Exists(readyPath))
+            {
+                string json = await File.ReadAllTextAsync(readyPath, cancellationToken).ConfigureAwait(false);
+                WorkerReady? ready = JsonSerializer.Deserialize<WorkerReady>(
+                    json,
+                    UnattendedTestFiles.JsonOptions);
+                if (ready?.RunId == requestId)
+                {
+                    if (ready.Held)
+                        throw new InvalidOperationException("The pre-combat worker unexpectedly retained a live search.");
+                    return;
+                }
+            }
+
+            if (process.HasExited)
+            {
+                throw new InvalidOperationException(
+                    $"The isolated game process exited with code {process.ExitCode} before becoming reusable.");
+            }
+            await Task.Delay(100, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -489,5 +693,21 @@ internal static class PreCombatForecastWorker
     {
         char[] invalid = Path.GetInvalidFileNameChars();
         return new string(value.Select(ch => invalid.Contains(ch) ? '_' : ch).ToArray());
+    }
+
+    private sealed record WorkerSession(
+        string Signature,
+        Process Process,
+        string RequestPath,
+        string ResultPath,
+        string ReadyPath,
+        string LogPath,
+        bool AudioMuted);
+
+    private sealed class WorkerReady
+    {
+        public int SchemaVersion { get; init; }
+        public string RunId { get; init; } = string.Empty;
+        public bool Held { get; init; }
     }
 }

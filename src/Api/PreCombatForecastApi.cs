@@ -14,7 +14,7 @@ namespace CombatSolver.Api;
 /// </summary>
 public static class PreCombatForecastApi
 {
-    public const int ApiVersion = 2;
+    public const int ApiVersion = 3;
 
     private static readonly ConcurrentDictionary<string, Task<PreCombatForecastResult>> Active = new();
     private static readonly ConcurrentDictionary<string, PreCombatForecastResult> Completed = new();
@@ -28,6 +28,11 @@ public static class PreCombatForecastApi
 
     /// <summary>Returns an opaque token suitable for caller-side caching while the run remains unchanged.</summary>
     public static string CaptureLiveStateToken(RunState run) => PreCombatLiveStateSnapshot.CaptureToken(run);
+
+    /// <summary>
+    /// Stops the reusable isolated worker, if one is active. Callers may use this when their forecast UI closes.
+    /// </summary>
+    public static Task StopWorkerAsync() => PreCombatForecastWorker.StopSessionAsync();
 
     public static Task<PreCombatForecastResult> ForecastAsync(
         RunState run,

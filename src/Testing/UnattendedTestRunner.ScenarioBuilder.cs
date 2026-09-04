@@ -342,14 +342,13 @@ internal sealed partial class UnattendedTestRunner
             VerifyPreCombatNormalization();
             int forecastEntryHp = Math.Max(1, runState.Players.Single().Creature.CurrentHp - 1);
             string before = PreCombatForecastApi.CaptureLiveStateToken(runState);
-            PreCombatForecastResult result = await PreCombatForecastApi.ForecastAsync(
-                runState,
-                encounter,
-                Math.Max(1, runState.ActFloor + 1),
-                ResolveNextMapColumn(runState),
-                PreCombatRoomKind.Normal,
-                PreCombatMapPointKind.Normal,
-                options: new PreCombatForecastOptions
+            await PreCombatForecastApi.StopWorkerAsync();
+            int startsBefore = PreCombatForecastWorker.WorkerStartCountForTesting;
+            int reusesBefore = PreCombatForecastWorker.WorkerReuseCountForTesting;
+            PreCombatForecastResult result;
+            try
+            {
+                var options = new PreCombatForecastOptions
                 {
                     SearchBudgetMilliseconds = 3_000,
                     OverallTimeoutMilliseconds = 45_000,
@@ -357,24 +356,73 @@ internal sealed partial class UnattendedTestRunner
                     PlayerCurrentHpOverride = forecastEntryHp,
                     CancelWorkerWhenCallerCancels = true,
                     ForceRefresh = true,
-                });
-            if (!result.IsSuccess)
-            {
-                throw new InvalidOperationException(
-                    $"战前 API 返回 {result.Status}: {result.Error} log={result.DiagnosticLogPath}");
+                };
+                int targetActFloor = Math.Max(1, runState.ActFloor + 1);
+                int targetMapColumn = ResolveNextMapColumn(runState);
+                result = await PreCombatForecastApi.ForecastAsync(
+                    runState,
+                    encounter,
+                    targetActFloor,
+                    targetMapColumn,
+                    PreCombatRoomKind.Normal,
+                    PreCombatMapPointKind.Normal,
+                    options: options);
+                if (!result.IsSuccess)
+                {
+                    throw new InvalidOperationException(
+                        $"战前 API 返回 {result.Status}: {result.Error} log={result.DiagnosticLogPath}");
+                }
+
+                PreCombatForecastResult repeated = await PreCombatForecastApi.ForecastAsync(
+                    runState,
+                    encounter,
+                    targetActFloor,
+                    targetMapColumn,
+                    PreCombatRoomKind.Normal,
+                    PreCombatMapPointKind.Normal,
+                    options: options);
+                if (!repeated.IsSuccess)
+                {
+                    throw new InvalidOperationException(
+                        $"战前 API 复用请求返回 {repeated.Status}: {repeated.Error} log={repeated.DiagnosticLogPath}");
+                }
+                if (result.ProjectedHpLoss != repeated.ProjectedHpLoss
+                    || result.FinalHp != repeated.FinalHp
+                    || result.CombatEndedTurn != repeated.CombatEndedTurn
+                    || result.SearchBoundary != repeated.SearchBoundary
+                    || !result.PotionUses.SequenceEqual(repeated.PotionUses))
+                {
+                    throw new InvalidOperationException("相同跑局快照的复用 worker 返回了不同的战前预测结果。");
+                }
+
+                int workerStarts = PreCombatForecastWorker.WorkerStartCountForTesting - startsBefore;
+                int workerReuses = PreCombatForecastWorker.WorkerReuseCountForTesting - reusesBefore;
+                if (workerStarts != 1 || workerReuses != 1)
+                {
+                    throw new InvalidOperationException(
+                        $"战前 worker 生命周期不符合预期：starts={workerStarts}, reuses={workerReuses}。");
+                }
+                if (!PreCombatForecastWorker.ActiveSessionAudioMutedForTesting)
+                    throw new InvalidOperationException("隔离战前 worker 没有应用静音用户设置。");
+
+                string after = PreCombatForecastApi.CaptureLiveStateToken(runState);
+                if (!before.Equals(after, StringComparison.Ordinal))
+                    throw new InvalidOperationException("战前 API 调用改变了主进程跑局状态或 RNG。");
+                if (result.ProjectedHpLoss is { } hpLoss
+                    && result.FinalHp != Math.Max(0, forecastEntryHp - hpLoss))
+                {
+                    throw new InvalidOperationException(
+                        $"战前 HP 覆盖没有反映在结果中：entry={forecastEntryHp} loss={hpLoss} final={result.FinalHp}。");
+                }
+                runner._completedChecks.Add(
+                    $"PreCombatForecastApi:EntryHp={forecastEntryHp}:HpLoss={result.ProjectedHpLoss}:Potions={result.PotionUses.Count}:" +
+                    $"Boundary={result.SearchBoundary}:LiveStateUnchanged=1:WorkerStarts={workerStarts}:" +
+                    $"WorkerReuses={workerReuses}:AudioMuted=1");
             }
-            string after = PreCombatForecastApi.CaptureLiveStateToken(runState);
-            if (!before.Equals(after, StringComparison.Ordinal))
-                throw new InvalidOperationException("战前 API 调用改变了主进程跑局状态或 RNG。");
-            if (result.ProjectedHpLoss is { } hpLoss
-                && result.FinalHp != Math.Max(0, forecastEntryHp - hpLoss))
+            finally
             {
-                throw new InvalidOperationException(
-                    $"战前 HP 覆盖没有反映在结果中：entry={forecastEntryHp} loss={hpLoss} final={result.FinalHp}。");
+                await PreCombatForecastApi.StopWorkerAsync();
             }
-            runner._completedChecks.Add(
-                $"PreCombatForecastApi:EntryHp={forecastEntryHp}:HpLoss={result.ProjectedHpLoss}:Potions={result.PotionUses.Count}:" +
-                $"Boundary={result.SearchBoundary}:LiveStateUnchanged=1");
         }
 
         private void VerifyPreCombatNormalization()
