@@ -194,7 +194,7 @@ internal sealed partial class CombatBeamSolver
         {
             SearchNode node = retained[index];
             if (ShouldPruneByPrimaryIncumbent(
-                    node.Snapshot.CumulativePlayerHpLost,
+                    StrategicHpLowerBound(node.Snapshot),
                     node.Turn,
                     incumbent))
             {
@@ -209,12 +209,28 @@ internal sealed partial class CombatBeamSolver
         return bounded ?? retained;
     }
 
+    /// <summary>
+    /// Best strategic HP result an unfinished node could still reach, so the incumbent bound never prunes a
+    /// branch that could still overtake it.
+    /// </summary>
+    /// <remarks>
+    /// Future damage cannot help: every point of it raises cumulative loss and can at most be healed back, so
+    /// it cancels out. What is left is the HP the node is currently missing, which a heal could still restore.
+    /// Max HP is deliberately excluded for the same reason the caller excludes it: it may still recover.
+    /// </remarks>
+    private int StrategicHpLowerBound(SimulationSnapshot snapshot)
+        => ActEndingBossPolicy.StrategicHpDeficit(
+            snapshot.CumulativePlayerHpLost,
+            maxHpDeficit: 0,
+            snapshot.RecoveredPlayerHp + Math.Max(0, snapshot.PlayerMaxHp - snapshot.PlayerHp),
+            _strategicBossHpRelief);
+
     internal static bool ShouldPruneByPrimaryIncumbent(
-        int cumulativePlayerHpLost,
+        int strategicHpLowerBound,
         int turn,
         PrimarySearchIncumbent incumbent)
-        => cumulativePlayerHpLost > incumbent.StrategicHpDeficit
-            || cumulativePlayerHpLost == incumbent.StrategicHpDeficit
+        => strategicHpLowerBound > incumbent.StrategicHpDeficit
+            || strategicHpLowerBound == incumbent.StrategicHpDeficit
                 && turn > incumbent.CombatEndedTurn;
 
     internal static bool TryTightenPrimarySearchIncumbent(
@@ -303,10 +319,13 @@ internal sealed partial class CombatBeamSolver
             }
 
             // PlayerMaxHp is part of the incumbent only after combat has actually ended.
-            // ApplyPrimaryIncumbentBound deliberately keeps using cumulative HP loss alone
-            // as the lower bound for incomplete nodes because max HP may still recover.
-            int strategicHpDeficit = node.Snapshot.CumulativePlayerHpLost
-                + Math.Max(0, root.InitialPlayerMaxHp - node.Snapshot.PlayerMaxHp);
+            // ApplyPrimaryIncumbentBound deliberately keeps using a looser lower bound for
+            // incomplete nodes because max HP may still recover and HP may still be healed.
+            int strategicHpDeficit = ActEndingBossPolicy.StrategicHpDeficit(
+                node.Snapshot.CumulativePlayerHpLost,
+                Math.Max(0, root.InitialPlayerMaxHp - node.Snapshot.PlayerMaxHp),
+                node.Snapshot.RecoveredPlayerHp,
+                _strategicBossHpRelief);
             TryTightenPrimarySearchIncumbent(
                 _potionFreePolicyBaseline,
                 _minimumPotionUses,

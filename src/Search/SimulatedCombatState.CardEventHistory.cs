@@ -157,8 +157,27 @@ internal sealed partial class SimulatedCombatState
         (_poweredAttackHitsThisTurn ??= [])[key] = GetPoweredAttackHitsThisTurn(dealer, receiver) + 1;
     }
 
+    /// <summary>
+    /// Records HP a heal actually put back. <paramref name="amount"/> is already clamped by max HP, so an
+    /// overheal never reaches here and a route cannot be credited for HP it did not restore.
+    /// </summary>
+    /// <remarks>
+    /// This is the counterpart of <see cref="GetCumulativeHpLost"/> on the same axis: cumulative loss is the
+    /// gross damage a route took, recovery is how much of it the route bought back. Both only ever grow, so a
+    /// route's strategic HP result stays monotonic in the search.
+    /// </remarks>
+    public void RecordHpRecovered(Creature receiver, int amount)
+    {
+        if (amount <= 0)
+            throw new ArgumentOutOfRangeException(nameof(amount), amount, "生命回复量必须为正数。");
+        (_recoveredHp ??= [])[receiver] = GetRecoveredHp(receiver) + amount;
+    }
+
     public int GetCumulativeHpLost(Creature receiver)
         => _cumulativeHpLost?.GetValueOrDefault(receiver) ?? 0;
+
+    public int GetRecoveredHp(Creature receiver)
+        => _recoveredHp?.GetValueOrDefault(receiver) ?? 0;
 
     public bool HasLostHpThisTurn(Creature receiver)
     {

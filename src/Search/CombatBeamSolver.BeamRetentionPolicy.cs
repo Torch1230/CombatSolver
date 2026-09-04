@@ -63,6 +63,7 @@ internal sealed partial class CombatBeamSolver
     private sealed class BeamRetentionPolicy(
         SolverSearchProfile _profile,
         bool _isActEndingBoss,
+        BossHpRelief _bossHpRelief,
         int _initialEnemyCount,
         int _initialPlayerHp,
         int _initialPlayerMaxHp,
@@ -133,6 +134,7 @@ internal sealed partial class CombatBeamSolver
                             potionFreeBaseline,
                             _initialPlayerHp,
                             _initialPlayerMaxHp,
+                            _bossHpRelief,
                             _theftPolicy) < 0))
                 {
                     potionFreeBaseline = candidate;
@@ -1769,8 +1771,11 @@ internal sealed partial class CombatBeamSolver
                 node.Snapshot.ProjectedPlayerHp);
 
         private int StrategicHpDeficit(SimulationSnapshot snapshot)
-            => snapshot.CumulativePlayerHpLost
-                + Math.Max(0, _initialPlayerMaxHp - snapshot.PlayerMaxHp);
+            => ActEndingBossPolicy.StrategicHpDeficit(
+                snapshot.CumulativePlayerHpLost,
+                Math.Max(0, _initialPlayerMaxHp - snapshot.PlayerMaxHp),
+                snapshot.RecoveredPlayerHp,
+                _bossHpRelief);
 
         private int HealthResourceCost(SimulationSnapshot snapshot)
             => _initialPlayerHp - snapshot.PlayerHp

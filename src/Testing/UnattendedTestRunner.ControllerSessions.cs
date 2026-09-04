@@ -800,46 +800,79 @@ internal sealed partial class UnattendedTestRunner
                 completeVictory: false,
                 strategicHpDeficit: 0,
                 combatEndedTurn: null,
-                earliestPossibleCombatEndedTurn: 1)
+                earliestPossibleCombatEndedTurn: 1,
+                provableStrategicHpFloor: 0)
             || CombatSearchCoordinator.HasReachedProvablePrimaryQualityLowerBound(
                 completeVictory: true,
                 strategicHpDeficit: 0,
                 combatEndedTurn: 2,
-                earliestPossibleCombatEndedTurn: 1)
+                earliestPossibleCombatEndedTurn: 1,
+                provableStrategicHpFloor: 0)
             || CombatSearchCoordinator.HasReachedProvablePrimaryQualityLowerBound(
                 completeVictory: true,
                 strategicHpDeficit: 0,
                 combatEndedTurn: 1,
-                earliestPossibleCombatEndedTurn: null)
+                earliestPossibleCombatEndedTurn: null,
+                provableStrategicHpFloor: 0)
             || !CombatSearchCoordinator.HasReachedProvablePrimaryQualityLowerBound(
                 completeVictory: true,
                 strategicHpDeficit: 0,
                 combatEndedTurn: 1,
-                earliestPossibleCombatEndedTurn: 1))
+                earliestPossibleCombatEndedTurn: 1,
+                provableStrategicHpFloor: 0))
         {
             throw new InvalidOperationException(
                 "开局能力补查错误地把未胜、较慢的零战损结果或未知回合下界当成可停止条件。");
+        }
+        // A wounded player can still end the fight higher than zero battle loss, so zero stops being the
+        // provable floor and a zero-loss route no longer proves the search can stop.
+        if (CombatSearchCoordinator.HasReachedProvablePrimaryQualityLowerBound(
+                completeVictory: true,
+                strategicHpDeficit: 0,
+                combatEndedTurn: 1,
+                earliestPossibleCombatEndedTurn: 1,
+                provableStrategicHpFloor: -9)
+            || !CombatSearchCoordinator.HasReachedProvablePrimaryQualityLowerBound(
+                completeVictory: true,
+                strategicHpDeficit: -9,
+                combatEndedTurn: 1,
+                earliestPossibleCombatEndedTurn: 1,
+                provableStrategicHpFloor: -9))
+        {
+            throw new InvalidOperationException(
+                "可回复生命时，零战损被错误地当成了已证明的最优下界。");
+        }
+        if (ActEndingBossPolicy.PersistentValueOfRecoveredHp(10, BossHpRelief.None) != 10
+            || ActEndingBossPolicy.PersistentValueOfRecoveredHp(10, BossHpRelief.ActClearHeal) != 2
+            || ActEndingBossPolicy.PersistentValueOfRecoveredHp(10, BossHpRelief.RunEnding) != 0
+            || ActEndingBossPolicy.PersistentValueOfRecoveredHp(0, BossHpRelief.None) != 0
+            || ActEndingBossPolicy.StrategicHpDeficit(12, 3, 10, BossHpRelief.None) != 5
+            || ActEndingBossPolicy.StrategicHpDeficit(0, 0, 9, BossHpRelief.None) != -9
+            || ActEndingBossPolicy.StrategicHpDeficit(0, 0, 9, BossHpRelief.RunEnding) != 0)
+        {
+            throw new InvalidOperationException(
+                "回复生命的跨战斗计价没有按幕末 Boss 的战后回复折算。");
         }
         PrimarySearchIncumbent incumbent = new(
             StrategicHpDeficit: 5,
             CombatEndedTurn: 3);
         if (!CombatBeamSolver.ShouldPruneByPrimaryIncumbent(
-                cumulativePlayerHpLost: 6,
+                strategicHpLowerBound: 6,
                 turn: 2,
                 incumbent: incumbent)
             || !CombatBeamSolver.ShouldPruneByPrimaryIncumbent(
-                cumulativePlayerHpLost: 5,
+                strategicHpLowerBound: 5,
                 turn: 4,
                 incumbent: incumbent)
             || CombatBeamSolver.ShouldPruneByPrimaryIncumbent(
-                cumulativePlayerHpLost: 5,
+                strategicHpLowerBound: 5,
                 turn: 3,
                 incumbent: incumbent)
             // Even far past the incumbent turn, a branch below the incumbent's loss
             // remains eligible. Its current max-HP deficit is deliberately not an input:
             // later effects may recover max HP before combat ends.
             || CombatBeamSolver.ShouldPruneByPrimaryIncumbent(
-                cumulativePlayerHpLost: 4,
+                strategicHpLowerBound: 4,
                 turn: 99,
                 incumbent: incumbent))
         {
