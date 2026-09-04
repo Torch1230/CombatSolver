@@ -2608,6 +2608,19 @@ internal static class SolverController
         {
             Entry.Logger.Info($"[CombatSolver/Test] DEPLOY_CANCELED turn={turn}");
         }
+        catch (InvalidOperationException ex) when (IsMissingDeploymentCard(ex))
+        {
+            _combat.ContinuationSource = null;
+            CompleteDeployment(deployment);
+            Entry.Logger.Warn(
+                $"[CombatSolver/Test] DEPLOY_REPLAN turn={turn} reason=card_missing " +
+                $"message={ex.Message}");
+            RequestSearch(
+                host,
+                state,
+                SearchReason.DeploymentDrift,
+                deployWhenReady: !_combat.FullAutoEnabled);
+        }
         catch (Exception ex)
         {
             _combat.BugReportIssues.RecordFailure(CombatBugReportIssueKind.DeploymentFailure, ex);
@@ -2666,6 +2679,10 @@ internal static class SolverController
                 $"部署时找不到手牌 {action.CardId}#{action.CardOccurrence}；" +
                 $"当前手牌={string.Join(',', hand.Select(card => card.Id.Entry))}。");
     }
+
+    private static bool IsMissingDeploymentCard(InvalidOperationException exception)
+        => exception.Message.StartsWith("部署时找不到计划中的手牌状态 ", StringComparison.Ordinal)
+            || exception.Message.StartsWith("部署时找不到手牌 ", StringComparison.Ordinal);
 
     private static async Task<GameAction> EnqueueAndCaptureActionAsync(
         Func<GameAction, bool> matches,
