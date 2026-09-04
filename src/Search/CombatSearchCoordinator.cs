@@ -1078,10 +1078,11 @@ internal static class CombatSearchCoordinator
             return selected;
         }
 
+        // The candidates this baseline is compared against are ranked on the strategic axis, so the
+        // baseline has to be measured on it too; the raw sum here predated healing counting at all.
         PotionFreePolicyBaseline baseline = new(
             Won: true,
-            HpDeficit: potionFree.Snapshot.CumulativePlayerHpLost
-                + Math.Max(0, root.InitialPlayerMaxHp - potionFree.Snapshot.PlayerMaxHp),
+            HpDeficit: StrategicHpDeficit(root, policy, potionFree),
             PlayerHp: potionFree.Snapshot.PlayerHp,
             CombatEndedTurn: potionFree.CombatEndedTurn);
         SolverResult audited = new CombatBeamSolver(
@@ -1616,7 +1617,16 @@ internal static class CombatSearchCoordinator
         => ActEndingBossPolicy.StrategicHpDeficit(
             result.Snapshot.CumulativePlayerHpLost,
             Math.Max(0, root.InitialPlayerMaxHp - result.Snapshot.PlayerMaxHp),
-            result.Snapshot.RecoveredPlayerHp,
+            result.Snapshot.RecoveredPlayerHp
+                + ActEndingBossPolicy.RankedPostCombatRelicHeal(
+                    root.PostCombatRelicHeal,
+                    SolverInterimResultOrdering.IsCompleteVictory(
+                        result.BestNode.ActionCount,
+                        result.Snapshot.AllEnemiesDead,
+                        result.Snapshot.PlayerDead,
+                        result.Snapshot.ProjectedPlayerHp),
+                    result.Snapshot.PlayerHp,
+                    result.Snapshot.PlayerMaxHp),
             StrategicBossHpRelief(root, policy));
 
     /// <summary>
