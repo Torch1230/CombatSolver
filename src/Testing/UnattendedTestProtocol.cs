@@ -25,8 +25,11 @@ internal sealed class UnattendedTestRequest
     public string? RunSnapshotPath { get; init; }
     public bool LoadRunSnapshotDirectly { get; init; }
     public int? TargetActFloor { get; init; }
+    public int? TargetMapColumn { get; init; }
     public RoomType TargetRoomType { get; init; } = RoomType.Monster;
     public MapPointType TargetMapPointType { get; init; } = MapPointType.Unassigned;
+    public int? PreCombatPlayerCurrentHpOverride { get; init; }
+    public UnattendedPreCombatMapStep[] PreCombatInterveningMapPoints { get; init; } = [];
     public string[] ExpectedLoadedMods { get; init; } = [];
     public string? ReplayStatePath { get; init; }
     public int Ascension { get; init; }
@@ -203,6 +206,13 @@ internal sealed class UnattendedTestRequest
     public int InjectPlayerHpLossAmount { get; init; }
     public int? ClearPlayerBlockBeforeEndTurnForTest { get; init; }
     public bool ExitOnComplete { get; init; } = true;
+}
+
+internal sealed record UnattendedPreCombatMapStep
+{
+    public MapCoord Coordinate { get; init; }
+    public RoomType RoomType { get; init; }
+    public MapPointType MapPointType { get; init; }
 }
 
 internal sealed class UnattendedPotionCheck

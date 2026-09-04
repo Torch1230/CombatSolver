@@ -17,11 +17,14 @@
 
 ## 本地扩展：2026-09-04 隔离战前预测 API v1
 
-- 新增公开 `CombatSolver.Api.PreCombatForecastApi` v1。它接收当前完整单人跑局、确定的遭遇、目标楼层与房间/地图节点类型，异步返回战损、药水动作、搜索边界和可信度；不向调用方暴露当前战斗控制器或内部搜索对象。
+- 新增公开 `CombatSolver.Api.PreCombatForecastApi` v2。它接收当前完整单人跑局、确定的遭遇、目标楼层与地图列坐标、房间/地图节点类型及可选的连续非战斗路径历史，异步返回战损、药水动作、搜索边界和可信度；不向调用方暴露当前战斗控制器或内部搜索对象。
 - 战前请求在带所有权标记的独立 Windows headless 游戏进程中执行。worker 使用游戏文件硬链接镜像、精确主进程 Mod 集合、独立用户目录和禁用 NoGC 的短搜索；直接恢复完整跑局并在开战前核对规范化快照。主进程捕获前后均核对完整状态令牌，状态或 RNG 改变时拒绝结果。
-- 无人协议新增完整跑局直接恢复、目标房间/地图点、精确 Mod 集合与 API 往返验证；solver 指标同步输出所选路线中的药水 ID、标题、回合和槽位。Windows/Linux 结构门禁同时固定 API 文件、隔离标记、精确恢复和禁止 live 战斗调用。
+- v2 为可见手动操作增加独占取消、强制重算和入战 HP 覆盖；取消会终止并等待精确拥有的 worker。路径步骤只补记楼层、坐标和房间历史，不执行奖励或选项；未决 Event 和任何中间战斗会被拒绝。目标坐标参与怪物局部 RNG，入战 HP 在开战 Hook 前应用。
+- 快照规范化修复事件历史中空 `variables:{}` 恢复后被省略造成的误报，非空变量保持原样。无人协议新增目标坐标、连续中间地图点和 HP 覆盖；Windows/Linux 启动参数与结构门禁同步固定这些边界。
 - 最终双进程往返 `PRECOMBAT-API-FINAL-004` 通过（runId `7da852343994495e923dec58bf624b28`）；四 Mod 组合 `PRECOMBAT-API-SEED-STACK-005` 同时加载 RitsuLib、Combat Solver、Random Foreseer 与 Seed Oracle 并通过（runId `1961ef8c7d484da691e07cec99074215`）。两项均返回战损 `5`、边界 `None`，并证明调用前后 live 状态令牌一致。
 - 非空药水结果协议由 `PRECOMBAT-POTION-METRICS-006` 验证：返回 `FIRE_POTION`、本地化标题“火焰药水”、第 `3` 回合与槽位 `0`，runId `5e281451a3534051b605577cd51c9038`。
+- `PRECOMBAT-REMOTE-CAMPFIRE-007` 从含历史事件选项的完整跑局恢复，补记“篝火→宝箱”两层后以目标坐标进入第 11 层 `SLIMES_NORMAL`，并在开战前覆盖为休息后的 `66 HP`；短搜返回战损 `12`、最终 `54 HP`，runId `fe93b060ada64e78864fca8d825aeb85`。
+- `PRECOMBAT-API-MANUAL-V2-008` 完成 public API v2 双进程往返：空事件变量规范化与非空变量保留断言通过，入战 `79 HP`、战损 `1`，主进程完整状态令牌不变，runId `f8db7c03ea9444cc89483495c985f221`。
 
 ## 0.29.0（历史开发记录）：2026-09-03 问题包硬逻辑修复
 

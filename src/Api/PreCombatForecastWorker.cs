@@ -25,6 +25,7 @@ internal static class PreCombatForecastWorker
         PreCombatLiveStateSnapshot snapshot,
         string encounterId,
         int targetActFloor,
+        int targetMapColumn,
         PreCombatRoomKind roomKind,
         PreCombatMapPointKind mapPointKind,
         bool isSecondBoss,
@@ -76,6 +77,7 @@ internal static class PreCombatForecastWorker
                 MarkEncounterAsSecondBossForTest = isSecondBoss,
                 LoadRunSnapshotDirectly = true,
                 TargetActFloor = targetActFloor,
+                TargetMapColumn = targetMapColumn,
                 TargetRoomType = ToRoomType(roomKind),
                 TargetMapPointType = ToMapPointType(mapPointKind),
                 ExpectedLoadedMods = expectedMods,
@@ -85,6 +87,15 @@ internal static class PreCombatForecastWorker
                 ShortSearchBudgetOverrideMilliseconds = options.SearchBudgetMilliseconds,
                 DeepSearchBudgetOverrideMilliseconds = options.SearchBudgetMilliseconds,
                 SearchMaxDegreeOfParallelismForTest = options.MaxDegreeOfParallelism,
+                PreCombatPlayerCurrentHpOverride = options.PlayerCurrentHpOverride,
+                PreCombatInterveningMapPoints = options.InterveningMapPoints
+                    .Select(static step => new UnattendedPreCombatMapStep
+                    {
+                        Coordinate = step.Coordinate,
+                        RoomType = step.RoomType,
+                        MapPointType = step.MapPointType,
+                    })
+                    .ToArray(),
                 EnableNoGcRegionForTest = false,
                 HeadlessFastModeForTest = SolverDeploymentFastMode.Instant,
                 StopAfterInitialSolverResultAssertion = true,

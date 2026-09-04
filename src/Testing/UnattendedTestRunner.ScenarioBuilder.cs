@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using MegaCrit.Sts2.Core.Assets;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
@@ -90,10 +91,22 @@ internal sealed partial class UnattendedTestRunner
             }
             if (request.MarkEncounterAsSecondBossForTest)
                 runState.Act.SetSecondBossEncounter(encounter);
+            if (request.LoadRunSnapshotDirectly)
+                ApplyPreCombatInterveningMapPoints(runState, request.PreCombatInterveningMapPoints);
             if (request.TargetActFloor is { } targetActFloor)
                 runState.ActFloor = targetActFloor;
             Player runPlayer = LocalContext.GetMe(runState)
                 ?? throw new InvalidOperationException("创建跑局后找不到本地玩家。");
+            if (request.PreCombatPlayerCurrentHpOverride is { } preCombatPlayerHp)
+            {
+                if (preCombatPlayerHp < 1 || preCombatPlayerHp > runPlayer.Creature.MaxHp)
+                {
+                    throw new InvalidOperationException(
+                        $"战前玩家生命覆盖必须在 1 到 {runPlayer.Creature.MaxHp} 之间，收到 {preCombatPlayerHp}。");
+                }
+                runPlayer.Creature.SetCurrentHpInternal(preCombatPlayerHp);
+                runner._completedChecks.Add($"PreCombatPlayerHp:{preCombatPlayerHp}");
+            }
             foreach (UnattendedRelicInjection injection in request.Relics)
                 await InjectRelicAsync(runPlayer, injection);
             if (!request.LoadRunSnapshotDirectly && !string.IsNullOrWhiteSpace(request.RunSnapshotPath))
@@ -117,10 +130,28 @@ internal sealed partial class UnattendedTestRunner
                     _ => throw new InvalidOperationException(
                         $"无人测试仅支持战斗房间，收到 {request.TargetRoomType}。"),
                 };
-            await RunManager.Instance.EnterRoomDebug(
-                request.LoadRunSnapshotDirectly ? request.TargetRoomType : RoomType.Monster,
-                request.LoadRunSnapshotDirectly ? targetMapPointType : MapPointType.Unassigned,
-                mutableEncounter);
+            if (request.LoadRunSnapshotDirectly)
+            {
+                if (request.TargetActFloor is not { } directTargetFloor
+                    || request.TargetMapColumn is not { } directTargetColumn)
+                {
+                    throw new InvalidOperationException(
+                        "完整跑局恢复请求需要目标楼层和地图列坐标。");
+                }
+                await RunManager.Instance.EnterMapCoordDebug(
+                    new MapCoord(directTargetColumn, directTargetFloor - 1),
+                    request.TargetRoomType,
+                    targetMapPointType,
+                    mutableEncounter,
+                    showTransition: false);
+            }
+            else
+            {
+                await RunManager.Instance.EnterRoomDebug(
+                    RoomType.Monster,
+                    MapPointType.Unassigned,
+                    mutableEncounter);
+            }
 
             runner.SetStage("wait_player_turn");
             if (request.VerifyTurnSetupSceneExitCancellation)
@@ -308,11 +339,14 @@ internal sealed partial class UnattendedTestRunner
             EncounterModel encounter)
         {
             runner.SetStage("verify_precombat_api");
+            VerifyPreCombatNormalization();
+            int forecastEntryHp = Math.Max(1, runState.Players.Single().Creature.CurrentHp - 1);
             string before = PreCombatForecastApi.CaptureLiveStateToken(runState);
             PreCombatForecastResult result = await PreCombatForecastApi.ForecastAsync(
                 runState,
                 encounter,
                 Math.Max(1, runState.ActFloor + 1),
+                ResolveNextMapColumn(runState),
                 PreCombatRoomKind.Normal,
                 PreCombatMapPointKind.Normal,
                 options: new PreCombatForecastOptions
@@ -320,6 +354,9 @@ internal sealed partial class UnattendedTestRunner
                     SearchBudgetMilliseconds = 3_000,
                     OverallTimeoutMilliseconds = 45_000,
                     MaxDegreeOfParallelism = 1,
+                    PlayerCurrentHpOverride = forecastEntryHp,
+                    CancelWorkerWhenCallerCancels = true,
+                    ForceRefresh = true,
                 });
             if (!result.IsSuccess)
             {
@@ -329,9 +366,100 @@ internal sealed partial class UnattendedTestRunner
             string after = PreCombatForecastApi.CaptureLiveStateToken(runState);
             if (!before.Equals(after, StringComparison.Ordinal))
                 throw new InvalidOperationException("战前 API 调用改变了主进程跑局状态或 RNG。");
+            if (result.ProjectedHpLoss is { } hpLoss
+                && result.FinalHp != Math.Max(0, forecastEntryHp - hpLoss))
+            {
+                throw new InvalidOperationException(
+                    $"战前 HP 覆盖没有反映在结果中：entry={forecastEntryHp} loss={hpLoss} final={result.FinalHp}。");
+            }
             runner._completedChecks.Add(
-                $"PreCombatForecastApi:HpLoss={result.ProjectedHpLoss}:Potions={result.PotionUses.Count}:" +
+                $"PreCombatForecastApi:EntryHp={forecastEntryHp}:HpLoss={result.ProjectedHpLoss}:Potions={result.PotionUses.Count}:" +
                 $"Boundary={result.SearchBoundary}:LiveStateUnchanged=1");
+        }
+
+        private void VerifyPreCombatNormalization()
+        {
+            JsonObject emptyVariables = new()
+            {
+                ["variables"] = new JsonObject(),
+            };
+            JsonObject populatedVariables = new()
+            {
+                ["variables"] = new JsonObject
+                {
+                    ["kept"] = "value",
+                },
+            };
+            JsonObject root = new()
+            {
+                ["map_point_history"] = new JsonArray
+                {
+                    new JsonArray
+                    {
+                        new JsonObject
+                        {
+                            ["player_stats"] = new JsonArray
+                            {
+                                new JsonObject
+                                {
+                                    ["event_choices"] = new JsonArray
+                                    {
+                                        emptyVariables,
+                                        populatedVariables,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            };
+
+            PreCombatRunSerialization.NormalizeRoot(root);
+            if (emptyVariables.ContainsKey("variables")
+                || populatedVariables["variables"]?["kept"]?.GetValue<string>() != "value")
+            {
+                throw new InvalidOperationException(
+                    "战前快照规范化未正确删除空事件变量，或误删了非空事件变量。");
+            }
+            runner._completedChecks.Add("PreCombatSnapshotNormalization:EmptyEventVariablesRemoved:PopulatedRetained");
+        }
+
+        private static int ResolveNextMapColumn(RunState runState)
+        {
+            int targetRow = Math.Max(0, runState.ActFloor);
+            return runState.CurrentMapPoint?.Children
+                       .OrderBy(static point => point.coord.col)
+                       .FirstOrDefault()?.coord.col
+                   ?? runState.Map.GetPointsInRow(targetRow)
+                       .OrderBy(static point => point.coord.col)
+                       .FirstOrDefault()?.coord.col
+                   ?? runState.Map.BossMapPoint.coord.col;
+        }
+
+        private void ApplyPreCombatInterveningMapPoints(
+            RunState runState,
+            IReadOnlyList<UnattendedPreCombatMapStep> steps)
+        {
+            int previousRow = runState.CurrentMapCoord?.row ?? runState.ActFloor - 1;
+            foreach (UnattendedPreCombatMapStep step in steps)
+            {
+                if (step.Coordinate.row != previousRow + 1)
+                {
+                    throw new InvalidOperationException(
+                        $"战前中间地图点不连续：previousRow={previousRow} next={step.Coordinate}。");
+                }
+                if (runState.Map.GetPoint(step.Coordinate)?.PointType != step.MapPointType)
+                    throw new InvalidOperationException($"战前中间地图点与恢复地图不一致：{step.Coordinate}。");
+                if (step.RoomType is RoomType.Monster or RoomType.Elite or RoomType.Boss or RoomType.Event)
+                    throw new InvalidOperationException($"不能跳过会改变战斗序列的中间房间：{step.RoomType}。");
+
+                runState.AddVisitedMapCoord(step.Coordinate);
+                runState.ActFloor = step.Coordinate.row + 1;
+                runState.AppendToMapPointHistory(step.MapPointType, step.RoomType, null);
+                previousRow = step.Coordinate.row;
+            }
+            if (steps.Count > 0)
+                runner._completedChecks.Add($"PreCombatInterveningMapPoints:{steps.Count}");
         }
 
         private async Task<RunState> RestoreRunSnapshotDirectlyAsync(UnattendedTestRequest request)

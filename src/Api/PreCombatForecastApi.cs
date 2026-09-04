@@ -1,7 +1,9 @@
 using System.Collections.Concurrent;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Nodes;
+using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 
 namespace CombatSolver.Api;
@@ -12,7 +14,7 @@ namespace CombatSolver.Api;
 /// </summary>
 public static class PreCombatForecastApi
 {
-    public const int ApiVersion = 1;
+    public const int ApiVersion = 2;
 
     private static readonly ConcurrentDictionary<string, Task<PreCombatForecastResult>> Active = new();
     private static readonly ConcurrentDictionary<string, PreCombatForecastResult> Completed = new();
@@ -31,6 +33,7 @@ public static class PreCombatForecastApi
         RunState run,
         EncounterModel encounter,
         int targetActFloor,
+        int targetMapColumn,
         PreCombatRoomKind roomKind,
         PreCombatMapPointKind mapPointKind,
         bool isSecondBoss = false,
@@ -58,6 +61,7 @@ public static class PreCombatForecastApi
         string? optionError = ValidateOptions(
             effectiveOptions,
             targetActFloor,
+            targetMapColumn,
             roomKind,
             mapPointKind);
         if (optionError != null)
@@ -76,37 +80,92 @@ public static class PreCombatForecastApi
         {
             return Task.FromResult(Failure(PreCombatForecastStatus.Failed, requestId, ex.Message));
         }
+        if (effectiveOptions.PlayerCurrentHpOverride is { } playerHp
+            && (playerHp < 1 || playerHp > run.Players[0].Creature.MaxHp))
+        {
+            return Task.FromResult(Failure(
+                PreCombatForecastStatus.Unsupported,
+                requestId,
+                $"PlayerCurrentHpOverride must be between 1 and {run.Players[0].Creature.MaxHp}."));
+        }
+        var targetMapCoord = new MapCoord(targetMapColumn, targetActFloor - 1);
+        if (run.Map.GetPoint(targetMapCoord) is null)
+        {
+            return Task.FromResult(Failure(
+                PreCombatForecastStatus.Unsupported,
+                requestId,
+                $"The target map coordinate does not exist: {targetMapCoord}."));
+        }
+        string? routeError = ValidateInterveningMapPoints(
+            run,
+            effectiveOptions.InterveningMapPoints,
+            targetMapCoord);
+        if (routeError is not null)
+            return Task.FromResult(Failure(PreCombatForecastStatus.Unsupported, requestId, routeError));
+
+        string routeKey = string.Join(
+            ';',
+            effectiveOptions.InterveningMapPoints.Select(static step =>
+                $"{step.Coordinate.col},{step.Coordinate.row},{step.MapPointType},{step.RoomType}"));
 
         string key = string.Join(
             '|',
             snapshot.StateToken,
             encounter.Id,
             targetActFloor,
+            targetMapColumn,
             roomKind,
             mapPointKind,
             isSecondBoss,
             effectiveOptions.SearchBudgetMilliseconds,
             effectiveOptions.OverallTimeoutMilliseconds,
-            effectiveOptions.MaxDegreeOfParallelism?.ToString() ?? "configured");
+            effectiveOptions.MaxDegreeOfParallelism?.ToString() ?? "configured",
+            effectiveOptions.PlayerCurrentHpOverride?.ToString() ?? "live-hp",
+            routeKey);
 
-        if (Completed.TryGetValue(key, out PreCombatForecastResult? completed))
+        if (!effectiveOptions.ForceRefresh
+            && Completed.TryGetValue(key, out PreCombatForecastResult? completed))
             return CompleteAfterLiveValidation(snapshot, completed, cancellationToken);
 
-        Task<PreCombatForecastResult> worker = Active.GetOrAdd(
-            key,
-            _ => Task.Run(
+        Task<PreCombatForecastResult> worker;
+        if (effectiveOptions.CancelWorkerWhenCallerCancels)
+        {
+            worker = Task.Run(
                 () => PreCombatForecastWorker.RunAsync(
                     snapshot,
                     encounter.Id.Entry,
                     targetActFloor,
+                    targetMapColumn,
                     roomKind,
                     mapPointKind,
                     isSecondBoss,
                     effectiveOptions,
-                    CancellationToken.None),
-                CancellationToken.None));
+                    cancellationToken),
+                CancellationToken.None);
+        }
+        else
+        {
+            worker = Active.GetOrAdd(
+                key,
+                _ => Task.Run(
+                    () => PreCombatForecastWorker.RunAsync(
+                        snapshot,
+                        encounter.Id.Entry,
+                        targetActFloor,
+                        targetMapColumn,
+                        roomKind,
+                        mapPointKind,
+                        isSecondBoss,
+                        effectiveOptions,
+                        CancellationToken.None),
+                    CancellationToken.None));
+        }
         _ = CacheCompletionAsync(key, worker);
-        return CompleteAfterLiveValidation(snapshot, worker, cancellationToken);
+        return CompleteAfterLiveValidation(
+            snapshot,
+            worker,
+            cancellationToken,
+            effectiveOptions.CancelWorkerWhenCallerCancels);
     }
 
     private static async Task CacheCompletionAsync(string key, Task<PreCombatForecastResult> worker)
@@ -140,7 +199,8 @@ public static class PreCombatForecastApi
     private static Task<PreCombatForecastResult> CompleteAfterLiveValidation(
         PreCombatLiveStateSnapshot snapshot,
         Task<PreCombatForecastResult> worker,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool awaitOwnedWorkerCancellation = false)
     {
         TaskCompletionSource<PreCombatForecastResult> completion = new(
             TaskCreationOptions.RunContinuationsAsynchronously);
@@ -152,7 +212,9 @@ public static class PreCombatForecastApi
             PreCombatForecastResult result;
             try
             {
-                result = await worker.WaitAsync(cancellationToken).ConfigureAwait(false);
+                result = awaitOwnedWorkerCancellation
+                    ? await worker.ConfigureAwait(false)
+                    : await worker.WaitAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -223,11 +285,14 @@ public static class PreCombatForecastApi
     private static string? ValidateOptions(
         PreCombatForecastOptions options,
         int targetActFloor,
+        int targetMapColumn,
         PreCombatRoomKind roomKind,
         PreCombatMapPointKind mapPointKind)
     {
         if (targetActFloor < 1)
             return "Target floor must be at least 1.";
+        if (targetMapColumn < 0)
+            return "Target map column must be non-negative.";
         if (options.SearchBudgetMilliseconds is < 1_000 or > 30_000)
             return "SearchBudgetMilliseconds must be between 1000 and 30000.";
         if (options.OverallTimeoutMilliseconds < options.SearchBudgetMilliseconds + 10_000
@@ -249,6 +314,41 @@ public static class PreCombatForecastApi
         {
             return $"Map point kind {mapPointKind} does not match combat room kind {roomKind}.";
         }
+        return null;
+    }
+
+    private static string? ValidateInterveningMapPoints(
+        RunState run,
+        IReadOnlyList<PreCombatMapStep>? steps,
+        MapCoord target)
+    {
+        if (steps is null)
+            return "InterveningMapPoints cannot be null.";
+
+        int previousRow = run.CurrentMapCoord?.row ?? run.ActFloor - 1;
+        foreach (PreCombatMapStep step in steps)
+        {
+            if (step.Coordinate.row <= previousRow || step.Coordinate.row >= target.row)
+                return $"Intervening map rows must increase and remain before the target: {step.Coordinate}.";
+            if (step.Coordinate.row != previousRow + 1)
+                return $"Intervening map points must describe every row before the target: {step.Coordinate}.";
+            MapPoint? point = run.Map.GetPoint(step.Coordinate);
+            if (point is null)
+                return $"An intervening map coordinate does not exist: {step.Coordinate}.";
+            if (point.PointType != step.MapPointType)
+            {
+                return $"Intervening map-point kind does not match the map at {step.Coordinate}: " +
+                       $"expected {point.PointType}, received {step.MapPointType}.";
+            }
+            if (step.RoomType is RoomType.Monster or RoomType.Elite or RoomType.Boss or RoomType.Event)
+            {
+                return $"Intervening room {step.RoomType} cannot be skipped by a deterministic pre-combat request.";
+            }
+            previousRow = step.Coordinate.row;
+        }
+
+        if (previousRow + 1 != target.row)
+            return "InterveningMapPoints must include every map row between the live position and the target.";
         return null;
     }
 

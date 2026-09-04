@@ -48,13 +48,14 @@ Entry / turn hooks
 
 ### 2.1 战前预测 API 隔离边界
 
-`src/Api` 是供伴生 Mod 使用的公开战前边界。它只暴露不可变请求选项、枚举和结果，不暴露 `SolverController`、live `CombatState` 或搜索内部类型。
+`src/Api` 是供伴生 Mod 使用的公开战前边界。API v2 只暴露不可变请求选项、目标坐标、已确定的非战斗路径步骤、枚举和结果，不暴露 `SolverController`、live `CombatState` 或搜索内部类型。
 
 - `PreCombatLiveStateSnapshot` 只能在主线程捕获当前单人跑局。它用 `RunManager.ToSave` 获取完整 `SerializableRun`、记录精确加载的 Mod 集合和游戏/用户目录，并生成包含规范化存档与当前房间身份的 SHA-256 状态令牌。
-- `PreCombatRunSerialization` 清除墙钟、平台和地图涂鸦等非语义字段；同时显式写出游戏序列化器会省略、但反序列化默认成 `true` 的 `can_modify:false`，使子进程恢复后的全量快照能够逐字节核对。
-- `PreCombatForecastApi` 负责参数验证、相同状态请求去重/缓存和返回前主线程复核。活动跑局、战斗状态或令牌发生变化时只返回 `LiveStateChanged`。
+- `PreCombatRunSerialization` 清除墙钟、平台和地图涂鸦等非语义字段；显式写出游戏序列化器会省略、但反序列化默认成 `true` 的 `can_modify:false`；只移除恢复后会从空对象变成缺失值的事件历史 `variables:{}`，保留非空变量。这样子进程恢复后的全量快照能够逐字节核对。
+- `PreCombatForecastApi` 负责参数验证、相同状态请求去重/缓存和返回前主线程复核。API v2 要求目标地图列坐标，避免远端战斗沿用当前位置派生怪物 RNG；可选路径步骤必须逐层连续且只能是已确定的篝火、宝箱或商店等非战斗房间，未决事件和中间战斗会被拒绝。活动跑局、战斗状态或令牌发生变化时只返回 `LiveStateChanged`。
+- 默认调用仍共享相同请求；显式可见的手动面板可要求独占取消和强制重算。独占取消会等待其精确拥有的 worker 进程结束后才完成，不能留下后台计算。
 - `PreCombatForecastWorker` 串行拥有一个 Windows 子进程请求。它在游戏目录下带所有权标记的 `.combatsolver-precombat` 中硬链接游戏文件，按来源镜像主进程实际加载的全部 Mod，复制必要配置，并使用独立的 `APPDATA` / `LOCALAPPDATA`、关闭 Steam 和 NoGC。
-- 子进程由 `ScenarioBuilder` 直接恢复完整跑局，加载资源和地图后再次规范化序列化并核对精确哈希；只有通过后才用目标房间/节点类型进入遭遇，沿用正常的开战 Hook、首回合初始化和搜索流程。所有开战、RNG 推进及求解器会话都只存在于子进程。
+- 子进程由 `ScenarioBuilder` 直接恢复完整跑局，加载资源和地图后再次规范化序列化并核对精确哈希；只有通过后才按顺序补记已确定的中间非战斗地图历史，应用可选入战 HP，并用目标坐标、房间和节点类型进入遭遇。目标 `TotalFloor`、地图坐标、怪物局部种子、正常开战 Hook、首回合初始化和搜索流程因而保持一致。中间房间的购买、奖励、锻造和其他玩家状态变化不会被擅自执行，必须由调用方标为条件场景。
 
 `src/Api` 禁止直接调用 `SolverController.RequestSearch`、`CombatManager.SetUpCombat` 或 `RunManager.EnterRoomDebug`。这些静态边界由 Windows/Linux 两份 `verify-refactor-boundaries` 脚本共同检查。隔离 worker 内通过 `COMBATSOLVER_PRECOMBAT_WORKER=1` 关闭 API，避免加载伴生 Mod 后递归创建 worker。
 

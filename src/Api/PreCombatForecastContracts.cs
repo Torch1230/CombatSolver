@@ -1,3 +1,6 @@
+using MegaCrit.Sts2.Core.Map;
+using MegaCrit.Sts2.Core.Rooms;
+
 namespace CombatSolver.Api;
 
 /// <summary>Stable status values returned by the pre-combat forecast API.</summary>
@@ -36,6 +39,16 @@ public enum PreCombatMapPointKind
     Unknown,
 }
 
+/// <summary>
+/// A known non-combat map point between the live position and the forecast target. The worker records these steps
+/// without executing their choices, so floor-, coordinate-, and room-history-dependent combat setup matches the
+/// requested route while player-state changes remain the caller's explicitly labelled responsibility.
+/// </summary>
+public sealed record PreCombatMapStep(
+    MapCoord Coordinate,
+    RoomType RoomType,
+    MapPointType MapPointType);
+
 /// <summary>Request-level limits for an isolated pre-combat search.</summary>
 public sealed record PreCombatForecastOptions
 {
@@ -52,6 +65,31 @@ public sealed record PreCombatForecastOptions
 
     /// <summary>Optional worker search parallelism. Null follows the user's Combat Solver setting.</summary>
     public int? MaxDegreeOfParallelism { get; init; }
+
+    /// <summary>
+    /// Optional player HP at combat entry for an explicitly labeled hypothetical branch, such as resting at a
+    /// guaranteed campfire before a boss. The worker applies it before combat-start hooks run.
+    /// </summary>
+    public int? PlayerCurrentHpOverride { get; init; }
+
+    /// <summary>
+    /// Ordered known non-combat points between the live position and the target. Event steps are rejected because an
+    /// unresolved event option can advance combat-relevant RNG; callers should wait until that option is resolved.
+    /// </summary>
+    public IReadOnlyList<PreCombatMapStep> InterveningMapPoints { get; init; } = [];
+
+    /// <summary>
+    /// When true, caller cancellation owns and stops the isolated worker instead of detaching from a shared
+    /// request. Use this for an explicit, visible manual operation with a Stop control. The default preserves
+    /// shared request deduplication for lightweight callers.
+    /// </summary>
+    public bool CancelWorkerWhenCallerCancels { get; init; }
+
+    /// <summary>
+    /// Ignore a successful cached result and launch a fresh isolated search. Intended for an explicit Recalculate
+    /// action where the caller exposes the cost and progress to the player.
+    /// </summary>
+    public bool ForceRefresh { get; init; }
 }
 
 /// <summary>A potion action present in the selected route.</summary>

@@ -213,6 +213,10 @@ $preCombatApiChecks = @(
         Text = 'point["can_modify"] = false'
     },
     @{
+        Path = Join-Path $repositoryRoot "src\Api\PreCombatRunSerialization.cs"
+        Text = 'eventChoice["variables"] is JsonObject { Count: 0 }'
+    },
+    @{
         Path = Join-Path $repositoryRoot "src\Api\PreCombatForecastWorker.cs"
         Text = "COMBATSOLVER_PRECOMBAT_WORKER"
     },
@@ -223,6 +227,18 @@ $preCombatApiChecks = @(
     @{
         Path = Join-Path $repositoryRoot "src\Api\PreCombatForecastWorker.cs"
         Text = "EnableNoGcRegionForTest = false"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Api\PreCombatForecastWorker.cs"
+        Text = "PreCombatInterveningMapPoints = options.InterveningMapPoints"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Testing\UnattendedTestRunner.ScenarioBuilder.cs"
+        Text = "EnterMapCoordDebug"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Testing\UnattendedTestRunner.ScenarioBuilder.cs"
+        Text = "PreCombatPlayerHp:"
     },
     @{
         Path = Join-Path $repositoryRoot "src\Testing\UnattendedTestRunner.ScenarioBuilder.cs"

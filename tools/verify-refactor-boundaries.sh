@@ -259,9 +259,13 @@ done <<'EOF'
 src/Api/PreCombatForecastApi.cs	public static class PreCombatForecastApi
 src/Api/PreCombatLiveStateSnapshot.cs	RunManager.Instance.ToSave(null)
 src/Api/PreCombatRunSerialization.cs	point["can_modify"] = false
+src/Api/PreCombatRunSerialization.cs	eventChoice["variables"] is JsonObject { Count: 0 }
 src/Api/PreCombatForecastWorker.cs	COMBATSOLVER_PRECOMBAT_WORKER
 src/Api/PreCombatForecastWorker.cs	ExpectedLoadedMods = expectedMods
 src/Api/PreCombatForecastWorker.cs	EnableNoGcRegionForTest = false
+src/Api/PreCombatForecastWorker.cs	PreCombatInterveningMapPoints = options.InterveningMapPoints
+src/Testing/UnattendedTestRunner.ScenarioBuilder.cs	EnterMapCoordDebug
+src/Testing/UnattendedTestRunner.ScenarioBuilder.cs	PreCombatPlayerHp:
 src/Testing/UnattendedTestRunner.ScenarioBuilder.cs	DirectRunSnapshot:ExactStateRestored
 EOF
 

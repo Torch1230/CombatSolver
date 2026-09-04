@@ -8,6 +8,15 @@ param(
     [string]$Sts2GameRoot = "D:\Steam\steamapps\common\Slay the Spire 2",
     [string]$RitsuWorkshopRoot = "D:\Steam\steamapps\workshop\content\2868840\3747602295",
     [string]$RunSnapshotPath = "",
+    [switch]$LoadRunSnapshotDirectly,
+    [int]$TargetActFloor = -1,
+    [int]$TargetMapColumn = -1,
+    [ValidateSet("Monster", "Elite", "Boss")]
+    [string]$TargetRoomType = "Monster",
+    [ValidateSet("Unassigned", "Monster", "Elite", "Boss", "Unknown")]
+    [string]$TargetMapPointType = "Unassigned",
+    [int]$PreCombatPlayerCurrentHpOverride = -1,
+    [string]$PreCombatInterveningMapPointsJson = "",
     [string]$ReplayStatePath = "",
     [string]$ProgressSnapshotPath = "",
     [ValidateRange(0, 10)]
@@ -649,6 +658,17 @@ $request = [ordered]@{
     characterId = $CharacterId
     encounterId = $EncounterId
     runSnapshotPath = $resolvedRunSnapshotPath
+    loadRunSnapshotDirectly = $LoadRunSnapshotDirectly.IsPresent
+    targetActFloor = if ($TargetActFloor -gt 0) { $TargetActFloor } else { $null }
+    targetMapColumn = if ($TargetMapColumn -ge 0) { $TargetMapColumn } else { $null }
+    targetRoomType = $TargetRoomType
+    targetMapPointType = $TargetMapPointType
+    preCombatPlayerCurrentHpOverride = if ($PreCombatPlayerCurrentHpOverride -gt 0) { $PreCombatPlayerCurrentHpOverride } else { $null }
+    preCombatInterveningMapPoints = if ([string]::IsNullOrWhiteSpace($PreCombatInterveningMapPointsJson)) {
+        @()
+    } else {
+        @($PreCombatInterveningMapPointsJson | ConvertFrom-Json -NoEnumerate)
+    }
     replayStatePath = $resolvedReplayStatePath
     ascension = $Ascension
     actIndexForTest = $ActIndexForTest
