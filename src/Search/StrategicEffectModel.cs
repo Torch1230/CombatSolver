@@ -72,6 +72,7 @@ internal readonly record struct StrategicEffectContext(
     int EnemyHp,
     int IncomingDamage,
     int IncomingHitCount,
+    int PlayerBlock,
     int RemainingTurns,
     int UsefulCardPlays,
     int AttackPlays,
@@ -86,6 +87,8 @@ internal readonly record struct StrategicEffectContext(
     int AverageCardValue,
     int BestCardValue,
     int AverageAttackValue,
+    int ReachableBlockValue,
+    int AverageBlockValue,
     int StatusDrawTriggers)
 {
     public static StrategicEffectContext Build(
@@ -93,6 +96,7 @@ internal readonly record struct StrategicEffectContext(
         int enemyHp,
         int incomingDamage,
         int incomingHitCount,
+        int playerBlock,
         StrategicEffectRequirements requirements)
     {
         if (requirements == StrategicEffectRequirements.None)
@@ -101,6 +105,7 @@ internal readonly record struct StrategicEffectContext(
                 Math.Max(0, enemyHp),
                 Math.Max(0, incomingDamage),
                 Math.Max(0, incomingHitCount),
+                Math.Max(0, playerBlock),
                 1,
                 0,
                 0,
@@ -114,6 +119,8 @@ internal readonly record struct StrategicEffectContext(
                 0,
                 1,
                 1,
+                0,
+                0,
                 0,
                 0);
         }
@@ -159,6 +166,7 @@ internal readonly record struct StrategicEffectContext(
         int totalCardValue = 0;
         int bestCardValue = 0;
         int totalAttackValue = 0;
+        int totalBlockValue = 0;
         foreach (PredictedCard predicted in liveCards)
         {
             CardModel card = predicted.Preview;
@@ -174,6 +182,16 @@ internal readonly record struct StrategicEffectContext(
                 }
                 if (needsAttackValues && cardType == CardType.Attack)
                     totalAttackValue += cardValue;
+            }
+
+            if (needsBlockSkillCount && cardType == CardType.Skill)
+            {
+                int blockValue = Math.Max(
+                    0,
+                    (int)Math.Ceiling(CardChoiceSupport.DynamicVarBaseValue(
+                        card.DynamicVars,
+                        "Block")));
+                totalBlockValue += blockValue;
             }
 
             bool hasBlockDynamicVar = false;
@@ -268,10 +286,14 @@ internal readonly record struct StrategicEffectContext(
         int debuffApplications = requirements.HasFlag(StrategicEffectRequirements.DebuffApplications)
             ? ReachablePlays(debuffCount, deckSize, reachableCards)
             : 0;
+        int reachableBlockValue = requirements.HasFlag(StrategicEffectRequirements.BlockSkillPlays)
+            ? ReachableValue(totalBlockValue, deckSize, reachableCards)
+            : 0;
         return new StrategicEffectContext(
             Math.Max(0, enemyHp),
             Math.Max(0, incomingDamage),
             Math.Max(0, incomingHitCount),
+            Math.Max(0, playerBlock),
             remainingTurns,
             reachableCards,
             attackPlays,
@@ -292,6 +314,10 @@ internal readonly record struct StrategicEffectContext(
             requirements.HasFlag(StrategicEffectRequirements.AverageAttackValue) && attackCount > 0
                 ? Math.Max(1, totalAttackValue / attackCount)
                 : 0,
+            reachableBlockValue,
+            requirements.HasFlag(StrategicEffectRequirements.BlockSkillPlays) && blockSkillCount > 0
+                ? Math.Max(1, totalBlockValue / blockSkillCount)
+                : 0,
             requirements.HasFlag(StrategicEffectRequirements.StatusDrawTriggers)
                 ? Math.Min(remainingTurns, ReachablePlays(statusCount, deckSize, reachableCards))
                 : 0);
@@ -306,6 +332,11 @@ internal readonly record struct StrategicEffectContext(
         => matchingCards == 0
             ? 0
             : Math.Max(1, (int)Math.Ceiling((double)matchingCards * reachableCards / deckSize));
+
+    private static int ReachableValue(int totalValue, int deckSize, int reachableCards)
+        => totalValue == 0
+            ? 0
+            : Math.Max(1, (int)Math.Ceiling((double)totalValue * reachableCards / deckSize));
 
     /// <summary>返回 true 表示需要的标记都已确定，可以停止扫描。</summary>
     private static bool ObserveDynamicVarKey(
@@ -352,6 +383,13 @@ internal static class StrategicEffectModel
             LethalityPower or ReaperFormPower => StrategicEffectRequirements.AttackPlays
                 | StrategicEffectRequirements.AverageAttackValue,
             DexterityPower => StrategicEffectRequirements.BlockSkillPlays,
+            BarricadePower => StrategicEffectRequirements.RemainingTurns
+                | StrategicEffectRequirements.BlockSkillPlays,
+            RagePower => StrategicEffectRequirements.AttackPlays,
+            UnmovablePower => StrategicEffectRequirements.BlockSkillPlays,
+            BlockNextTurnPower => StrategicEffectRequirements.RemainingTurns,
+            StratagemPower or WellLaidPlansPower => StrategicEffectRequirements.RemainingTurns
+                | StrategicEffectRequirements.BestCardValue,
             DemonFormPower => StrategicEffectRequirements.AttackPlays
                 | StrategicEffectRequirements.RemainingTurns,
             CuriousPower => StrategicEffectRequirements.PowerEnergySpend
@@ -404,6 +442,16 @@ internal static class StrategicEffectModel
                 enemyHp),
             LethalityPower or ReaperFormPower => StrategicEffectVector.Zero,
             DexterityPower => Prevention(amount * context.BlockSkillPlays, context),
+            BarricadePower => PersistentBlockPrevention(context),
+            RagePower => Prevention(amount * context.AttackPlays, context),
+            UnmovablePower => Prevention(
+                Math.Min(amount, context.BlockSkillPlays) * context.AverageBlockValue,
+                context),
+            BlockNextTurnPower => Prevention(amount, context),
+            StratagemPower or WellLaidPlansPower => CardAccess(
+                amount
+                    * Math.Min(3, context.RemainingTurns)
+                    * context.BestCardValue),
             DemonFormPower when context.AttackPlays > 0 => Damage(
                 amount * Math.Max(1, context.AttackPlays / Math.Max(1, context.RemainingTurns))
                     * context.RemainingTurns * (context.RemainingTurns + 1) / 2,
@@ -444,6 +492,17 @@ internal static class StrategicEffectModel
             1,
             context.IncomingDamage / Math.Max(1, context.IncomingHitCount));
         return Math.Min(context.IncomingDamage, amount * averageHit);
+    }
+
+    private static StrategicEffectVector PersistentBlockPrevention(
+        StrategicEffectContext context)
+    {
+        int value = context.PlayerBlock + context.ReachableBlockValue;
+        int turns = Math.Min(4, Math.Max(1, context.RemainingTurns));
+        int cap = context.IncomingDamage == 0
+            ? value
+            : context.IncomingDamage * turns;
+        return new(0, Math.Min(Math.Max(0, cap), Math.Max(0, value)), 0, 0, 0);
     }
 
     private static StrategicEffectVector Resource(int value)
