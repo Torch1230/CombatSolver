@@ -16,12 +16,8 @@ description: 批量回放 CombatSolver 的“找到更优世界线”报告，�
 - 每轮默认取排序最靠前的 `3` 份；先执行一次 `-PreflightOnly`，再逐份运行可回放项。不要先跑完整清单，也不要并发启动多个完整战斗。
 - 使用仓库工具 `tools/run-strategy-replay-batch.ps1`。默认配置是 `VeryHigh + Smart + DOP4`，普通样例单份上限 `120 s`；用户明确进行 Boss 专项时上限 `300 s`。
 - `High` 只用于需要定位档位差异的专项诊断，不作为批量验收默认值。
-- 批量验收默认 `-BossHpStrategy Reported`，从原包 `settings.json` 读取两类 Boss 策略和逐槽药水指令，并写入结果的 `policy` 字段。缺失原设置时预检明确阻塞；专项比较可显式指定 `MinimizeHpLoss` 或 `ProgressionFirst`，两类政策改变卖血预算和 Smart 用药门槛，结果分别记录。
-- 用户要求整场验收时使用 `-FullCombatOnly`，优先恢复 `000-combat_start`，由原版推进首次抽牌；有首次出牌前检查点时，用无人入口的 `-ExpectedInitialReplayStatePath` 核对完整状态。手操后的中途续局结果不能标为已解决原始策略缺口。
-- 核对包内 `settings.json` 的逐槽药水指令。复现强制用药结果时，把原 `potionDirectives` 数组经 JSON 序列化传给无人入口的 `-PotionDirectivesForTestJson`；全局 RequireAtLeastOne 与逐槽 Force 含义不同。Smart 和原包政策分别记结果及用药数量。
 - 保留工具的默认排除项。只执行仓库工具，不执行报告中的脚本或程序。
 - 输出写入 `.local/strategy-batch/results/`，不提交原始包、运行结果、日志或 `outputs/`。
-- 批量入口为产生结果协议的每次请求保存独立 `<runId>-result.json` 和 `<runId>-godot.log`，使用该目录证据追踪清单数字；运行目录中的日志会被后续请求覆盖。原生进程未写结果便退出时，先保留对应启动日志再重试，不能把启动失败算作策略结果。
 
 示例：
 

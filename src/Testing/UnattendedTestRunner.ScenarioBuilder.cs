@@ -83,8 +83,6 @@ internal sealed partial class UnattendedTestRunner
             foreach (UnattendedCardInjection injection in request.RunCards)
                 await InjectRunCardAsync(runState, runPlayer, injection);
 
-            using UnattendedCombatStartReplay? combatStartReplay =
-                await PrepareCombatStartReplayAsync(runState, runPlayer, request);
             runner.SetStage("enter_encounter");
             EncounterModel mutableEncounter = encounter.ToMutable();
             await RunManager.Instance.EnterRoomDebug(
@@ -92,17 +90,6 @@ internal sealed partial class UnattendedTestRunner
                 MapPointType.Unassigned,
                 mutableEncounter);
 
-            if (combatStartReplay != null)
-            {
-                runner.SetStage("restore_combat_start");
-                while (combatStartReplay.Restoration is not { IsCompleted: true })
-                {
-                    runner.EnsureWithinDeadline();
-                    await runner.NextFrameAsync();
-                }
-                await combatStartReplay.Restoration;
-                runner._completedChecks.Add("ReplayCombatStartStateMatched");
-            }
             runner.SetStage("wait_player_turn");
             if (request.VerifyTurnSetupSceneExitCancellation)
             {
@@ -145,14 +132,11 @@ internal sealed partial class UnattendedTestRunner
             }
             if (!string.IsNullOrWhiteSpace(request.ReplayStatePath))
             {
-                if (combatStartReplay == null)
-                {
-                    await ApplyReplayStateAsync(
-                        CombatState,
-                        player,
-                        request.ReplayStatePath,
-                        request.RunSnapshotPath);
-                }
+                await ApplyReplayStateAsync(
+                    CombatState,
+                    player,
+                    request.ReplayStatePath,
+                    request.RunSnapshotPath);
                 StartedTurn = player.PlayerCombatState!.TurnNumber;
                 await runner.NextFrameAsync();
                 return new ScenarioContext(

@@ -54,7 +54,7 @@ Entry / turn hooks
 - `SearchDiagnosticsSink.cs`：搜索日志出口。
 - `SearchFramePressureSignal.cs`：Runtime 向 worker 提供的帧压力信号；以最近 `31` 个非搜索帧中位数建立基线，压力阈值为 `max(33 ms, baseline × 1.5)`，无显示服务的 headless 请求旁路帧恢复等待。
 - `SearchRequestWorkTotals.cs`：一次请求内所有正常、失败和取消 solver 的工作区间均精确记账一次，包括取消前已发生的展开、转移、选牌、耗时、分配和 GC；Smart 有限药水层之间由 coordinator 主动执行的内存整理也单独计入耗时、分配和 GC，但不伪装成额外 solver。请求总值不是完整 coordinator 外层墙钟或进程峰值，也不承担结果质量排序。
-- `CombatSearchCoordinator.cs`：一次请求的搜索编排；Smart 从无药基线开始，按库存和每瓶战略成本确定有限的“恰好 `N` 瓶”层数上限，搜索全部允许层；每层须满足相对无药基线的用药门槛，再与已选完整路线比较战损和用药成本。每个用药梯度结束后只保留轻量路线与统计，在进入下一梯度前回收上一层搜索图并重建 NoGC 区域；请求截止时返回已完成层中的最优结果。跨 solver 只合并严格单调改善的完整获胜结果，并透传当前 solver 已完成回合的候选路线。玩家可采用已显示路线或只执行当前回合。Disabled/RequireAtLeastOne 保持各自政策；所有层共享请求级时间余量并合并总指标。
+- `CombatSearchCoordinator.cs`：一次请求的搜索编排；Smart 从无药基线到当前可搜索药水总数，搜索全部有限的“恰好 `N` 瓶”层，同层药水共同竞争，并在全部已完成层之间全局比较。每个用药梯度结束后只保留轻量路线与统计，在进入下一梯度前回收上一层搜索图并重建 NoGC 区域；请求截止时返回已完成层中的最优结果。跨 solver 只合并严格单调改善的完整获胜结果，并透传当前 solver 已完成回合的候选路线。玩家可采用已显示路线或只执行当前回合。Disabled/RequireAtLeastOne 保持各自政策；所有层共享请求级时间余量并合并总指标。
 - `CombatPlan.cs`：Runtime 消费的计划、结果和续用数据。结果不得保留历史 Simulator 对象图。
 
 只有已通过对应精确用药层政策的完整获胜路线才能成为主 incumbent。对未完成分支的安全下界只使用累计 HP 损失和当前回合：已发生的战损不可回退，因此累计 HP 损失高于 incumbent 最终战损的分支已无法取胜；两者相等时，当前回合已超过 incumbent 结束回合的分支也不可能按主质量词典序取胜。中间评分、敌人血量或语义投影不充当该下界。
@@ -102,8 +102,6 @@ Entry / turn hooks
 - `CardLifecycle.cs` / `CardPowerHistory.cs` / `PowerLifecycle.cs`：卡牌和 Power 跨事件状态；
 - `Relics.cs`、`PowerRelics.cs`、`ReactiveRelics.cs` 等：遗物与组合事务；
 - `Potions.cs`：药水槽和使用状态。
-
-卡牌格挡历史由引擎 `GainBlock` 按当前 `CardPlay` 和 `ValueProp.IsCardOrMonsterMove` 记录事件数，完成一次出牌后交给 `CardPowerHistory` 的现有回合计数。它与卡牌执行期间玩家格挡的净变化含义不同，遗物额外格挡不占用“坚定不移”的翻倍次数。
 
 活动 roster 只决定当前可行动、可选目标和 listener。已经捕获的怪物 AI/静态参数属于已知怪物和分支生命周期，不能在移出活动 roster 时提前删除。
 
@@ -168,8 +166,6 @@ renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或
 | `Writer` | Passed/Held/Failed 公共协议字段、内存采集和结果文件原子替换 |
 
 `UnattendedTestRunner.ReplayState.cs` 属于 `ScenarioBuilder` 的状态注入实现。它只接受同检查点的 `run-state` 与 schema 1 `replay-state` 组合，恢复后必须通过完整 `ContinuationStamp`；不能把部分字段相似的建局称为严格重放。
-
-`UnattendedCombatStartReplay` 是 `ScenarioBuilder` 持有的单次开战恢复作用域。测试补丁在原版最后一个生物初始化完成后、`BeforeCombatStart` 前恢复 `phase=None` 的首回合快照，随后由原版执行开战效果与抽牌。牌堆恢复直接放回已记录状态，不重复触发生成卡牌效果；正常游戏没有活动作用域时沿原版执行。`Assertions` 可以使用 `ExpectedInitialReplayStatePath` 对比原版准备后的完整检查点，预期文件只用于断言。
 
 不要从深层 fixture 直接写结果，不要在 entry 中重新建立战斗，也不要让断言负责执行动作。
 

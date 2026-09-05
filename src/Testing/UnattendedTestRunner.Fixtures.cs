@@ -323,8 +323,7 @@ internal sealed partial class UnattendedTestRunner
     private static async Task<IReadOnlyList<CardModel>> InjectCardAsync(
         CombatState combatState,
         Player player,
-        UnattendedCardInjection injection,
-        bool restoreSnapshot = false)
+        UnattendedCardInjection injection)
     {
         if (!Enum.TryParse(injection.Pile, true, out PileType pileType)
             || pileType is not (PileType.Hand or PileType.Draw or PileType.Discard or PileType.Exhaust))
@@ -380,19 +379,9 @@ internal sealed partial class UnattendedTestRunner
                     "苦难").ToMutable();
                 await CardCmd.Afflict(affliction, card, injection.AfflictionAmount);
             }
-            if (restoreSnapshot)
-            {
-                // Snapshot cards already include their generation effects.
-                CardPile pile = CardPile.Get(pileType, player)
-                    ?? throw new InvalidOperationException($"Snapshot pile {pileType} is unavailable.");
-                pile.AddInternal(card, -1);
-            }
-            else
-            {
-                CardPileAddResult result = await CardPileCmd.AddGeneratedCardToCombat(card, pileType, player);
-                if (!result.success)
-                    throw new InvalidOperationException($"游戏拒绝把 {canonical.Id} 注入 {pileType}。");
-            }
+            CardPileAddResult result = await CardPileCmd.AddGeneratedCardToCombat(card, pileType, player);
+            if (!result.success)
+                throw new InvalidOperationException($"游戏拒绝把 {canonical.Id} 注入 {pileType}。");
             cards.Add(card);
         }
         return cards;

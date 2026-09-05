@@ -85,7 +85,7 @@ internal sealed partial class SimulatedCombatState
             SetAmount<UnmovablePower>(suppression.Owner, unmovable);
     }
 
-    public void RecordCardPlayed(PredictedCard card, int blockGainCount)
+    public void RecordCardPlayed(PredictedCard card, bool gainedBlock)
     {
         RecordHistoryCourseAttack(card);
         Creature owner = card.Preview.Owner.Creature;
@@ -95,8 +95,8 @@ internal sealed partial class SimulatedCombatState
             if (card.Preview.Tags.Contains(CardTag.Shiv))
                 (_shivsPlayedThisTurn ??= [])[owner] = GetShivsPlayedThisTurn(owner) + 1;
         }
-        if (blockGainCount > 0)
-            (_blockCardsPlayedThisTurn ??= [])[owner] = GetBlockCardsPlayedThisTurn(owner) + blockGainCount;
+        if (gainedBlock)
+            (_blockCardsPlayedThisTurn ??= [])[owner] = GetBlockCardsPlayedThisTurn(owner) + 1;
 
         foreach (Creature creature in Creatures)
         {

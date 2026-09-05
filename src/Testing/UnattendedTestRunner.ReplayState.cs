@@ -16,29 +16,6 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
-    private static async Task<UnattendedCombatStartReplay?> PrepareCombatStartReplayAsync(
-        RunState runState,
-        Player player,
-        UnattendedTestRequest request)
-    {
-        if (string.IsNullOrWhiteSpace(request.ReplayStatePath))
-            return null;
-        using JsonDocument document = JsonDocument.Parse(await File.ReadAllTextAsync(request.ReplayStatePath));
-        JsonElement root = document.RootElement;
-        JsonElement savedPlayer = root.GetProperty("players")[0];
-        if (RequiredString(savedPlayer, "phase") != "None")
-            return null;
-        if (root.GetProperty("roundNumber").GetInt32() != 1
-            || savedPlayer.GetProperty("turnNumber").GetInt32() != 1
-            || RequiredString(root, "currentSide") != "Player")
-        {
-            throw new InvalidOperationException("Combat-start replay requires the first player round before setup.");
-        }
-        return new UnattendedCombatStartReplay(
-            runState,
-            state => ApplyReplayStateAsync(state, player, request.ReplayStatePath, request.RunSnapshotPath));
-    }
-
     private static async Task ApplyReplayStateAsync(
         CombatState combatState,
         Player player,
@@ -121,11 +98,6 @@ internal sealed partial class UnattendedTestRunner
         ReloadRunSnapshotRng((RunState)combatState.RunState, player, runSnapshotPath);
 
         string expectedState = RequiredString(root, "exactContinuationState");
-        AssertReplayContinuation(combatState, expectedState);
-    }
-
-    private static void AssertReplayContinuation(CombatState combatState, string expectedState)
-    {
         string actualState = ContinuationStamp.CaptureLive(combatState).StateText;
         if (!expectedState.Contains("/baselib=", StringComparison.Ordinal))
             actualState = actualState.Replace("/baselib=-", "", StringComparison.Ordinal);
@@ -219,17 +191,6 @@ internal sealed partial class UnattendedTestRunner
     {
         JsonElement[] savedPowers = savedPowersElement.EnumerateArray().ToArray();
         List<PowerModel> unmatched = creature.Powers.ToList();
-        HashSet<string> savedPowerIds = savedPowers
-            .Select(saved => RequiredString(saved, "id"))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (PowerModel extra in unmatched
-                     .Where(power => !savedPowerIds.Contains(power.Id.Entry))
-                     .ToArray())
-        {
-            await PowerCmd.Remove(extra);
-            unmatched.Remove(extra);
-        }
-
         foreach (JsonElement saved in savedPowers)
         {
             string id = RequiredString(saved, "id");
@@ -245,7 +206,7 @@ internal sealed partial class UnattendedTestRunner
                 Creature? target = ReplayCreatureReference(combatState, saved, "targetCombatId");
                 Creature applier = ReplayCreatureReference(combatState, saved, "applierCombatId")
                     ?? creature;
-                injected.Target = target ?? creature;
+                injected.Target = target;
                 int applyAmount = Math.Max(1, saved.GetProperty("amount").GetInt32());
                 await PowerCmd.Apply(
                     new BlockingPlayerChoiceContext(),
@@ -256,14 +217,12 @@ internal sealed partial class UnattendedTestRunner
                     null);
                 power = creature.Powers.LastOrDefault(candidate => ModelMatches(candidate, id))
                     ?? throw new InvalidOperationException(
-                        $"CombatId={creature.CombatId} 无法恢复 Power {id}，当前 Powers=" +
-                        string.Join(',', creature.Powers.Select(candidate => candidate.Id.Entry)));
+                        $"CombatId={creature.CombatId} 无法恢复 Power {id}。");
             }
 
             power.Amount = saved.GetProperty("amount").GetInt32();
             power.AmountOnTurnStart = saved.GetProperty("amountOnTurnStart").GetInt32();
             RestoreReplayPrimitiveState(power, typeof(PowerModel), saved.GetProperty("fields"));
-            RestoreReplayDynamicVars(power, saved.GetProperty("dynamicVars"));
         }
         foreach (PowerModel extra in unmatched)
             await PowerCmd.Remove(extra);
@@ -317,19 +276,11 @@ internal sealed partial class UnattendedTestRunner
         for (int slot = 0; slot < savedPotions.Length; slot++)
         {
             string? expected = OptionalString(savedPotions[slot], "id");
-            PotionModel? actual = player.GetPotionAtSlotIndex(slot);
-            if (string.Equals(expected, actual?.Id.Entry, StringComparison.Ordinal))
-                continue;
-
-            actual?.Discard();
-            if (expected == null)
-                continue;
-
-            PotionModel potion = ResolveUnique(ModelDb.AllPotions, expected, "药水").ToMutable();
-            if (!player.AddPotionInternal(potion, slot, silent: false).success)
+            string? actual = player.GetPotionAtSlotIndex(slot)?.Id.Entry;
+            if (!string.Equals(expected, actual, StringComparison.Ordinal))
             {
                 throw new InvalidOperationException(
-                    $"无法把 replay-state 药水 {expected} 恢复到槽位 {slot}。");
+                    $"药水槽 {slot} 为 {actual ?? "-"}，replay-state 为 {expected ?? "-"}。");
             }
         }
 
@@ -418,23 +369,6 @@ internal sealed partial class UnattendedTestRunner
                 if (value != null || saved.ValueKind == JsonValueKind.Null)
                     field.SetValue(target, value);
             }
-        }
-    }
-
-    private static void RestoreReplayDynamicVars(
-        PowerModel power,
-        JsonElement savedDynamicVars)
-    {
-        foreach (JsonProperty property in savedDynamicVars.EnumerateObject())
-        {
-            if (!power.DynamicVars.TryGetValue(property.Name, out var dynamicVar))
-            {
-                throw new InvalidOperationException(
-                    $"Power {power.Id.Entry} 不存在动态变量 {property.Name}。");
-            }
-
-            decimal baseValue = property.Value.GetProperty("baseValue").GetDecimal();
-            dynamicVar.BaseValue = baseValue;
         }
     }
 
@@ -533,27 +467,12 @@ internal sealed partial class UnattendedTestRunner
             foreach (JsonElement savedCard in savedCards)
             {
                 UnattendedCardInjection injection = BuildReplayCardInjection(savedCard, pile);
-                CardModel restored = (await InjectCardAsync(combatState, player, injection, restoreSnapshot: true)).Single();
+                CardModel restored = (await InjectCardAsync(combatState, player, injection)).Single();
                 AttachReplayDeckVersion(restored, savedCard, player);
                 RestoreReplayPrimitiveState(
                     restored,
                     typeof(AbstractModel),
                     savedCard.GetProperty("fields"));
-                JsonElement savedEnchantment = savedCard.GetProperty("enchantment");
-                if (savedEnchantment.ValueKind != JsonValueKind.Null)
-                {
-                    if (restored.Enchantment == null)
-                    {
-                        throw new InvalidOperationException(
-                            $"卡牌 {restored.Id.Entry} 缺少 replay-state 中的附魔 " +
-                            $"{RequiredString(savedEnchantment, "id")}。");
-                    }
-
-                    RestoreReplayPrimitiveState(
-                        restored.Enchantment,
-                        typeof(AbstractModel),
-                        savedEnchantment.GetProperty("fields"));
-                }
                 RestoreReplayCardKeywords(restored, savedCard.GetProperty("keywords"));
             }
         }
@@ -610,9 +529,6 @@ internal sealed partial class UnattendedTestRunner
                 $"无法精确恢复本回合卡牌历史：状态牌={actualStatusDraws}/{expectedStatusDraws}，" +
                 $"零费攻击={actualZeroCostAttackStarts}/{expectedZeroCostAttackStarts}。");
         }
-
-        if (actualStatusDraws == expectedStatusDraws)
-            return;
 
         PlayerCombatState playerState = player.PlayerCombatState
             ?? throw new InvalidOperationException("replay-state 历史恢复时玩家没有战斗状态。");

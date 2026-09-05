@@ -1,5 +1,4 @@
 using System.IO.Compression;
-using System.Text.Json;
 using Godot;
 
 namespace CombatSolver;
@@ -19,16 +18,6 @@ internal sealed partial class UnattendedTestRunner
         public async Task RunBeforeExecutionAsync(ScenarioContext scenario)
         {
             UnattendedTestRequest request = runner._request;
-            if (!string.IsNullOrWhiteSpace(request.ExpectedInitialReplayStatePath))
-            {
-                runner.SetStage("assert_initial_replay_state");
-                using JsonDocument document = JsonDocument.Parse(
-                    await File.ReadAllTextAsync(request.ExpectedInitialReplayStatePath));
-                AssertReplayContinuation(
-                    scenario.CombatState,
-                    RequiredString(document.RootElement, "exactContinuationState"));
-                runner._completedChecks.Add("InitialReplayCheckpointMatched");
-            }
             if (request.VerifyPredictionFailureBoundaries)
             {
                 runner.SetStage("prediction_failure_boundaries");

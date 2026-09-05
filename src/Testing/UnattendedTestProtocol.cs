@@ -22,7 +22,6 @@ internal sealed class UnattendedTestRequest
     public string Seed { get; init; } = "COMBATSOLVER";
     public string? RunSnapshotPath { get; init; }
     public string? ReplayStatePath { get; init; }
-    public string? ExpectedInitialReplayStatePath { get; init; }
     public int Ascension { get; init; }
     public int ActIndexForTest { get; init; }
     public bool MarkEncounterAsSecondBossForTest { get; init; }
@@ -172,9 +171,6 @@ internal sealed class UnattendedTestRequest
     public int? ShortMaxCardBranchesPerNodeForTest { get; init; }
     public int? DeepMaxCardBranchesPerNodeForTest { get; init; }
     public SolverPotionPolicy? PotionPolicyForTest { get; init; }
-    public PersistedPotionDirective[]? PotionDirectivesForTest { get; init; }
-    public BossHpStrategy? ActTransitionBossHpStrategyForTest { get; init; }
-    public BossHpStrategy? FinalBossHpStrategyForTest { get; init; }
     public SolverTheftPolicy? TheftPolicyForTest { get; init; }
     public bool? EnableNoGcRegionForTest { get; init; }
     public double? NoGcRegionBudgetGigabytesForTest { get; init; }

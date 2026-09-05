@@ -50,7 +50,6 @@ add_option sts2-game-root "$steam_root/steamapps/common/Slay the Spire 2" string
 add_option ritsu-workshop-root "$steam_root/steamapps/workshop/content/2868840/3747602295" string none
 add_option run-snapshot-path "" string none
 add_option replay-state-path "" string none
-add_option expected-initial-replay-state-path "" string optional_string
 add_option progress-snapshot-path "" string none
 add_option ascension 0 int raw_int
 add_option act-index-for-test 0 int raw_int
@@ -198,9 +197,6 @@ add_option headless-fast-mode-for-test "Instant" string optional_string "FollowG
 add_option deployment-fast-mode-for-test "" string optional_string "FollowGame|Normal|Fast|Instant"
 add_option performance-preset-for-test "" string optional_string "Low|Medium|High|VeryHigh|Custom"
 add_option potion-policy-for-test "" string optional_string "Disabled|Smart|RequireAtLeastOne"
-add_option potion-directives-for-test-json "" string none
-add_option act-transition-boss-hp-strategy-for-test "" string optional_string "ProgressionFirst|MinimizeHpLoss"
-add_option final-boss-hp-strategy-for-test "" string optional_string "ProgressionFirst|MinimizeHpLoss"
 add_option theft-policy-for-test "" string optional_string "PreserveResources|LetEscape"
 add_option enable-no-gc-region-for-test -1 int tri_bool
 add_option no-gc-region-budget-gigabytes-for-test -1 number positive_number
@@ -493,11 +489,6 @@ if ! is_blank "${option_value[replay-state-path]}"; then
         runtime_error "replay state not found: ${option_value[replay-state-path]}"
 fi
 
-if ! is_blank "${option_value[expected-initial-replay-state-path]}"; then
-    option_value[expected-initial-replay-state-path]="$(realpath -e -- "${option_value[expected-initial-replay-state-path]}")" || \
-        runtime_error "expected initial replay state not found: ${option_value[expected-initial-replay-state-path]}"
-fi
-
 json_array_from_text() {
     local label="$1" source_json="$2" result
     if ! result="$(jq -ce 'if type == "array" then . else [.] end' <<<"$source_json")"; then
@@ -566,10 +557,6 @@ combat_relics="$(array_from_path_or_json combat-relics combat-relics-path combat
 cards="$(array_from_path_or_json cards cards-path cards-json)"
 run_cards="$(array_from_path_or_json run-cards run-cards-path run-cards-json)"
 potions="$(array_from_path_or_json potions potions-path potions-json)"
-potion_directives_for_test=null
-if ! is_blank "${option_value[potion-directives-for-test-json]}"; then
-    potion_directives_for_test="$(json_array_from_text --potion-directives-for-test-json "${option_value[potion-directives-for-test-json]}")"
-fi
 if [[ "$potions" == '[]' ]] && ! is_blank "${option_value[potion-id]}" && \
     is_blank "${option_value[potions-path]}" && is_blank "${option_value[potions-json]}"; then
     potions="$(jq -cn --arg potionId "${option_value[potion-id]}" '[{potionId: $potionId}]')"
@@ -686,7 +673,6 @@ request="$(jq -cn \
     --argjson relics "$relics" \
     --argjson combatRelics "$combat_relics" \
     --argjson potions "$potions" \
-    --argjson potionDirectivesForTest "$potion_directives_for_test" \
     --argjson orbChecks "$orb_checks" \
     --argjson potionCheck "$potion_check" \
     --argjson potionChecks "$potion_checks" \
@@ -726,7 +712,6 @@ request="$(jq -cn \
         relics: $relics,
         combatRelics: $combatRelics,
         potions: $potions,
-        potionDirectivesForTest: $potionDirectivesForTest,
         orbChecks: $orbChecks,
         potionCheck: $potionCheck,
         potionChecks: $potionChecks,

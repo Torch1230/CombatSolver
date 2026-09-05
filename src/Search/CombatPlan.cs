@@ -89,8 +89,6 @@ internal enum PersistentSetupTraits
     Thunder = 1 << 4,
     RecurringScaling = 1 << 5,
     OrbEngine = 1 << 6,
-    BlockEngine = 1 << 7,
-    FutureChoice = 1 << 8,
 }
 
 internal sealed record PlanCardToken(

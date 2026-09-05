@@ -6,35 +6,6 @@
 
 维护时默认使用分层快速回归：普通语义改动跑单效果严格差分；Fork、跨回合历史和续用改动补一个最小两回合或最早复用边界；搜索/部署改动的最终候选才运行必要的完整自动场。快速 unattended 请求总超时不超过 `120` 秒，超时后缩小 fixture 或记为未验证，不在同一轮延长等待。下方完整矩阵是发布门禁和专项审计入口，不是每次修复都要执行的默认清单。
 
-## 0.30.0（开发中）：2026-09-05 玩家更优世界线策略第一批
-
-| 场景 | 当前结果 | 验证内容 | 日期 |
-| --- | --- | --- | --- |
-| `RELEASE-BUILD-0300-ABILITY-ENGINE` | 通过 | `dotnet build CombatSolver.csproj -c Release`，CombatSolver 与 MemoryCleaner 均成功生成，0 警告、0 错误。 | 2026-09-05 |
-| `PLAYER-WORLDLINE-TEST-SUBJECT-133704-ABILITY-ENGINE` | 续局通过，手操前待验收 | 第 3 条手操后 T2 的 High/DOP1 剩余战损 `0`，runId `d538dcebac0543f4b93ed28ff0e95704`。未验证求解器能从 T1 自行完成同等准备，撤回整体策略已优于人工的结论。 | 2026-09-05 |
-| `PLAYER-WORLDLINE-AEONGLASS-153416-DYNAMIC-POWER` | 续局通过，手操前待验收 | 第 1 条恢复 Power 动态变量后，手操后 T3 High/Force 剩余战损 `3`，runId `5d768646dbb641ea967de0349a18c9ef`；手操前 T2 的策略仍待验收。 | 2026-09-05 |
-| `PLAYER-WORLDLINE-AEONGLASS-152708-POWER-ORDER` | 续局通过，比较口径已纠正 | 第 2 条恢复 Power 和附魔后，手操后 T7 High/Force 剩余战损 `0`，runId `2a65b5cb43b846809f31838c8e71f7ed`。原人工 `55` 含既有战损，不能直接与续局 `0` 相减；手操前待验收。 | 2026-09-05 |
-| `PLAYER-WORLDLINE-AEONGLASS-151202-POISON-HORIZON` | 按用户要求跳过，整场未验收 | 第 4 条手操后 T4 续局 High/Force 剩余战损 `2`，runId `fbc9fe2a11a7416abee9d1a542c15931`；VeryHigh/Force 为 `0`，runId `e91590c716aa40548e02eb7931c96d17`。这些结果没有验证从开战开始的策略。 | 2026-09-05 |
-| `PLAYER-WORLDLINE-IMPORT-BASELINE-0300` | 部分解除，手操前验收待补 | 第 1、2、3、6、7 条已取得手操后续局结果，不能代替手操前的策略验收；第 4 条按用户指令跳过；第 5 条导入缺少回合卡牌历史。 | 2026-09-05 |
-| `PLAYER-WORLDLINE-TEST-SUBJECT-013258-IMPORT` | 暂跳过 | 第 5 条有备注实验体包尝试复用第 2 回合状态；导入在 `RestoreReplayTurnCardHistory` 因缺少本回合卡牌历史失败，runId `06b9c267486a4d1f9ce9618a22d52839`，没有产生可比较的求解结果。 | 2026-09-05 |
-| `PLAYER-WORLDLINE-MECHA-KNIGHT-131216-REPLAY-INVENTORY` | 续局通过，手操前待验收 | 第 6 条 T4 回放库存恢复后，High/Disabled 剩余战损 `0`；展开 `565` 节点、跨 `2` 回合，runId `7d6aa2ce419040b4a3d1533568c8d4dd`。没有验证 T1 手操用药策略。 | 2026-09-05 |
-| `PLAYER-WORLDLINE-QUEEN-173813-CURRENT` | 续局通过，手操前待验收 | 第 7 条手操后 T2 High/RequireAtLeastOne 剩余战损 `5`；展开 `15,419` 节点、跨 `12` 回合，runId `0155a51343524f769b82068df0c0d857`。没有验证 T1 灵动步法选择。 | 2026-09-05 |
-| `PLAYER-WORLDLINE-AEONGLASS-053711-MANUAL-STATE` | 基线未完成战斗，暂跳过 | 第 8 条原 `20 HP` 在 NodeLimit 截止时敌剩 `420 HP`；当前 High 手操后完整胜利战损 `52 HP`，runId `fe655950b7844083868ab9274f712197`。断言按错误的 `20 HP` 上限失败，不能计为有效策略差距。 | 2026-09-05 |
-| `PLAYER-WORLDLINE-QUEEN-113237-MINIMIZE-HP` | 超时，未验收 | 原版 T3 手操前，剩余人工目标 `9 HP`（整场 `30` 扣除此前 `21`）。VeryHigh/Smart 与两类 Boss 减战损优先配置已生效，完整搜索在 `120 s` 超时，runId `4e804297417641c18019805dd29d9e13`；不与默认通关优先的无药 `23 HP` 结果混算。 | 2026-09-05 |
-| `BOSS-HP-STRATEGY-OVERRIDE-SMOKE-0300` | 通过 | Windows 参数、协议和临时设置均验证两类 Boss 策略为 MinimizeHpLoss，最小搜索正常返回，runId `0f7704b8270b4928b2ccb0bbb58a6e36`。Linux 参数同步，尚未实机执行。 | 2026-09-05 |
-| `REPLAY-COMBAT-START-TEST-SUBJECT-133704` | 通过，开战及首次出牌前状态一致 | 从第 3 条 `000-combat_start` 恢复，由原版执行开战效果与抽牌，完整状态匹配 `001-search_request_AutoTurnStart`，CombatRootSnapshot 验证通过；runId `0f6926e7b3e0467daa93e31dfe4899e5`。这证明可从开战还原，不代表整场策略已追平。 | 2026-09-05 |
-| `REPLAY-MID-COMBAT-MECHA-KNIGHT-SNAPSHOT-0300` | 通过 | 牌堆改为直接恢复快照后，第 6 条 T4 中途导入仍通过完整 ContinuationStamp 和 CombatRootSnapshot 对账；runId `e9b1d1f50f4a4bbd934c3859cb791bd4`。仅验证状态恢复。 | 2026-09-05 |
-| `PLAYER-WORLDLINE-AEONGLASS-153416-COMBAT-START` | 开战恢复通过，整场策略未追平 | 从 `000-combat_start` 完整状态恢复，VeryHigh/Smart、两类 Boss 减战损优先；整场战损 `94 HP`、1 药、T12 胜利，人工 `6 HP`、4 药，相对人工 `-88`。runId `564d0352af0243ed87ae31dfeb7a2a53`。 | 2026-09-05 |
-| `UNMOVABLE-RELIC-BLOCK-HISTORY-0300` | 通过 | “风的女儿”加“坚定不移”，打击后连续两张防御，严格状态对账为 `16` 格挡；失败基线预测 `11` / 实机 `16`，runId `9df60cff0d9b40289ff5750f67937664`；修复 runId `203972a50aae4aeb8278447d4010f414`。 | 2026-09-05 |
-| `PLAYER-WORLDLINE-AEONGLASS-153416-REPORTED-POLICY-DEPLOY` | 通过，整场优于人工 +3 | 开战快照、原包逐槽强制四药、VeryHigh/DOP4：预测及实际累计战损 `3 HP`，人工 `6 HP`，均用 `4` 药；T7 获胜、6 次续用、零非预期重算。runId `ff728e5661394c9e8a77c7b03a404a48`。另测 Smart 选择预测 `8 HP` / `3` 药，保留额外用药成本口径。 | 2026-09-05 |
-| `SMART-POTION-QUALIFIED-LAYER-CONTINUATION-0300` | 通过 | 无药 `50 HP`、一药 `38 HP` 已达九血门槛，仍继续搜索并选择两药 `26 HP`，累计省 `24 HP`；`58/124` 展开/转移，runId `3d38a2692d7849bca4a259879057a187`。 | 2026-09-05 |
-| `SMART-POTION-ZERO-LOSS-SENTINEL-0300` | 通过 | 复用 `generic-smart-potion-three-layer-progress-v0111.json`，显式设置两类 Boss 为 MinimizeHpLoss、清空逐槽指令。保留 `0` 战损 / `0` 药 / T3，未打放血；`24/52` 展开/转移，runId `af4f8a802cd84581a760aab2b558ec0e`。 | 2026-09-05 |
-| `BUILD-BOUNDARIES-0300-POTION-BLOCK-HISTORY` | 通过 | Release 构建 0 警告、0 错误；结构门禁 `REFACTOR_BOUNDARIES_OK search_files=61`，PowerShell 与 Bash 语法检查通过。逐槽指令入口在 Windows 实测，Linux 游戏运行未验证。 | 2026-09-05 |
-| `PLAYER-WORLDLINE-AEONGLASS-152708-ORIGINAL-POLICY-BASELINE` | 通过，整场优于人工 +5 | 开战恢复、VeryHigh/DOP4、原包两类 Boss 通关优先、仅稳定血清强制使用。预测及实际累计战损 `50 HP`，人工 `55 HP`，均用 `1` 药；T10 胜利、9 次续用、零非预期重算。搜索源码为 `0cb5bcf`，`13,592/61,876` 展开/转移，runId `beb01c29aa57492db5c55ce103a593c2`。此前减战损优先结果不作为原政策基线。 | 2026-09-05 |
-| `BATCH-REPORTED-POLICY-0300` | 通过 | 第 2 条预检保留原包两类 Boss 策略与四槽指令；第 3 条旧设置缺少 Boss 策略时显式用 MinimizeHpLoss，并成功传入原包两槽禁药指令。批量得到完整胜利预测 `22 HP`（含卖血 `14`），正确报告人工 `3 HP` 的策略缺口，runId `389bf24c170f4eefb1561042746ca043`。PowerShell 语法、T7 不生成整场相对值、T1 的 `55-50=+5` 断言通过；第 3 条尚未整场部署。 | 2026-09-05 |
-| `RANK3-PREPARATION-RETENTION-TRACE-0300` | 定位通过，策略未验收 | 原包开战、VeryHigh/DOP1、20 秒临时诊断：第 3 层“放血、许愿检索燃烧契约、疯狂科学”已在未剪枝候选中；该父节点 `10/10` 动作全部获准，随后目标路线不在保留的 `135` 条内。选牌能力分组试验保住第 3 张但仍丢第 4 张，暂存未合入。标准 DOP4 节点预留试验仍为 `22 HP`，已撤回。 | 2026-09-05 |
-| `BATCH-RUN-EVIDENCE-0300` | 通过 | 第 3 条多轮实际请求均在独立结果目录保存 `<runId>-result.json` 和 `<runId>-godot.log`，批量状态正确区分完整胜利质量缺口与未确认胜利。一次原生开局 `Invalid Task ID` / `0xC0000005` 未进入搜索，启动日志单独留存，随后重试正常完成；不记为策略失败。 | 2026-09-05 |
-
 ## 0.29.1（定版准备）：2026-09-04 19 点后问题包硬逻辑修复
 
 | 场景 | 当前结果 | 验证内容 | 日期 |

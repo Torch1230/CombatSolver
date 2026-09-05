@@ -1207,6 +1207,7 @@ internal static class CombatSearchCoordinator
         List<SolverResult> searches = [potionFree];
         SolverResult selected = potionFree;
         bool deadlineExpired = false;
+        bool acceptablePotionLayerFound = false;
         for (int potionCount = 1; potionCount <= maximumPotionUses; potionCount++)
         {
             if (searchCancellationToken.IsCancellationRequested)
@@ -1301,21 +1302,18 @@ internal static class CombatSearchCoordinator
                 hpSaved,
                 hpRequired,
                 protectsLoot);
-            bool selectedCandidate = acceptable
-                && SolverInterimResultOrdering.IsBetter(
-                    BuildInterimResult(root, policy, candidate),
-                    BuildInterimResult(root, policy, selected));
-            if (selectedCandidate)
+            if (acceptable)
             {
                 candidate.PotionHpSaved = hpSaved;
                 candidate.PotionHpRequired = hpRequired;
                 selected = candidate;
+                acceptablePotionLayerFound = true;
             }
             policy.Diagnostics.Info(
                 $"[CombatSolver/Test] SMART_POTION_GRADIENT layer={potionCount} " +
                 $"won={candidateWon} hp_deficit={candidateDeficit} saved={hpSaved} " +
                 $"required={hpRequired} protects_loot={protectsLoot} acceptable={acceptable} " +
-                $"selected={selectedCandidate} " +
+                $"selected={acceptable} " +
                 $"expanded={candidate.ExpandedNodes} transitions={candidate.TransitionCount} " +
                 $"choice_branches={candidate.ChoiceBranchesEvaluated} " +
                 $"elapsed_ms={candidate.Elapsed.TotalMilliseconds:F1} " +
@@ -1324,13 +1322,15 @@ internal static class CombatSearchCoordinator
                 $"incumbent_turn={primaryIncumbent?.CombatEndedTurn.ToString() ?? "-"} " +
                 $"incumbent_pruned={candidate.PrimaryIncumbentBranchesPruned} " +
                 $"incumbent_updates={candidate.PrimaryIncumbentUpdates}");
+            if (acceptable)
+                break;
         }
 
         callerCancellationToken.ThrowIfCancellationRequested();
         MergeAuditTotals(selected, [.. searches]);
         policy.Diagnostics.Info(
             $"[CombatSolver/Test] SMART_POTION_GRADIENT result " +
-            $"stop={(deadlineExpired ? "deadline" : "complete")} " +
+            $"stop={(deadlineExpired ? "deadline" : acceptablePotionLayerFound ? "threshold_met" : "complete")} " +
             $"maximum={maximumPotionUses} " +
             $"selected_potions={selected.PotionCount}");
         return selected;

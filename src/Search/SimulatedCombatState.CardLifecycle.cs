@@ -214,13 +214,14 @@ internal sealed partial class SimulatedCombatState
     void ICombatPredictionCardExecutionSink.CompleteCardPlayEffects(
         CombatPredictionSimulator simulator,
         PredictedCard card,
-        int cardBlockGainCount,
+        int ownerBlockBefore,
         int historyEntryStart)
     {
         TriggeredPowerSupport.CompensateHistorySince(simulator, this, historyEntryStart);
         simulator.SynchronizePowerAmountPredictionStates();
         PowerLifecycleSupport.ResolvePowerAmountChanges(simulator, this);
-        RecordCardPlayed(card, cardBlockGainCount);
+        int ownerBlockAfter = simulator.State.GetCreature(card.Preview.Owner.Creature).Block;
+        RecordCardPlayed(card, ownerBlockAfter > ownerBlockBefore);
         RecordCardLifecycle(simulator, card);
     }
 
