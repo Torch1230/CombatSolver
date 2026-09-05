@@ -160,7 +160,8 @@ internal sealed partial class CombatBeamSolver
             score += SolverWeights.VictoryBonus;
         score += enemyHp * SolverWeights.EnemyHp;
         int liveDeckClutter = liveCards.Count(card =>
-            card.Preview.Type is CardType.Status or CardType.Curse);
+            card.Preview.Type is CardType.Status or CardType.Curse
+            && !LeavesHandAtTurnEnd(simulator, playerState, card));
         score += liveDeckClutter * SolverWeights.LiveDeckClutterPenalty;
         int outstandingStolenResource = TheftEncounterStrategy.OutstandingStolenResource(simulator, combat);
         if (_theftPolicy == SolverTheftPolicy.PreserveResources)
@@ -773,6 +774,30 @@ internal sealed partial class CombatBeamSolver
             };
         }
         return checked((int)Math.Ceiling(value));
+    }
+
+    /// <summary>手里这张牌会不会在本回合结束时自己消耗掉。</summary>
+    /// <remarks>
+    /// 虚无牌回合结束时若仍在手牌就自己消耗，判据与
+    /// <c>CombatPredictionSimulator.EndTurn</c> 的虚无分支一致。
+    ///
+    /// 这类牌不该计入牌库杂物：无论路线是否提前把它移除，到本回合边界它都已经不在了，
+    /// 同一笔杂物减少两边都会拿到。把它算进来等于给"提前移除"发一笔本来就会到账的钱，
+    /// 于是一次有限的消耗看上去比移除真正长期占位的牌更划算。
+    ///
+    /// 只排除手牌。抽牌堆和弃牌堆里的同一张牌本回合不会自己走，那时它确实是杂物。
+    /// </remarks>
+    private static bool LeavesHandAtTurnEnd(
+        CombatPredictionSimulator simulator,
+        SimPlayerCombatState playerState,
+        PredictedCard card)
+    {
+        if (card.GetPile(playerState)?.Type is not PileType.Hand)
+            return false;
+        if (card.Preview.HasTurnEndInHandEffect)
+            return false;
+        return card.HasKeyword(simulator.State, CardKeyword.Ethereal)
+            && Hook.ShouldEtherealTrigger(simulator.State.CombatState, card.Preview);
     }
 
     private static int LatentCardSetupValue(CardModel card)
