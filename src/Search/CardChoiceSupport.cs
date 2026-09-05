@@ -21,6 +21,12 @@ internal sealed record CardChoiceSpec(
 
 internal static partial class CardChoiceSupport
 {
+    /// <summary>
+    /// 会自己离场的牌在移除排序里加的偏置。取值只要大过任何一张牌的估值即可，作用是让它排到
+    /// 最后，而不是与普通牌按数值竞争。
+    /// </summary>
+    private const double SelfClearingRemovalPenalty = 1_000d;
+
     private static readonly HashSet<string> UnsupportedExistingChoiceCards =
     [
         "Tutor"
@@ -207,7 +213,7 @@ internal static partial class CardChoiceSupport
                 or PlanChoiceEffect.DiscardAndDraw
                 or PlanChoiceEffect.Exhaust
                 or PlanChoiceEffect.Transform
-                ? spec.Options.OrderBy(card => RemovalPriority(spec.Effect, card))
+                ? spec.Options.OrderBy(card => RemovalPriority(spec, card))
                 : spec.Options.OrderByDescending(card => CardValue(card.Preview)))
             .ThenBy(ChoiceCardKey, StringComparer.Ordinal)
             .ToList();
@@ -487,8 +493,8 @@ internal static partial class CardChoiceSupport
 
     private static double ChoicePriority(CardChoiceSpec spec, IReadOnlyList<PredictedCard> cards)
     {
-        double value = cards.Sum(card => spec.Effect == PlanChoiceEffect.Transform
-            ? RemovalPriority(spec.Effect, card)
+        double value = cards.Sum(card => spec.Effect is PlanChoiceEffect.Transform or PlanChoiceEffect.Exhaust
+            ? RemovalPriority(spec, card)
             : CardValue(card.Preview));
         return spec.Effect switch
         {
@@ -509,15 +515,45 @@ internal static partial class CardChoiceSupport
             + DynamicVarBaseValue(card.Preview.DynamicVars, "Stars") * 12d;
     }
 
-    private static double RemovalPriority(PlanChoiceEffect effect, PredictedCard card)
+    /// <summary>
+    /// 移除类选择的排序键，从低到高优先移除。
+    /// </summary>
+    /// <remarks>
+    /// 会自己离场的牌不值得占用一次移除。虚无牌在回合结束时若仍在手牌，自己就会消耗掉
+    /// （见 <c>CombatPredictionSimulator.EndTurn</c> 的虚无分支），所以把一次消耗花在它身上，
+    /// 换来的只是本回合剩下的一个手牌位；花在打击、防御这类牌上，换来的是整场战斗之后每一次
+    /// 抽牌的质量。两者不是一个量级。
+    ///
+    /// 判据限定在手牌来源：虚无只在手牌里触发，抽牌堆或弃牌堆里的同一张牌本回合不会自己走，
+    /// 那时移除它是真正的牌库压缩。
+    ///
+    /// 弃牌不适用：弃掉的牌回到弃牌堆、仍在本场牌库里，没有压缩可言，而把打不出的牌从手上
+    /// 弃掉本来就是弃牌该干的事。所以这里只覆盖消耗与转变。
+    /// </remarks>
+    private static double RemovalPriority(CardChoiceSpec spec, PredictedCard card)
     {
         double value = CardValue(card.Preview);
-        if (effect == PlanChoiceEffect.Transform
-            && card.Preview.GetKeywordsWithSources(KeywordSources.Local).Contains(CardKeyword.Ethereal))
-        {
-            value += 1_000d;
-        }
+        if (LeavesOnItsOwn(spec, card))
+            value += SelfClearingRemovalPenalty;
         return value;
+    }
+
+    /// <summary>这张牌会不会不花移除资源就自己离场。</summary>
+    /// <remarks>
+    /// 关键字只读本地来源，与转变分支原有的判据一致：涵盖规范关键字和音乐盒这种直接写在牌上的
+    /// 来源，不涵盖诅咒之触那种由其他 Model 持续授予的全局来源。要覆盖全局来源需要把战斗状态
+    /// 一路传进选牌构建，那是另一件事。
+    /// </remarks>
+    private static bool LeavesOnItsOwn(CardChoiceSpec spec, PredictedCard card)
+    {
+        if (!card.Preview.GetKeywordsWithSources(KeywordSources.Local).Contains(CardKeyword.Ethereal))
+            return false;
+        return spec.Effect switch
+        {
+            PlanChoiceEffect.Transform => true,
+            PlanChoiceEffect.Exhaust => spec.SourcePile == PileType.Hand,
+            _ => false,
+        };
     }
 
     internal static double CardValue(CardModel card)
