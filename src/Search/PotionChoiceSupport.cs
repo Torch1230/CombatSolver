@@ -74,7 +74,7 @@ internal static class PotionChoiceSupport
         };
     }
 
-    public static void Apply(
+    public static bool Apply(
         CombatPredictionSimulator simulator,
         PotionModel potion,
         PlanCardChoice choice)
@@ -105,10 +105,16 @@ internal static class PotionChoiceSupport
                 break;
             case PlanChoiceEffect.Exhaust:
                 foreach (PredictedCard card in selected)
+                {
                     simulator.Exhaust(card);
+                    if (simulator.HasPendingChoice)
+                        return false;
+                }
                 break;
             case PlanChoiceEffect.DiscardAndDraw:
                 simulator.Discard(selected);
+                if (simulator.HasPendingChoice)
+                    return false;
                 simulator.Draw(potion.Owner, selected.Count);
                 break;
             case PlanChoiceEffect.MoveToHandFreeThisTurn:
@@ -137,6 +143,7 @@ internal static class PotionChoiceSupport
                 throw new InvalidOperationException(
                     $"药水 {potion.Id.Entry} 不支持选牌效果 {choice.Effect}。");
         }
+        return !simulator.HasPendingChoice;
     }
 
     private static CardChoiceSpec ExactSpec(

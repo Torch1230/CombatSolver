@@ -83,6 +83,8 @@ internal static class CardOnPlayInferrer
         foreach (var action in actions)
         {
             action(card, context);
+            if (context.Simulator.HasPendingChoice)
+                return;
         }
     }
 

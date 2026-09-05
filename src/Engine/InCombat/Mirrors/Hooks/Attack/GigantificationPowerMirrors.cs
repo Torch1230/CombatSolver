@@ -19,12 +19,19 @@ internal static class GigantificationPowerMirrors
     }
 
     public static void AfterAttack(GigantificationPower power, AfterAttackMirrorContext context)
+        => CompleteOrAbort(power, context, completed: true);
+
+    public static void CompleteOrAbort(
+        GigantificationPower power,
+        AfterAttackMirrorContext context,
+        bool completed)
     {
         var state = GetState(power, context);
         if (context.Command == state.CommandToModify)
         {
             state.CommandToModify = null;
-            context.StateStore.GetPowerAmount(power).Decrement();
+            if (completed)
+                context.StateStore.GetPowerAmount(power).Decrement();
         }
     }
 

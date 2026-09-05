@@ -27,11 +27,14 @@ internal static class FrostOrbMirrors
 
     private static IReadOnlyList<Creature> Block(FrostOrb orb, OrbMirrorContext context, decimal value)
     {
+        List<Creature> completedTargets = [orb.Owner.Creature];
         context.Simulator.GainBlock(orb.Owner.Creature, value, ValueProp.Unpowered);
+        if (context.Simulator.HasPendingChoice)
+            return completedTargets;
 
         if (!orb.Owner.Creature.HasPower<HibernatePower>())
         {
-            return [orb.Owner.Creature];
+            return completedTargets;
         }
 
         // StS2 v0.108.0 grants the owner block first, then the same block to all other players.
@@ -41,9 +44,12 @@ internal static class FrostOrbMirrors
             if (player != orb.Owner)
             {
                 context.Simulator.GainBlock(player.Creature, value, ValueProp.Unpowered);
+                completedTargets.Add(player.Creature);
+                if (context.Simulator.HasPendingChoice)
+                    return completedTargets;
             }
         }
 
-        return [.. allPlayers.Select(player => player.Creature)];
+        return completedTargets;
     }
 }

@@ -43,6 +43,8 @@ internal static class CardPileOnPlaySupport
                 break;
             case UpMySleeve:
                 GenerateShivs(simulator, card.Owner, card.DynamicVars.Cards.IntValue, upgraded: false);
+                if (simulator.HasPendingChoice)
+                    return;
                 playedCard.MutablePreview.EnergyCost.AddThisCombat(-1);
                 break;
         }
@@ -77,6 +79,8 @@ internal static class CardPileOnPlaySupport
         SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(source.Owner);
         PredictedCard[] discarded = playerState.Hand.Cards.ToArray();
         simulator.Discard(discarded);
+        if (simulator.HasPendingChoice)
+            return;
         GenerateShivs(simulator, source.Owner, discarded.Length, source.IsUpgraded);
     }
 
@@ -97,6 +101,8 @@ internal static class CardPileOnPlaySupport
         int count)
     {
         IReadOnlyList<PredictedCard> shivs = GenerateShivs(simulator, owner, count, upgraded: false);
+        if (simulator.HasPendingChoice)
+            return;
         foreach (PredictedCard shiv in shivs)
             shiv.Enchant(CanonicalModels.Enchantment<Inky>().ToMutable(), 1m);
     }

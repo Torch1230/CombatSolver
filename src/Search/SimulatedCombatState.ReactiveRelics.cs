@@ -12,12 +12,13 @@ namespace CombatSolver;
 
 internal sealed partial class SimulatedCombatState
 {
-    public bool PrepareExtraPlayerTurn(
+    public bool TryPrepareExtraPlayerTurn(
         CombatPredictionSimulator simulator,
         Player player,
+        out bool extraTurn,
         out bool hasActiveEmotionChip)
     {
-        bool extraTurn = GetAmount<AmbergrisPower>(player.Creature) > 0;
+        extraTurn = GetAmount<AmbergrisPower>(player.Creature) > 0;
         hasActiveEmotionChip = false;
         foreach (RelicModel relic in RelicsOf(player))
         {
@@ -27,25 +28,29 @@ internal sealed partial class SimulatedCombatState
                 hasActiveEmotionChip = true;
             if (relic is not PaelsEye paelsEye || !ShouldTriggerPaelsEye(paelsEye))
                 continue;
-            TriggerPaelsEye(simulator, player, paelsEye);
+            if (!TriggerPaelsEye(simulator, player, paelsEye))
+                return false;
             extraTurn = true;
         }
-        return extraTurn;
+        return true;
     }
 
-    public bool PrepareLiveExtraPlayerTurn(
+    public bool TryPrepareLiveExtraPlayerTurn(
         CombatPredictionSimulator simulator,
         Player player,
-        bool paelsEyeTriggers)
+        bool paelsEyeTriggers,
+        out bool extraTurn)
     {
-        bool extraTurn = GetAmount<AmbergrisPower>(player.Creature) > 0;
+        extraTurn = GetAmount<AmbergrisPower>(player.Creature) > 0;
         if (!paelsEyeTriggers)
-            return extraTurn;
+            return true;
 
         PaelsEye relic = RelicsOf(player)
             .OfType<PaelsEye>()
             .Single(static relic => !relic.IsMelted);
-        TriggerPaelsEye(simulator, player, relic);
+        if (!TriggerPaelsEye(simulator, player, relic))
+            return false;
+        extraTurn = true;
         return true;
     }
 
@@ -63,15 +68,20 @@ internal sealed partial class SimulatedCombatState
     public bool IsPaelsEyeUnused(PaelsEye relic)
         => GetStatefulRelicState(relic).Current == 0;
 
-    private static void TriggerPaelsEye(
+    private static bool TriggerPaelsEye(
         CombatPredictionSimulator simulator,
         Player player,
         PaelsEye relic)
     {
         foreach (PredictedCard card in simulator.State.GetPlayerCombatState(player).Hand.Cards.ToArray())
+        {
             simulator.Exhaust(card);
+            if (simulator.HasPendingChoice)
+                return false;
+        }
         if (simulator.IsRecordingActionRelicTriggers)
             simulator.RecordRelicTrigger(relic, "：额外回合");
+        return true;
     }
 
     public void ConsumeExtraTurnSources(Player player)
@@ -218,10 +228,12 @@ internal sealed partial class SimulatedCombatState
                     Apply<DexterityPower>(creature, relic.DynamicVars.Dexterity.IntValue, creature);
                     break;
             }
+            if (simulator.HasPendingChoice)
+                return;
         }
     }
 
-    public void TriggerRelicsAfterSideTurnEnd(
+    public bool TriggerRelicsAfterSideTurnEnd(
         CombatPredictionSimulator simulator,
         IReadOnlyList<Creature> participants,
         int etherealExhaustCount)
@@ -270,8 +282,11 @@ internal sealed partial class SimulatedCombatState
                     break;
                 }
             }
+            if (simulator.HasPendingChoice)
+                return false;
             RelicPredictionStateSupport.ResetAfterSideTurnEnd(simulator, relic);
         }
+        return true;
     }
 
     public void RecordRelicRoundDamage(
@@ -303,17 +318,22 @@ internal sealed partial class SimulatedCombatState
         }
     }
 
-    public void TriggerEmotionChip(
+    public bool TriggerEmotionChip(
         CombatPredictionSimulator simulator,
         EmotionChip relic)
     {
         StatefulRelicState state = GetStatefulRelicState(relic);
         if (state.Current == 0)
-            return;
+            return true;
         int historyEntryStart = simulator.History.Entries.Count;
         foreach (OrbModel orb in simulator.State.GetPlayerCombatState(relic.Owner).OrbQueue.Orbs.ToArray())
+        {
             simulator.TriggerOrbPassive(orb, null);
+            if (simulator.HasPendingChoice)
+                return false;
+        }
         TriggeredPowerSupport.CompensateHistorySince(simulator, this, historyEntryStart);
+        return !simulator.HasPendingChoice;
     }
 
     private bool HasAvailablePotion(Player player)

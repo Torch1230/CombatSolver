@@ -9,7 +9,7 @@ namespace CombatSolver;
 
 internal static class DeathPowerSupport
 {
-    public static void Trigger(
+    public static bool Trigger(
         CombatPredictionSimulator simulator,
         SimulatedCombatState combat,
         Creature dead)
@@ -41,6 +41,8 @@ internal static class DeathPowerSupport
                     power.Owner,
                     power.DynamicVars.Block.BaseValue,
                     ValueProp.Unpowered);
+                if (simulator.HasPendingChoice)
+                    return false;
                 combat.SetPowerAmount(power, 0);
                 continue;
             }
@@ -126,10 +128,15 @@ internal static class DeathPowerSupport
                     combat.RefundPossessedStats(dead);
                     break;
             }
+            if (simulator.HasPendingChoice)
+                return false;
         }
         combat.RecoverStolenResources(simulator, dead);
+        if (simulator.HasPendingChoice)
+            return false;
         combat.RemovePowersAfterDeath(dead);
         combat.CompleteDeathPhase(dead);
+        return true;
     }
 
 }

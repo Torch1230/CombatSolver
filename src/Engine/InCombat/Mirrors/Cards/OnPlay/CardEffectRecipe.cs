@@ -39,6 +39,8 @@ internal sealed class CardEffectRecipe(IReadOnlyList<CardEffectKind> effects)
                 default:
                     throw new ArgumentOutOfRangeException(nameof(effect), effect, null);
             }
+            if (context.Simulator.HasPendingChoice)
+                return;
         }
     }
 }

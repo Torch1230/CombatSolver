@@ -21,6 +21,13 @@ fi
 sts2_game_root="$steam_root/steamapps/common/Slay the Spire 2"
 ritsu_workshop_root="$steam_root/steamapps/workshop/content/2868840/3747602295"
 results_path=".local/headless-matrix-results.jsonl"
+headless_instance=""
+headless_execution_mode="${COMBATSOLVER_HEADLESS_EXECUTION_MODE:-exclusive}"
+headless_memory_reservation_mib=4096
+headless_cpu_reservation=2
+headless_queue_timeout_seconds=120
+combat_solver_build_dir=""
+[[ $(getconf _NPROCESSORS_ONLN) != 1 ]] || headless_cpu_reservation=1
 
 usage() {
     cat <<'EOF'
@@ -33,6 +40,12 @@ Options:
   --sts2-game-root PATH          Native Linux Slay the Spire 2 directory
   --ritsu-workshop-root PATH     Native Linux RitsuLib workshop directory
   --results-path PATH            JSONL result path
+  --headless-instance ID         Stable instance shared by every case and cleanup
+  --headless-execution-mode MODE exclusive (default) or parallel
+  --headless-memory-reservation-mib NUMBER  Host reservation, not a hard limit
+  --headless-cpu-reservation NUMBER         Host reservation, not Search DOP
+  --headless-queue-timeout-seconds NUMBER   Admission deadline (default: 120)
+  --combat-solver-build-dir PATH Frozen DLL/manifest directory
   -h, --help                     Show this help
 
 Commands keep the lifecycle boundaries documented in docs/TEST_MATRIX.md. Cases
@@ -49,14 +62,14 @@ die() {
 
 while (($# > 0)); do
     case "$1" in
-        --start-at|--max-cases|--sts2-game-root|--ritsu-workshop-root|--results-path)
+        --start-at|--max-cases|--sts2-game-root|--ritsu-workshop-root|--results-path|--headless-instance|--headless-execution-mode|--headless-memory-reservation-mib|--headless-cpu-reservation|--headless-queue-timeout-seconds|--combat-solver-build-dir)
             (($# >= 2)) || die "missing value for $1"
             option_name="${1#--}"
             option_name="${option_name//-/_}"
             printf -v "$option_name" '%s' "$2"
             shift 2
             ;;
-        --start-at=*|--max-cases=*|--sts2-game-root=*|--ritsu-workshop-root=*|--results-path=*)
+        --start-at=*|--max-cases=*|--sts2-game-root=*|--ritsu-workshop-root=*|--results-path=*|--headless-instance=*|--headless-execution-mode=*|--headless-memory-reservation-mib=*|--headless-cpu-reservation=*|--headless-queue-timeout-seconds=*|--combat-solver-build-dir=*)
             option_name="${1%%=*}"
             option_name="${option_name#--}"
             option_name="${option_name//-/_}"
@@ -79,7 +92,7 @@ done
     die "--start-at must be between 1 and 10000"
 [[ "$max_cases" =~ ^[0-9]+$ ]] && ((max_cases <= 10000)) || \
     die "--max-cases must be between 0 and 10000"
-for command_name in jq setsid; do
+for command_name in jq setsid realpath flock sha256sum; do
     command -v "$command_name" >/dev/null 2>&1 || die "$command_name is required"
 done
 lifecycle_mode=documented
@@ -127,24 +140,69 @@ signal_status=0
 case_pid=""
 case_pgid=""
 
-headless_root="${COMBATSOLVER_HEADLESS_ROOT:-${XDG_STATE_HOME:-${HOME}/.local/state}/CombatSolver/headless-runtime}"
-process_marker_path="$(realpath -m -- "$headless_root")/process.json"
+if [[ -z $headless_instance ]]; then
+    headless_instance="$(printf '%s' "$repo_root" | sha256sum)"
+    headless_instance="worktree-${headless_instance:0:16}"
+fi
+headless_root="${COMBATSOLVER_HEADLESS_ROOT:-${XDG_STATE_HOME:-${HOME}/.local/state}/CombatSolver/headless-instances/$headless_instance}"
+headless_root="$(realpath -m -- "$headless_root")"
+source_game_root="$(realpath -m -- "$sts2_game_root")"
+[[ $headless_root != "$source_game_root" && $headless_root != "$source_game_root/"* \
+    && $source_game_root != "$headless_root/"* ]] || die 'matrix runtime must be separate from the source game'
+source "$script_dir/headless-runtime.sh"
+HR_WORKTREE="$repo_root"
+hr_init "$headless_root" "$headless_instance" "$headless_root/game/SlayTheSpire2" \
+    "$headless_root/data" "$headless_execution_mode" "$headless_memory_reservation_mib" \
+    "$headless_cpu_reservation" "$headless_queue_timeout_seconds" || die 'cannot claim matrix instance'
+[[ ! -L $headless_root/matrix.lock ]] || die 'matrix lock cannot be a symlink'
+exec {matrix_fd}>"$headless_root/matrix.lock"
+flock -n "$matrix_fd" || die 'instance already has a matrix producer'
+# Cases retain the ordinary launcher lock; the matrix lock spans the gaps.
+flock -u "$HR_INSTANCE_FD"
+exec {HR_INSTANCE_FD}>&-
+export COMBATSOLVER_HEADLESS_ROOT="$headless_root"
+process_marker_path="$headless_root/process.json"
+runtime_arguments=(--headless-instance "$headless_instance"
+    --headless-execution-mode "$headless_execution_mode"
+    --headless-memory-reservation-mib "$headless_memory_reservation_mib"
+    --headless-cpu-reservation "$headless_cpu_reservation"
+    --headless-queue-timeout-seconds "$headless_queue_timeout_seconds")
+if [[ -n $combat_solver_build_dir ]]; then
+    runtime_arguments+=(--combat-solver-build-dir "$(realpath -m -- "$combat_solver_build_dir")")
+fi
 
 cleanup_headless_process() {
-    local allow_before_first_case=${1:-0} marker_pid="" cleanup_status=0
+    local allow_before_first_case=${1:-0} marker_pid="" cleanup_status=0 candidate
+    if [[ ! -f $process_marker_path ]]; then
+        for candidate in /proc/[0-9]*/exe; do
+            if [[ $(readlink -f -- "$candidate" 2>/dev/null) == "$HR_EXECUTABLE" ]]; then
+                echo 'run-headless-matrix.sh: markerless instance process preserved; cleanup cannot prove ownership' >&2
+                return 1
+            fi
+        done
+        return 0
+    fi
     if ((ran_case == 1 || allow_before_first_case == 1)) \
         && [[ -f "$process_marker_path" ]]; then
+        jq -e --arg root "$headless_root" --arg id "$headless_instance" --arg worktree "$repo_root" \
+            '.schemaVersion == 1 and .root == $root and .instance == $id and .worktree == $worktree' \
+            "$headless_root/runtime-owner.json" >/dev/null || {
+            echo 'run-headless-matrix.sh: runtime owner changed; cleanup preserved the process' >&2; return 1;
+        }
+        jq -e --arg executable "$HR_EXECUTABLE" --arg data "$headless_root/data/SlayTheSpire2" \
+            '(.pid | type == "number" and . > 0 and floor == .) and
+             (.procStartTimeTicks | type == "string" and test("^[0-9]+$")) and
+             .executable == $executable and .dataDir == $data' "$process_marker_path" >/dev/null || {
+            echo 'run-headless-matrix.sh: invalid or foreign marker preserved; cleanup refused' >&2; return 1;
+        }
         marker_pid="$(jq -er '.pid | select(type == "number" and . > 0 and floor == .)' \
             "$process_marker_path" 2>/dev/null || true)"
-        [[ -n "$marker_pid" ]] || marker_pid=unknown
         echo "MATRIX_CLEANUP_BEGIN pid=$marker_pid"
         "$runner" \
-            --scenario-id MATRIX-CLEANUP \
+            --stop-instance \
             --sts2-game-root "$sts2_game_root" \
             --ritsu-workshop-root "$ritsu_workshop_root" \
-            --stop-after-combat-root-snapshot-assertion \
-            --timeout-seconds 90 \
-            --exit-on-complete || cleanup_status=$?
+            "${runtime_arguments[@]}" {matrix_fd}>&- || cleanup_status=$?
         echo "MATRIX_CLEANUP_END exit_code=$cleanup_status"
     fi
     return "$cleanup_status"
@@ -300,11 +358,13 @@ for ((offset = start_at - 1; offset < ${#commands[@]}; offset++)); do
     printf -v game_root_quoted '%q' "$sts2_game_root"
     printf -v ritsu_root_quoted '%q' "$ritsu_workshop_root"
     case_command+=" --sts2-game-root $game_root_quoted --ritsu-workshop-root $ritsu_root_quoted"
+    printf -v runtime_arguments_quoted ' %q' "${runtime_arguments[@]}"
+    case_command+="$runtime_arguments_quoted"
 
     case_started_ms="$(date +%s%3N)"
     echo "MATRIX_CASE_BEGIN index=$index scenario=$scenario_id"
     exit_code=0
-    setsid bash -c "exec $case_command" &
+    setsid bash -c "exec $case_command" {matrix_fd}>&- &
     case_pid=$!
     # Non-interactive Bash starts background children in its own process group,
     # so GNU setsid can exec directly and establishes PGID == child PID. Recheck

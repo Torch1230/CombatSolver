@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "GENERIC-LOOP-STAGNANT-BLOCK-DRAW-V0111",
+  "description": "A zero-cost draw/block recurrence keeps changing exact pile, history, and block state after its defensive value is saturated. Bounded planning must sample the recurrence and then stop without relying on a card-specific rule.",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "LOOPSTAGNANTBLOCKDRAW0111",
+  "enemyCurrentHp": 1,
+  "initialEnemyMoveIds": ["INHALE"],
+  "initialPlayerHp": 80,
+  "initialPlayerMaxHp": 80,
+  "initialPlayerBlock": 0,
+  "initialPlayerEnergy": 0,
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "powers": [
+    { "powerId": "POISON_POWER", "target": "Enemy", "amount": 1 }
+  ],
+  "cards": [
+    { "cardId": "IMPATIENCE", "pile": "Hand", "treatAsDeckCard": true },
+    { "cardId": "FINESSE", "pile": "Discard", "treatAsDeckCard": true }
+  ],
+  "performancePresetForTest": "Low",
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 5000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "expectedInitialBoundaryReason": "None",
+  "expectedInitialExpandedNodesAtMost": 80,
+  "expectedInitialTransitionsAtMost": 160,
+  "expectedInitialCycleShapesDetectedAtLeast": 1,
+  "expectedInitialCycleProbeContinuationsExpandedAtLeast": 1,
+  "expectedInitialCycleProbeContinuationsExpandedAtMost": 40,
+  "expectedInitialCycleCandidatesProtectedAtLeast": 1,
+  "expectedInitialCycleContinuationsStoppedAtLeast": 1,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120
+}

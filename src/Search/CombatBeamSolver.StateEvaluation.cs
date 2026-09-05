@@ -31,6 +31,12 @@ namespace CombatSolver;
 
 internal sealed partial class CombatBeamSolver
 {
+    internal static StrategicEffectRequirements CompleteStrategicEffectRequirements(
+        StrategicEffectRequirements activePowerRequirements)
+        // Latent setup reads AttackPlays and the unconditionally populated PlayerBlock.
+        // Both consumers must declare their inputs before the shared context is built.
+        => activePowerRequirements | StrategicEffectRequirements.AttackPlays;
+
     private SimulationSnapshot Snapshot(
         CombatPredictionSimulator simulator,
         int turn,
@@ -84,7 +90,7 @@ internal sealed partial class CombatBeamSolver
         bool won = boundary != SearchBoundaryReason.EventDefeat
             && !dead
             && !combat.HasPendingChoice
-            && (!simulator.IsInProgress || simulator.IsEnding);
+            && simulator.TerminalStamp is { Outcome: CombatTerminalOutcome.Victory };
         CoverageSummary coverage = GetCoverageSummary(simulator);
         IReadOnlyList<PredictionGap> predictionGaps = coverage.Gaps;
         bool risk = coverage.HasUncompensatedRisk;
@@ -189,7 +195,13 @@ internal sealed partial class CombatBeamSolver
             }
             strategicRequirements |= StrategicEffectModel.Requirements(power);
         }
-        StrategicEffectContext? strategicContext = null;
+        StrategicEffectContext strategicContext = StrategicEffectContext.Build(
+            liveCards,
+            enemyHp,
+            focus.TotalThreat,
+            focus.IncomingHitCount,
+            player.Block,
+            CompleteStrategicEffectRequirements(strategicRequirements));
         StrategicEffectVector strategicEffects = StrategicEffectVector.Zero;
         int offensivePersistentBuffValue = 0;
         PersistentSetupTraits persistentSetupTraits = PersistentSetupTraits.None;
@@ -203,16 +215,9 @@ internal sealed partial class CombatBeamSolver
             {
                 continue;
             }
-            strategicContext ??= StrategicEffectContext.Build(
-                liveCards,
-                enemyHp,
-                focus.TotalThreat,
-                focus.IncomingHitCount,
-                simulator.State.GetCreature(_player.Creature).Block,
-                strategicRequirements);
             StrategicEffectVector effect = StrategicEffectModel.Evaluate(
                 power,
-                strategicContext.Value);
+                strategicContext);
             strategicEffects += effect;
             offensivePersistentBuffValue += effect.DamagePotential + effect.ScalingPotential;
             persistentSetupTraits |= PersistentPowerSetupTrait(power);
@@ -226,16 +231,6 @@ internal sealed partial class CombatBeamSolver
                 playerState.OrbQueue.Orbs,
                 aliveEnemyCount);
         }
-        strategicContext ??= StrategicEffectContext.Build(
-            liveCards,
-            enemyHp,
-            focus.TotalThreat,
-            focus.IncomingHitCount,
-            simulator.State.GetCreature(_player.Creature).Block,
-            strategicRequirements
-                | StrategicEffectRequirements.RemainingTurns
-                | StrategicEffectRequirements.BlockSkillPlays
-                | StrategicEffectRequirements.BestCardValue);
         int latentSetupValue = 0;
         PersistentSetupTraits latentSetupTraits = PersistentSetupTraits.None;
         foreach (PredictedCard latentCard in liveCards)
@@ -248,7 +243,7 @@ internal sealed partial class CombatBeamSolver
             {
                 latentSetupValue = Math.Min(
                     SolverWeights.LatentSetupBeamCap,
-                    latentSetupValue + LatentCardSetupValue(preview, strategicContext.Value));
+                    latentSetupValue + LatentCardSetupValue(preview, strategicContext));
             }
         }
         int replayPotentialValue = ReplayPotentialValue(liveCards);
@@ -443,7 +438,8 @@ internal sealed partial class CombatBeamSolver
             processedEnemyDeaths,
             boundary,
             predictionGaps,
-            simulator);
+            simulator,
+            simulator.TerminalStamp);
     }
 
     private static StateFingerprint BuildCycleShapeKey(
@@ -676,16 +672,16 @@ internal sealed partial class CombatBeamSolver
 
     private StateFingerprint BuildUnorderedPileKey(SimPlayerCombatState playerState)
     {
-        StateFingerprintBuilder key = new();
-        AppendUnorderedPile(ref key, playerState.Hand, 'H');
-        AppendUnorderedPile(ref key, playerState.DrawPile, 'D');
-        AppendUnorderedPile(ref key, playerState.DiscardPile, 'C');
-        AppendUnorderedPile(ref key, playerState.ExhaustPile, 'X');
-        return key.Finish();
+        StateFingerprintBuilder unordered = new();
+        AppendUnorderedPileKey(ref unordered, playerState.Hand, 'H');
+        AppendUnorderedPileKey(ref unordered, playerState.DrawPile, 'D');
+        AppendUnorderedPileKey(ref unordered, playerState.DiscardPile, 'C');
+        AppendUnorderedPileKey(ref unordered, playerState.ExhaustPile, 'X');
+        return unordered.Finish();
     }
 
-    private void AppendUnorderedPile(
-        ref StateFingerprintBuilder key,
+    private void AppendUnorderedPileKey(
+        ref StateFingerprintBuilder unordered,
         SimCardPile pile,
         char marker)
     {
@@ -697,10 +693,11 @@ internal sealed partial class CombatBeamSolver
             first += StateFingerprintBuilder.MixFirst(cardKey.First);
             second += StateFingerprintBuilder.MixSecond(cardKey.Second);
         }
-        key.Add(marker);
-        key.Add(pile.Cards.Count);
-        key.Add(first);
-        key.Add(second);
+        // Keep the unordered key's values and append order exactly unchanged.
+        unordered.Add(marker);
+        unordered.Add(pile.Cards.Count);
+        unordered.Add(first);
+        unordered.Add(second);
     }
 
     private (StateFingerprint Key, int Value) BuildProjectedShuffleOrder(
@@ -1220,6 +1217,7 @@ internal sealed partial class CombatBeamSolver
         key.Add(preview.ExhaustOnNextPlay);
         key.Add(preview.IsSlyThisTurn);
         key.Add(preview.ShouldRetainThisTurn);
+        AppendLocalCardKeywords(ref key, preview);
         key.Add(preview.DeckVersion != null);
         key.Add(preview.HasBeenRemovedFromState);
         EnchantmentStateSupport.Append(ref key, preview.Enchantment);
@@ -1251,6 +1249,30 @@ internal sealed partial class CombatBeamSolver
         if (card.HasExternallyMutableAttachedModels)
             AppendBaseLibCardModifiers(ref key, preview);
         return key.Finish();
+    }
+
+    private static void AppendLocalCardKeywords(
+        ref StateFingerprintBuilder key,
+        CardModel card)
+    {
+        ulong commonKeywordMask = 0;
+        SortedSet<int>? overflowKeywords = null;
+        foreach (CardKeyword keyword in card.GetKeywordsWithSources(KeywordSources.Local))
+        {
+            int value = (int)keyword;
+            if ((uint)value < 64)
+            {
+                commonKeywordMask |= 1UL << value;
+                continue;
+            }
+            (overflowKeywords ??= []).Add(value);
+        }
+        key.Add(commonKeywordMask);
+        key.Add(overflowKeywords?.Count ?? 0);
+        if (overflowKeywords == null)
+            return;
+        foreach (int keyword in overflowKeywords)
+            key.Add(keyword);
     }
 
     private static void AppendBaseLibCardModifiers(

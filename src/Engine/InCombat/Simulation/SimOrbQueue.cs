@@ -98,13 +98,19 @@ internal sealed class SimOrbQueue
     /// <summary>
     /// Mirrors the prediction-relevant orb snapshot and trigger order of <see cref="OrbQueue.BeforeTurnEnd"/>.
     /// </summary>
-    public void BeforeTurnEnd(CombatPredictionSimulator simulator)
+    public bool BeforeTurnEnd(CombatPredictionSimulator simulator)
     {
+        if (simulator.HasPendingChoice)
+            return false;
+
         HashSet<uint> processedEnemyDeaths = [];
         foreach (var orb in Orbs.ToList())
         {
             OrbMirrors.InvokeBeforeTurnEndOrbTrigger(simulator, orb, processedEnemyDeaths);
+            if (simulator.HasPendingChoice)
+                return false;
         }
+        return true;
     }
 
     internal SimOrbQueue Fork(PredictionForkContext context)

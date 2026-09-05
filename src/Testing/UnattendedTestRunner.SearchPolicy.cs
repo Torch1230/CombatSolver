@@ -10,12 +10,25 @@ internal sealed partial class UnattendedTestRunner
 {
     private static async Task AssertSearchPolicySnapshotAsync(CombatState combat)
     {
+        AssertBeamRankOffensiveProgressTieBreak();
+        AssertOrdinaryBeamBoundaryDiversity();
+        AssertStrategicEffectContextRequirements();
+        AssertPrimaryIncumbentFiltering();
+        AssertPrimaryIncumbentEligibility();
+
         if (Environment.ProcessorCount < 2)
         {
             throw new PlatformNotSupportedException(
                 "DOP1/DOP2 搜索等价测试至少需要两个可用逻辑处理器。");
         }
 
+        CombatBeamSolver.VerifyCycleFamilyLayerBudgetPolicyForTesting();
+        CombatBeamSolver.VerifyCycleRegionRetentionPolicyForTesting();
+        CombatBeamSolver.VerifyCycleExitTicketSettlementPolicyForTesting();
+        CombatBeamSolver.VerifyOrderedMutationRetentionPolicyForTesting();
+        CombatBeamSolver.VerifyRoutingChoicePortfolioBoundsForTesting();
+        CombatBeamSolver.VerifyPotionQuotaReservationPolicyForTesting();
+        CombatBeamSolver.VerifyPruneMemoryCheckpointPolicyForTesting();
         AssertAdaptiveFramePressureBaseline();
         await AssertNoGcBudgetTransitionAsync();
 
@@ -52,6 +65,7 @@ internal sealed partial class UnattendedTestRunner
         AssertFullRngStateIdentity(combat);
         AssertRequiredPotionAuditSelectionAndTotals();
         CombatRootSnapshot rootSnapshot = CombatRootSnapshot.Capture(combat);
+        AssertNarrowBeamRecoveryPolicy(rootSnapshot, capturedPolicy);
         await AssertCanceledSearchWorkRecordedOnceAsync(
             rootSnapshot,
             displayNames,
@@ -103,8 +117,10 @@ internal sealed partial class UnattendedTestRunner
         {
             throw new InvalidOperationException(
                 $"节点上限搜索没有释放被预算丢弃的模拟器快照：" +
-                $"dop1={serialResult.NodeLimitSnapshotsReleased} " +
-                $"dop2={parallelResult.NodeLimitSnapshotsReleased}。");
+                $"dop1={serialResult.NodeLimitSnapshotsReleased}/" +
+                $"{serialResult.ExpandedNodes}/{serialResult.BoundaryReason} " +
+                $"dop2={parallelResult.NodeLimitSnapshotsReleased}/" +
+                $"{parallelResult.ExpandedNodes}/{parallelResult.BoundaryReason}。");
         }
 
         SolverPotionPolicy changedPotionPolicy = capturedPolicy.PotionPolicy == SolverPotionPolicy.Disabled
@@ -130,6 +146,430 @@ internal sealed partial class UnattendedTestRunner
         {
             SolverSettings.ApplyForTesting(originalSettings);
         }
+    }
+
+    private static void AssertBeamRankOffensiveProgressTieBreak()
+    {
+        const double tiedScore = 1234.5d;
+        double nextScore = Math.BitIncrement(tiedScore);
+
+        static void AssertEarlier(
+            (double Score, int OffensiveProgress, int ActionCount) expected,
+            (double Score, int OffensiveProgress, int ActionCount) other,
+            string failure)
+        {
+            int forward = CombatBeamSolver.CompareBeamRankOrder(
+                expected.Score,
+                expected.OffensiveProgress,
+                expected.ActionCount,
+                other.Score,
+                other.OffensiveProgress,
+                other.ActionCount);
+            int reverse = CombatBeamSolver.CompareBeamRankOrder(
+                other.Score,
+                other.OffensiveProgress,
+                other.ActionCount,
+                expected.Score,
+                expected.OffensiveProgress,
+                expected.ActionCount);
+            if (forward >= 0 || reverse <= 0)
+                throw new InvalidOperationException(failure);
+        }
+
+        AssertEarlier(
+            (nextScore, OffensiveProgress: 0, ActionCount: 99),
+            (tiedScore, OffensiveProgress: int.MaxValue, ActionCount: 0),
+            "Beam 排序在评分不同时错误地让进攻进度覆盖了评分顺序。");
+        AssertEarlier(
+            (tiedScore, OffensiveProgress: 0, ActionCount: 3),
+            (tiedScore, OffensiveProgress: int.MaxValue, ActionCount: 4),
+            "Beam 同分时错误地让进攻进度覆盖了较短路线。");
+        AssertEarlier(
+            (tiedScore, OffensiveProgress: 55, ActionCount: 3),
+            (tiedScore, OffensiveProgress: 50, ActionCount: 3),
+            "Beam 同分同动作数时没有保留更高的可兑现进攻进度。");
+
+        int exactTie = CombatBeamSolver.CompareBeamRankOrder(
+            tiedScore,
+            leftOffensiveProgressValue: 55,
+            leftActionCount: 3,
+            tiedScore,
+            rightOffensiveProgressValue: 55,
+            rightActionCount: 3);
+        if (exactTie != 0)
+            throw new InvalidOperationException("Beam 完全相同的排序键没有保持相等。");
+    }
+
+    private static void AssertPrimaryIncumbentEligibility()
+    {
+        static void AssertCandidate(
+            SolverPotionPolicy? effectivePolicy,
+            bool expected,
+            int minimumUses = 0,
+            int? maximumUses = null,
+            bool completeVictory = true,
+            bool satisfiesHardRules = true,
+            int explicitUses = 0,
+            int deficit = 5,
+            int? endedTurn = 3,
+            PotionFreePolicyBaseline? baseline = null,
+            PrimarySearchIncumbent? initial = null)
+        {
+            PrimarySearchIncumbent? incumbent = initial;
+            bool changed = CombatBeamSolver.TryTightenPrimarySearchIncumbent(
+                baseline,
+                minimumUses,
+                maximumUses,
+                completeVictory,
+                satisfiesHardRules,
+                explicitUses,
+                deficit,
+                endedTurn,
+                ref incumbent,
+                effectivePolicy);
+            PrimarySearchIncumbent? expectedIncumbent = expected
+                ? new PrimarySearchIncumbent(deficit, endedTurn!.Value)
+                : initial;
+            if (changed != expected || incumbent != expectedIncumbent)
+            {
+                throw new InvalidOperationException(
+                    $"主结果下界资格或更新错误：policy={effectivePolicy} min={minimumUses} " +
+                    $"max={maximumUses} complete={completeVictory} hard={satisfiesHardRules} " +
+                    $"explicit={explicitUses} loss={deficit} turn={endedTurn} expected={expected}。");
+            }
+        }
+
+        // The current solver's effective policy is required: a zero-use winner is
+        // admissible in the main/Disabled searches, but not in a require-use search.
+        AssertCandidate(SolverPotionPolicy.Disabled, expected: true);
+        AssertCandidate(SolverPotionPolicy.Smart, expected: true);
+        AssertCandidate(SolverPotionPolicy.Disabled, expected: true, maximumUses: 0);
+        AssertCandidate(SolverPotionPolicy.RequireAtLeastOne, expected: false);
+        AssertCandidate(null, expected: false);
+        AssertCandidate(SolverPotionPolicy.Smart, expected: false, satisfiesHardRules: false);
+        AssertCandidate(SolverPotionPolicy.Smart, expected: false, completeVictory: false);
+        AssertCandidate(SolverPotionPolicy.Smart, expected: false, endedTurn: null);
+        AssertCandidate(SolverPotionPolicy.Smart, expected: false, minimumUses: 1);
+        AssertCandidate(SolverPotionPolicy.Smart, expected: false, explicitUses: 1);
+        if (SolverInterimResultOrdering.IsCompleteVictory(0, true, false, 1)
+            || SolverInterimResultOrdering.IsCompleteVictory(1, false, false, 1)
+            || SolverInterimResultOrdering.IsCompleteVictory(1, true, true, 1)
+            || SolverInterimResultOrdering.IsCompleteVictory(1, true, false, 0)
+            || !SolverInterimResultOrdering.IsCompleteVictory(1, true, false, 1))
+        {
+            throw new InvalidOperationException("主结果下界不能把死亡或未完成候选作为完整获胜凭证。");
+        }
+
+        // A better loss wins even at a later turn; exact primary ties remain open
+        // for the final ordering's theft, sold-HP and other resource tie-breaks.
+        AssertCandidate(SolverPotionPolicy.Smart, expected: true,
+            deficit: 4, endedTurn: 99, initial: new PrimarySearchIncumbent(5, 3));
+        AssertCandidate(SolverPotionPolicy.Smart, expected: true,
+            endedTurn: 2, initial: new PrimarySearchIncumbent(5, 3));
+        AssertCandidate(SolverPotionPolicy.Smart, expected: false,
+            initial: new PrimarySearchIncumbent(5, 3));
+        AssertCandidate(SolverPotionPolicy.Smart, expected: false,
+            deficit: 6, endedTurn: 1, initial: new PrimarySearchIncumbent(5, 3));
+        AssertCandidate(SolverPotionPolicy.Smart, expected: false,
+            endedTurn: 4, initial: new PrimarySearchIncumbent(5, 3));
+
+        PrimarySearchIncumbent bound = new(5, 3);
+        if (CombatBeamSolver.ShouldPruneByPrimaryIncumbent(4, 99, bound)
+            || CombatBeamSolver.ShouldPruneByPrimaryIncumbent(5, 3, bound)
+            || CombatBeamSolver.ShouldPruneByPrimaryIncumbent(5, 2, bound)
+            || !CombatBeamSolver.ShouldPruneByPrimaryIncumbent(5, 4, bound)
+            || !CombatBeamSolver.ShouldPruneByPrimaryIncumbent(6, 1, bound))
+        {
+            throw new InvalidOperationException("主结果下界破坏了低累计战损长线或同损同回合候选。");
+        }
+
+        // Exercise the existing exact-layer gate in this fixture as well: the
+        // extension must not turn unaudited/soft-policy-ineligible potion wins into bounds.
+        PotionFreePolicyBaseline audited = new(true, 5, 75, 3);
+        AssertCandidate(null, expected: true, minimumUses: 1, maximumUses: 1,
+            explicitUses: 1, deficit: 4, endedTurn: 99, baseline: audited);
+        AssertCandidate(null, expected: true, minimumUses: 1, maximumUses: 1,
+            explicitUses: 1, endedTurn: 2, baseline: audited);
+        AssertCandidate(SolverPotionPolicy.Smart, expected: false,
+            minimumUses: 1, maximumUses: 1, explicitUses: 1, deficit: 4);
+        AssertCandidate(null, expected: false, minimumUses: 1, maximumUses: 2,
+            explicitUses: 1, deficit: 4, baseline: audited);
+        AssertCandidate(null, expected: false, minimumUses: 1, maximumUses: 1,
+            explicitUses: 1, baseline: audited);
+        AssertCandidate(null, expected: false, minimumUses: 1, maximumUses: 1,
+            explicitUses: 1, endedTurn: 4, baseline: audited);
+        AssertCandidate(null, expected: false, minimumUses: 1, maximumUses: 1,
+            explicitUses: 1, deficit: 4, satisfiesHardRules: false, baseline: audited);
+        AssertCandidate(null, expected: false, minimumUses: 1, maximumUses: 1,
+            explicitUses: 1, deficit: 4, completeVictory: false, baseline: audited);
+        AssertCandidate(null, expected: false, minimumUses: 1, maximumUses: 1,
+            deficit: 4, baseline: audited);
+    }
+
+    private sealed record BeamBoundaryTestCandidate(
+        int Identity,
+        double Score,
+        int Actions,
+        int OffensiveProgress,
+        int Potions = 0,
+        bool Victory = false,
+        CombatBeamSolver.OrdinaryBeamTacticalValues? Tactical = null);
+
+    private static void AssertOrdinaryBeamBoundaryDiversity()
+    {
+        static CombatBeamSolver.OrdinaryBeamTacticalValues GetTactical(
+            BeamBoundaryTestCandidate candidate)
+            => candidate.Tactical ?? throw new InvalidOperationException(
+                "普通 Beam 战术排序读取了必保节点或本应旁路的候选。");
+
+        static void AssertSelection(
+            IReadOnlyList<BeamBoundaryTestCandidate> pool,
+            int[] original,
+            int[] required,
+            int[] expected,
+            bool finalQualityFirst = false,
+            bool useTacticalOrder = false)
+        {
+            List<BeamBoundaryTestCandidate> selected = original
+                .Select(identity => pool.Single(candidate => candidate.Identity == identity))
+                .ToList();
+            List<BeamBoundaryTestCandidate> requiredNodes = required
+                .Select(identity => pool.Single(candidate => candidate.Identity == identity))
+                .ToList();
+            BeamBoundaryTestCandidate[] before = selected.ToArray();
+            for (int repetition = 0; repetition < 2; repetition++)
+            {
+                selected = before.ToList();
+                CombatBeamSolver.DiversifyOrdinaryBeamBoundary(
+                    pool,
+                    selected,
+                    requiredNodes,
+                    candidate => (
+                        candidate.Score,
+                        candidate.Actions,
+                        candidate.OffensiveProgress,
+                        candidate.Potions,
+                        candidate.Victory),
+                    finalQualityFirst,
+                    useTacticalOrder ? GetTactical : null);
+                if (!selected.Select(candidate => candidate.Identity).SequenceEqual(expected)
+                    || selected.Count != before.Length
+                    || selected.Distinct(ReferenceEqualityComparer.Instance).Count() != selected.Count
+                    || selected.Any(candidate => !pool.Any(item => ReferenceEquals(item, candidate)))
+                    || requiredNodes.Any(candidate =>
+                        !ReferenceEquals(selected[Array.IndexOf(before, candidate)], candidate))
+                    || !selected.GroupBy(candidate => candidate.Potions)
+                        .OrderBy(group => group.Key)
+                        .Select(group => (group.Key, Count: group.Count()))
+                        .SequenceEqual(before.GroupBy(candidate => candidate.Potions)
+                            .OrderBy(group => group.Key)
+                            .Select(group => (group.Key, Count: group.Count()))))
+                {
+                    throw new InvalidOperationException(
+                        "普通 Beam 同分截线没有保持预期多样性、引用、药水席数或确定性。");
+                }
+            }
+        }
+
+        BeamBoundaryTestCandidate[] tied = Enumerable.Range(0, 12)
+            .Select(index => new BeamBoundaryTestCandidate(
+                index, Score: 10, Actions: 2, OffensiveProgress: index < 4 ? 18 : 15))
+            .ToArray();
+        AssertSelection(tied, [0, 1, 2, 3], [], [0, 4, 1, 5]);
+        AssertSelection(tied, [0], [], [0]);
+        AssertSelection(tied, [], [], []);
+        AssertSelection(tied, [0, 1], [0, 1], [0, 1]);
+        AssertSelection(tied, [0, 1, 2, 3, 4], [1], [0, 1, 4, 2, 5]);
+        AssertSelection(tied, [0, 1, 2, 3], [], [0, 1, 2, 3], finalQualityFirst: true);
+        int[] all = Enumerable.Range(0, tied.Length).ToArray();
+        AssertSelection(tied, all, [], all);
+        AssertSelection(
+            tied.Select(candidate => candidate with { OffensiveProgress = 18 }).ToArray(),
+            [0, 1, 2, 3], [], [0, 1, 2, 3]);
+        AssertSelection(
+            tied.Select(candidate => candidate with { Victory = candidate.Identity == 11 }).ToArray(),
+            [0, 1, 2, 3], [], [0, 1, 2, 3]);
+
+        // Required replacement can put a worse node in the middle of selected. Neither it,
+        // a higher score, nor a shorter/longer action count belongs to the ordinary tie.
+        BeamBoundaryTestCandidate[] primaryBoundaries =
+        [
+            new(100, Score: Math.BitIncrement(10d), Actions: 99, OffensiveProgress: 0),
+            new(300, Score: 10, Actions: 1, OffensiveProgress: 0),
+            .. tied,
+            new(400, Score: 10, Actions: 3, OffensiveProgress: int.MaxValue),
+            new(200, Score: 9, Actions: 1, OffensiveProgress: int.MaxValue),
+        ];
+        AssertSelection(
+            primaryBoundaries,
+            [0, 100, 1, 200, 300, 2, 3], [200],
+            [0, 100, 4, 200, 300, 1, 5]);
+        AssertSelection(
+            tied.Select(candidate => candidate with { Score = candidate.Identity < 4 ? 11 : 10 })
+                .ToArray(),
+            [0, 1, 2, 3], [], [0, 1, 2, 3]);
+
+        BeamBoundaryTestCandidate[] potions = Enumerable.Range(0, 8)
+            .Select(index => new BeamBoundaryTestCandidate(
+                index, Score: 10, Actions: 2,
+                OffensiveProgress: index < 4 ? 18 : 15,
+                Potions: index % 2))
+            .ToArray();
+        AssertSelection(potions, [0, 1, 2, 3], [], [0, 1, 4, 5]);
+        AssertSelection(potions, [0, 1], [], [0, 1]);
+
+        // Beam rank is deliberately different from the policy label's score. Only a
+        // turn + complete production-label tie may change order within each progress group.
+        int[] reachable = [25, 14, 18, 11, 25, 15, 13, 23, 9];
+        int[] hand = [5, 5, 5, 5, 5, 5, 6, 6, 6];
+        BeamBoundaryTestCandidate[] tacticalTie = Enumerable.Range(0, 9)
+            .Select(index => new BeamBoundaryTestCandidate(
+                index,
+                Score: 1_581_982,
+                Actions: 18,
+                OffensiveProgress: index < 3 ? 18 : 15,
+                Tactical: new CombatBeamSolver.OrdinaryBeamTacticalValues(
+                    Turn: 3,
+                    PotionCount: 0,
+                    PotionStrategicCost: 0,
+                    FutureSoldHp: 1,
+                    CumulativePlayerHpLost: 1,
+                    ActionCount: 18,
+                    Score: 801_982,
+                    ZeroCostPlayableCount: 1,
+                    ReachableHandValue: reachable[index],
+                    HandCount: hand[index])))
+            .ToArray();
+        int[] seven = [0, 1, 2, 3, 4, 5, 6];
+        AssertSelection(tacticalTie, seven, [], [0, 3, 1, 4, 2, 5, 6]);
+        AssertSelection(tacticalTie, seven, [], [0, 4, 2, 7, 1, 5, 6],
+            useTacticalOrder: true);
+
+        // Routing members keep their original progress-group positions, including an
+        // unselected tactical extreme. Their presence does not block route-less peers.
+        AssertSelection(
+            tacticalTie.Select(candidate => candidate with
+            {
+                Tactical = GetTactical(candidate) with { HasRetainedRoutingChoice = true },
+            }).ToArray(),
+            seven, [], [0, 3, 1, 4, 2, 5, 6], useTacticalOrder: true);
+        AssertSelection(
+            tacticalTie.Select(candidate => candidate.Identity is 1 or 4 or 6 or 8
+                ? candidate with
+                {
+                    Tactical = GetTactical(candidate) with
+                    {
+                        HasRetainedRoutingChoice = true,
+                        ZeroCostPlayableCount = 99,
+                        ReachableHandValue = 99,
+                        HandCount = 99,
+                    },
+                }
+                : candidate).ToArray(),
+            seven, [], [0, 7, 1, 4, 2, 5, 6], useTacticalOrder: true);
+
+        // Zero-cost availability outranks reachable value; hand count breaks only its tie.
+        AssertSelection(
+            tacticalTie.Select(candidate => candidate with
+            {
+                Tactical = candidate.Identity switch
+                {
+                    3 => GetTactical(candidate) with
+                    {
+                        ZeroCostPlayableCount = 2,
+                        ReachableHandValue = 0,
+                        HandCount = 0,
+                    },
+                    6 => GetTactical(candidate) with { ReachableHandValue = 25 },
+                    _ => GetTactical(candidate),
+                },
+            }).ToArray(),
+            seven, [], [0, 3, 2, 6, 1, 4, 7], useTacticalOrder: true);
+        AssertSelection(
+            tacticalTie.Select(candidate => candidate with
+            {
+                Tactical = GetTactical(candidate) with
+                {
+                    ZeroCostPlayableCount = 1,
+                    ReachableHandValue = 1,
+                    HandCount = 1,
+                },
+            }).ToArray(),
+            seven, [], [0, 3, 1, 4, 2, 5, 6], useTacticalOrder: true);
+
+        // Unequal cohorts are deliberately interleaved. Even an extreme tactical value
+        // cannot move a cohort into another label's slots. Exercise every key component,
+        // including an exact policy-score difference smaller than any scoring heuristic.
+        Func<CombatBeamSolver.OrdinaryBeamTacticalValues,
+            CombatBeamSolver.OrdinaryBeamTacticalValues>[] changePolicy =
+        [
+            values => values with { Turn = values.Turn + 1 },
+            values => values with { PotionCount = values.PotionCount + 1 },
+            values => values with { PotionStrategicCost = values.PotionStrategicCost + 1 },
+            values => values with { FutureSoldHp = values.FutureSoldHp + 1 },
+            values => values with { CumulativePlayerHpLost = values.CumulativePlayerHpLost + 1 },
+            values => values with { ActionCount = values.ActionCount + 1 },
+            values => values with { Score = Math.BitIncrement(values.Score) },
+        ];
+        foreach (var change in changePolicy)
+        {
+            BeamBoundaryTestCandidate[] interleaved = tacticalTie.Select(candidate =>
+            {
+                CombatBeamSolver.OrdinaryBeamTacticalValues values = GetTactical(candidate);
+                if (candidate.Identity is 4 or 6 or 8)
+                    values = change(values);
+                if (candidate.Identity == 8)
+                    values = values with { ReachableHandValue = 999 };
+                return candidate with { Tactical = values };
+            }).ToArray();
+            AssertSelection(interleaved, seven, [], [0, 7, 2, 8, 1, 5, 4],
+                useTacticalOrder: true);
+        }
+
+        AssertSelection(
+            tacticalTie.Select(candidate => candidate.Identity == 3
+                ? candidate with { Tactical = null }
+                : candidate).ToArray(),
+            seven, [3], [0, 4, 2, 3, 7, 1, 5], useTacticalOrder: true);
+        AssertSelection(
+            potions.Select(candidate => candidate with
+            {
+                Tactical = new CombatBeamSolver.OrdinaryBeamTacticalValues(
+                    Turn: 1,
+                    PotionCount: candidate.Potions,
+                    PotionStrategicCost: 0,
+                    FutureSoldHp: 0,
+                    CumulativePlayerHpLost: 0,
+                    ActionCount: candidate.Actions,
+                    Score: candidate.Score,
+                    ZeroCostPlayableCount: 1,
+                    ReachableHandValue: candidate.Identity,
+                    HandCount: 1),
+            }).ToArray(),
+            [0, 1, 2, 3], [], [2, 3, 6, 7], useTacticalOrder: true);
+
+        // Missing tactical payloads make the callback fail if any existing bypass starts
+        // consulting the new descriptor, including required-only and fully retained pools.
+        BeamBoundaryTestCandidate[] bypass = tacticalTie
+            .Select(candidate => candidate with { Tactical = null }).ToArray();
+        AssertSelection(bypass, seven, [], seven,
+            finalQualityFirst: true, useTacticalOrder: true);
+        AssertSelection(bypass, [0], [], [0], useTacticalOrder: true);
+        AssertSelection(bypass, [], [], [], useTacticalOrder: true);
+        AssertSelection(bypass, seven, seven, seven, useTacticalOrder: true);
+        int[] allTactical = Enumerable.Range(0, bypass.Length).ToArray();
+        AssertSelection(bypass, allTactical, [], allTactical, useTacticalOrder: true);
+        AssertSelection(
+            bypass.Select(candidate => candidate with { OffensiveProgress = 15 }).ToArray(),
+            seven, [], seven, useTacticalOrder: true);
+        AssertSelection(
+            bypass.Select(candidate => candidate with { Victory = candidate.Identity == 8 })
+                .ToArray(),
+            seven, [], seven, useTacticalOrder: true);
+        AssertSelection(
+            bypass.Select(candidate => candidate with { Score = candidate.Identity < 7 ? 11 : 10 })
+                .ToArray(),
+            seven, [], seven, useTacticalOrder: true);
     }
 
     private static async Task AssertCanceledSearchWorkRecordedOnceAsync(
@@ -340,6 +780,19 @@ internal sealed partial class UnattendedTestRunner
             forceCollection: true);
         await AssertNoGcDisableTransitionAsync(initialBudgetBytes, deadline.Token);
         await AssertManualGcAtInSearchCheckpointAsync(initialBudgetBytes, deadline.Token);
+        await AssertDeferredReclaimDuringInSearchCheckpointAsync(
+            initialBudgetBytes,
+            deadline.Token);
+        await AssertDeferredProcessReleaseDuringCanceledCheckpointAsync(
+            initialBudgetBytes,
+            deadline.Token);
+        await AssertDeferredReclaimSurvivesFaultedCheckpointAsync(
+            initialBudgetBytes,
+            deadline.Token);
+        await AssertRegionExitFailureSettlesDeferredRequestsAsync(
+            initialBudgetBytes,
+            deadline.Token);
+        await AssertInSearchDefaultGcFallbackAsync(initialBudgetBytes, deadline.Token);
         await AssertInSearchReclaimAsync(deadline.Token);
         await AssertCombatEndReclaimPolicyAsync(deadline.Token);
         SearchGcPolicy.ResetCountersForTesting();
@@ -496,6 +949,369 @@ internal sealed partial class UnattendedTestRunner
         }
     }
 
+    private static async Task AssertDeferredReclaimDuringInSearchCheckpointAsync(
+        long budgetBytes,
+        CancellationToken cancellationToken)
+    {
+        await SearchGcPolicy.ReclaimIfPendingAsync(
+            "unattended_deferred_reclaim_checkpoint_setup",
+            forceCollection: true);
+        SearchGcPolicy.ResetCountersForTesting();
+        SearchMemoryPressureSignal signal = new();
+        IDisposable? scope = SearchGcPolicy.EnterLowLatencySearch(
+            enableNoGcRegion: true,
+            budgetBytes,
+            signal,
+            cancellationToken);
+        Task? deferredReclaim = null;
+        Task? checkpoint = null;
+        try
+        {
+            deferredReclaim = SearchGcPolicy.ReclaimIfPendingAsync(
+                "unattended_deferred_reclaim_during_search",
+                forceCollection: true,
+                includeCombatLifecyclePressure: false);
+            if (deferredReclaim.IsCompleted)
+            {
+                throw new InvalidOperationException(
+                    "活动搜索期间的后台 GC 请求没有等到搜索退出边界。");
+            }
+
+            checkpoint = Task.Run(
+                () => signal.ReclaimAndContinue(cancellationToken),
+                cancellationToken);
+            await checkpoint.WaitAsync(cancellationToken);
+            if (signal.ReclaimCount != 1)
+                throw new InvalidOperationException("deferred GC 请求阻塞了搜索内检查点。");
+            if (deferredReclaim.IsCompleted)
+            {
+                throw new InvalidOperationException(
+                    "搜索内检查点提前完成了必须在搜索退出后执行的后台 GC 请求。");
+            }
+
+            scope.Dispose();
+            scope = null;
+            await deferredReclaim.WaitAsync(cancellationToken);
+            if (SearchGcPolicy.BackgroundReclaimStartedCountForTesting != 1
+                || SearchGcPolicy.BackgroundGen2CompletedCountForTesting != 1)
+            {
+                throw new InvalidOperationException(
+                    $"deferred GC 请求没有在退出后恰好完成一次后台回收：" +
+                    $"reclaims={SearchGcPolicy.BackgroundReclaimStartedCountForTesting} " +
+                    $"gen2={SearchGcPolicy.BackgroundGen2CompletedCountForTesting}。");
+            }
+        }
+        finally
+        {
+            scope?.Dispose();
+            if (checkpoint != null)
+                await checkpoint.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            if (deferredReclaim != null)
+                await deferredReclaim.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            await SearchGcPolicy.ExitNoGcRegionWhenSearchesIdleAsync("no_gc_disabled")
+                .ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            await SearchGcPolicy.ReclaimIfPendingAsync(
+                    "unattended_deferred_reclaim_checkpoint_cleanup")
+                .ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+        }
+    }
+
+    private static async Task AssertDeferredProcessReleaseDuringCanceledCheckpointAsync(
+        long budgetBytes,
+        CancellationToken cancellationToken)
+    {
+        await SearchGcPolicy.ReclaimIfPendingAsync(
+            "unattended_canceled_checkpoint_deferred_setup",
+            forceCollection: true);
+        SearchGcPolicy.ResetCountersForTesting();
+        using CancellationTokenSource checkpointCancellation =
+            CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        SearchMemoryPressureSignal signal = new();
+        IDisposable? scope = SearchGcPolicy.EnterLowLatencySearch(
+            enableNoGcRegion: true,
+            budgetBytes,
+            signal,
+            cancellationToken);
+        Task? checkpoint = null;
+        Task? processRelease = null;
+        Task? duplicateProcessRelease = null;
+        try
+        {
+            Task checkpointReached = SearchGcPolicy.PauseNextInSearchCheckpointForTesting();
+            checkpoint = Task.Run(
+                () => signal.ReclaimAndContinue(checkpointCancellation.Token),
+                CancellationToken.None);
+            Task firstCompleted = await Task.WhenAny(checkpointReached, checkpoint)
+                .WaitAsync(cancellationToken);
+            if (ReferenceEquals(firstCompleted, checkpoint))
+            {
+                await checkpoint;
+                throw new InvalidOperationException(
+                    "搜索内 checkpoint 没有停在 deferred 请求竞态边界。");
+            }
+            await checkpointReached;
+
+            processRelease = SearchGcPolicy.ForceManualProcessMemoryRelease();
+            duplicateProcessRelease = SearchGcPolicy.ForceManualProcessMemoryRelease();
+            if (processRelease.IsCompleted
+                || duplicateProcessRelease.IsCompleted
+                || !ReferenceEquals(processRelease, duplicateProcessRelease))
+            {
+                throw new InvalidOperationException(
+                    "checkpoint 运行中的重复 trim 请求没有共享搜索退出后的完成信号。");
+            }
+
+            checkpointCancellation.Cancel();
+            SearchGcPolicy.ResumeInSearchCheckpointForTesting();
+            try
+            {
+                await checkpoint.WaitAsync(cancellationToken);
+                throw new InvalidOperationException("已取消的搜索内 checkpoint 没有传播取消。");
+            }
+            catch (OperationCanceledException) when (checkpointCancellation.IsCancellationRequested)
+            {
+            }
+            if (processRelease.IsCompleted)
+            {
+                throw new InvalidOperationException(
+                    "checkpoint 取消提前完成了必须等搜索退出的 trim 请求。");
+            }
+
+            scope.Dispose();
+            scope = null;
+            await Task.WhenAll(processRelease, duplicateProcessRelease)
+                .WaitAsync(cancellationToken);
+            if (SearchGcPolicy.BackgroundReclaimStartedCountForTesting != 1
+                || SearchGcPolicy.BackgroundGen2CompletedCountForTesting != 1)
+            {
+                throw new InvalidOperationException(
+                    $"checkpoint 取消后的 trim 没有恰好完成一次后台回收：" +
+                    $"reclaims={SearchGcPolicy.BackgroundReclaimStartedCountForTesting} " +
+                    $"gen2={SearchGcPolicy.BackgroundGen2CompletedCountForTesting}。");
+            }
+        }
+        finally
+        {
+            checkpointCancellation.Cancel();
+            SearchGcPolicy.ResumeInSearchCheckpointForTesting();
+            if (checkpoint != null)
+                await checkpoint.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            scope?.Dispose();
+            if (processRelease != null)
+            {
+                await processRelease.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            }
+            if (duplicateProcessRelease != null)
+            {
+                await duplicateProcessRelease
+                    .ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            }
+            await SearchGcPolicy.ExitNoGcRegionWhenSearchesIdleAsync("no_gc_disabled")
+                .ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            await SearchGcPolicy.ReclaimIfPendingAsync(
+                    "unattended_canceled_checkpoint_deferred_cleanup")
+                .ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+        }
+    }
+
+    private static async Task AssertRegionExitFailureSettlesDeferredRequestsAsync(
+        long budgetBytes,
+        CancellationToken cancellationToken)
+    {
+        await SearchGcPolicy.ReclaimIfPendingAsync(
+            "unattended_region_exit_failure_setup",
+            forceCollection: true);
+        SearchGcPolicy.ResetCountersForTesting();
+        IDisposable? scope = SearchGcPolicy.EnterLowLatencySearch(
+            enableNoGcRegion: true,
+            budgetBytes,
+            new SearchMemoryPressureSignal(),
+            cancellationToken);
+        Task? regionExit = null;
+        Task? deferredRelease = null;
+        try
+        {
+            regionExit = SearchGcPolicy.ExitNoGcRegionWhenSearchesIdleAsync(
+                "no_gc_disabled");
+            deferredRelease = SearchGcPolicy.ForceManualProcessMemoryRelease();
+            if (regionExit.IsCompleted || deferredRelease.IsCompleted)
+            {
+                throw new InvalidOperationException(
+                    "region-exit 失败测试的请求没有等到活动搜索退出。");
+            }
+            SearchGcPolicy.FailNextRegionExitAfterTransitionForTesting();
+            scope.Dispose();
+            scope = null;
+
+            await AssertInjectedRegionExitFailureAsync(
+                regionExit,
+                "region-exit",
+                cancellationToken);
+            await AssertInjectedRegionExitFailureAsync(
+                deferredRelease,
+                "deferred trim",
+                cancellationToken);
+
+            Task retry = SearchGcPolicy.ForceManualProcessMemoryRelease();
+            await retry.WaitAsync(cancellationToken);
+            if (SearchGcPolicy.BackgroundReclaimStartedCountForTesting != 1
+                || SearchGcPolicy.BackgroundGen2CompletedCountForTesting != 1)
+            {
+                throw new InvalidOperationException(
+                    $"region-exit 失败后的新请求没有恢复：" +
+                    $"reclaims={SearchGcPolicy.BackgroundReclaimStartedCountForTesting} " +
+                    $"gen2={SearchGcPolicy.BackgroundGen2CompletedCountForTesting}。");
+            }
+        }
+        finally
+        {
+            scope?.Dispose();
+            if (regionExit != null)
+                await regionExit.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            if (deferredRelease != null)
+            {
+                await deferredRelease
+                    .ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            }
+            SearchGcPolicy.ResetCountersForTesting();
+            await SearchGcPolicy.ExitNoGcRegionWhenSearchesIdleAsync("no_gc_disabled")
+                .ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            await SearchGcPolicy.ReclaimIfPendingAsync(
+                    "unattended_region_exit_failure_cleanup",
+                    forceCollection: true)
+                .ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+        }
+    }
+
+    private static async Task AssertDeferredReclaimSurvivesFaultedCheckpointAsync(
+        long budgetBytes,
+        CancellationToken cancellationToken)
+    {
+        await SearchGcPolicy.ReclaimIfPendingAsync(
+            "unattended_faulted_checkpoint_deferred_setup",
+            forceCollection: true);
+        SearchGcPolicy.ResetCountersForTesting();
+        SearchMemoryPressureSignal signal = new();
+        IDisposable? scope = SearchGcPolicy.EnterLowLatencySearch(
+            enableNoGcRegion: true,
+            budgetBytes,
+            signal,
+            cancellationToken);
+        Task? checkpoint = null;
+        Task? checkpointJoin = null;
+        Task? deferredReclaim = null;
+        try
+        {
+            Task checkpointReached = SearchGcPolicy.PauseNextInSearchCheckpointForTesting();
+            checkpoint = Task.Run(
+                () => signal.ReclaimAndContinue(cancellationToken),
+                CancellationToken.None);
+            Task firstCompleted = await Task.WhenAny(checkpointReached, checkpoint)
+                .WaitAsync(cancellationToken);
+            if (ReferenceEquals(firstCompleted, checkpoint))
+            {
+                await checkpoint;
+                throw new InvalidOperationException(
+                    "搜索内 checkpoint 没有停在 fault/deferred 竞态边界。");
+            }
+            await checkpointReached;
+
+            checkpointJoin = SearchGcPolicy.ForceManualGc();
+            deferredReclaim = SearchGcPolicy.ReclaimIfPendingAsync(
+                "unattended_deferred_after_checkpoint_started",
+                forceCollection: true,
+                includeCombatLifecyclePressure: false);
+            if (deferredReclaim.IsCompleted || ReferenceEquals(checkpointJoin, deferredReclaim))
+            {
+                throw new InvalidOperationException(
+                    "checkpoint 加入者与 post-search deferred 请求错误共享了完成信号。");
+            }
+
+            SearchGcPolicy.FailNextInSearchCheckpointAfterTransitionForTesting();
+            SearchGcPolicy.ResumeInSearchCheckpointForTesting();
+            await AssertInjectedInSearchCheckpointFailureAsync(
+                checkpoint,
+                "checkpoint caller",
+                cancellationToken);
+            await AssertInjectedInSearchCheckpointFailureAsync(
+                checkpointJoin,
+                "checkpoint joiner",
+                cancellationToken);
+            if (deferredReclaim.IsCompleted)
+            {
+                throw new InvalidOperationException(
+                    "faulted checkpoint 提前落定了独立的 post-search deferred 请求。");
+            }
+
+            scope.Dispose();
+            scope = null;
+            await deferredReclaim.WaitAsync(cancellationToken);
+            if (SearchGcPolicy.BackgroundReclaimStartedCountForTesting != 1
+                || SearchGcPolicy.BackgroundGen2CompletedCountForTesting != 1)
+            {
+                throw new InvalidOperationException(
+                    $"faulted checkpoint 后的 deferred 请求没有恢复：" +
+                    $"reclaims={SearchGcPolicy.BackgroundReclaimStartedCountForTesting} " +
+                    $"gen2={SearchGcPolicy.BackgroundGen2CompletedCountForTesting}。");
+            }
+        }
+        finally
+        {
+            SearchGcPolicy.ResumeInSearchCheckpointForTesting();
+            if (checkpoint != null)
+                await checkpoint.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            if (checkpointJoin != null)
+                await checkpointJoin.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            scope?.Dispose();
+            if (deferredReclaim != null)
+            {
+                await deferredReclaim
+                    .ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            }
+            SearchGcPolicy.ResetCountersForTesting();
+            await SearchGcPolicy.ExitNoGcRegionWhenSearchesIdleAsync("no_gc_disabled")
+                .ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            await SearchGcPolicy.ReclaimIfPendingAsync(
+                    "unattended_faulted_checkpoint_deferred_cleanup",
+                    forceCollection: true)
+                .ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+        }
+    }
+
+    private static async Task AssertInjectedRegionExitFailureAsync(
+        Task operation,
+        string waiter,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await operation.WaitAsync(cancellationToken);
+        }
+        catch (InvalidOperationException ex) when (
+            ex.Message == "无人测试注入的 NoGC region-exit 完成失败。")
+        {
+            return;
+        }
+        throw new InvalidOperationException($"{waiter} 没有收到同一个 region-exit 失败。");
+    }
+
+    private static async Task AssertInjectedInSearchCheckpointFailureAsync(
+        Task operation,
+        string waiter,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await operation.WaitAsync(cancellationToken);
+        }
+        catch (InvalidOperationException ex) when (
+            ex.Message == "无人测试注入的搜索内 GC checkpoint 失败。")
+        {
+            return;
+        }
+        throw new InvalidOperationException($"{waiter} 没有收到同一个 checkpoint 失败。");
+    }
+
     private static async Task AssertNoGcDisableTransitionAsync(
         long budgetBytes,
         CancellationToken cancellationToken)
@@ -513,6 +1329,7 @@ internal sealed partial class UnattendedTestRunner
             allocationLimitBytes: 1,
             memoryLoadBytesAtStart: 0,
             systemMemoryLimitBytes: long.MaxValue,
+            _ => disabledCheckpointInvoked = true,
             _ => disabledCheckpointInvoked = true);
         Task<IDisposable> disabledScopeTask = Task.Run(() =>
             SearchGcPolicy.EnterLowLatencySearch(
@@ -561,6 +1378,7 @@ internal sealed partial class UnattendedTestRunner
                 allocationLimitBytes: 1,
                 memoryLoadBytesAtStart: 0,
                 systemMemoryLimitBytes: long.MaxValue,
+                _ => { },
                 _ => { });
             fallbackSignal.UseDefaultGcFallback(systemHeadroomConstrained: true);
             if (fallbackSignal.IsEnabled
@@ -687,6 +1505,77 @@ internal sealed partial class UnattendedTestRunner
                 $"requires_collection={disabledPressure.RequiresCollection} " +
                 $"reclaims={SearchGcPolicy.BackgroundReclaimStartedCountForTesting} " +
                 $"gen2={SearchGcPolicy.BackgroundGen2CompletedCountForTesting}。");
+        }
+    }
+
+    private static async Task AssertInSearchDefaultGcFallbackAsync(
+        long budgetBytes,
+        CancellationToken cancellationToken)
+    {
+        await SearchGcPolicy.ReclaimIfPendingAsync(
+            "unattended_in_search_default_gc_setup",
+            forceCollection: true);
+        GCLatencyMode initialLatencyMode = GCSettings.LatencyMode;
+        SearchMemoryPressureSignal signal = new();
+        IDisposable? scope = null;
+        try
+        {
+            scope = SearchGcPolicy.EnterLowLatencySearch(
+                enableNoGcRegion: true,
+                budgetBytes,
+                signal,
+                cancellationToken);
+            if (!signal.IsEnabled
+                || GCSettings.LatencyMode != GCLatencyMode.NoGCRegion
+                || SearchGcPolicy.CurrentNoGcRegionBudgetBytesForTesting <= 0)
+            {
+                throw new InvalidOperationException(
+                    "搜索内默认 GC 回退测试没有实际进入 NoGC 区域。");
+            }
+
+            int generation2Before = GC.CollectionCount(GC.MaxGeneration);
+            signal.UseDefaultGcAndContinue(cancellationToken);
+            if (GCSettings.LatencyMode != initialLatencyMode
+                || SearchGcPolicy.CurrentNoGcRegionBudgetBytesForTesting != 0
+                || signal.IsEnabled
+                || signal.ReclaimCount != 1
+                || GC.CollectionCount(GC.MaxGeneration) <= generation2Before)
+            {
+                throw new InvalidOperationException(
+                    $"搜索内默认 GC 回退没有完成实际回收并清理区域所有权：" +
+                    $"latency={GCSettings.LatencyMode} expected_latency={initialLatencyMode} " +
+                    $"budget={SearchGcPolicy.CurrentNoGcRegionBudgetBytesForTesting} " +
+                    $"signal_enabled={signal.IsEnabled} checkpoints={signal.ReclaimCount}。");
+            }
+
+            try
+            {
+                signal.UseDefaultGcAndContinue(cancellationToken);
+                throw new InvalidOperationException("默认 GC 回退后仍保留了旧区域检查点回调。");
+            }
+            catch (InvalidOperationException ex) when (
+                ex.Message == "搜索默认 GC 回退信号尚未配置。")
+            {
+            }
+
+            scope.Dispose();
+            scope = null;
+            if (GCSettings.LatencyMode != initialLatencyMode
+                || SearchGcPolicy.CurrentNoGcRegionBudgetBytesForTesting != 0)
+            {
+                throw new InvalidOperationException(
+                    "默认 GC 回退后的原搜索作用域退出时重新取得了 NoGC 所有权。");
+            }
+        }
+        finally
+        {
+            scope?.Dispose();
+            await SearchGcPolicy.ExitNoGcRegionWhenSearchesIdleAsync("no_gc_disabled")
+                .ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            await SearchGcPolicy.ReclaimIfPendingAsync(
+                    "unattended_in_search_default_gc_cleanup",
+                    forceCollection: true)
+                .ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
         }
     }
 
@@ -1217,6 +2106,71 @@ internal sealed partial class UnattendedTestRunner
             "cycle_continuations_stopped",
             expected.CycleContinuationsStopped,
             actual.CycleContinuationsStopped);
+        AddMismatch(
+            mismatches,
+            "cycle_regions",
+            expected.CycleRegionsDetected,
+            actual.CycleRegionsDetected);
+        AddMismatch(
+            mismatches,
+            "cycle_region_considered",
+            expected.CycleRegionCandidatesConsidered,
+            actual.CycleRegionCandidatesConsidered);
+        AddMismatch(
+            mismatches,
+            "cycle_region_admitted",
+            expected.CycleRegionCandidatesAdmitted,
+            actual.CycleRegionCandidatesAdmitted);
+        AddMismatch(
+            mismatches,
+            "cycle_region_dropped",
+            expected.CycleRegionCandidatesDropped,
+            actual.CycleRegionCandidatesDropped);
+        AddMismatch(
+            mismatches,
+            "cycle_region_progress_epochs",
+            expected.CycleRegionProgressEpochs,
+            actual.CycleRegionProgressEpochs);
+        AddMismatch(
+            mismatches,
+            "cycle_region_probe_admitted",
+            expected.CycleRegionProbeCandidatesAdmitted,
+            actual.CycleRegionProbeCandidatesAdmitted);
+        AddMismatch(
+            mismatches,
+            "cycle_region_progress_admitted",
+            expected.CycleRegionProgressCandidatesAdmitted,
+            actual.CycleRegionProgressCandidatesAdmitted);
+        AddMismatch(
+            mismatches,
+            "cycle_region_max_action_families",
+            expected.CycleRegionMaxActionFamilies,
+            actual.CycleRegionMaxActionFamilies);
+        AddMismatch(
+            mismatches,
+            "ordered_admitted",
+            expected.OrderedMutationCandidatesAdmitted,
+            actual.OrderedMutationCandidatesAdmitted);
+        AddMismatch(
+            mismatches,
+            "ordered_lease_expired_budget",
+            expected.OrderedMutationLeaseExpiredBudget,
+            actual.OrderedMutationLeaseExpiredBudget);
+        AddMismatch(
+            mismatches,
+            "ordered_ordinary_fallback",
+            expected.OrderedMutationOrdinaryFallbacks,
+            actual.OrderedMutationOrdinaryFallbacks);
+        AddMismatch(
+            mismatches,
+            "cold_atomic_committed",
+            expected.OrderedMutationColdAtomicCommitted,
+            actual.OrderedMutationColdAtomicCommitted);
+        AddMismatch(
+            mismatches,
+            "cold_atomic_rejected",
+            expected.OrderedMutationColdAtomicRejected,
+            actual.OrderedMutationColdAtomicRejected);
         AddMismatch(
             mismatches,
             "cross_turn_candidates_protected",

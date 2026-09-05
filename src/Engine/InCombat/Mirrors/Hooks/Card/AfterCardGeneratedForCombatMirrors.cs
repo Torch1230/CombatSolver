@@ -143,6 +143,8 @@ internal static class AfterCardGeneratedForCombatMirrors
         {
             var orb = OrbModel.GetRandomOrb(context.Rng.CombatOrbGeneration).ToMutable();
             context.Simulator.OrbChannel(player, orb);
+            if (context.Simulator.HasPendingChoice)
+                return;
         }
     }
 

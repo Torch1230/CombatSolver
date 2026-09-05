@@ -1,5 +1,6 @@
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Powers;
 using System.Text;
 
 namespace CombatSolver;
@@ -149,6 +150,22 @@ internal sealed partial class SimulatedCombatState
         if (creature.CurrentHp > 0)
             return (int)PredictedDeathPhase.None;
         string move = creature.Monster?.NextMove.Id ?? string.Empty;
+        // Reattach's final-death hook leaves the old DEAD/REATTACH move (and
+        // private animation flag) on segments already waiting to revive. Its
+        // actual revival contract requires another living Reattach owner.
+        // Project that contract for both root capture and continuation checks;
+        // a stale move label is not evidence of a remaining revival.
+        if (move is "DEAD_MOVE" or "REATTACH_MOVE"
+            && creature.HasPower<ReattachPower>()
+            && (creature.CombatState
+                    ?? throw new InvalidOperationException("重新接合的死亡阶段缺少所属战斗。"))
+                .GetTeammatesOf(creature)
+                .Where(other => other != creature
+                    && other.HasPower<ReattachPower>())
+                .All(static other => other.IsDead))
+        {
+            return (int)PredictedDeathPhase.PermanentlyDead;
+        }
         return move is "RESPAWN_MOVE" or "REVIVE_MOVE" or "DEAD_MOVE" or "REATTACH_MOVE"
             ? (int)PredictedDeathPhase.Reviving
             : (int)PredictedDeathPhase.PermanentlyDead;

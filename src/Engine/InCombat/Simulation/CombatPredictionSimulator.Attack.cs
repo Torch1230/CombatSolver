@@ -53,8 +53,14 @@ internal sealed partial class CombatPredictionSimulator
         return flattened;
     }
 
-    public void EndAttackContext(AttackCommand attackContext)
+    public void EndAttackContext(AttackCommand attackContext, bool completed = true)
     {
+        if (!completed)
+        {
+            HookMirrors.AbortAttack(this, attackContext);
+            return;
+        }
+
         Creature attacker = attackContext.Attacker
             ?? throw new InvalidOperationException("Attack context must have an attacker.");
         History.CreatureAttacked(
@@ -104,50 +110,58 @@ internal sealed partial class CombatPredictionSimulator
             return;
         }
 
-        HookMirrors.BeforeAttack(this, attackCommand);
-
-        var hitCount = HookMirrors.ModifyAttackHitCount(this, attackCommand, attackCommand._hitCount);
-
-        var cardSource = State.FindCard(card) ?? new PredictedCard(card);
-
-        for (var i = 0; i < hitCount; i++)
+        BeginAttackContext(attackCommand);
+        bool completed = false;
+        try
         {
-            if (attackerState.IsDead)
+            if (HasPendingChoice)
+                return;
+
+            var hitCount = HookMirrors.ModifyAttackHitCount(this, attackCommand, attackCommand._hitCount);
+            if (HasPendingChoice)
+                return;
+
+            var cardSource = State.FindCard(card) ?? new PredictedCard(card);
+
+            for (var i = 0; i < hitCount; i++)
             {
-                break;
+                if (attackerState.IsDead)
+                {
+                    break;
+                }
+
+                var validTargets = GetPossibleAttackTargets(attackCommand)
+                    .Where(creature => State.GetCreature(creature).IsAlive)
+                    .ToList();
+                if (validTargets.Count == 0)
+                {
+                    break;
+                }
+
+                var singleTarget = SelectSingleAttackTarget(attackCommand, validTargets);
+                if (attackCommand.IsRandomlyTargeted && singleTarget == null)
+                {
+                    break;
+                }
+
+                var results = Damage(
+                    singleTarget != null ? [singleTarget] : validTargets,
+                    GetAttackDamageAmount(attackCommand, cardSource, singleTarget),
+                    attackCommand.DamageProps,
+                    attacker,
+                    cardSource,
+                    attackCommand.CardPlay);
+                if (HasPendingChoice)
+                    return;
+                attackCommand.AddResultsInternal(results);
             }
 
-            var validTargets = GetPossibleAttackTargets(attackCommand)
-                .Where(creature => State.GetCreature(creature).IsAlive)
-                .ToList();
-            if (validTargets.Count == 0)
-            {
-                break;
-            }
-
-            var singleTarget = SelectSingleAttackTarget(attackCommand, validTargets);
-            if (attackCommand.IsRandomlyTargeted && singleTarget == null)
-            {
-                break;
-            }
-
-            var results = Damage(
-                singleTarget != null ? [singleTarget] : validTargets,
-                GetAttackDamageAmount(attackCommand, cardSource, singleTarget),
-                attackCommand.DamageProps,
-                attacker,
-                cardSource,
-                attackCommand.CardPlay);
-            attackCommand.AddResultsInternal(results);
+            completed = true;
         }
-
-        History.CreatureAttacked(
-            attacker,
-            FlattenAttackResults(attackCommand));
-        if (State.CombatState is ICombatPredictionCardEventSink eventSink)
-            eventSink.RecordCreatureAttacked(attacker);
-
-        HookMirrors.AfterAttack(this, attackCommand);
+        finally
+        {
+            EndAttackContext(attackCommand, completed);
+        }
     }
 
     // Mirrors AttackCommand.GetPossibleTargets but uses the simulator's state instead of the real CombatState.

@@ -18,6 +18,8 @@ internal static class RandomTargetAttackCardMirrors
         foreach (var status in statuses)
         {
             context.Simulator.Exhaust(status);
+            if (context.Simulator.HasPendingChoice)
+                return;
         }
 
         context.AttackRandomOpponents(statuses.Count);

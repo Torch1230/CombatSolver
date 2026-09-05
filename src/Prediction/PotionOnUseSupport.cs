@@ -71,7 +71,7 @@ internal static class PotionOnUseSupport
             or WeakPotion
             || PotionOnUseMirrors.CanMirror(potion);
 
-    public static void Use(
+    public static bool Use(
         CombatPredictionSimulator simulator,
         SimulatedCombatState combat,
         PotionModel potion,
@@ -160,11 +160,13 @@ internal static class PotionOnUseSupport
                 break;
             }
             case ExplosiveAmpoule value:
-                foreach (Creature enemy in combat.HittableEnemies.ToArray())
-                {
-                    if (simulator.State.IsHittable(enemy))
-                        simulator.Damage(enemy, value.DynamicVars.Damage.BaseValue, value.DynamicVars.Damage.Props, owner);
-                }
+                simulator.Damage(
+                    combat.HittableEnemies.ToArray(),
+                    value.DynamicVars.Damage.BaseValue,
+                    value.DynamicVars.Damage.Props,
+                    owner);
+                if (simulator.HasPendingChoice)
+                    return false;
                 break;
             case FirePotion value when target != null:
                 simulator.Damage(target, value.DynamicVars.Damage.BaseValue, value.DynamicVars.Damage.Props, owner);
@@ -181,17 +183,16 @@ internal static class PotionOnUseSupport
                 simulator.GainBlock(playerTarget, fortified.Block * 2, ValueProp.Unpowered);
                 break;
             case FoulPotion value:
-                foreach (Creature creature in combat.Creatures.ToArray())
-                {
-                    if (!creature.IsPet && simulator.State.GetCreature(creature).IsAlive)
-                    {
-                        simulator.Damage(
-                            creature,
-                            value.DynamicVars.Damage.BaseValue,
-                            value.DynamicVars.Damage.Props,
-                            owner);
-                    }
-                }
+                Creature[] foulTargets = combat.Creatures
+                    .Where(creature => !creature.IsPet && simulator.State.GetCreature(creature).IsAlive)
+                    .ToArray();
+                simulator.Damage(
+                    foulTargets,
+                    value.DynamicVars.Damage.BaseValue,
+                    value.DynamicVars.Damage.Props,
+                    owner);
+                if (simulator.HasPendingChoice)
+                    return false;
                 break;
             case FruitJuice value:
             {
@@ -292,6 +293,8 @@ internal static class PotionOnUseSupport
                 break;
             case ShipInABottle value:
                 simulator.GainBlock(playerTarget, value.DynamicVars.Block.BaseValue, ValueProp.Unpowered);
+                if (simulator.HasPendingChoice)
+                    return false;
                 combat.Apply<BlockNextTurnPower>(playerTarget, value.DynamicVars.Block.IntValue, owner);
                 break;
             case SoldiersStew:
@@ -317,10 +320,13 @@ internal static class PotionOnUseSupport
                 if (PotionOnUseMirrors.CanMirror(potion))
                 {
                     PotionOnUseMirrors.Invoke(simulator, potion, resolvedTarget);
+                    if (simulator.HasPendingChoice)
+                        return false;
                     break;
                 }
 
                 throw new NotSupportedException($"药水 {potion.Id.Entry} 尚未进入确定性搜索支持表。");
         }
+        return !simulator.HasPendingChoice;
     }
 }

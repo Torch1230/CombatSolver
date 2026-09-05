@@ -14,14 +14,23 @@ internal static class CardExecutionSupport
         Creature? target,
         ISet<uint> processedEnemyDeaths,
         bool payResources = false,
-        string? nestedChoiceSourceId = null)
+        string? nestedChoiceSourceId = null,
+        string? nestedChoiceContextId = null)
     {
         int historyStart = simulator.History.Entries.Count;
         using IDisposable scope = combat.BeginCardExecutionScope(processedEnemyDeaths);
         if (payResources)
-            simulator.PaidAutoPlay(card, target, nestedChoiceSourceId);
+            simulator.PaidAutoPlay(
+                card,
+                target,
+                nestedChoiceSourceId,
+                nestedChoiceContextId);
         else
-            simulator.AutoPlay(card, target, nestedChoiceSourceId: nestedChoiceSourceId);
+            simulator.AutoPlay(
+                card,
+                target,
+                nestedChoiceSourceId: nestedChoiceSourceId,
+                nestedChoiceContextId: nestedChoiceContextId);
 
         CombatPredictionCardPlayStartedEntry? started = null;
         foreach (CombatPredictionHistoryEntry entry in simulator.History.EntriesFrom(historyStart))
@@ -36,6 +45,6 @@ internal static class CardExecutionSupport
         }
         if (started == null)
             return false;
-        return nestedChoiceSourceId == null || !simulator.HasPendingChoice;
+        return !simulator.HasPendingChoice;
     }
 }

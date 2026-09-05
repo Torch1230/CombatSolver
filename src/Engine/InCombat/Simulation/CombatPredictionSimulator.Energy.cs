@@ -37,16 +37,16 @@ internal sealed partial class CombatPredictionSimulator
     }
 
     // Mirrors PlayerCmd.GainStars, including AfterStarsGained after the state mutation.
-    public void GainStars(Player player, decimal amount)
+    public bool GainStars(Player player, decimal amount)
     {
         if (IsEnding || !Hook.ShouldGainStars(State.CombatState, amount, player))
         {
-            return;
+            return true;
         }
 
         State.GetPlayerCombatState(player).GainStars(amount);
         if (State.CombatState is ICombatPredictionCardEventSink eventSink)
             eventSink.RecordStarsGained(player, (int)amount);
-        HookMirrors.AfterStarsGained(this, (int)amount, player);
+        return HookMirrors.AfterStarsGained(this, (int)amount, player);
     }
 }

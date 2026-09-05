@@ -116,6 +116,8 @@ internal static class AfterDamageGivenMirrors
                 target.CurrentHp - newMaxHp,
                 ValueProp.Unblockable | ValueProp.Unpowered,
                 dealer: null);
+            if (context.Simulator.HasPendingChoice)
+                return;
         }
         target.SetMaxHp(Math.Max(1, newMaxHp));
     }

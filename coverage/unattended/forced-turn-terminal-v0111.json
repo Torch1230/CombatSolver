@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "forced-turn-terminal-v0111",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "TERMINALTURN0111",
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [],
+  "stopAfterCombatRootSnapshotAssertion": true,
+  "expectedFinishedTurn": 2,
+  "headlessFastModeForTest": "Instant",
+  "timeoutSeconds": 120,
+  "exitOnComplete": true
+}

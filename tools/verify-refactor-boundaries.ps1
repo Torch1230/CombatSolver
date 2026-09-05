@@ -16,7 +16,11 @@ $violations = [System.Collections.Generic.List[string]]::new()
 $searchFiles = Get-ChildItem -LiteralPath $searchRoot -Filter *.cs -File -Recurse
 $beamFiles = Get-ChildItem -LiteralPath $searchRoot -Filter "CombatBeamSolver*.cs" -File
 $beamPaths = @($beamFiles.FullName)
-$cyclePlanningPath = Join-Path $searchRoot "CombatBeamSolver.CyclePlanning.cs"
+$cyclePolicyPaths = @(
+    (Join-Path $searchRoot "CombatBeamSolver.CyclePlanning.cs"),
+    (Join-Path $searchRoot "CombatBeamSolver.CycleRegionRetention.cs"),
+    (Join-Path $searchRoot "CombatBeamSolver.OrderedMutationRetention.cs")
+)
 $legacyLoopGuardPaths = @(
     (Join-Path $searchRoot "CombatBeamSolver.Expansion.cs"),
     (Join-Path $searchRoot "CombatBeamSolver.ParallelExpansion.cs"),
@@ -33,16 +37,93 @@ foreach ($file in $searchFiles) {
 # Cycle planning must infer recurrence and payoff from generic simulated-state deltas. Keeping
 # scenario names out of this policy file prevents a regression to card/power/relic/enemy allowlists.
 $scenarioSpecificCycleModelPattern = '\b(?:Body[\s_.-]*Slam|Lunar[\s_.-]*Blast|Gold[\s_.-]*Axe|Slow[\s_.-]*Power|Hellraiser|Pillage|Bloodletting|Particle[\s_.-]*Wall|Pale[\s_.-]*Blue[\s_.-]*Dot|Flash[\s_.-]*Of[\s_.-]*Steel|Finesse|Speedster|Black[\s_.-]*Hole|Glow|Alignment|Spoils[\s_.-]*Of[\s_.-]*Battle)\b'
-foreach ($match in Select-String -LiteralPath $cyclePlanningPath -Pattern $scenarioSpecificCycleModelPattern) {
-    $violations.Add("$($match.Path):$($match.LineNumber): generic cycle planning contains a scenario-specific model name or ID")
-}
-foreach ($directModelLookupPattern in @(
-    '\bModelDb\.(?:Card|Power|Relic|Monster)\b',
-    '\bGetAmount<[A-Za-z_][A-Za-z0-9_]*(?:Power|Relic|Monster)>',
-    '\btypeof\([A-Za-z_][A-Za-z0-9_]*(?:Card|Power|Relic|Monster)\)')) {
-    foreach ($match in Select-String -LiteralPath $cyclePlanningPath -Pattern $directModelLookupPattern) {
-        $violations.Add("$($match.Path):$($match.LineNumber): generic cycle planning performs a direct concrete-model lookup")
+foreach ($cyclePolicyPath in $cyclePolicyPaths) {
+    foreach ($match in Select-String -LiteralPath $cyclePolicyPath -Pattern $scenarioSpecificCycleModelPattern) {
+        $violations.Add("$($match.Path):$($match.LineNumber): generic cycle planning contains a scenario-specific model name or ID")
     }
+    foreach ($directModelLookupPattern in @(
+        '\bModelDb\.(?:Card|Power|Relic|Monster)\b',
+        '\bGetAmount<[A-Za-z_][A-Za-z0-9_]*(?:Power|Relic|Monster)>',
+        '\btypeof\([A-Za-z_][A-Za-z0-9_]*(?:Card|Power|Relic|Monster)\)')) {
+        foreach ($match in Select-String -LiteralPath $cyclePolicyPath -Pattern $directModelLookupPattern) {
+            $violations.Add("$($match.Path):$($match.LineNumber): generic cycle planning performs a direct concrete-model lookup")
+        }
+    }
+}
+
+$cycleRegionRetentionPath = Join-Path $searchRoot "CombatBeamSolver.CycleRegionRetention.cs"
+foreach ($cycleTransactionRule in @(
+    'CycleRegionRetentionTransaction',
+    'CloneCycleRegionLedger(',
+    'ObservationBaseline',
+    'FindBestCycleRegionProgressWitness(',
+    'lanePriority: -1',
+    'SelectCycleRegionAdmissionKind(',
+    'normalAdmissionSucceeded',
+    'HasActiveOrderedMutationCycleRegionAdmission(',
+    'node.CycleExitRetentionRank != int.MaxValue')) {
+    if (-not (Select-String -LiteralPath $cycleRegionRetentionPath -SimpleMatch $cycleTransactionRule -Quiet)) {
+        $violations.Add("${cycleRegionRetentionPath}: cycle-region final-survivor transaction invariant is missing '$cycleTransactionRule'")
+    }
+}
+foreach ($retiredCycleOrderedCoupling in @(
+    'CycleRegionOrderedProgressTail',
+    'OrderCycleRegionOrderedMutationLane(',
+    'TryStageCycleRegionOrderedProgressTailAdmission(')) {
+    foreach ($match in Select-String -LiteralPath $cycleRegionRetentionPath -SimpleMatch $retiredCycleOrderedCoupling) {
+        $violations.Add("$($match.Path):$($match.LineNumber): retired cycle-region/ordered joint ledger returned '$retiredCycleOrderedCoupling'")
+    }
+}
+if (-not (Select-String -LiteralPath (Join-Path $searchRoot "CombatBeamSolver.Retention.cs") -SimpleMatch 'FinalizeCycleRegionRetention(cycleRegionTransaction, finalized);' -Quiet)) {
+    $violations.Add("${searchRoot}/CombatBeamSolver.Retention.cs: cycle-region provisional admissions are no longer reconciled after final arbitration")
+}
+$orderedRetentionPath = Join-Path $searchRoot "CombatBeamSolver.OrderedMutationRetention.cs"
+foreach ($orderedTransactionRule in @(
+    'MaximumOrderedMutationRunAdmissions = 2048',
+    'HasFullyPendingAtomicOrderedMutationPair(',
+    'ExpireOrderedMutationSchedulingLeaseForOrdinaryFallback(node);',
+    'PendingOrderedMutationOrdinaryFallbackNodes',
+    'ValidateOrderedMutationAdmissionLedger(',
+    'typeof(OrderedMutationRetentionLease).IsValueType')) {
+    if (-not (Select-String -LiteralPath $orderedRetentionPath -SimpleMatch $orderedTransactionRule -Quiet)) {
+        $violations.Add("${orderedRetentionPath}: ordered-mutation atomic accounting invariant is missing '$orderedTransactionRule'")
+    }
+}
+$orderedCoordinatorPaths = @{
+    'BuildOrderedMutationContinuationAdmissionLease(candidate);' = Join-Path $searchRoot "CombatBeamSolver.BeamRetentionPolicy.cs"
+    'Every independent retention channel must finish before the ordered coordinator.' = Join-Path $searchRoot "CombatBeamSolver.Retention.cs"
+    'Any inherited lane left outside this prune' = Join-Path $searchRoot "CombatBeamSolver.BeamRetentionPolicy.cs"
+    'HasOrdinaryAnchor' = Join-Path $searchRoot "CombatBeamSolver.BeamRetentionPolicy.cs"
+}
+foreach ($entry in $orderedCoordinatorPaths.GetEnumerator()) {
+    if (-not (Select-String -LiteralPath $entry.Value -SimpleMatch $entry.Key -Quiet)) {
+        $violations.Add("$($entry.Value): unified ordered-mutation coordinator invariant is missing '$($entry.Key)'")
+    }
+}
+$solverDiagnosticsPath = Join-Path $repositoryRoot "src\Runtime\SolverDiagnostics.cs"
+foreach ($orderedMetric in @(
+    'ordered_admitted=',
+    'ordered_lease_expired_budget=',
+    'ordered_ordinary_fallback=',
+    'cold_atomic_committed=',
+    'cold_atomic_rejected=')) {
+    if (-not (Select-String -LiteralPath $solverDiagnosticsPath -SimpleMatch $orderedMetric -Quiet)) {
+        $violations.Add("${solverDiagnosticsPath}: ordered-mutation acceptance metric is missing '$orderedMetric'")
+    }
+}
+$retentionPath = Join-Path $searchRoot "CombatBeamSolver.Retention.cs"
+$openingChannelMatch = Select-String -LiteralPath $retentionPath -SimpleMatch 'List<List<SearchNode>> openingChannels = pool' | Select-Object -First 1
+$orderedCoordinatorMatch = Select-String -LiteralPath $retentionPath -SimpleMatch 'Retention.AddOrderedMutationPortfolio(pool, selected, selectedSet);' | Select-Object -First 1
+$cycleRegionMatch = Select-String -LiteralPath $retentionPath -SimpleMatch 'cycleRegionTransaction = ApplyCycleRegionRetention(' | Select-Object -First 1
+if ($null -eq $openingChannelMatch `
+    -or $null -eq $orderedCoordinatorMatch `
+    -or $null -eq $cycleRegionMatch `
+    -or $openingChannelMatch.LineNumber -ge $orderedCoordinatorMatch.LineNumber `
+    -or $orderedCoordinatorMatch.LineNumber -ge $cycleRegionMatch.LineNumber) {
+    $violations.Add("${retentionPath}: opening/independent channels must settle before ordered admission, which must settle before CycleRegion")
+}
+foreach ($match in Select-String -LiteralPath $cycleRegionRetentionPath -SimpleMatch 'selectedSet.Add(node);') {
+    $violations.Add("$($match.Path):$($match.LineNumber): CycleRegion rebuilt an O(pool) selected-set shadow")
 }
 
 # PR #28's fixed repeat count and named payoff exceptions are retired. These checks intentionally
@@ -157,6 +238,8 @@ foreach ($check in $forkBoundaryChecks) {
 $searchGcPolicyPath = Join-Path $repositoryRoot "src\Runtime\SearchGcPolicy.cs"
 foreach ($gcChainRule in @(
     "return WaitForReclaimChainAsync(_reclaimTask)",
+    "CollectGeneration2InBackgroundAsync(inSearchCheckpoint: true)",
+    "_inSearchManualReclaimTask = manualCompletion.Task",
     "failure == null && (_regionExitRequired || _reclaimRequired)")) {
     if (-not (Select-String -LiteralPath $searchGcPolicyPath -SimpleMatch $gcChainRule -Quiet)) {
         $violations.Add("${searchGcPolicyPath}: missing serialized reclaim-chain rule '$gcChainRule'")
@@ -241,15 +324,68 @@ $expectedBeamFiles = @(
     "CombatBeamSolver.BeamRetentionPolicy.cs",
     "CombatBeamSolver.CrossTurnPlanning.cs",
     "CombatBeamSolver.CyclePlanning.cs",
+    "CombatBeamSolver.CycleRegionRetention.cs",
+    "CombatBeamSolver.DeferredFrontier.cs",
     "CombatBeamSolver.Expansion.cs",
     "CombatBeamSolver.FinalPlanOrdering.cs",
     "CombatBeamSolver.Models.cs",
+    "CombatBeamSolver.OrderedMutationRetention.cs",
     "CombatBeamSolver.ParallelExpansion.cs",
+    "CombatBeamSolver.PathDiagnostics.cs",
     "CombatBeamSolver.Phases.cs",
     "CombatBeamSolver.Retention.cs",
     "CombatBeamSolver.StateEvaluation.cs",
     "CombatBeamSolver.Terminal.cs"
 )
+$pathDiagnosticsPath = Join-Path $searchRoot "CombatBeamSolver.PathDiagnostics.cs"
+$deferredFrontierPath = Join-Path $searchRoot "CombatBeamSolver.DeferredFrontier.cs"
+foreach ($required in @(
+    @{ Path = (Join-Path $searchRoot "CombatBeamSolver.BeamRetentionPolicy.cs"); Text = 'HasRetainedRoutingChoice: RetainedRoutingChoice(node) != null' },
+    @{ Path = (Join-Path $searchRoot "CombatBeamSolver.BeamRetentionPolicy.cs"); Text = 'if (values.HasRetainedRoutingChoice)' },
+    @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.SearchPolicy.cs"); Text = 'seven, [], [0, 7, 1, 4, 2, 5, 6], useTacticalOrder: true);' },
+    @{ Path = $deferredFrontierPath; Text = 'private sealed class DeferredTurnFrontier(' },
+    @{ Path = $deferredFrontierPath; Text = '_run.DeferredFrontierReplayActions++;' },
+    @{ Path = $deferredFrontierPath; Text = 'node with { Snapshot = replayed }' },
+    @{ Path = (Join-Path $searchRoot "CombatBeamSolver.Phases.cs"); Text = 'CaptureDeferredFrontier(nextPlays, prunedPlays);' },
+    @{ Path = (Join-Path $searchRoot "CombatSearchCoordinator.FailureRecovery.cs"); Text = 'RecoverDeferredTurnFrontier = true' },
+    @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.Executor.cs"); Text = 'KNOWN-CUSTOM-DEFERRED-FRONTIER-V0111' },
+    @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.KnownCustomDeferredFrontier.cs"); Text = 'MetadataContractOnly:NotFrontierQualityOrPerformance' },
+    @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.Executor.cs"); Text = 'KNOWN-SOUL-GENERATION-CONTEXT-V0111' },
+    @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.Executor.cs"); Text = 'KNOWN-SOUL-GENERATION-SUFFIX-V0111' },
+    @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.Executor.cs"); Text = 'KNOWN-SOUL-VARIANT-PATH-TRACE-V0111' },
+    @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.Executor.cs"); Text = 'KNOWN-SOUL-RETAINED-PATH-TRACE-V0111' },
+    @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.KnownSoulVariantPathTrace.cs"); Text = 'requiredRetentionStep: 18, proveRetentionAliases: true' },
+    @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.KnownSoulVariantPathTrace.cs"); Text = 'RunKnownSoulGenerationContext(combat, player, fullKnownSuffix: true, frozenVariants: variants);' },
+    @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.KnownRoutePathTrace.cs"); Text = 'watched.UnionWith(variants.Values.SelectMany(variant => variant.Prefixes)' },
+    @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.KnownRoutePathTrace.cs"); Text = 'exact.GroupBy(item => new { item.PolicyLabel, item.ParentPolicyLabel })' },
+    @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.Executor.cs"); Text = 'KNOWN-EXOSKELETONS-ROUTE-REPLAY-V0111' },
+    @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.Executor.cs"); Text = 'KNOWN-EXOSKELETONS-PATH-TRACE-V0111' },
+    @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.Executor.cs"); Text = 'KNOWN-EXOSKELETONS-CONTINUATION-PATH-TRACE-V0111' },
+    @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.Executor.cs"); Text = 'KNOWN-EXOSKELETONS-ROUTE-NATIVE-V0111' },
+    @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.KnownRoutePathTrace.cs"); Text = 'CaptureKnownRouteRootStates(root, player, enemies)' },
+    @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.KnownExoskeletonsPathTrace.cs"); Text = 'RunKnownExoskeletonsRouteReplay(combat, player, freeze: frozen);' },
+    @{ Path = $pathDiagnosticsPath; Text = 'observer.WantsState(node.StateKey)' },
+    @{ Path = $pathDiagnosticsPath; Text = 'observer.WantsRetentionPool(node.StateKey)' },
+    @{ Path = $pathDiagnosticsPath; Text = 'SearchPathObservationStage.RetentionPoolInput' },
+    @{ Path = $pathDiagnosticsPath; Text = 'Evaluation: new SearchPathEvaluationValues(' },
+    @{ Path = (Join-Path $searchRoot "CombatBeamSolver.Retention.cs"); Text = 'SearchPathObservationStage.RetentionPoolFinal' },
+    @{ Path = (Join-Path $searchRoot "CombatBeamSolver.BeamRetentionPolicy.cs"); Text = 'observedOptionLeaders.Add(optionLeader)' },
+    @{ Path = (Join-Path $searchRoot "CombatBeamSolver.Retention.cs"); Text = 'SearchPathObservationStage.PruneFinal' },
+    @{ Path = (Join-Path $repositoryRoot "src\Engine\InCombat\Mirrors\Hooks\Card\AfterCardPlayedMirrors.cs"); Text = 'private static bool ApplyRelicStatPower(' },
+    @{ Path = (Join-Path $repositoryRoot "src\Engine\InCombat\Mirrors\Hooks\Card\AfterCardPlayedMirrors.cs"); Text = 'if (context.Simulator.IsEnding)' })) {
+    if (-not (Select-String -LiteralPath $required.Path -SimpleMatch $required.Text -Quiet)) {
+        $violations.Add("$($required.Path): path observation or relic command boundary is missing '$($required.Text)'")
+    }
+}
+foreach ($forbidden in @(
+    @{ Path = $pathDiagnosticsPath; Text = 'node.Actions;' },
+    @{ Path = (Join-Path $searchRoot "SimulatedCombatState.Relics.cs"); Text = 'case Kunai' },
+    @{ Path = (Join-Path $searchRoot "SimulatedCombatState.Relics.cs"); Text = 'case Shuriken' },
+    @{ Path = (Join-Path $searchRoot "SimulatedCombatState.Relics.cs"); Text = 'Apply<DexterityPower>' })) {
+    foreach ($match in Select-String -LiteralPath $forbidden.Path -SimpleMatch $forbidden.Text) {
+        $violations.Add("$($match.Path):$($match.LineNumber): observer cache mutation or deferred relic stat application returned '$($forbidden.Text)'")
+    }
+}
 $actualBeamFiles = @($beamFiles.Name | Sort-Object)
 if (($actualBeamFiles -join "|") -ne (($expectedBeamFiles | Sort-Object) -join "|")) {
     $violations.Add(
@@ -283,7 +419,7 @@ foreach ($check in $beamStructureChecks) {
         $violations.Add("${path}: missing CombatBeamSolver stage member '$($check.Text)'")
     }
 }
-if (-not (Select-String -LiteralPath (Join-Path $searchRoot "CombatBeamSolver.Expansion.cs") -SimpleMatch "ResolveWholeActionChoiceBranchLimit" -Quiet)) {
+if (-not (Select-String -LiteralPath (Join-Path $searchRoot "CombatBeamSolver.Expansion.cs") -SimpleMatch "CreateWholeActionChoiceBudget" -Quiet)) {
     $violations.Add("CombatBeamSolver.Expansion.cs: repeated card choices are missing their whole-action branch quota")
 }
 $beamEntryPath = Join-Path $searchRoot "CombatBeamSolver.cs"
@@ -295,6 +431,19 @@ if (Select-String -LiteralPath $beamRetentionFacadePath -SimpleMatch "private Li
     $violations.Add("${beamRetentionFacadePath}: RankBest returned outside BeamRetentionPolicy")
 }
 $beamPhasesPath = Join-Path $searchRoot "CombatBeamSolver.Phases.cs"
+if (-not (Select-String -LiteralPath $beamPhasesPath -SimpleMatch "TightenPrimarySearchIncumbentAtTurnLayer(" -Quiet)) {
+    $violations.Add("${beamPhasesPath}: turn-layer incumbent is no longer tightened before coordinator pruning")
+}
+foreach ($match in Select-String -LiteralPath $beamPhasesPath -SimpleMatch "FinalizePrunedSelection(") {
+    $violations.Add("$($match.Path):$($match.LineNumber): turn-layer incumbent pruning performs a second post-commit finalization")
+}
+foreach ($directPruneFinalizer in @(
+    "ApplyPrimaryIncumbentBound(",
+    "FinalizePrunedCycleExitProbeTickets(")) {
+    foreach ($match in Select-String -LiteralPath $beamPhasesPath -SimpleMatch $directPruneFinalizer) {
+        $violations.Add("$($match.Path):$($match.LineNumber): turn-layer pruning bypasses observation-debt finalization '$directPruneFinalizer'")
+    }
+}
 foreach ($finalOrderingImplementation in @(
     "POLICY_BASELINE kind=potion_free",
     "PotionUsePolicy.IsEligible(",
@@ -355,6 +504,18 @@ $rootModelBoundaryChecks = @(
     @{
         Path = Join-Path $repositoryRoot "src\Engine\InCombat\Simulation\CombatPredictionSimulator.cs"
         Text = "ICombatPredictionRootMaterializable materializable"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Engine\InCombat\Simulation\CombatPredictionSimulator.cs"
+        Text = "public CombatTerminalStamp? TerminalStamp { get; private set; }"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Search\CombatPlan.cs"
+        Text = "public CombatTerminalStamp? TerminalStamp { get; } = terminalStamp;"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Search\CombatBeamSolver.Terminal.cs"
+        Text = "combatEndedTurn = node.Snapshot.CombatEndedTurn;"
     },
     @{
         Path = Join-Path $repositoryRoot "src\Search\SimulatedCombatState.cs"
@@ -588,6 +749,38 @@ foreach ($removedWorkerRead in $removedWorkerReads) {
 }
 
 $unattendedEntryPath = Join-Path $repositoryRoot "src\Testing\UnattendedTestRunner.cs"
+foreach ($check in @(
+    @{ Path = 'tools/run-unattended-test.sh'; Text = 'source "$script_dir/headless-runtime.sh"' },
+    @{ Path = 'tools/run-unattended-test.sh'; Text = 'hr_acquire "$process_pid" "$process_identity_start_time"' },
+    @{ Path = 'tools/run-unattended-test.sh'; Text = 'if ((option_value[stop-instance] == 1)); then' },
+    @{ Path = 'tools/run-unattended-test.ps1'; Text = ". (Join-Path `$PSScriptRoot 'headless-runtime.ps1')" },
+    @{ Path = 'tools/run-unattended-test.ps1'; Text = 'if ($StopInstance) {' },
+    @{ Path = 'tools/run-headless-matrix.sh'; Text = '--stop-instance' },
+    @{ Path = 'tools/run-headless-matrix.ps1'; Text = '"-StopInstance"' },
+    @{ Path = 'tools/headless-runtime.sh'; Text = 'hr_prepare_snapshot() {' },
+    @{ Path = 'tools/headless-runtime.sh'; Text = 'hr_bind() {' },
+    @{ Path = 'tools/headless-runtime.ps1'; Text = 'function Set-HeadlessGameSnapshot(' },
+    @{ Path = 'tools/headless-runtime.ps1'; Text = 'function Enter-HeadlessHostLease(' },
+    @{ Path = 'tools/headless-runtime.ps1'; Text = 'function Set-HeadlessHostGame(' })) {
+    $path = Join-Path $repositoryRoot $check.Path
+    if (-not (Select-String -LiteralPath $path -SimpleMatch $check.Text -Quiet)) {
+        $violations.Add("${path}: missing headless infrastructure ownership boundary '$($check.Text)'")
+    }
+}
+foreach ($matrix in @('tools/run-headless-matrix.sh', 'tools/run-headless-matrix.ps1')) {
+    $path = Join-Path $repositoryRoot $matrix
+    if (Select-String -LiteralPath $path -SimpleMatch 'MATRIX-CLEANUP' -Quiet) {
+        $violations.Add("${path}: matrix cleanup must not dispatch a new game request")
+    }
+}
+foreach ($helper in @('tools/headless-runtime.sh', 'tools/headless-runtime.ps1')) {
+    $path = Join-Path $repositoryRoot $helper
+    foreach ($forbidden in @('combat_solver_test_request.json', 'SolverSettings')) {
+        if (Select-String -LiteralPath $path -SimpleMatch $forbidden -Quiet) {
+            $violations.Add("${path}: protocol/game settings leaked into headless resource owner '$forbidden'")
+        }
+    }
+}
 $unattendedProtocolHostPath = Join-Path $repositoryRoot "src\Testing\UnattendedTestRunner.ProtocolHost.cs"
 $unattendedWriterPath = Join-Path $repositoryRoot "src\Testing\UnattendedTestRunner.Writer.cs"
 $unattendedScenarioBuilderPath = Join-Path $repositoryRoot "src\Testing\UnattendedTestRunner.ScenarioBuilder.cs"

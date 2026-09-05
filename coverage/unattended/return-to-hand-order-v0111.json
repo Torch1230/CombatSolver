@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "return-to-hand-order-v0111",
+  "characterId": "IRONCLAD",
+  "seed": "COMBATSOLVER",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "ascension": 0,
+  "initialPlayerEnergy": 6,
+  "stopAfterCombatRootSnapshotAssertion": true,
+  "headlessFastModeForTest": "Instant",
+  "timeoutSeconds": 120,
+  "exitOnComplete": true,
+  "cards": []
+}

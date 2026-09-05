@@ -31,7 +31,11 @@ internal static class BespokeCardMirrors
     {
         PredictedCard[] hand = context.OwnerState.Hand.Cards.ToArray();
         foreach (PredictedCard candidate in hand)
+        {
             context.Simulator.Exhaust(candidate);
+            if (context.Simulator.HasPendingChoice)
+                return;
+        }
         DamageCmd.Attack(card.DynamicVars.Damage.BaseValue)
             .WithHitCount(hand.Length)
             .FromCard(card, context.CardPlay)
@@ -65,6 +69,8 @@ internal static class BespokeCardMirrors
             .FromCard(card, context.CardPlay)
             .Targeting(context.Target)
             .Simulate(context.Simulator);
+        if (context.Simulator.HasPendingChoice)
+            return;
         context.Simulator.CreateAndAddGeneratedCardsToCombat<Shiv>(
             card.Owner,
             PileType.Hand,
@@ -79,6 +85,8 @@ internal static class BespokeCardMirrors
             .FromCard(card, context.CardPlay)
             .Targeting(context.Target)
             .Simulate(context.Simulator);
+        if (context.Simulator.HasPendingChoice)
+            return;
         decimal increase = card.DynamicVars["Increase"].BaseValue;
         foreach (PredictedCard candidate in context.OwnerState.AllCards
                      .Where(candidate => candidate.Preview is Maul)
@@ -117,6 +125,8 @@ internal static class BespokeCardMirrors
             .FromCard(card, context.CardPlay)
             .Targeting(context.Target)
             .Simulate(context.Simulator);
+        if (context.Simulator.HasPendingChoice)
+            return;
         TheScythe mutable = (TheScythe)context.Card.MutablePreview;
         int increase = card.DynamicVars["Increase"].IntValue;
         mutable.IncreasedDamage += increase;
@@ -134,6 +144,8 @@ internal static class BespokeCardMirrors
             return;
         int block = context.State.GetCreature(osty).MaxHp * 3;
         context.Simulator.Kill(osty, force: true);
+        if (context.Simulator.HasPendingChoice)
+            return;
         context.Simulator.GainBlock(
             card.Owner.Creature,
             block,
@@ -150,11 +162,15 @@ internal static class BespokeCardMirrors
         foreach (PredictedCard candidate in cards)
         {
             context.Simulator.Exhaust(candidate);
+            if (context.Simulator.HasPendingChoice)
+                return;
             context.Simulator.GainBlock(
                 card.Owner.Creature,
                 card.DynamicVars.Block,
                 context.Card,
                 context.CardPlay);
+            if (context.Simulator.HasPendingChoice)
+                return;
         }
     }
 
@@ -169,6 +185,8 @@ internal static class BespokeCardMirrors
         else
             attack.Targeting(context.Target);
         attack.Simulate(context.Simulator);
+        if (context.Simulator.HasPendingChoice)
+            return;
 
         int parry = GetPowerAmount<ParryPower>(context, card.Owner.Creature);
         if (parry > 0)

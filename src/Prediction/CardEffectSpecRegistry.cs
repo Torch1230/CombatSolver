@@ -136,6 +136,7 @@ internal static class CardEffectSpecRegistry
         bool applied = false;
         if (PowerEffects.TryGetValue(card.GetType(), out CardPowerEffect[]? effects))
         {
+            applied = true;
             foreach (CardPowerEffect effect in effects)
             {
                 int amount = effect.Amount(card);
@@ -165,14 +166,21 @@ internal static class CardEffectSpecRegistry
                         break;
                     }
                     case CardEffectTarget.AllEnemies:
+                    {
                         foreach (Creature enemy in combat.HittableEnemies)
+                        {
                             ApplyPower(combat, effect.PowerType, enemy, amount, owner);
+                            if (simulator.HasPendingChoice)
+                                return true;
+                        }
                         break;
+                    }
                     default:
                         throw new ArgumentOutOfRangeException(nameof(effect.Target), effect.Target, null);
                 }
+                if (simulator.HasPendingChoice)
+                    return true;
             }
-            applied = true;
         }
 
         switch (card)
@@ -195,7 +203,8 @@ internal static class CardEffectSpecRegistry
                 break;
             case BigBang:
                 simulator.GainEnergy(card.Owner, card.DynamicVars.Energy.IntValue);
-                simulator.GainStars(card.Owner, card.DynamicVars.Stars.IntValue);
+                if (!simulator.GainStars(card.Owner, card.DynamicVars.Stars.IntValue))
+                    return true;
                 PersistentPowerSupport.Forge(simulator, card.Owner, card.DynamicVars.Forge.IntValue);
                 applied = true;
                 break;
@@ -219,6 +228,8 @@ internal static class CardEffectSpecRegistry
                         ownerState.CurrentHp - newMaxHp,
                         ValueProp.Unblockable | ValueProp.Unpowered | ValueProp.Move,
                         null);
+                    if (simulator.HasPendingChoice)
+                        return true;
                 }
                 ownerState.SetMaxHp(newMaxHp);
                 applied = true;
@@ -242,6 +253,8 @@ internal static class CardEffectSpecRegistry
                     card.DynamicVars.HpLoss.IntValue,
                     ValueProp.Unblockable | ValueProp.Unpowered | ValueProp.Move,
                     card.Owner.Creature);
+                if (simulator.HasPendingChoice)
+                    return true;
                 simulator.GainEnergy(card.Owner, card.DynamicVars.Energy.IntValue);
                 applied = true;
                 break;
@@ -252,7 +265,10 @@ internal static class CardEffectSpecRegistry
             case BoneShards:
                 if (simulator.State.GetOsty(card.Owner) is { } osty
                     && simulator.State.GetCreature(osty).IsAlive)
-                    simulator.Kill(osty, force: true);
+                {
+                    if (!simulator.Kill(osty, force: true))
+                        return true;
+                }
                 applied = true;
                 break;
             case Bulwark:
@@ -285,7 +301,11 @@ internal static class CardEffectSpecRegistry
             }
             case DeathsDoor when combat.WasDoomAppliedThisTurn(ownerCreature):
                 for (int index = 0; index < card.DynamicVars.Repeat.IntValue; index++)
+                {
                     simulator.GainBlock(ownerCreature, card.DynamicVars.Block, playedCard, null);
+                    if (simulator.HasPendingChoice)
+                        return true;
+                }
                 applied = true;
                 break;
             case EvilEye when combat.WasCardExhaustedThisTurn(ownerCreature):
@@ -368,6 +388,8 @@ internal static class CardEffectSpecRegistry
                 applied = true;
                 break;
         }
+        if (simulator.HasPendingChoice)
+            return true;
         switch (card)
         {
             case AdaptiveStrike:
@@ -442,7 +464,11 @@ internal static class CardEffectSpecRegistry
             case Severance:
             {
                 AddFixed<Soul>(simulator, card, PileType.Draw, 1, CardPilePosition.Random);
+                if (simulator.HasPendingChoice)
+                    return true;
                 AddFixed<Soul>(simulator, card, PileType.Discard, 1);
+                if (simulator.HasPendingChoice)
+                    return true;
                 AddFixed<Soul>(simulator, card, PileType.Hand, 1);
                 applied = true;
                 break;

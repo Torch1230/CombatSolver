@@ -34,6 +34,225 @@ internal sealed partial class UnattendedTestRunner
             bool expectedPotionUsed = request.ExpectedUsedPotionId == null;
             bool expectedPlayerPowerObserved = request.ExpectedObservedPlayerPowerId == null;
 
+            if (request.ScenarioId.Equals("GC-CHECKPOINT-BACKGROUND-V0111", StringComparison.OrdinalIgnoreCase))
+            {
+                if (scenario.OrbChecks.Count > 0 || scenario.PotionChecks.Count > 0
+                    || scenario.MonsterMoveChecks.Count > 0 || request.VerifyIncrementalSearch)
+                    throw new InvalidOperationException("后台 GC 生命周期夹具不能混入战斗差分或正式搜索。");
+                runner.SetStage("gc_checkpoint_background");
+                await runner.RunGcCheckpointBackgroundFixtureAsync();
+                return Observation(combatEnded: false);
+            }
+
+            if (request.ScenarioId.Equals("KNOWN-SOUL-ROUTE-NATIVE-V0111", StringComparison.OrdinalIgnoreCase))
+            {
+                if (scenario.OrbChecks.Count > 0 || scenario.PotionChecks.Count > 0
+                    || scenario.MonsterMoveChecks.Count > 0 || request.VerifyIncrementalSearch)
+                    throw new InvalidOperationException("Soul 原版对照不能混入其他差分或正式搜索请求。");
+                runner.SetStage("known_soul_route_native");
+                int finishedTurn = await runner.RunKnownSoulRouteNativeAsync(combatState, player);
+                return new ExecutionOutcome(true, finishedTurn, expectedCardPlayed, expectedPotionUsed,
+                    expectedPlayerPowerObserved, InitialSearchHeld: false);
+            }
+
+            if (request.ScenarioId.Equals("KNOWN-SOUL-PATH-TRACE-V0111", StringComparison.OrdinalIgnoreCase))
+            {
+                if (scenario.OrbChecks.Count > 0 || scenario.PotionChecks.Count > 0
+                    || scenario.MonsterMoveChecks.Count > 0 || request.VerifyIncrementalSearch)
+                    throw new InvalidOperationException("已知路径诊断不能混入其他差分或增量搜索请求。");
+                _ = ApplySettingsOverrides();
+                runner.SetStage("known_soul_path_trace_prepare");
+                int finishedTurn = await runner.RunKnownSoulPathTraceAsync(combatState, player);
+                return new ExecutionOutcome(false, finishedTurn, expectedCardPlayed, expectedPotionUsed,
+                    expectedPlayerPowerObserved, InitialSearchHeld: false);
+            }
+
+            if (request.ScenarioId.Equals("KNOWN-SOUL-VARIANT-PATH-TRACE-V0111", StringComparison.OrdinalIgnoreCase))
+            {
+                if (scenario.OrbChecks.Count > 0 || scenario.PotionChecks.Count > 0
+                    || scenario.MonsterMoveChecks.Count > 0 || request.VerifyIncrementalSearch)
+                    throw new InvalidOperationException("Soul 替代路线观察不能混入其他差分或增量搜索请求。");
+                _ = ApplySettingsOverrides();
+                runner.SetStage("known_soul_variant_path_trace_prepare");
+                int finishedTurn = await runner.RunKnownSoulVariantPathTraceAsync(combatState, player);
+                return new ExecutionOutcome(false, finishedTurn, expectedCardPlayed, expectedPotionUsed,
+                    expectedPlayerPowerObserved, InitialSearchHeld: false);
+            }
+
+            if (request.ScenarioId.Equals("KNOWN-SOUL-RETAINED-PATH-TRACE-V0111", StringComparison.OrdinalIgnoreCase))
+            {
+                if (scenario.OrbChecks.Count > 0 || scenario.PotionChecks.Count > 0
+                    || scenario.MonsterMoveChecks.Count > 0 || request.VerifyIncrementalSearch)
+                    throw new InvalidOperationException("Soul 实际保留别名观察不能混入其他差分或增量搜索请求。");
+                _ = ApplySettingsOverrides();
+                runner.SetStage("known_soul_retained_path_trace_prepare");
+                int finishedTurn = await runner.RunKnownSoulVariantPathTraceAsync(
+                    combatState, player, proveRetainedAlias: true);
+                return new ExecutionOutcome(false, finishedTurn, expectedCardPlayed, expectedPotionUsed,
+                    expectedPlayerPowerObserved, InitialSearchHeld: false);
+            }
+
+            if (request.ScenarioId.Equals("KNOWN-CUSTOM-PATH-TRACE-V0111", StringComparison.OrdinalIgnoreCase))
+            {
+                if (scenario.OrbChecks.Count > 0 || scenario.PotionChecks.Count > 0
+                    || scenario.MonsterMoveChecks.Count > 0 || request.VerifyIncrementalSearch)
+                    throw new InvalidOperationException("已知路径诊断不能混入其他差分或增量搜索请求。");
+                _ = ApplySettingsOverrides();
+                runner.SetStage("known_custom_path_trace_prepare");
+                int finishedTurn = await runner.RunKnownCustomPathTraceAsync(combatState, player);
+                return new ExecutionOutcome(false, finishedTurn, expectedCardPlayed, expectedPotionUsed,
+                    expectedPlayerPowerObserved, InitialSearchHeld: false);
+            }
+
+            if (request.ScenarioId.Equals("KNOWN-SOUL-GENERATION-CONTEXT-V0111", StringComparison.OrdinalIgnoreCase))
+            {
+                if (scenario.OrbChecks.Count > 0 || scenario.PotionChecks.Count > 0
+                    || scenario.MonsterMoveChecks.Count > 0 || request.VerifyIncrementalSearch)
+                    throw new InvalidOperationException("生成上下文回放不能混入其他差分或正式搜索请求。");
+                runner.SetStage("known_soul_generation_context");
+                int finishedTurn = runner.RunKnownSoulGenerationContext(combatState, player);
+                return new ExecutionOutcome(false, finishedTurn, expectedCardPlayed, expectedPotionUsed,
+                    expectedPlayerPowerObserved, InitialSearchHeld: false);
+            }
+
+            if (request.ScenarioId.Equals("KNOWN-SOUL-GENERATION-SUFFIX-V0111", StringComparison.OrdinalIgnoreCase))
+            {
+                if (scenario.OrbChecks.Count > 0 || scenario.PotionChecks.Count > 0
+                    || scenario.MonsterMoveChecks.Count > 0 || request.VerifyIncrementalSearch)
+                    throw new InvalidOperationException("生成上下文完整后缀回放不能混入其他差分或正式搜索请求。");
+                runner.SetStage("known_soul_generation_suffix");
+                int finishedTurn = runner.RunKnownSoulGenerationContext(combatState, player, fullKnownSuffix: true);
+                return new ExecutionOutcome(false, finishedTurn, expectedCardPlayed, expectedPotionUsed,
+                    expectedPlayerPowerObserved, InitialSearchHeld: false);
+            }
+
+            if (request.ScenarioId.Equals("KNOWN-CUSTOM-DEFERRED-FRONTIER-V0111", StringComparison.OrdinalIgnoreCase))
+            {
+                if (scenario.OrbChecks.Count > 0 || scenario.PotionChecks.Count > 0
+                    || scenario.MonsterMoveChecks.Count > 0 || request.VerifyIncrementalSearch)
+                    throw new InvalidOperationException("落选恢复合同不能混入其他差分或正式搜索请求。");
+                runner.SetStage("known_custom_deferred_frontier");
+                int finishedTurn = runner.RunKnownCustomDeferredFrontier(combatState, player);
+                return new ExecutionOutcome(false, finishedTurn, expectedCardPlayed, expectedPotionUsed,
+                    expectedPlayerPowerObserved, InitialSearchHeld: false);
+            }
+
+            if (request.ScenarioId.Equals(RelicStatTerminalScenarioId, StringComparison.OrdinalIgnoreCase))
+            {
+                if (scenario.OrbChecks.Count > 0 || scenario.PotionChecks.Count > 0
+                    || scenario.MonsterMoveChecks.Count > 0 || request.VerifyIncrementalSearch)
+                    throw new InvalidOperationException("遗物属性终局夹具不能混入其他差分或正式搜索请求。");
+                runner.SetStage("relic_stat_terminal");
+                int finishedTurn = await runner.RunRelicStatTerminalAsync(combatState, player);
+                return new ExecutionOutcome(true, finishedTurn, expectedCardPlayed, expectedPotionUsed,
+                    expectedPlayerPowerObserved, InitialSearchHeld: false);
+            }
+
+            if (request.ScenarioId.Equals("KNOWN-SOUL-ROUTE-REPLAY-V0111", StringComparison.OrdinalIgnoreCase))
+            {
+                if (scenario.OrbChecks.Count > 0 || scenario.PotionChecks.Count > 0
+                    || scenario.MonsterMoveChecks.Count > 0 || request.VerifyIncrementalSearch)
+                    throw new InvalidOperationException("已知 Soul 路线重建不能混入其他差分或正式搜索请求。");
+                runner.SetStage("known_soul_route_replay");
+                int finishedTurn = runner.RunKnownSoulRouteReplay(combatState, player);
+                return new ExecutionOutcome(false, finishedTurn, expectedCardPlayed, expectedPotionUsed,
+                    expectedPlayerPowerObserved, InitialSearchHeld: false);
+            }
+
+            if (request.ScenarioId.Equals("KNOWN-EXOSKELETONS-ROUTE-REPLAY-V0111", StringComparison.OrdinalIgnoreCase))
+            {
+                if (scenario.OrbChecks.Count > 0 || scenario.PotionChecks.Count > 0
+                    || scenario.MonsterMoveChecks.Count > 0 || request.VerifyIncrementalSearch)
+                    throw new InvalidOperationException("已知外骨骼虫路线重建不能混入其他差分或正式搜索请求。");
+                runner.SetStage("known_exoskeletons_route_replay");
+                int finishedTurn = runner.RunKnownExoskeletonsRouteReplay(combatState, player);
+                return new ExecutionOutcome(false, finishedTurn, expectedCardPlayed, expectedPotionUsed,
+                    expectedPlayerPowerObserved, InitialSearchHeld: false);
+            }
+
+            if (request.ScenarioId.Equals("KNOWN-EXOSKELETONS-PATH-TRACE-V0111", StringComparison.OrdinalIgnoreCase)
+                || request.ScenarioId.Equals("KNOWN-EXOSKELETONS-CONTINUATION-PATH-TRACE-V0111", StringComparison.OrdinalIgnoreCase))
+            {
+                if (scenario.OrbChecks.Count > 0 || scenario.PotionChecks.Count > 0
+                    || scenario.MonsterMoveChecks.Count > 0 || request.VerifyIncrementalSearch)
+                    throw new InvalidOperationException("外骨骼虫路径观察不能混入其他差分或增量搜索请求。");
+                _ = ApplySettingsOverrides();
+                runner.SetStage("known_exoskeletons_path_trace");
+                int retentionStep = request.ScenarioId.Equals(
+                    "KNOWN-EXOSKELETONS-CONTINUATION-PATH-TRACE-V0111", StringComparison.OrdinalIgnoreCase) ? 5 : 4;
+                int finishedTurn = await runner.RunKnownExoskeletonsPathTraceAsync(
+                    combatState, player, requiredRetentionStep: retentionStep);
+                return new ExecutionOutcome(false, finishedTurn, expectedCardPlayed, expectedPotionUsed,
+                    expectedPlayerPowerObserved, InitialSearchHeld: false);
+            }
+
+            if (request.ScenarioId.Equals("KNOWN-EXOSKELETONS-ROUTE-NATIVE-V0111", StringComparison.OrdinalIgnoreCase))
+            {
+                if (scenario.OrbChecks.Count > 0 || scenario.PotionChecks.Count > 0
+                    || scenario.MonsterMoveChecks.Count > 0 || request.VerifyIncrementalSearch)
+                    throw new InvalidOperationException("外骨骼虫原版对照不能混入其他差分或正式搜索请求。");
+                runner.SetStage("known_exoskeletons_route_native");
+                int finishedTurn = await runner.RunKnownExoskeletonsRouteNativeAsync(combatState, player);
+                return new ExecutionOutcome(true, finishedTurn, expectedCardPlayed, expectedPotionUsed,
+                    expectedPlayerPowerObserved, InitialSearchHeld: false);
+            }
+
+            if (request.ScenarioId.Equals("KNOWN-CUSTOM-ROUTE-NATIVE-V0111", StringComparison.OrdinalIgnoreCase))
+            {
+                if (scenario.OrbChecks.Count > 0 || scenario.PotionChecks.Count > 0
+                    || scenario.MonsterMoveChecks.Count > 0 || request.VerifyIncrementalSearch)
+                    throw new InvalidOperationException("已知路线原版对照不能混入其他差分或正式搜索请求。");
+                runner.SetStage("known_custom_route_native");
+                int finishedTurn = await runner.RunKnownCustomRouteNativeAsync(combatState, player);
+                return new ExecutionOutcome(true, finishedTurn, expectedCardPlayed, expectedPotionUsed,
+                    expectedPlayerPowerObserved, InitialSearchHeld: false);
+            }
+
+            if (request.ScenarioId.Equals("KNOWN-CUSTOM-ROUTE-REPLAY-V0111", StringComparison.OrdinalIgnoreCase))
+            {
+                if (scenario.OrbChecks.Count > 0 || scenario.PotionChecks.Count > 0
+                    || scenario.MonsterMoveChecks.Count > 0 || request.VerifyIncrementalSearch)
+                    throw new InvalidOperationException("已知路线重建夹具不能混入其他差分或正式搜索请求。");
+                runner.SetStage("known_custom_route_replay");
+                int finishedTurn = runner.RunKnownCustomRouteReplay(combatState, player);
+                // Only shadow replay was performed: the native combat remains untouched.
+                return new ExecutionOutcome(false, finishedTurn, expectedCardPlayed, expectedPotionUsed,
+                    expectedPlayerPowerObserved, InitialSearchHeld: false);
+            }
+
+            if (request.ScenarioId.Equals(MercuryReattachScenarioId, StringComparison.OrdinalIgnoreCase))
+            {
+                if (scenario.OrbChecks.Count > 0 || scenario.PotionChecks.Count > 0
+                    || scenario.MonsterMoveChecks.Count > 0 || request.VerifyIncrementalSearch)
+                    throw new InvalidOperationException("沙漏复活边界夹具不能混入其他差分或正式搜索请求。");
+                runner.SetStage("mercury_reattach_differential");
+                int finishedTurn = await runner.RunMercuryReattachDifferentialAsync(combatState, player);
+                return new ExecutionOutcome(true, finishedTurn, expectedCardPlayed, expectedPotionUsed,
+                    expectedPlayerPowerObserved, InitialSearchHeld: false);
+            }
+
+            if (request.ScenarioId.Equals(ForcedTurnTerminalScenarioId, StringComparison.OrdinalIgnoreCase))
+            {
+                if (scenario.OrbChecks.Count > 0 || scenario.PotionChecks.Count > 0
+                    || scenario.MonsterMoveChecks.Count > 0 || request.VerifyIncrementalSearch)
+                    throw new InvalidOperationException("强制结束终局夹具不能混入其他差分或正式搜索请求。");
+                runner.SetStage("forced_turn_terminal_differential");
+                int finishedTurn = await runner.RunForcedTurnTerminalDifferentialAsync(combatState, player);
+                return new ExecutionOutcome(true, finishedTurn, expectedCardPlayed, expectedPotionUsed,
+                    expectedPlayerPowerObserved, InitialSearchHeld: false);
+            }
+
+            if (request.ScenarioId.Equals(ReturnToHandOrderScenarioId, StringComparison.OrdinalIgnoreCase))
+            {
+                if (scenario.OrbChecks.Count > 0 || scenario.PotionChecks.Count > 0
+                    || scenario.MonsterMoveChecks.Count > 0 || request.VerifyIncrementalSearch)
+                    throw new InvalidOperationException("回手顺序专用夹具不能混入其他差分或搜索请求。");
+                runner.SetStage("return_to_hand_order_differential");
+                await runner.RunReturnToHandOrderDifferentialAsync(combatState, player);
+                runner._completedChecks.Add("ReturnToHandOrder:ActualContinuousForkRoot");
+                return Observation(combatEnded: false);
+            }
+
             if (request.VerifyTurnSetupSceneExitCancellation
                 || request.VerifyTurnSetupControlsDuringInitialSearch)
                 return Observation(combatEnded: false);

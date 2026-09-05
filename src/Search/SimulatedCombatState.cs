@@ -1059,24 +1059,32 @@ internal sealed partial class SimulatedCombatState
     public bool ShouldClearBlock(Creature owner, out AbstractModel? preventer)
         => Hook.ShouldClearBlock(this, owner, out preventer);
 
-    public void TriggerSideTurnStart(
+    public bool TriggerSideTurnStart(
         CombatPredictionSimulator simulator,
         CombatSide side,
         IReadOnlyList<Creature> participants,
         bool decrementPlating,
         bool isExtraTurn = false)
     {
+        if (HasPendingChoice)
+            return false;
         foreach (Creature owner in participants)
             TriggerBaseSideTurnStart(owner, decrementPlating);
-        PersistentPowerSupport.TriggerAfterSideTurnStart(
-            simulator,
-            this,
-            side,
-            participants,
-            isExtraTurn);
-        TurnStartPowerSupport.TriggerAfterSideTurnStart(simulator, this, side, participants);
-        TurnStartRelicSupport.TriggerAfterSideTurnStart(simulator, this, side, participants);
+        if (!PersistentPowerSupport.TriggerAfterSideTurnStart(
+                simulator,
+                this,
+                side,
+                participants,
+                isExtraTurn))
+        {
+            return false;
+        }
+        if (!TurnStartPowerSupport.TriggerAfterSideTurnStart(simulator, this, side, participants))
+            return false;
+        if (!TurnStartRelicSupport.TriggerAfterSideTurnStart(simulator, this, side, participants))
+            return false;
         PowerLifecycleSupport.ResolvePowerAmountChanges(simulator, this);
+        return !HasPendingChoice;
     }
 
     private void TriggerBaseSideTurnStart(
@@ -1668,6 +1676,7 @@ internal sealed partial class SimulatedCombatState
         _registeredCombatCards = simulator.State.Players
             .SelectMany(player => simulator.State.GetPlayerCombatState(player).AllCards)
             .ToList();
+        CaptureReturningCardEligibility(simulator);
         CapturePowerAfflictionRootCards(simulator);
         foreach (PredictedCard card in _registeredCombatCards)
         {
@@ -1797,6 +1806,7 @@ internal sealed partial class SimulatedCombatState
     public void UnregisterGeneratedCombatCard(PredictedCard card)
     {
         _registeredCombatCards?.Remove(card);
+        _returnToHandNextTurn?.Remove(card);
         card.SetMutationObserver(null);
         if (_generatedCombatCards?.Remove(card) != true)
             return;

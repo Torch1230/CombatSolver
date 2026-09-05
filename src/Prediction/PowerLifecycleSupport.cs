@@ -107,11 +107,16 @@ internal static class PowerLifecycleSupport
         if (amount <= 0)
             return;
         Creature owner = card.Preview.Owner.Creature;
-        combat.TriggerRelicsAfterStarsSpent(simulator, card.Preview.Owner, amount);
+        if (!combat.TriggerRelicsAfterStarsSpent(simulator, card.Preview.Owner, amount))
+            return;
         foreach (ChildOfTheStarsPower power in combat.EffectivePowers().OfType<ChildOfTheStarsPower>())
         {
             if (power.Amount > 0 && ReferenceEquals(power.Owner, owner))
+            {
                 simulator.GainBlock(owner, power.Amount * amount, ValueProp.Unpowered);
+                if (simulator.HasPendingChoice)
+                    return;
+            }
         }
     }
 
@@ -158,6 +163,8 @@ internal static class PowerLifecycleSupport
                             simulator.Draw(player, listener.Amount);
                             break;
                     }
+                    if (simulator.HasPendingChoice)
+                        return;
                 }
             }
         }

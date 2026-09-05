@@ -8,6 +8,14 @@ using CombatSolver.Engine.Common.Mirrors;
 
 namespace CombatSolver.Engine.InCombat.Simulation;
 
+internal enum CombatTerminalOutcome
+{
+    Victory,
+    Defeat,
+}
+
+internal readonly record struct CombatTerminalStamp(int PlayerTurn, CombatTerminalOutcome Outcome);
+
 internal sealed partial class CombatPredictionSimulator
 {
     private readonly PredictionTrace _trace;
@@ -80,6 +88,10 @@ internal sealed partial class CombatPredictionSimulator
     /// </summary>
     public bool IsAboutToLose { get; private set; }
 
+    // Locked only at a vanilla-safe victory/loss check, not by the IsEnding query.
+    // A value copy survives Fork without retaining any combat or simulator graph.
+    public CombatTerminalStamp? TerminalStamp { get; private set; }
+
     /// <summary>
     /// Mirrors <see cref="CombatManager.IsEnding"/>.
     /// </summary>
@@ -111,6 +123,7 @@ internal sealed partial class CombatPredictionSimulator
         CombatPredictionHistory history,
         bool isInProgress,
         bool isAboutToLose,
+        CombatTerminalStamp? terminalStamp,
         int shuffleEventCount,
         ActionRelicTriggerRecorder? actionRelicTriggers)
     {
@@ -121,6 +134,7 @@ internal sealed partial class CombatPredictionSimulator
         History = history;
         IsInProgress = isInProgress;
         IsAboutToLose = isAboutToLose;
+        TerminalStamp = terminalStamp;
         ShuffleEventCount = shuffleEventCount;
         ActionRelicTriggers = actionRelicTriggers;
     }
@@ -142,6 +156,7 @@ internal sealed partial class CombatPredictionSimulator
             history,
             IsInProgress,
             IsAboutToLose,
+            TerminalStamp,
             ShuffleEventCount,
             ActionRelicTriggers);
     }
@@ -152,6 +167,8 @@ internal sealed partial class CombatPredictionSimulator
             throw new InvalidOperationException("Combat prediction can only be forked between completed actions.");
         if (_damageSource is not null)
             throw new InvalidOperationException("Combat prediction cannot be forked while a damage source is active.");
+        if (_activeDrawDepth != 0)
+            throw new InvalidOperationException("Combat prediction cannot be forked during draw resolution.");
         if (ActionRelicTriggers is not null)
             throw new InvalidOperationException("Combat prediction cannot be forked while action relic triggers are being recorded.");
         if (State.CombatState is IPredictionForkBoundary combatBoundary)
@@ -185,13 +202,19 @@ internal sealed partial class CombatPredictionSimulator
     /// It does not simulate the vanilla combat teardown after <c>EndCombatInternal</c>, including
     /// after-combat hooks, rewards, room progression, save operations, music/UI cleanup, or run-loss handling.
     /// </remarks>
-    public bool CheckWinCondition()
+    public bool CheckWinCondition(int playerTurn)
     {
+        if (TerminalStamp.HasValue)
+            return true;
+        if (playerTurn < 1)
+            throw new ArgumentOutOfRangeException(nameof(playerTurn));
         if (!IsAboutToLose && !IsEnding)
         {
             return false;
         }
 
+        TerminalStamp = new CombatTerminalStamp(playerTurn,
+            IsAboutToLose ? CombatTerminalOutcome.Defeat : CombatTerminalOutcome.Victory);
         IsAboutToLose = false;
         IsInProgress = false;
         return true;

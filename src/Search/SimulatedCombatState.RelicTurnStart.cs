@@ -49,7 +49,7 @@ internal sealed partial class SimulatedCombatState
         return relics;
     }
 
-    public void PrepareRelicsBeforeSideTurnStart(
+    public bool PrepareRelicsBeforeSideTurnStart(
         CombatPredictionSimulator simulator,
         IReadOnlyList<Creature> participants)
     {
@@ -89,7 +89,10 @@ internal sealed partial class SimulatedCombatState
                     }
                     break;
             }
+            if (simulator.HasPendingChoice)
+                return false;
         }
+        return true;
     }
 
     public void TriggerRelicsAfterEnergyReset(
@@ -175,7 +178,8 @@ internal sealed partial class SimulatedCombatState
                     break;
                 }
                 case EmotionChip value:
-                    TriggerEmotionChip(simulator, value);
+                    if (!TriggerEmotionChip(simulator, value))
+                        return true;
                     break;
                 case FestivePopper when turn <= 1:
                     using (simulator.PushDamageSource(
@@ -267,11 +271,13 @@ internal sealed partial class SimulatedCombatState
                     break;
                 }
             }
+            if (simulator.HasPendingChoice)
+                return true;
         }
         return false;
     }
 
-    public void TriggerRelicsAfterSideTurnStart(
+    public bool TriggerRelicsAfterSideTurnStart(
         CombatPredictionSimulator simulator,
         CombatSide side,
         IReadOnlyList<Creature> participants)
@@ -312,6 +318,8 @@ internal sealed partial class SimulatedCombatState
                     break;
                 case DiamondDiadem when turn <= 1:
                     simulator.GainBlock(relic.Owner.Creature, relic.DynamicVars.Block.BaseValue, ValueProp.Unpowered);
+                    if (simulator.HasPendingChoice)
+                        return false;
                     Apply<BlurPower>(relic.Owner.Creature, 1, relic.Owner.Creature);
                     break;
                 case DivineDestiny when turn <= 1:
@@ -395,7 +403,10 @@ internal sealed partial class SimulatedCombatState
                     simulator.GainEnergy(relic.Owner, relic.DynamicVars.Energy.BaseValue);
                     break;
             }
+            if (simulator.HasPendingChoice)
+                return false;
         }
+        return true;
     }
 
     private void GenerateRelicCards(
@@ -439,7 +450,7 @@ internal sealed partial class SimulatedCombatState
         }
     }
 
-    public void CompleteRelicsAfterSideTurnEnd(
+    public bool CompleteRelicsAfterSideTurnEnd(
         CombatPredictionSimulator simulator,
         IReadOnlyList<Creature> participants,
         int etherealExhaustCount)
@@ -452,7 +463,7 @@ internal sealed partial class SimulatedCombatState
             StatefulRelicState state = GetStatefulRelicState(relic);
             SetStatefulRelicState(relic, new StatefulRelicState(0, state.Current));
         }
-        TriggerRelicsAfterSideTurnEnd(simulator, participants, etherealExhaustCount);
+        return TriggerRelicsAfterSideTurnEnd(simulator, participants, etherealExhaustCount);
     }
 
     private IReadOnlyList<Creature> LivingOpponents(

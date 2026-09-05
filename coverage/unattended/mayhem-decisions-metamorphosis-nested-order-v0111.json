@@ -1,0 +1,37 @@
+[
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 999,
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "powersBeforeMove": [
+      {
+        "powerId": "MAYHEM_POWER",
+        "amount": 1,
+        "target": "Player"
+      }
+    ],
+    "cardsBeforeMove": [
+      {
+        "cardId": "DECISIONS_DECISIONS",
+        "pile": "Draw",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "STRIKE_REGENT",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "METAMORPHOSIS",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      }
+    ],
+    "triggerAutoPrePlayAfterPlayerSetup": true,
+    "autoPrePlayChoiceCardIds": [
+      "METAMORPHOSIS"
+    ]
+  }
+]

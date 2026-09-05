@@ -66,41 +66,60 @@ internal static class LiveEndTurnRiskEvaluator
         bool paelsEyeTriggers = player.Relics
             .OfType<PaelsEye>()
             .Any(relic => !relic.IsMelted && relic.ShouldTakeExtraTurn(player));
-        bool takingExtraTurn = combat.PrepareLiveExtraPlayerTurn(
-            simulator,
-            player,
-            paelsEyeTriggers);
+        if (!combat.TryPrepareLiveExtraPlayerTurn(
+                simulator,
+                player,
+                paelsEyeTriggers,
+                out bool takingExtraTurn))
+        {
+            return BuildProjection(hpBefore, simulatedPlayer, []);
+        }
         int etherealExhaustCount = combat.CountEtherealCardsInHand(simulator, player);
 
-        PlayerTurnEndLifecycle.RunPhaseOne(
-            simulator,
-            combat,
-            player,
-            [player.Creature]);
+        if (!PlayerTurnEndLifecycle.RunPhaseOne(
+                simulator,
+                combat,
+                player,
+                [player.Creature]))
+        {
+            return BuildProjection(hpBefore, simulatedPlayer, []);
+        }
         combat.CommitHistoryCourseTurn(player);
         combat.NormalizeAeonglassWithers(simulator);
         combat.NormalizeCardAfflictions(simulator);
-        CorePowerSupport.ApplyEnemyDeathPowers(
-            simulator,
-            combat,
-            combat.KnownEnemies,
-            processedEnemyDeaths);
+        if (!CorePowerSupport.ApplyEnemyDeathPowers(
+                simulator,
+                combat,
+                combat.KnownEnemies,
+                processedEnemyDeaths))
+        {
+            return BuildProjection(hpBefore, simulatedPlayer, []);
+        }
         CorePowerSupport.FlushPlayerHandAtTurnEnd(simulator, combat, player);
-        TurnStartRelicSupport.TriggerAfterSideTurnEnd(
-            simulator,
-            combat,
-            [player.Creature],
-            etherealExhaustCount);
-        CorePowerSupport.TriggerPlayerSideTurnEndEffects(
-            simulator,
-            combat,
-            [player.Creature],
-            etherealExhaustCount);
-        CorePowerSupport.ApplyEnemyDeathPowers(
-            simulator,
-            combat,
-            combat.KnownEnemies,
-            processedEnemyDeaths);
+        if (!TurnStartRelicSupport.TriggerAfterSideTurnEnd(
+                simulator,
+                combat,
+                [player.Creature],
+                etherealExhaustCount))
+        {
+            return BuildProjection(hpBefore, simulatedPlayer, []);
+        }
+        if (!CorePowerSupport.TriggerPlayerSideTurnEndEffects(
+                simulator,
+                combat,
+                [player.Creature],
+                etherealExhaustCount))
+        {
+            return BuildProjection(hpBefore, simulatedPlayer, []);
+        }
+        if (!CorePowerSupport.ApplyEnemyDeathPowers(
+                simulator,
+                combat,
+                combat.KnownEnemies,
+                processedEnemyDeaths))
+        {
+            return BuildProjection(hpBefore, simulatedPlayer, []);
+        }
 
         if (takingExtraTurn || simulatedPlayer.IsDead)
             return BuildProjection(hpBefore, simulatedPlayer, []);
@@ -108,8 +127,10 @@ internal static class LiveEndTurnRiskEvaluator
         combat.CurrentSide = CombatSide.Enemy;
         combat.SetActionChoiceTiming(PlanChoiceTiming.EnemyTurn);
         combat.SnapshotPowerAmountsAtTurnStart(combat.Enemies);
-        TurnStartRelicSupport.TriggerBeforeSideTurnStart(simulator, combat, combat.Enemies);
-        TurnStartPowerSupport.TriggerBeforeSideTurnStart(simulator, combat, combat.Enemies);
+        if (!TurnStartRelicSupport.TriggerBeforeSideTurnStart(simulator, combat, combat.Enemies))
+            return BuildProjection(hpBefore, simulatedPlayer, []);
+        if (TurnStartPowerSupport.TriggerBeforeSideTurnStart(simulator, combat, combat.Enemies))
+            return BuildProjection(hpBefore, simulatedPlayer, []);
         foreach (Creature enemy in combat.Enemies)
         {
             SimCreatureState simulatedEnemy = simulator.State.GetCreature(enemy);
@@ -120,21 +141,31 @@ internal static class LiveEndTurnRiskEvaluator
                 else
                     PersistentRelicSupport.TriggerAfterPreventingBlockClear(simulator, preventer, enemy);
             }
-            CorePowerSupport.TriggerAfterBlockCleared(simulator, combat, enemy);
+            if (!CorePowerSupport.TriggerAfterBlockCleared(simulator, combat, enemy))
+                return BuildProjection(hpBefore, simulatedPlayer, []);
         }
-        combat.TriggerSideTurnStart(
-            simulator,
-            CombatSide.Enemy,
-            combat.Enemies,
-            decrementPlating: combat.RoundNumber > 1);
+        if (!combat.TriggerSideTurnStart(
+                simulator,
+                CombatSide.Enemy,
+                combat.Enemies,
+                decrementPlating: combat.RoundNumber > 1))
+        {
+            return BuildProjection(hpBefore, simulatedPlayer, []);
+        }
         int poisonHistoryStart = simulator.History.Entries.Count;
-        CorePowerSupport.TriggerPoison(simulator, combat, combat.Enemies.ToArray());
+        if (!CorePowerSupport.TriggerPoison(simulator, combat, combat.Enemies.ToArray()))
+            return BuildProjection(hpBefore, simulatedPlayer, []);
         TriggeredPowerSupport.CompensateHistorySince(simulator, combat, poisonHistoryStart);
-        CorePowerSupport.ApplyEnemyDeathPowers(
-            simulator,
-            combat,
-            combat.KnownEnemies,
-            processedEnemyDeaths);
+        if (combat.HasPendingChoice)
+            return BuildProjection(hpBefore, simulatedPlayer, []);
+        if (!CorePowerSupport.ApplyEnemyDeathPowers(
+                simulator,
+                combat,
+                combat.KnownEnemies,
+                processedEnemyDeaths))
+        {
+            return BuildProjection(hpBefore, simulatedPlayer, []);
+        }
 
         Creature[] actingEnemies = combat.Enemies.ToArray();
         List<ForecastMove> moves = new(actingEnemies.Length);
@@ -156,21 +187,24 @@ internal static class LiveEndTurnRiskEvaluator
                         move.Owner,
                         player.Creature,
                         forcedDamage);
+                    if (combat.HasPendingChoice)
+                        return BuildProjection(hpBefore, simulatedPlayer, moves);
                 }
                 if (simulatedPlayer.IsDead)
                     break;
                 continue;
             }
-            if (MonsterMoveSemantics.ApplyForecastMove(
+            bool playerDied = MonsterMoveSemantics.ApplyForecastMove(
                     simulator,
                     combat,
                     move,
                     player.Creature,
                     processedEnemyDeaths,
-                    endTurnChoices))
-            {
+                    endTurnChoices);
+            if (combat.HasPendingChoice)
+                return BuildProjection(hpBefore, simulatedPlayer, moves);
+            if (playerDied)
                 break;
-            }
         }
 
         return BuildProjection(hpBefore, simulatedPlayer, moves);

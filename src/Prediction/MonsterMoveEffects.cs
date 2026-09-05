@@ -394,6 +394,8 @@ internal static partial class MonsterMoveEffects
                 {
                     simulator.Kill(move.Owner, force: true);
                 }
+                if (simulator.HasPendingChoice)
+                    return true;
                 killedOwner = true;
                 return true;
             case ("GlobeHead", "SHOCKING_SLAP"):
@@ -897,6 +899,8 @@ internal static partial class MonsterMoveEffects
                 {
                     simulator.Kill(move.Owner, force: true);
                 }
+                if (simulator.HasPendingChoice)
+                    return true;
                 killedOwner = true;
                 return true;
             case ("DecimillipedeSegmentBack", "BULK_MOVE"):

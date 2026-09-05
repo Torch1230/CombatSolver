@@ -15,6 +15,9 @@ internal sealed record SolverSearchProfile(
     int MaxHandChoiceBranchesPerAction,
     int SoftTimeBudgetMilliseconds)
 {
+    // Internal to the existing failed-layer retry; never enabled for a normal primary solve.
+    public bool RecoverDeferredTurnFrontier { get; init; }
+
     public static SolverSearchProfile Short { get; } = new(
         SolverSearchPhase.Short,
         BeamWidth: 24,

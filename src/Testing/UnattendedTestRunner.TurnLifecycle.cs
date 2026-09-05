@@ -105,7 +105,13 @@ internal sealed partial class UnattendedTestRunner
         SimPlayerCombatState state = simulator.State.GetPlayerCombatState(player);
         combat.AdvancePlayerTurn(player);
         combat.SnapshotPowerAmountsAtTurnStart([player.Creature]);
-        TurnStartRelicSupport.TriggerBeforeSideTurnStart(simulator, combat, [player.Creature]);
+        if (!TurnStartRelicSupport.TriggerBeforeSideTurnStart(
+                simulator,
+                combat,
+                [player.Creature]))
+        {
+            throw new InvalidOperationException("模拟玩家回合准备在回合开始遗物阶段遇到动态选择。");
+        }
         if (TurnStartPowerSupport.TriggerBeforeSideTurnStart(
                 simulator,
                 combat,
@@ -130,17 +136,23 @@ internal sealed partial class UnattendedTestRunner
         state.GainEnergy(PersistentPowerSupport.GetModifiedMaxEnergy(combat, player)
             + combat.ConsumeEnergyNextTurn(player));
         TurnStartRelicSupport.TriggerAfterEnergyReset(simulator, combat, player);
-        PersistentPowerSupport.TriggerAfterEnergyReset(simulator, combat, player);
+        if (combat.HasPendingChoice
+            || !PersistentPowerSupport.TriggerAfterEnergyReset(simulator, combat, player))
+        {
+            throw new InvalidOperationException("模拟玩家回合准备在能量重置后遇到动态选择。");
+        }
         TurnStartRelicSupport.TriggerAfterEnergyResetLate(simulator, combat, player);
+        if (combat.HasPendingChoice)
+            throw new InvalidOperationException("模拟玩家回合准备在能量重置后期遇到动态选择。");
         bool sideTurnStartTriggeredEarly = false;
         using (choices.BeforeNextTake(() =>
                {
-                   combat.TriggerSideTurnStart(
+                   sideTurnStartTriggeredEarly = true;
+                   return combat.TriggerSideTurnStart(
                        simulator,
                        CombatSide.Player,
                        [player.Creature],
                        decrementPlating: combat.GetPlayerTurnNumber(player) != 1);
-                   sideTurnStartTriggeredEarly = true;
                }))
         {
             if (combat.PrepareBeforeHandDraw(simulator, player, choices))
@@ -151,7 +163,11 @@ internal sealed partial class UnattendedTestRunner
                 CombatManager.baseHandDrawCount);
             int historyEntryStart = simulator.History.Entries.Count;
             simulator.Draw(player, drawCount, fromHandDraw: true);
+            if (combat.HasPendingChoice)
+                throw new InvalidOperationException("模拟玩家回合准备在抽牌时遇到动态选择。");
             TriggeredPowerSupport.CompensateHistorySince(simulator, combat, historyEntryStart);
+            if (combat.HasPendingChoice)
+                throw new InvalidOperationException("模拟玩家回合准备在抽牌补偿时遇到动态选择。");
             if (combat.TriggerAfterPlayerTurnStart(
                     simulator,
                     player.Creature,
@@ -159,11 +175,14 @@ internal sealed partial class UnattendedTestRunner
                 throw new InvalidOperationException("模拟玩家回合准备遇到动态抽牌后结算。");
             if (!sideTurnStartTriggeredEarly)
             {
-                combat.TriggerSideTurnStart(
-                    simulator,
-                    CombatSide.Player,
-                    [player.Creature],
-                    decrementPlating: combat.GetPlayerTurnNumber(player) != 1);
+                if (!combat.TriggerSideTurnStart(
+                        simulator,
+                        CombatSide.Player,
+                        [player.Creature],
+                        decrementPlating: combat.GetPlayerTurnNumber(player) != 1))
+                {
+                    throw new InvalidOperationException("模拟玩家回合准备在阶段开始时遇到动态选择。");
+                }
             }
         }
         choices.AssertConsumed();

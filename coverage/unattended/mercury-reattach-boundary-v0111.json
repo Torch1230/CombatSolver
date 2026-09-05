@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "mercury-reattach-boundary-v0111",
+  "characterId": "IRONCLAD",
+  "seed": "COMBATSOLVER",
+  "encounterId": "DECIMILLIPEDE_ELITE",
+  "ascension": 0,
+  "stopAfterCombatRootSnapshotAssertion": true,
+  "headlessFastModeForTest": "Instant",
+  "timeoutSeconds": 120,
+  "exitOnComplete": true,
+  "cards": []
+}

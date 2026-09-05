@@ -4,6 +4,7 @@ using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Hooks;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
+using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.ValueProps;
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.InCombat.Mirrors;
@@ -71,10 +72,22 @@ internal sealed partial class CombatPredictionSimulator
 
         foreach (var originalTarget in targets)
         {
-            results.AddRange(DamageTarget(originalTarget, amount, props, dealer, cardSource, cardPlay, source));
+            if (!TryDamageTarget(
+                    originalTarget,
+                    amount,
+                    props,
+                    dealer,
+                    cardSource,
+                    cardPlay,
+                    source,
+                    out IReadOnlyList<DamageResult> targetResults))
+            {
+                return results;
+            }
+            results.AddRange(targetResults);
         }
 
-        ProcessDamageResults(results, dealer, cardSource, source);
+        _ = ProcessDamageResults(results, dealer, cardSource, source);
         return results;
     }
 
@@ -89,32 +102,38 @@ internal sealed partial class CombatPredictionSimulator
         if (dealer?.IsDead == true)
             return [];
         CombatDamageSource source = ResolveDamageSource(cardSource);
-        IReadOnlyList<DamageResult> results = DamageTarget(
-            target,
-            amount,
-            props,
-            dealer,
-            cardSource,
-            cardPlay,
-            source);
-        ProcessDamageResults(results, dealer, cardSource, source);
+        if (!TryDamageTarget(
+                target,
+                amount,
+                props,
+                dealer,
+                cardSource,
+                cardPlay,
+                source,
+                out IReadOnlyList<DamageResult> results))
+        {
+            return results;
+        }
+        _ = ProcessDamageResults(results, dealer, cardSource, source);
         return results;
     }
 
     // Mirrors the per-target body of CreatureCmd.Damage.
-    private IReadOnlyList<DamageResult> DamageTarget(
+    private bool TryDamageTarget(
         Creature originalTarget,
         decimal amount,
         ValueProp props,
         Creature? dealer,
         PredictedCard? cardSource,
         CardPlay? cardPlay,
-        CombatDamageSource source)
+        CombatDamageSource source,
+        out IReadOnlyList<DamageResult> results)
     {
+        results = [];
         var originalTargetState = State.GetCreature(originalTarget);
         if (originalTargetState.IsDead)
         {
-            return [];
+            return true;
         }
 
         var modifiedAmount = HookMirrors.ModifyDamage(
@@ -124,6 +143,8 @@ internal sealed partial class CombatPredictionSimulator
             props,
             cardSource,
             cardPlay);
+        if (HasPendingChoice)
+            return false;
 
         HookMirrors.BeforeDamageReceived(
             this,
@@ -132,6 +153,8 @@ internal sealed partial class CombatPredictionSimulator
             props,
             dealer,
             cardSource);
+        if (HasPendingChoice)
+            return false;
 
         var blockTarget = originalTarget.PetOwner?.Creature ?? originalTarget;
         var blockTargetState = State.GetCreature(blockTarget);
@@ -146,6 +169,8 @@ internal sealed partial class CombatPredictionSimulator
             cardSource,
             HpLossHookPhase.BeforeOsty,
             out _);
+        if (HasPendingChoice)
+            return false;
 
         var unblockedDamageTarget = Hook.ModifyUnblockedDamageTarget(
             State.CombatState,
@@ -153,6 +178,8 @@ internal sealed partial class CombatPredictionSimulator
             unblockedDamage,
             props,
             dealer);
+        if (HasPendingChoice)
+            return false;
 
         unblockedDamage = HookMirrors.ModifyHpLost(
             this,
@@ -164,6 +191,8 @@ internal sealed partial class CombatPredictionSimulator
             HpLossHookPhase.AfterOsty,
             out var afterOstyModifiers);
         HookMirrors.AfterModifyingHpLostAfterOsty(this, afterOstyModifiers);
+        if (HasPendingChoice)
+            return false;
 
         var unblockedDamageTargetState = State.GetCreature(unblockedDamageTarget);
         var unblockedDamageResult = unblockedDamageTargetState.LoseHp(unblockedDamage, props);
@@ -185,7 +214,8 @@ internal sealed partial class CombatPredictionSimulator
                 source);
             if (State.CombatState is ICombatPredictionCardEventSink directEventSink)
                 directEventSink.RecordDamageReceived(unblockedDamageResult.Receiver, dealer, unblockedDamageResult);
-            return [unblockedDamageResult];
+            results = [unblockedDamageResult];
+            return true;
         }
 
         var originalTargetDamage = HookMirrors.ModifyHpLost(
@@ -198,6 +228,8 @@ internal sealed partial class CombatPredictionSimulator
             HpLossHookPhase.AfterOsty,
             out var redirectedAfterOstyModifiers);
         HookMirrors.AfterModifyingHpLostAfterOsty(this, redirectedAfterOstyModifiers);
+        if (HasPendingChoice)
+            return false;
 
         var damageResult = originalTargetDamage > 0m
             ? originalTargetState.LoseHp(originalTargetDamage, props)
@@ -221,11 +253,12 @@ internal sealed partial class CombatPredictionSimulator
             source);
         if (State.CombatState is ICombatPredictionCardEventSink redirectedEventSink)
             redirectedEventSink.RecordDamageReceived(damageResult.Receiver, dealer, damageResult);
-        return [unblockedDamageResult, damageResult];
+        results = [unblockedDamageResult, damageResult];
+        return true;
     }
 
     // Mirrors the post-target DamageResult processing in CreatureCmd.Damage.
-    private void ProcessDamageResults(
+    private bool ProcessDamageResults(
         IEnumerable<DamageResult> results,
         Creature? dealer,
         PredictedCard? cardSource,
@@ -239,11 +272,15 @@ internal sealed partial class CombatPredictionSimulator
             if (damageResult.WasBlockBroken)
             {
                 HookMirrors.AfterBlockBroken(this, originalTarget, dealer);
+                if (HasPendingChoice)
+                    return false;
             }
 
             if (damageResult.UnblockedDamage > 0)
             {
                 HookMirrors.AfterCurrentHpChanged(this, originalTarget, -damageResult.UnblockedDamage);
+                if (HasPendingChoice)
+                    return false;
             }
 
             HookMirrors.AfterDamageGiven(
@@ -253,6 +290,8 @@ internal sealed partial class CombatPredictionSimulator
                 damageResult.Props,
                 dealer,
                 cardSource);
+            if (HasPendingChoice)
+                return false;
 
             if (!damageResult.WasTargetKilled || !State.GetCreature(originalTarget).IsDead)
             {
@@ -263,6 +302,8 @@ internal sealed partial class CombatPredictionSimulator
                     damageResult.Props,
                     dealer,
                     cardSource);
+                if (HasPendingChoice)
+                    return false;
             }
             else
             {
@@ -278,25 +319,32 @@ internal sealed partial class CombatPredictionSimulator
         }
 
         if (killedCreatures != null)
-            Kill(killedCreatures);
+        {
+            if (!Kill(killedCreatures))
+                return false;
+        }
         else if (State.Players.All(player => State.GetCreature(player.Creature).IsDead))
             LoseCombat();
+        return !HasPendingChoice;
     }
 
     // Convenience overload for Kill with a single target.
-    public void Kill(Creature creature, bool force = false)
+    public bool Kill(Creature creature, bool force = false)
     {
-        KillWithoutCheckingWinCondition(creature, force);
+        if (!KillWithoutCheckingWinCondition(creature, force))
+            return false;
         if (State.Players.All(player => State.GetCreature(player.Creature).IsDead))
             LoseCombat();
+        return !HasPendingChoice;
     }
 
     // Mirrors CreatureCmd.Kill.
-    public void Kill(IReadOnlyList<Creature> creatures, bool force = false)
+    public bool Kill(IReadOnlyList<Creature> creatures, bool force = false)
     {
         foreach (var creature in creatures)
         {
-            KillWithoutCheckingWinCondition(creature, force);
+            if (!KillWithoutCheckingWinCondition(creature, force))
+                return false;
         }
 
         if (State.Players.All(player => State.GetCreature(player.Creature).IsDead))
@@ -305,10 +353,11 @@ internal sealed partial class CombatPredictionSimulator
         }
 
         // Vanilla ends a player's turn when the player is killed, which is not simulated here.
+        return !HasPendingChoice;
     }
 
     // Mirrors CreatureCmd.KillWithoutCheckingWinCondition, without recursion checks.
-    private void KillWithoutCheckingWinCondition(Creature creature, bool force, int recursion = 0)
+    private bool KillWithoutCheckingWinCondition(Creature creature, bool force, int recursion = 0)
     {
         var creatureState = State.GetCreature(creature);
         var currentHp = creatureState.CurrentHp;
@@ -317,11 +366,21 @@ internal sealed partial class CombatPredictionSimulator
         {
             creatureState.LoseHp(currentHp, ValueProp.Unblockable | ValueProp.Unpowered);
             HookMirrors.AfterCurrentHpChanged(this, creature, -currentHp);
+            if (HasPendingChoice)
+                return false;
         }
 
         HookMirrors.BeforeDeath(this, creature);
+        if (HasPendingChoice)
+            return false;
 
-        if (force || creatureState.MaxHp <= 0 || HookMirrors.ShouldDie(this, creature, out var preventer))
+        AbstractModel? preventer = null;
+        bool shouldDie = force || creatureState.MaxHp <= 0;
+        if (!shouldDie)
+            shouldDie = HookMirrors.ShouldDie(this, creature, out preventer);
+        if (HasPendingChoice)
+            return false;
+        if (shouldDie)
         {
             if (wasAlive
                 && creature.Side == CombatSide.Enemy
@@ -334,8 +393,12 @@ internal sealed partial class CombatPredictionSimulator
             bool shouldRemoveFromCombat = State.CombatState is ICombatPredictionCreatureSemantics semantics
                 ? semantics.ShouldRemoveAfterDeath(creature)
                 : Hook.ShouldCreatureBeRemovedFromCombatAfterDeath(State.CombatState, creature);
+            if (HasPendingChoice)
+                return false;
 
             HookMirrors.AfterDeath(this, creature, wasRemovalPrevented: false);
+            if (HasPendingChoice)
+                return false;
 
             var aliveTeammates = State.GetTeammatesOf(creature)
                 .Where(c => State.GetCreature(c).IsAlive)
@@ -362,37 +425,50 @@ internal sealed partial class CombatPredictionSimulator
                         ? !predicted.IsPrimaryEnemy(c)
                         : c.IsSecondaryEnemy))
                 {
-                    Kill(aliveTeammates);
+                    if (!Kill(aliveTeammates))
+                        return false;
                 }
             }
             else if (creature.Player is { } player)
             {
-                HandlePlayerDeath(player);
+                if (!HandlePlayerDeath(player))
+                    return false;
             }
         }
         else
         {
+            if (preventer == null)
+            {
+                throw new InvalidOperationException(
+                    "死亡被阻止但没有返回对应的阻止者。");
+            }
             HookMirrors.AfterDeath(this, creature, wasRemovalPrevented: true);
+            if (HasPendingChoice)
+                return false;
             HookMirrors.AfterPreventingDeath(this, preventer, creature);
+            if (HasPendingChoice)
+                return false;
 
             if (State.GetCreature(creature).IsDead)
             {
                 if (recursion >= 10)
                     throw new InvalidOperationException("死亡被连续阻止十次后，生物仍未复活。");
-                KillWithoutCheckingWinCondition(creature, force, recursion + 1);
+                return KillWithoutCheckingWinCondition(creature, force, recursion + 1);
             }
         }
+        return !HasPendingChoice;
     }
 
     // Mirrors the player-death flow in CreatureCmd.KillWithoutCheckingWinCondition.
-    private void HandlePlayerDeath(Player player)
+    private bool HandlePlayerDeath(Player player)
     {
         var playerState = State.GetPlayerCombatState(player);
         playerState.OrbQueue.Clear();
 
         if (State.GetOsty(player) is { } osty && State.GetCreature(osty).IsAlive)
         {
-            Kill(osty, force: true);
+            if (!Kill(osty, force: true))
+                return false;
         }
 
         // Player hook deactivation only affects a surviving multiplayer teammate's later hooks; multiplayer is out of scope.
@@ -408,5 +484,6 @@ internal sealed partial class CombatPredictionSimulator
             playerState.LoseEnergy(playerState.Energy);
             playerState.LoseStars(playerState.Stars);
         }
+        return !HasPendingChoice;
     }
 }
