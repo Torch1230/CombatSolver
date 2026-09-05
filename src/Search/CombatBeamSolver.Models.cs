@@ -63,6 +63,52 @@ internal sealed partial class CombatBeamSolver
         int ProjectedPlayerHp,
         int ResourceValue);
 
+    internal readonly record struct CanonicalCycleFamilyKey(
+        int Turn,
+        int PrimitivePeriodActions,
+        StateFingerprint SequenceKey);
+
+    // A region deliberately excludes the exact action sequence. Exact sequence identity is
+    // still used by CycleFamilyLedger for delayed-benefit leases, while this coarser key caps
+    // permutations that revisit the same semantic recurrence in one turn.
+    internal readonly record struct CycleRegionKey(
+        int Turn,
+        StateFingerprint ShapeKey);
+
+    private sealed class CycleFamilyLedgerEntry
+    {
+        public HashSet<int> AdmittedActionCounts { get; } = [];
+        // Family keys intentionally omit mutable exact state, so the first sibling admitted at
+        // one depth is not necessarily the sibling which proves progress. Track that evidence
+        // independently while still bounding it by the admitted action-depth set.
+        public HashSet<int>? ImprovementEvidenceActionCounts;
+        public int ProbeStarts;
+        public int ProbeExpandedNodes;
+        public byte EarnedImprovementEpoch;
+        public byte ActiveImprovementEpoch;
+        public byte RequestedImprovementEpoch;
+    }
+
+    private sealed class CycleRegionLedgerEntry
+    {
+        public int AdmittedNodes;
+        public int ProbeAdmittedNodes;
+        public int ProgressAdmittedNodes;
+        // Identity only: an inactive region must not keep an obsolete route's parent chain
+        // alive. Treat each handle as immutable; provisional ledgers may share it, but an
+        // updated witness always receives a new handle rather than calling SetTarget.
+        public WeakReference<SearchNode>? ProgressContinuationNode;
+        public int ProgressActionsRemaining;
+        public int DroppedNodes;
+        public int ProgressEpochs;
+        public bool HasObservation;
+        public EnemyDurabilityVector EnemyDurabilityFloor;
+        public long BestHealthRisk;
+        public int BestProjectedPlayerHp;
+        public int BestUsefulBlock;
+        public long BestSetupValue;
+    }
+
     private readonly record struct ThreatFocus(
         uint? CombatId,
         int Pressure,
@@ -82,6 +128,8 @@ internal sealed partial class CombatBeamSolver
         bool measurePhasePerformance,
         SearchFramePressureSignal framePressureSignal)
     {
+        public Guid PathDiagnosticsSolverId;
+        public int PathDiagnosticsBoundaryId;
         public readonly SearchPerformanceMetrics Performance = new(measurePhasePerformance);
         public readonly SearchWorkPacer WorkPacer = new(framePressureSignal);
         public Dictionary<StateFingerprint, TranspositionFrontier> Transpositions = [];
@@ -89,7 +137,55 @@ internal sealed partial class CombatBeamSolver
         public Dictionary<StateFingerprint, StandPatEvaluation> StandPatCache = [];
         public Dictionary<(StateFingerprint State, int RoundIndex), int> ThreatProjectionCache = [];
         public Dictionary<PredictionRiskSignature, CoverageSummary> CoverageCache = [];
+        // This ledger is search semantics rather than a rebuildable cache. In particular, a
+        // memory-pressure checkpoint must not let an already sampled cycle family buy fresh
+        // work merely because the transposition tables were rebuilt.
+        public readonly Dictionary<CanonicalCycleFamilyKey, CycleFamilyLedgerEntry>
+            CycleFamilyLedger = [];
+        public readonly HashSet<CycleExitProbeTicketKey> ExpandedCycleProbeTickets = [];
+        public readonly Dictionary<CycleRegionKey, CycleRegionLedgerEntry>
+            CycleRegionLedger = [];
+        // Region run budgets are partitioned by combat turn. A combinatorial cycle in one
+        // turn cannot spend the admission reserve needed to inspect a later turn, while all
+        // recurrent shapes within the same turn still share one deterministic hard cap.
+        public readonly Dictionary<int, int> CycleRegionAdmissionsByTurn = [];
+        public readonly Dictionary<int, int> CycleRegionProbeAdmissionsByTurn = [];
+        public readonly Dictionary<int, int> CycleRegionMaxProgressEpochsByTurn = [];
+        // Cycle-family work is budgeted independently for each combat turn. A large same-turn
+        // recurrence cannot consume the reserve required to inspect a later turn, while the
+        // dictionaries remain bounded by the number of turns that actually earned work.
+        public readonly Dictionary<int, int> CycleFamilyDepthsConsumedByTurn = [];
+        public readonly Dictionary<int, int> CycleProbeExpandedNodesConsumedByTurn = [];
+        // Scheduling semantics, not rebuildable caches. Every derived lane is charged to the
+        // collision root's hard budget; the narrower ledgers only order roots, original lanes,
+        // and current derived lanes fairly after checkpoint rebuilds.
+        public readonly Dictionary<StateFingerprint, int>
+            OrderedMutationAdmissionsByRootLease = [];
+        public readonly Dictionary<StateFingerprint, int>
+            OrderedMutationAdmissionsByInitialLease = [];
+        public readonly Dictionary<StateFingerprint, int> OrderedMutationAdmissionsByLease = [];
+        public readonly Dictionary<OrderedMutationHandoffSourceLedgerKey, int>
+            OrderedMutationHandoffAdmissionsByInitialAndSource = [];
+        public readonly Dictionary<SearchNode, OrderedMutationHandoffSourceLedgerKey>
+            PendingOrderedMutationHandoffSourceByNode = new(
+                ReferenceEqualityComparer.Instance);
+        // Naturally ranked inherited leases still pay the ordered admission ledger. If that
+        // payment cannot commit, only the scheduling lease expires; the ordinary route remains
+        // eligible for the normal cycle-region coordinator.
+        public readonly HashSet<SearchNode> PendingOrderedMutationOrdinaryFallbackNodes = new(
+            ReferenceEqualityComparer.Instance);
+        public int CycleRegionPortfolioNodesConsumed;
+        public int OrderedMutationPortfolioNodesConsumed;
+        public int OrderedMutationLeaseExpiredBudget;
+        public int OrderedMutationOrdinaryFallbacks;
+        public int OrderedMutationColdAtomicCommitted;
+        public int OrderedMutationColdAtomicRejected;
         public int Expanded;
+        public DeferredTurnFrontier? DeferredFrontier;
+        public int DeferredFrontierCaptured;
+        public int DeferredFrontierRestored;
+        public int DeferredFrontierReplayRoots;
+        public int DeferredFrontierReplayActions;
         public int DominatedActionsPruned;
         public int TopQueueActionsDropped;
         public int ActionAdmissionRepresentativesProtected;
@@ -97,6 +193,7 @@ internal sealed partial class CombatBeamSolver
         public int ChoiceBranchesEvaluated;
         public int ChoiceReplayAttempts;
         public int ChoiceReplayBudgetExhaustions;
+        public int ChoiceBranchesDroppedByBudget;
         public int ShuffleBranchesPruned = 0;
         public int SoldHpBranchesPruned;
         public int HpInvestmentBranchesProtected;
@@ -110,6 +207,14 @@ internal sealed partial class CombatBeamSolver
         public int CycleProbeContinuationsExpanded;
         public int CycleCandidatesProtected;
         public int CycleContinuationsStopped;
+        public int CycleRegionsDetected;
+        public int CycleRegionCandidatesConsidered;
+        public int CycleRegionCandidatesAdmitted;
+        public int CycleRegionCandidatesDropped;
+        public int CycleRegionProgressEpochs;
+        public int CycleRegionProbeCandidatesAdmitted;
+        public int CycleRegionProgressCandidatesAdmitted;
+        public int CycleRegionMaxActionFamilies;
         public int CrossTurnCandidatesProtected;
         public int CrossTurnContinuationsStopped;
         public int PrimaryIncumbentBranchesPruned;
@@ -128,9 +233,11 @@ internal sealed partial class CombatBeamSolver
         public int DeferredRoundChoiceFiniteQuotaFallbacks;
         public int DeferredRoundChoiceFinitePrimaryLayers;
         public int DeferredRoundChoiceFinitePendingFallbacks;
-        public int ParallelRoundChoiceReplayWaves;
-        public int ParallelRoundChoiceReplayWorkItems;
-        public int MaxParallelRoundChoiceReplayConcurrency;
+        // Retained as zero-valued compatibility telemetry after nested choice replay moved to the
+        // deterministic coordinator-owned two-phase collector.
+        public int ParallelRoundChoiceReplayWaves = 0;
+        public int ParallelRoundChoiceReplayWorkItems = 0;
+        public int MaxParallelRoundChoiceReplayConcurrency = 0;
         public int NodeLimitSnapshotsReleased;
         public int InitialPersistentBuffValue;
         public int InitialEnemyStrengthSuppression;

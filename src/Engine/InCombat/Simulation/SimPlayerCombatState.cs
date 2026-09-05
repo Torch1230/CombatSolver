@@ -159,7 +159,7 @@ internal sealed class SimPlayerCombatState
     {
         if (amount < 0m)
             throw new ArgumentException("Must not be negative.", nameof(amount));
-        Stars = (int)Math.Max(Stars + amount, 0m);
+        Stars = (int)Math.Clamp(Stars + amount, 0m, 999999999m);
     }
 
     // Mirrors PlayerCombatState.LoseStars.

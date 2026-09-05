@@ -1,4 +1,4 @@
-#requires -Version 7.0
+#requires -Version 7.4
 
 [CmdletBinding()]
 param(
@@ -9,6 +9,16 @@ param(
     [switch]$ContinueOnFailure,
     [string]$Sts2GameRoot = "C:\Program Files (x86)\Steam\steamapps\common\Slay the Spire 2",
     [string]$RitsuWorkshopRoot = "C:\Program Files (x86)\Steam\steamapps\workshop\content\2868840\3747602295",
+    [string]$HeadlessInstance = "",
+    [ValidateSet('exclusive', 'parallel')]
+    [string]$HeadlessExecutionMode = 'exclusive',
+    [ValidateRange(1, 1048576)]
+    [int]$HeadlessMemoryReservationMiB = 4096,
+    [ValidateRange(1, 1024)]
+    [int]$HeadlessCpuReservation = 2,
+    [ValidateRange(1, 3600)]
+    [int]$HeadlessQueueTimeoutSeconds = 120,
+    [string]$CombatSolverBuildDir = "",
     [string]$ResultsPath = ".local\headless-matrix-results.jsonl"
 )
 
@@ -63,6 +73,7 @@ public static class CombatSolverHeadlessMatrixCancellation
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $repoRoot
 $runner = Join-Path $PSScriptRoot "run-unattended-test.ps1"
+. (Join-Path $PSScriptRoot 'headless-runtime.ps1')
 
 $commands = @(Get-Content -LiteralPath "docs\TEST_MATRIX.md" |
     Where-Object { $_ -match '^pwsh -NoProfile -File tools\\run-unattended-test\.ps1(?: |$)' })
@@ -106,13 +117,39 @@ $failed = 0
 $skipped = 0
 $ranCase = $false
 $suiteStopwatch = [Diagnostics.Stopwatch]::StartNew()
-$headlessRoot = Join-Path ([Environment]::GetFolderPath("LocalApplicationData")) "CombatSolver\headless-runtime"
+if ([Environment]::ProcessorCount -eq 1 -and -not $PSBoundParameters.ContainsKey('HeadlessCpuReservation')) {
+    $HeadlessCpuReservation = 1
+}
+$runtimeContext = New-HeadlessRuntimeContext $repoRoot $Sts2GameRoot $HeadlessInstance `
+    $HeadlessExecutionMode $HeadlessMemoryReservationMiB $HeadlessCpuReservation $HeadlessQueueTimeoutSeconds
+$headlessRoot = $runtimeContext.Root
+New-Item -ItemType Directory -Path $headlessRoot -Force | Out-Null
+$launcherLock = [IO.File]::Open((Join-Path $headlessRoot 'launcher.lock'),
+    [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+try {
+    Initialize-HeadlessRuntimeOwner $runtimeContext
+    $matrixLockPath = Join-Path $headlessRoot 'matrix.lock'
+    Assert-HeadlessNoReparsePoint $matrixLockPath
+    $matrixLock = [IO.File]::Open($matrixLockPath,
+        [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+} finally {
+    $launcherLock.Dispose()
+}
 $processMarkerPath = Join-Path $headlessRoot "process.json"
-$gameRootFullPath = [IO.Path]::GetFullPath($Sts2GameRoot)
-$gameModsFullPath = [IO.Path]::GetFullPath((Join-Path $gameRootFullPath "mods"))
-$headlessDependencyDir = [IO.Path]::GetFullPath(
-    (Join-Path $gameModsFullPath ".combatsolver-headless-ritsulib"))
-$headlessDependencyMarker = Join-Path $headlessDependencyDir ".combatsolver-headless-only"
+$runtimeArguments = @('-HeadlessInstance', $runtimeContext.Instance,
+    '-HeadlessExecutionMode', $HeadlessExecutionMode,
+    '-HeadlessMemoryReservationMiB', [string]$HeadlessMemoryReservationMiB,
+    '-HeadlessCpuReservation', [string]$HeadlessCpuReservation,
+    '-HeadlessQueueTimeoutSeconds', [string]$HeadlessQueueTimeoutSeconds)
+if (-not [string]::IsNullOrWhiteSpace($CombatSolverBuildDir)) {
+    $runtimeArguments += @('-CombatSolverBuildDir', [IO.Path]::GetFullPath($CombatSolverBuildDir))
+}
+# Parameter names must be tokens, not quoted positional values in a command.
+$runtimeCommandSuffix = ''
+for ($argumentIndex = 0; $argumentIndex -lt $runtimeArguments.Count; $argumentIndex += 2) {
+    $runtimeCommandSuffix += ' ' + $runtimeArguments[$argumentIndex] + " '" +
+        $runtimeArguments[$argumentIndex + 1].Replace("'", "''") + "'"
+}
 $primaryError = $null
 $cleanupError = $null
 $cleanupExitCode = 0
@@ -124,6 +161,8 @@ function Start-MatrixPwshProcess([string[]]$Arguments) {
     $startInfo.FileName = $script:pwshExecutable
     $startInfo.UseShellExecute = $false
     $startInfo.CreateNoWindow = $true
+    $startInfo.WorkingDirectory = $script:repoRoot
+    $startInfo.Environment['COMBATSOLVER_HEADLESS_ROOT'] = $script:headlessRoot
     foreach ($argument in $Arguments) {
         $startInfo.ArgumentList.Add($argument)
     }
@@ -168,105 +207,42 @@ try {
     }
 }
 
-function Remove-CancelledCaseOrphanedDependency {
-    $orphanCleanupLockPath = Join-Path $script:headlessRoot "launcher.lock"
-    try {
-        $orphanCleanupLock = [IO.File]::Open(
-            $orphanCleanupLockPath,
-            [IO.FileMode]::OpenOrCreate,
-            [IO.FileAccess]::ReadWrite,
-            [IO.FileShare]::None)
-    } catch {
-        throw "Could not acquire the unattended launcher lock for cancelled-case cleanup; " +
-            "the headless dependency was preserved. error=$($_.Exception.Message)"
-    }
-
-    try {
-        # The case wrapper has already been killed and waited. Do not infer that
-        # a numeric PID is ours here: any remaining game may be the player's
-        # process. A live or uninspectable game therefore fails closed.
-        $gameProcesses = @([Diagnostics.Process]::GetProcessesByName("SlayTheSpire2"))
-        try {
-            foreach ($gameProcess in $gameProcesses) {
-                $gameProcessSafeHandle = $gameProcess.SafeHandle
-                $gameProcess.Refresh()
-                if (-not $gameProcess.HasExited) {
-                    throw "A live SlayTheSpire2 process remains after the cancelled case; " +
-                        "the headless dependency was preserved. pid=$($gameProcess.Id)"
-                }
-            }
-        } finally {
-            foreach ($gameProcess in $gameProcesses) {
-                $gameProcess.Dispose()
-            }
-        }
-
-        if (-not (Test-Path -LiteralPath $script:headlessDependencyDir -PathType Container)) {
-            return
-        }
-        $modsPrefix = $script:gameModsFullPath.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
-        $dependencyFullPath = [IO.Path]::GetFullPath($script:headlessDependencyDir)
-        if (-not $dependencyFullPath.StartsWith($modsPrefix, [StringComparison]::OrdinalIgnoreCase) -or
-            -not [string]::Equals(
-                [IO.Path]::GetFileName($dependencyFullPath),
-                ".combatsolver-headless-ritsulib",
-                [StringComparison]::OrdinalIgnoreCase)) {
-            throw "Refusing to remove a cancelled-case dependency outside the exact managed path: $dependencyFullPath"
-        }
-        if (-not (Test-Path -LiteralPath $script:headlessDependencyMarker -PathType Leaf)) {
-            $orphanEntries = @(Get-ChildItem -LiteralPath $dependencyFullPath -Force)
-            if ($orphanEntries.Count -eq 0) {
-                Remove-Item -LiteralPath $dependencyFullPath -Force
-                Write-Host "MATRIX_CANCELLED_EMPTY_DEPENDENCY_REMOVED path=$dependencyFullPath"
-                return
-            }
-            throw "Cancelled-case dependency lacks its ownership marker and was preserved: $dependencyFullPath"
-        }
-        $ownershipMarker = (Get-Content -LiteralPath $script:headlessDependencyMarker -Raw).Trim()
-        if ($ownershipMarker -ne "CombatSolver isolated headless dependency") {
-            throw "Cancelled-case dependency has an unexpected ownership marker and was preserved: $dependencyFullPath"
-        }
-        Remove-Item -LiteralPath $dependencyFullPath -Recurse -Force
-        Write-Host "MATRIX_CANCELLED_DEPENDENCY_REMOVED path=$dependencyFullPath"
-    } finally {
-        $orphanCleanupLock.Dispose()
-    }
-}
-
-function Invoke-HeadlessCleanup(
-    [switch]$AllowBeforeFirstCase,
-    [switch]$RecoverCancelledOrphan) {
+function Invoke-HeadlessCleanup([switch]$AllowBeforeFirstCase) {
     if (-not $script:ranCase -and -not $AllowBeforeFirstCase.IsPresent) {
         return 0
     }
     if (-not (Test-Path -LiteralPath $script:processMarkerPath -PathType Leaf)) {
-        if ($RecoverCancelledOrphan.IsPresent) {
-            Remove-CancelledCaseOrphanedDependency
+        if (Test-HeadlessUnboundGame $script:headlessRoot) {
+            throw 'Markerless instance process preserved: cleanup cannot prove ownership.'
         }
         return 0
     }
 
-    $markerProcessLabel = "unknown"
-    $markerProcessId = 0
-    try {
-        $marker = Get-Content -LiteralPath $script:processMarkerPath -Raw | ConvertFrom-Json
-        if ([int]::TryParse([string]$marker.pid, [ref]$markerProcessId) -and
-            $markerProcessId -gt 0) {
-            $markerProcessLabel = [string]$markerProcessId
-        }
-    } catch {
-        $markerProcessLabel = "unknown"
+    if (-not (Test-Path -LiteralPath (Join-Path $script:headlessRoot 'instance.json') -PathType Leaf)) {
+        throw 'Runtime owner is missing; cleanup preserved the process.'
     }
+    Initialize-HeadlessRuntimeOwner $script:runtimeContext
+    $marker = Get-Content -LiteralPath $script:processMarkerPath -Raw | ConvertFrom-Json -AsHashtable
+    if ($marker.pid -isnot [long] -and $marker.pid -isnot [int]) {
+        throw 'Invalid process marker preserved; cleanup requires a numeric PID.'
+    }
+    if ($marker.pid -le 0 -or [string]::IsNullOrWhiteSpace([string]$marker.processStartTimeUtc) -or
+        $marker.instance -ne $script:runtimeContext.Instance -or
+        -not [string]::Equals($marker.runtimeRoot, $script:headlessRoot, [StringComparison]::OrdinalIgnoreCase) -or
+        -not [string]::Equals($marker.executable, (Join-Path $script:headlessRoot 'game\SlayTheSpire2.exe'), [StringComparison]::OrdinalIgnoreCase) -or
+        -not [string]::Equals($marker.appData, (Join-Path $script:headlessRoot 'Roaming'), [StringComparison]::OrdinalIgnoreCase) -or
+        -not [string]::Equals($marker.dataDir, (Join-Path $script:headlessRoot 'Roaming\SlayTheSpire2'), [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'Invalid or foreign process marker preserved; cleanup refused.'
+    }
+    $markerProcessLabel = [string]$marker.pid
     Write-Host "MATRIX_CLEANUP_BEGIN pid=$markerProcessLabel"
-    $child = Start-MatrixPwshProcess @(
+    $cleanupArguments = @(
         "-NoProfile",
         "-File", $script:runner,
-        "-ScenarioId", "MATRIX-CLEANUP",
+        "-StopInstance",
         "-Sts2GameRoot", $script:Sts2GameRoot,
-        "-RitsuWorkshopRoot", $script:RitsuWorkshopRoot,
-        "-StopAfterCombatRootSnapshotAssertion",
-        "-TimeoutSeconds", "90",
-        "-ExitOnComplete")
+        "-RitsuWorkshopRoot", $script:RitsuWorkshopRoot) + $script:runtimeArguments
+    $child = Start-MatrixPwshProcess $cleanupArguments
     try {
         [CombatSolverHeadlessMatrixCancellation]::WaitForExit($child, $false) | Out-Null
         $exitCode = [int]$child.ExitCode
@@ -328,6 +304,7 @@ try {
         $ranCase = $true
         $caseCommand = $command
         $caseCommand += " -Sts2GameRoot '$escapedGameRoot' -RitsuWorkshopRoot '$escapedRitsuRoot'"
+        $caseCommand += $runtimeCommandSuffix
 
         $caseStopwatch = [Diagnostics.Stopwatch]::StartNew()
         Write-Host "MATRIX_CASE_BEGIN index=$index scenario=$scenarioId"
@@ -386,10 +363,7 @@ try {
     $primaryError = $_
 } finally {
     try {
-        $recoverCancelledOrphan =
-            [CombatSolverHeadlessMatrixCancellation]::IsCancellationRequested -or
-            ($null -ne $primaryError -and $primaryError.Exception -is [OperationCanceledException])
-        $cleanupExitCode = Invoke-HeadlessCleanup -RecoverCancelledOrphan:$recoverCancelledOrphan
+        $cleanupExitCode = Invoke-HeadlessCleanup
         if ($cleanupExitCode -ne 0) {
             throw "Matrix cleanup request exited with code $cleanupExitCode."
         }
@@ -408,6 +382,7 @@ try {
     if ($matrixCancellationInstalled) {
         [CombatSolverHeadlessMatrixCancellation]::Uninstall()
     }
+    $matrixLock.Dispose()
 }
 
 if ([CombatSolverHeadlessMatrixCancellation]::IsCancellationRequested -or

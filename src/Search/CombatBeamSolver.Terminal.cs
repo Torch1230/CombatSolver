@@ -35,6 +35,9 @@ internal sealed partial class CombatBeamSolver
         if (ended.Count == 0)
             return ended;
 
+        int pathBoundaryId = ObserveSearchPathBoundaryInput(
+            ended, SearchPathObservationStage.TurnInput, "before_turn_outcome_annotation");
+
         List<PendingTurnOutcome> pending = [];
         foreach (SearchNode node in ended)
         {
@@ -193,6 +196,7 @@ internal sealed partial class CombatBeamSolver
                     isInvestment: true));
             }
         }
+        ObserveSearchPathTurnSelection(ended, annotated, pathBoundaryId);
         return annotated;
     }
 
@@ -326,10 +330,10 @@ internal sealed partial class CombatBeamSolver
                     node.Snapshot.ProjectedPlayerHp)
                 && node.Snapshot.BoundaryReason != SearchBoundaryReason.UnsupportedEffect)
             {
-                combatEndedTurn = action.Turn;
+                combatEndedTurn = node.Snapshot.CombatEndedTurn;
             }
             if (deathTurn == null && node.Snapshot.PlayerDead)
-                deathTurn = action.Turn;
+                deathTurn = node.Snapshot.DeathTurn;
         }
         if (killRecorder != null)
         {

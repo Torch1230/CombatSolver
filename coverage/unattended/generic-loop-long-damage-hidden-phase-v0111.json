@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "GENERIC-LOOP-LONG-DAMAGE-HIDDEN-PHASE-V0111",
+  "description": "A three-action damage period must survive shorter zero-damage structural recurrences and exhaust plateau admission budgets without truncating a proven damaging cycle.",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "LOOPLETTEROPENERPHASE0111",
+  "initialEnemyMaxHps": [2000],
+  "initialEnemyCurrentHps": [2000],
+  "initialPlayerHp": 80,
+  "initialPlayerMaxHp": 80,
+  "initialPlayerEnergy": 0,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    { "cardId": "IMPATIENCE", "pile": "Hand" },
+    { "cardId": "IMPATIENCE", "pile": "Discard" }
+  ],
+  "relics": [{ "relicId": "LETTER_OPENER" }],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 20000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "expectedInitialExecutableActionCountAtLeast": 1200,
+  "expectedInitialShufflesCrossedAtLeast": 1200,
+  "expectedInitialProjectedBattleHpLost": 0,
+  "expectedInitialOnlyDeathRoutesFound": false,
+  "expectedInitialCombatEndedTurn": 1,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "expectedInitialCycleShapesDetectedAtLeast": 1,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120
+}

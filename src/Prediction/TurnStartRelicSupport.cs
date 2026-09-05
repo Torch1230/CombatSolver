@@ -8,7 +8,7 @@ namespace CombatSolver;
 
 internal static class TurnStartRelicSupport
 {
-    public static void TriggerBeforeSideTurnStart(
+    public static bool TriggerBeforeSideTurnStart(
         CombatPredictionSimulator simulator,
         SimulatedCombatState combat,
         IReadOnlyList<Creature> participants)
@@ -27,14 +27,14 @@ internal static class TurnStartRelicSupport
         TurnStartChoiceCursor choices)
         => combat.TriggerRelicsAfterPlayerTurnStart(simulator, player, choices);
 
-    public static void TriggerAfterSideTurnStart(
+    public static bool TriggerAfterSideTurnStart(
         CombatPredictionSimulator simulator,
         SimulatedCombatState combat,
         CombatSide side,
         IReadOnlyList<Creature> participants)
         => combat.TriggerRelicsAfterSideTurnStart(simulator, side, participants);
 
-    public static void TriggerAfterSideTurnEnd(
+    public static bool TriggerAfterSideTurnEnd(
         CombatPredictionSimulator simulator,
         SimulatedCombatState combat,
         IReadOnlyList<Creature> participants,

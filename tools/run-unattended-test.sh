@@ -48,6 +48,15 @@ add_option seed "COMBATSOLVER" string raw_string
 add_option encounter-id "FUZZY_WURM_CRAWLER_WEAK" string raw_string
 add_option sts2-game-root "$steam_root/steamapps/common/Slay the Spire 2" string none
 add_option ritsu-workshop-root "$steam_root/steamapps/workshop/content/2868840/3747602295" string none
+add_option combat-solver-build-dir "" string none
+add_option headless-instance "" string none
+add_option stop-instance 0 switch none
+add_option headless-execution-mode "${COMBATSOLVER_HEADLESS_EXECUTION_MODE:-exclusive}" string none "exclusive|parallel"
+add_option headless-memory-reservation-mib 4096 int none
+default_headless_cpu=2
+(( $(getconf _NPROCESSORS_ONLN) > 1 )) || default_headless_cpu=1
+add_option headless-cpu-reservation "$default_headless_cpu" int none
+add_option headless-queue-timeout-seconds 120 int none
 add_option run-snapshot-path "" string none
 add_option replay-state-path "" string none
 add_option progress-snapshot-path "" string none
@@ -55,7 +64,9 @@ add_option ascension 0 int raw_int
 add_option act-index-for-test 0 int raw_int
 add_option mark-encounter-as-second-boss-for-test 0 switch bool
 add_option enemy-current-hp 1 int raw_int
+add_option initial-enemy-max-hps-json "" string none
 add_option initial-enemy-current-hps-json "" string none
+add_option initial-enemy-blocks-json "" string none
 add_option initial-player-hp -1 int positive_int
 add_option initial-player-max-hp -1 int positive_int
 for name in initial-player-block initial-player-energy initial-player-stars initial-round-number initial-player-turn-number; do
@@ -106,6 +117,7 @@ add_option search-max-degree-of-parallelism-for-test -1 int positive_int
 add_option expected-initial-search-phase "" string optional_string "Short|Deep"
 add_option expected-initial-deep-search-triggered -1 int tri_bool
 add_option expected-initial-deep-search-improved-result -1 int tri_bool
+add_option expected-initial-boundary-reason "" string optional_string "None|Shuffle|NoCards|UnsupportedEffect|DynamicResolution|PendingChoice|EventDefeat|TurnLimit|NodeLimit|TimeLimit"
 for name in \
     expected-initial-total-elapsed-milliseconds-at-most \
     expected-initial-total-gc-pause-milliseconds-at-most \
@@ -118,10 +130,15 @@ for name in \
     expected-initial-gen2-collections-at-most \
     expected-initial-main-thread-frames-over50-milliseconds-at-most \
     expected-initial-main-thread-frames-over100-milliseconds-at-most \
+    expected-initial-expanded-nodes-at-most \
+    expected-initial-transitions-at-most \
+    expected-initial-total-expanded-nodes-at-most \
+    expected-initial-total-transitions-at-most \
     expected-initial-transition-cache-hits-at-least \
     expected-initial-repeatable-no-progress-branches-pruned-at-least \
     expected-initial-cycle-shapes-detected-at-least \
     expected-initial-cycle-probe-continuations-expanded-at-least \
+    expected-initial-cycle-probe-continuations-expanded-at-most \
     expected-initial-cycle-candidates-protected-at-least \
     expected-initial-cycle-continuations-stopped-at-least \
     expected-initial-cross-turn-candidates-protected-at-least \
@@ -148,7 +165,8 @@ done
 add_option expected-initial-theft-policy "" string optional_string "PreserveResources|LetEscape"
 for name in \
     expected-initial-action-card-id expected-initial-absent-action-card-id \
-    expected-initial-first-action-card-id expected-initial-first-action-potion-id \
+    expected-initial-first-action-card-id expected-initial-first-action-choice-card-id \
+    expected-initial-first-action-potion-id \
     expected-initial-action-title; do
     add_option "$name" "" string optional_string
 done
@@ -380,19 +398,30 @@ for command_name in jq realpath flock setsid pgrep sha256sum; do
     command -v "$command_name" >/dev/null 2>&1 || runtime_error "$command_name is required"
 done
 
-game_root="$(realpath -m -- "${option_value[sts2-game-root]}")"
-game_executable="$game_root/SlayTheSpire2"
-game_mods_root="$game_root/mods"
-combat_solver_dll="$game_mods_root/CombatSolver/CombatSolver.dll"
-combat_solver_manifest="$game_mods_root/CombatSolver/CombatSolver.json"
+source_game_root="$(realpath -m -- "${option_value[sts2-game-root]}")"
+if [[ -n ${option_value[combat-solver-build-dir]} ]]; then
+    build_dir="$(realpath -m -- "${option_value[combat-solver-build-dir]}")"
+    combat_solver_dll="$build_dir/CombatSolver.dll"
+    combat_solver_manifest="$build_dir/CombatSolver.json"
+else
+    combat_solver_dll="$repo_root/.godot/mono/temp/bin/Release/CombatSolver.dll"
+    combat_solver_manifest="$repo_root/CombatSolver.json"
+fi
 ritsu_workshop_root="$(realpath -m -- "${option_value[ritsu-workshop-root]}")"
 ritsu_variant_dll="$ritsu_workshop_root/lib/0.111.0/STS2-RitsuLib.dll"
 ritsu_manifest_source="$ritsu_workshop_root/mod_manifest.json"
-headless_dependency_dir="$game_mods_root/CombatSolverHeadlessRitsuLib"
-headless_dependency_marker="$headless_dependency_dir/.combatsolver-headless-only"
 interactive_data_dir="$host_data_home/SlayTheSpire2"
-headless_root="${COMBATSOLVER_HEADLESS_ROOT:-${XDG_STATE_HOME:-${HOME}/.local/state}/CombatSolver/headless-runtime}"
+headless_instance="${option_value[headless-instance]}"
+if [[ -z $headless_instance ]]; then
+    headless_instance="$(printf '%s' "$repo_root" | sha256sum)"
+    headless_instance="worktree-${headless_instance:0:16}"
+fi
+[[ $headless_instance =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$ ]] || die 'invalid --headless-instance (letters, digits, dot, underscore, dash; max 64)'
+headless_root="${COMBATSOLVER_HEADLESS_ROOT:-${XDG_STATE_HOME:-${HOME}/.local/state}/CombatSolver/headless-instances/$headless_instance}"
 headless_root="$(realpath -m -- "$headless_root")"
+game_root="$headless_root/game"
+game_executable="$game_root/SlayTheSpire2"
+game_mods_root="$game_root/mods"
 headless_data_home="$headless_root/data"
 headless_config_home="$headless_root/config"
 headless_cache_home="$headless_root/cache"
@@ -406,17 +435,25 @@ result_path="$data_dir/combat_solver_test_result.json"
 ready_path="$data_dir/combat_solver_test_ready.json"
 lock_path="$headless_root/launcher.lock"
 
-[[ -x "$game_executable" ]] || runtime_error "game executable not found or not executable: $game_executable"
+if ((option_value[stop-instance] == 0)); then
+[[ -x "$source_game_root/SlayTheSpire2" ]] || runtime_error "game executable not found: $source_game_root/SlayTheSpire2"
 [[ -f "$combat_solver_dll" && -f "$combat_solver_manifest" ]] || runtime_error \
-    "built CombatSolver mod not found under: $game_mods_root/CombatSolver"
+    "built CombatSolver DLL/manifest not found; build with -p:CopyModOnBuild=false or supply --combat-solver-build-dir"
 [[ -f "$ritsu_variant_dll" && -f "$ritsu_manifest_source" ]] || \
     runtime_error "headless RitsuLib source not found under: $ritsu_workshop_root"
+fi
 [[ "$(realpath -m -- "$data_dir")" != "$(realpath -m -- "$interactive_data_dir")" ]] || \
     runtime_error "isolated and interactive data directories resolve to the same path"
 
-mkdir -p -- "$headless_root" "$headless_data_home" "$headless_config_home" "$headless_cache_home" "$data_dir"
-exec {launcher_lock_fd}>"$lock_path"
-flock -w 15 "$launcher_lock_fd" || runtime_error "another unattended launcher owns $lock_path"
+[[ $headless_root != "$source_game_root" && $headless_root != "$source_game_root/"* && $source_game_root != "$headless_root/"* ]] || runtime_error 'source game and instance runtime must be disjoint'
+# shellcheck source=headless-runtime.sh
+source "$script_dir/headless-runtime.sh"
+hr_init "$headless_root" "$headless_instance" "$game_executable" "$headless_data_home" \
+    "${option_value[headless-execution-mode]}" "${option_value[headless-memory-reservation-mib]}" \
+    "${option_value[headless-cpu-reservation]}" "${option_value[headless-queue-timeout-seconds]}" || runtime_error 'could not claim headless instance'
+launcher_lock_fd=$HR_INSTANCE_FD
+if ((option_value[stop-instance] == 0)); then
+mkdir -p -- "$headless_data_home" "$headless_config_home" "$headless_cache_home" "$data_dir"
 
 if ((option_value[hold-after-initial-search] == 1)) && [[ -f "$hold_release_path" ]]; then
     rm -f -- "$hold_release_path"
@@ -426,7 +463,7 @@ copy_interactive_profile_once() {
     [[ ! -d "$data_dir/default" ]] || return 0
 
     if [[ -d "$interactive_data_dir/default" ]]; then
-        cp -a -- "$interactive_data_dir/default" "$data_dir/"
+        cp -aL -- "$interactive_data_dir/default" "$data_dir/"
     else
         local account_dir="" candidate
         if [[ -d "$interactive_data_dir/steam" ]]; then
@@ -440,19 +477,19 @@ copy_interactive_profile_once() {
         [[ -n "$account_dir" ]] || runtime_error \
             "no interactive settings.save was found below $interactive_data_dir"
         mkdir -p -- "$data_dir/default/1"
-        cp -a -- "$account_dir/." "$data_dir/default/1/"
+        cp -aL -- "$account_dir/." "$data_dir/default/1/"
     fi
 
     local directory source target_mods
     for directory in ModConfig mod_configs; do
         source="$interactive_data_dir/$directory"
-        [[ ! -d "$source" ]] || cp -a -- "$source" "$data_dir/"
+        [[ ! -d "$source" ]] || cp -aL -- "$source" "$data_dir/"
     done
     source="$interactive_data_dir/mods/config"
     if [[ -d "$source" ]]; then
         target_mods="$data_dir/mods"
         mkdir -p -- "$target_mods"
-        cp -a -- "$source" "$target_mods/"
+        cp -aL -- "$source" "$target_mods/"
     fi
 }
 
@@ -534,9 +571,17 @@ array_from_path_or_json() {
     fi
 }
 
+initial_enemy_max_hps='[]'
+if ! is_blank "${option_value[initial-enemy-max-hps-json]}"; then
+    initial_enemy_max_hps="$(json_array_from_text --initial-enemy-max-hps-json "${option_value[initial-enemy-max-hps-json]}")"
+fi
 initial_enemy_current_hps='[]'
 if ! is_blank "${option_value[initial-enemy-current-hps-json]}"; then
     initial_enemy_current_hps="$(json_array_from_text --initial-enemy-current-hps-json "${option_value[initial-enemy-current-hps-json]}")"
+fi
+initial_enemy_blocks='[]'
+if ! is_blank "${option_value[initial-enemy-blocks-json]}"; then
+    initial_enemy_blocks="$(json_array_from_text --initial-enemy-blocks-json "${option_value[initial-enemy-blocks-json]}")"
 fi
 initial_enemy_move_ids='[]'
 if ! is_blank "${option_value[initial-enemy-move-ids-json]}"; then
@@ -663,7 +708,9 @@ request="$(jq -cn \
     --arg runId "$run_id" \
     --arg runSnapshotPath "$resolved_run_snapshot_path" \
     --arg replayStatePath "$resolved_replay_state_path" \
+    --argjson initialEnemyMaxHps "$initial_enemy_max_hps" \
     --argjson initialEnemyCurrentHps "$initial_enemy_current_hps" \
+    --argjson initialEnemyBlocks "$initial_enemy_blocks" \
     --argjson initialEnemyMoveIds "$initial_enemy_move_ids" \
     --argjson initialEnemyStateLogs "$initial_enemy_state_logs" \
     --argjson cards "$cards" \
@@ -702,7 +749,9 @@ request="$(jq -cn \
         runId: $runId,
         runSnapshotPath: (if ($runSnapshotPath | blank) then null else $runSnapshotPath end),
         replayStatePath: (if ($replayStatePath | blank) then null else $replayStatePath end),
+        initialEnemyMaxHps: $initialEnemyMaxHps,
         initialEnemyCurrentHps: $initialEnemyCurrentHps,
+        initialEnemyBlocks: $initialEnemyBlocks,
         initialEnemyMoveIds: $initialEnemyMoveIds,
         initialEnemyStateLogs: $initialEnemyStateLogs,
         cards: $cards,
@@ -720,50 +769,7 @@ request="$(jq -cn \
         modifierIds: $modifierIds,
         additionalMonsterIds: $additionalMonsterIds
     }')"
-
-assert_dependency_path() {
-    local mods_full dependency_full
-    mods_full="$(realpath -m -- "$game_mods_root")"
-    dependency_full="$(realpath -m -- "$headless_dependency_dir")"
-    [[ "$dependency_full" == "$mods_full/"* ]] || runtime_error \
-        "refusing to manage a headless dependency outside the game mods directory: $dependency_full"
-}
-
-dependency_created_here=0
-install_headless_dependency() {
-    assert_dependency_path
-    if [[ -d "$headless_dependency_dir" ]]; then
-        [[ -f "$headless_dependency_marker" ]] || runtime_error \
-            "headless dependency target exists without its ownership marker: $headless_dependency_dir"
-        dependency_created_here=1
-        rm -rf -- "$headless_dependency_dir"
-    else
-        dependency_created_here=1
-    fi
-    mkdir -p -- "$headless_dependency_dir"
-    cp -f -- "$ritsu_variant_dll" "$headless_dependency_dir/STS2-RitsuLib.dll"
-    cp -f -- "$ritsu_manifest_source" "$headless_dependency_dir/STS2-RitsuLib.json"
-    printf '%s\n' 'CombatSolver isolated headless dependency' >"$headless_dependency_marker"
-}
-
-remove_headless_dependency() {
-    assert_dependency_path
-    if [[ ! -d "$headless_dependency_dir" ]]; then
-        dependency_created_here=0
-        return 0
-    fi
-    [[ -f "$headless_dependency_marker" ]] || runtime_error \
-        "refusing to remove a headless dependency without its ownership marker: $headless_dependency_dir"
-    rm -rf -- "$headless_dependency_dir"
-    dependency_created_here=0
-}
-
-remove_directly_created_headless_dependency() {
-    assert_dependency_path
-    ((dependency_created_here == 1)) || return 0
-    [[ ! -d "$headless_dependency_dir" ]] || rm -rf -- "$headless_dependency_dir"
-    dependency_created_here=0
-}
+fi
 
 process_is_alive() {
     local pid="$1" stat_line process_state
@@ -908,7 +914,7 @@ stop_test_process_and_remove_dependency() {
         wait "$pid" 2>/dev/null || true
     fi
     remove_process_marker_for_identity "$pid" "$start_time"
-    remove_headless_dependency
+    hr_release "$pid" "$start_time"
     owned_cleanup_active=0
 }
 
@@ -939,23 +945,24 @@ stop_direct_child_and_remove_dependency() {
     if [[ "$start_time" =~ ^[0-9]+$ ]]; then
         remove_process_marker_for_identity "$pid" "$start_time"
     fi
-    remove_headless_dependency
+    hr_release
     owned_cleanup_active=0
 }
 
 cleanup_owned_launcher() {
     local original_status=$?
     trap - EXIT INT TERM HUP
+    [[ -z ${HR_HOST_FD:-} ]] || hr_host_unlock
     if ((owned_cleanup_active == 1)); then
         if ((launched_here == 1)) && [[ "$process_pid" =~ ^[0-9]+$ ]]; then
             stop_direct_child_and_remove_dependency "$process_pid" "$process_identity_start_time"
         elif [[ "$process_pid" =~ ^[0-9]+$ ]]; then
             stop_test_process_and_remove_dependency "$process_pid" "$process_identity_start_time"
         else
-            remove_directly_created_headless_dependency
             owned_cleanup_active=0
         fi
     fi
+    hr_release
     exit "$original_status"
 }
 
@@ -967,13 +974,46 @@ arm_owned_cleanup() {
     trap 'exit 129' HUP
 }
 
+if ((option_value[stop-instance] == 1)); then
+    # Stop-only never enters snapshot construction, request publication or host
+    # admission. The ordinary producer lock and existing stop function own it.
+    if [[ ! -f $process_marker_path ]]; then
+        for candidate in /proc/[0-9]*/exe; do
+            [[ $(readlink -f -- "$candidate" 2>/dev/null) != "$game_executable" ]] || \
+                runtime_error 'markerless private game preserved; stop cannot prove ownership'
+        done
+        echo "UNATTENDED_STOP instance=$headless_instance state=absent"
+        exit 0
+    fi
+    jq -e --arg executable "$game_executable" --arg data "$data_dir" \
+        '(.pid | type == "number" and . > 0 and floor == .) and
+         (.procStartTimeTicks | type == "string" and test("^[0-9]+$")) and
+         .executable == $executable and .dataDir == $data' "$process_marker_path" >/dev/null || \
+        runtime_error 'invalid or foreign marker preserved; stop refused'
+    stop_pid="$(jq -r .pid "$process_marker_path")"
+    stop_birth="$(jq -r .procStartTimeTicks "$process_marker_path")"
+    stop_state=0
+    hr_checked_game_state "$stop_pid" "$stop_birth" "$game_executable" || stop_state=$?
+    ((stop_state != 2)) || runtime_error 'unknown, reused or foreign process identity preserved; stop refused'
+    # The existing function rechecks the /proc environment and birth before
+    # signaling; a concurrent exit remains idempotent and cannot spawn a game.
+    stop_test_process_and_remove_dependency "$stop_pid" "$stop_birth"
+    echo "UNATTENDED_STOP instance=$headless_instance state=stopped_or_exited pid=$stop_pid"
+    exit 0
+fi
+
 combat_solver_dll_sha256="$(sha256sum -- "$combat_solver_dll")"
 combat_solver_dll_sha256="${combat_solver_dll_sha256%% *}"
 combat_solver_manifest_sha256="$(sha256sum -- "$combat_solver_manifest")"
 combat_solver_manifest_sha256="${combat_solver_manifest_sha256%% *}"
+artifact_id="$(hr_snapshot_id "$source_game_root" "$combat_solver_dll" "$combat_solver_manifest" "$ritsu_variant_dll" "$ritsu_manifest_source")"
 
 process_pid=""
 process_identity_start_time=""
+trap cleanup_owned_launcher EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
 if [[ -f "$process_marker_path" ]]; then
     marker_pid="$(jq -er '.pid | select(type == "number" and . > 0 and floor == .)' "$process_marker_path" 2>/dev/null || true)"
     marker_start_time="$(jq -er '.procStartTimeTicks | strings | select(test("^[0-9]+$"))' "$process_marker_path" 2>/dev/null || true)"
@@ -981,6 +1021,7 @@ if [[ -f "$process_marker_path" ]]; then
     marker_data_dir="$(jq -r '.dataDir // empty' "$process_marker_path" 2>/dev/null || true)"
     marker_dll_sha256="$(jq -r '.combatSolverDllSha256 // empty' "$process_marker_path" 2>/dev/null || true)"
     marker_manifest_sha256="$(jq -r '.combatSolverManifestSha256 // empty' "$process_marker_path" 2>/dev/null || true)"
+    marker_artifact_id="$(jq -r '.artifactId // empty' "$process_marker_path" 2>/dev/null || true)"
     if [[ -n "$marker_pid" && -n "$marker_start_time" ]] \
         && [[ "$marker_executable" == "$game_executable" ]] \
         && [[ "$marker_data_dir" == "$data_dir" ]] \
@@ -989,7 +1030,10 @@ if [[ -f "$process_marker_path" ]]; then
         process_identity_start_time="$marker_start_time"
         arm_owned_cleanup
         if [[ "$marker_dll_sha256" != "$combat_solver_dll_sha256" \
-            || "$marker_manifest_sha256" != "$combat_solver_manifest_sha256" ]]; then
+            || "$marker_manifest_sha256" != "$combat_solver_manifest_sha256" \
+            || "$marker_artifact_id" != "$artifact_id" ]] \
+            || ! jq -e --arg mode "$HR_MODE" --argjson memory "$HR_MEMORY" --argjson cpu "$HR_CPU" \
+                '.executionMode == $mode and .memoryMiB == $memory and .cpu == $cpu' "$process_marker_path" >/dev/null; then
             echo "UNATTENDED_RESTART reason=mod_changed pid=$process_pid" >&2
             stop_test_process_and_remove_dependency "$process_pid" "$process_identity_start_time"
             process_pid=""
@@ -1010,7 +1054,11 @@ if [[ -f "$process_marker_path" ]]; then
         live_marker_processes=()
         for candidate_pid in "${marker_live_game_pids[@]}"; do
             process_is_alive "$candidate_pid" || continue
-            live_marker_processes+=("$candidate_pid")
+            # Other registered instances do not make this marker live. Preserve
+            # it when its own PID or private executable cannot be ruled out.
+            if [[ $candidate_pid == "$marker_pid" ]] || process_is_expected_game "$candidate_pid"; then
+                live_marker_processes+=("$candidate_pid")
+            fi
         done
         if ((${#live_marker_processes[@]} > 0)); then
             runtime_error \
@@ -1021,16 +1069,9 @@ if [[ -f "$process_marker_path" ]]; then
     fi
 fi
 
-game_pids=()
-snapshot_live_game_pids game_pids || runtime_error \
-    "could not enumerate SlayTheSpire2 processes; marker and dependency were preserved"
-other_pids=()
-for candidate_pid in "${game_pids[@]}"; do
-    process_is_alive "$candidate_pid" || continue
-    [[ "$candidate_pid" == "$process_pid" ]] || other_pids+=("$candidate_pid")
-done
-if ((${#other_pids[@]} > 0)); then
-    runtime_error "refusing to run while an unowned SlayTheSpire2 process exists: pid=$(IFS=,; echo "${other_pids[*]}")"
+hr_acquire "$process_pid" "$process_identity_start_time" || runtime_error 'headless host admission failed'
+if [[ -z $process_pid ]]; then
+    hr_prepare_snapshot "$source_game_root" "$combat_solver_dll" "$combat_solver_manifest" "$ritsu_variant_dll" "$ritsu_manifest_source" "$artifact_id" || runtime_error 'could not prepare frozen game snapshot'
 fi
 
 # Publish only after every process-safety check. An already-running protocol
@@ -1051,7 +1092,6 @@ else
     trap 'launch_cancel_status=129' HUP
     owned_cleanup_active=1
     trap cleanup_owned_launcher EXIT
-    install_headless_dependency
     ((launch_cancel_status == 0)) || exit "$launch_cancel_status"
     launched_here=1
     (
@@ -1081,6 +1121,7 @@ else
         stop_direct_child_and_remove_dependency "$process_pid" "$process_identity_start_time"
         runtime_error "headless SlayTheSpire2 did not remain running; log=$headless_log_path"
     fi
+    hr_bind "$process_pid" "$process_identity_start_time" || runtime_error 'could not bind host reservation to game identity'
     process_marker_temp="$(mktemp --tmpdir="$headless_root" .process.json.XXXXXX)"
     jq -cn \
         --argjson pid "$process_pid" \
@@ -1091,7 +1132,9 @@ else
         --arg procStartTimeTicks "$process_identity_start_time" \
         --arg combatSolverDllSha256 "$combat_solver_dll_sha256" \
         --arg combatSolverManifestSha256 "$combat_solver_manifest_sha256" \
+        --arg artifactId "$artifact_id" --arg executionMode "$HR_MODE" --argjson memoryMiB "$HR_MEMORY" --argjson cpu "$HR_CPU" \
         '{
+            artifactId: $artifactId, executionMode: $executionMode, memoryMiB: $memoryMiB, cpu: $cpu,
             pid: $pid,
             startedAtUtc: $startedAtUtc,
             dataDir: $dataDir,
@@ -1171,7 +1214,6 @@ while ((SECONDS < result_deadline)); do
                         '.schemaVersion == 1 and .runId == $runId and .held == false' \
                         "$ready_path" >/dev/null 2>&1; then
                     echo "UNATTENDED_READY run_id=$run_id pid=$process_pid"
-                    dependency_created_here=0
                     owned_cleanup_active=0
                     exit 0
                 fi
@@ -1193,7 +1235,7 @@ while ((SECONDS < result_deadline)); do
             process_exit_code="unknown"
         fi
         remove_process_marker_for_identity "$process_pid" "$process_identity_start_time"
-        remove_headless_dependency
+        hr_release
         runtime_error "game exited without writing a result for this run; exit_code=$process_exit_code"
     fi
     sleep 0.1

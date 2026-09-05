@@ -21,7 +21,10 @@ internal sealed partial class SimulatedCombatState
             fatalCounts[player] = count;
         }
         foreach (Creature creature in creatures)
-            simulator.Kill(creature);
+        {
+            if (!simulator.Kill(creature))
+                return;
+        }
         foreach ((Player player, int count) in fatalCounts)
         {
             if (count <= 0)
@@ -31,6 +34,8 @@ internal sealed partial class SimulatedCombatState
                          .Where(relic => !relic.IsMelted))
             {
                 simulator.Heal(player.Creature, relic.DynamicVars.Heal.BaseValue * count);
+                if (simulator.HasPendingChoice)
+                    return;
             }
         }
     }

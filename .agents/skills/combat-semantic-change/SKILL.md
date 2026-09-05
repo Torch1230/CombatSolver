@@ -44,6 +44,8 @@ CombatRootSnapshot.Capture（主线程根）
 - 候选展开入口：`CombatBeamSolver.Expansion.cs`，这里只调用语义，不实现具体结算。
 - Beam 保路、最终排序与预算不是语义修复位置。
 - live 部署和 UI 不反向修正预测结果。
+- 终局回合由模拟器在原版安全检查点首次锁定，Snapshot 按值保留并供标注/排序共用；不从最后动作回合推断、不统一加一，也不在已经开始的 Hook 监听器序列中逐个插入胜利中断。
+- 命令本身的终局门仍应在对应调用点核对。例如遗物 AfterCardPlayed 计数会在末击后递增，但 PowerCmd.Apply 在 IsEnding 拒绝加属性；不能省掉命令门，也不能把属性延后到整个监听器序列结束再统一补偿。
 - 生产选牌部署通过 `NativeChoiceRuntime` 驱动原版页面；`ICardSelector` 只用于无 UI 测试和原版明确自动选择。
 - 计划卡牌按 ID、升级和影响后续结算的逐实例语义状态匹配；附魔、重放、费用、关键词、动态变量或临时标志不同时，不能仅凭同名卡牌的序号回放。
 - 首回合准备没有既有路线，原生页面可见后再搜索。全自动后续回合消费上一轮 `EndTurn.TurnStartChoices` 并以 continuation 核对结果，不能为了展示页面重复搜索；单步执行在上一回合路线结束后交还控制，下一回合原生页面默认等待玩家，玩家在该页面请求执行或全自动时接管既有选择并继续复用，仍不得从选择中间态重搜。
@@ -89,6 +91,8 @@ CombatRootSnapshot.Capture（主线程根）
 6. 完整自动 headless 只在改动搜索/部署编排、较小边界无法覆盖、用户明确要求完整回归/门禁，或要声称整场零重算时运行；固定 `Instant / 0 秒`；
 7. 改 mirror 支持面、状态字段或 coverage 分类时运行对应 CoverageCatalog verify；只有改变目录覆盖面或明确完整门禁时跑全量；
 8. UI、动画或真实卡顿另做可见 Steam 验收。
+
+多敌已知路线的原版对照须在全部正式预测冻结后才推进live，使用固定原始Creature身份逐敌比较；末击在真实清理前取证并等待对应CombatEnded，不能以总敌HP代替死亡/阵容/完整状态。测试选择器未提供的原生来源或上下文参数应明确限定证明范围，不声称直接比对；累计伤害、原生洗牌事件与Search统计也应分别记账。
 
 性能数字不能来自 `-VerifyIncrementalSearch` / `--verify-incremental-search`。通用 helper 改动应覆盖其调用类型族，不只跑最初报告的一个模型。
 

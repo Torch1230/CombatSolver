@@ -26,7 +26,9 @@ internal sealed class UnattendedTestRequest
     public int ActIndexForTest { get; init; }
     public bool MarkEncounterAsSecondBossForTest { get; init; }
     public int EnemyCurrentHp { get; init; } = 1;
+    public int[] InitialEnemyMaxHps { get; init; } = [];
     public int[] InitialEnemyCurrentHps { get; init; } = [];
+    public int[] InitialEnemyBlocks { get; init; } = [];
     public int? InitialPlayerHp { get; init; }
     public int? InitialPlayerMaxHp { get; init; }
     public int? InitialPlayerBlock { get; init; }
@@ -78,6 +80,11 @@ internal sealed class UnattendedTestRequest
     public SolverSearchPhase? ExpectedInitialSearchPhase { get; init; }
     public bool? ExpectedInitialDeepSearchTriggered { get; init; }
     public bool? ExpectedInitialDeepSearchImprovedResult { get; init; }
+    public int? ExpectedInitialExpandedNodesAtMost { get; init; }
+    public int? ExpectedInitialTransitionsAtMost { get; init; }
+    public long? ExpectedInitialTotalExpandedNodesAtMost { get; init; }
+    public long? ExpectedInitialTotalTransitionsAtMost { get; init; }
+    public SearchBoundaryReason? ExpectedInitialBoundaryReason { get; init; }
     public double? ExpectedInitialTotalElapsedMillisecondsAtMost { get; init; }
     public long? ExpectedInitialTotalAllocatedBytesAtMost { get; init; }
     public int? ExpectedInitialGen2CollectionsAtMost { get; init; }
@@ -90,6 +97,7 @@ internal sealed class UnattendedTestRequest
     public int? ExpectedInitialRepeatableNoProgressBranchesPrunedAtLeast { get; init; }
     public int? ExpectedInitialCycleShapesDetectedAtLeast { get; init; }
     public int? ExpectedInitialCycleProbeContinuationsExpandedAtLeast { get; init; }
+    public int? ExpectedInitialCycleProbeContinuationsExpandedAtMost { get; init; }
     public int? ExpectedInitialCycleCandidatesProtectedAtLeast { get; init; }
     public int? ExpectedInitialCycleContinuationsStoppedAtLeast { get; init; }
     public int? ExpectedInitialCrossTurnCandidatesProtectedAtLeast { get; init; }
@@ -120,6 +128,7 @@ internal sealed class UnattendedTestRequest
     public string? ExpectedInitialActionCardId { get; init; }
     public string? ExpectedInitialAbsentActionCardId { get; init; }
     public string? ExpectedInitialFirstActionCardId { get; init; }
+    public string? ExpectedInitialFirstActionChoiceCardId { get; init; }
     public string? ExpectedInitialFirstActionPotionId { get; init; }
     public string? ExpectedInitialActionTitle { get; init; }
     public int? ExpectedInitialActionReplayCount { get; init; }
@@ -452,6 +461,20 @@ internal sealed class UnattendedSolverMetrics
     public int SelectedChoiceBranches { get; init; }
     public int ChoiceReplayAttempts { get; init; }
     public int ChoiceReplayBudgetExhaustions { get; init; }
+    public int ChoiceBranchesDroppedByBudget { get; init; }
+    public int CycleRegionsDetected { get; init; }
+    public int CycleRegionCandidatesConsidered { get; init; }
+    public int CycleRegionCandidatesAdmitted { get; init; }
+    public int CycleRegionCandidatesDropped { get; init; }
+    public int CycleRegionProgressEpochs { get; init; }
+    public int CycleRegionProbeCandidatesAdmitted { get; init; }
+    public int CycleRegionProgressCandidatesAdmitted { get; init; }
+    public int CycleRegionMaxActionFamilies { get; init; }
+    public int OrderedMutationCandidatesAdmitted { get; init; }
+    public int OrderedMutationLeaseExpiredBudget { get; init; }
+    public int OrderedMutationOrdinaryFallbacks { get; init; }
+    public int OrderedMutationColdAtomicCommitted { get; init; }
+    public int OrderedMutationColdAtomicRejected { get; init; }
     public long TotalExpanded { get; init; }
     public long TotalTransitions { get; init; }
     public long TotalChoiceBranches { get; init; }

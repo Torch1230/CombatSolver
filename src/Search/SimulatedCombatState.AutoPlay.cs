@@ -86,14 +86,14 @@ internal sealed partial class SimulatedCombatState
         return false;
     }
 
-    public void TriggerWhisperingEarring(
+    public bool TriggerWhisperingEarring(
         CombatPredictionSimulator simulator,
         Player player,
         int turnNumber,
         ISet<uint> processedEnemyDeaths)
     {
         if (turnNumber > 1)
-            return;
+            return true;
 
         foreach (WhisperingEarring relic in RelicsOf(player)
                      .OfType<WhisperingEarring>()
@@ -125,23 +125,29 @@ internal sealed partial class SimulatedCombatState
                     };
                     // The overridden cursor answers every request with the fixed Vakuu policy, so the
                     // card's own selection resolves inside the auto-play like any other nested choice.
-                    if (!CardExecutionSupport.AutoPlay(
+                    bool played = CardExecutionSupport.AutoPlay(
                             simulator,
                             this,
                             card,
                             target,
                             processedEnemyDeaths,
                             payResources: true,
-                            nestedChoiceSourceId: card.Preview.Id.Entry))
+                            nestedChoiceSourceId: card.Preview.Id.Entry);
+                    if (HasPendingChoice)
+                        return false;
+                    if (!played)
                     {
                         break;
                     }
 
-                    CorePowerSupport.ApplyEnemyDeathPowers(
-                        simulator,
-                        this,
-                        KnownEnemies,
-                        processedEnemyDeaths);
+                    if (!CorePowerSupport.ApplyEnemyDeathPowers(
+                            simulator,
+                            this,
+                            KnownEnemies,
+                            processedEnemyDeaths))
+                    {
+                        return false;
+                    }
                 }
             }
             finally
@@ -149,6 +155,7 @@ internal sealed partial class SimulatedCombatState
                 RestoreActionChoices(vakuuChoices, previous);
             }
         }
+        return true;
     }
 
     public bool AutoPlayWithChoice(
@@ -159,36 +166,16 @@ internal sealed partial class SimulatedCombatState
         TurnStartChoiceCursor choices,
         ISet<uint> processedEnemyDeaths)
     {
-        if (!CardExecutionSupport.AutoPlay(simulator, this, card, null, processedEnemyDeaths))
-            return true;
-        if (HasPendingChoice)
-            return false;
-        CardChoiceSpec? spec = CardChoiceSupport.GetSpec(simulator, card);
-        PlanCardChoice? emptyChoice = CardChoiceSupport.BuildRequiredEmptyChoice(card.Preview);
-        if (spec == null)
-        {
-            if (emptyChoice == null)
-                CardChoiceSupport.ApplyNoChoiceEffects(simulator, this, card);
-            else
-                CardChoiceSupport.Apply(simulator, this, card, emptyChoice, processedEnemyDeaths);
-            return true;
-        }
-
-        TurnStartChoiceRequest request = new(
-            sourceId,
-            spec.Effect,
-            spec.SourcePile,
-            spec.MinCount,
-            spec,
-            contextId,
-            ActiveActionChoiceTiming);
-        if (!choices.TryTake(request, out PlanCardChoice? choice))
-        {
-            SetPendingTurnStartChoice(request);
-            return false;
-        }
-        CardChoiceSupport.Apply(simulator, this, card, choice!, processedEnemyDeaths);
-        return true;
+        _ = choices;
+        _ = CardExecutionSupport.AutoPlay(
+            simulator,
+            this,
+            card,
+            target: null,
+            processedEnemyDeaths,
+            nestedChoiceSourceId: sourceId,
+            nestedChoiceContextId: contextId);
+        return !HasPendingChoice;
     }
 
     private PredictedCard? GetPreviousTurnAttack(CombatPredictionSimulator simulator, Player player)

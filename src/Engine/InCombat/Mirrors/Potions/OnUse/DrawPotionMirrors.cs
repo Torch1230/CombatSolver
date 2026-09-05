@@ -12,7 +12,11 @@ internal static class DrawPotionMirrors
     {
         var player = context.TargetPlayer;
         context.Simulator.MoveHandToDrawPile(player);
+        if (context.Simulator.HasPendingChoice)
+            return;
         context.Simulator.Shuffle(player);
+        if (context.Simulator.HasPendingChoice)
+            return;
         context.Simulator.Draw(player, potion.DynamicVars.Cards.BaseValue);
     }
 
@@ -20,6 +24,8 @@ internal static class DrawPotionMirrors
     {
         var player = context.TargetPlayer;
         context.Simulator.Draw(player, potion.DynamicVars.Cards.BaseValue);
+        if (context.Simulator.HasPendingChoice)
+            return;
         if (context.CombatState is not ICombatPredictionEffectSink effects)
             throw new InvalidOperationException("清醒药水结算缺少可写的预测状态。");
         effects.ApplyPower(
@@ -40,6 +46,8 @@ internal static class DrawPotionMirrors
     {
         var player = context.TargetPlayer;
         context.Simulator.ExhaustHand(player);
+        if (context.Simulator.HasPendingChoice)
+            return;
         context.Simulator.Draw(player, potion.DynamicVars.Cards.BaseValue);
     }
 
@@ -49,6 +57,8 @@ internal static class DrawPotionMirrors
         var hand = context.State.GetPlayerCombatState(player).Hand;
 
         context.Simulator.Draw(player, potion.DynamicVars.Cards.BaseValue);
+        if (context.Simulator.HasPendingChoice)
+            return;
 
         foreach (var card in hand)
         {

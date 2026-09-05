@@ -20,6 +20,8 @@ internal static class CombatPredictionSimulatorExtensions
         foreach (var card in cards)
         {
             simulator.Exhaust(card);
+            if (simulator.HasPendingChoice)
+                return;
         }
     }
 

@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "GENERIC-LOOP-LONG-GROWING-DAMAGE-V0111",
+  "description": "Repeated action and damage phases must keep making actual durability progress even when each period deals a different damage amount. The kill requires more than 256 repetitions; no extrapolated damage or card-specific scheduling is allowed.",
+  "characterId": "IRONCLAD",
+  "encounterId": "AEONGLASS_BOSS",
+  "seed": "LOOPRAMPAGEDYNAMIC0111",
+  "actIndexForTest": 2,
+  "initialEnemyMaxHps": [500000],
+  "initialEnemyCurrentHps": [500000],
+  "initialPlayerHp": 80,
+  "initialPlayerMaxHp": 80,
+  "initialPlayerEnergy": 0,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    { "cardId": "RAMPAGE", "pile": "Hand" },
+    { "cardId": "IMPATIENCE", "pile": "Hand" },
+    { "cardId": "IMPATIENCE", "pile": "Discard" }
+  ],
+  "powers": [
+    { "powerId": "BUFFER_POWER", "target": "Enemy", "targetIndex": 0, "amount": 8 }
+  ],
+  "potions": [{ "potionId": "TouchOfInsanity" }],
+  "potionPolicyForTest": "RequireAtLeastOne",
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 20000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "expectedInitialFirstActionPotionId": "TOUCH_OF_INSANITY",
+  "expectedInitialPotionCount": 1,
+  "expectedInitialCycleShapesDetectedAtLeast": 1,
+  "expectedInitialExecutableActionCountAtLeast": 800,
+  "expectedInitialShufflesCrossedAtLeast": 400,
+  "expectedInitialProjectedBattleHpLost": 0,
+  "expectedInitialOnlyDeathRoutesFound": false,
+  "expectedInitialCombatEndedTurn": 1,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120
+}

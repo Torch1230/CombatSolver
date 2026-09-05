@@ -172,6 +172,24 @@ internal sealed partial class UnattendedTestRunner
                     existingCount++;
                 }
             }
+            if (request.InitialEnemyMaxHps.Length > 0)
+            {
+                if (request.InitialEnemyMaxHps.Length != CombatState.Enemies.Count)
+                {
+                    throw new InvalidOperationException(
+                        $"逐敌最大生命数量 {request.InitialEnemyMaxHps.Length} 与敌人数 {CombatState.Enemies.Count} 不同。");
+                }
+                for (int enemyIndex = 0; enemyIndex < CombatState.Enemies.Count; enemyIndex++)
+                {
+                    int maxHp = request.InitialEnemyMaxHps[enemyIndex];
+                    if (maxHp <= 0)
+                    {
+                        throw new InvalidOperationException(
+                            $"逐敌最大生命必须为正数：enemyIndex={enemyIndex}，maxHp={maxHp}。");
+                    }
+                    await CreatureCmd.SetMaxHp(CombatState.Enemies[enemyIndex], maxHp);
+                }
+            }
             if (request.InitialEnemyCurrentHps.Length > 0)
             {
                 if (request.InitialEnemyCurrentHps.Length != CombatState.Enemies.Count)
@@ -191,6 +209,16 @@ internal sealed partial class UnattendedTestRunner
             {
                 foreach (Creature enemy in CombatState.Enemies.Where(static enemy => !enemy.IsDead))
                     await CreatureCmd.SetCurrentHp(enemy, Math.Min(request.EnemyCurrentHp, enemy.MaxHp));
+            }
+            if (request.InitialEnemyBlocks.Length > 0)
+            {
+                if (request.InitialEnemyBlocks.Length != CombatState.Enemies.Count)
+                {
+                    throw new InvalidOperationException(
+                        $"逐敌格挡数量 {request.InitialEnemyBlocks.Length} 与敌人数 {CombatState.Enemies.Count} 不同。");
+                }
+                for (int enemyIndex = 0; enemyIndex < CombatState.Enemies.Count; enemyIndex++)
+                    await SetBlockAsync(CombatState.Enemies[enemyIndex], request.InitialEnemyBlocks[enemyIndex]);
             }
             runner.ForceInitialEnemyMoves(CombatState);
             runner.ForceInitialEnemyStateLogs(CombatState);

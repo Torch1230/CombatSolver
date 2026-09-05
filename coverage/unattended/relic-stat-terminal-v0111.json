@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "relic-stat-terminal-v0111",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "RELICSTATEND0111",
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [],
+  "stopAfterCombatRootSnapshotAssertion": true,
+  "expectedFinishedTurn": 1,
+  "headlessFastModeForTest": "Instant",
+  "timeoutSeconds": 120,
+  "exitOnComplete": true
+}

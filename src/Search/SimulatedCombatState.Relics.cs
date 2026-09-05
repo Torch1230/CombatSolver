@@ -107,6 +107,8 @@ internal sealed partial class SimulatedCombatState
                     break;
                 }
             }
+            if (simulator.HasPendingChoice)
+                return true;
         }
         return false;
     }
@@ -144,49 +146,15 @@ internal sealed partial class SimulatedCombatState
                         SetStatefulRelicState(relic, state with { Current = 1 });
                         break;
                     }
-                case Kunai value when card.Type == CardType.Attack:
-                    {
-                        int count = RelicPredictionStateSupport.GetCounterValue(
-                            simulator,
-                            value,
-                            value._attacksPlayedThisTurn);
-                        if (count % value.DynamicVars.Cards.IntValue == 0)
-                        {
-                            Apply<DexterityPower>(player.Creature, value.DynamicVars.Dexterity.IntValue, player.Creature);
-                            if (simulator.IsRecordingActionRelicTriggers)
-                                simulator.RecordRelicTrigger(value, $"：敏捷+{value.DynamicVars.Dexterity.IntValue}");
-                        }
-                        break;
-                    }
                 case RainbowRing value:
                     {
                         StatefulRelicState state = GetStatefulRelicState(value);
                         if (state.Current == 0
                             && RelicPredictionStateSupport.GetRainbowActivationCount(simulator, value) > 0)
                         {
-                            Apply<StrengthPower>(player.Creature, value.DynamicVars.Strength.IntValue, player.Creature);
-                            Apply<DexterityPower>(player.Creature, value.DynamicVars.Dexterity.IntValue, player.Creature);
+                            // Power application belongs to the exact AfterCardPlayed mirror.
+                            // Keep this existing lifecycle projection synchronized with its counter.
                             SetStatefulRelicState(value, state with { Current = 1 });
-                            if (simulator.IsRecordingActionRelicTriggers)
-                            {
-                                simulator.RecordRelicTrigger(
-                                    value,
-                                    $"：力量+{value.DynamicVars.Strength.IntValue} 敏捷+{value.DynamicVars.Dexterity.IntValue}");
-                            }
-                        }
-                        break;
-                    }
-                case Shuriken value when card.Type == CardType.Attack:
-                    {
-                        int count = RelicPredictionStateSupport.GetCounterValue(
-                            simulator,
-                            value,
-                            value._attacksPlayedThisTurn);
-                        if (count % value.DynamicVars.Cards.IntValue == 0)
-                        {
-                            Apply<StrengthPower>(player.Creature, value.DynamicVars.Strength.IntValue, player.Creature);
-                            if (simulator.IsRecordingActionRelicTriggers)
-                                simulator.RecordRelicTrigger(value, $"：力量+{value.DynamicVars.Strength.IntValue}");
                         }
                         break;
                     }

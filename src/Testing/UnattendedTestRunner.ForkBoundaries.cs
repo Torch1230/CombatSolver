@@ -1,6 +1,7 @@
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
+using MegaCrit.Sts2.Core.Entities.Enchantments;
 using MegaCrit.Sts2.Core.Entities.Orbs;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Extensions;
@@ -20,6 +21,7 @@ using System.Collections;
 using System.Reflection;
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.InCombat.Extensions;
+using CombatSolver.Engine.InCombat.Mirrors;
 using CombatSolver.Engine.InCombat.Mirrors.Cards.OnPlay;
 using CombatSolver.Engine.InCombat.Mirrors.Hooks;
 using CombatSolver.Engine.InCombat.Mirrors.Hooks.Card;
@@ -34,6 +36,27 @@ internal sealed partial class UnattendedTestRunner
 
     private static void AssertForkBoundaries(CombatState combat, Player player)
     {
+        AssertReturningCardsUsePileOrderAcrossForks(combat, player);
+        AssertReturningEligibilityDistinguishesCardInstances(combat, player);
+        CombatBeamSolver.VerifyCycleFamilyLayerBudgetPolicyForTesting();
+        CombatBeamSolver.VerifyCycleRegionRetentionPolicyForTesting();
+        CombatBeamSolver.VerifyCycleExitTicketSettlementPolicyForTesting();
+        CombatBeamSolver.VerifyOrderedMutationRetentionPolicyForTesting();
+        CombatBeamSolver.VerifyRoutingChoicePortfolioBoundsForTesting();
+        CombatBeamSolver.VerifyPotionQuotaReservationPolicyForTesting();
+        CombatBeamSolver.VerifyChoiceReplayBranchBudgetPolicyForTesting();
+        AssertTurnStartChoiceCursorRunsNestedChoiceFirst();
+        AssertTurnStartChoicePreservesNestedPending(combat, player);
+        AssertSideTurnStartPropagatesPendingChoice(combat, player);
+        AssertOrbTurnEndStopsAfterPendingChoice(combat, player);
+        AssertDamageReceivedChoiceSuspendsPostDamagePipeline(combat, player);
+        AssertAfterAttackSuspensionPreservesUnvisitedPowers(combat, player);
+        AssertDeathChoiceSuspendsKillPipeline(combat, player);
+        AssertPendingHandlerTailBoundaries(combat, player);
+        AssertGainStarsSuspensionBoundaries(combat, player);
+        AssertOnPlaySuspensionBoundaries(combat, player);
+        AssertCardChoiceResolutionPendingBoundaries(combat, player);
+        AssertDrawHistoryDoesNotLimitFutureActions(combat, player);
         CardModel card = player.PlayerCombatState?.Hand.Cards.FirstOrDefault()
             ?? throw new InvalidOperationException("Fork 边界测试要求手牌中至少有一张牌。");
         SimulatedCombatState simulatedCombat = new(combat);
@@ -44,7 +67,16 @@ internal sealed partial class UnattendedTestRunner
         AssertRitsuExtendedCapabilityFastPaths(player);
         AssertRitsuCapabilityFastPath(simulator, player, card);
         AssertChoiceKeyCache(simulator, player, card);
+        AssertIdentityChangingChoiceEnumeratesPhysicalOccurrences(combat, player);
         AssertChoiceTokenSurvivesStateMutation(combat, player, card);
+        AssertNestedAutoPlayChoiceSuspendsOuterCompletion(combat, player);
+        AssertEnchantmentNestedChoiceSuspendsAcrossFork(combat, player);
+        AssertAfterCardDrawnNestedChoiceSuspendsAcrossFork(combat, player);
+        AssertAfterSideTurnEndRelicChoiceSuspends(combat, player);
+        AssertEndTurnPowerChoiceSuspends(combat, player);
+        AssertAfterAutoPostPlayNestedChoiceSuspendsAcrossFork(combat, player);
+        AssertAfterCardPlayedNestedChoiceSuspendsWrapperCompletion(combat, player);
+        AssertNestedChoiceSuspendsOuterPostChoiceEffects(combat, player);
         AssertMonsterAiUsesCapturedMachine(combat);
         AssertCardCompletionSettlesPowerAmountChanges(combat, player);
         AssertBeforeCardPlayedPowerConsumptionCommits(combat, player);
@@ -148,9 +180,13 @@ internal sealed partial class UnattendedTestRunner
 
         int originalEnergy = simulator.State.GetPlayerCombatState(player).Energy;
         CombatPredictionSimulator fork = simulator.Fork();
-        fork.State.GetPlayerCombatState(player).GainEnergy(1);
+        SimPlayerCombatState forkPlayerState = fork.State.GetPlayerCombatState(player);
+        forkPlayerState.GainEnergy(1);
         if (simulator.State.GetPlayerCombatState(player).Energy != originalEnergy)
             throw new InvalidOperationException("稳定边界 Fork 没有隔离玩家能量状态。");
+        forkPlayerState.GainStars(1_000_000_000m);
+        if (forkPlayerState.Stars != 999_999_999)
+            throw new InvalidOperationException("预测星能增加没有遵守既定资源上限。");
 
         AssertPredictedCardForkOwnershipAndObservers(combat, player, card);
         AssertAmountOnTurnStartCacheReuse(combat, player);
@@ -232,7 +268,8 @@ internal sealed partial class UnattendedTestRunner
         if (!queue.TryEnqueue(lightning) || !queue.TryEnqueue(glass))
             throw new InvalidOperationException("回合末球结算测试无法建立球队列。");
 
-        queue.BeforeTurnEnd(simulator);
+        if (!queue.BeforeTurnEnd(simulator))
+            throw new InvalidOperationException("回合末球结算测试意外遇到挂起选择。");
         Creature[] wrigglers = simulatedCombat.Enemies
             .Where(candidate => candidate.Monster is MegaCrit.Sts2.Core.Models.Monsters.Wriggler)
             .ToArray();
@@ -358,6 +395,1207 @@ internal sealed partial class UnattendedTestRunner
             PileType.Hand);
         if (!ReferenceEquals(selected.Single(), card))
             throw new InvalidOperationException("选牌令牌没有在卡牌状态变化后保持实体身份。");
+    }
+
+    private static void AssertIdentityChangingChoiceEnumeratesPhysicalOccurrences(
+        CombatState combat,
+        Player player)
+    {
+        const int copyCount = 6;
+        SimulatedCombatState simulatedCombat = new(combat);
+        CombatPredictionSimulator simulator = new(simulatedCombat);
+        SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(player);
+        simulator.RemoveFromCombat(playerState.AllCards.ToArray());
+        List<PredictedCard> copies = Enumerable.Range(0, copyCount)
+            .Select(_ => PredictedCard.Create(ModelDb.Card<DefendDefect>(), player))
+            .ToList();
+        foreach (PredictedCard copy in copies)
+        {
+            simulator.AddGeneratedCardToCombat(
+                copy,
+                PileType.Hand,
+                player,
+                resultKind: CardGenerationResultKind.Fixed);
+        }
+        SolverDisplayNames displayNames = SolverDisplayNames.Capture(combat);
+        CardChoiceSpec persistentSpec = new(
+            PlanChoiceEffect.Modify,
+            PileType.Hand,
+            1,
+            1,
+            copies,
+            copies,
+            ReplacementValue: 0d);
+        IReadOnlyList<PlanCardChoice> persistentChoices = CardChoiceSupport.BuildChoices(
+            persistentSpec,
+            displayNames,
+            maxPileBranches: 2,
+            maxHandBranches: 2);
+        int[] sourceOccurrences = persistentChoices
+            .Select(choice => choice.Cards.Single().SourceOccurrence)
+            .ToArray();
+        int[] optionOccurrences = persistentChoices
+            .Select(choice => choice.Cards.Single().OptionOccurrence)
+            .ToArray();
+        if (!sourceOccurrences.SequenceEqual([0, copyCount - 1])
+            || !optionOccurrences.SequenceEqual([0, copyCount - 1]))
+        {
+            throw new InvalidOperationException(
+                $"持久身份选牌没有保留稳定的首尾物理代表：" +
+                $"source={string.Join(',', sourceOccurrences)}；" +
+                $"option={string.Join(',', optionOccurrences)}。");
+        }
+        IReadOnlyList<PlanCardChoice> replayLimitedPersistentChoices =
+            CardChoiceSupport.TakeChoicesWithIdentityOccurrenceReserve(
+                persistentChoices,
+                persistentSpec.Effect,
+                semanticLimit: 1);
+        if (replayLimitedPersistentChoices.Count != 2
+            || !replayLimitedPersistentChoices
+                .Select(choice => choice.Cards.Single().SourceOccurrence)
+                .SequenceEqual([0, copyCount - 1]))
+        {
+            throw new InvalidOperationException(
+                "重放层的初始分支限额再次截断了持久身份 occurrence 代表。");
+        }
+
+        CardChoiceSpec ordinarySpec = persistentSpec with { Effect = PlanChoiceEffect.Discard };
+        IReadOnlyList<PlanCardChoice> ordinaryChoices = CardChoiceSupport.BuildChoices(
+            ordinarySpec,
+            displayNames,
+            maxPileBranches: 2,
+            maxHandBranches: 2);
+        if (ordinaryChoices.Count != 1
+            || ordinaryChoices[0].Cards.Single().SourceOccurrence != 0
+            || ordinaryChoices[0].Cards.Single().OptionOccurrence != 0)
+        {
+            throw new InvalidOperationException("普通选牌错误展开了等价卡牌的物理 occurrence。");
+        }
+
+        List<PredictedCard> exactRouteOptions = Enumerable.Range(0, 10)
+            .Select(index =>
+            {
+                PredictedCard option =
+                    PredictedCard.Create(ModelDb.Card<DefendDefect>(), player);
+                option.MutablePreview.BaseReplayCount += index;
+                return option;
+            })
+            .ToList();
+        CardChoiceSpec exactRouteSpec = new(
+            PlanChoiceEffect.MoveToHand,
+            PileType.Discard,
+            1,
+            1,
+            exactRouteOptions,
+            exactRouteOptions,
+            ReplacementValue: 0d);
+        IReadOnlyList<PlanCardChoice> exactRouteChoices = CardChoiceSupport.BuildChoices(
+            exactRouteSpec,
+            displayNames,
+            maxPileBranches: 3,
+            maxHandBranches: 3);
+        if (exactRouteChoices.Count != 10
+            || exactRouteChoices
+                .Select(choice => choice.Cards.Single().StateKey)
+                .Distinct(StringComparer.Ordinal)
+                .Count() != 10)
+        {
+            throw new InvalidOperationException(
+                "exact MoveToHand 没有越过 profile=3 保留全部 10 个不同语义路线。");
+        }
+
+        List<PredictedCard> saturatedCopies = Enumerable.Range(0, copyCount)
+            .Select(_ => PredictedCard.Create(ModelDb.Card<DefendDefect>(), player))
+            .ToList();
+        saturatedCopies[^2].MutablePreview.ExhaustOnNextPlay = true;
+        saturatedCopies[^1].MutablePreview.BaseReplayCount++;
+        CardChoiceSpec saturatedSpec = persistentSpec with
+        {
+            Options = saturatedCopies,
+            SourceCards = saturatedCopies,
+        };
+        IReadOnlyList<PlanCardChoice> saturatedChoices = CardChoiceSupport.BuildChoices(
+            saturatedSpec,
+            displayNames,
+            maxPileBranches: 3,
+            maxHandBranches: 3);
+        string repeatedStateKey = CardChoiceSupport.ChoiceCardKey(saturatedCopies[0]);
+        int[] repeatedOccurrences = saturatedChoices
+            .Where(choice => choice.Cards.Single().StateKey == repeatedStateKey)
+            .Select(choice => choice.Cards.Single().SourceOccurrence)
+            .Order()
+            .ToArray();
+        if (saturatedChoices.Count != 4
+            || saturatedChoices.Select(choice => choice.Cards.Single().StateKey).Distinct().Count() != 3
+            || saturatedChoices.Take(3)
+                .Select(choice => choice.Cards.Single().StateKey)
+                .Distinct()
+                .Count() != 3
+            || !repeatedOccurrences.SequenceEqual([0, 3]))
+        {
+            throw new InvalidOperationException(
+                $"持久身份选牌没有在不丢失语义分支的有界保留量内保留物理代表：" +
+                $"count={saturatedChoices.Count}，states=" +
+                $"{saturatedChoices.Select(choice => choice.Cards.Single().StateKey).Distinct().Count()}，" +
+                $"occurrences={string.Join(',', repeatedOccurrences)}。");
+        }
+
+        List<PredictedCard> semanticFirstOptions =
+        [
+            PredictedCard.Create(ModelDb.Card<DefendDefect>(), player),
+            PredictedCard.Create(ModelDb.Card<DefendDefect>(), player),
+            PredictedCard.Create(ModelDb.Card<Transfigure>(), player),
+            PredictedCard.Create(ModelDb.Card<BurningPact>(), player),
+        ];
+        IReadOnlyList<PlanCardChoice> semanticFirstChoices = CardChoiceSupport.BuildChoices(
+            persistentSpec with
+            {
+                Options = semanticFirstOptions,
+                SourceCards = semanticFirstOptions,
+            },
+            displayNames,
+            maxPileBranches: 3,
+            maxHandBranches: 3);
+        if (semanticFirstChoices.Count != 4
+            || semanticFirstChoices.Take(3)
+                .Select(choice => choice.Cards.Single().StateKey)
+                .Distinct(StringComparer.Ordinal)
+                .Count() != 3
+            || semanticFirstChoices
+                .Where(choice => choice.Cards.Single().CardId
+                    == ModelDb.Card<DefendDefect>().Id.Entry)
+                .Select(choice => choice.Cards.Single().SourceOccurrence)
+                .Order()
+                .SequenceEqual([0, 1]) == false)
+        {
+            throw new InvalidOperationException(
+                "identity 组合生成在语义截断前保留了 A#0/A#1，却永久丢失了唯一 B/C 分支。");
+        }
+        IReadOnlyList<PlanCardChoice> saturatedLayerChoices =
+            CardChoiceSupport.TakeChoicesWithIdentityOccurrenceReserve(
+                saturatedChoices,
+                saturatedSpec.Effect,
+                semanticLimit: 3);
+        if (saturatedLayerChoices.Count != 4
+            || CardChoiceSupport.AddIdentityOccurrenceBranchReserve(
+                saturatedSpec.Effect,
+                branchLimit: 3) != 5
+            || CardChoiceSupport.AddIdentityOccurrenceBranchReserve(
+                ordinarySpec.Effect,
+                branchLimit: 3) != 3
+            || CardChoiceSupport.AddIdentityOccurrenceBranchReserve(
+                saturatedSpec.Effect,
+                int.MaxValue) != int.MaxValue)
+        {
+            throw new InvalidOperationException(
+                "持久身份选牌的层级 +2 保留量没有保持有界或语义安全。");
+        }
+
+        int[] replayCountsBefore = copies.Select(copy => copy.Preview.BaseReplayCount).ToArray();
+        PlanCardChoice tailChoice = persistentChoices.Single(choice =>
+            choice.Cards.Single().SourceOccurrence == copyCount - 1);
+        PredictedCard transfigure = PredictedCard.Create(ModelDb.Card<Transfigure>(), player);
+        CardChoiceSupport.Apply(simulator, simulatedCombat, transfigure, tailChoice);
+        for (int index = 0; index < copies.Count; index++)
+        {
+            int expected = replayCountsBefore[index] + (index == copyCount - 1 ? 1 : 0);
+            if (copies[index].Preview.BaseReplayCount != expected)
+            {
+                throw new InvalidOperationException(
+                    $"持久身份选牌回放修改了错误实体：index={index}，" +
+                    $"actual={copies[index].Preview.BaseReplayCount}，expected={expected}。");
+            }
+        }
+    }
+
+    private static void AssertNestedAutoPlayChoiceSuspendsOuterCompletion(
+        CombatState combat,
+        Player player)
+    {
+        SimulatedCombatState simulatedCombat = new(combat);
+        CombatPredictionSimulator simulator = new(simulatedCombat);
+        SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(player);
+        simulator.RemoveFromCombat(playerState.AllCards.ToArray());
+
+        PredictedCard outer = PredictedCard.Create(ModelDb.Card<DecisionsDecisions>(), player);
+        PredictedCard inner = PredictedCard.Create(ModelDb.Card<Discovery>(), player);
+        simulator.AddGeneratedCardToCombat(
+            outer,
+            PileType.Draw,
+            player,
+            resultKind: CardGenerationResultKind.Fixed);
+        simulator.AddGeneratedCardToCombat(
+            inner,
+            PileType.Hand,
+            player,
+            resultKind: CardGenerationResultKind.Fixed);
+
+        CardChoiceSpec spec = CardChoiceSupport.GetSpec(simulator, outer)
+            ?? throw new InvalidOperationException("嵌套自动出牌边界测试没有建立外层选牌请求。");
+        PlanCardChoice outerChoice = CardChoiceSupport.BuildRequestedChoice(
+            spec,
+            [inner.Preview.Id.Entry]) with
+        {
+            SourceId = "TEST_NESTED",
+            ContextId = "TEST_CTX",
+            Timing = PlanChoiceTiming.PlayerTurnStart,
+        };
+        TurnStartChoiceCursor cursor = new([outerChoice]);
+        simulatedCombat.BeginActionChoices(cursor);
+        simulatedCombat.SetActionChoiceTiming(PlanChoiceTiming.PlayerTurnStart);
+        int historyStart = simulator.History.Entries.Count;
+        try
+        {
+            bool completed = simulatedCombat.AutoPlayWithChoice(
+                simulator,
+                outer,
+                "TEST_NESTED",
+                "TEST_CTX",
+                cursor,
+                new HashSet<uint>());
+            if (completed)
+                throw new InvalidOperationException("嵌套自动出牌仍在内层选牌待定时错误完成了外层卡牌。");
+
+            TurnStartChoiceRequest pending = simulatedCombat.PendingTurnStartChoice
+                ?? throw new InvalidOperationException("嵌套自动出牌没有保留内层选牌请求。");
+            if (!string.Equals(pending.SourceId, outer.Preview.Id.Entry, StringComparison.Ordinal)
+                || pending.Effect != PlanChoiceEffect.GenerateToHand
+                || pending.Timing != PlanChoiceTiming.PlayerTurnStart)
+            {
+                throw new InvalidOperationException(
+                    $"嵌套自动出牌保留了错误请求：{pending.SourceId}/{pending.Effect}/{pending.Timing}。");
+            }
+            if (outer.GetPile(simulator.State)?.Type != PileType.Play)
+                throw new InvalidOperationException("内层选牌待定时外层自动牌没有停留在打出牌堆。");
+
+            bool started = false;
+            bool finished = false;
+            foreach (CombatPredictionHistoryEntry entry in simulator.History.EntriesFrom(historyStart))
+            {
+                started |= entry is CombatPredictionCardPlayStartedEntry start
+                    && ReferenceEquals(start.Card, outer);
+                finished |= entry is CombatPredictionCardPlayFinishedEntry finish
+                    && ReferenceEquals(finish.Card, outer);
+            }
+            if (!started || finished)
+                throw new InvalidOperationException("内层选牌待定时外层自动牌的开始/完成边界不正确。");
+        }
+        finally
+        {
+            simulatedCombat.EndActionChoices();
+        }
+    }
+
+    private static void AssertEnchantmentNestedChoiceSuspendsAcrossFork(
+        CombatState combat,
+        Player player)
+    {
+        SimulatedCombatState parentCombat = new(combat);
+        CombatPredictionSimulator parent = new(parentCombat);
+        SimPlayerCombatState parentPlayer = parent.State.GetPlayerCombatState(player);
+        parent.RemoveFromCombat(parentPlayer.AllCards.ToArray());
+        StabilizeForkBoundaryEnemies(parent);
+
+        parentCombat.Apply<HellraiserPower>(
+            player.Creature,
+            1,
+            player.Creature);
+        parentCombat.Apply<AutomationPower>(
+            player.Creature,
+            1,
+            player.Creature);
+        _ = parentCombat.DrainPowerAmountChanges();
+        PredictedCard outer = PredictedCard.Create(ModelDb.Card<DefendDefect>(), player);
+        outer.Enchant(ModelDb.Enchantment<Swift>().ToMutable(), 1m);
+        if (outer.Preview.Enchantment is not Swift)
+            throw new InvalidOperationException("附魔嵌套选择测试无法建立迅捷附魔。");
+        PredictedCard nested = PredictedCard.Create(ModelDb.Card<SeekerStrike>(), player);
+        PredictedCard option = PredictedCard.Create(ModelDb.Card<DefendDefect>(), player);
+        parent.AddGeneratedCardToCombat(
+            outer,
+            PileType.Hand,
+            player,
+            resultKind: CardGenerationResultKind.Fixed);
+        parent.AddGeneratedCardToCombat(
+            nested,
+            PileType.Draw,
+            player,
+            resultKind: CardGenerationResultKind.Fixed);
+        parent.AddGeneratedCardToCombat(
+            option,
+            PileType.Draw,
+            player,
+            resultKind: CardGenerationResultKind.Fixed);
+
+        CombatPredictionSimulator pendingSimulator = parent.Fork();
+        SimulatedCombatState pendingCombat =
+            (SimulatedCombatState)pendingSimulator.State.CombatState;
+        SimPlayerCombatState pendingPlayer = pendingSimulator.State.GetPlayerCombatState(player);
+        PredictedCard pendingOuter = pendingPlayer.Hand.Cards.Single(card =>
+            card.Preview is DefendDefect && card.Preview.Enchantment is Swift);
+        PredictedCard pendingNested = pendingPlayer.DrawPile.Cards.Single(card =>
+            card.Preview is SeekerStrike);
+        HellraiserPower pendingHellraiser = pendingCombat.GetPower<HellraiserPower>(player.Creature)
+            ?? throw new InvalidOperationException("附魔嵌套选择测试找不到狂战士 Power。");
+        AutomationPower pendingAutomation = pendingCombat.GetPower<AutomationPower>(player.Creature)
+            ?? throw new InvalidOperationException("附魔嵌套选择测试找不到自动化 Power。");
+        AutomationPredictionState pendingAutomationState = pendingSimulator.StateStore.Get(
+            pendingAutomation,
+            () => new AutomationPredictionState(pendingAutomation));
+        int pendingAutomationBefore = pendingAutomationState.CardsLeft;
+        int pendingCompletedBefore = pendingCombat.GetCardsPlayedThisTurn(player.Creature);
+        int pendingHistoryStart = pendingSimulator.History.Entries.Count;
+        pendingCombat.BeginActionChoices((IReadOnlyList<PlanCardChoice>?)null);
+        try
+        {
+            pendingSimulator.ManualPlay(pendingOuter, target: null, out _);
+
+            AssertPendingChoice(
+                pendingCombat,
+                pendingHellraiser.Id.Entry,
+                PlanChoiceEffect.MoveToHand,
+                "迅捷附魔抽牌");
+            AssertCardPlayHistoryCounts(
+                pendingSimulator,
+                pendingHistoryStart,
+                pendingOuter,
+                expectedStarted: 1,
+                expectedFinished: 0,
+                "迅捷附魔外层牌");
+            AssertCardPlayHistoryCounts(
+                pendingSimulator,
+                pendingHistoryStart,
+                pendingNested,
+                expectedStarted: 1,
+                expectedFinished: 0,
+                "迅捷附魔内层牌");
+            if (pendingOuter.GetPile(pendingSimulator.State)?.Type != PileType.Play
+                || pendingNested.GetPile(pendingSimulator.State)?.Type != PileType.Play)
+            {
+                throw new InvalidOperationException(
+                    "迅捷附魔产生内层选择后没有把外层与内层牌停在 Play 牌堆。");
+            }
+            if (pendingCombat.GetCardsPlayedThisTurn(player.Creature) != pendingCompletedBefore)
+                throw new InvalidOperationException("迅捷附魔挂起后错误提交了卡牌完成生命周期。");
+            if (pendingAutomationState.CardsLeft != pendingAutomationBefore)
+                throw new InvalidOperationException("抽牌 early listener 挂起后仍执行了后续普通 listener。");
+        }
+        finally
+        {
+            pendingCombat.EndActionChoices();
+        }
+
+        CombatPredictionSimulator resolvedSimulator = parent.Fork();
+        SimulatedCombatState resolvedCombat =
+            (SimulatedCombatState)resolvedSimulator.State.CombatState;
+        SimPlayerCombatState resolvedPlayer = resolvedSimulator.State.GetPlayerCombatState(player);
+        PredictedCard resolvedOuter = resolvedPlayer.Hand.Cards.Single(card =>
+            card.Preview is DefendDefect && card.Preview.Enchantment is Swift);
+        PredictedCard resolvedNested = resolvedPlayer.DrawPile.Cards.Single(card =>
+            card.Preview is SeekerStrike);
+        AutomationPower resolvedAutomation = resolvedCombat.GetPower<AutomationPower>(player.Creature)
+            ?? throw new InvalidOperationException("附魔重放测试找不到自动化 Power。");
+        AutomationPredictionState resolvedAutomationState = resolvedSimulator.StateStore.Get(
+            resolvedAutomation,
+            () => new AutomationPredictionState(resolvedAutomation));
+        int resolvedAutomationBefore = resolvedAutomationState.CardsLeft;
+        int resolvedCompletedBefore = resolvedCombat.GetCardsPlayedThisTurn(player.Creature);
+        int resolvedHistoryStart = resolvedSimulator.History.Entries.Count;
+        resolvedCombat.BeginActionChoices(CreateForkBoundaryAutomaticChoiceCursor());
+        try
+        {
+            resolvedSimulator.ManualPlay(resolvedOuter, target: null, out _);
+            if (resolvedCombat.HasPendingChoice)
+                throw new InvalidOperationException("迅捷附魔重放仍留下未解决选择。");
+            AssertCardPlayHistoryCounts(
+                resolvedSimulator,
+                resolvedHistoryStart,
+                resolvedOuter,
+                expectedStarted: 1,
+                expectedFinished: 1,
+                "迅捷附魔重放外层牌");
+            AssertCardPlayHistoryCounts(
+                resolvedSimulator,
+                resolvedHistoryStart,
+                resolvedNested,
+                expectedStarted: 1,
+                expectedFinished: 1,
+                "迅捷附魔重放内层牌");
+            if (resolvedCombat.GetCardsPlayedThisTurn(player.Creature) != resolvedCompletedBefore + 2)
+                throw new InvalidOperationException("迅捷附魔重放没有恰好提交两张卡牌生命周期。");
+            int expectedAutomation = AdvanceAutomationCardsLeft(resolvedAutomationBefore, 1);
+            if (resolvedAutomationState.CardsLeft != expectedAutomation)
+            {
+                throw new InvalidOperationException(
+                    $"迅捷附魔重放没有恰好执行一次抽牌 listener：" +
+                    $"actual={resolvedAutomationState.CardsLeft} expected={expectedAutomation}。");
+            }
+            if (resolvedOuter.Preview.Enchantment is not Swift { Status: EnchantmentStatus.Disabled })
+                throw new InvalidOperationException("迅捷附魔重放没有恰好消费附魔效果。");
+        }
+        finally
+        {
+            resolvedCombat.EndActionChoices();
+        }
+        _ = resolvedSimulator.Fork();
+    }
+
+    private static void AssertAfterCardDrawnNestedChoiceSuspendsAcrossFork(
+        CombatState combat,
+        Player player)
+    {
+        SimulatedCombatState parentCombat = new(combat);
+        CombatPredictionSimulator parent = new(parentCombat);
+        SimPlayerCombatState parentPlayer = parent.State.GetPlayerCombatState(player);
+        parent.RemoveFromCombat(parentPlayer.AllCards.ToArray());
+        StabilizeForkBoundaryEnemies(parent);
+        parentPlayer.GainEnergy(100);
+
+        parentCombat.Apply<HellraiserPower>(
+            player.Creature,
+            1,
+            player.Creature);
+        parentCombat.Apply<IterationPower>(
+            player.Creature,
+            1,
+            player.Creature);
+        parentCombat.Apply<AutomationPower>(
+            player.Creature,
+            1,
+            player.Creature);
+        _ = parentCombat.DrainPowerAmountChanges();
+        PredictedCard outer = PredictedCard.Create(
+            ModelDb.Card<MegaCrit.Sts2.Core.Models.Cards.Void>(),
+            player);
+        PredictedCard nested = PredictedCard.Create(ModelDb.Card<SeekerStrike>(), player);
+        PredictedCard option = PredictedCard.Create(ModelDb.Card<DefendDefect>(), player);
+        parent.AddGeneratedCardToCombat(
+            outer,
+            PileType.Draw,
+            player,
+            resultKind: CardGenerationResultKind.Fixed);
+        parent.AddGeneratedCardToCombat(
+            nested,
+            PileType.Draw,
+            player,
+            resultKind: CardGenerationResultKind.Fixed);
+        parent.AddGeneratedCardToCombat(
+            option,
+            PileType.Draw,
+            player,
+            resultKind: CardGenerationResultKind.Fixed);
+
+        IReadOnlyList<AbstractModel> listeners = parentCombat.IterateHookListeners().ToArray();
+        int iterationIndex = listeners.ToList().FindIndex(listener => listener is IterationPower);
+        int automationIndex = listeners.ToList().FindIndex(listener => listener is AutomationPower);
+        if (iterationIndex < 0 || automationIndex <= iterationIndex)
+        {
+            throw new InvalidOperationException(
+                $"抽牌挂起测试的普通 listener 顺序无效：" +
+                $"iteration={iterationIndex} automation={automationIndex}。");
+        }
+
+        CombatPredictionSimulator pendingSimulator = parent.Fork();
+        SimulatedCombatState pendingCombat =
+            (SimulatedCombatState)pendingSimulator.State.CombatState;
+        SimPlayerCombatState pendingPlayer = pendingSimulator.State.GetPlayerCombatState(player);
+        PredictedCard pendingOuter = pendingPlayer.DrawPile.Cards.Single(card =>
+            card.Preview is MegaCrit.Sts2.Core.Models.Cards.Void);
+        PredictedCard pendingNested = pendingPlayer.DrawPile.Cards.Single(card =>
+            card.Preview is SeekerStrike);
+        HellraiserPower pendingHellraiser = pendingCombat.GetPower<HellraiserPower>(player.Creature)
+            ?? throw new InvalidOperationException("抽牌挂起测试找不到狂战士 Power。");
+        AutomationPower pendingAutomation = pendingCombat.GetPower<AutomationPower>(player.Creature)
+            ?? throw new InvalidOperationException("抽牌挂起测试找不到自动化 Power。");
+        AutomationPredictionState pendingAutomationState = pendingSimulator.StateStore.Get(
+            pendingAutomation,
+            () => new AutomationPredictionState(pendingAutomation));
+        int pendingAutomationBefore = pendingAutomationState.CardsLeft;
+        int pendingEnergyBefore = pendingPlayer.Energy;
+        int pendingHistoryStart = pendingSimulator.History.Entries.Count;
+        pendingCombat.BeginActionChoices((IReadOnlyList<PlanCardChoice>?)null);
+        try
+        {
+            pendingSimulator.Draw(player, 1);
+
+            AssertPendingChoice(
+                pendingCombat,
+                pendingHellraiser.Id.Entry,
+                PlanChoiceEffect.MoveToHand,
+                "普通抽牌 listener");
+            AssertCardPlayHistoryCounts(
+                pendingSimulator,
+                pendingHistoryStart,
+                pendingNested,
+                expectedStarted: 1,
+                expectedFinished: 0,
+                "普通抽牌 listener 内层牌");
+            if (pendingOuter.GetPile(pendingSimulator.State)?.Type != PileType.Hand)
+                throw new InvalidOperationException("普通抽牌 listener 挂起前没有保留已抽牌。");
+            if (pendingAutomationState.CardsLeft != pendingAutomationBefore)
+                throw new InvalidOperationException("普通抽牌 listener 挂起后仍执行了后续 listener。");
+            if (pendingPlayer.Energy != pendingEnergyBefore)
+                throw new InvalidOperationException("普通抽牌 listener 挂起后仍执行了卡牌自身 listener。");
+        }
+        finally
+        {
+            pendingCombat.EndActionChoices();
+        }
+
+        CombatPredictionSimulator resolvedSimulator = parent.Fork();
+        SimulatedCombatState resolvedCombat =
+            (SimulatedCombatState)resolvedSimulator.State.CombatState;
+        SimPlayerCombatState resolvedPlayer = resolvedSimulator.State.GetPlayerCombatState(player);
+        PredictedCard resolvedOuter = resolvedPlayer.DrawPile.Cards.Single(card =>
+            card.Preview is MegaCrit.Sts2.Core.Models.Cards.Void);
+        PredictedCard resolvedNested = resolvedPlayer.DrawPile.Cards.Single(card =>
+            card.Preview is SeekerStrike);
+        AutomationPower resolvedAutomation = resolvedCombat.GetPower<AutomationPower>(player.Creature)
+            ?? throw new InvalidOperationException("抽牌重放测试找不到自动化 Power。");
+        AutomationPredictionState resolvedAutomationState = resolvedSimulator.StateStore.Get(
+            resolvedAutomation,
+            () => new AutomationPredictionState(resolvedAutomation));
+        int resolvedAutomationBefore = resolvedAutomationState.CardsLeft;
+        int resolvedEnergyBefore = resolvedPlayer.Energy;
+        int resolvedHistoryStart = resolvedSimulator.History.Entries.Count;
+        resolvedCombat.BeginActionChoices(CreateForkBoundaryAutomaticChoiceCursor());
+        try
+        {
+            resolvedSimulator.Draw(player, 1);
+            if (resolvedCombat.HasPendingChoice)
+                throw new InvalidOperationException("普通抽牌 listener 重放仍留下未解决选择。");
+            AssertCardPlayHistoryCounts(
+                resolvedSimulator,
+                resolvedHistoryStart,
+                resolvedNested,
+                expectedStarted: 1,
+                expectedFinished: 1,
+                "普通抽牌 listener 重放内层牌");
+            int expectedAutomation = AdvanceAutomationCardsLeft(resolvedAutomationBefore, 2);
+            if (resolvedAutomationState.CardsLeft != expectedAutomation)
+            {
+                throw new InvalidOperationException(
+                    $"抽牌重放的 listener 次数不正确：" +
+                    $"actual={resolvedAutomationState.CardsLeft} expected={expectedAutomation}。");
+            }
+            int expectedEnergy = Math.Max(
+                0,
+                resolvedEnergyBefore - resolvedOuter.Preview.DynamicVars.Energy.IntValue);
+            if (resolvedPlayer.Energy != expectedEnergy)
+            {
+                throw new InvalidOperationException(
+                    $"抽牌重放没有恰好执行一次卡牌自身 listener：" +
+                    $"actual={resolvedPlayer.Energy} expected={expectedEnergy}。");
+            }
+        }
+        finally
+        {
+            resolvedCombat.EndActionChoices();
+        }
+        _ = resolvedSimulator.Fork();
+    }
+
+    private static void AssertAfterSideTurnEndRelicChoiceSuspends(
+        CombatState combat,
+        Player player)
+    {
+        SimulatedCombatState simulatedCombat = new(combat);
+        CombatPredictionSimulator simulator = new(simulatedCombat);
+        SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(player);
+        simulator.RemoveFromCombat(playerState.AllCards.ToArray());
+        foreach (PowerModel power in simulatedCombat.EffectivePowers().ToArray())
+            simulatedCombat.SetPowerAmount(power, 0);
+        HellraiserPower hellraiser = simulatedCombat.AddPowerInstance<HellraiserPower>(
+            player.Creature,
+            1,
+            player.Creature);
+        PredictedCard nested = PredictedCard.Create(ModelDb.Card<SeekerStrike>(), player);
+        PredictedCard option = PredictedCard.Create(ModelDb.Card<DefendDefect>(), player);
+        simulator.AddGeneratedCardToCombat(
+            nested,
+            PileType.Draw,
+            player,
+            resultKind: CardGenerationResultKind.Fixed);
+        simulator.AddGeneratedCardToCombat(
+            option,
+            PileType.Draw,
+            player,
+            resultKind: CardGenerationResultKind.Fixed);
+
+        JossPaper jossPaper = (JossPaper)PredictionUtils.CreateRelic(
+            CanonicalModels.Relic<JossPaper>(),
+            player);
+        LunarPastry laterRelic = (LunarPastry)PredictionUtils.CreateRelic(
+            CanonicalModels.Relic<LunarPastry>(),
+            player);
+        FieldInfo rootRelicsField = typeof(SimulatedCombatState).GetField(
+            "_rootRelics",
+            BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("遗物挂起测试找不到模拟遗物账本。");
+        if (rootRelicsField.GetValue(simulatedCombat)
+                is not IDictionary<Player, RelicModel[]> rootRelics)
+        {
+            throw new InvalidOperationException("遗物挂起测试无法写入隔离的模拟遗物账本。");
+        }
+        rootRelics[player] = [jossPaper, laterRelic];
+        playerState.LoseStars(playerState.Stars);
+        int starsBefore = playerState.Stars;
+        int exhaustThreshold = jossPaper.DynamicVars[JossPaper._exhaustAmountKey].IntValue;
+        if (exhaustThreshold <= 0 || laterRelic.DynamicVars.Stars.IntValue <= 0)
+            throw new InvalidOperationException("遗物挂起测试的规范动态数值无效。");
+
+        simulatedCombat.BeginActionChoices((IReadOnlyList<PlanCardChoice>?)null);
+        try
+        {
+            bool completed = TurnStartRelicSupport.TriggerAfterSideTurnEnd(
+                simulator,
+                simulatedCombat,
+                [player.Creature],
+                exhaustThreshold);
+            if (completed)
+                throw new InvalidOperationException("回合结束遗物产生挂起选择后错误完成了遗物阶段。");
+            AssertPendingChoice(
+                simulatedCombat,
+                hellraiser.Id.Entry,
+                PlanChoiceEffect.MoveToHand,
+                "回合结束遗物抽牌");
+            if (playerState.Stars != starsBefore)
+                throw new InvalidOperationException("回合结束遗物挂起后仍执行了后续遗物。");
+        }
+        finally
+        {
+            simulatedCombat.EndActionChoices();
+        }
+    }
+
+    private static void AssertEndTurnPowerChoiceSuspends(
+        CombatState combat,
+        Player player)
+    {
+        SimulatedCombatState simulatedCombat = new(combat);
+        CombatPredictionSimulator simulator = new(simulatedCombat);
+        SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(player);
+        simulator.RemoveFromCombat(playerState.AllCards.ToArray());
+        foreach (PowerModel power in simulatedCombat.EffectivePowers().ToArray())
+            simulatedCombat.SetPowerAmount(power, 0);
+        HellraiserPower hellraiser = simulatedCombat.AddPowerInstance<HellraiserPower>(
+            player.Creature,
+            1,
+            player.Creature);
+        _ = simulatedCombat.AddPowerInstance<DarkEmbracePower>(
+            player.Creature,
+            1,
+            player.Creature);
+        ShrinkPower laterPower = simulatedCombat.AddPowerInstance<ShrinkPower>(
+            player.Creature,
+            2,
+            player.Creature);
+        PredictedCard nested = PredictedCard.Create(ModelDb.Card<SeekerStrike>(), player);
+        PredictedCard option = PredictedCard.Create(ModelDb.Card<DefendDefect>(), player);
+        simulator.AddGeneratedCardToCombat(
+            nested,
+            PileType.Draw,
+            player,
+            resultKind: CardGenerationResultKind.Fixed);
+        simulator.AddGeneratedCardToCombat(
+            option,
+            PileType.Draw,
+            player,
+            resultKind: CardGenerationResultKind.Fixed);
+
+        IReadOnlyList<PowerModel> powers = simulatedCombat.EffectivePowers();
+        int darkEmbraceIndex = powers.ToList().FindIndex(static power => power is DarkEmbracePower);
+        int laterPowerIndex = powers.ToList().FindIndex(power => ReferenceEquals(power, laterPower));
+        if (darkEmbraceIndex < 0 || laterPowerIndex <= darkEmbraceIndex)
+        {
+            throw new InvalidOperationException(
+                $"回合结束 Power 挂起测试的 listener 顺序无效：" +
+                $"dark_embrace={darkEmbraceIndex} later={laterPowerIndex}。");
+        }
+
+        simulatedCombat.BeginActionChoices((IReadOnlyList<PlanCardChoice>?)null);
+        try
+        {
+            bool completed = CorePowerSupport.TriggerPlayerSideTurnEndEffects(
+                simulator,
+                simulatedCombat,
+                [player.Creature],
+                etherealExhaustCount: 1);
+            if (completed)
+                throw new InvalidOperationException("回合结束 Power 产生挂起选择后错误完成了 Power 阶段。");
+            AssertPendingChoice(
+                simulatedCombat,
+                hellraiser.Id.Entry,
+                PlanChoiceEffect.MoveToHand,
+                "回合结束 Power 抽牌");
+            if (laterPower.Amount != 2)
+                throw new InvalidOperationException("回合结束 Power 挂起后仍执行了后续 Power。");
+        }
+        finally
+        {
+            simulatedCombat.EndActionChoices();
+        }
+    }
+
+    private static void AssertAfterAutoPostPlayNestedChoiceSuspendsAcrossFork(
+        CombatState combat,
+        Player player)
+    {
+        SimulatedCombatState parentCombat = new(combat);
+        CombatPredictionSimulator parent = new(parentCombat);
+        SimPlayerCombatState parentPlayer = parent.State.GetPlayerCombatState(player);
+        parent.RemoveFromCombat(parentPlayer.AllCards.ToArray());
+        StabilizeForkBoundaryEnemies(parent);
+
+        parentCombat.Apply<HellraiserPower>(
+            player.Creature,
+            1,
+            player.Creature);
+        _ = parentCombat.DrainPowerAmountChanges();
+        PredictedCard suspending = PredictedCard.Create(ModelDb.Card<HowlFromBeyond>(), player);
+        suspending.Enchant(ModelDb.Enchantment<Swift>().ToMutable(), 1m);
+        if (suspending.Preview.Enchantment is not Swift)
+            throw new InvalidOperationException("自动后置阶段测试无法建立迅捷附魔。");
+        PredictedCard sentinel = PredictedCard.Create(ModelDb.Card<HowlFromBeyond>(), player);
+        PredictedCard nested = PredictedCard.Create(ModelDb.Card<SeekerStrike>(), player);
+        PredictedCard option = PredictedCard.Create(ModelDb.Card<DefendDefect>(), player);
+        PredictedCard turnEndSentinel = PredictedCard.Create(
+            ModelDb.Card<DefendDefect>(),
+            player);
+        turnEndSentinel.MutablePreview.AddKeyword(CardKeyword.Ethereal);
+        parent.AddGeneratedCardToCombat(
+            suspending,
+            PileType.Exhaust,
+            player,
+            resultKind: CardGenerationResultKind.Fixed);
+        parent.AddGeneratedCardToCombat(
+            sentinel,
+            PileType.Exhaust,
+            player,
+            resultKind: CardGenerationResultKind.Fixed);
+        parent.AddGeneratedCardToCombat(
+            nested,
+            PileType.Draw,
+            player,
+            resultKind: CardGenerationResultKind.Fixed);
+        parent.AddGeneratedCardToCombat(
+            option,
+            PileType.Draw,
+            player,
+            resultKind: CardGenerationResultKind.Fixed);
+        parent.AddGeneratedCardToCombat(
+            turnEndSentinel,
+            PileType.Hand,
+            player,
+            resultKind: CardGenerationResultKind.Fixed);
+
+        IReadOnlyList<AbstractModel> listeners = parentCombat.IterateHookListeners().ToArray();
+        int suspendingIndex = listeners.ToList().FindIndex(listener =>
+            ReferenceEquals(listener, suspending.Preview));
+        int sentinelIndex = listeners.ToList().FindIndex(listener =>
+            ReferenceEquals(listener, sentinel.Preview));
+        if (suspendingIndex < 0 || sentinelIndex <= suspendingIndex)
+        {
+            throw new InvalidOperationException(
+                $"自动后置阶段挂起测试的 listener 顺序无效：" +
+                $"suspending={suspendingIndex} sentinel={sentinelIndex}。");
+        }
+
+        CombatPredictionSimulator pendingSimulator = parent.Fork();
+        SimulatedCombatState pendingCombat =
+            (SimulatedCombatState)pendingSimulator.State.CombatState;
+        SimPlayerCombatState pendingPlayer = pendingSimulator.State.GetPlayerCombatState(player);
+        PredictedCard pendingSuspending = pendingPlayer.ExhaustPile.Cards.Single(card =>
+            card.Preview is HowlFromBeyond && card.Preview.Enchantment is Swift);
+        PredictedCard pendingSentinel = pendingPlayer.ExhaustPile.Cards.Single(card =>
+            card.Preview is HowlFromBeyond && card.Preview.Enchantment is null);
+        PredictedCard pendingNested = pendingPlayer.DrawPile.Cards.Single(card =>
+            card.Preview is SeekerStrike);
+        PredictedCard pendingTurnEndSentinel = pendingPlayer.Hand.Cards.Single(card =>
+            card.Preview is DefendDefect
+                && card.Preview.Keywords.Contains(CardKeyword.Ethereal));
+        HellraiserPower pendingHellraiser = pendingCombat.GetPower<HellraiserPower>(player.Creature)
+            ?? throw new InvalidOperationException("自动后置阶段测试找不到狂战士 Power。");
+        int pendingHistoryStart = pendingSimulator.History.Entries.Count;
+        pendingCombat.BeginActionChoices((IReadOnlyList<PlanCardChoice>?)null);
+        try
+        {
+            bool phaseCompleted = PlayerTurnEndLifecycle.RunPhaseOne(
+                pendingSimulator,
+                pendingCombat,
+                player,
+                [player.Creature]);
+            if (phaseCompleted)
+                throw new InvalidOperationException("自动后置阶段挂起后错误完成了回合结束阶段。");
+
+            AssertPendingChoice(
+                pendingCombat,
+                pendingHellraiser.Id.Entry,
+                PlanChoiceEffect.MoveToHand,
+                "自动后置阶段 listener");
+            AssertCardPlayHistoryCounts(
+                pendingSimulator,
+                pendingHistoryStart,
+                pendingSuspending,
+                expectedStarted: 1,
+                expectedFinished: 0,
+                "自动后置阶段挂起牌");
+            AssertCardPlayHistoryCounts(
+                pendingSimulator,
+                pendingHistoryStart,
+                pendingNested,
+                expectedStarted: 1,
+                expectedFinished: 0,
+                "自动后置阶段内层牌");
+            AssertCardPlayHistoryCounts(
+                pendingSimulator,
+                pendingHistoryStart,
+                pendingSentinel,
+                expectedStarted: 0,
+                expectedFinished: 0,
+                "自动后置阶段后续 listener");
+            if (pendingTurnEndSentinel.GetPile(pendingSimulator.State)?.Type != PileType.Hand)
+            {
+                throw new InvalidOperationException(
+                    "自动后置阶段挂起后仍继续执行了后续回合结束生命周期。");
+            }
+        }
+        finally
+        {
+            pendingCombat.EndActionChoices();
+        }
+
+        CombatPredictionSimulator resolvedSimulator = parent.Fork();
+        SimulatedCombatState resolvedCombat =
+            (SimulatedCombatState)resolvedSimulator.State.CombatState;
+        SimPlayerCombatState resolvedPlayer = resolvedSimulator.State.GetPlayerCombatState(player);
+        PredictedCard resolvedSuspending = resolvedPlayer.ExhaustPile.Cards.Single(card =>
+            card.Preview is HowlFromBeyond && card.Preview.Enchantment is Swift);
+        PredictedCard resolvedSentinel = resolvedPlayer.ExhaustPile.Cards.Single(card =>
+            card.Preview is HowlFromBeyond && card.Preview.Enchantment is null);
+        PredictedCard resolvedNested = resolvedPlayer.DrawPile.Cards.Single(card =>
+            card.Preview is SeekerStrike);
+        PredictedCard resolvedTurnEndSentinel = resolvedPlayer.Hand.Cards.Single(card =>
+            card.Preview is DefendDefect
+                && card.Preview.Keywords.Contains(CardKeyword.Ethereal));
+        int resolvedHistoryStart = resolvedSimulator.History.Entries.Count;
+        resolvedCombat.BeginActionChoices(CreateForkBoundaryAutomaticChoiceCursor());
+        try
+        {
+            bool phaseCompleted = PlayerTurnEndLifecycle.RunPhaseOne(
+                resolvedSimulator,
+                resolvedCombat,
+                player,
+                [player.Creature]);
+            if (!phaseCompleted || resolvedCombat.HasPendingChoice)
+                throw new InvalidOperationException("自动后置阶段重放仍留下未解决选择。");
+            AssertCardPlayHistoryCounts(
+                resolvedSimulator,
+                resolvedHistoryStart,
+                resolvedSuspending,
+                expectedStarted: 1,
+                expectedFinished: 1,
+                "自动后置阶段重放挂起牌");
+            AssertCardPlayHistoryCounts(
+                resolvedSimulator,
+                resolvedHistoryStart,
+                resolvedNested,
+                expectedStarted: 1,
+                expectedFinished: 1,
+                "自动后置阶段重放内层牌");
+            AssertCardPlayHistoryCounts(
+                resolvedSimulator,
+                resolvedHistoryStart,
+                resolvedSentinel,
+                expectedStarted: 1,
+                expectedFinished: 1,
+                "自动后置阶段重放后续 listener");
+            if (resolvedTurnEndSentinel.GetPile(resolvedSimulator.State)?.Type
+                != PileType.Exhaust)
+            {
+                throw new InvalidOperationException(
+                    "自动后置阶段选择解决后没有恢复后续回合结束生命周期。");
+            }
+        }
+        finally
+        {
+            resolvedCombat.EndActionChoices();
+        }
+        _ = resolvedSimulator.Fork();
+    }
+
+    private static TurnStartChoiceCursor CreateForkBoundaryAutomaticChoiceCursor()
+    {
+        return TurnStartChoiceCursor.ForAutomaticPolicy(request =>
+        {
+            CardChoiceSpec spec = request.Spec
+                ?? throw new InvalidOperationException(
+                    $"边界重放的自动选择缺少 spec：{request.SourceId}/{request.Effect}。");
+            return CardChoiceSupport.BuildRequestedChoice(spec, ["__FIRST__"]) with
+            {
+                SourceId = request.SourceId,
+                ContextId = request.ContextId,
+                Timing = request.Timing,
+            };
+        });
+    }
+
+    private static void AssertPendingChoice(
+        SimulatedCombatState combat,
+        string expectedSourceId,
+        PlanChoiceEffect expectedEffect,
+        string label)
+    {
+        TurnStartChoiceRequest pending = combat.PendingTurnStartChoice
+            ?? throw new InvalidOperationException($"{label}没有保留内层选择请求。");
+        if (!string.Equals(pending.SourceId, expectedSourceId, StringComparison.Ordinal)
+            || pending.Effect != expectedEffect)
+        {
+            throw new InvalidOperationException(
+                $"{label}保留了错误请求：{pending.SourceId}/{pending.Effect}。");
+        }
+    }
+
+    private static void AssertCardPlayHistoryCounts(
+        CombatPredictionSimulator simulator,
+        int historyStart,
+        PredictedCard card,
+        int expectedStarted,
+        int expectedFinished,
+        string label)
+    {
+        int started = 0;
+        int finished = 0;
+        foreach (CombatPredictionHistoryEntry entry in simulator.History.EntriesFrom(historyStart))
+        {
+            if (entry is CombatPredictionCardPlayStartedEntry start
+                && ReferenceEquals(start.Card, card))
+            {
+                started++;
+            }
+            if (entry is CombatPredictionCardPlayFinishedEntry finish
+                && ReferenceEquals(finish.Card, card))
+            {
+                finished++;
+            }
+        }
+        if (started != expectedStarted || finished != expectedFinished)
+        {
+            throw new InvalidOperationException(
+                $"{label}历史次数错误：started={started}/{expectedStarted}，" +
+                $"finished={finished}/{expectedFinished}。");
+        }
+    }
+
+    private static int AdvanceAutomationCardsLeft(int cardsLeft, int draws)
+    {
+        for (int index = 0; index < draws; index++)
+        {
+            cardsLeft--;
+            if (cardsLeft <= 0)
+                cardsLeft = AutomationPower._baseCardsLeft;
+        }
+        return cardsLeft;
+    }
+
+    private static void StabilizeForkBoundaryEnemies(CombatPredictionSimulator simulator)
+    {
+        foreach (Creature enemy in simulator.State.HittableEnemies)
+        {
+            SimCreatureState state = simulator.State.GetCreature(enemy);
+            state.SetMaxHp(999);
+            state.CurrentHp = 999;
+        }
+    }
+
+    private static void AssertNestedChoiceSuspendsOuterPostChoiceEffects(
+        CombatState combat,
+        Player player)
+    {
+        SimulatedCombatState simulatedCombat = new(combat);
+        CombatPredictionSimulator simulator = new(simulatedCombat);
+        SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(player);
+        simulator.RemoveFromCombat(playerState.AllCards.ToArray());
+
+        PredictedCard outer = PredictedCard.Create(ModelDb.Card<HiddenDaggers>(), player);
+        PredictedCard inner = PredictedCard.Create(ModelDb.Card<Discovery>(), player);
+        inner.MutablePreview.GiveSingleTurnSly();
+        simulator.AddGeneratedCardToCombat(
+            outer,
+            PileType.Play,
+            player,
+            resultKind: CardGenerationResultKind.Fixed);
+        simulator.AddGeneratedCardToCombat(
+            inner,
+            PileType.Hand,
+            player,
+            resultKind: CardGenerationResultKind.Fixed);
+
+        CardChoiceSpec spec = CardChoiceSupport.GetSpec(simulator, outer)
+            ?? throw new InvalidOperationException("嵌套选牌后效边界测试没有建立外层弃牌请求。");
+        PlanCardChoice choice = CardChoiceSupport.BuildRequestedChoice(
+            spec,
+            [inner.Preview.Id.Entry]);
+        int shivsBefore = playerState.AllCards.Count(card => card.Preview.Tags.Contains(CardTag.Shiv));
+        simulatedCombat.BeginActionChoices((IReadOnlyList<PlanCardChoice>?)null);
+        try
+        {
+            CardChoiceSupport.Apply(
+                simulator,
+                simulatedCombat,
+                outer,
+                choice,
+                new HashSet<uint>());
+            TurnStartChoiceRequest pending = simulatedCombat.PendingTurnStartChoice
+                ?? throw new InvalidOperationException("弃掉的狡猾选牌牌没有保留内层选择请求。");
+            if (!string.Equals(pending.SourceId, inner.Preview.Id.Entry, StringComparison.Ordinal))
+                throw new InvalidOperationException("狡猾自动出牌保留了错误的内层选择来源。");
+            int shivsAfter = playerState.AllCards.Count(
+                card => card.Preview.Tags.Contains(CardTag.Shiv));
+            if (shivsAfter != shivsBefore)
+                throw new InvalidOperationException("内层选择待定时错误执行了外层选牌后续效果。");
+        }
+        finally
+        {
+            simulatedCombat.EndActionChoices();
+        }
+    }
+
+    private static void AssertAfterCardPlayedNestedChoiceSuspendsWrapperCompletion(
+        CombatState combat,
+        Player player)
+    {
+        SimulatedCombatState simulatedCombat = new(combat);
+        CombatPredictionSimulator simulator = new(simulatedCombat);
+        SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(player);
+        simulator.RemoveFromCombat(playerState.AllCards.ToArray());
+
+        PredictedCard outer = PredictedCard.Create(ModelDb.Card<DefendDefect>(), player);
+        PredictedCard nested = PredictedCard.Create(ModelDb.Card<Discovery>(), player);
+        PredictedCard lateSentinel = PredictedCard.Create(ModelDb.Card<MakeItSo>(), player);
+        lateSentinel.MutablePreview.DynamicVars["Cards"].BaseValue = 1;
+        simulator.AddGeneratedCardToCombat(
+            outer,
+            PileType.Hand,
+            player,
+            resultKind: CardGenerationResultKind.Fixed);
+        simulator.AddGeneratedCardToCombat(
+            nested,
+            PileType.Hand,
+            player,
+            resultKind: CardGenerationResultKind.Fixed);
+        simulator.AddGeneratedCardToCombat(
+            lateSentinel,
+            PileType.Discard,
+            player,
+            resultKind: CardGenerationResultKind.Fixed);
+
+        ImitationLearningPower power = simulatedCombat.AddPowerInstance<ImitationLearningPower>(
+            player.Creature,
+            1,
+            player.Creature);
+        PanachePower ordinarySentinel = simulatedCombat.AddPowerInstance<PanachePower>(
+            player.Creature,
+            1,
+            player.Creature);
+        ImitationLearningPredictionState imitationState = simulator.StateStore.Get(
+            power,
+            () => new ImitationLearningPredictionState(power));
+        PanachePredictionState ordinarySentinelState = simulator.StateStore.Get(
+            ordinarySentinel,
+            () => new PanachePredictionState(ordinarySentinel));
+        // Seed the generic AfterCardPlayed auto-play boundary directly. The production path remains
+        // entirely content-agnostic; using a choosing clone here makes the suspension deterministic.
+        imitationState.CardAndClones.Add((outer, nested));
+
+        IReadOnlyList<AbstractModel> listeners = simulatedCombat.IterateHookListeners().ToArray();
+        int suspendingListenerIndex = listeners.ToList().FindIndex(listener =>
+            ReferenceEquals(listener, power));
+        int ordinarySentinelIndex = listeners.ToList().FindIndex(listener =>
+            ReferenceEquals(listener, ordinarySentinel));
+        int lateSentinelIndex = listeners.ToList().FindIndex(listener =>
+            ReferenceEquals(listener, lateSentinel.Preview));
+        if (suspendingListenerIndex < 0
+            || ordinarySentinelIndex <= suspendingListenerIndex
+            || lateSentinelIndex < 0)
+        {
+            throw new InvalidOperationException(
+                $"AfterCardPlayed 暂停边界测试的 listener 顺序无效：" +
+                $"suspending={suspendingListenerIndex}，ordinary={ordinarySentinelIndex}，" +
+                $"late={lateSentinelIndex}。");
+        }
+
+        int completedCardsBefore = simulatedCombat.GetCardsPlayedThisTurn(player.Creature);
+        int historyStart = simulator.History.Entries.Count;
+        simulatedCombat.BeginActionChoices((IReadOnlyList<PlanCardChoice>?)null);
+        try
+        {
+            simulator.ManualPlay(outer, target: null, out _);
+
+            TurnStartChoiceRequest pending = simulatedCombat.PendingTurnStartChoice
+                ?? throw new InvalidOperationException(
+                    "AfterCardPlayed 自动出牌没有保留内层选择请求。");
+            if (!string.Equals(pending.SourceId, power.Id.Entry, StringComparison.Ordinal)
+                || pending.Effect != PlanChoiceEffect.GenerateToHand)
+            {
+                throw new InvalidOperationException(
+                    $"AfterCardPlayed 自动出牌保留了错误请求：" +
+                    $"{pending.SourceId}/{pending.Effect}。");
+            }
+
+            if (outer.GetPile(simulator.State)?.Type != PileType.Play
+                || nested.GetPile(simulator.State)?.Type != PileType.Play)
+            {
+                throw new InvalidOperationException(
+                    "AfterCardPlayed 内层选择待定时错误移动了外层或内层卡牌。");
+            }
+
+            bool outerStarted = false;
+            bool outerFinished = false;
+            bool nestedStarted = false;
+            bool nestedFinished = false;
+            foreach (CombatPredictionHistoryEntry entry in simulator.History.EntriesFrom(historyStart))
+            {
+                outerStarted |= entry is CombatPredictionCardPlayStartedEntry outerStart
+                    && ReferenceEquals(outerStart.Card, outer);
+                outerFinished |= entry is CombatPredictionCardPlayFinishedEntry outerFinish
+                    && ReferenceEquals(outerFinish.Card, outer);
+                nestedStarted |= entry is CombatPredictionCardPlayStartedEntry nestedStart
+                    && ReferenceEquals(nestedStart.Card, nested);
+                nestedFinished |= entry is CombatPredictionCardPlayFinishedEntry nestedFinish
+                    && ReferenceEquals(nestedFinish.Card, nested);
+            }
+            if (!outerStarted || !outerFinished || !nestedStarted || nestedFinished)
+            {
+                throw new InvalidOperationException(
+                    "AfterCardPlayed 嵌套选择的开始/完成阶段边界不正确。");
+            }
+
+            if (simulatedCombat.GetCardsPlayedThisTurn(player.Creature) != completedCardsBefore)
+            {
+                throw new InvalidOperationException(
+                    "AfterCardPlayed 内层选择待定时错误提交了外层卡牌生命周期。");
+            }
+            if (imitationState.Amount != 0 || imitationState.CardAndClones.Count != 0)
+            {
+                throw new InvalidOperationException(
+                    "AfterCardPlayed 嵌套选择没有停在自动出牌之后的预期阶段。");
+            }
+            if (ordinarySentinelState.AlreadyApplied)
+            {
+                throw new InvalidOperationException(
+                    "AfterCardPlayed 内层选择待定时错误执行了后置 ordinary listener。");
+            }
+            if (lateSentinel.GetPile(simulator.State)?.Type != PileType.Discard)
+            {
+                throw new InvalidOperationException(
+                    "AfterCardPlayed 内层选择待定时错误启动了 late listener pass。");
+            }
+        }
+        finally
+        {
+            simulatedCombat.EndActionChoices();
+        }
     }
 
     private static void AssertCardCompletionSettlesPowerAmountChanges(
@@ -522,7 +1760,8 @@ internal sealed partial class UnattendedTestRunner
             PotionChoiceSupport.GetSpec(probe, potion),
             ["POMMEL_STRIKE"]);
         CombatPredictionSimulator replay = parent.Fork();
-        PotionChoiceSupport.Apply(replay, potion, choice);
+        if (!PotionChoiceSupport.Apply(replay, potion, choice))
+            throw new InvalidOperationException("预知水滴固定选择重放意外遇到挂起选择。");
         if (!replay.State.GetPlayerCombatState(player).Hand.Cards.Any(card =>
                 card.Preview is PommelStrike && card.Preview.IsUpgraded))
         {
@@ -848,7 +2087,8 @@ internal sealed partial class UnattendedTestRunner
         if (!combat.RelicsOf(player).Any(static relic => relic is WhisperingEarring && !relic.IsMelted))
             return;
         int cardsBefore = simulator.State.GetPlayerCombatState(player).Hand.Cards.Count;
-        combat.TriggerWhisperingEarring(simulator, player, 2, new HashSet<uint>());
+        if (!combat.TriggerWhisperingEarring(simulator, player, 2, new HashSet<uint>()))
+            throw new InvalidOperationException("低语耳饰在非首回合错误报告挂起。");
         int cardsAfter = simulator.State.GetPlayerCombatState(player).Hand.Cards.Count;
         if (cardsAfter != cardsBefore)
             throw new InvalidOperationException("低语耳饰在第二回合再次自动出牌。");
@@ -916,6 +2156,31 @@ internal sealed partial class UnattendedTestRunner
         {
             throw new InvalidOperationException(
                 "不改变卡牌 listener 身份的字段写入错误重建了 Hook listener 缓存。");
+        }
+
+        CardKeyword keywordProbe = Enum.GetValues<CardKeyword>()
+            .First(keyword => keyword != CardKeyword.None
+                && !childCard.Preview.GetKeywordsWithSources(KeywordSources.Local)
+                    .Contains(keyword));
+        StateFingerprint parentKeywordFingerprint =
+            CombatBeamSolver.CaptureCardStateFingerprintForTesting(parentCard);
+        StateFingerprint childFingerprintBeforeKeyword =
+            CombatBeamSolver.CaptureCardStateFingerprintForTesting(childCard);
+        childCard.MutablePreview.AddKeyword(keywordProbe);
+        StateFingerprint childFingerprintWithKeyword =
+            CombatBeamSolver.CaptureCardStateFingerprintForTesting(childCard);
+        if (childFingerprintWithKeyword == childFingerprintBeforeKeyword
+            || CombatBeamSolver.CaptureCardStateFingerprintForTesting(parentCard)
+                != parentKeywordFingerprint)
+        {
+            throw new InvalidOperationException(
+                "本地动态卡牌关键字没有进入精确 fingerprint，或跨 Fork 污染了父分支。");
+        }
+        childCard.MutablePreview.RemoveKeyword(keywordProbe);
+        if (CombatBeamSolver.CaptureCardStateFingerprintForTesting(childCard)
+            != childFingerprintBeforeKeyword)
+        {
+            throw new InvalidOperationException("移除本地动态卡牌关键字后 fingerprint 没有恢复。");
         }
 
         PredictedCard attachedListenerProbe = PredictedCard.Create(ModelDb.Card<PommelStrike>(), player);

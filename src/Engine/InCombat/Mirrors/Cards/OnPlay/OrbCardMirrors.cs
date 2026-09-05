@@ -14,6 +14,8 @@ internal static class OrbCardMirrors
     public static void BallLightningOnPlay(BallLightning card, CardOnPlayMirrorContext context)
     {
         context.AttackSingle();
+        if (context.Simulator.HasPendingChoice)
+            return;
         context.Simulator.OrbChannel<LightningOrb>(card.Owner);
     }
 
@@ -23,6 +25,8 @@ internal static class OrbCardMirrors
         {
             var orb = OrbModel.GetRandomOrb(context.Rng.CombatOrbGeneration).ToMutable();
             context.Simulator.OrbChannel(card.Owner, orb);
+            if (context.Simulator.HasPendingChoice)
+                return;
         }
     }
 
@@ -34,12 +38,16 @@ internal static class OrbCardMirrors
     public static void ColdSnapOnPlay(ColdSnap card, CardOnPlayMirrorContext context)
     {
         context.AttackSingle();
+        if (context.Simulator.HasPendingChoice)
+            return;
         context.Simulator.OrbChannel<FrostOrb>(card.Owner);
     }
 
     public static void ConsumingShadowOnPlay(ConsumingShadow card, CardOnPlayMirrorContext context)
     {
         context.Simulator.OrbChannel<DarkOrb>(card.Owner, card.DynamicVars.Repeat.IntValue);
+        if (context.Simulator.HasPendingChoice)
+            return;
         if (context.State.CombatState is not ICombatPredictionEffectSink effects)
             throw new InvalidOperationException("吞噬暗影结算缺少可写的预测状态。");
         effects.ApplyPower(
@@ -52,12 +60,16 @@ internal static class OrbCardMirrors
     public static void CoolheadedOnPlay(Coolheaded card, CardOnPlayMirrorContext context)
     {
         context.Simulator.OrbChannel<FrostOrb>(card.Owner);
+        if (context.Simulator.HasPendingChoice)
+            return;
         context.Simulator.Draw(card.Owner, card.DynamicVars.Cards.BaseValue);
     }
 
     public static void DarknessOnPlay(Darkness card, CardOnPlayMirrorContext context)
     {
         context.Simulator.OrbChannel<DarkOrb>(card.Owner);
+        if (context.Simulator.HasPendingChoice)
+            return;
 
         var triggerCount = card.IsUpgraded ? 2 : 1;
         var darkOrbs = context.OwnerState.OrbQueue.Orbs.OfType<DarkOrb>().ToArray();
@@ -66,6 +78,8 @@ internal static class OrbCardMirrors
             for (var i = 0; i < triggerCount; i++)
             {
                 context.Simulator.OrbPassive(darkOrb);
+                if (context.Simulator.HasPendingChoice)
+                    return;
             }
         }
     }
@@ -83,18 +97,24 @@ internal static class OrbCardMirrors
     public static void GlacierOnPlay(Glacier card, CardOnPlayMirrorContext context)
     {
         context.GainBlock(card.Owner.Creature);
+        if (context.Simulator.HasPendingChoice)
+            return;
         context.Simulator.OrbChannel<FrostOrb>(card.Owner, 2);
     }
 
     public static void GlassworkOnPlay(Glasswork card, CardOnPlayMirrorContext context)
     {
         context.GainBlock(card.Owner.Creature);
+        if (context.Simulator.HasPendingChoice)
+            return;
         context.Simulator.OrbChannel<GlassOrb>(card.Owner);
     }
 
     public static void IceLanceOnPlay(IceLance card, CardOnPlayMirrorContext context)
     {
         context.AttackSingle();
+        if (context.Simulator.HasPendingChoice)
+            return;
         context.Simulator.OrbChannel<FrostOrb>(card.Owner, card.DynamicVars.Repeat.IntValue);
     }
 
@@ -106,6 +126,8 @@ internal static class OrbCardMirrors
     public static void MeteorStrikeOnPlay(MeteorStrike card, CardOnPlayMirrorContext context)
     {
         context.AttackSingle();
+        if (context.Simulator.HasPendingChoice)
+            return;
         context.Simulator.OrbChannel<PlasmaOrb>(card.Owner, 3);
     }
 
@@ -118,6 +140,8 @@ internal static class OrbCardMirrors
     public static void NullOnPlay(Null card, CardOnPlayMirrorContext context)
     {
         context.AttackSingle();
+        if (context.Simulator.HasPendingChoice)
+            return;
         // Vanilla applies Weak before channeling; Weak does not affect this prediction's orb damage.
         context.Simulator.OrbChannel<DarkOrb>(card.Owner);
     }
@@ -130,30 +154,42 @@ internal static class OrbCardMirrors
     public static void RainbowOnPlay(Rainbow card, CardOnPlayMirrorContext context)
     {
         context.Simulator.OrbChannel<LightningOrb>(card.Owner);
+        if (context.Simulator.HasPendingChoice)
+            return;
         context.Simulator.OrbChannel<FrostOrb>(card.Owner);
+        if (context.Simulator.HasPendingChoice)
+            return;
         context.Simulator.OrbChannel<DarkOrb>(card.Owner);
     }
 
     public static void RefractOnPlay(Refract card, CardOnPlayMirrorContext context)
     {
         context.AttackSingle(hitCount: 2);
+        if (context.Simulator.HasPendingChoice)
+            return;
         context.Simulator.OrbChannel<GlassOrb>(card.Owner, card.DynamicVars.Repeat.IntValue);
     }
 
     public static void ShadowShieldOnPlay(ShadowShield card, CardOnPlayMirrorContext context)
     {
         context.GainBlock(card.Owner.Creature);
+        if (context.Simulator.HasPendingChoice)
+            return;
         context.Simulator.OrbChannel<DarkOrb>(card.Owner);
     }
 
     public static void ShatterOnPlay(Shatter card, CardOnPlayMirrorContext context)
     {
         context.AttackAllOpponents();
+        if (context.Simulator.HasPendingChoice)
+            return;
 
         var orbCount = context.OwnerState.OrbQueue.Orbs.Count;
         for (var i = 0; i < orbCount; i++)
         {
             context.Simulator.OrbEvokeNext(card.Owner, repeat: 2);
+            if (context.Simulator.HasPendingChoice)
+                return;
         }
     }
 
@@ -176,6 +212,8 @@ internal static class OrbCardMirrors
     public static void TeslaCoilOnPlay(TeslaCoil card, CardOnPlayMirrorContext context)
     {
         context.AttackSingle();
+        if (context.Simulator.HasPendingChoice)
+            return;
 
         var triggerCount = card.IsUpgraded ? 2 : 1;
         var lightningOrbs = context.OwnerState.OrbQueue.Orbs.OfType<LightningOrb>().ToArray();
@@ -184,6 +222,8 @@ internal static class OrbCardMirrors
             for (var i = 0; i < triggerCount; i++)
             {
                 context.Simulator.OrbPassive(lightningOrb, context.Target);
+                if (context.Simulator.HasPendingChoice)
+                    return;
             }
         }
     }

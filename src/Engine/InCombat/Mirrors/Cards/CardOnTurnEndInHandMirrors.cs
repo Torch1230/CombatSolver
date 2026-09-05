@@ -69,6 +69,8 @@ internal static class CardOnTurnEndInHandMirrors
     {
         var previewCard = (Regret)context.MutablePreviewCard;
         DamageOwner(context, previewCard.CardsInHand, DamageProps.cardHpLoss);
+        if (context.Simulator.HasPendingChoice)
+            return;
         previewCard.CardsInHand = 0;
     }
 

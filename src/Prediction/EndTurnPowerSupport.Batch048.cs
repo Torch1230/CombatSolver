@@ -9,7 +9,7 @@ namespace CombatSolver;
 
 internal static partial class EndTurnPowerSupport
 {
-    private static void TriggerBatch048(
+    private static bool TriggerBatch048(
         CombatPredictionSimulator simulator,
         SimulatedCombatState combat,
         CombatSide side,
@@ -38,6 +38,8 @@ internal static partial class EndTurnPowerSupport
                     {
                         simulator.Damage(owner, power.Amount, ValueProp.Unpowered, owner);
                     }
+                    if (simulator.HasPendingChoice)
+                        return false;
                     combat.SetPowerAmount(power, 0);
                     break;
                 case MonologuePower monologue when ownerParticipates:
@@ -65,6 +67,9 @@ internal static partial class EndTurnPowerSupport
                     combat.SetPowerAmount(power, 0);
                     break;
             }
+            if (simulator.HasPendingChoice)
+                return false;
         }
+        return true;
     }
 }

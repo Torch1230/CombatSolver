@@ -109,6 +109,8 @@ internal static class CardSelectionCardMirrors
     public static void CinderOnPlay(Cinder card, CardOnPlayMirrorContext context)
     {
         context.AttackSingle();
+        if (context.Simulator.HasPendingChoice)
+            return;
 
         if (SelectRandomHandCard(context, static _ => true) is { } selectedCard)
         {
@@ -120,6 +122,8 @@ internal static class CardSelectionCardMirrors
     public static void DrainPowerOnPlay(DrainPower card, CardOnPlayMirrorContext context)
     {
         context.AttackSingle();
+        if (context.Simulator.HasPendingChoice)
+            return;
 
         var cardsToUpgrade = context.OwnerState.DiscardPile.Cards
             .Where(predictedCard => predictedCard.Preview.IsUpgradable)
@@ -176,6 +180,8 @@ internal static class CardSelectionCardMirrors
     public static void ThrashOnPlay(Thrash card, CardOnPlayMirrorContext context)
     {
         context.AttackSingle(hitCount: 2);
+        if (context.Simulator.HasPendingChoice)
+            return;
 
         var cardToExhaust = SelectRandomHandCard(context, cardModel => cardModel.Type == CardType.Attack);
         if (cardToExhaust is null)
@@ -223,6 +229,8 @@ internal static class CardSelectionCardMirrors
     public static void TrueGritOnPlay(TrueGrit card, CardOnPlayMirrorContext context)
     {
         context.GainBlock(card.Owner.Creature);
+        if (context.Simulator.HasPendingChoice)
+            return;
 
         if (card.IsUpgraded)
         {
@@ -245,6 +253,8 @@ internal static class CardSelectionCardMirrors
     public static void UproarOnPlay(Uproar card, CardOnPlayMirrorContext context)
     {
         context.AttackSingle(hitCount: 2);
+        if (context.Simulator.HasPendingChoice)
+            return;
 
         var attackCards = context.OwnerState.DrawPile.Cards
             .Where(predictedCard => predictedCard.Preview.Type == CardType.Attack)

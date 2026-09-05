@@ -116,7 +116,7 @@ internal static class PersistentPowerSupport
             _ => 0m,
         };
 
-    public static void TriggerAfterEnergyReset(
+    public static bool TriggerAfterEnergyReset(
         CombatPredictionSimulator simulator,
         SimulatedCombatState combat,
         Player player)
@@ -126,12 +126,18 @@ internal static class PersistentPowerSupport
 
         int genesis = combat.GetAmount<GenesisPower>(owner);
         if (genesis > 0)
+        {
             simulator.GainStars(player, genesis);
+            if (simulator.HasPendingChoice)
+                return false;
+        }
 
         int lightningRod = combat.GetAmount<LightningRodPower>(owner);
         if (lightningRod > 0)
         {
             simulator.OrbChannel<LightningOrb>(player);
+            if (simulator.HasPendingChoice)
+                return false;
             combat.SetAmount<LightningRodPower>(owner, lightningRod - 1);
         }
 
@@ -145,17 +151,24 @@ internal static class PersistentPowerSupport
 
         int spinner = combat.GetAmount<SpinnerPower>(owner);
         if (spinner > 0)
+        {
             simulator.OrbChannel<GlassOrb>(player, spinner);
+            if (simulator.HasPendingChoice)
+                return false;
+        }
 
         int starsNextTurn = combat.GetAmount<StarNextTurnPower>(owner);
         if (starsNextTurn > 0)
         {
             simulator.GainStars(player, starsNextTurn);
+            if (simulator.HasPendingChoice)
+                return false;
             combat.SetAmount<StarNextTurnPower>(owner, 0);
         }
+        return !simulator.HasPendingChoice;
     }
 
-    public static void TriggerAfterSideTurnStart(
+    public static bool TriggerAfterSideTurnStart(
         CombatPredictionSimulator simulator,
         SimulatedCombatState combat,
         CombatSide side,
@@ -163,10 +176,14 @@ internal static class PersistentPowerSupport
         bool isExtraTurn = false)
     {
         foreach (Creature owner in participants)
-            TriggerOwnerAfterSideTurnStart(simulator, combat, owner);
+        {
+            if (!TriggerOwnerAfterSideTurnStart(simulator, combat, owner))
+                return false;
+        }
 
         if (side == CombatSide.Player && !isExtraTurn)
-            TriggerRampart(simulator, combat);
+            return TriggerRampart(simulator, combat);
+        return !simulator.HasPendingChoice;
     }
 
     public static void TriggerRitual(SimulatedCombatState combat, Creature owner)
@@ -177,7 +194,7 @@ internal static class PersistentPowerSupport
         combat.Apply<StrengthPower>(owner, amount, owner);
     }
 
-    private static void TriggerOwnerAfterSideTurnStart(
+    private static bool TriggerOwnerAfterSideTurnStart(
         CombatPredictionSimulator simulator,
         SimulatedCombatState combat,
         Creature owner)
@@ -194,6 +211,8 @@ internal static class PersistentPowerSupport
                 .Distinct()
                 .Count();
             simulator.GainBlock(owner, distinctOrbs * coolant, ValueProp.Unpowered);
+            if (simulator.HasPendingChoice)
+                return false;
         }
 
         int demonForm = combat.GetAmount<DemonFormPower>(owner);
@@ -206,7 +225,11 @@ internal static class PersistentPowerSupport
 
         int furnace = combat.GetAmount<FurnacePower>(owner);
         if (furnace > 0 && owner.Player is { } furnacePlayer)
+        {
             Forge(simulator, furnacePlayer, furnace);
+            if (simulator.HasPendingChoice)
+                return false;
+        }
 
         int neurosurge = combat.GetAmount<NeurosurgePower>(owner);
         if (neurosurge > 0)
@@ -244,9 +267,10 @@ internal static class PersistentPowerSupport
         int clarity = combat.GetAmount<ClarityPower>(owner);
         if (clarity > 0)
             combat.SetAmount<ClarityPower>(owner, clarity - 1);
+        return !simulator.HasPendingChoice;
     }
 
-    private static void TriggerRampart(
+    private static bool TriggerRampart(
         CombatPredictionSimulator simulator,
         SimulatedCombatState combat)
     {
@@ -257,9 +281,14 @@ internal static class PersistentPowerSupport
             foreach (Creature enemy in combat.Enemies)
             {
                 if (enemy.Monster is TurretOperator && simulator.State.GetCreature(enemy).IsAlive)
+                {
                     simulator.GainBlock(enemy, rampart.Amount, ValueProp.Unpowered);
+                    if (simulator.HasPendingChoice)
+                        return false;
+                }
             }
         }
+        return true;
     }
 
     public static void Forge(
@@ -267,6 +296,9 @@ internal static class PersistentPowerSupport
         Player player,
         int amount)
     {
+        if (simulator.HasPendingChoice)
+            return;
+
         SimPlayerCombatState state = simulator.State.GetPlayerCombatState(player);
         bool hasUnexhaustedBlade = state.AllCards.Any(card =>
             card.Preview is SovereignBlade
@@ -282,6 +314,8 @@ internal static class PersistentPowerSupport
                 player,
                 CardPilePosition.Bottom,
                 CardGenerationResultKind.Fixed);
+            if (simulator.HasPendingChoice)
+                return;
         }
         foreach (PredictedCard card in state.AllCards)
         {

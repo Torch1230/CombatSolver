@@ -22,7 +22,11 @@ internal static partial class CardOnPlaySupport
         CardModel card = playedCard.Preview;
         Creature owner = card.Owner.Creature;
         CardPowerOnPlaySupport.Apply(combat, card);
+        if (simulator.HasPendingChoice)
+            return;
         CardPileOnPlaySupport.Apply(simulator, playedCard);
+        if (simulator.HasPendingChoice)
+            return;
         switch (card)
         {
             case Alignment:
@@ -51,6 +55,8 @@ internal static partial class CardOnPlaySupport
                     owner,
                     playedCard,
                     null);
+                if (simulator.HasPendingChoice)
+                    return;
                 simulator.State.GetPlayerCombatState(card.Owner).GainEnergy(card.DynamicVars.Energy.IntValue);
                 break;
             case Conqueror when target != null:
@@ -114,7 +120,8 @@ internal static partial class CardOnPlaySupport
                     combat.Apply<WeakPower>(enemy, card.DynamicVars.Weak.IntValue, owner);
                 break;
             case HiddenCache:
-                simulator.GainStars(card.Owner, card.DynamicVars.Stars.IntValue);
+                if (!simulator.GainStars(card.Owner, card.DynamicVars.Stars.IntValue))
+                    return;
                 combat.Apply<StarNextTurnPower>(
                     owner,
                     card.DynamicVars["StarNextTurnPower"].IntValue,
@@ -154,6 +161,8 @@ internal static partial class CardOnPlaySupport
                 break;
             case ShadowStep:
                 simulator.Discard(simulator.State.GetPlayerCombatState(card.Owner).Hand.Cards.ToArray());
+                if (simulator.HasPendingChoice)
+                    return;
                 combat.Apply<ShadowStepPower>(owner, 1, owner);
                 break;
             case Snakebite when target != null:
@@ -197,7 +206,11 @@ internal static partial class CardOnPlaySupport
                 simulator.GainStars(card.Owner, card.DynamicVars.Stars.IntValue);
                 break;
         }
+        if (simulator.HasPendingChoice)
+            return;
         ApplyBatch042(simulator, combat, playedCard, cardPlay, target, processedEnemyDeaths);
+        if (simulator.HasPendingChoice)
+            return;
         ApplyBatch043(simulator, combat, playedCard, target, processedEnemyDeaths);
     }
 }

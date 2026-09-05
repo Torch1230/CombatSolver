@@ -132,8 +132,31 @@ internal sealed partial class SimulatedCombatState
         RecordRelicCardPlayed(simulator, card.Preview.Owner, card.Preview);
         if (card.Preview.Type == CardType.Skill)
             RecordSkillPlayed(owner);
-        if (card.Preview is Bolas or ThrummingHatchet)
+        if (ReturnsToHandAfterPlaying(card.Preview))
             (_returnToHandNextTurn ??= []).Add(card);
+    }
+
+    private static bool ReturnsToHandAfterPlaying(CardModel card)
+        => card is Bolas or ThrummingHatchet;
+
+    private void CaptureReturningCardEligibility(CombatPredictionSimulator simulator)
+    {
+        // MaterializeRoot is a synchronous main-thread capture. A supported Start root
+        // is captured before SetupPlayerTurn, so last turn's returns are still due now.
+        // Play roots must not rearm those already-consumed returns; current-turn plays
+        // remain eligible for the next turn in either entry path.
+        foreach (var entry in _rootHistory.CardPlaysFinished)
+        {
+            Player owner = entry.CardPlay.Player;
+            bool awaitingTurnSetup = owner.PlayerCombatState?.Phase == PlayerTurnPhase.Start;
+            if ((entry.HappenedThisTurn(this)
+                    || awaitingTurnSetup && entry.HappenedLastPlayerTurn(owner))
+                && ReturnsToHandAfterPlaying(entry.CardPlay.Card)
+                && simulator.State.FindCard(entry.CardPlay.Card) is { } card)
+            {
+                (_returnToHandNextTurn ??= []).Add(card);
+            }
+        }
     }
 
     public IDisposable BeginCardExecutionScope(ISet<uint>? processedEnemyDeaths = null)
@@ -194,17 +217,20 @@ internal sealed partial class SimulatedCombatState
         int historyEntryStart)
     {
         ISet<uint> processedEnemyDeaths = _activeCardExecutionDeaths ?? new HashSet<uint>();
-        CorePowerSupport.ApplyCardPowers(
-            simulator,
-            this,
-            card,
-            cardPlay,
-            target,
-            ownerBlockBefore,
-            cardBlockGained,
-            historyEntryStart,
-            processedEnemyDeaths);
-        CorePowerSupport.ApplyEnemyDeathPowers(
+        if (!CorePowerSupport.ApplyCardPowers(
+                simulator,
+                this,
+                card,
+                cardPlay,
+                target,
+                ownerBlockBefore,
+                cardBlockGained,
+                historyEntryStart,
+                processedEnemyDeaths))
+        {
+            return;
+        }
+        _ = CorePowerSupport.ApplyEnemyDeathPowers(
             simulator,
             this,
             KnownEnemies,
@@ -218,8 +244,12 @@ internal sealed partial class SimulatedCombatState
         int historyEntryStart)
     {
         TriggeredPowerSupport.CompensateHistorySince(simulator, this, historyEntryStart);
+        if (HasPendingChoice)
+            return;
         simulator.SynchronizePowerAmountPredictionStates();
         PowerLifecycleSupport.ResolvePowerAmountChanges(simulator, this);
+        if (HasPendingChoice)
+            return;
         int ownerBlockAfter = simulator.State.GetCreature(card.Preview.Owner.Creature).Block;
         RecordCardPlayed(card, ownerBlockAfter > ownerBlockBefore);
         RecordCardLifecycle(simulator, card);
@@ -229,11 +259,14 @@ internal sealed partial class SimulatedCombatState
         CombatPredictionSimulator simulator)
     {
         ISet<uint> processedEnemyDeaths = _activeCardExecutionDeaths ?? new HashSet<uint>();
-        CorePowerSupport.ApplyEnemyDeathPowers(
-            simulator,
-            this,
-            KnownEnemies,
-            processedEnemyDeaths);
+        if (!CorePowerSupport.ApplyEnemyDeathPowers(
+                simulator,
+                this,
+                KnownEnemies,
+                processedEnemyDeaths))
+        {
+            return;
+        }
         simulator.SynchronizePowerAmountPredictionStates();
         PowerLifecycleSupport.ResolvePowerAmountChanges(simulator, this);
     }
@@ -242,7 +275,7 @@ internal sealed partial class SimulatedCombatState
         CombatPredictionSimulator simulator,
         ISet<uint> processedEnemyDeaths)
     {
-        CorePowerSupport.ApplyEnemyDeathPowers(
+        _ = CorePowerSupport.ApplyEnemyDeathPowers(
             simulator,
             this,
             KnownEnemies,
@@ -340,6 +373,14 @@ internal sealed partial class SimulatedCombatState
         Player player,
         TurnStartChoiceCursor choices)
     {
+        // BeforeHandDraw snapshots its listeners from the current ordered combat piles
+        // before invoking powers or relics. The set records eligibility only: its free-slot
+        // history changes on Fork and must never determine the order of moves to Hand.
+        PredictedCard[] returningCards = _returnToHandNextTurn is { Count: > 0 }
+            ? simulator.State.GetPlayerCombatState(player).AllCards
+                .Where(card => _returnToHandNextTurn.Contains(card))
+                .ToArray()
+            : [];
         if (TurnStartPowerSupport.TriggerBeforeHandDraw(simulator, this, player, choices))
             return true;
         if (PrepareRelicsBeforeHandDraw(simulator, player, choices))
@@ -364,6 +405,8 @@ internal sealed partial class SimulatedCombatState
                     player,
                     CardPilePosition.Bottom,
                     CardGenerationResultKind.Fixed);
+                if (HasPendingChoice)
+                    return true;
                 SetPowerAmount(power, 0);
             }
         }
@@ -389,17 +432,26 @@ internal sealed partial class SimulatedCombatState
                 player,
                 CardPilePosition.Bottom,
                 CardGenerationResultKind.Fixed);
+            if (HasPendingChoice)
+                return true;
         }
 
         if (_returnToHandNextTurn != null)
         {
-            foreach (PredictedCard card in _returnToHandNextTurn.ToArray())
+            foreach (PredictedCard card in returningCards)
             {
-                if (!ReferenceEquals(card.Preview.Owner, player))
-                    continue;
                 SimCardPile? pile = card.GetPile(simulator.State);
+                if (card.Preview.HasBeenRemovedFromState)
+                {
+                    _returnToHandNextTurn.Remove(card);
+                    continue;
+                }
                 if (pile?.Type != PileType.Hand)
+                {
                     simulator.AddToPile(card, PileType.Hand);
+                    if (HasPendingChoice)
+                        return true;
+                }
                 _returnToHandNextTurn.Remove(card);
             }
         }
@@ -451,8 +503,11 @@ internal sealed partial class SimulatedCombatState
         {
             return true;
         }
-        TriggerWhisperingEarring(simulator, player, turnNumber, processedEnemyDeaths);
-        return false;
+        return !TriggerWhisperingEarring(
+            simulator,
+            player,
+            turnNumber,
+            processedEnemyDeaths);
     }
 
     public bool TriggerAutoPrePlayEarly(
@@ -543,7 +598,29 @@ internal sealed partial class SimulatedCombatState
                 item.Add(card.Preview.Owner.NetId);
                 item.Add(card.Preview.Id.Entry);
                 item.Add(card.Preview.CurrentUpgradeLevel);
-                item.Add(card.GetPile(simulator.State)?.Type.ToString());
+                SimCardPile? pile = card.GetPile(simulator.State);
+                item.Add(pile?.Type.ToString());
+                // Membership belongs to an instance in the ordered state, not merely
+                // to a card name. Two equal-name cards can have different replay/cost
+                // state, or sit on opposite sides of another returning listener.
+                int position = -1;
+                if (pile != null)
+                {
+                    for (int index = 0; index < pile.Cards.Count; index++)
+                    {
+                        if (!ReferenceEquals(pile.Cards[index], card))
+                            continue;
+                        position = index;
+                        break;
+                    }
+                }
+                else
+                {
+                    position = _registeredCombatCards?.IndexOf(card) ?? -1;
+                }
+                if (position < 0)
+                    throw new InvalidOperationException("Returning card eligibility has no branch-owned card position.");
+                item.Add(position);
                 AddUnorderedItem(item.Finish(), ref first, ref second);
                 count++;
             }

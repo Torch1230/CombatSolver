@@ -61,6 +61,8 @@ internal static class AfterCardExhaustedMirrors
                     PileType.Hand,
                     relic.Owner,
                     resultKind: CardGenerationResultKind.Contextual);
+                if (context.Simulator.HasPendingChoice)
+                    return;
                 state.WasUsedThisCombat = true;
                 context.Simulator.RecordRelicTrigger(relic, "：复制到手牌");
             }
@@ -114,6 +116,8 @@ internal static class AfterCardExhaustedMirrors
                 {
                     int draws = state.CardsExhausted / threshold;
                     context.Simulator.Draw(relic.Owner, draws);
+                    if (context.Simulator.HasPendingChoice)
+                        return;
                     state.CardsExhausted %= threshold;
                     if (context.Simulator.IsRecordingActionRelicTriggers)
                         context.Simulator.RecordRelicTrigger(relic, $"：抽{draws}");
@@ -127,6 +131,8 @@ internal static class AfterCardExhaustedMirrors
         if (relic.Owner == context.PreviewCard.Owner)
         {
             context.Simulator.Damage(context.State.HittableEnemies, relic.DynamicVars.Damage, relic.Owner.Creature);
+            if (context.Simulator.HasPendingChoice)
+                return;
             if (context.Simulator.IsRecordingActionRelicTriggers)
                 context.Simulator.RecordRelicTrigger(relic, $"：全体伤害{relic.DynamicVars.Damage.IntValue}");
         }
@@ -140,6 +146,8 @@ internal static class AfterCardExhaustedMirrors
             if (target is not null)
             {
                 context.Simulator.Damage(target, relic.DynamicVars.Damage, relic.Owner.Creature);
+                if (context.Simulator.HasPendingChoice)
+                    return;
                 if (context.Simulator.IsRecordingActionRelicTriggers)
                     context.Simulator.RecordRelicTrigger(relic, $"：伤害{relic.DynamicVars.Damage.IntValue}");
             }

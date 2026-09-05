@@ -28,13 +28,20 @@ internal sealed partial class CombatPredictionSimulator
         Creature? target,
         ISet<uint>? processedEnemyDeaths = null)
     {
+        if (HasPendingChoice)
+            return;
+
         var triggerCount = HookMirrors.ModifyOrbPassiveTriggerCount(this, orb, 1, out _);
+        if (HasPendingChoice)
+            return;
         // Vanilla calls Hook.AfterModifyingOrbPassiveTriggerCount here, but all listeners are cosmetic.
         processedEnemyDeaths ??= new HashSet<uint>();
 
         for (var i = 0; i < triggerCount; i++)
         {
             OrbPassive(orb, target, processedEnemyDeaths);
+            if (HasPendingChoice)
+                return;
         }
     }
 
@@ -53,7 +60,7 @@ internal sealed partial class CombatPredictionSimulator
     // Mirrors OrbCmd.Channel without VFX/SFX, waits, real queue mutation, or async hook execution.
     public bool OrbChannel(Player player, OrbModel orb)
     {
-        if (IsOverOrEnding)
+        if (IsOverOrEnding || HasPendingChoice)
         {
             return false;
         }
@@ -76,6 +83,8 @@ internal sealed partial class CombatPredictionSimulator
         if (orbQueue.Capacity > 0 && orbQueue.Orbs.Count >= orbQueue.Capacity)
         {
             OrbEvokeNext(player);
+            if (HasPendingChoice)
+                return false;
 
             // Vanilla OrbCmd.Channel immediately calls OrbQueue.TryEnqueue after EvokeNext. If
             // evoke side effects synchronously channel another orb and refill the freed slot,
@@ -95,12 +104,15 @@ internal sealed partial class CombatPredictionSimulator
 
         History.OrbChanneled(orb);
         HookMirrors.AfterOrbChanneled(this, player, orb);
-        return true;
+        return !HasPendingChoice;
     }
 
     // Mirrors OrbCmd.EvokeNext without mutating the real orb queue.
     public void OrbEvokeNext(Player player, int repeat = 1, bool dequeue = true)
     {
+        if (HasPendingChoice)
+            return;
+
         var orbQueue = State.GetPlayerCombatState(player).OrbQueue;
         if (orbQueue.Orbs.Count > 0)
         {
@@ -109,8 +121,14 @@ internal sealed partial class CombatPredictionSimulator
             for (int i = 0; i < repeat; i++)
             {
                 OrbEvoke(player, orb, dequeue: dequeue && i == repeat - 1);
+                if (HasPendingChoice)
+                    return;
                 if (State.CombatState is ICombatPredictionEnemyDeathSink deathSink)
+                {
                     deathSink.ResolvePendingEnemyDeaths(this, processedEnemyDeaths);
+                    if (HasPendingChoice)
+                        return;
+                }
             }
         }
     }
@@ -118,7 +136,7 @@ internal sealed partial class CombatPredictionSimulator
     // Mirrors OrbCmd.Evoke without VFX/SFX, choice-context model stack updates, or real queue mutation.
     public void OrbEvoke(Player player, OrbModel evokedOrb, bool dequeue = true)
     {
-        if (IsOverOrEnding)
+        if (IsOverOrEnding || HasPendingChoice)
         {
             return;
         }
@@ -135,6 +153,8 @@ internal sealed partial class CombatPredictionSimulator
         }
 
         var targets = OrbMirrors.InvokeEvoke(this, evokedOrb);
+        if (HasPendingChoice)
+            return;
 
         // Vanilla calls evokedOrb.RemoveInternal after AfterOrbEvoked when dequeue succeeds.
         // We only remove from the shadow queue because mutating the real orb would affect
@@ -148,12 +168,14 @@ internal sealed partial class CombatPredictionSimulator
         Creature? target = null,
         ISet<uint>? processedEnemyDeaths = null)
     {
-        if (IsOverOrEnding)
+        if (IsOverOrEnding || HasPendingChoice)
         {
             return;
         }
 
         OrbMirrors.InvokePassive(this, orb, target);
+        if (HasPendingChoice)
+            return;
         if (State.CombatState is ICombatPredictionEnemyDeathSink deathSink)
         {
             deathSink.ResolvePendingEnemyDeaths(

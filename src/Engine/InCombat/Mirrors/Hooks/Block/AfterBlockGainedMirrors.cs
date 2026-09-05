@@ -68,6 +68,8 @@ internal static class AfterBlockGainedMirrors
             foreach (var teammate in teammates)
             {
                 context.Simulator.GainBlock(teammate, amountToGive, ValueProp.Unpowered);
+                if (context.Simulator.HasPendingChoice)
+                    return;
             }
         }
         finally

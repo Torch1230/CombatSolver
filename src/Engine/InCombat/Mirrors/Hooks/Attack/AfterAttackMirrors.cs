@@ -29,6 +29,26 @@ internal static class AfterAttackMirrors
         Registry.Invoke(listener, context);
     }
 
+    // BeforeAttack stores command-scoped state for these powers. Pending-choice
+    // suspension must make that state forkable without firing ordinary AfterAttack
+    // effects or consuming the power; completed dispatch uses the same idempotent
+    // cleanup to cover a later listener suspending before the paired power is reached.
+    public static void CompleteOrAbortPairedState(
+        AbstractModel listener,
+        AfterAttackMirrorContext context,
+        bool completed)
+    {
+        switch (listener)
+        {
+            case GigantificationPower power:
+                GigantificationPowerMirrors.CompleteOrAbort(power, context, completed);
+                break;
+            case VigorPower power:
+                VigorPowerMirrors.CompleteOrAbort(power, context, completed);
+                break;
+        }
+    }
+
     private static Registry CreateRegistry()
     {
         var registry = new Registry(AfterAttack);

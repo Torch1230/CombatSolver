@@ -23,13 +23,22 @@ internal static class VigorPowerMirrors
     }
 
     public static void AfterAttack(VigorPower power, AfterAttackMirrorContext context)
+        => CompleteOrAbort(power, context, completed: true);
+
+    public static void CompleteOrAbort(
+        VigorPower power,
+        AfterAttackMirrorContext context,
+        bool completed)
     {
         var state = GetState(power, context);
         if (context.Command == state.CommandToModify)
         {
-            if (context.CombatState is not ICombatPredictionEffectSink effects)
-                throw new InvalidOperationException("活力攻击结算缺少可写预测状态。");
-            effects.SetPowerAmount(power, Math.Max(0, power.Amount - state.AmountWhenAttackStarted));
+            if (completed)
+            {
+                if (context.CombatState is not ICombatPredictionEffectSink effects)
+                    throw new InvalidOperationException("活力攻击结算缺少可写预测状态。");
+                effects.SetPowerAmount(power, Math.Max(0, power.Amount - state.AmountWhenAttackStarted));
+            }
             state.CommandToModify = null;
             state.AmountWhenAttackStarted = 0;
         }

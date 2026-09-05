@@ -33,6 +33,8 @@ internal static class TriggeredPowerSupport
                 }
             }
             PowerLifecycleSupport.ResolvePowerAmountChanges(simulator, combat);
+            if (simulator.HasPendingChoice)
+                return;
             if (nextEntry >= history.Entries.Count)
                 return;
         }

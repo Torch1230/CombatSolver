@@ -38,6 +38,27 @@ internal sealed partial class UnattendedTestRunner
                 SelectedChoiceBranches = result.ChoiceBranchesEvaluated,
                 ChoiceReplayAttempts = result.ChoiceReplayAttempts,
                 ChoiceReplayBudgetExhaustions = result.ChoiceReplayBudgetExhaustions,
+                ChoiceBranchesDroppedByBudget = result.ChoiceBranchesDroppedByBudget,
+                CycleRegionsDetected = result.CycleRegionsDetected,
+                CycleRegionCandidatesConsidered = result.CycleRegionCandidatesConsidered,
+                CycleRegionCandidatesAdmitted = result.CycleRegionCandidatesAdmitted,
+                CycleRegionCandidatesDropped = result.CycleRegionCandidatesDropped,
+                CycleRegionProgressEpochs = result.CycleRegionProgressEpochs,
+                CycleRegionProbeCandidatesAdmitted =
+                    result.CycleRegionProbeCandidatesAdmitted,
+                CycleRegionProgressCandidatesAdmitted =
+                    result.CycleRegionProgressCandidatesAdmitted,
+                CycleRegionMaxActionFamilies = result.CycleRegionMaxActionFamilies,
+                OrderedMutationCandidatesAdmitted =
+                    result.OrderedMutationCandidatesAdmitted,
+                OrderedMutationLeaseExpiredBudget =
+                    result.OrderedMutationLeaseExpiredBudget,
+                OrderedMutationOrdinaryFallbacks =
+                    result.OrderedMutationOrdinaryFallbacks,
+                OrderedMutationColdAtomicCommitted =
+                    result.OrderedMutationColdAtomicCommitted,
+                OrderedMutationColdAtomicRejected =
+                    result.OrderedMutationColdAtomicRejected,
                 TotalExpanded = result.TotalExpandedNodes,
                 TotalTransitions = result.TotalTransitionCount,
                 TotalChoiceBranches = result.TotalChoiceBranchesEvaluated,

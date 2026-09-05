@@ -53,8 +53,12 @@ internal sealed partial class CombatPredictionSimulator
             sink.ConsumePotion(potion);
             sink.BeforePotionUsed(this, potion, target);
         }
+        if (HasPendingChoice)
+            return;
 
         PotionOnUseMirrors.Invoke(this, potion, target);
+        if (HasPendingChoice)
+            return;
 
         if (State.GetCreature(potion.Owner.Creature).IsAlive)
         {

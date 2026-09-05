@@ -654,7 +654,8 @@ internal readonly record struct CycleExitQuality(
 internal sealed class CycleProbeTracker(
     StateFingerprint shapeKey,
     StateFingerprint sequenceKey,
-    StateFingerprint[] actionKeys)
+    StateFingerprint[] actionKeys,
+    CombatBeamSolver.CanonicalCycleFamilyKey familyKey)
 {
     private const int MaximumExitParetoQualities = 8;
 
@@ -682,12 +683,16 @@ internal sealed class CycleProbeTracker(
     public StateFingerprint SequenceKey { get; } = sequenceKey;
     public IReadOnlyList<StateFingerprint> ActionKeys => _actionKeys;
     public int PeriodActions => _actionKeys.Length;
+    public CombatBeamSolver.CanonicalCycleFamilyKey FamilyKey { get; } = familyKey;
+    public long ExitQualityEpoch { get; private set; }
 
     public long ObserveExit(
         int phaseIndex,
         StateFingerprint actionKey,
-        CycleExitQuality quality)
+        CycleExitQuality quality,
+        out bool qualityImproved)
     {
+        qualityImproved = false;
         Dictionary<StateFingerprint, ExitEnvelope> envelope =
             _exitEnvelopes[phaseIndex] ??= [];
         if (!envelope.TryGetValue(actionKey, out ExitEnvelope? prior))
@@ -695,6 +700,8 @@ internal sealed class CycleProbeTracker(
             envelope.Add(actionKey, new ExitEnvelope(quality));
             // A newly available exact action is itself bounded-lookahead evidence, even when
             // its first edge is only setup for a later payoff.
+            qualityImproved = true;
+            ExitQualityEpoch = checked(ExitQualityEpoch + 1);
             return 1;
         }
         if (prior.Qualities.Any(candidate => candidate.DominatesOrEquals(quality)))
@@ -704,7 +711,11 @@ internal sealed class CycleProbeTracker(
         prior.Qualities.Add(quality);
         TrimExitParetoFrontier(prior.Qualities);
         if (prior.Qualities.Contains(quality))
+        {
+            qualityImproved = true;
+            ExitQualityEpoch = checked(ExitQualityEpoch + 1);
             return CreatePendingGeneration(prior);
+        }
         return LatestPendingGeneration(prior);
     }
 
@@ -784,12 +795,23 @@ internal sealed class CycleProbeTracker(
         }
     }
 
+    internal int ActiveExitProbeTicketCountForTesting
+        => _exitEnvelopes.Sum(phase => phase?.Values.Sum(
+            envelope => envelope.ActiveTickets.Count) ?? 0);
+
+    internal int ExitEnvelopeActionCountForTesting
+        => _exitEnvelopes.Sum(phase => phase?.Count ?? 0);
+
     public CycleProbeTracker Clone()
     {
         CycleProbeTracker clone = new(
             ShapeKey,
             SequenceKey,
-            _actionKeys);
+            _actionKeys,
+            FamilyKey)
+        {
+            ExitQualityEpoch = ExitQualityEpoch,
+        };
         for (int phaseIndex = 0; phaseIndex < _exitEnvelopes.Length; phaseIndex++)
         {
             if (_exitEnvelopes[phaseIndex] is not { } source)
@@ -870,12 +892,13 @@ internal sealed class CycleProbeTracker(
     }
 }
 
-internal readonly record struct CycleProbeLease(
+internal sealed record CycleProbeLease(
     CycleProbeTracker Tracker,
     int NextActionIndex,
     int CompletedRepetitions,
     bool ImprovedSinceWrap,
-    bool LastCompletedRepetitionImproved);
+    bool LastCompletedRepetitionImproved,
+    long ObservedExitQualityEpoch);
 
 internal sealed record CycleExitProbeState(
     CycleProbeTracker OriginTracker,
@@ -887,11 +910,13 @@ internal sealed record CycleExitProbeState(
     StateFingerprint ExitActionKey,
     long OriginGeneration,
     int RemainingActions,
+    int RemainingEpochActions,
     int RemainingTurnTransitions,
     bool LeaseIssued = false);
 
 internal sealed record CycleExitObservation(
     CycleProbeTracker OriginTracker,
+    int OriginActionCount,
     int OriginPhaseIndex,
     StateFingerprint ExitActionKey,
     long OriginGeneration,
@@ -913,7 +938,7 @@ internal sealed class CrossTurnProbeTracker(
     public StateFingerprint OriginShapeKey { get; } = originShapeKey;
 }
 
-internal readonly record struct CrossTurnProbeState(
+internal sealed record CrossTurnProbeState(
     CrossTurnProbeTracker Tracker,
     int CompletedTurnTransitions,
     int SemanticStateChangeTransitions,
@@ -925,6 +950,59 @@ internal readonly record struct CrossTurnProbeState(
 internal readonly record struct CrossTurnStandPatBaseline(
     StateFingerprint StateKey,
     CycleExitQuality Quality);
+
+/// <summary>
+/// Incremental identity for order-sensitive card mutations performed since the last
+/// shuffle/turn boundary. The sequence key is deliberately ordered; the effect key is a
+/// commutative multiset used only to find routes whose visible unordered outcomes collide.
+/// </summary>
+internal sealed record OrderedMutationLineage(
+    int Turn,
+    int ChoiceCount,
+    StateFingerprint SequenceKey,
+    StateFingerprint EffectMultisetKey);
+
+/// <summary>
+/// One-prune evidence for an ordered mutation segment which ended on the edge that produced this
+/// node. It is never inherited by the next edge: the live lineage starts again after the boundary.
+/// </summary>
+internal sealed record OrderedMutationBoundaryLineage(
+    OrderedMutationLineage CompletedLineage,
+    int FromTurn,
+    int FromShufflesCrossed,
+    int ToTurn,
+    int ToShufflesCrossed);
+
+/// <summary>
+/// A bounded scheduling lease for one ordered-mutation alternative. RootKey is shared by every
+/// ordering in the collision family, InitialKey identifies the original ordering lane, and Key
+/// identifies the current derived lane. Derived lanes never mint a new root budget.
+/// </summary>
+internal sealed record OrderedMutationRetentionLease(
+    StateFingerprint RootKey,
+    StateFingerprint InitialKey,
+    StateFingerprint Key,
+    int OriginTurn,
+    int OriginShufflesCrossed,
+    int PortfolioPriority,
+    bool BoundaryReached)
+{
+    public const int MaximumProtectedAdmissions = 16;
+
+    /// <summary>
+    /// True only after an already-active ordering lane reaches a recurrent region whose
+    /// simulator state has made strict progress. It may then use the bounded tail of the
+    /// existing root/initial budgets; cold collision families never inherit this flag.
+    /// </summary>
+    public bool ProgressTailEligible { get; init; }
+}
+
+/// <summary>
+/// Transient identity for the two distinct orderings that first prove an unordered outcome
+/// collision. It exists only through the coordinator prune that activates the pair and is never
+/// propagated to an expanded child.
+/// </summary>
+internal sealed record OrderedMutationActivationTicket(StateFingerprint Key);
 
 /// <summary>
 /// A cycle candidate is evidence for search scheduling, never a proof that a route is infinite.
@@ -942,6 +1020,7 @@ internal sealed record CycleSearchState(
     public int PriorProjectedPlayerHp { get; init; }
     public EnemyDurabilityVector EnemyDurabilityFloor { get; init; }
     public bool HasNewEnemyDurabilityProgress { get; init; }
+    public bool HasConsistentDamagePhases { get; init; }
     public bool HasExactStateChange { get; init; }
     public int TotalStructuralRepetitions { get; init; } = Repetitions;
 }
@@ -969,12 +1048,38 @@ internal sealed record SearchNode(
 {
     private IReadOnlyList<PlanAction>? _actions;
 
+    // Cycle evidence is discovered only after the simulator snapshot has produced this node.
+    // Keep the positional member (and therefore record equality/deconstruction/with semantics),
+    // but allow the unpublished node to receive that evidence without cloning the whole node.
+    public CycleSearchState? Cycle { get; set; } = Cycle;
+
+    // Opening-only actions need only this monotonic route fact. Keeping it on the parent chain
+    // avoids materializing and retaining an ActionCount-sized array on every expanded sibling.
+    public bool HasNonPotionAction { get; } =
+        Parent?.HasNonPotionAction == true
+        || Action is { Kind: not PlanActionKind.UsePotion };
+
+    internal bool HasMaterializedActionsForTesting => _actions != null;
+
     public int RetentionRank { get; set; } = int.MaxValue;
     public int LongTermResourceRetentionRank { get; set; } = int.MaxValue;
     public int CumulativeEnemyHpLost { get; init; }
     public int CycleRetentionRank { get; set; } = int.MaxValue;
     public int CycleExitRetentionRank { get; set; } = int.MaxValue;
     public int CrossTurnRetentionRank { get; set; } = int.MaxValue;
+    public OrderedMutationLineage? OrderedMutationLineage { get; set; }
+    public OrderedMutationBoundaryLineage? OrderedMutationBoundaryLineage { get; set; }
+    public OrderedMutationRetentionLease? OrderedMutationRetentionLease { get; set; }
+    public bool OrderedMutationLeaseTransitionPending { get; set; }
+    public OrderedMutationActivationTicket? OrderedMutationActivationTicket { get; set; }
+    public bool OrderedMutationAdmissionPending { get; set; }
+    public bool OrderedMutationAdmissionCharged { get; set; }
+    public int OrderedMutationAdmissionSequence { get; set; } = int.MaxValue;
+    public bool OrderedMutationContinuationHandoff { get; set; }
+    public bool OrderedMutationContinuationBridge { get; set; }
+    public bool OrderedMutationObservationRequested { get; set; }
+    public bool OrderedMutationObservationDebtSettlementPending { get; set; }
+    public int OrderedMutationObservationStepsRemaining { get; set; }
     public CycleProbeLease? CycleProbeLease { get; set; }
     public CycleExitProbeState? CycleExitProbe { get; set; }
     public CycleExitObservation? CycleExitObservation { get; set; }
@@ -1090,7 +1195,8 @@ internal sealed class SimulationSnapshot(
     IReadOnlySet<uint> processedEnemyDeaths,
     SearchBoundaryReason boundaryReason,
     IReadOnlyList<PredictionGap> predictionGaps,
-    CombatPredictionSimulator simulator)
+    CombatPredictionSimulator simulator,
+    CombatTerminalStamp? terminalStamp = null)
 {
     private CombatPredictionSimulator? _simulator = simulator;
     private string? _releasedBy;
@@ -1105,6 +1211,11 @@ internal sealed class SimulationSnapshot(
     public bool HasRisk { get; } = hasRisk;
     public bool PlayerDead { get; } = playerDead;
     public bool AllEnemiesDead { get; } = allEnemiesDead;
+    public CombatTerminalStamp? TerminalStamp { get; } = terminalStamp;
+    public int? CombatEndedTurn => TerminalStamp is { Outcome: CombatTerminalOutcome.Victory } terminal
+        ? terminal.PlayerTurn : null;
+    public int? DeathTurn => TerminalStamp is { Outcome: CombatTerminalOutcome.Defeat } terminal
+        ? terminal.PlayerTurn : null;
     public int PlayerHp { get; } = playerHp;
     public int PlayerMaxHp { get; } = playerMaxHp;
     public int CumulativePlayerHpLost { get; } = cumulativePlayerHpLost;
@@ -1298,6 +1409,7 @@ internal sealed class SolverResult
     public long TotalChoiceBranchesEvaluated { get; internal set; }
     public int ChoiceReplayAttempts { get; init; }
     public int ChoiceReplayBudgetExhaustions { get; init; }
+    public int ChoiceBranchesDroppedByBudget { get; init; }
     public required int ShuffleBranchesPruned { get; init; }
     public required int SoldHpBranchesPruned { get; init; }
     public required int HpInvestmentBranchesProtected { get; init; }
@@ -1312,6 +1424,19 @@ internal sealed class SolverResult
     public int CycleProbeContinuationsExpanded { get; init; }
     public int CycleCandidatesProtected { get; init; }
     public int CycleContinuationsStopped { get; init; }
+    public int CycleRegionsDetected { get; init; }
+    public int CycleRegionCandidatesConsidered { get; init; }
+    public int CycleRegionCandidatesAdmitted { get; init; }
+    public int CycleRegionCandidatesDropped { get; init; }
+    public int CycleRegionProgressEpochs { get; init; }
+    public int CycleRegionProbeCandidatesAdmitted { get; init; }
+    public int CycleRegionProgressCandidatesAdmitted { get; init; }
+    public int CycleRegionMaxActionFamilies { get; init; }
+    public int OrderedMutationCandidatesAdmitted { get; init; }
+    public int OrderedMutationLeaseExpiredBudget { get; init; }
+    public int OrderedMutationOrdinaryFallbacks { get; init; }
+    public int OrderedMutationColdAtomicCommitted { get; init; }
+    public int OrderedMutationColdAtomicRejected { get; init; }
     public int CrossTurnCandidatesProtected { get; init; }
     public int CrossTurnContinuationsStopped { get; init; }
     public int PrimaryIncumbentBranchesPruned { get; init; }
@@ -1460,6 +1585,19 @@ internal sealed class SolverResult
             CycleProbeContinuationsExpanded = 0,
             CycleCandidatesProtected = 0,
             CycleContinuationsStopped = 0,
+            CycleRegionsDetected = 0,
+            CycleRegionCandidatesConsidered = 0,
+            CycleRegionCandidatesAdmitted = 0,
+            CycleRegionCandidatesDropped = 0,
+            CycleRegionProgressEpochs = 0,
+            CycleRegionProbeCandidatesAdmitted = 0,
+            CycleRegionProgressCandidatesAdmitted = 0,
+            CycleRegionMaxActionFamilies = 0,
+            OrderedMutationCandidatesAdmitted = 0,
+            OrderedMutationLeaseExpiredBudget = 0,
+            OrderedMutationOrdinaryFallbacks = 0,
+            OrderedMutationColdAtomicCommitted = 0,
+            OrderedMutationColdAtomicRejected = 0,
             CrossTurnCandidatesProtected = 0,
             CrossTurnContinuationsStopped = 0,
             PrimaryIncumbentBranchesPruned = 0,

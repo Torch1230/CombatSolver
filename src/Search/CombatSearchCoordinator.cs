@@ -3,7 +3,7 @@ using MegaCrit.Sts2.Core.Combat;
 
 namespace CombatSolver;
 
-internal static class CombatSearchCoordinator
+internal static partial class CombatSearchCoordinator
 {
     public static SolverResult Solve(
         CombatRootSnapshot root,
@@ -229,15 +229,21 @@ internal static class CombatSearchCoordinator
         }
         if (policy.ForceShortOnly)
         {
-            SolverResult shortResult = new CombatBeamSolver(
+            SolverResult shortResult = SolveWithNarrowBeamRecovery(
                 root,
-                displayNames,
-                battleDamage,
                 policy,
-                cancellationToken,
-                progressCallback,
                 shortProfile,
-                potionPolicyOverride: initialPotionPolicyOverride).Solve();
+                cancellationToken,
+                cancellationToken,
+                (attemptProfile, attemptCancellationToken) => new CombatBeamSolver(
+                    root,
+                    displayNames,
+                    battleDamage,
+                    policy,
+                    attemptCancellationToken,
+                    progressCallback,
+                    attemptProfile,
+                    potionPolicyOverride: initialPotionPolicyOverride).Solve());
             PopulateSingleSessionTotals(shortResult, shortProfile.SoftTimeBudgetMilliseconds, deepTriggered: false);
             interimResultCallback?.Invoke(shortResult);
             if (ResolveTakeoverResult(shortResult, policy.Interaction) is { } shortTakeoverResult)
@@ -264,9 +270,8 @@ internal static class CombatSearchCoordinator
             return shortResult;
         }
 
-        // 普通搜索只建立一次根状态。深化宽度从一开始就是候选超集；短预算仅作为
-        // UI/统计检查点。搜索空间在检查点前耗尽时会自然提前返回，否则原地继续，
-        // 不再从根重复分叉、回放并保留两套模拟图。
+        // 主搜索从深化宽度开始，短预算仅作为 UI/统计检查点。Beam 宽度增大
+        // 不保证跨层候选仍是超集；未找到胜利时可用本层剩余预算进行一次窄 Beam 恢复。
         SolverSearchProfile deepProfile = policy.DeepProfile;
         if (policy.DeepBudgetOverrideMilliseconds is { } deepBudget)
             deepProfile = deepProfile with { SoftTimeBudgetMilliseconds = deepBudget };
@@ -277,16 +282,22 @@ internal static class CombatSearchCoordinator
                 $"beam={deepProfile.BeamWidth}->45 reason=preserve_survival_routes");
             deepProfile = deepProfile with { BeamWidth = 45 };
         }
-        SolverResult result = new CombatBeamSolver(
+        SolverResult result = SolveWithNarrowBeamRecovery(
             root,
-            displayNames,
-            battleDamage,
             policy,
-            cancellationToken,
-            progressCallback,
             deepProfile,
-            shortCheckpointMilliseconds: shortProfile.SoftTimeBudgetMilliseconds,
-            potionPolicyOverride: initialPotionPolicyOverride).Solve();
+            cancellationToken,
+            cancellationToken,
+            (attemptProfile, attemptCancellationToken) => new CombatBeamSolver(
+                root,
+                displayNames,
+                battleDamage,
+                policy,
+                attemptCancellationToken,
+                progressCallback,
+                attemptProfile,
+                shortCheckpointMilliseconds: shortProfile.SoftTimeBudgetMilliseconds,
+                potionPolicyOverride: initialPotionPolicyOverride).Solve());
         if (policy.MeasurePhasePerformance)
             policy.Diagnostics.Info(SolverDiagnostics.DescribeSearchPhasePerformance(result));
         bool deepTriggered = result.Elapsed.TotalMilliseconds > shortProfile.SoftTimeBudgetMilliseconds;
@@ -1240,20 +1251,26 @@ internal static class CombatSearchCoordinator
             SolverResult candidate;
             try
             {
-                candidate = new CombatBeamSolver(
+                candidate = SolveWithNarrowBeamRecovery(
                     root,
-                    displayNames,
-                    battleDamage,
                     policy,
-                    searchCancellationToken,
-                    progressCallback,
                     profile,
-                    shortCheckpointMilliseconds,
-                    SolverPotionPolicy.RequireAtLeastOne,
-                    baseline,
-                    maximumPotionUses: potionCount,
-                    minimumPotionUses: potionCount,
-                    primaryIncumbent: primaryIncumbent).Solve();
+                    searchCancellationToken,
+                    callerCancellationToken,
+                    (attemptProfile, attemptCancellationToken) => new CombatBeamSolver(
+                        root,
+                        displayNames,
+                        battleDamage,
+                        policy,
+                        attemptCancellationToken,
+                        progressCallback,
+                        attemptProfile,
+                        shortCheckpointMilliseconds,
+                        SolverPotionPolicy.RequireAtLeastOne,
+                        baseline,
+                        maximumPotionUses: potionCount,
+                        minimumPotionUses: potionCount,
+                        primaryIncumbent: primaryIncumbent).Solve());
             }
             catch (PotionPolicyUnsatisfiedException)
             {

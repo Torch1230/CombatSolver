@@ -99,6 +99,8 @@ internal static class CardGenerationCardMirrors
     public static void JackpotOnPlay(Jackpot card, CardOnPlayMirrorContext context)
     {
         context.AttackSingle();
+        if (context.Simulator.HasPendingChoice)
+            return;
 
         var cards = card.Owner.GetUnlockedCharacterCards(context.CardMultiplayerConstraint)
             .Where(candidate => candidate.EnergyCost is { Canonical: 0, CostsX: false })
@@ -176,6 +178,8 @@ internal static class CardGenerationCardMirrors
             default:
                 throw new ArgumentOutOfRangeException(nameof(card.TinkerTimeType), card.TinkerTimeType, null);
         }
+        if (context.Simulator.HasPendingChoice)
+            return;
         switch (card.TinkerTimeRider)
         {
             case TinkerTime.RiderEffect.Sapping:
@@ -222,6 +226,8 @@ internal static class CardGenerationCardMirrors
     public static void ManifestAuthorityOnPlay(ManifestAuthority card, CardOnPlayMirrorContext context)
     {
         context.GainBlock(card.Owner.Creature);
+        if (context.Simulator.HasPendingChoice)
+            return;
 
         var cards = context.Simulator
             .GetDistinctUnlockedColorlessForCombat(
@@ -295,6 +301,8 @@ internal static class CardGenerationCardMirrors
         foreach (var cardToExhaust in cardsToExhaust)
         {
             context.Simulator.Exhaust(cardToExhaust);
+            if (context.Simulator.HasPendingChoice)
+                return;
         }
 
         var cards = card.Owner.GetUnlockedCharacterCards(context.CardMultiplayerConstraint)

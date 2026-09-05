@@ -11,7 +11,7 @@ namespace CombatSolver;
 
 internal static partial class EndTurnPowerSupport
 {
-    public static void TriggerRegular(
+    public static bool TriggerRegular(
         CombatPredictionSimulator simulator,
         SimulatedCombatState combat,
         CombatSide side,
@@ -63,7 +63,8 @@ internal static partial class EndTurnPowerSupport
                     combat.Apply<StrengthPower>(owner, power.Amount, owner);
                     break;
                 case ConsumingShadowPower when ownerParticipates && owner.Player is { } player:
-                    EvokeLastOrbs(simulator, player, power.Amount);
+                    if (!EvokeLastOrbs(simulator, player, power.Amount))
+                        return false;
                     break;
                 case NemesisPower when ownerParticipates:
                     TriggerNemesis(combat, owner);
@@ -126,10 +127,12 @@ internal static partial class EndTurnPowerSupport
                     combat.SetPowerAmount(power, power.Amount - 1);
                     break;
             }
+            if (simulator.HasPendingChoice)
+                return false;
         }
         foreach (Creature owner in participantSet)
             combat.ResetPowerLifecycleTurn(owner);
-        TriggerBatch048(simulator, combat, side, participantSet);
+        return TriggerBatch048(simulator, combat, side, participantSet);
     }
 
     public static void TriggerVeryEarly(
@@ -160,7 +163,7 @@ internal static partial class EndTurnPowerSupport
         }
     }
 
-    public static void TriggerLate(
+    public static bool TriggerLate(
         CombatPredictionSimulator simulator,
         SimulatedCombatState combat,
         IEnumerable<Creature> participants)
@@ -176,10 +179,13 @@ internal static partial class EndTurnPowerSupport
                     simulator.Damage(owner, amount, ValueProp.Unpowered, owner);
                 }
             }
+            if (simulator.HasPendingChoice)
+                return false;
         }
+        return true;
     }
 
-    private static void EvokeLastOrbs(
+    private static bool EvokeLastOrbs(
         CombatPredictionSimulator simulator,
         MegaCrit.Sts2.Core.Entities.Players.Player player,
         int amount)
@@ -189,7 +195,10 @@ internal static partial class EndTurnPowerSupport
         {
             OrbModel orb = queue.Orbs[^1];
             simulator.OrbEvoke(player, orb);
+            if (simulator.HasPendingChoice)
+                return false;
         }
+        return true;
     }
 
     private static void TriggerNemesis(SimulatedCombatState combat, Creature owner)

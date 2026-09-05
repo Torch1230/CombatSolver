@@ -5,13 +5,16 @@ namespace CombatSolver;
 
 internal static class OrbLifecycleSupport
 {
-    public static void TriggerBeforeTurnEnd(
+    public static bool TriggerBeforeTurnEnd(
         CombatPredictionSimulator simulator,
         SimulatedCombatState combat,
         Player player)
     {
         int historyEntryStart = simulator.History.Entries.Count;
-        simulator.State.GetPlayerCombatState(player).OrbQueue.BeforeTurnEnd(simulator);
+        bool completed = simulator.State.GetPlayerCombatState(player).OrbQueue.BeforeTurnEnd(simulator);
+        if (!completed)
+            return false;
         TriggeredPowerSupport.CompensateHistorySince(simulator, combat, historyEntryStart);
+        return !combat.HasPendingChoice;
     }
 }

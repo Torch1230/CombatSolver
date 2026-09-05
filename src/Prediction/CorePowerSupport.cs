@@ -18,7 +18,7 @@ internal static class CorePowerSupport
 {
     internal const int TheHuntLongTermResourceValue = 30;
 
-    public static void ApplyCardPowers(
+    public static bool ApplyCardPowers(
         CombatPredictionSimulator simulator,
         SimulatedCombatState combat,
         PredictedCard playedCard,
@@ -43,18 +43,27 @@ internal static class CorePowerSupport
             cardPlay,
             target,
             processedEnemyDeaths);
-        ApplyEnemyDeathPowers(
-            simulator,
-            combat,
-            combat.KnownEnemies,
-            processedEnemyDeaths);
+        if (simulator.HasPendingChoice)
+            return false;
+        if (!ApplyEnemyDeathPowers(
+                simulator,
+                combat,
+                combat.KnownEnemies,
+                processedEnemyDeaths))
+        {
+            return false;
+        }
         combat.ResolveMonologues(owner, pendingMonologues);
         combat.SynchronizePanacheState(simulator, owner);
         if (card is Armaments or IronWave or Taunt)
         {
             SimCreatureState ownerState = simulator.State.GetCreature(owner);
             if (ownerState.Block <= ownerBlockBefore)
+            {
                 simulator.GainBlock(owner, card.DynamicVars.Block, playedCard, cardPlay);
+                if (simulator.HasPendingChoice)
+                    return false;
+            }
             if (card is Armaments && card.IsUpgraded)
             {
                 SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(card.Owner);
@@ -247,6 +256,8 @@ internal static class CorePowerSupport
                     card.Owner,
                     CardPilePosition.Bottom,
                     CardGenerationResultKind.Fixed);
+                if (simulator.HasPendingChoice)
+                    return false;
                 combat.RecordAngerCopyGenerated();
                 break;
             case BattleTrance:
@@ -314,6 +325,8 @@ internal static class CorePowerSupport
                     // amount. Vicious and other AfterPowerAmountChanged listeners therefore
                     // finish (including any nested draws/auto-plays) before Strength is gained.
                     PowerLifecycleSupport.ResolvePowerAmountChanges(simulator, combat);
+                    if (simulator.HasPendingChoice)
+                        return false;
                     combat.Apply<StrengthPower>(owner, combat.GetAmount<VulnerablePower>(target), owner);
                 }
                 break;
@@ -375,15 +388,26 @@ internal static class CorePowerSupport
                 combat.AddEnergyNextTurn(card.Owner, card.DynamicVars.Energy.IntValue);
                 break;
         }
+        if (simulator.HasPendingChoice)
+            return false;
         PowerLifecycleSupport.AfterCardPlayed(
             simulator,
             combat,
             playedCard,
             historyEntryStart);
+        if (simulator.HasPendingChoice)
+            return false;
         PowerLifecycleSupport.ResolvePowerAmountChanges(simulator, combat);
+        if (simulator.HasPendingChoice)
+            return false;
         combat.NormalizeCardAfflictions(simulator);
+        if (simulator.HasPendingChoice)
+            return false;
         TriggeredPowerSupport.CompensateHistorySince(simulator, combat, historyEntryStart);
+        if (simulator.HasPendingChoice)
+            return false;
         simulator.SynchronizePowerAmountPredictionStates();
+        return true;
     }
 
     private static bool WasFatalKill(
@@ -415,7 +439,7 @@ internal static class CorePowerSupport
         return false;
     }
 
-    public static void TriggerPoison(
+    public static bool TriggerPoison(
         CombatPredictionSimulator simulator,
         SimulatedCombatState combat,
         IEnumerable<Creature> creatures)
@@ -440,14 +464,17 @@ internal static class CorePowerSupport
                 {
                     simulator.Damage(creature, current, ValueProp.Unblockable | ValueProp.Unpowered, null);
                 }
+                if (simulator.HasPendingChoice)
+                    return false;
                 if (simulator.State.GetCreature(creature).IsDead)
                     break;
                 combat.SetAmount<PoisonPower>(creature, current - 1);
             }
         }
+        return true;
     }
 
-    public static void TriggerPlayerSideTurnEndEffects(
+    public static bool TriggerPlayerSideTurnEndEffects(
         CombatPredictionSimulator simulator,
         SimulatedCombatState combat,
         IReadOnlyList<Creature> players,
@@ -461,6 +488,8 @@ internal static class CorePowerSupport
             int constrict = combat.GetAmount<ConstrictPower>(player);
             if (constrict > 0 && simulator.State.GetCreature(player).IsAlive)
                 simulator.Damage(player, constrict, ValueProp.Unpowered, player);
+            if (simulator.HasPendingChoice)
+                return false;
             if (combat.GetAmount<TangledPower>(player) > 0)
                 combat.SetAmount<TangledPower>(player, 0);
             if (combat.GetAmount<RingingPower>(player) > 0)
@@ -468,16 +497,23 @@ internal static class CorePowerSupport
             Tick<DoubleDamagePower>(combat, player);
             PersistentPowerSupport.TriggerRitual(combat, player);
         }
-        EndTurnPowerSupport.TriggerRegular(
-            simulator,
-            combat,
-            CombatSide.Player,
-            players,
-            etherealExhaustCount);
+        if (!EndTurnPowerSupport.TriggerRegular(
+                simulator,
+                combat,
+                CombatSide.Player,
+                players,
+                etherealExhaustCount))
+        {
+            return false;
+        }
         PowerLifecycleSupport.ResolvePowerAmountChanges(simulator, combat);
+        if (simulator.HasPendingChoice)
+            return false;
         TriggerTransientSideTurnEndPowers(simulator, combat, CombatSide.Player, players);
-        EndTurnPowerSupport.TriggerLate(simulator, combat, players);
+        if (!EndTurnPowerSupport.TriggerLate(simulator, combat, players))
+            return false;
         combat.NormalizeCardAfflictions(simulator);
+        return true;
     }
 
     public static void CompletePlayerEarlySideTurnEndEffects(
@@ -492,13 +528,15 @@ internal static class CorePowerSupport
         }
     }
 
-    public static void TriggerEnemySideTurnEndEffects(
+    public static bool TriggerEnemySideTurnEndEffects(
         CombatPredictionSimulator simulator,
         SimulatedCombatState combat,
         IReadOnlyList<Creature> enemies)
     {
         EndTurnPowerSupport.TriggerVeryEarly(combat, enemies);
         EndTurnPowerSupport.TriggerEnemyDoom(simulator, combat, enemies);
+        if (simulator.HasPendingChoice)
+            return false;
         foreach (Creature enemy in enemies)
         {
             if (simulator.State.GetCreature(enemy).IsAlive)
@@ -515,16 +553,21 @@ internal static class CorePowerSupport
             }
             Tick<DoubleDamagePower>(combat, enemy);
             PersistentPowerSupport.TriggerRitual(combat, enemy);
+            if (simulator.HasPendingChoice)
+                return false;
         }
-        EndTurnPowerSupport.TriggerRegular(simulator, combat, CombatSide.Enemy, enemies);
+        if (!EndTurnPowerSupport.TriggerRegular(simulator, combat, CombatSide.Enemy, enemies))
+            return false;
         PowerLifecycleSupport.ResolvePowerAmountChanges(simulator, combat);
+        if (simulator.HasPendingChoice)
+            return false;
         TriggerTransientSideTurnEndPowers(simulator, combat, CombatSide.Enemy, enemies);
         combat.RestoreTemporaryStrength(enemies);
         TickDurations(combat);
-        EndTurnPowerSupport.TriggerLate(simulator, combat, enemies);
+        return EndTurnPowerSupport.TriggerLate(simulator, combat, enemies);
     }
 
-    public static void TriggerAfterBlockCleared(
+    public static bool TriggerAfterBlockCleared(
         CombatPredictionSimulator simulator,
         SimulatedCombatState combat,
         Creature owner)
@@ -533,6 +576,8 @@ internal static class CorePowerSupport
         if (blockNextTurn > 0)
         {
             simulator.GainBlock(owner, blockNextTurn, ValueProp.Unpowered);
+            if (simulator.HasPendingChoice)
+                return false;
             combat.SetAmount<BlockNextTurnPower>(owner, 0);
         }
 
@@ -544,18 +589,23 @@ internal static class CorePowerSupport
             {
                 case SelfFormingClayPower:
                     simulator.GainBlock(owner, power.Amount, ValueProp.Unpowered);
+                    if (simulator.HasPendingChoice)
+                        return false;
                     combat.SetPowerAmount(power, 0);
                     break;
                 case ToricToughnessPower toric:
                     simulator.GainBlock(owner, toric.DynamicVars.Block.BaseValue, ValueProp.Unpowered);
+                    if (simulator.HasPendingChoice)
+                        return false;
                     combat.SetPowerAmount(power, power.Amount - 1);
                     break;
-                }
+            }
         }
         combat.TriggerRelicsAfterBlockCleared(simulator, owner);
+        return !simulator.HasPendingChoice;
     }
 
-    public static void ApplyEnemyDeathPowers(
+    public static bool ApplyEnemyDeathPowers(
         CombatPredictionSimulator simulator,
         SimulatedCombatState combat,
         IReadOnlyList<Creature> enemies,
@@ -570,7 +620,10 @@ internal static class CorePowerSupport
             {
                 continue;
             }
-            if (combat.TryTriggerSteamEruptionDeath(simulator, enemy))
+            bool steamEruptionTriggered = combat.TryTriggerSteamEruptionDeath(simulator, enemy);
+            if (simulator.HasPendingChoice)
+                return false;
+            if (steamEruptionTriggered)
                 continue;
             (newlyDead ??= []).Add(enemy);
         }
@@ -580,7 +633,8 @@ internal static class CorePowerSupport
             {
                 if (dead.CombatId is uint combatId)
                     processedDeaths.Add(combatId);
-                DeathPowerSupport.Trigger(simulator, combat, dead);
+                if (!DeathPowerSupport.Trigger(simulator, combat, dead))
+                    return false;
                 foreach (Creature player in combat.PlayerCreatures)
                 {
                     ConstrictPower? constrict = combat.GetPower<ConstrictPower>(player);
@@ -600,9 +654,12 @@ internal static class CorePowerSupport
                 {
                     combat.SetPowerAmount(bomb, 0);
                 }
+                if (simulator.HasPendingChoice)
+                    return false;
             }
         }
         PowerLifecycleSupport.ResolvePowerAmountChanges(simulator, combat);
+        return !simulator.HasPendingChoice;
     }
 
     public static void FlushPlayerHandAtTurnEnd(

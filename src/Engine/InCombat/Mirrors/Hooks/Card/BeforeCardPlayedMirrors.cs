@@ -164,6 +164,8 @@ internal static class BeforeCardPlayedMirrors
                 PileType.Hand,
                 power.Owner.Player,
                 resultKind: CardGenerationResultKind.Contextual);
+            if (context.Simulator.HasPendingChoice)
+                return;
         }
     }
 

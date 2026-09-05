@@ -200,6 +200,8 @@ internal static class BeforeSideTurnEndMirrors
         }
 
         context.Simulator.Damage(context.State.HittableEnemies, power.DynamicVars.Damage, power.Owner);
+        if (context.Simulator.HasPendingChoice)
+            return;
         amount.Consume();
     }
 

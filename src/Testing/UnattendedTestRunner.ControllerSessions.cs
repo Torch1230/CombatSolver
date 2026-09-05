@@ -846,6 +846,7 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidOperationException(
                 "主结果下界剪枝没有严格限制为不可逆累计战损与回合字典序。");
         }
+        AssertPrimaryIncumbentFiltering();
         PotionFreePolicyBaseline auditedPotionFreeBaseline = new(
             Won: true,
             HpDeficit: 5,
@@ -1261,6 +1262,130 @@ internal sealed partial class UnattendedTestRunner
             || displayedHpLost != adopted.ProjectedBattleHpLost)
         {
             throw new InvalidOperationException("搜索中间结果没有显示用药、战损并在玩家采纳后成为最终路线。");
+        }
+    }
+
+    private static void AssertPrimaryIncumbentFiltering()
+    {
+        PrimarySearchIncumbent incumbent = new(StrategicHpDeficit: 0, CombatEndedTurn: 3);
+        // All nodes have zero accumulated loss; their turns exercise the second primary key.
+        SimulationSnapshot snapshot = new(
+            score: 0,
+            stateKey: default,
+            unorderedPileKey: default,
+            cycleShapeKey: default,
+            projectedShuffleOrderKey: default,
+            projectedShuffleOrderValue: 0,
+            hasRisk: false,
+            playerDead: false,
+            allEnemiesDead: false,
+            playerHp: 1,
+            playerMaxHp: 1,
+            cumulativePlayerHpLost: 0,
+            longTermResourceValue: 0,
+            angerCopiesGenerated: 0,
+            projectedPlayerHp: 1,
+            playerBlock: 0,
+            enemyHp: 1,
+            enemyBlock: 0,
+            aliveEnemyCount: 1,
+            aliveEnemyMask: 1,
+            rawEnemyHp: 1,
+            maxCurrentEnemyHp: 1,
+            enemyCombatDistributionKey: default,
+            enemyDurabilityByCombatId: default,
+            revivingEnemyCount: 0,
+            persistentBuffValue: 0,
+            strategicEffects: default,
+            persistentSetupTraits: default,
+            latentSetupValue: 0,
+            latentSetupTraits: default,
+            focusTargetCombatId: null,
+            focusTargetPressure: 0,
+            focusTargetRemainingHp: 0,
+            focusTargetCurrentThreat: 0,
+            focusTargetVulnerableTurns: 0,
+            mostVulnerableTargetCombatId: null,
+            retainedAttackValue: 0,
+            replayPotentialValue: 0,
+            futureResourceValue: 0,
+            ostyHp: 0,
+            ostyMaxHp: 0,
+            delayedDamageValue: 0,
+            reactiveDamageValue: 0,
+            enemyStrengthSuppression: 0,
+            enemyWeakTurns: 0,
+            enemyVulnerableTurns: 0,
+            enemyControlDistributionKey: default,
+            sandpitRemaining: 0,
+            liveDeckClutter: 0,
+            liveDeckSize: 0,
+            outstandingStolenResource: 0,
+            offensiveProgressValue: 0,
+            energy: 0,
+            stars: 0,
+            historyEntryCount: 0,
+            handCount: 0,
+            reachableHandValue: 0,
+            zeroCostPlayableCount: 0,
+            canTriggerArtOfWarNextTurn: false,
+            pocketwatchCardsPlayedThisTurn: 0,
+            pocketwatchCardsPlayedLastTurn: 0,
+            pocketwatchCardThreshold: -1,
+            potionUseCount: 0,
+            potionStrategicCost: 0,
+            automaticPotionUseCount: 0,
+            turn: 1,
+            shufflesCrossed: 0,
+            processedEnemyDeaths: new HashSet<uint>(),
+            boundaryReason: SearchBoundaryReason.None,
+            predictionGaps: [],
+            simulator: null!);
+        SearchNode keepFirst = new(
+            Action: null,
+            ActionCount: 0,
+            PotionCount: 0,
+            PotionStrategicCost: 0,
+            Turn: 2,
+            Traits: SearchRouteTraits.None,
+            FutureSoldHp: 0,
+            Score: 0,
+            StateKey: default,
+            HasPredictionRisk: false,
+            BoundaryReason: SearchBoundaryReason.None,
+            IsTerminal: false,
+            Parent: null,
+            Snapshot: snapshot,
+            CombatProgress: null!);
+        SearchNode keepSecond = keepFirst with { Turn = 3 };
+        SearchNode rejectFirst = keepFirst with { Turn = 4 };
+        SearchNode rejectSecond = keepFirst with { Turn = 5 };
+
+        foreach ((List<SearchNode> input, SearchNode[] expected) in new[]
+                 {
+                     (new List<SearchNode> { rejectFirst, rejectSecond, keepFirst },
+                         new[] { keepFirst }),
+                     (new List<SearchNode> { rejectFirst, rejectSecond },
+                         Array.Empty<SearchNode>()),
+                     (new List<SearchNode> { keepFirst, rejectFirst, keepSecond, rejectSecond },
+                         new[] { keepFirst, keepSecond }),
+                     (new List<SearchNode> { keepFirst, keepSecond },
+                         new[] { keepFirst, keepSecond }),
+                 })
+        {
+            SearchNode[] original = input.ToArray();
+            List<SearchNode> result = CombatBeamSolver.ApplyPrimaryIncumbentBound(
+                input,
+                incumbent,
+                out int pruned);
+            if (!result.SequenceEqual(expected, ReferenceEqualityComparer.Instance)
+                || !input.SequenceEqual(original, ReferenceEqualityComparer.Instance)
+                || pruned != input.Count - expected.Length
+                || pruned == 0 && !ReferenceEquals(input, result))
+            {
+                throw new InvalidOperationException(
+                    "主结果下界过滤恢复了被拒绝的前缀、改变了顺序或原列表，或剪枝计数不一致。");
+            }
         }
     }
 

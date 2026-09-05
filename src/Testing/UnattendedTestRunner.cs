@@ -931,13 +931,24 @@ internal sealed partial class UnattendedTestRunner
             }
         }
         if (check.TriggerPlayerSideTurnEndBeforeMove)
-            CorePowerSupport.TriggerPlayerSideTurnEndEffects(simulator, simulatedCombat, [player.Creature]);
+        {
+            if (!CorePowerSupport.TriggerPlayerSideTurnEndEffects(
+                    simulator,
+                    simulatedCombat,
+                    [player.Creature]))
+            {
+                throw new InvalidOperationException("玩家回合结束前置测试遇到未提供的挂起选择。");
+            }
+        }
         if (check.TriggerEnemySideTurnEndBeforeMove)
         {
-            CorePowerSupport.TriggerEnemySideTurnEndEffects(
-                simulator,
-                simulatedCombat,
-                combatState.Enemies);
+            if (!CorePowerSupport.TriggerEnemySideTurnEndEffects(
+                    simulator,
+                    simulatedCombat,
+                    combatState.Enemies))
+            {
+                throw new InvalidOperationException("敌方回合结束前置测试遇到未提供的挂起选择。");
+            }
         }
         ForecastMove simulatedMove = simulatedCombat.CurrentMonsterMoves()
             .Single(candidate => ReferenceEquals(candidate.Owner, enemy));
@@ -994,7 +1005,15 @@ internal sealed partial class UnattendedTestRunner
         int simulatedPlayerBlockAfterMoveActions =
             simulator.State.GetCreature(player.Creature).Block;
         if (check.TriggerPlayerSideTurnEndAfterMove)
-            CorePowerSupport.TriggerPlayerSideTurnEndEffects(simulator, simulatedCombat, [player.Creature]);
+        {
+            if (!CorePowerSupport.TriggerPlayerSideTurnEndEffects(
+                    simulator,
+                    simulatedCombat,
+                    [player.Creature]))
+            {
+                throw new InvalidOperationException("玩家回合结束后置测试遇到未提供的挂起选择。");
+            }
+        }
         foreach (UnattendedCardPlayCheck playCheck in check.CardPlayChecksAfterPlayerSideTurnEnd)
         {
             PredictedCard card = FindSimulatedHandCard(simulator, player, playCheck.CardId, playCheck.Occurrence);
@@ -1022,10 +1041,13 @@ internal sealed partial class UnattendedTestRunner
         for (int trigger = 0; trigger < enemySideTurnEndCount; trigger++)
         {
             simulatedCombat.CurrentSide = CombatSide.Enemy;
-            CorePowerSupport.TriggerEnemySideTurnEndEffects(
-                simulator,
-                simulatedCombat,
-                combatState.Enemies);
+            if (!CorePowerSupport.TriggerEnemySideTurnEndEffects(
+                    simulator,
+                    simulatedCombat,
+                    combatState.Enemies))
+            {
+                throw new InvalidOperationException("敌方回合结束循环测试遇到未提供的挂起选择。");
+            }
             CorePowerSupport.ApplyEnemyDeathPowers(
                 simulator,
                 simulatedCombat,
@@ -1034,11 +1056,20 @@ internal sealed partial class UnattendedTestRunner
         }
         if (check.TriggerPlayerSideTurnStartAfterMove)
         {
-            TurnStartRelicSupport.TriggerBeforeSideTurnStart(simulator, simulatedCombat, [player.Creature]);
-            TurnStartPowerSupport.TriggerBeforeSideTurnStart(
-                simulator,
-                simulatedCombat,
-                [player.Creature]);
+            if (!TurnStartRelicSupport.TriggerBeforeSideTurnStart(
+                    simulator,
+                    simulatedCombat,
+                    [player.Creature]))
+            {
+                throw new InvalidOperationException("玩家回合开始遗物测试遇到未提供的挂起选择。");
+            }
+            if (TurnStartPowerSupport.TriggerBeforeSideTurnStart(
+                    simulator,
+                    simulatedCombat,
+                    [player.Creature]))
+            {
+                throw new InvalidOperationException("玩家回合开始 Power 测试遇到未提供的挂起选择。");
+            }
             SimCreatureState simulatedPlayer = simulator.State.GetCreature(player.Creature);
             if (simulatedPlayer.Block > 0)
             {
@@ -1051,25 +1082,38 @@ internal sealed partial class UnattendedTestRunner
                         player.Creature);
             }
             CorePowerSupport.TriggerAfterBlockCleared(simulator, simulatedCombat, player.Creature);
-            CorePowerSupport.TriggerPoison(simulator, simulatedCombat, [player.Creature]);
+            if (!CorePowerSupport.TriggerPoison(simulator, simulatedCombat, [player.Creature]))
+                throw new InvalidOperationException("玩家回合开始毒伤测试遇到未提供的挂起选择。");
             TurnStartChoiceCursor choices = new(null);
             if (simulatedCombat.TriggerAfterPlayerTurnStart(simulator, player.Creature, choices))
                 throw new InvalidOperationException("模拟玩家回合开始遇到未计划选择。");
-            simulatedCombat.TriggerSideTurnStart(
-                simulator,
-                CombatSide.Player,
-                [player.Creature],
-                decrementPlating: simulatedCombat.GetPlayerTurnNumber(player) != 1);
+            if (!simulatedCombat.TriggerSideTurnStart(
+                    simulator,
+                    CombatSide.Player,
+                    [player.Creature],
+                    decrementPlating: simulatedCombat.GetPlayerTurnNumber(player) != 1))
+            {
+                throw new InvalidOperationException("玩家回合开始测试遇到未提供的挂起选择。");
+            }
             EnchantmentLifecycleSupport.TriggerAfterTurnStartOrbs(simulator, player);
         }
         if (check.TriggerEnemySideTurnStartAfterMove)
         {
             simulatedCombat.SnapshotPowerAmountsAtTurnStart([enemy]);
-            TurnStartRelicSupport.TriggerBeforeSideTurnStart(simulator, simulatedCombat, [enemy]);
-            TurnStartPowerSupport.TriggerBeforeSideTurnStart(
-                simulator,
-                simulatedCombat,
-                [enemy]);
+            if (!TurnStartRelicSupport.TriggerBeforeSideTurnStart(
+                    simulator,
+                    simulatedCombat,
+                    [enemy]))
+            {
+                throw new InvalidOperationException("敌方回合开始遗物测试遇到未提供的挂起选择。");
+            }
+            if (TurnStartPowerSupport.TriggerBeforeSideTurnStart(
+                    simulator,
+                    simulatedCombat,
+                    [enemy]))
+            {
+                throw new InvalidOperationException("敌方回合开始 Power 测试遇到未提供的挂起选择。");
+            }
             SimCreatureState simulatedEnemy = simulator.State.GetCreature(enemy);
             if (simulatedEnemy.Block > 0)
             {
@@ -1079,12 +1123,16 @@ internal sealed partial class UnattendedTestRunner
                     PersistentRelicSupport.TriggerAfterPreventingBlockClear(simulator, preventer, enemy);
             }
             CorePowerSupport.TriggerAfterBlockCleared(simulator, simulatedCombat, enemy);
-            simulatedCombat.TriggerSideTurnStart(
-                simulator,
-                CombatSide.Enemy,
-                [enemy],
-                combatState.RoundNumber > 1);
-            CorePowerSupport.TriggerPoison(simulator, simulatedCombat, [enemy]);
+            if (!simulatedCombat.TriggerSideTurnStart(
+                    simulator,
+                    CombatSide.Enemy,
+                    [enemy],
+                    combatState.RoundNumber > 1))
+            {
+                throw new InvalidOperationException("敌方回合开始测试遇到未提供的挂起选择。");
+            }
+            if (!CorePowerSupport.TriggerPoison(simulator, simulatedCombat, [enemy]))
+                throw new InvalidOperationException("敌方回合开始毒伤测试遇到未提供的挂起选择。");
             CorePowerSupport.ApplyEnemyDeathPowers(
                 simulator,
                 simulatedCombat,
@@ -1098,11 +1146,15 @@ internal sealed partial class UnattendedTestRunner
         if (check.TriggerPlayerTurnEndAfterMove)
         {
             int etherealExhaustCount = simulatedCombat.CountEtherealCardsInHand(simulator, player);
-            PlayerTurnEndLifecycle.RunPhaseOne(
-                simulator,
-                simulatedCombat,
-                player,
-                [player.Creature]);
+            if (!PlayerTurnEndLifecycle.RunPhaseOne(
+                    simulator,
+                    simulatedCombat,
+                    player,
+                    [player.Creature]))
+            {
+                throw new InvalidOperationException(
+                    "回合结束测试遇到未提供的挂起选择。");
+            }
             simulatedCombat.NormalizeAeonglassWithers(simulator);
             simulatedCombat.NormalizeCardAfflictions(simulator);
             CorePowerSupport.ApplyEnemyDeathPowers(
@@ -1111,16 +1163,22 @@ internal sealed partial class UnattendedTestRunner
                 combatState.Enemies,
                 new HashSet<uint>());
             CorePowerSupport.FlushPlayerHandAtTurnEnd(simulator, simulatedCombat, player);
-            TurnStartRelicSupport.TriggerAfterSideTurnEnd(
-                simulator,
-                simulatedCombat,
-                [player.Creature],
-                etherealExhaustCount);
-            CorePowerSupport.TriggerPlayerSideTurnEndEffects(
-                simulator,
-                simulatedCombat,
-                [player.Creature],
-                etherealExhaustCount);
+            if (!TurnStartRelicSupport.TriggerAfterSideTurnEnd(
+                    simulator,
+                    simulatedCombat,
+                    [player.Creature],
+                    etherealExhaustCount))
+            {
+                throw new InvalidOperationException("回合结束遗物测试遇到未提供的挂起选择。");
+            }
+            if (!CorePowerSupport.TriggerPlayerSideTurnEndEffects(
+                    simulator,
+                    simulatedCombat,
+                    [player.Creature],
+                    etherealExhaustCount))
+            {
+                throw new InvalidOperationException("回合结束 Power 测试遇到未提供的挂起选择。");
+            }
             CorePowerSupport.ApplyEnemyDeathPowers(
                 simulator,
                 simulatedCombat,

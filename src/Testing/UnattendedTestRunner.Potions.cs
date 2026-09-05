@@ -103,15 +103,16 @@ internal sealed partial class UnattendedTestRunner
             {
                 simulatedCombat.ConsumePotion(player, slot);
                 simulatedCombat.BeforePotionUsed(simulator, potion, target);
-                PotionOnUseSupport.Use(simulator, simulatedCombat, potion, target);
+                if (!PotionOnUseSupport.Use(simulator, simulatedCombat, potion, target))
+                    throw new InvalidOperationException($"药水 {potion.Id.Entry} 差分测试遇到未提供的挂起选择。");
                 if (requiresChoice)
                 {
                     choice = CardChoiceSupport.BuildRequestedChoice(
                         PotionChoiceSupport.GetSpec(simulator, potion),
                         check.ChoiceCardIds);
                 }
-                if (choice != null)
-                    PotionChoiceSupport.Apply(simulator, potion, choice);
+                if (choice != null && !PotionChoiceSupport.Apply(simulator, potion, choice))
+                    throw new InvalidOperationException($"药水 {potion.Id.Entry} 选牌差分测试遇到未提供的内层选择。");
                 if (simulator.State.GetCreature(potion.Owner.Creature).IsAlive)
                     simulatedCombat.AfterPotionUsed(simulator, potion, target);
                 CorePowerSupport.ApplyEnemyDeathPowers(
@@ -129,16 +130,34 @@ internal sealed partial class UnattendedTestRunner
             {
                 if (potion is MegaCrit.Sts2.Core.Models.Potions.RegenPotion)
                 {
-                    PlayerTurnEndLifecycle.RunPhaseOne(
+                    if (!PlayerTurnEndLifecycle.RunPhaseOne(
+                            simulator,
+                            simulatedCombat,
+                            player,
+                            [player.Creature]))
+                    {
+                        throw new InvalidOperationException(
+                            "药水回合结束测试遇到未提供的挂起选择。");
+                    }
+                }
+                if (!CorePowerSupport.TriggerPlayerSideTurnEndEffects(
                         simulator,
                         simulatedCombat,
-                        player,
-                        [player.Creature]);
+                        [player.Creature]))
+                {
+                    throw new InvalidOperationException("药水玩家回合结束测试遇到未提供的挂起选择。");
                 }
-                CorePowerSupport.TriggerPlayerSideTurnEndEffects(simulator, simulatedCombat, [player.Creature]);
             }
             if (check.TriggerEnemySideTurnEndAfterUse)
-                CorePowerSupport.TriggerEnemySideTurnEndEffects(simulator, simulatedCombat, combatState.Enemies);
+            {
+                if (!CorePowerSupport.TriggerEnemySideTurnEndEffects(
+                        simulator,
+                        simulatedCombat,
+                        combatState.Enemies))
+                {
+                    throw new InvalidOperationException("药水敌方回合结束测试遇到未提供的挂起选择。");
+                }
+            }
         }
         MoveStateSnapshot predicted = CaptureSimulated(simulator, simulatedCombat, player, enemy);
         if (check.ExpectedSurroundedFacing is { } expectedFacingName)

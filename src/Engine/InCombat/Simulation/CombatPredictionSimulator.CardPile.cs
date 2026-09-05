@@ -13,7 +13,11 @@ namespace CombatSolver.Engine.InCombat.Simulation;
 
 internal sealed partial class CombatPredictionSimulator
 {
-    private const int MaxSimulatedDraws = 100;
+    // Only bound synchronous recursion (draw hook -> automatic play -> draw), never the
+    // accumulated battle history. Reaching this safety boundary invalidates the action;
+    // returning a partially drawn hand would silently invent a different combat state.
+    private const int MaximumNestedDrawDepth = 100;
+    private int _activeDrawDepth;
 
     /// <summary>
     /// See <see cref="Draw(Player, int, bool)"/> for the main overload.
@@ -29,6 +33,24 @@ internal sealed partial class CombatPredictionSimulator
     /// Mirrors <see cref="CardPileCmd.Draw(PlayerChoiceContext, decimal, Player, bool)"/>.
     /// </summary>
     public IReadOnlyList<PredictedCard> Draw(Player player, int drawCount, bool fromHandDraw = false)
+    {
+        if (_activeDrawDepth >= MaximumNestedDrawDepth)
+        {
+            throw new InvalidOperationException(
+                $"模拟抽牌同步递归达到 {MaximumNestedDrawDepth} 层，无法安全完成当前动作。");
+        }
+        _activeDrawDepth++;
+        try
+        {
+            return DrawCore(player, drawCount, fromHandDraw);
+        }
+        finally
+        {
+            _activeDrawDepth--;
+        }
+    }
+
+    private IReadOnlyList<PredictedCard> DrawCore(Player player, int drawCount, bool fromHandDraw)
     {
         if (IsOverOrEnding || !HookMirrors.ShouldDraw(this, player, fromHandDraw, out _))
         {
@@ -52,12 +74,6 @@ internal sealed partial class CombatPredictionSimulator
                 break;
             }
 
-            if (History.Count<CombatPredictionCardDrawnEntry>() >= MaxSimulatedDraws)
-            {
-                History.RecordRisk(PredictionRiskReason.CardDrawLimitExceeded);
-                break;
-            }
-
             ShuffleIfNecessary(player);
 
             if (HasPendingChoice)
@@ -76,6 +92,8 @@ internal sealed partial class CombatPredictionSimulator
                 eventSink.RecordCardDrawn(card, fromHandDraw);
 
             HookMirrors.AfterCardDrawn(this, card, fromHandDraw);
+            if (HasPendingChoice)
+                return drawnCards;
             History.CardDrawResolved(entry, card);
         }
 
@@ -228,6 +246,8 @@ internal sealed partial class CombatPredictionSimulator
             results.Add(AddToPile(card, newPileType, position));
 
             HookMirrors.AfterCardGeneratedForCombat(this, card, creator);
+            if (HasPendingChoice)
+                return results;
             History.CardGenerationResolved(entry, card);
         }
 

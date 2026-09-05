@@ -52,7 +52,8 @@ internal static class CardOnPlayMirrors
             Card = card,
             CardPlay = cardPlay
         });
-        if (simulator.State.CombatState is SimulatedCombatState combat)
+        if (!simulator.HasPendingChoice
+            && simulator.State.CombatState is SimulatedCombatState combat)
             CardEffectSpecRegistry.Apply(simulator, combat, card, cardPlay.Target);
         return result;
     }

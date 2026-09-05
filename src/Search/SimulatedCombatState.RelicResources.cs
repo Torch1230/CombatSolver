@@ -30,13 +30,13 @@ internal sealed partial class SimulatedCombatState
         (_simulatedPlayerGold ??= [])[player] = checked(GetPlayerGold(player) + amount);
     }
 
-    public void TriggerRelicsAfterStarsSpent(
+    public bool TriggerRelicsAfterStarsSpent(
         CombatPredictionSimulator simulator,
         Player player,
         int amount)
     {
         if (amount <= 0)
-            return;
+            return true;
         foreach (MiniRegent relic in RelicsOf(player)
                      .OfType<MiniRegent>()
                      .Where(static relic => !relic.IsMelted))
@@ -62,8 +62,11 @@ internal sealed partial class SimulatedCombatState
                     player.Creature,
                     triggers * relic.DynamicVars.Block.IntValue,
                     MegaCrit.Sts2.Core.ValueProps.ValueProp.Unpowered);
+                if (simulator.HasPendingChoice)
+                    return false;
             }
         }
+        return true;
     }
 
     private void AppendRelicResourceFingerprint(ref StateFingerprintBuilder fingerprint)

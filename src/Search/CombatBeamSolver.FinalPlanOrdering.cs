@@ -85,7 +85,7 @@ internal sealed partial class CombatBeamSolver
                         features.ProjectedPlayerHp);
                     return (candidate.Node, candidate.Snapshot, Features: features,
                         CompleteVictory: completeVictory,
-                        CombatEndedTurn: completeVictory ? candidate.Node.Action?.Turn : null,
+                        CombatEndedTurn: completeVictory ? candidate.Snapshot.CombatEndedTurn : null,
                         FutureSold: sold, BattleSold: battleSold, PotionCount: potionCount,
                         ExplicitPotionCount: explicitPotionCount, HpDeficit: hpDeficit,
                         StrategicHpDeficit: strategicHpDeficit, PolicyHpDeficit: policyHpDeficit,
@@ -341,8 +341,8 @@ internal sealed partial class CombatBeamSolver
                 + Math.Max(0, initialPlayerMaxHp - rightSnapshot.PlayerMaxHp));
         if (comparison != 0)
             return comparison;
-        comparison = (leftWon ? left.Action?.Turn ?? int.MaxValue : int.MaxValue)
-            .CompareTo(rightWon ? right.Action?.Turn ?? int.MaxValue : int.MaxValue);
+        comparison = (leftWon ? leftSnapshot.CombatEndedTurn ?? int.MaxValue : int.MaxValue)
+            .CompareTo(rightWon ? rightSnapshot.CombatEndedTurn ?? int.MaxValue : int.MaxValue);
         if (comparison != 0)
             return comparison;
         if (theftPolicy == SolverTheftPolicy.PreserveResources)
