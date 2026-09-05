@@ -98,14 +98,11 @@ v77 结果只属于合并前源码；最新主线撤回旧 worldline 估值/保�
 
 维护时默认使用分层快速回归：普通语义改动跑单效果严格差分；Fork、跨回合历史和续用改动补一个最小两回合或最早复用边界；搜索/部署改动的最终候选才运行必要的完整自动场。快速 unattended 请求总超时不超过 `120` 秒，超时后缩小 fixture 或记为未验证，不在同一轮延长等待。下方完整矩阵是发布门禁和专项审计入口，不是每次修复都要执行的默认清单。
 
-## 0.30.0（开发中）：2026-09-05 玩家更优世界线策略第一批
+## 0.30.0（开发中）：Checkpoint 日志与回放入口重做
 
 | 场景 | 当前结果 | 验证内容 | 日期 |
 | --- | --- | --- | --- |
-| `RELEASE-BUILD-0300-ABILITY-ENGINE` | 通过 | `dotnet build CombatSolver.csproj -c Release`，CombatSolver 与 MemoryCleaner 均成功生成，0 警告、0 错误。 | 2026-09-05 |
-| `PLAYER-WORLDLINE-TEST-SUBJECT-133704-ABILITY-ENGINE` | 通过，优于人工同状态基线 | 清单第 3 条有备注实验体包，复用玩家完成首轮准备后的第 2 回合状态，在 High/DOP1 下预计剩余战损 `0`，人工同状态剩余战损 `3`，相对人工 `+3`；最终完整搜索耗时约 `49.23 s`，runId `d538dcebac0543f4b93ed28ff0e95704`。此前首回合 `9` 与整场人工 `3` 的比较不属于同一状态，已排除。 | 2026-09-05 |
-| `PLAYER-WORLDLINE-AEONGLASS-153416-DYNAMIC-POWER` | 通过，优于人工同状态基线 | 清单第 1 条有备注永世沙漏包，恢复报告 Power 动态变量后，复用第 3 回合状态并使用报告原本的 High/Force 药水约束，预计剩余战损 `3`，人工 `6`，相对人工 `+3`；搜索进入 Deep，runId `5d768646dbb641ea967de0349a18c9ef`。 | 2026-09-05 |
-| `PLAYER-WORLDLINE-IMPORT-BASELINE-0300` | 部分解除 | 清单第 1 条已补齐 Power 动态变量恢复并完成同状态复测；第 2、4 条仍分别被历史 Power 导入差异阻塞，第 5 条缺少回合卡牌历史。导入阻塞与策略缺口分开处理。 | 2026-09-05 |
+| `CHECKPOINT-INDEX-0300` | 通过 | 导出 runId `b309d78548cd46708a8dcf008af8bd40` 生成唯一 `combat-solver/checkpoint.json`；索引指向的 metadata、replay-state、native-state、run-state 均存在。再以同一 ZIP 直接导入，runId `15fa0e74fee74af787116be3c2bf2dae` 通过开战根状态断言。 | 2026-09-05 |
 
 ## 下一版本（开发中）：循环、顺序选择与回收边界
 
@@ -169,7 +166,7 @@ v30 SearchPolicy 与下列8项最小搜索夹具在同一 headless 进程复用�
 | `KAISER / INFESTED` | v29未运行 | 位于 Exoskeletons 超时之后，尚无本轮结果。后续须按上述质量门槛人工复核，Kaiser 单列T2续用与零计划外重算，不以较弱协议 Passed 或固定旧节点数代替质量。 |
 | `AEONGLASS / LONGLINE-NOGC4/OFF` | v29未运行 | 位于 Exoskeletons 超时之后，须在后续验证实际获胜并比较 GC/NoGC 峰值、检查点和同根质量。旧 Aeonglass runId `030812eb278643389d002f23eef0f256` 虽协议为 Passed，实际只有死亡路线，不算获胜证据；headless 结果不作为可见 Steam 卡顿结论。 |
 
-## 0.29.1（定版准备）：2026-09-04 19 点后问题包硬逻辑修复
+## 0.29.1（历史）：2026-09-04 19 点后问题包硬逻辑修复
 
 | 场景 | 当前结果 | 验证内容 | 日期 |
 | --- | --- | --- | --- |

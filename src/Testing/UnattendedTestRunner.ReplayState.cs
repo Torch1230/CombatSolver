@@ -223,7 +223,6 @@ internal sealed partial class UnattendedTestRunner
             power.Amount = saved.GetProperty("amount").GetInt32();
             power.AmountOnTurnStart = saved.GetProperty("amountOnTurnStart").GetInt32();
             RestoreReplayPrimitiveState(power, typeof(PowerModel), saved.GetProperty("fields"));
-            RestoreReplayDynamicVars(power, saved.GetProperty("dynamicVars"));
         }
         foreach (PowerModel extra in unmatched)
             await PowerCmd.Remove(extra);
@@ -370,23 +369,6 @@ internal sealed partial class UnattendedTestRunner
                 if (value != null || saved.ValueKind == JsonValueKind.Null)
                     field.SetValue(target, value);
             }
-        }
-    }
-
-    private static void RestoreReplayDynamicVars(
-        PowerModel power,
-        JsonElement savedDynamicVars)
-    {
-        foreach (JsonProperty property in savedDynamicVars.EnumerateObject())
-        {
-            if (!power.DynamicVars.TryGetValue(property.Name, out var dynamicVar))
-            {
-                throw new InvalidOperationException(
-                    $"Power {power.Id.Entry} 不存在动态变量 {property.Name}。");
-            }
-
-            decimal baseValue = property.Value.GetProperty("baseValue").GetDecimal();
-            dynamicVar.BaseValue = baseValue;
         }
     }
 

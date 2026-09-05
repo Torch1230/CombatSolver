@@ -31,12 +31,6 @@ namespace CombatSolver;
 
 internal sealed partial class CombatBeamSolver
 {
-    internal static StrategicEffectRequirements CompleteStrategicEffectRequirements(
-        StrategicEffectRequirements activePowerRequirements)
-        // Latent setup reads AttackPlays and the unconditionally populated PlayerBlock.
-        // Both consumers must declare their inputs before the shared context is built.
-        => activePowerRequirements | StrategicEffectRequirements.AttackPlays;
-
     private SimulationSnapshot Snapshot(
         CombatPredictionSimulator simulator,
         int turn,
@@ -195,13 +189,7 @@ internal sealed partial class CombatBeamSolver
             }
             strategicRequirements |= StrategicEffectModel.Requirements(power);
         }
-        StrategicEffectContext strategicContext = StrategicEffectContext.Build(
-            liveCards,
-            enemyHp,
-            focus.TotalThreat,
-            focus.IncomingHitCount,
-            player.Block,
-            CompleteStrategicEffectRequirements(strategicRequirements));
+        StrategicEffectContext? strategicContext = null;
         StrategicEffectVector strategicEffects = StrategicEffectVector.Zero;
         int offensivePersistentBuffValue = 0;
         PersistentSetupTraits persistentSetupTraits = PersistentSetupTraits.None;
@@ -215,9 +203,15 @@ internal sealed partial class CombatBeamSolver
             {
                 continue;
             }
+            strategicContext ??= StrategicEffectContext.Build(
+                liveCards,
+                enemyHp,
+                focus.TotalThreat,
+                focus.IncomingHitCount,
+                strategicRequirements);
             StrategicEffectVector effect = StrategicEffectModel.Evaluate(
                 power,
-                strategicContext);
+                strategicContext.Value);
             strategicEffects += effect;
             offensivePersistentBuffValue += effect.DamagePotential + effect.ScalingPotential;
             persistentSetupTraits |= PersistentPowerSetupTrait(power);
@@ -241,9 +235,7 @@ internal sealed partial class CombatBeamSolver
             if (trait == PersistentSetupTraits.None
                 || !persistentSetupTraits.HasFlag(trait))
             {
-                latentSetupValue = Math.Min(
-                    SolverWeights.LatentSetupBeamCap,
-                    latentSetupValue + LatentCardSetupValue(preview, strategicContext));
+                latentSetupValue += LatentCardSetupValue(preview);
             }
         }
         int replayPotentialValue = ReplayPotentialValue(liveCards);
@@ -763,9 +755,6 @@ internal sealed partial class CombatBeamSolver
             ThunderPower => PersistentSetupTraits.Thunder,
             LightningRodPower => PersistentSetupTraits.OrbEngine,
             DemonFormPower or CreativeAiPower => PersistentSetupTraits.RecurringScaling,
-            BarricadePower or RagePower or UnmovablePower or BlockNextTurnPower or DexterityPower
-                => PersistentSetupTraits.BlockEngine,
-            StratagemPower or WellLaidPlansPower => PersistentSetupTraits.FutureChoice,
             _ => PersistentSetupTraits.None,
         };
 
@@ -788,23 +777,9 @@ internal sealed partial class CombatBeamSolver
         return checked((int)Math.Ceiling(value));
     }
 
-    private static int LatentCardSetupValue(
-        CardModel card,
-        StrategicEffectContext context)
+    private static int LatentCardSetupValue(CardModel card)
         => card switch
         {
-            Rage => Math.Min(
-                SolverWeights.LatentSetupBeamCap,
-                context.AttackPlays
-                    * Math.Max(
-                        1,
-                        (int)Math.Ceiling(
-                            CardChoiceSupport.DynamicVarBaseValue(
-                                card.DynamicVars,
-                                "Power")))),
-            Prolong => Math.Min(
-                SolverWeights.LatentSetupBeamCap,
-                context.PlayerBlock),
             EchoForm => 12,
             BufferCard => 8,
             MadScience madScience when madScience.TinkerTimeType == CardType.Power

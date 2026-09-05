@@ -3234,13 +3234,6 @@ internal sealed partial class CombatBeamSolver
                                  .OrderBy(group => group.Key))
                     {
                         AddRequired(required, FindBestLane(potionCountGroup.ToList(), trait), limit);
-                        if (trait == SearchRouteTraits.HpInvestment)
-                        {
-                            AddRequired(
-                                required,
-                                FindSafestHpInvestment(potionCountGroup),
-                                limit);
-                        }
                     }
                 }
                 // MultiObjectiveDominates intentionally cannot compare nodes from different
@@ -7049,15 +7042,6 @@ internal sealed partial class CombatBeamSolver
             }
             return best;
         }
-
-        private SearchNode? FindSafestHpInvestment(
-            IEnumerable<SearchNode> nodes)
-            => nodes
-                .Where(node => node.Traits.HasFlag(SearchRouteTraits.HpInvestment))
-                .OrderBy(node => node.FutureSoldHp)
-                .ThenByDescending(BeamRankScore)
-                .ThenByDescending(node => node.Snapshot.ProjectedPlayerHp)
-                .FirstOrDefault();
 
         private static SearchNode? FindBestSetup(IEnumerable<SearchNode> nodes)
         {

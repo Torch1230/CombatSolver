@@ -12,7 +12,6 @@ internal sealed partial class UnattendedTestRunner
     {
         AssertBeamRankOffensiveProgressTieBreak();
         AssertOrdinaryBeamBoundaryDiversity();
-        AssertStrategicEffectContextRequirements();
         AssertPrimaryIncumbentFiltering();
         AssertPrimaryIncumbentEligibility();
 
