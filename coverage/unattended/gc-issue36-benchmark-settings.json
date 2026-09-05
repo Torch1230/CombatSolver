@@ -1,0 +1,20 @@
+{
+  "performanceMigrationVersion": 243,
+  "performancePreset": "Custom",
+  "shortTimeLimitSeconds": 60,
+  "deepTimeLimitSeconds": 60,
+  "shortBeamWidth": 36,
+  "deepBeamWidth": 90,
+  "shortMaxExpandedNodes": 576,
+  "deepMaxExpandedNodes": 576,
+  "shortMaxCardBranchesPerNode": 30,
+  "deepMaxCardBranchesPerNode": 48,
+  "shortMaxPileChoiceBranchesPerAction": 16,
+  "deepMaxPileChoiceBranchesPerAction": 28,
+  "shortMaxHandChoiceBranchesPerAction": 20,
+  "deepMaxHandChoiceBranchesPerAction": 36,
+  "enableDetailedDiagnosticLogs": false,
+  "enableNoGcRegion": false,
+  "noGcRegionBudgetGigabytes": 4,
+  "searchMaxDegreeOfParallelism": 4
+}
