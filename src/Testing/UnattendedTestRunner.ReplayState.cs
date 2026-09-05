@@ -289,11 +289,19 @@ internal sealed partial class UnattendedTestRunner
         for (int slot = 0; slot < savedPotions.Length; slot++)
         {
             string? expected = OptionalString(savedPotions[slot], "id");
-            string? actual = player.GetPotionAtSlotIndex(slot)?.Id.Entry;
-            if (!string.Equals(expected, actual, StringComparison.Ordinal))
+            PotionModel? actual = player.GetPotionAtSlotIndex(slot);
+            if (string.Equals(expected, actual?.Id.Entry, StringComparison.Ordinal))
+                continue;
+
+            actual?.Discard();
+            if (expected == null)
+                continue;
+
+            PotionModel potion = ResolveUnique(ModelDb.AllPotions, expected, "药水").ToMutable();
+            if (!player.AddPotionInternal(potion, slot, silent: false).success)
             {
                 throw new InvalidOperationException(
-                    $"药水槽 {slot} 为 {actual ?? "-"}，replay-state 为 {expected ?? "-"}。");
+                    $"无法把 replay-state 药水 {expected} 恢复到槽位 {slot}。");
             }
         }
 
