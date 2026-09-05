@@ -191,6 +191,17 @@ internal sealed partial class UnattendedTestRunner
     {
         JsonElement[] savedPowers = savedPowersElement.EnumerateArray().ToArray();
         List<PowerModel> unmatched = creature.Powers.ToList();
+        HashSet<string> savedPowerIds = savedPowers
+            .Select(saved => RequiredString(saved, "id"))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (PowerModel extra in unmatched
+                     .Where(power => !savedPowerIds.Contains(power.Id.Entry))
+                     .ToArray())
+        {
+            await PowerCmd.Remove(extra);
+            unmatched.Remove(extra);
+        }
+
         foreach (JsonElement saved in savedPowers)
         {
             string id = RequiredString(saved, "id");
@@ -206,7 +217,7 @@ internal sealed partial class UnattendedTestRunner
                 Creature? target = ReplayCreatureReference(combatState, saved, "targetCombatId");
                 Creature applier = ReplayCreatureReference(combatState, saved, "applierCombatId")
                     ?? creature;
-                injected.Target = target;
+                injected.Target = target ?? creature;
                 int applyAmount = Math.Max(1, saved.GetProperty("amount").GetInt32());
                 await PowerCmd.Apply(
                     new BlockingPlayerChoiceContext(),
@@ -217,7 +228,8 @@ internal sealed partial class UnattendedTestRunner
                     null);
                 power = creature.Powers.LastOrDefault(candidate => ModelMatches(candidate, id))
                     ?? throw new InvalidOperationException(
-                        $"CombatId={creature.CombatId} 无法恢复 Power {id}。");
+                        $"CombatId={creature.CombatId} 无法恢复 Power {id}，当前 Powers=" +
+                        string.Join(',', creature.Powers.Select(candidate => candidate.Id.Entry)));
             }
 
             power.Amount = saved.GetProperty("amount").GetInt32();
@@ -491,6 +503,21 @@ internal sealed partial class UnattendedTestRunner
                     restored,
                     typeof(AbstractModel),
                     savedCard.GetProperty("fields"));
+                JsonElement savedEnchantment = savedCard.GetProperty("enchantment");
+                if (savedEnchantment.ValueKind != JsonValueKind.Null)
+                {
+                    if (restored.Enchantment == null)
+                    {
+                        throw new InvalidOperationException(
+                            $"卡牌 {restored.Id.Entry} 缺少 replay-state 中的附魔 " +
+                            $"{RequiredString(savedEnchantment, "id")}。");
+                    }
+
+                    RestoreReplayPrimitiveState(
+                        restored.Enchantment,
+                        typeof(AbstractModel),
+                        savedEnchantment.GetProperty("fields"));
+                }
                 RestoreReplayCardKeywords(restored, savedCard.GetProperty("keywords"));
             }
         }

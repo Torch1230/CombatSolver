@@ -13,7 +13,8 @@
 | `RELEASE-BUILD-0300-ABILITY-ENGINE` | 通过 | `dotnet build CombatSolver.csproj -c Release`，CombatSolver 与 MemoryCleaner 均成功生成，0 警告、0 错误。 | 2026-09-05 |
 | `PLAYER-WORLDLINE-TEST-SUBJECT-133704-ABILITY-ENGINE` | 通过，优于人工同状态基线 | 清单第 3 条有备注实验体包，复用玩家完成首轮准备后的第 2 回合状态，在 High/DOP1 下预计剩余战损 `0`，人工同状态剩余战损 `3`，相对人工 `+3`；最终完整搜索耗时约 `49.23 s`，runId `d538dcebac0543f4b93ed28ff0e95704`。此前首回合 `9` 与整场人工 `3` 的比较不属于同一状态，已排除。 | 2026-09-05 |
 | `PLAYER-WORLDLINE-AEONGLASS-153416-DYNAMIC-POWER` | 通过，优于人工同状态基线 | 清单第 1 条有备注永世沙漏包，恢复报告 Power 动态变量后，复用第 3 回合状态并使用报告原本的 High/Force 药水约束，预计剩余战损 `3`，人工 `6`，相对人工 `+3`；搜索进入 Deep，runId `5d768646dbb641ea967de0349a18c9ef`。 | 2026-09-05 |
-| `PLAYER-WORLDLINE-IMPORT-BASELINE-0300` | 部分解除 | 清单第 1 条已补齐 Power 动态变量恢复并完成同状态复测；第 2、4 条仍分别被历史 Power 导入差异阻塞，第 5 条缺少回合卡牌历史。导入阻塞与策略缺口分开处理。 | 2026-09-05 |
+| `PLAYER-WORLDLINE-AEONGLASS-152708-POWER-ORDER` | 通过，优于人工同状态基线 | 清单第 2 条有备注永世沙漏包，恢复第 7 回合状态时先清理多余 Power 并恢复 SOWN 附魔字段，High/Force 预计剩余战损 `0`，人工 `55`，相对人工 `+55`；runId `2a65b5cb43b846809f31838c8e71f7ed`。 | 2026-09-05 |
+| `PLAYER-WORLDLINE-IMPORT-BASELINE-0300` | 部分解除 | 清单第 1、2 条已完成同状态复测；第 4 条仍被历史 Power 导入差异阻塞，第 5 条缺少回合卡牌历史。导入阻塞与策略缺口分开处理。 | 2026-09-05 |
 
 ## 0.29.1（定版准备）：2026-09-04 19 点后问题包硬逻辑修复
 
