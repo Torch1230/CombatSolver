@@ -4,21 +4,23 @@ internal sealed class IncompatibleGameplayModException : NotSupportedException
 {
     public string ModId { get; }
     public string ModName { get; }
-    public string SubscriberType { get; }
+
+    /// <summary>What was found, e.g. a ModHelper subscriber type or a Harmony patch on a mirrored method.</summary>
+    public string Subject { get; }
+
+    /// <summary>Where it was found, e.g. <c>run</c> or <c>combat</c>.</summary>
     public string Scope { get; }
 
     public IncompatibleGameplayModException(
         string modId,
         string modName,
-        string subscriberType,
+        string subject,
         string scope)
-        : base(
-            $"Unsupported gameplay ModHelper {scope} subscriber {subscriberType} " +
-            $"from mod {DescribeMod(modName, modId)}.")
+        : base($"Unsupported gameplay {scope} extension {subject} from mod {DescribeMod(modName, modId)}.")
     {
         ModId = modId;
         ModName = modName;
-        SubscriberType = subscriberType;
+        Subject = subject;
         Scope = scope;
     }
 
