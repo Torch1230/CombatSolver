@@ -796,6 +796,18 @@ internal sealed partial class CombatBeamSolver
         StrategicEffectContext context)
         => card switch
         {
+            Rage => Math.Min(
+                SolverWeights.LatentSetupBeamCap,
+                context.AttackPlays
+                    * Math.Max(
+                        1,
+                        (int)Math.Ceiling(
+                            CardChoiceSupport.DynamicVarBaseValue(
+                                card.DynamicVars,
+                                "Power")))),
+            Prolong => Math.Min(
+                SolverWeights.LatentSetupBeamCap,
+                context.PlayerBlock),
             EchoForm => 12,
             BufferCard => 8,
             MadScience madScience when madScience.TinkerTimeType == CardType.Power
