@@ -21,6 +21,31 @@ internal sealed record CardChoiceSpec(
 
 internal static partial class CardChoiceSupport
 {
+    /// <summary>
+    /// 会自己离场的牌在移除排序里加的偏置。取值只要大过任何一张牌的估值即可，作用是让它排到
+    /// 最后，而不是与普通牌按数值竞争。
+    /// </summary>
+    private const double SelfClearingRemovalPenalty = 1_000d;
+
+    /// <summary>
+    /// 原版起手打击、防御在移除排序里改用的权重。
+    /// </summary>
+    /// <remarks>
+    /// 通用估值把伤害记满、格挡打八折，于是打击 <c>6.0</c> 高于防御 <c>4.0</c>，任何角色都先移除
+    /// 防御。原版五个角色的实战优先级相反：起手防御比起手打击更该留，先移除的应该是打击。
+    ///
+    /// 用权重而不是写死数值，是为了保住升级差别：起手打击 <c>6</c> 伤害得 <c>4.0</c>、升级后
+    /// <c>9</c> 伤害得 <c>6.0</c>；起手防御 <c>5</c> 格挡得 <c>6.0</c>、升级后 <c>8</c> 格挡得
+    /// <c>9.6</c>。升级过的那张仍然更靠后移除。
+    ///
+    /// 只覆盖原版这十张具体的起手牌。其他来源的打击、防御——包括 mod 角色的——继续走通用估值，
+    /// 因为它们的强弱取决于各自的机制，这里没有依据替它们排序。
+    /// </remarks>
+    private const double BasicStrikeRemovalWeight = 2d / 3d;
+
+    /// <inheritdoc cref="BasicStrikeRemovalWeight" />
+    private const double BasicDefendRemovalWeight = 1.2d;
+
     private static readonly HashSet<string> UnsupportedExistingChoiceCards =
     [
         "Tutor"
@@ -207,7 +232,7 @@ internal static partial class CardChoiceSupport
                 or PlanChoiceEffect.DiscardAndDraw
                 or PlanChoiceEffect.Exhaust
                 or PlanChoiceEffect.Transform
-                ? spec.Options.OrderBy(card => RemovalPriority(spec.Effect, card))
+                ? spec.Options.OrderBy(card => RemovalPriority(spec, card))
                 : spec.Options.OrderByDescending(card => CardValue(card.Preview)))
             .ThenBy(ChoiceCardKey, StringComparer.Ordinal)
             .ToList();
@@ -487,8 +512,8 @@ internal static partial class CardChoiceSupport
 
     private static double ChoicePriority(CardChoiceSpec spec, IReadOnlyList<PredictedCard> cards)
     {
-        double value = cards.Sum(card => spec.Effect == PlanChoiceEffect.Transform
-            ? RemovalPriority(spec.Effect, card)
+        double value = cards.Sum(card => spec.Effect is PlanChoiceEffect.Transform or PlanChoiceEffect.Exhaust
+            ? RemovalPriority(spec, card)
             : CardValue(card.Preview));
         return spec.Effect switch
         {
@@ -509,15 +534,57 @@ internal static partial class CardChoiceSupport
             + DynamicVarBaseValue(card.Preview.DynamicVars, "Stars") * 12d;
     }
 
-    private static double RemovalPriority(PlanChoiceEffect effect, PredictedCard card)
+    /// <summary>
+    /// 移除类选择的排序键，从低到高优先移除。
+    /// </summary>
+    /// <remarks>
+    /// 会自己离场的牌不值得占用一次移除。虚无牌在回合结束时若仍在手牌，自己就会消耗掉
+    /// （见 <c>CombatPredictionSimulator.EndTurn</c> 的虚无分支），所以把一次消耗花在它身上，
+    /// 换来的只是本回合剩下的一个手牌位；花在打击、防御这类牌上，换来的是整场战斗之后每一次
+    /// 抽牌的质量。两者不是一个量级。
+    ///
+    /// 判据限定在手牌来源：虚无只在手牌里触发，抽牌堆或弃牌堆里的同一张牌本回合不会自己走，
+    /// 那时移除它是真正的牌库压缩。转变分支原来不分牌堆，现在一并按同一条判据限定，
+    /// 否则从抽牌堆转变时会把一张本回合不会离场的牌当成会离场的。
+    ///
+    /// 弃牌不适用：弃掉的牌回到弃牌堆、仍在本场牌库里，没有压缩可言，而把打不出的牌从手上
+    /// 弃掉本来就是弃牌该干的事。所以这里只覆盖消耗与转变。
+    /// </remarks>
+    private static double RemovalPriority(CardChoiceSpec spec, PredictedCard card)
     {
-        double value = CardValue(card.Preview);
-        if (effect == PlanChoiceEffect.Transform
-            && card.Preview.GetKeywordsWithSources(KeywordSources.Local).Contains(CardKeyword.Ethereal))
-        {
-            value += 1_000d;
-        }
+        double value = BasicCardRemovalValue(card.Preview) ?? CardValue(card.Preview);
+        if (LeavesOnItsOwn(spec, card))
+            value += SelfClearingRemovalPenalty;
         return value;
+    }
+
+    /// <summary>原版起手打击、防御的移除估值；其他牌返回 <c>null</c> 走通用估值。</summary>
+    /// <remarks>
+    /// 不限来源牌堆。哪张牌更该留是牌本身的性质，从手牌消耗和从抽牌堆转变应当得到同一个排序。
+    /// 只有虚无那一条才限定手牌，因为它依赖"回合结束时在不在手上"。
+    /// </remarks>
+    private static double? BasicCardRemovalValue(CardModel card)
+        => card switch
+        {
+            StrikeIronclad or StrikeSilent or StrikeDefect or StrikeNecrobinder or StrikeRegent
+                => DynamicVarBaseValue(card.DynamicVars, "Damage") * BasicStrikeRemovalWeight,
+            DefendIronclad or DefendSilent or DefendDefect or DefendNecrobinder or DefendRegent
+                => DynamicVarBaseValue(card.DynamicVars, "Block") * BasicDefendRemovalWeight,
+            _ => null,
+        };
+
+    /// <summary>这张牌会不会不花移除资源就自己离场。</summary>
+    /// <remarks>
+    /// 关键字只读本地来源，与转变分支原有的判据一致：涵盖规范关键字和音乐盒这种直接写在牌上的
+    /// 来源，不涵盖诅咒之触那种由其他 Model 持续授予的全局来源。要覆盖全局来源需要把战斗状态
+    /// 一路传进选牌构建，那是另一件事。
+    /// </remarks>
+    private static bool LeavesOnItsOwn(CardChoiceSpec spec, PredictedCard card)
+    {
+        if (!card.Preview.GetKeywordsWithSources(KeywordSources.Local).Contains(CardKeyword.Ethereal))
+            return false;
+        return spec.Effect is PlanChoiceEffect.Exhaust or PlanChoiceEffect.Transform
+            && spec.SourcePile == PileType.Hand;
     }
 
     internal static double CardValue(CardModel card)
