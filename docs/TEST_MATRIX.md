@@ -18,6 +18,7 @@
 | `PLAYER-WORLDLINE-IMPORT-BASELINE-0300` | 部分解除 | 清单第 1、2 条已完成同状态复测，第 4 条已通过正确角色和人工前置回合导入但 High 仍有 2 HP 策略差距，已按规则暂跳过；第 5 条缺少回合卡牌历史。导入阻塞与策略缺口分开处理。 | 2026-09-05 |
 | `PLAYER-WORLDLINE-TEST-SUBJECT-013258-IMPORT` | 暂跳过 | 第 5 条有备注实验体包尝试复用第 2 回合状态；导入在 `RestoreReplayTurnCardHistory` 因缺少本回合卡牌历史失败，runId `06b9c267486a4d1f9ce9618a22d52839`，没有产生可比较的求解结果。 | 2026-09-05 |
 | `PLAYER-WORLDLINE-MECHA-KNIGHT-131216-REPLAY-INVENTORY` | 通过，追平人工同状态基线 | 第 6 条有备注机甲骑士包复用第 4 回合状态；回放库存逐槽恢复后，High/Disabled 预计剩余战损 `0`，人工 `0`，相对人工 `+0`；搜索展开 `565` 节点、跨 `2` 回合，runId `7d6aa2ce419040b4a3d1533568c8d4dd`。 | 2026-09-05 |
+| `PLAYER-WORLDLINE-QUEEN-173813-CURRENT` | 通过，追平人工同状态基线 | 第 7 条有备注女王包复用玩家完成第 1 回合后的第 2 回合状态；High/RequireAtLeastOne 预计剩余战损 `5`，人工 `5`，相对人工 `+0`；搜索展开 `15,419` 节点、跨 `12` 回合，runId `0155a51343524f769b82068df0c0d857`。 | 2026-09-05 |
 
 ## 0.29.1（定版准备）：2026-09-04 19 点后问题包硬逻辑修复
 
