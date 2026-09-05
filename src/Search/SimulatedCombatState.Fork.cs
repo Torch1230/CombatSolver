@@ -78,7 +78,12 @@ internal sealed partial class SimulatedCombatState
         };
 
         if (_addedPowerInstances is not null)
-            fork._addedPowerInstances = _addedPowerInstances.Select(power => ForkPower(power, context)).ToList();
+        {
+            List<PowerModel> addedPowerInstances = new(_addedPowerInstances.Count);
+            foreach (PowerModel power in _addedPowerInstances)
+                addedPowerInstances.Add(ForkPower(power, context));
+            fork._addedPowerInstances = addedPowerInstances;
+        }
         if (_rootMultiInstancePowerClones is not null)
         {
             fork._rootMultiInstancePowerClones = new(
@@ -110,11 +115,18 @@ internal sealed partial class SimulatedCombatState
         fork._dampenOriginalUpgrades = ForkDampenCards(context);
         fork._lastAttackThisTurn = ForkHistoryCourseCards(_lastAttackThisTurn, context);
         fork._lastAttackPreviousTurn = ForkHistoryCourseCards(_lastAttackPreviousTurn, context);
-        fork._registeredCombatCards = ForkCardList(_registeredCombatCards, context);
-        if (fork._registeredCombatCards is not null)
+        if (_registeredCombatCards is not null)
         {
-            foreach (PredictedCard card in fork._registeredCombatCards)
-                fork.ObserveCardMutations(card);
+            // 观察者只往卡上写一个回调，不读也不写任何被 ForkCard 改动的状态，
+            // 所以可以和分叉同一趟走完：卡的顺序、ForkCard 的调用序列都不变。
+            List<PredictedCard> registeredCombatCards = new(_registeredCombatCards.Count);
+            foreach (PredictedCard card in _registeredCombatCards)
+            {
+                PredictedCard forkedCard = ForkCard(card, context);
+                registeredCombatCards.Add(forkedCard);
+                fork.ObserveCardMutations(forkedCard);
+            }
+            fork._registeredCombatCards = registeredCombatCards;
         }
         fork._generatedCombatCards = ForkCardList(_generatedCombatCards, context);
 
@@ -164,11 +176,28 @@ internal sealed partial class SimulatedCombatState
 
         if (_effectiveRunHookListeners is not null)
         {
-            fork._effectiveRunHookListeners = ReferenceEquals(
-                _effectiveRunHookListeners,
-                _effectiveHookListeners)
-                ? fork._effectiveHookListeners
-                : RemapCachedModels(_effectiveRunHookListeners, context);
+            if (ReferenceEquals(_effectiveRunHookListeners, _effectiveHookListeners))
+            {
+                fork._effectiveRunHookListeners = fork._effectiveHookListeners;
+            }
+            else if (_effectiveRunHookListeners is ConcatenatedListenerView view
+                && ReferenceEquals(view.Suffix, _effectiveHookListeners)
+                && fork._effectiveHookListeners is { } forkedSuffix)
+            {
+                // 逐元素重映射对拼接是可分配的：remap(前缀 ++ 后缀) == remap(前缀) ++ remap(后缀)。
+                // 后缀就是刚刚重映射好的战斗监听表，前缀是根牌组快照（只含 CardModel/Enchantment，
+                // 从不作为 Fork 源登记），两段都没变时连视图对象一起复用。
+                IReadOnlyList<AbstractModel> forkedPrefix = RemapCachedModels(view.Prefix, context);
+                fork._effectiveRunHookListeners =
+                    ReferenceEquals(forkedPrefix, view.Prefix)
+                        && ReferenceEquals(forkedSuffix, view.Suffix)
+                        ? _effectiveRunHookListeners
+                        : new ConcatenatedListenerView(forkedPrefix, forkedSuffix);
+            }
+            else
+            {
+                fork._effectiveRunHookListeners = RemapCachedModels(_effectiveRunHookListeners, context);
+            }
         }
 
     }

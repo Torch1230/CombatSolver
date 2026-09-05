@@ -36,17 +36,26 @@ internal static class TurnStartPowerSupport
         SimulatedCombatState combat,
         IReadOnlyList<Creature> participants)
     {
+        // EffectivePowers 返回的数组一旦发布就不会被就地改写（失效只是把缓存字段置空，
+        // 旧数组内容不变），所以先取一次快照按下标推进，与原来的 ToArray/OfType 迭代器
+        // 看到的元素与顺序完全一致，只是不再复制数组、不再建迭代器。
         if (combat.CurrentSide == CombatSide.Player && combat.RoundNumber <= 1)
         {
-            foreach (PlatingPower plating in combat.EffectivePowers().OfType<PlatingPower>())
+            IReadOnlyList<PowerModel> platingPowers = combat.EffectivePowers();
+            for (int powerIndex = 0; powerIndex < platingPowers.Count; powerIndex++)
             {
+                if (platingPowers[powerIndex] is not PlatingPower plating)
+                    continue;
                 if (plating.Amount > 0 && plating.Owner.IsEnemy)
                     simulator.GainBlock(plating.Owner, plating.Amount, ValueProp.Unpowered);
             }
         }
 
-        foreach (AggressionPower aggression in combat.EffectivePowers().OfType<AggressionPower>().ToArray())
+        IReadOnlyList<PowerModel> aggressionPowers = combat.EffectivePowers();
+        for (int powerIndex = 0; powerIndex < aggressionPowers.Count; powerIndex++)
         {
+            if (aggressionPowers[powerIndex] is not AggressionPower aggression)
+                continue;
             if (aggression.Amount <= 0
                 || !participants.Contains(aggression.Owner)
                 || aggression.Owner.Player is not { } aggressionPlayer)
@@ -62,14 +71,19 @@ internal static class TurnStartPowerSupport
                 .ToArray();
             foreach (PredictedCard card in selected)
             {
-                simulator.AddToPile([card], PileType.Hand);
+                // 单张牌走单张重载：多张重载对 N==1 的两阶段流程与它逐步等价（同样的所有者
+                // 解析、同样的合法性判定、同样的手牌上限溢出改投弃牌堆、同一次 Shuffle 取位、
+                // 同样的入场事件），但会额外分配一个单元素数组和一张结果表。
+                simulator.AddToPile(card, PileType.Hand);
                 if (card.Preview.IsUpgradable)
                     card.Upgrade();
             }
         }
 
-        foreach (PowerModel power in combat.EffectivePowers().ToArray())
+        IReadOnlyList<PowerModel> effectivePowers = combat.EffectivePowers();
+        for (int powerIndex = 0; powerIndex < effectivePowers.Count; powerIndex++)
         {
+            PowerModel power = effectivePowers[powerIndex];
             if (power.Amount <= 0)
                 continue;
 

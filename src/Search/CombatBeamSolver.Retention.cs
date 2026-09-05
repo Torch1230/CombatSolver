@@ -90,16 +90,20 @@ internal sealed partial class CombatBeamSolver
         SearchMeasurement measurement = _run.Performance.Begin();
         try
         {
-            List<SearchNode> pool = nodes.ToList();
+            // Prune 只读取 pool，从不改动它，调用方传进来的若已经是 List 就直接沿用，
+            // 省掉一次整张候选表的复制。
+            List<SearchNode> pool = nodes as List<SearchNode> ?? nodes.ToList();
             List<SearchNode> global = Retention.RankBest(
                 pool,
                 _profile.BeamWidth,
                 preserveDefensiveRoute: true);
             List<SearchNode> selected = [.. global];
             HashSet<SearchNode> selectedSet = new(global, ReferenceEqualityComparer.Instance);
-            Dictionary<SearchNode, int> globalRetentionRanks = new(ReferenceEqualityComparer.Instance);
-            foreach (SearchNode candidate in global)
-                globalRetentionRanks.Add(candidate, candidate.RetentionRank);
+            // RankBest 的返回表按引用去重，保存/还原名次只需要一条与它同序的并行数组，
+            // 还原顺序与原来按插入序枚举字典完全一致。
+            int[] globalRetentionRanks = new int[global.Count];
+            for (int index = 0; index < global.Count; index++)
+                globalRetentionRanks[index] = global[index].RetentionRank;
             Dictionary<SearchNode, int> ancestorRetentionRanks = new(ReferenceEqualityComparer.Instance);
             foreach (SearchNode candidate in pool)
             {
@@ -118,8 +122,8 @@ internal sealed partial class CombatBeamSolver
                 candidate.LongTermResourceRetentionRank = candidate.RetentionRank;
             foreach ((SearchNode ancestor, int retentionRank) in ancestorRetentionRanks)
                 ancestor.RetentionRank = retentionRank;
-            foreach ((SearchNode candidate, int retentionRank) in globalRetentionRanks)
-                candidate.RetentionRank = retentionRank;
+            for (int index = 0; index < global.Count; index++)
+                global[index].RetentionRank = globalRetentionRanks[index];
             foreach (SearchNode candidate in longTermResource
                          .OrderBy(node => node.RetentionRank)
                          .ThenByDescending(node => node.Score))
@@ -163,7 +167,7 @@ internal sealed partial class CombatBeamSolver
                 pool.Count,
                 checked(selected.Count + Math.Max(12, _profile.BeamWidth / 3)));
             for (int round = 0;
-                 selected.Count < expandedLimit && openingChannels.Any(channel => round < channel.Count);
+                 selected.Count < expandedLimit && HasChannelAtRound(openingChannels, round);
                  round++)
             {
                 foreach (IReadOnlyList<SearchNode> channel in openingChannels)
@@ -182,6 +186,17 @@ internal sealed partial class CombatBeamSolver
         {
             _run.Performance.End(SearchMetricPhase.Prune, measurement);
         }
+    }
+
+    // 循环条件里的 Any(lambda) 捕获 round，每轮都要新建闭包与委托。
+    private static bool HasChannelAtRound(List<List<SearchNode>> channels, int round)
+    {
+        foreach (List<SearchNode> channel in channels)
+        {
+            if (round < channel.Count)
+                return true;
+        }
+        return false;
     }
 
     private List<SearchNode> ApplyPrimaryIncumbentBound(List<SearchNode> retained)

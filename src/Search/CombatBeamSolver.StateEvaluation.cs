@@ -31,6 +31,35 @@ namespace CombatSolver;
 
 internal sealed partial class CombatBeamSolver
 {
+    // 每个节点的快照都要一份牌组大小的临时牌表。这张表只在 Snapshot 内部被读、排序和洗牌，
+    // SimulationSnapshot 只收下它的 Count，没有任何出口持有它，所以可以按 solver 实例复用。
+    // 每个 CombatBeamSolver 实例只被一条线程使用（协调者跑主线程，每条 lane 有自己的 worker
+    // 和专属线程），取用时又先把字段摘空，万一出现嵌套调用内层会自己新建，不会共享同一块。
+    private List<PredictedCard>? _liveCardBuffer;
+
+    private List<PredictedCard> RentLiveCardBuffer()
+    {
+        List<PredictedCard>? buffer = _liveCardBuffer;
+        if (buffer is null)
+            return [];
+        _liveCardBuffer = null;
+        buffer.Clear();
+        return buffer;
+    }
+
+    private static bool HasUncompensatedDeathGap(IReadOnlyList<PredictionGap> gaps)
+    {
+        for (int index = 0; index < gaps.Count; index++)
+        {
+            if (!gaps[index].Compensated
+                && gaps[index].Method.Contains("Death", StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private SimulationSnapshot Snapshot(
         CombatPredictionSimulator simulator,
         int turn,
@@ -88,8 +117,7 @@ internal sealed partial class CombatBeamSolver
         CoverageSummary coverage = GetCoverageSummary(simulator);
         IReadOnlyList<PredictionGap> predictionGaps = coverage.Gaps;
         bool risk = coverage.HasUncompensatedRisk;
-        bool uncertainVictory = won && predictionGaps.Any(gap =>
-            !gap.Compensated && gap.Method.Contains("Death", StringComparison.Ordinal));
+        bool uncertainVictory = won && HasUncompensatedDeathGap(predictionGaps);
         if (uncertainVictory)
             boundary = SearchBoundaryReason.UnsupportedEffect;
 
@@ -109,13 +137,13 @@ internal sealed partial class CombatBeamSolver
         // Projected shuffle needs these piles in this exact pre-sort order. The remaining
         // snapshot metrics are order-independent, so they can reuse the shuffled list instead
         // of materializing a second deck-sized backing array.
-        List<PredictedCard> liveCards = [
-            .. playerState.DiscardPile.Cards,
-            .. playerState.DrawPile.Cards,
-            .. playerState.Hand.Cards,
-        ];
+        List<PredictedCard> liveCards = RentLiveCardBuffer();
+        liveCards.AddRange(playerState.DiscardPile.Cards);
+        liveCards.AddRange(playerState.DrawPile.Cards);
+        liveCards.AddRange(playerState.Hand.Cards);
         (StateFingerprint projectedShuffleOrderKey, int projectedShuffleOrderValue) =
             BuildProjectedShuffleOrder(simulator, liveCards);
+        int liveCardCount = liveCards.Count;
         _run.Performance.End(
             SearchMetricPhase.ProjectedShuffle,
             projectedShuffleMeasurement);
@@ -273,20 +301,26 @@ internal sealed partial class CombatBeamSolver
             : simulator.State.GetCreature(currentOsty).CurrentHp;
         int ostyMaxHp = combat.GetOstyMaxHp(simulator, _player);
         persistentBuffValue += liveCards.Count(card => card.Preview is Soul);
-        int delayedDamageValue = combat.KnownEnemies
-            .Where(enemy => combat.ContainsCreature(enemy) && simulator.State.GetCreature(enemy).IsAlive)
-            .Sum(enemy =>
-            {
-                int poison = Math.Max(0, combat.GetAmount<PoisonPower>(enemy));
-                int demise = Math.Max(0, combat.GetAmount<DemisePower>(enemy));
-                int doom = Math.Max(0, combat.GetAmount<DoomPower>(enemy));
-                int currentHp = Math.Max(0, simulator.State.GetCreature(enemy).CurrentHp);
-                int cappedDoom = Math.Min(currentHp, doom);
-                int doomProgress = currentHp <= 0
-                    ? 0
-                    : (int)Math.Min(currentHp, (long)cappedDoom * cappedDoom / currentHp);
-                return poison + demise + doomProgress;
-            });
+        // Where + Sum 两个闭包加一个装箱的 ForkableList 枚举器，换成按下标累加：
+        // 筛选条件、累加顺序与每项的整数运算完全不变。
+        IReadOnlyList<Creature> knownEnemies = combat.KnownEnemies;
+        int delayedDamageValue = 0;
+        for (int enemyIndex = 0; enemyIndex < knownEnemies.Count; enemyIndex++)
+        {
+            Creature enemy = knownEnemies[enemyIndex];
+            if (!combat.ContainsCreature(enemy) || !simulator.State.GetCreature(enemy).IsAlive)
+                continue;
+            int poison = Math.Max(0, combat.GetAmount<PoisonPower>(enemy));
+            int demise = Math.Max(0, combat.GetAmount<DemisePower>(enemy));
+            int doom = Math.Max(0, combat.GetAmount<DoomPower>(enemy));
+            int currentHp = Math.Max(0, simulator.State.GetCreature(enemy).CurrentHp);
+            int cappedDoom = Math.Min(currentHp, doom);
+            int doomProgress = currentHp <= 0
+                ? 0
+                : (int)Math.Min(currentHp, (long)cappedDoom * cappedDoom / currentHp);
+            // Enumerable.Sum 对 int 是 checked 累加，这里照搬同样的溢出语义。
+            delayedDamageValue = checked(delayedDamageValue + poison + demise + doomProgress);
+        }
         int reactiveDamageValue = Math.Max(
             0,
             combat.GetAmount<SleightOfFleshPower>(_player.Creature));
@@ -302,8 +336,9 @@ internal sealed partial class CombatBeamSolver
         uint? mostVulnerableTargetCombatId = null;
         int mostVulnerableTurns = 0;
         StateFingerprintBuilder enemyControlDistribution = new();
-        foreach (Creature enemy in combat.KnownEnemies)
+        for (int enemyIndex = 0; enemyIndex < knownEnemies.Count; enemyIndex++)
         {
+            Creature enemy = knownEnemies[enemyIndex];
             if (!combat.ContainsCreature(enemy) || !simulator.State.GetCreature(enemy).IsAlive)
                 continue;
             int strengthSuppression = -combat.GetAmount<StrengthPower>(enemy);
@@ -359,6 +394,10 @@ internal sealed partial class CombatBeamSolver
             aliveEnemyMask,
             potionInventoryKey,
             boundary);
+        // 到这里 liveCards 的最后一个读者已经走完，快照只收 Count。归还缓冲；若上面任何一步
+        // 抛出，缓冲只是被丢弃，下一次 Snapshot 重新分配一块，正确性不受影响。
+        liveCards.Clear();
+        _liveCardBuffer = liveCards;
         return new SimulationSnapshot(
             score,
             key,
@@ -409,7 +448,7 @@ internal sealed partial class CombatBeamSolver
             enemyControlDistributionKey,
             sandpitRemaining,
             liveDeckClutter,
-            liveCards.Count,
+            liveCardCount,
             outstandingStolenResource,
             offensiveProgressValue,
             playerState.Energy,
@@ -820,8 +859,10 @@ internal sealed partial class CombatBeamSolver
         int bestThreat = 0;
         int totalThreat = 0;
         int incomingHitCount = 0;
-        foreach (Creature enemy in combat.KnownEnemies)
+        IReadOnlyList<Creature> knownEnemies = combat.KnownEnemies;
+        for (int enemyIndex = 0; enemyIndex < knownEnemies.Count; enemyIndex++)
         {
+            Creature enemy = knownEnemies[enemyIndex];
             SimCreatureState enemyState = simulator.State.GetCreature(enemy);
             if (!combat.ContainsCreature(enemy)
                 || !enemyState.IsAlive
@@ -835,16 +876,21 @@ internal sealed partial class CombatBeamSolver
             int currentThreat = 0;
             if (!combat.WillSkipNextMove(enemy))
             {
-                foreach (ForecastMove move in moves)
+                for (int moveIndex = 0; moveIndex < moves.Count; moveIndex++)
                 {
+                    ForecastMove move = moves[moveIndex];
                     if (!ReferenceEquals(move.Owner, enemy))
                         continue;
-                    foreach (ForecastAttackHit hit in move.AttackHits)
+                    IReadOnlyList<ForecastAttackHit> attackHits = move.AttackHits;
+                    for (int hitIndex = 0; hitIndex < attackHits.Count; hitIndex++)
                     {
                         incomingHitCount++;
                         currentThreat += Math.Max(
                             0,
-                            combat.AdjustMonsterMoveDamage(enemy, move.Move.Id, hit.BaseDamage));
+                            combat.AdjustMonsterMoveDamage(
+                                enemy,
+                                move.Move.Id,
+                                attackHits[hitIndex].BaseDamage));
                     }
                 }
             }
@@ -904,8 +950,9 @@ internal sealed partial class CombatBeamSolver
             simulatedCombat,
             player.MaxHp);
         IReadOnlyList<ForecastMove> moves = simulatedCombat.CurrentMonsterMoves();
-        foreach (ForecastMove move in moves)
+        for (int moveIndex = 0; moveIndex < moves.Count; moveIndex++)
         {
+            ForecastMove move = moves[moveIndex];
             if (!simulator.State.GetCreature(move.Owner).IsAlive)
                 continue;
             if (simulatedCombat.WillSkipNextMove(move.Owner))
@@ -929,9 +976,13 @@ internal sealed partial class CombatBeamSolver
                     ref deathPrevention);
                 continue;
             }
-            foreach (ForecastAttackHit hit in move.AttackHits)
+            IReadOnlyList<ForecastAttackHit> attackHits = move.AttackHits;
+            for (int hitIndex = 0; hitIndex < attackHits.Count; hitIndex++)
             {
-                int baseDamage = simulatedCombat.AdjustMonsterMoveDamage(move.Owner, move.Move.Id, hit.BaseDamage);
+                int baseDamage = simulatedCombat.AdjustMonsterMoveDamage(
+                    move.Owner,
+                    move.Move.Id,
+                    attackHits[hitIndex].BaseDamage);
                 ProjectThreatHit(
                     simulator,
                     simulatedCombat,
@@ -1087,8 +1138,10 @@ internal sealed partial class CombatBeamSolver
             key.Add(0);
             key.Add(false);
         }
-        foreach (Creature enemy in simulatedCombat.KnownEnemies)
+        IReadOnlyList<Creature> knownEnemies = simulatedCombat.KnownEnemies;
+        for (int enemyIndex = 0; enemyIndex < knownEnemies.Count; enemyIndex++)
         {
+            Creature enemy = knownEnemies[enemyIndex];
             SimCreatureState enemyState = simulator.State.GetCreature(enemy);
             key.Add(enemy.Monster?.Id.Entry);
             key.Add(enemy.CombatId ?? uint.MaxValue);

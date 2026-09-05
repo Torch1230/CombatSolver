@@ -71,6 +71,15 @@ internal sealed partial class CombatPredictionSimulator
     }
 
     /// <summary>
+    /// Reusable mirror context for <see cref="Mirrors.HookMirrors.ModifyEnergyCostInCombat"/>.
+    /// </summary>
+    /// <remarks>
+    /// 该 context 在调用返回后没有任何持有者，可以复用；它的 <c>Simulator</c> 是 required init，
+    /// 所以复用范围绑定在单个模拟器上。取用方负责先摘空这个槽位以防重入。
+    /// </remarks>
+    internal Mirrors.Hooks.Card.ModifyEnergyCostInCombatMirrorContext? EnergyCostMirrorScratch;
+
+    /// <summary>
     /// Mirrors <see cref="CombatTurnState.IsInProgress"/>.
     /// </summary>
     public bool IsInProgress { get; private set; } = true;
@@ -148,7 +157,8 @@ internal sealed partial class CombatPredictionSimulator
 
     internal void AssertForkable()
     {
-        if (_trace.Current is not null)
+        // 只是判断有没有活动作用域，不需要把帧物化出来。
+        if (_trace.HasCurrentFrame)
             throw new InvalidOperationException("Combat prediction can only be forked between completed actions.");
         if (_damageSource is not null)
             throw new InvalidOperationException("Combat prediction cannot be forked while a damage source is active.");

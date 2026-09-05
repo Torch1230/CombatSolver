@@ -164,7 +164,7 @@ internal sealed partial class CombatPredictionSimulator
         CardPilePosition position = CardPilePosition.Bottom)
         where TCard : CardModel
     {
-        List<PredictedCard> cards = [];
+        List<PredictedCard> cards = new(count);
         for (var i = 0; i < count; i++)
         {
             cards.Add(PredictedCard.Create(CanonicalModels.Card<TCard>(), player));
@@ -215,12 +215,13 @@ internal sealed partial class CombatPredictionSimulator
             throw new InvalidOperationException("Generated combat cards can only be added to combat piles.");
         }
 
-        if (cards.Any(card => card.GetPile(State) is not null))
+        for (int index = 0; index < cards.Count; index++)
         {
-            throw new InvalidOperationException("Generated combat cards cannot already be in a pile.");
+            if (cards[index].GetPile(State) is not null)
+                throw new InvalidOperationException("Generated combat cards cannot already be in a pile.");
         }
 
-        List<SimCardPileAddResult> results = [];
+        List<SimCardPileAddResult> results = new(cards.Count);
 
         foreach (var card in cards)
         {
@@ -330,7 +331,7 @@ internal sealed partial class CombatPredictionSimulator
             ?? throw new InvalidOperationException("Cannot add cards with no owner to a pile.");
         var playerCombatState = State.GetPlayerCombatState(owner);
 
-        List<SimCardPileAddResult> results = [];
+        List<SimCardPileAddResult> results = new(cards.Count);
 
         foreach (var card in cards)
         {

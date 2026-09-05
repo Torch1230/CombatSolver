@@ -59,9 +59,14 @@ internal sealed class ForkableList<T> : IReadOnlyList<T>
 
     public bool Remove(T value)
     {
-        if (!_storage.Values.Contains(value))
-            return false;
-        EnsureWritable();
+        // 未命中的 Remove 不得触发写时复制，所以只有共享存储才需要先探测一次。
+        // 独占存储直接删，省掉 Contains + Remove 的双次线性查找。
+        if (_storage.Shared)
+        {
+            if (!_storage.Values.Contains(value))
+                return false;
+            EnsureWritable();
+        }
         return _storage.Values.Remove(value);
     }
 
@@ -145,9 +150,13 @@ internal sealed class ForkableDictionary<TKey, TValue> : IReadOnlyDictionary<TKe
 
     public bool Remove(TKey key)
     {
-        if (!_storage.Values.ContainsKey(key))
-            return false;
-        EnsureWritable();
+        // 未命中的 Remove 不得触发写时复制，所以只有共享存储才需要先探测一次。
+        if (_storage.Shared)
+        {
+            if (!_storage.Values.ContainsKey(key))
+                return false;
+            EnsureWritable();
+        }
         return _storage.Values.Remove(key);
     }
 
@@ -229,9 +238,14 @@ internal sealed class ForkableSet<T> : ISet<T>, IReadOnlySet<T>
 
     public bool Add(T value)
     {
-        if (_storage.Values.Contains(value))
-            return false;
-        EnsureWritable();
+        // 重复的 Add 不得触发写时复制，所以只有共享存储才需要先探测一次。
+        // 独占存储直接加，省掉 Contains + Add 的双次哈希查找。
+        if (_storage.Shared)
+        {
+            if (_storage.Values.Contains(value))
+                return false;
+            EnsureWritable();
+        }
         return _storage.Values.Add(value);
     }
 
@@ -239,9 +253,13 @@ internal sealed class ForkableSet<T> : ISet<T>, IReadOnlySet<T>
 
     public bool Remove(T value)
     {
-        if (!_storage.Values.Contains(value))
-            return false;
-        EnsureWritable();
+        // 未命中的 Remove 不得触发写时复制，所以只有共享存储才需要先探测一次。
+        if (_storage.Shared)
+        {
+            if (!_storage.Values.Contains(value))
+                return false;
+            EnsureWritable();
+        }
         return _storage.Values.Remove(value);
     }
 

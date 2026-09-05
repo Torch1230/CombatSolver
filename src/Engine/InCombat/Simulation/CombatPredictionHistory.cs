@@ -62,7 +62,14 @@ internal sealed class CombatPredictionHistory(PredictionTrace trace)
     }
 
     private HistorySegment? _prefix;
+    // 前缀段是从叶到根的链表，每次枚举都要先把它翻过来。段链只在 SealTail 时变长，
+    // 所以把翻好的顺序缓存下来；SealTail 换新数组而不是就地改，正在跑的迭代器仍看到
+    // 它启动时抓到的那一份，与原来"枚举开始时建一个 Stack"的可见性完全一致。
+    private HistorySegment[]? _orderedSegments;
     private List<CombatPredictionHistoryEntry>? _tail;
+    // 上一段封存时的条目数。同一条搜索里相邻两段长度接近，用它给可变尾表预留容量，
+    // 省掉从 0 开始的多轮扩容。容量只影响分配，不影响任何内容或顺序。
+    private int _tailCapacityHint;
     private Dictionary<CombatPredictionHistoryEntry, CombatPredictionHistoryEntry>? _tailCompletions;
     private int _pendingDeferredEntries;
     private ulong _riskSignatureFirst;
@@ -89,10 +96,12 @@ internal sealed class CombatPredictionHistory(PredictionTrace trace)
         ulong riskSignatureSecond,
         int riskEntryCount,
         int cardDrawnEntryCount,
-        int orbChanneledEntryCount)
+        int orbChanneledEntryCount,
+        int tailCapacityHint)
         : this(trace)
     {
         _prefix = prefix;
+        _tailCapacityHint = tailCapacityHint;
         _riskSignatureFirst = riskSignatureFirst;
         _riskSignatureSecond = riskSignatureSecond;
         _riskEntryCount = riskEntryCount;
@@ -369,7 +378,7 @@ internal sealed class CombatPredictionHistory(PredictionTrace trace)
     {
         entry.Index = EntryCount;
         entry.Trace = trace.Current;
-        (_tail ??= []).Add(entry);
+        (_tail ??= new List<CombatPredictionHistoryEntry>(_tailCapacityHint)).Add(entry);
         if (entry is CombatPredictionCardDrawnEntry)
             _cardDrawnEntryCount++;
         else if (entry is CombatPredictionOrbChanneledEntry)
@@ -422,7 +431,8 @@ internal sealed class CombatPredictionHistory(PredictionTrace trace)
             _riskSignatureSecond,
             _riskEntryCount,
             _cardDrawnEntryCount,
-            _orbChanneledEntryCount);
+            _orbChanneledEntryCount,
+            _tailCapacityHint);
     }
 
     internal void AssertForkable()
@@ -435,13 +445,10 @@ internal sealed class CombatPredictionHistory(PredictionTrace trace)
     {
         if (_prefix is not null)
         {
-            Stack<HistorySegment> segments = new();
-            for (HistorySegment? segment = _prefix; segment is not null; segment = segment.Parent)
-                segments.Push(segment);
-            while (segments.Count > 0)
+            HistorySegment[] ordered = GetOrderedSegments();
+            for (int segmentIndex = 0; segmentIndex < ordered.Length; segmentIndex++)
             {
-                HistorySegment segment = segments.Pop();
-                foreach (CombatPredictionHistoryEntry entry in segment.Entries)
+                foreach (CombatPredictionHistoryEntry entry in ordered[segmentIndex].Entries)
                     yield return entry;
             }
         }
@@ -453,6 +460,23 @@ internal sealed class CombatPredictionHistory(PredictionTrace trace)
     }
 
     System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+
+    // 原来每次枚举都新建一个 Stack（对象 + 逐轮扩容的数组）来把段链翻成从根到叶。
+    // 段链只在 SealTail 变长，翻好的顺序缓存起来即可，元素与顺序完全一致。
+    private HistorySegment[] GetOrderedSegments()
+    {
+        if (_orderedSegments is { } cached)
+            return cached;
+        int count = 0;
+        for (HistorySegment? segment = _prefix; segment is not null; segment = segment.Parent)
+            count++;
+        HistorySegment[] ordered = new HistorySegment[count];
+        int index = count;
+        for (HistorySegment? segment = _prefix; segment is not null; segment = segment.Parent)
+            ordered[--index] = segment;
+        _orderedSegments = ordered;
+        return ordered;
+    }
 
     private bool TryGetCompletion(
         CombatPredictionHistoryEntry originalEntry,
@@ -474,6 +498,8 @@ internal sealed class CombatPredictionHistory(PredictionTrace trace)
             _prefix,
             entries,
             _tailCompletions);
+        _orderedSegments = null;
+        _tailCapacityHint = entries.Length;
         _tail = null;
         _tailCompletions = null;
     }

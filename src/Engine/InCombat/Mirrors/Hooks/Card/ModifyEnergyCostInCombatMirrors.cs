@@ -131,9 +131,12 @@ internal static class ModifyEnergyCostInCombatMirrors
     }
 }
 
+// 这个 context 在调用返回后没有任何持有者：本文件的每个 handler 只读它的属性（状态仓工厂
+// 都是 static lambda，不捕获它），MethodMirrorRegistry 只是转交给 handler，回退路径交给游戏的
+// 只是 CardModel 与 decimal。因此它可以按模拟器复用一份，Card/Cost 每次取用时重置。
 internal sealed class ModifyEnergyCostInCombatMirrorContext : CombatMirrorContext
 {
-    public required PredictedCard Card { get; init; }
+    public required PredictedCard Card { get; set; }
 
     public required decimal Cost { get; set; }
 }

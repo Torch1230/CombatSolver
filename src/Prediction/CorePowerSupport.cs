@@ -561,9 +561,12 @@ internal static class CorePowerSupport
         IReadOnlyList<Creature> enemies,
         ISet<uint> processedDeaths)
     {
+        // enemies / PlayerCreatures / EffectivePowers 都是只读列表，接口 foreach 会为每次调用
+        // 装箱一个枚举器。按下标推进，遍历顺序与判定条件不变。
         List<Creature>? newlyDead = null;
-        foreach (Creature enemy in enemies)
+        for (int enemyIndex = 0; enemyIndex < enemies.Count; enemyIndex++)
         {
+            Creature enemy = enemies[enemyIndex];
             if (enemy.CombatId is not uint combatId
                 || processedDeaths.Contains(combatId)
                 || simulator.State.GetCreature(enemy).IsAlive)
@@ -581,8 +584,10 @@ internal static class CorePowerSupport
                 if (dead.CombatId is uint combatId)
                     processedDeaths.Add(combatId);
                 DeathPowerSupport.Trigger(simulator, combat, dead);
-                foreach (Creature player in combat.PlayerCreatures)
+                IReadOnlyList<Creature> playerCreatures = combat.PlayerCreatures;
+                for (int playerIndex = 0; playerIndex < playerCreatures.Count; playerIndex++)
                 {
+                    Creature player = playerCreatures[playerIndex];
                     ConstrictPower? constrict = combat.GetPower<ConstrictPower>(player);
                     if (constrict?.Applier == dead)
                         combat.SetAmount<ConstrictPower>(player, 0);
@@ -593,12 +598,22 @@ internal static class CorePowerSupport
                     if (shrink?.Applier == dead)
                         combat.SetAmount<ShrinkPower>(player, 0);
                 }
-                foreach (MagicBombPower bomb in combat.EffectivePowers()
-                             .OfType<MagicBombPower>()
-                             .Where(power => ReferenceEquals(power.Applier, dead))
-                             .ToArray())
+                // SetPowerAmount 会让 EffectivePowers 失效，所以命中项仍必须先物化；
+                // 但绝大多数结算根本没有 MagicBomb，改成只在命中时才建表，顺序与原来一致。
+                List<MagicBombPower>? magicBombs = null;
+                IReadOnlyList<PowerModel> effectivePowers = combat.EffectivePowers();
+                for (int powerIndex = 0; powerIndex < effectivePowers.Count; powerIndex++)
                 {
-                    combat.SetPowerAmount(bomb, 0);
+                    if (effectivePowers[powerIndex] is MagicBombPower bomb
+                        && ReferenceEquals(bomb.Applier, dead))
+                    {
+                        (magicBombs ??= []).Add(bomb);
+                    }
+                }
+                if (magicBombs != null)
+                {
+                    foreach (MagicBombPower bomb in magicBombs)
+                        combat.SetPowerAmount(bomb, 0);
                 }
             }
         }

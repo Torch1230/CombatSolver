@@ -392,12 +392,27 @@ internal static class HookMirrors
             return originalCost;
         }
 
-        var context = new ModifyEnergyCostInCombatMirrorContext
+        // 费用查询是最热的 hook 之一（每次可玩性判定都要为手里每张牌跑一遍）。这个 context
+        // 调用返回后无人持有，按模拟器复用一份即可；绑在模拟器上是因为 Simulator 是 required
+        // init，复用范围不能跨模拟器。取用时先摘空槽位，万一某个游戏侧 hook 递归回到这里，
+        // 内层会自建一份，两层互不干扰。
+        ModifyEnergyCostInCombatMirrorContext context;
+        if (simulator.EnergyCostMirrorScratch is { } scratch)
         {
-            Simulator = simulator,
-            Card = card,
-            Cost = originalCost
-        };
+            simulator.EnergyCostMirrorScratch = null;
+            scratch.Card = card;
+            scratch.Cost = originalCost;
+            context = scratch;
+        }
+        else
+        {
+            context = new ModifyEnergyCostInCombatMirrorContext
+            {
+                Simulator = simulator,
+                Card = card,
+                Cost = originalCost
+            };
+        }
 
         foreach (var listener in IterateCombatHookListeners(simulator))
         {
@@ -416,7 +431,9 @@ internal static class HookMirrors
             context.Cost = 0m;
         }
 
-        return context.Cost;
+        decimal cost = context.Cost;
+        simulator.EnergyCostMirrorScratch = context;
+        return cost;
     }
 
     /// <summary>
@@ -1120,37 +1137,71 @@ internal static class HookMirrors
     // IReadOnlyList<T>.GetEnumerator returns an interface enumerator and boxes List/array
     // enumerators. Hook dispatch is frequent enough for those tiny objects to become a visible
     // search allocation source, so iterate the immutable listener snapshot by index instead.
-    private readonly struct HookListenerEnumerable(
-        IReadOnlyList<AbstractModel> listeners)
+    private readonly struct HookListenerEnumerable
     {
-        public IReadOnlyList<AbstractModel> Listeners { get; } = listeners;
+        // 运行级监听表可能是"根牌组前缀 + 战斗监听表"的拼接视图。走视图自己的索引器意味着
+        // 每个元素两次接口调用外加一次分支；这里拆成两段各自按下标推进，元素与顺序不变。
+        private readonly IReadOnlyList<AbstractModel> _first;
+        private readonly IReadOnlyList<AbstractModel>? _second;
+
+        public HookListenerEnumerable(IReadOnlyList<AbstractModel> listeners)
+        {
+            if (listeners is ISegmentedModelList segmented)
+            {
+                _first = segmented.Prefix;
+                _second = segmented.Suffix;
+            }
+            else
+            {
+                _first = listeners;
+                _second = null;
+            }
+        }
 
         public Enumerator GetEnumerator()
-            => new(Listeners);
+            => new(_first, _second);
 
         public bool Contains(AbstractModel candidate)
         {
-            for (int index = 0; index < Listeners.Count; index++)
+            for (int index = 0; index < _first.Count; index++)
             {
-                if (EqualityComparer<AbstractModel>.Default.Equals(Listeners[index], candidate))
+                if (EqualityComparer<AbstractModel>.Default.Equals(_first[index], candidate))
+                    return true;
+            }
+            if (_second is null)
+                return false;
+            for (int index = 0; index < _second.Count; index++)
+            {
+                if (EqualityComparer<AbstractModel>.Default.Equals(_second[index], candidate))
                     return true;
             }
             return false;
         }
 
-        internal struct Enumerator(IReadOnlyList<AbstractModel> listeners)
+        internal struct Enumerator(
+            IReadOnlyList<AbstractModel> first,
+            IReadOnlyList<AbstractModel>? second)
         {
+            private IReadOnlyList<AbstractModel> _segment = first;
+            private IReadOnlyList<AbstractModel>? _pending = second;
             private int _index = -1;
 
-            public AbstractModel Current => listeners[_index];
+            public AbstractModel Current => _segment[_index];
 
             public bool MoveNext()
             {
                 int next = _index + 1;
-                if (next >= listeners.Count)
+                if (next < _segment.Count)
+                {
+                    _index = next;
+                    return true;
+                }
+                if (_pending is null)
                     return false;
-                _index = next;
-                return true;
+                _segment = _pending;
+                _pending = null;
+                _index = -1;
+                return MoveNext();
             }
         }
     }
