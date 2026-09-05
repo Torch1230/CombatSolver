@@ -194,6 +194,7 @@ internal static class CombatBugReportExporter
 
     private sealed record ForensicArchiveBundle(
         string ManifestJson,
+        string CheckpointJson,
         ForensicArchiveSession? Current,
         ForensicArchiveSession? Recent);
 
@@ -383,6 +384,7 @@ internal static class CombatBugReportExporter
         AddText(archive, "combat-solver/export-context.json", exportContextJson);
         AddText(archive, "combat-solver/environment.json", environmentJson);
         AddText(archive, "combat-solver/forensics/manifest.json", forensics.ManifestJson);
+        AddText(archive, "combat-solver/checkpoint.json", forensics.CheckpointJson);
         WriteForensicSession(archive, "current", forensics.Current);
         WriteForensicSession(archive, "recent", forensics.Recent);
         AddText(
@@ -391,6 +393,7 @@ internal static class CombatBugReportExporter
             "此问题包由 CombatSolver 设置页导出。\n" +
             "问题包只保存当前战斗；离开战斗后提交时则只保存最近结束的一场，不会重复附带更早楼层。归档保留最近关键的 6 个检查点。\n" +
             "replay-state 是可机器读取的完整中途战斗夹具，含有序牌堆、逐牌存档/动态状态、Power/遗物/怪物字段、行动历史、阵容和全部 RNG；native-state 是游戏原生 NetFullCombatState；run-state 是该检查点时刻的内存跑局存档。\n" +
+            "checkpoint.json 是唯一入口索引，直接指向本包当前可还原检查点的四个文件；导入器应按索引读取，不要扫描或猜测检查点文件名。\n" +
             "forensics/*/pre-combat 保存战前内存跑局快照。截图、整批磁盘存档和更早战斗不会进入问题包。\n" +
             "session.json、检查点和 export-context.json 会标记 controlMode：solver_only 表示全程由求解器接管，manual_plus_solver 表示本场曾手操后再交给求解器；lastSolverDeployedTurn 记录最近一次完整自动执行的回合。\n" +
             "设置页另有独立的“上传问题包”按钮。\n");
@@ -787,12 +790,42 @@ internal static class CombatBugReportExporter
             checkpointLimitPerCombat = MaximumCheckpoints,
             archivedCheckpointLimit = MaximumArchivedCheckpoints,
             checkpointArtifacts = new[] { "metadata", "replay-state", "native-state", "run-state" },
+            checkpointIndexPath = "combat-solver/checkpoint.json",
             replayStateSchemaVersion = 1,
             nativeStateFormat = "MegaCrit.Sts2.Core.Entities.Multiplayer.NetFullCombatState",
             currentCombatAvailable = current != null,
             recentCombatAvailable = recent != null,
         }, JsonOptions);
-        return new ForensicArchiveBundle(manifest, current, recent);
+        ForensicArchiveSession? selected = current ?? recent;
+        string? selectedSlot = current != null
+            ? "current"
+            : recent != null
+                ? "recent"
+                : null;
+        ForensicArchiveCheckpoint? selectedCheckpoint = selected?.Checkpoints.LastOrDefault();
+        string? checkpointName = selectedCheckpoint?.Name;
+        string checkpointJson = JsonSerializer.Serialize(new
+        {
+            schemaVersion = 1,
+            available = selectedCheckpoint != null,
+            slot = selectedSlot,
+            checkpoint = checkpointName,
+            metadataPath = selectedSlot == null || checkpointName == null
+                ? null
+                : $"combat-solver/forensics/{selectedSlot}/checkpoints/{checkpointName}",
+            replayStatePath = selectedSlot == null || checkpointName == null
+                ? null
+                : $"combat-solver/forensics/{selectedSlot}/replay-state/{checkpointName}",
+            nativeStatePath = selectedSlot == null || checkpointName == null
+                ? null
+                : $"combat-solver/forensics/{selectedSlot}/native-state/" +
+                  $"{Path.GetFileNameWithoutExtension(checkpointName)}.bin",
+            runStatePath = selectedSlot == null || checkpointName == null
+                ? null
+                : $"combat-solver/forensics/{selectedSlot}/run-state/" +
+                  $"{Path.GetFileNameWithoutExtension(checkpointName)}.save",
+        }, JsonOptions);
+        return new ForensicArchiveBundle(manifest, checkpointJson, current, recent);
     }
 
     private static ForensicArchiveSession? CaptureForensicSession(ForensicSession? session)

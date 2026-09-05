@@ -211,6 +211,7 @@ internal sealed partial class UnattendedTestRunner
             "combat-solver/export-context.json",
             "combat-solver/environment.json",
             "combat-solver/forensics/manifest.json",
+            "combat-solver/checkpoint.json",
             $"combat-solver/forensics/{forensicSlot}/session.json",
             $"combat-solver/forensics/{forensicSlot}/pre-combat/in-memory-current_run.save",
             $"combat-solver/forensics/{forensicSlot}/last-route.txt",
@@ -265,11 +266,27 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidDataException("问题包环境信息仍包含本机绝对路径。");
         }
 
-        string checkpointPrefix = $"combat-solver/forensics/{forensicSlot}/checkpoints/";
-        ZipArchiveEntry checkpoint = archive.Entries.FirstOrDefault(entry =>
-                entry.FullName.StartsWith(checkpointPrefix, StringComparison.Ordinal)
-                && entry.FullName.EndsWith(".json", StringComparison.Ordinal))
-            ?? throw new InvalidDataException($"问题包缺少 {forensicSlot} 战斗检查点。");
+        using Stream checkpointIndexStream = archive.GetEntry("combat-solver/checkpoint.json")!.Open();
+        using JsonDocument checkpointIndexDocument = JsonDocument.Parse(checkpointIndexStream);
+        JsonElement checkpointIndex = checkpointIndexDocument.RootElement;
+        if (checkpointIndex.GetProperty("schemaVersion").GetInt32() != 1
+            || !checkpointIndex.GetProperty("available").GetBoolean())
+        {
+            throw new InvalidDataException("问题包没有可还原的战斗检查点。");
+        }
+        if (!string.Equals(
+                checkpointIndex.GetProperty("slot").GetString(),
+                forensicSlot,
+                StringComparison.Ordinal))
+        {
+            throw new InvalidDataException("问题包检查点索引与战斗会话不一致。");
+        }
+        string checkpointPath = RequiredRelativeArchivePath(checkpointIndex, "metadataPath");
+        string replayStatePath = RequiredRelativeArchivePath(checkpointIndex, "replayStatePath");
+        string nativeStatePath = RequiredRelativeArchivePath(checkpointIndex, "nativeStatePath");
+        string runStatePath = RequiredRelativeArchivePath(checkpointIndex, "runStatePath");
+        ZipArchiveEntry checkpoint = archive.GetEntry(checkpointPath)
+            ?? throw new InvalidDataException("问题包检查点索引引用的 metadata 不存在。");
         AssertUtf8JsonArchiveEntry(checkpoint, $"{forensicSlot} 检查点 metadata");
         using Stream checkpointStream = checkpoint.Open();
         using JsonDocument checkpointDocument = JsonDocument.Parse(checkpointStream);
@@ -295,15 +312,12 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidDataException("问题包检查点没有玩家 RNG/odds。");
         }
 
-        string checkpointName = Path.GetFileName(checkpoint.FullName);
-        string checkpointStem = Path.GetFileNameWithoutExtension(checkpointName);
-        string rootPrefix = $"combat-solver/forensics/{forensicSlot}";
-        ZipArchiveEntry replayState = archive.GetEntry($"{rootPrefix}/replay-state/{checkpointName}")
-            ?? throw new InvalidDataException("问题包检查点缺少结构化中途战斗状态。");
-        ZipArchiveEntry nativeState = archive.GetEntry($"{rootPrefix}/native-state/{checkpointStem}.bin")
-            ?? throw new InvalidDataException("问题包检查点缺少游戏原生战斗状态包。");
-        ZipArchiveEntry runState = archive.GetEntry($"{rootPrefix}/run-state/{checkpointStem}.save")
-            ?? throw new InvalidDataException("问题包检查点缺少即时跑局存档。");
+        ZipArchiveEntry replayState = archive.GetEntry(replayStatePath)
+            ?? throw new InvalidDataException("问题包检查点索引引用的 replay-state 不存在。");
+        ZipArchiveEntry nativeState = archive.GetEntry(nativeStatePath)
+            ?? throw new InvalidDataException("问题包检查点索引引用的 native-state 不存在。");
+        ZipArchiveEntry runState = archive.GetEntry(runStatePath)
+            ?? throw new InvalidDataException("问题包检查点索引引用的 run-state 不存在。");
         if (nativeState.Length == 0)
             throw new InvalidDataException("问题包中的游戏原生战斗状态包为空。");
 
@@ -339,6 +353,7 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidDataException("问题包的即时跑局存档没有完整 Run RNG 流。");
         }
 
+        string rootPrefix = $"combat-solver/forensics/{forensicSlot}";
         using Stream sessionStream = archive.GetEntry($"{rootPrefix}/session.json")!.Open();
         using JsonDocument sessionDocument = JsonDocument.Parse(sessionStream);
         JsonElement sessionRoot = sessionDocument.RootElement;
@@ -404,6 +419,20 @@ internal sealed partial class UnattendedTestRunner
         {
             throw new InvalidDataException($"问题包的 {description} 不是有效 UTF-8。", ex);
         }
+    }
+
+    private static string RequiredRelativeArchivePath(JsonElement index, string propertyName)
+    {
+        string path = index.GetProperty(propertyName).GetString()
+            ?? throw new InvalidDataException($"问题包检查点索引缺少 {propertyName}。");
+        if (path.Length == 0
+            || Path.IsPathRooted(path)
+            || path.Split('/').Contains("..", StringComparer.Ordinal)
+            || path.Contains('\\', StringComparison.Ordinal))
+        {
+            throw new InvalidDataException($"问题包检查点索引的 {propertyName} 不是安全的相对路径。");
+        }
+        return path;
     }
 
     private bool WasExpectedCardPlayed()
