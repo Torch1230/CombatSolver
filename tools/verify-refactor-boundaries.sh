@@ -273,6 +273,8 @@ src/Runtime/SolverController.cs	SearchGcPolicy.EnterSearchScope(
 src/Search/CombatBeamSolver.Models.cs	ExpansionBatchPool = new(static snapshot => snapshot.ReleaseSimulator())
 src/Search/CombatBeamSolver.ParallelExpansion.cs	new(_run.ExpansionBatchPool)
 src/Search/CombatBeamSolver.Phases.cs	SearchWaveMemoryPolicy.Capacity(
+src/Search/CombatBeamSolver.Models.cs	SnapshotListBuffer<PredictedCard> SnapshotLiveCards = new()
+src/Search/CombatBeamSolver.StateEvaluation.cs	_run.SnapshotLiveCards.Rent()
 EOF
 
 card_play_prediction_state_path="$repository_root/src/Engine/InCombat/Mirrors/Hooks/Card/CardPlayHookPredictionStates.cs"
@@ -481,6 +483,22 @@ src/Prediction/MonsterMoveEffects.cs	MonsterValueReader.ReadInt(monster
 EOF
 
 unattended_entry_path="$repository_root/src/Testing/UnattendedTestRunner.cs"
+while IFS=$'\t' read -r relative_path text; do
+    require_fixed "$repository_root/$relative_path" "$text" 'missing headless infrastructure ownership boundary'
+done <<'EOF'
+tools/run-unattended-test.sh	source "$script_dir/headless-runtime.sh"
+tools/run-unattended-test.sh	hr_acquire "$process_pid" "$process_identity_start_time"
+tools/run-unattended-test.ps1	. (Join-Path $PSScriptRoot 'headless-runtime.ps1')
+tools/headless-runtime.sh	hr_prepare_snapshot() {
+tools/headless-runtime.sh	hr_bind() {
+tools/headless-runtime.ps1	function Set-HeadlessGameSnapshot(
+tools/headless-runtime.ps1	function Enter-HeadlessHostLease(
+tools/headless-runtime.ps1	function Set-HeadlessHostGame(
+EOF
+for helper in "$repository_root/tools/headless-runtime.sh" "$repository_root/tools/headless-runtime.ps1"; do
+    forbid_fixed "$helper" 'combat_solver_test_request.json' 'request protocol leaked into headless resource owner:'
+    forbid_fixed "$helper" 'SolverSettings' 'game settings leaked into headless resource owner:'
+done
 while IFS=$'\t' read -r relative_path text; do
     require_fixed "$repository_root/$relative_path" "$text" 'missing unattended protocol boundary'
 done <<'EOF'

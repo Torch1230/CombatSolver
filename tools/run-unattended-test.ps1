@@ -1,4 +1,4 @@
-#requires -Version 7.0
+#requires -Version 7.4
 
 param(
     [string]$ScenarioId = "SMOKE-001",
@@ -7,6 +7,16 @@ param(
     [string]$EncounterId = "FUZZY_WURM_CRAWLER_WEAK",
     [string]$Sts2GameRoot = "D:\Steam\steamapps\common\Slay the Spire 2",
     [string]$RitsuWorkshopRoot = "D:\Steam\steamapps\workshop\content\2868840\3747602295",
+    [string]$CombatSolverBuildDir = "",
+    [string]$HeadlessInstance = "",
+    [ValidateSet("exclusive", "parallel")]
+    [string]$HeadlessExecutionMode = "exclusive",
+    [ValidateRange(1, 1048576)]
+    [int]$HeadlessMemoryReservationMiB = 4096,
+    [ValidateRange(1, 1024)]
+    [int]$HeadlessCpuReservation = 2,
+    [ValidateRange(1, 3600)]
+    [int]$HeadlessQueueTimeoutSeconds = 120,
     [string]$RunSnapshotPath = "",
     [string]$ReplayStatePath = "",
     [string]$ExpectedInitialReplayStatePath = "",
@@ -231,6 +241,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot 'headless-runtime.ps1')
 
 if ($null -eq ("CombatSolverUnattendedLauncherCancellation" -as [type])) {
     Add-Type -TypeDefinition @"
@@ -271,18 +282,33 @@ function Assert-LauncherNotCancelled {
         throw [OperationCanceledException]::new("Unattended launcher cancellation was requested.")
     }
 }
-$gameRoot = [IO.Path]::GetFullPath($Sts2GameRoot)
+$sourceGameRoot = Get-HeadlessCanonicalPath $Sts2GameRoot
+$repositoryRoot = Get-HeadlessCanonicalPath (Join-Path $PSScriptRoot '..')
+if ([Environment]::ProcessorCount -eq 1 -and -not $PSBoundParameters.ContainsKey('HeadlessCpuReservation')) {
+    $HeadlessCpuReservation = 1
+}
+$runtimeContext = New-HeadlessRuntimeContext $repositoryRoot $sourceGameRoot $HeadlessInstance `
+    $HeadlessExecutionMode $HeadlessMemoryReservationMiB $HeadlessCpuReservation $HeadlessQueueTimeoutSeconds
+$gameRoot = $runtimeContext.GameRoot
 $gameExe = Join-Path $gameRoot "SlayTheSpire2.exe"
 $gameModsRoot = Join-Path $gameRoot "mods"
-$combatSolverDll = Join-Path $gameModsRoot "CombatSolver\CombatSolver.dll"
-$combatSolverManifest = Join-Path $gameModsRoot "CombatSolver\CombatSolver.json"
+$buildDirectory = if ([string]::IsNullOrWhiteSpace($CombatSolverBuildDir)) {
+    Join-Path $repositoryRoot '.godot\mono\temp\bin\Release'
+} else { Get-HeadlessCanonicalPath $CombatSolverBuildDir }
+$combatSolverDll = Join-Path $buildDirectory 'CombatSolver.dll'
+$combatSolverManifest = if ([string]::IsNullOrWhiteSpace($CombatSolverBuildDir)) {
+    Join-Path $repositoryRoot 'CombatSolver.json'
+} else { Join-Path $buildDirectory 'CombatSolver.json' }
+$memoryCleaner = if ([string]::IsNullOrWhiteSpace($CombatSolverBuildDir)) {
+    Join-Path $repositoryRoot 'tools\CombatSolver.MemoryCleaner\bin\Release\net48\CombatSolver.MemoryCleaner.exe'
+} else { Join-Path $buildDirectory 'CombatSolver.MemoryCleaner.exe' }
 $resolvedRitsuWorkshopRoot = [IO.Path]::GetFullPath($RitsuWorkshopRoot)
 $ritsuVariantDll = Join-Path $resolvedRitsuWorkshopRoot "lib\0.111.0\STS2-RitsuLib.dll"
 $ritsuManifestSource = Join-Path $resolvedRitsuWorkshopRoot "mod_manifest.json"
 $headlessDependencyDir = Join-Path $gameModsRoot ".combatsolver-headless-ritsulib"
 $headlessDependencyMarker = Join-Path $headlessDependencyDir ".combatsolver-headless-only"
 $interactiveDataDir = Join-Path ([Environment]::GetFolderPath("ApplicationData")) "SlayTheSpire2"
-$headlessRoot = Join-Path ([Environment]::GetFolderPath("LocalApplicationData")) "CombatSolver\headless-runtime"
+$headlessRoot = $runtimeContext.Root
 $headlessRoaming = Join-Path $headlessRoot "Roaming"
 $headlessLocal = Join-Path $headlessRoot "Local"
 $dataDir = Join-Path $headlessRoaming "SlayTheSpire2"
@@ -294,12 +320,13 @@ $resultPath = Join-Path $dataDir "combat_solver_test_result.json"
 $readyPath = Join-Path $dataDir "combat_solver_test_ready.json"
 $launcherLockPath = Join-Path $headlessRoot "launcher.lock"
 
-if (-not (Test-Path -LiteralPath $gameExe -PathType Leaf)) {
-    throw "Game executable not found: $gameExe"
+if (-not (Test-Path -LiteralPath (Join-Path $sourceGameRoot 'SlayTheSpire2.exe') -PathType Leaf)) {
+    throw "Source game executable not found: $sourceGameRoot"
 }
 if (-not (Test-Path -LiteralPath $combatSolverDll -PathType Leaf) -or
-    -not (Test-Path -LiteralPath $combatSolverManifest -PathType Leaf)) {
-    throw "Built CombatSolver mod not found under: $(Join-Path $gameModsRoot 'CombatSolver')"
+    -not (Test-Path -LiteralPath $combatSolverManifest -PathType Leaf) -or
+    -not (Test-Path -LiteralPath $memoryCleaner -PathType Leaf)) {
+    throw "Built CombatSolver DLL/manifest/MemoryCleaner not found: $combatSolverDll ; $combatSolverManifest ; $memoryCleaner"
 }
 if (-not (Test-Path -LiteralPath $ritsuVariantDll -PathType Leaf) -or
     -not (Test-Path -LiteralPath $ritsuManifestSource -PathType Leaf)) {
@@ -317,6 +344,9 @@ if ($KeepGameOpen.IsPresent -and $ExitOnComplete.IsPresent) {
 if ($HoldAfterInitialSearch.IsPresent -and -not $KeepGameOpen.IsPresent) {
     throw "HoldAfterInitialSearch requires KeepGameOpen so the profiler can attach to the held combat."
 }
+if ($HoldAfterInitialSearch.IsPresent -and $StopAfterInitialSolverResultAssertion.IsPresent) {
+    throw "HoldAfterInitialSearch and StopAfterInitialSolverResultAssertion cannot be used together."
+}
 if ($StopAfterExpectedReuse.IsPresent -and $ExpectedReusedTurn -le 0) {
     throw "StopAfterExpectedReuse requires ExpectedReusedTurn."
 }
@@ -326,7 +356,6 @@ if ($StopAfterExpectedPlayerPower.IsPresent -and [string]::IsNullOrWhiteSpace($E
 
 New-Item -ItemType Directory -Path $headlessRoot -Force | Out-Null
 $launcherLock = $null
-$launcherLockDeadline = (Get-Date).AddSeconds(15)
 while ($null -eq $launcherLock) {
     try {
         $launcherLock = [IO.File]::Open(
@@ -335,10 +364,7 @@ while ($null -eq $launcherLock) {
             [IO.FileAccess]::ReadWrite,
             [IO.FileShare]::None)
     } catch [IO.IOException] {
-        if ((Get-Date) -ge $launcherLockDeadline) {
-            throw "Another unattended launcher owns $launcherLockPath."
-        }
-        Start-Sleep -Milliseconds 100
+        throw "Another unattended launcher already owns this instance: $launcherLockPath."
     }
 }
 
@@ -354,6 +380,7 @@ try {
 [CombatSolverUnattendedLauncherCancellation]::Install()
 $launcherCancellationInstalled = $true
 Assert-LauncherNotCancelled
+Initialize-HeadlessRuntimeOwner $runtimeContext
 if ($HoldAfterInitialSearch.IsPresent -and (Test-Path -LiteralPath $holdReleasePath -PathType Leaf)) {
     Remove-Item -LiteralPath $holdReleasePath -Force
 }
@@ -368,60 +395,15 @@ function Assert-HeadlessDependencyPath {
 
 function Install-HeadlessDependency {
     Assert-HeadlessDependencyPath
-    if (Test-Path -LiteralPath $headlessDependencyDir -PathType Container) {
-        if (-not (Test-Path -LiteralPath $headlessDependencyMarker -PathType Leaf)) {
-            throw "Headless dependency target already exists without the ownership marker: $headlessDependencyDir"
-        }
-        Remove-HeadlessDependency
-    }
-    New-Item -ItemType Directory -Path $headlessDependencyDir -Force | Out-Null
-    # Publish ownership before either loadable file. If a supervising matrix
-    # must hard-stop this launcher, it can still identify and remove a partial
-    # projection without guessing whether the directory belongs to the user.
-    Set-Content -LiteralPath $headlessDependencyMarker -Value "CombatSolver isolated headless dependency" -Encoding UTF8
-    Copy-Item -LiteralPath $ritsuVariantDll -Destination (Join-Path $headlessDependencyDir "STS2-RitsuLib.dll")
-    Copy-Item -LiteralPath $ritsuManifestSource -Destination (Join-Path $headlessDependencyDir "STS2-RitsuLib.json")
-}
-
-function Remove-HeadlessDependency {
-    Assert-HeadlessDependencyPath
-    if (-not (Test-Path -LiteralPath $headlessDependencyDir -PathType Container)) {
-        return
-    }
-    if (-not (Test-Path -LiteralPath $headlessDependencyMarker -PathType Leaf)) {
-        throw "Refusing to remove a headless dependency without the ownership marker: $headlessDependencyDir"
-    }
-    $knownPayloads = @(
-        (Join-Path $headlessDependencyDir "STS2-RitsuLib.dll"),
-        (Join-Path $headlessDependencyDir "STS2-RitsuLib.json")
-    )
-    $knownPaths = @($headlessDependencyMarker) + $knownPayloads
-    $unexpected = @(Get-ChildItem -LiteralPath $headlessDependencyDir -Force |
-        Where-Object { $_.FullName -notin $knownPaths })
-    if ($unexpected.Count -gt 0) {
-        throw "Headless dependency target contains unexpected files: $($unexpected.Name -join ',')"
-    }
-    foreach ($payload in $knownPayloads) {
-        if (-not (Test-Path -LiteralPath $payload -PathType Leaf)) {
-            continue
-        }
-        $deadline = (Get-Date).AddSeconds(5)
-        while ($true) {
-            try {
-                Remove-Item -LiteralPath $payload -Force
-                break
-            } catch {
-                if (($_.Exception -isnot [System.IO.IOException] -and
-                        $_.Exception -isnot [System.UnauthorizedAccessException]) -or
-                    (Get-Date) -ge $deadline) {
-                    throw
-                }
-                Start-Sleep -Milliseconds 100
-            }
+    # Payload ownership moved from an individual process to its immutable
+    # private game snapshot. Reuse must not recopy mutable workshop files.
+    foreach ($path in @($headlessDependencyMarker,
+            (Join-Path $headlessDependencyDir 'STS2-RitsuLib.dll'),
+            (Join-Path $headlessDependencyDir 'STS2-RitsuLib.json'))) {
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            throw "Frozen headless dependency is incomplete: $path"
         }
     }
-    Remove-Item -LiteralPath $headlessDependencyMarker -Force
-    Remove-Item -LiteralPath $headlessDependencyDir -Force
 }
 
 function Get-ProcessStartTimeUtc([Diagnostics.Process]$TestProcess) {
@@ -529,10 +511,10 @@ function Stop-ClaimedProcessAndRemoveDependency(
     if (-not $TestProcess.HasExited) {
         throw "Claimed headless process did not exit within 10 seconds: pid=$processIdForCleanup"
     }
-    # Never remove the temporary dependency while the exact process that loaded
-    # it may still be alive. Marker removal remains PID+start-time guarded.
+    # Private dependencies remain frozen for the next request. Only the snapshot
+    # owner may replace them after this exact game has exited.
     Remove-ProcessMarkerForIdentity $processIdForCleanup $ExpectedStartTimeUtc
-    Remove-HeadlessDependency
+    Exit-HeadlessHostLease $runtimeContext $processIdForCleanup $ExpectedStartTimeUtc
 }
 
 New-Item -ItemType Directory -Path $dataDir -Force | Out-Null
@@ -541,14 +523,14 @@ if (-not (Test-Path -LiteralPath (Join-Path $dataDir "default") -PathType Contai
     foreach ($directory in @("default", "ModConfig", "mod_configs")) {
         $source = Join-Path $interactiveDataDir $directory
         if (Test-Path -LiteralPath $source -PathType Container) {
-            Copy-Item -LiteralPath $source -Destination $dataDir -Recurse -Force
+            Copy-HeadlessProfileTree $source $dataDir
         }
     }
     $sourceModConfig = Join-Path $interactiveDataDir "mods\config"
     if (Test-Path -LiteralPath $sourceModConfig -PathType Container) {
         $targetMods = Join-Path $dataDir "mods"
         New-Item -ItemType Directory -Path $targetMods -Force | Out-Null
-        Copy-Item -LiteralPath $sourceModConfig -Destination $targetMods -Recurse -Force
+        Copy-HeadlessProfileTree $sourceModConfig $targetMods
     }
 }
 $settingsPath = Join-Path $dataDir "default\1\settings.save"
@@ -914,8 +896,10 @@ if (-not [string]::IsNullOrWhiteSpace($PowerId)) {
     )
 }
 
-$combatSolverDllSha256 = (Get-FileHash -LiteralPath $combatSolverDll -Algorithm SHA256).Hash
-$combatSolverManifestSha256 = (Get-FileHash -LiteralPath $combatSolverManifest -Algorithm SHA256).Hash
+$snapshotPlan = Get-HeadlessSnapshotPlan $runtimeContext $combatSolverDll $combatSolverManifest $memoryCleaner $ritsuVariantDll $ritsuManifestSource
+$runtimeContext.ArtifactId = $snapshotPlan.id
+$combatSolverDllSha256 = @($snapshotPlan.files | Where-Object { $_.relative -eq 'mods\CombatSolver\CombatSolver.dll' })[0].sha256
+$combatSolverManifestSha256 = @($snapshotPlan.files | Where-Object { $_.relative -eq 'mods\CombatSolver\CombatSolver.json' })[0].sha256
 if (Test-Path -LiteralPath $processMarkerPath -PathType Leaf) {
     $marker = $null
     $markerProcessId = 0
@@ -942,7 +926,10 @@ if (Test-Path -LiteralPath $processMarkerPath -PathType Leaf) {
         }
         $markerAppData = [IO.Path]::GetFullPath([string]$marker.appData)
         $markerDataDir = [IO.Path]::GetFullPath([string]$marker.dataDir)
-        if (($null -ne $markerRequestedExecutable -and
+        if (-not [string]::Equals($markerExecutable, $gameExe, [StringComparison]::OrdinalIgnoreCase) -or
+            [string]$marker.instance -ne $runtimeContext.Instance -or
+            -not [string]::Equals([string]$marker.runtimeRoot, $headlessRoot, [StringComparison]::OrdinalIgnoreCase) -or
+            ($null -ne $markerRequestedExecutable -and
                 -not [string]::Equals(
                     $markerRequestedExecutable,
                     $gameExe,
@@ -1017,15 +1004,9 @@ if (Test-Path -LiteralPath $processMarkerPath -PathType Leaf) {
     if ($discardMarker) {
         Write-Warning "Discarding stale or unowned process marker ($markerProblem): $processMarkerPath"
         Remove-Item -LiteralPath $processMarkerPath -Force
-    } elseif (-not [string]::Equals(
-            [string]$marker.combatSolverDllSha256,
-            $combatSolverDllSha256,
-            [StringComparison]::OrdinalIgnoreCase) -or
-        -not [string]::Equals(
-            [string]$marker.combatSolverManifestSha256,
-            $combatSolverManifestSha256,
-            [StringComparison]::OrdinalIgnoreCase)) {
-        Write-Host "UNATTENDED_RESTART reason=mod_changed pid=$($process.Id)"
+    } elseif (-not [string]::Equals([string]$marker.artifactId,
+            $runtimeContext.ArtifactId, [StringComparison]::OrdinalIgnoreCase)) {
+        Write-Host "UNATTENDED_RESTART reason=frozen_artifact_changed pid=$($process.Id)"
         Stop-ClaimedProcessAndRemoveDependency $process $processIdentityStartTimeUtc
         $cleanupProcessOnExit = $false
         $process = $null
@@ -1049,12 +1030,12 @@ if (Test-Path -LiteralPath $processMarkerPath -PathType Leaf) {
         }
     }
 }
-$otherProcesses = @(Get-Process -Name "SlayTheSpire2" -ErrorAction SilentlyContinue |
-    Where-Object { $null -eq $process -or $_.Id -ne $process.Id })
-if ($otherProcesses.Count -gt 0) {
-    $ids = $otherProcesses.Id -join ","
-    throw "Refusing to start or reuse headless tests while an interactive SlayTheSpire2 process is running. pid=$ids"
+Enter-HeadlessHostLease $runtimeContext $process
+if ($null -eq $process) {
+    Set-HeadlessGameSnapshot $runtimeContext $snapshotPlan
 }
+$snapshotPlan = $null
+Write-Host "UNATTENDED_RUNTIME instance=$($runtimeContext.Instance) root=$headlessRoot artifact=$($runtimeContext.ArtifactId)"
 $reusedProcess = $null -ne $process
 Assert-LauncherNotCancelled
 
@@ -1078,6 +1059,7 @@ if (-not $reusedProcess) {
         Assert-LauncherNotCancelled
         $process = Start-Process `
             -FilePath $gameExe `
+            -WorkingDirectory $gameRoot `
             -ArgumentList $arguments `
             -Environment @{
                 APPDATA = $headlessRoaming
@@ -1092,12 +1074,13 @@ if (-not $reusedProcess) {
         $cleanupProcessOnExit = $true
         $processSafeHandle = $process.SafeHandle
         $processIdentityStartTimeUtc = Get-ProcessStartTimeUtc $process
-        Assert-LauncherNotCancelled
         $process.Refresh()
         if ($process.HasExited -or $process.ProcessName -ne "SlayTheSpire2") {
             throw "Started process exited or did not expose the expected game process."
         }
         $processActualExecutable = Get-ProcessExecutablePath $process
+        Set-HeadlessHostGame $runtimeContext $process
+        Assert-LauncherNotCancelled
     } catch {
         $launchError = $_
         if ($startedHere) {
@@ -1110,10 +1093,10 @@ if (-not $reusedProcess) {
             }
         } else {
             try {
-                Remove-HeadlessDependency
+                Exit-HeadlessHostLease $runtimeContext
             } catch {
                 throw "Headless game startup failed: $($launchError.Exception.Message) " +
-                    "Dependency cleanup also failed: $($_.Exception.Message)"
+                    "Host lease cleanup also failed: $($_.Exception.Message)"
             }
         }
         throw $launchError
@@ -1128,6 +1111,9 @@ if (-not $reusedProcess) {
         appData = $headlessRoaming
         dataDir = $dataDir
         logPath = $headlessLogPath
+        instance = $runtimeContext.Instance
+        runtimeRoot = $runtimeContext.Root
+        artifactId = $runtimeContext.ArtifactId
         combatSolverDllSha256 = $combatSolverDllSha256
         combatSolverManifestSha256 = $combatSolverManifestSha256
     } | ConvertTo-Json | Set-Content -LiteralPath $processMarkerTempPath -Encoding UTF8
@@ -1277,10 +1263,14 @@ throw "Unattended test exceeded the launcher timeout; its game process was stopp
             }
         }
     } finally {
-        if ($launcherCancellationInstalled) {
-            [CombatSolverUnattendedLauncherCancellation]::Uninstall()
+        try {
+            Exit-HeadlessHostLease $runtimeContext
+        } finally {
+            if ($launcherCancellationInstalled) {
+                [CombatSolverUnattendedLauncherCancellation]::Uninstall()
+            }
+            $launcherLock.Dispose()
         }
-        $launcherLock.Dispose()
     }
 }
 

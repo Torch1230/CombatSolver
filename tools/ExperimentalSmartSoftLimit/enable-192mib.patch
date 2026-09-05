@@ -1,0 +1,31 @@
+--- a/src/Runtime/SearchMemoryPressureSignal.cs
++++ b/src/Runtime/SearchMemoryPressureSignal.cs
+@@ -69,6 +69,10 @@
+         => Math.Max(0, GC.GetTotalAllocatedBytes(precise: false) - Volatile.Read(ref _allocatedBytesAtStart));
+
+     public long AllocationLimitBytes => Volatile.Read(ref _allocationLimitBytes);
++
++    // Cold-process experiment only: this counter resets at search admission or reclaim.
++    // It is not a production epoch for a NoGC region reused across requests.
++    public long ExperimentalLayerSoftLimitBytes => 192L * 1024 * 1024;
+
+     public long ProjectedMemoryLoadBytes
+     {
+--- a/src/Search/CombatSearchCoordinator.cs
++++ b/src/Search/CombatSearchCoordinator.cs
+@@ -1424,6 +1424,15 @@
+             signal.HasUnexpectedNoGcLoss(),
+             signal.AllocatedBytes,
+             signal.RemainingBytes);
++        if (!decision.ShouldReclaim && signal.IsEnabled
++            && signal.AllocatedBytes >= signal.ExperimentalLayerSoftLimitBytes)
++        {
++            decision = decision with
++            {
++                ShouldReclaim = true,
++                Reason = "experimental_layer_soft_limit"
++            };
++        }
+         policy.Diagnostics.Info(
+             $"[CombatSolver/Test] POTION_GRADIENT_MEMORY_DECISION " +
+             $"completed_layer={completedPotionCount} next_layer={nextPotionCount} " +

@@ -172,6 +172,8 @@ foreach ($check in @(
     @{ RelativePath = "src/Runtime/SolverController.cs"; Text = "SearchGcPolicy.EnterSearchScope(" },
     @{ RelativePath = "src/Search/CombatBeamSolver.Models.cs"; Text = "ExpansionBatchPool = new(static snapshot => snapshot.ReleaseSimulator())" },
     @{ RelativePath = "src/Search/CombatBeamSolver.ParallelExpansion.cs"; Text = "new(_run.ExpansionBatchPool)" },
+    @{ RelativePath = "src/Search/CombatBeamSolver.Models.cs"; Text = "SnapshotListBuffer<PredictedCard> SnapshotLiveCards = new()" },
+    @{ RelativePath = "src/Search/CombatBeamSolver.StateEvaluation.cs"; Text = "_run.SnapshotLiveCards.Rent()" },
     @{ RelativePath = "src/Search/CombatBeamSolver.Phases.cs"; Text = "SearchWaveMemoryPolicy.Capacity(" })) {
     $checkPath = Join-Path $repositoryRoot $check.RelativePath
     if (-not (Select-String -LiteralPath $checkPath -SimpleMatch $check.Text -Quiet)) {
@@ -601,6 +603,28 @@ foreach ($removedWorkerRead in $removedWorkerReads) {
 }
 
 $unattendedEntryPath = Join-Path $repositoryRoot "src\Testing\UnattendedTestRunner.cs"
+foreach ($check in @(
+    @{ Path = 'tools/run-unattended-test.sh'; Text = 'source "$script_dir/headless-runtime.sh"' },
+    @{ Path = 'tools/run-unattended-test.sh'; Text = 'hr_acquire "$process_pid" "$process_identity_start_time"' },
+    @{ Path = 'tools/run-unattended-test.ps1'; Text = ". (Join-Path `$PSScriptRoot 'headless-runtime.ps1')" },
+    @{ Path = 'tools/headless-runtime.sh'; Text = 'hr_prepare_snapshot() {' },
+    @{ Path = 'tools/headless-runtime.sh'; Text = 'hr_bind() {' },
+    @{ Path = 'tools/headless-runtime.ps1'; Text = 'function Set-HeadlessGameSnapshot(' },
+    @{ Path = 'tools/headless-runtime.ps1'; Text = 'function Enter-HeadlessHostLease(' },
+    @{ Path = 'tools/headless-runtime.ps1'; Text = 'function Set-HeadlessHostGame(' })) {
+    $path = Join-Path $repositoryRoot $check.Path
+    if (-not (Select-String -LiteralPath $path -SimpleMatch $check.Text -Quiet)) {
+        $violations.Add("${path}: missing headless infrastructure ownership boundary '$($check.Text)'")
+    }
+}
+foreach ($helper in @('tools/headless-runtime.sh', 'tools/headless-runtime.ps1')) {
+    $path = Join-Path $repositoryRoot $helper
+    foreach ($forbidden in @('combat_solver_test_request.json', 'SolverSettings')) {
+        if (Select-String -LiteralPath $path -SimpleMatch $forbidden -Quiet) {
+            $violations.Add("${path}: protocol/game settings leaked into headless resource owner '$forbidden'")
+        }
+    }
+}
 $unattendedProtocolHostPath = Join-Path $repositoryRoot "src\Testing\UnattendedTestRunner.ProtocolHost.cs"
 $unattendedWriterPath = Join-Path $repositoryRoot "src\Testing\UnattendedTestRunner.Writer.cs"
 $unattendedScenarioBuilderPath = Join-Path $repositoryRoot "src\Testing\UnattendedTestRunner.ScenarioBuilder.cs"

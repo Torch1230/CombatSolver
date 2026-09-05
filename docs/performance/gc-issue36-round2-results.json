@@ -1,0 +1,3367 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-05",
+  "baselineCommit": "7d724d6",
+  "candidate": "SnapshotListBuffer change accompanying this report; no Smart soft threshold in production",
+  "units": "Bytes are B; GB in tables is decimal; experimental thresholds are MiB",
+  "scope": "Isolated Linux headless. 12 uninstrumented samples finished before headless infrastructure migration; other host load was not controlled. No visible Steam/Windows performance claim. Smart pilots are exclusive, one each, not a stable threshold ranking.",
+  "references": {
+    "silent": {
+      "phase": "Short",
+      "boundary": "NodeLimit",
+      "selectedExpanded": 2500,
+      "selectedTransitions": 9752,
+      "selectedChoiceBranches": 3163,
+      "choiceReplayAttempts": 3163,
+      "choiceReplayBudgetExhaustions": 0,
+      "totalExpanded": 5000,
+      "totalTransitions": 19065,
+      "totalChoiceBranches": 6100,
+      "searchedTurns": 5,
+      "shufflesCrossed": 0,
+      "score": -6074032,
+      "projectedBattleHpLost": 44,
+      "potionCount": 0,
+      "onlyDeathRoutes": false,
+      "finalHp": 21,
+      "finalEnemyHp": 512,
+      "combatEndedTurn": null,
+      "nonTimingPruning": {
+        "dominance_pruned": "0",
+        "top_queue_dropped": "0",
+        "duplicate_cards_pruned": "10434",
+        "choice_replay_budget_exhaustions": "0",
+        "shuffle_branches_pruned": "0",
+        "sold_hp_branches_pruned": "0",
+        "transposition_pruned": "572",
+        "repeatable_no_progress_pruned": "0",
+        "cycle_shapes": "0",
+        "cycle_probe_continuations": "0",
+        "cycle_candidates_protected": "0",
+        "cycle_continuations_stopped": "0",
+        "cross_turn_candidates_protected": "13",
+        "primary_incumbent_pruned": "0",
+        "primary_incumbent_updates": "0"
+      },
+      "orderedActionTurnLog": [
+        "ACTION turn=1 kind=PlayCard card_id=PROWESS occurrence=0 title=非凡技艺+ target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=1 kind=PlayCard card_id=MALAISE occurrence=0 title=萎靡 target_index=0 target_combat_id=1 target=永世沙漏 choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=1 kind=PlayCard card_id=ADRENALINE occurrence=0 title=肾上腺素 target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=1 kind=PlayCard card_id=MALAISE occurrence=0 title=萎靡 target_index=0 target_combat_id=1 target=永世沙漏 choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=1 kind=EndTurn",
+        "ACTION turn=2 kind=PlayCard card_id=ACROBATICS occurrence=0 title=杂技 target_index=-1 target_combat_id=- target=- choice_effect=Discard choice_cards=ACROBATICS+0#src0/opt0 kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=ACROBATICS occurrence=0 title=杂技 target_index=-1 target_combat_id=- target=- choice_effect=Discard choice_cards=ACROBATICS+0#src0/opt0 kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=ACROBATICS occurrence=0 title=杂技 target_index=-1 target_combat_id=- target=- choice_effect=Discard choice_cards=ACROBATICS+0#src0/opt0 kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=ADRENALINE occurrence=0 title=肾上腺素 target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=ADRENALINE occurrence=0 title=肾上腺素 target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=ADRENALINE occurrence=0 title=肾上腺素 target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=ADRENALINE occurrence=0 title=肾上腺素 target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=ADRENALINE occurrence=0 title=肾上腺素 target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=ADRENALINE occurrence=0 title=肾上腺素 target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=ADRENALINE occurrence=0 title=肾上腺素 target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=ADRENALINE occurrence=0 title=肾上腺素 target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=ADRENALINE occurrence=0 title=肾上腺素 target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=ADRENALINE occurrence=0 title=肾上腺素 target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=ADRENALINE occurrence=0 title=肾上腺素 target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=ACROBATICS occurrence=0 title=杂技 target_index=-1 target_combat_id=- target=- choice_effect=Discard choice_cards=ASCENDERS_BANE+0#src0/opt0 kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=ACROBATICS occurrence=0 title=杂技 target_index=-1 target_combat_id=- target=- choice_effect=Discard choice_cards=WITHER+0#src0/opt0 kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=BACKFLIP occurrence=0 title=后空翻 target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=BACKFLIP occurrence=0 title=后空翻 target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=BACKFLIP occurrence=0 title=后空翻 target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=BACKFLIP occurrence=0 title=后空翻 target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=2 kind=EndTurn",
+        "ACTION turn=3 kind=EndTurn",
+        "ACTION turn=4 kind=PlayCard card_id=BACKFLIP occurrence=4 title=后空翻+ target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=4 kind=PlayCard card_id=BACKFLIP occurrence=4 title=后空翻+ target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=4 kind=PlayCard card_id=BACKFLIP occurrence=0 title=后空翻 target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=4 kind=EndTurn",
+        "ACTION turn=5 kind=EndTurn"
+      ]
+    },
+    "necro": {
+      "phase": "Short",
+      "boundary": "NodeLimit",
+      "selectedExpanded": 576,
+      "selectedTransitions": 5169,
+      "selectedChoiceBranches": 2981,
+      "choiceReplayAttempts": 2981,
+      "choiceReplayBudgetExhaustions": 0,
+      "totalExpanded": 1728,
+      "totalTransitions": 22541,
+      "totalChoiceBranches": 15422,
+      "searchedTurns": 3,
+      "shufflesCrossed": 0,
+      "score": -5110016,
+      "projectedBattleHpLost": 8,
+      "potionCount": 0,
+      "onlyDeathRoutes": false,
+      "finalHp": 33,
+      "finalEnemyHp": 510,
+      "combatEndedTurn": null,
+      "nonTimingPruning": {
+        "dominance_pruned": "1",
+        "top_queue_dropped": "0",
+        "duplicate_cards_pruned": "50",
+        "choice_replay_budget_exhaustions": "0",
+        "shuffle_branches_pruned": "0",
+        "sold_hp_branches_pruned": "0",
+        "transposition_pruned": "728",
+        "repeatable_no_progress_pruned": "0",
+        "cycle_shapes": "8",
+        "cycle_probe_continuations": "0",
+        "cycle_candidates_protected": "0",
+        "cycle_continuations_stopped": "0",
+        "cross_turn_candidates_protected": "6",
+        "primary_incumbent_pruned": "0",
+        "primary_incumbent_updates": "0"
+      },
+      "orderedActionTurnLog": [
+        "ACTION turn=1 kind=PlayCard card_id=DEFEND_NECROBINDER occurrence=0 title=防御 target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=1 kind=EndTurn",
+        "ACTION turn=2 kind=PlayCard card_id=SOUL occurrence=0 title=灵魂 target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=GRAVEBLAST occurrence=0 title=坟冢爆射 target_index=0 target_combat_id=1 target=永世沙漏 choice_effect=MoveToHand choice_cards=WISP+0#src0/opt0 kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=DEFEND_NECROBINDER occurrence=0 title=防御+ target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=WISP occurrence=0 title=鬼火 target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=CLEANSE occurrence=0 title=洁净 target_index=-1 target_combat_id=- target=- choice_effect=Exhaust choice_cards=STRIKE_NECROBINDER+0#src0/opt0 relic_effects=JOSS_PAPER:：抽1 kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=SPIRIT_OF_ASH occurrence=0 title=灰烬之灵 target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=FINESSE occurrence=0 title=妙计 target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=VEILPIERCER occurrence=0 title=刺破帷幕 target_index=0 target_combat_id=1 target=永世沙漏 choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=LETHALITY occurrence=0 title=致死性 target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=SCULPTING_STRIKE occurrence=0 title=雕琢打击 target_index=0 target_combat_id=1 target=永世沙漏 choice_effect=ApplyEthereal choice_cards=CALL_OF_THE_VOID+0#src0/opt0 relic_effects=ORNAMENTAL_FAN:：格挡+4 kills=-",
+        "ACTION turn=2 kind=PlayCard card_id=CALL_OF_THE_VOID occurrence=0 title=虚空之唤 target_index=-1 target_combat_id=- target=- choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=2 kind=EndTurn",
+        "ACTION turn=3 kind=PlayCard card_id=VEILPIERCER occurrence=0 title=刺破帷幕 target_index=0 target_combat_id=1 target=永世沙漏 choice_effect=- choice_cards=- kills=-",
+        "ACTION turn=3 kind=EndTurn"
+      ]
+    }
+  },
+  "samples": [
+    {
+      "label": "round2-base-silent-1",
+      "variant": "base",
+      "case": "silent",
+      "repetition": 1,
+      "runId": "eb06c0c8513d47978b3b24c3facedac0",
+      "status": "Passed",
+      "matchesReference": true,
+      "nodesPerSolver": 2500,
+      "noGcBudgetGb": 0,
+      "dop": 4,
+      "processVmHwmBytes": 1724022784,
+      "metrics": {
+        "totalElapsedMilliseconds": 10312.0151,
+        "totalWorkerAllocatedBytes": 1829184880,
+        "totalGcPauseMilliseconds": 1256.817,
+        "maxGcPauseMilliseconds": 12.252,
+        "totalGen0Collections": 243,
+        "totalGen1Collections": 114,
+        "totalGen2Collections": 9,
+        "maxParallelConcurrency": 4,
+        "gcLifecycle": {
+          "forcedCollections": 0,
+          "noGcStartAttempts": 0,
+          "noGcStarts": 0,
+          "noGcEndAttempts": 0,
+          "noGcEnds": 0,
+          "noGcRestarts": 0,
+          "noGcLosses": 0
+        },
+        "gcLifecycleAttribution": "SharedProcessWindow"
+      },
+      "phases": [
+        {
+          "fork": {
+            "milliseconds": 1501.2,
+            "allocatedBytes": 404519944
+          },
+          "action": {
+            "milliseconds": 6043.3,
+            "allocatedBytes": 241772992
+          },
+          "card_exec": {
+            "milliseconds": 2749.7,
+            "allocatedBytes": 139549080
+          },
+          "card_post": {
+            "milliseconds": 128.6,
+            "allocatedBytes": 1773000
+          },
+          "potion_exec": {
+            "milliseconds": 0.0,
+            "allocatedBytes": 0
+          },
+          "round": {
+            "milliseconds": 2770.1,
+            "allocatedBytes": 98081336
+          },
+          "round_player_end": {
+            "milliseconds": 825.5,
+            "allocatedBytes": 21947224
+          },
+          "round_end_sim": {
+            "milliseconds": 573.6,
+            "allocatedBytes": 11220240
+          },
+          "round_flush": {
+            "milliseconds": 81.1,
+            "allocatedBytes": 2819272
+          },
+          "round_player_powers": {
+            "milliseconds": 80.7,
+            "allocatedBytes": 5269088
+          },
+          "round_enemy": {
+            "milliseconds": 1316.5,
+            "allocatedBytes": 58458248
+          },
+          "round_enemy_start": {
+            "milliseconds": 85.9,
+            "allocatedBytes": 10800440
+          },
+          "round_enemy_moves": {
+            "milliseconds": 1198.1,
+            "allocatedBytes": 40708432
+          },
+          "round_enemy_powers": {
+            "milliseconds": 23.7,
+            "allocatedBytes": 5377600
+          },
+          "round_player_start": {
+            "milliseconds": 546.5,
+            "allocatedBytes": 16421288
+          },
+          "round_draw": {
+            "milliseconds": 350.6,
+            "allocatedBytes": 4251552
+          },
+          "snapshot": {
+            "milliseconds": 8611.8,
+            "allocatedBytes": 126378008
+          },
+          "threat": {
+            "milliseconds": 1948.1,
+            "allocatedBytes": 44404112
+          },
+          "fingerprint": {
+            "milliseconds": 1735.1,
+            "allocatedBytes": 39399344
+          },
+          "projected_shuffle": {
+            "milliseconds": 1108.5,
+            "allocatedBytes": 32558632
+          },
+          "pile_fingerprint": {
+            "milliseconds": 114.1,
+            "allocatedBytes": 850936
+          },
+          "pile_miss": {
+            "milliseconds": 104.7,
+            "allocatedBytes": 850048
+          },
+          "card_miss": {
+            "milliseconds": 57.6,
+            "allocatedBytes": 848440
+          },
+          "combat_fingerprint": {
+            "milliseconds": 93.5,
+            "allocatedBytes": 4022904
+          },
+          "prune": {
+            "milliseconds": 150.5,
+            "allocatedBytes": 25601168
+          },
+          "final": {
+            "milliseconds": 10.9,
+            "allocatedBytes": 659360
+          }
+        }
+      ],
+      "rawDirectory": ".local/gc-research/ab/round2-base-silent-1/silent-gc0-dop4-1",
+      "instrumented": false,
+      "parallelGamesRequested": false
+    },
+    {
+      "label": "round2-base-silent-2",
+      "variant": "base",
+      "case": "silent",
+      "repetition": 2,
+      "runId": "89f1e184bd1e4339bd94e45ec5a57d47",
+      "status": "Passed",
+      "matchesReference": true,
+      "nodesPerSolver": 2500,
+      "noGcBudgetGb": 0,
+      "dop": 4,
+      "processVmHwmBytes": 1705562112,
+      "metrics": {
+        "totalElapsedMilliseconds": 10783.5111,
+        "totalWorkerAllocatedBytes": 1830297976,
+        "totalGcPauseMilliseconds": 1270.141,
+        "maxGcPauseMilliseconds": 14.058,
+        "totalGen0Collections": 242,
+        "totalGen1Collections": 112,
+        "totalGen2Collections": 9,
+        "maxParallelConcurrency": 4,
+        "gcLifecycle": {
+          "forcedCollections": 0,
+          "noGcStartAttempts": 0,
+          "noGcStarts": 0,
+          "noGcEndAttempts": 0,
+          "noGcEnds": 0,
+          "noGcRestarts": 0,
+          "noGcLosses": 0
+        },
+        "gcLifecycleAttribution": "SharedProcessWindow"
+      },
+      "phases": [
+        {
+          "fork": {
+            "milliseconds": 1671.3,
+            "allocatedBytes": 404581592
+          },
+          "action": {
+            "milliseconds": 6306.3,
+            "allocatedBytes": 241788176
+          },
+          "card_exec": {
+            "milliseconds": 2888.3,
+            "allocatedBytes": 139518080
+          },
+          "card_post": {
+            "milliseconds": 146.9,
+            "allocatedBytes": 1773000
+          },
+          "potion_exec": {
+            "milliseconds": 0.0,
+            "allocatedBytes": 0
+          },
+          "round": {
+            "milliseconds": 2866.0,
+            "allocatedBytes": 98127544
+          },
+          "round_player_end": {
+            "milliseconds": 863.7,
+            "allocatedBytes": 21966096
+          },
+          "round_end_sim": {
+            "milliseconds": 591.9,
+            "allocatedBytes": 11238952
+          },
+          "round_flush": {
+            "milliseconds": 104.6,
+            "allocatedBytes": 2819432
+          },
+          "round_player_powers": {
+            "milliseconds": 99.9,
+            "allocatedBytes": 5269088
+          },
+          "round_enemy": {
+            "milliseconds": 1408.5,
+            "allocatedBytes": 58484992
+          },
+          "round_enemy_start": {
+            "milliseconds": 86.5,
+            "allocatedBytes": 10802696
+          },
+          "round_enemy_moves": {
+            "milliseconds": 1278.7,
+            "allocatedBytes": 40732920
+          },
+          "round_enemy_powers": {
+            "milliseconds": 30.5,
+            "allocatedBytes": 5377600
+          },
+          "round_player_start": {
+            "milliseconds": 530.8,
+            "allocatedBytes": 16421880
+          },
+          "round_draw": {
+            "milliseconds": 343.0,
+            "allocatedBytes": 4251552
+          },
+          "snapshot": {
+            "milliseconds": 9661.8,
+            "allocatedBytes": 127230288
+          },
+          "threat": {
+            "milliseconds": 2080.2,
+            "allocatedBytes": 44571960
+          },
+          "fingerprint": {
+            "milliseconds": 1975.0,
+            "allocatedBytes": 39479280
+          },
+          "projected_shuffle": {
+            "milliseconds": 1259.8,
+            "allocatedBytes": 32586024
+          },
+          "pile_fingerprint": {
+            "milliseconds": 151.4,
+            "allocatedBytes": 907656
+          },
+          "pile_miss": {
+            "milliseconds": 137.9,
+            "allocatedBytes": 906768
+          },
+          "card_miss": {
+            "milliseconds": 66.8,
+            "allocatedBytes": 905160
+          },
+          "combat_fingerprint": {
+            "milliseconds": 106.2,
+            "allocatedBytes": 4022904
+          },
+          "prune": {
+            "milliseconds": 135.6,
+            "allocatedBytes": 25624384
+          },
+          "final": {
+            "milliseconds": 10.4,
+            "allocatedBytes": 659360
+          }
+        }
+      ],
+      "rawDirectory": ".local/gc-research/ab/round2-base-silent-2/silent-gc0-dop4-1",
+      "instrumented": false,
+      "parallelGamesRequested": false
+    },
+    {
+      "label": "round2-base-silent-3",
+      "variant": "base",
+      "case": "silent",
+      "repetition": 3,
+      "runId": "3f522d8240ba4250936e675c2a9a58a9",
+      "status": "Passed",
+      "matchesReference": true,
+      "nodesPerSolver": 2500,
+      "noGcBudgetGb": 0,
+      "dop": 4,
+      "processVmHwmBytes": 1688567808,
+      "metrics": {
+        "totalElapsedMilliseconds": 10892.9008,
+        "totalWorkerAllocatedBytes": 1829576256,
+        "totalGcPauseMilliseconds": 1236.398,
+        "maxGcPauseMilliseconds": 12.405,
+        "totalGen0Collections": 243,
+        "totalGen1Collections": 115,
+        "totalGen2Collections": 10,
+        "maxParallelConcurrency": 4,
+        "gcLifecycle": {
+          "forcedCollections": 0,
+          "noGcStartAttempts": 0,
+          "noGcStarts": 0,
+          "noGcEndAttempts": 0,
+          "noGcEnds": 0,
+          "noGcRestarts": 0,
+          "noGcLosses": 0
+        },
+        "gcLifecycleAttribution": "SharedProcessWindow"
+      },
+      "phases": [
+        {
+          "fork": {
+            "milliseconds": 1466.1,
+            "allocatedBytes": 404583992
+          },
+          "action": {
+            "milliseconds": 6229.3,
+            "allocatedBytes": 241901256
+          },
+          "card_exec": {
+            "milliseconds": 2894.6,
+            "allocatedBytes": 139574656
+          },
+          "card_post": {
+            "milliseconds": 130.0,
+            "allocatedBytes": 1773000
+          },
+          "potion_exec": {
+            "milliseconds": 0.0,
+            "allocatedBytes": 0
+          },
+          "round": {
+            "milliseconds": 2809.1,
+            "allocatedBytes": 98179888
+          },
+          "round_player_end": {
+            "milliseconds": 802.6,
+            "allocatedBytes": 21957016
+          },
+          "round_end_sim": {
+            "milliseconds": 571.8,
+            "allocatedBytes": 11229880
+          },
+          "round_flush": {
+            "milliseconds": 89.4,
+            "allocatedBytes": 2819336
+          },
+          "round_player_powers": {
+            "milliseconds": 71.2,
+            "allocatedBytes": 5269176
+          },
+          "round_enemy": {
+            "milliseconds": 1402.7,
+            "allocatedBytes": 58546000
+          },
+          "round_enemy_start": {
+            "milliseconds": 60.2,
+            "allocatedBytes": 10803952
+          },
+          "round_enemy_moves": {
+            "milliseconds": 1291.1,
+            "allocatedBytes": 40792520
+          },
+          "round_enemy_powers": {
+            "milliseconds": 32.0,
+            "allocatedBytes": 5377752
+          },
+          "round_player_start": {
+            "milliseconds": 552.7,
+            "allocatedBytes": 16422296
+          },
+          "round_draw": {
+            "milliseconds": 356.9,
+            "allocatedBytes": 4251552
+          },
+          "snapshot": {
+            "milliseconds": 9567.5,
+            "allocatedBytes": 126494576
+          },
+          "threat": {
+            "milliseconds": 2078.4,
+            "allocatedBytes": 44409080
+          },
+          "fingerprint": {
+            "milliseconds": 1828.2,
+            "allocatedBytes": 39435608
+          },
+          "projected_shuffle": {
+            "milliseconds": 1198.4,
+            "allocatedBytes": 32558208
+          },
+          "pile_fingerprint": {
+            "milliseconds": 120.6,
+            "allocatedBytes": 891800
+          },
+          "pile_miss": {
+            "milliseconds": 115.5,
+            "allocatedBytes": 890912
+          },
+          "card_miss": {
+            "milliseconds": 66.5,
+            "allocatedBytes": 889304
+          },
+          "combat_fingerprint": {
+            "milliseconds": 103.0,
+            "allocatedBytes": 4022904
+          },
+          "prune": {
+            "milliseconds": 130.7,
+            "allocatedBytes": 25597120
+          },
+          "final": {
+            "milliseconds": 15.2,
+            "allocatedBytes": 659896
+          }
+        }
+      ],
+      "rawDirectory": ".local/gc-research/ab/round2-base-silent-3/silent-gc0-dop4-1",
+      "instrumented": false,
+      "parallelGamesRequested": false
+    },
+    {
+      "label": "round2-snapshot-silent-1",
+      "variant": "snapshot",
+      "case": "silent",
+      "repetition": 1,
+      "runId": "7a2999c49cc24d3fb8c0b8009458741d",
+      "status": "Passed",
+      "matchesReference": true,
+      "nodesPerSolver": 2500,
+      "noGcBudgetGb": 0,
+      "dop": 4,
+      "processVmHwmBytes": 1698140160,
+      "metrics": {
+        "totalElapsedMilliseconds": 10280.4742,
+        "totalWorkerAllocatedBytes": 1767139344,
+        "totalGcPauseMilliseconds": 1240.878,
+        "maxGcPauseMilliseconds": 11.318,
+        "totalGen0Collections": 234,
+        "totalGen1Collections": 113,
+        "totalGen2Collections": 9,
+        "maxParallelConcurrency": 4,
+        "gcLifecycle": {
+          "forcedCollections": 0,
+          "noGcStartAttempts": 0,
+          "noGcStarts": 0,
+          "noGcEndAttempts": 0,
+          "noGcEnds": 0,
+          "noGcRestarts": 0,
+          "noGcLosses": 0
+        },
+        "gcLifecycleAttribution": "SharedProcessWindow"
+      },
+      "phases": [
+        {
+          "fork": {
+            "milliseconds": 1640.9,
+            "allocatedBytes": 404581488
+          },
+          "action": {
+            "milliseconds": 6232.6,
+            "allocatedBytes": 241759264
+          },
+          "card_exec": {
+            "milliseconds": 2932.7,
+            "allocatedBytes": 139566368
+          },
+          "card_post": {
+            "milliseconds": 148.2,
+            "allocatedBytes": 1773000
+          },
+          "potion_exec": {
+            "milliseconds": 0.0,
+            "allocatedBytes": 0
+          },
+          "round": {
+            "milliseconds": 2757.2,
+            "allocatedBytes": 98050320
+          },
+          "round_player_end": {
+            "milliseconds": 804.5,
+            "allocatedBytes": 21965768
+          },
+          "round_end_sim": {
+            "milliseconds": 584.6,
+            "allocatedBytes": 11231440
+          },
+          "round_flush": {
+            "milliseconds": 91.9,
+            "allocatedBytes": 2819336
+          },
+          "round_player_powers": {
+            "milliseconds": 65.8,
+            "allocatedBytes": 5276368
+          },
+          "round_enemy": {
+            "milliseconds": 1369.9,
+            "allocatedBytes": 58408352
+          },
+          "round_enemy_start": {
+            "milliseconds": 65.4,
+            "allocatedBytes": 10801312
+          },
+          "round_enemy_moves": {
+            "milliseconds": 1270.4,
+            "allocatedBytes": 40657512
+          },
+          "round_enemy_powers": {
+            "milliseconds": 22.6,
+            "allocatedBytes": 5377752
+          },
+          "round_player_start": {
+            "milliseconds": 501.7,
+            "allocatedBytes": 16421624
+          },
+          "round_draw": {
+            "milliseconds": 318.5,
+            "allocatedBytes": 4251552
+          },
+          "snapshot": {
+            "milliseconds": 8909.2,
+            "allocatedBytes": 94799920
+          },
+          "threat": {
+            "milliseconds": 1988.0,
+            "allocatedBytes": 44419944
+          },
+          "fingerprint": {
+            "milliseconds": 1799.6,
+            "allocatedBytes": 7495216
+          },
+          "projected_shuffle": {
+            "milliseconds": 1167.6,
+            "allocatedBytes": 614824
+          },
+          "pile_fingerprint": {
+            "milliseconds": 118.2,
+            "allocatedBytes": 894792
+          },
+          "pile_miss": {
+            "milliseconds": 112.7,
+            "allocatedBytes": 893904
+          },
+          "card_miss": {
+            "milliseconds": 58.8,
+            "allocatedBytes": 892296
+          },
+          "combat_fingerprint": {
+            "milliseconds": 102.2,
+            "allocatedBytes": 4022904
+          },
+          "prune": {
+            "milliseconds": 150.2,
+            "allocatedBytes": 25662192
+          },
+          "final": {
+            "milliseconds": 10.0,
+            "allocatedBytes": 656120
+          }
+        }
+      ],
+      "rawDirectory": ".local/gc-research/ab/round2-snapshot-silent-1/silent-gc0-dop4-1",
+      "instrumented": false,
+      "parallelGamesRequested": false
+    },
+    {
+      "label": "round2-snapshot-silent-2",
+      "variant": "snapshot",
+      "case": "silent",
+      "repetition": 2,
+      "runId": "32b4d7d2290f4e759c9f0e8058c4ac17",
+      "status": "Passed",
+      "matchesReference": true,
+      "nodesPerSolver": 2500,
+      "noGcBudgetGb": 0,
+      "dop": 4,
+      "processVmHwmBytes": 1684873216,
+      "metrics": {
+        "totalElapsedMilliseconds": 10385.62,
+        "totalWorkerAllocatedBytes": 1767632560,
+        "totalGcPauseMilliseconds": 1271.579,
+        "maxGcPauseMilliseconds": 12.563,
+        "totalGen0Collections": 235,
+        "totalGen1Collections": 113,
+        "totalGen2Collections": 10,
+        "maxParallelConcurrency": 4,
+        "gcLifecycle": {
+          "forcedCollections": 0,
+          "noGcStartAttempts": 0,
+          "noGcStarts": 0,
+          "noGcEndAttempts": 0,
+          "noGcEnds": 0,
+          "noGcRestarts": 0,
+          "noGcLosses": 0
+        },
+        "gcLifecycleAttribution": "SharedProcessWindow"
+      },
+      "phases": [
+        {
+          "fork": {
+            "milliseconds": 1581.6,
+            "allocatedBytes": 404417376
+          },
+          "action": {
+            "milliseconds": 6453.8,
+            "allocatedBytes": 241832976
+          },
+          "card_exec": {
+            "milliseconds": 3013.0,
+            "allocatedBytes": 139516528
+          },
+          "card_post": {
+            "milliseconds": 138.7,
+            "allocatedBytes": 1773000
+          },
+          "potion_exec": {
+            "milliseconds": 0.0,
+            "allocatedBytes": 0
+          },
+          "round": {
+            "milliseconds": 2936.0,
+            "allocatedBytes": 98173872
+          },
+          "round_player_end": {
+            "milliseconds": 887.5,
+            "allocatedBytes": 21954128
+          },
+          "round_end_sim": {
+            "milliseconds": 658.0,
+            "allocatedBytes": 11227272
+          },
+          "round_flush": {
+            "milliseconds": 95.5,
+            "allocatedBytes": 2819056
+          },
+          "round_player_powers": {
+            "milliseconds": 64.4,
+            "allocatedBytes": 5269176
+          },
+          "round_enemy": {
+            "milliseconds": 1442.5,
+            "allocatedBytes": 58540568
+          },
+          "round_enemy_start": {
+            "milliseconds": 52.6,
+            "allocatedBytes": 10807744
+          },
+          "round_enemy_moves": {
+            "milliseconds": 1348.4,
+            "allocatedBytes": 40783296
+          },
+          "round_enemy_powers": {
+            "milliseconds": 31.9,
+            "allocatedBytes": 5377752
+          },
+          "round_player_start": {
+            "milliseconds": 535.6,
+            "allocatedBytes": 16424600
+          },
+          "round_draw": {
+            "milliseconds": 343.4,
+            "allocatedBytes": 4251552
+          },
+          "snapshot": {
+            "milliseconds": 8890.2,
+            "allocatedBytes": 94971216
+          },
+          "threat": {
+            "milliseconds": 1996.0,
+            "allocatedBytes": 44500336
+          },
+          "fingerprint": {
+            "milliseconds": 1816.4,
+            "allocatedBytes": 7522184
+          },
+          "projected_shuffle": {
+            "milliseconds": 1130.3,
+            "allocatedBytes": 633672
+          },
+          "pile_fingerprint": {
+            "milliseconds": 150.4,
+            "allocatedBytes": 902912
+          },
+          "pile_miss": {
+            "milliseconds": 136.2,
+            "allocatedBytes": 902024
+          },
+          "card_miss": {
+            "milliseconds": 73.6,
+            "allocatedBytes": 900416
+          },
+          "combat_fingerprint": {
+            "milliseconds": 111.7,
+            "allocatedBytes": 4022904
+          },
+          "prune": {
+            "milliseconds": 168.4,
+            "allocatedBytes": 25669968
+          },
+          "final": {
+            "milliseconds": 10.7,
+            "allocatedBytes": 656120
+          }
+        }
+      ],
+      "rawDirectory": ".local/gc-research/ab/round2-snapshot-silent-2/silent-gc0-dop4-1",
+      "instrumented": false,
+      "parallelGamesRequested": false
+    },
+    {
+      "label": "round2-snapshot-silent-3",
+      "variant": "snapshot",
+      "case": "silent",
+      "repetition": 3,
+      "runId": "fa72bcfe0b6f4275ba893f1667db837a",
+      "status": "Passed",
+      "matchesReference": true,
+      "nodesPerSolver": 2500,
+      "noGcBudgetGb": 0,
+      "dop": 4,
+      "processVmHwmBytes": 1707933696,
+      "metrics": {
+        "totalElapsedMilliseconds": 10690.6348,
+        "totalWorkerAllocatedBytes": 1767791192,
+        "totalGcPauseMilliseconds": 1249.938,
+        "maxGcPauseMilliseconds": 11.707,
+        "totalGen0Collections": 231,
+        "totalGen1Collections": 108,
+        "totalGen2Collections": 6,
+        "maxParallelConcurrency": 4,
+        "gcLifecycle": {
+          "forcedCollections": 0,
+          "noGcStartAttempts": 0,
+          "noGcStarts": 0,
+          "noGcEndAttempts": 0,
+          "noGcEnds": 0,
+          "noGcRestarts": 0,
+          "noGcLosses": 0
+        },
+        "gcLifecycleAttribution": "SharedProcessWindow"
+      },
+      "phases": [
+        {
+          "fork": {
+            "milliseconds": 1711.6,
+            "allocatedBytes": 404294168
+          },
+          "action": {
+            "milliseconds": 6283.1,
+            "allocatedBytes": 242156128
+          },
+          "card_exec": {
+            "milliseconds": 2838.6,
+            "allocatedBytes": 139622096
+          },
+          "card_post": {
+            "milliseconds": 129.1,
+            "allocatedBytes": 1773000
+          },
+          "potion_exec": {
+            "milliseconds": 0.0,
+            "allocatedBytes": 0
+          },
+          "round": {
+            "milliseconds": 2906.2,
+            "allocatedBytes": 98391040
+          },
+          "round_player_end": {
+            "milliseconds": 889.3,
+            "allocatedBytes": 21980008
+          },
+          "round_end_sim": {
+            "milliseconds": 633.9,
+            "allocatedBytes": 11252992
+          },
+          "round_flush": {
+            "milliseconds": 83.4,
+            "allocatedBytes": 2819216
+          },
+          "round_player_powers": {
+            "milliseconds": 76.9,
+            "allocatedBytes": 5269176
+          },
+          "round_enemy": {
+            "milliseconds": 1395.5,
+            "allocatedBytes": 58733728
+          },
+          "round_enemy_start": {
+            "milliseconds": 60.9,
+            "allocatedBytes": 10804816
+          },
+          "round_enemy_moves": {
+            "milliseconds": 1295.8,
+            "allocatedBytes": 40979384
+          },
+          "round_enemy_powers": {
+            "milliseconds": 30.2,
+            "allocatedBytes": 5377752
+          },
+          "round_player_start": {
+            "milliseconds": 554.0,
+            "allocatedBytes": 16422728
+          },
+          "round_draw": {
+            "milliseconds": 359.1,
+            "allocatedBytes": 4251552
+          },
+          "snapshot": {
+            "milliseconds": 9184.0,
+            "allocatedBytes": 94792768
+          },
+          "threat": {
+            "milliseconds": 2089.0,
+            "allocatedBytes": 44543296
+          },
+          "fingerprint": {
+            "milliseconds": 1743.0,
+            "allocatedBytes": 7476576
+          },
+          "projected_shuffle": {
+            "milliseconds": 1095.6,
+            "allocatedBytes": 636048
+          },
+          "pile_fingerprint": {
+            "milliseconds": 126.3,
+            "allocatedBytes": 854928
+          },
+          "pile_miss": {
+            "milliseconds": 120.6,
+            "allocatedBytes": 854040
+          },
+          "card_miss": {
+            "milliseconds": 67.8,
+            "allocatedBytes": 852432
+          },
+          "combat_fingerprint": {
+            "milliseconds": 99.8,
+            "allocatedBytes": 4022904
+          },
+          "prune": {
+            "milliseconds": 168.9,
+            "allocatedBytes": 25661800
+          },
+          "final": {
+            "milliseconds": 10.6,
+            "allocatedBytes": 656120
+          }
+        }
+      ],
+      "rawDirectory": ".local/gc-research/ab/round2-snapshot-silent-3/silent-gc0-dop4-1",
+      "instrumented": false,
+      "parallelGamesRequested": false
+    },
+    {
+      "label": "round2-base-necro-1",
+      "variant": "base",
+      "case": "necro",
+      "repetition": 1,
+      "runId": "d1b5773887d44d7184f3aec21ec15de4",
+      "status": "Passed",
+      "matchesReference": true,
+      "nodesPerSolver": 576,
+      "noGcBudgetGb": 4,
+      "dop": 4,
+      "processVmHwmBytes": 2816180224,
+      "metrics": {
+        "totalElapsedMilliseconds": 4766.6513,
+        "totalWorkerAllocatedBytes": 1276253784,
+        "totalGcPauseMilliseconds": 0,
+        "maxGcPauseMilliseconds": 0,
+        "totalGen0Collections": 0,
+        "totalGen1Collections": 0,
+        "totalGen2Collections": 0,
+        "maxParallelConcurrency": 4,
+        "gcLifecycle": {
+          "forcedCollections": 0,
+          "noGcStartAttempts": 1,
+          "noGcStarts": 1,
+          "noGcEndAttempts": 0,
+          "noGcEnds": 0,
+          "noGcRestarts": 0,
+          "noGcLosses": 0
+        },
+        "gcLifecycleAttribution": "ExclusiveSearchScope"
+      },
+      "phases": [
+        {
+          "fork": {
+            "milliseconds": 569.9,
+            "allocatedBytes": 68590912
+          },
+          "action": {
+            "milliseconds": 2069.4,
+            "allocatedBytes": 106355456
+          },
+          "card_exec": {
+            "milliseconds": 1350.0,
+            "allocatedBytes": 77371736
+          },
+          "card_post": {
+            "milliseconds": 63.9,
+            "allocatedBytes": 2355288
+          },
+          "potion_exec": {
+            "milliseconds": 0.0,
+            "allocatedBytes": 0
+          },
+          "round": {
+            "milliseconds": 530.0,
+            "allocatedBytes": 24491424
+          },
+          "round_player_end": {
+            "milliseconds": 144.5,
+            "allocatedBytes": 5476752
+          },
+          "round_end_sim": {
+            "milliseconds": 107.0,
+            "allocatedBytes": 3050768
+          },
+          "round_flush": {
+            "milliseconds": 10.2,
+            "allocatedBytes": 474024
+          },
+          "round_player_powers": {
+            "milliseconds": 14.4,
+            "allocatedBytes": 1264680
+          },
+          "round_enemy": {
+            "milliseconds": 242.3,
+            "allocatedBytes": 10201744
+          },
+          "round_enemy_start": {
+            "milliseconds": 20.0,
+            "allocatedBytes": 2748552
+          },
+          "round_enemy_moves": {
+            "milliseconds": 209.3,
+            "allocatedBytes": 5743720
+          },
+          "round_enemy_powers": {
+            "milliseconds": 9.2,
+            "allocatedBytes": 1341056
+          },
+          "round_player_start": {
+            "milliseconds": 133.8,
+            "allocatedBytes": 8621088
+          },
+          "round_draw": {
+            "milliseconds": 53.5,
+            "allocatedBytes": 1723688
+          },
+          "snapshot": {
+            "milliseconds": 1668.1,
+            "allocatedBytes": 47824304
+          },
+          "threat": {
+            "milliseconds": 358.9,
+            "allocatedBytes": 8000392
+          },
+          "fingerprint": {
+            "milliseconds": 387.1,
+            "allocatedBytes": 10035744
+          },
+          "projected_shuffle": {
+            "milliseconds": 129.7,
+            "allocatedBytes": 2915816
+          },
+          "pile_fingerprint": {
+            "milliseconds": 38.5,
+            "allocatedBytes": 2057608
+          },
+          "pile_miss": {
+            "milliseconds": 33.4,
+            "allocatedBytes": 2056720
+          },
+          "card_miss": {
+            "milliseconds": 26.6,
+            "allocatedBytes": 2055384
+          },
+          "combat_fingerprint": {
+            "milliseconds": 139.7,
+            "allocatedBytes": 3884208
+          },
+          "prune": {
+            "milliseconds": 82.9,
+            "allocatedBytes": 10882408
+          },
+          "final": {
+            "milliseconds": 9.7,
+            "allocatedBytes": 351392
+          }
+        }
+      ],
+      "rawDirectory": ".local/gc-research/ab/round2-base-necro-1/necro-gc4-dop4-1",
+      "instrumented": false,
+      "parallelGamesRequested": false
+    },
+    {
+      "label": "round2-base-necro-2",
+      "variant": "base",
+      "case": "necro",
+      "repetition": 2,
+      "runId": "5da1bf2eba784dd795a687f313172f9e",
+      "status": "Passed",
+      "matchesReference": true,
+      "nodesPerSolver": 576,
+      "noGcBudgetGb": 4,
+      "dop": 4,
+      "processVmHwmBytes": 2836615168,
+      "metrics": {
+        "totalElapsedMilliseconds": 4708.3901,
+        "totalWorkerAllocatedBytes": 1294667648,
+        "totalGcPauseMilliseconds": 0,
+        "maxGcPauseMilliseconds": 0,
+        "totalGen0Collections": 0,
+        "totalGen1Collections": 0,
+        "totalGen2Collections": 0,
+        "maxParallelConcurrency": 4,
+        "gcLifecycle": {
+          "forcedCollections": 0,
+          "noGcStartAttempts": 1,
+          "noGcStarts": 1,
+          "noGcEndAttempts": 0,
+          "noGcEnds": 0,
+          "noGcRestarts": 0,
+          "noGcLosses": 0
+        },
+        "gcLifecycleAttribution": "ExclusiveSearchScope"
+      },
+      "phases": [
+        {
+          "fork": {
+            "milliseconds": 575.4,
+            "allocatedBytes": 68590912
+          },
+          "action": {
+            "milliseconds": 2056.5,
+            "allocatedBytes": 106345536
+          },
+          "card_exec": {
+            "milliseconds": 1347.9,
+            "allocatedBytes": 77371264
+          },
+          "card_post": {
+            "milliseconds": 61.3,
+            "allocatedBytes": 2355288
+          },
+          "potion_exec": {
+            "milliseconds": 0.0,
+            "allocatedBytes": 0
+          },
+          "round": {
+            "milliseconds": 520.3,
+            "allocatedBytes": 24481960
+          },
+          "round_player_end": {
+            "milliseconds": 143.4,
+            "allocatedBytes": 5460624
+          },
+          "round_end_sim": {
+            "milliseconds": 106.8,
+            "allocatedBytes": 3034640
+          },
+          "round_flush": {
+            "milliseconds": 10.3,
+            "allocatedBytes": 474024
+          },
+          "round_player_powers": {
+            "milliseconds": 13.9,
+            "allocatedBytes": 1264680
+          },
+          "round_enemy": {
+            "milliseconds": 235.7,
+            "allocatedBytes": 10197040
+          },
+          "round_enemy_start": {
+            "milliseconds": 19.4,
+            "allocatedBytes": 2748552
+          },
+          "round_enemy_moves": {
+            "milliseconds": 203.9,
+            "allocatedBytes": 5739016
+          },
+          "round_enemy_powers": {
+            "milliseconds": 8.8,
+            "allocatedBytes": 1341056
+          },
+          "round_player_start": {
+            "milliseconds": 132.4,
+            "allocatedBytes": 8632456
+          },
+          "round_draw": {
+            "milliseconds": 53.9,
+            "allocatedBytes": 1744856
+          },
+          "snapshot": {
+            "milliseconds": 1666.1,
+            "allocatedBytes": 47824296
+          },
+          "threat": {
+            "milliseconds": 354.0,
+            "allocatedBytes": 8000392
+          },
+          "fingerprint": {
+            "milliseconds": 387.3,
+            "allocatedBytes": 10035552
+          },
+          "projected_shuffle": {
+            "milliseconds": 127.6,
+            "allocatedBytes": 2915816
+          },
+          "pile_fingerprint": {
+            "milliseconds": 39.9,
+            "allocatedBytes": 2057416
+          },
+          "pile_miss": {
+            "milliseconds": 34.7,
+            "allocatedBytes": 2056528
+          },
+          "card_miss": {
+            "milliseconds": 27.9,
+            "allocatedBytes": 2055192
+          },
+          "combat_fingerprint": {
+            "milliseconds": 139.5,
+            "allocatedBytes": 3884208
+          },
+          "prune": {
+            "milliseconds": 82.9,
+            "allocatedBytes": 10881888
+          },
+          "final": {
+            "milliseconds": 9.6,
+            "allocatedBytes": 351392
+          }
+        }
+      ],
+      "rawDirectory": ".local/gc-research/ab/round2-base-necro-2/necro-gc4-dop4-1",
+      "instrumented": false,
+      "parallelGamesRequested": false
+    },
+    {
+      "label": "round2-base-necro-3",
+      "variant": "base",
+      "case": "necro",
+      "repetition": 3,
+      "runId": "aaa8fd6b74ac4f7baf1f63af14db54bc",
+      "status": "Passed",
+      "matchesReference": true,
+      "nodesPerSolver": 576,
+      "noGcBudgetGb": 4,
+      "dop": 4,
+      "processVmHwmBytes": 2827157504,
+      "metrics": {
+        "totalElapsedMilliseconds": 4949.1663,
+        "totalWorkerAllocatedBytes": 1288507984,
+        "totalGcPauseMilliseconds": 0,
+        "maxGcPauseMilliseconds": 0,
+        "totalGen0Collections": 0,
+        "totalGen1Collections": 0,
+        "totalGen2Collections": 0,
+        "maxParallelConcurrency": 4,
+        "gcLifecycle": {
+          "forcedCollections": 0,
+          "noGcStartAttempts": 1,
+          "noGcStarts": 1,
+          "noGcEndAttempts": 0,
+          "noGcEnds": 0,
+          "noGcRestarts": 0,
+          "noGcLosses": 0
+        },
+        "gcLifecycleAttribution": "ExclusiveSearchScope"
+      },
+      "phases": [
+        {
+          "fork": {
+            "milliseconds": 587.8,
+            "allocatedBytes": 68590912
+          },
+          "action": {
+            "milliseconds": 2107.9,
+            "allocatedBytes": 104790528
+          },
+          "card_exec": {
+            "milliseconds": 1379.1,
+            "allocatedBytes": 76045152
+          },
+          "card_post": {
+            "milliseconds": 62.0,
+            "allocatedBytes": 2355288
+          },
+          "potion_exec": {
+            "milliseconds": 0.0,
+            "allocatedBytes": 0
+          },
+          "round": {
+            "milliseconds": 535.2,
+            "allocatedBytes": 24253928
+          },
+          "round_player_end": {
+            "milliseconds": 148.5,
+            "allocatedBytes": 5266416
+          },
+          "round_end_sim": {
+            "milliseconds": 111.2,
+            "allocatedBytes": 2992688
+          },
+          "round_flush": {
+            "milliseconds": 10.5,
+            "allocatedBytes": 321768
+          },
+          "round_player_powers": {
+            "milliseconds": 14.3,
+            "allocatedBytes": 1264680
+          },
+          "round_enemy": {
+            "milliseconds": 241.8,
+            "allocatedBytes": 10115872
+          },
+          "round_enemy_start": {
+            "milliseconds": 20.2,
+            "allocatedBytes": 2748552
+          },
+          "round_enemy_moves": {
+            "milliseconds": 207.8,
+            "allocatedBytes": 5657848
+          },
+          "round_enemy_powers": {
+            "milliseconds": 9.9,
+            "allocatedBytes": 1341056
+          },
+          "round_player_start": {
+            "milliseconds": 134.4,
+            "allocatedBytes": 8679800
+          },
+          "round_draw": {
+            "milliseconds": 54.7,
+            "allocatedBytes": 1723544
+          },
+          "snapshot": {
+            "milliseconds": 1689.9,
+            "allocatedBytes": 44477008
+          },
+          "threat": {
+            "milliseconds": 359.5,
+            "allocatedBytes": 8000576
+          },
+          "fingerprint": {
+            "milliseconds": 379.6,
+            "allocatedBytes": 8799328
+          },
+          "projected_shuffle": {
+            "milliseconds": 123.6,
+            "allocatedBytes": 2915816
+          },
+          "pile_fingerprint": {
+            "milliseconds": 38.5,
+            "allocatedBytes": 821192
+          },
+          "pile_miss": {
+            "milliseconds": 33.6,
+            "allocatedBytes": 820304
+          },
+          "card_miss": {
+            "milliseconds": 26.9,
+            "allocatedBytes": 818968
+          },
+          "combat_fingerprint": {
+            "milliseconds": 137.8,
+            "allocatedBytes": 3884208
+          },
+          "prune": {
+            "milliseconds": 77.2,
+            "allocatedBytes": 10881888
+          },
+          "final": {
+            "milliseconds": 11.2,
+            "allocatedBytes": 344280
+          }
+        }
+      ],
+      "rawDirectory": ".local/gc-research/ab/round2-base-necro-3/necro-gc4-dop4-1",
+      "instrumented": false,
+      "parallelGamesRequested": false
+    },
+    {
+      "label": "round2-snapshot-necro-1",
+      "variant": "snapshot",
+      "case": "necro",
+      "repetition": 1,
+      "runId": "d91a3005235245659a80aa560505914b",
+      "status": "Passed",
+      "matchesReference": true,
+      "nodesPerSolver": 576,
+      "noGcBudgetGb": 4,
+      "dop": 4,
+      "processVmHwmBytes": 2792542208,
+      "metrics": {
+        "totalElapsedMilliseconds": 4917.809,
+        "totalWorkerAllocatedBytes": 1256300312,
+        "totalGcPauseMilliseconds": 0,
+        "maxGcPauseMilliseconds": 0,
+        "totalGen0Collections": 0,
+        "totalGen1Collections": 0,
+        "totalGen2Collections": 0,
+        "maxParallelConcurrency": 4,
+        "gcLifecycle": {
+          "forcedCollections": 0,
+          "noGcStartAttempts": 1,
+          "noGcStarts": 1,
+          "noGcEndAttempts": 0,
+          "noGcEnds": 0,
+          "noGcRestarts": 0,
+          "noGcLosses": 0
+        },
+        "gcLifecycleAttribution": "ExclusiveSearchScope"
+      },
+      "phases": [
+        {
+          "fork": {
+            "milliseconds": 620.6,
+            "allocatedBytes": 68591960
+          },
+          "action": {
+            "milliseconds": 2248.8,
+            "allocatedBytes": 104801736
+          },
+          "card_exec": {
+            "milliseconds": 1470.4,
+            "allocatedBytes": 76140016
+          },
+          "card_post": {
+            "milliseconds": 65.1,
+            "allocatedBytes": 2355288
+          },
+          "potion_exec": {
+            "milliseconds": 0.0,
+            "allocatedBytes": 0
+          },
+          "round": {
+            "milliseconds": 574.6,
+            "allocatedBytes": 24170288
+          },
+          "round_player_end": {
+            "milliseconds": 156.3,
+            "allocatedBytes": 5266416
+          },
+          "round_end_sim": {
+            "milliseconds": 114.7,
+            "allocatedBytes": 2992688
+          },
+          "round_flush": {
+            "milliseconds": 12.0,
+            "allocatedBytes": 321768
+          },
+          "round_player_powers": {
+            "milliseconds": 16.3,
+            "allocatedBytes": 1264680
+          },
+          "round_enemy": {
+            "milliseconds": 262.6,
+            "allocatedBytes": 10115872
+          },
+          "round_enemy_start": {
+            "milliseconds": 24.0,
+            "allocatedBytes": 2748552
+          },
+          "round_enemy_moves": {
+            "milliseconds": 223.7,
+            "allocatedBytes": 5657848
+          },
+          "round_enemy_powers": {
+            "milliseconds": 10.6,
+            "allocatedBytes": 1341056
+          },
+          "round_player_start": {
+            "milliseconds": 145.9,
+            "allocatedBytes": 8596160
+          },
+          "round_draw": {
+            "milliseconds": 57.4,
+            "allocatedBytes": 1723544
+          },
+          "snapshot": {
+            "milliseconds": 1822.8,
+            "allocatedBytes": 41986160
+          },
+          "threat": {
+            "milliseconds": 385.7,
+            "allocatedBytes": 8000392
+          },
+          "fingerprint": {
+            "milliseconds": 416.8,
+            "allocatedBytes": 6307832
+          },
+          "projected_shuffle": {
+            "milliseconds": 136.0,
+            "allocatedBytes": 423104
+          },
+          "pile_fingerprint": {
+            "milliseconds": 43.4,
+            "allocatedBytes": 822408
+          },
+          "pile_miss": {
+            "milliseconds": 37.7,
+            "allocatedBytes": 821520
+          },
+          "card_miss": {
+            "milliseconds": 30.4,
+            "allocatedBytes": 820184
+          },
+          "combat_fingerprint": {
+            "milliseconds": 150.1,
+            "allocatedBytes": 3884208
+          },
+          "prune": {
+            "milliseconds": 87.6,
+            "allocatedBytes": 10882392
+          },
+          "final": {
+            "milliseconds": 10.3,
+            "allocatedBytes": 343792
+          }
+        }
+      ],
+      "rawDirectory": ".local/gc-research/ab/round2-snapshot-necro-1/necro-gc4-dop4-1",
+      "instrumented": false,
+      "parallelGamesRequested": false
+    },
+    {
+      "label": "round2-snapshot-necro-2",
+      "variant": "snapshot",
+      "case": "necro",
+      "repetition": 2,
+      "runId": "4b7e31dd897a4a209751bd89cd5c2624",
+      "status": "Passed",
+      "matchesReference": true,
+      "nodesPerSolver": 576,
+      "noGcBudgetGb": 4,
+      "dop": 4,
+      "processVmHwmBytes": 2804011008,
+      "metrics": {
+        "totalElapsedMilliseconds": 4700.5128,
+        "totalWorkerAllocatedBytes": 1276884896,
+        "totalGcPauseMilliseconds": 0,
+        "maxGcPauseMilliseconds": 0,
+        "totalGen0Collections": 0,
+        "totalGen1Collections": 0,
+        "totalGen2Collections": 0,
+        "maxParallelConcurrency": 4,
+        "gcLifecycle": {
+          "forcedCollections": 0,
+          "noGcStartAttempts": 1,
+          "noGcStarts": 1,
+          "noGcEndAttempts": 0,
+          "noGcEnds": 0,
+          "noGcRestarts": 0,
+          "noGcLosses": 0
+        },
+        "gcLifecycleAttribution": "ExclusiveSearchScope"
+      },
+      "phases": [
+        {
+          "fork": {
+            "milliseconds": 561.5,
+            "allocatedBytes": 68673984
+          },
+          "action": {
+            "milliseconds": 2066.2,
+            "allocatedBytes": 104977912
+          },
+          "card_exec": {
+            "milliseconds": 1355.6,
+            "allocatedBytes": 76193336
+          },
+          "card_post": {
+            "milliseconds": 61.0,
+            "allocatedBytes": 2355288
+          },
+          "potion_exec": {
+            "milliseconds": 0.0,
+            "allocatedBytes": 0
+          },
+          "round": {
+            "milliseconds": 522.4,
+            "allocatedBytes": 24293128
+          },
+          "round_player_end": {
+            "milliseconds": 147.2,
+            "allocatedBytes": 5308368
+          },
+          "round_end_sim": {
+            "milliseconds": 110.5,
+            "allocatedBytes": 3034640
+          },
+          "round_flush": {
+            "milliseconds": 10.2,
+            "allocatedBytes": 321768
+          },
+          "round_player_powers": {
+            "milliseconds": 14.2,
+            "allocatedBytes": 1264680
+          },
+          "round_enemy": {
+            "milliseconds": 237.8,
+            "allocatedBytes": 10174352
+          },
+          "round_enemy_start": {
+            "milliseconds": 20.6,
+            "allocatedBytes": 2748552
+          },
+          "round_enemy_moves": {
+            "milliseconds": 204.4,
+            "allocatedBytes": 5716328
+          },
+          "round_enemy_powers": {
+            "milliseconds": 9.0,
+            "allocatedBytes": 1341056
+          },
+          "round_player_start": {
+            "milliseconds": 128.2,
+            "allocatedBytes": 8618568
+          },
+          "round_draw": {
+            "milliseconds": 52.7,
+            "allocatedBytes": 1744856
+          },
+          "snapshot": {
+            "milliseconds": 1648.2,
+            "allocatedBytes": 41985096
+          },
+          "threat": {
+            "milliseconds": 354.4,
+            "allocatedBytes": 8000392
+          },
+          "fingerprint": {
+            "milliseconds": 374.0,
+            "allocatedBytes": 6306712
+          },
+          "projected_shuffle": {
+            "milliseconds": 117.9,
+            "allocatedBytes": 423104
+          },
+          "pile_fingerprint": {
+            "milliseconds": 38.4,
+            "allocatedBytes": 821288
+          },
+          "pile_miss": {
+            "milliseconds": 33.3,
+            "allocatedBytes": 820400
+          },
+          "card_miss": {
+            "milliseconds": 26.9,
+            "allocatedBytes": 819064
+          },
+          "combat_fingerprint": {
+            "milliseconds": 135.7,
+            "allocatedBytes": 3884208
+          },
+          "prune": {
+            "milliseconds": 78.3,
+            "allocatedBytes": 10881888
+          },
+          "final": {
+            "milliseconds": 9.8,
+            "allocatedBytes": 343792
+          }
+        }
+      ],
+      "rawDirectory": ".local/gc-research/ab/round2-snapshot-necro-2/necro-gc4-dop4-1",
+      "instrumented": false,
+      "parallelGamesRequested": false
+    },
+    {
+      "label": "round2-snapshot-necro-3",
+      "variant": "snapshot",
+      "case": "necro",
+      "repetition": 3,
+      "runId": "bb165bf2acd841cabee2e7b7f8f26aeb",
+      "status": "Passed",
+      "matchesReference": true,
+      "nodesPerSolver": 576,
+      "noGcBudgetGb": 4,
+      "dop": 4,
+      "processVmHwmBytes": 2801078272,
+      "metrics": {
+        "totalElapsedMilliseconds": 5650.0359,
+        "totalWorkerAllocatedBytes": 1271215864,
+        "totalGcPauseMilliseconds": 0,
+        "maxGcPauseMilliseconds": 0,
+        "totalGen0Collections": 0,
+        "totalGen1Collections": 0,
+        "totalGen2Collections": 0,
+        "maxParallelConcurrency": 4,
+        "gcLifecycle": {
+          "forcedCollections": 0,
+          "noGcStartAttempts": 1,
+          "noGcStarts": 1,
+          "noGcEndAttempts": 0,
+          "noGcEnds": 0,
+          "noGcRestarts": 0,
+          "noGcLosses": 0
+        },
+        "gcLifecycleAttribution": "ExclusiveSearchScope"
+      },
+      "phases": [
+        {
+          "fork": {
+            "milliseconds": 611.8,
+            "allocatedBytes": 68591960
+          },
+          "action": {
+            "milliseconds": 2158.4,
+            "allocatedBytes": 106348008
+          },
+          "card_exec": {
+            "milliseconds": 1407.1,
+            "allocatedBytes": 77369888
+          },
+          "card_post": {
+            "milliseconds": 64.8,
+            "allocatedBytes": 2355288
+          },
+          "potion_exec": {
+            "milliseconds": 0.0,
+            "allocatedBytes": 0
+          },
+          "round": {
+            "milliseconds": 555.7,
+            "allocatedBytes": 24485824
+          },
+          "round_player_end": {
+            "milliseconds": 159.1,
+            "allocatedBytes": 5460624
+          },
+          "round_end_sim": {
+            "milliseconds": 117.5,
+            "allocatedBytes": 3034640
+          },
+          "round_flush": {
+            "milliseconds": 11.8,
+            "allocatedBytes": 474024
+          },
+          "round_player_powers": {
+            "milliseconds": 16.1,
+            "allocatedBytes": 1264680
+          },
+          "round_enemy": {
+            "milliseconds": 246.3,
+            "allocatedBytes": 10197040
+          },
+          "round_enemy_start": {
+            "milliseconds": 22.3,
+            "allocatedBytes": 2748552
+          },
+          "round_enemy_moves": {
+            "milliseconds": 209.8,
+            "allocatedBytes": 5739016
+          },
+          "round_enemy_powers": {
+            "milliseconds": 10.1,
+            "allocatedBytes": 1341056
+          },
+          "round_player_start": {
+            "milliseconds": 140.4,
+            "allocatedBytes": 8636320
+          },
+          "round_draw": {
+            "milliseconds": 54.5,
+            "allocatedBytes": 1744856
+          },
+          "snapshot": {
+            "milliseconds": 1702.4,
+            "allocatedBytes": 45332264
+          },
+          "threat": {
+            "milliseconds": 358.6,
+            "allocatedBytes": 8000392
+          },
+          "fingerprint": {
+            "milliseconds": 385.0,
+            "allocatedBytes": 7542840
+          },
+          "projected_shuffle": {
+            "milliseconds": 121.0,
+            "allocatedBytes": 423104
+          },
+          "pile_fingerprint": {
+            "milliseconds": 40.1,
+            "allocatedBytes": 2057416
+          },
+          "pile_miss": {
+            "milliseconds": 34.7,
+            "allocatedBytes": 2056528
+          },
+          "card_miss": {
+            "milliseconds": 28.0,
+            "allocatedBytes": 2055192
+          },
+          "combat_fingerprint": {
+            "milliseconds": 143.3,
+            "allocatedBytes": 3884208
+          },
+          "prune": {
+            "milliseconds": 91.6,
+            "allocatedBytes": 10882408
+          },
+          "final": {
+            "milliseconds": 10.3,
+            "allocatedBytes": 350904
+          }
+        }
+      ],
+      "rawDirectory": ".local/gc-research/ab/round2-snapshot-necro-3/necro-gc4-dop4-1",
+      "instrumented": false,
+      "parallelGamesRequested": false
+    }
+  ],
+  "medians": {
+    "silent": {
+      "base": {
+        "totalElapsedMilliseconds": 10783.5111,
+        "totalWorkerAllocatedBytes": 1829576256,
+        "totalGcPauseMilliseconds": 1256.817,
+        "maxGcPauseMilliseconds": 12.405,
+        "processVmHwmBytes": 1705562112
+      },
+      "snapshot": {
+        "totalElapsedMilliseconds": 10385.62,
+        "totalWorkerAllocatedBytes": 1767632560,
+        "totalGcPauseMilliseconds": 1249.938,
+        "maxGcPauseMilliseconds": 11.707,
+        "processVmHwmBytes": 1698140160
+      }
+    },
+    "necro": {
+      "base": {
+        "totalElapsedMilliseconds": 4766.6513,
+        "totalWorkerAllocatedBytes": 1288507984,
+        "totalGcPauseMilliseconds": 0,
+        "maxGcPauseMilliseconds": 0,
+        "processVmHwmBytes": 2827157504
+      },
+      "snapshot": {
+        "totalElapsedMilliseconds": 4917.809,
+        "totalWorkerAllocatedBytes": 1271215864,
+        "totalGcPauseMilliseconds": 0,
+        "maxGcPauseMilliseconds": 0,
+        "processVmHwmBytes": 2801078272
+      }
+    }
+  },
+  "smartSoftLimitPilots": [
+    {
+      "label": "round2-soft-off",
+      "softLimitMiB": null,
+      "runId": "511aa659c2b345b3a405c2a66928f87e",
+      "status": "Passed",
+      "matchesReference": true,
+      "executionMode": "exclusive",
+      "processVmHwmBytes": 2822639616,
+      "metrics": {
+        "totalElapsedMilliseconds": 4742.8727,
+        "totalWorkerAllocatedBytes": 1287733304,
+        "totalGcPauseMilliseconds": 0,
+        "maxGcPauseMilliseconds": 0,
+        "totalGen0Collections": 0,
+        "totalGen1Collections": 0,
+        "totalGen2Collections": 0,
+        "maxParallelConcurrency": 4,
+        "gcLifecycle": {
+          "forcedCollections": 0,
+          "noGcStartAttempts": 1,
+          "noGcStarts": 1,
+          "noGcEndAttempts": 0,
+          "noGcEnds": 0,
+          "noGcRestarts": 0,
+          "noGcLosses": 0
+        },
+        "gcLifecycleAttribution": "ExclusiveSearchScope"
+      },
+      "decisions": [
+        {
+          "completed_layer": "0",
+          "next_layer": "1",
+          "reclaim": "false",
+          "reason": "forecast_fits",
+          "forecast_bytes": "809800320",
+          "remaining_bytes": "2396667624",
+          "observations": "1",
+          "minimum_transition_growth": "2",
+          "allocation_safety_factor": "1.5"
+        },
+        {
+          "completed_layer": "1",
+          "next_layer": "2",
+          "reclaim": "false",
+          "reason": "forecast_fits",
+          "forecast_bytes": "1576954416",
+          "remaining_bytes": "1870983352",
+          "observations": "2",
+          "minimum_transition_growth": "2",
+          "allocation_safety_factor": "1.5"
+        }
+      ],
+      "rawDirectory": ".local/gc-research/ab/round2-soft-off/necro-gc4-dop4-1"
+    },
+    {
+      "label": "round2-soft-512",
+      "softLimitMiB": 512,
+      "runId": "56775724d1cf4dfcb009b4b5765c1549",
+      "status": "Passed",
+      "matchesReference": true,
+      "executionMode": "exclusive",
+      "processVmHwmBytes": 2247454720,
+      "metrics": {
+        "totalElapsedMilliseconds": 5451.5187,
+        "totalWorkerAllocatedBytes": 1270890584,
+        "totalGcPauseMilliseconds": 185.195,
+        "maxGcPauseMilliseconds": 185.195,
+        "totalGen0Collections": 2,
+        "totalGen1Collections": 2,
+        "totalGen2Collections": 2,
+        "maxParallelConcurrency": 4,
+        "gcLifecycle": {
+          "forcedCollections": 1,
+          "noGcStartAttempts": 2,
+          "noGcStarts": 2,
+          "noGcEndAttempts": 1,
+          "noGcEnds": 1,
+          "noGcRestarts": 1,
+          "noGcLosses": 0
+        },
+        "gcLifecycleAttribution": "ExclusiveSearchScope"
+      },
+      "decisions": [
+        {
+          "completed_layer": "0",
+          "next_layer": "1",
+          "reclaim": "false",
+          "reason": "forecast_fits",
+          "forecast_bytes": "812651400",
+          "remaining_bytes": "2395718272",
+          "observations": "1",
+          "minimum_transition_growth": "2",
+          "allocation_safety_factor": "1.5"
+        },
+        {
+          "completed_layer": "1",
+          "next_layer": "2",
+          "reclaim": "true",
+          "reason": "experimental_layer_soft_limit",
+          "forecast_bytes": "1545853416",
+          "remaining_bytes": "1880392800",
+          "observations": "2",
+          "minimum_transition_growth": "2",
+          "allocation_safety_factor": "1.5"
+        }
+      ],
+      "rawDirectory": ".local/gc-research/ab/round2-soft-512/necro-gc4-dop4-1"
+    },
+    {
+      "label": "round2-soft-192",
+      "softLimitMiB": 192,
+      "runId": "6cb2b0d083b24189ac2fb733104ecddb",
+      "status": "Passed",
+      "matchesReference": true,
+      "executionMode": "exclusive",
+      "processVmHwmBytes": 1989394432,
+      "metrics": {
+        "totalElapsedMilliseconds": 5049.9576,
+        "totalWorkerAllocatedBytes": 1273652576,
+        "totalGcPauseMilliseconds": 152.205,
+        "maxGcPauseMilliseconds": 84.708,
+        "totalGen0Collections": 4,
+        "totalGen1Collections": 4,
+        "totalGen2Collections": 4,
+        "maxParallelConcurrency": 4,
+        "gcLifecycle": {
+          "forcedCollections": 2,
+          "noGcStartAttempts": 3,
+          "noGcStarts": 3,
+          "noGcEndAttempts": 2,
+          "noGcEnds": 2,
+          "noGcRestarts": 2,
+          "noGcLosses": 0
+        },
+        "gcLifecycleAttribution": "ExclusiveSearchScope"
+      },
+      "decisions": [
+        {
+          "completed_layer": "0",
+          "next_layer": "1",
+          "reclaim": "true",
+          "reason": "experimental_layer_soft_limit",
+          "forecast_bytes": "811156872",
+          "remaining_bytes": "2396215440",
+          "observations": "1",
+          "minimum_transition_growth": "2",
+          "allocation_safety_factor": "1.5"
+        },
+        {
+          "completed_layer": "1",
+          "next_layer": "2",
+          "reclaim": "true",
+          "reason": "experimental_layer_soft_limit",
+          "forecast_bytes": "1545269232",
+          "remaining_bytes": "2151445736",
+          "observations": "2",
+          "minimum_transition_growth": "2",
+          "allocation_safety_factor": "1.5"
+        }
+      ],
+      "rawDirectory": ".local/gc-research/ab/round2-soft-192/necro-gc4-dop4-1"
+    }
+  ],
+  "allocationTrace": {
+    "schemaVersion": 1,
+    "completeness": {
+      "status": "StrictConversionSucceeded",
+      "allowIncomplete": false,
+      "conversionReportedTruncated": null
+    },
+    "traceEventVersion": "3.1.23.0",
+    "traceEvents": 799759,
+    "traceEventsLost": 0,
+    "allocationEventsBeforeFilters": 26828,
+    "filters": {
+      "processId": null,
+      "startMs": null,
+      "endMs": null
+    },
+    "interpretation": [
+      "SampleCount counts GCAllocationTick events, not allocated objects.",
+      "EstimatedBytes sums AllocationAmount64 (legacy events use AllocationAmount32). It is a sampling estimate, not an exact type allocation total.",
+      "A tick labels one sampled object type, but its weight covers allocation since the preceding tick. Small/rare types may be absent or noisy.",
+      "ConfirmedSearch requires a resolved solver/coordinator/work-item stack anchor. Root capture is explicitly excluded even with a search ancestor.",
+      "Thread ID, a CombatSolver frame, or a generic simulator/Fork frame alone never establishes search ownership.",
+      "SearchRequest includes coordination; SearchLaneInfrastructure is reported separately and is not part of ConfirmedSearch.",
+      "Missing/unresolved stacks and unanchored simulation samples remain separate; they cannot safely be assigned to search or startup.",
+      "SearchCategories are exclusive: Fork, ProjectedShuffle, SnapshotStateEvaluation, History, Other. InclusiveSearchTags overlap and must not be summed.",
+      "Trace timing is diagnostic only; instrumentation and collection change execution cost. Compare allocation samples with independent exact phase counters."
+    ],
+    "rules": {
+      "rootCapture": "CombatSolver.CombatRootSnapshot.Capture (highest precedence)",
+      "expansionWork": [
+        "CombatSolver.CombatBeamSolver.ParallelExpansionExecutor.Execute/ExecuteActionReplay/ExecuteRoundChoiceReplay",
+        "CombatSolver.CombatBeamSolver.EvaluateRawExpansion/EvaluatePreparedCardAction/ReplayAction/Replay/Expand"
+      ],
+      "solverSearch": "CombatSolver.CombatBeamSolver.Solve/SolveCore",
+      "searchRequest": "CombatSolver.CombatSearchCoordinator.Solve/SolveCore",
+      "searchLaneInfrastructure": "CombatSolver.CombatBeamSolver.ParallelExpansionExecutor.ExpansionLane.Run without a work/search anchor",
+      "fork": "CombatSolver.Engine.InCombat.Simulation.CombatPredictionSimulator.Fork or CombatSolver.CombatRootSnapshot.ForkSimulator or solver PrepareReplayForkSeed/Core",
+      "snapshotStateEvaluation": "CombatSolver.CombatBeamSolver.Snapshot/BuildStateKey/BuildCardStateFingerprint/BuildUnorderedPileKey/ProjectHpAfterThreat/BuildThreatFocus",
+      "projectedShuffle": "CombatSolver.CombatBeamSolver.BuildProjectedShuffleOrder",
+      "history": "CombatPredictionHistory / CombatPredictionCardSnapshot.Capture / PredictionTrace",
+      "methodMatching": "Type and method boundaries; + and / nested-type separators normalized; compiler-generated <Method> frames accepted."
+    },
+    "allIncludedSamples": {
+      "sampleCount": 26828,
+      "estimatedBytes": 2946604312,
+      "samplesWithoutStack": 0,
+      "samplesWithUnresolvedOnlyStack": 0,
+      "samplesWithSomeUnresolvedFrames": 2531,
+      "firstSampleMs": 0.580764,
+      "lastSampleMs": 96967.795284
+    },
+    "confirmedSearch": {
+      "sampleCount": 18572,
+      "estimatedBytes": 1983533832,
+      "samplesWithoutStack": 0,
+      "samplesWithUnresolvedOnlyStack": 0,
+      "samplesWithSomeUnresolvedFrames": 19,
+      "firstSampleMs": 28424.018929,
+      "lastSampleMs": 39251.514431
+    },
+    "byteWeightSources": [
+      {
+        "key": "AllocationAmount64",
+        "totals": {
+          "sampleCount": 26828,
+          "estimatedBytes": 2946604312,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 2531,
+          "firstSampleMs": 0.580764,
+          "lastSampleMs": 96967.795284
+        }
+      }
+    ],
+    "scopes": [
+      {
+        "key": "ExpansionWork",
+        "totals": {
+          "sampleCount": 16036,
+          "estimatedBytes": 1709639720,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 11,
+          "firstSampleMs": 28424.018929,
+          "lastSampleMs": 39249.024584
+        }
+      },
+      {
+        "key": "Other",
+        "totals": {
+          "sampleCount": 8012,
+          "estimatedBytes": 936929880,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 2509,
+          "firstSampleMs": 0.580764,
+          "lastSampleMs": 96967.795284
+        }
+      },
+      {
+        "key": "SolverSearch",
+        "totals": {
+          "sampleCount": 2534,
+          "estimatedBytes": 273679584,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 7,
+          "firstSampleMs": 28462.104416,
+          "lastSampleMs": 39198.839196
+        }
+      },
+      {
+        "key": "RootCapture",
+        "totals": {
+          "sampleCount": 242,
+          "estimatedBytes": 25927400,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 3,
+          "firstSampleMs": 27723.645159,
+          "lastSampleMs": 27892.055664
+        }
+      },
+      {
+        "key": "SearchRequest",
+        "totals": {
+          "sampleCount": 2,
+          "estimatedBytes": 214528,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 1,
+          "firstSampleMs": 35101.101507,
+          "lastSampleMs": 39251.514431
+        }
+      },
+      {
+        "key": "UnattributedSimulation",
+        "totals": {
+          "sampleCount": 2,
+          "estimatedBytes": 213200,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 25628.007548,
+          "lastSampleMs": 39278.080702
+        }
+      }
+    ],
+    "searchCategories": [
+      {
+        "key": "Fork",
+        "totals": {
+          "sampleCount": 8176,
+          "estimatedBytes": 871368440,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 2,
+          "firstSampleMs": 28424.018929,
+          "lastSampleMs": 39243.679792
+        }
+      },
+      {
+        "key": "Other",
+        "totals": {
+          "sampleCount": 7309,
+          "estimatedBytes": 782540872,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 15,
+          "firstSampleMs": 28462.104416,
+          "lastSampleMs": 39251.514431
+        }
+      },
+      {
+        "key": "SnapshotStateEvaluation",
+        "totals": {
+          "sampleCount": 2919,
+          "estimatedBytes": 311726968,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 2,
+          "firstSampleMs": 28441.968691,
+          "lastSampleMs": 39249.024584
+        }
+      },
+      {
+        "key": "History",
+        "totals": {
+          "sampleCount": 108,
+          "estimatedBytes": 11501552,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 29156.051518,
+          "lastSampleMs": 39008.537078
+        }
+      },
+      {
+        "key": "ProjectedShuffle",
+        "totals": {
+          "sampleCount": 60,
+          "estimatedBytes": 6396000,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 32024.927128,
+          "lastSampleMs": 39248.50107
+        }
+      }
+    ],
+    "inclusiveSearchTags": [
+      {
+        "key": "Fork",
+        "totals": {
+          "sampleCount": 8176,
+          "estimatedBytes": 871368440,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 2,
+          "firstSampleMs": 28424.018929,
+          "lastSampleMs": 39243.679792
+        }
+      },
+      {
+        "key": "SnapshotStateEvaluation",
+        "totals": {
+          "sampleCount": 2979,
+          "estimatedBytes": 318122968,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 2,
+          "firstSampleMs": 28441.968691,
+          "lastSampleMs": 39249.024584
+        }
+      },
+      {
+        "key": "History",
+        "totals": {
+          "sampleCount": 131,
+          "estimatedBytes": 13953352,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 29156.051518,
+          "lastSampleMs": 39099.370008
+        }
+      },
+      {
+        "key": "ProjectedShuffle",
+        "totals": {
+          "sampleCount": 60,
+          "estimatedBytes": 6396000,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 32024.927128,
+          "lastSampleMs": 39248.50107
+        }
+      }
+    ],
+    "topSearchTypes": [
+      {
+        "key": "MegaCrit.Sts2.Core.Models.AbstractModel[]",
+        "totals": {
+          "sampleCount": 3894,
+          "estimatedBytes": 415012264,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28479.459828,
+          "lastSampleMs": 39246.588031
+        }
+      },
+      {
+        "key": "CombatSolver.Engine.Common.PredictedCard",
+        "totals": {
+          "sampleCount": 3377,
+          "estimatedBytes": 359864136,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28573.255133,
+          "lastSampleMs": 39243.679792
+        }
+      },
+      {
+        "key": "CombatSolver.Engine.Common.PredictedCard[]",
+        "totals": {
+          "sampleCount": 2261,
+          "estimatedBytes": 240948128,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28483.620039,
+          "lastSampleMs": 39233.144082
+        }
+      },
+      {
+        "key": "System.String",
+        "totals": {
+          "sampleCount": 426,
+          "estimatedBytes": 48078688,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28558.181637,
+          "lastSampleMs": 39251.514431
+        }
+      },
+      {
+        "key": "System.Collections.Generic.Dictionary`2[MegaCrit.Sts2.Core.Entities.Cards.CardPlay,System.Decimal]",
+        "totals": {
+          "sampleCount": 326,
+          "estimatedBytes": 34747440,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 29010.672974,
+          "lastSampleMs": 39226.163721
+        }
+      },
+      {
+        "key": "System.Text.StringBuilder",
+        "totals": {
+          "sampleCount": 317,
+          "estimatedBytes": 34238328,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 30279.339878,
+          "lastSampleMs": 39185.0527
+        }
+      },
+      {
+        "key": "IEnumerableWhereIterator`1[MegaCrit.Sts2.Core.Entities.Creatures.Creature]",
+        "totals": {
+          "sampleCount": 315,
+          "estimatedBytes": 33594216,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 32185.073991,
+          "lastSampleMs": 39030.959099
+        }
+      },
+      {
+        "key": "Entry[MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Int32][]",
+        "totals": {
+          "sampleCount": 244,
+          "estimatedBytes": 26005504,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 29123.814018,
+          "lastSampleMs": 39080.555928
+        }
+      },
+      {
+        "key": "System.Collections.Generic.Dictionary`2[System.String,MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar]",
+        "totals": {
+          "sampleCount": 223,
+          "estimatedBytes": 23779040,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28754.902279,
+          "lastSampleMs": 39172.03581
+        }
+      },
+      {
+        "key": "System.Int32[]",
+        "totals": {
+          "sampleCount": 218,
+          "estimatedBytes": 23242536,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28495.760297,
+          "lastSampleMs": 39185.671427
+        }
+      },
+      {
+        "key": "CombatSolver.Engine.InCombat.Simulation.CombatPredictionSimulator",
+        "totals": {
+          "sampleCount": 207,
+          "estimatedBytes": 22061920,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28900.14381,
+          "lastSampleMs": 39070.705352
+        }
+      },
+      {
+        "key": "OfTypeIterator`1[MegaCrit.Sts2.Core.Models.Relics.Pocketwatch]",
+        "totals": {
+          "sampleCount": 168,
+          "estimatedBytes": 17904624,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 32526.638039,
+          "lastSampleMs": 38817.994077
+        }
+      },
+      {
+        "key": "CombatSolver.StrategicEffectRequirements",
+        "totals": {
+          "sampleCount": 167,
+          "estimatedBytes": 17803416,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28726.376108,
+          "lastSampleMs": 32161.384238
+        }
+      },
+      {
+        "key": "Enumerator[MegaCrit.Sts2.Core.Entities.Creatures.Creature]",
+        "totals": {
+          "sampleCount": 156,
+          "estimatedBytes": 16620224,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28874.579401,
+          "lastSampleMs": 39244.414381
+        }
+      },
+      {
+        "key": "CombatSolver.SimulatedCombatState",
+        "totals": {
+          "sampleCount": 152,
+          "estimatedBytes": 16199616,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28727.893319,
+          "lastSampleMs": 39230.240552
+        }
+      },
+      {
+        "key": "System.Collections.Generic.KeyValuePair`2[System.String,MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar][]",
+        "totals": {
+          "sampleCount": 129,
+          "estimatedBytes": 13509088,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 30281.74445,
+          "lastSampleMs": 39187.478784
+        }
+      },
+      {
+        "key": "System.Func`2[STS2RitsuLib.Models.Capabilities.ICardPropertyContributor,System.Nullable`1[MegaCrit.Sts2.Core.Entities.Cards.CardType]]",
+        "totals": {
+          "sampleCount": 124,
+          "estimatedBytes": 13218856,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 35063.430925,
+          "lastSampleMs": 39248.963407
+        }
+      },
+      {
+        "key": "IEnumerableSelectIterator`2[MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar,MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar]",
+        "totals": {
+          "sampleCount": 120,
+          "estimatedBytes": 12789600,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 29014.014554,
+          "lastSampleMs": 39159.55586
+        }
+      },
+      {
+        "key": "CombatSolver.PlanAction",
+        "totals": {
+          "sampleCount": 115,
+          "estimatedBytes": 12245704,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28823.066886,
+          "lastSampleMs": 38446.715799
+        }
+      },
+      {
+        "key": "OrderedIterator`2[System.Collections.Generic.KeyValuePair`2[System.String,MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar],System.String]",
+        "totals": {
+          "sampleCount": 114,
+          "estimatedBytes": 12055944,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 33299.441086,
+          "lastSampleMs": 39155.795958
+        }
+      },
+      {
+        "key": "Entry[CombatSolver.CombatBeamSolver+RoutingChoiceSignature,CombatSolver.SearchNode][]",
+        "totals": {
+          "sampleCount": 105,
+          "estimatedBytes": 11345968,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28982.663775,
+          "lastSampleMs": 38494.438133
+        }
+      },
+      {
+        "key": "ListWhereIterator`1[CombatSolver.CombatBeamSolver+ActionCandidate]",
+        "totals": {
+          "sampleCount": 104,
+          "estimatedBytes": 11083744,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 29415.185935,
+          "lastSampleMs": 39175.122331
+        }
+      },
+      {
+        "key": "System.Collections.Generic.KeyValuePair`2[CombatSolver.CombatBeamSolver+RoutingChoiceSignature,System.Collections.Generic.List`1[CombatSolver.SearchNode]][]",
+        "totals": {
+          "sampleCount": 102,
+          "estimatedBytes": 10885280,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28983.289575,
+          "lastSampleMs": 38197.693901
+        }
+      },
+      {
+        "key": "CombatSolver.SearchNode",
+        "totals": {
+          "sampleCount": 97,
+          "estimatedBytes": 10335264,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28776.239259,
+          "lastSampleMs": 39165.490945
+        }
+      },
+      {
+        "key": "MegaCrit.Sts2.Core.Models.Powers.WitheringPresencePower",
+        "totals": {
+          "sampleCount": 95,
+          "estimatedBytes": 10127456,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28739.871586,
+          "lastSampleMs": 38712.305359
+        }
+      }
+    ],
+    "topSearchCategoryTypes": [
+      {
+        "key": "Fork / CombatSolver.Engine.Common.PredictedCard",
+        "totals": {
+          "sampleCount": 3376,
+          "estimatedBytes": 359757536,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28573.255133,
+          "lastSampleMs": 39243.679792
+        }
+      },
+      {
+        "key": "Fork / MegaCrit.Sts2.Core.Models.AbstractModel[]",
+        "totals": {
+          "sampleCount": 1580,
+          "estimatedBytes": 168422632,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28552.496332,
+          "lastSampleMs": 39214.487233
+        }
+      },
+      {
+        "key": "Other / MegaCrit.Sts2.Core.Models.AbstractModel[]",
+        "totals": {
+          "sampleCount": 1530,
+          "estimatedBytes": 163030632,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28479.459828,
+          "lastSampleMs": 39246.588031
+        }
+      },
+      {
+        "key": "Fork / CombatSolver.Engine.Common.PredictedCard[]",
+        "totals": {
+          "sampleCount": 1201,
+          "estimatedBytes": 127974608,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28483.620039,
+          "lastSampleMs": 39231.12045
+        }
+      },
+      {
+        "key": "SnapshotStateEvaluation / MegaCrit.Sts2.Core.Models.AbstractModel[]",
+        "totals": {
+          "sampleCount": 784,
+          "estimatedBytes": 83559000,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28561.672113,
+          "lastSampleMs": 39171.03459
+        }
+      },
+      {
+        "key": "SnapshotStateEvaluation / CombatSolver.Engine.Common.PredictedCard[]",
+        "totals": {
+          "sampleCount": 568,
+          "estimatedBytes": 60535536,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28567.489102,
+          "lastSampleMs": 39233.144082
+        }
+      },
+      {
+        "key": "Other / CombatSolver.Engine.Common.PredictedCard[]",
+        "totals": {
+          "sampleCount": 492,
+          "estimatedBytes": 52437984,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28833.690165,
+          "lastSampleMs": 39043.578687
+        }
+      },
+      {
+        "key": "Other / System.String",
+        "totals": {
+          "sampleCount": 426,
+          "estimatedBytes": 48078688,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28558.181637,
+          "lastSampleMs": 39251.514431
+        }
+      },
+      {
+        "key": "Fork / System.Collections.Generic.Dictionary`2[MegaCrit.Sts2.Core.Entities.Cards.CardPlay,System.Decimal]",
+        "totals": {
+          "sampleCount": 326,
+          "estimatedBytes": 34747440,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 29010.672974,
+          "lastSampleMs": 39226.163721
+        }
+      },
+      {
+        "key": "Other / System.Text.StringBuilder",
+        "totals": {
+          "sampleCount": 317,
+          "estimatedBytes": 34238328,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 30279.339878,
+          "lastSampleMs": 39185.0527
+        }
+      },
+      {
+        "key": "SnapshotStateEvaluation / IEnumerableWhereIterator`1[MegaCrit.Sts2.Core.Entities.Creatures.Creature]",
+        "totals": {
+          "sampleCount": 313,
+          "estimatedBytes": 33381016,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 32185.073991,
+          "lastSampleMs": 39030.959099
+        }
+      },
+      {
+        "key": "Other / Entry[MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Int32][]",
+        "totals": {
+          "sampleCount": 244,
+          "estimatedBytes": 26005504,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 29123.814018,
+          "lastSampleMs": 39080.555928
+        }
+      },
+      {
+        "key": "Fork / CombatSolver.Engine.InCombat.Simulation.CombatPredictionSimulator",
+        "totals": {
+          "sampleCount": 207,
+          "estimatedBytes": 22061920,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28900.14381,
+          "lastSampleMs": 39070.705352
+        }
+      },
+      {
+        "key": "Fork / System.Collections.Generic.Dictionary`2[System.String,MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar]",
+        "totals": {
+          "sampleCount": 199,
+          "estimatedBytes": 21221192,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28865.893128,
+          "lastSampleMs": 39027.330498
+        }
+      },
+      {
+        "key": "Other / System.Int32[]",
+        "totals": {
+          "sampleCount": 193,
+          "estimatedBytes": 20570792,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28495.760297,
+          "lastSampleMs": 39185.671427
+        }
+      },
+      {
+        "key": "SnapshotStateEvaluation / OfTypeIterator`1[MegaCrit.Sts2.Core.Models.Relics.Pocketwatch]",
+        "totals": {
+          "sampleCount": 168,
+          "estimatedBytes": 17904624,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 32526.638039,
+          "lastSampleMs": 38817.994077
+        }
+      },
+      {
+        "key": "SnapshotStateEvaluation / CombatSolver.StrategicEffectRequirements",
+        "totals": {
+          "sampleCount": 167,
+          "estimatedBytes": 17803416,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28726.376108,
+          "lastSampleMs": 32161.384238
+        }
+      },
+      {
+        "key": "Fork / CombatSolver.SimulatedCombatState",
+        "totals": {
+          "sampleCount": 152,
+          "estimatedBytes": 16199616,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28727.893319,
+          "lastSampleMs": 39230.240552
+        }
+      },
+      {
+        "key": "Other / System.Collections.Generic.KeyValuePair`2[System.String,MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar][]",
+        "totals": {
+          "sampleCount": 129,
+          "estimatedBytes": 13509088,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 30281.74445,
+          "lastSampleMs": 39187.478784
+        }
+      },
+      {
+        "key": "Other / CombatSolver.PlanAction",
+        "totals": {
+          "sampleCount": 115,
+          "estimatedBytes": 12245704,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28823.066886,
+          "lastSampleMs": 38446.715799
+        }
+      },
+      {
+        "key": "Other / OrderedIterator`2[System.Collections.Generic.KeyValuePair`2[System.String,MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar],System.String]",
+        "totals": {
+          "sampleCount": 114,
+          "estimatedBytes": 12055944,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 33299.441086,
+          "lastSampleMs": 39155.795958
+        }
+      },
+      {
+        "key": "Fork / IEnumerableSelectIterator`2[MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar,MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar]",
+        "totals": {
+          "sampleCount": 108,
+          "estimatedBytes": 11511520,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 29267.823886,
+          "lastSampleMs": 38826.528498
+        }
+      },
+      {
+        "key": "Other / Entry[CombatSolver.CombatBeamSolver+RoutingChoiceSignature,CombatSolver.SearchNode][]",
+        "totals": {
+          "sampleCount": 105,
+          "estimatedBytes": 11345968,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28982.663775,
+          "lastSampleMs": 38494.438133
+        }
+      },
+      {
+        "key": "Other / ListWhereIterator`1[CombatSolver.CombatBeamSolver+ActionCandidate]",
+        "totals": {
+          "sampleCount": 104,
+          "estimatedBytes": 11083744,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 29415.185935,
+          "lastSampleMs": 39175.122331
+        }
+      },
+      {
+        "key": "Other / System.Collections.Generic.KeyValuePair`2[CombatSolver.CombatBeamSolver+RoutingChoiceSignature,System.Collections.Generic.List`1[CombatSolver.SearchNode]][]",
+        "totals": {
+          "sampleCount": 102,
+          "estimatedBytes": 10885280,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 28983.289575,
+          "lastSampleMs": 38197.693901
+        }
+      }
+    ],
+    "topSearchStacks": [
+      {
+        "stackId": 90189,
+        "scope": "SolverSearch",
+        "category": "Other",
+        "tags": [],
+        "anchor": "CombatSolver.CombatBeamSolver.SolveCore()",
+        "totals": {
+          "sampleCount": 157,
+          "estimatedBytes": 18449328,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 35469.83852,
+          "lastSampleMs": 39187.702052
+        },
+        "frames": [
+          "System.Text.StringBuilder.ToString()",
+          "CombatSolver.ContinuationStamp.CapturePredicted(class MegaCrit.Sts2.Core.Entities.Players.Player,class CombatSolver.Engine.InCombat.Simulation.CombatPredictionSimulator,int32,class CombatSolver.IntentForecast,int32)",
+          "CombatSolver.CombatBeamSolver.CaptureContinuation(class CombatSolver.SearchNode)",
+          "CombatSolver.CombatBeamSolver.SolveCore()",
+          "CombatSolver.CombatBeamSolver.Solve()",
+          "CombatSolver.CombatSearchCoordinator.AuditOpeningPowerUse(class CombatSolver.CombatRootSnapshot,class CombatSolver.SolverDisplayNames,value class CombatSolver.BattleDamageSnapshot,class CombatSolver.SearchPolicySnapshot,value class System.Threading.CancellationToken,class System.Action`1<class CombatSolver.SolverProgress>,class CombatSolver.SolverSearchProfile,value class System.Nullable`1<int32>,class CombatSolver.SolverResult)",
+          "CombatSolver.CombatSearchCoordinator.RunSupplementalAudits(class CombatSolver.CombatRootSnapshot,class CombatSolver.SolverDisplayNames,value class CombatSolver.BattleDamageSnapshot,class CombatSolver.SearchPolicySnapshot,value class System.Threading.CancellationToken,class System.Action`1<class CombatSolver.SolverProgress>,class CombatSolver.SolverSearchProfile,value class System.Nullable`1<int32>,class System.Diagnostics.Stopwatch,class CombatSolver.SolverResult,class CombatSolver.SmartLayerMemoryForecast,class System.Action`1<class CombatSolver.SolverResult>)",
+          "CombatSolver.CombatSearchCoordinator.SolveCore(class CombatSolver.CombatRootSnapshot,class CombatSolver.SolverDisplayNames,value class CombatSolver.BattleDamageSnapshot,class CombatSolver.SearchPolicySnapshot,value class System.Threading.CancellationToken,class System.Action`1<class CombatSolver.SolverProgress>,class System.Action`1<class CombatSolver.SolverResult>)",
+          "CombatSolver.CombatSearchCoordinator.Solve(class CombatSolver.CombatRootSnapshot,class CombatSolver.SolverDisplayNames,value class CombatSolver.BattleDamageSnapshot,class CombatSolver.SearchPolicySnapshot,value class System.Threading.CancellationToken,class System.Action`1<class CombatSolver.SolverProgress>)",
+          "CombatSolver.SolverController+<>c__DisplayClass163_0.<RequestSearch>b__0()",
+          "System.Threading.Tasks.Task`1[System.__Canon].InnerInvoke()",
+          "System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(class System.Threading.Thread,class System.Threading.ExecutionContext,class System.Threading.ContextCallback,class System.Object)",
+          "System.Threading.Tasks.Task.ExecuteWithThreadLocal(class System.Threading.Tasks.Task&,class System.Threading.Thread)",
+          "System.Threading.ThreadPoolWorkQueue.Dispatch()",
+          "System.Threading.PortableThreadPool+WorkerThread.WorkerThreadStart()"
+        ]
+      },
+      {
+        "stackId": 88873,
+        "scope": "ExpansionWork",
+        "category": "Fork",
+        "tags": [
+          "Fork"
+        ],
+        "anchor": "CombatSolver.CombatBeamSolver.ParallelExpansionExecutor.Execute(class CombatSolver.CombatBeamSolver,class CombatSolver.SearchNode,class ExpansionWave,int32,bool,class ParallelExpansionExecutor)",
+        "totals": {
+          "sampleCount": 173,
+          "estimatedBytes": 18443288,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 35111.922204,
+          "lastSampleMs": 39073.135885
+        },
+        "frames": [
+          "CombatSolver.Engine.Common.SimCardPile.Fork(class CombatSolver.Engine.Common.PredictionForkContext)",
+          "CombatSolver.Engine.InCombat.Simulation.CombatPredictionState.Fork(class CombatSolver.Engine.Common.PredictionForkContext)",
+          "CombatSolver.Engine.InCombat.Simulation.CombatPredictionSimulator.Fork()",
+          "CombatSolver.CombatBeamSolver.Replay(class System.Collections.Generic.IReadOnlyList`1<class CombatSolver.PlanAction>,class CombatSolver.SimulationSnapshot,int32,int32,class CombatSolver.Engine.InCombat.Simulation.ActionRelicTriggerRecorder,class ReplayForkSeed)",
+          "CombatSolver.CombatBeamSolver+<>c__DisplayClass135_0.<ReplayAction>b__0()",
+          "CombatSolver.SearchTransitionGuard.Execute(class CombatSolver.PlanAction,value class CombatSolver.StateFingerprint,int32,class System.Func`1<!!0>)",
+          "CombatSolver.CombatBeamSolver.ReplayAction(class CombatSolver.SearchNode,class CombatSolver.PlanAction,class ReplayForkSeed)",
+          "CombatSolver.CombatBeamSolver.GeneratePreparedCardAction(class CombatSolver.SearchNode,value class PreparedCardAction,class ReplayForkSeed,class System.Object,class ExpansionBatch,bool)",
+          "CombatSolver.CombatBeamSolver.GenerateRawCardCandidates(class CombatSolver.SearchNode,class ExpansionBatch,class ParallelExpansionExecutor)",
+          "CombatSolver.CombatBeamSolver.EvaluateRawExpansion(class CombatSolver.SearchNode,class ParallelExpansionExecutor)",
+          "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor.Execute(class CombatSolver.CombatBeamSolver,class CombatSolver.SearchNode,class ExpansionWave,int32,bool,class ParallelExpansionExecutor)",
+          "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor+ExpansionWorkItem.Execute(class ParallelExpansionExecutor,class CombatSolver.CombatBeamSolver)",
+          "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor+ExpansionLane.Run()"
+        ]
+      },
+      {
+        "stackId": 89032,
+        "scope": "ExpansionWork",
+        "category": "Fork",
+        "tags": [
+          "Fork"
+        ],
+        "anchor": "CombatSolver.CombatBeamSolver.ParallelExpansionExecutor.Execute(class CombatSolver.CombatBeamSolver,class CombatSolver.SearchNode,class ExpansionWave,int32,bool,class ParallelExpansionExecutor)",
+        "totals": {
+          "sampleCount": 158,
+          "estimatedBytes": 16840696,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 35126.455603,
+          "lastSampleMs": 39164.78953
+        },
+        "frames": [
+          "CombatSolver.Engine.Common.SimCardPile.Fork(class CombatSolver.Engine.Common.PredictionForkContext)",
+          "CombatSolver.Engine.InCombat.Simulation.CombatPredictionState.Fork(class CombatSolver.Engine.Common.PredictionForkContext)",
+          "CombatSolver.Engine.InCombat.Simulation.CombatPredictionSimulator.Fork()",
+          "CombatSolver.CombatBeamSolver.Replay(class System.Collections.Generic.IReadOnlyList`1<class CombatSolver.PlanAction>,class CombatSolver.SimulationSnapshot,int32,int32,class CombatSolver.Engine.InCombat.Simulation.ActionRelicTriggerRecorder,class ReplayForkSeed)",
+          "CombatSolver.CombatBeamSolver+<>c__DisplayClass135_0.<ReplayAction>b__0()",
+          "CombatSolver.SearchTransitionGuard.Execute(class CombatSolver.PlanAction,value class CombatSolver.StateFingerprint,int32,class System.Func`1<!!0>)",
+          "CombatSolver.CombatBeamSolver.ReplayAction(class CombatSolver.SearchNode,class CombatSolver.PlanAction,class ReplayForkSeed)",
+          "CombatSolver.CombatBeamSolver.GeneratePreparedCardAction(class CombatSolver.SearchNode,value class PreparedCardAction,class ReplayForkSeed,class System.Object,class ExpansionBatch,bool)",
+          "CombatSolver.CombatBeamSolver.GenerateRawCardCandidates(class CombatSolver.SearchNode,class ExpansionBatch,class ParallelExpansionExecutor)",
+          "CombatSolver.CombatBeamSolver.EvaluateRawExpansion(class CombatSolver.SearchNode,class ParallelExpansionExecutor)",
+          "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor.Execute(class CombatSolver.CombatBeamSolver,class CombatSolver.SearchNode,class ExpansionWave,int32,bool,class ParallelExpansionExecutor)",
+          "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor+ExpansionWorkItem.Execute(class ParallelExpansionExecutor,class CombatSolver.CombatBeamSolver)",
+          "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor+ExpansionLane.Run()"
+        ]
+      },
+      {
+        "stackId": 89007,
+        "scope": "ExpansionWork",
+        "category": "Fork",
+        "tags": [
+          "Fork"
+        ],
+        "anchor": "CombatSolver.CombatBeamSolver.ParallelExpansionExecutor.Execute(class CombatSolver.CombatBeamSolver,class CombatSolver.SearchNode,class ExpansionWave,int32,bool,class ParallelExpansionExecutor)",
+        "totals": {
+          "sampleCount": 156,
+          "estimatedBytes": 16613912,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 35119.559885,
+          "lastSampleMs": 39161.774527
+        },
+        "frames": [
+          "CombatSolver.Engine.Common.SimCardPile.Fork(class CombatSolver.Engine.Common.PredictionForkContext)",
+          "CombatSolver.Engine.InCombat.Simulation.CombatPredictionState.Fork(class CombatSolver.Engine.Common.PredictionForkContext)",
+          "CombatSolver.Engine.InCombat.Simulation.CombatPredictionSimulator.Fork()",
+          "CombatSolver.CombatBeamSolver.Replay(class System.Collections.Generic.IReadOnlyList`1<class CombatSolver.PlanAction>,class CombatSolver.SimulationSnapshot,int32,int32,class CombatSolver.Engine.InCombat.Simulation.ActionRelicTriggerRecorder,class ReplayForkSeed)",
+          "CombatSolver.CombatBeamSolver+<>c__DisplayClass135_0.<ReplayAction>b__0()",
+          "CombatSolver.SearchTransitionGuard.Execute(class CombatSolver.PlanAction,value class CombatSolver.StateFingerprint,int32,class System.Func`1<!!0>)",
+          "CombatSolver.CombatBeamSolver.ReplayAction(class CombatSolver.SearchNode,class CombatSolver.PlanAction,class ReplayForkSeed)",
+          "CombatSolver.CombatBeamSolver.GeneratePreparedCardAction(class CombatSolver.SearchNode,value class PreparedCardAction,class ReplayForkSeed,class System.Object,class ExpansionBatch,bool)",
+          "CombatSolver.CombatBeamSolver.GenerateRawCardCandidates(class CombatSolver.SearchNode,class ExpansionBatch,class ParallelExpansionExecutor)",
+          "CombatSolver.CombatBeamSolver.EvaluateRawExpansion(class CombatSolver.SearchNode,class ParallelExpansionExecutor)",
+          "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor.Execute(class CombatSolver.CombatBeamSolver,class CombatSolver.SearchNode,class ExpansionWave,int32,bool,class ParallelExpansionExecutor)",
+          "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor.Evaluate(class System.Collections.Generic.IReadOnlyList`1<class CombatSolver.SearchNode>,bool,class System.Action`2<int32,class ExpansionBatch>)",
+          "CombatSolver.CombatBeamSolver.SolveCore()",
+          "CombatSolver.CombatBeamSolver.Solve()",
+          "CombatSolver.CombatSearchCoordinator.AuditOpeningPowerUse(class CombatSolver.CombatRootSnapshot,class CombatSolver.SolverDisplayNames,value class CombatSolver.BattleDamageSnapshot,class CombatSolver.SearchPolicySnapshot,value class System.Threading.CancellationToken,class System.Action`1<class CombatSolver.SolverProgress>,class CombatSolver.SolverSearchProfile,value class System.Nullable`1<int32>,class CombatSolver.SolverResult)",
+          "CombatSolver.CombatSearchCoordinator.RunSupplementalAudits(class CombatSolver.CombatRootSnapshot,class CombatSolver.SolverDisplayNames,value class CombatSolver.BattleDamageSnapshot,class CombatSolver.SearchPolicySnapshot,value class System.Threading.CancellationToken,class System.Action`1<class CombatSolver.SolverProgress>,class CombatSolver.SolverSearchProfile,value class System.Nullable`1<int32>,class System.Diagnostics.Stopwatch,class CombatSolver.SolverResult,class CombatSolver.SmartLayerMemoryForecast,class System.Action`1<class CombatSolver.SolverResult>)",
+          "CombatSolver.CombatSearchCoordinator.SolveCore(class CombatSolver.CombatRootSnapshot,class CombatSolver.SolverDisplayNames,value class CombatSolver.BattleDamageSnapshot,class CombatSolver.SearchPolicySnapshot,value class System.Threading.CancellationToken,class System.Action`1<class CombatSolver.SolverProgress>,class System.Action`1<class CombatSolver.SolverResult>)",
+          "CombatSolver.CombatSearchCoordinator.Solve(class CombatSolver.CombatRootSnapshot,class CombatSolver.SolverDisplayNames,value class CombatSolver.BattleDamageSnapshot,class CombatSolver.SearchPolicySnapshot,value class System.Threading.CancellationToken,class System.Action`1<class CombatSolver.SolverProgress>)",
+          "CombatSolver.SolverController+<>c__DisplayClass163_0.<RequestSearch>b__0()",
+          "System.Threading.Tasks.Task`1[System.__Canon].InnerInvoke()",
+          "System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(class System.Threading.Thread,class System.Threading.ExecutionContext,class System.Threading.ContextCallback,class System.Object)",
+          "System.Threading.Tasks.Task.ExecuteWithThreadLocal(class System.Threading.Tasks.Task&,class System.Threading.Thread)",
+          "System.Threading.ThreadPoolWorkQueue.Dispatch()",
+          "System.Threading.PortableThreadPool+WorkerThread.WorkerThreadStart()"
+        ]
+      },
+      {
+        "stackId": 88860,
+        "scope": "ExpansionWork",
+        "category": "Fork",
+        "tags": [
+          "Fork"
+        ],
+        "anchor": "CombatSolver.CombatBeamSolver.ParallelExpansionExecutor.Execute(class CombatSolver.CombatBeamSolver,class CombatSolver.SearchNode,class ExpansionWave,int32,bool,class ParallelExpansionExecutor)",
+        "totals": {
+          "sampleCount": 152,
+          "estimatedBytes": 16201960,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 35111.861999,
+          "lastSampleMs": 39171.875162
+        },
+        "frames": [
+          "CombatSolver.Engine.Common.SimCardPile.Fork(class CombatSolver.Engine.Common.PredictionForkContext)",
+          "CombatSolver.Engine.InCombat.Simulation.CombatPredictionState.Fork(class CombatSolver.Engine.Common.PredictionForkContext)",
+          "CombatSolver.Engine.InCombat.Simulation.CombatPredictionSimulator.Fork()",
+          "CombatSolver.CombatBeamSolver.Replay(class System.Collections.Generic.IReadOnlyList`1<class CombatSolver.PlanAction>,class CombatSolver.SimulationSnapshot,int32,int32,class CombatSolver.Engine.InCombat.Simulation.ActionRelicTriggerRecorder,class ReplayForkSeed)",
+          "CombatSolver.CombatBeamSolver+<>c__DisplayClass135_0.<ReplayAction>b__0()",
+          "CombatSolver.SearchTransitionGuard.Execute(class CombatSolver.PlanAction,value class CombatSolver.StateFingerprint,int32,class System.Func`1<!!0>)",
+          "CombatSolver.CombatBeamSolver.ReplayAction(class CombatSolver.SearchNode,class CombatSolver.PlanAction,class ReplayForkSeed)",
+          "CombatSolver.CombatBeamSolver.GeneratePreparedCardAction(class CombatSolver.SearchNode,value class PreparedCardAction,class ReplayForkSeed,class System.Object,class ExpansionBatch,bool)",
+          "CombatSolver.CombatBeamSolver.GenerateRawCardCandidates(class CombatSolver.SearchNode,class ExpansionBatch,class ParallelExpansionExecutor)",
+          "CombatSolver.CombatBeamSolver.EvaluateRawExpansion(class CombatSolver.SearchNode,class ParallelExpansionExecutor)",
+          "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor.Execute(class CombatSolver.CombatBeamSolver,class CombatSolver.SearchNode,class ExpansionWave,int32,bool,class ParallelExpansionExecutor)",
+          "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor+ExpansionWorkItem.Execute(class ParallelExpansionExecutor,class CombatSolver.CombatBeamSolver)",
+          "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor+ExpansionLane.Run()"
+        ]
+      },
+      {
+        "stackId": 88974,
+        "scope": "ExpansionWork",
+        "category": "Fork",
+        "tags": [
+          "Fork"
+        ],
+        "anchor": "CombatSolver.CombatBeamSolver.ParallelExpansionExecutor.Execute(class CombatSolver.CombatBeamSolver,class CombatSolver.SearchNode,class ExpansionWave,int32,bool,class ParallelExpansionExecutor)",
+        "totals": {
+          "sampleCount": 143,
+          "estimatedBytes": 15242888,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 35115.464589,
+          "lastSampleMs": 38154.487741
+        },
+        "frames": [
+          "CombatSolver.Engine.Common.SimCardPile.Fork(class CombatSolver.Engine.Common.PredictionForkContext)",
+          "CombatSolver.Engine.InCombat.Simulation.CombatPredictionState.Fork(class CombatSolver.Engine.Common.PredictionForkContext)",
+          "CombatSolver.Engine.InCombat.Simulation.CombatPredictionSimulator.Fork()",
+          "CombatSolver.CombatBeamSolver.Replay(class System.Collections.Generic.IReadOnlyList`1<class CombatSolver.PlanAction>,class CombatSolver.SimulationSnapshot,int32,int32,class CombatSolver.Engine.InCombat.Simulation.ActionRelicTriggerRecorder,class ReplayForkSeed)",
+          "CombatSolver.CombatBeamSolver+<>c__DisplayClass135_0.<ReplayAction>b__0()",
+          "CombatSolver.SearchTransitionGuard.Execute(class CombatSolver.PlanAction,value class CombatSolver.StateFingerprint,int32,class System.Func`1<!!0>)",
+          "CombatSolver.CombatBeamSolver.ReplayAction(class CombatSolver.SearchNode,class CombatSolver.PlanAction,class ReplayForkSeed)",
+          "CombatSolver.CombatBeamSolver.ReplayPlannedChoiceBranch(class CombatSolver.SearchNode,class CombatSolver.PlanAction,class ReplayForkSeed)",
+          "CombatSolver.CombatBeamSolver+<ResolvePrimaryCardChoiceLayer>d__111.MoveNext()",
+          "CombatSolver.CombatBeamSolver+<ResolvePrimaryCardChoiceBranches>d__109.MoveNext()",
+          "CombatSolver.CombatBeamSolver.AddResolvedCardCandidates(class CombatSolver.SearchNode,value class PreparedCardAction,class System.Collections.Generic.IEnumerable`1<value class System.ValueTuple`2<class CombatSolver.PlanAction,class CombatSolver.SimulationSnapshot>>,class ExpansionBatch)",
+          "CombatSolver.CombatBeamSolver.GeneratePreparedCardAction(class CombatSolver.SearchNode,value class PreparedCardAction,class ReplayForkSeed,class System.Object,class ExpansionBatch,bool)",
+          "CombatSolver.CombatBeamSolver.GenerateRawCardCandidates(class CombatSolver.SearchNode,class ExpansionBatch,class ParallelExpansionExecutor)",
+          "CombatSolver.CombatBeamSolver.EvaluateRawExpansion(class CombatSolver.SearchNode,class ParallelExpansionExecutor)",
+          "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor.Execute(class CombatSolver.CombatBeamSolver,class CombatSolver.SearchNode,class ExpansionWave,int32,bool,class ParallelExpansionExecutor)",
+          "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor+ExpansionWorkItem.Execute(class ParallelExpansionExecutor,class CombatSolver.CombatBeamSolver)",
+          "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor+ExpansionLane.Run()"
+        ]
+      },
+      {
+        "stackId": 88984,
+        "scope": "ExpansionWork",
+        "category": "Fork",
+        "tags": [
+          "Fork"
+        ],
+        "anchor": "CombatSolver.CombatBeamSolver.ParallelExpansionExecutor.Execute(class CombatSolver.CombatBeamSolver,class CombatSolver.SearchNode,class ExpansionWave,int32,bool,class ParallelExpansionExecutor)",
+        "totals": {
+          "sampleCount": 129,
+          "estimatedBytes": 13753584,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 35115.850419,
+          "lastSampleMs": 38370.434893
+        },
+        "frames": [
+          "CombatSolver.Engine.Common.SimCardPile.Fork(class CombatSolver.Engine.Common.PredictionForkContext)",
+          "CombatSolver.Engine.InCombat.Simulation.CombatPredictionState.Fork(class CombatSolver.Engine.Common.PredictionForkContext)",
+          "CombatSolver.Engine.InCombat.Simulation.CombatPredictionSimulator.Fork()",
+          "CombatSolver.CombatBeamSolver.Replay(class System.Collections.Generic.IReadOnlyList`1<class CombatSolver.PlanAction>,class CombatSolver.SimulationSnapshot,int32,int32,class CombatSolver.Engine.InCombat.Simulation.ActionRelicTriggerRecorder,class ReplayForkSeed)",
+          "CombatSolver.CombatBeamSolver+<>c__DisplayClass135_0.<ReplayAction>b__0()",
+          "CombatSolver.SearchTransitionGuard.Execute(class CombatSolver.PlanAction,value class CombatSolver.StateFingerprint,int32,class System.Func`1<!!0>)",
+          "CombatSolver.CombatBeamSolver.ReplayAction(class CombatSolver.SearchNode,class CombatSolver.PlanAction,class ReplayForkSeed)",
+          "CombatSolver.CombatBeamSolver.ReplayPlannedChoiceBranch(class CombatSolver.SearchNode,class CombatSolver.PlanAction,class ReplayForkSeed)",
+          "CombatSolver.CombatBeamSolver+<ResolvePrimaryCardChoiceLayer>d__111.MoveNext()",
+          "CombatSolver.CombatBeamSolver+<ResolvePrimaryCardChoiceBranches>d__109.MoveNext()",
+          "CombatSolver.CombatBeamSolver.AddResolvedCardCandidates(class CombatSolver.SearchNode,value class PreparedCardAction,class System.Collections.Generic.IEnumerable`1<value class System.ValueTuple`2<class CombatSolver.PlanAction,class CombatSolver.SimulationSnapshot>>,class ExpansionBatch)",
+          "CombatSolver.CombatBeamSolver.GeneratePreparedCardAction(class CombatSolver.SearchNode,value class PreparedCardAction,class ReplayForkSeed,class System.Object,class ExpansionBatch,bool)",
+          "CombatSolver.CombatBeamSolver.GenerateRawCardCandidates(class CombatSolver.SearchNode,class ExpansionBatch,class ParallelExpansionExecutor)",
+          "CombatSolver.CombatBeamSolver.EvaluateRawExpansion(class CombatSolver.SearchNode,class ParallelExpansionExecutor)",
+          "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor.Execute(class CombatSolver.CombatBeamSolver,class CombatSolver.SearchNode,class ExpansionWave,int32,bool,class ParallelExpansionExecutor)",
+          "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor+ExpansionWorkItem.Execute(class ParallelExpansionExecutor,class CombatSolver.CombatBeamSolver)",
+          "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor+ExpansionLane.Run()"
+        ]
+      },
+      {
+        "stackId": 88936,
+        "scope": "ExpansionWork",
+        "category": "Fork",
+        "tags": [
+          "Fork"
+        ],
+        "anchor": "CombatSolver.CombatBeamSolver.ParallelExpansionExecutor.Execute(class CombatSolver.CombatBeamSolver,class CombatSolver.SearchNode,class ExpansionWave,int32,bool,class ParallelExpansionExecutor)",
+        "totals": {
+          "sampleCount": 127,
+          "estimatedBytes": 13537632,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 35113.816618,
+          "lastSampleMs": 37827.058567
+        },
+        "frames": [
+          "CombatSolver.Engine.Common.SimCardPile.Fork(class CombatSolver.Engine.Common.PredictionForkContext)",
+          "CombatSolver.Engine.InCombat.Simulation.CombatPredictionState.Fork(class CombatSolver.Engine.Common.PredictionForkContext)",
+          "CombatSolver.Engine.InCombat.Simulation.CombatPredictionSimulator.Fork()",
+          "CombatSolver.CombatBeamSolver.Replay(class System.Collections.Generic.IReadOnlyList`1<class CombatSolver.PlanAction>,class CombatSolver.SimulationSnapshot,int32,int32,class CombatSolver.Engine.InCombat.Simulation.ActionRelicTriggerRecorder,class ReplayForkSeed)",
+          "CombatSolver.CombatBeamSolver+<>c__DisplayClass135_0.<ReplayAction>b__0()",
+          "CombatSolver.SearchTransitionGuard.Execute(class CombatSolver.PlanAction,value class CombatSolver.StateFingerprint,int32,class System.Func`1<!!0>)",
+          "CombatSolver.CombatBeamSolver.ReplayAction(class CombatSolver.SearchNode,class CombatSolver.PlanAction,class ReplayForkSeed)",
+          "CombatSolver.CombatBeamSolver.ReplayPlannedChoiceBranch(class CombatSolver.SearchNode,class CombatSolver.PlanAction,class ReplayForkSeed)",
+          "CombatSolver.CombatBeamSolver+<ResolvePrimaryCardChoiceLayer>d__111.MoveNext()",
+          "CombatSolver.CombatBeamSolver+<ResolvePrimaryCardChoiceBranches>d__109.MoveNext()",
+          "CombatSolver.CombatBeamSolver.AddResolvedCardCandidates(class CombatSolver.SearchNode,value class PreparedCardAction,class System.Collections.Generic.IEnumerable`1<value class System.ValueTuple`2<class CombatSolver.PlanAction,class CombatSolver.SimulationSnapshot>>,class ExpansionBatch)",
+          "CombatSolver.CombatBeamSolver.GeneratePreparedCardAction(class CombatSolver.SearchNode,value class PreparedCardAction,class ReplayForkSeed,class System.Object,class ExpansionBatch,bool)",
+          "CombatSolver.CombatBeamSolver.GenerateRawCardCandidates(class CombatSolver.SearchNode,class ExpansionBatch,class ParallelExpansionExecutor)",
+          "CombatSolver.CombatBeamSolver.EvaluateRawExpansion(class CombatSolver.SearchNode,class ParallelExpansionExecutor)",
+          "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor.Execute(class CombatSolver.CombatBeamSolver,class CombatSolver.SearchNode,class ExpansionWave,int32,bool,class ParallelExpansionExecutor)",
+          "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor+ExpansionWorkItem.Execute(class ParallelExpansionExecutor,class CombatSolver.CombatBeamSolver)",
+          "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor+ExpansionLane.Run()"
+        ]
+      },
+      {
+        "stackId": 88993,
+        "scope": "ExpansionWork",
+        "category": "Fork",
+        "tags": [
+          "Fork"
+        ],
+        "anchor": "CombatSolver.CombatBeamSolver.ParallelExpansionExecutor.Execute(class CombatSolver.CombatBeamSolver,class CombatSolver.SearchNode,class ExpansionWave,int32,bool,class ParallelExpansionExecutor)",
+        "totals": {
+          "sampleCount": 117,
+          "estimatedBytes": 12469144,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 35116.800352,
+          "lastSampleMs": 37811.296702
+        },
+        "frames": [
+          "CombatSolver.Engine.Common.SimCardPile.Fork(class CombatSolver.Engine.Common.PredictionForkContext)",
+          "CombatSolver.Engine.InCombat.Simulation.CombatPredictionState.Fork(class CombatSolver.Engine.Common.PredictionForkContext)",
+          "CombatSolver.Engine.InCombat.Simulation.CombatPredictionSimulator.Fork()",
+          "CombatSolver.CombatBeamSolver.Replay(class System.Collections.Generic.IReadOnlyList`1<class CombatSolver.PlanAction>,class CombatSolver.SimulationSnapshot,int32,int32,class CombatSolver.Engine.InCombat.Simulation.ActionRelicTriggerRecorder,class ReplayForkSeed)",
+          "CombatSolver.CombatBeamSolver+<>c__DisplayClass135_0.<ReplayAction>b__0()",
+          "CombatSolver.SearchTransitionGuard.Execute(class CombatSolver.PlanAction,value class CombatSolver.StateFingerprint,int32,class System.Func`1<!!0>)",
+          "CombatSolver.CombatBeamSolver.ReplayAction(class CombatSolver.SearchNode,class CombatSolver.PlanAction,class ReplayForkSeed)",
+          "CombatSolver.CombatBeamSolver.ReplayPlannedChoiceBranch(class CombatSolver.SearchNode,class CombatSolver.PlanAction,class ReplayForkSeed)",
+          "CombatSolver.CombatBeamSolver+<ResolvePrimaryCardChoiceLayer>d__111.MoveNext()",
+          "CombatSolver.CombatBeamSolver+<ResolvePrimaryCardChoiceBranches>d__109.MoveNext()",
+          "CombatSolver.CombatBeamSolver.AddResolvedCardCandidates(class CombatSolver.SearchNode,value class PreparedCardAction,class System.Collections.Generic.IEnumerable`1<value class System.ValueTuple`2<class CombatSolver.PlanAction,class CombatSolver.SimulationSnapshot>>,class ExpansionBatch)",
+          "CombatSolver.CombatBeamSolver.GeneratePreparedCardAction(class CombatSolver.SearchNode,value class PreparedCardAction,class ReplayForkSeed,class System.Object,class ExpansionBatch,bool)",
+          "CombatSolver.CombatBeamSolver.GenerateRawCardCandidates(class CombatSolver.SearchNode,class ExpansionBatch,class ParallelExpansionExecutor)",
+          "CombatSolver.CombatBeamSolver.EvaluateRawExpansion(class CombatSolver.SearchNode,class ParallelExpansionExecutor)",
+          "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor.Execute(class CombatSolver.CombatBeamSolver,class CombatSolver.SearchNode,class ExpansionWave,int32,bool,class ParallelExpansionExecutor)",
+          "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor.Evaluate(class System.Collections.Generic.IReadOnlyList`1<class CombatSolver.SearchNode>,bool,class System.Action`2<int32,class ExpansionBatch>)",
+          "CombatSolver.CombatBeamSolver.SolveCore()",
+          "CombatSolver.CombatBeamSolver.Solve()",
+          "CombatSolver.CombatSearchCoordinator.AuditOpeningPowerUse(class CombatSolver.CombatRootSnapshot,class CombatSolver.SolverDisplayNames,value class CombatSolver.BattleDamageSnapshot,class CombatSolver.SearchPolicySnapshot,value class System.Threading.CancellationToken,class System.Action`1<class CombatSolver.SolverProgress>,class CombatSolver.SolverSearchProfile,value class System.Nullable`1<int32>,class CombatSolver.SolverResult)",
+          "CombatSolver.CombatSearchCoordinator.RunSupplementalAudits(class CombatSolver.CombatRootSnapshot,class CombatSolver.SolverDisplayNames,value class CombatSolver.BattleDamageSnapshot,class CombatSolver.SearchPolicySnapshot,value class System.Threading.CancellationToken,class System.Action`1<class CombatSolver.SolverProgress>,class CombatSolver.SolverSearchProfile,value class System.Nullable`1<int32>,class System.Diagnostics.Stopwatch,class CombatSolver.SolverResult,class CombatSolver.SmartLayerMemoryForecast,class System.Action`1<class CombatSolver.SolverResult>)",
+          "CombatSolver.CombatSearchCoordinator.SolveCore(class CombatSolver.CombatRootSnapshot,class CombatSolver.SolverDisplayNames,value class CombatSolver.BattleDamageSnapshot,class CombatSolver.SearchPolicySnapshot,value class System.Threading.CancellationToken,class System.Action`1<class CombatSolver.SolverProgress>,class System.Action`1<class CombatSolver.SolverResult>)",
+          "CombatSolver.CombatSearchCoordinator.Solve(class CombatSolver.CombatRootSnapshot,class CombatSolver.SolverDisplayNames,value class CombatSolver.BattleDamageSnapshot,class CombatSolver.SearchPolicySnapshot,value class System.Threading.CancellationToken,class System.Action`1<class CombatSolver.SolverProgress>)",
+          "CombatSolver.SolverController+<>c__DisplayClass163_0.<RequestSearch>b__0()",
+          "System.Threading.Tasks.Task`1[System.__Canon].InnerInvoke()",
+          "System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(class System.Threading.Thread,class System.Threading.ExecutionContext,class System.Threading.ContextCallback,class System.Object)",
+          "System.Threading.Tasks.Task.ExecuteWithThreadLocal(class System.Threading.Tasks.Task&,class System.Threading.Thread)",
+          "System.Threading.ThreadPoolWorkQueue.Dispatch()",
+          "System.Threading.PortableThreadPool+WorkerThread.WorkerThreadStart()"
+        ]
+      },
+      {
+        "stackId": 88835,
+        "scope": "ExpansionWork",
+        "category": "Fork",
+        "tags": [
+          "Fork"
+        ],
+        "anchor": "CombatSolver.CombatBeamSolver.ParallelExpansionExecutor.Execute(class CombatSolver.CombatBeamSolver,class CombatSolver.SearchNode,class ExpansionWave,int32,bool,class ParallelExpansionExecutor)",
+        "totals": {
+          "sampleCount": 117,
+          "estimatedBytes": 12468928,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 35110.176485,
+          "lastSampleMs": 39157.327877
+        },
+        "frames": [
+          "CombatSolver.Engine.Common.SimCardPile.Fork(class CombatSolver.Engine.Common.PredictionForkContext)",
+          "CombatSolver.Engine.InCombat.Simulation.CombatPredictionState.Fork(class CombatSolver.Engine.Common.PredictionForkContext)",
+          "CombatSolver.Engine.InCombat.Simulation.CombatPredictionSimulator.Fork()",
+          "CombatSolver.CombatBeamSolver.Replay(class System.Collections.Generic.IReadOnlyList`1<class CombatSolver.PlanAction>,class CombatSolver.SimulationSnapshot,int32,int32,class CombatSolver.Engine.InCombat.Simulation.ActionRelicTriggerRecorder,class ReplayForkSeed)",
+          "CombatSolver.CombatBeamSolver+<>c__DisplayClass135_0.<ReplayAction>b__0()",
+          "CombatSolver.SearchTransitionGuard.Execute(class CombatSolver.PlanAction,value class CombatSolver.StateFingerprint,int32,class System.Func`1<!!0>)",
+          "CombatSolver.CombatBeamSolver.ReplayAction(class CombatSolver.SearchNode,class CombatSolver.PlanAction,class ReplayForkSeed)",
+          "CombatSolver.CombatBeamSolver+<BuildEndTurnBranches>d__102.MoveNext()",
+          "CombatSolver.CombatBeamSolver.GenerateRawEndTurnCandidates(class CombatSolver.SearchNode,class ExpansionBatch)",
+          "CombatSolver.CombatBeamSolver.EvaluateRawExpansion(class CombatSolver.SearchNode,class ParallelExpansionExecutor)",
+          "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor.Execute(class CombatSolver.CombatBeamSolver,class CombatSolver.SearchNode,class ExpansionWave,int32,bool,class ParallelExpansionExecutor)",
+          "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor.Evaluate(class System.Collections.Generic.IReadOnlyList`1<class CombatSolver.SearchNode>,bool,class System.Action`2<int32,class ExpansionBatch>)",
+          "CombatSolver.CombatBeamSolver.SolveCore()",
+          "CombatSolver.CombatBeamSolver.Solve()",
+          "CombatSolver.CombatSearchCoordinator.AuditOpeningPowerUse(class CombatSolver.CombatRootSnapshot,class CombatSolver.SolverDisplayNames,value class CombatSolver.BattleDamageSnapshot,class CombatSolver.SearchPolicySnapshot,value class System.Threading.CancellationToken,class System.Action`1<class CombatSolver.SolverProgress>,class CombatSolver.SolverSearchProfile,value class System.Nullable`1<int32>,class CombatSolver.SolverResult)",
+          "CombatSolver.CombatSearchCoordinator.RunSupplementalAudits(class CombatSolver.CombatRootSnapshot,class CombatSolver.SolverDisplayNames,value class CombatSolver.BattleDamageSnapshot,class CombatSolver.SearchPolicySnapshot,value class System.Threading.CancellationToken,class System.Action`1<class CombatSolver.SolverProgress>,class CombatSolver.SolverSearchProfile,value class System.Nullable`1<int32>,class System.Diagnostics.Stopwatch,class CombatSolver.SolverResult,class CombatSolver.SmartLayerMemoryForecast,class System.Action`1<class CombatSolver.SolverResult>)",
+          "CombatSolver.CombatSearchCoordinator.SolveCore(class CombatSolver.CombatRootSnapshot,class CombatSolver.SolverDisplayNames,value class CombatSolver.BattleDamageSnapshot,class CombatSolver.SearchPolicySnapshot,value class System.Threading.CancellationToken,class System.Action`1<class CombatSolver.SolverProgress>,class System.Action`1<class CombatSolver.SolverResult>)",
+          "CombatSolver.CombatSearchCoordinator.Solve(class CombatSolver.CombatRootSnapshot,class CombatSolver.SolverDisplayNames,value class CombatSolver.BattleDamageSnapshot,class CombatSolver.SearchPolicySnapshot,value class System.Threading.CancellationToken,class System.Action`1<class CombatSolver.SolverProgress>)",
+          "CombatSolver.SolverController+<>c__DisplayClass163_0.<RequestSearch>b__0()",
+          "System.Threading.Tasks.Task`1[System.__Canon].InnerInvoke()",
+          "System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(class System.Threading.Thread,class System.Threading.ExecutionContext,class System.Threading.ContextCallback,class System.Object)",
+          "System.Threading.Tasks.Task.ExecuteWithThreadLocal(class System.Threading.Tasks.Task&,class System.Threading.Thread)",
+          "System.Threading.ThreadPoolWorkQueue.Dispatch()",
+          "System.Threading.PortableThreadPool+WorkerThread.WorkerThreadStart()"
+        ]
+      }
+    ],
+    "captureOutcome": "Runner stop wait timed out because stdin was redirected; cleanup SIGTERM to the collector requested supported session.Stop + drain. Resulting file passed strict conversion with resolved methods. Diagnostic sample only.",
+    "runId": "db954eec85d140e783207abab1d44b6a"
+  },
+  "heapCapture": {
+    "heapBytes": 138493362,
+    "objects": 953244,
+    "waveLogLinesAtTrigger": 67,
+    "counts": {
+      "PredictedCard": 56542,
+      "PreviewStorage": 581,
+      "SimulationSnapshot": 263,
+      "CombatPredictionHistory": 143
+    },
+    "scope": "Profiler-induced GC; point-in-time object counts, not request allocations, RSS peak, per-type retained bytes or dominator ownership"
+  },
+  "checks": {
+    "snapshotListBuffer": {
+      "passed": 7,
+      "source": "actual production helper"
+    },
+    "headlessHelpers": {
+      "leaseGroups": 13,
+      "snapshotGroups": 4,
+      "snapshotFailureGroups": 9,
+      "scope": "Linux native child/test doubles; no game semantics"
+    },
+    "boundaries": {
+      "runId": "5171caca9cf84baaa3f48884644f3b07",
+      "passed": true,
+      "checks": [
+        "SearchPolicySnapshot",
+        "ForkBoundaries"
+      ],
+      "scope": "Candidate DLL under new parallel launcher; DOP1/DOP2 exact route/work/pruning checks inside SearchPolicySnapshot"
+    },
+    "parallelGames": {
+      "samples": [
+        {
+          "runId": "3f8b0b3f6bcc47ca82528f8528ccb486",
+          "status": "Passed",
+          "startedAtUtc": "2026-09-05T09:07:42.0588867+00:00",
+          "finishedAtUtc": "2026-09-05T09:08:05.8332958+00:00",
+          "completedChecks": []
+        },
+        {
+          "runId": "a97addbd1bf34400afe13f33342013bf",
+          "status": "Passed",
+          "startedAtUtc": "2026-09-05T09:07:41.8835307+00:00",
+          "finishedAtUtc": "2026-09-05T09:08:05.5323914+00:00",
+          "completedChecks": []
+        }
+      ],
+      "overlapSeconds": 23.473505,
+      "scope": "Real parallel game lifecycle and setup; root assertion flag was not requested; no performance conclusion"
+    }
+  }
+}

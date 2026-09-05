@@ -6,6 +6,11 @@
 
 ## 未发布：GC 独立研究（2026-09-05，版本保持不变）
 
+- 第二轮从 `7d724d6` 重新取对照，加入每 `_run` / lane 的 Snapshot 临时列表复用，容量上限4096，异常清空、嵌套租用与旧 lease 代次保护。三次固定工作量中位分配：Silent `1.830 → 1.768 GB`（−3.39%），Necrobinder `1.289 → 1.271 GB`（−1.34%）；完整动作、评分、工作量和非时序剪枝相同，耗时未显示稳定收益。7项生产 helper 检查及新入口下 Fork/DOP1-DOP2 检查通过，runId `5171caca9cf84baaa3f48884644f3b07`。
+- 实际分配采样可归因搜索18,572条，Fork占采样权重43.93%，逐牌 wrapper 与数组最突出；独立堆快照记录56,542个 PredictedCard。采样、存活对象和精确分配计数分开解释，详见 [第二轮报告](performance/gc-issue36-round2.md) 与 [结构化证据](performance/gc-issue36-round2-results.json)。AfterCardEnteredCombat 的提前写入假设因真实生成路径已独占 preview 而取消。
+- Smart 软阈值关闭/512/192 MiB 各做一次独占冷进程实验：保持同路线与工作量，额外回收0/1/2次；VmHWM `2.823/2.247/1.989 GB`，耗时 `4.743/5.452/5.050 s`。有明确内存/暂停交换，但单次不足以定默认值，跨请求 region epoch 也未实现，生产已撤销，仅保留 [实验补丁](../tools/ExperimentalSmartSoftLimit/README.md)。
+- 按用户要求从“小循环研究”工作区移植 headless 并行测试设施，未合入其战斗/评分改动。私有游戏/Mod 快照、数据及主机租约支持显式 parallel / 最多两实例；另修复 Linux 暖进程重复预约已兑现 RSS，并在两端拒绝 Hold 与初次结果提前返回的互斥组合。13组租约、4组快照及9组失败注入检查通过；两个真实实例均成功建局/退出，请求重叠23.47秒。Windows只做脚本解析/结构检查，未运行游戏；并行样本不作单场性能证据。
+
 - 从上游 `5c4b69d` 建立 `perf/gc-research` 独立 worktree，隔离构建输出、游戏 mods 和 headless 数据，未合入另一个小循环任务的策略修改。实现、取舍及完整证据见 [实施报告](performance/gc-issue36-implementation.md)；[首轮基线](performance/gc-issue36-research.md) 和 [源码审计](performance/gc-issue36-code-audit.md) 保留研究起点。
 - 当前源码保留 StateStore 直接存储与懒字典、空 PowerAmount dirty 查询、有界 raw batch storage 复用、按原序提交并释放完成前缀，以及历史到祖先 card wrapper 的引用解除。GC 部分增加准入 scope 冻结计数和单段暂停观测，外层 wave 按实际余量准入，Smart 用同一层的分配/转移预测是否跳过可选回收；搜索预算、路线排序和提交顺序保持原规则。
 - listener slot 的 eager / lazy 分页两版均撤回生产，保存为 [独立实验补丁](../tools/ExperimentalListenerSlots/README.md)。短搜的稀疏更新收益未覆盖长搜反例：同为 5,000 展开 / 19,065 转移，lazy 候选分配增加 20.81%；逐张 preview COW 立即复制缓存，随后新增卡使整批快照失效。仅回退 listener 的控制样本恢复到 2.801 GB。通用 StateStore COW、按类型分桶和 compact/undo/page COW 内核均未接入生产；普通 GC 自适应并发的生产接线也已撤回。

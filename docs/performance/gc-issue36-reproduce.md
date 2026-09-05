@@ -51,7 +51,7 @@ for gc36_case in silent necro; do
     > "$gc36_output/$gc36_case/data/SlayTheSpire2/combat_solver_settings.json"
 done
 
-gc36_common=(--sts2-game-root "$GC36_GAME_ROOT"
+gc36_common=(--headless-execution-mode exclusive --sts2-game-root "$GC36_GAME_ROOT"
   --ritsu-workshop-root "$GC36_RITSU_ROOT"
   --performance-preset-for-test Custom --force-short-search-only
   --measure-search-phases --enable-detailed-diagnostic-logs-for-test 0
@@ -85,9 +85,9 @@ COMBATSOLVER_HEADLESS_ROOT="$gc36_output/necro" \
 
 每个 runtime 的 `data/SlayTheSpire2/combat_solver_test_result.json` 保存结构化结果。原始运行目录留在 Git 忽略区；发布结果时仅提取必要数值和比较结论。
 
-## Windows 原生 PowerShell 7
+## Windows 原生 PowerShell 7.4+
 
-使用 `.ps1` launcher，不通过 WSL 启动 Windows 游戏。该入口目前固定使用系统 `LocalApplicationData/CombatSolver/headless-runtime`，**不读取 Linux 的 `COMBATSOLVER_HEADLESS_ROOT`**。下面仅向它的 headless `Roaming/SlayTheSpire2` 写研究设置；每次进程退出后，把结果复制到新轮次目录。此命令仅完成静态参数核对，尚未在 Windows 执行。
+使用 `.ps1` launcher，不通过 WSL 启动 Windows 游戏。当前实例入口支持 `COMBATSOLVER_HEADLESS_ROOT`，下面指定独立研究 runtime，并只向其 `Roaming/SlayTheSpire2` 写设置。每次进程退出后把结果保存到新轮次目录。这些 Windows 命令尚未实机执行。
 
 ```powershell
 $ErrorActionPreference = 'Stop'
@@ -96,7 +96,8 @@ $gc36Nodes = 576
 $gc36Dop = 4
 $gc36NoGc = 0
 $gc36RegionGb = 4
-$gc36Runtime = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'CombatSolver/headless-runtime'
+$gc36Runtime = Join-Path $gc36Output 'runtime'
+$env:COMBATSOLVER_HEADLESS_ROOT = $gc36Runtime
 $gc36Data = Join-Path $gc36Runtime 'Roaming/SlayTheSpire2'
 New-Item -ItemType Directory -Force -Path $gc36Data, $gc36Output | Out-Null
 $gc36Settings = Get-Content coverage/unattended/gc-issue36-benchmark-settings.json -Raw | ConvertFrom-Json
@@ -105,6 +106,7 @@ $gc36Settings.deepMaxExpandedNodes = $gc36Nodes
 $gc36Settings | ConvertTo-Json | Set-Content (Join-Path $gc36Data 'combat_solver_settings.json') -Encoding utf8NoBOM
 
 $gc36Common = @{
+    HeadlessExecutionMode = 'exclusive'
     Sts2GameRoot = $env:GC36_GAME_ROOT; RitsuWorkshopRoot = $env:GC36_RITSU_ROOT
     SearchMaxDegreeOfParallelismForTest = $gc36Dop
     EnableNoGcRegionForTest = $gc36NoGc; NoGcRegionBudgetGigabytesForTest = $gc36RegionGb
@@ -188,3 +190,5 @@ COMBATSOLVER_HEADLESS_ROOT="$gc36_output/aeonglass" \
 NoGC 生命周期旧构建缺字段时记录 null；普通 GC 的 `SharedProcessWindow` 不能声称只属于该请求，独占 NoGC scope 才有准入前后冻结归因。`noGcRegionRolloverCount` 不等于全部 NoGC restart 次数。
 
 普通 GC 自适应已经从生产撤回，源码及临时接线见 [ExperimentalAdaptiveGc](../../tools/ExperimentalAdaptiveGc/README.md)。其单次 A/B 需要相同最终组合的静态 DOP 控制；判读时保留每 Solve 的完成窗口、探测、拒绝/接受、最终容量与未完成探测数。本轮 Silent 有有效窗口但无探测，Necrobinder 一次降核探测遭拒绝；不能凭没有事件或单次耗时推断稳定收益。
+
+当前启动器默认从本 worktree 的 Release 目录读取 DLL，并从仓库根读取 manifest；冻结 A/B 构建可用 `--combat-solver-build-dir` / `-CombatSolverBuildDir` 指向同时含两者的目录（Windows 还需该构建的 MemoryCleaner）。源码游戏目录只作为私有快照的输入。不要为性能对照启用 parallel；它只用于正确性与吞吐检查。

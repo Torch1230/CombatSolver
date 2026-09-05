@@ -109,11 +109,14 @@ internal sealed partial class CombatBeamSolver
         // Projected shuffle needs these piles in this exact pre-sort order. The remaining
         // snapshot metrics are order-independent, so they can reuse the shuffled list instead
         // of materializing a second deck-sized backing array.
-        List<PredictedCard> liveCards = [
-            .. playerState.DiscardPile.Cards,
-            .. playerState.DrawPile.Cards,
-            .. playerState.Hand.Cards,
-        ];
+        using SnapshotListBuffer<PredictedCard>.Lease liveCardsLease =
+            _run.SnapshotLiveCards.Rent();
+        List<PredictedCard> liveCards = liveCardsLease.Items;
+        liveCards.EnsureCapacity(playerState.DiscardPile.Cards.Count
+            + playerState.DrawPile.Cards.Count + playerState.Hand.Cards.Count);
+        liveCards.AddRange(playerState.DiscardPile.Cards);
+        liveCards.AddRange(playerState.DrawPile.Cards);
+        liveCards.AddRange(playerState.Hand.Cards);
         (StateFingerprint projectedShuffleOrderKey, int projectedShuffleOrderValue) =
             BuildProjectedShuffleOrder(simulator, liveCards);
         _run.Performance.End(

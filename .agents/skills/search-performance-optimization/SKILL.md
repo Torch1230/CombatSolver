@@ -64,6 +64,7 @@ description: 在战斗语义已证明正确后，审计或修改 CombatSolver �
 - 并行 worker 只能拥有 lane-local 模拟、缓存、节流和原始候选；transposition、dominance、fallback、预算与最终接收顺序仍由 coordinator 独占。固定 lane 应在一次 `Solve` 内复用，禁止回到每父节点 `Task.Run` / 新建 solver。
 - 外层 wave 的已完成连续前缀由 coordinator 按输入序号提交并释放，异常退出仍先排空全部 lane；parent 内 aggregate 仍可能保留多组 raw snapshots。提高 DOP 时检查高目标/高选择场景的峰值 live graph，不能只看总分配或平均 bytes/transition。
 - 只有容器进入 `SearchRunContext` 的有界空闲池；每个发布批次必须持有独立 lease，归还前清空引用，旧 Dispose 不得触碰后来租户。不得池化 simulator/model。
+- Snapshot 临时牌列表只由当前 `_run` / lane 租用，维持 Discard → Draw → Hand 拼接顺序和原稳定洗牌。归还清空引用，只留一个容量不超过 4096 的列表；租用代次防止复制的旧 lease 清空新租户，禁止把列表存入返回快照或策略上下文。
 - GC 生命周期计数由 Runtime 在准入 Gate 内冻结。普通 GC 的共享进程窗口不得称为独占请求归因；总暂停、observed max 与 trace max 必须区分。Smart 预测只决定可选层间回收，不能改层预算或候选策略。
 - worker 阶段 ticks 合并后是累计 CPU 时间，不是墙钟占比；同时记录 `parallel_waves`、`parallel_work_items` 与 `parallel_max_concurrency`，避免只凭配置值宣称已并行。
 - BaseLib `3.4.5` 的克隆扩展会以非原子的“先查后加”访问全局弱表。并行搜索必须保留 `BaseLibCloneConcurrencyPatch` 对原版 `MutableClone` 第三方扩展段的窄串行边界；不要删除该边界，也不要把它扩大到候选生成、模拟、剪枝或提交阶段。
