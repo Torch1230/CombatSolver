@@ -12,15 +12,15 @@
 
 | # | 原始减损 | 原始求解器 → 玩家 | 优化后相对人工 | 是否更优 | 处理状态 | 遭遇 | 日志 | 汇总包 | 玩家备注 |
 |---:|---:|---:|---:|---|---|---|---|---|---|
-| 1 | 104 HP | 110 → 6 | +3 | 是 | 同状态已复测：High/Force 剩余 3 HP | AEONGLASS_BOSS | `CombatSolver-AEONGLASS_BOSS-20260903-153416-774.zip` | `combatsolver-reports-20260905-104714.zip` | 110->6 |
-| 2 | 68 HP | 123 → 55 | +55 | 是 | 同状态已复测：High/Force 剩余 0 HP | AEONGLASS_BOSS | `CombatSolver-AEONGLASS_BOSS-20260903-152708-532.zip` | `combatsolver-reports-20260905-104714.zip` | 沙小第知道他自己打得过120血带药战士吗？ |
-| 3 | 58 HP | 61 → 3 | +3 | 是 | 同状态已复测：High 剩余 0 HP | TEST_SUBJECT_BOSS | `CombatSolver-TEST_SUBJECT_BOSS-20260902-133704-483.zip` | `combatsolver-reports-20260905-104714.zip` | 打实验体不开壁垒吃重击的来 |
-| 4 | 52 HP | 52 → 0 | -2 | 否 | 已尽力：High/Force 剩余 2 HP；VeryHigh/Force 已找到 0 HP，暂跳过 | AEONGLASS_BOSS | `CombatSolver-AEONGLASS_BOSS-20260903-151202-078.zip` | `combatsolver-reports-20260905-104714.zip` | 手操从死亡到0战损 |
+| 1 | 104 HP | 110 → 6 | -88 | 否 | 从开战完整搜索：VeryHigh/Smart 战损 94 HP、用 1 药；人工 6 HP、共 4 药；未追平，当前优先修复 | AEONGLASS_BOSS | `CombatSolver-AEONGLASS_BOSS-20260903-153416-774.zip` | `combatsolver-reports-20260905-104714.zip` | 110->6 |
+| 2 | 68 HP | 123 → 55 | 待验证 | 待验证 | 手操前待验收；仅手操后 T7 续局 High/Force 已测 0 HP，须扣除既有战损 | AEONGLASS_BOSS | `CombatSolver-AEONGLASS_BOSS-20260903-152708-532.zip` | `combatsolver-reports-20260905-104714.zip` | 沙小第知道他自己打得过120血带药战士吗？ |
+| 3 | 58 HP | 61 → 3 | 待验证 | 待验证 | 开战快照还原、原版抽牌后完整状态对账通过；整场策略待验收 | TEST_SUBJECT_BOSS | `CombatSolver-TEST_SUBJECT_BOSS-20260902-133704-483.zip` | `combatsolver-reports-20260905-104714.zip` | 打实验体不开壁垒吃重击的来 |
+| 4 | 52 HP | 52 → 0 | 未验收 | 未验收 | 按用户要求跳过；旧 T4 续局 High/Force 2 HP、VeryHigh/Force 0 HP，整场未验收 | AEONGLASS_BOSS | `CombatSolver-AEONGLASS_BOSS-20260903-151202-078.zip` | `combatsolver-reports-20260905-104714.zip` | 手操从死亡到0战损 |
 | 5 | 49 HP | 73 → 24 | 待验证 | 待验证 | 证据不足，暂跳过：当前状态缺少本回合卡牌历史 | TEST_SUBJECT_BOSS | `CombatSolver-TEST_SUBJECT_BOSS-20260902-013258-533.zip` | `combatsolver-reports-20260905-104714.zip` | 更好的世界线 |
-| 6 | 45 HP | 45 → 0 | +0 | 否 | 同状态已复测：High/Disabled 剩余 0 HP；修复回放库存槽位恢复 | MECHA_KNIGHT_ELITE | `CombatSolver-MECHA_KNIGHT_ELITE-20260902-131216-716.zip` | `combatsolver-reports-20260905-104714.zip` | 战损45变0 |
-| 7 | 45 HP | 50 → 5 | +0 | 否 | 同状态已复测：High/RequireAtLeastOne 剩余 5 HP | QUEEN_BOSS | `CombatSolver-QUEEN_BOSS-20260903-173813-639.zip` | `combatsolver-reports-20260905-104652.zip` | 不尊重灵动？ |
-| 8 | 44 HP | 64 → 20 | 待验证 | 待验证 | 待分诊 | AEONGLASS_BOSS | `CombatSolver-AEONGLASS_BOSS-20260904-053711-747.zip` | `combatsolver-reports-20260905-104549.zip` | 无法参考寄托里的世界线 |
-| 9 | 44 HP | 74 → 30 | 待验证 | 待验证 | 待分诊 | QUEEN_BOSS | `CombatSolver-QUEEN_BOSS-20260902-113237-991.zip` | `combatsolver-reports-20260905-104714.zip` | 似乎不太会用疯狂之触药水 |
+| 6 | 45 HP | 45 → 0 | 待验证 | 待验证 | 手操前待验收；T4 续局 High/Disabled 已测 0 HP，库存导入已修复 | MECHA_KNIGHT_ELITE | `CombatSolver-MECHA_KNIGHT_ELITE-20260902-131216-716.zip` | `combatsolver-reports-20260905-104714.zip` | 战损45变0 |
+| 7 | 45 HP | 50 → 5 | 待验证 | 待验证 | 手操前待验收；手操后 T2 续局 High/RequireAtLeastOne 已测 5 HP | QUEEN_BOSS | `CombatSolver-QUEEN_BOSS-20260903-173813-639.zip` | `combatsolver-reports-20260905-104652.zip` | 不尊重灵动？ |
+| 8 | 44 HP | 64 → 20 | 不可比较 | 待验证 | 基线未完战，暂跳过：20 HP 时敌剩 420 HP；当前手操后 High 完整胜利战损 52 HP | AEONGLASS_BOSS | `CombatSolver-AEONGLASS_BOSS-20260904-053711-747.zip` | `combatsolver-reports-20260905-104549.zip` | 无法参考寄托里的世界线 |
+| 9 | 44 HP | 74 → 30 | 待验证 | 待验证 | T3 手操前 VeryHigh/Smart 减战损优先测试超时；整场待验收（人工 30 含此前 21 HP） | QUEEN_BOSS | `CombatSolver-QUEEN_BOSS-20260902-113237-991.zip` | `combatsolver-reports-20260905-104714.zip` | 似乎不太会用疯狂之触药水 |
 | 10 | 42 HP | 51 → 9 | 待验证 | 待验证 | 待分诊 | KNIGHTS_ELITE | `CombatSolver-KNIGHTS_ELITE-20260904-034250-040.zip` | `combatsolver-reports-20260905-104549.zip` | 更好的世界线 |
 | 11 | 40 HP | 62 → 22 | 待验证 | 待验证 | 待分诊 | DECIMILLIPEDE_ELITE | `CombatSolver-DECIMILLIPEDE_ELITE-20260902-012309-024.zip` | `combatsolver-reports-20260905-104714.zip` | 更好世界线 |
 | 12 | 35 HP | 51 → 16 | 待验证 | 待验证 | 待分诊 | KAISER_CRAB_BOSS | `CombatSolver-KAISER_CRAB_BOSS-20260904-231535-471.zip` | `combatsolver-reports-20260905-104412.zip` | 提示打不过boss，手动打了三个回合后计算就能打过了 |

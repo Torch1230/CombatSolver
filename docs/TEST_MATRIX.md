@@ -11,14 +11,20 @@
 | 场景 | 当前结果 | 验证内容 | 日期 |
 | --- | --- | --- | --- |
 | `RELEASE-BUILD-0300-ABILITY-ENGINE` | 通过 | `dotnet build CombatSolver.csproj -c Release`，CombatSolver 与 MemoryCleaner 均成功生成，0 警告、0 错误。 | 2026-09-05 |
-| `PLAYER-WORLDLINE-TEST-SUBJECT-133704-ABILITY-ENGINE` | 通过，优于人工同状态基线 | 清单第 3 条有备注实验体包，复用玩家完成首轮准备后的第 2 回合状态，在 High/DOP1 下预计剩余战损 `0`，人工同状态剩余战损 `3`，相对人工 `+3`；最终完整搜索耗时约 `49.23 s`，runId `d538dcebac0543f4b93ed28ff0e95704`。此前首回合 `9` 与整场人工 `3` 的比较不属于同一状态，已排除。 | 2026-09-05 |
-| `PLAYER-WORLDLINE-AEONGLASS-153416-DYNAMIC-POWER` | 通过，优于人工同状态基线 | 清单第 1 条有备注永世沙漏包，恢复报告 Power 动态变量后，复用第 3 回合状态并使用报告原本的 High/Force 药水约束，预计剩余战损 `3`，人工 `6`，相对人工 `+3`；搜索进入 Deep，runId `5d768646dbb641ea967de0349a18c9ef`。 | 2026-09-05 |
-| `PLAYER-WORLDLINE-AEONGLASS-152708-POWER-ORDER` | 通过，优于人工同状态基线 | 清单第 2 条有备注永世沙漏包，恢复第 7 回合状态时先清理多余 Power 并恢复 SOWN 附魔字段，High/Force 预计剩余战损 `0`，人工 `55`，相对人工 `+55`；runId `2a65b5cb43b846809f31838c8e71f7ed`。 | 2026-09-05 |
-| `PLAYER-WORLDLINE-AEONGLASS-151202-POISON-HORIZON` | High 暂跳过，VeryHigh 已追平 | 清单第 4 条有备注永世沙漏包，复用玩家完成第 3 回合后的第 4 回合状态；High/Force 预计剩余战损 `2`，人工 `0`，相对人工 `-2`，runId `fbc9fe2a11a7416abee9d1a542c15931`；VeryHigh/Force 找到 `0` 战损路线，runId `e91590c716aa40548e02eb7931c96d17`。已完成定向搜索尝试，High 仍差 `2 HP`，按规则暂跳过。 | 2026-09-05 |
-| `PLAYER-WORLDLINE-IMPORT-BASELINE-0300` | 部分解除 | 清单第 1、2 条已完成同状态复测，第 4 条已通过正确角色和人工前置回合导入但 High 仍有 2 HP 策略差距，已按规则暂跳过；第 5 条缺少回合卡牌历史。导入阻塞与策略缺口分开处理。 | 2026-09-05 |
+| `PLAYER-WORLDLINE-TEST-SUBJECT-133704-ABILITY-ENGINE` | 续局通过，手操前待验收 | 第 3 条手操后 T2 的 High/DOP1 剩余战损 `0`，runId `d538dcebac0543f4b93ed28ff0e95704`。未验证求解器能从 T1 自行完成同等准备，撤回整体策略已优于人工的结论。 | 2026-09-05 |
+| `PLAYER-WORLDLINE-AEONGLASS-153416-DYNAMIC-POWER` | 续局通过，手操前待验收 | 第 1 条恢复 Power 动态变量后，手操后 T3 High/Force 剩余战损 `3`，runId `5d768646dbb641ea967de0349a18c9ef`；手操前 T2 的策略仍待验收。 | 2026-09-05 |
+| `PLAYER-WORLDLINE-AEONGLASS-152708-POWER-ORDER` | 续局通过，比较口径已纠正 | 第 2 条恢复 Power 和附魔后，手操后 T7 High/Force 剩余战损 `0`，runId `2a65b5cb43b846809f31838c8e71f7ed`。原人工 `55` 含既有战损，不能直接与续局 `0` 相减；手操前待验收。 | 2026-09-05 |
+| `PLAYER-WORLDLINE-AEONGLASS-151202-POISON-HORIZON` | 按用户要求跳过，整场未验收 | 第 4 条手操后 T4 续局 High/Force 剩余战损 `2`，runId `fbc9fe2a11a7416abee9d1a542c15931`；VeryHigh/Force 为 `0`，runId `e91590c716aa40548e02eb7931c96d17`。这些结果没有验证从开战开始的策略。 | 2026-09-05 |
+| `PLAYER-WORLDLINE-IMPORT-BASELINE-0300` | 部分解除，手操前验收待补 | 第 1、2、3、6、7 条已取得手操后续局结果，不能代替手操前的策略验收；第 4 条按用户指令跳过；第 5 条导入缺少回合卡牌历史。 | 2026-09-05 |
 | `PLAYER-WORLDLINE-TEST-SUBJECT-013258-IMPORT` | 暂跳过 | 第 5 条有备注实验体包尝试复用第 2 回合状态；导入在 `RestoreReplayTurnCardHistory` 因缺少本回合卡牌历史失败，runId `06b9c267486a4d1f9ce9618a22d52839`，没有产生可比较的求解结果。 | 2026-09-05 |
-| `PLAYER-WORLDLINE-MECHA-KNIGHT-131216-REPLAY-INVENTORY` | 通过，追平人工同状态基线 | 第 6 条有备注机甲骑士包复用第 4 回合状态；回放库存逐槽恢复后，High/Disabled 预计剩余战损 `0`，人工 `0`，相对人工 `+0`；搜索展开 `565` 节点、跨 `2` 回合，runId `7d6aa2ce419040b4a3d1533568c8d4dd`。 | 2026-09-05 |
-| `PLAYER-WORLDLINE-QUEEN-173813-CURRENT` | 通过，追平人工同状态基线 | 第 7 条有备注女王包复用玩家完成第 1 回合后的第 2 回合状态；High/RequireAtLeastOne 预计剩余战损 `5`，人工 `5`，相对人工 `+0`；搜索展开 `15,419` 节点、跨 `12` 回合，runId `0155a51343524f769b82068df0c0d857`。 | 2026-09-05 |
+| `PLAYER-WORLDLINE-MECHA-KNIGHT-131216-REPLAY-INVENTORY` | 续局通过，手操前待验收 | 第 6 条 T4 回放库存恢复后，High/Disabled 剩余战损 `0`；展开 `565` 节点、跨 `2` 回合，runId `7d6aa2ce419040b4a3d1533568c8d4dd`。没有验证 T1 手操用药策略。 | 2026-09-05 |
+| `PLAYER-WORLDLINE-QUEEN-173813-CURRENT` | 续局通过，手操前待验收 | 第 7 条手操后 T2 High/RequireAtLeastOne 剩余战损 `5`；展开 `15,419` 节点、跨 `12` 回合，runId `0155a51343524f769b82068df0c0d857`。没有验证 T1 灵动步法选择。 | 2026-09-05 |
+| `PLAYER-WORLDLINE-AEONGLASS-053711-MANUAL-STATE` | 基线未完成战斗，暂跳过 | 第 8 条原 `20 HP` 在 NodeLimit 截止时敌剩 `420 HP`；当前 High 手操后完整胜利战损 `52 HP`，runId `fe655950b7844083868ab9274f712197`。断言按错误的 `20 HP` 上限失败，不能计为有效策略差距。 | 2026-09-05 |
+| `PLAYER-WORLDLINE-QUEEN-113237-MINIMIZE-HP` | 超时，未验收 | 原版 T3 手操前，剩余人工目标 `9 HP`（整场 `30` 扣除此前 `21`）。VeryHigh/Smart 与两类 Boss 减战损优先配置已生效，完整搜索在 `120 s` 超时，runId `4e804297417641c18019805dd29d9e13`；不与默认通关优先的无药 `23 HP` 结果混算。 | 2026-09-05 |
+| `BOSS-HP-STRATEGY-OVERRIDE-SMOKE-0300` | 通过 | Windows 参数、协议和临时设置均验证两类 Boss 策略为 MinimizeHpLoss，最小搜索正常返回，runId `0f7704b8270b4928b2ccb0bbb58a6e36`。Linux 参数同步，尚未实机执行。 | 2026-09-05 |
+| `REPLAY-COMBAT-START-TEST-SUBJECT-133704` | 通过，开战及首次出牌前状态一致 | 从第 3 条 `000-combat_start` 恢复，由原版执行开战效果与抽牌，完整状态匹配 `001-search_request_AutoTurnStart`，CombatRootSnapshot 验证通过；runId `0f6926e7b3e0467daa93e31dfe4899e5`。这证明可从开战还原，不代表整场策略已追平。 | 2026-09-05 |
+| `REPLAY-MID-COMBAT-MECHA-KNIGHT-SNAPSHOT-0300` | 通过 | 牌堆改为直接恢复快照后，第 6 条 T4 中途导入仍通过完整 ContinuationStamp 和 CombatRootSnapshot 对账；runId `e9b1d1f50f4a4bbd934c3859cb791bd4`。仅验证状态恢复。 | 2026-09-05 |
+| `PLAYER-WORLDLINE-AEONGLASS-153416-COMBAT-START` | 开战恢复通过，整场策略未追平 | 从 `000-combat_start` 完整状态恢复，VeryHigh/Smart、两类 Boss 减战损优先；整场战损 `94 HP`、1 药、T12 胜利，人工 `6 HP`、4 药，相对人工 `-88`。runId `564d0352af0243ed87ae31dfeb7a2a53`。 | 2026-09-05 |
 
 ## 0.29.1（定版准备）：2026-09-04 19 点后问题包硬逻辑修复
 

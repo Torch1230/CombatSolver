@@ -24,6 +24,8 @@ param(
     [int]$SearchParallelism = 4,
     [ValidateSet("Disabled", "Smart", "RequireAtLeastOne")]
     [string]$PotionPolicy = "Smart",
+    [ValidateSet("ProgressionFirst", "MinimizeHpLoss")]
+    [string]$BossHpStrategy = "MinimizeHpLoss",
     [ValidateRange(10, 3600)]
     [int]$HighTimeoutSeconds = 120,
     [ValidateRange(10, 3600)]
@@ -156,6 +158,7 @@ function New-BatchResult {
         turnNumber = $TurnNumber
         comparisonScope = if ($null -ne $TurnNumber -and $TurnNumber -eq 1) { "full_combat" } elseif ($null -ne $TurnNumber) { "mid_combat" } else { $null }
         preset = $Preset
+        bossHpStrategy = $BossHpStrategy
         solverLoss = $SolverLoss
         relativeToManual = $relativeToManual
         meetsManual = if ($null -ne $relativeToManual) { $relativeToManual -ge 0 } else { $null }
@@ -186,9 +189,13 @@ function Find-ReplayCandidate {
     }
 
     $reasons = [System.Collections.Generic.List[string]]::new()
-    $replayFiles = @(Get-ChildItem -LiteralPath $replayDirectory -File -Filter "*AutoTurnStart.json" | Sort-Object Name)
+    $replayFiles = @(Get-ChildItem -LiteralPath $replayDirectory -File -Filter "*.json" |
+        Where-Object {
+            $_.Name -like "*AutoTurnStart.json" -or
+            ($FullCombatOnly -and $_.Name -eq "000-combat_start.json")
+        } | Sort-Object Name)
     if ($replayFiles.Count -eq 0) {
-        return [pscustomobject]@{ candidate = $null; reason = "missing_auto_turn_start" }
+        return [pscustomobject]@{ candidate = $null; reason = "missing_combat_start_or_auto_turn_start" }
     }
 
     foreach ($replayFile in $replayFiles) {
@@ -304,6 +311,8 @@ function Invoke-ReplayTest {
         InitialPlayerStars = [int]$player.stars
         PerformancePresetForTest = $Preset
         PotionPolicyForTest = $PotionPolicy
+        ActTransitionBossHpStrategyForTest = $BossHpStrategy
+        FinalBossHpStrategyForTest = $BossHpStrategy
         SearchMaxDegreeOfParallelismForTest = $SearchParallelism
         ExpectedInitialProjectedBattleHpLostAtMost = $expectedLoss
         ExpectedInitialOnlyDeathRoutesFound = 0
@@ -367,11 +376,20 @@ function Invoke-ReplayTest {
         }
     }
 
-    $loss = Get-ProjectedLoss $testResult
+    $metrics = $testResult.solverMetrics
+    $completeVictory = $null -ne $metrics -and
+        $null -ne $metrics.combatEndedTurn -and
+        $metrics.finalEnemyHp -eq 0 -and
+        $metrics.finalHp -gt 0 -and
+        -not $metrics.onlyDeathRoutes
+    $loss = if ($completeVictory) { Get-ProjectedLoss $testResult } else { $null }
     $errorText = [string]$testResult.error
     $timedOut = $errorText -match "超时|timeout|timed out" -or [string]$testResult.status -eq "TimedOut"
     $status = if ($timedOut) {
         "timeout"
+    }
+    elseif (-not $completeVictory -and ($null -ne $metrics -or [string]$testResult.status -eq "Passed")) {
+        "unconfirmed_victory"
     }
     elseif ($null -ne $loss -and $null -ne $manualLoss -and $loss -gt $manualLoss) {
         "quality_gap"

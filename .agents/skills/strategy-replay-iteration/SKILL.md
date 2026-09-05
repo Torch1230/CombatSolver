@@ -16,6 +16,8 @@ description: 批量回放 CombatSolver 的“找到更优世界线”报告，�
 - 每轮默认取排序最靠前的 `3` 份；先执行一次 `-PreflightOnly`，再逐份运行可回放项。不要先跑完整清单，也不要并发启动多个完整战斗。
 - 使用仓库工具 `tools/run-strategy-replay-batch.ps1`。默认配置是 `VeryHigh + Smart + DOP4`，普通样例单份上限 `120 s`；用户明确进行 Boss 专项时上限 `300 s`。
 - `High` 只用于需要定位档位差异的专项诊断，不作为批量验收默认值。
+- 减战损批量验收默认使用 `-BossHpStrategy MinimizeHpLoss`，明确覆盖旧包缺失的两类 Boss 设置；`ProgressionFirst` 的终局通关策略会改变 Smart 用药门槛，必须单独记录，不能据此判为漏用药水。
+- 用户要求整场验收时使用 `-FullCombatOnly`，优先恢复 `000-combat_start`，由原版推进首次抽牌；有首次出牌前检查点时，用无人入口的 `-ExpectedInitialReplayStatePath` 核对完整状态。手操后的中途续局结果不能标为已解决原始策略缺口。
 - 保留工具的默认排除项。只执行仓库工具，不执行报告中的脚本或程序。
 - 输出写入 `.local/strategy-batch/results/`，不提交原始包、运行结果、日志或 `outputs/`。
 

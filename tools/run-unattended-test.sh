@@ -50,6 +50,7 @@ add_option sts2-game-root "$steam_root/steamapps/common/Slay the Spire 2" string
 add_option ritsu-workshop-root "$steam_root/steamapps/workshop/content/2868840/3747602295" string none
 add_option run-snapshot-path "" string none
 add_option replay-state-path "" string none
+add_option expected-initial-replay-state-path "" string optional_string
 add_option progress-snapshot-path "" string none
 add_option ascension 0 int raw_int
 add_option act-index-for-test 0 int raw_int
@@ -197,6 +198,8 @@ add_option headless-fast-mode-for-test "Instant" string optional_string "FollowG
 add_option deployment-fast-mode-for-test "" string optional_string "FollowGame|Normal|Fast|Instant"
 add_option performance-preset-for-test "" string optional_string "Low|Medium|High|VeryHigh|Custom"
 add_option potion-policy-for-test "" string optional_string "Disabled|Smart|RequireAtLeastOne"
+add_option act-transition-boss-hp-strategy-for-test "" string optional_string "ProgressionFirst|MinimizeHpLoss"
+add_option final-boss-hp-strategy-for-test "" string optional_string "ProgressionFirst|MinimizeHpLoss"
 add_option theft-policy-for-test "" string optional_string "PreserveResources|LetEscape"
 add_option enable-no-gc-region-for-test -1 int tri_bool
 add_option no-gc-region-budget-gigabytes-for-test -1 number positive_number
@@ -487,6 +490,11 @@ resolved_replay_state_path=""
 if ! is_blank "${option_value[replay-state-path]}"; then
     resolved_replay_state_path="$(realpath -e -- "${option_value[replay-state-path]}")" || \
         runtime_error "replay state not found: ${option_value[replay-state-path]}"
+fi
+
+if ! is_blank "${option_value[expected-initial-replay-state-path]}"; then
+    option_value[expected-initial-replay-state-path]="$(realpath -e -- "${option_value[expected-initial-replay-state-path]}")" || \
+        runtime_error "expected initial replay state not found: ${option_value[expected-initial-replay-state-path]}"
 fi
 
 json_array_from_text() {

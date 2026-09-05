@@ -9,6 +9,7 @@ param(
     [string]$RitsuWorkshopRoot = "D:\Steam\steamapps\workshop\content\2868840\3747602295",
     [string]$RunSnapshotPath = "",
     [string]$ReplayStatePath = "",
+    [string]$ExpectedInitialReplayStatePath = "",
     [string]$ProgressSnapshotPath = "",
     [ValidateRange(0, 10)]
     [int]$Ascension = 0,
@@ -192,6 +193,10 @@ param(
     [int]$DeepMaxCardBranchesPerNodeForTest = -1,
     [ValidateSet("", "Disabled", "Smart", "RequireAtLeastOne")]
     [string]$PotionPolicyForTest = "",
+    [ValidateSet("", "ProgressionFirst", "MinimizeHpLoss")]
+    [string]$ActTransitionBossHpStrategyForTest = "",
+    [ValidateSet("", "ProgressionFirst", "MinimizeHpLoss")]
+    [string]$FinalBossHpStrategyForTest = "",
     [ValidateSet("", "PreserveResources", "LetEscape")]
     [string]$TheftPolicyForTest = "",
     [ValidateSet(-1, 0, 1)]
@@ -637,6 +642,7 @@ $request = [ordered]@{
     encounterId = $EncounterId
     runSnapshotPath = $resolvedRunSnapshotPath
     replayStatePath = $resolvedReplayStatePath
+    expectedInitialReplayStatePath = if ([string]::IsNullOrWhiteSpace($ExpectedInitialReplayStatePath)) { $null } else { (Resolve-Path -LiteralPath $ExpectedInitialReplayStatePath).Path }
     ascension = $Ascension
     actIndexForTest = $ActIndexForTest
     markEncounterAsSecondBossForTest = $MarkEncounterAsSecondBossForTest.IsPresent
@@ -784,6 +790,8 @@ $request = [ordered]@{
     shortMaxCardBranchesPerNodeForTest = if ($ShortMaxCardBranchesPerNodeForTest -gt 0) { $ShortMaxCardBranchesPerNodeForTest } else { $null }
     deepMaxCardBranchesPerNodeForTest = if ($DeepMaxCardBranchesPerNodeForTest -gt 0) { $DeepMaxCardBranchesPerNodeForTest } else { $null }
     potionPolicyForTest = if ([string]::IsNullOrWhiteSpace($PotionPolicyForTest)) { $null } else { $PotionPolicyForTest }
+    actTransitionBossHpStrategyForTest = if ([string]::IsNullOrWhiteSpace($ActTransitionBossHpStrategyForTest)) { $null } else { $ActTransitionBossHpStrategyForTest }
+    finalBossHpStrategyForTest = if ([string]::IsNullOrWhiteSpace($FinalBossHpStrategyForTest)) { $null } else { $FinalBossHpStrategyForTest }
     theftPolicyForTest = if ([string]::IsNullOrWhiteSpace($TheftPolicyForTest)) { $null } else { $TheftPolicyForTest }
     enableNoGcRegionForTest = if ($EnableNoGcRegionForTest -ge 0) { [bool]$EnableNoGcRegionForTest } else { $null }
     noGcRegionBudgetGigabytesForTest = if ($NoGcRegionBudgetGigabytesForTest -gt 0) { $NoGcRegionBudgetGigabytesForTest } else { $null }

@@ -16,6 +16,29 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
+    private static async Task<UnattendedCombatStartReplay?> PrepareCombatStartReplayAsync(
+        RunState runState,
+        Player player,
+        UnattendedTestRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.ReplayStatePath))
+            return null;
+        using JsonDocument document = JsonDocument.Parse(await File.ReadAllTextAsync(request.ReplayStatePath));
+        JsonElement root = document.RootElement;
+        JsonElement savedPlayer = root.GetProperty("players")[0];
+        if (RequiredString(savedPlayer, "phase") != "None")
+            return null;
+        if (root.GetProperty("roundNumber").GetInt32() != 1
+            || savedPlayer.GetProperty("turnNumber").GetInt32() != 1
+            || RequiredString(root, "currentSide") != "Player")
+        {
+            throw new InvalidOperationException("Combat-start replay requires the first player round before setup.");
+        }
+        return new UnattendedCombatStartReplay(
+            runState,
+            state => ApplyReplayStateAsync(state, player, request.ReplayStatePath, request.RunSnapshotPath));
+    }
+
     private static async Task ApplyReplayStateAsync(
         CombatState combatState,
         Player player,
@@ -98,6 +121,11 @@ internal sealed partial class UnattendedTestRunner
         ReloadRunSnapshotRng((RunState)combatState.RunState, player, runSnapshotPath);
 
         string expectedState = RequiredString(root, "exactContinuationState");
+        AssertReplayContinuation(combatState, expectedState);
+    }
+
+    private static void AssertReplayContinuation(CombatState combatState, string expectedState)
+    {
         string actualState = ContinuationStamp.CaptureLive(combatState).StateText;
         if (!expectedState.Contains("/baselib=", StringComparison.Ordinal))
             actualState = actualState.Replace("/baselib=-", "", StringComparison.Ordinal);
@@ -505,7 +533,7 @@ internal sealed partial class UnattendedTestRunner
             foreach (JsonElement savedCard in savedCards)
             {
                 UnattendedCardInjection injection = BuildReplayCardInjection(savedCard, pile);
-                CardModel restored = (await InjectCardAsync(combatState, player, injection)).Single();
+                CardModel restored = (await InjectCardAsync(combatState, player, injection, restoreSnapshot: true)).Single();
                 AttachReplayDeckVersion(restored, savedCard, player);
                 RestoreReplayPrimitiveState(
                     restored,
@@ -582,6 +610,9 @@ internal sealed partial class UnattendedTestRunner
                 $"无法精确恢复本回合卡牌历史：状态牌={actualStatusDraws}/{expectedStatusDraws}，" +
                 $"零费攻击={actualZeroCostAttackStarts}/{expectedZeroCostAttackStarts}。");
         }
+
+        if (actualStatusDraws == expectedStatusDraws)
+            return;
 
         PlayerCombatState playerState = player.PlayerCombatState
             ?? throw new InvalidOperationException("replay-state 历史恢复时玩家没有战斗状态。");

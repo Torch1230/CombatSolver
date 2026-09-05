@@ -519,6 +519,8 @@ internal sealed partial class UnattendedTestRunner
                 && !request.ShortMaxCardBranchesPerNodeForTest.HasValue
                 && !request.DeepMaxCardBranchesPerNodeForTest.HasValue
                 && !request.PotionPolicyForTest.HasValue
+                && !request.ActTransitionBossHpStrategyForTest.HasValue
+                && !request.FinalBossHpStrategyForTest.HasValue
                 && !request.EnableNoGcRegionForTest.HasValue
                 && !request.NoGcRegionBudgetGigabytesForTest.HasValue
                 && !request.DeploymentFastModeForTest.HasValue
@@ -569,6 +571,10 @@ internal sealed partial class UnattendedTestRunner
                     ?? _settingsBeforeTest.EnableDetailedDiagnosticLogs,
                 PotionPolicy = request.PotionPolicyForTest
                     ?? _settingsBeforeTest.PotionPolicy,
+                ActTransitionBossHpStrategy = request.ActTransitionBossHpStrategyForTest
+                    ?? _settingsBeforeTest.ActTransitionBossHpStrategy,
+                FinalBossHpStrategy = request.FinalBossHpStrategyForTest
+                    ?? _settingsBeforeTest.FinalBossHpStrategy,
             });
             FastModeType fastModeBeforeDeployment = SaveManager.Instance.PrefsSave.FastMode;
             if (request.PerformancePresetForTest is { } expectedPreset)
@@ -579,6 +585,24 @@ internal sealed partial class UnattendedTestRunner
                         : expectedPreset);
             }
             SolverSettingsSnapshot snapshot = SolverSettings.Capture();
+            if (request.ActTransitionBossHpStrategyForTest is { } expectedActStrategy
+                && snapshot.ActTransitionBossHpStrategy != expectedActStrategy)
+            {
+                throw new InvalidOperationException(
+                    $"Act boss HP strategy is {snapshot.ActTransitionBossHpStrategy}, expected {expectedActStrategy}.");
+            }
+            if (request.FinalBossHpStrategyForTest is { } expectedFinalStrategy
+                && snapshot.FinalBossHpStrategy != expectedFinalStrategy)
+            {
+                throw new InvalidOperationException(
+                    $"Final boss HP strategy is {snapshot.FinalBossHpStrategy}, expected {expectedFinalStrategy}.");
+            }
+            if (request.ActTransitionBossHpStrategyForTest.HasValue
+                || request.FinalBossHpStrategyForTest.HasValue)
+            {
+                runner._completedChecks.Add(
+                    $"BossHpStrategies:Act={snapshot.ActTransitionBossHpStrategy};Final={snapshot.FinalBossHpStrategy}");
+            }
             if (request.EnableNoGcRegionForTest is { } expectedNoGcEnabled
                 && snapshot.EnableNoGcRegion != expectedNoGcEnabled)
             {
