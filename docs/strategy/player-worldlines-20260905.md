@@ -15,7 +15,7 @@
 | 1 | 104 HP | 110 → 6 | +3 | 是 | 同状态已复测：High/Force 剩余 3 HP | AEONGLASS_BOSS | `CombatSolver-AEONGLASS_BOSS-20260903-153416-774.zip` | `combatsolver-reports-20260905-104714.zip` | 110->6 |
 | 2 | 68 HP | 123 → 55 | +55 | 是 | 同状态已复测：High/Force 剩余 0 HP | AEONGLASS_BOSS | `CombatSolver-AEONGLASS_BOSS-20260903-152708-532.zip` | `combatsolver-reports-20260905-104714.zip` | 沙小第知道他自己打得过120血带药战士吗？ |
 | 3 | 58 HP | 61 → 3 | +3 | 是 | 同状态已复测：High 剩余 0 HP | TEST_SUBJECT_BOSS | `CombatSolver-TEST_SUBJECT_BOSS-20260902-133704-483.zip` | `combatsolver-reports-20260905-104714.zip` | 打实验体不开壁垒吃重击的来 |
-| 4 | 52 HP | 52 → 0 | 待验证 | 待验证 | 待分诊 | AEONGLASS_BOSS | `CombatSolver-AEONGLASS_BOSS-20260903-151202-078.zip` | `combatsolver-reports-20260905-104714.zip` | 手操从死亡到0战损 |
+| 4 | 52 HP | 52 → 0 | -2 | 否 | High/Force 剩余 2 HP；VeryHigh/Force 已找到 0 HP，继续修复 | AEONGLASS_BOSS | `CombatSolver-AEONGLASS_BOSS-20260903-151202-078.zip` | `combatsolver-reports-20260905-104714.zip` | 手操从死亡到0战损 |
 | 5 | 49 HP | 73 → 24 | 待验证 | 待验证 | 待分诊 | TEST_SUBJECT_BOSS | `CombatSolver-TEST_SUBJECT_BOSS-20260902-013258-533.zip` | `combatsolver-reports-20260905-104714.zip` | 更好的世界线 |
 | 6 | 45 HP | 45 → 0 | 待验证 | 待验证 | 待分诊 | MECHA_KNIGHT_ELITE | `CombatSolver-MECHA_KNIGHT_ELITE-20260902-131216-716.zip` | `combatsolver-reports-20260905-104714.zip` | 战损45变0 |
 | 7 | 45 HP | 50 → 5 | 待验证 | 待验证 | 待分诊 | QUEEN_BOSS | `CombatSolver-QUEEN_BOSS-20260903-173813-639.zip` | `combatsolver-reports-20260905-104652.zip` | 不尊重灵动？ |
