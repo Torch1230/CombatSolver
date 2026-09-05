@@ -16,6 +16,7 @@
 | `PLAYER-WORLDLINE-AEONGLASS-152708-POWER-ORDER` | 通过，优于人工同状态基线 | 清单第 2 条有备注永世沙漏包，恢复第 7 回合状态时先清理多余 Power 并恢复 SOWN 附魔字段，High/Force 预计剩余战损 `0`，人工 `55`，相对人工 `+55`；runId `2a65b5cb43b846809f31838c8e71f7ed`。 | 2026-09-05 |
 | `PLAYER-WORLDLINE-AEONGLASS-151202-POISON-HORIZON` | High 暂跳过，VeryHigh 已追平 | 清单第 4 条有备注永世沙漏包，复用玩家完成第 3 回合后的第 4 回合状态；High/Force 预计剩余战损 `2`，人工 `0`，相对人工 `-2`，runId `fbc9fe2a11a7416abee9d1a542c15931`；VeryHigh/Force 找到 `0` 战损路线，runId `e91590c716aa40548e02eb7931c96d17`。已完成定向搜索尝试，High 仍差 `2 HP`，按规则暂跳过。 | 2026-09-05 |
 | `PLAYER-WORLDLINE-IMPORT-BASELINE-0300` | 部分解除 | 清单第 1、2 条已完成同状态复测，第 4 条已通过正确角色和人工前置回合导入但 High 仍有 2 HP 策略差距，已按规则暂跳过；第 5 条缺少回合卡牌历史。导入阻塞与策略缺口分开处理。 | 2026-09-05 |
+| `PLAYER-WORLDLINE-TEST-SUBJECT-013258-IMPORT` | 暂跳过 | 第 5 条有备注实验体包尝试复用第 2 回合状态；导入在 `RestoreReplayTurnCardHistory` 因缺少本回合卡牌历史失败，runId `06b9c267486a4d1f9ce9618a22d52839`，没有产生可比较的求解结果。 | 2026-09-05 |
 
 ## 0.29.1（定版准备）：2026-09-04 19 点后问题包硬逻辑修复
 
