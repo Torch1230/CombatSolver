@@ -27,6 +27,25 @@ internal static partial class CardChoiceSupport
     /// </summary>
     private const double SelfClearingRemovalPenalty = 1_000d;
 
+    /// <summary>
+    /// 原版起手打击、防御在移除排序里改用的权重。
+    /// </summary>
+    /// <remarks>
+    /// 通用估值把伤害记满、格挡打八折，于是打击 <c>6.0</c> 高于防御 <c>4.0</c>，任何角色都先移除
+    /// 防御。原版五个角色的实战优先级相反：起手防御比起手打击更该留，先移除的应该是打击。
+    ///
+    /// 用权重而不是写死数值，是为了保住升级差别：起手打击 <c>6</c> 伤害得 <c>4.0</c>、升级后
+    /// <c>9</c> 伤害得 <c>6.0</c>；起手防御 <c>5</c> 格挡得 <c>6.0</c>、升级后 <c>8</c> 格挡得
+    /// <c>9.6</c>。升级过的那张仍然更靠后移除。
+    ///
+    /// 只覆盖原版这十张具体的起手牌。其他来源的打击、防御——包括 mod 角色的——继续走通用估值，
+    /// 因为它们的强弱取决于各自的机制，这里没有依据替它们排序。
+    /// </remarks>
+    private const double BasicStrikeRemovalWeight = 2d / 3d;
+
+    /// <inheritdoc cref="BasicStrikeRemovalWeight" />
+    private const double BasicDefendRemovalWeight = 1.2d;
+
     private static readonly HashSet<string> UnsupportedExistingChoiceCards =
     [
         "Tutor"
@@ -525,18 +544,34 @@ internal static partial class CardChoiceSupport
     /// 抽牌的质量。两者不是一个量级。
     ///
     /// 判据限定在手牌来源：虚无只在手牌里触发，抽牌堆或弃牌堆里的同一张牌本回合不会自己走，
-    /// 那时移除它是真正的牌库压缩。
+    /// 那时移除它是真正的牌库压缩。转变分支原来不分牌堆，现在一并按同一条判据限定，
+    /// 否则从抽牌堆转变时会把一张本回合不会离场的牌当成会离场的。
     ///
     /// 弃牌不适用：弃掉的牌回到弃牌堆、仍在本场牌库里，没有压缩可言，而把打不出的牌从手上
     /// 弃掉本来就是弃牌该干的事。所以这里只覆盖消耗与转变。
     /// </remarks>
     private static double RemovalPriority(CardChoiceSpec spec, PredictedCard card)
     {
-        double value = CardValue(card.Preview);
+        double value = BasicCardRemovalValue(card.Preview) ?? CardValue(card.Preview);
         if (LeavesOnItsOwn(spec, card))
             value += SelfClearingRemovalPenalty;
         return value;
     }
+
+    /// <summary>原版起手打击、防御的移除估值；其他牌返回 <c>null</c> 走通用估值。</summary>
+    /// <remarks>
+    /// 不限来源牌堆。哪张牌更该留是牌本身的性质，从手牌消耗和从抽牌堆转变应当得到同一个排序。
+    /// 只有虚无那一条才限定手牌，因为它依赖"回合结束时在不在手上"。
+    /// </remarks>
+    private static double? BasicCardRemovalValue(CardModel card)
+        => card switch
+        {
+            StrikeIronclad or StrikeSilent or StrikeDefect or StrikeNecrobinder or StrikeRegent
+                => DynamicVarBaseValue(card.DynamicVars, "Damage") * BasicStrikeRemovalWeight,
+            DefendIronclad or DefendSilent or DefendDefect or DefendNecrobinder or DefendRegent
+                => DynamicVarBaseValue(card.DynamicVars, "Block") * BasicDefendRemovalWeight,
+            _ => null,
+        };
 
     /// <summary>这张牌会不会不花移除资源就自己离场。</summary>
     /// <remarks>
@@ -548,12 +583,8 @@ internal static partial class CardChoiceSupport
     {
         if (!card.Preview.GetKeywordsWithSources(KeywordSources.Local).Contains(CardKeyword.Ethereal))
             return false;
-        return spec.Effect switch
-        {
-            PlanChoiceEffect.Transform => true,
-            PlanChoiceEffect.Exhaust => spec.SourcePile == PileType.Hand,
-            _ => false,
-        };
+        return spec.Effect is PlanChoiceEffect.Exhaust or PlanChoiceEffect.Transform
+            && spec.SourcePile == PileType.Hand;
     }
 
     internal static double CardValue(CardModel card)
