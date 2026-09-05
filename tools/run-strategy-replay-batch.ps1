@@ -379,7 +379,8 @@ function Invoke-ReplayTest {
     }
     $elapsed = ((Get-Date) - $startedAt).TotalSeconds
 
-    $resultPath = Join-Path ([Environment]::GetFolderPath("LocalApplicationData")) "CombatSolver/headless-runtime/Roaming/SlayTheSpire2/combat_solver_test_result.json"
+    $runtimePath = Join-Path ([Environment]::GetFolderPath("LocalApplicationData")) "CombatSolver/headless-runtime"
+    $resultPath = Join-Path $runtimePath "Roaming/SlayTheSpire2/combat_solver_test_result.json"
     $testResult = $null
     if (Test-Path -LiteralPath $resultPath -PathType Leaf) {
         try {
@@ -404,6 +405,9 @@ function Invoke-ReplayTest {
         }
     }
 
+    $evidencePrefix = Join-Path $outputPath ([string]$testResult.runId)
+    Copy-Item -LiteralPath $resultPath -Destination "$evidencePrefix-result.json"
+    Copy-Item -LiteralPath (Join-Path $runtimePath "godot-headless.log") -Destination "$evidencePrefix-godot.log"
     $metrics = $testResult.solverMetrics
     $completeVictory = $null -ne $metrics -and
         $null -ne $metrics.combatEndedTurn -and

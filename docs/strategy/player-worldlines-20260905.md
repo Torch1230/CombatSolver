@@ -14,7 +14,7 @@
 |---:|---:|---:|---:|---|---|---|---|---|---|
 | 1 | 104 HP | 110 → 6 | +3 | 是 | 整场部署通过：开战还原、VeryHigh、原包四药强制政策，3 HP / 4 药，零非预期重算；Smart 另测预测 8 HP / 3 药 | AEONGLASS_BOSS | `CombatSolver-AEONGLASS_BOSS-20260903-153416-774.zip` | `combatsolver-reports-20260905-104714.zip` | 110->6 |
 | 2 | 68 HP | 123 → 55 | +5 | 是 | 整场部署通过：开战还原、VeryHigh、原包通关优先及仅稳定血清强制政策，50 HP / 1 药，零非预期重算；减战损优先另测仅死亡路线，评分试验退化已撤回 | AEONGLASS_BOSS | `CombatSolver-AEONGLASS_BOSS-20260903-152708-532.zip` | `combatsolver-reports-20260905-104714.zip` | 沙小第知道他自己打得过120血带药战士吗？ |
-| 3 | 58 HP | 61 → 3 | 待验证 | 待验证 | 开战与首次抽牌对账通过；VeryHigh、减战损优先、原包禁药政策预测完整胜利 22 HP，含主动卖血 14 HP，尚未追平人工 3 HP | TEST_SUBJECT_BOSS | `CombatSolver-TEST_SUBJECT_BOSS-20260902-133704-483.zip` | `combatsolver-reports-20260905-104714.zip` | 打实验体不开壁垒吃重击的来 |
+| 3 | 58 HP | 61 → 3 | 待验证 | 待验证 | 开战与首次抽牌对账通过；VeryHigh、减战损优先、原包禁药政策预测完整胜利 22 HP；已定位人工第 3 张准备牌进入候选后被 Beam 淘汰，改动仍未追平人工 3 HP，继续处理 | TEST_SUBJECT_BOSS | `CombatSolver-TEST_SUBJECT_BOSS-20260902-133704-483.zip` | `combatsolver-reports-20260905-104714.zip` | 打实验体不开壁垒吃重击的来 |
 | 4 | 52 HP | 52 → 0 | 未验收 | 未验收 | 按用户要求跳过；旧 T4 续局 High/Force 2 HP、VeryHigh/Force 0 HP，整场未验收 | AEONGLASS_BOSS | `CombatSolver-AEONGLASS_BOSS-20260903-151202-078.zip` | `combatsolver-reports-20260905-104714.zip` | 手操从死亡到0战损 |
 | 5 | 49 HP | 73 → 24 | 待验证 | 待验证 | 证据不足，暂跳过：当前状态缺少本回合卡牌历史 | TEST_SUBJECT_BOSS | `CombatSolver-TEST_SUBJECT_BOSS-20260902-013258-533.zip` | `combatsolver-reports-20260905-104714.zip` | 更好的世界线 |
 | 6 | 45 HP | 45 → 0 | 待验证 | 待验证 | 手操前待验收；T4 续局 High/Disabled 已测 0 HP，库存导入已修复 | MECHA_KNIGHT_ELITE | `CombatSolver-MECHA_KNIGHT_ELITE-20260902-131216-716.zip` | `combatsolver-reports-20260905-104714.zip` | 战损45变0 |

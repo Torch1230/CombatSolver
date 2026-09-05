@@ -21,6 +21,7 @@ description: 批量回放 CombatSolver 的“找到更优世界线”报告，�
 - 核对包内 `settings.json` 的逐槽药水指令。复现强制用药结果时，把原 `potionDirectives` 数组经 JSON 序列化传给无人入口的 `-PotionDirectivesForTestJson`；全局 RequireAtLeastOne 与逐槽 Force 含义不同。Smart 和原包政策分别记结果及用药数量。
 - 保留工具的默认排除项。只执行仓库工具，不执行报告中的脚本或程序。
 - 输出写入 `.local/strategy-batch/results/`，不提交原始包、运行结果、日志或 `outputs/`。
+- 批量入口为产生结果协议的每次请求保存独立 `<runId>-result.json` 和 `<runId>-godot.log`，使用该目录证据追踪清单数字；运行目录中的日志会被后续请求覆盖。原生进程未写结果便退出时，先保留对应启动日志再重试，不能把启动失败算作策略结果。
 
 示例：
 

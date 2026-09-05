@@ -32,6 +32,8 @@
 | `BUILD-BOUNDARIES-0300-POTION-BLOCK-HISTORY` | 通过 | Release 构建 0 警告、0 错误；结构门禁 `REFACTOR_BOUNDARIES_OK search_files=61`，PowerShell 与 Bash 语法检查通过。逐槽指令入口在 Windows 实测，Linux 游戏运行未验证。 | 2026-09-05 |
 | `PLAYER-WORLDLINE-AEONGLASS-152708-ORIGINAL-POLICY-BASELINE` | 通过，整场优于人工 +5 | 开战恢复、VeryHigh/DOP4、原包两类 Boss 通关优先、仅稳定血清强制使用。预测及实际累计战损 `50 HP`，人工 `55 HP`，均用 `1` 药；T10 胜利、9 次续用、零非预期重算。搜索源码为 `0cb5bcf`，`13,592/61,876` 展开/转移，runId `beb01c29aa57492db5c55ce103a593c2`。此前减战损优先结果不作为原政策基线。 | 2026-09-05 |
 | `BATCH-REPORTED-POLICY-0300` | 通过 | 第 2 条预检保留原包两类 Boss 策略与四槽指令；第 3 条旧设置缺少 Boss 策略时显式用 MinimizeHpLoss，并成功传入原包两槽禁药指令。批量得到完整胜利预测 `22 HP`（含卖血 `14`），正确报告人工 `3 HP` 的策略缺口，runId `389bf24c170f4eefb1561042746ca043`。PowerShell 语法、T7 不生成整场相对值、T1 的 `55-50=+5` 断言通过；第 3 条尚未整场部署。 | 2026-09-05 |
+| `RANK3-PREPARATION-RETENTION-TRACE-0300` | 定位通过，策略未验收 | 原包开战、VeryHigh/DOP1、20 秒临时诊断：第 3 层“放血、许愿检索燃烧契约、疯狂科学”已在未剪枝候选中；该父节点 `10/10` 动作全部获准，随后目标路线不在保留的 `135` 条内。选牌能力分组试验保住第 3 张但仍丢第 4 张，暂存未合入。标准 DOP4 节点预留试验仍为 `22 HP`，已撤回。 | 2026-09-05 |
+| `BATCH-RUN-EVIDENCE-0300` | 通过 | 第 3 条多轮实际请求均在独立结果目录保存 `<runId>-result.json` 和 `<runId>-godot.log`，批量状态正确区分完整胜利质量缺口与未确认胜利。一次原生开局 `Invalid Task ID` / `0xC0000005` 未进入搜索，启动日志单独留存，随后重试正常完成；不记为策略失败。 | 2026-09-05 |
 
 ## 0.29.1（定版准备）：2026-09-04 19 点后问题包硬逻辑修复
 
