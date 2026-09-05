@@ -166,6 +166,19 @@ if (Select-String -LiteralPath $searchGcPolicyPath -SimpleMatch "ReclaimAfterAct
     $violations.Add("${searchGcPolicyPath}: recursive reclaim handoff returned")
 }
 
+# GC admission accounting and scratch-container ownership remain in their existing layers.
+foreach ($check in @(
+    @{ RelativePath = "src/Runtime/SearchGcPolicy.cs"; Text = "scope.CompleteLifecycle(CaptureLifecycle())" },
+    @{ RelativePath = "src/Runtime/SolverController.cs"; Text = "SearchGcPolicy.EnterSearchScope(" },
+    @{ RelativePath = "src/Search/CombatBeamSolver.Models.cs"; Text = "ExpansionBatchPool = new(static snapshot => snapshot.ReleaseSimulator())" },
+    @{ RelativePath = "src/Search/CombatBeamSolver.ParallelExpansion.cs"; Text = "new(_run.ExpansionBatchPool)" },
+    @{ RelativePath = "src/Search/CombatBeamSolver.Phases.cs"; Text = "SearchWaveMemoryPolicy.Capacity(" })) {
+    $checkPath = Join-Path $repositoryRoot $check.RelativePath
+    if (-not (Select-String -LiteralPath $checkPath -SimpleMatch $check.Text -Quiet)) {
+        $violations.Add("${checkPath}: missing GC research ownership boundary '$($check.Text)'")
+    }
+}
+
 $cardPlayPredictionStatePath = Join-Path $repositoryRoot "src\Engine\InCombat\Mirrors\Hooks\Card\CardPlayHookPredictionStates.cs"
 foreach ($stableVambraceState in @(
     "internal sealed class VambracePredictionState(Vambrace relic) : IPredictionStateForkable",

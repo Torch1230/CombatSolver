@@ -83,99 +83,23 @@ internal sealed partial class CombatBeamSolver
         }
     }
 
-    private sealed class ExpansionBatch : IDisposable
+    private ExpansionBatch RentExpansionBatch() => new(_run.ExpansionBatchPool);
+
+    private sealed class ExpansionBatch(
+        OwnedExpansionBatch<SimulationSnapshot, RawCardCandidate, SearchNode>.Pool pool)
+        : OwnedExpansionBatch<SimulationSnapshot, RawCardCandidate, SearchNode>(pool)
     {
-        private readonly HashSet<SimulationSnapshot> _owned =
-            new(ReferenceEqualityComparer.Instance);
-        private readonly HashSet<SimulationSnapshot> _transferred =
-            new(ReferenceEqualityComparer.Instance);
-
-        public List<RawCardCandidate> Cards { get; } = new(16);
-        public List<SearchNode> Potions { get; } = [];
-        public List<SearchNode> EndTurns { get; } = [];
-
         public void Add(RawCardCandidate candidate)
-        {
-            Own(candidate.Node.Snapshot);
-            Cards.Add(candidate);
-        }
-
-        public void Adopt(RawCardCandidate candidate)
-        {
-            Own(candidate.Node.Snapshot);
-            try
-            {
-                Cards.Add(candidate);
-            }
-            catch
-            {
-                _owned.Remove(candidate.Node.Snapshot);
-                throw;
-            }
-        }
+            => AddCard(candidate.Node.Snapshot, candidate);
 
         public void TransferTo(ExpansionBatch target, RawCardCandidate candidate)
-        {
-            if (!_owned.Contains(candidate.Node.Snapshot))
-                throw new InvalidOperationException("并行展开快照没有可移交的所有权。");
-            target.Adopt(candidate);
-            if (!_owned.Remove(candidate.Node.Snapshot))
-            {
-                target.Release(candidate.Node.Snapshot);
-                throw new InvalidOperationException("并行展开快照移交时丢失所有权。");
-            }
-        }
+            => base.TransferTo(target, candidate.Node.Snapshot, candidate);
 
         public void AddPotion(SearchNode candidate)
-        {
-            Own(candidate.Snapshot);
-            Potions.Add(candidate);
-        }
+            => base.AddPotion(candidate.Snapshot, candidate);
 
         public void AddEndTurn(SearchNode candidate)
-        {
-            Own(candidate.Snapshot);
-            EndTurns.Add(candidate);
-        }
-
-        public void Transfer(SimulationSnapshot snapshot)
-        {
-            if (_owned.Contains(snapshot))
-            {
-                // Register the transfer before dropping batch ownership. If growing the
-                // bookkeeping set throws (for example under memory pressure), Dispose still
-                // owns and releases the simulator instead of leaking it across the failed wave.
-                _transferred.Add(snapshot);
-                _owned.Remove(snapshot);
-                return;
-            }
-            if (!_transferred.Contains(snapshot))
-                throw new InvalidOperationException("并行展开快照没有可移交的所有权。");
-        }
-
-        public void Release(SimulationSnapshot snapshot)
-        {
-            if (!_owned.Remove(snapshot))
-                throw new InvalidOperationException("并行展开快照被重复释放或已经移交。");
-            snapshot.ReleaseSimulator();
-        }
-
-        public void Dispose()
-        {
-            foreach (SimulationSnapshot snapshot in _owned)
-                snapshot.ReleaseSimulator();
-            _owned.Clear();
-            _transferred.Clear();
-            Cards.Clear();
-            Potions.Clear();
-            EndTurns.Clear();
-        }
-
-        private void Own(SimulationSnapshot snapshot)
-        {
-            if (!_owned.Add(snapshot))
-                throw new InvalidOperationException("并行展开生成了共享的子快照所有权。");
-        }
+            => base.AddEndTurn(candidate.Snapshot, candidate);
     }
 
     private sealed record ExpansionWorkerOutcome(
@@ -228,7 +152,8 @@ internal sealed partial class CombatBeamSolver
 
         public ExpansionWorkerOutcome[] Evaluate(
             IReadOnlyList<SearchNode> nodes,
-            bool enableSingleParentActionReplay)
+            bool enableSingleParentActionReplay,
+            Action<int, ExpansionBatch> commitOrdered)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
             if (nodes.Count == 0)
@@ -242,10 +167,29 @@ internal sealed partial class CombatBeamSolver
 
             ExpansionLane[] backgroundLanes = EnsureBackgroundLanes();
             using ExpansionWave wave = new(nodes.Count);
-            for (int index = 1; index < nodes.Count; index++)
+            int dispatched = 0;
+            try
             {
-                backgroundLanes[index - 1].Dispatch(
-                    new ExpansionWorkItem(nodes[index], wave, index));
+                for (int index = 1; index < nodes.Count; index++)
+                {
+                    backgroundLanes[index - 1].Dispatch(
+                        new ExpansionWorkItem(nodes[index], wave, index));
+                    dispatched++;
+                }
+            }
+            catch
+            {
+                int undispatched = nodes.Count - 1 - dispatched;
+                if (undispatched > 0)
+                    wave.BackgroundCompleted.Signal(undispatched);
+                wave.BackgroundCompleted.Wait();
+                for (int index = 1; index <= dispatched; index++)
+                {
+                    ExpansionWorkerOutcome outcome = wave.Outcomes[index];
+                    _coordinator.MergeExpansionWorker(outcome);
+                    outcome.Batch?.Dispose();
+                }
+                throw;
             }
 
             Execute(
@@ -257,7 +201,40 @@ internal sealed partial class CombatBeamSolver
                 actionReplayExecutor: enableSingleParentActionReplay && nodes.Count == 1
                     ? this
                     : null);
-            wave.BackgroundCompleted.Wait();
+            ExceptionDispatchInfo? firstError = null;
+            try
+            {
+                for (int index = 0; index < nodes.Count; index++)
+                {
+                    // Completed prefixes can be committed while later lanes are still simulating.
+                    // Exactly one coordinator owns retention/transposition and input order.
+                    ExpansionWorkerOutcome outcome = wave.WaitForOutcome(index);
+                    _coordinator.MergeExpansionWorker(outcome);
+                    firstError ??= outcome.Error;
+                    if (firstError != null)
+                        continue;
+                    try
+                    {
+                        commitOrdered(index, outcome.Batch
+                            ?? throw new InvalidOperationException("并行展开没有返回候选批次。"));
+                    }
+                    catch (System.Exception error)
+                    {
+                        // Drain every dispatched lane before throwing or releasing its batch.
+                        // A failed wave never continues the search or publishes a final result.
+                        firstError = ExceptionDispatchInfo.Capture(error);
+                    }
+                }
+            }
+            finally
+            {
+                wave.BackgroundCompleted.Wait();
+                if (firstError != null)
+                {
+                    foreach (ExpansionWorkerOutcome outcome in wave.Outcomes)
+                        outcome.Batch?.Dispose();
+                }
+            }
 
             if (nodes.Count > 1)
             {
@@ -267,6 +244,7 @@ internal sealed partial class CombatBeamSolver
                     _coordinator._run.MaxParallelExpansionConcurrency,
                     Volatile.Read(ref _maximumActiveWorkers));
             }
+            firstError?.Throw();
             return wave.Outcomes;
         }
 
@@ -325,22 +303,22 @@ internal sealed partial class CombatBeamSolver
             {
                 ExpansionBatch batch = worker.EvaluateRawExpansion(node, actionReplayExecutor);
                 long allocatedBytes = GC.GetAllocatedBytesForCurrentThread() - allocatedAtStart;
-                wave.Outcomes[outcomeIndex] = new ExpansionWorkerOutcome(
+                wave.Publish(outcomeIndex, new ExpansionWorkerOutcome(
                     includeWorkerMetrics ? worker : null,
                     batch,
                     null,
-                    allocatedBytes);
+                    allocatedBytes));
             }
             // Background lanes cannot throw across a Thread boundary. Capture the original stack;
             // the coordinator always rethrows it after every lane reaches the completion barrier.
             catch (System.Exception error)
             {
                 long allocatedBytes = GC.GetAllocatedBytesForCurrentThread() - allocatedAtStart;
-                wave.Outcomes[outcomeIndex] = new ExpansionWorkerOutcome(
+                wave.Publish(outcomeIndex, new ExpansionWorkerOutcome(
                     includeWorkerMetrics ? worker : null,
                     null,
                     ExceptionDispatchInfo.Capture(error),
-                    allocatedBytes);
+                    allocatedBytes));
             }
             finally
             {
@@ -361,7 +339,7 @@ internal sealed partial class CombatBeamSolver
             }
 
             ExpansionLane[] backgroundLanes = EnsureBackgroundLanes();
-            ExpansionBatch aggregate = new();
+            ExpansionBatch aggregate = _coordinator.RentExpansionBatch();
             bool completed = false;
             try
             {
@@ -533,7 +511,7 @@ internal sealed partial class CombatBeamSolver
             SearchNode parent,
             DeferredCardActionProbe deferredProbe)
         {
-            ExpansionBatch aggregate = new();
+            ExpansionBatch aggregate = _coordinator.RentExpansionBatch();
             bool completed = false;
             try
             {
@@ -957,8 +935,28 @@ internal sealed partial class CombatBeamSolver
 
         private sealed class ExpansionWave(int workItemCount) : IDisposable
         {
+            private readonly object _completionGate = new();
             public ExpansionWorkerOutcome[] Outcomes { get; } = new ExpansionWorkerOutcome[workItemCount];
             public CountdownEvent BackgroundCompleted { get; } = new(Math.Max(0, workItemCount - 1));
+
+            public void Publish(int index, ExpansionWorkerOutcome outcome)
+            {
+                lock (_completionGate)
+                {
+                    Outcomes[index] = outcome;
+                    Monitor.PulseAll(_completionGate);
+                }
+            }
+
+            public ExpansionWorkerOutcome WaitForOutcome(int index)
+            {
+                lock (_completionGate)
+                {
+                    while (Outcomes[index] == null)
+                        Monitor.Wait(_completionGate);
+                    return Outcomes[index];
+                }
+            }
 
             public void Dispose()
             {
@@ -1242,7 +1240,7 @@ internal sealed partial class CombatBeamSolver
         SearchNode node,
         ParallelExpansionExecutor? actionReplayExecutor)
     {
-        ExpansionBatch batch = new();
+        ExpansionBatch batch = RentExpansionBatch();
         bool completed = false;
         try
         {
@@ -1265,7 +1263,7 @@ internal sealed partial class CombatBeamSolver
         ReplayForkSeed? seed,
         object replayForkGate)
     {
-        ExpansionBatch batch = new();
+        ExpansionBatch batch = RentExpansionBatch();
         bool completed = false;
         try
         {
@@ -1773,7 +1771,7 @@ internal sealed partial class CombatBeamSolver
         if (_parallelActionReplayForkGate != null)
             throw new InvalidOperationException("不能嵌套并行 round-choice replay 上下文。");
         _parallelActionReplayForkGate = replayForkGate;
-        ExpansionBatch batch = new();
+        ExpansionBatch batch = RentExpansionBatch();
         bool completed = false;
         try
         {

@@ -1,0 +1,509 @@
+{
+  "Scope": "Synthetic compact-state kernel; no game models, hooks, choices, history or parallel workers.",
+  "CapturedAtUtc": "2026-09-05T06:24:50.6078799+00:00",
+  "Runtime": ".NET 9.0.19",
+  "OS": "Arch Linux",
+  "ProcessArchitecture": "X64",
+  "ProjectTieredCompilation": false,
+  "TieredCompilationEnvironmentOverride": null,
+  "ProcessorCount": 16,
+  "Entities": 256,
+  "Words": 1028,
+  "Depth": 6,
+  "Fanout": 4,
+  "Repetitions": 5,
+  "PageWords": 64,
+  "AllocationScope": "Single-thread allocations in the measured workload; root construction and one full warmup per sample are excluded.",
+  "TimingScope": "Stopwatch wall time of the measured workload; explicit pre-sample Gen2 collection is excluded.",
+  "Checks": [
+    "immutable root and stable IDs",
+    "persistent sibling fork isolation including RNG",
+    "exception rollback after third write",
+    "cancellation rollback after third write",
+    "nested commit/rollback and repeated writes",
+    "full-state replay equality after every transition",
+    "full-state DFS/retained-frontier equality"
+  ],
+  "Results": [
+    {
+      "Shape": "DepthFirstRollback",
+      "Pattern": "Sparse",
+      "Strategy": "DeepCopy",
+      "MedianMilliseconds": 8.7705,
+      "BytesPerTransition": 8248,
+      "NanosecondsPerTransition": 1606.3186813186812,
+      "Samples": [
+        {
+          "Milliseconds": 11.6975,
+          "AllocatedBytes": 45034080,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        },
+        {
+          "Milliseconds": 8.2168,
+          "AllocatedBytes": 45034080,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        },
+        {
+          "Milliseconds": 8.7705,
+          "AllocatedBytes": 45034080,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        },
+        {
+          "Milliseconds": 7.7241,
+          "AllocatedBytes": 45034080,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        },
+        {
+          "Milliseconds": 9.4462,
+          "AllocatedBytes": 45034080,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        }
+      ]
+    },
+    {
+      "Shape": "DepthFirstRollback",
+      "Pattern": "Sparse",
+      "Strategy": "PageCOW",
+      "MedianMilliseconds": 3.6101,
+      "BytesPerTransition": 1392.8776556776556,
+      "NanosecondsPerTransition": 661.1904761904761,
+      "Samples": [
+        {
+          "Milliseconds": 3.6611,
+          "AllocatedBytes": 7605112,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        },
+        {
+          "Milliseconds": 4.2543,
+          "AllocatedBytes": 7605112,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        },
+        {
+          "Milliseconds": 3.5618,
+          "AllocatedBytes": 7605112,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        },
+        {
+          "Milliseconds": 3.5762,
+          "AllocatedBytes": 7605112,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        },
+        {
+          "Milliseconds": 3.6101,
+          "AllocatedBytes": 7605112,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        }
+      ]
+    },
+    {
+      "Shape": "DepthFirstRollback",
+      "Pattern": "Sparse",
+      "Strategy": "UndoJournal",
+      "MedianMilliseconds": 0.8047,
+      "BytesPerTransition": 0,
+      "NanosecondsPerTransition": 147.38095238095238,
+      "Samples": [
+        {
+          "Milliseconds": 0.8221,
+          "AllocatedBytes": 0,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        },
+        {
+          "Milliseconds": 0.7942,
+          "AllocatedBytes": 0,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        },
+        {
+          "Milliseconds": 0.8047,
+          "AllocatedBytes": 0,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        },
+        {
+          "Milliseconds": 0.7528,
+          "AllocatedBytes": 0,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        },
+        {
+          "Milliseconds": 0.8258,
+          "AllocatedBytes": 0,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        }
+      ]
+    },
+    {
+      "Shape": "DepthFirstRollback",
+      "Pattern": "Dense",
+      "Strategy": "DeepCopy",
+      "MedianMilliseconds": 27.8222,
+      "BytesPerTransition": 8248,
+      "NanosecondsPerTransition": 5095.641025641025,
+      "Samples": [
+        {
+          "Milliseconds": 27.8222,
+          "AllocatedBytes": 45034080,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        },
+        {
+          "Milliseconds": 22.2584,
+          "AllocatedBytes": 45034080,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        },
+        {
+          "Milliseconds": 23.0488,
+          "AllocatedBytes": 45034080,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        },
+        {
+          "Milliseconds": 49.341,
+          "AllocatedBytes": 45034080,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        },
+        {
+          "Milliseconds": 41.2831,
+          "AllocatedBytes": 45034080,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        }
+      ]
+    },
+    {
+      "Shape": "DepthFirstRollback",
+      "Pattern": "Dense",
+      "Strategy": "PageCOW",
+      "MedianMilliseconds": 66.1995,
+      "BytesPerTransition": 9336,
+      "NanosecondsPerTransition": 12124.45054945055,
+      "Samples": [
+        {
+          "Milliseconds": 70.0464,
+          "AllocatedBytes": 50974560,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        },
+        {
+          "Milliseconds": 33.3846,
+          "AllocatedBytes": 50974560,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        },
+        {
+          "Milliseconds": 34.9339,
+          "AllocatedBytes": 50974560,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        },
+        {
+          "Milliseconds": 68.6084,
+          "AllocatedBytes": 50974560,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        },
+        {
+          "Milliseconds": 66.1995,
+          "AllocatedBytes": 50974560,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        }
+      ]
+    },
+    {
+      "Shape": "DepthFirstRollback",
+      "Pattern": "Dense",
+      "Strategy": "UndoJournal",
+      "MedianMilliseconds": 39.3985,
+      "BytesPerTransition": 0,
+      "NanosecondsPerTransition": 7215.84249084249,
+      "Samples": [
+        {
+          "Milliseconds": 39.7563,
+          "AllocatedBytes": 0,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        },
+        {
+          "Milliseconds": 39.3985,
+          "AllocatedBytes": 0,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        },
+        {
+          "Milliseconds": 35.6713,
+          "AllocatedBytes": 0,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        },
+        {
+          "Milliseconds": 37.1448,
+          "AllocatedBytes": 0,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        },
+        {
+          "Milliseconds": 42.0778,
+          "AllocatedBytes": 0,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        }
+      ]
+    },
+    {
+      "Shape": "RetainedFrontier",
+      "Pattern": "Sparse",
+      "Strategy": "DeepCopy",
+      "MedianMilliseconds": 59.9289,
+      "BytesPerTransition": 8593.516483516483,
+      "NanosecondsPerTransition": 10975.989010989011,
+      "Samples": [
+        {
+          "Milliseconds": 70.4271,
+          "AllocatedBytes": 46920600,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        },
+        {
+          "Milliseconds": 56.9659,
+          "AllocatedBytes": 46920600,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        },
+        {
+          "Milliseconds": 59.9289,
+          "AllocatedBytes": 46920600,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        },
+        {
+          "Milliseconds": 69.2832,
+          "AllocatedBytes": 46920600,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        },
+        {
+          "Milliseconds": 44.0805,
+          "AllocatedBytes": 46920600,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        }
+      ]
+    },
+    {
+      "Shape": "RetainedFrontier",
+      "Pattern": "Sparse",
+      "Strategy": "PageCOW",
+      "MedianMilliseconds": 28.5419,
+      "BytesPerTransition": 1736.952380952381,
+      "NanosecondsPerTransition": 5227.454212454212,
+      "Samples": [
+        {
+          "Milliseconds": 33.9148,
+          "AllocatedBytes": 9483760,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        },
+        {
+          "Milliseconds": 27.3959,
+          "AllocatedBytes": 9483760,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        },
+        {
+          "Milliseconds": 23.4783,
+          "AllocatedBytes": 9483760,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        },
+        {
+          "Milliseconds": 28.5419,
+          "AllocatedBytes": 9483760,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        },
+        {
+          "Milliseconds": 32.4212,
+          "AllocatedBytes": 9483760,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        }
+      ]
+    },
+    {
+      "Shape": "RetainedFrontier",
+      "Pattern": "Sparse",
+      "Strategy": "UndoJournal",
+      "MedianMilliseconds": 55.2359,
+      "BytesPerTransition": 8473.538461538461,
+      "NanosecondsPerTransition": 10116.465201465202,
+      "Samples": [
+        {
+          "Milliseconds": 55.2359,
+          "AllocatedBytes": 46265520,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        },
+        {
+          "Milliseconds": 60.6833,
+          "AllocatedBytes": 46265520,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        },
+        {
+          "Milliseconds": 62.8493,
+          "AllocatedBytes": 46265520,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        },
+        {
+          "Milliseconds": 37.7361,
+          "AllocatedBytes": 46265520,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        },
+        {
+          "Milliseconds": 55.0993,
+          "AllocatedBytes": 46265520,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0936"
+        }
+      ]
+    },
+    {
+      "Shape": "RetainedFrontier",
+      "Pattern": "Dense",
+      "Strategy": "DeepCopy",
+      "MedianMilliseconds": 84.314,
+      "BytesPerTransition": 8593.516483516483,
+      "NanosecondsPerTransition": 15442.124542124542,
+      "Samples": [
+        {
+          "Milliseconds": 91.0194,
+          "AllocatedBytes": 46920600,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        },
+        {
+          "Milliseconds": 113.6824,
+          "AllocatedBytes": 46920600,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        },
+        {
+          "Milliseconds": 84.314,
+          "AllocatedBytes": 46920600,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        },
+        {
+          "Milliseconds": 83.801,
+          "AllocatedBytes": 46920600,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        },
+        {
+          "Milliseconds": 45.4151,
+          "AllocatedBytes": 46920600,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        }
+      ]
+    },
+    {
+      "Shape": "RetainedFrontier",
+      "Pattern": "Dense",
+      "Strategy": "PageCOW",
+      "MedianMilliseconds": 164.8993,
+      "BytesPerTransition": 9680.074725274726,
+      "NanosecondsPerTransition": 30201.336996336995,
+      "Samples": [
+        {
+          "Milliseconds": 119.1345,
+          "AllocatedBytes": 52853208,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        },
+        {
+          "Milliseconds": 164.8993,
+          "AllocatedBytes": 52853208,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        },
+        {
+          "Milliseconds": 204.653,
+          "AllocatedBytes": 52853208,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        },
+        {
+          "Milliseconds": 127.1288,
+          "AllocatedBytes": 52853208,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        },
+        {
+          "Milliseconds": 209.7881,
+          "AllocatedBytes": 52853416,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        }
+      ]
+    },
+    {
+      "Shape": "RetainedFrontier",
+      "Pattern": "Dense",
+      "Strategy": "UndoJournal",
+      "MedianMilliseconds": 84.6859,
+      "BytesPerTransition": 8473.538461538461,
+      "NanosecondsPerTransition": 15510.238095238095,
+      "Samples": [
+        {
+          "Milliseconds": 85.1145,
+          "AllocatedBytes": 46265520,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        },
+        {
+          "Milliseconds": 62.3582,
+          "AllocatedBytes": 46265520,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        },
+        {
+          "Milliseconds": 86.7395,
+          "AllocatedBytes": 46265520,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        },
+        {
+          "Milliseconds": 66.6998,
+          "AllocatedBytes": 46265520,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        },
+        {
+          "Milliseconds": 84.6859,
+          "AllocatedBytes": 46265520,
+          "Transitions": 5460,
+          "Checksum": "5fc159568f6e0a6c"
+        }
+      ]
+    }
+  ]
+}

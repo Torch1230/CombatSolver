@@ -48,8 +48,8 @@ internal sealed partial class CombatPredictionSimulator
         int historyEntryStart = History.Entries.Count;
         // Game 0.111.0 has no vanilla BeforeCardAutoPlayed listeners; the hook catalog will expose any future addition.
         var resources = SpendResources(card, isAutoPlay: true, skipXCapture);
-        OnPlayWrapper(card, target, isAutoPlay: true, resources, out _, nestedChoiceSourceId);
-        if (HasCardPlayStartedSince(historyEntryStart, card)
+        OnPlayWrapper(card, target, isAutoPlay: true, resources, out var frame, nestedChoiceSourceId);
+        if (History.HasCardPlayStartedSince(historyEntryStart, frame)
             && !HasPendingChoice
             && State.CombatState is ICombatPredictionCardExecutionSink sink)
         {

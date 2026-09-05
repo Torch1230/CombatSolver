@@ -6,15 +6,28 @@
 
 维护时默认使用分层快速回归：普通语义改动跑单效果严格差分；Fork、跨回合历史和续用改动补一个最小两回合或最早复用边界；搜索/部署改动的最终候选才运行必要的完整自动场。快速 unattended 请求总超时不超过 `120` 秒，超时后缩小 fixture 或记为未验证，不在同一轮延长等待。下方完整矩阵是发布门禁和专项审计入口，不是每次修复都要执行的默认清单。
 
-## GC 独立研究基线（2026-09-05）
+## 未发布：GC 独立研究（2026-09-05）
 
-固定上游 `5c4b69d`；设置、口径与重现命令见 [研究记录](performance/gc-issue36-research.md)。仅作当前行为 pilot；每配置一次冷进程样本，不构成性能 A/B 或完整路线等价验证。
+固定上游 `5c4b69d`，版本不变；设置与隔离方式见 [研究起点](performance/gc-issue36-research.md)，最终实现、候选取舍和 A/B 口径见 [实施报告](performance/gc-issue36-implementation.md)。首轮 250 节点记录仍只是单次 pilot；下列最终 A/B 使用独立冷进程、固定节点预算和三次中位数。最终长搜及 Smart 样本的完整 ACTION/TURN、工作量和非时序剪枝比较均通过；NodeLimit 结果不代表完成整场。
 
 | 场景 | 当前结果 | 验证内容 | 日期 |
 | --- | --- | --- | --- |
 | `GC36-RELEASE-BUILD` | 通过（Linux） | Release 构建显式设置 `CopyModOnBuild=false`，0 警告、0 错误；输出仅复制到本任务的隔离 mods。 | 2026-09-05 |
 | `GC36-SILENT-250-GC` | 通过（headless pilot） | DOP1 / 普通 GC / 每 solver 250 节点；selected 展开/转移 250/1426，请求累计 500/2510，265,265,168 B worker 分配；runId `2f721baf127c41aaa0646dc50e46e754`。NodeLimit，未完成整场。 | 2026-09-05 |
 | `GC36-NECRO-250-SMART-NOGC4` | 通过（headless pilot） | DOP1 / Smart / NoGC 4 GB / 每 solver 250 节点；请求累计 750/7540 展开/转移，432,608,568 B worker 分配；两次层间回收暂停约 102.4 ms。runId `129de2c8d3ea47649c61c5b6eb865566`。NodeLimit，未完成整场。 | 2026-09-05 |
+| `GC36-FINAL-BOUNDARIES` | 通过（headless，最终候选5） | Fork/历史/根快照、取消工作量只记一次，以及 DOP1/DOP2 的路线、评分、展开/转移和非时序剪枝等价。runId `9c4b36665ce240f185e4c722c024ff23`。listener slot 已撤回。 | 2026-09-05 |
+| `GC36-AEONGLASS-PREVIEW-OWNERSHIP` | 通过（两步 native 严格差分） | 先只读判型、仅 Wither 写入；第一次生成凋零总伤害6/力量3，第二次升级并生成后总伤害18/力量7。非 Wither preview 身份不变，未执行兄弟的 preview 身份与凋零伤害不变。runId `825d477edaa0456b91934583498388ba`。 | 2026-09-05 |
+| `GC36-FINAL-LONG-SILENT-GC0-DOP4` | 通过（三次 A/B，路线/工作量/剪枝等价） | 每 solver 2,500 节点，请求5,000展开/19,065转移。基线→最终中位：分配2.805→1.829 GB（−34.8%）、时间13,672.4→10,484.7 ms（−23.3%）、暂停3,007.0→1,280.3 ms（−57.4%）、VmHWM2.117→1.684 GB（−20.4%）。最终 runId `d45e986c9fe0490f8a1f03afcb0fecdd` / `658c7729a5a54188bc76bca1a0c55f6c` / `04e508c3b433429ca84b31a69d788576`。 | 2026-09-05 |
+| `GC36-FINAL-SMART-NECRO-NOGC4-DOP4` | 通过（三次 A/B，有峰值代价） | 每 solver 576 节点，请求1,728展开/22,541转移，路线/工作量/剪枝等价。基线→最终中位：分配1.302→1.296 GB、时间5,113.8→5,074.9 ms、暂停153.0→0 ms；VmHWM1.999→2.824 GB（约+0.825 GB）。最终 runId `356f302ce2fb400e9b67834e3989167a` / `c3810131b74546949076723dd3e6769b` / `4bc38f581c224830a51b1548d385744a`。 | 2026-09-05 |
+| `GC36-LISTENER-SLOTS-EAGER-LAZY` | 已拒绝并撤回生产 | helper/游戏 Fork 顺序检查通过，但 lazy 版2,500节点长搜分配增加20.81%，主要反增位于敌方动作中的密集 preview 更新。仅撤回 listener 的候选4控制样本恢复2,801,108,024 B，路线/工作量/剪枝相同。代码归档于 [ExperimentalListenerSlots](../tools/ExperimentalListenerSlots/README.md)。 | 2026-09-05 |
+| `GC36-FINAL-PRESSURE-1GB-DOP8` | 通过（合法低预算，单次） | 请求1,728展开/22,541转移，完整路线/工作量/剪枝等价；5,236.773 ms、1,279,327,296 B、暂停160.357 ms、VmHWM1,963,995,136 B。两个 Smart 层因 forecast_exceeds_remaining 回收，forced/start/end/restart/loss=`2/3/2/2/0`。runId `511d89a5ce1c4b378d20fc7bfc90c256`。 | 2026-09-05 |
+| `GC36-FINAL-PRESSURE-0.6GB` | 设置校验拒绝，未执行搜索 | 低于1 GB最小设置，runId `a68a6be47d404e7195e45d3fa47af7d8`；不计为搜索失败或性能数据。 | 2026-09-05 |
+| `GC36-AFTER-PRUNE-PRESSURE` | 代码审查，未有命中实测 | 保留有下一次 parent 准入时才在剪枝后回收的 guard。admitted_parents 同时受过滤和自然 frontier 影响，不将每个缩小的 wave 都归为内存压力事件。 | 2026-09-05 |
+| `GC36-ADAPTIVE-WAVE-EXPERIMENT` | 已撤回生产接线 | 15项合成决策检查通过，真实单轮实验暂无收益依据；控制器和补丁归档于 [ExperimentalAdaptiveGc](../tools/ExperimentalAdaptiveGc)，检查仍可运行。 | 2026-09-05 |
+| `GC36-FINAL-ADAPTIVE-SILENT` | 通过等价检查，候选未采用 | 每 solver 2,500节点，55个完整窗口、无probe；请求5,000展开/19,065转移，完整路线/工作量/剪枝等价。耗时11,114.4844 ms，相对最终长搜三次中位增加6.01%；单轮不作稳定退化或提升结论。runId `7ced6eed76f745968f0134743d308296`。 | 2026-09-05 |
+| `GC36-FINAL-ADAPTIVE-NECRO` | 通过等价检查，候选未采用 | 每 solver 576节点，35个完整窗口；最后层probeLower=1/rejected=1，4→2核吞吐比0.638、GC duty 0.258→0.146，拒绝后恢复4核且无pending。请求1,728展开/22,541转移，完整路线/工作量/剪枝等价。耗时5,994.7884 ms，相对同代码单轮对照增加1.72%；单轮不作稳定退化或提升结论。runId `20a59a45c3154712981125be355787ae`。 | 2026-09-05 |
+
+最终源码保留 StateStore/空 dirty 查询、历史引用解除、有界 batch storage 复用、原序前缀释放、GC scope 指标、按余量准入、Smart 预测回收及只读判型修复；listener、普通 GC 自适应并发、通用 StateStore COW/typed buckets 和 compact/undo/page COW 内核均不进入生产。VmHWM 为包含启动/建局的进程峰值，GB 使用十进制单位；本轮未完成 Windows、可见 Steam 或完整自动战斗验收。
 
 ## 0.30.0（开发中）：2026-09-05 玩家更优世界线策略第一批
 

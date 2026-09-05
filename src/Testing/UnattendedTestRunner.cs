@@ -912,12 +912,16 @@ internal sealed partial class UnattendedTestRunner
         }
         ForecastMove simulatedMove = simulatedCombat.CurrentMonsterMoves()
             .Single(candidate => ReferenceEquals(candidate.Owner, enemy));
+        Action? assertPreviewOwnership = check.VerifyAeonglassPreviewForkIsolation
+            ? CaptureAeonglassPreviewForkIsolation(simulator, player, check)
+            : null;
         _ = MonsterMoveSemantics.ApplyForecastMove(
             simulator,
             simulatedCombat,
             simulatedMove,
             player.Creature,
             new HashSet<uint>());
+        assertPreviewOwnership?.Invoke();
         foreach (UnattendedPowerInjection injectedPowerAfterMove in check.PowersAfterMove)
             ApplySimulatedPowerInjection(simulator, simulatedCombat, combatState, player, injectedPowerAfterMove, enemy);
         if (check.CardAfterMove is { } simulatedCardAfterMove)

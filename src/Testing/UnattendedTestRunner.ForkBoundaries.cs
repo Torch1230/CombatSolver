@@ -36,6 +36,7 @@ internal sealed partial class UnattendedTestRunner
     {
         CardModel card = player.PlayerCombatState?.Hand.Cards.FirstOrDefault()
             ?? throw new InvalidOperationException("Fork 边界测试要求手牌中至少有一张牌。");
+        AssertHistoryRetentionBoundaries(combat, player, card);
         SimulatedCombatState simulatedCombat = new(combat);
         CombatPredictionSimulator simulator = new(simulatedCombat);
         AssertSimulationCardPileLookupFastPath(player, card);

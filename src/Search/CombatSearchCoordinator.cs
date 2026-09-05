@@ -227,6 +227,9 @@ internal static class CombatSearchCoordinator
                 });
             };
         }
+        SmartLayerMemoryForecast memoryForecast = new();
+        long primaryAllocatedAtStart = GC.GetTotalAllocatedBytes(precise: false);
+        long primaryTransitionsAtStart = policy.RequestWorkTotals?.Snapshot().TransitionCount ?? 0;
         if (policy.ForceShortOnly)
         {
             SolverResult shortResult = new CombatBeamSolver(
@@ -238,6 +241,9 @@ internal static class CombatSearchCoordinator
                 progressCallback,
                 shortProfile,
                 potionPolicyOverride: initialPotionPolicyOverride).Solve();
+            ObserveSmartLayerMemory(
+                policy, memoryForecast, primaryAllocatedAtStart, primaryTransitionsAtStart,
+                shortResult, shortProfile, completedPotionCount: 0);
             PopulateSingleSessionTotals(shortResult, shortProfile.SoftTimeBudgetMilliseconds, deepTriggered: false);
             interimResultCallback?.Invoke(shortResult);
             if (ResolveTakeoverResult(shortResult, policy.Interaction) is { } shortTakeoverResult)
@@ -257,6 +263,7 @@ internal static class CombatSearchCoordinator
                     shortCheckpointMilliseconds: null,
                     requestClock,
                     shortResult,
+                    memoryForecast,
                     interimResultCallback);
             }
             if (policy.MeasurePhasePerformance)
@@ -287,6 +294,9 @@ internal static class CombatSearchCoordinator
             deepProfile,
             shortCheckpointMilliseconds: shortProfile.SoftTimeBudgetMilliseconds,
             potionPolicyOverride: initialPotionPolicyOverride).Solve();
+        ObserveSmartLayerMemory(
+            policy, memoryForecast, primaryAllocatedAtStart, primaryTransitionsAtStart,
+            result, deepProfile, completedPotionCount: 0);
         if (policy.MeasurePhasePerformance)
             policy.Diagnostics.Info(SolverDiagnostics.DescribeSearchPhasePerformance(result));
         bool deepTriggered = result.Elapsed.TotalMilliseconds > shortProfile.SoftTimeBudgetMilliseconds;
@@ -313,6 +323,7 @@ internal static class CombatSearchCoordinator
                 shortProfile.SoftTimeBudgetMilliseconds,
                 requestClock,
                 result,
+                memoryForecast,
                 interimResultCallback);
         }
         policy.Diagnostics.Info(
@@ -333,6 +344,7 @@ internal static class CombatSearchCoordinator
         int? shortCheckpointMilliseconds,
         Stopwatch requestClock,
         SolverResult primary,
+        SmartLayerMemoryForecast memoryForecast,
         Action<SolverResult>? interimResultCallback)
     {
         long remainingMilliseconds = profile.SoftTimeBudgetMilliseconds - requestClock.ElapsedMilliseconds;
@@ -375,6 +387,7 @@ internal static class CombatSearchCoordinator
                 profile,
                 shortCheckpointMilliseconds,
                 selected,
+                memoryForecast,
                 interimResultCallback);
             if (HasReachedAcceptableBattleHpLoss(policy, selected))
                 return selected;
@@ -1137,6 +1150,7 @@ internal static class CombatSearchCoordinator
         SolverSearchProfile profile,
         int? shortCheckpointMilliseconds,
         SolverResult primary,
+        SmartLayerMemoryForecast memoryForecast,
         Action<SolverResult>? interimResultCallback)
     {
         if (policy.PotionPolicy != SolverPotionPolicy.Smart)
@@ -1154,6 +1168,7 @@ internal static class CombatSearchCoordinator
                 profile,
                 shortCheckpointMilliseconds,
                 primary,
+                memoryForecast,
                 interimResultCallback);
         }
         catch (PotionPolicyUnsatisfiedException)
@@ -1177,6 +1192,7 @@ internal static class CombatSearchCoordinator
         SolverSearchProfile profile,
         int? shortCheckpointMilliseconds,
         SolverResult potionFree,
+        SmartLayerMemoryForecast memoryForecast,
         Action<SolverResult>? interimResultCallback)
     {
         if (potionFree.ExplicitPotionCount != 0)
@@ -1224,6 +1240,7 @@ internal static class CombatSearchCoordinator
                     progressCallback,
                     profile,
                     potionFree,
+                    memoryForecast,
                     potionCount - 1,
                     potionCount);
             }
@@ -1237,6 +1254,9 @@ internal static class CombatSearchCoordinator
             PrimarySearchIncumbent? primaryIncumbent = BuildPrimarySearchIncumbent(
                 root,
                 selected);
+            long layerAllocatedAtStart = GC.GetTotalAllocatedBytes(precise: false);
+            long layerTransitionsAtStart = policy.RequestWorkTotals?.Snapshot().TransitionCount ?? 0;
+            SolverResult? observedLayerResult = null;
             SolverResult candidate;
             try
             {
@@ -1254,6 +1274,7 @@ internal static class CombatSearchCoordinator
                     maximumPotionUses: potionCount,
                     minimumPotionUses: potionCount,
                     primaryIncumbent: primaryIncumbent).Solve();
+                observedLayerResult = candidate;
             }
             catch (PotionPolicyUnsatisfiedException)
             {
@@ -1267,6 +1288,14 @@ internal static class CombatSearchCoordinator
             {
                 deadlineExpired = true;
                 break;
+            }
+            finally
+            {
+                // Request totals include a solver that failed or was canceled. Use its actual
+                // interval, never the selected route's work paired with another layer's bytes.
+                ObserveSmartLayerMemory(
+                    policy, memoryForecast, layerAllocatedAtStart, layerTransitionsAtStart,
+                    observedLayerResult, profile, potionCount);
             }
             if (candidate.ResultScope != SolverResultScope.SearchCompletion)
                 return candidate;
@@ -1345,25 +1374,71 @@ internal static class CombatSearchCoordinator
         => candidateWon
             && (!potionFreeWon || hpSaved >= hpRequired || protectsLoot);
 
+    private static void ObserveSmartLayerMemory(
+        SearchPolicySnapshot policy,
+        SmartLayerMemoryForecast forecast,
+        long processAllocatedAtStart,
+        long transitionsAtStart,
+        SolverResult? result,
+        SolverSearchProfile profile,
+        int completedPotionCount)
+    {
+        if (policy.PotionPolicy != SolverPotionPolicy.Smart)
+            return;
+        long processAllocated = Math.Max(
+            0,
+            GC.GetTotalAllocatedBytes(precise: false) - processAllocatedAtStart);
+        long transitions = Math.Max(
+            0,
+            (policy.RequestWorkTotals?.Snapshot().TransitionCount ?? 0) - transitionsAtStart);
+        // A fixed node budget is a comparable work window for the next layer using this same
+        // profile. A timed-out or interrupted layer can understate that window, so keep the
+        // optional reset conservative until a complete observation is available again.
+        bool usableSample = result is { ResultScope: SolverResultScope.SearchCompletion }
+            && result.BoundaryReason != SearchBoundaryReason.TimeLimit
+            && result.Elapsed.TotalMilliseconds < profile.SoftTimeBudgetMilliseconds;
+        forecast.Observe(processAllocated, transitions, usableSample);
+        policy.Diagnostics.Info(
+            $"[CombatSolver/Test] SMART_LAYER_MEMORY_SAMPLE layer={completedPotionCount} " +
+            $"process_allocated_bytes={processAllocated} transitions={transitions} " +
+            $"sample_usable={usableSample.ToString().ToLowerInvariant()} " +
+            $"boundary={result?.BoundaryReason.ToString() ?? "incomplete"} " +
+            $"bytes_per_transition_high_water={forecast.BytesPerTransitionHighWater:F1} " +
+            $"prediction_error_high_water={forecast.UnderpredictionHighWater:F3}");
+    }
+
     private static void ReclaimAtPotionGradientBoundary(
         SearchPolicySnapshot policy,
         CancellationToken cancellationToken,
         Action<SolverProgress>? progressCallback,
         SolverSearchProfile profile,
         SolverResult totalsCarrier,
+        SmartLayerMemoryForecast forecast,
         int completedPotionCount,
         int nextPotionCount)
     {
         SearchMemoryPressureSignal signal = policy.MemoryPressureSignal;
-        if (!signal.IsEnabled || signal.AllocatedBytes == 0)
+        cancellationToken.ThrowIfCancellationRequested();
+        SmartLayerMemoryDecision decision = forecast.Decide(
+            signal.IsEnabled,
+            signal.HasUnexpectedNoGcLoss(),
+            signal.AllocatedBytes,
+            signal.RemainingBytes);
+        policy.Diagnostics.Info(
+            $"[CombatSolver/Test] POTION_GRADIENT_MEMORY_DECISION " +
+            $"completed_layer={completedPotionCount} next_layer={nextPotionCount} " +
+            $"reclaim={decision.ShouldReclaim.ToString().ToLowerInvariant()} reason={decision.Reason} " +
+            $"forecast_bytes={decision.ForecastBytes} remaining_bytes={decision.RemainingBytes} " +
+            $"observations={forecast.ObservationCount} minimum_transition_growth=2 allocation_safety_factor=1.5");
+        if (!decision.ShouldReclaim)
             return;
 
-        cancellationToken.ThrowIfCancellationRequested();
         long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
         int gen0Before = GC.CollectionCount(0);
         int gen1Before = GC.CollectionCount(1);
         int gen2Before = GC.CollectionCount(2);
         TimeSpan pauseBefore = GC.GetTotalPauseDuration();
+        SearchGcLifecycleSnapshot lifecycleBefore = signal.CaptureGcLifecycle();
         Stopwatch stopwatch = Stopwatch.StartNew();
         progressCallback?.Invoke(new SolverProgress(
             totalsCarrier.StartTurnNumber,
@@ -1384,7 +1459,7 @@ internal static class CombatSearchCoordinator
         long limitBefore = signal.AllocationLimitBytes;
         try
         {
-            signal.ReclaimAndContinue(cancellationToken);
+            signal.ReclaimAndContinue(cancellationToken, "smart_potion_layer");
         }
         finally
         {
@@ -1392,6 +1467,7 @@ internal static class CombatSearchCoordinator
             // Retain that completed work in request totals even when cancellation then unwinds.
             stopwatch.Stop();
             TimeSpan gcPause = GC.GetTotalPauseDuration() - pauseBefore;
+            TimeSpan maxObservedGcPause = signal.LastReclaimMaxObservedGcPause;
             long allocatedBytes = Math.Max(
                 0,
                 GC.GetAllocatedBytesForCurrentThread() - allocatedBefore);
@@ -1405,8 +1481,8 @@ internal static class CombatSearchCoordinator
             totalsCarrier.TotalGen1Collections += gen1Collections;
             totalsCarrier.TotalGen2Collections += gen2Collections;
             totalsCarrier.TotalGcPauseDuration += gcPause;
-            if (gcPause > totalsCarrier.TotalMaxObservedGcPause)
-                totalsCarrier.TotalMaxObservedGcPause = gcPause;
+            if (maxObservedGcPause > totalsCarrier.TotalMaxObservedGcPause)
+                totalsCarrier.TotalMaxObservedGcPause = maxObservedGcPause;
             totalsCarrier.TotalSearchElapsed += stopwatch.Elapsed;
             if (totalsCarrier.SearchPhase == SolverSearchPhase.Deep)
                 totalsCarrier.DeepSearchElapsed += stopwatch.Elapsed;
@@ -1420,7 +1496,7 @@ internal static class CombatSearchCoordinator
                 gen1Collections,
                 gen2Collections,
                 gcPause,
-                gcPause);
+                maxObservedGcPause);
 
             policy.Diagnostics.Info(
                 $"[CombatSolver/Test] POTION_GRADIENT_MEMORY_RESET " +
@@ -1428,6 +1504,8 @@ internal static class CombatSearchCoordinator
                 $"allocated_before={pressureBefore} limit_before={limitBefore} " +
                 $"allocated_after={signal.AllocatedBytes} limit_after={signal.AllocationLimitBytes} " +
                 $"gc_pause_ms={gcPause.TotalMilliseconds:F1} " +
+                $"max_observed_gc_pause_ms={maxObservedGcPause.TotalMilliseconds:F1} " +
+                signal.CaptureGcLifecycle().DeltaFrom(lifecycleBefore).ToDiagnosticString() + " " +
                 $"elapsed_ms={stopwatch.Elapsed.TotalMilliseconds:F1} " +
                 $"canceled={cancellationToken.IsCancellationRequested.ToString().ToLowerInvariant()}");
         }

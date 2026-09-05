@@ -246,6 +246,7 @@ internal sealed class UnattendedMonsterMoveCheck
     public string? SpawnInitialMoveId { get; init; }
     public string MoveId { get; init; } = string.Empty;
     public bool UseCurrentMove { get; init; }
+    public bool VerifyAeonglassPreviewForkIsolation { get; init; }
     public SearchBoundaryReason? ExpectedSearchBoundary { get; init; }
     public bool? ExpectedSimulatedDynamicResolution { get; init; }
     public int? PlayerHpBefore { get; init; }
@@ -448,6 +449,8 @@ internal sealed class UnattendedTestResult
 
 internal sealed class UnattendedSolverMetrics
 {
+    public SearchGcLifecycleSnapshot GcLifecycle { get; init; }
+    public SearchGcLifecycleAttribution? GcLifecycleAttribution { get; init; }
     public SolverSearchPhase Phase { get; init; }
     public SearchBoundaryReason Boundary { get; init; }
     public int SelectedExpanded { get; init; }

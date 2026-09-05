@@ -31,6 +31,8 @@ internal sealed partial class UnattendedTestRunner
                 SearchGcPolicy.CurrentNoGcRegionBudgetBytesForTesting;
             _solverMetrics = new UnattendedSolverMetrics
             {
+                GcLifecycle = result.GcLifecycle,
+                GcLifecycleAttribution = result.GcLifecycleAttribution,
                 Phase = result.SearchPhase,
                 Boundary = result.BoundaryReason,
                 SelectedExpanded = result.ExpandedNodes,

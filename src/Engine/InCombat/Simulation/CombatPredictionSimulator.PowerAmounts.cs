@@ -8,7 +8,8 @@ internal sealed partial class CombatPredictionSimulator
 {
     internal void SynchronizePowerAmountPredictionStates()
     {
-        if (State.CombatState is not ICombatPredictionEffectSink effects)
+        if (State.CombatState is not ICombatPredictionEffectSink effects
+            || !StateStore.HasEntries<PowerAmountPredictionState>())
             return;
         (AbstractModel Model, PowerAmountPredictionState State)[] pending =
             StateStore.ReadEntries<PowerAmountPredictionState>().ToArray();

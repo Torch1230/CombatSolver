@@ -252,16 +252,31 @@ internal sealed class CombatPredictionHistory(PredictionTrace trace)
     {
         Record(new CombatPredictionCardPlayStartedEntry
         {
-            Card = card,
+            Card = CombatPredictionCardSnapshot.Capture(card),
             CardPlay = cardPlay
         });
+    }
+
+    internal bool HasCardPlayStartedSince(int startIndex, PredictionTraceFrame actionFrame)
+    {
+        foreach (CombatPredictionHistoryEntry entry in EntriesFrom(startIndex))
+        {
+            // Replays share their action frame; nested plays and plays in sibling forks do
+            // not, even when they use wrappers of the same original card instance.
+            if (entry is CombatPredictionCardPlayStartedEntry
+                && ReferenceEquals(entry.Trace, actionFrame))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void CardPlayFinished(PredictedCard card, CardPlay cardPlay, bool wasEthereal)
     {
         Record(new CombatPredictionCardPlayFinishedEntry
         {
-            Card = card,
+            Card = CombatPredictionCardSnapshot.Capture(card),
             CardPlay = cardPlay,
             WasEthereal = wasEthereal
         });
@@ -338,7 +353,7 @@ internal sealed class CombatPredictionHistory(PredictionTrace trace)
             Receiver = receiver,
             Result = result,
             Dealer = dealer,
-            CardSource = cardSource,
+            CardSource = cardSource is null ? null : CombatPredictionCardSnapshot.Capture(cardSource),
             Source = source,
         });
     }

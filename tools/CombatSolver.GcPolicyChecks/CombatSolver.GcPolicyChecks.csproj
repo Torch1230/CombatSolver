@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>13.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>true</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/Search/SmartLayerMemoryForecast.cs" Link="Production/SmartLayerMemoryForecast.cs" />
+    <Compile Include="../ExperimentalAdaptiveGc/SearchParallelismController.cs" Link="Experimental/SearchParallelismController.cs" />
+    <Compile Include="../../src/Runtime/SearchGcLifecycleMetrics.cs" Link="Production/SearchGcLifecycleMetrics.cs" />
+    <Compile Include="../../src/Runtime/SearchMemoryPressureSignal.cs" Link="Production/SearchMemoryPressureSignal.cs" />
+    <Compile Include="../../src/Runtime/SearchGcPolicy.cs" Link="Production/SearchGcPolicy.cs" />
+    <Compile Include="../../src/Runtime/ProcessWorkingSetTrimmer.cs" Link="Production/ProcessWorkingSetTrimmer.cs" />
+  </ItemGroup>
+</Project>

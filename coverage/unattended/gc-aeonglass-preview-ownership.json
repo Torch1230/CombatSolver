@@ -1,0 +1,20 @@
+[
+  {
+    "monsterId": "Aeonglass",
+    "moveId": "INCREASING_INTENSITY_MOVE",
+    "verifyAeonglassPreviewForkIsolation": true,
+    "expectedPlayerHpLoss": 0,
+    "expectedEnemyPowers": { "STRENGTH_POWER": 3 },
+    "expectedPlayerPileCards": { "Discard:WITHER": 1 },
+    "expectedPlayerPileCardDamageTotals": { "Discard:WITHER": 6 }
+  },
+  {
+    "monsterId": "Aeonglass",
+    "moveId": "INCREASING_INTENSITY_MOVE",
+    "verifyAeonglassPreviewForkIsolation": true,
+    "expectedPlayerHpLoss": 0,
+    "expectedEnemyPowers": { "STRENGTH_POWER": 7 },
+    "expectedPlayerPileCards": { "Discard:WITHER": 2 },
+    "expectedPlayerPileCardDamageTotals": { "Discard:WITHER": 18 }
+  }
+]

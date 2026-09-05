@@ -1,0 +1,244 @@
+--- a/src/Search/CombatBeamSolver.Phases.cs
++++ b/src/Search/CombatBeamSolver.Phases.cs
+@@ -37,22 +37,43 @@
+         TimeSpan gcPauseAtStart = requestWorkTotals == null
+             ? TimeSpan.Zero
+             : GC.GetTotalPauseDuration();
++        Action<string>? reportParallelismExperiment = null;
++        string experimentTermination = "exception";
+         try
+         {
+-            return SolveCore();
++            SolverResult result = SolveCore(out reportParallelismExperiment);
++            experimentTermination = "completed";
++            return result;
++        }
++        catch (OperationCanceledException)
++        {
++            experimentTermination = "cancelled";
++            throw;
++        }
++        catch (System.Exception error)
++        {
++            experimentTermination = $"exception_{error.GetType().Name}";
++            throw;
+         }
+         finally
+         {
+-            if (requestWorkTotals != null)
+-            {
+-                RecordRequestWork(
+-                    requestWorkTotals,
+-                    startedTimestamp,
+-                    allocatedBytesAtStart,
+-                    gen0AtStart,
+-                    gen1AtStart,
+-                    gen2AtStart,
+-                    gcPauseAtStart);
++            try
++            {
++                reportParallelismExperiment?.Invoke(experimentTermination);
++            }
++            finally
++            {
++                if (requestWorkTotals != null)
++                {
++                    RecordRequestWork(
++                        requestWorkTotals,
++                        startedTimestamp,
++                        allocatedBytesAtStart,
++                        gen0AtStart,
++                        gen1AtStart,
++                        gen2AtStart,
++                        gcPauseAtStart);
++                }
+             }
+         }
+     }
+@@ -96,8 +117,42 @@
+             deepTriggered));
+     }
+
+-    private SolverResult SolveCore()
++    private SolverResult SolveCore(out Action<string>? reportParallelismExperiment)
+     {
++        // Research-only counters live in this Solve's closure; every exit reports once.
++        long experimentId = Stopwatch.GetTimestamp();
++        SearchParallelismController? adaptiveParallelism = null;
++        int experimentMaximumCapacity = 0;
++        long experimentWavesSeen = 0, experimentWavesCompleted = 0;
++        long experimentZeroWorkerWaves = 0, experimentZeroTransitionWaves = 0;
++        long experimentZeroElapsedWaves = 0, experimentUnknownMemoryWaves = 0;
++        long experimentObservedSamples = 0, experimentFullCapacitySamples = 0;
++        long experimentUnderfilledSamples = 0, experimentFullCapacityTransitions = 0;
++        long experimentFullCapacityTicks = 0, experimentCompletedWindows = 0;
++        long experimentProbeLower = 0, experimentProbeHigher = 0;
++        long experimentProbeAccepted = 0, experimentProbeRejected = 0;
++        long experimentWorkloadChanged = 0, experimentProbeAbortedWorkload = 0;
++        long experimentMemoryPressureLimited = 0, experimentSingletonReplayDisabled = 0;
++        reportParallelismExperiment = termination => policy.Diagnostics.Info(
++            $"[CombatSolver/Test] GC_PARALLELISM_SUMMARY solve={experimentId} " +
++            $"initialized={(adaptiveParallelism != null).ToString().ToLowerInvariant()} " +
++            $"enabled={(adaptiveParallelism?.IsEnabled == true).ToString().ToLowerInvariant()} " +
++            $"configured_max={policy.MaxDegreeOfParallelism} effective_max={experimentMaximumCapacity} " +
++            $"waves_seen={experimentWavesSeen} waves_completed={experimentWavesCompleted} " +
++            $"waves_interrupted={experimentWavesSeen - experimentWavesCompleted} " +
++            $"zero_worker_waves={experimentZeroWorkerWaves} zero_transition_waves={experimentZeroTransitionWaves} " +
++            $"zero_elapsed_waves={experimentZeroElapsedWaves} unknown_memory_waves={experimentUnknownMemoryWaves} " +
++            $"observed_samples={experimentObservedSamples} full_capacity_samples={experimentFullCapacitySamples} " +
++            $"underfilled_samples={experimentUnderfilledSamples} full_capacity_transitions={experimentFullCapacityTransitions} " +
++            $"full_capacity_elapsed_ms={TimeSpan.FromTicks(experimentFullCapacityTicks).TotalMilliseconds:F3} " +
++            $"completed_windows={experimentCompletedWindows} workload_changed_windows={experimentWorkloadChanged} " +
++            $"probe_lower_started={experimentProbeLower} probe_higher_started={experimentProbeHigher} " +
++            $"probe_accepted={experimentProbeAccepted} probe_rejected={experimentProbeRejected} " +
++            $"probe_aborted_workload={experimentProbeAbortedWorkload} memory_pressure_limited={experimentMemoryPressureLimited} " +
++            $"singleton_replay_disabled_waves={experimentSingletonReplayDisabled} " +
++            $"final_capacity={adaptiveParallelism?.Capacity ?? 0} " +
++            $"probe_in_flight={(adaptiveParallelism?.IsProbing == true).ToString().ToLowerInvariant()} " +
++            $"expanded={_run.Expanded} transitions={_run.TransitionCount} termination_reason={termination}");
+         using IDisposable notificationIsolation = SimulationNotificationIsolation.Enter();
+         cancellationToken.ThrowIfCancellationRequested();
+         if (_minimumPotionUses < 0
+@@ -138,6 +193,11 @@
+             expansionParallelism = Math.Min(2, expansionParallelism);
+         }
+
++        // Research-only experiment: disabled for replay and active NoGC regions.
++        experimentMaximumCapacity = expansionParallelism;
++        adaptiveParallelism = new SearchParallelismController(expansionParallelism,
++            enabled: !policy.MemoryPressureSignal.IsEnabled
++                && !_detailedDiagnostics && !policy.VerifyIncrementalSearch);
+         long allocatedBytesAtStart = GC.GetAllocatedBytesForCurrentThread();
+         int gen0AtStart = GC.CollectionCount(0);
+         int gen1AtStart = GC.CollectionCount(1);
+@@ -1269,7 +1329,7 @@
+                             break;
+                         }
+                         int desiredCapacity = Math.Min(
+-                            parallelWaveCapacity,
++                            Math.Min(parallelWaveCapacity, adaptiveParallelism.Capacity),
+                             Math.Min(remainingBudget - 1, active.Count - activeIndex));
+                         // Reserve only one parent before considering a reclaim. A smaller wave
+                         // can use the tail of this region without collecting a full candidate graph.
+@@ -1308,15 +1368,26 @@
+                         ExpansionWorkerOutcome[]? outcomes = null;
+                         int finishedEntryCount = 0;
+                         int rawCandidateCount = 0;
++                        bool disableSingleParentReplay = adaptiveParallelism.IsEnabled
++                            && adaptiveParallelism.Capacity < expansionParallelism
++                            && workerNodes.Count == 1;
++                        if (adaptiveParallelism.IsEnabled)
++                        {
++                            experimentWavesSeen++;
++                            if (disableSingleParentReplay)
++                                experimentSingletonReplayDisabled++;
++                        }
++                        long waveRemainingBefore = policy.MemoryPressureSignal.RemainingBytes;
++                        long waveStarted = Stopwatch.GetTimestamp();
+                         long waveAllocatedBefore = policy.MemoryPressureSignal.AllocatedBytes;
+-                        long waveRemainingBefore = policy.MemoryPressureSignal.RemainingBytes;
+                         TimeSpan wavePauseBefore = GC.GetTotalPauseDuration();
++                        int waveTransitionsBefore = _run.TransitionCount;
+                         try
+                         {
+                             outcomes = parallelExpansionExecutor!.Evaluate(
+                                 workerNodes,
+                                 enableSingleParentActionReplay:
+-                                    workerNodes.Count == 1,
++                                    workerNodes.Count == 1 && !disableSingleParentReplay,
+                                 commitOrdered: (workerIndex, batch) =>
+                                 {
+                                     rawCandidateCount += batch.Cards.Count + batch.Potions.Count + batch.EndTurns.Count;
+@@ -1352,9 +1423,14 @@
+                             for (int index = finishedEntryCount; index < entries.Count; index++)
+                                 entries[index].Node.Snapshot.ReleaseSimulator();
+                         }
++                        // Capture all end samples together, before bookkeeping and diagnostics.
++                        long waveFinished = Stopwatch.GetTimestamp();
+                         long waveAllocated = Math.Max(
+                             0,
+                             policy.MemoryPressureSignal.AllocatedBytes - waveAllocatedBefore);
++                        TimeSpan wavePause = GC.GetTotalPauseDuration() - wavePauseBefore;
++                        int waveTransitions = _run.TransitionCount - waveTransitionsBefore;
++                        TimeSpan waveElapsed = Stopwatch.GetElapsedTime(waveStarted, waveFinished);
+                         long reservedWaveBytes = ParallelWaveAllocationReserve(workerNodes.Count);
+                         bool waveStayedWithinReserve = waveAllocated <= reservedWaveBytes;
+                         if (workerNodes.Count > 0)
+@@ -1385,7 +1461,76 @@
+                                 $"remaining_before={waveRemainingBefore} process_allocated_bytes={waveAllocated} " +
+                                 $"reserved_bytes={reservedWaveBytes} raw_candidates={rawCandidateCount} " +
+                                 $"pending_plays={nextPlays.Count} ended={ended.Count} " +
+-                                $"gc_pause_ms={(GC.GetTotalPauseDuration() - wavePauseBefore).TotalMilliseconds:F3}");
++                                $"gc_pause_ms={wavePause.TotalMilliseconds:F3}");
++                        }
++                        if (adaptiveParallelism.IsEnabled)
++                        {
++                            experimentWavesCompleted++;
++                            // Categories below partition completed waves. DOP means scheduled
++                            // parents; it is not a measurement of simultaneously executing threads.
++                            if (workerNodes.Count == 0)
++                                experimentZeroWorkerWaves++;
++                            else if (waveTransitions == 0)
++                                experimentZeroTransitionWaves++;
++                            else if (waveElapsed <= TimeSpan.Zero)
++                                experimentZeroElapsedWaves++;
++                            else
++                            {
++                                GCMemoryInfo memory = GC.GetGCMemoryInfo();
++                                if (memory.HighMemoryLoadThresholdBytes <= 0 || memory.MemoryLoadBytes <= 0)
++                                    experimentUnknownMemoryWaves++;
++                                else
++                                {
++                                    experimentObservedSamples++;
++                                    if (workerNodes.Count == adaptiveParallelism.Capacity)
++                                    {
++                                        experimentFullCapacitySamples++;
++                                        experimentFullCapacityTransitions += waveTransitions;
++                                        experimentFullCapacityTicks += waveElapsed.Ticks;
++                                    }
++                                    else
++                                        experimentUnderfilledSamples++;
++                                    bool wasProbing = adaptiveParallelism.IsProbing;
++                                    SearchParallelismDecision decision = adaptiveParallelism.Observe(new(
++                                        waveElapsed, waveTransitions, waveAllocated, wavePause, workerNodes.Count,
++                                        Math.Clamp(memory.MemoryLoadBytes / (double)memory.HighMemoryLoadThresholdBytes, 0d, 1d)));
++                                    // None also describes valid completed windows without a decision.
++                                    if (decision.TransitionsPerSecond > 0)
++                                        experimentCompletedWindows++;
++                                    switch (decision.Kind)
++                                    {
++                                        case SearchParallelismDecisionKind.ProbeLower:
++                                            experimentProbeLower++;
++                                            break;
++                                        case SearchParallelismDecisionKind.ProbeHigher:
++                                            experimentProbeHigher++;
++                                            break;
++                                        case SearchParallelismDecisionKind.ProbeAccepted:
++                                            experimentProbeAccepted++;
++                                            break;
++                                        case SearchParallelismDecisionKind.ProbeRejected:
++                                            experimentProbeRejected++;
++                                            break;
++                                        case SearchParallelismDecisionKind.WorkloadChanged:
++                                            experimentWorkloadChanged++;
++                                            if (wasProbing)
++                                                experimentProbeAbortedWorkload++;
++                                            break;
++                                        case SearchParallelismDecisionKind.MemoryPressureLimited:
++                                            experimentMemoryPressureLimited++;
++                                            break;
++                                    }
++                                    if (decision.Kind != SearchParallelismDecisionKind.None)
++                                        policy.Diagnostics.Info(
++                                            $"[CombatSolver/Test] GC_PARALLELISM_EXPERIMENT solve={experimentId} " +
++                                            $"turn_layer={searchedTurnLayers} play_depth={playDepth} " +
++                                            $"scheduled_parent_dop={workerNodes.Count} kind={decision.Kind} " +
++                                            $"previous={decision.PreviousCapacity} capacity={decision.Capacity} " +
++                                            $"transitions_per_second={decision.TransitionsPerSecond:F3} " +
++                                            $"bytes_per_transition={decision.BytesPerTransition:F3} " +
++                                            $"gc_duty={decision.GcPauseDuty:F3} throughput_ratio={decision.ThroughputRatio:F3}");
++                                }
++                            }
+                         }
+                         ReclaimAfterCommittedWork("after_parallel_wave");
+                     }

@@ -1109,9 +1109,11 @@ internal static class SolverController
                 Thread worker = Thread.CurrentThread;
                 ThreadPriority previousPriority = worker.Priority;
                 worker.Priority = ThreadPriority.BelowNormal;
+                ISearchGcScope? gcPolicy = null;
+                SolverResult? finalizedResult = null;
                 try
                 {
-                    using IDisposable gcPolicy = SearchGcPolicy.EnterLowLatencySearch(
+                    using ISearchGcScope admittedGcPolicy = gcPolicy = SearchGcPolicy.EnterSearchScope(
                         settings.EnableNoGcRegion,
                         settings.NoGcRegionBudgetBytes,
                         searchPolicy.MemoryPressureSignal,
@@ -1123,11 +1125,26 @@ internal static class SolverController
                         searchPolicy,
                         token,
                         progress => PublishSearchProgress(search, progress));
-                    return search.Interaction.FinalizeWorkerResult(result);
+                    finalizedResult = search.Interaction.FinalizeWorkerResult(result);
+                    return finalizedResult;
                 }
                 finally
                 {
                     worker.Priority = previousPriority;
+                    if (gcPolicy?.IsLifecycleCompleted == true)
+                    {
+                        SearchGcLifecycleSnapshot gcLifecycle = gcPolicy.Lifecycle;
+                        if (finalizedResult != null)
+                        {
+                            finalizedResult.GcLifecycle = gcLifecycle;
+                            finalizedResult.GcLifecycleAttribution = gcPolicy.LifecycleAttribution;
+                        }
+                        Entry.Logger.Info(
+                            $"[CombatSolver/Test] SEARCH_GC_LIFECYCLE generation={generation} " +
+                            $"completed={(finalizedResult != null).ToString().ToLowerInvariant()} " +
+                            $"attribution={gcPolicy.LifecycleAttribution} " +
+                            gcLifecycle.ToDiagnosticString());
+                    }
                 }
             }, token);
             search.WorkerCompletion = solveTask;

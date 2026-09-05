@@ -4,10 +4,18 @@
 > 本文是项目的持续记录。每次改变搜索语义、评分、模拟覆盖、性能策略、UI 或测试方式时，都应同步更新对应章节和文末变更记录。  
 > “未来构想”均不是已经实现的功能。
 
-## GC 独立研究（2026-09-05，不改变版本或生产行为）
+## 未发布：GC 独立研究（2026-09-05，版本保持不变）
 
-- 从上游 `5c4b69d` 建立 `perf/gc-research` 独立 worktree，隔离构建输出、游戏 mods 和 headless 数据；研究记录见 [GC 首轮基线](performance/gc-issue36-research.md) 与 [源码审计](performance/gc-issue36-code-audit.md)。
-- 两个 DOP1、每 solver 250 节点的公开 fixture pilot 通过。Smart / NoGC 4 GB 样本在每层仅分配约 130–147 MB 时仍执行层间回收，两次暂停累计约 102.4 ms；这是当前行为的单次基线，不是优化收益。未修改生产源码，未执行完整性能 A/B、Windows 或可见 Steam 验证。
+- 从上游 `5c4b69d` 建立 `perf/gc-research` 独立 worktree，隔离构建输出、游戏 mods 和 headless 数据，未合入另一个小循环任务的策略修改。实现、取舍及完整证据见 [实施报告](performance/gc-issue36-implementation.md)；[首轮基线](performance/gc-issue36-research.md) 和 [源码审计](performance/gc-issue36-code-audit.md) 保留研究起点。
+- 当前源码保留 StateStore 直接存储与懒字典、空 PowerAmount dirty 查询、有界 raw batch storage 复用、按原序提交并释放完成前缀，以及历史到祖先 card wrapper 的引用解除。GC 部分增加准入 scope 冻结计数和单段暂停观测，外层 wave 按实际余量准入，Smart 用同一层的分配/转移预测是否跳过可选回收；搜索预算、路线排序和提交顺序保持原规则。
+- listener slot 的 eager / lazy 分页两版均撤回生产，保存为 [独立实验补丁](../tools/ExperimentalListenerSlots/README.md)。短搜的稀疏更新收益未覆盖长搜反例：同为 5,000 展开 / 19,065 转移，lazy 候选分配增加 20.81%；逐张 preview COW 立即复制缓存，随后新增卡使整批快照失效。仅回退 listener 的控制样本恢复到 2.801 GB。通用 StateStore COW、按类型分桶和 compact/undo/page COW 内核均未接入生产；普通 GC 自适应并发的生产接线也已撤回。
+- 长搜反例同时定位了已有的无用写入口：永世沙漏递加强度先取得每张牌的 `MutablePreview` 才判断 Wither。现在先读取 `Preview` 判型，仅真正升级 Wither 时取得可写预览。两次原生效果严格差分以及普通牌 preview 身份、Wither 升级和未执行兄弟 Fork 隔离通过，runId `825d477edaa0456b91934583498388ba`。
+- 最终 `GC36-FINAL-BOUNDARIES` 通过，runId `9c4b36665ce240f185e4c722c024ff23`，覆盖 Fork/历史/根快照、取消工作量只计一次与 DOP1/DOP2 路线和非时序工作量等价。最终大牌组长搜与 Smart 药水三次样本的完整 ACTION/TURN、工作量和非时序剪枝比较均通过。
+- Silent 普通 GC / DOP4、每 solver 2,500 节点的三次中位数：请求累计 5,000 / 19,065 展开/转移，worker 分配 `2.805 → 1.829 GB`（−34.8%），搜索时间 `13,672.4 → 10,484.7 ms`（−23.3%），暂停 `3,007.0 → 1,280.3 ms`（−57.4%），进程 VmHWM `2.117 → 1.684 GB`（−20.4%）。这是固定 fixture 下的最终组合收益，不把全部差异归给某一个 helper。
+- Necrobinder Smart / NoGC 4 GB / DOP4、每 solver 576 节点的三次中位数：请求累计 1,728 / 22,541，分配 `1.302 → 1.296 GB`、搜索时间 `5,113.8 → 5,074.9 ms`，两次可选层间回收被省去，暂停 `153.0 → 0 ms`，但进程 VmHWM `1.999 → 2.824 GB`，增加约 0.825 GB。暂停减少与峰值代价共同记录，不能称为无代价优化。
+- 合法 NoGC 1 GB / DOP8 压力样本通过，runId `511d89a5ce1c4b378d20fc7bfc90c256`，完整路线/工作量/剪枝仍相同；两个 Smart 层均因预测超过余量而回收，forced/start/end/restart/loss 为 `2/3/2/2/0`。此前 0.6 GB 请求在设置最小 1 GB 校验处失败，未执行搜索，不计性能样本。尚无 `after_prune` 命中实测；准入父节点减少也可能来自过滤或自然 frontier，不能全部归因于内存压力。
+- 普通 GC 自适应并发完成各一轮真实实验，均保持完整路线、工作量和非时序剪枝等价：Silent 每 solver 2,500 节点，55 个完整窗口未触发探测，相对最终长搜三次中位耗时增加 6.01%；Necrobinder 每 solver 576 节点，35 个完整窗口，最后一层一次 4→2 核探测把 GC duty 从 0.258 降至 0.146，但吞吐比只有 0.638，因此拒绝降并发并恢复4核，无未完成探测，耗时比同代码单轮对照增加1.72%。单轮不能证明稳定退化或提升，当前没有收益依据；控制器及接线补丁归档于 [ExperimentalAdaptiveGc](../tools/ExperimentalAdaptiveGc)，15项合成检查仍可运行。
+- 上述结果来自隔离 Linux headless，VmHWM 包含启动与建局。Windows、可见 Steam 帧表现和完整自动战斗未在本轮验收，不提升版本或发布。
 
 ## 0.30.0（开发中）：2026-09-05 玩家更优世界线策略迭代
 

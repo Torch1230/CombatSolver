@@ -1251,6 +1251,8 @@ internal sealed class SolverResult
     public int TotalGen2Collections { get; internal set; }
     public TimeSpan TotalGcPauseDuration { get; internal set; }
     public TimeSpan TotalMaxObservedGcPause { get; internal set; }
+    public SearchGcLifecycleSnapshot GcLifecycle { get; internal set; }
+    public SearchGcLifecycleAttribution? GcLifecycleAttribution { get; internal set; }
     public int MainThreadFrameCount { get; internal set; }
     public int MainThreadFramesOver33Milliseconds { get; internal set; }
     public double MaxMainThreadFrameGapMilliseconds { get; internal set; }

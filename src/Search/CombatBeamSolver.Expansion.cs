@@ -569,7 +569,7 @@ internal sealed partial class CombatBeamSolver
         using ExpansionBatch? cycleExitBatch = node.CycleProbeLease == null
             && node.CycleExitProbe == null
             ? null
-            : new ExpansionBatch();
+            : RentExpansionBatch();
         if (cycleExitBatch != null)
         {
             GenerateRawPotionCandidates(node, cycleExitBatch);

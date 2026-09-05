@@ -264,6 +264,17 @@ forbid_fixed \
     'ReclaimAfterActiveCheckpointAsync' \
     'recursive reclaim handoff returned:'
 
+# GC admission accounting and scratch-container ownership remain in their existing layers.
+while IFS=$'\t' read -r relative_path text; do
+    require_fixed "$repository_root/$relative_path" "$text" 'missing GC research ownership boundary'
+done <<'EOF'
+src/Runtime/SearchGcPolicy.cs	scope.CompleteLifecycle(CaptureLifecycle())
+src/Runtime/SolverController.cs	SearchGcPolicy.EnterSearchScope(
+src/Search/CombatBeamSolver.Models.cs	ExpansionBatchPool = new(static snapshot => snapshot.ReleaseSimulator())
+src/Search/CombatBeamSolver.ParallelExpansion.cs	new(_run.ExpansionBatchPool)
+src/Search/CombatBeamSolver.Phases.cs	SearchWaveMemoryPolicy.Capacity(
+EOF
+
 card_play_prediction_state_path="$repository_root/src/Engine/InCombat/Mirrors/Hooks/Card/CardPlayHookPredictionStates.cs"
 for stable_vambrace_state in \
     'internal sealed class VambracePredictionState(Vambrace relic) : IPredictionStateForkable' \

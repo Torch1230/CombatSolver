@@ -90,7 +90,9 @@ internal sealed class CombatPredictionRiskEntry : CombatPredictionHistoryEntry
 /// </summary>
 internal sealed class CombatPredictionCardPlayStartedEntry : CombatPredictionHistoryEntry
 {
-    public required PredictedCard Card { get; init; }
+    public required CombatPredictionCardSnapshot Card { get; init; }
+    // Keep the exact native play object: hook transactions and immediate consumers use its
+    // preview identity. Unlike PredictedCard, it does not carry a pile or mutation observer.
     public required CardPlay CardPlay { get; init; }
 }
 
@@ -99,7 +101,7 @@ internal sealed class CombatPredictionCardPlayStartedEntry : CombatPredictionHis
 /// </summary>
 internal sealed class CombatPredictionCardPlayFinishedEntry : CombatPredictionHistoryEntry
 {
-    public required PredictedCard Card { get; init; }
+    public required CombatPredictionCardSnapshot Card { get; init; }
     public required CardPlay CardPlay { get; init; }
     public required bool WasEthereal { get; init; }
 }
@@ -109,7 +111,7 @@ internal sealed class CombatPredictionDamageReceivedEntry : CombatPredictionHist
     public required Creature Receiver { get; init; }
     public required DamageResult Result { get; init; }
     public required Creature? Dealer { get; init; }
-    public required PredictedCard? CardSource { get; init; }
+    public required CombatPredictionCardSnapshot? CardSource { get; init; }
     public required CombatDamageSource Source { get; init; }
 }
 

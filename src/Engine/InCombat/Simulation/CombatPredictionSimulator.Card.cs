@@ -145,25 +145,12 @@ internal sealed partial class CombatPredictionSimulator
         int historyEntryStart = History.Entries.Count;
         var resources = SpendResources(card, isAutoPlay: false);
         OnPlayWrapper(card, target, isAutoPlay: false, resources, out frame);
-        if (HasCardPlayStartedSince(historyEntryStart, card)
+        if (History.HasCardPlayStartedSince(historyEntryStart, frame)
             && !HasPendingChoice
             && State.CombatState is ICombatPredictionCardExecutionSink sink)
         {
             sink.CompleteCardExecution(this);
         }
-    }
-
-    private bool HasCardPlayStartedSince(int historyEntryStart, PredictedCard card)
-    {
-        foreach (CombatPredictionHistoryEntry entry in History.EntriesFrom(historyEntryStart))
-        {
-            if (entry is CombatPredictionCardPlayStartedEntry started
-                && ReferenceEquals(started.Card, card))
-            {
-                return true;
-            }
-        }
-        return false;
     }
 
     /// <summary>

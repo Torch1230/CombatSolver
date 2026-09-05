@@ -1,0 +1,473 @@
+--- a/src/Engine/Common/PredictedCard.cs
++++ b/src/Engine/Common/PredictedCard.cs
+@@ -2,6 +2,12 @@
+ using MegaCrit.Sts2.Core.Models;
+
+ namespace CombatSolver.Engine.Common;
++
++internal interface IPredictedCardListenerObserver
++{
++    void CardPreviewReplaced(PredictedCard card, CardModel previousPreview);
++    void CardListenerStructureChanged();
++}
+
+ internal sealed class PredictedCard : IComparable<PredictedCard>
+ {
+@@ -55,7 +61,7 @@
+
+     private PreviewStorage _previewStorage;
+     private SimCardPile? _ownerPile;
+-    private Action? _mutationObserver;
++    private IPredictedCardListenerObserver? _mutationObserver;
+     private bool _observeEveryPreviewMutation;
+     private bool _isolateAttachedModelsOnFork;
+
+@@ -74,6 +80,10 @@
+     internal SimCardPile? OwnerPile => _ownerPile;
+
+     internal bool HasExternallyMutableAttachedModels => _isolateAttachedModelsOnFork;
++
++    // Relative to the card-listener suffix in the last immutable base snapshot. The
++    // branch rebuilds this hint after topology changes; ordinary Fork preserves the order.
++    internal int HookListenerSlot { get; set; } = -1;
+
+     public CardModel MutablePreview
+     {
+@@ -85,17 +95,19 @@
+             CardModel? preview = _previewStorage.Preview;
+             if (preview is null)
+             {
++                CardModel previousPreview = _previewStorage.Original;
+                 preview = PredictionUtils.CloneCardStateForSimulation(_previewStorage.Original);
+                 _previewStorage = new PreviewStorage(_previewStorage.Original, preview);
+                 if (!_observeEveryPreviewMutation)
+-                    NotifyHookListenerStructureChanged();
++                    _mutationObserver?.CardPreviewReplaced(this, previousPreview);
+             }
+             else if (_previewStorage.Shared)
+             {
++                CardModel previousPreview = preview;
+                 preview = PredictionUtils.CloneCardStateForSimulation(preview);
+                 _previewStorage = new PreviewStorage(_previewStorage.Original, preview);
+                 if (!_observeEveryPreviewMutation)
+-                    NotifyHookListenerStructureChanged();
++                    _mutationObserver?.CardPreviewReplaced(this, previousPreview);
+             }
+             else
+             {
+@@ -165,6 +177,7 @@
+         PredictedCard fork = new(forkStorage)
+         {
+             _isolateAttachedModelsOnFork = _isolateAttachedModelsOnFork,
++            HookListenerSlot = HookListenerSlot,
+         };
+         context.Register(this, fork);
+         return fork;
+@@ -217,10 +230,14 @@
+             pile?.DisableFingerprintCache();
+     }
+
+-    internal void SetMutationObserver(Action? observer, bool observeEveryPreviewMutation = false)
++    internal void SetMutationObserver(
++        IPredictedCardListenerObserver? observer,
++        bool observeEveryPreviewMutation = false)
+     {
+         _mutationObserver = observer;
+         _observeEveryPreviewMutation = observer is not null && observeEveryPreviewMutation;
++        if (observer is null)
++            HookListenerSlot = -1;
+     }
+
+     internal void EnableAttachedModelForkIsolation()
+@@ -238,7 +255,7 @@
+     // conservative per-access invalidation policy while such modifiers are present.
+     internal void NotifyHookListenerStructureChanged()
+     {
+-        _mutationObserver?.Invoke();
++        _mutationObserver?.CardListenerStructureChanged();
+     }
+
+     public int CompareTo(PredictedCard? other)
+--- a/src/Search/SimulatedCombatState.cs
++++ b/src/Search/SimulatedCombatState.cs
+@@ -41,7 +41,7 @@
+       ICombatPredictionPlayerLimits, ICombatPredictionPlayerCardRules,
+       ICombatPredictionPetState,
+       ICombatPredictionStateOwner, ICombatPredictionRootCaptureBoundary,
+-      ICombatPredictionRootMaterializable, IPredictionForkBoundary
++      ICombatPredictionRootMaterializable, IPredictionForkBoundary, IPredictedCardListenerObserver
+ {
+     private readonly IRunState _runState;
+     private readonly IReadOnlyList<Creature> _playerCreatures;
+@@ -161,6 +161,8 @@
+     private IReadOnlyList<AbstractModel>? _effectiveHookListeners;
+     private IReadOnlyList<AbstractModel>? _effectiveRunHookListeners;
+     private IReadOnlyList<PowerModel>? _effectivePowers;
++    private int _baseCardHookListenerStart = -1;
++    private int _effectiveCardHookListenerStart = -1;
+     private Action? _invalidateBaseHookListenersObserver;
+     private ForkableDictionary<Player, int>? _drawNextTurn;
+     private ForkableSet<(Creature Owner, Type Type)>? _skipNextDurationTick;
+@@ -1472,7 +1474,9 @@
+         List<AbstractModel> listeners = new(_rootRunHookListeners.Length + combatListeners.Count);
+         listeners.AddRange(_rootRunHookListeners);
+         listeners.AddRange(combatListeners);
+-        _effectiveRunHookListeners = listeners;
++        _effectiveRunHookListeners = CanReuseHookListenerCache
++            ? ImmutableListenerList<AbstractModel>.TakeOwnership(listeners)
++            : listeners;
+         return _effectiveRunHookListeners;
+     }
+
+@@ -1485,6 +1489,7 @@
+         if (_powers is null && _addedPowerInstances is null)
+         {
+             _effectiveHookListeners = baseListeners;
++            _effectiveCardHookListenerStart = _baseCardHookListenerStart;
+             return _effectiveHookListeners;
+         }
+
+@@ -1525,7 +1530,10 @@
+                     InsertPowerAtOwnerPosition(listeners, power);
+             }
+         }
+-        _effectiveHookListeners = listeners;
++        _effectiveCardHookListenerStart = FindCardListenerStart(listeners, baseListeners);
++        _effectiveHookListeners = CanReuseHookListenerCache
++            ? ImmutableListenerList<AbstractModel>.TakeOwnership(listeners)
++            : listeners;
+         return _effectiveHookListeners;
+     }
+
+@@ -1625,6 +1633,7 @@
+             ?? throw new InvalidOperationException("Combat prediction state is not attached.");
+         foreach (Player player in Players)
+             listeners.AddRange(predictionState.GetPlayerCombatState(player).OrbQueue.Orbs);
++        _baseCardHookListenerStart = listeners.Count;
+         if (_registeredCombatCards != null)
+         {
+             List<CardModel>? cardAttachedListenerOwners =
+@@ -1633,6 +1642,7 @@
+                          .Where(card => !card.Preview.HasBeenRemovedFromState))
+             {
+                 CardModel preview = card.Preview;
++                card.HookListenerSlot = listeners.Count - _baseCardHookListenerStart;
+                 listeners.Add(preview);
+                 if (preview.Affliction != null)
+                     listeners.Add(preview.Affliction);
+@@ -1643,7 +1653,9 @@
+             if (cardAttachedListenerOwners != null)
+                 _modHookSubscribers.AppendCardAttachedListeners(cardAttachedListenerOwners, listeners);
+         }
+-        _baseHookListeners = listeners;
++        _baseHookListeners = CanReuseHookListenerCache
++            ? ImmutableListenerList<AbstractModel>.TakeOwnership(listeners)
++            : listeners;
+         return _baseHookListeners;
+     }
+
+@@ -1822,7 +1834,7 @@
+     private void ObserveCardMutations(PredictedCard card)
+     {
+         card.SetMutationObserver(
+-            InvalidateBaseHookListenersObserver,
++            this,
+             observeEveryPreviewMutation: _modHookSubscribers.HasBaseLibCardModifiers);
+     }
+
+--- a/src/Search/SimulatedCombatState.Fork.cs
++++ b/src/Search/SimulatedCombatState.Fork.cs
+@@ -140,6 +140,8 @@
+         SimulatedCombatState fork,
+         PredictionForkContext context)
+     {
++        fork._baseCardHookListenerStart = _baseCardHookListenerStart;
++        fork._effectiveCardHookListenerStart = _effectiveCardHookListenerStart;
+         // CardModifier membership cannot change which Power models are active. Preserve this
+         // independently invalidated projection even when listener arrays must stay conservative.
+         if (_effectivePowers is not null)
+@@ -176,18 +178,8 @@
+     private static IReadOnlyList<AbstractModel> RemapCachedModels(
+         IReadOnlyList<AbstractModel> source,
+         PredictionForkContext context)
+-    {
+-        AbstractModel[]? remapped = null;
+-        for (int index = 0; index < source.Count; index++)
+-        {
+-            AbstractModel mapped = context.RemapOrSelf(source[index]);
+-            if (ReferenceEquals(mapped, source[index]))
+-                continue;
+-            remapped ??= source.ToArray();
+-            remapped[index] = mapped;
+-        }
+-        return remapped ?? source;
+-    }
++        => ImmutableListenerList<AbstractModel>.Remap(
++            source, context, static (forkContext, model) => forkContext.RemapOrSelf(model));
+
+     private static IReadOnlyList<PowerModel> RemapCachedPowers(
+         IReadOnlyList<PowerModel> source,
+--- a/src/Testing/UnattendedTestRunner.ForkBoundaries.cs
++++ b/src/Testing/UnattendedTestRunner.ForkBoundaries.cs
+@@ -154,6 +154,7 @@
+             throw new InvalidOperationException("稳定边界 Fork 没有隔离玩家能量状态。");
+
+         AssertPredictedCardForkOwnershipAndObservers(combat, player, card);
++        AssertListenerSlotReplacementAcrossFork(combat, player);
+         AssertAmountOnTurnStartCacheReuse(combat, player);
+         AssertPowerListenerCacheTransitionsAndForkIsolation(combat, player);
+         AssertSparsePowerAfflictionCardTracking(combat, player, card);
+@@ -868,7 +869,7 @@
+         if (!ReferenceEquals(parentCard.GetPile(parentState), parentState.Hand))
+             throw new InvalidOperationException("预测卡牌没有记录父分支手牌所有权。");
+
+-        Action parentObserver = GetCardMutationObserver(parentCard);
++        object parentObserver = GetCardMutationObserver(parentCard);
+         if (parentState.AllCards.Any(card =>
+                 !ReferenceEquals(GetCardMutationObserver(card), parentObserver)))
+         {
+@@ -881,7 +882,7 @@
+         SimPlayerCombatState childState = childSimulator.State.GetPlayerCombatState(player);
+         PredictedCard childCard = childState.FindCard(liveCard)
+             ?? throw new InvalidOperationException("预测卡牌 Fork 所有权测试找不到子卡牌。");
+-        Action childObserver = GetCardMutationObserver(childCard);
++        object childObserver = GetCardMutationObserver(childCard);
+         if (ReferenceEquals(parentObserver, childObserver)
+             || childState.AllCards.Any(card =>
+                 !ReferenceEquals(GetCardMutationObserver(card), childObserver)))
+@@ -977,13 +978,13 @@
+             throw new InvalidOperationException("预测牌堆清空后没有清理卡牌反向引用。");
+     }
+
+-    private static Action GetCardMutationObserver(PredictedCard card)
++    private static object GetCardMutationObserver(PredictedCard card)
+     {
+         FieldInfo observerField = typeof(PredictedCard).GetField(
+             "_mutationObserver",
+             BindingFlags.Instance | BindingFlags.NonPublic)
+             ?? throw new MissingFieldException(typeof(PredictedCard).FullName, "_mutationObserver");
+-        return (Action?)observerField.GetValue(card)
++        return observerField.GetValue(card)
+             ?? throw new InvalidOperationException("预测卡牌没有安装变更 observer。");
+     }
+
+--- /dev/null
++++ b/src/Search/SimulatedCombatState.ListenerSlots.cs
+@@ -0,0 +1,103 @@
++using MegaCrit.Sts2.Core.Models;
++using CombatSolver.Engine.Common;
++
++namespace CombatSolver;
++
++internal sealed partial class SimulatedCombatState
++{
++    void IPredictedCardListenerObserver.CardPreviewReplaced(
++        PredictedCard card,
++        CardModel previousPreview)
++    {
++        if (!TryReplaceCardListenerSlots(card, previousPreview))
++            InvalidateBaseHookListeners();
++    }
++
++    void IPredictedCardListenerObserver.CardListenerStructureChanged()
++        => InvalidateBaseHookListeners();
++
++    private int FindCardListenerStart(
++        List<AbstractModel> effectiveListeners,
++        IReadOnlyList<AbstractModel> baseListeners)
++    {
++        if (_baseCardHookListenerStart < 0 || _baseCardHookListenerStart >= baseListeners.Count)
++            return -1;
++        AbstractModel firstCard = baseListeners[_baseCardHookListenerStart];
++        for (int index = 0; index < effectiveListeners.Count; index++)
++        {
++            if (ReferenceEquals(effectiveListeners[index], firstCard))
++                return index;
++        }
++        return -1;
++    }
++
++    private bool TryReplaceCardListenerSlots(PredictedCard card, CardModel previousPreview)
++    {
++        if (!CanReuseHookListenerCache || _baseHookListeners is null || card.HookListenerSlot < 0)
++            return false;
++        CardModel preview = card.Preview;
++        if (previousPreview.HasBeenRemovedFromState || preview.HasBeenRemovedFromState
++            || !ReferenceEquals(previousPreview.Owner, preview.Owner)
++            || (previousPreview.Affliction is null) != (preview.Affliction is null)
++            || (previousPreview.Enchantment is null) != (preview.Enchantment is null))
++        {
++            return false;
++        }
++
++        int baseSlot = _baseCardHookListenerStart + card.HookListenerSlot;
++        int effectiveSlot = _effectiveCardHookListenerStart < 0
++            ? -1
++            : _effectiveCardHookListenerStart + card.HookListenerSlot;
++        int runSlot = effectiveSlot < 0 ? -1 : _rootRunHookListeners.Length + effectiveSlot;
++        // Slots are hints owned by this cached topology. Validate every published projection
++        // before changing one; an insertion/removal or opaque topology uses the full rebuild.
++        if (!MatchesCardListenerSlots(_baseHookListeners, baseSlot, previousPreview)
++            || (_effectiveHookListeners is not null
++                && !MatchesCardListenerSlots(_effectiveHookListeners, effectiveSlot, previousPreview))
++            || (_effectiveRunHookListeners is not null
++                && !MatchesCardListenerSlots(_effectiveRunHookListeners, runSlot, previousPreview)))
++        {
++            return false;
++        }
++
++        ReadOnlySpan<AbstractModel> replacements = preview.Affliction is { } affliction
++            ? preview.Enchantment is { } enchantment
++                ? [preview, affliction, enchantment]
++                : [preview, affliction]
++            : preview.Enchantment is { } onlyEnchantment
++                ? [preview, onlyEnchantment]
++                : [preview];
++        IReadOnlyList<AbstractModel> updatedBase = ImmutableListenerList<AbstractModel>.Replace(
++            _baseHookListeners, baseSlot, replacements);
++        IReadOnlyList<AbstractModel>? updatedEffective = ReferenceEquals(_effectiveHookListeners, _baseHookListeners)
++            ? updatedBase
++            : _effectiveHookListeners is null
++                ? null
++                : ImmutableListenerList<AbstractModel>.Replace(_effectiveHookListeners, effectiveSlot, replacements);
++        IReadOnlyList<AbstractModel>? updatedRun = ReferenceEquals(_effectiveRunHookListeners, _effectiveHookListeners)
++            ? updatedEffective
++            : _effectiveRunHookListeners is null
++                ? null
++                : ImmutableListenerList<AbstractModel>.Replace(_effectiveRunHookListeners, runSlot, replacements);
++        _baseHookListeners = updatedBase;
++        _effectiveHookListeners = updatedEffective;
++        _effectiveRunHookListeners = updatedRun;
++        // A preview replacement cannot change Power identity, membership or relative order.
++        // Preserve that independent projection while replacing the card and its attachments.
++        return true;
++    }
++
++    private static bool MatchesCardListenerSlots(
++        IReadOnlyList<AbstractModel> listeners,
++        int start,
++        CardModel preview)
++    {
++        int count = 1 + (preview.Affliction is null ? 0 : 1) + (preview.Enchantment is null ? 0 : 1);
++        if (start < 0 || start > listeners.Count - count || !ReferenceEquals(listeners[start], preview))
++            return false;
++        int index = start + 1;
++        if (preview.Affliction is { } affliction && !ReferenceEquals(listeners[index++], affliction))
++            return false;
++        return preview.Enchantment is not { } enchantment || ReferenceEquals(listeners[index], enchantment);
++    }
++}
+--- /dev/null
++++ b/src/Testing/UnattendedTestRunner.ListenerSlots.cs
+@@ -0,0 +1,111 @@
++using MegaCrit.Sts2.Core.Combat;
++using MegaCrit.Sts2.Core.Entities.Cards;
++using MegaCrit.Sts2.Core.Entities.Players;
++using MegaCrit.Sts2.Core.Extensions;
++using MegaCrit.Sts2.Core.Models;
++using MegaCrit.Sts2.Core.Models.Cards;
++using MegaCrit.Sts2.Core.Models.Enchantments;
++using CombatSolver.Engine.Common;
++using CombatSolver.Engine.InCombat.Simulation;
++
++namespace CombatSolver;
++
++internal sealed partial class UnattendedTestRunner
++{
++    private static void AssertListenerSlotReplacementAcrossFork(CombatState combat, Player player)
++    {
++        SimulatedCombatState parentCombat = new(combat);
++        CombatPredictionSimulator parent = new(parentCombat);
++        List<PredictedCard> generated = [];
++        for (int index = 0; index < 65; index++)
++        {
++            PredictedCard card = PredictedCard.Create(ModelDb.Card<PommelStrike>(), player);
++            if (!parent.AddToPile(card, PileType.Discard).Success)
++                throw new InvalidOperationException("Listener slot 测试无法建立宽卡牌列表。");
++            generated.Add(card);
++        }
++        generated[31].Enchant(ModelDb.Enchantment<Clone>().ToMutable(), 1m);
++        ICombatPredictionHookListenerSource parentSource = parentCombat;
++        IReadOnlyList<AbstractModel> parentListeners = parentSource.HookListeners;
++        IReadOnlyList<AbstractModel> parentRunListeners = parentSource.RunHookListeners;
++        AbstractModel[] parentBefore = parentListeners.ToArray();
++        AbstractModel[] parentRunBefore = parentRunListeners.ToArray();
++        CombatPredictionSimulator child = parent.Fork();
++        SimulatedCombatState childCombat = (SimulatedCombatState)child.State.CombatState;
++        ICombatPredictionHookListenerSource childSource = childCombat;
++        SimPlayerCombatState childPlayer = child.State.GetPlayerCombatState(player);
++
++        foreach (PredictedCard parentCard in new[] { generated[31], generated[32], generated[64] })
++        {
++            PredictedCard childCard = childPlayer.FindCard(parentCard.Original)
++                ?? throw new InvalidOperationException("Listener slot 测试找不到 Fork 后的卡牌。");
++            IReadOnlyList<PowerModel> powersBefore = childCombat.EffectivePowers();
++            IReadOnlyList<AbstractModel> before = childSource.HookListeners;
++            IReadOnlyList<AbstractModel> runBefore = childSource.RunHookListeners;
++            AbstractModel[] previousEntries = before.ToArray();
++            AbstractModel[] previousRunEntries = runBefore.ToArray();
++            CardModel previousPreview = childCard.Preview;
++            childCard.MutablePreview.BaseReplayCount++;
++            IReadOnlyList<AbstractModel> after = childSource.HookListeners;
++            IReadOnlyList<AbstractModel> runAfter = childSource.RunHookListeners;
++            AssertListenerPreviewReplacement(previousEntries, after, previousPreview, childCard.Preview);
++            AssertListenerPreviewReplacement(previousRunEntries, runAfter, previousPreview, childCard.Preview);
++            if (!before.SequenceEqual(previousEntries) || !runBefore.SequenceEqual(previousRunEntries))
++                throw new InvalidOperationException("Listener slot 更新改写了已发布的旧快照。");
++            if (!ReferenceEquals(powersBefore, childCombat.EffectivePowers()))
++                throw new InvalidOperationException("仅 preview 身份更新丢弃了独立 Power 投影。");
++            childCard.MutablePreview.BaseReplayCount++;
++            if (!ReferenceEquals(after, childSource.HookListeners))
++                throw new InvalidOperationException("原位字段更新不应替换 listener 快照。");
++        }
++
++        if (!parentListeners.SequenceEqual(parentBefore)
++            || !parentRunListeners.SequenceEqual(parentRunBefore)
++            || !ReferenceEquals(parentListeners, parentSource.HookListeners)
++            || !ReferenceEquals(parentRunListeners, parentSource.RunHookListeners))
++        {
++            throw new InvalidOperationException("Listener slot 更新污染了父分支缓存。");
++        }
++        CombatPredictionSimulator grandchild = child.Fork();
++        ICombatPredictionHookListenerSource grandchildSource =
++            (SimulatedCombatState)grandchild.State.CombatState;
++        IReadOnlyList<AbstractModel> grandchildBefore = grandchildSource.HookListeners;
++        AbstractModel[] grandchildEntries = grandchildBefore.ToArray();
++        PredictedCard grandchildCard = grandchild.State.GetPlayerCombatState(player).FindCard(generated[64].Original)
++            ?? throw new InvalidOperationException("Listener slot 测试找不到第二次 Fork 的卡牌。");
++        CardModel grandchildPreviousPreview = grandchildCard.Preview;
++        grandchildCard.MutablePreview.BaseReplayCount++;
++        AssertListenerPreviewReplacement(
++            grandchildEntries, grandchildSource.HookListeners, grandchildPreviousPreview, grandchildCard.Preview);
++        if (!grandchildBefore.SequenceEqual(grandchildEntries))
++            throw new InvalidOperationException("二次 Fork 的 slot 更新改写了旧快照。");
++    }
++
++    private static void AssertListenerPreviewReplacement(
++        IReadOnlyList<AbstractModel> before,
++        IReadOnlyList<AbstractModel> after,
++        CardModel previousPreview,
++        CardModel preview)
++    {
++        if (before.Count != after.Count)
++            throw new InvalidOperationException("Preview 替换改变了 listener 拓扑宽度。");
++        int replacedCards = 0;
++        for (int index = 0; index < before.Count; index++)
++        {
++            AbstractModel expected = before[index];
++            if (ReferenceEquals(expected, previousPreview))
++            {
++                expected = preview;
++                replacedCards++;
++            }
++            else if (previousPreview.Affliction is not null && ReferenceEquals(expected, previousPreview.Affliction))
++                expected = preview.Affliction!;
++            else if (previousPreview.Enchantment is not null && ReferenceEquals(expected, previousPreview.Enchantment))
++                expected = preview.Enchantment!;
++            if (!ReferenceEquals(expected, after[index]))
++                throw new InvalidOperationException($"Preview slot 替换改变了 listener 顺序或身份：index={index}。");
++        }
++        if (replacedCards != 1)
++            throw new InvalidOperationException($"Preview slot 测试预期替换一张卡牌，实际={replacedCards}。");
++    }
++}
