@@ -796,24 +796,6 @@ internal sealed partial class CombatBeamSolver
         StrategicEffectContext context)
         => card switch
         {
-            Barricade => Math.Min(
-                SolverWeights.LatentSetupBeamCap,
-                context.PlayerBlock + context.ReachableBlockValue),
-            Rage => Math.Min(
-                SolverWeights.LatentSetupBeamCap,
-                context.AttackPlays * 3),
-            Prolong => Math.Min(
-                SolverWeights.LatentSetupBeamCap,
-                context.PlayerBlock),
-            Unmovable => Math.Min(
-                SolverWeights.LatentSetupBeamCap,
-                context.AverageBlockValue * Math.Min(2, context.BlockSkillPlays)),
-            Stratagem or WellLaidPlans => Math.Min(
-                SolverWeights.LatentSetupBeamCap,
-                context.BestCardValue * Math.Min(2, context.RemainingTurns)),
-            Wish => Math.Min(
-                SolverWeights.LatentSetupBeamCap,
-                context.BestCardValue),
             EchoForm => 12,
             BufferCard => 8,
             MadScience madScience when madScience.TinkerTimeType == CardType.Power

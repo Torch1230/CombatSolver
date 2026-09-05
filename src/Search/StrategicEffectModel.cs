@@ -450,7 +450,6 @@ internal static class StrategicEffectModel
             BlockNextTurnPower => Prevention(amount, context),
             StratagemPower or WellLaidPlansPower => CardAccess(
                 amount
-                    * Math.Min(3, context.RemainingTurns)
                     * context.BestCardValue),
             DemonFormPower when context.AttackPlays > 0 => Damage(
                 amount * Math.Max(1, context.AttackPlays / Math.Max(1, context.RemainingTurns))
@@ -497,7 +496,7 @@ internal static class StrategicEffectModel
     private static StrategicEffectVector PersistentBlockPrevention(
         StrategicEffectContext context)
     {
-        int value = context.PlayerBlock + context.ReachableBlockValue;
+        int value = context.PlayerBlock;
         int turns = Math.Min(4, Math.Max(1, context.RemainingTurns));
         int cap = context.IncomingDamage == 0
             ? value

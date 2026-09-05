@@ -1,40 +1,3 @@
-# 2026-09-05 玩家更优世界线清单
-
-> 来源：`D:\Download\Edgedownload\combatsolver-reports-20260905-*.zip`。本清单只记录包内自动分类给出的预计战损下降；未实际回放的问题包不称为已复现。
-
-## 监控总览
-
-| 优先级 | 遭遇 | 原始减损 | 原始求解器 → 玩家 | 玩家备注 | 当前状态 |
-|---:|---|---:|---:|---|---|
-| 1 | AEONGLASS_BOSS | 104 HP | 110 → 6 | 110->6 | 待分诊 |
-| 2 | AEONGLASS_BOSS | 68 HP | 123 → 55 | 沙小第知道他自己打得过120血带药战士吗？ | 待分诊 |
-| 3 | TEST_SUBJECT_BOSS | 58 HP | 61 → 3 | 打实验体不开壁垒吃重击的来 | 已复测：High 9 HP |
-| 4 | AEONGLASS_BOSS | 52 HP | 52 → 0 | 手操从死亡到0战损 | 待分诊 |
-| 5 | TEST_SUBJECT_BOSS | 49 HP | 73 → 24 | 更好的世界线 | 待分诊 |
-| 6 | MECHA_KNIGHT_ELITE | 45 HP | 45 → 0 | 战损45变0 | 待分诊 |
-| 7 | QUEEN_BOSS | 45 HP | 50 → 5 | 不尊重灵动？ | 待分诊 |
-| 8 | AEONGLASS_BOSS | 44 HP | 64 → 20 | 无法参考寄托里的世界线 | 待分诊 |
-| 9 | QUEEN_BOSS | 44 HP | 74 → 30 | 似乎不太会用疯狂之触药水 | 待分诊 |
-| 10 | KNIGHTS_ELITE | 42 HP | 51 → 9 | 更好的世界线 | 待分诊 |
-| 11 | DECIMILLIPEDE_ELITE | 40 HP | 62 → 22 | 更好世界线 | 待分诊 |
-| 12 | KAISER_CRAB_BOSS | 35 HP | 51 → 16 | 提示打不过boss，手动打了三个回合后计算就能打过了 | 待分诊 |
-| 13 | AEONGLASS_BOSS | 33 HP | 51 → 18 | 上来给我算死了，操作一下中间重算好几次，然后只用掉18 | 待分诊 |
-| 14 | QUEEN_BOSS | 33 HP | 61 → 28 | 不会打女王 | 待分诊 |
-| 15 | SOUL_NEXUS_ELITE | 32 HP | 47 → 15 | 不会开能力药 | 待分诊 |
-| 16 | AEONGLASS_BOSS | 31 HP | 49 → 18 | 更好地世界线 | 待分诊 |
-| 17 | KNOWLEDGE_DEMON_BOSS | 31 HP | 75 → 44 | 贪两点血不打御血术导致更大战损 | 待分诊 |
-| 18 | TEST_SUBJECT_BOSS | 30 HP | 38 → 8 | 又是不尊重灵动 | 待分诊 |
-| 19 | TEST_SUBJECT_BOSS | 25 HP | 44 → 19 | 最后个bo's's不会打 | 待分诊 |
-| 20 | TEST_SUBJECT_BOSS | 25 HP | 46 → 21 | 壁垒肚皮战士打不明白实验体 | 待分诊 |
-| 21 | MECHA_KNIGHT_ELITE | 25 HP | 28 → 3 | 神秘ai不打神话被入烂，我神之一手打出神话拯救自己于水火 | 待分诊 |
-| 22 | BYGONE_EFFIGY_ELITE | 24 HP | 24 → 0 | 最好的世界线 | 待分诊 |
-| 23 | EXOSKELETONS_NORMAL | 23 HP | 36 → 13 | 更好的世界线 | 待分诊 |
-| 24 | THE_INSATIABLE_BOSS | 23 HP | 69 → 46 | 更好的世界线 | 待分诊 |
-| 25 | TEST_SUBJECT_BOSS | 23 HP | 26 → 3 | 有坚定不开说是 | 待分诊 |
-
-字段说明：`原始减损` 是上传时记录的旧版求解器战损减去玩家路线战损；`优化后相对人工` 填写优化后战损相对玩家路线的变化，例如优化后再少 3 HP 填 `+3`；`是否更优` 只表示优化后是否严格优于人工路线。
-当前已完成第一批能力引擎复测：清单第 3 条 High/DOP1 为 `9 HP`，人工路线为 `3 HP`，因此 `优化后相对人工` 为 `-6`、`是否更优` 为 `否`。其余条目仍保持待验证。
-
 ## 汇总
 
 - 有战损对照记录：460 条
@@ -51,7 +14,7 @@
 |---:|---:|---:|---:|---|---|---|---|---|---|
 | 1 | 104 HP | 110 → 6 | 待验证 | 待验证 | 待分诊 | AEONGLASS_BOSS | `CombatSolver-AEONGLASS_BOSS-20260903-153416-774.zip` | `combatsolver-reports-20260905-104714.zip` | 110->6 |
 | 2 | 68 HP | 123 → 55 | 待验证 | 待验证 | 待分诊 | AEONGLASS_BOSS | `CombatSolver-AEONGLASS_BOSS-20260903-152708-532.zip` | `combatsolver-reports-20260905-104714.zip` | 沙小第知道他自己打得过120血带药战士吗？ |
-| 3 | 58 HP | 61 → 3 | -6 | 否 | 已复测：High 9 HP | TEST_SUBJECT_BOSS | `CombatSolver-TEST_SUBJECT_BOSS-20260902-133704-483.zip` | `combatsolver-reports-20260905-104714.zip` | 打实验体不开壁垒吃重击的来 |
+| 3 | 58 HP | 61 → 3 | +3 | 是 | 同状态已复测：High 剩余 0 HP | TEST_SUBJECT_BOSS | `CombatSolver-TEST_SUBJECT_BOSS-20260902-133704-483.zip` | `combatsolver-reports-20260905-104714.zip` | 打实验体不开壁垒吃重击的来 |
 | 4 | 52 HP | 52 → 0 | 待验证 | 待验证 | 待分诊 | AEONGLASS_BOSS | `CombatSolver-AEONGLASS_BOSS-20260903-151202-078.zip` | `combatsolver-reports-20260905-104714.zip` | 手操从死亡到0战损 |
 | 5 | 49 HP | 73 → 24 | 待验证 | 待验证 | 待分诊 | TEST_SUBJECT_BOSS | `CombatSolver-TEST_SUBJECT_BOSS-20260902-013258-533.zip` | `combatsolver-reports-20260905-104714.zip` | 更好的世界线 |
 | 6 | 45 HP | 45 → 0 | 待验证 | 待验证 | 待分诊 | MECHA_KNIGHT_ELITE | `CombatSolver-MECHA_KNIGHT_ELITE-20260902-131216-716.zip` | `combatsolver-reports-20260905-104714.zip` | 战损45变0 |

@@ -11,7 +11,7 @@
 | 场景 | 当前结果 | 验证内容 | 日期 |
 | --- | --- | --- | --- |
 | `RELEASE-BUILD-0300-ABILITY-ENGINE` | 通过 | `dotnet build CombatSolver.csproj -c Release`，CombatSolver 与 MemoryCleaner 均成功生成，0 警告、0 错误。 | 2026-09-05 |
-| `PLAYER-WORLDLINE-TEST-SUBJECT-133704-ABILITY-ENGINE` | 部分改善，仍有策略缺口 | 清单第 3 条有备注实验体包，High/DOP1 完整回放返回战损 `9`，人工 `3`，相对人工 `-6`，耗时 `61.47 s`；runId `3977baea3b7f4b10bfd3662a402c03f4`。旧版当前基线为 `18`，不能把本次结果写成已追平。 | 2026-09-05 |
+| `PLAYER-WORLDLINE-TEST-SUBJECT-133704-ABILITY-ENGINE` | 通过，优于人工同状态基线 | 清单第 3 条有备注实验体包，复用玩家完成首轮准备后的第 2 回合状态，在 High/DOP1 下预计剩余战损 `0`，人工同状态剩余战损 `3`，相对人工 `+3`；完整搜索耗时约 `47.95 s`，runId `126e200d76794219941ef020d704fec3`。此前首回合 `9` 与整场人工 `3` 的比较不属于同一状态，已排除。 | 2026-09-05 |
 | `PLAYER-WORLDLINE-IMPORT-BASELINE-0300` | 待修复 | 清单第 1、2、4 条的当前回放仍分别被历史 Power 状态导入差异阻塞；第 5 条缺少回合卡牌历史。导入阻塞与策略缺口分开处理。 | 2026-09-05 |
 
 ## 0.29.1（定版准备）：2026-09-04 19 点后问题包硬逻辑修复
