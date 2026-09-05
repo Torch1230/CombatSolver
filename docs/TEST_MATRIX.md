@@ -30,6 +30,8 @@
 | `SMART-POTION-QUALIFIED-LAYER-CONTINUATION-0300` | 通过 | 无药 `50 HP`、一药 `38 HP` 已达九血门槛，仍继续搜索并选择两药 `26 HP`，累计省 `24 HP`；`58/124` 展开/转移，runId `3d38a2692d7849bca4a259879057a187`。 | 2026-09-05 |
 | `SMART-POTION-ZERO-LOSS-SENTINEL-0300` | 通过 | 复用 `generic-smart-potion-three-layer-progress-v0111.json`，显式设置两类 Boss 为 MinimizeHpLoss、清空逐槽指令。保留 `0` 战损 / `0` 药 / T3，未打放血；`24/52` 展开/转移，runId `af4f8a802cd84581a760aab2b558ec0e`。 | 2026-09-05 |
 | `BUILD-BOUNDARIES-0300-POTION-BLOCK-HISTORY` | 通过 | Release 构建 0 警告、0 错误；结构门禁 `REFACTOR_BOUNDARIES_OK search_files=61`，PowerShell 与 Bash 语法检查通过。逐槽指令入口在 Windows 实测，Linux 游戏运行未验证。 | 2026-09-05 |
+| `PLAYER-WORLDLINE-AEONGLASS-152708-ORIGINAL-POLICY-BASELINE` | 通过，整场优于人工 +5 | 开战恢复、VeryHigh/DOP4、原包两类 Boss 通关优先、仅稳定血清强制使用。预测及实际累计战损 `50 HP`，人工 `55 HP`，均用 `1` 药；T10 胜利、9 次续用、零非预期重算。搜索源码为 `0cb5bcf`，`13,592/61,876` 展开/转移，runId `beb01c29aa57492db5c55ce103a593c2`。此前减战损优先结果不作为原政策基线。 | 2026-09-05 |
+| `BATCH-REPORTED-POLICY-0300` | 通过 | 第 2 条预检保留原包两类 Boss 策略与四槽指令；第 3 条旧设置缺少 Boss 策略时显式用 MinimizeHpLoss，并成功传入原包两槽禁药指令。批量得到完整胜利预测 `22 HP`（含卖血 `14`），正确报告人工 `3 HP` 的策略缺口，runId `389bf24c170f4eefb1561042746ca043`。PowerShell 语法、T7 不生成整场相对值、T1 的 `55-50=+5` 断言通过；第 3 条尚未整场部署。 | 2026-09-05 |
 
 ## 0.29.1（定版准备）：2026-09-04 19 点后问题包硬逻辑修复
 
