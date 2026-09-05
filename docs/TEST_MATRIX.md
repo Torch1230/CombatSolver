@@ -10,7 +10,7 @@
 
 | 场景 | 当前结果 | 验证内容 | 日期 |
 | --- | --- | --- | --- |
-| `CHECKPOINT-INDEX-0300` | 已实现，待导出实测 | 导出包写入唯一 `combat-solver/checkpoint.json`，验证器按索引校验四个状态文件；无人测试入口支持 `-CheckpointArchivePath` 直接导入。 | 2026-09-05 |
+| `CHECKPOINT-INDEX-0300` | 通过 | 导出 runId `b309d78548cd46708a8dcf008af8bd40` 生成唯一 `combat-solver/checkpoint.json`；索引指向的 metadata、replay-state、native-state、run-state 均存在。再以同一 ZIP 直接导入，runId `15fa0e74fee74af787116be3c2bf2dae` 通过开战根状态断言。 | 2026-09-05 |
 
 ## 0.29.1（历史）：2026-09-04 19 点后问题包硬逻辑修复
 
