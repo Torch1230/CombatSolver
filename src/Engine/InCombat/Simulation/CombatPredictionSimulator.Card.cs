@@ -427,12 +427,13 @@ internal sealed partial class CombatPredictionSimulator
                 cardPlay,
                 card.HasKeyword(State, CardKeyword.Ethereal));
             HookMirrors.AfterCardPlayed(this, card, cardPlay);
+            int cardBlockGainCount = TakeCardBlockGainCount(cardPlay);
             if (State.CombatState is ICombatPredictionCardExecutionSink completionSink)
             {
                 completionSink.CompleteCardPlayEffects(
                     this,
                     card,
-                    ownerBlockBeforePlay,
+                    cardBlockGainCount,
                     completionHistoryEntryStart);
             }
 

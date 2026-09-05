@@ -12,7 +12,7 @@
 
 | # | 原始减损 | 原始求解器 → 玩家 | 优化后相对人工 | 是否更优 | 处理状态 | 遭遇 | 日志 | 汇总包 | 玩家备注 |
 |---:|---:|---:|---:|---|---|---|---|---|---|
-| 1 | 104 HP | 110 → 6 | -88 | 否 | 从开战完整搜索：VeryHigh/Smart 战损 94 HP、用 1 药；人工 6 HP、共 4 药；未追平，当前优先修复 | AEONGLASS_BOSS | `CombatSolver-AEONGLASS_BOSS-20260903-153416-774.zip` | `combatsolver-reports-20260905-104714.zip` | 110->6 |
+| 1 | 104 HP | 110 → 6 | +3 | 是 | 整场部署通过：开战还原、VeryHigh、原包四药强制政策，3 HP / 4 药，零非预期重算；Smart 另测预测 8 HP / 3 药 | AEONGLASS_BOSS | `CombatSolver-AEONGLASS_BOSS-20260903-153416-774.zip` | `combatsolver-reports-20260905-104714.zip` | 110->6 |
 | 2 | 68 HP | 123 → 55 | 待验证 | 待验证 | 手操前待验收；仅手操后 T7 续局 High/Force 已测 0 HP，须扣除既有战损 | AEONGLASS_BOSS | `CombatSolver-AEONGLASS_BOSS-20260903-152708-532.zip` | `combatsolver-reports-20260905-104714.zip` | 沙小第知道他自己打得过120血带药战士吗？ |
 | 3 | 58 HP | 61 → 3 | 待验证 | 待验证 | 开战快照还原、原版抽牌后完整状态对账通过；整场策略待验收 | TEST_SUBJECT_BOSS | `CombatSolver-TEST_SUBJECT_BOSS-20260902-133704-483.zip` | `combatsolver-reports-20260905-104714.zip` | 打实验体不开壁垒吃重击的来 |
 | 4 | 52 HP | 52 → 0 | 未验收 | 未验收 | 按用户要求跳过；旧 T4 续局 High/Force 2 HP、VeryHigh/Force 0 HP，整场未验收 | AEONGLASS_BOSS | `CombatSolver-AEONGLASS_BOSS-20260903-151202-078.zip` | `combatsolver-reports-20260905-104714.zip` | 手操从死亡到0战损 |

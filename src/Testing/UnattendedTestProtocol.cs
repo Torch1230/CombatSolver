@@ -172,6 +172,7 @@ internal sealed class UnattendedTestRequest
     public int? ShortMaxCardBranchesPerNodeForTest { get; init; }
     public int? DeepMaxCardBranchesPerNodeForTest { get; init; }
     public SolverPotionPolicy? PotionPolicyForTest { get; init; }
+    public PersistedPotionDirective[]? PotionDirectivesForTest { get; init; }
     public BossHpStrategy? ActTransitionBossHpStrategyForTest { get; init; }
     public BossHpStrategy? FinalBossHpStrategyForTest { get; init; }
     public SolverTheftPolicy? TheftPolicyForTest { get; init; }

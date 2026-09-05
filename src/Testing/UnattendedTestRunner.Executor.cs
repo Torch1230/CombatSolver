@@ -519,6 +519,7 @@ internal sealed partial class UnattendedTestRunner
                 && !request.ShortMaxCardBranchesPerNodeForTest.HasValue
                 && !request.DeepMaxCardBranchesPerNodeForTest.HasValue
                 && !request.PotionPolicyForTest.HasValue
+                && request.PotionDirectivesForTest == null
                 && !request.ActTransitionBossHpStrategyForTest.HasValue
                 && !request.FinalBossHpStrategyForTest.HasValue
                 && !request.EnableNoGcRegionForTest.HasValue
@@ -571,6 +572,8 @@ internal sealed partial class UnattendedTestRunner
                     ?? _settingsBeforeTest.EnableDetailedDiagnosticLogs,
                 PotionPolicy = request.PotionPolicyForTest
                     ?? _settingsBeforeTest.PotionPolicy,
+                PotionDirectives = request.PotionDirectivesForTest
+                    ?? _settingsBeforeTest.PotionDirectives,
                 ActTransitionBossHpStrategy = request.ActTransitionBossHpStrategyForTest
                     ?? _settingsBeforeTest.ActTransitionBossHpStrategy,
                 FinalBossHpStrategy = request.FinalBossHpStrategyForTest

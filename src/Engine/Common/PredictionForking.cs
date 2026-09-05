@@ -143,7 +143,7 @@ internal interface ICombatPredictionCardExecutionSink
     void CompleteCardPlayEffects(
         CombatSolver.Engine.InCombat.Simulation.CombatPredictionSimulator simulator,
         CombatSolver.Engine.Common.PredictedCard card,
-        int ownerBlockBefore,
+        int cardBlockGainCount,
         int historyEntryStart);
 
     void CompleteCardExecution(

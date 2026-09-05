@@ -25,6 +25,11 @@
 | `REPLAY-COMBAT-START-TEST-SUBJECT-133704` | 通过，开战及首次出牌前状态一致 | 从第 3 条 `000-combat_start` 恢复，由原版执行开战效果与抽牌，完整状态匹配 `001-search_request_AutoTurnStart`，CombatRootSnapshot 验证通过；runId `0f6926e7b3e0467daa93e31dfe4899e5`。这证明可从开战还原，不代表整场策略已追平。 | 2026-09-05 |
 | `REPLAY-MID-COMBAT-MECHA-KNIGHT-SNAPSHOT-0300` | 通过 | 牌堆改为直接恢复快照后，第 6 条 T4 中途导入仍通过完整 ContinuationStamp 和 CombatRootSnapshot 对账；runId `e9b1d1f50f4a4bbd934c3859cb791bd4`。仅验证状态恢复。 | 2026-09-05 |
 | `PLAYER-WORLDLINE-AEONGLASS-153416-COMBAT-START` | 开战恢复通过，整场策略未追平 | 从 `000-combat_start` 完整状态恢复，VeryHigh/Smart、两类 Boss 减战损优先；整场战损 `94 HP`、1 药、T12 胜利，人工 `6 HP`、4 药，相对人工 `-88`。runId `564d0352af0243ed87ae31dfeb7a2a53`。 | 2026-09-05 |
+| `UNMOVABLE-RELIC-BLOCK-HISTORY-0300` | 通过 | “风的女儿”加“坚定不移”，打击后连续两张防御，严格状态对账为 `16` 格挡；失败基线预测 `11` / 实机 `16`，runId `9df60cff0d9b40289ff5750f67937664`；修复 runId `203972a50aae4aeb8278447d4010f414`。 | 2026-09-05 |
+| `PLAYER-WORLDLINE-AEONGLASS-153416-REPORTED-POLICY-DEPLOY` | 通过，整场优于人工 +3 | 开战快照、原包逐槽强制四药、VeryHigh/DOP4：预测及实际累计战损 `3 HP`，人工 `6 HP`，均用 `4` 药；T7 获胜、6 次续用、零非预期重算。runId `ff728e5661394c9e8a77c7b03a404a48`。另测 Smart 选择预测 `8 HP` / `3` 药，保留额外用药成本口径。 | 2026-09-05 |
+| `SMART-POTION-QUALIFIED-LAYER-CONTINUATION-0300` | 通过 | 无药 `50 HP`、一药 `38 HP` 已达九血门槛，仍继续搜索并选择两药 `26 HP`，累计省 `24 HP`；`58/124` 展开/转移，runId `3d38a2692d7849bca4a259879057a187`。 | 2026-09-05 |
+| `SMART-POTION-ZERO-LOSS-SENTINEL-0300` | 通过 | 复用 `generic-smart-potion-three-layer-progress-v0111.json`，显式设置两类 Boss 为 MinimizeHpLoss、清空逐槽指令。保留 `0` 战损 / `0` 药 / T3，未打放血；`24/52` 展开/转移，runId `af4f8a802cd84581a760aab2b558ec0e`。 | 2026-09-05 |
+| `BUILD-BOUNDARIES-0300-POTION-BLOCK-HISTORY` | 通过 | Release 构建 0 警告、0 错误；结构门禁 `REFACTOR_BOUNDARIES_OK search_files=61`，PowerShell 与 Bash 语法检查通过。逐槽指令入口在 Windows 实测，Linux 游戏运行未验证。 | 2026-09-05 |
 
 ## 0.29.1（定版准备）：2026-09-04 19 点后问题包硬逻辑修复
 

@@ -18,6 +18,7 @@ description: 批量回放 CombatSolver 的“找到更优世界线”报告，�
 - `High` 只用于需要定位档位差异的专项诊断，不作为批量验收默认值。
 - 减战损批量验收默认使用 `-BossHpStrategy MinimizeHpLoss`，明确覆盖旧包缺失的两类 Boss 设置；`ProgressionFirst` 的终局通关策略会改变 Smart 用药门槛，必须单独记录，不能据此判为漏用药水。
 - 用户要求整场验收时使用 `-FullCombatOnly`，优先恢复 `000-combat_start`，由原版推进首次抽牌；有首次出牌前检查点时，用无人入口的 `-ExpectedInitialReplayStatePath` 核对完整状态。手操后的中途续局结果不能标为已解决原始策略缺口。
+- 核对包内 `settings.json` 的逐槽药水指令。复现强制用药结果时，把原 `potionDirectives` 数组经 JSON 序列化传给无人入口的 `-PotionDirectivesForTestJson`；全局 RequireAtLeastOne 与逐槽 Force 含义不同。Smart 和原包政策分别记结果及用药数量。
 - 保留工具的默认排除项。只执行仓库工具，不执行报告中的脚本或程序。
 - 输出写入 `.local/strategy-batch/results/`，不提交原始包、运行结果、日志或 `outputs/`。
 

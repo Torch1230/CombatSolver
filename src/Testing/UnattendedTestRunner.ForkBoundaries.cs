@@ -196,7 +196,7 @@ internal sealed partial class UnattendedTestRunner
         CombatPredictionSimulator simulator = new(simulatedCombat);
         PredictedCard priorBlockCard = simulator.State.GetPlayerCombatState(player).FindCard(liveCard)
             ?? throw new InvalidOperationException("自动出牌历史测试找不到根卡牌。");
-        simulatedCombat.RecordCardPlayed(priorBlockCard, gainedBlock: true);
+        simulatedCombat.RecordCardPlayed(priorBlockCard, blockGainCount: 1);
         simulatedCombat.Apply<UnmovablePower>(player.Creature, 1, player.Creature);
 
         PredictedCard defend = new(simulatedCombat.CreateCard<DefendDefect>(player));

@@ -193,6 +193,7 @@ param(
     [int]$DeepMaxCardBranchesPerNodeForTest = -1,
     [ValidateSet("", "Disabled", "Smart", "RequireAtLeastOne")]
     [string]$PotionPolicyForTest = "",
+    [string]$PotionDirectivesForTestJson = "",
     [ValidateSet("", "ProgressionFirst", "MinimizeHpLoss")]
     [string]$ActTransitionBossHpStrategyForTest = "",
     [ValidateSet("", "ProgressionFirst", "MinimizeHpLoss")]
@@ -790,6 +791,7 @@ $request = [ordered]@{
     shortMaxCardBranchesPerNodeForTest = if ($ShortMaxCardBranchesPerNodeForTest -gt 0) { $ShortMaxCardBranchesPerNodeForTest } else { $null }
     deepMaxCardBranchesPerNodeForTest = if ($DeepMaxCardBranchesPerNodeForTest -gt 0) { $DeepMaxCardBranchesPerNodeForTest } else { $null }
     potionPolicyForTest = if ([string]::IsNullOrWhiteSpace($PotionPolicyForTest)) { $null } else { $PotionPolicyForTest }
+    potionDirectivesForTest = if ([string]::IsNullOrWhiteSpace($PotionDirectivesForTestJson)) { $null } else { @($PotionDirectivesForTestJson | ConvertFrom-Json) }
     actTransitionBossHpStrategyForTest = if ([string]::IsNullOrWhiteSpace($ActTransitionBossHpStrategyForTest)) { $null } else { $ActTransitionBossHpStrategyForTest }
     finalBossHpStrategyForTest = if ([string]::IsNullOrWhiteSpace($FinalBossHpStrategyForTest)) { $null } else { $FinalBossHpStrategyForTest }
     theftPolicyForTest = if ([string]::IsNullOrWhiteSpace($TheftPolicyForTest)) { $null } else { $TheftPolicyForTest }

@@ -198,6 +198,7 @@ add_option headless-fast-mode-for-test "Instant" string optional_string "FollowG
 add_option deployment-fast-mode-for-test "" string optional_string "FollowGame|Normal|Fast|Instant"
 add_option performance-preset-for-test "" string optional_string "Low|Medium|High|VeryHigh|Custom"
 add_option potion-policy-for-test "" string optional_string "Disabled|Smart|RequireAtLeastOne"
+add_option potion-directives-for-test-json "" string none
 add_option act-transition-boss-hp-strategy-for-test "" string optional_string "ProgressionFirst|MinimizeHpLoss"
 add_option final-boss-hp-strategy-for-test "" string optional_string "ProgressionFirst|MinimizeHpLoss"
 add_option theft-policy-for-test "" string optional_string "PreserveResources|LetEscape"
@@ -565,6 +566,10 @@ combat_relics="$(array_from_path_or_json combat-relics combat-relics-path combat
 cards="$(array_from_path_or_json cards cards-path cards-json)"
 run_cards="$(array_from_path_or_json run-cards run-cards-path run-cards-json)"
 potions="$(array_from_path_or_json potions potions-path potions-json)"
+potion_directives_for_test=null
+if ! is_blank "${option_value[potion-directives-for-test-json]}"; then
+    potion_directives_for_test="$(json_array_from_text --potion-directives-for-test-json "${option_value[potion-directives-for-test-json]}")"
+fi
 if [[ "$potions" == '[]' ]] && ! is_blank "${option_value[potion-id]}" && \
     is_blank "${option_value[potions-path]}" && is_blank "${option_value[potions-json]}"; then
     potions="$(jq -cn --arg potionId "${option_value[potion-id]}" '[{potionId: $potionId}]')"
@@ -681,6 +686,7 @@ request="$(jq -cn \
     --argjson relics "$relics" \
     --argjson combatRelics "$combat_relics" \
     --argjson potions "$potions" \
+    --argjson potionDirectivesForTest "$potion_directives_for_test" \
     --argjson orbChecks "$orb_checks" \
     --argjson potionCheck "$potion_check" \
     --argjson potionChecks "$potion_checks" \
@@ -720,6 +726,7 @@ request="$(jq -cn \
         relics: $relics,
         combatRelics: $combatRelics,
         potions: $potions,
+        potionDirectivesForTest: $potionDirectivesForTest,
         orbChecks: $orbChecks,
         potionCheck: $potionCheck,
         potionChecks: $potionChecks,
