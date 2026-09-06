@@ -1,5 +1,17 @@
 # CombatSolver 测试清单
 
+## 2026-09-06：世界线队列第二批
+
+沿用 `184a9cd` 生产源码及构建；只更新文档，未重复构建或已通过的行为测试。证据根 `.local/checkpoint-batch/worldline-resume/`。
+
+| 包 | 本次验证 | 证据 |
+|---|---|---|
+| 3 | start完整恢复；VeryHigh/DOP4禁药长搜120秒超时；一次20秒Short得到未完战中途6 HP、敌313，未做完整部署 | `rank3-restore/`、`rank3-search/`（`00a12110a47348bb9bf2ee072c20be32`）、`rank3-short-search/`（`da84079debbb4b46880d93ab6bd08e3d`） |
+| 5 | 新入口Preflight材料有效，RestoreOnly失败：旧状态戳缺本回合卡牌历史；搜索未执行 | `rank5-preflight/`、`rank5-restore/`（`dc958b1b6ca84b0795fa180752f74b73`） |
+| 6 | recent/start完整恢复；预测及实际19 HP/1药、T10、HP30、敌0、存活、零计划外重算；报告参考软目标22 HP达标 | `rank6-restore/`、`rank6-search/`（`6751cb6e9a0f4a4ba598087f89e24527`）、`rank6-deploy/`（`e6f07178a5a64698a969a1655009191f`） |
+
+包6沿用原Custom档、DOP8、5秒短搜/20秒总预算，`rank6-policy.json`显式补Smart、两项减战损优先和可接受战损0；DeploySolver使用Instant/0秒。`manual_plus_solver`及缺失原药水政策使纯人工整场比较未验证。首次SearchOnly来自本构建；随后DeploySolver未单列缓存命中计数，实际部署结论仍来自本次原生执行。包3的短搜政策单列`rank3-short-policy.json`，与超时长搜分开记录。
+
 ## 2026-09-06：世界线策略恢复第一批
 
 构建：`9224f63` 加本批改动，Release 零警告/错误；结构门禁 Passed。证据根 `.local/checkpoint-batch/worldline-resume/`。搜索生产代码通过首轮构建；随后仅补旧包开战编号恢复并再次构建，已通过的策略 fixture 与包 1 沿用首次直接证据。
