@@ -1,5 +1,18 @@
 # CombatSolver 测试清单
 
+## 2026-09-06：开战选牌搜索与部署同根
+
+构建`deddc84`加本批Testing修正，Release零警告/错误，结构门禁Passed。包7固定High/180秒/DOP4、原包Boss政策及显式Smart/阈值0，每请求240秒、部署Instant/0秒。
+
+| 阶段 | 证据与结论 |
+|---|---|
+| 失败基线 | `rank7-high-search/`（`abc8ed4c27024620a5494ab75243bbfe`）报告17 HP/T8；`rank7-high-deploy/`（`e3254de3dcc1413fba563a6680abae63`）实际70 HP/T10且solverMetrics为空。源码与两份缓存路线确认：前者在开战选牌完成后再次Manual搜索，后者执行开战结果。17 HP不可称为同一起点的部署验收。 |
+| 同根SearchOnly | `rank7-high-opening-search/`，`b83c63da1b754f1f92bb9537377df1de`：start完整状态校验，`searchEntry=turn_setup_result`，70 HP/T10/余21，缓存false。 |
+| 同根DeploySolver | `rank7-high-opening-deploy/`，`f73f8bcfc2644c6aae9b493833b3293b`：同入口、缓存true、预测70 HP，实际掉血70/回血21/余21、瓶中精灵1、T10、敌0、存活、零计划外重算。未达27 HP软目标。 |
+| 包8材料 | `.local/issue-bundles/20260905/working/aeonglass053711/bundle/combat-solver/forensics/current/checkpoints/005-export_clicked.json`：`projectedBattleHpLost=20`、`combatEndedTurn=null`、`final_enemy_hp=420`。本轮只核对原始证据，未搜索或部署。 |
+
+请求证据根`.local/checkpoint-batch/worldline-resume/`。测试协议增加缓存标志，Windows/Linux共用输出模型，无新增脚本参数；Linux游戏未运行。生产搜索代码未变，已通过的无开战选牌包1、3、6沿用此前直接证据。
+
 ## 2026-09-06：用户指定High/180秒基线
 
 生产构建沿用184a9cd；仅CheckpointTool与PowerShell入口扩大显式总请求超时参数范围，默认120秒保持不变。本轮`-TimeoutSeconds 240`，政策High：Short Beam36/5000节点/12秒，Deep Beam90/25000节点/180秒，DOP4。Bash入口直接调用同一个CheckpointTool；Linux游戏未执行。`CheckpointTool self-test` 29项通过；包10的240秒Preflight及以下实际请求证明长请求参数可用。

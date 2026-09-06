@@ -375,11 +375,23 @@ internal sealed partial class UnattendedTestRunner
                     || request.ExpectedFullAutoPausedAtLiveRisk,
                 persist: false);
             runner._protocolHost.EnableAutomaticTurnSearch();
+            bool hasCheckpointSetupResult = runner._checkpointImport != null
+                && SolverController.LastTurnSetupResultForTesting is { } setupResult
+                && setupResult.StartTurnNumber == startedTurn;
+            if (hasCheckpointSetupResult)
+            {
+                runner._writer.CaptureSolverResult(SolverController.LastTurnSetupResultForTesting!);
+                runner._writer.ReplayVerification!["searchEntry"] = "turn_setup_result";
+            }
             if (request.HoldAfterInitialSearch
                 || request.ManualEndTurnAfterInitialSearch
                 || request.SingleStepAfterInitialSearch
                 || request.StopAfterInitialSolverResultAssertion)
-                SolverController.RequestSearch(runner._host, combatState, SearchReason.Manual);
+            {
+                // The opening choice search already produced the route DeploySolver consumes.
+                if (!hasCheckpointSetupResult)
+                    SolverController.RequestSearch(runner._host, combatState, SearchReason.Manual);
+            }
             else
                 SolverController.SetFullAuto(runner._host, combatState, enabled: true);
 

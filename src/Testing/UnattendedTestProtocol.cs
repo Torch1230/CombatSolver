@@ -537,6 +537,7 @@ internal sealed class UnattendedSolverMetrics
     public int ShufflesCrossed { get; init; }
     public double Score { get; init; }
     public int ProjectedBattleHpLost { get; init; }
+    public bool WasRestoredFromCache { get; init; }
     public int PotionCount { get; init; }
     public UnattendedPotionUse[] PotionUses { get; init; } = [];
     public bool OnlyDeathRoutes { get; init; }

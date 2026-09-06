@@ -30,6 +30,8 @@ Linux：
 
 选择器 `latest` 是最近稳定可搜索位置，`start` 是明确开战位置，`end` 是战斗结束位置，也可传稳定检查点 ID。开战 RestoreOnly 先校验开战，再推进录制的首次可操作入口；SearchOnly/DeploySolver 的开战选牌由求解器接管。动作中途和等待选牌时的导出保留上下文，默认入口指向此前稳定位置。
 
+存在开战选牌时，SearchOnly直接报告该阶段已生成的路线，DeploySolver执行同一路线；结果以`searchEntry=turn_setup_result`标记。选牌后额外手动重算属于新的搜索根，不能代替开战路线验收。`solverMetrics.wasRestoredFromCache`记录本次结果是否来自路线缓存，缓存命中时节点和耗时仍属于原搜索，实际部署单独记账。
+
 ## 旧包
 
 兼容旧 v1 索引、无索引 ZIP、已解压包和汇总 ZIP。保持 metadata、replay-state、native-state、run-state 原有目录，分别校验，不再同名覆盖。旧开战包从原生跑局存档加载，在首次抽牌前恢复检查点，到原始导出生命周期再对账。
