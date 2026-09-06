@@ -1,0 +1,17 @@
+[
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "clearPlayerHandBeforeMove": true,
+    "ostyHpBefore": 10,
+    "playerEnergyBefore": 30,
+    "cardsBeforeMove": [
+      { "cardId": "BONE_SHARDS", "pile": "Hand" },
+      { "cardId": "BONE_SHARDS", "pile": "Hand" }
+    ],
+    "cardPlayChecksAfterMove": [
+      { "cardId": "BONE_SHARDS", "occurrence": 0, "target": "None" },
+      { "cardId": "BONE_SHARDS", "occurrence": 0, "target": "None" }
+    ]
+  }
+]

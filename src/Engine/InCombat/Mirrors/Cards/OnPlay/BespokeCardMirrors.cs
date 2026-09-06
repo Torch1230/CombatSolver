@@ -18,6 +18,24 @@ internal static class BespokeCardMirrors
     public static void DaggerSprayOnPlay(DaggerSpray _, CardOnPlayMirrorContext context)
         => context.AttackAllOpponents(hitCount: 2);
 
+    // Vanilla wraps the whole body in Osty.CheckMissingWithAnim, so the attack and the block are both
+    // skipped once the Osty is gone. The sacrifice stays in CardEffectSpecRegistry, which runs after
+    // this mirror and is gated on the same condition.
+    public static void BoneShardsOnPlay(BoneShards card, CardOnPlayMirrorContext context)
+    {
+        if (context.State.GetOsty(card.Owner) is not { } osty || context.State.GetCreature(osty).IsDead)
+        {
+            return;
+        }
+
+        DamageCmd.Attack(card.DynamicVars.OstyDamage.BaseValue)
+            .FromOsty(osty, card, context.CardPlay)
+            .TargetingAllOpponents(context.CombatState)
+            .Simulate(context.Simulator);
+
+        context.GainBlock(card.Owner.Creature);
+    }
+
     public static void PactsEndOnPlay(PactsEnd card, CardOnPlayMirrorContext context)
     {
         if (context.OwnerState.ExhaustPile.Cards.Count >= card.DynamicVars.Cards.IntValue)

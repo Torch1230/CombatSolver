@@ -65,6 +65,7 @@ internal static class CardOnPlayMirrors
         registry.Register<Mangle>(GeneralCardMirrors.GeneralAttackOnPlay);
         registry.Register<IAmInvincible>(GeneralCardMirrors.GeneralBlockOnPlay);
         registry.Register<AstralPulse>(BespokeCardMirrors.AstralPulseOnPlay);
+        registry.Register<BoneShards>(BespokeCardMirrors.BoneShardsOnPlay);
         registry.Register<DaggerSpray>(BespokeCardMirrors.DaggerSprayOnPlay);
         registry.Register<PactsEnd>(BespokeCardMirrors.PactsEndOnPlay);
         registry.Register<TwinStrike>(BespokeCardMirrors.TwinStrikeOnPlay);
