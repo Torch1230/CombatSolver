@@ -1,5 +1,16 @@
 # CombatSolver 测试清单
 
+## 2026-09-06：用户指定High/180秒基线
+
+生产构建沿用184a9cd；仅CheckpointTool与PowerShell入口扩大显式总请求超时参数范围，默认120秒保持不变。本轮`-TimeoutSeconds 240`，政策High：Short Beam36/5000节点/12秒，Deep Beam90/25000节点/180秒，DOP4。Bash入口直接调用同一个CheckpointTool；Linux游戏未执行。`CheckpointTool self-test` 29项通过；包10的240秒Preflight及以下实际请求证明长请求参数可用。
+
+| 包 | 结果 | 证据 |
+|---|---|---|
+| 2 | High/180秒、历史通关优先及稳定血清Force，预测死亡HP0/敌194/1药；沿用此前VeryHigh实际死亡证据，跳过 | `rank2-high-search-resumed/`，`06e30a3430da450ea4a601b71f4789f4` |
+| 3 | High/180秒禁药、减战损优先，完整胜利预测6 HP、T6；实际6 HP、无药、余75 HP、T6、零计划外重算，目标32 HP达标 | `rank3-high-search/`，`f0402488cd7246568c22f59c1099f26e`；`rank3-high-deploy/`，`dbfded1e15bd465ab898a6d58f577040` |
+
+证据根`.local/checkpoint-batch/worldline-resume/`，政策文件`rank2-high-policy.json`、`rank3-high-policy.json`。原High包2请求被会话中断，进程已退出且无result；重新执行的目录保留`resumed`标记。包3旧超时与中途预测并未作为整场结论；缺人工完整录制，人工差距仍只作报告参考。
+
 ## 2026-09-06：世界线队列第二批
 
 沿用 `184a9cd` 生产源码及构建；只更新文档，未重复构建或已通过的行为测试。证据根 `.local/checkpoint-batch/worldline-resume/`。

@@ -9,7 +9,7 @@ param(
     [string]$ManifestPath,
     [string]$Sts2GameRoot,
     [string]$RitsuWorkshopRoot,
-    [ValidateRange(10,120)][int]$TimeoutSeconds = 120,
+    [ValidateRange(10,3600)][int]$TimeoutSeconds = 120,
     [ValidateRange(0,10000)][int]$MaxReports = 0,
     [switch]$Resume,
     [switch]$RetryFailures,

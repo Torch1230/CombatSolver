@@ -28,7 +28,7 @@ internal static class BatchRunner
         if (mode is not ("Preflight" or "RestoreOnly" or "ReplayRecorded" or "SearchOnly" or "DeploySolver"))
             throw new ArgumentException("invalid_mode:" + mode);
         int timeout = int.Parse(Option("--timeout", "120"));
-        if (timeout is < 10 or > 120) throw new ArgumentException("timeout_must_be_10_to_120_seconds");
+        if (timeout is < 10 or > 3600) throw new ArgumentException("timeout_must_be_10_to_3600_seconds");
         string selector = Option("--selector", "latest");
         string output = Path.GetFullPath(Option("--output", Path.Combine(".local", "checkpoint-batch", DateTime.Now.ToString("yyyyMMdd-HHmmss"))));
         string project = FindProject();
