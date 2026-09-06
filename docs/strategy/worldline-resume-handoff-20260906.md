@@ -1,108 +1,99 @@
-# 玩家世界线优化交接 Prompt（2026-09-06）
+# 世界线策略交接（2026-09-06，窗口切换）
 
-请接手 CombatSolver 的策略优化。先读取下面的规则和证据，恢复包 1、包 2 已验收的策略改动，再按清单快速推进。不要重新做整套计划，不要再次花大量时间纠缠少数几点战损。
+## 当前任务，以此为准
 
-## 工作位置与分支
+用户已停止自动策略优化，当前只处理监控表“有玩家备注”第 2 包。读取现有证据，对比求解器和人工路线，找出人工产生质变的策略并汇报，随后由用户指定优化路线。此时不要自行修改策略、推进第 7/10 包或自动完成前 10 包。
 
-- 工作目录：`D:\Desktop\sts2mod\CombatSolver`。
-- 本次已从 `d8e7648` 创建并切换到 `strategy/worldline-resume`，后续在此分支工作，不在 `main` 修改或直接推送 `main`。
-- 起点提交为 `Release 0.31.2 with community contributions and precombat API`。当前已有新的日志回放、缓存和社区贡献，必须保留。不要退回旧版本覆盖整个文件。
-- 本交接只新增文档并建立分支，没有恢复策略代码，也没有重新运行包 1、包 2。下文结果都是历史证据。
-- 根目录未跟踪的发布 ZIP 和 `outputs/` 是已有产物，不删除、不纳入提交。
-- 完整读取 `AGENTS.md`。使用 `.agents/skills/issue-bundle-triage/SKILL.md`、`strategy-replay-iteration/SKILL.md`、`search-performance-optimization/SKILL.md`；语义修改另读 `combat-semantic-change/SKILL.md`，职责重构另读 `architecture-boundary-refactor/SKILL.md`，推送和发版读 `release-gate/SKILL.md`。最新用户要求优先于历史文档中的旧目标。
+用户最后明确质疑启动可见实机的必要性：策略与路线对比使用 headless 即可。当前无需再启动 Steam 可见游戏。之前“实机跑一遍”已通过实际部署取得证据，不能据此反复启动可见窗口。只有后续确需验证可见效果或用户明确指定时才考虑可见验证。
 
-## 最新目标：达到即可停，达不到就跳过
+原目标“推进完 10 包”尚未完成，自动队列已暂停。以后若用户恢复优化：基线固定 High/180 秒；未达软目标须实际修改策略尝试 2–3 轮后再考虑跳过，单次失败不能直接跳过。死局目标为实际存活且战损合理；其他包目标为玩家减损幅度的一半：S <= O-ceiling((O-H)/2)，不是人工战损减半。包 4 按用户要求跳过。
 
-用户最新原话：
+## 工作区与已完成恢复
 
-> 对于死局，优化到能活并且得到不错的战损就行。软baseline是玩家优化的战损的一半。得到这个目标就可以停下了。如果这个也追不上就跳过。
+- 工作目录：`D:\Desktop\sts2mod\CombatSolver`。分支：`strategy/worldline-resume`，跟踪同名 origin 分支；不在 main 修改。
+- 完整读 `AGENTS.md`，按任务读取 issue-bundle-triage、strategy-replay-iteration；修改策略才读 search-performance-optimization，修改语义另读 combat-semantic-change，推送读 release-gate。
+- Git 恢复已完成，禁止再次应用旧恢复补丁或整文件覆盖新版本。保留现有日志、缓存、社区贡献和原生战前 API。
+- `184a9cd`：恢复已验收策略净改动，迁移两个 fixture，并从原生二进制精确恢复旧包 choice/reward 网络 ID。包 1 当前实际 1 HP；包 2 旧 50 HP 验收本次没有复现。
+- `4a607cb`：记录包 3、5、6 有界回放。
+- `deddc84`：支持显式长请求并验证 High 基线；默认请求仍 120 秒。
+- `a5266b4`：修正 SearchOnly 对开战选牌结果重复 Manual 重算的问题，增加缓存来源标记。生产搜索策略未因此改变。
+- 上述提交均已推送。包 2 的两轮实验及包 7 的一轮实验已全部撤回，当前生产策略没有未验收实验。
+- 本次交接批次另提交监控表、本文、可复制 prompt、可见测试脚本的政策/显式超时参数及对应开发/测试记录；提交号以 Git 最新提交为准。
+- 根目录已有未跟踪发布 ZIP 与 `outputs/` 不删除、不提交；`.local/` 中证据留本机。
+- 当前版本仍 0.31.2，行为改动记下一版本开发中，不创建新版本、发布包或上传工坊。
 
-- 原来死亡的路线，优先修到实际存活完战且战损合理；不再要求追平人工。死亡罚分不能当成真实 HP 战损计算改善比例。“不错的战损”没有额外指定数值，结合实际剩余 HP、资源和人工路线判断并记录，不自行加一个必须追平人工的门槛。
-- 可按同范围 HP 对照的包，软目标是达到玩家**减损幅度的一半**，不是将玩家最终战损减半。原始战损 O、人工 H，则玩家减损 D=O-H，目标为新结果 S <= O-ceiling(D/2)。例如原来 100、人工 40，求解器做到 70 即可停止本包。
-- 达标后完成必要验证并推进下一包；已有当前基线达标的，直接记录，无须为了修改而修改。
-- 有限投入后仍达不到软目标，记录最好结果、根因或阻塞并跳过。无需证明“无论如何也追不上”，不反复增加 Beam、预算或超时。
-- 建议节奏：一次当前基线，围绕明确根因做少量候选，只对最终候选做完整部署；没有新证据就停止该包。单请求沿用最多 120 秒，不自动加时。这里不新增固定试验次数作为硬门槛。
-- 能力牌跨回合收益、准备动作与组合启动仍是重点。修语义或保留有真实后续收益的分支；Beam 扩大必须有剪枝位置、收益与成本证据。
+## 包 2：接下来只完成对比报告
 
-## 先按 Git 恢复包 1、包 2 的已验收改动
+包名：`35f36dc49e5c4d1aa17c477d13d9f221-CombatSolver-AEONGLASS_BOSS-20260903-152708-532.zip`。
 
-`4ea8999` 回退了原策略批次。不要直接撤销整个回退提交：它还会重新引入旧导入器、旧测试脚本、版本和文档，冲掉后来的日志重构。也不要恢复包 2、包 3 被否决的 stash 实验。
+原包：`.local/issue-bundles/20260905/raw/104714/logs/` 下同名文件。
+人工材料根：`.local/issue-bundles/20260905/priority/35f36dc49e5c4d1aa17c477d13d9f221-CombatSolver-AEONGLASS_BOSS-20260903-152708-532/combat-solver/`。
+重点读 `forensics/current/logs/godot.log`、`current-route.txt`、`replan-audit.txt`。原始日志有撤销操作，必须按最终保留分支分析，不能把撤销前动作拼成一条路线。
 
-历史来源如下，按最终净差异恢复，不单独停留在早期评分版本：
+统一证据根：`.local/checkpoint-batch/worldline-resume/`。政策文件 `rank2-high-policy.json`：
+High，DOP4，短搜 Beam36/5000 节点/12 秒，深搜 Beam90/25000 节点/180 秒；Smart；slot0 STABLE_SERUM Force，其余 ENERGY_POTION、SWIFT_POTION、DISTILLED_CHAOS Disabled；两项 Boss 政策 ProgressionFirst，阈值 0。旧导出缺政策时使用此显式补齐值，不能称所有字段均来自原包。
 
-| 提交 | 应恢复或参考的内容 |
-| --- | --- |
-| `00bcaf7` | 能力收益及持久准备特征：格挡引擎、未来选牌、Barricade/Rage/Unmovable 等的效果估计；只是初版，必须结合后两个提交的修正。 |
-| `1e9f676` | 每个药水层保留较安全的 HP 投资路线；收回虚高的潜在收益，留牌收益不再重复乘剩余回合，Barricade 仅计现有格挡。 |
-| `e49aa18` | Rage 使用实际能力数值和可达攻击次数估计，Prolong 使用当前格挡，均有上限。此提交还含旧状态导入代码，后者不整批移植。 |
-| `0cb5bcf` | Smart 药水搜索在预算内继续比较后续合格组合，不遇到第一个合格层就停；修复 Unmovable 的卡牌格挡事件计数及 Fork 复制，排除遗物额外格挡误计。 |
-| `31899af` | 包 2 的最终验收及原报告政策恢复。没有单独的新 Search 评分修复；包 2 使用共用改动和正确政策取得结果。当前导入器已演进，参考政策和证据，不覆盖新导入器。 |
-| `afb732c` | 更早修正了从人工中途状态续局冒充整场结果的问题。仅作证据口径参考。 |
+### 已有求解器证据
 
-可直接从 Git 生成下面的生产代码净补丁，免去重写旧修复。先检查当前实现是否已有等价修复，再在本分支应用并解决与新代码的冲突。`git apply --3way` 可能留下需要处理的冲突，不能将旧版本整文件选为冲突解决结果。
+| 阶段 | 目录 / runId | 结论 |
+|---|---|---|
+| 严格恢复 | rank2-restore-fixed / 30148b32632f4ddaae88369730c154a8 | 开战完整状态校验通过 |
+| High 基线 | rank2-high-search-resumed / 06e30a3430da450ea4a601b71f4789f4 | 预测死亡，敌 194；rank2-high-search 是中断请求，不用它作结果 |
+| R1 潜在 Rage 攻击次数 | rank2-r1-rage-search / 83d99c169f144e8db7ba2dfe7ba0659b | 死亡，敌 125，缓存 false；已撤回 |
+| R2 生命投资通道优先预计 HP | rank2-r2-survival-search / 2b04ef3094ca4f87a1e8303358398737 | 死亡，敌 247，缓存 false；已撤回 |
+| 可见最小 Mod 栈实际部署 | rank2-visible-core-analysis / 21379368f7f0499bab2cac13f9a5f24e | start 严格校验，T11 死亡，计划外重算 0；预测敌 194，药水 T3 使用 |
 
-```powershell
-git diff --binary --output=.local/worldline-accepted-strategy.patch 927bb73 31899af -- src/Search/CombatBeamSolver.BeamRetentionPolicy.cs src/Search/CombatBeamSolver.StateEvaluation.cs src/Search/CombatPlan.cs src/Search/StrategicEffectModel.cs src/Search/CombatSearchCoordinator.cs src/Engine/Common/PredictionForking.cs src/Engine/InCombat/Simulation/CombatPredictionSimulator.Block.cs src/Engine/InCombat/Simulation/CombatPredictionSimulator.Card.cs src/Search/SimulatedCombatState.CardLifecycle.cs src/Search/SimulatedCombatState.CardPowerHistory.cs
-git apply --3way .local/worldline-accepted-strategy.patch
-```
+实验补丁保存在证据根的 `rank2-r1-rage.patch`、`rank2-r2-survival.patch`，只是失败记录，不自动恢复。两轮均基于 a5266b4 独立测试。敌人剩余 HP 改善不等于实际战损改善。
 
-该补丁只覆盖上述生产文件，测试支持需要按当前协议迁移。重点检查新的药水分层逻辑和 Beam 保留逻辑，避免覆盖社区 PR。Unmovable 修复必须连同历史写入、消费时机和 Fork 一起检查。
+可见实际日志已保存 `rank2-visible-core-analysis/godot.log`。完整 Mod 栈首次请求 `rank2-visible-analysis/`（2b32cfa1001642ab8da8f94079b2a557）在反序列化阶段因 SavedProperty net ID60/可用49 失败，属于环境恢复失败，不是策略结果。随后仅 CombatSolver/RitsuLib 环境已取得上述部署证据。临时安装 DLL 和账号 settings.save 均已通过 finally 恢复，游戏进程已退出；备份分别为证据根 `rank2-visible-installed-backup.dll`、`rank2-visible-settings-backup.save`。不用再次修改用户 Mod 设置。
 
-从 `0cb5bcf` 参考两个针对性 fixture 及其协议支持，按当前接口接入：`coverage/unattended/smart-potion-qualified-layer-continuation-0300.json`、`coverage/unattended/unmovable-relic-block-history-0300.json`。不要盲目复制旧无人测试执行器。恢复后重新构建，用相关语义差分和两个代表包验收，再提交这一批。
+### 人工与求解器的关键差异（已有日志证据，因果尚未做隔离实验）
 
-## 包 1、包 2 的真实历史结果
+| 时点 | 人工最终保留路线 | 当前求解器实际路线 |
+|---|---|---|
+| T1 | UNMOVABLE、两张 DEFEND+、PROLONG+；掉血 2 | 同样启动 UNMOVABLE/防御/PROLONG，另打 BREAK；掉血 1 |
+| T2 | FINESSE+、TAUNT+，使用 STABLE_SERUM 后结束，保留 BODY_SLAM+、ONE_TWO_PUNCH 等攻击 | FINESSE、ONE_TWO_PUNCH、BODY_SLAM、STRIKE；当回合不用药 |
+| T3 | 进入不攻击且无格挡的敌方阶段，手牌 10；RAGE、BLOODLETTING、BURNING_PACT、HAVOC、SHRUG_IT_OFF、FEED、BODY_SLAM、PROLONG；自损 3 | RAGE、FEED、SHRUG_IT_OFF、BURNING_PACT、HAVOC、PROLONG，最后才用 STABLE_SERUM |
+| T4 | 起手格挡 39，敌 481；RAGE、BURNING_PACT、FINESSE、TAUNT、BREAK、ONE_TWO_PUNCH，再 BLOODLETTING、两张 DEFEND，最后 BODY_SLAM；自损 3，敌降到 281 | DEFEND、STRIKE、STRIKE，没有人工这一轮 200 点爆发 |
 
-以下编号均为监控清单的“有玩家备注”分组；汇总包均为 `combatsolver-reports-20260905-104714.zip`。
+原始人工日志行段：T1 964–985；T2 1506–1525；T3 起始1543–1549，最终路线1741–1789（1756 有撤销）；T4 起始1811–1817，动作1966–2018（1997 有撤销）；T5 起始2036–2042；T8 起始2408–2414。
+求解器日志行段：T1 604–638，T2 736–763，T3 860–908，T4 1004–1026。
 
-| 包 | 日志 ZIP | 报告原始 → 人工 | 历史完整部署 | 条件 | 历史相对人工 |
-| --- | --- | --- | --- | --- | --- |
-| 1 | `CombatSolver-AEONGLASS_BOSS-20260903-153416-774.zip` | 110 → 6 | 3 HP / 4 药，T7 完战 | VeryHigh、DOP4、原包四药 Force、减战损优先；计划外重算 0 | +3 |
-| 2 | `CombatSolver-AEONGLASS_BOSS-20260903-152708-532.zip` | 123 → 55 | 50 HP / 1 药，T10 完战 | VeryHigh、DOP4；两项 Boss 政策均 BossProgressionFirst；slot0 StableSerum Force，其余三槽 Disabled；计划外重算 0 | +5 |
+候选质变策略是：**提前一回合用保留手牌药水，并主动结束回合保住攻击牌，把手牌、额外能量、抽牌与格挡转伤害集中到合适的敌方阶段；通过 PROLONG 跨回合保留格挡，BODY_SLAM 延后到格挡叠好之后。** 原版 StableSerum 源码已确认施加 RetainHandPower2（保留手牌两回合）。求解器已经会打 UNMOVABLE 和 RAGE，不能把差距笼统归结为“不会开能力”。
 
-历史证据：
+下一窗口先核对上述撤销后的动作与每回合 HP/格挡/敌 HP，形成简洁对比报告并把候选质变策略告诉用户；不要在用户给建议前写评分或保路改动。现有证据足够时直接分析；确需补执行证据才用 headless，避免同输入重复跑完整基线。
 
-- 包 1：`.local/strategy-batch/results/20260905-rank1-reported-policy-accepted/`，runId `ff728e5661394c9e8a77c7b03a404a48`。
-- 包 2：`.local/strategy-batch/results/20260905-rank2-reported-policy-accepted/`，runId `beb01c29aa57492db5c55ce103a593c2`。
-- 证据中有 `result.json` 和 `godot.log`，读取后对照当前执行政策。包 1 另测 Smart 为预测 8 HP / 3 药，不是完整部署验收。包 2 用 MinimizeHpLoss 的死亡路线不是原政策下的对照。
-- 包 2 早期“人工后 T7 续局 0 HP、相对人工 +55”已被撤销，不引用。这里的 50 HP 才是后来的整场证据。
-- 历史结果不能直接写成恢复后当前版本已通过。原始数值若是死亡罚分或不同区间，同样不能机械计算软目标。
+### 人工战损 55 的口径限制
 
-## 队列与需要避开的重复工作
+`replan-audit.txt` 为 manual_plus_solver，18 次搜索、6 次人工偏离、11 次显式请求。T8 HP68（初始123），实际累计掉血55，敌12且格挡30；导出的剩余路线 FINESSE+、TAUNT+、BODY_SLAM+、STRIKE 预测不再掉血。**没有人工完整完战录制**，只能写“人工已发生55，剩余预测0”，不能写本轮验证人工整场55。历史50 HP部署位于 `.local/strategy-batch/results/20260905-rank2-reported-policy-accepted/`，runId beb01c29aa57492db5c55ce103a593c2，属于旧版本证据。
 
-用户监控清单：`docs/strategy/player-worldlines-20260905.md`。共 460 条，有备注 129、无备注 331；进入处理 312，减损小于 5 HP 暂缓 148。只维护“汇总”下面的表格，不重建清单、不加顶部长篇维护内容。
+## 前 10 包状态与监控表
 
-先有备注，再无备注，各自按原始减损降序。小于 5 HP 只列清单。**有备注包 4 用户明确跳过，继续跳过。**
+监控表：`docs/strategy/player-worldlines-20260905.md`，只维护表格。“优化后相对人工”填人工报告值减已验证求解器实际掉血，并标“报告参考”；严格更优才填是。缺人工完整录制时不要宣称严格整场优于人工。死亡、无法恢复、人工未完战等明确填不可比较/未验收，不能伪造数字。
 
-- 包 3 `TEST_SUBJECT_BOSS-20260902-133704-483`：61 → 3，软目标 32 HP。历史已提交策略曾预测 22 HP，未提交试验为 20 HP，均未做完整部署验收。新目标下先复测当前基线，可能无需新增策略就能达标。旧根因是自损抽牌后能力降费启动链被剪掉，不重做大量准备组配额试验。
-- 包 7 `QUEEN_BOSS-20260903-173813-639`：50 → 5，软目标 27 HP。历史预测 23 HP，仅是预测；优先检查当前能否实际完成，不继续为追 5 HP 展开长线调查。
-- 包 8 `AEONGLASS_BOSS-20260904-053711-747`：人工记录 20 HP 时敌人还有 420 HP，不能作为人工整场 20 HP 对照。
-- 其他旧缺材料、政策不全、超时的条目，先用新兼容入口做小批预检。不要直接照搬旧导入失败结论，也不要为单个缺项无限修工具。
-- 原 ZIP 位于 `D:\Download\Edgedownload`，已整理材料在 `.local/issue-bundles/20260905/`。证据与旧 manifest 在 `.local/strategy-batch/`。这些是本地忽略文件，同机器新窗口可直接访问。
-- 旧 `.local/strategy-batch/handoff-prompt-20260905.md` 只作历史证据索引；其中“必须追平人工”、旧分支/版本/dirty 文件状态及继续死磕的要求已经过时。
+| 包 | 本轮结果 | 相对人工报告参考 | 证据根下目录 |
+|---|---|---|---|
+| 1 | 实际1 HP/4药/T6，余122，计划外重算0；VeryHigh原验收政策 | +5，是（参考） | rank1-deploy |
+| 2 | High仍死亡；两轮失败实验已撤回；当前等用户指定策略 | 死亡，否 | 见上文 |
+| 3 | High实际6 HP/0药/T6，目标32，计划外重算0 | -3，否（参考） | rank3-high-deploy |
+| 4 | 用户明确跳过，未整场验收 | 未验收 | 沿用监控记录 |
+| 5 | 新预检有效，严格恢复因缺本回合卡牌历史失败；未搜索 | 不可比较 | rank5-restore |
+| 6 | 原Custom/DOP8/短5秒深20秒，实际19 HP/1药/T10，目标22，计划外重算0；不是High重跑 | -19，否（参考） | rank6-deploy |
+| 7 | High实际掉血70/回血21/余21，1药/T10，目标27未达；R1未改善，已撤回，按新指令暂停 | -65，否（参考） | rank7-high-opening-deploy |
+| 8 | 人工20 HP对应敌还剩420，未完战 | 不可比较 | 原包working/aeonglass053711 |
+| 9 | High实际31 HP/1药/T6，目标52，计划外重算0 | -1，否（参考） | rank9-high-deploy |
+| 10 | 本轮只做rank10-preflight，材料有效；政策已准备，未恢复/搜索/部署 | 未验收 | rank10-preflight |
 
-表格状态写清“存活达标”“软目标达标”“跳过：未达软目标”或具体技术阻塞，并记录当前构建、政策、预测与实际值、证据目录。可以在处理状态内记录软目标，不必扩张整张清单。
+包7的17 HP来自开战选牌后额外Manual重算，已撤销其开战基线资格；修正后原开战路线70 HP。R1“手中Footwork防御收益”结果70 HP/T8，未改善战损，缓存false，runId 6c82c594531c4722831f31a4d3f00053，目录 rank7-r1-ready-defense-search，补丁 rank7-r1-ready-defense.patch。R2尚未进行，不能称已优化两三轮。
 
-“优化后相对于人工”仍为人工实际战损减求解器实际战损，例如人工 6、求解器 3，记 `+3`；严格小于人工战损才记“是否更优=是”，追平为 `0/否`。达到一半改善通常仍差于人工，不能把达标写成更优。未验证的整场对照留待验证，报告值差距可在处理状态中明确标为参考。
+包10 ZIP在证据根 `CombatSolver-KNIGHTS_ELITE-20260904-034250-040.zip`；`rank10-high-policy.json`仅准备，未执行。原报告9含此前8 HP，比较范围需核对。
 
-## 使用现在的日志工具验收
+## 验证与后续执行约束
 
-先读 `docs/CHECKPOINT_REPLAY.md` 和实际脚本参数；该文档开头的 0.30.0 是日志功能落地版本，不代表当前仓库版本。新旧包共用 `tools/run-checkpoint-batch.ps1`，优先此入口，不重新围绕旧 AutoTurnStart 扫描脚本搭流水线。
-
-```powershell
-pwsh -NoProfile -File tools/run-checkpoint-batch.ps1 -InputPath <原包.zip> -ReplayMode Preflight -OutputDirectory <独立目录>
-pwsh -NoProfile -File tools/run-checkpoint-batch.ps1 -InputPath <原包.zip> -CheckpointSelector start -ReplayMode RestoreOnly -Sts2GameRoot <实际游戏目录> -OutputDirectory <独立目录>
-```
-
-恢复通过后显式选择 SearchOnly 定位、DeploySolver 验收；开战用 `start`，不能用回合数为 1 猜起点。DeploySolver 使用 Instant/0 秒并检查计划外重算。不要把 SearchOnly 预测或人工后续局当成完整部署结果。新代码已有路线缓存，确认结果来自本次目标构建和输入，记录是否命中缓存。
-
-原包实际政策优先；缺失字段通过 `-ReplayPolicyOverridePath` 明确补齐，记录原值和执行值，不偷偷使用默认政策。旧包缺完整录制会限制 ReplayRecorded，不等于不能从开战部署求解器。严格的自动整场“相对人工”还要求已验证人工录制；无法满足时保留历史证据与报告参考值，不修改校验器放行。
-
-只保存有用的失败基线和最终证据；输入、根、政策、构建不同不能当成同一对照。技术失败归技术失败，不归策略差距。新修改按风险运行构建、相关 fixture、边界检查和必要整场部署，已通过且代码未变的检查不重复跑。
-
-## 提交与交付节奏
-
-第一批恢复并验证包 1、包 2 的已有生产修复，随后按清单小批推进。每批把代码、相关验证和监控表格一起提交并推送 `strategy/worldline-resume`。保留当前新日志系统和社区贡献，不恢复旧包 3 未验收试验。
-
-旧任务的 0.30.0 批次已经结束，当前起点为 0.31.2；本次策略行为进入下一版本开发中，具体版号未指定，不自行猜测，也不回写已发布版本。本次交接不要求再次发布日志版本。此前“全部推送并发布工坊”针对日志改进交付，不能据此在策略实验阶段直接发布。
-
-接手后先确认分支及工作区变化，按 Git 恢复已验收净改动、验证并提交第一批，然后应用新的停止标准推进队列。完成软目标就收工这个包，达不到就登记跳过。
+- 默认走 `tools/run-checkpoint-batch.ps1`，先读 `docs/CHECKPOINT_REPLAY.md` 与参数。High搜索180秒，整个请求显式 `-TimeoutSeconds 240`，用于覆盖启动/部署开销。优先复用已存 `rank2-high-policy.json`。
+- 开战使用 `CheckpointSelector=start`，Preflight不等于恢复成功，SearchOnly不等于实际完战；DeploySolver固定Instant/0秒，核对计划外重算及缓存来源。
+- 两个恢复fixture均已通过：unmovable-relic-block-history-0300（ee28e74dab6c4208b627462a5513eaba），smart-potion-qualified-layer-continuation-0300（ac3165ba938642f89e18ca4659928fec）。相关Release构建、结构门禁、CheckpointTool自测29断言已有通过证据。
+- 最后实验撤回后的Release构建成功。本文交接只做文档/差异检查，不重新跑战斗。
+- 可见测试脚本两端现支持政策覆盖路径与显式超时；PowerShell已用于上述实际请求，Linux脚本未做游戏运行验证。后续包2分析优先headless。
+- 每批维护监控表、开发/测试证据，显式暂存本任务文件并提交、推送当前分支；不纳入问题包/日志/输出。
+- 可复制的新窗口指令见 [worldline-resume-prompt-20260906.md](worldline-resume-prompt-20260906.md)。旧本地prompt路径已同步为相同最新指令。

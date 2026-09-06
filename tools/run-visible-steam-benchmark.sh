@@ -13,6 +13,7 @@ Options:
   --logging-fixture  Run the short native logging/export fixture (at most 120 seconds)
   --evidence-directory DIRECTORY
   --checkpoint-archive-path ZIP --checkpoint-selector latest --replay-mode RestoreOnly
+  --replay-policy-override-path JSON
   --steam-root DIRECTORY
   --steam-command FILE
   --game-root DIRECTORY
@@ -38,11 +39,13 @@ require_option_value() {
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repository_root="$(realpath -e -- "$script_dir/..")"
 timeout_seconds=360
+timeout_explicit=false
 search_max_degree_of_parallelism=2
 verify_baselib_card_modifier_boundary=false
 logging_fixture=false
 evidence_directory=""
 checkpoint_archive=""
+replay_policy_override=""
 checkpoint_selector="latest"
 replay_mode="RestoreOnly"
 steam_root_arg=""
@@ -55,6 +58,7 @@ while (($# > 0)); do
         --checkpoint-archive-path) require_option_value "$1" "${2-}"; checkpoint_archive="$(realpath -e -- "$2")"; shift 2 ;;
         --checkpoint-selector) require_option_value "$1" "${2-}"; checkpoint_selector="$2"; shift 2 ;;
         --replay-mode) require_option_value "$1" "${2-}"; replay_mode="$2"; shift 2 ;;
+        --replay-policy-override-path) require_option_value "$1" "${2-}"; replay_policy_override="$(realpath -e -- "$2")"; shift 2 ;;
         --logging-fixture) logging_fixture=true; shift ;;
         --evidence-directory)
             require_option_value "$1" "${2-}"
@@ -62,10 +66,12 @@ while (($# > 0)); do
         --timeout-seconds)
             require_option_value "$1" "${2-}"
             timeout_seconds="$2"
+            timeout_explicit=true
             shift 2
             ;;
         --timeout-seconds=*)
             timeout_seconds="${1#*=}"
+            timeout_explicit=true
             shift
             ;;
         --search-max-degree-of-parallelism)
@@ -133,7 +139,7 @@ done
     die "--search-max-degree-of-parallelism must be between 1 and 16"
 command -v jq >/dev/null 2>&1 || die "jq is required"
 if [[ "$logging_fixture" == true ]] && ((timeout_seconds > 120)); then timeout_seconds=120; fi
-if [[ -n "$checkpoint_archive" ]] && ((timeout_seconds > 120)); then timeout_seconds=120; fi
+if [[ -n "$checkpoint_archive" && "$timeout_explicit" == false ]]; then timeout_seconds=120; fi
 
 if [[ -n "$steam_root_arg" ]]; then
     steam_root="$steam_root_arg"
@@ -395,8 +401,9 @@ fi
 if [[ -n "$checkpoint_archive" ]]; then
     jq -n --arg runId "$run_id" --arg archive "$checkpoint_archive" --arg selector "$checkpoint_selector" \
         --arg mode "$replay_mode" --arg evidence "$evidence_directory" --argjson timeout "$timeout_seconds" \
+        --arg policy "$replay_policy_override" \
         '{schemaVersion: 1, runId: $runId, scenarioId: "VISIBLE-CHECKPOINT-REPLAY", checkpointArchivePath: $archive,
-          checkpointSelector: $selector, replayMode: $mode, evidenceDirectory: $evidence, timeoutSeconds: $timeout, exitOnComplete: true}' >"$request_temp_path"
+          checkpointSelector: $selector, replayMode: $mode, replayPolicyOverridePath: $policy, evidenceDirectory: $evidence, timeoutSeconds: $timeout, exitOnComplete: true}' >"$request_temp_path"
 fi
 mv -f -- "$request_temp_path" "$request_path"
 

@@ -1,5 +1,20 @@
 # CombatSolver 测试清单
 
+## 2026-09-06：包2对比证据与交接
+
+证据根为`.local/checkpoint-batch/worldline-resume/`，生产基线a5266b4。包2High/180秒/DOP4、仅STABLE_SERUM Force、BossProgressionFirst；实验分别基于该生产基线，测试后撤回。
+
+| 阶段 | 实际执行与结论 |
+|---|---|
+| 包2 R1 | `rank2-r1-rage-search/`，83d99c169f144e8db7ba2dfe7ba0659b：补潜在攻击次数依赖，预测死亡/敌125，缓存false，已撤回。 |
+| 包2 R2 | `rank2-r2-survival-search/`，2b04ef3094ca4f87a1e8303358398737：生命投资通道优先预计HP，预测死亡/敌247，缓存false，已撤回。 |
+| 包7 R1 | `rank7-r1-ready-defense-search/`，6c82c594531c4722831f31a4d3f00053：手中Footwork收益，预测70 HP/T8，战损未改善，缓存false，已撤回。最后撤回后的Release构建通过。 |
+| 包9部署 | `rank9-high-deploy/`，d8fde8cddb564dbabe712d258eca94d3：实际31 HP/1药/T6、余49、计划外重算0，缓存true。 |
+| 包2可见请求首次 | `rank2-visible-analysis/`，2b32cfa1001642ab8da8f94079b2a557：完整Mod栈原生反序列化失败，SavedProperty net ID60/可用49，未进入策略验证。 |
+| 包2可见最小栈 | `rank2-visible-core-analysis/`，21379368f7f0499bab2cac13f9a5f24e：CombatSolver/RitsuLib环境，start完整状态通过，实际T11死亡，计划外重算0；预测死亡/敌194。Failed表示战斗未胜利，不能写作通过。DLL与settings.save已在finally恢复。 |
+
+可见脚本新增政策路径和显式240秒超时已由PowerShell实际请求覆盖；Bash对应实现未运行Linux游戏。可见验证来自此前执行，当前交接不重新启动游戏。策略路线对比后续使用headless。人工55只确认T8累计实际掉血及后续预测0，缺人工完整完战录制。详细动作与撤销点见策略交接文档。
+
 ## 2026-09-06：开战选牌搜索与部署同根
 
 构建`deddc84`加本批Testing修正，Release零警告/错误，结构门禁Passed。包7固定High/180秒/DOP4、原包Boss政策及显式Smart/阈值0，每请求240秒、部署Instant/0秒。

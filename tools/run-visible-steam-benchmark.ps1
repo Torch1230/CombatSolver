@@ -8,6 +8,7 @@ param(
     [switch]$LoggingFixture,
     [string]$EvidenceDirectory,
     [string]$CheckpointArchivePath,
+    [string]$ReplayPolicyOverridePath,
     [ValidateSet('RestoreOnly','ReplayRecorded','SearchOnly','DeploySolver')][string]$ReplayMode = 'RestoreOnly',
     [string]$CheckpointSelector = 'latest'
 )
@@ -147,14 +148,15 @@ if ($LoggingFixture) {
 }
 if ($EvidenceDirectory) { $request.evidenceDirectory = [IO.Path]::GetFullPath($EvidenceDirectory) }
 if ($CheckpointArchivePath) {
+    if (!$PSBoundParameters.ContainsKey('TimeoutSeconds')) { $TimeoutSeconds = 120 }
     $request = @{
         schemaVersion = 1; runId = $runId; scenarioId = 'VISIBLE-CHECKPOINT-REPLAY'
         checkpointArchivePath = (Resolve-Path -LiteralPath $CheckpointArchivePath).Path
         checkpointSelector = $CheckpointSelector; replayMode = $ReplayMode
-        timeoutSeconds = [Math]::Min($TimeoutSeconds, 120); exitOnComplete = $true
+        timeoutSeconds = $TimeoutSeconds; exitOnComplete = $true
+        replayPolicyOverridePath = if ($ReplayPolicyOverridePath) { (Resolve-Path -LiteralPath $ReplayPolicyOverridePath).Path } else { $null }
         evidenceDirectory = if ($EvidenceDirectory) { [IO.Path]::GetFullPath($EvidenceDirectory) } else { $null }
     }
-    $TimeoutSeconds = [Math]::Min($TimeoutSeconds, 120)
 }
 try {
     $request | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $requestTempPath -Encoding UTF8
