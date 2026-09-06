@@ -130,6 +130,29 @@ internal static class CardGenerationCardMirrors
         context.Simulator.AddGeneratedCardsToCombat(cards, PileType.Hand, card.Owner);
     }
 
+    /// <summary>
+    /// Books the permanent deck upgrade that the Improvement rider will pay out after the fight.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="ImprovementPower"/> is a counter that runs in <c>AfterCombatEnd</c>: for each stack it picks a
+    /// random upgradable card out of <see cref="PileType.Deck"/> and upgrades it for good. That is the same
+    /// payoff Genetic Algorithm, The Scythe and Royalties are already booked for, so it belongs on the same
+    /// axis; without it a Mad Science built as Improvement scored as a plain Power card worth one buff stack,
+    /// and the "pursue cross-combat value" setting could not see it at all.
+    ///
+    /// The value matches The Hunt (<see cref="CorePowerSupport.TheHuntLongTermResourceValue"/>), which is what
+    /// one permanent card upgrade is worth on this scale. One simplification: the real power gives nothing when
+    /// the deck holds no upgradable card, and deck contents are not part of combat state, so the payoff is
+    /// always counted. A deck with nothing left to upgrade is a deck where nobody is holding this card back.
+    /// </remarks>
+    private static void RecordImprovementGrowth(CardOnPlayMirrorContext context)
+    {
+        if (context.CombatState is not SimulatedCombatState combat)
+            return;
+        combat.RecordLongTermResource(CorePowerSupport.TheHuntLongTermResourceValue);
+        combat.RecordLongTermGoal(LongTermGoals.PersistentGrowth);
+    }
+
     public static void MadScienceOnPlay(MadScience card, CardOnPlayMirrorContext context)
     {
         if (context.CombatState is not ICombatPredictionEffectSink effects)
@@ -172,6 +195,7 @@ internal static class CardGenerationCardMirrors
                         break;
                     case TinkerTime.RiderEffect.Improvement:
                         effects.ApplyPower(typeof(ImprovementPower), card.Owner.Creature, 1, card.Owner.Creature);
+                        RecordImprovementGrowth(context);
                         break;
                 }
                 break;

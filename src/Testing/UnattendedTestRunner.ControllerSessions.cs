@@ -1367,6 +1367,8 @@ internal sealed partial class UnattendedTestRunner
             recoveredPlayerHp: 0,
             deathSaveRelicHpRestored: 0,
             longTermResourceValue: 0,
+            longTermGoals: LongTermGoals.None,
+            longTermGoalCardsPlayed: LongTermGoals.None,
             angerCopiesGenerated: 0,
             projectedPlayerHp: 1,
             playerBlock: 0,
