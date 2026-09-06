@@ -1,5 +1,21 @@
 # CombatSolver 测试清单
 
+## 2026-09-06：世界线策略恢复第一批
+
+构建：`9224f63` 加本批改动，Release 零警告/错误；结构门禁 Passed。证据根 `.local/checkpoint-batch/worldline-resume/`。搜索生产代码通过首轮构建；随后仅补旧包开战编号恢复并再次构建，已通过的策略 fixture 与包 1 沿用首次直接证据。
+
+| 验证 | 本次结果 | 证据 |
+|---|---|---|
+| `unmovable-relic-block-history-0300.json` | 逐牌严格差分、每次出牌后 Fork、最终格挡16，Passed | `unmovable/`，`ee28e74dab6c4208b627462a5513eaba` |
+| `smart-potion-qualified-layer-continuation-0300.json` | 首结果双药、节省24 HP/门槛18，Passed；单线程5秒短搜 | `smart-qualified/`，`ac3165ba938642f89e18ca4659928fec` |
+| 包1开战恢复与完整部署 | 完整状态恢复通过；实际1 HP、4药、T6、存活、零计划外重算 | `rank1-preflight/`、`rank1-restore/`、`rank1-deploy/`；部署 `d4bdae5022294431ba706cc970ec885b` |
+| 包2开战编号恢复 | 基线 `nativeState.bytes[969]` 不一致；从原生快照恢复选择/奖励编号后严格恢复通过 | `rank2-restore/`、`rank2-restore-fixed/`；修复后 `30148b32632f4ddaae88369730c154a8` |
+| 包2完整部署 | Failed：主搜索及窄搜恢复均无存活路线，预测最终HP0/敌HP147；未复现历史50 HP | `rank2-deploy/`，`2306d4e83c9641169826fe7403940af0` |
+
+两包执行历史验收的 VeryHigh/DOP4，政策文件 `rank1-policy.json`、`rank2-policy.json` 显式覆盖导出时设置；每请求120秒、Instant/0秒。新构建 MVID 隔离旧路线缓存，执行前本构建未搜索这两个根；结果日志未单列缓存命中计数。旧包人工路线缺完整录制，整场相对人工栏留待验证；未运行可见性能、Linux或完整发布门禁。
+
+复跑使用 `tools/run-checkpoint-batch.ps1 -InputPath <原ZIP> -CheckpointSelector start -ReplayMode RestoreOnly/DeploySolver -ReplayPolicyOverridePath <对应政策文件> -OutputDirectory <新目录>`。格挡 fixture 使用 `tools/run-unattended-test.ps1 -MonsterMoveChecksPath coverage/unattended/unmovable-relic-block-history-0300.json`；Smart fixture 按JSON字段映射现有无人脚本同名参数，`cards/potions` 分别用 `CardsJson/PotionsJson`。
+
 ## 0.31.2 定版
 
 收录 PR #15、#18、#43。本次仅修改版本与发布资料，沿用下列已完成的定向验证，执行最终 Release 构建；未追加完整发布门禁或可见 Steam 双 Mod 联动验收。

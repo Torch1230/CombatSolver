@@ -11,6 +11,7 @@ namespace CombatSolver.Engine.InCombat.Simulation;
 internal sealed partial class CombatPredictionSimulator
 {
     private readonly Dictionary<CardPlay, decimal> _blockGainedByCardPlay = [];
+    private readonly Dictionary<CardPlay, int> _cardBlockGainCounts = [];
 
     /// <summary>
     /// Mirrors <see cref="CreatureCmd.GainBlock(Creature, BlockVar, CardPlay?, bool)"/>.
@@ -75,6 +76,8 @@ internal sealed partial class CombatPredictionSimulator
         {
             _blockGainedByCardPlay[cardPlay] =
                 _blockGainedByCardPlay.GetValueOrDefault(cardPlay) + modifiedBlock;
+            if (props.IsCardOrMonsterMove())
+                _cardBlockGainCounts[cardPlay] = _cardBlockGainCounts.GetValueOrDefault(cardPlay) + 1;
         }
 
         State.GetCreature(creature).GainBlock(modifiedBlock);
@@ -91,5 +94,12 @@ internal sealed partial class CombatPredictionSimulator
         decimal amount = _blockGainedByCardPlay.GetValueOrDefault(cardPlay);
         _blockGainedByCardPlay.Remove(cardPlay);
         return amount;
+    }
+
+    private int TakeCardBlockGainCount(CardPlay cardPlay)
+    {
+        int count = _cardBlockGainCounts.GetValueOrDefault(cardPlay);
+        _cardBlockGainCounts.Remove(cardPlay);
+        return count;
     }
 }

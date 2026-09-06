@@ -5,11 +5,13 @@ using MegaCrit.Sts2.Core.Combat.History.Entries;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
+using MegaCrit.Sts2.Core.Entities.Multiplayer;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.MonsterMoves.MonsterMoveStateMachine;
+using MegaCrit.Sts2.Core.Multiplayer.Serialization;
 using MegaCrit.Sts2.Core.Runs;
 
 namespace CombatSolver;
@@ -46,6 +48,14 @@ internal sealed partial class UnattendedTestRunner
         return new UnattendedCombatStartReplay(runState, async state =>
         {
             await ApplyReplayStateAsync(state, player, request.ReplayStatePath, request.RunSnapshotPath);
+            if (!string.IsNullOrWhiteSpace(request.NativeStatePath))
+            {
+                PacketReader reader = new();
+                reader.Reset(await File.ReadAllBytesAsync(request.NativeStatePath));
+                NetFullCombatState saved = reader.Read<NetFullCombatState>();
+                RunManager.Instance.PlayerChoiceSynchronizer.FastForwardChoiceIds(saved.nextChoiceIds);
+                RunManager.Instance.RewardsSetSynchronizer.FastForwardRewardIds(saved.nextRewardIds);
+            }
         }, VerifyOpening);
     }
 

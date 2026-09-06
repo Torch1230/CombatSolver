@@ -113,7 +113,7 @@ internal sealed partial class UnattendedTestRunner
             ((ICombatPredictionCardExecutionSink)simulatedCombat).CompleteCardPlayEffects(
                 simulator,
                 card,
-                simulator.State.GetCreature(player.Creature).Block,
+                cardBlockGainCount: 0,
                 simulator.History.Entries.Count);
 
             AssertPendingChoice(

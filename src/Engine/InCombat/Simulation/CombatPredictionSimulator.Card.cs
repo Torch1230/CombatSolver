@@ -471,12 +471,13 @@ internal sealed partial class CombatPredictionSimulator
                 return;
             }
 
+            int cardBlockGainCount = TakeCardBlockGainCount(cardPlay);
             if (State.CombatState is ICombatPredictionCardExecutionSink completionSink)
             {
                 completionSink.CompleteCardPlayEffects(
                     this,
                     card,
-                    ownerBlockBeforePlay,
+                    cardBlockGainCount,
                     completionHistoryEntryStart);
                 if (HasPendingChoice)
                     return;

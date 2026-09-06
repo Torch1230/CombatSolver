@@ -12,8 +12,8 @@
 
 | # | 原始减损 | 原始求解器 → 玩家 | 优化后相对人工 | 是否更优 | 处理状态 | 遭遇 | 日志 | 汇总包 | 玩家备注 |
 |---:|---:|---:|---:|---|---|---|---|---|---|
-| 1 | 104 HP | 110 → 6 | +3 | 是 | 整场部署通过：开战还原、VeryHigh、原包四药强制政策，3 HP / 4 药，零非预期重算；Smart 另测预测 8 HP / 3 药 | AEONGLASS_BOSS | `CombatSolver-AEONGLASS_BOSS-20260903-153416-774.zip` | `combatsolver-reports-20260905-104714.zip` | 110->6 |
-| 2 | 68 HP | 123 → 55 | +5 | 是 | 整场部署通过：开战还原、VeryHigh、原包通关优先及仅稳定血清强制政策，50 HP / 1 药，零非预期重算；减战损优先另测仅死亡路线，评分试验退化已撤回 | AEONGLASS_BOSS | `CombatSolver-AEONGLASS_BOSS-20260903-152708-532.zip` | `combatsolver-reports-20260905-104714.zip` | 沙小第知道他自己打得过120血带药战士吗？ |
+| 1 | 104 HP | 110 → 6 | 待验证 | 待验证 | 存活达标（20260906）：9224f63+恢复批次，start严格恢复；历史验收政策VeryHigh/DOP4、四药Force、减战损优先，预测/实际1 HP、4药、T6、余122 HP，计划外重算0；报告人工参考差+5，缺人工完整录制；证据`.local/checkpoint-batch/worldline-resume/rank1-deploy/`；本构建该根首次搜索，缓存未单列计数；历史3 HP保留为旧证据 | AEONGLASS_BOSS | `CombatSolver-AEONGLASS_BOSS-20260903-153416-774.zip` | `combatsolver-reports-20260905-104714.zip` | 110->6 |
+| 2 | 68 HP | 123 → 55 | 待验证 | 待验证 | 跳过：未达存活目标（20260906）；9224f63+恢复批次，补齐原生选择/奖励编号后start严格恢复；历史政策VeryHigh/DOP4、通关优先、仅稳定血清Force，主搜及窄搜恢复仍死亡，预测HP0/敌147、1药，实际部署Failed；证据`.local/checkpoint-batch/worldline-resume/rank2-deploy/`；本构建该根首次搜索；历史50 HP不是当前验收 | AEONGLASS_BOSS | `CombatSolver-AEONGLASS_BOSS-20260903-152708-532.zip` | `combatsolver-reports-20260905-104714.zip` | 沙小第知道他自己打得过120血带药战士吗？ |
 | 3 | 58 HP | 61 → 3 | 待验证 | 待验证 | 未追平，待回访：开战与首次抽牌对账通过；VeryHigh、减战损优先、原包禁药政策预测从 22 HP 降至 20 HP，但仍未追平人工 3 HP，未做整场部署验收；包 3 本轮快速迭代停止，试验留存待后续有新证据时再回访 | TEST_SUBJECT_BOSS | `CombatSolver-TEST_SUBJECT_BOSS-20260902-133704-483.zip` | `combatsolver-reports-20260905-104714.zip` | 打实验体不开壁垒吃重击的来 |
 | 4 | 52 HP | 52 → 0 | 未验收 | 未验收 | 按用户要求跳过；旧 T4 续局 High/Force 2 HP、VeryHigh/Force 0 HP，整场未验收 | AEONGLASS_BOSS | `CombatSolver-AEONGLASS_BOSS-20260903-151202-078.zip` | `combatsolver-reports-20260905-104714.zip` | 手操从死亡到0战损 |
 | 5 | 49 HP | 73 → 24 | 待验证 | 待验证 | 证据不足，暂缓：原包 `settings.json` 缺少 `potionDirectives`，开战预检明确阻塞；未伪造药水指令或整场结果 | TEST_SUBJECT_BOSS | `CombatSolver-TEST_SUBJECT_BOSS-20260902-013258-533.zip` | `combatsolver-reports-20260905-104714.zip` | 更好的世界线 |

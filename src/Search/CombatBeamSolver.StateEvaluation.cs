@@ -235,6 +235,7 @@ internal sealed partial class CombatBeamSolver
                 enemyHp,
                 focus.TotalThreat,
                 focus.IncomingHitCount,
+                simulator.State.GetCreature(_player.Creature).Block,
                 strategicRequirements);
             StrategicEffectVector effect = StrategicEffectModel.Evaluate(
                 power,
@@ -252,6 +253,16 @@ internal sealed partial class CombatBeamSolver
                 playerState.OrbQueue.Orbs,
                 aliveEnemyCount);
         }
+        strategicContext ??= StrategicEffectContext.Build(
+            liveCards,
+            enemyHp,
+            focus.TotalThreat,
+            focus.IncomingHitCount,
+            simulator.State.GetCreature(_player.Creature).Block,
+            strategicRequirements
+                | StrategicEffectRequirements.RemainingTurns
+                | StrategicEffectRequirements.BlockSkillPlays
+                | StrategicEffectRequirements.BestCardValue);
         int latentSetupValue = 0;
         PersistentSetupTraits latentSetupTraits = PersistentSetupTraits.None;
         foreach (PredictedCard latentCard in liveCards)
@@ -262,7 +273,9 @@ internal sealed partial class CombatBeamSolver
             if (trait == PersistentSetupTraits.None
                 || !persistentSetupTraits.HasFlag(trait))
             {
-                latentSetupValue += LatentCardSetupValue(preview);
+                latentSetupValue = Math.Min(
+                    SolverWeights.LatentSetupBeamCap,
+                    latentSetupValue + LatentCardSetupValue(preview, strategicContext.Value));
             }
         }
         int replayPotentialValue = ReplayPotentialValue(liveCards);
@@ -791,6 +804,9 @@ internal sealed partial class CombatBeamSolver
             ThunderPower => PersistentSetupTraits.Thunder,
             LightningRodPower => PersistentSetupTraits.OrbEngine,
             DemonFormPower or CreativeAiPower => PersistentSetupTraits.RecurringScaling,
+            BarricadePower or RagePower or UnmovablePower or BlockNextTurnPower or DexterityPower
+                => PersistentSetupTraits.BlockEngine,
+            StratagemPower or WellLaidPlansPower => PersistentSetupTraits.FutureChoice,
             _ => PersistentSetupTraits.None,
         };
 
@@ -837,9 +853,23 @@ internal sealed partial class CombatBeamSolver
             && Hook.ShouldEtherealTrigger(simulator.State.CombatState, card.Preview);
     }
 
-    private static int LatentCardSetupValue(CardModel card)
+    private static int LatentCardSetupValue(
+        CardModel card,
+        StrategicEffectContext context)
         => card switch
         {
+            Rage => Math.Min(
+                SolverWeights.LatentSetupBeamCap,
+                context.AttackPlays
+                    * Math.Max(
+                        1,
+                        (int)Math.Ceiling(
+                            CardChoiceSupport.DynamicVarBaseValue(
+                                card.DynamicVars,
+                                "Power")))),
+            Prolong => Math.Min(
+                SolverWeights.LatentSetupBeamCap,
+                context.PlayerBlock),
             EchoForm => 12,
             BufferCard => 8,
             MadScience madScience when madScience.TinkerTimeType == CardType.Power
