@@ -1,10 +1,14 @@
 # 战斗路线求解器 / Combat Solver
 
+> 0.34.6 试玩：成长侧栏可选平衡、保命、永久培养、净收益目标。收益模式设置累计战损上限和最低结束血量；培养目标按本次路线的永久成长点数计算，0 表示不限，重新搜索重新计量。结果展示成长、金币与药水净变化；净收益分属于规则估值，不保证整局最优。
+>
+> 0.34.6 preview: the growth sidebar offers Balanced, Survival, Permanent Growth, and Net Resources objectives. Reward modes support battle HP-loss and ending-HP limits. The growth target counts permanent points from the current search root (0 = unlimited) and resets on a new search. Results show growth and net gold/potions; resource scores are heuristic values, not whole-run guarantees.
+
 Combat Solver 是一个面向《杀戮尖塔 2》单人模式的战斗路线求解器。进入战斗后，它会在后台模拟当前手牌、牌堆、敌人行动、药水、遗物、选牌和跨回合状态，并在预算范围内给出推荐路线、预计战损与关键行动。
 
 玩家可以只查看建议，也可以让求解器执行当前回合，或连续接管整场战斗。搜索不会修改游戏 RNG，也不会在后台操作真实战斗状态。
 
-当前本地试玩版本为 **0.34.5**：新增战后选牌与商店购买优先级。详见 [更新日志](docs/releases/0.34.5-RELEASE_NOTES.md)。
+当前本地试玩版本为 **0.34.6**：新增搜索目标选择，战后选牌与商店显示具体评分。详见 [更新日志](docs/releases/0.34.6-RELEASE_NOTES.md)。
 
 **English UI:** Set the game language to English and restart the game. CombatSolver provides a recommended route; use **Play turn** for one turn or **Auto: On** for continuous play. Configure potions, growth and search budgets in the overlay. **Settings > Reports > Upload report** submits a bug report. Logs, raw errors and some detailed diagnostics retain their original text. Single-player only.
 
@@ -28,9 +32,9 @@ Combat Solver 是一个面向《杀戮尖塔 2》单人模式的战斗路线求�
 
 战斗外打开奖励选牌或商店时自动显示排名，数字越小越优先，相同分数可以并列。奖励中的“跳过”也参与比较，因此三张牌的排名不一定连续。商店同时比较卡牌、遗物、药水、删牌与保留金币；购买后刷新，删牌项显示建议移除的牌。标记不拦截点击，不会自动替玩家购买或选牌。
 
-“推荐”采用当前牌组、遗物、费用、金币及生命等规则；“参考”表示该原版商品目前只采用通用稀有度估值。没有覆盖的第三方效果显示“暂不评级”。这是一套可解释的启发式建议，不是整局胜率或最优路线预测；未建模地图路线、后续随机奖励或所有特殊组合。商店比较的是下一步购买，不是一次买齐的组合规划。此模块不启动战斗搜索。
+“评分”采用当前牌组、遗物、费用、金币及生命等规则；“参考分”表示该原版商品目前只采用通用稀有度估值。没有覆盖的第三方效果显示“暂不评级”。这是一套可解释的启发式建议，不是整局胜率或最优路线预测；未建模地图路线、后续随机奖励或所有特殊组合。商店比较的是下一步购买，不是一次买齐的组合规划。此模块不启动战斗搜索。
 
-Reward cards, skipping and shop purchases now show heuristic priorities. Shops compare cards, relics, potions, removal and saving gold, then refresh after purchases. “Estimate” marks a generic rarity-based evaluation; unknown mod effects remain unrated. This preview does not predict win rates or optimize an entire shopping basket.
+Reward cards, skipping and shop purchases now show numeric heuristic scores. Shops compare cards, relics, potions, removal and saving gold, then refresh after purchases. “Estimate” marks a generic rarity-based evaluation; unknown mod effects remain unrated. This preview does not predict win rates or optimize an entire shopping basket.
 
 ## 工作方式
 

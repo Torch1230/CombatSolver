@@ -623,7 +623,7 @@ internal static class SolverOverlay
         {
             _summaryText.Visible = true;
             _summaryText.Text = _searchBestSnapshot is { } snapshot
-                ? SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.SummaryText) +
+                ? SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.LocalizedSummaryText) +
                   $"\n{reviewedWorldlinesText}"
                 : reviewedWorldlinesText;
         }
@@ -739,7 +739,7 @@ internal static class SolverOverlay
         if (_summaryText != null)
         {
             _summaryText.Visible = true;
-            _summaryText.Text = SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.SummaryText);
+            _summaryText.Text = SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.LocalizedSummaryText);
         }
         if (_progressText != null)
             _progressText.Visible = false;
@@ -759,7 +759,7 @@ internal static class SolverOverlay
         if (_detailsButton != null)
             _detailsButton.Visible = hasRouteDetails;
         if (_detailsText != null)
-            _detailsText.Text = SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.DetailsText);
+            _detailsText.Text = SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.LocalizedDetailsText);
         SetDetailsVisible(false);
         ShowLayer();
         RefreshControls();
@@ -1354,6 +1354,7 @@ internal static class SolverOverlay
         _growthStrategyPanel = new SolverGrowthStrategyPanel();
         _growthStrategyPanel.PolicyChanged += OnGrowthPolicyChanged;
         _growthStrategyPanel.IgnoreLongTermRewardsChanged += OnIgnoreLongTermRewardsChanged;
+        _growthStrategyPanel.ObjectiveChanged += OnSearchObjectiveChanged;
         _potionStrategyPanel.DirectiveChanged += OnPotionDirectiveChanged;
 
         _body = new VBoxContainer
@@ -1434,6 +1435,11 @@ internal static class SolverOverlay
 
         _detailsPanel = CreateSectionPanel("DetailsPanel");
         _detailsText = CreateRichText(SolverUiTokens.Type.Caption);
+        SolverLocaleRefresh.Bind(_detailsText, () =>
+        {
+            if (_lastSnapshot is { Objective: not null } snapshot)
+                _detailsText.Text = SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.LocalizedDetailsText);
+        });
         _detailsText.FitContent = true;
         _detailsText.CustomMinimumSize = new Vector2(0, 56);
         _detailsPanel.AddChild(_detailsText);
@@ -1739,6 +1745,11 @@ internal static class SolverOverlay
         _summaryContextLabel.ClipText = true;
         statusRow.AddChild(_summaryContextLabel);
         _summaryText = CreateRichText(SolverUiTokens.Type.Metric);
+        SolverLocaleRefresh.Bind(_summaryText, () =>
+        {
+            if ((_searchBestSnapshot ?? _lastSnapshot) is { Objective: not null } snapshot)
+                _summaryText.Text = SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.LocalizedSummaryText);
+        });
         _summaryText.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _summaryText.FitContent = true;
         _summaryText.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
@@ -2736,6 +2747,13 @@ internal static class SolverOverlay
         CombatState? state = CombatManager.Instance.DebugOnlyGetState();
         if (host != null && state != null && CombatManager.Instance.IsInProgress)
             SolverController.SetGrowthPolicy(host, state, budgets);
+    }
+
+    private static void OnSearchObjectiveChanged(SearchObjectivePolicy objective)
+    {
+        if (NGame.Instance is { } host && CombatManager.Instance.IsInProgress
+            && CombatManager.Instance.DebugOnlyGetState() is { } state)
+            SolverController.SetSearchObjective(host, state, objective);
     }
 
     private static void OnIgnoreLongTermRewardsChanged(bool ignore)

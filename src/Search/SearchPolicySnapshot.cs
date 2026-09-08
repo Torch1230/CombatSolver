@@ -21,6 +21,7 @@ internal sealed record SearchPolicySnapshot(
     SearchFramePressureSignal FramePressureSignal,
     SearchMemoryPressureSignal MemoryPressureSignal)
 {
+    public SearchObjectivePolicy Objective { get; init; } = new(SearchObjective.Balanced, 10, 1, 0);
     public GrowthValues GrowthBudgets { get; init; }
     public bool HasGrowthTargets { get; init; }
 
@@ -30,14 +31,21 @@ internal sealed record SearchPolicySnapshot(
     /// </summary>
     public bool IgnoreLongTermRewards { get; init; }
 
-    /// <summary>搜索真正该用的额度。开着「不考虑局外收益」时一律为零。</summary>
-    public GrowthValues EffectiveGrowthBudgets => IgnoreLongTermRewards ? default : GrowthBudgets;
+    public SearchObjectivePolicy EffectiveObjective => IgnoreLongTermRewards && Objective.IsRewardObjective
+        ? Objective with { Mode = SearchObjective.Balanced } : Objective;
+    public BossHpRelief ResolveStrategicHpRelief(BossHpRelief relief)
+        => EffectiveObjective.Mode == SearchObjective.Survival ? BossHpRelief.None
+            : ActEndingBossPolicy.ResolveStrategicHpRelief(relief, ActTransitionBossHpStrategy, FinalBossHpStrategy);
+
+    public GrowthValues EffectiveGrowthBudgets => IgnoreLongTermRewards
+        || Objective.Mode != SearchObjective.Balanced ? default : GrowthBudgets;
 
     /// <summary>
     /// 搜索真正该看的「牌组里有没有成长目标」。开着「不考虑局外收益」时为假，
     /// 于是「打到可接受战损就提早收手」那条捷径会重新生效——不要收益了，就没有理由继续搜下去。
     /// </summary>
-    public bool EffectiveHasGrowthTargets => !IgnoreLongTermRewards && HasGrowthTargets;
+    public bool EffectiveHasGrowthTargets => EffectiveObjective.IsRewardObjective || !IgnoreLongTermRewards
+        && Objective.Mode == SearchObjective.Balanced && HasGrowthTargets;
     public SearchRequestWorkTotals? RequestWorkTotals { get; init; }
     public SearchInteractionState? Interaction { get; init; }
 }

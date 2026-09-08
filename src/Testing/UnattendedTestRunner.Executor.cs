@@ -44,6 +44,23 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertNormalityAutoPlayAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "SEARCH-OBJECTIVES-CONTRACTS")
+            {
+                runner.AssertSearchObjectiveEdgeContracts(combatState);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "SEARCH-OBJECTIVES-UI" or "SEARCH-OBJECTIVES-UI-LOCALE")
+            {
+                await runner.AssertSearchObjectiveUiAsync(combatState);
+                if (request.ScenarioId == "SEARCH-OBJECTIVES-UI")
+                    await runner.AssertRunAdviceAsync(player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "SEARCH-OBJECTIVES-GROWTH" or "SEARCH-OBJECTIVES-RESOURCES")
+            {
+                await runner.AssertSearchObjectivesAsync(combatState);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "RUN-ADVICE")
             {
                 await runner.AssertRunAdviceAsync(player);

@@ -74,6 +74,7 @@ internal sealed record SolverSettingsData
     [JsonIgnore]
     public SolverPotionPolicy PotionPolicy { get; init; } = SolverPotionPolicy.Smart;
     public PersistedPotionDirective[] PotionDirectives { get; init; } = [];
+    public SearchObjectivePolicy Objective { get; init; } = new(SearchObjective.Balanced, 10, 1, 0);
     public GrowthValues GrowthBudgets { get; init; }
     /// <summary>
     /// 不考虑局外收益。打开后搜索既不为金币、永久升级这类战斗外收益付出任何血量，也不再用它们
@@ -134,6 +135,7 @@ internal sealed record SolverSettingsSnapshot(
     SolverDeploymentFastMode DeploymentFastMode,
     double DeploymentInterActionDelaySeconds)
 {
+    public SearchObjectivePolicy Objective { get; init; } = new(SearchObjective.Balanced, 10, 1, 0);
     public GrowthValues GrowthBudgets { get; init; }
     public bool IgnoreLongTermRewards { get; init; }
 }
@@ -301,6 +303,7 @@ internal static class SolverSettings
             data.DeploymentFastMode,
             data.DeploymentInterActionDelaySeconds ?? 0d)
         {
+            Objective = data.Objective,
             GrowthBudgets = data.GrowthBudgets,
             IgnoreLongTermRewards = data.IgnoreLongTermRewards,
         };
@@ -554,6 +557,7 @@ internal static class SolverSettings
             throw new InvalidDataException(
                 $"{nameof(data.AcceptableBattleHpLoss)} must be between 0 and {MaximumAcceptableBattleHpLoss}.");
         }
+        data.Objective.Validate();
         data.GrowthBudgets.ValidateBudgets();
         HashSet<(int Slot, string PotionId)> potionDirectiveKeys = [];
         foreach (PersistedPotionDirective directive in data.PotionDirectives)

@@ -28,6 +28,9 @@ internal sealed class CombatRootSnapshot
     public ContinuationStamp ContinuationStamp { get; }
     public int PlayerCount { get; }
     public int StartTurnNumber { get; }
+    public int InitialGold { get; }
+    public int InitialPotionCount { get; }
+    public int InitialPotionValue { get; }
     public int InitialPlayerHp { get; }
     public int InitialPlayerMaxHp { get; }
     public int PotionSlotCount { get; }
@@ -87,6 +90,9 @@ internal sealed class CombatRootSnapshot
         LiveStamp = liveStamp;
         ContinuationStamp = continuationStamp;
         _rootSimulator = rootSimulator;
+        var resources = (SimulatedCombatState)rootSimulator.State.CombatState;
+        InitialGold = resources.GetPlayerGold(playerIdentity);
+        (InitialPotionCount, InitialPotionValue) = resources.CapturePotionResources(playerIdentity);
         PlayerCount = playerCount;
         StartTurnNumber = startTurnNumber;
         InitialPlayerHp = initialPlayerHp;

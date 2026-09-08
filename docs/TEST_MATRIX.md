@@ -1,12 +1,22 @@
 # CombatSolver 测试清单
 
-## 2026-09-09：无序牌堆指纹缓存（待运行验证）
+## 2026-09-09：四种搜索目标（0.34.6 试玩）
 
-- 用户正在游戏，明确暂不测试；本轮只做静态调用链审查与 Release 编译，不运行游戏、基准或测试，不安装。待验证：同根新旧指纹逐位一致；增删/移牌/牌面修改后失效；父子及兄弟 Fork 隔离；外部可变附属模型禁用缓存；固定节点目标与哨兵的动作、评分、展开、转移、剪枝指标一致，再测耗时及分配。旧性能实验不作为本次改动通过或收益证据。
+- `SEARCH-OBJECTIVES-GROWTH` / `SEARCH-OBJECTIVES-RESOURCES`：两牌、1 能量、敌 6 HP 的短搜索，比较平衡、保命、收益、零损限制四条路线。断言获胜、实际收益差、限制生效；开启增量回放只验证一致性，不引用耗时作为性能收益。
+- 同场合同覆盖目标配置序列化/冻结、成长面板和 eng/zhs/zht 文案、实际成长 Fork 隔离及状态键、无序牌堆指纹缓存与强制重算一致。
+- 成长夹具 `e5bd29dbf7d64f91baec2e4f4d3add56` Passed；净资源夹具 `e0c79440ae574106baa0d6e775e55225` Passed。前者选择永久格挡成长，后者选择额外金币；零损约束都拒绝付血收益。两者均完成上述四种搜索和增量回放。
+- 原生 UI 与 `RUN-ADVICE` 合并夹具 `2e326b4a30e74af9884f43f24b833128` Passed，31.18 秒：下拉框/限制输入真实信号保存设置；收益面板边界；奖励数值评分、原生购买后评分刷新及重掷。查看渲染图后发现摘要热切换漏更新，修复后定向 `SEARCH-OBJECTIVES-UI-LOCALE`，`179a98a732494bb4a7cb4967390cc736` Passed，25.23 秒，新增摘要语言断言。未重跑无关的商店与战斗夹具。
+- `SEARCH-OBJECTIVES-CONTRACTS`（`8bad25ea5ccb4373ae41a77b52398068`）验证旧忽略收益开关保留 Boss 血量政策，以及培养达标后同分时仍接受省药改进；Passed。根策略、预测状态、测试与 UI 均编译通过。
+- 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=80`；渲染图与请求结果保留在 `.local/perf-root/`。这是隔离游戏实例，非真实 Steam 存档/整局质量验收。无序指纹缓存仅有一致性合同与增量回放证据，没有新的性能提升数字。
+- 复跑入口 `tools/run-unattended-test.ps1`（或同协议 `.sh`）：ScenarioId 为 `SEARCH-OBJECTIVES-GROWTH` / `SEARCH-OBJECTIVES-RESOURCES`，CharacterId 为 DEFECT / IRONCLAD，ClearRunDeck、ClearPlayerPiles，InitialPlayerEnergy=1、InitialPlayerBlock=0、EnemyCurrentHp=6、TimeoutSeconds=120、ExitOnComplete。手牌为 GENETIC_ALGORITHM+STRIKE_DEFECT / HAND_OF_GREED+STRIKE_IRONCLAD，均 treatAsDeckCard=true。UI 使用成长手牌；`SEARCH-OBJECTIVES-UI` 同时运行奖励商店验证，`SEARCH-OBJECTIVES-UI-LOCALE` 只复测目标 UI。渲染运行仍沿用隔离 launcher，仅换成 windowed 1600×900、60 FPS；临时 launcher 不提交。
 
-## 2026-09-09：数值评分展示（开发中）
+## 2026-09-09：无序牌堆指纹缓存（首次实现记录）
 
-- 按用户要求不启动游戏、不运行测试、不覆盖正在使用的 Mod。此次仅执行 Release 编译；数值标签布局与语言切换尚未运行验证，旧版测试不作为本次通过证据。
+- 后续验证见本页 0.34.6 章节。首次实现时用户正在游戏，明确暂不测试；当时只做静态调用链审查与 Release 编译，不运行游戏、基准或测试，不安装。待验证：同根新旧指纹逐位一致；增删/移牌/牌面修改后失效；父子及兄弟 Fork 隔离；外部可变附属模型禁用缓存；固定节点目标与哨兵的动作、评分、展开、转移、剪枝指标一致，再测耗时及分配。旧性能实验不作为本次改动通过或收益证据。
+
+## 2026-09-09：数值评分展示（首次实现记录）
+
+- 后续原生界面验证见本页 0.34.6 章节。首次实现按用户要求不启动游戏、不运行测试、不覆盖正在使用的 Mod。当时仅执行 Release 编译；数值标签布局与语言切换尚未运行验证，旧版测试不作为本次通过证据。
 
 ## 2026-09-09：奖励与商店推荐（0.34.5 试玩）
 

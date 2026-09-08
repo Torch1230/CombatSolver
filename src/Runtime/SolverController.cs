@@ -497,6 +497,7 @@ internal static class SolverController
             Interaction = interaction,
             // 这里记的是玩家填的原始值；「不考虑局外收益」的折算交给快照上的 Effective* 一处做，
             // 免得两边各判一次而走岔。问题包里两样都在，方便看出当时是填了额度还是开了开关。
+            Objective = settings.Objective,
             GrowthBudgets = settings.GrowthBudgets,
             HasGrowthTargets = settings.GrowthBudgets.IsEnabled
                 || state.Players.SelectMany(player => player.PlayerCombatState!.AllCards).Any(GrowthValues.HasTarget),
@@ -1697,6 +1698,24 @@ internal static class SolverController
             RequestSearch(host, state, SearchReason.Manual);
     }
 
+    internal static void SetSearchObjective(NGame host, CombatState state, SearchObjectivePolicy objective)
+    {
+        AssertMainThread();
+        objective.Validate();
+        if (_deployment != null || SolverSettings.Current.Objective == objective
+            && !SolverSettings.Current.IgnoreLongTermRewards) return;
+        SolverSettings.Update(SolverSettings.Current with
+        {
+            Objective = objective,
+            IgnoreLongTermRewards = false,
+        });
+        _combat.ContinuationSource = null;
+        _combat.PendingCompleteProjectionBaseline = null;
+        SolverOverlay.RefreshControls();
+        if (!_combat.AutomaticSearchPaused && AutomaticCalculationEnabled)
+            RequestSearch(host, state, SearchReason.Manual);
+    }
+
     internal static void SetIgnoreLongTermRewards(NGame host, CombatState state, bool ignore)
     {
         AssertMainThread();
@@ -2361,6 +2380,14 @@ internal static class SolverController
 
     private static void StartFullAutoDeployment(NGame host, CombatState state, SolverResult result)
     {
+        if (result.Snapshot.Objective.Policy.IsRewardObjective
+            && (!result.CombatEndedTurn.HasValue || !result.Snapshot.Objective.MeetsLimits))
+        {
+            _combat.FullAutoEnabled = false;
+            SolverOverlay.RefreshControls();
+            Entry.Logger.Info("[CombatSolver] FULL_AUTO_STOP reason=objective_limits_unproven");
+            return;
+        }
         if (_stopFullAutoOnWorseRecalculation
             && !result.WasReused
             && result.ProjectedBattleHpLossIncrease > 0)
