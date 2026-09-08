@@ -92,8 +92,9 @@ internal static class RunAdvice
         if (offer.Kind == AdviceKind.Removal && removalId is null) available = false;
         if (shop && offer.Kind != AdviceKind.Skip)
         {
-            double goldValue = context.Gold < 150 ? 0.09 : 0.06;
-            value -= Math.Max(0, offer.Cost) * goldValue;
+            int cost = Math.Max(0, offer.Cost);
+            int surplusSpend = Math.Min(cost, Math.Max(0, context.Gold - 150));
+            value -= surplusSpend * 0.06 + (cost - surplusSpend) * 0.09;
             reasons.Add("已考虑价格与留钱");
         }
         if (!known) reasons.Add("效果规则未覆盖");
