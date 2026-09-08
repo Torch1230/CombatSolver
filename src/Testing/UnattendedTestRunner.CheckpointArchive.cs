@@ -91,7 +91,7 @@ internal sealed partial class UnattendedTestRunner
         }
         JsonObject settings = JsonSerializer.SerializeToNode(current, UnattendedTestFiles.JsonOptions)!.AsObject();
         settings["objective"] = recorded["objective"]?.DeepClone()
-            ?? JsonSerializer.SerializeToNode(new SearchObjectivePolicy(SearchObjective.Balanced, 10, 1, 0), UnattendedTestFiles.JsonOptions);
+            ?? JsonSerializer.SerializeToNode(SearchObjectivePolicy.Default, UnattendedTestFiles.JsonOptions);
         // Archives recorded before growth policy existed used zero willingness for this feature.
         settings["growthBudgets"] = recorded["growthBudgets"]?.DeepClone()
             ?? JsonSerializer.SerializeToNode(default(GrowthValues), UnattendedTestFiles.JsonOptions);

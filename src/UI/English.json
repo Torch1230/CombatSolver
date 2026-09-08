@@ -379,5 +379,7 @@
   "预计累计战损 {0} HP，超过上限 {1} HP": "Projected battle HP loss {0} exceeds the limit of {1} HP",
   "预计结束血量 {0} HP，低于下限 {1} HP": "Projected ending HP {0} is below the minimum of {1} HP",
   "全自动已暂停：": "Full auto paused: ",
-  "可在成长策略中调整限制或切换目标，然后重新计算；也可人工检查路线后执行本回合。": "Adjust limits or switch objectives in Growth Strategy, then recalculate. Alternatively, review the route and execute the current turn manually."
+  "可在成长策略中调整限制或切换目标，然后重新计算；也可人工检查路线后执行本回合。": "Adjust limits or switch objectives in Growth Strategy, then recalculate. Alternatively, review the route and execute the current turn manually.",
+  "最低结束血量（收益目标）": "Minimum end HP (reward modes)",
+  "平衡：优先降低战略战损，同分再比较成长收益；手动成长额度可允许换血。最低血量和累计战损限制仅用于永久成长与净收益目标，默认保留 30 HP、累计战损不超过 10 HP。已有自定义限制保留。": "Balanced minimizes strategic HP loss, then compares growth rewards on ties; custom growth allowances can permit HP trades. Minimum HP and total loss limits apply only to growth and net-resource modes. Defaults: retain 30 HP, lose at most 10 HP. Existing custom limits are preserved."
 }

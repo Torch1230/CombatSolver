@@ -74,7 +74,7 @@ internal sealed record SolverSettingsData
     [JsonIgnore]
     public SolverPotionPolicy PotionPolicy { get; init; } = SolverPotionPolicy.Smart;
     public PersistedPotionDirective[] PotionDirectives { get; init; } = [];
-    public SearchObjectivePolicy Objective { get; init; } = new(SearchObjective.Balanced, 10, 1, 0);
+    public SearchObjectivePolicy Objective { get; init; } = SearchObjectivePolicy.Default;
     public GrowthValues GrowthBudgets { get; init; }
     /// <summary>
     /// 不考虑局外收益。打开后搜索既不为金币、永久升级这类战斗外收益付出任何血量，也不再用它们
@@ -135,7 +135,7 @@ internal sealed record SolverSettingsSnapshot(
     SolverDeploymentFastMode DeploymentFastMode,
     double DeploymentInterActionDelaySeconds)
 {
-    public SearchObjectivePolicy Objective { get; init; } = new(SearchObjective.Balanced, 10, 1, 0);
+    public SearchObjectivePolicy Objective { get; init; } = SearchObjectivePolicy.Default;
     public GrowthValues GrowthBudgets { get; init; }
     public bool IgnoreLongTermRewards { get; init; }
 }

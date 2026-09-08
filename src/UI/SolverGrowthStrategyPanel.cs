@@ -109,7 +109,7 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
             _objectiveMode.AddItem(SolverText.Get(SearchObjectiveText.Name(mode)), (int)mode);
         layout.AddChild(_objectiveMode);
         AddObjectiveInput(layout, "允许本场累计战损", _objectiveLoss);
-        AddObjectiveInput(layout, "最低结束血量", _objectiveHp);
+        AddObjectiveInput(layout, "最低结束血量（收益目标）", _objectiveHp);
         AddObjectiveInput(layout, "本次路线培养目标（点，0 不限）", _objectiveTarget);
         _objectiveMode.ItemSelected += _ => PublishObjective();
         _objectiveLoss.ValueChanged += _ => PublishObjective();
@@ -118,6 +118,7 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
         SolverLocaleRefresh.Bind(title, () =>
         {
             title.Text = SolverText.Get("搜索目标");
+            _objectiveMode.TooltipText = SolverText.Get("平衡：优先降低战略战损，同分再比较成长收益；手动成长额度可允许换血。最低血量和累计战损限制仅用于永久成长与净收益目标，默认保留 30 HP、累计战损不超过 10 HP。已有自定义限制保留。");
             foreach (SearchObjective mode in Enum.GetValues<SearchObjective>())
                 _objectiveMode.SetItemText((int)mode, SolverText.Get(SearchObjectiveText.Name(mode)));
         });

@@ -21,7 +21,7 @@ internal sealed record SearchPolicySnapshot(
     SearchFramePressureSignal FramePressureSignal,
     SearchMemoryPressureSignal MemoryPressureSignal)
 {
-    public SearchObjectivePolicy Objective { get; init; } = new(SearchObjective.Balanced, 10, 1, 0);
+    public SearchObjectivePolicy Objective { get; init; } = SearchObjectivePolicy.Default;
     public GrowthValues GrowthBudgets { get; init; }
     public bool HasGrowthTargets { get; init; }
 

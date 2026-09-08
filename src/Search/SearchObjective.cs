@@ -5,9 +5,11 @@ internal enum SearchObjective { Balanced, Survival, PermanentGrowth, NetResource
 internal readonly record struct SearchObjectivePolicy(
     SearchObjective Mode = SearchObjective.Balanced,
     int MaximumBattleHpLoss = 10,
-    int MinimumEndingHp = 1,
+    int MinimumEndingHp = 30,
     int GrowthTarget = 0)
 {
+    public static SearchObjectivePolicy Default => new(SearchObjective.Balanced, 10, 30, 0);
+
     public bool IsRewardObjective => Mode is SearchObjective.PermanentGrowth or SearchObjective.NetResources;
 
     public void Validate()
