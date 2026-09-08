@@ -17,6 +17,20 @@ internal static class SearchObjectiveText
         return SolverText.Format($"目标：{name} · 永久成长 {outcome.Growth.Total} 点 · 净收益参考分 {outcome.NetResourceScore}");
     }
 
+    internal static string FullAutoStop(SearchObjectiveOutcome outcome, bool completeVictory)
+    {
+        if (!completeVictory)
+            return SolverText.Get("全自动已暂停：尚未找到完整胜利路线，无法确认收益限制。请重新计算，或在成长策略中切换为平衡／保命优先。");
+        List<string> reasons = [];
+        if (outcome.BattleHpLoss > outcome.Policy.MaximumBattleHpLoss)
+            reasons.Add(SolverText.Format($"预计累计战损 {outcome.BattleHpLoss} HP，超过上限 {outcome.Policy.MaximumBattleHpLoss} HP"));
+        if (outcome.EndingHp < outcome.Policy.MinimumEndingHp)
+            reasons.Add(SolverText.Format($"预计结束血量 {outcome.EndingHp} HP，低于下限 {outcome.Policy.MinimumEndingHp} HP"));
+        if (reasons.Count == 0) return string.Empty;
+        return SolverText.Get("全自动已暂停：") + string.Join("；", reasons) + "\n"
+            + SolverText.Get("可在成长策略中调整限制或切换目标，然后重新计算；也可人工检查路线后执行本回合。");
+    }
+
     internal static string Details(SearchObjectiveOutcome outcome)
     {
         string detail = SolverText.Format($"本次路线收益：最大生命 {outcome.Growth.MaxHp:+0;-0;0} · 永久伤害 {outcome.Growth.CardDamage:+0;-0;0} · 永久格挡 {outcome.Growth.CardBlock:+0;-0;0}\n金币净变化 {outcome.GoldGain:+0;-0;0} · 待结算金币 {outcome.PendingGold} · 药水数量净变化 {outcome.PotionCountChange:+0;-0;0} · 额外选牌奖励 {outcome.ExtraCardRewards}");

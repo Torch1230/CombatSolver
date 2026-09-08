@@ -1389,6 +1389,9 @@ internal static class SolverController
         if (currentTurn > 1 && _combat.LastSolverDeployedTurn != currentTurn - 1)
             MarkManualControlObserved("full_auto_after_manual_turn");
 
+        LiveCombatStamp current = LiveCombatStamp.Capture(state);
+        if (_combat.LatestResult is { } ready && _combat.LatestStamp == current
+            && StopFullAutoForObjective(ready)) return;
         _combat.FullAutoEnabled = true;
         Entry.Logger.Info(
             $"[CombatSolver/Test] FULL_AUTO enabled=true stop_on_combat_end={_stopFullAutoOnCombatEnd} " +
@@ -1396,7 +1399,6 @@ internal static class SolverController
             $"stop_on_worse_recalculation={_stopFullAutoOnWorseRecalculation}");
         SolverOverlay.RefreshControls();
 
-        LiveCombatStamp current = LiveCombatStamp.Capture(state);
         if (_combat.LatestResult != null && _combat.LatestStamp == current)
         {
             StartFullAutoDeployment(host, state, _combat.LatestResult);
@@ -2378,16 +2380,23 @@ internal static class SolverController
             StatusTone = SolverOverlayTone.Success,
         };
 
+    private static bool StopFullAutoForObjective(SolverResult result)
+    {
+        SearchObjectiveOutcome outcome = result.Snapshot.Objective;
+        bool complete = result.CombatEndedTurn.HasValue;
+        if (!outcome.Policy.IsRewardObjective || complete && outcome.MeetsLimits) return false;
+        _combat.FullAutoEnabled = false;
+        SolverOverlay.RefreshControls();
+        SolverOverlay.ShowFullAutoStoppedByObjective(outcome, complete);
+        Entry.Logger.Info($"[CombatSolver] FULL_AUTO_STOP reason=objective_limits_unproven complete={complete} " +
+            $"hp_loss={outcome.BattleHpLoss} max_loss={outcome.Policy.MaximumBattleHpLoss} " +
+            $"ending_hp={outcome.EndingHp} min_hp={outcome.Policy.MinimumEndingHp}");
+        return true;
+    }
+
     private static void StartFullAutoDeployment(NGame host, CombatState state, SolverResult result)
     {
-        if (result.Snapshot.Objective.Policy.IsRewardObjective
-            && (!result.CombatEndedTurn.HasValue || !result.Snapshot.Objective.MeetsLimits))
-        {
-            _combat.FullAutoEnabled = false;
-            SolverOverlay.RefreshControls();
-            Entry.Logger.Info("[CombatSolver] FULL_AUTO_STOP reason=objective_limits_unproven");
-            return;
-        }
+        if (StopFullAutoForObjective(result)) return;
         if (_stopFullAutoOnWorseRecalculation
             && !result.WasReused
             && result.ProjectedBattleHpLossIncrease > 0)
