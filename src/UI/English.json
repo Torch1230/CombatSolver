@@ -355,5 +355,9 @@
   "建议先留钱 · 已比较商品与删牌\n规则推荐（试玩），购买后会更新": "Consider saving gold; items and removal compared\nHeuristic preview; updates after purchases",
   "按当前金币比较商品与删牌\n规则推荐（试玩），购买后会更新": "Items and removal compared within your budget\nHeuristic preview; updates after purchases",
   "优先移除：{0}": "Remove first: {0}",
-  "提供持续效果": "Adds persistent effects"
+  "提供持续效果": "Adds persistent effects",
+  "参考分 {0:F1}": "Estimate {0:F1}",
+  "评分 {0:F1}": "Score {0:F1}",
+  "评分越高越优先 · 跳过基准为 0 分\n启发式评分，非百分制或胜率": "Higher scores rank better; skipping = 0\nHeuristic score, not a percentage or win rate",
+  "评分越高越优先 · 已计入价格 · 留钱为 0 分\n启发式评分，购买后更新；非百分制或胜率": "Higher scores rank better; price included; saving = 0\nUpdates after purchases; not a percentage or win rate"
 }

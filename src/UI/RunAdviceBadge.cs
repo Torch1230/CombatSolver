@@ -34,8 +34,8 @@ internal static class RunAdviceBadge
         {
             string title = !rating.Available ? SolverText.Get("暂不可选")
                 : rating.Rank == 0 ? SolverText.Get("暂不评级")
-                : !rating.Known ? SolverText.Format($"参考 #{rating.Rank}")
-                : SolverText.Format($"推荐 #{rating.Rank}");
+                : !rating.Known ? SolverText.Format($"参考分 {rating.Score:F1}")
+                : SolverText.Format($"评分 {rating.Score:F1}");
             string reason = detail?.Invoke() ?? string.Join(" · ",
                 (rating.Available ? rating.Reasons.Take(compact ? 1 : 2) : rating.Reasons.TakeLast(2)).Select(SolverText.Get));
             label.Text = titleOnly ? title : title + "\n" + reason;

@@ -91,10 +91,10 @@ internal sealed partial class UnattendedTestRunner
         for (int i = 0; i < remaining.Length; i++)
         {
             if (!remaining[i].Entry.IsStocked || !expected[i].Available || expected[i].Rank == 0) continue;
-            AdviceAssert(remaining[i].GetNode<Label>(RunAdviceBadge.NodeName).Text.Contains($"#{expected[i].Rank}"),
-                "remaining rankings refreshed using new budget and deck");
+            AdviceAssert(remaining[i].GetNode<Label>(RunAdviceBadge.NodeName).Text.Contains($"{expected[i].Score:F1}"),
+                "remaining scores refreshed using new budget and deck");
         }
-        _completedChecks.Add("RunAdvice:NativePurchase:Gold:Deck:SoldBadge:RemainingRanksUpdated");
+        _completedChecks.Add("RunAdvice:NativePurchase:Gold:Deck:SoldBadge:RemainingScoresUpdated");
 
         CardCreationResult[] cards = [new(player.RunState.CreateCard(ModelDb.Card<StrikeIronclad>(), player)),
             new(player.RunState.CreateCard(ModelDb.Card<DefendIronclad>(), player)),
@@ -114,7 +114,7 @@ internal sealed partial class UnattendedTestRunner
                 await NextFrameAsync();
                 await NextFrameAsync();
                 string text = screen.GetCardHolder(cards[0].Card).GetNode<Label>(RunAdviceBadge.NodeName).Text;
-                AdviceAssert(text.Contains(locale == "eng" ? "Pick #" : "推荐 #"), "live label language refresh");
+                AdviceAssert(text.Contains(locale == "eng" ? "Score " : "评分 "), "live label language refresh");
                 foreach (var rating in poor.Concat(good).Concat(unavailable).Concat(removal).Concat(generic))
                     foreach (string reason in rating.Reasons) _ = SolverText.Get(reason);
             }

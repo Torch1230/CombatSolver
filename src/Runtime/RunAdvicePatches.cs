@@ -49,9 +49,8 @@ internal static class RunAdvicePresentation
                 label.Size = new Vector2(buttons[index].Size.X, 35);
             }
         }
-        RunAdviceBadge.Summary(screen, skip?.Rank == 1
-            ? "建议跳过 · 保持牌组精简\n规则推荐（试玩），不代表整局最优解"
-            : "按当前牌组与遗物推荐\n规则推荐（试玩），不代表整局最优解", reward: true);
+        RunAdviceBadge.Summary(screen,
+            "评分越高越优先 · 跳过基准为 0 分\n启发式评分，非百分制或胜率", reward: true);
     }
 
     internal static void Shop(NMerchantInventory shop)
@@ -69,9 +68,8 @@ internal static class RunAdvicePresentation
             RunAdviceBadge.Show(slots[i], ratings[i], compact: true,
                 detail: removalCard is null ? null : () => SolverText.Format($"优先移除：{removalCard.Title}"));
         }
-        RunAdviceBadge.Summary(shop, ratings[^1].Rank == 1
-            ? "建议先留钱 · 已比较商品与删牌\n规则推荐（试玩），购买后会更新"
-            : "按当前金币比较商品与删牌\n规则推荐（试玩），购买后会更新");
+        RunAdviceBadge.Summary(shop,
+            "评分越高越优先 · 已计入价格 · 留钱为 0 分\n启发式评分，购买后更新；非百分制或胜率");
     }
 }
 
