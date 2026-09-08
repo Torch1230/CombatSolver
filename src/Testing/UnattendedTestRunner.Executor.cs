@@ -44,6 +44,11 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertNormalityAutoPlayAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "RUN-ADVICE")
+            {
+                await runner.AssertRunAdviceAsync(player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "UI-LOCALIZATION")
             {
                 await runner.AssertUiLocalizationAsync(combatState);

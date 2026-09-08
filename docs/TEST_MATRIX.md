@@ -1,5 +1,16 @@
 # CombatSolver 测试清单
 
+## 2026-09-09：奖励与商店推荐（0.34.5 试玩）
+
+- `RUN-ADVICE`：原生 headless 首次验证 `ddcf78267d984611948c5536d7a5c2c5` Passed。最终行为源码在独立 Windows 渲染实例运行 `176a7b909ce245e5bc85b5e5283ce758` Passed，28.55 秒，游戏 0.111.0 / RitsuLib 0.5.18。
+- 规则反例覆盖：重复基础牌应输给跳过、有用抽牌优先、生成小刀不误标为抽牌、金币不足、满药水栏、诅咒删除优先、不可移除牌排除、未知效果不伪造评级、通用评级保留低置信度。
+- 通过原版 Shop 开启与 CardRewardSelectionScreen.RefreshOptions 的实际补丁路径，检查每类商品和奖励的标签及 MouseFilter.Ignore；原生购买一张卡后核对金币减少、牌组增长、已售标签消失，以及其他排名按新上下文更新。奖励重新排列后无旧 holder，存活标签经过 eng/zhs/zht 切换。
+- 渲染检查发现并修复商店标签遮住牌面、ZIndex 使背景商店标记穿透奖励 overlay、底部说明压住跳过按钮的问题。最终保存并查看两张原生画面；这是隔离的有渲染窗口，不是正式 Steam 存档验收。截图与原始结果保留在本地 `.local/perf-root/advice-*.png` / `advice-final-result.json`。
+- 重跑合同：`pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId RUN-ADVICE -Seed COMBATSOLVER-ADVICE -EncounterId BYGONE_EFFIGY_ELITE -CardsJson '[]' -HeadlessInstance advice -TimeoutSeconds 120 -ExitOnComplete`，平台安装路径按 launcher 参数覆盖。渲染样本使用同一入口的临时本地副本，只把 `--headless` 换成 `--windowed --resolution 1600x900` 并显示窗口；副本已移除。
+- Release 编译 0 warnings / 0 errors；结构门禁 `REFACTOR_BOUNDARIES_OK search_files=79`。没有执行整局策略质量验证、多分辨率/手柄体验测试，也没有证明启发式排名优于玩家判断。
+
+
+
 ## 2026-09-08：凡庸与自动打牌（0.34.4）
 
 - 原报告 `12f213c23ccd4a00abaf7a80c796273e` 的第 6 回合在发现、彼岸咆哮后打出倾泻，Normality 仍在手；原版结束回合复核为 25 HP，计划为 0 HP。日志定位后直接构造最小夹具，没有运行原包恢复。

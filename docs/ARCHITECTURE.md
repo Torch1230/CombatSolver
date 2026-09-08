@@ -212,6 +212,10 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 普通能力与多实例能力共用逐实例获得顺序表，Fork 通过同一 `PredictionForkContext.RequireRemap` 映射到子分支。重新获得已移除的普通能力时建立新实例，回合开始数量与内部状态由新实例初始化。新召唤友方归入敌方段之前，按原版友方/敌方顺序构造监听表。
 
+## 奖励与商店建议
+
+`src/Advice/RunAdvice.cs` 只接收不可变的值输入，输出边际收益排序、可用性、置信度与理由；不依赖搜索模拟器、RNG 或 UI。`RunAdviceCapture` 在主线程读取当前玩家与 MerchantEntry，保留当下价格和移除候选身份，不执行购买。`Runtime/RunAdvicePatches` 负责战斗外单人页面准入、原生奖励刷新与商店购买完成后刷新；`UI/RunAdviceBadge` 负责本地化、父节点内标签与生命周期。该建议不进入 CombatRootSnapshot、状态指纹、搜索预算或自动部署。
+
 ## 6. UI
 
 `src/UI/SolverOverlaySnapshot.cs` 是结果或只读候选路线到显示数据的唯一转换边界。它在主线程复制状态、概览、详情、回合、动作标题、选牌文本、遗物标注、击杀、逐回合对敌伤害、tooltip 和视觉类别。
