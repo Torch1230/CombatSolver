@@ -98,8 +98,8 @@ internal static class AdviceMechanics
         }
         if (card.Stars > 0 && context.Deck.Any(c => c.StarCost > 0 || c.StarsX))
         {
-            double supply = context.Deck.Sum(StarSupply);
-            value += Math.Min(6, StarSupply(card) * (supply < context.Deck.Sum(c => c.StarCost) ? 3 : 1));
+            MechanismBalance profile = DeckMechanismProfile.Stars(context);
+            value += profile.Marginal(StarSupply(card), 0);
             reasons.Add("补充星星供给");
         }
         if (card.EnergyX) reasons.Add("X 能量效果取决于实际投入，不按固定费用评级");

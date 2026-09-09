@@ -26,6 +26,8 @@ internal static class DeckMechanismProfile
     {
         DeckMechanismAxis[] axes =
         [
+            new("星星供需", Stars(context)),
+            new("锻造兑现", Forge(context)),
             new("小刀配合", Capture(context, AdviceRole.ShivSource, AdviceRole.ShivPayoff)),
             new("弃牌配合", Capture(context, AdviceRole.DiscardSource, AdviceRole.DiscardPayoff)),
             new("消耗配合", Capture(context, AdviceRole.ExhaustSource | AdviceRole.SelfExhaust, AdviceRole.ExhaustPayoff)),
@@ -39,6 +41,18 @@ internal static class DeckMechanismProfile
             context.Deck.Count(c => c.Block > 0),
             context.Deck.Count(c => !c.EnergyX && c.Cost >= 2),
             context.Deck.Count(c => c.Coverage == AdviceCoverage.Partial));
+    }
+
+    internal static MechanismBalance Stars(AdviceContext context) => new(
+        context.StartingStars + context.Deck.Sum(AdviceMechanics.StarSupply),
+        context.Deck.Count(c => c.StarCost > 0 || c.StarsX));
+
+    internal static MechanismBalance Forge(AdviceContext context)
+    {
+        double supply = AdviceMechanics.SourceSupply(context, AdviceRole.ForgeSource);
+        // Forge creates a Blade. Requiring a permanent-deck Blade would invent a missing component.
+        double attacks = supply > 0 ? Math.Clamp(context.BaseEnergy / 2d, 0, 1) : 0;
+        return new(supply, attacks);
     }
 
     internal static double DrawDemand(int deckSize, int drawCards) =>

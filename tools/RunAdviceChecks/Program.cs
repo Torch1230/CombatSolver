@@ -211,4 +211,13 @@ Check(RunAdvice.CardValue(context with { Deck = [shiv, shiv] }, shivPayoff with 
     == RunAdvice.CardValue(context with { Deck = [shiv, shiv] }, shivPayoff, []), "Recognized Shiv roles must not also get generic tag synergy");
 Check(DeckMechanismProfile.Capture(context with { Deck = [shivSource, shivPayoff] }).Mechanisms.Count(a => a.Balance.Readiness > 0) == 1,
     "Shiv generation and amplification form a visible profile axis");
+var regentContext = context with { Deck = [stars, spender, forge], StartingStars = 3 };
+Check(DeckMechanismProfile.Stars(regentContext).Readiness > 0 && DeckMechanismProfile.Forge(regentContext).Readiness > 0,
+    "Stars and Forge can coexist in the same profile");
+Check(DeckMechanismProfile.Forge(context with { Deck = [forge] }).Readiness > 0,
+    "Forge profile must recognize that Forge creates its own Blade");
+Check(Mechanic(context with { Deck = [spender, stars, stars] }, stars) < Mechanic(context with { Deck = [spender] }, stars),
+    "Star production must have smooth diminishing marginal value");
+Check(DeckMechanismProfile.Stars(context with { Deck = [plain with { StarsX = true }] }).Payoffs == 1,
+    "X Stars contribute a demand component without a fabricated fixed price");
 Console.WriteLine($"RUN_ADVICE_CHECKS_OK checks={checks}");
