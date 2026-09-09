@@ -97,11 +97,13 @@ internal readonly record struct StrategicEffectContext(
         IReadOnlyList<PredictedCard> hand, Creature owner)
     {
         int noDrawIndex = -1, embraceIndex = -1;
+        bool skillsExhaust = false;
         for (int i = 0; i < powers.Count; i++)
         {
             if (!ReferenceEquals(powers[i].Owner, owner)) continue;
             if (powers[i] is NoDrawPower) noDrawIndex = i;
             if (powers[i] is DarkEmbracePower) embraceIndex = i;
+            skillsExhaust |= powers[i] is CorruptionPower;
         }
         if (embraceIndex < 0) return this;
         int ethereal = 0, exhaustingEthereal = 0;
@@ -109,7 +111,8 @@ internal readonly record struct StrategicEffectContext(
         {
             if (!card.Preview.Keywords.Contains(CardKeyword.Ethereal)) continue;
             ethereal++;
-            if (card.Preview.Keywords.Contains(CardKeyword.Exhaust)) exhaustingEthereal++;
+            if (card.Preview.Keywords.Contains(CardKeyword.Exhaust)
+                || skillsExhaust && card.Preview.Type == CardType.Skill) exhaustingEthereal++;
         }
         return this with { ExhaustDrawPlays = CardMechanismFacts.ExhaustDrawPotential(
             Math.Max(0, ExhaustPlays - exhaustingEthereal), RemainingTurns, noDrawIndex >= 0,
@@ -121,7 +124,7 @@ internal readonly record struct StrategicEffectContext(
         int enemyHp,
         int incomingDamage,
         int incomingHitCount,
-        StrategicEffectRequirements requirements)
+        StrategicEffectRequirements requirements, bool skillsExhaust = false)
     {
         if (requirements == StrategicEffectRequirements.None)
         {
@@ -264,7 +267,9 @@ internal readonly record struct StrategicEffectContext(
                         statusCount++;
                     break;
             }
-            if (needsExhaustCount && card.Keywords.Contains(CardKeyword.Exhaust))
+            bool exhaustsOnPlay = card.Keywords.Contains(CardKeyword.Exhaust)
+                || skillsExhaust && cardType == CardType.Skill;
+            if (needsExhaustCount && exhaustsOnPlay)
                 exhaustCount++;
             if (needsShivCount)
             {
@@ -280,7 +285,7 @@ internal readonly record struct StrategicEffectContext(
                         card.DynamicVars.TryGetValue("Shivs", out var shivsVar) ? shivsVar.IntValue : 0);
                     generatedShivCount += generated;
                     if (generated > 0) shivGeneratorCount++;
-                    if (generated > 0 && (cardType == CardType.Power || card.Keywords.Contains(CardKeyword.Exhaust)))
+                    if (generated > 0 && (cardType == CardType.Power || exhaustsOnPlay))
                     {
                         singleUseGeneratedShivs += generated;
                         singleUseShivGenerators++;

@@ -243,6 +243,7 @@ internal sealed partial class CombatBeamSolver
         IReadOnlyList<PowerModel> effectivePowers = combat.EffectivePowers();
         StrategicEffectRequirements strategicRequirements = StrategicEffectRequirements.None;
         bool needsExhaustDrawTiming = false;
+        bool skillsExhaust = false;
         for (int powerIndex = 0; powerIndex < effectivePowers.Count; powerIndex++)
         {
             PowerModel power = effectivePowers[powerIndex];
@@ -250,6 +251,7 @@ internal sealed partial class CombatBeamSolver
                 continue;
             strategicRequirements |= StrategicEffectModel.Requirements(power);
             needsExhaustDrawTiming |= power is DarkEmbracePower;
+            skillsExhaust |= power is CorruptionPower && ReferenceEquals(power.Owner, _player.Creature);
         }
         StrategicEffectContext? strategicContext = null;
         StrategicEffectVector strategicEffects = StrategicEffectVector.Zero;
@@ -263,7 +265,7 @@ internal sealed partial class CombatBeamSolver
             if (strategicContext is null)
             {
                 StrategicEffectContext context = StrategicEffectContext.Build(
-                    liveCards, enemyHp, focus.TotalThreat, focus.IncomingHitCount, strategicRequirements);
+                    liveCards, enemyHp, focus.TotalThreat, focus.IncomingHitCount, strategicRequirements, skillsExhaust);
                 strategicContext = needsExhaustDrawTiming
                     ? context.WithExhaustDrawTiming(effectivePowers, playerState.Hand.Cards, _player.Creature) : context;
             }

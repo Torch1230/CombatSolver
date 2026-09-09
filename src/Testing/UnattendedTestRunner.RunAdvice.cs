@@ -30,6 +30,21 @@ internal sealed partial class UnattendedTestRunner
 
     private async Task AssertRunAdviceAsync(Player player, CombatState nativeCombat)
     {
+        PredictedCard[] corruptionFuel = new CardModel[] { ModelDb.Card<DefendIronclad>(), ModelDb.Card<BladeDance>(),
+            ModelDb.Card<Shiv>(), ModelDb.Card<StrikeIronclad>() }
+            .Select(m => PredictedCard.Create(m, player)).ToArray();
+        var fuelWithout = StrategicEffectContext.Build(corruptionFuel, 100, 0, 0, StrategicEffectRequirements.ExhaustPlays);
+        var fuelWith = StrategicEffectContext.Build(corruptionFuel, 100, 0, 0, StrategicEffectRequirements.ExhaustPlays, skillsExhaust: true);
+        AdviceAssert(fuelWithout.ExhaustPlays == 2 && fuelWith.ExhaustPlays == 3,
+            "Corruption adds ordinary Skills without double-counting exhausting Skills or converting attacks");
+        PredictedCard[] cloakDeck = new CardModel[] { ModelDb.Card<CloakAndDagger>(), ModelDb.Card<DefendIronclad>(),
+            ModelDb.Card<DefendIronclad>(), ModelDb.Card<DefendIronclad>() }
+            .Select(m => PredictedCard.Create(m, player)).ToArray();
+        var reusableCloak = StrategicEffectContext.Build(cloakDeck, 100, 0, 0, StrategicEffectRequirements.ShivPlays);
+        var corruptedCloak = StrategicEffectContext.Build(cloakDeck, 100, 0, 0, StrategicEffectRequirements.ShivPlays, skillsExhaust: true);
+        AdviceAssert(reusableCloak.ShivPlays > 1 && corruptedCloak.ShivPlays == 1,
+            "Corruption makes an otherwise reusable Skill generator a finite source");
+        _completedChecks.Add("RunAdvice:NativeCorruptionFuel:NoDoubleCount:FiniteGenerator");
         foreach (bool noDrawFirst in new[] { true, false })
         {
             using PendingEnemyDeathFixture fixture = CreatePendingEnemyDeathFixture(nativeCombat, player, victimCount: 0);

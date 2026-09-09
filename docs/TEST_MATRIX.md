@@ -2560,3 +2560,9 @@ pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId MONSTER-MOVES-BA
 - “通过”必须有同一 `runId` 的 `Passed` 结果，并核对对应 `SEARCH_REQUEST`、`RESULT`、`ACTION`、`DEPLOY_*` 和真实怪物行动日志。
 - 只编译通过、只看到最终胜利或只看模拟结果都不能标记为通过。
 - `RID/resources still in use at exit` 当前记录为 Godot 退出噪音；任何 `CombatSolver/Unattended FAILED`、`SEARCH_FAILURE`、`DEPLOY_FAILURE` 或状态断言失败均判定场景失败。
+
+### Corruption exhaust fuel closeout
+
+Active Corruption counts ordinary Skills as exhaust fuel once and bounds Skill-based Shiv generators to one use. Native RUN-ADVICE checks cover ordinary Skills, existing Exhaust cards and finite Cloak and Dagger supply.
+
+Native validation: `b591965de44c4729ad7561f0d7b8ed11` Passed, including Corruption fuel and finite generator checks; Release build succeeded with zero warnings/errors.

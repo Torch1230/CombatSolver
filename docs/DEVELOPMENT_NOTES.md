@@ -2390,3 +2390,9 @@ Beam 中间排序与最终选择分离。稳健预设把 `1 HP` 约视为 `3` �
 - `0.5.6`：复用搜索快照，合并等价重复分支，增加真实回放计数。
 - `0.5.5`：逐张标注击杀，绿色标注战斗结束回合。
 - 更早版本：完成异步搜索、自动回合搜索、路线执行、动态洗牌边界、选牌支持、卖血权重、UI 覆盖层和模型覆盖诊断。
+
+### Corruption exhaust fuel closeout
+
+Active Corruption counts ordinary Skills as exhaust fuel once and bounds Skill-based Shiv generators to one use. Native RUN-ADVICE checks cover ordinary Skills, existing Exhaust cards and finite Cloak and Dagger supply.
+
+Native validation: `b591965de44c4729ad7561f0d7b8ed11` Passed, including Corruption fuel and finite generator checks; Release build succeeded with zero warnings/errors.
