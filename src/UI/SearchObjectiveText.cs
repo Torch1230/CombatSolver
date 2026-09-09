@@ -36,6 +36,8 @@ internal static class SearchObjectiveText
         string detail = SolverText.Format($"本次路线收益：最大生命 {outcome.Growth.MaxHp:+0;-0;0} · 永久伤害 {outcome.Growth.CardDamage:+0;-0;0} · 永久格挡 {outcome.Growth.CardBlock:+0;-0;0}\n金币净变化 {outcome.GoldGain:+0;-0;0} · 待结算金币 {outcome.PendingGold} · 药水数量净变化 {outcome.PotionCountChange:+0;-0;0} · 额外选牌奖励 {outcome.ExtraCardRewards}");
         if (outcome.Policy.IsRewardObjective)
         {
+            if (!outcome.HasObjectiveGain)
+                detail += "\n" + SolverText.Get("此路线未获得正向目标收益，按保命策略比较，不应用收益血量限制；不代表本场不存在潜在收益来源。");
             detail += "\n" + SolverText.Format($"目标限制：本场累计战损 ≤ {outcome.Policy.MaximumBattleHpLoss} · 结束血量 ≥ {outcome.Policy.MinimumEndingHp}");
             if (!outcome.MeetsLimits)
                 detail += "\n" + SolverText.Get("此路线未满足收益目标限制，已退回保命比较；请人工决定是否执行。");

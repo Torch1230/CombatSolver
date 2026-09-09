@@ -38,7 +38,8 @@ internal readonly record struct SearchObjectiveOutcome(
     int BattleHpLoss,
     int EndingHp) : IComparable<SearchObjectiveOutcome>
 {
-    public bool MeetsLimits => !Policy.IsRewardObjective
+    public bool HasObjectiveGain => Policy.IsRewardObjective && TargetValue > 0;
+    public bool MeetsLimits => !HasObjectiveGain
         || BattleHpLoss <= Policy.MaximumBattleHpLoss && EndingHp >= Policy.MinimumEndingHp;
     public int NetResourceScore => checked(GoldGain + PendingGold + ExtraCardRewards * 30 + PotionValueChange - DeathSaveCost);
     public int TargetValue => Policy.Mode switch
@@ -58,6 +59,6 @@ internal readonly record struct SearchObjectiveOutcome(
         int comparison = other.MeetsLimits.CompareTo(MeetsLimits);
         if (comparison != 0) return comparison;
         if (!MeetsLimits) return 0; // No safe farming route: fall back to HP quality.
-        return other.TargetValue.CompareTo(TargetValue);
+        return Math.Max(0, other.TargetValue).CompareTo(Math.Max(0, TargetValue));
     }
 }
