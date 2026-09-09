@@ -1,5 +1,13 @@
 # CombatSolver 测试清单
 
+## 下一版本（开发中）：小刀生成事实接入战斗评估
+
+- 新增 src/Strategy/CardMechanismFacts 纯值事实入口，奖励捕获与战斗 StrategicEffectContext 共用已审查的即时小刀生成数量；Search 不依赖 UI 或实时奖励捕获。
+- Accuracy 的 ShivPlays 估计现在包含当前分支 liveCards 内 BladeDance/CloakAndDagger/FanOfKnives 可生成的小刀，受既有 reachableCards 行动预算约束；InfiniteBlades 的延迟生成不冒充即时产出。已消耗来源不在 liveCards 时不贡献未来供给。
+- RunAdviceChecks 105,746 项、CaptureChecks 11 项通过；Release 编译通过。新增共享数量、延迟排除、未知来源排除三项检查。仍需目标短搜验证，不将编译和纯值合同当作出牌质量提升证据。
+- 本批是共同机制事实开始用于出牌的具体入口，尚非全画像战斗接入；其他机制与药水跨回合验证仍未完成。
+
+
 ## 下一版本（开发中）：满栏药水准入容量合同
 
 - 将 Coordinator 的付费药水容量计算集中到 PotionInventoryValue.PaidCapacity，首瓶门槛加后续完整门槛，禁止累计多次槽位折扣。

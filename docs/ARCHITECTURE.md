@@ -318,3 +318,7 @@ renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或
 ### 奖励评分捕获合同
 
 `tools/RunAdviceCaptureChecks` 链接生产 `RunAdviceCapture`，以 API 测试替身检查值快照、已审查来源与基础伤害字段。原生接口以主项目编译校验，游戏 Hook 和 UI 不在该工具证明范围内。`AdviceRating.Parts` 是 UI 的基础/配合/价格投影，覆盖标记独立于原生程序集来源。
+
+### 共享卡牌机制事实
+
+`src/Strategy/CardMechanismFacts` 保存已审查的纯值机制映射，由 Advice 主线程捕获和 Search 分支评估共用。它不读取 live model、UI、设置或 RNG，不承载模拟结算；战斗评估从分支 Preview 提供参数。

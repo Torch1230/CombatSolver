@@ -220,4 +220,7 @@ Check(Mechanic(context with { Deck = [spender, stars, stars] }, stars) < Mechani
     "Star production must have smooth diminishing marginal value");
 Check(DeckMechanismProfile.Stars(context with { Deck = [plain with { StarsX = true }] }).Payoffs == 1,
     "X Stars contribute a demand component without a fabricated fixed price");
+Check(CardMechanismFacts.ImmediateShivSupply("BLADE_DANCE", 4, 0) == 4, "Shared mechanism facts retain upgraded generator quantity");
+Check(CardMechanismFacts.ImmediateShivSupply("INFINITE_BLADES", 4, 0) == 0, "Delayed persistent generation must not masquerade as immediate supply");
+Check(CardMechanismFacts.ImmediateShivSupply("UNKNOWN", 4, 4) == 0, "Shared facts do not infer unknown generators");
 Console.WriteLine($"RUN_ADVICE_CHECKS_OK checks={checks}");

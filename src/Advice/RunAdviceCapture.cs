@@ -65,8 +65,9 @@ internal static class RunAdviceCapture
             roles |= AdviceRole.SelfExhaust;
         double amount = id switch
         {
-            "GRAVE_WARDEN" or "REAVE" or "BLADE_DANCE" or "CLOAK_AND_DAGGER" => Value("Cards"),
-            "FAN_OF_KNIVES" => Value("Shivs"),
+            "GRAVE_WARDEN" or "REAVE" => Value("Cards"),
+            "BLADE_DANCE" or "CLOAK_AND_DAGGER" or "FAN_OF_KNIVES"
+                => CardMechanismFacts.ImmediateShivSupply(id, (int)Value("Cards"), (int)Value("Shivs")),
             "SEVERANCE" => 3,
             "GLACIER" => 2,
             "ICE_LANCE" or "CONSUMING_SHADOW" => Value("Repeat"),
