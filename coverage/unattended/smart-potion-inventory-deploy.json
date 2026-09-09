@@ -27,10 +27,10 @@
   "shortSearchBudgetOverrideMilliseconds": 3000,
   "searchMaxDegreeOfParallelismForTest": 1,
   "expectedInitialFinalEnemyHpAtMost": 0,
-  "stopAfterInitialSolverResultAssertion": true,
+  "stopAfterInitialSolverResultAssertion": false,
   "timeoutSeconds": 120,
-  "scenarioId": "SMART-POTION-INVENTORY-FULL",
-  "description": "Game v0.111.0 regression: identical zero-energy roots with three versus one EnergyPotion; Smart spends one potion only when inventory is full, saving 3 HP.",
+  "scenarioId": "SMART-POTION-INVENTORY-DEPLOY",
+  "description": "Deploy the full-inventory potion route and finish without HP loss or unexpected replans.",
   "potions": [
     {
       "potionId": "EnergyPotion"
@@ -42,5 +42,10 @@
       "potionId": "EnergyPotion"
     }
   ],
-  "expectedInitialPotionCount": 1
+  "expectedInitialPotionCount": 1,
+  "expectedFinishedTurn": 1,
+  "expectedFinishedPlayerHpAtLeast": 70,
+  "expectedUnexpectedReplansAtMost": 0,
+  "deploymentFastModeForTest": "Instant",
+  "deploymentInterActionDelaySecondsForTest": 0
 }

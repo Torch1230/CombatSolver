@@ -30,7 +30,7 @@
   "stopAfterInitialSolverResultAssertion": true,
   "timeoutSeconds": 120,
   "scenarioId": "SMART-POTION-INVENTORY-OPEN",
-  "description": "Candidate regression fixture, not yet executed: compare identical roots with ordinary potion inventory full versus open. Enemy intent and root slot capacity must be confirmed on first run.",
+  "description": "Game v0.111.0 regression: identical zero-energy roots with three versus one EnergyPotion; Smart spends one potion only when inventory is full, saving 3 HP.",
   "potions": [
     {
       "potionId": "EnergyPotion"

@@ -6,7 +6,7 @@
   "enemyCurrentHp": 6,
   "initialPlayerHp": 70,
   "initialPlayerMaxHp": 70,
-  "initialPlayerEnergy": 0,
+  "initialPlayerEnergy": 1,
   "clearRunDeck": true,
   "clearPlayerPiles": true,
   "clearAllPowers": true,
@@ -29,8 +29,8 @@
   "expectedInitialFinalEnemyHpAtMost": 0,
   "stopAfterInitialSolverResultAssertion": true,
   "timeoutSeconds": 120,
-  "scenarioId": "SMART-POTION-INVENTORY-FULL",
-  "description": "Game v0.111.0 regression: identical zero-energy roots with three versus one EnergyPotion; Smart spends one potion only when inventory is full, saving 3 HP.",
+  "scenarioId": "SMART-POTION-INVENTORY-NO-BENEFIT",
+  "description": "A full inventory does not justify spending a potion when a free no-loss win exists.",
   "potions": [
     {
       "potionId": "EnergyPotion"
@@ -42,5 +42,6 @@
       "potionId": "EnergyPotion"
     }
   ],
-  "expectedInitialPotionCount": 1
+  "expectedInitialPotionCount": 0,
+  "expectedInitialProjectedBattleHpLost": 0
 }

@@ -1,10 +1,17 @@
 # CombatSolver 测试清单
 
-## 开发中：满栏药水实际搜索对照夹具（未执行）
+## 开发中：原生药水库存与画像路线验证（2026-09-09）
 
-- `coverage/unattended/smart-potion-inventory-full.json` 与 `smart-potion-inventory-open.json`：相同 Silent、Bloodletting/Strike、零能量和敌人，仅改变 EnergyPotion 数量；目标检查释放槽位是否改变低省血药水准入。
-- 两文件已验证 JSON 可解析。**尚未运行，不是通过证据**；首次运行需核对实际药水槽容量、敌人首动及无药最优损血，若不产生目标 3 点收益，应调整建局而非放宽行为断言。不得用当前期望值宣称规则已经成立。
-- 原生测试入口会启动独立 headless 进程。当前仍遵循用户编译交付约束，没有因此启动游戏或复制 Mod；其他不依赖实机的画像接入与审计继续进行。
+- Windows 游戏 v0.111.0 / RitsuLib 0.5.18，独立 headless 实例，当前源码 `736c7fc` 的既有 Release 产物；固定单 worker、3 秒短搜、单请求 120 秒上限。
+- `smart-potion-inventory-open.json`：Passed，1 瓶能量药水时不用药，预计损血 3、敌人剩余 HP 0；run `b1375ed06b7e41f3a865c4c0341289c3`。
+- `smart-potion-inventory-full.json`：Passed，3 瓶时使用 1 瓶，省血 3 / 准入要求 3、预计损血 0、敌人剩余 HP 0；run `1d1dd6ee6398490a93b79ddfeffcd9e5`。
+- `smart-potion-inventory-no-benefit.json`：Passed，满栏但初始能量足够无损击杀时不用药；run `19dcb946be3d4e2789dea2f0f2b1bd30`。
+- `smart-potion-inventory-deploy.json`：Passed，Instant / 0 秒实际部署满栏路线，第 1 回合胜利、最终 HP 至少 70、计划外重算 0；run `b04e608cc12747af89b9075deb7fb118`。
+- `profile-shiv-deploy.json`：Passed，首张 Accuracy，再 Blade Dance / 小刀击杀 24 HP 敌人，第 1 回合胜利、HP 至少 70、计划外重算 0；run `740c8ce7ad1d402e974a88c9d2a60b26`。
+- `profile-strength-deploy.json`：Passed，首张 Inflame，再 Twin Strike 击杀 14 HP 敌人，第 1 回合胜利、HP 至少 70、计划外重算 0；run `d9b002eb3eab42bb98918b55e5eb9459`。
+- 两个画像组合初次请求因误用成对 ID/标题断言失败；已改为 `expectedInitialFirstActionCardId` 后通过。夹具验证组合在原生搜索与部署中可用，不是旧版/新版 A/B，也不证明复杂牌组中启发式的提升幅度。画像 UI、商店和奖励页面仍未做可见测试。
+- 结果与请求保留于本地 `.local/inventory-*/`。前三项只断言初始搜索，部署项额外断言真实游戏结果；不声称逐字段 actual/simulated 差分或可见 Steam 性能提升。
+- 启动前缺少默认用户测试设置，已从现有 Steam settings 复制到隔离 profile；未改玩家存档或安装。原生加载报告 RitsuLib 重复 ID，但单个依赖成功初始化、测试入口正常；本轮不将该环境提示当作算法故障。
 
 
 ## 下一版本（开发中）：小刀一次性与复用潜力
