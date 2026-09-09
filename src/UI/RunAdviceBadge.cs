@@ -34,17 +34,26 @@ internal static class RunAdviceBadge
         {
             string title = !rating.Available ? SolverText.Get("暂不可选")
                 : rating.Rank == 0 ? SolverText.Get("暂不评级")
-                : !rating.Known ? SolverText.Format($"参考分 {rating.Score:F1}")
+                : !rating.Known || rating.Offer.Kind == AdviceKind.Card ? SolverText.Format($"参考分 {rating.Score:F1}")
                 : SolverText.Format($"评分 {rating.Score:F1}");
             string reason = detail?.Invoke() ?? string.Join(" · ",
                 (rating.Available ? rating.Reasons.Take(compact ? 1 : 2) : rating.Reasons.TakeLast(2)).Select(SolverText.Get));
+            if (rating.Offer.Card is { } card)
+            {
+                string coverage = SolverText.Get(card.Coverage == AdviceCoverage.Partial
+                    ? "部分效果已建模" : "仅通用牌面参考");
+                title += " · " + coverage;
+            }
+            if (!titleOnly && rating.Parts is { } parts)
+                reason = SolverText.Format($"基础 {parts.Base:F1} / 配合 {parts.Synergy:F1} / 价格 {parts.Price:F1}")
+                    + "\n" + reason;
             label.Text = titleOnly ? title : title + "\n" + reason;
         }
         SolverLocaleRefresh.Bind(label, Refresh);
         owner.AddChild(label);
         label.Position = shopCard ? new Vector2(-155, -310)
             : compact ? new Vector2(-110, -90) : new Vector2(-155, -275);
-        label.Size = compact && !shopCard ? new Vector2(220, 76) : new Vector2(310, 95);
+        label.Size = compact && !shopCard ? new Vector2(220, 108) : new Vector2(310, 130);
         return label;
     }
 

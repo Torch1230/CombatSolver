@@ -7,12 +7,18 @@ internal enum AdviceTag
     Discard = 16, Exhaust = 32, Poison = 64, Orb = 128, Doom = 256, Shiv = 512,
 }
 
+internal enum AdviceCoverage { Unreviewed, Partial }
+
+internal sealed record AdviceScoreParts(double Base, double Synergy, double Price);
+
 internal enum AdviceKind { Card, Relic, Potion, Removal, Skip }
 
 internal sealed record AdviceCard(
     string Id, double Damage, double Block, double Draw, int Cost, bool Attack,
     bool Basic, bool Curse, bool Removable, AdviceTag Tags, bool Known = true, int UpgradeLevel = 0,
-    AdviceRole Roles = AdviceRole.None, double Stars = 0, int StarCost = 0);
+    AdviceRole Roles = AdviceRole.None, double Stars = 0, int StarCost = 0,
+    double SourceAmount = 1, double Availability = 1, bool SingleUse = false,
+    AdviceCoverage Coverage = AdviceCoverage.Unreviewed);
 
 internal sealed record AdviceContext(
     IReadOnlyList<AdviceCard> Deck, IReadOnlySet<string> Relics,
@@ -25,7 +31,7 @@ internal sealed record AdviceOffer(
 
 internal sealed record AdviceRating(
     AdviceOffer Offer, double Score, int Rank, bool Available, bool Known,
-    IReadOnlyList<string> Reasons, string? RemovalCardId = null, int? RemovalDeckIndex = null);
+    IReadOnlyList<string> Reasons, string? RemovalCardId = null, int? RemovalDeckIndex = null, AdviceScoreParts? Parts = null);
 
 // Marginal deck improvement, not a forecast of an entire run. No live models or RNG.
 internal static class RunAdvice
@@ -52,11 +58,14 @@ internal static class RunAdvice
         string? removalId = null;
         int? removalIndex = null;
         double value;
+        double synergy = 0;
         switch (offer.Kind)
         {
             case AdviceKind.Card:
                 known = offer.Card?.Known == true;
                 value = offer.Card is { } card ? CardValue(context, card, reasons) : 0;
+                if (offer.Card is { Curse: false } scored)
+                    synergy = AdviceMechanics.Value(context, scored, []);
                 break;
             case AdviceKind.Relic:
                 (value, known) = RelicValue(context, offer.Id, reasons);
@@ -84,6 +93,7 @@ internal static class RunAdvice
             value = fallback;
             reasons.Add("通用稀有度参考");
         }
+        double beforePrice = value;
         bool available = offer.Available && (!shop || offer.Cost <= context.Gold);
         if (shop && offer.Cost > context.Gold) reasons.Add("金币不足");
         if (offer.Kind == AdviceKind.Potion && context.EmptyPotionSlots == 0)
@@ -100,7 +110,8 @@ internal static class RunAdvice
             reasons.Add("已考虑价格与留钱");
         }
         if (!known) reasons.Add("效果规则未覆盖");
-        return new AdviceRating(offer, value, 0, available, known, reasons, removalId, removalIndex);
+        return new AdviceRating(offer, value, 0, available, known, reasons, removalId, removalIndex,
+            new AdviceScoreParts(beforePrice - synergy, synergy, value - beforePrice));
     }
 
     internal static double CardValue(AdviceContext context, AdviceCard card, List<string> reasons)

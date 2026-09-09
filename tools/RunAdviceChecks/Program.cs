@@ -115,4 +115,19 @@ Check(Mechanic(context with { InitialFocusOrbs = 1 }, focus) > Mechanic(context,
     "Initial orbs support Focus without a card source");
 Check(AdviceMechanics.Roles("DARKNESS") == AdviceRole.FocusOrbSource,
     "Dark orb sources must not be omitted from Focus advice");
+var sourceDeck = context with { Deck = [plain with { Roles = AdviceRole.SoulPlayPayoff }] };
+Check(Mechanic(sourceDeck, soul with { SourceAmount = 2 }) > Mechanic(sourceDeck, soul),
+    "Higher source production supports a payoff more");
+Check(Mechanic(sourceDeck, soul with { Availability = 0.5 }) < Mechanic(sourceDeck, soul),
+    "Delayed generation is discounted relative to immediate generation");
+Check(Mechanic(sourceDeck, soul with { SingleUse = true }) < Mechanic(sourceDeck, soul),
+    "Single-use generation is not valued as repeatable supply");
+var partsRating = RunAdvice.Rank(sourceDeck with { Gold = 500 },
+    [new("soul", AdviceKind.Card, "SOURCE", 75, soul)], true)[0];
+Check(partsRating.Parts is { } parts && Math.Abs(parts.Base + parts.Synergy + parts.Price - partsRating.Score) < 1e-9,
+    "Visible score components must sum to the score including price");
+Check(partsRating.Parts!.Synergy > 0 && partsRating.Parts.Price < 0,
+    "Synergy and purchase cost must be separately visible");
+Check(RunAdvice.Rank(context, [new("unknown", AdviceKind.Card, "UNKNOWN", Card: plain with { Known = false })], false)[0].Rank == 0,
+    "Coverage labels must not grant unsupported cards a rank");
 Console.WriteLine($"RUN_ADVICE_CHECKS_OK checks={checks}");

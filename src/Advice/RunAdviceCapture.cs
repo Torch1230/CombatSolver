@@ -40,7 +40,10 @@ internal static class RunAdviceCapture
         if (draw > 0) tags |= AdviceTag.Draw;
         if (Value("Energy") > 0) tags |= AdviceTag.Energy;
         if (card.TargetType == TargetType.AllEnemies && Value("Damage") > 0) tags |= AdviceTag.Area;
-        if (card.Type == CardType.Power) tags |= AdviceTag.Scaling;
+        // Only reviewed persistent effects receive a scaling bonus.
+        if (card.Type == CardType.Power && id is "DARK_EMBRACE" or "FEEL_NO_PAIN"
+            or "CORRUPTION" or "ACCURACY" or "HAUNT" or "DEVOUR_LIFE" or "DEFRAGMENT"
+            or "NOXIOUS_FUMES" or "INFINITE_BLADES") tags |= AdviceTag.Scaling;
         if (Value("Poison") > 0) tags |= AdviceTag.Poison;
         if (Value("Doom") > 0) tags |= AdviceTag.Doom;
         if (card.GetKeywordsWithSources(KeywordSources.Local).Contains(CardKeyword.Exhaust)) tags |= AdviceTag.Exhaust;
@@ -60,12 +63,31 @@ internal static class RunAdviceCapture
         AdviceRole roles = vanilla ? AdviceMechanics.Roles(id) : AdviceRole.None;
         if (card.GetKeywordsWithSources(KeywordSources.Local).Contains(CardKeyword.Exhaust))
             roles |= AdviceRole.SelfExhaust;
+        double amount = id switch
+        {
+            "GRAVE_WARDEN" or "REAVE" => Value("Cards"),
+            "SEVERANCE" => 3,
+            "GLACIER" => 2,
+            "ICE_LANCE" or "CONSUMING_SHADOW" => Value("Repeat"),
+            _ => 1,
+        };
+        double availability = id switch
+        {
+            "GRAVE_WARDEN" or "REAVE" => 0.5,
+            "SEVERANCE" => (1 + 0.5 + 0.25) / 3,
+            "CHILL" => 0.5, // Unknown future enemy count; do not assume a crowd.
+            _ => 1,
+        };
         return new AdviceCard(id, Value("Damage"), Value("Block"), draw,
             card.EnergyCost.CostsX ? 2 : Math.Max(0, card.EnergyCost.GetWithModifiers(CostModifiers.Local)),
             card.Type == CardType.Attack, card.IsBasicStrikeOrDefend,
             card.Type is CardType.Curse or CardType.Status, card.IsRemovable, tags,
             vanilla, card.CurrentUpgradeLevel, roles, vanilla ? AdviceMechanics.StarGain(id, Value("Stars")) : 0,
-            card.HasStarCostX ? 1 : Math.Max(0, card.CurrentStarCost));
+            card.HasStarCostX ? 1 : Math.Max(0, card.CurrentStarCost),
+            vanilla ? amount : 1, vanilla ? availability : 1,
+            roles.HasFlag(AdviceRole.SelfExhaust) || card.Type == CardType.Power,
+            vanilla && (roles != AdviceRole.None || tags != AdviceTag.None || card.IsBasicStrikeOrDefend)
+                ? AdviceCoverage.Partial : AdviceCoverage.Unreviewed);
     }
 
     internal static AdviceOffer Offer(MerchantEntry entry, int index) => entry switch

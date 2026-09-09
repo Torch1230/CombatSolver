@@ -91,8 +91,12 @@ internal static class AdviceMechanics
         return value;
     }
 
+    internal static double SourceWeight(AdviceCard card) =>
+        Math.Clamp(card.SourceAmount, 0, 4) * Math.Clamp(card.Availability, 0, 1)
+        * (card.SingleUse ? 0.65 : 1);
+
     internal static double SourceSupply(AdviceContext context, AdviceRole source) =>
-        context.Deck.Count(c => (c.Roles & source) != 0)
+        context.Deck.Where(c => (c.Roles & source) != 0).Sum(SourceWeight)
         + ((source & AdviceRole.SummonSource) != 0 ? Math.Min(2, context.SummonSupply) : 0)
         + ((source & AdviceRole.FocusOrbSource) != 0 ? Math.Min(2, context.InitialFocusOrbs) : 0);
 
@@ -105,7 +109,7 @@ internal static class AdviceMechanics
         int payoffs = context.Deck.Count(c => (c.Roles & payoff) != 0);
         if ((card.Roles & source) != 0 && payoffs > 0)
         {
-            value += Math.Min(6, payoffs * 2d) / (1 + sources * 0.5);
+            value += Math.Min(6, payoffs * 2d * SourceWeight(card)) / (1 + sources * 0.5);
             reasons.Add(sourceReason);
         }
         if ((card.Roles & payoff) != 0)

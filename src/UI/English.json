@@ -405,5 +405,8 @@
   "缺少已识别的受集中影响的产球来源": "No recognized Focus-sensitive orb source",
   "锻造收益需要后续打出剑来兑现": "Forge requires a later Blade attack to pay off",
   "配合已识别的锻造来源": "Supported by recognized Forge sources",
-  "初始星星可支持一次打出，持续供给未确认": "Starting Stars cover one play; sustained supply is unconfirmed"
+  "初始星星可支持一次打出，持续供给未确认": "Starting Stars cover one play; sustained supply is unconfirmed",
+  "部分效果已建模": "Partial effect coverage",
+  "仅通用牌面参考": "Generic card estimate only",
+  "基础 {0:F1} / 配合 {1:F1} / 价格 {2:F1}": "Base {0:F1} / Synergy {1:F1} / Price {2:F1}"
 }
