@@ -12,6 +12,12 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
     private readonly Dictionary<GrowthSource, SpinBox> _budgets = [];
     private readonly List<(GrowthSourceHandle Source, SpinBox Input)> _extraBudgets = [];
     private readonly CheckButton _ignoreLongTermRewards;
+    private readonly OptionButton _objectiveMode = new() { Name = "SearchObjectiveMode" };
+    private readonly SpinBox _objectiveLoss = new() { Name = "ObjectiveMaximumHpLoss" };
+    private readonly SpinBox _objectiveHp = new() { Name = "ObjectiveMinimumHp" };
+    private readonly SpinBox _objectiveTarget = new() { Name = "ObjectiveGrowthTarget" };
+    private readonly SpinBox _resourceTarget = new() { Name = "ObjectiveNetResourceTarget" };
+    public event Action<SearchObjectivePolicy>? ObjectiveChanged;
     private bool _refreshing;
     private bool _disabled;
 
@@ -31,6 +37,7 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
             SolverUiTokens.Radius.Medium, SolverUiTokens.Spacing.Sm, SolverUiTokens.Spacing.Sm));
         VBoxContainer layout = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         layout.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Sm);
+        AddObjectiveControls(layout);
         HBoxContainer ignoreRow = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         Label ignoreLabel = SolverUiTokens.CreateLabel(
             SolverText.Get("不考虑局外收益"), SolverUiTokens.Type.Body, SolverUiTokens.Palette.TextPrimary);
@@ -92,6 +99,59 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
             IgnoreLongTermRewardsChanged?.Invoke(ignore);
         };
         Refresh(false);
+    }
+
+    private void AddObjectiveControls(VBoxContainer layout)
+    {
+        Label title = SolverUiTokens.CreateLabel(SolverText.Get("搜索目标"),
+            SolverUiTokens.Type.Body, SolverUiTokens.Palette.TextPrimary);
+        layout.AddChild(title);
+        foreach (SearchObjective mode in Enum.GetValues<SearchObjective>())
+            _objectiveMode.AddItem(SolverText.Get(SearchObjectiveText.Name(mode)), (int)mode);
+        layout.AddChild(_objectiveMode);
+        AddObjectiveInput(layout, "允许本场累计战损", _objectiveLoss);
+        AddObjectiveInput(layout, "最低结束血量（收益目标）", _objectiveHp);
+        AddObjectiveInput(layout, "培养目标（点，0 默认 3）", _objectiveTarget);
+        AddObjectiveInput(layout, "净收益目标（分，0 默认 25）", _resourceTarget);
+        _resourceTarget.ValueChanged += _ => PublishObjective();
+        _objectiveMode.ItemSelected += _ => PublishObjective();
+        _objectiveLoss.ValueChanged += _ => PublishObjective();
+        _objectiveHp.ValueChanged += _ => PublishObjective();
+        _objectiveTarget.ValueChanged += _ => PublishObjective();
+        SolverLocaleRefresh.Bind(title, () =>
+        {
+            title.Text = SolverText.Get("搜索目标");
+            _objectiveMode.TooltipText = SolverText.Get("平衡：优先降低战略战损，同分再比较成长收益；手动成长额度可允许换血。最低血量和累计战损限制仅用于永久成长与净收益目标，默认保留 30 HP、累计战损不超过 10 HP。已有自定义限制保留。");
+            foreach (SearchObjective mode in Enum.GetValues<SearchObjective>())
+                _objectiveMode.SetItemText((int)mode, SolverText.Get(SearchObjectiveText.Name(mode)));
+        });
+    }
+
+    private static void AddObjectiveInput(VBoxContainer layout, string source, SpinBox input)
+    {
+        HBoxContainer row = new();
+        Label label = SolverUiTokens.CreateLabel(SolverText.Get(source), SolverUiTokens.Type.Body,
+            SolverUiTokens.Palette.TextPrimary);
+        label.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        row.AddChild(label);
+        input.MinValue = 0;
+        input.MaxValue = 100_000;
+        input.Step = 1;
+        input.Rounded = true;
+        input.UpdateOnTextChanged = false;
+        input.CustomMinimumSize = new Vector2(96, 36);
+        input.GetLineEdit().FocusExited += input.Apply;
+        row.AddChild(input);
+        layout.AddChild(row);
+        SolverLocaleRefresh.Bind(label, () => label.Text = SolverText.Get(source));
+    }
+
+    private void PublishObjective()
+    {
+        if (_refreshing || _disabled) return;
+        ObjectiveChanged?.Invoke(new((SearchObjective)_objectiveMode.GetSelectedId(),
+            (int)_objectiveLoss.Value, (int)_objectiveHp.Value, (int)_objectiveTarget.Value, (int)_resourceTarget.Value));
     }
 
     private static CardModel SourceCard(GrowthSource source) => source switch
@@ -160,10 +220,22 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
         try
         {
             SolverSettingsData settings = SolverSettings.Current;
+            SearchObjectivePolicy objective = settings.Objective;
+            _objectiveMode.Disabled = disabled;
+            _objectiveMode.Select((int)objective.Mode);
+            _objectiveLoss.Editable = !disabled && objective.IsRewardObjective;
+            _objectiveHp.Editable = !disabled && objective.IsRewardObjective;
+            _objectiveTarget.Editable = !disabled && objective.Mode == SearchObjective.PermanentGrowth;
+            _resourceTarget.Editable = !disabled && objective.Mode == SearchObjective.NetResources;
+            if (!_resourceTarget.GetLineEdit().HasFocus()) _resourceTarget.SetValueNoSignal(objective.NetResourceTarget);
+            if (!_objectiveLoss.GetLineEdit().HasFocus()) _objectiveLoss.SetValueNoSignal(objective.MaximumBattleHpLoss);
+            if (!_objectiveHp.GetLineEdit().HasFocus()) _objectiveHp.SetValueNoSignal(objective.MinimumEndingHp);
+            if (!_objectiveTarget.GetLineEdit().HasFocus()) _objectiveTarget.SetValueNoSignal(objective.GrowthTarget);
             _ignoreLongTermRewards.Disabled = disabled;
             _ignoreLongTermRewards.ButtonPressed = settings.IgnoreLongTermRewards;
             // 总开关打开时下面每一项都不生效，所以灰掉：不是为了拦住输入，是让「填了没用」看得见。
-            bool budgetsUsable = !disabled && !settings.IgnoreLongTermRewards;
+            bool budgetsUsable = !disabled && !settings.IgnoreLongTermRewards
+                && objective.Mode == SearchObjective.Balanced;
             foreach ((GrowthSource source, SpinBox input) in _budgets)
             {
                 input.Editable = budgetsUsable;
@@ -216,10 +288,12 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
     internal bool SettingsConfiguredForTesting
         => _budgets.All(pair => (int)pair.Value.Value == SolverSettings.Current.GrowthBudgets.Get(pair.Key))
             && _extraBudgets.All(row => (int)row.Input.Value == SolverSettings.Current.GrowthBudgets.Get(row.Source)
-                && row.Input.Editable == (!SolverSettings.Current.IgnoreLongTermRewards && !_disabled))
+                && row.Input.Editable == (!SolverSettings.Current.IgnoreLongTermRewards && !_disabled
+                    && SolverSettings.Current.Objective.Mode == SearchObjective.Balanced))
             && _ignoreLongTermRewards.ButtonPressed == SolverSettings.Current.IgnoreLongTermRewards
             && _budgets.Values.All(input =>
-                input.Editable == (!SolverSettings.Current.IgnoreLongTermRewards && !_disabled));
+                input.Editable == (!SolverSettings.Current.IgnoreLongTermRewards && !_disabled
+                    && SolverSettings.Current.Objective.Mode == SearchObjective.Balanced));
 
     internal IReadOnlyList<(GrowthSourceHandle Source, SpinBox Input)> ThirdPartyRowsForTesting => _extraBudgets;
 

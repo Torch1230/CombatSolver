@@ -2014,6 +2014,9 @@ internal sealed partial class SimulatedCombatState
         fingerprint.Add('g');
         fingerprint.Add(_longTermResourceValue);
         _growthRewards.AppendFingerprint(ref fingerprint);
+        fingerprint.Add(_permanentGrowth.MaxHp);
+        fingerprint.Add(_permanentGrowth.CardDamage);
+        fingerprint.Add(_permanentGrowth.CardBlock);
         fingerprint.Add('A');
         fingerprint.Add(_angerCopiesGenerated);
         fingerprint.Add('L');

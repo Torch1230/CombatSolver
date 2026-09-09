@@ -64,6 +64,7 @@ internal static class SolverOverlay
     private static Button? _stopSearchButton;
     private static Button? _adoptRouteButton;
     private static Button? _executeButton;
+    private static (SearchObjectiveOutcome Outcome, bool CompleteVictory)? _objectiveStop;
     private static Button? _fullAutoButton;
     private static Button? _systemMemoryReleaseButton;
     private static Button? _collapseButton;
@@ -498,6 +499,7 @@ internal static class SolverOverlay
     {
         _lastSnapshot = null;
         _lastMessageText = text;
+        _objectiveStop = null;
         EnsureCreated(host);
         _deployQueued = false;
         SetStatus(SolverText.Get("求解器消息"), TextMuted);
@@ -517,6 +519,7 @@ internal static class SolverOverlay
     {
         _lastSnapshot = null;
         _lastMessageText = null;
+        _objectiveStop = null;
         EnsureCreated(host);
         _deployQueued = false;
         SetStatus(SolverText.Get("求解器已禁用"), TextMuted);
@@ -532,6 +535,7 @@ internal static class SolverOverlay
     public static void ShowSearchStopped(Node host)
     {
         _lastMessageText = null;
+        _objectiveStop = null;
         EnsureCreated(host);
         _deployQueued = false;
         SetStatus(SolverText.Get("计算已停止"), Danger);
@@ -559,6 +563,7 @@ internal static class SolverOverlay
         _lastSnapshot = null;
         _searchBestSnapshot = null;
         _lastMessageText = null;
+        _objectiveStop = null;
         EnsureCreated(host);
         _deployQueued = false;
         SetStatus(SolverText.Get("等待手动计算"), TextMuted);
@@ -623,7 +628,7 @@ internal static class SolverOverlay
         {
             _summaryText.Visible = true;
             _summaryText.Text = _searchBestSnapshot is { } snapshot
-                ? SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.SummaryText) +
+                ? SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.LocalizedSummaryText) +
                   $"\n{reviewedWorldlinesText}"
                 : reviewedWorldlinesText;
         }
@@ -653,6 +658,7 @@ internal static class SolverOverlay
         _lastSnapshot = null;
         _searchBestSnapshot = null;
         _lastMessageText = null;
+        _objectiveStop = null;
         _lastSearchingTurn = turn;
         _lastSearchDeployWhenReady = deployWhenReady;
         _lastReviewedWorldlinesBeforeSearch = reviewedWorldlinesBeforeSearch;
@@ -721,6 +727,7 @@ internal static class SolverOverlay
         _lastSnapshot = snapshot;
         _searchBestSnapshot = null;
         _lastMessageText = null;
+        _objectiveStop = null;
         EnsureCreated(host);
         _deployQueued = false;
         SetSearchLimitHint(snapshot.SearchLimitWarningText);
@@ -739,7 +746,7 @@ internal static class SolverOverlay
         if (_summaryText != null)
         {
             _summaryText.Visible = true;
-            _summaryText.Text = SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.SummaryText);
+            _summaryText.Text = SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.LocalizedSummaryText);
         }
         if (_progressText != null)
             _progressText.Visible = false;
@@ -759,7 +766,7 @@ internal static class SolverOverlay
         if (_detailsButton != null)
             _detailsButton.Visible = hasRouteDetails;
         if (_detailsText != null)
-            _detailsText.Text = SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.DetailsText);
+            _detailsText.Text = SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.LocalizedDetailsText);
         SetDetailsVisible(false);
         ShowLayer();
         RefreshControls();
@@ -838,6 +845,7 @@ internal static class SolverOverlay
 
     public static void ShowDeploying(Node host, int turn, int actionCount)
     {
+        _objectiveStop = null;
         _presentation = SolverOverlayPresentation.Deploying;
         _waitingForNextTurnPlan = false;
         _lastDeploymentTurn = turn;
@@ -956,6 +964,19 @@ internal static class SolverOverlay
         }
         ShowLayer();
         RefreshControls();
+    }
+
+    public static void ShowFullAutoStoppedByObjective(SearchObjectiveOutcome outcome, bool completeVictory)
+    {
+        _objectiveStop = (outcome, completeVictory);
+        SetStatus(SolverText.Get("已暂停执行"), Danger, SolverText.Get("收益目标限制"));
+        string reason = SearchObjectiveText.FullAutoStop(outcome, completeVictory);
+        if (_summaryText != null)
+        {
+            _summaryText.Visible = true;
+            _summaryText.Text = reason;
+        }
+        if (_fullAutoButton != null) _fullAutoButton.TooltipText = reason;
     }
 
     public static void ShowFullAutoStoppedAtCombatEnd(int turn)
@@ -1077,6 +1098,8 @@ internal static class SolverOverlay
 
         _fullAutoButton.Text = SolverController.FullAutoEnabled ? SolverText.Get("全自动：开") : SolverText.Get("全自动：关");
         _fullAutoButton.Disabled = solverDisabled || adoptingRoute;
+        _fullAutoButton.TooltipText = _objectiveStop is { } stop
+            ? SearchObjectiveText.FullAutoStop(stop.Outcome, stop.CompleteVictory) : string.Empty;
         if (_renderedFullAutoStyle != SolverController.FullAutoEnabled)
         {
             SolverUiTokens.ApplyButtonStyle(
@@ -1354,6 +1377,7 @@ internal static class SolverOverlay
         _growthStrategyPanel = new SolverGrowthStrategyPanel();
         _growthStrategyPanel.PolicyChanged += OnGrowthPolicyChanged;
         _growthStrategyPanel.IgnoreLongTermRewardsChanged += OnIgnoreLongTermRewardsChanged;
+        _growthStrategyPanel.ObjectiveChanged += OnSearchObjectiveChanged;
         _potionStrategyPanel.DirectiveChanged += OnPotionDirectiveChanged;
 
         _body = new VBoxContainer
@@ -1434,6 +1458,11 @@ internal static class SolverOverlay
 
         _detailsPanel = CreateSectionPanel("DetailsPanel");
         _detailsText = CreateRichText(SolverUiTokens.Type.Caption);
+        SolverLocaleRefresh.Bind(_detailsText, () =>
+        {
+            if (_lastSnapshot is { Objective: not null } snapshot)
+                _detailsText.Text = SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.LocalizedDetailsText);
+        });
         _detailsText.FitContent = true;
         _detailsText.CustomMinimumSize = new Vector2(0, 56);
         _detailsPanel.AddChild(_detailsText);
@@ -1739,6 +1768,13 @@ internal static class SolverOverlay
         _summaryContextLabel.ClipText = true;
         statusRow.AddChild(_summaryContextLabel);
         _summaryText = CreateRichText(SolverUiTokens.Type.Metric);
+        SolverLocaleRefresh.Bind(_summaryText, () =>
+        {
+            if (_objectiveStop is { } stop)
+                ShowFullAutoStoppedByObjective(stop.Outcome, stop.CompleteVictory);
+            else if ((_searchBestSnapshot ?? _lastSnapshot) is { Objective: not null } snapshot)
+                _summaryText.Text = SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.LocalizedSummaryText);
+        });
         _summaryText.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _summaryText.FitContent = true;
         _summaryText.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
@@ -2736,6 +2772,13 @@ internal static class SolverOverlay
         CombatState? state = CombatManager.Instance.DebugOnlyGetState();
         if (host != null && state != null && CombatManager.Instance.IsInProgress)
             SolverController.SetGrowthPolicy(host, state, budgets);
+    }
+
+    private static void OnSearchObjectiveChanged(SearchObjectivePolicy objective)
+    {
+        if (NGame.Instance is { } host && CombatManager.Instance.IsInProgress
+            && CombatManager.Instance.DebugOnlyGetState() is { } state)
+            SolverController.SetSearchObjective(host, state, objective);
     }
 
     private static void OnIgnoreLongTermRewardsChanged(bool ignore)

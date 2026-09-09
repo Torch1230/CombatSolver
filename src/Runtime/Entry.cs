@@ -45,6 +45,8 @@ public static class Entry
         CombatManager.Instance.TurnStarted += OnTurnStarted;
 
         var patcher = RitsuLibFramework.CreatePatcher(ModId, "combat-solver", "战斗路线求解器");
+        patcher.RegisterPatch<RewardAdvicePatch>();
+        patcher.RegisterPatch<ShopAdvicePatch>();
         patcher.RegisterPatch<PlayerTurnSetupPatch>();
         patcher.RegisterPatch<PlayerTurnAutoPrePlayPatch>();
         patcher.RegisterPatch<PlayerTurnSetupSceneExitPatch>();

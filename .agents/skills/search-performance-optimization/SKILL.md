@@ -67,6 +67,8 @@ description: 在战斗语义已证明正确后，审计或修改 CombatSolver �
 - 通用上下文可按单敌/多敌、普通/Boss 调整；不要按具体 encounter 或单卡硬编码路线。
 - 纯启发式特征不进入战斗状态键或 `ContinuationStamp`。
 
+收益目标由 `SearchObjectivePolicy/Outcome` 定义。新增目标必须同步终局、Beam、Pareto、临时结果和跨搜索/用药比较；不得仅修改最终排序。永久培养比较实际成长量，不以旧触发次数代替。收益目标禁用纯 HP 早停/incumbent，约束优先于收益；达培养点数目标后不继续奖励额外刷取。变更后用受限与非受限同根路线对比，并验证设置/缓存身份传播。
+
 ## 4. 性能所有权
 
 - `SearchRunContext` 是单次运行可变指标、转置和缓存的所有者；不要把这些字段退回 solver 入口或静态全局。
