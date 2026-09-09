@@ -65,7 +65,8 @@ internal static class RunAdviceCapture
             roles |= AdviceRole.SelfExhaust;
         double amount = id switch
         {
-            "GRAVE_WARDEN" or "REAVE" => Value("Cards"),
+            "GRAVE_WARDEN" or "REAVE" or "BLADE_DANCE" or "CLOAK_AND_DAGGER" => Value("Cards"),
+            "FAN_OF_KNIVES" => Value("Shivs"),
             "SEVERANCE" => 3,
             "GLACIER" => 2,
             "ICE_LANCE" or "CONSUMING_SHADOW" => Value("Repeat"),

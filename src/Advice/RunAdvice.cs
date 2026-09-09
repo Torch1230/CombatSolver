@@ -154,6 +154,8 @@ internal static class RunAdvice
         foreach (AdviceTag tag in archetypes)
         {
             if (!card.Tags.HasFlag(tag)) continue;
+            if (tag == AdviceTag.Shiv && (card.Roles & (AdviceRole.ShivSource | AdviceRole.ShivPayoff)) != 0)
+                continue;
             int support = context.Deck.Count(c => c.Tags.HasFlag(tag));
             if (support >= 2) synergy = Math.Max(synergy, Math.Min(7, support * 1.5));
         }

@@ -426,5 +426,9 @@
   "直接格挡组件偏少": "Few direct Block components",
   "X 能量效果取决于实际投入，不按固定费用评级": "X Energy effects depend on actual spending, not a fixed cost",
   "X 星星效果取决于投入，已识别产星支持": "X Star effects depend on spending; Star support identified",
-  "X 星星效果尚无已识别资源支持": "No recognized resource support for X Star effects"
+  "X 星星效果尚无已识别资源支持": "No recognized resource support for X Star effects",
+  "小刀配合": "Shiv synergy",
+  "补充小刀生成来源": "Adds Shiv generation",
+  "配合小刀增幅": "Supports Shiv amplification",
+  "缺少已识别的小刀生成来源": "No recognized Shiv generation source"
 }

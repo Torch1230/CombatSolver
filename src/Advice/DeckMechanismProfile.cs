@@ -26,6 +26,7 @@ internal static class DeckMechanismProfile
     {
         DeckMechanismAxis[] axes =
         [
+            new("小刀配合", Capture(context, AdviceRole.ShivSource, AdviceRole.ShivPayoff)),
             new("弃牌配合", Capture(context, AdviceRole.DiscardSource, AdviceRole.DiscardPayoff)),
             new("消耗配合", Capture(context, AdviceRole.ExhaustSource | AdviceRole.SelfExhaust, AdviceRole.ExhaustPayoff)),
             new("灵魂配合", Capture(context, AdviceRole.SoulSource, AdviceRole.SoulPlayPayoff | AdviceRole.SoulExhaustPayoff)),

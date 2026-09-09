@@ -1,5 +1,13 @@
 # CombatSolver 测试清单
 
+## 下一版本（开发中）：小刀来源与增幅画像
+
+- 增加 ShivSource/ShivPayoff，已核对的 BladeDance、CloakAndDagger、FanOfKnives 使用 Cards/Shivs 生成数量，Accuracy 作为增幅组件。来源与增幅通过边际配合程度评分，画像新增小刀轴。
+- 已识别角色不再重复获得通用 Shiv 标签协同，避免规则迁移产生双计。
+- RunAdviceChecks 105,739 项通过，新增来源依赖、通用标签不双计和画像轴识别三项检查；Release 编译通过。
+- InfiniteBlades 等持续生成需要区分一次性启动与跨回合供给，暂未归入新角色。其他画像轴与战斗接入、药水生命周期验证继续进行；不宣称当前名单覆盖全小刀体系。未运行游戏或安装。
+
+
 ## 下一版本（开发中）：X 费用标记
 
 - AdviceCard 独立记录 EnergyX/StarsX；捕获不再伪造固定 2 能量/1 星星。零占位值仅配合 X 标记存储，固定高费统计、费用惩罚和低费攻击遗物配合均排除 EnergyX。

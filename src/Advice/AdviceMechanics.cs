@@ -7,7 +7,7 @@ internal enum AdviceRole
     ExhaustSource = 4, ExhaustPayoff = 8, SelfExhaust = 16, StopsDraw = 32,
     SoulSource = 64, SoulPlayPayoff = 128, SoulExhaustPayoff = 256,
     SummonSource = 512, OstyAttack = 1024, ForgeSource = 2048, Blade = 4096,
-    FocusSource = 8192, FocusOrbSource = 16384, PlasmaSource = 32768,
+    FocusSource = 8192, FocusOrbSource = 16384, PlasmaSource = 32768, ShivSource = 65536, ShivPayoff = 131072,
 }
 
 // Explicitly reviewed vanilla roles. This is advice metadata, not combat simulation.
@@ -33,6 +33,8 @@ internal static class AdviceMechanics
         "ZAP" or "BALL_LIGHTNING" or "COOLHEADED" or "GLACIER"
             or "COLD_SNAP" or "DARKNESS" or "CONSUMING_SHADOW" or "ICE_LANCE" or "CHILL" => AdviceRole.FocusOrbSource,
         "FUSION" or "METEOR_STRIKE" => AdviceRole.PlasmaSource,
+        "BLADE_DANCE" or "CLOAK_AND_DAGGER" or "FAN_OF_KNIVES" => AdviceRole.ShivSource,
+        "ACCURACY" => AdviceRole.ShivPayoff,
         "BATTLE_TRANCE" => AdviceRole.StopsDraw,
         _ => AdviceRole.None,
     };
@@ -55,6 +57,8 @@ internal static class AdviceMechanics
             "补充弃牌入口", "配合弃牌触发收益", "缺少已识别的主动弃牌入口", reasons);
         value += PairValue(context, card, AdviceRole.ExhaustSource | AdviceRole.SelfExhaust,
             AdviceRole.ExhaustPayoff, "补充消耗触发机会", "配合消耗触发收益", "缺少已识别的消耗触发机会", reasons);
+        value += PairValue(context, card, AdviceRole.ShivSource, AdviceRole.ShivPayoff,
+            "补充小刀生成来源", "配合小刀增幅", "缺少已识别的小刀生成来源", reasons);
         // Soul play and exhaust payoffs share a source; count its synergy only once.
         value += PairValue(context, card, AdviceRole.SoulSource,
             AdviceRole.SoulPlayPayoff | AdviceRole.SoulExhaustPayoff,

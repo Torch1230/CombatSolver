@@ -204,4 +204,11 @@ var xRelicRating = RunAdvice.Rank(context with { Relics = new HashSet<string> { 
 Check(xRelicRating.Parts!.Synergy == 0, "X costs must not masquerade as cheap attacks for relic synergy");
 Check(DeckMechanismProfile.Capture(context with { Deck = [xAttack with { Cost = 2 }] }).ExpensiveCards == 0, "X costs are not fixed expensive costs");
 Check(Mechanic(context with { StartingStars = 3 }, plain with { StarsX = true }) > Mechanic(context, plain with { StarsX = true }), "X Stars recognize available support without inventing a fixed price");
+var shivSource = plain with { Roles = AdviceRole.ShivSource, SourceAmount = 3 };
+var shivPayoff = plain with { Roles = AdviceRole.ShivPayoff };
+Check(Mechanic(context with { Deck = [shivSource] }, shivPayoff) > Mechanic(context, shivPayoff), "Accuracy needs Shiv supply");
+Check(RunAdvice.CardValue(context with { Deck = [shiv, shiv] }, shivPayoff with { Tags = AdviceTag.Shiv }, [])
+    == RunAdvice.CardValue(context with { Deck = [shiv, shiv] }, shivPayoff, []), "Recognized Shiv roles must not also get generic tag synergy");
+Check(DeckMechanismProfile.Capture(context with { Deck = [shivSource, shivPayoff] }).Mechanisms.Count(a => a.Balance.Readiness > 0) == 1,
+    "Shiv generation and amplification form a visible profile axis");
 Console.WriteLine($"RUN_ADVICE_CHECKS_OK checks={checks}");
