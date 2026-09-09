@@ -61,6 +61,12 @@ internal sealed record SolverOverlaySnapshot(
     bool HasRisk,
     string? SearchLimitWarningText)
 {
+    public SearchObjectiveOutcome? Objective { get; init; }
+    public string LocalizedSummaryText => Objective is { } objective
+        ? SummaryText + "\n" + SearchObjectiveText.Summary(objective) : SummaryText;
+    public string LocalizedDetailsText => Objective is { } objective
+        ? SearchObjectiveText.Details(objective) + "\n" + DetailsText : DetailsText;
+
     public static SolverOverlaySnapshot Capture(SolverResult result, bool unexpectedReplan)
         => CaptureWithReviewedWorldlines(result, unexpectedReplan, reviewedWorldlinesTotal: 0);
 
@@ -257,7 +263,10 @@ internal sealed record SolverOverlaySnapshot(
             turns,
             BuildDetails(result, startTurnNumber, unmirrored, compensated, unexpectedReplan),
             hasRisk,
-            BuildSearchLimitWarning(result.BoundaryReason));
+            BuildSearchLimitWarning(result.BoundaryReason))
+        {
+            Objective = result.Snapshot.Objective,
+        };
     }
 
     private static SolverOverlayTurnSnapshot CaptureTurn(SolverResult result, int turn)

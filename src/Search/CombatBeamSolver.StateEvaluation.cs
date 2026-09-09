@@ -197,6 +197,19 @@ internal sealed partial class CombatBeamSolver
             realizedLongTermResourceValue * SolverWeights.LongTermResourceBeamValue,
             SolverWeights.LongTermResourceBeamCap);
         int growthHpCredit = _growthBudgets.Credit(growthRewards);
+        var potionResources = combat.CapturePotionResources(_player);
+        SearchObjectiveOutcome objective = new(_objective, combat.PermanentGrowth,
+            combat.GetPlayerGold(_player) - root.InitialGold,
+            Math.Max(0, combat.GetAmount<RoyaltiesPower>(_player.Creature)),
+            Math.Max(0, combat.GetAmount<TheHuntPower>(_player.Creature)),
+            potionResources.Count - root.InitialPotionCount,
+            potionResources.Value - root.InitialPotionValue,
+            deathSaveRelicHpRestored > 0 ? 500 : 0,
+            battleDamage.HpLostSoFar + cumulativePlayerHpLost,
+            player.CurrentHp);
+        if (_objective.IsRewardObjective)
+            score += Math.Clamp(objective.TargetValue, -1000, 1000) * hpWeight;
+
         score += (double)growthHpCredit * hpWeight;
         int angerCopiesGenerated = combat.AngerCopiesGenerated;
         score += angerCopiesGenerated * SolverWeights.AngerCopyBeamPenalty;
@@ -484,6 +497,7 @@ internal sealed partial class CombatBeamSolver
             simulator,
             simulator.TerminalStamp)
         {
+            Objective = objective,
             GrowthHpCredit = growthHpCredit,
             GrowthRewards = growthRewards,
         };
@@ -732,13 +746,17 @@ internal sealed partial class CombatBeamSolver
         SimCardPile pile,
         char marker)
     {
-        ulong first = 0;
-        ulong second = 0;
-        foreach (PredictedCard card in pile)
+        if (!pile.TryGetCachedUnorderedFingerprint(out ulong first, out ulong second))
         {
-            StateFingerprint cardKey = BuildCardStateFingerprint(card);
-            first += StateFingerprintBuilder.MixFirst(cardKey.First);
-            second += StateFingerprintBuilder.MixSecond(cardKey.Second);
+            first = 0;
+            second = 0;
+            foreach (PredictedCard card in pile)
+            {
+                StateFingerprint cardKey = BuildCardStateFingerprint(card);
+                first += StateFingerprintBuilder.MixFirst(cardKey.First);
+                second += StateFingerprintBuilder.MixSecond(cardKey.Second);
+            }
+            pile.SetCachedUnorderedFingerprint(first, second);
         }
         // Keep the unordered key's values and append order exactly unchanged.
         unordered.Add(marker);

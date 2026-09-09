@@ -1257,6 +1257,7 @@ internal sealed class SimulationSnapshot(
     public int DeathSaveRelicHpRestored { get; } = deathSaveRelicHpRestored;
 
     public int LongTermResourceValue { get; } = longTermResourceValue;
+    public SearchObjectiveOutcome Objective { get; init; }
     public int GrowthHpCredit { get; init; }
     public GrowthValues GrowthRewards { get; init; }
     public int AngerCopiesGenerated { get; } = angerCopiesGenerated;
@@ -1376,6 +1377,7 @@ internal sealed record SolverSnapshot(
     SearchBoundaryReason BoundaryReason,
     IReadOnlyList<PredictionGap> PredictionGaps)
 {
+    public SearchObjectiveOutcome Objective { get; init; }
     public int GrowthHpCredit { get; init; }
     public GrowthValues GrowthRewards { get; init; }
 }

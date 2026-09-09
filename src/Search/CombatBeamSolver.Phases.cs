@@ -211,6 +211,7 @@ internal sealed partial class CombatBeamSolver
                 Score: node.Score,
                 CombatEndedTurn: won ? node.Snapshot.CombatEndedTurn : null)
             {
+                Objective = node.Snapshot.Objective,
                 GrowthHpCredit = node.Snapshot.GrowthHpCredit,
                 GrowthRewardCount = node.Snapshot.GrowthRewards.Total,
             };
@@ -564,6 +565,7 @@ internal sealed partial class CombatBeamSolver
                 finalSnapshot.BoundaryReason,
                 finalSnapshot.PredictionGaps.ToArray())
             {
+                Objective = finalSnapshot.Objective,
                 GrowthHpCredit = finalSnapshot.GrowthHpCredit,
                 GrowthRewards = finalSnapshot.GrowthRewards,
             };

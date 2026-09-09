@@ -6,6 +6,12 @@ internal sealed partial class SimulatedCombatState
     private int _angerCopiesGenerated;
     private int _deathSaveRelicHpRestored;
     private GrowthValues _growthRewards;
+    private PermanentGrowth _permanentGrowth;
+    public PermanentGrowth PermanentGrowth => _permanentGrowth;
+
+    public void RecordPermanentGrowth(int maxHp = 0, int damage = 0, int block = 0)
+        => _permanentGrowth = new(checked(_permanentGrowth.MaxHp + maxHp),
+            checked(_permanentGrowth.CardDamage + damage), checked(_permanentGrowth.CardBlock + block));
 
     public GrowthValues GrowthRewards => _growthRewards;
 
@@ -19,6 +25,18 @@ internal sealed partial class SimulatedCombatState
     /// </summary>
     public void RecordGrowthReward(GrowthSourceHandle source)
         => _growthRewards = _growthRewards.With(source, checked(_growthRewards.Get(source) + 1));
+
+    public (int Count, int Value) CapturePotionResources(MegaCrit.Sts2.Core.Entities.Players.Player player)
+    {
+        int count = 0, value = 0;
+        for (int slot = 0; slot < PotionSlotCount(player); slot++)
+        {
+            if (GetPotionAtSlot(player, slot) is not { } potion) continue;
+            count++;
+            value = checked(value + 10 * PotionUsePolicy.StrategicHpCost(potion, false));
+        }
+        return (count, value);
+    }
 
     public int LongTermResourceValue => _longTermResourceValue;
     public int AngerCopiesGenerated => _angerCopiesGenerated;

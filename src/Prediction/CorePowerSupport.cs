@@ -141,6 +141,7 @@ internal static class CorePowerSupport
                 ownerState.SetMaxHp(ownerState.MaxHp + maxHpGain);
                 simulator.Heal(owner, maxHpGain);
                 combat.RecordGrowthReward(GrowthSource.Feed);
+                combat.RecordPermanentGrowth(maxHp: maxHpGain);
                 break;
             }
             case HandOfGreed when target != null && WasFatalKill(

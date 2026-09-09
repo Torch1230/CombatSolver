@@ -497,6 +497,7 @@ internal static class SolverController
             Interaction = interaction,
             // 这里记的是玩家填的原始值；「不考虑局外收益」的折算交给快照上的 Effective* 一处做，
             // 免得两边各判一次而走岔。问题包里两样都在，方便看出当时是填了额度还是开了开关。
+            Objective = settings.Objective,
             GrowthBudgets = settings.GrowthBudgets,
             HasGrowthTargets = settings.GrowthBudgets.IsEnabled
                 || state.Players.SelectMany(player => player.PlayerCombatState!.AllCards).Any(GrowthValues.HasTarget),
@@ -1388,6 +1389,9 @@ internal static class SolverController
         if (currentTurn > 1 && _combat.LastSolverDeployedTurn != currentTurn - 1)
             MarkManualControlObserved("full_auto_after_manual_turn");
 
+        LiveCombatStamp current = LiveCombatStamp.Capture(state);
+        if (_combat.LatestResult is { } ready && _combat.LatestStamp == current
+            && StopFullAutoForObjective(ready)) return;
         _combat.FullAutoEnabled = true;
         Entry.Logger.Info(
             $"[CombatSolver/Test] FULL_AUTO enabled=true stop_on_combat_end={_stopFullAutoOnCombatEnd} " +
@@ -1395,7 +1399,6 @@ internal static class SolverController
             $"stop_on_worse_recalculation={_stopFullAutoOnWorseRecalculation}");
         SolverOverlay.RefreshControls();
 
-        LiveCombatStamp current = LiveCombatStamp.Capture(state);
         if (_combat.LatestResult != null && _combat.LatestStamp == current)
         {
             StartFullAutoDeployment(host, state, _combat.LatestResult);
@@ -1690,6 +1693,24 @@ internal static class SolverController
         if (current.GrowthBudgets == budgets)
             return;
         SolverSettings.Update(current with { GrowthBudgets = budgets });
+        _combat.ContinuationSource = null;
+        _combat.PendingCompleteProjectionBaseline = null;
+        SolverOverlay.RefreshControls();
+        if (!_combat.AutomaticSearchPaused && AutomaticCalculationEnabled)
+            RequestSearch(host, state, SearchReason.Manual);
+    }
+
+    internal static void SetSearchObjective(NGame host, CombatState state, SearchObjectivePolicy objective)
+    {
+        AssertMainThread();
+        objective.Validate();
+        if (_deployment != null || SolverSettings.Current.Objective == objective
+            && !SolverSettings.Current.IgnoreLongTermRewards) return;
+        SolverSettings.Update(SolverSettings.Current with
+        {
+            Objective = objective,
+            IgnoreLongTermRewards = false,
+        });
         _combat.ContinuationSource = null;
         _combat.PendingCompleteProjectionBaseline = null;
         SolverOverlay.RefreshControls();
@@ -2359,8 +2380,23 @@ internal static class SolverController
             StatusTone = SolverOverlayTone.Success,
         };
 
+    private static bool StopFullAutoForObjective(SolverResult result)
+    {
+        SearchObjectiveOutcome outcome = result.Snapshot.Objective;
+        bool complete = result.CombatEndedTurn.HasValue;
+        if (!outcome.Policy.IsRewardObjective || complete && outcome.MeetsLimits) return false;
+        _combat.FullAutoEnabled = false;
+        SolverOverlay.RefreshControls();
+        SolverOverlay.ShowFullAutoStoppedByObjective(outcome, complete);
+        Entry.Logger.Info($"[CombatSolver] FULL_AUTO_STOP reason=objective_limits_unproven complete={complete} " +
+            $"hp_loss={outcome.BattleHpLoss} max_loss={outcome.Policy.MaximumBattleHpLoss} " +
+            $"ending_hp={outcome.EndingHp} min_hp={outcome.Policy.MinimumEndingHp}");
+        return true;
+    }
+
     private static void StartFullAutoDeployment(NGame host, CombatState state, SolverResult result)
     {
+        if (StopFullAutoForObjective(result)) return;
         if (_stopFullAutoOnWorseRecalculation
             && !result.WasReused
             && result.ProjectedBattleHpLossIncrease > 0)
