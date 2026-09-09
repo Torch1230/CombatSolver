@@ -404,5 +404,6 @@
   "配合受集中影响的产球来源": "Supports recognized Focus-sensitive orb sources",
   "缺少已识别的受集中影响的产球来源": "No recognized Focus-sensitive orb source",
   "锻造收益需要后续打出剑来兑现": "Forge requires a later Blade attack to pay off",
-  "配合已识别的锻造来源": "Supported by recognized Forge sources"
+  "配合已识别的锻造来源": "Supported by recognized Forge sources",
+  "初始星星可支持一次打出，持续供给未确认": "Starting Stars cover one play; sustained supply is unconfirmed"
 }

@@ -21,7 +21,14 @@ internal static class RunAdviceCapture
         player.Deck.Cards.Select(Card).ToArray(),
         player.Relics.Select(r => r.Id.Entry).ToHashSet(StringComparer.Ordinal),
         player.Gold, player.Creature.CurrentHp, player.Creature.MaxHp,
-        player.RunState.CurrentActIndex, player.PotionSlots.Count(p => p is null));
+        player.RunState.CurrentActIndex, player.PotionSlots.Count(p => p is null),
+        RelicValue(player, "DIVINE_RIGHT", "Stars"),
+        RelicValue(player, "BOUND_PHYLACTERY", "Summon"),
+        RelicValue(player, "CRACKED_CORE", "Lightning"));
+
+    private static double RelicValue(Player player, string id, string variable) => player.Relics
+        .Where(r => r.GetType().Assembly == typeof(RelicModel).Assembly && r.Id.Entry == id)
+        .Sum(r => r.DynamicVars.TryGetValue(variable, out var value) ? (double)value.BaseValue : 0);
 
     internal static AdviceCard Card(CardModel card)
     {

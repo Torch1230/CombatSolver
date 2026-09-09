@@ -91,4 +91,28 @@ Check(AdviceMechanics.Roles("UNKNOWN") == AdviceRole.None, "Unknown cards have n
 var soul = plain with { Roles = AdviceRole.SoulSource };
 Check(Mechanic(context with { Deck = [plain with { Roles = AdviceRole.SoulPlayPayoff | AdviceRole.SoulExhaustPayoff }] }, soul)
     == Mechanic(context with { Deck = [plain with { Roles = AdviceRole.SoulPlayPayoff }] }, soul), "Soul source synergy is not double counted");
+var discardSource = plain with { Id = "SOURCE", Roles = AdviceRole.DiscardSource };
+var discardPayoff = plain with { Id = "PAYOFF", Roles = AdviceRole.DiscardPayoff };
+Check(RunAdvice.RemovalValue(context with { Deck = [discardSource, discardPayoff] }, 0)
+    < RunAdvice.RemovalValue(context with { Deck = [discardSource, plain] }, 0),
+    "Removing the only source must account for the surviving payoff");
+Check(RunAdvice.RemovalValue(context with { Deck = [discardSource, discardPayoff, discardSource] }, 0)
+    > RunAdvice.RemovalValue(context with { Deck = [discardSource, discardPayoff, plain] }, 0),
+    "A redundant source is safer to remove than the last source");
+Check(RunAdvice.RemovalValue(context with { Deck = [plain] }, 0) == 3,
+    "Removal must not include a duplicate penalty for the card being removed");
+var upgradedBasic = plain with { Basic = true, UpgradeLevel = 1 };
+Check(RunAdvice.RemovalValue(context with { Deck = [upgradedBasic, upgradedBasic with { UpgradeLevel = 0 }] }, 0)
+    < RunAdvice.RemovalValue(context with { Deck = [upgradedBasic, upgradedBasic with { UpgradeLevel = 0 }] }, 1),
+    "Removal uses the exact deck index, including upgrades");
+Check(Mechanic(context with { StartingStars = 3 }, spender) > Mechanic(context, spender),
+    "Starting Stars can cover an initial play");
+Check(Mechanic(context with { StartingStars = 3 }, spender) < Mechanic(context with { Deck = [stars] }, spender),
+    "Starting Stars do not imply sustainable production");
+Check(Mechanic(context with { SummonSupply = 1 }, plain with { Roles = AdviceRole.OstyAttack })
+    > Mechanic(context, plain with { Roles = AdviceRole.OstyAttack }), "Starter summon supports Osty attacks");
+Check(Mechanic(context with { InitialFocusOrbs = 1 }, focus) > Mechanic(context, focus),
+    "Initial orbs support Focus without a card source");
+Check(AdviceMechanics.Roles("DARKNESS") == AdviceRole.FocusOrbSource,
+    "Dark orb sources must not be omitted from Focus advice");
 Console.WriteLine($"RUN_ADVICE_CHECKS_OK checks={checks}");

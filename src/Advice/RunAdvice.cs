@@ -16,7 +16,8 @@ internal sealed record AdviceCard(
 
 internal sealed record AdviceContext(
     IReadOnlyList<AdviceCard> Deck, IReadOnlySet<string> Relics,
-    int Gold, int Hp, int MaxHp, int Act, int EmptyPotionSlots);
+    int Gold, int Hp, int MaxHp, int Act, int EmptyPotionSlots,
+    double StartingStars = 0, double SummonSupply = 0, double InitialFocusOrbs = 0);
 
 internal sealed record AdviceOffer(
     string Key, AdviceKind Kind, string Id, int Cost = 0,
@@ -66,7 +67,7 @@ internal static class RunAdvice
             case AdviceKind.Removal:
                 var removable = context.Deck.Select((c, index) => (Card: c, Index: index))
                     .Where(c => c.Card.Removable)
-                    .Select(c => (c.Card, c.Index, Value: RemovalValue(context, c.Card)))
+                    .Select(c => (c.Card, c.Index, Value: RemovalValue(context, c.Index)))
                     .OrderByDescending(c => c.Value).FirstOrDefault();
                 value = removable.Card is null ? -100 : removable.Value;
                 removalId = removable.Card?.Id;
@@ -158,14 +159,44 @@ internal static class RunAdvice
         return value;
     }
 
-    private static double RemovalValue(AdviceContext context, AdviceCard card)
+    internal static double RemovalValue(AdviceContext context, int index)
     {
+        AdviceCard card = context.Deck[index];
+        AdviceContext remaining = context with
+        {
+            Deck = context.Deck.Where((_, i) => i != index).ToArray(),
+        };
         if (card.Curse) return context.Relics.Contains("DU_VU_DOLL") ? 18 : 28;
-        if (!card.Basic) return Math.Max(-8, -CardValue(context, card, []) * 0.5);
-        bool scarce = card.Attack
-            ? context.Deck.Count(c => c.Attack && !c.Basic) < 2
-            : context.Deck.Count(c => c.Block > 0 && !c.Basic) < 2;
-        return (scarce ? 3 : 15) - card.UpgradeLevel * 4;
+        double value;
+        if (card.Basic)
+        {
+            bool scarce = card.Attack
+                ? remaining.Deck.Count(c => c.Attack && !c.Basic) < 2
+                : remaining.Deck.Count(c => c.Block > 0 && !c.Basic) < 2;
+            value = (scarce ? 3 : 15) - card.UpgradeLevel * 4;
+        }
+        else
+            value = Math.Max(-8, -CardValue(remaining, card, []) * 0.5);
+        // Compare each surviving component with itself excluded on both sides.
+        // This accounts for breaking the last source, rather than treating removal
+        // as merely the opposite of buying one more copy.
+        double synergyChange = 0;
+        for (int i = 0; i < context.Deck.Count; i++)
+        {
+            if (i == index) continue;
+            AdviceCard survivor = context.Deck[i];
+            AdviceContext before = context with
+            {
+                Deck = context.Deck.Where((_, j) => j != i).ToArray(),
+            };
+            AdviceContext after = context with
+            {
+                Deck = context.Deck.Where((_, j) => j != i && j != index).ToArray(),
+            };
+            synergyChange += AdviceMechanics.Value(after, survivor, [])
+                - AdviceMechanics.Value(before, survivor, []);
+        }
+        return value + Math.Clamp(synergyChange, -20, 20);
     }
 
     private static (double, bool) RelicValue(AdviceContext context, string id, List<string> reasons)
@@ -206,7 +237,7 @@ internal static class RunAdvice
             "FAIRY_IN_A_BOTTLE" or "GHOST_IN_A_JAR" => 26,
             "REGEN_POTION" or "FRUIT_JUICE" => 20,
             "POISON_POTION" => context.Deck.Any(c => c.Tags.HasFlag(AdviceTag.Poison)) ? 18 : 11,
-            "FOCUS_POTION" => context.Deck.Any(c => c.Roles.HasFlag(AdviceRole.FocusOrbSource)) ? 20 : -10,
+            "FOCUS_POTION" => AdviceMechanics.SourceSupply(context, AdviceRole.FocusOrbSource) > 0 ? 20 : -10,
             _ => double.NaN,
         };
         if (double.IsNaN(value)) return (0, false);

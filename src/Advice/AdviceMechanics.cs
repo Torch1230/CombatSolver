@@ -30,7 +30,8 @@ internal static class AdviceMechanics
         "BIG_BANG" or "SPOILS_OF_BATTLE" or "WROUGHT_IN_WAR" => AdviceRole.ForgeSource,
         "SOVEREIGN_BLADE" => AdviceRole.Blade,
         "DEFRAGMENT" => AdviceRole.FocusSource,
-        "ZAP" or "BALL_LIGHTNING" or "COOLHEADED" or "GLACIER" => AdviceRole.FocusOrbSource,
+        "ZAP" or "BALL_LIGHTNING" or "COOLHEADED" or "GLACIER"
+            or "COLD_SNAP" or "DARKNESS" or "CONSUMING_SHADOW" or "ICE_LANCE" or "CHILL" => AdviceRole.FocusOrbSource,
         "FUSION" or "METEOR_STRIKE" => AdviceRole.PlasmaSource,
         "BATTLE_TRANCE" => AdviceRole.StopsDraw,
         _ => AdviceRole.None,
@@ -82,18 +83,25 @@ internal static class AdviceMechanics
         if (card.StarCost > 0)
         {
             bool supplied = context.Deck.Any(c => c.Stars > 0);
-            value += supplied ? 2 : -4;
-            reasons.Add(supplied ? "牌组具备产星来源" : "缺少已识别的持续产星来源");
+            bool initiallyAffordable = context.StartingStars >= card.StarCost;
+            value += supplied ? 2 : initiallyAffordable ? 0 : -4;
+            reasons.Add(supplied ? "牌组具备产星来源" : initiallyAffordable
+                ? "初始星星可支持一次打出，持续供给未确认" : "缺少已识别的持续产星来源");
         }
         return value;
     }
+
+    internal static double SourceSupply(AdviceContext context, AdviceRole source) =>
+        context.Deck.Count(c => (c.Roles & source) != 0)
+        + ((source & AdviceRole.SummonSource) != 0 ? Math.Min(2, context.SummonSupply) : 0)
+        + ((source & AdviceRole.FocusOrbSource) != 0 ? Math.Min(2, context.InitialFocusOrbs) : 0);
 
     private static double PairValue(AdviceContext context, AdviceCard card,
         AdviceRole source, AdviceRole payoff, string sourceReason, string payoffReason,
         string missingReason, List<string> reasons)
     {
         double value = 0;
-        int sources = context.Deck.Count(c => (c.Roles & source) != 0);
+        double sources = SourceSupply(context, source);
         int payoffs = context.Deck.Count(c => (c.Roles & payoff) != 0);
         if ((card.Roles & source) != 0 && payoffs > 0)
         {
