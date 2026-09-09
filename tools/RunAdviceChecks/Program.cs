@@ -223,4 +223,9 @@ Check(DeckMechanismProfile.Stars(context with { Deck = [plain with { StarsX = tr
 Check(CardMechanismFacts.ImmediateShivSupply("BLADE_DANCE", 4, 0) == 4, "Shared mechanism facts retain upgraded generator quantity");
 Check(CardMechanismFacts.ImmediateShivSupply("INFINITE_BLADES", 4, 0) == 0, "Delayed persistent generation must not masquerade as immediate supply");
 Check(CardMechanismFacts.ImmediateShivSupply("UNKNOWN", 4, 4) == 0, "Shared facts do not infer unknown generators");
+Check(CardMechanismFacts.EstimatedShivPlays(0, 3, 1, 1, 1) == 0, "One action cannot both generate and play a Shiv");
+Check(CardMechanismFacts.EstimatedShivPlays(0, 3, 1, 1, 4) == 3, "Four actions allow one generator and its three Shivs");
+Check(CardMechanismFacts.EstimatedShivPlays(2, 0, 0, 2, 2) == 2, "Existing Shivs need no generation setup");
+for (int actions = 0; actions < 20; actions++)
+    Check(CardMechanismFacts.EstimatedShivPlays(2, 6, 2, 10, actions) <= actions, "Shiv predictions stay within the action budget");
 Console.WriteLine($"RUN_ADVICE_CHECKS_OK checks={checks}");

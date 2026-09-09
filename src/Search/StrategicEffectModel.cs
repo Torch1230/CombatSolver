@@ -153,6 +153,7 @@ internal readonly record struct StrategicEffectContext(
         int exhaustCount = 0;
         int shivCount = 0;
         int generatedShivCount = 0;
+        int shivGeneratorCount = 0;
         int debuffCount = 0;
         int statusCount = 0;
         int skillEnergy = 0;
@@ -229,9 +230,13 @@ internal readonly record struct StrategicEffectContext(
             {
                 if (card.Tags.Contains(CardTag.Shiv)) shivCount++;
                 if (card.GetType().Assembly == typeof(CardModel).Assembly)
-                    generatedShivCount += CardMechanismFacts.ImmediateShivSupply(card.Id.Entry,
+                {
+                    int generated = CardMechanismFacts.ImmediateShivSupply(card.Id.Entry,
                         card.DynamicVars.TryGetValue("Cards", out var cardsVar) ? cardsVar.IntValue : 0,
                         card.DynamicVars.TryGetValue("Shivs", out var shivsVar) ? shivsVar.IntValue : 0);
+                    generatedShivCount += generated;
+                    if (generated > 0) shivGeneratorCount++;
+                }
             }
             if (needsDebuffCount && hasDebuffDynamicVar)
                 debuffCount++;
@@ -270,7 +275,7 @@ internal readonly record struct StrategicEffectContext(
             ? Math.Min(exhaustCount, reachableCards)
             : 0;
         int shivPlays = requirements.HasFlag(StrategicEffectRequirements.ShivPlays)
-            ? Math.Min(reachableCards, ReachablePlays(shivCount + generatedShivCount, deckSize, reachableCards))
+            ? CardMechanismFacts.EstimatedShivPlays(shivCount, generatedShivCount, shivGeneratorCount, deckSize, reachableCards)
             : 0;
         int debuffApplications = requirements.HasFlag(StrategicEffectRequirements.DebuffApplications)
             ? ReachablePlays(debuffCount, deckSize, reachableCards)
