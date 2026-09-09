@@ -6,4 +6,4 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup><Compile Include="../../src/Advice/RunAdvice.cs" Link="RunAdvice.cs" /><Compile Include="../../src/Advice/AdviceMechanics.cs" Link="AdviceMechanics.cs" /></ItemGroup>
-</Project>
+<ItemGroup><Compile Include="../../src/Advice/DeckMechanismProfile.cs" Link="DeckMechanismProfile.cs" /></ItemGroup></Project>

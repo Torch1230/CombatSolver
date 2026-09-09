@@ -127,18 +127,17 @@ internal static class AdviceMechanics
         AdviceRole source, AdviceRole payoff, string sourceReason, string payoffReason,
         string missingReason, List<string> reasons)
     {
-        double value = 0;
-        double sources = SourceSupply(context, source);
-        int payoffs = context.Deck.Count(c => (c.Roles & payoff) != 0);
-        if ((card.Roles & source) != 0 && payoffs > 0)
-        {
-            value += Math.Min(6, payoffs * 2d * SourceWeight(card)) / (1 + sources * 0.5);
+        MechanismBalance profile = DeckMechanismProfile.Capture(context, source, payoff);
+        double addedSupply = (card.Roles & source) != 0 ? SourceWeight(card) : 0;
+        double addedPayoff = (card.Roles & payoff) != 0 ? 1 : 0;
+        double value = profile.Marginal(addedSupply, addedPayoff);
+        if (addedSupply > 0 && profile.Payoffs > 0)
             reasons.Add(sourceReason);
-        }
-        if ((card.Roles & payoff) != 0)
+        if (addedPayoff > 0)
         {
-            value += sources == 0 ? -4 : Math.Min(8, sources * 2d) / (1 + payoffs * 0.5);
-            reasons.Add(sources == 0 ? missingReason : payoffReason);
+            bool missing = profile.Supply + addedSupply <= 0;
+            if (missing) value -= 4;
+            reasons.Add(missing ? missingReason : payoffReason);
         }
         return value;
     }

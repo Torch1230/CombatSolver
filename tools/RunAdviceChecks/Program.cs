@@ -178,4 +178,13 @@ Check(Mechanic(context with { Deck = [stars with { Availability = 0 }] }, spende
     "An unavailable recurring source cannot satisfy Star demand");
 Check(Mechanic(context with { StartingStars = 1, Deck = [stars with { Stars = 2, SingleUse = true }] }, spender)
     > Mechanic(context, spender), "Initial and finite Star supplies combine");
+Check(new MechanismBalance(4, 0).Readiness == 0 && new MechanismBalance(0, 4).Readiness == 0,
+    "Sources or payoffs alone are not a functioning mechanism");
+Check(new MechanismBalance(1, 4).Marginal(1, 0) > new MechanismBalance(4, 1).Marginal(1, 0),
+    "A source should be more valuable when supply is the bottleneck");
+Check(new MechanismBalance(4, 1).Marginal(0, 1) > new MechanismBalance(1, 4).Marginal(0, 1),
+    "A payoff should be more valuable when payoffs are the bottleneck");
+Check(Math.Abs(new MechanismBalance(1, 2).Marginal(1, 0) + new MechanismBalance(2, 2).Marginal(0, 1)
+    - new MechanismBalance(1, 2).Marginal(0, 1) - new MechanismBalance(1, 3).Marginal(1, 0)) < 1e-9,
+    "Deck readiness gains must be independent of acquisition order");
 Console.WriteLine($"RUN_ADVICE_CHECKS_OK checks={checks}");
