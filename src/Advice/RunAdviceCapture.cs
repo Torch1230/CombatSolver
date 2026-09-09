@@ -95,7 +95,7 @@ internal static class RunAdviceCapture
                 || card.Type == CardType.Power && !(vanilla && id is "INFINITE_BLADES" or "CORRUPTION" or "NOXIOUS_FUMES" or "INFLAME"),
             vanilla && (roles != AdviceRole.None || tags != AdviceTag.None || card.IsBasicStrikeOrDefend)
                 ? AdviceCoverage.Partial : AdviceCoverage.Unreviewed, card.EnergyCost.CostsX, card.HasStarCostX,
-            vanilla ? id switch { "TWIN_STRIKE" or "RIP_AND_TEAR" => 2, "SWORD_BOOMERANG" => Value("Repeat"), _ => 1 } : 1);
+            vanilla ? CardMechanismFacts.AttackHits(id, (int)Value("Repeat")) : 1);
     }
 
     internal static AdviceOffer Offer(MerchantEntry entry, int index) => entry switch

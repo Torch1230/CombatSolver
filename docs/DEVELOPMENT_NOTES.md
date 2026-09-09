@@ -1,5 +1,13 @@
 # CombatSolver 开发笔记与未来构想
 
+## 下一版本（开发中）：力量命中次数接入战斗
+
+- CardMechanismFacts.AttackHits 由奖励捕获与战斗共用，核对的固定两段、Repeat 多段使用真实段数；未知攻击保留原单段近似。
+- StrategicEffectContext 新增可选 AttackHits 与需求位；Build 按分支存活牌估计玩家攻击命中次数，排除 OstyAttack。StrengthPower 消费此项，其他按攻击牌次数计数的 Power 保持 AttackPlays。
+- RunAdviceChecks 105,776 项通过，新增固定段数不读无关 Repeat、升级段数、未知单段三项；Release 编译通过。上下文 Build→Evaluate 已静态核对，尚未原生搜索验证。
+- 该入口仍为潜力估计，不替代伤害模拟；实际流派出牌效果、药水生命周期与界面验收等目标仍待完成，未安装。
+
+
 ## 下一版本（开发中）：力量与多段画像
 
 - 定向核对原生 Inflame：按 StrengthPower 变量给予力量，升级增加变量。捕获力量量，并将效果持续性与 Power 打出一次区分。

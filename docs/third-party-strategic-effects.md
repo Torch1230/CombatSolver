@@ -98,3 +98,7 @@ StrategicEffectMirrors.Register<MyPower>(
 数的是 `liveCards` 里 `Type == Attack` 的张数。求解器现成的量里没有按段计数，`CardValue` 也
 只读 `Damage` 基础值。低估在这里可以接受，因为准入那一半不受影响，而排名那一半有 `Prevention`
 的上限兜着：对任何有威胁的局面，层数 × 张数早就顶到上限了。
+
+### 战略命中次数上下文
+
+`StrategicEffectRequirements.AttackHits` 请求玩家攻击预计命中次数，结果为 `StrategicEffectContext.AttackHits`；与 `AttackPlays` 的攻击牌次数分开。未请求时为 null，旧构造调用保持兼容。当前只展开已审查多段规则，排除 OstyAttack，未知攻击仍为单段近似。

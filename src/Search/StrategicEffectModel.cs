@@ -25,6 +25,7 @@ internal enum StrategicEffectRequirements
     BestCardValue = 1 << 12,
     AverageAttackValue = 1 << 13,
     StatusDrawTriggers = 1 << 14,
+    AttackHits = 1 << 15,
 }
 
 internal readonly record struct StrategicEffectVector(
@@ -88,6 +89,8 @@ internal readonly record struct StrategicEffectContext(
     int AverageAttackValue,
     int StatusDrawTriggers)
 {
+    public int? AttackHits { get; init; }
+
     public static StrategicEffectContext Build(
         IReadOnlyList<PredictedCard> liveCards,
         int enemyHp,
@@ -127,7 +130,8 @@ internal readonly record struct StrategicEffectContext(
             | StrategicEffectRequirements.ExhaustPlays
             | StrategicEffectRequirements.ShivPlays
             | StrategicEffectRequirements.DebuffApplications
-            | StrategicEffectRequirements.StatusDrawTriggers;
+            | StrategicEffectRequirements.StatusDrawTriggers
+            | StrategicEffectRequirements.AttackHits;
         bool needsRemainingTurns = requirements.HasFlag(StrategicEffectRequirements.RemainingTurns)
             || (requirements & reachablePlayRequirements) != 0;
         bool needsAllCardValues = requirements.HasFlag(StrategicEffectRequirements.AverageCardValue)
@@ -147,6 +151,7 @@ internal readonly record struct StrategicEffectContext(
         bool needsPowerEnergy = requirements.HasFlag(StrategicEffectRequirements.PowerEnergySpend);
 
         int attackCount = 0;
+        int attackHitCount = 0;
         int skillCount = 0;
         int blockSkillCount = 0;
         int powerCount = 0;
@@ -204,6 +209,12 @@ internal readonly record struct StrategicEffectContext(
                 case CardType.Attack:
                     if (needsAttackCount)
                         attackCount++;
+                    if (requirements.HasFlag(StrategicEffectRequirements.AttackHits)
+                        && !card.Tags.Contains(CardTag.OstyAttack))
+                        attackHitCount += card.GetType().Assembly == typeof(CardModel).Assembly
+                            ? CardMechanismFacts.AttackHits(card.Id.Entry,
+                                card.DynamicVars.TryGetValue("Repeat", out var repeatVar) ? repeatVar.IntValue : 0)
+                            : 1;
                     break;
                 case CardType.Skill:
                     if (needsSkillCount)
@@ -306,7 +317,11 @@ internal readonly record struct StrategicEffectContext(
                 : 0,
             requirements.HasFlag(StrategicEffectRequirements.StatusDrawTriggers)
                 ? Math.Min(remainingTurns, ReachablePlays(statusCount, deckSize, reachableCards))
-                : 0);
+                : 0)
+        {
+            AttackHits = requirements.HasFlag(StrategicEffectRequirements.AttackHits)
+                ? ReachablePlays(attackHitCount, deckSize, reachableCards) : null,
+        };
     }
 
     private static int EnergyCost(CardModel card)
@@ -364,7 +379,8 @@ internal static class StrategicEffectModel
                 | StrategicEffectRequirements.AverageCardValue,
             EchoFormPower => StrategicEffectRequirements.UsefulCardPlays
                 | StrategicEffectRequirements.BestCardValue,
-            EnvenomPower or StrengthPower => StrategicEffectRequirements.AttackPlays,
+            EnvenomPower => StrategicEffectRequirements.AttackPlays,
+            StrengthPower => StrategicEffectRequirements.AttackHits,
             AccuracyPower => StrategicEffectRequirements.ShivPlays,
             SleightOfFleshPower => StrategicEffectRequirements.DebuffApplications,
             LethalityPower or ReaperFormPower => StrategicEffectRequirements.AttackPlays
@@ -415,7 +431,7 @@ internal static class StrategicEffectModel
             EnvenomPower => Damage(amount * context.AttackPlays, enemyHp),
             AccuracyPower => Damage(amount * context.ShivPlays, enemyHp),
             SleightOfFleshPower => Damage(amount * context.DebuffApplications, enemyHp),
-            StrengthPower => Damage(amount * context.AttackPlays, enemyHp),
+            StrengthPower => Damage(amount * (context.AttackHits ?? context.AttackPlays), enemyHp),
             LethalityPower when context.AttackPlays > 0 => Damage(
                 context.AverageAttackValue
                     * Math.Min(context.AttackPlays, context.RemainingTurns)

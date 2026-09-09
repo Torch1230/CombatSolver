@@ -496,3 +496,7 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 - [第三方 Power 的战略估值登记](third-party-strategic-effects.md)。
 - [无头测试](HEADLESS_TESTING.md)：夹具怎么跑。
 - [检查点回放](CHECKPOINT_REPLAY.md)：问题包怎么导入。
+
+### 战略命中次数上下文
+
+`StrategicEffectRequirements.AttackHits` 请求玩家攻击预计命中次数，结果为 `StrategicEffectContext.AttackHits`；与 `AttackPlays` 的攻击牌次数分开。未请求时为 null，旧构造调用保持兼容。当前只展开已审查多段规则，排除 OstyAttack，未知攻击仍为单段近似。

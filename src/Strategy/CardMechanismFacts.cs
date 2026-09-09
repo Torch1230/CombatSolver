@@ -3,6 +3,13 @@ namespace CombatSolver;
 // Reviewed value-only facts shared by run advice and branch-local combat evaluation.
 internal static class CardMechanismFacts
 {
+    internal static int AttackHits(string id, int repeat) => id switch
+    {
+        "TWIN_STRIKE" or "RIP_AND_TEAR" => 2,
+        "SWORD_BOOMERANG" or "SOVEREIGN_BLADE" => Math.Max(0, repeat),
+        _ => 1,
+    };
+
     internal static int ImmediateShivSupply(string id, int cards, int shivs) => id switch
     {
         "BLADE_DANCE" or "CLOAK_AND_DAGGER" => Math.Max(0, cards),
