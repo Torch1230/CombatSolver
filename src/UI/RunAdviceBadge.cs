@@ -100,6 +100,7 @@ internal static class RunAdviceBadge
                 SolverText.Get(a.Name) + ": " + SolverText.Format($"配合指数 {100 * a.Balance.Readiness:F1}")
                 + " · " + SolverText.Format($"供给权重 {a.Balance.Supply:F1} / 兑现权重 {a.Balance.Payoffs:F1}")))
                 + "\n" + string.Join(" / ", shortages)
+                + "\n" + SolverText.Format($"间接抽牌供给权重 {profile.IndirectDrawSupply:F1}")
                 + "\n" + SolverText.Get("配合指数为 0–100 的启发式供需指标，不是胜率；权重包含效果数量、延迟与一次性折算")
                 + "\n" + SolverText.Format($"部分审查 {profile.ReviewedCards}/{profile.DeckSize} 张；未覆盖的机制不计入指数");
         });

@@ -258,6 +258,22 @@ Check(CardMechanismFacts.EstimatedAttackHits(0, 0, 3, 1, 4, 16, singleUseGenerat
 for (int budget = 0; budget <= 30; budget++)
     Check(CardMechanismFacts.EstimatedShivPlays(2, 3, 1, 4, budget, singleUseGenerated: 3, singleUseGenerators: 1) <= Math.Min(5, budget),
         "Existing and finite generated Shivs stay bounded by stock and actions");
+var soulDrawSource = plain with { Roles = AdviceRole.SoulSource, SourceAmount = 1, Availability = 0.5 };
+Check(RunAdvice.CardValue(context, soulDrawSource, []) > RunAdvice.CardValue(context, plain, []),
+    "Soul generators have standalone indirect draw value without a payoff engine");
+Check(AdviceMechanics.IndirectDrawSupply(soulDrawSource with { SingleUse = true }) < AdviceMechanics.IndirectDrawSupply(soulDrawSource),
+    "One-shot Soul supply is discounted");
+Check(AdviceMechanics.IndirectDrawSupply(soulDrawSource with { Availability = 0 }) == 0,
+    "Unavailable Soul supply does not invent draw");
+Check(DeckMechanismProfile.Capture(context with { Deck = [soulDrawSource] }).IndirectDrawSupply == 0.5,
+    "Profile retains indirect supply without relabeling it as direct draw");
+Check(Mechanic(context with { Deck = [soulDrawSource] }, plain with { Roles = AdviceRole.StopsDraw })
+    < Mechanic(context with { Deck = [] }, plain with { Roles = AdviceRole.StopsDraw }),
+    "NoDraw sees indirect Soul supply when offered after the generator");
+var directDrawCard = plain with { Tags = AdviceTag.Draw, Draw = 2 };
+Check(RunAdvice.CardValue(context with { Deck = [soulDrawSource] }, directDrawCard, [])
+    < RunAdvice.CardValue(context with { Deck = [plain] }, directDrawCard, []),
+    "Existing indirect supply reduces marginal demand for more direct draw");
 Check(CardMechanismFacts.AttackHits("TWIN_STRIKE", 99) == 2, "Fixed hits must not read unrelated repeat variables");
 Check(CardMechanismFacts.AttackHits("SWORD_BOOMERANG", 4) == 4, "Shared attack facts retain upgraded hit count");
 Check(CardMechanismFacts.AttackHits("UNKNOWN", 99) == 1, "Unknown attacks retain the conservative single-hit baseline");

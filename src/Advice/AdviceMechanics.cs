@@ -57,6 +57,12 @@ internal static class AdviceMechanics
     internal static double StarGain(string id, double amount) => id is
         "GLOW" or "GATHER_LIGHT" or "SHINING_STRIKE" or "SOLAR_STRIKE" or "BIG_BANG" ? amount : 0;
 
+    internal static double IndirectDrawSupply(AdviceCard card) => card.Roles.HasFlag(AdviceRole.SoulSource)
+        ? SourceWeight(card) : 0;
+
+    internal static double DrawSupply(AdviceCard card) => (card.Tags.HasFlag(AdviceTag.Draw) ? 1 : 0)
+        + IndirectDrawSupply(card);
+
     internal static double Value(AdviceContext context, AdviceCard card, List<string> reasons)
     {
         if (card.Id is "BLADE_DANCE" or "CLOAK_AND_DAGGER" or "FAN_OF_KNIVES"
@@ -106,8 +112,7 @@ internal static class AdviceMechanics
         }
         if (card.Roles.HasFlag(AdviceRole.StopsDraw))
         {
-            int otherDraw = context.Deck.Count(c => c.Tags.HasFlag(AdviceTag.Draw)
-                && !c.Roles.HasFlag(AdviceRole.StopsDraw));
+            double otherDraw = context.Deck.Where(c => !c.Roles.HasFlag(AdviceRole.StopsDraw)).Sum(DrawSupply);
             value -= Math.Min(8, otherDraw * 2);
             reasons.Add("打出后限制本回合继续抽牌");
         }

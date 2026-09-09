@@ -13,9 +13,9 @@ internal sealed record DeckMechanismAxis(string Name, MechanismBalance Balance);
 internal sealed record DeckProfileSnapshot(
     IReadOnlyList<DeckMechanismAxis> Mechanisms, int DeckSize,
     int DrawCards, int EnergyCards, int DefensiveCards, int ExpensiveCards,
-    int ReviewedCards)
+    int ReviewedCards, double IndirectDrawSupply = 0)
 {
-    internal bool DrawShortage => DeckSize >= 15 && DrawCards < DeckSize * 0.15;
+    internal bool DrawShortage => DeckSize >= 15 && DrawCards + IndirectDrawSupply < DeckSize * 0.15;
     internal bool EnergyShortage => ExpensiveCards >= 4 && EnergyCards == 0;
     internal bool DefenseShortage => DeckSize > 0 && DefensiveCards < DeckSize * 0.3;
 }
@@ -43,7 +43,8 @@ internal static class DeckMechanismProfile
             context.Deck.Count(c => c.Tags.HasFlag(AdviceTag.Energy)),
             context.Deck.Count(c => c.Block > 0),
             context.Deck.Count(c => !c.EnergyX && c.Cost >= 2),
-            context.Deck.Count(c => c.Coverage == AdviceCoverage.Partial));
+            context.Deck.Count(c => c.Coverage == AdviceCoverage.Partial),
+            context.Deck.Sum(AdviceMechanics.IndirectDrawSupply));
     }
 
     internal static MechanismBalance Stars(AdviceContext context) => new(
@@ -58,7 +59,7 @@ internal static class DeckMechanismProfile
         return new(supply, attacks);
     }
 
-    internal static double DrawDemand(int deckSize, int drawCards) =>
+    internal static double DrawDemand(int deckSize, double drawCards) =>
         1d / (1 + drawCards / Math.Max(1d, deckSize * 0.15));
 
     internal static double EnergyDemand(int expensiveCards, int energyCards) =>

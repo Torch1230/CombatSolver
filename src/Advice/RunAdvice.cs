@@ -131,8 +131,15 @@ internal static class RunAdvice
         if (card.Tags.HasFlag(AdviceTag.Draw))
         {
             value += (5 + Math.Min(5, card.Draw * 2)) * DeckMechanismProfile.DrawDemand(
-                size, context.Deck.Count(c => c.Tags.HasFlag(AdviceTag.Draw)));
+                size, context.Deck.Sum(AdviceMechanics.DrawSupply));
             reasons.Add("改善抽牌");
+        }
+        double indirectDraw = AdviceMechanics.IndirectDrawSupply(card);
+        if (indirectDraw > 0)
+        {
+            value += Math.Min(8, 4 * indirectDraw) * DeckMechanismProfile.DrawDemand(
+                size, context.Deck.Sum(AdviceMechanics.DrawSupply));
+            reasons.Add("生成灵魂提供后续抽牌，已折算延迟与一次性供给");
         }
         if (card.Tags.HasFlag(AdviceTag.Energy))
         {

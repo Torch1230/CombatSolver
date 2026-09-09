@@ -1,4 +1,6 @@
 {
+  "生成灵魂提供后续抽牌，已折算延迟与一次性供给": "Generated Souls provide later draw, discounted for delay and one-shot supply",
+  "间接抽牌供给权重 {0:F1}": "Indirect draw supply weight {0:F1}",
   "生成小刀的基础伤害计入参考，需手牌空间与后续出牌": "Includes generated Shivs' base damage; requires hand space and subsequent plays",
   "不选": "Skip choice",
   "（药水）": " (Potion)",
