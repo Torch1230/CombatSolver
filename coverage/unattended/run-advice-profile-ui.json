@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "RUN-ADVICE",
+  "description": "Native reward/shop, purchase refresh, upgraded payoff capture and profile localization contract.",
+  "seed": "COMBATSOLVER-ADVICE",
+  "encounterId": "BYGONE_EFFIGY_ELITE",
+  "cards": [],
+  "timeoutSeconds": 120,
+  "exitOnComplete": true
+}

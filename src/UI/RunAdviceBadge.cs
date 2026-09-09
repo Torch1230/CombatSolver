@@ -19,11 +19,13 @@ internal static class RunAdviceBadge
         Clear(owner);
         Label label = new()
         {
-            Name = NodeName, MouseFilter = Control.MouseFilterEnum.Ignore,
+            Name = NodeName, MouseFilter = titleOnly ? Control.MouseFilterEnum.Ignore : Control.MouseFilterEnum.Pass,
             HorizontalAlignment = HorizontalAlignment.Center,
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
         };
         bool shopCard = compact && owner is NMerchantCard;
+        float width = compact && !shopCard ? 220 : 310;
+        label.Size = new Vector2(width, 0);
         label.AddThemeFontSizeOverride("font_size", shopCard ? 26 : compact ? 20 : 23);
         label.AddThemeColorOverride("font_outline_color", new Color(0.06f, 0.07f, 0.09f, 0.95f));
         label.AddThemeConstantOverride("outline_size", 7);
@@ -38,6 +40,7 @@ internal static class RunAdviceBadge
                 : SolverText.Format($"评分 {rating.Score:F1}");
             string reason = detail?.Invoke() ?? string.Join(" · ",
                 (rating.Available ? rating.Reasons.Take(compact ? 1 : 2) : rating.Reasons.TakeLast(2)).Select(SolverText.Get));
+            string compactText = title + "\n" + reason;
             if (rating.Offer.Card is { } card)
             {
                 string coverage = SolverText.Get(card.Coverage == AdviceCoverage.Partial
@@ -47,13 +50,18 @@ internal static class RunAdviceBadge
             if (!titleOnly && rating.Parts is { } parts)
                 reason = SolverText.Format($"基础 {parts.Base:F1} / 配合 {parts.Synergy:F1} / 价格 {parts.Price:F1}")
                     + "\n" + reason;
-            label.Text = titleOnly ? title : title + "\n" + reason;
+            label.TooltipText = title + "\n" + reason + "\n"
+                + string.Join("\n", rating.Reasons.Select(SolverText.Get));
+            label.Text = titleOnly ? title : compact ? compactText : title + "\n" + reason;
+            if (!titleOnly)
+            {
+                label.Size = new Vector2(width, 0);
+                float bottom = shopCard ? -245 : compact ? -35 : -230;
+                label.Position = new Vector2(-width / 2, bottom - label.GetCombinedMinimumSize().Y);
+            }
         }
         SolverLocaleRefresh.Bind(label, Refresh);
         owner.AddChild(label);
-        label.Position = shopCard ? new Vector2(-155, -310)
-            : compact ? new Vector2(-110, -90) : new Vector2(-155, -275);
-        label.Size = compact && !shopCard ? new Vector2(220, 108) : new Vector2(310, 130);
         return label;
     }
 

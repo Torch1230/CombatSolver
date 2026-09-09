@@ -1,5 +1,6 @@
 using Godot;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.CardRewardAlternatives;
 using MegaCrit.Sts2.Core.Entities.Merchant;
@@ -9,6 +10,7 @@ using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
+using MegaCrit.Sts2.Core.Nodes.CommonUi;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Nodes.Screens.CardSelection;
 using MegaCrit.Sts2.Core.Nodes.Screens.Overlays;
@@ -30,6 +32,19 @@ internal sealed partial class UnattendedTestRunner
         AdviceAssert(!bladeDance.Tags.HasFlag(AdviceTag.Draw), "generated cards must not be labeled as draw");
         AdviceAssert(RunAdviceCapture.Card(ModelDb.Card<ShrugItOff>()).Tags.HasFlag(AdviceTag.Draw),
             "actual card draw classification");
+        CardModel[] payoffModels = [ModelDb.Card<Accuracy>(), ModelDb.Card<FeelNoPain>(),
+            ModelDb.Card<Reflex>(), ModelDb.Card<Tactician>(), ModelDb.Card<Haunt>(),
+            ModelDb.Card<DevourLife>(), ModelDb.Card<Defragment>(), ModelDb.Card<Accelerant>()];
+        foreach (CardModel model in payoffModels)
+        {
+            CardModel card = player.RunState.CreateCard(model, player);
+            AdviceCard beforeUpgrade = RunAdviceCapture.Card(card);
+            CardCmd.Upgrade(card, CardPreviewStyle.None);
+            AdviceCard afterUpgrade = RunAdviceCapture.Card(card);
+            AdviceAssert(beforeUpgrade.PayoffWeight == 1 && afterUpgrade.PayoffWeight > 1,
+                $"native upgraded payoff capture: {model.Id}");
+        }
+        _completedChecks.Add("RunAdvice:NativeUpgradeCapture:EightPayoffs");
         AdviceCard strike = new("STRIKE_IRONCLAD", 6, 0, 0, 1, true, true, false, true, AdviceTag.None);
         AdviceCard defend = strike with { Id = "DEFEND_IRONCLAD", Damage = 0, Block = 5, Attack = false };
         AdviceContext context = new(Enumerable.Repeat(strike, 5).Concat(Enumerable.Repeat(defend, 5)).ToArray(),
@@ -68,7 +83,8 @@ internal sealed partial class UnattendedTestRunner
         foreach (var slot in shop.GetAllSlots().Where(s => s.Entry.IsStocked))
             AdviceAssert(slot.GetNodeOrNull<Label>(RunAdviceBadge.NodeName) is { } label
                 && !string.IsNullOrWhiteSpace(label.Text)
-                && label.MouseFilter == Control.MouseFilterEnum.Ignore, "native merchant slot badge");
+                && label.MouseFilter == Control.MouseFilterEnum.Pass
+                && !string.IsNullOrWhiteSpace(label.TooltipText), "native merchant slot badge and non-blocking detail tooltip");
         _completedChecks.Add("RunAdvice:NativeShop:Cards:Relics:Potions:Removal:NonBlockingLabels");
         if (DisplayServer.GetName() != "headless")
         {
@@ -105,6 +121,9 @@ internal sealed partial class UnattendedTestRunner
         foreach (var card in cards)
             AdviceAssert(screen.GetCardHolder(card.Card).GetNodeOrNull<Label>(RunAdviceBadge.NodeName) is not null,
                 "native reward patch attaches each badge");
+        AdviceCard accuracy = RunAdviceCapture.Card(ModelDb.Card<Accuracy>()) with { PayoffWeight = 1.5 };
+        var profile = DeckMechanismProfile.Capture(context with { Deck = [bladeDance, accuracy] });
+        RunAdviceBadge.Summary(screen, "尚未识别成型配合", reward: true, profile: profile);
         string language = LocManager.Instance.Language;
         try
         {
@@ -114,7 +133,14 @@ internal sealed partial class UnattendedTestRunner
                 await NextFrameAsync();
                 await NextFrameAsync();
                 string text = screen.GetCardHolder(cards[0].Card).GetNode<Label>(RunAdviceBadge.NodeName).Text;
-                AdviceAssert(text.Contains(locale == "eng" ? "Score " : "评分 "), "live label language refresh");
+                AdviceAssert(text.Contains(locale == "eng" ? "Estimate " : "参考分 "), "live label language refresh");
+                Label summary = screen.GetNode<Label>("CombatSolverAdviceSummary");
+                AdviceAssert(summary.TooltipText.Contains(SolverText.Format($"供给权重 {profile.Mechanisms[5].Balance.Supply:F1} / 兑现权重 {1.5:F1}")),
+                    "profile tooltip preserves fractional payoff and refreshes language");
+                AdviceAssert(summary.Text.Contains(SolverText.Format($"配合指数 {100 * profile.Mechanisms[5].Balance.Readiness:F1}")),
+                    "profile summary uses the scoring readiness");
+                AdviceAssert(summary.MouseFilter == Control.MouseFilterEnum.Pass,
+                    "profile tooltip is reachable without stopping parent input");
                 foreach (var rating in poor.Concat(good).Concat(unavailable).Concat(removal).Concat(generic))
                     foreach (string reason in rating.Reasons) _ = SolverText.Get(reason);
             }
@@ -123,6 +149,8 @@ internal sealed partial class UnattendedTestRunner
             AdviceAssert(screen.GetNode<Control>("UI/CardRow").GetChildren()
                 .OfType<MegaCrit.Sts2.Core.Nodes.Cards.Holders.NGridCardHolder>()
                 .Count(c => !c.IsQueuedForDeletion()) == 3, "reward reroll has no stale holders");
+            AdviceAssert(screen.GetChildren().OfType<Label>().Count(c => c.Name == "CombatSolverAdviceSummary") == 1,
+                "reward reroll replaces the profile summary");
             if (DisplayServer.GetName() != "headless")
             {
                 await Task.Delay(1100);
