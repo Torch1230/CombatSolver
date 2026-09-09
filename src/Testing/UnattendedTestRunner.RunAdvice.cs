@@ -90,6 +90,27 @@ internal sealed partial class UnattendedTestRunner
         AdviceCard defend = strike with { Id = "DEFEND_IRONCLAD", Damage = 0, Block = 5, Attack = false };
         AdviceContext context = new(Enumerable.Repeat(strike, 5).Concat(Enumerable.Repeat(defend, 5)).ToArray(),
             new HashSet<string>(), 100, 50, 80, 0, 1);
+        AdviceAssert(ModelDb.Card<Soul>().DynamicVars.Cards.BaseValue == 2,
+            "reviewed unupgraded Soul supplies two cards of draw");
+        foreach (CardModel model in new CardModel[] { ModelDb.Card<GraveWarden>(), ModelDb.Card<Reave>(), ModelDb.Card<Severance>() })
+        {
+            AdviceCard generatedDraw = RunAdviceCapture.Card(player.RunState.CreateCard(model, player));
+            AdviceCard withoutSource = generatedDraw with { Roles = generatedDraw.Roles & ~AdviceRole.SoulSource };
+            AdviceAssert(!generatedDraw.Tags.HasFlag(AdviceTag.Draw) && AdviceMechanics.IndirectDrawSupply(generatedDraw) > 0,
+                "native Soul source stays distinct from direct draw");
+            foreach (bool shopMode in new[] { false, true })
+            {
+                AdviceRating[] values = RunAdvice.Rank(context,
+                    [new("source", AdviceKind.Card, generatedDraw.Id, Card: generatedDraw),
+                     new("control", AdviceKind.Card, generatedDraw.Id, Card: withoutSource)], shopMode);
+                AdviceAssert(values[0].Score > values[1].Score, "native indirect draw improves reward and equal-price shop value");
+            }
+            AdviceCard noDraw = RunAdviceCapture.Card(ModelDb.Card<BattleTrance>());
+            AdviceAssert(AdviceMechanics.Value(context with { Deck = [generatedDraw] }, noDraw, [])
+                < AdviceMechanics.Value(context with { Deck = [withoutSource] }, noDraw, []),
+                "native NoDraw scoring recognizes Soul supply");
+        }
+        _completedChecks.Add("RunAdvice:NativeSoulDraw:IndependentValue:Shop:NoDraw:DistinctTiming");
         AdviceOffer skip = new("skip", AdviceKind.Skip, "skip");
         var poor = RunAdvice.Rank(context, [new("basic", AdviceKind.Card, strike.Id, Card: strike), skip], false);
         AdviceAssert(poor[1].Rank == 1 && poor[0].Rank > 1, "skip must beat redundant basics");
@@ -163,7 +184,8 @@ internal sealed partial class UnattendedTestRunner
             AdviceAssert(screen.GetCardHolder(card.Card).GetNodeOrNull<Label>(RunAdviceBadge.NodeName) is not null,
                 "native reward patch attaches each badge");
         AdviceCard accuracy = RunAdviceCapture.Card(ModelDb.Card<Accuracy>()) with { PayoffWeight = 1.5 };
-        var profile = DeckMechanismProfile.Capture(context with { Deck = [bladeDance, accuracy] });
+        var profile = DeckMechanismProfile.Capture(context with
+            { Deck = [bladeDance, accuracy, RunAdviceCapture.Card(ModelDb.Card<GraveWarden>())] });
         RunAdviceBadge.Summary(screen, "尚未识别成型配合", reward: true, profile: profile);
         string language = LocManager.Instance.Language;
         try
@@ -178,6 +200,9 @@ internal sealed partial class UnattendedTestRunner
                 Label summary = screen.GetNode<Label>("CombatSolverAdviceSummary");
                 AdviceAssert(summary.TooltipText.Contains(SolverText.Format($"供给权重 {profile.Mechanisms[5].Balance.Supply:F1} / 兑现权重 {1.5:F1}")),
                     "profile tooltip preserves fractional payoff and refreshes language");
+                AdviceAssert(profile.IndirectDrawSupply > 0 && summary.TooltipText.Contains(
+                    SolverText.Format($"间接抽牌供给权重 {profile.IndirectDrawSupply:F1}")),
+                    "profile tooltip localizes native indirect draw supply");
                 AdviceAssert(summary.Text.Contains(SolverText.Format($"配合指数 {100 * profile.Mechanisms[5].Balance.Readiness:F1}")),
                     "profile summary uses the scoring readiness");
                 AdviceAssert(summary.MouseFilter == Control.MouseFilterEnum.Pass,
