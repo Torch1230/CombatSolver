@@ -163,4 +163,19 @@ Check(Mechanic(context with { Deck = [spender] }, stars with { SingleUse = true 
     "Single-use Stars have less supply value");
 Check(AdviceMechanics.StarSupply(stars with { Availability = 0.5 }) < AdviceMechanics.StarSupply(stars),
     "Delayed Stars are discounted");
+AdviceCard[] attackDeck = Enumerable.Range(0, 6).Select(i => largeAttack with { Id = "ATTACK_" + i }).ToArray();
+Check(RunAdvice.RemovalValue(context with { Deck = attackDeck, Relics = new HashSet<string> { "KUNAI" } }, 0)
+    < RunAdvice.RemovalValue(context with { Deck = attackDeck }, 0),
+    "Removal must account for crossing an owned relic's deck-support threshold");
+var shuffledDeck = attackDeck.Reverse().ToArray();
+Check(RunAdvice.RemovalValue(context with { Deck = attackDeck }, 0)
+    == RunAdvice.RemovalValue(context with { Deck = shuffledDeck }, 5),
+    "Removal depends on the selected card and deck composition, not ordering");
+Check(RunAdvice.RemovalValue(context with { Deck = [poison, poison with { Id = "P2" }, poison with { Id = "P3" }] }, 0)
+    < RunAdvice.RemovalValue(context with { Deck = [poison, plain with { Id = "P2" }, plain with { Id = "P3" }] }, 0),
+    "Removal must include generic archetype losses in surviving cards");
+Check(Mechanic(context with { Deck = [stars with { Availability = 0 }] }, spender) == Mechanic(context, spender),
+    "An unavailable recurring source cannot satisfy Star demand");
+Check(Mechanic(context with { StartingStars = 1, Deck = [stars with { Stars = 2, SingleUse = true }] }, spender)
+    > Mechanic(context, spender), "Initial and finite Star supplies combine");
 Console.WriteLine($"RUN_ADVICE_CHECKS_OK checks={checks}");

@@ -181,9 +181,10 @@ internal static class RunAdvice
         {
             Deck = context.Deck.Where((_, i) => i != index).ToArray(),
         };
-        if (card.Curse) return context.Relics.Contains("DU_VU_DOLL") ? 18 : 28;
         double value;
-        if (card.Basic)
+        if (card.Curse)
+            value = context.Relics.Contains("DU_VU_DOLL") ? 18 : 28;
+        else if (card.Basic)
         {
             bool scarce = card.Attack
                 ? remaining.Deck.Count(c => c.Attack && !c.Basic) < 2
@@ -210,6 +211,13 @@ internal static class RunAdvice
             };
             synergyChange += CardValue(after, survivor, [])
                 - CardValue(before, survivor, []);
+        }
+        foreach (string relic in context.Relics)
+        {
+            var before = RelicValue(context, relic, []);
+            var after = RelicValue(remaining, relic, []);
+            if (before.Item2 && after.Item2)
+                synergyChange += after.Item1 - before.Item1;
         }
         return value + Math.Clamp(synergyChange, -20, 20);
     }

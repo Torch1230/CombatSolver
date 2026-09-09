@@ -100,8 +100,8 @@ internal static class AdviceMechanics
         }
         if (card.StarCost > 0)
         {
-            bool supplied = context.Deck.Any(c => c.Stars > 0 && !c.SingleUse);
-            bool finiteSupply = context.Deck.Sum(StarSupply) >= card.StarCost;
+            bool supplied = context.Deck.Any(c => StarSupply(c) > 0 && !c.SingleUse);
+            bool finiteSupply = context.StartingStars + context.Deck.Sum(StarSupply) >= card.StarCost;
             bool initiallyAffordable = context.StartingStars >= card.StarCost;
             value += supplied ? 2 : initiallyAffordable || finiteSupply ? 0 : -4;
             reasons.Add(supplied ? "牌组具备产星来源" : finiteSupply
