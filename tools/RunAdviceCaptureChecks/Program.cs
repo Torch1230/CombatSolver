@@ -79,4 +79,22 @@ foreach (var (id, variable, baseline, upgraded, source) in new[]
     Check(unsupported[1].Parts!.Synergy == unsupported[0].Parts!.Synergy,
         $"{id}: larger payoffs must not invent a missing source");
 }
+foreach (var (id, variable, count, block) in new[]
+{
+    ("BLADE_DANCE", "Cards", 3m, 0m),
+    ("CLOAK_AND_DAGGER", "Cards", 1m, 6m),
+    ("FAN_OF_KNIVES", "Shivs", 4m, 0m),
+})
+{
+    var generator = Card(id, (variable, count), ("Block", block));
+    var normal = RunAdviceCapture.Card(generator);
+    generator.DynamicVars[variable].BaseValue++;
+    var upgraded = RunAdviceCapture.Card(generator);
+    Check(normal.Damage == (double)count * 4 && upgraded.Damage == normal.Damage + 4 && normal.Block == (double)block,
+        $"{id}: retain generated base output and direct block without losing quantity upgrades");
+    Check(RunAdvice.CardValue(context, normal, []) > RunAdvice.CardValue(context, normal with { Damage = 0 }, []),
+        $"{id}: standalone generated damage must affect advice even without an amplifier");
+}
+Check(RunAdviceCapture.Card(Card("INFINITE_BLADES")).Damage == 0,
+    "Delayed recurring supply must not be treated as an immediate guaranteed Shiv batch");
 Console.WriteLine($"RUN_ADVICE_CAPTURE_CHECKS_OK checks={checks}");

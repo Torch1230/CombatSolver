@@ -96,8 +96,12 @@ internal static class RunAdviceCapture
             "ACCELERANT" => Value("Accelerant"),
             _ => CardMechanismFacts.AttackHits(id, (int)Value("Repeat")),
         };
+        // Reviewed generators create unupgraded Shivs (4 base damage each).
+        // This is potential output; temporary buffs and hand capacity are unknown here.
+        double generatedDamage = vanilla ? 4 * CardMechanismFacts.ImmediateShivSupply(
+            id, (int)Value("Cards"), (int)Value("Shivs")) : 0;
         return new AdviceCard(id, vanilla
-            ? AdviceMechanics.FaceDamage(id, Value("Damage"), Value("CalculationBase"), Value("Repeat"))
+            ? AdviceMechanics.FaceDamage(id, Value("Damage"), Value("CalculationBase"), Value("Repeat")) + generatedDamage
             : Value("Damage"), Value("Block"), draw,
             card.EnergyCost.CostsX ? 0 : Math.Max(0, card.EnergyCost.GetWithModifiers(CostModifiers.Local)),
             card.Type == CardType.Attack, card.IsBasicStrikeOrDefend,

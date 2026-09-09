@@ -32,6 +32,19 @@ internal sealed partial class UnattendedTestRunner
         AdviceAssert(!bladeDance.Tags.HasFlag(AdviceTag.Draw), "generated cards must not be labeled as draw");
         AdviceAssert(RunAdviceCapture.Card(ModelDb.Card<ShrugItOff>()).Tags.HasFlag(AdviceTag.Draw),
             "actual card draw classification");
+        foreach (var (model, countVariable) in new (CardModel, string)[]
+            { (ModelDb.Card<BladeDance>(), "Cards"), (ModelDb.Card<CloakAndDagger>(), "Cards"), (ModelDb.Card<FanOfKnives>(), "Shivs") })
+        {
+            CardModel generator = player.RunState.CreateCard(model, player);
+            for (int level = 0; level < 2; level++)
+            {
+                AdviceAssert(RunAdviceCapture.Card(generator).Damage == (double)(
+                    ModelDb.Card<Shiv>().DynamicVars.Damage.BaseValue * generator.DynamicVars[countVariable].BaseValue),
+                    $"native generated Shiv output capture: {model.Id}, upgrade={level}");
+                if (level == 0) CardCmd.Upgrade(generator, CardPreviewStyle.None);
+            }
+        }
+        _completedChecks.Add("RunAdvice:NativeShivGeneratorDamage:BaseAndUpgraded");
         CardModel[] payoffModels = [ModelDb.Card<Accuracy>(), ModelDb.Card<FeelNoPain>(),
             ModelDb.Card<Reflex>(), ModelDb.Card<Tactician>(), ModelDb.Card<Haunt>(),
             ModelDb.Card<DevourLife>(), ModelDb.Card<Defragment>(), ModelDb.Card<Accelerant>()];

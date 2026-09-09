@@ -120,7 +120,7 @@ internal static class RunAdvice
         synergy = 0;
         if (card.Curse) { reasons.Add("增加牌组负担"); return -25; }
         int size = Math.Max(1, context.Deck.Count);
-        double attacks = context.Deck.Count(c => c.Attack) / (double)size;
+        double attacks = context.Deck.Count(c => c.Attack || c.Damage > 0) / (double)size;
         double blocks = context.Deck.Count(c => c.Block > 0) / (double)size;
         double damage = card.Roles.HasFlag(AdviceRole.OstyAttack)
             && AdviceMechanics.SourceSupply(context, AdviceRole.SummonSource) == 0 ? 0 : card.Damage;

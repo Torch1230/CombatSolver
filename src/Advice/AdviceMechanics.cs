@@ -59,6 +59,9 @@ internal static class AdviceMechanics
 
     internal static double Value(AdviceContext context, AdviceCard card, List<string> reasons)
     {
+        if (card.Id is "BLADE_DANCE" or "CLOAK_AND_DAGGER" or "FAN_OF_KNIVES"
+            && card.Roles.HasFlag(AdviceRole.ShivSource))
+            reasons.Add("生成小刀的基础伤害计入参考，需手牌空间与后续出牌");
         double value = PairValue(context, card, AdviceRole.DiscardSource, AdviceRole.DiscardPayoff,
             "补充弃牌入口", "配合弃牌触发收益", "缺少已识别的主动弃牌入口", reasons);
         value += PairValue(context, card, AdviceRole.ExhaustSource | AdviceRole.SelfExhaust,
