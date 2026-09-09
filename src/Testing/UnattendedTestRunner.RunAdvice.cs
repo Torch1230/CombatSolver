@@ -1,4 +1,5 @@
 using Godot;
+using CombatSolver.Engine.Common;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
@@ -28,6 +29,20 @@ internal sealed partial class UnattendedTestRunner
 
     private async Task AssertRunAdviceAsync(Player player)
     {
+        foreach (CardModel[] models in new CardModel[][]
+            { [ModelDb.Card<BladeDance>()], [ModelDb.Card<Shiv>(), ModelDb.Card<Shiv>()],
+                [ModelDb.Card<BladeDance>(), ModelDb.Card<Shiv>()], [ModelDb.Card<DefendIronclad>()] })
+        {
+            PredictedCard[] predicted = models.Select(m => new PredictedCard(player.RunState.CreateCard(m, player))).ToArray();
+            var strengthOnly = StrategicEffectContext.Build(predicted, 100, 0, 0, StrategicEffectRequirements.AttackHits);
+            var combined = StrategicEffectContext.Build(predicted, 100, 0, 0,
+                StrategicEffectRequirements.AttackHits | StrategicEffectRequirements.ShivPlays);
+            AdviceAssert(strengthOnly.AttackHits == combined.ShivPlays && combined.AttackHits == combined.ShivPlays,
+                "Strength and Accuracy share existing/generated Shiv estimates without double counting");
+            AdviceAssert(models[0] is DefendIronclad ? strengthOnly.AttackHits == 0 : strengthOnly.AttackHits > 0,
+                "native Strength context recognizes Shiv sources without inventing attacks");
+        }
+        _completedChecks.Add("RunAdvice:NativeStrategicStrengthShivs:Requirements:NoDoubleCount:NoAttack");
         var bladeDance = RunAdviceCapture.Card(ModelDb.Card<BladeDance>());
         AdviceAssert(!bladeDance.Tags.HasFlag(AdviceTag.Draw), "generated cards must not be labeled as draw");
         AdviceAssert(RunAdviceCapture.Card(ModelDb.Card<ShrugItOff>()).Tags.HasFlag(AdviceTag.Draw),

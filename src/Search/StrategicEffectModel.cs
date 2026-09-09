@@ -144,7 +144,8 @@ internal readonly record struct StrategicEffectContext(
         bool needsBlockSkillCount = requirements.HasFlag(StrategicEffectRequirements.BlockSkillPlays);
         bool needsPowerCount = requirements.HasFlag(StrategicEffectRequirements.PowerPlays);
         bool needsExhaustCount = requirements.HasFlag(StrategicEffectRequirements.ExhaustPlays);
-        bool needsShivCount = requirements.HasFlag(StrategicEffectRequirements.ShivPlays);
+        bool needsShivCount = requirements.HasFlag(StrategicEffectRequirements.ShivPlays)
+            || requirements.HasFlag(StrategicEffectRequirements.AttackHits);
         bool needsDebuffCount = requirements.HasFlag(StrategicEffectRequirements.DebuffApplications);
         bool needsStatusCount = requirements.HasFlag(StrategicEffectRequirements.StatusDrawTriggers);
         bool needsSkillEnergy = requirements.HasFlag(StrategicEffectRequirements.SkillEnergySpend);
@@ -211,7 +212,7 @@ internal readonly record struct StrategicEffectContext(
                     if (needsAttackCount)
                         attackCount++;
                     if (requirements.HasFlag(StrategicEffectRequirements.AttackHits)
-                        && !card.Tags.Contains(CardTag.OstyAttack))
+                        && !card.Tags.Contains(CardTag.OstyAttack) && !card.Tags.Contains(CardTag.Shiv))
                         attackHitCount += card.GetType().Assembly == typeof(CardModel).Assembly
                             ? CardMechanismFacts.AttackHits(card.Id.Entry,
                                 card.DynamicVars.TryGetValue("Repeat", out var repeatVar) ? repeatVar.IntValue : 0)
@@ -325,7 +326,8 @@ internal readonly record struct StrategicEffectContext(
                 : 0)
         {
             AttackHits = requirements.HasFlag(StrategicEffectRequirements.AttackHits)
-                ? ReachablePlays(attackHitCount, deckSize, reachableCards) : null,
+                ? CardMechanismFacts.EstimatedAttackHits(attackHitCount, shivCount, generatedShivCount,
+                    shivGeneratorCount, deckSize, reachableCards, reusableShivCount) : null,
         };
     }
 

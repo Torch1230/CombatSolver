@@ -1,5 +1,13 @@
 # CombatSolver 开发笔记与未来构想
 
+## 下一版本（开发中）：力量共享小刀来源与行动预算
+
+- AttackHits 单独请求时也捕获小刀生成来源；已有小刀排除在普通攻击命中计数之外，与生成小刀一起受同一行动预算约束，生成器启动占用行动，普通攻击仅使用剩余部分。没有小刀时保留普通攻击估计。
+- RunAdviceChecks 105,788 项通过，新增六个纯值边界；Release 编译通过。原生 Build 合同 run `c310b7ef30bc445cacfcde572b6291a1` Passed，检验只有生成器、只有现有小刀、混合与无攻击来源，以及 AttackHits 单独/联合请求一致性。
+- `profile-strength-shiv-deploy.json` run `495f6dd35b9646388da1ed29a381d778` Passed：先 Inflame 后生成小刀击杀 18 HP 敌人；`profile-strength-shiv-no-setup.json` run `47570057e4be4561b40f83d45e96fbfd` Passed：12 HP 敌人仅打 Blade Dance，不打 Inflame。两者均第 1 回合胜利、零战损、零计划外重算，固定 3 秒短搜与 120 秒请求上限。
+- 使用同一个隔离实例顺序复用，最后合同执行后自动退出。该结果证明上下文缺口与所测部署路线，不证明完整循环可执行或相对旧版的整局胜率提升；未改玩家正式安装。
+
+
 ## 下一版本（开发中）：小刀生成牌基础输出评分
 
 - Blade Dance、Cloak and Dagger、Fan of Knives 之前仅提供画像来源，缺少普通 Damage 变量使基础输出被记为 0。现在计入生成数量 × 原生未升级小刀 4 点基础伤害；保留直接格挡，升级增加生成数量会增加基础值。

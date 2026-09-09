@@ -241,6 +241,12 @@ Check(Mechanic(context, multihit) == 0, "Multihit damage does not require Streng
 Check(RunAdvice.CardValue(context, multihit, []) == RunAdvice.CardValue(context, multihit with { Roles = AdviceRole.None }, []),
     "Recognizing optional Strength synergy must not penalize otherwise identical standalone attacks");
 Check(Mechanic(context, accelerant) < 0, "A payoff that requires poison retains its missing-source penalty");
+Check(CardMechanismFacts.EstimatedAttackHits(0, 0, 3, 1, 1, 4) == 3, "Strength can amplify generated Shivs after setup");
+Check(CardMechanismFacts.EstimatedAttackHits(0, 2, 0, 0, 2, 8) == 2, "Strength cannot reuse exhausting Shivs");
+Check(CardMechanismFacts.EstimatedAttackHits(0, 2, 3, 1, 3, 6) == 5, "Existing and generated Shivs each count once");
+Check(CardMechanismFacts.EstimatedAttackHits(1, 0, 3, 1, 2, 4) == 3, "Generator setup and Shivs leave no spare ordinary attack action");
+Check(CardMechanismFacts.EstimatedAttackHits(2, 0, 0, 0, 2, 4) == 4, "Ordinary attack estimates retain the no-Shiv baseline");
+Check(CardMechanismFacts.EstimatedAttackHits(0, 0, 3, 1, 1, 0) == 0, "No action budget means no hits");
 Check(CardMechanismFacts.AttackHits("TWIN_STRIKE", 99) == 2, "Fixed hits must not read unrelated repeat variables");
 Check(CardMechanismFacts.AttackHits("SWORD_BOOMERANG", 4) == 4, "Shared attack facts retain upgraded hit count");
 Check(CardMechanismFacts.AttackHits("UNKNOWN", 99) == 1, "Unknown attacks retain the conservative single-hit baseline");

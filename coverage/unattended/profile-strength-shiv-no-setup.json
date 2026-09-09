@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "characterId": "SILENT",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "INVENTORYVALUE0111",
+  "enemyCurrentHp": 12,
+  "initialPlayerHp": 70,
+  "initialPlayerMaxHp": 70,
+  "initialPlayerEnergy": 1,
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    {
+      "cardId": "INFLAME",
+      "pile": "Hand",
+      "treatAsDeckCard": true,
+      "count": 1
+    },
+    {
+      "cardId": "BLADE_DANCE",
+      "pile": "Hand",
+      "treatAsDeckCard": true,
+      "count": 1
+    }
+  ],
+  "potionPolicyForTest": "Disabled",
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 3000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "stopAfterInitialSolverResultAssertion": false,
+  "timeoutSeconds": 120,
+  "scenarioId": "PROFILE-STRENGTH-SHIV-NO-SETUP",
+  "description": "When unbuffed generated Shivs already win, do not spend an action on unnecessary Strength.",
+  "potions": [],
+  "expectedInitialPotionCount": 0,
+  "expectedInitialProjectedBattleHpLost": 0,
+  "expectedFinishedTurn": 1,
+  "expectedFinishedPlayerHpAtLeast": 70,
+  "expectedUnexpectedReplansAtMost": 0,
+  "deploymentFastModeForTest": "Instant",
+  "deploymentInterActionDelaySecondsForTest": 0,
+  "expectedInitialFirstActionCardId": "BLADE_DANCE",
+  "expectedInitialAbsentActionCardId": "INFLAME"
+}

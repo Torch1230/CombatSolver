@@ -21,8 +21,7 @@ internal static class CardMechanismFacts
     {
         if (actions <= 0 || deckSize <= 0) return 0;
         int cycleSize = deckSize + generated;
-        int setupActions = generators == 0 ? 0
-            : Math.Min(actions, (int)Math.Ceiling((double)generators * actions / cycleSize));
+        int setupActions = ShivSetupActions(generators, cycleSize, actions);
         int reusable = Math.Clamp(reusableExisting, 0, existing);
         int oneShot = existing - reusable;
         int existingPlays = Math.Min(oneShot, (int)Math.Ceiling((double)oneShot * actions / cycleSize))
@@ -31,4 +30,18 @@ internal static class CardMechanismFacts
             : (int)Math.Ceiling((double)generated * actions / cycleSize);
         return Math.Min(actions - setupActions, existingPlays + generatedPlays);
     }
+
+    internal static int EstimatedAttackHits(int ordinaryHits, int existingShivs, int generatedShivs,
+        int generators, int deckSize, int actions, int reusableShivs = 0)
+    {
+        if (actions <= 0 || deckSize <= 0) return 0;
+        int shivPlays = EstimatedShivPlays(existingShivs, generatedShivs, generators, deckSize, actions, reusableShivs);
+        int setup = ShivSetupActions(generators, deckSize + generatedShivs, actions);
+        int remainingActions = Math.Max(0, actions - shivPlays - setup);
+        int ordinaryDeckSize = Math.Max(1, deckSize - existingShivs - generators);
+        return shivPlays + (int)Math.Ceiling((double)ordinaryHits * remainingActions / ordinaryDeckSize);
+    }
+
+    private static int ShivSetupActions(int generators, int cycleSize, int actions) => generators == 0 ? 0
+        : Math.Min(actions, (int)Math.Ceiling((double)generators * actions / cycleSize));
 }

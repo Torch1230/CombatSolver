@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "characterId": "SILENT",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "INVENTORYVALUE0111",
+  "enemyCurrentHp": 18,
+  "initialPlayerHp": 70,
+  "initialPlayerMaxHp": 70,
+  "initialPlayerEnergy": 2,
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    {
+      "cardId": "INFLAME",
+      "pile": "Hand",
+      "treatAsDeckCard": true,
+      "count": 1
+    },
+    {
+      "cardId": "BLADE_DANCE",
+      "pile": "Hand",
+      "treatAsDeckCard": true,
+      "count": 1
+    }
+  ],
+  "potionPolicyForTest": "Disabled",
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 3000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "stopAfterInitialSolverResultAssertion": false,
+  "timeoutSeconds": 120,
+  "scenarioId": "PROFILE-STRENGTH-SHIV-DEPLOY",
+  "description": "Native Strength plus generated Shivs search/deployment target; first-turn 18 damage after setup.",
+  "potions": [],
+  "expectedInitialPotionCount": 0,
+  "expectedInitialProjectedBattleHpLost": 0,
+  "expectedFinishedTurn": 1,
+  "expectedFinishedPlayerHpAtLeast": 70,
+  "expectedUnexpectedReplansAtMost": 0,
+  "deploymentFastModeForTest": "Instant",
+  "deploymentInterActionDelaySecondsForTest": 0,
+  "expectedInitialFirstActionCardId": "INFLAME"
+}
