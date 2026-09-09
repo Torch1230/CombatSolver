@@ -70,7 +70,7 @@ internal static class AdviceMechanics
         value += PairValue(context, card, AdviceRole.DoomSource, AdviceRole.DoomPayoff,
             "补充灾厄施加来源", "配合灾厄叠加或结算", "缺少已识别的灾厄来源", reasons);
         value += PairValue(context, card, AdviceRole.StrengthSource, AdviceRole.StrengthPayoff,
-            "力量支持多段攻击", "多段攻击放大力量收益", "缺少已识别的力量来源", reasons);
+            "力量支持多段攻击", "多段攻击放大力量收益", "缺少已识别的力量来源", reasons, sourceRequired: false);
         // Soul play and exhaust payoffs share a source; count its synergy only once.
         value += PairValue(context, card, AdviceRole.SoulSource,
             AdviceRole.SoulPlayPayoff | AdviceRole.SoulExhaustPayoff,
@@ -148,7 +148,7 @@ internal static class AdviceMechanics
 
     private static double PairValue(AdviceContext context, AdviceCard card,
         AdviceRole source, AdviceRole payoff, string sourceReason, string payoffReason,
-        string missingReason, List<string> reasons)
+        string missingReason, List<string> reasons, bool sourceRequired = true)
     {
         MechanismBalance profile = DeckMechanismProfile.Capture(context, source, payoff);
         double addedSupply = (card.Roles & source) != 0 ? SourceWeight(card) : 0;
@@ -159,6 +159,7 @@ internal static class AdviceMechanics
         if (addedPayoff > 0)
         {
             bool missing = profile.Supply + addedSupply <= 0;
+            if (missing && !sourceRequired) return value;
             if (missing) value -= 4;
             reasons.Add(missing ? missingReason : payoffReason);
         }

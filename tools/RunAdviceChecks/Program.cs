@@ -237,6 +237,10 @@ var strength = plain with { Roles = AdviceRole.StrengthSource, SourceAmount = 2 
 var multihit = plain with { Roles = AdviceRole.StrengthPayoff, PayoffWeight = 3 };
 Check(Mechanic(context with { Deck = [strength] }, multihit) > Mechanic(context with { Deck = [strength] }, multihit with { PayoffWeight = 1 }), "More hits offer greater Strength synergy");
 Check(DeckMechanismProfile.Capture(context with { Deck = [strength, multihit] }).Mechanisms.Count(a => a.Balance.Readiness > 0) == 1, "Strength and multihit produce a profile axis");
+Check(Mechanic(context, multihit) == 0, "Multihit damage does not require Strength to work");
+Check(RunAdvice.CardValue(context, multihit, []) == RunAdvice.CardValue(context, multihit with { Roles = AdviceRole.None }, []),
+    "Recognizing optional Strength synergy must not penalize otherwise identical standalone attacks");
+Check(Mechanic(context, accelerant) < 0, "A payoff that requires poison retains its missing-source penalty");
 Check(CardMechanismFacts.AttackHits("TWIN_STRIKE", 99) == 2, "Fixed hits must not read unrelated repeat variables");
 Check(CardMechanismFacts.AttackHits("SWORD_BOOMERANG", 4) == 4, "Shared attack facts retain upgraded hit count");
 Check(CardMechanismFacts.AttackHits("UNKNOWN", 99) == 1, "Unknown attacks retain the conservative single-hit baseline");
