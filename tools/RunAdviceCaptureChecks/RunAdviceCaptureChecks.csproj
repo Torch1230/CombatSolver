@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+<PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net9.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
+<ItemGroup>
+<Compile Include="../../src/Advice/RunAdvice.cs" Link="RunAdvice.cs" />
+<Compile Include="../../src/Advice/AdviceMechanics.cs" Link="AdviceMechanics.cs" />
+<Compile Include="../../src/Advice/RunAdviceCapture.cs" Link="RunAdviceCapture.cs" />
+</ItemGroup></Project>

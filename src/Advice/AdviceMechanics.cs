@@ -68,7 +68,7 @@ internal static class AdviceMechanics
             // Forge creates its own Blade. Existing Blade is not a prerequisite.
             int sources = context.Deck.Count(c => c.Roles.HasFlag(AdviceRole.ForgeSource));
             double support = context.Deck.Count(c => c.Tags.HasFlag(AdviceTag.Energy));
-            double setupCost = Math.Max(0, card.Cost + 2 - 3 - Math.Min(2, support));
+            double setupCost = Math.Max(0, card.Cost + 2 - context.BaseEnergy - Math.Min(2, support));
             value += 3d / (1 + sources * 0.5) - Math.Min(4, setupCost * 2);
             if (setupCost > 0) reasons.Add("锻造与剑的费用可能需要分回合支付");
             reasons.Add("锻造收益需要后续打出剑来兑现");

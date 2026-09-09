@@ -140,4 +140,6 @@ Check(Mechanic(context with { Deck = [plain with { Tags = AdviceTag.Energy }] },
     > Mechanic(context, forge with { Cost = 2 }), "Energy support eases Forge setup pressure");
 Check(Mechanic(context with { Deck = [stopsDraw] }, soul) < Mechanic(context, soul),
     "Soul generation conflicts with NoDraw even without direct draw tags");
+Check(Mechanic(context with { BaseEnergy = 4 }, forge with { Cost = 2 }) > Mechanic(context with { BaseEnergy = 3 }, forge with { Cost = 2 }),
+    "Forge must use captured base energy rather than a fixed three-energy assumption");
 Console.WriteLine($"RUN_ADVICE_CHECKS_OK checks={checks}");

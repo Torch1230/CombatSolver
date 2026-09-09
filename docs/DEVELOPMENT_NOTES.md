@@ -1,5 +1,13 @@
 # CombatSolver 开发笔记与未来构想
 
+## 下一版本（开发中）：建议评分缺口验收
+
+- Forge 改用捕获的 player.MaxEnergy 作为基础能量，避免固定三能量。战斗内临时能量 Hook、未来抽牌与费用变化仍不冒充已知条件。
+- 新增 RunAdviceCaptureChecks，直接链接生产捕获代码，使用 API 形状的测试替身检查八项捕获合同：多段/动态基础伤害、产量/时点/一次性、快照独立、Severance、未知 Power、起始遗物/基础能量及覆盖标记。原生程序集接口由 Release 编译验证；没有声称运行了原生 Hook。
+- RunAdviceChecks 105,711 项通过；CaptureChecks 八项通过；Release 编译通过。未启动游戏、未安装，真实排版和推荐收益待玩家验证。
+- 本批对应六项缺口：删牌前后依赖比较；已审查起始来源；产量/时点/一次性；已审查动态/多段牌面与 Power 分类；界面覆盖和分数分项；Forge 费用窗口及 Soul/NoDraw 冲突。均为有界奖励评分规则，不是完整战斗预测；未识别卡和遗物明确保留覆盖边界。
+
+
 ## 下一版本（开发中）：基础伤害与兑现限制
 
 - 主线程捕获将 TwinStrike 的固定两段、SwordBoomerang/SovereignBlade 的 Repeat 纳入总伤害；Unleash/SoulStorm 保留 CalculationBase，不把未知未来 Osty HP 或消耗堆数量当作实际增伤。无已识别召唤来源时不为 OstyAttack 计算基础输出奖励。

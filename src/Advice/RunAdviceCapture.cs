@@ -24,7 +24,7 @@ internal static class RunAdviceCapture
         player.RunState.CurrentActIndex, player.PotionSlots.Count(p => p is null),
         RelicValue(player, "DIVINE_RIGHT", "Stars"),
         RelicValue(player, "BOUND_PHYLACTERY", "Summon"),
-        RelicValue(player, "CRACKED_CORE", "Lightning"));
+        RelicValue(player, "CRACKED_CORE", "Lightning"), player.MaxEnergy);
 
     private static double RelicValue(Player player, string id, string variable) => player.Relics
         .Where(r => r.GetType().Assembly == typeof(RelicModel).Assembly && r.Id.Entry == id)

@@ -23,7 +23,7 @@ internal sealed record AdviceCard(
 internal sealed record AdviceContext(
     IReadOnlyList<AdviceCard> Deck, IReadOnlySet<string> Relics,
     int Gold, int Hp, int MaxHp, int Act, int EmptyPotionSlots,
-    double StartingStars = 0, double SummonSupply = 0, double InitialFocusOrbs = 0);
+    double StartingStars = 0, double SummonSupply = 0, double InitialFocusOrbs = 0, int BaseEnergy = 3);
 
 internal sealed record AdviceOffer(
     string Key, AdviceKind Kind, string Id, int Cost = 0,

@@ -314,3 +314,7 @@ renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或
 - `tools/verify-refactor-boundaries.ps1` / `tools/verify-refactor-boundaries.sh`：Windows / Linux 的等价门禁，阻止 Search 全局依赖、旧 controller 字段、worker live 回读、Beam 职责回流、unattended 编排回流、UI mutable 类型回流和 registry 私有反射；规则变化时必须同步维护两端。
 
 纯职责移动至少运行 Release 编译与当前平台的结构门禁。改变语义、搜索或显示行为时，再按影响面选择严格差分、完整 headless、CoverageCatalog 或可见 Steam。
+
+### 奖励评分捕获合同
+
+`tools/RunAdviceCaptureChecks` 链接生产 `RunAdviceCapture`，以 API 测试替身检查值快照、已审查来源与基础伤害字段。原生接口以主项目编译校验，游戏 Hook 和 UI 不在该工具证明范围内。`AdviceRating.Parts` 是 UI 的基础/配合/价格投影，覆盖标记独立于原生程序集来源。
