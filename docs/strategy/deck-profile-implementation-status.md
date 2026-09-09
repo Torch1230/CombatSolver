@@ -1,13 +1,13 @@
 # 画像与策略优化实现核对
 
-核对基线：`4417c37`（2026-09-09）。本页区分已实现的数据链路、实际证据和后续缺口，不能用维度数量代表完整流派覆盖。
+核对基线：`11aa051`（2026-09-09）。本页区分已实现的数据链路、实际证据和后续缺口，不能用维度数量代表完整流派覆盖。
 
 ## 当前范围与证据
 
 | 用户目标 | 当前链路 | 证据与限制 |
 |---|---|---|
 | 缓解平衡模式囤药 | PotionInventoryValue → 搜索容量／最终排序／反事实准入 | 满栏、未满栏、无收益哨兵及一次真实部署通过；只证明所测普通药水情形 |
-| 抓牌和商店数值评分 | RunAdviceCapture → RunAdvice / AdviceMechanics → RunAdviceBadge | 105,782 个纯评分检查、58 个捕获合同；原生购买刷新、奖励重掷及语言切换通过 |
+| 抓牌和商店数值评分 | RunAdviceCapture → RunAdvice / AdviceMechanics → RunAdviceBadge | 105,829 个纯评分检查、58 个捕获合同；原生购买刷新、奖励重掷及语言切换通过 |
 | 从牌组理解玩家体系 | DeckMechanismProfile 的 11 个可共存机制维度 | 供给、兑现、短缺与边际变化已进入建议；未知牌与未审查机制仍不完整 |
 | 画像影响战斗出牌 | CardMechanismFacts → StrategicEffectContext / StrategicEffectModel | 多段命中、小刀生成、一次性小刀行动预算、消耗抽牌潜力已部分接入；不能说 11 个建议维度全部接入战斗 |
 | UI 展示数值与原因 | 摘要指数、权重 tooltip、参考分与分解 | 原生渲染样本与 eng/zhs/zht 刷新通过；未穷尽分辨率和鼠标／手柄交互 |
@@ -29,3 +29,13 @@
 - 研究中的血量换启动、防御转伤害、更多生成牌转换等是候选机制轴，未逐卡核对。本批不以猜测补齐角色标签。
 
 这些是覆盖缺口，不是已复现的全部战斗错误。力量／小刀不一致已进入修复验证，其余按可复现的决策差异选择后续工作。
+
+## 下一项原生时序核对：消耗抽牌
+
+当前 `StrategicEffectModel` 将 Dark Embrace 的潜力按 ExhaustPlays × 抽牌价值计算，Context 不包含本回合禁抽状态。2026-09-09 定向核对 v0.111.0 原生实现得到：
+
+- Dark Embrace 的普通消耗立即调用 Draw；由 Ethereal 引发的消耗先累加内部计数，直到 AfterSideTurnEnd 才调用 Draw 并清零。
+- NoDraw 的 ShouldDraw 允许 fromHandDraw，但阻止所属玩家的其他抽牌；它本身也在 AfterSideTurnEnd 移除。
+- 因此不能仅凭存在 NoDraw 就把整个预测窗口的抽牌收益归零，也不能把 Ethereal 的延后抽牌直接当作下一回合起手抽牌。两个 AfterSideTurnEnd hook 的顺序需要按原生 subscriber 次序验证。
+
+下一步最小验证应比较普通消耗、Ethereal 回合末消耗，以及两种 Power 施加顺序的 actual/simulated 牌堆与抽牌历史；通过后再把本回合/延后供给分别注入战斗潜力上下文。上述核对尚未修改战斗估值，也不是语义差分通过证据。
