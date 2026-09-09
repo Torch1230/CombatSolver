@@ -1,5 +1,14 @@
 # CombatSolver 开发笔记与未来构想
 
+## 下一版本（开发中）：NoDraw 与消耗抽牌最小差分
+
+- `coverage/unattended/dark-embrace-draw-timing.json` 含四个最小请求：普通小刀消耗与虚无牌回合末消耗，分别按 NoDraw→DarkEmbrace 和相反顺序施加。只观察首个相关结算边界，不进入下一回合准备。
+- 游戏 v0.111.0 / RitsuLib 0.5.18 run `6fe4ee613293469c80fcf107128ff1ce` Passed（30.52 秒），四组均通过 actual/simulated 快照差分，包含牌堆顺序、Power 状态/内部状态、资源与显式手牌数量断言。
+- 普通消耗两种顺序均为 0 张；虚无消耗中 NoDraw 先施加时回合末留下 1 张、DarkEmbrace 先施加时 0 张。确认 AfterSideTurnEnd 的禁抽移除与延后抽牌顺序不能忽略，也不能把延后抽牌等同下一回合起手抽牌。
+- 复跑入口：`tools/run-unattended-test.ps1 -ScenarioId DARK-EMBRACE-DRAW-TIMING -CharacterId IRONCLAD -MonsterMoveChecksPath coverage/unattended/dark-embrace-draw-timing.json -TimeoutSeconds 120 -ExitOnComplete`，路径按环境覆盖；Bash 使用对应长参数。未修改行为源码，无需重建；隔离实例已退出。
+- 这一步确立接入战斗潜力估计前的语义边界，尚未修复 NoDraw 的潜力评分。不能仅按是否存在 NoDraw 将整个预测窗口的 DarkEmbrace 价值归零。
+
+
 ## 下一版本（开发中）：Soul 间接抽牌原生合同
 
 - 游戏 v0.111.0 / RitsuLib 0.5.18 的 RUN-ADVICE run `5113cd8fad094e4bb8028340c2321d77` Passed，23.68 秒。原生 Soul 的基础抽牌变量为 2；Grave Warden / Reave / Severance 均捕获为非即时 Draw 的间接来源。

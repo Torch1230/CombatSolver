@@ -36,6 +36,6 @@
 
 - Dark Embrace 的普通消耗立即调用 Draw；由 Ethereal 引发的消耗先累加内部计数，直到 AfterSideTurnEnd 才调用 Draw 并清零。
 - NoDraw 的 ShouldDraw 允许 fromHandDraw，但阻止所属玩家的其他抽牌；它本身也在 AfterSideTurnEnd 移除。
-- 因此不能仅凭存在 NoDraw 就把整个预测窗口的抽牌收益归零，也不能把 Ethereal 的延后抽牌直接当作下一回合起手抽牌。两个 AfterSideTurnEnd hook 的顺序需要按原生 subscriber 次序验证。
+- 因此不能仅凭存在 NoDraw 就把整个预测窗口的抽牌收益归零，也不能把 Ethereal 的延后抽牌直接当作下一回合起手抽牌。四组原生差分已验证该顺序：普通消耗均不能抽牌；虚无消耗在 NoDraw 先施加时抽 1 张，反向顺序抽 0 张。
 
-下一步最小验证应比较普通消耗、Ethereal 回合末消耗，以及两种 Power 施加顺序的 actual/simulated 牌堆与抽牌历史；通过后再把本回合/延后供给分别注入战斗潜力上下文。上述核对尚未修改战斗估值，也不是语义差分通过证据。
+最小四组 actual/simulated 快照差分已通过，run `6fe4ee613293469c80fcf107128ff1ce`。下一步把本回合/延后供给分别注入战斗潜力上下文，保留已验证的顺序差异。战斗估值尚未修改；本次快照合同不宣称完整抽牌历史专属断言。

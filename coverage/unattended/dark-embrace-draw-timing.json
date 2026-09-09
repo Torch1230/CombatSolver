@@ -1,0 +1,146 @@
+[
+  {
+    "monsterId": "BigDummy",
+    "moveId": "NOTHING",
+    "enemyHpBefore": 999,
+    "clearAllRelicsBeforeMove": true,
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "powersBeforeMove": [
+      {
+        "powerId": "NO_DRAW_POWER",
+        "target": "Player",
+        "amount": 1
+      },
+      {
+        "powerId": "DARK_EMBRACE_POWER",
+        "target": "Player",
+        "amount": 1
+      }
+    ],
+    "cardsBeforeMove": [
+      {
+        "cardId": "SHIV",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "DEFEND_IRONCLAD",
+        "pile": "Draw",
+        "count": 7
+      }
+    ],
+    "triggerPlayerTurnEndAfterMove": false,
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "SHIV",
+        "target": "Enemy"
+      }
+    ],
+    "expectedPlayerHandCount": 0
+  },
+  {
+    "monsterId": "BigDummy",
+    "moveId": "NOTHING",
+    "enemyHpBefore": 999,
+    "clearAllRelicsBeforeMove": true,
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "powersBeforeMove": [
+      {
+        "powerId": "DARK_EMBRACE_POWER",
+        "target": "Player",
+        "amount": 1
+      },
+      {
+        "powerId": "NO_DRAW_POWER",
+        "target": "Player",
+        "amount": 1
+      }
+    ],
+    "cardsBeforeMove": [
+      {
+        "cardId": "SHIV",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "DEFEND_IRONCLAD",
+        "pile": "Draw",
+        "count": 7
+      }
+    ],
+    "triggerPlayerTurnEndAfterMove": false,
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "SHIV",
+        "target": "Enemy"
+      }
+    ],
+    "expectedPlayerHandCount": 0
+  },
+  {
+    "monsterId": "BigDummy",
+    "moveId": "NOTHING",
+    "enemyHpBefore": 999,
+    "clearAllRelicsBeforeMove": true,
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "powersBeforeMove": [
+      {
+        "powerId": "NO_DRAW_POWER",
+        "target": "Player",
+        "amount": 1
+      },
+      {
+        "powerId": "DARK_EMBRACE_POWER",
+        "target": "Player",
+        "amount": 1
+      }
+    ],
+    "cardsBeforeMove": [
+      {
+        "cardId": "DAZED",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "DEFEND_IRONCLAD",
+        "pile": "Draw",
+        "count": 7
+      }
+    ],
+    "triggerPlayerTurnEndAfterMove": true,
+    "expectedPlayerHandCount": 1
+  },
+  {
+    "monsterId": "BigDummy",
+    "moveId": "NOTHING",
+    "enemyHpBefore": 999,
+    "clearAllRelicsBeforeMove": true,
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "powersBeforeMove": [
+      {
+        "powerId": "DARK_EMBRACE_POWER",
+        "target": "Player",
+        "amount": 1
+      },
+      {
+        "powerId": "NO_DRAW_POWER",
+        "target": "Player",
+        "amount": 1
+      }
+    ],
+    "cardsBeforeMove": [
+      {
+        "cardId": "DAZED",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "DEFEND_IRONCLAD",
+        "pile": "Draw",
+        "count": 7
+      }
+    ],
+    "triggerPlayerTurnEndAfterMove": true,
+    "expectedPlayerHandCount": 0
+  }
+]
