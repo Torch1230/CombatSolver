@@ -9,8 +9,32 @@ internal readonly record struct MechanismBalance(double Supply, double Payoffs)
         16 * (new MechanismBalance(Supply + supply, Payoffs + payoffs).Readiness - Readiness);
 }
 
+internal sealed record DeckMechanismAxis(string Name, MechanismBalance Balance);
+internal sealed record DeckProfileSnapshot(
+    IReadOnlyList<DeckMechanismAxis> Mechanisms, int DeckSize,
+    int DrawCards, int EnergyCards, int DefensiveCards, int ExpensiveCards,
+    int ReviewedCards);
+
 internal static class DeckMechanismProfile
 {
+    internal static DeckProfileSnapshot Capture(AdviceContext context)
+    {
+        DeckMechanismAxis[] axes =
+        [
+            new("弃牌配合", Capture(context, AdviceRole.DiscardSource, AdviceRole.DiscardPayoff)),
+            new("消耗配合", Capture(context, AdviceRole.ExhaustSource | AdviceRole.SelfExhaust, AdviceRole.ExhaustPayoff)),
+            new("灵魂配合", Capture(context, AdviceRole.SoulSource, AdviceRole.SoulPlayPayoff | AdviceRole.SoulExhaustPayoff)),
+            new("召唤攻击配合", Capture(context, AdviceRole.SummonSource, AdviceRole.OstyAttack)),
+            new("集中产球配合", Capture(context, AdviceRole.FocusOrbSource, AdviceRole.FocusSource)),
+        ];
+        return new(axes, context.Deck.Count,
+            context.Deck.Count(c => c.Tags.HasFlag(AdviceTag.Draw)),
+            context.Deck.Count(c => c.Tags.HasFlag(AdviceTag.Energy)),
+            context.Deck.Count(c => c.Block > 0),
+            context.Deck.Count(c => c.Cost >= 2),
+            context.Deck.Count(c => c.Coverage == AdviceCoverage.Partial));
+    }
+
     internal static MechanismBalance Capture(AdviceContext context, AdviceRole source, AdviceRole payoff) => new(
         AdviceMechanics.SourceSupply(context, source),
         context.Deck.Count(c => (c.Roles & payoff) != 0));

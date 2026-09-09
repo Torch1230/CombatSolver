@@ -187,4 +187,10 @@ Check(new MechanismBalance(4, 1).Marginal(0, 1) > new MechanismBalance(1, 4).Mar
 Check(Math.Abs(new MechanismBalance(1, 2).Marginal(1, 0) + new MechanismBalance(2, 2).Marginal(0, 1)
     - new MechanismBalance(1, 2).Marginal(0, 1) - new MechanismBalance(1, 3).Marginal(1, 0)) < 1e-9,
     "Deck readiness gains must be independent of acquisition order");
+var mixedProfile = DeckMechanismProfile.Capture(context with { Deck = [discardSource, discardPayoff, soul, plain with { Roles = AdviceRole.SoulPlayPayoff }] });
+Check(mixedProfile.Mechanisms.Count(a => a.Balance.Readiness > 0) == 2,
+    "A deck can have multiple active mechanisms without an exclusive label");
+var resourceProfile = DeckMechanismProfile.Capture(context with { Deck = [drawCard, stars, plain with { Tags = AdviceTag.Energy, Cost = 2 }, plain with { Block = 5 }] });
+Check(resourceProfile.DrawCards == 1 && resourceProfile.EnergyCards == 1 && resourceProfile.DefensiveCards == 1 && resourceProfile.ExpensiveCards == 1,
+    "Operating capabilities must be counted separately from mechanisms and Stars");
 Console.WriteLine($"RUN_ADVICE_CHECKS_OK checks={checks}");

@@ -57,7 +57,7 @@ internal static class RunAdviceBadge
         return label;
     }
 
-    internal static void Summary(Control owner, string source, bool reward = false)
+    internal static void Summary(Control owner, string source, bool reward = false, DeckProfileSnapshot? profile = null)
     {
         const string name = "CombatSolverAdviceSummary";
         if (owner.GetNodeOrNull<Control>(name) is { } old)
@@ -74,10 +74,23 @@ internal static class RunAdviceBadge
         label.AddThemeFontSizeOverride("font_size", 20);
         label.AddThemeConstantOverride("outline_size", 6);
         label.AddThemeColorOverride("font_outline_color", Colors.Black);
-        SolverLocaleRefresh.Bind(label, () => label.Text = SolverText.Get(source));
+        SolverLocaleRefresh.Bind(label, () =>
+        {
+            label.Text = SolverText.Get(source);
+            if (profile is null) return;
+            var active = profile.Mechanisms.Where(a => a.Balance.Supply > 0 && a.Balance.Payoffs > 0)
+                .OrderByDescending(a => a.Balance.Readiness).Take(2);
+            string axes = string.Join(" / ", active.Select(a => SolverText.Get(a.Name)));
+            label.Text += "\n" + (axes.Length == 0 ? SolverText.Get("尚未识别成型配合") : axes)
+                + " · " + SolverText.Format($"抽牌 {profile.DrawCards} / 产能 {profile.EnergyCards} / 格挡 {profile.DefensiveCards}");
+            label.TooltipText = string.Join("\n", profile.Mechanisms.Select(a =>
+                SolverText.Get(a.Name) + ": " + SolverText.Format($"来源 {a.Balance.Supply:F1} / 收益组件 {a.Balance.Payoffs:F0}")))
+                + "\n" + SolverText.Format($"部分审查 {profile.ReviewedCards}/{profile.DeckSize} 张；计数不是强度或胜率");
+        });
+        if (profile is not null) label.MouseFilter = Control.MouseFilterEnum.Pass;
         owner.AddChild(label);
         label.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.CenterBottom);
-        label.Position = new Vector2(owner.Size.X * 0.5f - 410, owner.Size.Y - (reward ? 95 : 155));
-        label.Size = new Vector2(820, 95);
+        label.Position = new Vector2(owner.Size.X * 0.5f - 410, owner.Size.Y - (reward ? 125 : 185));
+        label.Size = new Vector2(820, 125);
     }
 }

@@ -411,5 +411,14 @@
   "基础 {0:F1} / 配合 {1:F1} / 价格 {2:F1}": "Base {0:F1} / Synergy {1:F1} / Price {2:F1}",
   "锻造与剑的费用可能需要分回合支付": "Forge and Blade costs may require separate turns",
   "灵魂抽牌可能受到抽牌限制影响": "Soul draw may be blocked by draw restrictions",
-  "一次性产星可支持有限打出": "Single-use Star production supports limited plays"
+  "一次性产星可支持有限打出": "Single-use Star production supports limited plays",
+  "弃牌配合": "Discard synergy",
+  "消耗配合": "Exhaust synergy",
+  "灵魂配合": "Soul synergy",
+  "召唤攻击配合": "Summon/attack synergy",
+  "集中产球配合": "Focus/orb synergy",
+  "尚未识别成型配合": "No supported combination identified",
+  "抽牌 {0} / 产能 {1} / 格挡 {2}": "Draw {0} / Energy {1} / Block {2}",
+  "来源 {0:F1} / 收益组件 {1:F0}": "Supply {0:F1} / Payoffs {1:F0}",
+  "部分审查 {0}/{1} 张；计数不是强度或胜率": "Partially reviewed {0}/{1} cards; counts are not strength or win rate"
 }

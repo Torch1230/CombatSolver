@@ -31,7 +31,8 @@ internal static class RunAdvicePresentation
             $"reward:{i}", AdviceKind.Card, c.Card.Id.Entry, Card: RunAdviceCapture.Card(c.Card)))
             .Concat(alternatives.Any(a => a.OptionId.Equals("Skip", StringComparison.OrdinalIgnoreCase))
                 ? [new AdviceOffer("skip", AdviceKind.Skip, "skip")] : Array.Empty<AdviceOffer>()).ToArray();
-        AdviceRating[] ratings = RunAdvice.Rank(RunAdviceCapture.Capture(player), offers, false);
+        AdviceContext context = RunAdviceCapture.Capture(player);
+        AdviceRating[] ratings = RunAdvice.Rank(context, offers, false);
         var holders = screen.GetNode<Control>("UI/CardRow").GetChildren()
             .OfType<NGridCardHolder>().Where(c => !c.IsQueuedForDeletion()).ToArray();
         for (int i = 0; i < Math.Min(options.Count, holders.Length); i++)
@@ -50,7 +51,7 @@ internal static class RunAdvicePresentation
             }
         }
         RunAdviceBadge.Summary(screen,
-            "评分越高越优先 · 跳过基准为 0 分\n启发式评分，非百分制或胜率", reward: true);
+            "评分越高越优先 · 跳过基准为 0 分\n启发式评分，非百分制或胜率", reward: true, profile: DeckMechanismProfile.Capture(context));
     }
 
     internal static void Shop(NMerchantInventory shop)
@@ -59,7 +60,8 @@ internal static class RunAdvicePresentation
         NMerchantSlot[] slots = shop.GetAllSlots().ToArray();
         AdviceOffer[] offers = slots.Select((s, i) => RunAdviceCapture.Offer(s.Entry, i))
             .Append(new AdviceOffer("save", AdviceKind.Skip, "save")).ToArray();
-        AdviceRating[] ratings = RunAdvice.Rank(RunAdviceCapture.Capture(player), offers, true);
+        AdviceContext context = RunAdviceCapture.Capture(player);
+        AdviceRating[] ratings = RunAdvice.Rank(context, offers, true);
         for (int i = 0; i < slots.Length; i++)
         {
             if (!slots[i].Entry.IsStocked) { RunAdviceBadge.Clear(slots[i]); continue; }
@@ -69,7 +71,7 @@ internal static class RunAdvicePresentation
                 detail: removalCard is null ? null : () => SolverText.Format($"优先移除：{removalCard.Title}"));
         }
         RunAdviceBadge.Summary(shop,
-            "评分越高越优先 · 已计入价格 · 留钱为 0 分\n启发式评分，购买后更新；非百分制或胜率");
+            "评分越高越优先 · 已计入价格 · 留钱为 0 分\n启发式评分，购买后更新；非百分制或胜率", profile: DeckMechanismProfile.Capture(context));
     }
 }
 
