@@ -45,4 +45,16 @@ Check(zero.CompareTo(spent) == 0 && spent.MeetsLimits,
     "Nonpositive net returns fall back to HP and existing resource policy");
 var unrelatedGold = Outcome(SearchObjective.PermanentGrowth, 20, 0) with { GoldGain = 100 };
 Check(!unrelatedGold.HasObjectiveGain, "Gold must not count as permanent growth");
+foreach(var mode in new[]{SearchObjective.PermanentGrowth,SearchObjective.NetResources})
+{
+    var policy=SearchObjectivePolicy.Default with { Mode=mode, GrowthTarget=0, NetResourceTarget=0 };
+    var reached=Outcome(mode,30,3) with { Policy=policy, GoldGain=25 };
+    Check(reached.CanStopSearch(true), "Legacy zero uses finite defaults");
+    Check(!reached.CanStopSearch(false), "Incomplete routes must not stop search");
+    Check(!(reached with { EndingHp=29 }).CanStopSearch(true), "Unsafe farming must not stop search");
+    Check(!(reached with { Growth=default, GoldGain=0 }).CanStopSearch(true), "No gain is not target completion");
+    var extra=reached with { Growth=new(0,0,100), GoldGain=1000 };
+    Check(extra.TargetValue==reached.TargetValue, "Rewards above target must not improve objective priority");
+}
+Check(!Outcome(SearchObjective.Balanced,50,100).CanStopSearch(true), "Balanced retains its stopping rules");
 Console.WriteLine($"SEARCH_OBJECTIVE_CHECKS_OK checks={checks}");

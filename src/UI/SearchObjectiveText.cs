@@ -42,8 +42,8 @@ internal static class SearchObjectiveText
             if (!outcome.MeetsLimits)
                 detail += "\n" + SolverText.Get("此路线未满足收益目标限制，已退回保命比较；请人工决定是否执行。");
         }
-        if (outcome.Policy.Mode == SearchObjective.PermanentGrowth)
-            detail += "\n" + SolverText.Format($"本次路线培养目标：{outcome.Policy.GrowthTarget} 点（0 不限）；达标后按战损和回合数比较，重新搜索时重新计量。");
+        if (outcome.Policy.IsRewardObjective)
+            detail += "\n" + SolverText.Format($"目标进度：{outcome.RawTargetValue} / {outcome.Policy.EffectiveTarget}；达标且完整获胜、满足血量限制后停止继续搜索。本次重新搜索重新计量。");
         if (outcome.Policy.Mode == SearchObjective.NetResources)
             detail += "\n" + SolverText.Get("净收益为估值：金币 1 分，额外选牌奖励 30 分，药水按现有资源价值折算；消耗一次保命遗物扣 500 分。不预测普通战后随机奖励或整局收益。");
         return detail;

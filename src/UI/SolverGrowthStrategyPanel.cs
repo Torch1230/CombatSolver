@@ -16,6 +16,7 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
     private readonly SpinBox _objectiveLoss = new() { Name = "ObjectiveMaximumHpLoss" };
     private readonly SpinBox _objectiveHp = new() { Name = "ObjectiveMinimumHp" };
     private readonly SpinBox _objectiveTarget = new() { Name = "ObjectiveGrowthTarget" };
+    private readonly SpinBox _resourceTarget = new() { Name = "ObjectiveNetResourceTarget" };
     public event Action<SearchObjectivePolicy>? ObjectiveChanged;
     private bool _refreshing;
     private bool _disabled;
@@ -110,7 +111,9 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
         layout.AddChild(_objectiveMode);
         AddObjectiveInput(layout, "允许本场累计战损", _objectiveLoss);
         AddObjectiveInput(layout, "最低结束血量（收益目标）", _objectiveHp);
-        AddObjectiveInput(layout, "本次路线培养目标（点，0 不限）", _objectiveTarget);
+        AddObjectiveInput(layout, "培养目标（点，0 默认 3）", _objectiveTarget);
+        AddObjectiveInput(layout, "净收益目标（分，0 默认 25）", _resourceTarget);
+        _resourceTarget.ValueChanged += _ => PublishObjective();
         _objectiveMode.ItemSelected += _ => PublishObjective();
         _objectiveLoss.ValueChanged += _ => PublishObjective();
         _objectiveHp.ValueChanged += _ => PublishObjective();
@@ -148,7 +151,7 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
     {
         if (_refreshing || _disabled) return;
         ObjectiveChanged?.Invoke(new((SearchObjective)_objectiveMode.GetSelectedId(),
-            (int)_objectiveLoss.Value, (int)_objectiveHp.Value, (int)_objectiveTarget.Value));
+            (int)_objectiveLoss.Value, (int)_objectiveHp.Value, (int)_objectiveTarget.Value, (int)_resourceTarget.Value));
     }
 
     private static CardModel SourceCard(GrowthSource source) => source switch
@@ -223,6 +226,8 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
             _objectiveLoss.Editable = !disabled && objective.IsRewardObjective;
             _objectiveHp.Editable = !disabled && objective.IsRewardObjective;
             _objectiveTarget.Editable = !disabled && objective.Mode == SearchObjective.PermanentGrowth;
+            _resourceTarget.Editable = !disabled && objective.Mode == SearchObjective.NetResources;
+            if (!_resourceTarget.GetLineEdit().HasFocus()) _resourceTarget.SetValueNoSignal(objective.NetResourceTarget);
             if (!_objectiveLoss.GetLineEdit().HasFocus()) _objectiveLoss.SetValueNoSignal(objective.MaximumBattleHpLoss);
             if (!_objectiveHp.GetLineEdit().HasFocus()) _objectiveHp.SetValueNoSignal(objective.MinimumEndingHp);
             if (!_objectiveTarget.GetLineEdit().HasFocus()) _objectiveTarget.SetValueNoSignal(objective.GrowthTarget);

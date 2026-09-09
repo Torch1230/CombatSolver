@@ -300,7 +300,13 @@ internal sealed partial class CombatBeamSolver
             }
 
             SolverInterimResult candidate = SummarizeCandidate(node, won: true);
-            if (!_hasGrowthTargets && candidate.ProjectedBattleHpLost <= _acceptableBattleHpLoss)
+            if (candidate.Objective.CanStopSearch(completeVictory: true))
+            {
+                acceptableBattleHpLossReached = true;
+                policy.Diagnostics.Info($"[CombatSolver/Test] OBJECTIVE_TARGET_REACHED mode={_objective.Mode} " +
+                    $"target={_objective.EffectiveTarget} gain={candidate.Objective.RawTargetValue}");
+            }
+            else if (!_hasGrowthTargets && candidate.ProjectedBattleHpLost <= _acceptableBattleHpLoss)
             {
                 acceptableBattleHpLossReached = true;
                 policy.Diagnostics.Info(
