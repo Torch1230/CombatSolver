@@ -34,4 +34,10 @@ var xCard = Card("X_CARD"); xCard.EnergyCost.CostsX = true; xCard.HasStarCostX =
 var xSnapshot = RunAdviceCapture.Card(xCard);
 Check(xSnapshot.EnergyX && xSnapshot.StarsX && xSnapshot.Cost == 0 && xSnapshot.StarCost == 0,
     "Capture X identity without fabricated fixed prices");
+var blades = Card("INFINITE_BLADES"); blades.Type = CardType.Power;
+var bladeSupply = RunAdviceCapture.Card(blades);
+Check(bladeSupply.Roles.HasFlag(AdviceRole.ShivSource) && !bladeSupply.SingleUse && bladeSupply.Availability == 0.5,
+    "Persistent Shiv generation is recurring but delayed, despite a single Power play");
+var corruption = Card("CORRUPTION"); corruption.Type = CardType.Power;
+Check(!RunAdviceCapture.Card(corruption).SingleUse, "Corruption enables repeated exhaust triggers after setup");
 Console.WriteLine($"RUN_ADVICE_CAPTURE_CHECKS_OK checks={checks}");

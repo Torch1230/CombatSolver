@@ -33,7 +33,7 @@ internal static class AdviceMechanics
         "ZAP" or "BALL_LIGHTNING" or "COOLHEADED" or "GLACIER"
             or "COLD_SNAP" or "DARKNESS" or "CONSUMING_SHADOW" or "ICE_LANCE" or "CHILL" => AdviceRole.FocusOrbSource,
         "FUSION" or "METEOR_STRIKE" => AdviceRole.PlasmaSource,
-        "BLADE_DANCE" or "CLOAK_AND_DAGGER" or "FAN_OF_KNIVES" => AdviceRole.ShivSource,
+        "BLADE_DANCE" or "CLOAK_AND_DAGGER" or "FAN_OF_KNIVES" or "INFINITE_BLADES" => AdviceRole.ShivSource,
         "ACCURACY" => AdviceRole.ShivPayoff,
         "BATTLE_TRANCE" => AdviceRole.StopsDraw,
         _ => AdviceRole.None,

@@ -1,5 +1,13 @@
 # CombatSolver 开发笔记与未来构想
 
+## 下一版本（开发中）：能力启动与持续供给分离
+
+- 定向读取当前原生 InfiniteBladesPower.BeforeHandDraw：在拥有者抽牌前按 Amount 创建小刀。InfiniteBlades 现归入 ShivSource，保留 0.5 启动可用权重，但不把能力牌只打一次等同于只产出一次。
+- Corruption 的消耗入口也不再仅因 Power 类型套一次性供给折扣；其他未核对 Power 不泛化此例外。
+- CaptureChecks 11 项通过，新增两项对应上述捕获行为；RunAdviceChecks 105,739 项通过；Release 编译通过。权重仍是奖励启发式，不模拟未来具体触发次数。
+- 画像战斗接入、其他流派轴及药水策略实际搜索验收尚未完成。未安装或运行游戏。
+
+
 ## 下一版本（开发中）：小刀来源与增幅画像
 
 - 增加 ShivSource/ShivPayoff，已核对的 BladeDance、CloakAndDagger、FanOfKnives 使用 Cards/Shivs 生成数量，Accuracy 作为增幅组件。来源与增幅通过边际配合程度评分，画像新增小刀轴。
