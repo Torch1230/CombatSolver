@@ -40,4 +40,43 @@ Check(bladeSupply.Roles.HasFlag(AdviceRole.ShivSource) && !bladeSupply.SingleUse
     "Persistent Shiv generation is recurring but delayed, despite a single Power play");
 var corruption = Card("CORRUPTION"); corruption.Type = CardType.Power;
 Check(!RunAdviceCapture.Card(corruption).SingleUse, "Corruption enables repeated exhaust triggers after setup");
+foreach (var (id, variable, baseline, upgraded, source) in new[]
+{
+    ("ACCURACY", "AccuracyPower", 4m, 6m, AdviceRole.ShivSource),
+    ("FEEL_NO_PAIN", "Power", 3m, 4m, AdviceRole.ExhaustSource),
+    ("REFLEX", "Cards", 2m, 3m, AdviceRole.DiscardSource),
+    ("TACTICIAN", "Energy", 1m, 2m, AdviceRole.DiscardSource),
+    ("HAUNT", "HpLoss", 7m, 9m, AdviceRole.SoulSource),
+    ("DEVOUR_LIFE", "DevourLifePower", 1m, 2m, AdviceRole.SoulSource),
+    ("DEFRAGMENT", "FocusPower", 1m, 2m, AdviceRole.FocusOrbSource),
+    ("ACCELERANT", "Accelerant", 1m, 2m, AdviceRole.PoisonSource),
+})
+{
+    var native = Card(id, (variable, baseline));
+    var normal = RunAdviceCapture.Card(native);
+    native.DynamicVars[variable].BaseValue = upgraded;
+    var upgrade = RunAdviceCapture.Card(native);
+    Check(normal.PayoffWeight == 1 && upgrade.PayoffWeight > normal.PayoffWeight,
+        $"{id}: effect upgrades must survive capture without mutating the old snapshot");
+    var supply = Card("REVIEWED_SOURCE");
+    var supplied = context with { Relics = new HashSet<string>(), StartingStars = 0,
+        InitialFocusOrbs = 0, SummonSupply = 0,
+        Deck = [RunAdviceCapture.Card(supply) with { Roles = source }] };
+    AdviceOffer[] offers = [new("normal", AdviceKind.Card, id, Card: normal),
+        new("upgraded", AdviceKind.Card, id, Card: upgrade)];
+    foreach (bool shop in new[] { false, true })
+    {
+        var ranked = RunAdvice.Rank(supplied, offers, shop);
+        Check(ranked[1].Score > ranked[0].Score && ranked[1].Parts!.Synergy > ranked[0].Parts!.Synergy,
+            $"{id}: upgrades must improve supported reward and equal-price shop scores");
+    }
+    var before = DeckMechanismProfile.Capture(supplied with { Deck = [supplied.Deck[0], normal] });
+    var after = DeckMechanismProfile.Capture(supplied with { Deck = [supplied.Deck[0], upgrade] });
+    Check(after.Mechanisms.Sum(a => a.Balance.Readiness) > before.Mechanisms.Sum(a => a.Balance.Readiness),
+        $"{id}: profile and offer evaluation must use the same upgraded effect");
+    var absent = supplied with { Deck = [] };
+    var unsupported = RunAdvice.Rank(absent, offers, false);
+    Check(unsupported[1].Parts!.Synergy == unsupported[0].Parts!.Synergy,
+        $"{id}: larger payoffs must not invent a missing source");
+}
 Console.WriteLine($"RUN_ADVICE_CAPTURE_CHECKS_OK checks={checks}");

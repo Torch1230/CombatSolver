@@ -1,5 +1,12 @@
 # CombatSolver 测试清单
 
+## 开发中：兑现牌升级捕获与评分（2026-09-09）
+
+- `dotnet run --project tools/RunAdviceCaptureChecks/RunAdviceCaptureChecks.csproj -c Release`：51 项通过，新增 40 项。逐牌检查捕获后改变 live 动态值不会改旧快照、升级在有供给时提高配合分与画像强度、奖励及同价商店排序一致、无供给时不虚增配合。
+- 覆盖 Accuracy (AccuracyPower 4→6)、FeelNoPain (Power 3→4)、Reflex (Cards 2→3)、Tactician (Energy 1→2)、Haunt (HpLoss 7→9)、DevourLife (DevourLifePower 1→2)、Defragment (FocusPower 1→2)、Accelerant (Accelerant 1→2)。变量及升级来自本地游戏 v0.111.0 定向反编译；未升级兑现强度为 1，升级按效果比例变化，已有统一上限保留。
+- Release 编译通过，0 warnings / 0 errors。这是捕获/纯评分检查，不是原生奖励页、商店页或复杂战斗 A/B。既有原生战斗回归验证的是战斗模块，不会用它证明本次建议评分改动。
+
+
 ## 开发中：原生药水库存与画像路线验证（2026-09-09）
 
 - Windows 游戏 v0.111.0 / RitsuLib 0.5.18，独立 headless 实例，当前源码 `736c7fc` 的既有 Release 产物；固定单 worker、3 秒短搜、单请求 120 秒上限。

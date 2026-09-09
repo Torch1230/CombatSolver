@@ -82,6 +82,20 @@ internal static class RunAdviceCapture
             "CHILL" => 0.5, // Unknown future enemy count; do not assume a crowd.
             _ => 1,
         };
+        // Normalize reviewed trigger amounts to one unupgraded copy. Upgrades
+        // change effect strength, not merely the number of payoff cards.
+        double payoffWeight = id switch
+        {
+            "ACCURACY" => Value("AccuracyPower") / 4,
+            "FEEL_NO_PAIN" => Value("Power") / 3,
+            "REFLEX" => Value("Cards") / 2,
+            "TACTICIAN" => Value("Energy"),
+            "HAUNT" => Value("HpLoss") / 7,
+            "DEVOUR_LIFE" => Value("DevourLifePower"),
+            "DEFRAGMENT" => Value("FocusPower"),
+            "ACCELERANT" => Value("Accelerant"),
+            _ => CardMechanismFacts.AttackHits(id, (int)Value("Repeat")),
+        };
         return new AdviceCard(id, vanilla
             ? AdviceMechanics.FaceDamage(id, Value("Damage"), Value("CalculationBase"), Value("Repeat"))
             : Value("Damage"), Value("Block"), draw,
@@ -95,7 +109,7 @@ internal static class RunAdviceCapture
                 || card.Type == CardType.Power && !(vanilla && id is "INFINITE_BLADES" or "CORRUPTION" or "NOXIOUS_FUMES" or "INFLAME"),
             vanilla && (roles != AdviceRole.None || tags != AdviceTag.None || card.IsBasicStrikeOrDefend)
                 ? AdviceCoverage.Partial : AdviceCoverage.Unreviewed, card.EnergyCost.CostsX, card.HasStarCostX,
-            vanilla ? CardMechanismFacts.AttackHits(id, (int)Value("Repeat")) : 1);
+            vanilla ? Math.Max(0, payoffWeight) : 1);
     }
 
     internal static AdviceOffer Offer(MerchantEntry entry, int index) => entry switch
