@@ -228,4 +228,9 @@ Check(CardMechanismFacts.EstimatedShivPlays(0, 3, 1, 1, 4) == 3, "Four actions a
 Check(CardMechanismFacts.EstimatedShivPlays(2, 0, 0, 2, 2) == 2, "Existing Shivs need no generation setup");
 for (int actions = 0; actions < 20; actions++)
     Check(CardMechanismFacts.EstimatedShivPlays(2, 6, 2, 10, actions) <= actions, "Shiv predictions stay within the action budget");
+var poisonSource = plain with { Roles = AdviceMechanics.Roles("DEADLY_POISON") };
+var accelerant = plain with { Roles = AdviceMechanics.Roles("ACCELERANT") };
+Check(Mechanic(context with { Deck = [poisonSource] }, accelerant) > Mechanic(context, accelerant), "Accelerant needs poison application");
+Check(Mechanic(context, plain with { Roles = AdviceMechanics.Roles("END_OF_DAYS") }) >= 0,
+    "A Doom card that supplies its own prerequisite must not get a missing-source penalty");
 Console.WriteLine($"RUN_ADVICE_CHECKS_OK checks={checks}");

@@ -432,5 +432,13 @@
   "配合小刀增幅": "Supports Shiv amplification",
   "缺少已识别的小刀生成来源": "No recognized Shiv generation source",
   "星星供需": "Star supply and demand",
-  "锻造兑现": "Forge payoff access"
+  "锻造兑现": "Forge payoff access",
+  "毒的施加与增幅": "Poison application and amplification",
+  "灾厄叠加与结算": "Doom buildup and resolution",
+  "补充毒的施加来源": "Adds Poison application",
+  "配合毒的重复触发": "Supports repeated Poison triggers",
+  "缺少已识别的施毒来源": "No recognized Poison source",
+  "补充灾厄施加来源": "Adds Doom application",
+  "配合灾厄叠加或结算": "Supports Doom buildup or resolution",
+  "缺少已识别的灾厄来源": "No recognized Doom source"
 }

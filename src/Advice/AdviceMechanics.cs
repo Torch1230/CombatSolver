@@ -8,6 +8,7 @@ internal enum AdviceRole
     SoulSource = 64, SoulPlayPayoff = 128, SoulExhaustPayoff = 256,
     SummonSource = 512, OstyAttack = 1024, ForgeSource = 2048, Blade = 4096,
     FocusSource = 8192, FocusOrbSource = 16384, PlasmaSource = 32768, ShivSource = 65536, ShivPayoff = 131072,
+    PoisonSource = 262144, PoisonPayoff = 524288, DoomSource = 1048576, DoomPayoff = 2097152,
 }
 
 // Explicitly reviewed vanilla roles. This is advice metadata, not combat simulation.
@@ -35,6 +36,9 @@ internal static class AdviceMechanics
         "FUSION" or "METEOR_STRIKE" => AdviceRole.PlasmaSource,
         "BLADE_DANCE" or "CLOAK_AND_DAGGER" or "FAN_OF_KNIVES" or "INFINITE_BLADES" => AdviceRole.ShivSource,
         "ACCURACY" => AdviceRole.ShivPayoff,
+        "DEADLY_POISON" or "NOXIOUS_FUMES" => AdviceRole.PoisonSource,
+        "ACCELERANT" => AdviceRole.PoisonPayoff,
+        "END_OF_DAYS" or "NO_ESCAPE" => AdviceRole.DoomSource | AdviceRole.DoomPayoff,
         "BATTLE_TRANCE" => AdviceRole.StopsDraw,
         _ => AdviceRole.None,
     };
@@ -59,6 +63,10 @@ internal static class AdviceMechanics
             AdviceRole.ExhaustPayoff, "补充消耗触发机会", "配合消耗触发收益", "缺少已识别的消耗触发机会", reasons);
         value += PairValue(context, card, AdviceRole.ShivSource, AdviceRole.ShivPayoff,
             "补充小刀生成来源", "配合小刀增幅", "缺少已识别的小刀生成来源", reasons);
+        value += PairValue(context, card, AdviceRole.PoisonSource, AdviceRole.PoisonPayoff,
+            "补充毒的施加来源", "配合毒的重复触发", "缺少已识别的施毒来源", reasons);
+        value += PairValue(context, card, AdviceRole.DoomSource, AdviceRole.DoomPayoff,
+            "补充灾厄施加来源", "配合灾厄叠加或结算", "缺少已识别的灾厄来源", reasons);
         // Soul play and exhaust payoffs share a source; count its synergy only once.
         value += PairValue(context, card, AdviceRole.SoulSource,
             AdviceRole.SoulPlayPayoff | AdviceRole.SoulExhaustPayoff,

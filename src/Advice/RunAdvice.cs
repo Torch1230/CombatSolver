@@ -154,6 +154,10 @@ internal static class RunAdvice
         foreach (AdviceTag tag in archetypes)
         {
             if (!card.Tags.HasFlag(tag)) continue;
+            if (tag == AdviceTag.Poison && (card.Roles & (AdviceRole.PoisonSource | AdviceRole.PoisonPayoff)) != 0)
+                continue;
+            if (tag == AdviceTag.Doom && (card.Roles & (AdviceRole.DoomSource | AdviceRole.DoomPayoff)) != 0)
+                continue;
             if (tag == AdviceTag.Shiv && (card.Roles & (AdviceRole.ShivSource | AdviceRole.ShivPayoff)) != 0)
                 continue;
             int support = context.Deck.Count(c => c.Tags.HasFlag(tag));

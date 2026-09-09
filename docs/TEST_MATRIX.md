@@ -1,5 +1,13 @@
 # CombatSolver 测试清单
 
+## 下一版本（开发中）：毒与 Doom 的来源依赖
+
+- 定向核对原生 Accelerant/AccelerantPower、DeadlyPoison、NoEscape。Accelerant 自身不施毒，依赖 Poison 重复触发；NoEscape 基础施加 Doom 并从既有 Doom 获得额外量。
+- 已识别 DeadlyPoison/NoxiousFumes 为毒来源、Accelerant 为收益组件；EndOfDays/NoEscape 同时具备 Doom 来源与收益角色。画像增加两轴，已识别角色不再重复叠通用 Poison/Doom 标签分。
+- NoxiousFumes 作为延迟持续来源，不把能力启动一次等同于只产生一次效果。EndOfDays 的即时结算与 NoEscape 放大仍共用宏观轴；本批不把 Doom 分数当作即时伤害。
+- RunAdviceChecks 105,771 项通过（新增施毒依赖、自带来源不误扣两项）；Release 编译通过。名单有限，不是完整毒/Doom 卡池覆盖；真实搜索和 UI 验证仍未执行，目标继续进行。
+
+
 ## 下一版本（开发中）：生成小刀的行动预算
 
 - 战斗估计新增生成动作占用：以现存牌与预计生成牌的周期规模分摊有限行动预算，生成牌与小刀攻击不能同时占用同一次动作。

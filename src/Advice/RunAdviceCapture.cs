@@ -77,7 +77,7 @@ internal static class RunAdviceCapture
         {
             "GRAVE_WARDEN" or "REAVE" => 0.5,
             "SEVERANCE" => (1 + 0.5 + 0.25) / 3,
-            "INFINITE_BLADES" => 0.5, // Supply starts at a later BeforeHandDraw.
+            "INFINITE_BLADES" or "NOXIOUS_FUMES" => 0.5, // Supply starts at a later BeforeHandDraw.
             "CHILL" => 0.5, // Unknown future enemy count; do not assume a crowd.
             _ => 1,
         };
@@ -91,7 +91,7 @@ internal static class RunAdviceCapture
             card.HasStarCostX ? 0 : Math.Max(0, card.CurrentStarCost),
             vanilla ? amount : 1, vanilla ? availability : 1,
             roles.HasFlag(AdviceRole.SelfExhaust)
-                || card.Type == CardType.Power && !(vanilla && id is "INFINITE_BLADES" or "CORRUPTION"),
+                || card.Type == CardType.Power && !(vanilla && id is "INFINITE_BLADES" or "CORRUPTION" or "NOXIOUS_FUMES"),
             vanilla && (roles != AdviceRole.None || tags != AdviceTag.None || card.IsBasicStrikeOrDefend)
                 ? AdviceCoverage.Partial : AdviceCoverage.Unreviewed, card.EnergyCost.CostsX, card.HasStarCostX);
     }

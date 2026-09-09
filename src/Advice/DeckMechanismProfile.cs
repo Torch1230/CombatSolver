@@ -26,6 +26,8 @@ internal static class DeckMechanismProfile
     {
         DeckMechanismAxis[] axes =
         [
+            new("毒的施加与增幅", Capture(context, AdviceRole.PoisonSource, AdviceRole.PoisonPayoff)),
+            new("灾厄叠加与结算", Capture(context, AdviceRole.DoomSource, AdviceRole.DoomPayoff)),
             new("星星供需", Stars(context)),
             new("锻造兑现", Forge(context)),
             new("小刀配合", Capture(context, AdviceRole.ShivSource, AdviceRole.ShivPayoff)),
