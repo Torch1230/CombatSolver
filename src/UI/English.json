@@ -410,5 +410,6 @@
   "仅通用牌面参考": "Generic card estimate only",
   "基础 {0:F1} / 配合 {1:F1} / 价格 {2:F1}": "Base {0:F1} / Synergy {1:F1} / Price {2:F1}",
   "锻造与剑的费用可能需要分回合支付": "Forge and Blade costs may require separate turns",
-  "灵魂抽牌可能受到抽牌限制影响": "Soul draw may be blocked by draw restrictions"
+  "灵魂抽牌可能受到抽牌限制影响": "Soul draw may be blocked by draw restrictions",
+  "一次性产星可支持有限打出": "Single-use Star production supports limited plays"
 }

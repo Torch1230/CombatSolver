@@ -94,20 +94,25 @@ internal static class AdviceMechanics
         }
         if (card.Stars > 0 && context.Deck.Any(c => c.StarCost > 0))
         {
-            double supply = context.Deck.Sum(c => c.Stars);
-            value += Math.Min(6, card.Stars * (supply < context.Deck.Sum(c => c.StarCost) ? 3 : 1));
+            double supply = context.Deck.Sum(StarSupply);
+            value += Math.Min(6, StarSupply(card) * (supply < context.Deck.Sum(c => c.StarCost) ? 3 : 1));
             reasons.Add("补充星星供给");
         }
         if (card.StarCost > 0)
         {
-            bool supplied = context.Deck.Any(c => c.Stars > 0);
+            bool supplied = context.Deck.Any(c => c.Stars > 0 && !c.SingleUse);
+            bool finiteSupply = context.Deck.Sum(StarSupply) >= card.StarCost;
             bool initiallyAffordable = context.StartingStars >= card.StarCost;
-            value += supplied ? 2 : initiallyAffordable ? 0 : -4;
-            reasons.Add(supplied ? "牌组具备产星来源" : initiallyAffordable
+            value += supplied ? 2 : initiallyAffordable || finiteSupply ? 0 : -4;
+            reasons.Add(supplied ? "牌组具备产星来源" : finiteSupply
+                ? "一次性产星可支持有限打出" : initiallyAffordable
                 ? "初始星星可支持一次打出，持续供给未确认" : "缺少已识别的持续产星来源");
         }
         return value;
     }
+
+    internal static double StarSupply(AdviceCard card) => Math.Max(0, card.Stars)
+        * Math.Clamp(card.Availability, 0, 1) * (card.SingleUse ? 0.65 : 1);
 
     internal static double SourceWeight(AdviceCard card) =>
         Math.Clamp(card.SourceAmount, 0, 4) * Math.Clamp(card.Availability, 0, 1)

@@ -142,4 +142,25 @@ Check(Mechanic(context with { Deck = [stopsDraw] }, soul) < Mechanic(context, so
     "Soul generation conflicts with NoDraw even without direct draw tags");
 Check(Mechanic(context with { BaseEnergy = 4 }, forge with { Cost = 2 }) > Mechanic(context with { BaseEnergy = 3 }, forge with { Cost = 2 }),
     "Forge must use captured base energy rather than a fixed three-energy assumption");
+var largeAttack = plain with { Damage = 30, Attack = true };
+Check(RunAdvice.CardValue(context, largeAttack with { Damage = 40 }, []) > RunAdvice.CardValue(context, largeAttack, []),
+    "Large attacks must remain distinguishable above the old cap");
+double highGain = RunAdvice.CardValue(context, largeAttack with { Damage = 50 }, []) - RunAdvice.CardValue(context, largeAttack with { Damage = 40 }, []);
+double lowGain = RunAdvice.CardValue(context, largeAttack with { Damage = 40 }, []) - RunAdvice.CardValue(context, largeAttack, []);
+Check(highGain > 0 && highGain < lowGain, "High face values have diminishing, positive returns");
+var genericPair = RunAdvice.Rank(context with { Deck = [poison, poison] },
+    [new("poison", AdviceKind.Card, "POISON", Card: poison)], false)[0];
+Check(genericPair.Parts!.Synergy == 3, "Generic archetype synergy belongs in the synergy component");
+var relicPair = RunAdvice.Rank(context with { Relics = new HashSet<string> { "KUNAI" } },
+    [new("attack", AdviceKind.Card, "ATTACK", Card: largeAttack)], false)[0];
+Check(relicPair.Parts!.Synergy == 4, "Relic synergy belongs in the synergy component");
+var finiteStars = stars with { Stars = 4, SingleUse = true };
+List<string> finiteReasons = [];
+AdviceMechanics.Value(context with { Deck = [finiteStars] }, spender, finiteReasons);
+Check(!finiteReasons.Contains("牌组具备产星来源") && finiteReasons.Contains("一次性产星可支持有限打出"),
+    "Single-use Stars must not be described as repeatable production");
+Check(Mechanic(context with { Deck = [spender] }, stars with { SingleUse = true }) < Mechanic(context with { Deck = [spender] }, stars),
+    "Single-use Stars have less supply value");
+Check(AdviceMechanics.StarSupply(stars with { Availability = 0.5 }) < AdviceMechanics.StarSupply(stars),
+    "Delayed Stars are discounted");
 Console.WriteLine($"RUN_ADVICE_CHECKS_OK checks={checks}");
