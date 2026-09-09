@@ -37,6 +37,15 @@ internal static class AdviceMechanics
         _ => AdviceRole.None,
     };
 
+    // Values are captured with local modifiers; no future combat state is assumed.
+    internal static double FaceDamage(string id, double damage, double calculationBase, double repeat) => id switch
+    {
+        "UNLEASH" or "SOUL_STORM" => Math.Max(0, calculationBase),
+        "TWIN_STRIKE" => damage * 2,
+        "SWORD_BOOMERANG" or "SOVEREIGN_BLADE" => damage * Math.Max(0, repeat),
+        _ => damage,
+    };
+
     internal static double StarGain(string id, double amount) => id is
         "GLOW" or "GATHER_LIGHT" or "SHINING_STRIKE" or "SOLAR_STRIKE" or "BIG_BANG" ? amount : 0;
 
@@ -58,7 +67,10 @@ internal static class AdviceMechanics
         {
             // Forge creates its own Blade. Existing Blade is not a prerequisite.
             int sources = context.Deck.Count(c => c.Roles.HasFlag(AdviceRole.ForgeSource));
-            value += 3d / (1 + sources * 0.5);
+            double support = context.Deck.Count(c => c.Tags.HasFlag(AdviceTag.Energy));
+            double setupCost = Math.Max(0, card.Cost + 2 - 3 - Math.Min(2, support));
+            value += 3d / (1 + sources * 0.5) - Math.Min(4, setupCost * 2);
+            if (setupCost > 0) reasons.Add("锻造与剑的费用可能需要分回合支付");
             reasons.Add("锻造收益需要后续打出剑来兑现");
         }
         if (card.Roles.HasFlag(AdviceRole.Blade)
@@ -66,6 +78,12 @@ internal static class AdviceMechanics
         {
             value += 2;
             reasons.Add("配合已识别的锻造来源");
+        }
+        if (card.Roles.HasFlag(AdviceRole.SoulSource)
+            && context.Deck.Any(c => c.Roles.HasFlag(AdviceRole.StopsDraw)))
+        {
+            value -= Math.Min(4, SourceWeight(card) * 2);
+            reasons.Add("灵魂抽牌可能受到抽牌限制影响");
         }
         if (card.Roles.HasFlag(AdviceRole.StopsDraw))
         {

@@ -130,4 +130,14 @@ Check(partsRating.Parts!.Synergy > 0 && partsRating.Parts.Price < 0,
     "Synergy and purchase cost must be separately visible");
 Check(RunAdvice.Rank(context, [new("unknown", AdviceKind.Card, "UNKNOWN", Card: plain with { Known = false })], false)[0].Rank == 0,
     "Coverage labels must not grant unsupported cards a rank");
+Check(AdviceMechanics.FaceDamage("TWIN_STRIKE", 5, 0, 0) == 10, "Fixed multihit damage captures both hits");
+Check(AdviceMechanics.FaceDamage("SWORD_BOOMERANG", 3, 0, 4) == 12, "Variable multihit damage uses captured repeat");
+Check(AdviceMechanics.FaceDamage("SOUL_STORM", 0, 9, 0) == 9, "Dynamic cards retain their unconditional base damage");
+Check(AdviceMechanics.FaceDamage("UNREVIEWED", 5, 100, 4) == 5, "Unknown dynamic variables do not invent damage");
+Check(Mechanic(context, forge with { Cost = 3 }) < Mechanic(context, forge with { Cost = 0 }),
+    "Forge setup cost affects its payoff window");
+Check(Mechanic(context with { Deck = [plain with { Tags = AdviceTag.Energy }] }, forge with { Cost = 2 })
+    > Mechanic(context, forge with { Cost = 2 }), "Energy support eases Forge setup pressure");
+Check(Mechanic(context with { Deck = [stopsDraw] }, soul) < Mechanic(context, soul),
+    "Soul generation conflicts with NoDraw even without direct draw tags");
 Console.WriteLine($"RUN_ADVICE_CHECKS_OK checks={checks}");

@@ -120,8 +120,10 @@ internal static class RunAdvice
         int size = Math.Max(1, context.Deck.Count);
         double attacks = context.Deck.Count(c => c.Attack) / (double)size;
         double blocks = context.Deck.Count(c => c.Block > 0) / (double)size;
-        double value = Math.Min(14, card.Damage * 0.8 + card.Block * 0.7) - 6;
-        if (card.Damage > 0 && attacks < 0.4) { value += 7; reasons.Add("补充输出"); }
+        double damage = card.Roles.HasFlag(AdviceRole.OstyAttack)
+            && AdviceMechanics.SourceSupply(context, AdviceRole.SummonSource) == 0 ? 0 : card.Damage;
+        double value = Math.Min(14, damage * 0.8 + card.Block * 0.7) - 6;
+        if (damage > 0 && attacks < 0.4) { value += 7; reasons.Add("补充输出"); }
         if (card.Block > 0 && blocks < 0.3) { value += 7; reasons.Add("补充防御"); }
         if (card.Tags.HasFlag(AdviceTag.Draw))
         {

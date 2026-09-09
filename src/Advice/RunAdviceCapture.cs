@@ -78,7 +78,9 @@ internal static class RunAdviceCapture
             "CHILL" => 0.5, // Unknown future enemy count; do not assume a crowd.
             _ => 1,
         };
-        return new AdviceCard(id, Value("Damage"), Value("Block"), draw,
+        return new AdviceCard(id, vanilla
+            ? AdviceMechanics.FaceDamage(id, Value("Damage"), Value("CalculationBase"), Value("Repeat"))
+            : Value("Damage"), Value("Block"), draw,
             card.EnergyCost.CostsX ? 2 : Math.Max(0, card.EnergyCost.GetWithModifiers(CostModifiers.Local)),
             card.Type == CardType.Attack, card.IsBasicStrikeOrDefend,
             card.Type is CardType.Curse or CardType.Status, card.IsRemovable, tags,

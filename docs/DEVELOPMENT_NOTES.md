@@ -1,5 +1,14 @@
 # CombatSolver 开发笔记与未来构想
 
+## 下一版本（开发中）：基础伤害与兑现限制
+
+- 主线程捕获将 TwinStrike 的固定两段、SwordBoomerang/SovereignBlade 的 Repeat 纳入总伤害；Unleash/SoulStorm 保留 CalculationBase，不把未知未来 Osty HP 或消耗堆数量当作实际增伤。无已识别召唤来源时不为 OstyAttack 计算基础输出奖励。
+- Forge 来源奖励扣除强化后支付剑费用的压力，当前采用三能量、剑费用二的参考窗口，并有限考虑牌组能量支持。这是牌组启发式而非当回合可支付证明；实际费用变化与初始能量尚需捕获层进一步校准。
+- Soul 来源遇到抽牌禁止组件时降低配合价值，补齐原先只识别直接抽牌卡的冲突。
+- RunAdviceChecks 105,710 项通过；本批新增七项覆盖固定/变量多段、动态基础伤害、未知变量、Forge 费用/能量支持、Soul 与抽牌禁止。Release 编译通过（0 warnings/errors）。未运行游戏或安装。
+- 整体仍待捕获层专项合同、起始能量校准与最终需求逐项审计，不以本批纯数据测试替代完整捕获验证。
+
+
 ## 下一版本（开发中）：来源时点与评分透明度
 
 - 来源配对按产量、可用时点和一次性使用折扣计权，限定单来源产量上限 4。GraveWarden/Reave 使用实际 Cards 变量并折算抽牌堆延迟，Severance 分别计入手牌/抽牌堆/弃牌堆机会；Glacier、IceLance、ConsumingShadow 使用对应产球数量。折扣为启发式，非触发概率或精确回合预测。
