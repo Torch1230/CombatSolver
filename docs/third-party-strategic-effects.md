@@ -101,4 +101,4 @@ StrategicEffectMirrors.Register<MyPower>(
 
 ### 战略命中次数上下文
 
-`StrategicEffectRequirements.AttackHits` 请求玩家攻击预计命中次数，结果为 `StrategicEffectContext.AttackHits`；与 `AttackPlays` 的攻击牌次数分开。未请求时为 null，旧构造调用保持兼容。当前展开已审查多段规则与小刀生成来源，排除 OstyAttack，未知普通攻击仍为单段近似。AttackHits 单独请求时也会计算小刀：已有小刀从普通攻击计数中排除，与生成小刀一起消费行动预算，普通攻击只分配剩余行动；生成器的启动动作不能同时计为攻击。该值仍是潜力估计，不证明能量、过牌或循环可执行。
+`StrategicEffectRequirements.AttackHits` 请求玩家攻击预计命中次数，结果为 `StrategicEffectContext.AttackHits`；与 `AttackPlays` 的攻击牌次数分开。未请求时为 null，旧构造调用保持兼容。当前展开已审查多段规则与小刀生成来源，排除 OstyAttack，未知普通攻击仍为单段近似。AttackHits 单独请求时也会计算小刀：已有小刀从普通攻击计数中排除，与生成小刀一起消费行动预算，普通攻击只分配剩余行动；生成器的启动动作不能同时计为攻击。已审查生成器的 Power 类型或分支 Exhaust 词条会限制为一次性生成；已有/生成小刀和启动次数均使用对应的有限库存，其他可重复生成器保留循环潜力。该值仍是潜力估计，不证明能量、过牌或循环可执行。

@@ -161,6 +161,8 @@ internal readonly record struct StrategicEffectContext(
         int reusableShivCount = 0;
         int generatedShivCount = 0;
         int shivGeneratorCount = 0;
+        int singleUseGeneratedShivs = 0;
+        int singleUseShivGenerators = 0;
         int debuffCount = 0;
         int statusCount = 0;
         int skillEnergy = 0;
@@ -253,6 +255,11 @@ internal readonly record struct StrategicEffectContext(
                         card.DynamicVars.TryGetValue("Shivs", out var shivsVar) ? shivsVar.IntValue : 0);
                     generatedShivCount += generated;
                     if (generated > 0) shivGeneratorCount++;
+                    if (generated > 0 && (cardType == CardType.Power || card.Keywords.Contains(CardKeyword.Exhaust)))
+                    {
+                        singleUseGeneratedShivs += generated;
+                        singleUseShivGenerators++;
+                    }
                 }
             }
             if (needsDebuffCount && hasDebuffDynamicVar)
@@ -292,7 +299,8 @@ internal readonly record struct StrategicEffectContext(
             ? Math.Min(exhaustCount, reachableCards)
             : 0;
         int shivPlays = requirements.HasFlag(StrategicEffectRequirements.ShivPlays)
-            ? CardMechanismFacts.EstimatedShivPlays(shivCount, generatedShivCount, shivGeneratorCount, deckSize, reachableCards, reusableShivCount)
+            ? CardMechanismFacts.EstimatedShivPlays(shivCount, generatedShivCount, shivGeneratorCount, deckSize, reachableCards,
+                reusableShivCount, singleUseGeneratedShivs, singleUseShivGenerators)
             : 0;
         int debuffApplications = requirements.HasFlag(StrategicEffectRequirements.DebuffApplications)
             ? ReachablePlays(debuffCount, deckSize, reachableCards)
@@ -327,7 +335,8 @@ internal readonly record struct StrategicEffectContext(
         {
             AttackHits = requirements.HasFlag(StrategicEffectRequirements.AttackHits)
                 ? CardMechanismFacts.EstimatedAttackHits(attackHitCount, shivCount, generatedShivCount,
-                    shivGeneratorCount, deckSize, reachableCards, reusableShivCount) : null,
+                    shivGeneratorCount, deckSize, reachableCards, reusableShivCount,
+                    singleUseGeneratedShivs, singleUseShivGenerators) : null,
         };
     }
 

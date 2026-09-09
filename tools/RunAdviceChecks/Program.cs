@@ -247,6 +247,17 @@ Check(CardMechanismFacts.EstimatedAttackHits(0, 2, 3, 1, 3, 6) == 5, "Existing a
 Check(CardMechanismFacts.EstimatedAttackHits(1, 0, 3, 1, 2, 4) == 3, "Generator setup and Shivs leave no spare ordinary attack action");
 Check(CardMechanismFacts.EstimatedAttackHits(2, 0, 0, 0, 2, 4) == 4, "Ordinary attack estimates retain the no-Shiv baseline");
 Check(CardMechanismFacts.EstimatedAttackHits(0, 0, 3, 1, 1, 0) == 0, "No action budget means no hits");
+Check(CardMechanismFacts.EstimatedShivPlays(0, 3, 1, 4, 16, singleUseGenerated: 3, singleUseGenerators: 1) == 3,
+    "An exhausting generator cannot produce multiple batches across cycles");
+Check(CardMechanismFacts.EstimatedShivPlays(0, 4, 1, 4, 16, singleUseGenerated: 4, singleUseGenerators: 1) == 4,
+    "A Power generator supplies only its initial batch");
+Check(CardMechanismFacts.EstimatedShivPlays(0, 1, 1, 4, 16) > 1,
+    "Reusable generation must retain recurring potential");
+Check(CardMechanismFacts.EstimatedAttackHits(0, 0, 3, 1, 4, 16, singleUseGenerated: 3, singleUseGenerators: 1) == 3,
+    "Strength shares the same finite generated supply as Accuracy");
+for (int budget = 0; budget <= 30; budget++)
+    Check(CardMechanismFacts.EstimatedShivPlays(2, 3, 1, 4, budget, singleUseGenerated: 3, singleUseGenerators: 1) <= Math.Min(5, budget),
+        "Existing and finite generated Shivs stay bounded by stock and actions");
 Check(CardMechanismFacts.AttackHits("TWIN_STRIKE", 99) == 2, "Fixed hits must not read unrelated repeat variables");
 Check(CardMechanismFacts.AttackHits("SWORD_BOOMERANG", 4) == 4, "Shared attack facts retain upgraded hit count");
 Check(CardMechanismFacts.AttackHits("UNKNOWN", 99) == 1, "Unknown attacks retain the conservative single-hit baseline");

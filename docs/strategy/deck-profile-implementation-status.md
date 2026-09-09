@@ -17,7 +17,7 @@
 
 ## 已修复：力量与生成小刀的战斗潜力
 
-先前 `StrategicEffectContext.Build` 仅在请求 ShivPlays 时收集小刀来源，力量单独请求 AttackHits 会遗漏生成小刀。目前已让 AttackHits 单独请求也收集同一来源，现有小刀从普通攻击命中中排除，已有/生成小刀、生成启动和普通攻击共享行动预算。无小刀的普通攻击保留原估计口径。
+先前 `StrategicEffectContext.Build` 仅在请求 ShivPlays 时收集小刀来源，力量单独请求 AttackHits 会遗漏生成小刀。目前已让 AttackHits 单独请求也收集同一来源，现有小刀从普通攻击命中中排除，已有/生成小刀、生成启动和普通攻击共享行动预算。无小刀的普通攻击保留原估计口径。带 Exhaust 的生成器与 Power 生成器只计有限批次，原生对照确认 Blade Dance / Fan of Knives 不重复生成，Cloak and Dagger 保留循环潜力。
 
 纯值边界包含仅生成器、已有加生成、一次性耗尽、无攻击、普通攻击及零行动。原生短搜目标与无收益哨兵已执行，详细结果见测试矩阵；原生 Build 合同另检查只请求 AttackHits 与同时请求 ShivPlays 时的计数一致性。成功执行组合仍不等于证明整局胜率提升。
 

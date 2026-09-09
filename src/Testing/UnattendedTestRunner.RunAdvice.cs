@@ -43,6 +43,19 @@ internal sealed partial class UnattendedTestRunner
                 "native Strength context recognizes Shiv sources without inventing attacks");
         }
         _completedChecks.Add("RunAdvice:NativeStrategicStrengthShivs:Requirements:NoDoubleCount:NoAttack");
+        foreach (var (model, stock) in new (CardModel, int)[]
+            { (ModelDb.Card<BladeDance>(), 3), (ModelDb.Card<FanOfKnives>(), 4), (ModelDb.Card<CloakAndDagger>(), 1) })
+        {
+            PredictedCard[] cardsForCycles = new CardModel[] { model, ModelDb.Card<DefendIronclad>(),
+                ModelDb.Card<DefendIronclad>(), ModelDb.Card<DefendIronclad>() }
+                .Select(m => new PredictedCard(player.RunState.CreateCard(m, player))).ToArray();
+            var forecast = StrategicEffectContext.Build(cardsForCycles, 100, 0, 0,
+                StrategicEffectRequirements.AttackHits | StrategicEffectRequirements.ShivPlays);
+            AdviceAssert(model is CloakAndDagger ? forecast.ShivPlays > stock : forecast.ShivPlays == stock,
+                "native generator lifetime bounds repeated-cycle supply");
+            AdviceAssert(forecast.AttackHits == forecast.ShivPlays, "finite source bound is shared by Strength");
+        }
+        _completedChecks.Add("RunAdvice:NativeFiniteShivGenerators:Exhaust:Power:Reusable");
         var bladeDance = RunAdviceCapture.Card(ModelDb.Card<BladeDance>());
         AdviceAssert(!bladeDance.Tags.HasFlag(AdviceTag.Draw), "generated cards must not be labeled as draw");
         AdviceAssert(RunAdviceCapture.Card(ModelDb.Card<ShrugItOff>()).Tags.HasFlag(AdviceTag.Draw),
