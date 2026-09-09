@@ -30,4 +30,8 @@ foreach (var (id, variable, amount) in new[] { ("DIVINE_RIGHT", "Stars", 3m), ("
 var context = RunAdviceCapture.Capture(player);
 Check(context.StartingStars == 3 && context.SummonSupply == 1 && context.InitialFocusOrbs == 1 && context.BaseEnergy == 4, "Capture starter supplies and base energy");
 Check(RunAdviceCapture.Card(Card("UNKNOWN")).Coverage == AdviceCoverage.Unreviewed, "Unknown vanilla card must not claim reviewed coverage");
+var xCard = Card("X_CARD"); xCard.EnergyCost.CostsX = true; xCard.HasStarCostX = true;
+var xSnapshot = RunAdviceCapture.Card(xCard);
+Check(xSnapshot.EnergyX && xSnapshot.StarsX && xSnapshot.Cost == 0 && xSnapshot.StarCost == 0,
+    "Capture X identity without fabricated fixed prices");
 Console.WriteLine($"RUN_ADVICE_CAPTURE_CHECKS_OK checks={checks}");

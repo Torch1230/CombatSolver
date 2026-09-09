@@ -92,11 +92,18 @@ internal static class AdviceMechanics
             value -= Math.Min(8, otherDraw * 2);
             reasons.Add("打出后限制本回合继续抽牌");
         }
-        if (card.Stars > 0 && context.Deck.Any(c => c.StarCost > 0))
+        if (card.Stars > 0 && context.Deck.Any(c => c.StarCost > 0 || c.StarsX))
         {
             double supply = context.Deck.Sum(StarSupply);
             value += Math.Min(6, StarSupply(card) * (supply < context.Deck.Sum(c => c.StarCost) ? 3 : 1));
             reasons.Add("补充星星供给");
+        }
+        if (card.EnergyX) reasons.Add("X 能量效果取决于实际投入，不按固定费用评级");
+        if (card.StarsX)
+        {
+            double supply = context.StartingStars + context.Deck.Sum(StarSupply);
+            value += Math.Min(3, supply);
+            reasons.Add(supply > 0 ? "X 星星效果取决于投入，已识别产星支持" : "X 星星效果尚无已识别资源支持");
         }
         if (card.StarCost > 0)
         {

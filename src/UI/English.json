@@ -423,5 +423,8 @@
   "部分审查 {0}/{1} 张；计数不是强度或胜率": "Partially reviewed {0}/{1} cards; counts are not strength or win rate",
   "抽牌组件偏少": "Few draw components",
   "高费牌多，产能组件不足": "Many expensive cards; limited energy support",
-  "直接格挡组件偏少": "Few direct Block components"
+  "直接格挡组件偏少": "Few direct Block components",
+  "X 能量效果取决于实际投入，不按固定费用评级": "X Energy effects depend on actual spending, not a fixed cost",
+  "X 星星效果取决于投入，已识别产星支持": "X Star effects depend on spending; Star support identified",
+  "X 星星效果尚无已识别资源支持": "No recognized resource support for X Star effects"
 }

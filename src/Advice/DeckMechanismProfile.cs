@@ -36,7 +36,7 @@ internal static class DeckMechanismProfile
             context.Deck.Count(c => c.Tags.HasFlag(AdviceTag.Draw)),
             context.Deck.Count(c => c.Tags.HasFlag(AdviceTag.Energy)),
             context.Deck.Count(c => c.Block > 0),
-            context.Deck.Count(c => c.Cost >= 2),
+            context.Deck.Count(c => !c.EnergyX && c.Cost >= 2),
             context.Deck.Count(c => c.Coverage == AdviceCoverage.Partial));
     }
 

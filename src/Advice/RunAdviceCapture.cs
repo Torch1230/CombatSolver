@@ -81,15 +81,15 @@ internal static class RunAdviceCapture
         return new AdviceCard(id, vanilla
             ? AdviceMechanics.FaceDamage(id, Value("Damage"), Value("CalculationBase"), Value("Repeat"))
             : Value("Damage"), Value("Block"), draw,
-            card.EnergyCost.CostsX ? 2 : Math.Max(0, card.EnergyCost.GetWithModifiers(CostModifiers.Local)),
+            card.EnergyCost.CostsX ? 0 : Math.Max(0, card.EnergyCost.GetWithModifiers(CostModifiers.Local)),
             card.Type == CardType.Attack, card.IsBasicStrikeOrDefend,
             card.Type is CardType.Curse or CardType.Status, card.IsRemovable, tags,
             vanilla, card.CurrentUpgradeLevel, roles, vanilla ? AdviceMechanics.StarGain(id, Value("Stars")) : 0,
-            card.HasStarCostX ? 1 : Math.Max(0, card.CurrentStarCost),
+            card.HasStarCostX ? 0 : Math.Max(0, card.CurrentStarCost),
             vanilla ? amount : 1, vanilla ? availability : 1,
             roles.HasFlag(AdviceRole.SelfExhaust) || card.Type == CardType.Power,
             vanilla && (roles != AdviceRole.None || tags != AdviceTag.None || card.IsBasicStrikeOrDefend)
-                ? AdviceCoverage.Partial : AdviceCoverage.Unreviewed);
+                ? AdviceCoverage.Partial : AdviceCoverage.Unreviewed, card.EnergyCost.CostsX, card.HasStarCostX);
     }
 
     internal static AdviceOffer Offer(MerchantEntry entry, int index) => entry switch

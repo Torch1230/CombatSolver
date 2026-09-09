@@ -18,7 +18,7 @@ internal sealed record AdviceCard(
     bool Basic, bool Curse, bool Removable, AdviceTag Tags, bool Known = true, int UpgradeLevel = 0,
     AdviceRole Roles = AdviceRole.None, double Stars = 0, int StarCost = 0,
     double SourceAmount = 1, double Availability = 1, bool SingleUse = false,
-    AdviceCoverage Coverage = AdviceCoverage.Unreviewed);
+    AdviceCoverage Coverage = AdviceCoverage.Unreviewed, bool EnergyX = false, bool StarsX = false);
 
 internal sealed record AdviceContext(
     IReadOnlyList<AdviceCard> Deck, IReadOnlySet<string> Relics,
@@ -136,7 +136,7 @@ internal static class RunAdvice
         }
         if (card.Tags.HasFlag(AdviceTag.Energy))
         {
-            value += DeckMechanismProfile.EnergyDemand(context.Deck.Count(c => c.Cost >= 2),
+            value += DeckMechanismProfile.EnergyDemand(context.Deck.Count(c => !c.EnergyX && c.Cost >= 2),
                 context.Deck.Count(c => c.Tags.HasFlag(AdviceTag.Energy)));
             reasons.Add("补充能量");
         }
@@ -160,11 +160,11 @@ internal static class RunAdvice
         if (synergy > 0) reasons.Add("契合现有体系");
         synergy += AdviceMechanics.Value(context, card, reasons);
         if ((context.Relics.Contains("KUNAI") || context.Relics.Contains("SHURIKEN")
-                || context.Relics.Contains("ORNAMENTAL_FAN")) && card.Attack && card.Cost <= 1)
+                || context.Relics.Contains("ORNAMENTAL_FAN")) && card.Attack && !card.EnergyX && card.Cost <= 1)
         { synergy += 4; reasons.Add("配合连续攻击遗物"); }
-        if (context.Relics.Contains("SNECKO_EYE") && card.Cost >= 2)
+        if (context.Relics.Contains("SNECKO_EYE") && !card.EnergyX && card.Cost >= 2)
         { synergy += 5; reasons.Add("配合费用随机遗物"); }
-        else if (card.Cost >= 2 && !context.Deck.Any(c => c.Tags.HasFlag(AdviceTag.Energy)))
+        else if (!card.EnergyX && card.Cost >= 2 && !context.Deck.Any(c => c.Tags.HasFlag(AdviceTag.Energy)))
         { value -= 3 * (card.Cost - 1); reasons.Add("费用偏高"); }
         int copies = context.Deck.Count(c => c.Id == card.Id);
         if (copies > 0 && card.Id != "CLAW") { value -= copies * 3; reasons.Add("已有同名牌"); }
@@ -232,7 +232,7 @@ internal static class RunAdvice
             "ANCHOR" or "HORN_CLEAT" or "CAPTAINS_WHEEL" => 22,
             "BAG_OF_PREPARATION" or "LANTERN" or "HAPPY_FLOWER" => 25,
             "KUNAI" or "SHURIKEN" or "ORNAMENTAL_FAN" =>
-                context.Deck.Count(c => c.Attack && c.Cost <= 1) >= 6 ? 34 : 14,
+                context.Deck.Count(c => c.Attack && !c.EnergyX && c.Cost <= 1) >= 6 ? 34 : 14,
             "PEN_NIB" or "AKABEKO" => context.Deck.Count(c => c.Attack) >= 5 ? 23 : 10,
             "LETTER_OPENER" => context.Deck.Count(c => !c.Attack) >= 8 ? 26 : 12,
             "TOUGH_BANDAGES" or "TINGSHA" =>

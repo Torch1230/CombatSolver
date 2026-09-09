@@ -199,4 +199,9 @@ Check(DeckMechanismProfile.EnergyDemand(6, 0) > DeckMechanismProfile.EnergyDeman
 var shortageProfile = DeckMechanismProfile.Capture(context with { Deck = Enumerable.Repeat(plain with { Cost = 2 }, 20).ToArray() });
 Check(shortageProfile.DrawShortage && shortageProfile.EnergyShortage && shortageProfile.DefenseShortage,
     "A thick expensive deck without draw, energy or block should expose all three gaps");
+var xAttack = largeAttack with { Cost = 0, EnergyX = true };
+var xRelicRating = RunAdvice.Rank(context with { Relics = new HashSet<string> { "KUNAI" } }, [new("x", AdviceKind.Card, "X", Card: xAttack)], false)[0];
+Check(xRelicRating.Parts!.Synergy == 0, "X costs must not masquerade as cheap attacks for relic synergy");
+Check(DeckMechanismProfile.Capture(context with { Deck = [xAttack with { Cost = 2 }] }).ExpensiveCards == 0, "X costs are not fixed expensive costs");
+Check(Mechanic(context with { StartingStars = 3 }, plain with { StarsX = true }) > Mechanic(context, plain with { StarsX = true }), "X Stars recognize available support without inventing a fixed price");
 Console.WriteLine($"RUN_ADVICE_CHECKS_OK checks={checks}");
