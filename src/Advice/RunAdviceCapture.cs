@@ -68,6 +68,7 @@ internal static class RunAdviceCapture
             "GRAVE_WARDEN" or "REAVE" => Value("Cards"),
             "BLADE_DANCE" or "CLOAK_AND_DAGGER" or "FAN_OF_KNIVES"
                 => CardMechanismFacts.ImmediateShivSupply(id, (int)Value("Cards"), (int)Value("Shivs")),
+            "INFLAME" => Value("StrengthPower"),
             "SEVERANCE" => 3,
             "GLACIER" => 2,
             "ICE_LANCE" or "CONSUMING_SHADOW" => Value("Repeat"),
@@ -91,9 +92,10 @@ internal static class RunAdviceCapture
             card.HasStarCostX ? 0 : Math.Max(0, card.CurrentStarCost),
             vanilla ? amount : 1, vanilla ? availability : 1,
             roles.HasFlag(AdviceRole.SelfExhaust)
-                || card.Type == CardType.Power && !(vanilla && id is "INFINITE_BLADES" or "CORRUPTION" or "NOXIOUS_FUMES"),
+                || card.Type == CardType.Power && !(vanilla && id is "INFINITE_BLADES" or "CORRUPTION" or "NOXIOUS_FUMES" or "INFLAME"),
             vanilla && (roles != AdviceRole.None || tags != AdviceTag.None || card.IsBasicStrikeOrDefend)
-                ? AdviceCoverage.Partial : AdviceCoverage.Unreviewed, card.EnergyCost.CostsX, card.HasStarCostX);
+                ? AdviceCoverage.Partial : AdviceCoverage.Unreviewed, card.EnergyCost.CostsX, card.HasStarCostX,
+            vanilla ? id switch { "TWIN_STRIKE" or "RIP_AND_TEAR" => 2, "SWORD_BOOMERANG" => Value("Repeat"), _ => 1 } : 1);
     }
 
     internal static AdviceOffer Offer(MerchantEntry entry, int index) => entry switch

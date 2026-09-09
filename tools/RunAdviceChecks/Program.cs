@@ -233,4 +233,8 @@ var accelerant = plain with { Roles = AdviceMechanics.Roles("ACCELERANT") };
 Check(Mechanic(context with { Deck = [poisonSource] }, accelerant) > Mechanic(context, accelerant), "Accelerant needs poison application");
 Check(Mechanic(context, plain with { Roles = AdviceMechanics.Roles("END_OF_DAYS") }) >= 0,
     "A Doom card that supplies its own prerequisite must not get a missing-source penalty");
+var strength = plain with { Roles = AdviceRole.StrengthSource, SourceAmount = 2 };
+var multihit = plain with { Roles = AdviceRole.StrengthPayoff, PayoffWeight = 3 };
+Check(Mechanic(context with { Deck = [strength] }, multihit) > Mechanic(context with { Deck = [strength] }, multihit with { PayoffWeight = 1 }), "More hits offer greater Strength synergy");
+Check(DeckMechanismProfile.Capture(context with { Deck = [strength, multihit] }).Mechanisms.Count(a => a.Balance.Readiness > 0) == 1, "Strength and multihit produce a profile axis");
 Console.WriteLine($"RUN_ADVICE_CHECKS_OK checks={checks}");

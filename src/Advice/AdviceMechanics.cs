@@ -8,7 +8,7 @@ internal enum AdviceRole
     SoulSource = 64, SoulPlayPayoff = 128, SoulExhaustPayoff = 256,
     SummonSource = 512, OstyAttack = 1024, ForgeSource = 2048, Blade = 4096,
     FocusSource = 8192, FocusOrbSource = 16384, PlasmaSource = 32768, ShivSource = 65536, ShivPayoff = 131072,
-    PoisonSource = 262144, PoisonPayoff = 524288, DoomSource = 1048576, DoomPayoff = 2097152,
+    PoisonSource = 262144, PoisonPayoff = 524288, DoomSource = 1048576, DoomPayoff = 2097152, StrengthSource = 4194304, StrengthPayoff = 8388608,
 }
 
 // Explicitly reviewed vanilla roles. This is advice metadata, not combat simulation.
@@ -35,6 +35,8 @@ internal static class AdviceMechanics
             or "COLD_SNAP" or "DARKNESS" or "CONSUMING_SHADOW" or "ICE_LANCE" or "CHILL" => AdviceRole.FocusOrbSource,
         "FUSION" or "METEOR_STRIKE" => AdviceRole.PlasmaSource,
         "BLADE_DANCE" or "CLOAK_AND_DAGGER" or "FAN_OF_KNIVES" or "INFINITE_BLADES" => AdviceRole.ShivSource,
+        "INFLAME" => AdviceRole.StrengthSource,
+        "TWIN_STRIKE" or "RIP_AND_TEAR" or "SWORD_BOOMERANG" => AdviceRole.StrengthPayoff,
         "ACCURACY" => AdviceRole.ShivPayoff,
         "DEADLY_POISON" or "NOXIOUS_FUMES" => AdviceRole.PoisonSource,
         "ACCELERANT" => AdviceRole.PoisonPayoff,
@@ -47,7 +49,7 @@ internal static class AdviceMechanics
     internal static double FaceDamage(string id, double damage, double calculationBase, double repeat) => id switch
     {
         "UNLEASH" or "SOUL_STORM" => Math.Max(0, calculationBase),
-        "TWIN_STRIKE" => damage * 2,
+        "TWIN_STRIKE" or "RIP_AND_TEAR" => damage * 2,
         "SWORD_BOOMERANG" or "SOVEREIGN_BLADE" => damage * Math.Max(0, repeat),
         _ => damage,
     };
@@ -67,6 +69,8 @@ internal static class AdviceMechanics
             "补充毒的施加来源", "配合毒的重复触发", "缺少已识别的施毒来源", reasons);
         value += PairValue(context, card, AdviceRole.DoomSource, AdviceRole.DoomPayoff,
             "补充灾厄施加来源", "配合灾厄叠加或结算", "缺少已识别的灾厄来源", reasons);
+        value += PairValue(context, card, AdviceRole.StrengthSource, AdviceRole.StrengthPayoff,
+            "力量支持多段攻击", "多段攻击放大力量收益", "缺少已识别的力量来源", reasons);
         // Soul play and exhaust payoffs share a source; count its synergy only once.
         value += PairValue(context, card, AdviceRole.SoulSource,
             AdviceRole.SoulPlayPayoff | AdviceRole.SoulExhaustPayoff,
@@ -148,7 +152,7 @@ internal static class AdviceMechanics
     {
         MechanismBalance profile = DeckMechanismProfile.Capture(context, source, payoff);
         double addedSupply = (card.Roles & source) != 0 ? SourceWeight(card) : 0;
-        double addedPayoff = (card.Roles & payoff) != 0 ? 1 : 0;
+        double addedPayoff = (card.Roles & payoff) != 0 ? Math.Clamp(card.PayoffWeight, 0, 4) : 0;
         double value = profile.Marginal(addedSupply, addedPayoff);
         if (addedSupply > 0 && profile.Payoffs > 0)
             reasons.Add(sourceReason);

@@ -18,7 +18,7 @@ internal sealed record AdviceCard(
     bool Basic, bool Curse, bool Removable, AdviceTag Tags, bool Known = true, int UpgradeLevel = 0,
     AdviceRole Roles = AdviceRole.None, double Stars = 0, int StarCost = 0,
     double SourceAmount = 1, double Availability = 1, bool SingleUse = false,
-    AdviceCoverage Coverage = AdviceCoverage.Unreviewed, bool EnergyX = false, bool StarsX = false);
+    AdviceCoverage Coverage = AdviceCoverage.Unreviewed, bool EnergyX = false, bool StarsX = false, double PayoffWeight = 1);
 
 internal sealed record AdviceContext(
     IReadOnlyList<AdviceCard> Deck, IReadOnlySet<string> Relics,

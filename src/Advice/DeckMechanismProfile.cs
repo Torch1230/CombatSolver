@@ -28,6 +28,7 @@ internal static class DeckMechanismProfile
         [
             new("毒的施加与增幅", Capture(context, AdviceRole.PoisonSource, AdviceRole.PoisonPayoff)),
             new("灾厄叠加与结算", Capture(context, AdviceRole.DoomSource, AdviceRole.DoomPayoff)),
+            new("力量多段配合", Capture(context, AdviceRole.StrengthSource, AdviceRole.StrengthPayoff)),
             new("星星供需", Stars(context)),
             new("锻造兑现", Forge(context)),
             new("小刀配合", Capture(context, AdviceRole.ShivSource, AdviceRole.ShivPayoff)),
@@ -65,5 +66,5 @@ internal static class DeckMechanismProfile
 
     internal static MechanismBalance Capture(AdviceContext context, AdviceRole source, AdviceRole payoff) => new(
         AdviceMechanics.SourceSupply(context, source),
-        context.Deck.Count(c => (c.Roles & payoff) != 0));
+        context.Deck.Where(c => (c.Roles & payoff) != 0).Sum(c => Math.Clamp(c.PayoffWeight, 0, 4)));
 }

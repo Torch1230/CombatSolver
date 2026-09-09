@@ -440,5 +440,9 @@
   "缺少已识别的施毒来源": "No recognized Poison source",
   "补充灾厄施加来源": "Adds Doom application",
   "配合灾厄叠加或结算": "Supports Doom buildup or resolution",
-  "缺少已识别的灾厄来源": "No recognized Doom source"
+  "缺少已识别的灾厄来源": "No recognized Doom source",
+  "力量多段配合": "Strength and multi-hit synergy",
+  "力量支持多段攻击": "Strength supports multiple hits",
+  "多段攻击放大力量收益": "Multiple hits amplify Strength",
+  "缺少已识别的力量来源": "No recognized Strength source"
 }

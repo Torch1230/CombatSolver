@@ -1,5 +1,13 @@
 # CombatSolver 开发笔记与未来构想
 
+## 下一版本（开发中）：力量与多段画像
+
+- 定向核对原生 Inflame：按 StrengthPower 变量给予力量，升级增加变量。捕获力量量，并将效果持续性与 Power 打出一次区分。
+- TwinStrike/RipAndTear 固定两段、SwordBoomerang 按 Repeat 作为已审查力量收益组件；PayoffWeight 表示收益入口量，配合画像/边际分数共同读取并限幅 4。RipAndTear 同时补齐基础多段伤害。
+- 画像新增力量多段轴；不泛化未审查攻击，不将玩家力量套用 Osty 攻击。RunAdviceChecks 105,773 项通过，新增段数影响配合与画像轴识别；Release 编译通过。
+- 该批仍是有限已审查构筑规则，暂未覆盖所有力量/多段卡或战斗 StrengthPower 的多段预估；目标其余战斗接入和实际搜索验证继续进行，未安装。
+
+
 ## 下一版本（开发中）：毒与 Doom 的来源依赖
 
 - 定向核对原生 Accelerant/AccelerantPower、DeadlyPoison、NoEscape。Accelerant 自身不施毒，依赖 Poison 重复触发；NoEscape 基础施加 Doom 并从既有 Doom 获得额外量。
