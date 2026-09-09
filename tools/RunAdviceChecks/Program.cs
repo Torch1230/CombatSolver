@@ -240,4 +240,10 @@ Check(DeckMechanismProfile.Capture(context with { Deck = [strength, multihit] })
 Check(CardMechanismFacts.AttackHits("TWIN_STRIKE", 99) == 2, "Fixed hits must not read unrelated repeat variables");
 Check(CardMechanismFacts.AttackHits("SWORD_BOOMERANG", 4) == 4, "Shared attack facts retain upgraded hit count");
 Check(CardMechanismFacts.AttackHits("UNKNOWN", 99) == 1, "Unknown attacks retain the conservative single-hit baseline");
+Check(CardMechanismFacts.EstimatedShivPlays(2, 0, 0, 2, 6) == 2,
+    "Exhausting existing Shivs cannot be reused across estimated cycles");
+Check(CardMechanismFacts.EstimatedShivPlays(2, 0, 0, 2, 6, reusableExisting: 2) == 6,
+    "Non-exhausting special Shivs retain repeat-use potential");
+Check(CardMechanismFacts.EstimatedShivPlays(2, 0, 0, 2, 6, reusableExisting: 1) == 4,
+    "Mixed reusable and exhausting Shivs are counted separately");
 Console.WriteLine($"RUN_ADVICE_CHECKS_OK checks={checks}");
