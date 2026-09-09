@@ -53,7 +53,7 @@ internal sealed partial class UnattendedTestRunner
             {
                 await runner.AssertSearchObjectiveUiAsync(combatState);
                 if (request.ScenarioId == "SEARCH-OBJECTIVES-UI")
-                    await runner.AssertRunAdviceAsync(player);
+                    await runner.AssertRunAdviceAsync(player, combatState);
                 return Observation(combatEnded: false);
             }
             if (request.ScenarioId is "SEARCH-OBJECTIVES-GROWTH" or "SEARCH-OBJECTIVES-RESOURCES")
@@ -63,7 +63,7 @@ internal sealed partial class UnattendedTestRunner
             }
             if (request.ScenarioId == "RUN-ADVICE")
             {
-                await runner.AssertRunAdviceAsync(player);
+                await runner.AssertRunAdviceAsync(player, combatState);
                 return Observation(combatEnded: false);
             }
             if (request.ScenarioId == "UI-LOCALIZATION")

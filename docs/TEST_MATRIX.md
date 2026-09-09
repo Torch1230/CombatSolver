@@ -1,5 +1,15 @@
 # CombatSolver 测试清单
 
+## 下一版本（开发中）：消耗抽牌潜力按禁抽时序估计
+
+- StrategicEffectContext 新增可选 ExhaustDrawPlays，Dark Embrace 使用它而非不区分时机的 ExhaustPlays。生产快照使用分支有效 Power 顺序与分支手牌计算：当前 NoDraw 折减普通消耗抽牌，后续回合保留有界份额；手中 Ethereal 按回合末 Hook 顺序计收益，同时带 Exhaust 的实例不重复计数。
+- 只有当前存在自身 Dark Embrace 的快照才做额外 Power/手牌检查；没有读取实时卡牌堆或语言，没有改变终局比较和实际模拟。未来回合份额仍是近似，不是已证明的执行计划。
+- RunAdviceChecks 105,834 项通过，新增五项分别覆盖当前禁抽、未来窗口、延后抽牌两种顺序和无禁抽。Release 编译通过，接口手册同步可选字段及回退口径。
+- 原生分支合同 `2f9c2fdf44034560b0eb1a1faaa1f06f` Passed，使用克隆战斗里的 Power 顺序与预测手牌，确认 ExhaustDrawPlays 为 1/0 且真正影响 Dark Embrace 的 CardAccessPotential。
+- 短搜/部署目标 `85fa3f9e177f4e75b74ae1d3f898a6e1` Passed：Dark Embrace→Shiv→抽到 Strike 完成首回合击杀；禁抽哨兵 `fb8e688ad76e41639671969367d5ac4b` Passed：只用已有攻击击杀，不打无效 Dark Embrace。两者均零战损、零计划外重算；固定 3 秒短搜和 120 秒请求上限。
+- 原生四组时序差分的模拟输入与代码未变，复用既有证据，不重复同一差分。最终合同后隔离进程已退出，正式游戏安装未改动。
+
+
 ## 下一版本（开发中）：NoDraw 与消耗抽牌最小差分
 
 - `coverage/unattended/dark-embrace-draw-timing.json` 含四个最小请求：普通小刀消耗与虚无牌回合末消耗，分别按 NoDraw→DarkEmbrace 和相反顺序施加。只观察首个相关结算边界，不进入下一回合准备。

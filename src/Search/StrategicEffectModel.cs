@@ -1,4 +1,5 @@
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Powers;
@@ -90,6 +91,30 @@ internal readonly record struct StrategicEffectContext(
     int StatusDrawTriggers)
 {
     public int? AttackHits { get; init; }
+    public int? ExhaustDrawPlays { get; init; }
+
+    internal StrategicEffectContext WithExhaustDrawTiming(IReadOnlyList<PowerModel> powers,
+        IReadOnlyList<PredictedCard> hand, Creature owner)
+    {
+        int noDrawIndex = -1, embraceIndex = -1;
+        for (int i = 0; i < powers.Count; i++)
+        {
+            if (!ReferenceEquals(powers[i].Owner, owner)) continue;
+            if (powers[i] is NoDrawPower) noDrawIndex = i;
+            if (powers[i] is DarkEmbracePower) embraceIndex = i;
+        }
+        if (embraceIndex < 0) return this;
+        int ethereal = 0, exhaustingEthereal = 0;
+        foreach (PredictedCard card in hand)
+        {
+            if (!card.Preview.Keywords.Contains(CardKeyword.Ethereal)) continue;
+            ethereal++;
+            if (card.Preview.Keywords.Contains(CardKeyword.Exhaust)) exhaustingEthereal++;
+        }
+        return this with { ExhaustDrawPlays = CardMechanismFacts.ExhaustDrawPotential(
+            Math.Max(0, ExhaustPlays - exhaustingEthereal), RemainingTurns, noDrawIndex >= 0,
+            ethereal, noDrawIndex < 0 || noDrawIndex < embraceIndex) };
+    }
 
     public static StrategicEffectContext Build(
         IReadOnlyList<PredictedCard> liveCards,
@@ -436,7 +461,7 @@ internal static class StrategicEffectModel
             AfterimagePower => Prevention(amount * context.UsefulCardPlays, context),
             BufferPower => Prevention(BufferPrevention(amount, context), context),
             FeelNoPainPower => Prevention(amount * context.ExhaustPlays, context),
-            DarkEmbracePower => CardAccess(amount * context.ExhaustPlays * cardAccessUnit),
+            DarkEmbracePower => CardAccess(amount * (context.ExhaustDrawPlays ?? context.ExhaustPlays) * cardAccessUnit),
             ThornsPower => Damage(amount * context.IncomingHitCount, enemyHp),
             EchoFormPower when context.UsefulCardPlays > 0 => Damage(
                 context.BestCardValue

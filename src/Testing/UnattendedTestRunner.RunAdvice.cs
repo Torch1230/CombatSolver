@@ -11,6 +11,7 @@ using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
+using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Nodes.CommonUi;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Nodes.Screens.CardSelection;
@@ -27,8 +28,23 @@ internal sealed partial class UnattendedTestRunner
         if (!condition) throw new InvalidOperationException("RunAdvice: " + message);
     }
 
-    private async Task AssertRunAdviceAsync(Player player)
+    private async Task AssertRunAdviceAsync(Player player, CombatState nativeCombat)
     {
+        foreach (bool noDrawFirst in new[] { true, false })
+        {
+            using PendingEnemyDeathFixture fixture = CreatePendingEnemyDeathFixture(nativeCombat, player, victimCount: 0);
+            if (noDrawFirst) fixture.Combat.AddPowerInstance<NoDrawPower>(player.Creature, 1, player.Creature);
+            var embrace = fixture.Combat.AddPowerInstance<DarkEmbracePower>(player.Creature, 1, player.Creature);
+            if (!noDrawFirst) fixture.Combat.AddPowerInstance<NoDrawPower>(player.Creature, 1, player.Creature);
+            PredictedCard[] hand = [PredictedCard.Create(ModelDb.Card<Dazed>(), player)];
+            var forecast = StrategicEffectContext.Build(hand, 1, 0, 0, StrategicEffectModel.Requirements(embrace))
+                .WithExhaustDrawTiming(fixture.Combat.EffectivePowers(), hand, player.Creature);
+            AdviceAssert(forecast.ExhaustDrawPlays == (noDrawFirst ? 1 : 0),
+                "branch-owned exhaust draw forecast retains native Power order");
+            AdviceAssert(StrategicEffectModel.Evaluate(embrace, forecast).CardAccessPotential > 0 == noDrawFirst,
+                "Dark Embrace evaluation consumes the ordered draw forecast");
+        }
+        _completedChecks.Add("RunAdvice:NativeExhaustDrawTiming:BranchPowers:Evaluation");
         foreach (CardModel[] models in new CardModel[][]
             { [ModelDb.Card<BladeDance>()], [ModelDb.Card<Shiv>(), ModelDb.Card<Shiv>()],
                 [ModelDb.Card<BladeDance>(), ModelDb.Card<Shiv>()], [ModelDb.Card<DefendIronclad>()] })

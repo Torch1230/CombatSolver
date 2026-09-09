@@ -500,3 +500,5 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 ### 战略命中次数上下文
 
 `StrategicEffectRequirements.AttackHits` 请求玩家攻击预计命中次数，结果为 `StrategicEffectContext.AttackHits`；与 `AttackPlays` 的攻击牌次数分开。未请求时为 null，旧构造调用保持兼容。当前展开已审查多段规则与小刀生成来源，排除 OstyAttack，未知普通攻击仍为单段近似。AttackHits 单独请求时也会计算小刀：已有小刀从普通攻击计数中排除，与生成小刀一起消费行动预算，普通攻击只分配剩余行动；生成器的启动动作不能同时计为攻击。已审查生成器的 Power 类型或分支 Exhaust 词条会限制为一次性生成；已有/生成小刀和启动次数均使用对应的有限库存，其他可重复生成器保留循环潜力。该值仍是潜力估计，不证明能量、过牌或循环可执行。
+
+`StrategicEffectContext.ExhaustDrawPlays` 是可选的消耗抽牌机会估计，区别于 `ExhaustPlays` 的消耗触发机会。未提供时 Dark Embrace 保留旧构造的回退行为；生产快照仅在有自身 Dark Embrace 时，使用分支的有效 Power 顺序与手牌补齐该值。普通消耗在当前 NoDraw 窗口内折减，未来回合保留有界份额；手中 Ethereal 牌按回合末 NoDraw 移除与 Dark Embrace 的顺序计入，兼具 Exhaust 的实例不重复计算。它不修改模拟/历史，也不保证后续回合一定可抽到或打出所有候选。

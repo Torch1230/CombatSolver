@@ -3,6 +3,14 @@ namespace CombatSolver;
 // Reviewed value-only facts shared by run advice and branch-local combat evaluation.
 internal static class CardMechanismFacts
 {
+    internal static int ExhaustDrawPotential(int ordinaryExhausts, int remainingTurns, bool noDrawNow,
+        int etherealInHand, bool drawsAtTurnEnd)
+    {
+        int ordinary = noDrawNow ? (int)Math.Ceiling((double)ordinaryExhausts
+            * Math.Max(0, remainingTurns - 1) / Math.Max(1, remainingTurns)) : ordinaryExhausts;
+        return ordinary + (drawsAtTurnEnd ? etherealInHand : 0);
+    }
+
     internal static int AttackHits(string id, int repeat) => id switch
     {
         "TWIN_STRIKE" or "RIP_AND_TEAR" => 2,

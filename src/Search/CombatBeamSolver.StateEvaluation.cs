@@ -242,12 +242,14 @@ internal sealed partial class CombatBeamSolver
         ThreatFocus focus = BuildThreatFocus(simulator, combat);
         IReadOnlyList<PowerModel> effectivePowers = combat.EffectivePowers();
         StrategicEffectRequirements strategicRequirements = StrategicEffectRequirements.None;
+        bool needsExhaustDrawTiming = false;
         for (int powerIndex = 0; powerIndex < effectivePowers.Count; powerIndex++)
         {
             PowerModel power = effectivePowers[powerIndex];
             if (!StrategicEffectMirrors.Contributes(power, _player.Creature))
                 continue;
             strategicRequirements |= StrategicEffectModel.Requirements(power);
+            needsExhaustDrawTiming |= power is DarkEmbracePower;
         }
         StrategicEffectContext? strategicContext = null;
         StrategicEffectVector strategicEffects = StrategicEffectVector.Zero;
@@ -258,12 +260,13 @@ internal sealed partial class CombatBeamSolver
             PowerModel power = effectivePowers[powerIndex];
             if (!StrategicEffectMirrors.Contributes(power, _player.Creature))
                 continue;
-            strategicContext ??= StrategicEffectContext.Build(
-                liveCards,
-                enemyHp,
-                focus.TotalThreat,
-                focus.IncomingHitCount,
-                strategicRequirements);
+            if (strategicContext is null)
+            {
+                StrategicEffectContext context = StrategicEffectContext.Build(
+                    liveCards, enemyHp, focus.TotalThreat, focus.IncomingHitCount, strategicRequirements);
+                strategicContext = needsExhaustDrawTiming
+                    ? context.WithExhaustDrawTiming(effectivePowers, playerState.Hand.Cards, _player.Creature) : context;
+            }
             StrategicEffectVector effect = StrategicEffectModel.Evaluate(
                 power,
                 strategicContext.Value);

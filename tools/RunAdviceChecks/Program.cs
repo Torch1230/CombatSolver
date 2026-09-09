@@ -274,6 +274,11 @@ var directDrawCard = plain with { Tags = AdviceTag.Draw, Draw = 2 };
 Check(RunAdvice.CardValue(context with { Deck = [soulDrawSource] }, directDrawCard, [])
     < RunAdvice.CardValue(context with { Deck = [plain] }, directDrawCard, []),
     "Existing indirect supply reduces marginal demand for more direct draw");
+Check(CardMechanismFacts.ExhaustDrawPotential(3, 1, true, 0, false) == 0, "NoDraw blocks current-window ordinary exhaust draw");
+Check(CardMechanismFacts.ExhaustDrawPotential(3, 2, true, 0, false) == 2, "A later turn retains bounded exhaust draw potential");
+Check(CardMechanismFacts.ExhaustDrawPotential(0, 1, true, 1, true) == 1, "NoDraw removed before delayed draw permits Ethereal payoff");
+Check(CardMechanismFacts.ExhaustDrawPotential(0, 1, true, 1, false) == 0, "Delayed draw before NoDraw removal stays blocked");
+Check(CardMechanismFacts.ExhaustDrawPotential(3, 1, false, 1, true) == 4, "Unblocked ordinary and delayed exhaust sources combine");
 Check(CardMechanismFacts.AttackHits("TWIN_STRIKE", 99) == 2, "Fixed hits must not read unrelated repeat variables");
 Check(CardMechanismFacts.AttackHits("SWORD_BOOMERANG", 4) == 4, "Shared attack facts retain upgraded hit count");
 Check(CardMechanismFacts.AttackHits("UNKNOWN", 99) == 1, "Unknown attacks retain the conservative single-hit baseline");
