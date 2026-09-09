@@ -83,8 +83,13 @@ internal static class RunAdviceBadge
             string axes = string.Join(" / ", active.Select(a => SolverText.Get(a.Name)));
             label.Text += "\n" + (axes.Length == 0 ? SolverText.Get("尚未识别成型配合") : axes)
                 + " · " + SolverText.Format($"抽牌 {profile.DrawCards} / 产能 {profile.EnergyCards} / 格挡 {profile.DefensiveCards}");
+            List<string> shortages = [];
+            if (profile.DrawShortage) shortages.Add(SolverText.Get("抽牌组件偏少"));
+            if (profile.EnergyShortage) shortages.Add(SolverText.Get("高费牌多，产能组件不足"));
+            if (profile.DefenseShortage) shortages.Add(SolverText.Get("直接格挡组件偏少"));
             label.TooltipText = string.Join("\n", profile.Mechanisms.Select(a =>
                 SolverText.Get(a.Name) + ": " + SolverText.Format($"来源 {a.Balance.Supply:F1} / 收益组件 {a.Balance.Payoffs:F0}")))
+                + "\n" + string.Join(" / ", shortages)
                 + "\n" + SolverText.Format($"部分审查 {profile.ReviewedCards}/{profile.DeckSize} 张；计数不是强度或胜率");
         });
         if (profile is not null) label.MouseFilter = Control.MouseFilterEnum.Pass;

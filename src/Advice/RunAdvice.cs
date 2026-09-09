@@ -130,12 +130,14 @@ internal static class RunAdvice
         if (card.Block > 0 && blocks < 0.3) { value += 7; reasons.Add("补充防御"); }
         if (card.Tags.HasFlag(AdviceTag.Draw))
         {
-            value += 5 + Math.Min(5, card.Draw * 2);
+            value += (5 + Math.Min(5, card.Draw * 2)) * DeckMechanismProfile.DrawDemand(
+                size, context.Deck.Count(c => c.Tags.HasFlag(AdviceTag.Draw)));
             reasons.Add("改善抽牌");
         }
         if (card.Tags.HasFlag(AdviceTag.Energy))
         {
-            value += context.Deck.Count(c => c.Cost >= 2) >= 4 ? 12 : 6;
+            value += DeckMechanismProfile.EnergyDemand(context.Deck.Count(c => c.Cost >= 2),
+                context.Deck.Count(c => c.Tags.HasFlag(AdviceTag.Energy)));
             reasons.Add("补充能量");
         }
         if (card.Tags.HasFlag(AdviceTag.Area))

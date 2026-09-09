@@ -420,5 +420,8 @@
   "尚未识别成型配合": "No supported combination identified",
   "抽牌 {0} / 产能 {1} / 格挡 {2}": "Draw {0} / Energy {1} / Block {2}",
   "来源 {0:F1} / 收益组件 {1:F0}": "Supply {0:F1} / Payoffs {1:F0}",
-  "部分审查 {0}/{1} 张；计数不是强度或胜率": "Partially reviewed {0}/{1} cards; counts are not strength or win rate"
+  "部分审查 {0}/{1} 张；计数不是强度或胜率": "Partially reviewed {0}/{1} cards; counts are not strength or win rate",
+  "抽牌组件偏少": "Few draw components",
+  "高费牌多，产能组件不足": "Many expensive cards; limited energy support",
+  "直接格挡组件偏少": "Few direct Block components"
 }

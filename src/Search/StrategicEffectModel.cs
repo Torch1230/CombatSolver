@@ -348,6 +348,8 @@ internal static class StrategicEffectModel
             AfterimagePower => StrategicEffectRequirements.UsefulCardPlays,
             BufferPower => StrategicEffectRequirements.RemainingTurns,
             FeelNoPainPower => StrategicEffectRequirements.ExhaustPlays,
+            DarkEmbracePower => StrategicEffectRequirements.ExhaustPlays
+                | StrategicEffectRequirements.AverageCardValue,
             EchoFormPower => StrategicEffectRequirements.UsefulCardPlays
                 | StrategicEffectRequirements.BestCardValue,
             EnvenomPower or StrengthPower => StrategicEffectRequirements.AttackPlays,
@@ -390,6 +392,7 @@ internal static class StrategicEffectModel
             AfterimagePower => Prevention(amount * context.UsefulCardPlays, context),
             BufferPower => Prevention(BufferPrevention(amount, context), context),
             FeelNoPainPower => Prevention(amount * context.ExhaustPlays, context),
+            DarkEmbracePower => CardAccess(amount * context.ExhaustPlays * cardAccessUnit),
             ThornsPower => Damage(amount * context.IncomingHitCount, enemyHp),
             EchoFormPower when context.UsefulCardPlays > 0 => Damage(
                 context.BestCardValue

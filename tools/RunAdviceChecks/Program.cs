@@ -193,4 +193,10 @@ Check(mixedProfile.Mechanisms.Count(a => a.Balance.Readiness > 0) == 2,
 var resourceProfile = DeckMechanismProfile.Capture(context with { Deck = [drawCard, stars, plain with { Tags = AdviceTag.Energy, Cost = 2 }, plain with { Block = 5 }] });
 Check(resourceProfile.DrawCards == 1 && resourceProfile.EnergyCards == 1 && resourceProfile.DefensiveCards == 1 && resourceProfile.ExpensiveCards == 1,
     "Operating capabilities must be counted separately from mechanisms and Stars");
+Check(DeckMechanismProfile.DrawDemand(20, 1) > DeckMechanismProfile.DrawDemand(20, 5), "Draw support has diminishing demand");
+Check(DeckMechanismProfile.DrawDemand(30, 2) > DeckMechanismProfile.DrawDemand(15, 2), "Larger decks need more draw support");
+Check(DeckMechanismProfile.EnergyDemand(6, 0) > DeckMechanismProfile.EnergyDemand(6, 3), "Energy supply reduces the expensive-card bottleneck");
+var shortageProfile = DeckMechanismProfile.Capture(context with { Deck = Enumerable.Repeat(plain with { Cost = 2 }, 20).ToArray() });
+Check(shortageProfile.DrawShortage && shortageProfile.EnergyShortage && shortageProfile.DefenseShortage,
+    "A thick expensive deck without draw, energy or block should expose all three gaps");
 Console.WriteLine($"RUN_ADVICE_CHECKS_OK checks={checks}");

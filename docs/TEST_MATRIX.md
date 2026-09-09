@@ -1,5 +1,14 @@
 # CombatSolver 测试清单
 
+## 下一版本（开发中）：运转短板与消耗抽牌保路
+
+- 画像新增抽牌、高费缺能量、直接格挡组件偏少提示；仅为已捕获组件计数的启发式，不将间接防御或未识别机制解释为绝对缺失。
+- 抽牌分按牌组厚度和已有抽牌密度连续递减，能量分按高费需求/已有产能平滑计算，替代固定加分和四张高费阈值跳变。
+- 战斗 StrategicEffectModel 的 DarkEmbracePower 从通用 Scaling 转为按预测 ExhaustPlays 与 AverageCardValue 估计 CardAccessPotential，沿现有中间保路入口生效；不修改实际消耗/抽牌 Hook，也不改变终局质量比较。仍沿用现有 ExhaustPlays 近似，主动消耗选择与 Ethereal 时点未得到完整刻画。
+- RunAdviceChecks 105,733 项通过（新增四项运转短板检查）；Release 编译 0 warnings/errors。DarkEmbrace 战斗改动仅经静态调用链和编译检查，未运行目标短搜，不宣称已改善实际路线。
+- 共享画像完整接入出牌、其他流派轴、X 费用、药水跨回合审计和实机验证仍为当前目标未完成项。
+
+
 ## 下一版本（开发中）：可查看的多体系画像
 
 - DeckProfileSnapshot 输出五条已实现的来源/收益轴及抽牌、能量、格挡、高费、部分审查卡数，不把牌组锁定为单一流派。
