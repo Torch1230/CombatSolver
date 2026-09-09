@@ -1717,6 +1717,14 @@ internal static partial class CombatSearchCoordinator
             result.PotionStrategicCostByTurn.Values.Sum(),
             ambergrisCount,
             root.InitialPlayerMaxHp);
+        bool ordinaryUsed = result.BestNode.Actions.Any(action => action.Kind == PlanActionKind.UsePotion
+            && action.PotionId != "AMBERGRIS"
+            && policy.PotionStrategy.Resolve(action.PotionSlot, action.PotionId!) == SolverPotionDirective.Smart
+            && PotionUsePolicy.StrategicHpCost(action.PotionId!, root.HasRenewablePotionShapedRock)
+                == SolverWeights.PotionMinimumHpSaved);
+        strategicHpCost = PotionInventoryValue.RequiredCost(strategicHpCost,
+            root.PotionSlotCount > 0 && root.InitialPotionCount >= root.PotionSlotCount,
+            ordinaryUsed, SolverWeights.PotionMinimumHpSaved);
         return PotionUsePolicy.SmartRequiredHpSaved(
             strategicHpCost,
             StrategicBossHpRelief(root, policy));
@@ -1787,6 +1795,14 @@ internal static partial class CombatSearchCoordinator
         int paidPotionCapacity = paidPotionHpRequired >= int.MaxValue / 4
             ? 0
             : Math.Max(0, potionFreeHpDeficit) / paidPotionHpRequired;
+        bool ordinaryAvailable = allowedPotions.Any(potion => potion.PotionId != "AMBERGRIS"
+            && potion.StrategicHpCost == SolverWeights.PotionMinimumHpSaved);
+        int firstCost = PotionUsePolicy.SmartRequiredHpSaved(
+            PotionInventoryValue.RequiredCost(SolverWeights.PotionMinimumHpSaved,
+                root.PotionSlotCount > 0 && root.InitialPotionCount >= root.PotionSlotCount,
+                ordinaryAvailable, SolverWeights.PotionMinimumHpSaved), StrategicBossHpRelief(root, policy));
+        if (paidPotionHpRequired > 0 && firstCost > 0 && firstCost < int.MaxValue / 4 && potionFreeHpDeficit >= firstCost)
+            paidPotionCapacity = Math.Max(paidPotionCapacity, 1 + (potionFreeHpDeficit - firstCost) / paidPotionHpRequired);
         return Math.Min(
             allowedPotions.Length,
             allowedPotions.Count(potion => potion.StrategicHpCost == 0) + paidPotionCapacity);
