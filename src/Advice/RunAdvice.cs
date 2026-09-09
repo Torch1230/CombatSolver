@@ -131,7 +131,7 @@ internal static class RunAdvice
             value += context.Deck.Count(c => c.Tags.HasFlag(AdviceTag.Scaling)) < 2 ? (context.Act == 0 ? 10 : 12) : 3;
             reasons.Add("提供持续效果");
         }
-        AdviceTag[] archetypes = [AdviceTag.Poison, AdviceTag.Orb, AdviceTag.Doom, AdviceTag.Shiv];
+        AdviceTag[] archetypes = [AdviceTag.Poison, AdviceTag.Doom, AdviceTag.Shiv];
         double synergy = 0;
         foreach (AdviceTag tag in archetypes)
         {
@@ -206,7 +206,7 @@ internal static class RunAdvice
             "FAIRY_IN_A_BOTTLE" or "GHOST_IN_A_JAR" => 26,
             "REGEN_POTION" or "FRUIT_JUICE" => 20,
             "POISON_POTION" => context.Deck.Any(c => c.Tags.HasFlag(AdviceTag.Poison)) ? 18 : 11,
-            "FOCUS_POTION" => context.Deck.Any(c => c.Tags.HasFlag(AdviceTag.Orb)) ? 20 : -10,
+            "FOCUS_POTION" => context.Deck.Any(c => c.Roles.HasFlag(AdviceRole.FocusOrbSource)) ? 20 : -10,
             _ => double.NaN,
         };
         if (double.IsNaN(value)) return (0, false);

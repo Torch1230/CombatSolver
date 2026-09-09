@@ -393,5 +393,16 @@
   "打出后限制本回合继续抽牌": "Prevents further draws this turn",
   "补充星星供给": "Adds star supply",
   "牌组具备产星来源": "Deck has a star source",
-  "缺少已识别的持续产星来源": "No recognized ongoing star source"
+  "缺少已识别的持续产星来源": "No recognized ongoing star source",
+  "补充灵魂生成来源": "Adds a source of Souls",
+  "配合灵魂打出或消耗收益": "Supports Soul play or exhaust payoffs",
+  "缺少已识别的灵魂生成来源": "No recognized source of Souls",
+  "召唤支持奥斯蒂攻击": "Summoning supports Osty attacks",
+  "配合召唤来源": "Supported by summon sources",
+  "缺少已识别的召唤来源": "No recognized summon source",
+  "充能球可以受益于集中": "These orbs benefit from Focus",
+  "配合受集中影响的产球来源": "Supports recognized Focus-sensitive orb sources",
+  "缺少已识别的受集中影响的产球来源": "No recognized Focus-sensitive orb source",
+  "锻造收益需要后续打出剑来兑现": "Forge requires a later Blade attack to pay off",
+  "配合已识别的锻造来源": "Supported by recognized Forge sources"
 }

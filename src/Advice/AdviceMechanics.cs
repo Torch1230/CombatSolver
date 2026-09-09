@@ -5,6 +5,9 @@ internal enum AdviceRole
 {
     None = 0, DiscardSource = 1, DiscardPayoff = 2,
     ExhaustSource = 4, ExhaustPayoff = 8, SelfExhaust = 16, StopsDraw = 32,
+    SoulSource = 64, SoulPlayPayoff = 128, SoulExhaustPayoff = 256,
+    SummonSource = 512, OstyAttack = 1024, ForgeSource = 2048, Blade = 4096,
+    FocusSource = 8192, FocusOrbSource = 16384, PlasmaSource = 32768,
 }
 
 // Explicitly reviewed vanilla roles. This is advice metadata, not combat simulation.
@@ -18,6 +21,17 @@ internal static class AdviceMechanics
         "BURNING_PACT" or "TRUE_GRIT" or "FIEND_FIRE" or "SECOND_WIND" or "CORRUPTION"
             => AdviceRole.ExhaustSource,
         "DARK_EMBRACE" or "FEEL_NO_PAIN" => AdviceRole.ExhaustPayoff,
+        "GRAVE_WARDEN" or "REAVE" or "SEVERANCE" => AdviceRole.SoulSource,
+        "HAUNT" or "DEVOUR_LIFE" => AdviceRole.SoulPlayPayoff,
+        "SOUL_STORM" => AdviceRole.SoulExhaustPayoff,
+        "BODYGUARD" or "AFTERLIFE" or "REANIMATE" or "CLEANSE" or "SPUR" or "PULL_AGGRO"
+            => AdviceRole.SummonSource,
+        "UNLEASH" => AdviceRole.OstyAttack,
+        "BIG_BANG" or "SPOILS_OF_BATTLE" or "WROUGHT_IN_WAR" => AdviceRole.ForgeSource,
+        "SOVEREIGN_BLADE" => AdviceRole.Blade,
+        "DEFRAGMENT" => AdviceRole.FocusSource,
+        "ZAP" or "BALL_LIGHTNING" or "COOLHEADED" or "GLACIER" => AdviceRole.FocusOrbSource,
+        "FUSION" or "METEOR_STRIKE" => AdviceRole.PlasmaSource,
         "BATTLE_TRANCE" => AdviceRole.StopsDraw,
         _ => AdviceRole.None,
     };
@@ -31,6 +45,27 @@ internal static class AdviceMechanics
             "补充弃牌入口", "配合弃牌触发收益", "缺少已识别的主动弃牌入口", reasons);
         value += PairValue(context, card, AdviceRole.ExhaustSource | AdviceRole.SelfExhaust,
             AdviceRole.ExhaustPayoff, "补充消耗触发机会", "配合消耗触发收益", "缺少已识别的消耗触发机会", reasons);
+        // Soul play and exhaust payoffs share a source; count its synergy only once.
+        value += PairValue(context, card, AdviceRole.SoulSource,
+            AdviceRole.SoulPlayPayoff | AdviceRole.SoulExhaustPayoff,
+            "补充灵魂生成来源", "配合灵魂打出或消耗收益", "缺少已识别的灵魂生成来源", reasons);
+        value += PairValue(context, card, AdviceRole.SummonSource, AdviceRole.OstyAttack,
+            "召唤支持奥斯蒂攻击", "配合召唤来源", "缺少已识别的召唤来源", reasons);
+        value += PairValue(context, card, AdviceRole.FocusOrbSource, AdviceRole.FocusSource,
+            "充能球可以受益于集中", "配合受集中影响的产球来源", "缺少已识别的受集中影响的产球来源", reasons);
+        if (card.Roles.HasFlag(AdviceRole.ForgeSource))
+        {
+            // Forge creates its own Blade. Existing Blade is not a prerequisite.
+            int sources = context.Deck.Count(c => c.Roles.HasFlag(AdviceRole.ForgeSource));
+            value += 3d / (1 + sources * 0.5);
+            reasons.Add("锻造收益需要后续打出剑来兑现");
+        }
+        if (card.Roles.HasFlag(AdviceRole.Blade)
+            && context.Deck.Any(c => c.Roles.HasFlag(AdviceRole.ForgeSource)))
+        {
+            value += 2;
+            reasons.Add("配合已识别的锻造来源");
+        }
         if (card.Roles.HasFlag(AdviceRole.StopsDraw))
         {
             int otherDraw = context.Deck.Count(c => c.Tags.HasFlag(AdviceTag.Draw)

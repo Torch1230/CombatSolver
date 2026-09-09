@@ -69,4 +69,26 @@ Check(RunAdvice.CardValue(mixed, plain with { Tags=AdviceTag.Poison|AdviceTag.Sh
 var claw = plain with { Id="CLAW", Damage=3, Attack=true, Cost=0 };
 Check(RunAdvice.CardValue(context with { Deck=[claw] }, claw, []) > RunAdvice.CardValue(context with { Deck=[claw with { Id="OTHER_ATTACK" }] }, claw, []),
     "Claw copies must not receive the generic duplicate penalty");
+foreach (var pair in new[] {
+    (AdviceRole.SoulSource, AdviceRole.SoulPlayPayoff),
+    (AdviceRole.SoulSource, AdviceRole.SoulExhaustPayoff),
+    (AdviceRole.SummonSource, AdviceRole.OstyAttack),
+    (AdviceRole.FocusOrbSource, AdviceRole.FocusSource) })
+{
+    var source = plain with { Roles = pair.Item1 };
+    var payoff = plain with { Roles = pair.Item2 };
+    Check(Mechanic(context with { Deck = [source] }, payoff) > Mechanic(context, payoff), "Complex payoff needs a source");
+    Check(Mechanic(context with { Deck = [payoff] }, source) > Mechanic(context, source), "Complex source supports payoff");
+}
+var focus = plain with { Roles = AdviceRole.FocusSource, Tags = AdviceTag.Orb };
+var plasma = plain with { Roles = AdviceRole.PlasmaSource, Tags = AdviceTag.Orb };
+Check(RunAdvice.CardValue(context with { Deck = [plasma, plasma] }, focus, [])
+    == RunAdvice.CardValue(context with { Deck = [plain, plain] }, focus, []), "Plasma cannot create Focus synergy through generic Orb tags");
+var forge = plain with { Roles = AdviceRole.ForgeSource };
+Check(Mechanic(context, forge) > 0, "Forge supplies its own Blade");
+Check(Mechanic(context with { Deck = [forge, forge] }, forge) < Mechanic(context, forge), "Forge sources saturate");
+Check(AdviceMechanics.Roles("UNKNOWN") == AdviceRole.None, "Unknown cards have no inferred mechanics");
+var soul = plain with { Roles = AdviceRole.SoulSource };
+Check(Mechanic(context with { Deck = [plain with { Roles = AdviceRole.SoulPlayPayoff | AdviceRole.SoulExhaustPayoff }] }, soul)
+    == Mechanic(context with { Deck = [plain with { Roles = AdviceRole.SoulPlayPayoff }] }, soul), "Soul source synergy is not double counted");
 Console.WriteLine($"RUN_ADVICE_CHECKS_OK checks={checks}");
