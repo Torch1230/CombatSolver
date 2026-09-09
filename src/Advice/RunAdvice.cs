@@ -11,7 +11,8 @@ internal enum AdviceKind { Card, Relic, Potion, Removal, Skip }
 
 internal sealed record AdviceCard(
     string Id, double Damage, double Block, double Draw, int Cost, bool Attack,
-    bool Basic, bool Curse, bool Removable, AdviceTag Tags, bool Known = true, int UpgradeLevel = 0);
+    bool Basic, bool Curse, bool Removable, AdviceTag Tags, bool Known = true, int UpgradeLevel = 0,
+    AdviceRole Roles = AdviceRole.None, double Stars = 0, int StarCost = 0);
 
 internal sealed record AdviceContext(
     IReadOnlyList<AdviceCard> Deck, IReadOnlySet<string> Relics,
@@ -130,17 +131,16 @@ internal static class RunAdvice
             value += context.Deck.Count(c => c.Tags.HasFlag(AdviceTag.Scaling)) < 2 ? (context.Act == 0 ? 10 : 12) : 3;
             reasons.Add("提供持续效果");
         }
-        AdviceTag[] archetypes = [AdviceTag.Discard, AdviceTag.Exhaust, AdviceTag.Poison,
-            AdviceTag.Orb, AdviceTag.Doom, AdviceTag.Shiv];
+        AdviceTag[] archetypes = [AdviceTag.Poison, AdviceTag.Orb, AdviceTag.Doom, AdviceTag.Shiv];
+        double synergy = 0;
         foreach (AdviceTag tag in archetypes)
         {
             if (!card.Tags.HasFlag(tag)) continue;
             int support = context.Deck.Count(c => c.Tags.HasFlag(tag));
-            if (support < 2) continue;
-            value += Math.Min(7, support * 1.5);
-            reasons.Add("契合现有体系");
-            break;
+            if (support >= 2) synergy = Math.Max(synergy, Math.Min(7, support * 1.5));
         }
+        if (synergy > 0) { value += synergy; reasons.Add("契合现有体系"); }
+        value += AdviceMechanics.Value(context, card, reasons);
         if ((context.Relics.Contains("KUNAI") || context.Relics.Contains("SHURIKEN")
                 || context.Relics.Contains("ORNAMENTAL_FAN")) && card.Attack && card.Cost <= 1)
         { value += 4; reasons.Add("配合连续攻击遗物"); }
@@ -149,7 +149,8 @@ internal static class RunAdvice
         else if (card.Cost >= 2 && !context.Deck.Any(c => c.Tags.HasFlag(AdviceTag.Energy)))
         { value -= 3 * (card.Cost - 1); reasons.Add("费用偏高"); }
         int copies = context.Deck.Count(c => c.Id == card.Id);
-        if (copies > 0) { value -= copies * 3; reasons.Add("已有同名牌"); }
+        if (copies > 0 && card.Id != "CLAW") { value -= copies * 3; reasons.Add("已有同名牌"); }
+        if (copies > 0 && card.Id == "CLAW") { value += Math.Min(6, copies * 2); reasons.Add("同名爪击共享本战成长"); }
         if (card.Basic) { value -= 7; reasons.Add("基础牌收益有限"); }
         if (size > 20 && !card.Tags.HasFlag(AdviceTag.Draw))
         { value -= Math.Min(8, (size - 20) * 0.5); reasons.Add("牌组已经偏厚"); }

@@ -222,6 +222,8 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 ## 奖励与商店建议
 
+`src/Advice/AdviceMechanics.cs` 定义已核对的入口／收益角色和有界配合评分；不执行卡牌效果，不推断无限循环。
+
 `src/Advice/RunAdvice.cs` 只接收不可变的值输入，输出边际收益排序、可用性、置信度与理由；不依赖搜索模拟器、RNG 或 UI。`RunAdviceCapture` 在主线程读取当前玩家与 MerchantEntry，保留当下价格和移除候选身份，不执行购买。`Runtime/RunAdvicePatches` 负责战斗外单人页面准入、原生奖励刷新与商店购买完成后刷新；`UI/RunAdviceBadge` 负责本地化、父节点内标签与生命周期。该建议不进入 CombatRootSnapshot、状态指纹、搜索预算或自动部署。
 
 ## 6. UI

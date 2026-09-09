@@ -30,4 +30,43 @@ var ratings = RunAdvice.Rank(context with { Gold = 99 },
 Check(!ratings[0].Available && ratings[0].Rank == 0, "Unaffordable offers remain unranked");
 Check(ratings[1].Score == 0 && ratings[1].Rank == 1, "Saving remains the zero baseline");
 Check(Score(200, -10) == Score(200, 0), "Negative prices must not invent a bonus");
+AdviceCard plain = new("TEST", 0, 0, 0, 1, false, false, false, true, AdviceTag.None);
+double Mechanic(AdviceContext c, AdviceCard card) => AdviceMechanics.Value(c, card, []);
+foreach (var pair in new[] {
+    (AdviceRole.DiscardSource, AdviceRole.DiscardPayoff),
+    (AdviceRole.ExhaustSource, AdviceRole.ExhaustPayoff),
+    (AdviceRole.SelfExhaust, AdviceRole.ExhaustPayoff) })
+{
+    var source = plain with { Roles = pair.Item1 };
+    var payoff = plain with { Roles = pair.Item2 };
+    var supported = context with { Deck = [source] };
+    Check(Mechanic(supported, payoff) > Mechanic(context, payoff), "Payoffs require sources");
+    Check(Mechanic(context with { Deck = [payoff] }, source) > Mechanic(context, source), "Sources need payoffs");
+    Check(Mechanic(context with { Deck = [payoff, source, source] }, source)
+        < Mechanic(context with { Deck = [payoff] }, source), "Extra sources have diminishing returns");
+    Check(Mechanic(context with { Deck = [payoff, payoff] }, payoff) < 0,
+        "Payoffs alone cannot supply their own trigger");
+}
+var drawCard = plain with { Tags = AdviceTag.Draw };
+var stopsDraw = drawCard with { Roles = AdviceRole.StopsDraw };
+Check(Mechanic(context with { Deck = [drawCard, drawCard] }, stopsDraw) < Mechanic(context, stopsDraw),
+    "NoDraw conflicts with other draw cards");
+var stars = plain with { Stars = 1 }; var spender = plain with { StarCost = 2 };
+Check(Mechanic(context with { Deck = [spender] }, stars) > Mechanic(context, stars), "Star supply matches demand");
+Check(Mechanic(context with { Deck = [stars] }, spender) > Mechanic(context, spender), "Star cost considers supply");
+Check(AdviceMechanics.StarGain("GLOW", 2) == 2 && AdviceMechanics.StarGain("UNKNOWN", 2) == 0,
+    "A Stars variable alone is not a production rule");
+Check(AdviceMechanics.Roles("REFLEX") == AdviceRole.DiscardPayoff
+    && AdviceMechanics.Roles("ACROBATICS") == AdviceRole.DiscardSource,
+    "Sly payoff and active discard differ");
+Check(AdviceMechanics.Roles("FEEL_NO_PAIN") == AdviceRole.ExhaustPayoff
+    && AdviceMechanics.Roles("TRUE_GRIT") == AdviceRole.ExhaustSource, "Exhaust source and payoff differ");
+var poison = plain with { Tags = AdviceTag.Poison };
+var shiv = plain with { Tags = AdviceTag.Shiv };
+var mixed = context with { Deck = [poison, poison, shiv, shiv, shiv, shiv] };
+Check(RunAdvice.CardValue(mixed, plain with { Tags=AdviceTag.Poison|AdviceTag.Shiv }, [])
+    == RunAdvice.CardValue(mixed, shiv, []), "Stronger synergy must not depend on tag enumeration order");
+var claw = plain with { Id="CLAW", Damage=3, Attack=true, Cost=0 };
+Check(RunAdvice.CardValue(context with { Deck=[claw] }, claw, []) > RunAdvice.CardValue(context with { Deck=[claw with { Id="OTHER_ATTACK" }] }, claw, []),
+    "Claw copies must not receive the generic duplicate penalty");
 Console.WriteLine($"RUN_ADVICE_CHECKS_OK checks={checks}");

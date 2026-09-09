@@ -382,5 +382,16 @@
   "可在成长策略中调整限制或切换目标，然后重新计算；也可人工检查路线后执行本回合。": "Adjust limits or switch objectives in Growth Strategy, then recalculate. Alternatively, review the route and execute the current turn manually.",
   "最低结束血量（收益目标）": "Minimum end HP (reward modes)",
   "平衡：优先降低战略战损，同分再比较成长收益；手动成长额度可允许换血。最低血量和累计战损限制仅用于永久成长与净收益目标，默认保留 30 HP、累计战损不超过 10 HP。已有自定义限制保留。": "Balanced minimizes strategic HP loss, then compares growth rewards on ties; custom growth allowances can permit HP trades. Minimum HP and total loss limits apply only to growth and net-resource modes. Defaults: retain 30 HP, lose at most 10 HP. Existing custom limits are preserved.",
-  "此路线未获得正向目标收益，按保命策略比较，不应用收益血量限制；不代表本场不存在潜在收益来源。": "This route has no positive objective gain. It falls back to survival comparison without reward HP limits; this does not rule out potential reward sources in this combat."
+  "此路线未获得正向目标收益，按保命策略比较，不应用收益血量限制；不代表本场不存在潜在收益来源。": "This route has no positive objective gain. It falls back to survival comparison without reward HP limits; this does not rule out potential reward sources in this combat.",
+  "同名爪击共享本战成长": "Claw copies share combat growth",
+  "补充弃牌入口": "Adds an active discard source",
+  "配合弃牌触发收益": "Supports discard payoffs",
+  "缺少已识别的主动弃牌入口": "No recognized active discard source",
+  "补充消耗触发机会": "Adds exhaust triggers",
+  "配合消耗触发收益": "Supports exhaust payoffs",
+  "缺少已识别的消耗触发机会": "No recognized exhaust triggers",
+  "打出后限制本回合继续抽牌": "Prevents further draws this turn",
+  "补充星星供给": "Adds star supply",
+  "牌组具备产星来源": "Deck has a star source",
+  "缺少已识别的持续产星来源": "No recognized ongoing star source"
 }

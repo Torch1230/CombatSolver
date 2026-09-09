@@ -49,11 +49,16 @@ internal static class RunAdviceCapture
             "ADRENALINE" or "OFFERING" or "BLOODLETTING" or "TURBO" => AdviceTag.Energy,
             _ => AdviceTag.None,
         };
+        bool vanilla = card.GetType().Assembly == typeof(CardModel).Assembly;
+        AdviceRole roles = vanilla ? AdviceMechanics.Roles(id) : AdviceRole.None;
+        if (card.GetKeywordsWithSources(KeywordSources.Local).Contains(CardKeyword.Exhaust))
+            roles |= AdviceRole.SelfExhaust;
         return new AdviceCard(id, Value("Damage"), Value("Block"), draw,
             card.EnergyCost.CostsX ? 2 : Math.Max(0, card.EnergyCost.GetWithModifiers(CostModifiers.Local)),
             card.Type == CardType.Attack, card.IsBasicStrikeOrDefend,
             card.Type is CardType.Curse or CardType.Status, card.IsRemovable, tags,
-            card.GetType().Assembly == typeof(CardModel).Assembly, card.CurrentUpgradeLevel);
+            vanilla, card.CurrentUpgradeLevel, roles, vanilla ? AdviceMechanics.StarGain(id, Value("Stars")) : 0,
+            card.HasStarCostX ? 1 : Math.Max(0, card.CurrentStarCost));
     }
 
     internal static AdviceOffer Offer(MerchantEntry entry, int index) => entry switch
