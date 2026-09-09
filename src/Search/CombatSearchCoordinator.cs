@@ -1792,17 +1792,14 @@ internal static partial class CombatSearchCoordinator
         int paidPotionHpRequired = PotionUsePolicy.SmartRequiredHpSaved(
             SolverWeights.PotionMinimumHpSaved,
             StrategicBossHpRelief(root, policy));
-        int paidPotionCapacity = paidPotionHpRequired >= int.MaxValue / 4
-            ? 0
-            : Math.Max(0, potionFreeHpDeficit) / paidPotionHpRequired;
         bool ordinaryAvailable = allowedPotions.Any(potion => potion.PotionId != "AMBERGRIS"
             && potion.StrategicHpCost == SolverWeights.PotionMinimumHpSaved);
         int firstCost = PotionUsePolicy.SmartRequiredHpSaved(
             PotionInventoryValue.RequiredCost(SolverWeights.PotionMinimumHpSaved,
                 root.PotionSlotCount > 0 && root.InitialPotionCount >= root.PotionSlotCount,
                 ordinaryAvailable, SolverWeights.PotionMinimumHpSaved), StrategicBossHpRelief(root, policy));
-        if (paidPotionHpRequired > 0 && firstCost > 0 && firstCost < int.MaxValue / 4 && potionFreeHpDeficit >= firstCost)
-            paidPotionCapacity = Math.Max(paidPotionCapacity, 1 + (potionFreeHpDeficit - firstCost) / paidPotionHpRequired);
+        int paidPotionCapacity = PotionInventoryValue.PaidCapacity(
+            potionFreeHpDeficit, paidPotionHpRequired, firstCost);
         return Math.Min(
             allowedPotions.Length,
             allowedPotions.Count(potion => potion.StrategicHpCost == 0) + paidPotionCapacity);
