@@ -10,6 +10,7 @@
 | 本批未发布改动、版本演进与开发记录 | [开发笔记](DEVELOPMENT_NOTES.md) |
 | 已执行测试、复跑方式和未验证范围 | [测试矩阵](TEST_MATRIX.md) |
 | 模拟性能重构的阶段、工作量与验收标准 | [完整搜索重构计划](performance/simulation-refactor-plan-20260910.md) |
+| 重构首轮细分结果与候选取舍 | [P1 复用率与类型成本](performance/simulation-refactor-p1-20260910.md) |
 | 最新极高配置整场搜索的 CPU 与分配热点 | [完整搜索模拟采样](performance/simulation-profile-20260910.md) |
 | 最新快照/重放复查与 PR 验证 | [快照与重放热点复查](performance/snapshot-replay-followup-20260909.md) |
 | 保路元数据合入证据 | [perf-2 选择性合入与后续热点试验](performance/perf2-integration-20260909.md) |
