@@ -1,5 +1,11 @@
 # CombatSolver 测试清单
 
+## 2026-09-10：模拟性能重构 P3（原型撤回）
+
+- 候选 Release 0 警告/错误；Linux 结构门禁通过（84 个 Search 文件）。ForkBoundaries `27ab4415388d4b0aaa42cbe02eef6e02`，VitalSpark / Galvanic / Smoggy 原版严格差分 `7a6a4da5e99143058161d9d014cb2d90` / `4b6f4fd28e934e61969449d86111b7ac` / `796f720131104c93b7e28f53fe63f9a0` 均 Passed。
+- 预定完整 VeryHigh/DOP8/NoGC16GB 的 ABBAABBA，只完成前四个进程的两场各四个测量。全部 131 项 RESULT 字段比较，88 项逻辑字段与 85/40 条完整动作相同；调度、耗时、GC、内存差异另列。A4 遇桌面/Steam 启动干扰，A5 冷预热 `e0f73ea0c63046ac9632fad0673cbd08` 超过 120 秒、无 result.json、进程已停止；不是完成的稳定性能对照，不能把原始均值约 −11% 写成加速。
+- 原型及专用测试撤回，未保留生产变更；不追加 DOP/增量/整场部署/可见回归。已做与未做项、全部 runId、GC 与峰值 RSS、命令见[P3 报告和 JSON](performance/simulation-refactor-p3-20260910.md)。
+
 ## 2026-09-10：模拟性能重构 P1（临时诊断）
 
 - 诊断版 Release 0 警告 / 0 错误。两场仍使用完整 VeryHigh / DOP8 / NoGC16GB，无预算覆盖或增量验证：亡灵契约师 `147c10b1ade1470181726cde97954d7e`、机甲骑士 `c8a2065b2632499ab50200e8444bf674` 均 Passed，九项工作/终局标量与 P0 相同；不作为逐动作等价或提速证据。
