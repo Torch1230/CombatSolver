@@ -6,6 +6,7 @@
 
 ## 专题
 
+- [P2 / P4 剩余候选进入决策](simulation-refactor-p2-p4-decision-20260910.md)：等待选择快照与 Power 复制 CPU、所有权合同及不进入理由。
 - [P5 选择前缀测量与回合检查点](simulation-refactor-p5-20260910.md)：线程 CPU 诊断、阶段提取与检查点验证；[结构化数据](simulation-refactor-p5-20260910.json)。
 - [P3：归一化失效标记原型已撤回](simulation-refactor-p3-20260910.md)：相关 Fork/原版差分通过，但未建立稳定提速且分配略增；保留桌面启动干扰、冷预热超时和未完成交错序列。
 

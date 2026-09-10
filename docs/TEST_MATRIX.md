@@ -1,5 +1,10 @@
 # CombatSolver 测试清单
 
+## 2026-09-10：P2 / P4 决策诊断
+
+- `1787f9d` 上临时测量 Snapshot / ForkPower / PowerFingerprint 的线程 CPU 与分配，Release 0 警告/错误。机甲 `9305c5edd5844f7188aa8f584a1bbbd4`、亡灵 `c64a0b392e57424e96a06b1dc6492db3` 两场完整正常请求 Passed；88 项逻辑字段及完整动作、回合结果/预测相同。
+- 没有短搜、预算覆盖或 headless 增量验证；源码已精确恢复、helper 已移除、拥有的实例已停止。CPU 采样和读钟开销的局限见[P2/P4 决策](performance/simulation-refactor-p2-p4-decision-20260910.md)。本轮不进入这两项 API/存储迁移，不声称通过了未实现的 COW 或待选择结果协议。
+
 ## 2026-09-10：P5 回合检查点
 
 - Fork 合同 `9b709fcb76cf48c7979233b42981075b`，原生 Tools / Mayhem `94203d60bb9a4a38b612d400ada429c9` / `fc88e983d1f74a33b9a7cb2eeb8c1b45`，DOP1/DOP2 / 取消 / 失败排空 / 复用 `f9e7de49655940e1a92ea14a9f6fbf07` 均 Passed。七组影子检查点对原完整重放逐分支比动作、状态键、评分、完整状态、RNG/洗牌和逻辑工作；覆盖父子/live 隔离、提前释放与终局不捕获。
