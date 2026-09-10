@@ -1,0 +1,820 @@
+{
+  "scope": "compact primary-enemy Strike execution and complete reads; production backend unchanged",
+  "build": {
+    "configuration": "Release",
+    "artifact": "artifact-v5",
+    "elapsedSeconds": 9.4,
+    "warnings": 0,
+    "errors": 0,
+    "copyModOnBuild": false
+  },
+  "pureChecks": "COMPACT_CREATURE_CHECKS_OK damage_vectors=9 healing_caps=true journal=true frozen_workers=8 attack_targets=true ending_pile_gate=true attack_resume_rollback=true",
+  "native": {
+    "processReusable": false,
+    "processId": 688671,
+    "schemaVersion": 1,
+    "runId": "c8bd3d9d609c4023a187a4a0479ce1a9",
+    "scenarioId": "COMPACT-ATTACKS-NATIVE",
+    "status": "Passed",
+    "stage": "passed",
+    "characterId": "CHARACTER.SILENT",
+    "encounterId": "ENCOUNTER.CORPSE_SLUGS_NORMAL",
+    "seed": "COMBATSOLVER",
+    "startedAtUtc": "2026-09-10T19:58:05.2549334+00:00",
+    "elapsedMilliseconds": 24081.122,
+    "mainThread": true,
+    "combatEnded": true,
+    "startedTurn": 1,
+    "finishedTurn": 1,
+    "managedHeapBytes": 78028680,
+    "managedFragmentedBytes": 10555128,
+    "workingSetBytes": 1417449472,
+    "privateMemoryBytes": 1568989184,
+    "solverMetrics": null,
+    "replayVerification": null,
+    "stageTimings": [
+      {
+        "stage": "created",
+        "startedMilliseconds": 0,
+        "durationMilliseconds": 6.2291
+      },
+      {
+        "stage": "game_startup",
+        "startedMilliseconds": 6.2291,
+        "durationMilliseconds": 11099.545699999999
+      },
+      {
+        "stage": "start_run",
+        "startedMilliseconds": 11105.7748,
+        "durationMilliseconds": 10964.321
+      },
+      {
+        "stage": "inject_run_relics",
+        "startedMilliseconds": 22070.0958,
+        "durationMilliseconds": 0.5591999999996915
+      },
+      {
+        "stage": "enter_encounter",
+        "startedMilliseconds": 22070.655,
+        "durationMilliseconds": 1052.5248000000029
+      },
+      {
+        "stage": "wait_player_turn",
+        "startedMilliseconds": 23123.1798,
+        "durationMilliseconds": 2.4042999999983294
+      },
+      {
+        "stage": "inject_state",
+        "startedMilliseconds": 23125.5841,
+        "durationMilliseconds": 837.5652000000009
+      },
+      {
+        "stage": "cleanup",
+        "startedMilliseconds": 23963.1493,
+        "durationMilliseconds": 116.27030000000013
+      },
+      {
+        "stage": "passed",
+        "startedMilliseconds": 24079.4196,
+        "durationMilliseconds": 1.865799999999581
+      }
+    ],
+    "completedChecks": [
+      "CompactAttack:18Branches:FullState:DamageFlagsAndSources:AllSnapshotProperties:OriginalKeys:Undo:Frozen8Workers:PrivateReaderScratch",
+      "CompactAttack:NativePreTeardownSnapshot",
+      "CompactAttack:NativeFiveActions:ZeroDamageZeroCost:FullBlock:PartialAndFinalDeaths:PreTeardownFullState:CombatEnded:TerminalRestore"
+    ],
+    "error": null,
+    "finishedAtUtc": "2026-09-10T19:58:29.3359868+00:00"
+  },
+  "nativeCommand": [
+    "./tools/run-unattended-test.sh",
+    "--scenario-id",
+    "COMPACT-ATTACKS-NATIVE",
+    "--character-id",
+    "SILENT",
+    "--encounter-id",
+    "CORPSE_SLUGS_NORMAL",
+    "--seed",
+    "COMBATSOLVER",
+    "--enemy-current-hp",
+    "256",
+    "--timeout-seconds",
+    "120",
+    "--keep-game-open",
+    "--headless-instance",
+    "compact-attacks-20260911",
+    "--combat-solver-build-dir",
+    "<repository>/.local/compact-attacks-20260911/artifact-v5",
+    "--evidence-directory",
+    "<repository>/.local/compact-attacks-20260911/native-v5"
+  ],
+  "branches": {
+    "scope": "single-target Strike in primary-enemy domain without enemy Powers; compact native kill chain",
+    "branches": [
+      {
+        "card": 0,
+        "target": 1,
+        "BlockedDamage": 0,
+        "UnblockedDamage": 0,
+        "OverkillDamage": 0,
+        "WasBlockBroken": false,
+        "WasFullyBlocked": true,
+        "WasTargetKilled": false,
+        "StateKey": {
+          "First": 17290111875106670480,
+          "Second": 8853891796587946757
+        }
+      },
+      {
+        "card": 0,
+        "target": 2,
+        "BlockedDamage": 0,
+        "UnblockedDamage": 0,
+        "OverkillDamage": 0,
+        "WasBlockBroken": false,
+        "WasFullyBlocked": false,
+        "WasTargetKilled": false,
+        "StateKey": {
+          "First": 12755457732433418337,
+          "Second": 16090309399212105280
+        }
+      },
+      {
+        "card": 0,
+        "target": 3,
+        "BlockedDamage": 0,
+        "UnblockedDamage": 0,
+        "OverkillDamage": 0,
+        "WasBlockBroken": false,
+        "WasFullyBlocked": true,
+        "WasTargetKilled": false,
+        "StateKey": {
+          "First": 5430256420164972582,
+          "Second": 13107635982864513620
+        }
+      },
+      {
+        "card": 1,
+        "target": 1,
+        "BlockedDamage": 6,
+        "UnblockedDamage": 0,
+        "OverkillDamage": 0,
+        "WasBlockBroken": true,
+        "WasFullyBlocked": true,
+        "WasTargetKilled": false,
+        "StateKey": {
+          "First": 4475089606043612277,
+          "Second": 6541877010947345119
+        }
+      },
+      {
+        "card": 1,
+        "target": 2,
+        "BlockedDamage": 0,
+        "UnblockedDamage": 6,
+        "OverkillDamage": 0,
+        "WasBlockBroken": false,
+        "WasFullyBlocked": false,
+        "WasTargetKilled": true,
+        "StateKey": {
+          "First": 9974199254544356199,
+          "Second": 14222119909674388464
+        }
+      },
+      {
+        "card": 1,
+        "target": 3,
+        "BlockedDamage": 2,
+        "UnblockedDamage": 4,
+        "OverkillDamage": 0,
+        "WasBlockBroken": true,
+        "WasFullyBlocked": false,
+        "WasTargetKilled": true,
+        "StateKey": {
+          "First": 6616008601582925530,
+          "Second": 12249626189518636522
+        }
+      },
+      {
+        "card": 2,
+        "target": 1,
+        "BlockedDamage": 6,
+        "UnblockedDamage": 3,
+        "OverkillDamage": 0,
+        "WasBlockBroken": true,
+        "WasFullyBlocked": false,
+        "WasTargetKilled": false,
+        "StateKey": {
+          "First": 11810304888893687454,
+          "Second": 3950603238122343183
+        }
+      },
+      {
+        "card": 2,
+        "target": 2,
+        "BlockedDamage": 0,
+        "UnblockedDamage": 6,
+        "OverkillDamage": 3,
+        "WasBlockBroken": false,
+        "WasFullyBlocked": false,
+        "WasTargetKilled": true,
+        "StateKey": {
+          "First": 6471599404687916221,
+          "Second": 6700319704152621196
+        }
+      },
+      {
+        "card": 2,
+        "target": 3,
+        "BlockedDamage": 2,
+        "UnblockedDamage": 4,
+        "OverkillDamage": 3,
+        "WasBlockBroken": true,
+        "WasFullyBlocked": false,
+        "WasTargetKilled": true,
+        "StateKey": {
+          "First": 4157973329341001300,
+          "Second": 959554320786452509
+        }
+      },
+      {
+        "card": 3,
+        "target": 1,
+        "BlockedDamage": 6,
+        "UnblockedDamage": 0,
+        "OverkillDamage": 0,
+        "WasBlockBroken": true,
+        "WasFullyBlocked": true,
+        "WasTargetKilled": false,
+        "StateKey": {
+          "First": 5402325603674671119,
+          "Second": 12457467803639906550
+        }
+      },
+      {
+        "card": 3,
+        "target": 2,
+        "BlockedDamage": 0,
+        "UnblockedDamage": 6,
+        "OverkillDamage": 0,
+        "WasBlockBroken": false,
+        "WasFullyBlocked": false,
+        "WasTargetKilled": true,
+        "StateKey": {
+          "First": 11365271870526639035,
+          "Second": 8688000449953749624
+        }
+      },
+      {
+        "card": 3,
+        "target": 3,
+        "BlockedDamage": 2,
+        "UnblockedDamage": 4,
+        "OverkillDamage": 0,
+        "WasBlockBroken": true,
+        "WasFullyBlocked": false,
+        "WasTargetKilled": true,
+        "StateKey": {
+          "First": 15220511121061244890,
+          "Second": 16261981691075731673
+        }
+      },
+      {
+        "card": 4,
+        "target": 1,
+        "BlockedDamage": 6,
+        "UnblockedDamage": 0,
+        "OverkillDamage": 0,
+        "WasBlockBroken": true,
+        "WasFullyBlocked": true,
+        "WasTargetKilled": false,
+        "StateKey": {
+          "First": 5402325603674671119,
+          "Second": 12457467803639906550
+        }
+      },
+      {
+        "card": 4,
+        "target": 2,
+        "BlockedDamage": 0,
+        "UnblockedDamage": 6,
+        "OverkillDamage": 0,
+        "WasBlockBroken": false,
+        "WasFullyBlocked": false,
+        "WasTargetKilled": true,
+        "StateKey": {
+          "First": 11365271870526639035,
+          "Second": 8688000449953749624
+        }
+      },
+      {
+        "card": 4,
+        "target": 3,
+        "BlockedDamage": 2,
+        "UnblockedDamage": 4,
+        "OverkillDamage": 0,
+        "WasBlockBroken": true,
+        "WasFullyBlocked": false,
+        "WasTargetKilled": true,
+        "StateKey": {
+          "First": 15220511121061244890,
+          "Second": 16261981691075731673
+        }
+      },
+      {
+        "card": 5,
+        "target": 1,
+        "BlockedDamage": 6,
+        "UnblockedDamage": 0,
+        "OverkillDamage": 0,
+        "WasBlockBroken": true,
+        "WasFullyBlocked": true,
+        "WasTargetKilled": false,
+        "StateKey": {
+          "First": 5402325603674671119,
+          "Second": 12457467803639906550
+        }
+      },
+      {
+        "card": 5,
+        "target": 2,
+        "BlockedDamage": 0,
+        "UnblockedDamage": 6,
+        "OverkillDamage": 0,
+        "WasBlockBroken": false,
+        "WasFullyBlocked": false,
+        "WasTargetKilled": true,
+        "StateKey": {
+          "First": 11365271870526639035,
+          "Second": 8688000449953749624
+        }
+      },
+      {
+        "card": 5,
+        "target": 3,
+        "BlockedDamage": 2,
+        "UnblockedDamage": 4,
+        "OverkillDamage": 0,
+        "WasBlockBroken": true,
+        "WasFullyBlocked": false,
+        "WasTargetKilled": true,
+        "StateKey": {
+          "First": 15220511121061244890,
+          "Second": 16261981691075731673
+        }
+      }
+    ],
+    "nativeSteps": 5
+  },
+  "shuffle": {
+    "processReusable": false,
+    "processId": 688671,
+    "schemaVersion": 1,
+    "runId": "6660eab2ce51440b9dcecb097d7541e1",
+    "scenarioId": "COMPACT-SHUFFLE-POWER-NATIVE",
+    "status": "Passed",
+    "stage": "passed",
+    "characterId": "CHARACTER.SILENT",
+    "encounterId": "ENCOUNTER.FUZZY_WURM_CRAWLER_WEAK",
+    "seed": "COMBATSOLVER",
+    "startedAtUtc": "2026-09-10T19:59:17.3200751+00:00",
+    "elapsedMilliseconds": 5683.8988,
+    "mainThread": true,
+    "combatEnded": false,
+    "startedTurn": 1,
+    "finishedTurn": 2,
+    "managedHeapBytes": 86563448,
+    "managedFragmentedBytes": 19583648,
+    "workingSetBytes": 1559068672,
+    "privateMemoryBytes": 1694654464,
+    "solverMetrics": null,
+    "replayVerification": null,
+    "stageTimings": [
+      {
+        "stage": "created",
+        "startedMilliseconds": 0,
+        "durationMilliseconds": 0.0071
+      },
+      {
+        "stage": "game_startup",
+        "startedMilliseconds": 0.0071,
+        "durationMilliseconds": 0.8258
+      },
+      {
+        "stage": "start_run",
+        "startedMilliseconds": 0.8329,
+        "durationMilliseconds": 2181.7265
+      },
+      {
+        "stage": "inject_run_relics",
+        "startedMilliseconds": 2182.5594,
+        "durationMilliseconds": 0.05259999999998399
+      },
+      {
+        "stage": "enter_encounter",
+        "startedMilliseconds": 2182.612,
+        "durationMilliseconds": 999.4658
+      },
+      {
+        "stage": "wait_player_turn",
+        "startedMilliseconds": 3182.0778,
+        "durationMilliseconds": 0.06730000000015934
+      },
+      {
+        "stage": "inject_state",
+        "startedMilliseconds": 3182.1451,
+        "durationMilliseconds": 2407.4319
+      },
+      {
+        "stage": "cleanup",
+        "startedMilliseconds": 5589.577,
+        "durationMilliseconds": 93.64519999999993
+      },
+      {
+        "stage": "passed",
+        "startedMilliseconds": 5683.2222,
+        "durationMilliseconds": 0.6782999999995809
+      }
+    ],
+    "completedChecks": [
+      "CompactShufflePower:24Branches:AllSnapshotProperties:History:FiveFieldRng:Undo:Frozen8Workers:NativeTwoTurns:LegacyRoundBoundary"
+    ],
+    "error": null,
+    "finishedAtUtc": "2026-09-10T19:59:23.0039729+00:00"
+  },
+  "shuffleCommand": [
+    "./tools/run-unattended-test.sh",
+    "--scenario-id",
+    "COMPACT-SHUFFLE-POWER-NATIVE",
+    "--character-id",
+    "SILENT",
+    "--encounter-id",
+    "FUZZY_WURM_CRAWLER_WEAK",
+    "--seed",
+    "COMBATSOLVER",
+    "--enemy-current-hp",
+    "256",
+    "--timeout-seconds",
+    "120",
+    "--keep-game-open",
+    "--headless-instance",
+    "compact-attacks-20260911",
+    "--combat-solver-build-dir",
+    "<repository>/.local/compact-attacks-20260911/artifact-v5",
+    "--evidence-directory",
+    "<repository>/.local/compact-attacks-20260911/shuffle-v5"
+  ],
+  "shuffleMeasurements": {
+    "rounds": [
+      {
+        "round": 1,
+        "card": "ACROBATICS",
+        "cards": 24,
+        "samples": 24,
+        "rootSetupMicroseconds": 6133.1,
+        "rootSetupAllocatedBytes": 911760,
+        "valueSlots": 279,
+        "distinctWrittenSlots": [
+          58,
+          54,
+          56,
+          58,
+          53,
+          53,
+          55,
+          57,
+          58,
+          53,
+          54,
+          56,
+          58,
+          53,
+          53,
+          55,
+          57,
+          58,
+          53,
+          54,
+          56,
+          58,
+          53,
+          53
+        ],
+        "writes": 891773,
+        "valueChanges": 862502,
+        "peakUndoEntries": 371,
+        "cache": {
+          "EnemyBuilds": 1,
+          "FocusBuilds": 1,
+          "StrategyBuilds": 1,
+          "cardValues": 24
+        },
+        "measurements": [
+          {
+            "sample": 0,
+            "mode": "legacy_replay",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 238.382421875,
+            "cpuMicrosecondsPerLeaf": 234.43217708333347,
+            "allocatedBytesPerLeaf": 29656.427083333332
+          },
+          {
+            "sample": 0,
+            "mode": "compact_read_view",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 76.64817708333334,
+            "cpuMicrosecondsPerLeaf": 76.30674869791676,
+            "allocatedBytesPerLeaf": 4786.84375
+          },
+          {
+            "sample": 0,
+            "mode": "compact_cached",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 71.89270833333333,
+            "cpuMicrosecondsPerLeaf": 71.55137760416608,
+            "allocatedBytesPerLeaf": 4631.510416666667
+          },
+          {
+            "sample": 0,
+            "mode": "compact_cached_with_admission",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 83.29140625000001,
+            "cpuMicrosecondsPerLeaf": 82.69117317708326,
+            "allocatedBytesPerLeaf": 6160.333333333333
+          },
+          {
+            "sample": 1,
+            "mode": "compact_cached_with_admission",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 89.72369791666667,
+            "cpuMicrosecondsPerLeaf": 89.14590104166582,
+            "allocatedBytesPerLeaf": 6161.177083333333
+          },
+          {
+            "sample": 1,
+            "mode": "compact_cached",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 77.94492187499999,
+            "cpuMicrosecondsPerLeaf": 77.53887109375057,
+            "allocatedBytesPerLeaf": 4631.510416666667
+          },
+          {
+            "sample": 1,
+            "mode": "compact_read_view",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 41.412760416666664,
+            "cpuMicrosecondsPerLeaf": 41.155716145832834,
+            "allocatedBytesPerLeaf": 4786
+          },
+          {
+            "sample": 1,
+            "mode": "legacy_replay",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 121.49934895833333,
+            "cpuMicrosecondsPerLeaf": 120.76365364583334,
+            "allocatedBytesPerLeaf": 29631.583333333332
+          },
+          {
+            "sample": 2,
+            "mode": "legacy_replay",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 93.84140624999999,
+            "cpuMicrosecondsPerLeaf": 93.35146614583323,
+            "allocatedBytesPerLeaf": 29617
+          },
+          {
+            "sample": 2,
+            "mode": "compact_read_view",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 17.258984375,
+            "cpuMicrosecondsPerLeaf": 17.19771093749974,
+            "allocatedBytesPerLeaf": 4755.6875
+          },
+          {
+            "sample": 2,
+            "mode": "compact_cached",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 15.190624999999999,
+            "cpuMicrosecondsPerLeaf": 15.120207031249796,
+            "allocatedBytesPerLeaf": 4598.666666666667
+          },
+          {
+            "sample": 2,
+            "mode": "compact_cached_with_admission",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 18.139453125,
+            "cpuMicrosecondsPerLeaf": 18.0499010416663,
+            "allocatedBytesPerLeaf": 6129.177083333333
+          },
+          {
+            "sample": 3,
+            "mode": "compact_cached_with_admission",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 17.020572916666666,
+            "cpuMicrosecondsPerLeaf": 16.93788802083418,
+            "allocatedBytesPerLeaf": 6128.333333333333
+          },
+          {
+            "sample": 3,
+            "mode": "compact_cached",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 15.597265625,
+            "cpuMicrosecondsPerLeaf": 15.535493489583274,
+            "allocatedBytesPerLeaf": 4599.510416666667
+          },
+          {
+            "sample": 3,
+            "mode": "compact_read_view",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 16.32734375,
+            "cpuMicrosecondsPerLeaf": 16.261100260416345,
+            "allocatedBytesPerLeaf": 4754
+          },
+          {
+            "sample": 3,
+            "mode": "legacy_replay",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 51.58619791666666,
+            "cpuMicrosecondsPerLeaf": 51.31183723958325,
+            "allocatedBytesPerLeaf": 29617
+          }
+        ]
+      },
+      {
+        "round": 2,
+        "card": "DEFEND_SILENT",
+        "cards": 24,
+        "samples": 1,
+        "rootSetupMicroseconds": 131.3,
+        "rootSetupAllocatedBytes": 19752,
+        "valueSlots": 279,
+        "distinctWrittenSlots": [
+          0
+        ],
+        "writes": 91,
+        "valueChanges": 61,
+        "peakUndoEntries": 24,
+        "cache": {
+          "EnemyBuilds": 1,
+          "FocusBuilds": 1,
+          "StrategyBuilds": 1,
+          "cardValues": 24
+        },
+        "measurements": []
+      }
+    ],
+    "compactRoundAdvancement": false,
+    "productionBeamEnabled": false
+  },
+  "failures": [
+    {
+      "processReusable": false,
+      "processId": 681632,
+      "schemaVersion": 1,
+      "runId": "26f4ce56a305453c94d6d6eca88c30e9",
+      "scenarioId": "COMPACT-ATTACKS-NATIVE",
+      "status": "Failed",
+      "stage": "inject_state",
+      "characterId": "SILENT",
+      "encounterId": "CORPSE_SLUGS_NORMAL",
+      "seed": "COMBATSOLVER",
+      "startedAtUtc": "2026-09-10T19:51:57.5476843+00:00",
+      "elapsedMilliseconds": 23714.3035,
+      "mainThread": true,
+      "combatEnded": false,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "managedHeapBytes": 76090000,
+      "managedFragmentedBytes": 10871312,
+      "workingSetBytes": 1414197248,
+      "privateMemoryBytes": 1558691840,
+      "solverMetrics": null,
+      "replayVerification": null,
+      "stageTimings": [
+        {
+          "stage": "created",
+          "startedMilliseconds": 0,
+          "durationMilliseconds": 6.0787
+        },
+        {
+          "stage": "game_startup",
+          "startedMilliseconds": 6.0787,
+          "durationMilliseconds": 11074.5423
+        },
+        {
+          "stage": "start_run",
+          "startedMilliseconds": 11080.621,
+          "durationMilliseconds": 10985.347300000001
+        },
+        {
+          "stage": "inject_run_relics",
+          "startedMilliseconds": 22065.9683,
+          "durationMilliseconds": 0.7692999999999302
+        },
+        {
+          "stage": "enter_encounter",
+          "startedMilliseconds": 22066.7376,
+          "durationMilliseconds": 1042.837599999999
+        },
+        {
+          "stage": "wait_player_turn",
+          "startedMilliseconds": 23109.5752,
+          "durationMilliseconds": 2.5082000000002154
+        },
+        {
+          "stage": "inject_state",
+          "startedMilliseconds": 23112.0834,
+          "durationMilliseconds": 602.3767000000007
+        }
+      ],
+      "completedChecks": [],
+      "error": "System.InvalidOperationException: Compact values disagree with projected pile count.\n   at CombatSolver.CompactDiscardProjection.AssertValues(ResumableDiscardProgram program, CombatPredictionSimulator simulator)\n   at CombatSolver.UnattendedTestRunner.<>c__DisplayClass37_1.<AssertCompactAttacksAsync>g__Compare|4(ResumableDiscardProgram values, CombatPredictionSimulator oracle, String stage)\n   at CombatSolver.UnattendedTestRunner.AssertCompactAttacksAsync(CombatState combat, Player player)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()",
+      "finishedAtUtc": "2026-09-10T19:52:21.2619079+00:00"
+    },
+    {
+      "processReusable": false,
+      "processId": 684636,
+      "schemaVersion": 1,
+      "runId": "22e22c68eba04e9c86ea2c398fed0de6",
+      "scenarioId": "COMPACT-ATTACKS-NATIVE",
+      "status": "Failed",
+      "stage": "inject_state",
+      "characterId": "SILENT",
+      "encounterId": "CORPSE_SLUGS_NORMAL",
+      "seed": "COMBATSOLVER",
+      "startedAtUtc": "2026-09-10T19:54:42.5190605+00:00",
+      "elapsedMilliseconds": 23643.0498,
+      "mainThread": true,
+      "combatEnded": false,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "managedHeapBytes": 78162224,
+      "managedFragmentedBytes": 12332184,
+      "workingSetBytes": 1401982976,
+      "privateMemoryBytes": 1546149888,
+      "solverMetrics": null,
+      "replayVerification": null,
+      "stageTimings": [
+        {
+          "stage": "created",
+          "startedMilliseconds": 0,
+          "durationMilliseconds": 6.1801
+        },
+        {
+          "stage": "game_startup",
+          "startedMilliseconds": 6.1801,
+          "durationMilliseconds": 11042.4251
+        },
+        {
+          "stage": "start_run",
+          "startedMilliseconds": 11048.6052,
+          "durationMilliseconds": 10980.2099
+        },
+        {
+          "stage": "inject_run_relics",
+          "startedMilliseconds": 22028.8151,
+          "durationMilliseconds": 0.7462000000014086
+        },
+        {
+          "stage": "enter_encounter",
+          "startedMilliseconds": 22029.5613,
+          "durationMilliseconds": 1005.4328999999998
+        },
+        {
+          "stage": "wait_player_turn",
+          "startedMilliseconds": 23034.9942,
+          "durationMilliseconds": 1.6985999999997148
+        },
+        {
+          "stage": "inject_state",
+          "startedMilliseconds": 23036.6928,
+          "durationMilliseconds": 606.5249999999978
+        }
+      ],
+      "completedChecks": [],
+      "error": "System.InvalidOperationException: Compact full evaluation differs at ZeroCostPlayableCount: 1 / 2.\n   at CombatSolver.UnattendedTestRunner.AssertCompactEvaluation(SimulationSnapshot expected, SimulationSnapshot actual)\n   at CombatSolver.UnattendedTestRunner.<>c__DisplayClass37_0.<AssertCompactAttacksAsync>b__7()\n   at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)\n--- End of stack trace from previous location ---\n   at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)\n   at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)\n--- End of stack trace from previous location ---\n   at CombatSolver.UnattendedTestRunner.AssertCompactAttacksAsync(CombatState combat, Player player)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()",
+      "finishedAtUtc": "2026-09-10T19:55:06.162033+00:00"
+    }
+  ],
+  "productionBenchmarkPerformed": false,
+  "productionEnabled": false,
+  "compactRoundAdvancement": false,
+  "performanceCaveat": "Default tiered JIT changes substantially within attached fixture samples; no new aggregate speedup claim."
+}

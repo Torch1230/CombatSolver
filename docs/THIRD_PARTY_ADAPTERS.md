@@ -487,7 +487,7 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 | 位置 | 症状 | 状态 |
 |---|---|---|
 | `PredictionModHookSubscriberCapture.KnownPreRootSubscriberTypeNames` | 私有静态白名单，没有公开登记入口 | 待做 |
-| `Testing/CompactDiscardProjection` 的准入与卡牌定义 | 仅 `COMPACT-KERNEL-NATIVE` 实验支持有限抽牌/弃牌效果，拒绝未迁移 Hook、Power、修饰和随机操作；没有第三方登记入口。生产搜索仍走现有后端，不受此实验准入影响 | 测试原型，未开放 |
+| `Testing/CompactDiscardProjection` 的准入与卡牌定义 | 实验支持已准入抽弃牌／洗牌／固定 Power 选牌；显式攻击域增加主要敌人无 Power 的打击与死亡。仍拒绝未迁移 Hook、可变 Power、修饰与其他随机操作，没有第三方登记入口。完整状态与原生证据见[攻击阶段报告](performance/simulation-compact-attacks-20260911.md)；生产搜索仍走现有后端，不受此实验准入影响 | 测试原型，未开放 |
 | `PredictionModPatchAudit.ValidateLoadedMods` | 明确拒绝 `WheelchairSpire`，没有外部放行入口 | 项目不兼容策略 |
 | `PlayerTurnEndLifecycle.RunPhaseTwo`、`CorePowerSupport.TriggerPlayerRegularSideTurnEndEffects`、`FlushPlayerHandAtTurnEnd`、`TurnStartPowerSupport.TriggerAfterPlayerTurnStart`、`SimulatedCombatState.TriggerRelicsAfterPlayerTurnStart` | 回合边界的效果没有注册表 | 待做 |
 | `SimulatedCombatState.TryPrepareExtraPlayerTurn` / `TryPrepareLiveExtraPlayerTurn` / `ConsumeExtraTurnSources` | 额外回合的来源硬编码，只认龙涎香和帕尔之眼 | 待做 |

@@ -71,7 +71,57 @@ Parallel.For(0, 8, lane =>
 });
 if (!state.Freeze().ContentEquals(root) || dead[first.Offset] != 0 || dead[first.Offset + 3] != 0)
     throw new InvalidOperationException("Worker changed a frozen creature state.");
-Console.WriteLine($"COMPACT_CREATURE_CHECKS_OK damage_vectors={damageCases.Length} healing_caps=true journal=true frozen_workers=8");
+// Resume after Begin must retain the exact target, and the final native pile gate leaves
+// the killing card in Play until teardown. Terminal commitment is a separate safe point.
+var attacks = new ResumableDiscardProgram(
+    [new(0, 0, 0, false, Damage: 0, Attack: true), new(1, 0, 0, false, Damage: 6, Attack: true),
+     new(1, 0, 0, false, Damage: 9, Attack: true), new(1, 0, 0, false, Damage: 6, Attack: true), new(1, 0, 0, false, Block: 5)],
+    [new[] { 0, 1, 2, 3, 4 }, Array.Empty<int>(), Array.Empty<int>(), Array.Empty<int>(), Array.Empty<int>()],
+    5, 3, 0, creatures: [new(50, 60, 3), new(6, 30, 6), new(4, 30, 2)]);
+var attackRoot = attacks.Freeze();
+foreach (int target in new[] { -1, 0, 3, int.MaxValue })
+{
+    Expect<InvalidOperationException>(() => attacks.Begin(1, target));
+    if (!attacks.State.Freeze().ContentEquals(attackRoot.Open().State.Freeze()))
+        throw new InvalidOperationException("Invalid attack changed its root.");
+}
+var cancelled = attacks.State.Mark();
+attacks.Begin(1, 1);
+Expect<OperationCanceledException>(() => attacks.Run(new CancellationToken(true)));
+attacks.State.Rollback(cancelled);
+attacks.Begin(0, 2); attacks.Run();
+var zeroHit = Enumerable.Range(0, attacks.EventCount).Select(attacks.EventAt)
+    .Single(e => e.Kind == ResumableDiscardProgram.EventKind.Damage);
+if (zeroHit.Target != 2 || zeroHit.Value != 0 || zeroHit.Flags != 4 || attacks.Energy != 5)
+    throw new InvalidOperationException("Zero powered hit lost target, fully blocked flag or zero cost.");
+attacks.Begin(1, 1);
+var suspendedAttack = attacks.Freeze();
+Parallel.For(0, 8, _ =>
+{
+    var lane = suspendedAttack.Open(); lane.Run();
+    if (lane.Creature(1) != new CreatureVitals(6, 30, 0) || lane.Creature(2) != new CreatureVitals(4, 30, 2))
+        throw new InvalidOperationException("Frozen attack resumed against the wrong target.");
+    lane.Begin(2, 1); lane.Run();
+    if (lane.CreaturePresent(1) || !lane.CreatureDeathCompleted(1) || lane.Ending || lane.CheckWinCondition())
+        throw new InvalidOperationException("Partial death ended combat or missed lifecycle.");
+    var survivor = lane.Freeze();
+    var mark = lane.State.Mark();
+    lane.Begin(3, 2); lane.Run();
+    if (!lane.Ending || lane.Terminal || lane.Count(ResumableDiscardProgram.Pile.Play) != 1)
+        throw new InvalidOperationException("Final hit bypassed the native ending/pile gate.");
+    Expect<InvalidOperationException>(() => lane.Begin(4));
+    if (!lane.CheckWinCondition() || !lane.Terminal)
+        throw new InvalidOperationException("Safe point failed to commit victory.");
+    var victory = lane.Freeze();
+    lane.State.Rollback(mark);
+    if (!lane.State.Freeze().ContentEquals(survivor.Open().State.Freeze()))
+        throw new InvalidOperationException("Final kill failed to roll back.");
+    victory.RestoreInto(lane);
+    if (!lane.Terminal || lane.CreaturePresent(2)) throw new InvalidOperationException("Victory restore lost terminal/death state.");
+    attackRoot.RestoreInto(lane);
+    if (lane.Terminal || lane.Ending || !lane.CreaturePresent(1)) throw new InvalidOperationException("Root restore retained death state.");
+});
+Console.WriteLine($"COMPACT_CREATURE_CHECKS_OK damage_vectors={damageCases.Length} healing_caps=true journal=true frozen_workers=8 attack_targets=true ending_pile_gate=true attack_resume_rollback=true");
 
 static void Expect<T>(Action operation) where T : Exception
 {

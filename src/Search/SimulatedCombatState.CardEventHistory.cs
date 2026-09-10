@@ -297,17 +297,33 @@ internal sealed partial class SimulatedCombatState
         return value;
     }
 
+    internal CombatHistoryReadValues CaptureCombatHistoryReadValues()
+    {
+        CombatHistoryReadValues values = new();
+        if (_unblockedDamageThisTurn != null) values.LostHp.UnionWith(_unblockedDamageThisTurn);
+        if (_poweredAttackHitsThisTurn != null)
+            foreach (var pair in _poweredAttackHitsThisTurn) values.PoweredHits.Add(pair.Key, pair.Value);
+        if (_lastAttackThisTurn != null)
+            foreach (var pair in _lastAttackThisTurn) values.LastAttacks.Add(pair.Key, pair.Value);
+        if (_deathPhases != null)
+            foreach (var pair in _deathPhases) values.DeathPhases.Add(pair.Key, pair.Value);
+        return values;
+    }
+
     private static void AddPoweredAttackHits(
         ref StateFingerprintBuilder fingerprint,
-        ForkableDictionary<(Creature Dealer, Creature Receiver), int>? values)
+        ForkableDictionary<(Creature Dealer, Creature Receiver), int>? values,
+        Dictionary<(Creature Dealer, Creature Receiver), int>? readValues = null)
     {
         ulong first = 0;
         ulong second = 0;
         int count = 0;
-        if (values != null)
+        if (values != null || readValues != null)
         {
-            foreach (((Creature dealer, Creature receiver), int value) in values)
+            using var entries = readValues != null ? readValues.GetEnumerator() : values!.GetEnumerator();
+            while (entries.MoveNext())
             {
+                ((Creature dealer, Creature receiver), int value) = entries.Current;
                 StateFingerprintBuilder item = new();
                 item.Add(dealer.CombatId ?? uint.MaxValue);
                 item.Add(receiver.CombatId ?? uint.MaxValue);

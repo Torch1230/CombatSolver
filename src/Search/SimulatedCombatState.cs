@@ -2104,7 +2104,7 @@ internal sealed partial class SimulatedCombatState
     public void AppendFingerprint(
         ref StateFingerprintBuilder fingerprint,
         CombatPredictionSimulator simulator, CardHistoryReadValues? history = null,
-        IReadOnlyList<Creature>? enemyRoster = null)
+        IReadOnlyList<Creature>? enemyRoster = null, CombatHistoryReadValues? combatHistory = null)
     {
         fingerprint.Add('P');
         int powerCount = 0;
@@ -2130,22 +2130,22 @@ internal sealed partial class SimulatedCombatState
         AddSteamEruptionPhases(ref fingerprint, _steamEruptionPhases);
         AddAeonglassCounters(ref fingerprint, 'A', _aeonglassAdditionalStrength, "AdditionalStrength", enemyRoster);
         AddAeonglassCounters(ref fingerprint, 'W', _aeonglassWitherUpgradeCount, "WitherUpgradeCount", enemyRoster);
-        AddCreatureIntMap(ref fingerprint, 'a', _attacksPlayedThisTurn);
+        AddCreatureIntMap(ref fingerprint, 'a', _attacksPlayedThisTurn, history?.Owner.Creature, history?.AttackPlays);
         AddCreatureIntMap(ref fingerprint, 'j', _shivsPlayedThisTurn);
         AddCreatureIntMap(ref fingerprint, 'b', _blockCardsPlayedThisTurn, history?.Owner.Creature, history?.BlockPlays);
         AddCreatureIntMap(ref fingerprint, 'l', _skillCardsPlayedThisTurn, history?.Owner.Creature, history?.SkillPlays);
         AddCreatureIntMap(ref fingerprint, 'x', _cardsExhaustedThisTurn);
         AddCreatureSet(ref fingerprint, 'd', _doomAppliersThisTurn);
-        AddCreatureSet(ref fingerprint, 'L', _unblockedDamageThisTurn);
-        AddPoweredAttackHits(ref fingerprint, _poweredAttackHitsThisTurn);
+        AddCreatureSet(ref fingerprint, 'L', _unblockedDamageThisTurn, combatHistory?.LostHp);
+        AddPoweredAttackHits(ref fingerprint, _poweredAttackHitsThisTurn, combatHistory?.PoweredHits);
         AddCreatureIntMap(ref fingerprint, 'v', _cardsDiscardedThisTurn, history?.Owner.Creature, history?.Discards);
-        AddCreatureIntMap(ref fingerprint, 'u', _creatureAttacksThisTurn);
+        AddCreatureIntMap(ref fingerprint, 'u', _creatureAttacksThisTurn, history?.Owner.Creature, history?.CreatureAttacks);
         AddPlayerIntMap(ref fingerprint, 'e', _energySpentThisTurn, history?.Owner, history?.EnergySpent);
         AddPlayerIntMap(ref fingerprint, 'z', _starsGainedThisTurn);
         AddPlayerIntMap(ref fingerprint, 'n', _nonHandDrawsThisTurn, history?.Owner, history?.Draws);
         AddPlayerIntMap(ref fingerprint, 's', _statusCardsDrawnThisTurn);
         AddCreatureIntMap(ref fingerprint, 'Q', _cardPlaySeriesStartedThisTurn, history?.Owner.Creature, history?.Series);
-        AddCreatureIntMap(ref fingerprint, 'q', _zeroCostAttackStartsThisTurn);
+        AddCreatureIntMap(ref fingerprint, 'q', _zeroCostAttackStartsThisTurn, history?.Owner.Creature, history?.ZeroCostAttackStarts);
         AddCreatureIntMap(ref fingerprint, 'J', _cardPlayStartsThisTurn, history?.Owner.Creature, history?.Starts);
         AddCreatureIntMap(ref fingerprint, 'k', _knowledgeDemonCurseCounters);
         AddCreatureSet(ref fingerprint, 'i', _enemiesIntendingAttack);
@@ -2172,9 +2172,9 @@ internal sealed partial class SimulatedCombatState
         AppendMonsterAiFingerprint(ref fingerprint, enemyRoster);
         AppendMonsterStateFingerprint(ref fingerprint);
         AppendDampenFingerprint(ref fingerprint);
-        AppendDeathLifecycleFingerprint(ref fingerprint);
+        AppendDeathLifecycleFingerprint(ref fingerprint, combatHistory?.DeathPhases);
         AppendPossessFingerprint(ref fingerprint);
-        AppendAutoPlayFingerprint(ref fingerprint);
+        AppendAutoPlayFingerprint(ref fingerprint, combatHistory?.LastAttacks);
         fingerprint.Add('T');
         fingerprint.Add(OutstandingStolenResource(simulator));
     }
@@ -2485,15 +2485,19 @@ internal sealed partial class SimulatedCombatState
     private static void AddCreatureSet(
         ref StateFingerprintBuilder fingerprint,
         char marker,
-        ForkableSet<Creature>? values)
+        ForkableSet<Creature>? values, HashSet<Creature>? readValues = null)
     {
         ulong first = 0;
         ulong second = 0;
         int count = 0;
-        if (values != null)
+        if (values != null || readValues != null)
         {
-            foreach (Creature creature in values)
+            // Both stores expose the same value enumerator. Keep the legacy path free of
+            // interface boxing while sharing the original encoding with completed readers.
+            using var entries = readValues != null ? readValues.GetEnumerator() : values!.GetEnumerator();
+            while (entries.MoveNext())
             {
+                Creature creature = entries.Current;
                 StateFingerprintBuilder item = new();
                 item.Add(creature.CombatId ?? uint.MaxValue);
                 AddUnorderedItem(item.Finish(), ref first, ref second);

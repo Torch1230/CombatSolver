@@ -1,4 +1,6 @@
 using System.Reflection;
+using MegaCrit.Sts2.Core.Entities.Creatures;
+using MegaCrit.Sts2.Core.ValueProps;
 using System.Collections.Concurrent;
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.Common.Mirrors;
@@ -30,8 +32,10 @@ internal sealed class CompactDiscardProjection
     private readonly CardModel[] _identities;
     private readonly bool[] _inferred;
     internal readonly ResumableDiscardProgram Program;
+    private readonly Creature[] _creatures;
+    internal int PlayerTurn => ((SimulatedCombatState)_root.State.CombatState).GetPlayerTurnNumber(_player);
 
-    internal CompactDiscardProjection(CombatPredictionSimulator root, Player player)
+    internal CompactDiscardProjection(CombatPredictionSimulator root, Player player, bool includeAttacks = false)
     {
         _root = root;
         _player = player;
@@ -39,7 +43,7 @@ internal sealed class CompactDiscardProjection
         SimPlayerCombatState state = root.State.GetPlayerCombatState(player);
         var powers = combat.EffectivePowers();
         if (combat.Players.Count != 1 || powers.Any(p => !(p is StratagemPower && p.Owner == player.Creature && p.Amount is >= 1 and <= 10)
-                && !(p is StrengthPower && p.Owner != player.Creature))
+                && !(!includeAttacks && p is StrengthPower && p.Owner != player.Creature))
             || combat.RootRunModSubscriberCount != 0 || combat.RootCombatModSubscriberCount != 0
             || combat.RootHasBaseLibCardModifiers || combat.RootRunHookListenerCount != 0
             || state.OrbQueue.Orbs.Count != 0 || root.GetMaxHandSize(player) != 10
@@ -62,9 +66,16 @@ internal sealed class CompactDiscardProjection
             if (unrepresented.Length != 0)
                 throw new NotSupportedException($"Compact prototype has no effect program for {listener.Id.Entry}.{unrepresented[0]}.");
         }
+        _creatures = includeAttacks ? [player.Creature, .. combat.Enemies] : [];
+        if (includeAttacks && (combat.PlayerCreatures.Count != 1 || combat.KnownEnemies.Count != combat.Enemies.Count
+            || _creatures.Any(c => root.State.GetCreature(c).IsDead || c.PetOwner != null)
+            || combat.KnownEnemies.Any(c => combat.HasCompletedDeathEffects(c)
+                || !((ICombatPredictionCreatureSemantics)combat).IsPrimaryEnemy(c)
+                || !((ICombatPredictionCreatureSemantics)combat).ShouldRemoveAfterDeath(c))))
+            throw new NotSupportedException("Compact attack requires living primary enemies without pending deaths or pets.");
         PredictedCard[] cards = state.AllCards.ToArray();
         _identities = cards.Select(c => c.Original).ToArray();
-        ResumableDiscardProgram.Card[] definitions = cards.Select(card => Capture(card.Preview)).ToArray();
+        ResumableDiscardProgram.Card[] definitions = cards.Select(card => Capture(card.Preview, includeAttacks)).ToArray();
         _inferred = cards.Select(card => CardOnPlayMirrors.DescribeDispatch(card.Preview) switch
         {
             MirrorDispatchKind.Handled => false,
@@ -91,10 +102,11 @@ internal sealed class CompactDiscardProjection
             Block(relics.OfType<ToughBandages>().SingleOrDefault()),
             new(rng.Counter, rng.State0, rng.State1, rng.State2, rng.State3), comparisons,
             powers.OfType<StratagemPower>().SingleOrDefault()?.Amount ?? 0,
-            Block(relics.OfType<TheAbacus>().SingleOrDefault()), abacusIndex >= 0 && abacusIndex < stratagemIndex);
+            Block(relics.OfType<TheAbacus>().SingleOrDefault()), abacusIndex >= 0 && abacusIndex < stratagemIndex,
+            includeAttacks ? _creatures.Select(c => { var v = root.State.GetCreature(c); return new CreatureVitals(v.CurrentHp, v.MaxHp, v.Block); }).ToArray() : null);
     }
 
-    private static ResumableDiscardProgram.Card Capture(CardModel card)
+    private static ResumableDiscardProgram.Card Capture(CardModel card, bool includeAttacks)
     {
         if (card is not (Acrobatics or Prepared or Backflip or StrikeSilent or DefendSilent)
             || card.Enchantment != null || card.Affliction != null || card.BaseReplayCount != 0
@@ -107,19 +119,25 @@ internal sealed class CompactDiscardProjection
             || card.IsSlyThisTurn && card is not Prepared)
             throw new NotSupportedException($"Compact prototype cannot admit card state {card.Id.Entry}.");
         decimal draw = card is Acrobatics or Prepared or Backflip ? card.DynamicVars.Cards.BaseValue : 0;
+        decimal damage = includeAttacks && card is StrikeSilent ? card.DynamicVars.Damage.BaseValue : 0;
         decimal block = card is DefendSilent or Backflip ? card.DynamicVars.Block.BaseValue : 0;
         if (draw != decimal.Truncate(draw) || draw < 0 || draw > 10 || card.EnergyCost._base < 0
             || card is Acrobatics or Prepared or Backflip && draw == 0
+            || damage != decimal.Truncate(damage) || damage is < 0 or > 999_999_999m
             || block != decimal.Truncate(block) || block is < 0 or > 999_999_999m)
             throw new NotSupportedException($"Compact prototype cannot admit card variables {card.Id.Entry}.");
         return new(card.EnergyCost._base, (int)draw, card is Acrobatics ? 1 : card is Prepared ? (int)draw : 0,
-            card.IsSlyThisTurn, (int)block);
+            card.IsSlyThisTurn, (int)block, (int)damage, includeAttacks && card is StrikeSilent);
     }
 
+    // Legacy read helpers contain simulator-owned scratch. Each lane borrows its own root fork;
+    // this is setup once per reader, never a leaf projection or a second execution authority.
     internal CompactDiscardReadView CreateReadView(bool reuseInvariantFeatures = true)
-        => new(this, _root, _player, _inferred) { Invariants = reuseInvariantFeatures ? new() : null };
+        => new(this, _root.Fork(), _player, _inferred) { Invariants = reuseInvariantFeatures ? new() : null };
 
     internal int Identity(string cardId) => Array.FindIndex(_identities, c => c.Id.Entry == cardId);
+    internal Creature Creature(int index) => _creatures[index];
+    internal int CreatureIndex(Creature creature) => Array.IndexOf(_creatures, creature);
     internal int CardCount => _identities.Length;
     internal CardModel Original(int identity) => _identities[identity];
     internal int IndexOf(CardModel original) => Array.IndexOf(_identities, original);
@@ -136,6 +154,7 @@ internal sealed class CompactDiscardProjection
         SimPlayerCombatState state = projection.State.GetPlayerCombatState(_player);
         PredictedCard[] cards = _identities.Select(c => projection.State.FindCard(c)
             ?? throw new InvalidOperationException("Projection lost a root instance.")).ToArray();
+        var damageResults = new Dictionary<int, DamageResult>();
         var stack = new Stack<(int Identity, CardPlay Play, PredictionTrace.TraceScope Scope, PredictionTrace.TraceScope? Method)>();
         try
         {
@@ -154,13 +173,13 @@ internal sealed class CompactDiscardProjection
                     {
                         var scope = projection.PushActionSource(card.Original, PredictionActionKind.CardPlay);
                         CardModel preview = card.MutablePreview;
-                        preview.CurrentTarget = null;
+                        preview.CurrentTarget = item.Target < 0 ? null : _creatures[item.Target];
                         preview.CurrentPlayIndex = 0;
                         preview.LastStarsSpent = 0;
                         projection.AddToPile(card, PileType.Play);
                         CardPlay play = new()
                         {
-                            Card = preview, Player = _player, Target = null, ResultPile = PileType.Discard,
+                            Card = preview, Player = _player, Target = preview.CurrentTarget, ResultPile = PileType.Discard,
                             Resources = new ResourceInfo { EnergyValue = item.Value, EnergySpent = item.Automatic ? 0 : item.Value,
                                 StarsSpent = 0, StarValue = 0 },
                             IsAutoPlay = item.Automatic, PlayIndex = 0, PlayCount = 1
@@ -192,6 +211,35 @@ internal sealed class CompactDiscardProjection
                     case ResumableDiscardProgram.EventKind.Block:
                         projection.State.GetCreature(_player.Creature).GainBlock(item.Value);
                         break;
+                    case ResumableDiscardProgram.EventKind.Damage:
+                    {
+                        var blocked = program.EventAt(++index);
+                        var overkill = program.EventAt(++index);
+                        if (blocked.Kind != ResumableDiscardProgram.EventKind.DamageBlocked
+                            || overkill.Kind != ResumableDiscardProgram.EventKind.DamageOverkill
+                            || blocked.Target != item.Target || overkill.Target != item.Target)
+                            throw new InvalidOperationException("Malformed committed damage result.");
+                        Creature target = _creatures[item.Target];
+                        DamageResult result = new(target, ValueProp.Move)
+                        {
+                            UnblockedDamage = item.Value, BlockedDamage = blocked.Value, OverkillDamage = overkill.Value,
+                            WasTargetKilled = (item.Flags & 1) != 0, WasBlockBroken = (item.Flags & 2) != 0,
+                            WasFullyBlocked = (item.Flags & 4) != 0
+                        };
+                        projection.History.DamageReceived(target, _player.Creature, result, card, projection.ResolveDamageSource(card));
+                        combat.RecordDamageReceived(target, _player.Creature, result);
+                        damageResults[item.Card] = result;
+                        break;
+                    }
+                    case ResumableDiscardProgram.EventKind.Death:
+                        projection.State.RemoveCreature(_creatures[item.Target]);
+                        combat.CompleteDeathPhase(_creatures[item.Target]);
+                        break;
+                    case ResumableDiscardProgram.EventKind.AttackFinish:
+                        projection.History.CreatureAttacked(_player.Creature, [damageResults[item.Card]]);
+                        combat.RecordCreatureAttacked(_player.Creature);
+                        damageResults.Remove(item.Card);
+                        break;
                     case ResumableDiscardProgram.EventKind.Finish:
                     {
                         var active = stack.Pop();
@@ -201,6 +249,7 @@ internal sealed class CompactDiscardProjection
                         combat.RecordCardPlayed(card, item.Value != 0);
                         combat.RecordCardLifecycle(projection, card);
                         projection.AddToPile(card, PileType.Discard);
+                        card.MutablePreview.CurrentTarget = null;
                         card.InvalidateCaches();
                         active.Scope.Dispose();
                         break;
@@ -224,6 +273,19 @@ internal sealed class CompactDiscardProjection
         {
             while (stack.TryPop(out var active)) { active.Method?.Dispose(); active.Scope.Dispose(); }
         }
+        for (int index = 0; index < program.CreatureCount; index++)
+        {
+            CreatureVitals values = program.Creature(index);
+            SimCreatureState target = projection.State.GetCreature(_creatures[index]);
+            target.CurrentHp = values.CurrentHp;
+            target.DamageBlock(target.Block, ValueProp.Unpowered);
+            target.GainBlock(values.Block);
+        }
+        if (program.Terminal)
+        {
+            Terminal.SetValue(projection, new CombatTerminalStamp(PlayerTurn, CombatTerminalOutcome.Victory));
+            InProgress.SetValue(projection, false);
+        }
         ValueShuffleRng rng = program.ShuffleRng;
         projection.Rng.Shuffle.LoadFromSerializable(new()
             { counter = rng.Counter, state0 = rng.State0, state1 = rng.State1, state2 = rng.State2, state3 = rng.State3 });
@@ -241,11 +303,20 @@ internal sealed class CompactDiscardProjection
         if (program.ShuffleRng != new ValueShuffleRng(rng.Counter, rng.State0, rng.State1, rng.State2, rng.State3)
             || _root.ShuffleEventCount + program.ShuffleCount != simulator.ShuffleEventCount)
             throw new InvalidOperationException("Compact values disagree with shuffle state or event count.");
+        for (int index = 0; index < program.CreatureCount; index++)
+        {
+            Creature creature = _creatures[index];
+            CreatureReadValues actual = CreatureReadValues.Capture(simulator, creature);
+            CreatureVitals expected = program.Creature(index);
+            if (actual != new CreatureReadValues(expected.CurrentHp, expected.MaxHp, expected.Block, program.CreaturePresent(index))
+                || ((SimulatedCombatState)simulator.State.CombatState).HasCompletedDeathEffects(creature) != program.CreatureDeathCompleted(index))
+                throw new InvalidOperationException("Compact creature values or death lifecycle differ.");
+        }
         SimCardPile[] piles = [state.Hand, state.DrawPile, state.DiscardPile, state.PlayPile, state.ExhaustPile];
         for (int pile = 0; pile < piles.Length; pile++)
         {
             if (program.Count((ResumableDiscardProgram.Pile)pile) != piles[pile].Cards.Count)
-                throw new InvalidOperationException("Compact values disagree with projected pile count.");
+                throw new InvalidOperationException($"Compact pile {pile} count differs: {program.Count((ResumableDiscardProgram.Pile)pile)} / {piles[pile].Cards.Count}.");
             for (int i = 0; i < piles[pile].Cards.Count; i++)
                 if (!ReferenceEquals(_identities[program.CardAt((ResumableDiscardProgram.Pile)pile, i)], piles[pile].Cards[i].Original))
                     throw new InvalidOperationException("Compact values disagree with projected instance order.");
@@ -262,7 +333,10 @@ internal sealed class CompactDiscardProjection
         "TryModifyKeywordsInCombat", "ModifyMaxHandSize", "ModifyUnblockedDamageTarget",
         "ModifyHpLostBeforeOsty", "ModifyHpLostBeforeOstyLate", "ModifyHpLostAfterOsty", "ModifyHpLostAfterOstyLate",
         "ModifyDamageAdditive", "ModifyDamageMultiplicative", "BeforeCardAutoPlayed", "AfterCardChangedPiles",
-        "ModifyShuffleOrder", "AfterShuffle"
+        "ModifyShuffleOrder", "AfterShuffle", "BeforeAttack", "AfterAttack", "ModifyAttackHitCount",
+        "BeforeDamageReceived", "AfterBlockBroken", "AfterCurrentHpChanged", "AfterDamageGiven", "AfterDamageReceived",
+        "AfterModifyingHpLostAfterOsty", "BeforeDeath", "ShouldDie", "AfterDeath", "ShouldCreatureBeRemovedFromCombatAfterDeath",
+        "ShouldAllowHitting"
     };
     // Only immutable CLR method/type metadata is shared. Every root still checks subscriber,
     // Power, relic, card-instance, resource, and lifecycle values independently.
@@ -282,6 +356,8 @@ internal sealed class CompactDiscardProjection
 
     private static readonly MirrorMethodSpec OnPlay = new(typeof(CardModel), "OnPlay",
         BindingFlags.Instance | BindingFlags.NonPublic, [typeof(PlayerChoiceContext), typeof(CardPlay)]);
+    private static readonly PropertyInfo Terminal = typeof(CombatPredictionSimulator).GetProperty(nameof(CombatPredictionSimulator.TerminalStamp))!;
+    private static readonly PropertyInfo InProgress = typeof(CombatPredictionSimulator).GetProperty(nameof(CombatPredictionSimulator.IsInProgress))!;
     private static readonly PropertyInfo ShuffleEvents = typeof(CombatPredictionSimulator)
         .GetProperty(nameof(CombatPredictionSimulator.ShuffleEventCount))!;
 }

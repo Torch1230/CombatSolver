@@ -416,14 +416,18 @@ internal sealed partial class UnattendedTestRunner
         }
         string Card(CombatPredictionCardSnapshot card)
             => $"{adapter.IndexOf(card.Original)}:{card.Id}+{card.UpgradeLevel}:{card.Type}";
+        static string Result(MegaCrit.Sts2.Core.Entities.Creatures.DamageResult result)
+            => $"{result.Receiver.CombatId}:{result.Props}:{result.BlockedDamage}:{result.UnblockedDamage}:{result.OverkillDamage}:{result.WasTargetKilled}:{result.WasBlockBroken}:{result.WasFullyBlocked}";
         foreach (var entry in simulator.History.Entries)
         {
             string value = entry switch
             {
-                CombatPredictionCardPlayStartedEntry started => $"start:{Card(started.Card)}:{Identity(started.CardPlay)}:{started.CardPlay.IsAutoPlay}:{started.CardPlay.Resources.EnergySpent}:{started.CardPlay.Resources.EnergyValue}:{started.CardPlay.Resources.StarsSpent}:{started.CardPlay.Resources.StarValue}:{started.CardPlay.ResultPile}:{started.CardPlay.PlayIndex}:{started.CardPlay.PlayCount}",
+                CombatPredictionCardPlayStartedEntry started => $"start:{Card(started.Card)}:{Identity(started.CardPlay)}:{started.CardPlay.IsAutoPlay}:{started.CardPlay.Target?.CombatId}:{started.CardPlay.Resources.EnergySpent}:{started.CardPlay.Resources.EnergyValue}:{started.CardPlay.Resources.StarsSpent}:{started.CardPlay.Resources.StarValue}:{started.CardPlay.ResultPile}:{started.CardPlay.PlayIndex}:{started.CardPlay.PlayCount}",
                 CombatPredictionCardPlayFinishedEntry finished => $"finish:{Card(finished.Card)}:{Identity(finished.CardPlay)}:{finished.CardPlay.IsAutoPlay}:{finished.WasEthereal}",
                 CombatPredictionCardDrawnEntry drawn => $"draw:{Card(drawn.Card)}:{drawn.FromHandDraw}",
                 CombatPredictionCardDrawResolvedEntry resolved => $"draw-resolved:{Card(resolved.Card)}:{resolved.OriginalEntry.Index}",
+                CombatPredictionDamageReceivedEntry damage => $"damage:{damage.Receiver.CombatId}:{damage.Dealer?.CombatId}:{damage.Source}:{(damage.CardSource is { } source ? Card(source) : "-")}:{Result(damage.Result)}",
+                CombatPredictionCreatureAttackedEntry attack => $"attack:{attack.Attacker.CombatId}:{string.Join(";", attack.HitResults.Select(Result))}",
                 CombatPredictionRiskEntry risk => $"risk:{risk.Reason}",
                 _ => throw new InvalidOperationException($"Unexpected compact history entry {entry.GetType().Name}.")
             };

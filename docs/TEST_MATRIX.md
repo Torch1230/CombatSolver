@@ -1,5 +1,7 @@
 # CombatSolver 测试清单
 
+- `COMPACT-ATTACKS-NATIVE`：SILENT／CORPSE_SLUGS_NORMAL，120 秒 headless，最终 `c8bd3d9d609c4023a187a4a0479ce1a9` Passed。18 分支的全状态、完整评分／原键／来源历史，八工作区独立执行与读取，原生五步部分／最后击杀及 teardown 前完整终局对账；[证据与范围](performance/simulation-compact-attacks-20260911.md)。`CompactCreatureChecks` 增补目标、取消撤销、暂停恢复与结束门合同通过；洗牌原生哨兵 `6660eab2ce51440b9dcecb097d7541e1` Passed。
+
 ## 2026-09-11：生物值与完整估值读取
 
 - [CompactCreatureChecks](../tools/CompactCreatureChecks/README.md) 九个边界伤害向量、治疗／限幅、跨页撤销及八工作区恢复通过。
