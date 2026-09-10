@@ -1254,11 +1254,13 @@ foreach ($file in $compactProductionFiles) {
     }
 }
 $compactStorageGuards = @(
-    @('ReversibleValueState.cs', 'private readonly long[] _values;'),
+    @('ReversibleValueState.cs', 'private long[] _values;'),
     @('ReversibleValueState.cs', '_dirtyPages[entry.Slot / PageWidth] = true;'),
-    @('ReversibleValueState.cs', 'if (!source.HasRoot(_rootIdentity) || source.Count != Count)'),
+    @('ReversibleValueState.cs', 'if (!source.HasRoot(_rootIdentity))'),
     @('ReversibleValueState.cs', 'if (_checkpoints.Count != 0)'),
-    @('ReversibleValueState.FrozenValues.cs', '_pages = (ValuePage[])source._pages.Clone();'),
+    @('ReversibleValueState.cs', 'Resize(checkpoint.SlotCount);'),
+    @('ReversibleValueState.FrozenValues.cs', 'workspace.Resize(Count);'),
+    @('ReversibleValueState.FrozenValues.cs', '_pages = source._pages.AsSpan(0, PageCount(source.Count)).ToArray();'),
     @('ReversibleValueState.FrozenValues.cs', 'private readonly long[] _values = values;')
 )
 foreach ($guard in $compactStorageGuards) {

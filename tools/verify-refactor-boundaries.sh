@@ -1014,11 +1014,13 @@ while IFS= read -r production_path; do
 done < <(rg --files "$search_root" "$repository_root/src/Runtime" -g '*.cs')
 compact_values="$repository_root/src/Engine/InCombat/Simulation/Compact/ReversibleValueState.cs"
 compact_frozen="$repository_root/src/Engine/InCombat/Simulation/Compact/ReversibleValueState.FrozenValues.cs"
-require_fixed "$compact_values" 'private readonly long[] _values;' 'compact workspace lost exclusive values'
+require_fixed "$compact_values" 'private long[] _values;' 'compact workspace lost exclusive values'
 require_fixed "$compact_values" '_dirtyPages[entry.Slot / PageWidth] = true;' 'compact rollback must invalidate frozen pages'
-require_fixed "$compact_values" 'if (!source.HasRoot(_rootIdentity) || source.Count != Count)' 'compact restore lost root ownership guard'
+require_fixed "$compact_values" 'if (!source.HasRoot(_rootIdentity))' 'compact restore lost root ownership guard'
 require_fixed "$compact_values" 'if (_checkpoints.Count != 0)' 'compact restore lost active checkpoint guard'
-require_fixed "$compact_frozen" '_pages = (ValuePage[])source._pages.Clone();' 'compact candidate must own its published page directory'
+require_fixed "$compact_values" 'Resize(checkpoint.SlotCount);' 'compact rollback lost allocated slot ownership'
+require_fixed "$compact_frozen" 'workspace.Resize(Count);' 'compact restore lost candidate slot count'
+require_fixed "$compact_frozen" '_pages = source._pages.AsSpan(0, PageCount(source.Count)).ToArray();' 'compact candidate must own its published page directory'
 require_fixed "$compact_frozen" 'private readonly long[] _values = values;' 'compact page values must remain private and immutable'
 for mutable_owner in 'ReversibleValueState _owner' 'ReversibleValueState _workspace' 'FrozenValues _parent'; do
     forbid_fixed "$compact_frozen" "$mutable_owner" 'compact candidate must not retain mutable workers or ancestor chains:'

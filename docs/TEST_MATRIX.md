@@ -1,5 +1,10 @@
 # CombatSolver 测试清单
 
+## 2026-09-11：可增长紧凑工作区
+
+- [CompactGrowthChecks](../tools/CompactGrowthChecks/README.md) 八组合同通过：600 步独立列表 oracle、页边界／不同长度恢复、嵌套撤销、八路隔离，以及第 256 次冻结后继续至 512 次执行并逐槽对照。现有结构工具四个候选各 ABBA 的 34 叶／逐槽合同通过；数据包含未保留实验。
+- 最终洗牌／战略选择原生 `a198b630720f4cfdb6c5bdac5655bfc1` 和 34 叶原生哨兵 `2de8f6b9cdca477ab8787dda5f2ca17c` 均 Passed。相同 JIT 的旧／新产物成本请求也均通过，完整 ID、成本退化与未迁移范围见[报告](performance/simulation-growable-state-20260911.md)。Release 0 警告／错误，Linux 门禁通过，PowerShell 未运行；测试实例已停止。
+
 ## 2026-09-11：卡牌基础估值缓存完整复评（撤回）
 
 - 最小合同 `562da65df4654273bd870a0d5de7a622` Passed，覆盖升级、动态变量、COW 分支、并行读取和不透明模型旁路。两场完整原输入 ABBA 的八次测量均 Passed，88 项逻辑字段和完整路线一致；无预算覆盖或增量验证。约 2% 耗时差异不足以支持加入该缓存，分配略增且 GC 未稳定改善，生产源码与专用测试入口已撤回。具体 runId、命令、全部数据和局限见[报告](performance/simulation-card-value-cache-20260911.md)。

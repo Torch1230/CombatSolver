@@ -77,7 +77,7 @@ internal sealed partial class ReversibleValueState
             Count = source.Count;
             // The directory belongs to this candidate. Page objects contain only immutable
             // values; neither a worker nor an ancestor candidate is retained by this handle.
-            _pages = (ValuePage[])source._pages.Clone();
+            _pages = source._pages.AsSpan(0, PageCount(source.Count)).ToArray();
         }
 
         public long this[int slot]
@@ -115,6 +115,7 @@ internal sealed partial class ReversibleValueState
 
         internal void RestoreInto(ReversibleValueState workspace)
         {
+            workspace.Resize(Count);
             for (int page = 0; page < _pages.Length; page++)
             {
                 ValuePage frozen = _pages[page];

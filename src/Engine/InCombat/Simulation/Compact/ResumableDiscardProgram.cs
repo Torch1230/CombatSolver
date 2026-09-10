@@ -26,7 +26,6 @@ internal sealed class ResumableDiscardProgram
     private readonly int _pileStart = 10;
     private readonly int _frameStart;
     private readonly int _eventStart;
-    private readonly int _maxEvents;
     internal ReversibleValueState State { get; }
     internal int Energy => Read(EnergySlot);
     internal int Block => Read(BlockSlot);
@@ -69,8 +68,7 @@ internal sealed class ResumableDiscardProgram
         _cardComparer = comparisons == null ? null : new((int[])comparisons.Clone(), cards.Length);
         _frameStart = _pileStart + 5 * (cards.Length + 1);
         _eventStart = _frameStart + MaxFrames * FrameWidth;
-        _maxEvents = Math.Max(256, cards.Length * 9 + 8);
-        State = new ReversibleValueState(_eventStart + _maxEvents);
+        State = new ReversibleValueState(_eventStart);
         State.Write(EnergySlot, energy);
         State.Write(BlockSlot, block);
         WriteRng(shuffleRng);
@@ -93,7 +91,6 @@ internal sealed class ResumableDiscardProgram
         _cardComparer = cardComparer;
         _frameStart = _pileStart + 5 * (cards.Length + 1);
         _eventStart = _frameStart + MaxFrames * FrameWidth;
-        _maxEvents = Math.Max(256, cards.Length * 9 + 8);
         State = state;
     }
 
@@ -323,10 +320,11 @@ internal sealed class ResumableDiscardProgram
     private void Emit(EventKind kind, int card, int value = 0, bool automatic = false)
     {
         int count = EventCount;
-        if (count >= _maxEvents) throw new InvalidOperationException("Compact event capacity exceeded.");
-        State.Write(_eventStart + count, (long)(byte)kind | (long)(byte)card << 4 | (long)(uint)value << 12
+        if (State.Count != checked(_eventStart + count))
+            throw new InvalidOperationException("Compact event storage lost its append position.");
+        State.Append((long)(byte)kind | (long)(byte)card << 4 | (long)(uint)value << 12
             | (automatic ? 1L << 44 : 0));
-        State.Write(EventCountSlot, count + 1);
+        State.Write(EventCountSlot, checked(count + 1));
         EventsExecuted++;
     }
 
