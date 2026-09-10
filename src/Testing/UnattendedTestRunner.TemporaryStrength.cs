@@ -14,25 +14,39 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
-    private async Task AssertTemporaryStrengthAsync(CombatState combat, Player player, bool capped)
+    private async Task AssertTemporaryStrengthAsync(CombatState combat, Player player, bool capped, bool compact = false)
     {
         List<object> evidence = [];
-        foreach (int mode in capped ? new[] { 2, 3 } : new[] { 0, 1 })
+        foreach (int mode in compact ? new[] { 0, 4 } : capped ? new[] { 2, 3 } : new[] { 0, 1 })
         {
+            bool useCards = mode is 0 or 4;
             foreach (var relic in player.Relics.ToArray()) await RelicCmd.Remove(relic);
             foreach (var power in combat.Creatures.SelectMany(creature => creature.Powers).ToArray()) await PowerCmd.Remove(power);
             ClearRunDeck((RunState)combat.RunState, player);
             await ClearPlayerPilesAsync(player);
             Creature[] enemies = combat.Enemies.ToArray();
             if (enemies.Length != 3) throw new InvalidOperationException("Temporary strength fixture requires three enemies.");
-            if (mode == 0)
+            if (useCards)
             {
                 foreach (int upgrade in new[] { 0, 1 })
                     await InjectCardAsync(combat, player, new UnattendedCardInjection
                         { CardId = "PIERCING_WAIL", UpgradeLevels = upgrade, Pile = "Hand" });
                 await PowerCmd.Apply<StrengthPower>(new BlockingPlayerChoiceContext(), enemies[0], 6, enemies[0], null);
                 enemies[0].GetPower<StrengthPower>()!.AmountOnTurnStart = 9;
-                await PowerCmd.Apply<ArtifactPower>(new BlockingPlayerChoiceContext(), enemies[2], 1, enemies[2], null);
+                if (!compact) await PowerCmd.Apply<ArtifactPower>(new BlockingPlayerChoiceContext(), enemies[2], 1, enemies[2], null);
+                if (mode == 4)
+                {
+                    for (int index = 0; index < enemies.Length; index++)
+                    {
+                        await CreatureCmd.SetMaxHp(enemies[index], 100);
+                        await CreatureCmd.SetCurrentHp(enemies[index], index == 2 ? 1 : 100);
+                    }
+                    await PowerCmd.Apply<PiercingWailPower>(new BlockingPlayerChoiceContext(), enemies[0], 999_999_999, player.Creature, null);
+                    await PowerCmd.Remove(enemies[0].GetPower<StrengthPower>()!);
+                    await PowerCmd.Apply<PiercingWailPower>(new BlockingPlayerChoiceContext(), enemies[2], 2, enemies[2], null);
+                    enemies[2].GetPower<PiercingWailPower>()!.AmountOnTurnStart = 7;
+                    await InjectCardAsync(combat, player, new UnattendedCardInjection { CardId = "OUTBREAK", Pile = "Hand" });
+                }
             }
             else if (mode == 2)
             {
@@ -44,19 +58,21 @@ internal sealed partial class UnattendedTestRunner
             SetEnergy(player, 5); SetStars(player, 0);
             await RunManager.Instance.ActionExecutor.FinishedExecutingActions();
             CardModel[] cards = player.PlayerCombatState!.Hand.Cards.ToArray();
-            Creature[] participants = mode == 0 ? enemies : [player.Creature];
-            var root = CombatRootSnapshot.Capture(combat).ForkSimulator();
+            Creature[] participants = useCards ? enemies : [player.Creature];
+            var captured = CombatRootSnapshot.Capture(combat);
+            var root = captured.ForkSimulator();
+            if (compact) await AssertCompactCardSequencesAsync(captured, root, combat, player, cards, $"CompactTemporaryStrength:Mode{mode}");
             var prediction = root.Fork();
             var shadow = (SimulatedCombatState)prediction.State.CombatState;
             List<MoveStateSnapshot[]> expected = [];
             List<string[]> expectedPowers = [];
-            int actions = mode == 0 ? cards.Length : mode == 1 ? 3 : 1;
+            int actions = useCards ? cards.Length : mode == 1 ? 3 : 1;
             int Offset(int index) => mode switch { 2 => 6, 3 => 1_500_000_000, _ => new[] { 5, -2, -3 }[index] };
             using (SimulationNotificationIsolation.Enter())
             {
                 for (int index = 0; index < actions; index++)
                 {
-                    if (mode == 0)
+                    if (useCards)
                     {
                         if (!prediction.ManualPlay(prediction.State.FindCard(cards[index])!, null, out _))
                             throw new InvalidOperationException("Temporary strength card suspended.");
@@ -80,7 +96,7 @@ internal sealed partial class UnattendedTestRunner
             }
             for (int index = 0; index < actions; index++)
             {
-                if (mode == 0)
+                if (useCards)
                 {
                     if (!cards[index].TryManualPlay(null)) throw new InvalidOperationException("Native temporary strength card rejected.");
                 }
@@ -113,7 +129,8 @@ internal sealed partial class UnattendedTestRunner
                         + string.Join('|', expectedPowers[index]) + "; actual=" + string.Join('|', actual));
             }
         }
-        _completedChecks.Add(capped ? "TemporaryStrength:NativeStackAndInitialCounterCap:RequestedOffset:BeforeAppliedAndAmountChanged:AfterSideTurnEnd:FullState:ForkIsolation"
+        if (compact) _completedChecks.Add("CompactTemporaryStrength:Native2Roots5Cards:FirstStackCap:StrengthRetirementReacquisition:EnemyDeath:FullState:PowerMetadata:LegacyAfterSideTurnEnd");
+        else _completedChecks.Add(capped ? "TemporaryStrength:NativeStackAndInitialCounterCap:RequestedOffset:BeforeAppliedAndAmountChanged:AfterSideTurnEnd:FullState:ForkIsolation"
             : "TemporaryStrength:NativeLossAndGain:FirstApplicationOrder:StackingAndNegativeOffsets:Artifact:StrengthRetirementReacquisition:AfterSideTurnEnd:FullState:ForkIsolation");
         if (!string.IsNullOrWhiteSpace(_request.EvidenceDirectory))
         {

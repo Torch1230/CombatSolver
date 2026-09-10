@@ -4,7 +4,7 @@ internal enum CardInstructionKind
 {
     AttackTarget, GainBlock, Draw, Discard, ApplyBasicPower, SkipIfDrawnCardNotType,
     TriggerBasicPower, DiscardHandAndDraw, SkipIfTargetLacksPower, GainBlockFromPowerSum,
-    GainBlockAndApplyPower
+    GainBlockAndApplyPower, ApplyTemporaryStrengthLoss
 }
 internal enum CardInstructionTarget { Owner, ChosenEnemy, AllEnemies }
 internal enum CardCategory { Other, Attack, Skill, Power }
@@ -86,6 +86,13 @@ internal sealed class CardEffectProgram
                     if (instruction.Power != BasicPowerKind.Poison || instruction.Target != CardInstructionTarget.ChosenEnemy)
                         throw new NotSupportedException("Power predicate is outside the admitted target domain.");
                     RequiresTarget = true;
+                    RequiresPowers = true;
+                    break;
+                case CardInstructionKind.ApplyTemporaryStrengthLoss:
+                    if (instruction.Power != BasicPowerKind.PiercingWail
+                        || instruction.Target is not (CardInstructionTarget.ChosenEnemy or CardInstructionTarget.AllEnemies))
+                        throw new NotSupportedException("Temporary Strength is outside the admitted enemy Power domain.");
+                    RequiresTarget |= instruction.Target == CardInstructionTarget.ChosenEnemy;
                     RequiresPowers = true;
                     break;
                 case CardInstructionKind.ApplyBasicPower:

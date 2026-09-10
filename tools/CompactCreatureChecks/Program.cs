@@ -7,6 +7,7 @@ ConditionalPowerChecks.Run();
 PoisonDiscardChecks.Run();
 PowerExpressionChecks.Run();
 DeferredPowerChecks.Run();
+TemporaryStrengthChecks.Run();
 
 (int Hp, int Block, decimal Amount, bool Unblockable, int ExpectedHp, int ExpectedBlock, decimal Blocked, int Lost, bool Killed, int Overkill)[] damageCases =
 {

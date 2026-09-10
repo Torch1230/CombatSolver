@@ -46,6 +46,7 @@ internal sealed class CompactDiscardProjection
         var powers = combat.EffectivePowers();
         if (combat.Players.Count != 1 || powers.Any(p => !(p is StratagemPower && p.Owner == player.Creature && p.Amount is >= 1 and <= 10)
                 && !(includeAttacks ? IsBasicPower(p) && (p is not (BlockNextTurnPower or ToolsOfTheTradePower) || p.Owner == player.Creature)
+                    && (p is not PiercingWailPower || p.Owner != player.Creature)
                     : p is StrengthPower && p.Owner != player.Creature))
             || combat.RootRunModSubscriberCount != 0 || combat.RootCombatModSubscriberCount != 0
             || combat.RootHasBaseLibCardModifiers || combat.RootRunHookListenerCount != 0
@@ -130,6 +131,7 @@ internal sealed class CompactDiscardProjection
         foreach (BasicPowerKind kind in Enum.GetValues<BasicPowerKind>())
         {
             if (kind is BasicPowerKind.BlockNextTurn or BasicPowerKind.ToolsOfTheTrade && owner != _player.Creature) continue;
+            if (kind == BasicPowerKind.PiercingWail && owner == _player.Creature) continue;
             if (result.Any(p => p.Owner == owner && BasicKind(p) == kind)) continue;
             PowerModel prototype = CanonicalPower(kind);
             PowerModel template = PredictionUtils.CloneModelForSimulation(prototype);
@@ -140,7 +142,7 @@ internal sealed class CompactDiscardProjection
         return result.ToArray();
     }
 
-    private static bool IsBasicPower(PowerModel power) => power is StrengthPower or DexterityPower or WeakPower or VulnerablePower or FrailPower or PoisonPower or BlockNextTurnPower or ToolsOfTheTradePower;
+    private static bool IsBasicPower(PowerModel power) => power is StrengthPower or DexterityPower or WeakPower or VulnerablePower or FrailPower or PoisonPower or BlockNextTurnPower or ToolsOfTheTradePower or PiercingWailPower;
     private static PowerModel CanonicalPower(BasicPowerKind kind) => kind switch
     {
         BasicPowerKind.Strength => CanonicalModels.Power<StrengthPower>(),
@@ -150,6 +152,7 @@ internal sealed class CompactDiscardProjection
         BasicPowerKind.Frail => CanonicalModels.Power<FrailPower>(),
         BasicPowerKind.Poison => CanonicalModels.Power<PoisonPower>(),
         BasicPowerKind.BlockNextTurn => CanonicalModels.Power<BlockNextTurnPower>(),
+        BasicPowerKind.PiercingWail => CanonicalModels.Power<PiercingWailPower>(),
         BasicPowerKind.ToolsOfTheTrade => CanonicalModels.Power<ToolsOfTheTradePower>(),
         _ => throw new InvalidOperationException("Unknown basic Power kind.")
     };
@@ -157,6 +160,7 @@ internal sealed class CompactDiscardProjection
     {
         StrengthPower => BasicPowerKind.Strength, DexterityPower => BasicPowerKind.Dexterity, WeakPower => BasicPowerKind.Weak,
         VulnerablePower => BasicPowerKind.Vulnerable, FrailPower => BasicPowerKind.Frail, PoisonPower => BasicPowerKind.Poison,
+        PiercingWailPower => BasicPowerKind.PiercingWail,
         BlockNextTurnPower => BasicPowerKind.BlockNextTurn, ToolsOfTheTradePower => BasicPowerKind.ToolsOfTheTrade,
         _ => throw new InvalidOperationException("Power has no compact basic kind.")
     };
@@ -459,6 +463,7 @@ internal sealed class CompactDiscardProjection
             || type == typeof(DexterityPower) && method == nameof(AbstractModel.ModifyBlockAdditive)
             || (type == typeof(WeakPower) || type == typeof(VulnerablePower)) && method == nameof(AbstractModel.ModifyDamageMultiplicative)
             || type == typeof(FrailPower) && method == nameof(AbstractModel.ModifyBlockMultiplicative)
+            || type == typeof(PiercingWailPower) && method == nameof(AbstractModel.AfterPowerAmountChanged)
             || type == typeof(DebufferModel) && method == nameof(AbstractModel.AfterPowerAmountChanged)
             || type == typeof(MultiplayerScalingModel) && method == nameof(AbstractModel.ModifyBlockMultiplicative)
             || method == nameof(AbstractModel.AfterCardPlayed)

@@ -1,5 +1,7 @@
 # CombatSolver 测试清单
 
+- `COMPACT-TEMPORARY-STRENGTH-NATIVE`（`73cfb42540b941beb3603a22310c1712`）Passed：两个原生根／9 分支／八工作区／五次出牌，尖啸首次、叠加封顶、力量退休重获、Power 非默认字段与敌人死亡，完整 Snapshot／原键／历史／九 RNG。共用 helper 的下回合计数哨兵 `b171994244b54caaafb6e479dca94365` Passed；侧回合末仍由旧引擎与原生定向回调对照，[证据](performance/simulation-compact-temporary-strength-20260911.md)。
+
 - `TEMPORARY-STRENGTH-ORDER-NATIVE`（`f2309b7ed0b1467e87d45a4d77f741ac`）与 `TEMPORARY-STRENGTH-CAP-NATIVE`（`fdcb17d80e1b4106870c33f5a98f04fb`）Passed：两条失败基线对应顺序与封顶偏移；最终覆盖尖啸、Artifact、+5／−2／−3、已有封顶与首次超上限、完整 Power 顺序／快照、Fork 和原生侧回合末恢复。普通 Power／中毒哨兵 `d44af93c1ae845358d699f44961cb116` 通过；[产物范围与证据](performance/simulation-temporary-strength-20260911.md)。
 
 - `COMPACT-DEFERRED-POWERS-NATIVE`（`6f3117a761c04843a78aa6aae746b538`）与新增 Power 槽后的中毒／表达式哨兵（`0ea7d01ece354b858df12471eb6ba5d4`）Passed：三个原生根、16 分支／八工作区、上限与小数返回、必备工具计数和移除；完整状态／历史／原键／Snapshot。兑现由旧引擎与原生定向触发 `AfterBlockCleared`，不是紧凑跨回合；[证据](performance/simulation-compact-deferred-powers-20260911.md)。

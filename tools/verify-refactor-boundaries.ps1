@@ -1291,6 +1291,7 @@ $compactReadGuards = @(
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'State.Write(Frame + FirstDrawnOffset, drawn);'),
     @('src/Testing/CompactDiscardProjection.cs', 'CompactCardProgramCompiler.Compile(card.Preview, includeAttacks)'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'State.Write(Frame + DrawResumeIpOffset, resumeIp);'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'private void ApplyTemporaryStrengthLoss(int card, int target, int amount)'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'ValidateBlockReturns(cards, powers);'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'ApplyPower(card, 0, instruction.Power, (int)returned);'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'sum = checked(sum + _powers!.Amount(State, target, instruction.Power));'),

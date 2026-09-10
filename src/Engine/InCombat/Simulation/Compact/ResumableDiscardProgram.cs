@@ -346,6 +346,13 @@ internal sealed class ResumableDiscardProgram
                 }
                 else ApplyPower(card, instruction.Target == CardInstructionTarget.Owner ? 0 : Read(Frame + TargetOffset), instruction.Power, amount);
                 break;
+            case CardInstructionKind.ApplyTemporaryStrengthLoss:
+                if (instruction.Target == CardInstructionTarget.AllEnemies)
+                {
+                    for (int target = 1; target < CreatureCount; target++) ApplyTemporaryStrengthLoss(card, target, instruction.Amount);
+                }
+                else ApplyTemporaryStrengthLoss(card, Read(Frame + TargetOffset), instruction.Amount);
+                break;
             case CardInstructionKind.TriggerBasicPower:
                 if (instruction.Target == CardInstructionTarget.AllEnemies)
                 {
@@ -491,6 +498,19 @@ internal sealed class ResumableDiscardProgram
             _powers?.RemoveOwner(State, target);
             Emit(EventKind.Death, card, target: target);
         }
+    }
+
+    private void ApplyTemporaryStrengthLoss(int card, int target, int amount)
+    {
+        if (amount == 0 || Ending || !CreaturePresent(target) || Creature(target).CurrentHp <= 0) return;
+        // The first native Strength command precedes creation of the temporary counter.
+        if (_powers!.Amount(State, target, BasicPowerKind.PiercingWail) == 0)
+            ApplyPower(card, target, BasicPowerKind.Strength, -amount);
+        ApplyPower(card, target, BasicPowerKind.PiercingWail, amount);
+        // Native callback compares the requested offset with the resulting counter,
+        // including stacks whose counter is already at its cap.
+        if (amount != _powers.Amount(State, target, BasicPowerKind.PiercingWail))
+            ApplyPower(card, target, BasicPowerKind.Strength, -amount);
     }
 
     private void ApplyPower(int card, int target, BasicPowerKind kind, int amount)

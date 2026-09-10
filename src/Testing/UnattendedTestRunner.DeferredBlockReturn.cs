@@ -41,7 +41,7 @@ internal sealed partial class UnattendedTestRunner
             var cards = player.PlayerCombatState!.Hand.Cards.ToArray();
             var captured = CombatRootSnapshot.Capture(combat);
             var root = captured.ForkSimulator();
-            if (compact) await AssertCompactDeferredPowerRootAsync(captured, root, combat, player, cards, mode);
+            if (compact) await AssertCompactCardSequencesAsync(captured, root, combat, player, cards, $"CompactDeferredPowerRoot:Mode{mode}");
             var prediction = root.Fork();
             var shadow = (SimulatedCombatState)prediction.State.CombatState;
             List<MoveStateSnapshot> expected = [];

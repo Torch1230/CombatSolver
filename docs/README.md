@@ -7,6 +7,7 @@
 | 要查什么 | 入口 |
 |---|---|
 | 临时力量首次施加、正负偏移与计数封顶 | [原生差分与修正](performance/simulation-temporary-strength-20260911.md) |
+- [紧凑临时力量与尖啸](performance/simulation-compact-temporary-strength-20260911.md)
 | 紧凑下回合格挡、必备工具计数与零层实例准入 | [下回合计数结果](performance/simulation-compact-deferred-powers-20260911.md) |
 | 闪躲翻滚在格挡上限处的下回合格挡修正 | [返回值差分](performance/simulation-deferred-block-return-20260911.md) |
 | 目标 Power 条件与存活敌人求和格挡 | [Power 表达式结果](performance/simulation-power-expressions-20260911.md) |

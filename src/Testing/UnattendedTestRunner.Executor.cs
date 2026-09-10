@@ -39,6 +39,11 @@ internal sealed partial class UnattendedTestRunner
             bool expectedCardPlayed = request.ExpectedPlayedCardId == null;
             bool expectedPotionUsed = request.ExpectedUsedPotionId == null;
             bool expectedPlayerPowerObserved = request.ExpectedObservedPlayerPowerId == null;
+            if (request.ScenarioId == "COMPACT-TEMPORARY-STRENGTH-NATIVE")
+            {
+                await runner.AssertTemporaryStrengthAsync(combatState, player, capped: false, compact: true);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId is "TEMPORARY-STRENGTH-ORDER-NATIVE" or "TEMPORARY-STRENGTH-CAP-NATIVE")
             {
                 await runner.AssertTemporaryStrengthAsync(combatState, player, request.ScenarioId == "TEMPORARY-STRENGTH-CAP-NATIVE");

@@ -1,0 +1,135 @@
+{
+  "date": "2026-09-11",
+  "baseCommit": "672e25e",
+  "admittedCardTypeCount": 26,
+  "newCard": "PiercingWail",
+  "newEnemyPowerKind": "PiercingWail",
+  "productionBackendEnabled": false,
+  "fullSearchSpeedupClaim": false,
+  "build": {
+    "artifact": "artifact-v1",
+    "seconds": 10.65,
+    "warnings": 0,
+    "errors": 0
+  },
+  "pureChecks": {
+    "status": "Passed",
+    "firstAndStack": true,
+    "cap": true,
+    "retirementReacquisition": true,
+    "orderAndApplier": true,
+    "exhaustionAndDeath": true,
+    "rollback": true,
+    "workers": 8
+  },
+  "nativeRuns": [
+    {
+      "name": "native-v1",
+      "runId": "73cfb42540b941beb3603a22310c1712",
+      "scenarioId": "COMPACT-TEMPORARY-STRENGTH-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 24134.663,
+      "completedChecks": [
+        "CompactTemporaryStrength:Mode0:4Branches:Frozen8Workers:AllSnapshotProperties",
+        "CompactTemporaryStrength:Mode4:5Branches:Frozen8Workers:AllSnapshotProperties",
+        "CompactTemporaryStrength:Native2Roots5Cards:FirstStackCap:StrengthRetirementReacquisition:EnemyDeath:FullState:PowerMetadata:LegacyAfterSideTurnEnd"
+      ]
+    },
+    {
+      "name": "deferred-sentinel",
+      "runId": "b171994244b54caaafb6e479dca94365",
+      "scenarioId": "COMPACT-DEFERRED-POWERS-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 5836.7563,
+      "completedChecks": [
+        "CompactDeferredPowerRoot:Mode0:5Branches:Frozen8Workers:AllSnapshotProperties",
+        "CompactDeferredPowerRoot:Mode1:6Branches:Frozen8Workers:AllSnapshotProperties",
+        "CompactDeferredPowerRoot:Mode2:5Branches:Frozen8Workers:AllSnapshotProperties",
+        "DeferredBlockReturn:Native3Roots:CapAndFraction:Stacking:Zero:AllSnapshotFields:PowerMetadata:ForkIsolation:AfterBlockCleared",
+        "CompactDeferredPowers:Native3Roots10Actions:BlockReturnAndToolsCounter:Removal:AllSnapshotProperties:HistorySources:AllRng:Rollback:Frozen8Workers:LegacyAfterBlockCleared"
+      ]
+    }
+  ],
+  "branches": [
+    4,
+    5
+  ],
+  "nativeCardCount": 5,
+  "cases": [
+    {
+      "mode": 0,
+      "actions": 2,
+      "expectedPowers": [
+        [
+          "0:1:PIERCING_WAIL_POWER:6:0::0:False:",
+          "0:2:STRENGTH_POWER:-6:0::0:False:",
+          "0:3:STRENGTH_POWER:-6:0::0:False:",
+          "1:2:PIERCING_WAIL_POWER:6:0::0:False:",
+          "1:3:PIERCING_WAIL_POWER:6:0::0:False:"
+        ],
+        [
+          "0:1:PIERCING_WAIL_POWER:14:0::0:False:",
+          "0:2:STRENGTH_POWER:-14:0::0:False:",
+          "0:3:STRENGTH_POWER:-14:0::0:False:",
+          "1:1:STRENGTH_POWER:-8:0::0:False:",
+          "1:2:PIERCING_WAIL_POWER:14:0::0:False:",
+          "1:3:PIERCING_WAIL_POWER:14:0::0:False:"
+        ],
+        [
+          "0:1:STRENGTH_POWER:6:0::0:False:"
+        ]
+      ],
+      "finalStrength": [
+        6,
+        0,
+        0
+      ]
+    },
+    {
+      "mode": 4,
+      "actions": 3,
+      "expectedPowers": [
+        [
+          "0:1:PIERCING_WAIL_POWER:999999999:0::0:False:",
+          "0:2:STRENGTH_POWER:-6:0::0:False:",
+          "0:3:STRENGTH_POWER:-8:3::0:False:",
+          "1:1:STRENGTH_POWER:-6:0::0:False:",
+          "1:2:PIERCING_WAIL_POWER:6:0::0:False:",
+          "1:3:PIERCING_WAIL_POWER:8:3::7:False:"
+        ],
+        [
+          "0:1:PIERCING_WAIL_POWER:999999999:0::0:False:",
+          "0:2:STRENGTH_POWER:-14:0::0:False:",
+          "0:3:STRENGTH_POWER:-16:3::0:False:",
+          "1:1:STRENGTH_POWER:-14:0::0:False:",
+          "1:2:PIERCING_WAIL_POWER:14:0::0:False:",
+          "1:3:PIERCING_WAIL_POWER:16:3::7:False:"
+        ],
+        [
+          "0:1:PIERCING_WAIL_POWER:999999999:0::0:False:",
+          "0:2:STRENGTH_POWER:-14:0::0:False:",
+          "1:1:STRENGTH_POWER:-14:0::0:False:",
+          "1:2:PIERCING_WAIL_POWER:14:0::0:False:",
+          "2:1:POISON_POWER:8:0::0:False:",
+          "2:2:POISON_POWER:8:0::0:False:"
+        ],
+        [
+          "0:1:STRENGTH_POWER:999999985:0::0:False:",
+          "0:2:POISON_POWER:8:0::0:False:",
+          "1:1:POISON_POWER:8:0::0:False:"
+        ]
+      ],
+      "finalStrength": [
+        999999985,
+        0,
+        0
+      ]
+    }
+  ],
+  "boundaries": {
+    "linux": "Passed",
+    "searchFiles": 88,
+    "powershell": "Updated, not executed"
+  },
+  "lifecycleBoundary": "Compact applies and clears counters on death; legacy prediction and direct native AfterSideTurnEnd verify restoration. Compact round not implemented."
+}

@@ -9,8 +9,8 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
-    private async Task AssertCompactDeferredPowerRootAsync(CombatRootSnapshot captured, CombatPredictionSimulator root,
-        CombatState combat, Player player, CardModel[] cards, int mode)
+    private async Task AssertCompactCardSequencesAsync(CombatRootSnapshot captured, CombatPredictionSimulator root,
+        CombatState combat, Player player, CardModel[] cards, string fixture)
     {
         var display = SolverDisplayNames.Capture(combat);
         var damage = BattleDamageTracker.Observe(combat);
@@ -37,18 +37,18 @@ internal sealed partial class UnattendedTestRunner
                 {
                     Play(lane, index);
                     if (!oracle.ManualPlay(oracle.State.FindCard(cards[index])!, null, out _))
-                        throw new InvalidOperationException("Deferred Power oracle suspended.");
+                        throw new InvalidOperationException($"{fixture} oracle suspended.");
                     var projection = adapter.Materialize(lane);
                     adapter.AssertValues(lane, oracle); adapter.AssertValues(lane, projection);
                     foreach (var enemy in enemies)
                         AssertSnapshotEqual(CaptureSimulated(oracle, (SimulatedCombatState)oracle.State.CombatState, player, enemy),
                             CaptureSimulated(projection, (SimulatedCombatState)projection.State.CombatState, player, enemy),
-                            "CompactDeferredPowers", $"Mode{mode}-Card{index}");
+                            fixture, $"Card{index}");
                     if (!CompactPowerValues(((SimulatedCombatState)oracle.State.CombatState).EffectivePowers())
                         .SequenceEqual(CompactPowerValues(((SimulatedCombatState)projection.State.CombatState).EffectivePowers())))
-                        throw new InvalidOperationException("Deferred Power metadata/order differs.");
+                        throw new InvalidOperationException($"{fixture} metadata/order differs.");
                     if (!CompactHistory(oracle, adapter).SequenceEqual(CompactHistory(projection, adapter)))
-                        throw new InvalidOperationException("Deferred Power history/source differs.");
+                        throw new InvalidOperationException($"{fixture} history/source differs.");
                     AssertCompactRngSet(oracle.Rng, projection.Rng);
                     var expected = Release(evaluator.Evaluate(oracle));
                     AssertCompactEvaluation(expected, Release(evaluator.Evaluate(projection)));
@@ -60,7 +60,7 @@ internal sealed partial class UnattendedTestRunner
                 samples.Add((path, lane.Freeze(), evaluator.Evaluate(reader)));
                 lane.State.Rollback(mark);
                 if (!lane.State.Freeze().ContentEquals(initial.Open().State.Freeze()))
-                    throw new InvalidOperationException("Deferred Power rollback retained a counter or removed card.");
+                    throw new InvalidOperationException($"{fixture} rollback retained a counter or removed card.");
             }
             foreach (var sample in samples.AsEnumerable().Reverse())
             {
@@ -81,16 +81,16 @@ internal sealed partial class UnattendedTestRunner
                 initial.RestoreInto(lane);
                 foreach (int index in sample.Path) Play(lane, index);
                 if (!lane.State.Freeze().ContentEquals(sample.State.Open().State.Freeze()))
-                    throw new InvalidOperationException("Deferred Power worker retained sibling values.");
+                    throw new InvalidOperationException($"{fixture} worker retained sibling values.");
                 reader.Read(lane); AssertCompactEvaluation(sample.Evaluation, evaluator.Evaluate(reader));
             }
         })));
-        _completedChecks.Add($"CompactDeferredPowerRoot:Mode{mode}:{samples.Count}Branches:Frozen8Workers:AllSnapshotProperties");
+        _completedChecks.Add($"{fixture}:{samples.Count}Branches:Frozen8Workers:AllSnapshotProperties");
 
         void Play(ResumableDiscardProgram lane, int index)
         {
             lane.Begin(adapter.IndexOf(cards[index])); lane.Run();
-            if (!lane.Complete) throw new InvalidOperationException("Deferred Power compact command suspended.");
+            if (!lane.Complete) throw new InvalidOperationException($"{fixture} compact command suspended.");
         }
     }
 }
