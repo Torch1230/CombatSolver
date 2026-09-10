@@ -11,6 +11,7 @@
 | 已执行测试、复跑方式和未验证范围 | [测试矩阵](TEST_MATRIX.md) |
 | 模拟性能重构的阶段、工作量与验收标准 | [完整搜索重构计划](performance/simulation-refactor-plan-20260910.md) |
 | 重构首轮细分结果与候选取舍 | [P1 复用率与类型成本](performance/simulation-refactor-p1-20260910.md) |
+| 完整搜索性能重构最终交付、headless 收口与各阶段取舍 | [最终报告](performance/simulation-refactor-result-20260910.md) |
 | P2 / P4 等待选择快照及 Power 复制的 CPU 与所有权取舍 | [剩余候选决策](performance/simulation-refactor-p2-p4-decision-20260910.md) |
 | 线程 CPU 诊断、阶段提取与检查点验证状态 | [P5 选择前缀测量与回合检查点](performance/simulation-refactor-p5-20260910.md) |
 | 归一化原型验证、撤回与测量干扰 | [P3 实验记录](performance/simulation-refactor-p3-20260910.md) |

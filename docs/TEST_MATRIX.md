@@ -1,5 +1,11 @@
 # CombatSolver 测试清单
 
+## 2026-09-10：性能重构最终 headless 集成
+
+- 用户明确取消可见测试，以 headless 完成。本轮没有继续启动 Steam；隔离入口使用 `--headless --force-steam=off`。
+- 机甲 `170c7f252d1d4aa6b46a2a5f0b586b76`、亡灵 `dbc41031ba1e42e8b6933f1fe62edbf2` 完整原生部署均 Passed：VeryHigh / DOP8 / NoGC16GB，无搜索预算覆盖或增量验证，Instant / 0 秒部署；T7 / T13、实际结束 HP ≥59 / ≥32、零计划外重算。请求总时长 44.17 / 107.88 秒，均在 120 秒内。
+- 初始搜索 88 项逻辑字段及完整动作/回合结果/预测和 P5 候选全同；其后 6 / 12 个 `SEARCH_REUSED` 均为 `exact_state_text`，复用 RESULT 的展开与转移为零。日志退役后已停止拥有的实例。完整命令、请求、结果、逐次复用及取消前可见尝试的局限见[最终报告](performance/simulation-refactor-result-20260910.md)。行为构建和结构门禁复用 P5 已通过的相同冻结产物，收口只修改文档，未重跑同一成功行为验证。
+
 ## 2026-09-10：P2 / P4 决策诊断
 
 - `1787f9d` 上临时测量 Snapshot / ForkPower / PowerFingerprint 的线程 CPU 与分配，Release 0 警告/错误。机甲 `9305c5edd5844f7188aa8f584a1bbbd4`、亡灵 `c64a0b392e57424e96a06b1dc6492db3` 两场完整正常请求 Passed；88 项逻辑字段及完整动作、回合结果/预测相同。
@@ -9,7 +15,7 @@
 
 - Fork 合同 `9b709fcb76cf48c7979233b42981075b`，原生 Tools / Mayhem `94203d60bb9a4a38b612d400ada429c9` / `fc88e983d1f74a33b9a7cb2eeb8c1b45`，DOP1/DOP2 / 取消 / 失败排空 / 复用 `f9e7de49655940e1a92ea14a9f6fbf07` 均 Passed。七组影子检查点对原完整重放逐分支比动作、状态键、评分、完整状态、RNG/洗牌和逻辑工作；覆盖父子/live 隔离、提前释放与终局不捕获。
 - 冻结前 Release 0 警告/错误，Linux 结构门禁 85 个 Search 文件；双端规则同步，未执行 PowerShell。没有 headless 增量验证。
-- 两场原完整 VeryHigh / DOP8 / NoGC16GB 的 ABBAABBA 全部完成，每进程相同两场预热、16 次测量，131 项字段分类比较，88 项逻辑字段和 40/85 条完整动作零差异。机甲四对耗时下降 12.87%–18.80%、分配 −14.62%；亡灵四对下降 2.16%–9.52%、分配 −1.52%，同期基线漂移明显。采样 RSS 均值增加、最坏 GC 未改善，完整证据与局限见[P5 报告](performance/simulation-refactor-p5-20260910.md)。完整原生部署与可见帧验证待 P6。
+- 两场原完整 VeryHigh / DOP8 / NoGC16GB 的 ABBAABBA 全部完成，每进程相同两场预热、16 次测量，131 项字段分类比较，88 项逻辑字段和 40/85 条完整动作零差异。机甲四对耗时下降 12.87%–18.80%、分配 −14.62%；亡灵四对下降 2.16%–9.52%、分配 −1.52%，同期基线漂移明显。采样 RSS 均值增加、最坏 GC 未改善，完整证据与局限见[P5 报告](performance/simulation-refactor-p5-20260910.md)。完整原生部署已由 P6 headless 补齐，用户取消可见帧验证。
 
 ## 2026-09-10：P5 回合阶段职责迁移
 

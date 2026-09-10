@@ -4246,7 +4246,7 @@
     "P2": "Do not implement a typed pending-outcome evaluation bypass in this batch; measured possible savings are small, especially in the large case. Projection cache was already declined in P1.",
     "P4": "Do not enter first-batch compact Power ownership/storage migration: selected top three types total only 2.704% of request CPU in clone scopes, including timer overhead; all Power clone scopes total 8.163%. This is a measured entry decision, not a claim that a prototype was implemented or disproved.",
     "P5": "Retained separately at 1787f9d",
-    "P6": "Visible native integration in progress"
+    "P6": "Final full headless native integration passed; visible testing cancelled by user"
   },
   "sourceRestored": true,
   "validation": {

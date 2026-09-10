@@ -3322,7 +3322,7 @@
       }
     ],
     "performanceStatus": "ABBAABBA complete: 16 measured full searches, all 88 logical fields and full routes equal",
-    "visibleStatus": "P6 pending"
+    "visibleStatus": "Cancelled by explicit user request; final full headless native deployment passed in both cases"
   },
   "diagnosticSectionOnly": [
     "clock",
@@ -11886,6 +11886,6 @@
         ]
       }
     },
-    "decision": "Retain for repeated mechanical-case CPU/allocation benefit; smaller necro benefit; sampled process RSS increased, no general RSS or worst-GC improvement claim; final visible integration pending"
+    "decision": "Retain for repeated mechanical-case CPU/allocation benefit; smaller necro benefit; sampled process RSS increased, no general RSS or worst-GC improvement claim; final headless native integration passed; visible testing cancelled by user"
   }
 }
