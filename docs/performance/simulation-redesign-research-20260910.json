@@ -1,0 +1,320 @@
+{
+  "date": "2026-09-10",
+  "inspectedHead": "6161e74",
+  "kind": "offline research; no new game runs or implementation",
+  "sources": [
+    "simulation-refactor-p5-20260910.json",
+    "simulation-profile-20260910.json",
+    "simulation-refactor-p2-p4-decision-20260910.json",
+    "veryhigh-state-experiments-20260908.md",
+    "bold-backend-experiments-20260908.md"
+  ],
+  "units": "decimal bytes; wall/transition is request throughput normalization, not per-action latency or CPU",
+  "cases": {
+    "mecha": {
+      "retainedSourceCommit": "1787f9d",
+      "runIds": [
+        "cf237efb2579492ba33fb20d1213bc47",
+        "ba7255e365f54ce589544957357c1e28",
+        "1f16813d1bd942afbf5f61266b327308",
+        "ad0f5b90ec84409388c8a51c32f9ac4d"
+      ],
+      "totalTransitions": 119407,
+      "selectedSolverTransitions": 119407,
+      "outsideSelectedSolverTransitions": 0,
+      "outsideSelectedSolverSharePercent": 0.0,
+      "meanTotalElapsedMilliseconds": 3061.47675,
+      "meanTotalWorkerAllocatedBytes": 4871031680.0,
+      "requestMeanWallMicrosecondsPerLogicalTransition": 25.639005669684355,
+      "meanAllocatedBytesPerLogicalTransition": 40793.5186379358,
+      "originalCpuSourceCommit": "a6bc386",
+      "originalDisjointSearchCpu": [
+        {
+          "name": "round_simulation",
+          "weightNanoseconds": 5819094750,
+          "percent": 33.516642547033285,
+          "samples": 1158
+        },
+        {
+          "name": "snapshot_evaluation",
+          "weightNanoseconds": 4241205500,
+          "percent": 24.42836468885673,
+          "samples": 844
+        },
+        {
+          "name": "fork",
+          "weightNanoseconds": 2386934375,
+          "percent": 13.748191027496382,
+          "samples": 475
+        },
+        {
+          "name": "other_search",
+          "weightNanoseconds": 2030150500,
+          "percent": 11.693198263386396,
+          "samples": 404
+        },
+        {
+          "name": "card_execution",
+          "weightNanoseconds": 1552763625,
+          "percent": 8.94356005788712,
+          "samples": 309
+        },
+        {
+          "name": "replay_other",
+          "weightNanoseconds": 959798875,
+          "percent": 5.52821997105644,
+          "samples": 191
+        },
+        {
+          "name": "retention_other",
+          "weightNanoseconds": 371859250,
+          "percent": 2.141823444283647,
+          "samples": 74
+        }
+      ]
+    },
+    "necro": {
+      "retainedSourceCommit": "1787f9d",
+      "runIds": [
+        "43544da114824e169031be158500422d",
+        "a46dcba8b0d64a06ba4a74104634234f",
+        "324d78fa4c17415ea4cda05d63fde31c",
+        "69551896ebad45a4b4f1ca08731bee10"
+      ],
+      "totalTransitions": 1693024,
+      "selectedSolverTransitions": 409290,
+      "outsideSelectedSolverTransitions": 1283734,
+      "outsideSelectedSolverSharePercent": 75.82491447256507,
+      "meanTotalElapsedMilliseconds": 76701.651975,
+      "meanTotalWorkerAllocatedBytes": 85375636930.0,
+      "requestMeanWallMicrosecondsPerLogicalTransition": 45.30452726895779,
+      "meanAllocatedBytesPerLogicalTransition": 50427.89525133725,
+      "originalCpuSourceCommit": "a6bc386",
+      "originalDisjointSearchCpu": [
+        {
+          "name": "snapshot_evaluation",
+          "weightNanoseconds": 96055264375,
+          "percent": 28.24862931709696,
+          "samples": 19115
+        },
+        {
+          "name": "round_simulation",
+          "weightNanoseconds": 68874363250,
+          "percent": 20.25507263511017,
+          "samples": 13706
+        },
+        {
+          "name": "card_execution",
+          "weightNanoseconds": 55557782000,
+          "percent": 16.338835769281925,
+          "samples": 11056
+        },
+        {
+          "name": "fork",
+          "weightNanoseconds": 49371853125,
+          "percent": 14.519632908212275,
+          "samples": 9825
+        },
+        {
+          "name": "other_search",
+          "weightNanoseconds": 31708538750,
+          "percent": 9.325077216368392,
+          "samples": 6310
+        },
+        {
+          "name": "replay_other",
+          "weightNanoseconds": 23371856375,
+          "percent": 6.87336515583667,
+          "samples": 4651
+        },
+        {
+          "name": "retention_other",
+          "weightNanoseconds": 10512561500,
+          "percent": 3.0916103861557334,
+          "samples": 2092
+        },
+        {
+          "name": "potion_execution",
+          "weightNanoseconds": 4582914000,
+          "percent": 1.3477766119378722,
+          "samples": 912
+        }
+      ]
+    }
+  },
+  "necroAudit": {
+    "runId": "43544da114824e169031be158500422d",
+    "primarySolves": 1,
+    "potionFreeSolves": 1,
+    "singleOpeningSolves": 2,
+    "pairOpeningSolves": 2,
+    "pairDefensiveSolves": 0,
+    "totalSolves": 6,
+    "evidence": [
+      "[CombatSolver/Test] REQUIRED_POTION_AUDIT start potion_count=2 reported_saved=21 required=18",
+      "[CombatSolver/Test] REQUIRED_MULTI_POTION_POSTERIOR potion=GAMBLERS_BREW target=- won=False hp_deficit=8 selected=False",
+      "[CombatSolver/Test] REQUIRED_POTION_PAIR_POSTERIOR first=GAMBLERS_BREW:- second=COLORLESS_POTION:- won=True hp_deficit=15 selected=False",
+      "[CombatSolver/Test] REQUIRED_MULTI_POTION_POSTERIOR potion=COLORLESS_POTION target=- won=False hp_deficit=14 selected=False",
+      "[CombatSolver/Test] REQUIRED_POTION_PAIR_POSTERIOR first=COLORLESS_POTION:- second=GAMBLERS_BREW:- won=True hp_deficit=15 selected=False",
+      "[CombatSolver/Test] REQUIRED_POTION_AUDIT result potion_free_won=False selected=multi_potion_rescue"
+    ],
+    "caveat": "Solver count is cross-checked with current coordinator call sites; this is not a unique-transition or waste measurement."
+  },
+  "stateKeyOrderingSites": [
+    {
+      "path": "src/Search/CombatBeamSolver.BeamRetentionPolicy.cs",
+      "line": 2105,
+      "text": ".ThenBy(cohort => cohort.Obligation.ParentStateKey.First)"
+    },
+    {
+      "path": "src/Search/CombatBeamSolver.BeamRetentionPolicy.cs",
+      "line": 2106,
+      "text": ".ThenBy(cohort => cohort.Obligation.ParentStateKey.Second)"
+    },
+    {
+      "path": "src/Search/CombatBeamSolver.BeamRetentionPolicy.cs",
+      "line": 3637,
+      "text": "comparison = left.Node.StateKey.First.CompareTo(right.Node.StateKey.First);"
+    },
+    {
+      "path": "src/Search/CombatBeamSolver.BeamRetentionPolicy.cs",
+      "line": 3640,
+      "text": "comparison = left.Node.StateKey.Second.CompareTo(right.Node.StateKey.Second);"
+    },
+    {
+      "path": "src/Search/CombatBeamSolver.BeamRetentionPolicy.cs",
+      "line": 4007,
+      "text": "comparison = left.Parent.StateKey.First.CompareTo(right.Parent.StateKey.First);"
+    },
+    {
+      "path": "src/Search/CombatBeamSolver.BeamRetentionPolicy.cs",
+      "line": 4010,
+      "text": "comparison = left.Parent.StateKey.Second.CompareTo(right.Parent.StateKey.Second);"
+    },
+    {
+      "path": "src/Search/CombatBeamSolver.BeamRetentionPolicy.cs",
+      "line": 6769,
+      "text": "comparison = left.StateKey.First.CompareTo(right.StateKey.First);"
+    },
+    {
+      "path": "src/Search/CombatBeamSolver.BeamRetentionPolicy.cs",
+      "line": 6772,
+      "text": ": left.StateKey.Second.CompareTo(right.StateKey.Second);"
+    },
+    {
+      "path": "src/Search/CombatBeamSolver.BeamRetentionPolicy.cs",
+      "line": 6982,
+      "text": ".OrderBy(candidate => candidate.StateKey.First)"
+    },
+    {
+      "path": "src/Search/CombatBeamSolver.BeamRetentionPolicy.cs",
+      "line": 6983,
+      "text": ".ThenBy(candidate => candidate.StateKey.Second)"
+    },
+    {
+      "path": "src/Search/CombatBeamSolver.BeamRetentionPolicy.cs",
+      "line": 6985,
+      "text": ".OrderBy(candidate => candidate.StateKey.First)"
+    },
+    {
+      "path": "src/Search/CombatBeamSolver.BeamRetentionPolicy.cs",
+      "line": 6986,
+      "text": ".ThenBy(candidate => candidate.StateKey.Second)"
+    },
+    {
+      "path": "src/Search/CombatBeamSolver.BeamRetentionPolicy.cs",
+      "line": 6996,
+      "text": ".ThenBy(cohort => cohort.Decision.ParentStateKey.First)"
+    },
+    {
+      "path": "src/Search/CombatBeamSolver.BeamRetentionPolicy.cs",
+      "line": 6997,
+      "text": ".ThenBy(cohort => cohort.Decision.ParentStateKey.Second)"
+    },
+    {
+      "path": "src/Search/CombatBeamSolver.CyclePlanning.cs",
+      "line": 2840,
+      "text": "int comparison = left.StateKey.First.CompareTo(right.StateKey.First);"
+    },
+    {
+      "path": "src/Search/CombatBeamSolver.CyclePlanning.cs",
+      "line": 2843,
+      "text": "comparison = left.StateKey.Second.CompareTo(right.StateKey.Second);"
+    },
+    {
+      "path": "src/Search/CombatBeamSolver.CycleRegionRetention.cs",
+      "line": 1097,
+      "text": "comparison = left.StateKey.First.CompareTo(right.StateKey.First);"
+    },
+    {
+      "path": "src/Search/CombatBeamSolver.CycleRegionRetention.cs",
+      "line": 1100,
+      "text": "comparison = left.StateKey.Second.CompareTo(right.StateKey.Second);"
+    },
+    {
+      "path": "src/Search/CombatBeamSolver.FinalPlanOrdering.cs",
+      "line": 428,
+      "text": "comparison = left.StateKey.First.CompareTo(right.StateKey.First);"
+    },
+    {
+      "path": "src/Search/CombatBeamSolver.FinalPlanOrdering.cs",
+      "line": 431,
+      "text": ": left.StateKey.Second.CompareTo(right.StateKey.Second);"
+    },
+    {
+      "path": "src/Search/CombatBeamSolver.OrderedMutationRetention.cs",
+      "line": 933,
+      "text": ".ThenBy(candidate => candidate.StateKey.First)"
+    },
+    {
+      "path": "src/Search/CombatBeamSolver.OrderedMutationRetention.cs",
+      "line": 934,
+      "text": ".ThenBy(candidate => candidate.StateKey.Second))"
+    }
+  ],
+  "historicalFullTransitionProbe": {
+    "sourceCommit": "b168b68",
+    "eligibleReplayAttempts": 618785,
+    "distinctKeys": 603222,
+    "duplicateKeys": 15563,
+    "duplicateSharePercent": 2.5150900555120113,
+    "requestScope": "complete coordinator, older input/implementation; cannot relabel current hit rate"
+  },
+  "amdahlIllustrations": [
+    {
+      "affectedFraction": 0.9,
+      "localSpeedup": 10,
+      "wholeSpeedup": 5.2631578947368425
+    },
+    {
+      "affectedFraction": 0.95,
+      "localSpeedup": 10,
+      "wholeSpeedup": 6.896551724137929
+    },
+    {
+      "affectedFraction": 0.95,
+      "localSpeedup": 20,
+      "wholeSpeedup": 10.256410256410252
+    }
+  ],
+  "nextPrototypeAcceptanceTargets": {
+    "status": "proposed, unmeasured",
+    "representativeExpansionCpuSpeedupAtLeast": 3,
+    "representativeExpansionAllocationRatioAtMost": 0.2,
+    "include": [
+      "choice continuation",
+      "state materialization",
+      "freeze",
+      "rollback",
+      "all candidate evaluation",
+      "original ranking key",
+      "ownership handoff"
+    ]
+  },
+  "limitations": [
+    "No new runtime, perf, native differential, Release build or benchmark was run.",
+    "Original on-CPU group percentages predate P5; they are not current request wall fractions.",
+    "No read/write density, suffix-sharing ratio, general continuation prefix saving, or fast-engine coverage was measured.",
+    "Tenfold speedup is an aspiration, not an observed result or prediction."
+  ]
+}

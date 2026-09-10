@@ -6,6 +6,7 @@
 
 ## 专题
 
+- [新一轮大幅重构调研](simulation-redesign-research-20260910.md)：显式续执行、紧凑权威状态与撤销日志的组合原型；复算转移成本，核对六次药水搜索与状态键排序依赖，区分已测证据、旧实验和未验证目标。
 - [完整搜索性能重构最终结果](simulation-refactor-result-20260910.md)：保留检查点、完整 headless A/B 与原生部署、各阶段取舍及未达到的目标。
 - [P2 / P4 剩余候选进入决策](simulation-refactor-p2-p4-decision-20260910.md)：等待选择快照与 Power 复制 CPU、所有权合同及不进入理由。
 - [P5 选择前缀测量与回合检查点](simulation-refactor-p5-20260910.md)：线程 CPU 诊断、阶段提取与检查点验证；[结构化数据](simulation-refactor-p5-20260910.json)。

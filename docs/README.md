@@ -9,6 +9,7 @@
 | 组件职责、状态所有权和调用链 | [架构与职责地图](ARCHITECTURE.md) |
 | 本批未发布改动、版本演进与开发记录 | [开发笔记](DEVELOPMENT_NOTES.md) |
 | 已执行测试、复跑方式和未验证范围 | [测试矩阵](TEST_MATRIX.md) |
+| 更大范围的执行/状态内核重写方案、进入条件与证据缺口 | [大幅重构再调研](performance/simulation-redesign-research-20260910.md) |
 | 模拟性能重构的阶段、工作量与验收标准 | [完整搜索重构计划](performance/simulation-refactor-plan-20260910.md) |
 | 重构首轮细分结果与候选取舍 | [P1 复用率与类型成本](performance/simulation-refactor-p1-20260910.md) |
 | 完整搜索性能重构最终交付、headless 收口与各阶段取舍 | [最终报告](performance/simulation-refactor-result-20260910.md) |
