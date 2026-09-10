@@ -1,5 +1,18 @@
 # CombatSolver 测试清单
 
+## 2026-09-10：0.34.6 极高配置完整搜索热点采样
+
+- 上游 `a6bc386`，Release 构建 0 警告 / 0 错误，`CopyModOnBuild=false`。两场均 VeryHigh、DOP8、NoGC 配置 16 GB，正常搜索整场路线并在首个完整请求返回后停止；不覆盖时间、节点、Beam 或选择预算，不启用 `ForceShortSearchOnly` 或增量验证。CPU 与分配分别采集，耗时包含 profiler 开销，不作速度 A/B。
+
+| 场景 | CPU runId / 分配 runId | 直接结果 |
+| --- | --- | --- |
+| 亡灵契约师 / AEONGLASS，38 牌、19 遗物、2 药，RequireAtLeastOne | `e4d7d876fdf043679e33b9d0236ae49d` / `4f810c9cfe014539bce8ed2884b53dd8` | 均 Passed；累计展开 150,035 / 转移 1,693,024 / 选择 1,024,228；预计战损 9、T13、2 药 |
+| 静默猎手 / 机甲骑士，维护中原生建局 fixture 的完整 30 牌及附魔，Smart | `418816fd5abc4e0f957f9ab0cf07adb7` / `5fd38f44839842f083546fcc91bb310e` | 均 Passed；累计展开 14,611 / 转移 119,407 / 选择 67,273；预计战损 6、T7、0 药 |
+
+- Linux perf 的可归因搜索样本分别 67,667 / 3,455；分配 trace 完整转换，事件丢失均为 0。CPU/分配对照只确认上述工作量与结果标量，未做逐动作严格等价。第一份 CPU 请求的退出日志有截断，不当作完整动作证据；perf 数据已成功解析，未因此重复场景。
+- 初期短搜采集链路检查不进入正式结论；旧部分机甲存档 `1c1134cbba904d8c995745f1e4247cd2` 在建局时因缺少角色 ID 失败，未进入搜索，排除后使用维护中的完整建局 fixture。采样实例已停止；原始证据保留在 `.local/simulation-profile-20260910/`，完整条件与命令见[采样报告](performance/simulation-profile-20260910.md)及其 JSON。
+- 只改诊断文档，执行 L0 文档链接、结构化结果及 diff 检查；没有算法修改、新语义回归、整场原生部署或正常可见 Steam FPS 结论。
+
 ## 2026-09-09：0.34.6 静默猎手修复合并验证
 
 - 将 `fix/silent-unexpected-replans` 的 `7f5a984` 合入包含 PR #67 / #68 / #72 的源码。合并后的 Release 构建 0 警告 / 0 错误；`CopyModOnBuild=false`，使用本机现有 .NET 4.8 引用包。结构门禁 `REFACTOR_BOUNDARIES_OK search_files=84`；CoverageCatalog `--verify-effective --verify-roster-sources` 通过。

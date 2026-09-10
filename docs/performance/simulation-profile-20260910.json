@@ -1,0 +1,1866 @@
+{
+  "sourceCommit": "a6bc386",
+  "version": "0.34.6",
+  "date": "2026-09-10",
+  "branch": "perf/simulation-profile-20260910",
+  "environment": {
+    "game": "0.111.0",
+    "gameCommit": "41cef1ea",
+    "cpu": "AMD Ryzen 7 7840H",
+    "mode": "isolated Linux headless",
+    "preset": "VeryHigh",
+    "dop": 8,
+    "noGcBudgetBytes": 16000000000,
+    "forceShortSearchOnly": false,
+    "budgetOverrides": false,
+    "verifyIncrementalSearch": false
+  },
+  "cpuInterpretation": "Percent of resolved search on-CPU samples; exclusive categories follow precedence in CPU reports. Inclusive mechanisms overlap. Includes all solvers and potion audits in each complete request. Profiler timings are not benchmark results.",
+  "allocationInterpretation": "AllocationTick byte weights are estimates, not exact object counts or retained bytes. Independent normal full-search requests.",
+  "cases": {
+    "necro": {
+      "cpu": {
+        "totalSamples": 85388,
+        "searchSamples": 67667,
+        "missingStackSamples": 1,
+        "stacksAtLeast127Frames": 31,
+        "categoryPrecedence": [
+          "fork",
+          "snapshot_evaluation",
+          "round_simulation",
+          "card_execution",
+          "potion_execution",
+          "replay_other",
+          "retention_other",
+          "other_search"
+        ],
+        "processGroups": [
+          {
+            "name": "confirmed_search",
+            "weightNanoseconds": 340035133375,
+            "percent": 79.24649833700286
+          },
+          {
+            "name": "other_or_unanchored",
+            "weightNanoseconds": 76899487875,
+            "percent": 17.921722021829765
+          },
+          {
+            "name": "gc_thread",
+            "weightNanoseconds": 9497486250,
+            "percent": 2.2134257741134586
+          },
+          {
+            "name": "tiered_compilation_thread",
+            "weightNanoseconds": 2653266000,
+            "percent": 0.6183538670539186
+          }
+        ],
+        "disjointSearchGroups": [
+          {
+            "name": "snapshot_evaluation",
+            "weightNanoseconds": 96055264375,
+            "percent": 28.24862931709696,
+            "samples": 19115
+          },
+          {
+            "name": "round_simulation",
+            "weightNanoseconds": 68874363250,
+            "percent": 20.25507263511017,
+            "samples": 13706
+          },
+          {
+            "name": "card_execution",
+            "weightNanoseconds": 55557782000,
+            "percent": 16.338835769281925,
+            "samples": 11056
+          },
+          {
+            "name": "fork",
+            "weightNanoseconds": 49371853125,
+            "percent": 14.519632908212275,
+            "samples": 9825
+          },
+          {
+            "name": "other_search",
+            "weightNanoseconds": 31708538750,
+            "percent": 9.325077216368392,
+            "samples": 6310
+          },
+          {
+            "name": "replay_other",
+            "weightNanoseconds": 23371856375,
+            "percent": 6.87336515583667,
+            "samples": 4651
+          },
+          {
+            "name": "retention_other",
+            "weightNanoseconds": 10512561500,
+            "percent": 3.0916103861557334,
+            "samples": 2092
+          },
+          {
+            "name": "potion_execution",
+            "weightNanoseconds": 4582914000,
+            "percent": 1.3477766119378722,
+            "samples": 912
+          }
+        ],
+        "inclusiveMechanisms": [
+          {
+            "name": "hook_callbacks",
+            "weightNanoseconds": 42075371625,
+            "percent": 12.373830670784873
+          },
+          {
+            "name": "mirror_registry_dispatch",
+            "weightNanoseconds": 38437181125,
+            "percent": 11.303885202535948
+          },
+          {
+            "name": "hook_listener_bookkeeping",
+            "weightNanoseconds": 25271353625,
+            "percent": 7.431983093679341
+          },
+          {
+            "name": "state_key",
+            "weightNanoseconds": 22286429375,
+            "percent": 6.554154905640859
+          },
+          {
+            "name": "mutable_model_cloning",
+            "weightNanoseconds": 17663314375,
+            "percent": 5.194555691843883
+          },
+          {
+            "name": "card_affliction_normalization",
+            "weightNanoseconds": 13211053625,
+            "percent": 3.885202535948099
+          },
+          {
+            "name": "projected_shuffle",
+            "weightNanoseconds": 11743717125,
+            "percent": 3.4536775680907974
+          },
+          {
+            "name": "reachable_hand_value",
+            "weightNanoseconds": 11442209625,
+            "percent": 3.3650080541475167
+          },
+          {
+            "name": "damage_resolution",
+            "weightNanoseconds": 11035174500,
+            "percent": 3.245304210324087
+          },
+          {
+            "name": "history",
+            "weightNanoseconds": 3783919125,
+            "percent": 1.1128023999881773
+          }
+        ],
+        "inclusiveRoundDetailsPercentOfAllSearch": [
+          {
+            "name": "automatic_cards_at_player_start",
+            "weightNanoseconds": 10628139375,
+            "percent": 3.1256003665006578
+          },
+          {
+            "name": "enemy_move_execution",
+            "weightNanoseconds": 9552762625,
+            "percent": 2.809345766769622
+          },
+          {
+            "name": "player_end_after_orb_passives",
+            "weightNanoseconds": 8366833125,
+            "percent": 2.4605790119260496
+          },
+          {
+            "name": "before_hand_draw",
+            "weightNanoseconds": 8276380875,
+            "percent": 2.4339781577430655
+          },
+          {
+            "name": "card_affliction_normalization",
+            "weightNanoseconds": 5407034500,
+            "percent": 1.5901399500495073
+          },
+          {
+            "name": "draw",
+            "weightNanoseconds": 4693466750,
+            "percent": 1.3802887670504087
+          },
+          {
+            "name": "hand_flush",
+            "weightNanoseconds": 2070351500,
+            "percent": 0.6088639957438633
+          }
+        ],
+        "mechanismRules": {
+          "hook_callbacks": [
+            "CombatSolver.Engine.InCombat.Mirrors.HookMirrors::"
+          ],
+          "mirror_registry_dispatch": [
+            "Mirrors.MethodMirrorRegistry"
+          ],
+          "hook_listener_bookkeeping": [
+            "::GetEffectiveHookListeners",
+            "::GetActiveHookListeners",
+            "::GetBaseHookListeners",
+            "::GetBaseHookListenerPrefix",
+            "::BuildEffectiveHookListeners",
+            "::RestoreHookListenerCaches",
+            "::RemapCachedModels",
+            "ConcatenatedListenerView",
+            "MirroredHookListenerFilter"
+          ],
+          "card_affliction_normalization": [
+            "::NormalizeCardAfflictions",
+            "::NormalizePowerAfflictions",
+            "::NormalizeSwordSageReplays",
+            "::NormalizeGhostSeedCards"
+          ],
+          "mutable_model_cloning": [
+            "PredictionUtils::CloneModelForSimulation"
+          ],
+          "damage_resolution": [
+            "CombatPredictionSimulator::Damage",
+            "CombatPredictionSimulator::TryDamageTarget"
+          ],
+          "state_key": [
+            "CombatBeamSolver::BuildStateKey"
+          ],
+          "projected_shuffle": [
+            "CombatBeamSolver::BuildProjectedShuffleOrder"
+          ],
+          "reachable_hand_value": [
+            "CombatBeamSolver::CalculateReachableHandPotential"
+          ],
+          "history": [
+            "CombatPredictionHistory::",
+            "CombatPredictionHistory+"
+          ]
+        },
+        "roundRules": {
+          "automatic_cards_at_player_start": [
+            "::TriggerAutoPrePlayEarly"
+          ],
+          "before_hand_draw": [
+            "::PrepareBeforeHandDraw"
+          ],
+          "enemy_move_execution": [
+            "MonsterMoveSemantics::ApplyForecastMove"
+          ],
+          "player_end_after_orb_passives": [
+            "::SimulateEndPlayerTurnAfterOrbPassives"
+          ],
+          "draw": [
+            "CombatPredictionSimulator::Draw"
+          ],
+          "card_affliction_normalization": [
+            "::NormalizeCardAfflictions",
+            "::NormalizePowerAfflictions",
+            "::NormalizeSwordSageReplays",
+            "::NormalizeGhostSeedCards"
+          ],
+          "hand_flush": [
+            "::FlushPlayerHandAtTurnEnd"
+          ]
+        },
+        "forkInclusive": [
+          {
+            "name": "CombatSolver.Engine.InCombat.Simulation.CombatPredictionSimulator::Fork",
+            "weightNanoseconds": 49371853125,
+            "percent": 100.0
+          },
+          {
+            "name": "[unknown] libcoreclr.so",
+            "weightNanoseconds": 49371853125,
+            "percent": 100.0
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver::ReplayAction",
+            "weightNanoseconds": 49371853125,
+            "percent": 100.0
+          },
+          {
+            "name": "[unknown] libc.so.6",
+            "weightNanoseconds": 49371853125,
+            "percent": 100.0
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor+ExpansionLane::Run",
+            "weightNanoseconds": 49361802875,
+            "percent": 99.9796437659033
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor+AdmittedExpansionJob::Execute",
+            "weightNanoseconds": 45371853625,
+            "percent": 91.89821882951654
+          },
+          {
+            "name": "CombatSolver.Engine.InCombat.Simulation.CombatPredictionState::Fork",
+            "weightNanoseconds": 44683411500,
+            "percent": 90.50381679389314
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver::PrepareReplayForkSeedCore",
+            "weightNanoseconds": 37899492750,
+            "percent": 76.76335877862596
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver::PrepareReplayForkSeed",
+            "weightNanoseconds": 37899492750,
+            "percent": 76.76335877862596
+          },
+          {
+            "name": "CombatSolver.SimulatedCombatState::CombatSolver.Engine.Common.ICombatPredictionForkableState.Fork",
+            "weightNanoseconds": 36512558250,
+            "percent": 73.95419847328245
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver::ReplayPlannedChoiceBranch",
+            "weightNanoseconds": 26291454000,
+            "percent": 53.25190839694657
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver::ReplayPrimaryChoice",
+            "weightNanoseconds": 22934670500,
+            "percent": 46.4529262086514
+          },
+          {
+            "name": "CombatSolver.SimulatedCombatState::ForkPower",
+            "weightNanoseconds": 18160801750,
+            "percent": 36.783715012722645
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver::GeneratePreparedCardAction",
+            "weightNanoseconds": 13829144000,
+            "percent": 28.010178117048348
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver::EvaluatePreparedCardAction",
+            "weightNanoseconds": 13829144000,
+            "percent": 28.010178117048348
+          },
+          {
+            "name": "CombatSolver.Engine.Common.PredictionUtils::CloneModelForSimulation",
+            "weightNanoseconds": 12964822500,
+            "percent": 26.259541984732824
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver::Replay",
+            "weightNanoseconds": 11472360375,
+            "percent": 23.236641221374047
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver+<>c__DisplayClass342_0::<ReplayAction>b__0",
+            "weightNanoseconds": 11472360375,
+            "percent": 23.236641221374047
+          },
+          {
+            "name": "CombatSolver.SearchTransitionGuard::Execute",
+            "weightNanoseconds": 11472360375,
+            "percent": 23.236641221374047
+          },
+          {
+            "name": "MegaCrit.Sts2.Core.Models.PowerModel::DeepCloneFields",
+            "weightNanoseconds": 10623114250,
+            "percent": 21.516539440203562
+          },
+          {
+            "name": "MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVarSet::Clone",
+            "weightNanoseconds": 9648240000,
+            "percent": 19.541984732824428
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver+<BuildEndTurnBranches>d__291::MoveNext",
+            "weightNanoseconds": 7472360875,
+            "percent": 15.134860050890586
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver::GenerateRawEndTurnCandidates",
+            "weightNanoseconds": 7472360875,
+            "percent": 15.134860050890586
+          },
+          {
+            "name": "CombatSolver.SimulatedCombatState::RestoreHookListenerCaches",
+            "weightNanoseconds": 7221104625,
+            "percent": 14.625954198473282
+          },
+          {
+            "name": "MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVarSet::.ctor",
+            "weightNanoseconds": 5683416375,
+            "percent": 11.511450381679388
+          },
+          {
+            "name": "CombatSolver.SimulatedCombatState::RemapCachedModels",
+            "weightNanoseconds": 4015074875,
+            "percent": 8.132315521628499
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver::ComputeStandPat",
+            "weightNanoseconds": 3999999500,
+            "percent": 8.101781170483461
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor+StandPatJob::Execute",
+            "weightNanoseconds": 3989949250,
+            "percent": 8.08142493638677
+          },
+          {
+            "name": "CombatSolver.Engine.Common.SimCardPile::Fork",
+            "weightNanoseconds": 3713567375,
+            "percent": 7.521628498727735
+          },
+          {
+            "name": "System.Object::MemberwiseClone",
+            "weightNanoseconds": 3618090000,
+            "percent": 7.32824427480916
+          },
+          {
+            "name": "dynamicClass::CombatSolver_MemberwiseClone",
+            "weightNanoseconds": 2919597625,
+            "percent": 5.913486005089059
+          },
+          {
+            "name": "dynamicClass::MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar.Clone_Patch1",
+            "weightNanoseconds": 2758793625,
+            "percent": 5.587786259541985
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver+<ResolveRoundChoiceBranches>d__327::MoveNext",
+            "weightNanoseconds": 2477386625,
+            "percent": 5.017811704834606
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver+<ResolveRoundChoiceBranches>d__328::MoveNext",
+            "weightNanoseconds": 2381909250,
+            "percent": 4.824427480916031
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver+<ResolvePendingChoiceReplayLayer>d__330::MoveNext",
+            "weightNanoseconds": 2381909250,
+            "percent": 4.824427480916031
+          },
+          {
+            "name": "CombatSolver.SimulatedCombatState::ForkCardSet",
+            "weightNanoseconds": 2271356500,
+            "percent": 4.600508905852418
+          },
+          {
+            "name": "CombatSolver.Engine.Common.PredictionStateStore::Fork",
+            "weightNanoseconds": 1974874125,
+            "percent": 4.0
+          },
+          {
+            "name": "STS2RitsuLib.Cards.DynamicVars.DynamicVarTooltipRegistry::CopyTo",
+            "weightNanoseconds": 1809045000,
+            "percent": 3.66412213740458
+          },
+          {
+            "name": "System.Runtime.CompilerServices.CastHelpers::ChkCastAny",
+            "weightNanoseconds": 1547738500,
+            "percent": 3.1348600508905853
+          },
+          {
+            "name": "System.Collections.Generic.Dictionary`2[System.ValueTuple`2[System.__Canon,System.__Canon],System.__Canon]::TryInsert",
+            "weightNanoseconds": 1487437000,
+            "percent": 3.0127226463104324
+          },
+          {
+            "name": "[unknown] perf-41859.map",
+            "weightNanoseconds": 1432160625,
+            "percent": 2.900763358778626
+          },
+          {
+            "name": "CombatSolver.SimulatedCombatState::ForkCard",
+            "weightNanoseconds": 1160803875,
+            "percent": 2.351145038167939
+          },
+          {
+            "name": "System.Linq.Enumerable::Select",
+            "weightNanoseconds": 1125628000,
+            "percent": 2.2798982188295165
+          },
+          {
+            "name": "System.Linq.Enumerable+ListSelectIterator`2[System.__Canon,System.__Canon]::ToList",
+            "weightNanoseconds": 1100502375,
+            "percent": 2.2290076335877864
+          },
+          {
+            "name": "System.Collections.Generic.HashSet`1[System.__Canon]::AddIfNotPresent",
+            "weightNanoseconds": 1055276250,
+            "percent": 2.1374045801526718
+          }
+        ]
+      },
+      "allocation": {
+        "samples": 815473,
+        "estimatedBytes": 87725059456,
+        "groups": [
+          {
+            "name": "fork",
+            "estimatedBytes": 29991703128,
+            "percent": 34.18829615389757
+          },
+          {
+            "name": "round_simulation",
+            "estimatedBytes": 16764555936,
+            "percent": 19.11033864207131
+          },
+          {
+            "name": "card_execution",
+            "estimatedBytes": 13064841680,
+            "percent": 14.892941379598488
+          },
+          {
+            "name": "other_search",
+            "estimatedBytes": 9168948408,
+            "percent": 10.451914726371708
+          },
+          {
+            "name": "snapshot_evaluation",
+            "estimatedBytes": 8753877224,
+            "percent": 9.9787646520669
+          },
+          {
+            "name": "retention_other",
+            "estimatedBytes": 6731187776,
+            "percent": 7.673050115601394
+          },
+          {
+            "name": "replay_other",
+            "estimatedBytes": 1949594080,
+            "percent": 2.2223912894329265
+          },
+          {
+            "name": "potion_execution",
+            "estimatedBytes": 1300351224,
+            "percent": 1.4823030409597082
+          }
+        ],
+        "forkGroupsPercentOfFork": [
+          {
+            "name": "other_fork_state",
+            "estimatedBytes": 10954076608,
+            "percent": 36.52368977263371
+          },
+          {
+            "name": "power_model_clone",
+            "estimatedBytes": 9805718808,
+            "percent": 32.69477150447473
+          },
+          {
+            "name": "card_pile_and_wrappers",
+            "estimatedBytes": 5658721872,
+            "percent": 18.867624315462983
+          },
+          {
+            "name": "rng",
+            "estimatedBytes": 1327543312,
+            "percent": 4.426368540440162
+          },
+          {
+            "name": "prediction_state_store",
+            "estimatedBytes": 1284126592,
+            "percent": 4.281606104593474
+          },
+          {
+            "name": "listener_cache_remapping",
+            "estimatedBytes": 961515936,
+            "percent": 3.2059397623949435
+          }
+        ]
+      },
+      "allocationCompleteness": {
+        "status": "StrictConversionSucceeded",
+        "allowIncomplete": false,
+        "conversionReportedTruncated": null
+      },
+      "allocationEventsLost": 0,
+      "runs": {
+        "cpu-necro": {
+          "runId": "e4d7d876fdf043679e33b9d0236ae49d",
+          "status": "Passed",
+          "command": [
+            "./tools/run-unattended-test.sh",
+            "--scenario-id",
+            "CPU-NECRO",
+            "--character-id",
+            "NECROBINDER",
+            "--seed",
+            "SEARCH_PERF_NECROBINDER_POTION",
+            "--encounter-id",
+            "AEONGLASS_BOSS",
+            "--ascension",
+            "10",
+            "--act-index-for-test",
+            "2",
+            "--enemy-current-hp",
+            "526",
+            "--initial-player-hp",
+            "41",
+            "--initial-player-max-hp",
+            "76",
+            "--clear-run-deck",
+            "--run-cards-path",
+            "coverage/unattended/search-performance-necrobinder-projected-run-cards.json",
+            "--relics-path",
+            "coverage/unattended/search-performance-necrobinder-projected-relics.json",
+            "--potions-path",
+            "coverage/unattended/search-performance-necrobinder-projected-potions.json",
+            "--cards-json",
+            "[]",
+            "--potion-policy-for-test",
+            "RequireAtLeastOne",
+            "--performance-preset-for-test",
+            "VeryHigh",
+            "--search-max-degree-of-parallelism-for-test",
+            "8",
+            "--enable-no-gc-region-for-test",
+            "1",
+            "--no-gc-region-budget-gigabytes-for-test",
+            "16",
+            "--enable-detailed-diagnostic-logs-for-test",
+            "0",
+            "--measure-search-phases",
+            "--stop-after-initial-solver-result-assertion",
+            "--timeout-seconds",
+            "120",
+            "--keep-game-open",
+            "--headless-instance",
+            "simulation-profile-20260910",
+            "--headless-memory-reservation-mib",
+            "20000",
+            "--headless-cpu-reservation",
+            "8",
+            "--combat-solver-build-dir",
+            ".local/simulation-profile-20260910/artifact",
+            "--evidence-directory",
+            ".local/simulation-profile-20260910/cpu-necro"
+          ],
+          "metrics": {
+            "gcLifecycle": {
+              "forcedCollections": 0,
+              "noGcStartAttempts": 9,
+              "noGcStarts": 9,
+              "noGcEndAttempts": 8,
+              "noGcEnds": 8,
+              "noGcRestarts": 8,
+              "noGcLosses": 0
+            },
+            "gcLifecycleAttribution": "ExclusiveSearchScope",
+            "phase": "Short",
+            "boundary": "None",
+            "selectedExpanded": 32593,
+            "selectedTransitions": 409290,
+            "selectedChoiceBranches": 266747,
+            "choiceReplayAttempts": 266747,
+            "choiceReplayBudgetExhaustions": 0,
+            "choiceBranchesDroppedByBudget": 0,
+            "cycleRegionsDetected": 950,
+            "cycleRegionCandidatesConsidered": 2022,
+            "cycleRegionCandidatesAdmitted": 1903,
+            "cycleRegionCandidatesDropped": 119,
+            "cycleRegionProgressEpochs": 909,
+            "cycleRegionProbeCandidatesAdmitted": 0,
+            "cycleRegionProgressCandidatesAdmitted": 894,
+            "cycleRegionMaxActionFamilies": 1,
+            "orderedMutationCandidatesAdmitted": 2048,
+            "orderedMutationLeaseExpiredBudget": 3192,
+            "orderedMutationOrdinaryFallbacks": 283,
+            "orderedMutationColdAtomicCommitted": 70,
+            "orderedMutationColdAtomicRejected": 1544,
+            "totalExpanded": 150035,
+            "totalTransitions": 1693024,
+            "totalChoiceBranches": 1024228,
+            "elapsedMilliseconds": 16165.9458,
+            "totalElapsedMilliseconds": 80847.9516,
+            "workerAllocatedBytes": 19406158144,
+            "totalWorkerAllocatedBytes": 86720304240,
+            "totalGen0Collections": 16,
+            "totalGen1Collections": 16,
+            "totalGen2Collections": 16,
+            "totalGcPauseMilliseconds": 301.391,
+            "maxGcPauseMilliseconds": 45.844,
+            "maxParallelConcurrency": 8,
+            "parallelActionReplayWaves": 2201,
+            "parallelActionReplayWorkItems": 85975,
+            "maxParallelActionReplayConcurrency": 8,
+            "deferredRoundChoiceActions": 12720,
+            "deferredRoundChoiceLayerWidthTotal": 132420,
+            "maxDeferredRoundChoiceLayerWidth": 28,
+            "deferredRoundChoiceFiniteQuotaFallbacks": 31,
+            "deferredRoundChoiceFinitePrimaryLayers": 12689,
+            "deferredRoundChoiceFinitePendingFallbacks": 31,
+            "parallelRoundChoiceReplayWaves": 1767,
+            "parallelRoundChoiceReplayWorkItems": 176515,
+            "maxParallelRoundChoiceReplayConcurrency": 8,
+            "searchedTurns": 13,
+            "shufflesCrossed": 2,
+            "score": 10000517915,
+            "projectedBattleHpLost": 9,
+            "potionCount": 2,
+            "potionUses": [
+              {
+                "id": "COLORLESS_POTION",
+                "title": "无色药水",
+                "turn": 7,
+                "slot": 1
+              },
+              {
+                "id": "GAMBLERS_BREW",
+                "title": "赌徒特酿",
+                "turn": 10,
+                "slot": 0
+              }
+            ],
+            "onlyDeathRoutes": false,
+            "finalHp": 32,
+            "finalEnemyHp": 0,
+            "combatEndedTurn": 13,
+            "capturedAtElapsedMilliseconds": 84449.9179,
+            "managedLiveBytes": 21636440816,
+            "managedHeapBytes": 29330824008,
+            "managedFragmentedBytes": 10125843552,
+            "workingSetBytes": 31147753472,
+            "privateMemoryBytes": 48453484544,
+            "configuredNoGcRegionEnabled": true,
+            "configuredNoGcRegionBudgetBytes": 16000000000,
+            "gcLatencyMode": "NoGCRegion",
+            "noGcRegionActive": true,
+            "noGcRegionBudgetBytes": 16000000000,
+            "noGcRegionRolloverCount": 0
+          },
+          "artifactDirectory": ".local/simulation-profile-20260910/cpu-necro"
+        },
+        "allocation-necro-normal": {
+          "runId": "4f810c9cfe014539bce8ed2884b53dd8",
+          "status": "Passed",
+          "command": [
+            "./tools/run-unattended-test.sh",
+            "--scenario-id",
+            "ALLOCATION-NECRO-NORMAL",
+            "--character-id",
+            "NECROBINDER",
+            "--seed",
+            "SEARCH_PERF_NECROBINDER_POTION",
+            "--encounter-id",
+            "AEONGLASS_BOSS",
+            "--ascension",
+            "10",
+            "--act-index-for-test",
+            "2",
+            "--enemy-current-hp",
+            "526",
+            "--initial-player-hp",
+            "41",
+            "--initial-player-max-hp",
+            "76",
+            "--clear-run-deck",
+            "--run-cards-path",
+            "coverage/unattended/search-performance-necrobinder-projected-run-cards.json",
+            "--relics-path",
+            "coverage/unattended/search-performance-necrobinder-projected-relics.json",
+            "--potions-path",
+            "coverage/unattended/search-performance-necrobinder-projected-potions.json",
+            "--cards-json",
+            "[]",
+            "--potion-policy-for-test",
+            "RequireAtLeastOne",
+            "--performance-preset-for-test",
+            "VeryHigh",
+            "--search-max-degree-of-parallelism-for-test",
+            "8",
+            "--enable-no-gc-region-for-test",
+            "1",
+            "--no-gc-region-budget-gigabytes-for-test",
+            "16",
+            "--enable-detailed-diagnostic-logs-for-test",
+            "0",
+            "--measure-search-phases",
+            "--stop-after-initial-solver-result-assertion",
+            "--timeout-seconds",
+            "120",
+            "--keep-game-open",
+            "--headless-instance",
+            "simulation-profile-20260910",
+            "--headless-memory-reservation-mib",
+            "20000",
+            "--headless-cpu-reservation",
+            "8",
+            "--combat-solver-build-dir",
+            ".local/simulation-profile-20260910/artifact",
+            "--evidence-directory",
+            ".local/simulation-profile-20260910/allocation-necro-normal"
+          ],
+          "metrics": {
+            "gcLifecycle": {
+              "forcedCollections": 0,
+              "noGcStartAttempts": 9,
+              "noGcStarts": 9,
+              "noGcEndAttempts": 8,
+              "noGcEnds": 8,
+              "noGcRestarts": 8,
+              "noGcLosses": 0
+            },
+            "gcLifecycleAttribution": "ExclusiveSearchScope",
+            "phase": "Short",
+            "boundary": "None",
+            "selectedExpanded": 32593,
+            "selectedTransitions": 409290,
+            "selectedChoiceBranches": 266747,
+            "choiceReplayAttempts": 266747,
+            "choiceReplayBudgetExhaustions": 0,
+            "choiceBranchesDroppedByBudget": 0,
+            "cycleRegionsDetected": 950,
+            "cycleRegionCandidatesConsidered": 2022,
+            "cycleRegionCandidatesAdmitted": 1903,
+            "cycleRegionCandidatesDropped": 119,
+            "cycleRegionProgressEpochs": 909,
+            "cycleRegionProbeCandidatesAdmitted": 0,
+            "cycleRegionProgressCandidatesAdmitted": 894,
+            "cycleRegionMaxActionFamilies": 1,
+            "orderedMutationCandidatesAdmitted": 2048,
+            "orderedMutationLeaseExpiredBudget": 3192,
+            "orderedMutationOrdinaryFallbacks": 283,
+            "orderedMutationColdAtomicCommitted": 70,
+            "orderedMutationColdAtomicRejected": 1544,
+            "totalExpanded": 150035,
+            "totalTransitions": 1693024,
+            "totalChoiceBranches": 1024228,
+            "elapsedMilliseconds": 15034.2134,
+            "totalElapsedMilliseconds": 80478.5251,
+            "workerAllocatedBytes": 19389170368,
+            "totalWorkerAllocatedBytes": 86682794384,
+            "totalGen0Collections": 17,
+            "totalGen1Collections": 17,
+            "totalGen2Collections": 16,
+            "totalGcPauseMilliseconds": 2379.696,
+            "maxGcPauseMilliseconds": 2037.767,
+            "maxParallelConcurrency": 8,
+            "parallelActionReplayWaves": 2212,
+            "parallelActionReplayWorkItems": 85975,
+            "maxParallelActionReplayConcurrency": 8,
+            "deferredRoundChoiceActions": 12720,
+            "deferredRoundChoiceLayerWidthTotal": 132420,
+            "maxDeferredRoundChoiceLayerWidth": 28,
+            "deferredRoundChoiceFiniteQuotaFallbacks": 31,
+            "deferredRoundChoiceFinitePrimaryLayers": 12689,
+            "deferredRoundChoiceFinitePendingFallbacks": 31,
+            "parallelRoundChoiceReplayWaves": 1778,
+            "parallelRoundChoiceReplayWorkItems": 176515,
+            "maxParallelRoundChoiceReplayConcurrency": 8,
+            "searchedTurns": 13,
+            "shufflesCrossed": 2,
+            "score": 10000517915,
+            "projectedBattleHpLost": 9,
+            "potionCount": 2,
+            "potionUses": [
+              {
+                "id": "COLORLESS_POTION",
+                "title": "无色药水",
+                "turn": 7,
+                "slot": 1
+              },
+              {
+                "id": "GAMBLERS_BREW",
+                "title": "赌徒特酿",
+                "turn": 10,
+                "slot": 0
+              }
+            ],
+            "onlyDeathRoutes": false,
+            "finalHp": 32,
+            "finalEnemyHp": 0,
+            "combatEndedTurn": 13,
+            "capturedAtElapsedMilliseconds": 84200.5179,
+            "managedLiveBytes": 9751455736,
+            "managedHeapBytes": 16373709016,
+            "managedFragmentedBytes": 9022160696,
+            "workingSetBytes": 27458125824,
+            "privateMemoryBytes": 40344694784,
+            "configuredNoGcRegionEnabled": true,
+            "configuredNoGcRegionBudgetBytes": 16000000000,
+            "gcLatencyMode": "NoGCRegion",
+            "noGcRegionActive": true,
+            "noGcRegionBudgetBytes": 16000000000,
+            "noGcRegionRolloverCount": 0
+          },
+          "artifactDirectory": ".local/simulation-profile-20260910/allocation-necro-normal"
+        }
+      }
+    },
+    "mecha": {
+      "cpu": {
+        "totalSamples": 4281,
+        "searchSamples": 3455,
+        "missingStackSamples": 0,
+        "stacksAtLeast127Frames": 1,
+        "categoryPrecedence": [
+          "fork",
+          "snapshot_evaluation",
+          "round_simulation",
+          "card_execution",
+          "potion_execution",
+          "replay_other",
+          "retention_other",
+          "other_search"
+        ],
+        "processGroups": [
+          {
+            "name": "confirmed_search",
+            "weightNanoseconds": 17361806875,
+            "percent": 80.7054426535856
+          },
+          {
+            "name": "other_or_unanchored",
+            "weightNanoseconds": 3482411625,
+            "percent": 16.18780658724597
+          },
+          {
+            "name": "tiered_compilation_thread",
+            "weightNanoseconds": 613065250,
+            "percent": 2.8498014482597522
+          },
+          {
+            "name": "gc_thread",
+            "weightNanoseconds": 55276375,
+            "percent": 0.2569493109086662
+          }
+        ],
+        "disjointSearchGroups": [
+          {
+            "name": "round_simulation",
+            "weightNanoseconds": 5819094750,
+            "percent": 33.516642547033285,
+            "samples": 1158
+          },
+          {
+            "name": "snapshot_evaluation",
+            "weightNanoseconds": 4241205500,
+            "percent": 24.42836468885673,
+            "samples": 844
+          },
+          {
+            "name": "fork",
+            "weightNanoseconds": 2386934375,
+            "percent": 13.748191027496382,
+            "samples": 475
+          },
+          {
+            "name": "other_search",
+            "weightNanoseconds": 2030150500,
+            "percent": 11.693198263386396,
+            "samples": 404
+          },
+          {
+            "name": "card_execution",
+            "weightNanoseconds": 1552763625,
+            "percent": 8.94356005788712,
+            "samples": 309
+          },
+          {
+            "name": "replay_other",
+            "weightNanoseconds": 959798875,
+            "percent": 5.52821997105644,
+            "samples": 191
+          },
+          {
+            "name": "retention_other",
+            "weightNanoseconds": 371859250,
+            "percent": 2.141823444283647,
+            "samples": 74
+          }
+        ],
+        "inclusiveMechanisms": [
+          {
+            "name": "hook_callbacks",
+            "weightNanoseconds": 1221105375,
+            "percent": 7.03328509406657
+          },
+          {
+            "name": "hook_listener_bookkeeping",
+            "weightNanoseconds": 1100502375,
+            "percent": 6.338639652677279
+          },
+          {
+            "name": "mirror_registry_dispatch",
+            "weightNanoseconds": 1035175750,
+            "percent": 5.9623733719247465
+          },
+          {
+            "name": "state_key",
+            "weightNanoseconds": 864321500,
+            "percent": 4.978292329956584
+          },
+          {
+            "name": "card_affliction_normalization",
+            "weightNanoseconds": 854271250,
+            "percent": 4.92040520984081
+          },
+          {
+            "name": "damage_resolution",
+            "weightNanoseconds": 618090375,
+            "percent": 3.5600578871201156
+          },
+          {
+            "name": "mutable_model_cloning",
+            "weightNanoseconds": 613065250,
+            "percent": 3.5311143270622285
+          },
+          {
+            "name": "projected_shuffle",
+            "weightNanoseconds": 613065250,
+            "percent": 3.5311143270622285
+          },
+          {
+            "name": "reachable_hand_value",
+            "weightNanoseconds": 427135625,
+            "percent": 2.460202604920405
+          },
+          {
+            "name": "history",
+            "weightNanoseconds": 160804000,
+            "percent": 0.9261939218523878
+          }
+        ],
+        "inclusiveRoundDetailsPercentOfAllSearch": [
+          {
+            "name": "enemy_move_execution",
+            "weightNanoseconds": 1070351625,
+            "percent": 6.164978292329956
+          },
+          {
+            "name": "draw",
+            "weightNanoseconds": 723618000,
+            "percent": 4.167872648335745
+          },
+          {
+            "name": "player_end_after_orb_passives",
+            "weightNanoseconds": 658291375,
+            "percent": 3.7916063675832126
+          },
+          {
+            "name": "card_affliction_normalization",
+            "weightNanoseconds": 562814000,
+            "percent": 3.2416787264833573
+          },
+          {
+            "name": "hand_flush",
+            "weightNanoseconds": 271356750,
+            "percent": 1.5629522431259044
+          },
+          {
+            "name": "before_hand_draw",
+            "weightNanoseconds": 40201000,
+            "percent": 0.23154848046309695
+          },
+          {
+            "name": "automatic_cards_at_player_start",
+            "weightNanoseconds": 15075375,
+            "percent": 0.08683068017366136
+          }
+        ],
+        "mechanismRules": {
+          "hook_callbacks": [
+            "CombatSolver.Engine.InCombat.Mirrors.HookMirrors::"
+          ],
+          "mirror_registry_dispatch": [
+            "Mirrors.MethodMirrorRegistry"
+          ],
+          "hook_listener_bookkeeping": [
+            "::GetEffectiveHookListeners",
+            "::GetActiveHookListeners",
+            "::GetBaseHookListeners",
+            "::GetBaseHookListenerPrefix",
+            "::BuildEffectiveHookListeners",
+            "::RestoreHookListenerCaches",
+            "::RemapCachedModels",
+            "ConcatenatedListenerView",
+            "MirroredHookListenerFilter"
+          ],
+          "card_affliction_normalization": [
+            "::NormalizeCardAfflictions",
+            "::NormalizePowerAfflictions",
+            "::NormalizeSwordSageReplays",
+            "::NormalizeGhostSeedCards"
+          ],
+          "mutable_model_cloning": [
+            "PredictionUtils::CloneModelForSimulation"
+          ],
+          "damage_resolution": [
+            "CombatPredictionSimulator::Damage",
+            "CombatPredictionSimulator::TryDamageTarget"
+          ],
+          "state_key": [
+            "CombatBeamSolver::BuildStateKey"
+          ],
+          "projected_shuffle": [
+            "CombatBeamSolver::BuildProjectedShuffleOrder"
+          ],
+          "reachable_hand_value": [
+            "CombatBeamSolver::CalculateReachableHandPotential"
+          ],
+          "history": [
+            "CombatPredictionHistory::",
+            "CombatPredictionHistory+"
+          ]
+        },
+        "roundRules": {
+          "automatic_cards_at_player_start": [
+            "::TriggerAutoPrePlayEarly"
+          ],
+          "before_hand_draw": [
+            "::PrepareBeforeHandDraw"
+          ],
+          "enemy_move_execution": [
+            "MonsterMoveSemantics::ApplyForecastMove"
+          ],
+          "player_end_after_orb_passives": [
+            "::SimulateEndPlayerTurnAfterOrbPassives"
+          ],
+          "draw": [
+            "CombatPredictionSimulator::Draw"
+          ],
+          "card_affliction_normalization": [
+            "::NormalizeCardAfflictions",
+            "::NormalizePowerAfflictions",
+            "::NormalizeSwordSageReplays",
+            "::NormalizeGhostSeedCards"
+          ],
+          "hand_flush": [
+            "::FlushPlayerHandAtTurnEnd"
+          ]
+        },
+        "forkInclusive": [
+          {
+            "name": "CombatSolver.Engine.InCombat.Simulation.CombatPredictionSimulator::Fork",
+            "weightNanoseconds": 2386934375,
+            "percent": 100.0
+          },
+          {
+            "name": "[unknown] libcoreclr.so",
+            "weightNanoseconds": 2386934375,
+            "percent": 100.0
+          },
+          {
+            "name": "[unknown] libc.so.6",
+            "weightNanoseconds": 2386934375,
+            "percent": 100.0
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor+ExpansionLane::Run",
+            "weightNanoseconds": 2386934375,
+            "percent": 100.0
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver::ReplayAction",
+            "weightNanoseconds": 2386934375,
+            "percent": 100.0
+          },
+          {
+            "name": "CombatSolver.Engine.InCombat.Simulation.CombatPredictionState::Fork",
+            "weightNanoseconds": 2266331375,
+            "percent": 94.94736842105263
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor+AdmittedExpansionJob::Execute",
+            "weightNanoseconds": 2130653000,
+            "percent": 89.26315789473684
+          },
+          {
+            "name": "CombatSolver.SimulatedCombatState::CombatSolver.Engine.Common.ICombatPredictionForkableState.Fork",
+            "weightNanoseconds": 1849246000,
+            "percent": 77.47368421052632
+          },
+          {
+            "name": "CombatSolver.SearchTransitionGuard::Execute",
+            "weightNanoseconds": 1472361625,
+            "percent": 61.68421052631579
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver::Replay",
+            "weightNanoseconds": 1472361625,
+            "percent": 61.68421052631579
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver+<>c__DisplayClass342_0::<ReplayAction>b__0",
+            "weightNanoseconds": 1472361625,
+            "percent": 61.68421052631579
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver::GenerateRawEndTurnCandidates",
+            "weightNanoseconds": 1216080250,
+            "percent": 50.94736842105263
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver+<BuildEndTurnBranches>d__291::MoveNext",
+            "weightNanoseconds": 1216080250,
+            "percent": 50.94736842105263
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver::ReplayPlannedChoiceBranch",
+            "weightNanoseconds": 1105527500,
+            "percent": 46.31578947368421
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver::PrepareReplayForkSeedCore",
+            "weightNanoseconds": 914572750,
+            "percent": 38.31578947368421
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver::PrepareReplayForkSeed",
+            "weightNanoseconds": 914572750,
+            "percent": 38.31578947368421
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver+<ResolvePendingChoiceReplayLayer>d__330::MoveNext",
+            "weightNanoseconds": 824120500,
+            "percent": 34.526315789473685
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver+<ResolveRoundChoiceBranches>d__327::MoveNext",
+            "weightNanoseconds": 824120500,
+            "percent": 34.526315789473685
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver+<ResolveRoundChoiceBranches>d__328::MoveNext",
+            "weightNanoseconds": 824120500,
+            "percent": 34.526315789473685
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver::GeneratePreparedCardAction",
+            "weightNanoseconds": 633165750,
+            "percent": 26.526315789473685
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver::EvaluatePreparedCardAction",
+            "weightNanoseconds": 633165750,
+            "percent": 26.526315789473685
+          },
+          {
+            "name": "CombatSolver.SimulatedCombatState::ForkPower",
+            "weightNanoseconds": 527638125,
+            "percent": 22.105263157894736
+          },
+          {
+            "name": "CombatSolver.SimulatedCombatState::RestoreHookListenerCaches",
+            "weightNanoseconds": 522613000,
+            "percent": 21.894736842105264
+          },
+          {
+            "name": "CombatSolver.Engine.Common.PredictionUtils::CloneModelForSimulation",
+            "weightNanoseconds": 386934625,
+            "percent": 16.210526315789473
+          },
+          {
+            "name": "CombatSolver.SimulatedCombatState::RemapCachedModels",
+            "weightNanoseconds": 346733625,
+            "percent": 14.526315789473685
+          },
+          {
+            "name": "MegaCrit.Sts2.Core.Models.PowerModel::DeepCloneFields",
+            "weightNanoseconds": 321608000,
+            "percent": 13.473684210526315
+          },
+          {
+            "name": "MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVarSet::Clone",
+            "weightNanoseconds": 281407000,
+            "percent": 11.789473684210526
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver::ReplayPrimaryChoice",
+            "weightNanoseconds": 276381875,
+            "percent": 11.578947368421053
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver+ParallelExpansionExecutor+StandPatJob::Execute",
+            "weightNanoseconds": 256281375,
+            "percent": 10.736842105263158
+          },
+          {
+            "name": "CombatSolver.CombatBeamSolver::ComputeStandPat",
+            "weightNanoseconds": 256281375,
+            "percent": 10.736842105263158
+          },
+          {
+            "name": "CombatSolver.Engine.Common.SimCardPile::Fork",
+            "weightNanoseconds": 211055250,
+            "percent": 8.842105263157896
+          },
+          {
+            "name": "CombatSolver.SimulatedCombatState::ForkCardSet",
+            "weightNanoseconds": 201005000,
+            "percent": 8.421052631578947
+          },
+          {
+            "name": "CombatSolver.SimulatedCombatState::ForkCard",
+            "weightNanoseconds": 155778875,
+            "percent": 6.526315789473684
+          },
+          {
+            "name": "MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVarSet::.ctor",
+            "weightNanoseconds": 135678375,
+            "percent": 5.684210526315789
+          },
+          {
+            "name": "System.Collections.Generic.HashSet`1[System.__Canon]::AddIfNotPresent",
+            "weightNanoseconds": 120603000,
+            "percent": 5.052631578947368
+          },
+          {
+            "name": "[unknown] perf-76306.map",
+            "weightNanoseconds": 115577875,
+            "percent": 4.842105263157895
+          },
+          {
+            "name": "CombatSolver.Engine.Common.PredictionForkContext::FindIndexed",
+            "weightNanoseconds": 110552750,
+            "percent": 4.631578947368421
+          },
+          {
+            "name": "dynamicClass::MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar.Clone_Patch1",
+            "weightNanoseconds": 90452250,
+            "percent": 3.789473684210526
+          },
+          {
+            "name": "System.Collections.Generic.Dictionary`2[System.ValueTuple`2[System.__Canon,System.__Canon],System.__Canon]::TryInsert",
+            "weightNanoseconds": 75376875,
+            "percent": 3.1578947368421053
+          },
+          {
+            "name": "System.Collections.Generic.ObjectEqualityComparer`1[System.__Canon]::GetHashCode",
+            "weightNanoseconds": 75376875,
+            "percent": 3.1578947368421053
+          },
+          {
+            "name": "System.Object::MemberwiseClone",
+            "weightNanoseconds": 65326625,
+            "percent": 2.736842105263158
+          },
+          {
+            "name": "dynamicClass::CombatSolver_MemberwiseClone",
+            "weightNanoseconds": 65326625,
+            "percent": 2.736842105263158
+          },
+          {
+            "name": "System.Runtime.CompilerServices.CastHelpers::ChkCastAny",
+            "weightNanoseconds": 65326625,
+            "percent": 2.736842105263158
+          },
+          {
+            "name": "System.Runtime.CompilerServices.CastHelpers::StelemRef",
+            "weightNanoseconds": 60301500,
+            "percent": 2.526315789473684
+          },
+          {
+            "name": "STS2RitsuLib.Cards.DynamicVars.DynamicVarTooltipRegistry::CopyTo",
+            "weightNanoseconds": 60301500,
+            "percent": 2.526315789473684
+          }
+        ]
+      },
+      "allocation": {
+        "samples": 53600,
+        "estimatedBytes": 5759943504,
+        "groups": [
+          {
+            "name": "round_simulation",
+            "estimatedBytes": 2284699904,
+            "percent": 39.66531793954901
+          },
+          {
+            "name": "fork",
+            "estimatedBytes": 1448277696,
+            "percent": 25.14395662030785
+          },
+          {
+            "name": "other_search",
+            "estimatedBytes": 827648760,
+            "percent": 14.369043019696951
+          },
+          {
+            "name": "snapshot_evaluation",
+            "estimatedBytes": 488304928,
+            "percent": 8.477599262230541
+          },
+          {
+            "name": "card_execution",
+            "estimatedBytes": 459127448,
+            "percent": 7.97104082151428
+          },
+          {
+            "name": "retention_other",
+            "estimatedBytes": 204018608,
+            "percent": 3.542024463578836
+          },
+          {
+            "name": "replay_other",
+            "estimatedBytes": 47866160,
+            "percent": 0.8310178731225277
+          }
+        ],
+        "forkGroupsPercentOfFork": [
+          {
+            "name": "other_fork_state",
+            "estimatedBytes": 678306808,
+            "percent": 46.8354107691789
+          },
+          {
+            "name": "card_pile_and_wrappers",
+            "estimatedBytes": 316822808,
+            "percent": 21.875832851326326
+          },
+          {
+            "name": "power_model_clone",
+            "estimatedBytes": 299324760,
+            "percent": 20.667635828868
+          },
+          {
+            "name": "rng",
+            "estimatedBytes": 121091464,
+            "percent": 8.361066688691173
+          },
+          {
+            "name": "listener_cache_remapping",
+            "estimatedBytes": 27934856,
+            "percent": 1.9288328527846086
+          },
+          {
+            "name": "prediction_state_store",
+            "estimatedBytes": 4797000,
+            "percent": 0.3312210091509964
+          }
+        ]
+      },
+      "allocationCompleteness": {
+        "status": "StrictConversionSucceeded",
+        "allowIncomplete": false,
+        "conversionReportedTruncated": null
+      },
+      "allocationEventsLost": 0,
+      "runs": {
+        "cpu-mecha-native-normal": {
+          "runId": "418816fd5abc4e0f957f9ab0cf07adb7",
+          "status": "Passed",
+          "command": [
+            "./tools/run-unattended-test.sh",
+            "--scenario-id",
+            "CPU-MECHA-NATIVE-NORMAL",
+            "--character-id",
+            "SILENT",
+            "--seed",
+            "VH_PERF_MECHA",
+            "--encounter-id",
+            "MECHA_KNIGHT_ELITE",
+            "--enemy-current-hp",
+            "300",
+            "--initial-player-hp",
+            "65",
+            "--initial-player-max-hp",
+            "65",
+            "--clear-run-deck",
+            "--run-cards-path",
+            ".local/simulation-profile-20260910/mecha-native-run-cards.json",
+            "--cards-json",
+            "[]",
+            "--potion-policy-for-test",
+            "Smart",
+            "--expected-initial-only-death-routes-found",
+            "0",
+            "--performance-preset-for-test",
+            "VeryHigh",
+            "--search-max-degree-of-parallelism-for-test",
+            "8",
+            "--enable-no-gc-region-for-test",
+            "1",
+            "--no-gc-region-budget-gigabytes-for-test",
+            "16",
+            "--enable-detailed-diagnostic-logs-for-test",
+            "0",
+            "--measure-search-phases",
+            "--stop-after-initial-solver-result-assertion",
+            "--timeout-seconds",
+            "120",
+            "--keep-game-open",
+            "--headless-instance",
+            "simulation-profile-20260910",
+            "--headless-memory-reservation-mib",
+            "20000",
+            "--headless-cpu-reservation",
+            "8",
+            "--combat-solver-build-dir",
+            ".local/simulation-profile-20260910/artifact",
+            "--evidence-directory",
+            ".local/simulation-profile-20260910/cpu-mecha-native-normal"
+          ],
+          "metrics": {
+            "gcLifecycle": {
+              "forcedCollections": 0,
+              "noGcStartAttempts": 1,
+              "noGcStarts": 1,
+              "noGcEndAttempts": 0,
+              "noGcEnds": 0,
+              "noGcRestarts": 0,
+              "noGcLosses": 0
+            },
+            "gcLifecycleAttribution": "ExclusiveSearchScope",
+            "phase": "Short",
+            "boundary": "None",
+            "selectedExpanded": 14611,
+            "selectedTransitions": 119407,
+            "selectedChoiceBranches": 67273,
+            "choiceReplayAttempts": 67273,
+            "choiceReplayBudgetExhaustions": 0,
+            "choiceBranchesDroppedByBudget": 0,
+            "cycleRegionsDetected": 0,
+            "cycleRegionCandidatesConsidered": 0,
+            "cycleRegionCandidatesAdmitted": 0,
+            "cycleRegionCandidatesDropped": 0,
+            "cycleRegionProgressEpochs": 0,
+            "cycleRegionProbeCandidatesAdmitted": 0,
+            "cycleRegionProgressCandidatesAdmitted": 0,
+            "cycleRegionMaxActionFamilies": 0,
+            "orderedMutationCandidatesAdmitted": 0,
+            "orderedMutationLeaseExpiredBudget": 0,
+            "orderedMutationOrdinaryFallbacks": 0,
+            "orderedMutationColdAtomicCommitted": 0,
+            "orderedMutationColdAtomicRejected": 0,
+            "totalExpanded": 14611,
+            "totalTransitions": 119407,
+            "totalChoiceBranches": 67273,
+            "elapsedMilliseconds": 3887.3564,
+            "totalElapsedMilliseconds": 3887.8979,
+            "workerAllocatedBytes": 5709487576,
+            "totalWorkerAllocatedBytes": 5709502976,
+            "totalGen0Collections": 0,
+            "totalGen1Collections": 0,
+            "totalGen2Collections": 0,
+            "totalGcPauseMilliseconds": 0,
+            "maxGcPauseMilliseconds": 0,
+            "maxParallelConcurrency": 8,
+            "parallelActionReplayWaves": 888,
+            "parallelActionReplayWorkItems": 28527,
+            "maxParallelActionReplayConcurrency": 8,
+            "deferredRoundChoiceActions": 2078,
+            "deferredRoundChoiceLayerWidthTotal": 15246,
+            "maxDeferredRoundChoiceLayerWidth": 29,
+            "deferredRoundChoiceFiniteQuotaFallbacks": 0,
+            "deferredRoundChoiceFinitePrimaryLayers": 2078,
+            "deferredRoundChoiceFinitePendingFallbacks": 0,
+            "parallelRoundChoiceReplayWaves": 429,
+            "parallelRoundChoiceReplayWorkItems": 17257,
+            "maxParallelRoundChoiceReplayConcurrency": 8,
+            "searchedTurns": 7,
+            "shufflesCrossed": 2,
+            "score": 10001445960,
+            "projectedBattleHpLost": 6,
+            "potionCount": 0,
+            "potionUses": [],
+            "onlyDeathRoutes": false,
+            "finalHp": 59,
+            "finalEnemyHp": 0,
+            "combatEndedTurn": 7,
+            "capturedAtElapsedMilliseconds": 7269.3621,
+            "managedLiveBytes": 5803418184,
+            "managedHeapBytes": 116459576,
+            "managedFragmentedBytes": 41867320,
+            "workingSetBytes": 7417077760,
+            "privateMemoryBytes": 18941337600,
+            "configuredNoGcRegionEnabled": true,
+            "configuredNoGcRegionBudgetBytes": 16000000000,
+            "gcLatencyMode": "NoGCRegion",
+            "noGcRegionActive": true,
+            "noGcRegionBudgetBytes": 16000000000,
+            "noGcRegionRolloverCount": 0
+          },
+          "artifactDirectory": ".local/simulation-profile-20260910/cpu-mecha-native-normal"
+        },
+        "allocation-mecha-native-normal": {
+          "runId": "5fd38f44839842f083546fcc91bb310e",
+          "status": "Passed",
+          "command": [
+            "./tools/run-unattended-test.sh",
+            "--scenario-id",
+            "ALLOCATION-MECHA-NATIVE-NORMAL",
+            "--character-id",
+            "SILENT",
+            "--seed",
+            "VH_PERF_MECHA",
+            "--encounter-id",
+            "MECHA_KNIGHT_ELITE",
+            "--enemy-current-hp",
+            "300",
+            "--initial-player-hp",
+            "65",
+            "--initial-player-max-hp",
+            "65",
+            "--clear-run-deck",
+            "--run-cards-path",
+            ".local/simulation-profile-20260910/mecha-native-run-cards.json",
+            "--cards-json",
+            "[]",
+            "--potion-policy-for-test",
+            "Smart",
+            "--expected-initial-only-death-routes-found",
+            "0",
+            "--performance-preset-for-test",
+            "VeryHigh",
+            "--search-max-degree-of-parallelism-for-test",
+            "8",
+            "--enable-no-gc-region-for-test",
+            "1",
+            "--no-gc-region-budget-gigabytes-for-test",
+            "16",
+            "--enable-detailed-diagnostic-logs-for-test",
+            "0",
+            "--measure-search-phases",
+            "--stop-after-initial-solver-result-assertion",
+            "--timeout-seconds",
+            "120",
+            "--keep-game-open",
+            "--headless-instance",
+            "simulation-profile-20260910",
+            "--headless-memory-reservation-mib",
+            "20000",
+            "--headless-cpu-reservation",
+            "8",
+            "--combat-solver-build-dir",
+            ".local/simulation-profile-20260910/artifact",
+            "--evidence-directory",
+            ".local/simulation-profile-20260910/allocation-mecha-native-normal"
+          ],
+          "metrics": {
+            "gcLifecycle": {
+              "forcedCollections": 0,
+              "noGcStartAttempts": 1,
+              "noGcStarts": 1,
+              "noGcEndAttempts": 0,
+              "noGcEnds": 0,
+              "noGcRestarts": 0,
+              "noGcLosses": 0
+            },
+            "gcLifecycleAttribution": "ExclusiveSearchScope",
+            "phase": "Short",
+            "boundary": "None",
+            "selectedExpanded": 14611,
+            "selectedTransitions": 119407,
+            "selectedChoiceBranches": 67273,
+            "choiceReplayAttempts": 67273,
+            "choiceReplayBudgetExhaustions": 0,
+            "choiceBranchesDroppedByBudget": 0,
+            "cycleRegionsDetected": 0,
+            "cycleRegionCandidatesConsidered": 0,
+            "cycleRegionCandidatesAdmitted": 0,
+            "cycleRegionCandidatesDropped": 0,
+            "cycleRegionProgressEpochs": 0,
+            "cycleRegionProbeCandidatesAdmitted": 0,
+            "cycleRegionProgressCandidatesAdmitted": 0,
+            "cycleRegionMaxActionFamilies": 0,
+            "orderedMutationCandidatesAdmitted": 0,
+            "orderedMutationLeaseExpiredBudget": 0,
+            "orderedMutationOrdinaryFallbacks": 0,
+            "orderedMutationColdAtomicCommitted": 0,
+            "orderedMutationColdAtomicRejected": 0,
+            "totalExpanded": 14611,
+            "totalTransitions": 119407,
+            "totalChoiceBranches": 67273,
+            "elapsedMilliseconds": 3735.4224,
+            "totalElapsedMilliseconds": 3736.0046,
+            "workerAllocatedBytes": 5707456120,
+            "totalWorkerAllocatedBytes": 5707471528,
+            "totalGen0Collections": 0,
+            "totalGen1Collections": 0,
+            "totalGen2Collections": 0,
+            "totalGcPauseMilliseconds": 0,
+            "maxGcPauseMilliseconds": 0,
+            "maxParallelConcurrency": 8,
+            "parallelActionReplayWaves": 888,
+            "parallelActionReplayWorkItems": 28527,
+            "maxParallelActionReplayConcurrency": 8,
+            "deferredRoundChoiceActions": 2078,
+            "deferredRoundChoiceLayerWidthTotal": 15246,
+            "maxDeferredRoundChoiceLayerWidth": 29,
+            "deferredRoundChoiceFiniteQuotaFallbacks": 0,
+            "deferredRoundChoiceFinitePrimaryLayers": 2078,
+            "deferredRoundChoiceFinitePendingFallbacks": 0,
+            "parallelRoundChoiceReplayWaves": 429,
+            "parallelRoundChoiceReplayWorkItems": 17257,
+            "maxParallelRoundChoiceReplayConcurrency": 8,
+            "searchedTurns": 7,
+            "shufflesCrossed": 2,
+            "score": 10001445960,
+            "projectedBattleHpLost": 6,
+            "potionCount": 0,
+            "potionUses": [],
+            "onlyDeathRoutes": false,
+            "finalHp": 59,
+            "finalEnemyHp": 0,
+            "combatEndedTurn": 7,
+            "capturedAtElapsedMilliseconds": 7113.9361,
+            "managedLiveBytes": 5800543112,
+            "managedHeapBytes": 115424648,
+            "managedFragmentedBytes": 41478704,
+            "workingSetBytes": 7892803584,
+            "privateMemoryBytes": 18999463936,
+            "configuredNoGcRegionEnabled": true,
+            "configuredNoGcRegionBudgetBytes": 16000000000,
+            "gcLatencyMode": "NoGCRegion",
+            "noGcRegionActive": true,
+            "noGcRegionBudgetBytes": 16000000000,
+            "noGcRegionRolloverCount": 0
+          },
+          "artifactDirectory": ".local/simulation-profile-20260910/allocation-mecha-native-normal"
+        }
+      }
+    }
+  },
+  "supportingFixture": {
+    "path": "coverage/unattended/performance-veryhigh-mecha-native.json",
+    "generatedFile": ".local/simulation-profile-20260910/mecha-native-run-cards.json",
+    "contents": [
+      {
+        "cardId": "STRIKE_SILENT",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "STRIKE_SILENT",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "STRIKE_SILENT",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "DEFEND_SILENT",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "DEFEND_SILENT",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "DEFEND_SILENT",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "SURVIVOR",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "OUTBREAK",
+        "upgradeLevels": 1,
+        "enchantmentId": "SLITHER",
+        "enchantmentAmount": 1
+      },
+      {
+        "cardId": "FOOTWORK",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "BACKFLIP",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "ESCAPE_PLAN",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "BLADE_OF_INK",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "SNAKEBITE",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "PIERCING_WAIL",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "CALCULATED_GAMBLE",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "CLOAK_AND_DAGGER",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "MALAISE",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "SUPPRESS",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "BUBBLE_BUBBLE",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "PREPARED",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "HAZE",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "DEADLY_POISON",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "DODGE_AND_ROLL",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "MIRAGE",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "TOOLS_OF_THE_TRADE",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "CALCULATED_GAMBLE",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "MALAISE",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "ULTIMATE_DEFEND",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "PIERCING_WAIL",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "FOOTWORK",
+        "upgradeLevels": 1
+      }
+    ]
+  },
+  "excludedPilots": [
+    "warmup-necro",
+    "warmup-allocation-process",
+    "allocation-necro-short",
+    "warmup-knights",
+    "cpu-knights-short",
+    "warmup-necro-normal",
+    "warmup-mecha-native-normal"
+  ],
+  "failedFixture": {
+    "runId": "1c1134cbba904d8c995745f1e4247cd2",
+    "fixture": "coverage/unattended/mecha-knight-memory-run-snapshot.json",
+    "error": "ArgumentNullException key in ModelDb.GetById / Player.FromSerializable; missing character in partial old snapshot; no solver started"
+  },
+  "collectionNotes": [
+    "First perf wrapper treated intentional SIGINT (-2) as failure after all 85388 samples were written. Existing recording was recovered and fully exported with perf inject --jit / perf script, without repeating CPU sampling.",
+    "First CPU combat JSONL ended with an incomplete line after cleanup; not used as complete action evidence. Complete request metrics came from result.json. Later journals were held open and read after normal request retirement.",
+    "AllocationDetails build succeeded with NU1900 vulnerability-feed warnings; production Release build was zero warnings/errors."
+  ]
+}
