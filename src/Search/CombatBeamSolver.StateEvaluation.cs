@@ -217,7 +217,7 @@ internal sealed partial class CombatBeamSolver
                 continue;
             retainedAttackValue += Math.Max(
                 1,
-                (int)Math.Round(ReadCardValue(liveCard, view?.Invariants)));
+                (int)Math.Round(ReadCardValue(liveCard, view?.CardValuesInvariant == true ? view.Invariants : null)));
         }
         ThreatFocus focus = GetThreatFocus(simulator, combat, view);
         IReadOnlyList<PowerModel> effectivePowers = combat.EffectivePowers();
@@ -250,7 +250,7 @@ internal sealed partial class CombatBeamSolver
                 enemyHp,
                 focus.TotalThreat,
                 focus.IncomingHitCount,
-                strategicRequirements, view?.Invariants);
+                strategicRequirements, view?.CardValuesInvariant == true ? view.Invariants : null);
             StrategicEffectVector effect = StrategicEffectModel.Evaluate(
                 power,
                 strategicContext.Value);

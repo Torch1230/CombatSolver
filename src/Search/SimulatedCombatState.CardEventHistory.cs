@@ -287,7 +287,7 @@ internal sealed partial class SimulatedCombatState
         return value;
     }
 
-    private int GetCardsExhaustedThisTurn(Creature actor)
+    internal int GetCardsExhaustedThisTurn(Creature actor)
     {
         if (_cardsExhaustedThisTurn?.TryGetValue(actor, out int value) == true)
             return value;

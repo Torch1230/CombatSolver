@@ -16,8 +16,11 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
     private readonly PredictedCard[] _cards;
     private readonly Player _player;
     private readonly CardHistoryReadValues _baseline;
-    private readonly int[] _cardGapMasks;
-    private readonly IReadOnlyList<PredictionGap>[] _gapCombinations;
+    private readonly ulong[] _cardGapMasks;
+    private readonly Dictionary<ulong, IReadOnlyList<PredictionGap>> _gapCombinations = [];
+    private readonly IReadOnlyList<PredictionGap> _rootGaps;
+    private readonly PredictionGap[] _distinctGaps;
+    private readonly CompactCardMetadataReadBinding? _cardBinding;
     private ResumableDiscardProgram _program;
     private CardHistoryReadValues _history;
     private IReadOnlyList<PredictionGap> _gaps;
@@ -28,9 +31,10 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
     private readonly int[] _baseHits;
     private readonly SimulatedCombatState.CompletedPowerReadBinding? _powerBinding;
     private readonly CompletedPowerReadValues[] _powerValues;
+    internal int RiskSourceCount => _distinctGaps.Length;
 
     internal CompactDiscardReadView(CompactDiscardProjection adapter, CombatPredictionSimulator root, Player player,
-        bool[] inferred)
+        PredictionRiskReason?[] risks)
     {
         _adapter = adapter;
         _context = root;
@@ -47,23 +51,23 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
             metadata.GetCardPlaySeriesStartedThisTurn(player.Creature), metadata.GetCardPlayStartsThisTurn(player.Creature),
             metadata.GetCardsPlayedThisTurn(player.Creature), metadata.GetManualCardsPlayedThisTurn(player.Creature),
             metadata.GetAttacksPlayedThisTurn(player.Creature), metadata.GetCreatureAttacksThisTurn(player.Creature),
-            metadata.GetZeroCostAttackStartsThisTurn(player.Creature));
+            metadata.GetZeroCostAttackStartsThisTurn(player.Creature), metadata.GetCardsExhaustedThisTurn(player.Creature));
         _combatBaseline = ((SimulatedCombatState)root.State.CombatState).CaptureCombatHistoryReadValues();
         _baseHits = Enumerable.Range(0, _program.CreatureCount)
             .Select(id => metadata.GetPoweredAttackHitsThisTurn(player.Creature, adapter.Creature(id))).ToArray();
         _enemies = new(this);
         _powerValues = new CompletedPowerReadValues[_program.PowerCount];
         _powerBinding = _program.PowerCount == 0 ? null : adapter.CreatePowerReadBinding(_context);
-        IReadOnlyList<PredictionGap> rootGaps = PredictionCoverage.Collect(root);
-        PredictionGap?[] cardGaps = _cards.Select((card, id) => inferred[id]
-            ? PredictionCoverage.FromSource(card.Preview, "OnPlay", PredictionRiskReason.MethodMirrorIncomplete) : null).ToArray();
-        PredictionGap[] distinct = cardGaps.OfType<PredictionGap>().Distinct().ToArray();
-        // The admitting adapter limits executable card types; no generic source cache escapes it.
-        if (distinct.Length > 4) throw new NotSupportedException("Closed read view has more than four risk sources.");
-        _cardGapMasks = cardGaps.Select(gap => gap is null ? 0 : 1 << Array.IndexOf(distinct, gap)).ToArray();
-        _gapCombinations = Enumerable.Range(0, 1 << distinct.Length)
-            .Select(mask => PredictionCoverage.Normalize(rootGaps.Concat(distinct.Where((_, i) => (mask & (1 << i)) != 0))))
-            .ToArray();
+        _cardBinding = adapter.CardValuesInvariant ? null : new(_cards);
+        _rootGaps = PredictionCoverage.Collect(root);
+        PredictionGap?[] cardGaps = _cards.Select((card, id) => risks[id] is { } reason
+            ? PredictionCoverage.FromSource(card.Preview, "OnPlay", reason) : null).ToArray();
+        _distinctGaps = cardGaps.OfType<PredictionGap>().Distinct().ToArray();
+        // Root admission already bounds card identities at 64. Cache only combinations actually
+        // read by this lane; precomputing all subsets would grow exponentially with coverage.
+        if (_distinctGaps.Length > 64) throw new NotSupportedException("Compact risk mask capacity exceeded.");
+        _cardGapMasks = cardGaps.Select(gap => gap is null ? 0UL : 1UL << Array.IndexOf(_distinctGaps, gap)).ToArray();
+        _gapCombinations.Add(0, PredictionCoverage.Normalize(_rootGaps));
         _gaps = _gapCombinations[0];
         _hand = new(this, ResumableDiscardProgram.Pile.Hand);
         _draw = new(this, ResumableDiscardProgram.Pile.Draw);
@@ -76,11 +80,12 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
         if (!_adapter.Program.State.HasSameRoot(program.State) || !program.Complete)
             throw new InvalidOperationException("Read view requires a completed candidate from its own root.");
         _program = program;
+        _cardBinding?.Read(program);
         int attacks = 0, creatureAttacks = 0, zeroCostAttacks = 0;
         _combatHistory.ResetFrom(_combatBaseline);
-        int block = 0, skill = 0, discarded = 0, energy = 0, draw = 0, starts = 0, plays = 0, manual = 0;
+        int block = 0, skill = 0, discarded = 0, exhausted = 0, energy = 0, draw = 0, starts = 0, plays = 0, manual = 0;
         _entries = _context.History.Entries.Count;
-        int gapMask = 0;
+        ulong gapMask = 0;
         for (int i = 0; i < program.EventCount; i++)
         {
             var item = program.EventAt(i);
@@ -92,11 +97,14 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
                     if (_cards[item.Card].Preview.Type == CardType.Attack && item.Value == 0) zeroCostAttacks++;
                     if (!item.Automatic) manual++;
                     _entries++;
-                    int cardMask = _cardGapMasks[item.Card];
+                    ulong cardMask = _cardGapMasks[item.Card];
                     if (cardMask != 0) { _entries++; gapMask |= cardMask; }
                     break;
                 case ResumableDiscardProgram.EventKind.Draw: draw++; _entries += 2; break;
                 case ResumableDiscardProgram.EventKind.Discard: discarded++; break;
+                case ResumableDiscardProgram.EventKind.ResultMoved:
+                    if ((ResumableDiscardProgram.Pile)item.Value == ResumableDiscardProgram.Pile.Exhaust) exhausted++;
+                    break;
                 case ResumableDiscardProgram.EventKind.Finish:
                     plays++; _entries++;
                     if (_cards[item.Card].Preview.Type == CardType.Skill) skill++;
@@ -131,8 +139,13 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
         _history = new(_player, Add(_baseline.BlockPlays, block), Add(_baseline.SkillPlays, skill),
             Add(_baseline.Discards, discarded), Add(_baseline.EnergySpent, energy), Add(_baseline.Draws, draw),
             Add(_baseline.Series, starts), Add(_baseline.Starts, starts), Add(_baseline.Plays, plays), Add(_baseline.ManualPlays, manual), Add(_baseline.AttackPlays, attacks),
-            Add(_baseline.CreatureAttacks, creatureAttacks), Add(_baseline.ZeroCostAttackStarts, zeroCostAttacks));
-        _gaps = _gapCombinations[gapMask];
+            Add(_baseline.CreatureAttacks, creatureAttacks), Add(_baseline.ZeroCostAttackStarts, zeroCostAttacks), Add(_baseline.Exhausts, exhausted));
+        if (!_gapCombinations.TryGetValue(gapMask, out var gaps))
+        {
+            gaps = PredictionCoverage.Normalize(_rootGaps.Concat(_distinctGaps.Where((_, i) => (gapMask & (1UL << i)) != 0)));
+            _gapCombinations.Add(gapMask, gaps);
+        }
+        _gaps = gaps;
         if (_powerBinding != null)
         {
             _adapter.CopyPowerReadValues(program, _powerValues);
@@ -159,6 +172,8 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
     internal override IReadOnlyList<Creature> EnemyRoster => _program.CreatureCount == 0
         ? ((SimulatedCombatState)_context.State.CombatState).Enemies : _enemies;
     internal override bool EnemyValuesInvariant => _program.CreatureCount == 0;
+    internal override bool CardValuesInvariant => _adapter.CardValuesInvariant
+        && _program.Count(ResumableDiscardProgram.Pile.Play) == 0;
     internal override int HistoryEntries => _entries;
     internal override IReadOnlyList<PredictedCard> Hand => _hand;
     internal override IReadOnlyList<PredictedCard> Draw => _draw;

@@ -198,8 +198,10 @@ internal sealed partial class CombatPredictionSimulator
         var ownerState = State.GetPlayerCombatState(card.Preview.Owner);
         int energy = availableEnergy ?? ownerState.Energy;
         int stars = availableStars ?? ownerState.Stars;
-        energyCost = card.GetEnergyCostWithModifiers(this, ownerState);
-        starCost = card.GetStarCostWithModifiers(this, ownerState);
+        // An X card consumes the supplied resource pool. Completed readers can evaluate
+        // a different pool from the private context's initial resources without mutating it.
+        energyCost = card.Preview.EnergyCost.CostsX ? energy : card.GetEnergyCostWithModifiers(this, ownerState);
+        starCost = card.Preview.HasStarCostX ? stars : card.GetStarCostWithModifiers(this, ownerState);
         int payableEnergy = energyCost;
         int payableStars = starCost;
 

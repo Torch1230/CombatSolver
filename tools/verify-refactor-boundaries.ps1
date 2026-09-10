@@ -1201,7 +1201,7 @@ foreach ($file in Get-ChildItem -LiteralPath $compactRoot -Filter *.cs -File -Re
 }
 $compactProductionFiles = @($searchFiles) + @(Get-ChildItem -LiteralPath (Join-Path $repositoryRoot 'src/Runtime') -Filter *.cs -File -Recurse)
 foreach ($file in $compactProductionFiles) {
-    foreach ($reference in @('ResumableDiscardProgram', 'CompactDiscardProjection', 'CompactDiscardReadView', 'CompactPhaseProbe')) {
+    foreach ($reference in @('ResumableDiscardProgram', 'CompactDiscardProjection', 'CompactDiscardReadView', 'CompactPhaseProbe', 'CompactCardMetadataReadBinding')) {
         foreach ($match in Select-String -LiteralPath $file.FullName -SimpleMatch $reference) {
             $violations.Add("$($match.Path):$($match.LineNumber): unvalidated compact prototype reached production: $reference")
         }
@@ -1244,11 +1244,23 @@ foreach ($file in $compactProductionFiles) {
         $violations.Add("$($match.Path):$($match.LineNumber): completed Power binding is not admitted to production execution.")
     }
 }
+$compactCardReads = Join-Path $repositoryRoot 'src/Testing/CompactCardMetadataReadBinding.cs'
+foreach ($replay in @('.ManualPlay(', '.AutoPlay(', '.Fork(', 'HookMirrors.', 'CardCmd.', '.State.Write(')) {
+    foreach ($match in Select-String -LiteralPath $compactCardReads -SimpleMatch $replay) {
+        $violations.Add("Card metadata binding may only import supplied completed values: $($match.LineNumber) / $replay")
+    }
+}
 $compactReadGuards = @(
     @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'state.AssertForkable();'),
     @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'model._owner = source.Owner;'),
     @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'model._amount = value.Amount;'),
     @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', '_state.InvalidateBaseHookListeners();'),
+    @('src/Testing/CompactCardMetadataReadBinding.cs', 'private readonly CardModel[] _models;'),
+    @('src/Testing/CompactCardMetadataReadBinding.cs', 'model.EnergyCost.CapturedXValue = captured;'),
+    @('src/Testing/CompactCardMetadataReadBinding.cs', 'model.HasBeenRemovedFromState = removed;'),
+    @('src/Testing/CompactDiscardReadView.cs', '_cardBinding?.Read(program);'),
+    @('src/Search/SimulatedCombatState.cs', 'history?.Owner.Creature, history?.Exhausts'),
+    @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'strategicRequirements, view?.CardValuesInvariant == true ? view.Invariants : null'),
     @('src/Testing/CompactDiscardReadView.cs', '_adapter.CopyPowerReadValues(program, _powerValues);'),
     @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'SnapshotCore(view.EvaluationContext,'),
     @('src/Testing/CompactDiscardReadView.cs', '!_adapter.Program.State.HasSameRoot(program.State) || !program.Complete'),
@@ -1259,8 +1271,8 @@ $compactReadGuards = @(
     @('src/Search/CombatBeamSolver.ReadView.cs', 'view?.EnemyValuesInvariant == true ? view.Invariants : null'),
     @('src/Engine/InCombat/Simulation/SimCreatureState.cs', '_values.LoseHp(amount)'),
     @('src/Engine/InCombat/Simulation/Compact/CreatureValueSlots.cs', 'state.Write(Offset + 3, present ? 1 : 0)'),
-    @('src/Testing/CompactDiscardProjection.cs', '=> new(this, _root.Fork(), _player, _inferred)'),
-    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'if (!Ending) Move(card, Pile.Discard);'),
+    @('src/Testing/CompactDiscardProjection.cs', '=> new(this, _root.Fork(), _player, _risks)'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'if (ResultPile(card) == Pile.Removed || !Ending)'),
     @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', '_creatures[target].SetPresent(state, false);'),
     @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', 'state.Write(_terminalSlot, 1);'),
     @('src/Search/CompletedStateReadView.cs', 'A new stable root requires a new cache.'),

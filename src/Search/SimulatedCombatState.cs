@@ -2134,7 +2134,7 @@ internal sealed partial class SimulatedCombatState
         AddCreatureIntMap(ref fingerprint, 'j', _shivsPlayedThisTurn);
         AddCreatureIntMap(ref fingerprint, 'b', _blockCardsPlayedThisTurn, history?.Owner.Creature, history?.BlockPlays);
         AddCreatureIntMap(ref fingerprint, 'l', _skillCardsPlayedThisTurn, history?.Owner.Creature, history?.SkillPlays);
-        AddCreatureIntMap(ref fingerprint, 'x', _cardsExhaustedThisTurn);
+        AddCreatureIntMap(ref fingerprint, 'x', _cardsExhaustedThisTurn, history?.Owner.Creature, history?.Exhausts);
         AddCreatureSet(ref fingerprint, 'd', _doomAppliersThisTurn);
         AddCreatureSet(ref fingerprint, 'L', _unblockedDamageThisTurn, combatHistory?.LostHp);
         AddPoweredAttackHits(ref fingerprint, _poweredAttackHitsThisTurn, combatHistory?.PoweredHits);

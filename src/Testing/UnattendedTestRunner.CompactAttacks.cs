@@ -121,7 +121,7 @@ internal sealed partial class UnattendedTestRunner
                     throw new InvalidOperationException("Attack terminal boundary differs.");
                 Compare(lane, continued, $"route-{nativeExpected.Count}-after-safe-point");
                 nativeExpected.Add(CaptureSimulated(continued, (SimulatedCombatState)continued.State.CombatState, player, enemies[0]));
-                nativePowers.Add(PowerValues(((SimulatedCombatState)continued.State.CombatState).EffectivePowers()));
+                nativePowers.Add(CompactPowerValues(((SimulatedCombatState)continued.State.CombatState).EffectivePowers()));
                 nativeCreatures.Add(enemies.Select((_, index) =>
                 {
                     CreatureVitals value = lane.Creature(index + 1);
@@ -204,7 +204,7 @@ internal sealed partial class UnattendedTestRunner
                     "CompactAttack", $"Native{index}");
                 if (!final)
                 {
-                    string[] actualPowers = PowerValues(combat.Creatures.SelectMany(c => c.Powers));
+                    string[] actualPowers = CompactPowerValues(combat.Creatures.SelectMany(c => c.Powers));
                     if (!actualPowers.SequenceEqual(nativePowers[index]))
                         throw new InvalidOperationException($"Native Power state differs at route step {index}:\nexpected: "
                             + string.Join(";", nativePowers[index]) + "\nactual: " + string.Join(";", actualPowers));
@@ -235,10 +235,12 @@ internal sealed partial class UnattendedTestRunner
                 new JsonSerializerOptions { WriteIndented = true }));
         }
 
-        string[] PowerValues(IEnumerable<PowerModel> powers) => powers.GroupBy(power => power.Owner).SelectMany(group => group.Select((power, index) =>
+    }
+
+    private static string[] CompactPowerValues(IEnumerable<PowerModel> powers)
+        => powers.GroupBy(power => power.Owner).SelectMany(group => group.Select((power, index) =>
             $"{index}:{power.Owner.CombatId}:{power.Id.Entry}:{power.Amount}:{power.Applier?.CombatId}:{power.Target?.CombatId}:"
             + $"{power.AmountOnTurnStart}:{power.SkipNextDurationTick}:"
             + string.Join(',', power.DynamicVars.OrderBy(pair => pair.Key).Select(pair => $"{pair.Key}={pair.Value.BaseValue}"))))
             .Order(StringComparer.Ordinal).ToArray();
-    }
 }

@@ -6,6 +6,7 @@
 
 | 要查什么 | 入口 |
 |---|---|
+| 能力牌移除、消耗与 X 费用／完成读取 | [生命周期阶段结果](performance/simulation-card-lifecycle-20260911.md) |
 | 有序卡牌效果、嵌套选择与指令恢复 | [指令阶段结果](performance/simulation-effect-program-20260911.md) |
 | 基础 Power 值、原生攻击／格挡边界与单向评估读取 | [Power 值迁移结果](performance/simulation-compact-powers-20260911.md) |
 | 组件职责、状态所有权和调用链 | [架构与职责地图](ARCHITECTURE.md) |

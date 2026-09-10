@@ -7,16 +7,17 @@ namespace CombatSolver.Engine.InCombat.Simulation.Compact;
 /// </summary>
 internal sealed class ResumableDiscardProgram
 {
-    internal readonly record struct Card(int Cost, CardEffectProgram Effects, bool Sly = false);
-    internal enum Pile { Hand, Draw, Discard, Play, Exhaust }
-    internal enum EventKind { Pay, Start, Draw, Select, SelectedCard, Discard, Block, Finish, Shuffle, ShuffleCard, Retrieve, Damage, DamageBlocked, DamageOverkill, AttackFinish, Death, PowerChange }
+    internal readonly record struct Card(int Cost, CardEffectProgram Effects, bool Sly = false,
+        Pile ResultPile = Pile.Discard, bool CostsX = false, int CapturedX = 0);
+    internal enum Pile { Hand, Draw, Discard, Play, Exhaust, Removed }
+    internal enum EventKind { Pay, Start, Draw, Select, SelectedCard, Discard, Block, Finish, Shuffle, ShuffleCard, Retrieve, Damage, DamageBlocked, DamageOverkill, AttackFinish, Death, PowerChange, ResultMoved }
     internal readonly record struct Event(EventKind Kind, int Card, int Value, bool Automatic, int Target = -1, int Flags = 0);
     private const int EnergySlot = 0, BlockSlot = 1, DepthSlot = 2, EventCountSlot = 3;
     private const int RngSlot = 4, ShuffleCountSlot = 9;
-    private const int FrameWidth = 19, MaxFrames = 8;
+    private const int FrameWidth = 20, MaxFrames = 8, PileCount = 6;
     private const int CardOffset = 0, IpOffset = 1, AutoOffset = 2, BeforeBlockOffset = 3;
     private const int SelectedCountOffset = 4, NextAutoOffset = 5, SelectedOffset = 6;
-    private const int DrawIndexOffset = 16, TargetOffset = 17, EffectIndexOffset = 18;
+    private const int DrawIndexOffset = 16, TargetOffset = 17, EffectIndexOffset = 18, EnergyValueOffset = 19;
     private readonly Card[] _cards;
     private readonly CreatureAttackLayout? _combat;
     private readonly BasicPowerLayout? _powers;
@@ -27,9 +28,14 @@ internal sealed class ResumableDiscardProgram
     private readonly CardComparer? _cardComparer;
     private readonly int _pileStart = 10;
     private readonly int _frameStart;
+    private readonly int _cardValueStart;
     private readonly int _eventStart;
     internal ReversibleValueState State { get; }
     internal int Energy => Read(EnergySlot);
+    internal int CapturedX(int card) => Read(_cardValueStart + card);
+    internal Pile ResultPile(int card) => _cards[card].ResultPile;
+    internal bool CardRemoved(int card) => Contains(Pile.Removed, card);
+    internal bool CardValuesInvariant => _cards.All(card => card.ResultPile == Pile.Discard && !card.CostsX);
     internal int Block => _combat?.Read(State, 0).Block ?? Read(BlockSlot);
     internal int PowerCount => _powers?.Count ?? 0;
     internal BasicPowerValues Power(int index) => _powers!.Read(State, index);
@@ -63,9 +69,11 @@ internal sealed class ResumableDiscardProgram
     {
         if (cards.Length == 0 || cards.Length > 64 || piles.Length != 5 || cards.Count(c => c.Sly) >= MaxFrames)
             throw new NotSupportedException("Compact prototype capacity exceeded.");
-        if (cards.Any(c => c.Cost < 0 || c.Effects == null || c.Effects.RequiresPowers && powers == null
+        if (cards.Any(c => c.Cost < 0 || c.CapturedX is < 0 or > 999_999_999 || c.Effects == null
+                || c.Effects.RequiresPowers && (powers == null || creatures == null) || c.Effects.RequiresEnergyX && !c.CostsX
+                || c.ResultPile is not (Pile.Discard or Pile.Exhaust or Pile.Removed)
                 || c.Effects.RequiresTarget && creatures == null || c.Sly && (c.Effects.Count == 0 || c.Effects.RequiresTarget))
-            || energy < 0 || block < 0 || discardBlock < 0 || stratagem is < 0 or > 10 || shuffleBlock < 0)
+            || energy is < 0 or > 999_999_999 || block < 0 || discardBlock < 0 || stratagem is < 0 or > 10 || shuffleBlock < 0)
             throw new ArgumentException("Invalid compact root.");
         int[] identities = piles.SelectMany(p => p).ToArray();
         if (identities.Length != cards.Length || !identities.Order().SequenceEqual(Enumerable.Range(0, cards.Length))
@@ -83,7 +91,8 @@ internal sealed class ResumableDiscardProgram
         _shuffleBlock = shuffleBlock;
         _shuffleBlockFirst = shuffleBlockFirst;
         _cardComparer = comparisons == null ? null : new((int[])comparisons.Clone(), cards.Length);
-        _frameStart = _pileStart + 5 * (cards.Length + 1);
+        _cardValueStart = _pileStart + PileCount * (cards.Length + 1);
+        _frameStart = _cardValueStart + cards.Length;
         State = new ReversibleValueState(_frameStart + MaxFrames * FrameWidth);
         _combat = creatures == null ? null : new(State, creatures);
         _powers = powers == null ? null : new(State, powers);
@@ -92,6 +101,7 @@ internal sealed class ResumableDiscardProgram
         if (_combat == null) State.Write(BlockSlot, block);
         else if (Creature(0).Block != block) throw new ArgumentException("Player block disagrees with creature values.");
         WriteRng(shuffleRng);
+        for (int card = 0; card < cards.Length; card++) State.Write(_cardValueStart + card, cards[card].CapturedX);
         for (int p = 0; p < piles.Length; p++)
         {
             State.Write(PileBase((Pile)p), piles[p].Count);
@@ -109,7 +119,8 @@ internal sealed class ResumableDiscardProgram
         _shuffleBlock = shuffleBlock;
         _shuffleBlockFirst = shuffleBlockFirst;
         _cardComparer = cardComparer;
-        _frameStart = _pileStart + 5 * (cards.Length + 1);
+        _cardValueStart = _pileStart + PileCount * (cards.Length + 1);
+        _frameStart = _cardValueStart + cards.Length;
         _eventStart = eventStart;
         _combat = combat;
         _powers = powers;
@@ -162,12 +173,13 @@ internal sealed class ResumableDiscardProgram
     internal void Begin(int card, int target = -1)
     {
         if (!Complete || Terminal || Ending || !Contains(Pile.Hand, card)
-            || _cards[card].Effects.Count == 0 || Energy < _cards[card].Cost
+            || _cards[card].Effects.Count == 0 || !_cards[card].CostsX && Energy < _cards[card].Cost
             || (_cards[card].Effects.RequiresTarget ? target <= 0 || target >= CreatureCount || !CreaturePresent(target) || Creature(target).CurrentHp <= 0 : target != -1))
             throw new InvalidOperationException("Card cannot begin this compact action.");
-        State.Write(EnergySlot, Energy - _cards[card].Cost);
-        Emit(EventKind.Pay, card, _cards[card].Cost);
-        Push(card, false, target);
+        int energy = _cards[card].CostsX ? Energy : _cards[card].Cost;
+        State.Write(EnergySlot, Energy - energy);
+        Emit(EventKind.Pay, card, energy);
+        Push(card, false, target, energy);
     }
 
     internal void SupplyChoice(ReadOnlySpan<int> selected)
@@ -207,7 +219,7 @@ internal sealed class ResumableDiscardProgram
             {
                 case 0:
                     Move(card, Pile.Play);
-                    Emit(EventKind.Start, card, _cards[card].Cost, Read(frame + AutoOffset) != 0, Read(frame + TargetOffset));
+                    Emit(EventKind.Start, card, Read(frame + EnergyValueOffset), Read(frame + AutoOffset) != 0, Read(frame + TargetOffset));
                     State.Write(frame + IpOffset, 1);
                     break;
                 case 1:
@@ -246,7 +258,11 @@ internal sealed class ResumableDiscardProgram
                 case 5:
                     Emit(EventKind.Finish, card, Block > Read(frame + BeforeBlockOffset) ? 1 : 0,
                         Read(frame + AutoOffset) != 0);
-                    if (!Ending) Move(card, Pile.Discard);
+                    if (ResultPile(card) == Pile.Removed || !Ending)
+                    {
+                        Move(card, ResultPile(card));
+                        Emit(EventKind.ResultMoved, card, (int)ResultPile(card));
+                    }
                     State.Write(DepthSlot, Read(DepthSlot) - 1);
                     break;
                 default:
@@ -266,8 +282,9 @@ internal sealed class ResumableDiscardProgram
             case CardInstructionKind.GainBlock:
                 GainBlock(card, _powers?.ModifyBlock(State, 0, instruction.Amount) ?? instruction.Amount);
                 break;
-            case CardInstructionKind.ApplyWeakToTarget:
-                ApplyWeak(card, Read(Frame + TargetOffset), instruction.Amount);
+            case CardInstructionKind.ApplyBasicPower:
+                int target = instruction.Target == CardInstructionTarget.Owner ? 0 : Read(Frame + TargetOffset);
+                ApplyPower(card, target, instruction.Power, checked(instruction.Amount + instruction.EnergyXMultiplier * CapturedX(card)));
                 break;
             case CardInstructionKind.Draw:
                 while (Read(Frame + DrawIndexOffset) < instruction.Amount && Count(Pile.Hand) < 10 && !Ending)
@@ -365,14 +382,14 @@ internal sealed class ResumableDiscardProgram
         Emit(EventKind.AttackFinish, card, target: target);
     }
 
-    private void ApplyWeak(int card, int target, int amount)
+    private void ApplyPower(int card, int target, BasicPowerKind kind, int amount)
     {
-        if (amount > 0 && !Ending && CreaturePresent(target) && Creature(target).CurrentHp > 0)
+        if (amount != 0 && !Ending && CreaturePresent(target) && Creature(target).CurrentHp > 0)
         {
-            int index = _powers!.Find(target, BasicPowerKind.Weak);
+            int index = _powers!.Find(target, kind);
             int before = _powers.Read(State, index).Amount;
             _powers.Apply(State, index, amount, 0);
-            Emit(EventKind.PowerChange, card, _powers.Read(State, index).Amount - before, target: target, flags: (int)BasicPowerKind.Weak);
+            Emit(EventKind.PowerChange, card, _powers.Read(State, index).Amount - before, target: target, flags: (int)kind);
         }
     }
 
@@ -381,7 +398,7 @@ internal sealed class ResumableDiscardProgram
         public int Compare(int left, int right) => comparisons[left * count + right];
     }
 
-    private void Push(int card, bool automatic, int target = -1)
+    private void Push(int card, bool automatic, int target = -1, int? energyValue = null)
     {
         if (Read(DepthSlot) >= MaxFrames) throw new InvalidOperationException("Compact frame capacity exceeded.");
         State.Write(DepthSlot, Read(DepthSlot) + 1);
@@ -390,11 +407,14 @@ internal sealed class ResumableDiscardProgram
         State.Write(Frame + AutoOffset, automatic ? 1 : 0);
         State.Write(Frame + BeforeBlockOffset, Block);
         State.Write(Frame + TargetOffset, target);
+        int value = energyValue ?? (_cards[card].CostsX ? Energy : _cards[card].Cost);
+        State.Write(Frame + EnergyValueOffset, value);
+        if (_cards[card].CostsX) State.Write(_cardValueStart + card, value);
     }
 
     private void Move(int card, Pile destination)
     {
-        for (int p = 0; p < 5; p++)
+        for (int p = 0; p < PileCount; p++)
         {
             Pile source = (Pile)p;
             for (int i = 0; i < Count(source); i++)

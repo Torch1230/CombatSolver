@@ -1,8 +1,11 @@
 namespace CombatSolver.Engine.InCombat.Simulation.Compact;
 
-internal enum CardInstructionKind { AttackTarget, GainBlock, Draw, Discard, ApplyWeakToTarget }
+internal enum CardInstructionKind { AttackTarget, GainBlock, Draw, Discard, ApplyBasicPower }
+internal enum CardInstructionTarget { Owner, ChosenEnemy }
 
-internal readonly record struct CardInstruction(CardInstructionKind Kind, int Amount);
+internal readonly record struct CardInstruction(CardInstructionKind Kind, int Amount,
+    BasicPowerKind Power = BasicPowerKind.Strength, CardInstructionTarget Target = CardInstructionTarget.Owner,
+    int EnergyXMultiplier = 0);
 
 /// <summary>
 /// Immutable, fully admitted OnPlay instructions. Execution position belongs to the value
@@ -17,13 +20,16 @@ internal sealed class CardEffectProgram
     internal int TotalDraw { get; }
     internal bool RequiresTarget { get; }
     internal bool RequiresPowers { get; }
+    internal bool RequiresEnergyX { get; }
 
     internal CardEffectProgram(ReadOnlySpan<CardInstruction> instructions)
     {
         _instructions = instructions.ToArray();
         foreach (CardInstruction instruction in _instructions)
         {
-            if (instruction.Amount < 0 || instruction.Amount > 999_999_999)
+            if (instruction.Amount is < -999_999_999 or > 999_999_999
+                || instruction.Kind != CardInstructionKind.ApplyBasicPower && (instruction.Amount < 0 || instruction.EnergyXMultiplier != 0)
+                || instruction.EnergyXMultiplier is < -1 or > 1)
                 throw new ArgumentException("Compact instruction amount is outside the admitted range.");
             switch (instruction.Kind)
             {
@@ -39,9 +45,15 @@ internal sealed class CardEffectProgram
                 case CardInstructionKind.Discard:
                     if (instruction.Amount > 10) throw new ArgumentException("Compact discard exceeds choice capacity.");
                     break;
-                case CardInstructionKind.ApplyWeakToTarget:
-                    RequiresTarget = true;
+                case CardInstructionKind.ApplyBasicPower:
+                    if (instruction.Target is not (CardInstructionTarget.Owner or CardInstructionTarget.ChosenEnemy)
+                        || instruction.Power is not (BasicPowerKind.Strength or BasicPowerKind.Dexterity or BasicPowerKind.Weak)
+                        || instruction.Power == BasicPowerKind.Weak && (instruction.Target != CardInstructionTarget.ChosenEnemy
+                            || instruction.Amount < 0 || instruction.EnergyXMultiplier < 0))
+                        throw new NotSupportedException("Power instruction is outside the admitted application domain.");
+                    RequiresTarget |= instruction.Target == CardInstructionTarget.ChosenEnemy;
                     RequiresPowers = true;
+                    RequiresEnergyX |= instruction.EnergyXMultiplier != 0;
                     break;
                 default:
                     throw new NotSupportedException("Unknown compact card instruction.");

@@ -984,7 +984,7 @@ while IFS= read -r compact_path; do
     done
 done < <(rg --files "$repository_root/src/Engine/InCombat/Simulation/Compact" -g '*.cs')
 while IFS= read -r production_path; do
-    for prototype_reference in 'ResumableDiscardProgram' 'CompactDiscardProjection' 'CompactDiscardReadView' 'CompactPhaseProbe'; do
+    for prototype_reference in 'ResumableDiscardProgram' 'CompactDiscardProjection' 'CompactDiscardReadView' 'CompactPhaseProbe' 'CompactCardMetadataReadBinding'; do
         forbid_fixed "$production_path" "$prototype_reference" 'unvalidated compact prototype reached production:'
     done
 done < <(rg --files "$search_root" "$repository_root/src/Runtime" -g '*.cs')
@@ -1012,6 +1012,16 @@ require_fixed "$compact_power_reads" 'state.AssertForkable();' 'completed Power 
 require_fixed "$compact_power_reads" 'model._owner = source.Owner;' 'Power clone must restore captured ownership'
 require_fixed "$compact_power_reads" 'model._amount = value.Amount;' 'completed Power reads lost supplied amount authority'
 require_fixed "$compact_power_reads" '_state.InvalidateBaseHookListeners();' 'roster changes must invalidate Power owner-anchor order'
+compact_card_reads="$repository_root/src/Testing/CompactCardMetadataReadBinding.cs"
+for replay in '.ManualPlay(' '.AutoPlay(' '.Fork(' 'HookMirrors.' 'CardCmd.' '.State.Write('; do
+    forbid_fixed "$compact_card_reads" "$replay" 'card metadata binding may only import supplied completed values:'
+done
+require_fixed "$compact_card_reads" 'private readonly CardModel[] _models;' 'card read previews must belong to a private binding'
+require_fixed "$compact_card_reads" 'model.EnergyCost.CapturedXValue = captured;' 'completed card metadata lost captured X values'
+require_fixed "$compact_card_reads" 'model.HasBeenRemovedFromState = removed;' 'completed card metadata lost removal state'
+require_fixed "$compact_reader" '_cardBinding?.Read(program);' 'completed card metadata must come from the current program'
+require_fixed "$search_root/SimulatedCombatState.cs" "history?.Owner.Creature, history?.Exhausts" 'completed keys lost supplied exhaust history'
+require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'strategicRequirements, view?.CardValuesInvariant == true ? view.Invariants : null' 'card-set changes must bypass invariant strategic summaries'
 require_fixed "$compact_reader" '_adapter.CopyPowerReadValues(program, _powerValues);' 'completed Power inputs must come from the value program'
 require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'SnapshotCore(view.EvaluationContext,' 'completed evaluator must consume the lane-owned evaluation context'
 require_fixed "$compact_reader" '!_adapter.Program.State.HasSameRoot(program.State) || !program.Complete' 'completed reader lost ownership/stability guard'
@@ -1022,8 +1032,8 @@ require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'view?.CardHist
 require_fixed "$search_root/CombatBeamSolver.ReadView.cs" 'view?.EnemyValuesInvariant == true ? view.Invariants : null' 'mutable enemy values must bypass root invariant summaries'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/SimCreatureState.cs" '_values.LoseHp(amount)' 'legacy and compact scalar damage must share one arithmetic implementation'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/CreatureValueSlots.cs" 'state.Write(Offset + 3, present ? 1 : 0)' 'creature roster membership must remain journaled separately from HP'
-require_fixed "$compact_projection" '=> new(this, _root.Fork(), _player, _inferred)' 'each completed reader must own legacy simulator scratch'
-require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'if (!Ending) Move(card, Pile.Discard);' 'last-hit result movement must respect the native ending gate'
+require_fixed "$compact_projection" '=> new(this, _root.Fork(), _player, _risks)' 'each completed reader must own legacy simulator scratch'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'if (ResultPile(card) == Pile.Removed || !Ending)' 'last-hit result movement must respect the native ending gate'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs" '_creatures[target].SetPresent(state, false);' 'attack death must journal roster removal'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs" 'state.Write(_terminalSlot, 1);' 'compact terminal state must be journaled'
 require_fixed "$search_root/CompletedStateReadView.cs" 'A new stable root requires a new cache.' 'completed invariant cache lost its root lifetime contract'
