@@ -988,6 +988,8 @@ while IFS= read -r production_path; do
         forbid_fixed "$production_path" "$prototype_reference" 'unvalidated compact prototype reached production:'
     done
 done < <(rg --files "$search_root" "$repository_root/src/Runtime" -g '*.cs')
+require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" 'private T? PreparePowerApplication<T>' 'Power preparation must remain separate from ordered application'
+require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" 'private PowerModel ApplyPreparedPower<T>' 'Power application must preserve the prepared command'
 compact_projection="$repository_root/src/Testing/CompactDiscardProjection.cs"
 for semantic_replay in '.ManualPlay(' '.AutoPlay(' '.Discard(' 'CardOnPlayMirrors.Invoke(' 'HookMirrors.'; do
     forbid_fixed "$compact_projection" "$semantic_replay" 'compact projection must decode events without replaying effects:'

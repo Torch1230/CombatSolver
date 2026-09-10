@@ -1284,6 +1284,8 @@ $compactReadGuards = @(
     @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', '_creatures[target].SetPresent(state, false);'),
     @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', 'state.Write(_terminalSlot, 1);'),
     @('src/Search/CompletedStateReadView.cs', 'A new stable root requires a new cache.'),
+    @('src/Search/SimulatedCombatState.cs', 'private T? PreparePowerApplication<T>'),
+    @('src/Search/SimulatedCombatState.cs', 'private PowerModel ApplyPreparedPower<T>'),
     @('src/Engine/InCombat/Simulation/Compact/CardEffectProgram.cs', '_instructions = instructions.ToArray();'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'State.Write(Frame + EffectIndexOffset, Read(Frame + EffectIndexOffset) + 1);'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'State.Write(Frame + FirstDrawnOffset, drawn);'),

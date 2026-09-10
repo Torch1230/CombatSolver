@@ -1,5 +1,7 @@
 # CombatSolver 测试清单
 
+- `TEMPORARY-STRENGTH-ORDER-NATIVE`（`f2309b7ed0b1467e87d45a4d77f741ac`）与 `TEMPORARY-STRENGTH-CAP-NATIVE`（`fdcb17d80e1b4106870c33f5a98f04fb`）Passed：两条失败基线对应顺序与封顶偏移；最终覆盖尖啸、Artifact、+5／−2／−3、已有封顶与首次超上限、完整 Power 顺序／快照、Fork 和原生侧回合末恢复。普通 Power／中毒哨兵 `d44af93c1ae845358d699f44961cb116` 通过；[产物范围与证据](performance/simulation-temporary-strength-20260911.md)。
+
 - `COMPACT-DEFERRED-POWERS-NATIVE`（`6f3117a761c04843a78aa6aae746b538`）与新增 Power 槽后的中毒／表达式哨兵（`0ea7d01ece354b858df12471eb6ba5d4`）Passed：三个原生根、16 分支／八工作区、上限与小数返回、必备工具计数和移除；完整状态／历史／原键／Snapshot。兑现由旧引擎与原生定向触发 `AfterBlockCleared`，不是紧凑跨回合；[证据](performance/simulation-compact-deferred-powers-20260911.md)。
 
 - `DEFERRED-BLOCK-RETURN-NATIVE`：失败基线 `f061e289ecc44478bb7e2755653b3b05`（下回合格挡 1／3），最终 `c06b5d6fb97443589aea01f62f52672b` Passed。三个原生根覆盖上限与小数、叠加、零值，完整快照／Power 元数据、Fork 隔离和定向 `AfterBlockCleared`；[证据](performance/simulation-deferred-block-return-20260911.md)。

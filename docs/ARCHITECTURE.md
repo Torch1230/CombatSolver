@@ -197,6 +197,8 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 ## 4. 内嵌模拟引擎
 
+`SimulatedCombatState.Apply<T>` 共用 `PreparePowerApplication` 与 `ApplyPreparedPower`：前者保持修正与 Artifact 拦截，后者独占模型获得、数量／顺序和变更记录。临时力量入口在首次写入计数之前施加 Strength，随后按原版请求偏移与当前数量条件处理回调；叠加封顶仍传递原偏移。普通 Power 不走临时力量回调，不重复准备。
+
 ### 4.1 基础层
 
 `src/Engine/InCombat/Simulation/` 负责通用战斗命令时序、伤害、牌堆、历史、RNG、球和 Fork。它不包含单张卡、单个 Power 或具体怪物的搜索策略。历史卡牌 Started/Finished 与 DamageReceived 的卡牌来源使用不可变卡牌快照；当前动作是否开始以精确 trace-frame 身份判定，保留原生 `CardPlay` 身份，不以 Original 卡牌身份合并兄弟分支。`CombatPredictionHistory` 以不可变 prefix segment + 分支本地 mutable tail 保存事件；动作后缀消费者必须使用冻结上界的 `EntriesFrom/EntriesBetween`，不能先遍历完整 prefix 再 `Skip`，否则长线会把一次局部查询放大为随深度增长的重复工作。

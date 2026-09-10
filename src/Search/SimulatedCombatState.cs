@@ -592,15 +592,26 @@ internal sealed partial class SimulatedCombatState
 
     public void Apply<T>(Creature target, int amount, Creature? applier = null) where T : PowerModel
     {
+        T? incoming = PreparePowerApplication<T>(target, ref amount, applier);
+        if (incoming != null) ApplyPreparedPower(target, incoming, amount, applier);
+    }
+
+    private T? PreparePowerApplication<T>(Creature target, ref int amount, Creature? applier) where T : PowerModel
+    {
         if (amount == 0 || !CanReceivePredictedPowers(target))
-            return;
+            return null;
         T incoming = CreatePowerForApplication<T>(target, null, applier);
         amount = ModifyPowerAmountForRelics(incoming, target, amount, applier);
         if (incoming.GetTypeForAmount(amount) == MegaCrit.Sts2.Core.Entities.Powers.PowerType.Debuff
             && ConsumeArtifact(target))
         {
-            return;
+            return null;
         }
+        return incoming;
+    }
+
+    private PowerModel ApplyPreparedPower<T>(Creature target, T incoming, int amount, Creature? applier) where T : PowerModel
+    {
         PowerModel simulated = GetOrCreatePower(target, incoming, applier);
         int previousAmount = simulated._amount;
         simulated._amount = Math.Clamp(simulated._amount + amount, -999_999_999, 999_999_999);
@@ -626,6 +637,7 @@ internal sealed partial class SimulatedCombatState
                 throw new InvalidOperationException("击倒 Power 的施加者不是战斗中的玩家。");
             ((StringVar)knockdown.DynamicVars["Applier"]).StringValue = _playerNames[applyingPlayer];
         }
+        return simulated;
     }
 
     public void ApplyPower(Type powerType, Creature target, int amount, Creature? applier = null)
@@ -944,23 +956,27 @@ internal sealed partial class SimulatedCombatState
 
     public void ApplyTemporaryStrengthLoss<T>(Creature creature, int amount, Creature? applier)
         where T : PowerModel
-    {
-        int before = GetAmount<T>(creature);
-        Apply<T>(creature, amount, applier);
-        int applied = GetAmount<T>(creature) - before;
-        if (applied <= 0)
-            return;
-        Apply<StrengthPower>(creature, -applied, applier);
-    }
+        => ApplyTemporaryStrength<T>(creature, amount, applier, -1);
 
     public void ApplyTemporaryStrengthGain<T>(Creature creature, int amount, Creature? applier)
         where T : PowerModel
+        => ApplyTemporaryStrength<T>(creature, amount, applier, 1);
+
+    private void ApplyTemporaryStrength<T>(Creature creature, int amount, Creature? applier, int sign)
+        where T : PowerModel
     {
-        int before = GetAmount<T>(creature);
-        Apply<T>(creature, amount, applier);
-        int applied = GetAmount<T>(creature) - before;
-        if (applied > 0)
-            Apply<StrengthPower>(creature, applied, applier);
+        if (!typeof(TemporaryStrengthPower).IsAssignableFrom(typeof(T)))
+            throw new NotSupportedException("Temporary Strength application requires its native Power family.");
+        T? incoming = PreparePowerApplication<T>(creature, ref amount, applier);
+        if (incoming == null) return;
+        bool created = GetAmount<T>(creature) == 0;
+        // BeforeApplied runs before the new counter joins the owner's listener order.
+        if (created) Apply<StrengthPower>(creature, sign * amount, applier);
+        PowerModel applied = ApplyPreparedPower(creature, incoming, amount, applier);
+        // Native AfterPowerAmountChanged uses the requested, modified offset even when
+        // the counter is capped. Its first-application guard compares offset to Amount.
+        if (amount != applied.Amount)
+            Apply<StrengthPower>(creature, sign * amount, applier);
     }
 
     public void ApplyTemporaryDexterity<T>(Creature creature, int amount, Creature? applier)
