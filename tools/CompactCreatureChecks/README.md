@@ -13,3 +13,5 @@
 `EffectProgramChecks` 通过合成有序指令链验证同一父牌的两次选择、嵌套 Sly 选择、返回父牌继续后续格挡／抽牌、空选择、取消撤销、输入数组隔离和未知指令拒绝。八工作区反复从同一暂停候选恢复，比较全部值与有序牌堆。该通用游标合同不等于原生卡牌组合准入；生存者与真实洗牌／自动牌证据见[指令阶段报告](../../docs/performance/simulation-effect-program-20260911.md)。
 
 `CardLifecycleChecks` 在付款后冻结 X 牌，验证恢复时使用已捕获能量计算正负 Power 数量；能力牌离开战斗牌堆后，下一张零基础格挡仍读取当前敏捷。消耗位置、移除集合、X 值、根恢复和八工作区隔离一并比较。原生 12 分支与九步完整对账见[生命周期阶段报告](../../docs/performance/simulation-card-lifecycle-20260911.md)。
+
+`ConditionalPowerChecks` 覆盖四种卡牌类别、空抽牌、洗牌检索与实际抽牌返回值、八工作区恢复，以及群体中毒／虚弱的指令与目标顺序、已离场目标和撤销。条件跳转超过程序末尾时拒绝；这些是纯值合同，原生十九牌准入和抽牌边界见[阶段报告](../../docs/performance/simulation-conditional-powers-20260911.md)。

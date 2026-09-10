@@ -984,7 +984,7 @@ while IFS= read -r compact_path; do
     done
 done < <(rg --files "$repository_root/src/Engine/InCombat/Simulation/Compact" -g '*.cs')
 while IFS= read -r production_path; do
-    for prototype_reference in 'ResumableDiscardProgram' 'CompactDiscardProjection' 'CompactDiscardReadView' 'CompactPhaseProbe' 'CompactCardMetadataReadBinding'; do
+    for prototype_reference in 'ResumableDiscardProgram' 'CompactDiscardProjection' 'CompactDiscardReadView' 'CompactPhaseProbe' 'CompactCardMetadataReadBinding' 'CompactCardProgramCompiler'; do
         forbid_fixed "$production_path" "$prototype_reference" 'unvalidated compact prototype reached production:'
     done
 done < <(rg --files "$search_root" "$repository_root/src/Runtime" -g '*.cs')
@@ -1039,6 +1039,12 @@ require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/CreatureA
 require_fixed "$search_root/CompletedStateReadView.cs" 'A new stable root requires a new cache.' 'completed invariant cache lost its root lifetime contract'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/CardEffectProgram.cs" '_instructions = instructions.ToArray();' 'compact definitions must own immutable instruction storage'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'State.Write(Frame + EffectIndexOffset, Read(Frame + EffectIndexOffset) + 1);' 'compact effect position must belong to journaled values'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'State.Write(Frame + FirstDrawnOffset, drawn);' 'draw return values must survive in the journaled frame'
+require_fixed "$compact_projection" 'CompactCardProgramCompiler.Compile(card.Preview, includeAttacks)' 'card admission must use the shared immutable program compiler'
+compact_compiler="$repository_root/src/Testing/CompactCardProgramCompiler.cs"
+for replay in '.ManualPlay(' '.AutoPlay(' 'CardOnPlayMirrors.Invoke(' 'HookMirrors.' 'CardCmd.' 'PowerCmd.'; do
+    forbid_fixed "$compact_compiler" "$replay" 'card admission must compile definitions without executing effects:'
+done
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'WriteRng(rng);' 'compact shuffle lost journaled RNG writes'
 require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactShufflePower.cs" 'isolation.Dispose();' 'expanded compact isolation must close before worker/native awaits'
 require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" '=> SnapshotCore(simulator, turn, actionCount, shufflesCrossed, boundary, processedEnemyDeaths, null);' 'legacy and completed readers must share full SnapshotCore'

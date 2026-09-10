@@ -1201,7 +1201,7 @@ foreach ($file in Get-ChildItem -LiteralPath $compactRoot -Filter *.cs -File -Re
 }
 $compactProductionFiles = @($searchFiles) + @(Get-ChildItem -LiteralPath (Join-Path $repositoryRoot 'src/Runtime') -Filter *.cs -File -Recurse)
 foreach ($file in $compactProductionFiles) {
-    foreach ($reference in @('ResumableDiscardProgram', 'CompactDiscardProjection', 'CompactDiscardReadView', 'CompactPhaseProbe', 'CompactCardMetadataReadBinding')) {
+    foreach ($reference in @('ResumableDiscardProgram', 'CompactDiscardProjection', 'CompactDiscardReadView', 'CompactPhaseProbe', 'CompactCardMetadataReadBinding', 'CompactCardProgramCompiler')) {
         foreach ($match in Select-String -LiteralPath $file.FullName -SimpleMatch $reference) {
             $violations.Add("$($match.Path):$($match.LineNumber): unvalidated compact prototype reached production: $reference")
         }
@@ -1224,6 +1224,12 @@ $compactContextGuards = @(
 foreach ($guard in $compactContextGuards) {
     if (-not ([IO.File]::ReadAllText((Join-Path $repositoryRoot $guard[0]))).Contains($guard[1])) {
         $violations.Add("Compact profile lost simulation context boundary: $($guard[0]) / $($guard[1])")
+    }
+}
+$compactCompiler = Join-Path $repositoryRoot 'src/Testing/CompactCardProgramCompiler.cs'
+foreach ($reference in @('.ManualPlay(', '.AutoPlay(', 'CardOnPlayMirrors.Invoke(', 'HookMirrors.', 'CardCmd.', 'PowerCmd.')) {
+    foreach ($match in Select-String -LiteralPath $compactCompiler -SimpleMatch $reference) {
+        $violations.Add("$($match.Path):$($match.LineNumber): card admission must compile definitions without executing effects: $reference")
     }
 }
 $compactReader = Join-Path $repositoryRoot 'src/Testing/CompactDiscardReadView.cs'
@@ -1278,6 +1284,8 @@ $compactReadGuards = @(
     @('src/Search/CompletedStateReadView.cs', 'A new stable root requires a new cache.'),
     @('src/Engine/InCombat/Simulation/Compact/CardEffectProgram.cs', '_instructions = instructions.ToArray();'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'State.Write(Frame + EffectIndexOffset, Read(Frame + EffectIndexOffset) + 1);'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'State.Write(Frame + FirstDrawnOffset, drawn);'),
+    @('src/Testing/CompactDiscardProjection.cs', 'CompactCardProgramCompiler.Compile(card.Preview, includeAttacks)'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'WriteRng(rng);'),
     @('src/Testing/UnattendedTestRunner.CompactShufflePower.cs', 'isolation.Dispose();'),
     @('src/Search/CombatBeamSolver.StateEvaluation.cs', '=> SnapshotCore(simulator, turn, actionCount, shufflesCrossed, boundary, processedEnemyDeaths, null);'),

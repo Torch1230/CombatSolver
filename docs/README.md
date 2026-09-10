@@ -6,6 +6,7 @@
 
 | 要查什么 | 入口 |
 |---|---|
+| 有序群体中毒、条件抽牌返回值与虚无历史 | [群体与条件指令结果](performance/simulation-conditional-powers-20260911.md) |
 | 能力牌移除、消耗与 X 费用／完成读取 | [生命周期阶段结果](performance/simulation-card-lifecycle-20260911.md) |
 | 有序卡牌效果、嵌套选择与指令恢复 | [指令阶段结果](performance/simulation-effect-program-20260911.md) |
 | 基础 Power 值、原生攻击／格挡边界与单向评估读取 | [Power 值迁移结果](performance/simulation-compact-powers-20260911.md) |

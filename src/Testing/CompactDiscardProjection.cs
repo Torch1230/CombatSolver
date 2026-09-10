@@ -85,7 +85,7 @@ internal sealed class CompactDiscardProjection
             combat.IsCapturedRootPowerSlot(power))).ToArray() : null;
         PredictedCard[] cards = state.AllCards.ToArray();
         _identities = cards.Select(c => c.Original).ToArray();
-        ResumableDiscardProgram.Card[] definitions = cards.Select(card => Capture(card.Preview, includeAttacks)).ToArray();
+        ResumableDiscardProgram.Card[] definitions = cards.Select(card => CompactCardProgramCompiler.Compile(card.Preview, includeAttacks)).ToArray();
         _risks = cards.Select(card => CardOnPlayMirrors.DescribeDispatch(card.Preview) switch
         {
             MirrorDispatchKind.Handled => (PredictionRiskReason?)null,
@@ -118,57 +118,6 @@ internal sealed class CompactDiscardProjection
         CardValuesInvariant = Program.CardValuesInvariant;
     }
 
-    private static ResumableDiscardProgram.Card Capture(CardModel card, bool includeAttacks)
-    {
-        if (card is not (Acrobatics or Prepared or Backflip or StrikeSilent or StrikeNecrobinder or DefendSilent or DefendNecrobinder
-                or Neutralize or Survivor or Finesse or UltimateDefend or Suppress or Footwork or Malaise)
-            || card is Neutralize or Suppress or Footwork or Malaise && !includeAttacks
-            || card.Enchantment != null || card.Affliction != null || card.BaseReplayCount != 0
-            || card.ExhaustOnNextPlay || card.IsDupe || card.IsClone || card.HasBeenRemovedFromState
-            || card.EnergyCost.CostsX && card is not Malaise || card.EnergyCost._localModifiers.Count != 0
-            || card.HasStarCostX || card.CurrentStarCost > 0 || card._temporaryStarCosts.Count != 0
-            || card.CurrentTarget != null || card.CurrentPlayIndex != 0 || card.LastStarsSpent != 0
-            || card.ShouldRetainThisTurn || card.HasTurnEndInHandEffect
-            || card.LocalKeywords.Any(k => k != CardKeyword.Sly && !(card is Malaise && k == CardKeyword.Exhaust)
-                && !(card is Suppress && k == CardKeyword.Innate))
-            || card.IsSlyThisTurn && card is not Prepared)
-            throw new NotSupportedException($"Compact prototype cannot admit card state {card.Id.Entry}.");
-        decimal draw = card is Acrobatics or Prepared or Backflip or Finesse ? card.DynamicVars.Cards.BaseValue : 0;
-        decimal damage = includeAttacks && card is StrikeSilent or StrikeNecrobinder or Neutralize or Suppress ? card.DynamicVars.Damage.BaseValue : 0;
-        decimal block = card is DefendSilent or DefendNecrobinder or Backflip or Survivor or Finesse or UltimateDefend ? card.DynamicVars.Block.BaseValue : 0;
-        decimal weak = card is Neutralize or Suppress ? card.DynamicVars.Weak.BaseValue : 0;
-        decimal dexterity = card is Footwork ? card.DynamicVars.Dexterity.BaseValue : 0;
-        if (draw != decimal.Truncate(draw) || draw < 0 || draw > 10 || card.EnergyCost._base < 0
-            || card is Acrobatics or Prepared or Backflip or Finesse && draw == 0
-            || damage != decimal.Truncate(damage) || damage is < 0 or > 999_999_999m
-            || block != decimal.Truncate(block) || block is < 0 or > 999_999_999m
-            || weak != decimal.Truncate(weak) || weak is < 0 or > 999_999_999m
-            || dexterity != decimal.Truncate(dexterity) || dexterity is < 0 or > 999_999_999m)
-            throw new NotSupportedException($"Compact prototype cannot admit card variables {card.Id.Entry}.");
-        // These are ordered native commands, including meaningful zero-base effects. The
-        // adapter admits exact types/instance state; the executor contains no card identities.
-        CardEffectProgram effects = card switch
-        {
-            Acrobatics => new([new(CardInstructionKind.Draw, (int)draw), new(CardInstructionKind.Discard, 1)]),
-            Prepared => new([new(CardInstructionKind.Draw, (int)draw), new(CardInstructionKind.Discard, (int)draw)]),
-            Backflip or Finesse => new([new(CardInstructionKind.GainBlock, (int)block), new(CardInstructionKind.Draw, (int)draw)]),
-            Survivor => new([new(CardInstructionKind.GainBlock, (int)block), new(CardInstructionKind.Discard, 1)]),
-            DefendSilent or DefendNecrobinder or UltimateDefend => new([new(CardInstructionKind.GainBlock, (int)block)]),
-            StrikeSilent or StrikeNecrobinder when includeAttacks => new([new(CardInstructionKind.AttackTarget, (int)damage)]),
-            StrikeSilent or StrikeNecrobinder => CardEffectProgram.Empty, // Inert metadata in the draw/discard-only fixture.
-            Neutralize or Suppress => new([new(CardInstructionKind.AttackTarget, (int)damage),
-                new(CardInstructionKind.ApplyBasicPower, (int)weak, BasicPowerKind.Weak, CardInstructionTarget.ChosenEnemy)]),
-            Footwork => new([new(CardInstructionKind.ApplyBasicPower, (int)dexterity, BasicPowerKind.Dexterity)]),
-            Malaise => new([new(CardInstructionKind.ApplyBasicPower, card.IsUpgraded ? -1 : 0, BasicPowerKind.Strength,
-                    CardInstructionTarget.ChosenEnemy, -1),
-                new(CardInstructionKind.ApplyBasicPower, card.IsUpgraded ? 1 : 0, BasicPowerKind.Weak, CardInstructionTarget.ChosenEnemy, 1)]),
-            _ => throw new NotSupportedException("Card has no admitted compact instructions.")
-        };
-        return new(card.EnergyCost._base, effects, card.IsSlyThisTurn,
-            card is Footwork ? ResumableDiscardProgram.Pile.Removed : card is Malaise ? ResumableDiscardProgram.Pile.Exhaust : ResumableDiscardProgram.Pile.Discard,
-            card.EnergyCost.CostsX, card.EnergyCost.CostsX ? card.EnergyCost.CapturedXValue : 0);
-    }
-
     private PowerModel[] CapturePowerTemplates(SimulatedCombatState combat, IReadOnlyList<PowerModel> powers)
     {
         List<PowerModel> result = powers.Where(IsBasicPower).ToList();
@@ -187,6 +136,7 @@ internal sealed class CompactDiscardProjection
                 BasicPowerKind.Weak => CanonicalModels.Power<WeakPower>(),
                 BasicPowerKind.Vulnerable => CanonicalModels.Power<VulnerablePower>(),
                 BasicPowerKind.Frail => CanonicalModels.Power<FrailPower>(),
+                BasicPowerKind.Poison => CanonicalModels.Power<PoisonPower>(),
                 _ => throw new InvalidOperationException("Unknown basic Power kind.")
             };
             PowerModel template = PredictionUtils.CloneModelForSimulation(prototype);
@@ -197,11 +147,11 @@ internal sealed class CompactDiscardProjection
         return result.ToArray();
     }
 
-    private static bool IsBasicPower(PowerModel power) => power is StrengthPower or DexterityPower or WeakPower or VulnerablePower or FrailPower;
+    private static bool IsBasicPower(PowerModel power) => power is StrengthPower or DexterityPower or WeakPower or VulnerablePower or FrailPower or PoisonPower;
     private static BasicPowerKind BasicKind(PowerModel power) => power switch
     {
         StrengthPower => BasicPowerKind.Strength, DexterityPower => BasicPowerKind.Dexterity, WeakPower => BasicPowerKind.Weak,
-        VulnerablePower => BasicPowerKind.Vulnerable, FrailPower => BasicPowerKind.Frail,
+        VulnerablePower => BasicPowerKind.Vulnerable, FrailPower => BasicPowerKind.Frail, PoisonPower => BasicPowerKind.Poison,
         _ => throw new InvalidOperationException("Power has no compact basic kind.")
     };
     internal SimulatedCombatState.CompletedPowerReadBinding CreatePowerReadBinding(CombatPredictionSimulator context)
@@ -341,7 +291,7 @@ internal sealed class CompactDiscardProjection
                         var active = stack.Pop();
                         if (active.Identity != item.Card) throw new InvalidOperationException("Unbalanced compact history.");
                         active.Method?.Dispose();
-                        projection.History.CardPlayFinished(card, active.Play, false);
+                        projection.History.CardPlayFinished(card, active.Play, (item.Flags & 1) != 0);
                         combat.RecordCardPlayed(card, item.Value != 0);
                         combat.RecordCardLifecycle(projection, card);
                         card.MutablePreview.CurrentTarget = null;

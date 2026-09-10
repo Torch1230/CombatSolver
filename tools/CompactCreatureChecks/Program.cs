@@ -3,6 +3,7 @@ using CombatSolver.Engine.InCombat.Simulation.Compact;
 PowerChecks.Run();
 EffectProgramChecks.Run();
 CardLifecycleChecks.Run();
+ConditionalPowerChecks.Run();
 
 (int Hp, int Block, decimal Amount, bool Unblockable, int ExpectedHp, int ExpectedBlock, decimal Blocked, int Lost, bool Killed, int Overkill)[] damageCases =
 {

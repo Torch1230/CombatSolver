@@ -8,16 +8,18 @@ namespace CombatSolver.Engine.InCombat.Simulation.Compact;
 internal sealed class ResumableDiscardProgram
 {
     internal readonly record struct Card(int Cost, CardEffectProgram Effects, bool Sly = false,
-        Pile ResultPile = Pile.Discard, bool CostsX = false, int CapturedX = 0);
+        Pile ResultPile = Pile.Discard, bool CostsX = false, int CapturedX = 0, CardCategory Category = CardCategory.Other,
+        bool Ethereal = false);
     internal enum Pile { Hand, Draw, Discard, Play, Exhaust, Removed }
     internal enum EventKind { Pay, Start, Draw, Select, SelectedCard, Discard, Block, Finish, Shuffle, ShuffleCard, Retrieve, Damage, DamageBlocked, DamageOverkill, AttackFinish, Death, PowerChange, ResultMoved }
     internal readonly record struct Event(EventKind Kind, int Card, int Value, bool Automatic, int Target = -1, int Flags = 0);
     private const int EnergySlot = 0, BlockSlot = 1, DepthSlot = 2, EventCountSlot = 3;
     private const int RngSlot = 4, ShuffleCountSlot = 9;
-    private const int FrameWidth = 20, MaxFrames = 8, PileCount = 6;
+    private const int FrameWidth = 21, MaxFrames = 8, PileCount = 6;
     private const int CardOffset = 0, IpOffset = 1, AutoOffset = 2, BeforeBlockOffset = 3;
     private const int SelectedCountOffset = 4, NextAutoOffset = 5, SelectedOffset = 6;
     private const int DrawIndexOffset = 16, TargetOffset = 17, EffectIndexOffset = 18, EnergyValueOffset = 19;
+    private const int FirstDrawnOffset = 20;
     private readonly Card[] _cards;
     private readonly CreatureAttackLayout? _combat;
     private readonly BasicPowerLayout? _powers;
@@ -69,7 +71,7 @@ internal sealed class ResumableDiscardProgram
     {
         if (cards.Length == 0 || cards.Length > 64 || piles.Length != 5 || cards.Count(c => c.Sly) >= MaxFrames)
             throw new NotSupportedException("Compact prototype capacity exceeded.");
-        if (cards.Any(c => c.Cost < 0 || c.CapturedX is < 0 or > 999_999_999 || c.Effects == null
+        if (cards.Any(c => c.Cost < 0 || c.CapturedX is < 0 or > 999_999_999 || c.Effects == null || !Enum.IsDefined(c.Category)
                 || c.Effects.RequiresPowers && (powers == null || creatures == null) || c.Effects.RequiresEnergyX && !c.CostsX
                 || c.ResultPile is not (Pile.Discard or Pile.Exhaust or Pile.Removed)
                 || c.Effects.RequiresTarget && creatures == null || c.Sly && (c.Effects.Count == 0 || c.Effects.RequiresTarget))
@@ -257,7 +259,7 @@ internal sealed class ResumableDiscardProgram
                     break;
                 case 5:
                     Emit(EventKind.Finish, card, Block > Read(frame + BeforeBlockOffset) ? 1 : 0,
-                        Read(frame + AutoOffset) != 0);
+                        Read(frame + AutoOffset) != 0, flags: _cards[card].Ethereal ? 1 : 0);
                     if (ResultPile(card) == Pile.Removed || !Ending)
                     {
                         Move(card, ResultPile(card));
@@ -283,10 +285,22 @@ internal sealed class ResumableDiscardProgram
                 GainBlock(card, _powers?.ModifyBlock(State, 0, instruction.Amount) ?? instruction.Amount);
                 break;
             case CardInstructionKind.ApplyBasicPower:
-                int target = instruction.Target == CardInstructionTarget.Owner ? 0 : Read(Frame + TargetOffset);
-                ApplyPower(card, target, instruction.Power, checked(instruction.Amount + instruction.EnergyXMultiplier * CapturedX(card)));
+                int amount = checked(instruction.Amount + instruction.EnergyXMultiplier * CapturedX(card));
+                if (instruction.Target == CardInstructionTarget.AllEnemies)
+                {
+                    // One command visits the captured roster in order. The next instruction
+                    // starts only after all its targets, as in native bulk PowerCmd.Apply.
+                    for (int target = 1; target < CreatureCount; target++) ApplyPower(card, target, instruction.Power, amount);
+                }
+                else ApplyPower(card, instruction.Target == CardInstructionTarget.Owner ? 0 : Read(Frame + TargetOffset), instruction.Power, amount);
+                break;
+            case CardInstructionKind.SkipIfDrawnCardNotType:
+                int first = Read(Frame + FirstDrawnOffset);
+                if (first < 0 || _cards[first].Category != instruction.RequiredCategory)
+                    State.Write(Frame + EffectIndexOffset, Read(Frame + EffectIndexOffset) + instruction.Amount);
                 break;
             case CardInstructionKind.Draw:
+                if (Read(Frame + DrawIndexOffset) == 0) State.Write(Frame + FirstDrawnOffset, -1);
                 while (Read(Frame + DrawIndexOffset) < instruction.Amount && Count(Pile.Hand) < 10 && !Ending)
                 {
                     if (Count(Pile.Draw) == 0 && Count(Pile.Discard) != 0)
@@ -298,6 +312,7 @@ internal sealed class ResumableDiscardProgram
                     int drawn = CardAt(Pile.Draw, 0);
                     Move(drawn, Pile.Hand);
                     Emit(EventKind.Draw, drawn);
+                    if (Read(Frame + DrawIndexOffset) == 0) State.Write(Frame + FirstDrawnOffset, drawn);
                     State.Write(Frame + DrawIndexOffset, Read(Frame + DrawIndexOffset) + 1);
                 }
                 break;
@@ -407,6 +422,7 @@ internal sealed class ResumableDiscardProgram
         State.Write(Frame + AutoOffset, automatic ? 1 : 0);
         State.Write(Frame + BeforeBlockOffset, Block);
         State.Write(Frame + TargetOffset, target);
+        State.Write(Frame + FirstDrawnOffset, -1);
         int value = energyValue ?? (_cards[card].CostsX ? Energy : _cards[card].Cost);
         State.Write(Frame + EnergyValueOffset, value);
         if (_cards[card].CostsX) State.Write(_cardValueStart + card, value);

@@ -1,5 +1,7 @@
 # CombatSolver 测试清单
 
+- `COMPACT-CONDITIONAL-POWERS-NATIVE`（`0dda50623c92431687817928bbf2744f`）与 `COMPACT-DRAW-RETURN-NATIVE`（`e318d438c9d84b0fab75d17b48db46d8`）Passed：14 分支、八工作区、原生九步和四种原生抽牌根；群体中毒／虚弱顺序、条件格挡、固定施加者／死亡清理、虚无历史、全部 Snapshot／原键／九流 RNG 一致。编译器迁移后的旧生命周期（`2a8ad6be6fd8438bb89415106515af8c`）通过；[失败记录和适用范围](performance/simulation-conditional-powers-20260911.md)。
+
 - `COMPACT-CARD-LIFECYCLE-NATIVE`（`aa9d057433054489875622e192cb566a`）Passed：12 组合分支、六种风险来源、八工作区、原生九步覆盖能力牌移除、X=3／X=0、消耗历史与完整状态／Snapshot／原键。v5 终局缓存条件补充后的攻击哨兵（`7f451fc9bc8a4598875fccf00c3b70eb`）与 v4 嵌套选牌哨兵（`707c28338b8a452ab228ed9111d61b5c`）Passed；[证据与边界](performance/simulation-card-lifecycle-20260911.md)。
 
 - `COMPACT-EFFECT-PROGRAM-NATIVE`（`fd79e13365d845308fff3c6f825b78cf`）Passed：生存者→Sly 早有准备→部分抽牌／洗牌的 24 分支、完整状态／Snapshot／原键／历史／九流 RNG、八工作区及原生后空翻续接。原洗牌链（`df473de5246d45feb750f0510c97bf07`）与 Power／七步击杀链（`277e239f863f424c810cbe8ed161ddfb`）同产物通过。三组纯值工具通过；[证据与范围](performance/simulation-effect-program-20260911.md)。
