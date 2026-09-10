@@ -13,13 +13,18 @@ internal sealed class ResumableDiscardProgram
     internal enum Pile { Hand, Draw, Discard, Play, Exhaust, Removed }
     internal enum EventKind { Pay, Start, Draw, Select, SelectedCard, Discard, Block, Finish, Shuffle, ShuffleCard, Retrieve, Damage, DamageBlocked, DamageOverkill, AttackFinish, Death, PowerChange, ResultMoved }
     internal readonly record struct Event(EventKind Kind, int Card, int Value, bool Automatic, int Target = -1, int Flags = 0);
+    // The low three bits remain the native damage-result flags; the upper bits describe
+    // command provenance without retaining a model or attributing indirect damage to a card.
+    [Flags]
+    internal enum DamageTraits { Unpowered = 8, Unblockable = 16, NoDealer = 32, NoCard = 64, Poison = 128 }
     private const int EnergySlot = 0, BlockSlot = 1, DepthSlot = 2, EventCountSlot = 3;
     private const int RngSlot = 4, ShuffleCountSlot = 9;
-    private const int FrameWidth = 21, MaxFrames = 8, PileCount = 6;
+    private const int FrameWidth = 22, MaxFrames = 8, PileCount = 6;
     private const int CardOffset = 0, IpOffset = 1, AutoOffset = 2, BeforeBlockOffset = 3;
     private const int SelectedCountOffset = 4, NextAutoOffset = 5, SelectedOffset = 6;
     private const int DrawIndexOffset = 16, TargetOffset = 17, EffectIndexOffset = 18, EnergyValueOffset = 19;
     private const int FirstDrawnOffset = 20;
+    private const int DrawResumeIpOffset = 21;
     private readonly Card[] _cards;
     private readonly CreatureAttackLayout? _combat;
     private readonly BasicPowerLayout? _powers;
@@ -201,7 +206,7 @@ internal sealed class ResumableDiscardProgram
                 Emit(EventKind.Retrieve, card);
             }
             if (!_shuffleBlockFirst) GainBlock(ChoiceCard, _shuffleBlock);
-            State.Write(Frame + IpOffset, 1);
+            State.Write(Frame + IpOffset, Read(Frame + DrawResumeIpOffset));
             return;
         }
         State.Write(Frame + SelectedCountOffset, selected.Length);
@@ -235,7 +240,8 @@ internal sealed class ResumableDiscardProgram
                 case 3:
                     // Native batch discard moves every selected card and runs its hooks before
                     // starting any Sly card. The selected instance list survives nested choices.
-                    Emit(EventKind.Select, card, Read(frame + SelectedCountOffset));
+                    if (CurrentInstruction.Kind == CardInstructionKind.Discard)
+                        Emit(EventKind.Select, card, Read(frame + SelectedCountOffset));
                     for (int i = 0; i < Read(frame + SelectedCountOffset); i++)
                         Emit(EventKind.SelectedCard, Read(frame + SelectedOffset + i));
                     for (int i = 0; i < Read(frame + SelectedCountOffset); i++)
@@ -245,6 +251,10 @@ internal sealed class ResumableDiscardProgram
                         Emit(EventKind.Discard, discarded);
                         GainBlock(discarded, _discardBlock);
                     }
+                    State.Write(frame + IpOffset, CurrentInstruction.Kind == CardInstructionKind.DiscardHandAndDraw ? 7 : 4);
+                    break;
+                case 7:
+                    if (!DrawCards(card, Read(frame + SelectedCountOffset), 7)) return;
                     State.Write(frame + IpOffset, 4);
                     break;
                 case 4:
@@ -294,28 +304,29 @@ internal sealed class ResumableDiscardProgram
                 }
                 else ApplyPower(card, instruction.Target == CardInstructionTarget.Owner ? 0 : Read(Frame + TargetOffset), instruction.Power, amount);
                 break;
+            case CardInstructionKind.TriggerBasicPower:
+                if (instruction.Target == CardInstructionTarget.AllEnemies)
+                {
+                    for (int target = 1; target < CreatureCount; target++) TriggerPoison(card, target);
+                }
+                else TriggerPoison(card, Read(Frame + TargetOffset));
+                break;
             case CardInstructionKind.SkipIfDrawnCardNotType:
                 int first = Read(Frame + FirstDrawnOffset);
                 if (first < 0 || _cards[first].Category != instruction.RequiredCategory)
                     State.Write(Frame + EffectIndexOffset, Read(Frame + EffectIndexOffset) + instruction.Amount);
                 break;
             case CardInstructionKind.Draw:
-                if (Read(Frame + DrawIndexOffset) == 0) State.Write(Frame + FirstDrawnOffset, -1);
-                while (Read(Frame + DrawIndexOffset) < instruction.Amount && Count(Pile.Hand) < 10 && !Ending)
-                {
-                    if (Count(Pile.Draw) == 0 && Count(Pile.Discard) != 0)
-                    {
-                        Shuffle(card);
-                        if (NeedsChoice) return false;
-                    }
-                    if (Count(Pile.Draw) == 0 || Count(Pile.Hand) >= 10) break;
-                    int drawn = CardAt(Pile.Draw, 0);
-                    Move(drawn, Pile.Hand);
-                    Emit(EventKind.Draw, drawn);
-                    if (Read(Frame + DrawIndexOffset) == 0) State.Write(Frame + FirstDrawnOffset, drawn);
-                    State.Write(Frame + DrawIndexOffset, Read(Frame + DrawIndexOffset) + 1);
-                }
+                if (!DrawCards(card, instruction.Amount, 1)) return false;
                 break;
+            case CardInstructionKind.DiscardHandAndDraw:
+                if (Ending) break;
+                int count = Count(Pile.Hand);
+                State.Write(Frame + SelectedCountOffset, count);
+                State.Write(Frame + NextAutoOffset, 0);
+                for (int index = 0; index < count; index++) State.Write(Frame + SelectedOffset + index, CardAt(Pile.Hand, index));
+                State.Write(Frame + IpOffset, 3);
+                return true;
             case CardInstructionKind.Discard:
                 State.Write(Frame + IpOffset, 2);
                 if (ChoiceCount != 0) return false;
@@ -325,6 +336,27 @@ internal sealed class ResumableDiscardProgram
                 throw new InvalidOperationException("Unknown admitted compact instruction.");
         }
         AdvanceInstruction();
+        return true;
+    }
+
+    private bool DrawCards(int card, int count, int resumeIp)
+    {
+        if (Read(Frame + DrawIndexOffset) == 0) State.Write(Frame + FirstDrawnOffset, -1);
+        while (Read(Frame + DrawIndexOffset) < count && Count(Pile.Hand) < 10 && !Ending)
+        {
+            if (Count(Pile.Draw) == 0 && Count(Pile.Discard) != 0)
+            {
+                State.Write(Frame + DrawResumeIpOffset, resumeIp);
+                Shuffle(card);
+                if (NeedsChoice) return false;
+            }
+            if (Count(Pile.Draw) == 0 || Count(Pile.Hand) >= 10) break;
+            int drawn = CardAt(Pile.Draw, 0);
+            Move(drawn, Pile.Hand);
+            Emit(EventKind.Draw, drawn);
+            if (Read(Frame + DrawIndexOffset) == 0) State.Write(Frame + FirstDrawnOffset, drawn);
+            State.Write(Frame + DrawIndexOffset, Read(Frame + DrawIndexOffset) + 1);
+        }
         return true;
     }
 
@@ -385,16 +417,34 @@ internal sealed class ResumableDiscardProgram
     {
         if (Ending || !CreaturePresent(target) || Creature(target).CurrentHp <= 0) return;
         DamageValues result = _combat!.Damage(State, target, _powers?.ModifyAttack(State, 0, target, amount) ?? amount);
-        Emit(EventKind.Damage, card, result.Unblocked, target: target, flags: result.Flags);
+        RecordDamage(card, target, result);
+        Emit(EventKind.AttackFinish, card, target: target);
+    }
+
+    private void TriggerPoison(int card, int target)
+    {
+        if (Ending || !CreaturePresent(target) || Creature(target).CurrentHp <= 0) return;
+        int index = _powers!.Find(target, BasicPowerKind.Poison);
+        int amount = _powers.Read(State, index).Amount;
+        if (amount <= 0) return;
+        // Accelerant and all unrepresented damage/death hooks are excluded by root admission.
+        DamageValues result = _combat!.Damage(State, target, amount, unblockable: true);
+        RecordDamage(card, target, result, DamageTraits.Unpowered | DamageTraits.Unblockable
+            | DamageTraits.NoDealer | DamageTraits.NoCard | DamageTraits.Poison);
+        if (Creature(target).CurrentHp > 0) ApplyPower(card, target, BasicPowerKind.Poison, -1);
+    }
+
+    private void RecordDamage(int card, int target, DamageValues result, DamageTraits traits = 0)
+    {
+        Emit(EventKind.Damage, card, result.Unblocked, target: target, flags: result.Flags | (int)traits);
         Emit(EventKind.DamageBlocked, card, result.Blocked, target: target);
         Emit(EventKind.DamageOverkill, card, result.Overkill, target: target);
         if (result.Killed)
         {
-            _combat.CompleteDeath(State, target);
+            _combat!.CompleteDeath(State, target);
             _powers?.RemoveOwner(State, target);
             Emit(EventKind.Death, card, target: target);
         }
-        Emit(EventKind.AttackFinish, card, target: target);
     }
 
     private void ApplyPower(int card, int target, BasicPowerKind kind, int amount)

@@ -1010,6 +1010,8 @@ while IFS= read -r production_path; do
 done < <(rg --files "$search_root" "$repository_root/src/Runtime" -g '*.cs')
 require_fixed "$compact_power_reads" 'state.AssertForkable();' 'completed Power binding requires a stable setup root'
 require_fixed "$compact_power_reads" 'model._owner = source.Owner;' 'Power clone must restore captured ownership'
+require_fixed "$compact_power_reads" 'private readonly PowerModel[] _replacementModels;' 'reacquired Power metadata must have its own prepared read model'
+require_fixed "$compact_power_reads" 'PowerModel model = value.Retired ? _replacementModels[index] : _models[index];' 'Power read lifetime must follow journaled root retirement'
 require_fixed "$compact_power_reads" 'model._amount = value.Amount;' 'completed Power reads lost supplied amount authority'
 require_fixed "$compact_power_reads" '_state.InvalidateBaseHookListeners();' 'roster changes must invalidate Power owner-anchor order'
 compact_card_reads="$repository_root/src/Testing/CompactCardMetadataReadBinding.cs"
@@ -1045,6 +1047,8 @@ compact_compiler="$repository_root/src/Testing/CompactCardProgramCompiler.cs"
 for replay in '.ManualPlay(' '.AutoPlay(' 'CardOnPlayMirrors.Invoke(' 'HookMirrors.' 'CardCmd.' 'PowerCmd.'; do
     forbid_fixed "$compact_compiler" "$replay" 'card admission must compile definitions without executing effects:'
 done
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'State.Write(Frame + DrawResumeIpOffset, resumeIp);' 'shuffle return must retain the pending draw stage'
+require_fixed "$compact_reader" 'ResumableDiscardProgram.DamageTraits.Unpowered | ResumableDiscardProgram.DamageTraits.NoDealer' 'indirect damage must not count as powered attack hits'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'WriteRng(rng);' 'compact shuffle lost journaled RNG writes'
 require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactShufflePower.cs" 'isolation.Dispose();' 'expanded compact isolation must close before worker/native awaits'
 require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" '=> SnapshotCore(simulator, turn, actionCount, shufflesCrossed, boundary, processedEnemyDeaths, null);' 'legacy and completed readers must share full SnapshotCore'

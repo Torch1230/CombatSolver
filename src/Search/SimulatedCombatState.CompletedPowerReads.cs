@@ -17,6 +17,7 @@ internal sealed partial class SimulatedCombatState
     {
         private readonly SimulatedCombatState _state;
         private readonly PowerModel[] _models;
+        private readonly PowerModel[] _replacementModels;
         private readonly HashSet<(Creature Owner, Type Type)> _initialRetired;
         private readonly List<PowerModel> _unrepresentedOrder;
         private readonly CompletedPowerReadValues[] _previous;
@@ -24,9 +25,11 @@ internal sealed partial class SimulatedCombatState
         private readonly Comparison<int> _compareOrder;
         private bool _hasPrevious;
 
-        internal CompletedPowerReadBinding(SimulatedCombatState state, IReadOnlyList<PowerModel> templates)
+        internal CompletedPowerReadBinding(SimulatedCombatState state, IReadOnlyList<PowerModel> templates,
+            IReadOnlyList<PowerModel> canonicalTemplates)
         {
             state.AssertForkable();
+            if (templates.Count != canonicalTemplates.Count) throw new ArgumentException("Incomplete canonical Power metadata.");
             _state = state;
             _models = templates.Select(source =>
             {
@@ -35,6 +38,23 @@ internal sealed partial class SimulatedCombatState
                 model._target = source.Target;
                 model._applier = source.Applier;
                 model._amount = source.Amount;
+                return model;
+            }).ToArray();
+            _replacementModels = templates.Select((source, index) =>
+            {
+                PowerModel canonical = canonicalTemplates[index];
+                if (canonical.IsMutable || canonical.GetType() != source.GetType())
+                    throw new ArgumentException("Replacement Power metadata must be canonical and have the same type.");
+                // A captured instance can retire and be reacquired with native defaults.
+                // Keep both read models at setup so restoring either lifetime never clones
+                // per leaf or mutates the original template's private fields/variables.
+                if (source.Amount == 0) return _models[index];
+                PowerModel model = PredictionUtils.CloneModelForSimulation(canonical);
+                model._owner = source.Owner;
+                model._target = null;
+                model._applier = null;
+                model._amount = 0;
+                model.AmountOnTurnStart = 0;
                 return model;
             }).ToArray();
             _previous = new CompletedPowerReadValues[templates.Count];
@@ -65,9 +85,10 @@ internal sealed partial class SimulatedCombatState
             for (int index = 0; index < values.Length; index++)
             {
                 var value = values[index];
-                PowerModel model = _models[index];
+                PowerModel model = value.Retired ? _replacementModels[index] : _models[index];
                 model._amount = value.Amount;
                 model._applier = value.Applier;
+                _state._powers![(model.Owner, model.GetType())] = model;
                 if (value.Retired) _state._retiredRootPowerSlots.Add((model.Owner, model.GetType()));
                 _order[index] = index;
             }
@@ -75,7 +96,8 @@ internal sealed partial class SimulatedCombatState
             // owner-anchor insertion algorithm still computes that final sequence.
             Array.Sort(_order, _compareOrder);
             foreach (int index in _order)
-                if (values[index].Amount != 0) _state._powerListenerOrder.Add(_models[index]);
+                if (values[index].Amount != 0)
+                    _state._powerListenerOrder.Add(values[index].Retired ? _replacementModels[index] : _models[index]);
             if (rosterChanged)
             {
                 while (_state._enemies.Count > roster.Count) _state._enemies.RemoveAt(_state._enemies.Count - 1);

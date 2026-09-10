@@ -15,3 +15,5 @@
 `CardLifecycleChecks` 在付款后冻结 X 牌，验证恢复时使用已捕获能量计算正负 Power 数量；能力牌离开战斗牌堆后，下一张零基础格挡仍读取当前敏捷。消耗位置、移除集合、X 值、根恢复和八工作区隔离一并比较。原生 12 分支与九步完整对账见[生命周期阶段报告](../../docs/performance/simulation-card-lifecycle-20260911.md)。
 
 `ConditionalPowerChecks` 覆盖四种卡牌类别、空抽牌、洗牌检索与实际抽牌返回值、八工作区恢复，以及群体中毒／虚弱的指令与目标顺序、已离场目标和撤销。条件跳转超过程序末尾时拒绝；这些是纯值合同，原生十九牌准入和抽牌边界见[阶段报告](../../docs/performance/simulation-conditional-powers-20260911.md)。
+
+`PoisonDiscardChecks` 直接验证无攻击者／卡牌来源的中毒伤害属性、穿透、递减、退休／重获和最终击杀；整手弃抽在部分抽牌的洗牌选择与后续 Sly 选择处冻结，八工作区核对原手牌列表、重新抽回的 Sly、后续指令、消耗与撤销。另测空手牌。完整原生与读取模型重获证据见[中毒／弃抽报告](../../docs/performance/simulation-poison-discard-20260911.md)。

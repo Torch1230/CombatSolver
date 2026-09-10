@@ -129,16 +129,7 @@ internal sealed class CompactDiscardProjection
         foreach (BasicPowerKind kind in Enum.GetValues<BasicPowerKind>())
         {
             if (result.Any(p => p.Owner == owner && BasicKind(p) == kind)) continue;
-            PowerModel prototype = kind switch
-            {
-                BasicPowerKind.Strength => CanonicalModels.Power<StrengthPower>(),
-                BasicPowerKind.Dexterity => CanonicalModels.Power<DexterityPower>(),
-                BasicPowerKind.Weak => CanonicalModels.Power<WeakPower>(),
-                BasicPowerKind.Vulnerable => CanonicalModels.Power<VulnerablePower>(),
-                BasicPowerKind.Frail => CanonicalModels.Power<FrailPower>(),
-                BasicPowerKind.Poison => CanonicalModels.Power<PoisonPower>(),
-                _ => throw new InvalidOperationException("Unknown basic Power kind.")
-            };
+            PowerModel prototype = CanonicalPower(kind);
             PowerModel template = PredictionUtils.CloneModelForSimulation(prototype);
             template._owner = owner; template._target = null; template._applier = null; template._amount = 0;
             template.AmountOnTurnStart = 0;
@@ -148,6 +139,16 @@ internal sealed class CompactDiscardProjection
     }
 
     private static bool IsBasicPower(PowerModel power) => power is StrengthPower or DexterityPower or WeakPower or VulnerablePower or FrailPower or PoisonPower;
+    private static PowerModel CanonicalPower(BasicPowerKind kind) => kind switch
+    {
+        BasicPowerKind.Strength => CanonicalModels.Power<StrengthPower>(),
+        BasicPowerKind.Dexterity => CanonicalModels.Power<DexterityPower>(),
+        BasicPowerKind.Weak => CanonicalModels.Power<WeakPower>(),
+        BasicPowerKind.Vulnerable => CanonicalModels.Power<VulnerablePower>(),
+        BasicPowerKind.Frail => CanonicalModels.Power<FrailPower>(),
+        BasicPowerKind.Poison => CanonicalModels.Power<PoisonPower>(),
+        _ => throw new InvalidOperationException("Unknown basic Power kind.")
+    };
     private static BasicPowerKind BasicKind(PowerModel power) => power switch
     {
         StrengthPower => BasicPowerKind.Strength, DexterityPower => BasicPowerKind.Dexterity, WeakPower => BasicPowerKind.Weak,
@@ -155,7 +156,7 @@ internal sealed class CompactDiscardProjection
         _ => throw new InvalidOperationException("Power has no compact basic kind.")
     };
     internal SimulatedCombatState.CompletedPowerReadBinding CreatePowerReadBinding(CombatPredictionSimulator context)
-        => new((SimulatedCombatState)context.State.CombatState, _powerTemplates);
+        => new((SimulatedCombatState)context.State.CombatState, _powerTemplates, _powerTemplates.Select(power => CanonicalPower(BasicKind(power))).ToArray());
     internal void CopyPowerReadValues(ResumableDiscardProgram program, CompletedPowerReadValues[] target)
     {
         if (target.Length != program.PowerCount) throw new ArgumentException("Power read buffer has the wrong size.");
@@ -231,8 +232,15 @@ internal sealed class CompactDiscardProjection
                         };
                         projection.History.CardPlayStarted(card, play);
                         ((ICombatPredictionCardExecutionSink)combat).RecordCardPlayStarted(card, play);
-                        stack.Push((item.Card, play, scope, projection.PushMethodSource(card.Original, OnPlay)));
+                        PredictionTrace.TraceScope? method = projection.PushMethodSource(card.Original, OnPlay);
                         if (_risks[item.Card] is { } risk) projection.History.RecordRisk(risk);
+                        if (_risks[item.Card] == PredictionRiskReason.MethodNotMirrored)
+                        {
+                            // Legacy compensation starts after the unsupported mirror scope.
+                            // Its indirect history belongs to the enclosing card action.
+                            method?.Dispose(); method = null;
+                        }
+                        stack.Push((item.Card, play, scope, method));
                         break;
                     }
                     case ResumableDiscardProgram.EventKind.Draw:
@@ -266,15 +274,21 @@ internal sealed class CompactDiscardProjection
                             || blocked.Target != item.Target || overkill.Target != item.Target)
                             throw new InvalidOperationException("Malformed committed damage result.");
                         Creature target = _creatures[item.Target];
-                        DamageResult result = new(target, ValueProp.Move)
+                        var traits = (ResumableDiscardProgram.DamageTraits)item.Flags;
+                        bool poison = (traits & ResumableDiscardProgram.DamageTraits.Poison) != 0;
+                        Creature? dealer = (traits & ResumableDiscardProgram.DamageTraits.NoDealer) != 0 ? null : _player.Creature;
+                        PredictedCard? cardSource = (traits & ResumableDiscardProgram.DamageTraits.NoCard) != 0 ? null : card;
+                        ValueProp props = poison ? ValueProp.Unblockable | ValueProp.Unpowered : ValueProp.Move;
+                        DamageResult result = new(target, props)
                         {
                             UnblockedDamage = item.Value, BlockedDamage = blocked.Value, OverkillDamage = overkill.Value,
                             WasTargetKilled = (item.Flags & 1) != 0, WasBlockBroken = (item.Flags & 2) != 0,
                             WasFullyBlocked = (item.Flags & 4) != 0
                         };
-                        projection.History.DamageReceived(target, _player.Creature, result, card, projection.ResolveDamageSource(card));
-                        combat.RecordDamageReceived(target, _player.Creature, result);
-                        damageResults[item.Card] = result;
+                        projection.History.DamageReceived(target, dealer, result, cardSource, poison
+                            ? CombatDamageSource.For(CombatDamageSourceKind.Poison, nameof(PoisonPower)) : projection.ResolveDamageSource(cardSource));
+                        combat.RecordDamageReceived(target, dealer, result);
+                        if (!poison) damageResults[item.Card] = result;
                         break;
                     }
                     case ResumableDiscardProgram.EventKind.Death:
@@ -424,7 +438,7 @@ internal sealed class CompactDiscardProjection
         "AfterModifyingHpLostAfterOsty", "BeforeDeath", "ShouldDie", "AfterDeath", "ShouldCreatureBeRemovedFromCombatAfterDeath",
         "ShouldAllowHitting", "BeforePowerAmountChanged", "ModifyPowerAmountGiven", "ModifyPowerAmountReceived",
         "AfterModifyingPowerAmountGiven", "AfterModifyingPowerAmountReceived", "AfterPowerAmountChanged",
-        "AfterCardExhausted", "ModifyXValue"
+        "AfterCardExhausted", "ModifyXValue", "AfterModifyingDamageAmount", "AfterModifyingHpLostBeforeOsty"
     };
     // Only immutable CLR method/type metadata is shared. Every root still checks subscriber,
     // Power, relic, card-instance, resource, and lifecycle values independently.

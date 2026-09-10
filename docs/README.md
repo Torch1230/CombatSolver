@@ -6,6 +6,7 @@
 
 | 要查什么 | 入口 |
 |---|---|
+| 中毒主动触发、整手弃抽／Sly 和 Power 重获 | [中毒与弃抽结果](performance/simulation-poison-discard-20260911.md) |
 | 有序群体中毒、条件抽牌返回值与虚无历史 | [群体与条件指令结果](performance/simulation-conditional-powers-20260911.md) |
 | 能力牌移除、消耗与 X 费用／完成读取 | [生命周期阶段结果](performance/simulation-card-lifecycle-20260911.md) |
 | 有序卡牌效果、嵌套选择与指令恢复 | [指令阶段结果](performance/simulation-effect-program-20260911.md) |

@@ -12,16 +12,16 @@ internal static class CompactCardProgramCompiler
     {
         if (card is not (Acrobatics or Prepared or Backflip or StrikeSilent or StrikeNecrobinder or DefendSilent or DefendNecrobinder
                 or Neutralize or Survivor or Finesse or UltimateDefend or Suppress or Footwork or Malaise
-                or DeadlyPoison or Haze or Snakebite or Defy or EscapePlan)
-            || card is Neutralize or Suppress or Footwork or Malaise or DeadlyPoison or Haze or Snakebite or Defy && !includeAttacks
+                or DeadlyPoison or Haze or Snakebite or Defy or EscapePlan or Outbreak or CalculatedGamble)
+            || card is Neutralize or Suppress or Footwork or Malaise or DeadlyPoison or Haze or Snakebite or Defy or Outbreak && !includeAttacks
             || card.Enchantment != null || card.Affliction != null || card.BaseReplayCount != 0
             || card.ExhaustOnNextPlay || card.IsDupe || card.IsClone || card.HasBeenRemovedFromState
             || card.EnergyCost.CostsX && card is not Malaise || card.EnergyCost._localModifiers.Count != 0
             || card.HasStarCostX || card.CurrentStarCost > 0 || card._temporaryStarCosts.Count != 0
             || card.CurrentTarget != null || card.CurrentPlayIndex != 0 || card.LastStarsSpent != 0
             || card.HasSingleTurnRetain || card.HasTurnEndInHandEffect
-            || card.LocalKeywords.Any(k => k != CardKeyword.Sly && !(card is Malaise && k == CardKeyword.Exhaust)
-                && !(card is Suppress && k == CardKeyword.Innate) && !(card is Snakebite && k == CardKeyword.Retain)
+            || card.LocalKeywords.Any(k => k != CardKeyword.Sly && !(card is Malaise or CalculatedGamble && k == CardKeyword.Exhaust)
+                && !(card is Suppress && k == CardKeyword.Innate) && !(card is Snakebite or CalculatedGamble && k == CardKeyword.Retain)
                 && !(card is Defy && k == CardKeyword.Ethereal))
             || card.IsSlyThisTurn && card is not Prepared)
             throw new NotSupportedException($"Compact prototype cannot admit card state {card.Id.Entry}.");
@@ -29,7 +29,7 @@ internal static class CompactCardProgramCompiler
         decimal damage = includeAttacks && card is StrikeSilent or StrikeNecrobinder or Neutralize or Suppress ? card.DynamicVars.Damage.BaseValue : 0;
         decimal block = card is DefendSilent or DefendNecrobinder or Backflip or Survivor or Finesse or UltimateDefend or Defy or EscapePlan ? card.DynamicVars.Block.BaseValue : 0;
         decimal weak = card is Neutralize or Suppress or Haze or Defy ? card.DynamicVars.Weak.BaseValue : 0;
-        decimal poison = card is DeadlyPoison or Haze or Snakebite ? card.DynamicVars.Poison.BaseValue : 0;
+        decimal poison = card is DeadlyPoison or Haze or Snakebite or Outbreak ? card.DynamicVars.Poison.BaseValue : 0;
         decimal dexterity = card is Footwork ? card.DynamicVars.Dexterity.BaseValue : 0;
         if (draw != decimal.Truncate(draw) || draw < 0 || draw > 10 || card.EnergyCost._base < 0
             || card is Acrobatics or Prepared or Backflip or Finesse && draw == 0
@@ -60,13 +60,16 @@ internal static class CompactCardProgramCompiler
                 new(CardInstructionKind.ApplyBasicPower, (int)weak, BasicPowerKind.Weak, CardInstructionTarget.ChosenEnemy)]),
             EscapePlan => new([new(CardInstructionKind.Draw, 1), new(CardInstructionKind.SkipIfDrawnCardNotType, 1),
                 new(CardInstructionKind.GainBlock, (int)block)]),
+            Outbreak => new([new(CardInstructionKind.ApplyBasicPower, (int)poison, BasicPowerKind.Poison, CardInstructionTarget.AllEnemies),
+                new(CardInstructionKind.TriggerBasicPower, 0, BasicPowerKind.Poison, CardInstructionTarget.AllEnemies)]),
+            CalculatedGamble => new([new(CardInstructionKind.DiscardHandAndDraw, 0)]),
             Malaise => new([new(CardInstructionKind.ApplyBasicPower, card.IsUpgraded ? -1 : 0, BasicPowerKind.Strength,
                     CardInstructionTarget.ChosenEnemy, -1),
                 new(CardInstructionKind.ApplyBasicPower, card.IsUpgraded ? 1 : 0, BasicPowerKind.Weak, CardInstructionTarget.ChosenEnemy, 1)]),
             _ => throw new NotSupportedException("Card has no admitted compact instructions.")
         };
         return new(card.EnergyCost._base, effects, card.IsSlyThisTurn,
-            card is Footwork ? ResumableDiscardProgram.Pile.Removed : card is Malaise ? ResumableDiscardProgram.Pile.Exhaust : ResumableDiscardProgram.Pile.Discard,
+            card is Footwork ? ResumableDiscardProgram.Pile.Removed : card is Malaise or CalculatedGamble ? ResumableDiscardProgram.Pile.Exhaust : ResumableDiscardProgram.Pile.Discard,
             card.EnergyCost.CostsX, card.EnergyCost.CostsX ? card.EnergyCost.CapturedXValue : 0,
             card.Type switch { CardType.Attack => CardCategory.Attack, CardType.Skill => CardCategory.Skill,
                 CardType.Power => CardCategory.Power, _ => CardCategory.Other }, card.LocalKeywords.Contains(CardKeyword.Ethereal));

@@ -1,6 +1,6 @@
 namespace CombatSolver.Engine.InCombat.Simulation.Compact;
 
-internal enum CardInstructionKind { AttackTarget, GainBlock, Draw, Discard, ApplyBasicPower, SkipIfDrawnCardNotType }
+internal enum CardInstructionKind { AttackTarget, GainBlock, Draw, Discard, ApplyBasicPower, SkipIfDrawnCardNotType, TriggerBasicPower, DiscardHandAndDraw }
 internal enum CardInstructionTarget { Owner, ChosenEnemy, AllEnemies }
 internal enum CardCategory { Other, Attack, Skill, Power }
 
@@ -46,6 +46,17 @@ internal sealed class CardEffectProgram
                     break;
                 case CardInstructionKind.Discard:
                     if (instruction.Amount > 10) throw new ArgumentException("Compact discard exceeds choice capacity.");
+                    break;
+                case CardInstructionKind.DiscardHandAndDraw:
+                    if (instruction.Amount != 0) throw new ArgumentException("Hand discard/draw derives its count from the captured hand.");
+                    TotalDraw = checked(TotalDraw + 10);
+                    break;
+                case CardInstructionKind.TriggerBasicPower:
+                    if (instruction.Amount != 0 || instruction.Power != BasicPowerKind.Poison
+                        || instruction.Target is not (CardInstructionTarget.ChosenEnemy or CardInstructionTarget.AllEnemies))
+                        throw new NotSupportedException("Power trigger is outside the admitted domain.");
+                    RequiresPowers = true;
+                    RequiresTarget |= instruction.Target == CardInstructionTarget.ChosenEnemy;
                     break;
                 case CardInstructionKind.SkipIfDrawnCardNotType:
                     if (instruction.Amount == 0 || instruction.Amount > _instructions.Length - index - 1

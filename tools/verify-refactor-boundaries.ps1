@@ -1259,6 +1259,8 @@ foreach ($replay in @('.ManualPlay(', '.AutoPlay(', '.Fork(', 'HookMirrors.', 'C
 $compactReadGuards = @(
     @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'state.AssertForkable();'),
     @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'model._owner = source.Owner;'),
+    @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'private readonly PowerModel[] _replacementModels;'),
+    @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'PowerModel model = value.Retired ? _replacementModels[index] : _models[index];'),
     @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'model._amount = value.Amount;'),
     @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', '_state.InvalidateBaseHookListeners();'),
     @('src/Testing/CompactCardMetadataReadBinding.cs', 'private readonly CardModel[] _models;'),
@@ -1286,6 +1288,8 @@ $compactReadGuards = @(
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'State.Write(Frame + EffectIndexOffset, Read(Frame + EffectIndexOffset) + 1);'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'State.Write(Frame + FirstDrawnOffset, drawn);'),
     @('src/Testing/CompactDiscardProjection.cs', 'CompactCardProgramCompiler.Compile(card.Preview, includeAttacks)'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'State.Write(Frame + DrawResumeIpOffset, resumeIp);'),
+    @('src/Testing/CompactDiscardReadView.cs', 'ResumableDiscardProgram.DamageTraits.Unpowered | ResumableDiscardProgram.DamageTraits.NoDealer'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'WriteRng(rng);'),
     @('src/Testing/UnattendedTestRunner.CompactShufflePower.cs', 'isolation.Dispose();'),
     @('src/Search/CombatBeamSolver.StateEvaluation.cs', '=> SnapshotCore(simulator, turn, actionCount, shufflesCrossed, boundary, processedEnemyDeaths, null);'),

@@ -23,15 +23,15 @@ internal sealed class CreatureAttackLayout
     internal bool DeathCompleted(ReversibleValueState state, int creature) => state[_deathStart + creature] != 0;
     internal bool Terminal(ReversibleValueState state) => state[_terminalSlot] != 0;
 
-    internal DamageValues Damage(ReversibleValueState state, int target, decimal amount)
+    internal DamageValues Damage(ReversibleValueState state, int target, decimal amount, bool unblockable = false)
     {
         CreatureVitals values = Read(state, target);
-        decimal blocked = values.DamageBlock(amount, false);
+        decimal blocked = values.DamageBlock(amount, unblockable);
         decimal unblocked = Math.Max(amount - blocked, 0m);
         HpLossValues loss = values.LoseHp(unblocked);
         Write(state, target, values);
         return new((int)blocked, loss.UnblockedDamage, loss.OverkillDamage, loss.WasTargetKilled,
-            values.Block <= 0 && blocked > 0m, (blocked > 0m || values.Block > 0) && (int)unblocked == 0);
+            values.Block <= 0 && blocked > 0m, !unblockable && (blocked > 0m || values.Block > 0) && (int)unblocked == 0);
     }
 
     internal void CompleteDeath(ReversibleValueState state, int target)

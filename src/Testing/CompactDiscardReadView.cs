@@ -115,8 +115,11 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
                 case ResumableDiscardProgram.EventKind.Damage:
                     Creature receiver = _adapter.Creature(item.Target);
                     if (item.Value > 0) _combatHistory.LostHp.Add(receiver);
-                    var hitKey = (_player.Creature, receiver);
-                    _combatHistory.PoweredHits[hitKey] = _combatHistory.PoweredHits.GetValueOrDefault(hitKey, _baseHits[item.Target]) + 1;
+                    if ((item.Flags & (int)(ResumableDiscardProgram.DamageTraits.Unpowered | ResumableDiscardProgram.DamageTraits.NoDealer)) == 0)
+                    {
+                        var hitKey = (_player.Creature, receiver);
+                        _combatHistory.PoweredHits[hitKey] = _combatHistory.PoweredHits.GetValueOrDefault(hitKey, _baseHits[item.Target]) + 1;
+                    }
                     _entries++;
                     break;
                 case ResumableDiscardProgram.EventKind.AttackFinish: creatureAttacks++; _entries++; break;
