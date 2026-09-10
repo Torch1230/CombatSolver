@@ -6,6 +6,7 @@
 
 | 要查什么 | 入口 |
 |---|---|
+| 闪躲翻滚在格挡上限处的下回合格挡修正 | [返回值差分](performance/simulation-deferred-block-return-20260911.md) |
 | 目标 Power 条件与存活敌人求和格挡 | [Power 表达式结果](performance/simulation-power-expressions-20260911.md) |
 | 中毒主动触发、整手弃抽／Sly 和 Power 重获 | [中毒与弃抽结果](performance/simulation-poison-discard-20260911.md) |
 | 有序群体中毒、条件抽牌返回值与虚无历史 | [群体与条件指令结果](performance/simulation-conditional-powers-20260911.md) |

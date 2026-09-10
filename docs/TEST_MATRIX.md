@@ -1,5 +1,7 @@
 # CombatSolver 测试清单
 
+- `DEFERRED-BLOCK-RETURN-NATIVE`：失败基线 `f061e289ecc44478bb7e2755653b3b05`（下回合格挡 1／3），最终 `c06b5d6fb97443589aea01f62f52672b` Passed。三个原生根覆盖上限与小数、叠加、零值，完整快照／Power 元数据、Fork 隔离和定向 `AfterBlockCleared`；[证据](performance/simulation-deferred-block-return-20260911.md)。
+
 - `COMPACT-POWER-EXPRESSIONS-NATIVE`（`fbb8b2f392274928b5d27bc48ed4e9b8`）Passed：13 分支、八工作区、原生十步；中毒存在／归零／重获、存活敌人求和、基础值与倍率、敏捷／脆弱取整、升级消耗、完整 Snapshot／原键／历史／九流 RNG 及终局清理前状态。纯值工具与 Linux 门禁通过；[失败夹具记录与最终证据](performance/simulation-power-expressions-20260911.md)。
 
 - `COMPACT-POISON-TRIGGER-NATIVE`（`22e557b94d464cdc9b0e45713ff8be85`）、`COMPACT-DISCARD-DRAW-NATIVE`（`a7496c81ae34441987e89f369789116a`）、普通抽牌哨兵（`3e816af38b8c4ef196ec034482652464`）和 `COMPACT-POWER-REACQUIRE-NATIVE`（`c16dead0c81c4818bf9996b6ecf898b1`）Passed：中毒 11 分支／五步击杀与清理前终局、24 弃抽分支／重新抽到的 Sly、空手牌、非默认回合初始值／计时／Target 重获、八工作区、完整状态／历史／Snapshot／原键。纯值合同与结构门禁通过；[证据与边界](performance/simulation-poison-discard-20260911.md)。

@@ -1,0 +1,55 @@
+{
+  "baseCommit": "80b359f",
+  "productionSemanticFix": true,
+  "performanceClaim": false,
+  "scenarioId": "DEFERRED-BLOCK-RETURN-NATIVE",
+  "baseline": {
+    "runId": "f061e289ecc44478bb7e2755653b3b05",
+    "status": "Failed",
+    "elapsedMilliseconds": 23709.2463,
+    "error": "System.InvalidOperationException: DeferredBlockReturn.Mode0-Card0 一步模拟与真实行动不一致；首个差异：field=P[2] expected={0:BLOCK_NEXT_TURN_POWER=1/0[]} actual={0:BLOCK_NEXT_TURN_POWER=3/0[]} expected_count=3 actual_count=3\n   at CombatSolver.UnattendedTestRunner.AssertSnapshotEqual(MoveStateSnapshot predicted, MoveStateSnapshot actual, String monsterId, String moveId)\n   at CombatSolver.UnattendedTestRunner.AssertDeferredBlockReturnAsync(CombatState combat, Player player)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()"
+  },
+  "final": {
+    "runId": "c06b5d6fb97443589aea01f62f52672b",
+    "status": "Passed",
+    "elapsedMilliseconds": 23816.3348,
+    "completedChecks": [
+      "DeferredBlockReturn:Native3Roots:CapAndFraction:Stacking:Zero:AllSnapshotFields:PowerMetadata:ForkIsolation:AfterBlockCleared"
+    ]
+  },
+  "builds": [
+    {
+      "artifact": "baseline",
+      "seconds": 9.75,
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "artifact": "final",
+      "seconds": 10.6,
+      "warnings": 0,
+      "errors": 0
+    }
+  ],
+  "cases": [
+    {
+      "mode": 0,
+      "nativeCards": 1,
+      "finalBlock": 3,
+      "powerRemoved": true
+    },
+    {
+      "mode": 1,
+      "nativeCards": 2,
+      "finalBlock": 7,
+      "powerRemoved": true
+    },
+    {
+      "mode": 2,
+      "nativeCards": 1,
+      "finalBlock": 0,
+      "powerRemoved": true
+    }
+  ],
+  "lifecycleScope": "Direct native AfterBlockCleared versus existing prediction support; no full turn or compact advancement"
+}
