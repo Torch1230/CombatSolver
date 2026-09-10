@@ -10,6 +10,7 @@
 
 | 方案 | 决策与证据 | 再考虑的条件 |
 | --- | --- | --- |
+| 卡牌基础估值缓存 | [完整原输入复评后撤回](simulation-card-value-cache-20260911.md)：ABBA 的 88 项逻辑字段及全路线一致，耗时仅约 −2%，分配略增且 GC 未稳定改善；不重复计作新机制 | 新表示或依赖边界带来足够大的净收益证据，避免再次重复普通预览缓存 |
 | 空 Hook、目标类型缓存、路由顺序扫描、父队列 | 已保留；见[空回调](veryhigh-hook-dispatch-20260908.md)、[目标类型](metadata-target-type-cache-20260907.md)、[路由](veryhigh-routing-order-20260908.md)、[父队列](veryhigh-parent-queue-20260908.md)。历史收益不能相乘成当前倍率 | 新采样显示相同路径仍占主要成本 |
 | 指纹寄存器计算、路由摘要合并 | 已保留；[微架构](cpu-microarchitecture-20260908.md)、[聚合](backend-hotspot-optimization-20260908.md)保留原位级指纹与原排序；小样本均值有漂移限制 | 以实际 JIT/CPU 证据选择下一局部项 |
 | 普遍去分支、SIMD、绑核、缓存行填充 | [微架构评估](cpu-microarchitecture-20260908.md)不支持优先进入；分支失误约 1.05%，采样 skid 与 L2/LLC 口径已区分。指纹输入有递推依赖，不能任意按输入向量化 | 实际 JIT、PMU/IBS 与依赖证明定位可削减成本 |
