@@ -1264,6 +1264,8 @@ $compactReadGuards = @(
     @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', '_creatures[target].SetPresent(state, false);'),
     @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', 'state.Write(_terminalSlot, 1);'),
     @('src/Search/CompletedStateReadView.cs', 'A new stable root requires a new cache.'),
+    @('src/Engine/InCombat/Simulation/Compact/CardEffectProgram.cs', '_instructions = instructions.ToArray();'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'State.Write(Frame + EffectIndexOffset, Read(Frame + EffectIndexOffset) + 1);'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'WriteRng(rng);'),
     @('src/Testing/UnattendedTestRunner.CompactShufflePower.cs', 'isolation.Dispose();'),
     @('src/Search/CombatBeamSolver.StateEvaluation.cs', '=> SnapshotCore(simulator, turn, actionCount, shufflesCrossed, boundary, processedEnemyDeaths, null);'),

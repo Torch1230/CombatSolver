@@ -1027,6 +1027,8 @@ require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/Resumable
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs" '_creatures[target].SetPresent(state, false);' 'attack death must journal roster removal'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs" 'state.Write(_terminalSlot, 1);' 'compact terminal state must be journaled'
 require_fixed "$search_root/CompletedStateReadView.cs" 'A new stable root requires a new cache.' 'completed invariant cache lost its root lifetime contract'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/CardEffectProgram.cs" '_instructions = instructions.ToArray();' 'compact definitions must own immutable instruction storage'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'State.Write(Frame + EffectIndexOffset, Read(Frame + EffectIndexOffset) + 1);' 'compact effect position must belong to journaled values'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'WriteRng(rng);' 'compact shuffle lost journaled RNG writes'
 require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactShufflePower.cs" 'isolation.Dispose();' 'expanded compact isolation must close before worker/native awaits'
 require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" '=> SnapshotCore(simulator, turn, actionCount, shufflesCrossed, boundary, processedEnemyDeaths, null);' 'legacy and completed readers must share full SnapshotCore'

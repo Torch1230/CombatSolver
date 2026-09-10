@@ -1,0 +1,1155 @@
+{
+  "stage": "ordered_compact_effect_program",
+  "date": "2026-09-11",
+  "parentCommit": "12f9c70",
+  "artifact": "artifact-v1",
+  "build": {
+    "configuration": "Release",
+    "copyModOnBuild": false,
+    "seconds": 9.32,
+    "warnings": 0,
+    "errors": 0
+  },
+  "commands": [
+    [
+      "./tools/run-unattended-test.sh",
+      "--scenario-id",
+      "COMPACT-EFFECT-PROGRAM-NATIVE",
+      "--character-id",
+      "SILENT",
+      "--encounter-id",
+      "FUZZY_WURM_CRAWLER_WEAK",
+      "--seed",
+      "COMBATSOLVER",
+      "--enemy-current-hp",
+      "256",
+      "--timeout-seconds",
+      "120",
+      "--keep-game-open",
+      "--headless-instance",
+      "compact-effects-20260911",
+      "--combat-solver-build-dir",
+      "/home/ltlly/Code/nmslmod/.tools11/CombatSolver-open-source/.local/compact-effects-20260911/artifact-v1",
+      "--evidence-directory",
+      "/home/ltlly/Code/nmslmod/.tools11/CombatSolver-open-source/.local/compact-effects-20260911/survivor-v1"
+    ],
+    [
+      "./tools/run-unattended-test.sh",
+      "--scenario-id",
+      "COMPACT-SHUFFLE-POWER-NATIVE",
+      "--character-id",
+      "SILENT",
+      "--encounter-id",
+      "FUZZY_WURM_CRAWLER_WEAK",
+      "--seed",
+      "COMBATSOLVER",
+      "--enemy-current-hp",
+      "256",
+      "--timeout-seconds",
+      "120",
+      "--keep-game-open",
+      "--headless-instance",
+      "compact-effects-20260911",
+      "--combat-solver-build-dir",
+      "/home/ltlly/Code/nmslmod/.tools11/CombatSolver-open-source/.local/compact-effects-20260911/artifact-v1",
+      "--evidence-directory",
+      "/home/ltlly/Code/nmslmod/.tools11/CombatSolver-open-source/.local/compact-effects-20260911/shuffle-v1"
+    ],
+    [
+      "./tools/run-unattended-test.sh",
+      "--scenario-id",
+      "COMPACT-POWERS-NATIVE",
+      "--character-id",
+      "SILENT",
+      "--encounter-id",
+      "CORPSE_SLUGS_NORMAL",
+      "--seed",
+      "COMBATSOLVER",
+      "--enemy-current-hp",
+      "256",
+      "--timeout-seconds",
+      "120",
+      "--keep-game-open",
+      "--headless-instance",
+      "compact-effects-20260911",
+      "--combat-solver-build-dir",
+      "/home/ltlly/Code/nmslmod/.tools11/CombatSolver-open-source/.local/compact-effects-20260911/artifact-v1",
+      "--evidence-directory",
+      "/home/ltlly/Code/nmslmod/.tools11/CombatSolver-open-source/.local/compact-effects-20260911/powers-v1"
+    ]
+  ],
+  "native": [
+    {
+      "fixture": "survivor-v1",
+      "result": {
+        "processReusable": false,
+        "processId": 739294,
+        "schemaVersion": 1,
+        "runId": "fd79e13365d845308fff3c6f825b78cf",
+        "scenarioId": "COMPACT-EFFECT-PROGRAM-NATIVE",
+        "status": "Passed",
+        "stage": "passed",
+        "characterId": "CHARACTER.SILENT",
+        "encounterId": "ENCOUNTER.FUZZY_WURM_CRAWLER_WEAK",
+        "seed": "COMBATSOLVER",
+        "startedAtUtc": "2026-09-10T20:51:34.4971487+00:00",
+        "elapsedMilliseconds": 25835.8951,
+        "mainThread": true,
+        "combatEnded": false,
+        "startedTurn": 1,
+        "finishedTurn": 2,
+        "managedHeapBytes": 79034120,
+        "managedFragmentedBytes": 11698624,
+        "workingSetBytes": 1439690752,
+        "privateMemoryBytes": 1580855296,
+        "solverMetrics": null,
+        "replayVerification": null,
+        "stageTimings": [
+          {
+            "stage": "created",
+            "startedMilliseconds": 0,
+            "durationMilliseconds": 5.9645
+          },
+          {
+            "stage": "game_startup",
+            "startedMilliseconds": 5.9645,
+            "durationMilliseconds": 11100.2788
+          },
+          {
+            "stage": "start_run",
+            "startedMilliseconds": 11106.2433,
+            "durationMilliseconds": 10995.0338
+          },
+          {
+            "stage": "inject_run_relics",
+            "startedMilliseconds": 22101.2771,
+            "durationMilliseconds": 0.7739000000001397
+          },
+          {
+            "stage": "enter_encounter",
+            "startedMilliseconds": 22102.051,
+            "durationMilliseconds": 984.8876000000018
+          },
+          {
+            "stage": "wait_player_turn",
+            "startedMilliseconds": 23086.9386,
+            "durationMilliseconds": 2.4329999999972642
+          },
+          {
+            "stage": "inject_state",
+            "startedMilliseconds": 23089.3716,
+            "durationMilliseconds": 2620.353600000002
+          },
+          {
+            "stage": "cleanup",
+            "startedMilliseconds": 25709.7252,
+            "durationMilliseconds": 124.55639999999767
+          },
+          {
+            "stage": "passed",
+            "startedMilliseconds": 25834.2816,
+            "durationMilliseconds": 1.7879000000029919
+          }
+        ],
+        "completedChecks": [
+          "CompactShufflePower:24Branches:AllSnapshotProperties:History:FiveFieldRng:Undo:Frozen8Workers:NativeTwoTurns:LegacyRoundBoundary",
+          "CompactEffectProgram:SurvivorBlockThenDiscard:PreparedPartialDrawThenShuffle:BackflipContinuation:Native"
+        ],
+        "error": null,
+        "finishedAtUtc": "2026-09-10T20:52:00.3329738+00:00"
+      },
+      "evidence": {
+        "rounds": [
+          {
+            "round": 1,
+            "card": "SURVIVOR",
+            "cards": 22,
+            "samples": 24,
+            "rootSetupMicroseconds": 22126.8,
+            "rootSetupAllocatedBytes": 1423376,
+            "valueSlots": 277,
+            "distinctWrittenSlots": [
+              56,
+              55,
+              54,
+              53,
+              53,
+              56,
+              56,
+              55,
+              54,
+              53,
+              53,
+              56,
+              56,
+              55,
+              54,
+              53,
+              53,
+              56,
+              56,
+              55,
+              54,
+              53,
+              53,
+              56
+            ],
+            "writes": 800085,
+            "valueChanges": 751130,
+            "peakUndoEntries": 339,
+            "cache": {
+              "EnemyBuilds": 1,
+              "FocusBuilds": 1,
+              "StrategyBuilds": 1,
+              "cardValues": 22
+            },
+            "measurements": [
+              {
+                "sample": 0,
+                "mode": "legacy_replay",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 203.61393229166666,
+                "cpuMicrosecondsPerLeaf": 196.72835937499994,
+                "allocatedBytesPerLeaf": 30377.760416666668
+              },
+              {
+                "sample": 0,
+                "mode": "compact_read_view",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 68.08658854166667,
+                "cpuMicrosecondsPerLeaf": 67.7171184895838,
+                "allocatedBytesPerLeaf": 4464.177083333333
+              },
+              {
+                "sample": 0,
+                "mode": "compact_cached",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 64.26888020833333,
+                "cpuMicrosecondsPerLeaf": 63.931093749999945,
+                "allocatedBytesPerLeaf": 4308.84375
+              },
+              {
+                "sample": 0,
+                "mode": "compact_cached_with_admission",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 67.22669270833333,
+                "cpuMicrosecondsPerLeaf": 66.8809101562502,
+                "allocatedBytesPerLeaf": 5801
+              },
+              {
+                "sample": 1,
+                "mode": "compact_cached_with_admission",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 66.18111979166666,
+                "cpuMicrosecondsPerLeaf": 65.79283203125048,
+                "allocatedBytesPerLeaf": 5801.84375
+              },
+              {
+                "sample": 1,
+                "mode": "compact_cached",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 60.89479166666666,
+                "cpuMicrosecondsPerLeaf": 60.538786458334215,
+                "allocatedBytesPerLeaf": 4308
+              },
+              {
+                "sample": 1,
+                "mode": "compact_read_view",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 66.12213541666667,
+                "cpuMicrosecondsPerLeaf": 65.74820572916569,
+                "allocatedBytesPerLeaf": 4464.177083333333
+              },
+              {
+                "sample": 1,
+                "mode": "legacy_replay",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 196.11145833333333,
+                "cpuMicrosecondsPerLeaf": 194.87672656250038,
+                "allocatedBytesPerLeaf": 29178.583333333332
+              },
+              {
+                "sample": 2,
+                "mode": "legacy_replay",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 102.16731770833333,
+                "cpuMicrosecondsPerLeaf": 101.6681888020834,
+                "allocatedBytesPerLeaf": 29139.333333333332
+              },
+              {
+                "sample": 2,
+                "mode": "compact_read_view",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 44.73828125,
+                "cpuMicrosecondsPerLeaf": 44.46393359375023,
+                "allocatedBytesPerLeaf": 4464.177083333333
+              },
+              {
+                "sample": 2,
+                "mode": "compact_cached",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 40.715885416666666,
+                "cpuMicrosecondsPerLeaf": 40.5355143229175,
+                "allocatedBytesPerLeaf": 4308.84375
+              },
+              {
+                "sample": 2,
+                "mode": "compact_cached_with_admission",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 44.2015625,
+                "cpuMicrosecondsPerLeaf": 43.95350260416701,
+                "allocatedBytesPerLeaf": 5801
+              },
+              {
+                "sample": 3,
+                "mode": "compact_cached_with_admission",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 41.645572916666666,
+                "cpuMicrosecondsPerLeaf": 41.42165104166651,
+                "allocatedBytesPerLeaf": 5786.135416666667
+              },
+              {
+                "sample": 3,
+                "mode": "compact_cached",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 34.651692708333336,
+                "cpuMicrosecondsPerLeaf": 34.50124088541647,
+                "allocatedBytesPerLeaf": 4276
+              },
+              {
+                "sample": 3,
+                "mode": "compact_read_view",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 34.47630208333333,
+                "cpuMicrosecondsPerLeaf": 34.31234765625035,
+                "allocatedBytesPerLeaf": 4432.177083333333
+              },
+              {
+                "sample": 3,
+                "mode": "legacy_replay",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 42.485156249999996,
+                "cpuMicrosecondsPerLeaf": 42.28627864583364,
+                "allocatedBytesPerLeaf": 29107.333333333332
+              }
+            ]
+          },
+          {
+            "round": 2,
+            "card": "DEFEND_SILENT",
+            "cards": 22,
+            "samples": 1,
+            "rootSetupMicroseconds": 141.3,
+            "rootSetupAllocatedBytes": 18840,
+            "valueSlots": 277,
+            "distinctWrittenSlots": [
+              0
+            ],
+            "writes": 86,
+            "valueChanges": 55,
+            "peakUndoEntries": 21,
+            "cache": {
+              "EnemyBuilds": 1,
+              "FocusBuilds": 1,
+              "StrategyBuilds": 1,
+              "cardValues": 22
+            },
+            "measurements": []
+          }
+        ],
+        "compactRoundAdvancement": false,
+        "productionBeamEnabled": false
+      }
+    },
+    {
+      "fixture": "shuffle-v1",
+      "result": {
+        "processReusable": false,
+        "processId": 739294,
+        "schemaVersion": 1,
+        "runId": "df473de5246d45feb750f0510c97bf07",
+        "scenarioId": "COMPACT-SHUFFLE-POWER-NATIVE",
+        "status": "Passed",
+        "stage": "passed",
+        "characterId": "CHARACTER.SILENT",
+        "encounterId": "ENCOUNTER.FUZZY_WURM_CRAWLER_WEAK",
+        "seed": "COMBATSOLVER",
+        "startedAtUtc": "2026-09-10T20:52:02.4816091+00:00",
+        "elapsedMilliseconds": 5136.8669,
+        "mainThread": true,
+        "combatEnded": false,
+        "startedTurn": 1,
+        "finishedTurn": 2,
+        "managedHeapBytes": 84937304,
+        "managedFragmentedBytes": 16278488,
+        "workingSetBytes": 1546252288,
+        "privateMemoryBytes": 1723449344,
+        "solverMetrics": null,
+        "replayVerification": null,
+        "stageTimings": [
+          {
+            "stage": "created",
+            "startedMilliseconds": 0,
+            "durationMilliseconds": 0.008
+          },
+          {
+            "stage": "game_startup",
+            "startedMilliseconds": 0.008,
+            "durationMilliseconds": 0.7443
+          },
+          {
+            "stage": "start_run",
+            "startedMilliseconds": 0.7523,
+            "durationMilliseconds": 2180.3615999999997
+          },
+          {
+            "stage": "inject_run_relics",
+            "startedMilliseconds": 2181.1139,
+            "durationMilliseconds": 0.0443000000000211
+          },
+          {
+            "stage": "enter_encounter",
+            "startedMilliseconds": 2181.1582,
+            "durationMilliseconds": 1000.6102000000001
+          },
+          {
+            "stage": "wait_player_turn",
+            "startedMilliseconds": 3181.7684,
+            "durationMilliseconds": 0.10570000000006985
+          },
+          {
+            "stage": "inject_state",
+            "startedMilliseconds": 3181.8741,
+            "durationMilliseconds": 1864.0349999999999
+          },
+          {
+            "stage": "cleanup",
+            "startedMilliseconds": 5045.9091,
+            "durationMilliseconds": 90.29899999999998
+          },
+          {
+            "stage": "passed",
+            "startedMilliseconds": 5136.2081,
+            "durationMilliseconds": 0.6603999999997541
+          }
+        ],
+        "completedChecks": [
+          "CompactShufflePower:24Branches:AllSnapshotProperties:History:FiveFieldRng:Undo:Frozen8Workers:NativeTwoTurns:LegacyRoundBoundary"
+        ],
+        "error": null,
+        "finishedAtUtc": "2026-09-10T20:52:07.6184758+00:00"
+      },
+      "evidence": {
+        "rounds": [
+          {
+            "round": 1,
+            "card": "ACROBATICS",
+            "cards": 24,
+            "samples": 24,
+            "rootSetupMicroseconds": 804.3,
+            "rootSetupAllocatedBytes": 258992,
+            "valueSlots": 287,
+            "distinctWrittenSlots": [
+              60,
+              56,
+              58,
+              60,
+              55,
+              55,
+              57,
+              59,
+              60,
+              55,
+              56,
+              58,
+              60,
+              55,
+              55,
+              57,
+              59,
+              60,
+              55,
+              56,
+              58,
+              60,
+              55,
+              55
+            ],
+            "writes": 949012,
+            "valueChanges": 900316,
+            "peakUndoEntries": 379,
+            "cache": {
+              "EnemyBuilds": 1,
+              "FocusBuilds": 1,
+              "StrategyBuilds": 1,
+              "cardValues": 24
+            },
+            "measurements": [
+              {
+                "sample": 0,
+                "mode": "legacy_replay",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 47.08645833333333,
+                "cpuMicrosecondsPerLeaf": 46.87504687500047,
+                "allocatedBytesPerLeaf": 29617
+              },
+              {
+                "sample": 0,
+                "mode": "compact_read_view",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 15.790885416666667,
+                "cpuMicrosecondsPerLeaf": 15.740273437499988,
+                "allocatedBytesPerLeaf": 4764.510416666667
+              },
+              {
+                "sample": 0,
+                "mode": "compact_cached",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 15.0921875,
+                "cpuMicrosecondsPerLeaf": 15.047221354167325,
+                "allocatedBytesPerLeaf": 4609.177083333333
+              },
+              {
+                "sample": 0,
+                "mode": "compact_cached_with_admission",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 15.829036458333334,
+                "cpuMicrosecondsPerLeaf": 15.76322265625052,
+                "allocatedBytesPerLeaf": 6165.666666666667
+              },
+              {
+                "sample": 1,
+                "mode": "compact_cached_with_admission",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 16.210677083333334,
+                "cpuMicrosecondsPerLeaf": 16.14681380208438,
+                "allocatedBytesPerLeaf": 6166.510416666667
+              },
+              {
+                "sample": 1,
+                "mode": "compact_cached",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 14.499218749999999,
+                "cpuMicrosecondsPerLeaf": 14.44346614583362,
+                "allocatedBytesPerLeaf": 4608.333333333333
+              },
+              {
+                "sample": 1,
+                "mode": "compact_read_view",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 15.697265625,
+                "cpuMicrosecondsPerLeaf": 15.64137890624906,
+                "allocatedBytesPerLeaf": 4764.510416666667
+              },
+              {
+                "sample": 1,
+                "mode": "legacy_replay",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 43.711588541666664,
+                "cpuMicrosecondsPerLeaf": 43.499765625000464,
+                "allocatedBytesPerLeaf": 29617
+              },
+              {
+                "sample": 2,
+                "mode": "legacy_replay",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 44.13958333333333,
+                "cpuMicrosecondsPerLeaf": 43.93571223958285,
+                "allocatedBytesPerLeaf": 29617
+              },
+              {
+                "sample": 2,
+                "mode": "compact_read_view",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 17.161848958333334,
+                "cpuMicrosecondsPerLeaf": 16.309498697917018,
+                "allocatedBytesPerLeaf": 4765.354166666667
+              },
+              {
+                "sample": 2,
+                "mode": "compact_cached",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 16.260416666666668,
+                "cpuMicrosecondsPerLeaf": 16.155412760416727,
+                "allocatedBytesPerLeaf": 4608.333333333333
+              },
+              {
+                "sample": 2,
+                "mode": "compact_cached_with_admission",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 17.558333333333334,
+                "cpuMicrosecondsPerLeaf": 17.45833463541639,
+                "allocatedBytesPerLeaf": 6166.510416666667
+              },
+              {
+                "sample": 3,
+                "mode": "compact_cached_with_admission",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 16.998307291666666,
+                "cpuMicrosecondsPerLeaf": 16.930723958333022,
+                "allocatedBytesPerLeaf": 6165.666666666667
+              },
+              {
+                "sample": 3,
+                "mode": "compact_cached",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 15.840625000000001,
+                "cpuMicrosecondsPerLeaf": 15.786411458332594,
+                "allocatedBytesPerLeaf": 4609.177083333333
+              },
+              {
+                "sample": 3,
+                "mode": "compact_read_view",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 16.692838541666667,
+                "cpuMicrosecondsPerLeaf": 16.63650390625075,
+                "allocatedBytesPerLeaf": 4763.666666666667
+              },
+              {
+                "sample": 3,
+                "mode": "legacy_replay",
+                "iterations": 32,
+                "leaves": 24,
+                "microsecondsPerLeaf": 46.38815104166667,
+                "cpuMicrosecondsPerLeaf": 46.179713541666466,
+                "allocatedBytesPerLeaf": 29617
+              }
+            ]
+          },
+          {
+            "round": 2,
+            "card": "DEFEND_SILENT",
+            "cards": 24,
+            "samples": 1,
+            "rootSetupMicroseconds": 84.1,
+            "rootSetupAllocatedBytes": 20288,
+            "valueSlots": 287,
+            "distinctWrittenSlots": [
+              0
+            ],
+            "writes": 88,
+            "valueChanges": 57,
+            "peakUndoEntries": 21,
+            "cache": {
+              "EnemyBuilds": 1,
+              "FocusBuilds": 1,
+              "StrategyBuilds": 1,
+              "cardValues": 24
+            },
+            "measurements": []
+          }
+        ],
+        "compactRoundAdvancement": false,
+        "productionBeamEnabled": false
+      }
+    },
+    {
+      "fixture": "powers-v1",
+      "result": {
+        "processReusable": false,
+        "processId": 739294,
+        "schemaVersion": 1,
+        "runId": "277e239f863f424c810cbe8ed161ddfb",
+        "scenarioId": "COMPACT-POWERS-NATIVE",
+        "status": "Passed",
+        "stage": "passed",
+        "characterId": "CHARACTER.SILENT",
+        "encounterId": "ENCOUNTER.CORPSE_SLUGS_NORMAL",
+        "seed": "COMBATSOLVER",
+        "startedAtUtc": "2026-09-10T20:52:09.7450403+00:00",
+        "elapsedMilliseconds": 4083.9828,
+        "mainThread": true,
+        "combatEnded": true,
+        "startedTurn": 1,
+        "finishedTurn": 1,
+        "managedHeapBytes": 86957184,
+        "managedFragmentedBytes": 16507216,
+        "workingSetBytes": 1616117760,
+        "privateMemoryBytes": 1812557824,
+        "solverMetrics": null,
+        "replayVerification": null,
+        "stageTimings": [
+          {
+            "stage": "created",
+            "startedMilliseconds": 0,
+            "durationMilliseconds": 0.0071
+          },
+          {
+            "stage": "game_startup",
+            "startedMilliseconds": 0.0071,
+            "durationMilliseconds": 0.6808
+          },
+          {
+            "stage": "start_run",
+            "startedMilliseconds": 0.6879,
+            "durationMilliseconds": 2193.0138
+          },
+          {
+            "stage": "inject_run_relics",
+            "startedMilliseconds": 2193.7017,
+            "durationMilliseconds": 0.04039999999986321
+          },
+          {
+            "stage": "enter_encounter",
+            "startedMilliseconds": 2193.7421,
+            "durationMilliseconds": 999.3434000000002
+          },
+          {
+            "stage": "wait_player_turn",
+            "startedMilliseconds": 3193.0855,
+            "durationMilliseconds": 0.041999999999916326
+          },
+          {
+            "stage": "inject_state",
+            "startedMilliseconds": 3193.1275,
+            "durationMilliseconds": 791.5657999999999
+          },
+          {
+            "stage": "cleanup",
+            "startedMilliseconds": 3984.6933,
+            "durationMilliseconds": 98.65250000000015
+          },
+          {
+            "stage": "passed",
+            "startedMilliseconds": 4083.3458,
+            "durationMilliseconds": 0.638300000000072
+          }
+        ],
+        "completedChecks": [
+          "CompactAttack:21Branches:FullState:DamageFlagsAndSources:AllSnapshotProperties:OriginalKeys:Undo:Frozen8Workers:PrivateReaderScratch",
+          "CompactPowers:StrengthWeakVulnerable:DexterityFrail:ZeroBaseBlock:CreateStack:RootOrder:DeathRemoval:ReadRestore",
+          "CompactAttack:NativePreTeardownSnapshot",
+          "CompactAttack:Native7Actions:PartialAndFinalDeaths:PreTeardownFullState:CombatEnded:TerminalRestore"
+        ],
+        "error": null,
+        "finishedAtUtc": "2026-09-10T20:52:13.8290227+00:00"
+      },
+      "evidence": {
+        "scope": "Basic Power values, Neutralize create/stack, fractional damage/block and native kill chain",
+        "branches": [
+          {
+            "card": 0,
+            "target": 1,
+            "BlockedDamage": 2,
+            "UnblockedDamage": 0,
+            "OverkillDamage": 0,
+            "WasBlockBroken": false,
+            "WasFullyBlocked": true,
+            "WasTargetKilled": false,
+            "PlayerBlock": 3,
+            "StateKey": {
+              "First": 1450739707813070936,
+              "Second": 2970657539606489411
+            }
+          },
+          {
+            "card": 0,
+            "target": 2,
+            "BlockedDamage": 0,
+            "UnblockedDamage": 2,
+            "OverkillDamage": 0,
+            "WasBlockBroken": false,
+            "WasFullyBlocked": false,
+            "WasTargetKilled": false,
+            "PlayerBlock": 3,
+            "StateKey": {
+              "First": 3556611058506110297,
+              "Second": 14047490893647137520
+            }
+          },
+          {
+            "card": 0,
+            "target": 3,
+            "BlockedDamage": 1,
+            "UnblockedDamage": 0,
+            "OverkillDamage": 0,
+            "WasBlockBroken": false,
+            "WasFullyBlocked": true,
+            "WasTargetKilled": false,
+            "PlayerBlock": 3,
+            "StateKey": {
+              "First": 3334145510012849851,
+              "Second": 15267931941758006279
+            }
+          },
+          {
+            "card": 1,
+            "target": 1,
+            "BlockedDamage": 5,
+            "UnblockedDamage": 0,
+            "OverkillDamage": 0,
+            "WasBlockBroken": false,
+            "WasFullyBlocked": true,
+            "WasTargetKilled": false,
+            "PlayerBlock": 3,
+            "StateKey": {
+              "First": 8761931063911268216,
+              "Second": 1398736554935594300
+            }
+          },
+          {
+            "card": 1,
+            "target": 2,
+            "BlockedDamage": 0,
+            "UnblockedDamage": 5,
+            "OverkillDamage": 0,
+            "WasBlockBroken": false,
+            "WasFullyBlocked": false,
+            "WasTargetKilled": false,
+            "PlayerBlock": 3,
+            "StateKey": {
+              "First": 1091442181488291520,
+              "Second": 12142337555705189054
+            }
+          },
+          {
+            "card": 1,
+            "target": 3,
+            "BlockedDamage": 2,
+            "UnblockedDamage": 1,
+            "OverkillDamage": 0,
+            "WasBlockBroken": true,
+            "WasFullyBlocked": false,
+            "WasTargetKilled": false,
+            "PlayerBlock": 3,
+            "StateKey": {
+              "First": 6213258495244615632,
+              "Second": 2044333870729501621
+            }
+          },
+          {
+            "card": 2,
+            "target": 1,
+            "BlockedDamage": 6,
+            "UnblockedDamage": 6,
+            "OverkillDamage": 0,
+            "WasBlockBroken": true,
+            "WasFullyBlocked": false,
+            "WasTargetKilled": false,
+            "PlayerBlock": 3,
+            "StateKey": {
+              "First": 5019124052125194435,
+              "Second": 4150875475840426829
+            }
+          },
+          {
+            "card": 2,
+            "target": 2,
+            "BlockedDamage": 0,
+            "UnblockedDamage": 6,
+            "OverkillDamage": 6,
+            "WasBlockBroken": false,
+            "WasFullyBlocked": false,
+            "WasTargetKilled": true,
+            "PlayerBlock": 3,
+            "StateKey": {
+              "First": 10505676791881019596,
+              "Second": 2613918927292899100
+            }
+          },
+          {
+            "card": 2,
+            "target": 3,
+            "BlockedDamage": 2,
+            "UnblockedDamage": 4,
+            "OverkillDamage": 2,
+            "WasBlockBroken": true,
+            "WasFullyBlocked": false,
+            "WasTargetKilled": true,
+            "PlayerBlock": 3,
+            "StateKey": {
+              "First": 8466098088173153698,
+              "Second": 18339323601840385747
+            }
+          },
+          {
+            "card": 3,
+            "target": 1,
+            "BlockedDamage": 6,
+            "UnblockedDamage": 3,
+            "OverkillDamage": 0,
+            "WasBlockBroken": true,
+            "WasFullyBlocked": false,
+            "WasTargetKilled": false,
+            "PlayerBlock": 3,
+            "StateKey": {
+              "First": 3070693349284459126,
+              "Second": 397225683753499625
+            }
+          },
+          {
+            "card": 3,
+            "target": 2,
+            "BlockedDamage": 0,
+            "UnblockedDamage": 6,
+            "OverkillDamage": 3,
+            "WasBlockBroken": false,
+            "WasFullyBlocked": false,
+            "WasTargetKilled": true,
+            "PlayerBlock": 3,
+            "StateKey": {
+              "First": 3535875879185617556,
+              "Second": 15150492358170804724
+            }
+          },
+          {
+            "card": 3,
+            "target": 3,
+            "BlockedDamage": 2,
+            "UnblockedDamage": 4,
+            "OverkillDamage": 0,
+            "WasBlockBroken": true,
+            "WasFullyBlocked": false,
+            "WasTargetKilled": true,
+            "PlayerBlock": 3,
+            "StateKey": {
+              "First": 5269903932700346524,
+              "Second": 4261810280693740738
+            }
+          },
+          {
+            "card": 4,
+            "target": 1,
+            "BlockedDamage": 6,
+            "UnblockedDamage": 3,
+            "OverkillDamage": 0,
+            "WasBlockBroken": true,
+            "WasFullyBlocked": false,
+            "WasTargetKilled": false,
+            "PlayerBlock": 3,
+            "StateKey": {
+              "First": 3070693349284459126,
+              "Second": 397225683753499625
+            }
+          },
+          {
+            "card": 4,
+            "target": 2,
+            "BlockedDamage": 0,
+            "UnblockedDamage": 6,
+            "OverkillDamage": 3,
+            "WasBlockBroken": false,
+            "WasFullyBlocked": false,
+            "WasTargetKilled": true,
+            "PlayerBlock": 3,
+            "StateKey": {
+              "First": 3535875879185617556,
+              "Second": 15150492358170804724
+            }
+          },
+          {
+            "card": 4,
+            "target": 3,
+            "BlockedDamage": 2,
+            "UnblockedDamage": 4,
+            "OverkillDamage": 0,
+            "WasBlockBroken": true,
+            "WasFullyBlocked": false,
+            "WasTargetKilled": true,
+            "PlayerBlock": 3,
+            "StateKey": {
+              "First": 5269903932700346524,
+              "Second": 4261810280693740738
+            }
+          },
+          {
+            "card": 5,
+            "target": 1,
+            "BlockedDamage": 6,
+            "UnblockedDamage": 3,
+            "OverkillDamage": 0,
+            "WasBlockBroken": true,
+            "WasFullyBlocked": false,
+            "WasTargetKilled": false,
+            "PlayerBlock": 3,
+            "StateKey": {
+              "First": 3070693349284459126,
+              "Second": 397225683753499625
+            }
+          },
+          {
+            "card": 5,
+            "target": 2,
+            "BlockedDamage": 0,
+            "UnblockedDamage": 6,
+            "OverkillDamage": 3,
+            "WasBlockBroken": false,
+            "WasFullyBlocked": false,
+            "WasTargetKilled": true,
+            "PlayerBlock": 3,
+            "StateKey": {
+              "First": 3535875879185617556,
+              "Second": 15150492358170804724
+            }
+          },
+          {
+            "card": 5,
+            "target": 3,
+            "BlockedDamage": 2,
+            "UnblockedDamage": 4,
+            "OverkillDamage": 0,
+            "WasBlockBroken": true,
+            "WasFullyBlocked": false,
+            "WasTargetKilled": true,
+            "PlayerBlock": 3,
+            "StateKey": {
+              "First": 5269903932700346524,
+              "Second": 4261810280693740738
+            }
+          },
+          {
+            "card": 6,
+            "target": -1,
+            "BlockedDamage": null,
+            "UnblockedDamage": null,
+            "OverkillDamage": null,
+            "WasBlockBroken": null,
+            "WasFullyBlocked": null,
+            "WasTargetKilled": null,
+            "PlayerBlock": 9,
+            "StateKey": {
+              "First": 8265507806529075548,
+              "Second": 9553051276789556110
+            }
+          },
+          {
+            "card": 7,
+            "target": -1,
+            "BlockedDamage": null,
+            "UnblockedDamage": null,
+            "OverkillDamage": null,
+            "WasBlockBroken": null,
+            "WasFullyBlocked": null,
+            "WasTargetKilled": null,
+            "PlayerBlock": 5,
+            "StateKey": {
+              "First": 7493274182370216904,
+              "Second": 7159319824736709130
+            }
+          },
+          {
+            "card": 8,
+            "target": -1,
+            "BlockedDamage": null,
+            "UnblockedDamage": null,
+            "OverkillDamage": null,
+            "WasBlockBroken": null,
+            "WasFullyBlocked": null,
+            "WasTargetKilled": null,
+            "PlayerBlock": 6,
+            "StateKey": {
+              "First": 11304294206888805023,
+              "Second": 10862579288817414864
+            }
+          }
+        ],
+        "nativeSteps": 7,
+        "powers": [
+          [
+            "0:0:STRENGTH_POWER:2:0:0:0:False:",
+            "0:1:WEAK_POWER:2:0:1:0:False:DamageDecrease=0.75",
+            "0:2:VULNERABLE_POWER:2:0:2:0:False:DamageIncrease=1.5",
+            "1:0:DEXTERITY_POWER:3:0:0:0:False:",
+            "1:1:VULNERABLE_POWER:2:0:1:0:False:DamageIncrease=1.5",
+            "2:0:WEAK_POWER:2:0:0:0:True:DamageDecrease=0.75",
+            "2:1:STRENGTH_POWER:1:0:1:0:False:",
+            "3:0:FRAIL_POWER:2:0:0:0:True:"
+          ],
+          [
+            "0:0:STRENGTH_POWER:2:0:0:0:False:",
+            "0:1:WEAK_POWER:2:0:1:0:False:DamageDecrease=0.75",
+            "0:2:VULNERABLE_POWER:2:0:2:0:False:DamageIncrease=1.5",
+            "0:3:WEAK_POWER:1:0::0:False:DamageDecrease=0.75",
+            "1:0:DEXTERITY_POWER:3:0:0:0:False:",
+            "1:1:VULNERABLE_POWER:2:0:1:0:False:DamageIncrease=1.5",
+            "2:0:WEAK_POWER:2:0:0:0:True:DamageDecrease=0.75",
+            "2:1:STRENGTH_POWER:1:0:1:0:False:",
+            "3:0:FRAIL_POWER:2:0:0:0:True:"
+          ],
+          [
+            "0:0:STRENGTH_POWER:2:0:0:0:False:",
+            "0:1:WEAK_POWER:2:0:1:0:False:DamageDecrease=0.75",
+            "0:2:VULNERABLE_POWER:2:0:2:0:False:DamageIncrease=1.5",
+            "0:3:WEAK_POWER:2:0::0:False:DamageDecrease=0.75",
+            "1:0:DEXTERITY_POWER:3:0:0:0:False:",
+            "1:1:VULNERABLE_POWER:2:0:1:0:False:DamageIncrease=1.5",
+            "2:0:WEAK_POWER:2:0:0:0:True:DamageDecrease=0.75",
+            "2:1:STRENGTH_POWER:1:0:1:0:False:",
+            "3:0:FRAIL_POWER:2:0:0:0:True:"
+          ],
+          [
+            "0:0:STRENGTH_POWER:2:0:0:0:False:",
+            "0:1:WEAK_POWER:2:0:1:0:False:DamageDecrease=0.75",
+            "0:2:VULNERABLE_POWER:2:0:2:0:False:DamageIncrease=1.5",
+            "0:3:WEAK_POWER:2:0::0:False:DamageDecrease=0.75",
+            "1:0:DEXTERITY_POWER:3:0:0:0:False:",
+            "1:1:VULNERABLE_POWER:2:0:1:0:False:DamageIncrease=1.5",
+            "2:0:WEAK_POWER:2:0:0:0:True:DamageDecrease=0.75",
+            "2:1:STRENGTH_POWER:1:0:1:0:False:",
+            "3:0:FRAIL_POWER:2:0:0:0:True:"
+          ],
+          [
+            "0:0:STRENGTH_POWER:2:0:0:0:False:",
+            "0:2:VULNERABLE_POWER:2:0:2:0:False:DamageIncrease=1.5",
+            "0:3:WEAK_POWER:2:0::0:False:DamageDecrease=0.75",
+            "1:0:DEXTERITY_POWER:3:0:0:0:False:",
+            "2:0:WEAK_POWER:2:0:0:0:True:DamageDecrease=0.75",
+            "3:0:FRAIL_POWER:2:0:0:0:True:"
+          ],
+          [
+            "0:0:STRENGTH_POWER:2:0:0:0:False:",
+            "0:3:WEAK_POWER:2:0::0:False:DamageDecrease=0.75",
+            "1:0:DEXTERITY_POWER:3:0:0:0:False:",
+            "2:0:WEAK_POWER:2:0:0:0:True:DamageDecrease=0.75",
+            "3:0:FRAIL_POWER:2:0:0:0:True:"
+          ],
+          [
+            "0:0:STRENGTH_POWER:2:0:0:0:False:",
+            "1:0:DEXTERITY_POWER:3:0:0:0:False:",
+            "2:0:WEAK_POWER:2:0:0:0:True:DamageDecrease=0.75",
+            "3:0:FRAIL_POWER:2:0:0:0:True:"
+          ]
+        ]
+      }
+    }
+  ],
+  "pure": {
+    "creature": "COMPACT_CREATURE_CHECKS_OK damage_vectors=9; COMPACT_POWER_CHECKS_OK modifiers=6; COMPACT_EFFECT_PROGRAM_CHECKS_OK ordered_effects repeated_choices nested_parent_resume immutable_definition cancellation frozen_workers=8 empty_choice unknown_rejected",
+    "growth": "COMPACT_GROWTH_CHECKS_OK contracts=8",
+    "candidate": "COMPACT_CANDIDATE_CHECKS_OK label=effects-v1 samples=48 leaves=34 contracts=7"
+  },
+  "performanceClaim": null,
+  "productionBackendEnabled": false,
+  "compactRoundAdvancement": false
+}

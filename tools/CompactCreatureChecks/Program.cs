@@ -1,6 +1,7 @@
 using CombatSolver.Engine.InCombat.Simulation.Compact;
 
 PowerChecks.Run();
+EffectProgramChecks.Run();
 
 (int Hp, int Block, decimal Amount, bool Unblockable, int ExpectedHp, int ExpectedBlock, decimal Blocked, int Lost, bool Killed, int Overkill)[] damageCases =
 {
@@ -76,8 +77,9 @@ if (!state.Freeze().ContentEquals(root) || dead[first.Offset] != 0 || dead[first
 // Resume after Begin must retain the exact target, and the final native pile gate leaves
 // the killing card in Play until teardown. Terminal commitment is a separate safe point.
 var attacks = new ResumableDiscardProgram(
-    [new(0, 0, 0, false, Damage: 0, Attack: true), new(1, 0, 0, false, Damage: 6, Attack: true),
-     new(1, 0, 0, false, Damage: 9, Attack: true), new(1, 0, 0, false, Damage: 6, Attack: true), new(1, 0, 0, false, Block: 5)],
+    [new(0, new([new(CardInstructionKind.AttackTarget, 0)])), new(1, new([new(CardInstructionKind.AttackTarget, 6)])),
+     new(1, new([new(CardInstructionKind.AttackTarget, 9)])), new(1, new([new(CardInstructionKind.AttackTarget, 6)])),
+     new(1, new([new(CardInstructionKind.GainBlock, 5)]))],
     [new[] { 0, 1, 2, 3, 4 }, Array.Empty<int>(), Array.Empty<int>(), Array.Empty<int>(), Array.Empty<int>()],
     5, 3, 0, creatures: [new(50, 60, 3), new(6, 30, 6), new(4, 30, 2)]);
 var attackRoot = attacks.Freeze();

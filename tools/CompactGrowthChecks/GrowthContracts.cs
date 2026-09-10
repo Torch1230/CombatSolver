@@ -107,7 +107,8 @@ internal static class GrowthContracts
 
         // Continue a genuine executor program beyond the former fixed event limit.
         // This is a storage/execution contract, not a native full-battle claim.
-        ResumableDiscardProgram.Card[] cards = [new(0, 1, 0, false), new(0, 1, 0, false)];
+        CardEffectProgram draw = new([new(CardInstructionKind.Draw, 1)]);
+        ResumableDiscardProgram.Card[] cards = [new(0, draw), new(0, draw)];
         var program = new ResumableDiscardProgram(cards, [[0], [1], [], [], []], 1, 0, 0,
             new(0, 1, 2, 3, 4), [0, -1, 1, 0]);
         var before = program.State.Freeze();

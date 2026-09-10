@@ -117,7 +117,7 @@ internal sealed class CompactDiscardProjection
 
     private static ResumableDiscardProgram.Card Capture(CardModel card, bool includeAttacks)
     {
-        if (card is not (Acrobatics or Prepared or Backflip or StrikeSilent or DefendSilent or Neutralize)
+        if (card is not (Acrobatics or Prepared or Backflip or StrikeSilent or DefendSilent or Neutralize or Survivor)
             || card is Neutralize && !includeAttacks
             || card.Enchantment != null || card.Affliction != null || card.BaseReplayCount != 0
             || card.ExhaustOnNextPlay || card.IsDupe || card.IsClone || card.HasBeenRemovedFromState
@@ -130,7 +130,7 @@ internal sealed class CompactDiscardProjection
             throw new NotSupportedException($"Compact prototype cannot admit card state {card.Id.Entry}.");
         decimal draw = card is Acrobatics or Prepared or Backflip ? card.DynamicVars.Cards.BaseValue : 0;
         decimal damage = includeAttacks && card is StrikeSilent or Neutralize ? card.DynamicVars.Damage.BaseValue : 0;
-        decimal block = card is DefendSilent or Backflip ? card.DynamicVars.Block.BaseValue : 0;
+        decimal block = card is DefendSilent or Backflip or Survivor ? card.DynamicVars.Block.BaseValue : 0;
         decimal weak = card is Neutralize ? card.DynamicVars.Weak.BaseValue : 0;
         if (draw != decimal.Truncate(draw) || draw < 0 || draw > 10 || card.EnergyCost._base < 0
             || card is Acrobatics or Prepared or Backflip && draw == 0
@@ -138,9 +138,21 @@ internal sealed class CompactDiscardProjection
             || block != decimal.Truncate(block) || block is < 0 or > 999_999_999m
             || weak != decimal.Truncate(weak) || weak is < 0 or > 999_999_999m)
             throw new NotSupportedException($"Compact prototype cannot admit card variables {card.Id.Entry}.");
-        return new(card.EnergyCost._base, (int)draw, card is Acrobatics ? 1 : card is Prepared ? (int)draw : 0,
-            card.IsSlyThisTurn, (int)block, (int)damage, includeAttacks && card is StrikeSilent or Neutralize,
-            (int)weak, card is DefendSilent or Backflip);
+        // These are ordered native commands, including meaningful zero-base effects. The
+        // adapter admits exact types/instance state; the executor contains no card identities.
+        CardEffectProgram effects = card switch
+        {
+            Acrobatics => new([new(CardInstructionKind.Draw, (int)draw), new(CardInstructionKind.Discard, 1)]),
+            Prepared => new([new(CardInstructionKind.Draw, (int)draw), new(CardInstructionKind.Discard, (int)draw)]),
+            Backflip => new([new(CardInstructionKind.GainBlock, (int)block), new(CardInstructionKind.Draw, (int)draw)]),
+            Survivor => new([new(CardInstructionKind.GainBlock, (int)block), new(CardInstructionKind.Discard, 1)]),
+            DefendSilent => new([new(CardInstructionKind.GainBlock, (int)block)]),
+            StrikeSilent when includeAttacks => new([new(CardInstructionKind.AttackTarget, (int)damage)]),
+            StrikeSilent => CardEffectProgram.Empty, // Inert metadata in the draw/discard-only fixture.
+            Neutralize => new([new(CardInstructionKind.AttackTarget, (int)damage), new(CardInstructionKind.ApplyWeakToTarget, (int)weak)]),
+            _ => throw new NotSupportedException("Card has no admitted compact instructions.")
+        };
+        return new(card.EnergyCost._base, effects, card.IsSlyThisTurn);
     }
 
     private PowerModel[] CapturePowerTemplates(SimulatedCombatState combat, IReadOnlyList<PowerModel> powers)

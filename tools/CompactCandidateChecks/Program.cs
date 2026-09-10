@@ -32,8 +32,9 @@ void Measure(string name, Action action, int iterations)
 }
 
 var cards = new ResumableDiscardProgram.Card[30];
-cards[0] = new(1, 3, 1, false);
-cards[1] = new(0, 2, 2, true);
+Array.Fill(cards, new(0, CardEffectProgram.Empty));
+cards[0] = new(1, new([new(CardInstructionKind.Draw, 3), new(CardInstructionKind.Discard, 1)]));
+cards[1] = new(0, new([new(CardInstructionKind.Draw, 2), new(CardInstructionKind.Discard, 2)]), true);
 IReadOnlyList<int>[] piles = [Enumerable.Range(0, 5).ToArray(), Enumerable.Range(5, 25).ToArray(), [], [], []];
 var program = new ResumableDiscardProgram(cards, piles, 6, 0, 3);
 List<ResumableDiscardProgram.Candidate> retained = new(34);

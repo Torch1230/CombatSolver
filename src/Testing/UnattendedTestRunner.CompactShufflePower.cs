@@ -20,7 +20,7 @@ internal sealed partial class UnattendedTestRunner
     // A native reduction of the existing Stratagem/Prepared choice-order regression, extended
     // with Sly, a 17-card duplicate-rich shuffle, and both represented relic hooks. This is not
     // the entire archived deck, an exhaustive choice search, or compact round advancement.
-    private async Task AssertCompactShufflePowerAsync(CombatState combat, Player player)
+    private async Task AssertCompactShufflePowerAsync(CombatState combat, Player player, bool useSurvivor = false)
     {
         foreach (var relic in player.Relics.ToArray()) await RelicCmd.Remove(relic);
         foreach (var power in combat.Creatures.SelectMany(c => c.Powers).ToArray()) await PowerCmd.Remove(power);
@@ -30,10 +30,10 @@ internal sealed partial class UnattendedTestRunner
             await InjectRelicAsync(player, new UnattendedRelicInjection { RelicId = relic });
         await InjectPowerAsync(combat, player, new UnattendedPowerInjection
             { PowerId = "STRATAGEM_POWER", Target = "Player", Amount = 2 });
-        foreach (string id in new[] { "ACROBATICS", "PREPARED", "DEFEND_SILENT", "STRIKE_SILENT" })
+        foreach (string id in new[] { useSurvivor ? "SURVIVOR" : "ACROBATICS", "PREPARED", "DEFEND_SILENT", "STRIKE_SILENT" })
             await InjectCardAsync(combat, player, new UnattendedCardInjection
                 { CardId = id, Pile = "Hand", UpgradeLevels = id == "PREPARED" ? 1 : 0 });
-        foreach (string id in new[] { "DEFEND_SILENT", "STRIKE_SILENT", "DEFEND_SILENT" })
+        foreach (string id in useSurvivor ? new[] { "DEFEND_SILENT" } : new[] { "DEFEND_SILENT", "STRIKE_SILENT", "DEFEND_SILENT" })
             await InjectCardAsync(combat, player, new UnattendedCardInjection { CardId = id, Pile = "Draw" });
         for (int i = 0; i < 17; i++)
             await InjectCardAsync(combat, player, new UnattendedCardInjection
@@ -69,7 +69,7 @@ internal sealed partial class UnattendedTestRunner
             var lane = adapter.Program;
             var reader = adapter.CreateReadView();
             var uncachedReader = adapter.CreateReadView(false);
-            CardModel nativeCard = round == 0 ? FindActualHandCard(player, "ACROBATICS", 0)
+            CardModel nativeCard = round == 0 ? FindActualHandCard(player, useSurvivor ? "SURVIVOR" : "ACROBATICS", 0)
                 : player.PlayerCombatState!.Hand.Cards.First(c => c is DefendSilent);
             int played = adapter.IndexOf(nativeCard), prepared = adapter.Identity("PREPARED");
             var rootValues = lane.State.Freeze();
@@ -317,11 +317,12 @@ internal sealed partial class UnattendedTestRunner
         if (!string.IsNullOrWhiteSpace(_request.EvidenceDirectory))
         {
             Directory.CreateDirectory(_request.EvidenceDirectory);
-            File.WriteAllText(Path.Combine(_request.EvidenceDirectory, "compact-shuffle-power.json"),
+            File.WriteAllText(Path.Combine(_request.EvidenceDirectory, useSurvivor ? "compact-effect-program.json" : "compact-shuffle-power.json"),
                 JsonSerializer.Serialize(new { rounds, compactRoundAdvancement = false, productionBeamEnabled = false },
                     new JsonSerializerOptions { WriteIndented = true }));
         }
         _completedChecks.Add("CompactShufflePower:24Branches:AllSnapshotProperties:History:FiveFieldRng:Undo:Frozen8Workers:NativeTwoTurns:LegacyRoundBoundary");
+        if (useSurvivor) _completedChecks.Add("CompactEffectProgram:SurvivorBlockThenDiscard:PreparedPartialDrawThenShuffle:BackflipContinuation:Native");
     }
 
     private static void AssertCompactRngVectors()

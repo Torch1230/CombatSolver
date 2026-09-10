@@ -1,5 +1,7 @@
 # CombatSolver 测试清单
 
+- `COMPACT-EFFECT-PROGRAM-NATIVE`（`fd79e13365d845308fff3c6f825b78cf`）Passed：生存者→Sly 早有准备→部分抽牌／洗牌的 24 分支、完整状态／Snapshot／原键／历史／九流 RNG、八工作区及原生后空翻续接。原洗牌链（`df473de5246d45feb750f0510c97bf07`）与 Power／七步击杀链（`277e239f863f424c810cbe8ed161ddfb`）同产物通过。三组纯值工具通过；[证据与范围](performance/simulation-effect-program-20260911.md)。
+
 - `COMPACT-POWERS-NATIVE`（`6b2f26c48d4f4934b8959175a94271c1`）与 `COMPACT-POWER-BOUNDARIES-NATIVE`（`afe4886edcc945278a931a04dd758a31`）均 Passed：21 分支、五种基础 Power、原生七步击杀、八工作区，以及负属性／小数边界三步和旧引擎显式定向 Power。最终 Release `artifact-v8`；原生洗牌哨兵 `18e523f6b1b242ea91acae8073f90bbc`、混合 Power 顺序 `f6160c9671fa4d9785b37b9792edfc16` 均 Passed；[证据和边界](performance/simulation-compact-powers-20260911.md)。
 
 - `COMPACT-ATTACKS-NATIVE`：SILENT／CORPSE_SLUGS_NORMAL，120 秒 headless，最终 `c8bd3d9d609c4023a187a4a0479ce1a9` Passed。18 分支的全状态、完整评分／原键／来源历史，八工作区独立执行与读取，原生五步部分／最后击杀及 teardown 前完整终局对账；[证据与范围](performance/simulation-compact-attacks-20260911.md)。`CompactCreatureChecks` 增补目标、取消撤销、暂停恢复与结束门合同通过；洗牌原生哨兵 `6660eab2ce51440b9dcecb097d7541e1` Passed。
