@@ -12,9 +12,12 @@ internal sealed partial class SimulatedCombatState
     private ForkableDictionary<Creature, BranchMonsterAiState>? _monsterAiStates;
 
     public IReadOnlyList<ForecastMove> CurrentMonsterMoves()
+        => CurrentMonsterMoves(Enemies);
+
+    internal IReadOnlyList<ForecastMove> CurrentMonsterMoves(IReadOnlyList<Creature> enemies)
     {
-        List<ForecastMove> moves = new(Enemies.Count);
-        foreach (Creature enemy in Enemies)
+        List<ForecastMove> moves = new(enemies.Count);
+        foreach (Creature enemy in enemies)
         {
             if (enemy.Monster == null)
                 continue;
@@ -179,9 +182,9 @@ internal sealed partial class SimulatedCombatState
         return state;
     }
 
-    private void AppendMonsterAiFingerprint(ref StateFingerprintBuilder fingerprint)
+    private void AppendMonsterAiFingerprint(ref StateFingerprintBuilder fingerprint, IReadOnlyList<Creature>? enemies = null)
     {
-        foreach (Creature enemy in Enemies)
+        foreach (Creature enemy in enemies ?? Enemies)
         {
             if (enemy.Monster == null)
                 continue;

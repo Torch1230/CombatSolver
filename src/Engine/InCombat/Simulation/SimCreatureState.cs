@@ -1,6 +1,7 @@
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.ValueProps;
 using CombatSolver.Engine.Common;
+using CombatSolver.Engine.InCombat.Simulation.Compact;
 
 namespace CombatSolver.Engine.InCombat.Simulation;
 
@@ -8,11 +9,13 @@ internal sealed class SimCreatureState
 {
     public Creature Creature { get; }
 
-    public int CurrentHp { get; internal set; }
+    private CreatureVitals _values;
 
-    public int MaxHp { get; private set; }
+    public int CurrentHp { get => _values.CurrentHp; internal set => _values.CurrentHp = value; }
 
-    public int Block { get; private set; }
+    public int MaxHp => _values.MaxHp;
+
+    public int Block => _values.Block;
 
     public HpDisplay HpDisplay { get; set; }
 
@@ -29,9 +32,7 @@ internal sealed class SimCreatureState
         HpDisplay hpDisplay)
     {
         Creature = creature;
-        CurrentHp = currentHp;
-        MaxHp = maxHp;
-        Block = block;
+        _values = new(currentHp, maxHp, block);
         HpDisplay = hpDisplay;
     }
 
@@ -40,55 +41,27 @@ internal sealed class SimCreatureState
     public bool IsDead => !IsAlive;
 
     public decimal DamageBlock(decimal amount, ValueProp props)
-    {
-        var blockedDamage = props.HasFlag(ValueProp.Unblockable)
-            ? 0m
-            : Math.Min(Block, amount);
-
-        Block -= (int)blockedDamage;
-        return blockedDamage;
-    }
+        => _values.DamageBlock(amount, props.HasFlag(ValueProp.Unblockable));
 
     public DamageResult LoseHp(decimal amount, ValueProp props)
     {
-        var wasTargetKilled = CurrentHp > 0 && amount >= CurrentHp;
-        var previousHp = CurrentHp;
-        var damage = (int)Math.Min(amount, 999999999m);
-        CurrentHp = Math.Max(CurrentHp - damage, 0);
-
+        HpLossValues result = _values.LoseHp(amount);
         return new DamageResult(Creature, props)
         {
-            UnblockedDamage = previousHp - CurrentHp,
-            WasTargetKilled = wasTargetKilled,
-            OverkillDamage = wasTargetKilled ? Math.Max(damage - previousHp, 0) : 0
+            UnblockedDamage = result.UnblockedDamage,
+            WasTargetKilled = result.WasTargetKilled,
+            OverkillDamage = result.OverkillDamage
         };
     }
 
     public void GainBlock(decimal amount)
-    {
-        if (amount < 0m)
-        {
-            throw new ArgumentException("amount must be positive. Use LoseBlock for block loss.", nameof(amount));
-        }
-
-        Block = (int)Math.Min(Block + amount, 999999999m);
-    }
+        => _values.GainBlock(amount);
 
     public void Heal(decimal amount)
-    {
-        if (amount < 0m)
-        {
-            throw new ArgumentException("amount must be positive.", nameof(amount));
-        }
-
-        CurrentHp = (int)Math.Min(CurrentHp + amount, MaxHp);
-    }
+        => _values.Heal(amount);
 
     public void SetMaxHp(int amount)
-    {
-        MaxHp = Math.Clamp(amount, 1, 999_999_999);
-        CurrentHp = Math.Min(CurrentHp, MaxHp);
-    }
+        => _values.SetMaxHp(amount);
 
     internal SimCreatureState Fork(PredictionForkContext context)
     {

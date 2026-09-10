@@ -1321,14 +1321,17 @@ internal sealed partial class SimulatedCombatState
     }
 
     public int EffectiveEnemyHp(Creature enemy, SimCreatureState state)
+        => EffectiveEnemyHp(enemy, state.CurrentHp, state.MaxHp);
+
+    internal int EffectiveEnemyHp(Creature enemy, int currentHp, int maxHp)
     {
         if (_steamEruptionPhases?.ContainsKey(enemy) == true)
             return 0;
         if (enemy.Monster is TestSubject)
-            return RemainingTestSubjectFormHp(enemy, state.CurrentHp);
-        if (state.CurrentHp > 0)
-            return state.CurrentHp;
-        return RevivingEnemyHp(enemy, state.MaxHp);
+            return RemainingTestSubjectFormHp(enemy, currentHp);
+        if (currentHp > 0)
+            return currentHp;
+        return RevivingEnemyHp(enemy, maxHp);
     }
 
     public int AdvanceAeonglassAdditionalStrength(Creature owner)
@@ -2100,7 +2103,8 @@ internal sealed partial class SimulatedCombatState
 
     public void AppendFingerprint(
         ref StateFingerprintBuilder fingerprint,
-        CombatPredictionSimulator simulator, CardHistoryReadValues? history = null)
+        CombatPredictionSimulator simulator, CardHistoryReadValues? history = null,
+        IReadOnlyList<Creature>? enemyRoster = null)
     {
         fingerprint.Add('P');
         int powerCount = 0;
@@ -2124,8 +2128,8 @@ internal sealed partial class SimulatedCombatState
         AddCreatureIntMap(ref fingerprint, 'G', _pressureGunBonus);
         AddCreatureIntMap(ref fingerprint, 'R', _steamEruptionDamage);
         AddSteamEruptionPhases(ref fingerprint, _steamEruptionPhases);
-        AddAeonglassCounters(ref fingerprint, 'A', _aeonglassAdditionalStrength, "AdditionalStrength");
-        AddAeonglassCounters(ref fingerprint, 'W', _aeonglassWitherUpgradeCount, "WitherUpgradeCount");
+        AddAeonglassCounters(ref fingerprint, 'A', _aeonglassAdditionalStrength, "AdditionalStrength", enemyRoster);
+        AddAeonglassCounters(ref fingerprint, 'W', _aeonglassWitherUpgradeCount, "WitherUpgradeCount", enemyRoster);
         AddCreatureIntMap(ref fingerprint, 'a', _attacksPlayedThisTurn);
         AddCreatureIntMap(ref fingerprint, 'j', _shivsPlayedThisTurn);
         AddCreatureIntMap(ref fingerprint, 'b', _blockCardsPlayedThisTurn, history?.Owner.Creature, history?.BlockPlays);
@@ -2165,7 +2169,7 @@ internal sealed partial class SimulatedCombatState
         AppendStatefulRelicFingerprint(ref fingerprint, simulator);
         AppendRelicResourceFingerprint(ref fingerprint);
         AppendPotionFingerprint(ref fingerprint);
-        AppendMonsterAiFingerprint(ref fingerprint);
+        AppendMonsterAiFingerprint(ref fingerprint, enemyRoster);
         AppendMonsterStateFingerprint(ref fingerprint);
         AppendDampenFingerprint(ref fingerprint);
         AppendDeathLifecycleFingerprint(ref fingerprint);
@@ -2524,12 +2528,12 @@ internal sealed partial class SimulatedCombatState
         ref StateFingerprintBuilder fingerprint,
         char marker,
         IReadOnlyDictionary<Creature, int>? simulatedValues,
-        string memberName)
+        string memberName, IReadOnlyList<Creature>? enemyRoster = null)
     {
         ulong first = 0;
         ulong second = 0;
         int count = 0;
-        foreach (Creature enemy in Enemies)
+        foreach (Creature enemy in enemyRoster ?? Enemies)
         {
             if (enemy.Monster?.GetType().Name != "Aeonglass")
                 continue;

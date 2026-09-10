@@ -1,5 +1,10 @@
 # CombatSolver 测试清单
 
+## 2026-09-11：生物值与完整估值读取
+
+- [CompactCreatureChecks](../tools/CompactCreatureChecks/README.md) 九个边界伤害向量、治疗／限幅、跨页撤销及八工作区恢复通过。
+- `COMPACT-CREATURE-VALUES-NATIVE` 最终 `f79411f25e10403cab705060cd22d350` Passed，23.64 秒：三敌 16 状态的全部 Snapshot 属性／原键／排序／根恢复，12 个玩家与敌人原生伤害的完整状态。另单列 `SandpitPower` 评分 helper 的 owner／target／amount／分支 HP 读取，未把它计作完整 Power＋离场闭包。既有 24 分支、九 RNG 和两回合洗牌原生 `310ff556730f4086affc538afc587915` Passed。完整原输入、退化样本、失败原因及最终构建／门禁证据见[报告](performance/simulation-creature-values-20260911.md)。
+
 ## 2026-09-11：可增长紧凑工作区
 
 - [CompactGrowthChecks](../tools/CompactGrowthChecks/README.md) 八组合同通过：600 步独立列表 oracle、页边界／不同长度恢复、嵌套撤销、八路隔离，以及第 256 次冻结后继续至 512 次执行并逐槽对照。现有结构工具四个候选各 ABBA 的 34 叶／逐槽合同通过；数据包含未保留实验。

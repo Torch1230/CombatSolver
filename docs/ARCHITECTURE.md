@@ -213,6 +213,10 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 `Search/CompletedStateReadView.cs` 是同步已完成状态的读取合同，既有 Snapshot 与 `SnapshotFromReadView` 共用 `SnapshotCore`、合法性、完整估值、投影洗牌与原键编码。`CombatBeamSolver.ReadView.cs` 持有共用的值牌堆编码与可选的根内不变特征缓存；敌人摘要、威胁焦点、卡牌估值与策略上下文仍调用原公式，只在准入证明敌人／AI、Power 与存活牌集合及元数据不变时复用。每个稳定根新建缓存，不保留跨回合或跨根条目；非实验入口不启用缓存。`SimulatedCombatState.AppendFingerprint` 在原序列中替换已改变的 owner 历史项和技能集合。读取结果立即释放借用 Simulator；读取器不能逃入保留候选，也不建立旧图与值状态的双写权威。所有未提供字段必须在准入程序内不变；因此不能将当前合同用于任意 Power 变化、死亡或其他随机流写入。双端门禁仍禁止生产 Search/Runtime 调用实验入口；生产后端与调度未切换。
 
+生物标量现在由纯值 `CreatureVitals` 保存并统一实现扣格挡、扣血、治疗与最大生命限幅；生产 `SimCreatureState` 持有该值，负责稳定 Creature 身份、显示值和原 `DamageResult` 外壳。`CreatureValueSlots` 仅是不可变布局位置，向程序所属工作区读写 HP／MaxHp／Block／Present，生命归零不会自动移出阵容。它不包含伤害 Hook、攻击事务、历史或死亡回调。
+
+完成状态合同另提供逐生物数值、有序敌方 roster 和显式可空的终局时点。完整快照的分布、集火、威胁与原键共用这些值；AI／沙漏计数的原键仍按活动 roster 原序编码。敌人值可变时禁用该根的敌人／焦点缓存，卡牌元数据复用仍要求自身闭包成立。`UnattendedTestRunner.CreatureValues` 用三敌 16 状态对照全部 Snapshot 属性／原键／排序，并以 12 个原生非致命伤害样例验证基础算术；这只是伤害执行迁移的基础，尚未迁移 Power／死亡历史、宠物生命周期及攻击命令。根内未迁移的 Hook／AI／领域公式也必须与已变化数值无关，不能仅凭 Power 数量未变就认定可借用根。
+
 `Testing/CompactPhaseProbe.cs` 与 `UnattendedTestRunner.CompactKernelProfile.cs` 独占原型的阶段计量和新旧 solver 缓存对照，不进入生产 Search/Runtime。直接调用 Snapshot 的实验必须进入正式 `SolveCore` 使用的 `SimulationNotificationIsolation`，否则既有第三方空能力快速路径会旁路。该作用域使用线程静态状态，必须在 await 前和原生部署前退出；恢复后的模拟重新进入。诊断输出实际线程 CPU、独立墙钟和分配，内部既有 Snapshot 指标仍是嵌套墙钟；冻结候选不保留计量器、solver 或读取视图。
 
 通用命令和 Hook 调用遇到 `PendingChoice` 时立即向上传播未完成状态，不再执行其后的监听器、抽牌、资源变更、死亡处理或卡牌收尾。Search 为待处理选择补齐计划后，从稳定父节点精确重放该动作，按原顺序通过挂起点；未完成事务不作为可继续执行的稳定 Fork。自动出牌将外层来源与上下文身份带入 `OnPlayWrapper`，在来源牌仍位于 Play 时消费嵌套选择，等待嵌套自动出牌结束后才移动来源牌和执行费用清理。原版挂起位置、顺序与卡牌实例身份属于模拟语义，不能由 Beam 或部署层补偿。

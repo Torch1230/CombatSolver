@@ -3,6 +3,7 @@ using System.Collections;
 using CombatSolver.Engine.InCombat.Simulation;
 using CombatSolver.Engine.InCombat.Simulation.Compact;
 using MegaCrit.Sts2.Core.Entities.Players;
+using MegaCrit.Sts2.Core.Entities.Creatures;
 
 namespace CombatSolver;
 
@@ -102,6 +103,14 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
     internal override CombatPredictionSimulator Root => _root;
     internal override int Energy => _program.Energy;
     internal override int Block => _program.Block;
+    internal override CreatureReadValues ReadCreature(Creature creature)
+    {
+        CreatureReadValues values = CreatureReadValues.Capture(_root, creature);
+        return ReferenceEquals(creature, _player.Creature) ? values with { Block = Block } : values;
+    }
+    internal override CombatTerminalStamp? TerminalStamp => _root.TerminalStamp;
+    internal override IReadOnlyList<Creature> EnemyRoster => ((SimulatedCombatState)_root.State.CombatState).Enemies;
+    internal override bool EnemyValuesInvariant => true;
     internal override int HistoryEntries => _entries;
     internal override IReadOnlyList<PredictedCard> Hand => _hand;
     internal override IReadOnlyList<PredictedCard> Draw => _draw;

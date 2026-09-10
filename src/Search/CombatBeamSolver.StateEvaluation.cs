@@ -68,10 +68,10 @@ internal sealed partial class CombatBeamSolver
         CombatPredictionSimulator simulator, int turn, int actionCount, int shufflesCrossed,
         SearchBoundaryReason boundary, IReadOnlySet<uint> processedEnemyDeaths, CompletedStateReadView? view)
     {
-        SimCreatureState player = simulator.State.GetCreature(_player.Creature);
+        CreatureReadValues player = ReadCreatureValues(simulator, _player.Creature, view);
         int playerBlock = view?.Block ?? player.Block;
         SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
-        EnemyEvaluationValues enemyValues = GetEnemyEvaluation(simulator, combat, view?.Invariants);
+        EnemyEvaluationValues enemyValues = GetEnemyEvaluation(simulator, combat, view);
         int enemyHp = enemyValues.Hp, enemyBlock = enemyValues.Block, rawEnemyHp = enemyValues.RawHp;
         int maxCurrentEnemyHp = enemyValues.MaxHp, revivingEnemyCount = enemyValues.Reviving;
         int aliveEnemyCount = enemyValues.Alive;
@@ -80,11 +80,12 @@ internal sealed partial class CombatBeamSolver
         if (boundary == SearchBoundaryReason.None && combat.HasPendingChoice)
             boundary = SearchBoundaryReason.PendingChoice;
         // Later effects may restore HP after native pending loss has already been committed.
-        bool dead = player.IsDead || simulator.TerminalStamp is { Outcome: CombatTerminalOutcome.Defeat };
+        CombatTerminalStamp? terminal = view is null ? simulator.TerminalStamp : view.TerminalStamp;
+        bool dead = player.IsDead || terminal is { Outcome: CombatTerminalOutcome.Defeat };
         bool won = boundary != SearchBoundaryReason.EventDefeat
             && !dead
             && !combat.HasPendingChoice
-            && simulator.TerminalStamp is { Outcome: CombatTerminalOutcome.Victory };
+            && terminal is { Outcome: CombatTerminalOutcome.Victory };
         CoverageSummary coverage = view is null ? GetCoverageSummary(simulator)
             : new(view.PredictionGaps, view.PredictionGaps.Any(gap => !gap.Compensated));
         IReadOnlyList<PredictionGap> predictionGaps = coverage.Gaps;
@@ -145,7 +146,7 @@ internal sealed partial class CombatBeamSolver
         }
         else if (!_run.ThreatProjectionCache.TryGetValue((key, roundIndex), out threat))
         {
-            threat = ProjectHpAfterThreat(simulator, player, roundIndex, playerBlock);
+            threat = ProjectHpAfterThreat(simulator, player, roundIndex, playerBlock, view);
             _run.ThreatProjectionCache.Add((key, roundIndex), threat);
         }
         int projectedHp = threat.Hp;
@@ -218,7 +219,7 @@ internal sealed partial class CombatBeamSolver
                 1,
                 (int)Math.Round(ReadCardValue(liveCard, view?.Invariants)));
         }
-        ThreatFocus focus = GetThreatFocus(simulator, combat, view?.Invariants);
+        ThreatFocus focus = GetThreatFocus(simulator, combat, view);
         IReadOnlyList<PowerModel> effectivePowers = combat.EffectivePowers();
         // Requirements and evaluation inspect the same immutable snapshot. Native
         // GetTypeForAmount boxes its enum comparisons, so keep this one-pass decision
@@ -311,7 +312,7 @@ internal sealed partial class CombatBeamSolver
         Creature? currentOsty = combat.GetOsty(_player);
         int ostyHp = currentOsty == null
             ? 0
-            : simulator.State.GetCreature(currentOsty).CurrentHp;
+            : ReadCreatureValues(simulator, currentOsty, view).CurrentHp;
         int ostyMaxHp = combat.GetOstyMaxHp(simulator, _player);
         persistentBuffValue += liveCards.Count(card => card.Preview is Soul);
         // Where + Sum 两个闭包加一个装箱的 ForkableList 枚举器，换成按下标累加：
@@ -321,12 +322,13 @@ internal sealed partial class CombatBeamSolver
         for (int enemyIndex = 0; enemyIndex < knownEnemies.Count; enemyIndex++)
         {
             Creature enemy = knownEnemies[enemyIndex];
-            if (!combat.ContainsCreature(enemy) || !simulator.State.GetCreature(enemy).IsAlive)
+            CreatureReadValues enemyState = ReadCreatureValues(simulator, enemy, view);
+            if (!enemyState.Present || !enemyState.IsAlive)
                 continue;
             int poison = Math.Max(0, combat.GetAmount<PoisonPower>(enemy));
             int demise = Math.Max(0, combat.GetAmount<DemisePower>(enemy));
             int doom = Math.Max(0, combat.GetAmount<DoomPower>(enemy));
-            int currentHp = Math.Max(0, simulator.State.GetCreature(enemy).CurrentHp);
+            int currentHp = Math.Max(0, enemyState.CurrentHp);
             int cappedDoom = Math.Min(currentHp, doom);
             int doomProgress = currentHp <= 0
                 ? 0
@@ -352,7 +354,8 @@ internal sealed partial class CombatBeamSolver
         for (int enemyIndex = 0; enemyIndex < knownEnemies.Count; enemyIndex++)
         {
             Creature enemy = knownEnemies[enemyIndex];
-            if (!combat.ContainsCreature(enemy) || !simulator.State.GetCreature(enemy).IsAlive)
+            CreatureReadValues enemyState = ReadCreatureValues(simulator, enemy, view);
+            if (!enemyState.Present || !enemyState.IsAlive)
                 continue;
             int strengthSuppression = -combat.GetAmount<StrengthPower>(enemy);
             int weakTurns = Math.Max(0, combat.GetAmount<WeakPower>(enemy));
@@ -373,11 +376,7 @@ internal sealed partial class CombatBeamSolver
             enemyControlDistribution.Add(vulnerableTurns);
         }
         StateFingerprint enemyControlDistributionKey = enemyControlDistribution.Finish();
-        int sandpitRemaining = combat.EffectivePowers()
-            .OfType<SandpitPower>()
-            .Where(power => ReferenceEquals(power.Target, _player.Creature)
-                && simulator.State.GetCreature(power.Owner).IsAlive)
-            .Sum(power => Math.Max(0, power.Amount));
+        int sandpitRemaining = ReadSandpitRemaining(simulator, effectivePowers, _player.Creature, view);
         int vulnerableAttackWindow = Math.Min(
             SolverWeights.VulnerableAttackWindowCap,
             retainedAttackValue);
@@ -481,7 +480,7 @@ internal sealed partial class CombatBeamSolver
             boundary,
             predictionGaps,
             simulator,
-            simulator.TerminalStamp)
+            terminal)
         {
             GrowthHpCredit = growthHpCredit,
             GrowthRewards = growthRewards,
@@ -876,9 +875,9 @@ internal sealed partial class CombatBeamSolver
 
     private static ThreatFocus BuildThreatFocus(
         CombatPredictionSimulator simulator,
-        SimulatedCombatState combat)
+        SimulatedCombatState combat, CompletedStateReadView? view)
     {
-        IReadOnlyList<ForecastMove> moves = combat.CurrentMonsterMoves();
+        IReadOnlyList<ForecastMove> moves = combat.CurrentMonsterMoves(view?.EnemyRoster ?? combat.Enemies);
         uint? bestCombatId = null;
         int bestPressure = 0;
         int bestRemainingHp = int.MaxValue;
@@ -889,8 +888,8 @@ internal sealed partial class CombatBeamSolver
         for (int enemyIndex = 0; enemyIndex < knownEnemies.Count; enemyIndex++)
         {
             Creature enemy = knownEnemies[enemyIndex];
-            SimCreatureState enemyState = simulator.State.GetCreature(enemy);
-            if (!combat.ContainsCreature(enemy)
+            CreatureReadValues enemyState = ReadCreatureValues(simulator, enemy, view);
+            if (!enemyState.Present
                 || !enemyState.IsAlive
                 || enemy.CombatId is not uint combatId)
             {
@@ -969,23 +968,23 @@ internal sealed partial class CombatBeamSolver
 
     private ThreatProjection ProjectHpAfterThreat(
         CombatPredictionSimulator simulator,
-        SimCreatureState player,
-        int roundIndex, int? initialBlock = null)
+        CreatureReadValues player,
+        int roundIndex, int? initialBlock = null, CompletedStateReadView? view = null)
     {
         int hp = player.CurrentHp;
         int block = initialBlock ?? player.Block;
         SimulatedCombatState simulatedCombat = (SimulatedCombatState)simulator.State.CombatState;
         Creature? osty = simulatedCombat.GetOsty(_player);
-        int ostyHp = osty == null ? 0 : simulator.State.GetCreature(osty).CurrentHp;
+        int ostyHp = osty == null ? 0 : ReadCreatureValues(simulator, osty, view).CurrentHp;
         ProjectedDeathPrevention deathPrevention = BuildProjectedDeathPrevention(
             simulator,
             simulatedCombat,
             player.MaxHp);
-        IReadOnlyList<ForecastMove> moves = simulatedCombat.CurrentMonsterMoves();
+        IReadOnlyList<ForecastMove> moves = simulatedCombat.CurrentMonsterMoves(view?.EnemyRoster ?? simulatedCombat.Enemies);
         for (int moveIndex = 0; moveIndex < moves.Count; moveIndex++)
         {
             ForecastMove move = moves[moveIndex];
-            if (!simulator.State.GetCreature(move.Owner).IsAlive)
+            if (!ReadCreatureValues(simulator, move.Owner, view).IsAlive)
                 continue;
             if (simulatedCombat.WillSkipNextMove(move.Owner))
                 continue;
@@ -1148,7 +1147,7 @@ internal sealed partial class CombatBeamSolver
 
     private StateFingerprint BuildStateKey(
         int turn,
-        SimCreatureState player,
+        CreatureReadValues player,
         SimPlayerCombatState playerState,
         SimulatedCombatState simulatedCombat,
         CombatPredictionSimulator simulator,
@@ -1166,7 +1165,7 @@ internal sealed partial class CombatBeamSolver
         Player owner = _player;
         if (simulatedCombat.GetOsty(owner) is { } osty)
         {
-            key.Add(simulator.State.GetCreature(osty).CurrentHp);
+            key.Add(ReadCreatureValues(simulator, osty, view).CurrentHp);
             key.Add(simulatedCombat.GetOstyMaxHp(simulator, owner));
             key.Add(simulatedCombat.IsOstyHittable(simulator, owner));
         }
@@ -1180,10 +1179,10 @@ internal sealed partial class CombatBeamSolver
         for (int enemyIndex = 0; enemyIndex < knownEnemies.Count; enemyIndex++)
         {
             Creature enemy = knownEnemies[enemyIndex];
-            SimCreatureState enemyState = simulator.State.GetCreature(enemy);
+            CreatureReadValues enemyState = ReadCreatureValues(simulator, enemy, view);
             key.Add(enemy.Monster?.Id.Entry);
             key.Add(enemy.CombatId ?? uint.MaxValue);
-            key.Add(simulatedCombat.ContainsCreature(enemy));
+            key.Add(enemyState.Present);
             key.Add(enemyState.CurrentHp);
             key.Add(enemyState.MaxHp);
             key.Add(enemyState.Block);
@@ -1225,7 +1224,7 @@ internal sealed partial class CombatBeamSolver
         key.Add(deathsFirst);
         key.Add(deathsSecond);
         SearchMeasurement combatFingerprintMeasurement = _run.Performance.Begin();
-        simulatedCombat.AppendFingerprint(ref key, simulator, view?.CardHistory);
+        simulatedCombat.AppendFingerprint(ref key, simulator, view?.CardHistory, view?.EnemyRoster);
         _run.Performance.End(SearchMetricPhase.CombatFingerprint, combatFingerprintMeasurement);
         return key.Finish();
     }

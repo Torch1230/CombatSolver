@@ -39,6 +39,11 @@ internal sealed partial class UnattendedTestRunner
             bool expectedCardPlayed = request.ExpectedPlayedCardId == null;
             bool expectedPotionUsed = request.ExpectedUsedPotionId == null;
             bool expectedPlayerPowerObserved = request.ExpectedObservedPlayerPowerId == null;
+            if (request.ScenarioId == "COMPACT-CREATURE-VALUES-NATIVE")
+            {
+                await runner.AssertCreatureValuesAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "COMPACT-KERNEL-NATIVE")
             {
                 await runner.AssertCompactKernelAsync(combatState, player);
