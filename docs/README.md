@@ -7,6 +7,7 @@
 | 要查什么 | 入口 |
 |---|---|
 | 组件职责、状态所有权和调用链 | [架构与职责地图](ARCHITECTURE.md) |
+| 紧凑可恢复内核的实现、原生对照与迁移门槛实测 | [R0–R2 原型结果](performance/simulation-kernel-prototype-20260910.md) |
 | 本批未发布改动、版本演进与开发记录 | [开发笔记](DEVELOPMENT_NOTES.md) |
 | 已执行测试、复跑方式和未验证范围 | [测试矩阵](TEST_MATRIX.md) |
 | 更大范围的执行/状态内核重写方案、进入条件与证据缺口 | [大幅重构再调研](performance/simulation-redesign-research-20260910.md) |

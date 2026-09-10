@@ -87,6 +87,8 @@ description: 重构 CombatSolver 的 Search、Runtime 会话、UI snapshot、无
 
 ## 6. 记录
 
+`Simulation/Compact/` 保持纯值执行和不可变候选，`Testing/CompactDiscardProjection.cs` 独占实验准入与旧评估投影；生产 Search/Runtime 仍使用现有后端。迁移这条边界必须同时替换双端禁止启用规则并提供完整支持闭包证据，不能只删除门禁或把可变 Simulator 藏入冻结句柄。类型分发诊断通过 registry 自己的 `DescribeDispatch` 获取，不反射私有注册表。
+
 - `docs/ARCHITECTURE.md` 保存当前事实；
 - `docs/refactoring/verified-audit-*.md` 保存阶段证据，不作为永久入口；
 - `docs/refactoring/refactor-roadmap.md` 保存批次状态；

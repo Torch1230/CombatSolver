@@ -1,5 +1,11 @@
 # CombatSolver 测试清单
 
+## 2026-09-10：紧凑可恢复执行原型
+
+- `COMPACT-KERNEL-NATIVE` / `c5c109a3766249aa8885298e5ebdc60c` Passed，隔离 headless 总时长 25.26 秒，120 秒上限未扩。30 张真实卡、34 个物理叶子：完整状态/ContinuationStamp、原 StateKey、全部 Snapshot 属性与历史来源配对一致；覆盖嵌套撤销、错误 LIFO/外根/重复消费、取消、冻结候选的八个独立任务与下一手动动作。一个原生嵌套链通过 actual/predicted；不是整场或 DOP8 全搜索验证。
+- 同请求内完成预热及四组正反交错固定工作量样本，完整模式包括冻结、旧模型投影、完整 Snapshot 和相同保留排序，CPU 均值约 1.53×、分配下降 4.54%；R2 门槛未通过。纯内核单列，不当作完整后端收益。原完整基准未缩减/运行；洗牌、RNG 写入、生成与跨回合尚未迁移。
+- 最终行为源码 Release 0 警告/错误，Linux 门禁 `REFACTOR_BOUNDARIES_OK search_files=85`；PowerShell 规则同步但未执行。三次开发失败及 v3 失败退出时的进程崩溃保留，成功后显式停止拥有的实例。命令、全部样本和范围见[结果报告](performance/simulation-kernel-prototype-20260910.md)及其 JSON。
+
 ## 2026-09-10：大幅重构再调研（离线）
 
 - 基于 `6161e74` 源码与已完成的 P5 证据，离线复算四个 B 样本的请求均值、分配/转移；从亡灵 `43544da114824e169031be158500422d` 日志与 Coordinator 调用链核对六次 solver，提取 22 处 StateKey 排序源码行。JSON 中保留来源、原事件和计算口径，详见[调研报告](performance/simulation-redesign-research-20260910.md)。

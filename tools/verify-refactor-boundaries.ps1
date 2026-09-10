@@ -1189,6 +1189,36 @@ foreach ($hookName in $mirroredHookNames) {
     }
 }
 
+# The compact executor remains a value-only experiment behind a Testing adapter.
+$compactRoot = Join-Path $repositoryRoot 'src/Engine/InCombat/Simulation/Compact'
+foreach ($file in Get-ChildItem -LiteralPath $compactRoot -Filter *.cs -File -Recurse) {
+    foreach ($reference in @('MegaCrit.', 'Godot', 'CombatPredictionSimulator', 'SimulatedCombatState', 'CardModel', 'Task', 'IEnumerator', 'Func<', 'Action<')) {
+        foreach ($match in Select-String -LiteralPath $file.FullName -SimpleMatch $reference) {
+            $violations.Add("$($match.Path):$($match.LineNumber): compact execution must contain only owned values: $reference")
+        }
+    }
+}
+$compactProductionFiles = @($searchFiles) + @(Get-ChildItem -LiteralPath (Join-Path $repositoryRoot 'src/Runtime') -Filter *.cs -File -Recurse)
+foreach ($file in $compactProductionFiles) {
+    foreach ($reference in @('ResumableDiscardProgram', 'CompactDiscardProjection')) {
+        foreach ($match in Select-String -LiteralPath $file.FullName -SimpleMatch $reference) {
+            $violations.Add("$($match.Path):$($match.LineNumber): unvalidated compact prototype reached production: $reference")
+        }
+    }
+}
+$compactProjection = Join-Path $repositoryRoot 'src/Testing/CompactDiscardProjection.cs'
+foreach ($reference in @('.ManualPlay(', '.AutoPlay(', '.Discard(', 'CardOnPlayMirrors.Invoke(', 'HookMirrors.')) {
+    foreach ($match in Select-String -LiteralPath $compactProjection -SimpleMatch $reference) {
+        $violations.Add("$($match.Path):$($match.LineNumber): compact projection must decode events without replaying effects: $reference")
+    }
+}
+if (-not ([IO.File]::ReadAllText($compactProjection)).Contains('Program.State.HasSameRoot(program.State)')) {
+    $violations.Add('Compact projection lost root ownership guard.')
+}
+if (-not ([IO.File]::ReadAllText((Join-Path $compactRoot 'ReversibleValueState.cs'))).Contains('private readonly long[] _values;')) {
+    $violations.Add('Compact frozen values lost independent storage.')
+}
+
 if ($violations.Count -gt 0) {
     $violations | ForEach-Object { Write-Error $_ }
     throw "Refactor boundary verification failed with $($violations.Count) violation(s)."

@@ -1,0 +1,389 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-10",
+  "baseCommit": "9f37ac2",
+  "productionActivated": false,
+  "source": "same commit as this report",
+  "result": {
+    "runId": "c5c109a3766249aa8885298e5ebdc60c",
+    "status": "Passed",
+    "scenarioId": "COMPACT-KERNEL-NATIVE",
+    "elapsedMilliseconds": 25256.1804,
+    "completedChecks": [
+      "CompactKernel:34Leaves:FullStateAndEvaluation:NestedUndo:Frozen8Workers:Admission:Native"
+    ],
+    "stageTimings": [
+      {
+        "stage": "created",
+        "startedMilliseconds": 0,
+        "durationMilliseconds": 5.9104
+      },
+      {
+        "stage": "game_startup",
+        "startedMilliseconds": 5.9104,
+        "durationMilliseconds": 11156.435899999999
+      },
+      {
+        "stage": "start_run",
+        "startedMilliseconds": 11162.3463,
+        "durationMilliseconds": 10966.449600000002
+      },
+      {
+        "stage": "inject_run_relics",
+        "startedMilliseconds": 22128.7959,
+        "durationMilliseconds": 1.404500000000553
+      },
+      {
+        "stage": "enter_encounter",
+        "startedMilliseconds": 22130.2004,
+        "durationMilliseconds": 1028.6438999999991
+      },
+      {
+        "stage": "wait_player_turn",
+        "startedMilliseconds": 23158.8443,
+        "durationMilliseconds": 2.552400000000489
+      },
+      {
+        "stage": "inject_state",
+        "startedMilliseconds": 23161.3967,
+        "durationMilliseconds": 1969.702699999998
+      },
+      {
+        "stage": "cleanup",
+        "startedMilliseconds": 25131.0994,
+        "durationMilliseconds": 123.47320000000036
+      },
+      {
+        "stage": "passed",
+        "startedMilliseconds": 25254.5726,
+        "durationMilliseconds": 1.7942000000002736
+      }
+    ]
+  },
+  "requestScope": {
+    "character": "SILENT",
+    "encounter": "FUZZY_WURM_CRAWLER_WEAK",
+    "seed": "COMBATSOLVER",
+    "headless": true,
+    "timeoutSeconds": 120,
+    "verifyIncrementalSearch": false,
+    "globalBenchmarkInputsModified": false,
+    "fullSearchRun": false
+  },
+  "commands": {
+    "build": "dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false -o .local/simulation-kernel-20260910/artifact --no-restore",
+    "linux": "./tools/run-unattended-test.sh --scenario-id COMPACT-KERNEL-NATIVE --character-id SILENT --enemy-current-hp 256 --headless-instance simulation-kernel-20260910 --combat-solver-build-dir .local/simulation-kernel-20260910/artifact --evidence-directory .local/simulation-kernel-20260910/native-v4 --timeout-seconds 120 --keep-game-open",
+    "stop": "./tools/run-unattended-test.sh --headless-instance simulation-kernel-20260910 --stop-instance"
+  },
+  "validation": {
+    "fullLegacyLeaves": 34,
+    "nativeLeaves": 1,
+    "nativeNestedCardsPlayed": 2,
+    "cancelAndInvalidChoiceRollback": true,
+    "checkpointOwnershipAndLifo": true,
+    "frozenIndependentTasks": 8,
+    "physicalPeakConcurrencyMeasured": false,
+    "nextManualActionFromFrozenCandidate": true,
+    "allSnapshotPropertiesComparedExcept": [
+      "Simulator",
+      "HasSimulator"
+    ],
+    "fullContinuationAndStateKey": true,
+    "orderedHistoryTraceAndIdentity": true,
+    "rngMutationRollbackTested": false,
+    "explicitAdmissionRejections": [
+      "Power",
+      "possible shuffle",
+      "temporary energy cost",
+      "foreign root"
+    ],
+    "releaseBuild": "Passed, 0 warnings and 0 errors",
+    "linuxBoundaryGate": "Passed, search_files=85",
+    "powershellBoundaryGate": "rules updated; not executed"
+  },
+  "measurement": {
+    "schemaVersion": 1,
+    "scope": "closed draw/discard prototype; full fixtures unchanged and not run",
+    "cards": 30,
+    "leaves": 34,
+    "candidatesOwnValues": true,
+    "fullLegacyEvaluation": true,
+    "rngPolicy": "all random effects rejected at admission; nine root RNG states preserved by projection",
+    "payloadBytes": 4584,
+    "distinctWrittenSlots": [
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      55,
+      55,
+      55,
+      55,
+      55,
+      55
+    ],
+    "workspaceSlots": 573,
+    "EventsExecuted": 38521,
+    "WriteAttempts": 255206,
+    "ValueChanges": 236711,
+    "UndoEntriesWritten": 236679,
+    "PeakUndoEntries": 249,
+    "measurements": [
+      {
+        "mode": "legacy",
+        "sample": 0,
+        "iterations": 16,
+        "leaves": 34,
+        "elapsedMilliseconds": 108.6583,
+        "cpuMilliseconds": 108.12239799999952,
+        "allocatedBytes": 33917256
+      },
+      {
+        "mode": "compact_full",
+        "sample": 0,
+        "iterations": 16,
+        "leaves": 34,
+        "elapsedMilliseconds": 72.0764,
+        "cpuMilliseconds": 71.756437,
+        "allocatedBytes": 32159592
+      },
+      {
+        "mode": "compact_kernel",
+        "sample": 0,
+        "iterations": 16,
+        "leaves": 34,
+        "elapsedMilliseconds": 2.7608,
+        "cpuMilliseconds": 2.749410999999782,
+        "allocatedBytes": 2606440
+      },
+      {
+        "mode": "compact_kernel",
+        "sample": 1,
+        "iterations": 16,
+        "leaves": 34,
+        "elapsedMilliseconds": 3.125,
+        "cpuMilliseconds": 3.1192280000004757,
+        "allocatedBytes": 2606440
+      },
+      {
+        "mode": "compact_full",
+        "sample": 1,
+        "iterations": 16,
+        "leaves": 34,
+        "elapsedMilliseconds": 75.746,
+        "cpuMilliseconds": 72.06457299999965,
+        "allocatedBytes": 32159592
+      },
+      {
+        "mode": "legacy",
+        "sample": 1,
+        "iterations": 16,
+        "leaves": 34,
+        "elapsedMilliseconds": 103.4013,
+        "cpuMilliseconds": 102.71510400000079,
+        "allocatedBytes": 33240488
+      },
+      {
+        "mode": "legacy",
+        "sample": 2,
+        "iterations": 16,
+        "leaves": 34,
+        "elapsedMilliseconds": 100.045,
+        "cpuMilliseconds": 99.5447320000003,
+        "allocatedBytes": 33079016
+      },
+      {
+        "mode": "compact_full",
+        "sample": 2,
+        "iterations": 16,
+        "leaves": 34,
+        "elapsedMilliseconds": 67.3279,
+        "cpuMilliseconds": 66.99366399999963,
+        "allocatedBytes": 31465320
+      },
+      {
+        "mode": "compact_kernel",
+        "sample": 2,
+        "iterations": 16,
+        "leaves": 34,
+        "elapsedMilliseconds": 3.1396,
+        "cpuMilliseconds": 3.1283720000001267,
+        "allocatedBytes": 2606440
+      },
+      {
+        "mode": "compact_kernel",
+        "sample": 3,
+        "iterations": 16,
+        "leaves": 34,
+        "elapsedMilliseconds": 2.7603,
+        "cpuMilliseconds": 2.7518079999999827,
+        "allocatedBytes": 2606440
+      },
+      {
+        "mode": "compact_full",
+        "sample": 3,
+        "iterations": 16,
+        "leaves": 34,
+        "elapsedMilliseconds": 68.6623,
+        "cpuMilliseconds": 68.26353500000005,
+        "allocatedBytes": 31465320
+      },
+      {
+        "mode": "legacy",
+        "sample": 3,
+        "iterations": 16,
+        "leaves": 34,
+        "elapsedMilliseconds": 117.8559,
+        "cpuMilliseconds": 117.01544999999987,
+        "allocatedBytes": 33065960
+      }
+    ],
+    "checksum": 0
+  },
+  "summary": {
+    "legacy": {
+      "cpuMilliseconds": {
+        "mean": 106.84942100000012,
+        "min": 99.5447320000003,
+        "max": 117.01544999999987
+      },
+      "elapsedMilliseconds": {
+        "mean": 107.490125,
+        "min": 100.045,
+        "max": 117.8559
+      },
+      "allocatedBytes": {
+        "mean": 33325680,
+        "min": 33065960,
+        "max": 33917256
+      },
+      "cpuMicrosecondsPerLeaf": 196.4143768382355,
+      "allocatedBytesPerLeaf": 61260.44117647059
+    },
+    "compact_full": {
+      "cpuMilliseconds": {
+        "mean": 69.76955224999983,
+        "min": 66.99366399999963,
+        "max": 72.06457299999965
+      },
+      "elapsedMilliseconds": {
+        "mean": 70.95315,
+        "min": 67.3279,
+        "max": 75.746
+      },
+      "allocatedBytes": {
+        "mean": 31812456,
+        "min": 31465320,
+        "max": 32159592
+      },
+      "cpuMicrosecondsPerLeaf": 128.25285340073498,
+      "allocatedBytesPerLeaf": 58478.779411764706
+    },
+    "compact_kernel": {
+      "cpuMilliseconds": {
+        "mean": 2.9372047500000917,
+        "min": 2.749410999999782,
+        "max": 3.1283720000001267
+      },
+      "elapsedMilliseconds": {
+        "mean": 2.946425,
+        "min": 2.7603,
+        "max": 3.1396
+      },
+      "allocatedBytes": {
+        "mean": 2606440,
+        "min": 2606440,
+        "max": 2606440
+      },
+      "cpuMicrosecondsPerLeaf": 5.3992734375001685,
+      "allocatedBytesPerLeaf": 4791.25
+    }
+  },
+  "pairedSamples": [
+    {
+      "sample": 0,
+      "cpuSpeedup": 1.5067971950725412,
+      "allocatedRatio": 0.9481778832580089
+    },
+    {
+      "sample": 1,
+      "cpuSpeedup": 1.4253203720502345,
+      "allocatedRatio": 0.9674825471876346
+    },
+    {
+      "sample": 2,
+      "cpuSpeedup": 1.4858827843779503,
+      "allocatedRatio": 0.9512169285809469
+    },
+    {
+      "sample": 3,
+      "cpuSpeedup": 1.7141721418323823,
+      "allocatedRatio": 0.9515925138722723
+    }
+  ],
+  "decision": {
+    "cpuSpeedup": 1.5314620425989673,
+    "allocationRatio": 0.9545928545193977,
+    "allocationReductionPercent": 4.540714548060231,
+    "researchCpuTarget": 3,
+    "researchAllocationRatioTarget": 0.2,
+    "gatePassed": false,
+    "nextScope": "Keep the value executor experiment; full evaluation must read compact state without per-leaf legacy graph projection before general backend migration.",
+    "globalSpeedupEstablished": false,
+    "tenTimesEstablished": false
+  },
+  "limitations": [
+    "Closed 30-card one-action expansion; all 34 physical choices, not production Beam admission.",
+    "Legacy baseline is favored with precomputed choices and no charge for discovering pending prefixes.",
+    "Four short interleaved samples in one headless process, warmed modes; no production No-GC or GC-pause/RSS comparison.",
+    "Compact kernel mode includes value execution, traversal, freeze and retention but omits full evaluation and sorting; it cannot be compared as a complete backend.",
+    "Unchanged root metadata and nine RNG states remain in the captured root; random effects, generation, damage and round changes are not migrated.",
+    "Eight Task.Run candidates were checked; actual peak thread concurrency was not measured."
+  ],
+  "failedDevelopmentRuns": [
+    {
+      "runId": "73ceccaa69b246ad9e55a0654ed6401c",
+      "status": "Failed",
+      "elapsedMilliseconds": 24418.7089,
+      "error": "System.NotSupportedException: Compact prototype has no effect program for CCC_COMBO_MODEL.AfterCardPlayed.\n   at CombatSolver.CompactDiscardProjection..ctor(CombatPredictionSimulator root, Player player)\n   at CombatSolver.UnattendedTestRunner.AssertCompactKernelAsync(CombatState combat, Player player)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()"
+    },
+    {
+      "runId": "ee151266015e4d949abcdb049e5b5cec",
+      "status": "Failed",
+      "elapsedMilliseconds": 23454.4237,
+      "error": "System.NotSupportedException: Compact prototype cannot admit card state ACROBATICS.\n   at CombatSolver.CompactDiscardProjection.Capture(CardModel card)\n   at CombatSolver.CompactDiscardProjection.<>c.<.ctor>b__4_2(PredictedCard card)\n   at System.Linq.Enumerable.ArraySelectIterator`2.Fill(ReadOnlySpan`1 source, Span`1 destination, Func`2 func)\n   at System.Linq.Enumerable.ArraySelectIterator`2.ToArray()\n   at System.Linq.Enumerable.ToArray[TSource](IEnumerable`1 source)\n   at CombatSolver.CompactDiscardProjection..ctor(CombatPredictionSimulator root, Player player)\n   at CombatSolver.UnattendedTestRunner.AssertCompactKernelAsync(CombatState combat, Player player)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()"
+    },
+    {
+      "runId": "f6936059d35f4a6796a633adeeae829f",
+      "status": "Failed",
+      "elapsedMilliseconds": 23592.1557,
+      "error": "System.InvalidOperationException: Compact full evaluation differs at HistoryEntryCount: 16 / 14.\n   at CombatSolver.UnattendedTestRunner.AssertCompactEvaluation(SimulationSnapshot expected, SimulationSnapshot actual)\n   at CombatSolver.UnattendedTestRunner.<>c__DisplayClass38_0.<AssertCompactKernelAsync>b__7(ResumableDiscardProgram program, Int32[][] path)\n   at CombatSolver.UnattendedTestRunner.Walk(ResumableDiscardProgram program, Int32[][] path, Action`2 completed)\n   at CombatSolver.UnattendedTestRunner.Walk(ResumableDiscardProgram program, Int32[][] path, Action`2 completed)\n   at CombatSolver.UnattendedTestRunner.Walk(ResumableDiscardProgram program, Int32[][] path, Action`2 completed)\n   at CombatSolver.UnattendedTestRunner.AssertCompactKernelAsync(CombatState combat, Player player)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()"
+    }
+  ],
+  "failureCleanupNote": "native-v3 printed Segmentation fault after its managed Failed result during isolated-process exit; not diagnosed or counted as a pass.",
+  "rawEvidenceDirectory": ".local/simulation-kernel-20260910/native-v4"
+}

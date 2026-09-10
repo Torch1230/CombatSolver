@@ -33,6 +33,8 @@ internal static class CardOnPlayMirrors
         return Registry.HasRegisteredHandler(card);
     }
 
+    internal static MirrorDispatchKind DescribeDispatch(CardModel card) => Registry.DescribeDispatch(card);
+
     public static bool IsOnPlayInvocation(PredictionInvocation invocation)
     {
         return ReferenceEquals(invocation.Method, OnPlay.BaseMethod);

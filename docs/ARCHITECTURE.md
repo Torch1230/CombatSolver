@@ -207,6 +207,10 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 `CombatPredictionSimulator.TerminalStamp` 在与原版对应的完整动作/阶段安全检查点首次锁定胜负及影子玩家回合号，按值 Fork；`IsEnding` 仍是无副作用查询，不在单个 Hook 监听器之间提前终止正在结算的序列。`SimulationSnapshot` 独立保留此值，释放模拟器后，终局标注、临时结果、最终排序和已知胜利上界仍读取同一时点。`PlanAction.Turn` 只表示发起动作的回合，不能代表该动作跨回合结算后的终局回合。
 
+`Simulation/Compact/` 是尚未接入生产搜索的紧凑执行实验。`ReversibleValueState` 独占值槽、撤销日志和单次 LIFO 检查点；`ResumableDiscardProgram` 把牌堆、资源、显式执行帧、选择和事件游标全部写入这些槽，冻结候选独占数组并共享不可变卡牌定义。内核不引用原生 Model、Simulator、Task 或委托。当前只表达无随机抽牌/弃牌与自动出牌，不能将其称为通用新后端。
+
+`Testing/CompactDiscardProjection.cs` 负责该实验的封闭能力准入和旧模型读投影：检查整根监听器、附加状态、费用与洗牌可能性；从事件构造一个拥有的旧分支供完整 `Snapshot` 读取，不再次执行 OnPlay、弃牌 Hook 或选择器。投影不得反写紧凑权威值。`MethodMirrorRegistry.DescribeDispatch` 和 OnPlay facade 仅提供同一缓存查询的只读分类，投影据此保留旧引擎的已补偿风险历史。候选在复用 worker 前冻结值，并释放旧评估快照的模拟器；后续动作从候选自有值重新打开。双端门禁禁止此实验从 Search/Runtime 入口启用，禁止值内核引入 Model 依赖，禁止投影重新回放效果。
+
 通用命令和 Hook 调用遇到 `PendingChoice` 时立即向上传播未完成状态，不再执行其后的监听器、抽牌、资源变更、死亡处理或卡牌收尾。Search 为待处理选择补齐计划后，从稳定父节点精确重放该动作，按原顺序通过挂起点；未完成事务不作为可继续执行的稳定 Fork。自动出牌将外层来源与上下文身份带入 `OnPlayWrapper`，在来源牌仍位于 Play 时消费嵌套选择，等待嵌套自动出牌结束后才移动来源牌和执行费用清理。原版挂起位置、顺序与卡牌实例身份属于模拟语义，不能由 Beam 或部署层补偿。
 
 `CombatPredictionSimulator.CardPile.cs` 的抽牌安全边界只约束当前同步调用栈：抽牌 Hook 再次自动出牌、自动出牌又抽牌时，嵌套深度最多 `100` 层，继续嵌套会明确失败，不返回部分抽牌结果。深度在 `finally` 中退出；普通动作结束后、跨回合或从稳定边界 Fork 后继续抽牌，都不因已经累计的抽牌历史而减少合法抽牌。历史记录不再承担整个分支生命周期的 `100` 次抽牌额度，正常长线与有效循环仍受 Search 的节点、时间和调度预算约束。
