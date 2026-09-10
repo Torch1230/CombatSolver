@@ -11,6 +11,8 @@ description: 修改 CombatSolver 的卡牌、Power、遗物、药水、球、怪
 
 开始前读取 `docs/ARCHITECTURE.md` 的 Runtime、Search、模拟引擎与 Prediction 章节。若 actual/simulated、增量回放和续用均一致，问题才可能属于搜索质量，转用 `search-performance-optimization`。
 
+`CombatBeamSolver.RoundLifecycle.cs` 统一回合推进；普通重放与后续检查点必须共用 `AdvancePlayerTurnStart`，不得复制玩家回合开始结算。提取阶段不改变选择事务、回调顺序、RNG 或逻辑预算。
+
 ## 1. 沿当前调用链定位
 
 玩家问题包先按 `issue-bundle-triage` 读取异常栈、状态差异和动作记录，再检查对应源码。已有证据能证明错误链时直接定位，原包重跑用于解决尚未确定的问题；修复的正确性另由下面的最小行为验证证明。

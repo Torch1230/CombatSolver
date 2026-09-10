@@ -441,6 +441,7 @@ $expectedBeamFiles = @(
     "CombatBeamSolver.PrimaryChoiceReplay.cs",
     "CombatBeamSolver.Retention.cs",
     "CombatBeamSolver.RetentionJobs.cs",
+    "CombatBeamSolver.RoundLifecycle.cs",
     "CombatBeamSolver.StateEvaluation.cs",
     "CombatBeamSolver.StandPatJobs.cs",
     "CombatBeamSolver.Terminal.cs"
@@ -556,6 +557,9 @@ $beamStructureChecks = @(
     @{ File = "CombatBeamSolver.ParallelExpansion.cs"; Text = "private void CommitExpansionBatch(" },
     @{ File = "CombatBeamSolver.Phases.cs"; Text = "public SolverResult Solve()" },
     @{ File = "CombatBeamSolver.Expansion.cs"; Text = "private IEnumerable<SearchNode> Expand(SearchNode node)" },
+    @{ File = "CombatBeamSolver.RoundLifecycle.cs"; Text = "private SearchBoundaryReason AdvanceRound(" },
+    @{ File = "CombatBeamSolver.RoundLifecycle.cs"; Text = "private SearchBoundaryReason AdvancePlayerTurnStart(" },
+    @{ File = "CombatBeamSolver.RoundLifecycle.cs"; Text = "return AdvancePlayerTurnStart(" },
     @{ File = "CombatBeamSolver.BeamRetentionPolicy.cs"; Text = "public List<SearchNode> RankFinal(IEnumerable<SearchNode> nodes)" },
     @{ File = "CombatBeamSolver.FinalPlanOrdering.cs"; Text = "private sealed class FinalPlanOrdering(" },
     @{ File = "CombatBeamSolver.FinalPlanOrdering.cs"; Text = "public FinalPlanSelection Select(" },
@@ -570,6 +574,9 @@ foreach ($check in $beamStructureChecks) {
 }
 if (-not (Select-String -LiteralPath (Join-Path $searchRoot "CombatBeamSolver.Expansion.cs") -SimpleMatch "CreateWholeActionChoiceBudget" -Quiet)) {
     $violations.Add("CombatBeamSolver.Expansion.cs: repeated card choices are missing their whole-action branch quota")
+}
+if (Select-String -LiteralPath (Join-Path $searchRoot "CombatBeamSolver.Expansion.cs") -Pattern 'private SearchBoundaryReason (AdvanceRound|AdvancePlayerTurnStart)\(' -Quiet) {
+    $violations.Add("CombatBeamSolver.Expansion.cs: round lifecycle must remain in RoundLifecycle")
 }
 $beamEntryPath = Join-Path $searchRoot "CombatBeamSolver.cs"
 if (Select-String -LiteralPath $beamEntryPath -SimpleMatch "public SolverResult Solve()" -Quiet) {

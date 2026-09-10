@@ -484,6 +484,7 @@ expected_beam_files=(
     CombatBeamSolver.PrimaryChoiceReplay.cs
     CombatBeamSolver.Retention.cs
     CombatBeamSolver.RetentionJobs.cs
+    CombatBeamSolver.RoundLifecycle.cs
     CombatBeamSolver.StateEvaluation.cs
     CombatBeamSolver.StandPatJobs.cs
     CombatBeamSolver.Terminal.cs
@@ -560,6 +561,9 @@ CombatBeamSolver.Retention.cs	end.ReleaseSimulator();
 CombatBeamSolver.ParallelExpansion.cs	private void CommitExpansionBatch(
 CombatBeamSolver.Phases.cs	public SolverResult Solve()
 CombatBeamSolver.Expansion.cs	private IEnumerable<SearchNode> Expand(SearchNode node)
+CombatBeamSolver.RoundLifecycle.cs	private SearchBoundaryReason AdvanceRound(
+CombatBeamSolver.RoundLifecycle.cs	private SearchBoundaryReason AdvancePlayerTurnStart(
+CombatBeamSolver.RoundLifecycle.cs	return AdvancePlayerTurnStart(
 CombatBeamSolver.BeamRetentionPolicy.cs	public List<SearchNode> RankFinal(IEnumerable<SearchNode> nodes)
 CombatBeamSolver.FinalPlanOrdering.cs	private sealed class FinalPlanOrdering(
 CombatBeamSolver.FinalPlanOrdering.cs	public FinalPlanSelection Select(
@@ -571,6 +575,10 @@ require_fixed \
     "$search_root/CombatBeamSolver.Expansion.cs" \
     'CreateWholeActionChoiceBudget' \
     'repeated card choices are missing their whole-action branch quota:'
+
+if rg -q 'private SearchBoundaryReason (AdvanceRound|AdvancePlayerTurnStart)\(' "$search_root/CombatBeamSolver.Expansion.cs"; then
+    add_violation 'CombatBeamSolver.Expansion.cs: round lifecycle must remain in RoundLifecycle'
+fi
 
 path_diagnostics_path="$search_root/CombatBeamSolver.PathDiagnostics.cs"
 require_fixed "$search_root/CombatBeamSolver.BeamRetentionPolicy.cs" 'HasRetainedRoutingChoice: RetainedRoutingChoice(node) != null' 'ordinary tactical ties must use the existing retained routing semantics:'

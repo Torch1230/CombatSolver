@@ -117,6 +117,7 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 | `CombatBeamSolver.Models.cs` | 转置标签、`SearchFeatures`、单次运行 `SearchRunContext` |
 | `CombatBeamSolver.Phases.cs` | `Solve`、阶段循环、总预算与回合层预算保留、当前回合预览、约 `200 ms` 刷新的动态推演路线，以及玩家采用路线/执行当前回合的收束检查点；动态路线显式携带战斗是否结束，未完成路线不产生整场战损数值 |
 | `CombatBeamSolver.Expansion.cs` | 可执行卡牌/药水/结束回合候选展开和动作回放入口 |
+| `CombatBeamSolver.RoundLifecycle.cs` | 回合推进及唯一的玩家回合开始阶段；保持选择事务、Hook/抽牌顺序与历史/死亡补偿 |
 | `CombatBeamSolver.ParallelExpansion.cs` | 固定 worker lane、卡牌/药水动作准备与原始候选物化、按输入顺序串行提交 |
 | `CombatBeamSolver.AdmittedExpansion.cs` | 已准入父节点的准备、动作探测、选择准备/回放/续接、药水/目标与回合尾部作业；有界派发、快照移交、取消/异常排空 |
 | `CombatBeamSolver.PrimaryChoiceReplay.cs` | 原预算保证必经的首层回放、唯一快照暂存与原序消费；动态预算和实例补充仍由一个续接作业独占 |

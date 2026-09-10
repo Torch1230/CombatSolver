@@ -23,6 +23,8 @@ description: 在战斗语义已证明正确后，审计或修改 CombatSolver �
 
 不要把所有问题重新塞回 `Solve` 或用一个总分同时承担保路与终局政策。
 
+`CombatBeamSolver.RoundLifecycle.cs` 统一回合推进；普通重放与后续检查点必须共用 `AdvancePlayerTurnStart`，不得复制玩家回合开始结算。提取阶段不改变选择事务、回调顺序、RNG 或逻辑预算。
+
 ## 1. 建立可比较基线
 
 固定同一源码版本、快照、预设和测试模式，记录：

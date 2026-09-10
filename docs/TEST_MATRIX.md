@@ -1,5 +1,11 @@
 # CombatSolver 测试清单
 
+## 2026-09-10：P5 回合阶段职责迁移
+
+- Release 0 警告/错误，Linux 门禁 `REFACTOR_BOUNDARIES_OK search_files=85`。双端门禁同步文件集、阶段入口与禁止结算回流规则；本机没有执行 PowerShell。
+- 完整正常机甲场景 `03bc4c371cb04593abef0f4098af2bb6` Passed；VeryHigh / DOP8 / NoGC16GB，无预算覆盖、无增量验证。88 项逻辑字段与 40 条完整动作、7 项回合结果、7 项预测和本批基线相同；请求后退出拥有的实例。
+- 仅提取原回合推进及玩家开始阶段，没有新增状态、检查点、原生语义修复或性能结论。原始命令、完整结果和比较保留在 `.local/simulation-refactor-20260910/p5-phase-*`。
+
 ## 2026-09-10：模拟性能重构 P3（原型撤回）
 
 - 候选 Release 0 警告/错误；Linux 结构门禁通过（84 个 Search 文件）。ForkBoundaries `27ab4415388d4b0aaa42cbe02eef6e02`，VitalSpark / Galvanic / Smoggy 原版严格差分 `7a6a4da5e99143058161d9d014cb2d90` / `4b6f4fd28e934e61969449d86111b7ac` / `796f720131104c93b7e28f53fe63f9a0` 均 Passed。
