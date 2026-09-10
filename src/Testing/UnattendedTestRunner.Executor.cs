@@ -44,6 +44,11 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertCompactKernelAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "COMPACT-SHUFFLE-POWER-NATIVE")
+            {
+                await runner.AssertCompactShufflePowerAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId is "P5-ROUND-PREFIX-NATIVE-TOOLS" or "P5-ROUND-PREFIX-NATIVE-MAYHEM"
                 or "P5-ROUND-PREFIX-PARALLEL")
             {

@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Collections.Concurrent;
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.Common.Mirrors;
 using CombatSolver.Engine.InCombat.Simulation;
@@ -12,6 +13,7 @@ using MegaCrit.Sts2.Core.Models.Achievements;
 using MegaCrit.Sts2.Core.Models.Badges;
 using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Relics;
+using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Models.Singleton;
 
 namespace CombatSolver;
@@ -35,26 +37,30 @@ internal sealed class CompactDiscardProjection
         _player = player;
         var combat = (SimulatedCombatState)root.State.CombatState;
         SimPlayerCombatState state = root.State.GetPlayerCombatState(player);
-        if (combat.Players.Count != 1 || combat.EffectivePowers().Count != 0
+        var powers = combat.EffectivePowers();
+        if (combat.Players.Count != 1 || powers.Any(p => !(p is StratagemPower && p.Owner == player.Creature && p.Amount is >= 1 and <= 10)
+                && !(p is StrengthPower && p.Owner != player.Creature))
             || combat.RootRunModSubscriberCount != 0 || combat.RootCombatModSubscriberCount != 0
             || combat.RootHasBaseLibCardModifiers || combat.RootRunHookListenerCount != 0
             || state.OrbQueue.Orbs.Count != 0 || root.GetMaxHandSize(player) != 10
             || root.HasPendingChoice || root.IsOverOrEnding)
-            throw new NotSupportedException("Compact prototype requires an idle root without Powers, deck listeners, or mod subscribers.");
+            throw new NotSupportedException("Compact prototype requires an idle root with only player Stratagem, without deck listeners or mod subscribers.");
         var relics = combat.RelicsOf(player);
-        if (relics.Any(r => r is not ToughBandages || r.IsMelted) || relics.Count > 1
+        if (relics.Any(r => r is not (ToughBandages or TheAbacus) || r.IsMelted)
+            || relics.Select(r => r.GetType()).Distinct().Count() != relics.Count || powers.OfType<StratagemPower>().Count() > 1
             || combat.CurrentSide != player.Creature.Side)
             throw new NotSupportedException("Compact prototype admits only the discard-block relic in player phase.");
         foreach (AbstractModel listener in combat.IterateHookListeners())
         {
             // Native listeners can add effects even when no Power exists. Reject any override
             // on a hook reached by this program, independently of encounter/model identity.
-            foreach (MethodInfo method in listener.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public))
-            {
-                if (ReachedHooks.Contains(method.Name) && method.GetBaseDefinition().DeclaringType == typeof(AbstractModel)
-                    && method.DeclaringType != typeof(AbstractModel) && !RepresentedHook(listener.GetType(), method.Name))
-                    throw new NotSupportedException($"Compact prototype has no effect program for {listener.Id.Entry}.{method.Name}.");
-            }
+            string[] unrepresented = HookAudit.GetOrAdd(listener.GetType(), static type => type
+                .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                .Where(method => ReachedHooks.Contains(method.Name) && method.GetBaseDefinition().DeclaringType == typeof(AbstractModel)
+                    && method.DeclaringType != typeof(AbstractModel) && !RepresentedHook(type, method.Name))
+                .Select(method => method.Name).ToArray());
+            if (unrepresented.Length != 0)
+                throw new NotSupportedException($"Compact prototype has no effect program for {listener.Id.Entry}.{unrepresented[0]}.");
         }
         PredictedCard[] cards = state.AllCards.ToArray();
         _identities = cards.Select(c => c.Original).ToArray();
@@ -69,15 +75,28 @@ internal sealed class CompactDiscardProjection
         IReadOnlyList<int>[] piles = [state.Hand.Cards.Select(Index).ToArray(), state.DrawPile.Cards.Select(Index).ToArray(),
             state.DiscardPile.Cards.Select(Index).ToArray(), state.PlayPile.Cards.Select(Index).ToArray(),
             state.ExhaustPile.Cards.Select(Index).ToArray()];
-        decimal block = relics.Count == 0 ? 0 : relics[0].DynamicVars.Block.BaseValue;
-        if (block != decimal.Truncate(block) || block < 0 || block > 999_999_999m)
-            throw new NotSupportedException("Compact prototype requires integral discard block.");
-        Program = new(definitions, piles, state.Energy, root.State.GetCreature(player.Creature).Block, (int)block);
+        static int Block(RelicModel? relic)
+        {
+            decimal value = relic?.DynamicVars.Block.BaseValue ?? 0;
+            if (value != decimal.Truncate(value) || value < 0 || value > 999_999_999m)
+                throw new NotSupportedException("Compact prototype requires integral relic block.");
+            return (int)value;
+        }
+        int[] comparisons = cards.SelectMany(left => cards.Select(left.CompareTo)).ToArray();
+        PredictionRngState rng = root.Rng.Shuffle.CaptureState();
+        AbstractModel[] listeners = combat.IterateHookListeners().ToArray();
+        int abacusIndex = Array.FindIndex(listeners, p => p is TheAbacus);
+        int stratagemIndex = Array.FindIndex(listeners, p => p is StratagemPower);
+        Program = new(definitions, piles, state.Energy, root.State.GetCreature(player.Creature).Block,
+            Block(relics.OfType<ToughBandages>().SingleOrDefault()),
+            new(rng.Counter, rng.State0, rng.State1, rng.State2, rng.State3), comparisons,
+            powers.OfType<StratagemPower>().SingleOrDefault()?.Amount ?? 0,
+            Block(relics.OfType<TheAbacus>().SingleOrDefault()), abacusIndex >= 0 && abacusIndex < stratagemIndex);
     }
 
     private static ResumableDiscardProgram.Card Capture(CardModel card)
     {
-        if (card is not (Acrobatics or Prepared or StrikeSilent or DefendSilent)
+        if (card is not (Acrobatics or Prepared or Backflip or StrikeSilent or DefendSilent)
             || card.Enchantment != null || card.Affliction != null || card.BaseReplayCount != 0
             || card.ExhaustOnNextPlay || card.IsDupe || card.IsClone || card.HasBeenRemovedFromState
             || card.EnergyCost.CostsX || card.EnergyCost._localModifiers.Count != 0
@@ -87,14 +106,18 @@ internal sealed class CompactDiscardProjection
             || card.LocalKeywords.Any(k => k != CardKeyword.Sly)
             || card.IsSlyThisTurn && card is not Prepared)
             throw new NotSupportedException($"Compact prototype cannot admit card state {card.Id.Entry}.");
-        decimal draw = card is Acrobatics or Prepared ? card.DynamicVars.Cards.BaseValue : 0;
+        decimal draw = card is Acrobatics or Prepared or Backflip ? card.DynamicVars.Cards.BaseValue : 0;
+        decimal block = card is DefendSilent or Backflip ? card.DynamicVars.Block.BaseValue : 0;
         if (draw != decimal.Truncate(draw) || draw < 0 || draw > 10 || card.EnergyCost._base < 0
-            || card is Acrobatics or Prepared && draw == 0)
+            || card is Acrobatics or Prepared or Backflip && draw == 0
+            || block != decimal.Truncate(block) || block is < 0 or > 999_999_999m)
             throw new NotSupportedException($"Compact prototype cannot admit card variables {card.Id.Entry}.");
-        return new(card.EnergyCost._base, (int)draw, card is Acrobatics ? 1 : (int)draw, card.IsSlyThisTurn);
+        return new(card.EnergyCost._base, (int)draw, card is Acrobatics ? 1 : card is Prepared ? (int)draw : 0,
+            card.IsSlyThisTurn, (int)block);
     }
 
-    internal CompactDiscardReadView CreateReadView() => new(this, _root, _player, _inferred);
+    internal CompactDiscardReadView CreateReadView(bool reuseInvariantFeatures = true)
+        => new(this, _root, _player, _inferred) { Invariants = reuseInvariantFeatures ? new() : null };
 
     internal int Identity(string cardId) => Array.FindIndex(_identities, c => c.Id.Entry == cardId);
     internal int CardCount => _identities.Length;
@@ -154,6 +177,14 @@ internal sealed class CompactDiscardProjection
                         combat.RecordCardDrawn(card, false);
                         projection.History.CardDrawResolved(entry, card);
                         break;
+                    case ResumableDiscardProgram.EventKind.Shuffle:
+                        break;
+                    case ResumableDiscardProgram.EventKind.ShuffleCard:
+                        projection.AddToPile(card, PileType.Draw);
+                        break;
+                    case ResumableDiscardProgram.EventKind.Retrieve:
+                        projection.AddToPile(card, PileType.Hand);
+                        break;
                     case ResumableDiscardProgram.EventKind.Discard:
                         projection.AddToPile(card, PileType.Discard);
                         combat.RecordCardDiscarded(_player.Creature);
@@ -193,6 +224,10 @@ internal sealed class CompactDiscardProjection
         {
             while (stack.TryPop(out var active)) { active.Method?.Dispose(); active.Scope.Dispose(); }
         }
+        ValueShuffleRng rng = program.ShuffleRng;
+        projection.Rng.Shuffle.LoadFromSerializable(new()
+            { counter = rng.Counter, state0 = rng.State0, state1 = rng.State1, state2 = rng.State2, state3 = rng.State3 });
+        ShuffleEvents.SetValue(projection, _root.ShuffleEventCount + program.ShuffleCount);
         probe?.End(CompactProfilePhase.ProjectEvents, eventsStart);
         return projection;
     }
@@ -202,6 +237,10 @@ internal sealed class CompactDiscardProjection
         SimPlayerCombatState state = simulator.State.GetPlayerCombatState(_player);
         if (program.Energy != state.Energy || program.Block != simulator.State.GetCreature(_player.Creature).Block)
             throw new InvalidOperationException("Compact values disagree with projected resources.");
+        PredictionRngState rng = simulator.Rng.Shuffle.CaptureState();
+        if (program.ShuffleRng != new ValueShuffleRng(rng.Counter, rng.State0, rng.State1, rng.State2, rng.State3)
+            || _root.ShuffleEventCount + program.ShuffleCount != simulator.ShuffleEventCount)
+            throw new InvalidOperationException("Compact values disagree with shuffle state or event count.");
         SimCardPile[] piles = [state.Hand, state.DrawPile, state.DiscardPile, state.PlayPile, state.ExhaustPile];
         for (int pile = 0; pile < piles.Length; pile++)
         {
@@ -222,13 +261,20 @@ internal sealed class CompactDiscardProjection
         "BeforeBlockGained", "ModifyBlockAdditive", "ModifyBlockMultiplicative", "AfterModifyingBlockAmount", "AfterBlockGained",
         "TryModifyKeywordsInCombat", "ModifyMaxHandSize", "ModifyUnblockedDamageTarget",
         "ModifyHpLostBeforeOsty", "ModifyHpLostBeforeOstyLate", "ModifyHpLostAfterOsty", "ModifyHpLostAfterOstyLate",
-        "ModifyDamageAdditive", "ModifyDamageMultiplicative", "BeforeCardAutoPlayed", "AfterCardChangedPiles"
+        "ModifyDamageAdditive", "ModifyDamageMultiplicative", "BeforeCardAutoPlayed", "AfterCardChangedPiles",
+        "ModifyShuffleOrder", "AfterShuffle"
     };
+    // Only immutable CLR method/type metadata is shared. Every root still checks subscriber,
+    // Power, relic, card-instance, resource, and lifecycle values independently.
+    private static readonly ConcurrentDictionary<Type, string[]> HookAudit = new();
 
     // Keep these exact method/type pairs aligned with the explicitly ignored registrations in
     // AfterCardPlayedMirrors. Badge/achievement progress is outside combat equivalence.
     private static bool RepresentedHook(Type type, string method)
         => type == typeof(ToughBandages) && method == nameof(AbstractModel.AfterCardDiscarded)
+            || type == typeof(StratagemPower) && method == nameof(AbstractModel.AfterShuffle)
+            || type == typeof(TheAbacus) && method == nameof(AbstractModel.AfterShuffle)
+            || type == typeof(StrengthPower) && method == nameof(AbstractModel.ModifyDamageAdditive)
             || type == typeof(MultiplayerScalingModel) && method == nameof(AbstractModel.ModifyBlockMultiplicative)
             || method == nameof(AbstractModel.AfterCardPlayed)
             && (type == typeof(CccComboModel) || type == typeof(Play20CardsSingleTurnAchievement)
@@ -236,4 +282,6 @@ internal sealed class CompactDiscardProjection
 
     private static readonly MirrorMethodSpec OnPlay = new(typeof(CardModel), "OnPlay",
         BindingFlags.Instance | BindingFlags.NonPublic, [typeof(PlayerChoiceContext), typeof(CardPlay)]);
+    private static readonly PropertyInfo ShuffleEvents = typeof(CombatPredictionSimulator)
+        .GetProperty(nameof(CombatPredictionSimulator.ShuffleEventCount))!;
 }

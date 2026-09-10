@@ -1,5 +1,11 @@
 # CombatSolver 测试清单
 
+## 2026-09-11：紧凑洗牌／战略选择与估值复用
+
+- `COMPACT-SHUFFLE-POWER-NATIVE` / `caf3dd7642e04d678278d1d30bdc0e5d` Passed，28.20 秒，T1→T2；24 个嵌套选择样本的完整状态／ContinuationStamp、九流五字段 RNG、原键、全部估值属性和历史来源对账；缓存开关一致，卡牌元数据不变，完整撤销，8 worker 从暂停洗牌候选独立恢复。原生再执行后空翻，旧引擎推进回合后，新根紧凑执行防御。已验证效果不等于完整紧凑跨回合、Power 数量变化或死亡。
+- 原 34 叶哨兵 `ce69f05dcfd04e2fb4be938848967191` Passed，4.83 秒，使用 v3；完整属性／原键／排序、冷暖 solver、根隔离和下一动作等继续通过。最终 v4 仅进一步缓存类型审计元数据并计入每批准入，未知 Power／临时费用的拒绝由 v4 原生场景覆盖。
+- 四组交错对照：含准入 3.31×，分配为旧重放的 19.35%；缓存本身 CPU −9.56%。数据、初次 RNG 测试表达式和目录写出失败、冷初始化成本及边界见[报告](performance/simulation-expanded-chain-20260911.md)／[原始数字](performance/simulation-expanded-chain-20260911.json)。Release 0 警告／错误，Linux 边界门禁通过；PowerShell 未执行，未跑完整战斗、增量搜索、Steam 或生产 Beam 性能。
+
 ## 2026-09-11：紧凑完成状态直接读取
 
 - `COMPACT-KERNEL-NATIVE` / `0c14283a61414f3eacb81ebfe7f7f277` Passed，29.60 秒；根与 34 叶全部 Snapshot 属性、原键、投影洗牌／保留排序、卡牌元数据及根不变、外根／挂起拒绝、直接下一动作通过。原完整状态／ContinuationStamp／有序来源历史、冻结恢复的 8 worker 和原生嵌套链继续通过。最终四组交错完整批次约 2.87×，分配为原来的 16.53%，CPU 3× 联合门槛未通过。Release 0 警告／错误，Linux 门禁 `REFACTOR_BOUNDARIES_OK search_files=87`，实例已停止。

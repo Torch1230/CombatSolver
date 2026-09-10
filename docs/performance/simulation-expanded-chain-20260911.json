@@ -1,0 +1,545 @@
+{
+  "schemaVersion": 1,
+  "baselineCommit": "414a92f",
+  "gameVersion": "0.111.0",
+  "scope": "native regression reduction; compact action execution; legacy round lifecycle; no production Beam",
+  "measurements": "current-thread CPU, wall time and allocation, no profiler or incremental verifier",
+  "rootCaptureIncluded": false,
+  "coldTypeMetadataAndJitIncludedInHotSamples": false,
+  "nativeFixture": {
+    "cards": 24,
+    "hand": [
+      "ACROBATICS",
+      "PREPARED+ (single-turn Sly)",
+      "DEFEND_SILENT",
+      "STRIKE_SILENT"
+    ],
+    "draw": [
+      "DEFEND_SILENT",
+      "STRIKE_SILENT",
+      "DEFEND_SILENT"
+    ],
+    "discard": "BACKFLIP, BACKFLIP, then DEFEND_SILENT and STRIKE_SILENT alternating for 15 cards, starting and ending with DEFEND_SILENT",
+    "power": {
+      "STRATAGEM_POWER": 2
+    },
+    "relics": [
+      "TOUGH_BANDAGES",
+      "THE_ABACUS"
+    ],
+    "seed": "COMBATSOLVER",
+    "encounter": "FUZZY_WURM_CRAWLER_WEAK",
+    "branches": 24,
+    "exhaustive": false
+  },
+  "runs": {
+    "native-v1": {
+      "runId": "513e0d83c27b4652a462d1b891c3468b",
+      "scenarioId": "COMPACT-SHUFFLE-POWER-NATIVE",
+      "status": "Failed",
+      "elapsedMilliseconds": 25263.5157,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "completedChecks": [],
+      "error": "System.ArgumentOutOfRangeException: Specified argument was out of the range of valid values. (Parameter 'exclusiveMaximum')\n   at CombatSolver.Engine.InCombat.Simulation.Compact.ValueShuffleRng.NextInt(Int32 exclusiveMaximum, Int32& value)\n   at CombatSolver.UnattendedTestRunner.AssertCompactRngVectors()\n   at CombatSolver.UnattendedTestRunner.AssertCompactShufflePowerAsync(CombatState combat, Player player)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()"
+    },
+    "native-v2": {
+      "runId": "d0b78dce3161471ba5cbd8be64591bf2",
+      "scenarioId": "COMPACT-SHUFFLE-POWER-NATIVE",
+      "status": "Failed",
+      "elapsedMilliseconds": 27980.3058,
+      "startedTurn": 1,
+      "finishedTurn": 2,
+      "completedChecks": [],
+      "error": "System.IO.DirectoryNotFoundException: Could not find a part of the path '{repository}/.local/compact-expand-20260911/native-v2/compact-shuffle-power.json'.\n   at Interop.ThrowExceptionForIoErrno(ErrorInfo errorInfo, String path, Boolean isDirError)\n   at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String path, OpenFlags flags, Int32 mode, Boolean failForSymlink, Boolean& wasSymlink, Func`4 createOpenException)\n   at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, UnixFileMode openPermissions, Int64& fileLength, UnixFileMode& filePermissions, Boolean failForSymlink, Boolean& wasSymlink, Func`4 createOpenException)\n   at System.IO.File.OpenHandle(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize)\n   at System.IO.File.WriteToFile(String path, FileMode mode, ReadOnlySpan`1 contents, Encoding encoding)\n   at System.IO.File.WriteAllText(String path, String contents, Encoding encoding)\n   at CombatSolver.UnattendedTestRunner.AssertCompactShufflePowerAsync(CombatState combat, Player player)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()"
+    },
+    "native-v3": {
+      "runId": "7d576b58d2244b72a5daf177d13de4bf",
+      "scenarioId": "COMPACT-SHUFFLE-POWER-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 27964.4951,
+      "startedTurn": 1,
+      "finishedTurn": 2,
+      "completedChecks": [
+        "CompactShufflePower:24Branches:AllSnapshotProperties:History:FiveFieldRng:Undo:Frozen8Workers:NativeTwoTurns:LegacyRoundBoundary"
+      ],
+      "error": null
+    },
+    "native-v4": {
+      "runId": "caf3dd7642e04d678278d1d30bdc0e5d",
+      "scenarioId": "COMPACT-SHUFFLE-POWER-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 28198.9732,
+      "startedTurn": 1,
+      "finishedTurn": 2,
+      "completedChecks": [
+        "CompactShufflePower:24Branches:AllSnapshotProperties:History:FiveFieldRng:Undo:Frozen8Workers:NativeTwoTurns:LegacyRoundBoundary"
+      ],
+      "error": null
+    },
+    "regression-v3": {
+      "runId": "ce69f05dcfd04e2fb4be938848967191",
+      "scenarioId": "COMPACT-KERNEL-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 4826.5375,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "completedChecks": [
+        "CompactEvaluationProfile:34Leaves:FullPropertiesAndSortedOrder:WarmAndFreshSolver",
+        "CompactReadView:RootAnd34Leaves:AllSnapshotProperties:CardMetadataInvariant:RootUnchanged:ForeignAndPendingRejected",
+        "CompactKernel:34Leaves:FullStateAndEvaluation:NestedUndo:Frozen8Workers:Admission:Native"
+      ],
+      "error": null
+    }
+  },
+  "profiles": {
+    "native-v3": {
+      "rounds": [
+        {
+          "round": 1,
+          "card": "ACROBATICS",
+          "cards": 24,
+          "samples": 24,
+          "rootSetupMicroseconds": 45976.1,
+          "rootSetupAllocatedBytes": 1483880,
+          "valueSlots": 527,
+          "distinctWrittenSlots": [
+            58,
+            54,
+            56,
+            58,
+            53,
+            53,
+            55,
+            57,
+            58,
+            53,
+            54,
+            56,
+            58,
+            53,
+            53,
+            55,
+            57,
+            58,
+            53,
+            54,
+            56,
+            58,
+            53,
+            53
+          ],
+          "writes": 890737,
+          "valueChanges": 861984,
+          "peakUndoEntries": 411,
+          "cache": {
+            "EnemyBuilds": 1,
+            "FocusBuilds": 1,
+            "StrategyBuilds": 1,
+            "cardValues": 24
+          },
+          "measurements": [
+            {
+              "sample": 0,
+              "mode": "legacy_replay",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 71.516796875,
+              "cpuMicrosecondsPerLeaf": 70.38228385416545,
+              "allocatedBytesPerLeaf": 29864.177083333332
+            },
+            {
+              "sample": 0,
+              "mode": "compact_read_view",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 21.005208333333332,
+              "cpuMicrosecondsPerLeaf": 20.93409505208399,
+              "allocatedBytesPerLeaf": 4536.510416666667
+            },
+            {
+              "sample": 0,
+              "mode": "compact_cached",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 18.933463541666665,
+              "cpuMicrosecondsPerLeaf": 18.86704427083193,
+              "allocatedBytesPerLeaf": 4380.333333333333
+            },
+            {
+              "sample": 1,
+              "mode": "compact_cached",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 19.061197916666668,
+              "cpuMicrosecondsPerLeaf": 18.99366406250162,
+              "allocatedBytesPerLeaf": 4381.177083333333
+            },
+            {
+              "sample": 1,
+              "mode": "compact_read_view",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 20.488411458333335,
+              "cpuMicrosecondsPerLeaf": 20.380608072917045,
+              "allocatedBytesPerLeaf": 4535.666666666667
+            },
+            {
+              "sample": 1,
+              "mode": "legacy_replay",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 66.94401041666667,
+              "cpuMicrosecondsPerLeaf": 66.62886067708247,
+              "allocatedBytesPerLeaf": 29857
+            },
+            {
+              "sample": 2,
+              "mode": "legacy_replay",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 68.08242187500001,
+              "cpuMicrosecondsPerLeaf": 67.78113281250124,
+              "allocatedBytesPerLeaf": 29857
+            },
+            {
+              "sample": 2,
+              "mode": "compact_read_view",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 20.513802083333335,
+              "cpuMicrosecondsPerLeaf": 20.43349348958164,
+              "allocatedBytesPerLeaf": 4536.510416666667
+            },
+            {
+              "sample": 2,
+              "mode": "compact_cached",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 18.853906249999998,
+              "cpuMicrosecondsPerLeaf": 18.762955729168123,
+              "allocatedBytesPerLeaf": 4381.177083333333
+            },
+            {
+              "sample": 3,
+              "mode": "compact_cached",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 18.473307291666668,
+              "cpuMicrosecondsPerLeaf": 18.399273437500103,
+              "allocatedBytesPerLeaf": 4380.333333333333
+            },
+            {
+              "sample": 3,
+              "mode": "compact_read_view",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 20.263020833333332,
+              "cpuMicrosecondsPerLeaf": 20.19328385416704,
+              "allocatedBytesPerLeaf": 4535.666666666667
+            },
+            {
+              "sample": 3,
+              "mode": "legacy_replay",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 68.21015625,
+              "cpuMicrosecondsPerLeaf": 67.91608854166735,
+              "allocatedBytesPerLeaf": 29857
+            }
+          ]
+        },
+        {
+          "round": 2,
+          "card": "DEFEND_SILENT",
+          "cards": 24,
+          "samples": 1,
+          "rootSetupMicroseconds": 1150.6,
+          "rootSetupAllocatedBytes": 712056,
+          "valueSlots": 527,
+          "distinctWrittenSlots": [
+            0
+          ],
+          "writes": 89,
+          "valueChanges": 60,
+          "peakUndoEntries": 28,
+          "cache": {
+            "EnemyBuilds": 1,
+            "FocusBuilds": 1,
+            "StrategyBuilds": 1,
+            "cardValues": 24
+          },
+          "measurements": []
+        }
+      ],
+      "compactRoundAdvancement": false,
+      "productionBeamEnabled": false
+    },
+    "native-v4": {
+      "rounds": [
+        {
+          "round": 1,
+          "card": "ACROBATICS",
+          "cards": 24,
+          "samples": 24,
+          "rootSetupMicroseconds": 44861.6,
+          "rootSetupAllocatedBytes": 1375008,
+          "valueSlots": 527,
+          "distinctWrittenSlots": [
+            58,
+            54,
+            56,
+            58,
+            53,
+            53,
+            55,
+            57,
+            58,
+            53,
+            54,
+            56,
+            58,
+            53,
+            53,
+            55,
+            57,
+            58,
+            53,
+            54,
+            56,
+            58,
+            53,
+            53
+          ],
+          "writes": 890737,
+          "valueChanges": 861984,
+          "peakUndoEntries": 411,
+          "cache": {
+            "EnemyBuilds": 1,
+            "FocusBuilds": 1,
+            "StrategyBuilds": 1,
+            "cardValues": 24
+          },
+          "measurements": [
+            {
+              "sample": 0,
+              "mode": "legacy_replay",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 70.26848958333333,
+              "cpuMicrosecondsPerLeaf": 69.14431640624959,
+              "allocatedBytesPerLeaf": 29864.177083333332
+            },
+            {
+              "sample": 0,
+              "mode": "compact_read_view",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 20.73515625,
+              "cpuMicrosecondsPerLeaf": 20.65824999999914,
+              "allocatedBytesPerLeaf": 4536.510416666667
+            },
+            {
+              "sample": 0,
+              "mode": "compact_cached",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 18.525390625,
+              "cpuMicrosecondsPerLeaf": 18.446585937499076,
+              "allocatedBytesPerLeaf": 4380.333333333333
+            },
+            {
+              "sample": 0,
+              "mode": "compact_cached_with_admission",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 20.530338541666666,
+              "cpuMicrosecondsPerLeaf": 20.444613281249246,
+              "allocatedBytesPerLeaf": 5777.84375
+            },
+            {
+              "sample": 1,
+              "mode": "compact_cached_with_admission",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 20.63203125,
+              "cpuMicrosecondsPerLeaf": 20.52350651041479,
+              "allocatedBytesPerLeaf": 5777
+            },
+            {
+              "sample": 1,
+              "mode": "compact_cached",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 18.663151041666666,
+              "cpuMicrosecondsPerLeaf": 18.59942187500015,
+              "allocatedBytesPerLeaf": 4381.177083333333
+            },
+            {
+              "sample": 1,
+              "mode": "compact_read_view",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 20.354427083333334,
+              "cpuMicrosecondsPerLeaf": 20.283687499999797,
+              "allocatedBytesPerLeaf": 4535.666666666667
+            },
+            {
+              "sample": 1,
+              "mode": "legacy_replay",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 67.41966145833334,
+              "cpuMicrosecondsPerLeaf": 67.11272526041512,
+              "allocatedBytesPerLeaf": 29857
+            },
+            {
+              "sample": 2,
+              "mode": "legacy_replay",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 66.87148437500001,
+              "cpuMicrosecondsPerLeaf": 66.54819140625061,
+              "allocatedBytesPerLeaf": 29857
+            },
+            {
+              "sample": 2,
+              "mode": "compact_read_view",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 20.704296875,
+              "cpuMicrosecondsPerLeaf": 20.618368489583833,
+              "allocatedBytesPerLeaf": 4536.510416666667
+            },
+            {
+              "sample": 2,
+              "mode": "compact_cached",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 18.96953125,
+              "cpuMicrosecondsPerLeaf": 18.89248046875025,
+              "allocatedBytesPerLeaf": 4381.177083333333
+            },
+            {
+              "sample": 2,
+              "mode": "compact_cached_with_admission",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 20.075130208333334,
+              "cpuMicrosecondsPerLeaf": 19.998990885416863,
+              "allocatedBytesPerLeaf": 5777
+            },
+            {
+              "sample": 3,
+              "mode": "compact_cached_with_admission",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 20.425,
+              "cpuMicrosecondsPerLeaf": 20.31144140624974,
+              "allocatedBytesPerLeaf": 5777.84375
+            },
+            {
+              "sample": 3,
+              "mode": "compact_cached",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 18.439062500000002,
+              "cpuMicrosecondsPerLeaf": 18.35360937500023,
+              "allocatedBytesPerLeaf": 4380.333333333333
+            },
+            {
+              "sample": 3,
+              "mode": "compact_read_view",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 20.669010416666666,
+              "cpuMicrosecondsPerLeaf": 20.582869791664866,
+              "allocatedBytesPerLeaf": 4536.510416666667
+            },
+            {
+              "sample": 3,
+              "mode": "legacy_replay",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 66.719921875,
+              "cpuMicrosecondsPerLeaf": 66.44750651041657,
+              "allocatedBytesPerLeaf": 29857
+            }
+          ]
+        },
+        {
+          "round": 2,
+          "card": "DEFEND_SILENT",
+          "cards": 24,
+          "samples": 1,
+          "rootSetupMicroseconds": 84.1,
+          "rootSetupAllocatedBytes": 21184,
+          "valueSlots": 527,
+          "distinctWrittenSlots": [
+            0
+          ],
+          "writes": 89,
+          "valueChanges": 60,
+          "peakUndoEntries": 28,
+          "cache": {
+            "EnemyBuilds": 1,
+            "FocusBuilds": 1,
+            "StrategyBuilds": 1,
+            "cardValues": 24
+          },
+          "measurements": []
+        }
+      ],
+      "compactRoundAdvancement": false,
+      "productionBeamEnabled": false
+    }
+  },
+  "means": {
+    "compact_cached": {
+      "cpuMicrosecondsPerLeaf": 18.573024414062427,
+      "microsecondsPerLeaf": 18.64928385416667,
+      "allocatedBytesPerLeaf": 4380.755208333333
+    },
+    "compact_cached_with_admission": {
+      "cpuMicrosecondsPerLeaf": 20.31963802083266,
+      "microsecondsPerLeaf": 20.415625,
+      "allocatedBytesPerLeaf": 5777.421875
+    },
+    "compact_read_view": {
+      "cpuMicrosecondsPerLeaf": 20.53579394531191,
+      "microsecondsPerLeaf": 20.61572265625,
+      "allocatedBytesPerLeaf": 4536.299479166667
+    },
+    "legacy_replay": {
+      "cpuMicrosecondsPerLeaf": 67.31318489583298,
+      "microsecondsPerLeaf": 67.81988932291667,
+      "allocatedBytesPerLeaf": 29858.794270833332
+    }
+  },
+  "ratios": {
+    "cachedSpeedup": 3.6242446784739752,
+    "withAdmissionSpeedup": 3.3127157495040165,
+    "cachedAllocationReduction": 0.853284256269767,
+    "withAdmissionAllocationReduction": 0.806508534048761,
+    "cacheCpuReduction": 0.09557797163705761,
+    "cacheAllocationReduction": 0.03428880115779043
+  },
+  "validation": {
+    "rngVectors": 512,
+    "rngStreamsCompared": 9,
+    "allSnapshotProperties": true,
+    "cardMetadataInvariant": true,
+    "fullContinuationAndNativeState": true,
+    "cachedAndUncachedEqual": true,
+    "nativeBackflipContinuation": true,
+    "nativeNextTurnDefend": true,
+    "independentFrozenWorkers": 8,
+    "legacy34LeafRegression": "regression-v3",
+    "buildWarnings": 0,
+    "buildErrors": 0,
+    "linuxBoundaryGate": "REFACTOR_BOUNDARIES_OK search_files=87",
+    "powershellExecuted": false,
+    "productionBeamEnabled": false,
+    "compactRoundLifecycle": false
+  }
+}

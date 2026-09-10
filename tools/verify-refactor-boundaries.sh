@@ -1001,6 +1001,11 @@ for replay_or_write in '.Materialize(' '.ManualPlay(' '.AutoPlay(' '.MutablePrev
     forbid_fixed "$compact_reader" "$replay_or_write" 'completed reader must not reconstruct or mutate branch models:'
 done
 require_fixed "$compact_reader" '!_adapter.Program.State.HasSameRoot(program.State) || !program.Complete' 'completed reader lost ownership/stability guard'
+require_fixed "$compact_reader" 'ValueShuffleRng rng = _program.ShuffleRng;' 'completed reader lost authoritative shuffle state'
+require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'view?.ShuffleRng ?? simulator.Rng.Shuffle.CaptureState()' 'completed state key lost branch shuffle RNG'
+require_fixed "$search_root/CompletedStateReadView.cs" 'A new stable root requires a new cache.' 'completed invariant cache lost its root lifetime contract'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'WriteRng(rng);' 'compact shuffle lost journaled RNG writes'
+require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactShufflePower.cs" 'isolation.Dispose();' 'expanded compact isolation must close before worker/native awaits'
 require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" '=> SnapshotCore(simulator, turn, actionCount, shufflesCrossed, boundary, processedEnemyDeaths, null);' 'legacy and completed readers must share full SnapshotCore'
 require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'result.ReleaseSimulator();' 'completed evaluations must release their borrowed root'
 while IFS= read -r production_path; do

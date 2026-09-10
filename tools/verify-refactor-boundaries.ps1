@@ -1234,6 +1234,11 @@ foreach ($reference in @('.Materialize(', '.ManualPlay(', '.AutoPlay(', '.Mutabl
 }
 $compactReadGuards = @(
     @('src/Testing/CompactDiscardReadView.cs', '!_adapter.Program.State.HasSameRoot(program.State) || !program.Complete'),
+    @('src/Testing/CompactDiscardReadView.cs', 'ValueShuffleRng rng = _program.ShuffleRng;'),
+    @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'view?.ShuffleRng ?? simulator.Rng.Shuffle.CaptureState()'),
+    @('src/Search/CompletedStateReadView.cs', 'A new stable root requires a new cache.'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'WriteRng(rng);'),
+    @('src/Testing/UnattendedTestRunner.CompactShufflePower.cs', 'isolation.Dispose();'),
     @('src/Search/CombatBeamSolver.StateEvaluation.cs', '=> SnapshotCore(simulator, turn, actionCount, shufflesCrossed, boundary, processedEnemyDeaths, null);'),
     @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'result.ReleaseSimulator();')
 )

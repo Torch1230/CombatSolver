@@ -242,7 +242,11 @@ internal sealed partial class UnattendedTestRunner
         ExpectCompactUnsupported(() => new CompactDiscardProjection(powered, player));
         CombatPredictionSimulator shuffle = rootSimulator.Fork();
         shuffle.AddToPile(shuffle.State.GetPlayerCombatState(player).DrawPile.Cards.ToArray(), MegaCrit.Sts2.Core.Entities.Cards.PileType.Discard);
-        ExpectCompactUnsupported(() => new CompactDiscardProjection(shuffle, player));
+        var shuffledAdapter = new CompactDiscardProjection(shuffle, player);
+        shuffledAdapter.Program.Begin(shuffledAdapter.Identity("ACROBATICS"));
+        shuffledAdapter.Program.Run();
+        if (shuffledAdapter.Program.ShuffleCount != 1)
+            throw new InvalidOperationException("Admitted shuffle did not consume its value random stream.");
         CombatPredictionSimulator modified = rootSimulator.Fork();
         modified.State.FindCard(adapter.Original(played))!.MutablePreview.EnergyCost.SetThisTurn(0);
         ExpectCompactUnsupported(() => new CompactDiscardProjection(modified, player));
@@ -308,7 +312,7 @@ internal sealed partial class UnattendedTestRunner
         }
         var evidence = new { schemaVersion = 1, scope = "closed draw/discard prototype; full fixtures unchanged and not run",
             cards = 30, leaves = cases.Count, candidatesOwnValues = true, fullLegacyEvaluation = true, directCompletedReadView = true,
-            rngPolicy = "all random effects rejected at admission; nine root RNG states preserved by projection",
+            rngPolicy = "this fixture does not shuffle; expanded shuffle and five-field rollback have a separate native fixture",
             payloadBytes = cases[0].Candidate.PayloadBytes,
             distinctWrittenSlots, workspaceSlots = lane.State.Count, lane.EventsExecuted,
             lane.State.WriteAttempts, lane.State.ValueChanges, lane.State.UndoEntriesWritten, lane.State.PeakUndoEntries,
@@ -357,7 +361,7 @@ internal sealed partial class UnattendedTestRunner
     {
         if (program.Complete) { completed(program, path); return; }
         if (!program.NeedsChoice) throw new InvalidOperationException("Compact traversal has no suspended instruction.");
-        int[] hand = program.Cards(ResumableDiscardProgram.Pile.Hand);
+        int[] hand = program.Cards(program.ChoicePile);
         int count = program.ChoiceCount;
         foreach (int[] selected in CompactCombinations(hand, count))
         {

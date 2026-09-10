@@ -43,8 +43,8 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
         PredictionGap?[] cardGaps = _cards.Select((card, id) => inferred[id]
             ? PredictionCoverage.FromSource(card.Preview, "OnPlay", PredictionRiskReason.MethodMirrorIncomplete) : null).ToArray();
         PredictionGap[] distinct = cardGaps.OfType<PredictionGap>().Distinct().ToArray();
-        // Only Acrobatics and Prepared can execute. Keep the specialization explicitly bounded.
-        if (distinct.Length > 2) throw new NotSupportedException("Closed read view has more than two risk sources.");
+        // The admitting adapter limits executable card types; no generic source cache escapes it.
+        if (distinct.Length > 4) throw new NotSupportedException("Closed read view has more than four risk sources.");
         _cardGapMasks = cardGaps.Select(gap => gap is null ? 0 : 1 << Array.IndexOf(distinct, gap)).ToArray();
         _gapCombinations = Enumerable.Range(0, 1 << distinct.Length)
             .Select(mask => PredictionCoverage.Normalize(rootGaps.Concat(distinct.Where((_, i) => (mask & (1 << i)) != 0))))
@@ -84,6 +84,9 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
                     if (item.Value != 0) block++;
                     break;
                 case ResumableDiscardProgram.EventKind.Block:
+                case ResumableDiscardProgram.EventKind.Shuffle:
+                case ResumableDiscardProgram.EventKind.ShuffleCard:
+                case ResumableDiscardProgram.EventKind.Retrieve:
                 case ResumableDiscardProgram.EventKind.Select:
                 case ResumableDiscardProgram.EventKind.SelectedCard: break;
                 default: throw new InvalidOperationException("Read view encountered an unknown committed event.");
@@ -106,6 +109,14 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
     internal override IReadOnlyList<PredictedCard> Exhaust => _exhaust;
     internal override IReadOnlyList<PredictionGap> PredictionGaps => _gaps;
     internal override CardHistoryReadValues CardHistory => _history;
+    internal override PredictionRngState ShuffleRng
+    {
+        get
+        {
+            ValueShuffleRng rng = _program.ShuffleRng;
+            return new(rng.Counter, rng.State0, rng.State1, rng.State2, rng.State3);
+        }
+    }
 
     private sealed class PileView(CompactDiscardReadView owner, ResumableDiscardProgram.Pile pile)
         : IReadOnlyList<PredictedCard>

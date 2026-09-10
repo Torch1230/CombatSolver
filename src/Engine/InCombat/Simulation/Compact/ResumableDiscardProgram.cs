@@ -7,17 +7,23 @@ namespace CombatSolver.Engine.InCombat.Simulation.Compact;
 /// </summary>
 internal sealed class ResumableDiscardProgram
 {
-    internal readonly record struct Card(int Cost, int Draw, int Discard, bool Sly);
+    internal readonly record struct Card(int Cost, int Draw, int Discard, bool Sly, int Block = 0);
     internal enum Pile { Hand, Draw, Discard, Play, Exhaust }
-    internal enum EventKind { Pay, Start, Draw, Select, SelectedCard, Discard, Block, Finish }
+    internal enum EventKind { Pay, Start, Draw, Select, SelectedCard, Discard, Block, Finish, Shuffle, ShuffleCard, Retrieve }
     internal readonly record struct Event(EventKind Kind, int Card, int Value, bool Automatic);
     private const int EnergySlot = 0, BlockSlot = 1, DepthSlot = 2, EventCountSlot = 3;
+    private const int RngSlot = 4, ShuffleCountSlot = 9;
     private const int FrameWidth = 17, MaxFrames = 8;
     private const int CardOffset = 0, IpOffset = 1, AutoOffset = 2, BeforeBlockOffset = 3;
     private const int SelectedCountOffset = 4, NextAutoOffset = 5, SelectedOffset = 6;
+    private const int DrawIndexOffset = 16;
     private readonly Card[] _cards;
     private readonly int _discardBlock;
-    private readonly int _pileStart = 4;
+    private readonly int _stratagem;
+    private readonly int _shuffleBlock;
+    private readonly bool _shuffleBlockFirst;
+    private readonly CardComparer? _cardComparer;
+    private readonly int _pileStart = 10;
     private readonly int _frameStart;
     private readonly int _eventStart;
     private readonly int _maxEvents;
@@ -25,19 +31,25 @@ internal sealed class ResumableDiscardProgram
     internal int Energy => Read(EnergySlot);
     internal int Block => Read(BlockSlot);
     internal bool Complete => Read(DepthSlot) == 0;
-    internal bool NeedsChoice => !Complete && Read(Frame + IpOffset) == 2;
+    internal bool NeedsChoice => !Complete && Read(Frame + IpOffset) is 2 or 6;
+    internal Pile ChoicePile => NeedsChoice && Read(Frame + IpOffset) == 6 ? Pile.Draw : Pile.Hand;
     internal int ChoiceCard => NeedsChoice ? Read(Frame + CardOffset) : throw new InvalidOperationException("No pending choice.");
-    internal int ChoiceCount => Math.Min(_cards[ChoiceCard].Discard, Count(Pile.Hand));
+    internal int ChoiceCount => Math.Min(ChoicePile == Pile.Draw ? _stratagem : _cards[ChoiceCard].Discard, Count(ChoicePile));
+    internal int ShuffleCount => Read(ShuffleCountSlot);
+    internal ValueShuffleRng ShuffleRng => new(Read(RngSlot), unchecked((ulong)State[RngSlot + 1]),
+        unchecked((ulong)State[RngSlot + 2]), unchecked((ulong)State[RngSlot + 3]), unchecked((ulong)State[RngSlot + 4]));
     internal int EventCount => Read(EventCountSlot);
     internal long EventsExecuted { get; private set; }
     private int Frame => _frameStart + (Read(DepthSlot) - 1) * FrameWidth;
 
-    internal ResumableDiscardProgram(Card[] cards, IReadOnlyList<int>[] piles, int energy, int block, int discardBlock)
+    internal ResumableDiscardProgram(Card[] cards, IReadOnlyList<int>[] piles, int energy, int block, int discardBlock,
+        ValueShuffleRng shuffleRng = default, int[]? comparisons = null, int stratagem = 0, int shuffleBlock = 0,
+        bool shuffleBlockFirst = false)
     {
         if (cards.Length == 0 || cards.Length > 64 || piles.Length != 5 || cards.Count(c => c.Sly) >= MaxFrames)
             throw new NotSupportedException("Compact prototype capacity exceeded.");
-        if (cards.Any(c => c.Cost < 0 || c.Draw < 0 || c.Discard < 0 || c.Discard > 10 || c.Sly && c.Draw == 0)
-            || energy < 0 || block < 0 || discardBlock < 0)
+        if (cards.Any(c => c.Cost < 0 || c.Draw < 0 || c.Discard < 0 || c.Discard > 10 || c.Block < 0 || c.Sly && c.Draw == 0)
+            || energy < 0 || block < 0 || discardBlock < 0 || stratagem is < 0 or > 10 || shuffleBlock < 0)
             throw new ArgumentException("Invalid compact root.");
         int[] identities = piles.SelectMany(p => p).ToArray();
         if (identities.Length != cards.Length || !identities.Order().SequenceEqual(Enumerable.Range(0, cards.Length))
@@ -45,16 +57,23 @@ internal sealed class ResumableDiscardProgram
             throw new ArgumentException("Compact root requires unique instances and an idle play pile.");
         // A card can be drawn/played at most once without reshuffling. Reject before execution,
         // so an unsupported random operation can never leave a partially accepted candidate.
-        if (cards.Sum(c => c.Draw) > piles[(int)Pile.Draw].Count)
-            throw new NotSupportedException("Compact prototype does not admit roots that may shuffle.");
+        if (comparisons == null && cards.Sum(c => c.Draw) > piles[(int)Pile.Draw].Count)
+            throw new NotSupportedException("Compact shuffle requires captured ordering and random state.");
+        if (comparisons != null && (comparisons.Length != cards.Length * cards.Length || cards.Count(c => c.Sly) > 1))
+            throw new NotSupportedException("Compact shuffle admits at most one Sly instance and a full comparison matrix.");
         _cards = (Card[])cards.Clone();
         _discardBlock = discardBlock;
+        _stratagem = stratagem;
+        _shuffleBlock = shuffleBlock;
+        _shuffleBlockFirst = shuffleBlockFirst;
+        _cardComparer = comparisons == null ? null : new((int[])comparisons.Clone(), cards.Length);
         _frameStart = _pileStart + 5 * (cards.Length + 1);
         _eventStart = _frameStart + MaxFrames * FrameWidth;
-        _maxEvents = cards.Length * 9 + 8;
+        _maxEvents = Math.Max(256, cards.Length * 9 + 8);
         State = new ReversibleValueState(_eventStart + _maxEvents);
         State.Write(EnergySlot, energy);
         State.Write(BlockSlot, block);
+        WriteRng(shuffleRng);
         for (int p = 0; p < piles.Length; p++)
         {
             State.Write(PileBase((Pile)p), piles[p].Count);
@@ -63,13 +82,18 @@ internal sealed class ResumableDiscardProgram
         }
     }
 
-    private ResumableDiscardProgram(Card[] cards, int discardBlock, ReversibleValueState state)
+    private ResumableDiscardProgram(Card[] cards, int discardBlock, int stratagem, int shuffleBlock,
+        bool shuffleBlockFirst, CardComparer? cardComparer, ReversibleValueState state)
     {
         _cards = cards;
         _discardBlock = discardBlock;
+        _stratagem = stratagem;
+        _shuffleBlock = shuffleBlock;
+        _shuffleBlockFirst = shuffleBlockFirst;
+        _cardComparer = cardComparer;
         _frameStart = _pileStart + 5 * (cards.Length + 1);
         _eventStart = _frameStart + MaxFrames * FrameWidth;
-        _maxEvents = cards.Length * 9 + 8;
+        _maxEvents = Math.Max(256, cards.Length * 9 + 8);
         State = state;
     }
 
@@ -77,15 +101,23 @@ internal sealed class ResumableDiscardProgram
     {
         private readonly Card[] _cards;
         private readonly int _discardBlock;
+        private readonly int _stratagem, _shuffleBlock;
+        private readonly bool _shuffleBlockFirst;
+        private readonly CardComparer? _cardComparer;
         private readonly ReversibleValueState.FrozenValues _values;
         internal Candidate(ResumableDiscardProgram source)
         {
             _values = source.State.Freeze();
             _cards = source._cards;
             _discardBlock = source._discardBlock;
+            _stratagem = source._stratagem;
+            _shuffleBlock = source._shuffleBlock;
+            _shuffleBlockFirst = source._shuffleBlockFirst;
+            _cardComparer = source._cardComparer;
         }
         internal int PayloadBytes => _values.PayloadBytes;
-        internal ResumableDiscardProgram Open() => new(_cards, _discardBlock, _values.CreateWorkspace());
+        internal ResumableDiscardProgram Open() => new(_cards, _discardBlock, _stratagem, _shuffleBlock,
+            _shuffleBlockFirst, _cardComparer, _values.CreateWorkspace());
         internal void RestoreInto(ResumableDiscardProgram workspace) => workspace.State.Restore(_values);
     }
 
@@ -105,7 +137,7 @@ internal sealed class ResumableDiscardProgram
     internal void Begin(int card)
     {
         if (!Complete || !Contains(Pile.Hand, card)
-            || _cards[card].Draw == 0 || Energy < _cards[card].Cost)
+            || _cards[card].Draw == 0 && _cards[card].Block == 0 || Energy < _cards[card].Cost)
             throw new InvalidOperationException("Card cannot begin this compact action.");
         State.Write(EnergySlot, Energy - _cards[card].Cost);
         Emit(EventKind.Pay, card, _cards[card].Cost);
@@ -118,8 +150,19 @@ internal sealed class ResumableDiscardProgram
             throw new InvalidOperationException("Choice does not match the suspended instruction.");
         for (int i = 0; i < selected.Length; i++)
         {
-            if (!Contains(Pile.Hand, selected[i]) || selected[..i].Contains(selected[i]))
+            if (!Contains(ChoicePile, selected[i]) || selected[..i].Contains(selected[i]))
                 throw new InvalidOperationException("Choice contains an absent or repeated instance.");
+        }
+        if (ChoicePile == Pile.Draw)
+        {
+            foreach (int card in selected)
+            {
+                Move(card, Count(Pile.Hand) < 10 ? Pile.Hand : Pile.Discard);
+                Emit(EventKind.Retrieve, card);
+            }
+            if (!_shuffleBlockFirst) GainBlock(ChoiceCard, _shuffleBlock);
+            State.Write(Frame + IpOffset, 1);
+            return;
         }
         State.Write(Frame + SelectedCountOffset, selected.Length);
         State.Write(Frame + NextAutoOffset, 0);
@@ -139,21 +182,29 @@ internal sealed class ResumableDiscardProgram
                 case 0:
                     Move(card, Pile.Play);
                     Emit(EventKind.Start, card, _cards[card].Cost, Read(frame + AutoOffset) != 0);
+                    GainBlock(card, _cards[card].Block);
                     State.Write(frame + IpOffset, 1);
                     break;
                 case 1:
-                    for (int i = 0; i < _cards[card].Draw && Count(Pile.Hand) < 10; i++)
+                    while (Read(frame + DrawIndexOffset) < _cards[card].Draw && Count(Pile.Hand) < 10)
                     {
-                        if (Count(Pile.Draw) == 0) throw new InvalidOperationException("Admission failed to exclude shuffle.");
+                        if (Count(Pile.Draw) == 0 && Count(Pile.Discard) != 0)
+                        {
+                            Shuffle(card);
+                            if (NeedsChoice) return;
+                        }
+                        if (Count(Pile.Draw) == 0 || Count(Pile.Hand) >= 10) break;
                         int drawn = CardAt(Pile.Draw, 0);
                         Move(drawn, Pile.Hand);
                         Emit(EventKind.Draw, drawn);
+                        State.Write(frame + DrawIndexOffset, Read(frame + DrawIndexOffset) + 1);
                     }
                     State.Write(frame + IpOffset, 2);
                     if (ChoiceCount != 0) return;
                     SupplyChoice([]);
                     break;
                 case 2:
+                case 6:
                     return;
                 case 3:
                     // Native batch discard moves every selected card and runs its hooks before
@@ -166,12 +217,7 @@ internal sealed class ResumableDiscardProgram
                         int discarded = Read(frame + SelectedOffset + i);
                         Move(discarded, Pile.Discard);
                         Emit(EventKind.Discard, discarded);
-                        if (_discardBlock > 0)
-                        {
-                            int previous = Block;
-                            State.Write(BlockSlot, Math.Min(999_999_999L, (long)Block + _discardBlock));
-                            Emit(EventKind.Block, discarded, Block - previous);
-                        }
+                        GainBlock(discarded, _discardBlock);
                     }
                     State.Write(frame + IpOffset, 4);
                     break;
@@ -195,6 +241,51 @@ internal sealed class ResumableDiscardProgram
                     throw new InvalidOperationException("Unknown compact instruction.");
             }
         }
+    }
+
+    private void Shuffle(int sourceCard)
+    {
+        if (_cardComparer == null) throw new InvalidOperationException("Shuffle ordering was not admitted.");
+        int count = Count(Pile.Discard);
+        Span<int> order = stackalloc int[count];
+        for (int i = 0; i < count; i++) order[i] = CardAt(Pile.Discard, i);
+        order.Sort(_cardComparer);
+        ValueShuffleRng rng = ShuffleRng;
+        for (int i = count - 1; i > 0; i--)
+        {
+            rng = rng.NextInt(i + 1, out int index);
+            (order[index], order[i]) = (order[i], order[index]);
+        }
+        WriteRng(rng);
+        State.Write(ShuffleCountSlot, ShuffleCount + 1);
+        Emit(EventKind.Shuffle, sourceCard, count);
+        foreach (int card in order) { Move(card, Pile.Draw); Emit(EventKind.ShuffleCard, card); }
+        if (_shuffleBlockFirst) GainBlock(sourceCard, _shuffleBlock);
+        if (_stratagem > 0)
+            State.Write(Frame + IpOffset, 6);
+        else if (!_shuffleBlockFirst) GainBlock(sourceCard, _shuffleBlock);
+    }
+
+    private void WriteRng(ValueShuffleRng rng)
+    {
+        State.Write(RngSlot, rng.Counter);
+        State.Write(RngSlot + 1, unchecked((long)rng.State0));
+        State.Write(RngSlot + 2, unchecked((long)rng.State1));
+        State.Write(RngSlot + 3, unchecked((long)rng.State2));
+        State.Write(RngSlot + 4, unchecked((long)rng.State3));
+    }
+
+    private void GainBlock(int card, int amount)
+    {
+        if (amount <= 0) return;
+        int previous = Block;
+        State.Write(BlockSlot, Math.Min(999_999_999L, (long)Block + amount));
+        Emit(EventKind.Block, card, Block - previous);
+    }
+
+    private sealed class CardComparer(int[] comparisons, int count) : IComparer<int>
+    {
+        public int Compare(int left, int right) => comparisons[left * count + right];
     }
 
     private void Push(int card, bool automatic)
