@@ -38,7 +38,7 @@ internal sealed partial class UnattendedTestRunner
         SearchReplayEvidence evidence = new(node);
         ActionRelicTriggerRecorder recorder = new();
         SimulationSnapshot replay = (SimulationSnapshot)InvokeForcedTerminalMethod(driver, "Replay",
-            [new PlanAction[] { action }, null, root.StartTurnNumber, 0, recorder, null, evidence])!;
+            [new PlanAction[] { action }, null, root.StartTurnNumber, 0, recorder, null, evidence, null])!;
         try
         {
             if (selected.StateKey != replay.StateKey || evidence.FirstScalarDifference != null)
@@ -55,7 +55,7 @@ internal sealed partial class UnattendedTestRunner
                 throw new InvalidOperationException("未捕获首个 5 HP 分叉点及完整回放状态。");
             mismatch.Publish(policy.Diagnostics, "fixture_injected_hp_difference", recorder);
             bool failed = false;
-            try { InvokeForcedTerminalMethod(driver, "ReplayAction", [parent, action with { CardId = "MISSING_DIAGNOSTIC_FIXTURE_CARD" }, null]); }
+            try { InvokeForcedTerminalMethod(driver, "ReplayAction", [parent, action with { CardId = "MISSING_DIAGNOSTIC_FIXTURE_CARD" }, null, null]); }
             catch (SearchTransitionException) { failed = true; }
             if (!failed) throw new InvalidOperationException("失败分支取证吞掉了搜索异常。");
         }

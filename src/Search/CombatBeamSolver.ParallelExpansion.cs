@@ -963,6 +963,8 @@ internal sealed partial class CombatBeamSolver
         _run.HpInvestmentBranchesProtected += source.HpInvestmentBranchesProtected;
         _run.ReplayCount += source.ReplayCount;
         _run.ForkCount += source.ForkCount;
+        _run.RoundPrefixCaptures += source.RoundPrefixCaptures;
+        _run.RoundPrefixResumes += source.RoundPrefixResumes;
         _run.TransitionCount += source.TransitionCount;
         _run.RepeatableNoProgressBranchesPruned +=
             source.RepeatableNoProgressBranchesPruned;
@@ -996,6 +998,8 @@ internal sealed partial class CombatBeamSolver
         source.HpInvestmentBranchesProtected = 0;
         source.ReplayCount = 0;
         source.ForkCount = 0;
+        source.RoundPrefixCaptures = 0;
+        source.RoundPrefixResumes = 0;
         source.TransitionCount = 0;
         source.RepeatableNoProgressBranchesPruned = 0;
         source.CycleShapesDetected = 0;

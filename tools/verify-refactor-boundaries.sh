@@ -564,6 +564,12 @@ CombatBeamSolver.Expansion.cs	private IEnumerable<SearchNode> Expand(SearchNode 
 CombatBeamSolver.RoundLifecycle.cs	private SearchBoundaryReason AdvanceRound(
 CombatBeamSolver.RoundLifecycle.cs	private SearchBoundaryReason AdvancePlayerTurnStart(
 CombatBeamSolver.RoundLifecycle.cs	return AdvancePlayerTurnStart(
+CombatBeamSolver.RoundLifecycle.cs	private sealed class RoundPrefixReplayContext(
+CombatBeamSolver.RoundLifecycle.cs	private SearchBoundaryReason ResumeRoundPrefix(
+CombatBeamSolver.Expansion.cs	using RoundPrefixReplayContext? roundPrefix
+SimulatedCombatState.ActionChoices.cs	internal CombatPredictionSimulator ForkCompletedRoundPrefix(
+SimulatedCombatState.ActionChoices.cs	!cursor.IsEmptyCompletedPhaseCursor
+SimulatedCombatState.ActionChoices.cs	return simulator.Fork();
 CombatBeamSolver.BeamRetentionPolicy.cs	public List<SearchNode> RankFinal(IEnumerable<SearchNode> nodes)
 CombatBeamSolver.FinalPlanOrdering.cs	private sealed class FinalPlanOrdering(
 CombatBeamSolver.FinalPlanOrdering.cs	public FinalPlanSelection Select(

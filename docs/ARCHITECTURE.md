@@ -152,6 +152,8 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 准备作业先冻结父节点的卡牌 action/target 与药水/target 表。各父节点轮流派发，已完成的 PendingChoice probe 优先作为独立选择链作业续接；药水完整选择链也作为独立作业运行，避免绑在回合尾部串行等待。首层回放每份作业合并 `clamp(N/DOP, 1, 4)` 次、末份截短，N≥DOP 的 singleton 仍至少有 DOP 份可派发作业，减少细碎结果反复进出邮箱。每个父节点有自己的窄 Fork gate，worker 在 gate 内串行生成 seed，离开后独占自己的分支模拟器；不同父节点不共享这个 gate。卡牌和药水在各自原序数组中归并，只有该父节点全部卡牌/选择/药水完成后，尾部作业才独占 aggregate 执行 EndTurn 并发布 stand-pat 基线。最终 TT、dominance、fallback 与接受顺序仍由 coordinator 按父节点连续前缀提交。
 
+直接 EndTurn 的 `BuildEndTurnBranches` 枚举独占 `RoundPrefixReplayContext`，其嵌套与逐实例分支只借用同一上下文。前面回合阶段已完成且游标确为空时，`ForkCompletedRoundPrefix` 仅临时分离该空游标，仍调用严格 Fork 并在 finally 恢复；其他未完成事务不得复制。检查点通过同一 Fork 合同拥有模型、历史、RNG 与死亡集合，附带洗牌数、回合索引和额外回合标记；恢复调用唯一 `AdvancePlayerTurnStart`，随后进入原结算与快照。当前只为已知玩家开始选择机制建立检查点，不扩大选择或预算。捕获/恢复是物理计数，与原逻辑 Fork/转移分开。上下文不保存在发布快照、父链或 worker 全局中，枚举完成、失败、取消和提前 Dispose 均清除冻结图。
+
 同一动作内的动态选择配额和物理实例补充收集器由一个续接作业独占，前一分支的未用额度仍返还给后一分支。直接首层有 N 个非空语义选择，且原最终候选额度 F 与回放额度 R 均至少为 N、N 至少为 2 时，原分支租约 `ceil(F/N), ceil(R/N)` 即使耗尽也至少给后续 N−1 个兄弟各留下一个名额。因此 `PrimaryChoiceReplayFrontier` 只提前派发每个兄弟必经的第一次回放，不增加物理回放次数。快照先由完成结果持有，再交给 frontier；全部首层作业完成后，唯一续接作业在原遍历位置取走快照并扣原逻辑额度。嵌套回放、失败分支的剩余额度返还、物理实例补充与最终候选枚举保持原序；不满足保证条件或首层之前已有挂起选择时走原完整选择链。没有按完成次序竞争共享额度，也没有改变 512 次 replay 上限、候选规则或身份补充分配。
 
 并行搜索失败提示保留本次请求的 DOP；DOP 大于 1 时先引导上传问题包，再建议切换为“关闭（单线程）”。coordinator 消费完成邮箱、归并该 worker 的指标后才复用 lane；probe 和 raw batch 持有独立 lease。提交前完整保留已预约父节点和所有在途作业的所有权，异常停止派发，释放 dispatch sentinel 并等待全部 lane 完成，再释放未移交的 probe/batch/root。`OwnedExpansionBatch.TransferPotionTo` 与卡牌移交使用同样的先接纳、后移出规则，部分失败仍由原租约负责；旧 Dispose 不触碰后续租户。等待提交的父窗口最多 `2×DOP`，同时执行的作业最多 DOP；这是数量界和高水位预约，不是固定字节界。

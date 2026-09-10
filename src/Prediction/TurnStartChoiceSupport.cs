@@ -38,6 +38,10 @@ internal sealed class TurnStartChoiceCursor(IReadOnlyList<PlanCardChoice>? choic
         Func<TurnStartChoiceRequest, PlanCardChoice?> automaticPolicy)
         => new(automaticPolicy, true);
 
+    internal bool IsEmptyCompletedPhaseCursor
+        => _choices.Count == 0 && _index == 0
+            && _automaticPolicy == null && _beforeNextTake == null;
+
     public bool TryTake(TurnStartChoiceRequest request, out PlanCardChoice? choice)
     {
         // The callback can synchronously open and consume a deeper choice from this same cursor.

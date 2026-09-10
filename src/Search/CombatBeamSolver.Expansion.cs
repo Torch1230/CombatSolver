@@ -1030,15 +1030,19 @@ internal sealed partial class CombatBeamSolver
 
     private IEnumerable<(PlanAction Action, SimulationSnapshot Snapshot)> BuildEndTurnBranches(
         SearchNode node,
-        IReadOnlyList<PlanCardChoice> choices)
+        IReadOnlyList<PlanCardChoice> choices,
+        bool reuseRoundPrefix = true)
     {
+        using RoundPrefixReplayContext? roundPrefix = reuseRoundPrefix && choices.Count == 0
+            ? new(node.Snapshot, node.Turn)
+            : null;
         PlanAction action = new(
             PlanActionKind.EndTurn,
             node.Turn,
             TurnStartChoices: choices.Count == 0 ? null : choices);
-        SimulationSnapshot snapshot = ReplayAction(node, action);
+        SimulationSnapshot snapshot = ReplayAction(node, action, roundPrefix: roundPrefix);
         foreach ((PlanAction resolvedAction, SimulationSnapshot resolvedSnapshot) in
-                 ResolveRoundChoiceBranches(node, action, snapshot))
+                 ResolveRoundChoiceBranches(node, action, snapshot, roundPrefix: roundPrefix))
         {
             yield return (resolvedAction, resolvedSnapshot);
         }
@@ -1104,7 +1108,8 @@ internal sealed partial class CombatBeamSolver
 
     private readonly record struct PendingChoiceReplayBranch(
         PlanAction Action,
-        bool PruneInvalidBranch);
+        bool PruneInvalidBranch,
+        RoundPrefixReplayContext? RoundPrefix = null);
 
     private sealed record PrimaryCardChoiceLayer(
         IReadOnlyList<PlanCardChoice?> Choices,
@@ -1930,7 +1935,8 @@ internal sealed partial class CombatBeamSolver
                          branchSnapshot,
                          candidate.UnresolvedPrimaryChoice,
                          branchBudget,
-                         collector))
+                         collector,
+                         candidate.Branch.RoundPrefix))
             {
                 yield return (finalAction, finalSnapshot);
             }
@@ -2067,7 +2073,8 @@ internal sealed partial class CombatBeamSolver
         SimulationSnapshot snapshot,
         PrimaryChoiceMatch? unresolvedPrimaryChoice = null,
         WholeActionChoiceBudget? wholeActionBudget = null,
-        CardChoiceSpec? budgetPrimaryChoiceSpec = null)
+        CardChoiceSpec? budgetPrimaryChoiceSpec = null,
+        RoundPrefixReplayContext? roundPrefix = null)
     {
         WholeActionChoiceBudget budget;
         ChoiceOccurrenceCollector<DeferredOccurrenceChoiceBranch> occurrenceCollector;
@@ -2094,7 +2101,8 @@ internal sealed partial class CombatBeamSolver
                      snapshot,
                      unresolvedPrimaryChoice,
                      budget.SemanticSearchBudget,
-                     occurrenceCollector))
+                     occurrenceCollector,
+                     roundPrefix))
         {
             yield return (finalAction, finalSnapshot);
         }
@@ -2111,7 +2119,8 @@ internal sealed partial class CombatBeamSolver
         SimulationSnapshot snapshot,
         PrimaryChoiceMatch? unresolvedPrimaryChoice,
         ChoiceSearchBudget searchBudget,
-        ChoiceOccurrenceCollector<DeferredOccurrenceChoiceBranch> occurrenceCollector)
+        ChoiceOccurrenceCollector<DeferredOccurrenceChoiceBranch> occurrenceCollector,
+        RoundPrefixReplayContext? roundPrefix = null)
     {
         if (snapshot.BoundaryReason != SearchBoundaryReason.PendingChoice)
         {
@@ -2140,7 +2149,8 @@ internal sealed partial class CombatBeamSolver
                 snapshot,
                 unresolvedPrimaryChoice,
                 searchBudget,
-                occurrenceCollector);
+                occurrenceCollector,
+                roundPrefix);
         }
         catch
         {
@@ -2166,7 +2176,8 @@ internal sealed partial class CombatBeamSolver
         SimulationSnapshot snapshot,
         PrimaryChoiceMatch? unresolvedPrimaryChoice,
         ChoiceSearchBudget searchBudget,
-        ChoiceOccurrenceCollector<DeferredOccurrenceChoiceBranch> occurrenceCollector)
+        ChoiceOccurrenceCollector<DeferredOccurrenceChoiceBranch> occurrenceCollector,
+        RoundPrefixReplayContext? roundPrefix = null)
     {
         SimulatedCombatState combat = (SimulatedCombatState)snapshot.Simulator.State.CombatState;
         if (combat.PendingKnowledgeDemonChoice is { } knowledgeRequest)
@@ -2187,7 +2198,8 @@ internal sealed partial class CombatBeamSolver
                 };
                 resolvedBranches.Add(new PendingChoiceReplayBranch(
                     resolvedAction,
-                    PruneInvalidBranch: true));
+                    PruneInvalidBranch: true,
+                    RoundPrefix: roundPrefix));
             }
             return new PendingChoiceReplayLayer(resolvedBranches);
         }
@@ -2253,7 +2265,8 @@ internal sealed partial class CombatBeamSolver
                         };
                 resolvedBranches.Add(new PendingChoiceReplayBranch(
                     resolvedAction,
-                    PruneInvalidBranch: true));
+                    PruneInvalidBranch: true,
+                    RoundPrefix: roundPrefix));
             }
             if (identityChangingLayer)
             {
@@ -2302,7 +2315,8 @@ internal sealed partial class CombatBeamSolver
                          resolvedSnapshot,
                          unresolvedPrimaryChoice,
                          branchBudget,
-                         occurrenceCollector))
+                         occurrenceCollector,
+                         branch.RoundPrefix))
             {
                 yield return (finalAction, finalSnapshot);
             }
@@ -2314,8 +2328,8 @@ internal sealed partial class CombatBeamSolver
         PendingChoiceReplayBranch branch,
         ReplayForkSeed? replayForkSeed = null)
         => branch.PruneInvalidBranch
-            ? ReplayPlannedChoiceBranch(node, branch.Action, replayForkSeed)
-            : ReplayAction(node, branch.Action, replayForkSeed);
+            ? ReplayPlannedChoiceBranch(node, branch.Action, replayForkSeed, branch.RoundPrefix)
+            : ReplayAction(node, branch.Action, replayForkSeed, branch.RoundPrefix);
 
     private IReadOnlyList<(IReadOnlyList<PlanCardChoice> Choices, SimulationSnapshot Snapshot)>
         BuildTurnSetupRoots()
@@ -2700,8 +2714,11 @@ internal sealed partial class CombatBeamSolver
         int priorActionCount = 0,
         ActionRelicTriggerRecorder? triggerRecorder = null,
         ReplayForkSeed? replayForkSeed = null,
-        SearchReplayEvidence? replayEvidence = null)
+        SearchReplayEvidence? replayEvidence = null,
+        RoundPrefixReplayContext? roundPrefix = null)
     {
+        roundPrefix?.AssertOwner(parentSnapshot, startingTurn, actions, triggerRecorder, replayForkSeed);
+        bool resumeRoundPrefix = roundPrefix?.HasCheckpoint == true;
         _run.WorkPacer.YieldIfNeeded();
         CombatPredictionSimulator simulator;
         SimulatedCombatState simulatedCombat;
@@ -2730,7 +2747,14 @@ internal sealed partial class CombatBeamSolver
             if (parentSnapshot.BoundaryReason != SearchBoundaryReason.None)
                 throw new InvalidOperationException("不能从已抵达搜索边界的模拟状态继续分叉。");
             _run.TransitionCount += actions.Count;
-            if (replayForkSeed == null)
+            if (resumeRoundPrefix)
+            {
+                _run.ForkCount++;
+                _run.RoundPrefixResumes++;
+                using (_run.Performance.Measure(SearchMetricPhase.Fork))
+                    (simulator, processedEnemyDeaths) = roundPrefix!.Fork();
+            }
+            else if (replayForkSeed == null)
             {
                 _run.ForkCount++;
                 SearchMeasurement forkMeasurement = _run.Performance.Begin();
@@ -2751,7 +2775,9 @@ internal sealed partial class CombatBeamSolver
             }
             simulatedCombat = (SimulatedCombatState)simulator.State.CombatState;
             turn = startingTurn;
-            shufflesCrossed = parentSnapshot.ShufflesCrossed;
+            shufflesCrossed = resumeRoundPrefix
+                ? roundPrefix!.ShufflesCrossed
+                : parentSnapshot.ShufflesCrossed;
         }
         if (triggerRecorder != null)
             simulator.ActionRelicTriggers = triggerRecorder;
@@ -2769,13 +2795,14 @@ internal sealed partial class CombatBeamSolver
                 SearchMeasurement roundMeasurement = _run.Performance.Begin();
                 try
                 {
-                    boundary = AdvanceRound(
-                        simulator,
-                        simulatedCombat,
-                        turn - _startTurnNumber,
-                        processedEnemyDeaths,
-                        ref shufflesCrossed,
-                        action.TurnStartChoices);
+                    boundary = resumeRoundPrefix
+                        ? ResumeRoundPrefix(
+                            simulator, simulatedCombat, processedEnemyDeaths,
+                            ref shufflesCrossed, action.TurnStartChoices, roundPrefix!)
+                        : AdvanceRound(
+                            simulator, simulatedCombat, turn - _startTurnNumber,
+                            processedEnemyDeaths, ref shufflesCrossed,
+                            action.TurnStartChoices, roundPrefix);
                 }
                 finally
                 {
@@ -3085,14 +3112,16 @@ internal sealed partial class CombatBeamSolver
     private SimulationSnapshot ReplayAction(
         SearchNode parent,
         PlanAction action,
-        ReplayForkSeed? replayForkSeed = null)
+        ReplayForkSeed? replayForkSeed = null,
+        RoundPrefixReplayContext? roundPrefix = null)
     {
         if (replayForkSeed != null && policy.VerifyIncrementalSearch)
             throw new InvalidOperationException("严格增量回放不能消费并行 Fork seed。");
         ReplayForkSeed? gatedSeed = null;
         try
         {
-            if (replayForkSeed == null && _parallelActionReplayForkGate != null)
+            if (replayForkSeed == null && roundPrefix?.HasCheckpoint != true
+                && _parallelActionReplayForkGate != null)
             {
                 gatedSeed = PrepareReplayForkSeed(
                     parent.Snapshot,
@@ -3110,7 +3139,8 @@ internal sealed partial class CombatBeamSolver
                     parent.Snapshot,
                     parent.Turn,
                     parent.ActionCount,
-                    replayForkSeed: replayForkSeed);
+                    replayForkSeed: replayForkSeed,
+                    roundPrefix: roundPrefix);
                 if (!policy.VerifyIncrementalSearch)
                     return incremental;
 
@@ -3159,11 +3189,12 @@ internal sealed partial class CombatBeamSolver
     private SimulationSnapshot? ReplayPlannedChoiceBranch(
         SearchNode parent,
         PlanAction action,
-        ReplayForkSeed? replayForkSeed = null)
+        ReplayForkSeed? replayForkSeed = null,
+        RoundPrefixReplayContext? roundPrefix = null)
     {
         try
         {
-            return ReplayAction(parent, action, replayForkSeed);
+            return ReplayAction(parent, action, replayForkSeed, roundPrefix);
         }
         catch (InvalidPlannedChoiceBranchException ex)
         {

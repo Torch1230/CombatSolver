@@ -207,6 +207,8 @@ internal sealed partial class CombatBeamSolver
         public int HpInvestmentBranchesProtected;
         public int ReplayCount;
         public int ForkCount;
+        public int RoundPrefixCaptures;
+        public int RoundPrefixResumes;
         public int TransitionCount;
         public int ReusedNodeSnapshots;
         public int TranspositionBranchesPruned;

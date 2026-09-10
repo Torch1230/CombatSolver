@@ -39,6 +39,13 @@ internal sealed partial class UnattendedTestRunner
             bool expectedCardPlayed = request.ExpectedPlayedCardId == null;
             bool expectedPotionUsed = request.ExpectedUsedPotionId == null;
             bool expectedPlayerPowerObserved = request.ExpectedObservedPlayerPowerId == null;
+            if (request.ScenarioId is "P5-ROUND-PREFIX-NATIVE-TOOLS" or "P5-ROUND-PREFIX-NATIVE-MAYHEM"
+                or "P5-ROUND-PREFIX-PARALLEL")
+            {
+                await runner.AssertRoundPrefixNativeAsync(combatState, player);
+                runner._completedChecks.Add(request.ScenarioId);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId is "NORMALITY-AUTOPLAY" or "NORMALITY-AUTOPLAY-REPLAY")
             {
                 await runner.AssertNormalityAutoPlayAsync(combatState, player);

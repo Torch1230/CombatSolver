@@ -11,7 +11,7 @@ description: 修改 CombatSolver 的卡牌、Power、遗物、药水、球、怪
 
 开始前读取 `docs/ARCHITECTURE.md` 的 Runtime、Search、模拟引擎与 Prediction 章节。若 actual/simulated、增量回放和续用均一致，问题才可能属于搜索质量，转用 `search-performance-optimization`。
 
-`CombatBeamSolver.RoundLifecycle.cs` 统一回合推进；普通重放与后续检查点必须共用 `AdvancePlayerTurnStart`，不得复制玩家回合开始结算。提取阶段不改变选择事务、回调顺序、RNG 或逻辑预算。
+`CombatBeamSolver.RoundLifecycle.cs` 统一回合推进；普通重放与后续检查点必须共用 `AdvancePlayerTurnStart`，不得复制玩家回合开始结算。提取阶段不改变选择事务、回调顺序、RNG 或逻辑预算。 直接 EndTurn 前缀由该次枚举独占；仅已完成阶段的空游标可临时分离，其他 Fork 禁止条件原样执行。所有恢复进入同一玩家开始方法，嵌套/逐实例选择维持原额度与顺序，枚举退出释放冻结图；不得把上下文搬到发布快照或共享 worker 缓存。
 
 ## 1. 沿当前调用链定位
 

@@ -1,5 +1,11 @@
 # CombatSolver 测试清单
 
+## 2026-09-10：P5 回合检查点
+
+- Fork 合同 `9b709fcb76cf48c7979233b42981075b`，原生 Tools / Mayhem `94203d60bb9a4a38b612d400ada429c9` / `fc88e983d1f74a33b9a7cb2eeb8c1b45`，DOP1/DOP2 / 取消 / 失败排空 / 复用 `f9e7de49655940e1a92ea14a9f6fbf07` 均 Passed。七组影子检查点对原完整重放逐分支比动作、状态键、评分、完整状态、RNG/洗牌和逻辑工作；覆盖父子/live 隔离、提前释放与终局不捕获。
+- 冻结前 Release 0 警告/错误，Linux 结构门禁 85 个 Search 文件；双端规则同步，未执行 PowerShell。没有 headless 增量验证。
+- 两场原完整 VeryHigh / DOP8 / NoGC16GB 的 ABBAABBA 全部完成，每进程相同两场预热、16 次测量，131 项字段分类比较，88 项逻辑字段和 40/85 条完整动作零差异。机甲四对耗时下降 12.87%–18.80%、分配 −14.62%；亡灵四对下降 2.16%–9.52%、分配 −1.52%，同期基线漂移明显。采样 RSS 均值增加、最坏 GC 未改善，完整证据与局限见[P5 报告](performance/simulation-refactor-p5-20260910.md)。完整原生部署与可见帧验证待 P6。
+
 ## 2026-09-10：P5 回合阶段职责迁移
 
 - Release 0 警告/错误，Linux 门禁 `REFACTOR_BOUNDARIES_OK search_files=85`。双端门禁同步文件集、阶段入口与禁止结算回流规则；本机没有执行 PowerShell。

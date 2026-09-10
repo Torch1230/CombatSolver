@@ -45,6 +45,30 @@ internal sealed partial class SimulatedCombatState :
         _activeActionChoiceTiming = PlanChoiceTiming.Action;
     }
 
+    // Only the completed round prefix may detach an empty cursor. All simulator, history,
+    // card, Power and pending-choice barriers are still enforced by the ordinary Fork.
+    internal CombatPredictionSimulator ForkCompletedRoundPrefix(
+        CombatPredictionSimulator simulator,
+        TurnStartChoiceCursor cursor)
+    {
+        if (!ReferenceEquals(simulator.State.CombatState, this)
+            || !ReferenceEquals(_activeActionChoices, cursor)
+            || !cursor.IsEmptyCompletedPhaseCursor
+            || _activeActionChoiceTiming is not (PlanChoiceTiming.PlayerTurnEnd or PlanChoiceTiming.EnemyTurn))
+        {
+            throw new InvalidOperationException("回合前缀只能在完成阶段与空选择游标处复制。");
+        }
+        _activeActionChoices = null;
+        try
+        {
+            return simulator.Fork();
+        }
+        finally
+        {
+            _activeActionChoices = cursor;
+        }
+    }
+
     public TurnStartChoiceCursor OverrideActionChoices(TurnStartChoiceCursor choices)
     {
         TurnStartChoiceCursor previous = _activeActionChoices

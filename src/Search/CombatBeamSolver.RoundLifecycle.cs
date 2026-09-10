@@ -31,7 +31,8 @@ internal sealed partial class CombatBeamSolver
         int roundIndex,
         ISet<uint> processedEnemyDeaths,
         ref int shufflesCrossed,
-        IReadOnlyList<PlanCardChoice>? turnStartChoices)
+        IReadOnlyList<PlanCardChoice>? turnStartChoices,
+        RoundPrefixReplayContext? roundPrefix = null)
     {
         if (!simulator.IsInProgress)
             return SearchBoundaryReason.None;
@@ -307,6 +308,17 @@ internal sealed partial class CombatBeamSolver
             simulatedCombat.ConsumeExtraTurnSources(_player);
         }
 
+        if (roundPrefix != null && roundChoices.IsEmptyCompletedPhaseCursor
+            && simulator.IsInProgress
+            && (simulatedCombat.GetAmount<ToolsOfTheTradePower>(_player.Creature) > 0
+                || simulatedCombat.GetAmount<TyrannyPower>(_player.Creature) > 0
+                || simulatedCombat.GetAmount<MayhemPower>(_player.Creature) > 0))
+        {
+            using (_run.Performance.Measure(SearchMetricPhase.Fork))
+                roundPrefix.Capture(simulator, simulatedCombat, roundChoices,
+                    processedEnemyDeaths, shufflesCrossed, roundIndex, takingExtraTurn);
+            _run.RoundPrefixCaptures++;
+        }
         return AdvancePlayerTurnStart(
             simulator,
             simulatedCombat,
@@ -321,6 +333,86 @@ internal sealed partial class CombatBeamSolver
         finally
         {
             simulatedCombat.EndActionChoices();
+        }
+    }
+
+    private SearchBoundaryReason ResumeRoundPrefix(
+        CombatPredictionSimulator simulator,
+        SimulatedCombatState combat,
+        ISet<uint> processedEnemyDeaths,
+        ref int shufflesCrossed,
+        IReadOnlyList<PlanCardChoice>? choices,
+        RoundPrefixReplayContext prefix)
+    {
+        TurnStartChoiceCursor cursor = new(choices?
+            .Where(choice => choice.Effect != PlanChoiceEffect.ApplyKnowledgeCurse).ToArray());
+        combat.BeginActionChoices(cursor);
+        try
+        {
+            return AdvancePlayerTurnStart(simulator, combat,
+                simulator.State.GetPlayerCombatState(_player),
+                simulator.State.GetCreature(_player.Creature),
+                prefix.RoundIndex, processedEnemyDeaths, ref shufflesCrossed,
+                cursor, prefix.TakingExtraTurn);
+        }
+        finally
+        {
+            combat.EndActionChoices();
+        }
+    }
+
+    // One direct EndTurn iterator owns this context, including all nested and occurrence choices.
+    // It never belongs to a published snapshot or worker-global cache. Fork has its usual full
+    // ownership/remapping contract; disposal releases the frozen graph without pooling it.
+    private sealed class RoundPrefixReplayContext(SimulationSnapshot parent, int turn) : IDisposable
+    {
+        private CombatPredictionSimulator? _checkpoint;
+        private ForkableSet<uint>? _processedEnemyDeaths;
+        private bool _disposed;
+        public bool HasCheckpoint => _checkpoint != null;
+        public int ShufflesCrossed { get; private set; }
+        public int RoundIndex { get; private set; }
+        public bool TakingExtraTurn { get; private set; }
+
+        public void AssertOwner(SimulationSnapshot? actualParent, int actualTurn,
+            IReadOnlyList<PlanAction> actions, ActionRelicTriggerRecorder? recorder,
+            ReplayForkSeed? seed)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (!ReferenceEquals(parent, actualParent) || turn != actualTurn
+                || actions.Count != 1 || actions[0].Kind != PlanActionKind.EndTurn
+                || actions[0].Turn != turn || recorder != null
+                || (HasCheckpoint && seed != null))
+                throw new InvalidOperationException("回合前缀被用于其他父节点、动作或重放事务。");
+        }
+
+        public void Capture(CombatPredictionSimulator simulator, SimulatedCombatState combat,
+            TurnStartChoiceCursor cursor, ISet<uint> deaths, int shuffles,
+            int roundIndex, bool takingExtraTurn)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (HasCheckpoint || deaths is not ForkableSet<uint> forkableDeaths)
+                throw new InvalidOperationException("回合前缀重复捕获或死亡集合没有复制合同。");
+            _checkpoint = combat.ForkCompletedRoundPrefix(simulator, cursor);
+            _processedEnemyDeaths = forkableDeaths.Fork();
+            ShufflesCrossed = shuffles;
+            RoundIndex = roundIndex;
+            TakingExtraTurn = takingExtraTurn;
+        }
+
+        public (CombatPredictionSimulator Simulator, ForkableSet<uint> Deaths) Fork()
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_checkpoint == null || _processedEnemyDeaths == null)
+                throw new InvalidOperationException("回合前缀尚未捕获。");
+            return (_checkpoint.Fork(), _processedEnemyDeaths.Fork());
+        }
+
+        public void Dispose()
+        {
+            _disposed = true;
+            _checkpoint = null;
+            _processedEnemyDeaths = null;
         }
     }
 
