@@ -8,28 +8,29 @@ namespace CombatSolver;
 // Exact native card admission and immutable instruction compilation, shared by all test readers.
 internal static class CompactCardProgramCompiler
 {
-    internal static ResumableDiscardProgram.Card Compile(CardModel card, bool includeAttacks)
+    internal static ResumableDiscardProgram.Card Compile(CardModel card, bool includeAttacks, int shivTemplate = -1)
     {
         if (card is not (Acrobatics or Prepared or Backflip or StrikeSilent or StrikeNecrobinder or DefendSilent or DefendNecrobinder
                 or Neutralize or Survivor or Finesse or UltimateDefend or Suppress or Footwork or Malaise
-                or DeadlyPoison or Haze or Snakebite or Defy or EscapePlan or Outbreak or CalculatedGamble or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail)
-            || card is Neutralize or Suppress or Footwork or Malaise or DeadlyPoison or Haze or Snakebite or Defy or Outbreak or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail && !includeAttacks
+                or DeadlyPoison or Haze or Snakebite or Defy or EscapePlan or Outbreak or CalculatedGamble or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail or CloakAndDagger or Shiv)
+            || card is Neutralize or Suppress or Footwork or Malaise or DeadlyPoison or Haze or Snakebite or Defy or Outbreak or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail or CloakAndDagger or Shiv && !includeAttacks
             || card.Enchantment != null || card.Affliction != null || card.BaseReplayCount != 0
             || card.ExhaustOnNextPlay || card.IsDupe || card.IsClone || card.HasBeenRemovedFromState
             || card.EnergyCost.CostsX && card is not Malaise || card.EnergyCost._localModifiers.Count != 0
             || card.HasStarCostX || card.CurrentStarCost > 0 || card._temporaryStarCosts.Count != 0
             || card.CurrentTarget != null || card.CurrentPlayIndex != 0 || card.LastStarsSpent != 0
             || card.HasSingleTurnRetain || card.HasTurnEndInHandEffect
-            || card.LocalKeywords.Any(k => k != CardKeyword.Sly && !(card is Malaise or CalculatedGamble or Mirage or PiercingWail && k == CardKeyword.Exhaust)
+            || card.LocalKeywords.Any(k => k != CardKeyword.Sly && !(card is Malaise or CalculatedGamble or Mirage or PiercingWail or Shiv && k == CardKeyword.Exhaust)
                 && !(card is Suppress && k == CardKeyword.Innate) && !(card is Snakebite or CalculatedGamble && k == CardKeyword.Retain)
                 && !(card is Defy && k == CardKeyword.Ethereal))
             || card.IsSlyThisTurn && card is not Prepared)
             throw new NotSupportedException($"Compact prototype cannot admit card state {card.Id.Entry}.");
         decimal draw = card is EscapePlan ? 1 : card is Acrobatics or Prepared or Backflip or Finesse ? card.DynamicVars.Cards.BaseValue : 0;
-        decimal damage = includeAttacks && card is StrikeSilent or StrikeNecrobinder or Neutralize or Suppress ? card.DynamicVars.Damage.BaseValue : 0;
-        decimal block = card is DefendSilent or DefendNecrobinder or Backflip or Survivor or Finesse or UltimateDefend or Defy or EscapePlan or DodgeAndRoll ? card.DynamicVars.Block.BaseValue : 0;
+        decimal damage = includeAttacks && card is StrikeSilent or StrikeNecrobinder or Neutralize or Suppress or Shiv ? card.DynamicVars.Damage.BaseValue : 0;
+        decimal block = card is DefendSilent or DefendNecrobinder or Backflip or Survivor or Finesse or UltimateDefend or Defy or EscapePlan or DodgeAndRoll or CloakAndDagger ? card.DynamicVars.Block.BaseValue : 0;
         decimal weak = card is Neutralize or Suppress or Haze or Defy ? card.DynamicVars.Weak.BaseValue : 0;
         decimal poison = card is DeadlyPoison or Haze or Snakebite or Outbreak or BubbleBubble ? card.DynamicVars.Poison.BaseValue : 0;
+        decimal generated = card is CloakAndDagger ? card.DynamicVars.Cards.BaseValue : 0;
         decimal strengthLoss = card is PiercingWail ? card.DynamicVars["StrengthLoss"].BaseValue : 0;
         decimal dexterity = card is Footwork ? card.DynamicVars.Dexterity.BaseValue : 0;
         decimal calculationBase = card is Mirage ? card.DynamicVars.CalculationBase.BaseValue : 0;
@@ -40,6 +41,7 @@ internal static class CompactCardProgramCompiler
             || block != decimal.Truncate(block) || block is < 0 or > 999_999_999m
             || weak != decimal.Truncate(weak) || weak is < 0 or > 999_999_999m
             || poison != decimal.Truncate(poison) || poison is < 0 or > 999_999_999m
+            || generated != decimal.Truncate(generated) || generated is < 0 or > 999_999_999m
             || strengthLoss != decimal.Truncate(strengthLoss) || strengthLoss is < 0 or > 999_999_999m
             || dexterity != decimal.Truncate(dexterity) || dexterity is < 0 or > 999_999_999m
             || calculationBase != decimal.Truncate(calculationBase) || calculationBase is < 0 or > 999_999_999m
@@ -54,6 +56,8 @@ internal static class CompactCardProgramCompiler
             Backflip or Finesse => new([new(CardInstructionKind.GainBlock, (int)block), new(CardInstructionKind.Draw, (int)draw)]),
             Survivor => new([new(CardInstructionKind.GainBlock, (int)block), new(CardInstructionKind.Discard, 1)]),
             DefendSilent or DefendNecrobinder or UltimateDefend => new([new(CardInstructionKind.GainBlock, (int)block)]),
+            Shiv => new([new(CardInstructionKind.AttackTarget, (int)damage)]),
+            CloakAndDagger => new([new(CardInstructionKind.GainBlock, (int)block), new(CardInstructionKind.GenerateCards, (int)generated, CardTemplate: shivTemplate)]),
             StrikeSilent or StrikeNecrobinder when includeAttacks => new([new(CardInstructionKind.AttackTarget, (int)damage)]),
             StrikeSilent or StrikeNecrobinder => CardEffectProgram.Empty, // Inert metadata in the draw/discard-only fixture.
             Neutralize or Suppress => new([new(CardInstructionKind.AttackTarget, (int)damage),

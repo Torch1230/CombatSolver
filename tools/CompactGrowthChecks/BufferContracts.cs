@@ -14,7 +14,7 @@ internal static class BufferContracts
         for (int step = 0; step < 800; step++)
         {
             int buffer = random.Next(buffers.Length);
-            switch (random.Next(6))
+            switch (random.Next(7))
             {
                 case 0:
                 case 1:
@@ -34,6 +34,11 @@ internal static class BufferContracts
                     break;
                 case 4 when marks.Count != 0:
                     var before = marks.Pop(); state.Rollback(before.Mark); expected = before.Values.Select(v => v.ToList()).ToArray();
+                    break;
+                case 6:
+                    int retained = random.Next(expected[buffer].Count + 1);
+                    buffers[buffer].Truncate(state, retained);
+                    expected[buffer].RemoveRange(retained, expected[buffer].Count - retained);
                     break;
                 case 5:
                     if (marks.Count == 0 && saved.Count != 0 && step % 2 == 0)
@@ -76,6 +81,12 @@ internal static class BufferContracts
         buffers[0].Write(deep, 65_536, long.MinValue); buffers[1].Append(deep, [long.MaxValue]);
         deep.Rollback(mark);
         if (!deep.Freeze().ContentEquals(deepFrozen)) throw new InvalidOperationException("Deep indexed writes/growth failed rollback.");
+        var shorten = deep.Mark();
+        buffers[0].Truncate(deep, 0); buffers[0].Append(deep, [17, 19]);
+        if (buffers[0].Count(deep) != 2 || buffers[0].Read(deep, 0) != 17 || buffers[0].Read(deep, 1) != 19)
+            throw new InvalidOperationException("A truncated tall buffer failed to reuse its first leaf.");
+        deep.Rollback(shorten);
+        if (!deep.Freeze().ContentEquals(deepFrozen)) throw new InvalidOperationException("Truncated data did not roll back.");
         deep.Restore(root); Compare(deep, [[], [], []]);
         deep.Restore(deepFrozen); Compare(deep, large.Select(v => v[..65_539]).ToArray());
         foreach (int id in new[] { -1, 0, 255, 256, 65_536, int.MaxValue })
@@ -87,7 +98,7 @@ internal static class BufferContracts
             if (ResumableDiscardProgram.Event.Decode(item.Data, item.Metadata) != item)
                 throw new InvalidOperationException("Event encoding truncated a generated identity, amount or flag.");
         }
-        Console.WriteLine("COMPACT_BUFFER_CHECKS_OK interleaved_buffers=3 random_steps=800 radix_boundaries=true frozen_workers=8 undo=true restore=true signed_32bit_event_fields=true");
+        Console.WriteLine("COMPACT_BUFFER_CHECKS_OK interleaved_buffers=3 random_steps=800 radix_boundaries=true frozen_workers=8 undo=true restore=true truncation_reuse=true signed_32bit_event_fields=true");
 
         long[][] Copy() => expected.Select(v => v.ToArray()).ToArray();
         void Compare(ReversibleValueState lane, long[][] values)

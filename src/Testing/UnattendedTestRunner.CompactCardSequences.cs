@@ -9,8 +9,10 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
+    private readonly record struct CompactCardAction(CardModel? RootCard, int GeneratedOrdinal = -1, int Target = -1);
+
     private async Task AssertCompactCardSequencesAsync(CombatRootSnapshot captured, CombatPredictionSimulator root,
-        CombatState combat, Player player, CardModel[] cards, string fixture)
+        CombatState combat, Player player, CardModel[] cards, string fixture, IReadOnlyList<CompactCardAction[]>? requestedPaths = null)
     {
         var display = SolverDisplayNames.Capture(combat);
         var damage = BattleDamageTracker.Observe(combat);
@@ -18,7 +20,7 @@ internal sealed partial class UnattendedTestRunner
         var enemies = combat.Enemies.ToArray();
         CompactDiscardProjection adapter;
         ResumableDiscardProgram.Candidate initial;
-        List<(int[] Path, ResumableDiscardProgram.Candidate State, SimulationSnapshot Evaluation)> samples = [];
+        List<(CompactCardAction[] Path, ResumableDiscardProgram.Candidate State, SimulationSnapshot Evaluation)> samples = [];
         using (SimulationNotificationIsolation.Enter())
         {
             adapter = new(root, player, includeAttacks: true);
@@ -27,28 +29,32 @@ internal sealed partial class UnattendedTestRunner
             var reader = adapter.CreateReadView();
             var uncached = adapter.CreateReadView(false);
             var evaluator = new CompactEvaluationDriver(captured, display, damage, policy);
-            var paths = Enumerable.Range(0, cards.Length).Select(index => new[] { index })
-                .Concat([Enumerable.Range(0, cards.Length).ToArray(), Enumerable.Range(0, cards.Length).Reverse().ToArray()]);
-            foreach (int[] path in paths)
+            IEnumerable<CompactCardAction[]> paths = requestedPaths ?? cards.Select(card => new[] { new CompactCardAction(card) })
+                .Concat([cards.Select(card => new CompactCardAction(card)).ToArray(), cards.Reverse().Select(card => new CompactCardAction(card)).ToArray()]).ToArray();
+            foreach (var path in paths)
             {
                 var mark = lane.State.Mark();
                 var oracle = root.Fork();
-                foreach (int index in path)
+                foreach (var action in path)
                 {
-                    Play(lane, index);
-                    if (!oracle.ManualPlay(oracle.State.FindCard(cards[index])!, null, out _))
+                    Play(lane, action);
+                    int identity = Resolve(action);
+                    CardModel original = action.RootCard ?? adapter.CaptureCardIdentities(oracle).Single(pair => pair.Value == identity).Key;
+                    if (!oracle.ManualPlay(oracle.State.FindCard(original)!, action.Target < 0 ? null : adapter.Creature(action.Target), out _))
                         throw new InvalidOperationException($"{fixture} oracle suspended.");
                     var projection = adapter.Materialize(lane);
                     adapter.AssertValues(lane, oracle); adapter.AssertValues(lane, projection);
                     foreach (var enemy in enemies)
                         AssertSnapshotEqual(CaptureSimulated(oracle, (SimulatedCombatState)oracle.State.CombatState, player, enemy),
                             CaptureSimulated(projection, (SimulatedCombatState)projection.State.CombatState, player, enemy),
-                            fixture, $"Card{index}");
+                            fixture, $"Card{identity}");
                     if (!CompactPowerValues(((SimulatedCombatState)oracle.State.CombatState).EffectivePowers())
                         .SequenceEqual(CompactPowerValues(((SimulatedCombatState)projection.State.CombatState).EffectivePowers())))
                         throw new InvalidOperationException($"{fixture} metadata/order differs.");
-                    if (!CompactHistory(oracle, adapter).SequenceEqual(CompactHistory(projection, adapter)))
-                        throw new InvalidOperationException($"{fixture} history/source differs.");
+                    string[] expectedHistory = CompactHistory(oracle, adapter).ToArray(), actualHistory = CompactHistory(projection, adapter).ToArray();
+                    if (!expectedHistory.SequenceEqual(actualHistory))
+                        throw new InvalidOperationException($"{fixture} history/source differs at card {identity}:\nExpected:\n"
+                            + string.Join('\n', expectedHistory) + "\nProjected:\n" + string.Join('\n', actualHistory));
                     AssertCompactRngSet(oracle.Rng, projection.Rng);
                     var expected = Release(evaluator.Evaluate(oracle));
                     AssertCompactEvaluation(expected, Release(evaluator.Evaluate(projection)));
@@ -79,7 +85,7 @@ internal sealed partial class UnattendedTestRunner
             foreach (var sample in samples.AsEnumerable().Reverse())
             {
                 initial.RestoreInto(lane);
-                foreach (int index in sample.Path) Play(lane, index);
+                foreach (var action in sample.Path) Play(lane, action);
                 if (!lane.State.Freeze().ContentEquals(sample.State.Open().State.Freeze()))
                     throw new InvalidOperationException($"{fixture} worker retained sibling values.");
                 reader.Read(lane); AssertCompactEvaluation(sample.Evaluation, evaluator.Evaluate(reader));
@@ -87,9 +93,12 @@ internal sealed partial class UnattendedTestRunner
         })));
         _completedChecks.Add($"{fixture}:{samples.Count}Branches:Frozen8Workers:AllSnapshotProperties");
 
-        void Play(ResumableDiscardProgram lane, int index)
+        int Resolve(CompactCardAction action) => action.RootCard != null ? adapter.IndexOf(action.RootCard)
+            : action.GeneratedOrdinal >= 0 ? adapter.CardCount + action.GeneratedOrdinal
+            : throw new InvalidOperationException("Compact action lacks a card identity.");
+        void Play(ResumableDiscardProgram lane, CompactCardAction action)
         {
-            lane.Begin(adapter.IndexOf(cards[index])); lane.Run();
+            lane.Begin(Resolve(action), action.Target); lane.Run();
             if (!lane.Complete) throw new InvalidOperationException($"{fixture} compact command suspended.");
         }
     }

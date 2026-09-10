@@ -4,14 +4,14 @@ internal enum CardInstructionKind
 {
     AttackTarget, GainBlock, Draw, Discard, ApplyBasicPower, SkipIfDrawnCardNotType,
     TriggerBasicPower, DiscardHandAndDraw, SkipIfTargetLacksPower, GainBlockFromPowerSum,
-    GainBlockAndApplyPower, ApplyTemporaryStrengthLoss
+    GainBlockAndApplyPower, ApplyTemporaryStrengthLoss, GenerateCards
 }
 internal enum CardInstructionTarget { Owner, ChosenEnemy, AllEnemies }
 internal enum CardCategory { Other, Attack, Skill, Power }
 
 internal readonly record struct CardInstruction(CardInstructionKind Kind, int Amount,
     BasicPowerKind Power = BasicPowerKind.Strength, CardInstructionTarget Target = CardInstructionTarget.Owner,
-    int EnergyXMultiplier = 0, CardCategory RequiredCategory = CardCategory.Skill, int PowerMultiplier = 0);
+    int EnergyXMultiplier = 0, CardCategory RequiredCategory = CardCategory.Skill, int PowerMultiplier = 0, int CardTemplate = -1);
 
 /// <summary>
 /// Immutable, fully admitted OnPlay instructions. Execution position belongs to the value
@@ -27,6 +27,7 @@ internal sealed class CardEffectProgram
     internal bool RequiresTarget { get; }
     internal bool RequiresPowers { get; }
     internal bool RequiresEnergyX { get; }
+    internal bool GeneratesCards { get; }
 
     internal CardEffectProgram(ReadOnlySpan<CardInstruction> instructions)
     {
@@ -40,8 +41,15 @@ internal sealed class CardEffectProgram
                 || instruction.PowerMultiplier is < 0 or > 999_999_999
                 || instruction.Kind != CardInstructionKind.GainBlockFromPowerSum && instruction.PowerMultiplier != 0)
                 throw new ArgumentException("Compact instruction amount is outside the admitted range.");
+            if (instruction.Kind != CardInstructionKind.GenerateCards && instruction.CardTemplate != -1)
+                throw new ArgumentException("Only generation instructions can reference card templates.");
             switch (instruction.Kind)
             {
+                case CardInstructionKind.GenerateCards:
+                    if (instruction.CardTemplate < 0 || instruction.Target != CardInstructionTarget.Owner)
+                        throw new NotSupportedException("Generation requires an admitted owner card template.");
+                    GeneratesCards = true;
+                    break;
                 case CardInstructionKind.AttackTarget:
                     RequiresTarget = true;
                     break;

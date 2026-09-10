@@ -1,5 +1,7 @@
 # CombatSolver 测试清单
 
+- `COMPACT-GENERATED-CARDS-NATIVE`（`230fb3cfae674da49a61751b4f23da55`）Passed：两根／12 分支／八工作区／九次原生出牌，生成次序、满手溢出、小刀消耗／洗牌／死亡、全部 Snapshot／原键／历史／九 RNG；300 实例、索引截短复用的纯值合同通过。原选择链 `57b5d857e4354a63b1022738090d8fbf` Passed，成本与迭代失败见[报告](performance/simulation-generated-cards-20260911.md)。
+
 - 索引缓冲区合同 Passed：三列表／800 步交错分配、64／2048／65536 边界、八工作区、事件完整 32 位字段；512 次执行中穿插领域槽位。最终 `COMPACT-EFFECT-PROGRAM-NATIVE`（`70f16b4d11984d1c98d46718324c2034`）和中毒终局 `24a06feb94e54f17aa05414434226290` Passed；同 JIT 原产物成本请求 `2321744580d545658aa1abec3536982c` 保留作对照，[额外成本与证据](performance/simulation-indexed-buffer-20260911.md)。
 
 - `COMPACT-TEMPORARY-STRENGTH-NATIVE`（`73cfb42540b941beb3603a22310c1712`）Passed：两个原生根／9 分支／八工作区／五次出牌，尖啸首次、叠加封顶、力量退休重获、Power 非默认字段与敌人死亡，完整 Snapshot／原键／历史／九 RNG。共用 helper 的下回合计数哨兵 `b171994244b54caaafb6e479dca94365` Passed；侧回合末仍由旧引擎与原生定向回调对照，[证据](performance/simulation-compact-temporary-strength-20260911.md)。

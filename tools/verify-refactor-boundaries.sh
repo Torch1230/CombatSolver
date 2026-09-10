@@ -992,6 +992,8 @@ require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" 'private T? 
 require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" 'private PowerModel ApplyPreparedPower<T>' 'Power application must preserve the prepared command'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" '_events.Append(State, [item.Data, item.Metadata]);' 'event identities must retain full-width indexed storage'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ReversibleValueBuffer.cs" 'state.Write(_header + TailOffset, leaf);' 'buffer append cursor must belong to reversible values'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'private readonly ReversibleValueBuffer[] _piles;' 'growing piles must use reversible indexed buffers'
+require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" "history?.Owner.Creature, history?.ShivPlays" 'Shiv history must participate in completed state reads'
 compact_projection="$repository_root/src/Testing/CompactDiscardProjection.cs"
 for semantic_replay in '.ManualPlay(' '.AutoPlay(' '.Discard(' 'CardOnPlayMirrors.Invoke(' 'HookMirrors.'; do
     forbid_fixed "$compact_projection" "$semantic_replay" 'compact projection must decode events without replaying effects:'
@@ -1022,10 +1024,10 @@ compact_card_reads="$repository_root/src/Testing/CompactCardMetadataReadBinding.
 for replay in '.ManualPlay(' '.AutoPlay(' '.Fork(' 'HookMirrors.' 'CardCmd.' '.State.Write('; do
     forbid_fixed "$compact_card_reads" "$replay" 'card metadata binding may only import supplied completed values:'
 done
-require_fixed "$compact_card_reads" 'private readonly CardModel[] _models;' 'card read previews must belong to a private binding'
+require_fixed "$compact_card_reads" 'private readonly List<Binding> _active;' 'card read previews must belong to a private binding'
 require_fixed "$compact_card_reads" 'model.EnergyCost.CapturedXValue = captured;' 'completed card metadata lost captured X values'
 require_fixed "$compact_card_reads" 'model.HasBeenRemovedFromState = removed;' 'completed card metadata lost removal state'
-require_fixed "$compact_reader" '_cardBinding?.Read(program);' 'completed card metadata must come from the current program'
+require_fixed "$compact_reader" '_cards.Read(program);' 'completed card metadata must come from the current program'
 require_fixed "$search_root/SimulatedCombatState.cs" "history?.Owner.Creature, history?.Exhausts" 'completed keys lost supplied exhaust history'
 require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'strategicRequirements, view?.CardValuesInvariant == true ? view.Invariants : null' 'card-set changes must bypass invariant strategic summaries'
 require_fixed "$compact_reader" '_adapter.CopyPowerReadValues(program, _powerValues);' 'completed Power inputs must come from the value program'
@@ -1046,7 +1048,7 @@ require_fixed "$search_root/CompletedStateReadView.cs" 'A new stable root requir
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/CardEffectProgram.cs" '_instructions = instructions.ToArray();' 'compact definitions must own immutable instruction storage'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'State.Write(Frame + EffectIndexOffset, Read(Frame + EffectIndexOffset) + 1);' 'compact effect position must belong to journaled values'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'State.Write(Frame + FirstDrawnOffset, drawn);' 'draw return values must survive in the journaled frame'
-require_fixed "$compact_projection" 'CompactCardProgramCompiler.Compile(card.Preview, includeAttacks)' 'card admission must use the shared immutable program compiler'
+require_fixed "$compact_projection" 'CompactCardProgramCompiler.Compile(card, includeAttacks, cards.Length)' 'card admission must use the shared immutable program compiler'
 compact_compiler="$repository_root/src/Testing/CompactCardProgramCompiler.cs"
 for replay in '.ManualPlay(' '.AutoPlay(' 'CardOnPlayMirrors.Invoke(' 'HookMirrors.' 'CardCmd.' 'PowerCmd.'; do
     forbid_fixed "$compact_compiler" "$replay" 'card admission must compile definitions without executing effects:'
@@ -1055,7 +1057,7 @@ require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/Resumable
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'sum = checked(sum + _powers!.Amount(State, target, instruction.Power));' 'calculated Power sums must read current values'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'if (CreaturePresent(target) && Creature(target).CurrentHp > 0)' 'calculated Power sums must exclude removed and dead enemies'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'private void ApplyTemporaryStrengthLoss(int card, int target, int amount)' 'temporary Strength ordering must belong to the value program'
-require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'ValidateBlockReturns(cards, powers);' 'block-return admission must exclude unrepresented zero-amount instances'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'ValidateBlockReturns(definitions, powers);' 'block-return admission must exclude unrepresented zero-amount instances'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'ApplyPower(card, 0, instruction.Power, (int)returned);' 'deferred Power must use the block command return'
 require_fixed "$compact_reader" 'ResumableDiscardProgram.DamageTraits.Unpowered | ResumableDiscardProgram.DamageTraits.NoDealer' 'indirect damage must not count as powered attack hits'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'WriteRng(rng);' 'compact shuffle lost journaled RNG writes'

@@ -13,14 +13,13 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
 {
     private readonly CompactDiscardProjection _adapter;
     private readonly CombatPredictionSimulator _context;
-    private readonly PredictedCard[] _cards;
+    private readonly CompactCardMetadataReadBinding _cards;
     private readonly Player _player;
     private readonly CardHistoryReadValues _baseline;
     private readonly ulong[] _cardGapMasks;
     private readonly Dictionary<ulong, IReadOnlyList<PredictionGap>> _gapCombinations = [];
     private readonly IReadOnlyList<PredictionGap> _rootGaps;
     private readonly PredictionGap[] _distinctGaps;
-    private readonly CompactCardMetadataReadBinding? _cardBinding;
     private ResumableDiscardProgram _program;
     private CardHistoryReadValues _history;
     private IReadOnlyList<PredictionGap> _gaps;
@@ -40,8 +39,9 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
         _context = root;
         _player = player;
         _program = adapter.Program;
-        _cards = Enumerable.Range(0, adapter.CardCount).Select(id => root.State.FindCard(adapter.Original(id))
+        var cards = Enumerable.Range(0, adapter.CardCount).Select(id => root.State.FindCard(adapter.Original(id))
             ?? throw new InvalidOperationException("Read view lost a root card.")).ToArray();
+        _cards = new(adapter, cards);
         // Getters materialize history maps. Only this disposable setup fork may do that;
         // untouched maps in the immutable root must retain their original absence/zero shape.
         var metadata = (SimulatedCombatState)root.Fork().State.CombatState;
@@ -51,20 +51,19 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
             metadata.GetCardPlaySeriesStartedThisTurn(player.Creature), metadata.GetCardPlayStartsThisTurn(player.Creature),
             metadata.GetCardsPlayedThisTurn(player.Creature), metadata.GetManualCardsPlayedThisTurn(player.Creature),
             metadata.GetAttacksPlayedThisTurn(player.Creature), metadata.GetCreatureAttacksThisTurn(player.Creature),
-            metadata.GetZeroCostAttackStartsThisTurn(player.Creature), metadata.GetCardsExhaustedThisTurn(player.Creature));
+            metadata.GetZeroCostAttackStartsThisTurn(player.Creature), metadata.GetCardsExhaustedThisTurn(player.Creature), metadata.GetShivsPlayedThisTurn(player.Creature));
         _combatBaseline = ((SimulatedCombatState)root.State.CombatState).CaptureCombatHistoryReadValues();
         _baseHits = Enumerable.Range(0, _program.CreatureCount)
             .Select(id => metadata.GetPoweredAttackHitsThisTurn(player.Creature, adapter.Creature(id))).ToArray();
         _enemies = new(this);
         _powerValues = new CompletedPowerReadValues[_program.PowerCount];
         _powerBinding = _program.PowerCount == 0 ? null : adapter.CreatePowerReadBinding(_context);
-        _cardBinding = adapter.CardValuesInvariant ? null : new(_cards);
         _rootGaps = PredictionCoverage.Collect(root);
-        PredictionGap?[] cardGaps = _cards.Select((card, id) => risks[id] is { } reason
-            ? PredictionCoverage.FromSource(card.Preview, "OnPlay", reason) : null).ToArray();
+        PredictionGap?[] cardGaps = adapter.DefinitionModels.Select((card, id) => risks[id] is { } reason
+            ? PredictionCoverage.FromSource(card, "OnPlay", reason) : null).ToArray();
         _distinctGaps = cardGaps.OfType<PredictionGap>().Distinct().ToArray();
-        // Root admission already bounds card identities at 64. Cache only combinations actually
-        // read by this lane; precomputing all subsets would grow exponentially with coverage.
+        // Gaps are keyed by immutable definitions, not the growing instance count. Cache
+        // only combinations actually read by this lane, never all possible subsets.
         if (_distinctGaps.Length > 64) throw new NotSupportedException("Compact risk mask capacity exceeded.");
         _cardGapMasks = cardGaps.Select(gap => gap is null ? 0UL : 1UL << Array.IndexOf(_distinctGaps, gap)).ToArray();
         _gapCombinations.Add(0, PredictionCoverage.Normalize(_rootGaps));
@@ -80,8 +79,8 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
         if (!_adapter.Program.State.HasSameRoot(program.State) || !program.Complete)
             throw new InvalidOperationException("Read view requires a completed candidate from its own root.");
         _program = program;
-        _cardBinding?.Read(program);
-        int attacks = 0, creatureAttacks = 0, zeroCostAttacks = 0;
+        _cards.Read(program);
+        int attacks = 0, creatureAttacks = 0, zeroCostAttacks = 0, shivs = 0;
         _combatHistory.ResetFrom(_combatBaseline);
         int block = 0, skill = 0, discarded = 0, exhausted = 0, energy = 0, draw = 0, starts = 0, plays = 0, manual = 0;
         _entries = _context.History.Entries.Count;
@@ -97,9 +96,10 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
                     if (_cards[item.Card].Preview.Type == CardType.Attack && item.Value == 0) zeroCostAttacks++;
                     if (!item.Automatic) manual++;
                     _entries++;
-                    ulong cardMask = _cardGapMasks[item.Card];
+                    ulong cardMask = _cardGapMasks[program.DefinitionIndex(item.Card)];
                     if (cardMask != 0) { _entries++; gapMask |= cardMask; }
                     break;
+                case ResumableDiscardProgram.EventKind.Generated: _entries += 2; break;
                 case ResumableDiscardProgram.EventKind.Draw: draw++; _entries += 2; break;
                 case ResumableDiscardProgram.EventKind.Discard: discarded++; break;
                 case ResumableDiscardProgram.EventKind.ResultMoved:
@@ -109,7 +109,10 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
                     plays++; _entries++;
                     if (_cards[item.Card].Preview.Type == CardType.Skill) skill++;
                     if (_cards[item.Card].Preview.Type == CardType.Attack)
-                    { attacks++; _combatHistory.LastAttacks[_player] = _cards[item.Card]; }
+                    {
+                        attacks++; _combatHistory.LastAttacks[_player] = _cards[item.Card];
+                        if (_cards[item.Card].Preview.Tags.Contains(CardTag.Shiv)) shivs++;
+                    }
                     if (item.Value != 0) block++;
                     break;
                 case ResumableDiscardProgram.EventKind.Damage:
@@ -142,7 +145,7 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
         _history = new(_player, Add(_baseline.BlockPlays, block), Add(_baseline.SkillPlays, skill),
             Add(_baseline.Discards, discarded), Add(_baseline.EnergySpent, energy), Add(_baseline.Draws, draw),
             Add(_baseline.Series, starts), Add(_baseline.Starts, starts), Add(_baseline.Plays, plays), Add(_baseline.ManualPlays, manual), Add(_baseline.AttackPlays, attacks),
-            Add(_baseline.CreatureAttacks, creatureAttacks), Add(_baseline.ZeroCostAttackStarts, zeroCostAttacks), Add(_baseline.Exhausts, exhausted));
+            Add(_baseline.CreatureAttacks, creatureAttacks), Add(_baseline.ZeroCostAttackStarts, zeroCostAttacks), Add(_baseline.Exhausts, exhausted), Add(_baseline.ShivPlays, shivs));
         if (!_gapCombinations.TryGetValue(gapMask, out var gaps))
         {
             gaps = PredictionCoverage.Normalize(_rootGaps.Concat(_distinctGaps.Where((_, i) => (gapMask & (1UL << i)) != 0)));

@@ -2147,7 +2147,7 @@ internal sealed partial class SimulatedCombatState
         AddAeonglassCounters(ref fingerprint, 'A', _aeonglassAdditionalStrength, "AdditionalStrength", enemyRoster);
         AddAeonglassCounters(ref fingerprint, 'W', _aeonglassWitherUpgradeCount, "WitherUpgradeCount", enemyRoster);
         AddCreatureIntMap(ref fingerprint, 'a', _attacksPlayedThisTurn, history?.Owner.Creature, history?.AttackPlays);
-        AddCreatureIntMap(ref fingerprint, 'j', _shivsPlayedThisTurn);
+        AddCreatureIntMap(ref fingerprint, 'j', _shivsPlayedThisTurn, history?.Owner.Creature, history?.ShivPlays);
         AddCreatureIntMap(ref fingerprint, 'b', _blockCardsPlayedThisTurn, history?.Owner.Creature, history?.BlockPlays);
         AddCreatureIntMap(ref fingerprint, 'l', _skillCardsPlayedThisTurn, history?.Owner.Creature, history?.SkillPlays);
         AddCreatureIntMap(ref fingerprint, 'x', _cardsExhaustedThisTurn, history?.Owner.Creature, history?.Exhausts);

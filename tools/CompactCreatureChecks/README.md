@@ -23,3 +23,5 @@
 `DeferredPowerChecks` 覆盖格挡命令小数返回值与封顶净增量的区别、叠加、零返回、能力牌移除、施加者、撤销和八工作区恢复；根初始或后续敏捷增长可能产生正小数零层 Power 时拒绝整根。真实卡牌与全部估值见[下回合计数报告](../../docs/performance/simulation-compact-deferred-powers-20260911.md)。
 
 `TemporaryStrengthChecks` 验证首次顺序、叠加封顶偏移、力量归零重获、施加者与获得顺序、消耗、敌人死亡清理、整段撤销和八工作区恢复。原生卡牌与完整估值见[临时力量迁移报告](../../docs/performance/simulation-compact-temporary-strength-20260911.md)。
+
+`GeneratedCardChecks` 从十张满手牌生成 300 个实例，以完整列表比较手牌／弃牌的次序，验证模板绑定、完整编号事件、生成后攻击／消耗／洗牌、撤销与八工作区重新生成。原生状态与读取器模型池见[生成卡报告](../../docs/performance/simulation-generated-cards-20260911.md)。

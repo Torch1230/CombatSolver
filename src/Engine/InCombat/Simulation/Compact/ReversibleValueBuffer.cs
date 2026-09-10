@@ -49,6 +49,15 @@ internal sealed class ReversibleValueBuffer
         return start;
     }
 
+    internal void Truncate(ReversibleValueState state, int count)
+    {
+        int previous = Count(state);
+        if ((uint)count > (uint)previous) throw new ArgumentOutOfRangeException(nameof(count));
+        for (int index = count; index < previous; index++) Write(state, index, 0);
+        state.Write(_header + CountOffset, count);
+        state.Write(_header + TailOffset, count == 0 ? 0 : FindLeaf(state, (count - 1) >> LeafBits));
+    }
+
     private void RequireIndex(ReversibleValueState state, int index)
     {
         if ((uint)index >= (uint)Count(state)) throw new ArgumentOutOfRangeException(nameof(index));

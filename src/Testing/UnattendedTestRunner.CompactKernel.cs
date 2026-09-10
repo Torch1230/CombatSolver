@@ -401,6 +401,13 @@ internal sealed partial class UnattendedTestRunner
     {
         Dictionary<PredictionTraceFrame, int> frames = [];
         Dictionary<object, int> plays = [];
+        var cards = adapter.CaptureCardIdentities(simulator);
+        int prior = Math.Min(-2, cards.Values.Min() - 1);
+        int CardIdentity(CardModel card)
+        {
+            if (!cards.TryGetValue(card, out int identity)) cards.Add(card, identity = prior--);
+            return identity;
+        }
         int Identity(object play)
         {
             if (!plays.TryGetValue(play, out int identity)) plays.Add(play, identity = plays.Count);
@@ -411,11 +418,11 @@ internal sealed partial class UnattendedTestRunner
             if (trace == null) return "-";
             string parent = Trace(trace.Parent);
             if (!frames.TryGetValue(trace, out int identity)) frames.Add(trace, identity = frames.Count);
-            string source = trace.Source is CardModel card ? adapter.IndexOf(card).ToString() : trace.Source.Id.Entry;
+            string source = trace.Source is CardModel card ? CardIdentity(card).ToString() : trace.Source.Id.Entry;
             return $"{parent}/{identity}:{source}:{trace.Invocation.Action}:{trace.Invocation.Method?.Name}";
         }
         string Card(CombatPredictionCardSnapshot card)
-            => $"{adapter.IndexOf(card.Original)}:{card.Id}+{card.UpgradeLevel}:{card.Type}";
+            => $"{CardIdentity(card.Original)}:{card.Id}+{card.UpgradeLevel}:{card.Type}";
         static string Result(MegaCrit.Sts2.Core.Entities.Creatures.DamageResult result)
             => $"{result.Receiver.CombatId}:{result.Props}:{result.BlockedDamage}:{result.UnblockedDamage}:{result.OverkillDamage}:{result.WasTargetKilled}:{result.WasBlockBroken}:{result.WasFullyBlocked}";
         foreach (var entry in simulator.History.Entries)
@@ -424,6 +431,8 @@ internal sealed partial class UnattendedTestRunner
             {
                 CombatPredictionCardPlayStartedEntry started => $"start:{Card(started.Card)}:{Identity(started.CardPlay)}:{started.CardPlay.IsAutoPlay}:{started.CardPlay.Target?.CombatId}:{started.CardPlay.Resources.EnergySpent}:{started.CardPlay.Resources.EnergyValue}:{started.CardPlay.Resources.StarsSpent}:{started.CardPlay.Resources.StarValue}:{started.CardPlay.ResultPile}:{started.CardPlay.PlayIndex}:{started.CardPlay.PlayCount}",
                 CombatPredictionCardPlayFinishedEntry finished => $"finish:{Card(finished.Card)}:{Identity(finished.CardPlay)}:{finished.CardPlay.IsAutoPlay}:{finished.WasEthereal}",
+                CombatPredictionCardGeneratedEntry generated => $"generated:{Card(generated.Card)}:{generated.Creator?.NetId}:{generated.ResultKind}",
+                CombatPredictionCardGenerationResolvedEntry resolved => $"generation-resolved:{Card(resolved.Card)}:{resolved.OriginalEntry.Index}",
                 CombatPredictionCardDrawnEntry drawn => $"draw:{Card(drawn.Card)}:{drawn.FromHandDraw}",
                 CombatPredictionCardDrawResolvedEntry resolved => $"draw-resolved:{Card(resolved.Card)}:{resolved.OriginalEntry.Index}",
                 CombatPredictionDamageReceivedEntry damage => $"damage:{damage.Receiver.CombatId}:{damage.Dealer?.CombatId}:{damage.Source}:{(damage.CardSource is { } source ? Card(source) : "-")}:{Result(damage.Result)}",

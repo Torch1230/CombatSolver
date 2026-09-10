@@ -29,7 +29,7 @@ internal sealed class CompactDiscardProjection
 {
     private readonly CombatPredictionSimulator _root;
     private readonly Player _player;
-    private readonly CardModel[] _identities;
+    private readonly CardModel[] _identities, _definitionModels;
     private readonly PredictionRiskReason?[] _risks;
     internal readonly ResumableDiscardProgram Program;
     internal bool CardValuesInvariant { get; }
@@ -87,13 +87,16 @@ internal sealed class CompactDiscardProjection
             combat.IsCapturedRootPowerSlot(power))).ToArray() : null;
         PredictedCard[] cards = state.AllCards.ToArray();
         _identities = cards.Select(c => c.Original).ToArray();
-        ResumableDiscardProgram.Card[] definitions = cards.Select(card => CompactCardProgramCompiler.Compile(card.Preview, includeAttacks)).ToArray();
-        _risks = cards.Select(card => CardOnPlayMirrors.DescribeDispatch(card.Preview) switch
+        CardModel[] generated = cards.Any(card => card.Preview is CloakAndDagger)
+            ? [PredictionUtils.CreateCard(CanonicalModels.Card<Shiv>(), player)] : [];
+        _definitionModels = [.. cards.Select(card => card.Preview), .. generated];
+        ResumableDiscardProgram.Card[] definitions = _definitionModels.Select(card => CompactCardProgramCompiler.Compile(card, includeAttacks, cards.Length)).ToArray();
+        _risks = _definitionModels.Select(card => CardOnPlayMirrors.DescribeDispatch(card) switch
         {
             MirrorDispatchKind.Handled => (PredictionRiskReason?)null,
             MirrorDispatchKind.Inferred => PredictionRiskReason.MethodMirrorIncomplete,
-            MirrorDispatchKind.Unsupported when CardOnPlayCompensationCatalog.Contains(card.Preview) => PredictionRiskReason.MethodNotMirrored,
-            _ => throw new NotSupportedException($"Compact compatibility projection has no legacy OnPlay support for {card.Preview.Id.Entry}.")
+            MirrorDispatchKind.Unsupported when CardOnPlayCompensationCatalog.Contains(card) => PredictionRiskReason.MethodNotMirrored,
+            _ => throw new NotSupportedException($"Compact compatibility projection has no legacy OnPlay support for {card.Id.Entry}.")
         }).ToArray();
         int Index(PredictedCard card) => Array.IndexOf(_identities, card.Original);
         IReadOnlyList<int>[] piles = [state.Hand.Cards.Select(Index).ToArray(), state.DrawPile.Cards.Select(Index).ToArray(),
@@ -106,17 +109,17 @@ internal sealed class CompactDiscardProjection
                 throw new NotSupportedException("Compact prototype requires integral relic block.");
             return (int)value;
         }
-        int[] comparisons = cards.SelectMany(left => cards.Select(left.CompareTo)).ToArray();
+        int[] comparisons = _definitionModels.SelectMany(left => _definitionModels.Select(left.CompareTo)).ToArray();
         PredictionRngState rng = root.Rng.Shuffle.CaptureState();
         AbstractModel[] listeners = combat.IterateHookListeners().ToArray();
         int abacusIndex = Array.FindIndex(listeners, p => p is TheAbacus);
         int stratagemIndex = Array.FindIndex(listeners, p => p is StratagemPower);
-        Program = new(definitions, piles, state.Energy, root.State.GetCreature(player.Creature).Block,
+        Program = new(definitions[..cards.Length], piles, state.Energy, root.State.GetCreature(player.Creature).Block,
             Block(relics.OfType<ToughBandages>().SingleOrDefault()),
             new(rng.Counter, rng.State0, rng.State1, rng.State2, rng.State3), comparisons,
             powers.OfType<StratagemPower>().SingleOrDefault()?.Amount ?? 0,
             Block(relics.OfType<TheAbacus>().SingleOrDefault()), abacusIndex >= 0 && abacusIndex < stratagemIndex,
-            includeAttacks ? _creatures.Select(c => { var v = root.State.GetCreature(c); return new CreatureVitals(v.CurrentHp, v.MaxHp, v.Block); }).ToArray() : null, powerDefinitions);
+            includeAttacks ? _creatures.Select(c => { var v = root.State.GetCreature(c); return new CreatureVitals(v.CurrentHp, v.MaxHp, v.Block); }).ToArray() : null, powerDefinitions, definitions[cards.Length..]);
         CardValuesInvariant = Program.CardValuesInvariant;
     }
 
@@ -193,8 +196,20 @@ internal sealed class CompactDiscardProjection
     internal Creature Creature(int index) => _creatures[index];
     internal int CreatureIndex(Creature creature) => Array.IndexOf(_creatures, creature);
     internal int CardCount => _identities.Length;
+    internal IReadOnlyList<CardModel> DefinitionModels => _definitionModels;
+    internal PredictedCard CreateGeneratedCard(int definition) => definition >= _identities.Length && definition < _definitionModels.Length
+        ? PredictedCard.FromGenerated(PredictionUtils.CloneCardStateForSimulation(_definitionModels[definition])) : throw new ArgumentOutOfRangeException(nameof(definition));
     internal CardModel Original(int identity) => _identities[identity];
     internal int IndexOf(CardModel original) => Array.IndexOf(_identities, original);
+    internal Dictionary<CardModel, int> CaptureCardIdentities(CombatPredictionSimulator simulator)
+    {
+        var identities = _identities.Select((card, index) => (card, index)).ToDictionary(item => item.card, item => item.index);
+        int generated = _identities.Length, prior = -2;
+        foreach (var entry in simulator.History.Entries.OfType<CombatPredictionCardGeneratedEntry>())
+            if (!identities.ContainsKey(entry.Card.Original))
+                identities.Add(entry.Card.Original, entry.Index < _root.History.Entries.Count ? prior-- : generated++);
+        return identities;
+    }
 
     internal CombatPredictionSimulator Materialize(ResumableDiscardProgram program, CompactPhaseProbe? probe = null)
     {
@@ -206,8 +221,8 @@ internal sealed class CompactDiscardProjection
         var eventsStart = probe?.Begin() ?? default;
         var combat = (SimulatedCombatState)projection.State.CombatState;
         SimPlayerCombatState state = projection.State.GetPlayerCombatState(_player);
-        PredictedCard[] cards = _identities.Select(c => projection.State.FindCard(c)
-            ?? throw new InvalidOperationException("Projection lost a root instance.")).ToArray();
+        List<PredictedCard> cards = _identities.Select(c => projection.State.FindCard(c)
+            ?? throw new InvalidOperationException("Projection lost a root instance.")).ToList();
         var damageResults = new Dictionary<int, DamageResult>();
         var stack = new Stack<(int Identity, CardPlay Play, PredictionTrace.TraceScope Scope, PredictionTrace.TraceScope? Method)>();
         try
@@ -215,6 +230,26 @@ internal sealed class CompactDiscardProjection
             for (int index = 0; index < program.EventCount; index++)
             {
                 ResumableDiscardProgram.Event item = program.EventAt(index);
+                if (item.Kind == ResumableDiscardProgram.EventKind.Generated)
+                {
+                    var creator = stack.Peek();
+                    int creatorDefinition = program.DefinitionIndex(creator.Identity);
+                    if (_definitionModels[creatorDefinition] is CloakAndDagger
+                        && _risks[creatorDefinition] == PredictionRiskReason.MethodMirrorIncomplete && creator.Method != null)
+                    {
+                        // The inferred mirror handles only block. Legacy generation runs in
+                        // the subsequent compensation phase, outside its OnPlay method scope.
+                        stack.Pop(); creator.Method?.Dispose();
+                        stack.Push((creator.Identity, creator.Play, creator.Scope, null));
+                    }
+                    if (item.Card != cards.Count) throw new InvalidOperationException("Generated card identity is out of order.");
+                    PredictedCard created = CreateGeneratedCard(item.Value);
+                    cards.Add(created);
+                    var generation = projection.History.CardGenerated(created, _player, CardGenerationResultKind.Fixed);
+                    projection.AddToPile(created, PileType.Hand);
+                    projection.History.CardGenerationResolved(generation, created);
+                    continue;
+                }
                 PredictedCard card = cards[item.Card];
                 switch (item.Kind)
                 {
@@ -242,8 +277,8 @@ internal sealed class CompactDiscardProjection
                         projection.History.CardPlayStarted(card, play);
                         ((ICombatPredictionCardExecutionSink)combat).RecordCardPlayStarted(card, play);
                         PredictionTrace.TraceScope? method = projection.PushMethodSource(card.Original, OnPlay);
-                        if (_risks[item.Card] is { } risk) projection.History.RecordRisk(risk);
-                        if (_risks[item.Card] == PredictionRiskReason.MethodNotMirrored)
+                        if (_risks[program.DefinitionIndex(item.Card)] is { } risk) projection.History.RecordRisk(risk);
+                        if (_risks[program.DefinitionIndex(item.Card)] == PredictionRiskReason.MethodNotMirrored)
                         {
                             // Legacy compensation starts after the unsupported mirror scope.
                             // Its indirect history belongs to the enclosing card action.
@@ -415,9 +450,12 @@ internal sealed class CompactDiscardProjection
                 throw new InvalidOperationException($"Compact Power values differ: owner={definition.Owner}, kind={definition.Kind}.");
         }
         SimCardPile[] piles = [state.Hand, state.DrawPile, state.DiscardPile, state.PlayPile, state.ExhaustPile];
-        for (int card = 0; card < CardCount; card++)
+        var identities = CaptureCardIdentities(simulator);
+        CardModel[] originals = identities.Where(pair => pair.Value >= 0).OrderBy(pair => pair.Value).Select(pair => pair.Key).ToArray();
+        if (originals.Length != program.CardCount) throw new InvalidOperationException("Generated card count differs.");
+        for (int card = 0; card < program.CardCount; card++)
         {
-            PredictedCard? actual = simulator.State.FindCard(_identities[card]);
+            PredictedCard? actual = simulator.State.FindCard(originals[card]);
             if (program.CardRemoved(card) != (actual == null)
                 || actual != null && actual.Preview.EnergyCost.CostsX && actual.Preview.EnergyCost.CapturedXValue != program.CapturedX(card))
                 throw new InvalidOperationException("Compact removal or captured energy differs.");
@@ -427,7 +465,7 @@ internal sealed class CompactDiscardProjection
             if (program.Count((ResumableDiscardProgram.Pile)pile) != piles[pile].Cards.Count)
                 throw new InvalidOperationException($"Compact pile {pile} count differs: {program.Count((ResumableDiscardProgram.Pile)pile)} / {piles[pile].Cards.Count}.");
             for (int i = 0; i < piles[pile].Cards.Count; i++)
-                if (!ReferenceEquals(_identities[program.CardAt((ResumableDiscardProgram.Pile)pile, i)], piles[pile].Cards[i].Original))
+                if (!ReferenceEquals(originals[program.CardAt((ResumableDiscardProgram.Pile)pile, i)], piles[pile].Cards[i].Original))
                     throw new InvalidOperationException("Compact values disagree with projected instance order.");
         }
     }
@@ -447,7 +485,7 @@ internal sealed class CompactDiscardProjection
         "AfterModifyingHpLostAfterOsty", "BeforeDeath", "ShouldDie", "AfterDeath", "ShouldCreatureBeRemovedFromCombatAfterDeath",
         "ShouldAllowHitting", "BeforePowerAmountChanged", "ModifyPowerAmountGiven", "ModifyPowerAmountReceived",
         "AfterModifyingPowerAmountGiven", "AfterModifyingPowerAmountReceived", "AfterPowerAmountChanged",
-        "AfterCardExhausted", "ModifyXValue", "AfterModifyingDamageAmount", "AfterModifyingHpLostBeforeOsty"
+        "AfterCardExhausted", "AfterCardEnteredCombat", "AfterCardGeneratedForCombat", "ModifyXValue", "AfterModifyingDamageAmount", "AfterModifyingHpLostBeforeOsty"
     };
     // Only immutable CLR method/type metadata is shared. Every root still checks subscriber,
     // Power, relic, card-instance, resource, and lifecycle values independently.
