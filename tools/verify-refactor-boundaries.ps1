@@ -1289,6 +1289,8 @@ $compactReadGuards = @(
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'State.Write(Frame + FirstDrawnOffset, drawn);'),
     @('src/Testing/CompactDiscardProjection.cs', 'CompactCardProgramCompiler.Compile(card.Preview, includeAttacks)'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'State.Write(Frame + DrawResumeIpOffset, resumeIp);'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'sum = checked(sum + _powers!.Amount(State, target, instruction.Power));'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'if (CreaturePresent(target) && Creature(target).CurrentHp > 0)'),
     @('src/Testing/CompactDiscardReadView.cs', 'ResumableDiscardProgram.DamageTraits.Unpowered | ResumableDiscardProgram.DamageTraits.NoDealer'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'WriteRng(rng);'),
     @('src/Testing/UnattendedTestRunner.CompactShufflePower.cs', 'isolation.Dispose();'),

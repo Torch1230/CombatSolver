@@ -798,6 +798,8 @@ internal sealed partial class UnattendedTestRunner
         {
             string firstDifference = new ContinuationStamp(predicted.ExactContinuationState)
                 .DescribeFirstDifference(new ContinuationStamp(actual.ExactContinuationState));
+            if (firstDifference == "none")
+                firstDifference = DescribeMoveSnapshotDifference(predicted, actual);
             Entry.Logger.Info(
                 $"[CombatSolver/Unattended] MOVE_DIFF_MISMATCH run_id={_request.RunId} " +
                 $"monster={monsterId} move={moveId} first_difference={firstDifference} " +
@@ -805,6 +807,27 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidOperationException(
                 $"{monsterId}.{moveId} 一步模拟与真实行动不一致；首个差异：{firstDifference}");
         }
+    }
+
+    private static string DescribeMoveSnapshotDifference(MoveStateSnapshot predicted, MoveStateSnapshot actual)
+    {
+        // The strict snapshot also contains diagnostics outside ContinuationStamp. Preserve
+        // their first mismatch in the result even when the large log message is discarded.
+        foreach (var property in typeof(MoveStateSnapshot).GetProperties())
+        {
+            object? before = property.GetValue(predicted), after = property.GetValue(actual);
+            if (before is IReadOnlyDictionary<string, int> left && after is IReadOnlyDictionary<string, int> right)
+            {
+                foreach (string key in left.Keys.Concat(right.Keys).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal))
+                {
+                    bool foundLeft = left.TryGetValue(key, out int leftValue), foundRight = right.TryGetValue(key, out int rightValue);
+                    if (foundLeft != foundRight || leftValue != rightValue)
+                        return $"{property.Name}[{key}]: predicted={(foundLeft ? leftValue.ToString() : "absent")}, actual={(foundRight ? rightValue.ToString() : "absent")}";
+                }
+            }
+            else if (!Equals(before, after)) return $"{property.Name}: predicted={before}, actual={after}";
+        }
+        throw new InvalidOperationException("Snapshot mismatch had no differing field.");
     }
 
     private static void AssertExpectedPowers(

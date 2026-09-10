@@ -39,6 +39,11 @@ internal sealed partial class UnattendedTestRunner
             bool expectedCardPlayed = request.ExpectedPlayedCardId == null;
             bool expectedPotionUsed = request.ExpectedUsedPotionId == null;
             bool expectedPlayerPowerObserved = request.ExpectedObservedPlayerPowerId == null;
+            if (request.ScenarioId == "COMPACT-POWER-EXPRESSIONS-NATIVE")
+            {
+                await runner.AssertCompactPoisonTriggerAsync(combatState, player, powerExpressions: true);
+                return Observation(combatEnded: true);
+            }
             if (request.ScenarioId == "COMPACT-POWER-REACQUIRE-NATIVE")
             {
                 await runner.AssertCompactPoisonTriggerAsync(combatState, player, nonDefaultLifetime: true);

@@ -18,7 +18,7 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
-    private async Task AssertCompactPoisonTriggerAsync(CombatState combat, Player player, bool nonDefaultLifetime = false)
+    private async Task AssertCompactPoisonTriggerAsync(CombatState combat, Player player, bool nonDefaultLifetime = false, bool powerExpressions = false)
     {
         foreach (var relic in player.Relics.ToArray()) await RelicCmd.Remove(relic);
         foreach (var power in combat.Creatures.SelectMany(c => c.Powers).ToArray()) await PowerCmd.Remove(power);
@@ -26,6 +26,8 @@ internal sealed partial class UnattendedTestRunner
         await ClearPlayerPilesAsync(player);
         (string Id, int Upgrade)[] input = [("OUTBREAK", 0), ("OUTBREAK", 1), ("OUTBREAK", 0),
             ("DEADLY_POISON", 1), ("HAZE", 1), ("DEFEND_SILENT", 0)];
+        if (powerExpressions) input = [.. input.Take(5), ("BUBBLE_BUBBLE", 0), ("BUBBLE_BUBBLE", 1),
+            ("MIRAGE", 0), ("MIRAGE", 1), ("MIRAGE", 1)];
         foreach (var card in input)
             await InjectCardAsync(combat, player, new UnattendedCardInjection { CardId = card.Id, UpgradeLevels = card.Upgrade, Pile = "Hand" });
         CardModel[] nativeCards = player.PlayerCombatState!.Hand.Cards.ToArray();
@@ -33,7 +35,10 @@ internal sealed partial class UnattendedTestRunner
         if (enemies.Length != 3) throw new InvalidOperationException("Poison trigger fixture requires three enemies.");
         for (int index = 0; index < enemies.Length; index++)
         {
+            if (powerExpressions) await CreatureCmd.SetMaxHp(enemies[index], 40);
             await CreatureCmd.SetCurrentHp(enemies[index], new[] { 10, 40, 18 }[index]);
+            if (powerExpressions && enemies[index].CurrentHp != new[] { 10, 40, 18 }[index])
+                throw new InvalidOperationException("Power expression fixture did not retain its requested enemy HP.");
             await SetBlockAsync(enemies[index], new[] { 20, 7, 6 }[index]);
         }
         nativeCards[0].DynamicVars.Poison.BaseValue = 0;
@@ -48,6 +53,14 @@ internal sealed partial class UnattendedTestRunner
         }
         await PowerCmd.Apply<StrengthPower>(new BlockingPlayerChoiceContext(), player.Creature, 50, player.Creature, null);
         await PowerCmd.Apply<WeakPower>(new BlockingPlayerChoiceContext(), player.Creature, 2, player.Creature, null);
+        if (powerExpressions)
+        {
+            nativeCards[9].DynamicVars.CalculationBase.BaseValue = 2;
+            nativeCards[9].DynamicVars.CalculationExtra.BaseValue = 3;
+            nativeCards[9].DynamicVars.CalculatedBlock.RecalculateForUpgradeOrEnchant();
+            await PowerCmd.Apply<DexterityPower>(new BlockingPlayerChoiceContext(), player.Creature, -1, player.Creature, null);
+            await PowerCmd.Apply<FrailPower>(new BlockingPlayerChoiceContext(), player.Creature, 2, player.Creature, null);
+        }
         SetEnergy(player, 20); SetStars(player, 0);
         await SetBlockAsync(player.Creature, 3);
         await RunManager.Instance.ActionExecutor.FinishedExecutingActions();
@@ -64,8 +77,8 @@ internal sealed partial class UnattendedTestRunner
         List<ResumableDiscardProgram.Candidate> nativeStates = [];
         List<object> evidence = [];
         int riskSourceCount;
-        int[] route = [0, 3, 4, 1, 2];
-        static int TargetIndex(int index) => index == 3 ? 0 : -1;
+        int[] route = powerExpressions ? [0, 5, 7, 3, 6, 9, 4, 1, 8, 2] : [0, 3, 4, 1, 2];
+        int TargetIndex(int index) => index == 3 || powerExpressions && index == 5 ? 0 : powerExpressions && index == 6 ? 1 : -1;
         Creature? Target(int index) => TargetIndex(index) is var target && target >= 0 ? enemies[target] : null;
         using (SimulationNotificationIsolation.Enter())
         {
@@ -78,6 +91,8 @@ internal sealed partial class UnattendedTestRunner
             var evaluator = new CompactEvaluationDriver(root, display, damage, policy);
             MoveStateSnapshot original = CaptureSimulated(simulator, (SimulatedCombatState)simulator.State.CombatState, player, enemies[0]);
             int[][] paths = [[0], [1], [2], [3, 0], [0, 3], [4, 0], [0, 4], [3, 4, 1], [4, 3, 1], [0, 3, 4, 1], [0, 3, 4, 1, 2]];
+            if (powerExpressions) paths = [[5], [6], [7], [8], [9], [0, 5], [0, 7], [0, 3, 5, 8],
+                [5, 0, 8], [6, 9], [4, 5, 8], [0, 3, 4, 1, 8], [0, 3, 4, 1, 9]];
             foreach (int[] path in paths)
             {
                 initial.RestoreInto(lane);
@@ -99,6 +114,9 @@ internal sealed partial class UnattendedTestRunner
                 if (!lane.State.Freeze().ContentEquals(initial.Open().State.Freeze()))
                     throw new InvalidOperationException("PoisonTrigger rollback retained removal, exhaust or captured X.");
             }
+            if (powerExpressions && (cases[2].Evaluation.PlayerBlock != 4 || cases[3].Evaluation.PlayerBlock != 4
+                || cases[4].Evaluation.PlayerBlock != 10 || cases[6].Evaluation.PlayerBlock != 3))
+                throw new InvalidOperationException("Power expressions missed base/extra, zero or Dexterity/Frail rounding.");
             initial.RestoreInto(lane);
             var continued = simulator.Fork();
             foreach (int card in route)
@@ -114,6 +132,8 @@ internal sealed partial class UnattendedTestRunner
                 nativePowers.Add(CompactPowerValues(((SimulatedCombatState)continued.State.CombatState).EffectivePowers()));
                 nativeStates.Add(lane.Freeze());
             }
+            if (powerExpressions && (lane.Block != 69 || lane.Count(ResumableDiscardProgram.Pile.Exhaust) != 1))
+                throw new InvalidOperationException("Power expression route retained dead-enemy poison or wrong upgrade exhaustion.");
             if (!lane.Terminal || lane.Count(ResumableDiscardProgram.Pile.Play) != 1)
                 throw new InvalidOperationException("Poison route did not exercise the indirect terminal/result-pile gate.");
             if (continued.History.Entries.OfType<CombatPredictionDamageReceivedEntry>().Any(entry => entry.Dealer != null
@@ -218,15 +238,16 @@ internal sealed partial class UnattendedTestRunner
             try { patch.Unpatch(endCombat, prefix); }
             finally { CombatManager.Instance.CombatEnded -= observation.ObserveCombatEnded; _mercuryTerminalObservation = null; }
         }
-        _completedChecks.Add("CompactPoisonTrigger:11Branches:NoDealerOrCardSource:UnpoweredUnblockable:NoAttackHistory:RootRetirementReacquisition:OriginalKeys:AllSnapshotProperties:Frozen8Workers:Native5Actions:PreTeardownFullState:CombatEnded");
+        _completedChecks.Add($"CompactPoisonTrigger:{cases.Count}Branches:NoDealerOrCardSource:UnpoweredUnblockable:NoAttackHistory:RootRetirementReacquisition:OriginalKeys:AllSnapshotProperties:Frozen8Workers:Native{route.Length}Actions:PreTeardownFullState:CombatEnded");
+        if (powerExpressions) _completedChecks.Add("CompactPowerExpressions:TargetPresenceAfterRetirementReacquisition:LivingEnemySumAfterDeath:CalculationBaseExtra:ZeroAndFrailRounding:UpgradeExhaustion:Native10Actions");
         if (nonDefaultLifetime) _completedChecks.Add("CompactPowerReacquire:NonDefaultTurnStartAmountSkipTickTarget:NativeFreshInstance:ReverseRestore:Frozen8Workers");
         if (!string.IsNullOrWhiteSpace(_request.EvidenceDirectory))
         {
             Directory.CreateDirectory(_request.EvidenceDirectory);
-            File.WriteAllText(Path.Combine(_request.EvidenceDirectory, "compact-card-poison-trigger.json"), JsonSerializer.Serialize(
+            File.WriteAllText(Path.Combine(_request.EvidenceDirectory, powerExpressions ? "compact-power-expressions.json" : "compact-card-poison-trigger.json"), JsonSerializer.Serialize(
                 new { branches = evidence, riskSourceCount,
                     nativeRoute = route.Select(index => new { index, input[index].Id, input[index].Upgrade }), nativeSteps = route.Length,
-                    nativePowers, nonDefaultLifetime, zeroBaseOutbreak = 0, productionBackendEnabled = false }, new JsonSerializerOptions { WriteIndented = true }));
+                    nativePowers, nonDefaultLifetime, powerExpressions, zeroBaseOutbreak = 0, productionBackendEnabled = false }, new JsonSerializerOptions { WriteIndented = true }));
         }
 
         void Play(ResumableDiscardProgram lane, int card)

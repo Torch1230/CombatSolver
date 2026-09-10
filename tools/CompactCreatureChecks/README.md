@@ -17,3 +17,5 @@
 `ConditionalPowerChecks` 覆盖四种卡牌类别、空抽牌、洗牌检索与实际抽牌返回值、八工作区恢复，以及群体中毒／虚弱的指令与目标顺序、已离场目标和撤销。条件跳转超过程序末尾时拒绝；这些是纯值合同，原生十九牌准入和抽牌边界见[阶段报告](../../docs/performance/simulation-conditional-powers-20260911.md)。
 
 `PoisonDiscardChecks` 直接验证无攻击者／卡牌来源的中毒伤害属性、穿透、递减、退休／重获和最终击杀；整手弃抽在部分抽牌的洗牌选择与后续 Sly 选择处冻结，八工作区核对原手牌列表、重新抽回的 Sly、后续指令、消耗与撤销。另测空手牌。完整原生与读取模型重获证据见[中毒／弃抽报告](../../docs/performance/simulation-poison-discard-20260911.md)。
+
+`PowerExpressionChecks` 验证条件读取当前中毒状态、归零／重获、移除敌人后的求和、基础值／额外倍率与敏捷／脆弱取整，以及逐槽撤销和八工作区重算；未知目标域、越界跳转与无效倍率必须拒绝。原生组合和完整读取见[表达式报告](../../docs/performance/simulation-power-expressions-20260911.md)。

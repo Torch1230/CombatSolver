@@ -1048,6 +1048,8 @@ for replay in '.ManualPlay(' '.AutoPlay(' 'CardOnPlayMirrors.Invoke(' 'HookMirro
     forbid_fixed "$compact_compiler" "$replay" 'card admission must compile definitions without executing effects:'
 done
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'State.Write(Frame + DrawResumeIpOffset, resumeIp);' 'shuffle return must retain the pending draw stage'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'sum = checked(sum + _powers!.Amount(State, target, instruction.Power));' 'calculated Power sums must read current values'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'if (CreaturePresent(target) && Creature(target).CurrentHp > 0)' 'calculated Power sums must exclude removed and dead enemies'
 require_fixed "$compact_reader" 'ResumableDiscardProgram.DamageTraits.Unpowered | ResumableDiscardProgram.DamageTraits.NoDealer' 'indirect damage must not count as powered attack hits'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'WriteRng(rng);' 'compact shuffle lost journaled RNG writes'
 require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactShufflePower.cs" 'isolation.Dispose();' 'expanded compact isolation must close before worker/native awaits'

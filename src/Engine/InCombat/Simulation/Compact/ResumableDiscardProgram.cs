@@ -182,7 +182,9 @@ internal sealed class ResumableDiscardProgram
         if (!Complete || Terminal || Ending || !Contains(Pile.Hand, card)
             || _cards[card].Effects.Count == 0 || !_cards[card].CostsX && Energy < _cards[card].Cost
             || (_cards[card].Effects.RequiresTarget ? target <= 0 || target >= CreatureCount || !CreaturePresent(target) || Creature(target).CurrentHp <= 0 : target != -1))
-            throw new InvalidOperationException("Card cannot begin this compact action.");
+            throw new InvalidOperationException($"Card cannot begin this compact action: card={card}, target={target}, "
+                + $"energy={Energy}, cost={_cards[card].Cost}, complete={Complete}, ending={Ending}, terminal={Terminal}, "
+                + $"inHand={Contains(Pile.Hand, card)}, requiresTarget={_cards[card].Effects.RequiresTarget}.");
         int energy = _cards[card].CostsX ? Energy : _cards[card].Cost;
         State.Write(EnergySlot, Energy - energy);
         Emit(EventKind.Pay, card, energy);
@@ -294,6 +296,14 @@ internal sealed class ResumableDiscardProgram
             case CardInstructionKind.GainBlock:
                 GainBlock(card, _powers?.ModifyBlock(State, 0, instruction.Amount) ?? instruction.Amount);
                 break;
+            case CardInstructionKind.GainBlockFromPowerSum:
+                int sum = 0;
+                for (int target = 1; target < CreatureCount; target++)
+                    if (CreaturePresent(target) && Creature(target).CurrentHp > 0)
+                        sum = checked(sum + _powers!.Amount(State, target, instruction.Power));
+                decimal block = instruction.Amount + (decimal)instruction.PowerMultiplier * sum;
+                GainBlock(card, _powers!.ModifyBlock(State, 0, block));
+                break;
             case CardInstructionKind.ApplyBasicPower:
                 int amount = checked(instruction.Amount + instruction.EnergyXMultiplier * CapturedX(card));
                 if (instruction.Target == CardInstructionTarget.AllEnemies)
@@ -314,6 +324,10 @@ internal sealed class ResumableDiscardProgram
             case CardInstructionKind.SkipIfDrawnCardNotType:
                 int first = Read(Frame + FirstDrawnOffset);
                 if (first < 0 || _cards[first].Category != instruction.RequiredCategory)
+                    State.Write(Frame + EffectIndexOffset, Read(Frame + EffectIndexOffset) + instruction.Amount);
+                break;
+            case CardInstructionKind.SkipIfTargetLacksPower:
+                if (_powers!.Amount(State, Read(Frame + TargetOffset), instruction.Power) == 0)
                     State.Write(Frame + EffectIndexOffset, Read(Frame + EffectIndexOffset) + instruction.Amount);
                 break;
             case CardInstructionKind.Draw:

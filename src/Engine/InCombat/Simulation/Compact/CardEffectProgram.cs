@@ -1,12 +1,12 @@
 namespace CombatSolver.Engine.InCombat.Simulation.Compact;
 
-internal enum CardInstructionKind { AttackTarget, GainBlock, Draw, Discard, ApplyBasicPower, SkipIfDrawnCardNotType, TriggerBasicPower, DiscardHandAndDraw }
+internal enum CardInstructionKind { AttackTarget, GainBlock, Draw, Discard, ApplyBasicPower, SkipIfDrawnCardNotType, TriggerBasicPower, DiscardHandAndDraw, SkipIfTargetLacksPower, GainBlockFromPowerSum }
 internal enum CardInstructionTarget { Owner, ChosenEnemy, AllEnemies }
 internal enum CardCategory { Other, Attack, Skill, Power }
 
 internal readonly record struct CardInstruction(CardInstructionKind Kind, int Amount,
     BasicPowerKind Power = BasicPowerKind.Strength, CardInstructionTarget Target = CardInstructionTarget.Owner,
-    int EnergyXMultiplier = 0, CardCategory RequiredCategory = CardCategory.Skill);
+    int EnergyXMultiplier = 0, CardCategory RequiredCategory = CardCategory.Skill, int PowerMultiplier = 0);
 
 /// <summary>
 /// Immutable, fully admitted OnPlay instructions. Execution position belongs to the value
@@ -31,7 +31,9 @@ internal sealed class CardEffectProgram
             CardInstruction instruction = _instructions[index];
             if (instruction.Amount is < -999_999_999 or > 999_999_999
                 || instruction.Kind != CardInstructionKind.ApplyBasicPower && (instruction.Amount < 0 || instruction.EnergyXMultiplier != 0)
-                || instruction.EnergyXMultiplier is < -1 or > 1)
+                || instruction.EnergyXMultiplier is < -1 or > 1
+                || instruction.PowerMultiplier is < 0 or > 999_999_999
+                || instruction.Kind != CardInstructionKind.GainBlockFromPowerSum && instruction.PowerMultiplier != 0)
                 throw new ArgumentException("Compact instruction amount is outside the admitted range.");
             switch (instruction.Kind)
             {
@@ -39,6 +41,11 @@ internal sealed class CardEffectProgram
                     RequiresTarget = true;
                     break;
                 case CardInstructionKind.GainBlock:
+                    break;
+                case CardInstructionKind.GainBlockFromPowerSum:
+                    if (instruction.Power != BasicPowerKind.Poison || instruction.Target != CardInstructionTarget.AllEnemies)
+                        throw new NotSupportedException("Calculated block requires the admitted living-enemy Power sum.");
+                    RequiresPowers = true;
                     break;
                 case CardInstructionKind.Draw:
                     if (instruction.Amount > 10) throw new ArgumentException("Compact draw exceeds hand capacity.");
@@ -62,6 +69,14 @@ internal sealed class CardEffectProgram
                     if (instruction.Amount == 0 || instruction.Amount > _instructions.Length - index - 1
                         || !Enum.IsDefined(instruction.RequiredCategory))
                         throw new ArgumentException("Compact conditional branch exceeds its program or has an unknown type.");
+                    break;
+                case CardInstructionKind.SkipIfTargetLacksPower:
+                    if (instruction.Amount == 0 || instruction.Amount > _instructions.Length - index - 1)
+                        throw new ArgumentException("Compact Power predicate exceeds its program.");
+                    if (instruction.Power != BasicPowerKind.Poison || instruction.Target != CardInstructionTarget.ChosenEnemy)
+                        throw new NotSupportedException("Power predicate is outside the admitted target domain.");
+                    RequiresTarget = true;
+                    RequiresPowers = true;
                     break;
                 case CardInstructionKind.ApplyBasicPower:
                     if (instruction.Target is not (CardInstructionTarget.Owner or CardInstructionTarget.ChosenEnemy or CardInstructionTarget.AllEnemies)

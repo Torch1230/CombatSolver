@@ -1,5 +1,7 @@
 # CombatSolver 测试清单
 
+- `COMPACT-POWER-EXPRESSIONS-NATIVE`（`fbb8b2f392274928b5d27bc48ed4e9b8`）Passed：13 分支、八工作区、原生十步；中毒存在／归零／重获、存活敌人求和、基础值与倍率、敏捷／脆弱取整、升级消耗、完整 Snapshot／原键／历史／九流 RNG 及终局清理前状态。纯值工具与 Linux 门禁通过；[失败夹具记录与最终证据](performance/simulation-power-expressions-20260911.md)。
+
 - `COMPACT-POISON-TRIGGER-NATIVE`（`22e557b94d464cdc9b0e45713ff8be85`）、`COMPACT-DISCARD-DRAW-NATIVE`（`a7496c81ae34441987e89f369789116a`）、普通抽牌哨兵（`3e816af38b8c4ef196ec034482652464`）和 `COMPACT-POWER-REACQUIRE-NATIVE`（`c16dead0c81c4818bf9996b6ecf898b1`）Passed：中毒 11 分支／五步击杀与清理前终局、24 弃抽分支／重新抽到的 Sly、空手牌、非默认回合初始值／计时／Target 重获、八工作区、完整状态／历史／Snapshot／原键。纯值合同与结构门禁通过；[证据与边界](performance/simulation-poison-discard-20260911.md)。
 
 - `COMPACT-CONDITIONAL-POWERS-NATIVE`（`0dda50623c92431687817928bbf2744f`）与 `COMPACT-DRAW-RETURN-NATIVE`（`e318d438c9d84b0fab75d17b48db46d8`）Passed：14 分支、八工作区、原生九步和四种原生抽牌根；群体中毒／虚弱顺序、条件格挡、固定施加者／死亡清理、虚无历史、全部 Snapshot／原键／九流 RNG 一致。编译器迁移后的旧生命周期（`2a8ad6be6fd8438bb89415106515af8c`）通过；[失败记录和适用范围](performance/simulation-conditional-powers-20260911.md)。
