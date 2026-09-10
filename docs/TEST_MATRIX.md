@@ -1,5 +1,12 @@
 # CombatSolver 测试清单
 
+## 2026-09-11：剩余瓶颈评估与紧凑候选存储
+
+- [存储探针](../tools/CompactCandidateChecks/README.md)直接链接内核：七组容量合同、零值与完整有符号值、页边界、嵌套回滚后冻结、活动事务/外根拒绝及 8 worker 复用恢复通过。0/1,024/8,192 历史值、8/512/1,024 核心写入的 128 个保留分支全部逐槽一致；这些是结构负载，不是 Power/RNG/死亡语义。A–B–B–A 固定测量完成，保留分配收益与密集退化；最初测试表达式优先级错误及修正见报告。
+- `COMPACT-KERNEL-NATIVE` / `ed3c059cd1a643b0aed19a65ab53597a` Passed，30.22 秒：同一 lane 恢复全部 34 个候选，8 worker 各四次恢复暂停候选；完整状态/ContinuationStamp、原键、Snapshot 全属性与顺序、历史及下一动作续接、原生嵌套链均通过。保持正式通知隔离与 await/原生部署边界。Release 0 警告/错误，未运行新后端整场或 headless 增量验证。
+- 当前原生产构建固定 Short 的 DOP8/1/2/4/8 分别为 `0c364b56a13f49c593fbac24b0476023`、`d24e093fddb54e4d934a21345090ad66`、`0f73e4cbd7054e568ac7edc750a74a73`、`d1b1ec9dc87a49fc8f98df13fa666349`、`28001fde029d42779321a25a9609d9c5`，均 Passed。34 项逻辑/质量指标相同，DOP2/4/8 最大并发达到 2/4/8；本轮没有比较全部动作或逐状态。首尾漂移、实际线程 CPU 与采样窗口局限保留，未据此修改调度。
+- Linux 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=85`；PowerShell 对应规则同步但未在本机执行。两个实例已停止。完整命令、CPU/分配样本、保留 payload、GC 证据边界及后续进入条件见[本轮报告](performance/simulation-candidate-storage-20260911.md)和[方案账本](performance/simulation-strategy-ledger-20260911.md)。
+
 ## 2026-09-11：紧凑估值诊断与模拟上下文校正
 
 - `COMPACT-KERNEL-NATIVE` / `22e98eed11404f2cbb9287d29c7e889a` Passed，30.48 秒。测试与正式搜索共用通知隔离上下文，八任务 await 前与原生部署前显式退出；34 叶完整状态、ContinuationStamp、原状态键、全部 Snapshot 属性、有序历史、冻结续执行和原生嵌套链通过。

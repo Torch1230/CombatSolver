@@ -207,7 +207,7 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 `CombatPredictionSimulator.TerminalStamp` 在与原版对应的完整动作/阶段安全检查点首次锁定胜负及影子玩家回合号，按值 Fork；`IsEnding` 仍是无副作用查询，不在单个 Hook 监听器之间提前终止正在结算的序列。`SimulationSnapshot` 独立保留此值，释放模拟器后，终局标注、临时结果、最终排序和已知胜利上界仍读取同一时点。`PlanAction.Turn` 只表示发起动作的回合，不能代表该动作跨回合结算后的终局回合。
 
-`Simulation/Compact/` 是尚未接入生产搜索的紧凑执行实验。`ReversibleValueState` 独占值槽、撤销日志和单次 LIFO 检查点；`ResumableDiscardProgram` 把牌堆、资源、显式执行帧、选择和事件游标全部写入这些槽，冻结候选独占数组并共享不可变卡牌定义。内核不引用原生 Model、Simulator、Task 或委托。当前只表达无随机抽牌/弃牌与自动出牌，不能将其称为通用新后端。
+`Simulation/Compact/` 是尚未接入生产搜索的紧凑执行实验。`ReversibleValueState` 独占连续值槽、撤销日志、单次 LIFO 检查点及派生页缓存；普通写入和 rollback 都将对应页失效。`ReversibleValueState.FrozenValues` 独占发布时复制的页表，共享只含位图和非零值的私有不可变 64 槽页，不持有 worker、祖先候选或旧模型。恢复要求同根且目标没有活动 checkpoint；只重写失效或不同的页，清除旧候选遗留的零槽，复用工作区不分配。页表及恢复扫描仍随槽容量增长。`ResumableDiscardProgram` 将牌堆、资源、显式执行帧、选择和事件游标全部写入同一值槽，并共享不可变卡牌定义；候选支持新建工作区或 `RestoreInto` 复用已有 lane。诊断写入/事件计数仍累计在各 lane，不属于恢复的战斗状态。内核不引用原生 Model、Simulator、Task 或委托。当前只表达无随机抽牌/弃牌与自动出牌，不能将其称为通用新后端。
 
 `Testing/CompactDiscardProjection.cs` 负责该实验的封闭能力准入和旧模型读投影：检查整根监听器、附加状态、费用与洗牌可能性；从事件构造一个拥有的旧分支供完整 `Snapshot` 读取，不再次执行 OnPlay、弃牌 Hook 或选择器。投影不得反写紧凑权威值。`MethodMirrorRegistry.DescribeDispatch` 和 OnPlay facade 仅提供同一缓存查询的只读分类，投影据此保留旧引擎的已补偿风险历史。候选在复用 worker 前冻结值，并释放旧评估快照的模拟器；后续动作从候选自有值重新打开。双端门禁禁止此实验从 Search/Runtime 入口启用，禁止值内核引入 Model 依赖，禁止投影重新回放效果。
 

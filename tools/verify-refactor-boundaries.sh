@@ -995,7 +995,17 @@ require_fixed "$compact_projection" 'Program.State.HasSameRoot(program.State)' '
 require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactKernelProfile.cs" 'if (!SimulationNotificationIsolation.IsActive)' 'compact measurements lost production simulation context guard'
 require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactKernel.cs" 'initialIsolation.Dispose();' 'compact thread-static isolation must close before worker await'
 require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactKernel.cs" 'continuationIsolation.Dispose();' 'compact simulation isolation must close before native deployment'
-require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ReversibleValueState.cs" 'private readonly long[] _values;' 'compact frozen values lost independent storage'
+compact_values="$repository_root/src/Engine/InCombat/Simulation/Compact/ReversibleValueState.cs"
+compact_frozen="$repository_root/src/Engine/InCombat/Simulation/Compact/ReversibleValueState.FrozenValues.cs"
+require_fixed "$compact_values" 'private readonly long[] _values;' 'compact workspace lost exclusive values'
+require_fixed "$compact_values" '_dirtyPages[entry.Slot / PageWidth] = true;' 'compact rollback must invalidate frozen pages'
+require_fixed "$compact_values" 'if (!source.HasRoot(_rootIdentity) || source.Count != Count)' 'compact restore lost root ownership guard'
+require_fixed "$compact_values" 'if (_checkpoints.Count != 0)' 'compact restore lost active checkpoint guard'
+require_fixed "$compact_frozen" '_pages = (ValuePage[])source._pages.Clone();' 'compact candidate must own its published page directory'
+require_fixed "$compact_frozen" 'private readonly long[] _values = values;' 'compact page values must remain private and immutable'
+for mutable_owner in 'ReversibleValueState _owner' 'ReversibleValueState _workspace' 'FrozenValues _parent'; do
+    forbid_fixed "$compact_frozen" "$mutable_owner" 'compact candidate must not retain mutable workers or ancestor chains:'
+done
 
 if ((${#violations[@]} > 0)); then
     printf '%s\n' "${violations[@]}" >&2

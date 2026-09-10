@@ -129,11 +129,11 @@ internal sealed partial class UnattendedTestRunner
         lane.State.Rollback(innerMark);
         ExpectCompactFailure(() => lane.State.Rollback(innerMark));
         lane.State.Rollback(outerMark);
-        if (!lane.State.Freeze().Values.SequenceEqual(outerValues.Values))
+        if (!lane.State.Freeze().ContentEquals(outerValues))
             throw new InvalidOperationException("Compact nested cancellation changed the suspended outer state.");
         int[] invalid = [prepared, prepared];
         ExpectCompactFailure(() => lane.SupplyChoice(invalid));
-        if (!lane.State.Freeze().Values.SequenceEqual(outerValues.Values))
+        if (!lane.State.Freeze().ContentEquals(outerValues))
             throw new InvalidOperationException("Compact invalid choice mutated its owner.");
 
         Walk(lane, [], (program, path) =>
@@ -154,7 +154,7 @@ internal sealed partial class UnattendedTestRunner
             cases.Add(new(path, program.Freeze(), plan, actual));
         });
         lane.State.Rollback(rootMark);
-        if (!lane.State.Freeze().Values.SequenceEqual(rootValues.Values))
+        if (!lane.State.Freeze().ContentEquals(rootValues))
             throw new InvalidOperationException("Compact expansion changed its root.");
         if (cases.Count < 20 || cases.All(c => c.Choices.Length != 2))
             throw new InvalidOperationException("Compact fixture did not expand nested sibling choices.");
@@ -164,18 +164,26 @@ internal sealed partial class UnattendedTestRunner
         ResumableDiscardProgram[] siblings = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => Task.Run(() =>
         {
             ResumableDiscardProgram worker = pending.Open();
-            worker.SupplyChoice(firstSelection);
-            worker.Run();
+            for (int repeat = 0; repeat < 4; repeat++)
+            {
+                pending.RestoreInto(worker);
+                worker.SupplyChoice(firstSelection);
+                worker.Run();
+            }
             return worker;
         })));
         using IDisposable continuationIsolation = SimulationNotificationIsolation.Enter();
         foreach (var worker in siblings)
         {
-            if (!worker.Complete || !worker.State.Freeze().Values.SequenceEqual(siblings[0].State.Freeze().Values))
+            if (!worker.Complete || !worker.State.Freeze().ContentEquals(siblings[0].State.Freeze()))
                 throw new InvalidOperationException("Compact frozen candidates leaked between workers.");
         }
         foreach (CompactCase item in cases)
-            AssertCompactEvaluation(item.Evaluation, Release(Evaluate(adapter.Materialize(item.Candidate.Open()))));
+        {
+            item.Candidate.RestoreInto(lane);
+            AssertCompactEvaluation(item.Evaluation, Release(Evaluate(adapter.Materialize(lane))));
+        }
+        lane.State.Restore(rootValues);
 
         // A retained completed candidate can start another action after all original lane state
         // has been rolled back. Its event tape and semantic counters survive across actions.

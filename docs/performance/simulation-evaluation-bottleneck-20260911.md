@@ -2,6 +2,8 @@
 
 [性能目录](README.md) · [全部阶段样本、CPU 采样与计算](simulation-evaluation-bottleneck-20260911.json) · [前一轮原型](simulation-kernel-prototype-20260910.md)
 
+> 后续进度：冻结候选压缩与工作区恢复已实现，剩余五项评估和历史方案见[决策账本](simulation-strategy-ledger-20260911.md)与[本轮实现结果](simulation-candidate-storage-20260911.md)。本报告保留修改前的测量，完整读取边界尚未迁移。
+
 ## 结论
 
 **下一项应做完整估值的读取边界迁移，并压缩冻结候选。** 校正测试上下文后，完整 `Snapshot` 占该实验约 **51%–53% 线程 CPU**；逐叶根 Fork 与事件物化合计约 **36%–38% CPU、63%–66% 分配**。Snapshot 内优先处理手牌可达性、完整状态键和投影洗牌。继续优化纯执行循环或最终 34 项排序的空间很小。

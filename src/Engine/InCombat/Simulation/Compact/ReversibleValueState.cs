@@ -5,10 +5,12 @@ namespace CombatSolver.Engine.InCombat.Simulation.Compact;
 /// slots, so rolling back a choice restores both data and the next instruction to execute.
 /// No model, delegate, or mutable simulator reference may be stored in these slots.
 /// </summary>
-internal sealed class ReversibleValueState
+internal sealed partial class ReversibleValueState
 {
     private readonly object _rootIdentity;
     private readonly long[] _values;
+    private readonly ValuePage[] _pages;
+    private readonly bool[] _dirtyPages;
     private readonly List<UndoEntry> _undo = new(128);
     private readonly List<Checkpoint> _checkpoints = new(8);
     private long _nextSequence;
@@ -29,42 +31,23 @@ internal sealed class ReversibleValueState
         }
     }
 
-    internal sealed class FrozenValues
-    {
-        private readonly object _rootIdentity;
-        private readonly long[] _values;
-
-        private FrozenValues(object rootIdentity, long[] values)
-        {
-            _rootIdentity = rootIdentity;
-            _values = values;
-        }
-
-        public int Count => _values.Length;
-        public long this[int slot] => _values[slot];
-        public ReadOnlySpan<long> Values => _values;
-
-        public ReversibleValueState CreateWorkspace()
-            => new(_rootIdentity, (long[])_values.Clone());
-
-        internal bool HasSameRoot(FrozenValues other)
-            => ReferenceEquals(_rootIdentity, other._rootIdentity);
-
-        internal static FrozenValues Capture(object rootIdentity, long[] values)
-            => new(rootIdentity, (long[])values.Clone());
-    }
-
     public ReversibleValueState(int slotCount)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(slotCount);
         _rootIdentity = new object();
         _values = new long[slotCount];
+        _pages = new ValuePage[PageCount(slotCount)];
+        Array.Fill(_pages, ValuePage.Empty);
+        _dirtyPages = new bool[_pages.Length];
     }
 
     private ReversibleValueState(object rootIdentity, long[] ownedValues)
     {
         _rootIdentity = rootIdentity;
         _values = ownedValues;
+        _pages = new ValuePage[PageCount(ownedValues.Length)];
+        Array.Fill(_pages, ValuePage.Empty);
+        _dirtyPages = new bool[_pages.Length];
     }
 
     public int Count => _values.Length;
@@ -89,6 +72,7 @@ internal sealed class ReversibleValueState
             PeakUndoEntries = Math.Max(PeakUndoEntries, _undo.Count);
         }
         _values[slot] = value;
+        _dirtyPages[slot / PageWidth] = true;
         ValueChanges++;
     }
 
@@ -106,12 +90,36 @@ internal sealed class ReversibleValueState
         {
             UndoEntry entry = _undo[index];
             _values[entry.Slot] = entry.Previous;
+            _dirtyPages[entry.Slot / PageWidth] = true;
         }
         _undo.RemoveRange(checkpoint.UndoIndex, _undo.Count - checkpoint.UndoIndex);
         _checkpoints.RemoveAt(_checkpoints.Count - 1);
     }
 
-    public FrozenValues Freeze() => FrozenValues.Capture(_rootIdentity, _values);
+    public FrozenValues Freeze()
+    {
+        for (int page = 0; page < _pages.Length; page++)
+        {
+            if (!_dirtyPages[page]) continue;
+            _pages[page] = ValuePage.Capture(PageValues(page), _pages[page]);
+            _dirtyPages[page] = false;
+        }
+        return FrozenValues.Capture(this);
+    }
+
+    public void Restore(FrozenValues source)
+    {
+        // Reject before any write. A suspended execution is stored in value slots, but
+        // the destination journal must be idle: restore cannot invalidate active marks.
+        if (!source.HasRoot(_rootIdentity) || source.Count != Count)
+            throw new InvalidOperationException("Compact restore requires the same immutable root.");
+        if (_checkpoints.Count != 0)
+            throw new InvalidOperationException("Compact restore requires an idle workspace journal.");
+        source.RestoreInto(this);
+    }
+
+    private Span<long> PageValues(int page)
+        => _values.AsSpan(page * PageWidth, Math.Min(PageWidth, Count - page * PageWidth));
 
     internal bool HasSameRoot(ReversibleValueState other)
         => ReferenceEquals(_rootIdentity, other._rootIdentity);

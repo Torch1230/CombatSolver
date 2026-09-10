@@ -84,8 +84,9 @@ internal sealed class ResumableDiscardProgram
             _cards = source._cards;
             _discardBlock = source._discardBlock;
         }
-        internal int PayloadBytes => _values.Count * sizeof(long);
+        internal int PayloadBytes => _values.PayloadBytes;
         internal ResumableDiscardProgram Open() => new(_cards, _discardBlock, _values.CreateWorkspace());
+        internal void RestoreInto(ResumableDiscardProgram workspace) => workspace.State.Restore(_values);
     }
 
     internal Candidate Freeze() => new(this);

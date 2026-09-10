@@ -1225,8 +1225,23 @@ foreach ($guard in $compactContextGuards) {
         $violations.Add("Compact profile lost simulation context boundary: $($guard[0]) / $($guard[1])")
     }
 }
-if (-not ([IO.File]::ReadAllText((Join-Path $compactRoot 'ReversibleValueState.cs'))).Contains('private readonly long[] _values;')) {
-    $violations.Add('Compact frozen values lost independent storage.')
+$compactStorageGuards = @(
+    @('ReversibleValueState.cs', 'private readonly long[] _values;'),
+    @('ReversibleValueState.cs', '_dirtyPages[entry.Slot / PageWidth] = true;'),
+    @('ReversibleValueState.cs', 'if (!source.HasRoot(_rootIdentity) || source.Count != Count)'),
+    @('ReversibleValueState.cs', 'if (_checkpoints.Count != 0)'),
+    @('ReversibleValueState.FrozenValues.cs', '_pages = (ValuePage[])source._pages.Clone();'),
+    @('ReversibleValueState.FrozenValues.cs', 'private readonly long[] _values = values;')
+)
+foreach ($guard in $compactStorageGuards) {
+    if (-not ([IO.File]::ReadAllText((Join-Path $compactRoot $guard[0]))).Contains($guard[1])) {
+        $violations.Add("Compact storage lost ownership boundary: $($guard[0]) / $($guard[1])")
+    }
+}
+foreach ($reference in @('ReversibleValueState _owner', 'ReversibleValueState _workspace', 'FrozenValues _parent')) {
+    foreach ($match in Select-String -LiteralPath (Join-Path $compactRoot 'ReversibleValueState.FrozenValues.cs') -SimpleMatch $reference) {
+        $violations.Add("$($match.Path):$($match.LineNumber): compact candidate must not retain mutable workers or ancestor chains: $reference")
+    }
 }
 
 if ($violations.Count -gt 0) {
