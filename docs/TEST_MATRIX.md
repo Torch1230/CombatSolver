@@ -1,5 +1,10 @@
 # CombatSolver 测试清单
 
+## 2026-09-10：模拟性能重构计划（仅文档）
+
+- 新增[分阶段执行计划](performance/simulation-refactor-plan-20260910.md)，约定完整正常配置的交错 A/B、严格差分、Fork/并行合同及最终可见验证。以上均为后续验收要求，不计为本轮通过。
+- 本轮仅做 L0 新增链接/路径及 diff 检查，未修改行为源码、重跑游戏、构建或新增性能结论。现有直接采样证据见下节。
+
 ## 2026-09-10：0.34.6 极高配置完整搜索热点采样
 
 - 上游 `a6bc386`，Release 构建 0 警告 / 0 错误，`CopyModOnBuild=false`。两场均 VeryHigh、DOP8、NoGC 配置 16 GB，正常搜索整场路线并在首个完整请求返回后停止；不覆盖时间、节点、Beam 或选择预算，不启用 `ForceShortSearchOnly` 或增量验证。CPU 与分配分别采集，耗时包含 profiler 开销，不作速度 A/B。
