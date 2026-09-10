@@ -92,6 +92,7 @@ internal sealed class ResumableDiscardProgram
             throw new NotSupportedException("Compact shuffle requires captured ordering and random state.");
         if (comparisons != null && (comparisons.Length != cards.Length * cards.Length || cards.Count(c => c.Sly) > 1))
             throw new NotSupportedException("Compact shuffle admits at most one Sly instance and a full comparison matrix.");
+        ValidateBlockReturns(cards, powers);
         _cards = (Card[])cards.Clone();
         _discardBlock = discardBlock;
         _stratagem = stratagem;
@@ -115,6 +116,32 @@ internal sealed class ResumableDiscardProgram
             for (int i = 0; i < piles[p].Count; i++)
                 State.Write(PileBase((Pile)p) + 1 + i, piles[p][i]);
         }
+    }
+
+    private static void ValidateBlockReturns(Card[] cards, BasicPowerDefinition[]? powers)
+    {
+        if (powers == null || !powers.Any(power => power.Owner == 0 && power.Kind == BasicPowerKind.Frail && power.Amount != 0)) return;
+        var returns = cards.SelectMany(card => Enumerable.Range(0, card.Effects.Count).Select(index => card.Effects[index]))
+            .Where(instruction => instruction.Kind == CardInstructionKind.GainBlockAndApplyPower).ToArray();
+        if (returns.Length == 0) return;
+        long minimum = powers.Single(power => power.Owner == 0 && power.Kind == BasicPowerKind.Dexterity).Amount;
+        long maximum = minimum;
+        foreach (var card in cards)
+        for (int index = 0; index < card.Effects.Count; index++)
+        {
+            var instruction = card.Effects[index];
+            if (instruction.Kind != CardInstructionKind.ApplyBasicPower || instruction.Power != BasicPowerKind.Dexterity
+                || instruction.Target != CardInstructionTarget.Owner) continue;
+            if (instruction.EnergyXMultiplier != 0) { minimum = -999_999_999; maximum = 999_999_999; }
+            else if (instruction.Amount > 0)
+                maximum = card.ResultPile == Pile.Removed ? Math.Min(999_999_999, maximum + instruction.Amount) : 999_999_999;
+            else if (instruction.Amount < 0)
+                minimum = card.ResultPile == Pile.Removed ? Math.Max(-999_999_999, minimum + instruction.Amount) : -999_999_999;
+        }
+        // A 0.75 return creates a native zero-amount Power instance. This domain uses zero
+        // as absence, so reject the entire reachable interval before any candidate executes.
+        if (returns.Any(instruction => 1L - instruction.Amount >= minimum && 1L - instruction.Amount <= maximum))
+            throw new NotSupportedException("Compact block return can create an unrepresented zero-amount Power instance.");
     }
 
     private ResumableDiscardProgram(Card[] cards, int discardBlock, int stratagem, int shuffleBlock,
@@ -303,6 +330,11 @@ internal sealed class ResumableDiscardProgram
                         sum = checked(sum + _powers!.Amount(State, target, instruction.Power));
                 decimal block = instruction.Amount + (decimal)instruction.PowerMultiplier * sum;
                 GainBlock(card, _powers!.ModifyBlock(State, 0, block));
+                break;
+            case CardInstructionKind.GainBlockAndApplyPower:
+                decimal returned = _powers!.ModifyBlock(State, 0, instruction.Amount);
+                GainBlock(card, returned);
+                ApplyPower(card, 0, instruction.Power, (int)returned);
                 break;
             case CardInstructionKind.ApplyBasicPower:
                 int amount = checked(instruction.Amount + instruction.EnergyXMultiplier * CapturedX(card));

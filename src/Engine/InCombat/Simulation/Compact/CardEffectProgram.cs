@@ -1,6 +1,11 @@
 namespace CombatSolver.Engine.InCombat.Simulation.Compact;
 
-internal enum CardInstructionKind { AttackTarget, GainBlock, Draw, Discard, ApplyBasicPower, SkipIfDrawnCardNotType, TriggerBasicPower, DiscardHandAndDraw, SkipIfTargetLacksPower, GainBlockFromPowerSum }
+internal enum CardInstructionKind
+{
+    AttackTarget, GainBlock, Draw, Discard, ApplyBasicPower, SkipIfDrawnCardNotType,
+    TriggerBasicPower, DiscardHandAndDraw, SkipIfTargetLacksPower, GainBlockFromPowerSum,
+    GainBlockAndApplyPower
+}
 internal enum CardInstructionTarget { Owner, ChosenEnemy, AllEnemies }
 internal enum CardCategory { Other, Attack, Skill, Power }
 
@@ -47,6 +52,11 @@ internal sealed class CardEffectProgram
                         throw new NotSupportedException("Calculated block requires the admitted living-enemy Power sum.");
                     RequiresPowers = true;
                     break;
+                case CardInstructionKind.GainBlockAndApplyPower:
+                    if (instruction.Power != BasicPowerKind.BlockNextTurn || instruction.Target != CardInstructionTarget.Owner)
+                        throw new NotSupportedException("Block return requires the admitted owner Power.");
+                    RequiresPowers = true;
+                    break;
                 case CardInstructionKind.Draw:
                     if (instruction.Amount > 10) throw new ArgumentException("Compact draw exceeds hand capacity.");
                     TotalDraw = checked(TotalDraw + instruction.Amount);
@@ -80,9 +90,11 @@ internal sealed class CardEffectProgram
                     break;
                 case CardInstructionKind.ApplyBasicPower:
                     if (instruction.Target is not (CardInstructionTarget.Owner or CardInstructionTarget.ChosenEnemy or CardInstructionTarget.AllEnemies)
-                        || instruction.Power is not (BasicPowerKind.Strength or BasicPowerKind.Dexterity or BasicPowerKind.Weak or BasicPowerKind.Poison)
+                        || instruction.Power is not (BasicPowerKind.Strength or BasicPowerKind.Dexterity or BasicPowerKind.Weak or BasicPowerKind.Poison or BasicPowerKind.ToolsOfTheTrade)
                         || instruction.Power is BasicPowerKind.Weak or BasicPowerKind.Poison && (instruction.Target == CardInstructionTarget.Owner
-                            || instruction.Amount < 0 || instruction.EnergyXMultiplier < 0))
+                            || instruction.Amount < 0 || instruction.EnergyXMultiplier < 0)
+                        || instruction.Power == BasicPowerKind.ToolsOfTheTrade && (instruction.Target != CardInstructionTarget.Owner
+                            || instruction.Amount < 0 || instruction.EnergyXMultiplier != 0))
                         throw new NotSupportedException("Power instruction is outside the admitted application domain.");
                     RequiresTarget |= instruction.Target == CardInstructionTarget.ChosenEnemy;
                     RequiresPowers = true;

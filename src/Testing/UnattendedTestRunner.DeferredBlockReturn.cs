@@ -14,7 +14,7 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
-    private async Task AssertDeferredBlockReturnAsync(CombatState combat, Player player)
+    private async Task AssertDeferredBlockReturnAsync(CombatState combat, Player player, bool compact = false)
     {
         var enemy = combat.Enemies.First();
         List<object> evidence = [];
@@ -28,6 +28,10 @@ internal sealed partial class UnattendedTestRunner
                 { CardId = "DODGE_AND_ROLL", UpgradeLevels = mode == 1 ? 0 : 1, Pile = "Hand" });
             if (mode == 1) await InjectCardAsync(combat, player, new UnattendedCardInjection
                 { CardId = "DODGE_AND_ROLL", UpgradeLevels = 1, Pile = "Hand" });
+            if (compact)
+                foreach (int upgrade in new[] { 0, 1 })
+                    await InjectCardAsync(combat, player, new UnattendedCardInjection
+                        { CardId = "TOOLS_OF_THE_TRADE", UpgradeLevels = upgrade, Pile = "Hand" });
             await PowerCmd.Apply<DexterityPower>(new BlockingPlayerChoiceContext(), player.Creature, mode == 2 ? -6 : -1, player.Creature, null);
             await PowerCmd.Apply<FrailPower>(new BlockingPlayerChoiceContext(), player.Creature, 2, player.Creature, null);
             if (mode == 1) await PowerCmd.Apply<BlockNextTurnPower>(new BlockingPlayerChoiceContext(), player.Creature, 2, player.Creature, null);
@@ -35,7 +39,9 @@ internal sealed partial class UnattendedTestRunner
             SetEnergy(player, 5); SetStars(player, 0);
             await RunManager.Instance.ActionExecutor.FinishedExecutingActions();
             var cards = player.PlayerCombatState!.Hand.Cards.ToArray();
-            var root = CombatRootSnapshot.Capture(combat).ForkSimulator();
+            var captured = CombatRootSnapshot.Capture(combat);
+            var root = captured.ForkSimulator();
+            if (compact) await AssertCompactDeferredPowerRootAsync(captured, root, combat, player, cards, mode);
             var prediction = root.Fork();
             var shadow = (SimulatedCombatState)prediction.State.CombatState;
             List<MoveStateSnapshot> expected = [];
@@ -82,6 +88,7 @@ internal sealed partial class UnattendedTestRunner
                 powerRemoved = !player.Creature.HasPower<BlockNextTurnPower>() });
         }
         _completedChecks.Add("DeferredBlockReturn:Native3Roots:CapAndFraction:Stacking:Zero:AllSnapshotFields:PowerMetadata:ForkIsolation:AfterBlockCleared");
+        if (compact) _completedChecks.Add("CompactDeferredPowers:Native3Roots10Actions:BlockReturnAndToolsCounter:Removal:AllSnapshotProperties:HistorySources:AllRng:Rollback:Frozen8Workers:LegacyAfterBlockCleared");
         if (!string.IsNullOrWhiteSpace(_request.EvidenceDirectory))
         {
             Directory.CreateDirectory(_request.EvidenceDirectory);

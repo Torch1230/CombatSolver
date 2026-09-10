@@ -1,6 +1,6 @@
 namespace CombatSolver.Engine.InCombat.Simulation.Compact;
 
-internal enum BasicPowerKind { Strength, Dexterity, Weak, Vulnerable, Frail, Poison }
+internal enum BasicPowerKind { Strength, Dexterity, Weak, Vulnerable, Frail, Poison, BlockNextTurn, ToolsOfTheTrade }
 internal readonly record struct BasicPowerDefinition(BasicPowerKind Kind, int Owner, int Amount,
     int Applier, int Order, decimal Multiplier, bool RootSlot);
 internal readonly record struct BasicPowerValues(int Amount, int Applier, int Order, bool Retired);

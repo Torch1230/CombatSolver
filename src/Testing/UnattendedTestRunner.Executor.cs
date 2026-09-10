@@ -39,6 +39,11 @@ internal sealed partial class UnattendedTestRunner
             bool expectedCardPlayed = request.ExpectedPlayedCardId == null;
             bool expectedPotionUsed = request.ExpectedUsedPotionId == null;
             bool expectedPlayerPowerObserved = request.ExpectedObservedPlayerPowerId == null;
+            if (request.ScenarioId == "COMPACT-DEFERRED-POWERS-NATIVE")
+            {
+                await runner.AssertDeferredBlockReturnAsync(combatState, player, compact: true);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "DEFERRED-BLOCK-RETURN-NATIVE")
             {
                 await runner.AssertDeferredBlockReturnAsync(combatState, player);

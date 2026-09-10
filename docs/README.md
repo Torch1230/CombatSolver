@@ -6,6 +6,7 @@
 
 | 要查什么 | 入口 |
 |---|---|
+| 紧凑下回合格挡、必备工具计数与零层实例准入 | [下回合计数结果](performance/simulation-compact-deferred-powers-20260911.md) |
 | 闪躲翻滚在格挡上限处的下回合格挡修正 | [返回值差分](performance/simulation-deferred-block-return-20260911.md) |
 | 目标 Power 条件与存活敌人求和格挡 | [Power 表达式结果](performance/simulation-power-expressions-20260911.md) |
 | 中毒主动触发、整手弃抽／Sly 和 Power 重获 | [中毒与弃抽结果](performance/simulation-poison-discard-20260911.md) |

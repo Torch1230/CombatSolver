@@ -19,3 +19,5 @@
 `PoisonDiscardChecks` 直接验证无攻击者／卡牌来源的中毒伤害属性、穿透、递减、退休／重获和最终击杀；整手弃抽在部分抽牌的洗牌选择与后续 Sly 选择处冻结，八工作区核对原手牌列表、重新抽回的 Sly、后续指令、消耗与撤销。另测空手牌。完整原生与读取模型重获证据见[中毒／弃抽报告](../../docs/performance/simulation-poison-discard-20260911.md)。
 
 `PowerExpressionChecks` 验证条件读取当前中毒状态、归零／重获、移除敌人后的求和、基础值／额外倍率与敏捷／脆弱取整，以及逐槽撤销和八工作区重算；未知目标域、越界跳转与无效倍率必须拒绝。原生组合和完整读取见[表达式报告](../../docs/performance/simulation-power-expressions-20260911.md)。
+
+`DeferredPowerChecks` 覆盖格挡命令小数返回值与封顶净增量的区别、叠加、零返回、能力牌移除、施加者、撤销和八工作区恢复；根初始或后续敏捷增长可能产生正小数零层 Power 时拒绝整根。真实卡牌与全部估值见[下回合计数报告](../../docs/performance/simulation-compact-deferred-powers-20260911.md)。

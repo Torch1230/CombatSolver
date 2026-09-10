@@ -1,5 +1,7 @@
 # CombatSolver 测试清单
 
+- `COMPACT-DEFERRED-POWERS-NATIVE`（`6f3117a761c04843a78aa6aae746b538`）与新增 Power 槽后的中毒／表达式哨兵（`0ea7d01ece354b858df12471eb6ba5d4`）Passed：三个原生根、16 分支／八工作区、上限与小数返回、必备工具计数和移除；完整状态／历史／原键／Snapshot。兑现由旧引擎与原生定向触发 `AfterBlockCleared`，不是紧凑跨回合；[证据](performance/simulation-compact-deferred-powers-20260911.md)。
+
 - `DEFERRED-BLOCK-RETURN-NATIVE`：失败基线 `f061e289ecc44478bb7e2755653b3b05`（下回合格挡 1／3），最终 `c06b5d6fb97443589aea01f62f52672b` Passed。三个原生根覆盖上限与小数、叠加、零值，完整快照／Power 元数据、Fork 隔离和定向 `AfterBlockCleared`；[证据](performance/simulation-deferred-block-return-20260911.md)。
 
 - `COMPACT-POWER-EXPRESSIONS-NATIVE`（`fbb8b2f392274928b5d27bc48ed4e9b8`）Passed：13 分支、八工作区、原生十步；中毒存在／归零／重获、存活敌人求和、基础值与倍率、敏捷／脆弱取整、升级消耗、完整 Snapshot／原键／历史／九流 RNG 及终局清理前状态。纯值工具与 Linux 门禁通过；[失败夹具记录与最终证据](performance/simulation-power-expressions-20260911.md)。
