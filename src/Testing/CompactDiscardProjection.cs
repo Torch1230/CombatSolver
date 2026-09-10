@@ -14,6 +14,7 @@ using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Achievements;
 using MegaCrit.Sts2.Core.Models.Badges;
 using MegaCrit.Sts2.Core.Models.Cards;
+using MegaCrit.Sts2.Core.Models.Enchantments;
 using MegaCrit.Sts2.Core.Models.Relics;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Models.Singleton;
@@ -87,10 +88,25 @@ internal sealed class CompactDiscardProjection
             combat.IsCapturedRootPowerSlot(power))).ToArray() : null;
         PredictedCard[] cards = state.AllCards.ToArray();
         _identities = cards.Select(c => c.Original).ToArray();
-        CardModel[] generated = cards.Any(card => card.Preview is CloakAndDagger)
-            ? [PredictionUtils.CreateCard(CanonicalModels.Card<Shiv>(), player)] : [];
+        List<CardModel> generated = [];
+        int shivTemplate = -1, inkyShivTemplate = -1;
+        if (cards.Any(card => card.Preview is CloakAndDagger))
+        {
+            shivTemplate = cards.Length + generated.Count;
+            generated.Add(PredictionUtils.CreateCard(CanonicalModels.Card<Shiv>(), player));
+        }
+        if (cards.Any(card => card.Preview is BladeOfInk))
+        {
+            inkyShivTemplate = cards.Length + generated.Count;
+            CardModel template = PredictionUtils.CreateCard(CanonicalModels.Card<Shiv>(), player);
+            PredictionUtils.EnchantCard(CanonicalModels.Enchantment<Inky>().ToMutable(), template, 1m);
+            generated.Add(template);
+        }
+        // Native BladeOfInk enchants after the entire generated batch. In this closed root
+        // generation hooks have no observers, Inky has no OnEnchant/Modify effects and no
+        // combat history event is emitted by enchanting. Capture the final immutable variant.
         _definitionModels = [.. cards.Select(card => card.Preview), .. generated];
-        ResumableDiscardProgram.Card[] definitions = _definitionModels.Select(card => CompactCardProgramCompiler.Compile(card, includeAttacks, cards.Length)).ToArray();
+        ResumableDiscardProgram.Card[] definitions = _definitionModels.Select(card => CompactCardProgramCompiler.Compile(card, includeAttacks, shivTemplate, inkyShivTemplate)).ToArray();
         _risks = _definitionModels.Select(card => CardOnPlayMirrors.DescribeDispatch(card) switch
         {
             MirrorDispatchKind.Handled => (PredictionRiskReason?)null,

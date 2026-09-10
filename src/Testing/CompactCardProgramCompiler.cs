@@ -1,20 +1,23 @@
 using CombatSolver.Engine.InCombat.Simulation.Compact;
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Enchantments;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
+using MegaCrit.Sts2.Core.Models.Enchantments;
 
 namespace CombatSolver;
 
 // Exact native card admission and immutable instruction compilation, shared by all test readers.
 internal static class CompactCardProgramCompiler
 {
-    internal static ResumableDiscardProgram.Card Compile(CardModel card, bool includeAttacks, int shivTemplate = -1)
+    internal static ResumableDiscardProgram.Card Compile(CardModel card, bool includeAttacks, int shivTemplate = -1, int inkyShivTemplate = -1)
     {
         if (card is not (Acrobatics or Prepared or Backflip or StrikeSilent or StrikeNecrobinder or DefendSilent or DefendNecrobinder
                 or Neutralize or Survivor or Finesse or UltimateDefend or Suppress or Footwork or Malaise
-                or DeadlyPoison or Haze or Snakebite or Defy or EscapePlan or Outbreak or CalculatedGamble or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail or CloakAndDagger or Shiv)
-            || card is Neutralize or Suppress or Footwork or Malaise or DeadlyPoison or Haze or Snakebite or Defy or Outbreak or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail or CloakAndDagger or Shiv && !includeAttacks
-            || card.Enchantment != null || card.Affliction != null || card.BaseReplayCount != 0
+                or DeadlyPoison or Haze or Snakebite or Defy or EscapePlan or Outbreak or CalculatedGamble or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail or CloakAndDagger or Shiv or BladeOfInk)
+            || card is Neutralize or Suppress or Footwork or Malaise or DeadlyPoison or Haze or Snakebite or Defy or Outbreak or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail or CloakAndDagger or Shiv or BladeOfInk && !includeAttacks
+            || card.Enchantment != null && !(card is Shiv && card.Enchantment is Inky { Amount: 1, Status: EnchantmentStatus.Normal })
+            || card.Affliction != null || card.BaseReplayCount != 0
             || card.ExhaustOnNextPlay || card.IsDupe || card.IsClone || card.HasBeenRemovedFromState
             || card.EnergyCost.CostsX && card is not Malaise || card.EnergyCost._localModifiers.Count != 0
             || card.HasStarCostX || card.CurrentStarCost > 0 || card._temporaryStarCosts.Count != 0
@@ -28,9 +31,10 @@ internal static class CompactCardProgramCompiler
         decimal draw = card is EscapePlan ? 1 : card is Acrobatics or Prepared or Backflip or Finesse ? card.DynamicVars.Cards.BaseValue : 0;
         decimal damage = includeAttacks && card is StrikeSilent or StrikeNecrobinder or Neutralize or Suppress or Shiv ? card.DynamicVars.Damage.BaseValue : 0;
         decimal block = card is DefendSilent or DefendNecrobinder or Backflip or Survivor or Finesse or UltimateDefend or Defy or EscapePlan or DodgeAndRoll or CloakAndDagger ? card.DynamicVars.Block.BaseValue : 0;
-        decimal weak = card is Neutralize or Suppress or Haze or Defy ? card.DynamicVars.Weak.BaseValue : 0;
+        decimal weak = card.Enchantment is Inky inky ? inky.DynamicVars.Weak.BaseValue
+            : card is Neutralize or Suppress or Haze or Defy ? card.DynamicVars.Weak.BaseValue : 0;
         decimal poison = card is DeadlyPoison or Haze or Snakebite or Outbreak or BubbleBubble ? card.DynamicVars.Poison.BaseValue : 0;
-        decimal generated = card is CloakAndDagger ? card.DynamicVars.Cards.BaseValue : 0;
+        decimal generated = card is CloakAndDagger or BladeOfInk ? card.DynamicVars.Cards.BaseValue : 0;
         decimal strengthLoss = card is PiercingWail ? card.DynamicVars["StrengthLoss"].BaseValue : 0;
         decimal dexterity = card is Footwork ? card.DynamicVars.Dexterity.BaseValue : 0;
         decimal calculationBase = card is Mirage ? card.DynamicVars.CalculationBase.BaseValue : 0;
@@ -56,8 +60,11 @@ internal static class CompactCardProgramCompiler
             Backflip or Finesse => new([new(CardInstructionKind.GainBlock, (int)block), new(CardInstructionKind.Draw, (int)draw)]),
             Survivor => new([new(CardInstructionKind.GainBlock, (int)block), new(CardInstructionKind.Discard, 1)]),
             DefendSilent or DefendNecrobinder or UltimateDefend => new([new(CardInstructionKind.GainBlock, (int)block)]),
+            Shiv when card.Enchantment is Inky => new([new(CardInstructionKind.AttackTarget, (int)damage),
+                new(CardInstructionKind.ApplyBasicPower, (int)weak, BasicPowerKind.Weak, CardInstructionTarget.ChosenEnemy)]),
             Shiv => new([new(CardInstructionKind.AttackTarget, (int)damage)]),
             CloakAndDagger => new([new(CardInstructionKind.GainBlock, (int)block), new(CardInstructionKind.GenerateCards, (int)generated, CardTemplate: shivTemplate)]),
+            BladeOfInk => new([new(CardInstructionKind.GenerateCards, (int)generated, CardTemplate: inkyShivTemplate)]),
             StrikeSilent or StrikeNecrobinder when includeAttacks => new([new(CardInstructionKind.AttackTarget, (int)damage)]),
             StrikeSilent or StrikeNecrobinder => CardEffectProgram.Empty, // Inert metadata in the draw/discard-only fixture.
             Neutralize or Suppress => new([new(CardInstructionKind.AttackTarget, (int)damage),

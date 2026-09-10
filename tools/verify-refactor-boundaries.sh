@@ -1048,7 +1048,7 @@ require_fixed "$search_root/CompletedStateReadView.cs" 'A new stable root requir
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/CardEffectProgram.cs" '_instructions = instructions.ToArray();' 'compact definitions must own immutable instruction storage'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'State.Write(Frame + EffectIndexOffset, Read(Frame + EffectIndexOffset) + 1);' 'compact effect position must belong to journaled values'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'State.Write(Frame + FirstDrawnOffset, drawn);' 'draw return values must survive in the journaled frame'
-require_fixed "$compact_projection" 'CompactCardProgramCompiler.Compile(card, includeAttacks, cards.Length)' 'card admission must use the shared immutable program compiler'
+require_fixed "$compact_projection" 'CompactCardProgramCompiler.Compile(card, includeAttacks, shivTemplate, inkyShivTemplate)' 'card admission must use the shared immutable program compiler'
 compact_compiler="$repository_root/src/Testing/CompactCardProgramCompiler.cs"
 for replay in '.ManualPlay(' '.AutoPlay(' 'CardOnPlayMirrors.Invoke(' 'HookMirrors.' 'CardCmd.' 'PowerCmd.'; do
     forbid_fixed "$compact_compiler" "$replay" 'card admission must compile definitions without executing effects:'

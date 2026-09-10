@@ -7,6 +7,7 @@
 | 要查什么 | 入口 |
 |---|---|
 | 临时力量首次施加、正负偏移与计数封顶 | [原生差分与修正](performance/simulation-temporary-strength-20260911.md) |
+- [紧凑附魔生成牌](performance/simulation-inky-cards-20260911.md)：固定模板折叠条件、完整差分与边界。
 - [紧凑生成卡牌与小刀实例](performance/simulation-generated-cards-20260911.md)
 - [交错分配的紧凑索引缓冲区](performance/simulation-indexed-buffer-20260911.md)
 - [紧凑临时力量与尖啸](performance/simulation-compact-temporary-strength-20260911.md)
