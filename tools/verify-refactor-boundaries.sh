@@ -1000,6 +1000,20 @@ compact_reader="$repository_root/src/Testing/CompactDiscardReadView.cs"
 for replay_or_write in '.Materialize(' '.ManualPlay(' '.AutoPlay(' '.MutablePreview' '.State.Write('; do
     forbid_fixed "$compact_reader" "$replay_or_write" 'completed reader must not reconstruct or mutate branch models:'
 done
+compact_power_reads="$search_root/SimulatedCombatState.CompletedPowerReads.cs"
+for replay in '.ManualPlay(' '.AutoPlay(' '.Fork(' 'HookMirrors.' 'PowerCmd.' '.State.Write('; do
+    forbid_fixed "$compact_power_reads" "$replay" 'completed Power binding may only import supplied values:'
+done
+while IFS= read -r production_path; do
+    [[ $production_path == "$compact_power_reads" ]] && continue
+    forbid_fixed "$production_path" 'CompletedPowerReadBinding' 'completed Power binding is not admitted to production execution:'
+done < <(rg --files "$search_root" "$repository_root/src/Runtime" -g '*.cs')
+require_fixed "$compact_power_reads" 'state.AssertForkable();' 'completed Power binding requires a stable setup root'
+require_fixed "$compact_power_reads" 'model._owner = source.Owner;' 'Power clone must restore captured ownership'
+require_fixed "$compact_power_reads" 'model._amount = value.Amount;' 'completed Power reads lost supplied amount authority'
+require_fixed "$compact_power_reads" '_state.InvalidateBaseHookListeners();' 'roster changes must invalidate Power owner-anchor order'
+require_fixed "$compact_reader" '_adapter.CopyPowerReadValues(program, _powerValues);' 'completed Power inputs must come from the value program'
+require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'SnapshotCore(view.EvaluationContext,' 'completed evaluator must consume the lane-owned evaluation context'
 require_fixed "$compact_reader" '!_adapter.Program.State.HasSameRoot(program.State) || !program.Complete' 'completed reader lost ownership/stability guard'
 require_fixed "$compact_reader" 'ValueShuffleRng rng = _program.ShuffleRng;' 'completed reader lost authoritative shuffle state'
 require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'view?.ShuffleRng ?? simulator.Rng.Shuffle.CaptureState()' 'completed state key lost branch shuffle RNG'

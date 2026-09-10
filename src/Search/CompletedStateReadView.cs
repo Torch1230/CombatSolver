@@ -8,13 +8,15 @@ namespace CombatSolver;
 
 /// <summary>
 /// Completed, synchronous evaluation of a closed effect program. All omitted state must be
-/// invariant in Root: known creature identities, Powers, card metadata, the other eight RNGs, relics, potions, and lifecycle
-/// state other than CardHistory. Piles borrow immutable root cards, never mutable previews.
-/// A reader is owned by one lane and cannot be retained in a candidate. This is not an execution API.
+/// invariant in EvaluationContext: identities, card metadata, the other eight RNGs, relics,
+/// potions and omitted lifecycle state. Supplied Power cells are copied one way into lane-owned
+/// evaluation models before reading, so existing formulas consume the current values/order.
+/// Piles borrow immutable root cards. The context also owns the old formulas' mutable scratch;
+/// it is never executed, retained in a candidate, or read back into the authoritative program.
 /// </summary>
 internal abstract class CompletedStateReadView
 {
-    internal abstract CombatPredictionSimulator Root { get; }
+    internal abstract CombatPredictionSimulator EvaluationContext { get; }
     internal abstract int Energy { get; }
     internal abstract int Block { get; }
     internal abstract CreatureReadValues ReadCreature(Creature creature);

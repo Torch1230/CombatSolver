@@ -6,6 +6,7 @@
 
 | 要查什么 | 入口 |
 |---|---|
+| 基础 Power 值、原生攻击／格挡边界与单向评估读取 | [Power 值迁移结果](performance/simulation-compact-powers-20260911.md) |
 | 组件职责、状态所有权和调用链 | [架构与职责地图](ARCHITECTURE.md) |
 | 全部性能方案取舍、剩余评估与已实现的冻结恢复 | [方案账本](performance/simulation-strategy-ledger-20260911.md)、[候选存储结果](performance/simulation-candidate-storage-20260911.md) |
 | 紧凑洗牌／战略选择、原生两回合与特征复用 | [执行扩展结果](performance/simulation-expanded-chain-20260911.md) |

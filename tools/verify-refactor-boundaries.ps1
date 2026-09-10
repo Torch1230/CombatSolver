@@ -1232,7 +1232,25 @@ foreach ($reference in @('.Materialize(', '.ManualPlay(', '.AutoPlay(', '.Mutabl
         $violations.Add("$($match.Path):$($match.LineNumber): completed reader must not reconstruct or mutate branch models: $reference")
     }
 }
+$compactPowerReads = Join-Path $searchRoot 'SimulatedCombatState.CompletedPowerReads.cs'
+foreach ($reference in @('.ManualPlay(', '.AutoPlay(', '.Fork(', 'HookMirrors.', 'PowerCmd.', '.State.Write(')) {
+    foreach ($match in Select-String -LiteralPath $compactPowerReads -SimpleMatch $reference) {
+        $violations.Add("$($match.Path):$($match.LineNumber): completed Power binding may only import supplied values: $reference")
+    }
+}
+foreach ($file in $compactProductionFiles) {
+    if ($file.FullName -eq $compactPowerReads) { continue }
+    foreach ($match in Select-String -LiteralPath $file.FullName -SimpleMatch 'CompletedPowerReadBinding') {
+        $violations.Add("$($match.Path):$($match.LineNumber): completed Power binding is not admitted to production execution.")
+    }
+}
 $compactReadGuards = @(
+    @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'state.AssertForkable();'),
+    @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'model._owner = source.Owner;'),
+    @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'model._amount = value.Amount;'),
+    @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', '_state.InvalidateBaseHookListeners();'),
+    @('src/Testing/CompactDiscardReadView.cs', '_adapter.CopyPowerReadValues(program, _powerValues);'),
+    @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'SnapshotCore(view.EvaluationContext,'),
     @('src/Testing/CompactDiscardReadView.cs', '!_adapter.Program.State.HasSameRoot(program.State) || !program.Complete'),
     @('src/Testing/CompactDiscardReadView.cs', 'ValueShuffleRng rng = _program.ShuffleRng;'),
     @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'view?.ShuffleRng ?? simulator.Rng.Shuffle.CaptureState()'),

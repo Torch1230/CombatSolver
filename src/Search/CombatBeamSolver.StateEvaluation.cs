@@ -59,7 +59,7 @@ internal sealed partial class CombatBeamSolver
         CompletedStateReadView view, int turn, int actionCount, int shufflesCrossed,
         SearchBoundaryReason boundary, IReadOnlySet<uint> processedEnemyDeaths)
     {
-        SimulationSnapshot result = SnapshotCore(view.Root, turn, actionCount, shufflesCrossed, boundary, processedEnemyDeaths, view);
+        SimulationSnapshot result = SnapshotCore(view.EvaluationContext, turn, actionCount, shufflesCrossed, boundary, processedEnemyDeaths, view);
         result.ReleaseSimulator();
         return result;
     }

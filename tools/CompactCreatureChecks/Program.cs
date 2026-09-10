@@ -1,5 +1,7 @@
 using CombatSolver.Engine.InCombat.Simulation.Compact;
 
+PowerChecks.Run();
+
 (int Hp, int Block, decimal Amount, bool Unblockable, int ExpectedHp, int ExpectedBlock, decimal Blocked, int Lost, bool Killed, int Overkill)[] damageCases =
 {
     (10, 5, 3.75m, false, 10, 2, 3.75m, 0, false, 0),

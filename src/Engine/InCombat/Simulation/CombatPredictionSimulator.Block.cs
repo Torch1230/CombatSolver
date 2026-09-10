@@ -49,7 +49,7 @@ internal sealed partial class CombatPredictionSimulator
         PredictedCard? cardSource,
         CardPlay? cardPlay)
     {
-        if (IsOverOrEnding || State.GetCreature(creature).IsDead || amount <= 0m)
+        if (IsOverOrEnding || State.GetCreature(creature).IsDead)
         {
             return 0m;
         }

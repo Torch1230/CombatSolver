@@ -193,7 +193,7 @@ internal sealed partial class UnattendedTestRunner
             }).ToArray();
             _gaps = PredictionCoverage.Collect(root);
         }
-        internal override CombatPredictionSimulator Root => _root;
+        internal override CombatPredictionSimulator EvaluationContext => _root;
         internal override int Energy => _cards.Energy;
         internal override int Block => ReadCreature(_player.Creature).Block;
         internal override CreatureReadValues ReadCreature(Creature creature)

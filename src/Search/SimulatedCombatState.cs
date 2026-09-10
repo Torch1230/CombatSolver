@@ -594,7 +594,7 @@ internal sealed partial class SimulatedCombatState
     {
         if (amount == 0 || !CanReceivePredictedPowers(target))
             return;
-        T incoming = CreatePowerForApplication<T>(target, target, applier);
+        T incoming = CreatePowerForApplication<T>(target, null, applier);
         amount = ModifyPowerAmountForRelics(incoming, target, amount, applier);
         if (incoming.GetTypeForAmount(amount) == MegaCrit.Sts2.Core.Entities.Powers.PowerType.Debuff
             && ConsumeArtifact(target))
@@ -863,7 +863,7 @@ internal sealed partial class SimulatedCombatState
     public void ResetTenderCardsPlayed(Creature owner)
         => (_tenderCardsPlayed ??= [])[owner] = 0;
 
-    private static T CreatePowerForApplication<T>(Creature owner, Creature target, Creature? applier)
+    private static T CreatePowerForApplication<T>(Creature owner, Creature? target, Creature? applier)
         where T : PowerModel
     {
         T incoming = PredictionUtils.CloneModelForSimulation(CanonicalModels.Power<T>());
@@ -890,7 +890,7 @@ internal sealed partial class SimulatedCombatState
             : PredictionUtils.CloneModelForSimulation(prototype);
         simulated._owner = target;
         simulated._applier = existingPower?.Applier ?? applier;
-        simulated._target = target;
+        simulated._target = existingPower != null ? existingPower.Target : prototype.Target;
         simulated._amount = existingPower?.Amount ?? 0;
         if (existingPower == null)
             simulated.AmountOnTurnStart = 0;

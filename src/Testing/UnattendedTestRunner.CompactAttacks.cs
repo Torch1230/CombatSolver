@@ -15,7 +15,7 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
-    private async Task AssertCompactAttacksAsync(CombatState combat, Player player)
+    private async Task AssertCompactAttacksAsync(CombatState combat, Player player, bool includePowers = false)
     {
         if (combat.Enemies.Count != 3 || _mercuryTerminalObservation != null)
             throw new InvalidOperationException("Compact attack fixture requires three primary enemies and exclusive observation.");
@@ -25,12 +25,33 @@ internal sealed partial class UnattendedTestRunner
         await ClearPlayerPilesAsync(player);
         for (int index = 0; index < 6; index++)
             await InjectCardAsync(combat, player, new UnattendedCardInjection
-                { CardId = "STRIKE_SILENT", Pile = "Hand", UpgradeLevels = index == 2 ? 1 : 0 });
+                { CardId = includePowers && index < 2 ? "NEUTRALIZE" : "STRIKE_SILENT", Pile = "Hand", UpgradeLevels = index == 2 ? 1 : 0 });
         await InjectCardAsync(combat, player, new UnattendedCardInjection { CardId = "DEFEND_SILENT", Pile = "Hand" });
+        if (includePowers)
+        {
+            await InjectCardAsync(combat, player, new UnattendedCardInjection { CardId = "DEFEND_SILENT", Pile = "Hand" });
+            await InjectCardAsync(combat, player, new UnattendedCardInjection { CardId = "DEFEND_SILENT", Pile = "Hand" });
+            // Interleave native acquisition across owners; effective listener order groups
+            // owner anchors and must survive new Weak and removal of the first enemy.
+            foreach (var power in new (string Id, string Target, int Index, int Amount)[]
+            {
+                ("VULNERABLE_POWER", "Enemy", 1, 2), ("STRENGTH_POWER", "Player", 0, 2),
+                ("WEAK_POWER", "Enemy", 0, 2), ("DEXTERITY_POWER", "Player", 0, 3),
+                ("VULNERABLE_POWER", "Enemy", 0, 2), ("WEAK_POWER", "Player", 0, 2),
+                ("STRENGTH_POWER", "Enemy", 0, 1), ("FRAIL_POWER", "Player", 0, 2)
+            })
+                await InjectPowerAsync(combat, player, new UnattendedPowerInjection
+                    { PowerId = power.Id, Target = power.Target, TargetIndex = power.Index, Amount = power.Amount });
+        }
         CardModel[] nativeCards = player.PlayerCombatState!.Hand.Cards.ToArray();
         // Explicit native inputs cover a powered zero-damage hit and zero-energy attack start.
         nativeCards[0].DynamicVars.Damage.BaseValue = 0;
         nativeCards[0].EnergyCost._base = 0;
+        if (includePowers)
+        {
+            nativeCards[7].DynamicVars.Block.BaseValue = 0;
+            nativeCards[8].DynamicVars.Block.BaseValue = 1;
+        }
         Creature[] enemies = combat.Enemies.ToArray();
         for (int index = 0; index < enemies.Length; index++)
         {
@@ -52,7 +73,10 @@ internal sealed partial class UnattendedTestRunner
         List<MoveStateSnapshot> nativeExpected = [];
         List<(int Hp, int MaxHp, int Block, bool Present)[]> nativeCreatures = [];
         List<object> evidence = [];
-        (int Card, int Target)[] route = [(0, 3), (1, 1), (2, 1), (3, 2), (4, 3)];
+        List<string[]> nativePowers = [];
+        (int Card, int Target)[] route = includePowers
+            ? [(7, -1), (0, 3), (1, 3), (2, 1), (3, 1), (4, 2), (5, 3)]
+            : [(0, 3), (1, 1), (2, 1), (3, 2), (4, 3)];
         using (SimulationNotificationIsolation.Enter())
         {
             adapter = new(simulator, player, includeAttacks: true);
@@ -61,23 +85,25 @@ internal sealed partial class UnattendedTestRunner
             var reader = adapter.CreateReadView();
             var evaluator = new CompactEvaluationDriver(root, display, damage, policy);
             MoveStateSnapshot rootState = CaptureSimulated(simulator, (SimulatedCombatState)simulator.State.CombatState, player, enemies[0]);
-            for (int card = 0; card < 6; card++)
-            for (int target = 1; target <= 3; target++)
+            IEnumerable<(int Card, int Target)> branches = Enumerable.Range(0, 6)
+                .SelectMany(card => Enumerable.Range(1, 3).Select(target => (card, target)));
+            if (includePowers) branches = branches.Concat(Enumerable.Range(6, 3).Select(card => (card, -1)));
+            foreach (var (card, target) in branches)
             {
                 initial.RestoreInto(lane);
                 var mark = lane.State.Mark();
                 int id = adapter.IndexOf(nativeCards[card]);
                 lane.Begin(id, target); lane.Run();
                 var oracle = simulator.Fork();
-                if (!oracle.ManualPlay(oracle.State.FindCard(nativeCards[card])!, enemies[target - 1], out _))
+                if (!oracle.ManualPlay(oracle.State.FindCard(nativeCards[card])!, target < 0 ? null : enemies[target - 1], out _))
                     throw new InvalidOperationException("Compact attack oracle suspended unexpectedly.");
                 Compare(lane, oracle, $"single-{card}-{target}");
                 reader.Read(lane);
                 SimulationSnapshot evaluation = evaluator.Evaluate(reader);
                 cases.Add((id, target, lane.Freeze(), evaluation));
-                var result = oracle.History.Entries.OfType<CombatPredictionDamageReceivedEntry>().Last().Result;
-                evidence.Add(new { card, target, result.BlockedDamage, result.UnblockedDamage, result.OverkillDamage,
-                    result.WasBlockBroken, result.WasFullyBlocked, result.WasTargetKilled, evaluation.StateKey });
+                var result = oracle.History.Entries.OfType<CombatPredictionDamageReceivedEntry>().LastOrDefault()?.Result;
+                evidence.Add(new { card, target, result?.BlockedDamage, result?.UnblockedDamage, result?.OverkillDamage,
+                    result?.WasBlockBroken, result?.WasFullyBlocked, result?.WasTargetKilled, evaluation.PlayerBlock, evaluation.StateKey });
                 lane.State.Rollback(mark);
                 if (!lane.State.Freeze().ContentEquals(initial.Open().State.Freeze()))
                     throw new InvalidOperationException("Attack rollback changed its root.");
@@ -87,7 +113,7 @@ internal sealed partial class UnattendedTestRunner
             foreach (var step in route)
             {
                 lane.Begin(adapter.IndexOf(nativeCards[step.Card]), step.Target); lane.Run();
-                if (!continued.ManualPlay(continued.State.FindCard(nativeCards[step.Card])!, enemies[step.Target - 1], out _))
+                if (!continued.ManualPlay(continued.State.FindCard(nativeCards[step.Card])!, step.Target < 0 ? null : enemies[step.Target - 1], out _))
                     throw new InvalidOperationException("Continued attack oracle suspended.");
                 Compare(lane, continued, $"route-{nativeExpected.Count}-before-safe-point");
                 bool compactTerminal = lane.CheckWinCondition();
@@ -95,6 +121,7 @@ internal sealed partial class UnattendedTestRunner
                     throw new InvalidOperationException("Attack terminal boundary differs.");
                 Compare(lane, continued, $"route-{nativeExpected.Count}-after-safe-point");
                 nativeExpected.Add(CaptureSimulated(continued, (SimulatedCombatState)continued.State.CombatState, player, enemies[0]));
+                nativePowers.Add(PowerValues(((SimulatedCombatState)continued.State.CombatState).EffectivePowers()));
                 nativeCreatures.Add(enemies.Select((_, index) =>
                 {
                     CreatureVitals value = lane.Creature(index + 1);
@@ -147,7 +174,8 @@ internal sealed partial class UnattendedTestRunner
                 AssertCompactEvaluation(sample.Evaluation, evaluator.Evaluate(reader));
             }
         })));
-        _completedChecks.Add("CompactAttack:18Branches:FullState:DamageFlagsAndSources:AllSnapshotProperties:OriginalKeys:Undo:Frozen8Workers:PrivateReaderScratch");
+        _completedChecks.Add($"CompactAttack:{cases.Count}Branches:FullState:DamageFlagsAndSources:AllSnapshotProperties:OriginalKeys:Undo:Frozen8Workers:PrivateReaderScratch");
+        if (includePowers) _completedChecks.Add("CompactPowers:StrengthWeakVulnerable:DexterityFrail:ZeroBaseBlock:CreateStack:RootOrder:DeathRemoval:ReadRestore");
 
         // Observe the final native command before game teardown, then require its real end event.
         MethodInfo endCombat = typeof(CombatManager).GetMethods(BindingFlags.Instance | BindingFlags.NonPublic)
@@ -164,7 +192,7 @@ internal sealed partial class UnattendedTestRunner
             for (int index = 0; index < route.Length; index++)
             {
                 var step = route[index];
-                if (!nativeCards[step.Card].TryManualPlay(enemies[step.Target - 1]))
+                if (!nativeCards[step.Card].TryManualPlay(step.Target < 0 ? null : enemies[step.Target - 1]))
                     throw new InvalidOperationException("Native compact attack route was rejected.");
                 await RunManager.Instance.ActionExecutor.FinishedExecutingActions();
                 bool final = index == route.Length - 1;
@@ -174,6 +202,13 @@ internal sealed partial class UnattendedTestRunner
                 observation.Failure?.Throw();
                 AssertSnapshotEqual(nativeExpected[index], final ? observation.Snapshot! : CaptureActual(combat, player, enemies[0]),
                     "CompactAttack", $"Native{index}");
+                if (!final)
+                {
+                    string[] actualPowers = PowerValues(combat.Creatures.SelectMany(c => c.Powers));
+                    if (!actualPowers.SequenceEqual(nativePowers[index]))
+                        throw new InvalidOperationException($"Native Power state differs at route step {index}:\nexpected: "
+                            + string.Join(";", nativePowers[index]) + "\nactual: " + string.Join(";", actualPowers));
+                }
                 for (int creature = 0; creature < enemies.Length; creature++)
                 {
                     var expected = nativeCreatures[index][creature];
@@ -191,13 +226,19 @@ internal sealed partial class UnattendedTestRunner
             try { patch.Unpatch(endCombat, prefix); }
             finally { CombatManager.Instance.CombatEnded -= observation.ObserveCombatEnded; _mercuryTerminalObservation = null; }
         }
-        _completedChecks.Add("CompactAttack:NativeFiveActions:ZeroDamageZeroCost:FullBlock:PartialAndFinalDeaths:PreTeardownFullState:CombatEnded:TerminalRestore");
+        _completedChecks.Add($"CompactAttack:Native{route.Length}Actions:PartialAndFinalDeaths:PreTeardownFullState:CombatEnded:TerminalRestore");
         if (!string.IsNullOrWhiteSpace(_request.EvidenceDirectory))
         {
             Directory.CreateDirectory(_request.EvidenceDirectory);
-            File.WriteAllText(Path.Combine(_request.EvidenceDirectory, "compact-attacks.json"), JsonSerializer.Serialize(
-                new { scope = "single-target Strike in primary-enemy domain without enemy Powers; compact native kill chain", branches = evidence, nativeSteps = route.Length },
+            File.WriteAllText(Path.Combine(_request.EvidenceDirectory, includePowers ? "compact-powers.json" : "compact-attacks.json"), JsonSerializer.Serialize(
+                new { scope = includePowers ? "Basic Power values, Neutralize create/stack, fractional damage/block and native kill chain" : "Strike native kill chain", branches = evidence, nativeSteps = route.Length, powers = nativePowers },
                 new JsonSerializerOptions { WriteIndented = true }));
         }
+
+        string[] PowerValues(IEnumerable<PowerModel> powers) => powers.GroupBy(power => power.Owner).SelectMany(group => group.Select((power, index) =>
+            $"{index}:{power.Owner.CombatId}:{power.Id.Entry}:{power.Amount}:{power.Applier?.CombatId}:{power.Target?.CombatId}:"
+            + $"{power.AmountOnTurnStart}:{power.SkipNextDurationTick}:"
+            + string.Join(',', power.DynamicVars.OrderBy(pair => pair.Key).Select(pair => $"{pair.Key}={pair.Value.BaseValue}"))))
+            .Order(StringComparer.Ordinal).ToArray();
     }
 }

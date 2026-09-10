@@ -33,6 +33,7 @@ internal sealed class CompactDiscardProjection
     private readonly bool[] _inferred;
     internal readonly ResumableDiscardProgram Program;
     private readonly Creature[] _creatures;
+    private readonly PowerModel[] _powerTemplates;
     internal int PlayerTurn => ((SimulatedCombatState)_root.State.CombatState).GetPlayerTurnNumber(_player);
 
     internal CompactDiscardProjection(CombatPredictionSimulator root, Player player, bool includeAttacks = false)
@@ -43,7 +44,7 @@ internal sealed class CompactDiscardProjection
         SimPlayerCombatState state = root.State.GetPlayerCombatState(player);
         var powers = combat.EffectivePowers();
         if (combat.Players.Count != 1 || powers.Any(p => !(p is StratagemPower && p.Owner == player.Creature && p.Amount is >= 1 and <= 10)
-                && !(!includeAttacks && p is StrengthPower && p.Owner != player.Creature))
+                && !(includeAttacks ? IsBasicPower(p) : p is StrengthPower && p.Owner != player.Creature))
             || combat.RootRunModSubscriberCount != 0 || combat.RootCombatModSubscriberCount != 0
             || combat.RootHasBaseLibCardModifiers || combat.RootRunHookListenerCount != 0
             || state.OrbQueue.Orbs.Count != 0 || root.GetMaxHandSize(player) != 10
@@ -73,6 +74,14 @@ internal sealed class CompactDiscardProjection
                 || !((ICombatPredictionCreatureSemantics)combat).IsPrimaryEnemy(c)
                 || !((ICombatPredictionCreatureSemantics)combat).ShouldRemoveAfterDeath(c))))
             throw new NotSupportedException("Compact attack requires living primary enemies without pending deaths or pets.");
+        _powerTemplates = includeAttacks ? CapturePowerTemplates(combat, powers) : [];
+        PowerModel[] rootPowerOrder = powers.ToArray();
+        BasicPowerDefinition[]? powerDefinitions = includeAttacks ? _powerTemplates.Select(power => new BasicPowerDefinition(
+            BasicKind(power), CreatureIndex(power.Owner), power.Amount, power.Applier == null ? -1 : CreatureIndex(power.Applier),
+            Array.IndexOf(rootPowerOrder, power) + 1,
+            power is WeakPower ? power.DynamicVars["DamageDecrease"].BaseValue
+                : power is VulnerablePower ? power.DynamicVars["DamageIncrease"].BaseValue : 1m,
+            combat.IsCapturedRootPowerSlot(power))).ToArray() : null;
         PredictedCard[] cards = state.AllCards.ToArray();
         _identities = cards.Select(c => c.Original).ToArray();
         ResumableDiscardProgram.Card[] definitions = cards.Select(card => Capture(card.Preview, includeAttacks)).ToArray();
@@ -103,12 +112,13 @@ internal sealed class CompactDiscardProjection
             new(rng.Counter, rng.State0, rng.State1, rng.State2, rng.State3), comparisons,
             powers.OfType<StratagemPower>().SingleOrDefault()?.Amount ?? 0,
             Block(relics.OfType<TheAbacus>().SingleOrDefault()), abacusIndex >= 0 && abacusIndex < stratagemIndex,
-            includeAttacks ? _creatures.Select(c => { var v = root.State.GetCreature(c); return new CreatureVitals(v.CurrentHp, v.MaxHp, v.Block); }).ToArray() : null);
+            includeAttacks ? _creatures.Select(c => { var v = root.State.GetCreature(c); return new CreatureVitals(v.CurrentHp, v.MaxHp, v.Block); }).ToArray() : null, powerDefinitions);
     }
 
     private static ResumableDiscardProgram.Card Capture(CardModel card, bool includeAttacks)
     {
-        if (card is not (Acrobatics or Prepared or Backflip or StrikeSilent or DefendSilent)
+        if (card is not (Acrobatics or Prepared or Backflip or StrikeSilent or DefendSilent or Neutralize)
+            || card is Neutralize && !includeAttacks
             || card.Enchantment != null || card.Affliction != null || card.BaseReplayCount != 0
             || card.ExhaustOnNextPlay || card.IsDupe || card.IsClone || card.HasBeenRemovedFromState
             || card.EnergyCost.CostsX || card.EnergyCost._localModifiers.Count != 0
@@ -119,15 +129,65 @@ internal sealed class CompactDiscardProjection
             || card.IsSlyThisTurn && card is not Prepared)
             throw new NotSupportedException($"Compact prototype cannot admit card state {card.Id.Entry}.");
         decimal draw = card is Acrobatics or Prepared or Backflip ? card.DynamicVars.Cards.BaseValue : 0;
-        decimal damage = includeAttacks && card is StrikeSilent ? card.DynamicVars.Damage.BaseValue : 0;
+        decimal damage = includeAttacks && card is StrikeSilent or Neutralize ? card.DynamicVars.Damage.BaseValue : 0;
         decimal block = card is DefendSilent or Backflip ? card.DynamicVars.Block.BaseValue : 0;
+        decimal weak = card is Neutralize ? card.DynamicVars.Weak.BaseValue : 0;
         if (draw != decimal.Truncate(draw) || draw < 0 || draw > 10 || card.EnergyCost._base < 0
             || card is Acrobatics or Prepared or Backflip && draw == 0
             || damage != decimal.Truncate(damage) || damage is < 0 or > 999_999_999m
-            || block != decimal.Truncate(block) || block is < 0 or > 999_999_999m)
+            || block != decimal.Truncate(block) || block is < 0 or > 999_999_999m
+            || weak != decimal.Truncate(weak) || weak is < 0 or > 999_999_999m)
             throw new NotSupportedException($"Compact prototype cannot admit card variables {card.Id.Entry}.");
         return new(card.EnergyCost._base, (int)draw, card is Acrobatics ? 1 : card is Prepared ? (int)draw : 0,
-            card.IsSlyThisTurn, (int)block, (int)damage, includeAttacks && card is StrikeSilent);
+            card.IsSlyThisTurn, (int)block, (int)damage, includeAttacks && card is StrikeSilent or Neutralize,
+            (int)weak, card is DefendSilent or Backflip);
+    }
+
+    private PowerModel[] CapturePowerTemplates(SimulatedCombatState combat, IReadOnlyList<PowerModel> powers)
+    {
+        List<PowerModel> result = powers.Where(IsBasicPower).ToList();
+        if (result.GroupBy(p => (p.Owner, p.GetType())).Any(g => g.Count() != 1)
+            || result.Any(p => CreatureIndex(p.Owner) < 0 || p.Applier != null && CreatureIndex(p.Applier) < 0
+                || p is not (StrengthPower or DexterityPower) && p.Amount < 0))
+            throw new NotSupportedException("Basic Power state has duplicate slots, unknown ownership or negative debuffs.");
+        foreach (Creature owner in _creatures)
+        foreach (BasicPowerKind kind in Enum.GetValues<BasicPowerKind>())
+        {
+            if (result.Any(p => p.Owner == owner && BasicKind(p) == kind)) continue;
+            PowerModel prototype = kind switch
+            {
+                BasicPowerKind.Strength => CanonicalModels.Power<StrengthPower>(),
+                BasicPowerKind.Dexterity => CanonicalModels.Power<DexterityPower>(),
+                BasicPowerKind.Weak => CanonicalModels.Power<WeakPower>(),
+                BasicPowerKind.Vulnerable => CanonicalModels.Power<VulnerablePower>(),
+                BasicPowerKind.Frail => CanonicalModels.Power<FrailPower>(),
+                _ => throw new InvalidOperationException("Unknown basic Power kind.")
+            };
+            PowerModel template = PredictionUtils.CloneModelForSimulation(prototype);
+            template._owner = owner; template._target = null; template._applier = null; template._amount = 0;
+            template.AmountOnTurnStart = 0;
+            result.Add(template);
+        }
+        return result.ToArray();
+    }
+
+    private static bool IsBasicPower(PowerModel power) => power is StrengthPower or DexterityPower or WeakPower or VulnerablePower or FrailPower;
+    private static BasicPowerKind BasicKind(PowerModel power) => power switch
+    {
+        StrengthPower => BasicPowerKind.Strength, DexterityPower => BasicPowerKind.Dexterity, WeakPower => BasicPowerKind.Weak,
+        VulnerablePower => BasicPowerKind.Vulnerable, FrailPower => BasicPowerKind.Frail,
+        _ => throw new InvalidOperationException("Power has no compact basic kind.")
+    };
+    internal SimulatedCombatState.CompletedPowerReadBinding CreatePowerReadBinding(CombatPredictionSimulator context)
+        => new((SimulatedCombatState)context.State.CombatState, _powerTemplates);
+    internal void CopyPowerReadValues(ResumableDiscardProgram program, CompletedPowerReadValues[] target)
+    {
+        if (target.Length != program.PowerCount) throw new ArgumentException("Power read buffer has the wrong size.");
+        for (int index = 0; index < target.Length; index++)
+        {
+            var value = program.Power(index);
+            target[index] = new(value.Amount, value.Applier < 0 ? null : _creatures[value.Applier], value.Order, value.Retired);
+        }
     }
 
     // Legacy read helpers contain simulator-owned scratch. Each lane borrows its own root fork;
@@ -196,6 +256,7 @@ internal sealed class CompactDiscardProjection
                         combat.RecordCardDrawn(card, false);
                         projection.History.CardDrawResolved(entry, card);
                         break;
+                    case ResumableDiscardProgram.EventKind.PowerChange:
                     case ResumableDiscardProgram.EventKind.Shuffle:
                         break;
                     case ResumableDiscardProgram.EventKind.ShuffleCard:
@@ -273,6 +334,14 @@ internal sealed class CompactDiscardProjection
         {
             while (stack.TryPop(out var active)) { active.Method?.Dispose(); active.Scope.Dispose(); }
         }
+        if (program.PowerCount > 0)
+        {
+            var binding = CreatePowerReadBinding(projection);
+            var values = new CompletedPowerReadValues[program.PowerCount];
+            CopyPowerReadValues(program, values);
+            binding.Read(values, Enumerable.Range(1, program.CreatureCount - 1)
+                .Where(program.CreaturePresent).Select(Creature).ToArray());
+        }
         for (int index = 0; index < program.CreatureCount; index++)
         {
             CreatureVitals values = program.Creature(index);
@@ -312,6 +381,17 @@ internal sealed class CompactDiscardProjection
                 || ((SimulatedCombatState)simulator.State.CombatState).HasCompletedDeathEffects(creature) != program.CreatureDeathCompleted(index))
                 throw new InvalidOperationException("Compact creature values or death lifecycle differ.");
         }
+        IReadOnlyList<PowerModel> powers = ((SimulatedCombatState)simulator.State.CombatState).EffectivePowers();
+        for (int index = 0; index < program.PowerCount; index++)
+        {
+            var definition = program.PowerDefinition(index);
+            var expected = program.Power(index);
+            PowerModel? actual = powers.SingleOrDefault(power => ReferenceEquals(power.Owner, _creatures[definition.Owner])
+                && power.GetType() == _powerTemplates[index].GetType());
+            if ((actual?.Amount ?? 0) != expected.Amount || actual != null
+                && !ReferenceEquals(actual.Applier, expected.Applier < 0 ? null : _creatures[expected.Applier]))
+                throw new InvalidOperationException($"Compact Power values differ: owner={definition.Owner}, kind={definition.Kind}.");
+        }
         SimCardPile[] piles = [state.Hand, state.DrawPile, state.DiscardPile, state.PlayPile, state.ExhaustPile];
         for (int pile = 0; pile < piles.Length; pile++)
         {
@@ -336,19 +416,24 @@ internal sealed class CompactDiscardProjection
         "ModifyShuffleOrder", "AfterShuffle", "BeforeAttack", "AfterAttack", "ModifyAttackHitCount",
         "BeforeDamageReceived", "AfterBlockBroken", "AfterCurrentHpChanged", "AfterDamageGiven", "AfterDamageReceived",
         "AfterModifyingHpLostAfterOsty", "BeforeDeath", "ShouldDie", "AfterDeath", "ShouldCreatureBeRemovedFromCombatAfterDeath",
-        "ShouldAllowHitting"
+        "ShouldAllowHitting", "BeforePowerAmountChanged", "ModifyPowerAmountGiven", "ModifyPowerAmountReceived",
+        "AfterModifyingPowerAmountGiven", "AfterModifyingPowerAmountReceived", "AfterPowerAmountChanged"
     };
     // Only immutable CLR method/type metadata is shared. Every root still checks subscriber,
     // Power, relic, card-instance, resource, and lifecycle values independently.
     private static readonly ConcurrentDictionary<Type, string[]> HookAudit = new();
 
-    // Keep these exact method/type pairs aligned with the explicitly ignored registrations in
-    // AfterCardPlayedMirrors. Badge/achievement progress is outside combat equivalence.
+    // Keep exact method/type pairs. AfterCardPlayed badges match the ignored mirror registrations;
+    // DebufferModel only increments the native run badge counter, outside combat equivalence.
     private static bool RepresentedHook(Type type, string method)
         => type == typeof(ToughBandages) && method == nameof(AbstractModel.AfterCardDiscarded)
             || type == typeof(StratagemPower) && method == nameof(AbstractModel.AfterShuffle)
             || type == typeof(TheAbacus) && method == nameof(AbstractModel.AfterShuffle)
             || type == typeof(StrengthPower) && method == nameof(AbstractModel.ModifyDamageAdditive)
+            || type == typeof(DexterityPower) && method == nameof(AbstractModel.ModifyBlockAdditive)
+            || (type == typeof(WeakPower) || type == typeof(VulnerablePower)) && method == nameof(AbstractModel.ModifyDamageMultiplicative)
+            || type == typeof(FrailPower) && method == nameof(AbstractModel.ModifyBlockMultiplicative)
+            || type == typeof(DebufferModel) && method == nameof(AbstractModel.AfterPowerAmountChanged)
             || type == typeof(MultiplayerScalingModel) && method == nameof(AbstractModel.ModifyBlockMultiplicative)
             || method == nameof(AbstractModel.AfterCardPlayed)
             && (type == typeof(CccComboModel) || type == typeof(Play20CardsSingleTurnAchievement)

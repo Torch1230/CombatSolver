@@ -23,7 +23,7 @@ internal sealed class CreatureAttackLayout
     internal bool DeathCompleted(ReversibleValueState state, int creature) => state[_deathStart + creature] != 0;
     internal bool Terminal(ReversibleValueState state) => state[_terminalSlot] != 0;
 
-    internal DamageValues Damage(ReversibleValueState state, int target, int amount)
+    internal DamageValues Damage(ReversibleValueState state, int target, decimal amount)
     {
         CreatureVitals values = Read(state, target);
         decimal blocked = values.DamageBlock(amount, false);

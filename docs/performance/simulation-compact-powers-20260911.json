@@ -1,0 +1,1410 @@
+{
+  "scope": "Basic Power values and lane-local completed evaluation; production backend remains legacy",
+  "build": {
+    "configuration": "Release",
+    "artifact": "artifact-v8",
+    "elapsedSeconds": 9.35,
+    "warnings": 0,
+    "errors": 0,
+    "CopyModOnBuild": false
+  },
+  "pureContracts": {
+    "tool": "tools/CompactCreatureChecks",
+    "status": "Passed",
+    "damageVectors": 9,
+    "powerModifierVectors": 6,
+    "workers": 8,
+    "checks": [
+      "negative_stats",
+      "stack_cap",
+      "original_applier",
+      "root_retirement",
+      "reacquisition_order",
+      "rollback",
+      "frozen_isolation"
+    ]
+  },
+  "runs": {
+    "powers-v8": {
+      "processReusable": false,
+      "processId": 721936,
+      "schemaVersion": 1,
+      "runId": "6b2f26c48d4f4934b8959175a94271c1",
+      "scenarioId": "COMPACT-POWERS-NATIVE",
+      "status": "Passed",
+      "stage": "passed",
+      "characterId": "CHARACTER.SILENT",
+      "encounterId": "ENCOUNTER.CORPSE_SLUGS_NORMAL",
+      "seed": "COMBATSOLVER",
+      "startedAtUtc": "2026-09-10T20:35:35.4409952+00:00",
+      "elapsedMilliseconds": 24234.7569,
+      "mainThread": true,
+      "combatEnded": true,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "managedHeapBytes": 77336120,
+      "managedFragmentedBytes": 8417912,
+      "workingSetBytes": 1427468288,
+      "privateMemoryBytes": 1583869952,
+      "solverMetrics": null,
+      "replayVerification": null,
+      "stageTimings": [
+        {
+          "stage": "created",
+          "startedMilliseconds": 0,
+          "durationMilliseconds": 6.106
+        },
+        {
+          "stage": "game_startup",
+          "startedMilliseconds": 6.106,
+          "durationMilliseconds": 11091.4072
+        },
+        {
+          "stage": "start_run",
+          "startedMilliseconds": 11097.5132,
+          "durationMilliseconds": 10920.895300000002
+        },
+        {
+          "stage": "inject_run_relics",
+          "startedMilliseconds": 22018.4085,
+          "durationMilliseconds": 0.721399999998539
+        },
+        {
+          "stage": "enter_encounter",
+          "startedMilliseconds": 22019.1299,
+          "durationMilliseconds": 1046.3545999999988
+        },
+        {
+          "stage": "wait_player_turn",
+          "startedMilliseconds": 23065.4845,
+          "durationMilliseconds": 2.433899999999994
+        },
+        {
+          "stage": "inject_state",
+          "startedMilliseconds": 23067.9184,
+          "durationMilliseconds": 1048.865600000001
+        },
+        {
+          "stage": "cleanup",
+          "startedMilliseconds": 24116.784,
+          "durationMilliseconds": 116.3752999999997
+        },
+        {
+          "stage": "passed",
+          "startedMilliseconds": 24233.1593,
+          "durationMilliseconds": 1.7769000000007509
+        }
+      ],
+      "completedChecks": [
+        "CompactAttack:21Branches:FullState:DamageFlagsAndSources:AllSnapshotProperties:OriginalKeys:Undo:Frozen8Workers:PrivateReaderScratch",
+        "CompactPowers:StrengthWeakVulnerable:DexterityFrail:ZeroBaseBlock:CreateStack:RootOrder:DeathRemoval:ReadRestore",
+        "CompactAttack:NativePreTeardownSnapshot",
+        "CompactAttack:Native7Actions:PartialAndFinalDeaths:PreTeardownFullState:CombatEnded:TerminalRestore"
+      ],
+      "error": null,
+      "finishedAtUtc": "2026-09-10T20:35:59.675645+00:00"
+    },
+    "boundaries-v8": {
+      "processReusable": false,
+      "processId": 721936,
+      "schemaVersion": 1,
+      "runId": "afe4886edcc945278a931a04dd758a31",
+      "scenarioId": "COMPACT-POWER-BOUNDARIES-NATIVE",
+      "status": "Passed",
+      "stage": "passed",
+      "characterId": "CHARACTER.SILENT",
+      "encounterId": "ENCOUNTER.CORPSE_SLUGS_NORMAL",
+      "seed": "COMBATSOLVER",
+      "startedAtUtc": "2026-09-10T20:36:01.8241599+00:00",
+      "elapsedMilliseconds": 3619.1219,
+      "mainThread": true,
+      "combatEnded": false,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "managedHeapBytes": 89217256,
+      "managedFragmentedBytes": 20875240,
+      "workingSetBytes": 1605152768,
+      "privateMemoryBytes": 1786957824,
+      "solverMetrics": null,
+      "replayVerification": null,
+      "stageTimings": [
+        {
+          "stage": "created",
+          "startedMilliseconds": 0,
+          "durationMilliseconds": 0.0069
+        },
+        {
+          "stage": "game_startup",
+          "startedMilliseconds": 0.0069,
+          "durationMilliseconds": 0.6977
+        },
+        {
+          "stage": "start_run",
+          "startedMilliseconds": 0.7046,
+          "durationMilliseconds": 2191.7097
+        },
+        {
+          "stage": "inject_run_relics",
+          "startedMilliseconds": 2192.4143,
+          "durationMilliseconds": 0.07960000000002765
+        },
+        {
+          "stage": "enter_encounter",
+          "startedMilliseconds": 2192.4939,
+          "durationMilliseconds": 999.5084000000002
+        },
+        {
+          "stage": "wait_player_turn",
+          "startedMilliseconds": 3192.0023,
+          "durationMilliseconds": 0.0603000000000975
+        },
+        {
+          "stage": "inject_state",
+          "startedMilliseconds": 3192.0626,
+          "durationMilliseconds": 337.6068
+        },
+        {
+          "stage": "cleanup",
+          "startedMilliseconds": 3529.6694,
+          "durationMilliseconds": 88.77579999999989
+        },
+        {
+          "stage": "passed",
+          "startedMilliseconds": 3618.4452,
+          "durationMilliseconds": 0.6778999999996813
+        }
+      ],
+      "completedChecks": [
+        "CompactPowers:NativeNegativeStrengthDexterity:FractionalBlockBelowOne:ZeroBaseBlock:ThreeSteps:FullState:AllSnapshotProperties",
+        "PowerFactory:ExplicitTarget:OwnerAndApplier:Fork:NativeFullState:LegacyEngine"
+      ],
+      "error": null,
+      "finishedAtUtc": "2026-09-10T20:36:05.4432809+00:00"
+    },
+    "shuffle-v8": {
+      "processReusable": false,
+      "processId": 725647,
+      "schemaVersion": 1,
+      "runId": "18e523f6b1b242ea91acae8073f90bbc",
+      "scenarioId": "COMPACT-SHUFFLE-POWER-NATIVE",
+      "status": "Passed",
+      "stage": "passed",
+      "characterId": "CHARACTER.SILENT",
+      "encounterId": "ENCOUNTER.FUZZY_WURM_CRAWLER_WEAK",
+      "seed": "COMBATSOLVER",
+      "startedAtUtc": "2026-09-10T20:36:43.4937691+00:00",
+      "elapsedMilliseconds": 25985.9795,
+      "mainThread": true,
+      "combatEnded": false,
+      "startedTurn": 1,
+      "finishedTurn": 2,
+      "managedHeapBytes": 81411368,
+      "managedFragmentedBytes": 14548856,
+      "workingSetBytes": 1438871552,
+      "privateMemoryBytes": 1579880448,
+      "solverMetrics": null,
+      "replayVerification": null,
+      "stageTimings": [
+        {
+          "stage": "created",
+          "startedMilliseconds": 0,
+          "durationMilliseconds": 5.7306
+        },
+        {
+          "stage": "game_startup",
+          "startedMilliseconds": 5.7306,
+          "durationMilliseconds": 11118.4139
+        },
+        {
+          "stage": "start_run",
+          "startedMilliseconds": 11124.1445,
+          "durationMilliseconds": 10942.3781
+        },
+        {
+          "stage": "inject_run_relics",
+          "startedMilliseconds": 22066.5226,
+          "durationMilliseconds": 1.0607999999992899
+        },
+        {
+          "stage": "enter_encounter",
+          "startedMilliseconds": 22067.5834,
+          "durationMilliseconds": 989.1454000000012
+        },
+        {
+          "stage": "wait_player_turn",
+          "startedMilliseconds": 23056.7288,
+          "durationMilliseconds": 1.6470999999983178
+        },
+        {
+          "stage": "inject_state",
+          "startedMilliseconds": 23058.3759,
+          "durationMilliseconds": 2800.6172000000006
+        },
+        {
+          "stage": "cleanup",
+          "startedMilliseconds": 25858.9931,
+          "durationMilliseconds": 125.39830000000075
+        },
+        {
+          "stage": "passed",
+          "startedMilliseconds": 25984.3914,
+          "durationMilliseconds": 1.786499999998341
+        }
+      ],
+      "completedChecks": [
+        "CompactShufflePower:24Branches:AllSnapshotProperties:History:FiveFieldRng:Undo:Frozen8Workers:NativeTwoTurns:LegacyRoundBoundary"
+      ],
+      "error": null,
+      "finishedAtUtc": "2026-09-10T20:37:09.4796602+00:00"
+    },
+    "mixed-v8": {
+      "processReusable": false,
+      "processId": 725647,
+      "schemaVersion": 1,
+      "runId": "f6160c9671fa4d9785b37b9792edfc16",
+      "scenarioId": "MIXED-POWER-ACQUISITION-ORDER",
+      "status": "Passed",
+      "stage": "passed",
+      "characterId": "CHARACTER.IRONCLAD",
+      "encounterId": "ENCOUNTER.FUZZY_WURM_CRAWLER_WEAK",
+      "seed": "COMBATSOLVER",
+      "startedAtUtc": "2026-09-10T20:37:11.6281213+00:00",
+      "elapsedMilliseconds": 4022.6713,
+      "mainThread": true,
+      "combatEnded": false,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "managedHeapBytes": 88836704,
+      "managedFragmentedBytes": 21346832,
+      "workingSetBytes": 1602424832,
+      "privateMemoryBytes": 1757458432,
+      "solverMetrics": null,
+      "replayVerification": null,
+      "stageTimings": [
+        {
+          "stage": "created",
+          "startedMilliseconds": 0,
+          "durationMilliseconds": 0.008
+        },
+        {
+          "stage": "game_startup",
+          "startedMilliseconds": 0.008,
+          "durationMilliseconds": 1.0367
+        },
+        {
+          "stage": "start_run",
+          "startedMilliseconds": 1.0447,
+          "durationMilliseconds": 2508.598
+        },
+        {
+          "stage": "inject_run_relics",
+          "startedMilliseconds": 2509.6427,
+          "durationMilliseconds": 0.07709999999997308
+        },
+        {
+          "stage": "enter_encounter",
+          "startedMilliseconds": 2509.7198,
+          "durationMilliseconds": 999.9412000000002
+        },
+        {
+          "stage": "wait_player_turn",
+          "startedMilliseconds": 3509.661,
+          "durationMilliseconds": 0.05420000000003711
+        },
+        {
+          "stage": "inject_state",
+          "startedMilliseconds": 3509.7152,
+          "durationMilliseconds": 423.9656
+        },
+        {
+          "stage": "cleanup",
+          "startedMilliseconds": 3933.6808,
+          "durationMilliseconds": 88.31410000000005
+        },
+        {
+          "stage": "passed",
+          "startedMilliseconds": 4021.9949,
+          "durationMilliseconds": 0.6774999999997817
+        }
+      ],
+      "completedChecks": [
+        "MIXED-POWER-ACQUISITION-ORDER"
+      ],
+      "error": null,
+      "finishedAtUtc": "2026-09-10T20:37:15.650792+00:00"
+    },
+    "attack-v8": {
+      "processReusable": false,
+      "processId": 730002,
+      "schemaVersion": 1,
+      "runId": "c9484cca51f245e1bdde027e342bff20",
+      "scenarioId": "COMPACT-ATTACKS-NATIVE",
+      "status": "Passed",
+      "stage": "passed",
+      "characterId": "CHARACTER.SILENT",
+      "encounterId": "ENCOUNTER.CORPSE_SLUGS_NORMAL",
+      "seed": "COMBATSOLVER",
+      "startedAtUtc": "2026-09-10T20:38:23.7934763+00:00",
+      "elapsedMilliseconds": 24236.338,
+      "mainThread": true,
+      "combatEnded": true,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "managedHeapBytes": 77937824,
+      "managedFragmentedBytes": 10926664,
+      "workingSetBytes": 1434304512,
+      "privateMemoryBytes": 1582067712,
+      "solverMetrics": null,
+      "replayVerification": null,
+      "stageTimings": [
+        {
+          "stage": "created",
+          "startedMilliseconds": 0,
+          "durationMilliseconds": 6.5658
+        },
+        {
+          "stage": "game_startup",
+          "startedMilliseconds": 6.5658,
+          "durationMilliseconds": 11215.8849
+        },
+        {
+          "stage": "start_run",
+          "startedMilliseconds": 11222.4507,
+          "durationMilliseconds": 10964.804000000002
+        },
+        {
+          "stage": "inject_run_relics",
+          "startedMilliseconds": 22187.2547,
+          "durationMilliseconds": 0.6968999999990046
+        },
+        {
+          "stage": "enter_encounter",
+          "startedMilliseconds": 22187.9516,
+          "durationMilliseconds": 1049.8784000000014
+        },
+        {
+          "stage": "wait_player_turn",
+          "startedMilliseconds": 23237.83,
+          "durationMilliseconds": 1.6740999999965425
+        },
+        {
+          "stage": "inject_state",
+          "startedMilliseconds": 23239.5041,
+          "durationMilliseconds": 880.016300000003
+        },
+        {
+          "stage": "cleanup",
+          "startedMilliseconds": 24119.5204,
+          "durationMilliseconds": 115.14370000000054
+        },
+        {
+          "stage": "passed",
+          "startedMilliseconds": 24234.6641,
+          "durationMilliseconds": 1.8549999999995634
+        }
+      ],
+      "completedChecks": [
+        "CompactAttack:18Branches:FullState:DamageFlagsAndSources:AllSnapshotProperties:OriginalKeys:Undo:Frozen8Workers:PrivateReaderScratch",
+        "CompactAttack:NativePreTeardownSnapshot",
+        "CompactAttack:Native5Actions:PartialAndFinalDeaths:PreTeardownFullState:CombatEnded:TerminalRestore"
+      ],
+      "error": null,
+      "finishedAtUtc": "2026-09-10T20:38:48.0297409+00:00"
+    }
+  },
+  "failures": {
+    "attack-v2": {
+      "processReusable": false,
+      "processId": 699666,
+      "schemaVersion": 1,
+      "runId": "31367593cc5443a0ab23df8d35ee095c",
+      "scenarioId": "COMPACT-ATTACKS-NATIVE",
+      "status": "Failed",
+      "stage": "inject_state",
+      "characterId": "SILENT",
+      "encounterId": "CORPSE_SLUGS_NORMAL",
+      "seed": "COMBATSOLVER",
+      "startedAtUtc": "2026-09-10T20:18:20.0184188+00:00",
+      "elapsedMilliseconds": 23521.4036,
+      "mainThread": true,
+      "combatEnded": false,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "managedHeapBytes": 79761912,
+      "managedFragmentedBytes": 14772176,
+      "workingSetBytes": 1408000000,
+      "privateMemoryBytes": 1547288576,
+      "solverMetrics": null,
+      "replayVerification": null,
+      "stageTimings": [
+        {
+          "stage": "created",
+          "startedMilliseconds": 0,
+          "durationMilliseconds": 5.9823
+        },
+        {
+          "stage": "game_startup",
+          "startedMilliseconds": 5.9823,
+          "durationMilliseconds": 11051.7636
+        },
+        {
+          "stage": "start_run",
+          "startedMilliseconds": 11057.7459,
+          "durationMilliseconds": 10987.2053
+        },
+        {
+          "stage": "inject_run_relics",
+          "startedMilliseconds": 22044.9512,
+          "durationMilliseconds": 0.7322999999996682
+        },
+        {
+          "stage": "enter_encounter",
+          "startedMilliseconds": 22045.6835,
+          "durationMilliseconds": 997.2030000000013
+        },
+        {
+          "stage": "wait_player_turn",
+          "startedMilliseconds": 23042.8865,
+          "durationMilliseconds": 2.514999999999418
+        },
+        {
+          "stage": "inject_state",
+          "startedMilliseconds": 23045.4015,
+          "durationMilliseconds": 476.15560000000187
+        }
+      ],
+      "completedChecks": [],
+      "error": "System.ArgumentException: Completed Power reads require unique owner/type slots.\n   at CombatSolver.SimulatedCombatState.CompletedPowerReadBinding..ctor(SimulatedCombatState state, IReadOnlyList`1 templates)\n   at CombatSolver.CompactDiscardProjection.CreatePowerReadBinding(CombatPredictionSimulator context)\n   at CombatSolver.CompactDiscardReadView..ctor(CompactDiscardProjection adapter, CombatPredictionSimulator root, Player player, Boolean[] inferred)\n   at CombatSolver.CompactDiscardProjection.CreateReadView(Boolean reuseInvariantFeatures)\n   at CombatSolver.UnattendedTestRunner.AssertCompactAttacksAsync(CombatState combat, Player player)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()",
+      "finishedAtUtc": "2026-09-10T20:18:43.539749+00:00"
+    },
+    "powers-v3": {
+      "processReusable": false,
+      "processId": 704652,
+      "schemaVersion": 1,
+      "runId": "1b5bf90383ed4d758d77a3c920297673",
+      "scenarioId": "COMPACT-POWERS-NATIVE",
+      "status": "Failed",
+      "stage": "inject_state",
+      "characterId": "SILENT",
+      "encounterId": "CORPSE_SLUGS_NORMAL",
+      "seed": "COMBATSOLVER",
+      "startedAtUtc": "2026-09-10T20:25:08.2427323+00:00",
+      "elapsedMilliseconds": 23795.8783,
+      "mainThread": true,
+      "combatEnded": false,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "managedHeapBytes": 76929888,
+      "managedFragmentedBytes": 11919288,
+      "workingSetBytes": 1385254912,
+      "privateMemoryBytes": 1534181376,
+      "solverMetrics": null,
+      "replayVerification": null,
+      "stageTimings": [
+        {
+          "stage": "created",
+          "startedMilliseconds": 0,
+          "durationMilliseconds": 6.4677
+        },
+        {
+          "stage": "game_startup",
+          "startedMilliseconds": 6.4677,
+          "durationMilliseconds": 11125.7774
+        },
+        {
+          "stage": "start_run",
+          "startedMilliseconds": 11132.2451,
+          "durationMilliseconds": 10938.0304
+        },
+        {
+          "stage": "inject_run_relics",
+          "startedMilliseconds": 22070.2755,
+          "durationMilliseconds": 0.7433000000019092
+        },
+        {
+          "stage": "enter_encounter",
+          "startedMilliseconds": 22071.0188,
+          "durationMilliseconds": 999.5419000000002
+        },
+        {
+          "stage": "wait_player_turn",
+          "startedMilliseconds": 23070.5607,
+          "durationMilliseconds": 2.3321999999971013
+        },
+        {
+          "stage": "inject_state",
+          "startedMilliseconds": 23072.8929,
+          "durationMilliseconds": 723.1782000000021
+        }
+      ],
+      "completedChecks": [],
+      "error": "System.InvalidOperationException: Attack values stage=single-7--1\n ---> System.InvalidOperationException: Compact values disagree with projected resources.\n   at CombatSolver.CompactDiscardProjection.AssertValues(ResumableDiscardProgram program, CombatPredictionSimulator simulator)\n   at CombatSolver.UnattendedTestRunner.<>c__DisplayClass37_1.<AssertCompactAttacksAsync>g__Compare|7(ResumableDiscardProgram values, CombatPredictionSimulator oracle, String stage)\n   --- End of inner exception stack trace ---\n   at CombatSolver.UnattendedTestRunner.<>c__DisplayClass37_1.<AssertCompactAttacksAsync>g__Compare|7(ResumableDiscardProgram values, CombatPredictionSimulator oracle, String stage)\n   at CombatSolver.UnattendedTestRunner.AssertCompactAttacksAsync(CombatState combat, Player player, Boolean includePowers)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()",
+      "finishedAtUtc": "2026-09-10T20:25:32.03853+00:00"
+    },
+    "powers-v4": {
+      "processReusable": false,
+      "processId": 709323,
+      "schemaVersion": 1,
+      "runId": "287809913789457abf37c207b9365978",
+      "scenarioId": "COMPACT-POWERS-NATIVE",
+      "status": "Failed",
+      "stage": "inject_state",
+      "characterId": "SILENT",
+      "encounterId": "CORPSE_SLUGS_NORMAL",
+      "seed": "COMBATSOLVER",
+      "startedAtUtc": "2026-09-10T20:27:44.5696548+00:00",
+      "elapsedMilliseconds": 23588.6821,
+      "mainThread": true,
+      "combatEnded": false,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "managedHeapBytes": 77908304,
+      "managedFragmentedBytes": 12866168,
+      "workingSetBytes": 1433083904,
+      "privateMemoryBytes": 1583407104,
+      "solverMetrics": null,
+      "replayVerification": null,
+      "stageTimings": [
+        {
+          "stage": "created",
+          "startedMilliseconds": 0,
+          "durationMilliseconds": 5.7464
+        },
+        {
+          "stage": "game_startup",
+          "startedMilliseconds": 5.7464,
+          "durationMilliseconds": 11049.9573
+        },
+        {
+          "stage": "start_run",
+          "startedMilliseconds": 11055.7037,
+          "durationMilliseconds": 10965.5859
+        },
+        {
+          "stage": "inject_run_relics",
+          "startedMilliseconds": 22021.2896,
+          "durationMilliseconds": 0.5040000000008149
+        },
+        {
+          "stage": "enter_encounter",
+          "startedMilliseconds": 22021.7936,
+          "durationMilliseconds": 1001.7419000000009
+        },
+        {
+          "stage": "wait_player_turn",
+          "startedMilliseconds": 23023.5355,
+          "durationMilliseconds": 2.3950999999979103
+        },
+        {
+          "stage": "inject_state",
+          "startedMilliseconds": 23025.9306,
+          "durationMilliseconds": 562.9477000000006
+        }
+      ],
+      "completedChecks": [],
+      "error": "System.NotSupportedException: Compact prototype has no effect program for DEBUFFER_MODEL.AfterPowerAmountChanged.\n   at CombatSolver.CompactDiscardProjection..ctor(CombatPredictionSimulator root, Player player, Boolean includeAttacks)\n   at CombatSolver.UnattendedTestRunner.AssertCompactAttacksAsync(CombatState combat, Player player, Boolean includePowers)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()",
+      "finishedAtUtc": "2026-09-10T20:28:08.1582569+00:00"
+    },
+    "powers-v6": {
+      "processReusable": false,
+      "processId": 715239,
+      "schemaVersion": 1,
+      "runId": "c14346e896884da6ad1eaec69126c481",
+      "scenarioId": "COMPACT-POWERS-NATIVE",
+      "status": "Failed",
+      "stage": "inject_state",
+      "characterId": "SILENT",
+      "encounterId": "CORPSE_SLUGS_NORMAL",
+      "seed": "COMBATSOLVER",
+      "startedAtUtc": "2026-09-10T20:31:03.5568421+00:00",
+      "elapsedMilliseconds": 24072.4054,
+      "mainThread": true,
+      "combatEnded": false,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "managedHeapBytes": 78420608,
+      "managedFragmentedBytes": 12518792,
+      "workingSetBytes": 1391071232,
+      "privateMemoryBytes": 1536999424,
+      "solverMetrics": null,
+      "replayVerification": null,
+      "stageTimings": [
+        {
+          "stage": "created",
+          "startedMilliseconds": 0,
+          "durationMilliseconds": 6.631
+        },
+        {
+          "stage": "game_startup",
+          "startedMilliseconds": 6.631,
+          "durationMilliseconds": 11260.1568
+        },
+        {
+          "stage": "start_run",
+          "startedMilliseconds": 11266.7878,
+          "durationMilliseconds": 10953.810200000002
+        },
+        {
+          "stage": "inject_run_relics",
+          "startedMilliseconds": 22220.598,
+          "durationMilliseconds": 0.7330999999976484
+        },
+        {
+          "stage": "enter_encounter",
+          "startedMilliseconds": 22221.3311,
+          "durationMilliseconds": 1007.2652999999991
+        },
+        {
+          "stage": "wait_player_turn",
+          "startedMilliseconds": 23228.5964,
+          "durationMilliseconds": 2.3388000000013562
+        },
+        {
+          "stage": "inject_state",
+          "startedMilliseconds": 23230.9352,
+          "durationMilliseconds": 841.645199999999
+        }
+      ],
+      "completedChecks": [
+        "CompactAttack:21Branches:FullState:DamageFlagsAndSources:AllSnapshotProperties:OriginalKeys:Undo:Frozen8Workers:PrivateReaderScratch",
+        "CompactPowers:StrengthWeakVulnerable:DexterityFrail:ZeroBaseBlock:CreateStack:RootOrder:DeathRemoval:ReadRestore"
+      ],
+      "error": "System.InvalidOperationException: Native Power state differs at route step 1.\n   at CombatSolver.UnattendedTestRunner.AssertCompactAttacksAsync(CombatState combat, Player player, Boolean includePowers)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()",
+      "finishedAtUtc": "2026-09-10T20:31:27.6291663+00:00"
+    }
+  },
+  "commands": {
+    "powers-boundaries-v8-commands.json": [
+      [
+        "./tools/run-unattended-test.sh",
+        "--scenario-id",
+        "COMPACT-POWERS-NATIVE",
+        "--character-id",
+        "SILENT",
+        "--encounter-id",
+        "CORPSE_SLUGS_NORMAL",
+        "--seed",
+        "COMBATSOLVER",
+        "--enemy-current-hp",
+        "256",
+        "--timeout-seconds",
+        "120",
+        "--keep-game-open",
+        "--headless-instance",
+        "compact-powers-20260911",
+        "--combat-solver-build-dir",
+        "/home/ltlly/Code/nmslmod/.tools11/CombatSolver-open-source/.local/compact-powers-20260911/artifact-v8",
+        "--evidence-directory",
+        "/home/ltlly/Code/nmslmod/.tools11/CombatSolver-open-source/.local/compact-powers-20260911/powers-v8"
+      ],
+      [
+        "./tools/run-unattended-test.sh",
+        "--scenario-id",
+        "COMPACT-POWER-BOUNDARIES-NATIVE",
+        "--character-id",
+        "SILENT",
+        "--encounter-id",
+        "CORPSE_SLUGS_NORMAL",
+        "--seed",
+        "COMBATSOLVER",
+        "--enemy-current-hp",
+        "256",
+        "--timeout-seconds",
+        "120",
+        "--keep-game-open",
+        "--headless-instance",
+        "compact-powers-20260911",
+        "--combat-solver-build-dir",
+        "/home/ltlly/Code/nmslmod/.tools11/CombatSolver-open-source/.local/compact-powers-20260911/artifact-v8",
+        "--evidence-directory",
+        "/home/ltlly/Code/nmslmod/.tools11/CombatSolver-open-source/.local/compact-powers-20260911/boundaries-v8"
+      ]
+    ],
+    "sentinels-v8-commands.json": [
+      [
+        "./tools/run-unattended-test.sh",
+        "--scenario-id",
+        "COMPACT-SHUFFLE-POWER-NATIVE",
+        "--character-id",
+        "SILENT",
+        "--encounter-id",
+        "FUZZY_WURM_CRAWLER_WEAK",
+        "--seed",
+        "COMBATSOLVER",
+        "--enemy-current-hp",
+        "256",
+        "--timeout-seconds",
+        "120",
+        "--keep-game-open",
+        "--headless-instance",
+        "compact-powers-20260911",
+        "--combat-solver-build-dir",
+        "/home/ltlly/Code/nmslmod/.tools11/CombatSolver-open-source/.local/compact-powers-20260911/artifact-v8",
+        "--evidence-directory",
+        "/home/ltlly/Code/nmslmod/.tools11/CombatSolver-open-source/.local/compact-powers-20260911/shuffle-v8"
+      ],
+      [
+        "./tools/run-unattended-test.sh",
+        "--scenario-id",
+        "MIXED-POWER-ACQUISITION-ORDER",
+        "--character-id",
+        "IRONCLAD",
+        "--encounter-id",
+        "FUZZY_WURM_CRAWLER_WEAK",
+        "--seed",
+        "COMBATSOLVER",
+        "--enemy-current-hp",
+        "256",
+        "--timeout-seconds",
+        "120",
+        "--keep-game-open",
+        "--headless-instance",
+        "compact-powers-20260911",
+        "--combat-solver-build-dir",
+        "/home/ltlly/Code/nmslmod/.tools11/CombatSolver-open-source/.local/compact-powers-20260911/artifact-v8",
+        "--evidence-directory",
+        "/home/ltlly/Code/nmslmod/.tools11/CombatSolver-open-source/.local/compact-powers-20260911/mixed-v8"
+      ]
+    ],
+    "attack-v8-command.json": [
+      "./tools/run-unattended-test.sh",
+      "--scenario-id",
+      "COMPACT-ATTACKS-NATIVE",
+      "--character-id",
+      "SILENT",
+      "--encounter-id",
+      "CORPSE_SLUGS_NORMAL",
+      "--seed",
+      "COMBATSOLVER",
+      "--enemy-current-hp",
+      "256",
+      "--timeout-seconds",
+      "120",
+      "--keep-game-open",
+      "--headless-instance",
+      "compact-powers-20260911",
+      "--combat-solver-build-dir",
+      "/home/ltlly/Code/nmslmod/.tools11/CombatSolver-open-source/.local/compact-powers-20260911/artifact-v8",
+      "--evidence-directory",
+      "/home/ltlly/Code/nmslmod/.tools11/CombatSolver-open-source/.local/compact-powers-20260911/attack-v8"
+    ]
+  },
+  "powers": {
+    "scope": "Basic Power values, Neutralize create/stack, fractional damage/block and native kill chain",
+    "branches": [
+      {
+        "card": 0,
+        "target": 1,
+        "BlockedDamage": 2,
+        "UnblockedDamage": 0,
+        "OverkillDamage": 0,
+        "WasBlockBroken": false,
+        "WasFullyBlocked": true,
+        "WasTargetKilled": false,
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 1450739707813070936,
+          "Second": 2970657539606489411
+        }
+      },
+      {
+        "card": 0,
+        "target": 2,
+        "BlockedDamage": 0,
+        "UnblockedDamage": 2,
+        "OverkillDamage": 0,
+        "WasBlockBroken": false,
+        "WasFullyBlocked": false,
+        "WasTargetKilled": false,
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 3556611058506110297,
+          "Second": 14047490893647137520
+        }
+      },
+      {
+        "card": 0,
+        "target": 3,
+        "BlockedDamage": 1,
+        "UnblockedDamage": 0,
+        "OverkillDamage": 0,
+        "WasBlockBroken": false,
+        "WasFullyBlocked": true,
+        "WasTargetKilled": false,
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 3334145510012849851,
+          "Second": 15267931941758006279
+        }
+      },
+      {
+        "card": 1,
+        "target": 1,
+        "BlockedDamage": 5,
+        "UnblockedDamage": 0,
+        "OverkillDamage": 0,
+        "WasBlockBroken": false,
+        "WasFullyBlocked": true,
+        "WasTargetKilled": false,
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 8761931063911268216,
+          "Second": 1398736554935594300
+        }
+      },
+      {
+        "card": 1,
+        "target": 2,
+        "BlockedDamage": 0,
+        "UnblockedDamage": 5,
+        "OverkillDamage": 0,
+        "WasBlockBroken": false,
+        "WasFullyBlocked": false,
+        "WasTargetKilled": false,
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 1091442181488291520,
+          "Second": 12142337555705189054
+        }
+      },
+      {
+        "card": 1,
+        "target": 3,
+        "BlockedDamage": 2,
+        "UnblockedDamage": 1,
+        "OverkillDamage": 0,
+        "WasBlockBroken": true,
+        "WasFullyBlocked": false,
+        "WasTargetKilled": false,
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 6213258495244615632,
+          "Second": 2044333870729501621
+        }
+      },
+      {
+        "card": 2,
+        "target": 1,
+        "BlockedDamage": 6,
+        "UnblockedDamage": 6,
+        "OverkillDamage": 0,
+        "WasBlockBroken": true,
+        "WasFullyBlocked": false,
+        "WasTargetKilled": false,
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 5019124052125194435,
+          "Second": 4150875475840426829
+        }
+      },
+      {
+        "card": 2,
+        "target": 2,
+        "BlockedDamage": 0,
+        "UnblockedDamage": 6,
+        "OverkillDamage": 6,
+        "WasBlockBroken": false,
+        "WasFullyBlocked": false,
+        "WasTargetKilled": true,
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 10505676791881019596,
+          "Second": 2613918927292899100
+        }
+      },
+      {
+        "card": 2,
+        "target": 3,
+        "BlockedDamage": 2,
+        "UnblockedDamage": 4,
+        "OverkillDamage": 2,
+        "WasBlockBroken": true,
+        "WasFullyBlocked": false,
+        "WasTargetKilled": true,
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 8466098088173153698,
+          "Second": 18339323601840385747
+        }
+      },
+      {
+        "card": 3,
+        "target": 1,
+        "BlockedDamage": 6,
+        "UnblockedDamage": 3,
+        "OverkillDamage": 0,
+        "WasBlockBroken": true,
+        "WasFullyBlocked": false,
+        "WasTargetKilled": false,
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 3070693349284459126,
+          "Second": 397225683753499625
+        }
+      },
+      {
+        "card": 3,
+        "target": 2,
+        "BlockedDamage": 0,
+        "UnblockedDamage": 6,
+        "OverkillDamage": 3,
+        "WasBlockBroken": false,
+        "WasFullyBlocked": false,
+        "WasTargetKilled": true,
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 3535875879185617556,
+          "Second": 15150492358170804724
+        }
+      },
+      {
+        "card": 3,
+        "target": 3,
+        "BlockedDamage": 2,
+        "UnblockedDamage": 4,
+        "OverkillDamage": 0,
+        "WasBlockBroken": true,
+        "WasFullyBlocked": false,
+        "WasTargetKilled": true,
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 5269903932700346524,
+          "Second": 4261810280693740738
+        }
+      },
+      {
+        "card": 4,
+        "target": 1,
+        "BlockedDamage": 6,
+        "UnblockedDamage": 3,
+        "OverkillDamage": 0,
+        "WasBlockBroken": true,
+        "WasFullyBlocked": false,
+        "WasTargetKilled": false,
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 3070693349284459126,
+          "Second": 397225683753499625
+        }
+      },
+      {
+        "card": 4,
+        "target": 2,
+        "BlockedDamage": 0,
+        "UnblockedDamage": 6,
+        "OverkillDamage": 3,
+        "WasBlockBroken": false,
+        "WasFullyBlocked": false,
+        "WasTargetKilled": true,
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 3535875879185617556,
+          "Second": 15150492358170804724
+        }
+      },
+      {
+        "card": 4,
+        "target": 3,
+        "BlockedDamage": 2,
+        "UnblockedDamage": 4,
+        "OverkillDamage": 0,
+        "WasBlockBroken": true,
+        "WasFullyBlocked": false,
+        "WasTargetKilled": true,
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 5269903932700346524,
+          "Second": 4261810280693740738
+        }
+      },
+      {
+        "card": 5,
+        "target": 1,
+        "BlockedDamage": 6,
+        "UnblockedDamage": 3,
+        "OverkillDamage": 0,
+        "WasBlockBroken": true,
+        "WasFullyBlocked": false,
+        "WasTargetKilled": false,
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 3070693349284459126,
+          "Second": 397225683753499625
+        }
+      },
+      {
+        "card": 5,
+        "target": 2,
+        "BlockedDamage": 0,
+        "UnblockedDamage": 6,
+        "OverkillDamage": 3,
+        "WasBlockBroken": false,
+        "WasFullyBlocked": false,
+        "WasTargetKilled": true,
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 3535875879185617556,
+          "Second": 15150492358170804724
+        }
+      },
+      {
+        "card": 5,
+        "target": 3,
+        "BlockedDamage": 2,
+        "UnblockedDamage": 4,
+        "OverkillDamage": 0,
+        "WasBlockBroken": true,
+        "WasFullyBlocked": false,
+        "WasTargetKilled": true,
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 5269903932700346524,
+          "Second": 4261810280693740738
+        }
+      },
+      {
+        "card": 6,
+        "target": -1,
+        "BlockedDamage": null,
+        "UnblockedDamage": null,
+        "OverkillDamage": null,
+        "WasBlockBroken": null,
+        "WasFullyBlocked": null,
+        "WasTargetKilled": null,
+        "PlayerBlock": 9,
+        "StateKey": {
+          "First": 8265507806529075548,
+          "Second": 9553051276789556110
+        }
+      },
+      {
+        "card": 7,
+        "target": -1,
+        "BlockedDamage": null,
+        "UnblockedDamage": null,
+        "OverkillDamage": null,
+        "WasBlockBroken": null,
+        "WasFullyBlocked": null,
+        "WasTargetKilled": null,
+        "PlayerBlock": 5,
+        "StateKey": {
+          "First": 7493274182370216904,
+          "Second": 7159319824736709130
+        }
+      },
+      {
+        "card": 8,
+        "target": -1,
+        "BlockedDamage": null,
+        "UnblockedDamage": null,
+        "OverkillDamage": null,
+        "WasBlockBroken": null,
+        "WasFullyBlocked": null,
+        "WasTargetKilled": null,
+        "PlayerBlock": 6,
+        "StateKey": {
+          "First": 11304294206888805023,
+          "Second": 10862579288817414864
+        }
+      }
+    ],
+    "nativeSteps": 7,
+    "powers": [
+      [
+        "0:0:STRENGTH_POWER:2:0:0:0:False:",
+        "0:1:WEAK_POWER:2:0:1:0:False:DamageDecrease=0.75",
+        "0:2:VULNERABLE_POWER:2:0:2:0:False:DamageIncrease=1.5",
+        "1:0:DEXTERITY_POWER:3:0:0:0:False:",
+        "1:1:VULNERABLE_POWER:2:0:1:0:False:DamageIncrease=1.5",
+        "2:0:WEAK_POWER:2:0:0:0:True:DamageDecrease=0.75",
+        "2:1:STRENGTH_POWER:1:0:1:0:False:",
+        "3:0:FRAIL_POWER:2:0:0:0:True:"
+      ],
+      [
+        "0:0:STRENGTH_POWER:2:0:0:0:False:",
+        "0:1:WEAK_POWER:2:0:1:0:False:DamageDecrease=0.75",
+        "0:2:VULNERABLE_POWER:2:0:2:0:False:DamageIncrease=1.5",
+        "0:3:WEAK_POWER:1:0::0:False:DamageDecrease=0.75",
+        "1:0:DEXTERITY_POWER:3:0:0:0:False:",
+        "1:1:VULNERABLE_POWER:2:0:1:0:False:DamageIncrease=1.5",
+        "2:0:WEAK_POWER:2:0:0:0:True:DamageDecrease=0.75",
+        "2:1:STRENGTH_POWER:1:0:1:0:False:",
+        "3:0:FRAIL_POWER:2:0:0:0:True:"
+      ],
+      [
+        "0:0:STRENGTH_POWER:2:0:0:0:False:",
+        "0:1:WEAK_POWER:2:0:1:0:False:DamageDecrease=0.75",
+        "0:2:VULNERABLE_POWER:2:0:2:0:False:DamageIncrease=1.5",
+        "0:3:WEAK_POWER:2:0::0:False:DamageDecrease=0.75",
+        "1:0:DEXTERITY_POWER:3:0:0:0:False:",
+        "1:1:VULNERABLE_POWER:2:0:1:0:False:DamageIncrease=1.5",
+        "2:0:WEAK_POWER:2:0:0:0:True:DamageDecrease=0.75",
+        "2:1:STRENGTH_POWER:1:0:1:0:False:",
+        "3:0:FRAIL_POWER:2:0:0:0:True:"
+      ],
+      [
+        "0:0:STRENGTH_POWER:2:0:0:0:False:",
+        "0:1:WEAK_POWER:2:0:1:0:False:DamageDecrease=0.75",
+        "0:2:VULNERABLE_POWER:2:0:2:0:False:DamageIncrease=1.5",
+        "0:3:WEAK_POWER:2:0::0:False:DamageDecrease=0.75",
+        "1:0:DEXTERITY_POWER:3:0:0:0:False:",
+        "1:1:VULNERABLE_POWER:2:0:1:0:False:DamageIncrease=1.5",
+        "2:0:WEAK_POWER:2:0:0:0:True:DamageDecrease=0.75",
+        "2:1:STRENGTH_POWER:1:0:1:0:False:",
+        "3:0:FRAIL_POWER:2:0:0:0:True:"
+      ],
+      [
+        "0:0:STRENGTH_POWER:2:0:0:0:False:",
+        "0:2:VULNERABLE_POWER:2:0:2:0:False:DamageIncrease=1.5",
+        "0:3:WEAK_POWER:2:0::0:False:DamageDecrease=0.75",
+        "1:0:DEXTERITY_POWER:3:0:0:0:False:",
+        "2:0:WEAK_POWER:2:0:0:0:True:DamageDecrease=0.75",
+        "3:0:FRAIL_POWER:2:0:0:0:True:"
+      ],
+      [
+        "0:0:STRENGTH_POWER:2:0:0:0:False:",
+        "0:3:WEAK_POWER:2:0::0:False:DamageDecrease=0.75",
+        "1:0:DEXTERITY_POWER:3:0:0:0:False:",
+        "2:0:WEAK_POWER:2:0:0:0:True:DamageDecrease=0.75",
+        "3:0:FRAIL_POWER:2:0:0:0:True:"
+      ],
+      [
+        "0:0:STRENGTH_POWER:2:0:0:0:False:",
+        "1:0:DEXTERITY_POWER:3:0:0:0:False:",
+        "2:0:WEAK_POWER:2:0:0:0:True:DamageDecrease=0.75",
+        "3:0:FRAIL_POWER:2:0:0:0:True:"
+      ]
+    ]
+  },
+  "shuffleProbe": {
+    "rounds": [
+      {
+        "round": 1,
+        "card": "ACROBATICS",
+        "cards": 24,
+        "samples": 24,
+        "rootSetupMicroseconds": 22112,
+        "rootSetupAllocatedBytes": 1422448,
+        "valueSlots": 279,
+        "distinctWrittenSlots": [
+          58,
+          54,
+          56,
+          58,
+          53,
+          53,
+          55,
+          57,
+          58,
+          53,
+          54,
+          56,
+          58,
+          53,
+          53,
+          55,
+          57,
+          58,
+          53,
+          54,
+          56,
+          58,
+          53,
+          53
+        ],
+        "writes": 891773,
+        "valueChanges": 862502,
+        "peakUndoEntries": 371,
+        "cache": {
+          "EnemyBuilds": 1,
+          "FocusBuilds": 1,
+          "StrategyBuilds": 1,
+          "cardValues": 24
+        },
+        "measurements": [
+          {
+            "sample": 0,
+            "mode": "legacy_replay",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 213.3942708333333,
+            "cpuMicrosecondsPerLeaf": 211.62553385416652,
+            "allocatedBytesPerLeaf": 31480.427083333332
+          },
+          {
+            "sample": 0,
+            "mode": "compact_read_view",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 77.625,
+            "cpuMicrosecondsPerLeaf": 77.27104036458361,
+            "allocatedBytesPerLeaf": 5469.354166666667
+          },
+          {
+            "sample": 0,
+            "mode": "compact_cached",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 72.63502604166666,
+            "cpuMicrosecondsPerLeaf": 72.26633072916755,
+            "allocatedBytesPerLeaf": 5312.333333333333
+          },
+          {
+            "sample": 0,
+            "mode": "compact_cached_with_admission",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 82.18710937499999,
+            "cpuMicrosecondsPerLeaf": 77.4170078124996,
+            "allocatedBytesPerLeaf": 7150.177083333333
+          },
+          {
+            "sample": 1,
+            "mode": "compact_cached_with_admission",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 77.56692708333334,
+            "cpuMicrosecondsPerLeaf": 77.0049596354158,
+            "allocatedBytesPerLeaf": 7143.208333333333
+          },
+          {
+            "sample": 1,
+            "mode": "compact_cached",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 70.8828125,
+            "cpuMicrosecondsPerLeaf": 70.43044661458353,
+            "allocatedBytesPerLeaf": 4641.177083333333
+          },
+          {
+            "sample": 1,
+            "mode": "compact_read_view",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 78.34479166666667,
+            "cpuMicrosecondsPerLeaf": 77.82630598958325,
+            "allocatedBytesPerLeaf": 4795.666666666667
+          },
+          {
+            "sample": 1,
+            "mode": "legacy_replay",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 243.20768229166666,
+            "cpuMicrosecondsPerLeaf": 241.66735546874918,
+            "allocatedBytesPerLeaf": 29745
+          },
+          {
+            "sample": 2,
+            "mode": "legacy_replay",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 185.50117187499998,
+            "cpuMicrosecondsPerLeaf": 184.36133203125019,
+            "allocatedBytesPerLeaf": 29744.125
+          },
+          {
+            "sample": 2,
+            "mode": "compact_read_view",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 29.077734375000002,
+            "cpuMicrosecondsPerLeaf": 28.89461458333405,
+            "allocatedBytesPerLeaf": 4796.510416666667
+          },
+          {
+            "sample": 2,
+            "mode": "compact_cached",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 25.531770833333336,
+            "cpuMicrosecondsPerLeaf": 25.39767187499938,
+            "allocatedBytesPerLeaf": 4641.177083333333
+          },
+          {
+            "sample": 2,
+            "mode": "compact_cached_with_admission",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 26.05846354166667,
+            "cpuMicrosecondsPerLeaf": 25.917977864582536,
+            "allocatedBytesPerLeaf": 6178.041666666667
+          },
+          {
+            "sample": 3,
+            "mode": "compact_cached_with_admission",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 25.562109375000002,
+            "cpuMicrosecondsPerLeaf": 25.436451822915984,
+            "allocatedBytesPerLeaf": 6158.177083333333
+          },
+          {
+            "sample": 3,
+            "mode": "compact_cached",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 20.399088541666668,
+            "cpuMicrosecondsPerLeaf": 20.289619791666286,
+            "allocatedBytesPerLeaf": 4608.333333333333
+          },
+          {
+            "sample": 3,
+            "mode": "compact_read_view",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 21.578515624999998,
+            "cpuMicrosecondsPerLeaf": 21.47379557291747,
+            "allocatedBytesPerLeaf": 4764.510416666667
+          },
+          {
+            "sample": 3,
+            "mode": "legacy_replay",
+            "iterations": 32,
+            "leaves": 24,
+            "microsecondsPerLeaf": 105.125,
+            "cpuMicrosecondsPerLeaf": 104.59451953124936,
+            "allocatedBytesPerLeaf": 29617
+          }
+        ]
+      },
+      {
+        "round": 2,
+        "card": "DEFEND_SILENT",
+        "cards": 24,
+        "samples": 1,
+        "rootSetupMicroseconds": 141,
+        "rootSetupAllocatedBytes": 20216,
+        "valueSlots": 279,
+        "distinctWrittenSlots": [
+          0
+        ],
+        "writes": 91,
+        "valueChanges": 61,
+        "peakUndoEntries": 24,
+        "cache": {
+          "EnemyBuilds": 1,
+          "FocusBuilds": 1,
+          "StrategyBuilds": 1,
+          "cardValues": 24
+        },
+        "measurements": []
+      }
+    ],
+    "compactRoundAdvancement": false,
+    "productionBeamEnabled": false
+  },
+  "validation": {
+    "linuxBoundaries": "REFACTOR_BOUNDARIES_OK search_files=88",
+    "powerShellExecuted": false,
+    "headlessInstancesStopped": true,
+    "incrementalVerification": false,
+    "fullProductionAB": false
+  },
+  "limitations": [
+    "No new production speed claim",
+    "Five basic Power types only; new Weak only targets living enemies",
+    "Round and mixed-acquisition sentinel execution remains legacy",
+    "R3 original full input/dynamic closure and R4 complete backend integration remain unfinished"
+  ]
+}

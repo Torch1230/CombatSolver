@@ -7,9 +7,9 @@ namespace CombatSolver.Engine.InCombat.Simulation.Compact;
 /// </summary>
 internal sealed class ResumableDiscardProgram
 {
-    internal readonly record struct Card(int Cost, int Draw, int Discard, bool Sly, int Block = 0, int Damage = 0, bool Attack = false);
+    internal readonly record struct Card(int Cost, int Draw, int Discard, bool Sly, int Block = 0, int Damage = 0, bool Attack = false, int Weak = 0, bool BlockEffect = false);
     internal enum Pile { Hand, Draw, Discard, Play, Exhaust }
-    internal enum EventKind { Pay, Start, Draw, Select, SelectedCard, Discard, Block, Finish, Shuffle, ShuffleCard, Retrieve, Damage, DamageBlocked, DamageOverkill, AttackFinish, Death }
+    internal enum EventKind { Pay, Start, Draw, Select, SelectedCard, Discard, Block, Finish, Shuffle, ShuffleCard, Retrieve, Damage, DamageBlocked, DamageOverkill, AttackFinish, Death, PowerChange }
     internal readonly record struct Event(EventKind Kind, int Card, int Value, bool Automatic, int Target = -1, int Flags = 0);
     private const int EnergySlot = 0, BlockSlot = 1, DepthSlot = 2, EventCountSlot = 3;
     private const int RngSlot = 4, ShuffleCountSlot = 9;
@@ -19,6 +19,7 @@ internal sealed class ResumableDiscardProgram
     private const int DrawIndexOffset = 16, TargetOffset = 17;
     private readonly Card[] _cards;
     private readonly CreatureAttackLayout? _combat;
+    private readonly BasicPowerLayout? _powers;
     private readonly int _discardBlock;
     private readonly int _stratagem;
     private readonly int _shuffleBlock;
@@ -30,6 +31,9 @@ internal sealed class ResumableDiscardProgram
     internal ReversibleValueState State { get; }
     internal int Energy => Read(EnergySlot);
     internal int Block => _combat?.Read(State, 0).Block ?? Read(BlockSlot);
+    internal int PowerCount => _powers?.Count ?? 0;
+    internal BasicPowerValues Power(int index) => _powers!.Read(State, index);
+    internal BasicPowerDefinition PowerDefinition(int index) => _powers!.Definition(index);
     internal int CreatureCount => _combat?.Count ?? 0;
     internal CreatureVitals Creature(int index) => _combat!.Read(State, index);
     internal bool CreaturePresent(int index) => _combat!.Present(State, index);
@@ -52,11 +56,11 @@ internal sealed class ResumableDiscardProgram
 
     internal ResumableDiscardProgram(Card[] cards, IReadOnlyList<int>[] piles, int energy, int block, int discardBlock,
         ValueShuffleRng shuffleRng = default, int[]? comparisons = null, int stratagem = 0, int shuffleBlock = 0,
-        bool shuffleBlockFirst = false, CreatureVitals[]? creatures = null)
+        bool shuffleBlockFirst = false, CreatureVitals[]? creatures = null, BasicPowerDefinition[]? powers = null)
     {
         if (cards.Length == 0 || cards.Length > 64 || piles.Length != 5 || cards.Count(c => c.Sly) >= MaxFrames)
             throw new NotSupportedException("Compact prototype capacity exceeded.");
-        if (cards.Any(c => c.Cost < 0 || c.Draw < 0 || c.Discard < 0 || c.Discard > 10 || c.Block < 0 || c.Damage < 0 || c.Attack && creatures == null || c.Sly && c.Draw == 0)
+        if (cards.Any(c => c.Cost < 0 || c.Draw < 0 || c.Discard < 0 || c.Discard > 10 || c.Block < 0 || c.Damage < 0 || c.Weak < 0 || c.Weak > 0 && powers == null || c.Attack && creatures == null || c.Sly && c.Draw == 0)
             || energy < 0 || block < 0 || discardBlock < 0 || stratagem is < 0 or > 10 || shuffleBlock < 0)
             throw new ArgumentException("Invalid compact root.");
         int[] identities = piles.SelectMany(p => p).ToArray();
@@ -78,6 +82,7 @@ internal sealed class ResumableDiscardProgram
         _frameStart = _pileStart + 5 * (cards.Length + 1);
         State = new ReversibleValueState(_frameStart + MaxFrames * FrameWidth);
         _combat = creatures == null ? null : new(State, creatures);
+        _powers = powers == null ? null : new(State, powers);
         _eventStart = State.Count;
         State.Write(EnergySlot, energy);
         if (_combat == null) State.Write(BlockSlot, block);
@@ -92,7 +97,7 @@ internal sealed class ResumableDiscardProgram
     }
 
     private ResumableDiscardProgram(Card[] cards, int discardBlock, int stratagem, int shuffleBlock,
-        bool shuffleBlockFirst, CardComparer? cardComparer, CreatureAttackLayout? combat, int eventStart, ReversibleValueState state)
+        bool shuffleBlockFirst, CardComparer? cardComparer, CreatureAttackLayout? combat, BasicPowerLayout? powers, int eventStart, ReversibleValueState state)
     {
         _cards = cards;
         _discardBlock = discardBlock;
@@ -103,6 +108,7 @@ internal sealed class ResumableDiscardProgram
         _frameStart = _pileStart + 5 * (cards.Length + 1);
         _eventStart = eventStart;
         _combat = combat;
+        _powers = powers;
         State = state;
     }
 
@@ -115,6 +121,7 @@ internal sealed class ResumableDiscardProgram
         private readonly CardComparer? _cardComparer;
         private readonly ReversibleValueState.FrozenValues _values;
         private readonly CreatureAttackLayout? _combat;
+        private readonly BasicPowerLayout? _powers;
         private readonly int _eventStart;
         internal Candidate(ResumableDiscardProgram source)
         {
@@ -126,11 +133,12 @@ internal sealed class ResumableDiscardProgram
             _shuffleBlockFirst = source._shuffleBlockFirst;
             _cardComparer = source._cardComparer;
             _combat = source._combat;
+            _powers = source._powers;
             _eventStart = source._eventStart;
         }
         internal int PayloadBytes => _values.PayloadBytes;
         internal ResumableDiscardProgram Open() => new(_cards, _discardBlock, _stratagem, _shuffleBlock,
-            _shuffleBlockFirst, _cardComparer, _combat, _eventStart, _values.CreateWorkspace());
+            _shuffleBlockFirst, _cardComparer, _combat, _powers, _eventStart, _values.CreateWorkspace());
         internal void RestoreInto(ResumableDiscardProgram workspace) => workspace.State.Restore(_values);
     }
 
@@ -143,14 +151,14 @@ internal sealed class ResumableDiscardProgram
     {
         if ((uint)index >= (uint)EventCount) throw new ArgumentOutOfRangeException(nameof(index));
         long packed = State[_eventStart + index];
-        return new((EventKind)(packed & 15), (int)((packed >> 4) & 255),
-            (int)((packed >> 12) & uint.MaxValue), (packed & (1L << 44)) != 0, (int)((packed >> 45) & 255) - 1, (int)((packed >> 53) & 255));
+        return new((EventKind)(packed & 31), (int)((packed >> 5) & 255),
+            (int)((packed >> 13) & uint.MaxValue), (packed & (1L << 45)) != 0, (int)((packed >> 46) & 255) - 1, (int)((packed >> 54) & 255));
     }
 
     internal void Begin(int card, int target = -1)
     {
         if (!Complete || Terminal || Ending || !Contains(Pile.Hand, card)
-            || !_cards[card].Attack && _cards[card].Draw == 0 && _cards[card].Block == 0 || Energy < _cards[card].Cost
+            || !_cards[card].Attack && _cards[card].Draw == 0 && _cards[card].Block == 0 && !_cards[card].BlockEffect || Energy < _cards[card].Cost
             || (_cards[card].Attack ? target <= 0 || target >= CreatureCount || !CreaturePresent(target) || Creature(target).CurrentHp <= 0 : target != -1))
             throw new InvalidOperationException("Card cannot begin this compact action.");
         State.Write(EnergySlot, Energy - _cards[card].Cost);
@@ -197,7 +205,8 @@ internal sealed class ResumableDiscardProgram
                     Move(card, Pile.Play);
                     Emit(EventKind.Start, card, _cards[card].Cost, Read(frame + AutoOffset) != 0, Read(frame + TargetOffset));
                     if (_cards[card].Attack) Attack(card, Read(frame + TargetOffset));
-                    GainBlock(card, _cards[card].Block);
+                    if (_cards[card].Block > 0 || _cards[card].BlockEffect)
+                        GainBlock(card, _powers?.ModifyBlock(State, 0, _cards[card].Block) ?? _cards[card].Block);
                     State.Write(frame + IpOffset, 1);
                     break;
                 case 1:
@@ -290,11 +299,11 @@ internal sealed class ResumableDiscardProgram
         State.Write(RngSlot + 4, unchecked((long)rng.State3));
     }
 
-    private void GainBlock(int card, int amount)
+    private void GainBlock(int card, decimal amount)
     {
         if (amount <= 0) return;
         int previous = Block;
-        if (_combat == null) State.Write(BlockSlot, Math.Min(999_999_999L, (long)Block + amount));
+        if (_combat == null) State.Write(BlockSlot, (int)Math.Min(999_999_999m, Block + amount));
         else
         {
             CreatureVitals values = Creature(0);
@@ -306,16 +315,24 @@ internal sealed class ResumableDiscardProgram
 
     private void Attack(int card, int target)
     {
-        DamageValues result = _combat!.Damage(State, target, _cards[card].Damage);
+        DamageValues result = _combat!.Damage(State, target, _powers?.ModifyAttack(State, 0, target, _cards[card].Damage) ?? _cards[card].Damage);
         Emit(EventKind.Damage, card, result.Unblocked, target: target, flags: result.Flags);
         Emit(EventKind.DamageBlocked, card, result.Blocked, target: target);
         Emit(EventKind.DamageOverkill, card, result.Overkill, target: target);
         if (result.Killed)
         {
             _combat.CompleteDeath(State, target);
+            _powers?.RemoveOwner(State, target);
             Emit(EventKind.Death, card, target: target);
         }
         Emit(EventKind.AttackFinish, card, target: target);
+        if (_cards[card].Weak > 0 && !Ending && CreaturePresent(target) && Creature(target).CurrentHp > 0)
+        {
+            int index = _powers!.Find(target, BasicPowerKind.Weak);
+            int before = _powers.Read(State, index).Amount;
+            _powers.Apply(State, index, _cards[card].Weak, 0);
+            Emit(EventKind.PowerChange, card, _powers.Read(State, index).Amount - before, target: target, flags: (int)BasicPowerKind.Weak);
+        }
     }
 
     private sealed class CardComparer(int[] comparisons, int count) : IComparer<int>
@@ -361,8 +378,8 @@ internal sealed class ResumableDiscardProgram
         int count = EventCount;
         if (State.Count != checked(_eventStart + count))
             throw new InvalidOperationException("Compact event storage lost its append position.");
-        State.Append((long)(byte)kind | (long)(byte)card << 4 | (long)(uint)value << 12
-            | (automatic ? 1L << 44 : 0) | (long)(byte)(target + 1) << 45 | (long)(byte)flags << 53);
+        State.Append((long)(byte)kind | (long)(byte)card << 5 | (long)(uint)value << 13
+            | (automatic ? 1L << 45 : 0) | (long)(byte)(target + 1) << 46 | (long)(byte)flags << 54);
         State.Write(EventCountSlot, checked(count + 1));
         EventsExecuted++;
     }
