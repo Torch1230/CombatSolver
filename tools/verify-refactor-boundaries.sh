@@ -990,6 +990,8 @@ while IFS= read -r production_path; do
 done < <(rg --files "$search_root" "$repository_root/src/Runtime" -g '*.cs')
 require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" 'private T? PreparePowerApplication<T>' 'Power preparation must remain separate from ordered application'
 require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" 'private PowerModel ApplyPreparedPower<T>' 'Power application must preserve the prepared command'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" '_events.Append(State, [item.Data, item.Metadata]);' 'event identities must retain full-width indexed storage'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ReversibleValueBuffer.cs" 'state.Write(_header + TailOffset, leaf);' 'buffer append cursor must belong to reversible values'
 compact_projection="$repository_root/src/Testing/CompactDiscardProjection.cs"
 for semantic_replay in '.ManualPlay(' '.AutoPlay(' '.Discard(' 'CardOnPlayMirrors.Invoke(' 'HookMirrors.'; do
     forbid_fixed "$compact_projection" "$semantic_replay" 'compact projection must decode events without replaying effects:'

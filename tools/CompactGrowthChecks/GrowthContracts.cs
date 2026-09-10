@@ -116,8 +116,7 @@ internal static class GrowthContracts
         ResumableDiscardProgram.Candidate? middle = null;
         for (int action = 0; action < 512; action++)
         {
-            program.Begin(action % 2);
-            program.Run();
+            Execute(program, action);
             if (!program.Complete || program.Count(ResumableDiscardProgram.Pile.Hand) != 1
                 || program.CardAt(ResumableDiscardProgram.Pile.Hand, 0) != (action + 1) % 2)
                 throw new InvalidOperationException("Long executor history changed its next action.");
@@ -130,11 +129,21 @@ internal static class GrowthContracts
         program.State.Rollback(checkpoint);
         if (!program.State.Freeze().ContentEquals(before)) throw new InvalidOperationException("Long execution did not restore its original root.");
         var restored = middle!.Open();
-        for (int action = 256; action < 512; action++) { restored.Begin(action % 2); restored.Run(); }
+        for (int action = 256; action < 512; action++) Execute(restored, action);
         if (!restored.State.Freeze().ContentEquals(endValues)) throw new InvalidOperationException("Frozen history did not resume identically.");
         end.RestoreInto(program);
         if (!program.State.Freeze().ContentEquals(endValues)) throw new InvalidOperationException("Long candidate could not restore into the original lane.");
         return checks + 2;
+
+        static void Execute(ResumableDiscardProgram lane, int action)
+        {
+            if (action % 31 == 0)
+            {
+                int domain = lane.State.Allocate(action % 5 + 1);
+                lane.State.Write(domain, action + 91);
+            }
+            lane.Begin(action % 2); lane.Run();
+        }
     }
 
     private static void Expect<T>(Action action) where T : Exception

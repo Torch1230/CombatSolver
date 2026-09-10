@@ -1,0 +1,554 @@
+{
+  "date": "2026-09-11",
+  "baseCommit": "5e2f43f",
+  "productionBackendEnabled": false,
+  "generatedCardsEnabled": false,
+  "build": {
+    "artifact": "artifact-v1",
+    "seconds": 9.93,
+    "warnings": 0,
+    "errors": 0
+  },
+  "pureChecks": {
+    "status": "Passed",
+    "randomBufferSteps": 800,
+    "independentBuffers": 3,
+    "frozenWorkers": 8,
+    "radixBoundaries": [
+      64,
+      2048,
+      65536
+    ],
+    "eventFields32Bit": true,
+    "existingGrowthContracts": 8,
+    "interleavedExecutorActions": 512
+  },
+  "nativeRuns": [
+    {
+      "name": "cost-before",
+      "runId": "2321744580d545658aa1abec3536982c",
+      "scenarioId": "COMPACT-EFFECT-PROGRAM-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 28087.7818,
+      "completedChecks": [
+        "CompactShufflePower:24Branches:AllSnapshotProperties:History:FiveFieldRng:Undo:Frozen8Workers:NativeTwoTurns:LegacyRoundBoundary",
+        "CompactEffectProgram:SurvivorBlockThenDiscard:PreparedPartialDrawThenShuffle:BackflipContinuation:Native"
+      ]
+    },
+    {
+      "name": "cost-after",
+      "runId": "70f16b4d11984d1c98d46718324c2034",
+      "scenarioId": "COMPACT-EFFECT-PROGRAM-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 28071.0483,
+      "completedChecks": [
+        "CompactShufflePower:24Branches:AllSnapshotProperties:History:FiveFieldRng:Undo:Frozen8Workers:NativeTwoTurns:LegacyRoundBoundary",
+        "CompactEffectProgram:SurvivorBlockThenDiscard:PreparedPartialDrawThenShuffle:BackflipContinuation:Native"
+      ]
+    },
+    {
+      "name": "poison-sentinel",
+      "runId": "24a06feb94e54f17aa05414434226290",
+      "scenarioId": "COMPACT-POWER-EXPRESSIONS-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 4389.0208,
+      "completedChecks": [
+        "CompactPoisonTrigger:NativePreTeardownSnapshot",
+        "CompactPoisonTrigger:13Branches:NoDealerOrCardSource:UnpoweredUnblockable:NoAttackHistory:RootRetirementReacquisition:OriginalKeys:AllSnapshotProperties:Frozen8Workers:Native10Actions:PreTeardownFullState:CombatEnded",
+        "CompactPowerExpressions:TargetPresenceAfterRetirementReacquisition:LivingEnemySumAfterDeath:CalculationBaseExtra:ZeroAndFrailRounding:UpgradeExhaustion:Native10Actions"
+      ]
+    }
+  ],
+  "cost": {
+    "cost-before": {
+      "rounds": [
+        {
+          "round": 1,
+          "card": "SURVIVOR",
+          "cards": 22,
+          "samples": 24,
+          "rootSetupMicroseconds": 55554,
+          "rootSetupAllocatedBytes": 1383776,
+          "valueSlots": 346,
+          "distinctWrittenSlots": [
+            58,
+            57,
+            56,
+            55,
+            55,
+            58,
+            58,
+            57,
+            56,
+            55,
+            55,
+            58,
+            58,
+            57,
+            56,
+            55,
+            55,
+            58,
+            58,
+            57,
+            56,
+            55,
+            55,
+            58
+          ],
+          "writes": 828338,
+          "valueChanges": 777289,
+          "peakUndoEntries": 346,
+          "cache": {
+            "EnemyBuilds": 1,
+            "FocusBuilds": 1,
+            "StrategyBuilds": 1,
+            "cardValues": 22
+          },
+          "measurements": [
+            {
+              "sample": 0,
+              "mode": "legacy_replay",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 64.80768229166667,
+              "cpuMicrosecondsPerLeaf": 63.65178385416451,
+              "allocatedBytesPerLeaf": 29146.614583333332
+            },
+            {
+              "sample": 0,
+              "mode": "compact_read_view",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 20.32890625,
+              "cpuMicrosecondsPerLeaf": 20.258503906250763,
+              "allocatedBytesPerLeaf": 4460.6875
+            },
+            {
+              "sample": 0,
+              "mode": "compact_cached",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 18.086458333333333,
+              "cpuMicrosecondsPerLeaf": 18.021446614582715,
+              "allocatedBytesPerLeaf": 4303.666666666667
+            },
+            {
+              "sample": 0,
+              "mode": "compact_cached_with_admission",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 20.405208333333334,
+              "cpuMicrosecondsPerLeaf": 20.30194661458277,
+              "allocatedBytesPerLeaf": 6005.802083333333
+            },
+            {
+              "sample": 1,
+              "mode": "compact_cached_with_admission",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 19.748307291666666,
+              "cpuMicrosecondsPerLeaf": 19.668131510416725,
+              "allocatedBytesPerLeaf": 6004.333333333333
+            },
+            {
+              "sample": 1,
+              "mode": "compact_cached",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 18.266276041666668,
+              "cpuMicrosecondsPerLeaf": 18.19191796874975,
+              "allocatedBytesPerLeaf": 4304.510416666667
+            },
+            {
+              "sample": 1,
+              "mode": "compact_read_view",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 19.25078125,
+              "cpuMicrosecondsPerLeaf": 19.148069010415252,
+              "allocatedBytesPerLeaf": 4459
+            },
+            {
+              "sample": 1,
+              "mode": "legacy_replay",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 62.64427083333334,
+              "cpuMicrosecondsPerLeaf": 62.379794270834545,
+              "allocatedBytesPerLeaf": 29139.333333333332
+            },
+            {
+              "sample": 2,
+              "mode": "legacy_replay",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 62.955859374999996,
+              "cpuMicrosecondsPerLeaf": 62.59902473958334,
+              "allocatedBytesPerLeaf": 29139.333333333332
+            },
+            {
+              "sample": 2,
+              "mode": "compact_read_view",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 19.6125,
+              "cpuMicrosecondsPerLeaf": 19.534041666666724,
+              "allocatedBytesPerLeaf": 4459.84375
+            },
+            {
+              "sample": 2,
+              "mode": "compact_cached",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 17.996484374999998,
+              "cpuMicrosecondsPerLeaf": 17.915739583334773,
+              "allocatedBytesPerLeaf": 4303.666666666667
+            },
+            {
+              "sample": 2,
+              "mode": "compact_cached_with_admission",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 21.662499999999998,
+              "cpuMicrosecondsPerLeaf": 21.551897135417164,
+              "allocatedBytesPerLeaf": 6005.802083333333
+            },
+            {
+              "sample": 3,
+              "mode": "compact_cached_with_admission",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 20.715885416666666,
+              "cpuMicrosecondsPerLeaf": 20.622243489583525,
+              "allocatedBytesPerLeaf": 6004.333333333333
+            },
+            {
+              "sample": 3,
+              "mode": "compact_cached",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 18.662890625,
+              "cpuMicrosecondsPerLeaf": 18.603414062501617,
+              "allocatedBytesPerLeaf": 4304.510416666667
+            },
+            {
+              "sample": 3,
+              "mode": "compact_read_view",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 22.060286458333334,
+              "cpuMicrosecondsPerLeaf": 21.95960546874905,
+              "allocatedBytesPerLeaf": 4459
+            },
+            {
+              "sample": 3,
+              "mode": "legacy_replay",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 64.03919270833333,
+              "cpuMicrosecondsPerLeaf": 63.82295703124896,
+              "allocatedBytesPerLeaf": 29139.333333333332
+            }
+          ]
+        },
+        {
+          "round": 2,
+          "card": "DEFEND_SILENT",
+          "cards": 22,
+          "samples": 1,
+          "rootSetupMicroseconds": 83.2,
+          "rootSetupAllocatedBytes": 22888,
+          "valueSlots": 346,
+          "distinctWrittenSlots": [
+            0
+          ],
+          "writes": 115,
+          "valueChanges": 59,
+          "peakUndoEntries": 24,
+          "cache": {
+            "EnemyBuilds": 1,
+            "FocusBuilds": 1,
+            "StrategyBuilds": 1,
+            "cardValues": 22
+          },
+          "measurements": []
+        }
+      ],
+      "means": {
+        "legacy_replay": {
+          "microsecondsPerLeaf": 63.611751302083334,
+          "cpuMicrosecondsPerLeaf": 63.11338997395784,
+          "allocatedBytesPerLeaf": 29141.153645833332
+        },
+        "compact_read_view": {
+          "microsecondsPerLeaf": 20.31311848958333,
+          "cpuMicrosecondsPerLeaf": 20.225055013020448,
+          "allocatedBytesPerLeaf": 4459.6328125
+        },
+        "compact_cached": {
+          "microsecondsPerLeaf": 18.25302734375,
+          "cpuMicrosecondsPerLeaf": 18.18312955729221,
+          "allocatedBytesPerLeaf": 4304.088541666667
+        },
+        "compact_cached_with_admission": {
+          "microsecondsPerLeaf": 20.632975260416664,
+          "cpuMicrosecondsPerLeaf": 20.536054687500048,
+          "allocatedBytesPerLeaf": 6005.067708333333
+        }
+      }
+    },
+    "cost-after": {
+      "rounds": [
+        {
+          "round": 1,
+          "card": "SURVIVOR",
+          "cards": 22,
+          "samples": 24,
+          "rootSetupMicroseconds": 55671.2,
+          "rootSetupAllocatedBytes": 1388504,
+          "valueSlots": 350,
+          "distinctWrittenSlots": [
+            152,
+            151,
+            150,
+            149,
+            149,
+            152,
+            152,
+            151,
+            150,
+            149,
+            149,
+            152,
+            152,
+            151,
+            150,
+            149,
+            149,
+            152,
+            152,
+            151,
+            150,
+            149,
+            149,
+            152
+          ],
+          "writes": 960169,
+          "valueChanges": 909120,
+          "peakUndoEntries": 361,
+          "cache": {
+            "EnemyBuilds": 1,
+            "FocusBuilds": 1,
+            "StrategyBuilds": 1,
+            "cardValues": 22
+          },
+          "measurements": [
+            {
+              "sample": 0,
+              "mode": "legacy_replay",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 63.85703125,
+              "cpuMicrosecondsPerLeaf": 62.7731523437518,
+              "allocatedBytesPerLeaf": 29146.614583333332
+            },
+            {
+              "sample": 0,
+              "mode": "compact_read_view",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 20.986848958333333,
+              "cpuMicrosecondsPerLeaf": 20.901541666667356,
+              "allocatedBytesPerLeaf": 4539.84375
+            },
+            {
+              "sample": 0,
+              "mode": "compact_cached",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 18.937890624999998,
+              "cpuMicrosecondsPerLeaf": 18.871733072915713,
+              "allocatedBytesPerLeaf": 4383.666666666667
+            },
+            {
+              "sample": 0,
+              "mode": "compact_cached_with_admission",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 21.626692708333334,
+              "cpuMicrosecondsPerLeaf": 21.51095963541631,
+              "allocatedBytesPerLeaf": 6102.135416666667
+            },
+            {
+              "sample": 1,
+              "mode": "compact_cached_with_admission",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 21.007421875000002,
+              "cpuMicrosecondsPerLeaf": 20.91804687499869,
+              "allocatedBytesPerLeaf": 6100.666666666667
+            },
+            {
+              "sample": 1,
+              "mode": "compact_cached",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 19.640885416666666,
+              "cpuMicrosecondsPerLeaf": 19.56417578125051,
+              "allocatedBytesPerLeaf": 4384.510416666667
+            },
+            {
+              "sample": 1,
+              "mode": "compact_read_view",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 20.6375,
+              "cpuMicrosecondsPerLeaf": 20.560578125000006,
+              "allocatedBytesPerLeaf": 4539
+            },
+            {
+              "sample": 1,
+              "mode": "legacy_replay",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 61.59140625,
+              "cpuMicrosecondsPerLeaf": 61.26305859374762,
+              "allocatedBytesPerLeaf": 29139.333333333332
+            },
+            {
+              "sample": 2,
+              "mode": "legacy_replay",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 61.24856770833333,
+              "cpuMicrosecondsPerLeaf": 60.96213151041733,
+              "allocatedBytesPerLeaf": 29139.333333333332
+            },
+            {
+              "sample": 2,
+              "mode": "compact_read_view",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 20.968229166666667,
+              "cpuMicrosecondsPerLeaf": 20.887364583333106,
+              "allocatedBytesPerLeaf": 4539.84375
+            },
+            {
+              "sample": 2,
+              "mode": "compact_cached",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 19.155859375000002,
+              "cpuMicrosecondsPerLeaf": 19.08586979166671,
+              "allocatedBytesPerLeaf": 4383.666666666667
+            },
+            {
+              "sample": 2,
+              "mode": "compact_cached_with_admission",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 21.478255208333334,
+              "cpuMicrosecondsPerLeaf": 21.378455729165562,
+              "allocatedBytesPerLeaf": 6102.135416666667
+            },
+            {
+              "sample": 3,
+              "mode": "compact_cached_with_admission",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 21.35859375,
+              "cpuMicrosecondsPerLeaf": 21.245526041667517,
+              "allocatedBytesPerLeaf": 6101.822916666667
+            },
+            {
+              "sample": 3,
+              "mode": "compact_cached",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 18.974869791666666,
+              "cpuMicrosecondsPerLeaf": 18.90171875000135,
+              "allocatedBytesPerLeaf": 4383.666666666667
+            },
+            {
+              "sample": 3,
+              "mode": "compact_read_view",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 20.618229166666666,
+              "cpuMicrosecondsPerLeaf": 20.54131119791691,
+              "allocatedBytesPerLeaf": 4539
+            },
+            {
+              "sample": 3,
+              "mode": "legacy_replay",
+              "iterations": 32,
+              "leaves": 24,
+              "microsecondsPerLeaf": 62.04296875,
+              "cpuMicrosecondsPerLeaf": 61.749627604164914,
+              "allocatedBytesPerLeaf": 29139.333333333332
+            }
+          ]
+        },
+        {
+          "round": 2,
+          "card": "DEFEND_SILENT",
+          "cards": 22,
+          "samples": 1,
+          "rootSetupMicroseconds": 76.7,
+          "rootSetupAllocatedBytes": 28632,
+          "valueSlots": 350,
+          "distinctWrittenSlots": [
+            0
+          ],
+          "writes": 122,
+          "valueChanges": 66,
+          "peakUndoEntries": 26,
+          "cache": {
+            "EnemyBuilds": 1,
+            "FocusBuilds": 1,
+            "StrategyBuilds": 1,
+            "cardValues": 22
+          },
+          "measurements": []
+        }
+      ],
+      "means": {
+        "legacy_replay": {
+          "microsecondsPerLeaf": 62.184993489583334,
+          "cpuMicrosecondsPerLeaf": 61.686992513020414,
+          "allocatedBytesPerLeaf": 29141.153645833332
+        },
+        "compact_read_view": {
+          "microsecondsPerLeaf": 20.802701822916667,
+          "cpuMicrosecondsPerLeaf": 20.722698893229346,
+          "allocatedBytesPerLeaf": 4539.421875
+        },
+        "compact_cached": {
+          "microsecondsPerLeaf": 19.17737630208333,
+          "cpuMicrosecondsPerLeaf": 19.105874348958572,
+          "allocatedBytesPerLeaf": 4383.877604166667
+        },
+        "compact_cached_with_admission": {
+          "microsecondsPerLeaf": 21.367740885416666,
+          "cpuMicrosecondsPerLeaf": 21.26324707031202,
+          "allocatedBytesPerLeaf": 6101.690104166667
+        }
+      }
+    },
+    "comparison": {
+      "cpuChangeFraction": 0.03541052036906578,
+      "allocationChangeFraction": 0.016090142613920833,
+      "legacyControlCpuChangeFraction": -0.022600552141565977,
+      "bLocalSpeedup": 2.9011087680558663,
+      "bLocalAllocationFraction": 0.20938395845008353,
+      "jit": "DOTNET_TieredCompilation=0",
+      "scope": "24-leaf closed Survivor/Sly/shuffle prototype; one A then B process, four internal interleaved samples each mode, not full original inputs"
+    }
+  },
+  "boundaries": {
+    "linux": "Passed",
+    "searchFiles": 88,
+    "powershell": "Updated, not executed"
+  }
+}

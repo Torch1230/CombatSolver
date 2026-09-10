@@ -1286,6 +1286,8 @@ $compactReadGuards = @(
     @('src/Search/CompletedStateReadView.cs', 'A new stable root requires a new cache.'),
     @('src/Search/SimulatedCombatState.cs', 'private T? PreparePowerApplication<T>'),
     @('src/Search/SimulatedCombatState.cs', 'private PowerModel ApplyPreparedPower<T>'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', '_events.Append(State, [item.Data, item.Metadata]);'),
+    @('src/Engine/InCombat/Simulation/Compact/ReversibleValueBuffer.cs', 'state.Write(_header + TailOffset, leaf);'),
     @('src/Engine/InCombat/Simulation/Compact/CardEffectProgram.cs', '_instructions = instructions.ToArray();'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'State.Write(Frame + EffectIndexOffset, Read(Frame + EffectIndexOffset) + 1);'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'State.Write(Frame + FirstDrawnOffset, drawn);'),
