@@ -593,10 +593,10 @@ internal sealed partial class SimulatedCombatState
 
     private void AppendCardLifecycleFingerprint(
         ref StateFingerprintBuilder fingerprint,
-        CombatPredictionSimulator simulator)
+        CombatPredictionSimulator simulator, CardHistoryReadValues? history = null)
     {
-        AddCreatureIntMap(ref fingerprint, 'c', _cardsPlayedThisTurn);
-        AddCreatureIntMap(ref fingerprint, 'm', _manualCardsPlayedThisTurn);
+        AddCreatureIntMap(ref fingerprint, 'c', _cardsPlayedThisTurn, history?.Owner.Creature, history?.Plays);
+        AddCreatureIntMap(ref fingerprint, 'm', _manualCardsPlayedThisTurn, history?.Owner.Creature, history?.ManualPlays);
         AddCreatureIntMap(ref fingerprint, 'o', _simulatedOstyMaxHp);
 
         ulong first = 0;

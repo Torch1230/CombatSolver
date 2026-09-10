@@ -439,6 +439,7 @@ $expectedBeamFiles = @(
     "CombatBeamSolver.PathDiagnostics.cs",
     "CombatBeamSolver.Phases.cs",
     "CombatBeamSolver.PrimaryChoiceReplay.cs",
+    "CombatBeamSolver.ReadView.cs",
     "CombatBeamSolver.Retention.cs",
     "CombatBeamSolver.RetentionJobs.cs",
     "CombatBeamSolver.RoundLifecycle.cs",
@@ -1200,7 +1201,7 @@ foreach ($file in Get-ChildItem -LiteralPath $compactRoot -Filter *.cs -File -Re
 }
 $compactProductionFiles = @($searchFiles) + @(Get-ChildItem -LiteralPath (Join-Path $repositoryRoot 'src/Runtime') -Filter *.cs -File -Recurse)
 foreach ($file in $compactProductionFiles) {
-    foreach ($reference in @('ResumableDiscardProgram', 'CompactDiscardProjection', 'CompactPhaseProbe')) {
+    foreach ($reference in @('ResumableDiscardProgram', 'CompactDiscardProjection', 'CompactDiscardReadView', 'CompactPhaseProbe')) {
         foreach ($match in Select-String -LiteralPath $file.FullName -SimpleMatch $reference) {
             $violations.Add("$($match.Path):$($match.LineNumber): unvalidated compact prototype reached production: $reference")
         }
@@ -1223,6 +1224,28 @@ $compactContextGuards = @(
 foreach ($guard in $compactContextGuards) {
     if (-not ([IO.File]::ReadAllText((Join-Path $repositoryRoot $guard[0]))).Contains($guard[1])) {
         $violations.Add("Compact profile lost simulation context boundary: $($guard[0]) / $($guard[1])")
+    }
+}
+$compactReader = Join-Path $repositoryRoot 'src/Testing/CompactDiscardReadView.cs'
+foreach ($reference in @('.Materialize(', '.ManualPlay(', '.AutoPlay(', '.MutablePreview', '.State.Write(')) {
+    foreach ($match in Select-String -LiteralPath $compactReader -SimpleMatch $reference) {
+        $violations.Add("$($match.Path):$($match.LineNumber): completed reader must not reconstruct or mutate branch models: $reference")
+    }
+}
+$compactReadGuards = @(
+    @('src/Testing/CompactDiscardReadView.cs', '!_adapter.Program.State.HasSameRoot(program.State) || !program.Complete'),
+    @('src/Search/CombatBeamSolver.StateEvaluation.cs', '=> SnapshotCore(simulator, turn, actionCount, shufflesCrossed, boundary, processedEnemyDeaths, null);'),
+    @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'result.ReleaseSimulator();')
+)
+foreach ($guard in $compactReadGuards) {
+    if (-not ([IO.File]::ReadAllText((Join-Path $repositoryRoot $guard[0]))).Contains($guard[1])) {
+        $violations.Add("Completed reader lost ownership/formula boundary: $($guard[0]) / $($guard[1])")
+    }
+}
+foreach ($file in $compactProductionFiles) {
+    if ($file.Name -eq 'CombatBeamSolver.StateEvaluation.cs') { continue }
+    foreach ($match in Select-String -LiteralPath $file.FullName -SimpleMatch 'SnapshotFromReadView(') {
+        $violations.Add("$($match.Path):$($match.LineNumber): closed completed reader is not admitted to production execution.")
     }
 }
 $compactStorageGuards = @(

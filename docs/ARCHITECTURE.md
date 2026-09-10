@@ -209,7 +209,9 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 `Simulation/Compact/` 是尚未接入生产搜索的紧凑执行实验。`ReversibleValueState` 独占连续值槽、撤销日志、单次 LIFO 检查点及派生页缓存；普通写入和 rollback 都将对应页失效。`ReversibleValueState.FrozenValues` 独占发布时复制的页表，共享只含位图和非零值的私有不可变 64 槽页，不持有 worker、祖先候选或旧模型。恢复要求同根且目标没有活动 checkpoint；只重写失效或不同的页，清除旧候选遗留的零槽，复用工作区不分配。页表及恢复扫描仍随槽容量增长。`ResumableDiscardProgram` 将牌堆、资源、显式执行帧、选择和事件游标全部写入同一值槽，并共享不可变卡牌定义；候选支持新建工作区或 `RestoreInto` 复用已有 lane。诊断写入/事件计数仍累计在各 lane，不属于恢复的战斗状态。内核不引用原生 Model、Simulator、Task 或委托。当前只表达无随机抽牌/弃牌与自动出牌，不能将其称为通用新后端。
 
-`Testing/CompactDiscardProjection.cs` 负责该实验的封闭能力准入和旧模型读投影：检查整根监听器、附加状态、费用与洗牌可能性；从事件构造一个拥有的旧分支供完整 `Snapshot` 读取，不再次执行 OnPlay、弃牌 Hook 或选择器。投影不得反写紧凑权威值。`MethodMirrorRegistry.DescribeDispatch` 和 OnPlay facade 仅提供同一缓存查询的只读分类，投影据此保留旧引擎的已补偿风险历史。候选在复用 worker 前冻结值，并释放旧评估快照的模拟器；后续动作从候选自有值重新打开。双端门禁禁止此实验从 Search/Runtime 入口启用，禁止值内核引入 Model 依赖，禁止投影重新回放效果。
+`Testing/CompactDiscardProjection.cs` 负责封闭能力准入及旧模型事件投影，投影仅用于完整状态／历史与原生差分，不再次执行 OnPlay、弃牌 Hook 或选择器。`Testing/CompactDiscardReadView.cs` 在同一准入闭包内直接读取值牌堆、资源和已提交事件；根卡牌及其他生命周期只作已证明不变的元数据。每根独立 Fork 一次取得会惰性物化的历史初值，保留原根的缺席／零值区别；每叶不再 Fork 或物化旧图。风险组合由原 `PredictionCoverage` 分类／排序后在根级准备。
+
+`Search/CompletedStateReadView.cs` 是同步已完成状态的读取合同，既有 Snapshot 与 `SnapshotFromReadView` 共用 `SnapshotCore`、合法性、完整估值、投影洗牌与原键编码。`CombatBeamSolver.ReadView.cs` 持有共用的值牌堆编码；`SimulatedCombatState.AppendFingerprint` 在原序列中替换已改变的 owner 历史项和技能集合。读取结果立即释放借用 Simulator；读取器不能逃入保留候选，也不建立旧图与值状态的双写权威。所有未提供字段必须在准入程序内不变；因此不能将当前合同用于任意 Power、死亡或随机效果。双端门禁仍禁止生产 Search/Runtime 调用实验入口；生产后端与调度未切换。
 
 `Testing/CompactPhaseProbe.cs` 与 `UnattendedTestRunner.CompactKernelProfile.cs` 独占原型的阶段计量和新旧 solver 缓存对照，不进入生产 Search/Runtime。直接调用 Snapshot 的实验必须进入正式 `SolveCore` 使用的 `SimulationNotificationIsolation`，否则既有第三方空能力快速路径会旁路。该作用域使用线程静态状态，必须在 await 前和原生部署前退出；恢复后的模拟重新进入。诊断输出实际线程 CPU、独立墙钟和分配，内部既有 Snapshot 指标仍是嵌套墙钟；冻结候选不保留计量器、solver 或读取视图。
 

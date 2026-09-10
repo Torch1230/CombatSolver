@@ -42,7 +42,7 @@ internal sealed class CompactDiscardProjection
             || root.HasPendingChoice || root.IsOverOrEnding)
             throw new NotSupportedException("Compact prototype requires an idle root without Powers, deck listeners, or mod subscribers.");
         var relics = combat.RelicsOf(player);
-        if (relics.Any(r => r is not ToughBandages) || relics.Count > 1
+        if (relics.Any(r => r is not ToughBandages || r.IsMelted) || relics.Count > 1
             || combat.CurrentSide != player.Creature.Side)
             throw new NotSupportedException("Compact prototype admits only the discard-block relic in player phase.");
         foreach (AbstractModel listener in combat.IterateHookListeners())
@@ -83,6 +83,7 @@ internal sealed class CompactDiscardProjection
             || card.EnergyCost.CostsX || card.EnergyCost._localModifiers.Count != 0
             || card.HasStarCostX || card.CurrentStarCost > 0 || card._temporaryStarCosts.Count != 0
             || card.CurrentTarget != null || card.CurrentPlayIndex != 0 || card.LastStarsSpent != 0
+            || card.ShouldRetainThisTurn || card.HasTurnEndInHandEffect
             || card.LocalKeywords.Any(k => k != CardKeyword.Sly)
             || card.IsSlyThisTurn && card is not Prepared)
             throw new NotSupportedException($"Compact prototype cannot admit card state {card.Id.Entry}.");
@@ -92,6 +93,8 @@ internal sealed class CompactDiscardProjection
             throw new NotSupportedException($"Compact prototype cannot admit card variables {card.Id.Entry}.");
         return new(card.EnergyCost._base, (int)draw, card is Acrobatics ? 1 : (int)draw, card.IsSlyThisTurn);
     }
+
+    internal CompactDiscardReadView CreateReadView() => new(this, _root, _player, _inferred);
 
     internal int Identity(string cardId) => Array.FindIndex(_identities, c => c.Id.Entry == cardId);
     internal int CardCount => _identities.Length;
@@ -217,7 +220,9 @@ internal sealed class CompactDiscardProjection
         "AfterModifyingCardPlayResultLocation", "ModifyCardPlayCount", "AfterModifyingCardPlayCount",
         "BeforeCardPlayed", "AfterCardPlayed", "AfterCardPlayedLate", "AfterCardDrawn", "AfterCardDiscarded", "AfterHandEmptied",
         "BeforeBlockGained", "ModifyBlockAdditive", "ModifyBlockMultiplicative", "AfterModifyingBlockAmount", "AfterBlockGained",
-        "TryModifyKeywordsInCombat", "ModifyMaxHandSize", "BeforeCardAutoPlayed", "AfterCardChangedPiles"
+        "TryModifyKeywordsInCombat", "ModifyMaxHandSize", "ModifyUnblockedDamageTarget",
+        "ModifyHpLostBeforeOsty", "ModifyHpLostBeforeOstyLate", "ModifyHpLostAfterOsty", "ModifyHpLostAfterOstyLate",
+        "ModifyDamageAdditive", "ModifyDamageMultiplicative", "BeforeCardAutoPlayed", "AfterCardChangedPiles"
     };
 
     // Keep these exact method/type pairs aligned with the explicitly ignored registrations in

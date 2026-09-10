@@ -103,6 +103,15 @@ internal sealed partial class UnattendedTestRunner
             return (sim, plans.ToArray());
         }
 
+        var rootBeforeReadSetup = CaptureSimulated(rootSimulator, (SimulatedCombatState)rootSimulator.State.CombatState, player, enemy);
+        CompactDiscardReadView readView = adapter.CreateReadView();
+        AssertSnapshotEqual(rootBeforeReadSetup, CaptureSimulated(rootSimulator,
+            (SimulatedCombatState)rootSimulator.State.CombatState, player, enemy), "CompactReadView", "SetupRootUnchanged");
+        readView.Read(lane);
+        AssertCompactEvaluation(Release(Evaluate(rootSimulator, 0)), driver.SnapshotFromReadView(readView,
+            turn, 0, 0, SearchBoundaryReason.None, emptyDeaths));
+        var foreignAdapter = new CompactDiscardProjection(rootSimulator.Fork(), player);
+        ExpectCompactFailure(() => readView.Read(foreignAdapter.Program));
         List<CompactCase> cases = [];
         List<int> distinctWrittenSlots = [];
         var rootValues = lane.State.Freeze();
@@ -111,6 +120,7 @@ internal sealed partial class UnattendedTestRunner
         lane.Run();
         if (!lane.NeedsChoice || lane.Energy != 5 || lane.EventCount != 5)
             throw new InvalidOperationException("Compact paid/draw prefix did not suspend at its first choice.");
+        ExpectCompactFailure(() => readView.Read(lane));
         var outerValues = lane.State.Freeze();
         var outerMark = lane.State.Mark();
         lane.SupplyChoice([prepared]);
@@ -147,6 +157,14 @@ internal sealed partial class UnattendedTestRunner
                 CaptureSimulated(projection, (SimulatedCombatState)projection.State.CombatState, player, enemy), "CompactKernel", "FullState");
             SimulationSnapshot expected = Evaluate(oracle), actual = Evaluate(projection);
             AssertCompactEvaluation(expected, actual);
+            readView.Read(program);
+            AssertCompactEvaluation(expected, driver.SnapshotFromReadView(readView, turn, 1, 0, SearchBoundaryReason.None, emptyDeaths));
+            foreach (int id in Enumerable.Range(0, adapter.CardCount))
+            {
+                if (CombatBeamSolver.CaptureCardStateFingerprintForTesting(oracle.State.FindCard(adapter.Original(id))!)
+                    != CombatBeamSolver.CaptureCardStateFingerprintForTesting(rootSimulator.State.FindCard(adapter.Original(id))!))
+                    throw new InvalidOperationException("Closed read view cached mutable card metadata.");
+            }
             if (!CompactHistory(oracle, adapter).SequenceEqual(CompactHistory(projection, adapter)))
                 throw new InvalidOperationException("Compact semantic history differs from the legacy oracle.");
             expected.ReleaseSimulator();
@@ -211,7 +229,11 @@ internal sealed partial class UnattendedTestRunner
         adapter.AssertValues(continuation, continuedOracle);
         AssertSnapshotEqual(CaptureSimulated(continuedOracle, continuedCombat, player, enemy),
             CaptureSimulated(continuedProjection, (SimulatedCombatState)continuedProjection.State.CombatState, player, enemy), "CompactKernel", "NextAction");
-        AssertCompactEvaluation(Release(Evaluate(continuedOracle, 2)), Release(Evaluate(continuedProjection, 2)));
+        SimulationSnapshot continuedExpected = Release(Evaluate(continuedOracle, 2));
+        AssertCompactEvaluation(continuedExpected, Release(Evaluate(continuedProjection, 2)));
+        readView.Read(continuation);
+        AssertCompactEvaluation(continuedExpected, driver.SnapshotFromReadView(readView,
+            turn, 2, 0, SearchBoundaryReason.None, emptyDeaths));
         AssertCompactEvaluation(continuationCase.Evaluation, Release(Evaluate(adapter.Materialize(continuationCase.Candidate.Open()))));
 
         // Admission failures are explicit and precede any compact execution.
@@ -238,8 +260,9 @@ internal sealed partial class UnattendedTestRunner
             retained.Sort(CompareCompactEvaluation);
             foreach (var item in retained) { checksum ^= (long)item.StateKey.First; item.ReleaseSimulator(); }
         }
-        void CompactBatch(bool evaluate)
+        void CompactBatch(bool evaluate, bool direct = false)
         {
+            CompactDiscardReadView? reader = direct ? adapter.CreateReadView() : null;
             var mark = lane.State.Mark();
             List<(ResumableDiscardProgram.Candidate Handle, SimulationSnapshot? Evaluation)> retained = new(cases.Count);
             try
@@ -248,7 +271,10 @@ internal sealed partial class UnattendedTestRunner
                 Walk(lane, [], (program, _) =>
                 {
                     var handle = program.Freeze();
-                    SimulationSnapshot? value = evaluate ? Release(Evaluate(adapter.Materialize(program))) : null;
+                    reader?.Read(program);
+                    SimulationSnapshot? value = reader is not null
+                        ? driver.SnapshotFromReadView(reader, turn, 1, 0, SearchBoundaryReason.None, emptyDeaths)
+                        : evaluate ? Release(Evaluate(adapter.Materialize(program))) : null;
                     retained.Add((handle, value));
                 });
                 if (evaluate)
@@ -260,18 +286,18 @@ internal sealed partial class UnattendedTestRunner
             }
             finally { lane.State.Rollback(mark); }
         }
-        LegacyBatch(); CompactBatch(true); CompactBatch(false);
+        LegacyBatch(); CompactBatch(true); CompactBatch(true, true); CompactBatch(false);
         for (int sample = 0; sample < 4; sample++)
         {
-            foreach (string mode in sample % 2 == 0 ? new[] { "legacy", "compact_full", "compact_kernel" }
-                         : new[] { "compact_kernel", "compact_full", "legacy" })
+            foreach (string mode in sample % 2 == 0 ? new[] { "legacy", "compact_full", "compact_read_view", "compact_kernel" }
+                         : new[] { "compact_kernel", "compact_read_view", "compact_full", "legacy" })
             {
                 EnsureWithinDeadline();
                 long before = GC.GetAllocatedBytesForCurrentThread();
                 double cpuBefore = CompactThreadCpu.Milliseconds();
                 var watch = Stopwatch.StartNew();
                 for (int i = 0; i < iterations; i++)
-                    if (mode == "legacy") LegacyBatch(); else CompactBatch(mode == "compact_full");
+                    if (mode == "legacy") LegacyBatch(); else CompactBatch(mode is "compact_full" or "compact_read_view", mode == "compact_read_view");
                 watch.Stop();
                 double cpuMilliseconds = CompactThreadCpu.Milliseconds() - cpuBefore;
                 measurements.Add(new { mode, sample, iterations, leaves = cases.Count,
@@ -281,7 +307,7 @@ internal sealed partial class UnattendedTestRunner
             }
         }
         var evidence = new { schemaVersion = 1, scope = "closed draw/discard prototype; full fixtures unchanged and not run",
-            cards = 30, leaves = cases.Count, candidatesOwnValues = true, fullLegacyEvaluation = true,
+            cards = 30, leaves = cases.Count, candidatesOwnValues = true, fullLegacyEvaluation = true, directCompletedReadView = true,
             rngPolicy = "all random effects rejected at admission; nine root RNG states preserved by projection",
             payloadBytes = cases[0].Candidate.PayloadBytes,
             distinctWrittenSlots, workspaceSlots = lane.State.Count, lane.EventsExecuted,
@@ -294,6 +320,8 @@ internal sealed partial class UnattendedTestRunner
                 JsonSerializer.Serialize(evidence, new JsonSerializerOptions { WriteIndented = true }));
         }
 
+        AssertSnapshotEqual(rootBeforeReadSetup, CaptureSimulated(rootSimulator,
+            (SimulatedCombatState)rootSimulator.State.CombatState, player, enemy), "CompactReadView", "AllReadsRootUnchanged");
         ProfileCompactEvaluation(root, displayNames, battleDamage, policy, adapter, cases, played);
 
         CompactCase native = cases.First(c => c.Choices.Length == 2 && c.Choices[0].SequenceEqual(new[] { prepared }));
@@ -311,6 +339,7 @@ internal sealed partial class UnattendedTestRunner
         nativeSelector.AssertConsumed();
         AssertSnapshotEqual(CaptureSimulated(nativeExpected, (SimulatedCombatState)nativeExpected.State.CombatState, player, enemy),
             CaptureActual(combat, player, enemy), "CompactKernel", "NativeNestedPlay");
+        _completedChecks.Add("CompactReadView:RootAnd34Leaves:AllSnapshotProperties:CardMetadataInvariant:RootUnchanged:ForeignAndPendingRejected");
         _completedChecks.Add($"CompactKernel:{cases.Count}Leaves:FullStateAndEvaluation:NestedUndo:Frozen8Workers:Admission:Native");
     }
 

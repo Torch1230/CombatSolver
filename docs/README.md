@@ -8,6 +8,7 @@
 |---|---|
 | 组件职责、状态所有权和调用链 | [架构与职责地图](ARCHITECTURE.md) |
 | 全部性能方案取舍、剩余评估与已实现的冻结恢复 | [方案账本](performance/simulation-strategy-ledger-20260911.md)、[候选存储结果](performance/simulation-candidate-storage-20260911.md) |
+| 紧凑状态直接读取、完整语义对照与复杂状态净变化 | [直接读取结果](performance/simulation-read-view-20260911.md) |
 | 紧凑原型估值瓶颈、测试上下文校正与下一迁移边界 | [估值与读模型调研](performance/simulation-evaluation-bottleneck-20260911.md) |
 | 紧凑可恢复内核的实现、原生对照与迁移门槛实测 | [R0–R2 原型结果](performance/simulation-kernel-prototype-20260910.md) |
 | 本批未发布改动、版本演进与开发记录 | [开发笔记](DEVELOPMENT_NOTES.md) |

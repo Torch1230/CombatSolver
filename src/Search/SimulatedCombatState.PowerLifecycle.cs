@@ -269,7 +269,7 @@ internal sealed partial class SimulatedCombatState
         _swordSageCardsInitialized = true;
     }
 
-    private void AppendPowerLifecycleFingerprint(ref StateFingerprintBuilder fingerprint)
+    private void AppendPowerLifecycleFingerprint(ref StateFingerprintBuilder fingerprint, Creature? additionalSkillOwner = null)
     {
         ulong first = 0;
         ulong second = 0;
@@ -315,6 +315,13 @@ internal sealed partial class SimulatedCombatState
                 AddUnorderedItem(item.Finish(), ref first, ref second);
                 count++;
             }
+        }
+        if (additionalSkillOwner != null && _skillsPlayedThisTurn?.Contains(additionalSkillOwner) != true)
+        {
+            StateFingerprintBuilder item = new();
+            item.Add(additionalSkillOwner.CombatId ?? uint.MaxValue);
+            AddUnorderedItem(item.Finish(), ref first, ref second);
+            count++;
         }
         AddUnordered(ref fingerprint, 'K', count, first, second);
     }

@@ -51,8 +51,25 @@ internal sealed partial class CombatBeamSolver
         int shufflesCrossed,
         SearchBoundaryReason boundary,
         IReadOnlySet<uint> processedEnemyDeaths)
+        => SnapshotCore(simulator, turn, actionCount, shufflesCrossed, boundary, processedEnemyDeaths, null);
+
+    // The reader must prove that every omitted root field is invariant for its admitted program.
+    // It supplies completed values only; SnapshotCore owns all scoring and ordering formulas.
+    internal SimulationSnapshot SnapshotFromReadView(
+        CompletedStateReadView view, int turn, int actionCount, int shufflesCrossed,
+        SearchBoundaryReason boundary, IReadOnlySet<uint> processedEnemyDeaths)
+    {
+        SimulationSnapshot result = SnapshotCore(view.Root, turn, actionCount, shufflesCrossed, boundary, processedEnemyDeaths, view);
+        result.ReleaseSimulator();
+        return result;
+    }
+
+    private SimulationSnapshot SnapshotCore(
+        CombatPredictionSimulator simulator, int turn, int actionCount, int shufflesCrossed,
+        SearchBoundaryReason boundary, IReadOnlySet<uint> processedEnemyDeaths, CompletedStateReadView? view)
     {
         SimCreatureState player = simulator.State.GetCreature(_player.Creature);
+        int playerBlock = view?.Block ?? player.Block;
         SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
         int enemyHp = 0;
         int enemyBlock = 0;
@@ -99,7 +116,8 @@ internal sealed partial class CombatBeamSolver
             && !dead
             && !combat.HasPendingChoice
             && simulator.TerminalStamp is { Outcome: CombatTerminalOutcome.Victory };
-        CoverageSummary coverage = GetCoverageSummary(simulator);
+        CoverageSummary coverage = view is null ? GetCoverageSummary(simulator)
+            : new(view.PredictionGaps, view.PredictionGaps.Any(gap => !gap.Compensated));
         IReadOnlyList<PredictionGap> predictionGaps = coverage.Gaps;
         bool risk = coverage.HasUncompensatedRisk;
         bool uncertainVictory = won && HasUncompensatedDeathGap(predictionGaps);
@@ -107,6 +125,11 @@ internal sealed partial class CombatBeamSolver
             boundary = SearchBoundaryReason.UnsupportedEffect;
 
         SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(_player);
+        IReadOnlyList<PredictedCard> hand = view?.Hand ?? playerState.Hand.Cards;
+        IReadOnlyList<PredictedCard> draw = view?.Draw ?? playerState.DrawPile.Cards;
+        IReadOnlyList<PredictedCard> discard = view?.Discard ?? playerState.DiscardPile.Cards;
+        IReadOnlyList<PredictedCard> exhaust = view?.Exhaust ?? playerState.ExhaustPile.Cards;
+        int energy = view?.Energy ?? playerState.Energy;
         SearchMeasurement fingerprintMeasurement = _run.Performance.Begin();
         StateFingerprint key = BuildStateKey(
             turn,
@@ -115,9 +138,10 @@ internal sealed partial class CombatBeamSolver
             combat,
             simulator,
             shufflesCrossed,
-            processedEnemyDeaths);
-        StateFingerprint unorderedPileKey = BuildUnorderedPileKey(playerState);
-        StateFingerprint cyclePileShapeKey = BuildCyclePileShapeKey(playerState);
+            processedEnemyDeaths, view);
+        StateFingerprint unorderedPileKey = BuildUnorderedPileKey(hand, draw, discard, exhaust);
+        StateFingerprint cyclePileShapeKey = view is null ? BuildCyclePileShapeKey(playerState)
+            : BuildCyclePileShapeKey(hand, draw, discard, exhaust);
         SearchMeasurement projectedShuffleMeasurement = _run.Performance.Begin();
         // Projected shuffle needs these piles in this exact pre-sort order. The remaining
         // snapshot metrics are order-independent, so they can reuse the shuffled list instead
@@ -125,11 +149,10 @@ internal sealed partial class CombatBeamSolver
         using SnapshotListBuffer<PredictedCard>.Lease liveCardsLease =
             _run.SnapshotLiveCards.Rent();
         List<PredictedCard> liveCards = liveCardsLease.Items;
-        liveCards.EnsureCapacity(playerState.DiscardPile.Cards.Count
-            + playerState.DrawPile.Cards.Count + playerState.Hand.Cards.Count);
-        liveCards.AddRange(playerState.DiscardPile.Cards);
-        liveCards.AddRange(playerState.DrawPile.Cards);
-        liveCards.AddRange(playerState.Hand.Cards);
+        liveCards.EnsureCapacity(discard.Count + draw.Count + hand.Count);
+        liveCards.AddRange(discard);
+        liveCards.AddRange(draw);
+        liveCards.AddRange(hand);
         (StateFingerprint projectedShuffleOrderKey, int projectedShuffleOrderValue) =
             BuildProjectedShuffleOrder(simulator, liveCards);
         int liveCardCount = liveCards.Count;
@@ -153,7 +176,7 @@ internal sealed partial class CombatBeamSolver
         }
         else if (!_run.ThreatProjectionCache.TryGetValue((key, roundIndex), out threat))
         {
-            threat = ProjectHpAfterThreat(simulator, player, roundIndex);
+            threat = ProjectHpAfterThreat(simulator, player, roundIndex, playerBlock);
             _run.ThreatProjectionCache.Add((key, roundIndex), threat);
         }
         int projectedHp = threat.Hp;
@@ -174,7 +197,7 @@ internal sealed partial class CombatBeamSolver
         score -= ActEndingBossPolicy.DeathSaveRelicBeamCost(
             deathSaveRelicHpRestored + threat.DeathSaveRelicHpRestored,
             _strategicBossHpRelief) * hpWeight;
-        int exhaustedTheHunts = playerState.ExhaustPile.Cards.Count(card => card.Preview is TheHunt);
+        int exhaustedTheHunts = exhaust.Count(card => card.Preview is TheHunt);
         int rewardedTheHunts = Math.Max(0, combat.GetAmount<TheHuntPower>(_player.Creature));
         int missedTheHuntRewards = Math.Max(0, exhaustedTheHunts - rewardedTheHunts);
         // 「不考虑局外收益」在快照源头把这两个量清零，下游十几处读到的是同一个 0。
@@ -288,7 +311,7 @@ internal sealed partial class CombatBeamSolver
             }
         }
         int replayPotentialValue = ReplayPotentialValue(liveCards);
-        int retainedHandValue = playerState.Hand.Cards
+        int retainedHandValue = hand
             .Where(card => card.Preview.ShouldRetainThisTurn)
             .Sum(card => Math.Max(
                 1,
@@ -349,7 +372,7 @@ internal sealed partial class CombatBeamSolver
         int offensiveProgressValue = offensivePersistentBuffValue
             + delayedDamageValue
             + reactiveDamageValue
-            + (hasBlockDamagePayoff ? Math.Max(0, player.Block) : 0);
+            + (hasBlockDamagePayoff ? Math.Max(0, playerBlock) : 0);
         int enemyStrengthSuppression = 0;
         int enemyWeakTurns = 0;
         int vulnerable = 0;
@@ -408,7 +431,7 @@ internal sealed partial class CombatBeamSolver
         int potionStrategicCost = combat.PotionUses.Sum(use => use.StrategicHpCost);
         int automaticPotionUseCount = combat.PotionUses.Count(use => use.Automatic);
         (int reachableHandValue, int zeroCostPlayableCount) =
-            CalculateReachableHandPotential(simulator, combat, playerState);
+            CalculateReachableHandPotential(simulator, combat, hand, energy, playerState.Stars);
         StateFingerprint potionInventoryKey = BuildPotionInventoryKey(combat);
         StateFingerprint cycleShapeKey = BuildCycleShapeKey(
             cyclePileShapeKey,
@@ -433,7 +456,7 @@ internal sealed partial class CombatBeamSolver
             longTermResourceValue,
             angerCopiesGenerated,
             projectedHp,
-            player.Block,
+            playerBlock,
             enemyHp,
             enemyBlock,
             aliveEnemyCount,
@@ -470,10 +493,10 @@ internal sealed partial class CombatBeamSolver
             liveCardCount,
             outstandingStolenResource,
             offensiveProgressValue,
-            playerState.Energy,
+            energy,
             playerState.Stars,
-            simulator.History.Entries.Count,
-            playerState.Hand.Cards.Count,
+            view?.HistoryEntries ?? simulator.History.Entries.Count,
+            hand.Count,
             reachableHandValue,
             zeroCostPlayableCount,
             combat.CanTriggerArtOfWarNextTurn(_player),
@@ -533,18 +556,7 @@ internal sealed partial class CombatBeamSolver
         // lets a bounded probe observe setup loops whose payoff appears only after N plays.
         if (!pile.TryGetCachedCycleShapeFingerprint(out ulong first, out ulong second))
         {
-            first = 0;
-            second = 0;
-            foreach (PredictedCard card in pile.Cards)
-            {
-                CardModel preview = card.Preview;
-                StateFingerprintBuilder cardKeyBuilder = new();
-                cardKeyBuilder.Add(preview.Id.Entry);
-                cardKeyBuilder.Add(preview.CurrentUpgradeLevel);
-                StateFingerprint cardKey = cardKeyBuilder.Finish();
-                first += StateFingerprintBuilder.MixFirst(cardKey.First);
-                second += StateFingerprintBuilder.MixSecond(cardKey.Second);
-            }
+            (first, second) = CyclePileValues(pile.Cards);
             pile.SetCachedCycleShapeFingerprint(first, second);
         }
         key.Add(marker);
@@ -569,17 +581,18 @@ internal sealed partial class CombatBeamSolver
     private static (int Value, int ZeroCostPlayableCount) CalculateReachableHandPotential(
         CombatPredictionSimulator simulator,
         SimulatedCombatState combat,
-        SimPlayerCombatState playerState)
+        IReadOnlyList<PredictedCard> hand, int energy, int stars)
     {
-        int handCount = playerState.Hand.Cards.Count;
+        int handCount = hand.Count;
         Span<(int Energy, int Stars, int Value)> playable = handCount <= 64
             ? stackalloc (int, int, int)[handCount]
             : new (int, int, int)[handCount];
         int playableCount = 0;
         int zeroCostPlayableCount = 0;
-        foreach (PredictedCard card in playerState.Hand)
+        for (int index = 0; index < hand.Count; index++)
         {
-            if (!combat.CanPlayCard(simulator, card, out int energyCost, out int starCost))
+            PredictedCard card = hand[index];
+            if (!combat.CanPlayCardAtResources(simulator, card, energy, stars, out int energyCost, out int starCost))
                 continue;
             energyCost = Math.Max(0, energyCost);
             starCost = Math.Max(0, starCost);
@@ -594,7 +607,7 @@ internal sealed partial class CombatBeamSolver
             }
         }
 
-        return (ReachableHandValue.Calculate(playable[..playableCount], playerState.Energy, playerState.Stars),
+        return (ReachableHandValue.Calculate(playable[..playableCount], energy, stars),
             zeroCostPlayableCount);
     }
 
@@ -708,32 +721,34 @@ internal sealed partial class CombatBeamSolver
             .Sum();
     }
 
-    private StateFingerprint BuildUnorderedPileKey(SimPlayerCombatState playerState)
+    private StateFingerprint BuildUnorderedPileKey(IReadOnlyList<PredictedCard> hand,
+        IReadOnlyList<PredictedCard> draw, IReadOnlyList<PredictedCard> discard, IReadOnlyList<PredictedCard> exhaust)
     {
         StateFingerprintBuilder unordered = new();
-        AppendUnorderedPileKey(ref unordered, playerState.Hand, 'H');
-        AppendUnorderedPileKey(ref unordered, playerState.DrawPile, 'D');
-        AppendUnorderedPileKey(ref unordered, playerState.DiscardPile, 'C');
-        AppendUnorderedPileKey(ref unordered, playerState.ExhaustPile, 'X');
+        AppendUnorderedPileKey(ref unordered, hand, 'H');
+        AppendUnorderedPileKey(ref unordered, draw, 'D');
+        AppendUnorderedPileKey(ref unordered, discard, 'C');
+        AppendUnorderedPileKey(ref unordered, exhaust, 'X');
         return unordered.Finish();
     }
 
     private void AppendUnorderedPileKey(
         ref StateFingerprintBuilder unordered,
-        SimCardPile pile,
+        IReadOnlyList<PredictedCard> pile,
         char marker)
     {
         ulong first = 0;
         ulong second = 0;
-        foreach (PredictedCard card in pile)
+        for (int index = 0; index < pile.Count; index++)
         {
+            PredictedCard card = pile[index];
             StateFingerprint cardKey = BuildCardStateFingerprint(card);
             first += StateFingerprintBuilder.MixFirst(cardKey.First);
             second += StateFingerprintBuilder.MixSecond(cardKey.Second);
         }
         // Keep the unordered key's values and append order exactly unchanged.
         unordered.Add(marker);
-        unordered.Add(pile.Cards.Count);
+        unordered.Add(pile.Count);
         unordered.Add(first);
         unordered.Add(second);
     }
@@ -977,10 +992,10 @@ internal sealed partial class CombatBeamSolver
     private ThreatProjection ProjectHpAfterThreat(
         CombatPredictionSimulator simulator,
         SimCreatureState player,
-        int roundIndex)
+        int roundIndex, int? initialBlock = null)
     {
         int hp = player.CurrentHp;
-        int block = player.Block;
+        int block = initialBlock ?? player.Block;
         SimulatedCombatState simulatedCombat = (SimulatedCombatState)simulator.State.CombatState;
         Creature? osty = simulatedCombat.GetOsty(_player);
         int ostyHp = osty == null ? 0 : simulator.State.GetCreature(osty).CurrentHp;
@@ -1160,14 +1175,14 @@ internal sealed partial class CombatBeamSolver
         SimulatedCombatState simulatedCombat,
         CombatPredictionSimulator simulator,
         int shufflesCrossed,
-        IReadOnlySet<uint> processedEnemyDeaths)
+        IReadOnlySet<uint> processedEnemyDeaths, CompletedStateReadView? view = null)
     {
         StateFingerprintBuilder key = new();
         key.Add(turn);
         key.Add(player.CurrentHp);
         key.Add(player.MaxHp);
-        key.Add(player.Block);
-        key.Add(playerState.Energy);
+        key.Add(view?.Block ?? player.Block);
+        key.Add(view?.Energy ?? playerState.Energy);
         key.Add(playerState.Stars);
         key.Add(shufflesCrossed);
         Player owner = _player;
@@ -1196,10 +1211,20 @@ internal sealed partial class CombatBeamSolver
             key.Add(enemyState.Block);
         }
         SearchMeasurement pileFingerprintMeasurement = _run.Performance.Begin();
-        AppendPile(ref key, playerState.Hand, 'H');
-        AppendPile(ref key, playerState.DrawPile, 'D');
-        AppendPile(ref key, playerState.DiscardPile, 'C');
-        AppendPile(ref key, playerState.ExhaustPile, 'X');
+        if (view is null)
+        {
+            AppendPile(ref key, playerState.Hand, 'H');
+            AppendPile(ref key, playerState.DrawPile, 'D');
+            AppendPile(ref key, playerState.DiscardPile, 'C');
+            AppendPile(ref key, playerState.ExhaustPile, 'X');
+        }
+        else
+        {
+            AppendPileValues(ref key, view.Hand, 'H');
+            AppendPileValues(ref key, view.Draw, 'D');
+            AppendPileValues(ref key, view.Discard, 'C');
+            AppendPileValues(ref key, view.Exhaust, 'X');
+        }
         AppendOrbs(ref key, simulator, playerState.OrbQueue);
         _run.Performance.End(SearchMetricPhase.PileFingerprint, pileFingerprintMeasurement);
         AppendRngState(ref key, simulator.Rng.Shuffle);
@@ -1222,7 +1247,7 @@ internal sealed partial class CombatBeamSolver
         key.Add(deathsFirst);
         key.Add(deathsSecond);
         SearchMeasurement combatFingerprintMeasurement = _run.Performance.Begin();
-        simulatedCombat.AppendFingerprint(ref key, simulator);
+        simulatedCombat.AppendFingerprint(ref key, simulator, view?.CardHistory);
         _run.Performance.End(SearchMetricPhase.CombatFingerprint, combatFingerprintMeasurement);
         return key.Finish();
     }
@@ -1390,15 +1415,7 @@ internal sealed partial class CombatBeamSolver
             return;
         }
         SearchMeasurement measurement = _run.Performance.Begin();
-        StateFingerprintBuilder pileKey = new();
-        pileKey.Add(pile.Cards.Count);
-        foreach (PredictedCard card in pile)
-        {
-            StateFingerprint cardFingerprint = BuildCardStateFingerprint(card);
-            pileKey.Add(cardFingerprint.First);
-            pileKey.Add(cardFingerprint.Second);
-        }
-        StateFingerprint fingerprint = pileKey.Finish();
+        StateFingerprint fingerprint = BuildPileValuesFingerprint(pile.Cards);
         pile.SetCachedFingerprint(fingerprint.First, fingerprint.Second);
         _run.Performance.End(SearchMetricPhase.PileFingerprintMiss, measurement);
         key.Add(fingerprint.First);

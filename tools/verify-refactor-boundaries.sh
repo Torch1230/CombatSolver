@@ -482,6 +482,7 @@ expected_beam_files=(
     CombatBeamSolver.PathDiagnostics.cs
     CombatBeamSolver.Phases.cs
     CombatBeamSolver.PrimaryChoiceReplay.cs
+    CombatBeamSolver.ReadView.cs
     CombatBeamSolver.Retention.cs
     CombatBeamSolver.RetentionJobs.cs
     CombatBeamSolver.RoundLifecycle.cs
@@ -983,7 +984,7 @@ while IFS= read -r compact_path; do
     done
 done < <(rg --files "$repository_root/src/Engine/InCombat/Simulation/Compact" -g '*.cs')
 while IFS= read -r production_path; do
-    for prototype_reference in 'ResumableDiscardProgram' 'CompactDiscardProjection' 'CompactPhaseProbe'; do
+    for prototype_reference in 'ResumableDiscardProgram' 'CompactDiscardProjection' 'CompactDiscardReadView' 'CompactPhaseProbe'; do
         forbid_fixed "$production_path" "$prototype_reference" 'unvalidated compact prototype reached production:'
     done
 done < <(rg --files "$search_root" "$repository_root/src/Runtime" -g '*.cs')
@@ -995,6 +996,17 @@ require_fixed "$compact_projection" 'Program.State.HasSameRoot(program.State)' '
 require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactKernelProfile.cs" 'if (!SimulationNotificationIsolation.IsActive)' 'compact measurements lost production simulation context guard'
 require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactKernel.cs" 'initialIsolation.Dispose();' 'compact thread-static isolation must close before worker await'
 require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactKernel.cs" 'continuationIsolation.Dispose();' 'compact simulation isolation must close before native deployment'
+compact_reader="$repository_root/src/Testing/CompactDiscardReadView.cs"
+for replay_or_write in '.Materialize(' '.ManualPlay(' '.AutoPlay(' '.MutablePreview' '.State.Write('; do
+    forbid_fixed "$compact_reader" "$replay_or_write" 'completed reader must not reconstruct or mutate branch models:'
+done
+require_fixed "$compact_reader" '!_adapter.Program.State.HasSameRoot(program.State) || !program.Complete' 'completed reader lost ownership/stability guard'
+require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" '=> SnapshotCore(simulator, turn, actionCount, shufflesCrossed, boundary, processedEnemyDeaths, null);' 'legacy and completed readers must share full SnapshotCore'
+require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'result.ReleaseSimulator();' 'completed evaluations must release their borrowed root'
+while IFS= read -r production_path; do
+    [[ $production_path == "$search_root/CombatBeamSolver.StateEvaluation.cs" ]] && continue
+    forbid_fixed "$production_path" 'SnapshotFromReadView(' 'closed completed reader is not admitted to production execution:'
+done < <(rg --files "$search_root" "$repository_root/src/Runtime" -g '*.cs')
 compact_values="$repository_root/src/Engine/InCombat/Simulation/Compact/ReversibleValueState.cs"
 compact_frozen="$repository_root/src/Engine/InCombat/Simulation/Compact/ReversibleValueState.FrozenValues.cs"
 require_fixed "$compact_values" 'private readonly long[] _values;' 'compact workspace lost exclusive values'

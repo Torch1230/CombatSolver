@@ -1441,13 +1441,16 @@ internal sealed partial class SimulatedCombatState
         out int energyCost,
         out int starCost)
     {
-        energyCost = 0;
-        starCost = 0;
-        if (IsCardPlayPrevented(simulator, card))
-            return false;
-        if (!simulator.CanPlay(card, out energyCost, out starCost))
-            return false;
-        return card.Preview.Affliction is not Smog;
+        return CanPlayCardAtResources(simulator, card, null, null, out energyCost, out starCost);
+    }
+
+    internal bool CanPlayCardAtResources(CombatPredictionSimulator simulator, PredictedCard card,
+        int? energy, int? stars, out int energyCost, out int starCost)
+    {
+        energyCost = starCost = 0;
+        if (IsCardPlayPrevented(simulator, card)) return false;
+        return simulator.CanPlayAtResources(card, energy, stars, out energyCost, out starCost)
+            && card.Preview.Affliction is not Smog;
     }
 
     public IReadOnlyList<PowerModel> EffectivePowers()
@@ -2097,7 +2100,7 @@ internal sealed partial class SimulatedCombatState
 
     public void AppendFingerprint(
         ref StateFingerprintBuilder fingerprint,
-        CombatPredictionSimulator simulator)
+        CombatPredictionSimulator simulator, CardHistoryReadValues? history = null)
     {
         fingerprint.Add('P');
         int powerCount = 0;
@@ -2125,21 +2128,21 @@ internal sealed partial class SimulatedCombatState
         AddAeonglassCounters(ref fingerprint, 'W', _aeonglassWitherUpgradeCount, "WitherUpgradeCount");
         AddCreatureIntMap(ref fingerprint, 'a', _attacksPlayedThisTurn);
         AddCreatureIntMap(ref fingerprint, 'j', _shivsPlayedThisTurn);
-        AddCreatureIntMap(ref fingerprint, 'b', _blockCardsPlayedThisTurn);
-        AddCreatureIntMap(ref fingerprint, 'l', _skillCardsPlayedThisTurn);
+        AddCreatureIntMap(ref fingerprint, 'b', _blockCardsPlayedThisTurn, history?.Owner.Creature, history?.BlockPlays);
+        AddCreatureIntMap(ref fingerprint, 'l', _skillCardsPlayedThisTurn, history?.Owner.Creature, history?.SkillPlays);
         AddCreatureIntMap(ref fingerprint, 'x', _cardsExhaustedThisTurn);
         AddCreatureSet(ref fingerprint, 'd', _doomAppliersThisTurn);
         AddCreatureSet(ref fingerprint, 'L', _unblockedDamageThisTurn);
         AddPoweredAttackHits(ref fingerprint, _poweredAttackHitsThisTurn);
-        AddCreatureIntMap(ref fingerprint, 'v', _cardsDiscardedThisTurn);
+        AddCreatureIntMap(ref fingerprint, 'v', _cardsDiscardedThisTurn, history?.Owner.Creature, history?.Discards);
         AddCreatureIntMap(ref fingerprint, 'u', _creatureAttacksThisTurn);
-        AddPlayerIntMap(ref fingerprint, 'e', _energySpentThisTurn);
+        AddPlayerIntMap(ref fingerprint, 'e', _energySpentThisTurn, history?.Owner, history?.EnergySpent);
         AddPlayerIntMap(ref fingerprint, 'z', _starsGainedThisTurn);
-        AddPlayerIntMap(ref fingerprint, 'n', _nonHandDrawsThisTurn);
+        AddPlayerIntMap(ref fingerprint, 'n', _nonHandDrawsThisTurn, history?.Owner, history?.Draws);
         AddPlayerIntMap(ref fingerprint, 's', _statusCardsDrawnThisTurn);
-        AddCreatureIntMap(ref fingerprint, 'Q', _cardPlaySeriesStartedThisTurn);
+        AddCreatureIntMap(ref fingerprint, 'Q', _cardPlaySeriesStartedThisTurn, history?.Owner.Creature, history?.Series);
         AddCreatureIntMap(ref fingerprint, 'q', _zeroCostAttackStartsThisTurn);
-        AddCreatureIntMap(ref fingerprint, 'J', _cardPlayStartsThisTurn);
+        AddCreatureIntMap(ref fingerprint, 'J', _cardPlayStartsThisTurn, history?.Owner.Creature, history?.Starts);
         AddCreatureIntMap(ref fingerprint, 'k', _knowledgeDemonCurseCounters);
         AddCreatureSet(ref fingerprint, 'i', _enemiesIntendingAttack);
         fingerprint.Add(_hasPredictedEnemyIntents);
@@ -2155,10 +2158,10 @@ internal sealed partial class SimulatedCombatState
         AddFeralStates(ref fingerprint, simulator, effectivePowers);
         AddJugglingStates(ref fingerprint, simulator, effectivePowers);
         AddTurnStartStates(ref fingerprint, simulator, effectivePowers);
-        AppendPowerLifecycleFingerprint(ref fingerprint);
+        AppendPowerLifecycleFingerprint(ref fingerprint, history?.SkillPlays.HasValue == true ? history?.Owner.Creature : null);
         AddNemesisStates(ref fingerprint, effectivePowers);
         AddTenderStates(ref fingerprint, effectivePowers);
-        AppendCardLifecycleFingerprint(ref fingerprint, simulator);
+        AppendCardLifecycleFingerprint(ref fingerprint, simulator, history);
         AppendStatefulRelicFingerprint(ref fingerprint, simulator);
         AppendRelicResourceFingerprint(ref fingerprint);
         AppendPotionFingerprint(ref fingerprint);
@@ -2394,7 +2397,7 @@ internal sealed partial class SimulatedCombatState
     private static void AddPlayerIntMap(
         ref StateFingerprintBuilder fingerprint,
         char marker,
-        ForkableDictionary<Player, int>? values)
+        ForkableDictionary<Player, int>? values, Player? replacedOwner = null, int? replacedValue = null)
     {
         ulong first = 0;
         ulong second = 0;
@@ -2403,6 +2406,7 @@ internal sealed partial class SimulatedCombatState
         {
             foreach ((Player player, int value) in values)
             {
+                if (replacedValue.HasValue && ReferenceEquals(player, replacedOwner)) continue;
                 StateFingerprintBuilder item = new();
                 item.Add(player.NetId);
                 item.Add(value);
@@ -2410,13 +2414,21 @@ internal sealed partial class SimulatedCombatState
                 count++;
             }
         }
+        if (replacedValue.HasValue)
+        {
+            StateFingerprintBuilder item = new();
+            item.Add(replacedOwner!.NetId);
+            item.Add(replacedValue.Value);
+            AddUnorderedItem(item.Finish(), ref first, ref second);
+            count++;
+        }
         AddUnordered(ref fingerprint, marker, count, first, second);
     }
 
     private static void AddCreatureIntMap(
         ref StateFingerprintBuilder fingerprint,
         char marker,
-        ForkableDictionary<Creature, int>? values)
+        ForkableDictionary<Creature, int>? values, Creature? replacedOwner = null, int? replacedValue = null)
     {
         ulong first = 0;
         ulong second = 0;
@@ -2425,12 +2437,21 @@ internal sealed partial class SimulatedCombatState
         {
             foreach ((Creature creature, int value) in values)
             {
+                if (replacedValue.HasValue && ReferenceEquals(creature, replacedOwner)) continue;
                 StateFingerprintBuilder item = new();
                 item.Add(creature.CombatId ?? uint.MaxValue);
                 item.Add(value);
                 AddUnorderedItem(item.Finish(), ref first, ref second);
                 count++;
             }
+        }
+        if (replacedValue.HasValue)
+        {
+            StateFingerprintBuilder item = new();
+            item.Add(replacedOwner!.CombatId ?? uint.MaxValue);
+            item.Add(replacedValue.Value);
+            AddUnorderedItem(item.Finish(), ref first, ref second);
+            count++;
         }
         AddUnordered(ref fingerprint, marker, count, first, second);
     }

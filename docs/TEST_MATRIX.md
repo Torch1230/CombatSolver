@@ -1,5 +1,12 @@
 # CombatSolver 测试清单
 
+## 2026-09-11：紧凑完成状态直接读取
+
+- `COMPACT-KERNEL-NATIVE` / `0c14283a61414f3eacb81ebfe7f7f277` Passed，29.60 秒；根与 34 叶全部 Snapshot 属性、原键、投影洗牌／保留排序、卡牌元数据及根不变、外根／挂起拒绝、直接下一动作通过。原完整状态／ContinuationStamp／有序来源历史、冻结恢复的 8 worker 和原生嵌套链继续通过。最终四组交错完整批次约 2.87×，分配为原来的 16.53%，CPU 3× 联合门槛未通过。Release 0 警告／错误，Linux 门禁 `REFACTOR_BOUNDARIES_OK search_files=87`，实例已停止。
+- `MIXED-POWER-ACQUISITION-ORDER` / `c6987417df75415fa60154e7f089051a` Passed，4.08 秒，混合 Power／卡牌联动／重获六个稳定边界；`SUMMON-DEATH-POWER-ORDER` / `a48e596bf32c495db7516f36c91016f0` Passed，4.29 秒，T1→T3，原生召唤、击杀、Fork、完整状态和 MonsterAi／Niche 精确 RNG。使用本轮 v2，两个夹具后续没有语义改动；观察器默认关闭，净字段变化不冒充紧凑槽写入或瞬态 journal。
+- v1 `f35a810d682d4ac49bc29ba66c288c55` 因遗漏技能集合导致 StateKey 差分失败；v2 `7b18485c879541f7b699cf4c002025c8`、v3 `c811984ef331420088f55fce6c06dca4` 已通过各自启用的断言。v3 进一步覆盖根／外根／挂起拒绝与直接下一动作，之后只将共用牌堆遍历改为索引以消除新增装箱分配；最终受影响夹具重测记在上项。
+- Linux／PowerShell 门禁同步；最终验证结果及完整交错样本见[报告](performance/simulation-read-view-20260911.md)和[原始数字](performance/simulation-read-view-20260911.json)。头次门禁指出新的 ReadView partial 未列入白名单，已同步双端职责清单。未执行 PowerShell、完整战斗、增量、可见 Steam 或新后端 DOP 性能测试。
+
 ## 2026-09-11：剩余瓶颈评估与紧凑候选存储
 
 - [存储探针](../tools/CompactCandidateChecks/README.md)直接链接内核：七组容量合同、零值与完整有符号值、页边界、嵌套回滚后冻结、活动事务/外根拒绝及 8 worker 复用恢复通过。0/1,024/8,192 历史值、8/512/1,024 核心写入的 128 个保留分支全部逐槽一致；这些是结构负载，不是 Power/RNG/死亡语义。A–B–B–A 固定测量完成，保留分配收益与密集退化；最初测试表达式优先级错误及修正见报告。

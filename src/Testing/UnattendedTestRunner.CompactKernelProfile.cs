@@ -23,6 +23,7 @@ internal sealed partial class UnattendedTestRunner
             IReadOnlySet<uint>, SimulationSnapshot> _snapshot;
         private readonly ForkableSet<uint> _deaths = new();
         private readonly int _turn;
+        private readonly CombatBeamSolver _solver;
         private readonly ICollection _threat, _coverage;
         internal readonly SearchPerformanceMetrics Metrics;
         internal int ThreatKeys => _threat.Count;
@@ -31,7 +32,7 @@ internal sealed partial class UnattendedTestRunner
         internal CompactEvaluationDriver(CombatRootSnapshot root, SolverDisplayNames display,
             BattleDamageSnapshot damage, SearchPolicySnapshot policy)
         {
-            CombatBeamSolver solver = new(root, display, damage, policy with { MeasurePhasePerformance = true });
+            CombatBeamSolver solver = _solver = new(root, display, damage, policy with { MeasurePhasePerformance = true });
             _snapshot = SnapshotMethod.CreateDelegate<Func<CombatPredictionSimulator, int, int, int,
                 SearchBoundaryReason, IReadOnlySet<uint>, SimulationSnapshot>>(solver);
             object run = RunField.GetValue(solver)!;
@@ -40,6 +41,9 @@ internal sealed partial class UnattendedTestRunner
             _coverage = (ICollection)CoverageField.GetValue(run)!;
             _turn = root.StartTurnNumber;
         }
+
+        internal SimulationSnapshot Evaluate(CompletedStateReadView view)
+            => _solver.SnapshotFromReadView(view, _turn, 1, 0, SearchBoundaryReason.None, _deaths);
 
         internal SimulationSnapshot Evaluate(CombatPredictionSimulator sim)
             => _snapshot(sim, _turn, 1, 0, SearchBoundaryReason.None, _deaths);
@@ -60,10 +64,11 @@ internal sealed partial class UnattendedTestRunner
         if (iterations is < 1 or > 256) throw new InvalidOperationException("Compact profile iterations must be 1..256.");
         var samples = new List<object>();
         long checksum = 0;
-        int Batch(bool fresh, CompactPhaseProbe probe, SearchPerformanceMetrics metrics, bool verify)
+        int Batch(bool fresh, CompactPhaseProbe probe, SearchPerformanceMetrics metrics, bool verify, bool direct = false)
         {
             var setup = probe.Begin();
             CompactEvaluationDriver evaluator = fresh ? new(root, display, damage, policy) : shared;
+            CompactDiscardReadView? reader = direct ? adapter.CreateReadView() : null;
             probe.End(CompactProfilePhase.SolverSetup, setup);
             int beforeThreat = evaluator.ThreatKeys;
             ResumableDiscardProgram lane = adapter.Program;
@@ -78,9 +83,11 @@ internal sealed partial class UnattendedTestRunner
                     var freeze = probe.Begin();
                     var handle = program.Freeze();
                     probe.End(CompactProfilePhase.Freeze, freeze);
-                    CombatPredictionSimulator projection = adapter.Materialize(program, probe);
+                    CombatPredictionSimulator? projection = direct ? null : adapter.Materialize(program, probe);
                     var snapshot = probe.Begin();
-                    SimulationSnapshot value = Release(evaluator.Evaluate(projection));
+                    reader?.Read(program);
+                    SimulationSnapshot value = reader is null ? Release(evaluator.Evaluate(projection!))
+                        : evaluator.Evaluate(reader);
                     probe.End(CompactProfilePhase.Snapshot, snapshot);
                     if (verify) AssertCompactEvaluation(cases[index].Evaluation, value);
                     retained.Add((handle, value));
@@ -111,9 +118,12 @@ internal sealed partial class UnattendedTestRunner
         int freshUniqueKeys = Batch(true, warmProbe, warmMetrics, true);
         if (warmUniqueKeys != freshUniqueKeys || warmUniqueKeys <= 0)
             throw new InvalidOperationException("Fresh/warm cache-key populations differ.");
+        Batch(false, warmProbe, warmMetrics, true, true);
+        Batch(true, warmProbe, warmMetrics, true, true);
         for (int sample = 0; sample < 4; sample++)
         {
             foreach (bool fresh in sample % 2 == 0 ? new[] { false, true } : new[] { true, false })
+            foreach (bool direct in sample % 2 == 0 ? new[] { false, true } : new[] { true, false })
             {
                 EnsureWithinDeadline();
                 var probe = new CompactPhaseProbe();
@@ -122,13 +132,13 @@ internal sealed partial class UnattendedTestRunner
                 double cpuBefore = CompactThreadCpu.Milliseconds();
                 long wallBefore = Stopwatch.GetTimestamp();
                 int threatNewKeys = 0;
-                for (int i = 0; i < iterations; i++) threatNewKeys += Batch(fresh, probe, metrics, false);
+                for (int i = 0; i < iterations; i++) threatNewKeys += Batch(fresh, probe, metrics, false, direct);
                 double elapsed = Stopwatch.GetElapsedTime(wallBefore).TotalMilliseconds;
                 double cpu = CompactThreadCpu.Milliseconds() - cpuBefore;
                 long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
                 if (threatNewKeys != (fresh ? freshUniqueKeys * iterations : 0))
                     throw new InvalidOperationException("Profile cache policy changed during measurement.");
-                samples.Add(new { mode = fresh ? "fresh_solver_per_expansion" : "warm_shared_solver", sample,
+                samples.Add(new { backend = direct ? "completed_read_view" : "legacy_projection", mode = fresh ? "fresh_solver_per_expansion" : "warm_shared_solver", sample,
                     iterations, leaves = cases.Count, cpuMilliseconds = cpu, elapsedMilliseconds = elapsed,
                     allocatedBytes = allocated, threatNewKeys, phases = probe.Rows(),
                     snapshotSubphases = Enum.GetValues<SearchMetricPhase>()
@@ -149,7 +159,8 @@ internal sealed partial class UnattendedTestRunner
             tieredCompilationEnvironment = Environment.GetEnvironmentVariable("DOTNET_TieredCompilation"),
             perfMapEnvironment = Environment.GetEnvironmentVariable("DOTNET_PerfMapEnabled"),
             simulationIsolationActive = SimulationNotificationIsolation.IsActive, emptyCapabilityEligibleCards,
-            fullPropertiesAndSortedOrderVerified = true, leaves = cases.Count, uniqueThreatKeys = freshUniqueKeys,
+            fullPropertiesAndSortedOrderVerified = true, directReadViewVerified = true,
+            readViewSetup = "one reader and isolated history-metadata fork per 34-leaf expansion, included in SolverSetup", leaves = cases.Count, uniqueThreatKeys = freshUniqueKeys,
             sharedCoverageKeys = shared.CoverageKeys, sharedThreatKeys = shared.ThreatKeys,
             samples, emptyProbe = empty.Rows().Single(r => r.Phase == nameof(CompactProfilePhase.EmptyProbe)), checksum };
         if (!string.IsNullOrWhiteSpace(_request.EvidenceDirectory))
