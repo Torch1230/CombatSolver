@@ -983,7 +983,7 @@ while IFS= read -r compact_path; do
     done
 done < <(rg --files "$repository_root/src/Engine/InCombat/Simulation/Compact" -g '*.cs')
 while IFS= read -r production_path; do
-    for prototype_reference in 'ResumableDiscardProgram' 'CompactDiscardProjection'; do
+    for prototype_reference in 'ResumableDiscardProgram' 'CompactDiscardProjection' 'CompactPhaseProbe'; do
         forbid_fixed "$production_path" "$prototype_reference" 'unvalidated compact prototype reached production:'
     done
 done < <(rg --files "$search_root" "$repository_root/src/Runtime" -g '*.cs')
@@ -992,6 +992,9 @@ for semantic_replay in '.ManualPlay(' '.AutoPlay(' '.Discard(' 'CardOnPlayMirror
     forbid_fixed "$compact_projection" "$semantic_replay" 'compact projection must decode events without replaying effects:'
 done
 require_fixed "$compact_projection" 'Program.State.HasSameRoot(program.State)' 'compact projection lost root ownership guard'
+require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactKernelProfile.cs" 'if (!SimulationNotificationIsolation.IsActive)' 'compact measurements lost production simulation context guard'
+require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactKernel.cs" 'initialIsolation.Dispose();' 'compact thread-static isolation must close before worker await'
+require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactKernel.cs" 'continuationIsolation.Dispose();' 'compact simulation isolation must close before native deployment'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ReversibleValueState.cs" 'private readonly long[] _values;' 'compact frozen values lost independent storage'
 
 if ((${#violations[@]} > 0)); then

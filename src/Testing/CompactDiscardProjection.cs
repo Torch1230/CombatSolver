@@ -94,14 +94,18 @@ internal sealed class CompactDiscardProjection
     }
 
     internal int Identity(string cardId) => Array.FindIndex(_identities, c => c.Id.Entry == cardId);
+    internal int CardCount => _identities.Length;
     internal CardModel Original(int identity) => _identities[identity];
     internal int IndexOf(CardModel original) => Array.IndexOf(_identities, original);
 
-    internal CombatPredictionSimulator Materialize(ResumableDiscardProgram program)
+    internal CombatPredictionSimulator Materialize(ResumableDiscardProgram program, CompactPhaseProbe? probe = null)
     {
         if (!Program.State.HasSameRoot(program.State) || !program.Complete)
             throw new InvalidOperationException("Evaluation requires a completed candidate from this root.");
+        var forkStart = probe?.Begin() ?? default;
         CombatPredictionSimulator projection = _root.Fork();
+        probe?.End(CompactProfilePhase.RootFork, forkStart);
+        var eventsStart = probe?.Begin() ?? default;
         var combat = (SimulatedCombatState)projection.State.CombatState;
         SimPlayerCombatState state = projection.State.GetPlayerCombatState(_player);
         PredictedCard[] cards = _identities.Select(c => projection.State.FindCard(c)
@@ -186,6 +190,7 @@ internal sealed class CompactDiscardProjection
         {
             while (stack.TryPop(out var active)) { active.Method?.Dispose(); active.Scope.Dispose(); }
         }
+        probe?.End(CompactProfilePhase.ProjectEvents, eventsStart);
         return projection;
     }
 

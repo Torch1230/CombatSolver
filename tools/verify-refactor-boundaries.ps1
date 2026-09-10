@@ -1200,7 +1200,7 @@ foreach ($file in Get-ChildItem -LiteralPath $compactRoot -Filter *.cs -File -Re
 }
 $compactProductionFiles = @($searchFiles) + @(Get-ChildItem -LiteralPath (Join-Path $repositoryRoot 'src/Runtime') -Filter *.cs -File -Recurse)
 foreach ($file in $compactProductionFiles) {
-    foreach ($reference in @('ResumableDiscardProgram', 'CompactDiscardProjection')) {
+    foreach ($reference in @('ResumableDiscardProgram', 'CompactDiscardProjection', 'CompactPhaseProbe')) {
         foreach ($match in Select-String -LiteralPath $file.FullName -SimpleMatch $reference) {
             $violations.Add("$($match.Path):$($match.LineNumber): unvalidated compact prototype reached production: $reference")
         }
@@ -1214,6 +1214,16 @@ foreach ($reference in @('.ManualPlay(', '.AutoPlay(', '.Discard(', 'CardOnPlayM
 }
 if (-not ([IO.File]::ReadAllText($compactProjection)).Contains('Program.State.HasSameRoot(program.State)')) {
     $violations.Add('Compact projection lost root ownership guard.')
+}
+$compactContextGuards = @(
+    @('src/Testing/UnattendedTestRunner.CompactKernelProfile.cs', 'if (!SimulationNotificationIsolation.IsActive)'),
+    @('src/Testing/UnattendedTestRunner.CompactKernel.cs', 'initialIsolation.Dispose();'),
+    @('src/Testing/UnattendedTestRunner.CompactKernel.cs', 'continuationIsolation.Dispose();')
+)
+foreach ($guard in $compactContextGuards) {
+    if (-not ([IO.File]::ReadAllText((Join-Path $repositoryRoot $guard[0]))).Contains($guard[1])) {
+        $violations.Add("Compact profile lost simulation context boundary: $($guard[0]) / $($guard[1])")
+    }
 }
 if (-not ([IO.File]::ReadAllText((Join-Path $compactRoot 'ReversibleValueState.cs'))).Contains('private readonly long[] _values;')) {
     $violations.Add('Compact frozen values lost independent storage.')

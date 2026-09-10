@@ -1,5 +1,11 @@
 # CombatSolver 测试清单
 
+## 2026-09-11：紧凑估值诊断与模拟上下文校正
+
+- `COMPACT-KERNEL-NATIVE` / `22e98eed11404f2cbb9287d29c7e889a` Passed，30.48 秒。测试与正式搜索共用通知隔离上下文，八任务 await 前与原生部署前显式退出；34 叶完整状态、ContinuationStamp、原状态键、全部 Snapshot 属性、有序历史、冻结续执行和原生嵌套链通过。
+- 新增预热 solver / 每 34 叶新建 solver 的全属性与排序对照，四组交错样本，每样本 256×34 叶；24 个唯一威胁缓存键，保留同批重复状态。线程 CPU、墙钟、分配与嵌套内部阶段分开记录。CPU 采样仅纳入诊断栈，不代表完整搜索、可见性能或 DOP8 合同。
+- 前两次 `810165f0484549aa98b845ff06769596` / `3612a4288755423e9cf0707c4f1c192b` 也通过其启用的断言，但遗漏正式隔离，第一轮另有计时漂移。它们与前一原型的 1.53× 样本保留为历史，不作为正确上下文的瓶颈依据。最终 Release 0 警告/错误；双端结构规则同步，实际执行 Linux 版。全部实例已停止。详见[报告与全部样本](performance/simulation-evaluation-bottleneck-20260911.md)。
+
 ## 2026-09-10：紧凑可恢复执行原型
 
 - `COMPACT-KERNEL-NATIVE` / `c5c109a3766249aa8885298e5ebdc60c` Passed，隔离 headless 总时长 25.26 秒，120 秒上限未扩。30 张真实卡、34 个物理叶子：完整状态/ContinuationStamp、原 StateKey、全部 Snapshot 属性与历史来源配对一致；覆盖嵌套撤销、错误 LIFO/外根/重复消费、取消、冻结候选的八个独立任务与下一手动动作。一个原生嵌套链通过 actual/predicted；不是整场或 DOP8 全搜索验证。

@@ -39,13 +39,18 @@ internal sealed partial class UnattendedTestRunner
         await CreatureCmd.SetCurrentHp(enemy, enemy.MaxHp);
         await RunManager.Instance.ActionExecutor.FinishedExecutingActions();
         CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
+        // Match SolveCore's notification/capability context. This scope is thread-static:
+        // close it before every await, then reopen on the resumed thread when needed.
+        using IDisposable initialIsolation = SimulationNotificationIsolation.Enter();
         CombatPredictionSimulator rootSimulator = root.ForkSimulator();
         var adapter = new CompactDiscardProjection(rootSimulator, player);
         ResumableDiscardProgram lane = adapter.Program;
         int played = adapter.Identity("ACROBATICS"), prepared = adapter.Identity("PREPARED");
         int turn = root.StartTurnNumber;
-        CombatBeamSolver driver = new(root, SolverDisplayNames.Capture(combat), BattleDamageTracker.Observe(combat),
-            SolverController.CaptureSearchPolicy(SolverSettings.Capture(), combat, false, null));
+        SolverDisplayNames displayNames = SolverDisplayNames.Capture(combat);
+        BattleDamageSnapshot battleDamage = BattleDamageTracker.Observe(combat);
+        SearchPolicySnapshot policy = SolverController.CaptureSearchPolicy(SolverSettings.Capture(), combat, false, null);
+        CombatBeamSolver driver = new(root, displayNames, battleDamage, policy);
         var snapshotMethod = typeof(CombatBeamSolver).GetMethod("Snapshot", BindingFlags.NonPublic | BindingFlags.Instance)!;
         var snapshot = snapshotMethod.CreateDelegate<Func<CombatPredictionSimulator, int, int, int, SearchBoundaryReason,
             IReadOnlySet<uint>, SimulationSnapshot>>(driver);
@@ -155,6 +160,7 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidOperationException("Compact fixture did not expand nested sibling choices.");
 
         // Frozen pending executions remain usable after their worker rolled all the way back.
+        initialIsolation.Dispose();
         ResumableDiscardProgram[] siblings = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => Task.Run(() =>
         {
             ResumableDiscardProgram worker = pending.Open();
@@ -162,6 +168,7 @@ internal sealed partial class UnattendedTestRunner
             worker.Run();
             return worker;
         })));
+        using IDisposable continuationIsolation = SimulationNotificationIsolation.Enter();
         foreach (var worker in siblings)
         {
             if (!worker.Complete || !worker.State.Freeze().Values.SequenceEqual(siblings[0].State.Freeze().Values))
@@ -279,8 +286,13 @@ internal sealed partial class UnattendedTestRunner
                 JsonSerializer.Serialize(evidence, new JsonSerializerOptions { WriteIndented = true }));
         }
 
+        ProfileCompactEvaluation(root, displayNames, battleDamage, policy, adapter, cases, played);
+
         CompactCase native = cases.First(c => c.Choices.Length == 2 && c.Choices[0].SequenceEqual(new[] { prepared }));
         CombatPredictionSimulator nativeExpected = adapter.Materialize(native.Candidate.Open());
+        continuationIsolation.Dispose();
+        if (SimulationNotificationIsolation.IsActive)
+            throw new InvalidOperationException("Compact simulation isolation leaked into native deployment.");
         var nativeSelector = new PlannedCardSelector(native.Plan);
         using (CardSelectCmd.PushSelector(nativeSelector))
         {

@@ -211,6 +211,8 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 `Testing/CompactDiscardProjection.cs` 负责该实验的封闭能力准入和旧模型读投影：检查整根监听器、附加状态、费用与洗牌可能性；从事件构造一个拥有的旧分支供完整 `Snapshot` 读取，不再次执行 OnPlay、弃牌 Hook 或选择器。投影不得反写紧凑权威值。`MethodMirrorRegistry.DescribeDispatch` 和 OnPlay facade 仅提供同一缓存查询的只读分类，投影据此保留旧引擎的已补偿风险历史。候选在复用 worker 前冻结值，并释放旧评估快照的模拟器；后续动作从候选自有值重新打开。双端门禁禁止此实验从 Search/Runtime 入口启用，禁止值内核引入 Model 依赖，禁止投影重新回放效果。
 
+`Testing/CompactPhaseProbe.cs` 与 `UnattendedTestRunner.CompactKernelProfile.cs` 独占原型的阶段计量和新旧 solver 缓存对照，不进入生产 Search/Runtime。直接调用 Snapshot 的实验必须进入正式 `SolveCore` 使用的 `SimulationNotificationIsolation`，否则既有第三方空能力快速路径会旁路。该作用域使用线程静态状态，必须在 await 前和原生部署前退出；恢复后的模拟重新进入。诊断输出实际线程 CPU、独立墙钟和分配，内部既有 Snapshot 指标仍是嵌套墙钟；冻结候选不保留计量器、solver 或读取视图。
+
 通用命令和 Hook 调用遇到 `PendingChoice` 时立即向上传播未完成状态，不再执行其后的监听器、抽牌、资源变更、死亡处理或卡牌收尾。Search 为待处理选择补齐计划后，从稳定父节点精确重放该动作，按原顺序通过挂起点；未完成事务不作为可继续执行的稳定 Fork。自动出牌将外层来源与上下文身份带入 `OnPlayWrapper`，在来源牌仍位于 Play 时消费嵌套选择，等待嵌套自动出牌结束后才移动来源牌和执行费用清理。原版挂起位置、顺序与卡牌实例身份属于模拟语义，不能由 Beam 或部署层补偿。
 
 `CombatPredictionSimulator.CardPile.cs` 的抽牌安全边界只约束当前同步调用栈：抽牌 Hook 再次自动出牌、自动出牌又抽牌时，嵌套深度最多 `100` 层，继续嵌套会明确失败，不返回部分抽牌结果。深度在 `finally` 中退出；普通动作结束后、跨回合或从稳定边界 Fork 后继续抽牌，都不因已经累计的抽牌历史而减少合法抽牌。历史记录不再承担整个分支生命周期的 `100` 次抽牌额度，正常长线与有效循环仍受 Search 的节点、时间和调度预算约束。

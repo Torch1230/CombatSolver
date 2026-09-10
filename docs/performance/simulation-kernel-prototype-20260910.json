@@ -385,5 +385,11 @@
     }
   ],
   "failureCleanupNote": "native-v3 printed Segmentation fault after its managed Failed result during isolated-process exit; not diagnosed or counted as a pass.",
-  "rawEvidenceDirectory": ".local/simulation-kernel-20260910/native-v4"
+  "rawEvidenceDirectory": ".local/simulation-kernel-20260910/native-v4",
+  "measurementContextCorrection": {
+    "date": "2026-09-11",
+    "finding": "direct fixture omitted SimulationNotificationIsolation.Enter, so existing Ritsu empty-capability fast paths were inactive; retained measurements are historical and do not represent the complete production context",
+    "followup": "simulation-evaluation-bottleneck-20260911.md",
+    "historicalSamplesPreserved": true
+  }
 }

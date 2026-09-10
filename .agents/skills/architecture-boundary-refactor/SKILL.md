@@ -89,6 +89,8 @@ description: 重构 CombatSolver 的 Search、Runtime 会话、UI snapshot、无
 
 `Simulation/Compact/` 保持纯值执行和不可变候选，`Testing/CompactDiscardProjection.cs` 独占实验准入与旧评估投影；生产 Search/Runtime 仍使用现有后端。迁移这条边界必须同时替换双端禁止启用规则并提供完整支持闭包证据，不能只删除门禁或把可变 Simulator 藏入冻结句柄。类型分发诊断通过 registry 自己的 `DescribeDispatch` 获取，不反射私有注册表。
 
+原型阶段计量由 Testing 的 `CompactPhaseProbe` / `CompactKernelProfile` 持有。直接调用旧 Snapshot 时必须保持正式通知隔离上下文；其线程静态作用域在 await 与原生部署前释放。新读视图只借用当前同步评估所需的权威状态，不能逃入保留候选或通过读接口重新构造每叶旧对象图；共享完整公式与原状态键编码，避免新增独立评分权威。
+
 - `docs/ARCHITECTURE.md` 保存当前事实；
 - `docs/refactoring/verified-audit-*.md` 保存阶段证据，不作为永久入口；
 - `docs/refactoring/refactor-roadmap.md` 保存批次状态；

@@ -2,6 +2,8 @@
 
 [性能目录](README.md) · [全部样本与验证记录](simulation-kernel-prototype-20260910.json) · [原调研方案](simulation-redesign-research-20260910.md)
 
+> 2026-09-11 测量更正：本报告的直接调用 fixture 遗漏了正式搜索的 `SimulationNotificationIsolation` 作用域，未启用既有 Ritsu 空能力快速路径。下文 1.53× / −4.54% 保留为历史数据，不能代表完整生产上下文。已修正 fixture 并重新完成完整对照及分段测量，见[下一瓶颈报告](simulation-evaluation-bottleneck-20260911.md)；其受控实验参考值约 1.64× / −7.66%，仍不是正式搜索收益或全面迁移通过。
+
 ## 结果与决定
 
 **真实纵向原型已经实现并通过最小原生对照。** 34 个物理选择分支与旧引擎的完整状态、ContinuationStamp、原 StateKey、完整 Snapshot 属性及有序历史一致。值执行器能停在选择处，从同一前缀继续多个选择，撤销后恢复执行位置；已冻结候选能独立恢复并继续下一张牌。
