@@ -30,6 +30,7 @@
 | 第三方卡牌、Power、药水等登记入口 | [第三方 Mod 适配手册](THIRD_PARTY_ADAPTERS.md) |
 | 第三方 Power 的搜索估值 | [战略估值登记](third-party-strategic-effects.md) |
 | 遗物与 Modifier 的捕获、Fork 与续用状态 | [模型状态适配](third-party-model-state.md) |
+| 模型状态中的卡牌引用、重映射及集合描述 | [卡牌引用辅助接口](third-party-model-state.md#卡牌引用辅助接口) |
 | 战斗语义适配与验证方法 | [适配验证](ADAPTATION_VERIFICATION.md) |
 | 原版 Hook 支持和覆盖证据 | [战斗 Hook 覆盖目录](COMBAT_HOOK_COVERAGE.md) |
 

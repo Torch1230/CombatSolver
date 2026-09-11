@@ -393,6 +393,8 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 首次根或续用捕获后拒绝继续登记；未捕获状态不回落到 live 值。
 
 此接口不放行 Mod、补丁或 Hook，不扩展遗物／Modifier 的中途增删。
+卡牌引用可用 `PredictionCardReferences.RequireCard` / `Remap` 与 writer 的 `AddCard` / `AddCards`；
+只支持当前五个战斗牌堆，位置索引按观察惰性建立，缺失或歧义拒绝。无序描述须显式声明。
 完整签名、对象重映射、字段格式及验证边界见[模型状态适配](third-party-model-state.md)。
 与其他内部镜像入口一样，外部程序集仍需要 publicizer；本接口尚未发布。
 

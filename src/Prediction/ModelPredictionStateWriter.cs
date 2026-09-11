@@ -9,10 +9,13 @@ internal delegate void ModelPredictionStateWrite<in T>(T source, ref ModelPredic
 /// Writes the same ordered, typed fields to a search fingerprint or a continuation stamp.
 /// Field order and collection order are part of the adapter's state contract.
 /// </summary>
-internal struct ModelPredictionStateWriter
+internal partial struct ModelPredictionStateWriter
 {
     private StateFingerprintBuilder _fingerprint;
     private readonly StringBuilder? _text;
+    private MegaCrit.Sts2.Core.Combat.ICombatState? _referenceCombat;
+    private CombatSolver.Engine.InCombat.Simulation.CombatPredictionSimulator? _referenceSimulator;
+    private Dictionary<object, CardPosition>? _cardPositions;
 
     internal ModelPredictionStateWriter(StateFingerprintBuilder fingerprint, StringBuilder? text = null)
     {

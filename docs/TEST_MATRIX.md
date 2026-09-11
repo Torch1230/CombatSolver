@@ -1,5 +1,12 @@
 # CombatSolver 测试清单
 
+## 下一版本（开发中）：卡牌引用辅助接口
+
+- `dotnet run --project tools/ModelPredictionStateChecks/ModelPredictionStateChecks.csproj -c Release -- --cards`：通过 28 项合同，覆盖原卡／Preview、同名实例、缺失／歧义、父子兄弟隔离、模型状态 Fork、live 变化、两侧字段、null／空／重复／顺序／无序、失效引用与堆内移动。
+- 工具链接生产 helper、writer、registry、state store；游戏对象和模拟器外壳由小型合同替身提供，不能当成完整游戏证明。
+- 同轮默认模型状态合同 32 项、`--empty` 3 项通过；0.111.0 对应引用下 Release 构建零警告／零错误，Bash 结构门禁通过。没有运行 `--allocation`。
+- `MODEL-STATE-INTEGRATION` 已增加真实模拟器引用集合重映射及 Preview COW 断言。本项没有启动游戏，T1→T2 差分未运行；不引用旧记录作为本轮通过。不运行性能 A/B。
+
 ## 0.36.3：策略摘要
 
 - 后续摘要样式调整：`UI-LOCALIZATION` / `fc0bb52775dd427c80b61719838b1225` Passed（25.38 秒），校验目标 7/实际 4、成功与未达标状态分组、前缀删除及 405 项目录。右对齐、16 号字体和全自动按钮样式通过编译检查，未作可见游戏人工验收。

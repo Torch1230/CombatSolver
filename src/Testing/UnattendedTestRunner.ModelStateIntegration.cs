@@ -15,9 +15,14 @@ internal sealed partial class UnattendedTestRunner
         public int Count = count;
         public List<int> Values = [count];
         public PredictedCard Card = card;
+        public List<PredictedCard?> References = [card, null, card];
 
         public object Fork(PredictionForkContext context)
-            => new IntegrationModelState(Count, context.RequireRemap(Card)) { Values = [.. Values] };
+            => new IntegrationModelState(Count, context.RequireRemap(Card))
+            {
+                Values = [.. Values],
+                References = PredictionCardReferences.Remap(References, context)!,
+            };
     }
 
     // A dedicated fresh-process fixture registers before its first root. Production effects
@@ -25,7 +30,10 @@ internal sealed partial class UnattendedTestRunner
     private static void RegisterModelStateIntegrationAdapters()
     {
         static IntegrationModelState Capture(CombatPredictionSimulator simulator, Player owner, int count)
-            => new(count, simulator.State.GetPlayerCombatState(owner).AllCards.First());
+        {
+            var cards = simulator.State.GetPlayerCombatState(owner);
+            return new(count, PredictionCardReferences.RequireCard(cards, cards.AllCards.First().Original));
+        }
         static void WriteValues(int count, IReadOnlyList<int> values, ref ModelPredictionStateWriter writer)
         {
             writer.Add("counter", (long)count);
@@ -60,6 +68,7 @@ internal sealed partial class UnattendedTestRunner
             player, simulator, root.StartTurnNumber, root.Forecast, root.StartTurnNumber).StateText;
         StateFingerprint initial = Fingerprint(parent);
         string initialStamp = Stamp(parent);
+        AssertCardReferenceObservation(combat, player, parent, child);
         if (initial != Fingerprint(child) || initialStamp != Stamp(child))
             throw new InvalidOperationException("Full simulator fork changed registered model state.");
         AbstractModel[] models = [parentCombat.RelicsOf(player).OfType<BurningBlood>().Single(), parentCombat.Modifiers.OfType<BigGameHunter>().Single()];
@@ -70,6 +79,8 @@ internal sealed partial class UnattendedTestRunner
             IntegrationModelState after = ModelPredictionStateMirrors.Get<IntegrationModelState>(child, childModels[i]);
             if (ReferenceEquals(before, after) || ReferenceEquals(before.Values, after.Values)
                 || ReferenceEquals(before.Card, after.Card)
+                || ReferenceEquals(before.References, after.References)
+                || !after.References.SequenceEqual(new PredictedCard?[] { after.Card, null, after.Card })
                 || !child.State.GetPlayerCombatState(player).AllCards.Any(card => ReferenceEquals(card, after.Card)))
                 throw new InvalidOperationException("Registered model state retained a parent branch reference.");
             after.Count++;
@@ -83,5 +94,28 @@ internal sealed partial class UnattendedTestRunner
         _completedChecks.Add("RegisteredRelicAndModifier:FullSimulatorFork:CardRemapping:MutableIsolation:FingerprintAndContinuation");
         await AssertReportRoundAsync(combat, player);
         _completedChecks.Add("RegisteredModelState:NativeVsPredictedTurn1To2:FullSnapshotAndContinuation");
+    }
+
+    private static void AssertCardReferenceObservation(CombatState live, Player player,
+        CombatPredictionSimulator parent, CombatPredictionSimulator child)
+    {
+        var parentCards = parent.State.GetPlayerCombatState(player);
+        var childCards = child.State.GetPlayerCombatState(player);
+        PredictedCard before = parentCards.AllCards.First();
+        PredictedCard after = PredictionCardReferences.RequireCard(childCards, before.Original);
+        System.Text.StringBuilder actual = new(), predicted = new();
+        ModelPredictionStateWriter actualWriter = new(new(), actual), predictedWriter = new(new(), predicted);
+        actualWriter.BindCardReferences(live, null);
+        predictedWriter.BindCardReferences(child.State.CombatState, child);
+        actualWriter.AddCards("references", new CardModel?[] { before.Original, null, before.Original });
+        predictedWriter.AddCards("references", new PredictedCard?[] { after, null, after });
+        if (actual.ToString() != predicted.ToString())
+            throw new InvalidOperationException("Live/predicted card reference positions differ.");
+        CardModel parentPreview = before.Preview;
+        CardModel childPreview = after.MutablePreview;
+        if (ReferenceEquals(parentPreview, childPreview)
+            || PredictionCardReferences.RequireCard(childCards, childPreview) != after
+            || PredictionCardReferences.RequireCard(childCards, before.Original) != after)
+            throw new InvalidOperationException("Card reference resolution failed after preview COW.");
     }
 }
