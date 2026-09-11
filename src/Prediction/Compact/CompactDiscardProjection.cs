@@ -32,6 +32,7 @@ namespace CombatSolver;
 internal sealed class CompactDiscardProjection
 {
     private readonly CombatPredictionSimulator _root;
+    private readonly object _rootForkGate = new();
     private readonly Player _player;
     private readonly CardModel[] _identities, _definitionModels;
     private readonly PredictionRiskReason?[] _risks;
@@ -184,7 +185,7 @@ internal sealed class CompactDiscardProjection
 
     internal CompactCardMetadataReadBinding CreatePlanMetadata()
     {
-        var owned = _root.Fork();
+        var owned = ForkRoot();
         return new(this, _identities.Select(card => owned.State.FindCard(card)!).ToArray());
     }
 
@@ -276,7 +277,14 @@ internal sealed class CompactDiscardProjection
     // Legacy read helpers contain simulator-owned scratch. Each lane borrows its own root fork;
     // this is setup once per reader, never a leaf projection or a second execution authority.
     internal CompactDiscardReadView CreateReadView(bool reuseInvariantFeatures = true)
-        => new(this, _root.Fork(), _player, _risks) { Invariants = reuseInvariantFeatures ? new() : null };
+        => new(this, ForkRoot(), _player, _risks) { Invariants = reuseInvariantFeatures ? new() : null };
+
+    private CombatPredictionSimulator ForkRoot()
+    {
+        // Fork seals history tails and publishes COW sharing bits. Only root copying is
+        // serialized; event projection and lane-owned evaluation run independently.
+        lock (_rootForkGate) return _root.Fork();
+    }
 
     private static PileType NativePile(ResumableDiscardProgram.Pile pile) => pile switch
     {
@@ -310,7 +318,7 @@ internal sealed class CompactDiscardProjection
         if (!Program.State.HasSameRoot(program.State) || !program.Complete)
             throw new InvalidOperationException("Evaluation requires a completed candidate from this root.");
         var forkStart = probe?.Begin() ?? default;
-        CombatPredictionSimulator projection = _root.Fork();
+        CombatPredictionSimulator projection = ForkRoot();
         probe?.End(CompactProfilePhase.RootFork, forkStart);
         var eventsStart = probe?.Begin() ?? default;
         var combat = (SimulatedCombatState)projection.State.CombatState;

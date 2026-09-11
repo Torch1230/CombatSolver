@@ -91,3 +91,5 @@
 - [性能与掉帧复盘](PERFORMANCE_AND_STUTTER_DIAGNOSIS.md)：早期版本结论与演进记录。
 - [Fork 性能结果](RF_FORK_PERFORMANCE_RESULTS.md)：历史固定场景的性能与正确性数据。
 - [旧性能样例](PERFORMANCE_FIXTURES.md)：保留复现资料；后续策略批次使用仓库的 strategy-replay-iteration skill，不继续维护此旧样例清单。
+
+- [紧凑状态接入完整搜索：逻辑一致但性能回退](simulation-search-backend-20260911.md)（2026-09-11，Runtime 未启用）。

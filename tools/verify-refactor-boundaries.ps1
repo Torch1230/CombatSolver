@@ -427,6 +427,7 @@ $expectedBeamFiles = @(
     "CombatBeamSolver.cs",
     "CombatBeamSolver.AdmittedExpansion.cs",
     "CombatBeamSolver.BeamRetentionPolicy.cs",
+    "CombatBeamSolver.CompactReplay.cs",
     "CombatBeamSolver.CrossTurnPlanning.cs",
     "CombatBeamSolver.CyclePlanning.cs",
     "CombatBeamSolver.CycleRegionRetention.cs",
@@ -1190,7 +1191,7 @@ foreach ($hookName in $mirroredHookNames) {
     }
 }
 
-# The compact executor remains a value-only experiment behind a Testing adapter.
+# The value executor is admitted only through the captured-root search replay seam.
 $compactRoot = Join-Path $repositoryRoot 'src/Engine/InCombat/Simulation/Compact'
 foreach ($file in Get-ChildItem -LiteralPath $compactRoot -Filter *.cs -File -Recurse) {
     foreach ($reference in @('MegaCrit.', 'Godot', 'CombatPredictionSimulator', 'SimulatedCombatState', 'CardModel', 'Task', 'IEnumerator', 'Func<', 'Action<')) {
@@ -1202,8 +1203,9 @@ foreach ($file in Get-ChildItem -LiteralPath $compactRoot -Filter *.cs -File -Re
 $compactProductionFiles = @($searchFiles) + @(Get-ChildItem -LiteralPath (Join-Path $repositoryRoot 'src/Runtime') -Filter *.cs -File -Recurse)
 foreach ($file in $compactProductionFiles) {
     foreach ($reference in @('ResumableDiscardProgram', 'CompactDiscardProjection', 'CompactDiscardReadView', 'CompactPhaseProbe', 'CompactCardMetadataReadBinding', 'CompactCardProgramCompiler', 'MonsterEffectProgram', 'DeterministicMonsterAi', 'CompactMonsterAiReadBinding', 'CompactRoundRoot', 'CompactRoundLayout', 'CompactPlanReplay')) {
+        if ($file.Name -eq 'CombatBeamSolver.CompactReplay.cs' -and $reference -in @('ResumableDiscardProgram', 'CompactDiscardReadView', 'CompactPlanReplay')) { continue }
         foreach ($match in Select-String -LiteralPath $file.FullName -SimpleMatch $reference) {
-            $violations.Add("$($match.Path):$($match.LineNumber): unvalidated compact prototype reached production: $reference")
+            $violations.Add("$($match.Path):$($match.LineNumber): compact model admission escaped the captured-root replay seam: $reference")
         }
     }
 }
@@ -1291,7 +1293,7 @@ $compactReadGuards = @(
     @('src/Search/CombatBeamSolver.ReadView.cs', 'view?.EnemyValuesInvariant == true ? view.Invariants : null'),
     @('src/Engine/InCombat/Simulation/SimCreatureState.cs', '_values.LoseHp(amount)'),
     @('src/Engine/InCombat/Simulation/Compact/CreatureValueSlots.cs', 'state.Write(Offset + 3, present ? 1 : 0)'),
-    @('src/Prediction/Compact/CompactDiscardProjection.cs', '=> new(this, _root.Fork(), _player, _risks)'),
+    @('src/Prediction/Compact/CompactDiscardProjection.cs', '=> new(this, ForkRoot(), _player, _risks)'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'if (ResultPile(card) == Pile.Removed || !Ending)'),
     @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', 'if (target != 0) _creatures[target].SetPresent(state, false);'),
     @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', 'state.Write(_terminalSlot, DeathCompleted(state, 0) ? 2 : 1);'),
@@ -1353,7 +1355,7 @@ foreach ($guard in $compactReadGuards) {
     }
 }
 foreach ($file in $compactProductionFiles) {
-    if ($file.Name -eq 'CombatBeamSolver.StateEvaluation.cs') { continue }
+    if ($file.Name -in @('CombatBeamSolver.StateEvaluation.cs', 'CombatBeamSolver.CompactReplay.cs')) { continue }
     foreach ($match in Select-String -LiteralPath $file.FullName -SimpleMatch 'SnapshotFromReadView(') {
         $violations.Add("$($match.Path):$($match.LineNumber): closed completed reader is not admitted to production execution.")
     }
@@ -1412,6 +1414,23 @@ foreach ($forbidden in @('.Fork(', 'RollMove(', 'AdvanceMonsterAi(', 'BranchMons
 Get-ChildItem (Join-Path $repositoryRoot 'src/Search'), (Join-Path $repositoryRoot 'src/Runtime') -Recurse -Filter '*.cs' | ForEach-Object {
     if ($_.FullName -ne $compactAiReads -and (Get-Content -LiteralPath $_.FullName -Raw).Contains('CompletedMonsterAiReadBinding')) {
         throw "Completed AI binding is not admitted to production execution: $($_.FullName)"
+    }
+}
+
+# Backend integration is opt-in through test-captured immutable policy, not live Runtime.
+Get-ChildItem (Join-Path $repositoryRoot 'src/Runtime') -Recurse -Filter '*.cs' | ForEach-Object {
+    if ((Get-Content -LiteralPath $_.FullName -Raw).Contains('CompactRoot')) {
+        throw "Runtime compact selection requires separate supported-domain acceptance: $($_.FullName)"
+    }
+}
+foreach ($rule in @(
+    @('src/Prediction/Compact/CompactDiscardProjection.cs', 'lock (_rootForkGate) return _root.Fork();'),
+    @('src/Search/CombatPlan.cs', '_compact = null;'),
+    @('src/Search/CombatBeamSolver.CompactReplay.cs', 'SnapshotFromReadView(lane.Reader,'),
+    @('src/Search/CombatBeamSolver.ParallelExpansion.cs', 'ReferenceEquals(_compact, parent)')
+)) {
+    if (-not (Get-Content -LiteralPath (Join-Path $repositoryRoot $rule[0]) -Raw).Contains($rule[1])) {
+        throw "Compact captured-root ownership/evaluation guard missing: $($rule[0]): $($rule[1])"
     }
 }
 

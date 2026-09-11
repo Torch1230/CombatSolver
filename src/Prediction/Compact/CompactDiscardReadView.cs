@@ -8,7 +8,7 @@ using MegaCrit.Sts2.Core.Entities.Creatures;
 
 namespace CombatSolver;
 
-/// <summary>Test-only reader for the exact admission contract of CompactDiscardProjection.</summary>
+/// <summary>Lane-owned reader for the exact admission contract of CompactDiscardProjection.</summary>
 internal sealed class CompactDiscardReadView : CompletedStateReadView
 {
     private readonly CompactDiscardProjection _adapter;
@@ -35,6 +35,7 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
     private readonly CompactMonsterAiReadBinding? _monsterAiBinding;
     private readonly SimulatedCombatState.CompletedRoundReadBinding? _roundBinding;
     internal int RiskSourceCount => _distinctGaps.Length;
+    internal int LastImpureHistoryIndex { get; private set; }
 
     internal CompactDiscardReadView(CompactDiscardProjection adapter, CombatPredictionSimulator root, Player player,
         PredictionRiskReason?[] risks)
@@ -98,6 +99,8 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
         _combatHistory.ResetFrom(_combatBaseline);
         int block = 0, skill = 0, discarded = 0, exhausted = 0, energy = 0, draw = 0, starts = 0, plays = 0, manual = 0;
         _entries = _context.History.Entries.Count;
+        // Search compares only suffixes beginning at or after this captured root.
+        LastImpureHistoryIndex = _entries - 1;
         _playerHpLost = _rootPlayerHpLost;
         ulong gapMask = 0;
         for (int i = 0; i < program.EventCount; i++)
@@ -128,12 +131,14 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
                     if (!item.Automatic) manual++;
                     _entries++;
                     ulong cardMask = _cardGapMasks[program.DefinitionIndex(item.Card)];
-                    if (cardMask != 0) { _entries++; gapMask |= cardMask; }
+                    if (cardMask != 0) { LastImpureHistoryIndex = _entries++; gapMask |= cardMask; }
                     break;
-                case ResumableDiscardProgram.EventKind.Generated: _entries += 2; break;
+                case ResumableDiscardProgram.EventKind.Generated:
+                    _entries += 2; LastImpureHistoryIndex = _entries - 1; break;
                 case ResumableDiscardProgram.EventKind.Draw:
                     if (item.Value == 0) draw++;
                     _entries += 2;
+                    LastImpureHistoryIndex = _entries - 1;
                     if (_cards[item.Card].Preview.Type == CardType.Status) statusDraws++;
                     break;
                 case ResumableDiscardProgram.EventKind.Discard: discarded++; break;

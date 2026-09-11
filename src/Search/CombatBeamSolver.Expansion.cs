@@ -1373,11 +1373,9 @@ internal sealed partial class CombatBeamSolver
             choiceSpec,
             semanticBranchCount);
 
-        SimulatedCombatState probeCombat =
-            (SimulatedCombatState)probeSnapshot.Simulator.State.CombatState;
         bool unregisteredPendingChoice = probeSnapshot.BoundaryReason == SearchBoundaryReason.PendingChoice
-            && probeCombat.PendingTurnStartChoice == null
-            && probeCombat.PendingKnowledgeDemonChoice == null;
+            && ((SimulatedCombatState)probeSnapshot.Simulator.State.CombatState) is var probeCombat
+            && probeCombat.PendingTurnStartChoice == null && probeCombat.PendingKnowledgeDemonChoice == null;
         return new PrimaryCardChoiceLayer(
             choices,
             unregisteredPendingChoice,
@@ -1945,6 +1943,8 @@ internal sealed partial class CombatBeamSolver
 
     private CardChoiceSpec? BuildPrimaryCardChoiceSpec(SimulationSnapshot probeSnapshot)
     {
+        if (probeSnapshot.BoundaryReason != SearchBoundaryReason.PendingChoice)
+            return null;
         CombatPredictionSimulator probeSimulator =
             (CombatPredictionSimulator)probeSnapshot.Simulator;
         SimulatedCombatState probeCombat =
@@ -2720,6 +2720,9 @@ internal sealed partial class CombatBeamSolver
         roundPrefix?.AssertOwner(parentSnapshot, startingTurn, actions, triggerRecorder, replayForkSeed);
         bool resumeRoundPrefix = roundPrefix?.HasCheckpoint == true;
         _run.WorkPacer.YieldIfNeeded();
+        if (triggerRecorder == null && replayEvidence == null
+            && TryCompactReplay(actions, parentSnapshot, startingTurn, priorActionCount, replayForkSeed, out var compactSnapshot))
+            return compactSnapshot!;
         CombatPredictionSimulator simulator;
         SimulatedCombatState simulatedCombat;
         int turn;
@@ -3097,6 +3100,8 @@ internal sealed partial class CombatBeamSolver
         SearchMeasurement forkMeasurement = _run.Performance.Begin();
         try
         {
+            if (parentSnapshot.CompactCandidate is { } compact)
+                return new ReplayForkSeed(compact, ((ForkableSet<uint>)parentSnapshot.ProcessedEnemyDeaths).Fork());
             CombatPredictionSimulator simulator =
                 ((CombatPredictionSimulator)parentSnapshot.Simulator).Fork();
             ForkableSet<uint> processedEnemyDeaths =
@@ -3303,15 +3308,13 @@ internal sealed partial class CombatBeamSolver
         int block = Math.Max(0, after.PlayerBlock - before.PlayerBlock);
         double resource = Math.Max(0.5d, energy + stars * 0.5d);
         double normalized = (damage + block * 0.8d) / resource;
-        CombatPredictionSimulator simulator = (CombatPredictionSimulator)after.Simulator;
-        bool pure = true;
-        foreach (CombatPredictionHistoryEntry entry in
-                 simulator.History.EntriesFrom(before.HistoryEntryCount))
+        bool pure = after.CompactCandidate is { } compact
+            ? compact.LastImpureHistoryIndex < before.HistoryEntryCount : IsPureLegacySuffix();
+        bool IsPureLegacySuffix()
         {
-            if (IsPureHistoryEntry(entry))
-                continue;
-            pure = false;
-            break;
+            foreach (var entry in after.Simulator.History.EntriesFrom(before.HistoryEntryCount))
+                if (!IsPureHistoryEntry(entry)) return false;
+            return true;
         }
         SimulatedCombatState beforeCombat = (SimulatedCombatState)
             ((CombatPredictionSimulator)before.Simulator).State.CombatState;

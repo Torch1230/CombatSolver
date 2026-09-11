@@ -40,4 +40,6 @@ internal sealed record SearchPolicySnapshot(
     public bool EffectiveHasGrowthTargets => !IgnoreLongTermRewards && HasGrowthTargets;
     public SearchRequestWorkTotals? RequestWorkTotals { get; init; }
     public SearchInteractionState? Interaction { get; init; }
+    // Captured only by the explicit backend differential fixture during integration.
+    public CompactCombatRoot? CompactRoot { get; init; }
 }

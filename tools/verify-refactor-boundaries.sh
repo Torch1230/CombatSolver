@@ -470,6 +470,7 @@ expected_beam_files=(
     CombatBeamSolver.cs
     CombatBeamSolver.AdmittedExpansion.cs
     CombatBeamSolver.BeamRetentionPolicy.cs
+    CombatBeamSolver.CompactReplay.cs
     CombatBeamSolver.CrossTurnPlanning.cs
     CombatBeamSolver.CyclePlanning.cs
     CombatBeamSolver.CycleRegionRetention.cs
@@ -987,7 +988,7 @@ require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" 'simulated.S
 require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" '!PowerLifecycleSupport.UsesNativeDurationSkip(powerType) && !alreadyPresent' 'typed duration application must not duplicate native skip state'
 require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" '!PowerLifecycleSupport.UsesNativeDurationSkip(typeof(T)) && !alreadyPresent' 'monster duration application must not duplicate native skip state'
 
-# The compact executor remains a value-only experiment behind a Testing adapter.
+# The value executor is admitted only through the captured-root search replay seam.
 while IFS= read -r compact_path; do
     for native_reference in 'MegaCrit.' 'Godot' 'CombatPredictionSimulator' 'SimulatedCombatState' 'CardModel' 'Task' 'IEnumerator' 'Func<' 'Action<'; do
         forbid_fixed "$compact_path" "$native_reference" 'compact execution must contain only owned values:'
@@ -995,7 +996,9 @@ while IFS= read -r compact_path; do
 done < <(rg --files "$repository_root/src/Engine/InCombat/Simulation/Compact" -g '*.cs')
 while IFS= read -r production_path; do
     for prototype_reference in 'ResumableDiscardProgram' 'CompactDiscardProjection' 'CompactDiscardReadView' 'CompactPhaseProbe' 'CompactCardMetadataReadBinding' 'CompactCardProgramCompiler' 'MonsterEffectProgram' 'DeterministicMonsterAi' 'CompactMonsterAiReadBinding' 'CompactRoundRoot' 'CompactRoundLayout' 'CompactPlanReplay'; do
-        forbid_fixed "$production_path" "$prototype_reference" 'unvalidated compact prototype reached production:'
+        if [[ $production_path == "$search_root/CombatBeamSolver.CompactReplay.cs" &&
+              $prototype_reference =~ ^(ResumableDiscardProgram|CompactDiscardReadView|CompactPlanReplay)$ ]]; then continue; fi
+        forbid_fixed "$production_path" "$prototype_reference" 'compact model admission escaped the captured-root replay seam:'
     done
 done < <(rg --files "$search_root" "$repository_root/src/Runtime" -g '*.cs')
 require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" 'private T? PreparePowerApplication<T>' 'Power preparation must remain separate from ordered application'
@@ -1085,7 +1088,7 @@ require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'view?.CardHist
 require_fixed "$search_root/CombatBeamSolver.ReadView.cs" 'view?.EnemyValuesInvariant == true ? view.Invariants : null' 'mutable enemy values must bypass root invariant summaries'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/SimCreatureState.cs" '_values.LoseHp(amount)' 'legacy and compact scalar damage must share one arithmetic implementation'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/CreatureValueSlots.cs" 'state.Write(Offset + 3, present ? 1 : 0)' 'creature roster membership must remain journaled separately from HP'
-require_fixed "$compact_projection" '=> new(this, _root.Fork(), _player, _risks)' 'each completed reader must own legacy simulator scratch'
+require_fixed "$compact_projection" '=> new(this, ForkRoot(), _player, _risks)' 'each completed reader must own legacy simulator scratch'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'if (ResultPile(card) == Pile.Removed || !Ending)' 'last-hit result movement must respect the native ending gate'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs" 'if (target != 0) _creatures[target].SetPresent(state, false);' 'only enemy death may remove roster membership'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs" 'state.Write(_terminalSlot, DeathCompleted(state, 0) ? 2 : 1);' 'compact victory and defeat must be journaled'
@@ -1123,7 +1126,7 @@ require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactShuffleP
 require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" '=> SnapshotCore(simulator, turn, actionCount, shufflesCrossed, boundary, processedEnemyDeaths, null);' 'legacy and completed readers must share full SnapshotCore'
 require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'result.ReleaseSimulator();' 'completed evaluations must release their borrowed root'
 while IFS= read -r production_path; do
-    [[ $production_path == "$search_root/CombatBeamSolver.StateEvaluation.cs" ]] && continue
+    [[ $production_path == "$search_root/CombatBeamSolver.StateEvaluation.cs" || $production_path == "$search_root/CombatBeamSolver.CompactReplay.cs" ]] && continue
     forbid_fixed "$production_path" 'SnapshotFromReadView(' 'closed completed reader is not admitted to production execution:'
 done < <(rg --files "$search_root" "$repository_root/src/Runtime" -g '*.cs')
 compact_values="$repository_root/src/Engine/InCombat/Simulation/Compact/ReversibleValueState.cs"
@@ -1139,6 +1142,15 @@ require_fixed "$compact_frozen" 'private readonly long[] _values = values;' 'com
 for mutable_owner in 'ReversibleValueState _owner' 'ReversibleValueState _workspace' 'FrozenValues _parent'; do
     forbid_fixed "$compact_frozen" "$mutable_owner" 'compact candidate must not retain mutable workers or ancestor chains:'
 done
+
+# Backend integration is opt-in through test-captured immutable policy, not live Runtime.
+while IFS= read -r runtime_path; do
+    forbid_fixed "$runtime_path" 'CompactRoot' 'Runtime compact selection requires separate supported-domain acceptance:'
+done < <(rg --files "$repository_root/src/Runtime" -g '*.cs')
+require_fixed "$compact_projection" 'lock (_rootForkGate) return _root.Fork();' 'shared compact metadata root requires a narrow Fork gate'
+require_fixed "$search_root/CombatPlan.cs" '_compact = null;' 'snapshot release must drop compact candidate ownership'
+require_fixed "$search_root/CombatBeamSolver.CompactReplay.cs" 'SnapshotFromReadView(lane.Reader,' 'compact replay must share the complete existing evaluation'
+require_fixed "$search_root/CombatBeamSolver.ParallelExpansion.cs" 'ReferenceEquals(_compact, parent)' 'compact seeds must verify their exact immutable parent'
 
 if ((${#violations[@]} > 0)); then
     printf '%s\n' "${violations[@]}" >&2

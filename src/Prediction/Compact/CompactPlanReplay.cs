@@ -17,6 +17,14 @@ internal sealed class CompactPlanReplay
 
     internal void Execute(ResumableDiscardProgram lane, PlanAction action)
     {
+        if (!TryExecute(lane, action, default))
+            throw new InvalidOperationException("Compact execution requires an omitted plan choice.");
+    }
+
+    // A missing choice is a defined search boundary. All supplied choices and execution
+    // failures remain strict; the caller restores its frozen parent before another attempt.
+    internal bool TryExecute(ResumableDiscardProgram lane, PlanAction action, CancellationToken cancellationToken)
+    {
         if (action.Turn != lane.PlayerTurn || action.EndsPlayerTurn || action.ReplayCount != 0)
             throw new NotSupportedException("Compact plan has an unrepresented turn or replay request.");
         IReadOnlyList<PlanCardChoice> choices;
@@ -44,9 +52,9 @@ internal sealed class CompactPlanReplay
         int consumed = 0;
         while (!lane.Complete)
         {
-            lane.Run();
+            lane.Run(cancellationToken);
             if (!lane.NeedsChoice) continue;
-            if (consumed == choices.Count) throw new InvalidOperationException("Compact execution requires an omitted plan choice.");
+            if (consumed == choices.Count) return false;
             var choice = choices[consumed++];
             PileType pile = lane.ChoicePile == ResumableDiscardProgram.Pile.Draw ? PileType.Draw : PileType.Hand;
             PlanChoiceEffect effect = pile == PileType.Draw ? PlanChoiceEffect.MoveToHand : PlanChoiceEffect.Discard;
@@ -60,5 +68,6 @@ internal sealed class CompactPlanReplay
         }
         if (consumed != choices.Count) throw new InvalidOperationException("Compact execution left unconsumed plan choices.");
         lane.CheckWinCondition();
+        return true;
     }
 }
