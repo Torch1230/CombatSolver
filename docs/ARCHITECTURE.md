@@ -291,6 +291,7 @@ DarkEmbrace 的延迟抽牌数由 AfterCardExhausted 镜像按实际虚无消耗
 Nostalgia 的本回合攻击/技能开始数属于 `SimulatedCombatState`：冻结根历史初始化，开始事件递增，阵营回合开始归零，Fork COW，进入指纹及 ContinuationStamp 的 `Y` 第四项。HistoryCourse 的上一回合空值也属于物化根/分支状态，跨回合后不重新扫描实机历史。Nightmare 在选中时克隆选中牌并去除 affliction，后续原牌费用、升级和保留变化不修改该快照。ForegoneConclusion 的候选全选为原版隐式选择时，由 CardChoiceSpec 显式标记并保持来源顺序。
 
 `Prediction/ModelPredictionStateMirrors` 拥有遗物／Modifier 的精确类型状态登记，首次根或续用捕获后冻结。
+`PredictionCardReferences` 在捕获时严格解析原卡／Preview，Fork 复用同一 context 的映射。writer 的卡牌位置索引只属于一次只读观察，首次非空引用才建立，跨模型复用但不跨节点缓存；预测一侧只索引分支包装对象，不读取 live 卡牌字段。移出五个战斗牌堆或来自其他分支的引用明确失败。
 `SimulatedCombatState.MaterializeRoot` 在内置状态物化后调用捕获并释放实机源映射；状态放入现有
 `PredictionStateStore`，随同一 Fork context 复制。模型克隆仅作只读身份，效果镜像通过登记入口的
 `Get<TState>` 读写分支状态。`ModelPredictionStateWriter` 用同一组有序类型字段生成搜索指纹与

@@ -1,5 +1,13 @@
 # CombatSolver 测试清单
 
+## 下一版本（开发中）：卡牌引用辅助接口
+
+- 游戏 0.111.0 的 Release 构建通过，零警告、零错误；Bash 结构门禁通过。
+- `ModelPredictionStateChecks`：卡牌引用合同 28 项、模型状态合同 32 项、空登记合同 3 项通过。覆盖实例身份、父子兄弟隔离、Fork、两侧描述、空值、重复、顺序及失效引用；游戏对象和模拟器外壳使用替身。
+- [模型状态集成](../coverage/unattended/model-state-integration.json)：完整模拟器 Fork、Preview COW、子状态变更隔离、引用列表参与指纹和 continuation，以及 T1→T2 原生完整快照对账通过。
+- [模型状态续用](../coverage/unattended/model-state-reuse-integration.json)：控制器第 2 回合精确续用通过，计划外重算为 0。
+- 游戏验证使用回合阶段、卡牌引用和 OnPlay 适配的组合构建。任意外部 Mod 的状态语义未覆盖；未作性能验证。注册场景须使用独立新进程。
+
 ## 0.36.3：策略摘要
 
 - 后续摘要样式调整：`UI-LOCALIZATION` / `fc0bb52775dd427c80b61719838b1225` Passed（25.38 秒），校验目标 7/实际 4、成功与未达标状态分组、前缀删除及 405 项目录。右对齐、16 号字体和全自动按钮样式通过编译检查，未作可见游戏人工验收。

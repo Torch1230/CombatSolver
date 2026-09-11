@@ -7,6 +7,11 @@ using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Models;
 
 int checks = 0;
+if (args.Contains("--cards"))
+{
+    CardReferenceChecks.Run();
+    return;
+}
 void Check(bool condition, string message)
 {
     if (!condition) throw new InvalidOperationException(message);
