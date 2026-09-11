@@ -1,0 +1,273 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-11",
+  "scope": "Captured exact Osty identity, Bodyguard/Unleash and closed Mecha rounds; not first creation or original Necrobinder complete-input admission",
+  "passes": [
+    {
+      "case": "native-v8",
+      "runId": "6010c0d47e96431dbade11158be9cc4b",
+      "scenarioId": "COMPACT-OSTY-NATIVE",
+      "status": "Passed",
+      "processId": 1354371,
+      "startedAtUtc": "2026-09-11T06:50:41.8258126+00:00",
+      "finishedAtUtc": "2026-09-11T06:51:07.9017121+00:00",
+      "elapsedMilliseconds": 26075.9735,
+      "startedTurn": 1,
+      "finishedTurn": 3,
+      "completedChecks": [
+        "CompactOsty:Mode0:9NativeSteps:FullSnapshotsKeysHistoryRngPowerMetadata:ReverseRollback:EightWorkers:FrozenAfterNative",
+        "CompactOsty:Mode1:3NativeSteps:FullSnapshotsKeysHistoryRngPowerMetadata:ReverseRollback:EightWorkers:FrozenAfterNative",
+        "CompactOsty:Mode2:3NativeSteps:FullSnapshotsKeysHistoryRngPowerMetadata:ReverseRollback:EightWorkers:FrozenAfterNative"
+      ],
+      "error": null
+    },
+    {
+      "case": "cap-v8",
+      "runId": "4d0a060ad8334f1ca9415e6da62a9d82",
+      "scenarioId": "COMPACT-OSTY-CAP",
+      "status": "Passed",
+      "processId": 1354371,
+      "startedAtUtc": "2026-09-11T06:52:30.0532089+00:00",
+      "finishedAtUtc": "2026-09-11T06:52:33.5536642+00:00",
+      "elapsedMilliseconds": 3500.4567,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "completedChecks": [
+        "OstyMaxHpCap:TwoNativeSummons:HealOnlyActualMaxHpGain:FullSnapshots"
+      ],
+      "error": null
+    },
+    {
+      "case": "defeat-v8",
+      "runId": "5a5aabac21104cd29ab6bcd4c4b7636d",
+      "scenarioId": "COMPACT-OSTY-DEFEAT",
+      "status": "Passed",
+      "processId": 1354371,
+      "startedAtUtc": "2026-09-11T06:52:55.6396288+00:00",
+      "finishedAtUtc": "2026-09-11T06:52:59.0758551+00:00",
+      "elapsedMilliseconds": 3436.2271,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "completedChecks": [
+        "CompactDoom:EnemySideFalse:ThresholdAndOppositePhase:NativeDirectKill:NoDamageHistoryOrBlockLoss:PowerRetirement:FullKeys:EightWorkers:FrozenAfterNative"
+      ],
+      "error": null
+    },
+    {
+      "case": "round-v8",
+      "runId": "23c1d73aeb9943848a0483e5abc10b39",
+      "scenarioId": "COMPACT-ROUND-NATIVE",
+      "status": "Passed",
+      "processId": 1354371,
+      "startedAtUtc": "2026-09-11T06:54:06.5800873+00:00",
+      "finishedAtUtc": "2026-09-11T06:54:14.6497078+00:00",
+      "elapsedMilliseconds": 8069.6215,
+      "startedTurn": 1,
+      "finishedTurn": 6,
+      "completedChecks": [
+        "CompactRoundPending:Mode0:5OmittedChoices:FullEvaluationAndOwnedSpecs:ReverseRestore",
+        "CompactRound:Mode0:Branches13:NativeActions4:FullSnapshotHistoryKeysEvaluationRng:ReverseAndEightWorkerRestore:FrozenAfterNative",
+        "CompactRoundPending:Mode1:3OmittedChoices:FullEvaluationAndOwnedSpecs:ReverseRestore",
+        "CompactRound:Mode1:Branches6:NativeActions2:FullSnapshotHistoryKeysEvaluationRng:ReverseAndEightWorkerRestore:FrozenAfterNative",
+        "CompactRoundPending:Mode2:0OmittedChoices:FullEvaluationAndOwnedSpecs:ReverseRestore",
+        "CompactRound:NativePreTeardownSnapshot",
+        "CompactRound:Mode2:Branches1:NativeActions1:FullSnapshotHistoryKeysEvaluationRng:ReverseAndEightWorkerRestore:FrozenAfterNative"
+      ],
+      "error": null
+    },
+    {
+      "case": "search-v9",
+      "runId": "a0d7276f1be84023b6c419724f8c1472",
+      "scenarioId": "COMPACT-OSTY-SEARCH",
+      "status": "Passed",
+      "processId": 1361900,
+      "startedAtUtc": "2026-09-11T06:59:21.2590101+00:00",
+      "finishedAtUtc": "2026-09-11T06:59:46.3634225+00:00",
+      "elapsedMilliseconds": 25104.4939,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "completedChecks": [
+        "CompactSearchLifecycle:NeurosurgeFalse:OstyTrue:250Nodes:LegacyEqualsCompact:DOP1EqualsDOP2:Concurrency2:CancelAndFailureDrained:RootReusable:UnsupportedPotionRejected:ActualUnchanged"
+      ],
+      "error": null
+    }
+  ],
+  "failures": [
+    {
+      "case": "native-v2",
+      "runId": "60af254b057347ad928ac40ae6103234",
+      "scenarioId": "COMPACT-OSTY-NATIVE",
+      "status": "Failed",
+      "processId": 1332105,
+      "startedAtUtc": "2026-09-11T06:27:09.2591001+00:00",
+      "finishedAtUtc": "2026-09-11T06:27:33.0349268+00:00",
+      "elapsedMilliseconds": 23775.9042,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "completedChecks": [],
+      "error": "System.InvalidOperationException: Compact creature values or death lifecycle differ.\n   at CombatSolver.CompactDiscardProjection.AssertValues(ResumableDiscardProgram program, CombatPredictionSimulator simulator)\n   at CombatSolver.UnattendedTestRunner.AssertCompactOstyAsync(CombatState combat, Player player)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()",
+      "interpretation": "Fixture assertion incorrectly treated retained pet death as enemy phase completion; aggregate snapshots already agreed."
+    },
+    {
+      "case": "native-v3",
+      "runId": "4547c6b8e52942dd825bb0da9fd3a272",
+      "scenarioId": "COMPACT-OSTY-NATIVE",
+      "status": "Failed",
+      "processId": 1335681,
+      "startedAtUtc": "2026-09-11T06:29:28.2243407+00:00",
+      "finishedAtUtc": "2026-09-11T06:29:52.0509479+00:00",
+      "elapsedMilliseconds": 23826.727,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "completedChecks": [],
+      "error": "System.InvalidOperationException: Osty full Power lifecycle fields differ.\n   at CombatSolver.UnattendedTestRunner.AssertCompactOstyAsync(CombatState combat, Player player)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()",
+      "interpretation": "Full Power metadata exposed old temporary DieForYou suppression; next run added field diagnostics."
+    },
+    {
+      "case": "native-v4",
+      "runId": "5941956399b641d4806f9bcbed99d367",
+      "scenarioId": "COMPACT-OSTY-NATIVE",
+      "status": "Failed",
+      "processId": 1340434,
+      "startedAtUtc": "2026-09-11T06:32:45.1203586+00:00",
+      "finishedAtUtc": "2026-09-11T06:33:08.9916283+00:00",
+      "elapsedMilliseconds": 23871.3604,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "completedChecks": [],
+      "error": "System.InvalidOperationException: Osty full Power lifecycle fields differ at mode=0, step=8:\n0:0:STRENGTH_POWER:11:0::11:False:\n0:1:POISON_POWER:2:0::3:False:\n0:2:DIE_FOR_YOU_POWER:1:::0:False:\nProjected:\n0:0:STRENGTH_POWER:11:0::11:False:\n0:1:POISON_POWER:2:0::3:False:\n0:2:DIE_FOR_YOU_POWER:1:::37:False:\n   at CombatSolver.UnattendedTestRunner.AssertCompactOstyAsync(CombatState combat, Player player)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()",
+      "interpretation": "Old damage workaround removed and recreated DieForYou, losing AmountOnTurnStart; exact state-aware redirection replaced workaround."
+    },
+    {
+      "case": "cap-baseline-v6",
+      "runId": "96aae02946f44a6a9985e9dbf1d13887",
+      "scenarioId": "COMPACT-OSTY-CAP",
+      "status": "Failed",
+      "processId": 1345858,
+      "startedAtUtc": "2026-09-11T06:40:38.1286101+00:00",
+      "finishedAtUtc": "2026-09-11T06:41:01.7189617+00:00",
+      "elapsedMilliseconds": 23590.4308,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "completedChecks": [],
+      "error": "System.InvalidOperationException: OstyMaxHpCap.Model 一步模拟与真实行动不一致；首个差异：field=osty.hp expected={999999992} actual={999999995}\n   at CombatSolver.UnattendedTestRunner.AssertSnapshotEqual(MoveStateSnapshot predicted, MoveStateSnapshot actual, String monsterId, String moveId)\n   at CombatSolver.UnattendedTestRunner.AssertCompactOstyCapAsync(CombatState combat, Player player)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()",
+      "interpretation": "Native capped max-HP gain heals only its actual increment; old and compact requested healing was too large, and old map stored uncapped max HP."
+    },
+    {
+      "case": "native-v7",
+      "runId": "9d045fd2920942f6a9e10da11d23a7ba",
+      "scenarioId": "COMPACT-OSTY-NATIVE",
+      "status": "Failed",
+      "processId": 1349390,
+      "startedAtUtc": "2026-09-11T06:43:23.2061538+00:00",
+      "finishedAtUtc": "2026-09-11T06:43:47.6198573+00:00",
+      "elapsedMilliseconds": 24413.8013,
+      "startedTurn": 1,
+      "finishedTurn": 2,
+      "completedChecks": [],
+      "error": "System.InvalidOperationException: Native pet Power lifecycle differs.\n   at CombatSolver.UnattendedTestRunner.AssertCompactOstyAsync(CombatState combat, Player player)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()",
+      "interpretation": "Ordinary native player turns snapshot and clear retained allies including dead pets; both backends omitted pet participants."
+    }
+  ],
+  "capBaseline": [
+    {
+      "Native": {
+        "OstyHp": 999999992,
+        "OstyMaxHp": 999999999
+      },
+      "Model": {
+        "OstyHp": 999999995,
+        "OstyMaxHp": 1000000002
+      },
+      "Values": {
+        "OstyHp": 999999995,
+        "OstyMaxHp": 999999999
+      }
+    },
+    {
+      "Native": {
+        "OstyHp": 999999990,
+        "OstyMaxHp": 999999999
+      },
+      "Model": {
+        "OstyHp": 999999995,
+        "OstyMaxHp": 1000000004
+      },
+      "Values": {
+        "OstyHp": 999999995,
+        "OstyMaxHp": 999999999
+      }
+    }
+  ],
+  "builds": [
+    {
+      "revision": "v1",
+      "passed": true,
+      "elapsed": "00:00:11.18",
+      "errors": []
+    },
+    {
+      "revision": "v2",
+      "passed": true,
+      "elapsed": "00:00:11.11",
+      "errors": []
+    },
+    {
+      "revision": "v3",
+      "passed": true,
+      "elapsed": "00:00:10.96",
+      "errors": []
+    },
+    {
+      "revision": "v4",
+      "passed": true,
+      "elapsed": "00:00:11.76",
+      "errors": []
+    },
+    {
+      "revision": "v5",
+      "passed": false,
+      "elapsed": "00:00:09.13",
+      "errors": [
+        "/home/ltlly/Code/nmslmod/.tools11/CombatSolver-open-source/src/Engine/InCombat/Mirrors/Hooks/Damage/ModifyUnblockedDamageTargetMirrors.cs(29,22): error CS1061: 'MethodMirrorRegistry<AbstractModel, ModifyUnblockedDamageTargetMirrorContext, Creature>' does not contain a definition for 'DescribeDispatch' and no accessible extension method 'DescribeDispatch' accepting a first argument of type 'MethodMirrorRegistry<AbstractModel, ModifyUnblockedDamageTargetMirrorContext, Creature>' could be found (are you missing a using directive or an assembly reference?) [/home/ltlly/Code/nmslmod/.tools11/CombatSolver-open-source/CombatSolver.csproj]",
+        "/home/ltlly/Code/nmslmod/.tools11/CombatSolver-open-source/src/Prediction/MonsterMoveSemantics.cs(83,52): error CS0246: The type or namespace name 'ImbalancedPower' could not be found (are you missing a using directive or an assembly reference?) [/home/ltlly/Code/nmslmod/.tools11/CombatSolver-open-source/CombatSolver.csproj]"
+      ]
+    },
+    {
+      "revision": "v6",
+      "passed": true,
+      "elapsed": "00:00:11.35",
+      "errors": []
+    },
+    {
+      "revision": "v7",
+      "passed": true,
+      "elapsed": "00:00:11.03",
+      "errors": []
+    },
+    {
+      "revision": "v8",
+      "passed": true,
+      "elapsed": "00:00:11.67",
+      "errors": []
+    },
+    {
+      "revision": "v9",
+      "passed": true,
+      "elapsed": "00:00:10.78",
+      "errors": []
+    }
+  ],
+  "artifactReuse": "v8 production code is final; v9 only extracts shared fixture setup and adds search execution. Successful v8 native tests were not repeated.",
+  "validation": {
+    "linuxBoundaries": "Passed: REFACTOR_BOUNDARIES_OK search_files=93",
+    "powershellBoundaries": "Maintained, not executed",
+    "coverageEffective": "Passed: --verify-effective; only DieForYou redirection registration changed, no method-hash churn",
+    "linksAndJson": "Passed: 307 local Markdown links and changed JSON parsed"
+  },
+  "limitations": [
+    "No first pet creation, BoundPhylactery, other pet powers, unrepresented relics/potions or dynamic pools admitted.",
+    "All runs headless and under 120 seconds; no Steam/install/package/push.",
+    "No new speed, allocation or GC conclusion; original full Necrobinder R3 and final fixed prewarmed R4 remain incomplete."
+  ]
+}

@@ -11,15 +11,15 @@ internal sealed partial class ResumableDiscardProgram
         Pile ResultPile = Pile.Discard, bool CostsX = false, int CapturedX = 0, CardCategory Category = CardCategory.Other,
         bool Ethereal = false, RandomDrawCost? DrawCost = null, int? HandEndDamage = null, bool Unplayable = false, bool Retain = false, bool SingleTurnSly = false);
     internal enum Pile { Hand, Draw, Discard, Play, Exhaust, Removed }
-    internal enum EventKind { Pay, Start, Draw, Select, SelectedCard, Discard, Block, Finish, Shuffle, ShuffleCard, Retrieve, Damage, DamageBlocked, DamageOverkill, AttackFinish, Death, PowerChange, ResultMoved, Generated, CostChanged, HandEndMoved, HandEndStart, HandEndFinish, BeginSide, ResetEnergy, CleanupCards, CommitPlayerTurnHistory, GainEnergy, DoomApplied, Kill }
-    internal readonly record struct Event(EventKind Kind, int Card, int Value, bool Automatic, int Target = -1, int Flags = 0)
+    internal enum EventKind { Pay, Start, Draw, Select, SelectedCard, Discard, Block, Finish, Shuffle, ShuffleCard, Retrieve, Damage, DamageBlocked, DamageOverkill, AttackFinish, Death, PowerChange, ResultMoved, Generated, CostChanged, HandEndMoved, HandEndStart, HandEndFinish, BeginSide, ResetEnergy, CleanupCards, CommitPlayerTurnHistory, GainEnergy, DoomApplied, Kill, SummonPet }
+    internal readonly record struct Event(EventKind Kind, int Card, int Value, bool Automatic, int Target = -1, int Flags = 0, int Dealer = -1)
     {
         internal long Data => (long)(uint)Card | (long)(uint)Value << 32;
-        internal long Metadata => (uint)Kind <= byte.MaxValue && (uint)Flags <= byte.MaxValue
-            ? (long)(byte)Kind | (long)(byte)Flags << 8 | (long)(uint)Target << 16 | (Automatic ? 1L << 48 : 0)
+        internal long Metadata => (uint)Kind <= byte.MaxValue && (uint)Flags <= byte.MaxValue && Dealer is >= -1 and < 254
+            ? (long)(byte)Kind | (long)(byte)Flags << 8 | (long)(uint)Target << 16 | (Automatic ? 1L << 48 : 0) | (long)(Dealer + 1) << 49
             : throw new ArgumentOutOfRangeException(nameof(Kind), "Compact event tags exceed their encoding.");
         internal static Event Decode(long data, long metadata) => new((EventKind)(metadata & 255), unchecked((int)data),
-            (int)(data >> 32), (metadata & (1L << 48)) != 0, unchecked((int)(metadata >> 16)), (int)((metadata >> 8) & 255));
+            (int)(data >> 32), (metadata & (1L << 48)) != 0, unchecked((int)(metadata >> 16)), (int)((metadata >> 8) & 255), (int)((metadata >> 49) & 255) - 1);
     }
     // The low three bits remain the native damage-result flags; the upper bits describe
     // command provenance without retaining a model or attributing indirect damage to a card.
@@ -75,6 +75,9 @@ internal sealed partial class ResumableDiscardProgram
     internal BasicPowerValues Power(int index) => _powers!.Read(State, index);
     internal BasicPowerDefinition PowerDefinition(int index) => _powers!.Definition(index);
     internal int CreatureCount => _combat?.Count ?? 0;
+    internal int EnemyEnd => _combat?.EnemyEnd ?? 0;
+    internal int PetIndex => _combat?.Pet ?? -1;
+    internal bool PetSummoned => _combat?.PetSummoned(State) ?? false;
     internal CreatureVitals Creature(int index) => _combat!.Read(State, index);
     internal bool CreaturePresent(int index) => _combat!.Present(State, index);
     internal bool CreatureDeathCompleted(int index) => _combat!.DeathCompleted(State, index);
@@ -111,7 +114,7 @@ internal sealed partial class ResumableDiscardProgram
     internal ResumableDiscardProgram(Card[] cards, IReadOnlyList<int>[] piles, int energy, int block, int discardBlock,
         ValueRng shuffleRng = default, int[]? comparisons = null, int stratagem = 0, int shuffleBlock = 0,
         bool shuffleBlockFirst = false, CreatureVitals[]? creatures = null, BasicPowerDefinition[]? powers = null, Card[]? generatedCards = null,
-        ValueRng? energyCostRng = null, bool handEndAdmitted = false, MonsterEffectProgram[]? monsterMoves = null, bool powerPhasesAdmitted = false, DeterministicMonsterAi? monsterAi = null, CompactRoundRoot? round = null)
+        ValueRng? energyCostRng = null, bool handEndAdmitted = false, MonsterEffectProgram[]? monsterMoves = null, bool powerPhasesAdmitted = false, DeterministicMonsterAi? monsterAi = null, CompactRoundRoot? round = null, int pet = -1)
     {
         Card[] definitions = [.. cards, .. generatedCards ?? []];
         if (cards.Length == 0 || piles.Length != 5 || cards.Count(c => c.Sly || c.SingleTurnSly) >= MaxFrames
@@ -122,7 +125,7 @@ internal sealed partial class ResumableDiscardProgram
                 || c.Unplayable && (c.CostsX || c.Sly || c.SingleTurnSly || c.Effects.Count != 0 || c.DrawCost != null)
                 || c.DrawCost != null && c.CostsX || c.Effects.RequiresPowers && (powers == null || creatures == null) || c.Effects.RequiresEnergyX && !c.CostsX
                 || c.ResultPile is not (Pile.Discard or Pile.Exhaust or Pile.Removed)
-                || c.Effects.RequiresTarget && creatures == null || (c.Sly || c.SingleTurnSly) && (c.Effects.Count == 0 || c.Effects.RequiresTarget))
+                || c.Effects.RequiresPet && pet < 0 || c.Effects.RequiresTarget && creatures == null || (c.Sly || c.SingleTurnSly) && (c.Effects.Count == 0 || c.Effects.RequiresTarget))
             || energy is < 0 or > 999_999_999 || block < 0 || discardBlock < 0 || stratagem is < 0 or > 10 || shuffleBlock < 0)
             throw new ArgumentException("Invalid compact root.");
         int[] identities = piles.SelectMany(p => p).ToArray();
@@ -158,7 +161,7 @@ internal sealed partial class ResumableDiscardProgram
             || creatures == null || monsterAi.Owner >= creatures.Length))
             throw new ArgumentException("Monster AI requires matching captured commands and owner.");
         if (round != null && (!handEndAdmitted || !powerPhasesAdmitted || monsterAi == null || monsterAi.Owner != 1
-            || creatures?.Length != 2 || comparisons == null
+            || (creatures?.Length != (pet < 0 ? 2 : 3) || pet >= 0 && pet != 2) || comparisons == null
             || powers!.Any(power => power.Owner == 0 && power.Kind == BasicPowerKind.Poison && power.Amount != 0)))
             throw new NotSupportedException("Round closure requires one enemy, all phases, ordering and no player Poison.");
         ValidateBlockReturns(definitions, powers);
@@ -176,7 +179,7 @@ internal sealed partial class ResumableDiscardProgram
         _cardInstances = new(State);
         _cardComparer = comparisons == null ? null : new((int[])comparisons.Clone(), definitions.Length);
         _instanceComparer = _cardComparer == null ? null : new(this, _cardComparer);
-        _combat = creatures == null ? null : new(State, creatures);
+        _combat = creatures == null ? null : new(State, creatures, pet);
         _powers = powers == null ? null : new(State, powers);
         _events = new(State);
         _monsterAi = monsterAi == null ? null : new(State, monsterAi);
@@ -308,7 +311,7 @@ internal sealed partial class ResumableDiscardProgram
     {
         if (!Complete || Terminal || Ending || !Contains(Pile.Hand, card)
             || Definition(card).Unplayable || Definition(card).Effects.Count == 0 || !Definition(card).CostsX && Energy < EnergyCost(card)
-            || (Definition(card).Effects.RequiresTarget ? target <= 0 || target >= CreatureCount || !CreaturePresent(target) || Creature(target).CurrentHp <= 0 : target != -1))
+            || (Definition(card).Effects.RequiresTarget ? target <= 0 || target >= EnemyEnd || !CreaturePresent(target) || Creature(target).CurrentHp <= 0 : target != -1))
             throw new InvalidOperationException($"Card cannot begin this compact action: card={card}, target={target}, "
                 + $"energy={Energy}, cost={EnergyCost(card)}, complete={Complete}, ending={Ending}, terminal={Terminal}, "
                 + $"inHand={Contains(Pile.Hand, card)}, requiresTarget={Definition(card).Effects.RequiresTarget}.");
@@ -429,6 +432,17 @@ internal sealed partial class ResumableDiscardProgram
             case CardInstructionKind.GenerateCards:
                 GenerateCards(instruction.CardTemplate, instruction.Amount, creator: 0);
                 break;
+            case CardInstructionKind.SummonPet:
+                if (!Ending && instruction.Amount > 0)
+                {
+                    _combat!.SummonPet(State, instruction.Amount);
+                    Emit(EventKind.SummonPet, card, instruction.Amount, target: PetIndex);
+                }
+                break;
+            case CardInstructionKind.PetAttackTarget:
+                AttackCreature(card, PetIndex, Read(Frame + TargetOffset),
+                    instruction.Amount + (decimal)instruction.Multiplier * Creature(PetIndex).CurrentHp);
+                break;
             case CardInstructionKind.AttackTarget:
                 Attack(card, Read(Frame + TargetOffset), instruction.Amount);
                 break;
@@ -437,10 +451,10 @@ internal sealed partial class ResumableDiscardProgram
                 break;
             case CardInstructionKind.GainBlockFromPowerSum:
                 int sum = 0;
-                for (int target = 1; target < CreatureCount; target++)
+                for (int target = 1; target < EnemyEnd; target++)
                     if (CreaturePresent(target) && Creature(target).CurrentHp > 0)
                         sum = checked(sum + _powers!.Amount(State, target, instruction.Power));
-                decimal block = instruction.Amount + (decimal)instruction.PowerMultiplier * sum;
+                decimal block = instruction.Amount + (decimal)instruction.Multiplier * sum;
                 GainBlock(card, _powers!.ModifyBlock(State, 0, block));
                 break;
             case CardInstructionKind.GainBlockAndApplyPower:
@@ -454,21 +468,21 @@ internal sealed partial class ResumableDiscardProgram
                 {
                     // One command visits the captured roster in order. The next instruction
                     // starts only after all its targets, as in native bulk PowerCmd.Apply.
-                    for (int target = 1; target < CreatureCount; target++) ApplyPower(card, target, instruction.Power, amount);
+                    for (int target = 1; target < EnemyEnd; target++) ApplyPower(card, target, instruction.Power, amount);
                 }
                 else ApplyPower(card, instruction.Target == CardInstructionTarget.Owner ? 0 : Read(Frame + TargetOffset), instruction.Power, amount);
                 break;
             case CardInstructionKind.ApplyTemporaryStrengthLoss:
                 if (instruction.Target == CardInstructionTarget.AllEnemies)
                 {
-                    for (int target = 1; target < CreatureCount; target++) ApplyTemporaryStrengthLoss(card, target, instruction.Amount);
+                    for (int target = 1; target < EnemyEnd; target++) ApplyTemporaryStrengthLoss(card, target, instruction.Amount);
                 }
                 else ApplyTemporaryStrengthLoss(card, Read(Frame + TargetOffset), instruction.Amount);
                 break;
             case CardInstructionKind.TriggerBasicPower:
                 if (instruction.Target == CardInstructionTarget.AllEnemies)
                 {
-                    for (int target = 1; target < CreatureCount; target++) TriggerPoison(card, target);
+                    for (int target = 1; target < EnemyEnd; target++) TriggerPoison(card, target);
                 }
                 else TriggerPoison(card, Read(Frame + TargetOffset));
                 break;
@@ -586,12 +600,20 @@ internal sealed partial class ResumableDiscardProgram
 
     private void Attack(int card, int target, int amount) => AttackCreature(card, 0, target, amount);
 
-    private void AttackCreature(int source, int dealer, int target, int amount)
+    private void AttackCreature(int source, int dealer, int target, decimal amount)
     {
         if (Ending || !CreaturePresent(target) || Creature(target).CurrentHp <= 0 || Creature(dealer).CurrentHp <= 0) return;
-        DamageValues result = _combat!.Damage(State, target, _powers?.ModifyAttack(State, dealer, target, amount) ?? amount);
-        RecordDamage(source, target, result, source < 0 ? DamageTraits.NoCard : 0);
-        Emit(EventKind.AttackFinish, source, target: target);
+        bool redirect = target == 0 && PetIndex >= 0 && Creature(PetIndex).CurrentHp > 0;
+        DamageValues result = _combat!.Damage(State, target, _powers?.ModifyAttack(State, dealer, target, amount) ?? amount,
+            out DamageValues? petResult, redirectToPet: redirect);
+        DamageTraits traits = source < 0 ? DamageTraits.NoCard : 0;
+        // Native records both receivers before processing either death. Even a fully
+        // blocked hit produces the pet result and a separate zero-loss owner result.
+        if (petResult is { } petDamage) EmitDamage(source, PetIndex, petDamage, traits, dealer);
+        EmitDamage(source, target, result, traits, dealer);
+        if (petResult is { Killed: true }) CompleteCreatureDeath(source, PetIndex);
+        if (result.Killed) CompleteCreatureDeath(source, target);
+        Emit(EventKind.AttackFinish, source, target: target, dealer: dealer);
     }
 
     private void TriggerPoison(int card, int target)
@@ -603,22 +625,41 @@ internal sealed partial class ResumableDiscardProgram
         // Accelerant and all unrepresented damage/death hooks are excluded by root admission.
         DamageValues result = _combat!.Damage(State, target, amount, unblockable: true);
         RecordDamage(card, target, result, DamageTraits.Unpowered | DamageTraits.Unblockable
-            | DamageTraits.NoDealer | DamageTraits.NoCard | DamageTraits.Poison);
+            | DamageTraits.NoDealer | DamageTraits.NoCard | DamageTraits.Poison, dealer: -1);
         // Native Decrement bypasses application modifiers, including Artifact.
         if (Creature(target).CurrentHp > 0) CommitPower(card, target, BasicPowerKind.Poison, -1);
     }
 
-    private void RecordDamage(int card, int target, DamageValues result, DamageTraits traits = 0)
+    private void RecordDamage(int card, int target, DamageValues result, DamageTraits traits = 0, int dealer = 0)
     {
-        Emit(EventKind.Damage, card, result.Unblocked, target: target, flags: result.Flags | (int)traits);
+        EmitDamage(card, target, result, traits, dealer);
+        if (result.Killed) CompleteCreatureDeath(card, target);
+    }
+
+    private void EmitDamage(int card, int target, DamageValues result, DamageTraits traits, int dealer)
+    {
+        Emit(EventKind.Damage, card, result.Unblocked, target: target, flags: result.Flags | (int)traits, dealer: dealer);
         Emit(EventKind.DamageBlocked, card, result.Blocked, target: target);
         Emit(EventKind.DamageOverkill, card, result.Overkill, target: target);
-        if (result.Killed)
-        {
-            _combat!.CompleteDeath(State, target);
-            _powers?.RemoveOwner(State, target);
-            Emit(EventKind.Death, card, target: target);
-        }
+    }
+
+    private void CompleteCreatureDeath(int source, int target)
+    {
+        _combat!.CompleteDeath(State, target);
+        _powers?.RemoveOwner(State, target);
+        Emit(EventKind.Death, source, target: target);
+        if (target == 0 && PetIndex >= 0 && Creature(PetIndex).CurrentHp > 0)
+            KillCreature(source, PetIndex);
+    }
+
+    private void KillCreature(int source, int target)
+    {
+        CreatureVitals values = Creature(target);
+        int hp = values.CurrentHp;
+        values.LoseHp(hp);
+        _combat!.Write(State, target, values);
+        Emit(EventKind.Kill, source, hp, target: target);
+        CompleteCreatureDeath(source, target);
     }
 
     private void ApplyTemporaryStrengthLoss(int card, int target, int amount)
@@ -715,11 +756,11 @@ internal sealed partial class ResumableDiscardProgram
         throw new InvalidOperationException("Compact card has no owning pile.");
     }
 
-    private void Emit(EventKind kind, int card, int value = 0, bool automatic = false, int target = -1, int flags = 0)
+    private void Emit(EventKind kind, int card, int value = 0, bool automatic = false, int target = -1, int flags = 0, int dealer = -1)
     {
         // Card and target identities retain all 32 bits so generated instances cannot
         // alias an earlier event after the first 256 cards.
-        var item = new Event(kind, card, value, automatic, target, flags);
+        var item = new Event(kind, card, value, automatic, target, flags, dealer);
         _events.Append(State, [item.Data, item.Metadata]);
         EventsExecuted++;
     }

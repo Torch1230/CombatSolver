@@ -25,7 +25,7 @@ internal sealed partial class ResumableDiscardProgram
     // existing nonnegative identity. Generated events still identify the new card.
     internal void ExecuteMonsterMove(int owner, int moveIndex)
     {
-        if (_monsterMoves == null || !Complete || Terminal || Ending || owner <= 0 || owner >= CreatureCount
+        if (_monsterMoves == null || !Complete || Terminal || Ending || owner <= 0 || owner >= EnemyEnd
             || !CreaturePresent(owner) || Creature(owner).CurrentHp <= 0 || (uint)moveIndex >= (uint)_monsterMoves.Length)
             throw new InvalidOperationException($"Monster command requires an admitted idle root, living owner and captured move: owner={owner}, move={moveIndex}, admitted={_monsterMoves != null}, complete={Complete}, terminal={Terminal}, ending={Ending}.");
         int source = -owner - 1;

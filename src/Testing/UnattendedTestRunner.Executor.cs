@@ -39,12 +39,22 @@ internal sealed partial class UnattendedTestRunner
             bool expectedCardPlayed = request.ExpectedPlayedCardId == null;
             bool expectedPotionUsed = request.ExpectedUsedPotionId == null;
             bool expectedPlayerPowerObserved = request.ExpectedObservedPlayerPowerId == null;
+            if (request.ScenarioId == "COMPACT-OSTY-CAP")
+            {
+                await runner.AssertCompactOstyCapAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-OSTY-NATIVE")
+            {
+                await runner.AssertCompactOstyAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "OSTY-STATE-LIFECYCLE")
             {
                 await runner.AssertOstyStateLifecycleAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
-            if (request.ScenarioId is "COMPACT-DOOM-PLAYER" or "COMPACT-DOOM-ENEMY")
+            if (request.ScenarioId is "COMPACT-DOOM-PLAYER" or "COMPACT-DOOM-ENEMY" or "COMPACT-OSTY-DEFEAT")
             {
                 await runner.AssertCompactDoomAsync(combatState, player);
                 return Observation(combatEnded: false);
@@ -54,7 +64,7 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertCompactNeurosurgeAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
-            if (request.ScenarioId is "COMPACT-SEARCH-LIFECYCLE" or "COMPACT-NEUROSURGE-SEARCH")
+            if (request.ScenarioId is "COMPACT-SEARCH-LIFECYCLE" or "COMPACT-NEUROSURGE-SEARCH" or "COMPACT-OSTY-SEARCH")
             {
                 _ = ApplySettingsOverrides();
                 await runner.AssertCompactSearchLifecycleAsync(combatState, player);

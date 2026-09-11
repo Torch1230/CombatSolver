@@ -6,7 +6,9 @@ internal sealed partial class ResumableDiscardProgram
     // participant selection, first-turn block retention and the surrounding hooks.
     internal void CapturePowerTurnStart(int owner)
     {
-        AssertPowerPhase(owner);
+        AssertPowerPhase();
+        if (owner < 0 || owner >= CreatureCount || !CreaturePresent(owner))
+            throw new InvalidOperationException("Turn-start Power amounts require a captured participant.");
         _powers!.CaptureTurnStart(State, owner);
     }
 
@@ -34,7 +36,7 @@ internal sealed partial class ResumableDiscardProgram
         }
         // Only enemy temporary Strength is admitted. Its removal has no amount callback;
         // restoring Strength uses the owner as applier and the ordinary command gate.
-        for (int owner = 1; enemySide && owner < CreatureCount; owner++)
+        for (int owner = 1; enemySide && owner < EnemyEnd; owner++)
         {
             if (!CreaturePresent(owner)) continue;
             int amount = _powers!.Amount(State, owner, BasicPowerKind.PiercingWail);
@@ -66,21 +68,14 @@ internal sealed partial class ResumableDiscardProgram
     private void TriggerDoom(bool enemySide)
     {
         if (Ending) return;
-        // This closure has only primary enemies, no resurrection/Fatal observers and no
-        // pets. Native Doom kills without damage history, block loss or attack callbacks.
-        for (int owner = enemySide ? 1 : 0; owner < (enemySide ? CreatureCount : 1); owner++)
+        // Primary enemies have no resurrection/Fatal observers. The retained pet is
+        // killed with its owner; native Doom has no damage or attack history.
+        for (int owner = enemySide ? 1 : 0; owner < (enemySide ? EnemyEnd : 1); owner++)
         {
             int index = _powers!.FindOrDefault(owner, BasicPowerKind.Doom);
             if (index < 0 || !CreaturePresent(owner) || Creature(owner).CurrentHp <= 0
                 || Creature(owner).CurrentHp > Power(index).Amount) continue;
-            var values = Creature(owner);
-            int hp = values.CurrentHp;
-            values.LoseHp(hp);
-            _combat!.Write(State, owner, values);
-            Emit(EventKind.Kill, -owner - 1, hp, target: owner);
-            _combat.CompleteDeath(State, owner);
-            _powers.RemoveOwner(State, owner);
-            Emit(EventKind.Death, -owner - 1, target: owner);
+            KillCreature(-owner - 1, owner);
         }
     }
 

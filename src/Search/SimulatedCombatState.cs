@@ -1180,7 +1180,7 @@ internal sealed partial class SimulatedCombatState
             (_starsGainedThisTurn ??= [])[ownerPlayer] = 0;
             (_nonHandDrawsThisTurn ??= [])[ownerPlayer] = 0;
             (_statusCardsDrawnThisTurn ??= [])[ownerPlayer] = 0;
-            // Osty is never a turn-start participant but acts during the player turn; reset its counters here.
+            // Pet attack counters share the owner's history window, including extra turns.
             if (GetOsty(ownerPlayer) is { } osty)
             {
                 (_creatureAttacksThisTurn ??= [])[osty] = 0;

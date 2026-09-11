@@ -1,4 +1,5 @@
 # CombatSolver 文档导航
+- [奥斯蒂值执行与搜索](performance/simulation-osty-values-20260911.md)：承伤、复活、攻击和两回合原生对照，最大生命封顶与回合参与者修正。
 - [奥斯蒂根身份与死亡清理](performance/simulation-osty-ownership-20260911.md)：实机首次召唤后的空根隔离、普通能力退休和连续复活。
 - [精神过载与毁灭](performance/simulation-necro-resources-20260911.md)：资源／选牌时序、死亡相位、原生差分与搜索生命周期。
 

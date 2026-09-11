@@ -1,4 +1,12 @@
 {
+  "COMPACT-OSTY-VALUES-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeDifferentialAndFixedSearchLifecycle",
+    "procedure": "奥斯蒂三个根十五原生步骤、两回合、生命封顶两组、毁灭玩家连带宠物死亡、普通回合哨兵及固定250节点串并行／取消异常排空。",
+    "expected": "代伤从分支HP判断且不改变能力实例，伤害和攻击历史保留真实来源；死亡／复活／封顶治疗／普通回合参与者与原版一致，原键和完整搜索政策不变。",
+    "observed": "native-v8、cap-v8、defeat-v8、round-v8、search-v9全部Passed；八工作区冻结恢复、缓存开关、全Power元数据、九RNG及实机后根隔离通过；搜索DOP1/DOP2真实并发2。首次创建和原始亡灵完整域仍未准入。",
+    "evidence": "docs/performance/simulation-osty-values-20260911.json；docs/performance/simulation-osty-values-20260911.md；2026-09-11。"
+  },
   "OSTY-STATE-LIFECYCLE-20260911": {
     "status": "Passed",
     "level": "HeadlessNativeDifferentialAndFrozenRootIsolation",

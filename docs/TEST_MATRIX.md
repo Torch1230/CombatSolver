@@ -2618,3 +2618,9 @@ pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId MONSTER-MOVES-BA
 ### 奥斯蒂根身份与死亡清理（2026-09-11）
 
 `OSTY-STATE-LIFECYCLE`：无宠物根捕获后原生首次召唤；活宠物根五步承伤／复活／增长／直接受伤／复活，逐步完整原生快照、伤害结果顺序、连续 Fork、全部键／估值、八工作区。实机推进后两个冻结根不变，空根后续独立生成实例与原生首次召唤一致。120 秒以内 L2，无正式搜索、无性能断言。[结果和重跑参数](performance/simulation-osty-ownership-20260911.md)。
+
+### 奥斯蒂值执行、生命封顶与搜索（2026-09-11）
+
+`COMPACT-OSTY-NATIVE`：三个根状态、十五个原生步骤，包括存活／死亡根、双方不同力量、部分／完全格挡代伤、死亡后空攻击、复活／增长、群体效果不触及宠物及两个完整回合；逐步比对完整状态、能力元数据、历史、九 RNG、原键／估值／续用、缓存开关、逆序／撤销与八工作区，实机推进后冻结根不变。`COMPACT-OSTY-CAP`：接近／达到最大生命上限两次原生召唤与三十组事件编码边界；`COMPACT-OSTY-DEFEAT`：毁灭直接杀死玩家及存活宠物，保留格挡、不伪造伤害历史、完整能力退休。`COMPACT-ROUND-NATIVE` 三模式回归覆盖二十分支和七个原生动作。
+
+`COMPACT-OSTY-SEARCH` 共用主场景原始建局并增加一层 Tools 触发选择，固定 250 节点，旧／新 DOP1 与紧凑 DOP2 比较完整政策及续用结果，验证实际并发、挂起候选、取消／注入异常排空、根可复用、未迁移药水拒绝及实机不变。全部使用 SILENT／MECHA_KNIGHT_ELITE、Cards=[]、HP300、Instant、120 秒上限，建局直接注入奥斯蒂；不依赖切换亡灵角色。[本轮结果与重跑命令](performance/simulation-osty-values-20260911.md)。

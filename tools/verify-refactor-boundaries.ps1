@@ -1223,6 +1223,11 @@ if (-not $damageSimulator.Contains('effects.CompletePlayerDeath(player);')) { $v
 if (-not $damageSimulator.Contains('petEffects.RemovePowersAfterDeath(creature);')) { $violations.Add('Pet death must clean Powers outside the enemy sweep.') }
 if (-not ([IO.File]::ReadAllText((Join-Path $searchRoot 'SimulatedCombatState.cs'))).Contains('_rootOsties = source._rootOsties;')) { $violations.Add('Pet root identities and absence must survive forks.') }
 if (([IO.File]::ReadAllText((Join-Path $searchRoot 'SimulatedCombatState.CardLifecycle.cs'))).Contains('?? player.Osty')) { $violations.Add('Pet reads must not fall through to live ownership.') }
+if (([IO.File]::ReadAllText((Join-Path $repositoryRoot 'src/Prediction/MonsterMoveSemantics.cs'))).Contains('SetAmount<DieForYouPower>')) { $violations.Add('Monster damage must not retire pet protection Powers.') }
+$compactPetReads = [IO.File]::ReadAllText((Join-Path $searchRoot 'SimulatedCombatState.CompletedOstyReads.cs'))
+foreach ($replay in @('SummonOsty(', '.Damage(', '.Fork(', 'HookMirrors.', 'PowerCmd.', '.State.Write(')) {
+    if ($compactPetReads.Contains($replay)) { $violations.Add("Pet read binding may only import supplied values: $replay") }
+}
 if ([IO.File]::ReadAllText((Join-Path $repositoryRoot 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.EndTurn.cs')).Contains('SaveManager')) { $violations.Add('Turn-end execution must not read live animation settings.') }
 foreach ($required in @('AssertRepresentedHooks(runListeners[index], runPrefix: true, includeHandEnd, includePowerPhases, includeRounds);', '(key.RunPrefix || !RepresentedHook(key.Type, method.Name))')) {
     if (-not ([IO.File]::ReadAllText($compactProjection)).Contains($required)) {
@@ -1305,7 +1310,14 @@ $compactReadGuards = @(
     @('src/Engine/InCombat/Simulation/Compact/CreatureValueSlots.cs', 'state.Write(Offset + 3, present ? 1 : 0)'),
     @('src/Prediction/Compact/CompactDiscardProjection.cs', '=> new(this, ForkRoot(), _player, _risks)'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'if (ResultPile(card) == Pile.Removed || !Ending)'),
-    @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', 'if (target != 0) _creatures[target].SetPresent(state, false);'),
+    @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', 'if (target != 0 && target != Pet) _creatures[target].SetPresent(state, false);'),
+    @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', 'internal int EnemyEnd => Pet < 0 ? Count : Pet;'),
+    @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', 'state.Write(_petSummonedSlot, 1);'),
+    @('src/Engine/InCombat/Simulation/Compact/BasicPowerLayout.cs', '_definitions[index].Kind == BasicPowerKind.DieForYou'),
+    @('src/Prediction/Compact/CompactDiscardReadView.cs', 'int dealer = item.Dealer;'),
+    @('src/Search/SimulatedCombatState.CompletedOstyReads.cs', '_combat._simulatedOstyMaxHp = summoned || _hadMap ? _maxHp : null;'),
+    @('src/Engine/InCombat/Mirrors/Hooks/Damage/ModifyUnblockedDamageTargetMirrors.cs', 'context.State.GetCreature(power.Owner).IsAlive'),
+    @('src/Search/CombatBeamSolver.RoundLifecycle.cs', 'participants = takingExtraTurn ? [_player.Creature] : simulatedCombat.Allies.ToArray();'),
     @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', 'state.Write(_terminalSlot, DeathCompleted(state, 0) ? 2 : 1);'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Rounds.cs', 'Emit(EventKind.CommitPlayerTurnHistory, -1);'),
     @('src/Search/SimulatedCombatState.cs', 'combatHistory?.LastAttacks, combatHistory?.PreviousTurnAttacks'),

@@ -55,7 +55,16 @@ internal sealed partial class ResumableDiscardProgram
         _round.BeginPlayer(State);
         Emit(EventKind.BeginSide, -1);
         CapturePowerTurnStart(0);
+        if (PetIndex >= 0) CapturePowerTurnStart(PetIndex);
         ClearCreatureBlock(0);
+        if (PetIndex >= 0)
+        {
+            // Native dead pets still participate in the ordinary side-start snapshot and
+            // block clear. No admitted pet Power has an after-clear callback.
+            var pet = Creature(PetIndex);
+            pet.Block = 0;
+            _combat!.Write(State, PetIndex, pet);
+        }
         State.Write(EnergySlot, _round.Root.MaxEnergy);
         Emit(EventKind.ResetEnergy, -1, Energy);
         // A synthetic frame shares draw / shuffle / choice / child-card machinery.

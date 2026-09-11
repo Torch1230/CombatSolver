@@ -1,6 +1,6 @@
 namespace CombatSolver.Engine.InCombat.Simulation.Compact;
 
-internal enum BasicPowerKind { Strength, Dexterity, Weak, Vulnerable, Frail, Poison, BlockNextTurn, ToolsOfTheTrade, PiercingWail, Artifact, Stratagem, Doom, Neurosurge }
+internal enum BasicPowerKind { Strength, Dexterity, Weak, Vulnerable, Frail, Poison, BlockNextTurn, ToolsOfTheTrade, PiercingWail, Artifact, Stratagem, Doom, Neurosurge, DieForYou }
 internal readonly record struct BasicPowerDefinition(BasicPowerKind Kind, int Owner, int Amount,
     int Applier, int Order, decimal Multiplier, bool RootSlot, int AmountOnTurnStart = 0, bool SkipNextDurationTick = false);
 internal readonly record struct BasicPowerValues(int Amount, int Applier, int Order, bool Retired,
@@ -101,7 +101,7 @@ internal sealed class BasicPowerLayout
     {
         for (int index = 0; index < Count; index++)
         {
-            if (_definitions[index].Owner != owner) continue;
+            if (_definitions[index].Owner != owner || _definitions[index].Kind == BasicPowerKind.DieForYou) continue;
             var before = Read(state, index);
             if (before.Amount != 0)
                 Write(state, index, before with { Amount = 0, Order = 0, Retired = before.Retired || _definitions[index].RootSlot });

@@ -113,6 +113,7 @@ internal sealed class MirroredHookListenerFilter(bool enabled)
         [nameof(AbstractModel.TryModifyEnergyCostInCombatLate)] = MirroredHookMask.TryModifyEnergyCostInCombatLate,
         [nameof(AbstractModel.TryModifyStarCost)] = MirroredHookMask.TryModifyStarCost,
         [nameof(AbstractModel.TryModifyKeywordsInCombat)] = MirroredHookMask.TryModifyKeywordsInCombat,
+        [nameof(AbstractModel.ModifyUnblockedDamageTarget)] = MirroredHookMask.ModifyUnblockedDamageTarget,
     };
     private static readonly MethodInfo[] BaseHooks = typeof(AbstractModel)
         .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
@@ -283,6 +284,7 @@ internal enum MirroredHookMask : ulong
     TryModifyEnergyCostInCombatLate = 1UL << 52,
     TryModifyStarCost = 1UL << 53,
     TryModifyKeywordsInCombat = 1UL << 54,
+    ModifyUnblockedDamageTarget = 1UL << 55,
     All = ulong.MaxValue,
 }
 

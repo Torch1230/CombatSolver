@@ -4,14 +4,14 @@ internal enum CardInstructionKind
 {
     AttackTarget, GainBlock, Draw, Discard, ApplyBasicPower, SkipIfDrawnCardNotType,
     TriggerBasicPower, DiscardHandAndDraw, SkipIfTargetLacksPower, GainBlockFromPowerSum,
-    GainBlockAndApplyPower, ApplyTemporaryStrengthLoss, GenerateCards, GainEnergy
+    GainBlockAndApplyPower, ApplyTemporaryStrengthLoss, GenerateCards, GainEnergy, SummonPet, PetAttackTarget
 }
 internal enum CardInstructionTarget { Owner, ChosenEnemy, AllEnemies }
 internal enum CardCategory { Other, Attack, Skill, Power, Status }
 
 internal readonly record struct CardInstruction(CardInstructionKind Kind, int Amount,
     BasicPowerKind Power = BasicPowerKind.Strength, CardInstructionTarget Target = CardInstructionTarget.Owner,
-    int EnergyXMultiplier = 0, CardCategory RequiredCategory = CardCategory.Skill, int PowerMultiplier = 0, int CardTemplate = -1);
+    int EnergyXMultiplier = 0, CardCategory RequiredCategory = CardCategory.Skill, int Multiplier = 0, int CardTemplate = -1);
 
 /// <summary>
 /// Immutable, fully admitted OnPlay instructions. Execution position belongs to the value
@@ -28,6 +28,7 @@ internal sealed class CardEffectProgram
     internal bool RequiresPowers { get; }
     internal bool RequiresEnergyX { get; }
     internal bool GeneratesCards { get; }
+    internal bool RequiresPet { get; }
 
     internal CardEffectProgram(ReadOnlySpan<CardInstruction> instructions)
     {
@@ -38,8 +39,8 @@ internal sealed class CardEffectProgram
             if (instruction.Amount is < -999_999_999 or > 999_999_999
                 || instruction.Kind != CardInstructionKind.ApplyBasicPower && (instruction.Amount < 0 || instruction.EnergyXMultiplier != 0)
                 || instruction.EnergyXMultiplier is < -1 or > 1
-                || instruction.PowerMultiplier is < 0 or > 999_999_999
-                || instruction.Kind != CardInstructionKind.GainBlockFromPowerSum && instruction.PowerMultiplier != 0)
+                || instruction.Multiplier is < 0 or > 999_999_999
+                || instruction.Kind is not (CardInstructionKind.GainBlockFromPowerSum or CardInstructionKind.PetAttackTarget) && instruction.Multiplier != 0)
                 throw new ArgumentException("Compact instruction amount is outside the admitted range.");
             if (instruction.Kind != CardInstructionKind.GenerateCards && instruction.CardTemplate != -1)
                 throw new ArgumentException("Only generation instructions can reference card templates.");
@@ -49,6 +50,16 @@ internal sealed class CardEffectProgram
                     if (instruction.CardTemplate < 0 || instruction.Target != CardInstructionTarget.Owner)
                         throw new NotSupportedException("Generation requires an admitted owner card template.");
                     GeneratesCards = true;
+                    break;
+                case CardInstructionKind.SummonPet:
+                    if (instruction.Target != CardInstructionTarget.Owner)
+                        throw new NotSupportedException("Summoning requires the admitted pet owner.");
+                    RequiresPet = true;
+                    break;
+                case CardInstructionKind.PetAttackTarget:
+                    RequiresPet = true;
+                    RequiresTarget = true;
+                    RequiresPowers = true;
                     break;
                 case CardInstructionKind.AttackTarget:
                     RequiresTarget = true;

@@ -752,8 +752,23 @@ internal static class HookMirrors
         => value.ToString("0.##", CultureInfo.InvariantCulture);
 
     /// <summary>
-    /// Mirrors <see cref="Hook.ModifyHpLost"/>.
+    /// Mirrors <see cref="Hook.ModifyUnblockedDamageTarget"/>.
     /// </summary>
+    public static Creature ModifyUnblockedDamageTarget(CombatPredictionSimulator simulator, Creature target,
+        decimal amount, ValueProp props, Creature? dealer)
+    {
+        var context = new ModifyUnblockedDamageTargetMirrorContext
+            { Simulator = simulator, Target = target, Amount = amount, Props = props, Dealer = dealer };
+        // Native damage redirection bypasses the ending guard and chains each listener's
+        // returned recipient into the next. No Power instance is removed or recreated.
+        var listeners = simulator.State.CombatState is ICombatPredictionHookListenerSource source
+            ? source.MirroredHookListeners : simulator.State.IterateHookListeners();
+        foreach (var listener in new HookListenerEnumerable(simulator, listeners, MirroredHookMask.ModifyUnblockedDamageTarget))
+            context.Target = ModifyUnblockedDamageTargetMirrors.Invoke(listener, context);
+        return context.Target;
+    }
+
+    /// <summary>Mirrors <see cref="Hook.ModifyHpLost"/>.</summary>
     public static decimal ModifyHpLost(
         CombatPredictionSimulator simulator,
         Creature target,

@@ -93,7 +93,7 @@ internal sealed partial class CombatBeamSolver
         }
         ForkableSet<uint> deaths = seed != null ? seed.TakeCompact(candidate!)
             : parent == null ? [] : ((ForkableSet<uint>)parent.ProcessedEnemyDeaths).Fork();
-        for (int index = 1; index < program.CreatureCount; index++)
+        for (int index = 1; index < program.EnemyEnd; index++)
             if (program.Creature(index).CurrentHp <= 0 && compactRoot.Adapter.Creature(index).CombatId is uint combatId)
                 deaths.Add(combatId);
         if (pending == null) lane.Reader.Read(program);

@@ -35,7 +35,7 @@ internal sealed class CompactPlanReplay
             var card = CombatBeamSolver.FindCardForReplay(hand.Select(id => _metadata[id]).ToArray(), action)
                 ?? throw new InvalidOperationException("Compact plan card instance is absent from hand.");
             int identity = hand.Single(id => ReferenceEquals(_metadata[id], card));
-            int target = action.TargetCombatId == null ? -1 : Enumerable.Range(1, lane.CreatureCount - 1)
+            int target = action.TargetCombatId == null ? -1 : Enumerable.Range(1, lane.EnemyEnd - 1)
                 .Single(id => _adapter.Creature(id).CombatId == action.TargetCombatId);
             lane.Begin(identity, target);
             choices = action.GetActionChoicesInExecutionOrder();

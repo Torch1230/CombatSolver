@@ -18,13 +18,13 @@ internal static class CompactCardProgramCompiler
         typeof(UltimateDefend), typeof(Suppress), typeof(Footwork), typeof(Malaise), typeof(DeadlyPoison),
         typeof(Haze), typeof(Snakebite), typeof(Defy), typeof(EscapePlan), typeof(Outbreak), typeof(CalculatedGamble),
         typeof(BubbleBubble), typeof(Mirage), typeof(DodgeAndRoll), typeof(ToolsOfTheTrade), typeof(PiercingWail),
-        typeof(CloakAndDagger), typeof(Shiv), typeof(BladeOfInk), typeof(Burn), typeof(Neurosurge)
+        typeof(CloakAndDagger), typeof(Shiv), typeof(BladeOfInk), typeof(Burn), typeof(Neurosurge), typeof(Bodyguard), typeof(Unleash)
     ];
 
     internal static ResumableDiscardProgram.Card Compile(CardModel card, bool includeAttacks, int shivTemplate = -1, int inkyShivTemplate = -1)
     {
         if (!AdmittedTypes.Contains(card.GetType())
-            || card is Neutralize or Suppress or Footwork or Malaise or DeadlyPoison or Haze or Snakebite or Defy or Outbreak or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail or CloakAndDagger or Shiv or BladeOfInk or Burn or Neurosurge && !includeAttacks
+            || card is Neutralize or Suppress or Footwork or Malaise or DeadlyPoison or Haze or Snakebite or Defy or Outbreak or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail or CloakAndDagger or Shiv or BladeOfInk or Burn or Neurosurge or Bodyguard or Unleash && !includeAttacks
             || card is Burn && (card.Enchantment != null || card.EnergyCost._base != -1 || card.IsUpgraded
                 || !card.LocalKeywords.Contains(CardKeyword.Unplayable) || card.DynamicVars.Damage.Props != (ValueProp.Unpowered | ValueProp.Move))
             || card.Enchantment is { } enchantment && enchantment.GetType() != typeof(Inky) && enchantment.GetType() != typeof(Slither)
@@ -56,8 +56,9 @@ internal static class CompactCardProgramCompiler
         decimal generated = card is CloakAndDagger or BladeOfInk ? card.DynamicVars.Cards.BaseValue : 0;
         decimal strengthLoss = card is PiercingWail ? card.DynamicVars["StrengthLoss"].BaseValue : 0;
         decimal dexterity = card is Footwork ? card.DynamicVars.Dexterity.BaseValue : 0;
-        decimal calculationBase = card is Mirage ? card.DynamicVars.CalculationBase.BaseValue : 0;
-        decimal calculationExtra = card is Mirage ? card.DynamicVars.CalculationExtra.BaseValue : 0;
+        decimal summon = card is Bodyguard ? card.DynamicVars.Summon.BaseValue : 0;
+        decimal calculationBase = card is Mirage or Unleash ? card.DynamicVars.CalculationBase.BaseValue : 0;
+        decimal calculationExtra = card is Mirage ? card.DynamicVars.CalculationExtra.BaseValue : card is Unleash ? card.DynamicVars.ExtraDamage.BaseValue : 0;
         if (draw != decimal.Truncate(draw) || draw < 0 || draw > 10 || card.EnergyCost._base < 0 && card is not Burn
             || card is Acrobatics or Prepared or Backflip or Finesse && draw == 0
             || damage != decimal.Truncate(damage) || damage is < 0 or > 999_999_999m
@@ -69,6 +70,7 @@ internal static class CompactCardProgramCompiler
             || neurosurge != decimal.Truncate(neurosurge) || neurosurge is < 0 or > 999_999_999m
             || strengthLoss != decimal.Truncate(strengthLoss) || strengthLoss is < 0 or > 999_999_999m
             || dexterity != decimal.Truncate(dexterity) || dexterity is < 0 or > 999_999_999m
+            || summon != decimal.Truncate(summon) || summon is < 0 or > 999_999_999m
             || calculationBase != decimal.Truncate(calculationBase) || calculationBase is < 0 or > 999_999_999m
             || calculationExtra != decimal.Truncate(calculationExtra) || calculationExtra is < 0 or > 999_999_999m)
             throw new NotSupportedException($"Compact prototype cannot admit card variables {card.Id.Entry}.");
@@ -77,6 +79,8 @@ internal static class CompactCardProgramCompiler
         CardEffectProgram effects = card switch
         {
             Burn => CardEffectProgram.Empty,
+            Bodyguard => new([new(CardInstructionKind.SummonPet, (int)summon)]),
+            Unleash => new([new(CardInstructionKind.PetAttackTarget, (int)calculationBase, Multiplier: (int)calculationExtra)]),
             Acrobatics => new([new(CardInstructionKind.Draw, (int)draw), new(CardInstructionKind.Discard, 1)]),
             Prepared => new([new(CardInstructionKind.Draw, (int)draw), new(CardInstructionKind.Discard, (int)draw)]),
             Backflip or Finesse => new([new(CardInstructionKind.GainBlock, (int)block), new(CardInstructionKind.Draw, (int)draw)]),
@@ -110,7 +114,7 @@ internal static class CompactCardProgramCompiler
             BubbleBubble => new([new(CardInstructionKind.SkipIfTargetLacksPower, 1, BasicPowerKind.Poison, CardInstructionTarget.ChosenEnemy),
                 new(CardInstructionKind.ApplyBasicPower, (int)poison, BasicPowerKind.Poison, CardInstructionTarget.ChosenEnemy)]),
             Mirage => new([new(CardInstructionKind.GainBlockFromPowerSum, (int)calculationBase, BasicPowerKind.Poison,
-                CardInstructionTarget.AllEnemies, PowerMultiplier: (int)calculationExtra)]),
+                CardInstructionTarget.AllEnemies, Multiplier: (int)calculationExtra)]),
             Malaise => new([new(CardInstructionKind.ApplyBasicPower, card.IsUpgraded ? -1 : 0, BasicPowerKind.Strength,
                     CardInstructionTarget.ChosenEnemy, -1),
                 new(CardInstructionKind.ApplyBasicPower, card.IsUpgraded ? 1 : 0, BasicPowerKind.Weak, CardInstructionTarget.ChosenEnemy, 1)]),

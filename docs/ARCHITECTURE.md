@@ -386,3 +386,7 @@ renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或
 精神过载与毁灭的值扩展：资源指令、阵营开始一次性标记和 Kill/Death 事件由 `Simulation/Compact` 独占；模型类型、可创建模板和能量／死亡 Hook 审计由 Prediction/Compact 独占。`CombatHistoryReadValues.DoomAppliers` 随事件窗口重置，读取器导入 lane 所属旧原键字段，不重放效果。旧精神过载由 `CardDrawCardMirrors.NeurosurgeOnPlay` 精确实现获得能量→抽牌→能力，CardEffectSpecRegistry 不再重复补偿。通用 Power 新实例按实际玩家 Debuff 设置持续跳过标记，语义指纹仍只区分三种持续减益。[边界与原生证据](performance/simulation-necro-resources-20260911.md)。
 
 宠物身份由 `SimulatedCombatState._rootOsties` 在主线程捕获（包括空值），Fork 共享不可变身份表；`CardLifecycle.GetOsty` 优先分支生成映射，禁止回落 live。宠物死亡由通用 Damage 入口在 AfterDeath 后通知 `ICombatPredictionEffectSink.RemovePowersAfterDeath`，使用同一领域清理，DieForYou 保留阵容及自身能力。敌人死亡阶段扫描不承担宠物清理。[根隔离与五步原生证据](performance/simulation-osty-ownership-20260911.md)。
+
+宠物值执行由 `CreatureAttackLayout` 的独立末尾槽与 `EnemyEnd` 管理，死亡保留身份；`BasicPowerLayout` 保留代伤能力，`ResumableDiscardProgram` 保存实际施伤者及双结果顺序，玩家死亡独立连带杀死存活宠物。`CompletedOstyReadBinding` 属于每 lane 的派生兼容上下文，只导入当前 HP／最大生命／格挡及原最大生命映射的缺席形状，不运行召唤、伤害或 Power 命令。`ContinuationStamp` 从读视图取得宠物 HP，其他宠物读取消费同一绑定上下文。首次创建仍在根准入时拒绝。
+
+`ModifyUnblockedDamageTargetMirrors` 独占代伤 Hook 的精确分支状态实现，按原版链式传递目标且保留战斗结束时的分发；未知覆盖显式拒绝。怪物行动不再临时移除代伤 Power。普通玩家回合在 Hook 前冻结 `Allies` 参与者（包括死亡但保留的宠物），先快照全部能力，清完全部格挡后再逐个 AfterBlockCleared；额外玩家回合只选择玩家。召唤增长按封顶后的实际最大生命增量治疗。[原生对照与边界](performance/simulation-osty-values-20260911.md)。

@@ -78,20 +78,19 @@ internal sealed partial class SimulatedCombatState
             osty = existingOsty!;
         }
         SimCreatureState state = simulator.State.GetCreature(osty);
-        int currentMax = _simulatedOstyMaxHp?.GetValueOrDefault(osty) ?? state.MaxHp;
         if (!created && state.IsAlive)
         {
-            currentMax += amount;
-            state.SetMaxHp(currentMax);
-            state.CurrentHp = Math.Min(currentMax, state.CurrentHp + amount);
+            int beforeMaxHp = state.MaxHp;
+            state.SetMaxHp((int)Math.Min(999_999_999L, (long)beforeMaxHp + amount));
+            // Native GainMaxHp heals the actual capped increase, not the request.
+            state.Heal(state.MaxHp - beforeMaxHp);
         }
         else
         {
-            currentMax = amount;
-            state.SetMaxHp(currentMax);
-            state.CurrentHp = amount;
+            state.SetMaxHp(amount);
+            state.Heal(amount);
         }
-        (_simulatedOstyMaxHp ??= [])[osty] = currentMax;
+        (_simulatedOstyMaxHp ??= [])[osty] = state.MaxHp;
     }
 
     public void HealOsty(CombatPredictionSimulator simulator, Player player, int amount)

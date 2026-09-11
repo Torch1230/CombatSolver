@@ -29,7 +29,8 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
     private readonly PileView _hand, _draw, _discard, _exhaust;
     private readonly RosterView _enemies;
     private readonly CombatHistoryReadValues _combatBaseline, _combatHistory = new();
-    private readonly int[] _baseHits, _baseEnemyHits, _baseCreatureAttacks;
+    private readonly int[] _baseHits, _baseEnemyHits, _baseCreatureAttacks, _basePetHits, _baseHitsOnPet;
+    private readonly SimulatedCombatState.CompletedOstyReadBinding? _ostyBinding;
     private readonly SimulatedCombatState.CompletedPowerReadBinding? _powerBinding;
     private readonly CompletedPowerReadValues[] _powerValues;
     private readonly CompactMonsterAiReadBinding? _monsterAiBinding;
@@ -63,8 +64,13 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
             .Select(id => metadata.GetPoweredAttackHitsThisTurn(player.Creature, adapter.Creature(id))).ToArray();
         _baseEnemyHits = !adapter.HasMonsterMoves ? [] : Enumerable.Range(0, _program.CreatureCount)
             .Select(id => metadata.GetPoweredAttackHitsThisTurn(adapter.Creature(id), player.Creature)).ToArray();
-        _baseCreatureAttacks = !adapter.HasMonsterMoves ? [] : Enumerable.Range(0, _program.CreatureCount)
+        _baseCreatureAttacks = !adapter.HasMonsterMoves && _program.PetIndex < 0 ? [] : Enumerable.Range(0, _program.CreatureCount)
             .Select(id => metadata.GetCreatureAttacksThisTurn(adapter.Creature(id))).ToArray();
+        _basePetHits = _program.PetIndex < 0 ? [] : Enumerable.Range(0, _program.CreatureCount)
+            .Select(id => metadata.GetPoweredAttackHitsThisTurn(adapter.Creature(_program.PetIndex), adapter.Creature(id))).ToArray();
+        _baseHitsOnPet = _program.PetIndex < 0 ? [] : Enumerable.Range(0, _program.CreatureCount)
+            .Select(id => metadata.GetPoweredAttackHitsThisTurn(adapter.Creature(id), adapter.Creature(_program.PetIndex))).ToArray();
+        _ostyBinding = adapter.CreateOstyReadBinding(_context);
         _enemies = new(this);
         _monsterAiBinding = adapter.CreateMonsterAiReadBinding(_context);
         _roundBinding = adapter.CreateRoundReadBinding(_context);
@@ -106,6 +112,11 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
         combat.ClearPendingTurnStartChoice();
         _program = program;
         _cards.Read(program);
+        if (_ostyBinding != null)
+        {
+            var pet = program.Creature(program.PetIndex);
+            _ostyBinding.Read(pet.CurrentHp, pet.MaxHp, pet.Block, program.PetSummoned);
+        }
         _monsterAiBinding?.Read(program);
         _roundBinding?.Read(program.RoundNumber, program.PlayerTurn, program.EnemySide, program.BeganEnemyTurn, program.BeganPlayerTurn);
         bool playerReset = false, enemyReset = false;
@@ -135,6 +146,7 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
                     _combatHistory.PoweredHits.Clear();
                     _combatHistory.CreatureAttacks.Clear();
                     _combatHistory.CreatureAttacks[phaseOwner] = 0;
+                    if (!enemy && program.PetIndex >= 0) _combatHistory.CreatureAttacks[_adapter.Creature(program.PetIndex)] = 0;
                     playerReset = enemyReset = true;
                     attacks = creatureAttacks = zeroCostAttacks = shivs = statusDraws = 0;
                     block = skill = discarded = exhausted = energy = draw = starts = plays = manual = 0;
@@ -176,29 +188,33 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
                     if (item.Value > 0) _combatHistory.LostHp.Add(receiver);
                     if ((item.Flags & (int)(ResumableDiscardProgram.DamageTraits.Unpowered | ResumableDiscardProgram.DamageTraits.NoDealer)) == 0)
                     {
-                        int dealer = item.Card < 0 ? -item.Card - 1 : 0;
+                        int dealer = item.Dealer;
                         var hitKey = (_adapter.Creature(dealer), receiver);
-                        int baseline = dealer == 0 ? playerReset ? 0 : _baseHits[item.Target] : enemyReset ? 0 : _baseEnemyHits[dealer];
+                        int baseline = playerReset ? 0 : dealer == 0 ? _baseHits[item.Target]
+                            : dealer == program.PetIndex ? _basePetHits[item.Target]
+                            : item.Target == program.PetIndex ? _baseHitsOnPet[dealer] : _baseEnemyHits[dealer];
                         _combatHistory.PoweredHits[hitKey] = _combatHistory.PoweredHits.GetValueOrDefault(hitKey, baseline) + 1;
                     }
                     _entries++;
                     break;
                 case ResumableDiscardProgram.EventKind.AttackFinish:
-                    if (item.Card >= 0) creatureAttacks++;
+                    if (item.Dealer == 0) creatureAttacks++;
                     else
                     {
-                        int owner = -item.Card - 1;
+                        int owner = item.Dealer;
                         Creature actor = _adapter.Creature(owner);
                         _combatHistory.CreatureAttacks[actor] = _combatHistory.CreatureAttacks.GetValueOrDefault(actor, enemyReset ? 0 : _baseCreatureAttacks[owner]) + 1;
                     }
                     _entries++;
                     break;
                 case ResumableDiscardProgram.EventKind.Death:
-                    _combatHistory.DeathPhases[_adapter.Creature(item.Target)] = PredictedDeathPhase.PermanentlyDead;
+                    if (item.Target != program.PetIndex)
+                        _combatHistory.DeathPhases[_adapter.Creature(item.Target)] = PredictedDeathPhase.PermanentlyDead;
                     break;
                 case ResumableDiscardProgram.EventKind.DoomApplied:
                     _combatHistory.DoomAppliers.Add(_adapter.Creature(item.Card));
                     break;
+                case ResumableDiscardProgram.EventKind.SummonPet:
                 case ResumableDiscardProgram.EventKind.Kill:
                 case ResumableDiscardProgram.EventKind.GainEnergy:
                 case ResumableDiscardProgram.EventKind.ResetEnergy:
@@ -285,20 +301,20 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
     {
         public int Count
         {
-            get { int count = 0; for (int i = 1; i < owner._program.CreatureCount; i++) if (owner._program.CreaturePresent(i)) count++; return count; }
+            get { int count = 0; for (int i = 1; i < owner._program.EnemyEnd; i++) if (owner._program.CreaturePresent(i)) count++; return count; }
         }
         public Creature this[int index]
         {
             get
             {
-                for (int i = 1; i < owner._program.CreatureCount; i++)
+                for (int i = 1; i < owner._program.EnemyEnd; i++)
                     if (owner._program.CreaturePresent(i) && index-- == 0) return owner._adapter.Creature(i);
                 throw new ArgumentOutOfRangeException(nameof(index));
             }
         }
         public IEnumerator<Creature> GetEnumerator()
         {
-            for (int i = 1; i < owner._program.CreatureCount; i++)
+            for (int i = 1; i < owner._program.EnemyEnd; i++)
                 if (owner._program.CreaturePresent(i)) yield return owner._adapter.Creature(i);
         }
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();

@@ -135,7 +135,7 @@ internal sealed record ContinuationStamp(string StateText)
         AppendOsty(
             text,
             combat.GetOsty(player),
-            combat.GetOsty(player) is { } osty ? simulator.State.GetCreature(osty).CurrentHp : 0,
+            combat.GetOsty(player) is { } osty ? readView?.ReadCreature(osty).CurrentHp ?? simulator.State.GetCreature(osty).CurrentHp : 0,
             combat.GetOstyMaxHp(simulator, player));
         IReadOnlyList<Creature> predictedEnemies = readView?.EnemyRoster ?? combat.Enemies;
         AppendEnemies(text, predictedEnemies,

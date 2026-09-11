@@ -434,40 +434,39 @@ internal sealed partial class CombatBeamSolver
             simulatedCombat.RoundNumber++;
         simulatedCombat.AdvancePlayerTurn(_player);
         simulatedCombat.BeginSideTurn(_player.Creature);
-        simulatedCombat.SnapshotPowerAmountsAtTurnStart([_player.Creature]);
+        // Native ordinary turns include retained pets, even when dead. Extra player
+        // turns select only the player creature. Freeze membership before any start hook.
+        IReadOnlyList<Creature> participants = takingExtraTurn ? [_player.Creature] : simulatedCombat.Allies.ToArray();
+        simulatedCombat.SnapshotPowerAmountsAtTurnStart(participants);
 
         if (!TurnStartRelicSupport.TriggerBeforeSideTurnStart(
                 simulator,
                 simulatedCombat,
-                [_player.Creature]))
+                participants))
         {
             return SearchBoundaryReason.PendingChoice;
         }
         if (TurnStartPowerSupport.TriggerBeforeSideTurnStart(
                 simulator,
                 simulatedCombat,
-                [_player.Creature]))
+                participants))
         {
             return SearchBoundaryReason.PendingChoice;
         }
 
-        if (simulatedPlayer.Block > 0)
+        foreach (Creature participant in participants)
         {
-            if (simulatedCombat.ShouldClearBlock(_player.Creature, out AbstractModel? preventer))
-                simulatedPlayer.DamageBlock(simulatedPlayer.Block, ValueProp.Move);
+            SimCreatureState values = simulator.State.GetCreature(participant);
+            if (values.Block <= 0) continue;
+            if (simulatedCombat.ShouldClearBlock(participant, out AbstractModel? preventer))
+                values.DamageBlock(values.Block, ValueProp.Move);
             else
-                PersistentRelicSupport.TriggerAfterPreventingBlockClear(
-                    simulator,
-                    preventer,
-                    _player.Creature);
+                PersistentRelicSupport.TriggerAfterPreventingBlockClear(simulator, preventer, participant);
         }
-        if (!CorePowerSupport.TriggerAfterBlockCleared(
-                simulator,
-                simulatedCombat,
-                _player.Creature))
-        {
-            return SearchBoundaryReason.PendingChoice;
-        }
+        // Native clears every participant first, then dispatches the after-clear hooks.
+        foreach (Creature participant in participants)
+            if (!CorePowerSupport.TriggerAfterBlockCleared(simulator, simulatedCombat, participant))
+                return SearchBoundaryReason.PendingChoice;
 
         if (PersistentRelicSupport.ShouldPlayerResetEnergy(simulatedCombat, _player))
             playerState.LoseEnergy(playerState.Energy);
@@ -492,7 +491,7 @@ internal sealed partial class CombatBeamSolver
                    return simulatedCombat.TriggerSideTurnStart(
                        simulator,
                        CombatSide.Player,
-                       [_player.Creature],
+                       participants,
                        decrementPlating: simulatedCombat.GetPlayerTurnNumber(_player) != 1,
                        takingExtraTurn);
                }))
@@ -529,7 +528,7 @@ internal sealed partial class CombatBeamSolver
                 if (!simulatedCombat.TriggerSideTurnStart(
                         simulator,
                         CombatSide.Player,
-                        [_player.Creature],
+                        participants,
                         decrementPlating: simulatedCombat.GetPlayerTurnNumber(_player) != 1,
                         takingExtraTurn))
                 {

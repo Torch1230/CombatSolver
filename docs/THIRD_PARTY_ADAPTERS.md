@@ -57,6 +57,8 @@
 
 ### 1.3 只读 hook 会自动回落
 
+`ModifyUnblockedDamageTargetMirrors` 是显式例外：代伤目标依赖分支存活值，不能回落 live。`DieForYouPower` 已登记精确实现；新增覆盖须登记返回目标的分支状态处理器，未登记覆盖直接抛出不支持。各监听器收到上一个返回目标，分发不受战斗结束保护提前跳过，不得通过临时删除能力来关闭代伤。
+
 `Modify*` / `Should*` 这类只读 hook 中，允许原实现回落的入口会调用 Mod 自己的实现。
 适配者仍须核对读取的数据属于当前预测分支；只读方法也可能读到 live 手牌、Power 或费用。
 姿态伤害倍率、费用修改等效果只有在完整分支差分通过后，才能认定原实现回落适用。
@@ -67,7 +69,7 @@
 
 ## 2. 登记点总表
 
-### 2.1 统一形状的镜像注册表（44 张）
+### 2.1 统一形状的镜像注册表（45 张）
 
 绝大多数登记走同一个形状：
 
@@ -75,7 +77,9 @@
 XxxMirrors.Registry.Register<TYourType>(handler);
 ```
 
-44 张注册表按域分布在 `src/Engine/InCombat/Mirrors/` 下：
+45 张注册表按域分布在 `src/Engine/InCombat/Mirrors/` 下：
+
+新增 `Hooks/Damage/ModifyUnblockedDamageTargetMirrors.Registry.Register<T>`，处理器接收 `ModifyUnblockedDamageTargetMirrorContext`（分支 State、Target、Amount、Props、Dealer），返回 `Creature`；按精确类型注册，不改变能力实例或当前量。
 
 死亡后生成单位的镜像应保持原生生成时点。例如补货由 `AfterDeathMirrors` 调用分支生成入口，旧个体仍在阵容中，其最大生命参与替补生命判重。把生成延后到阵容清理后，即使 RNG 调用次数相同也会改变抽样结果；登记镜像时应同步移除原领域补偿中的同一生成动作。
 
@@ -87,7 +91,7 @@ XxxMirrors.Registry.Register<TYourType>(handler);
 
 | 目录 | 注册表数 | 覆盖什么 | 你多半要用的 |
 |---|---|---|---|
-| `Hooks/` | 37 | 战斗 hook：攻击、格挡、伤害、死亡、卡牌、球体、回合边界 | 按你重写了哪个 hook 挑，例如 `AfterDamageGivenMirrors` |
+| `Hooks/` | 38 | 战斗 hook：攻击、格挡、伤害、死亡、卡牌、球体、回合边界 | 按你重写了哪个 hook 挑，例如 `AfterDamageGivenMirrors` |
 | `Cards/` | 4 | 出牌、可打出性、回合结束留手、结算落点 | `CardOnPlayMirrors`、`CardIsPlayableMirrors` |
 | `Potions/` | 1 | 药水使用 | `PotionOnUseMirrors` |
 | `Enchantments/`、`Afflictions/` | 各 1 | 附魔与病症的出牌效果 | 少见 |
@@ -97,7 +101,7 @@ XxxMirrors.Registry.Register<TYourType>(handler);
 `CardOnPlayMirrors.Registry` 这张共享注册表里登记，自己不持有注册表。找登记入口时认
 `static readonly Registry Registry` 这个字段，不要认文件名。
 
-**怎么知道自己要登记哪几个。** 把你的每个类型对基类虚方法的重写列出来，和这 44 张表逐一对照。
+**怎么知道自己要登记哪几个。** 把你的每个类型对基类虚方法的重写列出来，和这 45 张表逐一对照。
 只重写了求解器不分发的方法，不用登记；重写了它分发的方法，就要登记。这一步不要靠印象，
 要交叉核对——漏一个的表现是「效果看起来正常但其实没发生」。
 
@@ -492,7 +496,7 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 | `SimulatedCombatState.ApplyTemporaryStrengthLoss/Gain` | 仅接受原生 `TemporaryStrengthPower` 类型族；首次施加 Strength 在临时计数之前，随后按修正后偏移而非计数净变化处理回调，包含首次及叠加封顶。与普通 `Apply<T>` 共用准备／写入，不重复修正或 Artifact（[证据](performance/simulation-temporary-strength-20260911.md)） | 非登记入口 |
 | `CorePowerSupport.ApplyCardPowers` | 部分卡牌 Power 补偿仍按原版类型封闭分发。闪躲翻滚消费该次 `CardPlay` 已记录的格挡命令返回值，按原版整数转换施加下回合格挡；不能用净格挡增量替代，也不能重新执行格挡修正 Hook（[证据](performance/simulation-deferred-block-return-20260911.md)） | 未开放 |
 | `PredictionModHookSubscriberCapture.KnownPreRootSubscriberTypeNames` | 私有静态白名单，没有公开登记入口 | 待做 |
-| `Prediction/Compact/CompactDiscardProjection` 的整根准入与 `CompactCardProgramCompiler` 的卡牌编译 | 实验支持已准入抽弃牌／洗牌／固定 Power 选牌；`CardEffectProgram` 是不可变有序指令，由独立编译器生成，新增生存者格挡后弃牌（[证据](performance/simulation-effect-program-20260911.md)）；显式攻击域增加主要敌人打击、中和、六种基础 Power 的值状态与死亡清理；现又准入 `FOOTWORK` 移除、`MALAISE` 的 X／消耗、`SUPPRESS`、`ULTIMATE_DEFEND`、`FINESSE` 和亡灵基础卡牌（[生命周期证据](performance/simulation-card-lifecycle-20260911.md)）。现支持三十一种精确卡牌类型，新增单体／群体中毒、虚弱、条件抽牌和虚无历史（[群体与条件指令证据](performance/simulation-conditional-powers-20260911.md)）。新增 `OUTBREAK` 的中毒触发／递减和 `CALCULATED_GAMBLE` 的整手弃抽／Sly 后续（[触发与弃抽证据](performance/simulation-poison-discard-20260911.md)）。新增 `BUBBLE_BUBBLE` 的目标中毒存在条件与 `MIRAGE` 的存活敌人中毒求和格挡（[Power 表达式证据](performance/simulation-power-expressions-20260911.md)）。新增 `DODGE_AND_ROLL` 的格挡返回值施加 `BlockNextTurnPower` 与 `TOOLS_OF_THE_TRADE` 计数／移除；正小数零层实例域由整根检查拒绝（[下回合计数证据](performance/simulation-compact-deferred-powers-20260911.md)）。新增 `PIERCING_WAIL` 的敌方临时力量施加、封顶偏移与消耗；只准入该精确 Power 的数量回调，其他临时属性类型仍拒绝（[证据](performance/simulation-compact-temporary-strength-20260911.md)）。新增 `CLOAK_AND_DAGGER`／`SHIV` 的固定模板生成、满手转弃牌、攻击和消耗；仅放行已证明的卡入场／生成回调，新增模型只在读取器中物化（[生成卡证据](performance/simulation-generated-cards-20260911.md)）。`BLADE_OF_INK` 仅在无中间观察者的闭包折叠为最终 `Inky` 模板，攻击后虚弱与混合模板恢复经[原生差分](performance/simulation-inky-cards-20260911.md)验证。新增正常 1 层 `Slither` 的本场绝对费用列表及 `CombatEnergyCosts` 值状态（[证据](performance/simulation-random-costs-20260911.md)），其他修饰不放行。既有人工制品可阻止负面施加，修改先于临时力量的内部效果，并保留数量／顺序／退休（[证据](performance/simulation-compact-artifact-20260911.md)）。蛇之戒及无已触及运行级覆盖的牌组监听前缀现可保留，牌组与战斗表分开审计（[原始根证据](performance/simulation-full-root-20260911.md)）。新增精确 `BURN` 及独立准入的手牌末尾阶段，保存状态抽取、累计失血、玩家死亡与显式入场顺序；该参数不提供第三方回调登记，也不表示所有动画模式或完整回合已支持（[手牌阶段证据](performance/simulation-hand-end-20260911.md)）。`MonsterEffectProgram` 现仅由 Testing 从单个精确 `MechaKnight` 根捕获四种指令体；无创建者生成、怪物攻击历史与完整状态已有[原生证据](performance/simulation-monster-commands-20260911.md)，没有泛化怪物登记口。确定性 AI 扩展只接收经 Testing 验证的精确四节点图，复制根当前招式、后继和日志；当前／日志与意图从值读取，仍无第三方 AI 登记表。Power 回合初始快照、下回合格挡兑现、敌方临时力量恢复和三种持续减益递减现有独立整根准入，包含 AfterSideTurnEndLate 审计及`StratagemPower`初始字段（[阶段证据](performance/simulation-power-phases-20260911.md)）；该接口没有第三方注册表。完整回合驱动有独立 Testing 准入，增加阶段／时间／历史重置、保留、临时 Sly 清理、起手与 Tools 暂停帧；精确闭包仅含单个机械骑士，玩家中毒、待抽牌与额外行动拒绝，20 分支／7 原生动作及冷根历史通过[完整回合对照](performance/simulation-rounds-20260911.md)。`Prediction/Compact/CompactPlanReplay` 由已准入根的 Search 接线，桥接已准入卡牌／结束回合计划，按正式实例键和选牌 token 匹配；不是第三方登记口。原始 30 牌、44 原生动作及 424 个已准入替代分支通过[完整路线对照](performance/simulation-full-route-20260911.md)，回合末本回合／上回合最后攻击牌分别进入原键。派生历史查询按回合、阵营及分支玩家回合界定窗口，消费者不应将上一阵营的缓存当成本阶段计数。仍拒绝未迁移 Hook、其他 Power、修饰与其他随机操作，没有第三方登记入口。完整状态与原生证据见[Power 阶段报告](performance/simulation-compact-powers-20260911.md)；生产搜索在完整根准入后选择紧凑后端，未准入域继续使用模型后端 | 测试原型，未开放 |
+| `Prediction/Compact/CompactDiscardProjection` 的整根准入与 `CompactCardProgramCompiler` 的卡牌编译 | 实验支持已准入抽弃牌／洗牌／固定 Power 选牌；`CardEffectProgram` 是不可变有序指令，由独立编译器生成，新增生存者格挡后弃牌（[证据](performance/simulation-effect-program-20260911.md)）；显式攻击域增加主要敌人打击、中和、六种基础 Power 的值状态与死亡清理；现又准入 `FOOTWORK` 移除、`MALAISE` 的 X／消耗、`SUPPRESS`、`ULTIMATE_DEFEND`、`FINESSE` 和亡灵基础卡牌（[生命周期证据](performance/simulation-card-lifecycle-20260911.md)）。现支持三十三种精确卡牌类型，新增单体／群体中毒、虚弱、条件抽牌和虚无历史（[群体与条件指令证据](performance/simulation-conditional-powers-20260911.md)）。新增 `OUTBREAK` 的中毒触发／递减和 `CALCULATED_GAMBLE` 的整手弃抽／Sly 后续（[触发与弃抽证据](performance/simulation-poison-discard-20260911.md)）。新增 `BUBBLE_BUBBLE` 的目标中毒存在条件与 `MIRAGE` 的存活敌人中毒求和格挡（[Power 表达式证据](performance/simulation-power-expressions-20260911.md)）。新增 `DODGE_AND_ROLL` 的格挡返回值施加 `BlockNextTurnPower` 与 `TOOLS_OF_THE_TRADE` 计数／移除；正小数零层实例域由整根检查拒绝（[下回合计数证据](performance/simulation-compact-deferred-powers-20260911.md)）。新增 `PIERCING_WAIL` 的敌方临时力量施加、封顶偏移与消耗；只准入该精确 Power 的数量回调，其他临时属性类型仍拒绝（[证据](performance/simulation-compact-temporary-strength-20260911.md)）。新增 `CLOAK_AND_DAGGER`／`SHIV` 的固定模板生成、满手转弃牌、攻击和消耗；仅放行已证明的卡入场／生成回调，新增模型只在读取器中物化（[生成卡证据](performance/simulation-generated-cards-20260911.md)）。`BLADE_OF_INK` 仅在无中间观察者的闭包折叠为最终 `Inky` 模板，攻击后虚弱与混合模板恢复经[原生差分](performance/simulation-inky-cards-20260911.md)验证。新增正常 1 层 `Slither` 的本场绝对费用列表及 `CombatEnergyCosts` 值状态（[证据](performance/simulation-random-costs-20260911.md)），其他修饰不放行。既有人工制品可阻止负面施加，修改先于临时力量的内部效果，并保留数量／顺序／退休（[证据](performance/simulation-compact-artifact-20260911.md)）。蛇之戒及无已触及运行级覆盖的牌组监听前缀现可保留，牌组与战斗表分开审计（[原始根证据](performance/simulation-full-root-20260911.md)）。新增精确 `BURN` 及独立准入的手牌末尾阶段，保存状态抽取、累计失血、玩家死亡与显式入场顺序；该参数不提供第三方回调登记，也不表示所有动画模式或完整回合已支持（[手牌阶段证据](performance/simulation-hand-end-20260911.md)）。`MonsterEffectProgram` 现仅由 Testing 从单个精确 `MechaKnight` 根捕获四种指令体；无创建者生成、怪物攻击历史与完整状态已有[原生证据](performance/simulation-monster-commands-20260911.md)，没有泛化怪物登记口。确定性 AI 扩展只接收经 Testing 验证的精确四节点图，复制根当前招式、后继和日志；当前／日志与意图从值读取，仍无第三方 AI 登记表。Power 回合初始快照、下回合格挡兑现、敌方临时力量恢复和三种持续减益递减现有独立整根准入，包含 AfterSideTurnEndLate 审计及`StratagemPower`初始字段（[阶段证据](performance/simulation-power-phases-20260911.md)）；该接口没有第三方注册表。完整回合驱动有独立 Testing 准入，增加阶段／时间／历史重置、保留、临时 Sly 清理、起手与 Tools 暂停帧；精确闭包仅含单个机械骑士，玩家中毒、待抽牌与额外行动拒绝，20 分支／7 原生动作及冷根历史通过[完整回合对照](performance/simulation-rounds-20260911.md)。`Prediction/Compact/CompactPlanReplay` 由已准入根的 Search 接线，桥接已准入卡牌／结束回合计划，按正式实例键和选牌 token 匹配；不是第三方登记口。原始 30 牌、44 原生动作及 424 个已准入替代分支通过[完整路线对照](performance/simulation-full-route-20260911.md)，回合末本回合／上回合最后攻击牌分别进入原键。派生历史查询按回合、阵营及分支玩家回合界定窗口，消费者不应将上一阵营的缓存当成本阶段计数。仍拒绝未迁移 Hook、其他 Power、修饰与其他随机操作，没有第三方登记入口。完整状态与原生证据见[Power 阶段报告](performance/simulation-compact-powers-20260911.md)；生产搜索在完整根准入后选择紧凑后端，未准入域继续使用模型后端 | 测试原型，未开放 |
 | `PredictionModPatchAudit.ValidateLoadedMods` | 明确拒绝 `WheelchairSpire`，没有外部放行入口 | 项目不兼容策略 |
 | `PlayerTurnEndLifecycle.RunPhaseTwo`、`CorePowerSupport.TriggerPlayerRegularSideTurnEndEffects`、`FlushPlayerHandAtTurnEnd`、`TurnStartPowerSupport.TriggerAfterPlayerTurnStart`、`SimulatedCombatState.TriggerRelicsAfterPlayerTurnStart` | 回合边界的效果没有注册表 | 待做 |
 | `SimulatedCombatState.TryPrepareExtraPlayerTurn` / `TryPrepareLiveExtraPlayerTurn` / `ConsumeExtraTurnSources` | 额外回合的来源硬编码，只认龙涎香和帕尔之眼 | 待做 |
@@ -526,3 +530,5 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 精神过载已移入显式 OnPlay registry，能量先于抽牌、能力后于抽牌；外部适配不得再在 `CardEffectSpecRegistry` 重复结算。通用新实例的玩家负面类型决定原生持续跳过标记，计数标记本身不进入持续等价键。紧凑封闭开关新增精确 `Neurosurge`／`NeurosurgePower`／`DoomPower`，但只允许已表示的能量、阵营开始和双方毁灭死亡相位；新增 `ModifyEnergyGain`、`AfterModifyingEnergyGain`、`AfterDiedToDoom` 观察者仍拒绝。没有开放第三方登记表；宠物、复活和未迁移遗物／药水不能借此准入。[完整范围](performance/simulation-necro-resources-20260911.md)。
 
 奥斯蒂的根身份和“没有宠物”现在显式捕获，分支生成身份由原召唤映射持有；外部适配不能从 `player.Osty` 补读分支状态。死亡阵容保留判定包含 DieForYou，普通能力退休不延后至下一次召唤。[五步原生与双根隔离证据](performance/simulation-osty-ownership-20260911.md)。
+
+紧凑宠物闭包现支持已捕获的精确奥斯蒂身份，以及其一层代伤能力和可选力量。`BODYGUARD`／`UNLEASH` 普通及升级值程序分别负责复活／增长和按存活宠物当前 HP／力量攻击；代伤使用玩家格挡，宠物死亡保留身份和代伤能力，其他能力退休，群体敌方效果仅遍历主敌人区间。`CompletedOstyReadBinding` 是内部值导入合同，保留最大生命映射的缺席／零值差别；不能用它执行自定义召唤。`ModifySummonAmount`、`AfterOstyRevived`、`AfterSummon` 新观察者须重新证明完整闭包；首次创建、其他宠物能力及未迁移遗物／药水仍拒绝，没有新增外部紧凑注册表。普通玩家回合包含保留的死宠物，额外回合只包含玩家，外部回合钩子不能假设参与者永远只有玩家。[范围和原生证据](performance/simulation-osty-values-20260911.md)。

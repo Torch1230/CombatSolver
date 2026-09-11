@@ -61,6 +61,14 @@ internal sealed class CompactDiscardProjection
         if (includeRounds) combat.AssertCompletedRoundRoot();
         SimPlayerCombatState state = root.State.GetPlayerCombatState(player);
         var powers = combat.EffectivePowers();
+        Creature? osty = combat.GetOsty(player);
+        if (osty != null && (!includeAttacks || osty.Monster?.GetType() != typeof(Osty) || osty.PetOwner != player
+                || powers.Count(power => power.Owner == osty && power.GetType() == typeof(DieForYouPower) && power.Amount == 1) != 1
+                || powers.Any(power => power.Owner == osty && power is not (DieForYouPower or StrengthPower))
+                || root.State.GetCreature(osty).IsDead && powers.Any(power => power.Owner == osty && power is not DieForYouPower))
+            || powers.Any(power => power is DieForYouPower && power.Owner != osty)
+            || combat.Allies.Any(creature => creature != player.Creature && creature != osty))
+            throw new NotSupportedException("Compact pet roots require one captured Osty with its persistent protection and admitted stats.");
         if (combat.Players.Count != 1 || powers.Any(p => !IsBasicPower(p))
             || powers.Any(p => !(p is StratagemPower && p.Owner == player.Creature && p.Amount is >= 1 and <= 10)
                 && !(includeAttacks ? p is not StratagemPower && IsBasicPower(p) && (p is not (BlockNextTurnPower or ToolsOfTheTradePower or NeurosurgePower) || p.Owner == player.Creature)
@@ -84,14 +92,14 @@ internal sealed class CompactDiscardProjection
             AssertRepresentedHooks(runListeners[index], runPrefix: true, includeHandEnd, includePowerPhases, includeRounds);
         foreach (AbstractModel listener in combat.IterateHookListeners())
             AssertRepresentedHooks(listener, runPrefix: false, includeHandEnd, includePowerPhases, includeRounds);
-        _creatures = includeAttacks ? [player.Creature, .. combat.Enemies] : [];
+        _creatures = !includeAttacks ? [] : osty == null ? [player.Creature, .. combat.Enemies] : [player.Creature, .. combat.Enemies, osty];
         if (includeAttacks && (combat.PlayerCreatures.Count != 1 || combat.KnownEnemies.Count != combat.Enemies.Count
-            || _creatures.Any(c => root.State.GetCreature(c).IsDead || c.PetOwner != null)
+            || _creatures.Where(c => c != osty).Any(c => root.State.GetCreature(c).IsDead || c.PetOwner != null)
             || combat.KnownEnemies.Any(c => combat.HasCompletedDeathEffects(c)
                 || !((ICombatPredictionCreatureSemantics)combat).IsPrimaryEnemy(c)
                 || !((ICombatPredictionCreatureSemantics)combat).ShouldRemoveAfterDeath(c))))
-            throw new NotSupportedException("Compact attack requires living primary enemies without pending deaths or pets.");
-        if (includeMechaMoves && (!includeAttacks || _creatures.Length != 2 || _creatures[1].Monster?.GetType() != typeof(MechaKnight)))
+            throw new NotSupportedException("Compact attack requires living primary enemies without pending deaths, plus an optional captured pet.");
+        if (includeMechaMoves && (!includeAttacks || combat.Enemies.Count != 1 || _creatures[1].Monster?.GetType() != typeof(MechaKnight)))
             throw new NotSupportedException("Captured Mecha commands require exactly one MechaKnight and creature values.");
         PredictedCard[] cards = state.AllCards.ToArray();
         _powerTemplates = includeAttacks ? CapturePowerTemplates(combat, powers, cards.Any(card => card.Preview is Neurosurge)) : [];
@@ -127,6 +135,8 @@ internal sealed class CompactDiscardProjection
         // combat history event is emitted by enchanting. Capture the final immutable variant.
         _definitionModels = [.. cards.Select(card => card.Preview), .. generated];
         ResumableDiscardProgram.Card[] definitions = _definitionModels.Select(card => CompactCardProgramCompiler.Compile(card, includeAttacks, shivTemplate, inkyShivTemplate)).ToArray();
+        if (osty == null && definitions.Any(card => card.Effects.RequiresPet))
+            throw new NotSupportedException("Compact summoning requires a captured pet identity; first creation is not represented.");
         _risks = _definitionModels.Select(card => card is Burn ? null : CardOnPlayMirrors.DescribeDispatch(card) switch
         {
             MirrorDispatchKind.Handled => (PredictionRiskReason?)null,
@@ -178,7 +188,7 @@ internal sealed class CompactDiscardProjection
             Block(relics.OfType<TheAbacus>().SingleOrDefault()), abacusIndex >= 0 && abacusIndex < stratagemIndex,
             includeAttacks ? _creatures.Select(c => { var v = root.State.GetCreature(c); return new CreatureVitals(v.CurrentHp, v.MaxHp, v.Block); }).ToArray() : null, powerDefinitions, definitions[cards.Length..],
             new(energyRng.Counter, energyRng.State0, energyRng.State1, energyRng.State2, energyRng.State3), handEndAdmitted: includeHandEnd, monsterMoves: includeMechaMoves ? CaptureMechaCommands(root, burnTemplate) : null, powerPhasesAdmitted: includePowerPhases, monsterAi: ai,
-            round: includeRounds ? new(combat.RoundNumber, PlayerTurn, player.MaxEnergy, MegaCrit.Sts2.Core.Combat.CombatManager.baseHandDrawCount) : null);
+            round: includeRounds ? new(combat.RoundNumber, PlayerTurn, player.MaxEnergy, MegaCrit.Sts2.Core.Combat.CombatManager.baseHandDrawCount) : null, pet: osty == null ? -1 : CreatureIndex(osty));
         CardValuesInvariant = Program.CardValuesInvariant;
     }
 
@@ -187,6 +197,9 @@ internal sealed class CompactDiscardProjection
 
     internal SimulatedCombatState.CompletedRoundReadBinding? CreateRoundReadBinding(CombatPredictionSimulator context)
         => !Program.HasRounds ? null : new((SimulatedCombatState)context.State.CombatState, _player, _creatures[1]);
+
+    internal SimulatedCombatState.CompletedOstyReadBinding? CreateOstyReadBinding(CombatPredictionSimulator context)
+        => Program.PetIndex < 0 ? null : new(context, _player);
 
     internal CompactCardMetadataReadBinding CreatePlanMetadata()
     {
@@ -229,7 +242,8 @@ internal sealed class CompactDiscardProjection
         foreach (BasicPowerKind kind in Enum.GetValues<BasicPowerKind>())
         {
             // No admitted instruction creates Artifact or Stratagem; capture existing slots only.
-            if (kind is BasicPowerKind.Artifact or BasicPowerKind.Stratagem) continue;
+            if (kind is BasicPowerKind.Artifact or BasicPowerKind.Stratagem or BasicPowerKind.DieForYou) continue;
+            if (owner.PetOwner != null && kind != BasicPowerKind.Strength) continue;
             if (kind is BasicPowerKind.Neurosurge or BasicPowerKind.Doom
                 && (owner != _player.Creature || !canCreateNeurosurge && !powers.Any(power => power is NeurosurgePower))) continue;
             if (kind is BasicPowerKind.BlockNextTurn or BasicPowerKind.ToolsOfTheTrade && owner != _player.Creature) continue;
@@ -258,7 +272,8 @@ internal sealed class CompactDiscardProjection
         [typeof(ArtifactPower)] = BasicPowerKind.Artifact,
         [typeof(StratagemPower)] = BasicPowerKind.Stratagem,
         [typeof(DoomPower)] = BasicPowerKind.Doom,
-        [typeof(NeurosurgePower)] = BasicPowerKind.Neurosurge
+        [typeof(NeurosurgePower)] = BasicPowerKind.Neurosurge,
+        [typeof(DieForYouPower)] = BasicPowerKind.DieForYou
     };
     private static bool IsBasicPower(PowerModel power) => BasicKinds.ContainsKey(power.GetType());
     private static PowerModel CanonicalPower(BasicPowerKind kind) => kind switch
@@ -276,6 +291,7 @@ internal sealed class CompactDiscardProjection
         BasicPowerKind.ToolsOfTheTrade => CanonicalModels.Power<ToolsOfTheTradePower>(),
         BasicPowerKind.Doom => CanonicalModels.Power<DoomPower>(),
         BasicPowerKind.Neurosurge => CanonicalModels.Power<NeurosurgePower>(),
+        BasicPowerKind.DieForYou => CanonicalModels.Power<DieForYouPower>(),
         _ => throw new InvalidOperationException("Unknown basic Power kind.")
     };
     private static BasicPowerKind BasicKind(PowerModel power) => BasicKinds[power.GetType()];
@@ -346,7 +362,7 @@ internal sealed class CompactDiscardProjection
         SimPlayerCombatState state = projection.State.GetPlayerCombatState(_player);
         List<PredictedCard> cards = _identities.Select(c => projection.State.FindCard(c)
             ?? throw new InvalidOperationException("Projection lost a root instance.")).ToList();
-        var damageResults = new Dictionary<int, DamageResult>();
+        var damageResults = new Dictionary<int, List<DamageResult>>();
         var stack = new Stack<(int Identity, CardPlay Play, PredictionTrace.TraceScope Scope, PredictionTrace.TraceScope? Method)>();
         PredictionTrace.TraceScope? handEndMethod = null;
         try
@@ -434,8 +450,8 @@ internal sealed class CompactDiscardProjection
                 }
                 if (item.Kind == ResumableDiscardProgram.EventKind.AttackFinish)
                 {
-                    Creature attacker = item.Card < 0 ? _creatures[-item.Card - 1] : _player.Creature;
-                    projection.History.CreatureAttacked(attacker, [damageResults[item.Card]]);
+                    Creature attacker = _creatures[item.Dealer];
+                    projection.History.CreatureAttacked(attacker, damageResults[item.Card]);
                     combat.RecordCreatureAttacked(attacker);
                     damageResults.Remove(item.Card);
                     continue;
@@ -445,12 +461,12 @@ internal sealed class CompactDiscardProjection
                     projection.State.GetCreature(item.Target < 0 ? _player.Creature : _creatures[item.Target]).GainBlock(item.Value);
                     continue;
                 }
-                if (item.Kind == ResumableDiscardProgram.EventKind.PowerChange) continue;
+                if (item.Kind is ResumableDiscardProgram.EventKind.PowerChange or ResumableDiscardProgram.EventKind.SummonPet) continue;
                 if (item.Kind == ResumableDiscardProgram.EventKind.Death)
                 {
                     if (item.Target == 0) projection.LoseCombat();
-                    else projection.State.RemoveCreature(_creatures[item.Target]);
-                    combat.CompleteDeathPhase(_creatures[item.Target]);
+                    else if (item.Target != program.PetIndex) projection.State.RemoveCreature(_creatures[item.Target]);
+                    if (item.Target != program.PetIndex) combat.CompleteDeathPhase(_creatures[item.Target]);
                     continue;
                 }
                 PredictedCard card = cards[item.Card];
@@ -584,7 +600,7 @@ internal sealed class CompactDiscardProjection
             var traits = (ResumableDiscardProgram.DamageTraits)item.Flags;
             bool poison = (traits & ResumableDiscardProgram.DamageTraits.Poison) != 0;
             Creature? dealer = (traits & ResumableDiscardProgram.DamageTraits.NoDealer) != 0 ? null
-                : item.Card < 0 ? _creatures[-item.Card - 1] : _player.Creature;
+                : _creatures[item.Dealer];
             PredictedCard? cardSource = (traits & ResumableDiscardProgram.DamageTraits.NoCard) != 0 ? null : cards[item.Card];
             ValueProp props = poison ? 0 : ValueProp.Move;
             if ((traits & ResumableDiscardProgram.DamageTraits.Unpowered) != 0) props |= ValueProp.Unpowered;
@@ -600,7 +616,11 @@ internal sealed class CompactDiscardProjection
                 : projection.ResolveDamageSource(cardSource);
             projection.History.DamageReceived(target, dealer, result, cardSource, source);
             combat.RecordDamageReceived(target, dealer, result);
-            if ((traits & ResumableDiscardProgram.DamageTraits.Unpowered) == 0) damageResults[item.Card] = result;
+            if ((traits & ResumableDiscardProgram.DamageTraits.Unpowered) == 0)
+            {
+                if (!damageResults.TryGetValue(item.Card, out var results)) damageResults.Add(item.Card, results = []);
+                results.Add(result);
+            }
         }
         combat.ImportCompletedDoomAppliers(doomAppliers);
         CreateMonsterAiReadBinding(projection)?.Read(program);
@@ -609,7 +629,7 @@ internal sealed class CompactDiscardProjection
             var binding = CreatePowerReadBinding(projection);
             var values = new CompletedPowerReadValues[program.PowerCount];
             CopyPowerReadValues(program, values);
-            binding.Read(values, Enumerable.Range(1, program.CreatureCount - 1)
+            binding.Read(values, Enumerable.Range(1, program.EnemyEnd - 1)
                 .Where(program.CreaturePresent).Select(Creature).ToArray());
         }
         for (int index = 0; index < program.CreatureCount; index++)
@@ -619,6 +639,11 @@ internal sealed class CompactDiscardProjection
             target.CurrentHp = values.CurrentHp;
             target.DamageBlock(target.Block, ValueProp.Unpowered);
             target.GainBlock(values.Block);
+        }
+        if (program.PetIndex >= 0)
+        {
+            var pet = program.Creature(program.PetIndex);
+            CreateOstyReadBinding(projection)!.Read(pet.CurrentHp, pet.MaxHp, pet.Block, program.PetSummoned);
         }
         if (program.Terminal)
         {
@@ -664,9 +689,13 @@ internal sealed class CompactDiscardProjection
             Creature creature = _creatures[index];
             CreatureReadValues actual = CreatureReadValues.Capture(simulator, creature);
             CreatureVitals expected = program.Creature(index);
+            // A retained pet never enters the model backend's enemy death-phase map.
+            // At a completed boundary its reversible death flag follows its own HP.
+            bool deathCompleted = index == program.PetIndex ? actual.CurrentHp == 0
+                : ((SimulatedCombatState)simulator.State.CombatState).HasCompletedDeathEffects(creature);
             if (actual != new CreatureReadValues(expected.CurrentHp, expected.MaxHp, expected.Block, program.CreaturePresent(index))
-                || ((SimulatedCombatState)simulator.State.CombatState).HasCompletedDeathEffects(creature) != program.CreatureDeathCompleted(index))
-                throw new InvalidOperationException("Compact creature values or death lifecycle differ.");
+                || deathCompleted != program.CreatureDeathCompleted(index))
+                throw new InvalidOperationException($"Compact creature values or death lifecycle differ: index={index}, actual={actual}, expected={expected}, death={deathCompleted}/{program.CreatureDeathCompleted(index)}.");
         }
         IReadOnlyList<PowerModel> powers = ((SimulatedCombatState)simulator.State.CombatState).EffectivePowers();
         for (int index = 0; index < program.PowerCount; index++)
@@ -723,7 +752,7 @@ internal sealed class CompactDiscardProjection
         "TryModifyPowerAmountGiven", "TryModifyPowerAmountReceived",
         "AfterModifyingPowerAmountGiven", "AfterModifyingPowerAmountReceived", "AfterPowerAmountChanged",
         "AfterCardExhausted", "AfterCardEnteredCombat", "AfterCardGeneratedForCombat", "ModifyXValue", "AfterModifyingDamageAmount", "AfterModifyingHpLostBeforeOsty",
-        "ModifyEnergyGain", "AfterModifyingEnergyGain", "AfterDiedToDoom"
+        "ModifyEnergyGain", "AfterModifyingEnergyGain", "AfterDiedToDoom", "ModifySummonAmount", "AfterOstyRevived", "AfterSummon"
     };
     // Only immutable CLR method/type metadata is shared. Every root still checks subscriber,
     // Power, relic, card-instance, resource, and lifecycle values independently.
@@ -766,6 +795,8 @@ internal sealed class CompactDiscardProjection
     // DebufferModel only increments the native run badge counter, outside combat equivalence.
     private static bool RepresentedHook(Type type, string method)
         => (type == typeof(CccComboModel) || type == typeof(Play20CardsSingleTurnAchievement)) && method == nameof(AbstractModel.AfterSideTurnStart)
+            || type == typeof(DieForYouPower) && method is nameof(AbstractModel.ModifyUnblockedDamageTarget)
+                or nameof(AbstractModel.ShouldAllowHitting) or nameof(AbstractModel.ShouldCreatureBeRemovedFromCombatAfterDeath)
             || type == typeof(PoisonPower) && method == nameof(AbstractModel.AfterSideTurnStart)
             || type == typeof(NeurosurgePower) && method == nameof(AbstractModel.AfterSideTurnStart)
             || type == typeof(DoomPower) && method is nameof(AbstractModel.BeforeSideTurnEnd) or nameof(AbstractModel.AfterSideTurnEnd)

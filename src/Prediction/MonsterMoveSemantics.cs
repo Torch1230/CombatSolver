@@ -122,28 +122,10 @@ internal static class MonsterMoveSemantics
         Creature player,
         int baseDamage)
     {
-        Creature? osty = player.Player is { } owner ? simulator.State.GetOsty(owner) : null;
-        int? suppressedDieForYou = null;
-        if (osty != null
-            && simulator.State.GetCreature(osty).IsDead
-            && combat.GetAmount<DieForYouPower>(osty) is > 0 and var amount)
+        using (simulator.PushDamageSource(
+            CombatDamageSource.For(CombatDamageSourceKind.MonsterMove, attacker.Monster?.Id.Entry)))
         {
-            suppressedDieForYou = amount;
-            combat.SetAmount<DieForYouPower>(osty, 0);
-        }
-
-        try
-        {
-            using (simulator.PushDamageSource(
-                CombatDamageSource.For(CombatDamageSourceKind.MonsterMove, attacker.Monster?.Id.Entry)))
-            {
-                return simulator.Damage(player, baseDamage, ValueProp.Move, attacker);
-            }
-        }
-        finally
-        {
-            if (suppressedDieForYou is { } restoredAmount)
-                combat.SetAmount<DieForYouPower>(osty!, restoredAmount);
+            return simulator.Damage(player, baseDamage, ValueProp.Move, attacker);
         }
     }
 }

@@ -172,8 +172,8 @@ internal sealed partial class CombatPredictionSimulator
         if (HasPendingChoice)
             return false;
 
-        var unblockedDamageTarget = Hook.ModifyUnblockedDamageTarget(
-            State.CombatState,
+        var unblockedDamageTarget = HookMirrors.ModifyUnblockedDamageTarget(
+            this,
             originalTarget,
             unblockedDamage,
             props,

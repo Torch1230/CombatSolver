@@ -22,6 +22,12 @@ internal sealed partial class UnattendedTestRunner
         ClearRunDeck((RunState)combat.RunState, player);
         await ClearPlayerPilesAsync(player);
         await InjectCardAsync(combat, player, new UnattendedCardInjection { CardId = "DEFEND_NECROBINDER", Pile = "Hand" });
+        bool withPet = _request.ScenarioId == "COMPACT-OSTY-DEFEAT";
+        if (withPet)
+        {
+            await OstyCmd.Summon(new BlockingPlayerChoiceContext(), player, 7, null);
+            await PowerCmd.Apply<StrengthPower>(new BlockingPlayerChoiceContext(), player.Osty!, 2, player.Creature, null);
+        }
         var enemy = combat.Enemies.Single(); var target = enemySide ? enemy : player.Creature;
         await SetBlockAsync(target, 17);
         await PowerCmd.Apply<DoomPower>(new BlockingPlayerChoiceContext(), target, 5, player.Creature, null);
@@ -69,7 +75,7 @@ internal sealed partial class UnattendedTestRunner
                     || !CompactPowerValues(shadow.EffectivePowers()).SequenceEqual(CompactPowerValues(((SimulatedCombatState)projected.State.CombatState).EffectivePowers())))
                     throw new InvalidOperationException("Doom direct-kill history or Power lifetime differs.");
                 if (lane.Block != (enemySide ? original.PlayerBlock : 17)
-                    || lane.EventCount != (hp == 5 ? 2 : 0) || oracle.History.Entries.Count != root.History.Entries.Count)
+                    || lane.EventCount != (hp == 5 ? withPet ? 4 : 2 : 0) || oracle.History.Entries.Count != root.History.Entries.Count)
                     throw new InvalidOperationException("Doom was treated as damage or consumed block.");
                 AssertCompactRngSet(oracle.Rng, projected.Rng);
                 var evaluator = new CompactEvaluationDriver(captured, display, damage, policy);
