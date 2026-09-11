@@ -121,7 +121,7 @@ PR #43 集成修正：Mod 使用独立文件复制，游戏程序继续使用硬
 
 `CombatSearchCoordinator.FailureRecovery` 在请求级完成主搜索与药水审计后，管理无完整胜利的有限追加搜索。它扩大搜索配置、保留请求剩余时间并比较已有质量；交接结果优先返回，每轮内存观测独立起算。四档内置节点预算由 `SolverSettings` / `SolverSearchProfile` 声明，Custom 保留显式设置。
 
-根创建时，`PredictionModPatchAudit` 在 Prediction 层检查已有卡牌 OnPlay 的第三方 Harmony 补丁；每根按类型去重并读取当前补丁表。它只负责未支持行为的准入边界，不执行补丁或提供第三方镜像注册，后续生成卡牌和其他方法不在此入口覆盖范围。
+根创建时，`PredictionModPatchAudit` 在 Prediction 层检查已有卡牌 OnPlay 的第三方 Harmony 补丁；每根按类型去重并读取当前补丁表。`AdaptedCardOnPlayMirrors` 只为完整精确组合提供标准 registry 镜像，选择表归 `PredictionModHookSubscriberCapture`，随 `SimulatedCombatState` Fork 共享。OnPlay facade 命中后直接返回，禁止再执行 vanilla/spec。Runtime 的 live continuation 读取当前配置，预测 continuation 和指纹只读根标记；既有采用／续用／部署检查拒绝配置失配。worker 不得读取 Harmony 表。启用登记后，根未审计的新卡牌类型明确失败；其他方法和未登记状态机不在完整审计范围。接口见[OnPlay 补丁适配](third-party-onplay-patches.md)。
 
 `BuildAcceptedEndTurnNodes` 是回合层/软时间预算收尾及普通串行回合尾的共同入口，复用 raw EndTurn 批次生成、跨回合剪枝与循环出口准入。全部直接选择分支在转置准入前结算临时观测；批次持有未转交快照，迭代器提前结束或生成失败时统一释放。
 

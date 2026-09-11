@@ -194,6 +194,11 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertModelStateIntegrationAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "ADAPTED-ONPLAY-INTEGRATION-CARD")
+            {
+                await runner.AssertAdaptedOnPlayIntegrationAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "COMBAT-TIMING-LIFETIME")
             {
                 await runner.AssertCombatTimingLifetimeAsync(combatState, player);
@@ -775,7 +780,11 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertInitialSolverResultAsync(startedTurn);
 
             if (request.StopAfterInitialSolverResultAssertion)
+            {
+                if (request.ScenarioId == "ADAPTED-ONPLAY-INTEGRATION-STALE")
+                    runner.AssertAdaptedOnPlayCachedRoute();
                 return Observation(combatEnded: false);
+            }
 
             if (request.HoldAfterInitialSearch)
             {

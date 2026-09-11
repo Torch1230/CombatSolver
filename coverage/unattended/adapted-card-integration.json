@@ -1,0 +1,15 @@
+{
+  "scenarioId": "ADAPTED-ONPLAY-INTEGRATION-CARD",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "enemyCurrentHp": 100,
+  "clearPlayerPiles": true,
+  "cards": [
+    {
+      "cardId": "DEFEND_IRONCLAD",
+      "pile": "Hand",
+      "count": 1
+    }
+  ],
+  "timeoutSeconds": 120
+}

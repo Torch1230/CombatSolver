@@ -1,5 +1,15 @@
 # CombatSolver 测试清单
 
+## 下一版本（开发中）：精确 OnPlay 补丁适配
+
+- 游戏 0.111.0 的 Release 构建通过，零警告、零错误；Bash 结构门禁通过。
+- `AdaptedOnPlayChecks`：35 项合同、2 项空登记检查通过。使用 Harmony 2.4.2，覆盖完整组合、来源、重载、类别、顺序、冻结及拒绝规则；游戏实体和模拟器外壳使用替身。命令见[工具说明](../tools/AdaptedOnPlayChecks/README.md)。
+- [原生替换](../coverage/unattended/adapted-card-integration.json)：真实防御 OnPlay 替换执行恰好一次，完整快照、增量回放、Fork 与 T1→T2 对账通过；额外补丁改变 continuation，旧根保持冻结，新根拒绝未登记组合。
+- [缓存路线](../coverage/unattended/adapted-stale-integration.json)：补丁变化使控制器执行资格失效，移除补丁后恢复。
+- [跨回合续用](../coverage/unattended/adapted-reuse-integration.json)：第 2 回合精确续用通过，计划外重算为 0。
+- 游戏验证使用回合阶段、卡牌引用和 OnPlay 适配的组合构建；续用场景同时登记模型状态与 OnPlay，独立场景只登记 OnPlay。注册场景须使用独立新进程。
+- 执行中热换补丁、完整长局和任意第三方 Mod 未覆盖；未作性能验证。
+
 ## 0.36.3：策略摘要
 
 - 后续摘要样式调整：`UI-LOCALIZATION` / `fc0bb52775dd427c80b61719838b1225` Passed（25.38 秒），校验目标 7/实际 4、成功与未达标状态分组、前缀删除及 405 项目录。右对齐、16 号字体和全自动按钮样式通过编译检查，未作可见游戏人工验收。
