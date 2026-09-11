@@ -723,6 +723,10 @@ $rootModelBoundaryChecks = @(
         Text = "TryGetRootEligibleCharacterCards("
     },
     @{
+        Path = Join-Path $repositoryRoot "src/Engine/InCombat/Simulation/Compact/ValueRng.cs"
+        Text = "TakeDistinctIndices("
+    },
+    @{
         Path = Join-Path $repositoryRoot "src/Prediction/TurnStartPowerSupport.cs"
         Text = "options = simulator.TryGetRootEligibleCharacterCardsForCombat("
     },

@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text.Json;
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.InCombat.Extensions;
+using CombatSolver.Engine.InCombat.Simulation.Compact;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
@@ -68,11 +69,15 @@ internal sealed partial class UnattendedTestRunner
                 var nativeRng = simulator.Rng.CombatCardGeneration.Clone();
                 var modelRng = simulator.Rng.CombatCardGeneration.Clone();
                 var cachedRng = simulator.Rng.CombatCardGeneration.Clone();
+                var initial = nativeRng.CaptureState();
+                var valueRng = new ValueRng(initial.Counter, initial.State0, initial.State1, initial.State2, initial.State3);
+                int[] selectionScratch = new int[nativeEligible.Length];
                 for (int sample = 0; sample < 12; sample++)
                 {
                     int requested = source.Name == "ColorlessPotion" ? 3 : 1;
                     var start = nativeRng.CaptureState();
                     var selected = nativeEligible.TakeRandom(requested, nativeRng).ToArray();
+                    valueRng = valueRng.TakeDistinctIndices(nativeEligible.Length, requested, selectionScratch, out int valueCount);
                     var predicted = source.Cards.GetDistinctForCombat(player, requested, modelRng, constraint).ToArray();
                     var cached = source.Name == "CallOfTheVoid"
                         ? rootEligible.GetDistinctForCombat(player, requested, cachedRng, constraint).ToArray()
@@ -80,6 +85,10 @@ internal sealed partial class UnattendedTestRunner
                     if (!selected.Select(card => card.Id).SequenceEqual(predicted.Select(card => card.Preview.Id))
                         || !SameFiveFieldRngState(nativeRng.CaptureState(), modelRng.CaptureState())
                         || !SameFiveFieldRngState(nativeRng.CaptureState(), cachedRng.CaptureState())
+                        || !SameFiveFieldRngState(nativeRng.CaptureState(),
+                            new(valueRng.Counter, valueRng.State0, valueRng.State1, valueRng.State2, valueRng.State3))
+                        || selected.Length != valueCount
+                        || selected.Where((card, index) => !ReferenceEquals(card, nativeEligible[selectionScratch[index]])).Any()
                         || predicted.Length != cached.Length
                         || predicted.Where((card, index) => ReferenceEquals(card.Original, cached[index].Original)
                             || CombatBeamSolver.CaptureCardStateFingerprintForTesting(card)
@@ -96,6 +105,7 @@ internal sealed partial class UnattendedTestRunner
                     samples.Add(new { requested, ids = selected.Select(card => card.Id.Entry).ToArray(),
                         counterDelta = nativeRng.CaptureState().Counter - start.Counter });
                 }
+                AssertValueGenerationSelectionBoundaries(nativeEligible, simulator.Rng.CombatCardGeneration.CaptureState());
             }
             pools.Add(new { source.Name, unlockedSourceCount = source.Cards.Length,
                 eligibleCount = nativeEligible.Length,
@@ -129,6 +139,45 @@ internal sealed partial class UnattendedTestRunner
                 rootAdmitted, rejection, pools,
                 limitation = "Exact type membership is not full state, hook, or transitive generated-pool admission." },
                 new JsonSerializerOptions { WriteIndented = true }));
-        _completedChecks.Add($"CompactGenerationClosureAudit:Original38Cards19InjectedRelics2Potions:ActualRelics{player.Relics.Count}:CompleteOrderedPools:24NativeLegacyCachedSamples:FiveFieldRng:FullPoolForkOwnership:InvalidPoolsRejected:GeneratedCardIsolation:AttackAndColorlessRegression:ActualUnchanged:FullRootExplicitlyRejected");
+        _completedChecks.Add($"CompactGenerationClosureAudit:Original38Cards19InjectedRelics2Potions:ActualRelics{player.Relics.Count}:CompleteOrderedPools:24NativeLegacyCachedValueSamples:ValueSelectionEmptySingletonNegativeZeroOversize:FiveFieldRng:FullPoolForkOwnership:InvalidPoolsRejected:GeneratedCardIsolation:AttackAndColorlessRegression:ActualUnchanged:FullRootExplicitlyRejected");
+    }
+
+    private static void AssertValueGenerationSelectionBoundaries(CardModel[] fullPool, PredictionRngState initial)
+    {
+        foreach (int size in new[] { 0, 1, 2, fullPool.Length })
+        foreach (int count in new[] { -1, 0, 1, 3, size, size + 5 }.Distinct())
+        {
+            var nativeRng = new MegaCrit.Sts2.Core.Random.Rng(0);
+            nativeRng.LoadFromSerializable(new() { counter = initial.Counter, state0 = initial.State0,
+                state1 = initial.State1, state2 = initial.State2, state3 = initial.State3 });
+            var source = fullPool.Take(size).ToArray();
+            var selected = source.TakeRandom(count, nativeRng).ToArray();
+            int[] scratch = new int[size + 1];
+            scratch[size] = 987;
+            var valueRng = new ValueRng(initial.Counter, initial.State0, initial.State1, initial.State2, initial.State3)
+                .TakeDistinctIndices(size, count, scratch, out int selectedCount);
+            if (selected.Length != selectedCount || scratch[size] != 987
+                || selected.Where((card, index) => !ReferenceEquals(card, source[scratch[index]])).Any()
+                || !SameFiveFieldRngState(nativeRng.CaptureState(),
+                    new(valueRng.Counter, valueRng.State0, valueRng.State1, valueRng.State2, valueRng.State3)))
+                throw new InvalidOperationException($"Value generation selection mismatch for size={size}, count={count}.");
+        }
+        int[] invalidScratch = [71, 72];
+        bool rejected = false;
+        try { _ = new ValueRng().TakeDistinctIndices(3, 1, invalidScratch, out _); }
+        catch (ArgumentException) { rejected = true; }
+        if (!rejected || !invalidScratch.SequenceEqual(new[] { 71, 72 }))
+            throw new InvalidOperationException("Value generation selection modified undersized scratch or failed to reject it.");
+        int[] reusable = new int[fullPool.Length];
+        var allocationRng = new ValueRng(initial.Counter, initial.State0, initial.State1, initial.State2, initial.State3);
+        for (int warmup = 0; warmup < 100; warmup++)
+            allocationRng = allocationRng.TakeDistinctIndices(fullPool.Length, 1, reusable, out _);
+        int beforeCounter = allocationRng.Counter;
+        long beforeBytes = GC.GetAllocatedBytesForCurrentThread();
+        for (int sample = 0; sample < 5000; sample++)
+            allocationRng = allocationRng.TakeDistinctIndices(fullPool.Length, 1, reusable, out _);
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - beforeBytes;
+        if (allocated != 0 || allocationRng.Counter - beforeCounter != 5000 * (fullPool.Length - 1))
+            throw new InvalidOperationException($"Value generation selection allocated {allocated} bytes or changed RNG consumption.");
     }
 }

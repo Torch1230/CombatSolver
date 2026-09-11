@@ -10,6 +10,8 @@
 
 - 合并上游 `61e54fa`（0.36.1）的遗物计数策略及 UI，保留紧凑后端完整状态与固定节点合同。合并候选 Release、Linux 结构门禁、`COMPACT-PAGESTORM-SEARCH` 和 `RELIC-COUNTER-POLICY` 通过；没有重测完整性能基准。
 
+- 值 RNG 完整池选取（未完成检查点）：新增独占 scratch 的 `TakeDistinctIndices`，尚未接入紧凑生成命令或扩大准入。新测试因首个池计量到 160 字节额外分配而 Failed，具体归因待查；不能把编译通过当作原语或完整生成闭包通过。
+
 - [完整角色生成池冻结](performance/simulation-generation-root-20260911.md)：主线程捕获全部规范候选，CallOfTheVoid 读取冻结池，攻击候选共用同一来源；自定义池保持原生成链。分支仍独立完成随机洗牌和牌实例创建。
 
 - [完整随机生成池审计](performance/simulation-generation-audit-20260911.md)：保留原始建局并导出 CallOfTheVoid 的 78 种和无色药水的 50 种候选；目前分别准入 19／3 种。24 次原生选择／旧引擎完整 RNG 对照通过，完整根仍显式拒绝。

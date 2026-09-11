@@ -1,4 +1,12 @@
 {
+  "VALUE-GENERATION-SELECTION-WIP-20260911": {
+    "status": "Failed",
+    "level": "IncompleteNativeValueSelectionAndAllocationContract",
+    "procedure": "完整生成池与值 RNG 选取原语四方对照，包含边界及重复选择分配检查。",
+    "expected": "完整顺序和RNG一致；独占scratch复用后的计量段无额外当前线程分配。",
+    "observed": "3c479d36a88f4889b9d1f78f9d0c9251 Failed: Value generation selection allocated 160 bytes or changed RNG consumption. 首池计量阶段退出，归因和后续覆盖未完成。",
+    "evidence": "docs/TEST_MATRIX.md 值 RNG 未完成检查点；不是生产紧凑生成准入。"
+  },
   "CHARACTER-GENERATION-ROOT-20260911": {
     "status": "Passed",
     "level": "HeadlessNativeGenerationAndRootPoolOwnership",

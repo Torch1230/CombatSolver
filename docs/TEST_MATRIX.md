@@ -3110,3 +3110,7 @@ pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId MONSTER-MOVES-BA
 - `COMPACT-PAGESTORM-SEARCH`：`4062afbaaa7749afa4b20ddca77d86c5` Passed，30.44 秒含启动；250 节点旧新／串并行、实际并发 2、取消／故障排空及根复用。
 - `RELIC-COUNTER-POLICY`：`6e67fdf96aaf4511a7e436e1de01b896` Passed，4.75 秒；十项根计数、Fork、实机推进隔离、设置/UI、真实搜索与原生末击；早停 2 节点，关闭后 17 节点。
 - Release 零警告／错误，Linux 结构门禁 Passed（96 个 Search 文件）；PowerShell 对应规则未执行。未重跑完整部署、正常 NoGC 基准或覆盖分类 verify。
+
+## 值 RNG 的完整池选取（2026-09-11，未完成）
+
+`COMPACT-GENERATION-CLOSURE-AUDIT` 增加 78／50 个完整池的原生／旧链／缓存／值 RNG 四方对照；44 个边界组合覆盖空／单元素／双元素／完整池及负、零和超量请求，检查 scratch 尾部、容量不足拒绝、两池各 5,000 次复用选择的当前线程分配和完整 RNG 消耗。本轮 `3c479d36a88f4889b9d1f78f9d0c9251` Failed（23.945 秒），在首个池完成选择对照后，因分配／RNG 合并断言打印 160 字节而退出；没有完成第二个池和全部后续检查，分配归因待查。Release v2 和 Linux 结构门禁通过不代表该行为测试通过；保持失败断言及原生比较。

@@ -709,6 +709,7 @@ src/Search/SimulatedCombatState.cs	_rootCardGenerationPools = source._rootCardGe
 src/Search/RootCombatCardGenerationPoolSnapshot.cs	TryGetEligibleCharacterCards(
 src/Search/RootCombatCardGenerationPoolSnapshot.cs	ReferenceEquals(cardPool.AllCards, captured.AllCardsIdentity)
 src/Engine/Common/PredictionForking.cs	TryGetRootEligibleCharacterCards(
+src/Engine/InCombat/Simulation/Compact/ValueRng.cs	TakeDistinctIndices(
 src/Prediction/TurnStartPowerSupport.cs	options = simulator.TryGetRootEligibleCharacterCardsForCombat(
 src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs	ICombatPredictionRootMaterializable materializable
 src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs	public CombatTerminalStamp? TerminalStamp { get; private set; }
