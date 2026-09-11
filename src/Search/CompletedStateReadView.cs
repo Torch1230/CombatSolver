@@ -34,6 +34,7 @@ internal abstract class CompletedStateReadView
     internal abstract IReadOnlyList<PredictionGap> PredictionGaps { get; }
     internal abstract CardHistoryReadValues CardHistory { get; }
     internal virtual CombatHistoryReadValues? CombatHistory => null;
+    internal virtual int? CumulativePlayerHpLost => null;
     internal abstract PredictionRngState ShuffleRng { get; }
     internal virtual PredictionRngState? EnergyCostRng => null;
     // Consumers separately honor EnemyValuesInvariant and CardValuesInvariant, plus each
@@ -58,7 +59,7 @@ internal readonly record struct CreatureReadValues(int CurrentHp, int MaxHp, int
 // Null means preserve the original map entry (including absence); zero is an explicit entry.
 internal readonly record struct CardHistoryReadValues(Player Owner, int? BlockPlays, int? SkillPlays,
     int? Discards, int? EnergySpent, int? Draws, int? Series, int? Starts, int? Plays, int? ManualPlays,
-    int? AttackPlays = null, int? CreatureAttacks = null, int? ZeroCostAttackStarts = null, int? Exhausts = null, int? ShivPlays = null);
+    int? AttackPlays = null, int? CreatureAttacks = null, int? ZeroCostAttackStarts = null, int? Exhausts = null, int? ShivPlays = null, int? StatusDraws = null);
 
 // Lane-owned derived read data. These collections preserve explicit entries (including zero)
 // from the captured root; event consumers extend them without mutating root models or maps.

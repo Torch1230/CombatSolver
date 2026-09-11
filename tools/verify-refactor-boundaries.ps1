@@ -1211,7 +1211,8 @@ $compactProjection = Join-Path $repositoryRoot 'src/Testing/CompactDiscardProjec
 $damageSimulator = [IO.File]::ReadAllText((Join-Path $repositoryRoot 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.Damage.cs'))
 if ($damageSimulator.Contains('dealer?.IsDead')) { $violations.Add('Damage dealers must read branch vitals.') }
 if (-not $damageSimulator.Contains('effects.CompletePlayerDeath(player);')) { $violations.Add('Player death lost domain cleanup before orb/pet handling.') }
-foreach ($required in @('AssertRepresentedHooks(runListeners[index], runPrefix: true);', '(key.RunPrefix || !RepresentedHook(key.Type, method.Name))')) {
+if ([IO.File]::ReadAllText((Join-Path $repositoryRoot 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.EndTurn.cs')).Contains('SaveManager')) { $violations.Add('Turn-end execution must not read live animation settings.') }
+foreach ($required in @('AssertRepresentedHooks(runListeners[index], runPrefix: true, includeHandEnd);', '(key.RunPrefix || !RepresentedHook(key.Type, method.Name))')) {
     if (-not ([IO.File]::ReadAllText($compactProjection)).Contains($required)) {
         $violations.Add("Compact deck listeners lost their independent run-hook audit: $required")
     }
@@ -1292,8 +1293,11 @@ $compactReadGuards = @(
     @('src/Engine/InCombat/Simulation/Compact/CreatureValueSlots.cs', 'state.Write(Offset + 3, present ? 1 : 0)'),
     @('src/Testing/CompactDiscardProjection.cs', '=> new(this, _root.Fork(), _player, _risks)'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'if (ResultPile(card) == Pile.Removed || !Ending)'),
-    @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', '_creatures[target].SetPresent(state, false);'),
-    @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', 'state.Write(_terminalSlot, 1);'),
+    @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', 'if (target != 0) _creatures[target].SetPresent(state, false);'),
+    @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', 'state.Write(_terminalSlot, DeathCompleted(state, 0) ? 2 : 1);'),
+    @('src/Search/SimulatedCombatState.cs', 'history?.Owner, history?.StatusDraws'),
+    @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'view?.CumulativePlayerHpLost ?? combat.GetCumulativeHpLost(_player.Creature)'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.HandEnd.cs', 'if (!_handEndAdmitted || !Complete || !Enum.IsDefined(staging))'),
     @('src/Search/CompletedStateReadView.cs', 'A new stable root requires a new cache.'),
     @('src/Search/SimulatedCombatState.cs', 'private T? PreparePowerApplication<T>'),
     @('src/Search/SimulatedCombatState.cs', 'private PowerModel ApplyPreparedPower<T>'),

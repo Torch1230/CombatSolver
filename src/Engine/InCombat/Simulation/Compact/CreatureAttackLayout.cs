@@ -22,6 +22,7 @@ internal sealed class CreatureAttackLayout
     internal bool Present(ReversibleValueState state, int creature) => _creatures[creature].IsPresent(state);
     internal bool DeathCompleted(ReversibleValueState state, int creature) => state[_deathStart + creature] != 0;
     internal bool Terminal(ReversibleValueState state) => state[_terminalSlot] != 0;
+    internal bool DefeatTerminal(ReversibleValueState state) => state[_terminalSlot] == 2;
 
     internal DamageValues Damage(ReversibleValueState state, int target, decimal amount, bool unblockable = false)
     {
@@ -38,12 +39,14 @@ internal sealed class CreatureAttackLayout
     {
         if (Read(state, target).CurrentHp != 0 || DeathCompleted(state, target))
             throw new InvalidOperationException("Death completion requires an unprocessed dead creature.");
-        _creatures[target].SetPresent(state, false);
+        // A dead player remains in the combat roster until native teardown.
+        if (target != 0) _creatures[target].SetPresent(state, false);
         state.Write(_deathStart + target, 1);
     }
 
     internal bool IsEnding(ReversibleValueState state)
     {
+        if (DeathCompleted(state, 0)) return true;
         for (int index = 1; index < Count; index++)
             if (Present(state, index)) return false;
         return true;
@@ -53,7 +56,7 @@ internal sealed class CreatureAttackLayout
     {
         if (Terminal(state)) return true;
         if (!IsEnding(state)) return false;
-        state.Write(_terminalSlot, 1);
+        state.Write(_terminalSlot, DeathCompleted(state, 0) ? 2 : 1);
         return true;
     }
 }

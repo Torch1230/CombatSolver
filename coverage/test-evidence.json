@@ -2062,5 +2062,13 @@
     "expected": "玩家死亡后Power清理；伤害只依赖分支施伤者状态，失败在安全检查点锁定。",
     "observed": "75524a751dad411391589882d8d1b468证明Power未移除；1b1a06a2afe24fe1b305c7f6a23176e2证明live死亡泄漏；最终9215d87712ed4b01befaae18c76ee62b Passed。",
     "evidence": "docs/performance/simulation-player-death-20260911.json"
+  },
+  "COMPACT-HAND-END-NATIVE": {
+    "status": "Passed",
+    "level": "HeadlessStrictNativeHandPhaseTwoSchedulingModesAndFrozenValueDifferential",
+    "procedure": "Normal 和 Instant 分别比较真实 DoTurnEnd：三组根、六条分支，三或四张灼伤、虚无、逃脱计划抽状态及防御兄弟。",
+    "expected": "无属性可格挡自身伤害、玩家阵容保留和 Power 清理、正确入场及结果牌堆、累计失血评分、状态抽取键、待失败与终局；各 lane 独立恢复。",
+    "observed": "final-v4 Instant 537ef792140f40368dc7b30b0b328a00／Normal a80cf738cde74758a4ceabbf6b01905e Passed；全部 Snapshot、源历史、九 RNG、五个有序牌堆、八工作区及原生死亡后重放通过。v3 普通攻击／Power 哨兵 92409a0ec76245eaad053b899a7f91b2 Passed。",
+    "evidence": "src/Testing/UnattendedTestRunner.CompactHandEnd.cs；docs/performance/simulation-hand-end-20260911.md；2026-09-11。仅手牌阶段，未接生产完整回合。"
   }
 }

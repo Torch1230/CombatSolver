@@ -2159,7 +2159,7 @@ internal sealed partial class SimulatedCombatState
         AddPlayerIntMap(ref fingerprint, 'e', _energySpentThisTurn, history?.Owner, history?.EnergySpent);
         AddPlayerIntMap(ref fingerprint, 'z', _starsGainedThisTurn);
         AddPlayerIntMap(ref fingerprint, 'n', _nonHandDrawsThisTurn, history?.Owner, history?.Draws);
-        AddPlayerIntMap(ref fingerprint, 's', _statusCardsDrawnThisTurn);
+        AddPlayerIntMap(ref fingerprint, 's', _statusCardsDrawnThisTurn, history?.Owner, history?.StatusDraws);
         AddCreatureIntMap(ref fingerprint, 'Q', _cardPlaySeriesStartedThisTurn, history?.Owner.Creature, history?.Series);
         AddCreatureIntMap(ref fingerprint, 'q', _zeroCostAttackStartsThisTurn, history?.Owner.Creature, history?.ZeroCostAttackStarts);
         AddCreatureIntMap(ref fingerprint, 'J', _cardPlayStartsThisTurn, history?.Owner.Creature, history?.Starts);

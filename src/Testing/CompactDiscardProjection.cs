@@ -38,7 +38,7 @@ internal sealed class CompactDiscardProjection
     private readonly PowerModel[] _powerTemplates;
     internal int PlayerTurn => ((SimulatedCombatState)_root.State.CombatState).GetPlayerTurnNumber(_player);
 
-    internal CompactDiscardProjection(CombatPredictionSimulator root, Player player, bool includeAttacks = false)
+    internal CompactDiscardProjection(CombatPredictionSimulator root, Player player, bool includeAttacks = false, bool includeHandEnd = false)
     {
         _root = root;
         _player = player;
@@ -63,9 +63,9 @@ internal sealed class CompactDiscardProjection
         // reach them; e.g. drawing a combat Slither must not invoke the deck copy.
         var runListeners = ((ICombatPredictionHookListenerSource)combat).RunHookListeners;
         for (int index = 0; index < combat.RootRunHookListenerCount; index++)
-            AssertRepresentedHooks(runListeners[index], runPrefix: true);
+            AssertRepresentedHooks(runListeners[index], runPrefix: true, includeHandEnd);
         foreach (AbstractModel listener in combat.IterateHookListeners())
-            AssertRepresentedHooks(listener, runPrefix: false);
+            AssertRepresentedHooks(listener, runPrefix: false, includeHandEnd);
         _creatures = includeAttacks ? [player.Creature, .. combat.Enemies] : [];
         if (includeAttacks && (combat.PlayerCreatures.Count != 1 || combat.KnownEnemies.Count != combat.Enemies.Count
             || _creatures.Any(c => root.State.GetCreature(c).IsDead || c.PetOwner != null)
@@ -102,7 +102,7 @@ internal sealed class CompactDiscardProjection
         // combat history event is emitted by enchanting. Capture the final immutable variant.
         _definitionModels = [.. cards.Select(card => card.Preview), .. generated];
         ResumableDiscardProgram.Card[] definitions = _definitionModels.Select(card => CompactCardProgramCompiler.Compile(card, includeAttacks, shivTemplate, inkyShivTemplate)).ToArray();
-        _risks = _definitionModels.Select(card => CardOnPlayMirrors.DescribeDispatch(card) switch
+        _risks = _definitionModels.Select(card => card is Burn ? null : CardOnPlayMirrors.DescribeDispatch(card) switch
         {
             MirrorDispatchKind.Handled => (PredictionRiskReason?)null,
             MirrorDispatchKind.Inferred => PredictionRiskReason.MethodMirrorIncomplete,
@@ -132,7 +132,7 @@ internal sealed class CompactDiscardProjection
             powers.OfType<StratagemPower>().SingleOrDefault()?.Amount ?? 0,
             Block(relics.OfType<TheAbacus>().SingleOrDefault()), abacusIndex >= 0 && abacusIndex < stratagemIndex,
             includeAttacks ? _creatures.Select(c => { var v = root.State.GetCreature(c); return new CreatureVitals(v.CurrentHp, v.MaxHp, v.Block); }).ToArray() : null, powerDefinitions, definitions[cards.Length..],
-            new(energyRng.Counter, energyRng.State0, energyRng.State1, energyRng.State2, energyRng.State3));
+            new(energyRng.Counter, energyRng.State0, energyRng.State1, energyRng.State2, energyRng.State3), handEndAdmitted: includeHandEnd);
         CardValuesInvariant = Program.CardValuesInvariant;
     }
 
@@ -241,6 +241,7 @@ internal sealed class CompactDiscardProjection
             ?? throw new InvalidOperationException("Projection lost a root instance.")).ToList();
         var damageResults = new Dictionary<int, DamageResult>();
         var stack = new Stack<(int Identity, CardPlay Play, PredictionTrace.TraceScope Scope, PredictionTrace.TraceScope? Method)>();
+        PredictionTrace.TraceScope? handEndMethod = null;
         try
         {
             for (int index = 0; index < program.EventCount; index++)
@@ -269,6 +270,17 @@ internal sealed class CompactDiscardProjection
                 PredictedCard card = cards[item.Card];
                 switch (item.Kind)
                 {
+                    case ResumableDiscardProgram.EventKind.HandEndMoved:
+                        projection.AddToPile(card, PileType.Play);
+                        break;
+                    case ResumableDiscardProgram.EventKind.HandEndStart:
+                        if (handEndMethod != null || stack.Count != 0) throw new InvalidOperationException("Hand-end method overlaps a card action.");
+                        handEndMethod = projection.PushMethodSource(card.Original, OnTurnEndInHand);
+                        break;
+                    case ResumableDiscardProgram.EventKind.HandEndFinish:
+                        if (handEndMethod == null) throw new InvalidOperationException("Hand-end method was not started.");
+                        handEndMethod.Value.Dispose(); handEndMethod = null;
+                        break;
                     case ResumableDiscardProgram.EventKind.Pay:
                         state.LoseEnergy(item.Value);
                         combat.RecordEnergySpent(_player, item.Value);
@@ -342,7 +354,9 @@ internal sealed class CompactDiscardProjection
                         bool poison = (traits & ResumableDiscardProgram.DamageTraits.Poison) != 0;
                         Creature? dealer = (traits & ResumableDiscardProgram.DamageTraits.NoDealer) != 0 ? null : _player.Creature;
                         PredictedCard? cardSource = (traits & ResumableDiscardProgram.DamageTraits.NoCard) != 0 ? null : card;
-                        ValueProp props = poison ? ValueProp.Unblockable | ValueProp.Unpowered : ValueProp.Move;
+                        ValueProp props = poison ? 0 : ValueProp.Move;
+                        if ((traits & ResumableDiscardProgram.DamageTraits.Unpowered) != 0) props |= ValueProp.Unpowered;
+                        if ((traits & ResumableDiscardProgram.DamageTraits.Unblockable) != 0) props |= ValueProp.Unblockable;
                         DamageResult result = new(target, props)
                         {
                             UnblockedDamage = item.Value, BlockedDamage = blocked.Value, OverkillDamage = overkill.Value,
@@ -352,11 +366,12 @@ internal sealed class CompactDiscardProjection
                         projection.History.DamageReceived(target, dealer, result, cardSource, poison
                             ? CombatDamageSource.For(CombatDamageSourceKind.Poison, nameof(PoisonPower)) : projection.ResolveDamageSource(cardSource));
                         combat.RecordDamageReceived(target, dealer, result);
-                        if (!poison) damageResults[item.Card] = result;
+                        if ((traits & ResumableDiscardProgram.DamageTraits.Unpowered) == 0) damageResults[item.Card] = result;
                         break;
                     }
                     case ResumableDiscardProgram.EventKind.Death:
-                        projection.State.RemoveCreature(_creatures[item.Target]);
+                        if (item.Target == 0) projection.LoseCombat();
+                        else projection.State.RemoveCreature(_creatures[item.Target]);
                         combat.CompleteDeathPhase(_creatures[item.Target]);
                         break;
                     case ResumableDiscardProgram.EventKind.AttackFinish:
@@ -405,10 +420,11 @@ internal sealed class CompactDiscardProjection
                         throw new InvalidOperationException("Unknown compact projection event.");
                 }
             }
-            if (stack.Count != 0) throw new InvalidOperationException("Compact history did not finish.");
+            if (stack.Count != 0 || handEndMethod != null) throw new InvalidOperationException("Compact history did not finish.");
         }
         finally
         {
+            handEndMethod?.Dispose();
             while (stack.TryPop(out var active)) { active.Method?.Dispose(); active.Scope.Dispose(); }
         }
         if (program.PowerCount > 0)
@@ -429,8 +445,9 @@ internal sealed class CompactDiscardProjection
         }
         if (program.Terminal)
         {
-            Terminal.SetValue(projection, new CombatTerminalStamp(PlayerTurn, CombatTerminalOutcome.Victory));
-            InProgress.SetValue(projection, false);
+            if (!projection.CheckWinCondition(PlayerTurn)
+                || projection.TerminalStamp?.Outcome != (program.DefeatTerminal ? CombatTerminalOutcome.Defeat : CombatTerminalOutcome.Victory))
+                throw new InvalidOperationException("Compact terminal outcome differs from its projected safe point.");
         }
         ValueRng rng = program.ShuffleRng;
         projection.Rng.Shuffle.LoadFromSerializable(new()
@@ -531,13 +548,16 @@ internal sealed class CompactDiscardProjection
         "ModifyHpLostBeforeOsty", "ModifyHpLostBeforeOstyLate", "ModifyHpLostAfterOsty", "ModifyHpLostAfterOstyLate",
         "AfterModifyingHpLostBeforeOsty", "AfterModifyingHpLostAfterOsty", "BeforeDeath", "ShouldDie", "ShouldDieLate", "AfterDeath"
     };
-    private static readonly ConcurrentDictionary<(Type Type, bool RunPrefix), string[]> HookAudit = new();
+    private static readonly HashSet<string> HandEndHooks = new(StringComparer.Ordinal)
+        { "AfterAutoPostPlayPhaseEntered", "BeforeSideTurnEnd", "ShouldEtherealTrigger", "BeforeFlush" };
+    private static readonly ConcurrentDictionary<(Type Type, bool RunPrefix, bool HandEnd), string[]> HookAudit = new();
 
-    private static void AssertRepresentedHooks(AbstractModel listener, bool runPrefix)
+    private static void AssertRepresentedHooks(AbstractModel listener, bool runPrefix, bool includeHandEnd)
     {
-        string[] unrepresented = HookAudit.GetOrAdd((listener.GetType(), runPrefix), static key => key.Type
+        string[] unrepresented = HookAudit.GetOrAdd((listener.GetType(), runPrefix, includeHandEnd), static key => key.Type
             .GetMethods(BindingFlags.Instance | BindingFlags.Public)
-            .Where(method => (key.RunPrefix ? ReachedRunHooks : ReachedHooks).Contains(method.Name)
+            .Where(method => ((key.RunPrefix ? ReachedRunHooks : ReachedHooks).Contains(method.Name)
+                    || key.HandEnd && !key.RunPrefix && HandEndHooks.Contains(method.Name))
                 && method.GetBaseDefinition().DeclaringType == typeof(AbstractModel)
                 && method.DeclaringType != typeof(AbstractModel) && (key.RunPrefix || !RepresentedHook(key.Type, method.Name)))
             .Select(method => method.Name).ToArray());
@@ -566,8 +586,8 @@ internal sealed class CompactDiscardProjection
 
     private static readonly MirrorMethodSpec OnPlay = new(typeof(CardModel), "OnPlay",
         BindingFlags.Instance | BindingFlags.NonPublic, [typeof(PlayerChoiceContext), typeof(CardPlay)]);
-    private static readonly PropertyInfo Terminal = typeof(CombatPredictionSimulator).GetProperty(nameof(CombatPredictionSimulator.TerminalStamp))!;
-    private static readonly PropertyInfo InProgress = typeof(CombatPredictionSimulator).GetProperty(nameof(CombatPredictionSimulator.IsInProgress))!;
+    private static readonly MirrorMethodSpec OnTurnEndInHand = new(typeof(CardModel), "OnTurnEndInHand",
+        BindingFlags.Instance | BindingFlags.NonPublic, [typeof(PlayerChoiceContext)]);
     private static readonly PropertyInfo ShuffleEvents = typeof(CombatPredictionSimulator)
         .GetProperty(nameof(CombatPredictionSimulator.ShuffleEventCount))!;
 }

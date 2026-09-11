@@ -1,5 +1,7 @@
 # CombatSolver 文档导航
 
+- [紧凑灼伤与手牌末尾阶段](performance/simulation-hand-end-20260911.md)：显式入场顺序、玩家失败、状态牌抽取与完整原生对照。
+
 - [玩家死亡清理与施伤者分支存活状态](performance/simulation-player-death-20260911.md)：原生致死差分与冻结根隔离修复。
 
 - [紧凑原始机甲首回合根](performance/simulation-full-root-20260911.md)：完整 30 牌／31 监听器、蛇之戒与原生分支对照。

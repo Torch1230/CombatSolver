@@ -4,6 +4,7 @@ using MegaCrit.Sts2.Core.Entities.Enchantments;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Enchantments;
+using MegaCrit.Sts2.Core.ValueProps;
 
 namespace CombatSolver;
 
@@ -14,8 +15,10 @@ internal static class CompactCardProgramCompiler
     {
         if (card is not (Acrobatics or Prepared or Backflip or StrikeSilent or StrikeNecrobinder or DefendSilent or DefendNecrobinder
                 or Neutralize or Survivor or Finesse or UltimateDefend or Suppress or Footwork or Malaise
-                or DeadlyPoison or Haze or Snakebite or Defy or EscapePlan or Outbreak or CalculatedGamble or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail or CloakAndDagger or Shiv or BladeOfInk)
-            || card is Neutralize or Suppress or Footwork or Malaise or DeadlyPoison or Haze or Snakebite or Defy or Outbreak or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail or CloakAndDagger or Shiv or BladeOfInk && !includeAttacks
+                or DeadlyPoison or Haze or Snakebite or Defy or EscapePlan or Outbreak or CalculatedGamble or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail or CloakAndDagger or Shiv or BladeOfInk or Burn)
+            || card is Neutralize or Suppress or Footwork or Malaise or DeadlyPoison or Haze or Snakebite or Defy or Outbreak or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail or CloakAndDagger or Shiv or BladeOfInk or Burn && !includeAttacks
+            || card is Burn && (card.Enchantment != null || card.EnergyCost._base != -1 || card.IsUpgraded
+                || !card.LocalKeywords.Contains(CardKeyword.Unplayable) || card.DynamicVars.Damage.Props != (ValueProp.Unpowered | ValueProp.Move))
             || card.Enchantment != null && !(card is Shiv && card.Enchantment is Inky { Amount: 1, Status: EnchantmentStatus.Normal })
                 && card.Enchantment is not Slither { Amount: 1, Status: EnchantmentStatus.Normal, TestEnergyCostOverride: -1 }
             || card.Affliction != null || card.BaseReplayCount != 0
@@ -27,14 +30,14 @@ internal static class CompactCardProgramCompiler
                     || modifier.IsReduceOnly || modifier.Amount is < 0 or > 3))
             || card.HasStarCostX || card.CurrentStarCost > 0 || card._temporaryStarCosts.Count != 0
             || card.CurrentTarget != null || card.CurrentPlayIndex != 0 || card.LastStarsSpent != 0
-            || card.HasSingleTurnRetain || card.HasTurnEndInHandEffect
+            || card.HasSingleTurnRetain || card.HasTurnEndInHandEffect && card is not Burn
             || card.LocalKeywords.Any(k => k != CardKeyword.Sly && !(card is Malaise or CalculatedGamble or Mirage or PiercingWail or Shiv && k == CardKeyword.Exhaust)
                 && !(card is Suppress && k == CardKeyword.Innate) && !(card is Snakebite or CalculatedGamble && k == CardKeyword.Retain)
-                && !(card is Defy && k == CardKeyword.Ethereal))
+                && !(card is Defy && k == CardKeyword.Ethereal) && !(card is Burn && k == CardKeyword.Unplayable))
             || card.IsSlyThisTurn && card is not Prepared)
             throw new NotSupportedException($"Compact prototype cannot admit card state {card.Id.Entry}.");
         decimal draw = card is EscapePlan ? 1 : card is Acrobatics or Prepared or Backflip or Finesse ? card.DynamicVars.Cards.BaseValue : 0;
-        decimal damage = includeAttacks && card is StrikeSilent or StrikeNecrobinder or Neutralize or Suppress or Shiv ? card.DynamicVars.Damage.BaseValue : 0;
+        decimal damage = includeAttacks && card is StrikeSilent or StrikeNecrobinder or Neutralize or Suppress or Shiv or Burn ? card.DynamicVars.Damage.BaseValue : 0;
         decimal block = card is DefendSilent or DefendNecrobinder or Backflip or Survivor or Finesse or UltimateDefend or Defy or EscapePlan or DodgeAndRoll or CloakAndDagger ? card.DynamicVars.Block.BaseValue : 0;
         decimal weak = card.Enchantment is Inky inky ? inky.DynamicVars.Weak.BaseValue
             : card is Neutralize or Suppress or Haze or Defy ? card.DynamicVars.Weak.BaseValue : 0;
@@ -44,7 +47,7 @@ internal static class CompactCardProgramCompiler
         decimal dexterity = card is Footwork ? card.DynamicVars.Dexterity.BaseValue : 0;
         decimal calculationBase = card is Mirage ? card.DynamicVars.CalculationBase.BaseValue : 0;
         decimal calculationExtra = card is Mirage ? card.DynamicVars.CalculationExtra.BaseValue : 0;
-        if (draw != decimal.Truncate(draw) || draw < 0 || draw > 10 || card.EnergyCost._base < 0
+        if (draw != decimal.Truncate(draw) || draw < 0 || draw > 10 || card.EnergyCost._base < 0 && card is not Burn
             || card is Acrobatics or Prepared or Backflip or Finesse && draw == 0
             || damage != decimal.Truncate(damage) || damage is < 0 or > 999_999_999m
             || block != decimal.Truncate(block) || block is < 0 or > 999_999_999m
@@ -60,6 +63,7 @@ internal static class CompactCardProgramCompiler
         // adapter admits exact types/instance state; the executor contains no card identities.
         CardEffectProgram effects = card switch
         {
+            Burn => CardEffectProgram.Empty,
             Acrobatics => new([new(CardInstructionKind.Draw, (int)draw), new(CardInstructionKind.Discard, 1)]),
             Prepared => new([new(CardInstructionKind.Draw, (int)draw), new(CardInstructionKind.Discard, (int)draw)]),
             Backflip or Finesse => new([new(CardInstructionKind.GainBlock, (int)block), new(CardInstructionKind.Draw, (int)draw)]),
@@ -101,8 +105,9 @@ internal static class CompactCardProgramCompiler
             card.Type == CardType.Power ? ResumableDiscardProgram.Pile.Removed : card.LocalKeywords.Contains(CardKeyword.Exhaust) ? ResumableDiscardProgram.Pile.Exhaust : ResumableDiscardProgram.Pile.Discard,
             card.EnergyCost.CostsX, card.EnergyCost.CostsX ? card.EnergyCost.CapturedXValue : 0,
             card.Type switch { CardType.Attack => CardCategory.Attack, CardType.Skill => CardCategory.Skill,
-                CardType.Power => CardCategory.Power, _ => CardCategory.Other }, card.LocalKeywords.Contains(CardKeyword.Ethereal),
-            card.Enchantment is Slither ? new RandomDrawCost(card.EnergyCost._localModifiers.Select(modifier => modifier.Amount).ToArray()) : null);
+                CardType.Power => CardCategory.Power, CardType.Status => CardCategory.Status, _ => CardCategory.Other }, card.LocalKeywords.Contains(CardKeyword.Ethereal),
+            card.Enchantment is Slither ? new RandomDrawCost(card.EnergyCost._localModifiers.Select(modifier => modifier.Amount).ToArray()) : null,
+            card is Burn ? (int)damage : null, card is Burn);
     }
 
 }

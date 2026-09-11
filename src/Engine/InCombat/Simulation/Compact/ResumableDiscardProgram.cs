@@ -5,13 +5,13 @@ namespace CombatSolver.Engine.InCombat.Simulation.Compact;
 /// The admitting adapter must prove that draw, discard and play have no unrepresented effects.
 /// It is deliberately not selected by production search.
 /// </summary>
-internal sealed class ResumableDiscardProgram
+internal sealed partial class ResumableDiscardProgram
 {
     internal readonly record struct Card(int Cost, CardEffectProgram Effects, bool Sly = false,
         Pile ResultPile = Pile.Discard, bool CostsX = false, int CapturedX = 0, CardCategory Category = CardCategory.Other,
-        bool Ethereal = false, RandomDrawCost? DrawCost = null);
+        bool Ethereal = false, RandomDrawCost? DrawCost = null, int? HandEndDamage = null, bool Unplayable = false);
     internal enum Pile { Hand, Draw, Discard, Play, Exhaust, Removed }
-    internal enum EventKind { Pay, Start, Draw, Select, SelectedCard, Discard, Block, Finish, Shuffle, ShuffleCard, Retrieve, Damage, DamageBlocked, DamageOverkill, AttackFinish, Death, PowerChange, ResultMoved, Generated, CostChanged }
+    internal enum EventKind { Pay, Start, Draw, Select, SelectedCard, Discard, Block, Finish, Shuffle, ShuffleCard, Retrieve, Damage, DamageBlocked, DamageOverkill, AttackFinish, Death, PowerChange, ResultMoved, Generated, CostChanged, HandEndMoved, HandEndStart, HandEndFinish }
     internal readonly record struct Event(EventKind Kind, int Card, int Value, bool Automatic, int Target = -1, int Flags = 0)
     {
         internal long Data => (long)(uint)Card | (long)(uint)Value << 32;
@@ -41,6 +41,7 @@ internal sealed class ResumableDiscardProgram
     private readonly int _stratagem;
     private readonly int _shuffleBlock;
     private readonly bool _shuffleBlockFirst;
+    private readonly bool _handEndAdmitted;
     private readonly CardComparer? _cardComparer;
     private readonly InstanceComparer? _instanceComparer;
     private const int FrameStart = 10;
@@ -63,7 +64,7 @@ internal sealed class ResumableDiscardProgram
     internal ValueRng? EnergyCostRng => _drawCosts?.Rng(State);
     internal Pile ResultPile(int card) => Definition(card).ResultPile;
     internal bool CardRemoved(int card) => Contains(Pile.Removed, card);
-    internal bool CardValuesInvariant => _definitions.All(card => card.ResultPile == Pile.Discard && !card.CostsX && !card.Effects.GeneratesCards && card.DrawCost == null);
+    internal bool CardValuesInvariant => _definitions.All(card => card.ResultPile == Pile.Discard && !card.Ethereal && !card.CostsX && !card.Effects.GeneratesCards && card.DrawCost == null);
     internal int Block => _combat?.Read(State, 0).Block ?? Read(BlockSlot);
     internal int PowerCount => _powers?.Count ?? 0;
     internal BasicPowerValues Power(int index) => _powers!.Read(State, index);
@@ -74,6 +75,7 @@ internal sealed class ResumableDiscardProgram
     internal bool CreatureDeathCompleted(int index) => _combat!.DeathCompleted(State, index);
     internal bool Ending => _combat?.IsEnding(State) ?? false;
     internal bool Terminal => _combat?.Terminal(State) ?? false;
+    internal bool DefeatTerminal => _combat?.DefeatTerminal(State) ?? false;
     internal bool CheckWinCondition() => Complete ? _combat?.CheckWinCondition(State) ?? false
         : throw new InvalidOperationException("Terminal check requires a completed command.");
     internal bool Complete => Read(DepthSlot) == 0;
@@ -93,13 +95,16 @@ internal sealed class ResumableDiscardProgram
 
     internal ResumableDiscardProgram(Card[] cards, IReadOnlyList<int>[] piles, int energy, int block, int discardBlock,
         ValueRng shuffleRng = default, int[]? comparisons = null, int stratagem = 0, int shuffleBlock = 0,
-        bool shuffleBlockFirst = false, CreatureVitals[]? creatures = null, BasicPowerDefinition[]? powers = null, Card[]? generatedCards = null, ValueRng? energyCostRng = null)
+        bool shuffleBlockFirst = false, CreatureVitals[]? creatures = null, BasicPowerDefinition[]? powers = null, Card[]? generatedCards = null,
+        ValueRng? energyCostRng = null, bool handEndAdmitted = false)
     {
         Card[] definitions = [.. cards, .. generatedCards ?? []];
         if (cards.Length == 0 || piles.Length != 5 || cards.Count(c => c.Sly) >= MaxFrames
             || generatedCards?.Any(card => card.Sly || card.DrawCost != null) == true)
             throw new NotSupportedException("Compact prototype capacity exceeded.");
-        if (definitions.Any(c => c.Cost < 0 || c.CapturedX is < 0 or > 999_999_999 || c.Effects == null || !Enum.IsDefined(c.Category)
+        if (definitions.Any(c => c.Cost < 0 && !(c.Unplayable && c.Cost == -1) || c.CapturedX is < 0 or > 999_999_999 || c.Effects == null || !Enum.IsDefined(c.Category)
+                || c.HandEndDamage is < 0 or > 999_999_999 || c.HandEndDamage != null && creatures == null
+                || c.Unplayable && (c.CostsX || c.Sly || c.Effects.Count != 0 || c.DrawCost != null)
                 || c.DrawCost != null && c.CostsX || c.Effects.RequiresPowers && (powers == null || creatures == null) || c.Effects.RequiresEnergyX && !c.CostsX
                 || c.ResultPile is not (Pile.Discard or Pile.Exhaust or Pile.Removed)
                 || c.Effects.RequiresTarget && creatures == null || c.Sly && (c.Effects.Count == 0 || c.Effects.RequiresTarget))
@@ -129,6 +134,7 @@ internal sealed class ResumableDiscardProgram
         _stratagem = stratagem;
         _shuffleBlock = shuffleBlock;
         _shuffleBlockFirst = shuffleBlockFirst;
+        _handEndAdmitted = handEndAdmitted;
         State = new ReversibleValueState(FrameStart + MaxFrames * FrameWidth);
         _piles = Enumerable.Range(0, PileCount).Select(_ => new ReversibleValueBuffer(State)).ToArray();
         _cardInstances = new(State);
@@ -176,7 +182,8 @@ internal sealed class ResumableDiscardProgram
 
     private ResumableDiscardProgram(Card[] cards, int rootCardCount, int discardBlock, int stratagem, int shuffleBlock,
         bool shuffleBlockFirst, CardComparer? cardComparer, CreatureAttackLayout? combat, BasicPowerLayout? powers,
-        ReversibleValueBuffer[] piles, ReversibleValueBuffer cardInstances, ReversibleValueBuffer events, RandomDrawCostLayout? drawCosts, ReversibleValueState state)
+        ReversibleValueBuffer[] piles, ReversibleValueBuffer cardInstances, ReversibleValueBuffer events, RandomDrawCostLayout? drawCosts,
+        bool handEndAdmitted, ReversibleValueState state)
     {
         _definitions = cards;
         _rootCardCount = rootCardCount;
@@ -184,6 +191,7 @@ internal sealed class ResumableDiscardProgram
         _stratagem = stratagem;
         _shuffleBlock = shuffleBlock;
         _shuffleBlockFirst = shuffleBlockFirst;
+        _handEndAdmitted = handEndAdmitted;
         _cardComparer = cardComparer;
         _instanceComparer = cardComparer == null ? null : new(this, cardComparer);
         _piles = piles;
@@ -202,6 +210,7 @@ internal sealed class ResumableDiscardProgram
         private readonly int _discardBlock;
         private readonly int _stratagem, _shuffleBlock;
         private readonly bool _shuffleBlockFirst;
+        private readonly bool _handEndAdmitted;
         private readonly CardComparer? _cardComparer;
         private readonly ReversibleValueState.FrozenValues _values;
         private readonly CreatureAttackLayout? _combat;
@@ -220,6 +229,7 @@ internal sealed class ResumableDiscardProgram
             _stratagem = source._stratagem;
             _shuffleBlock = source._shuffleBlock;
             _shuffleBlockFirst = source._shuffleBlockFirst;
+            _handEndAdmitted = source._handEndAdmitted;
             _cardComparer = source._cardComparer;
             _combat = source._combat;
             _powers = source._powers;
@@ -228,7 +238,7 @@ internal sealed class ResumableDiscardProgram
         }
         internal int PayloadBytes => _values.PayloadBytes;
         internal ResumableDiscardProgram Open() => new(_definitions, _rootCardCount, _discardBlock, _stratagem, _shuffleBlock,
-            _shuffleBlockFirst, _cardComparer, _combat, _powers, _piles, _cardInstances, _events, _drawCosts, _values.CreateWorkspace());
+            _shuffleBlockFirst, _cardComparer, _combat, _powers, _piles, _cardInstances, _events, _drawCosts, _handEndAdmitted, _values.CreateWorkspace());
         internal void RestoreInto(ResumableDiscardProgram workspace) => workspace.State.Restore(_values);
     }
 
@@ -247,7 +257,7 @@ internal sealed class ResumableDiscardProgram
     internal void Begin(int card, int target = -1)
     {
         if (!Complete || Terminal || Ending || !Contains(Pile.Hand, card)
-            || Definition(card).Effects.Count == 0 || !Definition(card).CostsX && Energy < EnergyCost(card)
+            || Definition(card).Unplayable || Definition(card).Effects.Count == 0 || !Definition(card).CostsX && Energy < EnergyCost(card)
             || (Definition(card).Effects.RequiresTarget ? target <= 0 || target >= CreatureCount || !CreaturePresent(target) || Creature(target).CurrentHp <= 0 : target != -1))
             throw new InvalidOperationException($"Card cannot begin this compact action: card={card}, target={target}, "
                 + $"energy={Energy}, cost={EnergyCost(card)}, complete={Complete}, ending={Ending}, terminal={Terminal}, "

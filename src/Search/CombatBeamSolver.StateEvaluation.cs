@@ -151,7 +151,7 @@ internal sealed partial class CombatBeamSolver
         }
         int projectedHp = threat.Hp;
         _run.Performance.End(SearchMetricPhase.ThreatProjection, threatMeasurement);
-        int cumulativePlayerHpLost = combat.GetCumulativeHpLost(_player.Creature);
+        int cumulativePlayerHpLost = view?.CumulativePlayerHpLost ?? combat.GetCumulativeHpLost(_player.Creature);
         int recoveredPlayerHp = combat.GetRecoveredHp(_player.Creature);
         int deathSaveRelicHpRestored = combat.DeathSaveRelicHpRestored;
         double hpWeight = SolverWeights.Hp;

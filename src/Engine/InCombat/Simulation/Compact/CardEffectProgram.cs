@@ -7,7 +7,7 @@ internal enum CardInstructionKind
     GainBlockAndApplyPower, ApplyTemporaryStrengthLoss, GenerateCards
 }
 internal enum CardInstructionTarget { Owner, ChosenEnemy, AllEnemies }
-internal enum CardCategory { Other, Attack, Skill, Power }
+internal enum CardCategory { Other, Attack, Skill, Power, Status }
 
 internal readonly record struct CardInstruction(CardInstructionKind Kind, int Amount,
     BasicPowerKind Power = BasicPowerKind.Strength, CardInstructionTarget Target = CardInstructionTarget.Owner,
