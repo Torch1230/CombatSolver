@@ -2054,5 +2054,13 @@
     "expected": "冻结根与分支隔离，完整状态、原键、历史、RNG、Power及估值一致。",
     "observed": "7ef49b1ef6de4b56a82c6e6c180754b3 Passed，24.32秒，31牌组监听器、9分支、6原生动作；未推进紧凑回合。",
     "evidence": "docs/performance/simulation-full-root-20260911.json"
+  },
+  "PLAYER-DEATH-POWERS-NATIVE": {
+    "status": "Passed",
+    "level": "HeadlessNativePlayerDeathAndFrozenDealerLiveness",
+    "procedure": "1HP/0格挡、Strength3/Dexterity4/Artifact2；灼伤回合末致死、原生严格差分及冻结根再次重放，两种Damage入口覆盖live与分支相反存活状态。",
+    "expected": "玩家死亡后Power清理；伤害只依赖分支施伤者状态，失败在安全检查点锁定。",
+    "observed": "75524a751dad411391589882d8d1b468证明Power未移除；1b1a06a2afe24fe1b305c7f6a23176e2证明live死亡泄漏；最终9215d87712ed4b01befaae18c76ee62b Passed。",
+    "evidence": "docs/performance/simulation-player-death-20260911.json"
   }
 }

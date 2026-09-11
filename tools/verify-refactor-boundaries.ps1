@@ -1208,6 +1208,9 @@ foreach ($file in $compactProductionFiles) {
     }
 }
 $compactProjection = Join-Path $repositoryRoot 'src/Testing/CompactDiscardProjection.cs'
+$damageSimulator = [IO.File]::ReadAllText((Join-Path $repositoryRoot 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.Damage.cs'))
+if ($damageSimulator.Contains('dealer?.IsDead')) { $violations.Add('Damage dealers must read branch vitals.') }
+if (-not $damageSimulator.Contains('effects.CompletePlayerDeath(player);')) { $violations.Add('Player death lost domain cleanup before orb/pet handling.') }
 foreach ($required in @('AssertRepresentedHooks(runListeners[index], runPrefix: true);', '(key.RunPrefix || !RepresentedHook(key.Type, method.Name))')) {
     if (-not ([IO.File]::ReadAllText($compactProjection)).Contains($required)) {
         $violations.Add("Compact deck listeners lost their independent run-hook audit: $required")

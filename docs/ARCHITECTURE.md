@@ -233,6 +233,8 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 `CombatPredictionSimulator.CardPile.cs` 的抽牌安全边界只约束当前同步调用栈：抽牌 Hook 再次自动出牌、自动出牌又抽牌时，嵌套深度最多 `100` 层，继续嵌套会明确失败，不返回部分抽牌结果。深度在 `finally` 中退出；普通动作结束后、跨回合或从稳定边界 Fork 后继续抽牌，都不因已经累计的抽牌历史而减少合法抽牌。历史记录不再承担整个分支生命周期的 `100` 次抽牌额度，正常长线与有效循环仍受 Search 的节点、时间和调度预算约束。
 
+玩家死亡由通用伤害入口经 `ICombatPredictionEffectSink.CompletePlayerDeath` 通知 `SimulatedCombatState.DeathLifecycle`，后者复用 Power 退休／移除和死亡阶段的分支所有权。该通知发生在球与宠物清理前，不借用只遍历敌人的后续清扫。列表与单目标伤害入口都从分支读取施伤者存活状态，真实 Creature 仅作为身份。
+
 ### 4.2 Mirror
 
 > 面向外部 Mod 作者的登记点总表、登记纪律与验收标准见

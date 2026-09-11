@@ -20,6 +20,12 @@ internal sealed partial class SimulatedCombatState
 {
     private ForkableDictionary<Creature, PredictedDeathPhase>? _deathPhases;
 
+    public void CompletePlayerDeath(MegaCrit.Sts2.Core.Entities.Players.Player player)
+    {
+        RemovePowersAfterDeath(player.Creature);
+        CompleteDeathPhase(player.Creature);
+    }
+
     public void SpawnStockReplacement(CombatPredictionSimulator simulator, StockPower power)
         => MonsterSpawnSupport.Spawn<Axebot>(simulator, this, power.Owner, power.Owner.SlotName,
             configure: axebot =>

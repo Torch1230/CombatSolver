@@ -1,5 +1,7 @@
 # CombatSolver 文档导航
 
+- [玩家死亡清理与施伤者分支存活状态](performance/simulation-player-death-20260911.md)：原生致死差分与冻结根隔离修复。
+
 - [紧凑原始机甲首回合根](performance/simulation-full-root-20260911.md)：完整 30 牌／31 监听器、蛇之戒与原生分支对照。
 
 玩家安装、操作与兼容性说明见 [项目 README](../README.md)。源码规则见 [AGENTS.md](../AGENTS.md)。

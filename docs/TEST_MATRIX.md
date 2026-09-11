@@ -1,5 +1,7 @@
 # CombatSolver 测试清单
 
+- `PLAYER-DEATH-POWERS-NATIVE`（`9215d87712ed4b01befaae18c76ee62b`）Passed：灼伤致死后三个 Power 清理、完整状态、根／兄弟隔离、列表／单目标伤害的反向 live／分支存活状态及待失败→Defeat。保留两条失败证据，[报告](performance/simulation-player-death-20260911.md)。
+
 - `COMPACT-FULL-ROOT-NATIVE`（`7ef49b1ef6de4b56a82c6e6c180754b3`）Passed：原始机甲 30 牌／31 牌组监听器／蛇之戒，9 分支／八工作区／六次原生出牌；完整 Snapshot、键、历史、九 RNG、缓存开关和原生推进后根隔离一致，仅首回合行动边界。[证据](performance/simulation-full-root-20260911.md)。
 
 - `COMPACT-ARTIFACT-NATIVE`（`10f13f49a6a24b03bd3d61bba40c19f2`）Passed：两根／15 分支／八工作区／九次原生出牌，首次／叠加临时效果阻止、负属性、X=0、正增益、非默认字段／顺序／退休和死亡清理，完整 Snapshot／原键／历史／九 RNG。纯值合同及普通 Power／费用哨兵 `7cbc93b5ccd9442496f85ec7e51df4fd` 通过，[证据](performance/simulation-compact-artifact-20260911.md)。

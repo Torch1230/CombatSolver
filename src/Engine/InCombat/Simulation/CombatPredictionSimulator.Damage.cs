@@ -60,7 +60,7 @@ internal sealed partial class CombatPredictionSimulator
         PredictedCard? cardSource,
         CardPlay? cardPlay)
     {
-        if (dealer?.IsDead == true || targets.Count == 0)
+        if (dealer != null && State.GetCreature(dealer).IsDead || targets.Count == 0)
         {
             // Vanilla returns empty DamageResult shells when the dealer is dead. The simulator
             // only uses damage results to update prediction state, so no-op results are omitted.
@@ -99,7 +99,7 @@ internal sealed partial class CombatPredictionSimulator
         PredictedCard? cardSource,
         CardPlay? cardPlay)
     {
-        if (dealer?.IsDead == true)
+        if (dealer != null && State.GetCreature(dealer).IsDead)
             return [];
         CombatDamageSource source = ResolveDamageSource(cardSource);
         if (!TryDamageTarget(
@@ -468,6 +468,10 @@ internal sealed partial class CombatPredictionSimulator
     // Mirrors the player-death flow in CreatureCmd.KillWithoutCheckingWinCondition.
     private bool HandlePlayerDeath(Player player)
     {
+        // Native removes the dead player's Powers before clearing their orbs and pet.
+        // Enemy cleanup is deferred to the solver's death sweep, which never visits players.
+        if (State.CombatState is ICombatPredictionEffectSink effects)
+            effects.CompletePlayerDeath(player);
         var playerState = State.GetPlayerCombatState(player);
         playerState.OrbQueue.Clear();
 

@@ -995,6 +995,9 @@ require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/Reversibl
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'private readonly ReversibleValueBuffer[] _piles;' 'growing piles must use reversible indexed buffers'
 require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" "history?.Owner.Creature, history?.ShivPlays" 'Shiv history must participate in completed state reads'
 compact_projection="$repository_root/src/Testing/CompactDiscardProjection.cs"
+damage_simulator="$repository_root/src/Engine/InCombat/Simulation/CombatPredictionSimulator.Damage.cs"
+forbid_fixed "$damage_simulator" 'dealer?.IsDead' 'damage dealers must read branch vitals'
+require_fixed "$damage_simulator" 'effects.CompletePlayerDeath(player);' 'player death must run its domain cleanup before orb/pet handling'
 for semantic_replay in '.ManualPlay(' '.AutoPlay(' '.Discard(' 'CardOnPlayMirrors.Invoke(' 'HookMirrors.'; do
     forbid_fixed "$compact_projection" "$semantic_replay" 'compact projection must decode events without replaying effects:'
 done

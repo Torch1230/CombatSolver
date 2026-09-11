@@ -178,6 +178,8 @@ internal interface ICombatPredictionEnemyDeathSink
 
 internal interface ICombatPredictionEffectSink
 {
+    void CompletePlayerDeath(MegaCrit.Sts2.Core.Entities.Players.Player player);
+
     void RecordTenderCardPlayed(MegaCrit.Sts2.Core.Entities.Creatures.Creature owner);
 
     void SpawnStockReplacement(
