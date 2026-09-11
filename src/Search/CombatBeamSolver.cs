@@ -33,7 +33,6 @@ internal sealed partial class CombatBeamSolver(
     CancellationToken cancellationToken = default,
     Action<SolverProgress>? progressCallback = null,
     SolverSearchProfile? searchProfile = null,
-    int? shortCheckpointMilliseconds = null,
     SolverPotionPolicy? potionPolicyOverride = null,
     PotionFreePolicyBaseline? potionFreePolicyBaseline = null,
     int? maximumPotionUses = null,
@@ -41,11 +40,10 @@ internal sealed partial class CombatBeamSolver(
     int? minimumPotionUses = null,
     PrimarySearchIncumbent? primaryIncumbent = null)
 {
-    private readonly SolverSearchProfile _profile = searchProfile ?? SolverSearchProfile.Short;
+    private readonly SolverSearchProfile _profile = searchProfile ?? SolverSearchProfile.Default;
     private readonly SearchRunContext _run = new(
         policy.MeasurePhasePerformance,
         policy.FramePressureSignal);
-    private readonly int? _shortCheckpointMilliseconds = shortCheckpointMilliseconds;
     private readonly bool _includeTurnSetup = policy.IncludeTurnSetup;
     private readonly Player _player = root.PlayerIdentity;
     private readonly IntentForecast _forecast = root.Forecast;

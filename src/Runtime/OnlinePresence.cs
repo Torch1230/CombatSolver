@@ -17,13 +17,15 @@ namespace CombatSolver;
 
 internal sealed record OnlinePresencePayload(
     string SessionId, string Name, string Character, int? Floor,
-    string Encounter, int? HpLoss, string Version, bool InCombat = false, long? BattleUpdatedAt = null, bool InRun = false);
+    string Encounter, int? HpLoss, string Version, bool InCombat = false, long? BattleUpdatedAt = null, bool InRun = false,
+    RunStatisticsSnapshot? RunStatistics = null);
 
 // Capture scalar values on the main thread; only the immutable payload reaches HTTP.
 internal sealed partial class OnlinePresence : Node
 {
     private static OnlinePresence? _instance;
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    private static readonly Lazy<string> InstallationIdentity = new(ReadIdentity);
     private HttpClient? _client;
     private string? _identity;
     private OnlinePresencePayload? _latestBattle;
@@ -32,6 +34,9 @@ internal sealed partial class OnlinePresence : Node
     private Task? _pending;
     private CancellationTokenSource? _request;
     private readonly string _version = typeof(Entry).Assembly.GetName().Version!.ToString(3);
+    private static readonly ClientUpdateNotice Updates = new(typeof(Entry).Assembly.GetName().Version!.ToString(3));
+    internal static string? AvailableUpdateVersion => Updates.AvailableVersion;
+    private string? _displayedUpdate;
 
     public static void Start(NGame host)
     {
@@ -45,6 +50,7 @@ internal sealed partial class OnlinePresence : Node
 
     public static void SettingsChanged()
     {
+        RunStatistics.SettingsChanged();
         if (_instance == null) return;
         _instance._request?.Cancel();
         _instance._elapsed = 30;
@@ -52,7 +58,15 @@ internal sealed partial class OnlinePresence : Node
 
     public override void _Process(double delta)
     {
-        if (!SolverSettings.Current.OnlineStatisticsEnabled || SolverController.IsMultiplayerSession) return;
+        // Saved-run loading publishes State before awaiting the save counter, then installs
+        // NetService. Capture only after that initialization boundary has completed.
+        if (RunManager.Instance.IsInProgress && RunManager.Instance.NetService is null) return;
+        if (_displayedUpdate != AvailableUpdateVersion)
+        {
+            _displayedUpdate = AvailableUpdateVersion;
+            SolverOverlay.RefreshControls();
+        }
+        if (!SolverSettings.Current.OnlineStatisticsEnabled || SolverController.IsMultiplayerSession || UnattendedTestRunner.IsActive) return;
         SolverResult? result = SolverController.CurrentResultForBugReport;
         if (CombatManager.Instance.IsInProgress && result?.CombatEndedTurn.HasValue == true && result != _capturedResult)
         {
@@ -85,7 +99,7 @@ internal sealed partial class OnlinePresence : Node
             Clean(combat == null ? "" : string.Join("、",combat.Enemies.Select(enemy => enemy.Name)),512),
             result?.CombatEndedTurn.HasValue == true ? result.ProjectedBattleHpLost : null, version,
             combat != null, result?.CombatEndedTurn.HasValue == true ? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() : null,
-            RunManager.Instance.IsInProgress);
+            RunManager.Instance.IsInProgress, RunStatistics.Snapshot);
     }
 
     internal static OnlinePresencePayload RetainLatestBattle(OnlinePresencePayload current, OnlinePresencePayload? previous)
@@ -94,7 +108,7 @@ internal sealed partial class OnlinePresence : Node
             && current.Floor.HasValue && current.Encounter.Length > 0)
             return current;
         if (previous?.HpLoss.HasValue == true)
-            return previous with { SessionId = current.SessionId, Name = current.Name, Version = current.Version, InCombat = current.InCombat, InRun = current.InRun };
+            return previous with { SessionId = current.SessionId, Name = current.Name, Version = current.Version, InCombat = current.InCombat, InRun = current.InRun, RunStatistics = current.RunStatistics };
         return current with { Character = "", Floor = null, Encounter = "", HpLoss = null, BattleUpdatedAt = null };
     }
 
@@ -106,15 +120,8 @@ internal sealed partial class OnlinePresence : Node
 
     private bool ConfigureClient()
     {
-        var metadata = typeof(Entry).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
-            .ToDictionary(item => item.Key, item => item.Value);
-        if (!metadata.TryGetValue("PresenceEndpoint", out string? address)) return false;
-        Uri endpoint = new(address!, UriKind.Absolute);
-        if (endpoint.Scheme != Uri.UriSchemeHttps) throw new InvalidOperationException("Presence endpoint requires HTTPS.");
-        byte[] pin = Convert.FromHexString(metadata["PresenceCertificateSha256"]!);
-        if (pin.Length != 32) throw new InvalidOperationException("Presence certificate pin must be SHA-256.");
-        _client = new HttpClient(CreateHandler(pin)) { BaseAddress = endpoint, Timeout = TimeSpan.FromSeconds(8) };
-        return true;
+        _client = CreateStatisticsClient();
+        return _client != null;
     }
 
     private static HttpClientHandler CreateHandler(byte[] pin)
@@ -150,7 +157,20 @@ internal sealed partial class OnlinePresence : Node
         catch (HttpRequestException) { }
     }
 
-    private static string LoadIdentity()
+    internal static HttpClient? CreateStatisticsClient()
+    {
+        var metadata = typeof(Entry).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>().ToDictionary(item => item.Key, item => item.Value);
+        if (!metadata.TryGetValue("PresenceEndpoint", out string? address)) return null;
+        Uri endpoint = new(address!, UriKind.Absolute);
+        if (endpoint.Scheme != Uri.UriSchemeHttps) throw new InvalidOperationException("Presence endpoint requires HTTPS.");
+        byte[] pin = Convert.FromHexString(metadata["PresenceCertificateSha256"]!);
+        if (pin.Length != 32) throw new InvalidOperationException("Presence certificate pin must be SHA-256.");
+        return new HttpClient(CreateHandler(pin)) { BaseAddress = endpoint, Timeout = TimeSpan.FromSeconds(8) };
+    }
+
+    internal static string LoadIdentity() => InstallationIdentity.Value;
+
+    private static string ReadIdentity()
     {
         string directory = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CombatSolver");
         System.IO.Directory.CreateDirectory(directory);
@@ -168,10 +188,16 @@ internal sealed partial class OnlinePresence : Node
             using HttpResponseMessage response = await _client!.PostAsJsonAsync("v1/heartbeat",payload,Json,token).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
                 Entry.Logger.Warn($"[CombatSolver/Online] Heartbeat HTTP {(int)response.StatusCode}");
+            else
+                await Updates.ReadResponseAsync(response, token).ConfigureAwait(false);
         }
         catch (HttpRequestException)
         {
             Entry.Logger.Warn("[CombatSolver/Online] Heartbeat connection failed.");
+        }
+        catch (JsonException)
+        {
+            Entry.Logger.Warn("[CombatSolver/Online] Invalid heartbeat update response.");
         }
         catch (OperationCanceledException) { }
     }

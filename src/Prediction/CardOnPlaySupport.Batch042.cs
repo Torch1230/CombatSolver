@@ -214,9 +214,18 @@ internal static partial class CardOnPlaySupport
     {
         List<Creature> targets = AliveHittableEnemies(simulator, combat);
         foreach (Creature enemy in targets)
+        {
             combat.Apply<DoomPower>(enemy, card.DynamicVars.Doom.IntValue, card.Owner.Creature);
+            // PowerCmd.Apply awaits amount-change listeners before OnPlay proceeds
+            // to its Doom threshold check (notably SleightOfFlesh damage).
+            PowerLifecycleSupport.ResolvePowerAmountChanges(simulator, combat);
+            if (simulator.HasPendingChoice)
+                return;
+            if (!CorePowerSupport.ApplyEnemyDeathPowers(simulator, combat, combat.KnownEnemies, processedEnemyDeaths))
+                return;
+        }
 
-        List<Creature> doomed = targets
+        List<Creature> doomed = AliveHittableEnemies(simulator, combat)
             .Where(enemy => simulator.State.GetCreature(enemy).CurrentHp <= combat.GetAmount<DoomPower>(enemy))
             .ToList();
         combat.DoomKill(simulator, doomed);

@@ -155,6 +155,10 @@ internal sealed partial class SimulatedCombatState
         Player player)
     {
         SimPlayerCombatState state = simulator.State.GetPlayerCombatState(player);
+        if (state.Phase is not (MegaCrit.Sts2.Core.Combat.PlayerTurnPhase.AutoPrePlay
+            or MegaCrit.Sts2.Core.Combat.PlayerTurnPhase.Play
+            or MegaCrit.Sts2.Core.Combat.PlayerTurnPhase.AutoPostPlay))
+            return;
         if (!state.Hand.IsEmpty
             || !RelicsOf(player).Any(static relic => !relic.IsMelted && relic is UnceasingTop))
         {

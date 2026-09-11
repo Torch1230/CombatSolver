@@ -1486,7 +1486,7 @@ internal static class SearchGcPolicy
                         afterCoverageCapture: true);
                     completedCollection = trimWorkingSet
                         ? CollectGeneration2ForManualMemoryRelease()
-                        : await CollectGeneration2InBackgroundAsync();
+                        : await CollectGeneration2ForAutomaticReclaimAsync();
                     lock (Gate)
                     {
                         _backgroundGen2CompletedCountForTesting++;
@@ -1711,6 +1711,7 @@ internal static class SearchGcPolicy
                     backgroundIndexBefore = background.Index;
                     fullBlockingIndexBefore = fullBlocking.Index;
                     requests++;
+                    Lifecycle.RecordForcedCollection();
                     GC.Collect(
                         GC.MaxGeneration,
                         GCCollectionMode.Forced,
@@ -1735,6 +1736,13 @@ internal static class SearchGcPolicy
                 CollectGeneration2ForSearch();
         }
     }
+
+    private static Task<BackgroundGen2Completion> CollectGeneration2ForAutomaticReclaimAsync(
+        bool inSearchCheckpoint = false)
+        => CollectGeneration2InBackgroundAsync(inSearchCheckpoint);
+
+    internal static async Task<string> CollectAutomaticReclaimForTesting()
+        => (await CollectGeneration2ForAutomaticReclaimAsync()).Kind;
 
     private static BackgroundGen2Completion CollectGeneration2ForManualMemoryRelease()
     {
@@ -1892,12 +1900,18 @@ internal static class SearchGcPolicy
                 restartNoGcRegion: false,
                 cancellationToken: cancellationToken,
                 reason: "default_gc_fallback"),
-            HasUnexpectedNoGcLoss);
+            HasUnexpectedNoGcLoss,
+            OperatingSystem.IsWindows() ? CaptureCurrentPhysicalMemoryLoad : null,
+            OperatingSystem.IsWindows()
+                ? CalculateReusableHeapBytes(memory.HeapSizeBytes, memory.FragmentedBytes,
+                    GC.GetTotalMemory(forceFullCollection: false))
+                : 0);
         Entry.Logger.Info(
             $"[CombatSolver/Test] GC_SEARCH_ALLOCATION_LIMIT limit={allocationLimitBytes} " +
             $"remaining_region={remainingRegionBytes} region_budget={regionBudgetBytes} " +
             $"loh_budget={lohBudgetBytes} configured_budget={configuredRegionBudgetBytes} " +
             $"system_memory_load={memory.MemoryLoadBytes} " +
+            $"system_pressure_source={(OperatingSystem.IsWindows() ? "physical" : "allocation_projection")} " +
             $"system_memory_limit={systemMemoryLimitBytes}");
     }
 
@@ -1978,6 +1992,8 @@ internal static class SearchGcPolicy
             : NoGcRegionStartOutcome.InsufficientMemory;
         bool collectionCompleted = false;
         BackgroundGen2Completion completedCollection = default;
+        long liveAfterCollection = 0;
+        GCMemoryInfo heapAfterCollection = default;
         long liveBefore = GC.GetTotalMemory(forceFullCollection: false);
         using Process processBefore = Process.GetCurrentProcess();
         long workingSetBefore = processBefore.WorkingSet64;
@@ -2005,9 +2021,11 @@ internal static class SearchGcPolicy
                 // reference-release epochs. Those retain their post-search completion chain.
                 _activeGeneration2CollectionStarted = true;
             }
-            completedCollection = CollectGeneration2InBackgroundAsync(inSearchCheckpoint: true)
+            completedCollection = CollectGeneration2ForAutomaticReclaimAsync(inSearchCheckpoint: true)
                 .GetAwaiter().GetResult();
             collectionCompleted = true;
+            liveAfterCollection = GC.GetTotalMemory(false);
+            heapAfterCollection = GC.GetGCMemoryInfo();
             // Capture the forced collection before TryStartNoGCRegion can replace the latest
             // GC info with a bookkeeping collection that has no pause of its own.
             signal.ObserveReclaimGcPause(pauseObservation.ObserveMaximumSince());
@@ -2112,6 +2130,10 @@ internal static class SearchGcPolicy
                 $"max_observed_gc_pause_ms={signal.LastReclaimMaxObservedGcPause.TotalMilliseconds:F1} " +
                 CaptureLifecycle().DeltaFrom(lifecycleBefore).ToDiagnosticString() + " " +
                 $"collection_completed={collectionCompleted.ToString().ToLowerInvariant()} " +
+                $"managed_live_after_collect={liveAfterCollection} " +
+                $"heap_after_collect={heapAfterCollection.HeapSizeBytes} " +
+                $"fragmented_after_collect={heapAfterCollection.FragmentedBytes} " +
+                $"committed_after_collect={heapAfterCollection.TotalCommittedBytes} " +
                 $"managed_live_before={liveBefore} managed_live_after={GC.GetTotalMemory(false)} " +
                 $"working_set_before={workingSetBefore} working_set_after={processAfter.WorkingSet64} " +
                 $"private_before={privateBefore} private_after={processAfter.PrivateMemorySize64}");
@@ -2185,7 +2207,7 @@ internal static class SearchGcPolicy
         process.Refresh();
         return $"working_set={process.WorkingSet64} private_bytes={process.PrivateMemorySize64} " +
                $"managed_live={GC.GetTotalMemory(forceFullCollection: false)} " +
-               $"managed_heap={memory.HeapSizeBytes} fragmented={memory.FragmentedBytes} " +
+               $"managed_heap={memory.HeapSizeBytes} fragmented={memory.FragmentedBytes} managed_committed={memory.TotalCommittedBytes} " +
                $"memory_load={memory.MemoryLoadBytes} high_memory_threshold={memory.HighMemoryLoadThresholdBytes} " +
                $"total_available={memory.TotalAvailableMemoryBytes} " +
                $"gen0={GC.CollectionCount(0)} gen1={GC.CollectionCount(1)} gen2={GC.CollectionCount(2)} " +
@@ -2275,11 +2297,20 @@ internal static class SearchGcPolicy
     {
         GCMemoryInfo memory = GC.GetGCMemoryInfo();
         long systemLimit = ResolveSystemMemoryLimit(memory);
-        long memoryLoad = Math.Max(0, memory.MemoryLoadBytes);
-        long headroom = systemLimit == long.MaxValue
-            ? configuredBudgetBytes
-            : Math.Max(0, systemLimit - memoryLoad);
-        long effectiveBudget = Math.Min(configuredBudgetBytes, headroom);
+        // A background collection leaves reusable holes inside the already committed heap.
+        // Reusing those holes is allocation, but does not consume the same amount of new
+        // physical memory. Use live physical pressure while searching on Windows; platforms
+        // with only last-GC memory samples retain the conservative allocation projection.
+        long memoryLoad = OperatingSystem.IsWindows()
+            ? PhysicalMemoryUsage.Capture(memory).UsedBytes
+            : Math.Max(0, memory.MemoryLoadBytes);
+        long reusableHeap = OperatingSystem.IsWindows()
+            ? CalculateReusableHeapBytes(memory.HeapSizeBytes, memory.FragmentedBytes,
+                GC.GetTotalMemory(forceFullCollection: false))
+            : 0;
+        long effectiveBudget = CalculateAllocationCapacity(configuredBudgetBytes, systemLimit, memoryLoad, reusableHeap);
+        Entry.Logger.Info($"[CombatSolver/Test] GC_ALLOCATION_CAPACITY physical_load={memoryLoad} " +
+            $"system_limit={systemLimit} reusable_heap={reusableHeap} effective_budget={effectiveBudget}");
         if (effectiveBudget < MinimumNoGcRegionBudgetBytes)
             effectiveBudget = 0;
         long effectiveLohBudget = effectiveBudget == 0
@@ -2293,6 +2324,22 @@ internal static class SearchGcPolicy
             memoryLoad,
             systemLimit,
             effectiveBudget < configuredBudgetBytes);
+    }
+
+    private static long CaptureCurrentPhysicalMemoryLoad()
+        => PhysicalMemoryUsage.Capture(GC.GetGCMemoryInfo()).UsedBytes;
+
+    internal static long CalculateReusableHeapBytes(long heapSize, long fragmented, long currentLive)
+        => Math.Max(0, Math.Min(fragmented, heapSize - Math.Max(0, currentLive)));
+
+    internal static long CalculateAllocationCapacity(long configured, long systemLimit, long memoryLoad, long reusableHeap)
+    {
+        if (systemLimit == long.MaxValue) return configured;
+        // Existing heap space does not grant permission to run at the physical pressure limit.
+        long headroom = Math.Max(0, systemLimit - memoryLoad);
+        if (headroom == 0) return 0;
+        return Math.Min(configured, headroom > long.MaxValue - reusableHeap
+            ? long.MaxValue : headroom + reusableHeap);
     }
 
     internal static long ResolveSystemMemoryLimit(GCMemoryInfo memory)

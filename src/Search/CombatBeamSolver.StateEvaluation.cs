@@ -109,7 +109,7 @@ internal sealed partial class CombatBeamSolver
             simulator,
             shufflesCrossed,
             processedEnemyDeaths, view);
-        StateFingerprint unorderedPileKey = BuildUnorderedPileKey(hand, draw, discard, exhaust);
+        StateFingerprint unorderedPileKey = BuildUnorderedPileKey(hand, draw, discard, exhaust, view == null ? playerState : null);
         StateFingerprint cyclePileShapeKey = view is null ? BuildCyclePileShapeKey(playerState)
             : BuildCyclePileShapeKey(hand, draw, discard, exhaust);
         SearchMeasurement projectedShuffleMeasurement = _run.Performance.Begin();
@@ -228,6 +228,8 @@ internal sealed partial class CombatBeamSolver
             ? stackalloc bool[effectivePowers.Count]
             : new bool[effectivePowers.Count];
         StrategicEffectRequirements strategicRequirements = StrategicEffectRequirements.None;
+        bool needsExhaustDrawTiming = false;
+        bool skillsExhaust = false;
         for (int powerIndex = 0; powerIndex < effectivePowers.Count; powerIndex++)
         {
             PowerModel power = effectivePowers[powerIndex];
@@ -235,6 +237,8 @@ internal sealed partial class CombatBeamSolver
             if (!contributes[powerIndex])
                 continue;
             strategicRequirements |= StrategicEffectModel.Requirements(power);
+            needsExhaustDrawTiming |= power is DarkEmbracePower;
+            skillsExhaust |= power is CorruptionPower && ReferenceEquals(power.Owner, _player.Creature);
         }
         StrategicEffectContext? strategicContext = null;
         StrategicEffectVector strategicEffects = StrategicEffectVector.Zero;
@@ -245,12 +249,14 @@ internal sealed partial class CombatBeamSolver
             PowerModel power = effectivePowers[powerIndex];
             if (!contributes[powerIndex])
                 continue;
-            strategicContext ??= GetStrategicContext(
-                liveCards,
-                enemyHp,
-                focus.TotalThreat,
-                focus.IncomingHitCount,
-                strategicRequirements, view?.CardValuesInvariant == true ? view.Invariants : null);
+            if (strategicContext is null)
+            {
+                StrategicEffectContext context = GetStrategicContext(liveCards, enemyHp,
+                    focus.TotalThreat, focus.IncomingHitCount, strategicRequirements,
+                    view?.CardValuesInvariant == true ? view.Invariants : null, skillsExhaust);
+                strategicContext = needsExhaustDrawTiming
+                    ? context.WithExhaustDrawTiming(effectivePowers, hand, _player.Creature) : context;
+            }
             StrategicEffectVector effect = StrategicEffectModel.Evaluate(
                 power,
                 strategicContext.Value);
@@ -484,6 +490,9 @@ internal sealed partial class CombatBeamSolver
         {
             GrowthHpCredit = growthHpCredit,
             GrowthRewards = growthRewards,
+            BrightestFlameMaxHpSpent = combat.BrightestFlameMaxHpSpent,
+            UnrecoveredGold = combat.UnrecoveredLoot(simulator).Gold,
+            UnrecoveredCards = combat.UnrecoveredLoot(simulator).Cards,
         };
     }
 
@@ -690,29 +699,32 @@ internal sealed partial class CombatBeamSolver
     }
 
     private StateFingerprint BuildUnorderedPileKey(IReadOnlyList<PredictedCard> hand,
-        IReadOnlyList<PredictedCard> draw, IReadOnlyList<PredictedCard> discard, IReadOnlyList<PredictedCard> exhaust)
+        IReadOnlyList<PredictedCard> draw, IReadOnlyList<PredictedCard> discard, IReadOnlyList<PredictedCard> exhaust, SimPlayerCombatState? modelPiles)
     {
         StateFingerprintBuilder unordered = new();
-        AppendUnorderedPileKey(ref unordered, hand, 'H');
-        AppendUnorderedPileKey(ref unordered, draw, 'D');
-        AppendUnorderedPileKey(ref unordered, discard, 'C');
-        AppendUnorderedPileKey(ref unordered, exhaust, 'X');
+        AppendUnorderedPileKey(ref unordered, hand, 'H', modelPiles?.Hand);
+        AppendUnorderedPileKey(ref unordered, draw, 'D', modelPiles?.DrawPile);
+        AppendUnorderedPileKey(ref unordered, discard, 'C', modelPiles?.DiscardPile);
+        AppendUnorderedPileKey(ref unordered, exhaust, 'X', modelPiles?.ExhaustPile);
         return unordered.Finish();
     }
 
     private void AppendUnorderedPileKey(
         ref StateFingerprintBuilder unordered,
         IReadOnlyList<PredictedCard> pile,
-        char marker)
+        char marker, SimCardPile? modelPile)
     {
-        ulong first = 0;
-        ulong second = 0;
-        for (int index = 0; index < pile.Count; index++)
+        ulong first = 0, second = 0;
+        if (modelPile == null || !modelPile.TryGetCachedUnorderedFingerprint(out first, out second))
         {
-            PredictedCard card = pile[index];
-            StateFingerprint cardKey = BuildCardStateFingerprint(card);
-            first += StateFingerprintBuilder.MixFirst(cardKey.First);
-            second += StateFingerprintBuilder.MixSecond(cardKey.Second);
+            first = second = 0;
+            for (int index = 0; index < pile.Count; index++)
+            {
+                StateFingerprint cardKey = BuildCardStateFingerprint(pile[index]);
+                first += StateFingerprintBuilder.MixFirst(cardKey.First);
+                second += StateFingerprintBuilder.MixSecond(cardKey.Second);
+            }
+            modelPile?.SetCachedUnorderedFingerprint(first, second);
         }
         // Keep the unordered key's values and append order exactly unchanged.
         unordered.Add(marker);
@@ -1160,6 +1172,7 @@ internal sealed partial class CombatBeamSolver
         key.Add(player.MaxHp);
         key.Add(view?.Block ?? player.Block);
         key.Add(view?.Energy ?? playerState.Energy);
+        key.Add((int)playerState.Phase);
         key.Add(playerState.Stars);
         key.Add(shufflesCrossed);
         Player owner = _player;

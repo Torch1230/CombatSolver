@@ -1,4 +1,12 @@
 {
+  "UPSTREAM-COMPACT-INTEGRATION-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeRoundHistoryAndFixedSearchDifferential",
+    "procedure": "合并 c2cc463；三根两回合、死亡与独立实例原生差分；250 节点旧新／串并行。",
+    "expected": "玩家阶段、新历史计数与上游政策进入两种后端的相同状态／键／续用合同。",
+    "observed": "1afd0d4535574cbc862c4081f6a96206, a017c6546bd241d6b07115b2f6ddf482, af98ce1a1a3243d884cc2b519b570e9b, 746fca9b886648cfb7b9f86cce05e56f Passed",
+    "evidence": "docs/performance/simulation-upstream-merge-20260911.md"
+  },
   "COMPACT-SHARED-FATE-20260911": {
     "status": "Passed",
     "level": "HeadlessNativeOrderedStatApplicationsAndFixedSearchDifferential",
@@ -2206,5 +2214,53 @@
     "expected": "三种减益的新实例保留原生跳过标记，叠加不刷新、阻止不留残余，入口间状态等价及完整生命周期字段一致。",
     "observed": "基线 0ea7b37d671b42d2b3d01cddfb3ed224 Failed；最终 54cd9ef622764de4845909b9f8abc3ad Passed，实机推进后冻结重放与等价键通过。",
     "evidence": "src/Testing/UnattendedTestRunner.PowerDurationApplication.cs；docs/performance/simulation-duration-state-20260911.md；2026-09-11。"
+  },
+  "TEST-SUBJECT-ORIGINAL-REPORT": {
+    "status": "Passed",
+    "level": "OriginalArchiveNativeActionAndTwoTurnDifferential",
+    "procedure": "恢复5cc95原包首个可操作根，重走三药水、SpectrumShift、Tyranny、HeavenlyDrill、Bulwark、结束回合及原Tyranny选择；逐动作和T2完整状态对账。",
+    "expected": "天钻按修正后的X值达到4时翻倍攻击次数，Boss在玩家回合倒地、敌方回合复活。",
+    "observed": "ebbcbc7c3e8d4f688944b20b87024b66复现原T2玩家HP97/103；9516db27445a487ea2cecad9d34e185c首错定位天钻后Boss8/0。最终2139e56df0aa41f5940ad6bca1cee627 Passed。",
+    "evidence": "src/Testing/UnattendedTestRunner.TestSubjectReport.cs；docs/TEST_MATRIX.md；2026-09-10。"
+  },
+  "REPORT-ROUND-DOOM-THRESHOLD-CARD": {
+    "status": "Passed",
+    "level": "HeadlessStrictNativeTwoTurnAndForkDifferential",
+    "procedure": "报告e476临界条件：Boss134HP、Doom34、SleightOfFlesh13、Duplication1，打出升级EndOfDays再跨回合；完整状态和增量/Fork对账。",
+    "expected": "施加Doom后先结算触发伤害再判断处决，第二次施放在108HP/108Doom时击杀，Boss按时复活。",
+    "observed": "基线d4ffe973627244df921d003d529bdf52预测玩家HP46/原生66；最终339f3bf702874325bf13a36ea0b9c37f Passed。",
+    "evidence": "src/Testing/UnattendedTestRunner.ReportRound.cs；docs/TEST_MATRIX.md；2026-09-10。"
+  },
+  "REPLAY-BOUNDARY-CONTRACT": {
+    "status": "Passed",
+    "level": "HeadlessReplaySchemaAndFailureBoundaryContract",
+    "procedure": "比较旧两项/三项与当前四项历史，反例覆盖已记录计数和其他状态字段；边界观察器抛出异常后等待原生回放驱动。",
+    "expected": "只迁移旧格式缺失的派生字段，实际已记录差异均拒绝；观察器原异常使回放失败。",
+    "observed": "2ed7ea141baa48748df3b3fcaea69cb7 Passed。另两份原包开战/首个可操作状态对账通过，其中5cc95原生二进制也通过，e476旧编号表缺失明确未核验。",
+    "evidence": "src/Testing/UnattendedTestRunner.ReplayBoundary.cs；docs/TEST_MATRIX.md；2026-09-10。"
+  },
+  "REPORT-ROUND-NOSTALGIA-STRIKE": {
+    "status": "Passed",
+    "level": "HeadlessStrictNativeTwoTurnAndForkDifferential",
+    "procedure": "Nostalgia1，T1 出攻击并结束回合，T2 再出攻击，比较完整状态与 Fork。",
+    "expected": "每回合第一张攻击/技能放回抽牌堆顶，分支计数隔离并清零。",
+    "observed": "基线 e1d57aa82cc54fd5890d8628508890a8 第二回合攻击进入弃牌堆；最终 fa776392afa3413b93ee93ce4e931550 Passed。增加四项检查点历史解析与篡改计数拒绝后，2bff954cd0a246c4abd406220823b202 Passed。",
+    "evidence": "src/Testing/UnattendedTestRunner.ReportRound.cs；docs/TEST_MATRIX.md；2026-09-10。"
+  },
+  "REPORT-CARDS-PALE-BLUE-ROOT": {
+    "status": "Passed",
+    "level": "HeadlessStrictNativeRootCaptureAndForkDifferential",
+    "procedure": "原生先出五张牌触发苍蓝星球，捕获根后预测和原生分别打第六张。",
+    "expected": "根保留已经触发标志，第六张不重复增加下回合抽牌。",
+    "observed": "基线12498ff2098a424eb7f9037a1f2ff5c4抽牌Power预测2/原生1；最终733ed99ebed048e1b9d2933512fd6899 Passed。",
+    "evidence": "src/Testing/UnattendedTestRunner.ReportCardSequence.cs；docs/TEST_MATRIX.md；2026-09-10。"
+  },
+  "REPORT-ROUND-HOWL-MUSIC-BOX": {
+    "status": "Passed",
+    "level": "HeadlessStrictNativeTwoTurnAndForkDifferential",
+    "procedure": "MusicBox、DarkEmbrace1、消耗堆 HowlFromBeyond，八张手牌结束回合，比较生成复制牌的虚无消耗及下回合抽牌。",
+    "expected": "黑暗之拥按实际虚无消耗次数延迟抽牌，包含自动打牌期间新生成的牌。",
+    "observed": "基线5dc660636a54439c9ae036755c11e582下一回合手牌预测5/原生6；最终88166b32b56541479cb7fa666adeee09 Passed。",
+    "evidence": "src/Testing/UnattendedTestRunner.ReportRound.cs；docs/TEST_MATRIX.md；2026-09-10。"
   }
 }

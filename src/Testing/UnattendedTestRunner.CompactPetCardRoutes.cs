@@ -44,7 +44,7 @@ internal sealed partial class UnattendedTestRunner
             var lane = adapter.Program; var replay = new CompactPlanReplay(adapter);
             var reader = adapter.CreateReadView(); var uncached = adapter.CreateReadView(false);
             var evaluator = new CompactEvaluationDriver(captured, display, damage, policy);
-            var driver = new CombatBeamSolver(captured, display, damage, policy, searchProfile: policy.ShortProfile);
+            var driver = new CombatBeamSolver(captured, display, damage, policy, searchProfile: policy.Profile);
             var parent = InvokeForcedTerminalReplay(driver, [], null, captured.StartTurnNumber, null);
             try
             {

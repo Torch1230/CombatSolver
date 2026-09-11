@@ -13,6 +13,7 @@
     <Compile Include="../../src/Runtime/SearchGcLifecycleMetrics.cs" Link="Production/SearchGcLifecycleMetrics.cs" />
     <Compile Include="../../src/Runtime/SearchMemoryPressureSignal.cs" Link="Production/SearchMemoryPressureSignal.cs" />
     <Compile Include="../../src/Runtime/SearchGcPolicy.cs" Link="Production/SearchGcPolicy.cs" />
+    <Compile Include="../../src/Runtime/PhysicalMemoryUsage.cs" Link="Production/PhysicalMemoryUsage.cs" />
     <Compile Include="../../src/Runtime/ProcessWorkingSetTrimmer.cs" Link="Production/ProcessWorkingSetTrimmer.cs" />
   </ItemGroup>
 </Project>

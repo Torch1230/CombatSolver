@@ -91,15 +91,20 @@ internal sealed class UnattendedTestRequest
     public bool VerifyBaseLibCardModifierBoundary { get; init; }
     public bool StopAfterCombatRootSnapshotAssertion { get; init; }
     public bool VerifyIncrementalSearch { get; init; }
-    public bool ForceShortSearchOnly { get; init; }
+    private bool _fixedSearchBudget;
+    private bool _legacyFixedSearchBudget;
+    public bool FixedSearchBudget { get => _fixedSearchBudget || _legacyFixedSearchBudget; init => _fixedSearchBudget = value; }
+    [System.Text.Json.Serialization.JsonPropertyName("forceShortSearchOnly")]
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool LegacyForceShortSearchOnly { get => false; init => _legacyFixedSearchBudget = value; }
     public bool MeasureSearchPhases { get; init; }
     public bool HoldAfterInitialSearch { get; init; }
-    public int? ShortSearchBudgetOverrideMilliseconds { get; init; }
-    public int? DeepSearchBudgetOverrideMilliseconds { get; init; }
+    public int? SearchBudgetOverrideMilliseconds { get; init; }
+    [System.Text.Json.Serialization.JsonPropertyName("shortSearchBudgetOverrideMilliseconds")]
+    public int? LegacyShortSearchBudgetMilliseconds { get; init; }
+    [System.Text.Json.Serialization.JsonPropertyName("deepSearchBudgetOverrideMilliseconds")]
+    public int? LegacyDeepSearchBudgetMilliseconds { get; init; }
     public int? SearchMaxDegreeOfParallelismForTest { get; init; }
-    public SolverSearchPhase? ExpectedInitialSearchPhase { get; init; }
-    public bool? ExpectedInitialDeepSearchTriggered { get; init; }
-    public bool? ExpectedInitialDeepSearchImprovedResult { get; init; }
     public int? ExpectedInitialExpandedNodesAtMost { get; init; }
     public int? ExpectedInitialTransitionsAtMost { get; init; }
     public long? ExpectedInitialTotalExpandedNodesAtMost { get; init; }
@@ -489,7 +494,6 @@ internal sealed class UnattendedSolverMetrics
 {
     public SearchGcLifecycleSnapshot GcLifecycle { get; init; }
     public SearchGcLifecycleAttribution? GcLifecycleAttribution { get; init; }
-    public SolverSearchPhase Phase { get; init; }
     public SearchBoundaryReason Boundary { get; init; }
     public int SelectedExpanded { get; init; }
     public int SelectedTransitions { get; init; }

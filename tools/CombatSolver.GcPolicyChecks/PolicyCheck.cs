@@ -54,5 +54,5 @@ internal sealed class CheckLogger
 
 internal static class UnattendedTestRunner
 {
-    public static bool IsActive => false;
+    public static bool IsActive { get; set; }
 }

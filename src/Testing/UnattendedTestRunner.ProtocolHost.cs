@@ -26,12 +26,11 @@ internal sealed partial class UnattendedTestRunner
         public bool IsActive { get; private set; }
         public bool AutomaticTurnSearchEnabled { get; private set; } = true;
         public bool VerifyIncrementalSearch { get; private set; }
-        public bool ForceShortSearchOnly { get; private set; }
-        public void ApplyRecordedShortSearchMode(bool enabled) => ForceShortSearchOnly = enabled;
+        public bool FixedSearchBudget { get; private set; }
+        public void ApplyRecordedShortSearchMode(bool enabled) => FixedSearchBudget = enabled;
         public bool MeasureSearchPhases { get; private set; }
         public int? SearchMaxDegreeOfParallelismOverride { get; private set; }
-        public int? ShortSearchBudgetOverrideMilliseconds { get; private set; }
-        public int? DeepSearchBudgetOverrideMilliseconds { get; private set; }
+        public int? SearchBudgetOverrideMilliseconds { get; private set; }
 
         public void TryStart(NGame? host)
         {
@@ -311,7 +310,7 @@ internal sealed partial class UnattendedTestRunner
             _clearedPlayerBlock = 0;
             AutomaticTurnSearchEnabled = false;
             VerifyIncrementalSearch = request.VerifyIncrementalSearch;
-            ForceShortSearchOnly = request.ForceShortSearchOnly;
+            FixedSearchBudget = request.FixedSearchBudget;
             MeasureSearchPhases = request.MeasureSearchPhases;
             if (request.SearchMaxDegreeOfParallelismForTest is { } maxDegreeOfParallelism
                 && (maxDegreeOfParallelism < 1
@@ -322,8 +321,10 @@ internal sealed partial class UnattendedTestRunner
                     $"实际为 {maxDegreeOfParallelism}。");
             }
             SearchMaxDegreeOfParallelismOverride = request.SearchMaxDegreeOfParallelismForTest;
-            ShortSearchBudgetOverrideMilliseconds = request.ShortSearchBudgetOverrideMilliseconds;
-            DeepSearchBudgetOverrideMilliseconds = request.DeepSearchBudgetOverrideMilliseconds;
+            SearchBudgetOverrideMilliseconds = request.SearchBudgetOverrideMilliseconds
+                ?? (request.FixedSearchBudget
+                    ? request.LegacyShortSearchBudgetMilliseconds ?? request.LegacyDeepSearchBudgetMilliseconds
+                    : request.LegacyDeepSearchBudgetMilliseconds ?? request.LegacyShortSearchBudgetMilliseconds);
         }
 
         private void Reset()
@@ -331,7 +332,7 @@ internal sealed partial class UnattendedTestRunner
             IsActive = false;
             AutomaticTurnSearchEnabled = true;
             VerifyIncrementalSearch = false;
-            ForceShortSearchOnly = false;
+            FixedSearchBudget = false;
             MeasureSearchPhases = false;
             SearchMaxDegreeOfParallelismOverride = null;
             _injectPlayerHpLossTurn = 0;
@@ -339,8 +340,7 @@ internal sealed partial class UnattendedTestRunner
             _injectedPlayerHpLoss = 0;
             _clearPlayerBlockBeforeEndTurn = 0;
             _clearedPlayerBlock = 0;
-            ShortSearchBudgetOverrideMilliseconds = null;
-            DeepSearchBudgetOverrideMilliseconds = null;
+            SearchBudgetOverrideMilliseconds = null;
         }
     }
 }

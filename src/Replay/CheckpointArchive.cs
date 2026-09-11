@@ -178,6 +178,14 @@ internal static class CheckpointArchive
         JsonObject paths = new();
         IEnumerable<string> artifacts = StateArtifacts.Select(field => RequiredString(checkpoint, field));
         JsonObject index = result["index"]!.AsObject();
+        if (checkpoint["label"]?.GetValue<string>() == "combat_start"
+            && index["checkpoints"] is JsonArray checkpoints)
+        {
+            JsonObject? ready = checkpoints.OfType<JsonObject>()
+                .FirstOrDefault(item => item["canSearch"]?.GetValue<bool>() == true);
+            if (ready != null)
+                artifacts = artifacts.Concat(StateArtifacts.Select(field => RequiredString(ready, field)));
+        }
         if (index["recording"] is JsonObject recording)
             artifacts = artifacts.Concat(recording.Where(item => item.Key.EndsWith("Path", StringComparison.Ordinal))
                 .Select(item => item.Value!.GetValue<string>()));

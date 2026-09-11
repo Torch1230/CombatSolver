@@ -72,11 +72,18 @@ internal sealed partial class UnattendedTestRunner
         if (!playerMessage.Contains("The Watcher ［Test］（Watcher）", StringComparison.Ordinal)
             || !playerMessage.Contains("不兼容的第三方 Mod", StringComparison.Ordinal)
             || !playerMessage.Contains("建议卸载", StringComparison.Ordinal)
-            || !playerMessage.Contains(SolverUiTokens.BugReportUploadInstruction, StringComparison.Ordinal)
+            || playerMessage.Contains(SolverUiTokens.BugReportUploadInstruction, StringComparison.Ordinal)
             || playerMessage.Contains("WatcherEnchantStackHookProxy", StringComparison.Ordinal))
         {
-            throw new InvalidOperationException("第三方玩法 Mod 初始化失败提示缺少名称、卸载建议或上传入口。");
+            throw new InvalidOperationException("第三方玩法 Mod 提示必须显示来源和卸载建议，且无需上传日志。");
         }
+        if (SolverController.FormatSearchFailureForTesting(new InvalidOperationException("wrapped", incompatible), true)
+            .Contains(SolverUiTokens.BugReportUploadInstruction, StringComparison.Ordinal))
+            throw new InvalidOperationException("第三方玩法异常被包装后仍引导上传日志。");
+        CombatBugReportIssueLedger ledger = new();
+        ledger.RecordFailure(CombatBugReportIssueKind.SearchSetupFailure, incompatible);
+        if (ledger.RequiresPlayerUpload || ledger.Snapshot().Single().Kind != CombatBugReportIssueKind.IncompatibleGameplayMod)
+            throw new InvalidOperationException("第三方玩法异常触发了玩家上传提醒。");
         if (!incompatible.Message.Contains("WatcherEnchantStackHookProxy", StringComparison.Ordinal)
             || !incompatible.Message.Contains("Watcher", StringComparison.Ordinal))
         {

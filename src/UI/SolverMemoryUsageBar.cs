@@ -68,6 +68,7 @@ internal sealed partial class SolverMemoryUsageBar : PanelContainer
             FontType.Bold);
         _label.HorizontalAlignment = HorizontalAlignment.Right;
         _label.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        _label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         content.AddChild(_label);
 
         _progress = new PanelContainer

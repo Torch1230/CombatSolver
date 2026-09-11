@@ -20,6 +20,7 @@ test('strict payload: rejects extra fields, invalid loss, oversized strings',()=
 test('collector privacy, login, deduplication, expiry and durable aggregate history',async()=>{
   let time=1_800_000_000_000;const dir=mkdtempSync(join(tmpdir(),'cs-presence-'));const database=join(dir,'history.sqlite');
   const app=createApp({database,password,now:()=>time});
+  time+=Math.ceil(TTL/60000)*60000; // Begin steady-state sampling on a minute boundary after recovery.
   const collector=http.createServer(app.collector).listen(0,'127.0.0.1');
   const admin=http.createServer(app.admin).listen(0,'127.0.0.1');
   await Promise.all([once(collector,'listening'),once(admin,'listening')]);
@@ -33,8 +34,8 @@ test('collector privacy, login, deduplication, expiry and durable aggregate hist
     const overview=()=>fetch(a+'/api/overview',{headers:{Cookie:cookie}}).then(r=>r.json());
     const playerPage=()=>fetch(a+'/api/players',{headers:{Cookie:cookie}}).then(r=>r.json());
     assert.equal((await post(c+'/v1/heartbeat',{...payload,route:[]})).status,400);
-    assert.equal((await post(c+'/v1/heartbeat',payload)).status,204);
-    assert.equal((await post(c+'/v1/heartbeat',{...payload,hpLoss:7})).status,204);
+    assert.equal((await post(c+'/v1/heartbeat',payload)).status,200);
+    assert.equal((await post(c+'/v1/heartbeat',{...payload,hpLoss:7})).status,200);
     app.sample();const current=await overview();assert.equal(current.onlineCount,1);assert.equal((await playerPage()).players[0].hpLoss,7);assert.equal(current.history.at(-1).count,1);assert.ok(!('players' in current));
     time+=TTL+1;app.sample();assert.equal((await playerPage()).players.length,0);assert.equal((await overview()).history.at(-1).count,0.5);
     assert.equal((await fetch(a+'/api/logout',{method:'POST',headers:{Cookie:cookie,Origin:a}})).status,204);
@@ -52,7 +53,7 @@ test('collector privacy, login, deduplication, expiry and durable aggregate hist
 });
 test('heartbeat per-identity throttling',async()=>{
   const app=createApp({password});const server=http.createServer(app.collector).listen(0,'127.0.0.1');await once(server,'listening');
-  try{for(let i=0;i<7;i++){const r=await fetch(`http://127.0.0.1:${server.address().port}/v1/heartbeat`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});assert.equal(r.status,i<6?204:429);}}
+  try{for(let i=0;i<7;i++){const r=await fetch(`http://127.0.0.1:${server.address().port}/v1/heartbeat`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});assert.equal(r.status,i<6?200:429);}}
   finally{server.closeAllConnections();await new Promise(r=>server.close(r));app.close();}
 });
 
@@ -68,7 +69,7 @@ test('retains complete battles atomically through idle and pending results, with
     const login=await post(a+'/api/login',{password},{Origin:a});
     const cookie=login.headers.get('set-cookie').split(';')[0];
     const get=path=>fetch(a+path,{headers:{Cookie:cookie}}).then(r=>r.json());
-    const send=async body=>{time+=30000;assert.equal((await post(c+'/v1/heartbeat',body)).status,204);return (await get('/api/players')).players[0];};
+    const send=async body=>{time+=30000;assert.equal((await post(c+'/v1/heartbeat',body)).status,200);return (await get('/api/players')).players[0];};
     const idle={...payload,character:'',floor:null,encounter:'',hpLoss:null};
     assert.equal((await send(idle)).hpLoss,null);
     const first=await send(payload);

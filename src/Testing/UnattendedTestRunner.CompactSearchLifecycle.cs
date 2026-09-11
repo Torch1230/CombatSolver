@@ -67,13 +67,12 @@ internal sealed partial class UnattendedTestRunner
         var policy = SolverController.CaptureSearchPolicy(SolverSettings.Capture(), combat, false, null);
         policy = policy with
         {
-            ShortProfile = policy.ShortProfile with { MaxExpandedNodes = 250, SoftTimeBudgetMilliseconds = 120_000 },
-            ForceShortOnly = true,
+            Profile = policy.Profile with { MaxExpandedNodes = 250, SoftTimeBudgetMilliseconds = 120_000 },
+            FixedBudget = true,
             VerifyIncrementalSearch = false,
             DetailedDiagnostics = false,
             MeasurePhasePerformance = false,
-            ShortBudgetOverrideMilliseconds = null,
-            DeepBudgetOverrideMilliseconds = null
+            BudgetOverrideMilliseconds = null
         };
         var compactPolicy = policy with { CompactRoot = compact };
         await AssertParallelExpansionFailureDrainAsync(root, display, damage, compactPolicy);

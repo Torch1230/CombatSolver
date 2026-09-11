@@ -1200,9 +1200,21 @@ internal static class HookMirrors
                 return;
         }
 
+        // Earlier listeners can clear Bound and replace a later card's COW preview.
+        // Bind wrappers before invoking anything; re-enumerating midway would change membership.
+        List<CardHookReceiver>? turnEndReceivers = null;
         foreach (var listener in IterateCombatHookListeners(simulator, MirroredHookMask.BeforeSideTurnEnd))
         {
-            BeforeSideTurnEndMirrors.Invoke(listener, context);
+            PredictedCard? card = listener is CardModel model
+                ? simulator.State.GetPlayerCombatState(model.Owner).FindCard(model)
+                : null;
+            (turnEndReceivers ??= []).Add(new CardHookReceiver(listener, card));
+        }
+        if (turnEndReceivers is null)
+            return;
+        foreach (CardHookReceiver receiver in turnEndReceivers)
+        {
+            BeforeSideTurnEndMirrors.Invoke(receiver.Current, context);
             if (simulator.HasPendingChoice)
                 return;
         }

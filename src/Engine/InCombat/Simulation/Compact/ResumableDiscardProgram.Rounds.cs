@@ -25,6 +25,7 @@ internal sealed partial class ResumableDiscardProgram
     {
         if (_round == null || !Complete || EnemySide || Terminal || Ending)
             throw new InvalidOperationException("Round advance requires admitted completed player choice.");
+        Emit(EventKind.PlayerPhaseChanged, -1, (int)PlayerPhase.End);
         EndHandEffects(staging);
         Emit(EventKind.CommitPlayerTurnHistory, -1);
         if (CheckWinCondition()) return;
@@ -40,6 +41,7 @@ internal sealed partial class ResumableDiscardProgram
         EndSidePowerEffects(enemySide: false);
         // Phase two can mark a pending loss. Native still switches sides, snapshots
         // Powers and clears enemy block before committing at its next safe point.
+        Emit(EventKind.PlayerPhaseChanged, -1, (int)PlayerPhase.None);
         _round.BeginEnemy(State);
         State.Write(AttackCardStartsSlot, 0);
         Emit(EventKind.BeginSide, -2);
@@ -54,6 +56,7 @@ internal sealed partial class ResumableDiscardProgram
         CleanupCards();
         EndSidePowerEffects(enemySide: true);
         AdvanceMonsterMove(1);
+        Emit(EventKind.PlayerPhaseChanged, -1, (int)PlayerPhase.Start);
         _round.BeginPlayer(State);
         State.Write(AttackCardStartsSlot, 0);
         Emit(EventKind.BeginSide, -1);

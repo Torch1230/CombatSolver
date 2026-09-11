@@ -1,4 +1,5 @@
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Powers;
@@ -25,6 +26,7 @@ internal enum StrategicEffectRequirements
     BestCardValue = 1 << 12,
     AverageAttackValue = 1 << 13,
     StatusDrawTriggers = 1 << 14,
+    AttackHits = 1 << 15,
 }
 
 internal readonly record struct StrategicEffectVector(
@@ -88,12 +90,41 @@ internal readonly record struct StrategicEffectContext(
     int AverageAttackValue,
     int StatusDrawTriggers)
 {
+    public int? AttackHits { get; init; }
+    public int? ExhaustDrawPlays { get; init; }
+
+    internal StrategicEffectContext WithExhaustDrawTiming(IReadOnlyList<PowerModel> powers,
+        IReadOnlyList<PredictedCard> hand, Creature owner)
+    {
+        int noDrawIndex = -1, embraceIndex = -1;
+        bool skillsExhaust = false;
+        for (int i = 0; i < powers.Count; i++)
+        {
+            if (!ReferenceEquals(powers[i].Owner, owner)) continue;
+            if (powers[i] is NoDrawPower) noDrawIndex = i;
+            if (powers[i] is DarkEmbracePower) embraceIndex = i;
+            skillsExhaust |= powers[i] is CorruptionPower;
+        }
+        if (embraceIndex < 0) return this;
+        int ethereal = 0, exhaustingEthereal = 0;
+        foreach (PredictedCard card in hand)
+        {
+            if (!card.Preview.Keywords.Contains(CardKeyword.Ethereal)) continue;
+            ethereal++;
+            if (card.Preview.Keywords.Contains(CardKeyword.Exhaust)
+                || skillsExhaust && card.Preview.Type == CardType.Skill) exhaustingEthereal++;
+        }
+        return this with { ExhaustDrawPlays = CardMechanismFacts.ExhaustDrawPotential(
+            Math.Max(0, ExhaustPlays - exhaustingEthereal), RemainingTurns, noDrawIndex >= 0,
+            ethereal, noDrawIndex < 0 || noDrawIndex < embraceIndex) };
+    }
+
     public static StrategicEffectContext Build(
         IReadOnlyList<PredictedCard> liveCards,
         int enemyHp,
         int incomingDamage,
         int incomingHitCount,
-        StrategicEffectRequirements requirements)
+        StrategicEffectRequirements requirements, bool skillsExhaust = false)
     {
         if (requirements == StrategicEffectRequirements.None)
         {
@@ -127,7 +158,8 @@ internal readonly record struct StrategicEffectContext(
             | StrategicEffectRequirements.ExhaustPlays
             | StrategicEffectRequirements.ShivPlays
             | StrategicEffectRequirements.DebuffApplications
-            | StrategicEffectRequirements.StatusDrawTriggers;
+            | StrategicEffectRequirements.StatusDrawTriggers
+            | StrategicEffectRequirements.AttackHits;
         bool needsRemainingTurns = requirements.HasFlag(StrategicEffectRequirements.RemainingTurns)
             || (requirements & reachablePlayRequirements) != 0;
         bool needsAllCardValues = requirements.HasFlag(StrategicEffectRequirements.AverageCardValue)
@@ -140,18 +172,25 @@ internal readonly record struct StrategicEffectContext(
         bool needsBlockSkillCount = requirements.HasFlag(StrategicEffectRequirements.BlockSkillPlays);
         bool needsPowerCount = requirements.HasFlag(StrategicEffectRequirements.PowerPlays);
         bool needsExhaustCount = requirements.HasFlag(StrategicEffectRequirements.ExhaustPlays);
-        bool needsShivCount = requirements.HasFlag(StrategicEffectRequirements.ShivPlays);
+        bool needsShivCount = requirements.HasFlag(StrategicEffectRequirements.ShivPlays)
+            || requirements.HasFlag(StrategicEffectRequirements.AttackHits);
         bool needsDebuffCount = requirements.HasFlag(StrategicEffectRequirements.DebuffApplications);
         bool needsStatusCount = requirements.HasFlag(StrategicEffectRequirements.StatusDrawTriggers);
         bool needsSkillEnergy = requirements.HasFlag(StrategicEffectRequirements.SkillEnergySpend);
         bool needsPowerEnergy = requirements.HasFlag(StrategicEffectRequirements.PowerEnergySpend);
 
         int attackCount = 0;
+        int attackHitCount = 0;
         int skillCount = 0;
         int blockSkillCount = 0;
         int powerCount = 0;
         int exhaustCount = 0;
         int shivCount = 0;
+        int reusableShivCount = 0;
+        int generatedShivCount = 0;
+        int shivGeneratorCount = 0;
+        int singleUseGeneratedShivs = 0;
+        int singleUseShivGenerators = 0;
         int debuffCount = 0;
         int statusCount = 0;
         int skillEnergy = 0;
@@ -202,6 +241,12 @@ internal readonly record struct StrategicEffectContext(
                 case CardType.Attack:
                     if (needsAttackCount)
                         attackCount++;
+                    if (requirements.HasFlag(StrategicEffectRequirements.AttackHits)
+                        && !card.Tags.Contains(CardTag.OstyAttack) && !card.Tags.Contains(CardTag.Shiv))
+                        attackHitCount += card.GetType().Assembly == typeof(CardModel).Assembly
+                            ? CardMechanismFacts.AttackHits(card.Id.Entry,
+                                card.DynamicVars.TryGetValue("Repeat", out var repeatVar) ? repeatVar.IntValue : 0)
+                            : 1;
                     break;
                 case CardType.Skill:
                     if (needsSkillCount)
@@ -222,10 +267,31 @@ internal readonly record struct StrategicEffectContext(
                         statusCount++;
                     break;
             }
-            if (needsExhaustCount && card.Keywords.Contains(CardKeyword.Exhaust))
+            bool exhaustsOnPlay = card.Keywords.Contains(CardKeyword.Exhaust)
+                || skillsExhaust && cardType == CardType.Skill;
+            if (needsExhaustCount && exhaustsOnPlay)
                 exhaustCount++;
-            if (needsShivCount && card.Tags.Contains(CardTag.Shiv))
-                shivCount++;
+            if (needsShivCount)
+            {
+                if (card.Tags.Contains(CardTag.Shiv))
+                {
+                    shivCount++;
+                    if (!card.Keywords.Contains(CardKeyword.Exhaust)) reusableShivCount++;
+                }
+                if (card.GetType().Assembly == typeof(CardModel).Assembly)
+                {
+                    int generated = CardMechanismFacts.ImmediateShivSupply(card.Id.Entry,
+                        card.DynamicVars.TryGetValue("Cards", out var cardsVar) ? cardsVar.IntValue : 0,
+                        card.DynamicVars.TryGetValue("Shivs", out var shivsVar) ? shivsVar.IntValue : 0);
+                    generatedShivCount += generated;
+                    if (generated > 0) shivGeneratorCount++;
+                    if (generated > 0 && (cardType == CardType.Power || exhaustsOnPlay))
+                    {
+                        singleUseGeneratedShivs += generated;
+                        singleUseShivGenerators++;
+                    }
+                }
+            }
             if (needsDebuffCount && hasDebuffDynamicVar)
                 debuffCount++;
         }
@@ -263,7 +329,8 @@ internal readonly record struct StrategicEffectContext(
             ? Math.Min(exhaustCount, reachableCards)
             : 0;
         int shivPlays = requirements.HasFlag(StrategicEffectRequirements.ShivPlays)
-            ? ReachablePlays(shivCount, deckSize, reachableCards)
+            ? CardMechanismFacts.EstimatedShivPlays(shivCount, generatedShivCount, shivGeneratorCount, deckSize, reachableCards,
+                reusableShivCount, singleUseGeneratedShivs, singleUseShivGenerators)
             : 0;
         int debuffApplications = requirements.HasFlag(StrategicEffectRequirements.DebuffApplications)
             ? ReachablePlays(debuffCount, deckSize, reachableCards)
@@ -294,7 +361,13 @@ internal readonly record struct StrategicEffectContext(
                 : 0,
             requirements.HasFlag(StrategicEffectRequirements.StatusDrawTriggers)
                 ? Math.Min(remainingTurns, ReachablePlays(statusCount, deckSize, reachableCards))
-                : 0);
+                : 0)
+        {
+            AttackHits = requirements.HasFlag(StrategicEffectRequirements.AttackHits)
+                ? CardMechanismFacts.EstimatedAttackHits(attackHitCount, shivCount, generatedShivCount,
+                    shivGeneratorCount, deckSize, reachableCards, reusableShivCount,
+                    singleUseGeneratedShivs, singleUseShivGenerators) : null,
+        };
     }
 
     private static int EnergyCost(CardModel card)
@@ -348,9 +421,12 @@ internal static class StrategicEffectModel
             AfterimagePower => StrategicEffectRequirements.UsefulCardPlays,
             BufferPower => StrategicEffectRequirements.RemainingTurns,
             FeelNoPainPower => StrategicEffectRequirements.ExhaustPlays,
+            DarkEmbracePower => StrategicEffectRequirements.ExhaustPlays
+                | StrategicEffectRequirements.AverageCardValue,
             EchoFormPower => StrategicEffectRequirements.UsefulCardPlays
                 | StrategicEffectRequirements.BestCardValue,
-            EnvenomPower or StrengthPower => StrategicEffectRequirements.AttackPlays,
+            EnvenomPower => StrategicEffectRequirements.AttackPlays,
+            StrengthPower => StrategicEffectRequirements.AttackHits,
             AccuracyPower => StrategicEffectRequirements.ShivPlays,
             SleightOfFleshPower => StrategicEffectRequirements.DebuffApplications,
             LethalityPower or ReaperFormPower => StrategicEffectRequirements.AttackPlays
@@ -390,6 +466,7 @@ internal static class StrategicEffectModel
             AfterimagePower => Prevention(amount * context.UsefulCardPlays, context),
             BufferPower => Prevention(BufferPrevention(amount, context), context),
             FeelNoPainPower => Prevention(amount * context.ExhaustPlays, context),
+            DarkEmbracePower => CardAccess(amount * (context.ExhaustDrawPlays ?? context.ExhaustPlays) * cardAccessUnit),
             ThornsPower => Damage(amount * context.IncomingHitCount, enemyHp),
             EchoFormPower when context.UsefulCardPlays > 0 => Damage(
                 context.BestCardValue
@@ -400,7 +477,7 @@ internal static class StrategicEffectModel
             EnvenomPower => Damage(amount * context.AttackPlays, enemyHp),
             AccuracyPower => Damage(amount * context.ShivPlays, enemyHp),
             SleightOfFleshPower => Damage(amount * context.DebuffApplications, enemyHp),
-            StrengthPower => Damage(amount * context.AttackPlays, enemyHp),
+            StrengthPower => Damage(amount * (context.AttackHits ?? context.AttackPlays), enemyHp),
             LethalityPower when context.AttackPlays > 0 => Damage(
                 context.AverageAttackValue
                     * Math.Min(context.AttackPlays, context.RemainingTurns)

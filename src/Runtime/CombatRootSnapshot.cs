@@ -30,6 +30,8 @@ internal sealed class CombatRootSnapshot
     public int StartTurnNumber { get; }
     public int InitialPlayerHp { get; }
     public int InitialPlayerMaxHp { get; }
+    public int InitialBrightestFlameMaxHpSpent
+        => ((SimulatedCombatState)_rootSimulator.State.CombatState).BrightestFlameMaxHpSpent;
     public int PotionSlotCount { get; }
     public IReadOnlyList<SearchablePotionSlotSnapshot> SearchablePotions { get; }
     public int SearchablePotionCount { get; }

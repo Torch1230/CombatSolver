@@ -22,6 +22,7 @@ internal static class PredictionUtils
     private static readonly LocalCostModifiersGetter GetLocalCostModifiers = BuildLocalCostModifiersGetter();
     private static readonly CardBoolGetter GetSingleTurnRetain = BuildCardBoolGetter("_hasSingleTurnRetain");
     private static readonly CardBoolGetter GetSingleTurnSly = BuildCardBoolGetter("_hasSingleTurnSly");
+    private static readonly Action<CardModel> DetachCardObservers = BuildCardObserverDetacher();
 
     public static TModel CloneModelForSimulation<TModel>(TModel source)
         where TModel : AbstractModel
@@ -31,6 +32,8 @@ internal static class PredictionUtils
         {
             TModel clone = (TModel)InvokeMemberwiseClone(source);
             clone.IsMutable = true;
+            if (clone is CardModel card)
+                DetachCardObservers(card);
             InvokeDeepCloneFields(clone);
             InvokeAfterCloned(clone);
             return clone;
@@ -48,6 +51,25 @@ internal static class PredictionUtils
         clone.DeckVersion = source.DeckVersion;
         clone.HasBeenRemovedFromState = source.HasBeenRemovedFromState;
         return clone;
+    }
+
+    private static Action<CardModel> BuildCardObserverDetacher()
+    {
+        DynamicMethod method = new("CombatSolver_DetachCardObservers", typeof(void),
+            [typeof(CardModel)], typeof(PredictionUtils).Module, skipVisibility: true);
+        ILGenerator il = method.GetILGenerator();
+        foreach (EventInfo observer in typeof(CardModel).GetEvents(
+                     BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
+        {
+            FieldInfo field = typeof(CardModel).GetField(observer.Name,
+                BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new MissingFieldException(typeof(CardModel).FullName, observer.Name);
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Ldnull);
+            il.Emit(OpCodes.Stfld, field);
+        }
+        il.Emit(OpCodes.Ret);
+        return method.CreateDelegate<Action<CardModel>>();
     }
 
     private static MemberwiseCloneInvoker BuildMemberwiseCloneInvoker()

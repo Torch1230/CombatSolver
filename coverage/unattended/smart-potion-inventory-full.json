@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "characterId": "SILENT",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "INVENTORYVALUE0111",
+  "enemyCurrentHp": 6,
+  "initialPlayerHp": 70,
+  "initialPlayerMaxHp": 70,
+  "initialPlayerEnergy": 0,
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    {
+      "cardId": "BLOODLETTING",
+      "pile": "Hand",
+      "treatAsDeckCard": true
+    },
+    {
+      "cardId": "STRIKE_IRONCLAD",
+      "pile": "Hand",
+      "treatAsDeckCard": true
+    }
+  ],
+  "potionPolicyForTest": "Smart",
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 3000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120,
+  "scenarioId": "SMART-POTION-INVENTORY-FULL",
+  "description": "Full inventory uses the standard Smart threshold: retain potions when they save only 3 HP.",
+  "potions": [
+    {
+      "potionId": "EnergyPotion"
+    },
+    {
+      "potionId": "EnergyPotion"
+    },
+    {
+      "potionId": "EnergyPotion"
+    }
+  ],
+  "expectedInitialPotionCount": 0,
+  "expectedInitialProjectedBattleHpLost": 3
+}

@@ -39,6 +39,7 @@ internal sealed partial class SimulatedCombatState
             Own(ref combat._cardPlaySeriesStartedThisTurn);
             Own(ref combat._zeroCostAttackStartsThisTurn);
             Own(ref combat._cardPlayStartsThisTurn);
+            Own(ref combat._attackSkillStartsThisTurn);
             Own(ref combat._cardsPlayedThisTurn);
             Own(ref combat._manualCardsPlayedThisTurn);
             Own(ref combat._energySpentThisTurn);

@@ -15,6 +15,12 @@ internal sealed partial class SimulatedCombatState
         return _outstandingStolenGold!.Value + _outstandingStolenCards!.Value;
     }
 
+    public (int Gold, int Cards) UnrecoveredLoot(CombatPredictionSimulator simulator)
+    {
+        EnsureOutstandingStolenResourcesInitialized(simulator);
+        return (_outstandingStolenGold!.Value, _outstandingStolenCards!.Value);
+    }
+
     public void RecordStolenCard(CombatPredictionSimulator simulator)
     {
         EnsureOutstandingStolenResourcesInitialized(simulator);

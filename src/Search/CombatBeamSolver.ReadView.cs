@@ -13,7 +13,7 @@ internal sealed partial class CombatBeamSolver
     {
         internal EnemyEvaluationValues? Enemies;
         internal ThreatFocus? Focus;
-        internal (StrategicEffectRequirements Requirements, int EnemyHp, int Damage, int Hits, StrategicEffectContext Value)? Strategy;
+        internal (StrategicEffectRequirements Requirements, int EnemyHp, int Damage, int Hits, bool SkillsExhaust, StrategicEffectContext Value)? Strategy;
         internal readonly Dictionary<PredictedCard, double> CardValues = new(ReferenceEqualityComparer.Instance);
         internal int EnemyBuilds, FocusBuilds, StrategyBuilds;
     }
@@ -65,12 +65,13 @@ internal sealed partial class CombatBeamSolver
     }
 
     private static StrategicEffectContext GetStrategicContext(IReadOnlyList<PredictedCard> cards,
-        int enemyHp, int damage, int hits, StrategicEffectRequirements requirements, ReadViewInvariantCache? cache)
+        int enemyHp, int damage, int hits, StrategicEffectRequirements requirements, ReadViewInvariantCache? cache, bool skillsExhaust = false)
     {
         if (cache?.Strategy is { } cached && cached.Requirements == requirements
-            && cached.EnemyHp == enemyHp && cached.Damage == damage && cached.Hits == hits) return cached.Value;
-        StrategicEffectContext result = StrategicEffectContext.Build(cards, enemyHp, damage, hits, requirements);
-        if (cache != null) { cache.Strategy = (requirements, enemyHp, damage, hits, result); cache.StrategyBuilds++; }
+            && cached.EnemyHp == enemyHp && cached.Damage == damage && cached.Hits == hits
+            && cached.SkillsExhaust == skillsExhaust) return cached.Value;
+        StrategicEffectContext result = StrategicEffectContext.Build(cards, enemyHp, damage, hits, requirements, skillsExhaust);
+        if (cache != null) { cache.Strategy = (requirements, enemyHp, damage, hits, skillsExhaust, result); cache.StrategyBuilds++; }
         return result;
     }
 

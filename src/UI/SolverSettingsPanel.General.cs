@@ -67,11 +67,19 @@ internal sealed partial class SolverSettingsPanel
 
     internal bool ExerciseThresholdOutsideClickForTesting()
     {
-        _acceptableBattleHpLoss.GrabFocus();
-        _acceptableBattleHpLoss.Text = "19";
-        using InputEventMouseButton click = new() { Pressed = true, ButtonIndex = MouseButton.Left, Position = new Vector2(-1, -1) };
-        _Input(click);
-        return !_acceptableBattleHpLoss.HasFocus() && SolverSettings.Current.AcceptableBattleHpLoss == 19;
+        SettingsPage previousPage = _activePage;
+        if (!TrySelectPage(SettingsPage.Performance))
+            throw new InvalidOperationException("Cannot open performance settings for threshold input.");
+        try
+        {
+            _acceptableBattleHpLoss.GrabFocus();
+            _acceptableBattleHpLoss.Text = "19";
+            using InputEventMouseButton click = new() { Pressed = true, ButtonIndex = MouseButton.Left, Position = new Vector2(-1, -1) };
+            _Input(click);
+            return _performancePage.IsAncestorOf(_acceptableBattleHpLoss)
+                && !_acceptableBattleHpLoss.HasFocus() && SolverSettings.Current.AcceptableBattleHpLoss == 19;
+        }
+        finally { TrySelectPage(previousPage); }
     }
 
     private LineEdit CreateAcceptableBattleHpLossInput()
@@ -165,7 +173,6 @@ internal sealed partial class SolverSettingsPanel
     private Control CreateGeneralPage()
     {
         VBoxContainer content = CreatePageContent("GeneralSettingsPage");
-        content.AddChild(CreateSectionHeading(SolverText.Get("求解器")));
         GridContainer solverGrid = CreateSettingsGrid();
         _solverEnabled = CreateToggle();
         _solverEnabled.Toggled += OnSolverEnabledToggled;
@@ -177,18 +184,9 @@ internal sealed partial class SolverSettingsPanel
             SolverText.Get("自动计算"),
             _automaticCalculation,
             SolverText.Get("开启后会在进入战斗局面和每个玩家回合自动开始后台计算；关闭后由主面板手动开始计算。"));
-        _searchCompletionNotificationPolicy = CreateSearchCompletionNotificationPolicyInput();
-        AddBasicRow(
-            solverGrid,
-            SolverText.Get("搜索结束通知"),
-            _searchCompletionNotificationPolicy,
-            SolverText.Get("搜索成功、失败、停止或结果过期时发送 Windows 系统通知和提示音。可关闭、仅在游戏不处于前台时通知，或始终通知；其他平台不会调用 Windows 接口。"));
-        _acceptableBattleHpLoss = CreateAcceptableBattleHpLossInput();
-        AddBasicRow(solverGrid, SolverText.Get("提前结束搜索的战损阈值（HP）"), _acceptableBattleHpLoss,
-            SolverText.Get("找到预计整场战损不超过此值的完整胜利路线时，可提前结束搜索。默认 0。有成长目标或非零成长额度时不生效；下次搜索生效。"));
-        content.AddChild(solverGrid);
+        AddSettingsSection(content, SolverText.Get("开始计算"),
+            SolverText.Get("控制求解器启停与自动计算。自动开启全自动可在主界面右侧设置。"), solverGrid);
 
-        content.AddChild(CreateSectionHeading(SolverText.Get("幕末 Boss")));
         GridContainer bossStrategyGrid = CreateSettingsGrid();
         _actTransitionBossHpStrategy = CreateBossHpStrategyInput(
             data => data.ActTransitionBossHpStrategy,
@@ -206,9 +204,7 @@ internal sealed partial class SolverSettingsPanel
             SolverText.Get("最终 Boss 血量取舍"),
             _finalBossHpStrategy,
             SolverText.Get("通关优先只要求路线存活并优先保留资源；最低战损会继续比较剩余血量。重新计算后生效。"));
-        content.AddChild(bossStrategyGrid);
 
-        content.AddChild(CreateSectionHeading(SolverText.Get("自动执行")));
         GridContainer executionGrid = CreateSettingsGrid();
         _stopOnCombatEnd = CreateToggle();
         _stopOnCombatEnd.Toggled += OnStopOnCombatEndToggled;
@@ -219,16 +215,20 @@ internal sealed partial class SolverSettingsPanel
         _stopOnWorseRecalculation = CreateToggle();
         _stopOnWorseRecalculation.Toggled += OnStopOnWorseRecalculationToggled;
         AddBasicRow(executionGrid, SolverText.Get("重算后战损增加时暂停"), _stopOnWorseRecalculation);
-        AddBasicRow(executionGrid, SolverText.Get("自动出牌速度"), CreateDeploymentFastModeInput());
-        AddBasicRow(executionGrid, SolverText.Get("牌间额外停顿（秒）"), CreateOptionalDoubleInput(
+        GridContainer speedGrid = CreateSettingsGrid();
+        AddBasicRow(speedGrid, SolverText.Get("自动出牌速度"), CreateDeploymentFastModeInput());
+        AddBasicRow(speedGrid, SolverText.Get("牌间额外停顿（秒）"), CreateOptionalDoubleInput(
             0d,
             data => data.DeploymentInterActionDelaySeconds,
             (data, value) => data with { DeploymentInterActionDelaySeconds = value },
             0d,
             3d));
-        content.AddChild(executionGrid);
+        AddSettingsSection(content, SolverText.Get("出牌速度"), SolverText.Get("调整自动执行的节奏，下次执行生效。"), speedGrid);
+        AddSettingsSection(content, SolverText.Get("自动执行的暂停条件"),
+            SolverText.Get("选择哪些情况下暂停自动执行并交还操作权。"), executionGrid);
+        AddSettingsSection(content, SolverText.Get("幕末 Boss"),
+            SolverText.Get("分别设置幕末战斗的血量取舍，重新计算后生效。"), bossStrategyGrid);
 
-        content.AddChild(CreateSectionHeading(SolverText.Get("界面")));
         GridContainer interfaceGrid = CreateSettingsGrid();
         _overlayTheme = CreateOverlayThemeInput();
         AddBasicRow(
@@ -241,8 +241,11 @@ internal sealed partial class SolverSettingsPanel
             SolverText.Get("覆盖层透明度"),
             CreateOverlayOpacityInput(),
             SolverText.Get("调整整个求解器覆盖层的透明度，范围为 25%–100%，立即生效。"));
-        content.AddChild(interfaceGrid);
-        content.AddChild(CreateSectionHeading(SolverText.Get("在线统计")));
+        _searchCompletionNotificationPolicy = CreateSearchCompletionNotificationPolicyInput();
+        AddBasicRow(interfaceGrid, SolverText.Get("搜索结束通知"), _searchCompletionNotificationPolicy,
+            SolverText.Get("搜索成功、失败、停止或结果过期时发送 Windows 系统通知和提示音。可关闭、仅在游戏不处于前台时通知，或始终通知；其他平台不会调用 Windows 接口。"));
+        AddSettingsSection(content, SolverText.Get("显示与通知"),
+            SolverText.Get("设置主题、透明度与系统通知。"), interfaceGrid);
         GridContainer statisticsGrid = CreateSettingsGrid();
         CheckButton statistics = CreateToggle();
         _reloadInputs.Add(data => statistics.SetPressedNoSignal(data.OnlineStatisticsEnabled));
@@ -254,8 +257,9 @@ internal sealed partial class SolverSettingsPanel
             SetStatus(enabled ? SolverText.Get("在线统计已开启") : SolverText.Get("在线统计已关闭"), SolverUiTokens.Palette.Success);
         };
         AddBasicRow(statisticsGrid, SolverText.Get("向作者发送在线状态（默认开启）"), statistics,
-            SolverText.Get("每 30 秒发送随机安装标识、昵称、角色、楼层、当前战斗、预计战损和 Mod 版本。作者后台可见当前状态，不上传完整路线；离线后清除玩家详情，仅保留历史人数。关闭后停止发送，最迟 90 秒从在线列表移除。"));
-        content.AddChild(statisticsGrid);
+            SolverText.Get("每 30 秒发送在线状态，并同步本档案的跑局胜负、放弃、求解器参与情况与历史战绩快照。作者后台保留匿名战绩用于胜率和连胜统计；历史成绩与求解器成绩分开。关闭后停止自动上传，最迟 90 秒从在线列表移除。"));
+        AddSettingsSection(content, SolverText.Get("在线统计"),
+            SolverText.Get("管理在线状态和跑局统计的自动上传。"), statisticsGrid);
         return CreatePageScroll(content);
     }
 

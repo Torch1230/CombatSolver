@@ -31,7 +31,7 @@ test('30-row global ranking, remote search, reconnect accumulation and restart p
   async function heartbeat(index){
     const data={sessionId:(index+1).toString(16).padStart(32,'0'),name:`玩家 ${index+1}`,character:'铁甲战士',floor:12,encounter:index%2?'':'测试战斗',hpLoss:0,version:'test'};
     const result=await fetch(collectorOrigin+'/v1/heartbeat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
-    assert.equal(result.status,204);
+    assert.equal(result.status,200);
   }
   const get=path=>fetch(origin+path,{headers:{Cookie:cookie}});
   const page=(query='')=>get('/api/players'+query).then(r=>r.json());

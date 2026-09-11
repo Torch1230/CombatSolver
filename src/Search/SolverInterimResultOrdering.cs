@@ -51,7 +51,8 @@ internal static class SolverInterimResultOrdering
         int comparison = current.Won.CompareTo(candidate.Won);
         if (comparison != 0)
             return comparison < 0;
-        if (candidate.OutstandingStolenResource != current.OutstandingStolenResource)
+        if (candidate.TheftPolicy == SolverTheftPolicy.PreserveResources
+            && candidate.OutstandingStolenResource != current.OutstandingStolenResource)
             return candidate.OutstandingStolenResource < current.OutstandingStolenResource;
         if (IsResourceTradeImprovement(candidate, current))
             return true;
@@ -76,6 +77,8 @@ internal static class SolverInterimResultOrdering
         SolverInterimResult candidate,
         SolverInterimResult current)
         => (!candidate.Won
+                || candidate.TheftPolicy == SolverTheftPolicy.PreserveResources
+                    && candidate.OutstandingStolenResource < current.OutstandingStolenResource
                 || !current.Won
                 || candidate.ProjectedBattleHpLost - candidate.GrowthHpCredit
                     <= current.ProjectedBattleHpLost - current.GrowthHpCredit)

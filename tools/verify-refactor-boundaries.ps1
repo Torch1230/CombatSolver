@@ -5,6 +5,10 @@ $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $searchRoot = Join-Path $repositoryRoot "src\Search"
 
 $forbiddenSearchReferences = @(
+    "SolverSearchPhase",
+    "ShortProfile",
+    "DeepProfile",
+    "shortCheckpointMilliseconds",
     "SolverSettings.Current",
     "Entry.Logger",
     "SolverController",
@@ -15,10 +19,18 @@ $forbiddenSearchReferences = @(
     "SolverActionTextIdentity",
     "SolverLocaleRefresh",
     "SolvedRouteCache",
+    "RunStatistics",
     "UnattendedTestRunner"
 )
 
 $violations = [System.Collections.Generic.List[string]]::new()
+$poolLifetime = [System.IO.File]::ReadAllText((Join-Path $repositoryRoot 'src/Runtime/NodePoolSignalLifetimePatch.cs'))
+foreach ($required in @('using ((Godot.Collections.Array)signals)', 'using var ownedArray', 'using (connection)', 'using (callable.Method)', 'using (signal.Name)')) {
+    if (-not $poolLifetime.Contains($required)) { $violations.Add("Node pool wrapper ownership missing: $required") }
+}
+if ($poolLifetime.Contains('GC.Collect') -or $poolLifetime.Contains('QueueFree')) {
+    $violations.Add('Node pool signal cleanup owns temporary wrappers, not nodes or process GC.')
+}
 $normalityMirror = [System.IO.File]::ReadAllText((Join-Path $repositoryRoot 'src/Engine/InCombat/Mirrors/Hooks/Card/ShouldPlayMirrors.cs'))
 if (-not $normalityMirror.Contains('registry.Register<Normality>(HandleNormality)')) {
     $violations.Add('Normality must use the shared ShouldPlay mirror for manual and automatic cards.')
@@ -232,6 +244,34 @@ foreach ($sessionType in @("SolverCombatSession", "SolverSearchSession", "Solver
 
 $forkBoundaryChecks = @(
     @{
+        Path = Join-Path $repositoryRoot "src\Prediction\ModelPredictionStateMirrors.cs"
+        Text = "context.Register(value, typed)"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Prediction\ModelPredictionStateMirrors.cs"
+        Text = "boundary.AssertForkable()"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Search\SimulatedCombatState.cs"
+        Text = "ModelPredictionStateMirrors.CaptureRootState(simulator,"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Search\SimulatedCombatState.cs"
+        Text = "ModelPredictionStateMirrors.AppendPredicted(ref fingerprint,"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Search\SimulatedCombatState.cs"
+        Text = "_rootModifierSources = null;"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Runtime\ContinuationStamp.cs"
+        Text = "ModelPredictionStateMirrors.AppendLiveContinuation(text, state)"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Runtime\ContinuationStamp.cs"
+        Text = "ModelPredictionStateMirrors.AppendPredicted(ref adapterFingerprint,"
+    },
+    @{
         Path = Join-Path $repositoryRoot "src\Engine\Common\PredictionForking.cs"
         Text = "interface IPredictionForkBoundary"
     },
@@ -265,7 +305,7 @@ foreach ($check in $forkBoundaryChecks) {
 $searchGcPolicyPath = Join-Path $repositoryRoot "src\Runtime\SearchGcPolicy.cs"
 foreach ($gcChainRule in @(
     "return WaitForReclaimChainAsync(_reclaimTask)",
-    "CollectGeneration2InBackgroundAsync(inSearchCheckpoint: true)",
+    "CollectGeneration2ForAutomaticReclaimAsync(inSearchCheckpoint: true)",
     "_inSearchManualReclaimTask = manualCompletion.Task",
     "failure == null && (_regionExitRequired || _reclaimRequired)")) {
     if (-not (Select-String -LiteralPath $searchGcPolicyPath -SimpleMatch $gcChainRule -Quiet)) {
@@ -411,8 +451,8 @@ foreach ($runtimePath in Get-ChildItem (Join-Path $repositoryRoot "src\Runtime")
 }
 $cardTargetingPath = Join-Path $repositoryRoot "src\Engine\InCombat\Simulation\CombatPredictionSimulator.CardTargeting.cs"
 foreach ($targetingRule in @(
-    "Shiv when combat.GetAmount<FanOfKnivesPower>",
-    "SovereignBlade when combat.GetAmount<SeekingEdgePower>")) {
+    "Shiv => combat.GetAmount<FanOfKnivesPower>",
+    "SovereignBlade => combat.GetAmount<SeekingEdgePower>")) {
     if (-not (Select-String -LiteralPath $cardTargetingPath -SimpleMatch $targetingRule -Quiet)) {
         $violations.Add("${cardTargetingPath}: missing simulated card targeting rule '$targetingRule'")
     }
@@ -1007,7 +1047,8 @@ $overlaySnapshotPath = Join-Path $repositoryRoot "src\UI\SolverOverlaySnapshot.c
 $overlayRendererPaths = @(
     (Join-Path $repositoryRoot "src\UI\SolverOverlay.cs"),
     (Join-Path $repositoryRoot "src\UI\SolverRouteRow.cs"),
-    (Join-Path $repositoryRoot "src\UI\SolverActionPill.cs")
+    (Join-Path $repositoryRoot "src\UI\SolverActionPill.cs"),
+    (Join-Path $repositoryRoot "src\UI\SolverActionBar.cs")
 )
 foreach ($check in @(
     @{ Path = $overlaySnapshotPath; Text = "internal sealed record SolverOverlaySnapshot(" },
@@ -1101,6 +1142,15 @@ foreach ($check in @(
 }
 
 $mirrorRegistryPath = Join-Path $repositoryRoot "src\Engine\Common\Mirrors\MethodMirrorRegistry.cs"
+$dynamicVarMetadataPath = Join-Path $repositoryRoot "src\Runtime\DynamicVarCloneMetadataPatches.cs"
+foreach ($rule in @('SimulationNotificationIsolation.IsActive', '"DynamicVarUpgrades"', 'table.TryGetValue(source', 'Tips.TryGetValue(__0')) {
+    if (-not (Select-String -LiteralPath $dynamicVarMetadataPath -SimpleMatch $rule -Quiet)) {
+        $violations.Add("DynamicVarCloneMetadataPatches.cs: missing sparse metadata boundary '$rule'")
+    }
+}
+if (Select-String -LiteralPath $dynamicVarMetadataPath -SimpleMatch '.Clear()' -Quiet) {
+    $violations.Add('DynamicVarCloneMetadataPatches.cs: global metadata clearing is forbidden')
+}
 $mirrorDescriptorPath = Join-Path $repositoryRoot "src\Engine\Common\Mirrors\MethodMirrorRegistryDescriptor.cs"
 $coverageCatalogPath = Join-Path $repositoryRoot "tools\CoverageCatalog\Program.cs"
 foreach ($check in @(
@@ -1332,7 +1382,7 @@ $compactReadGuards = @(
     @('src/Search/SimulatedCombatState.cs', 'CaptureHistoryCourseCards(simulator, player);'),
     @('src/Search/SimulatedCombatState.AutoPlay.cs', '=> _lastAttackPreviousTurn?.GetValueOrDefault(player);'),
     @('src/Search/SimulatedCombatState.cs', 'history?.Owner.Creature, history?.Exhausts'),
-    @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'strategicRequirements, view?.CardValuesInvariant == true ? view.Invariants : null'),
+    @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'view?.CardValuesInvariant == true ? view.Invariants : null, skillsExhaust'),
     @('src/Prediction/Compact/CompactDiscardReadView.cs', '_adapter.CopyPowerReadValues(program, values);'),
     @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'SnapshotCore(view.EvaluationContext,'),
     @('src/Prediction/Compact/CompactDiscardReadView.cs', '!_adapter.Program.State.HasSameRoot(program.State) || !program.Complete'),

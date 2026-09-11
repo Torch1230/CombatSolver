@@ -71,15 +71,23 @@ internal sealed partial class SimulatedCombatState
     {
         if (_paleBlueDotActivated?.TryGetValue(power, out bool activated) == true)
             return activated;
+        activated = ReadPaleBlueDotActivated(power);
+        (_paleBlueDotActivated ??= [])[power] = activated;
+        return activated;
+    }
+
+    public void CapturePaleBlueDotRootState(PaleBlueDotPower target, PaleBlueDotPower source)
+        => InitializePaleBlueDot(target, ReadPaleBlueDotActivated(source));
+
+    private static bool ReadPaleBlueDotActivated(PaleBlueDotPower power)
+    {
         object data = PowerInternalDataField.GetValue(power)
             ?? throw new InvalidOperationException("苍蓝星球没有内部回合状态。");
         FieldInfo field = data.GetType().GetField(
             "alreadyActivatedThisTurn",
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
             ?? throw new MissingFieldException(data.GetType().FullName, "alreadyActivatedThisTurn");
-        activated = (bool)field.GetValue(data)!;
-        (_paleBlueDotActivated ??= [])[power] = activated;
-        return activated;
+        return (bool)field.GetValue(data)!;
     }
 
     public void SetPaleBlueDotActivated(PaleBlueDotPower power, bool activated)
@@ -244,19 +252,18 @@ internal sealed partial class SimulatedCombatState
             int rootAmount = _swordSageCardsInitialized
                 ? 0
                 : _rootPowerAmounts.GetValueOrDefault((player.Creature, typeof(SwordSagePower)));
-            // With no current/root bonus and no previously applied bonus, every blade
-            // already has the correct replay count. A later Power gain still scans all
-            // cards with a zero baseline; removal must visit any recorded bonuses.
-            if (desired == 0 && rootAmount == 0 && _swordSageReplayBonuses is not { Count: > 0 })
-                continue;
+            // Record zero bonuses too: a clone already present before the next Power
+            // gain needs that delta, while a newly generated clone carries its bonus.
             foreach (PredictedCard card in simulator.State.GetPlayerCombatState(player).AllCards)
             {
-                if (card.Preview is not SovereignBlade || card.Preview.IsClone)
+                if (card.Preview is not SovereignBlade)
                     continue;
                 _swordSageReplayBonuses ??= [];
                 if (!_swordSageReplayBonuses.TryGetValue(card, out int applied))
                 {
-                    applied = rootAmount;
+                    // A gameplay clone carries its source's replay state on entry. Later
+                    // power changes still affect that instance, just like every other blade.
+                    applied = _swordSageCardsInitialized && card.Preview.IsClone ? desired : rootAmount;
                     _swordSageReplayBonuses.Add(card, applied);
                 }
                 int delta = desired - applied;

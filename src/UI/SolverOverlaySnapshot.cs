@@ -61,6 +61,7 @@ internal sealed record SolverOverlaySnapshot(
     bool HasRisk,
     string? SearchLimitWarningText)
 {
+    public string? UnrecoveredLootText { get; init; }
     public static SolverOverlaySnapshot Capture(SolverResult result, bool unexpectedReplan)
         => CaptureWithReviewedWorldlines(result, unexpectedReplan, reviewedWorldlinesTotal: 0);
 
@@ -257,7 +258,13 @@ internal sealed record SolverOverlaySnapshot(
             turns,
             BuildDetails(result, startTurnNumber, unmirrored, compensated, unexpectedReplan),
             hasRisk,
-            BuildSearchLimitWarning(result.BoundaryReason));
+            BuildSearchLimitWarning(result.BoundaryReason))
+        {
+            UnrecoveredLootText = result.OutstandingStolenResource <= 0 ? null
+                : result.Snapshot.UnrecoveredGold is { } gold && result.Snapshot.UnrecoveredCards is { } cards
+                    ? SolverText.Format($"预计未追回：{cards} 张牌 / {gold} 金币")
+                    : SolverText.Format($"路线结束时未追回 {result.OutstandingStolenResource}"),
+        };
     }
 
     private static SolverOverlayTurnSnapshot CaptureTurn(SolverResult result, int turn)
@@ -405,7 +412,7 @@ internal sealed record SolverOverlaySnapshot(
             ? SolverText.Format($"[color={SolverUiTokens.Palette.TextMutedHex}]搜索[/color]  战斗状态一致，恢复已记录路线  │  本次 0 节点")
             : result.WasReused
             ? SolverText.Format($"[color={SolverUiTokens.Palette.TextMutedHex}]搜索[/color]  跨回合状态一致，复用既有路线  │  本回合 0 节点")
-            : SolverText.Format($"[color={SolverUiTokens.Palette.TextMutedHex}]搜索[/color]  {(result.DeepSearchTriggered ? SolverText.Get("深化") : SolverText.Get("快速"))}  │  {result.ExpandedNodes} 节点  │  置换剪枝 {result.TranspositionBranchesPruned}  │  {result.TotalSearchElapsed.TotalMilliseconds:F0} ms");
+            : SolverText.Format($"[color={SolverUiTokens.Palette.TextMutedHex}]搜索[/color]  {result.ExpandedNodes} 节点  │  置换剪枝 {result.TranspositionBranchesPruned}  │  {result.TotalSearchElapsed.TotalMilliseconds:F0} ms");
         List<string> detailLines =
         [
             searchDetails,

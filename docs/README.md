@@ -1,5 +1,8 @@
 # CombatSolver 文档导航
 
+- [上游 0.36.0 合并验证](performance/simulation-upstream-merge-20260911.md)：紧凑后端阶段／历史适配与同政策验证。
+
+
 - [性能重构交接与剩余工作](performance/simulation-refactor-handoff-20260911.md)：完整目标、额度交接条件、当前代码与验证、亡灵动态闭包和最终性能验收。
 - [命运同担与属性能力类型](performance/simulation-shared-fate-20260911.md)：有序力量削减、人工制品和负属性能力生命周期。
 - [神气制胜独立实例与终局分派](performance/simulation-panache-20260911.md)：独立计数、首次应用、末击与玩家死亡的完整回合边界。
@@ -73,18 +76,26 @@
 | 线程 CPU 诊断、阶段提取与检查点验证状态 | [P5 选择前缀测量与回合检查点](performance/simulation-refactor-p5-20260910.md) |
 | 归一化原型验证、撤回与测量干扰 | [P3 实验记录](performance/simulation-refactor-p3-20260910.md) |
 | 最新极高配置整场搜索的 CPU 与分配热点 | [完整搜索模拟采样](performance/simulation-profile-20260910.md) |
+| 当前 UI 重设计、按钮区整理与 Gemini 建议审计 | [UI 建议复核与重构方案](audits/ui-redesign-gemini-review-20260911.md) |
+| 跨跑局卡顿、第三方 Mod 性能取证 | [进程全程性能录制](performance/long-session-recording.md) |
+| 三层秒级卡顿与自动回收 | [2026-09-11 实录诊断](performance/player-lag-diagnosis-20260911.md) |
 | 最新快照/重放复查与 PR 验证 | [快照与重放热点复查](performance/snapshot-replay-followup-20260909.md) |
 | 保路元数据合入证据 | [perf-2 选择性合入与后续热点试验](performance/perf2-integration-20260909.md) |
 | 上一轮性能目标与逐轮证据 | [回合结束探针与元数据热路径](performance/standpat-and-metadata-20260909.md) |
 | 无人测试环境与请求协议 | [无头测试](HEADLESS_TESTING.md) |
 | 在线状态、隐私设置与管理后台 | [在线统计](ONLINE_STATISTICS.md) |
+| 在线监控工作台、筛选与刷新行为 | [监控工作台](ONLINE_WORKBENCH.md) |
+| 两个在线服务的权威源码与部署来源 | [在线服务维护入口](ONLINE_SERVICES.md) |
+| 跑局胜负、连胜、历史快照与筛选 | [跑局战绩](RUN_STATISTICS.md) |
 | 创意工坊中英文介绍与语言字段 | [创意工坊介绍](workshop/README.md) |
 | 玩家问题包、检查点恢复与回放 | [检查点回放](CHECKPOINT_REPLAY.md) |
+| 2026-09-09 22:56 的 34 份实验体报告 | [实验体批次修复与未定位项](issues/test-subject-reports-20260909.md) |
 | 问题包目录、提交元数据和后台筛选口径 | [报告协议](BUG_REPORT_PROTOCOL.md) |
 | 188 份计划外重算报告的分类与高频修复 | [2026-09-08 重算分诊](issues/report-replans-20260908.md) |
 | 0.33.0 修复批次的剩余问题与交接 | [2026-09-07 修复交接](issues/report-logic-bugs-20260907-handoff.md) |
 | 第三方卡牌、Power、药水等登记入口 | [第三方 Mod 适配手册](THIRD_PARTY_ADAPTERS.md) |
 | 第三方 Power 的搜索估值 | [战略估值登记](third-party-strategic-effects.md) |
+| 遗物与 Modifier 的捕获、Fork 与续用状态 | [模型状态适配](third-party-model-state.md) |
 | 战斗语义适配与验证方法 | [适配验证](ADAPTATION_VERIFICATION.md) |
 | 原版 Hook 支持和覆盖证据 | [战斗 Hook 覆盖目录](COMBAT_HOOK_COVERAGE.md) |
 
@@ -93,7 +104,6 @@
 ## 专题目录
 
 | 目录 | 内容 |
-|---|---|
 | [releases/](releases/README.md) | 按版本整理的玩家更新日志与历史草案 |
 | [pr/](pr/README.md) | PR 审查、集成修正与验证记录 |
 | [refactoring/](refactoring/README.md) | 滚动重构路线与核验记录 |

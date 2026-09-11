@@ -16,6 +16,15 @@ internal sealed partial class UnattendedTestRunner
         Check(new SolverSettingsData().GrowthBudgets == default, "default budgets");
         Check(SolverSettings.RoundTripForTesting(original with { GrowthBudgets = budgets }).GrowthBudgets == budgets,
             "settings round trip");
+        foreach (string retiredMode in new[] { "Survival", "PermanentGrowth", "NetResources" })
+        {
+            string previousSettings = "{\"objective\":{\"mode\":\"" + retiredMode
+                + "\",\"maximumBattleHpLoss\":0,\"minimumEndingHp\":100,\"growthTarget\":999},"
+                + "\"growthBudgets\":{\"geneticAlgorithm\":7},\"ignoreLongTermRewards\":false}";
+            SolverSettingsData migrated = SolverSettings.DeserializeForTesting(previousSettings);
+            Check(migrated.GrowthBudgets.GeneticAlgorithm == 7 && !migrated.IgnoreLongTermRewards,
+                "0.34.9 objective settings preserve the original per-source growth budget");
+        }
         try
         {
             SolverSettings.ApplyForTesting(original with { GrowthBudgets = budgets });
@@ -60,8 +69,8 @@ internal sealed partial class UnattendedTestRunner
             GrowthBudgets = default,
             AcceptableBattleHpLoss = 100,
             PotionPolicy = SolverPotionPolicy.Disabled,
-            ForceShortOnly = true,
-            ShortBudgetOverrideMilliseconds = 1500,
+            FixedBudget = true,
+            BudgetOverrideMilliseconds = 1500,
             MaxDegreeOfParallelism = 1,
             VerifyIncrementalSearch = true,
         };

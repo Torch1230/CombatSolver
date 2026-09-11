@@ -55,7 +55,7 @@ internal sealed partial class UnattendedTestRunner
             UnattendedTestRequest request = runner._request;
             runner.SetStage("game_startup");
             await runner._host.GameStartupComplete;
-            runner.ValidateCheckpointModsAfterStartup();
+            runner.RecordCheckpointModDifferencesAfterStartup();
             runner.ApplyHeadlessFastModeOverride();
             runner.EnsureWithinDeadline();
             if (RunManager.Instance.IsInProgress)

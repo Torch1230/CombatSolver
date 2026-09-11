@@ -231,6 +231,8 @@ internal sealed partial class CombatBeamSolver
                             && candidate.Features.OutstandingStolenResource
                                 < potionFreeOutstandingResource;
                     bool passesAmbergrisPolicy = strictPrimaryImprovement
+                        || theftPolicy == SolverTheftPolicy.PreserveResources
+                            && candidate.Features.OutstandingStolenResource < potionFreeOutstandingResource
                         || PotionUsePolicy.MeetsAmbergrisRestriction(
                             hasPotionFreeBaseline,
                             candidate.OptionalAmbergrisCount,
@@ -254,14 +256,13 @@ internal sealed partial class CombatBeamSolver
                         || candidate.Snapshot.ProjectedPlayerHp <= 0)
                         ? 1
                         : 0)
-                // Compare HP after earned growth credit, then realized growth and duration.
+                .ThenBy(candidate => theftPolicy == SolverTheftPolicy.PreserveResources
+                    ? candidate.Features.OutstandingStolenResource : 0)
+                // Compare HP after the requested recovery objective.
                 .ThenBy(candidate => candidate.StrategicHpDeficit)
                 .ThenByDescending(candidate => candidate.Snapshot.GrowthHpCredit)
                 .ThenByDescending(candidate => candidate.Snapshot.GrowthRewards.Total)
                 .ThenBy(candidate => candidate.CombatEndedTurn ?? int.MaxValue)
-                .ThenBy(candidate => theftPolicy == SolverTheftPolicy.PreserveResources
-                    ? candidate.Features.OutstandingStolenResource
-                    : 0)
                 .ThenBy(candidate => candidate.PolicyHpDeficit)
                 .ThenBy(candidate => candidate.HealthResourceCost)
                 .ThenByDescending(candidate => candidate.Features.LongTermResourceValue)
@@ -356,6 +357,10 @@ internal sealed partial class CombatBeamSolver
             if (comparison != 0)
                 return comparison;
         }
+        comparison = TheftEncounterStrategy.CompareRecovery(theftPolicy,
+            leftWon, leftSnapshot.OutstandingStolenResource, rightWon, rightSnapshot.OutstandingStolenResource);
+        if (comparison != 0)
+            return comparison;
         comparison = (ActEndingBossPolicy.StrategicHpDeficit(
                 leftSnapshot.CumulativePlayerHpLost,
                 Math.Max(0, initialPlayerMaxHp - leftSnapshot.PlayerMaxHp),

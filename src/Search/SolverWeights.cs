@@ -52,6 +52,28 @@ internal static class SolverWeights
     /// 保留层数多、剩余节点少的时候，不至于把某一层挤到几乎搜不动。
     /// </summary>
     public const int MinimumTurnLayerExpandedNodes = 500;
+    /// <summary>
+    /// 一条胜利路线都没找到、而时间预算还剩一大截时，搜索面和工作量帽每次各翻这么多倍。
+    /// </summary>
+    /// <remarks>
+    /// Beam 和节点都要翻，翻一样多。只翻节点没用：实测 Beam 90 的主搜索在 2 701–5 206 个
+    /// 节点上就把前沿走空了，根本花不掉多给的额度；只翻 Beam 也没用，Beam 135 找到胜利
+    /// 需要 83 423 个节点，而极高档只给 50 000。两者是乘的关系，Beam 越宽同一条线需要的
+    /// 节点越少（Beam 512 只要 26 671）。
+    /// </remarks>
+    public const int NoVictoryEscalationFactor = 2;
+    /// <summary>
+    /// 最多抬这么多次（配合 <see cref="NoVictoryEscalationFactor" />，上限是 4 倍）。
+    /// </summary>
+    /// <remarks>
+    /// 每一轮都是从根重搜，所以次数要少。再往上加只会在真的无解的局面里多烧时间，
+    /// 而那种局面全自动本来就会停在「只有死亡路线」上。
+    /// </remarks>
+    public const int MaximumNoVictoryEscalations = 2;
+    /// <summary>Beam 宽度的硬上限，和设置校验里那一档对齐。</summary>
+    public const int MaximumEscalatedBeamWidth = 512;
+    /// <summary>各类分支上限的硬上限，和设置校验里那一档对齐。</summary>
+    public const int MaximumEscalatedBranchesPerAction = 100;
     public const double AngerCopyBeamPenalty = -15_000d;
     public const int RetainedAttackGrowthBeamCap = 16;
     public const double RetainedAttackGrowthBeamValue = 20_000d;

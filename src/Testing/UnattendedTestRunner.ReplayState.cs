@@ -454,6 +454,17 @@ internal sealed partial class UnattendedTestRunner
             string actualField = actualFields[index];
             if (string.Equals(expectedField, actualField, StringComparison.Ordinal))
                 continue;
+            if (expectedField.StartsWith("Y=", StringComparison.Ordinal)
+                && actualField.StartsWith("Y=", StringComparison.Ordinal))
+            {
+                string[] recordedHistory = expectedField[2..].Split('/');
+                string[] currentHistory = actualField[2..].Split('/');
+                // Older schemas recorded fewer derived history counters. Compare every
+                // recorded counter; the added counters come from the replayed native events.
+                if (recordedHistory.Length is 2 or 3 && currentHistory.Length == 4
+                    && recordedHistory.SequenceEqual(currentHistory.Take(recordedHistory.Length)))
+                    continue;
+            }
             if (!expectedField.StartsWith("R=", StringComparison.Ordinal)
                 || !actualField.StartsWith("R=", StringComparison.Ordinal)
                 || !LegacyRngContinuationMatches(expectedField[2..], actualField[2..]))
@@ -540,7 +551,7 @@ internal sealed partial class UnattendedTestRunner
         start += marker.Length;
         int end = continuationState.IndexOf(';', start);
         string[] values = continuationState[start..(end < 0 ? continuationState.Length : end)].Split('/');
-        if (values.Length != 2
+        if (values.Length is < 2 or > 4
             || !int.TryParse(values[0], out int expectedStatusDraws)
             || !int.TryParse(values[1], out int expectedZeroCostAttackStarts))
         {
@@ -557,6 +568,16 @@ internal sealed partial class UnattendedTestRunner
             && entry.CardPlay.Player == player
             && entry.CardPlay.Card.Type == CardType.Attack
             && entry.CardPlay.Resources.EnergyValue == 0);
+        int actualCardPlayStarts = CombatManager.Instance.History.CardPlaysStarted.Count(entry =>
+            entry.HappenedThisTurn(combatState) && entry.CardPlay.Player == player);
+        int actualAttackSkillStarts = CombatManager.Instance.History.CardPlaysStarted.Count(entry =>
+            entry.HappenedThisTurn(combatState) && entry.CardPlay.Player == player
+            && entry.CardPlay.Card.Type is CardType.Attack or CardType.Skill);
+        if (values.Length >= 3 && (!int.TryParse(values[2], out int expectedStarts) || expectedStarts != actualCardPlayStarts)
+            || values.Length == 4 && (!int.TryParse(values[3], out int expectedAttackSkills) || expectedAttackSkills != actualAttackSkillStarts))
+        {
+            throw new InvalidOperationException("无法精确恢复本回合出牌开始历史。");
+        }
         if (actualStatusDraws != expectedStatusDraws
             || actualZeroCostAttackStarts != expectedZeroCostAttackStarts)
         {

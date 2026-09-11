@@ -299,8 +299,20 @@ require_fixed "$repository_root/src/Engine/InCombat/Mirrors/Hooks/Card/ShouldPla
     'registry.Register<Normality>(HandleNormality)' \
     'Normality must use the shared ShouldPlay mirror for manual and automatic cards.'
 
+pool_lifetime="$repository_root/src/Runtime/NodePoolSignalLifetimePatch.cs"
+for required in 'using ((Godot.Collections.Array)signals)' 'using var ownedArray' 'using (connection)' 'using (callable.Method)' 'using (signal.Name)'; do
+    require_fixed "$pool_lifetime" "$required" 'Node pool wrapper ownership missing:'
+done
+for forbidden in 'GC.Collect' 'QueueFree'; do
+    forbid_fixed "$pool_lifetime" "$forbidden" 'Node pool signal cleanup owns temporary wrappers, not nodes or process GC:'
+done
+
 for file in "${search_files[@]}"; do
     for reference in \
+        'SolverSearchPhase' \
+        'ShortProfile' \
+        'DeepProfile' \
+        'shortCheckpointMilliseconds' \
         'SolverSettings.Current' \
         'Entry.Logger' \
         'SolverController' \
@@ -311,6 +323,7 @@ for file in "${search_files[@]}"; do
         'SolverActionTextIdentity' \
         'SolverLocaleRefresh' \
         'SolvedRouteCache' \
+        'RunStatistics' \
         'UnattendedTestRunner'; do
         forbid_fixed "$file" "$reference" 'forbidden Search reference'
     done
@@ -365,6 +378,13 @@ while IFS=$'\t' read -r relative_path text; do
 done <<'EOF'
 src/Engine/Common/PredictionForking.cs	interface IPredictionForkBoundary
 src/Engine/Common/PredictionStateStore.cs	boundary.AssertForkable()
+src/Prediction/ModelPredictionStateMirrors.cs	context.Register(value, typed)
+src/Prediction/ModelPredictionStateMirrors.cs	boundary.AssertForkable()
+src/Search/SimulatedCombatState.cs	ModelPredictionStateMirrors.CaptureRootState(simulator,
+src/Search/SimulatedCombatState.cs	ModelPredictionStateMirrors.AppendPredicted(ref fingerprint,
+src/Search/SimulatedCombatState.cs	_rootModifierSources = null;
+src/Runtime/ContinuationStamp.cs	ModelPredictionStateMirrors.AppendLiveContinuation(text, state)
+src/Runtime/ContinuationStamp.cs	ModelPredictionStateMirrors.AppendPredicted(ref adapterFingerprint,
 src/Search/SimulatedCombatState.Fork.cs	_activeActionChoices
 src/Search/SimulatedCombatState.Fork.cs	_activeCardExecutionDeaths
 src/Engine/InCombat/Mirrors/Hooks/Card/CardPlayHookPredictionStates.cs	Cannot fork Pen Nib
@@ -399,7 +419,7 @@ done < <(find "$repository_root/src/Api" -type f -name '*.cs' -print0 | sort -z)
 search_gc_policy_path="$repository_root/src/Runtime/SearchGcPolicy.cs"
 for gc_chain_rule in \
     'return WaitForReclaimChainAsync(_reclaimTask)' \
-    'CollectGeneration2InBackgroundAsync(inSearchCheckpoint: true)' \
+    'CollectGeneration2ForAutomaticReclaimAsync(inSearchCheckpoint: true)' \
     '_inSearchManualReclaimTask = manualCompletion.Task' \
     'failure == null && (_regionExitRequired || _reclaimRequired)'; do
     require_fixed "$search_gc_policy_path" "$gc_chain_rule" 'missing serialized reclaim-chain rule'
@@ -461,8 +481,8 @@ done
 
 card_targeting_path="$repository_root/src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardTargeting.cs"
 for targeting_rule in \
-    'Shiv when combat.GetAmount<FanOfKnivesPower>' \
-    'SovereignBlade when combat.GetAmount<SeekingEdgePower>'; do
+    'Shiv => combat.GetAmount<FanOfKnivesPower>' \
+    'SovereignBlade => combat.GetAmount<SeekingEdgePower>'; do
     require_fixed "$card_targeting_path" "$targeting_rule" 'missing simulated card targeting rule'
 done
 
@@ -836,6 +856,7 @@ overlay_renderer_paths=(
     "$repository_root/src/UI/SolverOverlay.cs"
     "$repository_root/src/UI/SolverRouteRow.cs"
     "$repository_root/src/UI/SolverActionPill.cs"
+    "$repository_root/src/UI/SolverActionBar.cs"
 )
 for renderer_path in "${overlay_renderer_paths[@]}"; do
     for mutable_search_type in SolverResult PlanAction PlanCardChoice ModelDb; do
@@ -924,6 +945,10 @@ EOF
 for private_registry_field in '"_registrations"' '"_inferrer"' '"_strictInferrer"'; do
     forbid_fixed "$coverage_catalog_path" "$private_registry_field" 'private registry reflection returned:'
 done
+for rule in 'SimulationNotificationIsolation.IsActive' '"DynamicVarUpgrades"' 'table.TryGetValue(source' 'Tips.TryGetValue(__0'; do
+    require_fixed "$repository_root/src/Runtime/DynamicVarCloneMetadataPatches.cs" "$rule" 'missing sparse metadata boundary'
+done
+forbid_fixed "$repository_root/src/Runtime/DynamicVarCloneMetadataPatches.cs" '.Clear()' 'global metadata clearing is forbidden:'
 forbid_fixed \
     "$repository_root/src/Search/SimulatedCombatState.cs" \
     '_monsterAiStates?.Remove(creature)' \
@@ -1116,7 +1141,7 @@ require_fixed "$repository_root/src/Prediction/Compact/CompactDiscardProjection.
 require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" 'CaptureHistoryCourseCards(simulator, player);' 'both history-course windows must be captured before workers'
 require_fixed "$repository_root/src/Search/SimulatedCombatState.AutoPlay.cs" '=> _lastAttackPreviousTurn?.GetValueOrDefault(player);' 'empty previous-turn attack must not refill from live history'
 require_fixed "$search_root/SimulatedCombatState.cs" "history?.Owner.Creature, history?.Exhausts" 'completed keys lost supplied exhaust history'
-require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'strategicRequirements, view?.CardValuesInvariant == true ? view.Invariants : null' 'card-set changes must bypass invariant strategic summaries'
+require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'view?.CardValuesInvariant == true ? view.Invariants : null, skillsExhaust' 'card-set changes must bypass invariant strategic summaries'
 require_fixed "$compact_reader" '_adapter.CopyPowerReadValues(program, values);' 'completed Power inputs must come from the value program'
 require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'SnapshotCore(view.EvaluationContext,' 'completed evaluator must consume the lane-owned evaluation context'
 require_fixed "$compact_reader" '!_adapter.Program.State.HasSameRoot(program.State) || !program.Complete' 'completed reader lost ownership/stability guard'

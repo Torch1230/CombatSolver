@@ -102,6 +102,14 @@ Linux 不使用上述 Windows 路径。上传前必须设置 `COMBATSOLVER_MOD_U
 
 上传命令报告成功就是远端完成证据。不要打开创意工坊页面、重新下载订阅内容、再次读取版本或重复上传。失败时只修正命令明确报告的原因，再重试一次；原因不明则原样报告。
 
+### 必做：维护线上最新已发布版本
+
+客户端 0.35.3 起随心跳检查监控系统维护的版本。每次下载渠道实际发布成功后，必须把监控系统的 `latestVersion` 更新为该次已发布版本，作为本次发布的收尾步骤；只准备 ZIP、创建标签或推源码时保持原值。
+
+在监控后台“客户端更新提醒”保存版本，或在服务器部署目录执行 `node --env-file=private/service.env set-release.mjs <版本号>`。定位信息见本机 `combatsolver-online-services` skill 和私有配置；密码仅从服务器运行环境读取，不写入 Git、更新日志或命令参数。设置存入 SQLite，成功响应必须对应本次版本，此响应就是完成证据。
+
+渠道上传失败时保持原已发布版本。监控写入失败时明确报告“渠道已发布，监控版本未更新”及失败原因，修正明确原因后仅重试该步骤，不重复构建/上传。撤回提醒可用 `off`；不能从创意工坊查询接口、客户端上报数量或本地最大版本号猜测线上最新版。
+
 ### Steam 工坊 `FileNotFound` 排查
 
 - `k_EItemUpdateStatusInvalid` 与 `k_EResultFileNotFound` 不一定表示暂存目录缺文件。若工作区的 `image.png`、`workshop.json`、`content/` 和 `mod_id.txt` 已通过一次本地读取确认存在，先读取 Steam 客户端日志 `D:\Steam\logs\workshop_log.txt` 中对应时间和 AppID 的记录。
@@ -109,6 +117,8 @@ Linux 不使用上述 Windows 路径。上传前必须设置 `COMBATSOLVER_MOD_U
 - 这类重试期间以 Steam 日志中的 `Uploaded new content ...` 和 `Upload finished for workshop item <id> : OK` 作为实际成功证据；上传器末尾若同时打印中间状态 `k_EItemUpdateStatusInvalid`，以最终成功行和 Steam 日志为准，不再重复上传。
 
 ## 6. GitHub 干净提交与推送
+
+用户已确认：以后版本更新发布时同步创建 GitHub Release，并上传该版本最小 ZIP，提供中英玩家更新日志。仅开发、暂不发版和单独推源码仍不创建 Release。发布使用 `gh release create v<版本> releases/CombatSolver-<版本>.zip --verify-tag --notes-file docs/releases/<版本>-RELEASE_NOTES.md`；若本次同版本上传已有成功证据，直接复用，不重复创建或上传。0.35.5 已完成 GitHub Release 上传。
 
 - 读取一次 `git status --short --branch`、当前分支、远端和领先关系。显式暂存本任务的跟踪文件；保留并排除用户其他改动、发布 ZIP、构建产物、日志和创意工坊暂存内容。
 - “干净提交”指提交内容边界干净，不表示删除未跟踪文件、清空工作区或回退用户改动。

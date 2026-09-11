@@ -109,13 +109,8 @@ internal static class ModifyCardPlayResultLocationMirrors
             return context.Location;
         }
 
-        var count = CombatManager.Instance.History.CardPlaysStarted.Count(entry =>
-            entry.HappenedThisTurn(power.CombatState) &&
-            entry.CardPlay.Card.Type is CardType.Attack or CardType.Skill &&
-            entry.CardPlay.Player == power.Owner.Player);
-        count += context.History.OfType<CombatPredictionCardPlayStartedEntry>().Count(entry =>
-            entry.CardPlay.Card.Type is CardType.Attack or CardType.Skill &&
-            entry.CardPlay.Player == power.Owner.Player);
+        var count = ((SimulatedCombatState)context.State.CombatState)
+            .GetAttackSkillStartsThisTurn(power.Owner);
         if (count >= power.Amount)
         {
             return context.Location;

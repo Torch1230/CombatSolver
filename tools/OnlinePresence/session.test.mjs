@@ -2,10 +2,9 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import {once} from 'node:events';
-import {mkdtempSync,rmSync,readFileSync} from 'node:fs';
+import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import vm from 'node:vm';
 import {createApp} from './server.mjs';
 
 test('dedicated durable session survives restart, expires, revokes and follows password changes',async()=>{
@@ -45,28 +44,5 @@ test('dedicated durable session survives restart, expires, revokes and follows p
   } finally {await stop();rmSync(dir,{recursive:true});}
 });
 
-test('initial UI waits for authentication and shows login only on 401',async()=>{
-  const html=readFileSync(new URL('./public/index.html',import.meta.url),'utf8');
-  assert.match(html,/<section id="login" hidden>/);
-  const source=readFileSync(new URL('./public/app.js',import.meta.url),'utf8');
-  for(const outcome of ['success','unauthorized','network']) {
-    const elements=new Map();
-    const element=id=>{
-      if(!elements.has(id)) elements.set(id,{hidden:['login','dashboard','logout','session-retry'].includes(id),value:id==='range'?'24':'',parentElement:{clientWidth:800},addEventListener(){},replaceChildren(){},append(){}});
-      return elements.get(id);
-    };
-    let release;
-    const ready=new Promise(r=>release=r);
-    const context=vm.createContext({document:{getElementById:element,createElement:()=>({})},window:{innerWidth:1000,addEventListener(){}},AbortController,URLSearchParams,setTimeout:()=>1,clearTimeout(){},Chart:function(){},fetch:async path=>{
-      await ready;
-      if(outcome==='network') throw Error('network unavailable');
-      return {status:outcome==='unauthorized'?401:200,ok:outcome!=='unauthorized',json:async()=>path.startsWith('/api/overview')?{onlineCount:0,inRunCount:0,runStatusUnknownCount:0,historyPeak:0,history:[],now:0}:{page:1,totalPages:1,pageSize:30,total:0,players:[]}};
-    }});
-    vm.runInContext(source,context);
-    assert.equal(element('login').hidden,true);
-    release(); await new Promise(r=>setImmediate(r));
-    assert.equal(element('login').hidden,outcome!=='unauthorized');
-    assert.equal(element('dashboard').hidden,outcome!=='success');
-    if(outcome==='network') assert.equal(element('session-retry').hidden,false);
-  }
-});
+// Authentication rendering, request races and user interactions are exercised in browser.test.mjs
+// against the real DOM rather than a hand-written subset of browser APIs.

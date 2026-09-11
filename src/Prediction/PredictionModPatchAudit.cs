@@ -22,6 +22,7 @@ namespace CombatSolver;
 internal static class PredictionModPatchAudit
 {
     private const string OnPlayName = "OnPlay";
+    private static readonly string[] IncompatibleModIds = ["WheelchairSpire", "PengoTarot", "BetterCharacterRelics"];
 
     private readonly record struct ForeignPatch(string ModId, string ModName, string Description);
 
@@ -54,14 +55,16 @@ internal static class PredictionModPatchAudit
     {
         foreach (Mod mod in mods)
         {
-            if (!string.Equals(mod.manifest?.id, "WheelchairSpire", StringComparison.OrdinalIgnoreCase)
-                && !mod.assemblies.Any(assembly => string.Equals(
-                    assembly.GetName().Name, "WheelchairSpire", StringComparison.OrdinalIgnoreCase)))
+            string? incompatibleId = IncompatibleModIds.FirstOrDefault(id =>
+                string.Equals(mod.manifest?.id, id, StringComparison.OrdinalIgnoreCase)
+                || mod.assemblies.Any(assembly => string.Equals(
+                    assembly.GetName().Name, id, StringComparison.OrdinalIgnoreCase)));
+            if (incompatibleId is null)
                 continue;
             throw new IncompatibleGameplayModException(
                 mod.manifest?.id ?? string.Empty,
-                mod.manifest?.name ?? "WheelchairSpire",
-                "WheelchairSpire gameplay changes",
+                mod.manifest?.name ?? incompatibleId,
+                $"{incompatibleId} gameplay changes",
                 "combat");
         }
     }

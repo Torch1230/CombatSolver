@@ -12,10 +12,13 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
     private readonly Dictionary<GrowthSource, SpinBox> _budgets = [];
     private readonly List<(GrowthSourceHandle Source, SpinBox Input)> _extraBudgets = [];
     private readonly CheckButton _ignoreLongTermRewards;
+    private readonly CheckButton _limitBrightestFlame;
+    private readonly SpinBox _brightestFlameLimit;
     private bool _refreshing;
     private bool _disabled;
 
     public event Action<GrowthValues>? PolicyChanged;
+    public event Action<int?>? BrightestFlameLimitChanged;
 
     /// <summary>「不考虑局外收益」这个总开关变了。</summary>
     public event Action<bool>? IgnoreLongTermRewardsChanged;
@@ -42,9 +45,27 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
         _ignoreLongTermRewards.TooltipText =
             SolverText.Get("打开后，金币、永久升级这类只在战斗之外兑现的收益一律不参与打分：既不付出任何战损去换，")
             + SolverText.Get("也不再靠它们在搜索里保留路线。白拿的收益照样拿——最终选择里它仍然排在战损之后当平局的分先手。")
-            + SolverText.Get("后期没有商店、不需要这些收益时打开它；下面每一项额度在打开期间不生效。");
+            + SolverText.Get("后期没有商店、不需要这些收益时打开它；收益额度暂停生效，最大生命消耗限制仍然有效。");
         ignoreRow.AddChild(_ignoreLongTermRewards);
         layout.AddChild(ignoreRow);
+        VBoxContainer flameRows = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        CardModel flame = ModelDb.Card<BrightestFlame>();
+        HBoxContainer flameToggleRow = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        Label flameLabel = SolverUiTokens.CreateLabel(SolverText.Format($"限制{flame.Title}的最大生命消耗"), SolverUiTokens.Type.Body, SolverUiTokens.Palette.TextPrimary);
+        flameLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        flameLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        flameToggleRow.AddChild(flameLabel);
+        _limitBrightestFlame = SolverSettingsPanel.CreateToggle();
+        _limitBrightestFlame.Name = "LimitBrightestFlame";
+        _limitBrightestFlame.TooltipText = SolverText.Get("关闭时不限；开启后按整场战斗累计消耗计算，重算和跨回合不会恢复额度。修改后重新计算路线。");
+        flameToggleRow.AddChild(_limitBrightestFlame);
+        flameRows.AddChild(flameToggleRow);
+        _brightestFlameLimit = AddBudgetRow(flameRows, SolverText.Get("每场最多消耗"), flame.Portrait, 1000);
+        _brightestFlameLimit.Name = "BrightestFlameMaxHpLossLimit";
+        _brightestFlameLimit.TooltipText = SolverText.Get("至亮之焰每场允许消耗的最大生命总量。0 表示求解器不再使用；已手动消耗的额度也计入，其他来源增加最大生命不会返还额度。");
+        _limitBrightestFlame.Toggled += _ => PublishFlameLimit();
+        _brightestFlameLimit.ValueChanged += _ => PublishFlameLimit();
+        layout.AddChild(flameRows);
         layout.AddChild(new HSeparator());
         Label allowanceLabel = SolverUiTokens.CreateLabel(SolverText.Get("每次收益允许的额外战损"), SolverUiTokens.Type.Body, SolverUiTokens.Palette.TextPrimary);
         allowanceLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -72,7 +93,7 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
             _budgets.Add(source, input);
             input.ValueChanged += _ => Publish();
         }
-        // 第三方登记的来源排在原版八行之后，按登记顺序。
+        // 第三方登记的来源排在原版九行之后，按登记顺序。
         foreach (GrowthSourceMirrors.Entry entry in GrowthSourceMirrors.All)
         {
             (string title, Texture2D? portrait) = ResolveThirdPartyRow(entry);
@@ -104,6 +125,7 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
         GrowthSource.GeneticAlgorithm => ModelDb.Card<GeneticAlgorithm>(),
         GrowthSource.TheScythe => ModelDb.Card<TheScythe>(),
         GrowthSource.Goopy => ModelDb.Card<DefendIronclad>(),
+        GrowthSource.ForbiddenGrimoire => ModelDb.Card<ForbiddenGrimoire>(),
         _ => throw new ArgumentOutOfRangeException(nameof(source)),
     };
 
@@ -162,6 +184,11 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
             SolverSettingsData settings = SolverSettings.Current;
             _ignoreLongTermRewards.Disabled = disabled;
             _ignoreLongTermRewards.ButtonPressed = settings.IgnoreLongTermRewards;
+            _limitBrightestFlame.Disabled = disabled;
+            _limitBrightestFlame.SetPressedNoSignal(settings.BrightestFlameMaxHpLossLimit.HasValue);
+            _brightestFlameLimit.Editable = !disabled && settings.BrightestFlameMaxHpLossLimit.HasValue;
+            if (!_brightestFlameLimit.GetLineEdit().HasFocus())
+                _brightestFlameLimit.SetValueNoSignal(settings.BrightestFlameMaxHpLossLimit ?? 2);
             // 总开关打开时下面每一项都不生效，所以灰掉：不是为了拦住输入，是让「填了没用」看得见。
             bool budgetsUsable = !disabled && !settings.IgnoreLongTermRewards;
             foreach ((GrowthSource source, SpinBox input) in _budgets)
@@ -197,6 +224,13 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
         using InputEventMouseButton click = new() { Pressed = true, ButtonIndex = MouseButton.Left, Position = new Vector2(-1, -1) };
         _Input(click);
         return !edit.HasFocus() && input.Value == 7 && SolverSettings.Current.GrowthBudgets.GeneticAlgorithm == 7;
+    }
+
+    private void PublishFlameLimit()
+    {
+        if (_refreshing) return;
+        BrightestFlameLimitChanged?.Invoke(_limitBrightestFlame.ButtonPressed
+            ? checked((int)_brightestFlameLimit.Value) : null);
     }
 
     private void Publish()

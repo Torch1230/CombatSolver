@@ -399,7 +399,6 @@ internal sealed partial class CombatBeamSolver
             cancellationToken,
             progressCallback: null,
             searchProfile: _profile,
-            shortCheckpointMilliseconds: _shortCheckpointMilliseconds,
             potionPolicyOverride: _potionPolicy,
             potionFreePolicyBaseline: _potionFreePolicyBaseline,
             maximumPotionUses: _maximumPotionUses);

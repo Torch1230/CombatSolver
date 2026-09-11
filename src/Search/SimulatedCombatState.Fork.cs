@@ -49,6 +49,7 @@ internal sealed partial class SimulatedCombatState
             _cardPlaySeriesStartedThisTurn = _cardPlaySeriesStartedThisTurn?.Fork(),
             _zeroCostAttackStartsThisTurn = _zeroCostAttackStartsThisTurn?.Fork(),
             _cardPlayStartsThisTurn = _cardPlayStartsThisTurn?.Fork(),
+            _attackSkillStartsThisTurn = _attackSkillStartsThisTurn?.Fork(),
             _enemiesIntendingAttack = _enemiesIntendingAttack?.Fork(),
             _hasPredictedEnemyIntents = _hasPredictedEnemyIntents,
             _playerTurnNumbers = _playerTurnNumbers?.Fork(),
@@ -81,6 +82,7 @@ internal sealed partial class SimulatedCombatState
             _outstandingStolenCards = _outstandingStolenCards,
             _longTermResourceValue = _longTermResourceValue,
             _growthRewards = _growthRewards,
+            _brightestFlameMaxHpSpent = _brightestFlameMaxHpSpent,
             _angerCopiesGenerated = _angerCopiesGenerated,
             _deathSaveRelicHpRestored = _deathSaveRelicHpRestored,
         };

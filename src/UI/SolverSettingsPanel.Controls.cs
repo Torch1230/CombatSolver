@@ -22,9 +22,9 @@ internal sealed partial class SolverSettingsPanel
     {
         ScrollContainer scroll = new()
         {
-            CustomMinimumSize = new Vector2(0, 310),
+            CustomMinimumSize = new Vector2(0, 120),
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ShrinkBegin,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
             VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
             MouseFilter = MouseFilterEnum.Pass,
@@ -44,6 +44,22 @@ internal sealed partial class SolverSettingsPanel
         grid.AddThemeConstantOverride("h_separation", SolverUiTokens.Spacing.Lg);
         grid.AddThemeConstantOverride("v_separation", SolverUiTokens.Spacing.Sm);
         return grid;
+    }
+
+    private static void AddSettingsSection(VBoxContainer page, string title, string description, Control content)
+    {
+        PanelContainer panel = new() { MouseFilter = MouseFilterEnum.Pass, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        panel.AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
+            SolverUiTokens.Palette.SurfaceRaised, SolverUiTokens.Palette.BorderSubtle,
+            SolverUiTokens.Radius.Medium, SolverUiTokens.Spacing.Sm, SolverUiTokens.Spacing.Sm));
+        VBoxContainer section = CreatePageContent("SettingsSection");
+        section.AddChild(CreateSectionHeading(title));
+        Label hint = SolverUiTokens.CreateLabel(description, SolverUiTokens.Type.Caption, SolverUiTokens.Palette.TextMuted);
+        hint.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        section.AddChild(hint);
+        section.AddChild(content);
+        panel.AddChild(section);
+        page.AddChild(panel);
     }
 
     private static OptionButton CreateOptionInput(float minimumWidth = 126)
@@ -254,7 +270,9 @@ internal sealed partial class SolverSettingsPanel
         Control input,
         string? tooltip = null)
     {
-        Label rowLabel = CreateRowLabel(label, 250);
+        Label rowLabel = CreateRowLabel(label, 170);
+        rowLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        rowLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         if (!string.IsNullOrEmpty(tooltip))
         {
             ApplyTooltip(rowLabel, tooltip);

@@ -354,6 +354,58 @@ internal sealed partial class UnattendedTestRunner
                 runner._completedChecks.Add(request.ScenarioId);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId.StartsWith("TURN-SETUP-UI-", StringComparison.Ordinal))
+                return Observation(combatEnded: false);
+            if (request.ScenarioId == "GROWTH-ANCIENT-POLICY")
+            {
+                await runner.AssertAncientGrowthPolicyAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "UI-COMPACT-QOL")
+            {
+                await SolverOverlay.ExerciseCompactQolForTesting(combatState);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "PROCESS-DIAGNOSTICS")
+            {
+                await runner.AssertProcessDiagnosticsAsync();
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "NODE-POOL-LIFETIME")
+            {
+                runner.AssertNodePoolLifetime();
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "DYNAMIC-VAR-METADATA")
+            {
+                runner.AssertDynamicVarMetadata();
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "SINGLE-SEARCH-PROFILE")
+            {
+                await runner.AssertSingleSearchProfileAsync(combatState);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "THEFT-RECOVERY-POLICY")
+            {
+                await AssertTheftRecoveryPolicyAsync(combatState);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "SEARCH-HP-TARGET-STOP")
+            {
+                await runner.AssertHpTargetStopAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "NATIVE-HAND-CHOICE-REPLAY")
+            {
+                await runner.AssertNativeHandChoiceReplayAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "UI-PRIORITY-FEEDBACK")
+            {
+                await SolverOverlay.ExercisePriorityUiForTesting(combatState);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId is "NORMALITY-AUTOPLAY" or "NORMALITY-AUTOPLAY-REPLAY")
             {
                 await runner.AssertNormalityAutoPlayAsync(combatState, player);
@@ -361,6 +413,9 @@ internal sealed partial class UnattendedTestRunner
             }
             if (request.ScenarioId == "UI-LOCALIZATION")
             {
+                RunStatistics.Start(MegaCrit.Sts2.Core.Nodes.NGame.Instance!);
+                if (MegaCrit.Sts2.Core.Nodes.NGame.Instance!.GetNodeOrNull("CombatSolverRunStatistics") != null)
+                    throw new InvalidOperationException("Headless statistics must remain inactive.");
                 await runner.AssertUiLocalizationAsync(combatState);
                 return Observation(combatEnded: false);
             }
@@ -422,6 +477,23 @@ internal sealed partial class UnattendedTestRunner
             {
                 await runner.AssertLivingFogSummonIntentAsync(combatState, player);
                 runner._completedChecks.Add("LivingFogSummonIntentAndExplosionNativeFork");
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "MODEL-STATE-INTEGRATION")
+            {
+                await runner.AssertModelStateIntegrationAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMBAT-TIMING-LIFETIME")
+            {
+                await runner.AssertCombatTimingLifetimeAsync(combatState, player);
+                return Observation(combatEnded: true);
+            }
+            if (request.ScenarioId == "PERFORMANCE-RECORDING-LIFETIME")
+            {
+                PerformanceRecording.VerifyHostReattachmentForTesting();
+                await Task.Delay(TimeSpan.FromSeconds(15));
+                runner._completedChecks.Add("PerformanceObserverReattachmentKeepsProcessRecorder");
                 return Observation(combatEnded: false);
             }
             if (request.ScenarioId == "ONLINE-PRESENCE-CONTRACT")
@@ -558,6 +630,54 @@ internal sealed partial class UnattendedTestRunner
             if (request.ScenarioId is "TENDER-NESTED-SLY" or "TENDER-DISCARD-ALL-SLY")
             {
                 await runner.AssertTenderNestedAsync(combatState, player);
+                runner._completedChecks.Add(request.ScenarioId);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "FOREGONE-IMPLICIT-ORDER")
+            {
+                await runner.AssertForegoneSelectionAsync(combatState, player);
+                runner._completedChecks.Add(request.ScenarioId);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "HISTORY-COURSE-EMPTY-TURN")
+            {
+                await runner.AssertHistoryCourseEmptyTurnAsync(combatState, player);
+                runner._completedChecks.Add(request.ScenarioId);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId.StartsWith("REPORT-ROUND-", StringComparison.Ordinal))
+            {
+                await runner.AssertReportRoundAsync(combatState, player);
+                runner._completedChecks.Add(request.ScenarioId);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId.StartsWith("REPORT-CARDS-", StringComparison.Ordinal))
+            {
+                await runner.AssertReportCardSequenceAsync(combatState, player);
+                runner._completedChecks.Add(request.ScenarioId);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "TEST-SUBJECT-ORIGINAL-REPORT")
+            {
+                await runner.AssertTestSubjectReportAsync(combatState, player);
+                runner._completedChecks.Add("TestSubjectOriginalReportTurn2");
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "REPLAY-BOUNDARY-CONTRACT")
+            {
+                await runner.AssertReplayBoundaryContractAsync(player);
+                runner._completedChecks.Add("ReplayLegacyHistoryAndBoundaryFailure");
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "CLONE-EVENT-ISOLATION")
+            {
+                runner.AssertCloneEventIsolation(player);
+                runner._completedChecks.Add(request.ScenarioId);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "NIGHTMARE-SELECTION-SNAPSHOT")
+            {
+                await runner.AssertNightmareSnapshotAsync(combatState, player);
                 runner._completedChecks.Add(request.ScenarioId);
                 return Observation(combatEnded: false);
             }
@@ -1344,7 +1464,7 @@ internal sealed partial class UnattendedTestRunner
                 testSettings = testSettings with
                 {
                     PerformancePreset = SolverPerformancePreset.Custom,
-                    ShortMaxCardBranchesPerNode = shortMaxCardBranches,
+                    SearchMaxCardBranchesPerNode = shortMaxCardBranches,
                 };
             }
             if (request.DeepMaxCardBranchesPerNodeForTest is { } deepMaxCardBranches)
@@ -1352,7 +1472,7 @@ internal sealed partial class UnattendedTestRunner
                 testSettings = testSettings with
                 {
                     PerformancePreset = SolverPerformancePreset.Custom,
-                    DeepMaxCardBranchesPerNode = deepMaxCardBranches,
+                    SearchMaxCardBranchesPerNode = deepMaxCardBranches,
                 };
             }
             SolverSettings.ApplyForTesting(testSettings with
@@ -1381,7 +1501,7 @@ internal sealed partial class UnattendedTestRunner
                 runner._writer.ReplayVerification["executedPolicy"] = System.Text.Json.JsonSerializer.SerializeToNode(
                     new { snapshot.PotionPolicy, SolverSettings.Current.PotionDirectives,
                         snapshot.ActTransitionBossHpStrategy, snapshot.FinalBossHpStrategy,
-                        snapshot.ShortProfile, snapshot.DeepProfile, snapshot.SearchMaxDegreeOfParallelism },
+                        snapshot.Profile, snapshot.SearchMaxDegreeOfParallelism },
                     UnattendedTestFiles.JsonOptions);
             if (request.EnableNoGcRegionForTest is { } expectedNoGcEnabled
                 && snapshot.EnableNoGcRegion != expectedNoGcEnabled)
@@ -1390,17 +1510,17 @@ internal sealed partial class UnattendedTestRunner
                     $"No-GC 开关为 {snapshot.EnableNoGcRegion}，预期 {expectedNoGcEnabled}。");
             }
             if (request.ShortMaxCardBranchesPerNodeForTest is { } expectedShortBranches
-                && snapshot.ShortProfile.MaxCardBranchesPerNode != expectedShortBranches)
+                && snapshot.Profile.MaxCardBranchesPerNode != expectedShortBranches)
             {
                 throw new InvalidOperationException(
-                    $"短搜单节点出牌分支为 {snapshot.ShortProfile.MaxCardBranchesPerNode}，" +
+                    $"短搜单节点出牌分支为 {snapshot.Profile.MaxCardBranchesPerNode}，" +
                     $"预期 {expectedShortBranches}。");
             }
             if (request.DeepMaxCardBranchesPerNodeForTest is { } expectedDeepBranches
-                && snapshot.DeepProfile.MaxCardBranchesPerNode != expectedDeepBranches)
+                && snapshot.Profile.MaxCardBranchesPerNode != expectedDeepBranches)
             {
                 throw new InvalidOperationException(
-                    $"深搜单节点出牌分支为 {snapshot.DeepProfile.MaxCardBranchesPerNode}，" +
+                    $"深搜单节点出牌分支为 {snapshot.Profile.MaxCardBranchesPerNode}，" +
                     $"预期 {expectedDeepBranches}。");
             }
             if (request.NoGcRegionBudgetGigabytesForTest is { } expectedNoGcGigabytes)

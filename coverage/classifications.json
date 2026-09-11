@@ -1,4 +1,10 @@
 {
+  "Card|MegaCrit.Sts2.Core.Models.Cards.HeavenlyDrill|MegaCrit.Sts2.Core.Models.CardModel.OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Cards/OnPlay/BespokeCardMirrors.cs",
+    "notes": "Explicit mirror resolves branch-owned energy X including modifiers, doubles hit count at the card's energy threshold, and executes one native-shaped attack transaction.",
+    "testId": "TEST-SUBJECT-ORIGINAL-REPORT"
+  },
   "Relic|MegaCrit.Sts2.Core.Models.Relics.EmotionChip|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDamageReceived(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Entities.Creatures.DamageResult,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel)": {
     "status": "NotCombatRelevant", "source": "Game 0.111.0 EmotionChip source audit",
     "notes": "Only changes RelicStatus and flashes; the next-turn orb trigger reads combat DamageReceivedEntry history directly.", "testId": "STATIC-RELIC-CARD-PRESENTATION-HOOK-AUDIT-328"
@@ -4088,8 +4094,8 @@
   "Card|MegaCrit.Sts2.Core.Models.Cards.EndOfDays|MegaCrit.Sts2.Core.Models.CardModel.OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
     "status": "SolverCompensation",
     "source": "src/Prediction/CardOnPlaySupport.Batch042.cs",
-    "notes": "Applies Doom to all living enemies, kills those at or below Doom, resolves death hooks, and mirrors Book Repair Knife healing per fatal death.",
-    "testId": "CARD-ON-PLAY-BATCH-042"
+    "notes": "Awaits power amount-change reactions and death resolution after each Doom application, then evaluates the Doom threshold on remaining hittable enemies; preserves fatal healing.",
+    "testId": "REPORT-ROUND-DOOM-THRESHOLD-CARD"
   },
   "Card|MegaCrit.Sts2.Core.Models.Cards.FranticEscape|MegaCrit.Sts2.Core.Models.CardModel.OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
     "status": "SolverCompensation",

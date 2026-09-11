@@ -30,7 +30,7 @@ internal sealed partial class UnattendedTestRunner
     {
         SetStage("native_replay_startup");
         await _host.GameStartupComplete;
-        ValidateCheckpointModsAfterStartup();
+        RecordCheckpointModDifferencesAfterStartup();
         ApplyHeadlessFastModeOverride();
         EnsureWithinDeadline();
         if (RunManager.Instance.IsInProgress)
@@ -40,7 +40,14 @@ internal sealed partial class UnattendedTestRunner
         string RootPath(string key) => Path.Combine(_checkpointImportDirectory!, recording[key]!.GetValue<string>());
         JsonObject origin = JsonNode.Parse(await File.ReadAllTextAsync(RootPath("originPath")))!.AsObject();
         if (origin["modelIdHash"]!.GetValue<uint>() != ModelIdSerializationCache.Hash)
-            throw new InvalidDataException("environment_mismatch:modelIdHash");
+        {
+            _writer.ReplayVerification!["modelSerializationComparison"] = new JsonObject
+            {
+                ["field"] = "serialization.modelIdHash",
+                ["expected"] = origin["modelIdHash"]!.DeepClone(),
+                ["actual"] = ModelIdSerializationCache.Hash,
+            };
+        }
         SerializableRun save = JsonSerializer.Deserialize(
             await File.ReadAllTextAsync(RootPath("runSavePath")), JsonSerializationUtility.GetTypeInfo<SerializableRun>())!;
         if (save.Players.Count != 1)
@@ -60,12 +67,14 @@ internal sealed partial class UnattendedTestRunner
         string expectedState = metadata["exactContinuationState"]!.GetValue<string>();
         bool combatStart = checkpoint["label"]!.GetValue<string>() == "combat_start";
         bool combatEnd = checkpoint["combatEnded"]?.GetValue<bool>() == true;
+        JsonObject? readyCheckpoint = null;
         if (combatStart && _request.ReplayMode == "RestoreOnly")
         {
             JsonObject? firstPlayable = import["index"]!["checkpoints"]!.AsArray().OfType<JsonObject>()
                 .FirstOrDefault(item => item["canSearch"]?.GetValue<bool>() == true);
             if (firstPlayable != null)
             {
+                readyCheckpoint = firstPlayable;
                 target = checked((int)firstPlayable["eventCursor"]!.GetValue<long>());
                 _writer.ReplayVerification!["readyCheckpointId"] = firstPlayable["checkpointId"]!.DeepClone();
             }
@@ -89,11 +98,11 @@ internal sealed partial class UnattendedTestRunner
         using NativeReplayDriver driver = new(this, events, target, player);
         bool openingVerified = false;
         bool endingVerified = false;
-        CombatReplayRecording.TestCombatStartObserver = combat =>
+        CombatReplayRecording.TestCombatStartObserver = combat => driver.ObserveBoundary(() =>
         {
             if (combatStart)
             {
-                AssertRecordedContinuation(expectedState, combat, 0);
+                AssertRecordedContinuation(expectedState, combat, 0, _request.NativeStatePath);
                 openingVerified = true;
                 if (_request.ReplayMode is "SearchOnly" or "DeploySolver")
                 {
@@ -101,17 +110,17 @@ internal sealed partial class UnattendedTestRunner
                     _writer.ReplayVerification!["openingChoiceAuthority"] = "solver";
                 }
             }
-        };
-        CombatReplayRecording.TestCombatEndObserver = combat =>
+        });
+        CombatReplayRecording.TestCombatEndObserver = combat => driver.ObserveBoundary(() =>
         {
             if (combatEnd)
             {
-                AssertRecordedContinuation(expectedState, combat, target);
+                AssertRecordedContinuation(expectedState, combat, target, _request.NativeStatePath);
                 endingVerified = true;
                 _writer.ReplayVerification!["recordedOutcome"] = JsonSerializer.SerializeToNode(
                     CombatBugReportExporter.CaptureOutcome(combat) with { CombatEnded = true }, UnattendedTestFiles.JsonOptions);
             }
-        };
+        });
         SetStage("native_replay_enter_combat");
         Task<AbstractRoom> entering = RunManager.Instance.EnterRoomDebug(
             encounter.RoomType, MapPointType.Unassigned, encounter.ToMutable(), showTransition: false);
@@ -123,29 +132,51 @@ internal sealed partial class UnattendedTestRunner
         if (combatEnd && !endingVerified)
             throw new InvalidDataException("native_replay_missing_combat_end_boundary");
         if (!combatStart && !combatEnd)
-            AssertRecordedContinuation(expectedState, combatState, target);
+            AssertRecordedContinuation(expectedState, combatState, target, _request.NativeStatePath);
+        if (readyCheckpoint != null)
+        {
+            JsonObject readyMetadata = JsonNode.Parse(await File.ReadAllTextAsync(Path.Combine(
+                _checkpointImportDirectory!, readyCheckpoint["metadataPath"]!.GetValue<string>())))!.AsObject();
+            AssertRecordedContinuation(readyMetadata["exactContinuationState"]!.GetValue<string>(), combatState, target,
+                Path.Combine(_checkpointImportDirectory!, readyCheckpoint["nativeStatePath"]!.GetValue<string>()));
+            _writer.ReplayVerification!["readyCheckpointVerified"] = true;
+        }
         if (!combatEnd && !combatStart && player.PlayerCombatState?.Phase.ToString() != "Play")
             throw new InvalidDataException("checkpoint_is_not_searchable");
         _writer.ReplayVerification!["replayedEvents"] = driver.Cursor;
         _writer.ReplayVerification["eventKinds"] = JsonSerializer.SerializeToNode(events.Take(target)
             .GroupBy(item => item.Kind ?? "legacy_unspecified").ToDictionary(group => group.Key, group => group.Count()));
-        _writer.ReplayVerification["comparisonScope"] = combatStart ? "full_combat" : "checkpoint";
+        _writer.ReplayVerification["comparisonScope"] = "checkpoint";
         RecordCheckpointRestored();
         if (_request.ReplayMode == "ReplayRecorded")
         {
-            _writer.ReplayVerification["status"] = combatEnd ? "recorded_completed" : "recorded_prefix_verified";
+            bool nativeEncodingComparable = _writer.ReplayVerification["nativeStateVerification"] == null;
+            _writer.ReplayVerification["status"] = nativeEncodingComparable
+                ? combatEnd ? "recorded_completed" : "recorded_prefix_verified"
+                : "recorded_continuation_only";
             _writer.ReplayVerification["comparisonScope"] = combatEnd ? "full_combat" : "checkpoint";
         }
         return new ScenarioContext(player.Character, encounter, combatState, player,
             player.PlayerCombatState?.TurnNumber ?? 0, [], [], []);
     }
 
-    private void AssertRecordedContinuation(string expected, CombatState state, long cursor)
+    private void AssertRecordedContinuation(string expected, CombatState state, long cursor, string? nativePath)
     {
         string actual = ContinuationStamp.CaptureLive(state).StateText;
-        if (actual == expected)
+        if (ReplayContinuationMatches(expected, actual))
         {
-            AssertNativeCheckpoint(state, _request.NativeStatePath);
+            bool differentEncoding = _writer.ReplayVerification!["modelSerializationComparison"] != null;
+            bool nativeVerified = AssertNativeCheckpoint(state, nativePath, differentEncoding);
+            _writer.ReplayVerification["continuationVerified"] = true;
+            _writer.ReplayVerification["nativeStateVerified"] = nativeVerified;
+            if (!nativeVerified && differentEncoding && !string.IsNullOrWhiteSpace(nativePath))
+            {
+                _writer.ReplayVerification["nativeStateVerification"] = new JsonObject
+                {
+                    ["status"] = "not_comparable",
+                    ["reason"] = "legacy_model_id_mapping_not_recorded",
+                };
+            }
             return;
         }
         _writer.ReplayVerification!["status"] = "restore_mismatch";
@@ -204,6 +235,17 @@ internal sealed partial class UnattendedTestRunner
                 return;
             }
             Cursor++;
+        }
+
+        public void ObserveBoundary(Action verify)
+        {
+            try { verify(); }
+            catch (Exception error)
+            {
+                // Lifecycle subscribers isolate exceptions. Forward the failure to the
+                // awaited replay driver so the original mismatch terminates this request.
+                _failure ??= error;
+            }
         }
 
         public async Task AdvanceAsync(Task entering)

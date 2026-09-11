@@ -1,17 +1,17 @@
 namespace CombatSolver;
 
+internal readonly record struct FatalGrowthSearchTarget(GrowthSource Source, int KillCount);
+
 internal sealed record SearchPolicySnapshot(
-    SolverSearchProfile ShortProfile,
-    SolverSearchProfile DeepProfile,
+    SolverSearchProfile Profile,
     SolverPotionPolicy PotionPolicy,
     PotionStrategySnapshot PotionStrategy,
     bool DetailedDiagnostics,
     bool VerifyIncrementalSearch,
-    bool ForceShortOnly,
+    bool FixedBudget,
     bool MeasurePhasePerformance,
     int MaxDegreeOfParallelism,
-    int? ShortBudgetOverrideMilliseconds,
-    int? DeepBudgetOverrideMilliseconds,
+    int? BudgetOverrideMilliseconds,
     bool IncludeTurnSetup,
     SolverTheftPolicy? TheftPolicy,
     BossHpStrategy ActTransitionBossHpStrategy,
@@ -22,7 +22,17 @@ internal sealed record SearchPolicySnapshot(
     SearchMemoryPressureSignal MemoryPressureSignal)
 {
     public GrowthValues GrowthBudgets { get; init; }
+    public int? BrightestFlameMaxHpLossLimit { get; init; }
     public bool HasGrowthTargets { get; init; }
+    public bool StopAtAcceptableBattleHpLoss { get; init; } = true;
+    public bool CanStopAtHpTarget => StopAtAcceptableBattleHpLoss && !EffectiveHasGrowthTargets;
+    public FatalGrowthSearchTarget? FatalGrowthTarget { get; init; }
+    public bool GrowthTargetSatisfied(GrowthValues rewards)
+        => CanStopAtHpTarget || StopAtAcceptableBattleHpLoss && FatalGrowthTarget is { } target
+            && rewards.Get(target.Source) >= target.KillCount;
+    public int MinimumRequiredPotionUses(int alreadyUsed)
+        => Math.Max(PotionStrategy.Directives.Count(d => d.Directive == SolverPotionDirective.Force),
+            PotionPolicy == SolverPotionPolicy.RequireAtLeastOne && alreadyUsed == 0 ? 1 : 0);
 
     /// <summary>
     /// 不考虑局外收益。玩家填的额度原样留在 <see cref="GrowthBudgets"/> 里，折算只在

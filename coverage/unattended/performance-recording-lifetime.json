@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "PERFORMANCE-RECORDING-LIFETIME",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "PERFORMANCE-LIFETIME",
+  "cards": [],
+  "exitOnComplete": true
+}

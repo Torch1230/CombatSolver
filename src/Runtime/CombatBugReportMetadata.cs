@@ -50,6 +50,7 @@ internal static class CombatBugReportMetadata
             modVersion = CombatBugReportDescription.CurrentModVersion,
             gameVersion = ReleaseInfoManager.Instance.ReleaseInfo?.Version,
             playerDescription = description ?? string.Empty,
+            runStatistics = RunStatistics.Snapshot,
             combat,
             classification,
             comparisonKind = comparison == null ? null : "projected_comparison",

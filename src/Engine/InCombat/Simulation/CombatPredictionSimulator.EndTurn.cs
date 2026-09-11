@@ -13,20 +13,20 @@ internal sealed partial class CombatPredictionSimulator
     /// <summary>
     /// Currently mirrors the prediction-relevant parts of <see cref="CombatManager.EndPlayerTurnPhaseOneInternal()"/>.
     /// </summary>
-    internal bool SimulateEndPlayerTurnAfterOrbPassives(int playerTurn, bool stageHandEndCardsTogether = false)
+    internal bool SimulateEndPlayerTurnBeforeOrbPassives(int playerTurn)
     {
-        var playersEndingTurn = CombatManager.Instance.PlayersTakingExtraTurn switch
-        {
-            { Count: > 0 } extraTurnPlayers => extraTurnPlayers,
-            _ => State.CombatState.Players
-        };
+        var playersEndingTurn = State.CombatState.Players;
 
         foreach (var player in playersEndingTurn)
         {
+            State.GetPlayerCombatState(player).Phase = PlayerTurnPhase.AutoPostPlay;
             HookMirrors.AfterAutoPostPlayPhaseEntered(this, player);
             if (HasPendingChoice)
                 return false;
         }
+
+        foreach (var player in playersEndingTurn)
+            State.GetPlayerCombatState(player).Phase = PlayerTurnPhase.End;
 
         HookMirrors.BeforeSideTurnEnd(
             this,
@@ -36,10 +36,15 @@ internal sealed partial class CombatPredictionSimulator
             return false;
         SynchronizePowerAmountPredictionStates();
 
-        if (CheckWinCondition(playerTurn))
-        {
+        CheckWinCondition(playerTurn);
+        return true;
+    }
+
+    internal bool SimulateEndPlayerTurnAfterOrbPassives(int playerTurn, bool stageHandEndCardsTogether = false)
+    {
+        if (IsOverOrEnding)
             return true;
-        }
+        var playersEndingTurn = State.CombatState.Players;
 
         foreach (var player in playersEndingTurn)
         {

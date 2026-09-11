@@ -4,7 +4,7 @@ Combat Solver 是一个面向《杀戮尖塔 2》单人模式的战斗路线求�
 
 玩家可以只查看建议，也可以让求解器执行当前回合，或连续接管整场战斗。搜索不会修改游戏 RNG，也不会在后台操作真实战斗状态。
 
-当前本地版本为 **0.34.4**：修复凡庸与倾泻等自动打牌效果的预测偏差。详见 [更新日志](docs/releases/0.34.4-RELEASE_NOTES.md)。
+当前版本为 **0.36.0**：统一搜索预算，改善长局内存管理，修复模拟克隆的空缓存膨胀。详见 [更新日志](docs/releases/0.36.0-RELEASE_NOTES.md)。
 
 **English UI:** Set the game language to English and restart the game. CombatSolver provides a recommended route; use **Play turn** for one turn or **Auto: On** for continuous play. Configure potions, growth and search budgets in the overlay. **Settings > Reports > Upload report** submits a bug report. Logs, raw errors and some detailed diagnostics retain their original text. Single-player only.
 
@@ -111,14 +111,14 @@ THIRD_PARTY_NOTICES.md
 
 ## 搜索预算
 
-预设只控制快搜与深搜的时间、Beam、节点和动作分支。时间是上限而不是固定等待时间；提前找到足够明确的结果时可以更早结束。
+预设控制一套搜索时间、Beam、节点和动作分支预算。搜索持续更新当前最佳路线；时间是上限，满足战损目标及本场成长、资源和必要用药条件时可以提前结束。旧自定义配置沿用原深搜参数。
 
-| 预设 | 快搜 / 深搜时间 | 快搜 / 深搜节点 | 适用场景 |
+| 预设 | 搜索时间 | 搜索节点 | 适用场景 |
 | --- | ---: | ---: | --- |
-| 低 | `5s / 60s` | `1,200 / 6,000` | 资源有限或希望快速获得建议 |
-| 中（默认） | `8s / 120s` | `2,400 / 12,000` | 日常使用 |
-| 高 | `12s / 180s` | `5,000 / 25,000` | 复杂战斗与更宽搜索 |
-| 极高 | `20s / 300s` | `10,000 / 50,000` | 更充分的路线搜索 |
+| 低 | `60s` | `12,000` | 资源有限或希望快速获得建议 |
+| 中（默认） | `120s` | `24,000` | 日常使用 |
+| 高 | `180s` | `50,000` | 复杂战斗与更宽搜索 |
+| 极高 | `300s` | `100,000` | 更充分的路线搜索 |
 
 现有配置与新安装均默认启用 NoGC，并使用独立于性能预设的 `16 GB` 区域请求预算；这不是进程总内存上限。可手动关闭并使用 CLR 常规分代 GC：稳定关闭状态不建立 No-GC 区域、不切换 GC latency，也不新增自动内存检查点或补账回收；若同一场战斗从开启切到关闭，仍会先安全完成此前已登记的区域退出与回收义务。关闭不会清除预算值，重新启用时会继续使用原设置。
 

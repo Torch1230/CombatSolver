@@ -10,9 +10,8 @@ internal sealed partial class UnattendedTestRunner
     {
         // A bounded Deep profile reaches the retention probes that the ordinary Short
         // DOP contract cannot exercise. Production profile/budgets are not modified.
-        SolverSearchProfile profile = capturedPolicy.ShortProfile with
+        SolverSearchProfile profile = capturedPolicy.Profile with
         {
-            Phase = SolverSearchPhase.Deep,
             BeamWidth = 24,
             MaxExpandedNodes = 1_000,
         };

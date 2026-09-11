@@ -53,13 +53,30 @@ internal readonly record struct PersistedPotionDirective(
     SolverPotionDirective Directive);
 
 internal sealed record SolverPerformanceValues(
-    SolverSearchProfile ShortProfile,
-    SolverSearchProfile DeepProfile);
+    SolverSearchProfile Profile);
 
 internal sealed record SolverSettingsData
 {
+    // Read pre-unified settings once; new files contain only Search* budget values.
+    [JsonPropertyName("deepTimeLimitSeconds"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public double? LegacyDeepTimeLimitSeconds { get => null; init { if (!SearchTimeLimitSeconds.HasValue) SearchTimeLimitSeconds = value; } }
+    [JsonPropertyName("deepBeamWidth"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? LegacyDeepBeamWidth { get => null; init { if (!SearchBeamWidth.HasValue) SearchBeamWidth = value; } }
+    [JsonPropertyName("deepPotionFreeBeamWidth"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? LegacyDeepPotionFreeBeamWidth { get => null; init { if (!SearchPotionFreeBeamWidth.HasValue) SearchPotionFreeBeamWidth = value; } }
+    [JsonPropertyName("deepPotionBeamWidth"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? LegacyDeepPotionBeamWidth { get => null; init { if (!SearchPotionBeamWidth.HasValue) SearchPotionBeamWidth = value; } }
+    [JsonPropertyName("deepMaxExpandedNodes"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? LegacyDeepMaxExpandedNodes { get => null; init { if (!SearchMaxExpandedNodes.HasValue) SearchMaxExpandedNodes = value; } }
+    [JsonPropertyName("deepMaxCardBranchesPerNode"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? LegacyDeepMaxCardBranchesPerNode { get => null; init { if (!SearchMaxCardBranchesPerNode.HasValue) SearchMaxCardBranchesPerNode = value; } }
+    [JsonPropertyName("deepMaxPileChoiceBranchesPerAction"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? LegacyDeepMaxPileChoiceBranchesPerAction { get => null; init { if (!SearchMaxPileChoiceBranchesPerAction.HasValue) SearchMaxPileChoiceBranchesPerAction = value; } }
+    [JsonPropertyName("deepMaxHandChoiceBranchesPerAction"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? LegacyDeepMaxHandChoiceBranchesPerAction { get => null; init { if (!SearchMaxHandChoiceBranchesPerAction.HasValue) SearchMaxHandChoiceBranchesPerAction = value; } }
     public bool SolverDisabled { get; init; }
     public bool AutomaticCalculationEnabled { get; init; } = true;
+    public bool AutoEnableFullAuto { get; init; }
     public bool OnlineStatisticsEnabled { get; init; } = true;
     public bool StopFullAutoOnCombatEnd { get; init; }
     public bool StopFullAutoOnDeathTurn { get; init; } = true;
@@ -75,6 +92,7 @@ internal sealed record SolverSettingsData
     public SolverPotionPolicy PotionPolicy { get; init; } = SolverPotionPolicy.Smart;
     public PersistedPotionDirective[] PotionDirectives { get; init; } = [];
     public GrowthValues GrowthBudgets { get; init; }
+    public int? BrightestFlameMaxHpLossLimit { get; init; }
     /// <summary>
     /// 不考虑局外收益。打开后搜索既不为金币、永久升级这类战斗外收益付出任何血量，也不再用它们
     /// 在 Beam 里保留路线；最终选择里的字典序位置不变，所以白拿的收益照样拿。
@@ -83,28 +101,21 @@ internal sealed record SolverSettingsData
     public BossHpStrategy ActTransitionBossHpStrategy { get; init; } = BossHpStrategy.ProgressionFirst;
     public BossHpStrategy FinalBossHpStrategy { get; init; } = BossHpStrategy.ProgressionFirst;
     public int AcceptableBattleHpLoss { get; init; }
+    public bool StopAtAcceptableBattleHpLoss { get; init; } = true;
     public int PerformanceMigrationVersion { get; init; }
     public SolverPerformancePreset? PerformancePreset { get; init; } = SolverPerformancePreset.Medium;
     public int? SearchMaxDegreeOfParallelism { get; init; }
-    public double? ShortTimeLimitSeconds { get; init; }
-    public double? DeepTimeLimitSeconds { get; init; }
+    public double? SearchTimeLimitSeconds { get; init; }
     public bool EnableNoGcRegion { get; init; } = true;
     public double? NoGcRegionBudgetGigabytes { get; init; } = 16d;
-    public int? ShortBeamWidth { get; init; }
-    public int? DeepBeamWidth { get; init; }
-    // Legacy split fields are read for migration; new writes use Short/DeepBeamWidth.
-    public int? ShortPotionFreeBeamWidth { get; init; }
-    public int? DeepPotionFreeBeamWidth { get; init; }
-    public int? ShortPotionBeamWidth { get; init; }
-    public int? DeepPotionBeamWidth { get; init; }
-    public int? ShortMaxExpandedNodes { get; init; }
-    public int? DeepMaxExpandedNodes { get; init; }
-    public int? ShortMaxCardBranchesPerNode { get; init; }
-    public int? DeepMaxCardBranchesPerNode { get; init; }
-    public int? ShortMaxPileChoiceBranchesPerAction { get; init; }
-    public int? DeepMaxPileChoiceBranchesPerAction { get; init; }
-    public int? ShortMaxHandChoiceBranchesPerAction { get; init; }
-    public int? DeepMaxHandChoiceBranchesPerAction { get; init; }
+    public int? SearchBeamWidth { get; init; }
+    // Legacy split fields are read for migration; new writes use Short/SearchBeamWidth.
+    public int? SearchPotionFreeBeamWidth { get; init; }
+    public int? SearchPotionBeamWidth { get; init; }
+    public int? SearchMaxExpandedNodes { get; init; }
+    public int? SearchMaxCardBranchesPerNode { get; init; }
+    public int? SearchMaxPileChoiceBranchesPerAction { get; init; }
+    public int? SearchMaxHandChoiceBranchesPerAction { get; init; }
     public SolverDeploymentFastMode DeploymentFastMode { get; init; } = SolverDeploymentFastMode.FollowGame;
     public double? DeploymentInterActionDelaySeconds { get; init; }
     public float? OverlayPositionX { get; init; }
@@ -127,14 +138,15 @@ internal sealed record SolverSettingsSnapshot(
     BossHpStrategy FinalBossHpStrategy,
     int AcceptableBattleHpLoss,
     int SearchMaxDegreeOfParallelism,
-    SolverSearchProfile ShortProfile,
-    SolverSearchProfile DeepProfile,
+    SolverSearchProfile Profile,
     bool EnableNoGcRegion,
     long NoGcRegionBudgetBytes,
     SolverDeploymentFastMode DeploymentFastMode,
     double DeploymentInterActionDelaySeconds)
 {
+    public bool StopAtAcceptableBattleHpLoss { get; init; } = true;
     public GrowthValues GrowthBudgets { get; init; }
+    public int? BrightestFlameMaxHpLossLimit { get; init; }
     public bool IgnoreLongTermRewards { get; init; }
 }
 
@@ -149,54 +161,26 @@ internal static class SolverSettings
     internal const int CurrentPerformanceMigrationVersion = 243;
     private static readonly SolverPerformanceValues LowPerformance = new(
         new SolverSearchProfile(
-            SolverSearchPhase.Short,
-            BeamWidth: 18,
-            MaxExpandedNodes: 1_200,
-            MaxCardBranchesPerNode: 14,
-            MaxPileChoiceBranchesPerAction: 6,
-            MaxHandChoiceBranchesPerAction: 8,
-            SoftTimeBudgetMilliseconds: 5_000),
-        new SolverSearchProfile(
-            SolverSearchPhase.Deep,
             BeamWidth: 45,
-            MaxExpandedNodes: 6_000,
+            MaxExpandedNodes: 12_000,
             MaxCardBranchesPerNode: 24,
             MaxPileChoiceBranchesPerAction: 12,
             MaxHandChoiceBranchesPerAction: 16,
             SoftTimeBudgetMilliseconds: 60_000));
     private static readonly SolverPerformanceValues MediumPerformance = new(
-        SolverSearchProfile.Short,
-        SolverSearchProfile.Deep);
+        SolverSearchProfile.Default);
     private static readonly SolverPerformanceValues HighPerformance = new(
         new SolverSearchProfile(
-            SolverSearchPhase.Short,
-            BeamWidth: 36,
-            MaxExpandedNodes: 5_000,
-            MaxCardBranchesPerNode: 30,
-            MaxPileChoiceBranchesPerAction: 16,
-            MaxHandChoiceBranchesPerAction: 20,
-            SoftTimeBudgetMilliseconds: 12_000),
-        new SolverSearchProfile(
-            SolverSearchPhase.Deep,
             BeamWidth: 90,
-            MaxExpandedNodes: 25_000,
+            MaxExpandedNodes: 50_000,
             MaxCardBranchesPerNode: 48,
             MaxPileChoiceBranchesPerAction: 28,
             MaxHandChoiceBranchesPerAction: 36,
             SoftTimeBudgetMilliseconds: 180_000));
     private static readonly SolverPerformanceValues VeryHighPerformance = new(
         new SolverSearchProfile(
-            SolverSearchPhase.Short,
-            BeamWidth: 54,
-            MaxExpandedNodes: 10_000,
-            MaxCardBranchesPerNode: 45,
-            MaxPileChoiceBranchesPerAction: 24,
-            MaxHandChoiceBranchesPerAction: 30,
-            SoftTimeBudgetMilliseconds: 20_000),
-        new SolverSearchProfile(
-            SolverSearchPhase.Deep,
             BeamWidth: 135,
-            MaxExpandedNodes: 50_000,
+            MaxExpandedNodes: 100_000,
             MaxCardBranchesPerNode: 72,
             MaxPileChoiceBranchesPerAction: 42,
             MaxHandChoiceBranchesPerAction: 54,
@@ -261,8 +245,7 @@ internal static class SolverSettings
             $"potion_directives={migrated.PotionDirectives.Length} " +
             $"performance_preset={ResolvePerformancePreset(migrated)} " +
             $"max_dop={Capture().SearchMaxDegreeOfParallelism} " +
-            $"short_budget_ms={Capture().ShortProfile.SoftTimeBudgetMilliseconds} " +
-            $"deep_budget_ms={Capture().DeepProfile.SoftTimeBudgetMilliseconds} " +
+            $"search_budget_ms={Capture().Profile.SoftTimeBudgetMilliseconds} " +
             $"no_gc_enabled={Capture().EnableNoGcRegion.ToString().ToLowerInvariant()} " +
             $"no_gc_budget_bytes={Capture().NoGcRegionBudgetBytes} " +
             $"deployment_fast_mode={migrated.DeploymentFastMode} " +
@@ -275,8 +258,7 @@ internal static class SolverSettings
     {
         SolverSettingsData data = Current;
         SolverPerformanceValues performance = ResolvePerformanceValues(data);
-        SolverSearchProfile shortProfile = performance.ShortProfile;
-        SolverSearchProfile deepProfile = performance.DeepProfile;
+        SolverSearchProfile profile = performance.Profile;
         double noGcGigabytes = data.NoGcRegionBudgetGigabytes
             ?? DefaultNoGcRegionBudgetGigabytes;
         long noGcBytes = checked((long)Math.Round(
@@ -294,14 +276,15 @@ internal static class SolverSettings
             data.AcceptableBattleHpLoss,
             data.SearchMaxDegreeOfParallelism
                 ?? SolverWeights.DefaultSearchMaxDegreeOfParallelism,
-            shortProfile,
-            deepProfile,
+            profile,
             data.EnableNoGcRegion,
             noGcBytes,
             data.DeploymentFastMode,
             data.DeploymentInterActionDelaySeconds ?? 0d)
         {
             GrowthBudgets = data.GrowthBudgets,
+            StopAtAcceptableBattleHpLoss = data.StopAtAcceptableBattleHpLoss,
+            BrightestFlameMaxHpLossLimit = data.BrightestFlameMaxHpLossLimit,
             IgnoreLongTermRewards = data.IgnoreLongTermRewards,
         };
     }
@@ -353,22 +336,14 @@ internal static class SolverSettings
         return data with
         {
             PerformancePreset = preset,
-            ShortTimeLimitSeconds = values.ShortProfile.SoftTimeBudgetMilliseconds / 1000d,
-            DeepTimeLimitSeconds = values.DeepProfile.SoftTimeBudgetMilliseconds / 1000d,
-            ShortBeamWidth = values.ShortProfile.BeamWidth,
-            DeepBeamWidth = values.DeepProfile.BeamWidth,
-            ShortPotionFreeBeamWidth = null,
-            DeepPotionFreeBeamWidth = null,
-            ShortPotionBeamWidth = null,
-            DeepPotionBeamWidth = null,
-            ShortMaxExpandedNodes = values.ShortProfile.MaxExpandedNodes,
-            DeepMaxExpandedNodes = values.DeepProfile.MaxExpandedNodes,
-            ShortMaxCardBranchesPerNode = values.ShortProfile.MaxCardBranchesPerNode,
-            DeepMaxCardBranchesPerNode = values.DeepProfile.MaxCardBranchesPerNode,
-            ShortMaxPileChoiceBranchesPerAction = values.ShortProfile.MaxPileChoiceBranchesPerAction,
-            DeepMaxPileChoiceBranchesPerAction = values.DeepProfile.MaxPileChoiceBranchesPerAction,
-            ShortMaxHandChoiceBranchesPerAction = values.ShortProfile.MaxHandChoiceBranchesPerAction,
-            DeepMaxHandChoiceBranchesPerAction = values.DeepProfile.MaxHandChoiceBranchesPerAction,
+            SearchTimeLimitSeconds = values.Profile.SoftTimeBudgetMilliseconds / 1000d,
+            SearchBeamWidth = values.Profile.BeamWidth,
+            SearchPotionFreeBeamWidth = null,
+            SearchPotionBeamWidth = null,
+            SearchMaxExpandedNodes = values.Profile.MaxExpandedNodes,
+            SearchMaxCardBranchesPerNode = values.Profile.MaxCardBranchesPerNode,
+            SearchMaxPileChoiceBranchesPerAction = values.Profile.MaxPileChoiceBranchesPerAction,
+            SearchMaxHandChoiceBranchesPerAction = values.Profile.MaxHandChoiceBranchesPerAction,
         };
     }
 
@@ -502,8 +477,7 @@ internal static class SolverSettings
     {
         if (data.PerformanceMigrationVersion < 0)
             throw new InvalidDataException("PerformanceMigrationVersion must be non-negative.");
-        ValidateRange(data.ShortTimeLimitSeconds, 0.1d, 600d, nameof(data.ShortTimeLimitSeconds));
-        ValidateRange(data.DeepTimeLimitSeconds, 0.1d, 600d, nameof(data.DeepTimeLimitSeconds));
+        ValidateRange(data.SearchTimeLimitSeconds, 0.1d, 600d, nameof(data.SearchTimeLimitSeconds));
         ValidateRange(
             data.NoGcRegionBudgetGigabytes,
             1d,
@@ -514,24 +488,15 @@ internal static class SolverSettings
             1,
             SolverWeights.MaximumSearchMaxDegreeOfParallelism,
             nameof(data.SearchMaxDegreeOfParallelism));
-        ValidateRange(data.ShortBeamWidth, 1, 512, nameof(data.ShortBeamWidth));
-        ValidateRange(data.DeepBeamWidth, 1, 512, nameof(data.DeepBeamWidth));
-        ValidateRange(data.ShortPotionFreeBeamWidth, 1, 256, nameof(data.ShortPotionFreeBeamWidth));
-        ValidateRange(data.DeepPotionFreeBeamWidth, 1, 256, nameof(data.DeepPotionFreeBeamWidth));
-        ValidateRange(data.ShortPotionBeamWidth, 1, 256, nameof(data.ShortPotionBeamWidth));
-        ValidateRange(data.DeepPotionBeamWidth, 1, 256, nameof(data.DeepPotionBeamWidth));
-        ValidateRange(data.ShortMaxExpandedNodes, 100, 100_000, nameof(data.ShortMaxExpandedNodes));
-        ValidateRange(data.DeepMaxExpandedNodes, 100, 100_000, nameof(data.DeepMaxExpandedNodes));
-        ValidateRange(data.ShortMaxCardBranchesPerNode, 1, 100, nameof(data.ShortMaxCardBranchesPerNode));
-        ValidateRange(data.DeepMaxCardBranchesPerNode, 1, 100, nameof(data.DeepMaxCardBranchesPerNode));
-        ValidateRange(data.ShortMaxPileChoiceBranchesPerAction, 1, 100,
-            nameof(data.ShortMaxPileChoiceBranchesPerAction));
-        ValidateRange(data.DeepMaxPileChoiceBranchesPerAction, 1, 100,
-            nameof(data.DeepMaxPileChoiceBranchesPerAction));
-        ValidateRange(data.ShortMaxHandChoiceBranchesPerAction, 1, 100,
-            nameof(data.ShortMaxHandChoiceBranchesPerAction));
-        ValidateRange(data.DeepMaxHandChoiceBranchesPerAction, 1, 100,
-            nameof(data.DeepMaxHandChoiceBranchesPerAction));
+        ValidateRange(data.SearchBeamWidth, 1, 512, nameof(data.SearchBeamWidth));
+        ValidateRange(data.SearchPotionFreeBeamWidth, 1, 256, nameof(data.SearchPotionFreeBeamWidth));
+        ValidateRange(data.SearchPotionBeamWidth, 1, 256, nameof(data.SearchPotionBeamWidth));
+        ValidateRange(data.SearchMaxExpandedNodes, 100, 100_000, nameof(data.SearchMaxExpandedNodes));
+        ValidateRange(data.SearchMaxCardBranchesPerNode, 1, 100, nameof(data.SearchMaxCardBranchesPerNode));
+        ValidateRange(data.SearchMaxPileChoiceBranchesPerAction, 1, 100,
+            nameof(data.SearchMaxPileChoiceBranchesPerAction));
+        ValidateRange(data.SearchMaxHandChoiceBranchesPerAction, 1, 100,
+            nameof(data.SearchMaxHandChoiceBranchesPerAction));
         if (!Enum.IsDefined(data.DeploymentFastMode))
             throw new InvalidDataException($"Unknown deployment fast mode {data.DeploymentFastMode}.");
         if (!Enum.IsDefined(data.SearchCompletionNotificationMode))
@@ -555,6 +520,8 @@ internal static class SolverSettings
                 $"{nameof(data.AcceptableBattleHpLoss)} must be between 0 and {MaximumAcceptableBattleHpLoss}.");
         }
         data.GrowthBudgets.ValidateBudgets();
+        if (data.BrightestFlameMaxHpLossLimit is < 0 or > 1000)
+            throw new InvalidDataException("BrightestFlame maximum HP loss limit must be in 0..1000.");
         HashSet<(int Slot, string PotionId)> potionDirectiveKeys = [];
         foreach (PersistedPotionDirective directive in data.PotionDirectives)
         {
@@ -651,64 +618,36 @@ internal static class SolverSettings
 
     private static SolverPerformanceValues BuildCustomPerformance(SolverSettingsData data)
     {
-        SolverSearchProfile shortProfile = MediumPerformance.ShortProfile with
+        SolverSearchProfile profile = MediumPerformance.Profile with
         {
             BeamWidth = ResolveBeamWidth(
-                data.ShortBeamWidth,
-                data.ShortPotionFreeBeamWidth,
-                data.ShortPotionBeamWidth,
-                MediumPerformance.ShortProfile.BeamWidth,
-                legacyPotionFreeDefault: 9,
-                legacyPotionDefault: 3),
-            MaxExpandedNodes = data.ShortMaxExpandedNodes ?? MediumPerformance.ShortProfile.MaxExpandedNodes,
-            MaxCardBranchesPerNode = data.ShortMaxCardBranchesPerNode
-                ?? MediumPerformance.ShortProfile.MaxCardBranchesPerNode,
-            MaxPileChoiceBranchesPerAction = data.ShortMaxPileChoiceBranchesPerAction
-                ?? MediumPerformance.ShortProfile.MaxPileChoiceBranchesPerAction,
-            MaxHandChoiceBranchesPerAction = data.ShortMaxHandChoiceBranchesPerAction
-                ?? MediumPerformance.ShortProfile.MaxHandChoiceBranchesPerAction,
-            SoftTimeBudgetMilliseconds = data.ShortTimeLimitSeconds is { } shortSeconds
-                ? checked((int)Math.Round(shortSeconds * 1000d, MidpointRounding.AwayFromZero))
-                : MediumPerformance.ShortProfile.SoftTimeBudgetMilliseconds,
-        };
-        SolverSearchProfile deepProfile = MediumPerformance.DeepProfile with
-        {
-            BeamWidth = ResolveBeamWidth(
-                data.DeepBeamWidth,
-                data.DeepPotionFreeBeamWidth,
-                data.DeepPotionBeamWidth,
-                MediumPerformance.DeepProfile.BeamWidth,
+                data.SearchBeamWidth,
+                data.SearchPotionFreeBeamWidth,
+                data.SearchPotionBeamWidth,
+                MediumPerformance.Profile.BeamWidth,
                 legacyPotionFreeDefault: 22,
                 legacyPotionDefault: 7),
-            MaxExpandedNodes = data.DeepMaxExpandedNodes ?? MediumPerformance.DeepProfile.MaxExpandedNodes,
-            MaxCardBranchesPerNode = data.DeepMaxCardBranchesPerNode
-                ?? MediumPerformance.DeepProfile.MaxCardBranchesPerNode,
-            MaxPileChoiceBranchesPerAction = data.DeepMaxPileChoiceBranchesPerAction
-                ?? MediumPerformance.DeepProfile.MaxPileChoiceBranchesPerAction,
-            MaxHandChoiceBranchesPerAction = data.DeepMaxHandChoiceBranchesPerAction
-                ?? MediumPerformance.DeepProfile.MaxHandChoiceBranchesPerAction,
-            SoftTimeBudgetMilliseconds = data.DeepTimeLimitSeconds is { } deepSeconds
+            MaxExpandedNodes = data.SearchMaxExpandedNodes ?? MediumPerformance.Profile.MaxExpandedNodes,
+            MaxCardBranchesPerNode = data.SearchMaxCardBranchesPerNode
+                ?? MediumPerformance.Profile.MaxCardBranchesPerNode,
+            MaxPileChoiceBranchesPerAction = data.SearchMaxPileChoiceBranchesPerAction
+                ?? MediumPerformance.Profile.MaxPileChoiceBranchesPerAction,
+            MaxHandChoiceBranchesPerAction = data.SearchMaxHandChoiceBranchesPerAction
+                ?? MediumPerformance.Profile.MaxHandChoiceBranchesPerAction,
+            SoftTimeBudgetMilliseconds = data.SearchTimeLimitSeconds is { } deepSeconds
                 ? checked((int)Math.Round(deepSeconds * 1000d, MidpointRounding.AwayFromZero))
-                : MediumPerformance.DeepProfile.SoftTimeBudgetMilliseconds,
+                : MediumPerformance.Profile.SoftTimeBudgetMilliseconds,
         };
-        return new SolverPerformanceValues(shortProfile, deepProfile);
+        return new SolverPerformanceValues(profile);
     }
 
     private static bool HasExplicitPerformanceValues(SolverSettingsData data)
-        => data.ShortTimeLimitSeconds.HasValue
-            || data.DeepTimeLimitSeconds.HasValue
-            || data.ShortBeamWidth.HasValue
-            || data.DeepBeamWidth.HasValue
-            || data.ShortPotionFreeBeamWidth.HasValue
-            || data.DeepPotionFreeBeamWidth.HasValue
-            || data.ShortPotionBeamWidth.HasValue
-            || data.DeepPotionBeamWidth.HasValue
-            || data.ShortMaxExpandedNodes.HasValue
-            || data.DeepMaxExpandedNodes.HasValue
-            || data.ShortMaxCardBranchesPerNode.HasValue
-            || data.DeepMaxCardBranchesPerNode.HasValue
-            || data.ShortMaxPileChoiceBranchesPerAction.HasValue
-            || data.DeepMaxPileChoiceBranchesPerAction.HasValue
-            || data.ShortMaxHandChoiceBranchesPerAction.HasValue
-            || data.DeepMaxHandChoiceBranchesPerAction.HasValue;
+        => data.SearchTimeLimitSeconds.HasValue
+            || data.SearchBeamWidth.HasValue
+            || data.SearchPotionFreeBeamWidth.HasValue
+            || data.SearchPotionBeamWidth.HasValue
+            || data.SearchMaxExpandedNodes.HasValue
+            || data.SearchMaxCardBranchesPerNode.HasValue
+            || data.SearchMaxPileChoiceBranchesPerAction.HasValue
+            || data.SearchMaxHandChoiceBranchesPerAction.HasValue;
 }

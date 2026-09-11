@@ -220,6 +220,7 @@ internal static class CardEffectSpecRegistry
                 break;
             case BrightestFlame:
             {
+                combat.RecordBrightestFlameMaxHpLoss(card.DynamicVars.MaxHp.IntValue);
                 simulator.GainEnergy(card.Owner, card.DynamicVars.Energy.IntValue);
                 SimCreatureState ownerState = simulator.State.GetCreature(card.Owner.Creature);
                 int newMaxHp = Math.Max(1, ownerState.MaxHp - card.DynamicVars.MaxHp.IntValue);

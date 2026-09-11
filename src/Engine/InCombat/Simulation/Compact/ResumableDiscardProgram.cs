@@ -12,7 +12,8 @@ internal sealed partial class ResumableDiscardProgram
         bool Ethereal = false, RandomDrawCost? DrawCost = null, int? HandEndDamage = null, bool Unplayable = false, bool Retain = false, bool SingleTurnSly = false,
         bool EnchantmentInitiallyDisabled = false);
     internal enum Pile { Hand, Draw, Discard, Play, Exhaust, Removed, Unplaced }
-    internal enum EventKind { Pay, Start, Draw, Select, SelectedCard, Discard, Block, Finish, Shuffle, ShuffleCard, Retrieve, Damage, DamageBlocked, DamageOverkill, AttackFinish, Death, PowerChange, ResultMoved, Generated, CostChanged, HandEndMoved, HandEndStart, HandEndFinish, BeginSide, ResetEnergy, CleanupCards, CommitPlayerTurnHistory, GainEnergy, DoomApplied, Kill, SummonPet, KeywordAdded, EnchantmentStart, EnchantmentFinish, PanacheStart, PanacheFinish, CardHooksFinished }
+    internal enum EventKind { Pay, Start, Draw, Select, SelectedCard, Discard, Block, Finish, Shuffle, ShuffleCard, Retrieve, Damage, DamageBlocked, DamageOverkill, AttackFinish, Death, PowerChange, ResultMoved, Generated, CostChanged, HandEndMoved, HandEndStart, HandEndFinish, BeginSide, ResetEnergy, CleanupCards, CommitPlayerTurnHistory, GainEnergy, DoomApplied, Kill, SummonPet, KeywordAdded, EnchantmentStart, EnchantmentFinish, PanacheStart, PanacheFinish, CardHooksFinished, PlayerPhaseChanged }
+    internal enum PlayerPhase { End, None, Start, Play }
     internal readonly record struct Event(EventKind Kind, int Card, int Value, bool Automatic, int Target = -1, int Flags = 0, int Dealer = -1)
     {
         internal long Data => (long)(uint)Card | (long)(uint)Value << 32;
@@ -475,7 +476,7 @@ internal sealed partial class ResumableDiscardProgram
                     else AdvanceInstruction();
                     break;
                 case 5:
-                    if (card < 0) { CompletePlayerSideStart(); State.Write(DepthSlot, 0); break; }
+                    if (card < 0) { CompletePlayerSideStart(); Emit(EventKind.PlayerPhaseChanged, -1, (int)PlayerPhase.Play); State.Write(DepthSlot, 0); break; }
                     Emit(EventKind.Finish, card, Block > Read(frame + BeforeBlockOffset) ? 1 : 0,
                         Read(frame + AutoOffset) != 0, flags: (IsEthereal(card) ? 1 : 0) | (PanacheCount > 0 ? 2 : 0));
                     if (PanacheCount > 0)

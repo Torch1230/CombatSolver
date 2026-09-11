@@ -30,6 +30,10 @@ Linux：
 
 选择器 `latest` 是最近稳定可搜索位置，`start` 是明确开战位置，`end` 是战斗结束位置，也可传稳定检查点 ID。开战 RestoreOnly 先校验开战，再推进录制的首次可操作入口；SearchOnly/DeploySolver 的开战选牌由求解器接管。动作中途和等待选牌时的导出保留上下文，默认入口指向此前稳定位置。
 
+`start` 的 RestoreOnly 会同时对账开战及首个可操作检查点，`readyCheckpointVerified` 表示后者的 ContinuationStamp 已通过；`comparisonScope=checkpoint`，不是整场回放结论。旧历史 `Y` 的两项/三项格式逐项比较全部已记录计数，新格式四项同样全部比较。
+
+原生模型表 hash 不同只作诊断。原生二进制相同时仍可完整验证；旧包二进制不同且没有保存原编号映射时，不能使用本机表解码。若全部已记录战斗状态对账通过，返回 `restored_continuation`、`continuationVerified=true`，同时保留 `restorationVerified=false`、`nativeStateVerified=false` 和 `legacy_model_id_mapping_not_recorded`。这表示状态恢复可用，但不称完整原生恢复验收；批量工具也不会把该状态算作完整验证成功。录制回放对应状态为 `recorded_continuation_only`。
+
 ## 旧包
 
 兼容旧 v1 索引、无索引 ZIP、已解压包和汇总 ZIP。保持 metadata、replay-state、native-state、run-state 原有目录，分别校验，不再同名覆盖。旧开战包从原生跑局存档加载，在首次抽牌前恢复检查点，到原始导出生命周期再对账。
@@ -70,4 +74,6 @@ v2 索引保存稳定战斗/检查点 ID、永久递增编号、原生事件位�
 
 可见采集测量：`run-visible-steam-benchmark.ps1 -LoggingFixture -TimeoutSeconds 120 -EvidenceDirectory <目录>`，Linux 为 `--logging-fixture --timeout-seconds 120 --evidence-directory <目录>`。该短原生战斗另存 ZIP，索引提供采集累计/最大时间和积压，session.json 提供材料大小。headless 只用于导入和吞吐测量。具体证据及未覆盖场景见 TEST_MATRIX.md。
 
-可见原包恢复可使用同一脚本的 `-CheckpointArchivePath <ZIP> -CheckpointSelector start -ReplayMode RestoreOnly`；Linux 提供同名 kebab-case 参数。完整 Steam Mod 栈导出的包与精简 headless Mod 栈不同会被拦截，需要在匹配的环境验证。工具不会自动忽略缺失 Mod。
+可见原包恢复可使用同一脚本的 `-CheckpointArchivePath <ZIP> -CheckpointSelector start -ReplayMode RestoreOnly`；Linux 提供同名 kebab-case 参数。程序集清单差异只写入 `replayVerification.modEnvironmentComparison`，逐项列出 `missing`、`extra`、`build_changed`，不凭清单不同中止恢复，也不把差异自动认定为冲突。清单包含外观 Mod、加载器和依赖库，不能代表战斗语义。
+
+恢复继续执行游戏构建、模型解码、原生事件、完整 ContinuationStamp 与可比较的 native-state 校验。缺少实际使用的模型、事件无法解码或状态不同仍按具体错误失败；只有完整校验通过才标记 `restorationVerified=true`。求解器已有的第三方不兼容门禁保持独立。

@@ -9,6 +9,9 @@ internal sealed class SimCardPile
     private bool _hasCachedFingerprint;
     private ulong _cachedFingerprintFirst;
     private ulong _cachedFingerprintSecond;
+    private bool _hasCachedUnorderedFingerprint;
+    private ulong _cachedUnorderedFingerprintFirst;
+    private ulong _cachedUnorderedFingerprintSecond;
     private bool _hasCachedCycleShapeFingerprint;
     private ulong _cachedCycleShapeFingerprintFirst;
     private ulong _cachedCycleShapeFingerprintSecond;
@@ -92,6 +95,9 @@ internal sealed class SimCardPile
         fork._hasCachedFingerprint = _hasCachedFingerprint;
         fork._cachedFingerprintFirst = _cachedFingerprintFirst;
         fork._cachedFingerprintSecond = _cachedFingerprintSecond;
+        fork._hasCachedUnorderedFingerprint = _hasCachedUnorderedFingerprint;
+        fork._cachedUnorderedFingerprintFirst = _cachedUnorderedFingerprintFirst;
+        fork._cachedUnorderedFingerprintSecond = _cachedUnorderedFingerprintSecond;
         fork._hasCachedCycleShapeFingerprint = _hasCachedCycleShapeFingerprint;
         fork._cachedCycleShapeFingerprintFirst = _cachedCycleShapeFingerprintFirst;
         fork._cachedCycleShapeFingerprintSecond = _cachedCycleShapeFingerprintSecond;
@@ -115,6 +121,22 @@ internal sealed class SimCardPile
         _hasCachedFingerprint = true;
     }
 
+    internal bool TryGetCachedUnorderedFingerprint(out ulong first, out ulong second)
+    {
+        first = _cachedUnorderedFingerprintFirst;
+        second = _cachedUnorderedFingerprintSecond;
+        return !_fingerprintCacheDisabled && _hasCachedUnorderedFingerprint;
+    }
+
+    internal void SetCachedUnorderedFingerprint(ulong first, ulong second)
+    {
+        if (_fingerprintCacheDisabled)
+            return;
+        _cachedUnorderedFingerprintFirst = first;
+        _cachedUnorderedFingerprintSecond = second;
+        _hasCachedUnorderedFingerprint = true;
+    }
+
     internal bool TryGetCachedCycleShapeFingerprint(out ulong first, out ulong second)
     {
         first = _cachedCycleShapeFingerprintFirst;
@@ -134,6 +156,7 @@ internal sealed class SimCardPile
     internal void InvalidateFingerprint()
     {
         _hasCachedFingerprint = false;
+        _hasCachedUnorderedFingerprint = false;
         _hasCachedCycleShapeFingerprint = false;
     }
 
@@ -141,6 +164,7 @@ internal sealed class SimCardPile
     {
         _fingerprintCacheDisabled = true;
         _hasCachedFingerprint = false;
+        _hasCachedUnorderedFingerprint = false;
         _hasCachedCycleShapeFingerprint = false;
     }
 

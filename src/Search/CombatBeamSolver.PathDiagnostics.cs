@@ -60,7 +60,6 @@ internal sealed partial class CombatBeamSolver
 
         return new SearchPathObservation(
             _run.PathDiagnosticsSolverId,
-            _profile.Phase,
             _profile.BeamWidth,
             stage,
             reason,

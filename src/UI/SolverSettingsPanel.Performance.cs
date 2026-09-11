@@ -69,7 +69,6 @@ internal sealed partial class SolverSettingsPanel
     private Control CreatePerformancePage()
     {
         VBoxContainer content = CreatePageContent("PerformanceSettingsPage");
-        content.AddChild(CreateSectionHeading(SolverText.Get("搜索预算")));
         GridContainer budgetGrid = CreateSettingsGrid();
         _performancePreset = CreatePerformancePresetInput();
         AddBasicRow(budgetGrid, SolverText.Get("性能预设"), _performancePreset);
@@ -79,9 +78,12 @@ internal sealed partial class SolverSettingsPanel
             CreateSearchParallelismInput(),
             SolverText.Get("关闭时使用单线程搜索；2–16 是并行上限，实际并发还会受可独立分支数和内存安全准入限制，因此 CPU 不一定满载。提高可能加快大型搜索，也会增加 CPU、峰值内存和帧率压力；超过物理核心数通常只有小幅收益。默认按可用逻辑处理器选择：16 个及以上用 8 线程，4–15 个用 4 线程，2–3 个用 2 线程，其余用单线程；遇到疑似并行问题时请先上传问题包，再切换为关闭。"));
         _noGcRegionEnabled = CreateToggle();
+        AddSettingsSection(content, SolverText.Get("搜索预算"),
+            SolverText.Get("选择性能预设与并行度；详细参数可在下方展开。"), budgetGrid);
+        GridContainer memoryGrid = CreateSettingsGrid();
         _noGcRegionEnabled.Toggled += OnNoGcRegionEnabledToggled;
         AddBasicRow(
-            budgetGrid,
+            memoryGrid,
             SolverText.Get("启用 NoGC 区域"),
             _noGcRegionEnabled,
             SolverText.Get("开启时按下方预算建立战斗级 NoGC 区域，在安全分配检查点整理内存后继续；最终搜索完成后保留区域，战斗结束后延时清理。关闭时搜索期间使用 CLR 常规分代 GC。切换在下次搜索生效。"));
@@ -92,11 +94,28 @@ internal sealed partial class SolverSettingsPanel
             1d,
             SolverSettings.MaximumNoGcRegionBudgetGigabytes);
         AddBasicRow(
-            budgetGrid,
+            memoryGrid,
             SolverText.Get("搜索内存预算（GB）"),
             _noGcRegionBudget,
             SolverText.Get("这是独立于性能预设的战斗级 NoGC 区域请求上限，不是进程总内存上限，也不等于实际驻留内存。求解器会按系统当前安全余量自动下调实际区域；提高后可容纳更多并行分支并减少长搜索中的整理次数，但会增加内存占用与系统换页风险。搜索接近分配额度或系统内存安全线时，会保留活动 Beam、整理后继续；最终搜索完成后保留区域，战斗结束后延时清理。"));
-        content.AddChild(budgetGrid);
+        GridContainer stopGrid = CreateSettingsGrid();
+        _acceptableBattleHpLoss = CreateAcceptableBattleHpLossInput();
+        CheckButton stopAtHpTarget = CreateToggle();
+        _reloadInputs.Add(data => stopAtHpTarget.ButtonPressed = data.StopAtAcceptableBattleHpLoss);
+        stopAtHpTarget.Toggled += enabled =>
+        {
+            if (_loading) return;
+            SolverSettings.Update(SolverSettings.Current with { StopAtAcceptableBattleHpLoss = enabled });
+            SetStatus(SolverText.Get("已保存，下次搜索生效"), SolverUiTokens.Palette.Success);
+        };
+        AddBasicRow(stopGrid, SolverText.Get("达到战损目标后停止搜索"), stopAtHpTarget,
+            SolverText.Get("默认开启。完整胜利达到战损阈值且没有多用药水时停止；0 表示零损。成长收益尚未满足时继续搜索，击杀成长牌兑现收益后可停止。下次搜索生效。"));
+        AddBasicRow(stopGrid, SolverText.Get("提前结束搜索的战损阈值（HP）"), _acceptableBattleHpLoss,
+            SolverText.Get("默认 0，即零损。启用上方开关后，找到预计整场扣血不超过此值的完整胜利路线就停止搜索；仅保存成长额度而本场没有对应卡牌时仍可早停。"));
+        AddSettingsSection(content, SolverText.Get("搜索停止条件"),
+            SolverText.Get("战损阈值按整场累计扣血计算，下次搜索生效。"), stopGrid);
+        AddSettingsSection(content, SolverText.Get("内存管理"),
+            SolverText.Get("设置搜索内存预算；手动释放入口位于主界面内存条右侧。"), memoryGrid);
 
         _advancedParametersToggle = SolverUiTokens.CreateButton(
             SolverText.Get("展开自定义参数"),
@@ -109,52 +128,43 @@ internal sealed partial class SolverSettingsPanel
         advanced.AddChild(CreateSectionHeading(SolverText.Get("自定义搜索参数")));
         GridContainer searchGrid = new()
         {
-            Columns = 3,
+            Columns = 2,
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             MouseFilter = MouseFilterEnum.Pass,
         };
         searchGrid.AddThemeConstantOverride("h_separation", SolverUiTokens.Spacing.Md);
         searchGrid.AddThemeConstantOverride("v_separation", SolverUiTokens.Spacing.Sm);
         AddGridHeader(searchGrid, SolverText.Get("配置项"));
-        AddGridHeader(searchGrid, SolverText.Get("快搜"));
-        AddGridHeader(searchGrid, SolverText.Get("深搜"));
+        AddGridHeader(searchGrid, SolverText.Get("搜索预算"));
         AddDoubleRow(
             searchGrid,
             SolverText.Get("时间上限（秒）"),
-            data => SolverSettings.ResolvePerformanceValues(data).ShortProfile.SoftTimeBudgetMilliseconds / 1000d,
-            (data, value) => AsCustomPerformance(data with { ShortTimeLimitSeconds = value }),
-            data => SolverSettings.ResolvePerformanceValues(data).DeepProfile.SoftTimeBudgetMilliseconds / 1000d,
-            (data, value) => AsCustomPerformance(data with { DeepTimeLimitSeconds = value }),
+            data => SolverSettings.ResolvePerformanceValues(data).Profile.SoftTimeBudgetMilliseconds / 1000d,
+            (data, value) => AsCustomPerformance(data with { SearchTimeLimitSeconds = value }),
             0.1d,
             600d,
-            SolverText.Get("搜索达到该时间后停止当前阶段。提高后可搜索更久，可能找到更好路线，也会更晚显示结果；快搜负责先给结果，深搜负责继续优化。"));
+            SolverText.Get("搜索使用一套时间预算，期间持续更新当前最好路线；达到停止条件时提前结束。"));
         AddIntRow(
             searchGrid,
             SolverText.Get("Beam 宽度"),
-            data => SolverSettings.ResolvePerformanceValues(data).ShortProfile.BeamWidth,
-            (data, value) => AsCustomPerformance(data with { ShortBeamWidth = value }),
-            data => SolverSettings.ResolvePerformanceValues(data).DeepProfile.BeamWidth,
-            (data, value) => AsCustomPerformance(data with { DeepBeamWidth = value }),
+            data => SolverSettings.ResolvePerformanceValues(data).Profile.BeamWidth,
+            (data, value) => AsCustomPerformance(data with { SearchBeamWidth = value }),
             1,
             512,
             SolverText.Get("每层保留的候选路线数量。提高后更不容易过早淘汰好路线，但会明显增加计算量和内存占用。"));
         AddIntRow(
             searchGrid,
             SolverText.Get("节点上限"),
-            data => SolverSettings.ResolvePerformanceValues(data).ShortProfile.MaxExpandedNodes,
-            (data, value) => AsCustomPerformance(data with { ShortMaxExpandedNodes = value }),
-            data => SolverSettings.ResolvePerformanceValues(data).DeepProfile.MaxExpandedNodes,
-            (data, value) => AsCustomPerformance(data with { DeepMaxExpandedNodes = value }),
+            data => SolverSettings.ResolvePerformanceValues(data).Profile.MaxExpandedNodes,
+            (data, value) => AsCustomPerformance(data with { SearchMaxExpandedNodes = value }),
             100,
             100_000,
             SolverText.Get("单次搜索最多展开的状态数量。提高后搜索范围更大，也会增加耗时和内存占用。"));
         AddIntRow(
             searchGrid,
             SolverText.Get("单节点出牌分支"),
-            data => SolverSettings.ResolvePerformanceValues(data).ShortProfile.MaxCardBranchesPerNode,
-            (data, value) => AsCustomPerformance(data with { ShortMaxCardBranchesPerNode = value }),
-            data => SolverSettings.ResolvePerformanceValues(data).DeepProfile.MaxCardBranchesPerNode,
-            (data, value) => AsCustomPerformance(data with { DeepMaxCardBranchesPerNode = value }),
+            data => SolverSettings.ResolvePerformanceValues(data).Profile.MaxCardBranchesPerNode,
+            (data, value) => AsCustomPerformance(data with { SearchMaxCardBranchesPerNode = value }),
             1,
             100,
             SolverText.Get("每个状态最多继续尝试的出牌动作数量。提高后能覆盖更多出牌顺序，但会放大后续搜索量。"));
@@ -201,10 +211,10 @@ internal sealed partial class SolverSettingsPanel
     private OptionButton CreatePerformancePresetInput()
     {
         OptionButton input = CreateOptionInput(260);
-        input.AddItem(SolverText.Get("低档（5 / 60 秒）"), (int)SolverPerformancePreset.Low);
-        input.AddItem(SolverText.Get("中档（默认，8 / 120 秒）"), (int)SolverPerformancePreset.Medium);
-        input.AddItem(SolverText.Get("高档（12 / 180 秒）"), (int)SolverPerformancePreset.High);
-        input.AddItem(SolverText.Get("极高（20 / 300 秒）"), (int)SolverPerformancePreset.VeryHigh);
+        input.AddItem(SolverText.Get("低档（60 秒）"), (int)SolverPerformancePreset.Low);
+        input.AddItem(SolverText.Get("中档（默认，120 秒）"), (int)SolverPerformancePreset.Medium);
+        input.AddItem(SolverText.Get("高档（180 秒）"), (int)SolverPerformancePreset.High);
+        input.AddItem(SolverText.Get("极高（300 秒）"), (int)SolverPerformancePreset.VeryHigh);
         input.AddItem(SolverText.Get("自定义"), (int)SolverPerformancePreset.Custom);
         input.ItemSelected += index =>
         {
@@ -251,8 +261,6 @@ internal sealed partial class SolverSettingsPanel
     private void AddIntRow(
         GridContainer grid,
         string label,
-        Func<SolverSettingsData, int> getShort,
-        Func<SolverSettingsData, int, SolverSettingsData> setShort,
         Func<SolverSettingsData, int> getDeep,
         Func<SolverSettingsData, int, SolverSettingsData> setDeep,
         int minimum,
@@ -260,21 +268,16 @@ internal sealed partial class SolverSettingsPanel
         string tooltip)
     {
         Label rowLabel = CreateRowLabel(label);
-        LineEdit shortInput = CreateRequiredIntInput(getShort, setShort, minimum, maximum);
         LineEdit deepInput = CreateRequiredIntInput(getDeep, setDeep, minimum, maximum);
         ApplyTooltip(rowLabel, tooltip);
-        ApplyTooltip(shortInput, tooltip);
         ApplyTooltip(deepInput, tooltip);
         grid.AddChild(rowLabel);
-        grid.AddChild(shortInput);
         grid.AddChild(deepInput);
     }
 
     private void AddDoubleRow(
         GridContainer grid,
         string label,
-        Func<SolverSettingsData, double> getShort,
-        Func<SolverSettingsData, double, SolverSettingsData> setShort,
         Func<SolverSettingsData, double> getDeep,
         Func<SolverSettingsData, double, SolverSettingsData> setDeep,
         double minimum,
@@ -282,13 +285,10 @@ internal sealed partial class SolverSettingsPanel
         string tooltip)
     {
         Label rowLabel = CreateRowLabel(label);
-        LineEdit shortInput = CreateRequiredDoubleInput(getShort, setShort, minimum, maximum);
         LineEdit deepInput = CreateRequiredDoubleInput(getDeep, setDeep, minimum, maximum);
         ApplyTooltip(rowLabel, tooltip);
-        ApplyTooltip(shortInput, tooltip);
         ApplyTooltip(deepInput, tooltip);
         grid.AddChild(rowLabel);
-        grid.AddChild(shortInput);
         grid.AddChild(deepInput);
     }
 

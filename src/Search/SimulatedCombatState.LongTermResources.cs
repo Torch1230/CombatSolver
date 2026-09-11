@@ -6,6 +6,11 @@ internal sealed partial class SimulatedCombatState
     private int _angerCopiesGenerated;
     private int _deathSaveRelicHpRestored;
     private GrowthValues _growthRewards;
+    private int _brightestFlameMaxHpSpent;
+    public int BrightestFlameMaxHpSpent => _brightestFlameMaxHpSpent;
+
+    public void RecordBrightestFlameMaxHpLoss(int amount)
+        => _brightestFlameMaxHpSpent = checked(_brightestFlameMaxHpSpent + amount);
 
     public GrowthValues GrowthRewards => _growthRewards;
 

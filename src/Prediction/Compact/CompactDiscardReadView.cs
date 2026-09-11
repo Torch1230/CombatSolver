@@ -16,6 +16,7 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
     private readonly CompactCardMetadataReadBinding _cards;
     private readonly Player _player;
     private readonly CardHistoryReadValues _baseline;
+    private readonly MegaCrit.Sts2.Core.Combat.PlayerTurnPhase _rootPhase;
     private readonly ulong[] _cardGapMasks;
     private readonly Dictionary<ulong, IReadOnlyList<PredictionGap>> _gapCombinations = [];
     private readonly IReadOnlyList<PredictionGap> _rootGaps;
@@ -44,6 +45,7 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
         _adapter = adapter;
         _context = root;
         _player = player;
+        _rootPhase = root.State.GetPlayerCombatState(player).Phase;
         _program = adapter.Program;
         var cards = Enumerable.Range(0, adapter.CardCount).Select(id => root.State.FindCard(adapter.Original(id))
             ?? throw new InvalidOperationException("Read view lost a root card.")).ToArray();
@@ -58,7 +60,7 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
             metadata.GetCardPlaySeriesStartedThisTurn(player.Creature), metadata.GetCardPlayStartsThisTurn(player.Creature),
             metadata.GetCardsPlayedThisTurn(player.Creature), metadata.GetManualCardsPlayedThisTurn(player.Creature),
             metadata.GetAttacksPlayedThisTurn(player.Creature), metadata.GetCreatureAttacksThisTurn(player.Creature),
-            metadata.GetZeroCostAttackStartsThisTurn(player.Creature), metadata.GetCardsExhaustedThisTurn(player.Creature), metadata.GetShivsPlayedThisTurn(player.Creature), metadata.GetStatusCardsDrawnThisTurn(player));
+            metadata.GetZeroCostAttackStartsThisTurn(player.Creature), metadata.GetCardsExhaustedThisTurn(player.Creature), metadata.GetShivsPlayedThisTurn(player.Creature), metadata.GetStatusCardsDrawnThisTurn(player), metadata.GetAttackSkillStartsThisTurn(player.Creature));
         _combatBaseline = ((SimulatedCombatState)root.State.CombatState).CaptureCombatHistoryReadValues();
         _rootPlayerHpLost = metadata.GetCumulativeHpLost(player.Creature);
         _baseHits = Enumerable.Range(0, _program.CreatureCount)
@@ -112,6 +114,7 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
         var combat = (SimulatedCombatState)_context.State.CombatState;
         combat.ClearPendingTurnStartChoice();
         _program = program;
+        _context.State.GetPlayerCombatState(_player).Phase = _rootPhase;
         _cards.Read(program);
         if (_ostyBinding != null)
         {
@@ -121,7 +124,7 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
         _monsterAiBinding?.Read(program);
         _roundBinding?.Read(program.RoundNumber, program.PlayerTurn, program.EnemySide, program.BeganEnemyTurn, program.BeganPlayerTurn);
         bool playerReset = false, enemyReset = false;
-        int attacks = 0, creatureAttacks = 0, zeroCostAttacks = 0, shivs = 0, statusDraws = 0;
+        int attacks = 0, creatureAttacks = 0, zeroCostAttacks = 0, shivs = 0, statusDraws = 0, attackSkillStarts = 0;
         _combatHistory.ResetFrom(_combatBaseline);
         int block = 0, skill = 0, discarded = 0, exhausted = 0, energy = 0, draw = 0, starts = 0, plays = 0, manual = 0;
         _entries = _context.History.Entries.Count;
@@ -134,6 +137,9 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
             var item = program.EventAt(i);
             switch (item.Kind)
             {
+                case ResumableDiscardProgram.EventKind.PlayerPhaseChanged:
+                    _context.State.GetPlayerCombatState(_player).Phase = CompactDiscardProjection.NativePlayerPhase(item.Value);
+                    break;
                 case ResumableDiscardProgram.EventKind.CommitPlayerTurnHistory:
                     if (_combatHistory.LastAttacks.Remove(_player, out var lastAttack))
                         _combatHistory.PreviousTurnAttacks[_player] = lastAttack;
@@ -149,12 +155,13 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
                     _combatHistory.CreatureAttacks[phaseOwner] = 0;
                     if (!enemy && program.PetIndex >= 0) _combatHistory.CreatureAttacks[_adapter.Creature(program.PetIndex)] = 0;
                     playerReset = enemyReset = true;
-                    attacks = creatureAttacks = zeroCostAttacks = shivs = statusDraws = 0;
+                    attacks = creatureAttacks = zeroCostAttacks = shivs = statusDraws = attackSkillStarts = 0;
                     block = skill = discarded = exhausted = energy = draw = starts = plays = manual = 0;
                     break;
                 case ResumableDiscardProgram.EventKind.Pay: energy += item.Value; break;
                 case ResumableDiscardProgram.EventKind.Start:
                     starts++;
+                    if (_cards[item.Card].Preview.Type is CardType.Attack or CardType.Skill) attackSkillStarts++;
                     if (_cards[item.Card].Preview.Type == CardType.Attack && item.Value == 0) zeroCostAttacks++;
                     if (!item.Automatic) manual++;
                     _entries++;
@@ -246,7 +253,7 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
         _history = new(_player, Add(_baseline.BlockPlays, block), Add(_baseline.SkillPlays, skill),
             Add(_baseline.Discards, discarded), Add(_baseline.EnergySpent, energy), Add(_baseline.Draws, draw),
             Add(_baseline.Series, starts), Add(_baseline.Starts, starts), Add(_baseline.Plays, plays), Add(_baseline.ManualPlays, manual), Add(_baseline.AttackPlays, attacks),
-            Add(_baseline.CreatureAttacks, creatureAttacks), Add(_baseline.ZeroCostAttackStarts, zeroCostAttacks), Add(_baseline.Exhausts, exhausted), Add(_baseline.ShivPlays, shivs), Add(_baseline.StatusDraws, statusDraws));
+            Add(_baseline.CreatureAttacks, creatureAttacks), Add(_baseline.ZeroCostAttackStarts, zeroCostAttacks), Add(_baseline.Exhausts, exhausted), Add(_baseline.ShivPlays, shivs), Add(_baseline.StatusDraws, statusDraws), Add(_baseline.AttackSkillStarts, attackSkillStarts));
         if (!_gapCombinations.TryGetValue(gapMask, out var gaps))
         {
             gaps = PredictionCoverage.Normalize(_rootGaps.Concat(_distinctGaps.Where((_, i) => (gapMask & (1UL << i)) != 0)));

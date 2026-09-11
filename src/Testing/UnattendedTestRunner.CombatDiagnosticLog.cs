@@ -79,7 +79,7 @@ internal sealed partial class UnattendedTestRunner
         SolverDisplayNames names = SolverDisplayNames.Capture(combat);
         BattleDamageSnapshot damage = BattleDamageTracker.Observe(combat);
         SolverResult shortResult = await Task.Run(() => new CombatBeamSolver(shortRoot, names, damage, policy,
-            searchProfile: SolverSearchProfile.Short with { BeamWidth = 4, MaxExpandedNodes = 100, SoftTimeBudgetMilliseconds = 1000 },
+            searchProfile: SolverSearchProfile.Default with { BeamWidth = 4, MaxExpandedNodes = 100, SoftTimeBudgetMilliseconds = 1000 },
             potionPolicyOverride: SolverPotionPolicy.Disabled).Solve());
         if (shortResult.CombatEndedTurn == null)
             throw new InvalidOperationException("正式搜索未完成单步终局物化。");

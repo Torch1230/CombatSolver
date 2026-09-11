@@ -41,17 +41,16 @@ internal sealed partial class UnattendedTestRunner
             includeTurnSetup: false,
             theftPolicy: SolverController.ResolveTheftPolicy(combat)) with
         {
-            ShortProfile = settings.ShortProfile with
+            Profile = settings.Profile with
             {
-                MaxExpandedNodes = Math.Min(settings.ShortProfile.MaxExpandedNodes, 250),
+                MaxExpandedNodes = Math.Min(settings.Profile.MaxExpandedNodes, 250),
                 SoftTimeBudgetMilliseconds = 120_000,
             },
-            ForceShortOnly = true,
+            FixedBudget = true,
             VerifyIncrementalSearch = false,
             DetailedDiagnostics = false,
             MeasurePhasePerformance = false,
-            ShortBudgetOverrideMilliseconds = null,
-            DeepBudgetOverrideMilliseconds = null,
+            BudgetOverrideMilliseconds = null,
         };
         if (string.Equals(
                 Godot.DisplayServer.GetName(),
@@ -67,6 +66,7 @@ internal sealed partial class UnattendedTestRunner
         AssertRequiredPotionAuditSelectionAndTotals();
         CombatRootSnapshot rootSnapshot = CombatRootSnapshot.Capture(combat);
         AssertNarrowBeamRecoveryPolicy(rootSnapshot, capturedPolicy);
+        AssertNoVictoryEscalationPolicy();
         await AssertCanceledSearchWorkRecordedOnceAsync(
             rootSnapshot,
             displayNames,
@@ -2079,7 +2079,6 @@ internal sealed partial class UnattendedTestRunner
         if (!ContinuationsEquivalent(expected.Continuations, actual.Continuations))
             mismatches.Add("continuations");
 
-        AddMismatch(mismatches, "search_phase", expected.SearchPhase, actual.SearchPhase);
         AddMismatch(mismatches, "start_turn", expected.StartTurnNumber, actual.StartTurnNumber);
         AddMismatch(mismatches, "best.action_count", expected.BestNode.ActionCount, actual.BestNode.ActionCount);
         AddMismatch(mismatches, "best.score", expected.BestNode.Score, actual.BestNode.Score);

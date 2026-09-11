@@ -66,18 +66,18 @@ internal sealed class SmartLayerMemoryForecast
         bool enabled,
         bool unexpectedNoGcLoss,
         long allocatedBytes,
-        long remainingBytes)
+        long remainingBytes,
+        long allocationLimitBytes)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(allocatedBytes);
         ArgumentOutOfRangeException.ThrowIfNegative(remainingBytes);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(allocationLimitBytes);
         if (!enabled)
             return new(false, "no_active_no_gc_region", 0, remainingBytes);
         if (unexpectedNoGcLoss)
             return new(true, "unexpected_no_gc_loss", 0, remainingBytes);
-        if (allocatedBytes == 0)
-            return new(false, "fresh_region", 0, remainingBytes);
         if (!_hasCompleteObservation)
-            return new(true, "incomplete_layer_sample", 0, remainingBytes);
+            return new(false, "use_wave_checkpoints_without_forecast", 0, remainingBytes);
 
         double expectedTransitions = _lastTransitions * _transitionGrowthHighWater;
         double expectedBytes = Math.Max(
@@ -88,9 +88,17 @@ internal sealed class SmartLayerMemoryForecast
         forecast = Math.Max(MinimumReserveBytes, forecast);
         _previousForecastBytes = forecast;
         bool fits = forecast != long.MaxValue && forecast <= remainingBytes;
+        if (fits)
+            return new(false, "forecast_fits", forecast, remainingBytes);
+        // A whole layer can span several regions. Resetting a nearly empty region cannot
+        // make such a layer fit; the normal per-wave admission owns those rollovers.
+        if (forecast == long.MaxValue || forecast > allocationLimitBytes)
+            return new(false, "layer_spans_regions", forecast, remainingBytes);
+        if (allocatedBytes < Math.Max(MinimumReserveBytes, allocationLimitBytes / 4))
+            return new(false, "preserve_fresh_region", forecast, remainingBytes);
         return new(
-            !fits,
-            fits ? "forecast_fits" : "forecast_exceeds_remaining",
+            true,
+            "forecast_fits_reclaimed_region",
             forecast,
             remainingBytes);
     }

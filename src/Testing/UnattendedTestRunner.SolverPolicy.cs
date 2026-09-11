@@ -18,12 +18,12 @@ internal sealed partial class UnattendedTestRunner
         if (preset == SolverPerformancePreset.Custom)
         {
             _completedChecks.Add(
-                $"PerformancePreset:Custom:{snapshot.ShortProfile.SoftTimeBudgetMilliseconds}/" +
-                $"{snapshot.DeepProfile.SoftTimeBudgetMilliseconds}ms:" +
-                $"Beam={snapshot.ShortProfile.BeamWidth}/{snapshot.DeepProfile.BeamWidth}:" +
-                $"Nodes={snapshot.ShortProfile.MaxExpandedNodes}/{snapshot.DeepProfile.MaxExpandedNodes}:" +
-                $"Branches={snapshot.ShortProfile.MaxCardBranchesPerNode}/" +
-                $"{snapshot.DeepProfile.MaxCardBranchesPerNode}:" +
+                $"PerformancePreset:Custom:{snapshot.Profile.SoftTimeBudgetMilliseconds}/" +
+                $"{snapshot.Profile.SoftTimeBudgetMilliseconds}ms:" +
+                $"Beam={snapshot.Profile.BeamWidth}/{snapshot.Profile.BeamWidth}:" +
+                $"Nodes={snapshot.Profile.MaxExpandedNodes}/{snapshot.Profile.MaxExpandedNodes}:" +
+                $"Branches={snapshot.Profile.MaxCardBranchesPerNode}/" +
+                $"{snapshot.Profile.MaxCardBranchesPerNode}:" +
                 $"NoGC={snapshot.EnableNoGcRegion}/{snapshot.NoGcRegionBudgetBytes}");
             return;
         }
@@ -36,14 +36,14 @@ internal sealed partial class UnattendedTestRunner
             SolverPerformancePreset.VeryHigh => (20_000, 300_000, 54, 135, 10_000, 50_000, 45, 72),
             _ => throw new ArgumentOutOfRangeException(nameof(preset)),
         };
-        if (snapshot.ShortProfile.SoftTimeBudgetMilliseconds != expected.ShortMs
-            || snapshot.DeepProfile.SoftTimeBudgetMilliseconds != expected.DeepMs
-            || snapshot.ShortProfile.BeamWidth != expected.ShortBeam
-            || snapshot.DeepProfile.BeamWidth != expected.DeepBeam
-            || snapshot.ShortProfile.MaxExpandedNodes != expected.ShortNodes
-            || snapshot.DeepProfile.MaxExpandedNodes != expected.DeepNodes
-            || snapshot.ShortProfile.MaxCardBranchesPerNode != expected.ShortBranches
-            || snapshot.DeepProfile.MaxCardBranchesPerNode != expected.DeepBranches)
+        if (snapshot.Profile.SoftTimeBudgetMilliseconds != expected.ShortMs
+            || snapshot.Profile.SoftTimeBudgetMilliseconds != expected.DeepMs
+            || snapshot.Profile.BeamWidth != expected.ShortBeam
+            || snapshot.Profile.BeamWidth != expected.DeepBeam
+            || snapshot.Profile.MaxExpandedNodes != expected.ShortNodes
+            || snapshot.Profile.MaxExpandedNodes != expected.DeepNodes
+            || snapshot.Profile.MaxCardBranchesPerNode != expected.ShortBranches
+            || snapshot.Profile.MaxCardBranchesPerNode != expected.DeepBranches)
         {
             throw new InvalidOperationException($"性能预设 {preset} 解析结果与固定规格不一致。");
         }
@@ -122,9 +122,6 @@ internal sealed partial class UnattendedTestRunner
             || _request.ExpectedInitialFinalMaxHp.HasValue
             || _request.ExpectedInitialMaxBlockAtLeast.HasValue
             || _request.ExpectedInitialActualBlockAtLeast.HasValue
-            || _request.ExpectedInitialSearchPhase.HasValue
-            || _request.ExpectedInitialDeepSearchTriggered.HasValue
-            || _request.ExpectedInitialDeepSearchImprovedResult.HasValue
             || _request.ExpectedInitialExpandedNodesAtMost.HasValue
             || _request.ExpectedInitialTransitionsAtMost.HasValue
             || _request.ExpectedInitialTotalExpandedNodesAtMost.HasValue
@@ -196,7 +193,7 @@ internal sealed partial class UnattendedTestRunner
 
         _writer.CaptureSolverResult(result);
         AssertAppliedNoGcConfiguration();
-        long reviewedWorldlines = (long)result.ShortExpandedNodes + result.DeepExpandedNodes;
+        long reviewedWorldlines = result.TotalExpandedNodes;
         SolverOverlaySnapshot reviewSnapshot = SolverOverlaySnapshot.CaptureWithReviewedWorldlines(
             result,
             unexpectedReplan: false,
@@ -415,20 +412,6 @@ internal sealed partial class UnattendedTestRunner
         {
             throw new InvalidOperationException(
                 $"首轮路线实际起防仅 {initialActualBlock}，低于预期 {minimumActualBlock}。");
-        }
-        if (_request.ExpectedInitialSearchPhase is { } expectedPhase && result.SearchPhase != expectedPhase)
-            throw new InvalidOperationException($"首轮最终采用 {result.SearchPhase}，预期为 {expectedPhase}。");
-        if (_request.ExpectedInitialDeepSearchTriggered is { } expectedDeepTriggered
-            && result.DeepSearchTriggered != expectedDeepTriggered)
-        {
-            throw new InvalidOperationException(
-                $"首轮深化触发状态为 {result.DeepSearchTriggered}，预期为 {expectedDeepTriggered}。");
-        }
-        if (_request.ExpectedInitialDeepSearchImprovedResult is { } expectedDeepImproved
-            && result.DeepSearchImprovedResult != expectedDeepImproved)
-        {
-            throw new InvalidOperationException(
-                $"首轮深化改善状态为 {result.DeepSearchImprovedResult}，预期为 {expectedDeepImproved}。");
         }
         if (_request.ExpectedInitialExpandedNodesAtMost is { } maximumExpandedNodes
             && result.ExpandedNodes > maximumExpandedNodes)
@@ -878,7 +861,6 @@ internal sealed partial class UnattendedTestRunner
             $"Unmirrored={unmirroredCount};HpLost={initialHpLost};" +
             $"ProjectedBattleHpLost={result.ProjectedBattleHpLost};" +
             $"Block={initialActualBlock}/{initialMaxBlock};Pruned={result.SoldHpBranchesPruned};" +
-            $"Phase={result.SearchPhase};Deep={result.DeepSearchTriggered}/{result.DeepSearchImprovedResult};" +
             $"Total={result.TotalSearchElapsed.TotalMilliseconds:F1}ms/{result.TotalWorkerAllocatedBytes}B;" +
             $"Gc={result.TotalGcPauseDuration.TotalMilliseconds:F1}ms/{result.TotalMaxObservedGcPause.TotalMilliseconds:F1}msMax;" +
             $"Frame={result.MaxMainThreadFrameGapMilliseconds:F1}msMax/{result.MainThreadFramesOver50Milliseconds}Over50;" +

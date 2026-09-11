@@ -52,10 +52,9 @@ internal sealed partial class UnattendedTestRunner
     internal static bool IsReplayingRecordedInputs => CombatReplayRecording.TestObserver != null;
     public static bool AutomaticTurnSearchEnabled => Host.AutomaticTurnSearchEnabled;
     public static bool VerifyIncrementalSearch => Host.VerifyIncrementalSearch;
-    public static bool ForceShortSearchOnly => Host.ForceShortSearchOnly;
+    public static bool FixedSearchBudget => Host.FixedSearchBudget;
     public static bool MeasureSearchPhases => Host.MeasureSearchPhases;
-    public static int? ShortSearchBudgetOverrideMilliseconds => Host.ShortSearchBudgetOverrideMilliseconds;
-    public static int? DeepSearchBudgetOverrideMilliseconds => Host.DeepSearchBudgetOverrideMilliseconds;
+    public static int? SearchBudgetOverrideMilliseconds => Host.SearchBudgetOverrideMilliseconds;
     public static int? SearchMaxDegreeOfParallelismOverride => Host.SearchMaxDegreeOfParallelismOverride;
 
     private readonly NGame _host;
@@ -77,6 +76,10 @@ internal sealed partial class UnattendedTestRunner
     {
         _host = host;
         _request = request;
+        if (request.ScenarioId == "MODEL-STATE-INTEGRATION")
+            RegisterModelStateIntegrationAdapters();
+        if (request.ScenarioId.StartsWith("TURN-SETUP-UI-", StringComparison.Ordinal))
+            InitializeTurnSetupControlCheck();
         _protocolHost = protocolHost;
         _writer = new Writer(
             () => _request,
@@ -224,6 +227,7 @@ internal sealed partial class UnattendedTestRunner
         }
         finally
         {
+            ReleaseTurnSetupControlCheck();
             _executor.RestoreSettings();
             RestoreHeadlessFastModeOverride();
             ReleaseCheckpointImport();
@@ -511,21 +515,53 @@ internal sealed partial class UnattendedTestRunner
             EnsureWithinDeadline();
             CombatState? state = CombatManager.Instance.DebugOnlyGetState();
             Player? player = state == null ? null : LocalContext.GetMe(state);
+            if (_request.ScenarioId.StartsWith("TURN-SETUP-UI-", StringComparison.Ordinal))
+            {
+                if (state != null && await AdvanceTurnSetupControlCheckAsync(state, player)) return state;
+                await NextFrameAsync();
+                continue;
+            }
             if (_request.VerifyTurnSetupControlsDuringInitialSearch
                 && !initialSearchControlsSubmitted
                 && state != null
                 && PlayerTurnSetupCoordinator.IsInitialChoiceSearchPendingForTesting(state))
             {
-                if (!SolverController.CanAdoptCurrentRoute)
+                bool applyCurrent = _request.ScenarioId == "TURN-SETUP-APPLY-CURRENT";
+                if (!(applyCurrent ? SolverController.CanApplyCurrentTurn : SolverController.CanAdoptCurrentRoute))
                 {
                     await NextFrameAsync();
                     continue;
                 }
                 int turn = player?.PlayerCombatState?.TurnNumber
                     ?? throw new InvalidOperationException("开局搜索控件测试找不到玩家回合。");
-                SolverController.AdoptCurrentRoute();
-                if (!SolverController.IsAdoptingCurrentRoute)
-                    throw new InvalidOperationException("开局搜索的当前完整路线没有进入采纳状态。");
+                if (_request.ScenarioId == "TURN-SETUP-STOP-CANDIDATE")
+                {
+                    SolverController.StopSearchByUser(_host);
+                    while (SolverController.IsSearching)
+                    {
+                        EnsureWithinDeadline();
+                        await NextFrameAsync();
+                    }
+                    if (!SolverController.CanAdoptCurrentRoute || SolverController.IsAdoptingCurrentRoute
+                        || !SolverController.CanExecuteCurrentTurn || HasChoiceBlocker(_host))
+                        throw new InvalidOperationException("停止并保留开局候选后仍有忙碌标记或输入锁。");
+                    SolverController.AdoptCurrentRoute();
+                    if (SolverController.IsAdoptingCurrentRoute)
+                        throw new InvalidOperationException("已停止候选被采用后没有结束采用状态。");
+                    _completedChecks.Add("TurnSetupStoppedCandidate:Adopted:ControlsAndInputReleased");
+                }
+                else if (applyCurrent)
+                {
+                    SolverController.ApplyCurrentTurn();
+                    if (!SolverController.IsApplyingCurrentTurn)
+                        throw new InvalidOperationException("开局搜索的当前回合没有进入应用状态。");
+                }
+                else
+                {
+                    SolverController.AdoptCurrentRoute();
+                    if (!SolverController.IsAdoptingCurrentRoute)
+                        throw new InvalidOperationException("开局搜索的当前完整路线没有进入采纳状态。");
+                }
                 SolverController.RequestDeploy(_host, state);
                 if (!PlayerTurnSetupCoordinator.TakeoverRequestedForTesting)
                     throw new InvalidOperationException("开局搜索期间的执行请求没有进入回合准备接管队列。");
@@ -536,7 +572,7 @@ internal sealed partial class UnattendedTestRunner
                 turnSetupPlanAccepted = true;
                 Entry.Logger.Info(
                     $"[CombatSolver/Test] TURN_SETUP_INITIAL_SEARCH_CONTROLS_SUBMITTED " +
-                    $"turn={turn} adopted_interim=true");
+                    $"turn={turn} interim_takeover=true");
             }
             if (_request.ScenarioId == "TURN-SETUP-REFRESH-TAKEOVER"
                 && manualRefreshRequested && !turnSetupPlanAccepted

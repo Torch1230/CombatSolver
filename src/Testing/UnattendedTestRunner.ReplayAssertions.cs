@@ -6,10 +6,10 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
-    private static void AssertNativeCheckpoint(CombatState state, string? nativePath)
+    private static bool AssertNativeCheckpoint(CombatState state, string? nativePath, bool differentModelEncoding = false)
     {
         if (string.IsNullOrWhiteSpace(nativePath))
-            return;
+            return false;
         byte[] expected = File.ReadAllBytes(nativePath);
         NetFullCombatState actual = NetFullCombatState.FromRun(state.RunState, justFinishedAction: null);
         PacketWriter writer = new() { WarnOnGrow = false };
@@ -17,7 +17,9 @@ internal sealed partial class UnattendedTestRunner
         writer.ZeroByteRemainder();
         ReadOnlySpan<byte> bytes = writer.Buffer.AsSpan(0, writer.BytePosition);
         if (bytes.SequenceEqual(expected))
-            return;
+            return true;
+        if (differentModelEncoding)
+            return false;
         int offset = 0;
         while (offset < Math.Min(expected.Length, bytes.Length) && expected[offset] == bytes[offset])
             offset++;

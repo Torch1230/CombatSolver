@@ -57,6 +57,7 @@ internal sealed partial class SimulatedCombatState
     private readonly AbstractModel[] _rootRunHookListeners;
     private readonly IReadOnlyDictionary<Player, RelicModel[]> _rootRelics;
     private IReadOnlyDictionary<RelicModel, RelicModel>? _rootRelicSources;
+    private IReadOnlyList<ModifierModel>? _rootModifierSources;
     private readonly IReadOnlyDictionary<Player, int> _rootPotionSlotCounts;
     private readonly IReadOnlyDictionary<Player, int> _rootPlayerTurnNumbers;
     private readonly IReadOnlyDictionary<(Creature Owner, Type Type), int> _rootPowerAmounts;
@@ -221,6 +222,7 @@ internal sealed partial class SimulatedCombatState
     private ForkableDictionary<Creature, int>? _cardPlaySeriesStartedThisTurn;
     private ForkableDictionary<Creature, int>? _zeroCostAttackStartsThisTurn;
     private ForkableDictionary<Creature, int>? _cardPlayStartsThisTurn;
+    private ForkableDictionary<Creature, int>? _attackSkillStartsThisTurn;
     private ForkableSet<Creature>? _enemiesIntendingAttack;
     private bool _hasPredictedEnemyIntents;
     private ForkableDictionary<Player, int>? _playerTurnNumbers;
@@ -257,6 +259,7 @@ internal sealed partial class SimulatedCombatState
         _encounter = inner.Encounter;
         _encounterSlots = inner.Encounter?.Slots.ToArray() ?? [];
         _rootHistory = RootCombatHistorySnapshot.Capture();
+        _brightestFlameMaxHpSpent = CaptureBrightestFlameMaxHpSpent(_rootHistory.CardPlaysStarted);
         _rootCreatures = inner.Creatures
             .Concat(_rootOsties.Values.OfType<Creature>())
             .ToHashSet();
@@ -281,6 +284,8 @@ internal sealed partial class SimulatedCombatState
             .Select(PredictionUtils.CloneModelForSimulation)
             .ToArray();
         _modifiers = modifiers;
+        if (ModelPredictionStateMirrors.HasAny)
+            _rootModifierSources = inner.Modifiers.ToArray();
         for (int index = 0; index < modifiers.Length; index++)
             rootModelClones.Add(inner.Modifiers[index], modifiers[index]);
         Dictionary<Player, RelicModel[]> rootRelics = [];
@@ -448,6 +453,7 @@ internal sealed partial class SimulatedCombatState
         _rootRunHookListeners = source._rootRunHookListeners;
         _rootRelics = source._rootRelics;
         _rootRelicSources = source._rootRelicSources;
+        _rootModifierSources = source._rootModifierSources;
         _rootPotionSlotCounts = source._rootPotionSlotCounts;
         _rootPlayerTurnNumbers = source._rootPlayerTurnNumbers;
         _rootPowerAmounts = source._rootPowerAmounts;
@@ -594,9 +600,17 @@ internal sealed partial class SimulatedCombatState
     }
 
     public void Apply<T>(Creature target, int amount, Creature? applier = null) where T : PowerModel
+        => ApplyWithBeforeApplied<T>(target, amount, applier, null);
+
+    private int ApplyWithBeforeApplied<T>(Creature target, int amount, Creature? applier, Action<int>? beforeApplied)
+        where T : PowerModel
     {
         T? incoming = PreparePowerApplication<T>(target, ref amount, applier);
-        if (incoming != null) ApplyPreparedPower(target, incoming, amount, applier);
+        if (incoming == null) return 0;
+        int previousAmount = GetAmount<T>(target);
+        if (previousAmount == 0) beforeApplied?.Invoke(amount);
+        PowerModel applied = ApplyPreparedPower(target, incoming, amount, applier);
+        return applied.Amount - previousAmount;
     }
 
     public void ApplyInstancedPower<T>(Creature target, int amount, Creature? applier = null) where T : PowerModel
@@ -999,33 +1013,25 @@ internal sealed partial class SimulatedCombatState
 
     public void ApplyTemporaryDexterity<T>(Creature creature, int amount, Creature? applier)
         where T : PowerModel
-    {
-        int before = GetAmount<T>(creature);
-        Apply<T>(creature, amount, applier);
-        int applied = GetAmount<T>(creature) - before;
-        if (applied <= 0)
-            return;
-        Apply<DexterityPower>(creature, applied, applier);
-    }
+        => ApplyTemporaryStat<T, DexterityPower>(creature, amount, applier, 1);
 
     public void ApplyTemporaryFocus<T>(Creature creature, int amount, Creature? applier)
         where T : PowerModel
-    {
-        int before = GetAmount<T>(creature);
-        Apply<T>(creature, amount, applier);
-        int applied = GetAmount<T>(creature) - before;
-        if (applied > 0)
-            Apply<FocusPower>(creature, applied, applier);
-    }
+        => ApplyTemporaryStat<T, FocusPower>(creature, amount, applier, 1);
 
     public void ApplyTemporaryFocusLoss<T>(Creature creature, int amount, Creature? applier)
         where T : PowerModel
+        => ApplyTemporaryStat<T, FocusPower>(creature, amount, applier, -1);
+
+    private void ApplyTemporaryStat<T, TStat>(Creature creature, int amount, Creature? applier, int sign)
+        where T : PowerModel
+        where TStat : PowerModel
     {
-        int before = GetAmount<T>(creature);
-        Apply<T>(creature, amount, applier);
-        int applied = GetAmount<T>(creature) - before;
-        if (applied > 0)
-            Apply<FocusPower>(creature, -applied, applier);
+        bool alreadyApplied = GetAmount<T>(creature) != 0;
+        int applied = ApplyWithBeforeApplied<T>(creature, amount, applier,
+            value => Apply<TStat>(creature, sign * value, applier));
+        if (alreadyApplied && applied != 0)
+            Apply<TStat>(creature, sign * applied, applier);
     }
 
     public void ApplyAnticipate(Creature creature, int amount, Creature? applier)
@@ -1183,6 +1189,7 @@ internal sealed partial class SimulatedCombatState
         (_cardPlaySeriesStartedThisTurn ??= [])[owner] = 0;
         (_zeroCostAttackStartsThisTurn ??= [])[owner] = 0;
         (_cardPlayStartsThisTurn ??= [])[owner] = 0;
+        (_attackSkillStartsThisTurn ??= [])[owner] = 0;
         if (owner.Player is { } ownerPlayer)
         {
             (_energySpentThisTurn ??= [])[ownerPlayer] = 0;
@@ -1968,6 +1975,8 @@ internal sealed partial class SimulatedCombatState
         {
             PowerModel mutable = GetMutablePowerInstance(power);
             PowerPredictionStateSupport.CaptureRootState(simulator, mutable, power);
+            if (power is PaleBlueDotPower paleBlueDot)
+                CapturePaleBlueDotRootState((PaleBlueDotPower)mutable, paleBlueDot);
             if (power is DampenPower dampen)
                 CaptureDampenRootState(simulator, dampen);
         }
@@ -2021,6 +2030,7 @@ internal sealed partial class SimulatedCombatState
             _ = GetCardPlaySeriesStartedThisTurn(creature);
             _ = GetZeroCostAttackStartsThisTurn(creature);
             _ = GetCardPlayStartsThisTurn(creature);
+            _ = GetAttackSkillStartsThisTurn(creature);
             _ = GetAttacksPlayedThisTurn(creature);
             _ = GetShivsPlayedThisTurn(creature);
             _ = GetBlockCardsPlayedThisTurn(creature);
@@ -2036,11 +2046,23 @@ internal sealed partial class SimulatedCombatState
             CaptureHistoryCourseCards(simulator, player);
         }
         _ = GetFetchCardsPlayedThisTurn();
+        NormalizeSwordSageReplays(simulator);
         _enemiesIntendingAttack = [.. Enemies.Where(enemy => enemy.Monster?.IntendsToAttack == true)];
         _hasPredictedEnemyIntents = true;
+        if (ModelPredictionStateMirrors.HasAny)
+        {
+            // Capture after the built-in root is materialized. Adapter factories may resolve
+            // live card references to predicted cards, but must not retain live mutable state.
+            foreach (Player player in Players)
+                foreach (RelicModel relic in RelicsOf(player))
+                    ModelPredictionStateMirrors.CaptureRootState(simulator, relic, _rootRelicSources![relic]);
+            for (int slot = 0; slot < _modifiers.Count; slot++)
+                ModelPredictionStateMirrors.CaptureRootState(simulator, _modifiers[slot], _rootModifierSources![slot]);
+        }
         StateFingerprintBuilder fingerprint = new();
         AppendFingerprint(ref fingerprint, simulator);
         _rootRelicSources = null;
+        _rootModifierSources = null;
         _rootMaterialized = true;
     }
 
@@ -2181,6 +2203,7 @@ internal sealed partial class SimulatedCombatState
         AddCreatureIntMap(ref fingerprint, 'Q', _cardPlaySeriesStartedThisTurn, history?.Owner.Creature, history?.Series);
         AddCreatureIntMap(ref fingerprint, 'q', _zeroCostAttackStartsThisTurn, history?.Owner.Creature, history?.ZeroCostAttackStarts);
         AddCreatureIntMap(ref fingerprint, 'J', _cardPlayStartsThisTurn, history?.Owner.Creature, history?.Starts);
+        AddCreatureIntMap(ref fingerprint, 'N', _attackSkillStartsThisTurn, history?.Owner.Creature, history?.AttackSkillStarts);
         AddCreatureIntMap(ref fingerprint, 'k', _knowledgeDemonCurseCounters);
         AddCreatureSet(ref fingerprint, 'i', _enemiesIntendingAttack);
         fingerprint.Add(_hasPredictedEnemyIntents);
@@ -2189,6 +2212,7 @@ internal sealed partial class SimulatedCombatState
         fingerprint.Add('g');
         fingerprint.Add(_longTermResourceValue);
         _growthRewards.AppendFingerprint(ref fingerprint);
+        fingerprint.Add(_brightestFlameMaxHpSpent);
         fingerprint.Add('A');
         fingerprint.Add(_angerCopiesGenerated);
         fingerprint.Add('L');
@@ -2201,6 +2225,7 @@ internal sealed partial class SimulatedCombatState
         AddTenderStates(ref fingerprint, effectivePowers);
         AppendCardLifecycleFingerprint(ref fingerprint, simulator, history);
         AppendStatefulRelicFingerprint(ref fingerprint, simulator);
+        ModelPredictionStateMirrors.AppendPredicted(ref fingerprint, null, simulator, this);
         AppendRelicResourceFingerprint(ref fingerprint);
         AppendPotionFingerprint(ref fingerprint);
         AppendMonsterAiFingerprint(ref fingerprint, enemyRoster);

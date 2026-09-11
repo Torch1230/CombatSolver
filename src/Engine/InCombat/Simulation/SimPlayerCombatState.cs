@@ -1,4 +1,5 @@
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Models;
 using CombatSolver.Engine.Common;
@@ -84,12 +85,14 @@ internal sealed class SimPlayerCombatState
     public int Energy { get; private set; }
 
     public int Stars { get; private set; }
+    public PlayerTurnPhase Phase { get; set; }
 
     public SimPlayerCombatState(PlayerCombatState liveState)
     {
         _liveState = liveState;
         Energy = liveState.Energy;
         Stars = liveState.Stars;
+        Phase = liveState.Phase;
     }
 
     private SimPlayerCombatState(PlayerCombatState liveState, int energy, int stars)
@@ -179,6 +182,7 @@ internal sealed class SimPlayerCombatState
     {
         SimPlayerCombatState fork = new(_liveState, Energy, Stars)
         {
+            Phase = Phase,
             _orbQueue = _orbQueue?.Fork(context),
             _hand = _hand?.Fork(context),
             _drawPile = _drawPile?.Fork(context),

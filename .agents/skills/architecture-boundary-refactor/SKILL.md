@@ -17,6 +17,8 @@ description: 重构 CombatSolver 的 Search、Runtime 会话、UI snapshot、无
 
 ## 1. 先定义迁移前后的所有权
 
+搜索预算仅由 `SearchPolicySnapshot.Profile` 表达；固定预算测试/API 使用 `FixedBudget`。旧 short/deep 字段只允许在设置、归档或请求反序列化边界迁移，禁止重新引入 Search 阶段或分段计数。UI 设置与请求总计必须消费单一配置；两端结构门禁同步维护。
+
 写清楚：
 
 - 当前谁创建、持有、修改和销毁该状态；
@@ -41,6 +43,7 @@ description: 重构 CombatSolver 的 Search、Runtime 会话、UI snapshot、无
 - controller 状态属于 combat/search/deployment session，不回退为并列静态字段。
 - 跨 SL 路线记录由 Runtime 的 `SolvedRouteCache` 持有磁盘协议；在普通根捕获和回合开始选择根捕获后按状态与策略匹配。结果中的 Forecast 从新根重新绑定，磁盘和跨会话所有者均不得保留旧 Creature/MoveState。Search 不读取路线文件。
 - UI renderer 只消费 `SolverOverlay*Snapshot`；结果到 snapshot 的复制发生在主线程边界。
+- `SolverActionBar` 只消费布局状态及已有控件，不读取 Controller 或战斗对象；命令绑定和能力判断仍由 Overlay 接入既有 Runtime 入口。
 - 改动 UI 文案及投影时读取 `../ui-localization/SKILL.md`：保留中英模板和胶囊/tooltip 的统一来源；名称与语言在主线程捕获，worker 使用冻结显示表。不要把日志 Describe 重新接回玩家界面或把本地化带入 Search。
 - 设置页自身驱动的后台任务使用控件所有者的完成邮箱收口；问题包上传的成功、失败和取消由 `SolverSettingsPanel._Process` 消费，不借用搜索生命周期的 `SolverDispatcher`。
 - 问题包 `CombatBugReportMetadata` 在主线程冻结战斗/角色/怪物与比较标量；Uploader 读取归档中的同一份 report.json，发送前核对身份和玩家描述。新包按 report.json、diagnostics/、replay/ 组织，CheckpointArchive 兼容旧包路径，禁止后台重新采样 live 元数据。
@@ -205,3 +208,5 @@ Runtime/SearchBackendPolicy 独占主线程后端选择；初始准备、增量�
 玩家回合末第二阶段标记待失败后，原生仍切换到敌方、捕获能力起始值并清格挡，直到敌方开始安全点才提交终局。普通 Hook 分派入口遇到 IsOverOrEnding 时整批跳过（AfterCardPlayed 等原生明确例外除外）；已开始分派不能逐监听器中止。中毒和延迟格挡属于新分派，不能提前结束整个回合，也不能继续补偿这些效果。终局原生观察分别绑定胜利清理和 ProcessPendingLoss，验证清理前完整状态。
 
 同一能力的原生 Type 与按请求量计算的 GetTypeForAmount 不能混用。人工制品按请求量判断负力量／负敏捷为减益，首次持续计数标记却依据原生 Type；两种属性能力本身仍为增益。基础值布局保留独立判定，在原生差分中覆盖归零后重获、初始负值、双方人工制品、不同施加者、附魔选择和完整回合。
+
+紧凑玩家阶段通过纯值事件记录，物化及直接读视图共用枚举映射，恢复旧候选时从根阶段重新消费；新增历史计数须同步根捕获、Fork、双方窗口、读取覆盖和完整键／续用。新增搜索政策字段必须同时迁移测试入口，不能通过旧字段兼容层重新引入已移除阶段。

@@ -476,7 +476,7 @@ internal sealed partial class CombatBeamSolver
 
         public List<SearchNode> RankFinal(IEnumerable<SearchNode> nodes)
         {
-            List<SearchNode> candidates = nodes.ToList();
+            List<SearchNode> candidates = nodes.Distinct((IEqualityComparer<SearchNode>)ReferenceEqualityComparer.Instance).ToList();
             List<SearchNode> ranked = RankBest(
                 candidates,
                 _profile.BeamWidth * 4,
@@ -2607,14 +2607,8 @@ internal sealed partial class CombatBeamSolver
             List<SearchNode> routingChoices = [];
             if (preserveDefensiveRoute)
             {
-                if (_profile.Phase == SolverSearchPhase.Deep)
-                {
-                    foreach (SearchNode candidate in
-                             BuildAmbiguousCompressedChoicePortfolio(ranked, limit))
-                    {
-                        AddRoutingCandidate(routingChoices, candidate, RoutingChoiceLimit);
-                    }
-                }
+                foreach (SearchNode candidate in BuildAmbiguousCompressedChoicePortfolio(ranked, limit))
+                    AddRoutingCandidate(routingChoices, candidate, RoutingChoiceLimit);
                 RoutingChoiceScratch scratch = RentRoutingChoiceScratch();
                 Dictionary<RoutingChoiceSignature, List<SearchNode>> nodesByRoutingChoice = scratch.NodesByChoice;
                 // The routing signature is a pure walk of the node's parent chain, so it can be
@@ -2840,15 +2834,12 @@ internal sealed partial class CombatBeamSolver
 
             int effectiveLimit = limit;
             bool preserveOrderedPile = preserveDefensiveRoute
-                && _profile.Phase == SolverSearchPhase.Deep
                 && ranked.Any(node => node.Snapshot.PocketwatchCardThreshold >= 0);
             int routingChoiceQuota = preserveOrderedPile
                 ? BoundedRoutingChoiceQuota(routingChoices.Count)
-                : _profile.Phase == SolverSearchPhase.Deep
-                ? _isActEndingBoss
+                : _isActEndingBoss
                     ? Math.Max(10, (limit + 3) / 2)
-                    : Math.Max(8, limit * 2 / 5)
-                : Math.Max(4, limit / 4);
+                    : Math.Max(8, limit * 2 / 5);
             List<OrderedPileCohort> orderedPileCohorts = [];
             if (preserveOrderedPile)
             {
@@ -3027,7 +3018,7 @@ internal sealed partial class CombatBeamSolver
                     (SearchNode?)null,
                     (best, node) => IsBetterCompletedVictory(node, best) ? node : best), limit);
             }
-            if (preserveDefensiveRoute && _profile.Phase == SolverSearchPhase.Deep)
+            if (preserveDefensiveRoute)
             {
                 foreach (IGrouping<int, SearchNode> potionGroup in ranked
                              .GroupBy(node => node.PotionCount)
@@ -3249,7 +3240,7 @@ internal sealed partial class CombatBeamSolver
                     AddRequired(required, FindBestSetup(artOfWarCandidates), effectiveLimit);
                 }
             }
-            if (preserveDefensiveRoute && _profile.Phase == SolverSearchPhase.Deep)
+            if (preserveDefensiveRoute)
             {
                 int signatureLimitPerPotionGroup = Math.Max(4, limit / 6);
                 foreach (IGrouping<int, SearchNode> potionGroup in ranked
@@ -3364,7 +3355,6 @@ internal sealed partial class CombatBeamSolver
             AddRequired(required, FindBestLane(ranked, SearchRouteTraits.LongTermResource), limit);
             AddRequired(required, FindBestLane(ranked, SearchRouteTraits.HpInvestment), limit);
             if (preserveDefensiveRoute
-                && _profile.Phase == SolverSearchPhase.Deep
                 && limit >= 18)
             {
                 foreach (SearchRouteTraits trait in new[]
@@ -6715,6 +6705,10 @@ internal sealed partial class CombatBeamSolver
                     return survivalComparison;
             }
 
+            int recoveryComparison = TheftEncounterStrategy.CompareRecovery(_theftPolicy,
+                leftWon, leftSnapshot.OutstandingStolenResource, rightWon, rightSnapshot.OutstandingStolenResource);
+            if (recoveryComparison != 0)
+                return recoveryComparison;
             int comparison = SolverInterimResultOrdering.ComparePrimaryQuality(
                 leftWon,
                 StrategicHpDeficit(leftSnapshot, leftWon),

@@ -157,7 +157,7 @@ internal sealed partial class UnattendedTestRunner
     {
         PredictedCard predictedCard = simulator.State.FindCard(liveCard)
             ?? throw new InvalidOperationException($"Missing predicted {liveCard.Id.Entry} card.");
-        Creature? target = liveCard.Type == MegaCrit.Sts2.Core.Entities.Cards.CardType.Attack
+        Creature? target = liveCard.TargetType == MegaCrit.Sts2.Core.Entities.Cards.TargetType.AnyEnemy
             ? enemy
             : null;
         var before = CaptureWriteDensity(simulator, player, enemy);

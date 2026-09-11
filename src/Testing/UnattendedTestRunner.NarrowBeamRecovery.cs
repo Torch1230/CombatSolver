@@ -6,7 +6,7 @@ internal sealed partial class UnattendedTestRunner
         CombatRootSnapshot root,
         SearchPolicySnapshot capturedPolicy)
     {
-        SolverSearchProfile wide = SolverSearchProfile.Deep with
+        SolverSearchProfile wide = SolverSearchProfile.Default with
         {
             BeamWidth = 135,
             MaxExpandedNodes = 50_000,
@@ -20,18 +20,37 @@ internal sealed partial class UnattendedTestRunner
             expandedNodes: 48_000,
             elapsedMilliseconds: 89_000)
             ?? throw new InvalidOperationException("有剩余预算的宽 Beam 没有生成恢复配置。");
-        if (SolverSearchProfile.Short.RecoverDeferredTurnFrontier
-            || SolverSearchProfile.Deep.RecoverDeferredTurnFrontier
+        if (SolverSearchProfile.Default.RecoverDeferredTurnFrontier
+            || SolverSearchProfile.Default.RecoverDeferredTurnFrontier
             || wide.RecoverDeferredTurnFrontier
             || !narrow.RecoverDeferredTurnFrontier
-            || narrow.BeamWidth != SolverSearchProfile.Deep.BeamWidth
+            || narrow.BeamWidth != SolverSearchProfile.Default.BeamWidth
             || narrow.MaxExpandedNodes != 2_000
             || narrow.SoftTimeBudgetMilliseconds != 1_000
-            || narrow.MaxCardBranchesPerNode != SolverSearchProfile.Deep.MaxCardBranchesPerNode
-            || narrow.MaxPileChoiceBranchesPerAction != SolverSearchProfile.Deep.MaxPileChoiceBranchesPerAction
-            || narrow.MaxHandChoiceBranchesPerAction != SolverSearchProfile.Deep.MaxHandChoiceBranchesPerAction)
+            || narrow.MaxCardBranchesPerNode != SolverSearchProfile.Default.MaxCardBranchesPerNode
+            || narrow.MaxPileChoiceBranchesPerAction != SolverSearchProfile.Default.MaxPileChoiceBranchesPerAction
+            || narrow.MaxHandChoiceBranchesPerAction != SolverSearchProfile.Default.MaxHandChoiceBranchesPerAction)
         {
             throw new InvalidOperationException("窄 Beam 恢复没有遵守标准配置与原层剩余预算。");
+        }
+
+        // 剩余预算大于内置档位时也必须原样带过去。收窄只针对搜索面，不针对玩家配的预算：
+        // 这个机制只在 Beam 比内置档位宽时触发，夹回内置档位等于只惩罚配得比 Medium 高的人。
+        SolverSearchProfile roomy = wide with { SoftTimeBudgetMilliseconds = 300_000 };
+        SolverSearchProfile ample = CombatSearchCoordinator.BuildNarrowBeamRecoveryProfile(
+            roomy,
+            expandedNodes: 1_000,
+            elapsedMilliseconds: 1_000)
+            ?? throw new InvalidOperationException("预算充裕的宽 Beam 没有生成恢复配置。");
+        if (ample.MaxExpandedNodes != 49_000
+            || ample.SoftTimeBudgetMilliseconds != 299_000
+            || ample.BeamWidth != SolverSearchProfile.Default.BeamWidth
+            || ample.MaxCardBranchesPerNode != SolverSearchProfile.Default.MaxCardBranchesPerNode
+            || ample.MaxPileChoiceBranchesPerAction != SolverSearchProfile.Default.MaxPileChoiceBranchesPerAction
+            || ample.MaxHandChoiceBranchesPerAction != SolverSearchProfile.Default.MaxHandChoiceBranchesPerAction)
+        {
+            throw new InvalidOperationException(
+                "窄 Beam 恢复把节点或时间预算夹回了内置档位，或者没有收窄搜索面。");
         }
 
         SolverSearchProfile custom = wide with
@@ -47,8 +66,8 @@ internal sealed partial class UnattendedTestRunner
             || capped.MaxHandChoiceBranchesPerAction != 1
             || CombatSearchCoordinator.BuildNarrowBeamRecoveryProfile(wide, 50_000, 0) != null
             || CombatSearchCoordinator.BuildNarrowBeamRecoveryProfile(wide, 0, 90_000) != null
-            || CombatSearchCoordinator.BuildNarrowBeamRecoveryProfile(SolverSearchProfile.Deep, 0, 0) != null
-            || CombatSearchCoordinator.BuildNarrowBeamRecoveryProfile(SolverSearchProfile.Short, 0, 0) != null)
+            || CombatSearchCoordinator.BuildNarrowBeamRecoveryProfile(SolverSearchProfile.Default, 0, 0) != null
+            || CombatSearchCoordinator.BuildNarrowBeamRecoveryProfile(SolverSearchProfile.Default, 0, 0) != null)
         {
             throw new InvalidOperationException("窄 Beam 恢复扩大了自定义预算或重复了相同配置。");
         }
@@ -151,18 +170,12 @@ internal sealed partial class UnattendedTestRunner
         ExpandedNodes: expandedNodes,
         TransitionCount: expandedNodes * 2,
         ChoiceBranchesEvaluated: 0,
-        ShortElapsed: TimeSpan.FromTicks(expandedNodes),
-        DeepElapsed: TimeSpan.Zero,
+        Elapsed: TimeSpan.FromTicks(expandedNodes),
         WorkerAllocatedBytes: expandedNodes * 3L,
-        ShortExpandedNodes: expandedNodes,
-        DeepExpandedNodes: 0,
-        ShortTransitionCount: expandedNodes * 2,
-        DeepTransitionCount: 0,
         Gen0Collections: 0,
         Gen1Collections: 0,
         Gen2Collections: 0,
         GcPauseDuration: TimeSpan.Zero,
-        MaxObservedGcPause: TimeSpan.Zero,
-        DeepSearchTriggered: false);
+        MaxObservedGcPause: TimeSpan.Zero);
 
 }

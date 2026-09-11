@@ -421,7 +421,8 @@ internal sealed partial class CombatPredictionSimulator
                 ? primarySemantics.IsPrimaryEnemy(creature)
                 : creature.IsPrimaryEnemy;
 
-            // Solver-owned combat states remove powers after running the complete predicted death-hook chain.
+            // Enemy powers are cleaned by the deferred death pass; player powers are cleaned
+            // in HandlePlayerDeath before orb and pet teardown.
 
             if (creature.Side == CombatSide.Enemy)
             {

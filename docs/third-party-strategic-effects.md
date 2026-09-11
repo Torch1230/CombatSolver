@@ -1,5 +1,7 @@
 # 第三方 Power 的战略估值登记
 
+当前上下文新增 `AttackHits`（通过 `StrategicEffectRequirements.AttackHits` 请求）和 `ExhaustDrawPlays`。前者按已识别多段与小刀生成估计可达命中，后者折算禁抽、虚无及回合末时序下的消耗抽牌机会。它们是分支局部的保路估值；未请求命中数时为 null，第三方自定义攻击尚无专用命中登记，按普通单次命中估计。真实动作仍由原有 mirror 与领域语义执行。
+
 ## 这是给谁用的
 
 第三方 mod 加了一层 Power，而这层 Power 会改变**玩家该按什么顺序出牌**。

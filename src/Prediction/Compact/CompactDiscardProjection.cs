@@ -405,6 +405,16 @@ internal sealed class CompactDiscardProjection
         return identities;
     }
 
+    internal static MegaCrit.Sts2.Core.Combat.PlayerTurnPhase NativePlayerPhase(int value)
+        => (ResumableDiscardProgram.PlayerPhase)value switch
+        {
+            ResumableDiscardProgram.PlayerPhase.End => MegaCrit.Sts2.Core.Combat.PlayerTurnPhase.End,
+            ResumableDiscardProgram.PlayerPhase.None => MegaCrit.Sts2.Core.Combat.PlayerTurnPhase.None,
+            ResumableDiscardProgram.PlayerPhase.Start => MegaCrit.Sts2.Core.Combat.PlayerTurnPhase.Start,
+            ResumableDiscardProgram.PlayerPhase.Play => MegaCrit.Sts2.Core.Combat.PlayerTurnPhase.Play,
+            _ => throw new InvalidOperationException("Unknown compact player phase.")
+        };
+
     internal CombatPredictionSimulator Materialize(ResumableDiscardProgram program, CompactPhaseProbe? probe = null)
     {
         if (!Program.State.HasSameRoot(program.State) || !program.Complete)
@@ -427,6 +437,11 @@ internal sealed class CompactDiscardProjection
             for (int index = 0; index < program.EventCount; index++)
             {
                 ResumableDiscardProgram.Event item = program.EventAt(index);
+                if (item.Kind == ResumableDiscardProgram.EventKind.PlayerPhaseChanged)
+                {
+                    projection.State.GetPlayerCombatState(_player).Phase = NativePlayerPhase(item.Value);
+                    continue;
+                }
                 if (item.Kind == ResumableDiscardProgram.EventKind.Generated)
                 {
                     if (item.Target == 0)

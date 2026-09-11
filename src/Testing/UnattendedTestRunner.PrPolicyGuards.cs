@@ -12,7 +12,14 @@ internal sealed partial class UnattendedTestRunner
 {
     private static void AssertKnownGameplayModBoundary()
     {
-        ModManifest manifest = new() { id = "WheelchairSpire", name = "WheelchairSpire", affectsGameplay = false };
+        foreach (string modId in new[] { "WheelchairSpire", "PengoTarot", "BetterCharacterRelics" })
+            AssertKnownGameplayModBoundary(modId);
+        PredictionModPatchAudit.ValidateLoadedMods([]);
+    }
+
+    private static void AssertKnownGameplayModBoundary(string modId)
+    {
+        ModManifest manifest = new() { id = modId, name = modId, affectsGameplay = false };
         Mod byId = new() { path = "unattended-incompatible-mod", manifest = manifest };
         Mod byAssembly = new()
         {
@@ -20,7 +27,7 @@ internal sealed partial class UnattendedTestRunner
             manifest = new ModManifest { id = "renamed-mod", name = "Renamed Mod", affectsGameplay = true },
         };
         byAssembly.assemblies.Add(System.Reflection.Emit.AssemblyBuilder.DefineDynamicAssembly(
-            new System.Reflection.AssemblyName("WheelchairSpire"),
+            new System.Reflection.AssemblyName(modId),
             System.Reflection.Emit.AssemblyBuilderAccess.RunAndCollect));
         foreach (Mod mod in new[] { byId, byAssembly })
         {
@@ -32,7 +39,7 @@ internal sealed partial class UnattendedTestRunner
             catch (IncompatibleGameplayModException exception)
             {
                 if (exception.ModId != mod.manifest!.id
-                    || !exception.Subject.Contains("WheelchairSpire", StringComparison.Ordinal))
+                    || !exception.Subject.Contains(modId, StringComparison.Ordinal))
                     throw new InvalidOperationException("Incompatible mod rejection lost source context.");
             }
         }

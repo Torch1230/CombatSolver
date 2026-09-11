@@ -104,6 +104,14 @@ internal static class ArchiveContractTests
             JsonObject overridden = (JsonObject)policy.DeepClone();
             overridden["potionPolicy"] = "Disabled";
             Check(!BatchRunner.EquivalentPolicy(policy, overridden), "different_potion_policy_is_not_comparable");
+            JsonObject unified = (JsonObject)policy.DeepClone();
+            unified.Remove("shortProfile");
+            unified.Remove("deepProfile");
+            unified.Remove("forceShortOnly");
+            unified["profile"] = new JsonObject { ["beamWidth"] = 60 };
+            unified["fixedBudget"] = true;
+            Check(BatchRunner.EquivalentPolicy(unified, unified.DeepClone()), "unified_policy_is_comparable");
+            Check(!BatchRunner.EquivalentPolicy(unified, policy), "legacy_stage_budget_is_not_same_policy");
             foreach (string unsafePath in new[] { "../escape", "/absolute", "C:/absolute", "a\\b", "a/./b" })
                 Reject(() => CheckpointArchive.ValidateEntryPath(unsafePath), "unsafe_entry");
             Console.WriteLine($"archive_contract_tests_passed assertions={assertions}");

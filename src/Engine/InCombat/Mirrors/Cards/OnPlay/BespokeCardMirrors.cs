@@ -48,6 +48,14 @@ internal static class BespokeCardMirrors
     public static void TwinStrikeOnPlay(TwinStrike _, CardOnPlayMirrorContext context)
         => context.AttackSingle(hitCount: 2);
 
+    public static void HeavenlyDrillOnPlay(HeavenlyDrill card, CardOnPlayMirrorContext context)
+    {
+        int hits = context.Card.ResolveEnergyXValue(context.State);
+        if (hits >= card.DynamicVars.Energy.IntValue)
+            hits *= 2;
+        context.AttackSingle(hitCount: hits);
+    }
+
     public static void FiendFireOnPlay(FiendFire card, CardOnPlayMirrorContext context)
     {
         PredictedCard[] hand = context.OwnerState.Hand.Cards.ToArray();

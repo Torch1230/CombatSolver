@@ -10,9 +10,12 @@ internal sealed partial class SolverDetailsButton : Button
     {
         FocusMode = FocusModeEnum.None;
         MouseDefaultCursorShape = CursorShape.PointingHand;
-        CustomMinimumSize = new Vector2(106, 28);
+        CustomMinimumSize = new Vector2(90, 26);
         ToggleMode = true;
         SolverUiTokens.ApplyButtonStyle(this, SolverButtonStyle.Secondary);
+        Flat = true;
+        foreach (string state in new[] { "normal", "hover", "pressed", "disabled", "focus" })
+            AddThemeStyleboxOverride(state, new StyleBoxEmpty());
 
         HBoxContainer layout = new()
         {
@@ -23,8 +26,8 @@ internal sealed partial class SolverDetailsButton : Button
         layout.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Xs);
         layout.AddChild(SolverUiTokens.CreateLabel(
             SolverText.Get("状态详情"),
-            SolverUiTokens.Type.Body,
-            SolverUiTokens.Palette.TextPrimary,
+            SolverUiTokens.Type.Caption,
+            SolverUiTokens.Palette.TextSecondary,
             MegaCrit.Sts2.Core.Localization.Fonts.FontType.Bold));
 
         _arrowLabel = SolverUiTokens.CreateLabel(

@@ -102,8 +102,8 @@ internal sealed partial class UnattendedTestRunner
         BattleDamageSnapshot damage, SearchPolicySnapshot policy, Player player, IReadOnlyList<PlanAction> route)
     {
         var captured = new CompactCombatRoot(root.ForkSimulator(), player);
-        var legacy = new CombatBeamSolver(root, display, damage, policy, searchProfile: policy.ShortProfile);
-        var compact = new CombatBeamSolver(root, display, damage, policy with { CompactRoot = captured }, searchProfile: policy.ShortProfile);
+        var legacy = new CombatBeamSolver(root, display, damage, policy, searchProfile: policy.Profile);
+        var compact = new CombatBeamSolver(root, display, damage, policy with { CompactRoot = captured }, searchProfile: policy.Profile);
         var continuationReader = captured.Adapter.CreateReadView();
         var beforeLegacy = InvokeForcedTerminalReplay(legacy, [], null, root.StartTurnNumber, null);
         var beforeCompact = InvokeForcedTerminalReplay(compact, [], null, root.StartTurnNumber, null);

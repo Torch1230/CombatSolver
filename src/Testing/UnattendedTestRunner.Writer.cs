@@ -38,7 +38,6 @@ internal sealed partial class UnattendedTestRunner
             {
                 GcLifecycle = result.GcLifecycle,
                 GcLifecycleAttribution = result.GcLifecycleAttribution,
-                Phase = result.SearchPhase,
                 Boundary = result.BoundaryReason,
                 SelectedExpanded = result.ExpandedNodes,
                 SelectedTransitions = result.TransitionCount,

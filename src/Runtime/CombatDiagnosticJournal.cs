@@ -63,6 +63,7 @@ internal sealed class CombatDiagnosticJournal : IDisposable
                 _ = Task.Run(() => RemoveRetiredAsync(previous));
             }
             _session = new(id, encounter, seed, Path.Combine(_directory, $"combat-{id}.jsonl"));
+            WriteProcessEvent($"COMBAT_LOG_BEGIN id={id} encounter={encounter}");
         }
     }
     private async Task RemoveRetiredAsync(Session session)
@@ -79,6 +80,7 @@ internal sealed class CombatDiagnosticJournal : IDisposable
             if (_session == null) return;
             _session.Ended = DateTimeOffset.Now;
             _session.Reason = reason;
+            WriteProcessEvent($"COMBAT_LOG_END reason={reason}");
         }
     }
     public Action<string> Bind(string level)
@@ -109,9 +111,25 @@ internal sealed class CombatDiagnosticJournal : IDisposable
                 owner.LastError = message.Length > 2000 ? message[..2000] : message;
             }
         }
-        (owner?.Log ?? _process).TryAppend(new(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), level, message),
-            checked(message.Length * 2));
+        CombatLogEntry entry = new(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), level, message);
+        int estimatedBytes = checked(message.Length * 2);
+        (owner?.Log ?? _process).TryAppend(entry, estimatedBytes);
+        // Keep compact process-wide evidence when the next combat retires its detailed log.
+        // This excludes per-node diagnostics and the frequently refreshed memory UI sample.
+        if (owner != null && IsProcessPerformanceEvent(message))
+            _process.TryAppend(entry, estimatedBytes);
     }
+    private void WriteProcessEvent(string message)
+        => _process.TryAppend(new(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), "info", message), message.Length * 2);
+
+    internal static bool IsProcessPerformanceEvent(string message)
+        => message.StartsWith("[CombatSolver/Test] HEAP_RECLAIM ", StringComparison.Ordinal)
+            || message.StartsWith("[CombatSolver/Test] GC_SEARCH_ALLOCATION_LIMIT ", StringComparison.Ordinal)
+            || message.StartsWith("[CombatSolver/Test] GC_ALLOCATION_CAPACITY ", StringComparison.Ordinal)
+            || message.StartsWith("[CombatSolver/Test] GC_FRAGMENTATION_COMPACTION ", StringComparison.Ordinal)
+            || message.StartsWith("[CombatSolver/Test] POTION_GRADIENT_MEMORY_DECISION ", StringComparison.Ordinal)
+            || message.StartsWith("[CombatSolver/Test] MAIN_THREAD_FRAMES ", StringComparison.Ordinal)
+            || message.StartsWith("[CombatSolver/Test] SEARCH_GC_LIFECYCLE ", StringComparison.Ordinal);
     public Task<CombatLogArchive> CaptureAsync()
     {
         lock (_gate)

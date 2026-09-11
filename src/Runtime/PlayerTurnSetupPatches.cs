@@ -146,6 +146,8 @@ internal static class PlayerTurnSetupCoordinator
         public TaskCompletionSource ManualRecalculationRequested { get; set; } = new(
             TaskCreationOptions.RunContinuationsAsynchronously);
         public int ManualSearchState;
+        public CancellationTokenSource? SearchCancellation;
+        public bool PlayerAdvancedChoice;
         public bool ManualRecalculated { get; set; }
         public int ManualRecalculationCompletedCount { get; set; }
         public bool ReplayDrivingStarted { get; set; }
@@ -154,7 +156,9 @@ internal static class PlayerTurnSetupCoordinator
         public bool DeployAfterSetup { get; set; }
         public int DisposeState;
         public IReadOnlyList<PlanCardChoice>? PlannedChoices
-            => Result?.TurnSetupChoices ?? ReplayChoices;
+            => PlayerAdvancedChoice ? null
+                : Result?.TurnSetupChoices
+                    ?? (ManualSearchState == 1 || ManualRecalculationRequested.Task.IsCompleted ? null : ReplayChoices);
         public TaskCompletionSource PlanReady { get; } = new(
             TaskCreationOptions.RunContinuationsAsynchronously);
     }
@@ -185,6 +189,11 @@ internal static class PlayerTurnSetupCoordinator
     private static CancellationTokenSource? _deferredSetupCancellation;
     private static ActivePlan? _active;
     private static Task _activeOperation = Task.CompletedTask;
+    internal static Action<CancellationToken>? BeforeChoiceSearchForTesting { get; set; }
+    internal static string DescribeControlsForTesting()
+        => _active is { } active
+            ? $"search={active.SearchState}/{active.ManualSearchState} worker={active.SearchCancellation != null} canceled={active.SearchCancellation?.IsCancellationRequested} advanced={active.PlayerAdvancedChoice} driving={active.ReplayDrivingStarted} result={active.Result != null} visible={active.Choices.IsVisibleChoicePending} sequence={active.Choices.FirstVisibleSequence}/{active.Choices.LatestVisibleSequence} phase={active.Player.PlayerCombatState?.Phase} operation={_activeOperation.Status}"
+            : $"inactive operation={_activeOperation.Status}";
 
     private static bool IsCurrentActivePlan(ActivePlan active)
         => ReferenceEquals(_active, active)
@@ -238,7 +247,7 @@ internal static class PlayerTurnSetupCoordinator
             || !_activeOperation.IsCompleted
             || !Entry.Enabled
             || SolverController.SolverDisabled
-            || !SolverController.AutomaticCalculationEnabled
+            || (!SolverController.AutomaticCalculationEnabled && !SolverController.FullAutoEnabled)
             || SolverController.IsMultiplayerSession
             || SolverController.AutomaticSearchPaused
             || !ReferenceEquals(LocalContext.GetMe(manager.DebugOnlyGetState()), player)
@@ -260,7 +269,8 @@ internal static class PlayerTurnSetupCoordinator
         }
         else if (!SolverController.TryGetPlannedTurnSetupChoices(combat, turn, out replayChoices))
         {
-            return false;
+            if (!RequiresSolverChoice(player)) return false;
+            replayChoices = null;
         }
 
         Task operation = RunSetupAsync(
@@ -331,24 +341,27 @@ internal static class PlayerTurnSetupCoordinator
 
     public static bool CanApplyCurrentTurn
         => _active is { } active
+           && active.SearchCancellation is { IsCancellationRequested: false }
            && active.Interaction.CurrentTakeoverRequest == null
            && active.Interaction.CanAcceptTakeover
            && (active.SearchState == 1 || active.ManualSearchState == 1)
            && Volatile.Read(ref active.Interaction.Progress)?.CurrentTurnPreview != null;
 
     public static bool IsApplyingCurrentTurn
-        => _active?.Interaction.IsApplyingCurrentTurn == true;
+        => IsSearching && _active?.Interaction.IsApplyingCurrentTurn == true;
 
     public static bool CanAdoptCurrentRoute
         => _active is { } active
+           && !active.PlayerAdvancedChoice
            && (active.Interaction.StoppedResult != null
-               || active.Interaction.CurrentTakeoverRequest == null
+               || active.SearchCancellation is { IsCancellationRequested: false }
+                   && active.Interaction.CurrentTakeoverRequest == null
                    && active.Interaction.RenderedRouteAdoptionSeed != null
                    && active.Interaction.CanAcceptTakeover
                    && (active.SearchState == 1 || active.ManualSearchState == 1));
 
     public static bool IsAdoptingCurrentRoute
-        => _active?.Interaction.IsAdoptingRoute == true;
+        => IsSearching && _active?.Interaction.IsAdoptingRoute == true;
 
     public static void InvalidateRenderedRouteAdoptionSeed()
     {
@@ -360,10 +373,10 @@ internal static class PlayerTurnSetupCoordinator
     {
         if (!CanApplyCurrentTurn || _active is not { } active)
             return;
-        active.DeployAfterSetup = true;
-        active.TakeoverRequested = true;
         if (!active.Interaction.RequestApplyCurrentTurn())
             return;
+        active.DeployAfterSetup = true;
+        active.TakeoverRequested = true;
         SolverOverlay.RefreshControls();
         Entry.Logger.Info("[CombatSolver/Test] UI_ACTION action=turn_setup_apply_current_turn");
     }
@@ -409,7 +422,7 @@ internal static class PlayerTurnSetupCoordinator
         => _active is { PlannedChoices: not null } active
            && IsCurrentActivePlan(active)
            && ReferenceEquals(active.Combat, combat)
-           && active.Choices.IsVisibleChoicePending;
+           && HasUnresolvedVisibleChoice(active);
 
     public static bool CanTakeOverTurnSetup(CombatState combat)
         => _active is { } active
@@ -435,6 +448,8 @@ internal static class PlayerTurnSetupCoordinator
         IReadOnlyList<PlanCardChoice>? plannedChoices = active.PlannedChoices;
         if (plannedChoices != null)
             StartReplayDriver(active, host);
+        else if (active.SearchCancellation == null || active.SearchCancellation.IsCancellationRequested)
+            active.ManualRecalculationRequested.TrySetResult();
         string takeoverMode = deployAfterSetup
             ? "single_step"
             : SolverController.FullAutoEnabled
@@ -506,6 +521,13 @@ internal static class PlayerTurnSetupCoordinator
             active.Token);
     }
 
+    internal static Task InteractWithPendingChoiceForTesting(NGame host, bool confirm)
+    {
+        if (!UnattendedTestRunner.IsActive || _active is not { } active)
+            throw new InvalidOperationException("开局选牌交互测试缺少活动会话。");
+        return active.Choices.InteractWithFirstChoiceForTesting(host, confirm, active.Token);
+    }
+
     public static void PrepareForSceneExit()
     {
         if (_active == null)
@@ -515,10 +537,12 @@ internal static class PlayerTurnSetupCoordinator
     }
 
     private static bool HasUnresolvedVisibleChoice(ActivePlan active)
-        => active.Choices.IsVisibleChoicePending
+        => !active.PlayerAdvancedChoice
+           && active.Choices.LatestVisibleSequence == active.Choices.FirstVisibleSequence
+           && (active.Choices.IsVisibleChoicePending
            || (active.Result == null
                && active.SearchState == 1
-               && active.Choices.HasVisibleRequest);
+               && active.Choices.HasVisibleRequest));
 
     public static Task Reset(string reason)
     {
@@ -560,7 +584,7 @@ internal static class PlayerTurnSetupCoordinator
 
     public static bool TryStopSearchAtCurrentRoute()
     {
-        if (_active is not { InitialSearch: not null, Result: null, SearchState: 1 } active
+        if (_active is not { InitialSearch: not null, Result: null, SearchCancellation: not null } active
             || active.Interaction.RenderedRouteAdoptionSeed is not { } seed)
         {
             return false;
@@ -577,12 +601,12 @@ internal static class PlayerTurnSetupCoordinator
             // observes that state and runs the native setup rather than starting a search.
             return true;
         }
-        if (_active is not { InitialSearch: not null, Result: null, SearchState: 1 } active)
+        if (_active is not { SearchCancellation: not null } active)
             return false;
-        Interlocked.Exchange(ref active.SearchState, 2);
-        _cancellation?.Cancel();
+        active.TakeoverRequested = false;
+        active.DeployAfterSetup = false;
+        active.SearchCancellation.Cancel();
         active.Choices.ReleaseVisibleSurface();
-        active.PlanReady.TrySetResult();
         return true;
     }
 
@@ -1026,291 +1050,181 @@ internal static class PlayerTurnSetupCoordinator
         }
     }
 
-    private static async Task AwaitPhaseWithManualRecalculationsAsync(
-        ActivePlan active,
-        NGame host,
-        Task phaseTask)
+    private static bool ObservePlayerChoiceProgress(ActivePlan active, Task phaseTask)
     {
-        if (active.ReplayDrivingStarted)
+        if (active.ReplayDrivingStarted || !active.Choices.HasVisibleRequest)
+            return active.PlayerAdvancedChoice;
+        if (!phaseTask.IsCompleted && active.Choices.IsVisibleChoicePending
+            && active.Choices.LatestVisibleSequence == active.Choices.FirstVisibleSequence)
+            return active.PlayerAdvancedChoice;
+        if (!active.PlayerAdvancedChoice)
         {
-            await active.Choices.AwaitPhaseAsync(phaseTask);
-            return;
+            active.PlayerAdvancedChoice = true;
+            active.Result = null;
+            active.TakeoverRequested = false;
+            active.DeployAfterSetup = false;
+            active.SearchCancellation?.Cancel();
+            active.Choices.ReleaseVisibleSurface();
+            Entry.Logger.Info($"[CombatSolver/Test] TURN_SETUP_PLAYER_ADVANCED turn={active.Player.PlayerCombatState!.TurnNumber} stale_plan_discarded=true");
         }
+        return true;
+    }
 
+    private static async Task AwaitPhaseWithManualRecalculationsAsync(
+        ActivePlan active, NGame host, Task phaseTask)
+    {
         while (!phaseTask.IsCompleted)
         {
-            TaskCompletionSource requested = active.ManualRecalculationRequested;
-            Task winner = await Task.WhenAny(phaseTask, requested.Task);
-            if (phaseTask.IsCompleted || ReferenceEquals(winner, phaseTask))
+            if (active.ReplayDrivingStarted)
                 break;
-            active.ManualRecalculationRequested = new TaskCompletionSource(
-                TaskCreationOptions.RunContinuationsAsynchronously);
-            if (!IsCurrentActivePlan(active))
-                break;
-            await RecalculatePendingChoiceAsync(active, host);
+            ObservePlayerChoiceProgress(active, phaseTask);
+            if (!IsCurrentActivePlan(active)) break;
+            if (active.ManualRecalculationRequested.Task.IsCompleted && !active.PlayerAdvancedChoice)
+            {
+                active.ManualRecalculationRequested = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                await RecalculatePendingChoiceAsync(active, host, phaseTask);
+            }
+            else
+                await host.ToSignal(host.GetTree(), SceneTree.SignalName.ProcessFrame);
         }
+        ObservePlayerChoiceProgress(active, phaseTask);
         await active.Choices.AwaitPhaseAsync(phaseTask);
     }
 
-    private static async Task RecalculatePendingChoiceAsync(ActivePlan active, NGame host)
+    private static async Task RecalculatePendingChoiceAsync(ActivePlan active, NGame host, Task phaseTask)
     {
-        if (active.ReplayDrivingStarted)
-            return;
+        if (active.ReplayDrivingStarted || active.PlayerAdvancedChoice) return;
         InitialSearchContext original = active.InitialSearch
             ?? throw new InvalidOperationException("回合开始选项重算缺少选择前搜索根。");
-        await active.Choices.LockVisibleSurfaceForSearchAsync(host, active.Token);
-        if (!IsCurrentActivePlan(active) || active.ReplayDrivingStarted)
-            return;
-
         SolverSettingsSnapshot settings = SolverSettings.Capture();
         InitialSearchContext refreshed = new(
-            SolverDisplayNames.Capture(active.Combat),
-            settings,
+            SolverDisplayNames.Capture(active.Combat), settings,
             BattleDamageTracker.Observe(active.Combat),
-            SolverController.CaptureSearchPolicy(
-                settings,
-                active.Combat,
-                includeTurnSetup: true,
-                theftPolicy: SolverController.ResolveTheftPolicy(active.Combat),
-                interaction: active.Interaction),
-            original.RootSnapshot,
-            original.RouteCache);
-        Volatile.Write(ref active.MemoryPressureSignal, refreshed.SearchPolicy.MemoryPressureSignal);
-        int turn = active.Player.PlayerCombatState!.TurnNumber;
-        active.Interaction.ResetForSearch();
-        Interlocked.Exchange(ref active.ManualSearchState, 1);
-        // A takeover during this search must use the result that will validate its choices.
-        active.Result = null;
-        SolverOverlay.ShowSearching(
-            host,
-            turn,
-            deployWhenReady: false,
-            SolverController.ReviewedWorldlinesTotal);
-        Entry.Logger.Info(
-            $"[CombatSolver/Test] TURN_SETUP_MANUAL_RECALCULATE_START turn={turn} " +
-            "native_choice_pending=true");
-        try
-        {
-            Task<SolverResult> solveTask = Task.Run(() =>
-            {
-                Thread worker = Thread.CurrentThread;
-                ThreadPriority previousPriority = worker.Priority;
-                worker.Priority = ThreadPriority.BelowNormal;
-                try
-                {
-                    using IDisposable gcPolicy = SearchGcPolicy.EnterLowLatencySearch(
-                        refreshed.Settings.EnableNoGcRegion,
-                        refreshed.Settings.NoGcRegionBudgetBytes,
-                        refreshed.SearchPolicy.MemoryPressureSignal,
-                        active.Token);
-                    SolverResult result = CombatSearchCoordinator.Solve(
-                        refreshed.RootSnapshot,
-                        refreshed.DisplayNames,
-                        refreshed.BattleDamage,
-                        refreshed.SearchPolicy,
-                        active.Token,
-                        active.Interaction.PublishProgress);
-                    return active.Interaction.FinalizeWorkerResult(result);
-                }
-                finally
-                {
-                    worker.Priority = previousPriority;
-                }
-            }, active.Token);
-            while (!solveTask.IsCompleted)
-            {
-                RefreshSearchProgress(active);
-                await host.ToSignal(host.GetTree(), SceneTree.SignalName.ProcessFrame);
-                active.Token.ThrowIfCancellationRequested();
-            }
-            SolverResult result = await solveTask;
-            if (!IsCurrentActivePlan(active))
-                return;
-            if (result.TurnSetupChoices.Count == 0)
-                throw new InvalidOperationException("回合开始选项重算没有返回原生选牌计划。");
-
-            active.Result = result;
-            active.ManualRecalculated = true;
-            active.ManualRecalculationCompletedCount++;
-            active.Choices.RecordPlanReady();
-            SolverController.ShowTurnSetupResultPreview(host, result);
-            if (active.TakeoverRequested)
-                StartReplayDriver(active, host);
-            Entry.Logger.Info(
-                $"[CombatSolver/Test] TURN_SETUP_MANUAL_RECALCULATE_RESULT turn={turn} " +
-                $"choices={result.TurnSetupChoices.Count} expanded={result.ExpandedNodes} " +
-                $"searched_turns={result.SearchedTurns}");
-        }
-        catch (OperationCanceledException) when (
-            active.Token.IsCancellationRequested || !CanPublishForPlan(active))
-        {
-            return;
-        }
-        catch
-        {
-            if (CanPublishForPlan(active))
-                SearchCompletionNotifier.Notify(SearchCompletionNotificationKind.Failed);
-            throw;
-        }
-        finally
-        {
-            Interlocked.Exchange(ref active.ManualSearchState, 0);
-            if (!active.ReplayDrivingStarted)
-                active.Choices.ReleaseVisibleSurface();
-        }
+            SolverController.CaptureSearchPolicy(settings, active.Combat, includeTurnSetup: true,
+                theftPolicy: SolverController.ResolveTheftPolicy(active.Combat), interaction: active.Interaction),
+            original.RootSnapshot, original.RouteCache);
+        await SearchPendingChoiceAsync(active, host, phaseTask, refreshed, manual: true);
     }
 
     private static async Task<bool> TryStartSearchAfterVisibleChoiceAsync(
-        ActivePlan active,
-        NGame host,
-        Task phaseTask,
-        string phase)
+        ActivePlan active, NGame host, Task phaseTask, string phase)
     {
-        if (active.Result != null)
+        if (active.PlayerAdvancedChoice) return false;
+        if (active.Result != null || active.SearchState != 0)
             return false;
-        InitialSearchContext initialSearch = active.InitialSearch
-            ?? throw new InvalidOperationException("已有路线的回合准备不得启动新搜索。");
-        if (!await active.Choices.WaitForFirstVisibleSurfaceAsync(host, phaseTask, active.Token))
-            return false;
-        if (!IsCurrentActivePlan(active))
-            return false;
+        if (!await active.Choices.WaitForFirstVisibleSurfaceAsync(host, phaseTask, active.Token)
+            || !IsCurrentActivePlan(active)) return false;
+        // Setup and AutoPrePlay can both observe the first visible request before either
+        // continuation resumes. Exactly one phase owns its worker and recalculation loop.
         if (Interlocked.CompareExchange(ref active.SearchState, 1, 0) != 0)
         {
             await active.PlanReady.Task.WaitAsync(active.Token);
             return false;
         }
-        active.Interaction.ResetForSearch();
-        int turn = active.Player.PlayerCombatState!.TurnNumber;
         active.Choices.RecordSearchStarted();
-        SolverOverlay.ShowSearching(
-            host,
-            turn,
-            deployWhenReady: false,
-            SolverController.ReviewedWorldlinesTotal);
-        Entry.Logger.Info(
-            $"[CombatSolver/Test] TURN_SETUP_SEARCH_START turn={turn} phase={phase} " +
-            "after_native_choice_visible=true");
-        SolverResult result;
+        Entry.Logger.Info($"[CombatSolver/Test] TURN_SETUP_SEARCH_START turn={active.Player.PlayerCombatState!.TurnNumber} phase={phase} after_native_choice_visible=true");
+        return await SearchPendingChoiceAsync(active, host, phaseTask,
+            active.InitialSearch ?? throw new InvalidOperationException("回合准备搜索缺少根。"), manual: false);
+    }
+
+    private static async Task<bool> SearchPendingChoiceAsync(
+        ActivePlan active, NGame host, Task phaseTask, InitialSearchContext context, bool manual)
+    {
+        using CancellationTokenSource searchCancellation = CancellationTokenSource.CreateLinkedTokenSource(active.Token);
+        active.SearchCancellation = searchCancellation;
+        CancellationToken searchToken = searchCancellation.Token;
+        if (manual) active.ManualSearchState = 1;
+        active.Result = null;
+        active.Interaction.ResetForSearch();
+        Volatile.Write(ref active.MemoryPressureSignal, context.SearchPolicy.MemoryPressureSignal);
+        int turn = active.Player.PlayerCombatState!.TurnNumber;
+        SolverOverlay.ShowSearching(host, turn, active.DeployAfterSetup, SolverController.ReviewedWorldlinesTotal);
+        if (manual) Entry.Logger.Info($"[CombatSolver/Test] TURN_SETUP_MANUAL_RECALCULATE_START turn={turn} native_choice_pending=true");
+        Task<SolverResult> solveTask = Task.Run(() =>
+        {
+            BeforeChoiceSearchForTesting?.Invoke(searchToken);
+            if (!manual && !context.SearchPolicy.VerifyIncrementalSearch && !context.SearchPolicy.MeasurePhasePerformance
+                && context.RouteCache.Read(context.RootSnapshot.Forecast) is { } cached)
+            {
+                searchToken.ThrowIfCancellationRequested();
+                Entry.Logger.Info($"[CombatSolver/Test] ROUTE_CACHE_HIT turn={cached.StartTurnNumber} phase=setup validation=exact_root");
+                return active.Interaction.FinalizeWorkerResult(cached);
+            }
+            Thread worker = Thread.CurrentThread;
+            ThreadPriority priority = worker.Priority;
+            worker.Priority = ThreadPriority.BelowNormal;
+            try
+            {
+                using IDisposable gcPolicy = SearchGcPolicy.EnterLowLatencySearch(
+                    context.Settings.EnableNoGcRegion, context.Settings.NoGcRegionBudgetBytes,
+                    context.SearchPolicy.MemoryPressureSignal, searchToken);
+                SolverResult result = CombatSearchCoordinator.Solve(context.RootSnapshot, context.DisplayNames,
+                    context.BattleDamage, context.SearchPolicy, searchToken, active.Interaction.PublishProgress);
+                SolverResult finalized = active.Interaction.FinalizeWorkerResult(result);
+                searchToken.ThrowIfCancellationRequested();
+                if (!manual && !active.Interaction.StopRequested) context.RouteCache.StoreFirst(finalized);
+                return finalized;
+            }
+            finally { worker.Priority = priority; }
+        }, searchToken);
         try
         {
-            Task<SolverResult> solveTask = Task.Run(() =>
-            {
-                if (!initialSearch.SearchPolicy.VerifyIncrementalSearch
-                    && !initialSearch.SearchPolicy.MeasurePhasePerformance
-                    && initialSearch.RouteCache.Read(initialSearch.RootSnapshot.Forecast) is { } cached)
-                {
-                    active.Token.ThrowIfCancellationRequested();
-                    Entry.Logger.Info($"[CombatSolver/Test] ROUTE_CACHE_HIT turn={cached.StartTurnNumber} phase=setup validation=exact_root");
-                    return cached;
-                }
-                Thread worker = Thread.CurrentThread;
-                ThreadPriority previousPriority = worker.Priority;
-                worker.Priority = ThreadPriority.BelowNormal;
-                try
-                {
-                    using IDisposable gcPolicy = SearchGcPolicy.EnterLowLatencySearch(
-                        initialSearch.Settings.EnableNoGcRegion,
-                        initialSearch.Settings.NoGcRegionBudgetBytes,
-                        initialSearch.SearchPolicy.MemoryPressureSignal,
-                        active.Token);
-                    SolverResult result = CombatSearchCoordinator.Solve(
-                        initialSearch.RootSnapshot,
-                        initialSearch.DisplayNames,
-                        initialSearch.BattleDamage,
-                        initialSearch.SearchPolicy,
-                        active.Token,
-                        active.Interaction.PublishProgress);
-                    SolverResult finalized = active.Interaction.FinalizeWorkerResult(result);
-                    active.Token.ThrowIfCancellationRequested();
-                    if (!active.Interaction.StopRequested)
-                        initialSearch.RouteCache.StoreFirst(finalized);
-                    return finalized;
-                }
-                finally
-                {
-                    worker.Priority = previousPriority;
-                }
-            }, active.Token);
             while (!solveTask.IsCompleted)
             {
+                ObservePlayerChoiceProgress(active, phaseTask);
                 RefreshSearchProgress(active);
                 await host.ToSignal(host.GetTree(), SceneTree.SignalName.ProcessFrame);
-                active.Token.ThrowIfCancellationRequested();
             }
-            result = await solveTask;
+            SolverResult result = await solveTask;
+            if (!IsCurrentActivePlan(active) || ObservePlayerChoiceProgress(active, phaseTask)
+                || searchToken.IsCancellationRequested) return false;
+            if (result.TurnSetupChoices.Count == 0)
+                throw new InvalidOperationException("原生页面已经请求选牌，但回合准备搜索没有返回计划选择。");
+            SearchTakeoverRequest? completed = active.Interaction.CompleteTakeover();
+            active.Result = result;
+            if (manual)
+            {
+                active.ManualRecalculated = true;
+                active.ManualRecalculationCompletedCount++;
+            }
+            active.Choices.RecordPlanReady();
+            SolverController.ShowTurnSetupResultPreview(host, result);
+            if (completed?.StopAfterResult == true)
+            {
+                active.TakeoverRequested = false;
+                active.DeployAfterSetup = false;
+                active.Interaction.PreserveStoppedResult(result, LiveCombatStamp.Capture(active.Combat));
+                SolverOverlay.ShowSearchStopped(host);
+            }
+            else if (active.TakeoverRequested || SolverController.FullAutoEnabled)
+                StartReplayDriver(active, host);
+            Entry.Logger.Info($"[CombatSolver/Test] {(manual ? "TURN_SETUP_MANUAL_RECALCULATE_RESULT" : "TURN_SETUP_PLAN")} turn={turn} choices={result.TurnSetupChoices.Count} expanded={result.ExpandedNodes} searched_turns={result.SearchedTurns}");
+            return true;
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (searchToken.IsCancellationRequested)
         {
-            bool ownsCurrentLifecycle = ReferenceEquals(_active, active)
-                && SolverController.IsCurrentCombatLifecycle(
-                    active.Combat,
-                    active.LifecycleGeneration);
-            if (active.SearchState != 2 && ownsCurrentLifecycle)
-                SearchCompletionNotifier.Notify(SearchCompletionNotificationKind.Canceled);
-            if (!ownsCurrentLifecycle)
-            {
-                active.PlanReady.TrySetResult();
-                return false;
-            }
-            if (SolverController.SolverDisabled || SolverController.AutomaticSearchPaused)
-            {
-                active.Choices.ReleaseVisibleSurface();
-                active.PlanReady.TrySetResult();
-                return false;
-            }
-            active.PlanReady.TrySetCanceled(active.Token);
+            active.Result = null;
+            return IsCurrentActivePlan(active) && !active.PlayerAdvancedChoice;
+        }
+        catch
+        {
+            if (CanPublishForPlan(active)) SearchCompletionNotifier.Notify(SearchCompletionNotificationKind.Failed);
             throw;
         }
-        catch (Exception ex)
+        finally
         {
-            if (!IsCurrentActivePlan(active))
-            {
-                active.PlanReady.TrySetResult();
-                return false;
-            }
-            SearchCompletionNotifier.Notify(SearchCompletionNotificationKind.Failed);
-            active.PlanReady.TrySetException(ex);
-            throw;
-        }
-
-        if (!IsCurrentActivePlan(active))
-        {
+            // A stop retires only this worker. Keep the native setup alive so the player can
+            // select a card or request another calculation on the same pending choice.
+            if (!solveTask.IsCompleted) searchCancellation.Cancel();
+            await ((Task)solveTask).ConfigureAwait(ConfigureAwaitOptions.ContinueOnCapturedContext | ConfigureAwaitOptions.SuppressThrowing);
+            active.SearchCancellation = null;
+            active.SearchState = 2;
+            active.ManualSearchState = 0;
+            active.Interaction.CompleteTakeover();
+            if (!active.ReplayDrivingStarted) active.Choices.ReleaseVisibleSurface();
             active.PlanReady.TrySetResult();
-            return false;
+            if (IsCurrentActivePlan(active)) SolverOverlay.RefreshControls();
         }
-        if (SolverController.SolverDisabled
-            || SolverController.AutomaticSearchPaused && !active.Interaction.StopRequested)
-        {
-            if (active.SearchState != 2 && ReferenceEquals(_active, active))
-                SearchCompletionNotifier.Notify(SearchCompletionNotificationKind.Canceled);
-            active.Choices.ReleaseVisibleSurface();
-            active.PlanReady.TrySetResult();
-            return false;
-        }
-        if (result.TurnSetupChoices.Count == 0)
-        {
-            if (ReferenceEquals(_active, active))
-                SearchCompletionNotifier.Notify(SearchCompletionNotificationKind.Failed);
-            throw new InvalidOperationException("原生页面已经请求选牌，但回合准备搜索没有返回计划选择。");
-        }
-        active.Result = result;
-        active.Choices.RecordPlanReady();
-        SolverController.ShowTurnSetupResultPreview(host, result);
-        if (active.Interaction.StopRequested)
-        {
-            active.Interaction.PreserveStoppedResult(result, LiveCombatStamp.Capture(active.Combat));
-            SolverOverlay.ShowSearchStopped(host);
-        }
-        else if (active.TakeoverRequested)
-            StartReplayDriver(active, host);
-        else
-            active.Choices.ReleaseVisibleSurface();
-        active.PlanReady.TrySetResult();
-        Entry.Logger.Info(
-            $"[CombatSolver/Test] TURN_SETUP_PLAN turn={turn} choices={result.TurnSetupChoices.Count} " +
-            $"expanded={result.ExpandedNodes} searched_turns={result.SearchedTurns} " +
-            "awaiting_user_start=true");
-        return true;
     }
 
     private static async Task<bool> PrepareReplayChoiceSurfaceAsync(

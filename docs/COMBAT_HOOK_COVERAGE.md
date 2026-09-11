@@ -1,6 +1,6 @@
 # CombatSolver 战斗钩子覆盖目录
 
-> CombatSolver `0.34.6`，游戏 `0.111.0`，模拟核心 `embedded`。本文件由 `tools/CoverageCatalog` 生成，不手工编辑。
+> CombatSolver `0.36.0`，游戏 `0.111.0`，模拟核心 `embedded`。本文件由 `tools/CoverageCatalog` 生成，不手工编辑。
 
 ## 汇总
 

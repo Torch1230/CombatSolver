@@ -6,6 +6,7 @@
 
 | 文档 | 内容 |
 |---|---|
+| [Gemini UI 建议复核与当前重构建议](ui-redesign-gemini-review-20260911.md) | 729b4ad 基线：逐项复核、按钮分组、收起布局与分阶段实施建议；尚未实施 |
 | [仓库与 Agent 指令审计](CombatSolver_Repository_Audit_20260825.md) | 2026-08-25 的源码地图、工程规范和指令建议 |
 | [早期 UI 与性能审计](AUDIT_REPORT.md) | 0.5.9 / 0.6.0 基线的分析与建议 |
 | [审计处理记录](AUDIT_RESPONSE.md) | 对早期审计建议的核实与采用情况 |

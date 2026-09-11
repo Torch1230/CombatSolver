@@ -14,10 +14,10 @@ internal sealed partial class CombatPredictionSimulator
 
         return card.Preview switch
         {
-            Shiv when combat.GetAmount<FanOfKnivesPower>(card.Preview.Owner.Creature) > 0
-                => TargetType.AllEnemies,
-            SovereignBlade when combat.GetAmount<SeekingEdgePower>(card.Preview.Owner.Creature) > 0
-                => TargetType.AllEnemies,
+            Shiv => combat.GetAmount<FanOfKnivesPower>(card.Preview.Owner.Creature) > 0
+                ? TargetType.AllEnemies : TargetType.AnyEnemy,
+            SovereignBlade => combat.GetAmount<SeekingEdgePower>(card.Preview.Owner.Creature) > 0
+                ? TargetType.AllEnemies : TargetType.AnyEnemy,
             _ => card.Preview.TargetType,
         };
     }

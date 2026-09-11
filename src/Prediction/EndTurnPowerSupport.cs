@@ -115,11 +115,16 @@ internal static partial class EndTurnPowerSupport
                     simulator.StateStore.GetPowerAmount(power).Consume();
                     combat.SetPowerAmount(power, 0);
                     break;
-                case DarkEmbracePower when ownerParticipates
-                                                 && etherealExhaustCount > 0
-                                                 && owner.Player is { } player:
-                    simulator.Draw(player, power.Amount * etherealExhaustCount);
+                case DarkEmbracePower darkEmbrace when ownerParticipates && owner.Player is { } player:
+                {
+                    var state = simulator.StateStore.Get(darkEmbrace,
+                        () => new CombatSolver.Engine.InCombat.Mirrors.Hooks.Card.DarkEmbracePredictionState(darkEmbrace));
+                    simulator.Draw(player, power.Amount * state.EtherealCount);
+                    if (simulator.HasPendingChoice)
+                        return false;
+                    state.EtherealCount = 0;
                     break;
+                }
                 case DoomPower when ownerParticipates
                                     && side != CombatSide.Enemy
                                     && simulator.State.GetCreature(owner).IsAlive

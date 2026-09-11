@@ -18,7 +18,8 @@ internal sealed record CardChoiceSpec(
     IReadOnlyList<PredictedCard> SourceCards,
     double ReplacementValue,
     string ContextId = "",
-    int? MaxBranches = null);
+    int? MaxBranches = null,
+    bool IsImplicitAllSelection = false);
 
 internal static partial class CardChoiceSupport
 {
@@ -220,6 +221,9 @@ internal static partial class CardChoiceSupport
     {
         if (spec.MaxCount < spec.MinCount)
             return [];
+        if (spec.IsImplicitAllSelection)
+            return [new PlanCardChoice(spec.Effect, spec.SourcePile,
+                ToTokens(spec.Options, spec.Options, spec.SourceCards, displayNames.Card), ContextId: spec.ContextId)];
 
         int minTake = Math.Min(spec.MinCount, spec.Options.Count);
         int maxTake = Math.Min(spec.MaxCount, spec.Options.Count);

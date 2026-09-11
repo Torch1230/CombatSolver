@@ -126,7 +126,6 @@ internal sealed record SearchPathRetentionDetails(
 // simulator, model, ledger, lazy enumerable, or callback that retains one of those objects.
 internal sealed record SearchPathObservation(
     Guid SolverId,
-    SolverSearchPhase Phase,
     int BeamWidth,
     SearchPathObservationStage Stage,
     string Reason,

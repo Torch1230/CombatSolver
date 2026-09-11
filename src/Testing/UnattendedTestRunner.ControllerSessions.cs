@@ -65,12 +65,12 @@ internal sealed partial class UnattendedTestRunner
                     includeTurnSetup: false,
                     theftPolicy: SolverController.ResolveTheftPolicy(combat)) with
                 {
-                    ShortProfile = settings.ShortProfile with
+                    Profile = settings.Profile with
                     {
-                        MaxExpandedNodes = Math.Min(500, settings.ShortProfile.MaxExpandedNodes),
+                        MaxExpandedNodes = Math.Min(500, settings.Profile.MaxExpandedNodes),
                         SoftTimeBudgetMilliseconds = 5_000,
                     },
-                    ForceShortOnly = true,
+                    FixedBudget = true,
                     MaxDegreeOfParallelism = 4,
                     Interaction = interaction,
                 };
@@ -82,7 +82,7 @@ internal sealed partial class UnattendedTestRunner
                     forcedDisplayNames,
                     forcedBattleDamage,
                     forcedPolicy,
-                    searchProfile: forcedPolicy.ShortProfile with { BeamWidth = 1 })
+                    searchProfile: forcedPolicy.Profile with { BeamWidth = 1 })
                     .VerifyFinalPolicyQualificationRetentionForTesting(
                         forcedPotion.Potion.Id.Entry,
                         forcedPotion.Slot);
@@ -719,12 +719,12 @@ internal sealed partial class UnattendedTestRunner
             includeTurnSetup: false,
             theftPolicy: SolverController.ResolveTheftPolicy(combat)) with
         {
-            ShortProfile = settings.ShortProfile with
+            Profile = settings.Profile with
             {
                 MaxExpandedNodes = 100_000,
                 SoftTimeBudgetMilliseconds = 1_200,
             },
-            ForceShortOnly = true,
+            FixedBudget = true,
             MaxDegreeOfParallelism = 1,
             Interaction = interaction,
         };
@@ -733,10 +733,10 @@ internal sealed partial class UnattendedTestRunner
         SearchPolicySnapshot thresholdPolicy = policy with
         {
             AcceptableBattleHpLoss = SolverSettings.MaximumAcceptableBattleHpLoss,
-            ShortProfile = policy.ShortProfile with
+            Profile = policy.Profile with
             {
                 BeamWidth = 1,
-                MaxExpandedNodes = Math.Min(500, policy.ShortProfile.MaxExpandedNodes),
+                MaxExpandedNodes = Math.Min(500, policy.Profile.MaxExpandedNodes),
                 SoftTimeBudgetMilliseconds = 1_000,
             },
         };
@@ -745,7 +745,7 @@ internal sealed partial class UnattendedTestRunner
                 displayNames,
                 BattleDamageTracker.Observe(combat),
                 thresholdPolicy,
-                searchProfile: thresholdPolicy.ShortProfile)
+                searchProfile: thresholdPolicy.Profile)
             .Solve();
         if (!CombatSearchCoordinator.HasReachedAcceptableBattleHpLoss(thresholdPolicy, thresholdResult))
         {

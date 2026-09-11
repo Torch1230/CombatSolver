@@ -7,6 +7,8 @@
 
 这份文档讲：默认会发生什么、有哪些登记点、登记的纪律、怎么验证自己做对了。
 
+HeavenlyDrill 的 OnPlay 使用精确镜像，先解析分支 X 值及修正，再按卡牌 Energy 阈值决定攻击次数翻倍。修改该卡的阈值或攻击流程需提供对应语义登记，通用“X次攻击”推断不足以表达条件翻倍。EndOfDays 的领域补偿在每次施加灾厄后结算能力数量变化监听器和死亡，再判断处决；登记类似监听器时应保留原版 await 时点。
+
 ## 0. 先判断你要不要读下去
 
 | 你的 Mod | 要做什么 |
@@ -18,7 +20,9 @@
 前两条是自动的。第三条不做适配的话，装上你的 Mod 之后求解器会直接停在
 「检测到不兼容的第三方 Mod」，玩家用不了。
 
-项目明确拒绝的玩法 Mod 优先于上述通用放行条件。当前 `WheelchairSpire` 按 Mod ID 或已加载程序集名识别，在根捕获时直接报告不兼容；不依据 `affects_gameplay: false` 放行。本批问题修复不为其数值、目标类型或效果改写提供适配。
+项目明确拒绝的玩法 Mod 优先于上述通用放行条件。当前 `WheelchairSpire`、`PengoTarot`、`BetterCharacterRelics` 按 Mod ID 或已加载程序集名识别，在根捕获时直接报告名称和不兼容原因；不依据 `affects_gameplay: false` 放行。本批不为这些 Mod 提供战斗适配。搜索、部署和回合准备捕获此异常时均使用专用提示，报告账本只记录不兼容类别，不引导玩家上传日志。包内仅出现其他 Mod 的名字或恢复环境不匹配，均不足以认定该 Mod 是某个偏差的原因。
+
+Power 的原版克隆会重置 `_internalData`。跨根保留的数据必须从原生来源捕获：例如本批苍蓝星球的已触发标记，以及 DarkEmbrace 的虚无消耗延迟计数。DarkEmbrace 后续按实际事件累计并在回合末清零，不能用结束回合前的牌数代替此状态。
 
 ## 1. 求解器默认怎么对待未知内容
 
@@ -119,6 +123,8 @@ StrategicEffectMirrors.Register<TYourPower>(requirements, evaluate, host);
 
 只有当你的 Power **收益取决于它和别的动作的先后关系**时才需要。详见
 [第三方 Power 的战略估值登记](third-party-strategic-effects.md)。
+
+`StrategicEffectRequirements.AttackHits` 可请求可达攻击命中数；`StrategicEffectContext.AttackHits` 在请求后提供估值，未请求时为 null。它包括已审查的原版多段与小刀生成，第三方攻击使用普通单次命中估计，不能当作真实攻击结算。`ExhaustDrawPlays` 是黑暗之拥在禁抽、虚无顺序下的抽牌机会估值；这些字段只服务保路，不改变 Hook 镜像语义。
 
 不登记的后果：求解器按叠加层数记一点 `ScalingPotential` 兜底。对大多数 Power 够用；对
 「自己不给甲、但让后续攻击给甲」这类会被排到错误位置。
@@ -265,6 +271,10 @@ PowerHiddenStateMirrors.Register<TYourPower>(
 
 ### 2.7 局外成长来源的独立额度
 
+下一版本的有限击杀收益早停只识别原版单一来源 THE_HUNT / FEED / HAND_OF_GREED；命中第三方 `hasTarget` 或混合来源时继续原成长搜索，不把一次收益套成第三方来源的完成条件。接口保持不变。
+战损目标早停默认开启；成长来源仅在本场实际卡牌命中 `hasTarget` 且考虑局外收益时阻止早停。只保存该来源的非零额度不算实际目标；第三方无需修改登记签名，继续提供准确的纯卡牌判据。
+原版禁忌魔典已包含独立删牌收益额度，按每次成功增加战后删牌奖励计数。至亮之焰的单场最大生命消耗上限属于独立成本约束，不使用成长收益向量表示负收益，也不受 IgnoreLongTermRewards 影响；它不改变第三方成长来源登记接口。
+
 尚未发布，登记入口在下一版本。登记应在 Mod 初始化、任何搜索之前完成；搜索期间保持登记表不变。
 
 ```csharp
@@ -293,14 +303,14 @@ combat.RecordGrowthReward(_diligence);
 一律判成亏。侧栏让玩家给每个来源单独填一份「每次收益允许的额外战损」，搜索据此在打分里给这条
 线路记一笔 HP 信用额度。
 
-原版八个来源写死在 `GrowthSource` 枚举里，`GrowthValues` 是与之对应的八个 int 字段。局外成长类
+原版九个来源写死在 `GrowthSource` 枚举里，`GrowthValues` 是与之对应的九个 int 字段。局外成长类
 卡牌很多 mod 都有，它们全部落不进那个枚举：既拿不到自己的额度栏，收益也记不进
 `SimulatedCombatState.GrowthRewards`。**表现不是「少了个选项」，而是搜索必然避开这张牌**——
 付出的血看得见，换回来的东西在打分里根本不存在。
 
 登记之后你会得到四样东西：
 
-- 成长策略侧栏多一行，有自己的图标、标题和额度输入框，排在原版八行之后、按登记顺序；
+- 成长策略侧栏多一行，有自己的图标、标题和额度输入框，排在原版九行之后、按登记顺序；
 - 额度按你给的 id 存进设置文件，也进问题包的有效策略和路线缓存；
 - `GrowthValues.HasTarget` 认得你的牌，于是「打到可接受战损就提早收手」那条捷径会被关掉——
   否则搜索会在还没摸到你这张牌之前就收手；
@@ -377,7 +387,18 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 **这个入口解决的是「别烧错、该烧的要烧」，不解决「为了压出无限而主动烧牌」。** 后者要的是对
 「移除之后牌库能不能自持」的判断，那是求解器的估值主干，见第 6 节。
 
-### 2.9 还没有登记入口的地方
+### 2.9 遗物与 Modifier 的分支状态
+
+`ModelPredictionStateMirrors.RegisterRelic<TModel, TState>` 与 `RegisterModifier<TModel, TState>`
+按精确类型登记根捕获、实机字段和预测字段。状态通过现有 `PredictionStateStore` Fork，
+同一字段口径进入搜索指纹与 `ContinuationStamp`，按实例所属位置绑定，不合并同类型计数。
+首次根或续用捕获后拒绝继续登记；未捕获状态不回落到 live 值。
+
+此接口不放行 Mod、补丁或 Hook，不扩展遗物／Modifier 的中途增删。
+完整签名、对象重映射、字段格式及验证边界见[模型状态适配](third-party-model-state.md)。
+与其他内部镜像入口一样，外部程序集仍需要 publicizer；本接口尚未发布。
+
+### 2.10 还没有登记入口的地方
 
 见第 6 节。目前只能 Harmony 打补丁，或者等对应的扩展点合并。
 
@@ -391,6 +412,9 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 一次（拿到 `Inferred` 或 `Unsupported`），之后再登记也不会生效，而且不报错。
 
 所以：在 Mod 初始化时把所有登记做完，绝不在战斗中途登记。
+
+`ModelPredictionStateMirrors` 不使用上述延迟分派缓存，而是在第一次根或续用捕获后冻结整张登记表；
+迟到登记明确抛异常。两类入口的共同要求仍是初始化期间一次完成登记。
 
 ### 3.2 失败要关死，不要装一半
 
@@ -498,13 +522,15 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 | `PredictionModHookSubscriberCapture.KnownPreRootSubscriberTypeNames` | 私有静态白名单，没有公开登记入口 | 待做 |
 | `Prediction/Compact/CompactDiscardProjection` 的整根准入与 `CompactCardProgramCompiler` 的卡牌编译 | 实验支持已准入抽弃牌／洗牌／固定 Power 选牌；`CardEffectProgram` 是不可变有序指令，由独立编译器生成，新增生存者格挡后弃牌（[证据](performance/simulation-effect-program-20260911.md)）；显式攻击域增加主要敌人打击、中和、六种基础 Power 的值状态与死亡清理；现又准入 `FOOTWORK` 移除、`MALAISE` 的 X／消耗、`SUPPRESS`、`ULTIMATE_DEFEND`、`FINESSE` 和亡灵基础卡牌（[生命周期证据](performance/simulation-card-lifecycle-20260911.md)）。现支持三十三种精确卡牌类型，新增单体／群体中毒、虚弱、条件抽牌和虚无历史（[群体与条件指令证据](performance/simulation-conditional-powers-20260911.md)）。新增 `OUTBREAK` 的中毒触发／递减和 `CALCULATED_GAMBLE` 的整手弃抽／Sly 后续（[触发与弃抽证据](performance/simulation-poison-discard-20260911.md)）。新增 `BUBBLE_BUBBLE` 的目标中毒存在条件与 `MIRAGE` 的存活敌人中毒求和格挡（[Power 表达式证据](performance/simulation-power-expressions-20260911.md)）。新增 `DODGE_AND_ROLL` 的格挡返回值施加 `BlockNextTurnPower` 与 `TOOLS_OF_THE_TRADE` 计数／移除；正小数零层实例域由整根检查拒绝（[下回合计数证据](performance/simulation-compact-deferred-powers-20260911.md)）。新增 `PIERCING_WAIL` 的敌方临时力量施加、封顶偏移与消耗；只准入该精确 Power 的数量回调，其他临时属性类型仍拒绝（[证据](performance/simulation-compact-temporary-strength-20260911.md)）。新增 `CLOAK_AND_DAGGER`／`SHIV` 的固定模板生成、满手转弃牌、攻击和消耗；仅放行已证明的卡入场／生成回调，新增模型只在读取器中物化（[生成卡证据](performance/simulation-generated-cards-20260911.md)）。`BLADE_OF_INK` 仅在无中间观察者的闭包折叠为最终 `Inky` 模板，攻击后虚弱与混合模板恢复经[原生差分](performance/simulation-inky-cards-20260911.md)验证。新增正常 1 层 `Slither` 的本场绝对费用列表及 `CombatEnergyCosts` 值状态（[证据](performance/simulation-random-costs-20260911.md)），其他修饰不放行。既有人工制品可阻止负面施加，修改先于临时力量的内部效果，并保留数量／顺序／退休（[证据](performance/simulation-compact-artifact-20260911.md)）。蛇之戒及无已触及运行级覆盖的牌组监听前缀现可保留，牌组与战斗表分开审计（[原始根证据](performance/simulation-full-root-20260911.md)）。新增精确 `BURN` 及独立准入的手牌末尾阶段，保存状态抽取、累计失血、玩家死亡与显式入场顺序；该参数不提供第三方回调登记，也不表示所有动画模式或完整回合已支持（[手牌阶段证据](performance/simulation-hand-end-20260911.md)）。`MonsterEffectProgram` 现仅由 Testing 从单个精确 `MechaKnight` 根捕获四种指令体；无创建者生成、怪物攻击历史与完整状态已有[原生证据](performance/simulation-monster-commands-20260911.md)，没有泛化怪物登记口。确定性 AI 扩展只接收经 Testing 验证的精确四节点图，复制根当前招式、后继和日志；当前／日志与意图从值读取，仍无第三方 AI 登记表。Power 回合初始快照、下回合格挡兑现、敌方临时力量恢复和三种持续减益递减现有独立整根准入，包含 AfterSideTurnEndLate 审计及`StratagemPower`初始字段（[阶段证据](performance/simulation-power-phases-20260911.md)）；该接口没有第三方注册表。完整回合驱动有独立 Testing 准入，增加阶段／时间／历史重置、保留、临时 Sly 清理、起手与 Tools 暂停帧；精确闭包仅含单个机械骑士，玩家中毒、待抽牌与额外行动拒绝，20 分支／7 原生动作及冷根历史通过[完整回合对照](performance/simulation-rounds-20260911.md)。`Prediction/Compact/CompactPlanReplay` 由已准入根的 Search 接线，桥接已准入卡牌／结束回合计划，按正式实例键和选牌 token 匹配；不是第三方登记口。原始 30 牌、44 原生动作及 424 个已准入替代分支通过[完整路线对照](performance/simulation-full-route-20260911.md)，回合末本回合／上回合最后攻击牌分别进入原键。派生历史查询按回合、阵营及分支玩家回合界定窗口，消费者不应将上一阵营的缓存当成本阶段计数。仍拒绝未迁移 Hook、其他 Power、修饰与其他随机操作，没有第三方登记入口。完整状态与原生证据见[Power 阶段报告](performance/simulation-compact-powers-20260911.md)；生产搜索在完整根准入后选择紧凑后端，未准入域继续使用模型后端 | 测试原型，未开放 |
 | `PredictionModPatchAudit.ValidateLoadedMods` | 明确拒绝 `WheelchairSpire`，没有外部放行入口 | 项目不兼容策略 |
+| `DynamicVarCloneMetadataPatches` | 模拟克隆只优化已核对为空默认值的 BaseLib 提示/升级字段与 Ritsu 提示工厂；非空值照常复制，live 调用保持原框架行为。其他附加字段继续原有克隆逻辑，不属于此优化入口 | 精确框架适配 |
 | `PlayerTurnEndLifecycle.RunPhaseTwo`、`CorePowerSupport.TriggerPlayerRegularSideTurnEndEffects`、`FlushPlayerHandAtTurnEnd`、`TurnStartPowerSupport.TriggerAfterPlayerTurnStart`、`SimulatedCombatState.TriggerRelicsAfterPlayerTurnStart` | 回合边界的效果没有注册表 | 待做 |
 | `SimulatedCombatState.TryPrepareExtraPlayerTurn` / `TryPrepareLiveExtraPlayerTurn` / `ConsumeExtraTurnSources` | 额外回合的来源硬编码，只认龙涎香和帕尔之眼 | 待做 |
 | `CombatPredictionSimulator.OnPlayWrapper` | 出牌后补抽没有挂载点 | 待做 |
 | `CardChoiceSupport.RemovalPriority` 的排序口径 | 移除类选择按**单卡**估值排，不看牌库其余部分；弃牌那一侧已经是「源牌堆平均值减本牌估值」的相对口径，消耗与转变没有。表现为求解器不会为了压出无限而主动烧牌。起手牌那一层已由 §2.7 打开，相对口径这一层仍然封闭 | 待做 |
 | `ContinuationStamp.AppendCard` 的 `private=` 段与 `CombatBeamSolver.CaptureCardStateFingerprintForTesting` 的 `switch (preview)` | **卡牌**的隐藏字段按原版类型写死（利爪、基因算法、巨锤、狂暴、镰刀、疯狂科学），第三方卡牌的私有计数进不了指纹。Power 那一侧已有 `PowerHiddenStateMirrors`，见 §2.6 | 待做 |
 | `SimulatedCombatState.AddTurnStartStates` 的 `switch (power)` | 原版 Power 隐藏计数按类型写死。第三方走 §2.6 的登记表进同一份指纹，本行只是记下原版那个 `switch` 本身仍然封闭 | 第三方已有入口 |
-| `GrowthSource` 枚举与 `SolverGrowthStrategyPanel.SourceCard` 的 `switch` | 原版八类成长来源按类型写死。第三方走 §2.7 的 `GrowthSourceMirrors` 拿独立额度、侧栏行和指纹，本行只是记下原版那个枚举本身仍然封闭 | 第三方已有入口 |
+| `RelicPredictionStateSupport` 的原版类型分支 | 内置遗物状态仍按原实现处理；第三方遗物与 Modifier 的独立状态通过 §2.9 登记，不修改原版分支 | 第三方已有入口 |
+| `GrowthSource` 枚举与 `SolverGrowthStrategyPanel.SourceCard` 的 `switch` | 原版九类成长来源按类型写死。第三方走 §2.7 的 `GrowthSourceMirrors` 拿独立额度、侧栏行和指纹，本行只是记下原版那个枚举本身仍然封闭 | 第三方已有入口 |
 
 **这些开关新增或改动时，必须在同一个提交里更新这张表和本文档对应章节。** 见
 [AGENTS.md](../AGENTS.md) 第 9 节。

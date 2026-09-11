@@ -329,7 +329,8 @@ internal static class TurnStartChoiceSupport
             count,
             options,
             sourceCards,
-            ReplacementValue: 0d);
+            ReplacementValue: 0d,
+            IsImplicitAllSelection: options.Count <= requestedCount);
         TurnStartChoiceRequest request = new(
             sourceId,
             effect,

@@ -24,11 +24,11 @@ internal sealed partial class UnattendedTestRunner
             EnemyHp: 0,
             Score: 1_000,
             CombatEndedTurn: 3);
-        if (CombatSearchCoordinator.IsBetterPotionPolicyResult(
+        if (!CombatSearchCoordinator.IsBetterPotionPolicyResult(
                 SolverTheftPolicy.PreserveResources,
                 onePotionAudit,
                 twoPotionPrimary)
-            || !CombatSearchCoordinator.IsBetterPotionPolicyResult(
+            || CombatSearchCoordinator.IsBetterPotionPolicyResult(
                 SolverTheftPolicy.PreserveResources,
                 twoPotionPrimary,
                 onePotionAudit)
@@ -42,48 +42,34 @@ internal sealed partial class UnattendedTestRunner
                 twoPotionPrimary))
         {
             throw new InvalidOperationException(
-                "RequireAtLeastOne 审计没有先按胜利、战损、回合选择，再使用资源与药水尾键。");
+                "保资源策略必须在胜利前提下优先追回资源，再比较战损与药水。");
         }
 
-        static SearchSolverWorkContribution Work(int unit, bool deep) => new(
+        static SearchSolverWorkContribution Work(int unit) => new(
             ExpandedNodes: unit,
             TransitionCount: unit * 2,
             ChoiceBranchesEvaluated: unit * 3,
-            ShortElapsed: TimeSpan.FromTicks(unit * 4L),
-            DeepElapsed: TimeSpan.FromTicks(unit * 5L),
+            Elapsed: TimeSpan.FromTicks(unit * 9L),
             WorkerAllocatedBytes: unit * 6L,
-            ShortExpandedNodes: deep ? 0 : unit,
-            DeepExpandedNodes: deep ? unit : 0,
-            ShortTransitionCount: deep ? 0 : unit * 2,
-            DeepTransitionCount: deep ? unit * 2 : 0,
             Gen0Collections: unit * 7,
             Gen1Collections: unit * 8,
             Gen2Collections: unit * 9,
             GcPauseDuration: TimeSpan.FromTicks(unit * 10L),
-            MaxObservedGcPause: TimeSpan.FromTicks(unit * 11L),
-            DeepSearchTriggered: deep);
+            MaxObservedGcPause: TimeSpan.FromTicks(unit * 11L));
 
         SearchRequestWorkSnapshot totals = CombatSearchCoordinator.AggregateAuditWork(
-            Work(1, deep: false),
-            Work(10, deep: false),
-            Work(100, deep: true));
+            Work(1), Work(10), Work(100));
         if (totals.RecordedSolverCount != 3
             || totals.ExpandedNodes != 111
             || totals.TransitionCount != 222
             || totals.ChoiceBranchesEvaluated != 333
-            || totals.ShortElapsed != TimeSpan.FromTicks(444)
-            || totals.DeepElapsed != TimeSpan.FromTicks(555)
+            || totals.Elapsed != TimeSpan.FromTicks(999)
             || totals.WorkerAllocatedBytes != 666
-            || totals.ShortExpandedNodes != 11
-            || totals.DeepExpandedNodes != 100
-            || totals.ShortTransitionCount != 22
-            || totals.DeepTransitionCount != 200
             || totals.Gen0Collections != 777
             || totals.Gen1Collections != 888
             || totals.Gen2Collections != 999
             || totals.GcPauseDuration != TimeSpan.FromTicks(1_110)
-            || totals.MaxObservedGcPause != TimeSpan.FromTicks(1_100)
-            || !totals.DeepSearchTriggered)
+            || totals.MaxObservedGcPause != TimeSpan.FromTicks(1_100))
         {
             throw new InvalidOperationException(
                 $"RequireAtLeastOne 的 primary/potionFree/audited 工作量没有各合并一次：" +
@@ -92,10 +78,9 @@ internal sealed partial class UnattendedTestRunner
         }
 
         SearchRequestWorkTotals requestTotals = new();
-        requestTotals.Record(Work(1, deep: false));
+        requestTotals.Record(Work(1));
         requestTotals.RecordCoordinatorOverhead(
             TimeSpan.FromTicks(13),
-            deepPhase: true,
             allocatedBytes: 17,
             gen0Collections: 1,
             gen1Collections: 2,
@@ -105,8 +90,7 @@ internal sealed partial class UnattendedTestRunner
         SearchRequestWorkSnapshot withCoordinatorOverhead = requestTotals.Snapshot();
         if (withCoordinatorOverhead.RecordedSolverCount != 1
             || withCoordinatorOverhead.ExpandedNodes != 1
-            || withCoordinatorOverhead.ShortElapsed != TimeSpan.FromTicks(4)
-            || withCoordinatorOverhead.DeepElapsed != TimeSpan.FromTicks(18)
+            || withCoordinatorOverhead.Elapsed != TimeSpan.FromTicks(22)
             || withCoordinatorOverhead.WorkerAllocatedBytes != 23
             || withCoordinatorOverhead.Gen0Collections != 8
             || withCoordinatorOverhead.Gen1Collections != 10
@@ -118,8 +102,7 @@ internal sealed partial class UnattendedTestRunner
                 "Smart 药水层间的 coordinator 内存整理没有计入请求总量，" +
                 "或被错误计作另一个 solver。" +
                 $" records={withCoordinatorOverhead.RecordedSolverCount}" +
-                $" elapsed={withCoordinatorOverhead.ShortElapsed}/" +
-                $"{withCoordinatorOverhead.DeepElapsed}" +
+                $" elapsed={withCoordinatorOverhead.Elapsed}" +
                 $" allocated={withCoordinatorOverhead.WorkerAllocatedBytes}。");
         }
     }
@@ -136,10 +119,10 @@ internal sealed partial class UnattendedTestRunner
             MaxDegreeOfParallelism = 1,
             RequestWorkTotals = requestWorkTotals,
         };
-        SolverSearchProfile focusedProfile = capturedPolicy.ShortProfile with
+        SolverSearchProfile focusedProfile = capturedPolicy.Profile with
         {
-            BeamWidth = Math.Min(capturedPolicy.ShortProfile.BeamWidth, 8),
-            MaxExpandedNodes = Math.Min(capturedPolicy.ShortProfile.MaxExpandedNodes, 32),
+            BeamWidth = Math.Min(capturedPolicy.Profile.BeamWidth, 8),
+            MaxExpandedNodes = Math.Min(capturedPolicy.Profile.MaxExpandedNodes, 32),
             SoftTimeBudgetMilliseconds = 120_000,
         };
 
@@ -207,16 +190,6 @@ internal sealed partial class UnattendedTestRunner
                 $"records={beforeCancellation.RecordedSolverCount}->{totals.RecordedSolverCount} " +
                 $"expanded={canceledExpanded} transitions={canceledTransitions} " +
                 $"allocated={canceledAllocation}。");
-        }
-        if (totals.ShortExpandedNodes + totals.DeepExpandedNodes != totals.ExpandedNodes
-            || totals.ShortTransitionCount + totals.DeepTransitionCount != totals.TransitionCount)
-        {
-            throw new InvalidOperationException(
-                $"取消后请求工作量的长短搜索分区没有与总量对齐：" +
-                $"expanded={totals.ExpandedNodes}/" +
-                $"{totals.ShortExpandedNodes + totals.DeepExpandedNodes} " +
-                $"transitions={totals.TransitionCount}/" +
-                $"{totals.ShortTransitionCount + totals.DeepTransitionCount}。");
         }
         Entry.Logger.Info(
             $"[CombatSolver/Test] REQUEST_WORK_IN_PROGRESS_CANCELLATION " +

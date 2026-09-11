@@ -72,6 +72,7 @@ internal static class CardOnPlayMirrors
         registry.Register<DaggerSpray>(BespokeCardMirrors.DaggerSprayOnPlay);
         registry.Register<PactsEnd>(BespokeCardMirrors.PactsEndOnPlay);
         registry.Register<TwinStrike>(BespokeCardMirrors.TwinStrikeOnPlay);
+        registry.Register<HeavenlyDrill>(BespokeCardMirrors.HeavenlyDrillOnPlay);
         registry.Register<Dismantle>(BespokeCardMirrors.DismantleOnPlay);
         registry.Register<Entrench>(BespokeCardMirrors.EntrenchOnPlay);
         registry.Register<FiendFire>(BespokeCardMirrors.FiendFireOnPlay);

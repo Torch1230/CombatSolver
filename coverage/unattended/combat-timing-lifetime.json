@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "COMBAT-TIMING-LIFETIME",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "COMBAT-TIMING",
+  "cards": [],
+  "exitOnComplete": true
+}

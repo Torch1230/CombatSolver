@@ -345,7 +345,7 @@ internal sealed partial class UnattendedTestRunner
         CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
         CombatBeamSolver driver = new(root, SolverDisplayNames.Capture(combat), BattleDamageTracker.Observe(combat),
             SolverController.CaptureSearchPolicy(SolverSettings.Capture(), combat, false, null),
-            searchProfile: SolverSearchProfile.Deep);
+            searchProfile: SolverSearchProfile.Default);
         List<SimulationSnapshot> snapshots = [];
         try
         {

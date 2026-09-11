@@ -49,11 +49,13 @@ internal sealed class CombatBugReportIssueLedger
     public void RecordFailure(CombatBugReportIssueKind primaryKind, Exception exception)
     {
         Exception failure = exception.GetBaseException();
+        if (failure is IncompatibleGameplayModException incompatible)
+        {
+            Record(CombatBugReportIssueKind.IncompatibleGameplayMod, incompatible.PlayerFacingModName);
+            return;
+        }
         string detail = $"{failure.GetType().Name}：{failure.Message}";
         Record(primaryKind, detail);
-
-        if (failure is IncompatibleGameplayModException incompatible)
-            Record(CombatBugReportIssueKind.IncompatibleGameplayMod, incompatible.PlayerFacingModName);
         if (failure is SearchTransitionException
             || failure.Message.Contains("搜索动作回放失败", StringComparison.Ordinal))
         {
@@ -85,6 +87,7 @@ internal sealed class CombatBugReportIssueLedger
     public bool RequiresPlayerUpload
         => _issues.Keys.Any(kind => kind is not (
             CombatBugReportIssueKind.ManualHpLossIncreased
+            or CombatBugReportIssueKind.IncompatibleGameplayMod
             or CombatBugReportIssueKind.FullAutoStoppedAtDeathTurn));
 
     private static bool IsUnexpectedChoiceFailure(string message)

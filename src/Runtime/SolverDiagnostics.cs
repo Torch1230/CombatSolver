@@ -13,8 +13,7 @@ internal static class SolverDiagnostics
 
     public static string DescribeStart(
         CombatState state,
-        SolverSearchProfile shortProfile,
-        SolverSearchProfile deepProfile)
+        SolverSearchProfile profile)
     {
         StringBuilder text = new();
         Player? player = LocalContext.GetMe(state);
@@ -57,17 +56,12 @@ internal static class SolverDiagnostics
             .Append(" horizon=time_or_node_budget")
             .Append(" predicted_shuffles=unbounded")
             .Append(" setup_value_horizon_turns=").Append(SolverWeights.SetupValueHorizonTurns)
-            .Append(" short_beam=").Append(shortProfile.BeamWidth)
-            .Append(" deep_beam=").Append(deepProfile.BeamWidth)
-            .Append(" short_budget_ms=").Append(shortProfile.SoftTimeBudgetMilliseconds)
-            .Append(" deep_total_budget_ms=").Append(deepProfile.SoftTimeBudgetMilliseconds)
+            .Append(" beam=").Append(profile.BeamWidth)
+            .Append(" budget_ms=").Append(profile.SoftTimeBudgetMilliseconds)
             .Append(" max_actions_per_turn=unbounded")
-            .Append(" short_top_queue=").Append(shortProfile.MaxCardBranchesPerNode)
-            .Append(" deep_top_queue=").Append(deepProfile.MaxCardBranchesPerNode)
-            .Append(" short_pile_choice_branches=").Append(shortProfile.MaxPileChoiceBranchesPerAction)
-            .Append(" deep_pile_choice_branches=").Append(deepProfile.MaxPileChoiceBranchesPerAction)
-            .Append(" short_hand_choice_branches=").Append(shortProfile.MaxHandChoiceBranchesPerAction)
-            .Append(" deep_hand_choice_branches=").Append(deepProfile.MaxHandChoiceBranchesPerAction)
+            .Append(" card_branches=").Append(profile.MaxCardBranchesPerNode)
+            .Append(" pile_choice_branches=").Append(profile.MaxPileChoiceBranchesPerAction)
+            .Append(" hand_choice_branches=").Append(profile.MaxHandChoiceBranchesPerAction)
             .Append(" hp=").Append(SolverWeights.Hp)
             .Append(" enemy_hp=").Append(SolverWeights.EnemyHp)
             .Append(" vulnerable_attack_window_cap=").Append(SolverWeights.VulnerableAttackWindowCap)
@@ -102,11 +96,6 @@ internal static class SolverDiagnostics
         using Process process = Process.GetCurrentProcess();
         StringBuilder text = new();
         text.Append(Prefix).Append(" RESULT")
-            .Append(" phase=").Append(result.SearchPhase)
-            .Append(" deep_triggered=").Append(result.DeepSearchTriggered)
-            .Append(" deep_improved=").Append(result.SingleSessionSearch
-                ? "n/a_single_session"
-                : result.DeepSearchImprovedResult.ToString())
             .Append(" reused=").Append(result.WasReused)
             .Append(" reused_from_turn=").Append(result.ReusedFromTurn?.ToString() ?? "-")
             .Append(" expanded=").Append(result.ExpandedNodes)
@@ -232,8 +221,6 @@ internal static class SolverDiagnostics
             .Append(" managed_fragmented_bytes=").Append(gcMemory.FragmentedBytes)
             .Append(" process_working_set_bytes=").Append(process.WorkingSet64)
             .Append(" process_private_bytes=").Append(process.PrivateMemorySize64)
-            .Append(" short_elapsed_ms=").Append(result.ShortSearchElapsed.TotalMilliseconds.ToString("F0"))
-            .Append(" deep_elapsed_ms=").Append(result.DeepSearchElapsed.TotalMilliseconds.ToString("F0"))
             .Append(" score=").Append(result.BestNode.Score.ToString("F0"))
             .Append(" final_hp=").Append(result.Snapshot.PlayerHp)
             .Append(" final_block=").Append(result.Snapshot.PlayerBlock)
@@ -349,7 +336,6 @@ internal static class SolverDiagnostics
             => $"{metric.Elapsed.TotalMilliseconds:F1}ms/{metric.AllocatedBytes}B";
         return new StringBuilder()
             .Append(Prefix).Append(" SEARCH_PHASE")
-            .Append(" phase=").Append(result.SearchPhase)
             .Append(" expanded=").Append(result.ExpandedNodes)
             .Append(" transitions=").Append(result.TransitionCount)
             .Append(" choice_replay_attempts=").Append(result.ChoiceReplayAttempts)

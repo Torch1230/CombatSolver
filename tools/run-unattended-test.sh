@@ -121,15 +121,13 @@ for name in \
     verify-controller-session-lifecycle verify-fork-boundaries \
     verify-combat-root-snapshot verify-pre-combat-forecast-api verify-base-lib-card-modifier-boundary \
     stop-after-combat-root-snapshot-assertion verify-incremental-search \
-    force-short-search-only measure-search-phases hold-after-initial-search; do
+    force-short-search-only fixed-search-budget measure-search-phases hold-after-initial-search; do
     add_option "$name" 0 switch bool
 done
 add_option short-search-budget-override-milliseconds -1 int positive_int
+add_option search-budget-override-milliseconds -1 int positive_int
 add_option deep-search-budget-override-milliseconds -1 int positive_int
 add_option search-max-degree-of-parallelism-for-test -1 int positive_int
-add_option expected-initial-search-phase "" string optional_string "Short|Deep"
-add_option expected-initial-deep-search-triggered -1 int tri_bool
-add_option expected-initial-deep-search-improved-result -1 int tri_bool
 add_option expected-initial-boundary-reason "" string optional_string "None|Shuffle|NoCards|UnsupportedEffect|DynamicResolution|PendingChoice|EventDefeat|TurnLimit|NodeLimit|TimeLimit"
 for name in \
     expected-initial-total-elapsed-milliseconds-at-most \
@@ -390,8 +388,7 @@ done
 search_max_dop="${option_value[search-max-degree-of-parallelism-for-test]}"
 ((search_max_dop == -1 || (search_max_dop >= 1 && search_max_dop <= 16))) || \
     die "--search-max-degree-of-parallelism-for-test must be -1 or between 1 and 16"
-for name in expected-initial-deep-search-triggered expected-initial-deep-search-improved-result \
-    expected-initial-only-death-routes-found expected-initial-act-ending-boss \
+for name in expected-initial-only-death-routes-found expected-initial-act-ending-boss \
     enable-no-gc-region-for-test enable-detailed-diagnostic-logs-for-test; do
     value="${option_value[$name]}"
     ((value == -1 || value == 0 || value == 1)) || die "--$name must be -1, 0, or 1"

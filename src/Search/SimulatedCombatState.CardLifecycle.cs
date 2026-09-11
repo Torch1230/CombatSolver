@@ -55,7 +55,11 @@ internal sealed partial class SimulatedCombatState
     }
 
     public void SetNightmareSelection(NightmarePower power, PredictedCard selected)
-        => (_nightmareSelections ??= [])[power] = selected;
+    {
+        PredictedCard snapshot = selected.CreateClone();
+        snapshot.ClearAffliction();
+        (_nightmareSelections ??= [])[power] = snapshot;
+    }
 
     public void SummonOsty(CombatPredictionSimulator simulator, Player player, int amount)
     {
@@ -181,6 +185,8 @@ internal sealed partial class SimulatedCombatState
     {
         Creature owner = card.Preview.Owner.Creature;
         (_cardPlayStartsThisTurn ??= [])[owner] = GetCardPlayStartsThisTurn(owner) + 1;
+        if (card.Preview.Type is CardType.Attack or CardType.Skill)
+            (_attackSkillStartsThisTurn ??= [])[owner] = GetAttackSkillStartsThisTurn(owner) + 1;
         if (card.Preview.Type == CardType.Attack && cardPlay.Resources.EnergyValue == 0)
         {
             (_zeroCostAttackStartsThisTurn ??= [])[owner] =
@@ -373,6 +379,7 @@ internal sealed partial class SimulatedCombatState
         Player player,
         TurnStartChoiceCursor choices)
     {
+        simulator.State.GetPlayerCombatState(player).Phase = PlayerTurnPhase.Start;
         // BeforeHandDraw snapshots its listeners from the current ordered combat piles
         // before invoking powers or relics. The set records eligibility only: its free-slot
         // history changes on Fork and must never determine the order of moves to Hand.
@@ -468,6 +475,7 @@ internal sealed partial class SimulatedCombatState
         TurnStartChoiceCursor choices,
         ISet<uint> processedEnemyDeaths)
     {
+        simulator.State.GetPlayerCombatState(player).Phase = PlayerTurnPhase.AutoPrePlay;
         PredictedCard[] bombardments = simulator.State.GetPlayerCombatState(player)
             .ExhaustPile.Cards
             .Where(card => card.Preview is Bombardment)
@@ -503,11 +511,14 @@ internal sealed partial class SimulatedCombatState
         {
             return true;
         }
-        return !TriggerWhisperingEarring(
+        bool completed = TriggerWhisperingEarring(
             simulator,
             player,
             turnNumber,
             processedEnemyDeaths);
+        if (completed)
+            simulator.State.GetPlayerCombatState(player).Phase = PlayerTurnPhase.Play;
+        return !completed;
     }
 
     public bool TriggerAutoPrePlayEarly(
@@ -541,6 +552,18 @@ internal sealed partial class SimulatedCombatState
         value = _rootHistory.CardPlaysStarted.Count(entry =>
             RootEntryHappenedThisTurn(entry) && entry.CardPlay.Player.Creature == owner);
         (_cardPlayStartsThisTurn ??= [])[owner] = value;
+        return value;
+    }
+
+    public int GetAttackSkillStartsThisTurn(Creature owner)
+    {
+        if (_attackSkillStartsThisTurn?.TryGetValue(owner, out int value) == true)
+            return value;
+        value = _rootHistory.CardPlaysStarted.Count(entry =>
+            RootEntryHappenedThisTurn(entry)
+            && entry.CardPlay.Player.Creature == owner
+            && entry.CardPlay.Card.Type is CardType.Attack or CardType.Skill);
+        (_attackSkillStartsThisTurn ??= [])[owner] = value;
         return value;
     }
 

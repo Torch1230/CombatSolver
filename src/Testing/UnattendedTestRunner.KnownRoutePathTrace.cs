@@ -180,7 +180,7 @@ internal sealed partial class UnattendedTestRunner
                 Entry.Logger.Info("[CombatSolver/Test] PATH_TRACE_SUMMARY " + JsonSerializer.Serialize(new
                 {
                     Sample = sample, SolverId = solver.Key, Step = index + 1,
-                    Phase = solver.First().Phase.ToString(), solver.First().BeamWidth,
+                    solver.First().BeamWidth,
                     Stages = exact.GroupBy(item => new { Stage = item.Stage.ToString(), item.Reason })
                         .Select(group => new { group.Key.Stage, group.Key.Reason, Count = group.Count() }).ToArray(),
                     StateOnly = solver.Count(item => item.StateKey == prefixes[index].StateKey
@@ -337,7 +337,7 @@ internal sealed partial class UnattendedTestRunner
             Entry.Logger.Info("[CombatSolver/Test] PATH_TRACE_VARIANT_SUMMARY " + JsonSerializer.Serialize(new
             {
                 Sample = sample, Variant = variant, Step = index + 1, SolverId = solver.Key,
-                Phase = solver.First().Phase.ToString(), solver.First().BeamWidth,
+                solver.First().BeamWidth,
                 PolicyBuckets = exact.GroupBy(item => new { item.PolicyLabel, item.ParentPolicyLabel })
                     .Select(group => new
                     {

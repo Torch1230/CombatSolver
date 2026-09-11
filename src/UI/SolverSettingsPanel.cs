@@ -35,6 +35,7 @@ internal sealed partial class SolverSettingsPanel : PanelContainer
         {
             MouseFilter = MouseFilterEnum.Pass,
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
         };
         root.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Sm);
 
@@ -83,6 +84,7 @@ internal sealed partial class SolverSettingsPanel : PanelContainer
             Name = "SettingsPageHost",
             MouseFilter = MouseFilterEnum.Pass,
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
         };
         _generalPage = CreateGeneralPage();
         _performancePage = CreatePerformancePage();
@@ -152,6 +154,21 @@ internal sealed partial class SolverSettingsPanel : PanelContainer
         if (_activePage != original)
             TrySelectPage(original);
         return switched;
+    }
+
+    internal async Task AssertResponsiveHeightForTesting()
+    {
+        Size = new Vector2(1000, 440);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        float small = _generalPage.Size.Y;
+        Size = new Vector2(1000, 660);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        if (_generalPage.Size.Y < small + 180)
+            throw new InvalidOperationException($"Settings scroll failed to expand: {small} -> {_generalPage.Size.Y}.");
+        if (!ExerciseSettingsTabSwitchingForTesting())
+            throw new InvalidOperationException("Settings tabs failed after resize.");
     }
 
     private Button CreateTabButton(string text, SettingsPage page)

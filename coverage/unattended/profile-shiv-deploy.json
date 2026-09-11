@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "characterId": "SILENT",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "INVENTORYVALUE0111",
+  "enemyCurrentHp": 24,
+  "initialPlayerHp": 70,
+  "initialPlayerMaxHp": 70,
+  "initialPlayerEnergy": 2,
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    {
+      "cardId": "ACCURACY",
+      "pile": "Hand",
+      "treatAsDeckCard": true,
+      "count": 1
+    },
+    {
+      "cardId": "BLADE_DANCE",
+      "pile": "Hand",
+      "treatAsDeckCard": true,
+      "count": 1
+    }
+  ],
+  "potionPolicyForTest": "Disabled",
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 3000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "stopAfterInitialSolverResultAssertion": false,
+  "timeoutSeconds": 120,
+  "scenarioId": "PROFILE-SHIV-DEPLOY",
+  "description": "Native search and deployment smoke test for reviewed setup plus payoff; not an A/B proof of heuristic improvement.",
+  "potions": [],
+  "expectedInitialPotionCount": 0,
+  "expectedInitialProjectedBattleHpLost": 0,
+  "expectedFinishedTurn": 1,
+  "expectedFinishedPlayerHpAtLeast": 70,
+  "expectedUnexpectedReplansAtMost": 0,
+  "deploymentFastModeForTest": "Instant",
+  "deploymentInterActionDelaySecondsForTest": 0,
+  "expectedInitialFirstActionCardId": "ACCURACY"
+}

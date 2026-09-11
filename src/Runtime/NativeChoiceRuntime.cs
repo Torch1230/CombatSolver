@@ -48,7 +48,11 @@ internal sealed record NativeChoiceRequest(
     bool RequiresSurface,
     bool CanSkip,
     bool RequireManualConfirmation,
-    string SourceId);
+    string SourceId)
+{
+    public Task? Completion { get; set; }
+    public bool IsPending => Completion?.IsCompleted != true;
+}
 
 internal sealed record NativeChoiceTrace(
     long Order,
@@ -116,7 +120,7 @@ internal static class NativeChoiceRuntime
         return session;
     }
 
-    public static void Observe(
+    public static NativeChoiceRequest? Observe(
         NativeChoiceSurfaceKind surface,
         Player player,
         IReadOnlyList<CardModel> options,
@@ -129,12 +133,12 @@ internal static class NativeChoiceRuntime
     {
         CombatReplayRecording.ObserveChoiceCandidates(surface, player, options, minSelect, maxSelect, sourceId);
         if (CardSelectCmd.Selector != null || Sessions.Count == 0)
-            return;
+            return null;
         NativeChoiceSession session = Sessions[^1];
         if (!ReferenceEquals(session.Player, player)
             || !ReferenceEquals(session.Combat, CombatManager.Instance.DebugOnlyGetState()))
         {
-            return;
+            return null;
         }
 
         CardModel[] observedOptions = options.ToArray();
@@ -147,7 +151,7 @@ internal static class NativeChoiceRuntime
                     CardChoiceSupport.ChoiceCardKey(option)))
                 .ToArray();
         int optionCount = observedOptions.Length;
-        session.Enqueue(new NativeChoiceRequest(
+        NativeChoiceRequest request = new(
             Interlocked.Increment(ref _nextSequence),
             surface,
             player,
@@ -158,7 +162,9 @@ internal static class NativeChoiceRuntime
             requiresSurface,
             canSkip,
             requireManualConfirmation,
-            sourceId));
+            sourceId);
+        session.Enqueue(request);
+        return request;
     }
 
     internal static void End(NativeChoiceSession session)
@@ -220,10 +226,8 @@ internal sealed class NativeChoiceSession : IDisposable
         TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TaskCompletionSource _allPlansConsumed = new(
         TaskCreationOptions.RunContinuationsAsynchronously);
-    private readonly object _firstSurfaceSync = new();
     private readonly HashSet<long> _visibleTraceSequences = [];
-    private Task<NativeChoiceSurfaceLock>? _firstSurfaceTask;
-    private NativeChoiceSurfaceLock? _firstSurfaceLock;
+    private NativeChoiceSurfaceLock? _surfaceLock;
     private CancellationTokenSource? _driverCancellation;
     private IReadOnlyList<PlanCardChoice>? _plans;
     private Task? _driver;
@@ -242,6 +246,8 @@ internal sealed class NativeChoiceSession : IDisposable
     public Player Player { get; }
     public string Owner { get; }
     public bool HasVisibleRequest => _firstVisibleRequest.Task.IsCompletedSuccessfully;
+    public long FirstVisibleSequence => HasVisibleRequest ? _firstVisibleRequest.Task.Result.Sequence : 0;
+    public long LatestVisibleSequence { get; private set; }
     public bool IsVisibleSurfaceOpen
         => _firstVisibleRequest.Task.IsCompletedSuccessfully
            && NativeChoiceSurface.IsVisible(_firstVisibleRequest.Task.Result.Surface);
@@ -249,7 +255,7 @@ internal sealed class NativeChoiceSession : IDisposable
     {
         get
         {
-            if (!_firstVisibleRequest.Task.IsCompletedSuccessfully)
+            if (!_firstVisibleRequest.Task.IsCompletedSuccessfully || !_firstVisibleRequest.Task.Result.IsPending)
                 return false;
             NativeChoiceSurfaceKind surface = _firstVisibleRequest.Task.Result.Surface;
             return surface is NativeChoiceSurfaceKind.Hand or NativeChoiceSurfaceKind.HandUpgrade
@@ -265,7 +271,10 @@ internal sealed class NativeChoiceSession : IDisposable
         if (!_requests.Writer.TryWrite(request))
             throw new InvalidOperationException($"原生选牌会话 {Owner} 无法记录选择请求。");
         if (request.RequiresSurface)
+        {
+            LatestVisibleSequence = request.Sequence;
             _firstVisibleRequest.TrySetResult(request);
+        }
         NativeChoiceRuntime.RecordTrace(this, request, "Requested");
         Entry.Logger.Info(
             $"[CombatSolver/Test] NATIVE_CHOICE_REQUEST owner={Owner} sequence={request.Sequence} " +
@@ -280,7 +289,7 @@ internal sealed class NativeChoiceSession : IDisposable
         Task phaseTask,
         CancellationToken token)
     {
-        Task winner = await Task.WhenAny(_firstVisibleRequest.Task, phaseTask);
+        Task winner = await Task.WhenAny(_firstVisibleRequest.Task, phaseTask).WaitAsync(token);
         if (ReferenceEquals(winner, phaseTask))
         {
             await phaseTask;
@@ -288,13 +297,16 @@ internal sealed class NativeChoiceSession : IDisposable
         }
 
         NativeChoiceRequest request = await _firstVisibleRequest.Task.WaitAsync(token);
-        Task<NativeChoiceSurfaceLock> surfaceTask;
-        lock (_firstSurfaceSync)
+        long deadline = System.Environment.TickCount64 + 30_000;
+        while (!NativeChoiceSurface.IsVisible(request.Surface))
         {
-            _firstSurfaceTask ??= NativeChoiceSurface.WaitAndLockAsync(host, request, token);
-            surfaceTask = _firstSurfaceTask;
+            token.ThrowIfCancellationRequested();
+            if (phaseTask.IsCompleted) return false;
+            if (System.Environment.TickCount64 >= deadline)
+                throw new NativeChoiceSurfaceTimeoutException($"30 秒内没有出现原生选牌页面 {request.Surface}（来源 {request.SourceId}）。");
+            await host.ToSignal(host.GetTree(), SceneTree.SignalName.ProcessFrame);
         }
-        _firstSurfaceLock = await surfaceTask;
+        if (phaseTask.IsCompleted || !IsVisibleChoicePending) return false;
         RecordVisibleOnce(request);
         Entry.Logger.Info(
             $"[CombatSolver/Test] NATIVE_CHOICE_VISIBLE owner={Owner} sequence={request.Sequence} " +
@@ -394,24 +406,8 @@ internal sealed class NativeChoiceSession : IDisposable
 
     public void ReleaseVisibleSurface()
     {
-        _firstSurfaceLock?.Dispose();
-        _firstSurfaceLock = null;
-    }
-
-    public void CancelVisibleSurfaceForReplan()
-    {
-        NativeChoiceSurface.Cancel(_firstVisibleRequest.Task.IsCompletedSuccessfully
-            ? _firstVisibleRequest.Task.Result.Surface
-            : null);
-        ReleaseVisibleSurface();
-    }
-
-    public async Task LockVisibleSurfaceForSearchAsync(NGame host, CancellationToken token)
-    {
-        NativeChoiceRequest request = await _firstVisibleRequest.Task.WaitAsync(token);
-        ReleaseVisibleSurface();
-        _firstSurfaceLock = await NativeChoiceSurface.WaitAndLockAsync(host, request, token);
-        RecordVisibleOnce(request);
+        _surfaceLock?.Dispose();
+        _surfaceLock = null;
     }
 
     internal async Task SelectVisibleCardsForTesting(
@@ -430,6 +426,27 @@ internal sealed class NativeChoiceSession : IDisposable
         using (surfaceLock)
             await NativeChoiceSurface.SelectAsync(host, surfaceLock, request, selected, token);
         NativeChoiceRuntime.RecordTrace(this, request, "ManualSelected");
+    }
+
+    internal async Task InteractWithFirstChoiceForTesting(NGame host, bool confirm, CancellationToken token)
+    {
+        if (!UnattendedTestRunner.IsActive) throw new InvalidOperationException("Only unattended tests may inject choice input.");
+        NativeChoiceRequest request = await _firstVisibleRequest.Task.WaitAsync(token);
+        if (confirm)
+        {
+            int count = request.Surface == NativeChoiceSurfaceKind.ChooseCard && !request.CanSkip
+                ? 1 : request.MinSelect;
+            await SelectVisibleCardsForTesting(host, request.Options.Take(count).ToArray(), token);
+        }
+        else
+        {
+            if (request.Surface != NativeChoiceSurfaceKind.Hand || !request.RequireManualConfirmation)
+                throw new InvalidOperationException("Partial-selection fixture requires a hand confirmation page.");
+            NCardHolder holder = NPlayerHand.Instance!.GetCardHolder(request.Options[0])
+                ?? throw new InvalidOperationException("Partial-selection fixture card holder is missing.");
+            holder.EmitSignal(NCardHolder.SignalName.Pressed, holder);
+            NativeChoiceRuntime.RecordTrace(this, request, "ManualHighlighted");
+        }
     }
 
     private async Task DriveAsync(NGame host, CancellationToken token)
@@ -469,22 +486,20 @@ internal sealed class NativeChoiceSession : IDisposable
             IReadOnlyList<CardModel> selected;
             if (request.RequiresSurface)
             {
-                NativeChoiceSurfaceLock surfaceLock;
-                if (_firstSurfaceLock is { } first && first.Request.Sequence == request.Sequence)
-                {
-                    surfaceLock = first;
-                    _firstSurfaceLock = null;
-                }
-                else
-                {
-                    surfaceLock = await NativeChoiceSurface.WaitAndLockAsync(host, request, token);
-                }
+                using NativeChoiceSurfaceLock surfaceLock = await NativeChoiceSurface.WaitAndLockAsync(host, request, token);
+                _surfaceLock = surfaceLock;
                 RecordVisibleOnce(request);
                 // A visible page can remain open while the search runs. Match only after the page
                 // is locked, against its current semantic identity, so stale plans fail safely.
-                selected = ResolvePlannedCards(plan, request, useObservedIdentity: false);
-                using (surfaceLock)
+                try
+                {
+                    selected = ResolvePlannedCards(plan, request, useObservedIdentity: false);
                     await NativeChoiceSurface.SelectAsync(host, surfaceLock, request, selected, token);
+                }
+                finally
+                {
+                    if (ReferenceEquals(_surfaceLock, surfaceLock)) _surfaceLock = null;
+                }
             }
             else
             {
@@ -701,8 +716,6 @@ internal static class NativeChoiceSurface
             token.ThrowIfCancellationRequested();
             await host.ToSignal(host.GetTree(), SceneTree.SignalName.ProcessFrame);
         }
-        surfaceLock.Dispose();
-
         switch (request.Surface)
         {
             case NativeChoiceSurfaceKind.ChooseCard:
@@ -752,6 +765,12 @@ internal static class NativeChoiceSurface
         CancellationToken token)
     {
         NCardGrid grid = Descendants<NCardGrid>(surface).Single();
+        var highlighted = (IEnumerable<CardModel>)AccessTools.Field(surface.GetType(), "_selectedCards").GetValue(surface)!;
+        foreach (CardModel card in highlighted.ToArray())
+        {
+            NGridCardHolder holder = await FindGridCardHolderAsync(host, grid, request, card, token);
+            grid.EmitSignal(NCardGrid.SignalName.HolderPressed, holder);
+        }
         foreach (CardModel card in selected)
         {
             NGridCardHolder holder = await FindGridCardHolderAsync(
@@ -819,6 +838,16 @@ internal static class NativeChoiceSurface
         CancellationToken token)
     {
         NPlayerHand hand = (NPlayerHand)surface;
+        // The player may have highlighted cards while the solver was observing the page.
+        // Rebuild the selection through native deselection before applying the ordered plan.
+        var highlighted = (List<CardModel>)AccessTools.Field(typeof(NPlayerHand), "_selectedCards").GetValue(hand)!;
+        foreach (CardModel card in highlighted.ToArray())
+        {
+            if (request.Surface == NativeChoiceSurfaceKind.HandUpgrade)
+                hand.DeselectCard(NCard.Create(card) ?? throw new InvalidOperationException("原生升级选择无法创建取消选择的卡牌节点。"));
+            else
+                hand.GetNode<NSelectedHandCardContainer>("%SelectedHandCardContainer").DeselectCard(card);
+        }
         foreach (CardModel card in selected)
         {
             NCardHolder holder = hand.GetCardHolder(card)
@@ -929,8 +958,8 @@ internal sealed class ChooseCardObservationPatch : IPatchMethod
     ];
 
     [HarmonyPriority(Priority.First)]
-    public static void Prefix(IReadOnlyList<CardModel> cards, Player player, bool canSkip)
-        => NativeChoiceRuntime.Observe(
+    public static void Prefix(IReadOnlyList<CardModel> cards, Player player, bool canSkip, out NativeChoiceRequest? __state)
+        => __state = NativeChoiceRuntime.Observe(
             NativeChoiceSurfaceKind.ChooseCard,
             player,
             cards,
@@ -938,6 +967,10 @@ internal sealed class ChooseCardObservationPatch : IPatchMethod
             1,
             cards.Count > 0,
             canSkip);
+    public static void Postfix(Task __result, NativeChoiceRequest? __state)
+    {
+        if (__state != null) __state.Completion = __result;
+    }
 }
 
 internal sealed class SimpleGridObservationPatch : IPatchMethod
@@ -951,8 +984,8 @@ internal sealed class SimpleGridObservationPatch : IPatchMethod
     ];
 
     [HarmonyPriority(Priority.First)]
-    public static void Prefix(IReadOnlyList<CardModel> cardsIn, Player player, CardSelectorPrefs prefs)
-        => NativeChoiceRuntime.Observe(
+    public static void Prefix(IReadOnlyList<CardModel> cardsIn, Player player, CardSelectorPrefs prefs, out NativeChoiceRequest? __state)
+        => __state = NativeChoiceRuntime.Observe(
             NativeChoiceSurfaceKind.SimpleGrid,
             player,
             cardsIn,
@@ -960,6 +993,10 @@ internal sealed class SimpleGridObservationPatch : IPatchMethod
             prefs.MaxSelect,
             cardsIn.Count > 0 && (prefs.RequireManualConfirmation || cardsIn.Count > prefs.MinSelect),
             requireManualConfirmation: prefs.RequireManualConfirmation);
+    public static void Postfix(Task __result, NativeChoiceRequest? __state)
+    {
+        if (__state != null) __state.Completion = __result;
+    }
 }
 
 internal sealed class RewardGridObservationPatch : IPatchMethod
@@ -973,10 +1010,10 @@ internal sealed class RewardGridObservationPatch : IPatchMethod
     ];
 
     [HarmonyPriority(Priority.First)]
-    public static void Prefix(List<CardCreationResult> cards, Player player, CardSelectorPrefs prefs)
+    public static void Prefix(List<CardCreationResult> cards, Player player, CardSelectorPrefs prefs, out NativeChoiceRequest? __state)
     {
         IReadOnlyList<CardModel> options = cards.Select(result => result.Card).ToArray();
-        NativeChoiceRuntime.Observe(
+        __state = NativeChoiceRuntime.Observe(
             NativeChoiceSurfaceKind.SimpleGrid,
             player,
             options,
@@ -984,6 +1021,10 @@ internal sealed class RewardGridObservationPatch : IPatchMethod
             prefs.MaxSelect,
             options.Count > 0 && (prefs.RequireManualConfirmation || options.Count > prefs.MinSelect),
             requireManualConfirmation: prefs.RequireManualConfirmation);
+    }
+    public static void Postfix(Task __result, NativeChoiceRequest? __state)
+    {
+        if (__state != null) __state.Completion = __result;
     }
 }
 
@@ -1002,10 +1043,10 @@ internal sealed class CombatPileObservationPatch : IPatchMethod
         CardPile pile,
         Player player,
         CardSelectorPrefs prefs,
-        Func<CardModel, bool>? filter)
+        Func<CardModel, bool>? filter, out NativeChoiceRequest? __state)
     {
         IReadOnlyList<CardModel> options = (filter == null ? pile.Cards : pile.Cards.Where(filter)).ToArray();
-        NativeChoiceRuntime.Observe(
+        __state = NativeChoiceRuntime.Observe(
             NativeChoiceSurfaceKind.CombatPile,
             player,
             options,
@@ -1013,6 +1054,10 @@ internal sealed class CombatPileObservationPatch : IPatchMethod
             prefs.MaxSelect,
             options.Count > 0 && (prefs.RequireManualConfirmation || options.Count > prefs.MinSelect),
             requireManualConfirmation: prefs.RequireManualConfirmation);
+    }
+    public static void Postfix(Task __result, NativeChoiceRequest? __state)
+    {
+        if (__state != null) __state.Completion = __result;
     }
 }
 
@@ -1031,12 +1076,12 @@ internal sealed class HandObservationPatch : IPatchMethod
         Player player,
         CardSelectorPrefs prefs,
         Func<CardModel, bool>? filter,
-        AbstractModel source)
+        AbstractModel source, out NativeChoiceRequest? __state)
     {
         IReadOnlyList<CardModel> options = player.PlayerCombatState!.Hand.Cards
             .Where(filter ?? (_ => true))
             .ToArray();
-        NativeChoiceRuntime.Observe(
+        __state = NativeChoiceRuntime.Observe(
             NativeChoiceSurfaceKind.Hand,
             player,
             options,
@@ -1045,6 +1090,10 @@ internal sealed class HandObservationPatch : IPatchMethod
             options.Count > 0 && (prefs.RequireManualConfirmation || options.Count > prefs.MinSelect),
             requireManualConfirmation: prefs.RequireManualConfirmation,
             sourceId: source.Id.Entry);
+    }
+    public static void Postfix(Task __result, NativeChoiceRequest? __state)
+    {
+        if (__state != null) __state.Completion = __result;
     }
 }
 
@@ -1059,12 +1108,12 @@ internal sealed class HandUpgradeObservationPatch : IPatchMethod
     ];
 
     [HarmonyPriority(Priority.First)]
-    public static void Prefix(Player player, AbstractModel source)
+    public static void Prefix(Player player, AbstractModel source, out NativeChoiceRequest? __state)
     {
         IReadOnlyList<CardModel> options = player.PlayerCombatState!.Hand.Cards
             .Where(card => card.IsUpgradable)
             .ToArray();
-        NativeChoiceRuntime.Observe(
+        __state = NativeChoiceRuntime.Observe(
             NativeChoiceSurfaceKind.HandUpgrade,
             player,
             options,
@@ -1073,5 +1122,9 @@ internal sealed class HandUpgradeObservationPatch : IPatchMethod
             options.Count > 1,
             requireManualConfirmation: false,
             sourceId: source.Id.Entry);
+    }
+    public static void Postfix(Task __result, NativeChoiceRequest? __state)
+    {
+        if (__state != null) __state.Completion = __result;
     }
 }

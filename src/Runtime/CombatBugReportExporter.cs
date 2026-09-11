@@ -662,8 +662,7 @@ internal static class CombatBugReportExporter
         int? lastSolverDeployedTurn = SolverController.LastSolverDeployedTurnForBugReport;
         object searchProfiles = new
         {
-            profiles.ShortProfile,
-            profiles.DeepProfile,
+            profiles.Profile,
         };
         object? metadataResult = result == null ? null : new
         {
@@ -747,8 +746,7 @@ internal static class CombatBugReportExporter
             state.RunState.TotalFloor,
             SolverDiagnostics.DescribeStart(
                 state,
-                profiles.ShortProfile,
-                profiles.DeepProfile),
+                profiles.Profile),
             state.RunState.Rng.ToSerializable(),
             state.Players.Select(player => (object)new
             {
@@ -1172,14 +1170,14 @@ internal static class CombatBugReportExporter
             settings.ActTransitionBossHpStrategy,
             settings.FinalBossHpStrategy,
             settings.AcceptableBattleHpLoss,
+            settings.StopAtAcceptableBattleHpLoss,
             settings.GrowthBudgets,
+            settings.BrightestFlameMaxHpLossLimit,
             settings.IgnoreLongTermRewards,
             searchMaxDegreeOfParallelism = UnattendedTestRunner.SearchMaxDegreeOfParallelismOverride ?? settings.SearchMaxDegreeOfParallelism,
-            shortProfile = settings.ShortProfile with { SoftTimeBudgetMilliseconds = UnattendedTestRunner.ShortSearchBudgetOverrideMilliseconds
-                ?? settings.ShortProfile.SoftTimeBudgetMilliseconds },
-            deepProfile = settings.DeepProfile with { SoftTimeBudgetMilliseconds = UnattendedTestRunner.DeepSearchBudgetOverrideMilliseconds
-                ?? settings.DeepProfile.SoftTimeBudgetMilliseconds },
-            forceShortOnly = UnattendedTestRunner.ForceShortSearchOnly,
+            profile = settings.Profile with { SoftTimeBudgetMilliseconds = UnattendedTestRunner.SearchBudgetOverrideMilliseconds
+                ?? settings.Profile.SoftTimeBudgetMilliseconds },
+            fixedBudget = UnattendedTestRunner.FixedSearchBudget,
             performancePreset = SolverSettings.Current.PerformancePreset,
         };
 
@@ -1210,15 +1208,11 @@ internal static class CombatBugReportExporter
         if (session == null)
             return;
         JsonObject captured = JsonSerializer.SerializeToNode(CaptureEffectivePolicy(state, SolverSettings.Capture()), JsonOptions)!.AsObject();
-        captured["shortProfile"] = JsonSerializer.SerializeToNode(policy.ShortProfile with
+        captured["profile"] = JsonSerializer.SerializeToNode(policy.Profile with
         {
-            SoftTimeBudgetMilliseconds = policy.ShortBudgetOverrideMilliseconds ?? policy.ShortProfile.SoftTimeBudgetMilliseconds,
+            SoftTimeBudgetMilliseconds = policy.BudgetOverrideMilliseconds ?? policy.Profile.SoftTimeBudgetMilliseconds,
         }, JsonOptions);
-        captured["deepProfile"] = JsonSerializer.SerializeToNode(policy.DeepProfile with
-        {
-            SoftTimeBudgetMilliseconds = policy.DeepBudgetOverrideMilliseconds ?? policy.DeepProfile.SoftTimeBudgetMilliseconds,
-        }, JsonOptions);
-        captured["forceShortOnly"] = policy.ForceShortOnly;
+        captured["fixedBudget"] = policy.FixedBudget;
         captured["searchMaxDegreeOfParallelism"] = policy.MaxDegreeOfParallelism;
         captured["includeTurnSetup"] = policy.IncludeTurnSetup;
         session.LatestEffectivePolicy = captured;
@@ -1269,7 +1263,7 @@ internal static class CombatBugReportExporter
         {
             "solverDisabled", "automaticCalculationEnabled", "stopFullAutoOnCombatEnd", "stopFullAutoOnDeathTurn",
             "stopFullAutoOnWorseRecalculation", "enableDetailedDiagnosticLogs", "potionDirectives",
-            "actTransitionBossHpStrategy", "finalBossHpStrategy", "acceptableBattleHpLoss", "growthBudgets", "performancePreset",
+            "actTransitionBossHpStrategy", "finalBossHpStrategy", "acceptableBattleHpLoss", "stopAtAcceptableBattleHpLoss", "growthBudgets", "brightestFlameMaxHpLossLimit", "performancePreset",
             "searchMaxDegreeOfParallelism", "shortTimeLimitSeconds", "deepTimeLimitSeconds", "enableNoGcRegion",
             "noGcRegionBudgetGigabytes", "shortBeamWidth", "deepBeamWidth", "shortMaxExpandedNodes", "deepMaxExpandedNodes",
             "shortMaxCardBranchesPerNode", "deepMaxCardBranchesPerNode", "shortMaxPileChoiceBranchesPerAction",
@@ -1301,8 +1295,7 @@ internal static class CombatBugReportExporter
         Player? player = LocalContext.GetMe(state);
         string diagnostic = SolverDiagnostics.DescribeStart(
             state,
-            profiles.ShortProfile,
-            profiles.DeepProfile);
+            profiles.Profile);
         string exactState = player?.PlayerCombatState == null
             ? string.Empty
             : ContinuationStamp.CaptureLive(state).StateText;

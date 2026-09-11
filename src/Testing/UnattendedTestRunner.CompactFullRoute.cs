@@ -59,7 +59,7 @@ internal sealed partial class UnattendedTestRunner
             var replay = new CompactPlanReplay(adapter);
             var reader = adapter.CreateReadView(); var uncached = adapter.CreateReadView(false);
             var evaluator = new CompactEvaluationDriver(captured, display, damage, policy);
-            var driver = new CombatBeamSolver(captured, display, damage, policy, searchProfile: policy.ShortProfile);
+            var driver = new CombatBeamSolver(captured, display, damage, policy, searchProfile: policy.Profile);
             var parent = InvokeForcedTerminalReplay(driver, [], null, captured.StartTurnNumber, null);
             var parentNode = ForcedTerminalAnnotationNode(parent, null, null);
             List<SimulationSnapshot> parents = [parent];
@@ -70,7 +70,7 @@ internal sealed partial class UnattendedTestRunner
                     var before = lane.Freeze();
                     // Exercise every alternative admitted by the existing action/choice policy
                     // at each chosen prefix. This is a semantic differential, not a speed sample.
-                    var branchDriver = new CombatBeamSolver(captured, display, damage, policy, searchProfile: policy.ShortProfile);
+                    var branchDriver = new CombatBeamSolver(captured, display, damage, policy, searchProfile: policy.Profile);
                     var branches = (IEnumerable<SearchNode>)InvokeForcedTerminalMethod(branchDriver, "Expand", [parentNode])!;
                     foreach (var branch in branches)
                     {

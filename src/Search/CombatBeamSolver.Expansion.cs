@@ -971,54 +971,26 @@ internal sealed partial class CombatBeamSolver
 
     private IEnumerable<SearchNode> BuildAcceptedEndTurnNodes(SearchNode node)
     {
-        List<CrossTurnStandPatBaseline>? directStandPatBaselines =
-            ReferenceEquals(FindTurnStart(node), node)
-            ? []
-            : null;
-        foreach ((PlanAction endAction, SimulationSnapshot endSnapshot) in BuildEndTurnBranches(node, []))
+        using ExpansionBatch batch = RentExpansionBatch();
+        GenerateRawEndTurnCandidates(node, batch);
+        PruneCommittedCrossTurnCandidates(batch.EndTurns, batch);
+        if (NeedsCycleExitAdmission(node, [], null, batch.EndTurns))
         {
-            bool combatEnded = endSnapshot.PlayerDead || endSnapshot.AllEnemiesDead;
-            SearchNode endNode = new(
-                endAction,
-                node.ActionCount + 1,
-                endSnapshot.PotionUseCount,
-                endSnapshot.PotionStrategicCost,
-                endSnapshot.Turn,
-                ClassifyRoundTransitionTraits(node.Traits, node.Snapshot, endSnapshot),
-                node.FutureSoldHp,
-                ApplySoldHpPenalty(endSnapshot.Score, node.FutureSoldHp),
-                endSnapshot.StateKey,
-                endSnapshot.HasRisk,
-                endSnapshot.BoundaryReason,
-                combatEnded || endSnapshot.BoundaryReason != SearchBoundaryReason.None,
-                node,
-                endSnapshot,
-                node.CombatProgress.Advance(endSnapshot))
-            {
-                CumulativeEnemyHpLost = AccumulateEnemyHpLost(node, endSnapshot),
-            };
-            endNode = AttachCycleSchedulingEvidence(endNode);
-            PromoteOrderedMutationProgressTail(endNode);
-            if (directStandPatBaselines != null
-                && IsComparableCrossTurnOutcome(endSnapshot.BoundaryReason))
-            {
-                directStandPatBaselines.Add(new CrossTurnStandPatBaseline(
-                    endNode.StateKey,
-                    MeasureCycleExitQuality(node, endNode)));
-            }
-            CommitCycleExitObservation(endNode);
-            if (ShouldPruneCrossTurnNoProgress(endNode))
-            {
-                _run.RepeatableNoProgressBranchesPruned++;
-                endSnapshot.ReleaseSimulator();
-            }
-            else if (TryAcceptTransposition(endNode))
-                yield return endNode;
-            else
-                endSnapshot.ReleaseSimulator();
+            AnnotateCycleExitProgress(node, batch.EndTurns);
+            _ = MaterializeAdmittedCycleExitObservation(
+                batch.EndTurns,
+                _run.CycleFamilyLedger);
         }
-        if (directStandPatBaselines != null)
-            PublishCrossTurnStandPatBaselines(node, directStandPatBaselines);
+        foreach (SearchNode endNode in batch.EndTurns)
+        {
+            if (!TryAcceptTransposition(endNode))
+            {
+                batch.Release(endNode.Snapshot);
+                continue;
+            }
+            batch.Transfer(endNode.Snapshot);
+            yield return endNode;
+        }
     }
 
     private readonly record struct PrimaryChoiceMatch(
@@ -2039,6 +2011,12 @@ internal sealed partial class CombatBeamSolver
         ChoiceOccurrenceCollector<DeferredOccurrenceChoiceBranch> occurrenceCollector,
         RoundPrefixReplayContext? roundPrefix = null)
     {
+        if (!GrowthCostPolicy.AllowsBrightestFlame(policy.BrightestFlameMaxHpLossLimit,
+                root.InitialBrightestFlameMaxHpSpent, snapshot.BrightestFlameMaxHpSpent))
+        {
+            snapshot.ReleaseSimulator();
+            yield break;
+        }
         if (snapshot.BoundaryReason != SearchBoundaryReason.PendingChoice)
         {
             if (searchBudget.TryConsumeFinal())
@@ -2345,6 +2323,12 @@ internal sealed partial class CombatBeamSolver
         ChoiceOccurrenceCollector<IReadOnlyList<PlanCardChoice>> occurrenceCollector,
         TurnSetupChoiceLayer? preparedLayer = null)
     {
+        if (!GrowthCostPolicy.AllowsBrightestFlame(policy.BrightestFlameMaxHpLossLimit,
+                root.InitialBrightestFlameMaxHpSpent, snapshot.BrightestFlameMaxHpSpent))
+        {
+            snapshot.ReleaseSimulator();
+            return;
+        }
         if (snapshot.BoundaryReason == SearchBoundaryReason.None)
         {
             if (searchBudget.TryConsumeFinal())
@@ -3524,7 +3508,7 @@ internal sealed partial class CombatBeamSolver
             || after.EnemyVulnerableTurns > before.EnemyVulnerableTurns
             || after.LiveDeckClutter < before.LiveDeckClutter
             || after.DelayedDamageValue > before.DelayedDamageValue
-            || !pure && (_profile.Phase == SolverSearchPhase.Deep || damage == 0 && block == 0))
+            || !pure)
         {
             traits |= SearchRouteTraits.Control;
         }

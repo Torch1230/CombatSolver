@@ -261,8 +261,11 @@ internal static class BatchRunner
 
     internal static bool EquivalentPolicy(JsonNode? actual, JsonNode? recorded)
     {
+        string[] budgetFields = actual?["profile"] != null || recorded?["profile"] != null
+            ? ["profile", "fixedBudget"]
+            : ["shortProfile", "deepProfile", "forceShortOnly"];
         string[] fields = ["potionPolicy", "potionDirectives", "actTransitionBossHpStrategy", "finalBossHpStrategy",
-            "acceptableBattleHpLoss", "searchMaxDegreeOfParallelism", "shortProfile", "deepProfile", "forceShortOnly"];
+            "acceptableBattleHpLoss", "searchMaxDegreeOfParallelism", .. budgetFields];
         return fields.All(field => actual?[field] != null && recorded?[field] != null && JsonNode.DeepEquals(actual[field], recorded[field]));
     }
 

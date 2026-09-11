@@ -50,7 +50,8 @@ internal static class SolverOverlay
     private static Label? _progressText;
     private static Label? _reviewText;
     private static ProgressBar? _searchProgressBar;
-    private static HBoxContainer? _routeHeadingRow;
+    private static HFlowContainer? _routeHeadingRow;
+    private static PanelContainer? _routeOutcomePanel;
     private static Label? _routeHeadingLabel;
     private static readonly SolverRouteRow[] RouteRows = new SolverRouteRow[SolverWeights.UiTurnRows];
     private static PanelContainer? _detailsPanel;
@@ -65,7 +66,10 @@ internal static class SolverOverlay
     private static Button? _adoptRouteButton;
     private static Button? _executeButton;
     private static Button? _fullAutoButton;
-    private static Button? _systemMemoryReleaseButton;
+    private static SolverActionBar? _actionBar;
+    private static Button? _solverEnabledButton;
+    private static Label? _stolenResourceOutcomeLabel;
+    private static CheckButton? _autoEnableFullAutoSwitch;
     private static Button? _collapseButton;
     private static Button? _settingsButton;
     private static Button? _potionStrategyButton;
@@ -77,6 +81,7 @@ internal static class SolverOverlay
     private static Button? _performanceHintButton;
     private static Button? _bossHpStrategyHintButton;
     private static SolverMemoryUsageBar? _memoryUsageBar;
+    private static Button? _systemMemoryReleaseButton;
     private static SolverPotionStrategyPanel? _potionStrategyPanel;
     private static Control? _rightResizeHandle;
     private static Control? _bottomResizeHandle;
@@ -94,7 +99,6 @@ internal static class SolverOverlay
     private static bool _dragging;
     private static bool _resizing;
     private static bool _layoutQueued;
-    private static bool? _renderedFullAutoStyle;
     private static SolverButtonStyle? _renderedExecuteButtonStyle;
     private static SolverButtonStyle? _renderedAdoptRouteButtonStyle;
     private static SolverTheftPolicy? _renderedTheftPolicy;
@@ -158,11 +162,12 @@ internal static class SolverOverlay
     internal static bool SettingsTabsConfiguredForTesting
         => _settingsPanel?.SettingsTabsConfiguredForTesting == true;
     internal static bool ManualSystemMemoryReleaseButtonConfiguredForTesting
-        => _systemMemoryReleaseButton is { Text: "强制释放内存" } button
-            && GodotObject.IsInstanceValid(button)
-            && button.IsInsideTree()
-            && _memoryUsageBar?.GetParent() == button.GetParent()
-            && _memoryUsageBar.GetIndex() < button.GetIndex();
+        => _memoryUsageBar is { MouseFilter: Control.MouseFilterEnum.Pass } bar
+            && GodotObject.IsInstanceValid(bar)
+            && bar.IsInsideTree()
+            && _systemMemoryReleaseButton is { } button
+            && button.GetParent() == bar.GetParent()
+            && button.GetIndex() > bar.GetIndex();
     internal static bool NoGcControlsConfiguredForTesting
         => _settingsPanel?.NoGcControlsConfiguredForTesting == true;
     internal static bool MemoryUsageBarConfiguredForTesting
@@ -624,7 +629,7 @@ internal static class SolverOverlay
             _summaryText.Visible = true;
             _summaryText.Text = _searchBestSnapshot is { } snapshot
                 ? SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.SummaryText) +
-                  $"\n{reviewedWorldlinesText}"
+                  $"  │  {reviewedWorldlinesText}"
                 : reviewedWorldlinesText;
         }
         if (_searchProgressBar != null)
@@ -679,7 +684,7 @@ internal static class SolverOverlay
         if (_searchProgressBar != null)
         {
             _searchProgressBar.Visible = true;
-            _searchProgressBar.MaxValue = SolverSearchProfile.Short.MaxExpandedNodes;
+            _searchProgressBar.MaxValue = SolverSearchProfile.Default.MaxExpandedNodes;
             _searchProgressBar.Value = 0;
         }
         SetRouteVisibility(true);
@@ -687,6 +692,8 @@ internal static class SolverOverlay
             _potionOutcomeLabel.Visible = false;
         if (_hpOutcomeLabel != null)
             _hpOutcomeLabel.Visible = false;
+        if (_stolenResourceOutcomeLabel != null)
+            _stolenResourceOutcomeLabel.Visible = false;
         if (_hpRecoveredOutcomeLabel != null)
             _hpRecoveredOutcomeLabel.Visible = false;
         if (_deathOutcomeLabel != null)
@@ -730,10 +737,7 @@ internal static class SolverOverlay
             SolverOverlayTone.Success => Success,
             _ => Accent,
         };
-        string routeContext = snapshot.Turns.Count > 0
-            ? SolverText.Format($"已规划至第 {snapshot.Turns[^1].Turn} 回合")
-            : SolverText.Format($"第 {snapshot.StartTurnNumber} 回合");
-        SetStatus(snapshot.StatusText, statusColor, routeContext);
+        SetStatus(snapshot.StatusText, statusColor);
         if (_summaryPanel != null)
             _summaryPanel.Visible = true;
         if (_summaryText != null)
@@ -771,6 +775,11 @@ internal static class SolverOverlay
     private static void PopulateRoute(SolverOverlaySnapshot snapshot, bool resetScroll)
     {
         SetRouteVisibility(true);
+        if (_stolenResourceOutcomeLabel != null)
+        {
+            _stolenResourceOutcomeLabel.Text = snapshot.UnrecoveredLootText ?? string.Empty;
+            _stolenResourceOutcomeLabel.Visible = snapshot.UnrecoveredLootText != null;
+        }
         if (_potionOutcomeLabel != null)
         {
             _potionOutcomeLabel.Visible = snapshot.ProjectedBattlePotionCount > 0;
@@ -1025,6 +1034,8 @@ internal static class SolverOverlay
         RefreshFeedbackBanner();
 
         bool solverDisabled = SolverController.SolverDisabled;
+        if (_solverEnabledButton != null)
+            _solverEnabledButton.Text = SolverText.Get(solverDisabled ? "求解器：关" : "求解器：开");
         bool searching = SolverController.IsSearching;
         bool adoptingRoute = SolverController.IsAdoptingCurrentRoute;
         bool canAdoptRoute = SolverController.CanAdoptCurrentRoute;
@@ -1039,9 +1050,7 @@ internal static class SolverOverlay
         _stopSearchButton.Disabled = solverDisabled || !searching || SolverController.IsStoppingSearch;
         _adoptRouteButton.Disabled = solverDisabled || !canAdoptRoute || adoptingRoute;
         _adoptRouteButton.Text = adoptingRoute ? SolverText.Get("正在采用…") : SolverText.Get("采用当前路线");
-        SolverButtonStyle adoptRouteStyle = canAdoptRoute && !adoptingRoute
-            ? SolverButtonStyle.Positive
-            : SolverButtonStyle.Secondary;
+        SolverButtonStyle adoptRouteStyle = SolverButtonStyle.Secondary;
         if (_renderedAdoptRouteButtonStyle != adoptRouteStyle)
         {
             SolverUiTokens.ApplyButtonStyle(_adoptRouteButton, adoptRouteStyle);
@@ -1066,29 +1075,23 @@ internal static class SolverOverlay
             _executeButton.Text = SolverText.Get("等待下一回合");
         else
             _executeButton.Text = SolverText.Get("执行本回合");
-        SolverButtonStyle executeStyle = canApplyCurrentTurn
-            ? SolverButtonStyle.Positive
-            : SolverButtonStyle.Primary;
+        SolverButtonStyle executeStyle = SolverButtonStyle.Secondary;
         if (_renderedExecuteButtonStyle != executeStyle)
         {
             SolverUiTokens.ApplyButtonStyle(_executeButton, executeStyle);
             _renderedExecuteButtonStyle = executeStyle;
         }
 
-        _fullAutoButton.Text = SolverController.FullAutoEnabled ? SolverText.Get("全自动：开") : SolverText.Get("全自动：关");
+        _fullAutoButton.Text = SolverText.Get(SolverController.FullAutoEnabled ? "全自动：开" : "全自动：关");
         _fullAutoButton.Disabled = solverDisabled || adoptingRoute;
-        if (_renderedFullAutoStyle != SolverController.FullAutoEnabled)
-        {
-            SolverUiTokens.ApplyButtonStyle(
-                _fullAutoButton,
-                SolverController.FullAutoEnabled ? SolverButtonStyle.Positive : SolverButtonStyle.Secondary);
-            _fullAutoButton.AddThemeColorOverride(
-                "font_color",
-                SolverUiTokens.IsLightTheme && SolverController.FullAutoEnabled
-                    ? Colors.White
-                    : TextPrimary);
-            _renderedFullAutoStyle = SolverController.FullAutoEnabled;
-        }
+        if (_autoEnableFullAutoSwitch != null)
+            _autoEnableFullAutoSwitch.ButtonPressed = SolverSettings.Current.AutoEnableFullAuto;
+        _actionBar?.Refresh(new SolverActionBarState(_collapsed, searching, canAdoptRoute || adoptingRoute));
+        _executeButton.TooltipText = SolverText.Get(solverDisabled ? "求解器已关闭，请从标题栏开启。"
+            : adoptingRoute ? "正在采用路线，请等待完成。"
+            : SolverController.IsDeploying ? "正在执行当前回合。"
+            : _executeButton.Disabled ? "当前没有可执行的回合，请等待计算或完成当前选牌。"
+            : "执行当前回合的动作。");
 
         CombatState? combat = CombatManager.Instance.DebugOnlyGetState();
         bool combatActive = combat != null && CombatManager.Instance.IsInProgress;
@@ -1204,7 +1207,6 @@ internal static class SolverOverlay
         _resizing = false;
         _layoutQueued = false;
         _remainingLayoutPasses = 0;
-        _renderedFullAutoStyle = null;
         _renderedExecuteButtonStyle = null;
         _renderedAdoptRouteButtonStyle = null;
         _renderedTheftPolicy = null;
@@ -1353,6 +1355,7 @@ internal static class SolverOverlay
         _potionStrategyPanel = new SolverPotionStrategyPanel();
         _growthStrategyPanel = new SolverGrowthStrategyPanel();
         _growthStrategyPanel.PolicyChanged += OnGrowthPolicyChanged;
+        _growthStrategyPanel.BrightestFlameLimitChanged += OnBrightestFlameLimitChanged;
         _growthStrategyPanel.IgnoreLongTermRewardsChanged += OnIgnoreLongTermRewardsChanged;
         _potionStrategyPanel.DirectiveChanged += OnPotionDirectiveChanged;
 
@@ -1366,11 +1369,14 @@ internal static class SolverOverlay
         lowerStack.AddChild(_body);
 
         _body.AddChild(CreateSummarySection());
-        _routeHeadingRow = new HBoxContainer
+        _routeOutcomePanel = CreateSectionPanel("RouteOutcomePanel");
+        _routeHeadingRow = new HFlowContainer
         {
             MouseFilter = Control.MouseFilterEnum.Ignore,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
+        _routeHeadingRow.AddThemeConstantOverride("h_separation", SolverUiTokens.Spacing.Md);
+        _routeHeadingRow.AddThemeConstantOverride("v_separation", SolverUiTokens.Spacing.Xs);
         _routeHeadingLabel = CreateTextLabel(
             SolverText.Get("推荐路线"),
             SolverUiTokens.Type.Body,
@@ -1391,7 +1397,10 @@ internal static class SolverOverlay
         _potionOutcomeLabel.SizeFlagsHorizontal = Control.SizeFlags.ShrinkEnd;
         _potionOutcomeLabel.HorizontalAlignment = HorizontalAlignment.Right;
         _routeHeadingRow.AddChild(_potionOutcomeLabel);
-        _hpOutcomeLabel = CreateTextLabel(SolverText.Get("本局扣血  0 HP"), SolverUiTokens.Type.Body, Success, FontType.Bold);
+        _stolenResourceOutcomeLabel = CreateTextLabel(string.Empty, SolverUiTokens.Type.Body, Danger, FontType.Bold);
+        _stolenResourceOutcomeLabel.Visible = false;
+        _routeHeadingRow.AddChild(_stolenResourceOutcomeLabel);
+        _hpOutcomeLabel = CreateTextLabel(SolverText.Get("本局扣血  0 HP"), SolverUiTokens.Type.Metric, Success, FontType.Bold);
         _hpOutcomeLabel.SizeFlagsHorizontal = Control.SizeFlags.ShrinkEnd;
         _hpOutcomeLabel.HorizontalAlignment = HorizontalAlignment.Right;
         _routeHeadingRow.AddChild(_hpOutcomeLabel);
@@ -1405,7 +1414,9 @@ internal static class SolverOverlay
         _hpRecoveredOutcomeLabel.SizeFlagsHorizontal = Control.SizeFlags.ShrinkEnd;
         _hpRecoveredOutcomeLabel.HorizontalAlignment = HorizontalAlignment.Right;
         _routeHeadingRow.AddChild(_hpRecoveredOutcomeLabel);
-        _body.AddChild(_routeHeadingRow);
+        _routeOutcomePanel.AddChild(_routeHeadingRow);
+        _body.AddChild(_routeOutcomePanel);
+        _body.MoveChild(_routeOutcomePanel, 0);
         VBoxContainer routes = new()
         {
             Name = "Routes",
@@ -1535,6 +1546,10 @@ internal static class SolverOverlay
         title.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin;
         header.AddChild(title);
 
+        _solverEnabledButton = CreateHeaderButton(SolverText.Get("求解器：开"), 90);
+        _solverEnabledButton.Pressed += () => SolverController.SetSolverDisabled(!SolverController.SolverDisabled);
+        header.AddChild(_solverEnabledButton);
+
         Control spacer = new()
         {
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
@@ -1542,10 +1557,10 @@ internal static class SolverOverlay
         };
         header.AddChild(spacer);
 
-        _potionStrategyButton = CreateHeaderButton(SolverText.Get("药水策略"), 76);
+        _potionStrategyButton = CreateHeaderButton(SolverText.Get("药水"), 48);
         _potionStrategyButton.Pressed += TogglePotionStrategy;
         header.AddChild(_potionStrategyButton);
-        _growthStrategyButton = CreateHeaderButton(SolverText.Get("成长策略"), 76);
+        _growthStrategyButton = CreateHeaderButton(SolverText.Get("成长"), 48);
         _growthStrategyButton.Pressed += ToggleGrowthStrategy;
         header.AddChild(_growthStrategyButton);
 
@@ -1704,17 +1719,25 @@ internal static class SolverOverlay
 
     private static Control CreateSummarySection()
     {
+        const int summaryFontSize = 16;
         _summaryPanel = CreateSectionPanel("SummaryPanel");
         _summaryPanel.MouseFilter = Control.MouseFilterEnum.Pass;
-        _summaryPanel.CustomMinimumSize = new Vector2(0, 64);
+        _summaryPanel.CustomMinimumSize = Vector2.Zero;
         VBoxContainer layout = new() { MouseFilter = Control.MouseFilterEnum.Pass };
-        layout.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Xxs);
+        layout.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Sm);
         HBoxContainer statusRow = new()
         {
             MouseFilter = Control.MouseFilterEnum.Pass,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
         statusRow.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Md);
+        HFlowContainer statisticsRow = new()
+        {
+            MouseFilter = Control.MouseFilterEnum.Pass,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        statisticsRow.AddThemeConstantOverride("h_separation", SolverUiTokens.Spacing.Md);
+        statisticsRow.AddThemeConstantOverride("v_separation", SolverUiTokens.Spacing.Xs);
         _summaryStatusBadge = new PanelContainer
         {
             MouseFilter = Control.MouseFilterEnum.Ignore,
@@ -1724,42 +1747,43 @@ internal static class SolverOverlay
         };
         _summaryStateLabel = CreateTextLabel(
             SolverText.Get("等待战斗状态"),
-            SolverUiTokens.Type.Metric,
+            summaryFontSize,
             TextMuted,
             FontType.Bold);
         _summaryStatusBadge.AddChild(_summaryStateLabel);
         statusRow.AddChild(_summaryStatusBadge);
         _summaryContextLabel = CreateTextLabel(
             string.Empty,
-            SolverUiTokens.Type.Metric,
+            summaryFontSize,
             SolverUiTokens.Palette.TextSecondary,
             FontType.Bold);
         _summaryContextLabel.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin;
-        _summaryContextLabel.CustomMinimumSize = new Vector2(104, 24);
-        _summaryContextLabel.ClipText = true;
-        statusRow.AddChild(_summaryContextLabel);
-        _summaryText = CreateRichText(SolverUiTokens.Type.Metric);
+        _summaryContextLabel.CustomMinimumSize = new Vector2(0, 24);
+        _summaryContextLabel.AutowrapMode = TextServer.AutowrapMode.Off;
+        _summaryContextLabel.Visible = false;
+        statisticsRow.AddChild(_summaryContextLabel);
+        _summaryText = CreateRichText(summaryFontSize);
         _summaryText.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _summaryText.FitContent = true;
         _summaryText.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         _summaryText.CustomMinimumSize = new Vector2(0, 24);
+        _summaryText.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
         _summaryText.ApplyLocaleFontSubstitution(FontType.Bold, "normal_font");
-        _progressText = CreateTextLabel(string.Empty, SolverUiTokens.Type.Metric, TextPrimary, FontType.Bold);
+        _progressText = CreateTextLabel(string.Empty, summaryFontSize, TextPrimary, FontType.Bold);
         _progressText.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin;
-        _progressText.CustomMinimumSize = new Vector2(104, 24);
-        _progressText.ClipText = true;
+        _progressText.CustomMinimumSize = new Vector2(0, 24);
+        _progressText.AutowrapMode = TextServer.AutowrapMode.Off;
         _progressText.Visible = false;
-        statusRow.AddChild(_progressText);
+        statisticsRow.AddChild(_progressText);
         _reviewText = CreateTextLabel(
             string.Empty,
-            SolverUiTokens.Type.Metric,
+            summaryFontSize,
             SolverUiTokens.Palette.TextSecondary,
             FontType.Bold);
         _reviewText.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         _reviewText.CustomMinimumSize = new Vector2(0, 24);
-        _reviewText.ClipText = true;
+        _reviewText.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _reviewText.Visible = false;
-        statusRow.AddChild(_reviewText);
         _detailsButton = new SolverDetailsButton
         {
             Visible = false,
@@ -1767,19 +1791,22 @@ internal static class SolverOverlay
         _detailsButton.Pressed += ToggleDetails;
         MarginContainer detailsSlot = new()
         {
-            CustomMinimumSize = new Vector2(96, 24),
+            CustomMinimumSize = new Vector2(0, 24),
             MouseFilter = Control.MouseFilterEnum.Pass,
             SizeFlagsHorizontal = Control.SizeFlags.ShrinkEnd,
         };
         detailsSlot.AddChild(_detailsButton);
+        detailsSlot.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+        statusRow.AddChild(_summaryText);
         statusRow.AddChild(detailsSlot);
         layout.AddChild(statusRow);
-        layout.AddChild(_summaryText);
+        statisticsRow.AddChild(_reviewText);
+        layout.AddChild(statisticsRow);
         _searchProgressBar = new ProgressBar
         {
             Name = "SearchProgress",
             MinValue = 0,
-            MaxValue = SolverSearchProfile.Short.MaxExpandedNodes,
+            MaxValue = SolverSearchProfile.Default.MaxExpandedNodes,
             Value = 0,
             ShowPercentage = false,
             CustomMinimumSize = new Vector2(0, 4),
@@ -1807,16 +1834,6 @@ internal static class SolverOverlay
 
     private static Control CreateFooter()
     {
-        HFlowContainer footer = new()
-        {
-            Name = "Footer",
-            CustomMinimumSize = new Vector2(0, SolverUiTokens.Size.ButtonHeight),
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            MouseFilter = Control.MouseFilterEnum.Pass,
-        };
-        footer.AddThemeConstantOverride("h_separation", SolverUiTokens.Spacing.Sm);
-        footer.AddThemeConstantOverride("v_separation", SolverUiTokens.Spacing.Xs);
-
         _theftPolicyControls = new HBoxContainer
         {
             Name = "TheftPolicy",
@@ -1832,56 +1849,66 @@ internal static class SolverOverlay
         _letEscapeButton.CustomMinimumSize = new Vector2(72, SolverUiTokens.Size.ButtonHeight);
         _letEscapeButton.Pressed += () => OnTheftPolicyPressed(SolverTheftPolicy.LetEscape);
         _theftPolicyControls.AddChild(_letEscapeButton);
-        footer.AddChild(_theftPolicyControls);
+        _body!.AddChild(_theftPolicyControls);
+        _body.MoveChild(_theftPolicyControls, 2);
 
         _recalculateButton = CreateButton(SolverText.Get("重新计算"), false);
         _recalculateButton.CustomMinimumSize = new Vector2(112, SolverUiTokens.Size.ButtonHeight);
         _recalculateButton.Pressed += OnRecalculatePressed;
-        footer.AddChild(_recalculateButton);
 
         _stopSearchButton = CreateButton(SolverText.Get("停止计算"), false);
         SolverUiTokens.ApplyButtonStyle(_stopSearchButton, SolverButtonStyle.Danger);
         _stopSearchButton.CustomMinimumSize = new Vector2(112, SolverUiTokens.Size.ButtonHeight);
         _stopSearchButton.Pressed += OnStopSearchPressed;
-        footer.AddChild(_stopSearchButton);
 
         _adoptRouteButton = CreateButton(SolverText.Get("采用当前路线"), false);
         _adoptRouteButton.CustomMinimumSize = new Vector2(132, SolverUiTokens.Size.ButtonHeight);
         _adoptRouteButton.Pressed += OnAdoptRoutePressed;
-        footer.AddChild(_adoptRouteButton);
+        _adoptRouteButton.TooltipText = SolverText.Get("结束搜索并采用屏幕当前路线；已开启的全自动或排队执行仍按原设置继续。");
 
-        _executeButton = CreateButton(SolverText.Get("执行本回合"), true);
-        _renderedExecuteButtonStyle = SolverButtonStyle.Primary;
+        _executeButton = CreateButton(SolverText.Get("执行本回合"), false);
+        _renderedExecuteButtonStyle = SolverButtonStyle.Secondary;
         _executeButton.CustomMinimumSize = new Vector2(132, SolverUiTokens.Size.ButtonHeight);
         _executeButton.Pressed += OnExecutePressed;
-        footer.AddChild(_executeButton);
 
-        _fullAutoButton = CreateButton(SolverText.Get("全自动：关"), false);
-        SolverUiTokens.ApplyButtonStyle(_fullAutoButton, SolverButtonStyle.Secondary);
-        _renderedFullAutoStyle = false;
-        _fullAutoButton.CustomMinimumSize = new Vector2(124, SolverUiTokens.Size.ButtonHeight);
+        _fullAutoButton = SolverUiTokens.CreateButton(SolverText.Get("全自动：关"), SolverButtonStyle.Positive);
+        _fullAutoButton.CustomMinimumSize = new Vector2(144, SolverUiTokens.Size.ButtonHeight);
+        _fullAutoButton.TooltipText = SolverText.Get("控制本场自动续打。关闭后，正在执行的动作按原流程完成。");
         _fullAutoButton.Pressed += OnFullAutoPressed;
-        footer.AddChild(_fullAutoButton);
+
+        HBoxContainer autoStart = new()
+        {
+            MouseFilter = Control.MouseFilterEnum.Pass,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+            TooltipText = SolverText.Get("每场战斗开始时自动开启全自动。本场手动停止后保持停止，下场战斗再次开启。"),
+        };
+        autoStart.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Xs);
+        autoStart.AddChild(CreateTextLabel(SolverText.Get("自动开启全自动"), SolverUiTokens.Type.Caption, TextPrimary));
+        _autoEnableFullAutoSwitch = SolverSettingsPanel.CreateToggle();
+        _autoEnableFullAutoSwitch.CustomMinimumSize = new Vector2(40, 24);
+        _autoEnableFullAutoSwitch.TooltipText = autoStart.TooltipText;
+        _autoEnableFullAutoSwitch.ButtonPressed = SolverSettings.Current.AutoEnableFullAuto;
+        _autoEnableFullAutoSwitch.Toggled += enabled =>
+        {
+            if (SolverSettings.Current.AutoEnableFullAuto != enabled)
+                SolverSettings.Update(SolverSettings.Current with { AutoEnableFullAuto = enabled });
+        };
+        autoStart.AddChild(_autoEnableFullAutoSwitch);
 
         _memoryUsageBar = new SolverMemoryUsageBar
         {
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
-        footer.AddChild(_memoryUsageBar);
 
-        _systemMemoryReleaseButton = CreateButton(SolverText.Get("强制释放内存"), false);
-        SolverUiTokens.ApplyButtonStyle(_systemMemoryReleaseButton, SolverButtonStyle.Secondary);
-        _systemMemoryReleaseButton.Name = "SystemMemoryReleaseButton";
-        _systemMemoryReleaseButton.CustomMinimumSize = new Vector2(
-            144,
-            SolverUiTokens.Size.ButtonHeight);
-        _systemMemoryReleaseButton.TooltipText =
-            SolverText.Get("等待搜索退出并回收求解器内存后，请求 Windows 管理员权限，") +
-            SolverText.Get("清空系统工作集与待机列表。其他程序之后重新载入页面时可能短暂卡顿。");
+        _systemMemoryReleaseButton = SolverUiTokens.CreateButton(SolverText.Get("强制释放内存"), SolverButtonStyle.Secondary);
+        _systemMemoryReleaseButton.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+        _systemMemoryReleaseButton.TooltipText = SolverText.Get("等待搜索退出并回收求解器内存后，请求 Windows 管理员权限，")
+            + SolverText.Get("清空系统工作集与待机列表。其他程序之后重新载入页面时可能短暂卡顿。");
         _systemMemoryReleaseButton.Pressed += OnSystemMemoryReleasePressed;
-        footer.AddChild(_systemMemoryReleaseButton);
 
-        return footer;
+        _actionBar = new SolverActionBar(_executeButton, _recalculateButton, _stopSearchButton,
+            _adoptRouteButton, _fullAutoButton, autoStart, _memoryUsageBar, _systemMemoryReleaseButton);
+        return _actionBar;
     }
 
     private static async void OnSystemMemoryReleasePressed()
@@ -1890,6 +1917,7 @@ internal static class SolverOverlay
             return;
 
         button.Disabled = true;
+        button.Text = SolverText.Get("正在释放内存…");
         Entry.Logger.Info("[CombatSolver/Test] UI_ACTION action=manual_system_memory_release");
         SetStatus(SolverText.Get("系统内存释放已安排，搜索退出后将请求管理员权限"), Success);
         try
@@ -1910,7 +1938,10 @@ internal static class SolverOverlay
         finally
         {
             if (GodotObject.IsInstanceValid(button))
+            {
                 button.Disabled = false;
+                button.Text = SolverText.Get("强制释放内存");
+            }
         }
     }
 
@@ -1972,7 +2003,10 @@ internal static class SolverOverlay
                 verticalPadding: 2));
         }
         if (_summaryContextLabel != null)
+        {
             _summaryContextLabel.Text = context;
+            _summaryContextLabel.Visible = !string.IsNullOrEmpty(context);
+        }
     }
 
     private static void SetMessageContent(string text)
@@ -2028,6 +2062,22 @@ internal static class SolverOverlay
             tone = TextMuted;
         }
 
+        if (LoadedModWarnings.SpeedXPresent)
+        {
+            string notice = SolverText.Get("检测到皮皮极速（SpeedX）：其悬浮显示可能持续产生大量临时内存，触发频繁回收，加重长时间游玩时的卡顿。\n需要战斗加速时，建议使用求解器自带的“瞬间”：设置 > 常规 > 自动执行，将“自动出牌速度”设为“瞬间”，“牌间额外停顿（秒）”设为 0。玩家和怪物回合均加速，局外保持原速。");
+            text = text == null ? notice : notice + "\n" + text;
+            if (tone != Danger)
+                tone = Warning;
+        }
+
+        if (OnlinePresence.AvailableUpdateVersion is { } latestVersion)
+        {
+            string notice = SolverText.Format($"求解器新版本 {latestVersion} 已发布，请更新 Mod 后重启游戏。");
+            text = text == null ? notice : notice + "\n" + text;
+            if (tone != Danger)
+                tone = Warning;
+        }
+
         bool visibilityChanged = _feedbackBanner.Visible != (text != null);
         _feedbackBanner.Visible = text != null;
         if (text != null)
@@ -2049,6 +2099,8 @@ internal static class SolverOverlay
     {
         if (_routeHeadingRow != null)
             _routeHeadingRow.Visible = visible;
+        if (_routeOutcomePanel != null)
+            _routeOutcomePanel.Visible = visible;
         for (int index = 0; index < SolverWeights.UiTurnRows; index++)
             SetRouteRowVisible(index, visible);
         QueueResponsiveLayout();
@@ -2290,6 +2342,24 @@ internal static class SolverOverlay
 
     private static void ApplyContentVisibility()
     {
+        _actionBar?.Refresh(new SolverActionBarState(_collapsed, SolverController.IsSearching,
+            SolverController.CanAdoptCurrentRoute || SolverController.IsAdoptingCurrentRoute));
+        if (_potionStrategyButton != null)
+            _potionStrategyButton.Visible = !_collapsed;
+        if (_growthStrategyButton != null)
+            _growthStrategyButton.Visible = !_collapsed;
+        if (_settingsButton != null)
+            _settingsButton.Visible = !_collapsed;
+        // Keep the same outcome controls and presentation state in both layouts.
+        if (_routeOutcomePanel != null && _mainStack != null && _body != null)
+        {
+            Node parent = _collapsed ? _mainStack : _body;
+            if (_routeOutcomePanel.GetParent() != parent)
+            {
+                _routeOutcomePanel.Reparent(parent);
+                parent.MoveChild(_routeOutcomePanel, 0);
+            }
+        }
         if (_mainStack != null)
             _mainStack.Visible = !_settingsVisible || _collapsed;
         if (_body != null)
@@ -2672,6 +2742,126 @@ internal static class SolverOverlay
         RefreshControls();
     }
 
+    internal static async Task ExerciseCompactQolForTesting(CombatState combat)
+    {
+        static void Check(bool value, string message)
+        {
+            if (!value) throw new InvalidOperationException("Compact UI: " + message);
+        }
+        NGame host = NGame.Instance ?? throw new InvalidOperationException("UI test requires a game host.");
+        SolverSettingsData original = SolverSettings.Current;
+        bool originalCollapsed = _collapsed;
+        try
+        {
+            Check(!new SolverSettingsData().AutoEnableFullAuto, "opt-in default");
+            SolverSettings.ApplyForTesting(original with { AutoEnableFullAuto = false, AutomaticCalculationEnabled = false });
+            SolverController.BeginCombat(combat);
+            EnsureCreated(host);
+            RefreshControls();
+            Check(!_autoEnableFullAutoSwitch!.ButtonPressed && !SolverController.FullAutoEnabled, "off at combat start");
+            _autoEnableFullAutoSwitch.ButtonPressed = true;
+            Check(SolverSettings.RoundTripForTesting(SolverSettings.Current).AutoEnableFullAuto, "switch persists");
+            Check(!SolverController.FullAutoEnabled, "preference applies at next combat");
+            SolverController.BeginCombat(combat);
+            Check(SolverController.FullAutoEnabled && SolverController.PrepareAutomaticSearchForTurn(host, combat), "start with manual calculation preference");
+            SolverController.SetFullAuto(host, combat, false);
+            RefreshControls();
+            Check(!SolverController.PrepareAutomaticSearchForTurn(host, combat) && !SolverController.FullAutoEnabled
+                && _autoEnableFullAutoSwitch.ButtonPressed, "manual stop remains stopped");
+            SolverController.BeginCombat(combat);
+            Check(SolverController.FullAutoEnabled, "next combat re-arms");
+            _autoEnableFullAutoSwitch.ButtonPressed = false;
+            SolverController.BeginCombat(combat);
+            Check(!SolverController.FullAutoEnabled, "disabled preference applies next combat");
+
+            SolverOverlaySnapshot snapshot = new(1, "UI test", SolverOverlayTone.Success, "", "", 0, 7, true,
+                SolverText.Format($"本局扣血  {7} HP"), 0, 0, false, [], "", false, null);
+            ShowResult(host, snapshot);
+            Label outcome = _hpOutcomeLabel!;
+            SetCollapsed(true);
+            await host.ToSignal(host.GetTree(), SceneTree.SignalName.ProcessFrame);
+            Check(outcome.IsVisibleInTree() && !_body!.Visible && _routeOutcomePanel!.GetParent() == _mainStack
+                && outcome.Text == snapshot.HpOutcomeText && outcome.GetThemeColor("font_color") == Danger, "collapsed loss and color");
+            ShowResult(host, snapshot with { HpOutcomeText = "0 HP", ProjectedBattleHpLost = 0 });
+            Check(ReferenceEquals(outcome, _hpOutcomeLabel) && outcome.Text == "0 HP"
+                && outcome.GetThemeColor("font_color") == Success, "live update uses same label");
+            SetCollapsed(false);
+            Check(_routeOutcomePanel!.GetParent() == _body && outcome.IsVisibleInTree(), "expanded placement restored");
+            SetCollapsed(true);
+            ShowSearching(host, 1, false, 0);
+            Check(!outcome.Visible, "new search clears stale loss");
+            ShowResult(host, snapshot with { ProjectedBattleHpLossKnown = false, HpOutcomeText = "? HP" });
+            Check(outcome.IsVisibleInTree() && outcome.Text == "? HP"
+                && outcome.GetThemeColor("font_color") == TextMuted, "unknown loss stays unknown");
+        }
+        finally
+        {
+            SolverSettings.Update(original);
+            SolverController.BeginCombat(combat);
+            SetCollapsed(originalCollapsed);
+            RefreshControls();
+        }
+    }
+
+    internal static async Task ExercisePriorityUiForTesting(CombatState combat)
+    {
+        NGame host = NGame.Instance!;
+        SolverSettingsData original = SolverSettings.Current;
+        bool wasCollapsed = _collapsed;
+        try
+        {
+            SolverSettings.ApplyForTesting(original with { AutomaticCalculationEnabled = false });
+            ShowManualCalculationReady(host, false);
+            _actionBar!.AssertLayoutForTesting();
+            RefreshControls();
+            if (_solverEnabledButton!.GetParent().Name != "Header"
+                || !ManualSystemMemoryReleaseButtonConfiguredForTesting
+                || _theftPolicyControls!.GetParent() != _body)
+                throw new InvalidOperationException("Action controls were not separated from header, strategy and maintenance controls.");
+            _solverEnabledButton!.EmitSignal(BaseButton.SignalName.Pressed);
+            if (!SolverController.SolverDisabled || _solverEnabledButton.Text != SolverText.Get("求解器：关"))
+                throw new InvalidOperationException("Main solver toggle did not disable the solver.");
+            _solverEnabledButton.EmitSignal(BaseButton.SignalName.Pressed);
+            if (SolverController.SolverDisabled)
+                throw new InvalidOperationException("Main solver toggle did not re-enable the solver.");
+            SolverController.Reset("test_sl_panel_loss");
+            SolverController.MonitorCombatPresence();
+            if (!IsVisible || SolverController.IsSearching)
+                throw new InvalidOperationException("SL panel recovery ignored manual calculation preference.");
+            SolverOverlaySnapshot snapshot = new(1, "UI test", SolverOverlayTone.Success, "", "", 0, 0, true,
+                "0 HP", 0, 0, false, [], "", false, null)
+            { UnrecoveredLootText = SolverText.Format($"预计未追回：{1} 张牌 / {30} 金币") };
+            ShowResult(host, snapshot);
+            SetCollapsed(true);
+            if (!_stolenResourceOutcomeLabel!.IsVisibleInTree()
+                || _stolenResourceOutcomeLabel.GetIndex() >= _hpOutcomeLabel!.GetIndex())
+                throw new InvalidOperationException("Unrecovered loot was not shown before HP loss in collapsed layout.");
+            if (_routeOutcomePanel!.GetParent() != _mainStack)
+                throw new InvalidOperationException("Collapsed layout lost its result card.");
+            SetCollapsed(false);
+            if (_routeOutcomePanel.GetParent() != _body || _routeOutcomePanel.GetIndex() != 0)
+                throw new InvalidOperationException("Expanded result card was not restored above search status.");
+            ShowSearching(host, 1, false, 0);
+            if (_stolenResourceOutcomeLabel.Visible)
+                throw new InvalidOperationException("New search retained stale loot warning.");
+            SolverSettingsPanel settings = new();
+            host.AddChild(settings);
+            try
+            {
+                await settings.AssertResponsiveHeightForTesting();
+                if (!settings.ExerciseThresholdOutsideClickForTesting())
+                    throw new InvalidOperationException("Moved performance threshold failed to save on focus loss.");
+            }
+            finally { host.RemoveChild(settings); settings.QueueFree(); }
+        }
+        finally
+        {
+            SolverSettings.Update(original);
+            SolverController.SetSolverDisabled(original.SolverDisabled, persist: false);
+            SetCollapsed(wasCollapsed);
+        }
+    }
+
     internal static async Task<bool> ExerciseGrowthPolicyUiForTesting()
     {
         EnsureCreated(NGame.Instance ?? throw new InvalidOperationException("Growth UI test requires an active game."));
@@ -2728,6 +2918,14 @@ internal static class SolverOverlay
         RefreshControls();
         ApplyContentVisibility();
         QueueResponsiveLayout();
+    }
+
+    private static void OnBrightestFlameLimitChanged(int? limit)
+    {
+        NGame? host = NGame.Instance;
+        CombatState? state = CombatManager.Instance.DebugOnlyGetState();
+        if (host != null && state != null && CombatManager.Instance.IsInProgress)
+            SolverController.SetBrightestFlameLimit(host, state, limit);
     }
 
     private static void OnGrowthPolicyChanged(GrowthValues budgets)

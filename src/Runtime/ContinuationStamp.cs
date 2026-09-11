@@ -96,6 +96,7 @@ internal sealed record ContinuationStamp(string StateText)
         AppendPotions(text, player, player.GetPotionAtSlotIndex);
         SimulatedCombatState.AppendLiveStatefulRelics(text, player);
         RelicPredictionStateSupport.AppendLiveContinuation(text, player);
+        ModelPredictionStateMirrors.AppendLiveContinuation(text, state);
         AppendPowers(text, state.Creatures.SelectMany(creature => creature.Powers));
         AppendRng(text,
             state.RunState.Rng.Shuffle.CaptureState(),
@@ -159,6 +160,8 @@ internal sealed record ContinuationStamp(string StateText)
             text,
             simulator,
             combat.RelicsOf(player));
+        StateFingerprintBuilder adapterFingerprint = new();
+        ModelPredictionStateMirrors.AppendPredicted(ref adapterFingerprint, text, simulator, combat);
         AppendPowers(text, combat.EffectivePowers(), simulator);
         AppendRng(text,
             readView?.ShuffleRng ?? simulator.Rng.Shuffle.CaptureState(),
