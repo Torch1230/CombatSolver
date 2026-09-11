@@ -22,6 +22,7 @@ internal sealed partial class UnattendedTestRunner
     // the entire archived deck, an exhaustive choice search, or compact round advancement.
     private async Task AssertCompactShufflePowerAsync(CombatState combat, Player player, bool useSurvivor = false)
     {
+        bool includePowerValues = _request.ScenarioId == "COMPACT-SHUFFLE-POWER-VALUES-NATIVE";
         foreach (var relic in player.Relics.ToArray()) await RelicCmd.Remove(relic);
         foreach (var power in combat.Creatures.SelectMany(c => c.Powers).ToArray()) await PowerCmd.Remove(power);
         ClearRunDeck((RunState)combat.RunState, player);
@@ -63,7 +64,7 @@ internal sealed partial class UnattendedTestRunner
                 => Release(snapshot(simulator, root.StartTurnNumber, 1, simulator.ShuffleEventCount, SearchBoundaryReason.None, deaths));
             using IDisposable isolation = SimulationNotificationIsolation.Enter();
             long setupBytes = GC.GetAllocatedBytesForCurrentThread(), setupTime = Stopwatch.GetTimestamp();
-            var adapter = new CompactDiscardProjection(rootSimulator, player);
+            var adapter = new CompactDiscardProjection(rootSimulator, player, includeAttacks: includePowerValues);
             double rootSetupMicroseconds = Stopwatch.GetElapsedTime(setupTime).TotalMicroseconds;
             long rootSetupAllocatedBytes = GC.GetAllocatedBytesForCurrentThread() - setupBytes;
             var lane = adapter.Program;
@@ -192,7 +193,7 @@ internal sealed partial class UnattendedTestRunner
                 }
                 else
                 {
-                    var batchAdapter = mode == 3 ? new CompactDiscardProjection(rootSimulator, player) : adapter;
+                    var batchAdapter = mode == 3 ? new CompactDiscardProjection(rootSimulator, player, includeAttacks: includePowerValues) : adapter;
                     var batchLane = batchAdapter.Program;
                     var view = batchAdapter.CreateReadView(reuseInvariantFeatures: mode >= 2);
                     var mark = batchLane.State.Mark();

@@ -4,7 +4,8 @@ using MegaCrit.Sts2.Core.Models;
 
 namespace CombatSolver;
 
-internal readonly record struct CompletedPowerReadValues(int Amount, Creature? Applier, int Order, bool Retired);
+internal readonly record struct CompletedPowerReadValues(int Amount, Creature? Applier, int Order, bool Retired,
+    int AmountOnTurnStart = 0, bool SkipNextDurationTick = false);
 
 internal sealed partial class SimulatedCombatState
 {
@@ -88,6 +89,8 @@ internal sealed partial class SimulatedCombatState
                 PowerModel model = value.Retired ? _replacementModels[index] : _models[index];
                 model._amount = value.Amount;
                 model._applier = value.Applier;
+                model.AmountOnTurnStart = value.AmountOnTurnStart;
+                model.SkipNextDurationTick = value.SkipNextDurationTick;
                 _state._powers![(model.Owner, model.GetType())] = model;
                 if (value.Retired) _state._retiredRootPowerSlots.Add((model.Owner, model.GetType()));
                 _order[index] = index;

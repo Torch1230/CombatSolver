@@ -1,5 +1,7 @@
 # CombatSolver 文档导航
 
+- [紧凑 Power 阶段体](performance/simulation-power-phases-20260911.md)：回合初始字段、力量恢复、持续递减和下回合格挡，独立准入与原生对照。
+
 - [持续减益的跳过递减状态](performance/simulation-duration-state-20260911.md)：统一应用入口的分支 Power 字段，修复原键和续用遗漏。
 
 - [紧凑机械骑士指令体](performance/simulation-monster-commands-20260911.md)：怪物攻击／格挡／力量、无创建者灼伤生成、完整历史和原生对照。

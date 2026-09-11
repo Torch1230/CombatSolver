@@ -42,6 +42,7 @@ internal sealed partial class ResumableDiscardProgram
     private readonly int _shuffleBlock;
     private readonly bool _shuffleBlockFirst;
     private readonly bool _handEndAdmitted;
+    private readonly bool _powerPhasesAdmitted;
     private readonly MonsterEffectProgram[]? _monsterMoves;
     private readonly CardComparer? _cardComparer;
     private readonly InstanceComparer? _instanceComparer;
@@ -98,7 +99,7 @@ internal sealed partial class ResumableDiscardProgram
     internal ResumableDiscardProgram(Card[] cards, IReadOnlyList<int>[] piles, int energy, int block, int discardBlock,
         ValueRng shuffleRng = default, int[]? comparisons = null, int stratagem = 0, int shuffleBlock = 0,
         bool shuffleBlockFirst = false, CreatureVitals[]? creatures = null, BasicPowerDefinition[]? powers = null, Card[]? generatedCards = null,
-        ValueRng? energyCostRng = null, bool handEndAdmitted = false, MonsterEffectProgram[]? monsterMoves = null)
+        ValueRng? energyCostRng = null, bool handEndAdmitted = false, MonsterEffectProgram[]? monsterMoves = null, bool powerPhasesAdmitted = false)
     {
         Card[] definitions = [.. cards, .. generatedCards ?? []];
         if (cards.Length == 0 || piles.Length != 5 || cards.Count(c => c.Sly) >= MaxFrames
@@ -139,6 +140,8 @@ internal sealed partial class ResumableDiscardProgram
                     && (move[index].CardTemplate < cards.Length || move[index].CardTemplate >= definitions.Length))
                     throw new NotSupportedException("Monster generation references a template outside the captured closure.");
         }
+        if (powerPhasesAdmitted && (creatures == null || powers == null))
+            throw new ArgumentException("Power phases require creature and Power layouts.");
         ValidateBlockReturns(definitions, powers);
         _definitions = definitions;
         _rootCardCount = cards.Length;
@@ -147,6 +150,7 @@ internal sealed partial class ResumableDiscardProgram
         _shuffleBlock = shuffleBlock;
         _shuffleBlockFirst = shuffleBlockFirst;
         _handEndAdmitted = handEndAdmitted;
+        _powerPhasesAdmitted = powerPhasesAdmitted;
         _monsterMoves = monsterMoves == null ? null : (MonsterEffectProgram[])monsterMoves.Clone();
         State = new ReversibleValueState(FrameStart + MaxFrames * FrameWidth);
         _piles = Enumerable.Range(0, PileCount).Select(_ => new ReversibleValueBuffer(State)).ToArray();
@@ -196,7 +200,7 @@ internal sealed partial class ResumableDiscardProgram
     private ResumableDiscardProgram(Card[] cards, int rootCardCount, int discardBlock, int stratagem, int shuffleBlock,
         bool shuffleBlockFirst, CardComparer? cardComparer, CreatureAttackLayout? combat, BasicPowerLayout? powers,
         ReversibleValueBuffer[] piles, ReversibleValueBuffer cardInstances, ReversibleValueBuffer events, RandomDrawCostLayout? drawCosts,
-        bool handEndAdmitted, MonsterEffectProgram[]? monsterMoves, ReversibleValueState state)
+        bool handEndAdmitted, MonsterEffectProgram[]? monsterMoves, bool powerPhasesAdmitted, ReversibleValueState state)
     {
         _definitions = cards;
         _rootCardCount = rootCardCount;
@@ -205,6 +209,7 @@ internal sealed partial class ResumableDiscardProgram
         _shuffleBlock = shuffleBlock;
         _shuffleBlockFirst = shuffleBlockFirst;
         _handEndAdmitted = handEndAdmitted;
+        _powerPhasesAdmitted = powerPhasesAdmitted;
         _monsterMoves = monsterMoves;
         _cardComparer = cardComparer;
         _instanceComparer = cardComparer == null ? null : new(this, cardComparer);
@@ -225,6 +230,7 @@ internal sealed partial class ResumableDiscardProgram
         private readonly int _stratagem, _shuffleBlock;
         private readonly bool _shuffleBlockFirst;
         private readonly bool _handEndAdmitted;
+        private readonly bool _powerPhasesAdmitted;
         private readonly MonsterEffectProgram[]? _monsterMoves;
         private readonly CardComparer? _cardComparer;
         private readonly ReversibleValueState.FrozenValues _values;
@@ -245,6 +251,7 @@ internal sealed partial class ResumableDiscardProgram
             _shuffleBlock = source._shuffleBlock;
             _shuffleBlockFirst = source._shuffleBlockFirst;
             _handEndAdmitted = source._handEndAdmitted;
+            _powerPhasesAdmitted = source._powerPhasesAdmitted;
             _monsterMoves = source._monsterMoves;
             _cardComparer = source._cardComparer;
             _combat = source._combat;
@@ -254,7 +261,7 @@ internal sealed partial class ResumableDiscardProgram
         }
         internal int PayloadBytes => _values.PayloadBytes;
         internal ResumableDiscardProgram Open() => new(_definitions, _rootCardCount, _discardBlock, _stratagem, _shuffleBlock,
-            _shuffleBlockFirst, _cardComparer, _combat, _powers, _piles, _cardInstances, _events, _drawCosts, _handEndAdmitted, _monsterMoves, _values.CreateWorkspace());
+            _shuffleBlockFirst, _cardComparer, _combat, _powers, _piles, _cardInstances, _events, _drawCosts, _handEndAdmitted, _monsterMoves, _powerPhasesAdmitted, _values.CreateWorkspace());
         internal void RestoreInto(ResumableDiscardProgram workspace) => workspace.State.Restore(_values);
     }
 

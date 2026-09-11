@@ -1212,7 +1212,7 @@ $damageSimulator = [IO.File]::ReadAllText((Join-Path $repositoryRoot 'src/Engine
 if ($damageSimulator.Contains('dealer?.IsDead')) { $violations.Add('Damage dealers must read branch vitals.') }
 if (-not $damageSimulator.Contains('effects.CompletePlayerDeath(player);')) { $violations.Add('Player death lost domain cleanup before orb/pet handling.') }
 if ([IO.File]::ReadAllText((Join-Path $repositoryRoot 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.EndTurn.cs')).Contains('SaveManager')) { $violations.Add('Turn-end execution must not read live animation settings.') }
-foreach ($required in @('AssertRepresentedHooks(runListeners[index], runPrefix: true, includeHandEnd);', '(key.RunPrefix || !RepresentedHook(key.Type, method.Name))')) {
+foreach ($required in @('AssertRepresentedHooks(runListeners[index], runPrefix: true, includeHandEnd, includePowerPhases);', '(key.RunPrefix || !RepresentedHook(key.Type, method.Name))')) {
     if (-not ([IO.File]::ReadAllText($compactProjection)).Contains($required)) {
         $violations.Add("Compact deck listeners lost their independent run-hook audit: $required")
     }
@@ -1298,6 +1298,10 @@ $compactReadGuards = @(
     @('src/Search/SimulatedCombatState.cs', 'history?.Owner, history?.StatusDraws'),
     @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'view?.CumulativePlayerHpLost ?? combat.GetCumulativeHpLost(_player.Creature)'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.HandEnd.cs', 'if (!_handEndAdmitted || !Complete || !Enum.IsDefined(staging))'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.PowerPhases.cs', 'if (!_powerPhasesAdmitted || !Complete'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', '_powerPhasesAdmitted = source._powerPhasesAdmitted;'),
+    @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'model.AmountOnTurnStart = value.AmountOnTurnStart;'),
+    @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'model.SkipNextDurationTick = value.SkipNextDurationTick;'),
     @('src/Search/CompletedStateReadView.cs', 'A new stable root requires a new cache.'),
     @('src/Search/SimulatedCombatState.cs', 'private T? PreparePowerApplication<T>'),
     @('src/Search/SimulatedCombatState.cs', 'private PowerModel ApplyPreparedPower<T>'),

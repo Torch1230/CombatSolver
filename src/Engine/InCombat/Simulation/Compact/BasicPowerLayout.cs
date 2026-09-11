@@ -1,9 +1,10 @@
 namespace CombatSolver.Engine.InCombat.Simulation.Compact;
 
-internal enum BasicPowerKind { Strength, Dexterity, Weak, Vulnerable, Frail, Poison, BlockNextTurn, ToolsOfTheTrade, PiercingWail, Artifact }
+internal enum BasicPowerKind { Strength, Dexterity, Weak, Vulnerable, Frail, Poison, BlockNextTurn, ToolsOfTheTrade, PiercingWail, Artifact, Stratagem }
 internal readonly record struct BasicPowerDefinition(BasicPowerKind Kind, int Owner, int Amount,
-    int Applier, int Order, decimal Multiplier, bool RootSlot);
-internal readonly record struct BasicPowerValues(int Amount, int Applier, int Order, bool Retired);
+    int Applier, int Order, decimal Multiplier, bool RootSlot, int AmountOnTurnStart = 0, bool SkipNextDurationTick = false);
+internal readonly record struct BasicPowerValues(int Amount, int Applier, int Order, bool Retired,
+    int AmountOnTurnStart = 0, bool SkipNextDurationTick = false);
 
 // Locations and immutable parameters only. The first domain has one instance of each basic
 // stat/debuff per creature; creation, stacking and removal write the same reversible workspace.
@@ -25,7 +26,8 @@ internal sealed class BasicPowerLayout
         for (int index = 0; index < Count; index++)
         {
             var definition = definitions[index];
-            Write(state, index, new(definition.Amount, definition.Applier, definition.Order, false));
+            Write(state, index, new(definition.Amount, definition.Applier, definition.Order, false,
+                definition.AmountOnTurnStart, definition.SkipNextDurationTick));
             if (definition.Order > state[_orderSlot]) state.Write(_orderSlot, definition.Order);
         }
     }
@@ -33,14 +35,18 @@ internal sealed class BasicPowerLayout
     internal BasicPowerValues Read(ReversibleValueState state, int index)
     {
         int offset = _start + index * Width;
-        return new((int)state[offset], (int)state[offset + 1], (int)state[offset + 2], state[offset + 3] != 0);
+        long metadata = state[offset + 3];
+        return new((int)state[offset], (int)state[offset + 1], (int)state[offset + 2], (metadata & 1) != 0,
+            (int)(metadata >> 32), (metadata & 2) != 0);
     }
 
     private void Write(ReversibleValueState state, int index, BasicPowerValues values)
     {
         int offset = _start + index * Width;
         state.Write(offset, values.Amount); state.Write(offset + 1, values.Applier);
-        state.Write(offset + 2, values.Order); state.Write(offset + 3, values.Retired ? 1 : 0);
+        state.Write(offset + 2, values.Order);
+        state.Write(offset + 3, (long)values.AmountOnTurnStart << 32
+            | (values.Retired ? 1L : 0L) | (values.SkipNextDurationTick ? 2L : 0L));
     }
 
     internal int Find(int owner, BasicPowerKind kind) => FindOrDefault(owner, kind) is var index && index >= 0 ? index
@@ -67,8 +73,25 @@ internal sealed class BasicPowerLayout
             state.Write(_orderSlot, order);
         }
         Write(state, index, new(after, before.Amount == 0 ? applier : before.Applier, after == 0 ? 0 : order,
-            before.Retired || before.Amount != 0 && after == 0 && _definitions[index].RootSlot));
+            before.Retired || before.Amount != 0 && after == 0 && _definitions[index].RootSlot,
+            before.Amount == 0 ? 0 : before.AmountOnTurnStart,
+            before.Amount == 0 ? _definitions[index].Owner == 0 && IsDuration(_definitions[index].Kind) : before.SkipNextDurationTick));
     }
+
+    internal static bool IsDuration(BasicPowerKind kind) => kind is BasicPowerKind.Weak or BasicPowerKind.Vulnerable or BasicPowerKind.Frail;
+
+    internal void CaptureTurnStart(ReversibleValueState state, int owner)
+    {
+        for (int index = 0; index < Count; index++)
+        {
+            var before = Read(state, index);
+            if (_definitions[index].Owner == owner && before.Amount != 0)
+                Write(state, index, before with { AmountOnTurnStart = before.Amount });
+        }
+    }
+
+    internal void ClearDurationSkip(ReversibleValueState state, int index)
+        => Write(state, index, Read(state, index) with { SkipNextDurationTick = false });
 
     internal void RemoveOwner(ReversibleValueState state, int owner)
     {

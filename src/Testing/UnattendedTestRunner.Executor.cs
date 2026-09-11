@@ -39,6 +39,11 @@ internal sealed partial class UnattendedTestRunner
             bool expectedCardPlayed = request.ExpectedPlayedCardId == null;
             bool expectedPotionUsed = request.ExpectedUsedPotionId == null;
             bool expectedPlayerPowerObserved = request.ExpectedObservedPlayerPowerId == null;
+            if (request.ScenarioId == "COMPACT-POWER-PHASES-NATIVE")
+            {
+                await runner.AssertCompactPowerPhasesAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "POWER-DURATION-APPLICATION-NATIVE")
             {
                 await runner.AssertPowerDurationApplicationAsync(combatState, player);
@@ -159,7 +164,7 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertCompactKernelAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
-            if (request.ScenarioId is "COMPACT-SHUFFLE-POWER-NATIVE" or "COMPACT-EFFECT-PROGRAM-NATIVE")
+            if (request.ScenarioId is "COMPACT-SHUFFLE-POWER-NATIVE" or "COMPACT-SHUFFLE-POWER-VALUES-NATIVE" or "COMPACT-EFFECT-PROGRAM-NATIVE")
             {
                 await runner.AssertCompactShufflePowerAsync(combatState, player, request.ScenarioId == "COMPACT-EFFECT-PROGRAM-NATIVE");
                 return Observation(combatEnded: false);

@@ -1,5 +1,7 @@
 # CombatSolver 测试清单
 
+- `COMPACT-POWER-PHASES-NATIVE`／`COMPACT-SHUFFLE-POWER-VALUES-NATIVE`：`1c179c6437ae46a0b09144cbe6de666a`／`d73115d6b55b4602810ee3e921a4353b` Passed；五路线／22 前缀／16 原生阶段及出牌步骤，完整 Power 字段、倒计时／恢复／重获、原键／全估值／九 RNG／八工作区；洗牌 24 分支与原生两回合对照（回合边界仍由旧引擎执行）。[阶段证据](performance/simulation-power-phases-20260911.md)。
+
 - `POWER-DURATION-KEYS-NATIVE`／`POWER-DURATION-APPLICATION-NATIVE`：最终 `683bb123f72d4b5f86ac5fdfaf2a8bc8`／`54cd9ef622764de4845909b9f8abc3ad` Passed；三种减益同层不同未来的键与续用区分、中毒等价，三个应用入口／16 原生步骤、叠加／递减／重获／人工制品阻止、完整 Power 字段和冻结重放。[失败基线与最终证据](performance/simulation-duration-state-20260911.md)。
 
 - `COMPACT-MONSTER-COMMANDS-NATIVE`：`1d46526236cc45f2bdb2ca0beee0600e` Passed；三根／十三分支／十五原生动作，四种机械骑士指令、伤害与格挡修正、施加者、无创建者生成、溢出洗牌抽灼伤、小刀混合与致死结束门，完整历史／原键／Snapshot／九 RNG 和八工作区。中毒哨兵 `4bcff2265a254ddca7fa26e9d6c30bcd` Passed；[范围与证据](performance/simulation-monster-commands-20260911.md)。完整回合与 AI 推进仍待迁移。

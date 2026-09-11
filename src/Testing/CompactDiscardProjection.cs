@@ -40,8 +40,9 @@ internal sealed class CompactDiscardProjection
     private readonly PowerModel[] _powerTemplates;
     internal int PlayerTurn => ((SimulatedCombatState)_root.State.CombatState).GetPlayerTurnNumber(_player);
 
-    internal CompactDiscardProjection(CombatPredictionSimulator root, Player player, bool includeAttacks = false, bool includeHandEnd = false, bool includeMechaMoves = false)
+    internal CompactDiscardProjection(CombatPredictionSimulator root, Player player, bool includeAttacks = false, bool includeHandEnd = false, bool includeMechaMoves = false, bool includePowerPhases = false)
     {
+        if (includePowerPhases && !includeAttacks) throw new NotSupportedException("Power phases require creature values.");
         HasMonsterMoves = includeMechaMoves;
         _root = root;
         _player = player;
@@ -49,7 +50,7 @@ internal sealed class CompactDiscardProjection
         SimPlayerCombatState state = root.State.GetPlayerCombatState(player);
         var powers = combat.EffectivePowers();
         if (combat.Players.Count != 1 || powers.Any(p => !(p is StratagemPower && p.Owner == player.Creature && p.Amount is >= 1 and <= 10)
-                && !(includeAttacks ? IsBasicPower(p) && (p is not (BlockNextTurnPower or ToolsOfTheTradePower) || p.Owner == player.Creature)
+                && !(includeAttacks ? p is not StratagemPower && IsBasicPower(p) && (p is not (BlockNextTurnPower or ToolsOfTheTradePower) || p.Owner == player.Creature)
                     && (p is not PiercingWailPower || p.Owner != player.Creature)
                     : p is StrengthPower && p.Owner != player.Creature))
             || combat.RootRunModSubscriberCount != 0 || combat.RootCombatModSubscriberCount != 0
@@ -66,9 +67,9 @@ internal sealed class CompactDiscardProjection
         // reach them; e.g. drawing a combat Slither must not invoke the deck copy.
         var runListeners = ((ICombatPredictionHookListenerSource)combat).RunHookListeners;
         for (int index = 0; index < combat.RootRunHookListenerCount; index++)
-            AssertRepresentedHooks(runListeners[index], runPrefix: true, includeHandEnd);
+            AssertRepresentedHooks(runListeners[index], runPrefix: true, includeHandEnd, includePowerPhases);
         foreach (AbstractModel listener in combat.IterateHookListeners())
-            AssertRepresentedHooks(listener, runPrefix: false, includeHandEnd);
+            AssertRepresentedHooks(listener, runPrefix: false, includeHandEnd, includePowerPhases);
         _creatures = includeAttacks ? [player.Creature, .. combat.Enemies] : [];
         if (includeAttacks && (combat.PlayerCreatures.Count != 1 || combat.KnownEnemies.Count != combat.Enemies.Count
             || _creatures.Any(c => root.State.GetCreature(c).IsDead || c.PetOwner != null)
@@ -85,7 +86,7 @@ internal sealed class CompactDiscardProjection
             Array.IndexOf(rootPowerOrder, power) + 1,
             power is WeakPower ? power.DynamicVars["DamageDecrease"].BaseValue
                 : power is VulnerablePower ? power.DynamicVars["DamageIncrease"].BaseValue : 1m,
-            combat.IsCapturedRootPowerSlot(power))).ToArray() : null;
+            combat.IsCapturedRootPowerSlot(power), power.AmountOnTurnStart, power.SkipNextDurationTick)).ToArray() : null;
         PredictedCard[] cards = state.AllCards.ToArray();
         _identities = cards.Select(c => c.Original).ToArray();
         List<CardModel> generated = [];
@@ -142,7 +143,7 @@ internal sealed class CompactDiscardProjection
             powers.OfType<StratagemPower>().SingleOrDefault()?.Amount ?? 0,
             Block(relics.OfType<TheAbacus>().SingleOrDefault()), abacusIndex >= 0 && abacusIndex < stratagemIndex,
             includeAttacks ? _creatures.Select(c => { var v = root.State.GetCreature(c); return new CreatureVitals(v.CurrentHp, v.MaxHp, v.Block); }).ToArray() : null, powerDefinitions, definitions[cards.Length..],
-            new(energyRng.Counter, energyRng.State0, energyRng.State1, energyRng.State2, energyRng.State3), handEndAdmitted: includeHandEnd, monsterMoves: includeMechaMoves ? CaptureMechaCommands(root, burnTemplate) : null);
+            new(energyRng.Counter, energyRng.State0, energyRng.State1, energyRng.State2, energyRng.State3), handEndAdmitted: includeHandEnd, monsterMoves: includeMechaMoves ? CaptureMechaCommands(root, burnTemplate) : null, powerPhasesAdmitted: includePowerPhases);
         CardValuesInvariant = Program.CardValuesInvariant;
     }
 
@@ -180,8 +181,8 @@ internal sealed class CompactDiscardProjection
         foreach (Creature owner in _creatures)
         foreach (BasicPowerKind kind in Enum.GetValues<BasicPowerKind>())
         {
-            // No admitted instruction creates Artifact. Only captured instances need slots.
-            if (kind == BasicPowerKind.Artifact) continue;
+            // No admitted instruction creates Artifact or Stratagem; capture existing slots only.
+            if (kind is BasicPowerKind.Artifact or BasicPowerKind.Stratagem) continue;
             if (kind is BasicPowerKind.BlockNextTurn or BasicPowerKind.ToolsOfTheTrade && owner != _player.Creature) continue;
             if (kind == BasicPowerKind.PiercingWail && owner == _player.Creature) continue;
             if (result.Any(p => p.Owner == owner && BasicKind(p) == kind)) continue;
@@ -194,7 +195,7 @@ internal sealed class CompactDiscardProjection
         return result.ToArray();
     }
 
-    private static bool IsBasicPower(PowerModel power) => power is StrengthPower or DexterityPower or WeakPower or VulnerablePower or FrailPower or PoisonPower or BlockNextTurnPower or ToolsOfTheTradePower or PiercingWailPower or ArtifactPower;
+    private static bool IsBasicPower(PowerModel power) => power is StrengthPower or DexterityPower or WeakPower or VulnerablePower or FrailPower or PoisonPower or BlockNextTurnPower or ToolsOfTheTradePower or PiercingWailPower or ArtifactPower or StratagemPower;
     private static PowerModel CanonicalPower(BasicPowerKind kind) => kind switch
     {
         BasicPowerKind.Strength => CanonicalModels.Power<StrengthPower>(),
@@ -206,6 +207,7 @@ internal sealed class CompactDiscardProjection
         BasicPowerKind.BlockNextTurn => CanonicalModels.Power<BlockNextTurnPower>(),
         BasicPowerKind.PiercingWail => CanonicalModels.Power<PiercingWailPower>(),
         BasicPowerKind.Artifact => CanonicalModels.Power<ArtifactPower>(),
+        BasicPowerKind.Stratagem => CanonicalModels.Power<StratagemPower>(),
         BasicPowerKind.ToolsOfTheTrade => CanonicalModels.Power<ToolsOfTheTradePower>(),
         _ => throw new InvalidOperationException("Unknown basic Power kind.")
     };
@@ -213,7 +215,7 @@ internal sealed class CompactDiscardProjection
     {
         StrengthPower => BasicPowerKind.Strength, DexterityPower => BasicPowerKind.Dexterity, WeakPower => BasicPowerKind.Weak,
         VulnerablePower => BasicPowerKind.Vulnerable, FrailPower => BasicPowerKind.Frail, PoisonPower => BasicPowerKind.Poison,
-        PiercingWailPower => BasicPowerKind.PiercingWail, ArtifactPower => BasicPowerKind.Artifact,
+        PiercingWailPower => BasicPowerKind.PiercingWail, ArtifactPower => BasicPowerKind.Artifact, StratagemPower => BasicPowerKind.Stratagem,
         BlockNextTurnPower => BasicPowerKind.BlockNextTurn, ToolsOfTheTradePower => BasicPowerKind.ToolsOfTheTrade,
         _ => throw new InvalidOperationException("Power has no compact basic kind.")
     };
@@ -225,7 +227,8 @@ internal sealed class CompactDiscardProjection
         for (int index = 0; index < target.Length; index++)
         {
             var value = program.Power(index);
-            target[index] = new(value.Amount, value.Applier < 0 ? null : _creatures[value.Applier], value.Order, value.Retired);
+            target[index] = new(value.Amount, value.Applier < 0 ? null : _creatures[value.Applier], value.Order, value.Retired,
+                value.AmountOnTurnStart, value.SkipNextDurationTick);
         }
     }
 
@@ -605,14 +608,17 @@ internal sealed class CompactDiscardProjection
     };
     private static readonly HashSet<string> HandEndHooks = new(StringComparer.Ordinal)
         { "AfterAutoPostPlayPhaseEntered", "BeforeSideTurnEnd", "ShouldEtherealTrigger", "BeforeFlush" };
-    private static readonly ConcurrentDictionary<(Type Type, bool RunPrefix, bool HandEnd), string[]> HookAudit = new();
+    private static readonly HashSet<string> PowerPhaseHooks = new(StringComparer.Ordinal)
+        { "AfterSideTurnEnd", "AfterSideTurnEndLate", "AfterBlockCleared" };
+    private static readonly ConcurrentDictionary<(Type Type, bool RunPrefix, bool HandEnd, bool PowerPhases), string[]> HookAudit = new();
 
-    private static void AssertRepresentedHooks(AbstractModel listener, bool runPrefix, bool includeHandEnd)
+    private static void AssertRepresentedHooks(AbstractModel listener, bool runPrefix, bool includeHandEnd, bool includePowerPhases)
     {
-        string[] unrepresented = HookAudit.GetOrAdd((listener.GetType(), runPrefix, includeHandEnd), static key => key.Type
+        string[] unrepresented = HookAudit.GetOrAdd((listener.GetType(), runPrefix, includeHandEnd, includePowerPhases), static key => key.Type
             .GetMethods(BindingFlags.Instance | BindingFlags.Public)
             .Where(method => ((key.RunPrefix ? ReachedRunHooks : ReachedHooks).Contains(method.Name)
-                    || key.HandEnd && !key.RunPrefix && HandEndHooks.Contains(method.Name))
+                    || !key.RunPrefix && (key.HandEnd && HandEndHooks.Contains(method.Name)
+                        || key.PowerPhases && PowerPhaseHooks.Contains(method.Name)))
                 && method.GetBaseDefinition().DeclaringType == typeof(AbstractModel)
                 && method.DeclaringType != typeof(AbstractModel) && (key.RunPrefix || !RepresentedHook(key.Type, method.Name)))
             .Select(method => method.Name).ToArray());
@@ -623,7 +629,10 @@ internal sealed class CompactDiscardProjection
     // Keep exact method/type pairs. AfterCardPlayed badges match the ignored mirror registrations;
     // DebufferModel only increments the native run badge counter, outside combat equivalence.
     private static bool RepresentedHook(Type type, string method)
-        => type == typeof(ToughBandages) && method == nameof(AbstractModel.AfterCardDiscarded)
+        => (type == typeof(WeakPower) || type == typeof(VulnerablePower) || type == typeof(FrailPower) || type == typeof(PiercingWailPower))
+                && method == nameof(AbstractModel.AfterSideTurnEnd)
+            || type == typeof(BlockNextTurnPower) && method == nameof(AbstractModel.AfterBlockCleared)
+            || type == typeof(ToughBandages) && method == nameof(AbstractModel.AfterCardDiscarded)
             || type == typeof(StratagemPower) && method == nameof(AbstractModel.AfterShuffle)
             || type == typeof(TheAbacus) && method == nameof(AbstractModel.AfterShuffle)
             || type == typeof(StrengthPower) && method == nameof(AbstractModel.ModifyDamageAdditive)
