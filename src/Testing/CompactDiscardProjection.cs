@@ -127,6 +127,7 @@ internal sealed class CompactDiscardProjection
         }
         int[] comparisons = _definitionModels.SelectMany(left => _definitionModels.Select(left.CompareTo)).ToArray();
         PredictionRngState rng = root.Rng.Shuffle.CaptureState();
+        PredictionRngState energyRng = root.Rng.CombatEnergyCosts.CaptureState();
         AbstractModel[] listeners = combat.IterateHookListeners().ToArray();
         int abacusIndex = Array.FindIndex(listeners, p => p is TheAbacus);
         int stratagemIndex = Array.FindIndex(listeners, p => p is StratagemPower);
@@ -135,7 +136,8 @@ internal sealed class CompactDiscardProjection
             new(rng.Counter, rng.State0, rng.State1, rng.State2, rng.State3), comparisons,
             powers.OfType<StratagemPower>().SingleOrDefault()?.Amount ?? 0,
             Block(relics.OfType<TheAbacus>().SingleOrDefault()), abacusIndex >= 0 && abacusIndex < stratagemIndex,
-            includeAttacks ? _creatures.Select(c => { var v = root.State.GetCreature(c); return new CreatureVitals(v.CurrentHp, v.MaxHp, v.Block); }).ToArray() : null, powerDefinitions, definitions[cards.Length..]);
+            includeAttacks ? _creatures.Select(c => { var v = root.State.GetCreature(c); return new CreatureVitals(v.CurrentHp, v.MaxHp, v.Block); }).ToArray() : null, powerDefinitions, definitions[cards.Length..],
+            new(energyRng.Counter, energyRng.State0, energyRng.State1, energyRng.State2, energyRng.State3));
         CardValuesInvariant = Program.CardValuesInvariant;
     }
 
@@ -312,6 +314,10 @@ internal sealed class CompactDiscardProjection
                     case ResumableDiscardProgram.EventKind.PowerChange:
                     case ResumableDiscardProgram.EventKind.Shuffle:
                         break;
+                    case ResumableDiscardProgram.EventKind.CostChanged:
+                        card.MutablePreview.EnergyCost.SetThisCombat(item.Value);
+                        card.InvalidateCaches();
+                        break;
                     case ResumableDiscardProgram.EventKind.ShuffleCard:
                         projection.AddToPile(card, PileType.Draw);
                         break;
@@ -428,9 +434,12 @@ internal sealed class CompactDiscardProjection
             Terminal.SetValue(projection, new CombatTerminalStamp(PlayerTurn, CombatTerminalOutcome.Victory));
             InProgress.SetValue(projection, false);
         }
-        ValueShuffleRng rng = program.ShuffleRng;
+        ValueRng rng = program.ShuffleRng;
         projection.Rng.Shuffle.LoadFromSerializable(new()
             { counter = rng.Counter, state0 = rng.State0, state1 = rng.State1, state2 = rng.State2, state3 = rng.State3 });
+        if (program.EnergyCostRng is { } energyRng)
+            projection.Rng.CombatEnergyCosts.LoadFromSerializable(new()
+                { counter = energyRng.Counter, state0 = energyRng.State0, state1 = energyRng.State1, state2 = energyRng.State2, state3 = energyRng.State3 });
         ShuffleEvents.SetValue(projection, _root.ShuffleEventCount + program.ShuffleCount);
         probe?.End(CompactProfilePhase.ProjectEvents, eventsStart);
         return projection;
@@ -442,9 +451,15 @@ internal sealed class CompactDiscardProjection
         if (program.Energy != state.Energy || program.Block != simulator.State.GetCreature(_player.Creature).Block)
             throw new InvalidOperationException("Compact values disagree with projected resources.");
         PredictionRngState rng = simulator.Rng.Shuffle.CaptureState();
-        if (program.ShuffleRng != new ValueShuffleRng(rng.Counter, rng.State0, rng.State1, rng.State2, rng.State3)
+        if (program.ShuffleRng != new ValueRng(rng.Counter, rng.State0, rng.State1, rng.State2, rng.State3)
             || _root.ShuffleEventCount + program.ShuffleCount != simulator.ShuffleEventCount)
             throw new InvalidOperationException("Compact values disagree with shuffle state or event count.");
+        if (program.EnergyCostRng is { } energyRng)
+        {
+            var expected = simulator.Rng.CombatEnergyCosts.CaptureState();
+            if (energyRng != new ValueRng(expected.Counter, expected.State0, expected.State1, expected.State2, expected.State3))
+                throw new InvalidOperationException("Compact values disagree with energy-cost RNG state.");
+        }
         for (int index = 0; index < program.CreatureCount; index++)
         {
             Creature creature = _creatures[index];
@@ -475,6 +490,11 @@ internal sealed class CompactDiscardProjection
             if (program.CardRemoved(card) != (actual == null)
                 || actual != null && actual.Preview.EnergyCost.CostsX && actual.Preview.EnergyCost.CapturedXValue != program.CapturedX(card))
                 throw new InvalidOperationException("Compact removal or captured energy differs.");
+            if (actual != null && !actual.Preview.EnergyCost.CostsX
+                && (actual.Preview.EnergyCost.GetWithModifiers(CostModifiers.Local) != program.EnergyCost(card)
+                    || !actual.Preview.EnergyCost._localModifiers.Select(modifier => modifier.Amount)
+                        .SequenceEqual(Enumerable.Range(0, program.CostModifierCount(card)).Select(index => program.CostModifierAt(card, index)))))
+                throw new InvalidOperationException("Compact energy cost or ordered modifier list differs.");
         }
         for (int pile = 0; pile < piles.Length; pile++)
         {
@@ -518,6 +538,7 @@ internal sealed class CompactDiscardProjection
             || (type == typeof(WeakPower) || type == typeof(VulnerablePower)) && method == nameof(AbstractModel.ModifyDamageMultiplicative)
             || type == typeof(FrailPower) && method == nameof(AbstractModel.ModifyBlockMultiplicative)
             || type == typeof(PiercingWailPower) && method == nameof(AbstractModel.AfterPowerAmountChanged)
+            || type == typeof(Slither) && method == nameof(AbstractModel.AfterCardDrawn)
             || type == typeof(DebufferModel) && method == nameof(AbstractModel.AfterPowerAmountChanged)
             || type == typeof(MultiplayerScalingModel) && method == nameof(AbstractModel.ModifyBlockMultiplicative)
             || method == nameof(AbstractModel.AfterCardPlayed)

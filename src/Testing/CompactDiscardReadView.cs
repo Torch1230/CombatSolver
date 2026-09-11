@@ -130,6 +130,7 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
                     _combatHistory.DeathPhases[_adapter.Creature(item.Target)] = PredictedDeathPhase.PermanentlyDead;
                     break;
                 case ResumableDiscardProgram.EventKind.PowerChange:
+                case ResumableDiscardProgram.EventKind.CostChanged:
                 case ResumableDiscardProgram.EventKind.DamageBlocked:
                 case ResumableDiscardProgram.EventKind.DamageOverkill:
                 case ResumableDiscardProgram.EventKind.Block:
@@ -192,10 +193,13 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
     {
         get
         {
-            ValueShuffleRng rng = _program.ShuffleRng;
+            ValueRng rng = _program.ShuffleRng;
             return new(rng.Counter, rng.State0, rng.State1, rng.State2, rng.State3);
         }
     }
+
+    internal override PredictionRngState? EnergyCostRng => _program.EnergyCostRng is { } rng
+        ? new(rng.Counter, rng.State0, rng.State1, rng.State2, rng.State3) : null;
 
     private sealed class RosterView(CompactDiscardReadView owner) : IReadOnlyList<Creature>
     {

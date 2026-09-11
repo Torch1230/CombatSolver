@@ -17,9 +17,14 @@ internal static class CompactCardProgramCompiler
                 or DeadlyPoison or Haze or Snakebite or Defy or EscapePlan or Outbreak or CalculatedGamble or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail or CloakAndDagger or Shiv or BladeOfInk)
             || card is Neutralize or Suppress or Footwork or Malaise or DeadlyPoison or Haze or Snakebite or Defy or Outbreak or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail or CloakAndDagger or Shiv or BladeOfInk && !includeAttacks
             || card.Enchantment != null && !(card is Shiv && card.Enchantment is Inky { Amount: 1, Status: EnchantmentStatus.Normal })
+                && card.Enchantment is not Slither { Amount: 1, Status: EnchantmentStatus.Normal, TestEnergyCostOverride: -1 }
             || card.Affliction != null || card.BaseReplayCount != 0
             || card.ExhaustOnNextPlay || card.IsDupe || card.IsClone || card.HasBeenRemovedFromState
-            || card.EnergyCost.CostsX && card is not Malaise || card.EnergyCost._localModifiers.Count != 0
+            || card.EnergyCost.CostsX && (card is not Malaise || card.Enchantment is Slither)
+            || card.EnergyCost._localModifiers.Count != 0 && (card.Enchantment is not Slither
+                || card.EnergyCost._localModifiers.Any(modifier => modifier.GetType() != typeof(LocalCostModifier)
+                    || modifier.Type != LocalCostType.Absolute || modifier.Expiration != LocalCostModifierExpiration.EndOfCombat
+                    || modifier.IsReduceOnly || modifier.Amount is < 0 or > 3))
             || card.HasStarCostX || card.CurrentStarCost > 0 || card._temporaryStarCosts.Count != 0
             || card.CurrentTarget != null || card.CurrentPlayIndex != 0 || card.LastStarsSpent != 0
             || card.HasSingleTurnRetain || card.HasTurnEndInHandEffect
@@ -96,7 +101,8 @@ internal static class CompactCardProgramCompiler
             card.Type == CardType.Power ? ResumableDiscardProgram.Pile.Removed : card.LocalKeywords.Contains(CardKeyword.Exhaust) ? ResumableDiscardProgram.Pile.Exhaust : ResumableDiscardProgram.Pile.Discard,
             card.EnergyCost.CostsX, card.EnergyCost.CostsX ? card.EnergyCost.CapturedXValue : 0,
             card.Type switch { CardType.Attack => CardCategory.Attack, CardType.Skill => CardCategory.Skill,
-                CardType.Power => CardCategory.Power, _ => CardCategory.Other }, card.LocalKeywords.Contains(CardKeyword.Ethereal));
+                CardType.Power => CardCategory.Power, _ => CardCategory.Other }, card.LocalKeywords.Contains(CardKeyword.Ethereal),
+            card.Enchantment is Slither ? new RandomDrawCost(card.EnergyCost._localModifiers.Select(modifier => modifier.Amount).ToArray()) : null);
     }
 
 }

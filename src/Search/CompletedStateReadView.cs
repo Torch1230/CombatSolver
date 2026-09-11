@@ -8,7 +8,7 @@ namespace CombatSolver;
 
 /// <summary>
 /// Completed, synchronous evaluation of a closed effect program. All omitted state must be
-/// invariant in EvaluationContext: identities, the other eight RNGs, relics, potions and omitted
+/// invariant in EvaluationContext: identities, omitted RNG streams, relics, potions and omitted
 /// lifecycle state. Supplied Power cells and changing card metadata are copied one way into
 /// lane-owned evaluation models before reading, so existing formulas consume current values.
 /// Piles borrow those private previews with stable root identities. The context owns formula scratch;
@@ -35,6 +35,7 @@ internal abstract class CompletedStateReadView
     internal abstract CardHistoryReadValues CardHistory { get; }
     internal virtual CombatHistoryReadValues? CombatHistory => null;
     internal abstract PredictionRngState ShuffleRng { get; }
+    internal virtual PredictionRngState? EnergyCostRng => null;
     // Consumers separately honor EnemyValuesInvariant and CardValuesInvariant, plus each
     // formula's dynamic input keys. A new stable root requires a new cache.
     internal CombatBeamSolver.ReadViewInvariantCache? Invariants { get; init; }

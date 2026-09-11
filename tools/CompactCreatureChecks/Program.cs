@@ -9,6 +9,7 @@ PowerExpressionChecks.Run();
 DeferredPowerChecks.Run();
 TemporaryStrengthChecks.Run();
 GeneratedCardChecks.Run();
+RandomCostChecks.Run();
 
 (int Hp, int Block, decimal Amount, bool Unblockable, int ExpectedHp, int ExpectedBlock, decimal Blocked, int Lost, bool Killed, int Overkill)[] damageCases =
 {

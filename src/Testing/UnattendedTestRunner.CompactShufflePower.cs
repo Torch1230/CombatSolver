@@ -331,14 +331,14 @@ internal sealed partial class UnattendedTestRunner
         {
             Rng native = new(seed);
             PredictionRngState initial = native.CaptureState();
-            ValueShuffleRng compact = new(initial.Counter, initial.State0, initial.State1, initial.State2, initial.State3);
+            ValueRng compact = new(initial.Counter, initial.State0, initial.State1, initial.State2, initial.State3);
             for (int i = 0; i < 128; i++)
             {
                 int maximum = (i % 4) switch { 0 => 1, 1 => 2, 2 => 17, _ => int.MaxValue };
                 compact = compact.NextInt(maximum, out int value);
                 if (value != native.NextInt(maximum)) throw new InvalidOperationException("Compact random output differs.");
                 PredictionRngState expected = native.CaptureState();
-                if (compact != new ValueShuffleRng(expected.Counter, expected.State0, expected.State1, expected.State2, expected.State3))
+                if (compact != new ValueRng(expected.Counter, expected.State0, expected.State1, expected.State2, expected.State3))
                     throw new InvalidOperationException("Compact random internal state differs.");
             }
         }

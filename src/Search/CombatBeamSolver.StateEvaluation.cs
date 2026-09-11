@@ -1208,7 +1208,7 @@ internal sealed partial class CombatBeamSolver
         AppendRngState(ref key, simulator.Rng.CombatCardGeneration);
         AppendRngState(ref key, simulator.Rng.CombatPotionGeneration);
         AppendRngState(ref key, simulator.Rng.CombatCardSelection);
-        AppendRngState(ref key, simulator.Rng.CombatEnergyCosts);
+        AppendRngState(ref key, view?.EnergyCostRng ?? simulator.Rng.CombatEnergyCosts.CaptureState());
         AppendRngState(ref key, simulator.Rng.CombatTargets);
         AppendRngState(ref key, simulator.Rng.CombatOrbGeneration);
         AppendRngState(ref key, simulator.Rng.MonsterAi);

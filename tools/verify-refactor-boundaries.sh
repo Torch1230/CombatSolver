@@ -1033,7 +1033,7 @@ require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'strategicRequi
 require_fixed "$compact_reader" '_adapter.CopyPowerReadValues(program, _powerValues);' 'completed Power inputs must come from the value program'
 require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'SnapshotCore(view.EvaluationContext,' 'completed evaluator must consume the lane-owned evaluation context'
 require_fixed "$compact_reader" '!_adapter.Program.State.HasSameRoot(program.State) || !program.Complete' 'completed reader lost ownership/stability guard'
-require_fixed "$compact_reader" 'ValueShuffleRng rng = _program.ShuffleRng;' 'completed reader lost authoritative shuffle state'
+require_fixed "$compact_reader" 'ValueRng rng = _program.ShuffleRng;' 'completed reader lost authoritative shuffle state'
 require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'view?.ShuffleRng ?? simulator.Rng.Shuffle.CaptureState()' 'completed state key lost branch shuffle RNG'
 require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'view is null ? simulator.TerminalStamp : view.TerminalStamp' 'completed terminal values must not fall back to stale root state'
 require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'view?.CardHistory, view?.EnemyRoster, view?.CombatHistory' 'completed state key lost the ordered branch roster'
@@ -1049,6 +1049,9 @@ require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/CardEffec
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'State.Write(Frame + EffectIndexOffset, Read(Frame + EffectIndexOffset) + 1);' 'compact effect position must belong to journaled values'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'State.Write(Frame + FirstDrawnOffset, drawn);' 'draw return values must survive in the journaled frame'
 require_fixed "$compact_projection" 'CompactCardProgramCompiler.Compile(card, includeAttacks, shivTemplate, inkyShivTemplate)' 'card admission must use the shared immutable program compiler'
+require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'view?.EnergyCostRng ?? simulator.Rng.CombatEnergyCosts.CaptureState()' 'completed keys must read branch energy-cost RNG'
+require_fixed "$compact_card_reads" 'int amount = program.CostModifierAt(card, index);' 'cost previews must import the complete ordered branch modifiers'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/RandomDrawCost.cs" 'Buffer(card).Append(state, [cost]);' 'random draw-cost modifiers must remain journaled'
 compact_compiler="$repository_root/src/Testing/CompactCardProgramCompiler.cs"
 for replay in '.ManualPlay(' '.AutoPlay(' 'CardOnPlayMirrors.Invoke(' 'HookMirrors.' 'CardCmd.' 'PowerCmd.'; do
     forbid_fixed "$compact_compiler" "$replay" 'card admission must compile definitions without executing effects:'

@@ -1,5 +1,7 @@
 # CombatSolver 测试清单
 
+- `COMPACT-RANDOM-COSTS-NATIVE`（`98dee34da8de40eb8313653b87ddb9e9`）Passed：两根／13 分支／八工作区／九次原生出牌、三次重抽／付款、完整修饰前缀／列表、满手门、Shuffle 和 CombatEnergyCosts 五字段、全部 Snapshot／原键／九 RNG 及原生推进后的根隔离。纯值 130 次重抽通过；附魔生成 `22d19af3b151495cba380e6873724b0c` 和选择链 `ea9a51de7d294b9cad9405a57c5e9d1e` 同产物通过，[证据与边界](performance/simulation-random-costs-20260911.md)。
+
 - `COMPACT-INKY-CARDS-NATIVE`（`942a23f0b0e1423d9ea58cd91f04adbd`）Passed：两根／13 分支／八工作区／八次原生出牌，普通与附魔生成混合、满手溢出、洗牌、消耗及目标死亡后跳过虚弱，完整 Snapshot／原键／历史／逐卡指纹／九 RNG；[证据与模板折叠条件](performance/simulation-inky-cards-20260911.md)。
 
 - `COMPACT-GENERATED-CARDS-NATIVE`（`230fb3cfae674da49a61751b4f23da55`）Passed：两根／12 分支／八工作区／九次原生出牌，生成次序、满手溢出、小刀消耗／洗牌／死亡、全部 Snapshot／原键／历史／九 RNG；300 实例、索引截短复用的纯值合同通过。原选择链 `57b5d857e4354a63b1022738090d8fbf` Passed，成本与迭代失败见[报告](performance/simulation-generated-cards-20260911.md)。
