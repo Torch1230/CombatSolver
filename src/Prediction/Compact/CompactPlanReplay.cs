@@ -74,12 +74,12 @@ internal sealed class CompactPlanReplay
     private TurnStartChoiceRequest DescribeChoice(ResumableDiscardProgram lane, PlanChoiceTiming timing)
     {
         if (!lane.NeedsChoice) throw new InvalidOperationException("Compact plan has no suspended selector.");
-        bool draw = lane.ChoicePile == ResumableDiscardProgram.Pile.Draw;
-        string source = draw || lane.ChoiceCard < 0 ? _adapter.ChoicePowerId(draw)
+        bool retrieve = lane.ChoiceRetrieves;
+        string source = retrieve || lane.ChoiceCard < 0 ? _adapter.ChoicePowerId(retrieve)
             : lane.ChoiceAutomatic ? _adapter.DefinitionModels[lane.DefinitionIndex(lane.ChoiceCard)].Id.Entry : "";
-        int count = draw || lane.ChoiceCard < 0 ? lane.ChoiceCount : lane.ChoiceRequestedCount;
-        return new(source, draw ? PlanChoiceEffect.MoveToHand : PlanChoiceEffect.Discard,
-            draw ? PileType.Draw : PileType.Hand, count, Timing: timing);
+        int count = retrieve || lane.ChoiceCard < 0 ? lane.ChoiceCount : lane.ChoiceRequestedCount;
+        return new(source, retrieve ? PlanChoiceEffect.MoveToHand : lane.ChoiceExhausts ? PlanChoiceEffect.Exhaust : PlanChoiceEffect.Discard,
+            lane.ChoicePile == ResumableDiscardProgram.Pile.Draw ? PileType.Draw : PileType.Hand, count, Timing: timing);
     }
 
     internal TurnStartChoiceRequest CapturePendingChoice(ResumableDiscardProgram lane, PlanChoiceTiming timing)

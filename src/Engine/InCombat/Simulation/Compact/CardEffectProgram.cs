@@ -4,7 +4,7 @@ internal enum CardInstructionKind
 {
     AttackTarget, GainBlock, Draw, Discard, ApplyBasicPower, SkipIfDrawnCardNotType,
     TriggerBasicPower, DiscardHandAndDraw, SkipIfTargetLacksPower, GainBlockFromPowerSum,
-    GainBlockAndApplyPower, ApplyTemporaryStrengthLoss, GenerateCards, GainEnergy, SummonPet, PetAttackTarget
+    GainBlockAndApplyPower, ApplyTemporaryStrengthLoss, GenerateCards, GainEnergy, SummonPet, PetAttackTarget, ExhaustFromDraw
 }
 internal enum CardInstructionTarget { Owner, ChosenEnemy, AllEnemies }
 internal enum CardCategory { Other, Attack, Skill, Power, Status }
@@ -28,6 +28,7 @@ internal sealed class CardEffectProgram
     internal bool RequiresPowers { get; }
     internal bool RequiresEnergyX { get; }
     internal bool GeneratesCards { get; }
+    internal bool ExhaustsCards { get; }
     internal bool RequiresPet { get; }
 
     internal CardEffectProgram(ReadOnlySpan<CardInstruction> instructions)
@@ -85,7 +86,9 @@ internal sealed class CardEffectProgram
                     TotalDraw = checked(TotalDraw + instruction.Amount);
                     break;
                 case CardInstructionKind.Discard:
-                    if (instruction.Amount > 10) throw new ArgumentException("Compact discard exceeds choice capacity.");
+                case CardInstructionKind.ExhaustFromDraw:
+                    if (instruction.Amount > 10) throw new ArgumentException("Compact selection exceeds choice capacity.");
+                    ExhaustsCards |= instruction.Kind == CardInstructionKind.ExhaustFromDraw;
                     break;
                 case CardInstructionKind.DiscardHandAndDraw:
                     if (instruction.Amount != 0) throw new ArgumentException("Hand discard/draw derives its count from the captured hand.");

@@ -1,0 +1,977 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-11",
+  "scope": "Exact Cleanse and Afterlife with captured pet; suspended draw-pile exhaustion and ordered summon",
+  "passes": [
+    {
+      "case": "native-v3",
+      "runId": "af8024b511d742c8b5d307f47f4ef495",
+      "scenarioId": "COMPACT-DRAW-EXHAUST-NATIVE",
+      "status": "Passed",
+      "processId": 1390621,
+      "startedAtUtc": "2026-09-11T07:23:53.7093366+00:00",
+      "finishedAtUtc": "2026-09-11T07:24:22.2106689+00:00",
+      "elapsedMilliseconds": 28501.4064,
+      "completedChecks": [
+        "CompactDrawExhaust:Mode0:OmittedChoices6:SummonBeforeDrawExhaust:SelfExhaust:FullContinuations",
+        "CompactDrawExhaust:Mode0:6NativeActions:15Branches:2NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative",
+        "CompactDrawExhaust:Mode1:OmittedChoices5:SummonBeforeDrawExhaust:SelfExhaust:FullContinuations",
+        "CompactDrawExhaust:Mode1:6NativeActions:12Branches:0NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative",
+        "CompactDrawExhaust:Mode2:OmittedChoices4:SummonBeforeDrawExhaust:SelfExhaust:FullContinuations",
+        "CompactDrawExhaust:Mode2:6NativeActions:12Branches:0NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative"
+      ],
+      "error": null
+    },
+    {
+      "case": "search-v3",
+      "runId": "7bd5f62560a84f92983af95a46d23b61",
+      "scenarioId": "COMPACT-DRAW-EXHAUST-SEARCH",
+      "status": "Passed",
+      "processId": 1390621,
+      "startedAtUtc": "2026-09-11T07:24:44.7746135+00:00",
+      "finishedAtUtc": "2026-09-11T07:24:50.6512239+00:00",
+      "elapsedMilliseconds": 5876.6115,
+      "completedChecks": [
+        "CompactSearchLifecycle:DrawExhaustTrue:NeurosurgeFalse:OstyFalse:TurnRelicFalse:250Nodes:LegacyEqualsCompact:DOP1EqualsDOP2:Concurrency2:CancelAndFailureDrained:RootReusable:UnsupportedPotionRejected:ActualUnchanged"
+      ],
+      "error": null
+    }
+  ],
+  "failures": [
+    {
+      "case": "native-v1",
+      "runId": "a02e6fc181e44017b1c8f47a72957d9b",
+      "scenarioId": "COMPACT-DRAW-EXHAUST-NATIVE",
+      "status": "Failed",
+      "processId": 1385406,
+      "startedAtUtc": "2026-09-11T07:20:27.9018041+00:00",
+      "finishedAtUtc": "2026-09-11T07:20:53.7017154+00:00",
+      "elapsedMilliseconds": 25799.9913,
+      "completedChecks": [
+        "CompactDrawExhaust:Mode0:OmittedChoices6:SummonBeforeDrawExhaust:SelfExhaust:FullContinuations"
+      ],
+      "error": "System.InvalidOperationException: Native DrawExhaust instance order or Power metadata differs.\n   at CombatSolver.UnattendedTestRunner.AssertCompactDrawExhaustModeAsync(CombatState combat, Player player, Int32 mode)\n   at CombatSolver.UnattendedTestRunner.AssertCompactDrawExhaustAsync(CombatState combat, Player player)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()"
+    }
+  ],
+  "failureAnalysis": "v1 completed every mode-0 action snapshot and pet value, then the fixture assigned -1 to four native Mecha-generated Burns at round two. v2 follows CardGeneratedEntry identities and checks generated metadata; production commands were unchanged. Before testing v2, review added ExhaustsCards cache invalidation in v3.",
+  "nativeModes": [
+    {
+      "mode": 0,
+      "drawCards": 4,
+      "rootPetDead": false,
+      "branches": 15,
+      "nativeChoiceObservations": 2,
+      "actions": [
+        {
+          "card": "CLEANSE",
+          "upgrade": 0,
+          "kind": 0,
+          "expectedPet": {
+            "CurrentHp": 8,
+            "MaxHp": 10,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 8,
+            "MaxHp": 10,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              1,
+              2,
+              3
+            ],
+            [
+              4,
+              5,
+              6
+            ],
+            [
+              0
+            ],
+            [],
+            [
+              7
+            ]
+          ],
+          "actualPiles": [
+            [
+              1,
+              2,
+              3
+            ],
+            [
+              4,
+              5,
+              6
+            ],
+            [
+              0
+            ],
+            [],
+            [
+              7
+            ]
+          ]
+        },
+        {
+          "card": "CLEANSE",
+          "upgrade": 1,
+          "kind": 0,
+          "expectedPet": {
+            "CurrentHp": 13,
+            "MaxHp": 15,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 13,
+            "MaxHp": 15,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              2,
+              3
+            ],
+            [
+              4,
+              5
+            ],
+            [
+              0,
+              1
+            ],
+            [],
+            [
+              7,
+              6
+            ]
+          ],
+          "actualPiles": [
+            [
+              2,
+              3
+            ],
+            [
+              4,
+              5
+            ],
+            [
+              0,
+              1
+            ],
+            [],
+            [
+              7,
+              6
+            ]
+          ]
+        },
+        {
+          "card": "AFTERLIFE",
+          "upgrade": 0,
+          "kind": 0,
+          "expectedPet": {
+            "CurrentHp": 19,
+            "MaxHp": 21,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 19,
+            "MaxHp": 21,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              3
+            ],
+            [
+              4,
+              5
+            ],
+            [
+              0,
+              1
+            ],
+            [],
+            [
+              7,
+              6,
+              2
+            ]
+          ],
+          "actualPiles": [
+            [
+              3
+            ],
+            [
+              4,
+              5
+            ],
+            [
+              0,
+              1
+            ],
+            [],
+            [
+              7,
+              6,
+              2
+            ]
+          ]
+        },
+        {
+          "card": "AFTERLIFE",
+          "upgrade": 1,
+          "kind": 0,
+          "expectedPet": {
+            "CurrentHp": 28,
+            "MaxHp": 30,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 28,
+            "MaxHp": 30,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [],
+            [
+              4,
+              5
+            ],
+            [
+              0,
+              1
+            ],
+            [],
+            [
+              7,
+              6,
+              2,
+              3
+            ]
+          ],
+          "actualPiles": [
+            [],
+            [
+              4,
+              5
+            ],
+            [
+              0,
+              1
+            ],
+            [],
+            [
+              7,
+              6,
+              2,
+              3
+            ]
+          ]
+        },
+        {
+          "card": "",
+          "upgrade": 0,
+          "kind": 2,
+          "expectedPet": {
+            "CurrentHp": 8,
+            "MaxHp": 31,
+            "Block": 0
+          },
+          "actualPet": {
+            "CurrentHp": 8,
+            "MaxHp": 31,
+            "Block": 0
+          },
+          "expectedPiles": [
+            [
+              4,
+              5,
+              1
+            ],
+            [],
+            [
+              0
+            ],
+            [],
+            [
+              7,
+              6,
+              2,
+              3
+            ]
+          ],
+          "actualPiles": [
+            [
+              4,
+              5,
+              1
+            ],
+            [],
+            [
+              0
+            ],
+            [],
+            [
+              7,
+              6,
+              2,
+              3
+            ]
+          ]
+        },
+        {
+          "card": "",
+          "upgrade": 0,
+          "kind": 2,
+          "expectedPet": {
+            "CurrentHp": 1,
+            "MaxHp": 1,
+            "Block": 0
+          },
+          "actualPet": {
+            "CurrentHp": 1,
+            "MaxHp": 1,
+            "Block": 0
+          },
+          "expectedPiles": [
+            [
+              8,
+              9,
+              10,
+              11,
+              4,
+              1,
+              5
+            ],
+            [],
+            [
+              0
+            ],
+            [],
+            [
+              7,
+              6,
+              2,
+              3
+            ]
+          ],
+          "actualPiles": [
+            [
+              8,
+              9,
+              10,
+              11,
+              4,
+              1,
+              5
+            ],
+            [],
+            [
+              0
+            ],
+            [],
+            [
+              7,
+              6,
+              2,
+              3
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "mode": 1,
+      "drawCards": 1,
+      "rootPetDead": true,
+      "branches": 12,
+      "nativeChoiceObservations": 0,
+      "actions": [
+        {
+          "card": "CLEANSE",
+          "upgrade": 0,
+          "kind": 0,
+          "expectedPet": {
+            "CurrentHp": 3,
+            "MaxHp": 3,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 3,
+            "MaxHp": 3,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              1,
+              2,
+              3
+            ],
+            [],
+            [
+              0
+            ],
+            [],
+            [
+              4
+            ]
+          ],
+          "actualPiles": [
+            [
+              1,
+              2,
+              3
+            ],
+            [],
+            [
+              0
+            ],
+            [],
+            [
+              4
+            ]
+          ]
+        },
+        {
+          "card": "CLEANSE",
+          "upgrade": 1,
+          "kind": 0,
+          "expectedPet": {
+            "CurrentHp": 8,
+            "MaxHp": 8,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 8,
+            "MaxHp": 8,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              2,
+              3
+            ],
+            [],
+            [
+              0,
+              1
+            ],
+            [],
+            [
+              4
+            ]
+          ],
+          "actualPiles": [
+            [
+              2,
+              3
+            ],
+            [],
+            [
+              0,
+              1
+            ],
+            [],
+            [
+              4
+            ]
+          ]
+        },
+        {
+          "card": "AFTERLIFE",
+          "upgrade": 0,
+          "kind": 0,
+          "expectedPet": {
+            "CurrentHp": 14,
+            "MaxHp": 14,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 14,
+            "MaxHp": 14,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              3
+            ],
+            [],
+            [
+              0,
+              1
+            ],
+            [],
+            [
+              4,
+              2
+            ]
+          ],
+          "actualPiles": [
+            [
+              3
+            ],
+            [],
+            [
+              0,
+              1
+            ],
+            [],
+            [
+              4,
+              2
+            ]
+          ]
+        },
+        {
+          "card": "AFTERLIFE",
+          "upgrade": 1,
+          "kind": 0,
+          "expectedPet": {
+            "CurrentHp": 23,
+            "MaxHp": 23,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 23,
+            "MaxHp": 23,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [],
+            [],
+            [
+              0,
+              1
+            ],
+            [],
+            [
+              4,
+              2,
+              3
+            ]
+          ],
+          "actualPiles": [
+            [],
+            [],
+            [
+              0,
+              1
+            ],
+            [],
+            [
+              4,
+              2,
+              3
+            ]
+          ]
+        },
+        {
+          "card": "",
+          "upgrade": 0,
+          "kind": 2,
+          "expectedPet": {
+            "CurrentHp": 3,
+            "MaxHp": 24,
+            "Block": 0
+          },
+          "actualPet": {
+            "CurrentHp": 3,
+            "MaxHp": 24,
+            "Block": 0
+          },
+          "expectedPiles": [
+            [
+              1
+            ],
+            [],
+            [
+              0
+            ],
+            [],
+            [
+              4,
+              2,
+              3
+            ]
+          ],
+          "actualPiles": [
+            [
+              1
+            ],
+            [],
+            [
+              0
+            ],
+            [],
+            [
+              4,
+              2,
+              3
+            ]
+          ]
+        },
+        {
+          "card": "",
+          "upgrade": 0,
+          "kind": 2,
+          "expectedPet": {
+            "CurrentHp": 1,
+            "MaxHp": 1,
+            "Block": 0
+          },
+          "actualPet": {
+            "CurrentHp": 1,
+            "MaxHp": 1,
+            "Block": 0
+          },
+          "expectedPiles": [
+            [
+              5,
+              6,
+              7,
+              8,
+              1
+            ],
+            [],
+            [
+              0
+            ],
+            [],
+            [
+              4,
+              2,
+              3
+            ]
+          ],
+          "actualPiles": [
+            [
+              5,
+              6,
+              7,
+              8,
+              1
+            ],
+            [],
+            [
+              0
+            ],
+            [],
+            [
+              4,
+              2,
+              3
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "mode": 2,
+      "drawCards": 0,
+      "rootPetDead": false,
+      "branches": 12,
+      "nativeChoiceObservations": 0,
+      "actions": [
+        {
+          "card": "CLEANSE",
+          "upgrade": 0,
+          "kind": 0,
+          "expectedPet": {
+            "CurrentHp": 8,
+            "MaxHp": 10,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 8,
+            "MaxHp": 10,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              1,
+              2,
+              3
+            ],
+            [],
+            [
+              0
+            ],
+            [],
+            []
+          ],
+          "actualPiles": [
+            [
+              1,
+              2,
+              3
+            ],
+            [],
+            [
+              0
+            ],
+            [],
+            []
+          ]
+        },
+        {
+          "card": "CLEANSE",
+          "upgrade": 1,
+          "kind": 0,
+          "expectedPet": {
+            "CurrentHp": 13,
+            "MaxHp": 15,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 13,
+            "MaxHp": 15,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              2,
+              3
+            ],
+            [],
+            [
+              0,
+              1
+            ],
+            [],
+            []
+          ],
+          "actualPiles": [
+            [
+              2,
+              3
+            ],
+            [],
+            [
+              0,
+              1
+            ],
+            [],
+            []
+          ]
+        },
+        {
+          "card": "AFTERLIFE",
+          "upgrade": 0,
+          "kind": 0,
+          "expectedPet": {
+            "CurrentHp": 19,
+            "MaxHp": 21,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 19,
+            "MaxHp": 21,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              3
+            ],
+            [],
+            [
+              0,
+              1
+            ],
+            [],
+            [
+              2
+            ]
+          ],
+          "actualPiles": [
+            [
+              3
+            ],
+            [],
+            [
+              0,
+              1
+            ],
+            [],
+            [
+              2
+            ]
+          ]
+        },
+        {
+          "card": "AFTERLIFE",
+          "upgrade": 1,
+          "kind": 0,
+          "expectedPet": {
+            "CurrentHp": 28,
+            "MaxHp": 30,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 28,
+            "MaxHp": 30,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [],
+            [],
+            [
+              0,
+              1
+            ],
+            [],
+            [
+              2,
+              3
+            ]
+          ],
+          "actualPiles": [
+            [],
+            [],
+            [
+              0,
+              1
+            ],
+            [],
+            [
+              2,
+              3
+            ]
+          ]
+        },
+        {
+          "card": "",
+          "upgrade": 0,
+          "kind": 2,
+          "expectedPet": {
+            "CurrentHp": 8,
+            "MaxHp": 31,
+            "Block": 0
+          },
+          "actualPet": {
+            "CurrentHp": 8,
+            "MaxHp": 31,
+            "Block": 0
+          },
+          "expectedPiles": [
+            [
+              1
+            ],
+            [],
+            [
+              0
+            ],
+            [],
+            [
+              2,
+              3
+            ]
+          ],
+          "actualPiles": [
+            [
+              1
+            ],
+            [],
+            [
+              0
+            ],
+            [],
+            [
+              2,
+              3
+            ]
+          ]
+        },
+        {
+          "card": "",
+          "upgrade": 0,
+          "kind": 2,
+          "expectedPet": {
+            "CurrentHp": 1,
+            "MaxHp": 1,
+            "Block": 0
+          },
+          "actualPet": {
+            "CurrentHp": 1,
+            "MaxHp": 1,
+            "Block": 0
+          },
+          "expectedPiles": [
+            [
+              4,
+              5,
+              6,
+              7,
+              1
+            ],
+            [],
+            [
+              0
+            ],
+            [],
+            [
+              2,
+              3
+            ]
+          ],
+          "actualPiles": [
+            [
+              4,
+              5,
+              6,
+              7,
+              1
+            ],
+            [],
+            [
+              0
+            ],
+            [],
+            [
+              2,
+              3
+            ]
+          ]
+        }
+      ]
+    }
+  ],
+  "builds": [
+    {
+      "revision": "v1",
+      "status": "Passed",
+      "seconds": 11.51,
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "revision": "v2",
+      "status": "Passed",
+      "seconds": 11.47,
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "revision": "v3",
+      "status": "Passed",
+      "seconds": 11.31,
+      "warnings": 0,
+      "errors": 0
+    }
+  ],
+  "validation": {
+    "linuxBoundaries": "Passed: search_files=93",
+    "powershellBoundaries": "Maintained, not executed",
+    "coverageCatalog": "Not rerun: no mirror registry changed",
+    "linksAndJson": "Passed: 317 local Markdown links and changed JSON parsed"
+  },
+  "limits": [
+    "Two native selector observations cover multiple options; single option uses implicit native selection and is checked through the plan and resulting identity.",
+    "No first pet creation, random draw insertion or other new observer admission.",
+    "Original full Necrobinder inputs and dynamic closure remain incomplete.",
+    "Request times include setup; no new performance claim."
+  ]
+}

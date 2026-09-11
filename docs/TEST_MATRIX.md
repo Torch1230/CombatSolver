@@ -2626,3 +2626,5 @@ pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId MONSTER-MOVES-BA
 `COMPACT-OSTY-SEARCH` 共用主场景原始建局并增加一层 Tools 触发选择，固定 250 节点，旧／新 DOP1 与紧凑 DOP2 比较完整政策及续用结果，验证实际并发、挂起候选、取消／注入异常排空、根可复用、未迁移药水拒绝及实机不变。全部使用 SILENT／MECHA_KNIGHT_ELITE、Cards=[]、HP300、Instant、120 秒上限，建局直接注入奥斯蒂；不依赖切换亡灵角色。[本轮结果与重跑命令](performance/simulation-osty-values-20260911.md)。
 
 `COMPACT-OSTY-TURN-NATIVE`：复用奥斯蒂三个根建局，额外注入初始遗物、Tools 和 Stratagem，每根连续三个完整回合；九个原生回合、十五个省略选择边界与十五次原生选择前观察，覆盖受击后复活、存活增长、完整元数据／历史／键／估值／续用、逆序／撤销、八工作区和实机后冻结恢复。`COMPACT-OSTY-TURN-SEARCH` 共用相同遗物根，固定 250 节点旧／新和串／并行完整政策、取消／失败排空及根复用。SILENT／MECHA_KNIGHT_ELITE、Cards=[]、HP300、Instant、120 秒，与现有双端参数兼容。[本轮记录](performance/simulation-pet-turns-20260911.md)。
+
+`COMPACT-DRAW-EXHAUST-NATIVE`：四张／单张／空抽牌堆，存活／死亡奥斯蒂；每根两种升级等级的洁净、来生和两个完整回合，18 原生动作、39 分支、15 个挂起边界及两次原生选择前观察。全快照、能力、九 RNG、历史、估值／原键／续用、生成身份、撤销／逆序／八工作区及实机后根隔离。`COMPACT-DRAW-EXHAUST-SEARCH` 固定 250 节点旧新串并行、取消失败排空和根复用。双端使用 SILENT／MECHA_KNIGHT_ELITE、Cards=[]、HP300、Instant、120 秒。[证据与夹具失败说明](performance/simulation-draw-exhaust-20260911.md)。

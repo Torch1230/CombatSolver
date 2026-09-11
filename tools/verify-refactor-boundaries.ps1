@@ -1310,6 +1310,8 @@ $compactReadGuards = @(
     @('src/Engine/InCombat/Simulation/Compact/CreatureValueSlots.cs', 'state.Write(Offset + 3, present ? 1 : 0)'),
     @('src/Prediction/Compact/CompactDiscardProjection.cs', '=> new(this, ForkRoot(), _player, _risks)'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'if (ResultPile(card) == Pile.Removed || !Ending)'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', '!card.Effects.ExhaustsCards'),
+    @('src/Prediction/Compact/CompactPlanReplay.cs', 'bool retrieve = lane.ChoiceRetrieves;'),
     @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', 'if (target != 0 && target != Pet) _creatures[target].SetPresent(state, false);'),
     @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', 'internal int EnemyEnd => Pet < 0 ? Count : Pet;'),
     @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', 'state.Write(_petSummonedSlot, 1);'),

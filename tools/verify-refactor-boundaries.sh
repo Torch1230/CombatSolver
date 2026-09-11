@@ -1008,6 +1008,8 @@ require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/Resumable
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ReversibleValueBuffer.cs" 'state.Write(_header + TailOffset, leaf);' 'buffer append cursor must belong to reversible values'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'private readonly ReversibleValueBuffer[] _piles;' 'growing piles must use reversible indexed buffers'
 require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" "history?.Owner.Creature, history?.ShivPlays" 'Shiv history must participate in completed state reads'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" '!card.Effects.ExhaustsCards' 'selected-card exhaustion must invalidate live-card invariant caches'
+require_fixed "$repository_root/src/Prediction/Compact/CompactPlanReplay.cs" 'bool retrieve = lane.ChoiceRetrieves;' 'choice effect/source must not be inferred solely from its draw pile'
 compact_projection="$repository_root/src/Prediction/Compact/CompactDiscardProjection.cs"
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/MonsterEffectProgram.cs" '_instructions = instructions.ToArray();' 'monster commands must own immutable captured instructions'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Monsters.cs" 'if (_monsterMoves == null || !Complete || Terminal || Ending' 'monster execution must require root admission and an idle boundary'

@@ -68,7 +68,8 @@ internal sealed partial class ResumableDiscardProgram
     internal ValueRng? EnergyCostRng => _drawCosts?.Rng(State);
     internal Pile ResultPile(int card) => Definition(card).ResultPile;
     internal bool CardRemoved(int card) => Contains(Pile.Removed, card);
-    internal bool CardValuesInvariant => _definitions.All(card => card.ResultPile == Pile.Discard && !card.Ethereal && !card.CostsX && !card.SingleTurnSly && !card.Effects.GeneratesCards && card.DrawCost == null)
+    internal bool CardValuesInvariant => _definitions.All(card => card.ResultPile == Pile.Discard && !card.Ethereal && !card.CostsX && !card.SingleTurnSly
+        && !card.Effects.GeneratesCards && !card.Effects.ExhaustsCards && card.DrawCost == null)
         && _monsterMoves?.All(move => !move.GeneratesCards) != false;
     internal int Block => _combat?.Read(State, 0).Block ?? Read(BlockSlot);
     internal int PowerCount => _powers?.Count ?? 0;
@@ -92,15 +93,17 @@ internal sealed partial class ResumableDiscardProgram
         return terminal;
     }
     internal bool Complete => Read(DepthSlot) == 0;
-    internal bool NeedsChoice => !Complete && Read(Frame + IpOffset) is 2 or 6;
-    internal Pile ChoicePile => NeedsChoice && Read(Frame + IpOffset) == 6 ? Pile.Draw : Pile.Hand;
+    internal bool NeedsChoice => !Complete && Read(Frame + IpOffset) is 2 or 6 or 8;
+    internal bool ChoiceRetrieves => NeedsChoice && Read(Frame + IpOffset) == 6;
+    internal bool ChoiceExhausts => NeedsChoice && Read(Frame + IpOffset) == 8;
+    internal Pile ChoicePile => ChoiceRetrieves || ChoiceExhausts ? Pile.Draw : Pile.Hand;
     internal int ChoiceCard => NeedsChoice ? Read(Frame + CardOffset) : throw new InvalidOperationException("No pending choice.");
     internal bool ChoiceAutomatic => NeedsChoice && Read(Frame + AutoOffset) != 0;
     internal int ChoiceRequestedCount => NeedsChoice
-        ? ChoicePile == Pile.Draw ? _stratagem : CurrentInstruction.Amount
+        ? ChoiceRetrieves ? _stratagem : CurrentInstruction.Amount
         : throw new InvalidOperationException("No pending choice.");
     internal int ChoiceCount => NeedsChoice
-        ? Math.Min(ChoicePile == Pile.Draw ? _stratagem : CurrentInstruction.Amount, Count(ChoicePile))
+        ? Math.Min(ChoiceRequestedCount, Count(ChoicePile))
         : throw new InvalidOperationException("No pending choice.");
     internal int ShuffleCount => Read(ShuffleCountSlot);
     internal ValueRng ShuffleRng => new(Read(RngSlot), unchecked((ulong)State[RngSlot + 1]),
@@ -331,7 +334,20 @@ internal sealed partial class ResumableDiscardProgram
             if (!Contains(ChoicePile, selected[i]) || selected[..i].Contains(selected[i]))
                 throw new InvalidOperationException("Choice contains an absent or repeated instance.");
         }
-        if (ChoicePile == Pile.Draw)
+        if (ChoiceExhausts)
+        {
+            Emit(EventKind.Select, ChoiceCard, selected.Length);
+            foreach (int card in selected)
+            {
+                Emit(EventKind.SelectedCard, card);
+                if (Ending) continue;
+                Move(card, Pile.Exhaust);
+                Emit(EventKind.ResultMoved, card, (int)Pile.Exhaust);
+            }
+            AdvanceInstruction();
+            return;
+        }
+        if (ChoiceRetrieves)
         {
             foreach (int card in selected)
             {
@@ -369,6 +385,7 @@ internal sealed partial class ResumableDiscardProgram
                     break;
                 case 2:
                 case 6:
+                case 8:
                     return;
                 case 3:
                     // Native batch discard moves every selected card and runs its hooks before
@@ -508,6 +525,11 @@ internal sealed partial class ResumableDiscardProgram
                 if (ChoiceCount != 0) { CompletePlayerSideStart(); return false; }
                 SupplyChoice([]);
                 return true;
+            case CardInstructionKind.ExhaustFromDraw:
+                // An empty native pile has no selector or selected-card command.
+                if (Count(Pile.Draw) == 0 || instruction.Amount == 0) break;
+                State.Write(Frame + IpOffset, 8);
+                return false;
             default:
                 throw new InvalidOperationException("Unknown admitted compact instruction.");
         }

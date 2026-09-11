@@ -1,4 +1,12 @@
 {
+  "COMPACT-DRAW-EXHAUST-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeChoiceDifferentialAndFixedSearchLifecycle",
+    "procedure": "三个抽牌堆／宠物根各四张牌及两个原生回合；所有省略选择，固定250节点旧新和串并行对照。",
+    "expected": "召唤先于抽牌堆消耗，空堆无选择、隐式选择保留实例，消耗历史和牌库估值读取当前分支。",
+    "observed": "af8024b511d742c8b5d307f47f4ef495：18原生动作、39分支、15挂起和2次原生观察；7bd5f62560a84f92983af95a46d23b61：完整搜索结果一致、实际并发2、取消失败排空及根复用。v1仅测试生成身份核对失败，详见记录。",
+    "evidence": "docs/performance/simulation-draw-exhaust-20260911.json；docs/performance/simulation-draw-exhaust-20260911.md；2026-09-11。"
+  },
   "COMPACT-OSTY-TURNS-20260911": {
     "status": "Passed",
     "level": "HeadlessNativeTurnChoiceDifferentialAndFixedSearchLifecycle",

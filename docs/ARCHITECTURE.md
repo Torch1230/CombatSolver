@@ -392,3 +392,5 @@ renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或
 `ModifyUnblockedDamageTargetMirrors` 独占代伤 Hook 的精确分支状态实现，按原版链式传递目标且保留战斗结束时的分发；未知覆盖显式拒绝。怪物行动不再临时移除代伤 Power。普通玩家回合在 Hook 前冻结 `Allies` 参与者（包括死亡但保留的宠物），先快照全部能力，清完全部格挡后再逐个 AfterBlockCleared；额外玩家回合只选择玩家。召唤增长按封顶后的实际最大生命增量治疗。[原生对照与边界](performance/simulation-osty-values-20260911.md)。
 
 `CompactRoundRoot.TurnStartSummon` 保存完整根捕获的初始遗物召唤量；Prediction 只准入带既有宠物和完整回合的精确 `BoundPhylactery`。回合驱动在 ResetEnergy 后、建立抽牌帧前调用共享 `SummonPet`，避免选择恢复重复召唤。首次战前创建已经落在根中，不由此入口补演。[三个回合与挂起对照](performance/simulation-pet-turns-20260911.md)。
+
+`CardEffectProgram.ExhaustFromDraw` 在召唤完成后建立独立选择边界，`CompactPlanReplay` 按检索／消耗效果决定来源，不能仅按抽牌堆推断 Stratagem。选中牌复用 `ResultMoved(Exhaust)` 的有序牌堆／消耗历史语义；恢复推进下一指令，空牌堆直接继续。`ExhaustsCards` 显式关闭存活牌集合不变缓存。Prediction 编译精确 `Cleanse`／`Afterlife`，旧模拟器与投影不增加第二次效果写入。[原生与搜索验证](performance/simulation-draw-exhaust-20260911.md)。

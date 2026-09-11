@@ -18,7 +18,9 @@ internal sealed partial class UnattendedTestRunner
         bool neurosurge = _request.ScenarioId == "COMPACT-NEUROSURGE-SEARCH";
         bool ostyTurns = _request.ScenarioId == "COMPACT-OSTY-TURN-SEARCH";
         bool osty = ostyTurns || _request.ScenarioId == "COMPACT-OSTY-SEARCH";
-        if (osty)
+        bool drawExhaust = _request.ScenarioId == "COMPACT-DRAW-EXHAUST-SEARCH";
+        if (drawExhaust) await PrepareCompactDrawExhaustAsync(combat, player, 0);
+        else if (osty)
         {
             await PrepareCompactOstyAsync(combat, player, 0, ostyTurns);
             if (!ostyTurns) await PowerCmd.Apply<ToolsOfTheTradePower>(new BlockingPlayerChoiceContext(), player.Creature, 1, player.Creature, null);
@@ -66,7 +68,7 @@ internal sealed partial class UnattendedTestRunner
             || serial.MaxParallelExpansionConcurrency != 0 || compact.Counts.PendingReplays == 0)
             throw new InvalidOperationException("Compact lifecycle failed to exercise concurrent and suspended candidates.");
         AssertSnapshotEqual(original, CaptureActual(combat, player, combat.Enemies.Single()), "CompactLifecycle", "ActualUnchanged");
-        _completedChecks.Add($"CompactSearchLifecycle:Neurosurge{neurosurge}:Osty{osty}:TurnRelic{ostyTurns}:250Nodes:LegacyEqualsCompact:DOP1EqualsDOP2:Concurrency{parallel.MaxParallelExpansionConcurrency}:CancelAndFailureDrained:RootReusable:UnsupportedPotionRejected:ActualUnchanged");
+        _completedChecks.Add($"CompactSearchLifecycle:DrawExhaust{drawExhaust}:Neurosurge{neurosurge}:Osty{osty}:TurnRelic{ostyTurns}:250Nodes:LegacyEqualsCompact:DOP1EqualsDOP2:Concurrency{parallel.MaxParallelExpansionConcurrency}:CancelAndFailureDrained:RootReusable:UnsupportedPotionRejected:ActualUnchanged");
 
         Task<SolverResult> Solve(SearchPolicySnapshot selectedPolicy, int degree)
             => Task.Run(() => CombatSearchCoordinator.Solve(root, display, damage,

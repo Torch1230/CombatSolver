@@ -1,4 +1,5 @@
 # CombatSolver 文档导航
+- [洁净与来生的值执行](performance/simulation-draw-exhaust-20260911.md)：召唤后的抽牌堆消耗选择、空牌堆、隐式选择和两回合对照。
 - [奥斯蒂每回合召唤](performance/simulation-pet-turns-20260911.md)：初始遗物的后置能量重置时点、三个回合与选牌中间态。
 - [奥斯蒂值执行与搜索](performance/simulation-osty-values-20260911.md)：承伤、复活、攻击和两回合原生对照，最大生命封顶与回合参与者修正。
 - [奥斯蒂根身份与死亡清理](performance/simulation-osty-ownership-20260911.md)：实机首次召唤后的空根隔离、普通能力退休和连续复活。
