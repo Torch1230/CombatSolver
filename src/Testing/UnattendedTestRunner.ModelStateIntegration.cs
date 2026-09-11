@@ -10,6 +10,8 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
+    private Action? _resetModelStateIntegrationReference;
+
     private sealed class IntegrationModelState(int count, PredictedCard card) : IPredictionStateForkable
     {
         public int Count = count;
@@ -27,12 +29,19 @@ internal sealed partial class UnattendedTestRunner
 
     // A dedicated fresh-process fixture registers before its first root. Production effects
     // stay native; the test state exercises ownership, observation and continuation plumbing.
-    private static void RegisterModelStateIntegrationAdapters()
+    private void RegisterModelStateIntegrationAdapters()
     {
-        static IntegrationModelState Capture(CombatPredictionSimulator simulator, Player owner, int count)
+        // Keep one live identity across turns. Selecting AllCards.First() again after a
+        // draw or shuffle would silently observe a different card at the same position.
+        CardModel? reference = null;
+        // Scenario injection may replace the native opening piles after their first
+        // diagnostic capture. Start the fixture's reference lifetime after that injection.
+        _resetModelStateIntegrationReference = () => reference = null;
+        CardModel LiveReference(Player owner) => reference ??= owner.PlayerCombatState!.AllCards.First();
+        IntegrationModelState Capture(CombatPredictionSimulator simulator, Player owner, int count)
         {
             var cards = simulator.State.GetPlayerCombatState(owner);
-            return new(count, PredictionCardReferences.RequireCard(cards, cards.AllCards.First().Original));
+            return new(count, PredictionCardReferences.RequireCard(cards, LiveReference(owner)));
         }
         static void WriteValues(int count, IReadOnlyList<int> values, ref ModelPredictionStateWriter writer)
         {
@@ -41,14 +50,24 @@ internal sealed partial class UnattendedTestRunner
             foreach (int value in values) writer.Add("value", (long)value);
         }
         static void WriteState(IntegrationModelState state, ref ModelPredictionStateWriter writer)
-            => WriteValues(state.Count, state.Values, ref writer);
-        ModelPredictionStateMirrors.RegisterRelic<BurningBlood, IntegrationModelState>("integration-v1",
+        {
+            WriteValues(state.Count, state.Values, ref writer);
+            writer.AddCards("references", state.References);
+        }
+        void WriteLive(Player owner, int count, ref ModelPredictionStateWriter writer)
+        {
+            WriteValues(count, [count], ref writer);
+            CardModel card = LiveReference(owner);
+            writer.AddCards("references", new CardModel?[] { card, null, card });
+        }
+        ModelPredictionStateMirrors.RegisterRelic<BurningBlood, IntegrationModelState>("integration-v2",
             (simulator, relic) => Capture(simulator, relic.Owner, relic.Owner.Gold),
-            (BurningBlood relic, ref ModelPredictionStateWriter writer) => WriteValues(relic.Owner.Gold, [relic.Owner.Gold], ref writer),
+            (BurningBlood relic, ref ModelPredictionStateWriter writer) => WriteLive(relic.Owner, relic.Owner.Gold, ref writer),
             WriteState);
-        ModelPredictionStateMirrors.RegisterModifier<BigGameHunter, IntegrationModelState>("integration-v1",
+        ModelPredictionStateMirrors.RegisterModifier<BigGameHunter, IntegrationModelState>("integration-v2",
             (simulator, _) => Capture(simulator, simulator.State.CombatState.Players.Single(), 1),
-            (BigGameHunter _, ref ModelPredictionStateWriter writer) => WriteValues(1, [1], ref writer), WriteState);
+            (BigGameHunter modifier, ref ModelPredictionStateWriter writer) =>
+                WriteLive(modifier.RunState.Players.Single(), 1, ref writer), WriteState);
     }
 
     private async Task AssertModelStateIntegrationAsync(CombatState combat, Player player)

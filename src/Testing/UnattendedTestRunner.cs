@@ -76,7 +76,7 @@ internal sealed partial class UnattendedTestRunner
     {
         _host = host;
         _request = request;
-        if (request.ScenarioId == "MODEL-STATE-INTEGRATION")
+        if (request.ScenarioId.StartsWith("MODEL-STATE-INTEGRATION", StringComparison.Ordinal))
             RegisterModelStateIntegrationAdapters();
         if (request.ScenarioId.StartsWith("TURN-SETUP-UI-", StringComparison.Ordinal))
             InitializeTurnSetupControlCheck();
@@ -112,6 +112,7 @@ internal sealed partial class UnattendedTestRunner
         try
         {
             ScenarioContext scenario = await _scenarioBuilder.BuildAsync();
+            _resetModelStateIntegrationReference?.Invoke();
             combatState = scenario.CombatState;
             startedTurn = scenario.StartedTurn;
 

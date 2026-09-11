@@ -1,0 +1,11 @@
+{
+  "scenarioId": "MODEL-STATE-INTEGRATION",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "modifierIds": [
+    "BIG_GAME_HUNTER"
+  ],
+  "preserveNativeCombatStateForTest": true,
+  "enemyCurrentHp": 500,
+  "timeoutSeconds": 120
+}

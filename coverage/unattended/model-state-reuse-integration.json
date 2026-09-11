@@ -1,0 +1,27 @@
+{
+  "scenarioId": "MODEL-STATE-INTEGRATION-REUSE",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "modifierIds": [
+    "BIG_GAME_HUNTER"
+  ],
+  "enemyCurrentHp": 18,
+  "clearPlayerPiles": true,
+  "cards": [
+    {
+      "cardId": "STRIKE_IRONCLAD",
+      "pile": "Hand",
+      "count": 1
+    }
+  ],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 1500,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "expectedPlayedCardId": "STRIKE_IRONCLAD",
+  "expectedReusedTurn": 2,
+  "expectedUnexpectedReplansAtMost": 0,
+  "stopAfterExpectedReuse": true,
+  "deploymentFastModeForTest": "Instant",
+  "deploymentInterActionDelaySecondsForTest": 0,
+  "timeoutSeconds": 120
+}
