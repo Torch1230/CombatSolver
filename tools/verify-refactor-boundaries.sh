@@ -1290,6 +1290,7 @@ require_fixed "$repository_root/src/Runtime/ContinuationStamp.cs" 'PowerPredicti
 require_fixed "$repository_root/src/Search/CombatBeamSolver.RoundLifecycle.cs" 'if (!simulator.IsOverOrEnding && !CorePowerSupport.TriggerAfterBlockCleared(' 'enemy-start Hook compensation must preserve native dispatch-entry ending gates'
 
 require_fixed "$repository_root/src/Prediction/Compact/CompactCardProgramCompiler.cs" 'SharedFate => new([new(CardInstructionKind.ApplyBasicPower, -(int)ownStrengthLoss, BasicPowerKind.Strength),' 'Shared Fate must compile its own Strength application first'
+require_fixed "$compact_compiler" 'Deathbringer => new([new(CardInstructionKind.ApplyBasicPower, (int)doom, BasicPowerKind.Doom, CardInstructionTarget.AllEnemies),' 'bulk Power commands must keep their complete roster pass before the next command'
 
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/BasicPowerLayout.cs" 'HasDebuffType(_definitions[index].Kind)' 'native duration metadata must use model type rather than signed incoming amount'
 

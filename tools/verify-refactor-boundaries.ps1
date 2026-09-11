@@ -1628,6 +1628,10 @@ if (-not (Get-Content -LiteralPath (Join-Path $repositoryRoot 'src/Prediction/Co
     throw 'Shared Fate must compile its own Strength application first.'
 }
 
+if (-not (Get-Content -LiteralPath (Join-Path $repositoryRoot 'src/Prediction/Compact/CompactCardProgramCompiler.cs') -Raw).Contains('Deathbringer => new([new(CardInstructionKind.ApplyBasicPower, (int)doom, BasicPowerKind.Doom, CardInstructionTarget.AllEnemies),')) {
+    throw 'bulk Power commands must keep their complete roster pass before the next command.'
+}
+
 if (-not (Get-Content -LiteralPath (Join-Path $repositoryRoot 'src/Engine/InCombat/Simulation/Compact/BasicPowerLayout.cs') -Raw).Contains('HasDebuffType(_definitions[index].Kind)')) {
     throw 'Native duration metadata must use model type rather than signed incoming amount.'
 }

@@ -4,6 +4,8 @@
 
 - [虚空之唤生产编译与回合开始执行](performance/simulation-void-generation-20260911.md)：精确编译、冻结完整池捕获与失败关闭准入，池闭包仍未完成。
 
+- [毁灭／虚弱／易伤卡牌的生产编译准入](performance/simulation-doom-vulnerable-cards-20260911.md)：五张亡灵的毁灭／虚弱／易伤牌逐张反编译准入，卡牌施加的毁灭走真实阵营结束边界。
+
 - [值 RNG 计量归因与生成池执行](performance/simulation-generation-metering-20260911.md)：独立计量归因、5 块零分配断言与紧凑生成池原生差分。
 
 - [完整随机生成池审计](performance/simulation-generation-audit-20260911.md)：原始亡灵输入、128 种直接候选与 RNG 顺序。

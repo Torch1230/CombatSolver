@@ -209,6 +209,21 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertCompactDoomAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "COMPACT-DOOM-CARDS-NATIVE")
+            {
+                await runner.AssertCompactDoomCardsAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-DOOM-CARD-KILL-NATIVE")
+            {
+                await runner.AssertCompactDoomCardKillAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-DOOM-ROSTER-NATIVE")
+            {
+                await runner.AssertCompactDoomRosterAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId is "COMPACT-NEUROSURGE-NATIVE" or "COMPACT-NEUROSURGE-CHOICES")
             {
                 await runner.AssertCompactNeurosurgeAsync(combatState, player);

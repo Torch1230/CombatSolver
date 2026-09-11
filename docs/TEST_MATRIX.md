@@ -3130,3 +3130,11 @@ pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId MONSTER-MOVES-BA
 `COMPACT-CALL-OF-THE-VOID-ADMISSION`（新，SILENT／MECHA_KNIGHT_ELITE、`VH_PERF_MECHA`、30 张 RunCards、清空牌组且 Cards=[]）：先证明同形对照根通过完整准入，再实机施加 4 层 `CallOfTheVoidPower`，断言同一根在完整角色池第一个不可表示候选处被拒绝、拒绝不归因根内卡牌、单回合投影在回合闭包要求处拒绝且实机不变；潜行者池 78 个候选中 16 个可编译、62 个不可（首个 `ABRASIVE`）。runId `094fe477c6494317848cda39bfe0ca98` Passed（23.95 秒）。`COMPACT-SEARCH-LIFECYCLE` 用同一 30 牌根作回归哨兵：旧／紧凑 DOP1 与紧凑 DOP2 全部政策一致、并发 2、取消／失败排空、根复用与未迁移药水拒绝，runId `d1f51f1cd8614f41b2ed7c0ad9fd517f` Passed（5.11 秒）。
 
 纯值 `tools/CompactCreatureChecks` 新增回合开始生成合同（施加／叠加计数与获得顺序、事件排在起手抽牌前、五字段 RNG 消耗、撤销与八工作区、零层不推进、满手溢出、三种构造拒绝），23 项全通过。夹具输入错误保留为失败基线：首次 `COMPACT-CALL-OF-THE-VOID-ADMISSION` 与同形 `COMPACT-SEARCH-LIFECYCLE` 探针都因缺少 30 张 RunCards 失败（空战斗牌集合与牌组数量不足），改用 `coverage/unattended/compact-void-admission-silent-run-cards.json` 后通过。生产准入未扩大：亡灵完整根继续显式拒绝，池模板构建的正向路径在池闭包完成前没有可执行样例。[完整证据](performance/simulation-void-generation-20260911.md)。
+
+`COMPACT-DOOM-CARDS-NATIVE`（亡灵／MECHA_KNIGHT_ELITE、Cards=[]、敌人 300 HP、Instant、120 秒）由测试内部建局并注入 `DEATHBRINGER`、`NEGATIVE_PULSE`、`SCOURGE`、`PUTREFY`、`FEAR` 与 `STRIKE_NECROBINDER`：两种升级各六步出牌、两个完整回合、8 个原生动作、14 分支、4 个省略选择边界。生产编译器、紧凑 lane、物化投影与实机逐动作对比毁灭 21/26＋7/11＋13/16、虚弱／易伤施加顺序、消耗与虚无结果位置、Scourge 抽牌、Fear 先攻击后施加易伤、后续攻击消费 1.5 倍易伤与敌方阵营结束的持续时间递减；完整状态键、估值、能力元数据、九条 RNG、逆序、八工作区与实机后冻结根一致，runId `5193feebe1d947ad8de1015470d0ae60` Passed。
+
+`COMPACT-DOOM-CARD-KILL-NATIVE`（同建局）实机先打出 `DEATHBRINGER`（`TryManualPlay(null)`，全体目标牌不传单体目标）并确认敌人仍存活，再由真实 `Hook.BeforeSideTurnEnd` 让生命低于等于毁灭层数的敌人直接死亡：保留格挡、无伤害历史、能力退休、终局锁定与撤销后无残留死亡状态，runId `d7b250f96c4c4f15956f4c05645dea31` Passed。
+
+纯值 `tools/CompactCreatureChecks` 新增 `COMPACT_DOOM_VULNERABLE_CHECKS_OK`（24 项全通过）：敌方指令域拒绝、两条原生命令的整轮名单顺序与施加历史、人工制品整条拦截、易伤倍率、同牌内攻击顺序、持续时间递减、包含等号的毁灭阈值、格挡保留、撤销与八工作区。`COMPACT-CALL-OF-THE-VOID-GENERATION` 普查回归为 78 池 23 可编译／55 不可（首个 `BANSHEES_CRY`，原 18／60），`COMPACT-GENERATION-CLOSURE-AUDIT` 继续 `FullRootExplicitlyRejected`。[完整证据](performance/simulation-doom-vulnerable-cards-20260911.md)。
+
+`COMPACT-DOOM-ROSTER-NATIVE`（亡灵／CORPSE_SLUGS_NORMAL、三敌、`--enemy-current-hp 256`、120 秒）在三个存活主敌人加已捕获奥斯蒂的名单上逐步执行这五张牌：紧凑 lane 的 `PowerChange` 序列逐条比对全体目标的毁灭／虚弱整轮名单、单目标的毁灭／虚弱／易伤与 Fear 先攻击后施加易伤，每一步的物化与读视图先自洽再与实机同一动作后的完整快照一致，撤销与实机后冻结候选重放一致，runId `3c3af9d6368e4441b6f893b1d9b33fe6` Passed（3.66 秒，复用进程）。它补上单敌夹具无法区分的 `AllEnemies`／`ChosenEnemy` 目标域。

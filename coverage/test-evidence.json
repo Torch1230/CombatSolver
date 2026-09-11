@@ -2310,5 +2310,13 @@
     "expected": "CallOfTheVoid精确编译为单条Power指令且只接受Innate升级；完整池逐候选编译，任何不可表示候选拒绝整根而不缩池；生产准入不扩大，亡灵根继续显式拒绝。",
     "observed": "46c0ff46f6b74e66ba551d5deb2e63ee COMPACT-CALL-OF-THE-VOID-GENERATION Passed (78池18可编译/60不可, 首BANSHEES_CRY); 094fe477c6494317848cda39bfe0ca98 COMPACT-CALL-OF-THE-VOID-ADMISSION Passed (对照根已准入, 池候选ABRASIVE拒绝, 78池16/62); ae2f88366cdc46489d381beeea855581 COMPACT-GENERATION-CLOSURE-AUDIT Passed (FullRootExplicitlyRejected); d1f51f1cd8614f41b2ed7c0ad9fd517f COMPACT-SEARCH-LIFECYCLE Passed. 首跑夹具缺30张RunCards的失败保留为基线。",
     "evidence": "docs/performance/simulation-void-generation-20260911.md；docs/performance/simulation-void-generation-20260911.json。"
+  },
+  "COMPACT-DOOM-CARDS-PRODUCTION-20260911": {
+    "status": "Passed",
+    "level": "HeadlessCompactCompileLaneMaterializationAndNativeDifferential",
+    "procedure": "亡灵五张毁灭／虚弱／易伤牌（DEATHBRINGER／NEGATIVE_PULSE／SCOURGE／PUTREFY／FEAR）逐张反编译后迁入生产编译器；两种升级各六步出牌、两个完整回合与原生差分；卡牌施加的毁灭走真实敌方阵营结束边界完成直接死亡；同产物重跑 CallOfTheVoid 普查与完整根拒绝审计。",
+    "expected": "完整 OnPlay 只能由既有 ApplyBasicPower／GainBlock／Draw／AttackTarget 精确表示：整套指令顺序、目标域与升级值一致；自施／负值／X 缩放与抽弃牌专用域继续拒绝；敌人毁灭槽只在实际存在可施加来源时建立；78 候选池不缩池，完整亡灵根继续显式拒绝。",
+    "observed": "5193feebe1d947ad8de1015470d0ae60 COMPACT-DOOM-CARDS-NATIVE Passed (两模式 8 原生动作 14 分支, 完整状态键／估值／能力元数据／九 RNG／逆序／八工作区); 3c3af9d6368e4441b6f893b1d9b33fe6 COMPACT-DOOM-ROSTER-NATIVE Passed (三敌名单逐步原生对照, 全体/单体目标域与整轮 Power 顺序, 撤销与实机后冻结); d7b250f96c4c4f15956f4c05645dea31 COMPACT-DOOM-CARD-KILL-NATIVE Passed (卡牌施加毁灭在真实 BeforeSideTurnEnd 直接死亡, 保留格挡且无伤害历史); 56bd91d7145b432ab3a82d3d7c5ad1c5 COMPACT-CALL-OF-THE-VOID-GENERATION Passed (78 池 23 可编译/55 不可, 首 BANSHEES_CRY, 原 18/60); a1a4963b61784a0485fd969a8cb2f24e COMPACT-GENERATION-CLOSURE-AUDIT Passed (FullRootExplicitlyRejected)。纯值 COMPACT_DOOM_VULNERABLE_CHECKS_OK 通过，24 项全通过。",
+    "evidence": "docs/performance/simulation-doom-vulnerable-cards-20260911.md；docs/performance/simulation-doom-vulnerable-cards-20260911.json。"
   }
 }

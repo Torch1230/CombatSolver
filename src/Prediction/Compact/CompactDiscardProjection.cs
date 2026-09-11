@@ -106,7 +106,7 @@ internal sealed class CompactDiscardProjection
         if (includeMechaMoves && (!includeAttacks || combat.Enemies.Count != 1 || _creatures[1].Monster?.GetType() != typeof(MechaKnight)))
             throw new NotSupportedException("Captured Mecha commands require exactly one MechaKnight and creature values.");
         PredictedCard[] cards = state.AllCards.ToArray();
-        _powerTemplates = includeAttacks ? CapturePowerTemplates(powers, cards) : [];
+        _powerTemplates = includeAttacks ? CapturePowerTemplates(powers, cards, AppliesDoom(cards, powers)) : [];
         PowerModel[] rootPowerOrder = powers.ToArray();
         PanachePowerValues[] panache = powers.OfType<PanachePower>().Select(power => new PanachePowerValues(
             power.Amount, power.Applier == null ? -1 : CreatureIndex(power.Applier), Array.IndexOf(rootPowerOrder, power) + 1,
@@ -289,7 +289,13 @@ internal sealed class CompactDiscardProjection
         }).ToArray();
     }
 
-    private PowerModel[] CapturePowerTemplates(IReadOnlyList<PowerModel> powers, IReadOnlyList<PredictedCard> cards)
+    // Enemy Doom slots exist only when an admitted instruction can apply them: a captured
+    // Doom card, or a CallOfTheVoid pool whose frozen candidates may contain one.
+    private static bool AppliesDoom(IReadOnlyList<PredictedCard> cards, IReadOnlyList<PowerModel> powers)
+        => cards.Any(card => card.Preview is Deathbringer or NegativePulse or Scourge or CallOfTheVoid)
+            || powers.Any(power => power is CallOfTheVoidPower);
+
+    private PowerModel[] CapturePowerTemplates(IReadOnlyList<PowerModel> powers, IReadOnlyList<PredictedCard> cards, bool appliesDoom)
     {
         List<PowerModel> result = powers.Where(IsBasicPower).ToList();
         if (result.GroupBy(p => (p.Owner, p.GetType())).Any(g => g.Count() != 1)
@@ -310,8 +316,11 @@ internal sealed class CompactDiscardProjection
             if (kind == BasicPowerKind.CallOfTheVoid && owner != _player.Creature) continue;
             if (kind == BasicPowerKind.Hang && (owner == _player.Creature || !cards.Any(card => card.Preview is Hang))) continue;
             if (owner.PetOwner != null && kind != BasicPowerKind.Strength) continue;
-            if (kind is BasicPowerKind.Neurosurge or BasicPowerKind.Doom
-                && (owner != _player.Creature || !cards.Any(card => card.Preview is Neurosurge) && !powers.Any(power => power is NeurosurgePower))) continue;
+            if (kind == BasicPowerKind.Neurosurge && (owner != _player.Creature
+                || !cards.Any(card => card.Preview is Neurosurge) && !powers.Any(power => power is NeurosurgePower))) continue;
+            if (kind == BasicPowerKind.Doom && (owner == _player.Creature
+                ? !cards.Any(card => card.Preview is Neurosurge) && !powers.Any(power => power is NeurosurgePower)
+                : !appliesDoom)) continue;
             if (kind is BasicPowerKind.BlockNextTurn or BasicPowerKind.ToolsOfTheTrade && owner != _player.Creature) continue;
             if (kind == BasicPowerKind.PiercingWail && owner == _player.Creature) continue;
             if (result.Any(p => p.Owner == owner && BasicKind(p) == kind)) continue;

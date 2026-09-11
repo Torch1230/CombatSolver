@@ -18,13 +18,14 @@ internal static class CompactCardProgramCompiler
         typeof(UltimateDefend), typeof(Suppress), typeof(Footwork), typeof(Malaise), typeof(DeadlyPoison),
         typeof(Haze), typeof(Snakebite), typeof(Defy), typeof(EscapePlan), typeof(Outbreak), typeof(CalculatedGamble),
         typeof(BubbleBubble), typeof(Mirage), typeof(DodgeAndRoll), typeof(ToolsOfTheTrade), typeof(PiercingWail),
-        typeof(CloakAndDagger), typeof(Shiv), typeof(BladeOfInk), typeof(Burn), typeof(Neurosurge), typeof(Bodyguard), typeof(Unleash), typeof(Afterlife), typeof(Cleanse), typeof(Dirge), typeof(Soul), typeof(CaptureSpirit), typeof(Graveblast), typeof(Defile), typeof(Wisp), typeof(AscendersBane), typeof(BorrowedTime), typeof(Veilpiercer), typeof(Hang), typeof(SculptingStrike), typeof(Snap), typeof(SpiritOfAsh), typeof(DanseMacabre), typeof(Lethality), typeof(Panache), typeof(SharedFate), typeof(Pagestorm), typeof(CallOfTheVoid)
+        typeof(CloakAndDagger), typeof(Shiv), typeof(BladeOfInk), typeof(Burn), typeof(Neurosurge), typeof(Bodyguard), typeof(Unleash), typeof(Afterlife), typeof(Cleanse), typeof(Dirge), typeof(Soul), typeof(CaptureSpirit), typeof(Graveblast), typeof(Defile), typeof(Wisp), typeof(AscendersBane), typeof(BorrowedTime), typeof(Veilpiercer), typeof(Hang), typeof(SculptingStrike), typeof(Snap), typeof(SpiritOfAsh), typeof(DanseMacabre), typeof(Lethality), typeof(Panache), typeof(SharedFate), typeof(Pagestorm), typeof(CallOfTheVoid), typeof(Deathbringer), typeof(NegativePulse),
+        typeof(Scourge), typeof(Putrefy), typeof(Fear)
     ];
 
     internal static ResumableDiscardProgram.Card Compile(CardModel card, bool includeAttacks, int shivTemplate = -1, int inkyShivTemplate = -1, int soulTemplate = -1, int upgradedSoulTemplate = -1)
     {
         if (!AdmittedTypes.Contains(card.GetType())
-            || card is Neutralize or Suppress or Footwork or Malaise or DeadlyPoison or Haze or Snakebite or Defy or Outbreak or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail or CloakAndDagger or Shiv or BladeOfInk or Burn or Neurosurge or Bodyguard or Unleash or Afterlife or Cleanse or Dirge or Soul or CaptureSpirit or Graveblast or Defile or Wisp or AscendersBane or BorrowedTime or Veilpiercer or Hang or SculptingStrike or Snap or SpiritOfAsh or DanseMacabre or Lethality or Panache or SharedFate or Pagestorm && !includeAttacks
+            || card is Neutralize or Suppress or Footwork or Malaise or DeadlyPoison or Haze or Snakebite or Defy or Outbreak or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail or CloakAndDagger or Shiv or BladeOfInk or Burn or Neurosurge or Bodyguard or Unleash or Afterlife or Cleanse or Dirge or Soul or CaptureSpirit or Graveblast or Defile or Wisp or AscendersBane or BorrowedTime or Veilpiercer or Hang or SculptingStrike or Snap or SpiritOfAsh or DanseMacabre or Lethality or Panache or SharedFate or Pagestorm or Deathbringer or NegativePulse or Scourge or Putrefy or Fear && !includeAttacks
             || card is Burn && (card.Enchantment != null || card.EnergyCost._base != -1 || card.IsUpgraded
                 || !card.LocalKeywords.Contains(CardKeyword.Unplayable) || card.DynamicVars.Damage.Props != (ValueProp.Unpowered | ValueProp.Move))
             || card is AscendersBane && (card.Enchantment != null || card.EnergyCost._base != -1 || card.IsUpgraded
@@ -44,13 +45,13 @@ internal static class CompactCardProgramCompiler
             || card.HasStarCostX || card.CurrentStarCost > 0 || card._temporaryStarCosts.Count != 0
             || card.CurrentTarget != null || card.CurrentPlayIndex != 0 || card.LastStarsSpent != 0
             || card.HasSingleTurnRetain || card.HasTurnEndInHandEffect && card is not (Burn or AscendersBane)
-            || card.LocalKeywords.Any(k => k is not (CardKeyword.Sly or CardKeyword.Ethereal or CardKeyword.Retain) && !(card is Malaise or CalculatedGamble or Mirage or PiercingWail or Shiv or Afterlife or Dirge or Soul or Graveblast or Wisp or SharedFate && k == CardKeyword.Exhaust)
+            || card.LocalKeywords.Any(k => k is not (CardKeyword.Sly or CardKeyword.Ethereal or CardKeyword.Retain) && !(card is Malaise or CalculatedGamble or Mirage or PiercingWail or Shiv or Afterlife or Dirge or Soul or Graveblast or Wisp or SharedFate or Putrefy && k == CardKeyword.Exhaust)
                 && !(card is Suppress && k == CardKeyword.Innate)
                 && !(card is CallOfTheVoid && k == CardKeyword.Innate)
                 && !(card is Burn or AscendersBane && k == CardKeyword.Unplayable) && !(card is AscendersBane && k == CardKeyword.Eternal))
             || card.IsSlyThisTurn && card is not Prepared)
             throw new NotSupportedException($"Compact prototype cannot admit card state {card.Id.Entry}.");
-        decimal draw = card is EscapePlan ? 1 : card is Acrobatics or Prepared or Backflip or Finesse or Neurosurge or Soul ? card.DynamicVars.Cards.BaseValue : 0;
+        decimal draw = card is EscapePlan ? 1 : card is Acrobatics or Prepared or Backflip or Finesse or Neurosurge or Soul or Scourge ? card.DynamicVars.Cards.BaseValue : 0;
         decimal energyGain = card is Neurosurge or Wisp or BorrowedTime ? card.DynamicVars.Energy.BaseValue : 0;
         decimal extraCost = card is BorrowedTime ? card.DynamicVars["ExtraCost"].BaseValue : 0;
         decimal neurosurge = card is Neurosurge ? card.DynamicVars["NeurosurgePower"].BaseValue : 0;
@@ -60,10 +61,14 @@ internal static class CompactCardProgramCompiler
         decimal voidCards = card is CallOfTheVoid ? card.DynamicVars.Cards.BaseValue : 0;
         decimal beforeCardPower = card is SpiritOfAsh ? card.DynamicVars["BlockOnExhaust"].BaseValue
             : card is DanseMacabre ? card.DynamicVars["DanseMacabrePower"].BaseValue : 0;
-        decimal damage = card is Snap ? card.DynamicVars.OstyDamage.BaseValue : includeAttacks && card is StrikeSilent or StrikeNecrobinder or Neutralize or Suppress or Shiv or Burn or CaptureSpirit or Graveblast or Defile or Veilpiercer or Hang or SculptingStrike ? card.DynamicVars.Damage.BaseValue : 0;
-        decimal block = card is DefendSilent or DefendNecrobinder or Backflip or Survivor or Finesse or UltimateDefend or Defy or EscapePlan or DodgeAndRoll or CloakAndDagger ? card.DynamicVars.Block.BaseValue : 0;
+        decimal damage = card is Snap ? card.DynamicVars.OstyDamage.BaseValue : includeAttacks && card is StrikeSilent or StrikeNecrobinder or Neutralize or Suppress or Shiv or Burn or CaptureSpirit or Graveblast or Defile or Veilpiercer or Hang or SculptingStrike or Fear ? card.DynamicVars.Damage.BaseValue : 0;
+        decimal block = card is DefendSilent or DefendNecrobinder or Backflip or Survivor or Finesse or UltimateDefend or Defy or EscapePlan or DodgeAndRoll or CloakAndDagger or NegativePulse ? card.DynamicVars.Block.BaseValue : 0;
         decimal weak = card.Enchantment is Inky inky ? inky.DynamicVars.Weak.BaseValue
-            : card is Neutralize or Suppress or Haze or Defy ? card.DynamicVars.Weak.BaseValue : 0;
+            : card is Neutralize or Suppress or Haze or Defy or Deathbringer ? card.DynamicVars.Weak.BaseValue : 0;
+        decimal vulnerable = card is Fear ? card.DynamicVars.Vulnerable.BaseValue : 0;
+        decimal doom = card is Deathbringer or NegativePulse or Scourge ? card.DynamicVars.Doom.BaseValue : 0;
+        // Putrefy shares one native amount slot for both of its debuffs.
+        decimal putrefy = card is Putrefy ? card.DynamicVars["Power"].BaseValue : 0;
         decimal poison = card is DeadlyPoison or Haze or Snakebite or Outbreak or BubbleBubble ? card.DynamicVars.Poison.BaseValue : 0;
         decimal generated = card is CloakAndDagger or BladeOfInk or CaptureSpirit ? card.DynamicVars.Cards.BaseValue : 0;
         decimal ownStrengthLoss = card is SharedFate ? card.DynamicVars["PlayerStrengthLoss"].BaseValue : 0;
@@ -78,6 +83,9 @@ internal static class CompactCardProgramCompiler
             || damage != decimal.Truncate(damage) || damage is < 0 or > 999_999_999m
             || block != decimal.Truncate(block) || block is < 0 or > 999_999_999m
             || weak != decimal.Truncate(weak) || weak is < 0 or > 999_999_999m
+            || vulnerable != decimal.Truncate(vulnerable) || vulnerable is < 0 or > 999_999_999m
+            || doom != decimal.Truncate(doom) || doom is < 0 or > 999_999_999m
+            || putrefy != decimal.Truncate(putrefy) || putrefy is < 0 or > 999_999_999m
             || poison != decimal.Truncate(poison) || poison is < 0 or > 999_999_999m
             || generated != decimal.Truncate(generated) || generated is < 0 or > 999_999_999m
             || energyGain != decimal.Truncate(energyGain) || energyGain is < 0 or > 999_999_999m
@@ -107,6 +115,18 @@ internal static class CompactCardProgramCompiler
                 new(CardInstructionKind.GenerateCards, 0, EnergyXMultiplier: 1,
                     CardTemplate: card.IsUpgraded ? upgradedSoulTemplate : soulTemplate, Placement: CardGenerationPlacement.RandomDraw)]),
             Soul => new([new(CardInstructionKind.Draw, (int)draw)]),
+            // Native bulk application finishes every target of one Power before the next
+            // command, so each instruction keeps its complete roster pass.
+            Deathbringer => new([new(CardInstructionKind.ApplyBasicPower, (int)doom, BasicPowerKind.Doom, CardInstructionTarget.AllEnemies),
+                new(CardInstructionKind.ApplyBasicPower, (int)weak, BasicPowerKind.Weak, CardInstructionTarget.AllEnemies)]),
+            NegativePulse => new([new(CardInstructionKind.GainBlock, (int)block),
+                new(CardInstructionKind.ApplyBasicPower, (int)doom, BasicPowerKind.Doom, CardInstructionTarget.AllEnemies)]),
+            Scourge => new([new(CardInstructionKind.ApplyBasicPower, (int)doom, BasicPowerKind.Doom, CardInstructionTarget.ChosenEnemy),
+                new(CardInstructionKind.Draw, (int)draw)]),
+            Putrefy => new([new(CardInstructionKind.ApplyBasicPower, (int)putrefy, BasicPowerKind.Weak, CardInstructionTarget.ChosenEnemy),
+                new(CardInstructionKind.ApplyBasicPower, (int)putrefy, BasicPowerKind.Vulnerable, CardInstructionTarget.ChosenEnemy)]),
+            Fear => new([new(CardInstructionKind.AttackTarget, (int)damage),
+                new(CardInstructionKind.ApplyBasicPower, (int)vulnerable, BasicPowerKind.Vulnerable, CardInstructionTarget.ChosenEnemy)]),
             Lethality => new([new(CardInstructionKind.ApplyBasicPower, (int)lethality, BasicPowerKind.Lethality)]),
             SharedFate => new([new(CardInstructionKind.ApplyBasicPower, -(int)ownStrengthLoss, BasicPowerKind.Strength),
                 new(CardInstructionKind.ApplyBasicPower, -(int)enemyStrengthLoss, BasicPowerKind.Strength, CardInstructionTarget.ChosenEnemy)]),
