@@ -1014,6 +1014,7 @@ require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/Resumable
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" '_monsterMoves = source._monsterMoves;' 'frozen candidates must retain monster admission and commands'
 require_fixed "$compact_projection" 'metadata.CurrentMonsterMove(_creatures[1])' 'monster parameters must come from captured branch metadata'
 require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" 'history?.CreatureAttacks, combatHistory?.CreatureAttacks' 'completed creature attack counts must share the original map encoding'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Rounds.cs" 'if (PlayerTurn != 1) SummonPet(-1, _round.Root.TurnStartSummon);' 'captured turn summon must use the shared value command'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Rounds.cs" 'Emit(EventKind.CommitPlayerTurnHistory, -1);' 'completed player history must survive frozen rounds'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Rounds.cs" '_round!.TryBeginPlayerSideStart(State)' 'side-start completion must belong to the reversible round state'
 require_fixed "$repository_root/src/Prediction/Compact/CompactDiscardReadView.cs" 'combat.ImportCompletedDoomAppliers(_combatHistory.DoomAppliers);' 'Doom application history must be imported from committed values'

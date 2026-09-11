@@ -73,7 +73,7 @@ internal sealed partial class UnattendedTestRunner
         _completedChecks.Add("OstyMaxHpCap:TwoNativeSummons:HealOnlyActualMaxHpGain:FullSnapshots");
     }
 
-    private async Task PrepareCompactOstyAsync(CombatState combat, Player player, int mode)
+    private async Task PrepareCompactOstyAsync(CombatState combat, Player player, int mode, bool withTurnRelic = false)
     {
         var enemy = combat.Enemies.Single();
         foreach (var relic in player.Relics.ToArray()) await RelicCmd.Remove(relic);
@@ -113,6 +113,12 @@ internal sealed partial class UnattendedTestRunner
         }
         if (mode == 2)
             await CreatureCmd.Damage(new BlockingPlayerChoiceContext(), [osty], 9, ValueProp.Unpowered | ValueProp.Unblockable, enemy, null, null);
+        if (withTurnRelic)
+        {
+            await InjectRelicAsync(player, new UnattendedRelicInjection { RelicId = "BOUND_PHYLACTERY", AddWithoutObtainedEffects = true });
+            await PowerCmd.Apply<ToolsOfTheTradePower>(new BlockingPlayerChoiceContext(), player.Creature, 1, player.Creature, null);
+            await PowerCmd.Apply<StratagemPower>(new BlockingPlayerChoiceContext(), player.Creature, 1, player.Creature, null);
+        }
         foreach (var power in combat.Creatures.SelectMany(c => c.Powers)) power.AmountOnTurnStart = 37;
         await RunManager.Instance.ActionExecutor.FinishedExecutingActions();
     }
@@ -121,10 +127,11 @@ internal sealed partial class UnattendedTestRunner
     {
         var enemy = combat.Enemies.Single();
         var monster = enemy.Monster as MechaKnight ?? throw new InvalidOperationException("Osty fixture requires MechaKnight.");
+        bool withTurnRelic = _request.ScenarioId == "COMPACT-OSTY-TURN-NATIVE";
         List<object> evidence = [];
         for (int mode = 0; mode < 3; mode++)
         {
-            await PrepareCompactOstyAsync(combat, player, mode);
+            await PrepareCompactOstyAsync(combat, player, mode, withTurnRelic);
             var osty = player.Osty!;
             var cards = player.PlayerCombatState!.Hand.Cards.ToArray();
             var captured = CombatRootSnapshot.Capture(combat);
@@ -133,7 +140,7 @@ internal sealed partial class UnattendedTestRunner
             var display = SolverDisplayNames.Capture(combat);
             var damage = BattleDamageTracker.Observe(combat);
             var policy = SolverController.CaptureSearchPolicy(SolverSettings.Capture(), combat, false, null);
-            CompactMechaStep[] steps = mode == 0
+            CompactMechaStep[] steps = withTurnRelic ? [new(-3), new(-3), new(-3)] : mode == 0
                 ? [new(-1, 0), new(3), new(-1, 3), new(-1, 1), new(-1, 2), new(-1, 4), new(-1, 5), new(-3), new(-3)]
                 : mode == 1 ? [new(0), new(-1, 0), new(-1, 2)] : [new(-1, 0), new(-1, 1), new(-1, 4)];
             CompactDiscardProjection adapter;
@@ -211,6 +218,12 @@ internal sealed partial class UnattendedTestRunner
                 // Roll back both the death-retained identity and the max-HP map's absent/zero shape.
                 var mark = lane.State.Mark(); Execute(lane, steps[0], samples[0].Round); lane.State.Rollback(mark);
                 if (!lane.State.Freeze().ContentEquals(initial.Open().State.Freeze())) throw new InvalidOperationException("Pet rollback leaked values.");
+                if (withTurnRelic)
+                {
+                    int pending = AssertCompactReplayBoundaries(captured, display, damage, policy, player, samples.Select(sample => sample.Round!).ToArray());
+                    if (pending == 0) throw new InvalidOperationException("Pet turn fixture omitted its required choices.");
+                    _completedChecks.Add($"CompactOstyTurns:Mode{mode}:OmittedChoices{pending}:FullPendingEvaluation");
+                }
                 AssertSnapshotEqual(original, CaptureActual(combat, player, enemy), "CompactOsty", "ActualUnchanged");
             }
             await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => Task.Run(() =>
@@ -225,6 +238,7 @@ internal sealed partial class UnattendedTestRunner
                     reader.Read(lane); AssertCompactEvaluation(samples[index].Evaluation, evaluator.Evaluate(reader, lane.PlayerTurn), "Osty/Worker");
                 }
             })));
+            int nativeChoices = 0;
             for (int index = 0; index < steps.Length; index++)
             {
                 var step = steps[index];
@@ -232,7 +246,15 @@ internal sealed partial class UnattendedTestRunner
                 {
                     var selector = new PlannedCardSelector(samples[index].Round!.TurnStartChoices ?? []);
                     selector.CaptureBefore(player);
-                    using (CardSelectCmd.PushSelector(selector)) await AdvanceMercuryActualTurnAsync(combat, player, false);
+                    var observer = new CompactResourceChoiceObserver(selector, () =>
+                    {
+                        nativeChoices++;
+                        if (!withTurnRelic) return;
+                        var expectedPet = samples[index].Values.Open().Creature(adapter.Program.PetIndex);
+                        if (new CreatureVitals(osty.CurrentHp, osty.MaxHp, osty.Block) != expectedPet)
+                            throw new InvalidOperationException("Native turn summon must finish before the first hand/Tools choice.");
+                    });
+                    using (CardSelectCmd.PushSelector(observer)) await AdvanceMercuryActualTurnAsync(combat, player, false);
                     selector.ReconcileImplicitChoices(player); selector.AssertConsumed();
                 }
                 else if (step.Move >= 0)
@@ -258,7 +280,8 @@ internal sealed partial class UnattendedTestRunner
                 reader.Read(lane); AssertCompactEvaluation(samples[^1].Evaluation, evaluator.Evaluate(reader, lane.PlayerTurn), "Osty/AfterNative");
                 AssertSnapshotEqual(original, CaptureSimulated(root, (SimulatedCombatState)root.State.CombatState, player, enemy), "CompactOsty", "FrozenRootAfterNative");
             }
-            _completedChecks.Add($"CompactOsty:Mode{mode}:{steps.Length}NativeSteps:FullSnapshotsKeysHistoryRngPowerMetadata:ReverseRollback:EightWorkers:FrozenAfterNative");
+            if (withTurnRelic && nativeChoices == 0) throw new InvalidOperationException("Pet turn fixture missed native choice observation.");
+            _completedChecks.Add($"CompactOsty:TurnRelic{withTurnRelic}:Mode{mode}:NativeChoices{nativeChoices}:{steps.Length}NativeSteps:FullSnapshotsKeysHistoryRngPowerMetadata:ReverseRollback:EightWorkers:FrozenAfterNative");
 
             void Execute(ResumableDiscardProgram lane, CompactMechaStep step, PlanAction? round)
             {

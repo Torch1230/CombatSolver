@@ -67,6 +67,9 @@ internal sealed partial class ResumableDiscardProgram
         }
         State.Write(EnergySlot, _round.Root.MaxEnergy);
         Emit(EventKind.ResetEnergy, -1, Energy);
+        // BoundPhylactery runs after energy-reset hooks, before hand draw and any
+        // selector. Pet existence checks in earlier hooks see the pre-summon state.
+        if (PlayerTurn != 1) SummonPet(-1, _round.Root.TurnStartSummon);
         // A synthetic frame shares draw / shuffle / choice / child-card machinery.
         // It has no card identity, payment, play history or result pile.
         State.Write(DepthSlot, 1);

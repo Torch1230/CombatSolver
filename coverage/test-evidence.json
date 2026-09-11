@@ -1,4 +1,12 @@
 {
+  "COMPACT-OSTY-TURNS-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeTurnChoiceDifferentialAndFixedSearchLifecycle",
+    "procedure": "带初始遗物的三个奥斯蒂根各推进三个回合，逐个省略选择及原生选择前观察；同根固定250节点串并行和取消异常排空。",
+    "expected": "AfterEnergyResetLate后、抽牌选择前完成召唤，恢复不重复；存活增长与死亡复活、完整键／续用／历史和政策均一致。",
+    "observed": "c1dc1de5335a4496a097c6deba28f50d Passed：九原生回合、十五省略边界／十五原生观察、八工作区；5867870dfeb84722b29418430e5da657 Passed：旧新和DOP1/DOP2一致、实际并发2、失败后根复用。",
+    "evidence": "docs/performance/simulation-pet-turns-20260911.json；docs/performance/simulation-pet-turns-20260911.md；2026-09-11。"
+  },
   "COMPACT-OSTY-VALUES-20260911": {
     "status": "Passed",
     "level": "HeadlessNativeDifferentialAndFixedSearchLifecycle",

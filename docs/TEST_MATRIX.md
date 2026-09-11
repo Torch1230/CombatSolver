@@ -2624,3 +2624,5 @@ pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId MONSTER-MOVES-BA
 `COMPACT-OSTY-NATIVE`：三个根状态、十五个原生步骤，包括存活／死亡根、双方不同力量、部分／完全格挡代伤、死亡后空攻击、复活／增长、群体效果不触及宠物及两个完整回合；逐步比对完整状态、能力元数据、历史、九 RNG、原键／估值／续用、缓存开关、逆序／撤销与八工作区，实机推进后冻结根不变。`COMPACT-OSTY-CAP`：接近／达到最大生命上限两次原生召唤与三十组事件编码边界；`COMPACT-OSTY-DEFEAT`：毁灭直接杀死玩家及存活宠物，保留格挡、不伪造伤害历史、完整能力退休。`COMPACT-ROUND-NATIVE` 三模式回归覆盖二十分支和七个原生动作。
 
 `COMPACT-OSTY-SEARCH` 共用主场景原始建局并增加一层 Tools 触发选择，固定 250 节点，旧／新 DOP1 与紧凑 DOP2 比较完整政策及续用结果，验证实际并发、挂起候选、取消／注入异常排空、根可复用、未迁移药水拒绝及实机不变。全部使用 SILENT／MECHA_KNIGHT_ELITE、Cards=[]、HP300、Instant、120 秒上限，建局直接注入奥斯蒂；不依赖切换亡灵角色。[本轮结果与重跑命令](performance/simulation-osty-values-20260911.md)。
+
+`COMPACT-OSTY-TURN-NATIVE`：复用奥斯蒂三个根建局，额外注入初始遗物、Tools 和 Stratagem，每根连续三个完整回合；九个原生回合、十五个省略选择边界与十五次原生选择前观察，覆盖受击后复活、存活增长、完整元数据／历史／键／估值／续用、逆序／撤销、八工作区和实机后冻结恢复。`COMPACT-OSTY-TURN-SEARCH` 共用相同遗物根，固定 250 节点旧／新和串／并行完整政策、取消／失败排空及根复用。SILENT／MECHA_KNIGHT_ELITE、Cards=[]、HP300、Instant、120 秒，与现有双端参数兼容。[本轮记录](performance/simulation-pet-turns-20260911.md)。

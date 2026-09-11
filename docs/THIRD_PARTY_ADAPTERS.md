@@ -532,3 +532,5 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 奥斯蒂的根身份和“没有宠物”现在显式捕获，分支生成身份由原召唤映射持有；外部适配不能从 `player.Osty` 补读分支状态。死亡阵容保留判定包含 DieForYou，普通能力退休不延后至下一次召唤。[五步原生与双根隔离证据](performance/simulation-osty-ownership-20260911.md)。
 
 紧凑宠物闭包现支持已捕获的精确奥斯蒂身份，以及其一层代伤能力和可选力量。`BODYGUARD`／`UNLEASH` 普通及升级值程序分别负责复活／增长和按存活宠物当前 HP／力量攻击；代伤使用玩家格挡，宠物死亡保留身份和代伤能力，其他能力退休，群体敌方效果仅遍历主敌人区间。`CompletedOstyReadBinding` 是内部值导入合同，保留最大生命映射的缺席／零值差别；不能用它执行自定义召唤。`ModifySummonAmount`、`AfterOstyRevived`、`AfterSummon` 新观察者须重新证明完整闭包；首次创建、其他宠物能力及未迁移遗物／药水仍拒绝，没有新增外部紧凑注册表。普通玩家回合包含保留的死宠物，额外回合只包含玩家，外部回合钩子不能假设参与者永远只有玩家。[范围和原生证据](performance/simulation-osty-values-20260911.md)。
+
+紧凑遗物封闭开关新增精确 `BoundPhylactery.AfterEnergyResetLate`：只在完整回合且已有宠物根准入，捕获非负整数召唤量，能量重置后、抽牌前调用既有值召唤。`BeforeCombatStart` 的首次创建属于捕获前效果，不能据此移植任意召唤或早期宠物存在观察者。登记点未开放；原能量重置顺序及未知 Hook 拒绝保持。[原生及搜索证据](performance/simulation-pet-turns-20260911.md)。

@@ -81,7 +81,7 @@ internal sealed class CompactDiscardProjection
             throw new NotSupportedException("Compact prototype requires an idle root with admitted Powers and no mod subscribers.");
         var relics = combat.RelicsOf(player);
         if (relics.Any(r => r.GetType() != typeof(ToughBandages) && r.GetType() != typeof(TheAbacus)
-                && r.GetType() != typeof(RingOfTheSnake) || r.IsMelted)
+                && r.GetType() != typeof(RingOfTheSnake) && !(r.GetType() == typeof(BoundPhylactery) && includeRounds && osty != null) || r.IsMelted)
             || relics.Select(r => r.GetType()).Distinct().Count() != relics.Count || powers.OfType<StratagemPower>().Count() > 1
             || combat.CurrentSide != player.Creature.Side)
             throw new NotSupportedException("Compact prototype requires admitted relics in player phase.");
@@ -144,6 +144,9 @@ internal sealed class CompactDiscardProjection
             MirrorDispatchKind.Unsupported when CardOnPlayCompensationCatalog.Contains(card) => PredictionRiskReason.MethodNotMirrored,
             _ => throw new NotSupportedException($"Compact compatibility projection has no legacy OnPlay support for {card.Id.Entry}.")
         }).ToArray();
+        decimal turnSummon = relics.OfType<BoundPhylactery>().SingleOrDefault()?.DynamicVars.Summon.BaseValue ?? 0;
+        if (turnSummon != decimal.Truncate(turnSummon) || turnSummon is < 0 or > 999_999_999m)
+            throw new NotSupportedException("Compact turn summoning requires an integral captured amount.");
         int Index(PredictedCard card) => Array.IndexOf(_identities, card.Original);
         IReadOnlyList<int>[] piles = [state.Hand.Cards.Select(Index).ToArray(), state.DrawPile.Cards.Select(Index).ToArray(),
             state.DiscardPile.Cards.Select(Index).ToArray(), state.PlayPile.Cards.Select(Index).ToArray(),
@@ -188,7 +191,7 @@ internal sealed class CompactDiscardProjection
             Block(relics.OfType<TheAbacus>().SingleOrDefault()), abacusIndex >= 0 && abacusIndex < stratagemIndex,
             includeAttacks ? _creatures.Select(c => { var v = root.State.GetCreature(c); return new CreatureVitals(v.CurrentHp, v.MaxHp, v.Block); }).ToArray() : null, powerDefinitions, definitions[cards.Length..],
             new(energyRng.Counter, energyRng.State0, energyRng.State1, energyRng.State2, energyRng.State3), handEndAdmitted: includeHandEnd, monsterMoves: includeMechaMoves ? CaptureMechaCommands(root, burnTemplate) : null, powerPhasesAdmitted: includePowerPhases, monsterAi: ai,
-            round: includeRounds ? new(combat.RoundNumber, PlayerTurn, player.MaxEnergy, MegaCrit.Sts2.Core.Combat.CombatManager.baseHandDrawCount) : null, pet: osty == null ? -1 : CreatureIndex(osty));
+            round: includeRounds ? new(combat.RoundNumber, PlayerTurn, player.MaxEnergy, MegaCrit.Sts2.Core.Combat.CombatManager.baseHandDrawCount, (int)turnSummon) : null, pet: osty == null ? -1 : CreatureIndex(osty));
         CardValuesInvariant = Program.CardValuesInvariant;
     }
 
@@ -801,6 +804,7 @@ internal sealed class CompactDiscardProjection
             || type == typeof(NeurosurgePower) && method == nameof(AbstractModel.AfterSideTurnStart)
             || type == typeof(DoomPower) && method is nameof(AbstractModel.BeforeSideTurnEnd) or nameof(AbstractModel.AfterSideTurnEnd)
             || type == typeof(ToolsOfTheTradePower) && method is nameof(AbstractModel.ModifyHandDraw) or nameof(AbstractModel.AfterPlayerTurnStart)
+            || type == typeof(BoundPhylactery) && method == nameof(AbstractModel.AfterEnergyResetLate)
             || type == typeof(RingOfTheSnake) && method == nameof(AbstractModel.ModifyHandDraw)
             || (type == typeof(WeakPower) || type == typeof(VulnerablePower) || type == typeof(FrailPower) || type == typeof(PiercingWailPower))
                 && method == nameof(AbstractModel.AfterSideTurnEnd)

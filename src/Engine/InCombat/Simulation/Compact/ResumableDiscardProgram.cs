@@ -162,6 +162,7 @@ internal sealed partial class ResumableDiscardProgram
             throw new ArgumentException("Monster AI requires matching captured commands and owner.");
         if (round != null && (!handEndAdmitted || !powerPhasesAdmitted || monsterAi == null || monsterAi.Owner != 1
             || (creatures?.Length != (pet < 0 ? 2 : 3) || pet >= 0 && pet != 2) || comparisons == null
+            || round.Value.TurnStartSummon > 0 && pet < 0
             || powers!.Any(power => power.Owner == 0 && power.Kind == BasicPowerKind.Poison && power.Amount != 0)))
             throw new NotSupportedException("Round closure requires one enemy, all phases, ordering and no player Poison.");
         ValidateBlockReturns(definitions, powers);
@@ -433,11 +434,7 @@ internal sealed partial class ResumableDiscardProgram
                 GenerateCards(instruction.CardTemplate, instruction.Amount, creator: 0);
                 break;
             case CardInstructionKind.SummonPet:
-                if (!Ending && instruction.Amount > 0)
-                {
-                    _combat!.SummonPet(State, instruction.Amount);
-                    Emit(EventKind.SummonPet, card, instruction.Amount, target: PetIndex);
-                }
+                SummonPet(card, instruction.Amount);
                 break;
             case CardInstructionKind.PetAttackTarget:
                 AttackCreature(card, PetIndex, Read(Frame + TargetOffset),
@@ -596,6 +593,13 @@ internal sealed partial class ResumableDiscardProgram
             _combat.Write(State, owner, values);
         }
         Emit(EventKind.Block, source, (_combat?.Read(State, owner).Block ?? Block) - previous, target: owner == 0 ? -1 : owner);
+    }
+
+    private void SummonPet(int source, int amount)
+    {
+        if (Ending || amount <= 0) return;
+        _combat!.SummonPet(State, amount);
+        Emit(EventKind.SummonPet, source, amount, target: PetIndex);
     }
 
     private void Attack(int card, int target, int amount) => AttackCreature(card, 0, target, amount);

@@ -44,7 +44,7 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertCompactOstyCapAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
-            if (request.ScenarioId == "COMPACT-OSTY-NATIVE")
+            if (request.ScenarioId is "COMPACT-OSTY-NATIVE" or "COMPACT-OSTY-TURN-NATIVE")
             {
                 await runner.AssertCompactOstyAsync(combatState, player);
                 return Observation(combatEnded: false);
@@ -64,7 +64,7 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertCompactNeurosurgeAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
-            if (request.ScenarioId is "COMPACT-SEARCH-LIFECYCLE" or "COMPACT-NEUROSURGE-SEARCH" or "COMPACT-OSTY-SEARCH")
+            if (request.ScenarioId is "COMPACT-SEARCH-LIFECYCLE" or "COMPACT-NEUROSURGE-SEARCH" or "COMPACT-OSTY-SEARCH" or "COMPACT-OSTY-TURN-SEARCH")
             {
                 _ = ApplySettingsOverrides();
                 await runner.AssertCompactSearchLifecycleAsync(combatState, player);

@@ -1,6 +1,6 @@
 namespace CombatSolver.Engine.InCombat.Simulation.Compact;
 
-internal readonly record struct CompactRoundRoot(int Round, int PlayerTurn, int MaxEnergy, int BaseDraw);
+internal readonly record struct CompactRoundRoot(int Round, int PlayerTurn, int MaxEnergy, int BaseDraw, int TurnStartSummon = 0);
 
 // The admitted domain starts in player choice, has one deterministic enemy and no
 // extra turns or player Poison. Only player hand draw / Tools / Sly can suspend.
@@ -10,7 +10,7 @@ internal sealed class CompactRoundLayout
     internal CompactRoundRoot Root { get; }
     internal CompactRoundLayout(ReversibleValueState state, CompactRoundRoot root)
     {
-        if (root.Round < 1 || root.PlayerTurn < 1 || root.MaxEnergy is < 0 or > 999_999_999 || root.BaseDraw is < 0 or > 10)
+        if (root.Round < 1 || root.PlayerTurn < 1 || root.MaxEnergy is < 0 or > 999_999_999 || root.BaseDraw is < 0 or > 10 || root.TurnStartSummon is < 0 or > 999_999_999)
             throw new ArgumentException("Invalid captured round clock or resources.");
         Root = root;
         _start = state.Allocate(7);

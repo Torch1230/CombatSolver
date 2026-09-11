@@ -1319,6 +1319,7 @@ $compactReadGuards = @(
     @('src/Engine/InCombat/Mirrors/Hooks/Damage/ModifyUnblockedDamageTargetMirrors.cs', 'context.State.GetCreature(power.Owner).IsAlive'),
     @('src/Search/CombatBeamSolver.RoundLifecycle.cs', 'participants = takingExtraTurn ? [_player.Creature] : simulatedCombat.Allies.ToArray();'),
     @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', 'state.Write(_terminalSlot, DeathCompleted(state, 0) ? 2 : 1);'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Rounds.cs', 'if (PlayerTurn != 1) SummonPet(-1, _round.Root.TurnStartSummon);'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Rounds.cs', 'Emit(EventKind.CommitPlayerTurnHistory, -1);'),
     @('src/Search/SimulatedCombatState.cs', 'combatHistory?.LastAttacks, combatHistory?.PreviousTurnAttacks'),
     @('src/Search/SimulatedCombatState.cs', 'history?.Owner, history?.StatusDraws'),
