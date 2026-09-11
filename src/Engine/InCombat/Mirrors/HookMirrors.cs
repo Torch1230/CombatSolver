@@ -25,7 +25,7 @@ namespace CombatSolver.Engine.InCombat.Mirrors;
 // Simulation-facing facade for mirrored combat hooks, analogous to vanilla Hook. Callers pass
 // ordinary hook arguments; this class owns mirror context construction, listener enumeration, and
 // hook-level ordering while method-specific registries and contexts remain implementation details.
-internal static class HookMirrors
+internal static partial class HookMirrors
 {
     /// <summary>
     /// Mirrors <see cref="Hook.ModifyBlock"/>.

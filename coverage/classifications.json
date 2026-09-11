@@ -654,8 +654,8 @@
     "testId": "MONSTER-MOVES-BATCH-033"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.DisintegrationPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEndLate(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
-    "status": "SolverCompensation",
-    "source": "src/Prediction/EndTurnPowerSupport.cs",
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/TurnEnd/AfterSideTurnEndLateMirrors.cs",
     "notes": "Deals the amount as blockable, unpowered self-damage in the late side-turn-end phase without consuming the power.",
     "testId": "MONSTER-MOVES-BATCH-033"
   },

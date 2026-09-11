@@ -284,7 +284,7 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 这里可以保存具体领域规则，但不能决定 Beam 配额、最终路线或 UI 显示。新增补偿前检查 mirror、spec、support 和 `SimulatedCombatState` 的完整调用链，确保只有一个权威结算点。
 
-`PlayerTurnEndLifecycle.RunPhaseTwo` 拥有清空手牌后的玩家回合末补偿顺序：常规 Power、遗物、晚期 Power，最后规范化卡牌词条。Search、风险预估和无人差分共用此入口；每个阶段的挂起选择立即向上传播。`CorePowerSupport.TriggerPlayerRegularSideTurnEndEffects` 仅承担常规 Power 阶段，晚期伤害在遗物之后结算。
+`PlayerTurnEndLifecycle.RunPhaseTwo` 拥有清空手牌后的玩家回合末顺序：常规 Power、遗物、`HookMirrors.AfterSideTurnEndLate`，最后规范化卡牌词条。Search、风险预估和无人差分共用此入口；每个阶段的挂起选择立即向上传播。敌方晚期入口由 `CorePowerSupport.TriggerEnemySideTurnEndEffects` 调用。晚期阶段按完整分支监听顺序固定成员并跟随卡牌 COW Preview；`AfterSideTurnEndLateMirrors` 独占原版 DisintegrationPower 效果，底层沿用标准 registry/descriptor。登记在首次根捕获或分发后冻结，未知战斗重写明确失败，不扩展状态或 Mod 门禁；见 [回合阶段镜像](third-party-turn-phase-mirrors.md)。
 
 DarkEmbrace 的延迟抽牌数由 AfterCardExhausted 镜像按实际虚无消耗事件写入 `DarkEmbracePredictionState`，根从原生内部计数捕获，StateStore/Fork 按值隔离并纳入指纹；常规 Power 回合末阶段抽牌后归零，稳定下一玩家回合不保留待抽事务。苍蓝星球的已触发标志由主线程从原生 Power 捕获至分支表，避免 Power 克隆重置内部数据后重复触发。
 

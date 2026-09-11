@@ -1,5 +1,15 @@
 # CombatSolver 测试清单
 
+## 下一版本（开发中）：回合末晚期镜像
+
+- `2996595` / `0.36.3` 复审：本机游戏已核对为 `0.111.0` / `41cef1ea`，直接使用安装目录与对应 RitsuLib 的 Release 构建零警告零错误。单监听器分配合同在旧实现下以 200,000 字节/1000 次失败，修复后 80,000 字节通过；一般合同 25 项及冻结进程 1 项通过。分配按线程累计字节取证，不依赖计时或反复热降频 A/B；命令和模型仍使用替身，实机待验范围不变。
+
+- `tools/TurnPhaseMirrorChecks`：`TURN_PHASE_MIRRORS_OK checks=25`，独立进程 `--seal`：`TURN_PHASE_SEAL_OK checks=1`。链接生产晚期 facade、registry 和 CardHookReceiver；检查参数/精确类型/覆盖描述、两侧顺序、空参与者、未知重写和异常传播、选牌暂停、成员快照、COW 接收者及 Disintegration 调用次数。模型、监听表来源和伤害命令为替身，不是原生游戏测试。
+- 初版 Release 构建针对 `0.111.0` 参考程序集与匹配 RitsuLib，通过，零警告零错误，`CopyModOnBuild=false`。当时本机安装游戏为 `0.107.1`，首次使用安装目录构建因 API 不匹配失败；改为现有 `0.111.0` 参考目录后修正缺少的 Simulation using，通过构建。后续针对本机 `0.111.0` 的结果见本节复审记录。没有部署模组。
+- Bash 结构门禁：`REFACTOR_BOUNDARIES_OK search_files=87`。同步修改 PowerShell 对应入口规则；本机没有执行 PowerShell。
+- CoverageCatalog `--verify` 在临时目录通过：3035 条、0 未分析、0 待实现；新镜像被识别为 `Registered / Exact / EngineMirror`。工具运行补入缺少的 SmartFormat 托管依赖；临时生成目录未覆盖仓库的全量生成文件，避免引入平台方法哈希及上游版本刷新差异。源分类已更新，生成结果另存本地审阅材料。
+- 未运行 `monster-moves-batch-033-disintegration.json`、敌方晚期伤害/末击，或中性遗物／Modifier 的原生两回合差分；这些仍为实机验收项。既有 `MONSTER-MOVES-BATCH-033` 的 Runtime 记录是历史证据，不能当作本轮迁移通过。无性能 A/B 或性能提升结论。
+
 ## 0.36.3：策略摘要
 
 - 后续摘要样式调整：`UI-LOCALIZATION` / `fc0bb52775dd427c80b61719838b1225` Passed（25.38 秒），校验目标 7/实际 4、成功与未达标状态分组、前缀删除及 405 项目录。右对齐、16 号字体和全自动按钮样式通过编译检查，未作可见游戏人工验收。

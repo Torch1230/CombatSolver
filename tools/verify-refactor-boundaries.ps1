@@ -46,7 +46,7 @@ foreach ($relativePath in $playerTurnEndCallers) {
     foreach ($reference in @(
         "CorePowerSupport.TriggerPlayerRegularSideTurnEndEffects(",
         "TurnStartRelicSupport.TriggerAfterSideTurnEnd(",
-        "EndTurnPowerSupport.TriggerLate(")) {
+        "HookMirrors.AfterSideTurnEndLate(")) {
         foreach ($match in Select-String -LiteralPath $callerPath -SimpleMatch $reference) {
             $violations.Add("$($match.Path):$($match.LineNumber): player phase two must use PlayerTurnEndLifecycle")
         }
