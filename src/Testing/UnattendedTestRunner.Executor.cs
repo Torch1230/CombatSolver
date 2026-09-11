@@ -54,6 +54,11 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertPowerDurationKeysAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "COMPACT-MONSTER-AI-NATIVE")
+            {
+                await runner.AssertCompactMonsterCommandsAsync(combatState, player, advanceAi: true);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "COMPACT-MONSTER-COMMANDS-NATIVE")
             {
                 await runner.AssertCompactMonsterCommandsAsync(combatState, player);

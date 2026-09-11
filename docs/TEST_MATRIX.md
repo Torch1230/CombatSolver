@@ -1,5 +1,7 @@
 # CombatSolver 测试清单
 
+- `COMPACT-MONSTER-AI-NATIVE`：`b7de315897af4c2782ce92a17f5c3cd7` Passed；`--character-id SILENT --encounter-id MECHA_KNIGHT_ELITE --enemy-current-hp 300 --cards-json '[]'`，3 根／10 分支／16 原生动作，完整 AI／状态／历史／九 RNG／估值／原键、逆序恢复及八工作区；纯值 300 次增长日志。原生侧调用 PerformMove 和 RollMove，尚非完整回合。[证据](performance/simulation-monster-ai-20260911.md)。
+
 - `COMPACT-POWER-PHASES-NATIVE`／`COMPACT-SHUFFLE-POWER-VALUES-NATIVE`：`1c179c6437ae46a0b09144cbe6de666a`／`d73115d6b55b4602810ee3e921a4353b` Passed；五路线／22 前缀／16 原生阶段及出牌步骤，完整 Power 字段、倒计时／恢复／重获、原键／全估值／九 RNG／八工作区；洗牌 24 分支与原生两回合对照（回合边界仍由旧引擎执行）。[阶段证据](performance/simulation-power-phases-20260911.md)。
 
 - `POWER-DURATION-KEYS-NATIVE`／`POWER-DURATION-APPLICATION-NATIVE`：最终 `683bb123f72d4b5f86ac5fdfaf2a8bc8`／`54cd9ef622764de4845909b9f8abc3ad` Passed；三种减益同层不同未来的键与续用区分、中毒等价，三个应用入口／16 原生步骤、叠加／递减／重获／人工制品阻止、完整 Power 字段和冻结重放。[失败基线与最终证据](performance/simulation-duration-state-20260911.md)。

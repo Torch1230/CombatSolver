@@ -1201,7 +1201,7 @@ foreach ($file in Get-ChildItem -LiteralPath $compactRoot -Filter *.cs -File -Re
 }
 $compactProductionFiles = @($searchFiles) + @(Get-ChildItem -LiteralPath (Join-Path $repositoryRoot 'src/Runtime') -Filter *.cs -File -Recurse)
 foreach ($file in $compactProductionFiles) {
-    foreach ($reference in @('ResumableDiscardProgram', 'CompactDiscardProjection', 'CompactDiscardReadView', 'CompactPhaseProbe', 'CompactCardMetadataReadBinding', 'CompactCardProgramCompiler', 'MonsterEffectProgram')) {
+    foreach ($reference in @('ResumableDiscardProgram', 'CompactDiscardProjection', 'CompactDiscardReadView', 'CompactPhaseProbe', 'CompactCardMetadataReadBinding', 'CompactCardProgramCompiler', 'MonsterEffectProgram', 'DeterministicMonsterAi', 'CompactMonsterAiReadBinding')) {
         foreach ($match in Select-String -LiteralPath $file.FullName -SimpleMatch $reference) {
             $violations.Add("$($match.Path):$($match.LineNumber): unvalidated compact prototype reached production: $reference")
         }
@@ -1316,6 +1316,10 @@ $compactReadGuards = @(
     @('src/Search/SimulatedCombatState.cs', 'simulated.SkipNextDurationTick = true;'),
     @('src/Search/SimulatedCombatState.cs', '!PowerLifecycleSupport.UsesNativeDurationSkip(powerType) && !alreadyPresent'),
     @('src/Search/SimulatedCombatState.cs', '!PowerLifecycleSupport.UsesNativeDurationSkip(typeof(T)) && !alreadyPresent'),
+    @('src/Engine/InCombat/Simulation/Compact/DeterministicMonsterAi.cs', '_log.Append(state, [next]);'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', '_monsterAi = source._monsterAi;'),
+    @('src/Testing/CompactDiscardProjection.cs', 'combat.RequireCapturedMonsterAi(_creatures[1])'),
+    @('src/Testing/CompactDiscardReadView.cs', '_monsterAiBinding?.Read(program);'),
     @('src/Engine/InCombat/Simulation/Compact/MonsterEffectProgram.cs', '_instructions = instructions.ToArray();'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Monsters.cs', 'if (_monsterMoves == null || !Complete || Terminal || Ending'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', '_monsterMoves = source._monsterMoves;'),
@@ -1383,4 +1387,16 @@ $nativeReplay = [IO.File]::ReadAllText((Join-Path $repositoryRoot 'src/Testing/U
 if ($nativeReplay.Contains('ApplyReplayStateAsync(')) {
     throw 'Native recorded replay must reconstruct state through native actions.'
 }
+
+$compactAiReads = Join-Path $repositoryRoot 'src/Search/SimulatedCombatState.CompletedMonsterAiReads.cs'
+$compactAiText = Get-Content -LiteralPath $compactAiReads -Raw
+foreach ($forbidden in @('.Fork(', 'RollMove(', 'AdvanceMonsterAi(', 'BranchMonsterAi.Capture(', '.State.Write(')) {
+    if ($compactAiText.Contains($forbidden)) { throw "Completed monster AI reads may only import supplied values: $forbidden" }
+}
+Get-ChildItem (Join-Path $repositoryRoot 'src/Search'), (Join-Path $repositoryRoot 'src/Runtime') -Recurse -Filter '*.cs' | ForEach-Object {
+    if ($_.FullName -ne $compactAiReads -and (Get-Content -LiteralPath $_.FullName -Raw).Contains('CompletedMonsterAiReadBinding')) {
+        throw "Completed AI binding is not admitted to production execution: $($_.FullName)"
+    }
+}
+
 Write-Output "REFACTOR_BOUNDARIES_OK search_files=$($searchFiles.Count)"

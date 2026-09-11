@@ -32,6 +32,7 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
     private readonly int[] _baseHits, _baseEnemyHits, _baseCreatureAttacks;
     private readonly SimulatedCombatState.CompletedPowerReadBinding? _powerBinding;
     private readonly CompletedPowerReadValues[] _powerValues;
+    private readonly CompactMonsterAiReadBinding? _monsterAiBinding;
     internal int RiskSourceCount => _distinctGaps.Length;
 
     internal CompactDiscardReadView(CompactDiscardProjection adapter, CombatPredictionSimulator root, Player player,
@@ -63,6 +64,7 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
         _baseCreatureAttacks = !adapter.HasMonsterMoves ? [] : Enumerable.Range(0, _program.CreatureCount)
             .Select(id => metadata.GetCreatureAttacksThisTurn(adapter.Creature(id))).ToArray();
         _enemies = new(this);
+        _monsterAiBinding = adapter.CreateMonsterAiReadBinding(_context);
         _powerValues = new CompletedPowerReadValues[_program.PowerCount];
         _powerBinding = _program.PowerCount == 0 ? null : adapter.CreatePowerReadBinding(_context);
         _rootGaps = PredictionCoverage.Collect(root);
@@ -87,6 +89,7 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
             throw new InvalidOperationException("Read view requires a completed candidate from its own root.");
         _program = program;
         _cards.Read(program);
+        _monsterAiBinding?.Read(program);
         int attacks = 0, creatureAttacks = 0, zeroCostAttacks = 0, shivs = 0, statusDraws = 0;
         _combatHistory.ResetFrom(_combatBaseline);
         int block = 0, skill = 0, discarded = 0, exhausted = 0, energy = 0, draw = 0, starts = 0, plays = 0, manual = 0;

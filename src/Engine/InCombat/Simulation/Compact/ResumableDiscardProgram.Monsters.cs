@@ -2,13 +2,30 @@ namespace CombatSolver.Engine.InCombat.Simulation.Compact;
 
 internal sealed partial class ResumableDiscardProgram
 {
+    internal bool HasMonsterAi => _monsterAi != null;
+    internal int CurrentMonsterMove => _monsterAi?.Current(State)
+        ?? throw new InvalidOperationException("Monster AI was not admitted.");
+    internal int MonsterMoveLogCount => _monsterAi?.LogCount(State)
+        ?? throw new InvalidOperationException("Monster AI was not admitted.");
+    internal int MonsterMoveLogAt(int index) => _monsterAi!.LogAt(State, index);
+
+    // This is the selection boundary after an already completed move, matching the
+    // existing round driver's AdvanceMonsterAi contract. It does not perform a move.
+    internal void AdvanceMonsterMove(int owner)
+    {
+        if (_monsterAi == null || owner != _monsterAi.Owner || !Complete || Ending || Terminal
+            || !CreaturePresent(owner) || Creature(owner).CurrentHp <= 0)
+            throw new InvalidOperationException("Monster advance requires an admitted idle graph and living owner.");
+        _monsterAi.Advance(State);
+    }
+
     // Negative event sources encode a creature as -index-1; card instances keep their
     // existing nonnegative identity. Generated events still identify the new card.
     internal void ExecuteMonsterMove(int owner, int moveIndex)
     {
         if (_monsterMoves == null || !Complete || Terminal || Ending || owner <= 0 || owner >= CreatureCount
             || !CreaturePresent(owner) || Creature(owner).CurrentHp <= 0 || (uint)moveIndex >= (uint)_monsterMoves.Length)
-            throw new InvalidOperationException("Monster command requires an admitted idle root, living owner and captured move.");
+            throw new InvalidOperationException($"Monster command requires an admitted idle root, living owner and captured move: owner={owner}, move={moveIndex}, admitted={_monsterMoves != null}, complete={Complete}, terminal={Terminal}, ending={Ending}.");
         int source = -owner - 1;
         var move = _monsterMoves[moveIndex];
         for (int index = 0; index < move.Count; index++)

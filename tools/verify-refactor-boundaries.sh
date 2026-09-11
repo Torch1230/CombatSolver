@@ -994,7 +994,7 @@ while IFS= read -r compact_path; do
     done
 done < <(rg --files "$repository_root/src/Engine/InCombat/Simulation/Compact" -g '*.cs')
 while IFS= read -r production_path; do
-    for prototype_reference in 'ResumableDiscardProgram' 'CompactDiscardProjection' 'CompactDiscardReadView' 'CompactPhaseProbe' 'CompactCardMetadataReadBinding' 'CompactCardProgramCompiler' 'MonsterEffectProgram'; do
+    for prototype_reference in 'ResumableDiscardProgram' 'CompactDiscardProjection' 'CompactDiscardReadView' 'CompactPhaseProbe' 'CompactCardMetadataReadBinding' 'CompactCardProgramCompiler' 'MonsterEffectProgram' 'DeterministicMonsterAi' 'CompactMonsterAiReadBinding'; do
         forbid_fixed "$production_path" "$prototype_reference" 'unvalidated compact prototype reached production:'
     done
 done < <(rg --files "$search_root" "$repository_root/src/Runtime" -g '*.cs')
@@ -1010,6 +1010,18 @@ require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/Resumable
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" '_monsterMoves = source._monsterMoves;' 'frozen candidates must retain monster admission and commands'
 require_fixed "$compact_projection" 'metadata.CurrentMonsterMove(_creatures[1])' 'monster parameters must come from captured branch metadata'
 require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" 'history?.CreatureAttacks, combatHistory?.CreatureAttacks' 'completed creature attack counts must share the original map encoding'
+compact_ai_reads="$search_root/SimulatedCombatState.CompletedMonsterAiReads.cs"
+for replay in '.Fork(' 'RollMove(' 'AdvanceMonsterAi(' 'BranchMonsterAi.Capture(' '.State.Write('; do
+    forbid_fixed "$compact_ai_reads" "$replay" 'completed monster AI reads may only import supplied values:'
+done
+while IFS= read -r production_path; do
+    [[ $production_path == "$compact_ai_reads" ]] && continue
+    forbid_fixed "$production_path" 'CompletedMonsterAiReadBinding' 'completed AI binding is not admitted to production execution:'
+done < <(rg --files "$search_root" "$repository_root/src/Runtime" -g '*.cs')
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/DeterministicMonsterAi.cs" '_log.Append(state, [next]);' 'monster move history must belong to reversible values'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" '_monsterAi = source._monsterAi;' 'frozen candidates must retain AI layout and admission'
+require_fixed "$compact_projection" 'combat.RequireCapturedMonsterAi(_creatures[1])' 'monster AI admission must consume captured root state'
+require_fixed "$repository_root/src/Testing/CompactDiscardReadView.cs" '_monsterAiBinding?.Read(program);' 'completed AI reads must consume current candidate values'
 damage_simulator="$repository_root/src/Engine/InCombat/Simulation/CombatPredictionSimulator.Damage.cs"
 forbid_fixed "$damage_simulator" 'dealer?.IsDead' 'damage dealers must read branch vitals'
 require_fixed "$damage_simulator" 'effects.CompletePlayerDeath(player);' 'player death must run its domain cleanup before orb/pet handling'

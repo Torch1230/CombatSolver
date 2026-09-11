@@ -1,4 +1,5 @@
 using System.Reflection;
+using MegaCrit.Sts2.Core.MonsterMoves.MonsterMoveStateMachine;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.ValueProps;
 using System.Collections.Concurrent;
@@ -38,11 +39,14 @@ internal sealed class CompactDiscardProjection
     internal bool HasMonsterMoves { get; }
     private readonly Creature[] _creatures;
     private readonly PowerModel[] _powerTemplates;
+    private readonly MoveState[]? _aiMoves;
+    private readonly bool[]? _aiAttacks;
     internal int PlayerTurn => ((SimulatedCombatState)_root.State.CombatState).GetPlayerTurnNumber(_player);
 
-    internal CompactDiscardProjection(CombatPredictionSimulator root, Player player, bool includeAttacks = false, bool includeHandEnd = false, bool includeMechaMoves = false, bool includePowerPhases = false)
+    internal CompactDiscardProjection(CombatPredictionSimulator root, Player player, bool includeAttacks = false, bool includeHandEnd = false, bool includeMechaMoves = false, bool includePowerPhases = false, bool includeMechaAi = false)
     {
         if (includePowerPhases && !includeAttacks) throw new NotSupportedException("Power phases require creature values.");
+        if (includeMechaAi && !includeMechaMoves) throw new NotSupportedException("Mecha AI requires captured commands.");
         HasMonsterMoves = includeMechaMoves;
         _root = root;
         _player = player;
@@ -137,15 +141,38 @@ internal sealed class CompactDiscardProjection
         AbstractModel[] listeners = combat.IterateHookListeners().ToArray();
         int abacusIndex = Array.FindIndex(listeners, p => p is TheAbacus);
         int stratagemIndex = Array.FindIndex(listeners, p => p is StratagemPower);
+        DeterministicMonsterAi? ai = null;
+        if (includeMechaAi)
+        {
+            var source = combat.RequireCapturedMonsterAi(_creatures[1]);
+            int[] next = [1, 2, 3, 1];
+            if (source.NeedsInitialRoll || source.KnowledgeDemonCurseCounter != 0 || source.Machine.States.Count != 4)
+                throw new NotSupportedException("Mecha AI has unsupported root state.");
+            _aiMoves = MechaMoveIds.Select(id => source.Machine.States.GetValueOrDefault(id) as MoveState
+                ?? throw new NotSupportedException("Mecha AI has an unknown state.")).ToArray();
+            for (int index = 0; index < _aiMoves.Length; index++)
+            {
+                var move = _aiMoves[index];
+                if (move.GetType() != typeof(MoveState) || move.MustPerformOnceBeforeTransitioning
+                    || (move.FollowUpState?.Id ?? move.FollowUpStateId) != MechaMoveIds[next[index]])
+                    throw new NotSupportedException("Mecha AI graph is outside the deterministic captured domain.");
+            }
+            int current = Array.IndexOf(_aiMoves, source.Current);
+            ai = new(1, current, next, source.StateLog.Select(id => Array.IndexOf(MechaMoveIds, id)).ToArray());
+            _aiAttacks = _aiMoves.Select(move => source.Static.AttacksByMove[move.Id].Count > 0).ToArray();
+        }
         Program = new(definitions[..cards.Length], piles, state.Energy, root.State.GetCreature(player.Creature).Block,
             Block(relics.OfType<ToughBandages>().SingleOrDefault()),
             new(rng.Counter, rng.State0, rng.State1, rng.State2, rng.State3), comparisons,
             powers.OfType<StratagemPower>().SingleOrDefault()?.Amount ?? 0,
             Block(relics.OfType<TheAbacus>().SingleOrDefault()), abacusIndex >= 0 && abacusIndex < stratagemIndex,
             includeAttacks ? _creatures.Select(c => { var v = root.State.GetCreature(c); return new CreatureVitals(v.CurrentHp, v.MaxHp, v.Block); }).ToArray() : null, powerDefinitions, definitions[cards.Length..],
-            new(energyRng.Counter, energyRng.State0, energyRng.State1, energyRng.State2, energyRng.State3), handEndAdmitted: includeHandEnd, monsterMoves: includeMechaMoves ? CaptureMechaCommands(root, burnTemplate) : null, powerPhasesAdmitted: includePowerPhases);
+            new(energyRng.Counter, energyRng.State0, energyRng.State1, energyRng.State2, energyRng.State3), handEndAdmitted: includeHandEnd, monsterMoves: includeMechaMoves ? CaptureMechaCommands(root, burnTemplate) : null, powerPhasesAdmitted: includePowerPhases, monsterAi: ai);
         CardValuesInvariant = Program.CardValuesInvariant;
     }
+
+    internal CompactMonsterAiReadBinding? CreateMonsterAiReadBinding(CombatPredictionSimulator context)
+        => _aiMoves == null ? null : new((SimulatedCombatState)context.State.CombatState, _creatures[1], _aiMoves, _aiAttacks!);
 
     internal static readonly string[] MechaMoveIds = ["CHARGE_MOVE", "FLAMETHROWER_MOVE", "WINDUP_MOVE", "HEAVY_CLEAVE_MOVE"];
 
@@ -485,6 +512,7 @@ internal sealed class CompactDiscardProjection
             combat.RecordDamageReceived(target, dealer, result);
             if ((traits & ResumableDiscardProgram.DamageTraits.Unpowered) == 0) damageResults[item.Card] = result;
         }
+        CreateMonsterAiReadBinding(projection)?.Read(program);
         if (program.PowerCount > 0)
         {
             var binding = CreatePowerReadBinding(projection);

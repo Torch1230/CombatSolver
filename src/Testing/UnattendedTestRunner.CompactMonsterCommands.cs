@@ -21,7 +21,7 @@ internal sealed partial class UnattendedTestRunner
     // 0..3 captured Mecha commands, 4 hand-end, -1 root/generated card play.
     private readonly record struct CompactMechaStep(int Move, int Card = -1, bool Generated = false);
 
-    private async Task AssertCompactMonsterCommandsAsync(CombatState combat, Player player)
+    private async Task AssertCompactMonsterCommandsAsync(CombatState combat, Player player, bool advanceAi = false)
     {
         List<object> evidence = [];
         var enemy = combat.Enemies.Single();
@@ -48,9 +48,13 @@ internal sealed partial class UnattendedTestRunner
             }
             await PowerCmd.Apply<ArtifactPower>(new BlockingPlayerChoiceContext(), enemy, 3, enemy, null);
             await PowerCmd.Apply<ArtifactPower>(new BlockingPlayerChoiceContext(), player.Creature, 2, player.Creature, null);
+            if (advanceAi && mode != 1)
+                ConfigureMonsterMove(enemy, new UnattendedMonsterMoveCheck { MoveId = mode == 0 ? "CHARGE_MOVE" : "FLAMETHROWER_MOVE" });
             SetEnergy(player, 20); SetStars(player, 0);
             await RunManager.Instance.ActionExecutor.FinishedExecutingActions();
             CardModel[] cards = player.PlayerCombatState!.Hand.Cards.ToArray();
+            int movesBefore = CombatManager.Instance.History.Entries.OfType<MonsterPerformedMoveEntry>().Count();
+            List<string> performed = [];
             int generatedBefore = CombatManager.Instance.History.Entries.OfType<CardGeneratedEntry>().Count();
             var captured = CombatRootSnapshot.Capture(combat);
             var root = captured.ForkSimulator();
@@ -63,6 +67,14 @@ internal sealed partial class UnattendedTestRunner
                 : mode == 1 ? [new(2), new(1), new(2), new(3), new(0), new(4)] : [new(1)];
             CompactMechaStep[][] routes = mode == 2 ? [[new(1)], [new(0)], [new(-1, 0), new(1)]]
                 : [[new(0)], [new(1)], [new(2)], [new(3)], native];
+            if (advanceAi)
+            {
+                native = mode == 0
+                    ? [new(-1, 0), new(-1, 0, true), new(-2), new(-2), new(-1, 1), new(-2), new(-2), new(-2), new(-2), new(4)]
+                    : mode == 1 ? [new(-2), new(-2), new(-2), new(-2), new(4)] : [new(-2)];
+                routes = mode == 2 ? [[new(-2)], [new(-1, 0), new(-2)]]
+                    : [[new(-2)], [new(-1, mode == 0 ? 3 : 0), new(-2)], [new(-2), new(-2)], native];
+            }
             CompactDiscardProjection adapter;
             ResumableDiscardProgram.Candidate initial;
             ForecastMove[] forecasts;
@@ -70,7 +82,7 @@ internal sealed partial class UnattendedTestRunner
             List<(MoveStateSnapshot State, int[][] Piles, StateFingerprint[] Generated)> expected = [];
             using (SimulationNotificationIsolation.Enter())
             {
-                adapter = new(root, player, includeAttacks: true, includeHandEnd: true, includeMechaMoves: true);
+                adapter = new(root, player, includeAttacks: true, includeHandEnd: true, includeMechaMoves: true, includeMechaAi: advanceAi);
                 var metadata = (SimulatedCombatState)root.Fork().State.CombatState;
                 forecasts = CompactDiscardProjection.MechaMoveIds.Select(id =>
                 {
@@ -151,6 +163,17 @@ internal sealed partial class UnattendedTestRunner
                     if (!card.TryManualPlay(card.Type == CardType.Attack ? enemy : null))
                         throw new InvalidOperationException("Native mixed Mecha route rejected card play.");
                 }
+                else if (step.Move == -2)
+                {
+                    performed.Add(monster.NextMove.Id);
+                    await monster.PerformMove();
+                    if (player.Creature.CurrentHp > 0) monster.RollMove([player.Creature]);
+                    var nativeMoves = CombatManager.Instance.History.Entries.OfType<MonsterPerformedMoveEntry>().Skip(movesBefore).ToArray();
+                    if (!performed.SequenceEqual(nativeMoves.Select(entry => entry.Move.Id))
+                        || nativeMoves.Any(entry => entry.Monster != monster || entry.Targets == null
+                            || !entry.Targets.SequenceEqual([player.Creature])))
+                        throw new InvalidOperationException("Native performed-move history differs from the executed sequence.");
+                }
                 else if (step.Move == 4)
                     await CombatManager.Instance.DoTurnEnd(CombatManager.Instance._turnState!, player, new BlockingPlayerChoiceContext());
                 else
@@ -165,12 +188,12 @@ internal sealed partial class UnattendedTestRunner
                     player.PlayerCombatState.PlayPile, player.PlayerCombatState.ExhaustPile];
                 int[][] actualPiles = piles.Select(pile => pile.Cards.Select(Identity).ToArray()).ToArray();
                 var actualGenerated = generated.Select(card => CombatBeamSolver.CaptureCardStateFingerprintForTesting(PredictedCard.FromGenerated(card))).ToArray();
-                evidence.Add(new { mode, step = index, command = step, branches = routes.Length, expected = expected[index].State, actual,
+                evidence.Add(new { advanceAi, performedMoves = performed.ToArray(), currentMove = monster.NextMove.Id, moveLog = monster.MoveStateMachine!.StateLog.Select(move => move.Id).ToArray(), mode, step = index, command = step, branches = routes.Length, expected = expected[index].State, actual,
                     expectedPiles = expected[index].Piles, actualPiles, generated = generated.Select(card => card.Id.Entry).ToArray() });
                 if (!string.IsNullOrWhiteSpace(_request.EvidenceDirectory))
                 {
                     Directory.CreateDirectory(_request.EvidenceDirectory);
-                    File.WriteAllText(Path.Combine(_request.EvidenceDirectory, "compact-monster-commands.json"),
+                    File.WriteAllText(Path.Combine(_request.EvidenceDirectory, advanceAi ? "compact-monster-ai.json" : "compact-monster-commands.json"),
                         JsonSerializer.Serialize(evidence, new JsonSerializerOptions { WriteIndented = true }));
                 }
                 AssertSnapshotEqual(expected[index].State, actual, "CompactMonsterCommands", $"Mode{mode}-Native{index}");
@@ -190,6 +213,8 @@ internal sealed partial class UnattendedTestRunner
             }
             void Execute(ResumableDiscardProgram lane, CombatPredictionSimulator? oracle, CompactMechaStep step)
             {
+                if (lane.Terminal || lane.Ending)
+                    throw new InvalidOperationException($"Mecha fixture continued beyond terminal: mode={mode}, step={step}, events={lane.EventCount}, hp={lane.Creature(0).CurrentHp}.");
                 if (step.Move == -1)
                 {
                     int identity = step.Generated ? adapter.CardCount + step.Card : adapter.IndexOf(cards[step.Card]);
@@ -200,6 +225,25 @@ internal sealed partial class UnattendedTestRunner
                         PredictedCard card = oracle.State.FindCard(original)!;
                         if (!oracle.ManualPlay(card, card.Preview.Type == CardType.Attack ? enemy : null, out _))
                             throw new InvalidOperationException("Mixed Mecha oracle rejected card play.");
+                    }
+                }
+                else if (step.Move == -2)
+                {
+                    lane.ExecuteMonsterMove(1, lane.CurrentMonsterMove);
+                    if (oracle != null)
+                    {
+                        var state = (SimulatedCombatState)oracle.State.CombatState;
+                        MonsterMoveSemantics.ApplyForecastMove(oracle, state, state.CurrentMonsterMove(enemy), player.Creature, new HashSet<uint>());
+                    }
+                    if (!lane.Ending)
+                    {
+                        lane.AdvanceMonsterMove(1);
+                        if (oracle != null)
+                        {
+                            var state = (SimulatedCombatState)oracle.State.CombatState;
+                            state.AdvanceMonsterAi(enemy, oracle);
+                            state.SetPredictedEnemyIntents(state.CurrentMonsterMove(enemy).AttackHits.Count > 0 ? [enemy] : []);
+                        }
                     }
                 }
                 else if (step.Move == 4)
@@ -220,6 +264,8 @@ internal sealed partial class UnattendedTestRunner
             }
             CardModel[] Generated() => CombatManager.Instance.History.Entries.OfType<CardGeneratedEntry>().Skip(generatedBefore).Select(entry => entry.Card).ToArray();
         }
-        _completedChecks.Add("CompactMonsterCommands:Native3Roots13Branches15Actions:FourMechaBodies:NoCreatorBurn:MixedShiv:SpillShuffleHandEnd:DamageBlockStrengthApplier:Fatal:FullStateAndPiles:AllHistory:AllRng:AllSnapshotProperties:Frozen8Workers");
+        _completedChecks.Add(advanceAi
+            ? "CompactMonsterAi:Native3Roots10Branches16Actions:CurrentAndLog:NativePerformedMove:FourMoves:MixedCards:FatalNoAdvance:FullStateHistoryRngEvaluationKeys:Frozen8Workers"
+            : "CompactMonsterCommands:Native3Roots13Branches15Actions:FourMechaBodies:NoCreatorBurn:MixedShiv:SpillShuffleHandEnd:DamageBlockStrengthApplier:Fatal:FullStateAndPiles:AllHistory:AllRng:AllSnapshotProperties:Frozen8Workers");
     }
 }

@@ -44,6 +44,7 @@ internal sealed partial class ResumableDiscardProgram
     private readonly bool _handEndAdmitted;
     private readonly bool _powerPhasesAdmitted;
     private readonly MonsterEffectProgram[]? _monsterMoves;
+    private readonly DeterministicMonsterAiLayout? _monsterAi;
     private readonly CardComparer? _cardComparer;
     private readonly InstanceComparer? _instanceComparer;
     private const int FrameStart = 10;
@@ -99,7 +100,7 @@ internal sealed partial class ResumableDiscardProgram
     internal ResumableDiscardProgram(Card[] cards, IReadOnlyList<int>[] piles, int energy, int block, int discardBlock,
         ValueRng shuffleRng = default, int[]? comparisons = null, int stratagem = 0, int shuffleBlock = 0,
         bool shuffleBlockFirst = false, CreatureVitals[]? creatures = null, BasicPowerDefinition[]? powers = null, Card[]? generatedCards = null,
-        ValueRng? energyCostRng = null, bool handEndAdmitted = false, MonsterEffectProgram[]? monsterMoves = null, bool powerPhasesAdmitted = false)
+        ValueRng? energyCostRng = null, bool handEndAdmitted = false, MonsterEffectProgram[]? monsterMoves = null, bool powerPhasesAdmitted = false, DeterministicMonsterAi? monsterAi = null)
     {
         Card[] definitions = [.. cards, .. generatedCards ?? []];
         if (cards.Length == 0 || piles.Length != 5 || cards.Count(c => c.Sly) >= MaxFrames
@@ -142,6 +143,9 @@ internal sealed partial class ResumableDiscardProgram
         }
         if (powerPhasesAdmitted && (creatures == null || powers == null))
             throw new ArgumentException("Power phases require creature and Power layouts.");
+        if (monsterAi != null && (monsterMoves == null || monsterAi.MoveCount != monsterMoves.Length
+            || creatures == null || monsterAi.Owner >= creatures.Length))
+            throw new ArgumentException("Monster AI requires matching captured commands and owner.");
         ValidateBlockReturns(definitions, powers);
         _definitions = definitions;
         _rootCardCount = cards.Length;
@@ -160,6 +164,7 @@ internal sealed partial class ResumableDiscardProgram
         _combat = creatures == null ? null : new(State, creatures);
         _powers = powers == null ? null : new(State, powers);
         _events = new(State);
+        _monsterAi = monsterAi == null ? null : new(State, monsterAi);
         _drawCosts = cards.Any(card => card.DrawCost != null) ? new(State, cards.Select(card => card.DrawCost).ToArray(),
             energyCostRng ?? throw new NotSupportedException("Random draw costs require a captured RNG stream.")) : null;
         State.Write(EnergySlot, energy);
@@ -200,7 +205,7 @@ internal sealed partial class ResumableDiscardProgram
     private ResumableDiscardProgram(Card[] cards, int rootCardCount, int discardBlock, int stratagem, int shuffleBlock,
         bool shuffleBlockFirst, CardComparer? cardComparer, CreatureAttackLayout? combat, BasicPowerLayout? powers,
         ReversibleValueBuffer[] piles, ReversibleValueBuffer cardInstances, ReversibleValueBuffer events, RandomDrawCostLayout? drawCosts,
-        bool handEndAdmitted, MonsterEffectProgram[]? monsterMoves, bool powerPhasesAdmitted, ReversibleValueState state)
+        bool handEndAdmitted, MonsterEffectProgram[]? monsterMoves, bool powerPhasesAdmitted, DeterministicMonsterAiLayout? monsterAi, ReversibleValueState state)
     {
         _definitions = cards;
         _rootCardCount = rootCardCount;
@@ -211,6 +216,7 @@ internal sealed partial class ResumableDiscardProgram
         _handEndAdmitted = handEndAdmitted;
         _powerPhasesAdmitted = powerPhasesAdmitted;
         _monsterMoves = monsterMoves;
+        _monsterAi = monsterAi;
         _cardComparer = cardComparer;
         _instanceComparer = cardComparer == null ? null : new(this, cardComparer);
         _piles = piles;
@@ -232,6 +238,7 @@ internal sealed partial class ResumableDiscardProgram
         private readonly bool _handEndAdmitted;
         private readonly bool _powerPhasesAdmitted;
         private readonly MonsterEffectProgram[]? _monsterMoves;
+        private readonly DeterministicMonsterAiLayout? _monsterAi;
         private readonly CardComparer? _cardComparer;
         private readonly ReversibleValueState.FrozenValues _values;
         private readonly CreatureAttackLayout? _combat;
@@ -253,6 +260,7 @@ internal sealed partial class ResumableDiscardProgram
             _handEndAdmitted = source._handEndAdmitted;
             _powerPhasesAdmitted = source._powerPhasesAdmitted;
             _monsterMoves = source._monsterMoves;
+            _monsterAi = source._monsterAi;
             _cardComparer = source._cardComparer;
             _combat = source._combat;
             _powers = source._powers;
@@ -261,7 +269,7 @@ internal sealed partial class ResumableDiscardProgram
         }
         internal int PayloadBytes => _values.PayloadBytes;
         internal ResumableDiscardProgram Open() => new(_definitions, _rootCardCount, _discardBlock, _stratagem, _shuffleBlock,
-            _shuffleBlockFirst, _cardComparer, _combat, _powers, _piles, _cardInstances, _events, _drawCosts, _handEndAdmitted, _monsterMoves, _powerPhasesAdmitted, _values.CreateWorkspace());
+            _shuffleBlockFirst, _cardComparer, _combat, _powers, _piles, _cardInstances, _events, _drawCosts, _handEndAdmitted, _monsterMoves, _powerPhasesAdmitted, _monsterAi, _values.CreateWorkspace());
         internal void RestoreInto(ResumableDiscardProgram workspace) => workspace.State.Restore(_values);
     }
 
