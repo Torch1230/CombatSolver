@@ -61,8 +61,24 @@ internal sealed partial class ResumableDiscardProgram
     internal int DefinitionIndex(int card) => (uint)card < (uint)_rootCardCount ? card : unchecked((int)_cardInstances.Read(State, card));
     internal Card Definition(int card) => _definitions[DefinitionIndex(card)];
     internal int CapturedX(int card) => (int)(_cardInstances.Read(State, card) >> 32);
-    internal int EnergyCost(int card) => Definition(card).DrawCost == null ? Definition(card).Cost
+    internal int LocalEnergyCost(int card) => Definition(card).DrawCost == null ? Definition(card).Cost
         : _drawCosts!.Current(State, card, Definition(card).Cost);
+    internal bool HasGlobalEnergyCosts => _powers?.HasGlobalEnergyCosts ?? false;
+    internal int EnergyCost(int card)
+    {
+        var definition = Definition(card);
+        int local = LocalEnergyCost(card);
+        if (definition.Cost < 0 || definition.CostsX) return definition.Cost;
+        if (!HasGlobalEnergyCosts || Ending) return Math.Max(0, local);
+        int borrowed = _powers?.FindOrDefault(0, BasicPowerKind.BorrowedTime) ?? -1;
+        long cost = (long)local + (borrowed < 0 ? 0 : Power(borrowed).Amount);
+        int veil = _powers?.FindOrDefault(0, BasicPowerKind.Veilpiercer) ?? -1;
+        // The late free-cost hook runs after the early additive pass, and only in
+        // these two piles. X and negative base costs never enter either pass.
+        if (veil >= 0 && Power(veil).Amount > 0 && definition.Ethereal
+            && (Contains(Pile.Hand, card) || Contains(Pile.Play, card))) return 0;
+        return Math.Max(0, checked((int)cost));
+    }
     internal int CostModifierCount(int card) => Definition(card).DrawCost == null ? 0 : _drawCosts!.Count(State, card);
     internal int CostModifierAt(int card, int index) => _drawCosts!.At(State, card, index);
     internal ValueRng? EnergyCostRng => _drawCosts?.Rng(State);
@@ -381,6 +397,7 @@ internal sealed partial class ResumableDiscardProgram
             {
                 case 0:
                     Move(card, Pile.Play);
+                    ConsumeFreeEtherealPlay(card);
                     Emit(EventKind.Start, card, Read(frame + EnergyValueOffset), Read(frame + AutoOffset) != 0, Read(frame + TargetOffset));
                     State.Write(frame + IpOffset, 1);
                     break;
@@ -725,6 +742,14 @@ internal sealed partial class ResumableDiscardProgram
     private void ApplyPower(int card, int target, BasicPowerKind kind, int amount)
     {
         if (PreparePower(card, target, kind, amount)) CommitPower(card, target, kind, amount);
+    }
+
+    private void ConsumeFreeEtherealPlay(int card)
+    {
+        if (!Definition(card).Ethereal) return;
+        int index = _powers?.FindOrDefault(0, BasicPowerKind.Veilpiercer) ?? -1;
+        if (index >= 0 && Power(index).Amount > 0)
+            CommitPower(card, 0, BasicPowerKind.Veilpiercer, -1);
     }
 
     private bool PreparePower(int card, int target, BasicPowerKind kind, int amount)

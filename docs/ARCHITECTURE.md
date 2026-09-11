@@ -400,3 +400,7 @@ renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或
 
 
 紧凑卡牌操作扩展：`LoseEnemyHp` 使用不受力量／格挡修正的伤害属性，保留施伤者与卡牌来源，不提交攻击完成；`RetrieveFromDiscard` 在攻击后独立挂起，计划来源保留弃牌堆。`Unplaced` 与 `Removed` 分开持有身份：前者保留终局生成历史，没有牌堆和移除标记，也不消费插入 RNG。兼容物化只恢复生成历史；旧历史仅保留标量卡牌快照，原生清理前观察另外核对完整模板指纹。怪物状态牌入口保留接收者存活门禁。Testing 的共享宠物路线通过现有终局观察器的可选快照回调捕获牌序／能力／生成元数据，回调只读且在原版清理之前执行。旧 `CardChoiceSupport` 的坟冢爆射规格遵循原生 `IsEnding` 门禁。[证据](performance/simulation-necro-card-operations-20260911.md)。
+
+紧凑费用读取扩展：`BorrowedTime`／`Veilpiercer` 编译为已有能量、攻击与能力指令；费用先应用本地修饰、再加预借时间、最后按当前手牌／出牌区位置处理刺破帷幕，负基础费用与 X 跳过全局修改，结束门禁同原生。付款值保存在帧中，免费层数在出牌开始之前直接递减。`ICompletedEnergyCostReadSource` 是 Engine 的内部只读合同，由每个 `CompactCardMetadataReadBinding` 按当前实例映射到权威值程序；只挂在其私有评估 Simulator，Fork 不复制，不随候选保留。评估模型的根牌堆不能用于全局费用的位置判定。旧 Hook 派发允许两阶段同步能量费用查询在选牌挂起时读取，效果 Hook 仍默认暂停。[证据](performance/simulation-cost-powers-20260911.md)。
+
+参数化 `CardEffectSpecRegistry.PowerEffects` 仍是旧后端这些能力效果的权威入口；每项施加检查 `simulator.IsEnding`，对应原版 PowerCmd.Apply，保留同牌其他资源／生成效果各自的命令规则。

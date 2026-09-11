@@ -48,6 +48,7 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
         var cards = Enumerable.Range(0, adapter.CardCount).Select(id => root.State.FindCard(adapter.Original(id))
             ?? throw new InvalidOperationException("Read view lost a root card.")).ToArray();
         _cards = new(adapter, cards);
+        if (_program.HasGlobalEnergyCosts) _context.CompletedEnergyCosts = _cards;
         // Getters materialize history maps. Only this disposable setup fork may do that;
         // untouched maps in the immutable root must retain their original absence/zero shape.
         var metadata = (SimulatedCombatState)root.Fork().State.CombatState;

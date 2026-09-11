@@ -133,10 +133,10 @@ internal sealed class CardEffectProgram
                     break;
                 case CardInstructionKind.ApplyBasicPower:
                     if (instruction.Target is not (CardInstructionTarget.Owner or CardInstructionTarget.ChosenEnemy or CardInstructionTarget.AllEnemies)
-                        || instruction.Power is not (BasicPowerKind.Strength or BasicPowerKind.Dexterity or BasicPowerKind.Weak or BasicPowerKind.Poison or BasicPowerKind.ToolsOfTheTrade or BasicPowerKind.Neurosurge)
+                        || instruction.Power is not (BasicPowerKind.Strength or BasicPowerKind.Dexterity or BasicPowerKind.Weak or BasicPowerKind.Poison or BasicPowerKind.ToolsOfTheTrade or BasicPowerKind.Neurosurge or BasicPowerKind.BorrowedTime or BasicPowerKind.Veilpiercer)
                         || instruction.Power is BasicPowerKind.Weak or BasicPowerKind.Poison && (instruction.Target == CardInstructionTarget.Owner
                             || instruction.Amount < 0 || instruction.EnergyXMultiplier < 0)
-                        || instruction.Power is BasicPowerKind.ToolsOfTheTrade or BasicPowerKind.Neurosurge && (instruction.Target != CardInstructionTarget.Owner
+                        || instruction.Power is BasicPowerKind.ToolsOfTheTrade or BasicPowerKind.Neurosurge or BasicPowerKind.BorrowedTime or BasicPowerKind.Veilpiercer && (instruction.Target != CardInstructionTarget.Owner
                             || instruction.Amount < 0 || instruction.EnergyXMultiplier != 0))
                         throw new NotSupportedException("Power instruction is outside the admitted application domain.");
                     RequiresTarget |= instruction.Target == CardInstructionTarget.ChosenEnemy;

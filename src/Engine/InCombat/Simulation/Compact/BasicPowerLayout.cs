@@ -1,6 +1,6 @@
 namespace CombatSolver.Engine.InCombat.Simulation.Compact;
 
-internal enum BasicPowerKind { Strength, Dexterity, Weak, Vulnerable, Frail, Poison, BlockNextTurn, ToolsOfTheTrade, PiercingWail, Artifact, Stratagem, Doom, Neurosurge, DieForYou }
+internal enum BasicPowerKind { Strength, Dexterity, Weak, Vulnerable, Frail, Poison, BlockNextTurn, ToolsOfTheTrade, PiercingWail, Artifact, Stratagem, Doom, Neurosurge, DieForYou, BorrowedTime, Veilpiercer }
 internal readonly record struct BasicPowerDefinition(BasicPowerKind Kind, int Owner, int Amount,
     int Applier, int Order, decimal Multiplier, bool RootSlot, int AmountOnTurnStart = 0, bool SkipNextDurationTick = false);
 internal readonly record struct BasicPowerValues(int Amount, int Applier, int Order, bool Retired,
@@ -15,11 +15,13 @@ internal sealed class BasicPowerLayout
     private readonly int _start, _orderSlot;
     internal int Count => _definitions.Length;
     internal bool HasArtifact { get; }
+    internal bool HasGlobalEnergyCosts { get; }
     internal BasicPowerDefinition Definition(int index) => _definitions[index];
 
     internal BasicPowerLayout(ReversibleValueState state, BasicPowerDefinition[] definitions)
     {
         _definitions = (BasicPowerDefinition[])definitions.Clone();
+        HasGlobalEnergyCosts = definitions.Any(definition => definition.Kind is BasicPowerKind.BorrowedTime or BasicPowerKind.Veilpiercer);
         HasArtifact = definitions.Any(definition => definition.Kind == BasicPowerKind.Artifact);
         _start = state.Allocate(checked(definitions.Length * Width));
         _orderSlot = state.Allocate(1);
@@ -82,7 +84,7 @@ internal sealed class BasicPowerLayout
     internal static bool IsDebuff(BasicPowerKind kind, int amount)
         => kind is BasicPowerKind.Strength or BasicPowerKind.Dexterity ? amount < 0
             : kind is BasicPowerKind.Weak or BasicPowerKind.Vulnerable or BasicPowerKind.Frail or BasicPowerKind.Poison
-                or BasicPowerKind.PiercingWail or BasicPowerKind.Doom or BasicPowerKind.Neurosurge;
+                or BasicPowerKind.PiercingWail or BasicPowerKind.Doom or BasicPowerKind.Neurosurge or BasicPowerKind.BorrowedTime;
 
     internal void CaptureTurnStart(ReversibleValueState state, int owner)
     {

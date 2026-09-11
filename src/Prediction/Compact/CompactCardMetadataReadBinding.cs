@@ -1,4 +1,5 @@
 using CombatSolver.Engine.Common;
+using CombatSolver.Engine.InCombat.Simulation;
 using CombatSolver.Engine.InCombat.Simulation.Compact;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Enchantments;
@@ -7,7 +8,7 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 namespace CombatSolver;
 
 /// <summary>Lane-owned preview values and generated model pool for completed reads.</summary>
-internal sealed class CompactCardMetadataReadBinding
+internal sealed class CompactCardMetadataReadBinding : ICompletedEnergyCostReadSource
 {
     private readonly record struct Binding(PredictedCard Card, CardModel Model, List<LocalCostModifier>? CostPool)
     {
@@ -20,6 +21,8 @@ internal sealed class CompactCardMetadataReadBinding
     private readonly CompactDiscardProjection _adapter;
     private readonly List<Binding> _active;
     private readonly Dictionary<(int Identity, int Definition), Binding> _generated = [];
+    private readonly Dictionary<PredictedCard, int> _costIdentities = [];
+    private ResumableDiscardProgram? _costProgram;
     internal PredictedCard this[int index] => _active[index].Card;
 
     internal CompactCardMetadataReadBinding(CompactDiscardProjection adapter, PredictedCard[] cards)
@@ -28,10 +31,13 @@ internal sealed class CompactCardMetadataReadBinding
         // Materialize only potentially changing previews, once per private reader. Generated
         // instances are pooled by identity and definition; sibling restores can reuse them.
         _active = cards.Select(card => Binding.Create(card, adapter.CardValuesInvariant)).ToList();
+        if (adapter.Program.HasGlobalEnergyCosts)
+            for (int card = 0; card < cards.Length; card++) _costIdentities.Add(cards[card], card);
     }
 
     internal void Read(ResumableDiscardProgram program)
     {
+        if (program.HasGlobalEnergyCosts) _costProgram = program;
         if (_adapter.CardValuesInvariant) return;
         if (_active.Count > program.CardCount) _active.RemoveRange(program.CardCount, _active.Count - program.CardCount);
         for (int card = _adapter.CardCount; card < program.CardCount; card++)
@@ -45,6 +51,11 @@ internal sealed class CompactCardMetadataReadBinding
             }
             if (card == _active.Count) _active.Add(binding);
             else _active[card] = binding;
+        }
+        if (_costProgram != null)
+        {
+            _costIdentities.Clear();
+            for (int card = 0; card < program.CardCount; card++) _costIdentities.Add(_active[card].Card, card);
         }
         for (int card = 0; card < program.CardCount; card++)
         {
@@ -63,6 +74,11 @@ internal sealed class CompactCardMetadataReadBinding
             if (structureChanged) binding.Card.NotifyHookListenerStructureChanged();
         }
     }
+
+    public int ReadEnergyCost(PredictedCard card)
+        => _costProgram != null && _costIdentities.TryGetValue(card, out int identity)
+            ? _costProgram.EnergyCost(identity)
+            : throw new InvalidOperationException("Completed energy cost query has no current card binding.");
 
     private static bool ImportCosts(Binding binding, ResumableDiscardProgram program, int card)
     {

@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Text.Json;
 using CombatSolver.Engine.Common;
+using CombatSolver.Engine.InCombat.Simulation;
+using CombatSolver.Engine.InCombat.Mirrors.Hooks;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Runs;
@@ -129,6 +131,21 @@ internal sealed partial class UnattendedTestRunner
                         actual = InvokeForcedTerminalReplay(compact, [partial], beforeCompact, beforeCompact.Turn, null);
                         if (expected.BoundaryReason != SearchBoundaryReason.PendingChoice || actual.CompactPendingChoice == null)
                             throw new InvalidOperationException($"Compact partial plan did not suspend at {step}/{cut}.");
+                        if (expected.ReachableHandValue != actual.ReachableHandValue)
+                        {
+                            var values = actual.CompactCandidate!.Values.Open();
+                            continuationReader.ReadPending(values, actual.CompactPendingChoice);
+                            var oldState = expected.Simulator.State.GetPlayerCombatState(player);
+                            string Hand(CombatPredictionSimulator simulator, IReadOnlyList<PredictedCard> cards, int energy)
+                                => string.Join(',', cards.Select(card => $"{card.Preview.Id.Entry}#{card.Preview.CurrentUpgradeLevel}:"
+                                    + $"{card.GetEnergyCostValueWithModifiers(simulator)}/{card.GetPile(simulator.State)?.Type}/"
+                                    + $"{((SimulatedCombatState)simulator.State.CombatState).CanPlayCardAtResources(simulator, card, energy, expected.Stars, out _, out _)}"));
+                            throw new InvalidOperationException($"Pending hand value differs at {step}/{cut}: {expected.ReachableHandValue}/{actual.ReachableHandValue}; "
+                                + $"energy={oldState.Energy}/{values.Energy}; old={Hand(expected.Simulator, oldState.Hand.Cards, oldState.Energy)}; "
+                                + $"value={Hand(continuationReader.EvaluationContext, continuationReader.Hand, values.Energy)}; "
+                                + $"oldPowers={string.Join(',', ((SimulatedCombatState)expected.Simulator.State.CombatState).EffectivePowers().Select(power => $"{power.Id.Entry}:{power.Amount}/{expected.Simulator.StateStore.Peek(power, value => new PowerAmountPredictionState(value.Amount)).Amount}"))}; "
+                                + $"valuePowers={string.Join(',', Enumerable.Range(0, values.PowerCount).Where(index => values.Power(index).Amount != 0).Select(index => $"{values.PowerDefinition(index).Kind}:{values.Power(index).Amount}"))}.");
+                        }
                         AssertCompactEvaluation(expected, actual, $"SearchPending/{step}/{cut}/{action.CardId}");
                         var request = ((SimulatedCombatState)expected.Simulator.State.CombatState).PendingTurnStartChoice!;
                         string signature = Signature(request);

@@ -18,13 +18,13 @@ internal static class CompactCardProgramCompiler
         typeof(UltimateDefend), typeof(Suppress), typeof(Footwork), typeof(Malaise), typeof(DeadlyPoison),
         typeof(Haze), typeof(Snakebite), typeof(Defy), typeof(EscapePlan), typeof(Outbreak), typeof(CalculatedGamble),
         typeof(BubbleBubble), typeof(Mirage), typeof(DodgeAndRoll), typeof(ToolsOfTheTrade), typeof(PiercingWail),
-        typeof(CloakAndDagger), typeof(Shiv), typeof(BladeOfInk), typeof(Burn), typeof(Neurosurge), typeof(Bodyguard), typeof(Unleash), typeof(Afterlife), typeof(Cleanse), typeof(Dirge), typeof(Soul), typeof(CaptureSpirit), typeof(Graveblast), typeof(Defile), typeof(Wisp), typeof(AscendersBane)
+        typeof(CloakAndDagger), typeof(Shiv), typeof(BladeOfInk), typeof(Burn), typeof(Neurosurge), typeof(Bodyguard), typeof(Unleash), typeof(Afterlife), typeof(Cleanse), typeof(Dirge), typeof(Soul), typeof(CaptureSpirit), typeof(Graveblast), typeof(Defile), typeof(Wisp), typeof(AscendersBane), typeof(BorrowedTime), typeof(Veilpiercer)
     ];
 
     internal static ResumableDiscardProgram.Card Compile(CardModel card, bool includeAttacks, int shivTemplate = -1, int inkyShivTemplate = -1, int soulTemplate = -1, int upgradedSoulTemplate = -1)
     {
         if (!AdmittedTypes.Contains(card.GetType())
-            || card is Neutralize or Suppress or Footwork or Malaise or DeadlyPoison or Haze or Snakebite or Defy or Outbreak or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail or CloakAndDagger or Shiv or BladeOfInk or Burn or Neurosurge or Bodyguard or Unleash or Afterlife or Cleanse or Dirge or Soul or CaptureSpirit or Graveblast or Defile or Wisp or AscendersBane && !includeAttacks
+            || card is Neutralize or Suppress or Footwork or Malaise or DeadlyPoison or Haze or Snakebite or Defy or Outbreak or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail or CloakAndDagger or Shiv or BladeOfInk or Burn or Neurosurge or Bodyguard or Unleash or Afterlife or Cleanse or Dirge or Soul or CaptureSpirit or Graveblast or Defile or Wisp or AscendersBane or BorrowedTime or Veilpiercer && !includeAttacks
             || card is Burn && (card.Enchantment != null || card.EnergyCost._base != -1 || card.IsUpgraded
                 || !card.LocalKeywords.Contains(CardKeyword.Unplayable) || card.DynamicVars.Damage.Props != (ValueProp.Unpowered | ValueProp.Move))
             || card is AscendersBane && (card.Enchantment != null || card.EnergyCost._base != -1 || card.IsUpgraded
@@ -49,9 +49,10 @@ internal static class CompactCardProgramCompiler
             || card.IsSlyThisTurn && card is not Prepared)
             throw new NotSupportedException($"Compact prototype cannot admit card state {card.Id.Entry}.");
         decimal draw = card is EscapePlan ? 1 : card is Acrobatics or Prepared or Backflip or Finesse or Neurosurge or Soul ? card.DynamicVars.Cards.BaseValue : 0;
-        decimal energyGain = card is Neurosurge or Wisp ? card.DynamicVars.Energy.BaseValue : 0;
+        decimal energyGain = card is Neurosurge or Wisp or BorrowedTime ? card.DynamicVars.Energy.BaseValue : 0;
+        decimal extraCost = card is BorrowedTime ? card.DynamicVars["ExtraCost"].BaseValue : 0;
         decimal neurosurge = card is Neurosurge ? card.DynamicVars["NeurosurgePower"].BaseValue : 0;
-        decimal damage = includeAttacks && card is StrikeSilent or StrikeNecrobinder or Neutralize or Suppress or Shiv or Burn or CaptureSpirit or Graveblast or Defile ? card.DynamicVars.Damage.BaseValue : 0;
+        decimal damage = includeAttacks && card is StrikeSilent or StrikeNecrobinder or Neutralize or Suppress or Shiv or Burn or CaptureSpirit or Graveblast or Defile or Veilpiercer ? card.DynamicVars.Damage.BaseValue : 0;
         decimal block = card is DefendSilent or DefendNecrobinder or Backflip or Survivor or Finesse or UltimateDefend or Defy or EscapePlan or DodgeAndRoll or CloakAndDagger ? card.DynamicVars.Block.BaseValue : 0;
         decimal weak = card.Enchantment is Inky inky ? inky.DynamicVars.Weak.BaseValue
             : card is Neutralize or Suppress or Haze or Defy ? card.DynamicVars.Weak.BaseValue : 0;
@@ -70,6 +71,7 @@ internal static class CompactCardProgramCompiler
             || poison != decimal.Truncate(poison) || poison is < 0 or > 999_999_999m
             || generated != decimal.Truncate(generated) || generated is < 0 or > 999_999_999m
             || energyGain != decimal.Truncate(energyGain) || energyGain is < 0 or > 999_999_999m
+            || extraCost != decimal.Truncate(extraCost) || extraCost is < 0 or > 999_999_999m
             || neurosurge != decimal.Truncate(neurosurge) || neurosurge is < 0 or > 999_999_999m
             || strengthLoss != decimal.Truncate(strengthLoss) || strengthLoss is < 0 or > 999_999_999m
             || dexterity != decimal.Truncate(dexterity) || dexterity is < 0 or > 999_999_999m
@@ -88,6 +90,10 @@ internal static class CompactCardProgramCompiler
                 new(CardInstructionKind.GenerateCards, 0, EnergyXMultiplier: 1,
                     CardTemplate: card.IsUpgraded ? upgradedSoulTemplate : soulTemplate, Placement: CardGenerationPlacement.RandomDraw)]),
             Soul => new([new(CardInstructionKind.Draw, (int)draw)]),
+            BorrowedTime => new([new(CardInstructionKind.GainEnergy, (int)energyGain),
+                new(CardInstructionKind.ApplyBasicPower, (int)extraCost, BasicPowerKind.BorrowedTime)]),
+            Veilpiercer => new([new(CardInstructionKind.AttackTarget, (int)damage),
+                new(CardInstructionKind.ApplyBasicPower, 1, BasicPowerKind.Veilpiercer)]),
             Wisp => new([new(CardInstructionKind.GainEnergy, (int)energyGain)]),
             CaptureSpirit => new([new(CardInstructionKind.LoseEnemyHp, (int)damage),
                 new(CardInstructionKind.GenerateCards, (int)generated, CardTemplate: soulTemplate, Placement: CardGenerationPlacement.RandomDraw)]),

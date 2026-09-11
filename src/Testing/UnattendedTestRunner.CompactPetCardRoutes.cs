@@ -17,12 +17,12 @@ namespace CombatSolver;
 internal sealed partial class UnattendedTestRunner
 {
     private sealed record CompactNativePetCardState(MoveStateSnapshot Snapshot, string[] Powers,
-        int[][] Piles, StateFingerprint[] Cards, CreatureVitals Pet);
+        int[][] Piles, StateFingerprint[] Cards, CreatureVitals Pet, int[]? EnergyCosts);
 
     private async Task AssertCompactPetCardRouteAsync(CombatState combat, Player player, int mode, string label, string evidencePrefix,
         (string Id, int? Upgrade)[] cardSteps, Action<ResumableDiscardProgram, ResumableDiscardProgram, int> assertStep,
         bool observeDrawExhaust = false, Func<PlanAction, ResumableDiscardProgram, bool>? observeNativeChoice = null,
-        int rounds = 2, bool requirePending = true)
+        int rounds = 2, bool requirePending = true, bool verifyEnergyCosts = false)
     {
         var enemy = combat.Enemies.Single();
         var captured = CombatRootSnapshot.Capture(combat);
@@ -67,7 +67,13 @@ internal sealed partial class UnattendedTestRunner
                         }
                         finally { branch.Snapshot.ReleaseSimulator(); }
                     }
-                    if (chosen == null || next == null) throw new InvalidOperationException("Pet card route fixture omitted its required action.");
+                    if (chosen == null || next == null)
+                    {
+                        var state = parent.Simulator.State.GetPlayerCombatState(player);
+                        string required = step < cardSteps.Length ? $"{cardSteps[step].Id}#{cardSteps[step].Upgrade}" : "EndTurn";
+                        throw new InvalidOperationException($"Pet card route omitted step {step} ({required}); energy={state.Energy}; "
+                            + $"hand={string.Join(',', state.Hand.Cards.Select(card => $"{card.Preview.Id.Entry}#{card.Preview.CurrentUpgradeLevel}"))}.");
+                    }
                     route.Add(chosen);
                     chosen.Values.RestoreInto(lane);
                     parent.ReleaseSimulator();
@@ -114,6 +120,19 @@ internal sealed partial class UnattendedTestRunner
                 var evaluation = Release(evaluator.Evaluate(expected, lane.PlayerTurn));
                 AssertCompactEvaluation(evaluation, Release(evaluator.Evaluate(projected, lane.PlayerTurn)), stage + "/Projection");
                 reader.Read(lane); uncached.Read(lane);
+                if (verifyEnergyCosts)
+                {
+                    IReadOnlyList<PredictedCard>[] readPiles = [reader.Hand, reader.Draw, reader.Discard, reader.Exhaust];
+                    ResumableDiscardProgram.Pile[] piles = [ResumableDiscardProgram.Pile.Hand, ResumableDiscardProgram.Pile.Draw,
+                        ResumableDiscardProgram.Pile.Discard, ResumableDiscardProgram.Pile.Exhaust];
+                    for (int pile = 0; pile < piles.Length; pile++)
+                    for (int index = 0; index < readPiles[pile].Count; index++)
+                    {
+                        int cost = readPiles[pile][index].GetEnergyCostValueWithModifiers(reader.EvaluationContext);
+                        if (cost != lane.EnergyCost(lane.CardAt(piles[pile], index)))
+                            throw new InvalidOperationException("Completed reader returned a stale global energy cost or pile.");
+                    }
+                }
                 AssertCompactEvaluation(evaluation, evaluator.Evaluate(reader, lane.PlayerTurn), stage + "/Reader");
                 AssertCompactEvaluation(evaluation, evaluator.Evaluate(uncached, lane.PlayerTurn), stage + "/Uncached");
                 var identities = adapter.CaptureCardIdentities(expected).Where(pair => pair.Value >= 0 && !lane.CardRemoved(pair.Value)).OrderBy(pair => pair.Value);
@@ -204,9 +223,13 @@ internal sealed partial class UnattendedTestRunner
                 selector.AssertConsumed();
                 var actual = expected.Terminal ? terminalState ?? throw new InvalidOperationException("Native terminal card metadata was not captured.")
                     : CaptureNative(expected);
+                var expectedValues = expected.Values.Open();
+                int[]? expectedCosts = verifyEnergyCosts ? Enumerable.Range(0, expectedValues.CardCount)
+                    .Where(id => !expectedValues.CardRemoved(id)).Select(expectedValues.EnergyCost).ToArray() : null;
                 evidence.Add(new { action, expected = expected.Snapshot, actual = actual.Snapshot, expected.Powers,
                     actualPowers = actual.Powers, expected.Piles, actualPiles = actual.Piles, expectedPet, actualPet = actual.Pet,
-                    expectedCards = expected.Cards, actualCards = actual.Cards, unplaced = expected.Values.Open().Cards(ResumableDiscardProgram.Pile.Unplaced) });
+                    expectedCards = expected.Cards, actualCards = actual.Cards, expectedCosts, actualCosts = actual.EnergyCosts,
+                    unplaced = expectedValues.Cards(ResumableDiscardProgram.Pile.Unplaced) });
                 if (!string.IsNullOrWhiteSpace(_request.EvidenceDirectory))
                 {
                     Directory.CreateDirectory(_request.EvidenceDirectory);
@@ -217,6 +240,8 @@ internal sealed partial class UnattendedTestRunner
                     || !expected.Powers.SequenceEqual(actual.Powers) || expectedPet != actual.Pet)
                     throw new InvalidOperationException("Native pet card route instance order or Power metadata differs.");
                 if (!expected.Cards.SequenceEqual(actual.Cards)) throw new InvalidOperationException("Native pet card route card metadata differs.");
+                if (expectedCosts != null && !expectedCosts.SequenceEqual(actual.EnergyCosts!))
+                    throw new InvalidOperationException("Native global energy costs differ from the current value program.");
             }
         }
         finally
@@ -250,7 +275,8 @@ internal sealed partial class UnattendedTestRunner
                 CompactPowerValues(combat.Creatures.SelectMany(c => c.Powers).ToArray()).ToArray(),
                 piles.Select(pile => pile.Cards.Select(Identity).ToArray()).ToArray(),
                 actualCards.Select(card => CombatBeamSolver.CaptureCardStateFingerprintForTesting(PredictedCard.FromGenerated(card))).ToArray(),
-                new CreatureVitals(player.Osty!.CurrentHp, player.Osty.MaxHp, player.Osty.Block));
+                new CreatureVitals(player.Osty!.CurrentHp, player.Osty.MaxHp, player.Osty.Block),
+                verifyEnergyCosts ? actualCards.Select(card => card.EnergyCost.GetWithModifiers(CostModifiers.All)).ToArray() : null);
         }
         if (observeDrawExhaust && mode == 0 && nativeResourceChoices == 0) throw new InvalidOperationException("Native pet card route resource-order selector was not reached.");
         using (SimulationNotificationIsolation.Enter())

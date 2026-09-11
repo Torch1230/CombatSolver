@@ -1,4 +1,12 @@
 {
+  "COMPACT-COST-POWERS-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeGlobalCostPendingAndTerminalDifferentialWithFixedSearch",
+    "procedure": "两根两回合原生、选牌现场费用、终局、250节点串并行和公共查询／嵌套回归。",
+    "expected": "付款、虚无免费次数、当前牌堆费用和挂起估值一致；最后击杀后拒绝施加能力。",
+    "observed": "2f8573b2cfd243ac8a511bcdbd8d335e COMPACT-COST-POWERS-NATIVE Passed; cbeb37c1c0d24ab3bcbcaed3894777e0 COMPACT-COST-POWERS-TERMINAL Passed; 583e48948363436485040ca3b59c8d67 COMPACT-COST-POWERS-SEARCH Passed; 85ed2117253a42babb843078eee7eb57 TENDER-NESTED-SLY Passed; 4aa2a1051d0644848e4bd28c7d2cd841 HAND-POTENTIAL-COSTS Passed",
+    "evidence": "docs/performance/simulation-cost-powers-20260911.json；docs/performance/simulation-cost-powers-20260911.md；2026-09-11。"
+  },
   "COMPACT-NECRO-CARD-OPERATIONS-20260911": {
     "status": "Passed",
     "level": "HeadlessNativeTerminalGenerationDifferentialAndFixedSearchLifecycle",

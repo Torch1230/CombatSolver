@@ -542,3 +542,7 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 
 
 紧凑封闭编译新增精确 `CaptureSpirit`／`Graveblast`／`Defile`／`Wisp`／`AscendersBane`（共 42 类型），没有新增第三方登记入口。直接失血与普通攻击分别保留属性及来源；生成命令和怪物预览生成入口有不同的结束门禁。未入堆生成身份不会进入战斗牌堆／监听器集合，也不标记为已移除。既有 `CardChoiceSupport.GetSpec` 的坟冢爆射分支现在在 `IsEnding` 时返回无选择，与原版 `FromCombatPile` 一致；外部 `CardChoiceMirrors` 的优先级保持原合同。外部适配不能通过追加无法由原生请求的选牌来对齐旧计划。[证据](performance/simulation-necro-card-operations-20260911.md)。
+
+紧凑费用闭包新增精确 `BorrowedTime`／`Veilpiercer`（共 44 卡牌类型）及玩家的对应能力；没有新增第三方登记入口。`ICompletedEnergyCostReadSource` 仅供已准入值执行器向私有评估上下文提供费用，不是第三方效果覆盖表，也不能注册未迁移效果。原有能量费用 Hook 的同步读取在选牌挂起时继续运行，仍遵守战斗结束门禁；异步效果派发保持原暂停合同。费用镜像必须读取分支状态，不能将原生 CardModel.Pile 或其他 live 变化值当作搜索分支。局部修饰列表与全局查询费用分别对账。[证据](performance/simulation-cost-powers-20260911.md)。
+
+`CardEffectSpecRegistry.PowerEffects` 的共同施加器在每条原生能力命令前检查 `IsEnding`。攻击击杀最后一个敌人后不再施加后续能力，但该表之外的资源／生成命令仍分别遵循自己的原生命令门禁，不能把全部卡牌尾部统一截断。刺破帷幕终局对照覆盖此共同规则。

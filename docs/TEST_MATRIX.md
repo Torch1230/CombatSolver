@@ -2634,3 +2634,7 @@ pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId MONSTER-MOVES-BA
 
 
 `COMPACT-NECRO-CARDS-NATIVE`：两根包含五种新增类型与普通／升级实例；空／非空弃牌堆、满手、存活／死亡宠物；六次出牌及两个原生回合。对照全部快照、能力元数据、九 RNG、历史、原键／续用、根和生成实例指纹、撤销／逆序／八工作区及实机后根隔离。`COMPACT-CAPTURE-SPIRIT-TERMINAL` 验证击杀后 3 张未入堆灵魂的历史且不消费 RNG；`COMPACT-GRAVEBLAST-TERMINAL` 验证击杀后没有原生／预测选牌。终局在清理前捕获完整状态并等待真实结束事件。`COMPACT-NECRO-CARDS-SEARCH` 使用既有 250 节点串并行／取消异常排空合同；公共路径回归 `COMPACT-MONSTER-COMMANDS-NATIVE` 和 `COMPACT-DRAW-EXHAUST-NATIVE`。双端继续使用 SILENT／MECHA_KNIGHT_ELITE、Cards=[]、HP300、Instant、120 秒；[直接证据和失败基线](performance/simulation-necro-card-operations-20260911.md)。
+
+## 2026-09-11：费用能力与挂起查询（开发中）
+
+`COMPACT-COST-POWERS-NATIVE`：两根各九次出牌及两个原生回合，比较全牌堆费用、随机本地修饰、X／负基础费、初始能力／叠加／消耗／人工制品；22 原生动作、36 分支、8 挂起和 3 次原生免费费用观察。`COMPACT-COST-POWERS-ROOT-STACKS` 可单独运行已有能力根。`COMPACT-COST-POWERS-TERMINAL` 验证付款后最后击杀的能力门禁和全局费用停止。`COMPACT-COST-POWERS-SEARCH` 使用 250 节点完整旧新／串并行／取消异常排空合同。全快照、原键、续用、实例、RNG、冻结恢复和八工作区均比较。公共回归为 `TENDER-NESTED-SLY` 与 `HAND-POTENTIAL-COSTS`；后者只在 100ms 首结果停止，不作性能比较。[本轮证据与失败记录](performance/simulation-cost-powers-20260911.md)。

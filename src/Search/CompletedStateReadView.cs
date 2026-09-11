@@ -11,6 +11,7 @@ namespace CombatSolver;
 /// invariant in EvaluationContext: identities, omitted RNG streams, relics, potions and omitted
 /// lifecycle state. Supplied Power cells and changing card metadata are copied one way into
 /// lane-owned evaluation models before reading, so existing formulas consume current values.
+/// Global costs can use an explicit current-value source because root context piles stay unchanged.
 /// Piles borrow those private previews with stable root identities. The context owns formula scratch;
 /// it is never executed, retained in a candidate, or read back into the authoritative program.
 /// </summary>

@@ -71,7 +71,7 @@ internal sealed class CompactDiscardProjection
             throw new NotSupportedException("Compact pet roots require one captured Osty with its persistent protection and admitted stats.");
         if (combat.Players.Count != 1 || powers.Any(p => !IsBasicPower(p))
             || powers.Any(p => !(p is StratagemPower && p.Owner == player.Creature && p.Amount is >= 1 and <= 10)
-                && !(includeAttacks ? p is not StratagemPower && IsBasicPower(p) && (p is not (BlockNextTurnPower or ToolsOfTheTradePower or NeurosurgePower) || p.Owner == player.Creature)
+                && !(includeAttacks ? p is not StratagemPower && IsBasicPower(p) && (p is not (BlockNextTurnPower or ToolsOfTheTradePower or NeurosurgePower or BorrowedTimePower or VeilpiercerPower) || p.Owner == player.Creature)
                     && (p is not PiercingWailPower || p.Owner != player.Creature)
                     : p is StrengthPower && p.Owner != player.Creature))
             || combat.RootRunModSubscriberCount != 0 || combat.RootCombatModSubscriberCount != 0
@@ -102,7 +102,7 @@ internal sealed class CompactDiscardProjection
         if (includeMechaMoves && (!includeAttacks || combat.Enemies.Count != 1 || _creatures[1].Monster?.GetType() != typeof(MechaKnight)))
             throw new NotSupportedException("Captured Mecha commands require exactly one MechaKnight and creature values.");
         PredictedCard[] cards = state.AllCards.ToArray();
-        _powerTemplates = includeAttacks ? CapturePowerTemplates(combat, powers, cards.Any(card => card.Preview is Neurosurge)) : [];
+        _powerTemplates = includeAttacks ? CapturePowerTemplates(powers, cards) : [];
         PowerModel[] rootPowerOrder = powers.ToArray();
         BasicPowerDefinition[]? powerDefinitions = includeAttacks ? _powerTemplates.Select(power => new BasicPowerDefinition(
             BasicKind(power), CreatureIndex(power.Owner), power.Amount, power.Applier == null ? -1 : CreatureIndex(power.Applier),
@@ -246,7 +246,7 @@ internal sealed class CompactDiscardProjection
         }).ToArray();
     }
 
-    private PowerModel[] CapturePowerTemplates(SimulatedCombatState combat, IReadOnlyList<PowerModel> powers, bool canCreateNeurosurge)
+    private PowerModel[] CapturePowerTemplates(IReadOnlyList<PowerModel> powers, IReadOnlyList<PredictedCard> cards)
     {
         List<PowerModel> result = powers.Where(IsBasicPower).ToList();
         if (result.GroupBy(p => (p.Owner, p.GetType())).Any(g => g.Count() != 1)
@@ -258,9 +258,11 @@ internal sealed class CompactDiscardProjection
         {
             // No admitted instruction creates Artifact or Stratagem; capture existing slots only.
             if (kind is BasicPowerKind.Artifact or BasicPowerKind.Stratagem or BasicPowerKind.DieForYou) continue;
+            if (kind == BasicPowerKind.BorrowedTime && (owner != _player.Creature || !cards.Any(card => card.Preview is BorrowedTime))) continue;
+            if (kind == BasicPowerKind.Veilpiercer && (owner != _player.Creature || !cards.Any(card => card.Preview is Veilpiercer))) continue;
             if (owner.PetOwner != null && kind != BasicPowerKind.Strength) continue;
             if (kind is BasicPowerKind.Neurosurge or BasicPowerKind.Doom
-                && (owner != _player.Creature || !canCreateNeurosurge && !powers.Any(power => power is NeurosurgePower))) continue;
+                && (owner != _player.Creature || !cards.Any(card => card.Preview is Neurosurge) && !powers.Any(power => power is NeurosurgePower))) continue;
             if (kind is BasicPowerKind.BlockNextTurn or BasicPowerKind.ToolsOfTheTrade && owner != _player.Creature) continue;
             if (kind == BasicPowerKind.PiercingWail && owner == _player.Creature) continue;
             if (result.Any(p => p.Owner == owner && BasicKind(p) == kind)) continue;
@@ -288,7 +290,9 @@ internal sealed class CompactDiscardProjection
         [typeof(StratagemPower)] = BasicPowerKind.Stratagem,
         [typeof(DoomPower)] = BasicPowerKind.Doom,
         [typeof(NeurosurgePower)] = BasicPowerKind.Neurosurge,
-        [typeof(DieForYouPower)] = BasicPowerKind.DieForYou
+        [typeof(DieForYouPower)] = BasicPowerKind.DieForYou,
+        [typeof(BorrowedTimePower)] = BasicPowerKind.BorrowedTime,
+        [typeof(VeilpiercerPower)] = BasicPowerKind.Veilpiercer
     };
     private static bool IsBasicPower(PowerModel power) => BasicKinds.ContainsKey(power.GetType());
     private static PowerModel CanonicalPower(BasicPowerKind kind) => kind switch
@@ -306,6 +310,8 @@ internal sealed class CompactDiscardProjection
         BasicPowerKind.ToolsOfTheTrade => CanonicalModels.Power<ToolsOfTheTradePower>(),
         BasicPowerKind.Doom => CanonicalModels.Power<DoomPower>(),
         BasicPowerKind.Neurosurge => CanonicalModels.Power<NeurosurgePower>(),
+        BasicPowerKind.BorrowedTime => CanonicalModels.Power<BorrowedTimePower>(),
+        BasicPowerKind.Veilpiercer => CanonicalModels.Power<VeilpiercerPower>(),
         BasicPowerKind.DieForYou => CanonicalModels.Power<DieForYouPower>(),
         _ => throw new InvalidOperationException("Unknown basic Power kind.")
     };
@@ -766,10 +772,12 @@ internal sealed class CompactDiscardProjection
                 || actual != null && actual.Preview.EnergyCost.CostsX && actual.Preview.EnergyCost.CapturedXValue != program.CapturedX(card))
                 throw new InvalidOperationException("Compact removal or captured energy differs.");
             if (actual != null && !actual.Preview.EnergyCost.CostsX
-                && (actual.Preview.EnergyCost.GetWithModifiers(CostModifiers.Local) != program.EnergyCost(card)
+                && (actual.Preview.EnergyCost.GetWithModifiers(CostModifiers.Local) != program.LocalEnergyCost(card)
                     || !actual.Preview.EnergyCost._localModifiers.Select(modifier => modifier.Amount)
                         .SequenceEqual(Enumerable.Range(0, program.CostModifierCount(card)).Select(index => program.CostModifierAt(card, index)))))
                 throw new InvalidOperationException("Compact energy cost or ordered modifier list differs.");
+            if (actual != null && actual.GetEnergyCostValueWithModifiers(simulator) != program.EnergyCost(card))
+                throw new InvalidOperationException($"Compact global cost differs for card {card}: {actual.GetEnergyCostValueWithModifiers(simulator)} / {program.EnergyCost(card)}.");
         }
         for (int pile = 0; pile < piles.Length; pile++)
         {
@@ -845,6 +853,8 @@ internal sealed class CompactDiscardProjection
                 or nameof(AbstractModel.ShouldAllowHitting) or nameof(AbstractModel.ShouldCreatureBeRemovedFromCombatAfterDeath)
             || type == typeof(PoisonPower) && method == nameof(AbstractModel.AfterSideTurnStart)
             || type == typeof(NeurosurgePower) && method == nameof(AbstractModel.AfterSideTurnStart)
+            || type == typeof(BorrowedTimePower) && method is nameof(AbstractModel.TryModifyEnergyCostInCombat) or nameof(AbstractModel.AfterSideTurnEnd)
+            || type == typeof(VeilpiercerPower) && method is nameof(AbstractModel.TryModifyEnergyCostInCombatLate) or nameof(AbstractModel.BeforeCardPlayed)
             || type == typeof(DoomPower) && method is nameof(AbstractModel.BeforeSideTurnEnd) or nameof(AbstractModel.AfterSideTurnEnd)
             || type == typeof(ToolsOfTheTradePower) && method is nameof(AbstractModel.ModifyHandDraw) or nameof(AbstractModel.AfterPlayerTurnStart)
             || type == typeof(BoundPhylactery) && method == nameof(AbstractModel.AfterEnergyResetLate)

@@ -138,6 +138,9 @@ internal static class CardEffectSpecRegistry
             applied = true;
             foreach (CardPowerEffect effect in effects)
             {
+                // These entries represent native PowerCmd.Apply calls after the card's
+                // earlier effects. A killing attack must not grant the remaining buff.
+                if (simulator.IsEnding) break;
                 int amount = effect.Amount(card);
                 Creature owner = ownerCreature;
                 switch (effect.Target)

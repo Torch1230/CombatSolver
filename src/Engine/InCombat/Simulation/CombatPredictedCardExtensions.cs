@@ -123,6 +123,8 @@ internal static class CombatPredictedCardExtensions
         this PredictedCard card,
         CombatPredictionSimulator simulator)
     {
+        if (simulator.CompletedEnergyCosts is { } completed)
+            return completed.ReadEnergyCost(card);
         var energyCost = card.Preview.EnergyCost;
 
         var cost = energyCost._base;
