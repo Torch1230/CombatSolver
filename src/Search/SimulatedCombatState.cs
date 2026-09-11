@@ -499,7 +499,7 @@ internal sealed partial class SimulatedCombatState
         get => _roundNumber;
         set
         {
-            if (_roundNumber != value) _unblockedDamageThisTurn = null;
+            if (_roundNumber != value) ResetTurnHistoryWindow();
             _roundNumber = value;
         }
     }
@@ -508,7 +508,7 @@ internal sealed partial class SimulatedCombatState
         get => _currentSide;
         set
         {
-            if (_currentSide != value) _unblockedDamageThisTurn = null;
+            if (_currentSide != value) ResetTurnHistoryWindow();
             _currentSide = value;
         }
     }
@@ -574,8 +574,8 @@ internal sealed partial class SimulatedCombatState
     {
         int nextTurn = GetPlayerTurnNumber(player) + 1;
         (_playerTurnNumbers ??= [])[player] = nextTurn;
-        // History's turn window changes before turn-start damage and draw effects run.
-        _unblockedDamageThisTurn = null;
+        // Extra turns also advance the history window without changing side or round.
+        ResetTurnHistoryWindow();
     }
 
     public void SnapshotPowerAmountsAtTurnStart(IEnumerable<Creature> participants)

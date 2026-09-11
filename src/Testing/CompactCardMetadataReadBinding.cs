@@ -53,10 +53,12 @@ internal sealed class CompactCardMetadataReadBinding
             int captured = program.CapturedX(card);
             bool removed = program.CardRemoved(card);
             bool costChanged = ImportCosts(binding, program, card);
-            if (!costChanged && (!model.EnergyCost.CostsX || model.EnergyCost.CapturedXValue == captured) && model.HasBeenRemovedFromState == removed) continue;
+            bool singleSly = program.SingleTurnSly(card);
+            if (!costChanged && model.HasSingleTurnSly == singleSly && (!model.EnergyCost.CostsX || model.EnergyCost.CapturedXValue == captured) && model.HasBeenRemovedFromState == removed) continue;
             bool structureChanged = model.HasBeenRemovedFromState != removed;
             if (model.EnergyCost.CostsX) model.EnergyCost.CapturedXValue = captured;
             model.HasBeenRemovedFromState = removed;
+            model.HasSingleTurnSly = singleSly;
             binding.Card.InvalidateCaches();
             if (structureChanged) binding.Card.NotifyHookListenerStructureChanged();
         }

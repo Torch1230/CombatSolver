@@ -1,5 +1,7 @@
 # CombatSolver 文档导航
 
+- [紧凑完整回合与历史窗口](performance/simulation-rounds-20260911.md)：完整阶段、起手／嵌套选择、跨阵营历史清理与原生终局。
+
 - [紧凑确定性怪物 AI](performance/simulation-monster-ai-20260911.md)：机甲招式循环、增长日志、当前意图与冻结恢复。
 
 - [紧凑 Power 阶段体](performance/simulation-power-phases-20260911.md)：回合初始字段、力量恢复、持续递减和下回合格挡，独立准入与原生对照。

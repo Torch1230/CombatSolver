@@ -185,6 +185,7 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 - `DeathLifecycle.cs`：死亡、复活与阵容事务；
 - `ActionChoices.cs` / `TurnStartChoices.cs` / `AutoPlay.cs`：嵌套选择与自动出牌；
 - `CardLifecycle.cs` / `CardPowerHistory.cs` / `PowerLifecycle.cs`：卡牌和 Power 跨事件状态；
+- `CardEventHistory.cs` 的历史查询缓存按回合／阵营／玩家回合整体失效，独立于参与者 Power 字段；续用三个计数在新窗口显式归零。根条目匹配使用分支玩家回合号，不调用会读取 live 玩家状态的原生匹配方法；完整回合与冷根原生证据见[历史窗口报告](performance/simulation-rounds-20260911.md)。
 - 凡庸在 `ShouldPlayMirrors` 使用同一分支手牌/开始次数入口约束手动与自动打牌。`_cardPlayStartsThisTurn` 包含重复播放和仍在执行的外层卡牌，根来自 CardPlaysStarted，随 Fork 复制、回合开始清零，进入 fingerprint 和 `CardEventHistory` 的 live/predicted 续用文本；不能以完成次数或手动系列数代替。
 - `Relics.cs`、`PowerRelics.cs`、`ReactiveRelics.cs` 等：遗物与组合事务；
 - `Potions.cs`：药水槽和使用状态。
@@ -213,7 +214,9 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 `Testing/CompactDiscardProjection.cs` 负责整根封闭能力准入及旧模型事件投影，`Testing/CompactCardProgramCompiler.cs` 负责精确卡牌状态准入及不可变指令编译；当前共三十种精确卡牌类型，包含单体／群体中毒、主动中毒触发、整手弃抽、条件抽牌及防御后虚弱。未镜像 OnPlay 的补偿在原方法作用域退出后投影，间接伤害来源不能伪造为 OnPlay 内的卡牌攻击。投影仅用于完整状态／历史与原生差分，不再次执行 OnPlay、弃牌 Hook 或选择器。`Testing/CompactDiscardReadView.cs` 在同一准入闭包内直接读取值牌堆、资源、Shuffle RNG 和已提交事件；根卡牌及其他生命周期只作已证明不变的元数据。每读取器独占一个根副本供旧公式的可变 scratch 使用，另一个初始化副本取得会惰性物化的历史初值，保留读取根的缺席／零值区别；两个副本的成本计入初始化，每叶不再 Fork 或物化旧图。风险来源由原 registry 区分未镜像与不完整镜像，经 `PredictionCoverage` 原分类／排序规范化；每读取器只缓存实际出现的组合，不预建全部子集，支持根内最多 64 个独立来源。`Testing/CompactCardMetadataReadBinding.cs` 在读取器初始化时取得独占预览，逐叶只单向导入 X 值和移除标志、失效相关缓存；旧模型不是第二份执行权威。`CardHistoryReadValues.Exhausts` 提供当前消耗历史；卡牌集合／元数据变化时旁路卡牌和策略摘要缓存。`SimulatedCombatState.CompletedPowerReads.cs` 提供每读取器私有的 `CompletedPowerReadBinding`：初始化克隆原实例，并为非零根 Power 准备独立的规范新实例；根据撤销状态的根槽退休标记选择读取模型，使重获后的回合初始数量、跳过持续计时标记、额外 Target 与动态变量恢复原生默认值，逆向恢复仍使用原模型。两组模型仅在初始化克隆并恢复原归属；每次读取仅单向替换提供的 Power 数量／施加者、回合初始量／跳过递减标志、退休集合、获得序列和阵容，失效监听器缓存，由既有 owner-anchor 算法得出有效顺序。它不执行命令、Hook、随机数或数量通知，不回写值程序，也不逐叶克隆。
 
-`DeterministicMonsterAi` 私有复制整根确定性图、当前招式和日志；`DeterministicMonsterAiLayout` 将当前索引与可增长日志写入同一撤销状态。Testing 仅准入精确单体 `MechaKnight` 四节点图，AI 独立要求已准入命令体；选择边界只推进后继，不再次执行招式。`SimulatedCombatState.CompletedMonsterAiReads` 从已捕获根准备每个招式的旧记录和 lane 私有日志，`CompactMonsterAiReadBinding` 逐叶导入当前值及意图；它不运行 AI、不从 live 补捕获、不进入候选，也不逐叶创建旧记录。原生行动条目目前没有游戏语义消费者且不属于旧预测历史合同，测试单独核对其实际招式与目标；不为凑条目数改变 Snapshot 计数。完整回合时间与阶段尚未接通。
+`CompactRoundLayout` 保存回合、玩家回合、当前阵营、首次终局回合和卡牌清理标志；`ResumableDiscardProgram.Rounds` 仅在完整阶段、确定性单敌 AI 及排序均准入后推进回合。手牌 flush 跳过弃牌 Hook，保留关键词与临时 Sly 分别捕获；起手抽牌／洗牌／Tools／嵌套 Sly 共用可暂停帧，抽牌事件标记是否属于起手。`SimulatedCombatState.CompletedRoundReads` 每个 lane 准备可复用的历史映射，逐叶从根形状及阶段标记导入时钟和重置；`BeginSideTurn` 在这里仅复用历史记账，不调用效果或 Hook。执行候选不保留旧读取器。该 Testing 准入目前拒绝玩家中毒、待抽牌与额外行动；两个原完整输入及生产搜索仍需独立验收。
+
+`DeterministicMonsterAi` 私有复制整根确定性图、当前招式和日志；`DeterministicMonsterAiLayout` 将当前索引与可增长日志写入同一撤销状态。Testing 仅准入精确单体 `MechaKnight` 四节点图，AI 独立要求已准入命令体；选择边界只推进后继，不再次执行招式。`SimulatedCombatState.CompletedMonsterAiReads` 从已捕获根准备每个招式的旧记录和 lane 私有日志，`CompactMonsterAiReadBinding` 逐叶导入当前值及意图；它不运行 AI、不从 live 补捕获、不进入候选，也不逐叶创建旧记录。原生行动条目目前没有游戏语义消费者且不属于旧预测历史合同，测试单独核对其实际招式与目标；不为凑条目数改变 Snapshot 计数。完整回合时间与阶段由下述独立准入驱动承担。
 
 `ResumableDiscardProgram.PowerPhases` 独占已准入 Power 阶段体：记录参与者的回合初始量、清除格挡并兑现下回合格挡、敌方临时力量恢复及虚弱／易伤／脆弱递减。`BasicPowerLayout` 在现有第四槽的高 32 位保存有符号初始量，低位分别保存退休／跳过标志；新建重置初始量并按玩家持续减益规则设置跳过。根上的`StratagemPower`也捕获为值槽，使其回合初始字段不再依赖旧投影；没有创建／修改`StratagemPower`的指令。Testing 独立审计回合末及 Late／格挡清除 Hook，准入标志随冻结候选保留。该接口不改变侧别、回合号、AI、阶段历史或起手，不等同于完整回合；[原生阶段证据](performance/simulation-power-phases-20260911.md)。
 
@@ -231,7 +234,7 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 牌组根监听器的准入独立于战斗监听器：`CompactDiscardProjection` 按原版运行级派发检查不可变根前缀，任何覆盖均拒绝；战斗表仅允许精确已表示的类型／方法。只缓存 CLR 元数据，根值仍逐次检查。蛇之戒在当前玩家行动域不变，原始机甲 30 牌／31 监听器经过完整读取与原生差分；起手与后续回合没有因此迁移。
 
-`ResumableDiscardProgram.HandEnd` 独占已准入手牌末尾的值执行，先处理无末尾效果的虚无牌，再按显式入场顺序处理状态牌伤害。是否准入此阶段属于不可变候选配置，未准入根调用前拒绝。入场顺序由调用者的根合同提供，不能在 worker 读取动画配置；真实 Normal／Instant 下的差异及当前生产默认路径限制见[阶段证据](performance/simulation-hand-end-20260911.md)。玩家死亡保留 roster、清理所属 Power，待失败与 Defeat 安全点分开。`CompletedStateReadView.CumulativePlayerHpLost` 进入原评分公式，`CardHistoryReadValues.StatusDraws` 进入原状态牌抽取字段；方法作用域事件保留 `OnTurnEndInHand` 来源，不增加出牌／攻击次数。完整回合与部署模式仍未接入。
+`ResumableDiscardProgram.HandEnd` 独占已准入手牌末尾的值执行，先处理无末尾效果的虚无牌，再按显式入场顺序处理状态牌伤害。是否准入此阶段属于不可变候选配置，未准入根调用前拒绝。入场顺序由调用者的根合同提供，不能在 worker 读取动画配置；真实 Normal／Instant 下的差异及当前生产默认路径限制见[阶段证据](performance/simulation-hand-end-20260911.md)。玩家死亡保留 roster、清理所属 Power，待失败与 Defeat 安全点分开。`CompletedStateReadView.CumulativePlayerHpLost` 进入原评分公式，`CardHistoryReadValues.StatusDraws` 进入原状态牌抽取字段；方法作用域事件保留 `OnTurnEndInHand` 来源，不增加出牌／攻击次数。该手牌阶段由 `ResumableDiscardProgram.Rounds` 组合为已准入完整回合；生产搜索和部署接线仍未完成。
 
 `MonsterEffectProgram` 只持有复制的不可变指令，`ResumableDiscardProgram.Monsters` 复用值伤害、格挡、Power 和生成状态；负事件来源表示怪物，生成事件另存空／玩家创建者。Testing 目前仅捕获单个机械骑士的四种指令体，伤害来自冻结怪物元数据；AI 选择及阶段顺序不由此程序承担。`CombatHistoryReadValues.CreatureAttacks` 提供完整生物攻击计数，原映射编码同时保留玩家单项替换与缺席／零值语义。读取器初始化取得历史基数，每叶仅累加事件；投影不能调用怪物效果或重新执行指令。见[指令体证据与完整回合边界](performance/simulation-monster-commands-20260911.md)。
 

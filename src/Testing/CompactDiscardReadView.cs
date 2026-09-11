@@ -33,6 +33,7 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
     private readonly SimulatedCombatState.CompletedPowerReadBinding? _powerBinding;
     private readonly CompletedPowerReadValues[] _powerValues;
     private readonly CompactMonsterAiReadBinding? _monsterAiBinding;
+    private readonly SimulatedCombatState.CompletedRoundReadBinding? _roundBinding;
     internal int RiskSourceCount => _distinctGaps.Length;
 
     internal CompactDiscardReadView(CompactDiscardProjection adapter, CombatPredictionSimulator root, Player player,
@@ -65,6 +66,7 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
             .Select(id => metadata.GetCreatureAttacksThisTurn(adapter.Creature(id))).ToArray();
         _enemies = new(this);
         _monsterAiBinding = adapter.CreateMonsterAiReadBinding(_context);
+        _roundBinding = adapter.CreateRoundReadBinding(_context);
         _powerValues = new CompletedPowerReadValues[_program.PowerCount];
         _powerBinding = _program.PowerCount == 0 ? null : adapter.CreatePowerReadBinding(_context);
         _rootGaps = PredictionCoverage.Collect(root);
@@ -90,6 +92,8 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
         _program = program;
         _cards.Read(program);
         _monsterAiBinding?.Read(program);
+        _roundBinding?.Read(program.RoundNumber, program.PlayerTurn, program.EnemySide, program.BeganEnemyTurn, program.BeganPlayerTurn);
+        bool playerReset = false, enemyReset = false;
         int attacks = 0, creatureAttacks = 0, zeroCostAttacks = 0, shivs = 0, statusDraws = 0;
         _combatHistory.ResetFrom(_combatBaseline);
         int block = 0, skill = 0, discarded = 0, exhausted = 0, energy = 0, draw = 0, starts = 0, plays = 0, manual = 0;
@@ -101,6 +105,17 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
             var item = program.EventAt(i);
             switch (item.Kind)
             {
+                case ResumableDiscardProgram.EventKind.BeginSide:
+                    bool enemy = item.Card == -2;
+                    Creature phaseOwner = _adapter.Creature(enemy ? 1 : 0);
+                    _combatHistory.LostHp.Clear();
+                    _combatHistory.PoweredHits.Clear();
+                    _combatHistory.CreatureAttacks.Clear();
+                    _combatHistory.CreatureAttacks[phaseOwner] = 0;
+                    playerReset = enemyReset = true;
+                    attacks = creatureAttacks = zeroCostAttacks = shivs = statusDraws = 0;
+                    block = skill = discarded = exhausted = energy = draw = starts = plays = manual = 0;
+                    break;
                 case ResumableDiscardProgram.EventKind.Pay: energy += item.Value; break;
                 case ResumableDiscardProgram.EventKind.Start:
                     starts++;
@@ -112,7 +127,8 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
                     break;
                 case ResumableDiscardProgram.EventKind.Generated: _entries += 2; break;
                 case ResumableDiscardProgram.EventKind.Draw:
-                    draw++; _entries += 2;
+                    if (item.Value == 0) draw++;
+                    _entries += 2;
                     if (_cards[item.Card].Preview.Type == CardType.Status) statusDraws++;
                     break;
                 case ResumableDiscardProgram.EventKind.Discard: discarded++; break;
@@ -137,7 +153,7 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
                     {
                         int dealer = item.Card < 0 ? -item.Card - 1 : 0;
                         var hitKey = (_adapter.Creature(dealer), receiver);
-                        int baseline = dealer == 0 ? _baseHits[item.Target] : _baseEnemyHits[dealer];
+                        int baseline = dealer == 0 ? playerReset ? 0 : _baseHits[item.Target] : enemyReset ? 0 : _baseEnemyHits[dealer];
                         _combatHistory.PoweredHits[hitKey] = _combatHistory.PoweredHits.GetValueOrDefault(hitKey, baseline) + 1;
                     }
                     _entries++;
@@ -148,13 +164,15 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
                     {
                         int owner = -item.Card - 1;
                         Creature actor = _adapter.Creature(owner);
-                        _combatHistory.CreatureAttacks[actor] = _combatHistory.CreatureAttacks.GetValueOrDefault(actor, _baseCreatureAttacks[owner]) + 1;
+                        _combatHistory.CreatureAttacks[actor] = _combatHistory.CreatureAttacks.GetValueOrDefault(actor, enemyReset ? 0 : _baseCreatureAttacks[owner]) + 1;
                     }
                     _entries++;
                     break;
                 case ResumableDiscardProgram.EventKind.Death:
                     _combatHistory.DeathPhases[_adapter.Creature(item.Target)] = PredictedDeathPhase.PermanentlyDead;
                     break;
+                case ResumableDiscardProgram.EventKind.ResetEnergy:
+                case ResumableDiscardProgram.EventKind.CleanupCards:
                 case ResumableDiscardProgram.EventKind.PowerChange:
                 case ResumableDiscardProgram.EventKind.HandEndMoved:
                 case ResumableDiscardProgram.EventKind.HandEndStart:
@@ -171,7 +189,7 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
                 default: throw new InvalidOperationException("Read view encountered an unknown committed event.");
             }
         }
-        static int? Add(int? value, int delta) => delta == 0 ? null : checked(value!.Value + delta);
+        int? Add(int? value, int delta) => delta == 0 ? null : checked((playerReset ? 0 : value!.Value) + delta);
         _history = new(_player, Add(_baseline.BlockPlays, block), Add(_baseline.SkillPlays, skill),
             Add(_baseline.Discards, discarded), Add(_baseline.EnergySpent, energy), Add(_baseline.Draws, draw),
             Add(_baseline.Series, starts), Add(_baseline.Starts, starts), Add(_baseline.Plays, plays), Add(_baseline.ManualPlays, manual), Add(_baseline.AttackPlays, attacks),
@@ -204,7 +222,7 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
         return ReferenceEquals(creature, _player.Creature) ? values with { Block = Block } : values;
     }
     internal override CombatTerminalStamp? TerminalStamp => _program.Terminal
-        ? new(_adapter.PlayerTurn, _program.DefeatTerminal ? CombatTerminalOutcome.Defeat : CombatTerminalOutcome.Victory) : _context.TerminalStamp;
+        ? new(_program.HasRounds ? _program.TerminalPlayerTurn : _adapter.PlayerTurn, _program.DefeatTerminal ? CombatTerminalOutcome.Defeat : CombatTerminalOutcome.Victory) : _context.TerminalStamp;
     internal override IReadOnlyList<Creature> EnemyRoster => _program.CreatureCount == 0
         ? ((SimulatedCombatState)_context.State.CombatState).Enemies : _enemies;
     internal override bool EnemyValuesInvariant => _program.CreatureCount == 0;

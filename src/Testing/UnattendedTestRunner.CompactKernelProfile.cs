@@ -42,11 +42,11 @@ internal sealed partial class UnattendedTestRunner
             _turn = root.StartTurnNumber;
         }
 
-        internal SimulationSnapshot Evaluate(CompletedStateReadView view)
-            => _solver.SnapshotFromReadView(view, _turn, 1, 0, SearchBoundaryReason.None, _deaths);
+        internal SimulationSnapshot Evaluate(CompletedStateReadView view, int? turn = null)
+            => _solver.SnapshotFromReadView(view, turn ?? _turn, 1, 0, SearchBoundaryReason.None, _deaths);
 
-        internal SimulationSnapshot Evaluate(CombatPredictionSimulator sim)
-            => _snapshot(sim, _turn, 1, 0, SearchBoundaryReason.None, _deaths);
+        internal SimulationSnapshot Evaluate(CombatPredictionSimulator sim, int? turn = null)
+            => _snapshot(sim, turn ?? _turn, 1, 0, SearchBoundaryReason.None, _deaths);
     }
 
     private void ProfileCompactEvaluation(CombatRootSnapshot root, SolverDisplayNames display,

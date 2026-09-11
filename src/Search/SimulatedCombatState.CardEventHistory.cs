@@ -1,5 +1,6 @@
 using System.Text;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Combat.History;
 using MegaCrit.Sts2.Core.Combat.History.Entries;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
@@ -15,6 +16,52 @@ namespace CombatSolver;
 
 internal sealed partial class SimulatedCombatState
 {
+    // Native history windows include round, side and player-turn identity. Actor
+    // ownership is not the window: player counters also expire on enemy-side entry.
+    private void ResetTurnHistoryWindow()
+    {
+        _unblockedDamageThisTurn = null;
+        _attacksPlayedThisTurn?.Clear();
+        _shivsPlayedThisTurn?.Clear();
+        _blockCardsPlayedThisTurn?.Clear();
+        _skillCardsPlayedThisTurn?.Clear();
+        _cardsExhaustedThisTurn?.Clear();
+        _cardsDiscardedThisTurn?.Clear();
+        _creatureAttacksThisTurn?.Clear();
+        _cardPlaySeriesStartedThisTurn?.Clear();
+        _zeroCostAttackStartsThisTurn?.Clear();
+        _cardPlayStartsThisTurn?.Clear();
+        _cardsPlayedThisTurn?.Clear();
+        _manualCardsPlayedThisTurn?.Clear();
+        _energySpentThisTurn?.Clear();
+        _starsGainedThisTurn?.Clear();
+        _nonHandDrawsThisTurn?.Clear();
+        _statusCardsDrawnThisTurn?.Clear();
+        _poweredAttackHitsThisTurn?.Clear();
+        _doomAppliersThisTurn?.Clear();
+        _fetchCardsPlayedThisTurn?.Clear();
+        // These three counters are part of every completed continuation snapshot.
+        // Materialize their new zero window here, so taking that snapshot cannot
+        // introduce fresh map entries after a candidate's original key is computed.
+        foreach (Player player in _players)
+        {
+            (_statusCardsDrawnThisTurn ??= [])[player] = 0;
+            (_zeroCostAttackStartsThisTurn ??= [])[player.Creature] = 0;
+            (_cardPlayStartsThisTurn ??= [])[player.Creature] = 0;
+        }
+    }
+
+    private bool RootEntryHappenedThisTurn(CombatHistoryEntry entry)
+    {
+        if (entry.RoundNumber != RoundNumber || entry.CurrentSide != CurrentSide) return false;
+        foreach (var pair in entry._playerTurnNumbers)
+        {
+            Player? player = GetPlayer(pair.Key);
+            if (player == null || GetPlayerTurnNumber(player) != pair.Value) return false;
+        }
+        return true;
+    }
+
     public int GetCardsDrawnBeforePrediction(Player player)
         => _rootHistory.CardsDrawn.Count(entry => entry.Actor.Player == player);
 
@@ -68,7 +115,7 @@ internal sealed partial class SimulatedCombatState
         if (_statusCardsDrawnThisTurn?.TryGetValue(player, out int value) == true)
             return value;
         value = _rootHistory.CardsDrawn.Count(entry =>
-            entry.HappenedThisTurn(this)
+            RootEntryHappenedThisTurn(entry)
             && entry.Actor.Player == player
             && entry.Card.Type == CardType.Status);
         (_statusCardsDrawnThisTurn ??= [])[player] = value;
@@ -193,7 +240,7 @@ internal sealed partial class SimulatedCombatState
         if (_unblockedDamageThisTurn?.Contains(receiver) == true)
             return true;
         bool live = _rootHistory.DamageReceived.Any(entry =>
-            entry.HappenedThisTurn(this)
+            RootEntryHappenedThisTurn(entry)
             && entry.Receiver == receiver
             && entry.Result.UnblockedDamage > 0);
         if (live)
@@ -209,7 +256,7 @@ internal sealed partial class SimulatedCombatState
         if (_doomAppliersThisTurn?.Contains(applier) == true)
             return true;
         bool live = _rootHistory.PowerReceived.Any(entry =>
-            entry.HappenedThisTurn(this)
+            RootEntryHappenedThisTurn(entry)
             && entry.Power is DoomPower
             && entry.Applier == applier);
         if (live)
@@ -223,7 +270,7 @@ internal sealed partial class SimulatedCombatState
         if (_poweredAttackHitsThisTurn?.TryGetValue(key, out int value) == true)
             return value;
         value = _rootHistory.DamageReceived.Count(entry =>
-            entry.HappenedThisTurn(this)
+            RootEntryHappenedThisTurn(entry)
             && entry.Dealer == dealer
             && entry.Receiver == receiver
             && entry.Result.Props.IsPoweredAttack());
@@ -236,7 +283,7 @@ internal sealed partial class SimulatedCombatState
         if (_cardsDiscardedThisTurn?.TryGetValue(actor, out int value) == true)
             return value;
         value = _rootHistory.CardsDiscarded.Count(entry =>
-            entry.HappenedThisTurn(this) && entry.Actor == actor);
+            RootEntryHappenedThisTurn(entry) && entry.Actor == actor);
         (_cardsDiscardedThisTurn ??= [])[actor] = value;
         return value;
     }
@@ -246,7 +293,7 @@ internal sealed partial class SimulatedCombatState
         if (_creatureAttacksThisTurn?.TryGetValue(actor, out int value) == true)
             return value;
         value = _rootHistory.CreatureAttacked.Count(entry =>
-            entry.HappenedThisTurn(this) && entry.Actor == actor);
+            RootEntryHappenedThisTurn(entry) && entry.Actor == actor);
         (_creatureAttacksThisTurn ??= [])[actor] = value;
         return value;
     }
@@ -256,7 +303,7 @@ internal sealed partial class SimulatedCombatState
         if (_energySpentThisTurn?.TryGetValue(player, out int value) == true)
             return value;
         value = _rootHistory.EnergySpent
-            .Where(entry => entry.HappenedThisTurn(this) && entry.Actor.Player == player)
+            .Where(entry => RootEntryHappenedThisTurn(entry) && entry.Actor.Player == player)
             .Sum(entry => entry.Amount);
         (_energySpentThisTurn ??= [])[player] = value;
         return value;
@@ -267,7 +314,7 @@ internal sealed partial class SimulatedCombatState
         if (_starsGainedThisTurn?.TryGetValue(player, out int value) == true)
             return value;
         value = _rootHistory.StarsModified
-            .Where(entry => entry.HappenedThisTurn(this)
+            .Where(entry => RootEntryHappenedThisTurn(entry)
                 && entry.Actor.Player == player
                 && entry.Amount > 0)
             .Sum(entry => entry.Amount);
@@ -280,7 +327,7 @@ internal sealed partial class SimulatedCombatState
         if (_nonHandDrawsThisTurn?.TryGetValue(player, out int value) == true)
             return value;
         value = _rootHistory.CardsDrawn.Count(entry =>
-            entry.HappenedThisTurn(this)
+            RootEntryHappenedThisTurn(entry)
             && entry.Actor.Player == player
             && !entry.FromHandDraw);
         (_nonHandDrawsThisTurn ??= [])[player] = value;
@@ -292,7 +339,7 @@ internal sealed partial class SimulatedCombatState
         if (_cardsExhaustedThisTurn?.TryGetValue(actor, out int value) == true)
             return value;
         value = _rootHistory.CardsExhausted.Count(entry =>
-            entry.HappenedThisTurn(this) && entry.Actor == actor);
+            RootEntryHappenedThisTurn(entry) && entry.Actor == actor);
         (_cardsExhaustedThisTurn ??= [])[actor] = value;
         return value;
     }

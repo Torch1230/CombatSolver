@@ -1,3 +1,4 @@
+using MegaCrit.Sts2.Core.Combat;
 using System.Reflection;
 using MegaCrit.Sts2.Core.MonsterMoves.MonsterMoveStateMachine;
 using MegaCrit.Sts2.Core.Entities.Creatures;
@@ -43,14 +44,17 @@ internal sealed class CompactDiscardProjection
     private readonly bool[]? _aiAttacks;
     internal int PlayerTurn => ((SimulatedCombatState)_root.State.CombatState).GetPlayerTurnNumber(_player);
 
-    internal CompactDiscardProjection(CombatPredictionSimulator root, Player player, bool includeAttacks = false, bool includeHandEnd = false, bool includeMechaMoves = false, bool includePowerPhases = false, bool includeMechaAi = false)
+    internal CompactDiscardProjection(CombatPredictionSimulator root, Player player, bool includeAttacks = false, bool includeHandEnd = false, bool includeMechaMoves = false, bool includePowerPhases = false, bool includeMechaAi = false, bool includeRounds = false)
     {
         if (includePowerPhases && !includeAttacks) throw new NotSupportedException("Power phases require creature values.");
         if (includeMechaAi && !includeMechaMoves) throw new NotSupportedException("Mecha AI requires captured commands.");
+        if (includeRounds && (!includeHandEnd || !includePowerPhases || !includeMechaAi))
+            throw new NotSupportedException("Round closure requires hand, Power and monster AI phases.");
         HasMonsterMoves = includeMechaMoves;
         _root = root;
         _player = player;
         var combat = (SimulatedCombatState)root.State.CombatState;
+        if (includeRounds) combat.AssertCompletedRoundRoot();
         SimPlayerCombatState state = root.State.GetPlayerCombatState(player);
         var powers = combat.EffectivePowers();
         if (combat.Players.Count != 1 || powers.Any(p => !(p is StratagemPower && p.Owner == player.Creature && p.Amount is >= 1 and <= 10)
@@ -71,9 +75,9 @@ internal sealed class CompactDiscardProjection
         // reach them; e.g. drawing a combat Slither must not invoke the deck copy.
         var runListeners = ((ICombatPredictionHookListenerSource)combat).RunHookListeners;
         for (int index = 0; index < combat.RootRunHookListenerCount; index++)
-            AssertRepresentedHooks(runListeners[index], runPrefix: true, includeHandEnd, includePowerPhases);
+            AssertRepresentedHooks(runListeners[index], runPrefix: true, includeHandEnd, includePowerPhases, includeRounds);
         foreach (AbstractModel listener in combat.IterateHookListeners())
-            AssertRepresentedHooks(listener, runPrefix: false, includeHandEnd, includePowerPhases);
+            AssertRepresentedHooks(listener, runPrefix: false, includeHandEnd, includePowerPhases, includeRounds);
         _creatures = includeAttacks ? [player.Creature, .. combat.Enemies] : [];
         if (includeAttacks && (combat.PlayerCreatures.Count != 1 || combat.KnownEnemies.Count != combat.Enemies.Count
             || _creatures.Any(c => root.State.GetCreature(c).IsDead || c.PetOwner != null)
@@ -167,12 +171,16 @@ internal sealed class CompactDiscardProjection
             powers.OfType<StratagemPower>().SingleOrDefault()?.Amount ?? 0,
             Block(relics.OfType<TheAbacus>().SingleOrDefault()), abacusIndex >= 0 && abacusIndex < stratagemIndex,
             includeAttacks ? _creatures.Select(c => { var v = root.State.GetCreature(c); return new CreatureVitals(v.CurrentHp, v.MaxHp, v.Block); }).ToArray() : null, powerDefinitions, definitions[cards.Length..],
-            new(energyRng.Counter, energyRng.State0, energyRng.State1, energyRng.State2, energyRng.State3), handEndAdmitted: includeHandEnd, monsterMoves: includeMechaMoves ? CaptureMechaCommands(root, burnTemplate) : null, powerPhasesAdmitted: includePowerPhases, monsterAi: ai);
+            new(energyRng.Counter, energyRng.State0, energyRng.State1, energyRng.State2, energyRng.State3), handEndAdmitted: includeHandEnd, monsterMoves: includeMechaMoves ? CaptureMechaCommands(root, burnTemplate) : null, powerPhasesAdmitted: includePowerPhases, monsterAi: ai,
+            round: includeRounds ? new(combat.RoundNumber, PlayerTurn, player.MaxEnergy, MegaCrit.Sts2.Core.Combat.CombatManager.baseHandDrawCount) : null);
         CardValuesInvariant = Program.CardValuesInvariant;
     }
 
     internal CompactMonsterAiReadBinding? CreateMonsterAiReadBinding(CombatPredictionSimulator context)
         => _aiMoves == null ? null : new((SimulatedCombatState)context.State.CombatState, _creatures[1], _aiMoves, _aiAttacks!);
+
+    internal SimulatedCombatState.CompletedRoundReadBinding? CreateRoundReadBinding(CombatPredictionSimulator context)
+        => !Program.HasRounds ? null : new((SimulatedCombatState)context.State.CombatState, _player, _creatures[1]);
 
     internal static readonly string[] MechaMoveIds = ["CHARGE_MOVE", "FLAMETHROWER_MOVE", "WINDUP_MOVE", "HEAVY_CLEAVE_MOVE"];
 
@@ -335,6 +343,32 @@ internal sealed class CompactDiscardProjection
                     projection.History.CardGenerationResolved(generation, created);
                     continue;
                 }
+                if (item.Kind == ResumableDiscardProgram.EventKind.BeginSide)
+                {
+                    bool enemy = item.Card == -2;
+                    combat.ResetPowerLifecycleTurn(enemy ? _player.Creature : _creatures[1]);
+                    combat.CurrentSide = enemy ? CombatSide.Enemy : CombatSide.Player;
+                    if (!enemy) { combat.RoundNumber++; combat.AdvancePlayerTurn(_player); }
+                    combat.BeginSideTurn(_creatures[-item.Card - 1]);
+                    continue;
+                }
+                if (item.Kind == ResumableDiscardProgram.EventKind.CleanupCards)
+                {
+                    foreach (var cleaned in cards)
+                    {
+                        if (!cleaned.Preview.HasSingleTurnSly) continue;
+                        cleaned.MutablePreview.HasSingleTurnSly = false;
+                        cleaned.InvalidateCaches();
+                    }
+                    continue;
+                }
+                if (item.Kind == ResumableDiscardProgram.EventKind.ResetEnergy)
+                {
+                    state.LoseEnergy(state.Energy); state.GainEnergy(item.Value);
+                    continue;
+                }
+                if (item.Kind == ResumableDiscardProgram.EventKind.Shuffle
+                    || item.Kind == ResumableDiscardProgram.EventKind.Select && item.Card < 0) continue;
                 // Creature commands share the committed damage and history representation.
                 // Handle them before interpreting the source as a card instance.
                 if (item.Kind == ResumableDiscardProgram.EventKind.Damage)
@@ -413,8 +447,8 @@ internal sealed class CompactDiscardProjection
                     }
                     case ResumableDiscardProgram.EventKind.Draw:
                         projection.AddToPile(card, PileType.Hand);
-                        var entry = projection.History.CardDrawn(card, false);
-                        combat.RecordCardDrawn(card, false);
+                        var entry = projection.History.CardDrawn(card, item.Value != 0);
+                        combat.RecordCardDrawn(card, item.Value != 0);
                         projection.History.CardDrawResolved(entry, card);
                         break;
                     case ResumableDiscardProgram.EventKind.Shuffle:
@@ -531,7 +565,7 @@ internal sealed class CompactDiscardProjection
         }
         if (program.Terminal)
         {
-            if (!projection.CheckWinCondition(PlayerTurn)
+            if (!projection.CheckWinCondition(program.HasRounds ? program.TerminalPlayerTurn : PlayerTurn)
                 || projection.TerminalStamp?.Outcome != (program.DefeatTerminal ? CombatTerminalOutcome.Defeat : CombatTerminalOutcome.Victory))
                 throw new InvalidOperationException("Compact terminal outcome differs from its projected safe point.");
         }
@@ -551,6 +585,13 @@ internal sealed class CompactDiscardProjection
         SimPlayerCombatState state = simulator.State.GetPlayerCombatState(_player);
         if (program.Energy != state.Energy || program.Block != simulator.State.GetCreature(_player.Creature).Block)
             throw new InvalidOperationException("Compact values disagree with projected resources.");
+        if (program.HasRounds)
+        {
+            var clock = (SimulatedCombatState)simulator.State.CombatState;
+            if (program.RoundNumber != clock.RoundNumber || program.PlayerTurn != clock.GetPlayerTurnNumber(_player)
+                || program.EnemySide != (clock.CurrentSide == CombatSide.Enemy))
+                throw new InvalidOperationException("Compact round clock differs from completed projection.");
+        }
         PredictionRngState rng = simulator.Rng.Shuffle.CaptureState();
         if (program.ShuffleRng != new ValueRng(rng.Counter, rng.State0, rng.State1, rng.State2, rng.State3)
             || _root.ShuffleEventCount + program.ShuffleCount != simulator.ShuffleEventCount)
@@ -589,6 +630,7 @@ internal sealed class CompactDiscardProjection
         {
             PredictedCard? actual = simulator.State.FindCard(originals[card]);
             if (program.CardRemoved(card) != (actual == null)
+                || actual != null && actual.Preview.HasSingleTurnSly != program.SingleTurnSly(card)
                 || actual != null && actual.Preview.EnergyCost.CostsX && actual.Preview.EnergyCost.CapturedXValue != program.CapturedX(card))
                 throw new InvalidOperationException("Compact removal or captured energy differs.");
             if (actual != null && !actual.Preview.EnergyCost.CostsX
@@ -638,15 +680,23 @@ internal sealed class CompactDiscardProjection
         { "AfterAutoPostPlayPhaseEntered", "BeforeSideTurnEnd", "ShouldEtherealTrigger", "BeforeFlush" };
     private static readonly HashSet<string> PowerPhaseHooks = new(StringComparer.Ordinal)
         { "AfterSideTurnEnd", "AfterSideTurnEndLate", "AfterBlockCleared" };
-    private static readonly ConcurrentDictionary<(Type Type, bool RunPrefix, bool HandEnd, bool PowerPhases), string[]> HookAudit = new();
-
-    private static void AssertRepresentedHooks(AbstractModel listener, bool runPrefix, bool includeHandEnd, bool includePowerPhases)
+    private static readonly HashSet<string> RoundHooks = new(StringComparer.Ordinal)
     {
-        string[] unrepresented = HookAudit.GetOrAdd((listener.GetType(), runPrefix, includeHandEnd, includePowerPhases), static key => key.Type
+        "ShouldFlush", "AfterFlush", "AfterCardRetained", "BeforeSideTurnStart", "ShouldClearBlock",
+        "AfterSideTurnStart", "AfterSideTurnStartLate", "AfterPlayerTurnStart", "BeforeHandDraw", "ModifyHandDraw", "ModifyHandDrawLate", "AfterModifyingHandDraw",
+        "ShouldPlayerResetEnergy", "ModifyMaxEnergy", "AfterEnergyReset", "AfterEnergyResetLate", "AfterPreventingBlockClear",
+        "ShouldTakeExtraTurn", "AfterTakingExtraTurn",
+        "AfterAutoPrePlayPhaseEntered", "AfterAutoPrePlayPhaseEnteredLate"
+    };
+    private static readonly ConcurrentDictionary<(Type Type, bool RunPrefix, bool HandEnd, bool PowerPhases, bool Rounds), string[]> HookAudit = new();
+
+    private static void AssertRepresentedHooks(AbstractModel listener, bool runPrefix, bool includeHandEnd, bool includePowerPhases, bool includeRounds)
+    {
+        string[] unrepresented = HookAudit.GetOrAdd((listener.GetType(), runPrefix, includeHandEnd, includePowerPhases, includeRounds), static key => key.Type
             .GetMethods(BindingFlags.Instance | BindingFlags.Public)
             .Where(method => ((key.RunPrefix ? ReachedRunHooks : ReachedHooks).Contains(method.Name)
                     || !key.RunPrefix && (key.HandEnd && HandEndHooks.Contains(method.Name)
-                        || key.PowerPhases && PowerPhaseHooks.Contains(method.Name)))
+                        || key.PowerPhases && PowerPhaseHooks.Contains(method.Name) || key.Rounds && RoundHooks.Contains(method.Name)))
                 && method.GetBaseDefinition().DeclaringType == typeof(AbstractModel)
                 && method.DeclaringType != typeof(AbstractModel) && (key.RunPrefix || !RepresentedHook(key.Type, method.Name)))
             .Select(method => method.Name).ToArray());
@@ -657,7 +707,11 @@ internal sealed class CompactDiscardProjection
     // Keep exact method/type pairs. AfterCardPlayed badges match the ignored mirror registrations;
     // DebufferModel only increments the native run badge counter, outside combat equivalence.
     private static bool RepresentedHook(Type type, string method)
-        => (type == typeof(WeakPower) || type == typeof(VulnerablePower) || type == typeof(FrailPower) || type == typeof(PiercingWailPower))
+        => (type == typeof(CccComboModel) || type == typeof(Play20CardsSingleTurnAchievement)) && method == nameof(AbstractModel.AfterSideTurnStart)
+            || type == typeof(PoisonPower) && method == nameof(AbstractModel.AfterSideTurnStart)
+            || type == typeof(ToolsOfTheTradePower) && method is nameof(AbstractModel.ModifyHandDraw) or nameof(AbstractModel.AfterPlayerTurnStart)
+            || type == typeof(RingOfTheSnake) && method == nameof(AbstractModel.ModifyHandDraw)
+            || (type == typeof(WeakPower) || type == typeof(VulnerablePower) || type == typeof(FrailPower) || type == typeof(PiercingWailPower))
                 && method == nameof(AbstractModel.AfterSideTurnEnd)
             || type == typeof(BlockNextTurnPower) && method == nameof(AbstractModel.AfterBlockCleared)
             || type == typeof(ToughBandages) && method == nameof(AbstractModel.AfterCardDiscarded)

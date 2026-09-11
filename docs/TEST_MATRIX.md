@@ -1,5 +1,7 @@
 # CombatSolver 测试清单
 
+- `COMPACT-ROUND-NATIVE`：`43aec28b796547a7b3d107003021bd01` Passed；3 根／20 分支／7 原生动作（6 次完整结束回合），覆盖起手洗牌、Tools、临时／永久 Sly、Power、AI、生成牌、保留与敌方中毒终局；完整状态／历史／原键／估值／九 RNG、冷根历史及八工作区恢复。[证据](performance/simulation-rounds-20260911.md)。
+
 - `COMPACT-MONSTER-AI-NATIVE`：`b7de315897af4c2782ce92a17f5c3cd7` Passed；`--character-id SILENT --encounter-id MECHA_KNIGHT_ELITE --enemy-current-hp 300 --cards-json '[]'`，3 根／10 分支／16 原生动作，完整 AI／状态／历史／九 RNG／估值／原键、逆序恢复及八工作区；纯值 300 次增长日志。原生侧调用 PerformMove 和 RollMove，尚非完整回合。[证据](performance/simulation-monster-ai-20260911.md)。
 
 - `COMPACT-POWER-PHASES-NATIVE`／`COMPACT-SHUFFLE-POWER-VALUES-NATIVE`：`1c179c6437ae46a0b09144cbe6de666a`／`d73115d6b55b4602810ee3e921a4353b` Passed；五路线／22 前缀／16 原生阶段及出牌步骤，完整 Power 字段、倒计时／恢复／重获、原键／全估值／九 RNG／八工作区；洗牌 24 分支与原生两回合对照（回合边界仍由旧引擎执行）。[阶段证据](performance/simulation-power-phases-20260911.md)。

@@ -150,7 +150,7 @@ internal sealed partial class SimulatedCombatState
         {
             Player owner = entry.CardPlay.Player;
             bool awaitingTurnSetup = owner.PlayerCombatState?.Phase == PlayerTurnPhase.Start;
-            if ((entry.HappenedThisTurn(this)
+            if ((RootEntryHappenedThisTurn(entry)
                     || awaitingTurnSetup && entry.HappenedLastPlayerTurn(owner))
                 && ReturnsToHandAfterPlaying(entry.CardPlay.Card)
                 && simulator.State.FindCard(entry.CardPlay.Card) is { } card)
@@ -201,7 +201,7 @@ internal sealed partial class SimulatedCombatState
         if (_zeroCostAttackStartsThisTurn?.TryGetValue(owner, out int value) == true)
             return value;
         value = _rootHistory.CardPlaysStarted.Count(entry =>
-            entry.HappenedThisTurn(this)
+            RootEntryHappenedThisTurn(entry)
             && entry.CardPlay.Player.Creature == owner
             && entry.CardPlay.Card.Type == CardType.Attack
             && entry.CardPlay.Resources.EnergyValue == 0);
@@ -528,7 +528,7 @@ internal sealed partial class SimulatedCombatState
         if (_cardsPlayedThisTurn?.TryGetValue(owner, out int value) == true)
             return value;
         value = _rootHistory.CardPlaysStarted.Count(entry =>
-            entry.HappenedThisTurn(this)
+            RootEntryHappenedThisTurn(entry)
             && entry.CardPlay.IsFirstInSeries
             && entry.CardPlay.Player.Creature == owner);
         (_cardsPlayedThisTurn ??= [])[owner] = value;
@@ -540,7 +540,7 @@ internal sealed partial class SimulatedCombatState
         if (_cardPlayStartsThisTurn?.TryGetValue(owner, out int value) == true)
             return value;
         value = _rootHistory.CardPlaysStarted.Count(entry =>
-            entry.HappenedThisTurn(this) && entry.CardPlay.Player.Creature == owner);
+            RootEntryHappenedThisTurn(entry) && entry.CardPlay.Player.Creature == owner);
         (_cardPlayStartsThisTurn ??= [])[owner] = value;
         return value;
     }
@@ -550,7 +550,7 @@ internal sealed partial class SimulatedCombatState
         if (_manualCardsPlayedThisTurn?.TryGetValue(owner, out int value) == true)
             return value;
         value = _rootHistory.CardPlaysStarted.Count(entry =>
-            entry.HappenedThisTurn(this)
+            RootEntryHappenedThisTurn(entry)
             && entry.CardPlay.IsFirstInSeries
             && !entry.CardPlay.IsAutoPlay
             && entry.CardPlay.Player.Creature == owner);
@@ -563,7 +563,7 @@ internal sealed partial class SimulatedCombatState
         if (_cardPlaySeriesStartedThisTurn?.TryGetValue(owner, out int value) == true)
             return value;
         value = _rootHistory.CardPlaysStarted.Count(entry =>
-            entry.HappenedThisTurn(this)
+            RootEntryHappenedThisTurn(entry)
             && entry.CardPlay.IsFirstInSeries
             && entry.CardPlay.Player.Creature == owner);
         (_cardPlaySeriesStartedThisTurn ??= [])[owner] = value;
@@ -580,7 +580,7 @@ internal sealed partial class SimulatedCombatState
     private ForkableSet<CardModel> GetFetchCardsPlayedThisTurn()
         => _fetchCardsPlayedThisTurn ??= new ForkableSet<CardModel>(
             _rootHistory.CardPlaysFinished
-                .Where(entry => entry.HappenedThisTurn(this) && entry.CardPlay.Card is Fetch)
+                .Where(entry => RootEntryHappenedThisTurn(entry) && entry.CardPlay.Card is Fetch)
                 .Select(entry => entry.CardPlay.Card));
 
     private void ResetCardLifecycleTurn(Creature owner)

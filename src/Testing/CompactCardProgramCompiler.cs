@@ -101,13 +101,13 @@ internal static class CompactCardProgramCompiler
                 new(CardInstructionKind.ApplyBasicPower, card.IsUpgraded ? 1 : 0, BasicPowerKind.Weak, CardInstructionTarget.ChosenEnemy, 1)]),
             _ => throw new NotSupportedException("Card has no admitted compact instructions.")
         };
-        return new(card.EnergyCost._base, effects, card.IsSlyThisTurn,
+        return new(card.EnergyCost._base, effects, card.LocalKeywords.Contains(CardKeyword.Sly),
             card.Type == CardType.Power ? ResumableDiscardProgram.Pile.Removed : card.LocalKeywords.Contains(CardKeyword.Exhaust) ? ResumableDiscardProgram.Pile.Exhaust : ResumableDiscardProgram.Pile.Discard,
             card.EnergyCost.CostsX, card.EnergyCost.CostsX ? card.EnergyCost.CapturedXValue : 0,
             card.Type switch { CardType.Attack => CardCategory.Attack, CardType.Skill => CardCategory.Skill,
                 CardType.Power => CardCategory.Power, CardType.Status => CardCategory.Status, _ => CardCategory.Other }, card.LocalKeywords.Contains(CardKeyword.Ethereal),
             card.Enchantment is Slither ? new RandomDrawCost(card.EnergyCost._localModifiers.Select(modifier => modifier.Amount).ToArray()) : null,
-            card is Burn ? (int)damage : null, card is Burn);
+            card is Burn ? (int)damage : null, card is Burn, card.LocalKeywords.Contains(CardKeyword.Retain), card.HasSingleTurnSly);
     }
 
 }

@@ -994,7 +994,7 @@ while IFS= read -r compact_path; do
     done
 done < <(rg --files "$repository_root/src/Engine/InCombat/Simulation/Compact" -g '*.cs')
 while IFS= read -r production_path; do
-    for prototype_reference in 'ResumableDiscardProgram' 'CompactDiscardProjection' 'CompactDiscardReadView' 'CompactPhaseProbe' 'CompactCardMetadataReadBinding' 'CompactCardProgramCompiler' 'MonsterEffectProgram' 'DeterministicMonsterAi' 'CompactMonsterAiReadBinding'; do
+    for prototype_reference in 'ResumableDiscardProgram' 'CompactDiscardProjection' 'CompactDiscardReadView' 'CompactPhaseProbe' 'CompactCardMetadataReadBinding' 'CompactCardProgramCompiler' 'MonsterEffectProgram' 'DeterministicMonsterAi' 'CompactMonsterAiReadBinding' 'CompactRoundRoot' 'CompactRoundLayout'; do
         forbid_fixed "$production_path" "$prototype_reference" 'unvalidated compact prototype reached production:'
     done
 done < <(rg --files "$search_root" "$repository_root/src/Runtime" -g '*.cs')
@@ -1010,6 +1010,17 @@ require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/Resumable
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" '_monsterMoves = source._monsterMoves;' 'frozen candidates must retain monster admission and commands'
 require_fixed "$compact_projection" 'metadata.CurrentMonsterMove(_creatures[1])' 'monster parameters must come from captured branch metadata'
 require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" 'history?.CreatureAttacks, combatHistory?.CreatureAttacks' 'completed creature attack counts must share the original map encoding'
+compact_round_reads="$search_root/SimulatedCombatState.CompletedRoundReads.cs"
+for replay in '.Fork(' '.ManualPlay(' 'TriggerSideTurnStart(' 'SnapshotPowerAmountsAtTurnStart(' '.State.Write('; do
+    forbid_fixed "$compact_round_reads" "$replay" 'completed round reads must only import clock and history maps:'
+done
+while IFS= read -r production_path; do
+    [[ $production_path == "$compact_round_reads" ]] && continue
+    forbid_fixed "$production_path" 'CompletedRoundReadBinding' 'completed round binding is not admitted to production execution:'
+done < <(rg --files "$search_root" "$repository_root/src/Runtime" -g '*.cs')
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" '_round = source._round;' 'frozen candidates must retain round layout and admission'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Rounds.cs" 'Emit(EventKind.BeginSide, -1);' 'side-start history must be committed in the value event tape'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'Emit(EventKind.Draw, drawn, card < 0 ? 1 : 0);' 'hand draw provenance must survive suspended round execution'
 compact_ai_reads="$search_root/SimulatedCombatState.CompletedMonsterAiReads.cs"
 for replay in '.Fork(' 'RollMove(' 'AdvanceMonsterAi(' 'BranchMonsterAi.Capture(' '.State.Write('; do
     forbid_fixed "$compact_ai_reads" "$replay" 'completed monster AI reads may only import supplied values:'
@@ -1029,7 +1040,7 @@ for semantic_replay in '.ManualPlay(' '.AutoPlay(' '.Discard(' 'CardOnPlayMirror
     forbid_fixed "$compact_projection" "$semantic_replay" 'compact projection must decode events without replaying effects:'
 done
 require_fixed "$compact_projection" 'Program.State.HasSameRoot(program.State)' 'compact projection lost root ownership guard'
-require_fixed "$compact_projection" 'AssertRepresentedHooks(runListeners[index], runPrefix: true, includeHandEnd, includePowerPhases);' 'compact deck listeners need a separate run-hook audit'
+require_fixed "$compact_projection" 'AssertRepresentedHooks(runListeners[index], runPrefix: true, includeHandEnd, includePowerPhases, includeRounds);' 'compact deck listeners need a separate run-hook audit'
 require_fixed "$compact_projection" '(key.RunPrefix || !RepresentedHook(key.Type, method.Name))' 'compact deck hooks cannot borrow combat effect exemptions'
 require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactKernelProfile.cs" 'if (!SimulationNotificationIsolation.IsActive)' 'compact measurements lost production simulation context guard'
 require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactKernel.cs" 'initialIsolation.Dispose();' 'compact thread-static isolation must close before worker await'

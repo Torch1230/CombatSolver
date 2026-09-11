@@ -384,7 +384,7 @@ internal sealed partial class UnattendedTestRunner
             else for (int second = first + 1; second < hand.Length; second++) yield return [hand[first], hand[second]];
     }
 
-    private static void AssertCompactEvaluation(SimulationSnapshot expected, SimulationSnapshot actual)
+    private static void AssertCompactEvaluation(SimulationSnapshot expected, SimulationSnapshot actual, string context = "")
     {
         foreach (PropertyInfo property in typeof(SimulationSnapshot).GetProperties(BindingFlags.Public | BindingFlags.Instance))
         {
@@ -393,7 +393,7 @@ internal sealed partial class UnattendedTestRunner
             bool equal = left is IReadOnlySet<uint> set && right is IReadOnlySet<uint> other ? set.SetEquals(other)
                 : left is IReadOnlyList<PredictionGap> gaps && right is IReadOnlyList<PredictionGap> otherGaps ? gaps.SequenceEqual(otherGaps)
                 : Equals(left, right);
-            if (!equal) throw new InvalidOperationException($"Compact full evaluation differs at {property.Name}: {left} / {right}.");
+            if (!equal) throw new InvalidOperationException($"Compact full evaluation {context} differs at {property.Name}: {left} / {right}.");
         }
     }
 

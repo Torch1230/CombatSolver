@@ -9,9 +9,9 @@ internal sealed partial class ResumableDiscardProgram
 {
     internal readonly record struct Card(int Cost, CardEffectProgram Effects, bool Sly = false,
         Pile ResultPile = Pile.Discard, bool CostsX = false, int CapturedX = 0, CardCategory Category = CardCategory.Other,
-        bool Ethereal = false, RandomDrawCost? DrawCost = null, int? HandEndDamage = null, bool Unplayable = false);
+        bool Ethereal = false, RandomDrawCost? DrawCost = null, int? HandEndDamage = null, bool Unplayable = false, bool Retain = false, bool SingleTurnSly = false);
     internal enum Pile { Hand, Draw, Discard, Play, Exhaust, Removed }
-    internal enum EventKind { Pay, Start, Draw, Select, SelectedCard, Discard, Block, Finish, Shuffle, ShuffleCard, Retrieve, Damage, DamageBlocked, DamageOverkill, AttackFinish, Death, PowerChange, ResultMoved, Generated, CostChanged, HandEndMoved, HandEndStart, HandEndFinish }
+    internal enum EventKind { Pay, Start, Draw, Select, SelectedCard, Discard, Block, Finish, Shuffle, ShuffleCard, Retrieve, Damage, DamageBlocked, DamageOverkill, AttackFinish, Death, PowerChange, ResultMoved, Generated, CostChanged, HandEndMoved, HandEndStart, HandEndFinish, BeginSide, ResetEnergy, CleanupCards }
     internal readonly record struct Event(EventKind Kind, int Card, int Value, bool Automatic, int Target = -1, int Flags = 0)
     {
         internal long Data => (long)(uint)Card | (long)(uint)Value << 32;
@@ -45,6 +45,7 @@ internal sealed partial class ResumableDiscardProgram
     private readonly bool _powerPhasesAdmitted;
     private readonly MonsterEffectProgram[]? _monsterMoves;
     private readonly DeterministicMonsterAiLayout? _monsterAi;
+    private readonly CompactRoundLayout? _round;
     private readonly CardComparer? _cardComparer;
     private readonly InstanceComparer? _instanceComparer;
     private const int FrameStart = 10;
@@ -67,7 +68,7 @@ internal sealed partial class ResumableDiscardProgram
     internal ValueRng? EnergyCostRng => _drawCosts?.Rng(State);
     internal Pile ResultPile(int card) => Definition(card).ResultPile;
     internal bool CardRemoved(int card) => Contains(Pile.Removed, card);
-    internal bool CardValuesInvariant => _definitions.All(card => card.ResultPile == Pile.Discard && !card.Ethereal && !card.CostsX && !card.Effects.GeneratesCards && card.DrawCost == null)
+    internal bool CardValuesInvariant => _definitions.All(card => card.ResultPile == Pile.Discard && !card.Ethereal && !card.CostsX && !card.SingleTurnSly && !card.Effects.GeneratesCards && card.DrawCost == null)
         && _monsterMoves?.All(move => !move.GeneratesCards) != false;
     internal int Block => _combat?.Read(State, 0).Block ?? Read(BlockSlot);
     internal int PowerCount => _powers?.Count ?? 0;
@@ -80,8 +81,13 @@ internal sealed partial class ResumableDiscardProgram
     internal bool Ending => _combat?.IsEnding(State) ?? false;
     internal bool Terminal => _combat?.Terminal(State) ?? false;
     internal bool DefeatTerminal => _combat?.DefeatTerminal(State) ?? false;
-    internal bool CheckWinCondition() => Complete ? _combat?.CheckWinCondition(State) ?? false
-        : throw new InvalidOperationException("Terminal check requires a completed command.");
+    internal bool CheckWinCondition()
+    {
+        if (!Complete) throw new InvalidOperationException("Terminal check requires a completed command.");
+        bool terminal = _combat?.CheckWinCondition(State) ?? false;
+        if (terminal) _round?.LockTerminal(State);
+        return terminal;
+    }
     internal bool Complete => Read(DepthSlot) == 0;
     internal bool NeedsChoice => !Complete && Read(Frame + IpOffset) is 2 or 6;
     internal Pile ChoicePile => NeedsChoice && Read(Frame + IpOffset) == 6 ? Pile.Draw : Pile.Hand;
@@ -95,23 +101,24 @@ internal sealed partial class ResumableDiscardProgram
     internal int EventCount => _events.Count(State) / 2;
     internal long EventsExecuted { get; private set; }
     private int Frame => FrameStart + (Read(DepthSlot) - 1) * FrameWidth;
-    private CardInstruction CurrentInstruction => Definition(Read(Frame + CardOffset)).Effects[Read(Frame + EffectIndexOffset)];
+    private CardInstruction CurrentInstruction => Read(Frame + CardOffset) < 0 ? RoundInstruction
+        : Definition(Read(Frame + CardOffset)).Effects[Read(Frame + EffectIndexOffset)];
 
     internal ResumableDiscardProgram(Card[] cards, IReadOnlyList<int>[] piles, int energy, int block, int discardBlock,
         ValueRng shuffleRng = default, int[]? comparisons = null, int stratagem = 0, int shuffleBlock = 0,
         bool shuffleBlockFirst = false, CreatureVitals[]? creatures = null, BasicPowerDefinition[]? powers = null, Card[]? generatedCards = null,
-        ValueRng? energyCostRng = null, bool handEndAdmitted = false, MonsterEffectProgram[]? monsterMoves = null, bool powerPhasesAdmitted = false, DeterministicMonsterAi? monsterAi = null)
+        ValueRng? energyCostRng = null, bool handEndAdmitted = false, MonsterEffectProgram[]? monsterMoves = null, bool powerPhasesAdmitted = false, DeterministicMonsterAi? monsterAi = null, CompactRoundRoot? round = null)
     {
         Card[] definitions = [.. cards, .. generatedCards ?? []];
-        if (cards.Length == 0 || piles.Length != 5 || cards.Count(c => c.Sly) >= MaxFrames
-            || generatedCards?.Any(card => card.Sly || card.DrawCost != null) == true)
+        if (cards.Length == 0 || piles.Length != 5 || cards.Count(c => c.Sly || c.SingleTurnSly) >= MaxFrames
+            || generatedCards?.Any(card => card.Sly || card.SingleTurnSly || card.DrawCost != null) == true)
             throw new NotSupportedException("Compact prototype capacity exceeded.");
         if (definitions.Any(c => c.Cost < 0 && !(c.Unplayable && c.Cost == -1) || c.CapturedX is < 0 or > 999_999_999 || c.Effects == null || !Enum.IsDefined(c.Category)
                 || c.HandEndDamage is < 0 or > 999_999_999 || c.HandEndDamage != null && creatures == null
-                || c.Unplayable && (c.CostsX || c.Sly || c.Effects.Count != 0 || c.DrawCost != null)
+                || c.Unplayable && (c.CostsX || c.Sly || c.SingleTurnSly || c.Effects.Count != 0 || c.DrawCost != null)
                 || c.DrawCost != null && c.CostsX || c.Effects.RequiresPowers && (powers == null || creatures == null) || c.Effects.RequiresEnergyX && !c.CostsX
                 || c.ResultPile is not (Pile.Discard or Pile.Exhaust or Pile.Removed)
-                || c.Effects.RequiresTarget && creatures == null || c.Sly && (c.Effects.Count == 0 || c.Effects.RequiresTarget))
+                || c.Effects.RequiresTarget && creatures == null || (c.Sly || c.SingleTurnSly) && (c.Effects.Count == 0 || c.Effects.RequiresTarget))
             || energy is < 0 or > 999_999_999 || block < 0 || discardBlock < 0 || stratagem is < 0 or > 10 || shuffleBlock < 0)
             throw new ArgumentException("Invalid compact root.");
         int[] identities = piles.SelectMany(p => p).ToArray();
@@ -122,7 +129,7 @@ internal sealed partial class ResumableDiscardProgram
         // so an unsupported random operation can never leave a partially accepted candidate.
         if (comparisons == null && definitions.Sum(c => c.Effects.TotalDraw) > piles[(int)Pile.Draw].Count)
             throw new NotSupportedException("Compact shuffle requires captured ordering and random state.");
-        if (comparisons != null && (comparisons.Length != definitions.Length * definitions.Length || cards.Count(c => c.Sly) > 1))
+        if (comparisons != null && (comparisons.Length != definitions.Length * definitions.Length || cards.Count(c => c.Sly || c.SingleTurnSly) > 1))
             throw new NotSupportedException("Compact shuffle admits at most one Sly instance and a full comparison matrix.");
         foreach (var definition in definitions)
         for (int instruction = 0; instruction < definition.Effects.Count; instruction++)
@@ -146,6 +153,10 @@ internal sealed partial class ResumableDiscardProgram
         if (monsterAi != null && (monsterMoves == null || monsterAi.MoveCount != monsterMoves.Length
             || creatures == null || monsterAi.Owner >= creatures.Length))
             throw new ArgumentException("Monster AI requires matching captured commands and owner.");
+        if (round != null && (!handEndAdmitted || !powerPhasesAdmitted || monsterAi == null || monsterAi.Owner != 1
+            || creatures?.Length != 2 || comparisons == null
+            || powers!.Any(power => power.Owner == 0 && power.Kind == BasicPowerKind.Poison && power.Amount != 0)))
+            throw new NotSupportedException("Round closure requires one enemy, all phases, ordering and no player Poison.");
         ValidateBlockReturns(definitions, powers);
         _definitions = definitions;
         _rootCardCount = cards.Length;
@@ -165,6 +176,7 @@ internal sealed partial class ResumableDiscardProgram
         _powers = powers == null ? null : new(State, powers);
         _events = new(State);
         _monsterAi = monsterAi == null ? null : new(State, monsterAi);
+        _round = round is { } roundRoot ? new(State, roundRoot) : null;
         _drawCosts = cards.Any(card => card.DrawCost != null) ? new(State, cards.Select(card => card.DrawCost).ToArray(),
             energyCostRng ?? throw new NotSupportedException("Random draw costs require a captured RNG stream.")) : null;
         State.Write(EnergySlot, energy);
@@ -205,7 +217,7 @@ internal sealed partial class ResumableDiscardProgram
     private ResumableDiscardProgram(Card[] cards, int rootCardCount, int discardBlock, int stratagem, int shuffleBlock,
         bool shuffleBlockFirst, CardComparer? cardComparer, CreatureAttackLayout? combat, BasicPowerLayout? powers,
         ReversibleValueBuffer[] piles, ReversibleValueBuffer cardInstances, ReversibleValueBuffer events, RandomDrawCostLayout? drawCosts,
-        bool handEndAdmitted, MonsterEffectProgram[]? monsterMoves, bool powerPhasesAdmitted, DeterministicMonsterAiLayout? monsterAi, ReversibleValueState state)
+        bool handEndAdmitted, MonsterEffectProgram[]? monsterMoves, bool powerPhasesAdmitted, DeterministicMonsterAiLayout? monsterAi, CompactRoundLayout? round, ReversibleValueState state)
     {
         _definitions = cards;
         _rootCardCount = rootCardCount;
@@ -217,6 +229,7 @@ internal sealed partial class ResumableDiscardProgram
         _powerPhasesAdmitted = powerPhasesAdmitted;
         _monsterMoves = monsterMoves;
         _monsterAi = monsterAi;
+        _round = round;
         _cardComparer = cardComparer;
         _instanceComparer = cardComparer == null ? null : new(this, cardComparer);
         _piles = piles;
@@ -239,6 +252,7 @@ internal sealed partial class ResumableDiscardProgram
         private readonly bool _powerPhasesAdmitted;
         private readonly MonsterEffectProgram[]? _monsterMoves;
         private readonly DeterministicMonsterAiLayout? _monsterAi;
+        private readonly CompactRoundLayout? _round;
         private readonly CardComparer? _cardComparer;
         private readonly ReversibleValueState.FrozenValues _values;
         private readonly CreatureAttackLayout? _combat;
@@ -261,6 +275,7 @@ internal sealed partial class ResumableDiscardProgram
             _powerPhasesAdmitted = source._powerPhasesAdmitted;
             _monsterMoves = source._monsterMoves;
             _monsterAi = source._monsterAi;
+            _round = source._round;
             _cardComparer = source._cardComparer;
             _combat = source._combat;
             _powers = source._powers;
@@ -269,7 +284,7 @@ internal sealed partial class ResumableDiscardProgram
         }
         internal int PayloadBytes => _values.PayloadBytes;
         internal ResumableDiscardProgram Open() => new(_definitions, _rootCardCount, _discardBlock, _stratagem, _shuffleBlock,
-            _shuffleBlockFirst, _cardComparer, _combat, _powers, _piles, _cardInstances, _events, _drawCosts, _handEndAdmitted, _monsterMoves, _powerPhasesAdmitted, _monsterAi, _values.CreateWorkspace());
+            _shuffleBlockFirst, _cardComparer, _combat, _powers, _piles, _cardInstances, _events, _drawCosts, _handEndAdmitted, _monsterMoves, _powerPhasesAdmitted, _monsterAi, _round, _values.CreateWorkspace());
         internal void RestoreInto(ResumableDiscardProgram workspace) => workspace.State.Restore(_values);
     }
 
@@ -340,7 +355,7 @@ internal sealed partial class ResumableDiscardProgram
                     State.Write(frame + IpOffset, 1);
                     break;
                 case 1:
-                    if (Read(frame + EffectIndexOffset) == Definition(card).Effects.Count)
+                    if (Read(frame + EffectIndexOffset) == InstructionCount(card))
                         State.Write(frame + IpOffset, 5);
                     else if (!ExecuteInstruction(card)) return;
                     break;
@@ -373,11 +388,12 @@ internal sealed partial class ResumableDiscardProgram
                     {
                         State.Write(frame + NextAutoOffset, next + 1);
                         int discarded = Read(frame + SelectedOffset + next);
-                        if (Definition(discarded).Sly) Push(discarded, true);
+                        if (IsSly(discarded)) Push(discarded, true);
                     }
                     else AdvanceInstruction();
                     break;
                 case 5:
+                    if (card < 0) { State.Write(DepthSlot, 0); break; }
                     Emit(EventKind.Finish, card, Block > Read(frame + BeforeBlockOffset) ? 1 : 0,
                         Read(frame + AutoOffset) != 0, flags: Definition(card).Ethereal ? 1 : 0);
                     if (ResultPile(card) == Pile.Removed || !Ending)
@@ -490,7 +506,7 @@ internal sealed partial class ResumableDiscardProgram
             if (Count(Pile.Draw) == 0 || Count(Pile.Hand) >= 10) break;
             int drawn = CardAt(Pile.Draw, 0);
             Move(drawn, Pile.Hand);
-            Emit(EventKind.Draw, drawn);
+            Emit(EventKind.Draw, drawn, card < 0 ? 1 : 0);
             if (Definition(drawn).DrawCost != null) Emit(EventKind.CostChanged, drawn, _drawCosts!.Draw(State, drawn));
             if (Read(Frame + DrawIndexOffset) == 0) State.Write(Frame + FirstDrawnOffset, drawn);
             State.Write(Frame + DrawIndexOffset, Read(Frame + DrawIndexOffset) + 1);
@@ -573,7 +589,8 @@ internal sealed partial class ResumableDiscardProgram
         DamageValues result = _combat!.Damage(State, target, amount, unblockable: true);
         RecordDamage(card, target, result, DamageTraits.Unpowered | DamageTraits.Unblockable
             | DamageTraits.NoDealer | DamageTraits.NoCard | DamageTraits.Poison);
-        if (Creature(target).CurrentHp > 0) ApplyPower(card, target, BasicPowerKind.Poison, -1);
+        // Native Decrement bypasses application modifiers, including Artifact.
+        if (Creature(target).CurrentHp > 0) CommitPower(card, target, BasicPowerKind.Poison, -1);
     }
 
     private void RecordDamage(int card, int target, DamageValues result, DamageTraits traits = 0)

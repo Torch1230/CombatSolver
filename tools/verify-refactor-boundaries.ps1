@@ -1201,7 +1201,7 @@ foreach ($file in Get-ChildItem -LiteralPath $compactRoot -Filter *.cs -File -Re
 }
 $compactProductionFiles = @($searchFiles) + @(Get-ChildItem -LiteralPath (Join-Path $repositoryRoot 'src/Runtime') -Filter *.cs -File -Recurse)
 foreach ($file in $compactProductionFiles) {
-    foreach ($reference in @('ResumableDiscardProgram', 'CompactDiscardProjection', 'CompactDiscardReadView', 'CompactPhaseProbe', 'CompactCardMetadataReadBinding', 'CompactCardProgramCompiler', 'MonsterEffectProgram', 'DeterministicMonsterAi', 'CompactMonsterAiReadBinding')) {
+    foreach ($reference in @('ResumableDiscardProgram', 'CompactDiscardProjection', 'CompactDiscardReadView', 'CompactPhaseProbe', 'CompactCardMetadataReadBinding', 'CompactCardProgramCompiler', 'MonsterEffectProgram', 'DeterministicMonsterAi', 'CompactMonsterAiReadBinding', 'CompactRoundRoot', 'CompactRoundLayout')) {
         foreach ($match in Select-String -LiteralPath $file.FullName -SimpleMatch $reference) {
             $violations.Add("$($match.Path):$($match.LineNumber): unvalidated compact prototype reached production: $reference")
         }
@@ -1212,7 +1212,7 @@ $damageSimulator = [IO.File]::ReadAllText((Join-Path $repositoryRoot 'src/Engine
 if ($damageSimulator.Contains('dealer?.IsDead')) { $violations.Add('Damage dealers must read branch vitals.') }
 if (-not $damageSimulator.Contains('effects.CompletePlayerDeath(player);')) { $violations.Add('Player death lost domain cleanup before orb/pet handling.') }
 if ([IO.File]::ReadAllText((Join-Path $repositoryRoot 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.EndTurn.cs')).Contains('SaveManager')) { $violations.Add('Turn-end execution must not read live animation settings.') }
-foreach ($required in @('AssertRepresentedHooks(runListeners[index], runPrefix: true, includeHandEnd, includePowerPhases);', '(key.RunPrefix || !RepresentedHook(key.Type, method.Name))')) {
+foreach ($required in @('AssertRepresentedHooks(runListeners[index], runPrefix: true, includeHandEnd, includePowerPhases, includeRounds);', '(key.RunPrefix || !RepresentedHook(key.Type, method.Name))')) {
     if (-not ([IO.File]::ReadAllText($compactProjection)).Contains($required)) {
         $violations.Add("Compact deck listeners lost their independent run-hook audit: $required")
     }
@@ -1316,6 +1316,9 @@ $compactReadGuards = @(
     @('src/Search/SimulatedCombatState.cs', 'simulated.SkipNextDurationTick = true;'),
     @('src/Search/SimulatedCombatState.cs', '!PowerLifecycleSupport.UsesNativeDurationSkip(powerType) && !alreadyPresent'),
     @('src/Search/SimulatedCombatState.cs', '!PowerLifecycleSupport.UsesNativeDurationSkip(typeof(T)) && !alreadyPresent'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', '_round = source._round;'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Rounds.cs', 'Emit(EventKind.BeginSide, -1);'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'Emit(EventKind.Draw, drawn, card < 0 ? 1 : 0);'),
     @('src/Engine/InCombat/Simulation/Compact/DeterministicMonsterAi.cs', '_log.Append(state, [next]);'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', '_monsterAi = source._monsterAi;'),
     @('src/Testing/CompactDiscardProjection.cs', 'combat.RequireCapturedMonsterAi(_creatures[1])'),
@@ -1386,6 +1389,17 @@ if ($archiveContract -match '\b(Godot|SolverController|RunManager)\b') {
 $nativeReplay = [IO.File]::ReadAllText((Join-Path $repositoryRoot 'src/Testing/UnattendedTestRunner.NativeReplay.cs'))
 if ($nativeReplay.Contains('ApplyReplayStateAsync(')) {
     throw 'Native recorded replay must reconstruct state through native actions.'
+}
+
+$compactRoundReads = Join-Path $repositoryRoot 'src/Search/SimulatedCombatState.CompletedRoundReads.cs'
+$compactRoundText = Get-Content -LiteralPath $compactRoundReads -Raw
+foreach ($forbidden in @('.Fork(', '.ManualPlay(', 'TriggerSideTurnStart(', 'SnapshotPowerAmountsAtTurnStart(', '.State.Write(')) {
+    if ($compactRoundText.Contains($forbidden)) { throw "Completed round reads must only import clock and history maps: $forbidden" }
+}
+Get-ChildItem (Join-Path $repositoryRoot 'src/Search'), (Join-Path $repositoryRoot 'src/Runtime') -Recurse -Filter '*.cs' | ForEach-Object {
+    if ($_.FullName -ne $compactRoundReads -and (Get-Content -LiteralPath $_.FullName -Raw).Contains('CompletedRoundReadBinding')) {
+        throw "Completed round binding is not admitted to production execution: $($_.FullName)"
+    }
 }
 
 $compactAiReads = Join-Path $repositoryRoot 'src/Search/SimulatedCombatState.CompletedMonsterAiReads.cs'
