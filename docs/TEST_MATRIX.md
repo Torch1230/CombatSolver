@@ -3152,3 +3152,17 @@ pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId MONSTER-MOVES-BA
 `COMPACT-POKE-PET-STATE-NATIVE`（无宠物 `SILENT`／MECHA_KNIGHT_ELITE、Cards=[]、敌人 300 HP、Instant、120 秒，2026-09-11 评审补测）分三种捕获宠物状态验证 `POKE` 的 `Osty.CheckMissingWithAnim` 门：缺席时同一根被生产准入拒绝、原生 Poke 为合法空操作（敌人 300 HP／3 格挡、0 条生物攻击与受伤历史、未创建宠物）；已死宠物先真实击杀再捕获，Poke 打出后紧凑 lane 无伤害／攻击完成事件且原生攻击与受伤历史不变（1 原生动作、1 分支）；`Reanimate` 复活同一身份（20／20）后的 Poke 由真实宠物施伤（原生 `CreatureAttackedEntry` actor 为该宠物、敌人 300→297，2 原生动作、2 分支）。两条路线逐动作比对完整状态键、估值、能力元数据、九条 RNG、逆序、八工作区与实机后冻结根，runId `8afb816dd7b04e839f724726a8aae7a0` Passed（24.67 秒，含建局与进入遭遇）。
 
 纯值 `tools/CompactCreatureChecks` 新增 `COMPACT_SOUL_GENERATION_CHECKS_OK`：结束变体选择、非结束主模板、随机插入消耗、空落点位置、未入堆身份与无 RNG 消耗、撤销、八工作区，指令域拒绝（非生成指令携带结束变体、两种变体相同）与真实构造器对根牌索引及 `definitions.Length` 两个结束变体索引的拒绝。`COMPACT-CALL-OF-THE-VOID-GENERATION` 普查回归为 78 池 29 可编译／49 不可（首个 `BANSHEES_CRY`，原 23／55），供给模板口径 33／45；`COMPACT-CARD-HOOKS-NATIVE`、`COMPACT-DOOM-CARDS-NATIVE` 与三敌目标域 `COMPACT-DOOM-ROSTER-NATIVE`（runId `c16f73aa73e944279bf479aa65aaa624` Passed）作为投影与模板捕获改动的回归，`COMPACT-GENERATION-CLOSURE-AUDIT` 继续 `FullRootExplicitlyRejected`。[完整证据](performance/simulation-necro-soul-cards-20260911.md)。
+
+## 独立测试 ledger（2026-09-12，`tools/test-ledger.sh`）
+
+新增只读编排工具，把现有入口汇总为机器可读 catalog 并输出四态 ledger；它不替换矩阵 runner，也不以 `coverage/test-evidence.json` 的静态证据作为通过依据。catalog 来源为 `tools/*/*.csproj`、`tools/*/run.py`、`tools/*/presets.py`、`tools/*/package.json`、`tools/{verify,test}-*.{sh,ps1}` 与本文档的 Windows/Linux 命令块。
+
+```bash
+./tools/test-ledger.sh catalog
+./tools/test-ledger.sh run --scope pure-contract --ledger-dir /tmp/test-ledger
+./tools/test-ledger.sh selftest
+```
+
+四态为 `Passed`（真实执行、退出码 0 且声明 marker 命中）、`Failed`（非零退出码、超时或缺 marker）、`Blocked`（策略拒绝、目标/可执行文件缺失或依赖未满足）、`NotRun`（依赖满足但未被本次 scope/filter 选中）。`StaticPassed`、`Skipped`/`SkippedMissingFixture`、超时和缺失命令都不记为 `Passed`。默认策略拒绝会启动游戏的入口和会重写覆盖目录的 `CoverageCatalog`；需要显式开关才允许。
+
+工具说明和边界见 [tools/TestLedger/README.md](../tools/TestLedger/README.md)。当前 Linux 纯合同基线实际记录 536 个入口：21 Passed、3 Failed、507 Blocked、5 NotRun；失败项已保留原始日志，Blocked 主要是游戏/Windows/Node/覆盖目录策略或依赖限制，不是通过记录。该 ledger 不代表完整游戏、Windows、可见 Steam 或最终性能验收已经完成。
