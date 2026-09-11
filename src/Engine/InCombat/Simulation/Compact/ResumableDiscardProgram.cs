@@ -12,7 +12,7 @@ internal sealed partial class ResumableDiscardProgram
         bool Ethereal = false, RandomDrawCost? DrawCost = null, int? HandEndDamage = null, bool Unplayable = false, bool Retain = false, bool SingleTurnSly = false,
         bool EnchantmentInitiallyDisabled = false);
     internal enum Pile { Hand, Draw, Discard, Play, Exhaust, Removed, Unplaced }
-    internal enum EventKind { Pay, Start, Draw, Select, SelectedCard, Discard, Block, Finish, Shuffle, ShuffleCard, Retrieve, Damage, DamageBlocked, DamageOverkill, AttackFinish, Death, PowerChange, ResultMoved, Generated, CostChanged, HandEndMoved, HandEndStart, HandEndFinish, BeginSide, ResetEnergy, CleanupCards, CommitPlayerTurnHistory, GainEnergy, DoomApplied, Kill, SummonPet, KeywordAdded, EnchantmentStart, EnchantmentFinish, PanacheStart, PanacheFinish, CardHooksFinished, PlayerPhaseChanged }
+    internal enum EventKind { Pay, Start, Draw, Select, SelectedCard, Discard, Block, Finish, Shuffle, ShuffleCard, Retrieve, Damage, DamageBlocked, DamageOverkill, AttackFinish, Death, PowerChange, ResultMoved, Generated, CostChanged, HandEndMoved, HandEndStart, HandEndFinish, BeginSide, ResetEnergy, CleanupCards, CommitPlayerTurnHistory, GainEnergy, DoomApplied, Kill, SummonPet, KeywordAdded, EnchantmentStart, EnchantmentFinish, PanacheStart, PanacheFinish, CardHooksFinished, PlayerPhaseChanged, DrawResolved, DrawPowerStart, DrawPowerFinish }
     internal enum PlayerPhase { End, None, Start, Play }
     internal readonly record struct Event(EventKind Kind, int Card, int Value, bool Automatic, int Target = -1, int Flags = 0, int Dealer = -1)
     {
@@ -56,6 +56,8 @@ internal sealed partial class ResumableDiscardProgram
     private readonly ReversibleValueBuffer _cardInstances;
     private readonly ReversibleValueBuffer _events;
     private readonly RandomDrawCostLayout? _drawCosts;
+    private readonly ReversibleValueBuffer? _drawFrames;
+    private readonly int _pagestormIndex;
     internal ReversibleValueState State { get; }
     internal int Energy => Read(EnergySlot);
     internal int AttackCardStarts => Read(AttackCardStartsSlot);
@@ -166,6 +168,12 @@ internal sealed partial class ResumableDiscardProgram
         // so an unsupported random operation can never leave a partially accepted candidate.
         if (comparisons == null && definitions.Sum(c => c.Effects.TotalDraw) > piles[(int)Pile.Draw].Count)
             throw new NotSupportedException("Compact shuffle requires captured ordering and random state.");
+        bool hasDrawHooks = powers?.Any(power => power.Kind == BasicPowerKind.Pagestorm && power.Amount != 0) == true
+            || definitions.Any(card => Enumerable.Range(0, card.Effects.Count).Any(index =>
+                card.Effects[index] is { Kind: CardInstructionKind.ApplyBasicPower, Power: BasicPowerKind.Pagestorm }));
+        if (hasDrawHooks && (comparisons == null || powers?.Any(power => power.Kind == BasicPowerKind.Pagestorm
+                && power.Amount != 0 && (power.Owner != 0 || power.Amount < 0)) == true))
+            throw new NotSupportedException("Nested draw powers require player ownership and captured shuffle ordering.");
         if (comparisons != null && (comparisons.Length != definitions.Length * definitions.Length || cards.Count(c => c.Sly || c.SingleTurnSly) > 1))
             throw new NotSupportedException("Compact shuffle admits at most one Sly instance and a full comparison matrix.");
         foreach (var definition in definitions)
@@ -214,6 +222,8 @@ internal sealed partial class ResumableDiscardProgram
         _instanceComparer = _cardComparer == null ? null : new(this, _cardComparer);
         _combat = creatures == null ? null : new(State, creatures, pet);
         _powers = powers == null ? null : new(State, powers, panache?.Select(value => value.Order).DefaultIfEmpty().Max() ?? 0);
+        _pagestormIndex = _powers?.FindOrDefault(0, BasicPowerKind.Pagestorm) ?? -1;
+        _drawFrames = hasDrawHooks ? new(State) : null;
         _panache = panache is { Length: > 0 } || definitions.Any(card => card.Effects.CreatesPanache) ? new(State, panache ?? []) : null;
         _events = new(State);
         _monsterAi = monsterAi == null ? null : new(State, monsterAi);
@@ -260,7 +270,7 @@ internal sealed partial class ResumableDiscardProgram
     private ResumableDiscardProgram(Card[] cards, int rootCardCount, int discardBlock, int stratagem, int shuffleBlock,
         bool shuffleBlockFirst, CardComparer? cardComparer, CreatureAttackLayout? combat, BasicPowerLayout? powers,
         ReversibleValueBuffer[] piles, ReversibleValueBuffer cardInstances, ReversibleValueBuffer events, RandomDrawCostLayout? drawCosts,
-        bool handEndAdmitted, MonsterEffectProgram[]? monsterMoves, bool powerPhasesAdmitted, DeterministicMonsterAiLayout? monsterAi, CompactRoundLayout? round, PanachePowerLayout? panache, ReversibleValueState state)
+        bool handEndAdmitted, MonsterEffectProgram[]? monsterMoves, bool powerPhasesAdmitted, DeterministicMonsterAiLayout? monsterAi, CompactRoundLayout? round, PanachePowerLayout? panache, ReversibleValueBuffer? drawFrames, ReversibleValueState state)
     {
         _definitions = cards;
         _rootCardCount = rootCardCount;
@@ -281,6 +291,8 @@ internal sealed partial class ResumableDiscardProgram
         _drawCosts = drawCosts;
         _combat = combat;
         _powers = powers;
+        _pagestormIndex = powers?.FindOrDefault(0, BasicPowerKind.Pagestorm) ?? -1;
+        _drawFrames = drawFrames;
         _panache = panache;
         State = state;
     }
@@ -305,6 +317,7 @@ internal sealed partial class ResumableDiscardProgram
         private readonly ReversibleValueBuffer[] _piles;
         private readonly ReversibleValueBuffer _cardInstances, _events;
         private readonly RandomDrawCostLayout? _drawCosts;
+        private readonly ReversibleValueBuffer? _drawFrames;
         internal Candidate(ResumableDiscardProgram source)
         {
             _values = source.State.Freeze();
@@ -327,10 +340,11 @@ internal sealed partial class ResumableDiscardProgram
             _panache = source._panache;
             _events = source._events;
             _drawCosts = source._drawCosts;
+            _drawFrames = source._drawFrames;
         }
         internal int PayloadBytes => _values.PayloadBytes;
         internal ResumableDiscardProgram Open() => new(_definitions, _rootCardCount, _discardBlock, _stratagem, _shuffleBlock,
-            _shuffleBlockFirst, _cardComparer, _combat, _powers, _piles, _cardInstances, _events, _drawCosts, _handEndAdmitted, _monsterMoves, _powerPhasesAdmitted, _monsterAi, _round, _panache, _values.CreateWorkspace());
+            _shuffleBlockFirst, _cardComparer, _combat, _powers, _piles, _cardInstances, _events, _drawCosts, _handEndAdmitted, _monsterMoves, _powerPhasesAdmitted, _monsterAi, _round, _panache, _drawFrames, _values.CreateWorkspace());
         internal void RestoreInto(ResumableDiscardProgram workspace) => workspace.State.Restore(_values);
     }
 
@@ -635,28 +649,6 @@ internal sealed partial class ResumableDiscardProgram
                 throw new InvalidOperationException("Unknown admitted compact instruction.");
         }
         AdvanceInstruction();
-        return true;
-    }
-
-    private bool DrawCards(int card, int count, int resumeIp)
-    {
-        if (Read(Frame + DrawIndexOffset) == 0) State.Write(Frame + FirstDrawnOffset, -1);
-        while (Read(Frame + DrawIndexOffset) < count && Count(Pile.Hand) < 10 && !Ending)
-        {
-            if (Count(Pile.Draw) == 0 && Count(Pile.Discard) != 0)
-            {
-                State.Write(Frame + DrawResumeIpOffset, resumeIp);
-                Shuffle(card);
-                if (NeedsChoice) return false;
-            }
-            if (Count(Pile.Draw) == 0 || Count(Pile.Hand) >= 10) break;
-            int drawn = CardAt(Pile.Draw, 0);
-            Move(drawn, Pile.Hand);
-            Emit(EventKind.Draw, drawn, card < 0 ? 1 : 0);
-            if (Definition(drawn).DrawCost != null) Emit(EventKind.CostChanged, drawn, _drawCosts!.Draw(State, drawn));
-            if (Read(Frame + DrawIndexOffset) == 0) State.Write(Frame + FirstDrawnOffset, drawn);
-            State.Write(Frame + DrawIndexOffset, Read(Frame + DrawIndexOffset) + 1);
-        }
         return true;
     }
 

@@ -1,4 +1,12 @@
 {
+  "COMPACT-PAGESTORM-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeNestedDrawContinuationAndFixedSearchDifferential",
+    "procedure": "三根两回合24原生动作／63分支／32挂起；父子抽牌、随机费用、Swift／Sly、九层纯值与共享抽牌回归。",
+    "expected": "能力子抽牌及选择先完成，再处理父卡随机费用及DrawResolved；父返回与来源、历史、状态键及续用保持。",
+    "observed": "939b9de3d7e34db3afc3d5e4d030a426 COMPACT-PAGESTORM-NATIVE Passed; c3c34264a1aa4531a298e221c0f34487 COMPACT-PAGESTORM-SEARCH Passed; 74c469c76e3e489abd8e334724cab46e COMPACT-DRAW-EXHAUST-NATIVE Passed",
+    "evidence": "docs/performance/simulation-pagestorm-20260911.md；docs/performance/simulation-pagestorm-20260911.json。"
+  },
   "UPSTREAM-COMPACT-INTEGRATION-20260911": {
     "status": "Passed",
     "level": "HeadlessNativeRoundHistoryAndFixedSearchDifferential",

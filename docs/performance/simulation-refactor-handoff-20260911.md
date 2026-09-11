@@ -1,8 +1,8 @@
 # 性能重构交接（2026-09-11）
 
-本页是为用户新增的额度交接要求预先准备的检查点，不代表整项重构完成。代码检查点为 `766fb27`，分支 `perf/simulation-profile-20260910`。记录时该提交后的工作区干净；后续以提交历史、当前源码和最新证据为准。
+本页是为用户新增的额度交接要求预先准备的检查点，不代表整项重构完成。分支 `perf/simulation-profile-20260910`。上游 `c2cc463` 已于 `136365c` 合并；书页风暴批次已验证通过，当前代码以本文件所在提交为准。`766fb27` 是较早的 52 种卡牌检查点。
 
-用户要求：**检测到周额度剩余不超过 1% 时，提交当前更改，写清目标、进度、验证和剩余工作，停止开发并交给另一位 AI。** 2026-09-11 12:22:47 UTC 的最新本地账号额度记录为周窗口已用 96%、剩余约 4%，尚未触发，继续开发并在后续批次检查。应用账号查询接口本次未返回，因此采用该近期记录；这不是未来额度保证。使用额度数据时，`usedPercent`／`used_percent` 是已用比例，剩余为 `max(0, min(100, 100-usedPercent))`；周窗口长度为 10,080 分钟。缺失或查询失败属于未知，不能记作 0%。不要自动购买额度或消耗重置。
+用户要求：**检测到周额度剩余不超过 1% 时，提交当前更改，写清目标、进度、验证和剩余工作，停止开发并交给另一位 AI。** 2026-09-11 12:40:03 UTC 的最新本地账号额度记录为周窗口已用 96%、剩余约 4%，尚未触发，继续开发并在后续批次检查。应用账号查询接口本次未返回，因此采用该近期记录；这不是未来额度保证。使用额度数据时，`usedPercent`／`used_percent` 是已用比例，剩余为 `max(0, min(100, 100-usedPercent))`；周窗口长度为 10,080 分钟。缺失或查询失败属于未知，不能记作 0%。不要自动购买额度或消耗重置。
 
 ## 1. 用户目标与当前授权
 
@@ -76,20 +76,17 @@
 - [原始两瓶药](../../coverage/unattended/search-performance-necrobinder-projected-potions.json)：`GAMBLERS_BREW`、`COLORLESS_POTION`
 - [原始完整命令与采样记录](simulation-profile-20260910.json) 中 `cases.necro.runs.cpu-necro.command` 可恢复建局参数；采样专用开关与 profiler 时间不作为最终基准。
 
-目前原牌组尚缺 **PAGESTORM** 和 **CALL_OF_THE_VOID** 的编译及相关 Hook／Power。随后仍需审计和迁移所有可达生成池（包括无色药水）、自动出牌、遗物内部状态和监听顺序、两瓶药及各药水审计、AEONGLASS AI／意图／隐藏状态／召唤与终局。不能把“补齐两张牌”误认为闭包完成。
+书页风暴已经完成，原牌组仍缺 **CALL_OF_THE_VOID** 的编译、随机生成与相关 Hook／Power。随后仍需审计和迁移所有可达生成池（包括无色药水）、自动出牌、遗物内部状态和监听顺序、两瓶药及各药水审计、AEONGLASS AI／意图／隐藏状态／召唤与终局。不能把“补齐剩余一张牌”误认为闭包完成。
 
 当前遗物准入仅 `ToughBandages / TheAbacus / RingOfTheSnake` 及符合回合／奥斯蒂条件的 `BoundPhylactery`；非空药水槽全部拒绝。原输入的 19 遗物不在该列表：`NEOWS_BONES, LARGE_CAPSULE, ORNAMENTAL_FAN, CLOAK_CLASP, POMANDER, JOSS_PAPER, JUZU_BRACELET, CANDELABRA, GORGET, BONE_FLUTE, BIIIG_HUG, FESTIVE_POPPER, TINY_MAILBOX, VAJRA, BRILLIANT_SCARF, RIPPLE_BASIN, PRAYER_WHEEL, WAR_PAINT, FUNERARY_MASK`。须分别确认哪些仅影响已完成的局外准备、哪些影响未来战斗；有原生证据后才能准入。
 
-### 5.2 下一步已开始的研究：Pagestorm
+### 5.2 最新完成批次与下一步
 
-**只读了原生代码，未改生产或测试源码。** 本机 `.local/compact-pagestorm-20260911/native/` 保存 `Pagestorm.cs` 和 `PagestormPower.cs`。
+书页风暴已完成，精确卡牌闭包现为 **53 种**。见[实现及直接结果](simulation-pagestorm-20260911.md)和[结构化数据](simulation-pagestorm-20260911.json)。三根两回合 24 原生动作／63 分支／32 挂起、250 节点旧新串并行和共享抽牌回归通过。抽牌栈、父返回、递归洗牌／来源／Slither、Swift／Sly、动态虚无与九层纯值均已验证；完整正常 NoGC 性能尚未重测。
 
-- 原牌基础 1 费 Power，升级费用减 1，`CardsVar(1)`；OnPlay 对主人施加对应数量能力。
-- 能力是 Buff／Counter。在 `AfterCardDrawn` 中检查抽到的牌属于主人且当前有 Ethereal，随后 `await CardPileCmd.Draw(choiceContext, Amount, Owner.Player)`。
-- 嵌套抽牌可能再次触发能力。必须先读原生 **Hook.AfterCardDrawn 的入口门禁**、CardPileCmd.Draw 与抽牌历史时序，再决定执行设计。不要从其他 Hook 推断它的终局规则。
-- 当前 `DrawCards(card, count, resumeIp)` 是卡牌帧内简单循环，尚无 Pagestorm 抽牌后回调；当前 `fromHandDraw` 依赖 `card < 0`，无法直接表达回合起手中嵌套的能力抽牌。需要保存父抽牌的位置、来源、返回数量、嵌套回调位置、洗牌／Stratagem 选择等所有暂停状态。
-- 候选方案是同一可撤销值缓冲区上的显式抽牌续执行栈，避免 C# 递归和任意新增深度上限；该设计尚未决定。现有卡牌帧最多 8 层，不应拿它冒充抽牌递归容量。
-- 校验动态新增 Ethereal（雕琢打击）和牌的原生关键字、多个能力层数、满手／空抽牌、洗牌中选择、Swift 与 Sly 的来源、回合起手嵌套、最后敌人死亡和取消。完成原生差分及固定搜索后再扩大整根准入。
+合并前备份 stash `78fece6d99ffa440d8e509f7548164846bcdf020` 已恢复并整合。它只是旧检查点，**不要重新应用或把它当作更新版本**。本批 v2–v9 失败、夹具修正与真实缺口在结果文档中明确记录；尤其 v4 使用旧产物，不算有效新代码验证。
+
+下一步 CallOfTheVoid 已读原生卡牌与能力，尚未实现：本机 `.local/compact-lethality-20260911/native/CallOfTheVoid{,Power}.cs`。它在 BeforeHandDraw 从主人角色的解锁池排除 Basic／Ancient，每次用 CombatCardGeneration RNG 独立生成一张，赋虚无，再把这一批加入手牌；不同次数允许重复。升级只加 Innate。必须继续核对 CardFactory.GetDistinctForCombat、生成历史／满手位置／Hook 和本批抽牌顺序；它不是只加一个 Power 枚举即可完成。原始亡灵池与无色药水的全部可达效果仍须保持合法，不准静默缩池或只选择已支持牌。
 
 ### 5.3 完整验收与 PR 准备
 
@@ -124,8 +121,8 @@ dotnet run --project tools/CompactCreatureChecks/CompactCreatureChecks.csproj -c
 本机资料供当前工作区接手者定位，不作为其他机器的固定配置：
 
 - checkout：`/home/ltlly/Code/nmslmod/.tools11/CombatSolver-open-source`；外层目录不是目标仓库。
-- 最新产物 `.local/compact-shared-fate-20260911/artifact`，原生／搜索结果位于同目录 `native-v3`、`search-v3`；对应构建、纯值、门禁日志是 `.local/compact-shared-fate-{build,values,gate}-v3.log`。
-- 检查点时任务拥有的 headless 实例 `compact-full-route-20260911`、PID `1711716` 仍 READY，加载最新 SharedFate DLL。PID 仅是记录，使用前须通过实例协议确认所有权，不能按过时 PID 杀进程。
+- 最新产物 `.local/compact-pagestorm-20260911/artifact`，原生／搜索结果为 `native-v9`、`search-v9`，共享回归为 `draw-exhaust-regression-v9`；对应日志为 `.local/compact-pagestorm-*.log`。
+- 检查点时任务拥有的 headless 实例 `compact-full-route-20260911`、PID `1811604` 仍 READY，加载最新 Pagestorm v9 DLL。PID 仅是记录，使用前须通过实例协议确认所有权，不能按过时 PID 杀进程。
 - **重编译后先停止持有旧 DLL 的本任务实例**：`./tools/run-unattended-test.sh --headless-instance compact-full-route-20260911 --stop-instance`。不要用不带正确 artifact 的 `--stop-owned-process` 替代，此前会触发无用游戏副本复制。重新启动时传入本批 artifact。
 - 本机磁盘空间紧：测试游戏快照约占 2 GB，最近约剩 1 GB。确实需要回收时，确认本任务实例已退出后，只删除其 `/home/ltlly/.local/state/CombatSolver/headless-instances/compact-full-route-20260911/game` 快照，保留原游戏、存档、其他实例和证据。
 - 当前支持游戏 `0.111.0 / 41cef1ea`；本机原生 DLL 在 `/home/ltlly/.local/share/Steam/steamapps/common/Slay the Spire 2/data_sts2_linuxbsd_x86_64/sts2.dll`。旧文档提到的 `.local/decompiled/sts2-v0.111.0` 在本机不存在。优先查已有 `.local/compact-*/native/`，避免反复反编译。
@@ -145,4 +142,4 @@ dotnet run --project tools/CompactCreatureChecks/CompactCreatureChecks.csproj -c
 
 ## 后续检查点：上游合并
 
-已整合 `upstream/main c2cc463`（0.36.0）并完成最小原生／固定节点验证，见[合并记录](simulation-upstream-merge-20260911.md)。以上旧性能数字只代表合并前实现。单一 `Profile`／`FixedBudget` 取代旧 Short／Deep 字段，新性能基线须固定本次上游政策。Pagestorm 进行中改动保存于本地 stash `78fece6d99ffa440d8e509f7548164846bcdf020`，本次合并通过证据不覆盖该改动；恢复与后续验证记录须继续更新。
+已整合 `upstream/main c2cc463`（0.36.0）并完成最小原生／固定节点验证，见[合并记录](simulation-upstream-merge-20260911.md)。以上旧性能数字只代表合并前实现。单一 `Profile`／`FixedBudget` 取代旧 Short／Deep 字段，新性能基线须固定本次上游政策。Pagestorm 进行中改动保存于本地 stash `78fece6d99ffa440d8e509f7548164846bcdf020`，本次合并通过证据不覆盖该改动；已在 `136365c` 合并提交后恢复全部 15 个文件，并保留备份。书页风暴随后已通过验证，后续以第 5.2 节和最新提交为准。

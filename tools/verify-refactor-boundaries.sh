@@ -1056,7 +1056,7 @@ while IFS= read -r production_path; do
 done < <(rg --files "$search_root" "$repository_root/src/Runtime" -g '*.cs')
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" '_round = source._round;' 'frozen candidates must retain round layout and admission'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Rounds.cs" 'Emit(EventKind.BeginSide, -1);' 'side-start history must be committed in the value event tape'
-require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'Emit(EventKind.Draw, drawn, card < 0 ? 1 : 0);' 'hand draw provenance must survive suspended round execution'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Draw.cs" 'Emit(EventKind.Draw, drawn, fromHandDraw ? 1 : 0, flags: deferred ? 1 : 0);' 'hand draw provenance must survive suspended round execution'
 compact_ai_reads="$search_root/SimulatedCombatState.CompletedMonsterAiReads.cs"
 for replay in '.Fork(' 'RollMove(' 'AdvanceMonsterAi(' 'BranchMonsterAi.Capture(' '.State.Write('; do
     forbid_fixed "$compact_ai_reads" "$replay" 'completed monster AI reads may only import supplied values:'
@@ -1178,7 +1178,7 @@ require_fixed "$repository_root/src/Search/SimulatedCombatState.CompletedPowerRe
 require_fixed "$search_root/CompletedStateReadView.cs" 'A new stable root requires a new cache.' 'completed invariant cache lost its root lifetime contract'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/CardEffectProgram.cs" '_instructions = instructions.ToArray();' 'compact definitions must own immutable instruction storage'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'State.Write(Frame + EffectIndexOffset, Read(Frame + EffectIndexOffset) + 1);' 'compact effect position must belong to journaled values'
-require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'State.Write(Frame + FirstDrawnOffset, drawn);' 'draw return values must survive in the journaled frame'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Draw.cs" 'State.Write(Frame + FirstDrawnOffset, drawn);' 'draw return values must survive in the journaled frame'
 require_fixed "$compact_projection" 'card, includeAttacks, shivTemplate, inkyShivTemplate, soulTemplate, upgradedSoulTemplate)' 'card admission must use the shared immutable program compiler'
 require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'view?.EnergyCostRng ?? simulator.Rng.CombatEnergyCosts.CaptureState()' 'completed keys must read branch energy-cost RNG'
 require_fixed "$compact_card_reads" 'int amount = program.CostModifierAt(card, index);' 'cost previews must import the complete ordered branch modifiers'
@@ -1187,7 +1187,11 @@ compact_compiler="$repository_root/src/Prediction/Compact/CompactCardProgramComp
 for replay in '.ManualPlay(' '.AutoPlay(' 'CardOnPlayMirrors.Invoke(' 'HookMirrors.' 'CardCmd.' 'PowerCmd.'; do
     forbid_fixed "$compact_compiler" "$replay" 'card admission must compile definitions without executing effects:'
 done
-require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'State.Write(Frame + DrawResumeIpOffset, resumeIp);' 'shuffle return must retain the pending draw stage'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Draw.cs" 'State.Write(Frame + DrawResumeIpOffset, resumeIp);' 'shuffle return must retain the pending draw stage'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" '_drawFrames = source._drawFrames;' 'frozen draw continuations must retain their reversible layout'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Draw.cs" 'frames.Write(State, offset + DrawPendingCard, drawn);' 'draw hook parents must remain in authoritative values'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Draw.cs" 'offset == 0 && card < 0' 'nested power draws must not inherit hand-draw provenance'
+require_fixed "$repository_root/src/Prediction/Compact/CompactDiscardProjection.cs" 'projection.History.CardDrawResolved(pendingDraw.Entry, card);' 'draw completion must retain its original history entry'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'sum = checked(sum + _powers!.Amount(State, target, instruction.Power));' 'calculated Power sums must read current values'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'if (CreaturePresent(target) && Creature(target).CurrentHp > 0)' 'calculated Power sums must exclude removed and dead enemies'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'if (!PreparePower(card, target, BasicPowerKind.PiercingWail, amount)) return;' 'temporary effects must pass modifiers before their nested first application'
@@ -1272,6 +1276,9 @@ require_fixed "$repository_root/src/Search/CombatBeamSolver.RoundLifecycle.cs" '
 require_fixed "$repository_root/src/Prediction/Compact/CompactCardProgramCompiler.cs" 'SharedFate => new([new(CardInstructionKind.ApplyBasicPower, -(int)ownStrengthLoss, BasicPowerKind.Strength),' 'Shared Fate must compile its own Strength application first'
 
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/BasicPowerLayout.cs" 'HasDebuffType(_definitions[index].Kind)' 'native duration metadata must use model type rather than signed incoming amount'
+
+require_fixed "$repository_root/src/Prediction/Compact/CompactDiscardReadView.cs" 'case ResumableDiscardProgram.EventKind.DrawPowerStart:' 'draw method-source markers must be explicitly consumed without synthetic history'
+require_fixed "$repository_root/src/Prediction/Compact/CompactDiscardReadView.cs" 'case ResumableDiscardProgram.EventKind.DrawPowerFinish:' 'nested draw method scopes must not escape the read event contract'
 
 if ((${#violations[@]} > 0)); then
     printf '%s\n' "${violations[@]}" >&2

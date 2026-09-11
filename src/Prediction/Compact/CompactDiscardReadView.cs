@@ -172,9 +172,12 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
                     _entries += 2; LastImpureHistoryIndex = _entries - 1; break;
                 case ResumableDiscardProgram.EventKind.Draw:
                     if (item.Value == 0) draw++;
-                    _entries += 2;
+                    _entries += (item.Flags & 1) == 0 ? 2 : 1;
                     LastImpureHistoryIndex = _entries - 1;
                     if (_cards[item.Card].Preview.Type == CardType.Status) statusDraws++;
+                    break;
+                case ResumableDiscardProgram.EventKind.DrawResolved:
+                    LastImpureHistoryIndex = _entries++;
                     break;
                 case ResumableDiscardProgram.EventKind.Discard: discarded++; break;
                 case ResumableDiscardProgram.EventKind.ResultMoved:
@@ -237,6 +240,8 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
                 case ResumableDiscardProgram.EventKind.EnchantmentFinish:
                 case ResumableDiscardProgram.EventKind.PanacheStart:
                 case ResumableDiscardProgram.EventKind.PanacheFinish:
+                case ResumableDiscardProgram.EventKind.DrawPowerStart:
+                case ResumableDiscardProgram.EventKind.DrawPowerFinish:
                 case ResumableDiscardProgram.EventKind.CardHooksFinished:
                 case ResumableDiscardProgram.EventKind.DamageBlocked:
                 case ResumableDiscardProgram.EventKind.DamageOverkill:
@@ -246,7 +251,7 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
                 case ResumableDiscardProgram.EventKind.Retrieve:
                 case ResumableDiscardProgram.EventKind.Select:
                 case ResumableDiscardProgram.EventKind.SelectedCard: break;
-                default: throw new InvalidOperationException("Read view encountered an unknown committed event.");
+                default: throw new InvalidOperationException($"Read view encountered an unknown committed event: {item.Kind}.");
             }
         }
         int? Add(int? value, int delta) => delta == 0 ? null : checked((playerReset ? 0 : value!.Value) + delta);

@@ -19,6 +19,7 @@ NeurosurgeChecks.Run();
 OneShotEnchantmentChecks.Run();
 AttackStartChecks.Run();
 PanacheChecks.Run();
+DrawHookChecks.Run();
 
 (int Hp, int Block, decimal Amount, bool Unblockable, int ExpectedHp, int ExpectedBlock, decimal Blocked, int Lost, bool Killed, int Overkill)[] damageCases =
 {

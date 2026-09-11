@@ -1,0 +1,73 @@
+{
+  "sourceBaseline": "136365c (merged upstream c2cc463)",
+  "admittedCardTypes": 53,
+  "scope": "Pagestorm nested draw implementation; not full original Necrobinder closure or production performance acceptance",
+  "results": [
+    {
+      "runId": "939b9de3d7e34db3afc3d5e4d030a426",
+      "scenarioId": "COMPACT-PAGESTORM-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 35961.7188,
+      "completedChecks": [
+        "CompactPagestorm:Mode0:OmittedChoices10:FullContinuations",
+        "CompactPagestorm:Mode0:PreparedCardsBeforeActionPruning:OriginalChoiceResolution",
+        "CompactPagestorm:Mode0:8NativeActions:21Branches:1NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative",
+        "CompactPagestorm:Mode0:NativeNestedChoice:ReverseSlitherOrder:ParentDrawReturn:NewAndRootPower:Swift:Sly:AddedEthereal:HandDraw:RoundPowerDrawTrue:TwoRounds",
+        "CompactPagestorm:Mode1:OmittedChoices11:FullContinuations",
+        "CompactPagestorm:Mode1:PreparedCardsBeforeActionPruning:OriginalChoiceResolution",
+        "CompactPagestorm:Mode1:8NativeActions:21Branches:1NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative",
+        "CompactPagestorm:Mode1:NativeNestedChoice:ReverseSlitherOrder:ParentDrawReturn:NewAndRootPower:Swift:Sly:AddedEthereal:HandDraw:RoundPowerDrawFalse:TwoRounds",
+        "CompactPagestorm:Mode2:OmittedChoices11:FullContinuations",
+        "CompactPagestorm:Mode2:PreparedCardsBeforeActionPruning:OriginalChoiceResolution",
+        "CompactPagestorm:Mode2:8NativeActions:21Branches:1NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative",
+        "CompactPagestorm:Mode2:NativeNestedChoice:ReverseSlitherOrder:ParentDrawReturn:NewAndRootPower:Swift:Sly:AddedEthereal:HandDraw:RoundPowerDrawFalse:TwoRounds"
+      ]
+    },
+    {
+      "runId": "c3c34264a1aa4531a298e221c0f34487",
+      "scenarioId": "COMPACT-PAGESTORM-SEARCH",
+      "status": "Passed",
+      "elapsedMilliseconds": 8391.0395,
+      "completedChecks": [
+        "CompactSearchLifecycle:PagestormTrue:SharedFateFalse:PanacheFalse:LethalityFalse:CardHooksFalse:KeywordsFalse:HangFalse:CostPowersFalse:NecroCardsFalse:DirgeFalse:DrawExhaustFalse:NeurosurgeFalse:OstyFalse:TurnRelicFalse:250Nodes:LegacyEqualsCompact:DOP1EqualsDOP2:Concurrency2:CancelAndFailureDrained:RootReusable:UnsupportedPotionRejected:ActualUnchanged"
+      ]
+    },
+    {
+      "runId": "74c469c76e3e489abd8e334724cab46e",
+      "scenarioId": "COMPACT-DRAW-EXHAUST-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 8336.4506,
+      "completedChecks": [
+        "CompactDrawExhaust:Mode0:OmittedChoices6:FullContinuations",
+        "CompactDrawExhaust:Mode0:6NativeActions:15Branches:2NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative",
+        "CompactDrawExhaust:Mode1:OmittedChoices5:FullContinuations",
+        "CompactDrawExhaust:Mode1:6NativeActions:12Branches:0NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative",
+        "CompactDrawExhaust:Mode2:OmittedChoices4:FullContinuations",
+        "CompactDrawExhaust:Mode2:6NativeActions:12Branches:0NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative"
+      ]
+    }
+  ],
+  "checks": {
+    "release": "v9 Passed, 0 warnings/errors",
+    "pureValues": "v5 Passed; engine sources unchanged afterwards",
+    "linuxBoundaries": "v9 Passed; 94 Search files, explicit draw source-marker rules",
+    "powershellBoundaries": "Synchronized, not executed"
+  },
+  "nativeTotals": {
+    "roots": 3,
+    "nativeActions": 24,
+    "branches": 63,
+    "omittedChoiceBoundaries": 32,
+    "nativeNestedChoiceObservations": 3,
+    "workers": 8,
+    "roundsPerRoot": 2
+  },
+  "failures": {
+    "native-v2-v3": "Semantic route removed by action policy before comparison; added original prepared-action/choice resolver witness.",
+    "native-v4": "Build failed; accidentally launched stale v3 DLL. Excluded from new-code validation.",
+    "native-v5": "Fixture used Veilpiercer as an Ethereal draw; native definition does not have the keyword. Replaced with Defile.",
+    "native-v6": "Test reflection did not unwrap nullable WholeActionChoiceBudget; corrected.",
+    "native-v7": "Direct read view omitted explicit draw Power scope markers; added both cases without history increments.",
+    "native-v8": "Full native/model comparisons passed for roots 0/1; overconstrained coverage assertion required nested next-round draws in every root. Root 0 now witnesses that path; roots 1/2 retain native exhaustion outcomes."
+  }
+}

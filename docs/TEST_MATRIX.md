@@ -3076,3 +3076,7 @@ pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId MONSTER-MOVES-BA
 ## 上游 0.36.0 集成（2026-09-11）
 
 本轮重跑 COMPACT-SHARED-FATE-NATIVE／SEARCH、COMPACT-PANACHE-PLAYER-DEATH、PANACHE-INSTANCES，完整状态／键／续用与 250 节点串并行对照均通过；独立 CardHookReceiverChecks 78 项、PlayerDeathChecks 48 项及纯值／Linux 结构／覆盖门禁通过。详见[合并记录](performance/simulation-upstream-merge-20260911.md)。未重跑完整正常 NoGC 性能基准。
+
+## 书页风暴（2026-09-11）
+
+`COMPACT-PAGESTORM-NATIVE`：三根、24 原生动作／63 分支／32 挂起，嵌套选择观察、逆序 Slither、父返回值、根／新能力、Swift／Sly、动态虚无和两个回合。全部状态／能力／九 RNG／原键／续用及八工作区严格比较。`COMPACT-PAGESTORM-SEARCH` 使用相同根和 250 节点，旧新／串并行完整结果、取消异常排空及根复用通过。`COMPACT-DRAW-EXHAUST-NATIVE` 回归无新能力根；纯值另验证九层抽牌与满手、终局、撤销。沿用 SILENT／MECHA_KNIGHT_ELITE、Instant、120 秒，无新增双端协议字段。[证据与失败归类](performance/simulation-pagestorm-20260911.md)。

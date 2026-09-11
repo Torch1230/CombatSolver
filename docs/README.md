@@ -1,5 +1,8 @@
 # CombatSolver 文档导航
 
+- [书页风暴与嵌套抽牌验证](performance/simulation-pagestorm-20260911.md)：完整父子抽牌时序与挂起恢复。
+
+
 - [上游 0.36.0 合并验证](performance/simulation-upstream-merge-20260911.md)：紧凑后端阶段／历史适配与同政策验证。
 
 

@@ -23,7 +23,7 @@ internal sealed partial class UnattendedTestRunner
         (string Id, int? Upgrade)[] cardSteps, Action<ResumableDiscardProgram, ResumableDiscardProgram, int> assertStep,
         bool observeDrawExhaust = false, Func<PlanAction, ResumableDiscardProgram, bool>? observeNativeChoice = null,
         int rounds = 2, bool requirePending = true, bool verifyEnergyCosts = false, Func<PlanAction, int, bool>? chooseBranch = null,
-        bool forceOpeningPower = false, bool verifyAttackStarts = false)
+        bool forceOpeningPower = false, bool verifyAttackStarts = false, bool usePreparedCardBranches = false)
     {
         var enemy = combat.Enemies.Single();
         var captured = CombatRootSnapshot.Capture(combat);
@@ -93,6 +93,12 @@ internal sealed partial class UnattendedTestRunner
                             yield return (action, InvokeForcedTerminalReplay(driver, [action], null, captured.StartTurnNumber, null));
                             yield break;
                         }
+                        if (usePreparedCardBranches)
+                        {
+                            foreach (var branch in EnumerateCompactCardEffectBranches(driver, node, cardSteps[step]))
+                                yield return branch;
+                            yield break;
+                        }
                         foreach (SearchNode child in (IEnumerable<SearchNode>)InvokeForcedTerminalMethod(driver, "Expand", [node])!)
                         {
                             if (child.Action?.CardId == cardSteps[step].Id
@@ -113,6 +119,7 @@ internal sealed partial class UnattendedTestRunner
                 int pending = AssertCompactReplayBoundaries(captured, display, damage, policy, player, route.Select(item => item.Action).ToArray());
                 if (requirePending && pending == 0) throw new InvalidOperationException("Pet card route did not exercise suspended turn-start state.");
                 _completedChecks.Add($"{label}:Mode{mode}:OmittedChoices{pending}:FullContinuations");
+                if (usePreparedCardBranches) _completedChecks.Add($"{label}:Mode{mode}:PreparedCardsBeforeActionPruning:OriginalChoiceResolution");
                 AssertSnapshotEqual(original, CaptureActual(combat, player, enemy), label, "ActualUnchanged");
             }
             finally { parent.ReleaseSimulator(); }

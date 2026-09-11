@@ -74,7 +74,7 @@ internal sealed class CompactDiscardProjection
         if (combat.Players.Count != 1 || powers.Any(p => !IsBasicPower(p) && p is not PanachePower)
             || powers.Any(p => !(includeAttacks && p is PanachePower && p.Owner == player.Creature)
                 && !(p is StratagemPower && p.Owner == player.Creature && p.Amount is >= 1 and <= 10)
-                && !(includeAttacks ? p is not StratagemPower && IsBasicPower(p) && (p is not (BlockNextTurnPower or ToolsOfTheTradePower or NeurosurgePower or BorrowedTimePower or VeilpiercerPower or SpiritOfAshPower or DanseMacabrePower or LethalityPower) || p.Owner == player.Creature)
+                && !(includeAttacks ? p is not StratagemPower && IsBasicPower(p) && (p is not (BlockNextTurnPower or ToolsOfTheTradePower or NeurosurgePower or BorrowedTimePower or VeilpiercerPower or SpiritOfAshPower or DanseMacabrePower or LethalityPower or PagestormPower) || p.Owner == player.Creature)
                     && (p is not (PiercingWailPower or HangPower) || p.Owner != player.Creature)
                     : p is StrengthPower && p.Owner != player.Creature))
             || combat.RootRunModSubscriberCount != 0 || combat.RootCombatModSubscriberCount != 0
@@ -277,6 +277,7 @@ internal sealed class CompactDiscardProjection
             if (kind == BasicPowerKind.Veilpiercer && (owner != _player.Creature || !cards.Any(card => card.Preview is Veilpiercer))) continue;
             if (kind == BasicPowerKind.SpiritOfAsh && (owner != _player.Creature || !cards.Any(card => card.Preview is SpiritOfAsh))) continue;
             if (kind == BasicPowerKind.Lethality && (owner != _player.Creature || !cards.Any(card => card.Preview is Lethality))) continue;
+            if (kind == BasicPowerKind.Pagestorm && (owner != _player.Creature || !cards.Any(card => card.Preview is Pagestorm))) continue;
             if (kind == BasicPowerKind.DanseMacabre && (owner != _player.Creature || !cards.Any(card => card.Preview is DanseMacabre))) continue;
             if (kind == BasicPowerKind.Hang && (owner == _player.Creature || !cards.Any(card => card.Preview is Hang))) continue;
             if (owner.PetOwner != null && kind != BasicPowerKind.Strength) continue;
@@ -315,7 +316,8 @@ internal sealed class CompactDiscardProjection
         [typeof(HangPower)] = BasicPowerKind.Hang,
         [typeof(SpiritOfAshPower)] = BasicPowerKind.SpiritOfAsh,
         [typeof(DanseMacabrePower)] = BasicPowerKind.DanseMacabre,
-        [typeof(LethalityPower)] = BasicPowerKind.Lethality
+        [typeof(LethalityPower)] = BasicPowerKind.Lethality,
+        [typeof(PagestormPower)] = BasicPowerKind.Pagestorm
     };
     private static bool IsBasicPower(PowerModel power) => BasicKinds.ContainsKey(power.GetType());
     private static PowerModel CanonicalPower(BasicPowerKind kind) => kind switch
@@ -337,6 +339,7 @@ internal sealed class CompactDiscardProjection
         BasicPowerKind.Hang => CanonicalModels.Power<HangPower>(),
         BasicPowerKind.SpiritOfAsh => CanonicalModels.Power<SpiritOfAshPower>(),
         BasicPowerKind.Lethality => CanonicalModels.Power<LethalityPower>(),
+        BasicPowerKind.Pagestorm => CanonicalModels.Power<PagestormPower>(),
         BasicPowerKind.DanseMacabre => CanonicalModels.Power<DanseMacabrePower>(),
         BasicPowerKind.Veilpiercer => CanonicalModels.Power<VeilpiercerPower>(),
         BasicPowerKind.DieForYou => CanonicalModels.Power<DieForYouPower>(),
@@ -430,6 +433,8 @@ internal sealed class CompactDiscardProjection
             ?? throw new InvalidOperationException("Projection lost a root instance.")).ToList();
         var damageResults = new Dictionary<int, List<DamageResult>>();
         var stack = new Stack<(int Identity, CardPlay Play, PredictionTrace.TraceScope Scope, PredictionTrace.TraceScope? Method)>();
+        var draws = new Stack<(int Identity, CombatPredictionCardDrawnEntry Entry)>();
+        var drawMethods = new Stack<PredictionTrace.TraceScope>();
         PredictionTrace.TraceScope? handEndMethod = null;
         PredictionTrace.TraceScope? panacheMethod = null;
         try
@@ -608,7 +613,23 @@ internal sealed class CompactDiscardProjection
                         projection.AddToPile(card, PileType.Hand);
                         var entry = projection.History.CardDrawn(card, item.Value != 0);
                         combat.RecordCardDrawn(card, item.Value != 0);
-                        projection.History.CardDrawResolved(entry, card);
+                        if ((item.Flags & 1) != 0) draws.Push((item.Card, entry));
+                        else projection.History.CardDrawResolved(entry, card);
+                        break;
+                    case ResumableDiscardProgram.EventKind.DrawResolved:
+                        if (!draws.TryPop(out var pendingDraw) || pendingDraw.Identity != item.Card)
+                            throw new InvalidOperationException("Draw completion lost its suspended parent history.");
+                        projection.History.CardDrawResolved(pendingDraw.Entry, card);
+                        break;
+                    case ResumableDiscardProgram.EventKind.DrawPowerStart:
+                        if (_powerTemplates[item.Value] is not PagestormPower || draws.Peek().Identity != item.Card)
+                            throw new InvalidOperationException("Nested draw hook has no admitted Power and drawn card.");
+                        drawMethods.Push(projection.PushMethodSource(_powerTemplates[item.Value], AfterCardDrawn));
+                        break;
+                    case ResumableDiscardProgram.EventKind.DrawPowerFinish:
+                        if (!drawMethods.TryPop(out var drawMethod) || draws.Peek().Identity != item.Card)
+                            throw new InvalidOperationException("Nested draw hook scope was not started.");
+                        drawMethod.Dispose();
                         break;
                     case ResumableDiscardProgram.EventKind.EnchantmentStart:
                     {
@@ -721,10 +742,12 @@ internal sealed class CompactDiscardProjection
                         throw new InvalidOperationException("Unknown compact projection event.");
                 }
             }
-            if (stack.Count != 0 || handEndMethod != null || panacheMethod != null) throw new InvalidOperationException("Compact history did not finish.");
+            if (stack.Count != 0 || draws.Count != 0 || drawMethods.Count != 0 || handEndMethod != null || panacheMethod != null)
+                throw new InvalidOperationException("Compact history did not finish.");
         }
         finally
         {
+            while (drawMethods.TryPop(out var drawMethod)) drawMethod.Dispose();
             panacheMethod?.Dispose();
             handEndMethod?.Dispose();
             while (stack.TryPop(out var active)) { active.Method?.Dispose(); active.Scope.Dispose(); }
@@ -1000,6 +1023,7 @@ internal sealed class CompactDiscardProjection
             || type == typeof(PiercingWailPower) && method == nameof(AbstractModel.AfterPowerAmountChanged)
             || type == typeof(ArtifactPower) && method is nameof(AbstractModel.TryModifyPowerAmountReceived) or nameof(AbstractModel.AfterModifyingPowerAmountReceived)
             || type == typeof(Slither) && method == nameof(AbstractModel.AfterCardDrawn)
+            || type == typeof(PagestormPower) && method == nameof(AbstractModel.AfterCardDrawn)
             || type == typeof(DebufferModel) && method == nameof(AbstractModel.AfterPowerAmountChanged)
             || type == typeof(MultiplayerScalingModel) && method == nameof(AbstractModel.ModifyBlockMultiplicative)
             || method == nameof(AbstractModel.AfterCardPlayed)
@@ -1014,6 +1038,8 @@ internal sealed class CompactDiscardProjection
         BindingFlags.Instance | BindingFlags.Public, [typeof(PlayerChoiceContext), typeof(CardPlay)]);
     private static readonly MirrorMethodSpec AfterCardPlayed = MirrorMethodSpec.Hook(nameof(AbstractModel.AfterCardPlayed),
         [typeof(PlayerChoiceContext), typeof(CardPlay)]);
+    private static readonly MirrorMethodSpec AfterCardDrawn = MirrorMethodSpec.Hook(nameof(AbstractModel.AfterCardDrawn),
+        [typeof(PlayerChoiceContext), typeof(CardModel), typeof(bool)]);
     private static readonly PropertyInfo ShuffleEvents = typeof(CombatPredictionSimulator)
         .GetProperty(nameof(CombatPredictionSimulator.ShuffleEventCount))!;
 }

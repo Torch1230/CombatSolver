@@ -488,3 +488,5 @@ NativeReplayDriver 保存开战/结束观察器抛出的原始异常，由 Advan
 `HookMirrors.BeforeSideTurnEnd` 的常规阶段先通过 `CardHookReceiver` 固定监听成员与对应分支 `PredictedCard`，再按原序读取当前 Preview。前一监听者触发 COW 时，不把已脱离牌堆的旧预览传给后一卡牌 Hook；不重新枚举成员，不保留跨阶段或跨分支接收者。
 
 上游 0.36.0 集成后，紧凑内核的 `PlayerPhaseChanged` 事件记录玩家阶段，物化与直接读取共用 Prediction 的枚举映射；读视图每次从根阶段恢复。`CardHistoryReadValues.AttackSkillStarts` 与原历史字段一样消费开始事件和双方窗口重置，进入原键及完整续用。战略摘要缓存包含 `skillsExhaust`，消耗抽牌时序按当前手牌独立附加。[验证边界](performance/simulation-upstream-merge-20260911.md)。
+
+书页风暴通过 `ResumableDiscardProgram.Draw` 的独立可撤销缓冲区保存父／子抽牌请求、返回数与待完成卡；全部抽牌共用 BeginDrawCard。内核只识别 Power 枚举和虚无标记，卡牌身份与 Hook 准入仍属于 Prediction。投影拥有未完成抽牌历史栈和方法来源栈，直接读取器只计真正历史事件；无相关 Hook 的根不创建该栈。Testing 的可选语义路线 helper 使用正式动作准备及选择解析器，固定节点搜索继续原政策。[原生与搜索证据](performance/simulation-pagestorm-20260911.md)。
