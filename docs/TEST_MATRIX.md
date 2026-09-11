@@ -2614,3 +2614,7 @@ pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId MONSTER-MOVES-BA
 ### 精神过载与毁灭值执行（2026-09-11）
 
 `COMPACT-NEUROSURGE-NATIVE`／`COMPACT-NEUROSURGE-CHOICES` 比较两次出牌、两回合和全部省略选择边界；原生选择观察器核对资源先到账、能力后施加。`COMPACT-DOOM-PLAYER`／`COMPACT-DOOM-ENEMY` 比较双方正确／错误相位、阈值、直接死亡与格挡／历史保留。均有完整能力元数据、原键／估值／续用、九 RNG、逆序与八工作区隔离。`COMPACT-NEUROSURGE-SEARCH` 同根固定 250 节点、旧／新 DOP1 和紧凑 DOP2 全政策相等，取消／异常排空后根可复用；明确拒绝未迁移药水。所有请求限制 120 秒。[构建、回归与结构化证据](performance/simulation-necro-resources-20260911.md)。
+
+### 奥斯蒂根身份与死亡清理（2026-09-11）
+
+`OSTY-STATE-LIFECYCLE`：无宠物根捕获后原生首次召唤；活宠物根五步承伤／复活／增长／直接受伤／复活，逐步完整原生快照、伤害结果顺序、连续 Fork、全部键／估值、八工作区。实机推进后两个冻结根不变，空根后续独立生成实例与原生首次召唤一致。120 秒以内 L2，无正式搜索、无性能断言。[结果和重跑参数](performance/simulation-osty-ownership-20260911.md)。

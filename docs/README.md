@@ -1,4 +1,5 @@
 # CombatSolver 文档导航
+- [奥斯蒂根身份与死亡清理](performance/simulation-osty-ownership-20260911.md)：实机首次召唤后的空根隔离、普通能力退休和连续复活。
 - [精神过载与毁灭](performance/simulation-necro-resources-20260911.md)：资源／选牌时序、死亡相位、原生差分与搜索生命周期。
 
 - [紧凑后端运行时准入与 NoGC 验收](performance/simulation-runtime-backend-20260911.md)：整场零重算、未迁移域归属、正常 NoGC 与普通 GC 口径。

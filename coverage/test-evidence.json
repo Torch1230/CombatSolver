@@ -1,4 +1,12 @@
 {
+  "OSTY-STATE-LIFECYCLE-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeDifferentialAndFrozenRootIsolation",
+    "procedure": "空根原生首次召唤、活宠物五步承伤与两次复活、连续 Fork、8 workers 以及实机推进后两个根隔离。",
+    "expected": "宠物缺席从根捕获，普通能力在死亡后退休，代伤能力／身份保留，后续独立首次召唤不借用 live。",
+    "observed": "374cd6f8a9f743a689f6985e153cf21a Passed，五步完整快照、伤害结果、原状态键／估值／续用一致，23.48 秒。紧凑宠物执行尚未准入。",
+    "evidence": "docs/performance/simulation-osty-ownership-20260911.json；docs/performance/simulation-osty-ownership-20260911.md；2026-09-11。"
+  },
   "COMPACT-NEUROSURGE-DOOM-20260911": {
     "status": "Passed",
     "level": "HeadlessNativeDifferentialAndFixedSearchLifecycle",

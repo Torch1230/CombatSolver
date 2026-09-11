@@ -122,7 +122,7 @@ internal sealed partial class SimulatedCombatState
     }
 
     public Creature? GetOsty(Player player)
-        => _simulatedOsties?.GetValueOrDefault(player) ?? player.Osty;
+        => _simulatedOsties?.GetValueOrDefault(player) ?? _rootOsties[player];
 
     public void RecordCardLifecycle(CombatPredictionSimulator simulator, PredictedCard card)
     {

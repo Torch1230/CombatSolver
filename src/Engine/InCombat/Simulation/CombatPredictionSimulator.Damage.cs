@@ -440,6 +440,12 @@ internal sealed partial class CombatPredictionSimulator
                 if (!HandlePlayerDeath(player))
                     return false;
             }
+            else if (creature.PetOwner != null && State.CombatState is ICombatPredictionEffectSink petEffects)
+            {
+                // Pets are not visited by the deferred enemy death sweep. Native clears
+                // ordinary Powers here while DieForYou keeps the dead Osty in the roster.
+                petEffects.RemovePowersAfterDeath(creature);
+            }
         }
         else
         {

@@ -1044,6 +1044,9 @@ require_fixed "$repository_root/src/Prediction/Compact/CompactDiscardReadView.cs
 damage_simulator="$repository_root/src/Engine/InCombat/Simulation/CombatPredictionSimulator.Damage.cs"
 forbid_fixed "$damage_simulator" 'dealer?.IsDead' 'damage dealers must read branch vitals'
 require_fixed "$damage_simulator" 'effects.CompletePlayerDeath(player);' 'player death must run its domain cleanup before orb/pet handling'
+require_fixed "$damage_simulator" 'petEffects.RemovePowersAfterDeath(creature);' 'pet death must clean Powers outside the enemy sweep'
+require_fixed "$search_root/SimulatedCombatState.cs" '_rootOsties = source._rootOsties;' 'pet root identities and absence must survive forks'
+forbid_fixed "$search_root/SimulatedCombatState.CardLifecycle.cs" '?? player.Osty' 'pet reads must not fall through to live ownership'
 for semantic_replay in '.ManualPlay(' '.AutoPlay(' '.Discard(' 'CardOnPlayMirrors.Invoke(' 'HookMirrors.'; do
     forbid_fixed "$compact_projection" "$semantic_replay" 'compact projection must decode events without replaying effects:'
 done

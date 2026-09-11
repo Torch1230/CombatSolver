@@ -180,6 +180,8 @@ internal interface ICombatPredictionEffectSink
 {
     void CompletePlayerDeath(MegaCrit.Sts2.Core.Entities.Players.Player player);
 
+    void RemovePowersAfterDeath(MegaCrit.Sts2.Core.Entities.Creatures.Creature creature);
+
     void RecordTenderCardPlayed(MegaCrit.Sts2.Core.Entities.Creatures.Creature owner);
 
     void SpawnStockReplacement(

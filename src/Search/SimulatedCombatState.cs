@@ -52,6 +52,7 @@ internal sealed partial class SimulatedCombatState
     private readonly IReadOnlyList<string> _encounterSlots;
     private readonly RootCombatHistorySnapshot _rootHistory;
     private readonly IReadOnlySet<Creature> _rootCreatures;
+    private readonly IReadOnlyDictionary<Player, Creature?> _rootOsties;
     private readonly AbstractModel[] _rootHookListeners;
     private readonly AbstractModel[] _rootRunHookListeners;
     private readonly IReadOnlyDictionary<Player, RelicModel[]> _rootRelics;
@@ -249,6 +250,7 @@ internal sealed partial class SimulatedCombatState
         _cardMultiplayerConstraint = inner.RunState.CardMultiplayerConstraint;
         _playerCreatures = inner.PlayerCreatures.ToArray();
         _players = inner.Players.ToArray();
+        _rootOsties = _players.ToDictionary(player => player, player => player.Osty);
         _rootCardGenerationPools = RootCombatCardGenerationPoolSnapshot.Capture(
             _players,
             _cardMultiplayerConstraint);
@@ -256,7 +258,7 @@ internal sealed partial class SimulatedCombatState
         _encounterSlots = inner.Encounter?.Slots.ToArray() ?? [];
         _rootHistory = RootCombatHistorySnapshot.Capture();
         _rootCreatures = inner.Creatures
-            .Concat(inner.Players.Select(player => player.Osty).OfType<Creature>())
+            .Concat(_rootOsties.Values.OfType<Creature>())
             .ToHashSet();
         _rootDeadCreatures = _rootCreatures.Where(creature => creature.CurrentHp <= 0).ToHashSet();
         Dictionary<AbstractModel, AbstractModel> rootModelClones = [];
@@ -441,6 +443,7 @@ internal sealed partial class SimulatedCombatState
         _encounterSlots = source._encounterSlots;
         _rootHistory = source._rootHistory;
         _rootCreatures = source._rootCreatures;
+        _rootOsties = source._rootOsties;
         _rootHookListeners = source._rootHookListeners;
         _rootRunHookListeners = source._rootRunHookListeners;
         _rootRelics = source._rootRelics;
@@ -1178,7 +1181,7 @@ internal sealed partial class SimulatedCombatState
             (_nonHandDrawsThisTurn ??= [])[ownerPlayer] = 0;
             (_statusCardsDrawnThisTurn ??= [])[ownerPlayer] = 0;
             // Osty is never a turn-start participant but acts during the player turn; reset its counters here.
-            if (ownerPlayer.Osty is { } osty)
+            if (GetOsty(ownerPlayer) is { } osty)
             {
                 (_creatureAttacksThisTurn ??= [])[osty] = 0;
                 RemovePoweredAttackHitsDealtBy(osty);
@@ -2765,7 +2768,8 @@ internal sealed partial class SimulatedCombatState
         return true;
     }
     bool ICombatPredictionCreatureSemantics.ShouldRemoveAfterDeath(Creature creature)
-        => GetAmount<AdaptablePower>(creature) <= 0
+        => GetAmount<DieForYouPower>(creature) <= 0
+            && GetAmount<AdaptablePower>(creature) <= 0
             && GetAmount<IllusionPower>(creature) <= 0
             && GetAmount<ReattachPower>(creature) <= 0
             && GetAmount<SteamEruptionPower>(creature) <= 0;

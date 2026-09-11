@@ -1,0 +1,302 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-11",
+  "scope": "Osty root ownership and ordinary Power cleanup; prerequisite to compact pet execution",
+  "baseline": {
+    "runId": "93b2edc21491473fb75de66498e6ecb2",
+    "scenarioId": "OSTY-STATE-LIFECYCLE",
+    "status": "Failed",
+    "elapsedMilliseconds": 23430.9392,
+    "completedChecks": [],
+    "error": "System.InvalidOperationException: An initially absent captured Osty changed after native summon.\n   at CombatSolver.UnattendedTestRunner.AssertOstyStateLifecycleAsync(CombatState combat, Player player)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()",
+    "absentRootUnchanged": false,
+    "steps": [
+      {
+        "step": 0,
+        "expected": {
+          "PlayerHp": 95,
+          "PlayerBlock": 0,
+          "OstyHp": 0,
+          "OstyMaxHp": 7,
+          "OstyInCombat": true,
+          "OstyPowers": {
+            "DIE_FOR_YOU_POWER": 1,
+            "STRENGTH_POWER": 2
+          }
+        },
+        "actual": {
+          "PlayerHp": 95,
+          "PlayerBlock": 0,
+          "OstyHp": 0,
+          "OstyMaxHp": 7,
+          "OstyInCombat": true,
+          "OstyPowers": {
+            "DIE_FOR_YOU_POWER": 1
+          }
+        },
+        "fullSnapshotEqual": false,
+        "damageResultsEqual": true
+      },
+      {
+        "step": 1,
+        "expected": {
+          "PlayerHp": 95,
+          "PlayerBlock": 0,
+          "OstyHp": 7,
+          "OstyMaxHp": 7,
+          "OstyInCombat": true,
+          "OstyPowers": {
+            "DIE_FOR_YOU_POWER": 1,
+            "STRENGTH_POWER": 2
+          }
+        },
+        "actual": {
+          "PlayerHp": 95,
+          "PlayerBlock": 0,
+          "OstyHp": 7,
+          "OstyMaxHp": 7,
+          "OstyInCombat": true,
+          "OstyPowers": {
+            "DIE_FOR_YOU_POWER": 1
+          }
+        },
+        "fullSnapshotEqual": false,
+        "damageResultsEqual": true
+      },
+      {
+        "step": 2,
+        "expected": {
+          "PlayerHp": 95,
+          "PlayerBlock": 0,
+          "OstyHp": 11,
+          "OstyMaxHp": 11,
+          "OstyInCombat": true,
+          "OstyPowers": {
+            "DIE_FOR_YOU_POWER": 1,
+            "STRENGTH_POWER": 2
+          }
+        },
+        "actual": {
+          "PlayerHp": 95,
+          "PlayerBlock": 0,
+          "OstyHp": 11,
+          "OstyMaxHp": 11,
+          "OstyInCombat": true,
+          "OstyPowers": {
+            "DIE_FOR_YOU_POWER": 1
+          }
+        },
+        "fullSnapshotEqual": false,
+        "damageResultsEqual": true
+      },
+      {
+        "step": 3,
+        "expected": {
+          "PlayerHp": 95,
+          "PlayerBlock": 0,
+          "OstyHp": 0,
+          "OstyMaxHp": 11,
+          "OstyInCombat": true,
+          "OstyPowers": {
+            "DIE_FOR_YOU_POWER": 1,
+            "STRENGTH_POWER": 2
+          }
+        },
+        "actual": {
+          "PlayerHp": 95,
+          "PlayerBlock": 0,
+          "OstyHp": 0,
+          "OstyMaxHp": 11,
+          "OstyInCombat": true,
+          "OstyPowers": {
+            "DIE_FOR_YOU_POWER": 1
+          }
+        },
+        "fullSnapshotEqual": false,
+        "damageResultsEqual": true
+      },
+      {
+        "step": 4,
+        "expected": {
+          "PlayerHp": 95,
+          "PlayerBlock": 0,
+          "OstyHp": 3,
+          "OstyMaxHp": 3,
+          "OstyInCombat": true,
+          "OstyPowers": {
+            "DIE_FOR_YOU_POWER": 1,
+            "STRENGTH_POWER": 2
+          }
+        },
+        "actual": {
+          "PlayerHp": 95,
+          "PlayerBlock": 0,
+          "OstyHp": 3,
+          "OstyMaxHp": 3,
+          "OstyInCombat": true,
+          "OstyPowers": {
+            "DIE_FOR_YOU_POWER": 1
+          }
+        },
+        "fullSnapshotEqual": false,
+        "damageResultsEqual": true
+      }
+    ]
+  },
+  "candidate": {
+    "runId": "374cd6f8a9f743a689f6985e153cf21a",
+    "scenarioId": "OSTY-STATE-LIFECYCLE",
+    "status": "Passed",
+    "elapsedMilliseconds": 23482.5186,
+    "completedChecks": [
+      "OstyStateLifecycle:AbsentAndLivingRoot:DamageRedirectAndSpill:PowerCleanup:TwoRevives:MaxHpGrowth:FullSnapshotKeysContinuations:FiveSteps:EightWorkers:FrozenAfterNative"
+    ],
+    "error": null,
+    "absentRootUnchanged": true,
+    "steps": [
+      {
+        "step": 0,
+        "expected": {
+          "PlayerHp": 95,
+          "PlayerBlock": 0,
+          "OstyHp": 0,
+          "OstyMaxHp": 7,
+          "OstyInCombat": true,
+          "OstyPowers": {
+            "DIE_FOR_YOU_POWER": 1
+          }
+        },
+        "actual": {
+          "PlayerHp": 95,
+          "PlayerBlock": 0,
+          "OstyHp": 0,
+          "OstyMaxHp": 7,
+          "OstyInCombat": true,
+          "OstyPowers": {
+            "DIE_FOR_YOU_POWER": 1
+          }
+        },
+        "fullSnapshotEqual": true,
+        "damageResultsEqual": true
+      },
+      {
+        "step": 1,
+        "expected": {
+          "PlayerHp": 95,
+          "PlayerBlock": 0,
+          "OstyHp": 7,
+          "OstyMaxHp": 7,
+          "OstyInCombat": true,
+          "OstyPowers": {
+            "DIE_FOR_YOU_POWER": 1
+          }
+        },
+        "actual": {
+          "PlayerHp": 95,
+          "PlayerBlock": 0,
+          "OstyHp": 7,
+          "OstyMaxHp": 7,
+          "OstyInCombat": true,
+          "OstyPowers": {
+            "DIE_FOR_YOU_POWER": 1
+          }
+        },
+        "fullSnapshotEqual": true,
+        "damageResultsEqual": true
+      },
+      {
+        "step": 2,
+        "expected": {
+          "PlayerHp": 95,
+          "PlayerBlock": 0,
+          "OstyHp": 11,
+          "OstyMaxHp": 11,
+          "OstyInCombat": true,
+          "OstyPowers": {
+            "DIE_FOR_YOU_POWER": 1
+          }
+        },
+        "actual": {
+          "PlayerHp": 95,
+          "PlayerBlock": 0,
+          "OstyHp": 11,
+          "OstyMaxHp": 11,
+          "OstyInCombat": true,
+          "OstyPowers": {
+            "DIE_FOR_YOU_POWER": 1
+          }
+        },
+        "fullSnapshotEqual": true,
+        "damageResultsEqual": true
+      },
+      {
+        "step": 3,
+        "expected": {
+          "PlayerHp": 95,
+          "PlayerBlock": 0,
+          "OstyHp": 0,
+          "OstyMaxHp": 11,
+          "OstyInCombat": true,
+          "OstyPowers": {
+            "DIE_FOR_YOU_POWER": 1
+          }
+        },
+        "actual": {
+          "PlayerHp": 95,
+          "PlayerBlock": 0,
+          "OstyHp": 0,
+          "OstyMaxHp": 11,
+          "OstyInCombat": true,
+          "OstyPowers": {
+            "DIE_FOR_YOU_POWER": 1
+          }
+        },
+        "fullSnapshotEqual": true,
+        "damageResultsEqual": true
+      },
+      {
+        "step": 4,
+        "expected": {
+          "PlayerHp": 95,
+          "PlayerBlock": 0,
+          "OstyHp": 3,
+          "OstyMaxHp": 3,
+          "OstyInCombat": true,
+          "OstyPowers": {
+            "DIE_FOR_YOU_POWER": 1
+          }
+        },
+        "actual": {
+          "PlayerHp": 95,
+          "PlayerBlock": 0,
+          "OstyHp": 3,
+          "OstyMaxHp": 3,
+          "OstyInCombat": true,
+          "OstyPowers": {
+            "DIE_FOR_YOU_POWER": 1
+          }
+        },
+        "fullSnapshotEqual": true,
+        "damageResultsEqual": true
+      }
+    ]
+  },
+  "build": {
+    "configuration": "Release CopyModOnBuild=false",
+    "seconds": 11.25,
+    "warnings": 0,
+    "errors": 0
+  },
+  "notVerified": [
+    "Compact pet execution",
+    "Complete original Necrobinder root",
+    "Performance",
+    "Visible Steam"
+  ],
+  "boundary": {
+    "linux": "Passed",
+    "searchFiles": 92,
+    "powershell": "Maintained, not executed",
+    "documentationLinks": 301
+  }
+}

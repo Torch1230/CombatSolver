@@ -79,7 +79,7 @@ XxxMirrors.Registry.Register<TYourType>(handler);
 
 死亡后生成单位的镜像应保持原生生成时点。例如补货由 `AfterDeathMirrors` 调用分支生成入口，旧个体仍在阵容中，其最大生命参与替补生命判重。把生成延后到阵容清理后，即使 RNG 调用次数相同也会改变抽样结果；登记镜像时应同步移除原领域补偿中的同一生成动作。
 
-玩家死亡现在从通用死亡入口单独通知领域 Power 清理，时点在 AfterDeath 之后、球与宠物处理之前；敌人清扫不会负责玩家。`CompletePlayerDeath` 是内部效果接收合同，不是新的第三方登记点。注册死亡钩子时不得依赖死亡后仍能读取已移除的玩家 Power；[原生证据](performance/simulation-player-death-20260911.md)。
+玩家死亡现在从通用死亡入口单独通知领域 Power 清理，时点在 AfterDeath 之后、球与宠物处理之前；敌人清扫不会负责玩家。`CompletePlayerDeath` 是内部效果接收合同，不是新的第三方登记点。宠物现同样在 AfterDeath 之后通过 `ICombatPredictionEffectSink.RemovePowersAfterDeath` 调用既有领域清理，保留 `ShouldPowerBeRemovedAfterOwnerDeath` 返回 false 的能力；这也是内部合同，不提供第三方注册口。注册死亡钩子时不得依赖死亡后仍能读取已移除的玩家 Power；[原生证据](performance/simulation-player-death-20260911.md)。
 
 逐次出牌完成效果也应由 `AfterCardPlayedMirrors` 的对应分派独占。温柔在该 Hook 更新计数并扣除属性，回合末仍使用既有领域计数恢复；父牌的历史扫描可能包含已经结算的内层自动牌，不能再通过该范围给内层牌重复施加效果。属性施加需遵守每次原生命令的战斗结束条件。
 
@@ -524,3 +524,5 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 运行时准入现在要求已表示模型的精确原生类型；第三方派生类不能借用基础类型的效果声明。非空药水槽当前使整个根选择模型后端，包含主动与自动药水；不能只检查 SearchablePotions。后端不适用只在准入时报告，执行出错仍停止搜索，没有逐候选回退或第三方绕过入口。[运行时证据](performance/simulation-runtime-backend-20260911.md)。
 
 精神过载已移入显式 OnPlay registry，能量先于抽牌、能力后于抽牌；外部适配不得再在 `CardEffectSpecRegistry` 重复结算。通用新实例的玩家负面类型决定原生持续跳过标记，计数标记本身不进入持续等价键。紧凑封闭开关新增精确 `Neurosurge`／`NeurosurgePower`／`DoomPower`，但只允许已表示的能量、阵营开始和双方毁灭死亡相位；新增 `ModifyEnergyGain`、`AfterModifyingEnergyGain`、`AfterDiedToDoom` 观察者仍拒绝。没有开放第三方登记表；宠物、复活和未迁移遗物／药水不能借此准入。[完整范围](performance/simulation-necro-resources-20260911.md)。
+
+奥斯蒂的根身份和“没有宠物”现在显式捕获，分支生成身份由原召唤映射持有；外部适配不能从 `player.Osty` 补读分支状态。死亡阵容保留判定包含 DieForYou，普通能力退休不延后至下一次召唤。[五步原生与双根隔离证据](performance/simulation-osty-ownership-20260911.md)。

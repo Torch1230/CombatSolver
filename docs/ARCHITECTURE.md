@@ -384,3 +384,5 @@ renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或
 `Runtime/SearchBackendPolicy.cs` 独占主线程后端选择，正常根与初始准备根都调用它；初始准备／增量诊断明确保留模型后端。`CompactCombatRoot.TryCreate` 只在完整准入构造期间捕获已定义的 NotSupportedException，记录拒绝原因；执行和读取错误继续传播，不中途切换。卡牌、Power、遗物、附魔和机械骑士按精确原生类型准入，全部非空药水槽当前拒绝。准入分配纳入根捕获生命周期；日志报告后端、准备耗时与紧凑完成／挂起／物化次数。[生命周期、全自动与正常 NoGC 证据](performance/simulation-runtime-backend-20260911.md)。
 
 精神过载与毁灭的值扩展：资源指令、阵营开始一次性标记和 Kill/Death 事件由 `Simulation/Compact` 独占；模型类型、可创建模板和能量／死亡 Hook 审计由 Prediction/Compact 独占。`CombatHistoryReadValues.DoomAppliers` 随事件窗口重置，读取器导入 lane 所属旧原键字段，不重放效果。旧精神过载由 `CardDrawCardMirrors.NeurosurgeOnPlay` 精确实现获得能量→抽牌→能力，CardEffectSpecRegistry 不再重复补偿。通用 Power 新实例按实际玩家 Debuff 设置持续跳过标记，语义指纹仍只区分三种持续减益。[边界与原生证据](performance/simulation-necro-resources-20260911.md)。
+
+宠物身份由 `SimulatedCombatState._rootOsties` 在主线程捕获（包括空值），Fork 共享不可变身份表；`CardLifecycle.GetOsty` 优先分支生成映射，禁止回落 live。宠物死亡由通用 Damage 入口在 AfterDeath 后通知 `ICombatPredictionEffectSink.RemovePowersAfterDeath`，使用同一领域清理，DieForYou 保留阵容及自身能力。敌人死亡阶段扫描不承担宠物清理。[根隔离与五步原生证据](performance/simulation-osty-ownership-20260911.md)。

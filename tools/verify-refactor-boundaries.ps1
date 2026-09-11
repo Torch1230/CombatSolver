@@ -1220,6 +1220,9 @@ if (-not ([IO.File]::ReadAllText((Join-Path $repositoryRoot 'src/Prediction/Comp
 $damageSimulator = [IO.File]::ReadAllText((Join-Path $repositoryRoot 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.Damage.cs'))
 if ($damageSimulator.Contains('dealer?.IsDead')) { $violations.Add('Damage dealers must read branch vitals.') }
 if (-not $damageSimulator.Contains('effects.CompletePlayerDeath(player);')) { $violations.Add('Player death lost domain cleanup before orb/pet handling.') }
+if (-not $damageSimulator.Contains('petEffects.RemovePowersAfterDeath(creature);')) { $violations.Add('Pet death must clean Powers outside the enemy sweep.') }
+if (-not ([IO.File]::ReadAllText((Join-Path $searchRoot 'SimulatedCombatState.cs'))).Contains('_rootOsties = source._rootOsties;')) { $violations.Add('Pet root identities and absence must survive forks.') }
+if (([IO.File]::ReadAllText((Join-Path $searchRoot 'SimulatedCombatState.CardLifecycle.cs'))).Contains('?? player.Osty')) { $violations.Add('Pet reads must not fall through to live ownership.') }
 if ([IO.File]::ReadAllText((Join-Path $repositoryRoot 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.EndTurn.cs')).Contains('SaveManager')) { $violations.Add('Turn-end execution must not read live animation settings.') }
 foreach ($required in @('AssertRepresentedHooks(runListeners[index], runPrefix: true, includeHandEnd, includePowerPhases, includeRounds);', '(key.RunPrefix || !RepresentedHook(key.Type, method.Name))')) {
     if (-not ([IO.File]::ReadAllText($compactProjection)).Contains($required)) {
