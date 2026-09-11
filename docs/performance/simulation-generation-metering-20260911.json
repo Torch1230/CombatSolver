@@ -58,6 +58,30 @@
         "CompactSearchLifecycle:PagestormTrue:SharedFateFalse:PanacheFalse:LethalityFalse:CardHooksFalse:KeywordsFalse:HangFalse:CostPowersFalse:NecroCardsFalse:DirgeFalse:DrawExhaustFalse:NeurosurgeFalse:OstyFalse:TurnRelicFalse:250Nodes:LegacyEqualsCompact:DOP1EqualsDOP2:Concurrency2:CancelAndFailureDrained:RootReusable:UnsupportedPotionRejected:ActualUnchanged"
       ],
       "error": null
+    },
+    {
+      "runId": "e039ec137c8b4f768cf46d7e8fbdfdd9",
+      "scenarioId": "COMPACT-GENERATION-CLOSURE-AUDIT",
+      "status": "Passed",
+      "elapsedMilliseconds": 24042.8442,
+      "evidence": ".local/metering-strength-20260911/audit-run2-passed-shape-stabilization.json",
+      "note": "First pass of the same-shape stabilization; the earlier single-block stabilization attempt (58268385f95c4d37a3383bfa46768b76) stayed Failed with 160/0/0/0/0 bytes.",
+      "completedChecks": [
+        "CompactGenerationClosureAudit:Original38Cards19InjectedRelics2Potions:ActualRelics20:CompleteOrderedPools:24NativeLegacyCachedValueSamples:ValueSelectionEmptySingletonNegativeZeroOversize:FiveFieldRng:FullPoolForkOwnership:InvalidPoolsRejected:GeneratedCardIsolation:AttackAndColorlessRegression:ActualUnchanged:FullRootExplicitlyRejected"
+      ],
+      "error": null
+    },
+    {
+      "runId": "537d20c96a944b48b505b90f0bf7fd34",
+      "scenarioId": "COMPACT-GENERATION-CLOSURE-AUDIT",
+      "status": "Passed",
+      "elapsedMilliseconds": 24145.7136,
+      "evidence": ".local/metering-strength-20260911/audit/result.json",
+      "note": "Final strict-shape run: 100 warmup + 5x5000 same-shape stabilization + 5x5000 steady state; passes only when all 5 steady-state blocks are exactly 0 bytes. Stabilization records are not passing evidence.",
+      "completedChecks": [
+        "CompactGenerationClosureAudit:Original38Cards19InjectedRelics2Potions:ActualRelics20:CompleteOrderedPools:24NativeLegacyCachedValueSamples:ValueSelectionEmptySingletonNegativeZeroOversize:FiveFieldRng:FullPoolForkOwnership:InvalidPoolsRejected:GeneratedCardIsolation:AttackAndColorlessRegression:ActualUnchanged:FullRootExplicitlyRejected"
+      ],
+      "error": null
     }
   ],
   "meteringAttribution": {
@@ -66,6 +90,16 @@
       "scenarioId": "COMPACT-GENERATION-CLOSURE-AUDIT",
       "status": "Failed",
       "message": "Value generation selection allocated 160 bytes or changed RNG consumption.",
+      "baselinePreserved": true
+    },
+    "intermediateFailedAttempt": {
+      "runId": "58268385f95c4d37a3383bfa46768b76",
+      "scenarioId": "COMPACT-GENERATION-CLOSURE-AUDIT",
+      "status": "Failed",
+      "shape": "single discarded stabilization block, then 5 asserted 5000-call blocks",
+      "message": "Value generation selection allocated in the steady state: 160/0/0/0/0 bytes; stabilization=0 bytes.",
+      "evidence": ".local/metering-strength-20260911/audit-run1-failed.log",
+      "resultFile": ".local/metering-strength-20260911/audit/result-run1-failed.json",
       "baselinePreserved": true
     },
     "standaloneMeasurement": {
@@ -85,14 +119,36 @@
       "nonZeroPerCallCalls": 0,
       "observedCounterDeltaPerBlock": 385000,
       "expectedCounterDeltaPerBlock": 385000,
-      "counterFormula": "5000 * (78 - 1)"
+      "counterFormula": "5000 * (78 - 1)",
+      "shippedShapeRerun": {
+        "harness": ".local/metering-strength-20260911/ValueRngMetering",
+        "output": "scratch metering-strength-checks.log section 2 (standalone source meter)",
+        "source": "pure .NET program referencing the real ValueRng.cs from src/, no game host",
+        "modes": [
+          "oneblock: 100-call warmup, single discarded stabilization block, then 5 asserted 5000-call blocks",
+          "sameshape: 100-call warmup, discarded stabilization batch identical to the asserted batch, then 5 asserted 5000-call blocks"
+        ],
+        "repetitionsPerMode": 10,
+        "populations": [
+          78,
+          50
+        ],
+        "allocatedBytes": 0,
+        "steadyStateBlocksAllZero": true,
+        "counterDeltaPopulation78": 1925000,
+        "counterDeltaPopulation50": 1225000,
+        "counterFormula": "5 * 5000 * (population - 1)",
+        "result": "METERING_STRENGTH_OK for both modes"
+      }
     },
-    "conclusion": "The 160 bytes were a one-time host-process charge to the test thread inside the Godot game process; not the ValueRng primitive and not JIT tiering on the metering thread.",
+    "conclusion": "The 160 bytes were a one-time host-process charge to the test thread inside the Godot game process; not the ValueRng primitive and not JIT tiering on the metering thread. Only a discarded stabilization phase with the same shape as the asserted batch moves that charge out of the steady state.",
     "fix": {
       "file": "src/Testing/UnattendedTestRunner.CompactGenerationAudit.cs",
-      "shape": "5 blocks x 5000 calls",
-      "rngAssertion": "counter delta == 5 * 5000 * (pool - 1), exact over all blocks",
-      "allocationAssertion": "min(blockAllocations) == 0 (at least one block is exactly 0 bytes), no tolerance threshold",
+      "warmup": "100 calls before any assertion; allocation records are not asserted",
+      "stabilization": "5 blocks x 5000 calls through the same helper and shape as the asserted batch; records are never read and are never passing evidence",
+      "steadyState": "5 blocks x 5000 calls; every one of the 5 blocks must be exactly 0 bytes",
+      "rngAssertion": "warmup + stabilization counter delta == (100 + 5 * 5000) * (pool - 1) and steady-state counter delta == 5 * 5000 * (pool - 1), both exact",
+      "allocationAssertion": "all steady-state blocks exactly 0 bytes; no tolerance threshold and no min(blockAllocations)==0 relaxation; five-field and boundary comparisons untouched",
       "independentMessages": true
     }
   },

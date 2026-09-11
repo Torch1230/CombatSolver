@@ -3123,6 +3123,8 @@ pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId MONSTER-MOVES-BA
 
 `COMPACT-PAGESTORM-SEARCH` 在最终 artifact-v4 上 Passed，runId `68c51d68693b4e79a1ea03da531e4f2e`（9.20 秒），确认值层改动未破坏搜索等价。[完整证据](performance/simulation-generation-metering-20260911.md)。
 
+严格形状（后续增补）：上述 `min==0` 形状已被三阶段计量取代——100 次 warmup；与正式测量完全同形的稳定化（同一个 `RunValueGenerationSelectionBlocks` helper、同样 5 块 × 5000 次，记录不读取、不计入分配断言，因此不作为通过证据）；正式 steady-state 5 块 × 5000 次，5 个块必须全部精确 0 字节，无容差阈值，也不再保留“至少一块为 0”的放宽。warmup／稳定化与正式段的 RNG 消耗分别精确断言（`(100+5×5000)×(pool−1)` 与 `5×5000×(pool−1)`），五字段比较与边界比较未删除。单块稳定化的中间形状在 Godot 首个正式块仍见 160 字节，runId `58268385f95c4d37a3383bfa46768b76` Failed，失败日志保留在 `.local/metering-strength-20260911/audit-run1-failed.log`；改为同形稳定化后 runId `e039ec137c8b4f768cf46d7e8fbdfdd9` Passed（24.04 秒），最终运行 runId `537d20c96a944b48b505b90f0bf7fd34` Passed（24.15 秒），证据目录 `.local/metering-strength-20260911/`。本批只收紧该审计计量形状，Release 零警告／错误、Linux 结构门禁 Passed（96 个 Search 文件）、PowerShell 未运行；整项极高配置完整搜索性能重构仍未完成。
+
 ## 虚空之唤生产编译与回合执行（2026-09-11，生产准入仍失败关闭）
 
 `COMPACT-CALL-OF-THE-VOID-GENERATION` 在原三方差分上增加生产编译器与闭包普查：`CallOfTheVoid` 编译为单条 `ApplyBasicPower(CallOfTheVoid)`（数量取 `DynamicVars.Cards.BaseValue`），升级版只加原生 `Innate` 且指令不变，异常关键字与抽弃牌专用域显式拒绝；78 个冻结候选中 18 个可精确编译、60 个不可（首个 `BANSHEES_CRY`）。runId `46c0ff46f6b74e66ba551d5deb2e63ee` Passed（3.89 秒，复用进程；含启动的同批审计 24.03 秒）。

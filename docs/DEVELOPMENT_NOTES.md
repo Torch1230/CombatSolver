@@ -8,9 +8,11 @@
 
 ## 下一版本（开发中）：极高配置完整搜索性能重构
 
+- [值 RNG 计量归因与生成池执行](performance/simulation-generation-metering-20260911.md)：审计尾部计量收紧为三阶段——100 次 warmup、与正式测量完全同形的 5×5000 稳定化（同一个 helper、同样块数，分配记录不读取且不参与分配断言，因此不作为通过证据）、5×5000 正式 steady-state；正式 5 个块必须全部精确 0 字节且无容差，warmup／稳定化与正式段的 RNG 次数分别精确断言。单块稳定化的中间形状在 Godot 首个正式块仍见 160 字节，runId `58268385f95c4d37a3383bfa46768b76` Failed 且失败 evidence 保留；同形稳定化后 runId `e039ec137c8b4f768cf46d7e8fbdfdd9` Passed（24.04 秒），最终 runId `537d20c96a944b48b505b90f0bf7fd34` Passed（24.15 秒）。这次的计量收紧只改测试与文档，不改变生产准入；整项极高配置完整搜索性能重构仍未完成。
+
 - 合并上游 `61e54fa`（0.36.1）的遗物计数策略及 UI，保留紧凑后端完整状态与固定节点合同。合并候选 Release、Linux 结构门禁、`COMPACT-PAGESTORM-SEARCH` 和 `RELIC-COUNTER-POLICY` 通过；没有重测完整性能基准。
 
-- 值 RNG 完整池选取（未完成检查点）：新增独占 scratch 的 `TakeDistinctIndices`，尚未接入紧凑生成命令或扩大准入。新测试因首个池计量到 160 字节额外分配而 Failed，具体归因待查；不能把编译通过当作原语或完整生成闭包通过。
+- 值 RNG 完整池选取（未完成检查点）：新增独占 scratch 的 `TakeDistinctIndices`，尚未接入紧凑生成命令或扩大准入。新测试因首个池计量到 160 字节额外分配而 Failed，失败基线保留；后续归因为 Godot 进程内测试线程的一次性宿主开销，并已按上面的三阶段严格形状复跑通过，不能把编译通过当作原语或完整生成闭包通过。
 
 - [完整角色生成池冻结](performance/simulation-generation-root-20260911.md)：主线程捕获全部规范候选，CallOfTheVoid 读取冻结池，攻击候选共用同一来源；自定义池保持原生成链。分支仍独立完成随机洗牌和牌实例创建。
 
@@ -2459,6 +2461,6 @@ Beam 中间排序与最终选择分离。稳健预设把 `1 HP` 约视为 `3` �
 
 完整根准入现在由 Runtime 主线程选择紧凑后端；初始准备、增量诊断、非空药水槽及未迁移域明确保留模型后端。250 节点 DOP1/DOP2、取消／失败排空及原始机甲整场自动部署通过：T8、损失 6 HP、0 药、0 计划外重算。正常 NoGC 首次搜索旧／紧凑为 7.209／7.164 秒，分配 5.654／2.976 GB；耗时收益尚未建立，不能沿用非 Runtime NoGC 的约两倍数字。亡灵完整闭包与最终交错测量继续进行。[证据](performance/simulation-runtime-backend-20260911.md)。
 
-值生成选择失败断言的 160 字节分配经独立纯 .NET 计量归因为宿主进程一次性开销：直接引用真实 `ValueRng.cs` 的 5.5M 次以上调用在全部模式与 JIT／GC 环境矩阵下均为 0 字节，原语本身不分配。审计尾部计量改为 5 块 × 5000 次，RNG 消耗对全部块精确断言，分配断言改为“至少一块精确为 0 字节”（`min==0`），两条断言独立并保留原失败基线。紧凑池生成值层落地 `CardGenerationPools` 与 `GenerateFromPool`：五字段 RNG 槽随 `ReversibleValueState` 撤销，工作区独占 scratch，冻结模板承担虚无，满手溢出转弃牌堆；原生差分 `COMPACT-CALL-OF-THE-VOID-GENERATION` 与搜索等价回归 `COMPACT-PAGESTORM-SEARCH` 通过。生产准入未扩大，仍为 53 种精确类型，完整亡灵根继续显式拒绝。剩余范围仍包括生产生成接线、106 个未准入类型、无色药水、原版遗物／0.36.1 计数政策、AEONGLASS AI 及最终交错性能验收。[记录](performance/simulation-generation-metering-20260911.md)。
+值生成选择失败断言的 160 字节分配经独立纯 .NET 计量归因为宿主进程一次性开销：直接引用真实 `ValueRng.cs` 的 5.5M 次以上调用在全部模式与 JIT／GC 环境矩阵下均为 0 字节，原语本身不分配。审计尾部计量收紧为三阶段：100 次 warmup 加与正式测量完全同形的 5×5000 稳定化，再加 5×5000 正式 steady-state；稳定化只吸收一次性宿主／JIT 形状开销，分配记录不读取、不参与分配断言，不作为通过证据，正式 5 个块必须全部精确 0 字节且无容差，warmup／稳定化与正式段的 RNG 次数分别精确断言，并保留原 160 字节失败基线；单块稳定化的中间形状在 Godot 首个正式块仍见 160 字节（runId `58268385f95c4d37a3383bfa46768b76` Failed），失败证据一并保留。紧凑池生成值层落地 `CardGenerationPools` 与 `GenerateFromPool`：五字段 RNG 槽随 `ReversibleValueState` 撤销，工作区独占 scratch，冻结模板承担虚无，满手溢出转弃牌堆；原生差分 `COMPACT-CALL-OF-THE-VOID-GENERATION` 与搜索等价回归 `COMPACT-PAGESTORM-SEARCH` 通过。生产准入未扩大，仍为 53 种精确类型，完整亡灵根继续显式拒绝。计量收紧只改测试与文档，不改变生产准入；剩余范围仍包括生产生成接线、106 个未准入类型、无色药水、原版遗物／0.36.1 计数政策、AEONGLASS AI 及最终交错性能验收，整项性能重构仍未完成。[记录](performance/simulation-generation-metering-20260911.md)。
 
 虚空之唤（CallOfTheVoid）从测试值层推进到生产编译与回合执行接线。编译器把原生 `OnPlay` 编译为一条有序 `ApplyBasicPower(CallOfTheVoid)`（数量取 `DynamicVars.Cards.BaseValue`），只接受原生 `Innate` 升级，异常关键字与无 Power 布局的抽弃牌专用域显式拒绝；`BasicPowerKind.CallOfTheVoid` 复用基础 Power 值槽，数量、施加者、获得顺序与退休标记随撤销状态。回合驱动在能量重置与 BoundPhylactery 后置召唤之后、合成起手抽牌帧之前执行整批生成，创建者与结果类型区分卡牌动作（`Fixed`）与回合开始能力（`Random`），整批先选择再逐张入堆、满手溢出、逐实例身份、批次间允许重复且不触发 `AfterCardDrawn`；五字段 `CombatCardGeneration` 由物化、直接读视图、状态键与续用共同读取 lane 值。Projection 只在根中实际出现该卡或能力时捕获完整角色池（持有人角色的冻结规范顺序），逐候选建立不可变虚无模板并精确编译，任何不可表示候选拒绝整根而不缩池；没有回合闭包时同样拒绝。生产准入没有扩大：亡灵池 78 个候选中 18 个可编译、60 个不可，潜行者池 16／62，含该卡或能力的根仍失败关闭，池模板构建的正向路径要等池闭包完成后才有可执行样例。`COMPACT-CALL-OF-THE-VOID-GENERATION`（编译器与闭包普查，78 池 18／60）、新增 `COMPACT-CALL-OF-THE-VOID-ADMISSION`（对照根已准入后在池候选 `ABRASIVE` 处拒绝、单回合投影拒绝、实机不变）、`COMPACT-GENERATION-CLOSURE-AUDIT`（`FullRootExplicitlyRejected` 不变）与 `COMPACT-SEARCH-LIFECYCLE` 回归哨兵全部通过，纯值回合开始生成合同并入 `tools/CompactCreatureChecks`。首次准入夹具因缺少既有 30 张 RunCards 失败，属输入错误并保留为基线。[记录](performance/simulation-void-generation-20260911.md)。
