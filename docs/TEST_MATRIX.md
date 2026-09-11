@@ -2,11 +2,11 @@
 
 ## 下一版本（开发中）：卡牌引用辅助接口
 
-- `dotnet run --project tools/ModelPredictionStateChecks/ModelPredictionStateChecks.csproj -c Release -- --cards`：通过 28 项合同，覆盖原卡／Preview、同名实例、缺失／歧义、父子兄弟隔离、模型状态 Fork、live 变化、两侧字段、null／空／重复／顺序／无序、失效引用与堆内移动。
-- 工具链接生产 helper、writer、registry、state store；游戏对象和模拟器外壳由小型合同替身提供，不能当成完整游戏证明。
-- 同轮默认模型状态合同 32 项、`--empty` 3 项通过；0.111.0 对应引用下 Release 构建零警告／零错误，Bash 结构门禁通过。没有运行 `--allocation`。
-- 隔离 macOS 可见游戏 0.111.0、RitsuLib 0.5.20，使用三个适配 PR 的组合构建：`MODEL-STATE-INTEGRATION` / `e527dfa444294e549bc66ec0fd38397b` Passed，引用列表参与指纹与 continuation，完整模拟器 Fork／Preview COW／子状态变更隔离，以及 T1→T2 原生完整快照一致。`MODEL-STATE-INTEGRATION-REUSE` / `d4f724351f304dbb80f841a35cf7d09a` Passed，正式控制器记录第 2 回合 `SEARCH_REUSED validation=exact_state_text`，计划外重算 0；停止观察时原生动作已推进到第 3 回合。输入见 `coverage/unattended/model-state-integration.json` 与 `model-state-reuse-integration.json`，注册夹具须使用独立新进程。
-- 首个续用夹具 `649c2ec2b2294da4850fb5ca06236bf1` 因注入清空原生牌堆而保留旧引用，按接口契约明确失败；修正测试引用生命周期后通过，没有放宽生产悬空引用检查。没有运行性能 A/B，也不宣称任意外部 Mod 的引用状态已兼容。
+- 游戏 0.111.0 的 Release 构建通过，零警告、零错误；Bash 结构门禁通过。
+- `ModelPredictionStateChecks`：卡牌引用合同 28 项、模型状态合同 32 项、空登记合同 3 项通过。覆盖实例身份、父子兄弟隔离、Fork、两侧描述、空值、重复、顺序及失效引用；游戏对象和模拟器外壳使用替身。
+- [模型状态集成](../coverage/unattended/model-state-integration.json)：完整模拟器 Fork、Preview COW、子状态变更隔离、引用列表参与指纹和 continuation，以及 T1→T2 原生完整快照对账通过。
+- [模型状态续用](../coverage/unattended/model-state-reuse-integration.json)：控制器第 2 回合精确续用通过，计划外重算为 0。
+- 游戏验证使用回合阶段、卡牌引用和 OnPlay 适配的组合构建。任意外部 Mod 的状态语义未覆盖；未作性能验证。注册场景须使用独立新进程。
 
 ## 0.36.3：策略摘要
 
