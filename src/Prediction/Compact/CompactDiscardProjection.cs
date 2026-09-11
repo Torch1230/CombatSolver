@@ -132,7 +132,7 @@ internal sealed class CompactDiscardProjection
         }
         foreach (bool upgraded in new[] { false, true })
         {
-            if (!cards.Any(card => card.Preview is Dirge && card.Preview.IsUpgraded == upgraded)) continue;
+            if (!cards.Any(card => card.Preview is Dirge && card.Preview.IsUpgraded == upgraded || !upgraded && card.Preview is CaptureSpirit)) continue;
             if (upgraded) upgradedSoulTemplate = cards.Length + generated.Count;
             else soulTemplate = cards.Length + generated.Count;
             CardModel template = PredictionUtils.CreateCard(CanonicalModels.Card<Soul>(), player);
@@ -149,7 +149,7 @@ internal sealed class CompactDiscardProjection
             card, includeAttacks, shivTemplate, inkyShivTemplate, soulTemplate, upgradedSoulTemplate)).ToArray();
         if (osty == null && definitions.Any(card => card.Effects.RequiresPet))
             throw new NotSupportedException("Compact summoning requires a captured pet identity; first creation is not represented.");
-        _risks = _definitionModels.Select(card => card is Burn ? null : CardOnPlayMirrors.DescribeDispatch(card) switch
+        _risks = _definitionModels.Select(card => card is Burn or AscendersBane ? null : CardOnPlayMirrors.DescribeDispatch(card) switch
         {
             MirrorDispatchKind.Handled => (PredictionRiskReason?)null,
             MirrorDispatchKind.Inferred => PredictionRiskReason.MethodMirrorIncomplete,
@@ -407,18 +407,22 @@ internal sealed class CompactDiscardProjection
                     PredictedCard created = CreateGeneratedCard(program.DefinitionIndex(item.Card));
                     cards.Add(created);
                     var generation = projection.History.CardGenerated(created, item.Target == 0 ? _player : null, CardGenerationResultKind.Fixed);
-                    SimCardPile destination = (ResumableDiscardProgram.Pile)item.Flags switch
+                    SimCardPile? destination = (ResumableDiscardProgram.Pile)item.Flags switch
                     {
                         ResumableDiscardProgram.Pile.Hand => state.Hand,
                         ResumableDiscardProgram.Pile.Draw => state.DrawPile,
                         ResumableDiscardProgram.Pile.Discard => state.DiscardPile,
+                        ResumableDiscardProgram.Pile.Unplaced when item.Value == -1 => null,
                         _ => throw new InvalidOperationException("Generated card destination was not admitted.")
                     };
-                    if ((uint)item.Value > (uint)destination.Cards.Count)
-                        throw new InvalidOperationException("Generated card insertion position is outside its pile.");
-                    projection.AddToPile(created, destination.Type);
-                    if (!destination.Remove(created)) throw new InvalidOperationException("Generated card left its captured destination.");
-                    destination.Insert(item.Value, created);
+                    if (destination != null)
+                    {
+                        if ((uint)item.Value > (uint)destination.Cards.Count)
+                            throw new InvalidOperationException("Generated card insertion position is outside its pile.");
+                        projection.AddToPile(created, destination.Type);
+                        if (!destination.Remove(created)) throw new InvalidOperationException("Generated card left its captured destination.");
+                        destination.Insert(item.Value, created);
+                    }
                     projection.History.CardGenerationResolved(generation, created);
                     continue;
                 }
@@ -743,7 +747,21 @@ internal sealed class CompactDiscardProjection
         for (int card = 0; card < program.CardCount; card++)
         {
             PredictedCard? actual = simulator.State.FindCard(originals[card]);
-            if (program.CardRemoved(card) != (actual == null)
+            if ((program.CardRemoved(card) || program.CardUnplaced(card)) != (actual == null))
+                throw new InvalidOperationException("Compact card presence differs from its combat piles.");
+            if (program.CardUnplaced(card))
+            {
+                var generated = simulator.History.Entries.OfType<CombatPredictionCardGeneratedEntry>()
+                    .Single(entry => ReferenceEquals(entry.Card.Original, originals[card])).Card;
+                var definition = _definitionModels[program.DefinitionIndex(card)];
+                if (generated.Owner != _player || generated.Id != definition.Id.Entry || generated.Type != definition.Type
+                    || generated.UpgradeLevel != definition.CurrentUpgradeLevel || originals[card].HasBeenRemovedFromState)
+                    throw new InvalidOperationException("Unplaced generation must retain history without a combat pile or removal flag.");
+                // Legacy history retains scalar snapshots, not an ownerless mutable
+                // preview. Native differential checks cover the full template metadata.
+                continue;
+            }
+            if (actual != null && actual.Preview.HasBeenRemovedFromState != program.CardRemoved(card)
                 || actual != null && actual.Preview.HasSingleTurnSly != program.SingleTurnSly(card)
                 || actual != null && actual.Preview.EnergyCost.CostsX && actual.Preview.EnergyCost.CapturedXValue != program.CapturedX(card))
                 throw new InvalidOperationException("Compact removal or captured energy differs.");

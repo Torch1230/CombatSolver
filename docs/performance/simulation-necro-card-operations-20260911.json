@@ -1,0 +1,4721 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-11",
+  "baseCommit": "d42ad50",
+  "scope": "Five exact card types, direct HP loss, discard retrieval and separate unplaced generation; fix legacy Graveblast phantom terminal selection",
+  "passes": [
+    {
+      "case": "native-v5",
+      "runId": "647e7d2bc55b46c28062f623f8e3455d",
+      "scenarioId": "COMPACT-NECRO-CARDS-NATIVE",
+      "status": "Passed",
+      "processId": 1442222,
+      "startedAtUtc": "2026-09-11T08:06:28.1760776+00:00",
+      "finishedAtUtc": "2026-09-11T08:06:35.7160238+00:00",
+      "elapsedMilliseconds": 7539.9472,
+      "completedChecks": [
+        "CompactNecroCards:Mode0:OmittedChoices5:FullContinuations",
+        "CompactNecroCards:Mode0:8NativeActions:15Branches:2NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative",
+        "CompactNecroCards:Mode0:DirectHpLoss:RandomSouls:EmptyAndNonemptyDiscard:AttackBeforeRetrieve:WispEnergy:EtherealHandEnd",
+        "CompactNecroCards:Mode1:OmittedChoices4:FullContinuations",
+        "CompactNecroCards:Mode1:8NativeActions:12Branches:0NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative",
+        "CompactNecroCards:Mode1:DirectHpLoss:RandomSouls:EmptyAndNonemptyDiscard:AttackBeforeRetrieve:WispEnergy:EtherealHandEnd"
+      ],
+      "error": null
+    },
+    {
+      "case": "capture-terminal-v4",
+      "runId": "971a93e65f5f4e908916a7a6216983ba",
+      "scenarioId": "COMPACT-CAPTURE-SPIRIT-TERMINAL",
+      "status": "Passed",
+      "processId": 1432223,
+      "startedAtUtc": "2026-09-11T08:00:57.7569324+00:00",
+      "finishedAtUtc": "2026-09-11T08:01:21.7827399+00:00",
+      "elapsedMilliseconds": 24026.0506,
+      "completedChecks": [
+        "CompactNecroTerminal:Mode0:OmittedChoices0:FullContinuations",
+        "CompactNecroTerminal:NativePreTeardownSnapshot",
+        "CompactNecroTerminal:Mode0:1NativeActions:1Branches:0NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative",
+        "CompactNecroTerminal:CAPTURE_SPIRIT:LastEnemyDeath:UnplacedGenerationHistory:NoRandomConsumption:FullStateKeysContinuation"
+      ],
+      "error": null
+    },
+    {
+      "case": "graveblast-terminal-v5",
+      "runId": "d482fbb86ff249238f87c6d84f918f83",
+      "scenarioId": "COMPACT-GRAVEBLAST-TERMINAL",
+      "status": "Passed",
+      "processId": 1442222,
+      "startedAtUtc": "2026-09-11T08:04:51.1016069+00:00",
+      "finishedAtUtc": "2026-09-11T08:05:15.187983+00:00",
+      "elapsedMilliseconds": 24086.4725,
+      "completedChecks": [
+        "CompactNecroTerminal:Mode0:OmittedChoices0:FullContinuations",
+        "CompactNecroTerminal:NativePreTeardownSnapshot",
+        "CompactNecroTerminal:Mode0:1NativeActions:1Branches:0NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative",
+        "CompactNecroTerminal:GRAVEBLAST:LastEnemyDeath:NoChoiceAfterDeath:NoRandomConsumption:FullStateKeysContinuation"
+      ],
+      "error": null
+    },
+    {
+      "case": "search-v5",
+      "runId": "7cc4d13f7a7a43c79980b4b84955a557",
+      "scenarioId": "COMPACT-NECRO-CARDS-SEARCH",
+      "status": "Passed",
+      "processId": 1442222,
+      "startedAtUtc": "2026-09-11T08:07:25.3458572+00:00",
+      "finishedAtUtc": "2026-09-11T08:07:30.421136+00:00",
+      "elapsedMilliseconds": 5075.2794,
+      "completedChecks": [
+        "CompactSearchLifecycle:NecroCardsTrue:DirgeFalse:DrawExhaustFalse:NeurosurgeFalse:OstyFalse:TurnRelicFalse:250Nodes:LegacyEqualsCompact:DOP1EqualsDOP2:Concurrency2:CancelAndFailureDrained:RootReusable:UnsupportedPotionRejected:ActualUnchanged"
+      ],
+      "error": null
+    },
+    {
+      "case": "monster-sentinel-v5",
+      "runId": "9979547276584c02995513c883eed8bc",
+      "scenarioId": "COMPACT-MONSTER-COMMANDS-NATIVE",
+      "status": "Passed",
+      "processId": 1442222,
+      "startedAtUtc": "2026-09-11T08:08:04.6322175+00:00",
+      "finishedAtUtc": "2026-09-11T08:08:10.1972211+00:00",
+      "elapsedMilliseconds": 5565.0041,
+      "completedChecks": [
+        "CompactMonsterCommands:Native3Roots13Branches15Actions:FourMechaBodies:NoCreatorBurn:MixedShiv:SpillShuffleHandEnd:DamageBlockStrengthApplier:Fatal:FullStateAndPiles:AllHistory:AllRng:AllSnapshotProperties:Frozen8Workers"
+      ],
+      "error": null
+    },
+    {
+      "case": "draw-exhaust-sentinel-v5",
+      "runId": "b49db0f399534ef68277c6bfcd1edec7",
+      "scenarioId": "COMPACT-DRAW-EXHAUST-NATIVE",
+      "status": "Passed",
+      "processId": 1442222,
+      "startedAtUtc": "2026-09-11T08:09:54.4105754+00:00",
+      "finishedAtUtc": "2026-09-11T08:10:02.7004351+00:00",
+      "elapsedMilliseconds": 8289.8605,
+      "completedChecks": [
+        "CompactDrawExhaust:Mode0:OmittedChoices6:FullContinuations",
+        "CompactDrawExhaust:Mode0:6NativeActions:15Branches:2NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative",
+        "CompactDrawExhaust:Mode1:OmittedChoices5:FullContinuations",
+        "CompactDrawExhaust:Mode1:6NativeActions:12Branches:0NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative",
+        "CompactDrawExhaust:Mode2:OmittedChoices4:FullContinuations",
+        "CompactDrawExhaust:Mode2:6NativeActions:12Branches:0NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative"
+      ],
+      "error": null
+    }
+  ],
+  "earlierPasses": [
+    {
+      "case": "native-v1",
+      "runId": "efbf6adde0574cbd987b3c4cee57d992",
+      "scenarioId": "COMPACT-NECRO-CARDS-NATIVE",
+      "status": "Passed",
+      "processId": 1417797,
+      "startedAtUtc": "2026-09-11T07:49:48.3246326+00:00",
+      "finishedAtUtc": "2026-09-11T07:50:16.0271645+00:00",
+      "elapsedMilliseconds": 27702.6069,
+      "completedChecks": [
+        "CompactNecroCards:Mode0:OmittedChoices5:FullContinuations",
+        "CompactNecroCards:Mode0:8NativeActions:15Branches:2NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative",
+        "CompactNecroCards:Mode0:DirectHpLoss:RandomSouls:EmptyAndNonemptyDiscard:AttackBeforeRetrieve:WispEnergy:EtherealHandEnd",
+        "CompactNecroCards:Mode1:OmittedChoices4:FullContinuations",
+        "CompactNecroCards:Mode1:8NativeActions:12Branches:0NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative",
+        "CompactNecroCards:Mode1:DirectHpLoss:RandomSouls:EmptyAndNonemptyDiscard:AttackBeforeRetrieve:WispEnergy:EtherealHandEnd"
+      ],
+      "error": null
+    }
+  ],
+  "failures": [
+    {
+      "case": "capture-terminal-v1",
+      "runId": "c60f79d2d08d4038876c3dcc7d624b7d",
+      "scenarioId": "COMPACT-CAPTURE-SPIRIT-TERMINAL",
+      "status": "Failed",
+      "processId": 1417797,
+      "startedAtUtc": "2026-09-11T07:50:39.0097432+00:00",
+      "finishedAtUtc": "2026-09-11T07:50:42.6891734+00:00",
+      "elapsedMilliseconds": 3679.4316,
+      "completedChecks": [],
+      "error": "System.InvalidOperationException: Generated card count differs.\n   at CombatSolver.CompactDiscardProjection.AssertValues(ResumableDiscardProgram program, CombatPredictionSimulator simulator)\n   at CombatSolver.UnattendedTestRunner.<>c__DisplayClass80_1.<AssertCompactPetCardRouteAsync>g__Check|1(PlanAction action, CombatPredictionSimulator expected, String stage)\n   at CombatSolver.UnattendedTestRunner.AssertCompactPetCardRouteAsync(CombatState combat, Player player, Int32 mode, String label, String evidencePrefix, ValueTuple`2[] cardSteps, Action`3 assertStep, Boolean observeDrawExhaust, Func`3 observeNativeChoice, Int32 rounds, Boolean requirePending)\n   at CombatSolver.UnattendedTestRunner.AssertCompactNecroTerminalAsync(CombatState combat, Player player)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()"
+    },
+    {
+      "case": "graveblast-terminal-v1",
+      "runId": "0707acab4b6b45a7ba21bc7ee1929825",
+      "scenarioId": "COMPACT-GRAVEBLAST-TERMINAL",
+      "status": "Failed",
+      "processId": 1422208,
+      "startedAtUtc": "2026-09-11T07:51:15.2237305+00:00",
+      "finishedAtUtc": "2026-09-11T07:51:39.0408062+00:00",
+      "elapsedMilliseconds": 23817.1516,
+      "completedChecks": [],
+      "error": "CombatSolver.InvalidPlannedChoiceBranchException: 回合开始仍有 1 个计划选牌没有触发；下一个=/MoveToHand/Discard/。\n   at CombatSolver.TurnStartChoiceCursor.AssertConsumed()\n   at CombatSolver.CompactPlanReplay.TryExecute(ResumableDiscardProgram lane, PlanAction action, CancellationToken cancellationToken)\n   at CombatSolver.CompactPlanReplay.Execute(ResumableDiscardProgram lane, PlanAction action)\n   at CombatSolver.UnattendedTestRunner.AssertCompactPetCardRouteAsync(CombatState combat, Player player, Int32 mode, String label, String evidencePrefix, ValueTuple`2[] cardSteps, Action`3 assertStep, Boolean observeDrawExhaust, Func`3 observeNativeChoice, Int32 rounds, Boolean requirePending)\n   at CombatSolver.UnattendedTestRunner.AssertCompactNecroTerminalAsync(CombatState combat, Player player)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()"
+    },
+    {
+      "case": "graveblast-terminal-v4",
+      "runId": "d1e00e1350654fa9acdd1d1b041f1c3d",
+      "scenarioId": "COMPACT-GRAVEBLAST-TERMINAL",
+      "status": "Failed",
+      "processId": 1432223,
+      "startedAtUtc": "2026-09-11T08:02:00.573834+00:00",
+      "finishedAtUtc": "2026-09-11T08:02:04.305871+00:00",
+      "elapsedMilliseconds": 3732.038,
+      "completedChecks": [
+        "CompactNecroTerminal:Mode0:OmittedChoices1:FullContinuations",
+        "CompactNecroTerminal:NativePreTeardownSnapshot"
+      ],
+      "error": "System.InvalidOperationException: 选择事务 2 仍有 1 个计划选牌没有被游戏请求。\n   at CombatSolver.PlannedCardSelector.AssertConsumed()\n   at CombatSolver.UnattendedTestRunner.AssertCompactPetCardRouteAsync(CombatState combat, Player player, Int32 mode, String label, String evidencePrefix, ValueTuple`2[] cardSteps, Action`3 assertStep, Boolean observeDrawExhaust, Func`3 observeNativeChoice, Int32 rounds, Boolean requirePending)\n   at CombatSolver.UnattendedTestRunner.AssertCompactNecroTerminalAsync(CombatState combat, Player player)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()"
+    }
+  ],
+  "infrastructureFailures": [
+    {
+      "case": "capture-terminal-v3",
+      "runId": "9b21c870417243e9a6151ba0a986c304",
+      "processId": 1427824,
+      "status": "ExitedWithoutResult",
+      "exitCode": 139,
+      "observation": "Native CaptureSpirit play and victory/reward setup appeared in the Godot log before SIGSEGV. No result file was written. v4 moved all terminal snapshot and card metadata reads to the existing pre-teardown observer.",
+      "godotLogTail": [
+        "[WARN] Asset not cached: res://images/powers/stratagem_power.png",
+        "[WARN] [com.ritsukage.sts2-RitsuLib] [Localization][DebugCompat] Missing localization key 'MOCK_GATED_TURN_START_POWER.title' in table 'powers' during GetRawText. Resolving to key placeholder (debug compat).",
+        "[WARN] [com.ritsukage.sts2-RitsuLib] [Localization][DebugCompat] Missing localization key 'MOCK_RECORD_CARD_CHANGED_PILES_POWER.title' in table 'powers' during GetRawText. Resolving to key placeholder (debug compat).",
+        "[INFO] Player 1 playing card CAPTURE_SPIRIT (targeting 机甲骑士 (index 2))",
+        "[WARN] Warning: Packet writer is growing from 1024 bytes to 2048 bytes!",
+        "[WARN] Warning: Packet writer is growing from 2048 bytes to 4096 bytes!",
+        "[WARN] Warning: Packet writer is growing from 4096 bytes to 8192 bytes!",
+        "[INFO] Wrote 281223 bytes to path=user://default/1/modded/profile1/saves/progress.save save_dir=user://default/1",
+        "[INFO] Card rarity: Rolled 0.1560361, need < 0.05 for rare (offset = -0.05)",
+        "[INFO] Card rarity: Rolled 0.2649305, need < 0.060000002 for rare (offset = -0.04)",
+        "[INFO] Card rarity: Rolled 0.9531857, need < 0.07 for rare (offset = -0.03)",
+        "[WARN] Asset not cached: res://images/relics/happy_flower.png"
+      ]
+    }
+  ],
+  "builds": [
+    {
+      "version": 1,
+      "passed": true,
+      "elapsedSeconds": 12.29,
+      "warnings": 0,
+      "errors": 0,
+      "error": null
+    },
+    {
+      "version": 2,
+      "passed": false,
+      "elapsedSeconds": 9.33,
+      "warnings": 0,
+      "errors": 1,
+      "error": "CS0019: Operator ?? cannot be applied to PredictedCard and CombatPredictionCardSnapshot; history retains scalar snapshots."
+    },
+    {
+      "version": 3,
+      "passed": true,
+      "elapsedSeconds": 11.29,
+      "warnings": 0,
+      "errors": 0,
+      "error": null
+    },
+    {
+      "version": 4,
+      "passed": true,
+      "elapsedSeconds": 10.9,
+      "warnings": 0,
+      "errors": 0,
+      "error": null
+    },
+    {
+      "version": 5,
+      "passed": true,
+      "elapsedSeconds": 11.68,
+      "warnings": 0,
+      "errors": 0,
+      "error": null
+    }
+  ],
+  "nativeModes": [
+    {
+      "case": "native-v5",
+      "mode": 0,
+      "branches": 15,
+      "nativeChoiceObservations": 2,
+      "actions": [
+        {
+          "action": {
+            "Kind": 0,
+            "Turn": 1,
+            "CardId": "GRAVEBLAST",
+            "CardOccurrence": 0,
+            "TargetIndex": 0,
+            "TargetCombatId": 1,
+            "CardTitle": "坟冢爆射",
+            "TargetName": "机甲骑士",
+            "Choice": {
+              "Effect": 0,
+              "SourcePile": 3,
+              "Cards": [
+                {
+                  "CardId": "DEFEND_NECROBINDER",
+                  "UpgradeLevel": 0,
+                  "StateKey": "DEFEND_NECROBINDER+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=Block=5|-|:0|baselib=-",
+                  "SourceOccurrence": 0,
+                  "OptionOccurrence": 0,
+                  "Title": "防御"
+                }
+              ],
+              "SourceId": "",
+              "ContextId": "",
+              "Timing": 0
+            },
+            "NestedChoices": null,
+            "NestedChoicesBeforePrimary": 0,
+            "PotionSlot": -1,
+            "PotionId": "",
+            "PotionTitle": "",
+            "TurnStartChoices": null,
+            "RelicEffects": null,
+            "ReplayCount": 0,
+            "CardStateKey": "GRAVEBLAST+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=Exhaust|vars=Damage=4|-|:0|baselib=-",
+            "CardStateOccurrence": 0,
+            "EndsPlayerTurn": false,
+            "CardUpgradeLevel": 0,
+            "IsExecutable": true,
+            "ActionTitle": "坟冢爆射"
+          },
+          "expectedPet": {
+            "CurrentHp": 5,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 5,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              0,
+              1,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9
+            ],
+            [],
+            [
+              10,
+              11
+            ],
+            [],
+            [
+              2
+            ]
+          ],
+          "actualPiles": [
+            [
+              0,
+              1,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9
+            ],
+            [],
+            [
+              10,
+              11
+            ],
+            [],
+            [
+              2
+            ]
+          ],
+          "unplaced": [],
+          "expectedCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            }
+          ],
+          "actualCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            }
+          ],
+          "expectedRng": {
+            "Shuffle": 11,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 11,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        },
+        {
+          "action": {
+            "Kind": 0,
+            "Turn": 1,
+            "CardId": "CAPTURE_SPIRIT",
+            "CardOccurrence": 0,
+            "TargetIndex": 0,
+            "TargetCombatId": 1,
+            "CardTitle": "捕捉灵魂",
+            "TargetName": "机甲骑士",
+            "Choice": null,
+            "NestedChoices": null,
+            "NestedChoicesBeforePrimary": 0,
+            "PotionSlot": -1,
+            "PotionId": "",
+            "PotionTitle": "",
+            "TurnStartChoices": null,
+            "RelicEffects": null,
+            "ReplayCount": 0,
+            "CardStateKey": "CAPTURE_SPIRIT+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=Cards=3;Damage=3|-|:0|baselib=-",
+            "CardStateOccurrence": 0,
+            "EndsPlayerTurn": false,
+            "CardUpgradeLevel": 0,
+            "IsExecutable": true,
+            "ActionTitle": "捕捉灵魂"
+          },
+          "expectedPet": {
+            "CurrentHp": 5,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 5,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              1,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9
+            ],
+            [
+              12,
+              13,
+              14
+            ],
+            [
+              10,
+              11,
+              0
+            ],
+            [],
+            [
+              2
+            ]
+          ],
+          "actualPiles": [
+            [
+              1,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9
+            ],
+            [
+              12,
+              13,
+              14
+            ],
+            [
+              10,
+              11,
+              0
+            ],
+            [],
+            [
+              2
+            ]
+          ],
+          "unplaced": [],
+          "expectedCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            }
+          ],
+          "actualCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            }
+          ],
+          "expectedRng": {
+            "Shuffle": 14,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 14,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        },
+        {
+          "action": {
+            "Kind": 0,
+            "Turn": 1,
+            "CardId": "GRAVEBLAST",
+            "CardOccurrence": 0,
+            "TargetIndex": 0,
+            "TargetCombatId": 1,
+            "CardTitle": "坟冢爆射+",
+            "TargetName": "机甲骑士",
+            "Choice": {
+              "Effect": 0,
+              "SourcePile": 3,
+              "Cards": [
+                {
+                  "CardId": "CAPTURE_SPIRIT",
+                  "UpgradeLevel": 0,
+                  "StateKey": "CAPTURE_SPIRIT+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=Cards=3;Damage=3|-|:0|baselib=-",
+                  "SourceOccurrence": 0,
+                  "OptionOccurrence": 0,
+                  "Title": "捕捉灵魂"
+                }
+              ],
+              "SourceId": "",
+              "ContextId": "",
+              "Timing": 0
+            },
+            "NestedChoices": null,
+            "NestedChoicesBeforePrimary": 0,
+            "PotionSlot": -1,
+            "PotionId": "",
+            "PotionTitle": "",
+            "TurnStartChoices": null,
+            "RelicEffects": null,
+            "ReplayCount": 0,
+            "CardStateKey": "GRAVEBLAST+1|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=Damage=6|-|:0|baselib=-",
+            "CardStateOccurrence": 0,
+            "EndsPlayerTurn": false,
+            "CardUpgradeLevel": 1,
+            "IsExecutable": true,
+            "ActionTitle": "坟冢爆射+"
+          },
+          "expectedPet": {
+            "CurrentHp": 5,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 5,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              1,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              0
+            ],
+            [
+              12,
+              13,
+              14
+            ],
+            [
+              10,
+              11,
+              3
+            ],
+            [],
+            [
+              2
+            ]
+          ],
+          "actualPiles": [
+            [
+              1,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              0
+            ],
+            [
+              12,
+              13,
+              14
+            ],
+            [
+              10,
+              11,
+              3
+            ],
+            [],
+            [
+              2
+            ]
+          ],
+          "unplaced": [],
+          "expectedCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            }
+          ],
+          "actualCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            }
+          ],
+          "expectedRng": {
+            "Shuffle": 14,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 14,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        },
+        {
+          "action": {
+            "Kind": 0,
+            "Turn": 1,
+            "CardId": "CAPTURE_SPIRIT",
+            "CardOccurrence": 0,
+            "TargetIndex": 0,
+            "TargetCombatId": 1,
+            "CardTitle": "捕捉灵魂+",
+            "TargetName": "机甲骑士",
+            "Choice": null,
+            "NestedChoices": null,
+            "NestedChoicesBeforePrimary": 0,
+            "PotionSlot": -1,
+            "PotionId": "",
+            "PotionTitle": "",
+            "TurnStartChoices": null,
+            "RelicEffects": null,
+            "ReplayCount": 0,
+            "CardStateKey": "CAPTURE_SPIRIT+1|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=Cards=4;Damage=4|-|:0|baselib=-",
+            "CardStateOccurrence": 0,
+            "EndsPlayerTurn": false,
+            "CardUpgradeLevel": 1,
+            "IsExecutable": true,
+            "ActionTitle": "捕捉灵魂+"
+          },
+          "expectedPet": {
+            "CurrentHp": 5,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 5,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              0
+            ],
+            [
+              12,
+              16,
+              17,
+              13,
+              14,
+              15,
+              18
+            ],
+            [
+              10,
+              11,
+              3,
+              1
+            ],
+            [],
+            [
+              2
+            ]
+          ],
+          "actualPiles": [
+            [
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              0
+            ],
+            [
+              12,
+              16,
+              17,
+              13,
+              14,
+              15,
+              18
+            ],
+            [
+              10,
+              11,
+              3,
+              1
+            ],
+            [],
+            [
+              2
+            ]
+          ],
+          "unplaced": [],
+          "expectedCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            }
+          ],
+          "actualCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            }
+          ],
+          "expectedRng": {
+            "Shuffle": 18,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 18,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        },
+        {
+          "action": {
+            "Kind": 0,
+            "Turn": 1,
+            "CardId": "WISP",
+            "CardOccurrence": 0,
+            "TargetIndex": -1,
+            "TargetCombatId": null,
+            "CardTitle": "鬼火",
+            "TargetName": "",
+            "Choice": null,
+            "NestedChoices": null,
+            "NestedChoicesBeforePrimary": 0,
+            "PotionSlot": -1,
+            "PotionId": "",
+            "PotionTitle": "",
+            "TurnStartChoices": null,
+            "RelicEffects": null,
+            "ReplayCount": 0,
+            "CardStateKey": "WISP+0|energy=False:0|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=Exhaust|vars=Energy=1|-|:0|baselib=-",
+            "CardStateOccurrence": 0,
+            "EndsPlayerTurn": false,
+            "CardUpgradeLevel": 0,
+            "IsExecutable": true,
+            "ActionTitle": "鬼火"
+          },
+          "expectedPet": {
+            "CurrentHp": 5,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 5,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              4,
+              5,
+              7,
+              8,
+              9,
+              0
+            ],
+            [
+              12,
+              16,
+              17,
+              13,
+              14,
+              15,
+              18
+            ],
+            [
+              10,
+              11,
+              3,
+              1
+            ],
+            [],
+            [
+              2,
+              6
+            ]
+          ],
+          "actualPiles": [
+            [
+              4,
+              5,
+              7,
+              8,
+              9,
+              0
+            ],
+            [
+              12,
+              16,
+              17,
+              13,
+              14,
+              15,
+              18
+            ],
+            [
+              10,
+              11,
+              3,
+              1
+            ],
+            [],
+            [
+              2,
+              6
+            ]
+          ],
+          "unplaced": [],
+          "expectedCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            }
+          ],
+          "actualCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            }
+          ],
+          "expectedRng": {
+            "Shuffle": 18,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 18,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        },
+        {
+          "action": {
+            "Kind": 0,
+            "Turn": 1,
+            "CardId": "DEFILE",
+            "CardOccurrence": 1,
+            "TargetIndex": 0,
+            "TargetCombatId": 1,
+            "CardTitle": "玷污+",
+            "TargetName": "机甲骑士",
+            "Choice": null,
+            "NestedChoices": null,
+            "NestedChoicesBeforePrimary": 0,
+            "PotionSlot": -1,
+            "PotionId": "",
+            "PotionTitle": "",
+            "TurnStartChoices": null,
+            "RelicEffects": null,
+            "ReplayCount": 0,
+            "CardStateKey": "DEFILE+1|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=Ethereal|vars=Damage=17|-|:0|baselib=-",
+            "CardStateOccurrence": 0,
+            "EndsPlayerTurn": false,
+            "CardUpgradeLevel": 1,
+            "IsExecutable": true,
+            "ActionTitle": "玷污+"
+          },
+          "expectedPet": {
+            "CurrentHp": 5,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 5,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              4,
+              7,
+              8,
+              9,
+              0
+            ],
+            [
+              12,
+              16,
+              17,
+              13,
+              14,
+              15,
+              18
+            ],
+            [
+              10,
+              11,
+              3,
+              1,
+              5
+            ],
+            [],
+            [
+              2,
+              6
+            ]
+          ],
+          "actualPiles": [
+            [
+              4,
+              7,
+              8,
+              9,
+              0
+            ],
+            [
+              12,
+              16,
+              17,
+              13,
+              14,
+              15,
+              18
+            ],
+            [
+              10,
+              11,
+              3,
+              1,
+              5
+            ],
+            [],
+            [
+              2,
+              6
+            ]
+          ],
+          "unplaced": [],
+          "expectedCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            }
+          ],
+          "actualCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            }
+          ],
+          "expectedRng": {
+            "Shuffle": 18,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 18,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        },
+        {
+          "action": {
+            "Kind": 2,
+            "Turn": 1,
+            "CardId": "",
+            "CardOccurrence": 0,
+            "TargetIndex": -1,
+            "TargetCombatId": null,
+            "CardTitle": "",
+            "TargetName": "",
+            "Choice": null,
+            "NestedChoices": null,
+            "NestedChoicesBeforePrimary": 0,
+            "PotionSlot": -1,
+            "PotionId": "",
+            "PotionTitle": "",
+            "TurnStartChoices": [
+              {
+                "Effect": 2,
+                "SourcePile": 2,
+                "Cards": [
+                  {
+                    "CardId": "WISP",
+                    "UpgradeLevel": 1,
+                    "StateKey": "WISP+1|energy=False:0|stars=False:-1|replay=0|exhaust=False|sly=False|retain=True|deck=False|keywords=Exhaust,Retain|vars=Energy=1|-|:0|baselib=-",
+                    "SourceOccurrence": 0,
+                    "OptionOccurrence": 0,
+                    "Title": "鬼火+"
+                  }
+                ],
+                "SourceId": "TOOLS_OF_THE_TRADE_POWER",
+                "ContextId": "",
+                "Timing": 3
+              }
+            ],
+            "RelicEffects": null,
+            "ReplayCount": 0,
+            "CardStateKey": "",
+            "CardStateOccurrence": 0,
+            "EndsPlayerTurn": false,
+            "CardUpgradeLevel": 0,
+            "IsExecutable": false,
+            "ActionTitle": ""
+          },
+          "expectedPet": {
+            "CurrentHp": 1,
+            "MaxHp": 1,
+            "Block": 0
+          },
+          "actualPet": {
+            "CurrentHp": 1,
+            "MaxHp": 1,
+            "Block": 0
+          },
+          "expectedPiles": [
+            [
+              12,
+              16,
+              17,
+              13,
+              14,
+              15
+            ],
+            [
+              18
+            ],
+            [
+              10,
+              11,
+              3,
+              1,
+              5,
+              9,
+              0,
+              7
+            ],
+            [],
+            [
+              2,
+              6,
+              4,
+              8
+            ]
+          ],
+          "actualPiles": [
+            [
+              12,
+              16,
+              17,
+              13,
+              14,
+              15
+            ],
+            [
+              18
+            ],
+            [
+              10,
+              11,
+              3,
+              1,
+              5,
+              9,
+              0,
+              7
+            ],
+            [],
+            [
+              2,
+              6,
+              4,
+              8
+            ]
+          ],
+          "unplaced": [],
+          "expectedCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            }
+          ],
+          "actualCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            }
+          ],
+          "expectedRng": {
+            "Shuffle": 18,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 18,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        },
+        {
+          "action": {
+            "Kind": 2,
+            "Turn": 2,
+            "CardId": "",
+            "CardOccurrence": 0,
+            "TargetIndex": -1,
+            "TargetCombatId": null,
+            "CardTitle": "",
+            "TargetName": "",
+            "Choice": null,
+            "NestedChoices": null,
+            "NestedChoicesBeforePrimary": 0,
+            "PotionSlot": -1,
+            "PotionId": "",
+            "PotionTitle": "",
+            "TurnStartChoices": [
+              {
+                "Effect": 0,
+                "SourcePile": 1,
+                "Cards": [
+                  {
+                    "CardId": "DEFILE",
+                    "UpgradeLevel": 1,
+                    "StateKey": "DEFILE+1|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=Ethereal|vars=Damage=17|-|:0|baselib=-",
+                    "SourceOccurrence": 0,
+                    "OptionOccurrence": 0,
+                    "Title": "玷污+"
+                  }
+                ],
+                "SourceId": "STRATAGEM_POWER",
+                "ContextId": "",
+                "Timing": 3
+              },
+              {
+                "Effect": 2,
+                "SourcePile": 2,
+                "Cards": [
+                  {
+                    "CardId": "BURN",
+                    "UpgradeLevel": 0,
+                    "StateKey": "BURN+0|energy=False:-1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=Unplayable|vars=Damage=2|-|:0|baselib=-",
+                    "SourceOccurrence": 0,
+                    "OptionOccurrence": 0,
+                    "Title": "灼伤"
+                  }
+                ],
+                "SourceId": "TOOLS_OF_THE_TRADE_POWER",
+                "ContextId": "",
+                "Timing": 3
+              }
+            ],
+            "RelicEffects": null,
+            "ReplayCount": 0,
+            "CardStateKey": "",
+            "CardStateOccurrence": 0,
+            "EndsPlayerTurn": false,
+            "CardUpgradeLevel": 0,
+            "IsExecutable": false,
+            "ActionTitle": ""
+          },
+          "expectedPet": {
+            "CurrentHp": 1,
+            "MaxHp": 1,
+            "Block": 0
+          },
+          "actualPet": {
+            "CurrentHp": 1,
+            "MaxHp": 1,
+            "Block": 0
+          },
+          "expectedPiles": [
+            [
+              20,
+              21,
+              22,
+              18,
+              5,
+              10,
+              9,
+              17,
+              1
+            ],
+            [
+              14,
+              13,
+              7,
+              11,
+              0,
+              15,
+              3,
+              16,
+              12
+            ],
+            [
+              19
+            ],
+            [],
+            [
+              2,
+              6,
+              4,
+              8
+            ]
+          ],
+          "actualPiles": [
+            [
+              20,
+              21,
+              22,
+              18,
+              5,
+              10,
+              9,
+              17,
+              1
+            ],
+            [
+              14,
+              13,
+              7,
+              11,
+              0,
+              15,
+              3,
+              16,
+              12
+            ],
+            [
+              19
+            ],
+            [],
+            [
+              2,
+              6,
+              4,
+              8
+            ]
+          ],
+          "unplaced": [],
+          "expectedCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 14878964182043971459,
+              "Second": 10798059761406717539
+            },
+            {
+              "First": 14878964182043971459,
+              "Second": 10798059761406717539
+            },
+            {
+              "First": 14878964182043971459,
+              "Second": 10798059761406717539
+            },
+            {
+              "First": 14878964182043971459,
+              "Second": 10798059761406717539
+            }
+          ],
+          "actualCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 14878964182043971459,
+              "Second": 10798059761406717539
+            },
+            {
+              "First": 14878964182043971459,
+              "Second": 10798059761406717539
+            },
+            {
+              "First": 14878964182043971459,
+              "Second": 10798059761406717539
+            },
+            {
+              "First": 14878964182043971459,
+              "Second": 10798059761406717539
+            }
+          ],
+          "expectedRng": {
+            "Shuffle": 31,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 31,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        }
+      ]
+    },
+    {
+      "case": "native-v5",
+      "mode": 1,
+      "branches": 12,
+      "nativeChoiceObservations": 0,
+      "actions": [
+        {
+          "action": {
+            "Kind": 0,
+            "Turn": 3,
+            "CardId": "GRAVEBLAST",
+            "CardOccurrence": 0,
+            "TargetIndex": 0,
+            "TargetCombatId": 1,
+            "CardTitle": "坟冢爆射",
+            "TargetName": "机甲骑士",
+            "Choice": null,
+            "NestedChoices": null,
+            "NestedChoicesBeforePrimary": 0,
+            "PotionSlot": -1,
+            "PotionId": "",
+            "PotionTitle": "",
+            "TurnStartChoices": null,
+            "RelicEffects": null,
+            "ReplayCount": 0,
+            "CardStateKey": "GRAVEBLAST+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=Exhaust|vars=Damage=4|-|:0|baselib=-",
+            "CardStateOccurrence": 0,
+            "EndsPlayerTurn": false,
+            "CardUpgradeLevel": 0,
+            "IsExecutable": true,
+            "ActionTitle": "坟冢爆射"
+          },
+          "expectedPet": {
+            "CurrentHp": 0,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 0,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              0,
+              1,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9
+            ],
+            [],
+            [],
+            [],
+            [
+              2
+            ]
+          ],
+          "actualPiles": [
+            [
+              0,
+              1,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9
+            ],
+            [],
+            [],
+            [],
+            [
+              2
+            ]
+          ],
+          "unplaced": [],
+          "expectedCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            }
+          ],
+          "actualCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            }
+          ],
+          "expectedRng": {
+            "Shuffle": 31,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 31,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        },
+        {
+          "action": {
+            "Kind": 0,
+            "Turn": 3,
+            "CardId": "CAPTURE_SPIRIT",
+            "CardOccurrence": 0,
+            "TargetIndex": 0,
+            "TargetCombatId": 1,
+            "CardTitle": "捕捉灵魂",
+            "TargetName": "机甲骑士",
+            "Choice": null,
+            "NestedChoices": null,
+            "NestedChoicesBeforePrimary": 0,
+            "PotionSlot": -1,
+            "PotionId": "",
+            "PotionTitle": "",
+            "TurnStartChoices": null,
+            "RelicEffects": null,
+            "ReplayCount": 0,
+            "CardStateKey": "CAPTURE_SPIRIT+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=Cards=3;Damage=3|-|:0|baselib=-",
+            "CardStateOccurrence": 0,
+            "EndsPlayerTurn": false,
+            "CardUpgradeLevel": 0,
+            "IsExecutable": true,
+            "ActionTitle": "捕捉灵魂"
+          },
+          "expectedPet": {
+            "CurrentHp": 0,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 0,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              1,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9
+            ],
+            [
+              12,
+              10,
+              11
+            ],
+            [
+              0
+            ],
+            [],
+            [
+              2
+            ]
+          ],
+          "actualPiles": [
+            [
+              1,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9
+            ],
+            [
+              12,
+              10,
+              11
+            ],
+            [
+              0
+            ],
+            [],
+            [
+              2
+            ]
+          ],
+          "unplaced": [],
+          "expectedCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            }
+          ],
+          "actualCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            }
+          ],
+          "expectedRng": {
+            "Shuffle": 34,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 34,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        },
+        {
+          "action": {
+            "Kind": 0,
+            "Turn": 3,
+            "CardId": "GRAVEBLAST",
+            "CardOccurrence": 0,
+            "TargetIndex": 0,
+            "TargetCombatId": 1,
+            "CardTitle": "坟冢爆射+",
+            "TargetName": "机甲骑士",
+            "Choice": {
+              "Effect": 0,
+              "SourcePile": 3,
+              "Cards": [
+                {
+                  "CardId": "CAPTURE_SPIRIT",
+                  "UpgradeLevel": 0,
+                  "StateKey": "CAPTURE_SPIRIT+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=Cards=3;Damage=3|-|:0|baselib=-",
+                  "SourceOccurrence": 0,
+                  "OptionOccurrence": 0,
+                  "Title": "捕捉灵魂"
+                }
+              ],
+              "SourceId": "",
+              "ContextId": "",
+              "Timing": 0
+            },
+            "NestedChoices": null,
+            "NestedChoicesBeforePrimary": 0,
+            "PotionSlot": -1,
+            "PotionId": "",
+            "PotionTitle": "",
+            "TurnStartChoices": null,
+            "RelicEffects": null,
+            "ReplayCount": 0,
+            "CardStateKey": "GRAVEBLAST+1|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=Damage=6|-|:0|baselib=-",
+            "CardStateOccurrence": 0,
+            "EndsPlayerTurn": false,
+            "CardUpgradeLevel": 1,
+            "IsExecutable": true,
+            "ActionTitle": "坟冢爆射+"
+          },
+          "expectedPet": {
+            "CurrentHp": 0,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 0,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              1,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              0
+            ],
+            [
+              12,
+              10,
+              11
+            ],
+            [
+              3
+            ],
+            [],
+            [
+              2
+            ]
+          ],
+          "actualPiles": [
+            [
+              1,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              0
+            ],
+            [
+              12,
+              10,
+              11
+            ],
+            [
+              3
+            ],
+            [],
+            [
+              2
+            ]
+          ],
+          "unplaced": [],
+          "expectedCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            }
+          ],
+          "actualCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            }
+          ],
+          "expectedRng": {
+            "Shuffle": 34,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 34,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        },
+        {
+          "action": {
+            "Kind": 0,
+            "Turn": 3,
+            "CardId": "CAPTURE_SPIRIT",
+            "CardOccurrence": 0,
+            "TargetIndex": 0,
+            "TargetCombatId": 1,
+            "CardTitle": "捕捉灵魂+",
+            "TargetName": "机甲骑士",
+            "Choice": null,
+            "NestedChoices": null,
+            "NestedChoicesBeforePrimary": 0,
+            "PotionSlot": -1,
+            "PotionId": "",
+            "PotionTitle": "",
+            "TurnStartChoices": null,
+            "RelicEffects": null,
+            "ReplayCount": 0,
+            "CardStateKey": "CAPTURE_SPIRIT+1|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=Cards=4;Damage=4|-|:0|baselib=-",
+            "CardStateOccurrence": 0,
+            "EndsPlayerTurn": false,
+            "CardUpgradeLevel": 1,
+            "IsExecutable": true,
+            "ActionTitle": "捕捉灵魂+"
+          },
+          "expectedPet": {
+            "CurrentHp": 0,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 0,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              0
+            ],
+            [
+              16,
+              13,
+              14,
+              15,
+              12,
+              10,
+              11
+            ],
+            [
+              3,
+              1
+            ],
+            [],
+            [
+              2
+            ]
+          ],
+          "actualPiles": [
+            [
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              0
+            ],
+            [
+              16,
+              13,
+              14,
+              15,
+              12,
+              10,
+              11
+            ],
+            [
+              3,
+              1
+            ],
+            [],
+            [
+              2
+            ]
+          ],
+          "unplaced": [],
+          "expectedCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            }
+          ],
+          "actualCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            }
+          ],
+          "expectedRng": {
+            "Shuffle": 38,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 38,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        },
+        {
+          "action": {
+            "Kind": 0,
+            "Turn": 3,
+            "CardId": "WISP",
+            "CardOccurrence": 0,
+            "TargetIndex": -1,
+            "TargetCombatId": null,
+            "CardTitle": "鬼火",
+            "TargetName": "",
+            "Choice": null,
+            "NestedChoices": null,
+            "NestedChoicesBeforePrimary": 0,
+            "PotionSlot": -1,
+            "PotionId": "",
+            "PotionTitle": "",
+            "TurnStartChoices": null,
+            "RelicEffects": null,
+            "ReplayCount": 0,
+            "CardStateKey": "WISP+0|energy=False:0|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=Exhaust|vars=Energy=1|-|:0|baselib=-",
+            "CardStateOccurrence": 0,
+            "EndsPlayerTurn": false,
+            "CardUpgradeLevel": 0,
+            "IsExecutable": true,
+            "ActionTitle": "鬼火"
+          },
+          "expectedPet": {
+            "CurrentHp": 0,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 0,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              4,
+              5,
+              7,
+              8,
+              9,
+              0
+            ],
+            [
+              16,
+              13,
+              14,
+              15,
+              12,
+              10,
+              11
+            ],
+            [
+              3,
+              1
+            ],
+            [],
+            [
+              2,
+              6
+            ]
+          ],
+          "actualPiles": [
+            [
+              4,
+              5,
+              7,
+              8,
+              9,
+              0
+            ],
+            [
+              16,
+              13,
+              14,
+              15,
+              12,
+              10,
+              11
+            ],
+            [
+              3,
+              1
+            ],
+            [],
+            [
+              2,
+              6
+            ]
+          ],
+          "unplaced": [],
+          "expectedCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            }
+          ],
+          "actualCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            }
+          ],
+          "expectedRng": {
+            "Shuffle": 38,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 38,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        },
+        {
+          "action": {
+            "Kind": 0,
+            "Turn": 3,
+            "CardId": "DEFILE",
+            "CardOccurrence": 1,
+            "TargetIndex": 0,
+            "TargetCombatId": 1,
+            "CardTitle": "玷污+",
+            "TargetName": "机甲骑士",
+            "Choice": null,
+            "NestedChoices": null,
+            "NestedChoicesBeforePrimary": 0,
+            "PotionSlot": -1,
+            "PotionId": "",
+            "PotionTitle": "",
+            "TurnStartChoices": null,
+            "RelicEffects": null,
+            "ReplayCount": 0,
+            "CardStateKey": "DEFILE+1|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=Ethereal|vars=Damage=17|-|:0|baselib=-",
+            "CardStateOccurrence": 0,
+            "EndsPlayerTurn": false,
+            "CardUpgradeLevel": 1,
+            "IsExecutable": true,
+            "ActionTitle": "玷污+"
+          },
+          "expectedPet": {
+            "CurrentHp": 0,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 0,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              4,
+              7,
+              8,
+              9,
+              0
+            ],
+            [
+              16,
+              13,
+              14,
+              15,
+              12,
+              10,
+              11
+            ],
+            [
+              3,
+              1,
+              5
+            ],
+            [],
+            [
+              2,
+              6
+            ]
+          ],
+          "actualPiles": [
+            [
+              4,
+              7,
+              8,
+              9,
+              0
+            ],
+            [
+              16,
+              13,
+              14,
+              15,
+              12,
+              10,
+              11
+            ],
+            [
+              3,
+              1,
+              5
+            ],
+            [],
+            [
+              2,
+              6
+            ]
+          ],
+          "unplaced": [],
+          "expectedCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            }
+          ],
+          "actualCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            }
+          ],
+          "expectedRng": {
+            "Shuffle": 38,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 38,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        },
+        {
+          "action": {
+            "Kind": 2,
+            "Turn": 3,
+            "CardId": "",
+            "CardOccurrence": 0,
+            "TargetIndex": -1,
+            "TargetCombatId": null,
+            "CardTitle": "",
+            "TargetName": "",
+            "Choice": null,
+            "NestedChoices": null,
+            "NestedChoicesBeforePrimary": 0,
+            "PotionSlot": -1,
+            "PotionId": "",
+            "PotionTitle": "",
+            "TurnStartChoices": [
+              {
+                "Effect": 2,
+                "SourcePile": 2,
+                "Cards": [
+                  {
+                    "CardId": "WISP",
+                    "UpgradeLevel": 1,
+                    "StateKey": "WISP+1|energy=False:0|stars=False:-1|replay=0|exhaust=False|sly=False|retain=True|deck=False|keywords=Exhaust,Retain|vars=Energy=1|-|:0|baselib=-",
+                    "SourceOccurrence": 0,
+                    "OptionOccurrence": 0,
+                    "Title": "鬼火+"
+                  }
+                ],
+                "SourceId": "TOOLS_OF_THE_TRADE_POWER",
+                "ContextId": "",
+                "Timing": 3
+              }
+            ],
+            "RelicEffects": null,
+            "ReplayCount": 0,
+            "CardStateKey": "",
+            "CardStateOccurrence": 0,
+            "EndsPlayerTurn": false,
+            "CardUpgradeLevel": 0,
+            "IsExecutable": false,
+            "ActionTitle": ""
+          },
+          "expectedPet": {
+            "CurrentHp": 1,
+            "MaxHp": 1,
+            "Block": 0
+          },
+          "actualPet": {
+            "CurrentHp": 1,
+            "MaxHp": 1,
+            "Block": 0
+          },
+          "expectedPiles": [
+            [
+              9,
+              16,
+              13,
+              14,
+              15,
+              12,
+              10
+            ],
+            [
+              11
+            ],
+            [
+              3,
+              1,
+              5,
+              0,
+              7
+            ],
+            [],
+            [
+              2,
+              6,
+              4,
+              8
+            ]
+          ],
+          "actualPiles": [
+            [
+              9,
+              16,
+              13,
+              14,
+              15,
+              12,
+              10
+            ],
+            [
+              11
+            ],
+            [
+              3,
+              1,
+              5,
+              0,
+              7
+            ],
+            [],
+            [
+              2,
+              6,
+              4,
+              8
+            ]
+          ],
+          "unplaced": [],
+          "expectedCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            }
+          ],
+          "actualCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            }
+          ],
+          "expectedRng": {
+            "Shuffle": 38,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 38,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        },
+        {
+          "action": {
+            "Kind": 2,
+            "Turn": 4,
+            "CardId": "",
+            "CardOccurrence": 0,
+            "TargetIndex": -1,
+            "TargetCombatId": null,
+            "CardTitle": "",
+            "TargetName": "",
+            "Choice": null,
+            "NestedChoices": null,
+            "NestedChoicesBeforePrimary": 0,
+            "PotionSlot": -1,
+            "PotionId": "",
+            "PotionTitle": "",
+            "TurnStartChoices": [
+              {
+                "Effect": 0,
+                "SourcePile": 1,
+                "Cards": [
+                  {
+                    "CardId": "DEFILE",
+                    "UpgradeLevel": 1,
+                    "StateKey": "DEFILE+1|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=Ethereal|vars=Damage=17|-|:0|baselib=-",
+                    "SourceOccurrence": 0,
+                    "OptionOccurrence": 0,
+                    "Title": "玷污+"
+                  }
+                ],
+                "SourceId": "STRATAGEM_POWER",
+                "ContextId": "",
+                "Timing": 3
+              },
+              {
+                "Effect": 2,
+                "SourcePile": 2,
+                "Cards": [
+                  {
+                    "CardId": "WISP",
+                    "UpgradeLevel": 1,
+                    "StateKey": "WISP+1|energy=False:0|stars=False:-1|replay=0|exhaust=False|sly=False|retain=True|deck=False|keywords=Exhaust,Retain|vars=Energy=1|-|:0|baselib=-",
+                    "SourceOccurrence": 0,
+                    "OptionOccurrence": 0,
+                    "Title": "鬼火+"
+                  }
+                ],
+                "SourceId": "TOOLS_OF_THE_TRADE_POWER",
+                "ContextId": "",
+                "Timing": 3
+              }
+            ],
+            "RelicEffects": null,
+            "ReplayCount": 0,
+            "CardStateKey": "",
+            "CardStateOccurrence": 0,
+            "EndsPlayerTurn": false,
+            "CardUpgradeLevel": 0,
+            "IsExecutable": false,
+            "ActionTitle": ""
+          },
+          "expectedPet": {
+            "CurrentHp": 1,
+            "MaxHp": 1,
+            "Block": 0
+          },
+          "actualPet": {
+            "CurrentHp": 1,
+            "MaxHp": 1,
+            "Block": 0
+          },
+          "expectedPiles": [
+            [
+              17,
+              18,
+              19,
+              20,
+              11,
+              5,
+              15,
+              1,
+              10
+            ],
+            [
+              7,
+              3,
+              12,
+              13,
+              0,
+              14,
+              16
+            ],
+            [
+              9
+            ],
+            [],
+            [
+              2,
+              6,
+              4,
+              8
+            ]
+          ],
+          "actualPiles": [
+            [
+              17,
+              18,
+              19,
+              20,
+              11,
+              5,
+              15,
+              1,
+              10
+            ],
+            [
+              7,
+              3,
+              12,
+              13,
+              0,
+              14,
+              16
+            ],
+            [
+              9
+            ],
+            [],
+            [
+              2,
+              6,
+              4,
+              8
+            ]
+          ],
+          "unplaced": [],
+          "expectedCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 14878964182043971459,
+              "Second": 10798059761406717539
+            },
+            {
+              "First": 14878964182043971459,
+              "Second": 10798059761406717539
+            },
+            {
+              "First": 14878964182043971459,
+              "Second": 10798059761406717539
+            },
+            {
+              "First": 14878964182043971459,
+              "Second": 10798059761406717539
+            }
+          ],
+          "actualCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 14208392928089346503,
+              "Second": 14579397698795334011
+            },
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 8719072669882673433,
+              "Second": 8331495198973208459
+            },
+            {
+              "First": 13717034693945775477,
+              "Second": 3969423766755656921
+            },
+            {
+              "First": 7773359614924350830,
+              "Second": 12105812713316622320
+            },
+            {
+              "First": 17147524456552577568,
+              "Second": 676506618991570103
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 236665275909989851,
+              "Second": 11758093946527536544
+            },
+            {
+              "First": 6011287647322865221,
+              "Second": 12022567908578206058
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 14878964182043971459,
+              "Second": 10798059761406717539
+            },
+            {
+              "First": 14878964182043971459,
+              "Second": 10798059761406717539
+            },
+            {
+              "First": 14878964182043971459,
+              "Second": 10798059761406717539
+            },
+            {
+              "First": 14878964182043971459,
+              "Second": 10798059761406717539
+            }
+          ],
+          "expectedRng": {
+            "Shuffle": 48,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 48,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        }
+      ]
+    },
+    {
+      "case": "capture-terminal-v4",
+      "mode": 0,
+      "branches": 1,
+      "nativeChoiceObservations": 0,
+      "actions": [
+        {
+          "action": {
+            "Kind": 0,
+            "Turn": 1,
+            "CardId": "CAPTURE_SPIRIT",
+            "CardOccurrence": 0,
+            "TargetIndex": 0,
+            "TargetCombatId": 1,
+            "CardTitle": "捕捉灵魂",
+            "TargetName": "机甲骑士",
+            "Choice": null,
+            "NestedChoices": null,
+            "NestedChoicesBeforePrimary": 0,
+            "PotionSlot": -1,
+            "PotionId": "",
+            "PotionTitle": "",
+            "TurnStartChoices": null,
+            "RelicEffects": null,
+            "ReplayCount": 0,
+            "CardStateKey": "CAPTURE_SPIRIT+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=Cards=3;Damage=3|-|:0|baselib=-",
+            "CardStateOccurrence": 0,
+            "EndsPlayerTurn": false,
+            "CardUpgradeLevel": 0,
+            "IsExecutable": true,
+            "ActionTitle": "捕捉灵魂"
+          },
+          "expectedPet": {
+            "CurrentHp": 5,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 5,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [],
+            [],
+            [
+              1,
+              2
+            ],
+            [
+              0
+            ],
+            []
+          ],
+          "actualPiles": [
+            [],
+            [],
+            [
+              1,
+              2
+            ],
+            [
+              0
+            ],
+            []
+          ],
+          "unplaced": [
+            3,
+            4,
+            5
+          ],
+          "expectedCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            }
+          ],
+          "actualCards": [
+            {
+              "First": 1921926131799216110,
+              "Second": 12783689162209198104
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            },
+            {
+              "First": 9666401226219499661,
+              "Second": 5085834469656819817
+            }
+          ],
+          "expectedRng": {
+            "Shuffle": 11,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 11,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        }
+      ]
+    },
+    {
+      "case": "graveblast-terminal-v5",
+      "mode": 0,
+      "branches": 1,
+      "nativeChoiceObservations": 0,
+      "actions": [
+        {
+          "action": {
+            "Kind": 0,
+            "Turn": 1,
+            "CardId": "GRAVEBLAST",
+            "CardOccurrence": 0,
+            "TargetIndex": 0,
+            "TargetCombatId": 1,
+            "CardTitle": "坟冢爆射",
+            "TargetName": "机甲骑士",
+            "Choice": null,
+            "NestedChoices": null,
+            "NestedChoicesBeforePrimary": 0,
+            "PotionSlot": -1,
+            "PotionId": "",
+            "PotionTitle": "",
+            "TurnStartChoices": null,
+            "RelicEffects": null,
+            "ReplayCount": 0,
+            "CardStateKey": "GRAVEBLAST+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=Exhaust|vars=Damage=4|-|:0|baselib=-",
+            "CardStateOccurrence": 0,
+            "EndsPlayerTurn": false,
+            "CardUpgradeLevel": 0,
+            "IsExecutable": true,
+            "ActionTitle": "坟冢爆射"
+          },
+          "expectedPet": {
+            "CurrentHp": 5,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 5,
+            "MaxHp": 7,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [],
+            [],
+            [
+              1,
+              2
+            ],
+            [
+              0
+            ],
+            []
+          ],
+          "actualPiles": [
+            [],
+            [],
+            [
+              1,
+              2
+            ],
+            [
+              0
+            ],
+            []
+          ],
+          "unplaced": [],
+          "expectedCards": [
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            }
+          ],
+          "actualCards": [
+            {
+              "First": 14754680717326830224,
+              "Second": 9731774500663729204
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            },
+            {
+              "First": 5197576652225766747,
+              "Second": 8459356018999145213
+            }
+          ],
+          "expectedRng": {
+            "Shuffle": 11,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 11,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        }
+      ]
+    }
+  ],
+  "failureAnalysis": [
+    "Capture v1 omitted generated identities whose native pile insertion was refused by IsEnding. Added Unplaced values and retained generated/resolved history without RNG.",
+    "Graveblast v1 disagreed with the legacy planned choice. v4 matched that old plan but native never requested the choice. Native FromCombatPile checks IsEnding; v5 fixes the legacy Graveblast spec and skips the compact selector.",
+    "History is immutable scalar metadata. Unplaced legacy identity/type/upgrade/owner are checked directly; full template fingerprints are checked against native generated models before teardown."
+  ],
+  "validation": {
+    "linuxBoundaries": "Passed: search_files=93",
+    "powerShellBoundaries": "Maintained, not executed",
+    "coverageCatalog": "No mirror or registry metadata change; not rerun"
+  },
+  "limitations": [
+    "Original full Necrobinder input and dynamic closure remain incomplete",
+    "No speedup claim from request elapsed time",
+    "No Steam launch, install, packaging, release or remote push"
+  ]
+}

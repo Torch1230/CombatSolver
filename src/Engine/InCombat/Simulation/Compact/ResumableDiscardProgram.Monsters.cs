@@ -46,7 +46,9 @@ internal sealed partial class ResumableDiscardProgram
                         CommitPower(source, owner, BasicPowerKind.Strength, instruction.Amount, owner);
                     break;
                 case MonsterInstructionKind.GenerateCards:
-                    GenerateCards(instruction.CardTemplate, instruction.Amount, creator: -1);
+                    // Native AddToCombatAndPreview checks its recipient before creating
+                    // cards; the card-level AddGeneratedCards command has a later gate.
+                    if (Creature(0).CurrentHp > 0) GenerateCards(instruction.CardTemplate, instruction.Amount, creator: -1);
                     break;
                 default:
                     throw new InvalidOperationException("Unknown captured monster command.");
@@ -56,11 +58,19 @@ internal sealed partial class ResumableDiscardProgram
 
     private void GenerateCards(int template, int count, int creator, CardGenerationPlacement placement = CardGenerationPlacement.Hand)
     {
-        for (int index = 0; index < count && !Ending; index++)
+        for (int index = 0; index < count; index++)
         {
             int created = CardCount;
             Card definition = _definitions[template];
             _cardInstances.Append(State, [(long)(uint)template | (long)definition.CapturedX << 32]);
+            if (Ending)
+            {
+                // Generation history survives the native ending gate on pile insertion.
+                // These identities never entered combat and are not removed card models.
+                _piles[(int)Pile.Unplaced].Append(State, [created]);
+                Emit(EventKind.Generated, created, -1, target: creator, flags: (int)Pile.Unplaced);
+                continue;
+            }
             Pile destination = placement == CardGenerationPlacement.RandomDraw ? Pile.Draw
                 : Count(Pile.Hand) < 10 ? Pile.Hand : Pile.Discard;
             int position = Count(destination);

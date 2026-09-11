@@ -10,7 +10,7 @@ internal sealed partial class ResumableDiscardProgram
     internal readonly record struct Card(int Cost, CardEffectProgram Effects, bool Sly = false,
         Pile ResultPile = Pile.Discard, bool CostsX = false, int CapturedX = 0, CardCategory Category = CardCategory.Other,
         bool Ethereal = false, RandomDrawCost? DrawCost = null, int? HandEndDamage = null, bool Unplayable = false, bool Retain = false, bool SingleTurnSly = false);
-    internal enum Pile { Hand, Draw, Discard, Play, Exhaust, Removed }
+    internal enum Pile { Hand, Draw, Discard, Play, Exhaust, Removed, Unplaced }
     internal enum EventKind { Pay, Start, Draw, Select, SelectedCard, Discard, Block, Finish, Shuffle, ShuffleCard, Retrieve, Damage, DamageBlocked, DamageOverkill, AttackFinish, Death, PowerChange, ResultMoved, Generated, CostChanged, HandEndMoved, HandEndStart, HandEndFinish, BeginSide, ResetEnergy, CleanupCards, CommitPlayerTurnHistory, GainEnergy, DoomApplied, Kill, SummonPet }
     internal readonly record struct Event(EventKind Kind, int Card, int Value, bool Automatic, int Target = -1, int Flags = 0, int Dealer = -1)
     {
@@ -27,7 +27,7 @@ internal sealed partial class ResumableDiscardProgram
     internal enum DamageTraits { Unpowered = 8, Unblockable = 16, NoDealer = 32, NoCard = 64, Poison = 128 }
     private const int EnergySlot = 0, BlockSlot = 1, DepthSlot = 2;
     private const int RngSlot = 4, ShuffleCountSlot = 9;
-    private const int FrameWidth = 22, MaxFrames = 8, PileCount = 6;
+    private const int FrameWidth = 22, MaxFrames = 8, PileCount = 7;
     private const int CardOffset = 0, IpOffset = 1, AutoOffset = 2, BeforeBlockOffset = 3;
     private const int SelectedCountOffset = 4, NextAutoOffset = 5, SelectedOffset = 6;
     private const int DrawIndexOffset = 16, TargetOffset = 17, EffectIndexOffset = 18, EnergyValueOffset = 19;
@@ -68,6 +68,7 @@ internal sealed partial class ResumableDiscardProgram
     internal ValueRng? EnergyCostRng => _drawCosts?.Rng(State);
     internal Pile ResultPile(int card) => Definition(card).ResultPile;
     internal bool CardRemoved(int card) => Contains(Pile.Removed, card);
+    internal bool CardUnplaced(int card) => Contains(Pile.Unplaced, card);
     internal bool CardValuesInvariant => _definitions.All(card => card.ResultPile == Pile.Discard && !card.Ethereal && !card.CostsX && !card.SingleTurnSly
         && !card.Effects.GeneratesCards && !card.Effects.ExhaustsCards && card.DrawCost == null)
         && _monsterMoves?.All(move => !move.GeneratesCards) != false;
@@ -93,10 +94,11 @@ internal sealed partial class ResumableDiscardProgram
         return terminal;
     }
     internal bool Complete => Read(DepthSlot) == 0;
-    internal bool NeedsChoice => !Complete && Read(Frame + IpOffset) is 2 or 6 or 8;
+    internal bool NeedsChoice => !Complete && Read(Frame + IpOffset) is 2 or 6 or 8 or 9;
     internal bool ChoiceRetrieves => NeedsChoice && Read(Frame + IpOffset) == 6;
     internal bool ChoiceExhausts => NeedsChoice && Read(Frame + IpOffset) == 8;
-    internal Pile ChoicePile => ChoiceRetrieves || ChoiceExhausts ? Pile.Draw : Pile.Hand;
+    internal bool ChoiceReturnsFromDiscard => NeedsChoice && Read(Frame + IpOffset) == 9;
+    internal Pile ChoicePile => ChoiceReturnsFromDiscard ? Pile.Discard : ChoiceRetrieves || ChoiceExhausts ? Pile.Draw : Pile.Hand;
     internal int ChoiceCard => NeedsChoice ? Read(Frame + CardOffset) : throw new InvalidOperationException("No pending choice.");
     internal bool ChoiceAutomatic => NeedsChoice && Read(Frame + AutoOffset) != 0;
     internal int ChoiceRequestedCount => NeedsChoice
@@ -336,15 +338,17 @@ internal sealed partial class ResumableDiscardProgram
             if (!Contains(ChoicePile, selected[i]) || selected[..i].Contains(selected[i]))
                 throw new InvalidOperationException("Choice contains an absent or repeated instance.");
         }
-        if (ChoiceExhausts)
+        if (ChoiceExhausts || ChoiceReturnsFromDiscard)
         {
+            bool exhaust = ChoiceExhausts;
             Emit(EventKind.Select, ChoiceCard, selected.Length);
             foreach (int card in selected)
             {
                 Emit(EventKind.SelectedCard, card);
                 if (Ending) continue;
-                Move(card, Pile.Exhaust);
-                Emit(EventKind.ResultMoved, card, (int)Pile.Exhaust);
+                Move(card, exhaust ? Pile.Exhaust : Count(Pile.Hand) < 10 ? Pile.Hand : Pile.Discard);
+                if (exhaust) Emit(EventKind.ResultMoved, card, (int)Pile.Exhaust);
+                else Emit(EventKind.Retrieve, card);
             }
             AdvanceInstruction();
             return;
@@ -388,6 +392,7 @@ internal sealed partial class ResumableDiscardProgram
                 case 2:
                 case 6:
                 case 8:
+                case 9:
                     return;
                 case 3:
                     // Native batch discard moves every selected card and runs its hooks before
@@ -464,6 +469,12 @@ internal sealed partial class ResumableDiscardProgram
             case CardInstructionKind.AttackTarget:
                 Attack(card, Read(Frame + TargetOffset), instruction.Amount);
                 break;
+            case CardInstructionKind.LoseEnemyHp:
+                int receiver = Read(Frame + TargetOffset);
+                if (!Ending && CreaturePresent(receiver) && Creature(receiver).CurrentHp > 0)
+                    RecordDamage(card, receiver, _combat!.Damage(State, receiver, instruction.Amount, unblockable: true),
+                        DamageTraits.Unpowered | DamageTraits.Unblockable);
+                break;
             case CardInstructionKind.GainBlock:
                 GainBlock(card, _powers?.ModifyBlock(State, 0, instruction.Amount) ?? instruction.Amount);
                 break;
@@ -533,6 +544,10 @@ internal sealed partial class ResumableDiscardProgram
                 // An empty native pile has no selector or selected-card command.
                 if (Count(Pile.Draw) == 0 || instruction.Amount == 0) break;
                 State.Write(Frame + IpOffset, 8);
+                return false;
+            case CardInstructionKind.RetrieveFromDiscard:
+                if (Ending || Count(Pile.Discard) == 0 || instruction.Amount == 0) break;
+                State.Write(Frame + IpOffset, 9);
                 return false;
             default:
                 throw new InvalidOperationException("Unknown admitted compact instruction.");

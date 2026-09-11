@@ -1,3 +1,5 @@
+using System.Reflection;
+using HarmonyLib;
 using System.Text.Json;
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.InCombat.Simulation;
@@ -14,9 +16,13 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
+    private sealed record CompactNativePetCardState(MoveStateSnapshot Snapshot, string[] Powers,
+        int[][] Piles, StateFingerprint[] Cards, CreatureVitals Pet);
+
     private async Task AssertCompactPetCardRouteAsync(CombatState combat, Player player, int mode, string label, string evidencePrefix,
         (string Id, int? Upgrade)[] cardSteps, Action<ResumableDiscardProgram, ResumableDiscardProgram, int> assertStep,
-        bool observeDrawExhaust = false)
+        bool observeDrawExhaust = false, Func<PlanAction, ResumableDiscardProgram, bool>? observeNativeChoice = null,
+        int rounds = 2, bool requirePending = true)
     {
         var enemy = combat.Enemies.Single();
         var captured = CombatRootSnapshot.Capture(combat);
@@ -41,7 +47,7 @@ internal sealed partial class UnattendedTestRunner
             var parent = InvokeForcedTerminalReplay(driver, [], null, captured.StartTurnNumber, null);
             try
             {
-                for (int step = 0; step < cardSteps.Length + 2; step++)
+                for (int step = 0; step < cardSteps.Length + rounds; step++)
                 {
                     var node = ForcedTerminalAnnotationNode(parent, null, null) with { ActionCount = step };
                     var before = lane.Freeze();
@@ -87,18 +93,18 @@ internal sealed partial class UnattendedTestRunner
                 if (!lane.State.Freeze().ContentEquals(initial.Open().State.Freeze()))
                     throw new InvalidOperationException("Pet card route rollback leaked summon or selection state.");
                 int pending = AssertCompactReplayBoundaries(captured, display, damage, policy, player, route.Select(item => item.Action).ToArray());
-                if (pending == 0) throw new InvalidOperationException("Pet card route did not exercise suspended turn-start state.");
+                if (requirePending && pending == 0) throw new InvalidOperationException("Pet card route did not exercise suspended turn-start state.");
                 _completedChecks.Add($"{label}:Mode{mode}:OmittedChoices{pending}:FullContinuations");
                 AssertSnapshotEqual(original, CaptureActual(combat, player, enemy), label, "ActualUnchanged");
             }
             finally { parent.ReleaseSimulator(); }
 
-            CompactRouteSample Check(PlanAction action, CombatPredictionSimulator expected, string label)
+            CompactRouteSample Check(PlanAction action, CombatPredictionSimulator expected, string stage)
             {
                 var projected = adapter.Materialize(lane);
                 adapter.AssertValues(lane, expected); adapter.AssertValues(lane, projected);
                 var snapshot = CaptureSimulated(expected, (SimulatedCombatState)expected.State.CombatState, player, enemy);
-                AssertSnapshotEqual(snapshot, CaptureSimulated(projected, (SimulatedCombatState)projected.State.CombatState, player, enemy), label, label);
+                AssertSnapshotEqual(snapshot, CaptureSimulated(projected, (SimulatedCombatState)projected.State.CombatState, player, enemy), label, stage);
                 if (!CompactHistory(expected, adapter).SequenceEqual(CompactHistory(projected, adapter)))
                     throw new InvalidOperationException("Pet card route full history/source differs.");
                 var powers = CompactPowerValues(((SimulatedCombatState)expected.State.CombatState).EffectivePowers()).ToArray();
@@ -106,14 +112,15 @@ internal sealed partial class UnattendedTestRunner
                     throw new InvalidOperationException("Pet card route Power lifecycle fields differ.");
                 AssertCompactRngSet(expected.Rng, projected.Rng);
                 var evaluation = Release(evaluator.Evaluate(expected, lane.PlayerTurn));
-                AssertCompactEvaluation(evaluation, Release(evaluator.Evaluate(projected, lane.PlayerTurn)), label + "/Projection");
+                AssertCompactEvaluation(evaluation, Release(evaluator.Evaluate(projected, lane.PlayerTurn)), stage + "/Projection");
                 reader.Read(lane); uncached.Read(lane);
-                AssertCompactEvaluation(evaluation, evaluator.Evaluate(reader, lane.PlayerTurn), label + "/Reader");
-                AssertCompactEvaluation(evaluation, evaluator.Evaluate(uncached, lane.PlayerTurn), label + "/Uncached");
+                AssertCompactEvaluation(evaluation, evaluator.Evaluate(reader, lane.PlayerTurn), stage + "/Reader");
+                AssertCompactEvaluation(evaluation, evaluator.Evaluate(uncached, lane.PlayerTurn), stage + "/Uncached");
                 var identities = adapter.CaptureCardIdentities(expected).Where(pair => pair.Value >= 0 && !lane.CardRemoved(pair.Value)).OrderBy(pair => pair.Value);
                 return new(action, lane.Freeze(), evaluation, snapshot, powers,
                     Enumerable.Range(0, 5).Select(pile => lane.Cards((ResumableDiscardProgram.Pile)pile)).ToArray(),
-                    identities.Select(pair => CombatBeamSolver.CaptureCardStateFingerprintForTesting(expected.State.FindCard(pair.Key)!)).ToArray(), lane.Terminal);
+                    identities.Select(pair => CombatBeamSolver.CaptureCardStateFingerprintForTesting(lane.CardUnplaced(pair.Value)
+                        ? adapter.CreateGeneratedCard(lane.DefinitionIndex(pair.Value)) : expected.State.FindCard(pair.Key)!)).ToArray(), lane.Terminal);
             }
         }
         await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => Task.Run(() =>
@@ -130,36 +137,104 @@ internal sealed partial class UnattendedTestRunner
         })));
         List<object> evidence = [];
         int nativeResourceChoices = 0;
-        foreach (var expected in route)
+        CompactRouteSample? activeSample = null;
+        PlannedCardSelector? activeSelector = null;
+        CompactNativePetCardState? terminalState = null;
+        MercuryTerminalObservation? terminalObservation = null;
+        MethodInfo? endCombat = null, prefix = null;
+        Harmony? patch = null;
+        if (route.Any(sample => sample.Terminal))
         {
-            var action = expected.Action;
-            var selector = new PlannedCardSelector(action.Kind == PlanActionKind.EndTurn ? action.TurnStartChoices ?? [] : action.GetActionChoicesInExecutionOrder());
-            selector.CaptureBefore(player);
-            var expectedPet = expected.Values.Open().Creature(adapter.Program.PetIndex);
-            var observer = new CompactResourceChoiceObserver(selector, () =>
+            if (_mercuryTerminalObservation != null) throw new InvalidOperationException("A terminal observer is already active.");
+            endCombat = typeof(CombatManager).GetMethods(BindingFlags.Instance | BindingFlags.NonPublic)
+                .Single(method => method.Name == "EndCombatInternal" && method.GetParameters() is [{ ParameterType.Name: "CombatTurnState" }]);
+            prefix = typeof(UnattendedTestRunner).GetMethod(nameof(ObserveMercuryCombatEndPrefix), BindingFlags.Static | BindingFlags.NonPublic)!;
+            patch = new Harmony("CombatSolver.Testing.CompactPetCardRoute." + _request.RunId);
+            terminalObservation = new(this, combat, player, enemy, endCombat.GetParameters()[0].ParameterType.GetProperty("State")!, label, snapshot =>
             {
-                if (!observeDrawExhaust || action.CardId != "CLEANSE") return;
-                var osty = player.Osty!;
-                if (new CreatureVitals(osty.CurrentHp, osty.MaxHp, osty.Block) != expectedPet)
-                    throw new InvalidOperationException("Native pet card route selector must observe the completed summon.");
-                nativeResourceChoices++;
+                activeSelector!.ReconcileImplicitChoices(player);
+                terminalState = CaptureNative(activeSample!, snapshot);
             });
-            using (CardSelectCmd.PushSelector(observer))
+        }
+        try
+        {
+            if (terminalObservation != null)
             {
-                if (action.Kind == PlanActionKind.EndTurn) await AdvanceMercuryActualTurnAsync(combat, player, false);
-                else
+                _mercuryTerminalObservation = terminalObservation;
+                CombatManager.Instance.CombatEnded += terminalObservation.ObserveCombatEnded;
+                patch!.Patch(endCombat!, prefix: new HarmonyMethod(prefix!));
+            }
+            foreach (var expected in route)
+            {
+                var action = expected.Action;
+                var selector = new PlannedCardSelector(action.Kind == PlanActionKind.EndTurn ? action.TurnStartChoices ?? [] : action.GetActionChoicesInExecutionOrder());
+                selector.CaptureBefore(player);
+                activeSample = expected; activeSelector = selector;
+                var expectedPet = expected.Values.Open().Creature(adapter.Program.PetIndex);
+                var observer = new CompactResourceChoiceObserver(selector, () =>
                 {
-                    var card = CombatBeamSolver.FindCardForReplay(player.PlayerCombatState!.Hand.Cards.Select(PredictedCard.FromGenerated).ToArray(), action)
-                        ?? throw new InvalidOperationException("Native pet card route instance is absent.");
-                    if (!card.Original.TryManualPlay(null)) throw new InvalidOperationException("Native pet card route was rejected.");
-                    await RunManager.Instance.ActionExecutor.FinishedExecutingActions();
+                    if (observeNativeChoice?.Invoke(action, expected.Values.Open()) == true) nativeResourceChoices++;
+                    if (!observeDrawExhaust || action.CardId != "CLEANSE") return;
+                    var osty = player.Osty!;
+                    if (new CreatureVitals(osty.CurrentHp, osty.MaxHp, osty.Block) != expectedPet)
+                        throw new InvalidOperationException("Native pet card route selector must observe the completed summon.");
+                    nativeResourceChoices++;
+                });
+                using (CardSelectCmd.PushSelector(observer))
+                {
+                    if (action.Kind == PlanActionKind.EndTurn) await AdvanceMercuryActualTurnAsync(combat, player, false);
+                    else
+                    {
+                        var card = CombatBeamSolver.FindCardForReplay(player.PlayerCombatState!.Hand.Cards.Select(PredictedCard.FromGenerated).ToArray(), action)
+                            ?? throw new InvalidOperationException("Native pet card route instance is absent.");
+                        var target = action.TargetCombatId == null ? null : combat.Creatures.Single(creature => creature.CombatId == action.TargetCombatId);
+                        if (!card.Original.TryManualPlay(target)) throw new InvalidOperationException("Native pet card route was rejected.");
+                        await RunManager.Instance.ActionExecutor.FinishedExecutingActions();
+                    }
+                }
+                if (expected.Terminal)
+                {
+                    while (terminalObservation!.Snapshot == null || !terminalObservation.CombatEnded || CombatManager.Instance.IsInProgress)
+                    { EnsureWithinDeadline(); terminalObservation.Failure?.Throw(); await NextFrameAsync(); }
+                    terminalObservation.Failure?.Throw();
+                    if (terminalObservation.Turn != expected.Values.Open().PlayerTurn)
+                        throw new InvalidOperationException("Native terminal turn differs.");
+                }
+                else selector.ReconcileImplicitChoices(player);
+                selector.AssertConsumed();
+                var actual = expected.Terminal ? terminalState ?? throw new InvalidOperationException("Native terminal card metadata was not captured.")
+                    : CaptureNative(expected);
+                evidence.Add(new { action, expected = expected.Snapshot, actual = actual.Snapshot, expected.Powers,
+                    actualPowers = actual.Powers, expected.Piles, actualPiles = actual.Piles, expectedPet, actualPet = actual.Pet,
+                    expectedCards = expected.Cards, actualCards = actual.Cards, unplaced = expected.Values.Open().Cards(ResumableDiscardProgram.Pile.Unplaced) });
+                if (!string.IsNullOrWhiteSpace(_request.EvidenceDirectory))
+                {
+                    Directory.CreateDirectory(_request.EvidenceDirectory);
+                    File.WriteAllText(Path.Combine(_request.EvidenceDirectory, $"{evidencePrefix}-mode{mode}.json"), JsonSerializer.Serialize(new { mode, alternatives, nativeResourceChoices, native = evidence }, new JsonSerializerOptions { WriteIndented = true }));
+                }
+                AssertSnapshotEqual(expected.Snapshot, actual.Snapshot, label, "Native");
+                if (expected.Piles.Where((pile, p) => !pile.SequenceEqual(actual.Piles[p])).Any()
+                    || !expected.Powers.SequenceEqual(actual.Powers) || expectedPet != actual.Pet)
+                    throw new InvalidOperationException("Native pet card route instance order or Power metadata differs.");
+                if (!expected.Cards.SequenceEqual(actual.Cards)) throw new InvalidOperationException("Native pet card route card metadata differs.");
+            }
+        }
+        finally
+        {
+            if (terminalObservation != null)
+            {
+                try { patch!.Unpatch(endCombat!, prefix!); }
+                finally
+                {
+                    CombatManager.Instance.CombatEnded -= terminalObservation.ObserveCombatEnded;
+                    _mercuryTerminalObservation = null;
                 }
             }
-            selector.ReconcileImplicitChoices(player); selector.AssertConsumed();
-            var actual = CaptureActual(combat, player, enemy);
+        }
+        CompactNativePetCardState CaptureNative(CompactRouteSample expected, MoveStateSnapshot? snapshot = null)
+        {
             var state = player.PlayerCombatState!;
             CardPile[] piles = [state.Hand, state.DrawPile, state.DiscardPile, state.PlayPile, state.ExhaustPile];
-            var actualPowers = CompactPowerValues(combat.Creatures.SelectMany(c => c.Powers).ToArray());
             var generated = CombatManager.Instance.History.Entries.OfType<CardGeneratedEntry>().Skip(generatedStart).Select(entry => entry.Card).ToArray();
             int Identity(CardModel card)
             {
@@ -168,23 +243,14 @@ internal sealed partial class UnattendedTestRunner
                 int index = Array.IndexOf(generated, card);
                 return index >= 0 ? adapter.CardCount + index : throw new InvalidOperationException("Native card has no captured or generated identity.");
             }
-            var actualPiles = piles.Select(pile => pile.Cards.Select(Identity).ToArray()).ToArray();
-            evidence.Add(new { action, expected = expected.Snapshot, actual, expected.Powers, actualPowers, expected.Piles, actualPiles, expectedPet, actualPet = new CreatureVitals(player.Osty!.CurrentHp, player.Osty.MaxHp, player.Osty.Block) });
-            if (!string.IsNullOrWhiteSpace(_request.EvidenceDirectory))
-            {
-                Directory.CreateDirectory(_request.EvidenceDirectory);
-                File.WriteAllText(Path.Combine(_request.EvidenceDirectory, $"{evidencePrefix}-mode{mode}.json"), JsonSerializer.Serialize(new { mode, alternatives, nativeResourceChoices, native = evidence }, new JsonSerializerOptions { WriteIndented = true }));
-            }
-            AssertSnapshotEqual(expected.Snapshot, actual, label, "Native");
-            if (expected.Piles.Where((pile, p) => !pile.SequenceEqual(actualPiles[p])).Any()
-                || !expected.Powers.SequenceEqual(actualPowers)
-                || expectedPet != new CreatureVitals(player.Osty!.CurrentHp, player.Osty.MaxHp, player.Osty.Block))
-                throw new InvalidOperationException("Native pet card route instance order or Power metadata differs.");
             var values = expected.Values.Open();
             var actualCards = Enumerable.Range(0, adapter.CardCount).Select(adapter.Original).Concat(generated)
                 .Where((_, id) => !values.CardRemoved(id));
-            if (!expected.Cards.SequenceEqual(actualCards.Select(card => CombatBeamSolver.CaptureCardStateFingerprintForTesting(PredictedCard.FromGenerated(card)))))
-                throw new InvalidOperationException("Native pet card route card metadata differs.");
+            return new(snapshot ?? CaptureActual(combat, player, enemy),
+                CompactPowerValues(combat.Creatures.SelectMany(c => c.Powers).ToArray()).ToArray(),
+                piles.Select(pile => pile.Cards.Select(Identity).ToArray()).ToArray(),
+                actualCards.Select(card => CombatBeamSolver.CaptureCardStateFingerprintForTesting(PredictedCard.FromGenerated(card))).ToArray(),
+                new CreatureVitals(player.Osty!.CurrentHp, player.Osty.MaxHp, player.Osty.Block));
         }
         if (observeDrawExhaust && mode == 0 && nativeResourceChoices == 0) throw new InvalidOperationException("Native pet card route resource-order selector was not reached.");
         using (SimulationNotificationIsolation.Enter())

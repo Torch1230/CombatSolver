@@ -4,7 +4,8 @@ internal enum CardInstructionKind
 {
     AttackTarget, GainBlock, Draw, Discard, ApplyBasicPower, SkipIfDrawnCardNotType,
     TriggerBasicPower, DiscardHandAndDraw, SkipIfTargetLacksPower, GainBlockFromPowerSum,
-    GainBlockAndApplyPower, ApplyTemporaryStrengthLoss, GenerateCards, GainEnergy, SummonPet, PetAttackTarget, ExhaustFromDraw
+    GainBlockAndApplyPower, ApplyTemporaryStrengthLoss, GenerateCards, GainEnergy, SummonPet, PetAttackTarget, ExhaustFromDraw,
+    LoseEnemyHp, RetrieveFromDiscard
 }
 internal enum CardInstructionTarget { Owner, ChosenEnemy, AllEnemies }
 internal enum CardCategory { Other, Attack, Skill, Power, Status }
@@ -70,6 +71,7 @@ internal sealed class CardEffectProgram
                     RequiresPowers = true;
                     break;
                 case CardInstructionKind.AttackTarget:
+                case CardInstructionKind.LoseEnemyHp:
                     RequiresTarget = true;
                     break;
                 case CardInstructionKind.GainBlock:
@@ -94,6 +96,7 @@ internal sealed class CardEffectProgram
                     break;
                 case CardInstructionKind.Discard:
                 case CardInstructionKind.ExhaustFromDraw:
+                case CardInstructionKind.RetrieveFromDiscard:
                     if (instruction.Amount > 10) throw new ArgumentException("Compact selection exceeds choice capacity.");
                     ExhaustsCards |= instruction.Kind == CardInstructionKind.ExhaustFromDraw;
                     break;

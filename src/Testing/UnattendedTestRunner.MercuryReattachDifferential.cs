@@ -27,7 +27,8 @@ internal sealed partial class UnattendedTestRunner
         Player player,
         Creature focus,
         PropertyInfo turnStateCombatProperty,
-        string checkPrefix = "MercuryReattach")
+        string checkPrefix = "MercuryReattach",
+        Action<MoveStateSnapshot>? captureExtra = null)
     {
         public CombatState Combat { get; } = combat;
         public PropertyInfo TurnStateCombatProperty { get; } = turnStateCombatProperty;
@@ -53,6 +54,7 @@ internal sealed partial class UnattendedTestRunner
                 Turn = player.PlayerCombatState?.TurnNumber
                     ?? throw new InvalidOperationException("沙漏终局观察发生在玩家战斗状态清理之后。");
                 Snapshot = CaptureActual(Combat, player, focus);
+                captureExtra?.Invoke(Snapshot);
                 runner._completedChecks.Add(checkPrefix + ":NativePreTeardownSnapshot");
             }
             catch (Exception error)

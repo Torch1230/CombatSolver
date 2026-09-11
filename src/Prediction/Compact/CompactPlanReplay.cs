@@ -78,8 +78,14 @@ internal sealed class CompactPlanReplay
         string source = retrieve || lane.ChoiceCard < 0 ? _adapter.ChoicePowerId(retrieve)
             : lane.ChoiceAutomatic ? _adapter.DefinitionModels[lane.DefinitionIndex(lane.ChoiceCard)].Id.Entry : "";
         int count = retrieve || lane.ChoiceCard < 0 ? lane.ChoiceCount : lane.ChoiceRequestedCount;
-        return new(source, retrieve ? PlanChoiceEffect.MoveToHand : lane.ChoiceExhausts ? PlanChoiceEffect.Exhaust : PlanChoiceEffect.Discard,
-            lane.ChoicePile == ResumableDiscardProgram.Pile.Draw ? PileType.Draw : PileType.Hand, count, Timing: timing);
+        return new(source, retrieve || lane.ChoiceReturnsFromDiscard ? PlanChoiceEffect.MoveToHand : lane.ChoiceExhausts ? PlanChoiceEffect.Exhaust : PlanChoiceEffect.Discard,
+            lane.ChoicePile switch
+            {
+                ResumableDiscardProgram.Pile.Hand => PileType.Hand,
+                ResumableDiscardProgram.Pile.Draw => PileType.Draw,
+                ResumableDiscardProgram.Pile.Discard => PileType.Discard,
+                _ => throw new InvalidOperationException("Unsupported choice pile.")
+            }, count, Timing: timing);
     }
 
     internal TurnStartChoiceRequest CapturePendingChoice(ResumableDiscardProgram lane, PlanChoiceTiming timing)

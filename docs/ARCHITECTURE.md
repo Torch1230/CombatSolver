@@ -397,3 +397,6 @@ renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或
 
 
 随机生成牌继续由 Engine 的通用 `GenerateCards` 执行：`CardGenerationPlacement.RandomDraw` 使用值状态的 Shuffle RNG，逐张记录目标牌堆和插入位置，模板通过实例定义索引读取。Prediction 在根捕获挽歌所需的普通／升级灵魂模板；兼容物化只导入位置，不重新调用随机插入。`RepeatForEnergyX` 保留逐次召唤命令。Testing 的 `CompactPetCardRoutes` 共用正式路线、完整状态／续用和原生生成身份对照，`CompactDirge` 与 `CompactDrawExhaust` 只拥有各自建局和效果断言。[证据](performance/simulation-dirge-20260911.md)。
+
+
+紧凑卡牌操作扩展：`LoseEnemyHp` 使用不受力量／格挡修正的伤害属性，保留施伤者与卡牌来源，不提交攻击完成；`RetrieveFromDiscard` 在攻击后独立挂起，计划来源保留弃牌堆。`Unplaced` 与 `Removed` 分开持有身份：前者保留终局生成历史，没有牌堆和移除标记，也不消费插入 RNG。兼容物化只恢复生成历史；旧历史仅保留标量卡牌快照，原生清理前观察另外核对完整模板指纹。怪物状态牌入口保留接收者存活门禁。Testing 的共享宠物路线通过现有终局观察器的可选快照回调捕获牌序／能力／生成元数据，回调只读且在原版清理之前执行。旧 `CardChoiceSupport` 的坟冢爆射规格遵循原生 `IsEnding` 门禁。[证据](performance/simulation-necro-card-operations-20260911.md)。

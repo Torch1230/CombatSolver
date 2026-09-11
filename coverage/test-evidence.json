@@ -1,4 +1,12 @@
 {
+  "COMPACT-NECRO-CARD-OPERATIONS-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeTerminalGenerationDifferentialAndFixedSearchLifecycle",
+    "procedure": "五卡原生两回合、两种最后击杀、固定250节点搜索、怪物和消耗回归。",
+    "expected": "直接生命损失、弃牌回收和消耗/保留等价；保留未入堆生成历史，终局不产生不可部署选牌。",
+    "observed": "647e7d2bc55b46c28062f623f8e3455d COMPACT-NECRO-CARDS-NATIVE Passed；971a93e65f5f4e908916a7a6216983ba COMPACT-CAPTURE-SPIRIT-TERMINAL Passed；d482fbb86ff249238f87c6d84f918f83 COMPACT-GRAVEBLAST-TERMINAL Passed；7cc4d13f7a7a43c79980b4b84955a557 COMPACT-NECRO-CARDS-SEARCH Passed；9979547276584c02995513c883eed8bc COMPACT-MONSTER-COMMANDS-NATIVE Passed；b49db0f399534ef68277c6bfcd1edec7 COMPACT-DRAW-EXHAUST-NATIVE Passed",
+    "evidence": "docs/performance/simulation-necro-card-operations-20260911.json；docs/performance/simulation-necro-card-operations-20260911.md；2026-09-11。"
+  },
   "COMPACT-DIRGE-20260911": {
     "status": "Passed",
     "level": "HeadlessNativeRandomGenerationDifferentialAndFixedSearchLifecycle",

@@ -1283,6 +1283,11 @@ foreach ($replay in @('.ManualPlay(', '.AutoPlay(', '.Fork(', 'HookMirrors.', 'C
     }
 }
 $compactReadGuards = @(
+    @('src/Search/CardChoiceSupport.cs', 'Graveblast when !simulator.IsEnding'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'internal bool CardUnplaced(int card)'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Monsters.cs', '_piles[(int)Pile.Unplaced].Append(State, [created]);'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Monsters.cs', 'if (Creature(0).CurrentHp > 0) GenerateCards('),
+    @('src/Prediction/Compact/CompactPlanReplay.cs', 'ResumableDiscardProgram.Pile.Discard => PileType.Discard,'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Monsters.cs', 'WriteRng(ShuffleRng.NextInt(checked(position + 1), out position));'),
     @('src/Prediction/Compact/CompactDiscardProjection.cs', 'CreateGeneratedCard(program.DefinitionIndex(item.Card))'),
     @('src/Prediction/Compact/CompactDiscardProjection.cs', 'destination.Insert(item.Value, created);'),

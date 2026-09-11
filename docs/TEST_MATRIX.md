@@ -2631,3 +2631,6 @@ pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId MONSTER-MOVES-BA
 
 
 `COMPACT-DIRGE-NATIVE`：普通／升级挽歌、存活／死亡宠物、非空／空抽牌堆和满手边界；每根 X=3 挽歌、灵巧、灵魂、X=0 挽歌和两个完整回合。12 原生动作、24 替代分支、8 挂起边界，逐次召唤与生成数量、Shuffle 计数／九流状态、牌序／身份／升级、完整原键／续用、撤销／逆序／八工作区和实机后根隔离。`COMPACT-DIRGE-SEARCH` 固定 250 节点，旧新串并行完整结果、实际并发 2、取消失败排空及根复用。公共生成与夹具提取回归 `COMPACT-DRAW-EXHAUST-NATIVE`、`COMPACT-INKY-CARDS-NATIVE`。双端参数沿用既有场景、Instant、120 秒；[本轮直接证据](performance/simulation-dirge-20260911.md)。
+
+
+`COMPACT-NECRO-CARDS-NATIVE`：两根包含五种新增类型与普通／升级实例；空／非空弃牌堆、满手、存活／死亡宠物；六次出牌及两个原生回合。对照全部快照、能力元数据、九 RNG、历史、原键／续用、根和生成实例指纹、撤销／逆序／八工作区及实机后根隔离。`COMPACT-CAPTURE-SPIRIT-TERMINAL` 验证击杀后 3 张未入堆灵魂的历史且不消费 RNG；`COMPACT-GRAVEBLAST-TERMINAL` 验证击杀后没有原生／预测选牌。终局在清理前捕获完整状态并等待真实结束事件。`COMPACT-NECRO-CARDS-SEARCH` 使用既有 250 节点串并行／取消异常排空合同；公共路径回归 `COMPACT-MONSTER-COMMANDS-NATIVE` 和 `COMPACT-DRAW-EXHAUST-NATIVE`。双端继续使用 SILENT／MECHA_KNIGHT_ELITE、Cards=[]、HP300、Instant、120 秒；[直接证据和失败基线](performance/simulation-necro-card-operations-20260911.md)。

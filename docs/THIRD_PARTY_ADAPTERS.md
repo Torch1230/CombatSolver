@@ -539,3 +539,6 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 
 
 紧凑封闭编译新增精确 `Dirge`／`Soul`（共 37 类型）；生成位置属于不可变指令配置，普通／升级灵魂模板在根捕获，X 修正与生成观察者仍通过整根门禁。随机插入使用现有 Shuffle 流，兼容事件的生成记录现在携带目标牌堆和位置，模板从实例定义解析；此内部格式不构成第三方注册 API。没有新增外部登记入口；首次宠物创建及未表示的生成／升级观察者仍须单独适配。[证据](performance/simulation-dirge-20260911.md)。
+
+
+紧凑封闭编译新增精确 `CaptureSpirit`／`Graveblast`／`Defile`／`Wisp`／`AscendersBane`（共 42 类型），没有新增第三方登记入口。直接失血与普通攻击分别保留属性及来源；生成命令和怪物预览生成入口有不同的结束门禁。未入堆生成身份不会进入战斗牌堆／监听器集合，也不标记为已移除。既有 `CardChoiceSupport.GetSpec` 的坟冢爆射分支现在在 `IsEnding` 时返回无选择，与原版 `FromCombatPile` 一致；外部 `CardChoiceMirrors` 的优先级保持原合同。外部适配不能通过追加无法由原生请求的选牌来对齐旧计划。[证据](performance/simulation-necro-card-operations-20260911.md)。
