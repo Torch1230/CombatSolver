@@ -1375,8 +1375,8 @@ internal sealed partial class CombatBeamSolver
             semanticBranchCount);
 
         bool unregisteredPendingChoice = probeSnapshot.BoundaryReason == SearchBoundaryReason.PendingChoice
-            && ((SimulatedCombatState)probeSnapshot.Simulator.State.CombatState) is var probeCombat
-            && probeCombat.PendingTurnStartChoice == null && probeCombat.PendingKnowledgeDemonChoice == null;
+            && PendingCardChoice(probeSnapshot) == null
+            && LegacyChoiceState(probeSnapshot)?.PendingKnowledgeDemonChoice == null;
         return new PrimaryCardChoiceLayer(
             choices,
             unregisteredPendingChoice,
@@ -1946,18 +1946,20 @@ internal sealed partial class CombatBeamSolver
     {
         if (probeSnapshot.BoundaryReason != SearchBoundaryReason.PendingChoice)
             return null;
-        CombatPredictionSimulator probeSimulator =
-            (CombatPredictionSimulator)probeSnapshot.Simulator;
-        SimulatedCombatState probeCombat =
-            (SimulatedCombatState)probeSnapshot.Simulator.State.CombatState;
-        return probeCombat.PendingTurnStartChoice is { } pendingChoice
+        return PendingCardChoice(probeSnapshot) is { } pendingChoice
             && string.IsNullOrEmpty(pendingChoice.SourceId)
-                ? TurnStartChoiceSupport.BuildPendingSpec(
-                    probeSimulator,
-                    probeCombat,
-                    _player)
+                ? PendingCardChoiceSpec(probeSnapshot, pendingChoice)
                 : null;
     }
+
+    private static SimulatedCombatState? LegacyChoiceState(SimulationSnapshot snapshot)
+        => snapshot.CompactCandidate != null ? null : (SimulatedCombatState)snapshot.Simulator.State.CombatState;
+
+    private static TurnStartChoiceRequest? PendingCardChoice(SimulationSnapshot snapshot)
+        => snapshot.CompactPendingChoice ?? LegacyChoiceState(snapshot)?.PendingTurnStartChoice;
+
+    private CardChoiceSpec PendingCardChoiceSpec(SimulationSnapshot snapshot, TurnStartChoiceRequest request)
+        => request.Spec ?? TurnStartChoiceSupport.BuildSpec(snapshot.Simulator, _player, request);
 
     /// <summary>
     /// Inspects the pending boundary without advancing or mutating its simulator. Root-level
@@ -1971,9 +1973,7 @@ internal sealed partial class CombatBeamSolver
         if (snapshot.BoundaryReason != SearchBoundaryReason.PendingChoice)
             return null;
 
-        SimulatedCombatState combat =
-            (SimulatedCombatState)snapshot.Simulator.State.CombatState;
-        if (combat.PendingKnowledgeDemonChoice is { } knowledgeRequest)
+        if (LegacyChoiceState(snapshot)?.PendingKnowledgeDemonChoice is { } knowledgeRequest)
         {
             IReadOnlyList<PlanCardChoice> knowledgeBranches =
                 KnowledgeDemonChoiceSupport.BuildChoices(knowledgeRequest, displayNames);
@@ -1983,13 +1983,10 @@ internal sealed partial class CombatBeamSolver
                 TurnSetupLayer: null);
         }
 
-        if (combat.PendingTurnStartChoice is not { } request)
+        if (PendingCardChoice(snapshot) is not { } request)
             return null;
 
-        CombatPredictionSimulator simulator =
-            (CombatPredictionSimulator)snapshot.Simulator;
-        CardChoiceSpec spec =
-            TurnStartChoiceSupport.BuildPendingSpec(simulator, combat, _player);
+        CardChoiceSpec spec = PendingCardChoiceSpec(snapshot, request);
         IReadOnlyList<PlanCardChoice> branches = CardChoiceSupport.BuildChoices(
             spec,
             displayNames,
@@ -2037,9 +2034,8 @@ internal sealed partial class CombatBeamSolver
     {
         if (snapshot.BoundaryReason != SearchBoundaryReason.PendingChoice)
             return false;
-        SimulatedCombatState combat = (SimulatedCombatState)snapshot.Simulator.State.CombatState;
-        if (combat.PendingTurnStartChoice is not { } request)
-            return combat.PendingKnowledgeDemonChoice != null;
+        if (PendingCardChoice(snapshot) is not { } request)
+            return LegacyChoiceState(snapshot)?.PendingKnowledgeDemonChoice != null;
         return !MatchesPrimaryChoice(request, primaryChoiceSpec);
     }
 
@@ -2180,8 +2176,7 @@ internal sealed partial class CombatBeamSolver
         ChoiceOccurrenceCollector<DeferredOccurrenceChoiceBranch> occurrenceCollector,
         RoundPrefixReplayContext? roundPrefix = null)
     {
-        SimulatedCombatState combat = (SimulatedCombatState)snapshot.Simulator.State.CombatState;
-        if (combat.PendingKnowledgeDemonChoice is { } knowledgeRequest)
+        if (LegacyChoiceState(snapshot)?.PendingKnowledgeDemonChoice is { } knowledgeRequest)
         {
             IReadOnlyList<PlanCardChoice> branches = KnowledgeDemonChoiceSupport.BuildChoices(
                 knowledgeRequest,
@@ -2205,10 +2200,9 @@ internal sealed partial class CombatBeamSolver
             return new PendingChoiceReplayLayer(resolvedBranches);
         }
 
-        if (combat.PendingTurnStartChoice is { } request)
+        if (PendingCardChoice(snapshot) is { } request)
         {
-            CombatPredictionSimulator simulator = (CombatPredictionSimulator)snapshot.Simulator;
-            CardChoiceSpec spec = TurnStartChoiceSupport.BuildPendingSpec(simulator, combat, _player);
+            CardChoiceSpec spec = PendingCardChoiceSpec(snapshot, request);
             IReadOnlyList<PlanCardChoice> branches = CardChoiceSupport.BuildChoices(
                 spec,
                 displayNames,

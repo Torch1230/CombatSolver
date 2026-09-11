@@ -144,6 +144,8 @@ internal sealed partial class UnattendedTestRunner
                 }
                 initial.RestoreInto(lane); reader.Read(lane);
                 AssertCompactEvaluation(Release(evaluator.Evaluate(root, lane.PlayerTurn)), evaluator.Evaluate(reader, lane.PlayerTurn));
+                int pendingChecks = AssertCompactReplayBoundaries(captured, display, damage, policy, player, nativePath);
+                _completedChecks.Add($"CompactRoundPending:Mode{mode}:{pendingChecks}OmittedChoices:FullEvaluationAndOwnedSpecs:ReverseRestore");
                 AssertSnapshotEqual(rootSnapshot, CaptureActual(combat, player, enemy), "CompactRound", $"Mode{mode}-Unchanged");
 
                 void Check(ResumableDiscardProgram values, CombatPredictionSimulator expected, PlanAction[] path)

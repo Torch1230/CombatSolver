@@ -31,6 +31,12 @@ internal sealed class DeterministicMonsterAiLayout
     internal int Current(ReversibleValueState state) => checked((int)state[_current]);
     internal int LogCount(ReversibleValueState state) => _log.Count(state);
     internal int LogAt(ReversibleValueState state, int index) => checked((int)_log.Read(state, index));
+    internal int Previous(ReversibleValueState state)
+    {
+        int advances = LogCount(state) - _definition.RootLog.Length;
+        if (advances < 1) throw new InvalidOperationException("Monster graph has not advanced from its captured root.");
+        return advances == 1 ? _definition.Current : LogAt(state, LogCount(state) - 2);
+    }
 
     internal DeterministicMonsterAiLayout(ReversibleValueState state, DeterministicMonsterAi definition)
     {

@@ -63,7 +63,22 @@ internal static class RoundChecks
         if (!fatal.Terminal || fatal.DefeatTerminal || fatal.TerminalPlayerTurn != 9 || !fatal.EnemySide
             || fatal.PlayerTurn != 9 || fatal.MonsterMoveLogCount != 1 || fatal.Creature(0).CurrentHp != 10)
             throw new InvalidOperationException("Enemy-start terminal advanced the player clock or AI.");
-        Console.WriteLine("COMPACT_ROUND_CHECKS_OK two_rounds=true noninitial_clock=true retained_hand=true cleanup=true hand_draw_shuffle=true tools=true poison=true terminal_turn=true frozen_workers=8 rollback=true");
+        // An AI transition precedes setup selection, while published intent membership
+        // still describes the previous turn. Empty root logs must retain that previous move.
+        var intent = new ResumableDiscardProgram([ordinary], [[0], [], [], [], []], 0, 0, 0,
+            comparisons: [0], creatures: [new(10, 10, 0), new(10, 10, 0)],
+            powers: powers.Select(power => power with { Amount = power is { Owner: 0, Kind: BasicPowerKind.ToolsOfTheTrade } ? 1 : 0 }).ToArray(),
+            handEndAdmitted: true, monsterMoves: [new([]), new([])], powerPhasesAdmitted: true,
+            monsterAi: new(1, 1, [1, 0], []), round: new(7, 9, 3, 0));
+        intent.BeginNextPlayerTurn(ResumableDiscardProgram.HandEndStaging.Together);
+        intent.Run();
+        var intentPending = intent.Freeze();
+        if (!intent.NeedsChoice || intent.CurrentMonsterMove != 0 || intent.PublishedMonsterIntentMove != 1)
+            throw new InvalidOperationException("Pending setup published its new AI intent too early.");
+        Complete(intent);
+        if (intent.PublishedMonsterIntentMove != 0 || intentPending.Open().PublishedMonsterIntentMove != 1)
+            throw new InvalidOperationException("Published intent failed to follow the frozen setup boundary.");
+        Console.WriteLine("COMPACT_ROUND_CHECKS_OK two_rounds=true noninitial_clock=true retained_hand=true cleanup=true hand_draw_shuffle=true tools=true poison=true terminal_turn=true frozen_workers=8 rollback=true pending_intent=true");
     }
 
     private static void Complete(ResumableDiscardProgram lane)

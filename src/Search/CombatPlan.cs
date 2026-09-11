@@ -1231,6 +1231,7 @@ internal sealed class SimulationSnapshot(
 {
     private CombatPredictionSimulator? _simulator = simulator;
     private CompactCombatCandidate? _compact;
+    internal TurnStartChoiceRequest? CompactPendingChoice { get; private set; }
     private string? _releasedBy;
     private int _releasedAtLine;
 
@@ -1343,10 +1344,11 @@ internal sealed class SimulationSnapshot(
     public bool HasSimulator => _simulator != null || _compact != null;
     internal CompactCombatCandidate? CompactCandidate => _compact;
 
-    internal void AttachCompact(CompactCombatCandidate candidate)
+    internal void AttachCompact(CompactCombatCandidate candidate, TurnStartChoiceRequest? pending = null)
     {
         if (HasSimulator) throw new InvalidOperationException("Completed compact snapshot already owns a state.");
         _compact = candidate;
+        CompactPendingChoice = pending;
     }
 
     public void SetContinuation(ContinuationStamp continuation)
@@ -1358,6 +1360,7 @@ internal sealed class SimulationSnapshot(
     {
         _simulator = null;
         _compact = null;
+        CompactPendingChoice = null;
         _releasedBy = caller;
         _releasedAtLine = line;
     }

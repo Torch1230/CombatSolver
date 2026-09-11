@@ -90,6 +90,20 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
     {
         if (!_adapter.Program.State.HasSameRoot(program.State) || !program.Complete)
             throw new InvalidOperationException("Read view requires a completed candidate from its own root.");
+        ReadCore(program, null);
+    }
+
+    internal void ReadPending(ResumableDiscardProgram program, TurnStartChoiceRequest request)
+    {
+        if (!_adapter.Program.State.HasSameRoot(program.State) || !program.NeedsChoice)
+            throw new InvalidOperationException("Pending read requires an explicit suspended selector from its own root.");
+        ReadCore(program, request);
+    }
+
+    private void ReadCore(ResumableDiscardProgram program, TurnStartChoiceRequest? pending)
+    {
+        var combat = (SimulatedCombatState)_context.State.CombatState;
+        combat.ClearPendingTurnStartChoice();
         _program = program;
         _cards.Read(program);
         _monsterAiBinding?.Read(program);
@@ -215,6 +229,7 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
             _adapter.CopyPowerReadValues(program, _powerValues);
             _powerBinding.Read(_powerValues, _enemies);
         }
+        if (pending != null) combat.SetPendingTurnStartChoice(pending);
     }
 
     internal override CombatPredictionSimulator EvaluationContext => _context;

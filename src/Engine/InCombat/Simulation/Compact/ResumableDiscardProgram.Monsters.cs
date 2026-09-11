@@ -8,6 +8,8 @@ internal sealed partial class ResumableDiscardProgram
     internal int MonsterMoveLogCount => _monsterAi?.LogCount(State)
         ?? throw new InvalidOperationException("Monster AI was not admitted.");
     internal int MonsterMoveLogAt(int index) => _monsterAi!.LogAt(State, index);
+    // The old round protocol publishes new intent membership only after setup choices finish.
+    internal int PublishedMonsterIntentMove => RoundInProgress ? _monsterAi!.Previous(State) : CurrentMonsterMove;
 
     // This is the selection boundary after an already completed move, matching the
     // existing round driver's AdvanceMonsterAi contract. It does not perform a move.

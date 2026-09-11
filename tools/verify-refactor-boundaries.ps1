@@ -1426,6 +1426,11 @@ Get-ChildItem (Join-Path $repositoryRoot 'src/Runtime') -Recurse -Filter '*.cs' 
 foreach ($rule in @(
     @('src/Prediction/Compact/CompactDiscardProjection.cs', 'lock (_rootForkGate) return _root.Fork();'),
     @('src/Search/CombatPlan.cs', '_compact = null;'),
+    @('src/Search/CombatPlan.cs', 'CompactPendingChoice = null;'),
+    @('src/Prediction/Compact/CompactDiscardReadView.cs', '!_adapter.Program.State.HasSameRoot(program.State) || !program.NeedsChoice'),
+    @('src/Prediction/Compact/CompactPlanReplay.cs', 'var cursor = new TurnStartChoiceCursor(choices);'),
+    @('src/Prediction/Compact/CompactPlanReplay.cs', '_metadata[id].Clone()'),
+    @('src/Prediction/Compact/CompactMonsterAiReadBinding.cs', '_attacks[program.PublishedMonsterIntentMove]'),
     @('src/Search/CombatBeamSolver.CompactReplay.cs', 'SnapshotFromReadView(lane.Reader,'),
     @('src/Search/CombatBeamSolver.ParallelExpansion.cs', 'ReferenceEquals(_compact, parent)'),
     @('src/Search/CombatBeamSolver.CompactReplay.cs', 'private sealed class CompactPolicyReadLane'),

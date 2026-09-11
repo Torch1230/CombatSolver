@@ -62,20 +62,25 @@ internal sealed partial class CombatBeamSolver
         if (program.PlayerTurn != (parent == null ? _startTurnNumber : startingTurn))
             throw new InvalidOperationException("Compact replay clock differs from the parent.");
         int shuffles = parent?.ShufflesCrossed ?? 0;
-        foreach (PlanAction action in actions)
+        TurnStartChoiceRequest? pending = null;
+        for (int actionIndex = 0; actionIndex < actions.Count; actionIndex++)
         {
+            PlanAction action = actions[actionIndex];
             cancellationToken.ThrowIfCancellationRequested();
             if (program.Ending)
                 throw new InvalidOperationException("Compact replay contains actions after the terminal boundary.");
             int eventStart = program.EventCount;
-            if (!lane.Replay.TryExecute(program, action, cancellationToken))
+            bool completed = lane.Replay.TryExecute(program, action, cancellationToken);
+            if (!completed)
             {
-                // The exact old pending-choice representation still owns this boundary.
-                // No logical counters or seed ownership have been consumed by this attempt.
-                compactRoot.RecordReplay(false);
-                return false;
+                if (actionIndex != actions.Count - 1)
+                    throw new InvalidOperationException("Compact replay contains actions after an omitted selector.");
+                pending = lane.Replay.CapturePendingChoice(program, action.Kind == PlanActionKind.EndTurn
+                    ? PlanChoiceTiming.PlayerTurnStart : PlanChoiceTiming.Action);
             }
-            for (int index = eventStart; index < program.EventCount; index++)
+            // The old card replay returns from a pending boundary before committing this
+            // shuffle metric. Round draw commits it before checking its pending selector.
+            for (int index = eventStart; (completed || action.Kind == PlanActionKind.EndTurn) && index < program.EventCount; index++)
             {
                 var item = program.EventAt(index);
                 if (item.Kind != ResumableDiscardProgram.EventKind.Shuffle
@@ -91,17 +96,19 @@ internal sealed partial class CombatBeamSolver
         for (int index = 1; index < program.CreatureCount; index++)
             if (program.Creature(index).CurrentHp <= 0 && compactRoot.Adapter.Creature(index).CombatId is uint combatId)
                 deaths.Add(combatId);
-        lane.Reader.Read(program);
+        if (pending == null) lane.Reader.Read(program);
+        else lane.Reader.ReadPending(program, pending);
+        SearchBoundaryReason boundary = pending == null ? SearchBoundaryReason.None : SearchBoundaryReason.PendingChoice;
         snapshot = SnapshotFromReadView(lane.Reader, program.PlayerTurn, priorActionCount + actions.Count,
-            shuffles, SearchBoundaryReason.None, deaths);
-        snapshot.AttachCompact(new(compactRoot, program.Freeze(), lane.Reader.LastImpureHistoryIndex));
+            shuffles, boundary, deaths);
+        snapshot.AttachCompact(new(compactRoot, program.Freeze(), lane.Reader.LastImpureHistoryIndex), pending);
         if (parent == null) _run.ReplayCount++;
         else
         {
             _run.TransitionCount += actions.Count;
             if (seed == null) _run.ForkCount++;
         }
-        compactRoot.RecordReplay(true);
+        compactRoot.RecordReplay(pending == null);
         return true;
     }
 }

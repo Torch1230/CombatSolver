@@ -3,6 +3,7 @@ namespace CombatSolver.Engine.InCombat.Simulation.Compact;
 internal sealed partial class ResumableDiscardProgram
 {
     internal bool HasRounds => _round != null;
+    internal bool RoundInProgress => _round != null && !Complete && Read(FrameStart + CardOffset) < 0;
     internal int RoundNumber => _round!.Round(State);
     internal int PlayerTurn => _round!.PlayerTurn(State);
     internal int TerminalPlayerTurn => _round!.TerminalTurn(State);

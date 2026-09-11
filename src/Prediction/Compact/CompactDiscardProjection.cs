@@ -302,6 +302,8 @@ internal sealed class CompactDiscardProjection
     internal PredictedCard CreateGeneratedCard(int definition) => definition >= _identities.Length && definition < _definitionModels.Length
         ? PredictedCard.FromGenerated(PredictionUtils.CloneCardStateForSimulation(_definitionModels[definition])) : throw new ArgumentOutOfRangeException(nameof(definition));
     internal CardModel Original(int identity) => _identities[identity];
+    internal string ChoicePowerId(bool draw)
+        => _powerTemplates.Single(power => draw ? power is StratagemPower : power is ToolsOfTheTradePower).Id.Entry;
     internal int IndexOf(CardModel original) => Array.IndexOf(_identities, original);
     internal Dictionary<CardModel, int> CaptureCardIdentities(CombatPredictionSimulator simulator)
     {

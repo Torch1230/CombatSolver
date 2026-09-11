@@ -49,25 +49,47 @@ internal sealed class CompactPlanReplay
         }
         else throw new NotSupportedException("Compact plan has no admitted potion protocol.");
 
-        int consumed = 0;
+        var cursor = new TurnStartChoiceCursor(choices);
         while (!lane.Complete)
         {
             lane.Run(cancellationToken);
             if (!lane.NeedsChoice) continue;
-            if (consumed == choices.Count) return false;
-            var choice = choices[consumed++];
-            PileType pile = lane.ChoicePile == ResumableDiscardProgram.Pile.Draw ? PileType.Draw : PileType.Hand;
-            PlanChoiceEffect effect = pile == PileType.Draw ? PlanChoiceEffect.MoveToHand : PlanChoiceEffect.Discard;
-            if (choice.SourcePile != pile || choice.Effect != effect || choice.Cards.Count != lane.ChoiceCount)
-                throw new InvalidOperationException("Compact choice effect, pile or cardinality differs from the plan.");
+            var request = DescribeChoice(lane, action.Kind == PlanActionKind.EndTurn
+                ? PlanChoiceTiming.PlayerTurnStart : PlanChoiceTiming.Action);
+            if (!cursor.TryTake(request, out var choice)) return false;
+            if (choice!.Cards.Count != lane.ChoiceCount)
+                throw new InvalidPlannedChoiceBranchException("Compact choice cardinality differs from the plan.");
             _metadata.Read(lane);
             int[] options = lane.Cards(lane.ChoicePile);
             int[] selected = choice.Cards.Select(token => options.Where(id => CardChoiceSupport.MatchesToken(_metadata[id], token))
-                .Skip(token.OptionOccurrence).First()).ToArray();
+                .Skip(token.OptionOccurrence).Select(id => (int?)id).FirstOrDefault()
+                ?? throw new InvalidPlannedChoiceBranchException($"Compact choice cannot find {token.CardId}+{token.UpgradeLevel}#{token.OptionOccurrence}.")).ToArray();
             lane.SupplyChoice(selected);
         }
-        if (consumed != choices.Count) throw new InvalidOperationException("Compact execution left unconsumed plan choices.");
+        cursor.AssertConsumed();
         lane.CheckWinCondition();
         return true;
+    }
+
+    private TurnStartChoiceRequest DescribeChoice(ResumableDiscardProgram lane, PlanChoiceTiming timing)
+    {
+        if (!lane.NeedsChoice) throw new InvalidOperationException("Compact plan has no suspended selector.");
+        bool draw = lane.ChoicePile == ResumableDiscardProgram.Pile.Draw;
+        string source = draw || lane.ChoiceCard < 0 ? _adapter.ChoicePowerId(draw)
+            : lane.ChoiceAutomatic ? _adapter.DefinitionModels[lane.DefinitionIndex(lane.ChoiceCard)].Id.Entry : "";
+        int count = draw || lane.ChoiceCard < 0 ? lane.ChoiceCount : lane.ChoiceRequestedCount;
+        return new(source, draw ? PlanChoiceEffect.MoveToHand : PlanChoiceEffect.Discard,
+            draw ? PileType.Draw : PileType.Hand, count, Timing: timing);
+    }
+
+    internal TurnStartChoiceRequest CapturePendingChoice(ResumableDiscardProgram lane, PlanChoiceTiming timing)
+    {
+        var request = DescribeChoice(lane, timing);
+        _metadata.Read(lane);
+        // Choice policy can retain a spec across child replays. Only its current source
+        // cards are cloned; these private previews never alias a mutable lane model pool.
+        var cards = lane.Cards(lane.ChoicePile).Select(id => _metadata[id].Clone()).ToArray();
+        return request with { Spec = new(request.Effect, request.SourcePile, request.Count, request.Count,
+            cards, cards, ReplacementValue: 0d) };
     }
 }

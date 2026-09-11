@@ -2601,6 +2601,8 @@ pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId MONSTER-MOVES-BA
 - 只编译通过、只看到最终胜利或只看模拟结果都不能标记为通过。
 - `RID/resources still in use at exit` 当前记录为 Godot 退出噪音；任何 `CombatSolver/Unattended FAILED`、`SEARCH_FAILURE`、`DEPLOY_FAILURE` 或状态断言失败均判定场景失败。
 
-`COMPACT-SEARCH-BACKEND`（L3，原始 SILENT／MECHA_KNIGHT_ELITE、VH_PERF_MECHA、30 张 RunCards、清空原跑局牌组且 Cards=[]、VeryHigh、8 worker）：同一捕获根运行完整旧／紧凑搜索，逐项比较路线、全部 SolverSnapshot 和主要逻辑计数，断言实机不变；另报完成、挂起回退和兼容物化数。请求上限 120 秒，NoGC 配置断言不代表 Runtime 已进入 NoGC。双端脚本使用现有 ScenarioId/RunCards/Cards/ClearRunDeck 参数，无新增协议字段。[通过结果与性能回退](performance/simulation-search-backend-20260911.md)。
+`COMPACT-SEARCH-BACKEND`（L3，原始 SILENT／MECHA_KNIGHT_ELITE、VH_PERF_MECHA、30 张 RunCards、清空原跑局牌组且 Cards=[]、VeryHigh、8 worker）：同一捕获根运行完整旧／紧凑搜索，逐项比较路线、全部 SolverSnapshot 和主要逻辑计数，断言实机不变；另报完成、挂起和兼容物化数。请求上限 120 秒，NoGC 配置断言不代表 Runtime 已进入 NoGC。双端脚本使用现有 ScenarioId/RunCards/Cards/ClearRunDeck 参数，无新增协议字段。[通过结果与分阶段性能](performance/simulation-search-backend-20260911.md)。
 
 `COMPACT-SEARCH-BACKEND` 现还校验原始战斗／跑局各 30 牌及完整 `Continuations`。政策读视图集成通过 `427def306b9748988a4088c10646bb4c`，既有完整路线和所有逻辑计数不变；物理成本单列，不能混同预算。
+
+挂起状态接入后，`COMPACT-SEARCH-BACKEND` 逐个截断完整路线的所有选牌前缀，比对挂起快照、请求、完整选项和来源实例，逆序检查冻结选择及预览未被复用覆盖，并对错误选择来源断言相同业务拒绝。单线程／8 worker 使用相同原输入及现有 DOP 参数。`COMPACT-ROUND-NATIVE` 增加同一 helper，覆盖 Stratagem、Tools、Sly 嵌套及回合内未发布意图；本轮三模式的省略边界为 5／3／0 个。纯值 `RoundChecks` 另覆盖空根 AI 日志、根当前招式与下一招式不同的挂起发布边界。

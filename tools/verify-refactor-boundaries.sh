@@ -1149,6 +1149,11 @@ while IFS= read -r runtime_path; do
 done < <(rg --files "$repository_root/src/Runtime" -g '*.cs')
 require_fixed "$compact_projection" 'lock (_rootForkGate) return _root.Fork();' 'shared compact metadata root requires a narrow Fork gate'
 require_fixed "$search_root/CombatPlan.cs" '_compact = null;' 'snapshot release must drop compact candidate ownership'
+require_fixed "$search_root/CombatPlan.cs" 'CompactPendingChoice = null;' 'snapshot release must drop owned pending previews'
+require_fixed "$compact_reader" '!_adapter.Program.State.HasSameRoot(program.State) || !program.NeedsChoice' 'pending reader requires its own suspended selector'
+require_fixed "$repository_root/src/Prediction/Compact/CompactPlanReplay.cs" 'var cursor = new TurnStartChoiceCursor(choices);' 'compact plan replay must share choice matching and invalid branch semantics'
+require_fixed "$repository_root/src/Prediction/Compact/CompactPlanReplay.cs" '_metadata[id].Clone()' 'pending previews must not alias a reusable lane'
+require_fixed "$repository_root/src/Prediction/Compact/CompactMonsterAiReadBinding.cs" '_attacks[program.PublishedMonsterIntentMove]' 'pending round intents must retain native publication timing'
 require_fixed "$search_root/CombatBeamSolver.CompactReplay.cs" 'SnapshotFromReadView(lane.Reader,' 'compact replay must share the complete existing evaluation'
 require_fixed "$search_root/CombatBeamSolver.ParallelExpansion.cs" 'ReferenceEquals(_compact, parent)' 'compact seeds must verify their exact immutable parent'
 

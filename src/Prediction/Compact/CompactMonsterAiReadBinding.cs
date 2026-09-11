@@ -21,6 +21,6 @@ internal sealed class CompactMonsterAiReadBinding
         int count = program.MonsterMoveLogCount;
         if (_log.Length < count) Array.Resize(ref _log, Math.Max(count, Math.Max(8, _log.Length * 2)));
         for (int index = 0; index < count; index++) _log[index] = program.MonsterMoveLogAt(index);
-        _binding.Read(program.CurrentMonsterMove, _log.AsSpan(0, count), _attacks[program.CurrentMonsterMove]);
+        _binding.Read(program.CurrentMonsterMove, _log.AsSpan(0, count), _attacks[program.PublishedMonsterIntentMove]);
     }
 }

@@ -737,5 +737,96 @@
     ],
     "runId": "ab2743e7cd3f46e7a06937f512b487ec",
     "notes": "First profiler launch used a profile available only to collect-linux and failed; corrected to dotnet-sampled-thread-time during the same live candidate run. Includes waits and cannot be interpreted as CPU percentages."
+  },
+  "pendingIntegration": {
+    "buildSeconds": 11.22,
+    "warnings": 0,
+    "errors": 0,
+    "runtimeDefaultEnabled": false,
+    "headlessOnly": true,
+    "pendingNowMeans": "compact suspended snapshots; no legacy fallback",
+    "samples": [
+      {
+        "equivalent": true,
+        "pendingChecks": 9,
+        "preparationMilliseconds": 55.3985,
+        "completedReplays": 111401,
+        "pendingReplays": 22654,
+        "materializations": 2208,
+        "baseline": {
+          "ExpandedNodes": 16413,
+          "TransitionCount": 134054,
+          "ChoiceBranchesEvaluated": 77969,
+          "CombatEndedTurn": 8,
+          "ProjectedBattleHpLost": 11,
+          "Elapsed": "00:00:12.7603063",
+          "actions": 44,
+          "MaxParallelExpansionConcurrency": 8
+        },
+        "candidate": {
+          "ExpandedNodes": 16413,
+          "TransitionCount": 134054,
+          "ChoiceBranchesEvaluated": 77969,
+          "CombatEndedTurn": 8,
+          "ProjectedBattleHpLost": 11,
+          "Elapsed": "00:00:06.7394475",
+          "actions": 44,
+          "MaxParallelExpansionConcurrency": 8
+        },
+        "runId": "72142ef230eb491788246c5ec6e22fca",
+        "result": "Passed",
+        "mode": "native-v1",
+        "invalidSourceDifferential": false
+      },
+      {
+        "equivalent": true,
+        "pendingChecks": 9,
+        "preparationMilliseconds": 52.8417,
+        "completedReplays": 111401,
+        "pendingReplays": 22654,
+        "materializations": 16413,
+        "baseline": {
+          "ExpandedNodes": 16413,
+          "TransitionCount": 134054,
+          "ChoiceBranchesEvaluated": 77969,
+          "CombatEndedTurn": 8,
+          "ProjectedBattleHpLost": 11,
+          "Elapsed": "00:00:20.4928996",
+          "actions": 44,
+          "MaxParallelExpansionConcurrency": 0
+        },
+        "candidate": {
+          "ExpandedNodes": 16413,
+          "TransitionCount": 134054,
+          "ChoiceBranchesEvaluated": 77969,
+          "CombatEndedTurn": 8,
+          "ProjectedBattleHpLost": 11,
+          "Elapsed": "00:00:15.5116329",
+          "actions": 44,
+          "MaxParallelExpansionConcurrency": 0
+        },
+        "runId": "56b4397ddc4c44e7bcdd09365e20db88",
+        "result": "Passed",
+        "mode": "serial-v3",
+        "invalidSourceDifferential": true
+      }
+    ],
+    "roundNative": {
+      "runId": "b6a081c1dac54defaff0c2233ab40459",
+      "status": "Passed",
+      "elapsedMilliseconds": 28160.4923,
+      "completedChecks": [
+        "CompactRoundPending:Mode0:5OmittedChoices:FullEvaluationAndOwnedSpecs:ReverseRestore",
+        "CompactRound:Mode0:Branches13:NativeActions4:FullSnapshotHistoryKeysEvaluationRng:ReverseAndEightWorkerRestore:FrozenAfterNative",
+        "CompactRoundPending:Mode1:3OmittedChoices:FullEvaluationAndOwnedSpecs:ReverseRestore",
+        "CompactRound:Mode1:Branches6:NativeActions2:FullSnapshotHistoryKeysEvaluationRng:ReverseAndEightWorkerRestore:FrozenAfterNative",
+        "CompactRoundPending:Mode2:0OmittedChoices:FullEvaluationAndOwnedSpecs:ReverseRestore",
+        "CompactRound:NativePreTeardownSnapshot",
+        "CompactRound:Mode2:Branches1:NativeActions1:FullSnapshotHistoryKeysEvaluationRng:ReverseAndEightWorkerRestore:FrozenAfterNative"
+      ]
+    },
+    "pureChecks": "Passed; pending_intent=true; corrected missing zero Poison slot fixture",
+    "linuxBoundaries": "Passed",
+    "powerShellBoundaries": "maintained, not run"
   }
 }

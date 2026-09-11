@@ -92,6 +92,10 @@ internal sealed partial class ResumableDiscardProgram
     internal bool NeedsChoice => !Complete && Read(Frame + IpOffset) is 2 or 6;
     internal Pile ChoicePile => NeedsChoice && Read(Frame + IpOffset) == 6 ? Pile.Draw : Pile.Hand;
     internal int ChoiceCard => NeedsChoice ? Read(Frame + CardOffset) : throw new InvalidOperationException("No pending choice.");
+    internal bool ChoiceAutomatic => NeedsChoice && Read(Frame + AutoOffset) != 0;
+    internal int ChoiceRequestedCount => NeedsChoice
+        ? ChoicePile == Pile.Draw ? _stratagem : CurrentInstruction.Amount
+        : throw new InvalidOperationException("No pending choice.");
     internal int ChoiceCount => NeedsChoice
         ? Math.Min(ChoicePile == Pile.Draw ? _stratagem : CurrentInstruction.Amount, Count(ChoicePile))
         : throw new InvalidOperationException("No pending choice.");
