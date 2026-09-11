@@ -3140,3 +3140,15 @@ pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId MONSTER-MOVES-BA
 纯值 `tools/CompactCreatureChecks` 新增 `COMPACT_DOOM_VULNERABLE_CHECKS_OK`（24 项全通过）：敌方指令域拒绝、两条原生命令的整轮名单顺序与施加历史、人工制品整条拦截、易伤倍率、同牌内攻击顺序、持续时间递减、包含等号的毁灭阈值、格挡保留、撤销与八工作区。`COMPACT-CALL-OF-THE-VOID-GENERATION` 普查回归为 78 池 23 可编译／55 不可（首个 `BANSHEES_CRY`，原 18／60），`COMPACT-GENERATION-CLOSURE-AUDIT` 继续 `FullRootExplicitlyRejected`。[完整证据](performance/simulation-doom-vulnerable-cards-20260911.md)。
 
 `COMPACT-DOOM-ROSTER-NATIVE`（亡灵／CORPSE_SLUGS_NORMAL、三敌、`--enemy-current-hp 256`、120 秒）在三个存活主敌人加已捕获奥斯蒂的名单上逐步执行这五张牌：紧凑 lane 的 `PowerChange` 序列逐条比对全体目标的毁灭／虚弱整轮名单、单目标的毁灭／虚弱／易伤与 Fear 先攻击后施加易伤，每一步的物化与读视图先自洽再与实机同一动作后的完整快照一致，撤销与实机后冻结候选重放一致，runId `3c3af9d6368e4441b6f893b1d9b33fe6` Passed（3.66 秒，复用进程）。它补上单敌夹具无法区分的 `AllEnemies`／`ChosenEnemy` 目标域。
+
+## 亡灵核心牌与灵魂生成生产编译（2026-09-11）
+
+`COMPACT-NECRO-SOUL-CARDS-NATIVE`（亡灵／MECHA_KNIGHT_ELITE、Cards=[]、敌人 300 HP、Instant、120 秒）由测试内部建局并注入 `BURY`、`REAP`、`PARSE`、`POKE`、`PULL_AGGRO`、`REANIMATE`、`GRAVE_WARDEN`、`REAVE` 与八张抽牌堆 `DEFEND_NECROBINDER`：两种升级各一条八步出牌路线加两个完整回合、10 个原生动作、14／15 分支、各 3 个省略选择边界。生产编译器、紧凑 lane、物化投影与实机逐动作对比单体攻击与力量加值、`Reap` 的 Retain 定义、`Parse` 的精确抽牌数与 Ethereal 定义、`Poke` 的宠物 dealer（宠物 2 点力量而非玩家 11 点）、`PullAggro` 的先召唤后格挡事件次序、`Reanimate` 的召唤与消耗结果牌堆、`GraveWarden`／`Reave` 的随机插入消耗一次洗牌流与普通／升级灵魂变体，以及攻击开始计数；完整状态键、估值、能力元数据、九条 RNG、逆序、八工作区与实机后冻结根一致。最终产物 runId `99a1dffc4d284ae086241c355559f5bd` Passed（7.89 秒，复用进程）。
+
+`COMPACT-NECRO-HAND-END-NATIVE`（同建局，无回合遗物）手牌只保留未打出的 `REAP` 与 `PARSE` 并走一次真实玩家结束回合：flush 后手牌恰好剩一张 Retain 牌（攻击指令 27 的 `Reap`），`Parse` 进入消耗堆；完整状态键、估值、RNG、八工作区与实机同一回合后的快照一致，runId `96061cdd3a914638b09bd5bf69945b3e` Passed（3.95 秒）。
+
+`COMPACT-REAVE-TERMINAL-NATIVE`（同建局）升级 `Reave` 的自身攻击击杀最后一个主敌人：紧凑 lane 落到胜利终局、敌人离场、生成身份进入 `Unplaced`、洗牌流未消耗，未入堆牌指纹（升级等级）与实机同一动作生成的灵魂一致——原生升级命令在结束窗口不升级，验证了独立的结束变体模板，runId `03a7074467944531afea88b0539a271f` Passed（3.66 秒）。
+
+`COMPACT-POKE-PET-STATE-NATIVE`（无宠物 `SILENT`／MECHA_KNIGHT_ELITE、Cards=[]、敌人 300 HP、Instant、120 秒，2026-09-11 评审补测）分三种捕获宠物状态验证 `POKE` 的 `Osty.CheckMissingWithAnim` 门：缺席时同一根被生产准入拒绝、原生 Poke 为合法空操作（敌人 300 HP／3 格挡、0 条生物攻击与受伤历史、未创建宠物）；已死宠物先真实击杀再捕获，Poke 打出后紧凑 lane 无伤害／攻击完成事件且原生攻击与受伤历史不变（1 原生动作、1 分支）；`Reanimate` 复活同一身份（20／20）后的 Poke 由真实宠物施伤（原生 `CreatureAttackedEntry` actor 为该宠物、敌人 300→297，2 原生动作、2 分支）。两条路线逐动作比对完整状态键、估值、能力元数据、九条 RNG、逆序、八工作区与实机后冻结根，runId `8afb816dd7b04e839f724726a8aae7a0` Passed（24.67 秒，含建局与进入遭遇）。
+
+纯值 `tools/CompactCreatureChecks` 新增 `COMPACT_SOUL_GENERATION_CHECKS_OK`：结束变体选择、非结束主模板、随机插入消耗、空落点位置、未入堆身份与无 RNG 消耗、撤销、八工作区，指令域拒绝（非生成指令携带结束变体、两种变体相同）与真实构造器对根牌索引及 `definitions.Length` 两个结束变体索引的拒绝。`COMPACT-CALL-OF-THE-VOID-GENERATION` 普查回归为 78 池 29 可编译／49 不可（首个 `BANSHEES_CRY`，原 23／55），供给模板口径 33／45；`COMPACT-CARD-HOOKS-NATIVE`、`COMPACT-DOOM-CARDS-NATIVE` 与三敌目标域 `COMPACT-DOOM-ROSTER-NATIVE`（runId `c16f73aa73e944279bf479aa65aaa624` Passed）作为投影与模板捕获改动的回归，`COMPACT-GENERATION-CLOSURE-AUDIT` 继续 `FullRootExplicitlyRejected`。[完整证据](performance/simulation-necro-soul-cards-20260911.md)。

@@ -450,7 +450,9 @@ internal static class CardEffectSpecRegistry
                 for (int index = 0; index < count; index++)
                 {
                     PredictedCard soul = PredictedCard.Create(CanonicalModels.Card<Soul>(), card.Owner);
-                    if (card.IsUpgraded)
+                    // Native CardCmd.Upgrade returns before upgrading while the combat is ending;
+                    // the branch mirrors the ending query instead of the live one.
+                    if (card.IsUpgraded && !simulator.IsEnding)
                         soul.Upgrade();
                     souls.Add(soul);
                 }

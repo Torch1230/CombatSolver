@@ -214,6 +214,26 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertCompactDoomCardsAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "COMPACT-NECRO-SOUL-CARDS-NATIVE")
+            {
+                await runner.AssertCompactNecroSoulCardsAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-REAVE-TERMINAL-NATIVE")
+            {
+                await runner.AssertCompactReaveTerminalAsync(combatState, player);
+                return Observation(combatEnded: true);
+            }
+            if (request.ScenarioId == "COMPACT-NECRO-HAND-END-NATIVE")
+            {
+                await runner.AssertCompactNecroHandEndAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-POKE-PET-STATE-NATIVE")
+            {
+                await runner.AssertCompactPokePetStateAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "COMPACT-DOOM-CARD-KILL-NATIVE")
             {
                 await runner.AssertCompactDoomCardKillAsync(combatState, player);

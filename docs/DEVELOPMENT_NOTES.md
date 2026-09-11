@@ -18,6 +18,8 @@
 
 - [完整随机生成池审计](performance/simulation-generation-audit-20260911.md)：保留原始建局并导出 CallOfTheVoid 的 78 种和无色药水的 50 种候选；目前分别准入 19／3 种。24 次原生选择／旧引擎完整 RNG 对照通过，完整根仍显式拒绝。
 
+- [亡灵核心牌与灵魂生成准入](performance/simulation-necro-soul-cards-20260911.md)：亡灵八张牌（`BURY`／`REAP`／`PARSE`／`POKE`／`REANIMATE`／`PULL_AGGRO`／`GRAVE_WARDEN`／`REAVE`）逐张反编译后进入精确编译器；`Poke` 使用真实宠物作为施伤者，`Reap` 的 Retain 与 `Parse` 的 Ethereal 由回合末 flush 覆盖，`GraveWarden`／`Reave` 的随机抽牌堆灵魂插入沿用已验收的生成形状。新增生成指令结束变体以表达原生升级命令的结束门禁（升级 `Reave` 在击杀最后一个敌人时留下未升级灵魂），并修正旧模型链无条件升级灵魂的偏差；78 池默认口径可编译 23→29、不可 55→49，供给模板口径 33／45，完整根继续显式拒绝。
+
 - [毁灭／虚弱／易伤卡牌准入](performance/simulation-doom-vulnerable-cards-20260911.md)：亡灵五张毁灭／虚弱／易伤牌逐张反编译后进入精确编译器，`ApplyBasicPower` 域新增敌方 `Doom`／`Vulnerable` 且要求非负整数且无 X 缩放；敌人毁灭槽只在实际存在可施加来源时建立。卡牌施加的毁灭走真实敌方阵营结束边界，三敌名单场景区分全体与单体目标域，78 池可编译 18→23、不可 60→55，完整根继续显式拒绝。
 
 - [书页风暴](performance/simulation-pagestorm-20260911.md)：显式可撤销抽牌栈保留嵌套洗牌选择、父卡随机费用和完成顺序；三根两回合完整原生、固定节点串并行和共享抽牌回归通过。

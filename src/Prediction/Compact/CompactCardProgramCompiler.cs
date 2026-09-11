@@ -19,13 +19,15 @@ internal static class CompactCardProgramCompiler
         typeof(Haze), typeof(Snakebite), typeof(Defy), typeof(EscapePlan), typeof(Outbreak), typeof(CalculatedGamble),
         typeof(BubbleBubble), typeof(Mirage), typeof(DodgeAndRoll), typeof(ToolsOfTheTrade), typeof(PiercingWail),
         typeof(CloakAndDagger), typeof(Shiv), typeof(BladeOfInk), typeof(Burn), typeof(Neurosurge), typeof(Bodyguard), typeof(Unleash), typeof(Afterlife), typeof(Cleanse), typeof(Dirge), typeof(Soul), typeof(CaptureSpirit), typeof(Graveblast), typeof(Defile), typeof(Wisp), typeof(AscendersBane), typeof(BorrowedTime), typeof(Veilpiercer), typeof(Hang), typeof(SculptingStrike), typeof(Snap), typeof(SpiritOfAsh), typeof(DanseMacabre), typeof(Lethality), typeof(Panache), typeof(SharedFate), typeof(Pagestorm), typeof(CallOfTheVoid), typeof(Deathbringer), typeof(NegativePulse),
-        typeof(Scourge), typeof(Putrefy), typeof(Fear)
+        typeof(Scourge), typeof(Putrefy), typeof(Fear),
+        typeof(Bury), typeof(Reap), typeof(Parse), typeof(Poke), typeof(Reanimate), typeof(PullAggro),
+        typeof(GraveWarden), typeof(Reave)
     ];
 
     internal static ResumableDiscardProgram.Card Compile(CardModel card, bool includeAttacks, int shivTemplate = -1, int inkyShivTemplate = -1, int soulTemplate = -1, int upgradedSoulTemplate = -1)
     {
         if (!AdmittedTypes.Contains(card.GetType())
-            || card is Neutralize or Suppress or Footwork or Malaise or DeadlyPoison or Haze or Snakebite or Defy or Outbreak or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail or CloakAndDagger or Shiv or BladeOfInk or Burn or Neurosurge or Bodyguard or Unleash or Afterlife or Cleanse or Dirge or Soul or CaptureSpirit or Graveblast or Defile or Wisp or AscendersBane or BorrowedTime or Veilpiercer or Hang or SculptingStrike or Snap or SpiritOfAsh or DanseMacabre or Lethality or Panache or SharedFate or Pagestorm or Deathbringer or NegativePulse or Scourge or Putrefy or Fear && !includeAttacks
+            || card is Neutralize or Suppress or Footwork or Malaise or DeadlyPoison or Haze or Snakebite or Defy or Outbreak or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail or CloakAndDagger or Shiv or BladeOfInk or Burn or Neurosurge or Bodyguard or Unleash or Afterlife or Cleanse or Dirge or Soul or CaptureSpirit or Graveblast or Defile or Wisp or AscendersBane or BorrowedTime or Veilpiercer or Hang or SculptingStrike or Snap or SpiritOfAsh or DanseMacabre or Lethality or Panache or SharedFate or Pagestorm or Deathbringer or NegativePulse or Scourge or Putrefy or Fear or Bury or Reap or Parse or Poke or Reanimate or PullAggro or GraveWarden or Reave && !includeAttacks
             || card is Burn && (card.Enchantment != null || card.EnergyCost._base != -1 || card.IsUpgraded
                 || !card.LocalKeywords.Contains(CardKeyword.Unplayable) || card.DynamicVars.Damage.Props != (ValueProp.Unpowered | ValueProp.Move))
             || card is AscendersBane && (card.Enchantment != null || card.EnergyCost._base != -1 || card.IsUpgraded
@@ -45,13 +47,13 @@ internal static class CompactCardProgramCompiler
             || card.HasStarCostX || card.CurrentStarCost > 0 || card._temporaryStarCosts.Count != 0
             || card.CurrentTarget != null || card.CurrentPlayIndex != 0 || card.LastStarsSpent != 0
             || card.HasSingleTurnRetain || card.HasTurnEndInHandEffect && card is not (Burn or AscendersBane)
-            || card.LocalKeywords.Any(k => k is not (CardKeyword.Sly or CardKeyword.Ethereal or CardKeyword.Retain) && !(card is Malaise or CalculatedGamble or Mirage or PiercingWail or Shiv or Afterlife or Dirge or Soul or Graveblast or Wisp or SharedFate or Putrefy && k == CardKeyword.Exhaust)
+            || card.LocalKeywords.Any(k => k is not (CardKeyword.Sly or CardKeyword.Ethereal or CardKeyword.Retain) && !(card is Malaise or CalculatedGamble or Mirage or PiercingWail or Shiv or Afterlife or Dirge or Soul or Graveblast or Wisp or SharedFate or Putrefy or Reanimate && k == CardKeyword.Exhaust)
                 && !(card is Suppress && k == CardKeyword.Innate)
                 && !(card is CallOfTheVoid && k == CardKeyword.Innate)
                 && !(card is Burn or AscendersBane && k == CardKeyword.Unplayable) && !(card is AscendersBane && k == CardKeyword.Eternal))
             || card.IsSlyThisTurn && card is not Prepared)
             throw new NotSupportedException($"Compact prototype cannot admit card state {card.Id.Entry}.");
-        decimal draw = card is EscapePlan ? 1 : card is Acrobatics or Prepared or Backflip or Finesse or Neurosurge or Soul or Scourge ? card.DynamicVars.Cards.BaseValue : 0;
+        decimal draw = card is EscapePlan ? 1 : card is Acrobatics or Prepared or Backflip or Finesse or Neurosurge or Soul or Scourge or Parse ? card.DynamicVars.Cards.BaseValue : 0;
         decimal energyGain = card is Neurosurge or Wisp or BorrowedTime ? card.DynamicVars.Energy.BaseValue : 0;
         decimal extraCost = card is BorrowedTime ? card.DynamicVars["ExtraCost"].BaseValue : 0;
         decimal neurosurge = card is Neurosurge ? card.DynamicVars["NeurosurgePower"].BaseValue : 0;
@@ -61,8 +63,8 @@ internal static class CompactCardProgramCompiler
         decimal voidCards = card is CallOfTheVoid ? card.DynamicVars.Cards.BaseValue : 0;
         decimal beforeCardPower = card is SpiritOfAsh ? card.DynamicVars["BlockOnExhaust"].BaseValue
             : card is DanseMacabre ? card.DynamicVars["DanseMacabrePower"].BaseValue : 0;
-        decimal damage = card is Snap ? card.DynamicVars.OstyDamage.BaseValue : includeAttacks && card is StrikeSilent or StrikeNecrobinder or Neutralize or Suppress or Shiv or Burn or CaptureSpirit or Graveblast or Defile or Veilpiercer or Hang or SculptingStrike or Fear ? card.DynamicVars.Damage.BaseValue : 0;
-        decimal block = card is DefendSilent or DefendNecrobinder or Backflip or Survivor or Finesse or UltimateDefend or Defy or EscapePlan or DodgeAndRoll or CloakAndDagger or NegativePulse ? card.DynamicVars.Block.BaseValue : 0;
+        decimal damage = card is Snap or Poke ? card.DynamicVars.OstyDamage.BaseValue : includeAttacks && card is StrikeSilent or StrikeNecrobinder or Neutralize or Suppress or Shiv or Burn or CaptureSpirit or Graveblast or Defile or Veilpiercer or Hang or SculptingStrike or Fear or Bury or Reap or Reave ? card.DynamicVars.Damage.BaseValue : 0;
+        decimal block = card is DefendSilent or DefendNecrobinder or Backflip or Survivor or Finesse or UltimateDefend or Defy or EscapePlan or DodgeAndRoll or CloakAndDagger or NegativePulse or PullAggro or GraveWarden ? card.DynamicVars.Block.BaseValue : 0;
         decimal weak = card.Enchantment is Inky inky ? inky.DynamicVars.Weak.BaseValue
             : card is Neutralize or Suppress or Haze or Defy or Deathbringer ? card.DynamicVars.Weak.BaseValue : 0;
         decimal vulnerable = card is Fear ? card.DynamicVars.Vulnerable.BaseValue : 0;
@@ -70,12 +72,12 @@ internal static class CompactCardProgramCompiler
         // Putrefy shares one native amount slot for both of its debuffs.
         decimal putrefy = card is Putrefy ? card.DynamicVars["Power"].BaseValue : 0;
         decimal poison = card is DeadlyPoison or Haze or Snakebite or Outbreak or BubbleBubble ? card.DynamicVars.Poison.BaseValue : 0;
-        decimal generated = card is CloakAndDagger or BladeOfInk or CaptureSpirit ? card.DynamicVars.Cards.BaseValue : 0;
+        decimal generated = card is CloakAndDagger or BladeOfInk or CaptureSpirit or GraveWarden or Reave ? card.DynamicVars.Cards.BaseValue : 0;
         decimal ownStrengthLoss = card is SharedFate ? card.DynamicVars["PlayerStrengthLoss"].BaseValue : 0;
         decimal enemyStrengthLoss = card is SharedFate ? card.DynamicVars["EnemyStrengthLoss"].BaseValue : 0;
         decimal strengthLoss = card is PiercingWail ? card.DynamicVars["StrengthLoss"].BaseValue : 0;
         decimal dexterity = card is Footwork ? card.DynamicVars.Dexterity.BaseValue : 0;
-        decimal summon = card is Bodyguard or Afterlife or Cleanse or Dirge ? card.DynamicVars.Summon.BaseValue : 0;
+        decimal summon = card is Bodyguard or Afterlife or Cleanse or Dirge or Reanimate or PullAggro ? card.DynamicVars.Summon.BaseValue : 0;
         decimal calculationBase = card is Mirage or Unleash ? card.DynamicVars.CalculationBase.BaseValue : 0;
         decimal calculationExtra = card is Mirage ? card.DynamicVars.CalculationExtra.BaseValue : card is Unleash ? card.DynamicVars.ExtraDamage.BaseValue : 0;
         if (draw != decimal.Truncate(draw) || draw < 0 || draw > 10 || card.EnergyCost._base < 0 && card is not (Burn or AscendersBane)
@@ -109,7 +111,23 @@ internal static class CompactCardProgramCompiler
         CardEffectProgram effects = card switch
         {
             Burn or AscendersBane => CardEffectProgram.Empty,
-            Bodyguard or Afterlife => new([new(CardInstructionKind.SummonPet, (int)summon)]),
+            Bodyguard or Afterlife or Reanimate => new([new(CardInstructionKind.SummonPet, (int)summon)]),
+            PullAggro => new([new(CardInstructionKind.SummonPet, (int)summon), new(CardInstructionKind.GainBlock, (int)block)]),
+            Bury or Reap => new([new(CardInstructionKind.AttackTarget, (int)damage)]),
+            Poke => new([new(CardInstructionKind.PetAttackTarget, (int)damage)]),
+            Parse => new([new(CardInstructionKind.Draw, (int)draw)]),
+            // Native inserts generated Souls at a random draw-pile position. Upgraded Reave
+            // upgrades every Soul before insertion, but the native upgrade command returns
+            // early while the combat is ending, so the uninserted identity keeps its plain
+            // upgrade level.
+            GraveWarden => new([new(CardInstructionKind.GainBlock, (int)block),
+                new(CardInstructionKind.GenerateCards, (int)generated, CardTemplate: soulTemplate,
+                    Placement: CardGenerationPlacement.RandomDraw)]),
+            Reave => new([new(CardInstructionKind.AttackTarget, (int)damage),
+                new(CardInstructionKind.GenerateCards, (int)generated,
+                    CardTemplate: card.IsUpgraded ? upgradedSoulTemplate : soulTemplate,
+                    Placement: CardGenerationPlacement.RandomDraw,
+                    EndingCardTemplate: card.IsUpgraded ? soulTemplate : -1)]),
             Cleanse => new([new(CardInstructionKind.SummonPet, (int)summon), new(CardInstructionKind.ExhaustFromDraw, 1)]),
             Dirge => new([new(CardInstructionKind.SummonPet, (int)summon, RepeatForEnergyX: true),
                 new(CardInstructionKind.GenerateCards, 0, EnergyXMultiplier: 1,

@@ -142,13 +142,23 @@ internal sealed class CompactDiscardProjection
             burnTemplate = cards.Length + generated.Count;
             generated.Add(PredictionUtils.CreateCard(CanonicalModels.Card<Burn>(), player));
         }
-        foreach (bool upgraded in new[] { false, true })
+        // GraveWarden, Reave and CaptureSpirit insert plain Souls; Dirge and Reave upgrade every
+        // Soul before insertion. Upgraded Reave also needs the plain variant for the native
+        // ending gate that skips CardCmd.Upgrade. Admitted generation and upgrade hooks have
+        // no observers, so each template captures that final native variant.
+        bool plainSoul = cards.Any(card => card.Preview is CaptureSpirit or GraveWarden or Reave
+            || card.Preview is Dirge && !card.Preview.IsUpgraded);
+        bool upgradedSoul = cards.Any(card => card.Preview.IsUpgraded && card.Preview is Dirge or Reave);
+        if (plainSoul)
         {
-            if (!cards.Any(card => card.Preview is Dirge && card.Preview.IsUpgraded == upgraded || !upgraded && card.Preview is CaptureSpirit)) continue;
-            if (upgraded) upgradedSoulTemplate = cards.Length + generated.Count;
-            else soulTemplate = cards.Length + generated.Count;
+            soulTemplate = cards.Length + generated.Count;
+            generated.Add(PredictionUtils.CreateCard(CanonicalModels.Card<Soul>(), player));
+        }
+        if (upgradedSoul)
+        {
+            upgradedSoulTemplate = cards.Length + generated.Count;
             CardModel template = PredictionUtils.CreateCard(CanonicalModels.Card<Soul>(), player);
-            if (upgraded) PredictionUtils.UpgradeCard(template);
+            PredictionUtils.UpgradeCard(template);
             generated.Add(template);
         }
         // CallOfTheVoid repeats one full-pool selection per count from the frozen complete
@@ -493,10 +503,11 @@ internal sealed class CompactDiscardProjection
                     {
                         var creator = stack.Peek();
                         int creatorDefinition = program.DefinitionIndex(creator.Identity);
-                        if (_definitionModels[creatorDefinition] is CloakAndDagger
-                            && _risks[creatorDefinition] == PredictionRiskReason.MethodMirrorIncomplete && creator.Method != null)
+                        // Card generation is never part of an inferred mirror; it always comes
+                        // from the legacy completion tables, which run after the inferred
+                        // OnPlay scope closed. The projected trace follows that shape.
+                        if (_risks[creatorDefinition] == PredictionRiskReason.MethodMirrorIncomplete && creator.Method != null)
                         {
-                            // Legacy compensation emits generation after its inferred block mirror.
                             stack.Pop(); creator.Method?.Dispose();
                             stack.Push((creator.Identity, creator.Play, creator.Scope, null));
                         }

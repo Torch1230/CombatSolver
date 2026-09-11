@@ -1,5 +1,7 @@
 # CombatSolver 文档导航
 
+- [亡灵核心牌与灵魂生成的生产编译准入](performance/simulation-necro-soul-cards-20260911.md)：八张亡灵牌逐张反编译准入，灵魂随机插入／升级模板与原生终局门禁的独立结束变体。
+
 - [完整角色生成池冻结](performance/simulation-generation-root-20260911.md)：原生池缓存、Fork 共享与生成回调对照。
 
 - [虚空之唤生产编译与回合开始执行](performance/simulation-void-generation-20260911.md)：精确编译、冻结完整池捕获与失败关闭准入，池闭包仍未完成。

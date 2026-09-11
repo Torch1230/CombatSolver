@@ -56,13 +56,17 @@ internal sealed partial class ResumableDiscardProgram
         }
     }
 
-    private void GenerateCards(int template, int count, int creator, CardGenerationPlacement placement = CardGenerationPlacement.Hand)
+    private void GenerateCards(int template, int count, int creator, CardGenerationPlacement placement = CardGenerationPlacement.Hand,
+        int endingTemplate = -1)
     {
         for (int index = 0; index < count; index++)
         {
             int created = CardCount;
-            Card definition = _definitions[template];
-            _cardInstances.Append(State, [new CardInstanceValue(template, definition.CapturedX,
+            // The ending variant models a native upgrade command that returns before it runs
+            // while the combat is ending, so only the uninserted identity changes.
+            int definitionIndex = Ending && endingTemplate >= 0 ? endingTemplate : template;
+            Card definition = _definitions[definitionIndex];
+            _cardInstances.Append(State, [new CardInstanceValue(definitionIndex, definition.CapturedX,
                 EnchantmentDisabled: definition.EnchantmentInitiallyDisabled).Data]);
             if (Ending)
             {

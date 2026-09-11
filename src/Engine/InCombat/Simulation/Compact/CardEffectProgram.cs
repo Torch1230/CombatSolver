@@ -17,7 +17,7 @@ internal readonly record struct CardInstruction(CardInstructionKind Kind, int Am
     int EnergyXMultiplier = 0, CardCategory RequiredCategory = CardCategory.Skill, int Multiplier = 0, int CardTemplate = -1,
     CardGenerationPlacement Placement = CardGenerationPlacement.Hand, bool RepeatForEnergyX = false,
     BasicPowerKind? AttackMultiplierPower = null, CardKeywordFlags Keyword = CardKeywordFlags.None,
-    int GenerationPool = -1);
+    int GenerationPool = -1, int EndingCardTemplate = -1);
 
 /// <summary>
 /// Immutable, fully admitted OnPlay instructions. Execution position belongs to the value
@@ -56,7 +56,8 @@ internal sealed class CardEffectProgram
                 || instruction.Multiplier is < 0 or > 999_999_999
                 || instruction.Kind is not (CardInstructionKind.GainBlockFromPowerSum or CardInstructionKind.PetAttackTarget) && instruction.Multiplier != 0)
                 throw new ArgumentException("Compact instruction amount is outside the admitted range.");
-            if (instruction.Kind != CardInstructionKind.GenerateCards && (instruction.CardTemplate != -1 || instruction.Placement != CardGenerationPlacement.Hand))
+            if (instruction.Kind != CardInstructionKind.GenerateCards && (instruction.CardTemplate != -1 || instruction.Placement != CardGenerationPlacement.Hand
+                    || instruction.EndingCardTemplate != -1))
                 throw new ArgumentException("Only generation instructions can reference card templates.");
             if (instruction.GenerationPool != -1 && instruction.Kind != CardInstructionKind.GenerateFromPool)
                 throw new ArgumentException("Only pool generation instructions can reference a generation pool.");
@@ -78,7 +79,8 @@ internal sealed class CardEffectProgram
                     CreatesPanache = true;
                     break;
                 case CardInstructionKind.GenerateCards:
-                    if (instruction.CardTemplate < 0 || instruction.Target != CardInstructionTarget.Owner
+                    if (instruction.CardTemplate < 0 || instruction.EndingCardTemplate < -1 || instruction.Target != CardInstructionTarget.Owner
+                        || instruction.EndingCardTemplate >= 0 && instruction.EndingCardTemplate == instruction.CardTemplate
                         || !Enum.IsDefined(instruction.Placement) || instruction.EnergyXMultiplier < 0)
                         throw new NotSupportedException("Generation requires an admitted owner card template.");
                     GeneratesCards = true;

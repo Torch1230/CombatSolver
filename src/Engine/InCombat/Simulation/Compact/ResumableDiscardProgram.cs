@@ -189,7 +189,9 @@ internal sealed partial class ResumableDiscardProgram
         for (int instruction = 0; instruction < definition.Effects.Count; instruction++)
         {
             var effect = definition.Effects[instruction];
-            if (effect.Kind == CardInstructionKind.GenerateCards && (effect.CardTemplate < cards.Length || effect.CardTemplate >= definitions.Length))
+            // Both templates are generated slots: a root instance can never become either variant.
+            if (effect.Kind == CardInstructionKind.GenerateCards && (effect.CardTemplate < cards.Length || effect.CardTemplate >= definitions.Length
+                || effect.EndingCardTemplate >= 0 && (effect.EndingCardTemplate < cards.Length || effect.EndingCardTemplate >= definitions.Length)))
                 throw new NotSupportedException("Generation references a template outside the captured closure.");
             if (effect.Kind == CardInstructionKind.GenerateFromPool && !AdmitsGenerationPool(generationPools, effect.GenerationPool, definitions))
                 throw new NotSupportedException("Pool generation references a template outside the captured closure.");
@@ -567,7 +569,7 @@ internal sealed partial class ResumableDiscardProgram
                 break;
             case CardInstructionKind.GenerateCards:
                 GenerateCards(instruction.CardTemplate, checked(instruction.Amount + instruction.EnergyXMultiplier * Read(Frame + EnergyValueOffset)),
-                    creator: CardActionCreator, instruction.Placement);
+                    creator: CardActionCreator, instruction.Placement, instruction.EndingCardTemplate);
                 break;
             case CardInstructionKind.GenerateFromPool:
                 GenerateFromPool(instruction.GenerationPool, instruction.Amount, CardActionCreator);
