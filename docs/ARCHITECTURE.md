@@ -415,3 +415,8 @@ renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或
 
 
 致死性扩展：`ResumableDiscardProgram` 使用既有预留槽保存攻击牌开始次数，根值从已冻结的当前回合历史捕获，在 CardPlayStarted 时增加、双方阵营开始时归零；暂停、冻结和撤销包含该槽。`BasicPowerLayout` 在力量加值后按卡牌主人和开始次数应用倍率，宠物实际施伤者保留自己的力量／虚弱；当前闭包仅含 Play 中首次 OnPlay，重放和外部卡牌来源仍拒绝。旧 `SimulatedCombatState` 在主线程一次捕获当前／上一玩家回合的非复制最后攻击，后续只消费分支映射；空窗口不能从 live 回合号补读。两份映射沿用统一 Fork 重映射与原键编码。[证据](performance/simulation-lethality-20260911.md)。
+
+
+神气制胜的独立实例由 `PanachePowerLayout` 持有可增长的撤销缓冲区，保存每个实例的数量、施加者、获得顺序、回合初始值、倒计数、首次应用与持续标记。`BasicPowerLayout.NextOrder` 为两种能力布局提供共同的获得序列；`ResumableDiscardProgram.Panache` 在卡牌结束历史之后执行监听器，逐实例更新与非威力群体伤害、回合重置和玩家死亡清理均消费值状态。末击后的剩余监听器仍完成计数重置。Prediction 保留能力方法来源作用域；Search 的 `CompletedPowerReadBinding` 池化独立读取模型，仅在超过该 lane 历史最大实例数时扩容，恢复较少实例时停用多余模型，并保留根单槽／多实例映射。旧神气制胜施加改用 `ApplyInstancedPower`，沿用命令门禁／修改和数量回调；原键及完整续用显式读取分支 `AlreadyApplied`。[证据](performance/simulation-panache-20260911.md)。
+
+玩家回合末第二阶段标记待失败后，原生仍切换到敌方、捕获能力起始值并清格挡，直到敌方开始安全点才提交终局。普通 Hook 分派入口遇到 IsOverOrEnding 时整批跳过（AfterCardPlayed 等原生明确例外除外）；已开始分派不能逐监听器中止。中毒和延迟格挡属于新分派，不能提前结束整个回合，也不能继续补偿这些效果。终局原生观察分别绑定胜利清理和 ProcessPendingLoss，验证清理前完整状态。

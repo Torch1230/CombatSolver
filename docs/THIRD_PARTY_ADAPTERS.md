@@ -557,3 +557,6 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 
 
 紧凑封闭编译新增精确致死性 `Lethality` 与玩家 `LethalityPower`，现为 50 种卡牌；只准入其原生乘算 Hook。倍率读取卡牌主人、当前分支攻击开始次数，不能以宠物攻击者身份或攻击完成次数替代。没有新增外部登记入口，未知重放／伤害回调仍拒绝。历史课的最后攻击映射在根阶段捕获，空窗口不再按实机回合补读；该修复不表示紧凑后端已准入历史课遗物。[证据](performance/simulation-lethality-20260911.md)。
+
+
+紧凑封闭编译新增精确神气制胜 `Panache`（51 种卡牌）及玩家 `PanachePower`，只准入其出牌后和回合末 Hook。独立实例使用可增长值布局，不支持外部类型登记或用普通槽叠加；其他独立能力仍在根准入时明确拒绝。旧 `CardPowerOnPlaySupport` 的精确 Panache 分支改为独立施加，共用既有门禁和修改；`PowerPredictionStateSupport.PanacheAlreadyApplied` 供指纹与续用读取 StateStore／实机内部标记。第三方内部标记仍应走手册已有隐藏状态登记，不能依赖此封闭识别。[证据](performance/simulation-panache-20260911.md)。

@@ -1,4 +1,12 @@
 {
+  "COMPACT-PANACHE-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeIndependentPowerAndTerminalDispatchWithFixedSearchDifferential",
+    "procedure": "三根两回合、24原生动作／45分支／18挂起；八牌独立施加；两类末击及玩家毁灭终局；250节点。",
+    "expected": "独立计数及首次应用随分支恢复；出牌完成保留终局例外；待失败后按原生安全点切换敌方、清格挡并跳过新普通回调。",
+    "observed": "1c9f76fa55234a27b35f360af22ab7b4 PANACHE-INSTANCES Passed; fbd15c301187409baa4a37c8de4f6947 COMPACT-PANACHE-NATIVE Passed; 2dedd4c990b44674a596de9b592a14e0 COMPACT-PANACHE-TERMINAL Passed; b2d1592ffaae421685999360818e5d26 COMPACT-PANACHE-SEARCH Passed; cdf0073661f340108611bd979bec08a4 COMPACT-PANACHE-PLAYER-DEATH Passed; b0c2c6d5ac9e435aa6547c2266e6852a COMPACT-PANACHE-CARD-TERMINAL Passed",
+    "evidence": "docs/performance/simulation-panache-20260911.md；docs/performance/simulation-panache-20260911.json。"
+  },
   "COMPACT-LETHALITY-20260911": {
     "status": "Passed",
     "level": "HeadlessNativeFirstAttackHistoryAndFixedSearchDifferential",

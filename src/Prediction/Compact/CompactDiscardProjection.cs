@@ -42,6 +42,7 @@ internal sealed class CompactDiscardProjection
     internal bool HasMonsterMoves { get; }
     private readonly Creature[] _creatures;
     private readonly PowerModel[] _powerTemplates;
+    private readonly PanachePower? _panacheTemplate;
     private readonly MoveState[]? _aiMoves;
     private readonly bool[]? _aiAttacks;
     internal int PlayerTurn => ((SimulatedCombatState)_root.State.CombatState).GetPlayerTurnNumber(_player);
@@ -70,8 +71,9 @@ internal sealed class CompactDiscardProjection
             || powers.Any(power => power is DieForYouPower && power.Owner != osty)
             || combat.Allies.Any(creature => creature != player.Creature && creature != osty))
             throw new NotSupportedException("Compact pet roots require one captured Osty with its persistent protection and admitted stats.");
-        if (combat.Players.Count != 1 || powers.Any(p => !IsBasicPower(p))
-            || powers.Any(p => !(p is StratagemPower && p.Owner == player.Creature && p.Amount is >= 1 and <= 10)
+        if (combat.Players.Count != 1 || powers.Any(p => !IsBasicPower(p) && p is not PanachePower)
+            || powers.Any(p => !(includeAttacks && p is PanachePower && p.Owner == player.Creature)
+                && !(p is StratagemPower && p.Owner == player.Creature && p.Amount is >= 1 and <= 10)
                 && !(includeAttacks ? p is not StratagemPower && IsBasicPower(p) && (p is not (BlockNextTurnPower or ToolsOfTheTradePower or NeurosurgePower or BorrowedTimePower or VeilpiercerPower or SpiritOfAshPower or DanseMacabrePower or LethalityPower) || p.Owner == player.Creature)
                     && (p is not (PiercingWailPower or HangPower) || p.Owner != player.Creature)
                     : p is StrengthPower && p.Owner != player.Creature))
@@ -105,6 +107,13 @@ internal sealed class CompactDiscardProjection
         PredictedCard[] cards = state.AllCards.ToArray();
         _powerTemplates = includeAttacks ? CapturePowerTemplates(powers, cards) : [];
         PowerModel[] rootPowerOrder = powers.ToArray();
+        PanachePowerValues[] panache = powers.OfType<PanachePower>().Select(power => new PanachePowerValues(
+            power.Amount, power.Applier == null ? -1 : CreatureIndex(power.Applier), Array.IndexOf(rootPowerOrder, power) + 1,
+            power.AmountOnTurnStart, power.DynamicVars["CardsLeft"].IntValue,
+            PowerPredictionStateSupport.PanacheAlreadyApplied(root, power), power.SkipNextDurationTick)).ToArray();
+        if (powers.OfType<PanachePower>().Any(power => power.Applier != null && CreatureIndex(power.Applier) < 0
+            || power.DynamicVars["CardsLeft"].BaseValue != power.DynamicVars["CardsLeft"].IntValue))
+            throw new NotSupportedException("Panache instance ownership or counter is outside the captured domain.");
         BasicPowerDefinition[]? powerDefinitions = includeAttacks ? _powerTemplates.Select(power => new BasicPowerDefinition(
             BasicKind(power), CreatureIndex(power.Owner), power.Amount, power.Applier == null ? -1 : CreatureIndex(power.Applier),
             Array.IndexOf(rootPowerOrder, power) + 1,
@@ -207,7 +216,9 @@ internal sealed class CompactDiscardProjection
             new(energyRng.Counter, energyRng.State0, energyRng.State1, energyRng.State2, energyRng.State3), handEndAdmitted: includeHandEnd, monsterMoves: includeMechaMoves ? CaptureMechaCommands(root, burnTemplate) : null, powerPhasesAdmitted: includePowerPhases, monsterAi: ai,
             round: includeRounds ? new(combat.RoundNumber, PlayerTurn, player.MaxEnergy, MegaCrit.Sts2.Core.Combat.CombatManager.baseHandDrawCount, (int)turnSummon) : null, pet: osty == null ? -1 : CreatureIndex(osty),
             // Idle roots contain completed plays; this getter uses frozen CardPlaysStarted history.
-            attackCardStarts: combat.GetAttacksPlayedThisTurn(player.Creature));
+            attackCardStarts: combat.GetAttacksPlayedThisTurn(player.Creature), panache: panache);
+        _panacheTemplate = Program.HasPanache ? CanonicalModels.Power<PanachePower>() : null;
+        if (_panacheTemplate != null) _ = _panacheTemplate.DynamicVars;
         CardValuesInvariant = Program.CardValuesInvariant;
     }
 
@@ -333,15 +344,21 @@ internal sealed class CompactDiscardProjection
     };
     private static BasicPowerKind BasicKind(PowerModel power) => BasicKinds[power.GetType()];
     internal SimulatedCombatState.CompletedPowerReadBinding CreatePowerReadBinding(CombatPredictionSimulator context)
-        => new((SimulatedCombatState)context.State.CombatState, _powerTemplates, _powerTemplates.Select(power => CanonicalPower(BasicKind(power))).ToArray());
-    internal void CopyPowerReadValues(ResumableDiscardProgram program, CompletedPowerReadValues[] target)
+        => new(context, _powerTemplates, _powerTemplates.Select(power => CanonicalPower(BasicKind(power))).ToArray(), _panacheTemplate);
+    internal void CopyPowerReadValues(ResumableDiscardProgram program, Span<CompletedPowerReadValues> target)
     {
-        if (target.Length != program.PowerCount) throw new ArgumentException("Power read buffer has the wrong size.");
-        for (int index = 0; index < target.Length; index++)
+        if (target.Length != program.PowerCount + program.PanacheCount) throw new ArgumentException("Power read buffer has the wrong size.");
+        for (int index = 0; index < program.PowerCount; index++)
         {
             var value = program.Power(index);
             target[index] = new(value.Amount, value.Applier < 0 ? null : _creatures[value.Applier], value.Order, value.Retired,
                 value.AmountOnTurnStart, value.SkipNextDurationTick);
+        }
+        for (int index = 0; index < program.PanacheCount; index++)
+        {
+            var value = program.Panache(index);
+            target[program.PowerCount + index] = new(value.Amount, value.Applier < 0 ? null : _creatures[value.Applier], value.Order, false,
+                value.AmountOnTurnStart, value.SkipNextDurationTick, value.CardsLeft, value.AlreadyApplied);
         }
     }
 
@@ -404,6 +421,7 @@ internal sealed class CompactDiscardProjection
         var damageResults = new Dictionary<int, List<DamageResult>>();
         var stack = new Stack<(int Identity, CardPlay Play, PredictionTrace.TraceScope Scope, PredictionTrace.TraceScope? Method)>();
         PredictionTrace.TraceScope? handEndMethod = null;
+        PredictionTrace.TraceScope? panacheMethod = null;
         try
         {
             for (int index = 0; index < program.EventCount; index++)
@@ -631,6 +649,30 @@ internal sealed class CompactDiscardProjection
                         projection.History.CardPlayFinished(card, active.Play, (item.Flags & 1) != 0);
                         combat.RecordCardPlayed(card, item.Value != 0);
                         combat.RecordCardLifecycle(projection, card);
+                        if ((item.Flags & 2) != 0)
+                            stack.Push((active.Identity, active.Play, active.Scope, null));
+                        else
+                        {
+                            card.MutablePreview.CurrentTarget = null;
+                            card.InvalidateCaches();
+                            active.Scope.Dispose();
+                        }
+                        break;
+                    }
+                    case ResumableDiscardProgram.EventKind.PanacheStart:
+                        if (panacheMethod != null || stack.Peek().Identity != item.Card)
+                            throw new InvalidOperationException("Independent Power hook has no completed owner card.");
+                        panacheMethod = projection.PushMethodSource(_panacheTemplate!, AfterCardPlayed);
+                        break;
+                    case ResumableDiscardProgram.EventKind.PanacheFinish:
+                        if (panacheMethod == null) throw new InvalidOperationException("Independent Power hook was not started.");
+                        panacheMethod.Value.Dispose(); panacheMethod = null;
+                        break;
+                    case ResumableDiscardProgram.EventKind.CardHooksFinished:
+                    {
+                        var active = stack.Pop();
+                        if (active.Identity != item.Card || active.Method != null || panacheMethod != null)
+                            throw new InvalidOperationException("Unbalanced after-card hook scope.");
                         card.MutablePreview.CurrentTarget = null;
                         card.InvalidateCaches();
                         active.Scope.Dispose();
@@ -664,10 +706,11 @@ internal sealed class CompactDiscardProjection
                         throw new InvalidOperationException("Unknown compact projection event.");
                 }
             }
-            if (stack.Count != 0 || handEndMethod != null) throw new InvalidOperationException("Compact history did not finish.");
+            if (stack.Count != 0 || handEndMethod != null || panacheMethod != null) throw new InvalidOperationException("Compact history did not finish.");
         }
         finally
         {
+            panacheMethod?.Dispose();
             handEndMethod?.Dispose();
             while (stack.TryPop(out var active)) { active.Method?.Dispose(); active.Scope.Dispose(); }
         }
@@ -686,7 +729,7 @@ internal sealed class CompactDiscardProjection
             Creature? dealer = (traits & ResumableDiscardProgram.DamageTraits.NoDealer) != 0 ? null
                 : _creatures[item.Dealer];
             PredictedCard? cardSource = (traits & ResumableDiscardProgram.DamageTraits.NoCard) != 0 ? null : cards[item.Card];
-            ValueProp props = poison ? 0 : ValueProp.Move;
+            ValueProp props = poison || panacheMethod != null ? 0 : ValueProp.Move;
             if ((traits & ResumableDiscardProgram.DamageTraits.Unpowered) != 0) props |= ValueProp.Unpowered;
             if ((traits & ResumableDiscardProgram.DamageTraits.Unblockable) != 0) props |= ValueProp.Unblockable;
             DamageResult result = new(target, props)
@@ -711,7 +754,7 @@ internal sealed class CompactDiscardProjection
         if (program.PowerCount > 0)
         {
             var binding = CreatePowerReadBinding(projection);
-            var values = new CompletedPowerReadValues[program.PowerCount];
+            var values = new CompletedPowerReadValues[program.PowerCount + program.PanacheCount];
             CopyPowerReadValues(program, values);
             binding.Read(values, Enumerable.Range(1, program.EnemyEnd - 1)
                 .Where(program.CreaturePresent).Select(Creature).ToArray());
@@ -792,6 +835,21 @@ internal sealed class CompactDiscardProjection
                 && !ReferenceEquals(actual.Applier, expected.Applier < 0 ? null : _creatures[expected.Applier]))
                 throw new InvalidOperationException($"Compact Power values differ: owner={definition.Owner}, kind={definition.Kind}.");
         }
+        var panache = powers.OfType<PanachePower>().ToArray();
+        int panacheIndex = 0;
+        for (int index = 0; index < program.PanacheCount; index++)
+        {
+            var value = program.Panache(index);
+            if (value.Amount == 0) continue;
+            if (panacheIndex == panache.Length) throw new InvalidOperationException("Compact independent Power count differs.");
+            var actual = panache[panacheIndex++];
+            if (value.Amount != actual.Amount || value.CardsLeft != actual.DynamicVars["CardsLeft"].IntValue
+                || value.AlreadyApplied != PowerPredictionStateSupport.PanacheAlreadyApplied(simulator, actual)
+                || value.AmountOnTurnStart != actual.AmountOnTurnStart || value.SkipNextDurationTick != actual.SkipNextDurationTick
+                || actual.Applier != (value.Applier < 0 ? null : _creatures[value.Applier]))
+                throw new InvalidOperationException("Compact independent Power lifecycle differs.");
+        }
+        if (panacheIndex != panache.Length) throw new InvalidOperationException("Compact independent Power count differs.");
         SimCardPile[] piles = [state.Hand, state.DrawPile, state.DiscardPile, state.PlayPile, state.ExhaustPile];
         var identities = CaptureCardIdentities(simulator);
         CardModel[] originals = identities.Where(pair => pair.Value >= 0).OrderBy(pair => pair.Value).Select(pair => pair.Key).ToArray();
@@ -908,6 +966,7 @@ internal sealed class CompactDiscardProjection
             || type == typeof(BorrowedTimePower) && method is nameof(AbstractModel.TryModifyEnergyCostInCombat) or nameof(AbstractModel.AfterSideTurnEnd)
             || (type == typeof(HangPower) || type == typeof(LethalityPower)) && method == nameof(AbstractModel.ModifyDamageMultiplicative)
             || (type == typeof(SpiritOfAshPower) || type == typeof(DanseMacabrePower)) && method == nameof(AbstractModel.BeforeCardPlayed)
+            || type == typeof(PanachePower) && method is nameof(AbstractModel.AfterCardPlayed) or nameof(AbstractModel.AfterSideTurnEnd)
             || type == typeof(VeilpiercerPower) && method is nameof(AbstractModel.TryModifyEnergyCostInCombatLate) or nameof(AbstractModel.BeforeCardPlayed)
             || type == typeof(DoomPower) && method is nameof(AbstractModel.BeforeSideTurnEnd) or nameof(AbstractModel.AfterSideTurnEnd)
             || type == typeof(ToolsOfTheTradePower) && method is nameof(AbstractModel.ModifyHandDraw) or nameof(AbstractModel.AfterPlayerTurnStart)
@@ -938,6 +997,8 @@ internal sealed class CompactDiscardProjection
         BindingFlags.Instance | BindingFlags.NonPublic, [typeof(PlayerChoiceContext)]);
     private static readonly MirrorMethodSpec EnchantmentOnPlay = new(typeof(EnchantmentModel), nameof(EnchantmentModel.OnPlay),
         BindingFlags.Instance | BindingFlags.Public, [typeof(PlayerChoiceContext), typeof(CardPlay)]);
+    private static readonly MirrorMethodSpec AfterCardPlayed = MirrorMethodSpec.Hook(nameof(AbstractModel.AfterCardPlayed),
+        [typeof(PlayerChoiceContext), typeof(CardPlay)]);
     private static readonly PropertyInfo ShuffleEvents = typeof(CombatPredictionSimulator)
         .GetProperty(nameof(CombatPredictionSimulator.ShuffleEventCount))!;
 }

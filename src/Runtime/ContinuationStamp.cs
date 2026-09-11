@@ -429,6 +429,8 @@ internal sealed record ContinuationStamp(string StateText)
             if (power is SurroundedPower surrounded)
                 text.Append("Facing=").Append(simulator == null ? surrounded.Facing
                     : PowerPredictionStateSupport.SurroundedFacing(simulator, surrounded)).Append(',');
+            if (power is PanachePower panache)
+                text.Append("AlreadyApplied=").Append(PowerPredictionStateSupport.PanacheAlreadyApplied(simulator, panache)).Append(',');
             text.Append("],");
         }
     }

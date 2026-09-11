@@ -38,7 +38,8 @@ internal sealed partial class ResumableDiscardProgram
         }
         CleanupCards();
         EndSidePowerEffects(enemySide: false);
-        if (CheckWinCondition()) return;
+        // Phase two can mark a pending loss. Native still switches sides, snapshots
+        // Powers and clears enemy block before committing at its next safe point.
         _round.BeginEnemy(State);
         State.Write(AttackCardStartsSlot, 0);
         Emit(EventKind.BeginSide, -2);

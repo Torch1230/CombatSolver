@@ -10,6 +10,7 @@ internal sealed partial class ResumableDiscardProgram
         if (owner < 0 || owner >= CreatureCount || !CreaturePresent(owner))
             throw new InvalidOperationException("Turn-start Power amounts require a captured participant.");
         _powers!.CaptureTurnStart(State, owner);
+        if (owner == 0) CapturePanacheTurnStart();
     }
 
     internal void ClearCreatureBlock(int owner)
@@ -18,6 +19,9 @@ internal sealed partial class ResumableDiscardProgram
         var values = Creature(owner);
         values.Block = 0;
         _combat!.Write(State, owner, values);
+        // Native clears block even during pending loss, but a new
+        // AfterBlockCleared dispatch has no listeners once combat is ending.
+        if (Ending) return;
         int index = _powers!.FindOrDefault(owner, BasicPowerKind.BlockNextTurn);
         if (index < 0 || Power(index).Amount == 0) return;
         int amount = Power(index).Amount;
@@ -37,6 +41,7 @@ internal sealed partial class ResumableDiscardProgram
             int borrowed = _powers!.FindOrDefault(0, BasicPowerKind.BorrowedTime);
             if (borrowed >= 0 && Power(borrowed).Amount != 0)
                 CommitPower(-1, 0, BasicPowerKind.BorrowedTime, -Power(borrowed).Amount);
+            ResetPanacheTurn();
             return;
         }
         // Only enemy temporary Strength is admitted. Its removal has no amount callback;

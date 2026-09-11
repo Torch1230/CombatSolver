@@ -36,10 +36,10 @@ internal static class NeurosurgeChecks
             throw new InvalidOperationException("Side-start Doom must commit before the first setup choice.");
         Continue(lane);
         var final = lane.Freeze();
-        if (!lane.Terminal || !lane.DefeatTerminal || lane.EnemySide || lane.PlayerTurn != 11 || lane.TerminalPlayerTurn != 11
+        if (!lane.Terminal || !lane.DefeatTerminal || !lane.EnemySide || lane.PlayerTurn != 11 || lane.TerminalPlayerTurn != 11
             || lane.MonsterMoveLogCount != 3 || lane.Creature(0).CurrentHp != 0 || !lane.CreaturePresent(0)
             || Enumerable.Range(0, lane.EventCount).Select(lane.EventAt).Any(e => e.Kind == ResumableDiscardProgram.EventKind.Damage))
-            throw new InvalidOperationException("Player Doom death advanced the enemy phase or became damage.");
+            throw new InvalidOperationException("Player Doom death missed the enemy-start safe point, executed a move or became damage.");
         lane.State.Rollback(mark);
         if (!lane.State.Freeze().ContentEquals(initial.Open().State.Freeze())) throw new InvalidOperationException("Doom round rollback leaked.");
         Parallel.For(0, 8, _ =>
@@ -62,7 +62,25 @@ internal static class NeurosurgeChecks
         if (!enemy.Terminal || enemy.DefeatTerminal || !enemy.EnemySide || enemy.PlayerTurn != 9 || enemy.MonsterMoveLogCount != 1
             || enemy.CreaturePresent(1) || enemy.Creature(1).Block != 9)
             throw new InvalidOperationException("Enemy Doom must follow its move and precede the next player turn.");
-        Console.WriteLine("COMPACT_NEUROSURGE_CHECKS_OK energy_cap=true onplay_pause=true artifact=true side_start_once=true doom_both_terminal_phases=true reverse_restore=true frozen_workers=8");
+        // A pending player loss still crosses the enemy snapshot/block-clear boundary,
+        // while new AfterBlockCleared/AfterSideTurnStart dispatches have no listeners.
+        // Enemy BlockNextTurn is a kernel contract only; root admission excludes it.
+        var pendingPowers = powers.Select(power => power with { Amount = (power.Owner, power.Kind) switch
+        {
+            (0, BasicPowerKind.Doom) => 3, (1, BasicPowerKind.Poison) => 3,
+            (1, BasicPowerKind.BlockNextTurn) => 9, _ => 0
+        } }).ToArray();
+        var pending = new ResumableDiscardProgram([ordinary], [[0], [], [], [], []], 1, 0, 0, comparisons: [0],
+            creatures: [new(3, 3, 0), new(20, 20, 7)], powers: pendingPowers,
+            handEndAdmitted: true, monsterMoves: [new([])], powerPhasesAdmitted: true,
+            monsterAi: new(1, 0, [0], [0]), round: new(7, 9, 3, 2));
+        pending.BeginNextPlayerTurn(ResumableDiscardProgram.HandEndStaging.Together);
+        if (!pending.DefeatTerminal || !pending.EnemySide || pending.Creature(1) != new CreatureVitals(20, 20, 0)
+            || pending.MonsterMoveLogCount != 1 || pending.PlayerTurn != 9
+            || pending.Power(Array.FindIndex(pendingPowers, p => p.Owner == 1 && p.Kind == BasicPowerKind.Poison)).Amount != 3
+            || pending.Power(Array.FindIndex(pendingPowers, p => p.Owner == 1 && p.Kind == BasicPowerKind.BlockNextTurn)).Amount != 9)
+            throw new InvalidOperationException("Pending-loss enemy start skipped creature cleanup or began a new Hook dispatch.");
+        Console.WriteLine("COMPACT_NEUROSURGE_CHECKS_OK energy_cap=true onplay_pause=true artifact=true side_start_once=true doom_both_terminal_phases=true pending_loss_dispatch_gate=true reverse_restore=true frozen_workers=8");
 
         static void Continue(ResumableDiscardProgram program)
         {

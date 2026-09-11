@@ -20,7 +20,7 @@ internal sealed class BasicPowerLayout
     internal bool HasGlobalEnergyCosts { get; }
     internal BasicPowerDefinition Definition(int index) => _definitions[index];
 
-    internal BasicPowerLayout(ReversibleValueState state, BasicPowerDefinition[] definitions)
+    internal BasicPowerLayout(ReversibleValueState state, BasicPowerDefinition[] definitions, int initialOrder = 0)
     {
         _definitions = (BasicPowerDefinition[])definitions.Clone();
         _beforeCardPowers = Enumerable.Range(0, definitions.Length).Where(index => definitions[index].Owner == 0
@@ -29,6 +29,7 @@ internal sealed class BasicPowerLayout
         HasArtifact = definitions.Any(definition => definition.Kind == BasicPowerKind.Artifact);
         _start = state.Allocate(checked(definitions.Length * Width));
         _orderSlot = state.Allocate(1);
+        state.Write(_orderSlot, initialOrder);
         for (int index = 0; index < Count; index++)
         {
             var definition = definitions[index];
@@ -87,13 +88,19 @@ internal sealed class BasicPowerLayout
         int order = before.Order;
         if (before.Amount == 0 && after != 0)
         {
-            order = checked((int)state[_orderSlot] + 1);
-            state.Write(_orderSlot, order);
+            order = NextOrder(state);
         }
         Write(state, index, new(after, before.Amount == 0 ? applier : before.Applier, after == 0 ? 0 : order,
             before.Retired || before.Amount != 0 && after == 0 && _definitions[index].RootSlot,
             before.Amount == 0 ? 0 : before.AmountOnTurnStart,
             before.Amount == 0 ? _definitions[index].Owner == 0 && IsDebuff(_definitions[index].Kind, after) : before.SkipNextDurationTick));
+    }
+
+    internal int NextOrder(ReversibleValueState state)
+    {
+        int order = checked((int)state[_orderSlot] + 1);
+        state.Write(_orderSlot, order);
+        return order;
     }
 
     internal static bool IsDuration(BasicPowerKind kind) => kind is BasicPowerKind.Weak or BasicPowerKind.Vulnerable or BasicPowerKind.Frail;

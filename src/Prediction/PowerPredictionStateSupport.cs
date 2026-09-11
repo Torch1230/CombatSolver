@@ -12,6 +12,10 @@ internal static class PowerPredictionStateSupport
     public static SurroundedPower.Direction SurroundedFacing(CombatPredictionSimulator simulator, SurroundedPower power)
         => simulator.StateStore.Peek(power, () => new SurroundedPredictionState(power)).Facing;
 
+    public static bool PanacheAlreadyApplied(CombatPredictionSimulator? simulator, PanachePower power)
+        => simulator == null ? power.GetInternalData<PanachePower.Data>().alreadyApplied
+            : simulator.StateStore.Peek(power, static value => new PanachePredictionState(value)).AlreadyApplied;
+
     public static void CaptureRootState(
         CombatPredictionSimulator simulator,
         PowerModel target,

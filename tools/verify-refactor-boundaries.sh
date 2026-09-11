@@ -1074,7 +1074,7 @@ done < <(rg --files "$search_root" "$repository_root/src/Runtime" -g '*.cs')
 require_fixed "$compact_power_reads" 'state.AssertForkable();' 'completed Power binding requires a stable setup root'
 require_fixed "$compact_power_reads" 'model._owner = source.Owner;' 'Power clone must restore captured ownership'
 require_fixed "$compact_power_reads" 'private readonly PowerModel[] _replacementModels;' 'reacquired Power metadata must have its own prepared read model'
-require_fixed "$compact_power_reads" 'PowerModel model = value.Retired ? _replacementModels[index] : _models[index];' 'Power read lifetime must follow journaled root retirement'
+require_fixed "$compact_power_reads" 'PowerModel model = index < _ordinaryCount && value.Retired ? _replacementModels[index] : _models[index];' 'Power read lifetime must follow journaled root retirement'
 require_fixed "$compact_power_reads" 'model._amount = value.Amount;' 'completed Power reads lost supplied amount authority'
 require_fixed "$compact_power_reads" '_state.InvalidateBaseHookListeners();' 'roster changes must invalidate Power owner-anchor order'
 compact_card_reads="$repository_root/src/Prediction/Compact/CompactCardMetadataReadBinding.cs"
@@ -1117,7 +1117,7 @@ require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" 'CaptureHist
 require_fixed "$repository_root/src/Search/SimulatedCombatState.AutoPlay.cs" '=> _lastAttackPreviousTurn?.GetValueOrDefault(player);' 'empty previous-turn attack must not refill from live history'
 require_fixed "$search_root/SimulatedCombatState.cs" "history?.Owner.Creature, history?.Exhausts" 'completed keys lost supplied exhaust history'
 require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'strategicRequirements, view?.CardValuesInvariant == true ? view.Invariants : null' 'card-set changes must bypass invariant strategic summaries'
-require_fixed "$compact_reader" '_adapter.CopyPowerReadValues(program, _powerValues);' 'completed Power inputs must come from the value program'
+require_fixed "$compact_reader" '_adapter.CopyPowerReadValues(program, values);' 'completed Power inputs must come from the value program'
 require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'SnapshotCore(view.EvaluationContext,' 'completed evaluator must consume the lane-owned evaluation context'
 require_fixed "$compact_reader" '!_adapter.Program.State.HasSameRoot(program.State) || !program.Complete' 'completed reader lost ownership/stability guard'
 require_fixed "$compact_reader" 'ValueRng rng = _program.ShuffleRng;' 'completed reader lost authoritative shuffle state'
@@ -1231,6 +1231,18 @@ require_fixed "$repository_root/src/Runtime/ContinuationStamp.cs" '!ReferenceEqu
 require_fixed "$repository_root/src/Runtime/ContinuationStamp.cs" 'combat.AppendPredictedTurnCardHistory(text, player, readView?.CardHistory);' 'continuation history must consume current supplied counters'
 require_fixed "$repository_root/src/Runtime/ContinuationStamp.cs" 'readView?.EnergyCostRng ?? simulator.Rng.CombatEnergyCosts.CaptureState()' 'continuation must preserve the complete branch random-cost stream'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/CombatPredictionState.cs" 'internal bool IsHittable(Creature creature, bool presentAndAlive)' 'target semantics must share the original implementation with supplied life values'
+
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/PanachePowerLayout.cs" 'private readonly ReversibleValueBuffer _values;' 'independent Power values must grow in the reversible workspace'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Panache.cs" '_panache!.Write(State, index, value with { CardsLeft = left, AlreadyApplied = true });' 'after-card counters must be committed per instance'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.PowerPhases.cs" 'ResetPanacheTurn();' 'independent counters must reset in their owner phase'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/BasicPowerLayout.cs" 'internal int NextOrder(ReversibleValueState state)' 'ordinary and independent Powers must share acquisition order'
+require_fixed "$repository_root/src/Search/SimulatedCombatState.CompletedPowerReads.cs" 'for (int index = values.Length; index < _models.Count; index++) _models[index]._amount = 0;' 'restoring fewer instances must deactivate pooled siblings'
+require_fixed "$repository_root/src/Search/SimulatedCombatState.CompletedPowerReads.cs" 'hidden.CardsLeft = value.CardsLeft; hidden.AlreadyApplied = value.AlreadyApplied;' 'completed Power reads must import independent hidden state'
+require_fixed "$repository_root/src/Prediction/CardPowerOnPlaySupport.cs" 'combat.ApplyInstancedPower<PanachePower>' 'native instanced Powers must not merge counters'
+require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" 'item.Add(PowerPredictionStateSupport.PanacheAlreadyApplied(simulator, panache));' 'activation lifetime must distinguish state keys'
+require_fixed "$repository_root/src/Runtime/ContinuationStamp.cs" 'PowerPredictionStateSupport.PanacheAlreadyApplied(simulator, panache)' 'activation lifetime must be checked during continuation'
+
+require_fixed "$repository_root/src/Search/CombatBeamSolver.RoundLifecycle.cs" 'if (!simulator.IsOverOrEnding && !CorePowerSupport.TriggerAfterBlockCleared(' 'enemy-start Hook compensation must preserve native dispatch-entry ending gates'
 
 if ((${#violations[@]} > 0)); then
     printf '%s\n' "${violations[@]}" >&2

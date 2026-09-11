@@ -123,8 +123,18 @@ internal sealed partial class UnattendedTestRunner
                 adapter.AssertValues(lane, expected); adapter.AssertValues(lane, projected);
                 var snapshot = CaptureSimulated(expected, (SimulatedCombatState)expected.State.CombatState, player, enemy);
                 AssertSnapshotEqual(snapshot, CaptureSimulated(projected, (SimulatedCombatState)projected.State.CombatState, player, enemy), label, stage);
-                if (!CompactHistory(expected, adapter).SequenceEqual(CompactHistory(projected, adapter)))
-                    throw new InvalidOperationException("Pet card route full history/source differs.");
+                var expectedHistory = CompactHistory(expected, adapter).ToArray();
+                var projectedHistory = CompactHistory(projected, adapter).ToArray();
+                if (!expectedHistory.SequenceEqual(projectedHistory))
+                {
+                    if (!string.IsNullOrWhiteSpace(_request.EvidenceDirectory))
+                    {
+                        Directory.CreateDirectory(_request.EvidenceDirectory);
+                        File.WriteAllText(Path.Combine(_request.EvidenceDirectory, "compact-history-difference.json"),
+                            JsonSerializer.Serialize(new { stage, expectedHistory, projectedHistory }, new JsonSerializerOptions { WriteIndented = true }));
+                    }
+                    throw new InvalidOperationException($"Pet card route full history/source differs at {stage}.");
+                }
                 var powers = CompactPowerValues(((SimulatedCombatState)expected.State.CombatState).EffectivePowers()).ToArray();
                 if (!powers.SequenceEqual(CompactPowerValues(((SimulatedCombatState)projected.State.CombatState).EffectivePowers())))
                     throw new InvalidOperationException("Pet card route Power lifecycle fields differ.");
@@ -180,8 +190,10 @@ internal sealed partial class UnattendedTestRunner
         if (route.Any(sample => sample.Terminal))
         {
             if (_mercuryTerminalObservation != null) throw new InvalidOperationException("A terminal observer is already active.");
+            string endMethod = route.Single(sample => sample.Terminal).Values.Open().DefeatTerminal
+                ? "ProcessPendingLoss" : "EndCombatInternal";
             endCombat = typeof(CombatManager).GetMethods(BindingFlags.Instance | BindingFlags.NonPublic)
-                .Single(method => method.Name == "EndCombatInternal" && method.GetParameters() is [{ ParameterType.Name: "CombatTurnState" }]);
+                .Single(method => method.Name == endMethod && method.GetParameters() is [{ ParameterType.Name: "CombatTurnState" }]);
             prefix = typeof(UnattendedTestRunner).GetMethod(nameof(ObserveMercuryCombatEndPrefix), BindingFlags.Static | BindingFlags.NonPublic)!;
             patch = new Harmony("CombatSolver.Testing.CompactPetCardRoute." + _request.RunId);
             terminalObservation = new(this, combat, player, enemy, endCombat.GetParameters()[0].ParameterType.GetProperty("State")!, label, snapshot =>
@@ -216,7 +228,7 @@ internal sealed partial class UnattendedTestRunner
                 });
                 using (CardSelectCmd.PushSelector(observer))
                 {
-                    if (action.Kind == PlanActionKind.EndTurn) await AdvanceMercuryActualTurnAsync(combat, player, false);
+                    if (action.Kind == PlanActionKind.EndTurn) await AdvanceMercuryActualTurnAsync(combat, player, expected.Terminal);
                     else
                     {
                         var card = CombatBeamSolver.FindCardForReplay(player.PlayerCombatState!.Hand.Cards.Select(PredictedCard.FromGenerated).ToArray(), action)

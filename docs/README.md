@@ -1,4 +1,5 @@
 # CombatSolver 文档导航
+- [神气制胜独立实例与终局分派](performance/simulation-panache-20260911.md)：独立计数、首次应用、末击与玩家死亡的完整回合边界。
 - [致死性与攻击历史窗口](performance/simulation-lethality-20260911.md)：首次攻击倍率和当前／上一回合最后攻击的冻结所有权。
 - [灰烬之灵、死亡之舞与迅速](performance/simulation-card-hooks-20260911.md)：出牌前顺序、当前费用与一次性附魔的分支恢复。
 - [雕琢打击、响指与动态关键字](performance/simulation-keywords-20260911.md)：过滤后的实例身份、生成牌标记、X 费与跨回合恢复。

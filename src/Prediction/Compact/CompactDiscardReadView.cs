@@ -32,7 +32,7 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
     private readonly int[] _baseHits, _baseEnemyHits, _baseCreatureAttacks, _basePetHits, _baseHitsOnPet;
     private readonly SimulatedCombatState.CompletedOstyReadBinding? _ostyBinding;
     private readonly SimulatedCombatState.CompletedPowerReadBinding? _powerBinding;
-    private readonly CompletedPowerReadValues[] _powerValues;
+    private CompletedPowerReadValues[] _powerValues;
     private readonly CompactMonsterAiReadBinding? _monsterAiBinding;
     private readonly SimulatedCombatState.CompletedRoundReadBinding? _roundBinding;
     internal int RiskSourceCount => _distinctGaps.Length;
@@ -75,7 +75,7 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
         _enemies = new(this);
         _monsterAiBinding = adapter.CreateMonsterAiReadBinding(_context);
         _roundBinding = adapter.CreateRoundReadBinding(_context);
-        _powerValues = new CompletedPowerReadValues[_program.PowerCount];
+        _powerValues = new CompletedPowerReadValues[_program.PowerCount + _program.PanacheCount];
         _powerBinding = _program.PowerCount == 0 ? null : adapter.CreatePowerReadBinding(_context);
         _rootGaps = PredictionCoverage.Collect(root);
         PredictionGap?[] cardGaps = adapter.DefinitionModels.Select((card, id) => risks[id] is { } reason
@@ -228,6 +228,9 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
                 case ResumableDiscardProgram.EventKind.KeywordAdded:
                 case ResumableDiscardProgram.EventKind.EnchantmentStart:
                 case ResumableDiscardProgram.EventKind.EnchantmentFinish:
+                case ResumableDiscardProgram.EventKind.PanacheStart:
+                case ResumableDiscardProgram.EventKind.PanacheFinish:
+                case ResumableDiscardProgram.EventKind.CardHooksFinished:
                 case ResumableDiscardProgram.EventKind.DamageBlocked:
                 case ResumableDiscardProgram.EventKind.DamageOverkill:
                 case ResumableDiscardProgram.EventKind.Block:
@@ -253,8 +256,11 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
         combat.ImportCompletedDoomAppliers(_combatHistory.DoomAppliers);
         if (_powerBinding != null)
         {
-            _adapter.CopyPowerReadValues(program, _powerValues);
-            _powerBinding.Read(_powerValues, _enemies);
+            int count = program.PowerCount + program.PanacheCount;
+            if (_powerValues.Length < count) Array.Resize(ref _powerValues, count);
+            var values = _powerValues.AsSpan(0, count);
+            _adapter.CopyPowerReadValues(program, values);
+            _powerBinding.Read(values, _enemies);
         }
         if (pending != null) combat.SetPendingTurnStartChoice(pending);
     }

@@ -1295,7 +1295,7 @@ $compactReadGuards = @(
     @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'state.AssertForkable();'),
     @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'model._owner = source.Owner;'),
     @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'private readonly PowerModel[] _replacementModels;'),
-    @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'PowerModel model = value.Retired ? _replacementModels[index] : _models[index];'),
+    @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'PowerModel model = index < _ordinaryCount && value.Retired ? _replacementModels[index] : _models[index];'),
     @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'model._amount = value.Amount;'),
     @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', '_state.InvalidateBaseHookListeners();'),
     @('src/Prediction/Compact/CompactCardMetadataReadBinding.cs', 'private readonly List<Binding> _active;'),
@@ -1333,7 +1333,7 @@ $compactReadGuards = @(
     @('src/Search/SimulatedCombatState.AutoPlay.cs', '=> _lastAttackPreviousTurn?.GetValueOrDefault(player);'),
     @('src/Search/SimulatedCombatState.cs', 'history?.Owner.Creature, history?.Exhausts'),
     @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'strategicRequirements, view?.CardValuesInvariant == true ? view.Invariants : null'),
-    @('src/Prediction/Compact/CompactDiscardReadView.cs', '_adapter.CopyPowerReadValues(program, _powerValues);'),
+    @('src/Prediction/Compact/CompactDiscardReadView.cs', '_adapter.CopyPowerReadValues(program, values);'),
     @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'SnapshotCore(view.EvaluationContext,'),
     @('src/Prediction/Compact/CompactDiscardReadView.cs', '!_adapter.Program.State.HasSameRoot(program.State) || !program.Complete'),
     @('src/Prediction/Compact/CompactDiscardReadView.cs', 'ValueRng rng = _program.ShuffleRng;'),
@@ -1513,6 +1513,23 @@ foreach ($rule in @(
 )) {
     if (-not (Get-Content -LiteralPath (Join-Path $repositoryRoot $rule[0]) -Raw).Contains($rule[1])) {
         throw "Compact captured-root ownership/evaluation guard missing: $($rule[0]): $($rule[1])"
+    }
+}
+
+foreach ($rule in @(
+    @('src/Search/CombatBeamSolver.RoundLifecycle.cs', 'if (!simulator.IsOverOrEnding && !CorePowerSupport.TriggerAfterBlockCleared('),
+    @('src/Engine/InCombat/Simulation/Compact/PanachePowerLayout.cs', 'private readonly ReversibleValueBuffer _values;'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Panache.cs', '_panache!.Write(State, index, value with { CardsLeft = left, AlreadyApplied = true });'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.PowerPhases.cs', 'ResetPanacheTurn();'),
+    @('src/Engine/InCombat/Simulation/Compact/BasicPowerLayout.cs', 'internal int NextOrder(ReversibleValueState state)'),
+    @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'for (int index = values.Length; index < _models.Count; index++) _models[index]._amount = 0;'),
+    @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'hidden.CardsLeft = value.CardsLeft; hidden.AlreadyApplied = value.AlreadyApplied;'),
+    @('src/Prediction/CardPowerOnPlaySupport.cs', 'combat.ApplyInstancedPower<PanachePower>'),
+    @('src/Search/SimulatedCombatState.cs', 'item.Add(PowerPredictionStateSupport.PanacheAlreadyApplied(simulator, panache));'),
+    @('src/Runtime/ContinuationStamp.cs', 'PowerPredictionStateSupport.PanacheAlreadyApplied(simulator, panache)')
+)) {
+    if (-not (Get-Content -LiteralPath (Join-Path $repositoryRoot $rule[0]) -Raw).Contains($rule[1])) {
+        throw "Independent Power ownership guard missing: $($rule[0]): $($rule[1])"
     }
 }
 

@@ -119,19 +119,25 @@ internal sealed partial class CombatBeamSolver
                     simulatedCombat.BeginSideTurn(enemy);
                 simulatedCombat.SnapshotPowerAmountsAtTurnStart(simulatedCombat.Enemies);
                 // 怪物方开始回合时，上一怪物回合留下的格挡先清除。
-                if (!TurnStartRelicSupport.TriggerBeforeSideTurnStart(
-                        simulator,
-                        simulatedCombat,
-                        simulatedCombat.Enemies))
+                // Native checks IsOverOrEnding once at each Hook dispatch entry.
+                // A pending phase-two loss still reaches creature snapshots/clears,
+                // but must not start a new listener pass.
+                if (!simulator.IsOverOrEnding)
                 {
-                    return SearchBoundaryReason.PendingChoice;
-                }
-                if (TurnStartPowerSupport.TriggerBeforeSideTurnStart(
-                        simulator,
-                        simulatedCombat,
-                        simulatedCombat.Enemies))
-                {
-                    return SearchBoundaryReason.PendingChoice;
+                    if (!TurnStartRelicSupport.TriggerBeforeSideTurnStart(
+                            simulator,
+                            simulatedCombat,
+                            simulatedCombat.Enemies))
+                    {
+                        return SearchBoundaryReason.PendingChoice;
+                    }
+                    if (TurnStartPowerSupport.TriggerBeforeSideTurnStart(
+                            simulator,
+                            simulatedCombat,
+                            simulatedCombat.Enemies))
+                    {
+                        return SearchBoundaryReason.PendingChoice;
+                    }
                 }
                 foreach (Creature enemy in simulatedCombat.Enemies)
                 {
@@ -143,7 +149,7 @@ internal sealed partial class CombatBeamSolver
                         else
                             PersistentRelicSupport.TriggerAfterPreventingBlockClear(simulator, preventer, enemy);
                     }
-                    if (!CorePowerSupport.TriggerAfterBlockCleared(
+                    if (!simulator.IsOverOrEnding && !CorePowerSupport.TriggerAfterBlockCleared(
                             simulator,
                             simulatedCombat,
                             enemy))
@@ -151,29 +157,34 @@ internal sealed partial class CombatBeamSolver
                         return SearchBoundaryReason.PendingChoice;
                     }
                 }
-                bool decrementEnemyPlating = simulatedCombat.RoundNumber > 1;
-                if (!simulatedCombat.TriggerSideTurnStart(
-                        simulator,
-                        CombatSide.Enemy,
-                        simulatedCombat.Enemies,
-                        decrementEnemyPlating))
+                // Preserve the entire already-started AfterSideTurnStart pass;
+                // do not recheck between its ordinary and Poison compensation.
+                if (!simulator.IsOverOrEnding)
                 {
-                    return SearchBoundaryReason.PendingChoice;
-                }
-                int enemyPoisonHistoryStart = simulator.History.Entries.Count;
-                if (!CorePowerSupport.TriggerPoison(
+                    bool decrementEnemyPlating = simulatedCombat.RoundNumber > 1;
+                    if (!simulatedCombat.TriggerSideTurnStart(
+                            simulator,
+                            CombatSide.Enemy,
+                            simulatedCombat.Enemies,
+                            decrementEnemyPlating))
+                    {
+                        return SearchBoundaryReason.PendingChoice;
+                    }
+                    int enemyPoisonHistoryStart = simulator.History.Entries.Count;
+                    if (!CorePowerSupport.TriggerPoison(
+                            simulator,
+                            simulatedCombat,
+                            simulatedCombat.Enemies.ToArray()))
+                    {
+                        return SearchBoundaryReason.PendingChoice;
+                    }
+                    TriggeredPowerSupport.CompensateHistorySince(
                         simulator,
                         simulatedCombat,
-                        simulatedCombat.Enemies.ToArray()))
-                {
-                    return SearchBoundaryReason.PendingChoice;
+                        enemyPoisonHistoryStart);
+                    if (simulatedCombat.HasPendingChoice)
+                        return SearchBoundaryReason.PendingChoice;
                 }
-                TriggeredPowerSupport.CompensateHistorySince(
-                    simulator,
-                    simulatedCombat,
-                    enemyPoisonHistoryStart);
-                if (simulatedCombat.HasPendingChoice)
-                    return SearchBoundaryReason.PendingChoice;
                 if (!CorePowerSupport.ApplyEnemyDeathPowers(
                         simulator,
                         simulatedCombat,

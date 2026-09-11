@@ -599,6 +599,14 @@ internal sealed partial class SimulatedCombatState
         if (incoming != null) ApplyPreparedPower(target, incoming, amount, applier);
     }
 
+    public void ApplyInstancedPower<T>(Creature target, int amount, Creature? applier = null) where T : PowerModel
+    {
+        if (CanonicalModels.Power<T>().InstanceType != MegaCrit.Sts2.Core.Entities.Powers.PowerInstanceType.Instanced)
+            throw new ArgumentException("Independent Power application requires an instanced native type.");
+        T? incoming = PreparePowerApplication<T>(target, ref amount, applier);
+        if (incoming != null) ApplyPreparedPower(target, incoming, amount, applier, newInstance: true);
+    }
+
     private T? PreparePowerApplication<T>(Creature target, ref int amount, Creature? applier) where T : PowerModel
     {
         if (amount == 0 || !CanReceivePredictedPowers(target))
@@ -613,9 +621,10 @@ internal sealed partial class SimulatedCombatState
         return incoming;
     }
 
-    private PowerModel ApplyPreparedPower<T>(Creature target, T incoming, int amount, Creature? applier) where T : PowerModel
+    private PowerModel ApplyPreparedPower<T>(Creature target, T incoming, int amount, Creature? applier, bool newInstance = false) where T : PowerModel
     {
-        PowerModel simulated = GetOrCreatePower(target, incoming, applier);
+        PowerModel simulated = newInstance ? incoming : GetOrCreatePower(target, incoming, applier);
+        if (newInstance) (_addedPowerInstances ??= []).Add(simulated);
         int previousAmount = simulated._amount;
         simulated._amount = Math.Clamp(simulated._amount + amount, -999_999_999, 999_999_999);
         // Native creates the skip flag on a new player debuff. Stacking an existing
@@ -2220,6 +2229,8 @@ internal sealed partial class SimulatedCombatState
             item.Add(ritual._wasJustAppliedByEnemy);
         if (power is SurroundedPower surrounded)
             item.Add((int)PowerPredictionStateSupport.SurroundedFacing(simulator, surrounded));
+        if (power is PanachePower panache)
+            item.Add(PowerPredictionStateSupport.PanacheAlreadyApplied(simulator, panache));
         ulong dynamicFirst = 0;
         ulong dynamicSecond = 0;
         int dynamicCount = 0;

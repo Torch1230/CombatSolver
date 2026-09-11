@@ -168,7 +168,7 @@ internal static partial class CardPowerOnPlaySupport
                 }
                 break;
             case Panache:
-                combat.Apply<PanachePower>(owner, card.DynamicVars["PanacheDamage"].IntValue, owner);
+                combat.ApplyInstancedPower<PanachePower>(owner, card.DynamicVars["PanacheDamage"].IntValue, owner);
                 break;
             case Parry:
                 combat.Apply<ParryPower>(owner, card.DynamicVars["ParryPower"].IntValue, owner);

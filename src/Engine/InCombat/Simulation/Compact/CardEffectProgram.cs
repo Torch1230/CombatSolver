@@ -5,7 +5,7 @@ internal enum CardInstructionKind
     AttackTarget, GainBlock, Draw, Discard, ApplyBasicPower, SkipIfDrawnCardNotType,
     TriggerBasicPower, DiscardHandAndDraw, SkipIfTargetLacksPower, GainBlockFromPowerSum,
     GainBlockAndApplyPower, ApplyTemporaryStrengthLoss, GenerateCards, GainEnergy, SummonPet, PetAttackTarget, ExhaustFromDraw,
-    LoseEnemyHp, RetrieveFromDiscard, ApplyPowerAtLeastCurrent, ApplyKeywordFromHand, DrawOnce
+    LoseEnemyHp, RetrieveFromDiscard, ApplyPowerAtLeastCurrent, ApplyKeywordFromHand, DrawOnce, AddPanachePower
 }
 internal enum CardInstructionTarget { Owner, ChosenEnemy, AllEnemies }
 internal enum CardCategory { Other, Attack, Skill, Power, Status }
@@ -36,6 +36,7 @@ internal sealed class CardEffectProgram
     internal bool RequiresPet { get; }
     internal bool ChangesKeywords { get; }
     internal bool HasOneShotEnchantment { get; }
+    internal bool CreatesPanache { get; }
 
     internal CardEffectProgram Append(CardInstruction instruction) => new([.. _instructions, instruction]);
 
@@ -65,6 +66,12 @@ internal sealed class CardEffectProgram
             RequiresPowers |= instruction.AttackMultiplierPower != null;
             switch (instruction.Kind)
             {
+                case CardInstructionKind.AddPanachePower:
+                    if (instruction.Target != CardInstructionTarget.Owner)
+                        throw new NotSupportedException("Independent Panache instances require the player owner.");
+                    RequiresPowers = true;
+                    CreatesPanache = true;
+                    break;
                 case CardInstructionKind.GenerateCards:
                     if (instruction.CardTemplate < 0 || instruction.Target != CardInstructionTarget.Owner
                         || !Enum.IsDefined(instruction.Placement) || instruction.EnergyXMultiplier < 0)
