@@ -11,8 +11,8 @@
 - 开放 `AfterSideTurnEndLateMirrors.Register<TModel>`，复用标准 MethodMirrorRegistry/Descriptor；精确类型、重复登记校验，首次根捕获或分发冻结。遗物／Modifier 状态继续由既有状态接口负责，登记不放行其他 Mod 语义。
 - 玩家与敌方晚期效果共用 Hook facade，按分支监听顺序固定成员、跟随卡牌 COW Preview，选牌立即暂停；未知战斗重写记录风险后明确失败。DisintegrationPower 迁入唯一镜像结算点，删除旧晚期补偿，保留伤害来源。
 - 掩码新增一个 bit；空参与表不分配阶段上下文/接收者列表，非空阶段仅保存当次监听成员。不增加逐节点程序集扫描或反射登记，没有进行性能 A/B。
-- 本地独立合同 25 项及冻结独立进程 1 项通过；0.111.0 参考程序集 Release 构建零警告零错误，Bash 结构门禁与 CoverageCatalog `--verify` 通过。合同使用引擎替身，尚未运行原生差分或两回合验证。覆盖目录校验保留历史证据口径，不代表本轮重跑；见测试清单。
-- 当前实现仍待原生差分验收，未发版。第三方签名和限制见 [回合阶段镜像](third-party-turn-phase-mirrors.md)。
+- 本地独立合同 25 项及冻结独立进程 1 项通过；0.111.0 参考程序集 Release 构建零警告零错误，Bash 结构门禁与 CoverageCatalog `--verify` 通过。合同使用引擎替身；后续隔离的可见游戏完成玩家晚期伤害差分，以及玩家／敌方两侧晚期伤害 T1→T2 完整状态对账。游戏验证使用三个适配 PR 的组合构建；具体 runId 与未覆盖项见测试清单。
+- 未发版。第三方签名和限制见 [回合阶段镜像](third-party-turn-phase-mirrors.md)。
 
 ## 0.36.3：路线策略结果摘要
 

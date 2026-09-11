@@ -8,7 +8,8 @@
 - 初版 Release 构建针对 `0.111.0` 参考程序集与匹配 RitsuLib，通过，零警告零错误，`CopyModOnBuild=false`。当时本机安装游戏为 `0.107.1`，首次使用安装目录构建因 API 不匹配失败；改为现有 `0.111.0` 参考目录后修正缺少的 Simulation using，通过构建。后续针对本机 `0.111.0` 的结果见本节复审记录。没有部署模组。
 - Bash 结构门禁：`REFACTOR_BOUNDARIES_OK search_files=87`。同步修改 PowerShell 对应入口规则；本机没有执行 PowerShell。
 - CoverageCatalog `--verify` 在临时目录通过：3035 条、0 未分析、0 待实现；新镜像被识别为 `Registered / Exact / EngineMirror`。工具运行补入缺少的 SmartFormat 托管依赖；临时生成目录未覆盖仓库的全量生成文件，避免引入平台方法哈希及上游版本刷新差异。源分类已更新，生成结果另存本地审阅材料。
-- 未运行 `monster-moves-batch-033-disintegration.json`、敌方晚期伤害/末击，或中性遗物／Modifier 的原生两回合差分；这些仍为实机验收项。既有 `MONSTER-MOVES-BATCH-033` 的 Runtime 记录是历史证据，不能当作本轮迁移通过。无性能 A/B 或性能提升结论。
+- 隔离的 macOS 可见游戏 0.111.0（非 Steam，独立用户目录，仅 CombatSolver 0.36.3 与 RitsuLib 0.5.20）使用三个适配 PR 的组合构建：`MONSTER-MOVES-BATCH-033-DISINTEGRATION` / `305ee31e761c4fe39146871bc114adce` Passed，验证玩家 2 格挡承受 5 点晚期伤害后掉血 3；`REPORT-ROUND-LATE-BOTH-SIDES` / `8232b2a0b7984535b95c7837eb7ab4b0` Passed，玩家／敌方均有 Disintegration，T1→T2 完整快照、Fork 与 continuation 一致。输入见 `coverage/unattended/monster-moves-batch-033-disintegration.json` 与 `late-both-sides.json`。
+- 末击、多监听器原生顺序以及任意第三方晚期 Hook 尚未实机覆盖；独立合同的模型替身不替代这些场景。没有性能 A/B 或性能提升结论。
 
 ## 0.36.3：策略摘要
 
