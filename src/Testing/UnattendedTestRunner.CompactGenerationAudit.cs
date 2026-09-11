@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.InCombat.Extensions;
@@ -168,25 +169,57 @@ internal sealed partial class UnattendedTestRunner
         catch (ArgumentException) { rejected = true; }
         if (!rejected || !invalidScratch.SequenceEqual(new[] { 71, 72 }))
             throw new InvalidOperationException("Value generation selection modified undersized scratch or failed to reject it.");
+        // Every array the metering touches is allocated before the first metered call:
+        // the reusable selection scratch plus one record array per phase. The phases
+        // themselves only run the shipped selection primitive and its scratch.
+        const int SelectionCount = 1;
+        const int WarmupCalls = 100;
+        const int BlockCalls = 5000;
+        const int BlockCount = 5;
         int[] reusable = new int[fullPool.Length];
+        long[] warmupAllocations = new long[1];
+        long[] stabilizationAllocations = new long[BlockCount];
+        long[] steadyStateAllocations = new long[BlockCount];
         var allocationRng = new ValueRng(initial.Counter, initial.State0, initial.State1, initial.State2, initial.State3);
-        for (int warmup = 0; warmup < 100; warmup++)
-            allocationRng = allocationRng.TakeDistinctIndices(fullPool.Length, 1, reusable, out _);
+        int firstCounter = allocationRng.Counter;
+        allocationRng = RunValueGenerationSelectionBlocks(
+            allocationRng, fullPool.Length, SelectionCount, WarmupCalls, warmupAllocations, reusable);
+        // The stabilization phase repeats the complete measurement shape - same helper,
+        // same block count, same calls per block - so one-time runtime work attached to a
+        // measured batch (JIT stubs, tiering, host thread setup) lands before the evidence.
+        // It is never passing evidence: its records are not read and its RNG calls are
+        // outside both assertions below.
+        allocationRng = RunValueGenerationSelectionBlocks(
+            allocationRng, fullPool.Length, SelectionCount, BlockCalls, stabilizationAllocations, reusable);
         int beforeCounter = allocationRng.Counter;
-        // The host process can charge one-time runtime work (JIT tiering, stubs) to this
-        // thread. A real allocation in the selection would appear in every block, so the
-        // steady state must contain an exactly zero-allocation block; no tolerance applies.
-        long[] blockAllocations = new long[5];
+        if (beforeCounter - firstCounter != (WarmupCalls + BlockCount * BlockCalls) * (fullPool.Length - 1))
+            throw new InvalidOperationException($"Value generation selection warmup/stabilization changed RNG consumption: {beforeCounter - firstCounter}.");
+        allocationRng = RunValueGenerationSelectionBlocks(
+            allocationRng, fullPool.Length, SelectionCount, BlockCalls, steadyStateAllocations, reusable);
+        if (allocationRng.Counter - beforeCounter != BlockCount * BlockCalls * (fullPool.Length - 1))
+            throw new InvalidOperationException($"Value generation selection changed RNG consumption: {allocationRng.Counter - beforeCounter}.");
+        // A real allocation in the selection would appear in every steady-state block; any
+        // nonzero block fails immediately. The one-time host charges were already consumed
+        // by the stabilization phase, so no tolerance or byte threshold applies.
+        if (steadyStateAllocations.Any(allocated => allocated != 0))
+            throw new InvalidOperationException("Value generation selection allocated in the steady state: "
+                + $"{string.Join('/', steadyStateAllocations)} bytes; stabilization="
+                + $"{string.Join('/', stabilizationAllocations)} bytes.");
+    }
+
+    // Pure loop helper. The measured region contains only the shipped selection primitive
+    // and its caller-owned scratch: no LINQ, formatting, logging or array creation.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static ValueRng RunValueGenerationSelectionBlocks(ValueRng rng, int population, int count,
+        int callsPerBlock, Span<long> blockAllocations, Span<int> scratch)
+    {
         for (int block = 0; block < blockAllocations.Length; block++)
         {
             long beforeBytes = GC.GetAllocatedBytesForCurrentThread();
-            for (int sample = 0; sample < 5000; sample++)
-                allocationRng = allocationRng.TakeDistinctIndices(fullPool.Length, 1, reusable, out _);
+            for (int call = 0; call < callsPerBlock; call++)
+                rng = rng.TakeDistinctIndices(population, count, scratch, out _);
             blockAllocations[block] = GC.GetAllocatedBytesForCurrentThread() - beforeBytes;
         }
-        if (allocationRng.Counter - beforeCounter != 5 * 5000 * (fullPool.Length - 1))
-            throw new InvalidOperationException($"Value generation selection changed RNG consumption: {allocationRng.Counter - beforeCounter}.");
-        if (blockAllocations.Min() != 0)
-            throw new InvalidOperationException($"Value generation selection allocated in every block: {string.Join('/', blockAllocations)} bytes.");
+        return rng;
     }
 }
