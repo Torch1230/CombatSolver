@@ -488,6 +488,7 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 
 | 位置 | 症状 | 状态 |
 |---|---|---|
+| `PowerLifecycleSupport.UsesNativeDurationSkip`／`SemanticallyRelevantSkipNextDurationTick` | 当前原生只有虚弱／易伤／脆弱消费该字段。其首次玩家施加在独占 Power 设置标记，普通、怪物及按类型入口不重复写影子集合；叠加不刷新、移除后重获重新设置、人工制品阻止不留状态。原键与续用文本共用分类，中毒无关标记不拆分状态。第三方新增使用该字段的 Power 需扩展此分类及隐藏状态合同；此处没有新注册表（[证据](performance/simulation-duration-state-20260911.md)） | 原版封闭语义分类 |
 | `SimulatedCombatState.ApplyTemporaryStrengthLoss/Gain` | 仅接受原生 `TemporaryStrengthPower` 类型族；首次施加 Strength 在临时计数之前，随后按修正后偏移而非计数净变化处理回调，包含首次及叠加封顶。与普通 `Apply<T>` 共用准备／写入，不重复修正或 Artifact（[证据](performance/simulation-temporary-strength-20260911.md)） | 非登记入口 |
 | `CorePowerSupport.ApplyCardPowers` | 部分卡牌 Power 补偿仍按原版类型封闭分发。闪躲翻滚消费该次 `CardPlay` 已记录的格挡命令返回值，按原版整数转换施加下回合格挡；不能用净格挡增量替代，也不能重新执行格挡修正 Hook（[证据](performance/simulation-deferred-block-return-20260911.md)） | 未开放 |
 | `PredictionModHookSubscriberCapture.KnownPreRootSubscriberTypeNames` | 私有静态白名单，没有公开登记入口 | 待做 |

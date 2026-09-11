@@ -977,6 +977,16 @@ done < <(
     } | sort -u
 )
 
+# Native duration skips affect both search equivalence and live continuation checks.
+for duration_consumer in src/Search/SimulatedCombatState.cs src/Runtime/ContinuationStamp.cs; do
+    require_fixed "$repository_root/$duration_consumer" 'PowerLifecycleSupport.SemanticallyRelevantSkipNextDurationTick(power)' 'duration skip semantics must be shared by keys and continuation'
+done
+require_fixed "$repository_root/src/Prediction/PowerLifecycleSupport.cs" 'UsesNativeDurationSkip(power.GetType()) && power.SkipNextDurationTick' 'irrelevant debuff metadata must not split state equivalence'
+
+require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" 'simulated.SkipNextDurationTick = true;' 'new native duration state must belong to the owned Power'
+require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" '!PowerLifecycleSupport.UsesNativeDurationSkip(powerType) && !alreadyPresent' 'typed duration application must not duplicate native skip state'
+require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" '!PowerLifecycleSupport.UsesNativeDurationSkip(typeof(T)) && !alreadyPresent' 'monster duration application must not duplicate native skip state'
+
 # The compact executor remains a value-only experiment behind a Testing adapter.
 while IFS= read -r compact_path; do
     for native_reference in 'MegaCrit.' 'Godot' 'CombatPredictionSimulator' 'SimulatedCombatState' 'CardModel' 'Task' 'IEnumerator' 'Func<' 'Action<'; do

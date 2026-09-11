@@ -231,6 +231,8 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 `MonsterEffectProgram` 只持有复制的不可变指令，`ResumableDiscardProgram.Monsters` 复用值伤害、格挡、Power 和生成状态；负事件来源表示怪物，生成事件另存空／玩家创建者。Testing 目前仅捕获单个机械骑士的四种指令体，伤害来自冻结怪物元数据；AI 选择及阶段顺序不由此程序承担。`CombatHistoryReadValues.CreatureAttacks` 提供完整生物攻击计数，原映射编码同时保留玩家单项替换与缺席／零值语义。读取器初始化取得历史基数，每叶仅累加事件；投影不能调用怪物效果或重新执行指令。见[指令体证据与完整回合边界](performance/simulation-monster-commands-20260911.md)。
 
+持续减益的跳过标记由独占 Power 持有。`PowerLifecycleSupport.UsesNativeDurationSkip` 识别原生使用此字段的虚弱／易伤／脆弱；`ApplyPreparedPower` 只在新建玩家实例时设置，普通、怪物及按类型应用对这三类共用同一表示。其他旧阶段补偿的集合未扩展至这些原生字段。`GetPowerFingerprint` 与 `ContinuationStamp.AppendPowers` 共用有效标记分类，保留无标记及无关 Power 的原编码；[基线和原生生命周期证据](performance/simulation-duration-state-20260911.md)覆盖同层不同未来及被人工制品阻止后的状态。
+
 `Testing/CompactPhaseProbe.cs` 与 `UnattendedTestRunner.CompactKernelProfile.cs` 独占原型的阶段计量和新旧 solver 缓存对照，不进入生产 Search/Runtime。直接调用 Snapshot 的实验必须进入正式 `SolveCore` 使用的 `SimulationNotificationIsolation`，否则既有第三方空能力快速路径会旁路。该作用域使用线程静态状态，必须在 await 前和原生部署前退出；恢复后的模拟重新进入。诊断输出实际线程 CPU、独立墙钟和分配，内部既有 Snapshot 指标仍是嵌套墙钟；冻结候选不保留计量器、solver 或读取视图。
 
 通用命令和 Hook 调用遇到 `PendingChoice` 时立即向上传播未完成状态，不再执行其后的监听器、抽牌、资源变更、死亡处理或卡牌收尾。Search 为待处理选择补齐计划后，从稳定父节点精确重放该动作，按原顺序通过挂起点；未完成事务不作为可继续执行的稳定 Fork。自动出牌将外层来源与上下文身份带入 `OnPlayWrapper`，在来源牌仍位于 Play 时消费嵌套选择，等待嵌套自动出牌结束后才移动来源牌和执行费用清理。原版挂起位置、顺序与卡牌实例身份属于模拟语义，不能由 Beam 或部署层补偿。

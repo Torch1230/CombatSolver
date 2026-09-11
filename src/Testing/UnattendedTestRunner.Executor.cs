@@ -39,6 +39,16 @@ internal sealed partial class UnattendedTestRunner
             bool expectedCardPlayed = request.ExpectedPlayedCardId == null;
             bool expectedPotionUsed = request.ExpectedUsedPotionId == null;
             bool expectedPlayerPowerObserved = request.ExpectedObservedPlayerPowerId == null;
+            if (request.ScenarioId == "POWER-DURATION-APPLICATION-NATIVE")
+            {
+                await runner.AssertPowerDurationApplicationAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "POWER-DURATION-KEYS-NATIVE")
+            {
+                await runner.AssertPowerDurationKeysAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "COMPACT-MONSTER-COMMANDS-NATIVE")
             {
                 await runner.AssertCompactMonsterCommandsAsync(combatState, player);

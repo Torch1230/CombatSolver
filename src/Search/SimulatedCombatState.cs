@@ -615,6 +615,11 @@ internal sealed partial class SimulatedCombatState
         PowerModel simulated = GetOrCreatePower(target, incoming, applier);
         int previousAmount = simulated._amount;
         simulated._amount = Math.Clamp(simulated._amount + amount, -999_999_999, 999_999_999);
+        // Native creates the skip flag on a new player debuff. Stacking an existing
+        // duration never renews it; the owned Power is the only authority for these types.
+        if (previousAmount == 0 && simulated._amount != 0 && target.Side == CombatSide.Player
+            && PowerLifecycleSupport.UsesNativeDurationSkip(typeof(T)))
+            simulated.SkipNextDurationTick = true;
         UpdatePowerListenerOrder(simulated, previousAmount, simulated._amount);
         InvalidateHookListenersForAmountTransition(previousAmount, simulated._amount);
         int applied = simulated._amount - previousAmount;
@@ -658,7 +663,7 @@ internal sealed partial class SimulatedCombatState
         bool alreadyPresent = EffectivePowers().Any(power =>
             power.GetType() == powerType && ReferenceEquals(power.Owner, target) && power.Amount > 0);
         ApplyPower(powerType, target, amount, applier);
-        if (!alreadyPresent && amount > 0)
+        if (!PowerLifecycleSupport.UsesNativeDurationSkip(powerType) && !alreadyPresent && amount > 0)
             (_skipNextDurationTick ??= []).Add((target, powerType));
     }
 
@@ -720,7 +725,7 @@ internal sealed partial class SimulatedCombatState
     {
         bool alreadyPresent = GetAmount<T>(target) > 0;
         Apply<T>(target, amount, applier);
-        if (!alreadyPresent && amount > 0 && GetAmount<T>(target) > 0)
+        if (!PowerLifecycleSupport.UsesNativeDurationSkip(typeof(T)) && !alreadyPresent && amount > 0 && GetAmount<T>(target) > 0)
             (_skipNextDurationTick ??= []).Add((target, typeof(T)));
     }
 
@@ -2204,6 +2209,9 @@ internal sealed partial class SimulatedCombatState
         item.Add(power.Id.Entry);
         item.Add(power.Amount);
         item.Add(PowerLifecycleSupport.SemanticallyRelevantAmountOnTurnStart(power));
+        // Preserve existing keys when no effective skip is pending; a pending duration
+        // skip changes the next settlement even when all current amounts are identical.
+        if (PowerLifecycleSupport.SemanticallyRelevantSkipNextDurationTick(power)) item.Add('d');
         if (power is RitualPower ritual)
             item.Add(ritual._wasJustAppliedByEnemy);
         if (power is SurroundedPower surrounded)

@@ -410,8 +410,9 @@ internal sealed record ContinuationStamp(string StateText)
         {
             text.Append(power.Owner.CombatId).Append(':').Append(power.Id.Entry).Append('=')
                 .Append(power.Amount).Append('/')
-                .Append(PowerLifecycleSupport.SemanticallyRelevantAmountOnTurnStart(power))
-                .Append('[');
+                .Append(PowerLifecycleSupport.SemanticallyRelevantAmountOnTurnStart(power));
+            if (PowerLifecycleSupport.SemanticallyRelevantSkipNextDurationTick(power)) text.Append("/skip");
+            text.Append('[');
             foreach (var dynamicVar in power.DynamicVars.OrderBy(item => item.Key, StringComparer.Ordinal))
             {
                 if (!SemanticStateFieldPolicy.IsSemantic(power, dynamicVar.Key, dynamicVar.Value))

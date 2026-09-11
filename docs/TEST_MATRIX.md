@@ -1,5 +1,7 @@
 # CombatSolver 测试清单
 
+- `POWER-DURATION-KEYS-NATIVE`／`POWER-DURATION-APPLICATION-NATIVE`：最终 `683bb123f72d4b5f86ac5fdfaf2a8bc8`／`54cd9ef622764de4845909b9f8abc3ad` Passed；三种减益同层不同未来的键与续用区分、中毒等价，三个应用入口／16 原生步骤、叠加／递减／重获／人工制品阻止、完整 Power 字段和冻结重放。[失败基线与最终证据](performance/simulation-duration-state-20260911.md)。
+
 - `COMPACT-MONSTER-COMMANDS-NATIVE`：`1d46526236cc45f2bdb2ca0beee0600e` Passed；三根／十三分支／十五原生动作，四种机械骑士指令、伤害与格挡修正、施加者、无创建者生成、溢出洗牌抽灼伤、小刀混合与致死结束门，完整历史／原键／Snapshot／九 RNG 和八工作区。中毒哨兵 `4bcff2265a254ddca7fa26e9d6c30bcd` Passed；[范围与证据](performance/simulation-monster-commands-20260911.md)。完整回合与 AI 推进仍待迁移。
 
 - `COMPACT-HAND-END-NATIVE`：最终 Instant `537ef792140f40368dc7b30b0b328a00`／Normal `a80cf738cde74758a4ceabbf6b01905e` Passed；共六根／十二分支、八工作区、虚无先消耗、状态抽取、格挡／失血／致死、出牌区和完整历史／原键／Snapshot／九 RNG、原生死亡后冻结重放。攻击哨兵 `92409a0ec76245eaad053b899a7f91b2` 通过；[调度边界与证据](performance/simulation-hand-end-20260911.md)。完整回合与生产模式接线仍待迁移。

@@ -2078,5 +2078,21 @@
     "expected": "原版伤害修正与施加者、空创建者生成、怪物攻击次数及来源、完整牌堆／Power／历史／原键／Snapshot／九 RNG、撤销和独立恢复。",
     "observed": "artifact-v2 1d46526236cc45f2bdb2ca0beee0600e Passed，八工作区和原生死亡后冻结重放通过；中毒共用投影哨兵 4bcff2265a254ddca7fa26e9d6c30bcd Passed。",
     "evidence": "src/Testing/UnattendedTestRunner.CompactMonsterCommands.cs；docs/performance/simulation-monster-commands-20260911.md；2026-09-11。仅指令体，不含 AI、MonsterPerformedMove 历史或完整回合。"
+  },
+  "POWER-DURATION-KEYS-NATIVE": {
+    "status": "Passed",
+    "level": "HeadlessNativeDurationAndStateEquivalence",
+    "procedure": "捕获原生三种持续减益及中毒，仅在兄弟分支改变跳过标记；比较原键、续用与下一次结算。",
+    "expected": "虚弱／易伤／脆弱相同层数但不同递减未来必须区分；中毒无关标记保持等价；实机递减及冻结根重放一致。",
+    "observed": "基线 5535647e98f94d76889437630ee42a88 Failed；最终 application-final-v1 683bb123f72d4b5f86ac5fdfaf2a8bc8 Passed。",
+    "evidence": "src/Testing/UnattendedTestRunner.PowerDurationKeys.cs；docs/performance/simulation-duration-state-20260911.md；2026-09-11。"
+  },
+  "POWER-DURATION-APPLICATION-NATIVE": {
+    "status": "Passed",
+    "level": "HeadlessNativePowerLifecycleAndForkDifferential",
+    "procedure": "普通／怪物／按类型应用三个入口，16 个原生步骤，首次／叠加／跳过／消失／重获／人工制品阻止。",
+    "expected": "三种减益的新实例保留原生跳过标记，叠加不刷新、阻止不留残余，入口间状态等价及完整生命周期字段一致。",
+    "observed": "基线 0ea7b37d671b42d2b3d01cddfb3ed224 Failed；最终 54cd9ef622764de4845909b9f8abc3ad Passed，实机推进后冻结重放与等价键通过。",
+    "evidence": "src/Testing/UnattendedTestRunner.PowerDurationApplication.cs；docs/performance/simulation-duration-state-20260911.md；2026-09-11。"
   }
 }
