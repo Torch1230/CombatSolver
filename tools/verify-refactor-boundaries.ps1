@@ -235,6 +235,11 @@ foreach ($field in $removedControllerFields) {
     }
 }
 
+$onPlayFacade = Join-Path $repositoryRoot "src/Engine/InCombat/Mirrors/Cards/OnPlay/CardOnPlayMirrors.cs"
+if (Select-String -LiteralPath $onPlayFacade -SimpleMatch "Harmony.GetPatchInfo" -Quiet) {
+    $violations.Add("${onPlayFacade}: worker must not query Harmony")
+}
+
 $sessionPath = Join-Path $repositoryRoot "src\Runtime\SolverControllerSessions.cs"
 foreach ($sessionType in @("SolverCombatSession", "SolverSearchSession", "SolverDeploymentSession")) {
     if (-not (Select-String -LiteralPath $sessionPath -SimpleMatch "class $sessionType" -Quiet)) {
@@ -243,6 +248,26 @@ foreach ($sessionType in @("SolverCombatSession", "SolverSearchSession", "Solver
 }
 
 $forkBoundaryChecks = @(
+    @{
+        Path = Join-Path $repositoryRoot "src/Prediction/PredictionModHookSubscriberCapture.cs"
+        Text = "PredictionModPatchAudit.CaptureCardOnPlay"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src/Search/SimulatedCombatState.cs"
+        Text = "_modHookSubscribers = source._modHookSubscribers;"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src/Runtime/ContinuationStamp.cs"
+        Text = "AdaptedCardOnPlayMirrors.CaptureLiveStamp()"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src/Runtime/ContinuationStamp.cs"
+        Text = "adaptedOnPlay.Stamp"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src/Engine/InCombat/Mirrors/Cards/OnPlay/CardOnPlayMirrors.cs"
+        Text = "return replacement;"
+    },
     @{
         Path = Join-Path $repositoryRoot "src\Prediction\ModelPredictionStateMirrors.cs"
         Text = "context.Register(value, typed)"

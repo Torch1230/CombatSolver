@@ -70,6 +70,7 @@ internal sealed partial class SimulatedCombatState
     private readonly MapCoord? _currentMapCoord;
     private readonly CardMultiplayerConstraint _cardMultiplayerConstraint;
     private readonly PredictionModHookSubscriberCapture _modHookSubscribers;
+    internal AdaptedOnPlaySnapshot? AdaptedOnPlay => _modHookSubscribers.AdaptedOnPlay;
     private readonly IReadOnlyDictionary<Player, int> _rootMaxHandSizes;
     private readonly RootCombatCardGenerationPoolSnapshot _rootCardGenerationPools;
 
@@ -2107,6 +2108,11 @@ internal sealed partial class SimulatedCombatState
         ref StateFingerprintBuilder fingerprint,
         CombatPredictionSimulator simulator)
     {
+        if (AdaptedOnPlay is { } adaptedOnPlay)
+        {
+            fingerprint.Add("onplay_configuration");
+            fingerprint.Add(adaptedOnPlay.Stamp);
+        }
         fingerprint.Add('P');
         int powerCount = 0;
         IReadOnlyList<PowerModel> effectivePowers = EffectivePowers();
