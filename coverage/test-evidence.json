@@ -1,4 +1,12 @@
 {
+  "COMPACT-CARD-HOOKS-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeOrderedCardHooksOneShotEnchantmentAndFixedSearchDifferential",
+    "procedure": "三根两回合、Sly、满手与零层、终局、死亡之舞费用基线、250节点及纯值合同。",
+    "expected": "出牌前按当前能力顺序查询解析费用；附魔失效、剩余抽牌和历史来源随分支恢复。",
+    "observed": "ffe1c758347c46a8928d77bc7b3bd211 COMPACT-CARD-HOOKS-NATIVE Passed; 2e80f39e9695451ab45e1b9c32ac84f1 COMPACT-SWIFT-AUTO Passed; 7fe2b123a64a43568c974a9a3c22d6c5 COMPACT-SWIFT-EMPTY Passed; ae17696b90f8428c9523a32aa74b5fdf COMPACT-SWIFT-TERMINAL Passed; da933dd7103a4f0bb0fbc127b3067759 DANSE-RESOLVED-NATIVE Passed; b60187e3b32348b8bd21dddff6f7f9fa COMPACT-CARD-HOOKS-SEARCH Passed",
+    "evidence": "docs/performance/simulation-card-hooks-20260911.json；docs/performance/simulation-card-hooks-20260911.md。"
+  },
   "COMPACT-KEYWORDS-20260911": {
     "status": "Passed",
     "level": "HeadlessNativeMutableKeywordsAndFixedSearchDifferential",

@@ -552,3 +552,5 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 
 
 紧凑卡牌封闭编译新增精确雕琢打击 `SculptingStrike`、响指 `Snap`（共 47 类型），接受已表示牌上的局部虚无／保留。`CardKeywordFlags` 只表示这两种永久增加；临时保留、任意关键字增删和全局关键字修改并未因此开放。全局修改 Hook 仍在整根准入中拒绝，所以雕琢打击的局部过滤与响指的全部关键字过滤可在当前闭包使用同一状态来源。模型导入不是第三方关键字执行入口。旧 `CardChoiceSupport.GetSpec` 中两张牌在结束时不生成选择，符合原生 FromHand；外部优先登记合同不变。[证据](performance/simulation-keywords-20260911.md)。
+
+紧凑封闭编译新增精确灰烬之灵 `SpiritOfAsh` 与死亡之舞 `DanseMacabre`（共 49 卡牌类型），及玩家的对应计数能力；迅速 `Swift` 只接受 0–10 层及 Normal／Disabled 状态。普通牌费用和 X 捕获值分开查询，不能把付款值代替当前费用。出牌前能力按分支获得顺序触发，不对开放观察者承诺可重排；附魔的状态、抽牌执行位置与历史来源均独立保留。状态导入不会调用真实事件，第三方附魔／能力回调仍由整根门禁拒绝；没有新增第三方登记入口。旧死亡之舞镜像修正为当前 GetResolved 语义，镜像登记及覆盖分类未改。[证据](performance/simulation-card-hooks-20260911.md)。

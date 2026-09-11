@@ -4,6 +4,7 @@ using CombatSolver.Engine.InCombat.Simulation.Compact;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Enchantments;
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Enchantments;
 
 namespace CombatSolver;
 
@@ -67,8 +68,15 @@ internal sealed class CompactCardMetadataReadBinding : ICompletedEnergyCostReadS
             bool removed = program.CardRemoved(card);
             bool costChanged = ImportCosts(binding, program, card);
             bool keywordsChanged = _keywordsCanChange && ImportKeywords(model, program, card);
+            bool enchantmentChanged = false;
+            if (model.Enchantment is Swift swift)
+            {
+                var status = program.EnchantmentDisabled(card) ? EnchantmentStatus.Disabled : EnchantmentStatus.Normal;
+                enchantmentChanged = swift.Status != status;
+                swift._status = status;
+            }
             bool singleSly = program.SingleTurnSly(card);
-            if (!costChanged && !keywordsChanged && model.HasSingleTurnSly == singleSly && (!model.EnergyCost.CostsX || model.EnergyCost.CapturedXValue == captured) && model.HasBeenRemovedFromState == removed) continue;
+            if (!costChanged && !keywordsChanged && !enchantmentChanged && model.HasSingleTurnSly == singleSly && (!model.EnergyCost.CostsX || model.EnergyCost.CapturedXValue == captured) && model.HasBeenRemovedFromState == removed) continue;
             bool structureChanged = model.HasBeenRemovedFromState != removed;
             if (model.EnergyCost.CostsX) model.EnergyCost.CapturedXValue = captured;
             model.HasBeenRemovedFromState = removed;

@@ -16,6 +16,7 @@ MonsterCommandChecks.Run();
 MonsterAiChecks.Run();
 RoundChecks.Run();
 NeurosurgeChecks.Run();
+OneShotEnchantmentChecks.Run();
 
 (int Hp, int Block, decimal Amount, bool Unblockable, int ExpectedHp, int ExpectedBlock, decimal Blocked, int Lost, bool Killed, int Overkill)[] damageCases =
 {

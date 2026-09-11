@@ -226,6 +226,8 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
                 case ResumableDiscardProgram.EventKind.HandEndFinish:
                 case ResumableDiscardProgram.EventKind.CostChanged:
                 case ResumableDiscardProgram.EventKind.KeywordAdded:
+                case ResumableDiscardProgram.EventKind.EnchantmentStart:
+                case ResumableDiscardProgram.EventKind.EnchantmentFinish:
                 case ResumableDiscardProgram.EventKind.DamageBlocked:
                 case ResumableDiscardProgram.EventKind.DamageOverkill:
                 case ResumableDiscardProgram.EventKind.Block:

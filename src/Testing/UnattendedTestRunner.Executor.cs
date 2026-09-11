@@ -39,6 +39,31 @@ internal sealed partial class UnattendedTestRunner
             bool expectedCardPlayed = request.ExpectedPlayedCardId == null;
             bool expectedPotionUsed = request.ExpectedUsedPotionId == null;
             bool expectedPlayerPowerObserved = request.ExpectedObservedPlayerPowerId == null;
+            if (request.ScenarioId == "DANSE-RESOLVED-NATIVE")
+            {
+                await runner.AssertDanseResolvedNativeAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-CARD-HOOKS-NATIVE")
+            {
+                await runner.AssertCompactCardHooksAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-SWIFT-AUTO")
+            {
+                await runner.AssertCompactSwiftAutoAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-SWIFT-EMPTY")
+            {
+                await runner.AssertCompactSwiftEmptyAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-SWIFT-TERMINAL")
+            {
+                await runner.AssertCompactSwiftTerminalAsync(combatState, player);
+                return Observation(combatEnded: true);
+            }
             if (request.ScenarioId == "COMPACT-KEYWORD-GENERATED")
             {
                 await runner.AssertCompactKeywordGeneratedAsync(combatState, player);
@@ -129,7 +154,7 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertCompactNeurosurgeAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
-            if (request.ScenarioId is "COMPACT-SEARCH-LIFECYCLE" or "COMPACT-NEUROSURGE-SEARCH" or "COMPACT-OSTY-SEARCH" or "COMPACT-OSTY-TURN-SEARCH" or "COMPACT-DRAW-EXHAUST-SEARCH" or "COMPACT-DIRGE-SEARCH" or "COMPACT-NECRO-CARDS-SEARCH" or "COMPACT-COST-POWERS-SEARCH" or "COMPACT-HANG-SEARCH" or "COMPACT-KEYWORDS-SEARCH")
+            if (request.ScenarioId is "COMPACT-SEARCH-LIFECYCLE" or "COMPACT-NEUROSURGE-SEARCH" or "COMPACT-OSTY-SEARCH" or "COMPACT-OSTY-TURN-SEARCH" or "COMPACT-DRAW-EXHAUST-SEARCH" or "COMPACT-DIRGE-SEARCH" or "COMPACT-NECRO-CARDS-SEARCH" or "COMPACT-COST-POWERS-SEARCH" or "COMPACT-HANG-SEARCH" or "COMPACT-KEYWORDS-SEARCH" or "COMPACT-CARD-HOOKS-SEARCH")
             {
                 _ = ApplySettingsOverrides();
                 await runner.AssertCompactSearchLifecycleAsync(combatState, player);

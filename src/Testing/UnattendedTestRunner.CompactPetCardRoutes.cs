@@ -22,7 +22,8 @@ internal sealed partial class UnattendedTestRunner
     private async Task AssertCompactPetCardRouteAsync(CombatState combat, Player player, int mode, string label, string evidencePrefix,
         (string Id, int? Upgrade)[] cardSteps, Action<ResumableDiscardProgram, ResumableDiscardProgram, int> assertStep,
         bool observeDrawExhaust = false, Func<PlanAction, ResumableDiscardProgram, bool>? observeNativeChoice = null,
-        int rounds = 2, bool requirePending = true, bool verifyEnergyCosts = false, Func<PlanAction, int, bool>? chooseBranch = null)
+        int rounds = 2, bool requirePending = true, bool verifyEnergyCosts = false, Func<PlanAction, int, bool>? chooseBranch = null,
+        bool forceOpeningPower = false)
     {
         var enemy = combat.Enemies.Single();
         var captured = CombatRootSnapshot.Capture(combat);
@@ -82,6 +83,16 @@ internal sealed partial class UnattendedTestRunner
 
                     IEnumerable<(PlanAction, SimulationSnapshot)> CardBranches()
                     {
+                        if (step == 0 && forceOpeningPower)
+                        {
+                            // Semantics can require a legal setup prefix that ordinary action
+                            // admission does not retain. Use the production opening-power path;
+                            // the separate fixed-work search still applies its original policy.
+                            var action = driver.BuildOpeningPowerActions().Single(action => action.CardId == cardSteps[0].Id
+                                && (cardSteps[0].Upgrade == null || action.CardUpgradeLevel == cardSteps[0].Upgrade));
+                            yield return (action, InvokeForcedTerminalReplay(driver, [action], null, captured.StartTurnNumber, null));
+                            yield break;
+                        }
                         foreach (SearchNode child in (IEnumerable<SearchNode>)InvokeForcedTerminalMethod(driver, "Expand", [node])!)
                         {
                             if (child.Action?.CardId == cardSteps[step].Id

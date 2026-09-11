@@ -104,7 +104,7 @@ internal static class BeforeCardPlayedMirrors
     private static void HandleDanseMacabrePower(DanseMacabrePower power, BeforeCardPlayedMirrorContext context)
     {
         if (context.PreviewCard.Owner.Creature == power.Owner &&
-            context.CardPlay.Resources.EnergyValue >= power.DynamicVars.Energy.IntValue)
+            context.Card.GetResolvedEnergyCost(context.Simulator) >= power.DynamicVars.Energy.IntValue)
         {
             context.Simulator.GainBlock(power.Owner, power.Amount, ValueProp.Unpowered);
         }

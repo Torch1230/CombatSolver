@@ -1,8 +1,9 @@
 namespace CombatSolver.Engine.InCombat.Simulation.Compact;
 
-internal enum BasicPowerKind { Strength, Dexterity, Weak, Vulnerable, Frail, Poison, BlockNextTurn, ToolsOfTheTrade, PiercingWail, Artifact, Stratagem, Doom, Neurosurge, DieForYou, BorrowedTime, Veilpiercer, Hang }
+internal enum BasicPowerKind { Strength, Dexterity, Weak, Vulnerable, Frail, Poison, BlockNextTurn, ToolsOfTheTrade, PiercingWail, Artifact, Stratagem, Doom, Neurosurge, DieForYou, BorrowedTime, Veilpiercer, Hang, SpiritOfAsh, DanseMacabre }
 internal readonly record struct BasicPowerDefinition(BasicPowerKind Kind, int Owner, int Amount,
-    int Applier, int Order, decimal Multiplier, bool RootSlot, int AmountOnTurnStart = 0, bool SkipNextDurationTick = false);
+    int Applier, int Order, decimal Multiplier, bool RootSlot, int AmountOnTurnStart = 0, bool SkipNextDurationTick = false,
+    int MinimumEnergyCost = 0);
 internal readonly record struct BasicPowerValues(int Amount, int Applier, int Order, bool Retired,
     int AmountOnTurnStart = 0, bool SkipNextDurationTick = false);
 
@@ -12,6 +13,7 @@ internal sealed class BasicPowerLayout
 {
     private const int Width = 4;
     private readonly BasicPowerDefinition[] _definitions;
+    private readonly int[] _beforeCardPowers;
     private readonly int _start, _orderSlot;
     internal int Count => _definitions.Length;
     internal bool HasArtifact { get; }
@@ -21,6 +23,8 @@ internal sealed class BasicPowerLayout
     internal BasicPowerLayout(ReversibleValueState state, BasicPowerDefinition[] definitions)
     {
         _definitions = (BasicPowerDefinition[])definitions.Clone();
+        _beforeCardPowers = Enumerable.Range(0, definitions.Length).Where(index => definitions[index].Owner == 0
+            && definitions[index].Kind is BasicPowerKind.Veilpiercer or BasicPowerKind.SpiritOfAsh or BasicPowerKind.DanseMacabre).ToArray();
         HasGlobalEnergyCosts = definitions.Any(definition => definition.Kind is BasicPowerKind.BorrowedTime or BasicPowerKind.Veilpiercer);
         HasArtifact = definitions.Any(definition => definition.Kind == BasicPowerKind.Artifact);
         _start = state.Allocate(checked(definitions.Length * Width));
@@ -62,6 +66,18 @@ internal sealed class BasicPowerLayout
     }
 
     internal int Amount(ReversibleValueState state, int owner, BasicPowerKind kind) => Read(state, Find(owner, kind)).Amount;
+
+    internal int NextBeforeCardPower(ReversibleValueState state, int afterOrder)
+    {
+        int selected = -1, order = int.MaxValue;
+        foreach (int index in _beforeCardPowers)
+        {
+            var value = Read(state, index);
+            if (value.Amount > 0 && value.Order > afterOrder && (selected < 0 || value.Order < order))
+            { selected = index; order = value.Order; }
+        }
+        return selected;
+    }
 
     internal void Apply(ReversibleValueState state, int index, int amount, int applier)
     {

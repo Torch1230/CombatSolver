@@ -17,6 +17,7 @@ using MegaCrit.Sts2.Core.Models.Achievements;
 using MegaCrit.Sts2.Core.Models.Badges;
 using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Enchantments;
+using MegaCrit.Sts2.Core.Entities.Enchantments;
 using MegaCrit.Sts2.Core.Models.Relics;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Models.Monsters;
@@ -71,7 +72,7 @@ internal sealed class CompactDiscardProjection
             throw new NotSupportedException("Compact pet roots require one captured Osty with its persistent protection and admitted stats.");
         if (combat.Players.Count != 1 || powers.Any(p => !IsBasicPower(p))
             || powers.Any(p => !(p is StratagemPower && p.Owner == player.Creature && p.Amount is >= 1 and <= 10)
-                && !(includeAttacks ? p is not StratagemPower && IsBasicPower(p) && (p is not (BlockNextTurnPower or ToolsOfTheTradePower or NeurosurgePower or BorrowedTimePower or VeilpiercerPower) || p.Owner == player.Creature)
+                && !(includeAttacks ? p is not StratagemPower && IsBasicPower(p) && (p is not (BlockNextTurnPower or ToolsOfTheTradePower or NeurosurgePower or BorrowedTimePower or VeilpiercerPower or SpiritOfAshPower or DanseMacabrePower) || p.Owner == player.Creature)
                     && (p is not (PiercingWailPower or HangPower) || p.Owner != player.Creature)
                     : p is StrengthPower && p.Owner != player.Creature))
             || combat.RootRunModSubscriberCount != 0 || combat.RootCombatModSubscriberCount != 0
@@ -109,7 +110,8 @@ internal sealed class CompactDiscardProjection
             Array.IndexOf(rootPowerOrder, power) + 1,
             power is WeakPower ? power.DynamicVars["DamageDecrease"].BaseValue
                 : power is VulnerablePower ? power.DynamicVars["DamageIncrease"].BaseValue : 1m,
-            combat.IsCapturedRootPowerSlot(power), power.AmountOnTurnStart, power.SkipNextDurationTick)).ToArray() : null;
+            combat.IsCapturedRootPowerSlot(power), power.AmountOnTurnStart, power.SkipNextDurationTick,
+            power is DanseMacabrePower ? power.DynamicVars.Energy.IntValue : 0)).ToArray() : null;
         _identities = cards.Select(c => c.Original).ToArray();
         List<CardModel> generated = [];
         int shivTemplate = -1, inkyShivTemplate = -1, burnTemplate = -1, soulTemplate = -1, upgradedSoulTemplate = -1;
@@ -260,6 +262,8 @@ internal sealed class CompactDiscardProjection
             if (kind is BasicPowerKind.Artifact or BasicPowerKind.Stratagem or BasicPowerKind.DieForYou) continue;
             if (kind == BasicPowerKind.BorrowedTime && (owner != _player.Creature || !cards.Any(card => card.Preview is BorrowedTime))) continue;
             if (kind == BasicPowerKind.Veilpiercer && (owner != _player.Creature || !cards.Any(card => card.Preview is Veilpiercer))) continue;
+            if (kind == BasicPowerKind.SpiritOfAsh && (owner != _player.Creature || !cards.Any(card => card.Preview is SpiritOfAsh))) continue;
+            if (kind == BasicPowerKind.DanseMacabre && (owner != _player.Creature || !cards.Any(card => card.Preview is DanseMacabre))) continue;
             if (kind == BasicPowerKind.Hang && (owner == _player.Creature || !cards.Any(card => card.Preview is Hang))) continue;
             if (owner.PetOwner != null && kind != BasicPowerKind.Strength) continue;
             if (kind is BasicPowerKind.Neurosurge or BasicPowerKind.Doom
@@ -294,7 +298,9 @@ internal sealed class CompactDiscardProjection
         [typeof(DieForYouPower)] = BasicPowerKind.DieForYou,
         [typeof(BorrowedTimePower)] = BasicPowerKind.BorrowedTime,
         [typeof(VeilpiercerPower)] = BasicPowerKind.Veilpiercer,
-        [typeof(HangPower)] = BasicPowerKind.Hang
+        [typeof(HangPower)] = BasicPowerKind.Hang,
+        [typeof(SpiritOfAshPower)] = BasicPowerKind.SpiritOfAsh,
+        [typeof(DanseMacabrePower)] = BasicPowerKind.DanseMacabre
     };
     private static bool IsBasicPower(PowerModel power) => BasicKinds.ContainsKey(power.GetType());
     private static PowerModel CanonicalPower(BasicPowerKind kind) => kind switch
@@ -314,6 +320,8 @@ internal sealed class CompactDiscardProjection
         BasicPowerKind.Neurosurge => CanonicalModels.Power<NeurosurgePower>(),
         BasicPowerKind.BorrowedTime => CanonicalModels.Power<BorrowedTimePower>(),
         BasicPowerKind.Hang => CanonicalModels.Power<HangPower>(),
+        BasicPowerKind.SpiritOfAsh => CanonicalModels.Power<SpiritOfAshPower>(),
+        BasicPowerKind.DanseMacabre => CanonicalModels.Power<DanseMacabrePower>(),
         BasicPowerKind.Veilpiercer => CanonicalModels.Power<VeilpiercerPower>(),
         BasicPowerKind.DieForYou => CanonicalModels.Power<DieForYouPower>(),
         _ => throw new InvalidOperationException("Unknown basic Power kind.")
@@ -564,6 +572,27 @@ internal sealed class CompactDiscardProjection
                         combat.RecordCardDrawn(card, item.Value != 0);
                         projection.History.CardDrawResolved(entry, card);
                         break;
+                    case ResumableDiscardProgram.EventKind.EnchantmentStart:
+                    {
+                        var active = stack.Pop();
+                        if (active.Identity != item.Card || card.Preview.Enchantment is not Swift)
+                            throw new InvalidOperationException("One-shot enchantment has no active admitted owner.");
+                        active.Method?.Dispose();
+                        var enchantment = card.MutablePreview.Enchantment!;
+                        enchantment._status = EnchantmentStatus.Disabled;
+                        card.InvalidateCaches();
+                        stack.Push((active.Identity, active.Play, active.Scope, projection.PushMethodSource(enchantment, EnchantmentOnPlay)));
+                        break;
+                    }
+                    case ResumableDiscardProgram.EventKind.EnchantmentFinish:
+                    {
+                        var active = stack.Pop();
+                        if (active.Identity != item.Card || active.Method == null)
+                            throw new InvalidOperationException("One-shot enchantment scope was not started.");
+                        active.Method.Value.Dispose();
+                        stack.Push((active.Identity, active.Play, active.Scope, null));
+                        break;
+                    }
                     case ResumableDiscardProgram.EventKind.Shuffle:
                         break;
                     case ResumableDiscardProgram.EventKind.KeywordAdded:
@@ -783,6 +812,9 @@ internal sealed class CompactDiscardProjection
                 || actual != null && actual.Preview.HasSingleTurnSly != program.SingleTurnSly(card)
                 || actual != null && actual.Preview.EnergyCost.CostsX && actual.Preview.EnergyCost.CapturedXValue != program.CapturedX(card))
                 throw new InvalidOperationException("Compact removal or captured energy differs.");
+            if (actual?.Preview.Enchantment is Swift swift
+                && swift.Status != (program.EnchantmentDisabled(card) ? EnchantmentStatus.Disabled : EnchantmentStatus.Normal))
+                throw new InvalidOperationException("Compact one-shot enchantment status differs.");
             if (actual != null && (actual.Preview.LocalKeywords.Contains(CardKeyword.Ethereal) != program.IsEthereal(card)
                 || actual.Preview.LocalKeywords.Contains(CardKeyword.Retain) != program.IsRetained(card)))
                 throw new InvalidOperationException("Compact local keywords differ.");
@@ -870,6 +902,7 @@ internal sealed class CompactDiscardProjection
             || type == typeof(NeurosurgePower) && method == nameof(AbstractModel.AfterSideTurnStart)
             || type == typeof(BorrowedTimePower) && method is nameof(AbstractModel.TryModifyEnergyCostInCombat) or nameof(AbstractModel.AfterSideTurnEnd)
             || type == typeof(HangPower) && method == nameof(AbstractModel.ModifyDamageMultiplicative)
+            || (type == typeof(SpiritOfAshPower) || type == typeof(DanseMacabrePower)) && method == nameof(AbstractModel.BeforeCardPlayed)
             || type == typeof(VeilpiercerPower) && method is nameof(AbstractModel.TryModifyEnergyCostInCombatLate) or nameof(AbstractModel.BeforeCardPlayed)
             || type == typeof(DoomPower) && method is nameof(AbstractModel.BeforeSideTurnEnd) or nameof(AbstractModel.AfterSideTurnEnd)
             || type == typeof(ToolsOfTheTradePower) && method is nameof(AbstractModel.ModifyHandDraw) or nameof(AbstractModel.AfterPlayerTurnStart)
@@ -898,6 +931,8 @@ internal sealed class CompactDiscardProjection
         BindingFlags.Instance | BindingFlags.NonPublic, [typeof(PlayerChoiceContext), typeof(CardPlay)]);
     private static readonly MirrorMethodSpec OnTurnEndInHand = new(typeof(CardModel), "OnTurnEndInHand",
         BindingFlags.Instance | BindingFlags.NonPublic, [typeof(PlayerChoiceContext)]);
+    private static readonly MirrorMethodSpec EnchantmentOnPlay = new(typeof(EnchantmentModel), nameof(EnchantmentModel.OnPlay),
+        BindingFlags.Instance | BindingFlags.Public, [typeof(PlayerChoiceContext), typeof(CardPlay)]);
     private static readonly PropertyInfo ShuffleEvents = typeof(CombatPredictionSimulator)
         .GetProperty(nameof(CombatPredictionSimulator.ShuffleEventCount))!;
 }

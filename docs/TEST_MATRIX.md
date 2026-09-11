@@ -1,5 +1,7 @@
 # CombatSolver 测试清单
 
+- 出牌前能力与迅速六项验证 Passed：三根两回合、嵌套 Sly、满手／零层／已失效、终局、死亡之舞原生费用基线修复与 250 节点旧新串并行。完整状态／来源／估值／键／续用及八工作区一致；纯值 72 组编码和生成 X 暂停合同通过。[逐项 runId 与范围](performance/simulation-card-hooks-20260911.md)。
+
 - 动态关键字六项验证 Passed：雕琢打击／响指三根两回合、生成牌、空过滤、两种终局与250节点旧新串并行；同名牌实例、X／费用、完整状态／续用及八工作区。[逐项 runId、范围与失败基线](performance/simulation-keywords-20260911.md)。
 
 - `COMPACT-HANG-NATIVE`／`HANG-CAP-NATIVE`／`COMPACT-HANG-TERMINAL`／`COMPACT-HANG-SEARCH`：`b4e7e3f4b225421e8bb208cfe8582239`／`0eb616cb7eea425daf617758199a573b`／`2067198c357a4a938e88df85cc4c6617`／`07239771f5f34edb9d623a896e207aa8` Passed；两根16原生动作28分支8挂起、四组封顶、最后击杀及250节点串并行，完整状态／原键／续用／九RNG／八工作区。[范围、失败迭代与复现](performance/simulation-hang-20260911.md)。

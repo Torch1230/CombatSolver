@@ -9,9 +9,10 @@ internal sealed partial class ResumableDiscardProgram
 {
     internal readonly record struct Card(int Cost, CardEffectProgram Effects, bool Sly = false,
         Pile ResultPile = Pile.Discard, bool CostsX = false, int CapturedX = 0, CardCategory Category = CardCategory.Other,
-        bool Ethereal = false, RandomDrawCost? DrawCost = null, int? HandEndDamage = null, bool Unplayable = false, bool Retain = false, bool SingleTurnSly = false);
+        bool Ethereal = false, RandomDrawCost? DrawCost = null, int? HandEndDamage = null, bool Unplayable = false, bool Retain = false, bool SingleTurnSly = false,
+        bool EnchantmentInitiallyDisabled = false);
     internal enum Pile { Hand, Draw, Discard, Play, Exhaust, Removed, Unplaced }
-    internal enum EventKind { Pay, Start, Draw, Select, SelectedCard, Discard, Block, Finish, Shuffle, ShuffleCard, Retrieve, Damage, DamageBlocked, DamageOverkill, AttackFinish, Death, PowerChange, ResultMoved, Generated, CostChanged, HandEndMoved, HandEndStart, HandEndFinish, BeginSide, ResetEnergy, CleanupCards, CommitPlayerTurnHistory, GainEnergy, DoomApplied, Kill, SummonPet, KeywordAdded }
+    internal enum EventKind { Pay, Start, Draw, Select, SelectedCard, Discard, Block, Finish, Shuffle, ShuffleCard, Retrieve, Damage, DamageBlocked, DamageOverkill, AttackFinish, Death, PowerChange, ResultMoved, Generated, CostChanged, HandEndMoved, HandEndStart, HandEndFinish, BeginSide, ResetEnergy, CleanupCards, CommitPlayerTurnHistory, GainEnergy, DoomApplied, Kill, SummonPet, KeywordAdded, EnchantmentStart, EnchantmentFinish }
     internal readonly record struct Event(EventKind Kind, int Card, int Value, bool Automatic, int Target = -1, int Flags = 0, int Dealer = -1)
     {
         internal long Data => (long)(uint)Card | (long)(uint)Value << 32;
@@ -57,10 +58,11 @@ internal sealed partial class ResumableDiscardProgram
     internal int Energy => Read(EnergySlot);
     internal int CardCount => _cardInstances.Count(State);
     // Existing instances cannot change definition in this admitted program. Only their
-    // captured X and added keywords are mutable; generated identities use the same buffer.
-    internal int DefinitionIndex(int card) => (uint)card < (uint)_rootCardCount ? card : unchecked((int)_cardInstances.Read(State, card));
+    // captured X, added keywords and one-shot status are mutable; generated identities share the buffer.
+    internal int DefinitionIndex(int card) => (uint)card < (uint)_rootCardCount ? card : (int)(_cardInstances.Read(State, card) & int.MaxValue);
     internal Card Definition(int card) => _definitions[DefinitionIndex(card)];
     internal int CapturedX(int card) => CardInstance(card).CapturedX;
+    internal bool EnchantmentDisabled(int card) => CardInstance(card).EnchantmentDisabled;
     internal int LocalEnergyCost(int card) => Definition(card).DrawCost == null ? Definition(card).Cost
         : _drawCosts!.Current(State, card, Definition(card).Cost);
     internal bool HasGlobalEnergyCosts => _powers?.HasGlobalEnergyCosts ?? false;
@@ -86,7 +88,7 @@ internal sealed partial class ResumableDiscardProgram
     internal bool CardRemoved(int card) => Contains(Pile.Removed, card);
     internal bool CardUnplaced(int card) => Contains(Pile.Unplaced, card);
     internal bool CardValuesInvariant => _definitions.All(card => card.ResultPile == Pile.Discard && !card.Ethereal && !card.CostsX && !card.SingleTurnSly
-        && !card.Effects.GeneratesCards && !card.Effects.ExhaustsCards && !card.Effects.ChangesKeywords && card.DrawCost == null)
+        && !card.Effects.GeneratesCards && !card.Effects.ExhaustsCards && !card.Effects.ChangesKeywords && !card.Effects.HasOneShotEnchantment && card.DrawCost == null)
         && _monsterMoves?.All(move => !move.GeneratesCards) != false;
     internal int Block => _combat?.Read(State, 0).Block ?? Read(BlockSlot);
     internal int PowerCount => _powers?.Count ?? 0;
@@ -214,7 +216,8 @@ internal sealed partial class ResumableDiscardProgram
         if (_combat == null) State.Write(BlockSlot, block);
         else if (Creature(0).Block != block) throw new ArgumentException("Player block disagrees with creature values.");
         WriteRng(shuffleRng);
-        for (int card = 0; card < cards.Length; card++) _cardInstances.Append(State, [new CardInstanceValue(card, cards[card].CapturedX).Data]);
+        for (int card = 0; card < cards.Length; card++) _cardInstances.Append(State,
+            [new CardInstanceValue(card, cards[card].CapturedX, EnchantmentDisabled: cards[card].EnchantmentInitiallyDisabled).Data]);
         for (int p = 0; p < piles.Length; p++)
             foreach (int card in piles[p]) _piles[p].Append(State, [card]);
     }
@@ -408,7 +411,7 @@ internal sealed partial class ResumableDiscardProgram
             {
                 case 0:
                     Move(card, Pile.Play);
-                    ConsumeFreeEtherealPlay(card);
+                    BeforeCardPlayed(card);
                     Emit(EventKind.Start, card, Read(frame + EnergyValueOffset), Read(frame + AutoOffset) != 0, Read(frame + TargetOffset));
                     State.Write(frame + IpOffset, 1);
                     break;
@@ -423,6 +426,11 @@ internal sealed partial class ResumableDiscardProgram
                 case 9:
                 case 10:
                     return;
+                case 11:
+                    if (!DrawCards(card, CurrentInstruction.Amount, 11)) return;
+                    Emit(EventKind.EnchantmentFinish, card);
+                    AdvanceInstruction();
+                    break;
                 case 3:
                     // Native batch discard moves every selected card and runs its hooks before
                     // starting any Sly card. The selected instance list survives nested choices.
@@ -565,6 +573,13 @@ internal sealed partial class ResumableDiscardProgram
             case CardInstructionKind.Draw:
                 if (!DrawCards(card, instruction.Amount, 1)) return false;
                 break;
+            case CardInstructionKind.DrawOnce:
+                if (EnchantmentDisabled(card)) break;
+                _cardInstances.Write(State, card, (CardInstance(card) with { EnchantmentDisabled = true }).Data);
+                Emit(EventKind.EnchantmentStart, card);
+                // Resume inside the already-started enchantment after shuffle selection.
+                State.Write(Frame + IpOffset, 11);
+                return true;
             case CardInstructionKind.DiscardHandAndDraw:
                 if (Ending) break;
                 int count = Count(Pile.Hand);
@@ -769,12 +784,28 @@ internal sealed partial class ResumableDiscardProgram
         if (PreparePower(card, target, kind, amount)) CommitPower(card, target, kind, amount);
     }
 
-    private void ConsumeFreeEtherealPlay(int card)
+    private void BeforeCardPlayed(int card)
     {
-        if (!IsEthereal(card)) return;
-        int index = _powers?.FindOrDefault(0, BasicPowerKind.Veilpiercer) ?? -1;
-        if (index >= 0 && Power(index).Amount > 0)
-            CommitPower(card, 0, BasicPowerKind.Veilpiercer, -1);
+        int order = 0;
+        while ((_powers?.NextBeforeCardPower(State, order) ?? -1) is var index && index >= 0)
+        {
+            var power = Power(index);
+            order = power.Order;
+            switch (PowerDefinition(index).Kind)
+            {
+                case BasicPowerKind.Veilpiercer:
+                    if (IsEthereal(card)) CommitPower(card, 0, BasicPowerKind.Veilpiercer, -1);
+                    break;
+                case BasicPowerKind.SpiritOfAsh:
+                    if (IsEthereal(card)) GainBlock(card, power.Amount);
+                    break;
+                case BasicPowerKind.DanseMacabre:
+                    int resolvedCost = Definition(card).CostsX ? CapturedX(card) : Math.Max(0, EnergyCost(card));
+                    if (resolvedCost >= PowerDefinition(index).MinimumEnergyCost) GainBlock(card, power.Amount);
+                    break;
+                default: throw new InvalidOperationException("Unrepresented before-card Power.");
+            }
+        }
     }
 
     private bool PreparePower(int card, int target, BasicPowerKind kind, int amount)

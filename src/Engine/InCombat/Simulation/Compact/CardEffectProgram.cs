@@ -5,7 +5,7 @@ internal enum CardInstructionKind
     AttackTarget, GainBlock, Draw, Discard, ApplyBasicPower, SkipIfDrawnCardNotType,
     TriggerBasicPower, DiscardHandAndDraw, SkipIfTargetLacksPower, GainBlockFromPowerSum,
     GainBlockAndApplyPower, ApplyTemporaryStrengthLoss, GenerateCards, GainEnergy, SummonPet, PetAttackTarget, ExhaustFromDraw,
-    LoseEnemyHp, RetrieveFromDiscard, ApplyPowerAtLeastCurrent, ApplyKeywordFromHand
+    LoseEnemyHp, RetrieveFromDiscard, ApplyPowerAtLeastCurrent, ApplyKeywordFromHand, DrawOnce
 }
 internal enum CardInstructionTarget { Owner, ChosenEnemy, AllEnemies }
 internal enum CardCategory { Other, Attack, Skill, Power, Status }
@@ -35,6 +35,9 @@ internal sealed class CardEffectProgram
     internal bool ExhaustsCards { get; }
     internal bool RequiresPet { get; }
     internal bool ChangesKeywords { get; }
+    internal bool HasOneShotEnchantment { get; }
+
+    internal CardEffectProgram Append(CardInstruction instruction) => new([.. _instructions, instruction]);
 
     internal CardEffectProgram(ReadOnlySpan<CardInstruction> instructions)
     {
@@ -102,6 +105,13 @@ internal sealed class CardEffectProgram
                     if (instruction.Amount > 10) throw new ArgumentException("Compact draw exceeds hand capacity.");
                     TotalDraw = checked(TotalDraw + instruction.Amount);
                     break;
+                case CardInstructionKind.DrawOnce:
+                    if (instruction.Amount > 10 || instruction.Target != CardInstructionTarget.Owner
+                        || index != _instructions.Length - 1)
+                        throw new NotSupportedException("One-shot enchantment draw must be the final owner instruction within hand capacity.");
+                    TotalDraw = checked(TotalDraw + instruction.Amount);
+                    HasOneShotEnchantment = true;
+                    break;
                 case CardInstructionKind.Discard:
                 case CardInstructionKind.ExhaustFromDraw:
                 case CardInstructionKind.RetrieveFromDiscard:
@@ -147,10 +157,10 @@ internal sealed class CardEffectProgram
                     break;
                 case CardInstructionKind.ApplyBasicPower:
                     if (instruction.Target is not (CardInstructionTarget.Owner or CardInstructionTarget.ChosenEnemy or CardInstructionTarget.AllEnemies)
-                        || instruction.Power is not (BasicPowerKind.Strength or BasicPowerKind.Dexterity or BasicPowerKind.Weak or BasicPowerKind.Poison or BasicPowerKind.ToolsOfTheTrade or BasicPowerKind.Neurosurge or BasicPowerKind.BorrowedTime or BasicPowerKind.Veilpiercer)
+                        || instruction.Power is not (BasicPowerKind.Strength or BasicPowerKind.Dexterity or BasicPowerKind.Weak or BasicPowerKind.Poison or BasicPowerKind.ToolsOfTheTrade or BasicPowerKind.Neurosurge or BasicPowerKind.BorrowedTime or BasicPowerKind.Veilpiercer or BasicPowerKind.SpiritOfAsh or BasicPowerKind.DanseMacabre)
                         || instruction.Power is BasicPowerKind.Weak or BasicPowerKind.Poison && (instruction.Target == CardInstructionTarget.Owner
                             || instruction.Amount < 0 || instruction.EnergyXMultiplier < 0)
-                        || instruction.Power is BasicPowerKind.ToolsOfTheTrade or BasicPowerKind.Neurosurge or BasicPowerKind.BorrowedTime or BasicPowerKind.Veilpiercer && (instruction.Target != CardInstructionTarget.Owner
+                        || instruction.Power is BasicPowerKind.ToolsOfTheTrade or BasicPowerKind.Neurosurge or BasicPowerKind.BorrowedTime or BasicPowerKind.Veilpiercer or BasicPowerKind.SpiritOfAsh or BasicPowerKind.DanseMacabre && (instruction.Target != CardInstructionTarget.Owner
                             || instruction.Amount < 0 || instruction.EnergyXMultiplier != 0))
                         throw new NotSupportedException("Power instruction is outside the admitted application domain.");
                     RequiresTarget |= instruction.Target == CardInstructionTarget.ChosenEnemy;
