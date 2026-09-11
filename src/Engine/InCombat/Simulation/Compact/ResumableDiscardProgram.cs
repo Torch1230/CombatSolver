@@ -484,7 +484,7 @@ internal sealed partial class ResumableDiscardProgram
                     instruction.Amount + (decimal)instruction.Multiplier * Creature(PetIndex).CurrentHp);
                 break;
             case CardInstructionKind.AttackTarget:
-                Attack(card, Read(Frame + TargetOffset), instruction.Amount);
+                AttackCreature(card, 0, Read(Frame + TargetOffset), instruction.Amount, instruction.AttackMultiplierPower);
                 break;
             case CardInstructionKind.LoseEnemyHp:
                 int receiver = Read(Frame + TargetOffset);
@@ -517,6 +517,15 @@ internal sealed partial class ResumableDiscardProgram
                     for (int target = 1; target < EnemyEnd; target++) ApplyPower(card, target, instruction.Power, amount);
                 }
                 else ApplyPower(card, instruction.Target == CardInstructionTarget.Owner ? 0 : Read(Frame + TargetOffset), instruction.Power, amount);
+                break;
+            case CardInstructionKind.ApplyPowerAtLeastCurrent:
+                int growthTarget = Read(Frame + TargetOffset);
+                int currentAmount = _powers!.Amount(State, growthTarget, instruction.Power);
+                // Within this closed domain, Artifact is the only incoming modifier and
+                // consumes even a native zero-offset stack at the cap. Clamp on commit so
+                // that this modifier still runs; no admitted observer reads the request.
+                int growth = Math.Max(instruction.Amount, currentAmount);
+                ApplyPower(card, growthTarget, instruction.Power, growth);
                 break;
             case CardInstructionKind.ApplyTemporaryStrengthLoss:
                 if (instruction.Target == CardInstructionTarget.AllEnemies)
@@ -660,13 +669,11 @@ internal sealed partial class ResumableDiscardProgram
         Emit(EventKind.SummonPet, source, amount, target: PetIndex);
     }
 
-    private void Attack(int card, int target, int amount) => AttackCreature(card, 0, target, amount);
-
-    private void AttackCreature(int source, int dealer, int target, decimal amount)
+    private void AttackCreature(int source, int dealer, int target, decimal amount, BasicPowerKind? cardMultiplier = null)
     {
         if (Ending || !CreaturePresent(target) || Creature(target).CurrentHp <= 0 || Creature(dealer).CurrentHp <= 0) return;
         bool redirect = target == 0 && PetIndex >= 0 && Creature(PetIndex).CurrentHp > 0;
-        DamageValues result = _combat!.Damage(State, target, _powers?.ModifyAttack(State, dealer, target, amount) ?? amount,
+        DamageValues result = _combat!.Damage(State, target, _powers?.ModifyAttack(State, dealer, target, amount, cardMultiplier) ?? amount,
             out DamageValues? petResult, redirectToPet: redirect);
         DamageTraits traits = source < 0 ? DamageTraits.NoCard : 0;
         // Native records both receivers before processing either death. Even a fully

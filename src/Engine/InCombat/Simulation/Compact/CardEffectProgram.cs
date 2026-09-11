@@ -5,7 +5,7 @@ internal enum CardInstructionKind
     AttackTarget, GainBlock, Draw, Discard, ApplyBasicPower, SkipIfDrawnCardNotType,
     TriggerBasicPower, DiscardHandAndDraw, SkipIfTargetLacksPower, GainBlockFromPowerSum,
     GainBlockAndApplyPower, ApplyTemporaryStrengthLoss, GenerateCards, GainEnergy, SummonPet, PetAttackTarget, ExhaustFromDraw,
-    LoseEnemyHp, RetrieveFromDiscard
+    LoseEnemyHp, RetrieveFromDiscard, ApplyPowerAtLeastCurrent
 }
 internal enum CardInstructionTarget { Owner, ChosenEnemy, AllEnemies }
 internal enum CardCategory { Other, Attack, Skill, Power, Status }
@@ -14,7 +14,8 @@ internal enum CardGenerationPlacement { Hand, RandomDraw }
 internal readonly record struct CardInstruction(CardInstructionKind Kind, int Amount,
     BasicPowerKind Power = BasicPowerKind.Strength, CardInstructionTarget Target = CardInstructionTarget.Owner,
     int EnergyXMultiplier = 0, CardCategory RequiredCategory = CardCategory.Skill, int Multiplier = 0, int CardTemplate = -1,
-    CardGenerationPlacement Placement = CardGenerationPlacement.Hand, bool RepeatForEnergyX = false);
+    CardGenerationPlacement Placement = CardGenerationPlacement.Hand, bool RepeatForEnergyX = false,
+    BasicPowerKind? AttackMultiplierPower = null);
 
 /// <summary>
 /// Immutable, fully admitted OnPlay instructions. Execution position belongs to the value
@@ -51,7 +52,11 @@ internal sealed class CardEffectProgram
                 throw new ArgumentException("Only generation instructions can reference card templates.");
             if (instruction.RepeatForEnergyX && instruction.Kind != CardInstructionKind.SummonPet)
                 throw new ArgumentException("Only summoning admits repeated X commands.");
+            if (instruction.AttackMultiplierPower != null
+                && (instruction.Kind != CardInstructionKind.AttackTarget || instruction.AttackMultiplierPower != BasicPowerKind.Hang))
+                throw new NotSupportedException("Card-specific damage multipliers require the admitted attack Power.");
             RequiresEnergyX |= instruction.EnergyXMultiplier != 0 || instruction.RepeatForEnergyX;
+            RequiresPowers |= instruction.AttackMultiplierPower != null;
             switch (instruction.Kind)
             {
                 case CardInstructionKind.GenerateCards:
@@ -140,6 +145,12 @@ internal sealed class CardEffectProgram
                             || instruction.Amount < 0 || instruction.EnergyXMultiplier != 0))
                         throw new NotSupportedException("Power instruction is outside the admitted application domain.");
                     RequiresTarget |= instruction.Target == CardInstructionTarget.ChosenEnemy;
+                    RequiresPowers = true;
+                    break;
+                case CardInstructionKind.ApplyPowerAtLeastCurrent:
+                    if (instruction.Power != BasicPowerKind.Hang || instruction.Target != CardInstructionTarget.ChosenEnemy)
+                        throw new NotSupportedException("Growing Power requests require the admitted enemy counter.");
+                    RequiresTarget = true;
                     RequiresPowers = true;
                     break;
                 default:

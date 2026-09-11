@@ -72,7 +72,7 @@ internal sealed class CompactDiscardProjection
         if (combat.Players.Count != 1 || powers.Any(p => !IsBasicPower(p))
             || powers.Any(p => !(p is StratagemPower && p.Owner == player.Creature && p.Amount is >= 1 and <= 10)
                 && !(includeAttacks ? p is not StratagemPower && IsBasicPower(p) && (p is not (BlockNextTurnPower or ToolsOfTheTradePower or NeurosurgePower or BorrowedTimePower or VeilpiercerPower) || p.Owner == player.Creature)
-                    && (p is not PiercingWailPower || p.Owner != player.Creature)
+                    && (p is not (PiercingWailPower or HangPower) || p.Owner != player.Creature)
                     : p is StrengthPower && p.Owner != player.Creature))
             || combat.RootRunModSubscriberCount != 0 || combat.RootCombatModSubscriberCount != 0
             || combat.RootHasBaseLibCardModifiers
@@ -260,6 +260,7 @@ internal sealed class CompactDiscardProjection
             if (kind is BasicPowerKind.Artifact or BasicPowerKind.Stratagem or BasicPowerKind.DieForYou) continue;
             if (kind == BasicPowerKind.BorrowedTime && (owner != _player.Creature || !cards.Any(card => card.Preview is BorrowedTime))) continue;
             if (kind == BasicPowerKind.Veilpiercer && (owner != _player.Creature || !cards.Any(card => card.Preview is Veilpiercer))) continue;
+            if (kind == BasicPowerKind.Hang && (owner == _player.Creature || !cards.Any(card => card.Preview is Hang))) continue;
             if (owner.PetOwner != null && kind != BasicPowerKind.Strength) continue;
             if (kind is BasicPowerKind.Neurosurge or BasicPowerKind.Doom
                 && (owner != _player.Creature || !cards.Any(card => card.Preview is Neurosurge) && !powers.Any(power => power is NeurosurgePower))) continue;
@@ -292,7 +293,8 @@ internal sealed class CompactDiscardProjection
         [typeof(NeurosurgePower)] = BasicPowerKind.Neurosurge,
         [typeof(DieForYouPower)] = BasicPowerKind.DieForYou,
         [typeof(BorrowedTimePower)] = BasicPowerKind.BorrowedTime,
-        [typeof(VeilpiercerPower)] = BasicPowerKind.Veilpiercer
+        [typeof(VeilpiercerPower)] = BasicPowerKind.Veilpiercer,
+        [typeof(HangPower)] = BasicPowerKind.Hang
     };
     private static bool IsBasicPower(PowerModel power) => BasicKinds.ContainsKey(power.GetType());
     private static PowerModel CanonicalPower(BasicPowerKind kind) => kind switch
@@ -311,6 +313,7 @@ internal sealed class CompactDiscardProjection
         BasicPowerKind.Doom => CanonicalModels.Power<DoomPower>(),
         BasicPowerKind.Neurosurge => CanonicalModels.Power<NeurosurgePower>(),
         BasicPowerKind.BorrowedTime => CanonicalModels.Power<BorrowedTimePower>(),
+        BasicPowerKind.Hang => CanonicalModels.Power<HangPower>(),
         BasicPowerKind.Veilpiercer => CanonicalModels.Power<VeilpiercerPower>(),
         BasicPowerKind.DieForYou => CanonicalModels.Power<DieForYouPower>(),
         _ => throw new InvalidOperationException("Unknown basic Power kind.")
@@ -854,6 +857,7 @@ internal sealed class CompactDiscardProjection
             || type == typeof(PoisonPower) && method == nameof(AbstractModel.AfterSideTurnStart)
             || type == typeof(NeurosurgePower) && method == nameof(AbstractModel.AfterSideTurnStart)
             || type == typeof(BorrowedTimePower) && method is nameof(AbstractModel.TryModifyEnergyCostInCombat) or nameof(AbstractModel.AfterSideTurnEnd)
+            || type == typeof(HangPower) && method == nameof(AbstractModel.ModifyDamageMultiplicative)
             || type == typeof(VeilpiercerPower) && method is nameof(AbstractModel.TryModifyEnergyCostInCombatLate) or nameof(AbstractModel.BeforeCardPlayed)
             || type == typeof(DoomPower) && method is nameof(AbstractModel.BeforeSideTurnEnd) or nameof(AbstractModel.AfterSideTurnEnd)
             || type == typeof(ToolsOfTheTradePower) && method is nameof(AbstractModel.ModifyHandDraw) or nameof(AbstractModel.AfterPlayerTurnStart)

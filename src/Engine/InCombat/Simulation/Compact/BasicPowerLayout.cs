@@ -1,6 +1,6 @@
 namespace CombatSolver.Engine.InCombat.Simulation.Compact;
 
-internal enum BasicPowerKind { Strength, Dexterity, Weak, Vulnerable, Frail, Poison, BlockNextTurn, ToolsOfTheTrade, PiercingWail, Artifact, Stratagem, Doom, Neurosurge, DieForYou, BorrowedTime, Veilpiercer }
+internal enum BasicPowerKind { Strength, Dexterity, Weak, Vulnerable, Frail, Poison, BlockNextTurn, ToolsOfTheTrade, PiercingWail, Artifact, Stratagem, Doom, Neurosurge, DieForYou, BorrowedTime, Veilpiercer, Hang }
 internal readonly record struct BasicPowerDefinition(BasicPowerKind Kind, int Owner, int Amount,
     int Applier, int Order, decimal Multiplier, bool RootSlot, int AmountOnTurnStart = 0, bool SkipNextDurationTick = false);
 internal readonly record struct BasicPowerValues(int Amount, int Applier, int Order, bool Retired,
@@ -84,7 +84,7 @@ internal sealed class BasicPowerLayout
     internal static bool IsDebuff(BasicPowerKind kind, int amount)
         => kind is BasicPowerKind.Strength or BasicPowerKind.Dexterity ? amount < 0
             : kind is BasicPowerKind.Weak or BasicPowerKind.Vulnerable or BasicPowerKind.Frail or BasicPowerKind.Poison
-                or BasicPowerKind.PiercingWail or BasicPowerKind.Doom or BasicPowerKind.Neurosurge or BasicPowerKind.BorrowedTime;
+                or BasicPowerKind.PiercingWail or BasicPowerKind.Doom or BasicPowerKind.Neurosurge or BasicPowerKind.BorrowedTime or BasicPowerKind.Hang;
 
     internal void CaptureTurnStart(ReversibleValueState state, int owner)
     {
@@ -110,7 +110,8 @@ internal sealed class BasicPowerLayout
         }
     }
 
-    internal decimal ModifyAttack(ReversibleValueState state, int dealer, int target, decimal amount)
+    internal decimal ModifyAttack(ReversibleValueState state, int dealer, int target, decimal amount,
+        BasicPowerKind? cardMultiplier = null)
     {
         amount += Amount(state, dealer, BasicPowerKind.Strength);
         // Definitions retain captured listener order. Only enemy Weak can be newly created;
@@ -119,10 +120,13 @@ internal sealed class BasicPowerLayout
         for (int index = 0; index < Count; index++)
         {
             var definition = _definitions[index];
-            if (Read(state, index).Amount == 0) continue;
+            int current = Read(state, index).Amount;
+            if (current == 0) continue;
             if (definition.Kind == BasicPowerKind.Weak && definition.Owner == dealer
                 || definition.Kind == BasicPowerKind.Vulnerable && definition.Owner == target)
                 amount *= definition.Multiplier;
+            if (definition.Kind == cardMultiplier && definition.Owner == target)
+                amount *= current;
         }
         return Math.Max(0m, amount);
     }

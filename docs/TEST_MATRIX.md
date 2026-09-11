@@ -1,5 +1,7 @@
 # CombatSolver 测试清单
 
+- `COMPACT-HANG-NATIVE`／`HANG-CAP-NATIVE`／`COMPACT-HANG-TERMINAL`／`COMPACT-HANG-SEARCH`：`b4e7e3f4b225421e8bb208cfe8582239`／`0eb616cb7eea425daf617758199a573b`／`2067198c357a4a938e88df85cc4c6617`／`07239771f5f34edb9d623a896e207aa8` Passed；两根16原生动作28分支8挂起、四组封顶、最后击杀及250节点串并行，完整状态／原键／续用／九RNG／八工作区。[范围、失败迭代与复现](performance/simulation-hang-20260911.md)。
+
 - `COMPACT-FULL-ROUTE-NATIVE`：`c42c12e1eb8b42ddbdf6cbe6b717bc80` Passed；原始 30 牌／31 监听器，44 原生动作、424 已准入替代分支，第 8 回合胜利、59/65 HP。完整状态／键／历史／Power／九 RNG／逐实例牌堆、双工作区和原生结束后冻结重放；原正式搜索生成路线，尚非紧凑生产搜索。[范围与复现](performance/simulation-full-route-20260911.md)。 六个适配文件移入 Prediction 后，代表请求 `ec8fa69959f742e4b8c1390566b2fc0a` Passed，完整路线取证对象与迁移前相同。
 
 - `COMPACT-ROUND-NATIVE`：`43aec28b796547a7b3d107003021bd01` Passed；3 根／20 分支／7 原生动作（6 次完整结束回合），覆盖起手洗牌、Tools、临时／永久 Sly、Power、AI、生成牌、保留与敌方中毒终局；完整状态／历史／原键／估值／九 RNG、冷根历史及八工作区恢复。[证据](performance/simulation-rounds-20260911.md)。

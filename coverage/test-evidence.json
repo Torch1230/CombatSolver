@@ -1,4 +1,12 @@
 {
+  "COMPACT-HANG-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeCardMultiplierCapTerminalAndFixedSearchDifferential",
+    "procedure": "两根两回合原生、四组层数封顶、终局与250节点串并行；八工作区、挂起、键及续用对照。",
+    "expected": "吊杀倍率只影响指定卡牌，力量后乘算，攻击后增长；封顶零偏移仍可被人工制品修饰。",
+    "observed": "b4e7e3f4b225421e8bb208cfe8582239 COMPACT-HANG-NATIVE Passed; 0eb616cb7eea425daf617758199a573b HANG-CAP-NATIVE Passed; 2067198c357a4a938e88df85cc4c6617 COMPACT-HANG-TERMINAL Passed; 07239771f5f34edb9d623a896e207aa8 COMPACT-HANG-SEARCH Passed",
+    "evidence": "docs/performance/simulation-hang-20260911.json；docs/performance/simulation-hang-20260911.md；2026-09-11。"
+  },
   "COMPACT-COST-POWERS-20260911": {
     "status": "Passed",
     "level": "HeadlessNativeGlobalCostPendingAndTerminalDifferentialWithFixedSearch",

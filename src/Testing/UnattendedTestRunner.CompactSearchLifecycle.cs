@@ -20,9 +20,11 @@ internal sealed partial class UnattendedTestRunner
         bool osty = ostyTurns || _request.ScenarioId == "COMPACT-OSTY-SEARCH";
         bool drawExhaust = _request.ScenarioId == "COMPACT-DRAW-EXHAUST-SEARCH";
         bool dirge = _request.ScenarioId == "COMPACT-DIRGE-SEARCH";
+        bool hang = _request.ScenarioId == "COMPACT-HANG-SEARCH";
         bool costPowers = _request.ScenarioId == "COMPACT-COST-POWERS-SEARCH";
         bool necroCards = _request.ScenarioId == "COMPACT-NECRO-CARDS-SEARCH";
-        if (costPowers) await PrepareCompactCostPowersAsync(combat, player, 0);
+        if (hang) await PrepareCompactHangAsync(combat, player, 0);
+        else if (costPowers) await PrepareCompactCostPowersAsync(combat, player, 0);
         else if (necroCards) await PrepareCompactNecroCardsAsync(combat, player, 0);
         else if (dirge) await PrepareCompactDirgeAsync(combat, player, 0);
         else if (drawExhaust) await PrepareCompactDrawExhaustAsync(combat, player, 0);
@@ -74,7 +76,7 @@ internal sealed partial class UnattendedTestRunner
             || serial.MaxParallelExpansionConcurrency != 0 || compact.Counts.PendingReplays == 0)
             throw new InvalidOperationException("Compact lifecycle failed to exercise concurrent and suspended candidates.");
         AssertSnapshotEqual(original, CaptureActual(combat, player, combat.Enemies.Single()), "CompactLifecycle", "ActualUnchanged");
-        _completedChecks.Add($"CompactSearchLifecycle:CostPowers{costPowers}:NecroCards{necroCards}:Dirge{dirge}:DrawExhaust{drawExhaust}:Neurosurge{neurosurge}:Osty{osty}:TurnRelic{ostyTurns}:250Nodes:LegacyEqualsCompact:DOP1EqualsDOP2:Concurrency{parallel.MaxParallelExpansionConcurrency}:CancelAndFailureDrained:RootReusable:UnsupportedPotionRejected:ActualUnchanged");
+        _completedChecks.Add($"CompactSearchLifecycle:Hang{hang}:CostPowers{costPowers}:NecroCards{necroCards}:Dirge{dirge}:DrawExhaust{drawExhaust}:Neurosurge{neurosurge}:Osty{osty}:TurnRelic{ostyTurns}:250Nodes:LegacyEqualsCompact:DOP1EqualsDOP2:Concurrency{parallel.MaxParallelExpansionConcurrency}:CancelAndFailureDrained:RootReusable:UnsupportedPotionRejected:ActualUnchanged");
 
         Task<SolverResult> Solve(SearchPolicySnapshot selectedPolicy, int degree)
             => Task.Run(() => CombatSearchCoordinator.Solve(root, display, damage,

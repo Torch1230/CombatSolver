@@ -404,3 +404,6 @@ renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或
 紧凑费用读取扩展：`BorrowedTime`／`Veilpiercer` 编译为已有能量、攻击与能力指令；费用先应用本地修饰、再加预借时间、最后按当前手牌／出牌区位置处理刺破帷幕，负基础费用与 X 跳过全局修改，结束门禁同原生。付款值保存在帧中，免费层数在出牌开始之前直接递减。`ICompletedEnergyCostReadSource` 是 Engine 的内部只读合同，由每个 `CompactCardMetadataReadBinding` 按当前实例映射到权威值程序；只挂在其私有评估 Simulator，Fork 不复制，不随候选保留。评估模型的根牌堆不能用于全局费用的位置判定。旧 Hook 派发允许两阶段同步能量费用查询在选牌挂起时读取，效果 Hook 仍默认暂停。[证据](performance/simulation-cost-powers-20260911.md)。
 
 参数化 `CardEffectSpecRegistry.PowerEffects` 仍是旧后端这些能力效果的权威入口；每项施加检查 `simulator.IsEnding`，对应原版 PowerCmd.Apply，保留同牌其他资源／生成效果各自的命令规则。
+
+
+吊杀的卡牌身份只由 Prediction 精确编译：`AttackMultiplierPower` 是不可变攻击指令元数据，Engine 在力量加值之后按目标能力乘算，普通卡牌／怪物／宠物攻击默认不携带该标记。`ApplyPowerAtLeastCurrent` 在攻击完成后读取当前目标层数；当前闭包唯一的施加修饰为人工制品，仍运行修饰再使用共享提交封顶，与原生封顶零请求仍可消耗人工制品的结果相同。未知请求量观察者仍在根准入时拒绝，不能将此等价变换扩展到开放 Hook 集合。能力继续使用原有层数／顺序／退休／回合快照槽和只读绑定。[原生与搜索证据](performance/simulation-hang-20260911.md)。

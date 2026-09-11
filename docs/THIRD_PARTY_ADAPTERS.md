@@ -546,3 +546,6 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 紧凑费用闭包新增精确 `BorrowedTime`／`Veilpiercer`（共 44 卡牌类型）及玩家的对应能力；没有新增第三方登记入口。`ICompletedEnergyCostReadSource` 仅供已准入值执行器向私有评估上下文提供费用，不是第三方效果覆盖表，也不能注册未迁移效果。原有能量费用 Hook 的同步读取在选牌挂起时继续运行，仍遵守战斗结束门禁；异步效果派发保持原暂停合同。费用镜像必须读取分支状态，不能将原生 CardModel.Pile 或其他 live 变化值当作搜索分支。局部修饰列表与全局查询费用分别对账。[证据](performance/simulation-cost-powers-20260911.md)。
 
 `CardEffectSpecRegistry.PowerEffects` 的共同施加器在每条原生能力命令前检查 `IsEnding`。攻击击杀最后一个敌人后不再施加后续能力，但该表之外的资源／生成命令仍分别遵循自己的原生命令门禁，不能把全部卡牌尾部统一截断。刺破帷幕终局对照覆盖此共同规则。
+
+
+紧凑封闭编译新增精确吊杀 `Hang`（共 45 卡牌类型）和敌方 `HangPower`，没有新增第三方登记入口。倍率仅携带在该卡攻击指令上，不由引擎识别 CLR 卡牌类型，不影响其他来源的攻击。当前能力增长只准入人工制品这一施加修饰；提交封顶与原生限制请求量的等价依赖“没有观察请求量的其他 Hook”。未来增加施加修饰或能力历史观察者时须重新核验封顶零请求及层数，不能仅补类型白名单。[证据](performance/simulation-hang-20260911.md)。
