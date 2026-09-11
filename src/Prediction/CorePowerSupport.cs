@@ -564,7 +564,7 @@ internal static class CorePowerSupport
         TriggerTransientSideTurnEndPowers(simulator, combat, CombatSide.Enemy, enemies);
         combat.RestoreTemporaryStrength(enemies);
         TickDurations(combat);
-        return EndTurnPowerSupport.TriggerLate(simulator, combat, enemies);
+        return HookMirrors.AfterSideTurnEndLate(simulator, CombatSide.Enemy, enemies);
     }
 
     public static bool TriggerAfterBlockCleared(

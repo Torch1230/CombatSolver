@@ -75,7 +75,7 @@ Power 来源也是语义的一部分：精确镜像可通过 `ICombatPredictionE
 
 ## 2. 登记点总表
 
-### 2.1 统一形状的镜像注册表（44 张）
+### 2.1 统一形状的镜像注册表（45 张）
 
 绝大多数登记走同一个形状：
 
@@ -83,7 +83,7 @@ Power 来源也是语义的一部分：精确镜像可通过 `ICombatPredictionE
 XxxMirrors.Registry.Register<TYourType>(handler);
 ```
 
-44 张注册表按域分布在 `src/Engine/InCombat/Mirrors/` 下：
+45 张注册表按域分布在 `src/Engine/InCombat/Mirrors/` 下：
 
 死亡后生成单位的镜像应保持原生生成时点。例如补货由 `AfterDeathMirrors` 调用分支生成入口，旧个体仍在阵容中，其最大生命参与替补生命判重。把生成延后到阵容清理后，即使 RNG 调用次数相同也会改变抽样结果；登记镜像时应同步移除原领域补偿中的同一生成动作。
 
@@ -93,7 +93,7 @@ XxxMirrors.Registry.Register<TYourType>(handler);
 
 | 目录 | 注册表数 | 覆盖什么 | 你多半要用的 |
 |---|---|---|---|
-| `Hooks/` | 37 | 战斗 hook：攻击、格挡、伤害、死亡、卡牌、球体、回合边界 | 按你重写了哪个 hook 挑，例如 `AfterDamageGivenMirrors` |
+| `Hooks/` | 38 | 战斗 hook：攻击、格挡、伤害、死亡、卡牌、球体、回合边界 | 按你重写了哪个 hook 挑，例如 `AfterDamageGivenMirrors` |
 | `Cards/` | 4 | 出牌、可打出性、回合结束留手、结算落点 | `CardOnPlayMirrors`、`CardIsPlayableMirrors` |
 | `Potions/` | 1 | 药水使用 | `PotionOnUseMirrors` |
 | `Enchantments/`、`Afflictions/` | 各 1 | 附魔与病症的出牌效果 | 少见 |
@@ -396,7 +396,19 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 完整签名、对象重映射、字段格式及验证边界见[模型状态适配](third-party-model-state.md)。
 与其他内部镜像入口一样，外部程序集仍需要 publicizer；本接口尚未发布。
 
-### 2.10 还没有登记入口的地方
+### 2.10 回合末晚期效果
+
+`AfterSideTurnEndLateMirrors.Register<TModel>(handler)` 为精确运行时类型登记
+`AbstractModel.AfterSideTurnEndLate` 的预测实现，适用于遗物、Modifier、Power 等模型。
+玩家与敌方回合末共用入口，回调自行根据 `Side`、`Participants` 判断是否生效。
+底层沿用 `MethodMirrorRegistry` 和覆盖描述元数据，外部仍需 publicizer。
+
+登记必须在首次 `CombatRootSnapshot.Capture` 或本阶段分发之前完成，此后明确拒绝登记。
+与多数旧镜像不同，本阶段遇到未登记且非纯表现的重写会记录风险并抛出
+`NotSupportedException`，不会只标记风险后继续生成路线。
+完整签名、暂停和状态约束见[回合阶段镜像](third-party-turn-phase-mirrors.md)。
+
+### 2.11 还没有登记入口的地方
 
 见第 6 节。目前只能 Harmony 打补丁，或者等对应的扩展点合并。
 
@@ -413,6 +425,9 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 
 `ModelPredictionStateMirrors` 不使用上述延迟分派缓存，而是在第一次根或续用捕获后冻结整张登记表；
 迟到登记明确抛异常。两类入口的共同要求仍是初始化期间一次完成登记。
+
+`AfterSideTurnEndLateMirrors.Register` 在标准 registry 外提供冻结检查，首次根捕获或分发后
+也会明确拒绝迟到登记；外部调用此入口，不绕过它直接写入内部 registry。
 
 ### 3.2 失败要关死，不要装一半
 
@@ -518,7 +533,7 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 | `PredictionModHookSubscriberCapture.KnownPreRootSubscriberTypeNames` | 私有静态白名单，没有公开登记入口 | 待做 |
 | `PredictionModPatchAudit.ValidateLoadedMods` | 明确拒绝 `WheelchairSpire`，没有外部放行入口 | 项目不兼容策略 |
 | `DynamicVarCloneMetadataPatches` | 模拟克隆只优化已核对为空默认值的 BaseLib 提示/升级字段与 Ritsu 提示工厂；非空值照常复制，live 调用保持原框架行为。其他附加字段继续原有克隆逻辑，不属于此优化入口 | 精确框架适配 |
-| `PlayerTurnEndLifecycle.RunPhaseTwo`、`CorePowerSupport.TriggerPlayerRegularSideTurnEndEffects`、`FlushPlayerHandAtTurnEnd`、`TurnStartPowerSupport.TriggerAfterPlayerTurnStart`、`SimulatedCombatState.TriggerRelicsAfterPlayerTurnStart` | 回合边界的效果没有注册表 | 待做 |
+| `CorePowerSupport.TriggerPlayerRegularSideTurnEndEffects`、`FlushPlayerHandAtTurnEnd`、`TurnStartPowerSupport.TriggerAfterPlayerTurnStart`、`SimulatedCombatState.TriggerRelicsAfterPlayerTurnStart` | 常规回合末和部分回合开始效果尚无通用登记；晚期 `AfterSideTurnEndLate` 已开放，见 §2.10 | 部分开放 |
 | `SimulatedCombatState.TryPrepareExtraPlayerTurn` / `TryPrepareLiveExtraPlayerTurn` / `ConsumeExtraTurnSources` | 额外回合的来源硬编码，只认龙涎香和帕尔之眼 | 待做 |
 | `CombatPredictionSimulator.OnPlayWrapper` | 出牌后补抽没有挂载点 | 待做 |
 | `CardChoiceSupport.RemovalPriority` 的排序口径 | 移除类选择按**单卡**估值排，不看牌库其余部分；弃牌那一侧已经是「源牌堆平均值减本牌估值」的相对口径，消耗与转变没有。表现为求解器不会为了压出无限而主动烧牌。起手牌那一层已由 §2.7 打开，相对口径这一层仍然封闭 | 待做 |

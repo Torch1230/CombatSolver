@@ -64,6 +64,8 @@ CombatRootSnapshot.Capture（主线程根）
 
 新增或修改 mirror 注册时，由 `MethodMirrorRegistryDescriptor` 自动向 CoverageCatalog 描述支持状态；不要在工具侧复制 registry 私有布局或另建平行登记。
 
+`AfterSideTurnEndLate` 的扩展使用 `AfterSideTurnEndLateMirrors.Register<TModel>`，在根捕获前完成登记；玩家和敌方共用 Hook facade，DisintegrationPower 不得恢复到独立晚期补偿。新增其他阶段时逐一核对原版顺序、选择暂停和状态所有权，不能把晚期入口当作所有回合事件的通用回调。
+
 ## 3. 状态所有权清单
 
 新增分支状态必须回答：

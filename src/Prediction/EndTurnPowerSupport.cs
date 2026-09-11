@@ -177,28 +177,6 @@ internal static partial class EndTurnPowerSupport
         }
     }
 
-    public static bool TriggerLate(
-        CombatPredictionSimulator simulator,
-        SimulatedCombatState combat,
-        IEnumerable<Creature> participants)
-    {
-        foreach (Creature owner in participants)
-        {
-            int amount = combat.GetAmount<DisintegrationPower>(owner);
-            if (amount > 0 && simulator.State.GetCreature(owner).IsAlive)
-            {
-                using (simulator.PushDamageSource(
-                    CombatDamageSource.For(CombatDamageSourceKind.Power, nameof(DisintegrationPower))))
-                {
-                    simulator.Damage(owner, amount, ValueProp.Unpowered, owner);
-                }
-            }
-            if (simulator.HasPendingChoice)
-                return false;
-        }
-        return true;
-    }
-
     private static bool EvokeLastOrbs(
         CombatPredictionSimulator simulator,
         MegaCrit.Sts2.Core.Entities.Players.Player player,

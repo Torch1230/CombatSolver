@@ -1,5 +1,14 @@
 # CombatSolver 测试清单
 
+## 下一版本（开发中）：回合末晚期镜像
+
+- 游戏 0.111.0 的 Release 构建通过，零警告、零错误；Bash 结构门禁通过。
+- `TurnPhaseMirrorChecks`：25 项合同、1 项冻结检查及分配回归通过。覆盖精确登记、两侧参数与顺序、空参与者、异常传播、选择暂停、成员快照、COW 和 Disintegration 调用次数。模型与命令使用替身。
+- CoverageCatalog 校验通过，新增镜像识别为 `Registered / Exact / EngineMirror`。
+- [玩家晚期伤害](../coverage/unattended/monster-moves-batch-033-disintegration.json)：原生差分通过，2 格挡承受 5 点伤害后掉血 3。
+- [双方晚期伤害](../coverage/unattended/late-both-sides.json)：原生 T1→T2 完整快照、Fork 与 continuation 对账通过。
+- 游戏验证使用回合阶段、卡牌引用和 OnPlay 适配的组合构建。末击、多监听器原生顺序和任意第三方晚期 Hook 未覆盖；未作性能验证。
+
 ## 0.36.3：策略摘要
 
 - 后续摘要样式调整：`UI-LOCALIZATION` / `fc0bb52775dd427c80b61719838b1225` Passed（25.38 秒），校验目标 7/实际 4、成功与未达标状态分组、前缀删除及 405 项目录。右对齐、16 号字体和全自动按钮样式通过编译检查，未作可见游戏人工验收。
