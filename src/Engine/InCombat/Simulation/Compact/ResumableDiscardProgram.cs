@@ -42,6 +42,7 @@ internal sealed partial class ResumableDiscardProgram
     private readonly int _shuffleBlock;
     private readonly bool _shuffleBlockFirst;
     private readonly bool _handEndAdmitted;
+    private readonly MonsterEffectProgram[]? _monsterMoves;
     private readonly CardComparer? _cardComparer;
     private readonly InstanceComparer? _instanceComparer;
     private const int FrameStart = 10;
@@ -64,7 +65,8 @@ internal sealed partial class ResumableDiscardProgram
     internal ValueRng? EnergyCostRng => _drawCosts?.Rng(State);
     internal Pile ResultPile(int card) => Definition(card).ResultPile;
     internal bool CardRemoved(int card) => Contains(Pile.Removed, card);
-    internal bool CardValuesInvariant => _definitions.All(card => card.ResultPile == Pile.Discard && !card.Ethereal && !card.CostsX && !card.Effects.GeneratesCards && card.DrawCost == null);
+    internal bool CardValuesInvariant => _definitions.All(card => card.ResultPile == Pile.Discard && !card.Ethereal && !card.CostsX && !card.Effects.GeneratesCards && card.DrawCost == null)
+        && _monsterMoves?.All(move => !move.GeneratesCards) != false;
     internal int Block => _combat?.Read(State, 0).Block ?? Read(BlockSlot);
     internal int PowerCount => _powers?.Count ?? 0;
     internal BasicPowerValues Power(int index) => _powers!.Read(State, index);
@@ -96,7 +98,7 @@ internal sealed partial class ResumableDiscardProgram
     internal ResumableDiscardProgram(Card[] cards, IReadOnlyList<int>[] piles, int energy, int block, int discardBlock,
         ValueRng shuffleRng = default, int[]? comparisons = null, int stratagem = 0, int shuffleBlock = 0,
         bool shuffleBlockFirst = false, CreatureVitals[]? creatures = null, BasicPowerDefinition[]? powers = null, Card[]? generatedCards = null,
-        ValueRng? energyCostRng = null, bool handEndAdmitted = false)
+        ValueRng? energyCostRng = null, bool handEndAdmitted = false, MonsterEffectProgram[]? monsterMoves = null)
     {
         Card[] definitions = [.. cards, .. generatedCards ?? []];
         if (cards.Length == 0 || piles.Length != 5 || cards.Count(c => c.Sly) >= MaxFrames
@@ -127,6 +129,16 @@ internal sealed partial class ResumableDiscardProgram
             if (effect.Kind == CardInstructionKind.GenerateCards && (effect.CardTemplate < cards.Length || effect.CardTemplate >= definitions.Length))
                 throw new NotSupportedException("Generation references a template outside the captured closure.");
         }
+        if (monsterMoves != null)
+        {
+            if (creatures == null || powers == null || monsterMoves.Length == 0 || monsterMoves.Any(move => move == null))
+                throw new ArgumentException("Monster commands require admitted creature and Power layouts.");
+            foreach (var move in monsterMoves)
+            for (int index = 0; index < move.Count; index++)
+                if (move[index].Kind == MonsterInstructionKind.GenerateCards
+                    && (move[index].CardTemplate < cards.Length || move[index].CardTemplate >= definitions.Length))
+                    throw new NotSupportedException("Monster generation references a template outside the captured closure.");
+        }
         ValidateBlockReturns(definitions, powers);
         _definitions = definitions;
         _rootCardCount = cards.Length;
@@ -135,6 +147,7 @@ internal sealed partial class ResumableDiscardProgram
         _shuffleBlock = shuffleBlock;
         _shuffleBlockFirst = shuffleBlockFirst;
         _handEndAdmitted = handEndAdmitted;
+        _monsterMoves = monsterMoves == null ? null : (MonsterEffectProgram[])monsterMoves.Clone();
         State = new ReversibleValueState(FrameStart + MaxFrames * FrameWidth);
         _piles = Enumerable.Range(0, PileCount).Select(_ => new ReversibleValueBuffer(State)).ToArray();
         _cardInstances = new(State);
@@ -183,7 +196,7 @@ internal sealed partial class ResumableDiscardProgram
     private ResumableDiscardProgram(Card[] cards, int rootCardCount, int discardBlock, int stratagem, int shuffleBlock,
         bool shuffleBlockFirst, CardComparer? cardComparer, CreatureAttackLayout? combat, BasicPowerLayout? powers,
         ReversibleValueBuffer[] piles, ReversibleValueBuffer cardInstances, ReversibleValueBuffer events, RandomDrawCostLayout? drawCosts,
-        bool handEndAdmitted, ReversibleValueState state)
+        bool handEndAdmitted, MonsterEffectProgram[]? monsterMoves, ReversibleValueState state)
     {
         _definitions = cards;
         _rootCardCount = rootCardCount;
@@ -192,6 +205,7 @@ internal sealed partial class ResumableDiscardProgram
         _shuffleBlock = shuffleBlock;
         _shuffleBlockFirst = shuffleBlockFirst;
         _handEndAdmitted = handEndAdmitted;
+        _monsterMoves = monsterMoves;
         _cardComparer = cardComparer;
         _instanceComparer = cardComparer == null ? null : new(this, cardComparer);
         _piles = piles;
@@ -211,6 +225,7 @@ internal sealed partial class ResumableDiscardProgram
         private readonly int _stratagem, _shuffleBlock;
         private readonly bool _shuffleBlockFirst;
         private readonly bool _handEndAdmitted;
+        private readonly MonsterEffectProgram[]? _monsterMoves;
         private readonly CardComparer? _cardComparer;
         private readonly ReversibleValueState.FrozenValues _values;
         private readonly CreatureAttackLayout? _combat;
@@ -230,6 +245,7 @@ internal sealed partial class ResumableDiscardProgram
             _shuffleBlock = source._shuffleBlock;
             _shuffleBlockFirst = source._shuffleBlockFirst;
             _handEndAdmitted = source._handEndAdmitted;
+            _monsterMoves = source._monsterMoves;
             _cardComparer = source._cardComparer;
             _combat = source._combat;
             _powers = source._powers;
@@ -238,7 +254,7 @@ internal sealed partial class ResumableDiscardProgram
         }
         internal int PayloadBytes => _values.PayloadBytes;
         internal ResumableDiscardProgram Open() => new(_definitions, _rootCardCount, _discardBlock, _stratagem, _shuffleBlock,
-            _shuffleBlockFirst, _cardComparer, _combat, _powers, _piles, _cardInstances, _events, _drawCosts, _handEndAdmitted, _values.CreateWorkspace());
+            _shuffleBlockFirst, _cardComparer, _combat, _powers, _piles, _cardInstances, _events, _drawCosts, _handEndAdmitted, _monsterMoves, _values.CreateWorkspace());
         internal void RestoreInto(ResumableDiscardProgram workspace) => workspace.State.Restore(_values);
     }
 
@@ -368,15 +384,7 @@ internal sealed partial class ResumableDiscardProgram
         switch (instruction.Kind)
         {
             case CardInstructionKind.GenerateCards:
-                for (int index = 0; index < instruction.Amount && !Ending; index++)
-                {
-                    int created = CardCount;
-                    Card definition = _definitions[instruction.CardTemplate];
-                    _cardInstances.Append(State, [(long)(uint)instruction.CardTemplate | (long)definition.CapturedX << 32]);
-                    Pile destination = Count(Pile.Hand) < 10 ? Pile.Hand : Pile.Discard;
-                    _piles[(int)destination].Append(State, [created]);
-                    Emit(EventKind.Generated, created, instruction.CardTemplate);
-                }
+                GenerateCards(instruction.CardTemplate, instruction.Amount, creator: 0);
                 break;
             case CardInstructionKind.AttackTarget:
                 Attack(card, Read(Frame + TargetOffset), instruction.Amount);
@@ -514,26 +522,30 @@ internal sealed partial class ResumableDiscardProgram
         State.Write(RngSlot + 4, unchecked((long)rng.State3));
     }
 
-    private void GainBlock(int card, decimal amount)
+    private void GainBlock(int card, decimal amount) => GainCreatureBlock(card, 0, amount);
+
+    private void GainCreatureBlock(int source, int owner, decimal amount)
     {
         if (amount <= 0 || Ending) return;
-        int previous = Block;
+        int previous = _combat?.Read(State, owner).Block ?? Block;
         if (_combat == null) State.Write(BlockSlot, (int)Math.Min(999_999_999m, Block + amount));
         else
         {
-            CreatureVitals values = Creature(0);
+            CreatureVitals values = Creature(owner);
             values.GainBlock(amount);
-            _combat.Write(State, 0, values);
+            _combat.Write(State, owner, values);
         }
-        Emit(EventKind.Block, card, Block - previous);
+        Emit(EventKind.Block, source, (_combat?.Read(State, owner).Block ?? Block) - previous, target: owner == 0 ? -1 : owner);
     }
 
-    private void Attack(int card, int target, int amount)
+    private void Attack(int card, int target, int amount) => AttackCreature(card, 0, target, amount);
+
+    private void AttackCreature(int source, int dealer, int target, int amount)
     {
-        if (Ending || !CreaturePresent(target) || Creature(target).CurrentHp <= 0) return;
-        DamageValues result = _combat!.Damage(State, target, _powers?.ModifyAttack(State, 0, target, amount) ?? amount);
-        RecordDamage(card, target, result);
-        Emit(EventKind.AttackFinish, card, target: target);
+        if (Ending || !CreaturePresent(target) || Creature(target).CurrentHp <= 0 || Creature(dealer).CurrentHp <= 0) return;
+        DamageValues result = _combat!.Damage(State, target, _powers?.ModifyAttack(State, dealer, target, amount) ?? amount);
+        RecordDamage(source, target, result, source < 0 ? DamageTraits.NoCard : 0);
+        Emit(EventKind.AttackFinish, source, target: target);
     }
 
     private void TriggerPoison(int card, int target)
@@ -602,11 +614,11 @@ internal sealed partial class ResumableDiscardProgram
         return true;
     }
 
-    private void CommitPower(int card, int target, BasicPowerKind kind, int amount)
+    private void CommitPower(int card, int target, BasicPowerKind kind, int amount, int applier = 0)
     {
         int index = _powers!.Find(target, kind);
         int before = _powers.Read(State, index).Amount;
-        _powers.Apply(State, index, amount, 0);
+        _powers.Apply(State, index, amount, applier);
         Emit(EventKind.PowerChange, card, _powers.Read(State, index).Amount - before, target: target, flags: (int)kind);
     }
 

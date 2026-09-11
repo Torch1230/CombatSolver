@@ -1,5 +1,7 @@
 # CombatSolver 文档导航
 
+- [紧凑机械骑士指令体](performance/simulation-monster-commands-20260911.md)：怪物攻击／格挡／力量、无创建者灼伤生成、完整历史和原生对照。
+
 - [紧凑灼伤与手牌末尾阶段](performance/simulation-hand-end-20260911.md)：显式入场顺序、玩家失败、状态牌抽取与完整原生对照。
 
 - [玩家死亡清理与施伤者分支存活状态](performance/simulation-player-death-20260911.md)：原生致死差分与冻结根隔离修复。

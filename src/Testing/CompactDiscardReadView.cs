@@ -29,7 +29,7 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
     private readonly PileView _hand, _draw, _discard, _exhaust;
     private readonly RosterView _enemies;
     private readonly CombatHistoryReadValues _combatBaseline, _combatHistory = new();
-    private readonly int[] _baseHits;
+    private readonly int[] _baseHits, _baseEnemyHits, _baseCreatureAttacks;
     private readonly SimulatedCombatState.CompletedPowerReadBinding? _powerBinding;
     private readonly CompletedPowerReadValues[] _powerValues;
     internal int RiskSourceCount => _distinctGaps.Length;
@@ -58,6 +58,10 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
         _rootPlayerHpLost = metadata.GetCumulativeHpLost(player.Creature);
         _baseHits = Enumerable.Range(0, _program.CreatureCount)
             .Select(id => metadata.GetPoweredAttackHitsThisTurn(player.Creature, adapter.Creature(id))).ToArray();
+        _baseEnemyHits = !adapter.HasMonsterMoves ? [] : Enumerable.Range(0, _program.CreatureCount)
+            .Select(id => metadata.GetPoweredAttackHitsThisTurn(adapter.Creature(id), player.Creature)).ToArray();
+        _baseCreatureAttacks = !adapter.HasMonsterMoves ? [] : Enumerable.Range(0, _program.CreatureCount)
+            .Select(id => metadata.GetCreatureAttacksThisTurn(adapter.Creature(id))).ToArray();
         _enemies = new(this);
         _powerValues = new CompletedPowerReadValues[_program.PowerCount];
         _powerBinding = _program.PowerCount == 0 ? null : adapter.CreatePowerReadBinding(_context);
@@ -128,12 +132,23 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
                     if (item.Value > 0) _combatHistory.LostHp.Add(receiver);
                     if ((item.Flags & (int)(ResumableDiscardProgram.DamageTraits.Unpowered | ResumableDiscardProgram.DamageTraits.NoDealer)) == 0)
                     {
-                        var hitKey = (_player.Creature, receiver);
-                        _combatHistory.PoweredHits[hitKey] = _combatHistory.PoweredHits.GetValueOrDefault(hitKey, _baseHits[item.Target]) + 1;
+                        int dealer = item.Card < 0 ? -item.Card - 1 : 0;
+                        var hitKey = (_adapter.Creature(dealer), receiver);
+                        int baseline = dealer == 0 ? _baseHits[item.Target] : _baseEnemyHits[dealer];
+                        _combatHistory.PoweredHits[hitKey] = _combatHistory.PoweredHits.GetValueOrDefault(hitKey, baseline) + 1;
                     }
                     _entries++;
                     break;
-                case ResumableDiscardProgram.EventKind.AttackFinish: creatureAttacks++; _entries++; break;
+                case ResumableDiscardProgram.EventKind.AttackFinish:
+                    if (item.Card >= 0) creatureAttacks++;
+                    else
+                    {
+                        int owner = -item.Card - 1;
+                        Creature actor = _adapter.Creature(owner);
+                        _combatHistory.CreatureAttacks[actor] = _combatHistory.CreatureAttacks.GetValueOrDefault(actor, _baseCreatureAttacks[owner]) + 1;
+                    }
+                    _entries++;
+                    break;
                 case ResumableDiscardProgram.EventKind.Death:
                     _combatHistory.DeathPhases[_adapter.Creature(item.Target)] = PredictedDeathPhase.PermanentlyDead;
                     break;

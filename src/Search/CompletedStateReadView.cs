@@ -67,6 +67,7 @@ internal sealed class CombatHistoryReadValues
 {
     internal HashSet<Creature> LostHp { get; } = [];
     internal Dictionary<(Creature Dealer, Creature Receiver), int> PoweredHits { get; } = [];
+    internal Dictionary<Creature, int> CreatureAttacks { get; } = [];
     internal Dictionary<Player, PredictedCard> LastAttacks { get; } = [];
     internal Dictionary<Creature, PredictedDeathPhase> DeathPhases { get; } = [];
 
@@ -75,6 +76,8 @@ internal sealed class CombatHistoryReadValues
         LostHp.Clear(); LostHp.UnionWith(source.LostHp);
         PoweredHits.Clear();
         foreach (var pair in source.PoweredHits) PoweredHits.Add(pair.Key, pair.Value);
+        CreatureAttacks.Clear();
+        foreach (var pair in source.CreatureAttacks) CreatureAttacks.Add(pair.Key, pair.Value);
         LastAttacks.Clear();
         foreach (var pair in source.LastAttacks) LastAttacks.Add(pair.Key, pair.Value);
         DeathPhases.Clear();

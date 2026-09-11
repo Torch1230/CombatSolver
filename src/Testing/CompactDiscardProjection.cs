@@ -17,6 +17,7 @@ using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Enchantments;
 using MegaCrit.Sts2.Core.Models.Relics;
 using MegaCrit.Sts2.Core.Models.Powers;
+using MegaCrit.Sts2.Core.Models.Monsters;
 using MegaCrit.Sts2.Core.Models.Singleton;
 
 namespace CombatSolver;
@@ -34,12 +35,14 @@ internal sealed class CompactDiscardProjection
     private readonly PredictionRiskReason?[] _risks;
     internal readonly ResumableDiscardProgram Program;
     internal bool CardValuesInvariant { get; }
+    internal bool HasMonsterMoves { get; }
     private readonly Creature[] _creatures;
     private readonly PowerModel[] _powerTemplates;
     internal int PlayerTurn => ((SimulatedCombatState)_root.State.CombatState).GetPlayerTurnNumber(_player);
 
-    internal CompactDiscardProjection(CombatPredictionSimulator root, Player player, bool includeAttacks = false, bool includeHandEnd = false)
+    internal CompactDiscardProjection(CombatPredictionSimulator root, Player player, bool includeAttacks = false, bool includeHandEnd = false, bool includeMechaMoves = false)
     {
+        HasMonsterMoves = includeMechaMoves;
         _root = root;
         _player = player;
         var combat = (SimulatedCombatState)root.State.CombatState;
@@ -73,6 +76,8 @@ internal sealed class CompactDiscardProjection
                 || !((ICombatPredictionCreatureSemantics)combat).IsPrimaryEnemy(c)
                 || !((ICombatPredictionCreatureSemantics)combat).ShouldRemoveAfterDeath(c))))
             throw new NotSupportedException("Compact attack requires living primary enemies without pending deaths or pets.");
+        if (includeMechaMoves && (!includeAttacks || _creatures.Length != 2 || _creatures[1].Monster is not MechaKnight))
+            throw new NotSupportedException("Captured Mecha commands require exactly one MechaKnight and creature values.");
         _powerTemplates = includeAttacks ? CapturePowerTemplates(combat, powers) : [];
         PowerModel[] rootPowerOrder = powers.ToArray();
         BasicPowerDefinition[]? powerDefinitions = includeAttacks ? _powerTemplates.Select(power => new BasicPowerDefinition(
@@ -84,7 +89,7 @@ internal sealed class CompactDiscardProjection
         PredictedCard[] cards = state.AllCards.ToArray();
         _identities = cards.Select(c => c.Original).ToArray();
         List<CardModel> generated = [];
-        int shivTemplate = -1, inkyShivTemplate = -1;
+        int shivTemplate = -1, inkyShivTemplate = -1, burnTemplate = -1;
         if (cards.Any(card => card.Preview is CloakAndDagger))
         {
             shivTemplate = cards.Length + generated.Count;
@@ -96,6 +101,11 @@ internal sealed class CompactDiscardProjection
             CardModel template = PredictionUtils.CreateCard(CanonicalModels.Card<Shiv>(), player);
             PredictionUtils.EnchantCard(CanonicalModels.Enchantment<Inky>().ToMutable(), template, 1m);
             generated.Add(template);
+        }
+        if (includeMechaMoves)
+        {
+            burnTemplate = cards.Length + generated.Count;
+            generated.Add(PredictionUtils.CreateCard(CanonicalModels.Card<Burn>(), player));
         }
         // Native BladeOfInk enchants after the entire generated batch. In this closed root
         // generation hooks have no observers, Inky has no OnEnchant/Modify effects and no
@@ -132,8 +142,32 @@ internal sealed class CompactDiscardProjection
             powers.OfType<StratagemPower>().SingleOrDefault()?.Amount ?? 0,
             Block(relics.OfType<TheAbacus>().SingleOrDefault()), abacusIndex >= 0 && abacusIndex < stratagemIndex,
             includeAttacks ? _creatures.Select(c => { var v = root.State.GetCreature(c); return new CreatureVitals(v.CurrentHp, v.MaxHp, v.Block); }).ToArray() : null, powerDefinitions, definitions[cards.Length..],
-            new(energyRng.Counter, energyRng.State0, energyRng.State1, energyRng.State2, energyRng.State3), handEndAdmitted: includeHandEnd);
+            new(energyRng.Counter, energyRng.State0, energyRng.State1, energyRng.State2, energyRng.State3), handEndAdmitted: includeHandEnd, monsterMoves: includeMechaMoves ? CaptureMechaCommands(root, burnTemplate) : null);
         CardValuesInvariant = Program.CardValuesInvariant;
+    }
+
+    internal static readonly string[] MechaMoveIds = ["CHARGE_MOVE", "FLAMETHROWER_MOVE", "WINDUP_MOVE", "HEAVY_CLEAVE_MOVE"];
+
+    private MonsterEffectProgram[] CaptureMechaCommands(CombatPredictionSimulator root, int burnTemplate)
+    {
+        // Force only a disposable shadow's move. Attack parameters are already captured
+        // by BranchMonsterStaticSnapshot; no worker consults live ascension or intents.
+        var metadata = (SimulatedCombatState)root.Fork().State.CombatState;
+        return MechaMoveIds.Select(id =>
+        {
+            metadata.ForceMonsterMove(_creatures[1], id);
+            var move = metadata.CurrentMonsterMove(_creatures[1]);
+            if (id == "WINDUP_MOVE")
+            {
+                if (move.AttackHits.Count != 0) throw new NotSupportedException("Mecha windup has unexpected attacks.");
+                return new MonsterEffectProgram([new(MonsterInstructionKind.GainBlock, 15), new(MonsterInstructionKind.GainStrength, 5)]);
+            }
+            if (move.AttackHits.Count != 1) throw new NotSupportedException("Mecha command requires one captured attack.");
+            MonsterInstruction attack = new(MonsterInstructionKind.AttackPlayer, move.AttackHits[0].BaseDamage);
+            return id == "FLAMETHROWER_MOVE"
+                ? new MonsterEffectProgram([attack, new(MonsterInstructionKind.GenerateCards, 4, burnTemplate)])
+                : new MonsterEffectProgram([attack]);
+        }).ToArray();
     }
 
     private PowerModel[] CapturePowerTemplates(SimulatedCombatState combat, IReadOnlyList<PowerModel> powers)
@@ -249,22 +283,54 @@ internal sealed class CompactDiscardProjection
                 ResumableDiscardProgram.Event item = program.EventAt(index);
                 if (item.Kind == ResumableDiscardProgram.EventKind.Generated)
                 {
-                    var creator = stack.Peek();
-                    int creatorDefinition = program.DefinitionIndex(creator.Identity);
-                    if (_definitionModels[creatorDefinition] is CloakAndDagger
-                        && _risks[creatorDefinition] == PredictionRiskReason.MethodMirrorIncomplete && creator.Method != null)
+                    if (item.Target == 0)
                     {
-                        // The inferred mirror handles only block. Legacy generation runs in
-                        // the subsequent compensation phase, outside its OnPlay method scope.
-                        stack.Pop(); creator.Method?.Dispose();
-                        stack.Push((creator.Identity, creator.Play, creator.Scope, null));
+                        var creator = stack.Peek();
+                        int creatorDefinition = program.DefinitionIndex(creator.Identity);
+                        if (_definitionModels[creatorDefinition] is CloakAndDagger
+                            && _risks[creatorDefinition] == PredictionRiskReason.MethodMirrorIncomplete && creator.Method != null)
+                        {
+                            // Legacy compensation emits generation after its inferred block mirror.
+                            stack.Pop(); creator.Method?.Dispose();
+                            stack.Push((creator.Identity, creator.Play, creator.Scope, null));
+                        }
                     }
+                    else if (item.Target != -1 || stack.Count != 0)
+                        throw new InvalidOperationException("Generated event has an invalid creator or overlapping action.");
                     if (item.Card != cards.Count) throw new InvalidOperationException("Generated card identity is out of order.");
                     PredictedCard created = CreateGeneratedCard(item.Value);
                     cards.Add(created);
-                    var generation = projection.History.CardGenerated(created, _player, CardGenerationResultKind.Fixed);
+                    var generation = projection.History.CardGenerated(created, item.Target == 0 ? _player : null, CardGenerationResultKind.Fixed);
                     projection.AddToPile(created, PileType.Hand);
                     projection.History.CardGenerationResolved(generation, created);
+                    continue;
+                }
+                // Creature commands share the committed damage and history representation.
+                // Handle them before interpreting the source as a card instance.
+                if (item.Kind == ResumableDiscardProgram.EventKind.Damage)
+                {
+                    AppendDamage(item, ref index);
+                    continue;
+                }
+                if (item.Kind == ResumableDiscardProgram.EventKind.AttackFinish)
+                {
+                    Creature attacker = item.Card < 0 ? _creatures[-item.Card - 1] : _player.Creature;
+                    projection.History.CreatureAttacked(attacker, [damageResults[item.Card]]);
+                    combat.RecordCreatureAttacked(attacker);
+                    damageResults.Remove(item.Card);
+                    continue;
+                }
+                if (item.Kind == ResumableDiscardProgram.EventKind.Block)
+                {
+                    projection.State.GetCreature(item.Target < 0 ? _player.Creature : _creatures[item.Target]).GainBlock(item.Value);
+                    continue;
+                }
+                if (item.Kind == ResumableDiscardProgram.EventKind.PowerChange) continue;
+                if (item.Kind == ResumableDiscardProgram.EventKind.Death)
+                {
+                    if (item.Target == 0) projection.LoseCombat();
+                    else projection.State.RemoveCreature(_creatures[item.Target]);
+                    combat.CompleteDeathPhase(_creatures[item.Target]);
                     continue;
                 }
                 PredictedCard card = cards[item.Card];
@@ -321,7 +387,6 @@ internal sealed class CompactDiscardProjection
                         combat.RecordCardDrawn(card, false);
                         projection.History.CardDrawResolved(entry, card);
                         break;
-                    case ResumableDiscardProgram.EventKind.PowerChange:
                     case ResumableDiscardProgram.EventKind.Shuffle:
                         break;
                     case ResumableDiscardProgram.EventKind.CostChanged:
@@ -337,47 +402,6 @@ internal sealed class CompactDiscardProjection
                     case ResumableDiscardProgram.EventKind.Discard:
                         projection.AddToPile(card, PileType.Discard);
                         combat.RecordCardDiscarded(_player.Creature);
-                        break;
-                    case ResumableDiscardProgram.EventKind.Block:
-                        projection.State.GetCreature(_player.Creature).GainBlock(item.Value);
-                        break;
-                    case ResumableDiscardProgram.EventKind.Damage:
-                    {
-                        var blocked = program.EventAt(++index);
-                        var overkill = program.EventAt(++index);
-                        if (blocked.Kind != ResumableDiscardProgram.EventKind.DamageBlocked
-                            || overkill.Kind != ResumableDiscardProgram.EventKind.DamageOverkill
-                            || blocked.Target != item.Target || overkill.Target != item.Target)
-                            throw new InvalidOperationException("Malformed committed damage result.");
-                        Creature target = _creatures[item.Target];
-                        var traits = (ResumableDiscardProgram.DamageTraits)item.Flags;
-                        bool poison = (traits & ResumableDiscardProgram.DamageTraits.Poison) != 0;
-                        Creature? dealer = (traits & ResumableDiscardProgram.DamageTraits.NoDealer) != 0 ? null : _player.Creature;
-                        PredictedCard? cardSource = (traits & ResumableDiscardProgram.DamageTraits.NoCard) != 0 ? null : card;
-                        ValueProp props = poison ? 0 : ValueProp.Move;
-                        if ((traits & ResumableDiscardProgram.DamageTraits.Unpowered) != 0) props |= ValueProp.Unpowered;
-                        if ((traits & ResumableDiscardProgram.DamageTraits.Unblockable) != 0) props |= ValueProp.Unblockable;
-                        DamageResult result = new(target, props)
-                        {
-                            UnblockedDamage = item.Value, BlockedDamage = blocked.Value, OverkillDamage = overkill.Value,
-                            WasTargetKilled = (item.Flags & 1) != 0, WasBlockBroken = (item.Flags & 2) != 0,
-                            WasFullyBlocked = (item.Flags & 4) != 0
-                        };
-                        projection.History.DamageReceived(target, dealer, result, cardSource, poison
-                            ? CombatDamageSource.For(CombatDamageSourceKind.Poison, nameof(PoisonPower)) : projection.ResolveDamageSource(cardSource));
-                        combat.RecordDamageReceived(target, dealer, result);
-                        if ((traits & ResumableDiscardProgram.DamageTraits.Unpowered) == 0) damageResults[item.Card] = result;
-                        break;
-                    }
-                    case ResumableDiscardProgram.EventKind.Death:
-                        if (item.Target == 0) projection.LoseCombat();
-                        else projection.State.RemoveCreature(_creatures[item.Target]);
-                        combat.CompleteDeathPhase(_creatures[item.Target]);
-                        break;
-                    case ResumableDiscardProgram.EventKind.AttackFinish:
-                        projection.History.CreatureAttacked(_player.Creature, [damageResults[item.Card]]);
-                        combat.RecordCreatureAttacked(_player.Creature);
-                        damageResults.Remove(item.Card);
                         break;
                     case ResumableDiscardProgram.EventKind.Finish:
                     {
@@ -426,6 +450,37 @@ internal sealed class CompactDiscardProjection
         {
             handEndMethod?.Dispose();
             while (stack.TryPop(out var active)) { active.Method?.Dispose(); active.Scope.Dispose(); }
+        }
+        void AppendDamage(ResumableDiscardProgram.Event item, ref int index)
+        {
+            var blocked = program.EventAt(++index);
+            var overkill = program.EventAt(++index);
+            if (blocked.Kind != ResumableDiscardProgram.EventKind.DamageBlocked
+                || overkill.Kind != ResumableDiscardProgram.EventKind.DamageOverkill
+                || blocked.Card != item.Card || overkill.Card != item.Card
+                || blocked.Target != item.Target || overkill.Target != item.Target)
+                throw new InvalidOperationException("Malformed committed damage result.");
+            Creature target = _creatures[item.Target];
+            var traits = (ResumableDiscardProgram.DamageTraits)item.Flags;
+            bool poison = (traits & ResumableDiscardProgram.DamageTraits.Poison) != 0;
+            Creature? dealer = (traits & ResumableDiscardProgram.DamageTraits.NoDealer) != 0 ? null
+                : item.Card < 0 ? _creatures[-item.Card - 1] : _player.Creature;
+            PredictedCard? cardSource = (traits & ResumableDiscardProgram.DamageTraits.NoCard) != 0 ? null : cards[item.Card];
+            ValueProp props = poison ? 0 : ValueProp.Move;
+            if ((traits & ResumableDiscardProgram.DamageTraits.Unpowered) != 0) props |= ValueProp.Unpowered;
+            if ((traits & ResumableDiscardProgram.DamageTraits.Unblockable) != 0) props |= ValueProp.Unblockable;
+            DamageResult result = new(target, props)
+            {
+                UnblockedDamage = item.Value, BlockedDamage = blocked.Value, OverkillDamage = overkill.Value,
+                WasTargetKilled = (item.Flags & 1) != 0, WasBlockBroken = (item.Flags & 2) != 0,
+                WasFullyBlocked = (item.Flags & 4) != 0
+            };
+            CombatDamageSource source = poison ? CombatDamageSource.For(CombatDamageSourceKind.Poison, nameof(PoisonPower))
+                : item.Card < 0 ? CombatDamageSource.For(CombatDamageSourceKind.MonsterMove, dealer!.Monster!.Id.Entry)
+                : projection.ResolveDamageSource(cardSource);
+            projection.History.DamageReceived(target, dealer, result, cardSource, source);
+            combat.RecordDamageReceived(target, dealer, result);
+            if ((traits & ResumableDiscardProgram.DamageTraits.Unpowered) == 0) damageResults[item.Card] = result;
         }
         if (program.PowerCount > 0)
         {

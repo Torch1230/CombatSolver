@@ -303,6 +303,8 @@ internal sealed partial class SimulatedCombatState
         if (_unblockedDamageThisTurn != null) values.LostHp.UnionWith(_unblockedDamageThisTurn);
         if (_poweredAttackHitsThisTurn != null)
             foreach (var pair in _poweredAttackHitsThisTurn) values.PoweredHits.Add(pair.Key, pair.Value);
+        if (_creatureAttacksThisTurn != null)
+            foreach (var pair in _creatureAttacksThisTurn) values.CreatureAttacks.Add(pair.Key, pair.Value);
         if (_lastAttackThisTurn != null)
             foreach (var pair in _lastAttackThisTurn) values.LastAttacks.Add(pair.Key, pair.Value);
         if (_deathPhases != null)

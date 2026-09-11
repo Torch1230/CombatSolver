@@ -2155,7 +2155,7 @@ internal sealed partial class SimulatedCombatState
         AddCreatureSet(ref fingerprint, 'L', _unblockedDamageThisTurn, combatHistory?.LostHp);
         AddPoweredAttackHits(ref fingerprint, _poweredAttackHitsThisTurn, combatHistory?.PoweredHits);
         AddCreatureIntMap(ref fingerprint, 'v', _cardsDiscardedThisTurn, history?.Owner.Creature, history?.Discards);
-        AddCreatureIntMap(ref fingerprint, 'u', _creatureAttacksThisTurn, history?.Owner.Creature, history?.CreatureAttacks);
+        AddCreatureIntMap(ref fingerprint, 'u', _creatureAttacksThisTurn, history?.Owner.Creature, history?.CreatureAttacks, combatHistory?.CreatureAttacks);
         AddPlayerIntMap(ref fingerprint, 'e', _energySpentThisTurn, history?.Owner, history?.EnergySpent);
         AddPlayerIntMap(ref fingerprint, 'z', _starsGainedThisTurn);
         AddPlayerIntMap(ref fingerprint, 'n', _nonHandDrawsThisTurn, history?.Owner, history?.Draws);
@@ -2448,15 +2448,17 @@ internal sealed partial class SimulatedCombatState
     private static void AddCreatureIntMap(
         ref StateFingerprintBuilder fingerprint,
         char marker,
-        ForkableDictionary<Creature, int>? values, Creature? replacedOwner = null, int? replacedValue = null)
+        ForkableDictionary<Creature, int>? values, Creature? replacedOwner = null, int? replacedValue = null, Dictionary<Creature, int>? readValues = null)
     {
         ulong first = 0;
         ulong second = 0;
         int count = 0;
-        if (values != null)
+        if (values != null || readValues != null)
         {
-            foreach ((Creature creature, int value) in values)
+            using var entries = readValues != null ? readValues.GetEnumerator() : values!.GetEnumerator();
+            while (entries.MoveNext())
             {
+                (Creature creature, int value) = entries.Current;
                 if (replacedValue.HasValue && ReferenceEquals(creature, replacedOwner)) continue;
                 StateFingerprintBuilder item = new();
                 item.Add(creature.CombatId ?? uint.MaxValue);

@@ -2070,5 +2070,13 @@
     "expected": "无属性可格挡自身伤害、玩家阵容保留和 Power 清理、正确入场及结果牌堆、累计失血评分、状态抽取键、待失败与终局；各 lane 独立恢复。",
     "observed": "final-v4 Instant 537ef792140f40368dc7b30b0b328a00／Normal a80cf738cde74758a4ceabbf6b01905e Passed；全部 Snapshot、源历史、九 RNG、五个有序牌堆、八工作区及原生死亡后重放通过。v3 普通攻击／Power 哨兵 92409a0ec76245eaad053b899a7f91b2 Passed。",
     "evidence": "src/Testing/UnattendedTestRunner.CompactHandEnd.cs；docs/performance/simulation-hand-end-20260911.md；2026-09-11。仅手牌阶段，未接生产完整回合。"
+  },
+  "COMPACT-MONSTER-COMMANDS-NATIVE": {
+    "status": "Passed",
+    "level": "HeadlessStrictNativeMonsterBodiesAndFrozenValueDifferential",
+    "procedure": "三根／十三分支／十五原生动作；精确 MechaKnight 四指令、混合玩家小刀与灼伤、满手溢出及后续抽取、格挡与致死。",
+    "expected": "原版伤害修正与施加者、空创建者生成、怪物攻击次数及来源、完整牌堆／Power／历史／原键／Snapshot／九 RNG、撤销和独立恢复。",
+    "observed": "artifact-v2 1d46526236cc45f2bdb2ca0beee0600e Passed，八工作区和原生死亡后冻结重放通过；中毒共用投影哨兵 4bcff2265a254ddca7fa26e9d6c30bcd Passed。",
+    "evidence": "src/Testing/UnattendedTestRunner.CompactMonsterCommands.cs；docs/performance/simulation-monster-commands-20260911.md；2026-09-11。仅指令体，不含 AI、MonsterPerformedMove 历史或完整回合。"
   }
 }

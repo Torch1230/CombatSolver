@@ -84,8 +84,9 @@ internal sealed class BasicPowerLayout
     internal decimal ModifyAttack(ReversibleValueState state, int dealer, int target, decimal amount)
     {
         amount += Amount(state, dealer, BasicPowerKind.Strength);
-        // Definitions retain captured listener order. New Weak only targets enemies in this
-        // domain; it cannot reorder the player's Weak and the target's Vulnerable modifiers.
+        // Definitions retain captured listener order. Only enemy Weak can be newly created;
+        // its owner position stays after the captured player's Vulnerable for monster attacks.
+        // Player Weak and enemy Vulnerable remain captured for player attacks.
         for (int index = 0; index < Count; index++)
         {
             var definition = _definitions[index];
