@@ -25,9 +25,9 @@ using MegaCrit.Sts2.Core.Models.Singleton;
 namespace CombatSolver;
 
 /// <summary>
-/// Test-only compatibility projection for the compact experiment. It decodes committed events;
+/// Captured model admission and compatibility projection for the compact executor. It decodes committed events;
 /// it never executes OnPlay, a choice resolver, or the discard hook again. Production search
-/// cannot select this adapter. Full legacy fork/materialization/evaluation costs must be measured.
+/// does not yet select this adapter. Full legacy fork/materialization/evaluation costs must be measured.
 /// </summary>
 internal sealed class CompactDiscardProjection
 {

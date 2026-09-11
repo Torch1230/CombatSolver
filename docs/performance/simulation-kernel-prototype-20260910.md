@@ -23,7 +23,7 @@
 | [ReversibleValueState](../../src/Engine/InCombat/Simulation/Compact/ReversibleValueState.cs) | 独占 `long[]`、撤销日志、拥有者及单次 LIFO 检查点；所有状态写入经过同一入口 |
 | [ResumableDiscardProgram](../../src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs) | 资源、五种有序牌堆、卡牌实例序号、显式执行栈、待选择内容及事件游标；执行和状态一起撤销 |
 | 冻结候选 | 自有值数组和不可变卡牌定义；不持有 worker、Model、Simulator、Task 或闭包；可以恢复挂起执行或开始下一动作 |
-| [CompactDiscardProjection](../../src/Testing/CompactDiscardProjection.cs) | 测试专用的整根能力检查、事件到旧模型的投影；不再次调用 OnPlay、自动出牌、弃牌 Hook 或选择结算 |
+| [CompactDiscardProjection](../../src/Prediction/Compact/CompactDiscardProjection.cs) | 测试专用的整根能力检查、事件到旧模型的投影；不再次调用 OnPlay、自动出牌、弃牌 Hook 或选择结算 |
 | [无人测试](../../src/Testing/UnattendedTestRunner.CompactKernel.cs) | 完整旧引擎 oracle、原生部署、撤销/冻结合同、全属性比较和固定工作量测量 |
 
 投影仍为每个叶子 Fork 一份原始根，从事件恢复历史和领域计数，再调用原有 `CombatBeamSolver.Snapshot`。**这是明确保留并计价的兼容成本。** 投影不反写值工作区；评分快照在 worker 回滚前释放其 Simulator，保留的候选另有独立数组。没有两个同时驱动效果的可变状态图。

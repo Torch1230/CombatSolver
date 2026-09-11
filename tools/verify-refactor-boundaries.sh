@@ -1004,7 +1004,7 @@ require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/Resumable
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ReversibleValueBuffer.cs" 'state.Write(_header + TailOffset, leaf);' 'buffer append cursor must belong to reversible values'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'private readonly ReversibleValueBuffer[] _piles;' 'growing piles must use reversible indexed buffers'
 require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" "history?.Owner.Creature, history?.ShivPlays" 'Shiv history must participate in completed state reads'
-compact_projection="$repository_root/src/Testing/CompactDiscardProjection.cs"
+compact_projection="$repository_root/src/Prediction/Compact/CompactDiscardProjection.cs"
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/MonsterEffectProgram.cs" '_instructions = instructions.ToArray();' 'monster commands must own immutable captured instructions'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Monsters.cs" 'if (_monsterMoves == null || !Complete || Terminal || Ending' 'monster execution must require root admission and an idle boundary'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" '_monsterMoves = source._monsterMoves;' 'frozen candidates must retain monster admission and commands'
@@ -1034,7 +1034,7 @@ done < <(rg --files "$search_root" "$repository_root/src/Runtime" -g '*.cs')
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/DeterministicMonsterAi.cs" '_log.Append(state, [next]);' 'monster move history must belong to reversible values'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" '_monsterAi = source._monsterAi;' 'frozen candidates must retain AI layout and admission'
 require_fixed "$compact_projection" 'combat.RequireCapturedMonsterAi(_creatures[1])' 'monster AI admission must consume captured root state'
-require_fixed "$repository_root/src/Testing/CompactDiscardReadView.cs" '_monsterAiBinding?.Read(program);' 'completed AI reads must consume current candidate values'
+require_fixed "$repository_root/src/Prediction/Compact/CompactDiscardReadView.cs" '_monsterAiBinding?.Read(program);' 'completed AI reads must consume current candidate values'
 damage_simulator="$repository_root/src/Engine/InCombat/Simulation/CombatPredictionSimulator.Damage.cs"
 forbid_fixed "$damage_simulator" 'dealer?.IsDead' 'damage dealers must read branch vitals'
 require_fixed "$damage_simulator" 'effects.CompletePlayerDeath(player);' 'player death must run its domain cleanup before orb/pet handling'
@@ -1047,7 +1047,7 @@ require_fixed "$compact_projection" '(key.RunPrefix || !RepresentedHook(key.Type
 require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactKernelProfile.cs" 'if (!SimulationNotificationIsolation.IsActive)' 'compact measurements lost production simulation context guard'
 require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactKernel.cs" 'initialIsolation.Dispose();' 'compact thread-static isolation must close before worker await'
 require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactKernel.cs" 'continuationIsolation.Dispose();' 'compact simulation isolation must close before native deployment'
-compact_reader="$repository_root/src/Testing/CompactDiscardReadView.cs"
+compact_reader="$repository_root/src/Prediction/Compact/CompactDiscardReadView.cs"
 for replay_or_write in '.Materialize(' '.ManualPlay(' '.AutoPlay(' '.MutablePreview' '.State.Write('; do
     forbid_fixed "$compact_reader" "$replay_or_write" 'completed reader must not reconstruct or mutate branch models:'
 done
@@ -1065,7 +1065,7 @@ require_fixed "$compact_power_reads" 'private readonly PowerModel[] _replacement
 require_fixed "$compact_power_reads" 'PowerModel model = value.Retired ? _replacementModels[index] : _models[index];' 'Power read lifetime must follow journaled root retirement'
 require_fixed "$compact_power_reads" 'model._amount = value.Amount;' 'completed Power reads lost supplied amount authority'
 require_fixed "$compact_power_reads" '_state.InvalidateBaseHookListeners();' 'roster changes must invalidate Power owner-anchor order'
-compact_card_reads="$repository_root/src/Testing/CompactCardMetadataReadBinding.cs"
+compact_card_reads="$repository_root/src/Prediction/Compact/CompactCardMetadataReadBinding.cs"
 for replay in '.ManualPlay(' '.AutoPlay(' '.Fork(' 'HookMirrors.' 'CardCmd.' '.State.Write('; do
     forbid_fixed "$compact_card_reads" "$replay" 'card metadata binding may only import supplied completed values:'
 done
@@ -1105,7 +1105,7 @@ require_fixed "$compact_projection" 'CompactCardProgramCompiler.Compile(card, in
 require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'view?.EnergyCostRng ?? simulator.Rng.CombatEnergyCosts.CaptureState()' 'completed keys must read branch energy-cost RNG'
 require_fixed "$compact_card_reads" 'int amount = program.CostModifierAt(card, index);' 'cost previews must import the complete ordered branch modifiers'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/RandomDrawCost.cs" 'Buffer(card).Append(state, [cost]);' 'random draw-cost modifiers must remain journaled'
-compact_compiler="$repository_root/src/Testing/CompactCardProgramCompiler.cs"
+compact_compiler="$repository_root/src/Prediction/Compact/CompactCardProgramCompiler.cs"
 for replay in '.ManualPlay(' '.AutoPlay(' 'CardOnPlayMirrors.Invoke(' 'HookMirrors.' 'CardCmd.' 'PowerCmd.'; do
     forbid_fixed "$compact_compiler" "$replay" 'card admission must compile definitions without executing effects:'
 done

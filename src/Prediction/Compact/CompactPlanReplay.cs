@@ -3,7 +3,7 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 
 namespace CombatSolver;
 
-/// <summary>Test bridge for the production plan protocol and an admitted value workspace.</summary>
+/// <summary>Bridge for the production plan protocol and an admitted value workspace.</summary>
 internal sealed class CompactPlanReplay
 {
     private readonly CompactDiscardProjection _adapter;

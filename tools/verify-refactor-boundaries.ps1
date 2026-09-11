@@ -1207,7 +1207,7 @@ foreach ($file in $compactProductionFiles) {
         }
     }
 }
-$compactProjection = Join-Path $repositoryRoot 'src/Testing/CompactDiscardProjection.cs'
+$compactProjection = Join-Path $repositoryRoot 'src/Prediction/Compact/CompactDiscardProjection.cs'
 $damageSimulator = [IO.File]::ReadAllText((Join-Path $repositoryRoot 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.Damage.cs'))
 if ($damageSimulator.Contains('dealer?.IsDead')) { $violations.Add('Damage dealers must read branch vitals.') }
 if (-not $damageSimulator.Contains('effects.CompletePlayerDeath(player);')) { $violations.Add('Player death lost domain cleanup before orb/pet handling.') }
@@ -1235,13 +1235,13 @@ foreach ($guard in $compactContextGuards) {
         $violations.Add("Compact profile lost simulation context boundary: $($guard[0]) / $($guard[1])")
     }
 }
-$compactCompiler = Join-Path $repositoryRoot 'src/Testing/CompactCardProgramCompiler.cs'
+$compactCompiler = Join-Path $repositoryRoot 'src/Prediction/Compact/CompactCardProgramCompiler.cs'
 foreach ($reference in @('.ManualPlay(', '.AutoPlay(', 'CardOnPlayMirrors.Invoke(', 'HookMirrors.', 'CardCmd.', 'PowerCmd.')) {
     foreach ($match in Select-String -LiteralPath $compactCompiler -SimpleMatch $reference) {
         $violations.Add("$($match.Path):$($match.LineNumber): card admission must compile definitions without executing effects: $reference")
     }
 }
-$compactReader = Join-Path $repositoryRoot 'src/Testing/CompactDiscardReadView.cs'
+$compactReader = Join-Path $repositoryRoot 'src/Prediction/Compact/CompactDiscardReadView.cs'
 foreach ($reference in @('.Materialize(', '.ManualPlay(', '.AutoPlay(', '.MutablePreview', '.State.Write(')) {
     foreach ($match in Select-String -LiteralPath $compactReader -SimpleMatch $reference) {
         $violations.Add("$($match.Path):$($match.LineNumber): completed reader must not reconstruct or mutate branch models: $reference")
@@ -1259,7 +1259,7 @@ foreach ($file in $compactProductionFiles) {
         $violations.Add("$($match.Path):$($match.LineNumber): completed Power binding is not admitted to production execution.")
     }
 }
-$compactCardReads = Join-Path $repositoryRoot 'src/Testing/CompactCardMetadataReadBinding.cs'
+$compactCardReads = Join-Path $repositoryRoot 'src/Prediction/Compact/CompactCardMetadataReadBinding.cs'
 foreach ($replay in @('.ManualPlay(', '.AutoPlay(', '.Fork(', 'HookMirrors.', 'CardCmd.', '.State.Write(')) {
     foreach ($match in Select-String -LiteralPath $compactCardReads -SimpleMatch $replay) {
         $violations.Add("Card metadata binding may only import supplied completed values: $($match.LineNumber) / $replay")
@@ -1272,18 +1272,18 @@ $compactReadGuards = @(
     @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'PowerModel model = value.Retired ? _replacementModels[index] : _models[index];'),
     @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'model._amount = value.Amount;'),
     @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', '_state.InvalidateBaseHookListeners();'),
-    @('src/Testing/CompactCardMetadataReadBinding.cs', 'private readonly List<Binding> _active;'),
-    @('src/Testing/CompactCardMetadataReadBinding.cs', 'model.EnergyCost.CapturedXValue = captured;'),
-    @('src/Testing/CompactCardMetadataReadBinding.cs', 'model.HasBeenRemovedFromState = removed;'),
-    @('src/Testing/CompactDiscardReadView.cs', '_cards.Read(program);'),
+    @('src/Prediction/Compact/CompactCardMetadataReadBinding.cs', 'private readonly List<Binding> _active;'),
+    @('src/Prediction/Compact/CompactCardMetadataReadBinding.cs', 'model.EnergyCost.CapturedXValue = captured;'),
+    @('src/Prediction/Compact/CompactCardMetadataReadBinding.cs', 'model.HasBeenRemovedFromState = removed;'),
+    @('src/Prediction/Compact/CompactDiscardReadView.cs', '_cards.Read(program);'),
     @('src/Search/SimulatedCombatState.cs', 'history?.Owner.Creature, history?.Exhausts'),
     @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'strategicRequirements, view?.CardValuesInvariant == true ? view.Invariants : null'),
-    @('src/Testing/CompactDiscardReadView.cs', '_adapter.CopyPowerReadValues(program, _powerValues);'),
+    @('src/Prediction/Compact/CompactDiscardReadView.cs', '_adapter.CopyPowerReadValues(program, _powerValues);'),
     @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'SnapshotCore(view.EvaluationContext,'),
-    @('src/Testing/CompactDiscardReadView.cs', '!_adapter.Program.State.HasSameRoot(program.State) || !program.Complete'),
-    @('src/Testing/CompactDiscardReadView.cs', 'ValueRng rng = _program.ShuffleRng;'),
+    @('src/Prediction/Compact/CompactDiscardReadView.cs', '!_adapter.Program.State.HasSameRoot(program.State) || !program.Complete'),
+    @('src/Prediction/Compact/CompactDiscardReadView.cs', 'ValueRng rng = _program.ShuffleRng;'),
     @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'view?.EnergyCostRng ?? simulator.Rng.CombatEnergyCosts.CaptureState()'),
-    @('src/Testing/CompactCardMetadataReadBinding.cs', 'int amount = program.CostModifierAt(card, index);'),
+    @('src/Prediction/Compact/CompactCardMetadataReadBinding.cs', 'int amount = program.CostModifierAt(card, index);'),
     @('src/Engine/InCombat/Simulation/Compact/RandomDrawCost.cs', 'Buffer(card).Append(state, [cost]);'),
     @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'view?.ShuffleRng ?? simulator.Rng.Shuffle.CaptureState()'),
     @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'view is null ? simulator.TerminalStamp : view.TerminalStamp'),
@@ -1291,7 +1291,7 @@ $compactReadGuards = @(
     @('src/Search/CombatBeamSolver.ReadView.cs', 'view?.EnemyValuesInvariant == true ? view.Invariants : null'),
     @('src/Engine/InCombat/Simulation/SimCreatureState.cs', '_values.LoseHp(amount)'),
     @('src/Engine/InCombat/Simulation/Compact/CreatureValueSlots.cs', 'state.Write(Offset + 3, present ? 1 : 0)'),
-    @('src/Testing/CompactDiscardProjection.cs', '=> new(this, _root.Fork(), _player, _risks)'),
+    @('src/Prediction/Compact/CompactDiscardProjection.cs', '=> new(this, _root.Fork(), _player, _risks)'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'if (ResultPile(card) == Pile.Removed || !Ending)'),
     @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', 'if (target != 0) _creatures[target].SetPresent(state, false);'),
     @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', 'state.Write(_terminalSlot, DeathCompleted(state, 0) ? 2 : 1);'),
@@ -1323,16 +1323,16 @@ $compactReadGuards = @(
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'Emit(EventKind.Draw, drawn, card < 0 ? 1 : 0);'),
     @('src/Engine/InCombat/Simulation/Compact/DeterministicMonsterAi.cs', '_log.Append(state, [next]);'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', '_monsterAi = source._monsterAi;'),
-    @('src/Testing/CompactDiscardProjection.cs', 'combat.RequireCapturedMonsterAi(_creatures[1])'),
-    @('src/Testing/CompactDiscardReadView.cs', '_monsterAiBinding?.Read(program);'),
+    @('src/Prediction/Compact/CompactDiscardProjection.cs', 'combat.RequireCapturedMonsterAi(_creatures[1])'),
+    @('src/Prediction/Compact/CompactDiscardReadView.cs', '_monsterAiBinding?.Read(program);'),
     @('src/Engine/InCombat/Simulation/Compact/MonsterEffectProgram.cs', '_instructions = instructions.ToArray();'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Monsters.cs', 'if (_monsterMoves == null || !Complete || Terminal || Ending'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', '_monsterMoves = source._monsterMoves;'),
-    @('src/Testing/CompactDiscardProjection.cs', 'metadata.CurrentMonsterMove(_creatures[1])'),
+    @('src/Prediction/Compact/CompactDiscardProjection.cs', 'metadata.CurrentMonsterMove(_creatures[1])'),
     @('src/Search/SimulatedCombatState.cs', 'history?.CreatureAttacks, combatHistory?.CreatureAttacks'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'State.Write(Frame + EffectIndexOffset, Read(Frame + EffectIndexOffset) + 1);'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'State.Write(Frame + FirstDrawnOffset, drawn);'),
-    @('src/Testing/CompactDiscardProjection.cs', 'CompactCardProgramCompiler.Compile(card, includeAttacks, shivTemplate, inkyShivTemplate)'),
+    @('src/Prediction/Compact/CompactDiscardProjection.cs', 'CompactCardProgramCompiler.Compile(card, includeAttacks, shivTemplate, inkyShivTemplate)'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'State.Write(Frame + DrawResumeIpOffset, resumeIp);'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'private void ApplyTemporaryStrengthLoss(int card, int target, int amount)'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'if (!PreparePower(card, target, BasicPowerKind.PiercingWail, amount)) return;'),
@@ -1341,7 +1341,7 @@ $compactReadGuards = @(
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'ApplyPower(card, 0, instruction.Power, (int)returned);'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'sum = checked(sum + _powers!.Amount(State, target, instruction.Power));'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'if (CreaturePresent(target) && Creature(target).CurrentHp > 0)'),
-    @('src/Testing/CompactDiscardReadView.cs', 'ResumableDiscardProgram.DamageTraits.Unpowered | ResumableDiscardProgram.DamageTraits.NoDealer'),
+    @('src/Prediction/Compact/CompactDiscardReadView.cs', 'ResumableDiscardProgram.DamageTraits.Unpowered | ResumableDiscardProgram.DamageTraits.NoDealer'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'WriteRng(rng);'),
     @('src/Testing/UnattendedTestRunner.CompactShufflePower.cs', 'isolation.Dispose();'),
     @('src/Search/CombatBeamSolver.StateEvaluation.cs', '=> SnapshotCore(simulator, turn, actionCount, shufflesCrossed, boundary, processedEnemyDeaths, null);'),

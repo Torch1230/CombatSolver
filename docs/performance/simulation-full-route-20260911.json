@@ -2767,5 +2767,27 @@
     "No Runtime GC lifecycle or full-auto continuation/deployment orchestration",
     "No new performance or global speedup claim",
     "Necrobinder and generated closure remain to migrate"
-  ]
+  ],
+  "ownershipMove": {
+    "baseline": "0f4b9c6",
+    "location": "src/Prediction/Compact",
+    "files": 6,
+    "methodBodiesUnchanged": true,
+    "build": "Release 10.46 seconds, zero warnings/errors",
+    "request": {
+      "runId": "ec8fa69959f742e4b8c1390566b2fc0a",
+      "status": "Passed",
+      "elapsedMilliseconds": 45679.3678,
+      "completedChecks": [
+        "PerformancePreset:VeryHigh:20000/300000ms:Beam=54/135:Nodes=10000/50000:Branches=45/72:NoGC=True/16000000000",
+        "CompactFullRoute:NativePreTeardownSnapshot",
+        "CompactFullRoute:Original30Cards31Listeners:44NativeActions:424AdmittedAlternatives:CompleteVictory:FullStateKeysHistoryRng:TwoWorkers:FrozenAfterNative"
+      ],
+      "error": null,
+      "processId": 1150382
+    },
+    "fullRouteEvidenceIdenticalToPrior": true,
+    "linuxBoundaries": "Passed; search_files=90",
+    "powershell": "rules updated; not executed"
+  }
 }
