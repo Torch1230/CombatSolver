@@ -60,7 +60,7 @@ writePredicted 与正确 Fork。实际效果用模拟器命令实现，不能调
 没有参与监听器时不分配本阶段上下文或接收者列表。单监听器只建立上下文，接收者保留在局部值中；
 多个监听器才建立剩余接收者列表，以保留成员快照和 COW 引用；不将列表跨阶段或跨 Fork 缓存。
 登记冻结只在首次进入时加锁，后续仅做 volatile 读取；适配者委托自身的成本由其负责。
-这些是代码层面的成本边界，未进行本机 A/B 或真实游戏性能测量。
+这些是实现层面的成本约束，未作性能验证。
 
 ```sh
 dotnet run --project tools/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release
@@ -72,7 +72,5 @@ dotnet run --project tools/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c
 监听表来源使用最小替身。覆盖精确登记、元数据、冻结、两侧参数、顺序、COW、成员变化、
 异常、选择暂停和原版镜像调用次数，不证明真实伤害命令、根捕获或原生两回合等价。
 
-实机复核先用既有 `coverage/unattended/monster-moves-batch-033-disintegration.json`
-（5 层、2 格挡、期望 3 HP 损失及层数保留），再覆盖敌方晚期伤害、末击边界，
-以及中性测试遗物／Modifier 的根捕获 → Fork → 两回合原生与预测状态严格差分。
-这一轮没有执行这些游戏测试，不把历史 fixture 的 Passed 当成本轮证据。
+玩家晚期伤害及敌我双方 T1→T2 原生完整状态对账通过；末击和多监听器原生顺序未覆盖。
+场景输入与验证范围见[测试清单](TEST_MATRIX.md)。

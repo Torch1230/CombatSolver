@@ -2,14 +2,12 @@
 
 ## 下一版本（开发中）：回合末晚期镜像
 
-- `2996595` / `0.36.3` 复审：本机游戏已核对为 `0.111.0` / `41cef1ea`，直接使用安装目录与对应 RitsuLib 的 Release 构建零警告零错误。单监听器分配合同在旧实现下以 200,000 字节/1000 次失败，修复后 80,000 字节通过；一般合同 25 项及冻结进程 1 项通过。分配按线程累计字节取证，不依赖计时或反复热降频 A/B；命令和模型仍使用替身，实机待验范围不变。
-
-- `tools/TurnPhaseMirrorChecks`：`TURN_PHASE_MIRRORS_OK checks=25`，独立进程 `--seal`：`TURN_PHASE_SEAL_OK checks=1`。链接生产晚期 facade、registry 和 CardHookReceiver；检查参数/精确类型/覆盖描述、两侧顺序、空参与者、未知重写和异常传播、选牌暂停、成员快照、COW 接收者及 Disintegration 调用次数。模型、监听表来源和伤害命令为替身，不是原生游戏测试。
-- 初版 Release 构建针对 `0.111.0` 参考程序集与匹配 RitsuLib，通过，零警告零错误，`CopyModOnBuild=false`。当时本机安装游戏为 `0.107.1`，首次使用安装目录构建因 API 不匹配失败；改为现有 `0.111.0` 参考目录后修正缺少的 Simulation using，通过构建。后续针对本机 `0.111.0` 的结果见本节复审记录。没有部署模组。
-- Bash 结构门禁：`REFACTOR_BOUNDARIES_OK search_files=87`。同步修改 PowerShell 对应入口规则；本机没有执行 PowerShell。
-- CoverageCatalog `--verify` 在临时目录通过：3035 条、0 未分析、0 待实现；新镜像被识别为 `Registered / Exact / EngineMirror`。工具运行补入缺少的 SmartFormat 托管依赖；临时生成目录未覆盖仓库的全量生成文件，避免引入平台方法哈希及上游版本刷新差异。源分类已更新，生成结果另存本地审阅材料。
-- 隔离的 macOS 可见游戏 0.111.0（非 Steam，独立用户目录，仅 CombatSolver 0.36.3 与 RitsuLib 0.5.20）使用三个适配 PR 的组合构建：`MONSTER-MOVES-BATCH-033-DISINTEGRATION` / `305ee31e761c4fe39146871bc114adce` Passed，验证玩家 2 格挡承受 5 点晚期伤害后掉血 3；`REPORT-ROUND-LATE-BOTH-SIDES` / `8232b2a0b7984535b95c7837eb7ab4b0` Passed，玩家／敌方均有 Disintegration，T1→T2 完整快照、Fork 与 continuation 一致。输入见 `coverage/unattended/monster-moves-batch-033-disintegration.json` 与 `late-both-sides.json`。
-- 末击、多监听器原生顺序以及任意第三方晚期 Hook 尚未实机覆盖；独立合同的模型替身不替代这些场景。没有性能 A/B 或性能提升结论。
+- 游戏 0.111.0 的 Release 构建通过，零警告、零错误；Bash 结构门禁通过。
+- `TurnPhaseMirrorChecks`：25 项合同、1 项冻结检查及分配回归通过。覆盖精确登记、两侧参数与顺序、空参与者、异常传播、选择暂停、成员快照、COW 和 Disintegration 调用次数。模型与命令使用替身。
+- CoverageCatalog 校验通过，新增镜像识别为 `Registered / Exact / EngineMirror`。
+- [玩家晚期伤害](../coverage/unattended/monster-moves-batch-033-disintegration.json)：原生差分通过，2 格挡承受 5 点伤害后掉血 3。
+- [双方晚期伤害](../coverage/unattended/late-both-sides.json)：原生 T1→T2 完整快照、Fork 与 continuation 对账通过。
+- 游戏验证使用回合阶段、卡牌引用和 OnPlay 适配的组合构建。末击、多监听器原生顺序和任意第三方晚期 Hook 未覆盖；未作性能验证。
 
 ## 0.36.3：策略摘要
 
