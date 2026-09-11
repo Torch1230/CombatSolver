@@ -136,8 +136,9 @@ internal sealed partial class UnattendedTestRunner
                     throw new InvalidOperationException($"Pet card route full history/source differs at {stage}.");
                 }
                 var powers = CompactPowerValues(((SimulatedCombatState)expected.State.CombatState).EffectivePowers()).ToArray();
-                if (!powers.SequenceEqual(CompactPowerValues(((SimulatedCombatState)projected.State.CombatState).EffectivePowers())))
-                    throw new InvalidOperationException("Pet card route Power lifecycle fields differ.");
+                var projectedPowers = CompactPowerValues(((SimulatedCombatState)projected.State.CombatState).EffectivePowers());
+                if (!powers.SequenceEqual(projectedPowers))
+                    throw new InvalidOperationException($"Pet card route Power lifecycle fields differ at {stage}: expected=[{string.Join(';', powers)}]; projected=[{string.Join(';', projectedPowers)}].");
                 AssertCompactRngSet(expected.Rng, projected.Rng);
                 var evaluation = Release(evaluator.Evaluate(expected, lane.PlayerTurn));
                 var projectionEvaluation = Release(evaluator.Evaluate(projected, lane.PlayerTurn));

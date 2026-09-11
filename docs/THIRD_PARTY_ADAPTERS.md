@@ -560,3 +560,5 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 
 
 紧凑封闭编译新增精确神气制胜 `Panache`（51 种卡牌）及玩家 `PanachePower`，只准入其出牌后和回合末 Hook。独立实例使用可增长值布局，不支持外部类型登记或用普通槽叠加；其他独立能力仍在根准入时明确拒绝。旧 `CardPowerOnPlaySupport` 的精确 Panache 分支改为独立施加，共用既有门禁和修改；`PowerPredictionStateSupport.PanacheAlreadyApplied` 供指纹与续用读取 StateStore／实机内部标记。第三方内部标记仍应走手册已有隐藏状态登记，不能依赖此封闭识别。[证据](performance/simulation-panache-20260911.md)。
+
+紧凑封闭编译新增命运同担 `SharedFate`（52 种精确卡牌），复用原有两个基础能力指令，先玩家再指定敌人分别施加负力量；原生消耗及迅速抽牌沿用既有实例执行。不新增外部登记口或变量槽。基础力量／敏捷的请求量类型与原生能力类型分开判定，人工制品与持续标记不共用符号分类。[证据](performance/simulation-shared-fate-20260911.md)。

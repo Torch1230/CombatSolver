@@ -93,7 +93,9 @@ internal sealed class BasicPowerLayout
         Write(state, index, new(after, before.Amount == 0 ? applier : before.Applier, after == 0 ? 0 : order,
             before.Retired || before.Amount != 0 && after == 0 && _definitions[index].RootSlot,
             before.Amount == 0 ? 0 : before.AmountOnTurnStart,
-            before.Amount == 0 ? _definitions[index].Owner == 0 && IsDebuff(_definitions[index].Kind, after) : before.SkipNextDurationTick));
+            // Duration metadata uses the native type, while Artifact uses the
+            // incoming amount's type. Negative Strength/Dexterity are still Buff types.
+            before.Amount == 0 ? _definitions[index].Owner == 0 && HasDebuffType(_definitions[index].Kind) : before.SkipNextDurationTick));
     }
 
     internal int NextOrder(ReversibleValueState state)
@@ -106,8 +108,11 @@ internal sealed class BasicPowerLayout
     internal static bool IsDuration(BasicPowerKind kind) => kind is BasicPowerKind.Weak or BasicPowerKind.Vulnerable or BasicPowerKind.Frail;
     internal static bool IsDebuff(BasicPowerKind kind, int amount)
         => kind is BasicPowerKind.Strength or BasicPowerKind.Dexterity ? amount < 0
-            : kind is BasicPowerKind.Weak or BasicPowerKind.Vulnerable or BasicPowerKind.Frail or BasicPowerKind.Poison
-                or BasicPowerKind.PiercingWail or BasicPowerKind.Doom or BasicPowerKind.Neurosurge or BasicPowerKind.BorrowedTime or BasicPowerKind.Hang;
+            : HasDebuffType(kind);
+
+    private static bool HasDebuffType(BasicPowerKind kind)
+        => kind is BasicPowerKind.Weak or BasicPowerKind.Vulnerable or BasicPowerKind.Frail or BasicPowerKind.Poison
+            or BasicPowerKind.PiercingWail or BasicPowerKind.Doom or BasicPowerKind.Neurosurge or BasicPowerKind.BorrowedTime or BasicPowerKind.Hang;
 
     internal void CaptureTurnStart(ReversibleValueState state, int owner)
     {

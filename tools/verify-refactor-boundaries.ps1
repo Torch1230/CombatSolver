@@ -1533,4 +1533,12 @@ foreach ($rule in @(
     }
 }
 
+if (-not (Get-Content -LiteralPath (Join-Path $repositoryRoot 'src/Prediction/Compact/CompactCardProgramCompiler.cs') -Raw).Contains('SharedFate => new([new(CardInstructionKind.ApplyBasicPower, -(int)ownStrengthLoss, BasicPowerKind.Strength),')) {
+    throw 'Shared Fate must compile its own Strength application first.'
+}
+
+if (-not (Get-Content -LiteralPath (Join-Path $repositoryRoot 'src/Engine/InCombat/Simulation/Compact/BasicPowerLayout.cs') -Raw).Contains('HasDebuffType(_definitions[index].Kind)')) {
+    throw 'Native duration metadata must use model type rather than signed incoming amount.'
+}
+
 Write-Output "REFACTOR_BOUNDARIES_OK search_files=$($searchFiles.Count)"

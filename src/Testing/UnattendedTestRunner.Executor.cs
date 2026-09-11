@@ -39,6 +39,11 @@ internal sealed partial class UnattendedTestRunner
             bool expectedCardPlayed = request.ExpectedPlayedCardId == null;
             bool expectedPotionUsed = request.ExpectedUsedPotionId == null;
             bool expectedPlayerPowerObserved = request.ExpectedObservedPlayerPowerId == null;
+            if (request.ScenarioId == "COMPACT-SHARED-FATE-NATIVE")
+            {
+                await runner.AssertCompactSharedFateAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "PANACHE-INSTANCES")
             {
                 await runner.AssertPanacheInstancesAsync(combatState, player);
@@ -184,7 +189,7 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertCompactNeurosurgeAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
-            if (request.ScenarioId is "COMPACT-SEARCH-LIFECYCLE" or "COMPACT-NEUROSURGE-SEARCH" or "COMPACT-OSTY-SEARCH" or "COMPACT-OSTY-TURN-SEARCH" or "COMPACT-DRAW-EXHAUST-SEARCH" or "COMPACT-DIRGE-SEARCH" or "COMPACT-NECRO-CARDS-SEARCH" or "COMPACT-COST-POWERS-SEARCH" or "COMPACT-HANG-SEARCH" or "COMPACT-KEYWORDS-SEARCH" or "COMPACT-CARD-HOOKS-SEARCH" or "COMPACT-LETHALITY-SEARCH" or "COMPACT-PANACHE-SEARCH")
+            if (request.ScenarioId is "COMPACT-SEARCH-LIFECYCLE" or "COMPACT-NEUROSURGE-SEARCH" or "COMPACT-OSTY-SEARCH" or "COMPACT-OSTY-TURN-SEARCH" or "COMPACT-DRAW-EXHAUST-SEARCH" or "COMPACT-DIRGE-SEARCH" or "COMPACT-NECRO-CARDS-SEARCH" or "COMPACT-COST-POWERS-SEARCH" or "COMPACT-HANG-SEARCH" or "COMPACT-KEYWORDS-SEARCH" or "COMPACT-CARD-HOOKS-SEARCH" or "COMPACT-LETHALITY-SEARCH" or "COMPACT-PANACHE-SEARCH" or "COMPACT-SHARED-FATE-SEARCH")
             {
                 _ = ApplySettingsOverrides();
                 await runner.AssertCompactSearchLifecycleAsync(combatState, player);

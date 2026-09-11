@@ -420,3 +420,7 @@ renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或
 神气制胜的独立实例由 `PanachePowerLayout` 持有可增长的撤销缓冲区，保存每个实例的数量、施加者、获得顺序、回合初始值、倒计数、首次应用与持续标记。`BasicPowerLayout.NextOrder` 为两种能力布局提供共同的获得序列；`ResumableDiscardProgram.Panache` 在卡牌结束历史之后执行监听器，逐实例更新与非威力群体伤害、回合重置和玩家死亡清理均消费值状态。末击后的剩余监听器仍完成计数重置。Prediction 保留能力方法来源作用域；Search 的 `CompletedPowerReadBinding` 池化独立读取模型，仅在超过该 lane 历史最大实例数时扩容，恢复较少实例时停用多余模型，并保留根单槽／多实例映射。旧神气制胜施加改用 `ApplyInstancedPower`，沿用命令门禁／修改和数量回调；原键及完整续用显式读取分支 `AlreadyApplied`。[证据](performance/simulation-panache-20260911.md)。
 
 玩家回合末第二阶段标记待失败后，原生仍切换到敌方、捕获能力起始值并清格挡，直到敌方开始安全点才提交终局。普通 Hook 分派入口遇到 IsOverOrEnding 时整批跳过（AfterCardPlayed 等原生明确例外除外）；已开始分派不能逐监听器中止。中毒和延迟格挡属于新分派，不能提前结束整个回合，也不能继续补偿这些效果。终局原生观察分别绑定胜利清理和 ProcessPendingLoss，验证清理前完整状态。
+
+同一能力的原生 Type 与按请求量计算的 GetTypeForAmount 不能混用。人工制品按请求量判断负力量／负敏捷为减益，首次持续计数标记却依据原生 Type；两种属性能力本身仍为增益。基础值布局保留独立判定，在原生差分中覆盖归零后重获、初始负值、双方人工制品、不同施加者、附魔选择和完整回合。
+
+命运同担由 `CompactCardProgramCompiler` 编译为玩家／目标两条有序负力量施加，沿用基础 Power 值槽、人工制品、退休／重获和读取投影；52 种精确卡牌的准入仍在 Prediction，内核不识别卡牌类型。[证据](performance/simulation-shared-fate-20260911.md)。

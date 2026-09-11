@@ -1244,6 +1244,10 @@ require_fixed "$repository_root/src/Runtime/ContinuationStamp.cs" 'PowerPredicti
 
 require_fixed "$repository_root/src/Search/CombatBeamSolver.RoundLifecycle.cs" 'if (!simulator.IsOverOrEnding && !CorePowerSupport.TriggerAfterBlockCleared(' 'enemy-start Hook compensation must preserve native dispatch-entry ending gates'
 
+require_fixed "$repository_root/src/Prediction/Compact/CompactCardProgramCompiler.cs" 'SharedFate => new([new(CardInstructionKind.ApplyBasicPower, -(int)ownStrengthLoss, BasicPowerKind.Strength),' 'Shared Fate must compile its own Strength application first'
+
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/BasicPowerLayout.cs" 'HasDebuffType(_definitions[index].Kind)' 'native duration metadata must use model type rather than signed incoming amount'
+
 if ((${#violations[@]} > 0)); then
     printf '%s\n' "${violations[@]}" >&2
     printf 'Refactor boundary verification failed with %d violation(s).\n' "${#violations[@]}" >&2

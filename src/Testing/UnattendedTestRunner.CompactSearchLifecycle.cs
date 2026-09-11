@@ -22,12 +22,14 @@ internal sealed partial class UnattendedTestRunner
         bool dirge = _request.ScenarioId == "COMPACT-DIRGE-SEARCH";
         bool keywords = _request.ScenarioId == "COMPACT-KEYWORDS-SEARCH";
         bool lethality = _request.ScenarioId == "COMPACT-LETHALITY-SEARCH";
+        bool sharedFate = _request.ScenarioId == "COMPACT-SHARED-FATE-SEARCH";
         bool panache = _request.ScenarioId == "COMPACT-PANACHE-SEARCH";
         bool cardHooks = _request.ScenarioId == "COMPACT-CARD-HOOKS-SEARCH";
         bool hang = _request.ScenarioId == "COMPACT-HANG-SEARCH";
         bool costPowers = _request.ScenarioId == "COMPACT-COST-POWERS-SEARCH";
         bool necroCards = _request.ScenarioId == "COMPACT-NECRO-CARDS-SEARCH";
-        if (panache) await PrepareCompactPanacheAsync(combat, player, 2);
+        if (sharedFate) await PrepareCompactSharedFateAsync(combat, player, 1);
+        else if (panache) await PrepareCompactPanacheAsync(combat, player, 2);
         else if (lethality) await PrepareCompactLethalityAsync(combat, player, 0);
         else if (cardHooks) await PrepareCompactCardHooksAsync(combat, player, 0);
         else if (keywords) await PrepareCompactKeywordsAsync(combat, player, 1);
@@ -84,7 +86,7 @@ internal sealed partial class UnattendedTestRunner
             || serial.MaxParallelExpansionConcurrency != 0 || compact.Counts.PendingReplays == 0)
             throw new InvalidOperationException("Compact lifecycle failed to exercise concurrent and suspended candidates.");
         AssertSnapshotEqual(original, CaptureActual(combat, player, combat.Enemies.Single()), "CompactLifecycle", "ActualUnchanged");
-        _completedChecks.Add($"CompactSearchLifecycle:Panache{panache}:Lethality{lethality}:CardHooks{cardHooks}:Keywords{keywords}:Hang{hang}:CostPowers{costPowers}:NecroCards{necroCards}:Dirge{dirge}:DrawExhaust{drawExhaust}:Neurosurge{neurosurge}:Osty{osty}:TurnRelic{ostyTurns}:250Nodes:LegacyEqualsCompact:DOP1EqualsDOP2:Concurrency{parallel.MaxParallelExpansionConcurrency}:CancelAndFailureDrained:RootReusable:UnsupportedPotionRejected:ActualUnchanged");
+        _completedChecks.Add($"CompactSearchLifecycle:SharedFate{sharedFate}:Panache{panache}:Lethality{lethality}:CardHooks{cardHooks}:Keywords{keywords}:Hang{hang}:CostPowers{costPowers}:NecroCards{necroCards}:Dirge{dirge}:DrawExhaust{drawExhaust}:Neurosurge{neurosurge}:Osty{osty}:TurnRelic{ostyTurns}:250Nodes:LegacyEqualsCompact:DOP1EqualsDOP2:Concurrency{parallel.MaxParallelExpansionConcurrency}:CancelAndFailureDrained:RootReusable:UnsupportedPotionRejected:ActualUnchanged");
 
         Task<SolverResult> Solve(SearchPolicySnapshot selectedPolicy, int degree)
             => Task.Run(() => CombatSearchCoordinator.Solve(root, display, damage,

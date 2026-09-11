@@ -18,13 +18,13 @@ internal static class CompactCardProgramCompiler
         typeof(UltimateDefend), typeof(Suppress), typeof(Footwork), typeof(Malaise), typeof(DeadlyPoison),
         typeof(Haze), typeof(Snakebite), typeof(Defy), typeof(EscapePlan), typeof(Outbreak), typeof(CalculatedGamble),
         typeof(BubbleBubble), typeof(Mirage), typeof(DodgeAndRoll), typeof(ToolsOfTheTrade), typeof(PiercingWail),
-        typeof(CloakAndDagger), typeof(Shiv), typeof(BladeOfInk), typeof(Burn), typeof(Neurosurge), typeof(Bodyguard), typeof(Unleash), typeof(Afterlife), typeof(Cleanse), typeof(Dirge), typeof(Soul), typeof(CaptureSpirit), typeof(Graveblast), typeof(Defile), typeof(Wisp), typeof(AscendersBane), typeof(BorrowedTime), typeof(Veilpiercer), typeof(Hang), typeof(SculptingStrike), typeof(Snap), typeof(SpiritOfAsh), typeof(DanseMacabre), typeof(Lethality), typeof(Panache)
+        typeof(CloakAndDagger), typeof(Shiv), typeof(BladeOfInk), typeof(Burn), typeof(Neurosurge), typeof(Bodyguard), typeof(Unleash), typeof(Afterlife), typeof(Cleanse), typeof(Dirge), typeof(Soul), typeof(CaptureSpirit), typeof(Graveblast), typeof(Defile), typeof(Wisp), typeof(AscendersBane), typeof(BorrowedTime), typeof(Veilpiercer), typeof(Hang), typeof(SculptingStrike), typeof(Snap), typeof(SpiritOfAsh), typeof(DanseMacabre), typeof(Lethality), typeof(Panache), typeof(SharedFate)
     ];
 
     internal static ResumableDiscardProgram.Card Compile(CardModel card, bool includeAttacks, int shivTemplate = -1, int inkyShivTemplate = -1, int soulTemplate = -1, int upgradedSoulTemplate = -1)
     {
         if (!AdmittedTypes.Contains(card.GetType())
-            || card is Neutralize or Suppress or Footwork or Malaise or DeadlyPoison or Haze or Snakebite or Defy or Outbreak or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail or CloakAndDagger or Shiv or BladeOfInk or Burn or Neurosurge or Bodyguard or Unleash or Afterlife or Cleanse or Dirge or Soul or CaptureSpirit or Graveblast or Defile or Wisp or AscendersBane or BorrowedTime or Veilpiercer or Hang or SculptingStrike or Snap or SpiritOfAsh or DanseMacabre or Lethality or Panache && !includeAttacks
+            || card is Neutralize or Suppress or Footwork or Malaise or DeadlyPoison or Haze or Snakebite or Defy or Outbreak or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail or CloakAndDagger or Shiv or BladeOfInk or Burn or Neurosurge or Bodyguard or Unleash or Afterlife or Cleanse or Dirge or Soul or CaptureSpirit or Graveblast or Defile or Wisp or AscendersBane or BorrowedTime or Veilpiercer or Hang or SculptingStrike or Snap or SpiritOfAsh or DanseMacabre or Lethality or Panache or SharedFate && !includeAttacks
             || card is Burn && (card.Enchantment != null || card.EnergyCost._base != -1 || card.IsUpgraded
                 || !card.LocalKeywords.Contains(CardKeyword.Unplayable) || card.DynamicVars.Damage.Props != (ValueProp.Unpowered | ValueProp.Move))
             || card is AscendersBane && (card.Enchantment != null || card.EnergyCost._base != -1 || card.IsUpgraded
@@ -44,7 +44,7 @@ internal static class CompactCardProgramCompiler
             || card.HasStarCostX || card.CurrentStarCost > 0 || card._temporaryStarCosts.Count != 0
             || card.CurrentTarget != null || card.CurrentPlayIndex != 0 || card.LastStarsSpent != 0
             || card.HasSingleTurnRetain || card.HasTurnEndInHandEffect && card is not (Burn or AscendersBane)
-            || card.LocalKeywords.Any(k => k is not (CardKeyword.Sly or CardKeyword.Ethereal or CardKeyword.Retain) && !(card is Malaise or CalculatedGamble or Mirage or PiercingWail or Shiv or Afterlife or Dirge or Soul or Graveblast or Wisp && k == CardKeyword.Exhaust)
+            || card.LocalKeywords.Any(k => k is not (CardKeyword.Sly or CardKeyword.Ethereal or CardKeyword.Retain) && !(card is Malaise or CalculatedGamble or Mirage or PiercingWail or Shiv or Afterlife or Dirge or Soul or Graveblast or Wisp or SharedFate && k == CardKeyword.Exhaust)
                 && !(card is Suppress && k == CardKeyword.Innate)
                 && !(card is Burn or AscendersBane && k == CardKeyword.Unplayable) && !(card is AscendersBane && k == CardKeyword.Eternal))
             || card.IsSlyThisTurn && card is not Prepared)
@@ -63,6 +63,8 @@ internal static class CompactCardProgramCompiler
             : card is Neutralize or Suppress or Haze or Defy ? card.DynamicVars.Weak.BaseValue : 0;
         decimal poison = card is DeadlyPoison or Haze or Snakebite or Outbreak or BubbleBubble ? card.DynamicVars.Poison.BaseValue : 0;
         decimal generated = card is CloakAndDagger or BladeOfInk or CaptureSpirit ? card.DynamicVars.Cards.BaseValue : 0;
+        decimal ownStrengthLoss = card is SharedFate ? card.DynamicVars["PlayerStrengthLoss"].BaseValue : 0;
+        decimal enemyStrengthLoss = card is SharedFate ? card.DynamicVars["EnemyStrengthLoss"].BaseValue : 0;
         decimal strengthLoss = card is PiercingWail ? card.DynamicVars["StrengthLoss"].BaseValue : 0;
         decimal dexterity = card is Footwork ? card.DynamicVars.Dexterity.BaseValue : 0;
         decimal summon = card is Bodyguard or Afterlife or Cleanse or Dirge ? card.DynamicVars.Summon.BaseValue : 0;
@@ -81,6 +83,8 @@ internal static class CompactCardProgramCompiler
             || lethality != decimal.Truncate(lethality) || lethality is < 0 or > 999_999_999m
             || panache != decimal.Truncate(panache) || panache is < 0 or > 999_999_999m
             || beforeCardPower != decimal.Truncate(beforeCardPower) || beforeCardPower is < 0 or > 999_999_999m
+            || ownStrengthLoss != decimal.Truncate(ownStrengthLoss) || ownStrengthLoss is < 0 or > 999_999_999m
+            || enemyStrengthLoss != decimal.Truncate(enemyStrengthLoss) || enemyStrengthLoss is < 0 or > 999_999_999m
             || strengthLoss != decimal.Truncate(strengthLoss) || strengthLoss is < 0 or > 999_999_999m
             || dexterity != decimal.Truncate(dexterity) || dexterity is < 0 or > 999_999_999m
             || summon != decimal.Truncate(summon) || summon is < 0 or > 999_999_999m
@@ -99,6 +103,8 @@ internal static class CompactCardProgramCompiler
                     CardTemplate: card.IsUpgraded ? upgradedSoulTemplate : soulTemplate, Placement: CardGenerationPlacement.RandomDraw)]),
             Soul => new([new(CardInstructionKind.Draw, (int)draw)]),
             Lethality => new([new(CardInstructionKind.ApplyBasicPower, (int)lethality, BasicPowerKind.Lethality)]),
+            SharedFate => new([new(CardInstructionKind.ApplyBasicPower, -(int)ownStrengthLoss, BasicPowerKind.Strength),
+                new(CardInstructionKind.ApplyBasicPower, -(int)enemyStrengthLoss, BasicPowerKind.Strength, CardInstructionTarget.ChosenEnemy)]),
             Panache => new([new(CardInstructionKind.AddPanachePower, (int)panache)]),
             SpiritOfAsh => new([new(CardInstructionKind.ApplyBasicPower, (int)beforeCardPower, BasicPowerKind.SpiritOfAsh)]),
             DanseMacabre => new([new(CardInstructionKind.ApplyBasicPower, (int)beforeCardPower, BasicPowerKind.DanseMacabre)]),

@@ -56,7 +56,20 @@ internal static class PowerChecks
                 if (!lane.Freeze().ContentEquals(retained)) throw new InvalidOperationException("Power rollback leaked.");
             }
         });
-        Console.WriteLine("COMPACT_POWER_CHECKS_OK modifiers=6 negative_stats=true stack_cap=true applier=true retirement=true reacquisition=true undo=true frozen_workers=8");
+        foreach (int index in new[] { 1, 3, 2 })
+        {
+            var before = state.Mark();
+            powers.Apply(state, index, -powers.Read(state, index).Amount, 0);
+            bool duration = definitions[index].Kind == BasicPowerKind.Weak;
+            int amount = duration ? 2 : -2;
+            powers.Apply(state, index, amount, 1);
+            var value = powers.Read(state, index);
+            if (value.Amount != amount || !value.Retired || value.Applier != 1 || value.SkipNextDurationTick != duration
+                || !BasicPowerLayout.IsDebuff(definitions[index].Kind, amount))
+                throw new InvalidOperationException("Native Power type metadata was confused with incoming amount type.");
+            state.Rollback(before);
+        }
+        Console.WriteLine("COMPACT_POWER_CHECKS_OK modifiers=6 negative_stats=true native_type_vs_amount_type=true stack_cap=true applier=true retirement=true reacquisition=true undo=true frozen_workers=8");
     }
 
     private static void Equal(decimal expected, decimal actual, string label)

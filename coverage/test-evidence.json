@@ -1,4 +1,12 @@
 {
+  "COMPACT-SHARED-FATE-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeOrderedStatApplicationsAndFixedSearchDifferential",
+    "procedure": "三根两回合21原生动作／42分支／18挂起；双方人工制品、零层重获、负值、迅速选择；250节点串并行。",
+    "expected": "玩家与敌人分别按原顺序施加负力量；负属性请求可被人工制品拦截，但不创建原生减益类型的持续标记。",
+    "observed": "c1c9ad4a063e4bd0be0d0f98212678c1 COMPACT-SHARED-FATE-NATIVE Passed; 7e507c349fa34294ab2cf68f0d578dab COMPACT-SHARED-FATE-SEARCH Passed",
+    "evidence": "docs/performance/simulation-shared-fate-20260911.md；docs/performance/simulation-shared-fate-20260911.json。"
+  },
   "COMPACT-PANACHE-20260911": {
     "status": "Passed",
     "level": "HeadlessNativeIndependentPowerAndTerminalDispatchWithFixedSearchDifferential",
