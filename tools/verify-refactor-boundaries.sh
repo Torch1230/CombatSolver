@@ -468,6 +468,7 @@ done
 
 expected_beam_files=(
     CombatBeamSolver.cs
+    CombatBeamSolver.ActionPreparation.cs
     CombatBeamSolver.AdmittedExpansion.cs
     CombatBeamSolver.BeamRetentionPolicy.cs
     CombatBeamSolver.CompactReplay.cs
@@ -1158,7 +1159,12 @@ require_fixed "$search_root/CombatBeamSolver.CompactReplay.cs" 'SnapshotFromRead
 require_fixed "$search_root/CombatBeamSolver.ParallelExpansion.cs" 'ReferenceEquals(_compact, parent)' 'compact seeds must verify their exact immutable parent'
 
 require_fixed "$search_root/CombatBeamSolver.CompactReplay.cs" 'private sealed class CompactPolicyReadLane' 'synchronous compact policy reads need a separate lane'
-require_fixed "$search_root/CombatBeamSolver.ParallelExpansion.cs" 'TargetsFor(card, simulator, view)' 'prepared actions must use the authoritative target roster'
+require_fixed "$search_root/CombatBeamSolver.ActionPreparation.cs" 'TargetsFor(card, simulator, view)' 'prepared actions must use the authoritative target roster'
+require_fixed "$search_root/CombatBeamSolver.Expansion.cs" 'foreach (PreparedCardAction prepared in PrepareCardActions(node))' 'serial expansion must share owned action preparation'
+require_fixed "$search_root/CombatBeamSolver.Expansion.cs" 'foreach (PreparedPotionAction prepared in PreparePotionActions(node))' 'serial expansion must share potion preparation'
+require_fixed "$repository_root/src/Runtime/ContinuationStamp.cs" '!ReferenceEquals(simulator, readView.EvaluationContext)' 'continuation values require matching metadata ownership'
+require_fixed "$repository_root/src/Runtime/ContinuationStamp.cs" 'combat.AppendPredictedTurnCardHistory(text, player, readView?.CardHistory);' 'continuation history must consume current supplied counters'
+require_fixed "$repository_root/src/Runtime/ContinuationStamp.cs" 'readView?.EnergyCostRng ?? simulator.Rng.CombatEnergyCosts.CaptureState()' 'continuation must preserve the complete branch random-cost stream'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/CombatPredictionState.cs" 'internal bool IsHittable(Creature creature, bool presentAndAlive)' 'target semantics must share the original implementation with supplied life values'
 
 if ((${#violations[@]} > 0)); then

@@ -143,12 +143,12 @@ internal sealed partial class SimulatedCombatState
         AppendTurnCardHistory(text, statusCardsDrawn, zeroCostAttackStarts, cardPlayStarts);
     }
 
-    public void AppendPredictedTurnCardHistory(StringBuilder text, Player player)
+    public void AppendPredictedTurnCardHistory(StringBuilder text, Player player, CardHistoryReadValues? values = null)
         => AppendTurnCardHistory(
             text,
-            GetStatusCardsDrawnThisTurn(player),
-            GetZeroCostAttackStartsThisTurn(player.Creature),
-            GetCardPlayStartsThisTurn(player.Creature));
+            values?.StatusDraws ?? GetStatusCardsDrawnThisTurn(player),
+            values?.ZeroCostAttackStarts ?? GetZeroCostAttackStartsThisTurn(player.Creature),
+            values?.Starts ?? GetCardPlayStartsThisTurn(player.Creature));
 
     private static void AppendTurnCardHistory(
         StringBuilder text,

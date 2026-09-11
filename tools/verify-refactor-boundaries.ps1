@@ -425,6 +425,7 @@ foreach ($check in $rootSnapshotChecks) {
 
 $expectedBeamFiles = @(
     "CombatBeamSolver.cs",
+    "CombatBeamSolver.ActionPreparation.cs",
     "CombatBeamSolver.AdmittedExpansion.cs",
     "CombatBeamSolver.BeamRetentionPolicy.cs",
     "CombatBeamSolver.CompactReplay.cs",
@@ -1434,7 +1435,12 @@ foreach ($rule in @(
     @('src/Search/CombatBeamSolver.CompactReplay.cs', 'SnapshotFromReadView(lane.Reader,'),
     @('src/Search/CombatBeamSolver.ParallelExpansion.cs', 'ReferenceEquals(_compact, parent)'),
     @('src/Search/CombatBeamSolver.CompactReplay.cs', 'private sealed class CompactPolicyReadLane'),
-    @('src/Search/CombatBeamSolver.ParallelExpansion.cs', 'TargetsFor(card, simulator, view)'),
+    @('src/Search/CombatBeamSolver.ActionPreparation.cs', 'TargetsFor(card, simulator, view)'),
+    @('src/Search/CombatBeamSolver.Expansion.cs', 'foreach (PreparedCardAction prepared in PrepareCardActions(node))'),
+    @('src/Search/CombatBeamSolver.Expansion.cs', 'foreach (PreparedPotionAction prepared in PreparePotionActions(node))'),
+    @('src/Runtime/ContinuationStamp.cs', '!ReferenceEquals(simulator, readView.EvaluationContext)'),
+    @('src/Runtime/ContinuationStamp.cs', 'combat.AppendPredictedTurnCardHistory(text, player, readView?.CardHistory);'),
+    @('src/Runtime/ContinuationStamp.cs', 'readView?.EnergyCostRng ?? simulator.Rng.CombatEnergyCosts.CaptureState()'),
     @('src/Engine/InCombat/Simulation/CombatPredictionState.cs', 'internal bool IsHittable(Creature creature, bool presentAndAlive)')
 )) {
     if (-not (Get-Content -LiteralPath (Join-Path $repositoryRoot $rule[0]) -Raw).Contains($rule[1])) {

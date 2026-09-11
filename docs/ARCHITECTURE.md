@@ -118,7 +118,8 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 | `CombatBeamSolver.Phases.cs` | `Solve`、阶段循环、总预算与回合层预算保留、当前回合预览、约 `200 ms` 刷新的动态推演路线，以及玩家采用路线/执行当前回合的收束检查点；动态路线显式携带战斗是否结束，未完成路线不产生整场战损数值 |
 | `CombatBeamSolver.Expansion.cs` | 可执行卡牌/药水/结束回合候选展开和动作回放入口 |
 | `CombatBeamSolver.RoundLifecycle.cs` | 回合推进及唯一的玩家回合开始阶段；保持选择事务、Hook/抽牌顺序与历史/死亡补偿 |
-| `CombatBeamSolver.ParallelExpansion.cs` | 固定 worker lane、卡牌/药水动作准备与原始候选物化、按输入顺序串行提交 |
+| `CombatBeamSolver.ActionPreparation.cs` | 串行／并行共用的卡牌与药水动作准备；同步消费当前值，返回独占动作元数据 |
+| `CombatBeamSolver.ParallelExpansion.cs` | 固定 worker lane、原始候选物化、按输入顺序串行提交 |
 | `CombatBeamSolver.AdmittedExpansion.cs` | 已准入父节点的准备、动作探测、选择准备/回放/续接、药水/目标与回合尾部作业；有界派发、快照移交、取消/异常排空 |
 | `CombatBeamSolver.PrimaryChoiceReplay.cs` | 原预算保证必经的首层回放、唯一快照暂存与原序消费；动态预算和实例补充仍由一个续接作业独占 |
 | `CombatBeamSolver.StandPatJobs.cs` | 对原保路规则必经的 EndTurn 探针批量求值，复用固定 lane、回传标量，缓存和选择仍由 coordinator 原序完成 |
@@ -377,3 +378,5 @@ renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或
 `CompactReplay` 另拥有独立 `CompactPolicyReadLane`，为同步政策消费者提供冻结值读取；不与执行 lane 共用可变模型，不让 hand/model 视图跨子回放或 yield 逃逸。动作准备、无进展抽牌数、父节点遗物和目标读取因此不再重建完整历史。合法性仍共享 `CanPlayCardAtResources` 与生命输入可显式提供的 `CombatPredictionState.IsHittable`；完成续用状态和完整搜索计数继续对账。
 
 挂起读取只接受同根且 `NeedsChoice` 的程序；完成读取仍要求 `Complete`。选项只克隆当前来源牌，不保存 lane 模型池。计划消费共用 `TurnStartChoiceCursor`，保留来源／上下文／时点匹配与业务无效分支异常。回合开始选牌尚未结束时，AI 当前值／日志已前进，但公开意图仍读前一招式；根日志为空或末项不同于当前招式时，以捕获的根当前值为准。
+
+串行展开与并行调度共用 `ActionPreparation`，避免保留借用手牌／模型跨子回放或 yield。`ContinuationStamp.CapturePredicted` 接受可选完成读视图，仍使用原编码器；动态生物、牌堆、卡牌计数与两条变化 RNG 来自读视图，其余值必须属于该闭包内不变或已单向导入的上下文。元数据上下文需精确匹配，返回文本可以保留，读视图不能随快照逃逸。

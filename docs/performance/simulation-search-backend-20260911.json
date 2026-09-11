@@ -828,5 +828,152 @@
     "pureChecks": "Passed; pending_intent=true; corrected missing zero Poison slot fixture",
     "linuxBoundaries": "Passed",
     "powerShellBoundaries": "maintained, not run"
+  },
+  "ownedActionAndContinuationReads": {
+    "samples": [
+      {
+        "equivalent": true,
+        "pendingChecks": 9,
+        "preparationMilliseconds": 57.527,
+        "completedReplays": 111401,
+        "pendingReplays": 22654,
+        "materializations": 0,
+        "baseline": {
+          "ExpandedNodes": 16413,
+          "TransitionCount": 134054,
+          "ChoiceBranchesEvaluated": 77969,
+          "CombatEndedTurn": 8,
+          "ProjectedBattleHpLost": 11,
+          "Elapsed": "00:00:20.8120682",
+          "actions": 44,
+          "MaxParallelExpansionConcurrency": 0
+        },
+        "candidate": {
+          "ExpandedNodes": 16413,
+          "TransitionCount": 134054,
+          "ChoiceBranchesEvaluated": 77969,
+          "CombatEndedTurn": 8,
+          "ProjectedBattleHpLost": 11,
+          "Elapsed": "00:00:10.0824412",
+          "actions": 44,
+          "MaxParallelExpansionConcurrency": 0
+        },
+        "baselineResources": {
+          "scope": "Process-wide deltas during headless coordinator solve; includes game/native background work",
+          "allocatedBytes": 5474600760,
+          "cpuMilliseconds": 25105.792,
+          "gcCollections": [
+            674,
+            305,
+            27
+          ],
+          "managedHeapAtEndBytes": 182841224,
+          "workingSetAtEndBytes": 1775681536
+        },
+        "candidateResources": {
+          "scope": "Process-wide deltas during headless coordinator solve; includes game/native background work",
+          "allocatedBytes": 2779402640,
+          "cpuMilliseconds": 11123.97,
+          "gcCollections": [
+            329,
+            100,
+            6
+          ],
+          "managedHeapAtEndBytes": 231435864,
+          "workingSetAtEndBytes": 1710952448
+        },
+        "runId": "9bb8ba3ad1854d729d39710ee8a4878b",
+        "status": "Passed",
+        "mode": "serial-v1"
+      },
+      {
+        "equivalent": true,
+        "pendingChecks": 9,
+        "preparationMilliseconds": 0.4606,
+        "completedReplays": 111401,
+        "pendingReplays": 22654,
+        "materializations": 0,
+        "baseline": {
+          "ExpandedNodes": 16413,
+          "TransitionCount": 134054,
+          "ChoiceBranchesEvaluated": 77969,
+          "CombatEndedTurn": 8,
+          "ProjectedBattleHpLost": 11,
+          "Elapsed": "00:00:11.0600846",
+          "actions": 44,
+          "MaxParallelExpansionConcurrency": 8
+        },
+        "candidate": {
+          "ExpandedNodes": 16413,
+          "TransitionCount": 134054,
+          "ChoiceBranchesEvaluated": 77969,
+          "CombatEndedTurn": 8,
+          "ProjectedBattleHpLost": 11,
+          "Elapsed": "00:00:05.5432378",
+          "actions": 44,
+          "MaxParallelExpansionConcurrency": 8
+        },
+        "baselineResources": {
+          "scope": "Process-wide deltas during headless coordinator solve; includes game/native background work",
+          "allocatedBytes": 5548761232,
+          "cpuMilliseconds": 28459.372,
+          "gcCollections": [
+            681,
+            314,
+            19
+          ],
+          "managedHeapAtEndBytes": 215281968,
+          "workingSetAtEndBytes": 2012393472
+        },
+        "candidateResources": {
+          "scope": "Process-wide deltas during headless coordinator solve; includes game/native background work",
+          "allocatedBytes": 2885600624,
+          "cpuMilliseconds": 16543.398,
+          "gcCollections": [
+            347,
+            107,
+            7
+          ],
+          "managedHeapAtEndBytes": 226430800,
+          "workingSetAtEndBytes": 1828737024
+        },
+        "runId": "451f27d9144541fcbccbfd18fcba49be",
+        "status": "Passed",
+        "mode": "parallel-v1"
+      }
+    ],
+    "sameSerialParallelLogicalResult": true,
+    "runtimeDefaultEnabled": false,
+    "headlessOnly": true,
+    "buildBeforeMoveSeconds": 11.17,
+    "pureMoveBuild": {
+      "seconds": 11.17,
+      "warnings": 0,
+      "errors": 0
+    },
+    "endMemoryIsPeak": false,
+    "legacySerialParallelSentinel": {
+      "runId": "6bc5d2268d40457d848e14af31d4cd33",
+      "status": "Passed",
+      "elapsedMilliseconds": 31651.9623,
+      "completedChecks": [
+        "SearchPolicySnapshot"
+      ]
+    },
+    "nativeRounds": {
+      "runId": "ed06cad8e2d84623b4afee27ab5e3414",
+      "status": "Passed",
+      "elapsedMilliseconds": 7844.7612,
+      "completedChecks": [
+        "CompactRoundPending:Mode0:5OmittedChoices:FullEvaluationAndOwnedSpecs:ReverseRestore",
+        "CompactRound:Mode0:Branches13:NativeActions4:FullSnapshotHistoryKeysEvaluationRng:ReverseAndEightWorkerRestore:FrozenAfterNative",
+        "CompactRoundPending:Mode1:3OmittedChoices:FullEvaluationAndOwnedSpecs:ReverseRestore",
+        "CompactRound:Mode1:Branches6:NativeActions2:FullSnapshotHistoryKeysEvaluationRng:ReverseAndEightWorkerRestore:FrozenAfterNative",
+        "CompactRoundPending:Mode2:0OmittedChoices:FullEvaluationAndOwnedSpecs:ReverseRestore",
+        "CompactRound:NativePreTeardownSnapshot",
+        "CompactRound:Mode2:Branches1:NativeActions1:FullSnapshotHistoryKeysEvaluationRng:ReverseAndEightWorkerRestore:FrozenAfterNative"
+      ]
+    },
+    "linuxBoundaries": "Passed; 92 Search files; first gate identified missing new partial in manifest, then updated both platforms"
   }
 }

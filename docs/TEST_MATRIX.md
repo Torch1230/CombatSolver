@@ -2606,3 +2606,5 @@ pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId MONSTER-MOVES-BA
 `COMPACT-SEARCH-BACKEND` 现还校验原始战斗／跑局各 30 牌及完整 `Continuations`。政策读视图集成通过 `427def306b9748988a4088c10646bb4c`，既有完整路线和所有逻辑计数不变；物理成本单列，不能混同预算。
 
 挂起状态接入后，`COMPACT-SEARCH-BACKEND` 逐个截断完整路线的所有选牌前缀，比对挂起快照、请求、完整选项和来源实例，逆序检查冻结选择及预览未被复用覆盖，并对错误选择来源断言相同业务拒绝。单线程／8 worker 使用相同原输入及现有 DOP 参数。`COMPACT-ROUND-NATIVE` 增加同一 helper，覆盖 Stratagem、Tools、Sly 嵌套及回合内未发布意图；本轮三模式的省略边界为 5／3／0 个。纯值 `RoundChecks` 另覆盖空根 AI 日志、根当前招式与下一招式不同的挂起发布边界。
+
+`COMPACT-SEARCH-BACKEND` 现保存成功 A/B 的完整逻辑结果，并比对每个完成前缀的 ContinuationStamp，附进程级分配／CPU／GC 增量。单线程与 DOP8 的原完整路线和全部逻辑结果跨请求一致，物化均 0。`COMPACT-SERIAL-PREPARATION-SENTINEL` 使用 VerifySearchPolicySnapshot + StopAfterCombatRootSnapshotAssertion，固定 250 节点、SILENT／机械骑士 1000 HP、PREPARED／SURVIVOR／BACKFLIP 及 GAMBLERS_BREW／COLORLESS_POTION，验证旧路径 DOP1/DOP2、取消／失败排空。三模式 `COMPACT-ROUND-NATIVE` 的每步完成值还比对续用文本，覆盖非零根历史及 Power 初始字段。

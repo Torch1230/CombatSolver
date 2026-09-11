@@ -1487,12 +1487,14 @@ internal sealed partial class CombatBeamSolver
         {
             return;
         }
+        CompletedStateReadView? view = ReadCompactPolicyState(node.Snapshot);
         node.Snapshot.SetContinuation(ContinuationStamp.CapturePredicted(
             _player,
-            node.Snapshot.Simulator,
+            view?.EvaluationContext ?? node.Snapshot.Simulator,
             node.Turn,
             _forecast,
-            _startTurnNumber));
+            _startTurnNumber,
+            view));
     }
 
     private static void ValidateHistoricalSimulatorsReleased(IReadOnlyList<SearchNode> candidates)

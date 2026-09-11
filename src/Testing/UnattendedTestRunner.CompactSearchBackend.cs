@@ -23,13 +23,12 @@ internal sealed partial class UnattendedTestRunner
         var preparation = Stopwatch.StartNew();
         using (SimulationNotificationIsolation.Enter()) compact = new(captured.ForkSimulator(), player);
         preparation.Stop();
-        var baseline = await Task.Run(() => CombatSearchCoordinator.Solve(captured, display, damage, policy, default, null));
+        var (baseline, baselineResources) = await Measure(policy);
         Write("compact-search-baseline.json", Summary(baseline));
         int pendingChecks;
         using (SimulationNotificationIsolation.Enter())
             pendingChecks = AssertCompactReplayBoundaries(captured, display, damage, policy, player, baseline.BestNode.Actions);
-        var changed = await Task.Run(() => CombatSearchCoordinator.Solve(captured, display, damage,
-            policy with { CompactRoot = compact }, default, null));
+        var (changed, candidateResources) = await Measure(policy with { CompactRoot = compact });
         Write("compact-search-candidate.json", Summary(changed));
         object Logical(SolverResult result) => new
         {
@@ -45,10 +44,10 @@ internal sealed partial class UnattendedTestRunner
             result.CrossTurnContinuationsStopped, result.CycleShapesDetected, result.CycleRegionsDetected,
             result.PrimaryIncumbentBranchesPruned, result.PrimaryIncumbentUpdates
         };
+        Write("compact-search-logical-baseline.json", Logical(baseline));
+        Write("compact-search-logical-candidate.json", Logical(changed));
         if (JsonSerializer.Serialize(Logical(baseline)) != JsonSerializer.Serialize(Logical(changed)))
         {
-            Write("compact-search-logical-baseline.json", Logical(baseline));
-            Write("compact-search-logical-candidate.json", Logical(changed));
             throw new InvalidOperationException("Compact backend changed the complete route, evaluation or logical search work; see logical evidence.");
         }
         var counts = compact.Counts;
@@ -59,7 +58,8 @@ internal sealed partial class UnattendedTestRunner
         {
             equivalent = true, pendingChecks, preparationMilliseconds = preparation.Elapsed.TotalMilliseconds,
             completedReplays = counts.CompletedReplays, pendingReplays = counts.PendingReplays,
-            materializations = counts.Materializations, baseline = Summary(baseline), candidate = Summary(changed)
+            materializations = counts.Materializations, baseline = Summary(baseline), candidate = Summary(changed),
+            baselineResources, candidateResources
         });
         _completedChecks.Add($"CompactSearchBackend:WholeSearchLogicalEquivalent:{counts.CompletedReplays}Completed:{counts.PendingReplays}Pending:{counts.Materializations}Materializations:ActualUnchanged");
 
@@ -69,6 +69,24 @@ internal sealed partial class UnattendedTestRunner
             result.CombatEndedTurn, result.ProjectedBattleHpLost, result.Elapsed,
             actions = result.BestNode.Actions.Count, result.MaxParallelExpansionConcurrency
         };
+        async Task<(SolverResult Result, object Resources)> Measure(SearchPolicySnapshot selectedPolicy)
+        {
+            using var process = Process.GetCurrentProcess();
+            long allocated = GC.GetTotalAllocatedBytes(precise: true);
+            TimeSpan cpu = process.TotalProcessorTime;
+            int[] collections = Enumerable.Range(0, 3).Select(GC.CollectionCount).ToArray();
+            var result = await Task.Run(() => CombatSearchCoordinator.Solve(captured, display, damage, selectedPolicy, default, null));
+            process.Refresh();
+            return (result, new
+            {
+                scope = "Process-wide deltas during headless coordinator solve; includes game/native background work",
+                allocatedBytes = GC.GetTotalAllocatedBytes(precise: true) - allocated,
+                cpuMilliseconds = (process.TotalProcessorTime - cpu).TotalMilliseconds,
+                gcCollections = Enumerable.Range(0, 3).Select(generation => GC.CollectionCount(generation) - collections[generation]).ToArray(),
+                managedHeapAtEndBytes = GC.GetTotalMemory(forceFullCollection: false),
+                workingSetAtEndBytes = process.WorkingSet64
+            });
+        }
         void Write(string file, object value)
         {
             if (string.IsNullOrWhiteSpace(_request.EvidenceDirectory)) return;
@@ -84,6 +102,7 @@ internal sealed partial class UnattendedTestRunner
         var captured = new CompactCombatRoot(root.ForkSimulator(), player);
         var legacy = new CombatBeamSolver(root, display, damage, policy, searchProfile: policy.ShortProfile);
         var compact = new CombatBeamSolver(root, display, damage, policy with { CompactRoot = captured }, searchProfile: policy.ShortProfile);
+        var continuationReader = captured.Adapter.CreateReadView();
         var beforeLegacy = InvokeForcedTerminalReplay(legacy, [], null, root.StartTurnNumber, null);
         var beforeCompact = InvokeForcedTerminalReplay(compact, [], null, root.StartTurnNumber, null);
         List<(CompactCombatCandidate Values, TurnStartChoiceRequest Request, string Signature)> retained = [];
@@ -124,6 +143,13 @@ internal sealed partial class UnattendedTestRunner
                 beforeLegacy.ReleaseSimulator(); beforeCompact.ReleaseSimulator();
                 beforeLegacy = nextLegacy; beforeCompact = nextCompact;
                 AssertCompactEvaluation(beforeLegacy, beforeCompact, $"SearchCompleted/{step}/{action.CardId}");
+                continuationReader.Read(beforeCompact.CompactCandidate!.Values.Open());
+                var expectedStamp = ContinuationStamp.CapturePredicted(player, beforeLegacy.Simulator,
+                    beforeLegacy.Turn, root.Forecast, root.StartTurnNumber);
+                var actualStamp = ContinuationStamp.CapturePredicted(player, continuationReader.EvaluationContext,
+                    beforeCompact.Turn, root.Forecast, root.StartTurnNumber, continuationReader);
+                if (expectedStamp != actualStamp)
+                    throw new InvalidOperationException($"Compact continuation differs at {step}: {expectedStamp.DescribeFirstDifference(actualStamp)}.");
             }
             var metadata = new CompactPlanReplay(captured.Adapter);
             foreach (var sample in retained.AsEnumerable().Reverse())

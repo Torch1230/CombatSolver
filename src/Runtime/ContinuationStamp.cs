@@ -115,17 +115,21 @@ internal sealed record ContinuationStamp(string StateText)
         CombatPredictionSimulator simulator,
         int turn,
         IntentForecast forecast,
-        int startTurnNumber)
+        int startTurnNumber,
+        CompletedStateReadView? readView = null)
     {
+        if (readView != null && !ReferenceEquals(simulator, readView.EvaluationContext))
+            throw new InvalidOperationException("Continuation values and metadata must belong to the same read context.");
         SimPlayerCombatState pcs = simulator.State.GetPlayerCombatState(player);
-        SimCreatureState simulatedPlayer = simulator.State.GetCreature(player.Creature);
+        CreatureReadValues simulatedPlayer = readView?.ReadCreature(player.Creature)
+            ?? CreatureReadValues.Capture(simulator, player.Creature);
         SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
         StringBuilder text = Begin(
             turn,
             simulatedPlayer.CurrentHp,
             simulatedPlayer.MaxHp,
             simulatedPlayer.Block,
-            pcs.Energy,
+            readView?.Energy ?? pcs.Energy,
             pcs.Stars,
             combat.GetPlayerGold(player));
         AppendOsty(
@@ -133,21 +137,21 @@ internal sealed record ContinuationStamp(string StateText)
             combat.GetOsty(player),
             combat.GetOsty(player) is { } osty ? simulator.State.GetCreature(osty).CurrentHp : 0,
             combat.GetOstyMaxHp(simulator, player));
-        IReadOnlyList<Creature> predictedEnemies = combat.Enemies;
+        IReadOnlyList<Creature> predictedEnemies = readView?.EnemyRoster ?? combat.Enemies;
         AppendEnemies(text, predictedEnemies,
-            enemy => simulator.State.GetCreature(enemy).CurrentHp,
-            enemy => simulator.State.GetCreature(enemy).MaxHp,
-            enemy => simulator.State.GetCreature(enemy).Block,
+            enemy => readView?.ReadCreature(enemy).CurrentHp ?? simulator.State.GetCreature(enemy).CurrentHp,
+            enemy => readView?.ReadCreature(enemy).MaxHp ?? simulator.State.GetCreature(enemy).MaxHp,
+            enemy => readView?.ReadCreature(enemy).Block ?? simulator.State.GetCreature(enemy).Block,
             enemy => combat.TryGetForcedMoveId(enemy, out string forcedMove)
                 ? forcedMove
                 : combat.GetPredictedMoveId(enemy));
         combat.AppendPredictedMonsterAiContinuation(text);
         combat.AppendPredictedMonsterStateContinuation(text);
-        AppendPredictedPile(text, pcs.Hand, 'H');
-        AppendPredictedPile(text, pcs.DrawPile, 'D');
-        AppendPredictedPile(text, pcs.DiscardPile, 'C');
-        AppendPredictedPile(text, pcs.ExhaustPile, 'X');
-        combat.AppendPredictedTurnCardHistory(text, player);
+        AppendPredictedPile(text, readView?.Hand ?? pcs.Hand.Cards, 'H');
+        AppendPredictedPile(text, readView?.Draw ?? pcs.DrawPile.Cards, 'D');
+        AppendPredictedPile(text, readView?.Discard ?? pcs.DiscardPile.Cards, 'C');
+        AppendPredictedPile(text, readView?.Exhaust ?? pcs.ExhaustPile.Cards, 'X');
+        combat.AppendPredictedTurnCardHistory(text, player, readView?.CardHistory);
         AppendPredictedOrbs(text, simulator, pcs.OrbQueue.Capacity, pcs.OrbQueue.Orbs);
         AppendPotions(text, player, slot => combat.GetPotionAtSlot(player, slot));
         combat.AppendPredictedStatefulRelics(text, player);
@@ -157,11 +161,11 @@ internal sealed record ContinuationStamp(string StateText)
             combat.RelicsOf(player));
         AppendPowers(text, combat.EffectivePowers(), simulator);
         AppendRng(text,
-            simulator.Rng.Shuffle.CaptureState(),
+            readView?.ShuffleRng ?? simulator.Rng.Shuffle.CaptureState(),
             simulator.Rng.CombatCardGeneration.CaptureState(),
             simulator.Rng.CombatPotionGeneration.CaptureState(),
             simulator.Rng.CombatCardSelection.CaptureState(),
-            simulator.Rng.CombatEnergyCosts.CaptureState(),
+            readView?.EnergyCostRng ?? simulator.Rng.CombatEnergyCosts.CaptureState(),
             simulator.Rng.CombatTargets.CaptureState(),
             simulator.Rng.CombatOrbGeneration.CaptureState(),
             simulator.Rng.MonsterAi.CaptureState(),
@@ -309,10 +313,10 @@ internal sealed record ContinuationStamp(string StateText)
             AppendCard(text, card, discoverUnregisteredBaseLibModifiers: true);
     }
 
-    private static void AppendPredictedPile(StringBuilder text, SimCardPile pile, char marker)
+    private static void AppendPredictedPile(StringBuilder text, IReadOnlyList<PredictedCard> cards, char marker)
     {
         text.Append(';').Append(marker).Append('=');
-        foreach (PredictedCard card in pile.Cards)
+        foreach (PredictedCard card in cards)
             AppendCard(text, card.Preview, discoverUnregisteredBaseLibModifiers: false);
     }
 
