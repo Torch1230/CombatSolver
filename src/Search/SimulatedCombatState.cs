@@ -2195,7 +2195,7 @@ internal sealed partial class SimulatedCombatState
         AppendDampenFingerprint(ref fingerprint);
         AppendDeathLifecycleFingerprint(ref fingerprint, combatHistory?.DeathPhases);
         AppendPossessFingerprint(ref fingerprint);
-        AppendAutoPlayFingerprint(ref fingerprint, combatHistory?.LastAttacks);
+        AppendAutoPlayFingerprint(ref fingerprint, combatHistory?.LastAttacks, combatHistory?.PreviousTurnAttacks);
         fingerprint.Add('T');
         fingerprint.Add(OutstandingStolenResource(simulator));
     }

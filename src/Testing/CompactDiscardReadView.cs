@@ -105,6 +105,11 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
             var item = program.EventAt(i);
             switch (item.Kind)
             {
+                case ResumableDiscardProgram.EventKind.CommitPlayerTurnHistory:
+                    if (_combatHistory.LastAttacks.Remove(_player, out var lastAttack))
+                        _combatHistory.PreviousTurnAttacks[_player] = lastAttack;
+                    else _combatHistory.PreviousTurnAttacks.Remove(_player);
+                    break;
                 case ResumableDiscardProgram.EventKind.BeginSide:
                     bool enemy = item.Card == -2;
                     Creature phaseOwner = _adapter.Creature(enemy ? 1 : 0);

@@ -208,10 +208,11 @@ internal sealed partial class SimulatedCombatState
     }
 
     private void AppendAutoPlayFingerprint(ref StateFingerprintBuilder fingerprint,
-        IReadOnlyDictionary<Player, PredictedCard>? lastAttacks = null)
+        IReadOnlyDictionary<Player, PredictedCard>? lastAttacks = null,
+        IReadOnlyDictionary<Player, PredictedCard>? previousTurnAttacks = null)
     {
         AppendTrackedAttack(ref fingerprint, 't', lastAttacks ?? _lastAttackThisTurn);
-        AppendTrackedAttack(ref fingerprint, 'p', _lastAttackPreviousTurn);
+        AppendTrackedAttack(ref fingerprint, 'p', previousTurnAttacks ?? _lastAttackPreviousTurn);
     }
 
     private static void AppendTrackedAttack(

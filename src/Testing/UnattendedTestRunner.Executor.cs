@@ -39,6 +39,12 @@ internal sealed partial class UnattendedTestRunner
             bool expectedCardPlayed = request.ExpectedPlayedCardId == null;
             bool expectedPotionUsed = request.ExpectedUsedPotionId == null;
             bool expectedPlayerPowerObserved = request.ExpectedObservedPlayerPowerId == null;
+            if (request.ScenarioId == "COMPACT-FULL-ROUTE-NATIVE")
+            {
+                _ = ApplySettingsOverrides();
+                await runner.AssertCompactFullRouteAsync(combatState, player);
+                return Observation(combatEnded: !CombatManager.Instance.IsInProgress);
+            }
             if (request.ScenarioId == "COMPACT-POWER-PHASES-NATIVE")
             {
                 await runner.AssertCompactPowerPhasesAsync(combatState, player);

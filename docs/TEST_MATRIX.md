@@ -1,5 +1,7 @@
 # CombatSolver 测试清单
 
+- `COMPACT-FULL-ROUTE-NATIVE`：`c42c12e1eb8b42ddbdf6cbe6b717bc80` Passed；原始 30 牌／31 监听器，44 原生动作、424 已准入替代分支，第 8 回合胜利、59/65 HP。完整状态／键／历史／Power／九 RNG／逐实例牌堆、双工作区和原生结束后冻结重放；原正式搜索生成路线，尚非紧凑生产搜索。[范围与复现](performance/simulation-full-route-20260911.md)。
+
 - `COMPACT-ROUND-NATIVE`：`43aec28b796547a7b3d107003021bd01` Passed；3 根／20 分支／7 原生动作（6 次完整结束回合），覆盖起手洗牌、Tools、临时／永久 Sly、Power、AI、生成牌、保留与敌方中毒终局；完整状态／历史／原键／估值／九 RNG、冷根历史及八工作区恢复。[证据](performance/simulation-rounds-20260911.md)。
 
 - `COMPACT-MONSTER-AI-NATIVE`：`b7de315897af4c2782ce92a17f5c3cd7` Passed；`--character-id SILENT --encounter-id MECHA_KNIGHT_ELITE --enemy-current-hp 300 --cards-json '[]'`，3 根／10 分支／16 原生动作，完整 AI／状态／历史／九 RNG／估值／原键、逆序恢复及八工作区；纯值 300 次增长日志。原生侧调用 PerformMove 和 RollMove，尚非完整回合。[证据](performance/simulation-monster-ai-20260911.md)。

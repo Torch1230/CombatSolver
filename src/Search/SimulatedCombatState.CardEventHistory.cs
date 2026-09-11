@@ -354,6 +354,8 @@ internal sealed partial class SimulatedCombatState
             foreach (var pair in _creatureAttacksThisTurn) values.CreatureAttacks.Add(pair.Key, pair.Value);
         if (_lastAttackThisTurn != null)
             foreach (var pair in _lastAttackThisTurn) values.LastAttacks.Add(pair.Key, pair.Value);
+        if (_lastAttackPreviousTurn != null)
+            foreach (var pair in _lastAttackPreviousTurn) values.PreviousTurnAttacks.Add(pair.Key, pair.Value);
         if (_deathPhases != null)
             foreach (var pair in _deathPhases) values.DeathPhases.Add(pair.Key, pair.Value);
         return values;

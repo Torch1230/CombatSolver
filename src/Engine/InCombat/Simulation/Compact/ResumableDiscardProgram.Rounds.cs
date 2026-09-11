@@ -25,6 +25,7 @@ internal sealed partial class ResumableDiscardProgram
         if (_round == null || !Complete || EnemySide || Terminal || Ending)
             throw new InvalidOperationException("Round advance requires admitted completed player choice.");
         EndHandEffects(staging);
+        Emit(EventKind.CommitPlayerTurnHistory, -1);
         if (CheckWinCondition()) return;
         // Native flush does not invoke discard hooks, history or Sly. Retain is
         // captured separately from temporary flags removed by the cleanup below.

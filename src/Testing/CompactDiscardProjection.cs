@@ -182,6 +182,12 @@ internal sealed class CompactDiscardProjection
     internal SimulatedCombatState.CompletedRoundReadBinding? CreateRoundReadBinding(CombatPredictionSimulator context)
         => !Program.HasRounds ? null : new((SimulatedCombatState)context.State.CombatState, _player, _creatures[1]);
 
+    internal CompactCardMetadataReadBinding CreatePlanMetadata()
+    {
+        var owned = _root.Fork();
+        return new(this, _identities.Select(card => owned.State.FindCard(card)!).ToArray());
+    }
+
     internal static readonly string[] MechaMoveIds = ["CHARGE_MOVE", "FLAMETHROWER_MOVE", "WINDUP_MOVE", "HEAVY_CLEAVE_MOVE"];
 
     private MonsterEffectProgram[] CaptureMechaCommands(CombatPredictionSimulator root, int burnTemplate)
@@ -341,6 +347,11 @@ internal sealed class CompactDiscardProjection
                     var generation = projection.History.CardGenerated(created, item.Target == 0 ? _player : null, CardGenerationResultKind.Fixed);
                     projection.AddToPile(created, PileType.Hand);
                     projection.History.CardGenerationResolved(generation, created);
+                    continue;
+                }
+                if (item.Kind == ResumableDiscardProgram.EventKind.CommitPlayerTurnHistory)
+                {
+                    combat.CommitHistoryCourseTurn(_player);
                     continue;
                 }
                 if (item.Kind == ResumableDiscardProgram.EventKind.BeginSide)

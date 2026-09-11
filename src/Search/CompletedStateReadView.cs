@@ -69,6 +69,7 @@ internal sealed class CombatHistoryReadValues
     internal Dictionary<(Creature Dealer, Creature Receiver), int> PoweredHits { get; } = [];
     internal Dictionary<Creature, int> CreatureAttacks { get; } = [];
     internal Dictionary<Player, PredictedCard> LastAttacks { get; } = [];
+    internal Dictionary<Player, PredictedCard> PreviousTurnAttacks { get; } = [];
     internal Dictionary<Creature, PredictedDeathPhase> DeathPhases { get; } = [];
 
     internal void ResetFrom(CombatHistoryReadValues source)
@@ -80,6 +81,8 @@ internal sealed class CombatHistoryReadValues
         foreach (var pair in source.CreatureAttacks) CreatureAttacks.Add(pair.Key, pair.Value);
         LastAttacks.Clear();
         foreach (var pair in source.LastAttacks) LastAttacks.Add(pair.Key, pair.Value);
+        PreviousTurnAttacks.Clear();
+        foreach (var pair in source.PreviousTurnAttacks) PreviousTurnAttacks.Add(pair.Key, pair.Value);
         DeathPhases.Clear();
         foreach (var pair in source.DeathPhases) DeathPhases.Add(pair.Key, pair.Value);
     }

@@ -1201,7 +1201,7 @@ foreach ($file in Get-ChildItem -LiteralPath $compactRoot -Filter *.cs -File -Re
 }
 $compactProductionFiles = @($searchFiles) + @(Get-ChildItem -LiteralPath (Join-Path $repositoryRoot 'src/Runtime') -Filter *.cs -File -Recurse)
 foreach ($file in $compactProductionFiles) {
-    foreach ($reference in @('ResumableDiscardProgram', 'CompactDiscardProjection', 'CompactDiscardReadView', 'CompactPhaseProbe', 'CompactCardMetadataReadBinding', 'CompactCardProgramCompiler', 'MonsterEffectProgram', 'DeterministicMonsterAi', 'CompactMonsterAiReadBinding', 'CompactRoundRoot', 'CompactRoundLayout')) {
+    foreach ($reference in @('ResumableDiscardProgram', 'CompactDiscardProjection', 'CompactDiscardReadView', 'CompactPhaseProbe', 'CompactCardMetadataReadBinding', 'CompactCardProgramCompiler', 'MonsterEffectProgram', 'DeterministicMonsterAi', 'CompactMonsterAiReadBinding', 'CompactRoundRoot', 'CompactRoundLayout', 'CompactPlanReplay')) {
         foreach ($match in Select-String -LiteralPath $file.FullName -SimpleMatch $reference) {
             $violations.Add("$($match.Path):$($match.LineNumber): unvalidated compact prototype reached production: $reference")
         }
@@ -1295,6 +1295,8 @@ $compactReadGuards = @(
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'if (ResultPile(card) == Pile.Removed || !Ending)'),
     @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', 'if (target != 0) _creatures[target].SetPresent(state, false);'),
     @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', 'state.Write(_terminalSlot, DeathCompleted(state, 0) ? 2 : 1);'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Rounds.cs', 'Emit(EventKind.CommitPlayerTurnHistory, -1);'),
+    @('src/Search/SimulatedCombatState.cs', 'combatHistory?.LastAttacks, combatHistory?.PreviousTurnAttacks'),
     @('src/Search/SimulatedCombatState.cs', 'history?.Owner, history?.StatusDraws'),
     @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'view?.CumulativePlayerHpLost ?? combat.GetCumulativeHpLost(_player.Creature)'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.HandEnd.cs', 'if (!_handEndAdmitted || !Complete || !Enum.IsDefined(staging))'),
