@@ -191,6 +191,10 @@ internal sealed partial class CombatBeamSolver
             SolverWeights.LongTermResourceBeamCap);
         int growthHpCredit = _growthBudgets.Credit(growthRewards);
         score += (double)growthHpCredit * hpWeight;
+        RelicCounterEvaluation relicCounters = combat.EvaluateRelicCounters(simulator, _player, _relicTargets);
+        score += (double)relicCounters.HpCredit * hpWeight;
+        // Small, bounded tie guidance for free counter alignment; HP remains the primary cost.
+        score += relicCounters.SatisfiedCount * 0.1 - relicCounters.Distance * 0.001;
         int angerCopiesGenerated = combat.AngerCopiesGenerated;
         score += angerCopiesGenerated * SolverWeights.AngerCopyBeamPenalty;
         if (won && !uncertainVictory)
@@ -489,6 +493,7 @@ internal sealed partial class CombatBeamSolver
             terminal)
         {
             GrowthHpCredit = growthHpCredit,
+            RelicCounters = relicCounters,
             GrowthRewards = growthRewards,
             BrightestFlameMaxHpSpent = combat.BrightestFlameMaxHpSpent,
             UnrecoveredGold = combat.UnrecoveredLoot(simulator).Gold,

@@ -90,7 +90,7 @@ internal sealed partial class CombatBeamSolver
                         maxHpDeficit,
                         features.RecoveredPlayerHp + relicHeal,
                         bossHpRelief,
-                        features.DeathSaveRelicHpRestored) - candidate.Snapshot.GrowthHpCredit;
+                        features.DeathSaveRelicHpRestored) - candidate.Snapshot.StrategicHpCredit;
                     int healthResourceCost = initialHp - features.PlayerHp
                         + initialPlayerMaxHp - features.PlayerMaxHp;
                     int strategicSold = battleSold;
@@ -260,8 +260,8 @@ internal sealed partial class CombatBeamSolver
                     ? candidate.Features.OutstandingStolenResource : 0)
                 // Compare HP after the requested recovery objective.
                 .ThenBy(candidate => candidate.StrategicHpDeficit)
-                .ThenByDescending(candidate => candidate.Snapshot.GrowthHpCredit)
-                .ThenByDescending(candidate => candidate.Snapshot.GrowthRewards.Total)
+                .ThenByDescending(candidate => candidate.Snapshot.StrategicHpCredit)
+                .ThenByDescending(candidate => candidate.Snapshot.StrategyGoalCount)
                 .ThenBy(candidate => candidate.CombatEndedTurn ?? int.MaxValue)
                 .ThenBy(candidate => candidate.PolicyHpDeficit)
                 .ThenBy(candidate => candidate.HealthResourceCost)
@@ -371,7 +371,7 @@ internal sealed partial class CombatBeamSolver
                         leftSnapshot.PlayerHp,
                         leftSnapshot.PlayerMaxHp),
                 bossHpRelief,
-                leftSnapshot.DeathSaveRelicHpRestored) - leftSnapshot.GrowthHpCredit)
+                leftSnapshot.DeathSaveRelicHpRestored) - leftSnapshot.StrategicHpCredit)
             .CompareTo(ActEndingBossPolicy.StrategicHpDeficit(
                 rightSnapshot.CumulativePlayerHpLost,
                 Math.Max(0, initialPlayerMaxHp - rightSnapshot.PlayerMaxHp),
@@ -382,13 +382,13 @@ internal sealed partial class CombatBeamSolver
                         rightSnapshot.PlayerHp,
                         rightSnapshot.PlayerMaxHp),
                 bossHpRelief,
-                rightSnapshot.DeathSaveRelicHpRestored) - rightSnapshot.GrowthHpCredit);
+                rightSnapshot.DeathSaveRelicHpRestored) - rightSnapshot.StrategicHpCredit);
         if (comparison != 0)
             return comparison;
-        comparison = rightSnapshot.GrowthHpCredit.CompareTo(leftSnapshot.GrowthHpCredit);
+        comparison = rightSnapshot.StrategicHpCredit.CompareTo(leftSnapshot.StrategicHpCredit);
         if (comparison != 0)
             return comparison;
-        comparison = rightSnapshot.GrowthRewards.Total.CompareTo(leftSnapshot.GrowthRewards.Total);
+        comparison = rightSnapshot.StrategyGoalCount.CompareTo(leftSnapshot.StrategyGoalCount);
         if (comparison != 0)
             return comparison;
         comparison = (leftWon ? leftSnapshot.CombatEndedTurn ?? int.MaxValue : int.MaxValue)

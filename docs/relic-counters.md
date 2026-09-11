@@ -1,0 +1,51 @@
+# 战斗末遗物计数策略
+
+面板默认显示已持有的可控遗物，并使用游戏原生图标。打开“显示未持有”可以提前配置；已持有项始终优先排列。每张卡片第一行显示名称、持有状态和独立开关，第二行配置结束计数范围与愿付额外战损。其他计数遗物的说明可展开查看。
+
+“遗物”入口位于“药水”“成长”旁边。总开关默认开启，每项独立开关默认关闭，设置保存后跨跑局保留。每项指定包含两端的最小/最大值，以及愿意为达标承担的额外战损。关闭开关保留其数值；未持有、已融化和覆盖整个计数周期的条件不生成搜索目标。
+
+本功能选择合法出牌路线来留下目标计数，不修改实机遗物的数值。每项达标只获得一次 HP 折算额度，多项相加；反复绕过触发周期不会累计额度。零额度仍比较同战损下的免费达标，但不会为它买入更高战损。该策略有独立总开关，与成长面板的开关分别控制。
+
+## 计数清单（游戏 0.111.0）
+
+定向检查原版 `RelicModel.DisplayAmount` 的 36 个重写类型；下面用源码类型标识避免自行翻译，客户端名称读取游戏本地化。另核对用户提到的 Lantern：它仅首回合加能量，没有跨战斗计数。
+
+### 可在战斗中安排、跨战斗保留的十项
+
+| 类型 | 稳定计数范围 | 状态来源 |
+|---|---|---|
+| HappyFlower | 0–2 | TurnsSeen |
+| FakeHappyFlower | 0–4 | TurnsSeen |
+| Pendulum | 0–2 | TurnsSeen |
+| PollinousCore | 0–3 | TurnsSeen，抽牌触发后归零 |
+| PenNib | 0–9 | AttacksPlayed |
+| Nunchaku | 0–9 | AttacksPlayed % 10 |
+| TuningFork | 0–9 | SkillsPlayed |
+| JossPaper | 0–4 | CardsExhausted；不计战后清空的延迟虚无计数 |
+| IronClub | 0–3 | CardsPlayed % 4，包含末击后的出牌回调 |
+| GalacticDust | 0–9 | StarsSpent % 10 |
+
+主线程冻结本场持有的目标。节点评价只读已有分支状态，覆盖 StatefulRelicState 与 StateStore；Fork、状态键与续用继续使用原权威计数，不新增第二套战斗计数。结果保存达标位掩码、一次性额度与目标距离，评分、候选排序、用药反事实、保路和 Pareto 共用这些派生值。目标不同但达标数量相同的节点，不会仅凭数量互相支配。
+
+### 其余 26 项
+
+| 类别 | 类型 | 处理 |
+|---|---|---|
+| 回合/战斗计数重置 | VelvetChoker、PaelsLegion、Shuriken、Pocketwatch、PaelsFlesh、StoneCalendar、Metronome、OrnamentalFan、LetterOpener、Kusarigama、Kunai、BrilliantScarf | 清单展示原因，不让无法带走的目标阻塞搜索 |
+| 按场数或精英胜场固定变化 | ToyBox、PaelsTooth、WongosMysteryTicket、PumpkinCandle、BoneTea、EmberTea、FishingRod、SwordOfStone | 出牌路线无法调整该战斗结束后的增减，不生成目标 |
+| 地图、奖励、永久牌库操作 | WingedBoots、SilverCrucible、Girya、LastingCandy、PaelsWing、BookOfFiveRings | 当前不参与战斗末卡数；保留原版行为 |
+
+TeaOfDiscourtesy、LavaRock 虽重写 ShowCounter，但返回 false，未重写 DisplayAmount，不冒充可配置的计数遗物。第三方额外计数只有清单展示，没有通用猜测适配。
+
+## 与早停的关系
+
+- 总开关关闭、独立开关关闭、未持有相关遗物、范围覆盖整个周期：原早停逻辑保持。
+- 当前有目标：完整胜利路线的计数都达标后，继续按原累计战损阈值、成长目标与必要药水条件早停。不会因打开功能而全局关闭早停。
+- 原战损阈值仍按真实累计扣血判断；遗物额度不抬高阈值。超过原阈值的达标路线仍受正常搜索预算约束，额度只影响路线取舍。
+- 找不到合适计数时保留最佳生还路线，沿用原时间/节点预算，不另开无限续搜。HP-only 下界剪枝在有计数目标时停用，避免先找到零损路线就错误裁掉可达标路线。
+
+## 验证与已知边界
+
+`RELIC-COUNTER-POLICY` 验证十项根捕获、Fork、live 推进隔离、设置往返、总/单项开关、UI 排序与边界、真实搜索的免费/付费卡数、原生末击后的计数与增量回放。首次在付费局面暴露补充搜索前缀丢失，已让攻防/准备后续探针复用完整固定前缀父链；不是关闭增量校验。
+
+通过样本 `5d123007ff00488fa48ad0278513ccdf`：25.36 秒，达标早停 2 节点，对照关闭早停 62 节点；零额度拒绝 3 HP 卡数，3 HP 额度允许，原生末击计数一致。无可见人工 UI 验收，headless 不证明所有牌组都能找到理想计数。

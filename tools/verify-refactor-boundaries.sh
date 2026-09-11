@@ -950,6 +950,16 @@ EOF
 for private_registry_field in '"_registrations"' '"_inferrer"' '"_strictInferrer"'; do
     forbid_fixed "$coverage_catalog_path" "$private_registry_field" 'private registry reflection returned:'
 done
+while IFS=$'\t' read -r relative_path text; do
+    require_fixed "$repository_root/$relative_path" "$text" 'missing relic policy ownership'
+done <<'EOF'
+src/Search/SearchPolicySnapshot.cs	IReadOnlyList<RelicCounterTarget> RelicTargets
+src/Search/CombatBeamSolver.Phases.cs	policy.RelicTargetsSatisfied(node.Snapshot.RelicCounters)
+src/Search/CombatSearchCoordinator.cs	policy.RelicTargetsSatisfied(result.Snapshot.RelicCounters)
+src/Runtime/SolvedRouteCache.cs	policy.RelicTargets
+src/Search/CombatBeamSolver.Expansion.cs	ApplyFixedPrefix(seed, prefix)
+src/UI/SolverRelicStrategyPanel.cs	row.Enabled.ButtonPressed
+EOF
 for rule in 'SimulationNotificationIsolation.IsActive' '"DynamicVarUpgrades"' 'table.TryGetValue(source' 'Tips.TryGetValue(__0'; do
     require_fixed "$repository_root/src/Runtime/DynamicVarCloneMetadataPatches.cs" "$rule" 'missing sparse metadata boundary'
 done

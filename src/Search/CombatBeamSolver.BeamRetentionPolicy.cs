@@ -6716,10 +6716,10 @@ internal sealed partial class CombatBeamSolver
                 rightWon,
                 StrategicHpDeficit(rightSnapshot, rightWon),
                 rightWon ? CompletedCombatTurn(right) : null,
-                leftSnapshot.GrowthHpCredit,
-                rightSnapshot.GrowthHpCredit,
-                leftSnapshot.GrowthRewards.Total,
-                rightSnapshot.GrowthRewards.Total);
+                leftSnapshot.StrategicHpCredit,
+                rightSnapshot.StrategicHpCredit,
+                leftSnapshot.StrategyGoalCount,
+                rightSnapshot.StrategyGoalCount);
             if (comparison != 0)
                 return comparison;
 
@@ -6788,7 +6788,7 @@ internal sealed partial class CombatBeamSolver
                         snapshot.PlayerHp,
                         snapshot.PlayerMaxHp),
                 _bossHpRelief,
-                snapshot.DeathSaveRelicHpRestored) - snapshot.GrowthHpCredit;
+                snapshot.DeathSaveRelicHpRestored) - snapshot.StrategicHpCredit;
 
         private int HealthResourceCost(SimulationSnapshot snapshot)
             => _initialPlayerHp - snapshot.PlayerHp
@@ -7386,8 +7386,10 @@ internal sealed partial class CombatBeamSolver
                 && left.Snapshot.PlayerMaxHp >= right.Snapshot.PlayerMaxHp
                 && left.Snapshot.CumulativePlayerHpLost <= right.Snapshot.CumulativePlayerHpLost
                 && left.Snapshot.LongTermResourceValue >= right.Snapshot.LongTermResourceValue
-                && left.Snapshot.GrowthHpCredit >= right.Snapshot.GrowthHpCredit
-                && left.Snapshot.GrowthRewards.Total >= right.Snapshot.GrowthRewards.Total
+                && left.Snapshot.StrategicHpCredit >= right.Snapshot.StrategicHpCredit
+                && (left.Snapshot.RelicCounters.SatisfiedMask & right.Snapshot.RelicCounters.SatisfiedMask)
+                    == right.Snapshot.RelicCounters.SatisfiedMask
+                && left.Snapshot.StrategyGoalCount >= right.Snapshot.StrategyGoalCount
                 && left.Snapshot.AngerCopiesGenerated <= right.Snapshot.AngerCopiesGenerated
                 && (_theftPolicy != SolverTheftPolicy.PreserveResources
                     || left.Snapshot.OutstandingStolenResource <= right.Snapshot.OutstandingStolenResource)

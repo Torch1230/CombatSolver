@@ -496,6 +496,7 @@ internal static class SolverController
             // 这里记的是玩家填的原始值；「不考虑局外收益」的折算交给快照上的 Effective* 一处做，
             // 免得两边各判一次而走岔。问题包里两样都在，方便看出当时是填了额度还是开了开关。
             GrowthBudgets = settings.GrowthBudgets,
+            RelicTargets = RelicCounterCatalog.Capture(state, settings.RelicStrategyEnabled, settings.RelicCounterRules),
             StopAtAcceptableBattleHpLoss = settings.StopAtAcceptableBattleHpLoss,
             BrightestFlameMaxHpLossLimit = settings.BrightestFlameMaxHpLossLimit,
             HasGrowthTargets = state.Players.SelectMany(player => player.PlayerCombatState!.AllCards).Any(GrowthValues.HasTarget),
@@ -1713,6 +1714,21 @@ internal static class SolverController
         if (current.GrowthBudgets == budgets)
             return;
         SolverSettings.Update(current with { GrowthBudgets = budgets });
+        _combat.ContinuationSource = null;
+        _combat.PendingCompleteProjectionBaseline = null;
+        SolverOverlay.RefreshControls();
+        if (!_combat.AutomaticSearchPaused && AutomaticCalculationEnabled)
+            RequestSearch(host, state, SearchReason.Manual);
+    }
+
+    internal static void SetRelicCounterPolicy(NGame host, CombatState state, bool enabled, RelicCounterRule[] rules)
+    {
+        AssertMainThread();
+        if (_deployment != null) return;
+        var copied = RelicCounterPolicy.ValidateAndCopy(rules);
+        var current = SolverSettings.Current;
+        if (current.RelicStrategyEnabled == enabled && current.RelicCounterRules.SequenceEqual(copied)) return;
+        SolverSettings.Update(current with { RelicStrategyEnabled = enabled, RelicCounterRules = copied });
         _combat.ContinuationSource = null;
         _combat.PendingCompleteProjectionBaseline = null;
         SolverOverlay.RefreshControls();

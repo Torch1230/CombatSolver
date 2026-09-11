@@ -344,29 +344,26 @@ internal sealed partial class CombatBeamSolver
         }
     }
 
+    private SearchNode CreateOpeningFollowUpSeed(IReadOnlyList<PlanAction> prefix, SearchRouteTraits traits = SearchRouteTraits.Scaling)
+    {
+        SimulationSnapshot snapshot = Replay([]);
+        SearchNode seed = new(null, 0, snapshot.PotionUseCount, snapshot.PotionStrategicCost,
+            snapshot.Turn, traits, 0, snapshot.Score, snapshot.StateKey,
+            snapshot.HasRisk, snapshot.BoundaryReason, false, null, snapshot, CombatProgressState.Capture(snapshot));
+        // Build the actual parent chain, so replay verification and descendant actions
+        // include the resource/potion/setup cards that produced this state.
+        return ApplyFixedPrefix(seed, prefix)
+            ?? throw new InvalidOperationException("Opening follow-up prefix is no longer applicable.");
+    }
+
     internal IReadOnlyList<PlanAction> BuildOpeningOffensiveFollowUps(
         IReadOnlyList<PlanAction> prefix)
     {
-        SimulationSnapshot prefixSnapshot = Replay(prefix);
+        SearchNode seed = CreateOpeningFollowUpSeed(prefix, SearchRouteTraits.None);
+        SimulationSnapshot prefixSnapshot = seed.Snapshot;
         List<SearchNode> followUps = [];
         try
         {
-            SearchNode seed = new(
-                null,
-                0,
-                prefixSnapshot.PotionUseCount,
-                prefixSnapshot.PotionStrategicCost,
-                prefixSnapshot.Turn,
-                SearchRouteTraits.None,
-                0,
-                prefixSnapshot.Score,
-                prefixSnapshot.StateKey,
-                prefixSnapshot.HasRisk,
-                prefixSnapshot.BoundaryReason,
-                false,
-                null,
-                prefixSnapshot,
-                CombatProgressState.Capture(prefixSnapshot));
             followUps.AddRange(Expand(seed).Where(node =>
                 node.Action is
                 {
@@ -398,26 +395,11 @@ internal sealed partial class CombatBeamSolver
 
     internal PlanAction? BuildOpeningDefensiveFollowUp(IReadOnlyList<PlanAction> prefix)
     {
-        SimulationSnapshot prefixSnapshot = Replay(prefix);
+        SearchNode seed = CreateOpeningFollowUpSeed(prefix);
+        SimulationSnapshot prefixSnapshot = seed.Snapshot;
         List<SearchNode> followUps = [];
         try
         {
-            SearchNode seed = new(
-                null,
-                0,
-                prefixSnapshot.PotionUseCount,
-                prefixSnapshot.PotionStrategicCost,
-                prefixSnapshot.Turn,
-                SearchRouteTraits.Scaling,
-                0,
-                prefixSnapshot.Score,
-                prefixSnapshot.StateKey,
-                prefixSnapshot.HasRisk,
-                prefixSnapshot.BoundaryReason,
-                false,
-                null,
-                prefixSnapshot,
-                CombatProgressState.Capture(prefixSnapshot));
             followUps.AddRange(Expand(seed).Where(node =>
                 node.Action is { Kind: PlanActionKind.PlayCard, Turn: var turn }
                 && turn == prefixSnapshot.Turn));
@@ -438,26 +420,11 @@ internal sealed partial class CombatBeamSolver
 
     internal PlanAction? BuildOpeningSetupFollowUp(IReadOnlyList<PlanAction> prefix)
     {
-        SimulationSnapshot prefixSnapshot = Replay(prefix);
+        SearchNode seed = CreateOpeningFollowUpSeed(prefix);
+        SimulationSnapshot prefixSnapshot = seed.Snapshot;
         List<SearchNode> followUps = [];
         try
         {
-            SearchNode seed = new(
-                null,
-                0,
-                prefixSnapshot.PotionUseCount,
-                prefixSnapshot.PotionStrategicCost,
-                prefixSnapshot.Turn,
-                SearchRouteTraits.Scaling,
-                0,
-                prefixSnapshot.Score,
-                prefixSnapshot.StateKey,
-                prefixSnapshot.HasRisk,
-                prefixSnapshot.BoundaryReason,
-                false,
-                null,
-                prefixSnapshot,
-                CombatProgressState.Capture(prefixSnapshot));
             followUps.AddRange(Expand(seed).Where(node =>
                 node.Action is { Kind: PlanActionKind.PlayCard, Turn: var turn }
                 && turn == prefixSnapshot.Turn));
@@ -3621,8 +3588,10 @@ internal sealed partial class CombatBeamSolver
             && left.MaxHp >= right.MaxHp
             && left.CumulativeHpLost <= right.CumulativeHpLost
             && left.LongTermResourceValue >= right.LongTermResourceValue
-            && left.Node.Snapshot.GrowthHpCredit >= right.Node.Snapshot.GrowthHpCredit
-            && left.Node.Snapshot.GrowthRewards.Total >= right.Node.Snapshot.GrowthRewards.Total
+            && left.Node.Snapshot.StrategicHpCredit >= right.Node.Snapshot.StrategicHpCredit
+            && (left.Node.Snapshot.RelicCounters.SatisfiedMask & right.Node.Snapshot.RelicCounters.SatisfiedMask)
+                == right.Node.Snapshot.RelicCounters.SatisfiedMask
+            && left.Node.Snapshot.StrategyGoalCount >= right.Node.Snapshot.StrategyGoalCount
             && left.AngerCopiesGenerated <= right.AngerCopiesGenerated;
         bool strictlyBetter = left.Damage > right.Damage
             || left.Block > right.Block

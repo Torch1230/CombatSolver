@@ -220,7 +220,7 @@ internal sealed partial class CombatBeamSolver
                         + ActEndingBossPolicy.RankedPostCombatRelicHeal(
                             root.PostCombatRelicHeal, won, node.Snapshot.PlayerHp, node.Snapshot.PlayerMaxHp),
                     _strategicBossHpRelief,
-                    node.Snapshot.DeathSaveRelicHpRestored) - node.Snapshot.GrowthHpCredit,
+                    node.Snapshot.DeathSaveRelicHpRestored) - node.Snapshot.StrategicHpCredit,
                 PotionStrategicCost: PotionUsePolicy.EffectiveStrategicHpCost(
                     node.PotionStrategicCost,
                     ambergrisCount,
@@ -230,9 +230,9 @@ internal sealed partial class CombatBeamSolver
                 Score: node.Score,
                 CombatEndedTurn: won ? node.Snapshot.CombatEndedTurn : null)
             {
-                GrowthHpCredit = node.Snapshot.GrowthHpCredit,
+                GrowthHpCredit = node.Snapshot.StrategicHpCredit,
                 TheftPolicy = _theftPolicy,
-                GrowthRewardCount = node.Snapshot.GrowthRewards.Total,
+                GrowthRewardCount = node.Snapshot.StrategyGoalCount,
             };
         }
 
@@ -319,6 +319,7 @@ internal sealed partial class CombatBeamSolver
 
         bool MeetsHpTarget(SearchNode node)
             => policy.GrowthTargetSatisfied(node.Snapshot.GrowthRewards)
+                && policy.RelicTargetsSatisfied(node.Snapshot.RelicCounters)
                 && TheftEncounterStrategy.RecoverySatisfied(_theftPolicy, node.Snapshot.OutstandingStolenResource)
                 && IsEligibleCompleteVictory(node)
                 && ExplicitPotionUseCount(node) <= earlyStopPotionUses
@@ -596,6 +597,7 @@ internal sealed partial class CombatBeamSolver
                 finalSnapshot.PredictionGaps.ToArray())
             {
                 GrowthHpCredit = finalSnapshot.GrowthHpCredit,
+                RelicCounters = finalSnapshot.RelicCounters,
                 GrowthRewards = finalSnapshot.GrowthRewards,
                 UnrecoveredGold = finalSnapshot.UnrecoveredGold,
                 UnrecoveredCards = finalSnapshot.UnrecoveredCards,
@@ -1991,9 +1993,12 @@ internal sealed partial class CombatBeamSolver
     }
 
     private SearchNode? ApplyFixedPrefix(SearchNode seed)
+        => ApplyFixedPrefix(seed, _fixedPrefixActions);
+
+    private SearchNode? ApplyFixedPrefix(SearchNode seed, IReadOnlyList<PlanAction> prefix)
     {
         SearchNode node = seed;
-        foreach (PlanAction action in _fixedPrefixActions)
+        foreach (PlanAction action in prefix)
         {
             if (action.Kind == PlanActionKind.EndTurn
                 || action.EndsPlayerTurn

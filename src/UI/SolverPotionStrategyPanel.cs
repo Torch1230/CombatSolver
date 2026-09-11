@@ -10,8 +10,8 @@ namespace CombatSolver;
 
 internal sealed partial class SolverPotionStrategyPanel : PanelContainer
 {
-    internal const float PreferredWidth = 184f;
-    private const float CardMinimumWidth = 152f;
+    internal const float PreferredWidth = 360f;
+    private const float CardMinimumWidth = 280f;
     private readonly GridContainer _cards;
     private string? _renderedSignature;
 
@@ -42,6 +42,7 @@ internal sealed partial class SolverPotionStrategyPanel : PanelContainer
             SolverUiTokens.Type.Body,
             SolverUiTokens.Palette.TextPrimary,
             FontType.Bold);
+        heading.Name = "StrategyHeading";
         layout.AddChild(heading);
 
         _cards = new GridContainer
@@ -66,6 +67,7 @@ internal sealed partial class SolverPotionStrategyPanel : PanelContainer
         scroll.AddChild(_cards);
         layout.AddChild(scroll);
         AddChild(layout);
+        SolverUiTokens.StyleStrategyPanel(this);
         Resized += UpdateGridColumns;
     }
 
@@ -155,7 +157,9 @@ internal sealed partial class SolverPotionStrategyPanel : PanelContainer
             SolverUiTokens.Palette.BorderSubtle,
             SolverUiTokens.Radius.Medium,
             SolverUiTokens.Spacing.Sm,
-            SolverUiTokens.Spacing.Xs));
+            SolverUiTokens.Spacing.Sm));
+        VBoxContainer content = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        content.AddThemeConstantOverride("separation", 10);
         HBoxContainer layout = new()
         {
             MouseFilter = MouseFilterEnum.Pass,
@@ -179,7 +183,7 @@ internal sealed partial class SolverPotionStrategyPanel : PanelContainer
 
         Label title = SolverUiTokens.CreateLabel(
             $"#{slot + 1} {potion.Title.GetFormattedText()}",
-            SolverUiTokens.Type.Caption,
+            SolverUiTokens.Type.Body,
             SolverUiTokens.Palette.TextPrimary,
             FontType.Bold);
         title.Name = "PotionTitle";
@@ -207,8 +211,10 @@ internal sealed partial class SolverPotionStrategyPanel : PanelContainer
                 DirectiveChanged?.Invoke(slot, potionId, directive);
             };
         }
-        layout.AddChild(input);
-        card.AddChild(layout);
+        content.AddChild(layout);
+        content.AddChild(input);
+        card.AddChild(content);
+        SolverUiTokens.StyleStrategyText(card);
         return card;
     }
 
@@ -221,7 +227,7 @@ internal sealed partial class SolverPotionStrategyPanel : PanelContainer
         {
             FocusMode = FocusModeEnum.None,
             CustomMinimumSize = new Vector2(40, 40),
-            SizeFlagsHorizontal = SizeFlags.ShrinkEnd,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ShrinkCenter,
             MouseDefaultCursorShape = CursorShape.PointingHand,
         };
@@ -251,7 +257,7 @@ internal sealed partial class SolverPotionStrategyPanel : PanelContainer
         Color background = SolverUiTokens.IsLightTheme
             ? SolverUiTokens.Palette.Surface
             : SolverUiTokens.Palette.Background;
-        input.Text = text;
+        input.Text = $"{text}  {description}";
         input.TooltipText = SolverText.Format($"{description}（点击切换）");
         input.AddThemeColorOverride("font_color", color);
         input.AddThemeColorOverride("font_hover_color", color);

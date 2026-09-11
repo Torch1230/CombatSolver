@@ -148,6 +148,6 @@ internal sealed partial class CombatBeamSolver
             SoldHpThreshold() - battleDamage.SoldHpCommitted);
         return node.CombatProgress.TurnsWithoutProgress > 0
             || node.CrossTurnSemanticInvisibleToModeledQuality
-            || node.FutureSoldHp > availableFutureSoldHp + node.Snapshot.GrowthHpCredit;
+            || node.FutureSoldHp > availableFutureSoldHp + node.Snapshot.StrategicHpCredit;
     }
 }

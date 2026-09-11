@@ -125,7 +125,7 @@ internal sealed partial class CombatBeamSolver
                     : 0;
                 int previousSold = outcome.Node.Parent!.FutureSoldHp;
                 int futureSold = previousSold + soldThisTurn;
-                bool exceedsPolicyThreshold = futureSold > availableFutureSoldHp + outcome.Node.Snapshot.GrowthHpCredit;
+                bool exceedsPolicyThreshold = futureSold > availableFutureSoldHp + outcome.Node.Snapshot.StrategicHpCredit;
                 bool protectsInvestment = exceedsPolicyThreshold
                     && HasStrategicInvestmentPayoff(outcome, conservative);
                 if (futureSold > absoluteFutureSoldHp)

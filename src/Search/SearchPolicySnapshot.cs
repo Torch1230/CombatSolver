@@ -22,6 +22,9 @@ internal sealed record SearchPolicySnapshot(
     SearchMemoryPressureSignal MemoryPressureSignal)
 {
     public GrowthValues GrowthBudgets { get; init; }
+    public IReadOnlyList<RelicCounterTarget> RelicTargets { get; init; } = Array.Empty<RelicCounterTarget>();
+    public bool RelicTargetsSatisfied(RelicCounterEvaluation value)
+        => RelicTargets.All(target => (value.SatisfiedMask & (1UL << (int)target.Id)) != 0);
     public int? BrightestFlameMaxHpLossLimit { get; init; }
     public bool HasGrowthTargets { get; init; }
     public bool StopAtAcceptableBattleHpLoss { get; init; } = true;

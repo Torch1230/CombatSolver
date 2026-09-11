@@ -102,6 +102,8 @@ internal sealed partial class UnattendedTestRunner
         settings["growthBudgets"] = recorded["growthBudgets"]?.DeepClone()
             ?? JsonSerializer.SerializeToNode(default(GrowthValues), UnattendedTestFiles.JsonOptions);
         settings["brightestFlameMaxHpLossLimit"] = recorded["brightestFlameMaxHpLossLimit"]?.DeepClone();
+        settings["relicStrategyEnabled"] = recorded["relicStrategyEnabled"]?.DeepClone() ?? JsonValue.Create(false);
+        settings["relicCounterRules"] = recorded["relicCounterRules"]?.DeepClone() ?? new JsonArray();
         settings["stopAtAcceptableBattleHpLoss"] = recorded["stopAtAcceptableBattleHpLoss"]?.DeepClone() ?? JsonValue.Create(true);
         // Archives recorded before the ignore switch existed considered long-term rewards.
         settings["ignoreLongTermRewards"] = recorded["ignoreLongTermRewards"]?.DeepClone()
@@ -170,7 +172,7 @@ internal sealed partial class UnattendedTestRunner
         JsonObject policy = recorded == null ? new JsonObject() : (JsonObject)recorded.DeepClone();
         if (recorded == null && _checkpointImport["legacySettings"] is JsonObject legacy)
         {
-            foreach (string key in new[] { "potionPolicy", "potionDirectives", "growthBudgets", "brightestFlameMaxHpLossLimit", "actTransitionBossHpStrategy", "finalBossHpStrategy", "acceptableBattleHpLoss", "stopAtAcceptableBattleHpLoss", "searchMaxDegreeOfParallelism" })
+            foreach (string key in new[] { "potionPolicy", "potionDirectives", "growthBudgets", "relicStrategyEnabled", "relicCounterRules", "brightestFlameMaxHpLossLimit", "actTransitionBossHpStrategy", "finalBossHpStrategy", "acceptableBattleHpLoss", "stopAtAcceptableBattleHpLoss", "searchMaxDegreeOfParallelism" })
                 if (legacy[key] != null)
                     policy[key] = legacy[key]!.DeepClone();
             if (_checkpointImport["legacySearchProfiles"] is JsonObject profiles)
@@ -183,7 +185,7 @@ internal sealed partial class UnattendedTestRunner
                 ?? throw new InvalidDataException("expected_replay_policy_override_object");
             HashSet<string> allowed = new(StringComparer.Ordinal)
             {
-                "potionPolicy", "potionDirectives", "growthBudgets", "brightestFlameMaxHpLossLimit", "actTransitionBossHpStrategy", "finalBossHpStrategy",
+                "potionPolicy", "potionDirectives", "growthBudgets", "relicStrategyEnabled", "relicCounterRules", "brightestFlameMaxHpLossLimit", "actTransitionBossHpStrategy", "finalBossHpStrategy",
                 "acceptableBattleHpLoss", "stopAtAcceptableBattleHpLoss", "searchMaxDegreeOfParallelism", "profile", "fixedBudget",
             };
             foreach ((string key, JsonNode? value) in overrides)

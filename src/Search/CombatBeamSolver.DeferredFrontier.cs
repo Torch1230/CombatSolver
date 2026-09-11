@@ -618,6 +618,7 @@ internal sealed partial class CombatBeamSolver
             || expected.LongTermResourceValue != actual.LongTermResourceValue
             || expected.GrowthRewards != actual.GrowthRewards
             || expected.GrowthHpCredit != actual.GrowthHpCredit
+            || expected.RelicCounters != actual.RelicCounters
             || expected.OstyHp != actual.OstyHp
             || expected.OstyMaxHp != actual.OstyMaxHp
             || expected.DelayedDamageValue != actual.DelayedDamageValue

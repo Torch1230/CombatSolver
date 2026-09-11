@@ -1431,9 +1431,9 @@ internal static partial class CombatSearchCoordinator
             EnemyHp: result.Snapshot.EnemyHp,
             Score: result.BestNode.Score)
         {
-            GrowthHpCredit = result.Snapshot.GrowthHpCredit,
+            GrowthHpCredit = result.Snapshot.StrategicHpCredit,
             TheftPolicy = policy.TheftPolicy,
-            GrowthRewardCount = result.Snapshot.GrowthRewards.Total,
+            GrowthRewardCount = result.Snapshot.StrategyGoalCount,
         };
 
 
@@ -1514,10 +1514,10 @@ internal static partial class CombatSearchCoordinator
             IsCompleteVictory(current),
             StrategicHpDeficit(root, policy, current),
             current.CombatEndedTurn,
-            candidate.Snapshot.GrowthHpCredit,
-            current.Snapshot.GrowthHpCredit,
-            candidate.Snapshot.GrowthRewards.Total,
-            current.Snapshot.GrowthRewards.Total);
+            candidate.Snapshot.StrategicHpCredit,
+            current.Snapshot.StrategicHpCredit,
+            candidate.Snapshot.StrategyGoalCount,
+            current.Snapshot.StrategyGoalCount);
     }
 
     private static bool IsCompleteVictory(SolverResult result)
@@ -1531,6 +1531,7 @@ internal static partial class CombatSearchCoordinator
         SearchPolicySnapshot policy,
         SolverResult result)
         => policy.GrowthTargetSatisfied(result.Snapshot.GrowthRewards)
+            && policy.RelicTargetsSatisfied(result.Snapshot.RelicCounters)
             && TheftEncounterStrategy.RecoverySatisfied(policy.TheftPolicy, result.OutstandingStolenResource)
             && result.PotionCount == policy.MinimumRequiredPotionUses(result.BattlePotionsUsedSoFar)
             && policy.PotionStrategy.EvaluateForcedUses(result.BestNode.Actions, renewablePotionShapedRock: false).AllForcedUsesSatisfied
@@ -1550,6 +1551,7 @@ internal static partial class CombatSearchCoordinator
         SearchPolicySnapshot policy,
         SolverResult result)
         => !policy.EffectiveHasGrowthTargets
+            && policy.RelicTargets.Count == 0
             && TheftEncounterStrategy.RecoverySatisfied(policy.TheftPolicy, result.OutstandingStolenResource)
             && HasReachedProvablePrimaryQualityLowerBound(
             IsCompleteVictory(result),
@@ -1581,7 +1583,7 @@ internal static partial class CombatSearchCoordinator
         SearchPolicySnapshot policy,
         SolverResult result)
     {
-        if (policy.EffectiveHasGrowthTargets || !IsCompleteVictory(result) || result.CombatEndedTurn is not { } combatEndedTurn)
+        if (policy.EffectiveHasGrowthTargets || policy.RelicTargets.Count > 0 || !IsCompleteVictory(result) || result.CombatEndedTurn is not { } combatEndedTurn)
             return null;
         return new PrimarySearchIncumbent(
             StrategicHpDeficit(root, policy, result),
@@ -1639,7 +1641,7 @@ internal static partial class CombatSearchCoordinator
                     result.Snapshot.PlayerHp,
                     result.Snapshot.PlayerMaxHp),
             StrategicBossHpRelief(root, policy),
-            result.Snapshot.DeathSaveRelicHpRestored) - result.Snapshot.GrowthHpCredit;
+            result.Snapshot.DeathSaveRelicHpRestored) - result.Snapshot.StrategicHpCredit;
 
     /// <summary>
     /// Best strategic HP result any route could still reach from this root.

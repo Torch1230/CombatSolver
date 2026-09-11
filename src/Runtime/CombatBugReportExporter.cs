@@ -1172,6 +1172,8 @@ internal static class CombatBugReportExporter
             settings.AcceptableBattleHpLoss,
             settings.StopAtAcceptableBattleHpLoss,
             settings.GrowthBudgets,
+            settings.RelicStrategyEnabled,
+            settings.RelicCounterRules,
             settings.BrightestFlameMaxHpLossLimit,
             settings.IgnoreLongTermRewards,
             searchMaxDegreeOfParallelism = UnattendedTestRunner.SearchMaxDegreeOfParallelismOverride ?? settings.SearchMaxDegreeOfParallelism,
@@ -1261,7 +1263,7 @@ internal static class CombatBugReportExporter
             ?? throw new InvalidDataException("求解器设置无法序列化为问题包。");
         HashSet<string> fields = new(StringComparer.Ordinal)
         {
-            "solverDisabled", "automaticCalculationEnabled", "stopFullAutoOnCombatEnd", "stopFullAutoOnDeathTurn",
+            "solverDisabled", "automaticCalculationEnabled", "stopFullAutoOnCombatEnd", "stopFullAutoOnDeathTurn", "relicStrategyEnabled", "relicCounterRules",
             "stopFullAutoOnWorseRecalculation", "enableDetailedDiagnosticLogs", "potionDirectives",
             "actTransitionBossHpStrategy", "finalBossHpStrategy", "acceptableBattleHpLoss", "stopAtAcceptableBattleHpLoss", "growthBudgets", "brightestFlameMaxHpLossLimit", "performancePreset",
             "searchMaxDegreeOfParallelism", "shortTimeLimitSeconds", "deepTimeLimitSeconds", "enableNoGcRegion",

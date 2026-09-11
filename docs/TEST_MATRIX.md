@@ -164,6 +164,22 @@
 - 初期短搜采集链路检查不进入正式结论；旧部分机甲存档 `1c1134cbba904d8c995745f1e4247cd2` 在建局时因缺少角色 ID 失败，未进入搜索，排除后使用维护中的完整建局 fixture。采样实例已停止；原始证据保留在 `.local/simulation-profile-20260910/`，完整条件与命令见[采样报告](performance/simulation-profile-20260910.md)及其 JSON。
 - 只改诊断文档，执行 L0 文档链接、结构化结果及 diff 检查；没有算法修改、新语义回归、整场原生部署或正常可见 Steam FPS 结论。
 
+## 0.36.1：遗物计数
+
+- 删除遗物早停说明行：纯展示删除，按 L0 执行 Release 编译，未重跑战斗。
+
+- 遗物总开关默认值调整：仅修改设置数据的初始值，新配置及缺少该字段的配置默认开启，显式保存的关闭状态仍保留；单项默认值和归档快照默认值保持原行为。本次按 L0 选择 Release 编译，不重跑战斗。
+
+- 本次 UI 文案：`UI-LOCALIZATION` / `9bd2e76b41bf446485b32dbc78f5fef8` Passed（25.59 秒），eng/zhs/zht、400 项目录与语言往返通过。
+
+- 三策略面板排版：`RELIC-COUNTER-POLICY` / `eaba35f068ce47b09eca0b8c51990814` Passed（25.82 秒），覆盖原生遗物图标、独立开关、面板互斥/边界，并新增三个面板背景与文字调制均完全不透明、数值输入 16 号字断言；原计数与早停合同保持。未进行可见游戏人工排版验收。
+
+- `SEARCH-HP-TARGET-STOP` / `fdc28b23b38741e3b87c2a143664b7fc` Passed，23.45 秒：零损、累计阈值、并行波次排空、成长存在/不存在、击杀成长兑现、强制一药与保留备用药、至少一药策略。第一次启动器在取得 PID 30748 的可执行路径前失败，尚未进入 fixture；新隔离实例 `relic-early-stop` 完成上述验证，未提高超时。
+
+- `RELIC-COUNTER-POLICY` / `5d123007ff00488fa48ad0278513ccdf` Passed，25.36 秒：十项计数根捕获、Fork、live 后续改变隔离、总/单项开关、设置往返、UI 标题顺序/面板边界/互斥；带增量校验的免费及 3 HP 付费路线，原生末击计数一致。达标早停 2 节点，关闭后 62 节点。初次 `e46d16d197f9426abc54e583f6f2de50` 明确 Failed，暴露补充搜索的前缀父链丢失；修复后通过，未关闭验证。
+- `UI-LOCALIZATION` / `d545270315244f54a07f1964f5bb4d74` Passed，25.62 秒：eng/zhs/zht、394 项文本目录、模板及原动态控件语言往返。没有可见人工排版验收。
+- Windows 结构门禁通过；Bash 同步新增策略、早停、缓存与前缀所有权规则，未在 Linux 启动游戏。
+
 ## 0.36.0：统一搜索预算与进程诊断
 
 ### 26356 三层卡顿修复
@@ -3088,3 +3104,9 @@ pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId MONSTER-MOVES-BA
 ## 完整角色生成池冻结（2026-09-11）
 
 `COMPACT-GENERATION-CLOSURE-AUDIT` 增加完整角色池的 Fork 共享、错误池／人数约束拒绝、24 次原生／旧路径／缓存路径全 RNG 与卡牌指纹对照、生成实例突变隔离，并调用既有攻击池和无色池缓存合同。`CALL-OF-THE-VOID-GENERATION-ROOT` 使用同一完整亡灵输入，注入 4 层能力，连续三次原生 BeforeHandDraw；对照 12 张虚无牌、满手溢出、完整快照／续用、Fork 和实机后冻结根。它是该生成命令的模型对照，不代表紧凑随机生成闭包或整场搜索通过。[直接结果](performance/simulation-generation-root-20260911.md)。
+
+## 上游 0.36.1 合并检查点（2026-09-11）
+
+- `COMPACT-PAGESTORM-SEARCH`：`4062afbaaa7749afa4b20ddca77d86c5` Passed，30.44 秒含启动；250 节点旧新／串并行、实际并发 2、取消／故障排空及根复用。
+- `RELIC-COUNTER-POLICY`：`6e67fdf96aaf4511a7e436e1de01b896` Passed，4.75 秒；十项根计数、Fork、实机推进隔离、设置/UI、真实搜索与原生末击；早停 2 节点，关闭后 17 节点。
+- Release 零警告／错误，Linux 结构门禁 Passed（96 个 Search 文件）；PowerShell 对应规则未执行。未重跑完整部署、正常 NoGC 基准或覆盖分类 verify。

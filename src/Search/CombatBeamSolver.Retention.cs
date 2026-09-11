@@ -1191,7 +1191,7 @@ internal sealed partial class CombatBeamSolver
         foreach (bool investmentBand in new[] { false, true })
         {
             bool InBand(SearchNode node)
-                => (node.FutureSoldHp > availableFutureSoldHp + node.Snapshot.GrowthHpCredit
+                => (node.FutureSoldHp > availableFutureSoldHp + node.Snapshot.StrategicHpCredit
                         || CycleHealthRisk(node, bestMaxHp) > minimumHealthRisk)
                     == investmentBand;
 

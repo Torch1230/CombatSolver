@@ -396,6 +396,11 @@ internal sealed partial class UnattendedTestRunner
                 runner.AssertDynamicVarMetadata();
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "RELIC-COUNTER-POLICY")
+            {
+                await runner.AssertRelicCountersAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "SINGLE-SEARCH-PROFILE")
             {
                 await runner.AssertSingleSearchProfileAsync(combatState);

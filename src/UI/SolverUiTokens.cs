@@ -317,6 +317,27 @@ internal static class SolverUiTokens
         button.ApplyLocaleFontSubstitution(FontType.Bold, "font");
     }
 
+    internal static void StyleStrategyPanel(Control root)
+    {
+        if (root is PanelContainer)
+            root.AddThemeStyleboxOverride("panel", CreateBox(
+                new Color(Palette.Surface, 1f), Palette.BorderSubtle, Radius.Medium, 12, 12));
+        StyleStrategyText(root);
+    }
+
+    internal static void StyleStrategyText(Node root)
+    {
+        if (root is Control control && root is Label or Button or LineEdit)
+        {
+            int size = root.Name == "StrategyHeading" ? 18 : root is Label label
+                && label.GetThemeFontSize("font_size") == Type.Caption ? 14 : 16;
+            control.AddThemeFontSizeOverride("font_size", size);
+            ApplyTextOutline(control, 0);
+            control.ApplyLocaleFontSubstitution(FontType.Regular, "font");
+        }
+        foreach (Node child in root.GetChildren()) StyleStrategyText(child);
+    }
+
     public static Texture2D CreateCircleTexture(Color color, int size = 12)
     {
         Image image = Image.CreateEmpty(size, size, false, Image.Format.Rgba8);

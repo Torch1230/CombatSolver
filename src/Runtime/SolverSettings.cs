@@ -91,6 +91,8 @@ internal sealed record SolverSettingsData
     [JsonIgnore]
     public SolverPotionPolicy PotionPolicy { get; init; } = SolverPotionPolicy.Smart;
     public PersistedPotionDirective[] PotionDirectives { get; init; } = [];
+    public bool RelicStrategyEnabled { get; init; } = true;
+    public RelicCounterRule[] RelicCounterRules { get; init; } = [];
     public GrowthValues GrowthBudgets { get; init; }
     public int? BrightestFlameMaxHpLossLimit { get; init; }
     /// <summary>
@@ -145,6 +147,8 @@ internal sealed record SolverSettingsSnapshot(
     double DeploymentInterActionDelaySeconds)
 {
     public bool StopAtAcceptableBattleHpLoss { get; init; } = true;
+    public bool RelicStrategyEnabled { get; init; }
+    public RelicCounterRule[] RelicCounterRules { get; init; } = [];
     public GrowthValues GrowthBudgets { get; init; }
     public int? BrightestFlameMaxHpLossLimit { get; init; }
     public bool IgnoreLongTermRewards { get; init; }
@@ -283,6 +287,8 @@ internal static class SolverSettings
             data.DeploymentInterActionDelaySeconds ?? 0d)
         {
             GrowthBudgets = data.GrowthBudgets,
+            RelicStrategyEnabled = data.RelicStrategyEnabled,
+            RelicCounterRules = RelicCounterPolicy.ValidateAndCopy(data.RelicCounterRules),
             StopAtAcceptableBattleHpLoss = data.StopAtAcceptableBattleHpLoss,
             BrightestFlameMaxHpLossLimit = data.BrightestFlameMaxHpLossLimit,
             IgnoreLongTermRewards = data.IgnoreLongTermRewards,
@@ -475,6 +481,7 @@ internal static class SolverSettings
 
     private static void Validate(SolverSettingsData data)
     {
+        _ = RelicCounterPolicy.ValidateAndCopy(data.RelicCounterRules);
         if (data.PerformanceMigrationVersion < 0)
             throw new InvalidDataException("PerformanceMigrationVersion must be non-negative.");
         ValidateRange(data.SearchTimeLimitSeconds, 0.1d, 600d, nameof(data.SearchTimeLimitSeconds));

@@ -8,7 +8,7 @@ namespace CombatSolver;
 
 internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
 {
-    internal const float PreferredWidth = 272f;
+    internal const float PreferredWidth = 390f;
     private readonly Dictionary<GrowthSource, SpinBox> _budgets = [];
     private readonly List<(GrowthSourceHandle Source, SpinBox Input)> _extraBudgets = [];
     private readonly CheckButton _ignoreLongTermRewards;
@@ -33,7 +33,10 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
             SolverUiTokens.Palette.Surface, SolverUiTokens.Palette.BorderSubtle,
             SolverUiTokens.Radius.Medium, SolverUiTokens.Spacing.Sm, SolverUiTokens.Spacing.Sm));
         VBoxContainer layout = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        layout.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Sm);
+        layout.AddThemeConstantOverride("separation", 12);
+        Label heading = SolverUiTokens.CreateLabel(SolverText.Get("成长策略"), 18, SolverUiTokens.Palette.TextPrimary);
+        heading.Name = "StrategyHeading";
+        layout.AddChild(heading);
         HBoxContainer ignoreRow = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         Label ignoreLabel = SolverUiTokens.CreateLabel(
             SolverText.Get("不考虑局外收益"), SolverUiTokens.Type.Body, SolverUiTokens.Palette.TextPrimary);
@@ -65,12 +68,8 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
         _brightestFlameLimit.TooltipText = SolverText.Get("至亮之焰每场允许消耗的最大生命总量。0 表示求解器不再使用；已手动消耗的额度也计入，其他来源增加最大生命不会返还额度。");
         _limitBrightestFlame.Toggled += _ => PublishFlameLimit();
         _brightestFlameLimit.ValueChanged += _ => PublishFlameLimit();
-        layout.AddChild(flameRows);
-        layout.AddChild(new HSeparator());
         Label allowanceLabel = SolverUiTokens.CreateLabel(SolverText.Get("每次收益允许的额外战损"), SolverUiTokens.Type.Body, SolverUiTokens.Palette.TextPrimary);
         allowanceLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        layout.AddChild(allowanceLabel);
-        layout.AddChild(new HSeparator());
         ScrollContainer scroll = new()
         {
             SizeFlagsVertical = SizeFlags.ExpandFill,
@@ -81,6 +80,10 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
         };
         VBoxContainer rows = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         rows.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Sm);
+        flameRows.AddThemeConstantOverride("separation", 8);
+        rows.AddChild(flameRows);
+        rows.AddChild(new HSeparator());
+        rows.AddChild(allowanceLabel);
         foreach (GrowthSource source in Enum.GetValues<GrowthSource>())
         {
             CardModel card = SourceCard(source);
@@ -106,6 +109,7 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
         scroll.AddChild(rows);
         layout.AddChild(scroll);
         AddChild(layout);
+        SolverUiTokens.StyleStrategyPanel(this);
         _ignoreLongTermRewards.Toggled += ignore =>
         {
             if (_refreshing)
@@ -151,27 +155,33 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
 
     private static SpinBox AddBudgetRow(VBoxContainer parent, string title, Texture2D? texture, int maximum)
     {
-        HBoxContainer row = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(0, 42) };
+        PanelContainer card = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        card.AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(SolverUiTokens.Palette.SurfaceRaised,
+            SolverUiTokens.Palette.BorderSubtle, SolverUiTokens.Radius.Medium, 10, 8));
+        HBoxContainer row = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(0, 48) };
+        row.AddThemeConstantOverride("separation", 12);
         if (texture != null)
             row.AddChild(new TextureRect
             {
-                Texture = texture, CustomMinimumSize = new Vector2(36, 36),
+                Texture = texture, CustomMinimumSize = new Vector2(44, 44),
+                SizeFlagsVertical = SizeFlags.ShrinkCenter,
                 ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
             });
-        Label label = SolverUiTokens.CreateLabel(title, SolverUiTokens.Type.Caption, SolverUiTokens.Palette.TextPrimary);
+        Label label = SolverUiTokens.CreateLabel(title, SolverUiTokens.Type.Body, SolverUiTokens.Palette.TextPrimary);
         label.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         row.AddChild(label);
         SpinBox input = new()
         {
             MinValue = 0, MaxValue = maximum, Step = 1, Rounded = true,
-            CustomMinimumSize = new Vector2(96, 36), SizeFlagsVertical = SizeFlags.ShrinkCenter,
+            CustomMinimumSize = new Vector2(112, 40), SizeFlagsVertical = SizeFlags.ShrinkCenter,
             Suffix = "HP", UpdateOnTextChanged = false,
         };
         row.AddChild(input);
         input.GetLineEdit().FocusExited += input.Apply;
-        parent.AddChild(row);
+        card.AddChild(row);
+        parent.AddChild(card);
         return input;
     }
 
