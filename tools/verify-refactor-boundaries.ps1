@@ -1427,7 +1427,10 @@ foreach ($rule in @(
     @('src/Prediction/Compact/CompactDiscardProjection.cs', 'lock (_rootForkGate) return _root.Fork();'),
     @('src/Search/CombatPlan.cs', '_compact = null;'),
     @('src/Search/CombatBeamSolver.CompactReplay.cs', 'SnapshotFromReadView(lane.Reader,'),
-    @('src/Search/CombatBeamSolver.ParallelExpansion.cs', 'ReferenceEquals(_compact, parent)')
+    @('src/Search/CombatBeamSolver.ParallelExpansion.cs', 'ReferenceEquals(_compact, parent)'),
+    @('src/Search/CombatBeamSolver.CompactReplay.cs', 'private sealed class CompactPolicyReadLane'),
+    @('src/Search/CombatBeamSolver.ParallelExpansion.cs', 'TargetsFor(card, simulator, view)'),
+    @('src/Engine/InCombat/Simulation/CombatPredictionState.cs', 'internal bool IsHittable(Creature creature, bool presentAndAlive)')
 )) {
     if (-not (Get-Content -LiteralPath (Join-Path $repositoryRoot $rule[0]) -Raw).Contains($rule[1])) {
         throw "Compact captured-root ownership/evaluation guard missing: $($rule[0]): $($rule[1])"

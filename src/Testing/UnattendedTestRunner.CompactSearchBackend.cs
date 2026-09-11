@@ -12,6 +12,8 @@ internal sealed partial class UnattendedTestRunner
     private async Task AssertCompactSearchBackendAsync(CombatState combat, Player player)
     {
         await RunManager.Instance.ActionExecutor.FinishedExecutingActions();
+        if (player.Deck.Cards.Count != 30 || player.PlayerCombatState!.AllCards.Count() != 30)
+            throw new InvalidOperationException("Compact search differential requires the unchanged original 30-card combat and run deck.");
         var captured = CombatRootSnapshot.Capture(combat);
         var display = SolverDisplayNames.Capture(combat);
         var damage = BattleDamageTracker.Observe(combat);
@@ -28,7 +30,7 @@ internal sealed partial class UnattendedTestRunner
         Write("compact-search-candidate.json", Summary(changed));
         object Logical(SolverResult result) => new
         {
-            result.BestNode.Actions, result.BestNode.Score, result.Snapshot, result.CombatEndedTurn,
+            result.BestNode.Actions, result.BestNode.Score, result.Snapshot, result.Continuations, result.CombatEndedTurn,
             result.ProjectedBattleHpLost, result.ExpandedNodes, result.TransitionCount, result.ForkCount,
             result.ReplayCount, result.ReusedNodeSnapshots, result.ChoiceBranchesEvaluated,
             result.ChoiceReplayAttempts, result.ChoiceReplayBudgetExhaustions, result.ChoiceBranchesDroppedByBudget,

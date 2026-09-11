@@ -127,7 +127,14 @@ internal sealed class CombatPredictionState
 
     public bool IsHittable(Creature creature)
     {
-        if (_removedCreatures?.Contains(creature) == true || !GetCreature(creature).IsAlive)
+        if (_removedCreatures?.Contains(creature) == true)
+            return false;
+        return IsHittable(creature, GetCreature(creature).IsAlive);
+    }
+
+    internal bool IsHittable(Creature creature, bool presentAndAlive)
+    {
+        if (!presentAndAlive)
             return false;
         return CombatState is ICombatPredictionCreatureSemantics semantics
             ? semantics.IsHittable(creature)

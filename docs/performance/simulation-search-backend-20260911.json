@@ -644,5 +644,98 @@
     "Compatibility graph materialization remains expensive. This sample regressed elapsed time and is not a speedup claim.",
     "Original Mecha input only; the original Necrobinder input and general Runtime admission remain outstanding.",
     "Headless comparison does not enter Runtime NoGC scope or certify visible performance."
-  ]
+  ],
+  "policyReadFollowup": {
+    "runId": "427def306b9748988a4088c10646bb4c",
+    "result": "Passed",
+    "buildSeconds": 12.32,
+    "scope": "Original complete Mecha, eight fixed workers; compare full route, all SolverSnapshot fields, Continuations and logical counters",
+    "comparison": {
+      "equivalent": true,
+      "preparationMilliseconds": 52.8622,
+      "completedReplays": 111401,
+      "pendingReplays": 22654,
+      "materializations": 22385,
+      "baseline": {
+        "ExpandedNodes": 16413,
+        "TransitionCount": 134054,
+        "ChoiceBranchesEvaluated": 77969,
+        "CombatEndedTurn": 8,
+        "ProjectedBattleHpLost": 11,
+        "Elapsed": "00:00:12.8040903",
+        "actions": 44,
+        "MaxParallelExpansionConcurrency": 8
+      },
+      "candidate": {
+        "ExpandedNodes": 16413,
+        "TransitionCount": 134054,
+        "ChoiceBranchesEvaluated": 77969,
+        "CombatEndedTurn": 8,
+        "ProjectedBattleHpLost": 11,
+        "Elapsed": "00:00:13.8967957",
+        "actions": 44,
+        "MaxParallelExpansionConcurrency": 8
+      }
+    },
+    "changes": [
+      "Use separate lane-owned policy reader for synchronous action preparation, draw-per-turn pruning and parent metadata.",
+      "Share CanPlayCardAtResources and IsHittable formulas, supplying current energy, roster and life values.",
+      "Do not retain policy views across replay iterators or child yields."
+    ]
+  },
+  "profilingBeforePolicyReads": {
+    "scope": "15-second dotnet sampled-thread-time window overlapping the latter candidate search; includes waits, not CPU time",
+    "totalSearchThreadMilliseconds": 22467.521480282252,
+    "categories": [
+      {
+        "name": "materialize",
+        "milliseconds": 13025.27,
+        "percentSearchThreadSamples": 57.97
+      },
+      {
+        "name": "other_search",
+        "milliseconds": 3643.26,
+        "percentSearchThreadSamples": 16.22
+      },
+      {
+        "name": "legacy_replay_other",
+        "milliseconds": 3124.36,
+        "percentSearchThreadSamples": 13.91
+      },
+      {
+        "name": "read_view",
+        "milliseconds": 1347.47,
+        "percentSearchThreadSamples": 6.0
+      },
+      {
+        "name": "snapshot_core",
+        "milliseconds": 1301.29,
+        "percentSearchThreadSamples": 5.79
+      },
+      {
+        "name": "compact_plan_execution",
+        "milliseconds": 25.87,
+        "percentSearchThreadSamples": 0.12
+      }
+    ],
+    "materializeCallers": [
+      {
+        "name": "CombatSolver!CombatSolver.CombatBeamSolver.ShouldPruneCrossTurnNoProgress(class CombatSolver.SearchNode)",
+        "milliseconds": 6613.36,
+        "percentSearchThreadSamples": 29.44
+      },
+      {
+        "name": "CombatSolver!CombatSolver.CombatBeamSolver.PrepareCardActions(class CombatSolver.SearchNode)",
+        "milliseconds": 5944.84,
+        "percentSearchThreadSamples": 26.46
+      },
+      {
+        "name": "CombatSolver!CombatSolver.CombatBeamSolver.Replay(class System.Collections.Generic.IReadOnlyList`1<class CombatSolver.PlanAction>,class CombatSolver.SimulationSnapshot,int32,int32,class CombatSolver.Engine.InCombat.Simulation.ActionRelicTriggerRecorder,class ReplayForkSeed,class CombatSolver.SearchReplayEvidence,class RoundPrefixReplayContext)",
+        "milliseconds": 467.07,
+        "percentSearchThreadSamples": 2.08
+      }
+    ],
+    "runId": "ab2743e7cd3f46e7a06937f512b487ec",
+    "notes": "First profiler launch used a profile available only to collect-linux and failed; corrected to dotnet-sampled-thread-time during the same live candidate run. Includes waits and cannot be interpreted as CPU percentages."
+  }
 }

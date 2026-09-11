@@ -1152,6 +1152,10 @@ require_fixed "$search_root/CombatPlan.cs" '_compact = null;' 'snapshot release 
 require_fixed "$search_root/CombatBeamSolver.CompactReplay.cs" 'SnapshotFromReadView(lane.Reader,' 'compact replay must share the complete existing evaluation'
 require_fixed "$search_root/CombatBeamSolver.ParallelExpansion.cs" 'ReferenceEquals(_compact, parent)' 'compact seeds must verify their exact immutable parent'
 
+require_fixed "$search_root/CombatBeamSolver.CompactReplay.cs" 'private sealed class CompactPolicyReadLane' 'synchronous compact policy reads need a separate lane'
+require_fixed "$search_root/CombatBeamSolver.ParallelExpansion.cs" 'TargetsFor(card, simulator, view)' 'prepared actions must use the authoritative target roster'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/CombatPredictionState.cs" 'internal bool IsHittable(Creature creature, bool presentAndAlive)' 'target semantics must share the original implementation with supplied life values'
+
 if ((${#violations[@]} > 0)); then
     printf '%s\n' "${violations[@]}" >&2
     printf 'Refactor boundary verification failed with %d violation(s).\n' "${#violations[@]}" >&2

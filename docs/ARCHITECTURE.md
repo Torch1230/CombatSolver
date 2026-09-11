@@ -373,3 +373,5 @@ renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或
 纯职责移动至少运行 Release 编译与当前平台的结构门禁。改变语义、搜索或显示行为时，再按影响面选择严格差分、完整 headless、CoverageCatalog 或可见 Steam。
 
 紧凑候选搜索接缝由 `CombatBeamSolver.CompactReplay.cs` 独占，`SearchPolicySnapshot.CompactRoot` 仅传递主线程捕获根，Runtime 默认不选择。`CompactCombatRoot` 属于 Prediction；冻结候选仅持有共享根、不可变值和历史纯度标量，每 lane 独占执行／读取上下文。`SimulationSnapshot` 按需拥有派生兼容图并在释放时同时清空两种状态；`ReplayForkSeed` 移交精确不可变父候选及私有死亡集合。缺选择暂时回退旧挂起表示，完整动作和回合共享原评分及逻辑计数。根 Fork 的 COW 发布有窄锁，完整回放不串行化。完整原输入搜索路线和逻辑计数已一致，但本次仍显著变慢；[结果与限制](performance/simulation-search-backend-20260911.md)。
+
+`CompactReplay` 另拥有独立 `CompactPolicyReadLane`，为同步政策消费者提供冻结值读取；不与执行 lane 共用可变模型，不让 hand/model 视图跨子回放或 yield 逃逸。动作准备、无进展抽牌数、父节点遗物和目标读取因此不再重建完整历史。合法性仍共享 `CanPlayCardAtResources` 与生命输入可显式提供的 `CombatPredictionState.IsHittable`；完成续用状态和完整搜索计数继续对账。

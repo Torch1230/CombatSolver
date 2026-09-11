@@ -458,13 +458,14 @@ internal sealed partial class CombatBeamSolver
     {
         cancellationToken.ThrowIfCancellationRequested();
         SimulationSnapshot snapshot = node.Snapshot;
-        CombatPredictionSimulator simulator = (CombatPredictionSimulator)snapshot.Simulator;
+        CompletedStateReadView? view = ReadCompactPolicyState(snapshot);
+        CombatPredictionSimulator simulator = view?.EvaluationContext ?? snapshot.Simulator;
         SimulatedCombatState simulatedCombat = (SimulatedCombatState)simulator.State.CombatState;
         if (snapshot.PlayerDead || snapshot.AllEnemiesDead)
             return [];
 
         SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(_player);
-        IReadOnlyList<PredictedCard> hand = playerState.Hand.Cards;
+        IReadOnlyList<PredictedCard> hand = view?.Hand ?? playerState.Hand.Cards;
         List<PreparedCardAction> actions = new(hand.Count);
         HandFingerprintBuffer seenCards = default;
         int seenCardCount = 0;
@@ -479,7 +480,7 @@ internal sealed partial class CombatBeamSolver
                 if (string.Equals(hand[priorIndex].Preview.Id.Entry, cardId, StringComparison.Ordinal))
                     occurrence++;
             }
-            if (!simulatedCombat.CanPlayCard(simulator, card))
+            if (!simulatedCombat.CanPlayCardAtResources(simulator, card, view?.Energy, snapshot.Stars, out _, out _))
                 continue;
             StateFingerprint playableKey = BuildPlayableCardKey(card);
             bool duplicate = false;
@@ -513,7 +514,7 @@ internal sealed partial class CombatBeamSolver
                     cardStateOccurrence++;
                 }
             }
-            foreach ((int targetIndex, Creature? target) in TargetsFor(card, simulator))
+            foreach ((int targetIndex, Creature? target) in TargetsFor(card, simulator, view))
             {
                 if (node.ActionCount == 0 && !card.Original.CanPlayTargeting(target))
                     continue;
@@ -780,7 +781,8 @@ internal sealed partial class CombatBeamSolver
             return [];
         }
 
-        CombatPredictionSimulator simulator = (CombatPredictionSimulator)snapshot.Simulator;
+        CompletedStateReadView? view = ReadCompactPolicyState(snapshot);
+        CombatPredictionSimulator simulator = view?.EvaluationContext ?? snapshot.Simulator;
         SimulatedCombatState simulatedCombat = (SimulatedCombatState)simulator.State.CombatState;
         List<PreparedPotionAction> actions = [];
         for (int potionSlot = 0; potionSlot < root.PotionSlotCount; potionSlot++)
@@ -796,7 +798,7 @@ internal sealed partial class CombatBeamSolver
                 continue;
             }
 
-            foreach ((int targetIndex, Creature? target) in TargetsForPotion(potion, simulator))
+            foreach ((int targetIndex, Creature? target) in TargetsForPotion(potion, simulator, view))
             {
                 PlanAction baseAction = new(
                     PlanActionKind.UsePotion,

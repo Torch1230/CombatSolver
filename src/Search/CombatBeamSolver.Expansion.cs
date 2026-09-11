@@ -986,7 +986,8 @@ internal sealed partial class CombatBeamSolver
         if (!node.CrossTurnSemanticEvidenceAttached)
             return false;
 
-        CombatPredictionSimulator simulator = (CombatPredictionSimulator)node.Snapshot.Simulator;
+        CompletedStateReadView? view = ReadCompactPolicyState(node.Snapshot);
+        CombatPredictionSimulator simulator = view?.EvaluationContext ?? node.Snapshot.Simulator;
         SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
         int drawPerTurn = Math.Max(
             1,
@@ -3317,7 +3318,7 @@ internal sealed partial class CombatBeamSolver
             return true;
         }
         SimulatedCombatState beforeCombat = (SimulatedCombatState)
-            ((CombatPredictionSimulator)before.Simulator).State.CombatState;
+            (ReadCompactPolicyState(before)?.EvaluationContext ?? before.Simulator).State.CombatState;
         bool declinedExtraTurn = beforeCombat.RelicsOf(_player)
             .OfType<PaelsEye>()
             .Any(relic => !relic.IsMelted && beforeCombat.IsPaelsEyeUnused(relic));
@@ -3486,12 +3487,12 @@ internal sealed partial class CombatBeamSolver
 
         SearchNode parent = candidate.Node.Parent
             ?? throw new InvalidOperationException("资源追回动作缺少父节点。");
-        CombatPredictionSimulator simulator = (CombatPredictionSimulator)parent.Snapshot.Simulator;
+        CompletedStateReadView? view = ReadCompactPolicyState(parent.Snapshot);
+        CombatPredictionSimulator simulator = view?.EvaluationContext ?? parent.Snapshot.Simulator;
         SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
-        Creature? target = combat.Enemies.FirstOrDefault(enemy => enemy.CombatId == targetCombatId);
+        Creature? target = (view?.EnemyRoster ?? combat.Enemies).FirstOrDefault(enemy => enemy.CombatId == targetCombatId);
         return target != null
-            && combat.ContainsCreature(target)
-            && simulator.State.GetCreature(target).IsAlive
+            && ReadCreatureValues(simulator, target, view) is { Present: true, IsAlive: true }
             && combat.EffectivePowers().Any(power =>
                 power.Owner == target
                 && (power is HeistPower { Amount: > 0 }
@@ -4205,15 +4206,16 @@ internal sealed partial class CombatBeamSolver
 
     private IEnumerable<(int Index, Creature? Target)> TargetsFor(
         PredictedCard card,
-        CombatPredictionSimulator simulator)
+        CombatPredictionSimulator simulator,
+        CompletedStateReadView? view = null)
     {
         if (simulator.GetTargetType(card) == TargetType.AnyEnemy)
         {
-            IReadOnlyList<Creature> enemies = simulator.State.Enemies;
+            IReadOnlyList<Creature> enemies = view?.EnemyRoster ?? simulator.State.Enemies;
             for (int i = 0; i < enemies.Count; i++)
             {
                 Creature target = enemies[i];
-                if (simulator.State.IsHittable(target))
+                if (IsHittable(simulator, target, view))
                     yield return (i, target);
             }
             yield break;
@@ -4224,15 +4226,16 @@ internal sealed partial class CombatBeamSolver
 
     private IEnumerable<(int Index, Creature? Target)> TargetsForPotion(
         PotionModel potion,
-        CombatPredictionSimulator simulator)
+        CombatPredictionSimulator simulator,
+        CompletedStateReadView? view = null)
     {
         if (potion.TargetType == TargetType.AnyEnemy)
         {
-            IReadOnlyList<Creature> enemies = simulator.State.Enemies;
+            IReadOnlyList<Creature> enemies = view?.EnemyRoster ?? simulator.State.Enemies;
             for (int index = 0; index < enemies.Count; index++)
             {
                 Creature enemy = enemies[index];
-                if (simulator.State.IsHittable(enemy))
+                if (IsHittable(simulator, enemy, view))
                     yield return (index, enemy);
             }
             yield break;
@@ -4240,7 +4243,7 @@ internal sealed partial class CombatBeamSolver
 
         if (potion.TargetType is TargetType.AnyPlayer or TargetType.Self)
         {
-            if (simulator.State.GetCreature(_player.Creature).IsAlive)
+            if (ReadCreatureValues(simulator, _player.Creature, view).IsAlive)
                 yield return (-1, null);
             yield break;
         }

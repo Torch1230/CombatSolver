@@ -514,3 +514,5 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 - [检查点回放](CHECKPOINT_REPLAY.md)：问题包怎么导入。
 
 紧凑执行的封闭开关补充：`Prediction/Compact/CompactCombatRoot` 捕获完整模型准入后，允许显式测试 policy 把冻结状态交给 `CombatBeamSolver.CompactReplay`；Runtime 尚未选择。该构造器不是外部注册 API，不能通过只设置 policy 绕过 Hook、卡牌、遗物、Power 或动态生成闭包。兼容投影也不表示外部效果已迁移；[搜索集成证据](performance/simulation-search-backend-20260911.md)。
+
+紧凑政策读取只消费该封闭根：合法性查询需要的新动态手牌、特殊目标或可出牌条件必须先纳入读取合同和准入，不能把 lane 上的旧根手牌当作变化后的手牌。当前准入没有 Enthralled 或相应动态条件；目标门仍使用同一领域合法性实现。

@@ -79,6 +79,10 @@ internal sealed partial class CombatBeamSolver
         Creature creature, CompletedStateReadView? view)
         => view is null ? CreatureReadValues.Capture(simulator, creature) : view.ReadCreature(creature);
 
+    private static bool IsHittable(CombatPredictionSimulator simulator, Creature creature, CompletedStateReadView? view)
+        => view == null ? simulator.State.IsHittable(creature)
+            : simulator.State.IsHittable(creature, view.ReadCreature(creature) is { Present: true, IsAlive: true });
+
     internal static int ReadSandpitRemaining(CombatPredictionSimulator simulator,
         IReadOnlyList<PowerModel> powers, Creature target, CompletedStateReadView? view)
     {

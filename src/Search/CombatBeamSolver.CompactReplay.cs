@@ -7,6 +7,7 @@ internal sealed partial class CombatBeamSolver
 {
     // A solver instance is one fixed worker lane. No candidate retains these mutable readers.
     private CompactReplayLane? _compactReplayLane;
+    private CompactPolicyReadLane? _compactPolicyReadLane;
 
     private sealed class CompactReplayLane(CompactCombatRoot root)
     {
@@ -14,6 +15,32 @@ internal sealed partial class CombatBeamSolver
         internal readonly CompactPlanReplay Replay = new(root.Adapter);
         internal readonly CompactDiscardReadView Reader = root.Adapter.CreateReadView();
     }
+
+    private sealed class CompactPolicyReadLane(CompactCombatRoot root)
+    {
+        private readonly ResumableDiscardProgram _program = root.Initial.Open();
+        private readonly CompactDiscardReadView _reader = root.Adapter.CreateReadView();
+        private CompactCombatCandidate? _current;
+
+        internal CompletedStateReadView Read(CompactCombatCandidate candidate)
+        {
+            if (!ReferenceEquals(candidate.Root, root))
+                throw new InvalidOperationException("Compact policy read belongs to another root.");
+            if (!ReferenceEquals(candidate, _current))
+            {
+                candidate.Values.RestoreInto(_program);
+                _reader.Read(_program);
+                _current = candidate;
+            }
+            return _reader;
+        }
+    }
+
+    // Only synchronous policy consumers may borrow this view. Iterators which replay
+    // children must not retain its piles/models across yields or subsequent reads.
+    private CompletedStateReadView? ReadCompactPolicyState(SimulationSnapshot snapshot)
+        => snapshot.CompactCandidate is { } candidate
+            ? (_compactPolicyReadLane ??= new(candidate.Root)).Read(candidate) : null;
 
     private bool TryCompactReplay(IReadOnlyList<PlanAction> actions, SimulationSnapshot? parent,
         int startingTurn, int priorActionCount, ReplayForkSeed? seed, out SimulationSnapshot? snapshot)

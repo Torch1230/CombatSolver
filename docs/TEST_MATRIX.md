@@ -2602,3 +2602,5 @@ pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId MONSTER-MOVES-BA
 - `RID/resources still in use at exit` 当前记录为 Godot 退出噪音；任何 `CombatSolver/Unattended FAILED`、`SEARCH_FAILURE`、`DEPLOY_FAILURE` 或状态断言失败均判定场景失败。
 
 `COMPACT-SEARCH-BACKEND`（L3，原始 SILENT／MECHA_KNIGHT_ELITE、VH_PERF_MECHA、30 张 RunCards、清空原跑局牌组且 Cards=[]、VeryHigh、8 worker）：同一捕获根运行完整旧／紧凑搜索，逐项比较路线、全部 SolverSnapshot 和主要逻辑计数，断言实机不变；另报完成、挂起回退和兼容物化数。请求上限 120 秒，NoGC 配置断言不代表 Runtime 已进入 NoGC。双端脚本使用现有 ScenarioId/RunCards/Cards/ClearRunDeck 参数，无新增协议字段。[通过结果与性能回退](performance/simulation-search-backend-20260911.md)。
+
+`COMPACT-SEARCH-BACKEND` 现还校验原始战斗／跑局各 30 牌及完整 `Continuations`。政策读视图集成通过 `427def306b9748988a4088c10646bb4c`，既有完整路线和所有逻辑计数不变；物理成本单列，不能混同预算。
