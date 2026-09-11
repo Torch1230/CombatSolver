@@ -2024,7 +2024,7 @@ internal sealed partial class SimulatedCombatState
             _ = GetStarsGainedThisTurn(player);
             _ = GetNonHandDrawsThisTurn(player);
             _ = GetStatusCardsDrawnThisTurn(player);
-            _ = GetPreviousTurnAttack(simulator, player);
+            CaptureHistoryCourseCards(simulator, player);
         }
         _ = GetFetchCardsPlayedThisTurn();
         _enemiesIntendingAttack = [.. Enemies.Where(enemy => enemy.Monster?.IntendsToAttack == true)];

@@ -26,7 +26,7 @@ internal sealed partial class ResumableDiscardProgram
     // command provenance without retaining a model or attributing indirect damage to a card.
     [Flags]
     internal enum DamageTraits { Unpowered = 8, Unblockable = 16, NoDealer = 32, NoCard = 64, Poison = 128 }
-    private const int EnergySlot = 0, BlockSlot = 1, DepthSlot = 2;
+    private const int EnergySlot = 0, BlockSlot = 1, DepthSlot = 2, AttackCardStartsSlot = 3;
     private const int RngSlot = 4, ShuffleCountSlot = 9;
     private const int FrameWidth = 22, MaxFrames = 8, PileCount = 7;
     private const int CardOffset = 0, IpOffset = 1, AutoOffset = 2, BeforeBlockOffset = 3;
@@ -56,6 +56,7 @@ internal sealed partial class ResumableDiscardProgram
     private readonly RandomDrawCostLayout? _drawCosts;
     internal ReversibleValueState State { get; }
     internal int Energy => Read(EnergySlot);
+    internal int AttackCardStarts => Read(AttackCardStartsSlot);
     internal int CardCount => _cardInstances.Count(State);
     // Existing instances cannot change definition in this admitted program. Only their
     // captured X, added keywords and one-shot status are mutable; generated identities share the buffer.
@@ -137,8 +138,9 @@ internal sealed partial class ResumableDiscardProgram
     internal ResumableDiscardProgram(Card[] cards, IReadOnlyList<int>[] piles, int energy, int block, int discardBlock,
         ValueRng shuffleRng = default, int[]? comparisons = null, int stratagem = 0, int shuffleBlock = 0,
         bool shuffleBlockFirst = false, CreatureVitals[]? creatures = null, BasicPowerDefinition[]? powers = null, Card[]? generatedCards = null,
-        ValueRng? energyCostRng = null, bool handEndAdmitted = false, MonsterEffectProgram[]? monsterMoves = null, bool powerPhasesAdmitted = false, DeterministicMonsterAi? monsterAi = null, CompactRoundRoot? round = null, int pet = -1)
+        ValueRng? energyCostRng = null, bool handEndAdmitted = false, MonsterEffectProgram[]? monsterMoves = null, bool powerPhasesAdmitted = false, DeterministicMonsterAi? monsterAi = null, CompactRoundRoot? round = null, int pet = -1, int attackCardStarts = 0)
     {
+        if (attackCardStarts < 0) throw new ArgumentOutOfRangeException(nameof(attackCardStarts));
         Card[] definitions = [.. cards, .. generatedCards ?? []];
         if (cards.Length == 0 || piles.Length != 5 || cards.Count(c => c.Sly || c.SingleTurnSly) >= MaxFrames
             || generatedCards?.Any(card => card.Sly || card.SingleTurnSly || card.DrawCost != null) == true)
@@ -213,6 +215,7 @@ internal sealed partial class ResumableDiscardProgram
         _drawCosts = cards.Any(card => card.DrawCost != null) ? new(State, cards.Select(card => card.DrawCost).ToArray(),
             energyCostRng ?? throw new NotSupportedException("Random draw costs require a captured RNG stream.")) : null;
         State.Write(EnergySlot, energy);
+        State.Write(AttackCardStartsSlot, attackCardStarts);
         if (_combat == null) State.Write(BlockSlot, block);
         else if (Creature(0).Block != block) throw new ArgumentException("Player block disagrees with creature values.");
         WriteRng(shuffleRng);
@@ -413,6 +416,8 @@ internal sealed partial class ResumableDiscardProgram
                     Move(card, Pile.Play);
                     BeforeCardPlayed(card);
                     Emit(EventKind.Start, card, Read(frame + EnergyValueOffset), Read(frame + AutoOffset) != 0, Read(frame + TargetOffset));
+                    if (Definition(card).Category == CardCategory.Attack)
+                        State.Write(AttackCardStartsSlot, checked(AttackCardStarts + 1));
                     State.Write(frame + IpOffset, 1);
                     break;
                 case 1:
@@ -706,7 +711,10 @@ internal sealed partial class ResumableDiscardProgram
     {
         if (Ending || !CreaturePresent(target) || Creature(target).CurrentHp <= 0 || Creature(dealer).CurrentHp <= 0) return;
         bool redirect = target == 0 && PetIndex >= 0 && Creature(PetIndex).CurrentHp > 0;
-        DamageValues result = _combat!.Damage(State, target, _powers?.ModifyAttack(State, dealer, target, amount, cardMultiplier) ?? amount,
+        // Every admitted card attack is inside its first OnPlay, in the Play pile.
+        // The source belongs to the player even when its actual dealer is the pet.
+        DamageValues result = _combat!.Damage(State, target, _powers?.ModifyAttack(State, dealer, target, amount, cardMultiplier,
+                firstCardAttack: source >= 0 && AttackCardStarts <= 1) ?? amount,
             out DamageValues? petResult, redirectToPet: redirect);
         DamageTraits traits = source < 0 ? DamageTraits.NoCard : 0;
         // Native records both receivers before processing either death. Even a fully

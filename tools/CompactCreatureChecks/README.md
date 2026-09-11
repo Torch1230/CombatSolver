@@ -40,3 +40,6 @@
 关键字迁移同步修复两处合同接口漂移：能力表达式使用当前 `Multiplier` 名称，生成事件按位置／牌堆／创建者核对，模板从实例定义单独核对。整套值合同与[动态关键字原生测试](../../docs/performance/simulation-keywords-20260911.md)共同验证当前内核；原生测试另覆盖实例编码的定义编号／X 上限／两高位和生成牌标记。
 
 `OneShotEnchantmentChecks` 核对 72 组定义编号／X／关键字／附魔状态编码、生成 X 卡部分抽牌后的暂停与恢复、撤销及八工作区。原生普通／自动出牌、来源、满手与终局见[出牌前能力与迅速报告](../../docs/performance/simulation-card-hooks-20260911.md)。
+
+
+`AttackStartChecks` 覆盖零／非零根历史、外层攻击未结束时的零命中内层攻击、暂停、来源门禁、撤销与八工作区。这是合成指令合同；原版卡牌、宠物、当前回合历史和跨回合验证见[致死性报告](../../docs/performance/simulation-lethality-20260911.md)。

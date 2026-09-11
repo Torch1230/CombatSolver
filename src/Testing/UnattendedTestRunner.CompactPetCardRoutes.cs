@@ -23,7 +23,7 @@ internal sealed partial class UnattendedTestRunner
         (string Id, int? Upgrade)[] cardSteps, Action<ResumableDiscardProgram, ResumableDiscardProgram, int> assertStep,
         bool observeDrawExhaust = false, Func<PlanAction, ResumableDiscardProgram, bool>? observeNativeChoice = null,
         int rounds = 2, bool requirePending = true, bool verifyEnergyCosts = false, Func<PlanAction, int, bool>? chooseBranch = null,
-        bool forceOpeningPower = false)
+        bool forceOpeningPower = false, bool verifyAttackStarts = false)
     {
         var enemy = combat.Enemies.Single();
         var captured = CombatRootSnapshot.Capture(combat);
@@ -130,7 +130,10 @@ internal sealed partial class UnattendedTestRunner
                     throw new InvalidOperationException("Pet card route Power lifecycle fields differ.");
                 AssertCompactRngSet(expected.Rng, projected.Rng);
                 var evaluation = Release(evaluator.Evaluate(expected, lane.PlayerTurn));
-                AssertCompactEvaluation(evaluation, Release(evaluator.Evaluate(projected, lane.PlayerTurn)), stage + "/Projection");
+                var projectionEvaluation = Release(evaluator.Evaluate(projected, lane.PlayerTurn));
+                if (evaluation.StateKey != projectionEvaluation.StateKey && !string.IsNullOrWhiteSpace(_request.EvidenceDirectory))
+                    WriteCompactKeyFieldDifference(expected, projected, adapter, stage);
+                AssertCompactEvaluation(evaluation, projectionEvaluation, stage + "/Projection");
                 reader.Read(lane); uncached.Read(lane);
                 if (verifyEnergyCosts)
                 {
@@ -238,7 +241,10 @@ internal sealed partial class UnattendedTestRunner
                 var expectedValues = expected.Values.Open();
                 int[]? expectedCosts = verifyEnergyCosts ? Enumerable.Range(0, expectedValues.CardCount)
                     .Where(id => !expectedValues.CardRemoved(id)).Select(expectedValues.EnergyCost).ToArray() : null;
-                evidence.Add(new { action, expected = expected.Snapshot, actual = actual.Snapshot, expected.Powers,
+                int? actualAttackStarts = verifyAttackStarts ? CountNativeAttackStarts(combat, player) : null;
+                if (actualAttackStarts != null && actualAttackStarts != expectedValues.AttackCardStarts)
+                    throw new InvalidOperationException("Native attack-start history differs from the reversible counter.");
+                evidence.Add(new { action, actualAttackStarts, expectedAttackStarts = expectedValues.AttackCardStarts, expected = expected.Snapshot, actual = actual.Snapshot, expected.Powers,
                     actualPowers = actual.Powers, expected.Piles, actualPiles = actual.Piles, expectedPet, actualPet = actual.Pet,
                     expectedCards = expected.Cards, actualCards = actual.Cards, expectedCosts, actualCosts = actual.EnergyCosts,
                     unplaced = expectedValues.Cards(ResumableDiscardProgram.Pile.Unplaced) });

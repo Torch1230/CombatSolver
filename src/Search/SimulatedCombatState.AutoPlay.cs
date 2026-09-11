@@ -61,7 +61,7 @@ internal sealed partial class SimulatedCombatState
 
         if (turnNumber > 1)
         {
-            PredictedCard? previousAttack = GetPreviousTurnAttack(simulator, player);
+            PredictedCard? previousAttack = GetPreviousTurnAttack(player);
             if (previousAttack != null)
             {
                 foreach (HistoryCourse relic in RelicsOf(player)
@@ -178,21 +178,27 @@ internal sealed partial class SimulatedCombatState
         return !HasPendingChoice;
     }
 
-    private PredictedCard? GetPreviousTurnAttack(CombatPredictionSimulator simulator, Player player)
+    private PredictedCard? GetPreviousTurnAttack(Player player)
+        => _lastAttackPreviousTurn?.GetValueOrDefault(player);
+
+    private void CaptureHistoryCourseCards(CombatPredictionSimulator simulator, Player player)
     {
-        if (_lastAttackPreviousTurn?.TryGetValue(player, out PredictedCard? predicted) == true)
-            return predicted;
-        CardPlayFinishedEntry? live = _rootHistory.CardPlaysFinished.LastOrDefault(entry =>
-            entry.CardPlay.Player == player
-            && entry.HappenedLastPlayerTurn(player)
-            && entry.CardPlay.Card.Type == CardType.Attack
-            && !entry.CardPlay.Card.IsDupe);
-        if (live == null)
-            return null;
-        predicted = simulator.State.FindCard(live.CardPlay.Card)
-            ?? PredictedCard.FromGenerated(PredictionUtils.CloneCardStateForSimulation(live.CardPlay.Card));
-        (_lastAttackPreviousTurn ??= [])[player] = predicted;
-        return predicted;
+        // Main-thread root capture owns both windows, including a current-turn play
+        // made before the root. Once committed, absence is authoritative: later
+        // auto-play queries must never refill it using live player turn numbers.
+        CardPlayFinishedEntry? LastAttack(int turn) => _rootHistory.CardPlaysFinished.LastOrDefault(entry =>
+            entry.CardPlay.Player == player && entry._playerTurnNumbers.TryGetValue(player.NetId, out int playedTurn)
+            && playedTurn == turn && entry.CardPlay.Card.Type == CardType.Attack && !entry.CardPlay.Card.IsDupe);
+        PredictedCard? Capture(CardPlayFinishedEntry? entry) => entry == null ? null
+            : simulator.State.FindCard(entry.CardPlay.Card)
+                ?? PredictedCard.FromGenerated(PredictionUtils.CloneCardStateForSimulation(entry.CardPlay.Card));
+        var currentEntry = LastAttack(GetPlayerTurnNumber(player));
+        var previousEntry = LastAttack(GetPlayerTurnNumber(player) - 1);
+        var current = Capture(currentEntry);
+        var previous = currentEntry != null && previousEntry?.CardPlay.Card == currentEntry.CardPlay.Card
+            ? current : Capture(previousEntry);
+        if (current != null) (_lastAttackThisTurn ??= [])[player] = current;
+        if (previous != null) (_lastAttackPreviousTurn ??= [])[player] = previous;
     }
 
     private Dictionary<Player, PredictedCard>? ForkHistoryCourseCards(

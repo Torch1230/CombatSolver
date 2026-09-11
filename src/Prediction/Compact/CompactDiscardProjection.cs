@@ -72,7 +72,7 @@ internal sealed class CompactDiscardProjection
             throw new NotSupportedException("Compact pet roots require one captured Osty with its persistent protection and admitted stats.");
         if (combat.Players.Count != 1 || powers.Any(p => !IsBasicPower(p))
             || powers.Any(p => !(p is StratagemPower && p.Owner == player.Creature && p.Amount is >= 1 and <= 10)
-                && !(includeAttacks ? p is not StratagemPower && IsBasicPower(p) && (p is not (BlockNextTurnPower or ToolsOfTheTradePower or NeurosurgePower or BorrowedTimePower or VeilpiercerPower or SpiritOfAshPower or DanseMacabrePower) || p.Owner == player.Creature)
+                && !(includeAttacks ? p is not StratagemPower && IsBasicPower(p) && (p is not (BlockNextTurnPower or ToolsOfTheTradePower or NeurosurgePower or BorrowedTimePower or VeilpiercerPower or SpiritOfAshPower or DanseMacabrePower or LethalityPower) || p.Owner == player.Creature)
                     && (p is not (PiercingWailPower or HangPower) || p.Owner != player.Creature)
                     : p is StrengthPower && p.Owner != player.Creature))
             || combat.RootRunModSubscriberCount != 0 || combat.RootCombatModSubscriberCount != 0
@@ -205,7 +205,9 @@ internal sealed class CompactDiscardProjection
             Block(relics.OfType<TheAbacus>().SingleOrDefault()), abacusIndex >= 0 && abacusIndex < stratagemIndex,
             includeAttacks ? _creatures.Select(c => { var v = root.State.GetCreature(c); return new CreatureVitals(v.CurrentHp, v.MaxHp, v.Block); }).ToArray() : null, powerDefinitions, definitions[cards.Length..],
             new(energyRng.Counter, energyRng.State0, energyRng.State1, energyRng.State2, energyRng.State3), handEndAdmitted: includeHandEnd, monsterMoves: includeMechaMoves ? CaptureMechaCommands(root, burnTemplate) : null, powerPhasesAdmitted: includePowerPhases, monsterAi: ai,
-            round: includeRounds ? new(combat.RoundNumber, PlayerTurn, player.MaxEnergy, MegaCrit.Sts2.Core.Combat.CombatManager.baseHandDrawCount, (int)turnSummon) : null, pet: osty == null ? -1 : CreatureIndex(osty));
+            round: includeRounds ? new(combat.RoundNumber, PlayerTurn, player.MaxEnergy, MegaCrit.Sts2.Core.Combat.CombatManager.baseHandDrawCount, (int)turnSummon) : null, pet: osty == null ? -1 : CreatureIndex(osty),
+            // Idle roots contain completed plays; this getter uses frozen CardPlaysStarted history.
+            attackCardStarts: combat.GetAttacksPlayedThisTurn(player.Creature));
         CardValuesInvariant = Program.CardValuesInvariant;
     }
 
@@ -263,6 +265,7 @@ internal sealed class CompactDiscardProjection
             if (kind == BasicPowerKind.BorrowedTime && (owner != _player.Creature || !cards.Any(card => card.Preview is BorrowedTime))) continue;
             if (kind == BasicPowerKind.Veilpiercer && (owner != _player.Creature || !cards.Any(card => card.Preview is Veilpiercer))) continue;
             if (kind == BasicPowerKind.SpiritOfAsh && (owner != _player.Creature || !cards.Any(card => card.Preview is SpiritOfAsh))) continue;
+            if (kind == BasicPowerKind.Lethality && (owner != _player.Creature || !cards.Any(card => card.Preview is Lethality))) continue;
             if (kind == BasicPowerKind.DanseMacabre && (owner != _player.Creature || !cards.Any(card => card.Preview is DanseMacabre))) continue;
             if (kind == BasicPowerKind.Hang && (owner == _player.Creature || !cards.Any(card => card.Preview is Hang))) continue;
             if (owner.PetOwner != null && kind != BasicPowerKind.Strength) continue;
@@ -300,7 +303,8 @@ internal sealed class CompactDiscardProjection
         [typeof(VeilpiercerPower)] = BasicPowerKind.Veilpiercer,
         [typeof(HangPower)] = BasicPowerKind.Hang,
         [typeof(SpiritOfAshPower)] = BasicPowerKind.SpiritOfAsh,
-        [typeof(DanseMacabrePower)] = BasicPowerKind.DanseMacabre
+        [typeof(DanseMacabrePower)] = BasicPowerKind.DanseMacabre,
+        [typeof(LethalityPower)] = BasicPowerKind.Lethality
     };
     private static bool IsBasicPower(PowerModel power) => BasicKinds.ContainsKey(power.GetType());
     private static PowerModel CanonicalPower(BasicPowerKind kind) => kind switch
@@ -321,6 +325,7 @@ internal sealed class CompactDiscardProjection
         BasicPowerKind.BorrowedTime => CanonicalModels.Power<BorrowedTimePower>(),
         BasicPowerKind.Hang => CanonicalModels.Power<HangPower>(),
         BasicPowerKind.SpiritOfAsh => CanonicalModels.Power<SpiritOfAshPower>(),
+        BasicPowerKind.Lethality => CanonicalModels.Power<LethalityPower>(),
         BasicPowerKind.DanseMacabre => CanonicalModels.Power<DanseMacabrePower>(),
         BasicPowerKind.Veilpiercer => CanonicalModels.Power<VeilpiercerPower>(),
         BasicPowerKind.DieForYou => CanonicalModels.Power<DieForYouPower>(),
@@ -901,7 +906,7 @@ internal sealed class CompactDiscardProjection
             || type == typeof(PoisonPower) && method == nameof(AbstractModel.AfterSideTurnStart)
             || type == typeof(NeurosurgePower) && method == nameof(AbstractModel.AfterSideTurnStart)
             || type == typeof(BorrowedTimePower) && method is nameof(AbstractModel.TryModifyEnergyCostInCombat) or nameof(AbstractModel.AfterSideTurnEnd)
-            || type == typeof(HangPower) && method == nameof(AbstractModel.ModifyDamageMultiplicative)
+            || (type == typeof(HangPower) || type == typeof(LethalityPower)) && method == nameof(AbstractModel.ModifyDamageMultiplicative)
             || (type == typeof(SpiritOfAshPower) || type == typeof(DanseMacabrePower)) && method == nameof(AbstractModel.BeforeCardPlayed)
             || type == typeof(VeilpiercerPower) && method is nameof(AbstractModel.TryModifyEnergyCostInCombatLate) or nameof(AbstractModel.BeforeCardPlayed)
             || type == typeof(DoomPower) && method is nameof(AbstractModel.BeforeSideTurnEnd) or nameof(AbstractModel.AfterSideTurnEnd)

@@ -40,6 +40,7 @@ internal sealed partial class ResumableDiscardProgram
         EndSidePowerEffects(enemySide: false);
         if (CheckWinCondition()) return;
         _round.BeginEnemy(State);
+        State.Write(AttackCardStartsSlot, 0);
         Emit(EventKind.BeginSide, -2);
         CapturePowerTurnStart(1);
         ClearCreatureBlock(1);
@@ -53,6 +54,7 @@ internal sealed partial class ResumableDiscardProgram
         EndSidePowerEffects(enemySide: true);
         AdvanceMonsterMove(1);
         _round.BeginPlayer(State);
+        State.Write(AttackCardStartsSlot, 0);
         Emit(EventKind.BeginSide, -1);
         CapturePowerTurnStart(0);
         if (PetIndex >= 0) CapturePowerTurnStart(PetIndex);

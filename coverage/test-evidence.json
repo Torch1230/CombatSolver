@@ -1,4 +1,12 @@
 {
+  "COMPACT-LETHALITY-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeFirstAttackHistoryAndFixedSearchDifferential",
+    "procedure": "三个倍率根及三个后续回合根，27原生动作／60分支／21挂起；历史课原生两阶段失败基线与修复；250节点搜索。",
+    "expected": "首张攻击按开始历史和卡牌主人判定；当前与上一回合最后攻击在根捕获，空窗口不可从live补读。",
+    "observed": "180188de829747f68de6b475b17873a6 HISTORY-COURSE-WINDOW Passed; 3c77813aa47c4fccb32bc88820296d0c COMPACT-LETHALITY-NATIVE Passed; 9c3e4dc540294893b6b2acbc70b9c6ac COMPACT-LETHALITY-SEARCH Passed",
+    "evidence": "docs/performance/simulation-lethality-20260911.md；docs/performance/simulation-lethality-20260911.json。"
+  },
   "COMPACT-CARD-HOOKS-20260911": {
     "status": "Passed",
     "level": "HeadlessNativeOrderedCardHooksOneShotEnchantmentAndFixedSearchDifferential",

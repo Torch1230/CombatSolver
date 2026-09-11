@@ -412,3 +412,6 @@ renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或
 雕琢打击／响指由 Prediction 编译为攻击／奥斯蒂攻击后 `ApplyKeywordFromHand`。`CardInstanceValue` 把定义编号、捕获 X 和两种新增关键字保存在原实例槽；X 上限 999999999 占 30 位，关键字不会在付款时被覆盖。原有关键字来自不可变定义，新增虚无／保留来自撤销状态，全部费用、结束历史、手牌末尾和保留读取同一来源。关键字选择的候选先过滤；计划 token 的 OptionOccurrence 用过滤集合，SourceOccurrence 与完整来源保留独立身份。完成读视图仅修改私有模型的局部关键字并失效缓存，恢复旧候选会移除后加标记；未知全局关键字 Hook 仍拒绝。旧选牌规格为这两张牌补上原生结束门禁。[证据](performance/simulation-keywords-20260911.md)。
 
 出牌前能力扩展：灰烬之灵／死亡之舞与刺破帷幕按当前能力获得顺序执行，查询、递减及非威力格挡都在 CardPlayStarted 之前。死亡之舞的能量门槛在根捕获为不可变配置，普通牌每次查询当前费用，X 使用捕获的付款值；旧镜像与纯值路径均遵循 GetResolved。迅速编译为末尾 DrawOnce，先将实例状态标成失效，再进入可暂停抽牌帧；恢复到该帧不会重启附魔。定义编号使用 31 位、失效状态一位、X 30 位及新增关键字两位，仍为一个可撤销实例槽。兼容投影为附魔抽牌建立独立来源作用域，读取器只导入私有预览状态、失效缓存。最后击杀后仍执行失效赋值，Draw 的结束门禁阻止抽牌与洗牌。[证据](performance/simulation-card-hooks-20260911.md)。
+
+
+致死性扩展：`ResumableDiscardProgram` 使用既有预留槽保存攻击牌开始次数，根值从已冻结的当前回合历史捕获，在 CardPlayStarted 时增加、双方阵营开始时归零；暂停、冻结和撤销包含该槽。`BasicPowerLayout` 在力量加值后按卡牌主人和开始次数应用倍率，宠物实际施伤者保留自己的力量／虚弱；当前闭包仅含 Play 中首次 OnPlay，重放和外部卡牌来源仍拒绝。旧 `SimulatedCombatState` 在主线程一次捕获当前／上一玩家回合的非复制最后攻击，后续只消费分支映射；空窗口不能从 live 回合号补读。两份映射沿用统一 Fork 重映射与原键编码。[证据](performance/simulation-lethality-20260911.md)。

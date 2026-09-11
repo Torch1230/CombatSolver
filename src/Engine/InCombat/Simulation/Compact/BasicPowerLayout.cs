@@ -1,6 +1,6 @@
 namespace CombatSolver.Engine.InCombat.Simulation.Compact;
 
-internal enum BasicPowerKind { Strength, Dexterity, Weak, Vulnerable, Frail, Poison, BlockNextTurn, ToolsOfTheTrade, PiercingWail, Artifact, Stratagem, Doom, Neurosurge, DieForYou, BorrowedTime, Veilpiercer, Hang, SpiritOfAsh, DanseMacabre }
+internal enum BasicPowerKind { Strength, Dexterity, Weak, Vulnerable, Frail, Poison, BlockNextTurn, ToolsOfTheTrade, PiercingWail, Artifact, Stratagem, Doom, Neurosurge, DieForYou, BorrowedTime, Veilpiercer, Hang, SpiritOfAsh, DanseMacabre, Lethality }
 internal readonly record struct BasicPowerDefinition(BasicPowerKind Kind, int Owner, int Amount,
     int Applier, int Order, decimal Multiplier, bool RootSlot, int AmountOnTurnStart = 0, bool SkipNextDurationTick = false,
     int MinimumEnergyCost = 0);
@@ -127,7 +127,7 @@ internal sealed class BasicPowerLayout
     }
 
     internal decimal ModifyAttack(ReversibleValueState state, int dealer, int target, decimal amount,
-        BasicPowerKind? cardMultiplier = null)
+        BasicPowerKind? cardMultiplier = null, bool firstCardAttack = false)
     {
         amount += Amount(state, dealer, BasicPowerKind.Strength);
         // Definitions retain captured listener order. Only enemy Weak can be newly created;
@@ -143,6 +143,8 @@ internal sealed class BasicPowerLayout
                 amount *= definition.Multiplier;
             if (definition.Kind == cardMultiplier && definition.Owner == target)
                 amount *= current;
+            if (firstCardAttack && definition.Kind == BasicPowerKind.Lethality && definition.Owner == 0)
+                amount *= 1m + current / 100m;
         }
         return Math.Max(0m, amount);
     }
