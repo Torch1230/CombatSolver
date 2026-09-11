@@ -1082,6 +1082,12 @@ for replay in '.ManualPlay(' '.AutoPlay(' '.Fork(' 'HookMirrors.' 'CardCmd.' '.S
     forbid_fixed "$compact_card_reads" "$replay" 'card metadata binding may only import supplied completed values:'
 done
 require_fixed "$compact_card_reads" 'private readonly List<Binding> _active;' 'card read previews must belong to a private binding'
+require_fixed "$repository_root/src/Prediction/Compact/CompactPlanReplay.cs" 'int[] options = lane.ChoiceOptions();' 'filtered choices must use option occurrences'
+require_fixed "$repository_root/src/Prediction/Compact/CompactPlanReplay.cs" 'options, cards, ReplacementValue: 0d)' 'filtered choices must retain their complete source'
+require_fixed "$repository_root/src/Prediction/Compact/CompactCardMetadataReadBinding.cs" '_keywordsCanChange && ImportKeywords(model, program, card)' 'mutable keyword imports must belong to the private reader'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" '(CardInstance(card) with { CapturedX = value }).Data' 'X payment must retain instance keyword bits'
+require_fixed "$repository_root/src/Search/CardChoiceSupport.cs" 'SculptingStrike when !simulator.IsEnding' 'sculpting hand choices must honor native ending gate'
+require_fixed "$repository_root/src/Search/CardChoiceSupport.cs" 'Snap when !simulator.IsEnding' 'snap hand choices must honor native ending gate'
 require_fixed "$compact_card_reads" 'model.EnergyCost.CapturedXValue = captured;' 'completed card metadata lost captured X values'
 require_fixed "$compact_card_reads" 'model.HasBeenRemovedFromState = removed;' 'completed card metadata lost removal state'
 require_fixed "$compact_reader" '_cards.Read(program);' 'completed card metadata must come from the current program'

@@ -407,3 +407,6 @@ renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或
 
 
 吊杀的卡牌身份只由 Prediction 精确编译：`AttackMultiplierPower` 是不可变攻击指令元数据，Engine 在力量加值之后按目标能力乘算，普通卡牌／怪物／宠物攻击默认不携带该标记。`ApplyPowerAtLeastCurrent` 在攻击完成后读取当前目标层数；当前闭包唯一的施加修饰为人工制品，仍运行修饰再使用共享提交封顶，与原生封顶零请求仍可消耗人工制品的结果相同。未知请求量观察者仍在根准入时拒绝，不能将此等价变换扩展到开放 Hook 集合。能力继续使用原有层数／顺序／退休／回合快照槽和只读绑定。[原生与搜索证据](performance/simulation-hang-20260911.md)。
+
+
+雕琢打击／响指由 Prediction 编译为攻击／奥斯蒂攻击后 `ApplyKeywordFromHand`。`CardInstanceValue` 把定义编号、捕获 X 和两种新增关键字保存在原实例槽；X 上限 999999999 占 30 位，关键字不会在付款时被覆盖。原有关键字来自不可变定义，新增虚无／保留来自撤销状态，全部费用、结束历史、手牌末尾和保留读取同一来源。关键字选择的候选先过滤；计划 token 的 OptionOccurrence 用过滤集合，SourceOccurrence 与完整来源保留独立身份。完成读视图仅修改私有模型的局部关键字并失效缓存，恢复旧候选会移除后加标记；未知全局关键字 Hook 仍拒绝。旧选牌规格为这两张牌补上原生结束门禁。[证据](performance/simulation-keywords-20260911.md)。

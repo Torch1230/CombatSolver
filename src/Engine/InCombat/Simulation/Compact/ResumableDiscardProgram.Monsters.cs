@@ -62,7 +62,7 @@ internal sealed partial class ResumableDiscardProgram
         {
             int created = CardCount;
             Card definition = _definitions[template];
-            _cardInstances.Append(State, [(long)(uint)template | (long)definition.CapturedX << 32]);
+            _cardInstances.Append(State, [new CardInstanceValue(template, definition.CapturedX).Data]);
             if (Ending)
             {
                 // Generation history survives the native ending gate on pile insertion.

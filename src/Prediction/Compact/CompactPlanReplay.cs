@@ -60,7 +60,7 @@ internal sealed class CompactPlanReplay
             if (choice!.Cards.Count != lane.ChoiceCount)
                 throw new InvalidPlannedChoiceBranchException("Compact choice cardinality differs from the plan.");
             _metadata.Read(lane);
-            int[] options = lane.Cards(lane.ChoicePile);
+            int[] options = lane.ChoiceOptions();
             int[] selected = choice.Cards.Select(token => options.Where(id => CardChoiceSupport.MatchesToken(_metadata[id], token))
                 .Skip(token.OptionOccurrence).Select(id => (int?)id).FirstOrDefault()
                 ?? throw new InvalidPlannedChoiceBranchException($"Compact choice cannot find {token.CardId}+{token.UpgradeLevel}#{token.OptionOccurrence}.")).ToArray();
@@ -78,7 +78,14 @@ internal sealed class CompactPlanReplay
         string source = retrieve || lane.ChoiceCard < 0 ? _adapter.ChoicePowerId(retrieve)
             : lane.ChoiceAutomatic ? _adapter.DefinitionModels[lane.DefinitionIndex(lane.ChoiceCard)].Id.Entry : "";
         int count = retrieve || lane.ChoiceCard < 0 ? lane.ChoiceCount : lane.ChoiceRequestedCount;
-        return new(source, retrieve || lane.ChoiceReturnsFromDiscard ? PlanChoiceEffect.MoveToHand : lane.ChoiceExhausts ? PlanChoiceEffect.Exhaust : PlanChoiceEffect.Discard,
+        var effect = lane.ChoiceKeyword switch
+        {
+            CardKeywordFlags.Ethereal => PlanChoiceEffect.ApplyEthereal,
+            CardKeywordFlags.Retain => PlanChoiceEffect.ApplyRetain,
+            _ => retrieve || lane.ChoiceReturnsFromDiscard ? PlanChoiceEffect.MoveToHand
+                : lane.ChoiceExhausts ? PlanChoiceEffect.Exhaust : PlanChoiceEffect.Discard
+        };
+        return new(source, effect,
             lane.ChoicePile switch
             {
                 ResumableDiscardProgram.Pile.Hand => PileType.Hand,
@@ -94,8 +101,11 @@ internal sealed class CompactPlanReplay
         _metadata.Read(lane);
         // Choice policy can retain a spec across child replays. Only its current source
         // cards are cloned; these private previews never alias a mutable lane model pool.
-        var cards = lane.Cards(lane.ChoicePile).Select(id => _metadata[id].Clone()).ToArray();
+        var source = lane.Cards(lane.ChoicePile);
+        var cards = source.Select(id => _metadata[id].Clone()).ToArray();
+        var options = lane.ChoiceKeyword == CardKeywordFlags.None ? cards
+            : cards.Where((_, index) => lane.IsChoiceOption(source[index])).ToArray();
         return request with { Spec = new(request.Effect, request.SourcePile, request.Count, request.Count,
-            cards, cards, ReplacementValue: 0d) };
+            options, cards, ReplacementValue: 0d) };
     }
 }

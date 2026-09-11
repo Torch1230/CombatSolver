@@ -22,7 +22,7 @@ internal sealed partial class UnattendedTestRunner
     private async Task AssertCompactPetCardRouteAsync(CombatState combat, Player player, int mode, string label, string evidencePrefix,
         (string Id, int? Upgrade)[] cardSteps, Action<ResumableDiscardProgram, ResumableDiscardProgram, int> assertStep,
         bool observeDrawExhaust = false, Func<PlanAction, ResumableDiscardProgram, bool>? observeNativeChoice = null,
-        int rounds = 2, bool requirePending = true, bool verifyEnergyCosts = false)
+        int rounds = 2, bool requirePending = true, bool verifyEnergyCosts = false, Func<PlanAction, int, bool>? chooseBranch = null)
     {
         var enemy = combat.Enemies.Single();
         var captured = CombatRootSnapshot.Capture(combat);
@@ -63,7 +63,8 @@ internal sealed partial class UnattendedTestRunner
                             before.RestoreInto(lane); replay.Execute(lane, branch.Action);
                             assertStep(lane, before.Open(), step);
                             var sample = Check(branch.Action, branch.Snapshot.Simulator, $"Step{step}/Branch{alternatives++}");
-                            if (chosen == null) { chosen = sample; next = branch.Snapshot.Simulator.Fork(); }
+                            if (chosen == null && (chooseBranch?.Invoke(branch.Action, step) ?? true))
+                            { chosen = sample; next = branch.Snapshot.Simulator.Fork(); }
                         }
                         finally { branch.Snapshot.ReleaseSimulator(); }
                     }

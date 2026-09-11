@@ -35,3 +35,6 @@
 确定性 AI 合同另覆盖非初始根、复制图、300 次增长日志、撤销和八工作区续接；原生 AI／意图由 `COMPACT-MONSTER-AI-NATIVE` 对照。
 
 `NeurosurgeChecks` 覆盖能量封顶、抽牌前资源、选择后能力与人工制品、阵营开始一次性标记、玩家／敌方毁灭相位、终局前时钟／AI、撤销和八工作区恢复；[原生与搜索证据](../../docs/performance/simulation-necro-resources-20260911.md)。
+
+
+关键字迁移同步修复两处合同接口漂移：能力表达式使用当前 `Multiplier` 名称，生成事件按位置／牌堆／创建者核对，模板从实例定义单独核对。整套值合同与[动态关键字原生测试](../../docs/performance/simulation-keywords-20260911.md)共同验证当前内核；原生测试另覆盖实例编码的定义编号／X 上限／两高位和生成牌标记。

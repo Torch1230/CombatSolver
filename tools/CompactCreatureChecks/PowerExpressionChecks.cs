@@ -13,7 +13,7 @@ internal static class PowerExpressionChecks
         CardEffectProgram predicate = new([new(CardInstructionKind.SkipIfTargetLacksPower, 1, BasicPowerKind.Poison, CardInstructionTarget.ChosenEnemy),
             new(CardInstructionKind.ApplyBasicPower, 9, BasicPowerKind.Poison, CardInstructionTarget.ChosenEnemy)]);
         CardEffectProgram sum = new([new(CardInstructionKind.GainBlockFromPowerSum, 2, BasicPowerKind.Poison,
-            CardInstructionTarget.AllEnemies, PowerMultiplier: 3)]);
+            CardInstructionTarget.AllEnemies, Multiplier: 3)]);
         var program = new ResumableDiscardProgram([new(0, predicate), new(0, sum),
                 new(0, new([new(CardInstructionKind.TriggerBasicPower, 0, BasicPowerKind.Poison, CardInstructionTarget.ChosenEnemy)])),
                 new(0, new([new(CardInstructionKind.AttackTarget, 100)])),
@@ -48,8 +48,8 @@ internal static class PowerExpressionChecks
             }
         });
         CardInstruction[][] invalid = [[new(CardInstructionKind.SkipIfTargetLacksPower, 1, BasicPowerKind.Poison, CardInstructionTarget.ChosenEnemy)],
-            [new(CardInstructionKind.GainBlockFromPowerSum, 0, BasicPowerKind.Poison, PowerMultiplier: 1)],
-            [new(CardInstructionKind.GainBlock, 1, PowerMultiplier: 1)]];
+            [new(CardInstructionKind.GainBlockFromPowerSum, 0, BasicPowerKind.Poison, Multiplier: 1)],
+            [new(CardInstructionKind.GainBlock, 1, Multiplier: 1)]];
         foreach (var instructions in invalid)
         {
             try { _ = new CardEffectProgram(instructions); }

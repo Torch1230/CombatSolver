@@ -549,3 +549,6 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 
 
 紧凑封闭编译新增精确吊杀 `Hang`（共 45 卡牌类型）和敌方 `HangPower`，没有新增第三方登记入口。倍率仅携带在该卡攻击指令上，不由引擎识别 CLR 卡牌类型，不影响其他来源的攻击。当前能力增长只准入人工制品这一施加修饰；提交封顶与原生限制请求量的等价依赖“没有观察请求量的其他 Hook”。未来增加施加修饰或能力历史观察者时须重新核验封顶零请求及层数，不能仅补类型白名单。[证据](performance/simulation-hang-20260911.md)。
+
+
+紧凑卡牌封闭编译新增精确雕琢打击 `SculptingStrike`、响指 `Snap`（共 47 类型），接受已表示牌上的局部虚无／保留。`CardKeywordFlags` 只表示这两种永久增加；临时保留、任意关键字增删和全局关键字修改并未因此开放。全局修改 Hook 仍在整根准入中拒绝，所以雕琢打击的局部过滤与响指的全部关键字过滤可在当前闭包使用同一状态来源。模型导入不是第三方关键字执行入口。旧 `CardChoiceSupport.GetSpec` 中两张牌在结束时不生成选择，符合原生 FromHand；外部优先登记合同不变。[证据](performance/simulation-keywords-20260911.md)。

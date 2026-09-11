@@ -153,10 +153,10 @@ internal static partial class CardChoiceSupport
                 owner.Hand.Cards.Where(item => item.Preview.Type == CardType.Skill && !item.Preview.IsSlyThisTurn)),
             HeirloomHammer => Spec(owner, PlanChoiceEffect.Duplicate, PileType.Hand, 1,
                 owner.Hand.Cards.Where(item => item.Preview.VisualCardPool.IsColorless)),
-            SculptingStrike => Spec(owner, PlanChoiceEffect.ApplyEthereal, PileType.Hand, 1,
+            SculptingStrike when !simulator.IsEnding => Spec(owner, PlanChoiceEffect.ApplyEthereal, PileType.Hand, 1,
                 owner.Hand.Cards.Where(item => !item.Preview.GetKeywordsWithSources(KeywordSources.Local)
                     .Contains(CardKeyword.Ethereal))),
-            Snap => Spec(owner, PlanChoiceEffect.ApplyRetain, PileType.Hand, 1,
+            Snap when !simulator.IsEnding => Spec(owner, PlanChoiceEffect.ApplyRetain, PileType.Hand, 1,
                 owner.Hand.Cards.Where(item => !item.Preview.Keywords.Contains(CardKeyword.Retain))),
             DecisionsDecisions => Spec(owner, PlanChoiceEffect.AutoPlayRepeated, PileType.Hand, 1,
                 owner.Hand.Cards.Where(item => item.Preview.Type == CardType.Skill

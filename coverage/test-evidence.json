@@ -1,4 +1,12 @@
 {
+  "COMPACT-KEYWORDS-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeMutableKeywordsAndFixedSearchDifferential",
+    "procedure": "三根两回合、生成牌、空选项、双终局、250节点及纯值合同。",
+    "expected": "关键字、过滤实例、费用、X和回合末读取同一分支状态；终局不生成选择。",
+    "observed": "e78df34f87994051bb8dec3ebc807ade COMPACT-KEYWORDS-NATIVE Passed; 2fd5c638a699489eaaf77f7325819914 COMPACT-KEYWORD-GENERATED Passed; f0c4c6ec174c42dc84900fdff264bd76 COMPACT-KEYWORD-EMPTY Passed; e05e6eb4f1d849279776acfeaeda6c5b COMPACT-SCULPTING-STRIKE-TERMINAL Passed; 1bfcf8d218a14e4c9831cf5b935bbc5e COMPACT-SNAP-TERMINAL Passed; 7aea3ac9a0844a5790032bcdcb5ee3a6 COMPACT-KEYWORDS-SEARCH Passed",
+    "evidence": "docs/performance/simulation-keywords-20260911.json；docs/performance/simulation-keywords-20260911.md。"
+  },
   "COMPACT-HANG-20260911": {
     "status": "Passed",
     "level": "HeadlessNativeCardMultiplierCapTerminalAndFixedSearchDifferential",

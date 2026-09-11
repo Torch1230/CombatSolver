@@ -33,7 +33,7 @@ internal sealed partial class ResumableDiscardProgram
         for (int index = 0; index < Count(Pile.Hand);)
         {
             int card = CardAt(Pile.Hand, index);
-            if (Definition(card).Retain) index++;
+            if (IsRetained(card)) index++;
             else MoveHandEndResult(card, Pile.Discard);
         }
         CleanupCards();

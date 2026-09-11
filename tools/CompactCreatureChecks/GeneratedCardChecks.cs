@@ -21,7 +21,10 @@ internal static class GeneratedCardChecks
             || !lane.Cards(ResumableDiscardProgram.Pile.Discard).SequenceEqual(Enumerable.Range(11, 299).Append(0)))
             throw new InvalidOperationException("Generated identities or full-hand spill order differ.");
         var events = Enumerable.Range(0, lane.EventCount).Select(lane.EventAt).Where(e => e.Kind == ResumableDiscardProgram.EventKind.Generated).ToArray();
-        if (!events.Select(e => e.Card).SequenceEqual(Enumerable.Range(10, 300)) || events.Any(e => e.Value != roots)
+        if (!events.Select(e => e.Card).SequenceEqual(Enumerable.Range(10, 300))
+            || events[0].Value != 9 || events[0].Flags != (int)ResumableDiscardProgram.Pile.Hand
+            || !events.Skip(1).Select(e => e.Value).SequenceEqual(Enumerable.Range(0, 299))
+            || events.Skip(1).Any(e => e.Flags != (int)ResumableDiscardProgram.Pile.Discard) || events.Any(e => e.Target != 0)
             || Enumerable.Range(10, 300).Any(card => lane.DefinitionIndex(card) != roots || lane.Definition(card) != token))
             throw new InvalidOperationException("Generated definitions or full-width event identities differ.");
         var created = lane.Freeze();

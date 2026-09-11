@@ -566,6 +566,15 @@ internal sealed class CompactDiscardProjection
                         break;
                     case ResumableDiscardProgram.EventKind.Shuffle:
                         break;
+                    case ResumableDiscardProgram.EventKind.KeywordAdded:
+                        card.MutablePreview.LocalKeywords.Add((CardKeywordFlags)item.Flags switch
+                        {
+                            CardKeywordFlags.Ethereal => CardKeyword.Ethereal,
+                            CardKeywordFlags.Retain => CardKeyword.Retain,
+                            _ => throw new InvalidOperationException("Unknown compact keyword change.")
+                        });
+                        card.InvalidateCaches();
+                        break;
                     case ResumableDiscardProgram.EventKind.CostChanged:
                         card.MutablePreview.EnergyCost.SetThisCombat(item.Value);
                         card.InvalidateCaches();
@@ -774,6 +783,9 @@ internal sealed class CompactDiscardProjection
                 || actual != null && actual.Preview.HasSingleTurnSly != program.SingleTurnSly(card)
                 || actual != null && actual.Preview.EnergyCost.CostsX && actual.Preview.EnergyCost.CapturedXValue != program.CapturedX(card))
                 throw new InvalidOperationException("Compact removal or captured energy differs.");
+            if (actual != null && (actual.Preview.LocalKeywords.Contains(CardKeyword.Ethereal) != program.IsEthereal(card)
+                || actual.Preview.LocalKeywords.Contains(CardKeyword.Retain) != program.IsRetained(card)))
+                throw new InvalidOperationException("Compact local keywords differ.");
             if (actual != null && !actual.Preview.EnergyCost.CostsX
                 && (actual.Preview.EnergyCost.GetWithModifiers(CostModifiers.Local) != program.LocalEnergyCost(card)
                     || !actual.Preview.EnergyCost._localModifiers.Select(modifier => modifier.Amount)

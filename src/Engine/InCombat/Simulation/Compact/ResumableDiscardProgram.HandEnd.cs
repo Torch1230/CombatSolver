@@ -17,7 +17,7 @@ internal sealed partial class ResumableDiscardProgram
         int count = Count(Pile.Hand);
         for (int index = 0; index < count; index++) hand[index] = CardAt(Pile.Hand, index);
         foreach (int card in hand[..count])
-            if (Definition(card).HandEndDamage == null && Definition(card).Ethereal)
+            if (Definition(card).HandEndDamage == null && IsEthereal(card))
                 MoveHandEndResult(card, Pile.Exhaust);
         if (staging == HandEndStaging.Together)
             foreach (int card in hand[..count])
@@ -30,7 +30,7 @@ internal sealed partial class ResumableDiscardProgram
             if (!Ending && Creature(0).CurrentHp > 0)
                 RecordDamage(card, 0, _combat!.Damage(State, 0, amount), DamageTraits.Unpowered);
             Emit(EventKind.HandEndFinish, card);
-            MoveHandEndResult(card, Definition(card).Ethereal ? Pile.Exhaust : Pile.Discard);
+            MoveHandEndResult(card, IsEthereal(card) ? Pile.Exhaust : Pile.Discard);
         }
     }
 

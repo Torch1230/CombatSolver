@@ -19,6 +19,7 @@ internal sealed class CompactCardMetadataReadBinding : ICompletedEnergyCostReadS
         }
     }
     private readonly CompactDiscardProjection _adapter;
+    private readonly bool _keywordsCanChange;
     private readonly List<Binding> _active;
     private readonly Dictionary<(int Identity, int Definition), Binding> _generated = [];
     private readonly Dictionary<PredictedCard, int> _costIdentities = [];
@@ -28,6 +29,7 @@ internal sealed class CompactCardMetadataReadBinding : ICompletedEnergyCostReadS
     internal CompactCardMetadataReadBinding(CompactDiscardProjection adapter, PredictedCard[] cards)
     {
         _adapter = adapter;
+        _keywordsCanChange = adapter.Program.KeywordsCanChange;
         // Materialize only potentially changing previews, once per private reader. Generated
         // instances are pooled by identity and definition; sibling restores can reuse them.
         _active = cards.Select(card => Binding.Create(card, adapter.CardValuesInvariant)).ToList();
@@ -64,8 +66,9 @@ internal sealed class CompactCardMetadataReadBinding : ICompletedEnergyCostReadS
             int captured = program.CapturedX(card);
             bool removed = program.CardRemoved(card);
             bool costChanged = ImportCosts(binding, program, card);
+            bool keywordsChanged = _keywordsCanChange && ImportKeywords(model, program, card);
             bool singleSly = program.SingleTurnSly(card);
-            if (!costChanged && model.HasSingleTurnSly == singleSly && (!model.EnergyCost.CostsX || model.EnergyCost.CapturedXValue == captured) && model.HasBeenRemovedFromState == removed) continue;
+            if (!costChanged && !keywordsChanged && model.HasSingleTurnSly == singleSly && (!model.EnergyCost.CostsX || model.EnergyCost.CapturedXValue == captured) && model.HasBeenRemovedFromState == removed) continue;
             bool structureChanged = model.HasBeenRemovedFromState != removed;
             if (model.EnergyCost.CostsX) model.EnergyCost.CapturedXValue = captured;
             model.HasBeenRemovedFromState = removed;
@@ -79,6 +82,16 @@ internal sealed class CompactCardMetadataReadBinding : ICompletedEnergyCostReadS
         => _costProgram != null && _costIdentities.TryGetValue(card, out int identity)
             ? _costProgram.EnergyCost(identity)
             : throw new InvalidOperationException("Completed energy cost query has no current card binding.");
+
+    private static bool ImportKeywords(CardModel model, ResumableDiscardProgram program, int card)
+    {
+        bool ethereal = program.IsEthereal(card), retain = program.IsRetained(card);
+        var keywords = model.LocalKeywords;
+        bool changed = keywords.Contains(CardKeyword.Ethereal) != ethereal || keywords.Contains(CardKeyword.Retain) != retain;
+        if (ethereal) keywords.Add(CardKeyword.Ethereal); else keywords.Remove(CardKeyword.Ethereal);
+        if (retain) keywords.Add(CardKeyword.Retain); else keywords.Remove(CardKeyword.Retain);
+        return changed;
+    }
 
     private static bool ImportCosts(Binding binding, ResumableDiscardProgram program, int card)
     {

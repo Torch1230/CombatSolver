@@ -5,7 +5,7 @@ internal enum CardInstructionKind
     AttackTarget, GainBlock, Draw, Discard, ApplyBasicPower, SkipIfDrawnCardNotType,
     TriggerBasicPower, DiscardHandAndDraw, SkipIfTargetLacksPower, GainBlockFromPowerSum,
     GainBlockAndApplyPower, ApplyTemporaryStrengthLoss, GenerateCards, GainEnergy, SummonPet, PetAttackTarget, ExhaustFromDraw,
-    LoseEnemyHp, RetrieveFromDiscard, ApplyPowerAtLeastCurrent
+    LoseEnemyHp, RetrieveFromDiscard, ApplyPowerAtLeastCurrent, ApplyKeywordFromHand
 }
 internal enum CardInstructionTarget { Owner, ChosenEnemy, AllEnemies }
 internal enum CardCategory { Other, Attack, Skill, Power, Status }
@@ -15,7 +15,7 @@ internal readonly record struct CardInstruction(CardInstructionKind Kind, int Am
     BasicPowerKind Power = BasicPowerKind.Strength, CardInstructionTarget Target = CardInstructionTarget.Owner,
     int EnergyXMultiplier = 0, CardCategory RequiredCategory = CardCategory.Skill, int Multiplier = 0, int CardTemplate = -1,
     CardGenerationPlacement Placement = CardGenerationPlacement.Hand, bool RepeatForEnergyX = false,
-    BasicPowerKind? AttackMultiplierPower = null);
+    BasicPowerKind? AttackMultiplierPower = null, CardKeywordFlags Keyword = CardKeywordFlags.None);
 
 /// <summary>
 /// Immutable, fully admitted OnPlay instructions. Execution position belongs to the value
@@ -34,6 +34,7 @@ internal sealed class CardEffectProgram
     internal bool GeneratesCards { get; }
     internal bool ExhaustsCards { get; }
     internal bool RequiresPet { get; }
+    internal bool ChangesKeywords { get; }
 
     internal CardEffectProgram(ReadOnlySpan<CardInstruction> instructions)
     {
@@ -52,6 +53,8 @@ internal sealed class CardEffectProgram
                 throw new ArgumentException("Only generation instructions can reference card templates.");
             if (instruction.RepeatForEnergyX && instruction.Kind != CardInstructionKind.SummonPet)
                 throw new ArgumentException("Only summoning admits repeated X commands.");
+            if (instruction.Keyword != CardKeywordFlags.None && instruction.Kind != CardInstructionKind.ApplyKeywordFromHand)
+                throw new ArgumentException("Only keyword selection instructions can carry a keyword.");
             if (instruction.AttackMultiplierPower != null
                 && (instruction.Kind != CardInstructionKind.AttackTarget || instruction.AttackMultiplierPower != BasicPowerKind.Hang))
                 throw new NotSupportedException("Card-specific damage multipliers require the admitted attack Power.");
@@ -104,6 +107,12 @@ internal sealed class CardEffectProgram
                 case CardInstructionKind.RetrieveFromDiscard:
                     if (instruction.Amount > 10) throw new ArgumentException("Compact selection exceeds choice capacity.");
                     ExhaustsCards |= instruction.Kind == CardInstructionKind.ExhaustFromDraw;
+                    break;
+                case CardInstructionKind.ApplyKeywordFromHand:
+                    if (instruction.Amount != 1 || instruction.Target != CardInstructionTarget.Owner
+                        || instruction.Keyword is not (CardKeywordFlags.Ethereal or CardKeywordFlags.Retain))
+                        throw new NotSupportedException("Keyword choice requires one admitted local keyword and one hand card.");
+                    ChangesKeywords = true;
                     break;
                 case CardInstructionKind.DiscardHandAndDraw:
                     if (instruction.Amount != 0) throw new ArgumentException("Hand discard/draw derives its count from the captured hand.");

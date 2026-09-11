@@ -1,4 +1,5 @@
 # CombatSolver 文档导航
+- [雕琢打击、响指与动态关键字](performance/simulation-keywords-20260911.md)：过滤后的实例身份、生成牌标记、X 费与跨回合恢复。
 - [吊杀的卡牌倍率与层数](performance/simulation-hang-20260911.md)：特定来源倍率、能力封顶与跨回合值状态。
 - [预借时间与刺破帷幕费用](performance/simulation-cost-powers-20260911.md)：当前分支费用、选牌挂起时的只读查询与终局能力门禁。
 - [亡灵卡牌操作与终局生成](performance/simulation-necro-card-operations-20260911.md)：直接失血、弃牌回收、鬼火与虚无，区分生成历史和实际入堆。

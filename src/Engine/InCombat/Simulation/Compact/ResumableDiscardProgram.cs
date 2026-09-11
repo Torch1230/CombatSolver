@@ -11,7 +11,7 @@ internal sealed partial class ResumableDiscardProgram
         Pile ResultPile = Pile.Discard, bool CostsX = false, int CapturedX = 0, CardCategory Category = CardCategory.Other,
         bool Ethereal = false, RandomDrawCost? DrawCost = null, int? HandEndDamage = null, bool Unplayable = false, bool Retain = false, bool SingleTurnSly = false);
     internal enum Pile { Hand, Draw, Discard, Play, Exhaust, Removed, Unplaced }
-    internal enum EventKind { Pay, Start, Draw, Select, SelectedCard, Discard, Block, Finish, Shuffle, ShuffleCard, Retrieve, Damage, DamageBlocked, DamageOverkill, AttackFinish, Death, PowerChange, ResultMoved, Generated, CostChanged, HandEndMoved, HandEndStart, HandEndFinish, BeginSide, ResetEnergy, CleanupCards, CommitPlayerTurnHistory, GainEnergy, DoomApplied, Kill, SummonPet }
+    internal enum EventKind { Pay, Start, Draw, Select, SelectedCard, Discard, Block, Finish, Shuffle, ShuffleCard, Retrieve, Damage, DamageBlocked, DamageOverkill, AttackFinish, Death, PowerChange, ResultMoved, Generated, CostChanged, HandEndMoved, HandEndStart, HandEndFinish, BeginSide, ResetEnergy, CleanupCards, CommitPlayerTurnHistory, GainEnergy, DoomApplied, Kill, SummonPet, KeywordAdded }
     internal readonly record struct Event(EventKind Kind, int Card, int Value, bool Automatic, int Target = -1, int Flags = 0, int Dealer = -1)
     {
         internal long Data => (long)(uint)Card | (long)(uint)Value << 32;
@@ -57,10 +57,10 @@ internal sealed partial class ResumableDiscardProgram
     internal int Energy => Read(EnergySlot);
     internal int CardCount => _cardInstances.Count(State);
     // Existing instances cannot change definition in this admitted program. Only their
-    // captured X is mutable; generated identities resolve their definition from the buffer.
+    // captured X and added keywords are mutable; generated identities use the same buffer.
     internal int DefinitionIndex(int card) => (uint)card < (uint)_rootCardCount ? card : unchecked((int)_cardInstances.Read(State, card));
     internal Card Definition(int card) => _definitions[DefinitionIndex(card)];
-    internal int CapturedX(int card) => (int)(_cardInstances.Read(State, card) >> 32);
+    internal int CapturedX(int card) => CardInstance(card).CapturedX;
     internal int LocalEnergyCost(int card) => Definition(card).DrawCost == null ? Definition(card).Cost
         : _drawCosts!.Current(State, card, Definition(card).Cost);
     internal bool HasGlobalEnergyCosts => _powers?.HasGlobalEnergyCosts ?? false;
@@ -75,7 +75,7 @@ internal sealed partial class ResumableDiscardProgram
         int veil = _powers?.FindOrDefault(0, BasicPowerKind.Veilpiercer) ?? -1;
         // The late free-cost hook runs after the early additive pass, and only in
         // these two piles. X and negative base costs never enter either pass.
-        if (veil >= 0 && Power(veil).Amount > 0 && definition.Ethereal
+        if (veil >= 0 && Power(veil).Amount > 0 && IsEthereal(card)
             && (Contains(Pile.Hand, card) || Contains(Pile.Play, card))) return 0;
         return Math.Max(0, checked((int)cost));
     }
@@ -86,7 +86,7 @@ internal sealed partial class ResumableDiscardProgram
     internal bool CardRemoved(int card) => Contains(Pile.Removed, card);
     internal bool CardUnplaced(int card) => Contains(Pile.Unplaced, card);
     internal bool CardValuesInvariant => _definitions.All(card => card.ResultPile == Pile.Discard && !card.Ethereal && !card.CostsX && !card.SingleTurnSly
-        && !card.Effects.GeneratesCards && !card.Effects.ExhaustsCards && card.DrawCost == null)
+        && !card.Effects.GeneratesCards && !card.Effects.ExhaustsCards && !card.Effects.ChangesKeywords && card.DrawCost == null)
         && _monsterMoves?.All(move => !move.GeneratesCards) != false;
     internal int Block => _combat?.Read(State, 0).Block ?? Read(BlockSlot);
     internal int PowerCount => _powers?.Count ?? 0;
@@ -110,7 +110,7 @@ internal sealed partial class ResumableDiscardProgram
         return terminal;
     }
     internal bool Complete => Read(DepthSlot) == 0;
-    internal bool NeedsChoice => !Complete && Read(Frame + IpOffset) is 2 or 6 or 8 or 9;
+    internal bool NeedsChoice => !Complete && Read(Frame + IpOffset) is 2 or 6 or 8 or 9 or 10;
     internal bool ChoiceRetrieves => NeedsChoice && Read(Frame + IpOffset) == 6;
     internal bool ChoiceExhausts => NeedsChoice && Read(Frame + IpOffset) == 8;
     internal bool ChoiceReturnsFromDiscard => NeedsChoice && Read(Frame + IpOffset) == 9;
@@ -121,7 +121,7 @@ internal sealed partial class ResumableDiscardProgram
         ? ChoiceRetrieves ? _stratagem : CurrentInstruction.Amount
         : throw new InvalidOperationException("No pending choice.");
     internal int ChoiceCount => NeedsChoice
-        ? Math.Min(ChoiceRequestedCount, Count(ChoicePile))
+        ? Math.Min(ChoiceRequestedCount, ChoiceKeyword == CardKeywordFlags.None ? Count(ChoicePile) : KeywordChoiceCount())
         : throw new InvalidOperationException("No pending choice.");
     internal int ShuffleCount => Read(ShuffleCountSlot);
     internal ValueRng ShuffleRng => new(Read(RngSlot), unchecked((ulong)State[RngSlot + 1]),
@@ -214,7 +214,7 @@ internal sealed partial class ResumableDiscardProgram
         if (_combat == null) State.Write(BlockSlot, block);
         else if (Creature(0).Block != block) throw new ArgumentException("Player block disagrees with creature values.");
         WriteRng(shuffleRng);
-        for (int card = 0; card < cards.Length; card++) _cardInstances.Append(State, [(long)(uint)card | (long)cards[card].CapturedX << 32]);
+        for (int card = 0; card < cards.Length; card++) _cardInstances.Append(State, [new CardInstanceValue(card, cards[card].CapturedX).Data]);
         for (int p = 0; p < piles.Length; p++)
             foreach (int card in piles[p]) _piles[p].Append(State, [card]);
     }
@@ -351,8 +351,19 @@ internal sealed partial class ResumableDiscardProgram
             throw new InvalidOperationException("Choice does not match the suspended instruction.");
         for (int i = 0; i < selected.Length; i++)
         {
-            if (!Contains(ChoicePile, selected[i]) || selected[..i].Contains(selected[i]))
+            if (!IsChoiceOption(selected[i]) || selected[..i].Contains(selected[i]))
                 throw new InvalidOperationException("Choice contains an absent or repeated instance.");
+        }
+        if (ChoiceKeyword != CardKeywordFlags.None)
+        {
+            Emit(EventKind.Select, ChoiceCard, selected.Length);
+            foreach (int card in selected)
+            {
+                Emit(EventKind.SelectedCard, card);
+                AddKeyword(card, ChoiceKeyword);
+            }
+            AdvanceInstruction();
+            return;
         }
         if (ChoiceExhausts || ChoiceReturnsFromDiscard)
         {
@@ -410,6 +421,7 @@ internal sealed partial class ResumableDiscardProgram
                 case 6:
                 case 8:
                 case 9:
+                case 10:
                     return;
                 case 3:
                     // Native batch discard moves every selected card and runs its hooks before
@@ -444,7 +456,7 @@ internal sealed partial class ResumableDiscardProgram
                 case 5:
                     if (card < 0) { CompletePlayerSideStart(); State.Write(DepthSlot, 0); break; }
                     Emit(EventKind.Finish, card, Block > Read(frame + BeforeBlockOffset) ? 1 : 0,
-                        Read(frame + AutoOffset) != 0, flags: Definition(card).Ethereal ? 1 : 0);
+                        Read(frame + AutoOffset) != 0, flags: IsEthereal(card) ? 1 : 0);
                     if (ResultPile(card) == Pile.Removed || !Ending)
                     {
                         Move(card, ResultPile(card));
@@ -565,6 +577,12 @@ internal sealed partial class ResumableDiscardProgram
                 State.Write(Frame + IpOffset, 2);
                 if (ChoiceCount != 0) { CompletePlayerSideStart(); return false; }
                 SupplyChoice([]);
+                return true;
+            case CardInstructionKind.ApplyKeywordFromHand:
+                if (Ending) break;
+                State.Write(Frame + IpOffset, 10);
+                if (ChoiceCount != 0) return false;
+                AdvanceInstruction();
                 return true;
             case CardInstructionKind.ExhaustFromDraw:
                 // An empty native pile has no selector or selected-card command.
@@ -753,7 +771,7 @@ internal sealed partial class ResumableDiscardProgram
 
     private void ConsumeFreeEtherealPlay(int card)
     {
-        if (!Definition(card).Ethereal) return;
+        if (!IsEthereal(card)) return;
         int index = _powers?.FindOrDefault(0, BasicPowerKind.Veilpiercer) ?? -1;
         if (index >= 0 && Power(index).Amount > 0)
             CommitPower(card, 0, BasicPowerKind.Veilpiercer, -1);
@@ -811,7 +829,7 @@ internal sealed partial class ResumableDiscardProgram
         State.Write(Frame + FirstDrawnOffset, -1);
         int value = energyValue ?? (Definition(card).CostsX ? Energy : EnergyCost(card));
         State.Write(Frame + EnergyValueOffset, value);
-        if (Definition(card).CostsX) _cardInstances.Write(State, card, (long)(uint)DefinitionIndex(card) | (long)value << 32);
+        if (Definition(card).CostsX) _cardInstances.Write(State, card, (CardInstance(card) with { CapturedX = value }).Data);
     }
 
     private void Move(int card, Pile destination)
