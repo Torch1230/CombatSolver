@@ -1208,6 +1208,11 @@ foreach ($file in $compactProductionFiles) {
     }
 }
 $compactProjection = Join-Path $repositoryRoot 'src/Testing/CompactDiscardProjection.cs'
+foreach ($required in @('AssertRepresentedHooks(runListeners[index], runPrefix: true);', '(key.RunPrefix || !RepresentedHook(key.Type, method.Name))')) {
+    if (-not ([IO.File]::ReadAllText($compactProjection)).Contains($required)) {
+        $violations.Add("Compact deck listeners lost their independent run-hook audit: $required")
+    }
+}
 foreach ($reference in @('.ManualPlay(', '.AutoPlay(', '.Discard(', 'CardOnPlayMirrors.Invoke(', 'HookMirrors.')) {
     foreach ($match in Select-String -LiteralPath $compactProjection -SimpleMatch $reference) {
         $violations.Add("$($match.Path):$($match.LineNumber): compact projection must decode events without replaying effects: $reference")

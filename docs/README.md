@@ -1,5 +1,7 @@
 # CombatSolver 文档导航
 
+- [紧凑原始机甲首回合根](performance/simulation-full-root-20260911.md)：完整 30 牌／31 监听器、蛇之戒与原生分支对照。
+
 玩家安装、操作与兼容性说明见 [项目 README](../README.md)。源码规则见 [AGENTS.md](../AGENTS.md)。
 
 ## 当前文档

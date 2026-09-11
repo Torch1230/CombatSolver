@@ -2046,5 +2046,13 @@
     "expected": "开关不得改变节点、选中路线、战损或回合；启用时每个压力/层间回收点应安全退出、回收并重建 NoGC，关闭时由 CLR 常规 GC 管理。",
     "observed": "两次均为累计 27905/173477/74998、选中层 8687/59910/26619、战损 9、56 HP、T9、两药。4 GB NoGC 为 72151.169 ms、VmHWM 4396804 kB、GC 暂停 4822.405 ms；关闭为 97927.457 ms、VmHWM 2745000 kB、GC 暂停 29712.935 ms。NoGC 快约 26.3%，峰值多约 1.57 GiB；13 个压力检查点和 2 次层间整理均成功重建且无回退。",
     "evidence": "用户问题包 CombatSolver-AEONGLASS_BOSS-20260902-011550-694.zip；docs/TEST_MATRIX.md；runId 5f75b1cd2b604f34874be9e6243590db、6c187605b7a8451bbd163a800d9f25c4；验证日期 2026-09-03。"
+  },
+  "COMPACT-FULL-ROOT-NATIVE": {
+    "status": "Passed",
+    "level": "HeadlessCompactOriginalOpeningRootAndNativeActions",
+    "procedure": "原始机甲完整30牌、Slither附魔及蛇之戒，七起手单牌与两条续接，八工作区、缓存开关、逐步原生对照。",
+    "expected": "冻结根与分支隔离，完整状态、原键、历史、RNG、Power及估值一致。",
+    "observed": "7ef49b1ef6de4b56a82c6e6c180754b3 Passed，24.32秒，31牌组监听器、9分支、6原生动作；未推进紧凑回合。",
+    "evidence": "docs/performance/simulation-full-root-20260911.json"
   }
 }

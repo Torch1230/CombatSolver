@@ -50,27 +50,22 @@ internal sealed class CompactDiscardProjection
                     && (p is not PiercingWailPower || p.Owner != player.Creature)
                     : p is StrengthPower && p.Owner != player.Creature))
             || combat.RootRunModSubscriberCount != 0 || combat.RootCombatModSubscriberCount != 0
-            || combat.RootHasBaseLibCardModifiers || combat.RootRunHookListenerCount != 0
+            || combat.RootHasBaseLibCardModifiers
             || state.OrbQueue.Orbs.Count != 0 || root.GetMaxHandSize(player) != 10
             || root.HasPendingChoice || root.IsOverOrEnding)
-            throw new NotSupportedException("Compact prototype requires an idle root with only player Stratagem, without deck listeners or mod subscribers.");
+            throw new NotSupportedException("Compact prototype requires an idle root with admitted Powers and no mod subscribers.");
         var relics = combat.RelicsOf(player);
-        if (relics.Any(r => r is not (ToughBandages or TheAbacus) || r.IsMelted)
+        if (relics.Any(r => r is not (ToughBandages or TheAbacus or RingOfTheSnake) || r.IsMelted)
             || relics.Select(r => r.GetType()).Distinct().Count() != relics.Count || powers.OfType<StratagemPower>().Count() > 1
             || combat.CurrentSide != player.Creature.Side)
-            throw new NotSupportedException("Compact prototype admits only the discard-block relic in player phase.");
+            throw new NotSupportedException("Compact prototype requires admitted relics in player phase.");
+        // Deck cards are a separate immutable listener prefix. Only run-scoped hooks
+        // reach them; e.g. drawing a combat Slither must not invoke the deck copy.
+        var runListeners = ((ICombatPredictionHookListenerSource)combat).RunHookListeners;
+        for (int index = 0; index < combat.RootRunHookListenerCount; index++)
+            AssertRepresentedHooks(runListeners[index], runPrefix: true);
         foreach (AbstractModel listener in combat.IterateHookListeners())
-        {
-            // Native listeners can add effects even when no Power exists. Reject any override
-            // on a hook reached by this program, independently of encounter/model identity.
-            string[] unrepresented = HookAudit.GetOrAdd(listener.GetType(), static type => type
-                .GetMethods(BindingFlags.Instance | BindingFlags.Public)
-                .Where(method => ReachedHooks.Contains(method.Name) && method.GetBaseDefinition().DeclaringType == typeof(AbstractModel)
-                    && method.DeclaringType != typeof(AbstractModel) && !RepresentedHook(type, method.Name))
-                .Select(method => method.Name).ToArray());
-            if (unrepresented.Length != 0)
-                throw new NotSupportedException($"Compact prototype has no effect program for {listener.Id.Entry}.{unrepresented[0]}.");
-        }
+            AssertRepresentedHooks(listener, runPrefix: false);
         _creatures = includeAttacks ? [player.Creature, .. combat.Enemies] : [];
         if (includeAttacks && (combat.PlayerCreatures.Count != 1 || combat.KnownEnemies.Count != combat.Enemies.Count
             || _creatures.Any(c => root.State.GetCreature(c).IsDead || c.PetOwner != null)
@@ -518,10 +513,10 @@ internal sealed class CompactDiscardProjection
         "BeforeBlockGained", "ModifyBlockAdditive", "ModifyBlockMultiplicative", "AfterModifyingBlockAmount", "AfterBlockGained",
         "TryModifyKeywordsInCombat", "ModifyMaxHandSize", "ModifyUnblockedDamageTarget",
         "ModifyHpLostBeforeOsty", "ModifyHpLostBeforeOstyLate", "ModifyHpLostAfterOsty", "ModifyHpLostAfterOstyLate",
-        "ModifyDamageAdditive", "ModifyDamageMultiplicative", "BeforeCardAutoPlayed", "AfterCardChangedPiles",
+        "ModifyDamageAdditive", "ModifyDamageMultiplicative", "ModifyDamageCap", "BeforeCardAutoPlayed", "AfterCardChangedPiles", "AfterCardChangedPilesLate",
         "ModifyShuffleOrder", "AfterShuffle", "BeforeAttack", "AfterAttack", "ModifyAttackHitCount",
-        "BeforeDamageReceived", "AfterBlockBroken", "AfterCurrentHpChanged", "AfterDamageGiven", "AfterDamageReceived",
-        "AfterModifyingHpLostAfterOsty", "BeforeDeath", "ShouldDie", "AfterDeath", "ShouldCreatureBeRemovedFromCombatAfterDeath",
+        "BeforeDamageReceived", "AfterBlockBroken", "AfterCurrentHpChanged", "AfterDamageGiven", "AfterDamageReceived", "AfterDamageReceivedLate",
+        "AfterModifyingHpLostAfterOsty", "BeforeDeath", "ShouldDie", "ShouldDieLate", "AfterDeath", "ShouldCreatureBeRemovedFromCombatAfterDeath",
         "ShouldAllowHitting", "BeforePowerAmountChanged", "ModifyPowerAmountGiven", "ModifyPowerAmountReceived",
         "TryModifyPowerAmountGiven", "TryModifyPowerAmountReceived",
         "AfterModifyingPowerAmountGiven", "AfterModifyingPowerAmountReceived", "AfterPowerAmountChanged",
@@ -529,7 +524,26 @@ internal sealed class CompactDiscardProjection
     };
     // Only immutable CLR method/type metadata is shared. Every root still checks subscriber,
     // Power, relic, card-instance, resource, and lifecycle values independently.
-    private static readonly ConcurrentDictionary<Type, string[]> HookAudit = new();
+    private static readonly HashSet<string> ReachedRunHooks = new(StringComparer.Ordinal)
+    {
+        "AfterCardChangedPiles", "AfterCardChangedPilesLate", "ModifyDamageAdditive", "ModifyDamageMultiplicative", "ModifyDamageCap",
+        "AfterModifyingDamageAmount", "BeforeDamageReceived", "AfterCurrentHpChanged", "AfterDamageReceived", "AfterDamageReceivedLate",
+        "ModifyHpLostBeforeOsty", "ModifyHpLostBeforeOstyLate", "ModifyHpLostAfterOsty", "ModifyHpLostAfterOstyLate",
+        "AfterModifyingHpLostBeforeOsty", "AfterModifyingHpLostAfterOsty", "BeforeDeath", "ShouldDie", "ShouldDieLate", "AfterDeath"
+    };
+    private static readonly ConcurrentDictionary<(Type Type, bool RunPrefix), string[]> HookAudit = new();
+
+    private static void AssertRepresentedHooks(AbstractModel listener, bool runPrefix)
+    {
+        string[] unrepresented = HookAudit.GetOrAdd((listener.GetType(), runPrefix), static key => key.Type
+            .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+            .Where(method => (key.RunPrefix ? ReachedRunHooks : ReachedHooks).Contains(method.Name)
+                && method.GetBaseDefinition().DeclaringType == typeof(AbstractModel)
+                && method.DeclaringType != typeof(AbstractModel) && (key.RunPrefix || !RepresentedHook(key.Type, method.Name)))
+            .Select(method => method.Name).ToArray());
+        if (unrepresented.Length != 0)
+            throw new NotSupportedException($"Compact prototype has no {(runPrefix ? "deck" : "combat")} effect program for {listener.Id.Entry}.{unrepresented[0]}.");
+    }
 
     // Keep exact method/type pairs. AfterCardPlayed badges match the ignored mirror registrations;
     // DebufferModel only increments the native run badge counter, outside combat equivalence.

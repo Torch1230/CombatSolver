@@ -999,6 +999,8 @@ for semantic_replay in '.ManualPlay(' '.AutoPlay(' '.Discard(' 'CardOnPlayMirror
     forbid_fixed "$compact_projection" "$semantic_replay" 'compact projection must decode events without replaying effects:'
 done
 require_fixed "$compact_projection" 'Program.State.HasSameRoot(program.State)' 'compact projection lost root ownership guard'
+require_fixed "$compact_projection" 'AssertRepresentedHooks(runListeners[index], runPrefix: true);' 'compact deck listeners need a separate run-hook audit'
+require_fixed "$compact_projection" '(key.RunPrefix || !RepresentedHook(key.Type, method.Name))' 'compact deck hooks cannot borrow combat effect exemptions'
 require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactKernelProfile.cs" 'if (!SimulationNotificationIsolation.IsActive)' 'compact measurements lost production simulation context guard'
 require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactKernel.cs" 'initialIsolation.Dispose();' 'compact thread-static isolation must close before worker await'
 require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactKernel.cs" 'continuationIsolation.Dispose();' 'compact simulation isolation must close before native deployment'

@@ -1,5 +1,7 @@
 # CombatSolver 测试清单
 
+- `COMPACT-FULL-ROOT-NATIVE`（`7ef49b1ef6de4b56a82c6e6c180754b3`）Passed：原始机甲 30 牌／31 牌组监听器／蛇之戒，9 分支／八工作区／六次原生出牌；完整 Snapshot、键、历史、九 RNG、缓存开关和原生推进后根隔离一致，仅首回合行动边界。[证据](performance/simulation-full-root-20260911.md)。
+
 - `COMPACT-ARTIFACT-NATIVE`（`10f13f49a6a24b03bd3d61bba40c19f2`）Passed：两根／15 分支／八工作区／九次原生出牌，首次／叠加临时效果阻止、负属性、X=0、正增益、非默认字段／顺序／退休和死亡清理，完整 Snapshot／原键／历史／九 RNG。纯值合同及普通 Power／费用哨兵 `7cbc93b5ccd9442496f85ec7e51df4fd` 通过，[证据](performance/simulation-compact-artifact-20260911.md)。
 
 - `COMPACT-RANDOM-COSTS-NATIVE`（`98dee34da8de40eb8313653b87ddb9e9`）Passed：两根／13 分支／八工作区／九次原生出牌、三次重抽／付款、完整修饰前缀／列表、满手门、Shuffle 和 CombatEnergyCosts 五字段、全部 Snapshot／原键／九 RNG 及原生推进后的根隔离。纯值 130 次重抽通过；附魔生成 `22d19af3b151495cba380e6873724b0c` 和选择链 `ea9a51de7d294b9cad9405a57c5e9d1e` 同产物通过，[证据与边界](performance/simulation-random-costs-20260911.md)。
