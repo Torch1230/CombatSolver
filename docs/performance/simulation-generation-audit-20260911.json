@@ -1,0 +1,1200 @@
+{
+  "status": "Passed",
+  "runId": "13339699a6c142a2b456a493fab6e6c2",
+  "elapsedMilliseconds": 23992.4701,
+  "level": "HeadlessReadOnlyGenerationRootAudit",
+  "completedChecks": [
+    "CompactGenerationClosureAudit:Original38Cards19InjectedRelics2Potions:ActualRelics20:CompleteOrderedPools:24SelectionSamples:FiveFieldRng:ActualUnchanged:FullRootExplicitlyRejected"
+  ],
+  "audit": {
+    "character": "NECROBINDER",
+    "encounter": "AEONGLASS_BOSS",
+    "seed": "SEARCH_PERF_NECROBINDER_POTION",
+    "deckCount": 38,
+    "combatCards": [
+      "CAPTURE_SPIRIT",
+      "HANG",
+      "DEFILE",
+      "WISP",
+      "DEFEND_NECROBINDER",
+      "SCULPTING_STRIKE",
+      "CALL_OF_THE_VOID",
+      "SOUL",
+      "CLEANSE",
+      "DEFEND_NECROBINDER",
+      "PAGESTORM",
+      "GRAVEBLAST",
+      "STRIKE_NECROBINDER",
+      "SPIRIT_OF_ASH",
+      "LETHALITY",
+      "FINESSE",
+      "VEILPIERCER",
+      "UNLEASH",
+      "STRIKE_NECROBINDER",
+      "GRAVEBLAST",
+      "GRAVEBLAST",
+      "SNAP",
+      "NEUROSURGE",
+      "BORROWED_TIME",
+      "SOUL",
+      "DEFEND_NECROBINDER",
+      "DANSE_MACABRE",
+      "BODYGUARD",
+      "DEFEND_NECROBINDER",
+      "AFTERLIFE",
+      "SHARED_FATE",
+      "DEFY",
+      "DEFY",
+      "ASCENDERS_BANE",
+      "CLEANSE",
+      "PANACHE",
+      "SOUL",
+      "DEFEND_NECROBINDER",
+      "DIRGE",
+      "GRAVEBLAST",
+      "LETHALITY"
+    ],
+    "injectedRelicCount": 19,
+    "actualRelicCount": 20,
+    "relics": [
+      "BOUND_PHYLACTERY",
+      "NEOWS_BONES",
+      "LARGE_CAPSULE",
+      "ORNAMENTAL_FAN",
+      "CLOAK_CLASP",
+      "POMANDER",
+      "JOSS_PAPER",
+      "JUZU_BRACELET",
+      "CANDELABRA",
+      "GORGET",
+      "BONE_FLUTE",
+      "BIIIG_HUG",
+      "FESTIVE_POPPER",
+      "TINY_MAILBOX",
+      "VAJRA",
+      "BRILLIANT_SCARF",
+      "RIPPLE_BASIN",
+      "PRAYER_WHEEL",
+      "WAR_PAINT",
+      "FUNERARY_MASK"
+    ],
+    "potions": [
+      "GAMBLERS_BREW",
+      "COLORLESS_POTION"
+    ],
+    "rootAdmitted": false,
+    "rejection": "Compact combat has unrepresented potion effects.",
+    "pools": [
+      {
+        "Name": "CallOfTheVoid",
+        "unlockedSourceCount": 80,
+        "eligibleCount": 78,
+        "exactTypeCount": 19,
+        "cards": [
+          {
+            "id": "AFTERLIFE",
+            "type": "Afterlife",
+            "category": "Skill",
+            "rarity": "Common",
+            "currentExactType": true
+          },
+          {
+            "id": "BANSHEES_CRY",
+            "type": "BansheesCry",
+            "category": "Attack",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "BLIGHT_STRIKE",
+            "type": "BlightStrike",
+            "category": "Attack",
+            "rarity": "Common",
+            "currentExactType": false
+          },
+          {
+            "id": "BONE_SHARDS",
+            "type": "BoneShards",
+            "category": "Attack",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "BORROWED_TIME",
+            "type": "BorrowedTime",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": true
+          },
+          {
+            "id": "BURY",
+            "type": "Bury",
+            "category": "Attack",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "CALCIFY",
+            "type": "Calcify",
+            "category": "Power",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "CALL_OF_THE_VOID",
+            "type": "CallOfTheVoid",
+            "category": "Power",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "CAPTURE_SPIRIT",
+            "type": "CaptureSpirit",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": true
+          },
+          {
+            "id": "CLEANSE",
+            "type": "Cleanse",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": true
+          },
+          {
+            "id": "COUNTDOWN",
+            "type": "Countdown",
+            "category": "Power",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "DANSE_MACABRE",
+            "type": "DanseMacabre",
+            "category": "Power",
+            "rarity": "Uncommon",
+            "currentExactType": true
+          },
+          {
+            "id": "DEATH_MARCH",
+            "type": "DeathMarch",
+            "category": "Attack",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "DEATHBRINGER",
+            "type": "Deathbringer",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "DEATHS_DOOR",
+            "type": "DeathsDoor",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "DEBILITATE",
+            "type": "Debilitate",
+            "category": "Attack",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "DEFILE",
+            "type": "Defile",
+            "category": "Attack",
+            "rarity": "Common",
+            "currentExactType": true
+          },
+          {
+            "id": "DEFY",
+            "type": "Defy",
+            "category": "Skill",
+            "rarity": "Common",
+            "currentExactType": true
+          },
+          {
+            "id": "DELAY",
+            "type": "Delay",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "DEMESNE",
+            "type": "Demesne",
+            "category": "Power",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "DEVOUR_LIFE",
+            "type": "DevourLife",
+            "category": "Power",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "DIRGE",
+            "type": "Dirge",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": true
+          },
+          {
+            "id": "DRAIN_POWER",
+            "type": "DrainPower",
+            "category": "Attack",
+            "rarity": "Common",
+            "currentExactType": false
+          },
+          {
+            "id": "DREDGE",
+            "type": "Dredge",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "END_OF_DAYS",
+            "type": "EndOfDays",
+            "category": "Skill",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "ENFEEBLING_TOUCH",
+            "type": "EnfeeblingTouch",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "ERADICATE",
+            "type": "Eradicate",
+            "category": "Attack",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "FEAR",
+            "type": "Fear",
+            "category": "Attack",
+            "rarity": "Common",
+            "currentExactType": false
+          },
+          {
+            "id": "FETCH",
+            "type": "Fetch",
+            "category": "Attack",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "FLATTEN",
+            "type": "Flatten",
+            "category": "Attack",
+            "rarity": "Common",
+            "currentExactType": false
+          },
+          {
+            "id": "FRIENDSHIP",
+            "type": "Friendship",
+            "category": "Power",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "GRAVE_WARDEN",
+            "type": "GraveWarden",
+            "category": "Skill",
+            "rarity": "Common",
+            "currentExactType": false
+          },
+          {
+            "id": "GRAVEBLAST",
+            "type": "Graveblast",
+            "category": "Attack",
+            "rarity": "Common",
+            "currentExactType": true
+          },
+          {
+            "id": "HANG",
+            "type": "Hang",
+            "category": "Attack",
+            "rarity": "Rare",
+            "currentExactType": true
+          },
+          {
+            "id": "HAUNT",
+            "type": "Haunt",
+            "category": "Power",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "HIGH_FIVE",
+            "type": "HighFive",
+            "category": "Attack",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "INVOKE",
+            "type": "Invoke",
+            "category": "Skill",
+            "rarity": "Common",
+            "currentExactType": false
+          },
+          {
+            "id": "LETHALITY",
+            "type": "Lethality",
+            "category": "Power",
+            "rarity": "Uncommon",
+            "currentExactType": true
+          },
+          {
+            "id": "MELANCHOLY",
+            "type": "Melancholy",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "MISERY",
+            "type": "Misery",
+            "category": "Attack",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "NECRO_MASTERY",
+            "type": "NecroMastery",
+            "category": "Power",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "NEGATIVE_PULSE",
+            "type": "NegativePulse",
+            "category": "Skill",
+            "rarity": "Common",
+            "currentExactType": false
+          },
+          {
+            "id": "NEUROSURGE",
+            "type": "Neurosurge",
+            "category": "Power",
+            "rarity": "Rare",
+            "currentExactType": true
+          },
+          {
+            "id": "NO_ESCAPE",
+            "type": "NoEscape",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "OBLIVION",
+            "type": "Oblivion",
+            "category": "Skill",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "PAGESTORM",
+            "type": "Pagestorm",
+            "category": "Power",
+            "rarity": "Uncommon",
+            "currentExactType": true
+          },
+          {
+            "id": "PARSE",
+            "type": "Parse",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "POKE",
+            "type": "Poke",
+            "category": "Attack",
+            "rarity": "Common",
+            "currentExactType": false
+          },
+          {
+            "id": "PULL_AGGRO",
+            "type": "PullAggro",
+            "category": "Skill",
+            "rarity": "Common",
+            "currentExactType": false
+          },
+          {
+            "id": "PULL_FROM_BELOW",
+            "type": "PullFromBelow",
+            "category": "Attack",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "PUTREFY",
+            "type": "Putrefy",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "RATTLE",
+            "type": "Rattle",
+            "category": "Attack",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "REANIMATE",
+            "type": "Reanimate",
+            "category": "Skill",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "REAP",
+            "type": "Reap",
+            "category": "Attack",
+            "rarity": "Common",
+            "currentExactType": false
+          },
+          {
+            "id": "REAPER_FORM",
+            "type": "ReaperForm",
+            "category": "Power",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "REAVE",
+            "type": "Reave",
+            "category": "Attack",
+            "rarity": "Common",
+            "currentExactType": false
+          },
+          {
+            "id": "RIGHT_HAND_HAND",
+            "type": "RightHandHand",
+            "category": "Attack",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "SACRIFICE",
+            "type": "Sacrifice",
+            "category": "Skill",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "SCOURGE",
+            "type": "Scourge",
+            "category": "Skill",
+            "rarity": "Common",
+            "currentExactType": false
+          },
+          {
+            "id": "SCULPTING_STRIKE",
+            "type": "SculptingStrike",
+            "category": "Attack",
+            "rarity": "Common",
+            "currentExactType": true
+          },
+          {
+            "id": "SEANCE",
+            "type": "Seance",
+            "category": "Skill",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "SENTRY_MODE",
+            "type": "SentryMode",
+            "category": "Power",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "SEVERANCE",
+            "type": "Severance",
+            "category": "Attack",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "SHARED_FATE",
+            "type": "SharedFate",
+            "category": "Skill",
+            "rarity": "Rare",
+            "currentExactType": true
+          },
+          {
+            "id": "SHROUD",
+            "type": "Shroud",
+            "category": "Power",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "SIC_EM",
+            "type": "SicEm",
+            "category": "Attack",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "SLEIGHT_OF_FLESH",
+            "type": "SleightOfFlesh",
+            "category": "Power",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "SNAP",
+            "type": "Snap",
+            "category": "Attack",
+            "rarity": "Common",
+            "currentExactType": true
+          },
+          {
+            "id": "SOUL_STORM",
+            "type": "SoulStorm",
+            "category": "Attack",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "SOW",
+            "type": "Sow",
+            "category": "Attack",
+            "rarity": "Common",
+            "currentExactType": false
+          },
+          {
+            "id": "SPIRIT_OF_ASH",
+            "type": "SpiritOfAsh",
+            "category": "Power",
+            "rarity": "Rare",
+            "currentExactType": true
+          },
+          {
+            "id": "SPUR",
+            "type": "Spur",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "SQUEEZE",
+            "type": "Squeeze",
+            "category": "Attack",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "THE_SCYTHE",
+            "type": "TheScythe",
+            "category": "Attack",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "TIMES_UP",
+            "type": "TimesUp",
+            "category": "Attack",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "UNDEATH",
+            "type": "Undeath",
+            "category": "Skill",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "VEILPIERCER",
+            "type": "Veilpiercer",
+            "category": "Attack",
+            "rarity": "Uncommon",
+            "currentExactType": true
+          },
+          {
+            "id": "WISP",
+            "type": "Wisp",
+            "category": "Skill",
+            "rarity": "Common",
+            "currentExactType": true
+          }
+        ],
+        "samples": [
+          {
+            "requested": 1,
+            "ids": [
+              "VEILPIERCER"
+            ],
+            "counterDelta": 77
+          },
+          {
+            "requested": 1,
+            "ids": [
+              "DANSE_MACABRE"
+            ],
+            "counterDelta": 77
+          },
+          {
+            "requested": 1,
+            "ids": [
+              "GRAVE_WARDEN"
+            ],
+            "counterDelta": 77
+          },
+          {
+            "requested": 1,
+            "ids": [
+              "UNDEATH"
+            ],
+            "counterDelta": 77
+          },
+          {
+            "requested": 1,
+            "ids": [
+              "INVOKE"
+            ],
+            "counterDelta": 77
+          },
+          {
+            "requested": 1,
+            "ids": [
+              "SENTRY_MODE"
+            ],
+            "counterDelta": 77
+          },
+          {
+            "requested": 1,
+            "ids": [
+              "COUNTDOWN"
+            ],
+            "counterDelta": 77
+          },
+          {
+            "requested": 1,
+            "ids": [
+              "BORROWED_TIME"
+            ],
+            "counterDelta": 77
+          },
+          {
+            "requested": 1,
+            "ids": [
+              "REAP"
+            ],
+            "counterDelta": 77
+          },
+          {
+            "requested": 1,
+            "ids": [
+              "PULL_AGGRO"
+            ],
+            "counterDelta": 77
+          },
+          {
+            "requested": 1,
+            "ids": [
+              "BORROWED_TIME"
+            ],
+            "counterDelta": 77
+          },
+          {
+            "requested": 1,
+            "ids": [
+              "NEUROSURGE"
+            ],
+            "counterDelta": 77
+          }
+        ]
+      },
+      {
+        "Name": "ColorlessPotion",
+        "unlockedSourceCount": 53,
+        "eligibleCount": 50,
+        "exactTypeCount": 3,
+        "cards": [
+          {
+            "id": "ANOINTED",
+            "type": "Anointed",
+            "category": "Skill",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "AUTOMATION",
+            "type": "Automation",
+            "category": "Power",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "BEAT_DOWN",
+            "type": "BeatDown",
+            "category": "Skill",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "BOLAS",
+            "type": "Bolas",
+            "category": "Attack",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "CALAMITY",
+            "type": "Calamity",
+            "category": "Power",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "CATASTROPHE",
+            "type": "Catastrophe",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "DARK_SHACKLES",
+            "type": "DarkShackles",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "DISCOVERY",
+            "type": "Discovery",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "DRAMATIC_ENTRANCE",
+            "type": "DramaticEntrance",
+            "category": "Attack",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "ENTROPY",
+            "type": "Entropy",
+            "category": "Power",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "EQUILIBRIUM",
+            "type": "Equilibrium",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "ETERNAL_ARMOR",
+            "type": "EternalArmor",
+            "category": "Power",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "FASTEN",
+            "type": "Fasten",
+            "category": "Power",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "FINESSE",
+            "type": "Finesse",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": true
+          },
+          {
+            "id": "FISTICUFFS",
+            "type": "Fisticuffs",
+            "category": "Attack",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "FLASH_OF_STEEL",
+            "type": "FlashOfSteel",
+            "category": "Attack",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "GOLD_AXE",
+            "type": "GoldAxe",
+            "category": "Attack",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "IMPATIENCE",
+            "type": "Impatience",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "JACK_OF_ALL_TRADES",
+            "type": "JackOfAllTrades",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "JACKPOT",
+            "type": "Jackpot",
+            "category": "Attack",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "MASTER_OF_STRATEGY",
+            "type": "MasterOfStrategy",
+            "category": "Skill",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "MAYHEM",
+            "type": "Mayhem",
+            "category": "Power",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "MIND_BLAST",
+            "type": "MindBlast",
+            "category": "Attack",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "NOSTALGIA",
+            "type": "Nostalgia",
+            "category": "Power",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "OMNISLICE",
+            "type": "Omnislice",
+            "category": "Attack",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "PANACHE",
+            "type": "Panache",
+            "category": "Power",
+            "rarity": "Uncommon",
+            "currentExactType": true
+          },
+          {
+            "id": "PANIC_BUTTON",
+            "type": "PanicButton",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "PREP_TIME",
+            "type": "PrepTime",
+            "category": "Power",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "PRODUCTION",
+            "type": "Production",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "PROLONG",
+            "type": "Prolong",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "PROWESS",
+            "type": "Prowess",
+            "category": "Power",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "PURITY",
+            "type": "Purity",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "REND",
+            "type": "Rend",
+            "category": "Attack",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "RESTLESSNESS",
+            "type": "Restlessness",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "ROLLING_BOULDER",
+            "type": "RollingBoulder",
+            "category": "Power",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "SALVO",
+            "type": "Salvo",
+            "category": "Attack",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "SCRAWL",
+            "type": "Scrawl",
+            "category": "Skill",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "SECRET_TECHNIQUE",
+            "type": "SecretTechnique",
+            "category": "Skill",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "SECRET_WEAPON",
+            "type": "SecretWeapon",
+            "category": "Skill",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "SEEKER_STRIKE",
+            "type": "SeekerStrike",
+            "category": "Attack",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "SHOCKWAVE",
+            "type": "Shockwave",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "SPLASH",
+            "type": "Splash",
+            "category": "Skill",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "STRATAGEM",
+            "type": "Stratagem",
+            "category": "Power",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "THE_BOMB",
+            "type": "TheBomb",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "THE_GAMBIT",
+            "type": "TheGambit",
+            "category": "Skill",
+            "rarity": "Rare",
+            "currentExactType": false
+          },
+          {
+            "id": "THINKING_AHEAD",
+            "type": "ThinkingAhead",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "THRUMMING_HATCHET",
+            "type": "ThrummingHatchet",
+            "category": "Attack",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "ULTIMATE_DEFEND",
+            "type": "UltimateDefend",
+            "category": "Skill",
+            "rarity": "Uncommon",
+            "currentExactType": true
+          },
+          {
+            "id": "ULTIMATE_STRIKE",
+            "type": "UltimateStrike",
+            "category": "Attack",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          },
+          {
+            "id": "VOLLEY",
+            "type": "Volley",
+            "category": "Attack",
+            "rarity": "Uncommon",
+            "currentExactType": false
+          }
+        ],
+        "samples": [
+          {
+            "requested": 3,
+            "ids": [
+              "JACK_OF_ALL_TRADES",
+              "PANACHE",
+              "MAYHEM"
+            ],
+            "counterDelta": 49
+          },
+          {
+            "requested": 3,
+            "ids": [
+              "CATASTROPHE",
+              "SPLASH",
+              "MIND_BLAST"
+            ],
+            "counterDelta": 49
+          },
+          {
+            "requested": 3,
+            "ids": [
+              "JACK_OF_ALL_TRADES",
+              "THINKING_AHEAD",
+              "FINESSE"
+            ],
+            "counterDelta": 49
+          },
+          {
+            "requested": 3,
+            "ids": [
+              "THRUMMING_HATCHET",
+              "AUTOMATION",
+              "GOLD_AXE"
+            ],
+            "counterDelta": 49
+          },
+          {
+            "requested": 3,
+            "ids": [
+              "ENTROPY",
+              "BOLAS",
+              "PROLONG"
+            ],
+            "counterDelta": 49
+          },
+          {
+            "requested": 3,
+            "ids": [
+              "BOLAS",
+              "SPLASH",
+              "CALAMITY"
+            ],
+            "counterDelta": 49
+          },
+          {
+            "requested": 3,
+            "ids": [
+              "FISTICUFFS",
+              "ENTROPY",
+              "FLASH_OF_STEEL"
+            ],
+            "counterDelta": 49
+          },
+          {
+            "requested": 3,
+            "ids": [
+              "STRATAGEM",
+              "MIND_BLAST",
+              "OMNISLICE"
+            ],
+            "counterDelta": 49
+          },
+          {
+            "requested": 3,
+            "ids": [
+              "OMNISLICE",
+              "THE_GAMBIT",
+              "SALVO"
+            ],
+            "counterDelta": 49
+          },
+          {
+            "requested": 3,
+            "ids": [
+              "NOSTALGIA",
+              "THRUMMING_HATCHET",
+              "CALAMITY"
+            ],
+            "counterDelta": 49
+          },
+          {
+            "requested": 3,
+            "ids": [
+              "EQUILIBRIUM",
+              "SHOCKWAVE",
+              "OMNISLICE"
+            ],
+            "counterDelta": 49
+          },
+          {
+            "requested": 3,
+            "ids": [
+              "PROLONG",
+              "THE_GAMBIT",
+              "ULTIMATE_STRIKE"
+            ],
+            "counterDelta": 49
+          }
+        ]
+      }
+    ],
+    "limitation": "Exact type membership is not full state, hook, or transitive generated-pool admission."
+  },
+  "validationScope": "Uses the native filtering and TakeRandom method; does not execute native card creation or generated-card callbacks. No search or performance measurement."
+}

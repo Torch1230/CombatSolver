@@ -3080,3 +3080,7 @@ pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId MONSTER-MOVES-BA
 ## 书页风暴（2026-09-11）
 
 `COMPACT-PAGESTORM-NATIVE`：三根、24 原生动作／63 分支／32 挂起，嵌套选择观察、逆序 Slither、父返回值、根／新能力、Swift／Sly、动态虚无和两个回合。全部状态／能力／九 RNG／原键／续用及八工作区严格比较。`COMPACT-PAGESTORM-SEARCH` 使用相同根和 250 节点，旧新／串并行完整结果、取消异常排空及根复用通过。`COMPACT-DRAW-EXHAUST-NATIVE` 回归无新能力根；纯值另验证九层抽牌与满手、终局、撤销。沿用 SILENT／MECHA_KNIGHT_ELITE、Instant、120 秒，无新增双端协议字段。[证据与失败归类](performance/simulation-pagestorm-20260911.md)。
+
+## 完整生成池审计（2026-09-11）
+
+`COMPACT-GENERATION-CLOSURE-AUDIT` 使用原始 NECROBINDER／AEONGLASS_BOSS 输入，38 牌、19 件遗物注入、保留初始遗物及两瓶药；导出 78／50 个完整有序候选，24 次抽样对照全部五个 RNG 字段，确认真实状态不变与未迁移根显式拒绝。只验证原生筛选／选择方法和旧模型选牌，不执行生成入堆及回调，也不启动搜索。双端使用既有协议参数，无新字段；[完整命令及边界](performance/simulation-generation-audit-20260911.md)。

@@ -2,7 +2,7 @@
 
 本页是为用户新增的额度交接要求预先准备的检查点，不代表整项重构完成。分支 `perf/simulation-profile-20260910`。上游 `c2cc463` 已于 `136365c` 合并；书页风暴批次已验证通过，当前代码以本文件所在提交为准。`766fb27` 是较早的 52 种卡牌检查点。
 
-用户要求：**检测到周额度剩余不超过 1% 时，提交当前更改，写清目标、进度、验证和剩余工作，停止开发并交给另一位 AI。** 2026-09-11 12:40:03 UTC 的最新本地账号额度记录为周窗口已用 96%、剩余约 4%，尚未触发，继续开发并在后续批次检查。应用账号查询接口本次未返回，因此采用该近期记录；这不是未来额度保证。使用额度数据时，`usedPercent`／`used_percent` 是已用比例，剩余为 `max(0, min(100, 100-usedPercent))`；周窗口长度为 10,080 分钟。缺失或查询失败属于未知，不能记作 0%。不要自动购买额度或消耗重置。
+用户要求：**检测到周额度剩余不超过 1% 时，提交当前更改，写清目标、进度、验证和剩余工作，停止开发并交给另一位 AI。** 2026-09-11 12:58:42 UTC 的最新本地账号额度记录为周窗口已用 97%、剩余约 3%，尚未触发，继续开发并在后续批次检查。应用账号查询接口本次未返回，因此采用该近期记录；这不是未来额度保证。使用额度数据时，`usedPercent`／`used_percent` 是已用比例，剩余为 `max(0, min(100, 100-usedPercent))`；周窗口长度为 10,080 分钟。缺失或查询失败属于未知，不能记作 0%。不要自动购买额度或消耗重置。
 
 ## 1. 用户目标与当前授权
 
@@ -23,7 +23,7 @@
 2. 有序卡牌指令、付款和 X 值、弃牌／消耗／回收、嵌套 Sly、生成卡逐实例身份、随机费用、关键字和迅速附魔；多次选择可挂起恢复。
 3. 生物和基础能力完整生命周期、持续与临时能力、独立神气制胜实例、伤害和终局阶段；奥斯蒂承伤、死亡、复活、攻击、每回合召唤；完整回合和机甲骑士 AI。
 4. 原始机甲 30 牌完整输入已进入生产紧凑后端；搜索结果、原生整场部署与 T2–T8 精确续用已有直接证据。未知域在求解前选择旧模型后端，执行中不得静默回退或混用两个可变对象图。
-5. 当前精确准入 **52 种卡牌类型**，名单以 [编译器](../../src/Prediction/Compact/CompactCardProgramCompiler.cs) 为准。此数字不是原始亡灵输入的全部动态闭包比例。
+5. 当前精确准入 **53 种卡牌类型**，名单以 [编译器](../../src/Prediction/Compact/CompactCardProgramCompiler.cs) 为准。此数字不是原始亡灵输入的全部动态闭包比例。
 
 关键实现入口：
 
@@ -69,7 +69,7 @@
 
 ### 5.1 原始完整亡灵输入与动态闭包
 
-原输入是 `NECROBINDER / AEONGLASS_BOSS`，种子 `SEARCH_PERF_NECROBINDER_POTION`，A10、act index 2、敌人 HP526、玩家 41/76 HP。必须保留 38 张牌、19 遗物、两瓶药及 `RequireAtLeastOne` 药水政策：
+原输入是 `NECROBINDER / AEONGLASS_BOSS`，种子 `SEARCH_PERF_NECROBINDER_POTION`，A10、act index 2、敌人 HP526、玩家 41/76 HP。必须保留 38 张牌、19 件遗物注入（另保留原生初始遗物，实测共 20 件）、两瓶药及 `RequireAtLeastOne` 药水政策：
 
 - [原始卡牌及附魔](../../coverage/unattended/search-performance-necrobinder-projected-run-cards.json)
 - [原始 19 遗物](../../coverage/unattended/search-performance-necrobinder-projected-relics.json)
@@ -86,7 +86,9 @@
 
 合并前备份 stash `78fece6d99ffa440d8e509f7548164846bcdf020` 已恢复并整合。它只是旧检查点，**不要重新应用或把它当作更新版本**。本批 v2–v9 失败、夹具修正与真实缺口在结果文档中明确记录；尤其 v4 使用旧产物，不算有效新代码验证。
 
-下一步 CallOfTheVoid 已读原生卡牌与能力，尚未实现：本机 `.local/compact-lethality-20260911/native/CallOfTheVoid{,Power}.cs`。它在 BeforeHandDraw 从主人角色的解锁池排除 Basic／Ancient，每次用 CombatCardGeneration RNG 独立生成一张，赋虚无，再把这一批加入手牌；不同次数允许重复。升级只加 Innate。必须继续核对 CardFactory.GetDistinctForCombat、生成历史／满手位置／Hook 和本批抽牌顺序；它不是只加一个 Power 枚举即可完成。原始亡灵池与无色药水的全部可达效果仍须保持合法，不准静默缩池或只选择已支持牌。
+完整生成池已完成只读审计，见[直接结果](simulation-generation-audit-20260911.md)。CallOfTheVoid 有 78 个候选，仅 19 个类型已准入；无色药水有 50 个候选，仅 3 个已准入。两池直接缺 106 个类型，尚不含进一步生成链；早期约 65% 的工作量估计不能继续用作剩余规模依据。原生每次生成前都洗乱完整池：该输入分别消耗 77／49 次 RNG；24 次选择与旧引擎完整五字段一致。根因非空药水首先显式拒绝。当前尚未扩充紧凑准入，下一步先冻结完整角色生成池，随后完成通用随机生成值执行和全部可达效果。
+
+CallOfTheVoid 已读原生卡牌与能力，尚未实现：本机 `.local/compact-lethality-20260911/native/CallOfTheVoid{,Power}.cs`。它在 BeforeHandDraw 从主人角色的解锁池排除 Basic／Ancient，每次用 CombatCardGeneration RNG 独立生成一张，赋虚无，再把这一批加入手牌；不同次数允许重复。升级只加 Innate。已定向核对 CardFactory.GetDistinctForCombat／TakeRandom／UnstableShuffle 及 AddGeneratedCardsToCombat：先生成整批并赋虚无，再逐张记录 Generated、入堆、AfterCardGeneratedForCombat；满手转弃牌，生成不触发 AfterCardDrawn。下一步须把这些顺序写入紧凑执行并做原生行为差分；它不是只加一个 Power 枚举即可完成。原始亡灵池与无色药水的全部可达效果仍须保持合法，不准静默缩池或只选择已支持牌。
 
 ### 5.3 完整验收与 PR 准备
 
@@ -121,12 +123,12 @@ dotnet run --project tools/CompactCreatureChecks/CompactCreatureChecks.csproj -c
 本机资料供当前工作区接手者定位，不作为其他机器的固定配置：
 
 - checkout：`/home/ltlly/Code/nmslmod/.tools11/CombatSolver-open-source`；外层目录不是目标仓库。
-- 最新产物 `.local/compact-pagestorm-20260911/artifact`，原生／搜索结果为 `native-v9`、`search-v9`，共享回归为 `draw-exhaust-regression-v9`；对应日志为 `.local/compact-pagestorm-*.log`。
-- 检查点时任务拥有的 headless 实例 `compact-full-route-20260911`、PID `1811604` 仍 READY，加载最新 Pagestorm v9 DLL。PID 仅是记录，使用前须通过实例协议确认所有权，不能按过时 PID 杀进程。
+- 最新只读审计产物 `.local/compact-random-generation-20260911/artifact`（Release v5 零警告错误），结果 `audit-v5`。上一语义产物 `.local/compact-pagestorm-20260911/artifact`，原生／搜索结果为 `native-v9`、`search-v9`，共享回归为 `draw-exhaust-regression-v9`；对应日志为 `.local/compact-pagestorm-*.log`。
+- 检查点时任务拥有的 headless 实例 `compact-full-route-20260911`、PID `1846284` 记录为 READY，加载生成池审计 v5 DLL；结果本身标记 processReusable=false，后续以实例协议实际状态为准。PID 仅是记录，使用前须通过实例协议确认所有权，不能按过时 PID 杀进程。
 - **重编译后先停止持有旧 DLL 的本任务实例**：`./tools/run-unattended-test.sh --headless-instance compact-full-route-20260911 --stop-instance`。不要用不带正确 artifact 的 `--stop-owned-process` 替代，此前会触发无用游戏副本复制。重新启动时传入本批 artifact。
 - 本机磁盘空间紧：测试游戏快照约占 2 GB，最近约剩 1 GB。确实需要回收时，确认本任务实例已退出后，只删除其 `/home/ltlly/.local/state/CombatSolver/headless-instances/compact-full-route-20260911/game` 快照，保留原游戏、存档、其他实例和证据。
 - 当前支持游戏 `0.111.0 / 41cef1ea`；本机原生 DLL 在 `/home/ltlly/.local/share/Steam/steamapps/common/Slay the Spire 2/data_sts2_linuxbsd_x86_64/sts2.dll`。旧文档提到的 `.local/decompiled/sts2-v0.111.0` 在本机不存在。优先查已有 `.local/compact-*/native/`，避免反复反编译。
-- 现有 ILSpy 入口：`dotnet /home/ltlly/Code/nmslmod/.tools/ilspy/.store/ilspycmd/9.1.0.7988/ilspycmd/9.1.0.7988/tools/net8.0/any/ilspycmd.dll -t <完整类型> <sts2.dll>`。在目标仓库工作目录写本批 `.local`；反编译输出可能带工具版本建议，不提交原生源码。
+- 现有 ILSpy 入口：`DOTNET_ROLL_FORWARD=Major .local/dotnet-tools/ilspycmd -t <完整类型> <sts2.dll>`（9.1.0.7988，本批重新安装的忽略开发工具；旧 `.tools/ilspy` 路径已失效）。在目标仓库工作目录写本批 `.local`；反编译输出可能带工具版本建议，不提交原生源码。
 
 ## 7. 容易重踩的正确性边界
 

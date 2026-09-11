@@ -1,4 +1,12 @@
 {
+  "COMPACT-GENERATION-AUDIT-20260911": {
+    "status": "Passed",
+    "level": "HeadlessReadOnlyGenerationRootAudit",
+    "procedure": "原始38牌、19件遗物注入和两瓶药；保留原生初始遗物，完整有序候选池和24次RNG抽样。",
+    "expected": "池顺序与原生筛选一致，旧生成选择的全部RNG字段一致，真实状态不变，完整未迁移根显式拒绝。",
+    "observed": "13339699a6c142a2b456a493fab6e6c2 Passed; CallOfTheVoid 78/19, ColorlessPotion 50/3 (候选/已准入类型), actual relics 20.",
+    "evidence": "docs/performance/simulation-generation-audit-20260911.md；docs/performance/simulation-generation-audit-20260911.json。"
+  },
   "COMPACT-PAGESTORM-20260911": {
     "status": "Passed",
     "level": "HeadlessNativeNestedDrawContinuationAndFixedSearchDifferential",
