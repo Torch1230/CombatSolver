@@ -63,7 +63,7 @@ internal sealed class CompactDiscardProjection
         var powers = combat.EffectivePowers();
         if (combat.Players.Count != 1 || powers.Any(p => !IsBasicPower(p))
             || powers.Any(p => !(p is StratagemPower && p.Owner == player.Creature && p.Amount is >= 1 and <= 10)
-                && !(includeAttacks ? p is not StratagemPower && IsBasicPower(p) && (p is not (BlockNextTurnPower or ToolsOfTheTradePower) || p.Owner == player.Creature)
+                && !(includeAttacks ? p is not StratagemPower && IsBasicPower(p) && (p is not (BlockNextTurnPower or ToolsOfTheTradePower or NeurosurgePower) || p.Owner == player.Creature)
                     && (p is not PiercingWailPower || p.Owner != player.Creature)
                     : p is StrengthPower && p.Owner != player.Creature))
             || combat.RootRunModSubscriberCount != 0 || combat.RootCombatModSubscriberCount != 0
@@ -93,7 +93,8 @@ internal sealed class CompactDiscardProjection
             throw new NotSupportedException("Compact attack requires living primary enemies without pending deaths or pets.");
         if (includeMechaMoves && (!includeAttacks || _creatures.Length != 2 || _creatures[1].Monster?.GetType() != typeof(MechaKnight)))
             throw new NotSupportedException("Captured Mecha commands require exactly one MechaKnight and creature values.");
-        _powerTemplates = includeAttacks ? CapturePowerTemplates(combat, powers) : [];
+        PredictedCard[] cards = state.AllCards.ToArray();
+        _powerTemplates = includeAttacks ? CapturePowerTemplates(combat, powers, cards.Any(card => card.Preview is Neurosurge)) : [];
         PowerModel[] rootPowerOrder = powers.ToArray();
         BasicPowerDefinition[]? powerDefinitions = includeAttacks ? _powerTemplates.Select(power => new BasicPowerDefinition(
             BasicKind(power), CreatureIndex(power.Owner), power.Amount, power.Applier == null ? -1 : CreatureIndex(power.Applier),
@@ -101,7 +102,6 @@ internal sealed class CompactDiscardProjection
             power is WeakPower ? power.DynamicVars["DamageDecrease"].BaseValue
                 : power is VulnerablePower ? power.DynamicVars["DamageIncrease"].BaseValue : 1m,
             combat.IsCapturedRootPowerSlot(power), power.AmountOnTurnStart, power.SkipNextDurationTick)).ToArray() : null;
-        PredictedCard[] cards = state.AllCards.ToArray();
         _identities = cards.Select(c => c.Original).ToArray();
         List<CardModel> generated = [];
         int shivTemplate = -1, inkyShivTemplate = -1, burnTemplate = -1;
@@ -218,7 +218,7 @@ internal sealed class CompactDiscardProjection
         }).ToArray();
     }
 
-    private PowerModel[] CapturePowerTemplates(SimulatedCombatState combat, IReadOnlyList<PowerModel> powers)
+    private PowerModel[] CapturePowerTemplates(SimulatedCombatState combat, IReadOnlyList<PowerModel> powers, bool canCreateNeurosurge)
     {
         List<PowerModel> result = powers.Where(IsBasicPower).ToList();
         if (result.GroupBy(p => (p.Owner, p.GetType())).Any(g => g.Count() != 1)
@@ -230,6 +230,8 @@ internal sealed class CompactDiscardProjection
         {
             // No admitted instruction creates Artifact or Stratagem; capture existing slots only.
             if (kind is BasicPowerKind.Artifact or BasicPowerKind.Stratagem) continue;
+            if (kind is BasicPowerKind.Neurosurge or BasicPowerKind.Doom
+                && (owner != _player.Creature || !canCreateNeurosurge && !powers.Any(power => power is NeurosurgePower))) continue;
             if (kind is BasicPowerKind.BlockNextTurn or BasicPowerKind.ToolsOfTheTrade && owner != _player.Creature) continue;
             if (kind == BasicPowerKind.PiercingWail && owner == _player.Creature) continue;
             if (result.Any(p => p.Owner == owner && BasicKind(p) == kind)) continue;
@@ -254,7 +256,9 @@ internal sealed class CompactDiscardProjection
         [typeof(ToolsOfTheTradePower)] = BasicPowerKind.ToolsOfTheTrade,
         [typeof(PiercingWailPower)] = BasicPowerKind.PiercingWail,
         [typeof(ArtifactPower)] = BasicPowerKind.Artifact,
-        [typeof(StratagemPower)] = BasicPowerKind.Stratagem
+        [typeof(StratagemPower)] = BasicPowerKind.Stratagem,
+        [typeof(DoomPower)] = BasicPowerKind.Doom,
+        [typeof(NeurosurgePower)] = BasicPowerKind.Neurosurge
     };
     private static bool IsBasicPower(PowerModel power) => BasicKinds.ContainsKey(power.GetType());
     private static PowerModel CanonicalPower(BasicPowerKind kind) => kind switch
@@ -270,6 +274,8 @@ internal sealed class CompactDiscardProjection
         BasicPowerKind.Artifact => CanonicalModels.Power<ArtifactPower>(),
         BasicPowerKind.Stratagem => CanonicalModels.Power<StratagemPower>(),
         BasicPowerKind.ToolsOfTheTrade => CanonicalModels.Power<ToolsOfTheTradePower>(),
+        BasicPowerKind.Doom => CanonicalModels.Power<DoomPower>(),
+        BasicPowerKind.Neurosurge => CanonicalModels.Power<NeurosurgePower>(),
         _ => throw new InvalidOperationException("Unknown basic Power kind.")
     };
     private static BasicPowerKind BasicKind(PowerModel power) => BasicKinds[power.GetType()];
@@ -336,6 +342,7 @@ internal sealed class CompactDiscardProjection
         probe?.End(CompactProfilePhase.RootFork, forkStart);
         var eventsStart = probe?.Begin() ?? default;
         var combat = (SimulatedCombatState)projection.State.CombatState;
+        var doomAppliers = combat.CaptureCombatHistoryReadValues().DoomAppliers;
         SimPlayerCombatState state = projection.State.GetPlayerCombatState(_player);
         List<PredictedCard> cards = _identities.Select(c => projection.State.FindCard(c)
             ?? throw new InvalidOperationException("Projection lost a root instance.")).ToList();
@@ -378,6 +385,7 @@ internal sealed class CompactDiscardProjection
                 }
                 if (item.Kind == ResumableDiscardProgram.EventKind.BeginSide)
                 {
+                    doomAppliers.Clear();
                     bool enemy = item.Card == -2;
                     combat.ResetPowerLifecycleTurn(enemy ? _player.Creature : _creatures[1]);
                     combat.CurrentSide = enemy ? CombatSide.Enemy : CombatSide.Player;
@@ -398,6 +406,21 @@ internal sealed class CompactDiscardProjection
                 if (item.Kind == ResumableDiscardProgram.EventKind.ResetEnergy)
                 {
                     state.LoseEnergy(state.Energy); state.GainEnergy(item.Value);
+                    continue;
+                }
+                if (item.Kind == ResumableDiscardProgram.EventKind.GainEnergy)
+                {
+                    state.GainEnergy(item.Value);
+                    continue;
+                }
+                if (item.Kind == ResumableDiscardProgram.EventKind.DoomApplied)
+                {
+                    doomAppliers.Add(_creatures[item.Card]);
+                    continue;
+                }
+                if (item.Kind == ResumableDiscardProgram.EventKind.Kill)
+                {
+                    projection.State.GetCreature(_creatures[item.Target]).LoseHp(item.Value, ValueProp.Unblockable | ValueProp.Unpowered);
                     continue;
                 }
                 if (item.Kind == ResumableDiscardProgram.EventKind.Shuffle
@@ -579,6 +602,7 @@ internal sealed class CompactDiscardProjection
             combat.RecordDamageReceived(target, dealer, result);
             if ((traits & ResumableDiscardProgram.DamageTraits.Unpowered) == 0) damageResults[item.Card] = result;
         }
+        combat.ImportCompletedDoomAppliers(doomAppliers);
         CreateMonsterAiReadBinding(projection)?.Read(program);
         if (program.PowerCount > 0)
         {
@@ -698,7 +722,8 @@ internal sealed class CompactDiscardProjection
         "ShouldAllowHitting", "BeforePowerAmountChanged", "ModifyPowerAmountGiven", "ModifyPowerAmountReceived",
         "TryModifyPowerAmountGiven", "TryModifyPowerAmountReceived",
         "AfterModifyingPowerAmountGiven", "AfterModifyingPowerAmountReceived", "AfterPowerAmountChanged",
-        "AfterCardExhausted", "AfterCardEnteredCombat", "AfterCardGeneratedForCombat", "ModifyXValue", "AfterModifyingDamageAmount", "AfterModifyingHpLostBeforeOsty"
+        "AfterCardExhausted", "AfterCardEnteredCombat", "AfterCardGeneratedForCombat", "ModifyXValue", "AfterModifyingDamageAmount", "AfterModifyingHpLostBeforeOsty",
+        "ModifyEnergyGain", "AfterModifyingEnergyGain", "AfterDiedToDoom"
     };
     // Only immutable CLR method/type metadata is shared. Every root still checks subscriber,
     // Power, relic, card-instance, resource, and lifecycle values independently.
@@ -707,7 +732,7 @@ internal sealed class CompactDiscardProjection
         "AfterCardChangedPiles", "AfterCardChangedPilesLate", "ModifyDamageAdditive", "ModifyDamageMultiplicative", "ModifyDamageCap",
         "AfterModifyingDamageAmount", "BeforeDamageReceived", "AfterCurrentHpChanged", "AfterDamageReceived", "AfterDamageReceivedLate",
         "ModifyHpLostBeforeOsty", "ModifyHpLostBeforeOstyLate", "ModifyHpLostAfterOsty", "ModifyHpLostAfterOstyLate",
-        "AfterModifyingHpLostBeforeOsty", "AfterModifyingHpLostAfterOsty", "BeforeDeath", "ShouldDie", "ShouldDieLate", "AfterDeath"
+        "AfterModifyingHpLostBeforeOsty", "AfterModifyingHpLostAfterOsty", "BeforeDeath", "ShouldDie", "ShouldDieLate", "AfterDeath", "AfterDiedToDoom"
     };
     private static readonly HashSet<string> HandEndHooks = new(StringComparer.Ordinal)
         { "AfterAutoPostPlayPhaseEntered", "BeforeSideTurnEnd", "ShouldEtherealTrigger", "BeforeFlush" };
@@ -742,6 +767,8 @@ internal sealed class CompactDiscardProjection
     private static bool RepresentedHook(Type type, string method)
         => (type == typeof(CccComboModel) || type == typeof(Play20CardsSingleTurnAchievement)) && method == nameof(AbstractModel.AfterSideTurnStart)
             || type == typeof(PoisonPower) && method == nameof(AbstractModel.AfterSideTurnStart)
+            || type == typeof(NeurosurgePower) && method == nameof(AbstractModel.AfterSideTurnStart)
+            || type == typeof(DoomPower) && method is nameof(AbstractModel.BeforeSideTurnEnd) or nameof(AbstractModel.AfterSideTurnEnd)
             || type == typeof(ToolsOfTheTradePower) && method is nameof(AbstractModel.ModifyHandDraw) or nameof(AbstractModel.AfterPlayerTurnStart)
             || type == typeof(RingOfTheSnake) && method == nameof(AbstractModel.ModifyHandDraw)
             || (type == typeof(WeakPower) || type == typeof(VulnerablePower) || type == typeof(FrailPower) || type == typeof(PiercingWailPower))

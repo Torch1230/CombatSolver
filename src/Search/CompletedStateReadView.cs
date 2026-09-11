@@ -66,6 +66,7 @@ internal readonly record struct CardHistoryReadValues(Player Owner, int? BlockPl
 internal sealed class CombatHistoryReadValues
 {
     internal HashSet<Creature> LostHp { get; } = [];
+    internal HashSet<Creature> DoomAppliers { get; } = [];
     internal Dictionary<(Creature Dealer, Creature Receiver), int> PoweredHits { get; } = [];
     internal Dictionary<Creature, int> CreatureAttacks { get; } = [];
     internal Dictionary<Player, PredictedCard> LastAttacks { get; } = [];
@@ -75,6 +76,7 @@ internal sealed class CombatHistoryReadValues
     internal void ResetFrom(CombatHistoryReadValues source)
     {
         LostHp.Clear(); LostHp.UnionWith(source.LostHp);
+        DoomAppliers.Clear(); DoomAppliers.UnionWith(source.DoomAppliers);
         PoweredHits.Clear();
         foreach (var pair in source.PoweredHits) PoweredHits.Add(pair.Key, pair.Value);
         CreatureAttacks.Clear();

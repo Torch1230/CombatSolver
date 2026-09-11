@@ -1211,6 +1211,12 @@ foreach ($file in $compactProductionFiles) {
     }
 }
 $compactProjection = Join-Path $repositoryRoot 'src/Prediction/Compact/CompactDiscardProjection.cs'
+if (-not ([IO.File]::ReadAllText((Join-Path $compactRoot 'ResumableDiscardProgram.Rounds.cs'))).Contains('_round!.TryBeginPlayerSideStart(State)')) {
+    $violations.Add('Side-start completion must belong to the reversible round state.')
+}
+if (-not ([IO.File]::ReadAllText((Join-Path $repositoryRoot 'src/Prediction/Compact/CompactDiscardReadView.cs'))).Contains('combat.ImportCompletedDoomAppliers(_combatHistory.DoomAppliers);')) {
+    $violations.Add('Doom application history must be imported from committed values.')
+}
 $damageSimulator = [IO.File]::ReadAllText((Join-Path $repositoryRoot 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.Damage.cs'))
 if ($damageSimulator.Contains('dealer?.IsDead')) { $violations.Add('Damage dealers must read branch vitals.') }
 if (-not $damageSimulator.Contains('effects.CompletePlayerDeath(player);')) { $violations.Add('Player death lost domain cleanup before orb/pet handling.') }

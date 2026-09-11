@@ -616,9 +616,10 @@ internal sealed partial class SimulatedCombatState
         int previousAmount = simulated._amount;
         simulated._amount = Math.Clamp(simulated._amount + amount, -999_999_999, 999_999_999);
         // Native creates the skip flag on a new player debuff. Stacking an existing
-        // duration never renews it; the owned Power is the only authority for these types.
+        // instance never renews it. Counter debuffs also retain this native metadata,
+        // although only duration counters consume it during settlement.
         if (previousAmount == 0 && simulated._amount != 0 && target.Side == CombatSide.Player
-            && PowerLifecycleSupport.UsesNativeDurationSkip(typeof(T)))
+            && simulated.Type == MegaCrit.Sts2.Core.Entities.Powers.PowerType.Debuff)
             simulated.SkipNextDurationTick = true;
         UpdatePowerListenerOrder(simulated, previousAmount, simulated._amount);
         InvalidateHookListenersForAmountTransition(previousAmount, simulated._amount);

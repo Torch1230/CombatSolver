@@ -1,0 +1,162 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-11",
+  "scope": "Closed exact Neurosurge/Doom extension; not original Necrobinder complete-input admission",
+  "passes": [
+    {
+      "runId": "9f1a7bcdd67e4e09ba043975caf14884",
+      "scenarioId": "COMPACT-NEUROSURGE-NATIVE",
+      "status": "Passed",
+      "processId": 1292080,
+      "elapsedMilliseconds": 4948.3888,
+      "startedTurn": 1,
+      "finishedTurn": 3,
+      "completedChecks": [
+        "CompactNeurosurge:ChoicesFalse:OmittedChoices0:GainBeforeDraw:ArtifactAndDoom:FullContinuations",
+        "CompactNeurosurge:ChoicesFalse:4NativeActions:5Branches:0NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative"
+      ],
+      "error": null
+    },
+    {
+      "runId": "f4c4a69ebcd54543bb5e731220f05c4d",
+      "scenarioId": "COMPACT-NEUROSURGE-CHOICES",
+      "status": "Passed",
+      "processId": 1292080,
+      "elapsedMilliseconds": 25461.631,
+      "startedTurn": 1,
+      "finishedTurn": 3,
+      "completedChecks": [
+        "CompactNeurosurge:ChoicesTrue:OmittedChoices5:GainBeforeDraw:ArtifactAndDoom:FullContinuations",
+        "CompactNeurosurge:ChoicesTrue:4NativeActions:5Branches:1NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative"
+      ],
+      "error": null
+    },
+    {
+      "runId": "d5a4dbe584f14766b50d178bbfef793d",
+      "scenarioId": "COMPACT-DOOM-PLAYER",
+      "status": "Passed",
+      "processId": 1276712,
+      "elapsedMilliseconds": 23460.5654,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "completedChecks": [
+        "CompactDoom:EnemySideFalse:ThresholdAndOppositePhase:NativeDirectKill:NoDamageHistoryOrBlockLoss:PowerRetirement:FullKeys:EightWorkers:FrozenAfterNative"
+      ],
+      "error": null
+    },
+    {
+      "runId": "470f99cc7fb24bc8bd8c7acf136cad67",
+      "scenarioId": "COMPACT-DOOM-ENEMY",
+      "status": "Passed",
+      "processId": 1276712,
+      "elapsedMilliseconds": 3402.7165,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "completedChecks": [
+        "CompactDoom:EnemySideTrue:ThresholdAndOppositePhase:NativeDirectKill:NoDamageHistoryOrBlockLoss:PowerRetirement:FullKeys:EightWorkers:FrozenAfterNative"
+      ],
+      "error": null
+    },
+    {
+      "runId": "fa2d6f307d674cf89688fbe019ccef6d",
+      "scenarioId": "COMPACT-NEUROSURGE-SEARCH",
+      "status": "Passed",
+      "processId": 1301083,
+      "elapsedMilliseconds": 24961.7596,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "completedChecks": [
+        "CompactSearchLifecycle:NeurosurgeTrue:250Nodes:LegacyEqualsCompact:DOP1EqualsDOP2:Concurrency2:CancelAndFailureDrained:RootReusable:UnsupportedPotionRejected:ActualUnchanged"
+      ],
+      "error": null
+    },
+    {
+      "runId": "b0b31b54b3f1403aa9e9a76ddce53520",
+      "scenarioId": "COMPACT-ROUND-NATIVE",
+      "status": "Passed",
+      "processId": 1301083,
+      "elapsedMilliseconds": 8040.0458,
+      "startedTurn": 1,
+      "finishedTurn": 6,
+      "completedChecks": [
+        "CompactRoundPending:Mode0:5OmittedChoices:FullEvaluationAndOwnedSpecs:ReverseRestore",
+        "CompactRound:Mode0:Branches13:NativeActions4:FullSnapshotHistoryKeysEvaluationRng:ReverseAndEightWorkerRestore:FrozenAfterNative",
+        "CompactRoundPending:Mode1:3OmittedChoices:FullEvaluationAndOwnedSpecs:ReverseRestore",
+        "CompactRound:Mode1:Branches6:NativeActions2:FullSnapshotHistoryKeysEvaluationRng:ReverseAndEightWorkerRestore:FrozenAfterNative",
+        "CompactRoundPending:Mode2:0OmittedChoices:FullEvaluationAndOwnedSpecs:ReverseRestore",
+        "CompactRound:NativePreTeardownSnapshot",
+        "CompactRound:Mode2:Branches1:NativeActions1:FullSnapshotHistoryKeysEvaluationRng:ReverseAndEightWorkerRestore:FrozenAfterNative"
+      ],
+      "error": null
+    }
+  ],
+  "failureBaselines": [
+    {
+      "runId": "e287b85aff7c44429083c1484a5c96a7",
+      "scenarioId": "COMPACT-NEUROSURGE-NATIVE",
+      "status": "Failed",
+      "processId": 1272964,
+      "elapsedMilliseconds": 24198.1093,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "completedChecks": [
+        "CompactNeurosurge:ChoicesFalse:OmittedChoices0:GainBeforeDraw:ArtifactAndDoom:FullContinuations"
+      ],
+      "error": "System.InvalidOperationException: Native Neurosurge instance order or Power metadata differs.\n   at CombatSolver.UnattendedTestRunner.AssertCompactNeurosurgeAsync(CombatState combat, Player player)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()"
+    },
+    {
+      "runId": "aae3e36f3a014248903b757378f76576",
+      "scenarioId": "COMPACT-NEUROSURGE-CHOICES",
+      "status": "Failed",
+      "processId": 1281355,
+      "elapsedMilliseconds": 3331.0612,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "completedChecks": [],
+      "error": "System.InvalidOperationException: Compact full evaluation SearchPending/0/0/NEUROSURGE differs at StateKey: StateFingerprint { First = 10824475634881794246, Second = 14883161073548788277 } / StateFingerprint { First = 12462344734542037484, Second = 17060017086532579346 }.\n   at CombatSolver.UnattendedTestRunner.AssertCompactEvaluation(SimulationSnapshot expected, SimulationSnapshot actual, String context)\n   at CombatSolver.UnattendedTestRunner.AssertCompactReplayBoundaries(CombatRootSnapshot root, SolverDisplayNames display, BattleDamageSnapshot damage, SearchPolicySnapshot policy, Player player, IReadOnlyList`1 route)\n   at CombatSolver.UnattendedTestRunner.AssertCompactNeurosurgeAsync(CombatState combat, Player player)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()"
+    },
+    {
+      "runId": "18eee6099a974aa9809833dbec738fbe",
+      "scenarioId": "COMPACT-NEUROSURGE-SEARCH",
+      "status": "Failed",
+      "processId": 1297880,
+      "elapsedMilliseconds": 23112.1486,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "completedChecks": [],
+      "error": "System.InvalidOperationException: 找不到卡牌 。\n   at CombatSolver.UnattendedTestRunner.ResolveUnique[TModel](IEnumerable`1 candidates, String input, String kind)\n   at CombatSolver.UnattendedTestRunner.InjectCardAsync(CombatState combatState, Player player, UnattendedCardInjection injection, Boolean restoreSnapshot)\n   at CombatSolver.UnattendedTestRunner.ScenarioBuilder.BuildAsync()\n   at CombatSolver.UnattendedTestRunner.RunAsync()"
+    }
+  ],
+  "build": {
+    "configuration": "Release CopyModOnBuild=false",
+    "finalSeconds": 11.38,
+    "warnings": 0,
+    "errors": 0
+  },
+  "pureChecks": {
+    "status": "Passed",
+    "log": ".local/compact-necro-resources-kernel-v1.log",
+    "includes": "CompactCreatureChecks and NeurosurgeChecks; production compact value behavior unchanged after this run"
+  },
+  "coverage": {
+    "verifyEffective": "Passed",
+    "entries": 3035,
+    "unclassified": 0,
+    "requiredStateWritesWithoutEvidence": 0,
+    "newExactMirror": "Neurosurge.OnPlay",
+    "note": "Generated raw IL method hashes reflect current Linux game assembly; not new native evidence for all models"
+  },
+  "performance": "Not measured in this stage",
+  "limits": [
+    "Original complete Necrobinder root and dynamic closure not yet admitted",
+    "No pet/resurrection/unknown energy or Doom death hooks admitted",
+    "Not a full native Doom terminal battle deployment",
+    "No Steam/installation/release/remotes"
+  ],
+  "boundary": {
+    "linux": "Passed",
+    "searchFiles": 92,
+    "powershell": "Maintained, not executed",
+    "documentationLinks": 311
+  }
+}

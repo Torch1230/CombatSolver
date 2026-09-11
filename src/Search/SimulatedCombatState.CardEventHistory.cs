@@ -348,6 +348,7 @@ internal sealed partial class SimulatedCombatState
     {
         CombatHistoryReadValues values = new();
         if (_unblockedDamageThisTurn != null) values.LostHp.UnionWith(_unblockedDamageThisTurn);
+        if (_doomAppliersThisTurn != null) values.DoomAppliers.UnionWith(_doomAppliersThisTurn);
         if (_poweredAttackHitsThisTurn != null)
             foreach (var pair in _poweredAttackHitsThisTurn) values.PoweredHits.Add(pair.Key, pair.Value);
         if (_creatureAttacksThisTurn != null)
@@ -359,6 +360,15 @@ internal sealed partial class SimulatedCombatState
         if (_deathPhases != null)
             foreach (var pair in _deathPhases) values.DeathPhases.Add(pair.Key, pair.Value);
         return values;
+    }
+
+    // Import a lane-owned read projection. This does not apply a Power or invoke its hooks;
+    // all application effects and window resets have already committed to the value journal.
+    internal void ImportCompletedDoomAppliers(IReadOnlySet<Creature> appliers)
+    {
+        if (_doomAppliersThisTurn == null && appliers.Count == 0) return;
+        (_doomAppliersThisTurn ??= []).Clear();
+        foreach (Creature applier in appliers) _doomAppliersThisTurn.Add(applier);
     }
 
     private static void AddPoweredAttackHits(

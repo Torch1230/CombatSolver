@@ -1,4 +1,12 @@
 {
+  "COMPACT-NEUROSURGE-DOOM-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeDifferentialAndFixedSearchLifecycle",
+    "procedure": "精神过载普通／选牌两组原生出牌和两回合，毁灭双方所属 Hook，值恢复／完整读取及固定 250 节点串并行和取消异常排空。",
+    "expected": "资源先于抽牌、能力后于选择、人工制品独立消耗，阵营开始不重入；直接死亡保留格挡且不伪造伤害历史；完整状态及搜索政策一致。",
+    "observed": "native-v6、choices-v6、双方 doom-v4、search-v7b、三模式 round-v7 全部 Passed；10 个精神过载分支／8 原生动作、5 个省略选择、8 工作区、DOP1/DOP2 实际并发2。原始亡灵完整域尚未迁移。",
+    "evidence": "docs/performance/simulation-necro-resources-20260911.json；docs/performance/simulation-necro-resources-20260911.md；2026-09-11。"
+  },
   "MURDER-ROOT-HISTORY": {
     "status": "Passed",
     "level": "HeadlessStrictNativeTwoTurnRootHistoryAndForkDifferential",

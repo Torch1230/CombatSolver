@@ -1015,6 +1015,8 @@ require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/Resumable
 require_fixed "$compact_projection" 'metadata.CurrentMonsterMove(_creatures[1])' 'monster parameters must come from captured branch metadata'
 require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" 'history?.CreatureAttacks, combatHistory?.CreatureAttacks' 'completed creature attack counts must share the original map encoding'
 require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Rounds.cs" 'Emit(EventKind.CommitPlayerTurnHistory, -1);' 'completed player history must survive frozen rounds'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Rounds.cs" '_round!.TryBeginPlayerSideStart(State)' 'side-start completion must belong to the reversible round state'
+require_fixed "$repository_root/src/Prediction/Compact/CompactDiscardReadView.cs" 'combat.ImportCompletedDoomAppliers(_combatHistory.DoomAppliers);' 'Doom application history must be imported from committed values'
 require_fixed "$search_root/SimulatedCombatState.cs" 'combatHistory?.LastAttacks, combatHistory?.PreviousTurnAttacks' 'completed reads must preserve both attack-history windows'
 compact_round_reads="$search_root/SimulatedCombatState.CompletedRoundReads.cs"
 for replay in '.Fork(' '.ManualPlay(' 'TriggerSideTurnStart(' 'SnapshotPowerAmountsAtTurnStart(' '.State.Write('; do

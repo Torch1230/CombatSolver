@@ -27,6 +27,11 @@ internal sealed partial class ResumableDiscardProgram
     {
         AssertPowerPhase();
         if (Ending) return;
+        if (!enemySide)
+        {
+            TriggerDoom(enemySide: false);
+            return;
+        }
         // Only enemy temporary Strength is admitted. Its removal has no amount callback;
         // restoring Strength uses the owner as applier and the ordinary command gate.
         for (int owner = 1; enemySide && owner < CreatureCount; owner++)
@@ -49,6 +54,33 @@ internal sealed partial class ResumableDiscardProgram
             if (!BasicPowerLayout.IsDuration(definition.Kind) || value.Amount == 0 || !CreaturePresent(definition.Owner)) continue;
             if (value.SkipNextDurationTick) _powers!.ClearDurationSkip(State, index);
             else CommitPower(-definition.Owner - 1, definition.Owner, definition.Kind, -1);
+        }
+    }
+
+    internal void BeforeEndSidePowerEffects(bool enemySide)
+    {
+        AssertPowerPhase();
+        if (enemySide) TriggerDoom(enemySide: true);
+    }
+
+    private void TriggerDoom(bool enemySide)
+    {
+        if (Ending) return;
+        // This closure has only primary enemies, no resurrection/Fatal observers and no
+        // pets. Native Doom kills without damage history, block loss or attack callbacks.
+        for (int owner = enemySide ? 1 : 0; owner < (enemySide ? CreatureCount : 1); owner++)
+        {
+            int index = _powers!.FindOrDefault(owner, BasicPowerKind.Doom);
+            if (index < 0 || !CreaturePresent(owner) || Creature(owner).CurrentHp <= 0
+                || Creature(owner).CurrentHp > Power(index).Amount) continue;
+            var values = Creature(owner);
+            int hp = values.CurrentHp;
+            values.LoseHp(hp);
+            _combat!.Write(State, owner, values);
+            Emit(EventKind.Kill, -owner - 1, hp, target: owner);
+            _combat.CompleteDeath(State, owner);
+            _powers.RemoveOwner(State, owner);
+            Emit(EventKind.Death, -owner - 1, target: owner);
         }
     }
 

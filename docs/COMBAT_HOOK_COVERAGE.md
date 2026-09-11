@@ -1,13 +1,13 @@
 # CombatSolver 战斗钩子覆盖目录
 
-> CombatSolver `0.34.5`，游戏 `0.111.0`，模拟核心 `embedded`。本文件由 `tools/CoverageCatalog` 生成，不手工编辑。
+> CombatSolver `0.34.6`，游戏 `0.111.0`，模拟核心 `embedded`。本文件由 `tools/CoverageCatalog` 生成，不手工编辑。
 
 ## 汇总
 
 | 分类 | 条目 | 未分析 | 待实现 | 引擎精确 | 引擎推断 | 引擎不支持 |
 |---|---:|---:|---:|---:|---:|---:|
 | Affliction | 3 | 0 | 0 | 0 | 0 | 1 |
-| Card | 1186 | 0 | 0 | 214 | 157 | 226 |
+| Card | 1186 | 0 | 0 | 215 | 156 | 226 |
 | Enchantment | 42 | 0 | 0 | 11 | 0 | 0 |
 | MonsterMove | 339 | 0 | 0 | 0 | 0 | 0 |
 | Monster | 352 | 0 | 0 | 15 | 0 | 0 |

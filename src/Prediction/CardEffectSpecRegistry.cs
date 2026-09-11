@@ -53,7 +53,6 @@ internal static class CardEffectSpecRegistry
         [typeof(LightningRod)] = [Owner<LightningRodPower>("LightningRodPower")],
         [typeof(Mangle)] = [Target<ManglePower>("StrengthLoss")],
         [typeof(NegativePulse)] = [AllEnemies<DoomPower>(card => card.DynamicVars.Doom.IntValue)],
-        [typeof(Neurosurge)] = [Owner<NeurosurgePower>("NeurosurgePower")],
         [typeof(PanicButton)] = [Owner<NoBlockPower>("Turns")],
         [typeof(Patter)] = [Owner<VigorPower>("VigorPower")],
         [typeof(Pounce)] = [Owner<FreeSkillPower>(_ => 1)],
@@ -80,7 +79,7 @@ internal static class CardEffectSpecRegistry
     private static readonly HashSet<Type> ResourceEffects =
     [
         typeof(Adrenaline), typeof(BigBang), typeof(BloodWall), typeof(Breakthrough), typeof(BrightestFlame), typeof(GatherLight),
-        typeof(Glow), typeof(Hemokinesis), typeof(Neurosurge), typeof(Offering), typeof(ShiningStrike), typeof(SolarStrike),
+        typeof(Glow), typeof(Hemokinesis), typeof(Offering), typeof(ShiningStrike), typeof(SolarStrike),
         typeof(AllForOne), typeof(BoneShards), typeof(Bulwark), typeof(Claw), typeof(Compact),
         typeof(DeathsDoor), typeof(EvilEye), typeof(GeneticAlgorithm), typeof(Glitterstream), typeof(GoForTheEyes),
         typeof(Misery), typeof(Modded), typeof(MoltenFist), typeof(MomentumStrike), typeof(PullAggro),
@@ -241,10 +240,6 @@ internal static class CardEffectSpecRegistry
                 break;
             case Glow:
                 simulator.GainStars(card.Owner, card.DynamicVars.Stars.IntValue);
-                applied = true;
-                break;
-            case Neurosurge:
-                simulator.GainEnergy(card.Owner, card.DynamicVars.Energy.IntValue);
                 applied = true;
                 break;
             case Offering:

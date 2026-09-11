@@ -18,13 +18,13 @@ internal static class CompactCardProgramCompiler
         typeof(UltimateDefend), typeof(Suppress), typeof(Footwork), typeof(Malaise), typeof(DeadlyPoison),
         typeof(Haze), typeof(Snakebite), typeof(Defy), typeof(EscapePlan), typeof(Outbreak), typeof(CalculatedGamble),
         typeof(BubbleBubble), typeof(Mirage), typeof(DodgeAndRoll), typeof(ToolsOfTheTrade), typeof(PiercingWail),
-        typeof(CloakAndDagger), typeof(Shiv), typeof(BladeOfInk), typeof(Burn)
+        typeof(CloakAndDagger), typeof(Shiv), typeof(BladeOfInk), typeof(Burn), typeof(Neurosurge)
     ];
 
     internal static ResumableDiscardProgram.Card Compile(CardModel card, bool includeAttacks, int shivTemplate = -1, int inkyShivTemplate = -1)
     {
         if (!AdmittedTypes.Contains(card.GetType())
-            || card is Neutralize or Suppress or Footwork or Malaise or DeadlyPoison or Haze or Snakebite or Defy or Outbreak or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail or CloakAndDagger or Shiv or BladeOfInk or Burn && !includeAttacks
+            || card is Neutralize or Suppress or Footwork or Malaise or DeadlyPoison or Haze or Snakebite or Defy or Outbreak or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail or CloakAndDagger or Shiv or BladeOfInk or Burn or Neurosurge && !includeAttacks
             || card is Burn && (card.Enchantment != null || card.EnergyCost._base != -1 || card.IsUpgraded
                 || !card.LocalKeywords.Contains(CardKeyword.Unplayable) || card.DynamicVars.Damage.Props != (ValueProp.Unpowered | ValueProp.Move))
             || card.Enchantment is { } enchantment && enchantment.GetType() != typeof(Inky) && enchantment.GetType() != typeof(Slither)
@@ -45,7 +45,9 @@ internal static class CompactCardProgramCompiler
                 && !(card is Defy && k == CardKeyword.Ethereal) && !(card is Burn && k == CardKeyword.Unplayable))
             || card.IsSlyThisTurn && card is not Prepared)
             throw new NotSupportedException($"Compact prototype cannot admit card state {card.Id.Entry}.");
-        decimal draw = card is EscapePlan ? 1 : card is Acrobatics or Prepared or Backflip or Finesse ? card.DynamicVars.Cards.BaseValue : 0;
+        decimal draw = card is EscapePlan ? 1 : card is Acrobatics or Prepared or Backflip or Finesse or Neurosurge ? card.DynamicVars.Cards.BaseValue : 0;
+        decimal energyGain = card is Neurosurge ? card.DynamicVars.Energy.BaseValue : 0;
+        decimal neurosurge = card is Neurosurge ? card.DynamicVars["NeurosurgePower"].BaseValue : 0;
         decimal damage = includeAttacks && card is StrikeSilent or StrikeNecrobinder or Neutralize or Suppress or Shiv or Burn ? card.DynamicVars.Damage.BaseValue : 0;
         decimal block = card is DefendSilent or DefendNecrobinder or Backflip or Survivor or Finesse or UltimateDefend or Defy or EscapePlan or DodgeAndRoll or CloakAndDagger ? card.DynamicVars.Block.BaseValue : 0;
         decimal weak = card.Enchantment is Inky inky ? inky.DynamicVars.Weak.BaseValue
@@ -63,6 +65,8 @@ internal static class CompactCardProgramCompiler
             || weak != decimal.Truncate(weak) || weak is < 0 or > 999_999_999m
             || poison != decimal.Truncate(poison) || poison is < 0 or > 999_999_999m
             || generated != decimal.Truncate(generated) || generated is < 0 or > 999_999_999m
+            || energyGain != decimal.Truncate(energyGain) || energyGain is < 0 or > 999_999_999m
+            || neurosurge != decimal.Truncate(neurosurge) || neurosurge is < 0 or > 999_999_999m
             || strengthLoss != decimal.Truncate(strengthLoss) || strengthLoss is < 0 or > 999_999_999m
             || dexterity != decimal.Truncate(dexterity) || dexterity is < 0 or > 999_999_999m
             || calculationBase != decimal.Truncate(calculationBase) || calculationBase is < 0 or > 999_999_999m
@@ -90,6 +94,8 @@ internal static class CompactCardProgramCompiler
             PiercingWail => new([new(CardInstructionKind.ApplyTemporaryStrengthLoss, (int)strengthLoss, BasicPowerKind.PiercingWail, CardInstructionTarget.AllEnemies)]),
             Footwork => new([new(CardInstructionKind.ApplyBasicPower, (int)dexterity, BasicPowerKind.Dexterity)]),
             ToolsOfTheTrade => new([new(CardInstructionKind.ApplyBasicPower, 1, BasicPowerKind.ToolsOfTheTrade)]),
+            Neurosurge => new([new(CardInstructionKind.GainEnergy, (int)energyGain), new(CardInstructionKind.Draw, (int)draw),
+                new(CardInstructionKind.ApplyBasicPower, (int)neurosurge, BasicPowerKind.Neurosurge)]),
             DodgeAndRoll => new([new(CardInstructionKind.GainBlockAndApplyPower, (int)block, BasicPowerKind.BlockNextTurn)]),
             DeadlyPoison or Snakebite => new([new(CardInstructionKind.ApplyBasicPower, (int)poison, BasicPowerKind.Poison, CardInstructionTarget.ChosenEnemy)]),
             Haze => new([new(CardInstructionKind.ApplyBasicPower, (int)poison, BasicPowerKind.Poison, CardInstructionTarget.AllEnemies),

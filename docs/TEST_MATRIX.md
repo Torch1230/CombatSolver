@@ -2610,3 +2610,7 @@ pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId MONSTER-MOVES-BA
 `COMPACT-SEARCH-BACKEND` 现保存成功 A/B 的完整逻辑结果，并比对每个完成前缀的 ContinuationStamp，附进程级分配／CPU／GC 增量。单线程与 DOP8 的原完整路线和全部逻辑结果跨请求一致，物化均 0。`COMPACT-SERIAL-PREPARATION-SENTINEL` 使用 VerifySearchPolicySnapshot + StopAfterCombatRootSnapshotAssertion，固定 250 节点、SILENT／机械骑士 1000 HP、PREPARED／SURVIVOR／BACKFLIP 及 GAMBLERS_BREW／COLORLESS_POTION，验证旧路径 DOP1/DOP2、取消／失败排空。三模式 `COMPACT-ROUND-NATIVE` 的每步完成值还比对续用文本，覆盖非零根历史及 Power 初始字段。
 
 `COMPACT-SEARCH-LIFECYCLE`：原始 30 牌根、250 节点，旧／紧凑 DOP1 和紧凑 DOP2 全政策结果一致；真实双线程、取消／注入异常排空、失败后复用根、未迁移药水明确拒绝及实机不变。`COMPACT-RUNTIME-FULL-AUTO`：原始机甲、VeryHigh/DOP8/NoGC16GB、Instant/0，实际紧凑执行与 T2–T8 精确续用，T8 胜利／6 HP／0 药／零计划外重算。`COMPACT-RUNTIME-MODEL-FALLBACK`：增加 FIRE_POTION 后明确使用模型后端，首轮结果正常。`COMPACT-RUNTIME-MODEL-BASELINE`：启用前 67aa82d 产物、同原输入与正常 NoGC，首轮逻辑计数／评分／预计战损与紧凑样本一致；仅停止在首轮结果。均为 120 秒以内 headless 请求。[结果与限制](performance/simulation-runtime-backend-20260911.md)。
+
+### 精神过载与毁灭值执行（2026-09-11）
+
+`COMPACT-NEUROSURGE-NATIVE`／`COMPACT-NEUROSURGE-CHOICES` 比较两次出牌、两回合和全部省略选择边界；原生选择观察器核对资源先到账、能力后施加。`COMPACT-DOOM-PLAYER`／`COMPACT-DOOM-ENEMY` 比较双方正确／错误相位、阈值、直接死亡与格挡／历史保留。均有完整能力元数据、原键／估值／续用、九 RNG、逆序与八工作区隔离。`COMPACT-NEUROSURGE-SEARCH` 同根固定 250 节点、旧／新 DOP1 和紧凑 DOP2 全政策相等，取消／异常排空后根可复用；明确拒绝未迁移药水。所有请求限制 120 秒。[构建、回归与结构化证据](performance/simulation-necro-resources-20260911.md)。

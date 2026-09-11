@@ -33,3 +33,5 @@
 `HandEndChecks` 覆盖十二组生命／格挡／入场顺序、不可打出、虚无先消耗、玩家阵容保留、Power 清理、待失败／终局、撤销和八工作区；未准入阶段必须无写入地拒绝。真实动画模式和完整读视图见[手牌末尾报告](../../docs/performance/simulation-hand-end-20260911.md)。
 
 确定性 AI 合同另覆盖非初始根、复制图、300 次增长日志、撤销和八工作区续接；原生 AI／意图由 `COMPACT-MONSTER-AI-NATIVE` 对照。
+
+`NeurosurgeChecks` 覆盖能量封顶、抽牌前资源、选择后能力与人工制品、阵营开始一次性标记、玩家／敌方毁灭相位、终局前时钟／AI、撤销和八工作区恢复；[原生与搜索证据](../../docs/performance/simulation-necro-resources-20260911.md)。

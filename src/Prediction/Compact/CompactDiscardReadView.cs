@@ -131,6 +131,7 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
                     bool enemy = item.Card == -2;
                     Creature phaseOwner = _adapter.Creature(enemy ? 1 : 0);
                     _combatHistory.LostHp.Clear();
+                    _combatHistory.DoomAppliers.Clear();
                     _combatHistory.PoweredHits.Clear();
                     _combatHistory.CreatureAttacks.Clear();
                     _combatHistory.CreatureAttacks[phaseOwner] = 0;
@@ -195,6 +196,11 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
                 case ResumableDiscardProgram.EventKind.Death:
                     _combatHistory.DeathPhases[_adapter.Creature(item.Target)] = PredictedDeathPhase.PermanentlyDead;
                     break;
+                case ResumableDiscardProgram.EventKind.DoomApplied:
+                    _combatHistory.DoomAppliers.Add(_adapter.Creature(item.Card));
+                    break;
+                case ResumableDiscardProgram.EventKind.Kill:
+                case ResumableDiscardProgram.EventKind.GainEnergy:
                 case ResumableDiscardProgram.EventKind.ResetEnergy:
                 case ResumableDiscardProgram.EventKind.CleanupCards:
                 case ResumableDiscardProgram.EventKind.PowerChange:
@@ -224,6 +230,7 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
             _gapCombinations.Add(gapMask, gaps);
         }
         _gaps = gaps;
+        combat.ImportCompletedDoomAppliers(_combatHistory.DoomAppliers);
         if (_powerBinding != null)
         {
             _adapter.CopyPowerReadValues(program, _powerValues);

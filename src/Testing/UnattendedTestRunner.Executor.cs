@@ -39,7 +39,17 @@ internal sealed partial class UnattendedTestRunner
             bool expectedCardPlayed = request.ExpectedPlayedCardId == null;
             bool expectedPotionUsed = request.ExpectedUsedPotionId == null;
             bool expectedPlayerPowerObserved = request.ExpectedObservedPlayerPowerId == null;
-            if (request.ScenarioId == "COMPACT-SEARCH-LIFECYCLE")
+            if (request.ScenarioId is "COMPACT-DOOM-PLAYER" or "COMPACT-DOOM-ENEMY")
+            {
+                await runner.AssertCompactDoomAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "COMPACT-NEUROSURGE-NATIVE" or "COMPACT-NEUROSURGE-CHOICES")
+            {
+                await runner.AssertCompactNeurosurgeAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "COMPACT-SEARCH-LIFECYCLE" or "COMPACT-NEUROSURGE-SEARCH")
             {
                 _ = ApplySettingsOverrides();
                 await runner.AssertCompactSearchLifecycleAsync(combatState, player);

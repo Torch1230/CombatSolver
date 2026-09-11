@@ -1,6 +1,6 @@
 namespace CombatSolver.Engine.InCombat.Simulation.Compact;
 
-internal enum BasicPowerKind { Strength, Dexterity, Weak, Vulnerable, Frail, Poison, BlockNextTurn, ToolsOfTheTrade, PiercingWail, Artifact, Stratagem }
+internal enum BasicPowerKind { Strength, Dexterity, Weak, Vulnerable, Frail, Poison, BlockNextTurn, ToolsOfTheTrade, PiercingWail, Artifact, Stratagem, Doom, Neurosurge }
 internal readonly record struct BasicPowerDefinition(BasicPowerKind Kind, int Owner, int Amount,
     int Applier, int Order, decimal Multiplier, bool RootSlot, int AmountOnTurnStart = 0, bool SkipNextDurationTick = false);
 internal readonly record struct BasicPowerValues(int Amount, int Applier, int Order, bool Retired,
@@ -75,10 +75,14 @@ internal sealed class BasicPowerLayout
         Write(state, index, new(after, before.Amount == 0 ? applier : before.Applier, after == 0 ? 0 : order,
             before.Retired || before.Amount != 0 && after == 0 && _definitions[index].RootSlot,
             before.Amount == 0 ? 0 : before.AmountOnTurnStart,
-            before.Amount == 0 ? _definitions[index].Owner == 0 && IsDuration(_definitions[index].Kind) : before.SkipNextDurationTick));
+            before.Amount == 0 ? _definitions[index].Owner == 0 && IsDebuff(_definitions[index].Kind, after) : before.SkipNextDurationTick));
     }
 
     internal static bool IsDuration(BasicPowerKind kind) => kind is BasicPowerKind.Weak or BasicPowerKind.Vulnerable or BasicPowerKind.Frail;
+    internal static bool IsDebuff(BasicPowerKind kind, int amount)
+        => kind is BasicPowerKind.Strength or BasicPowerKind.Dexterity ? amount < 0
+            : kind is BasicPowerKind.Weak or BasicPowerKind.Vulnerable or BasicPowerKind.Frail or BasicPowerKind.Poison
+                or BasicPowerKind.PiercingWail or BasicPowerKind.Doom or BasicPowerKind.Neurosurge;
 
     internal void CaptureTurnStart(ReversibleValueState state, int owner)
     {

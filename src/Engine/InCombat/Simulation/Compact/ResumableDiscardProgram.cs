@@ -1,9 +1,9 @@
 namespace CombatSolver.Engine.InCombat.Simulation.Compact;
 
 /// <summary>
-/// Experimental closed-domain executor. Only its value workspace is authoritative while running.
+/// Closed-domain executor. Only its value workspace is authoritative while running.
 /// The admitting adapter must prove that draw, discard and play have no unrepresented effects.
-/// It is deliberately not selected by production search.
+/// Production selects it only after complete root admission.
 /// </summary>
 internal sealed partial class ResumableDiscardProgram
 {
@@ -11,7 +11,7 @@ internal sealed partial class ResumableDiscardProgram
         Pile ResultPile = Pile.Discard, bool CostsX = false, int CapturedX = 0, CardCategory Category = CardCategory.Other,
         bool Ethereal = false, RandomDrawCost? DrawCost = null, int? HandEndDamage = null, bool Unplayable = false, bool Retain = false, bool SingleTurnSly = false);
     internal enum Pile { Hand, Draw, Discard, Play, Exhaust, Removed }
-    internal enum EventKind { Pay, Start, Draw, Select, SelectedCard, Discard, Block, Finish, Shuffle, ShuffleCard, Retrieve, Damage, DamageBlocked, DamageOverkill, AttackFinish, Death, PowerChange, ResultMoved, Generated, CostChanged, HandEndMoved, HandEndStart, HandEndFinish, BeginSide, ResetEnergy, CleanupCards, CommitPlayerTurnHistory }
+    internal enum EventKind { Pay, Start, Draw, Select, SelectedCard, Discard, Block, Finish, Shuffle, ShuffleCard, Retrieve, Damage, DamageBlocked, DamageOverkill, AttackFinish, Death, PowerChange, ResultMoved, Generated, CostChanged, HandEndMoved, HandEndStart, HandEndFinish, BeginSide, ResetEnergy, CleanupCards, CommitPlayerTurnHistory, GainEnergy, DoomApplied, Kill }
     internal readonly record struct Event(EventKind Kind, int Card, int Value, bool Automatic, int Target = -1, int Flags = 0)
     {
         internal long Data => (long)(uint)Card | (long)(uint)Value << 32;
@@ -397,7 +397,7 @@ internal sealed partial class ResumableDiscardProgram
                     else AdvanceInstruction();
                     break;
                 case 5:
-                    if (card < 0) { State.Write(DepthSlot, 0); break; }
+                    if (card < 0) { CompletePlayerSideStart(); State.Write(DepthSlot, 0); break; }
                     Emit(EventKind.Finish, card, Block > Read(frame + BeforeBlockOffset) ? 1 : 0,
                         Read(frame + AutoOffset) != 0, flags: Definition(card).Ethereal ? 1 : 0);
                     if (ResultPile(card) == Pile.Removed || !Ending)
@@ -418,6 +418,14 @@ internal sealed partial class ResumableDiscardProgram
         CardInstruction instruction = CurrentInstruction;
         switch (instruction.Kind)
         {
+            case CardInstructionKind.GainEnergy:
+                if (!Ending && instruction.Amount > 0)
+                {
+                    int before = Energy;
+                    State.Write(EnergySlot, Math.Min(999_999_999L, (long)Energy + instruction.Amount));
+                    Emit(EventKind.GainEnergy, card, Energy - before);
+                }
+                break;
             case CardInstructionKind.GenerateCards:
                 GenerateCards(instruction.CardTemplate, instruction.Amount, creator: 0);
                 break;
@@ -486,7 +494,7 @@ internal sealed partial class ResumableDiscardProgram
                 return true;
             case CardInstructionKind.Discard:
                 State.Write(Frame + IpOffset, 2);
-                if (ChoiceCount != 0) return false;
+                if (ChoiceCount != 0) { CompletePlayerSideStart(); return false; }
                 SupplyChoice([]);
                 return true;
             default:
@@ -544,7 +552,10 @@ internal sealed partial class ResumableDiscardProgram
         foreach (int card in order) { Move(card, Pile.Draw); Emit(EventKind.ShuffleCard, card); }
         if (_shuffleBlockFirst) GainBlock(sourceCard, _shuffleBlock);
         if (_stratagem > 0)
+        {
             State.Write(Frame + IpOffset, 6);
+            CompletePlayerSideStart();
+        }
         else if (!_shuffleBlockFirst) GainBlock(sourceCard, _shuffleBlock);
     }
 
@@ -635,8 +646,7 @@ internal sealed partial class ResumableDiscardProgram
         if (amount == 0 || Ending || !CreaturePresent(target) || Creature(target).CurrentHp <= 0) return false;
         // All admitted debuffs are visible. Stat polarity depends on the requested amount,
         // while counter debuffs retain their type independently of the owner's current amount.
-        bool debuff = kind is BasicPowerKind.Strength or BasicPowerKind.Dexterity ? amount < 0
-            : kind is BasicPowerKind.Weak or BasicPowerKind.Vulnerable or BasicPowerKind.Frail or BasicPowerKind.Poison or BasicPowerKind.PiercingWail;
+        bool debuff = BasicPowerLayout.IsDebuff(kind, amount);
         if (debuff && _powers!.HasArtifact)
         {
             int artifact = _powers.FindOrDefault(target, BasicPowerKind.Artifact);
@@ -655,7 +665,10 @@ internal sealed partial class ResumableDiscardProgram
         int index = _powers!.Find(target, kind);
         int before = _powers.Read(State, index).Amount;
         _powers.Apply(State, index, amount, applier);
-        Emit(EventKind.PowerChange, card, _powers.Read(State, index).Amount - before, target: target, flags: (int)kind);
+        int applied = _powers.Read(State, index).Amount - before;
+        Emit(EventKind.PowerChange, card, applied, target: target, flags: (int)kind);
+        if (kind == BasicPowerKind.Doom && applied > 0 && applier >= 0)
+            Emit(EventKind.DoomApplied, applier, applied, target: target);
     }
 
     private sealed class InstanceComparer(ResumableDiscardProgram owner, CardComparer definitions) : IComparer<int>

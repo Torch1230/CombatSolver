@@ -1,6 +1,7 @@
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models.Cards;
+using MegaCrit.Sts2.Core.Models.Powers;
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.InCombat.Simulation;
 
@@ -8,6 +9,18 @@ namespace CombatSolver.Engine.InCombat.Mirrors.Cards.OnPlay;
 
 internal static class CardDrawCardMirrors
 {
+    public static void NeurosurgeOnPlay(Neurosurge card, CardOnPlayMirrorContext context)
+    {
+        context.Simulator.GainEnergy(card.Owner, card.DynamicVars.Energy.BaseValue);
+        if (context.Simulator.HasPendingChoice) return;
+        context.Simulator.Draw(card.Owner, card.DynamicVars.Cards.BaseValue);
+        if (context.Simulator.HasPendingChoice) return;
+        var effects = context.State.CombatState as ICombatPredictionEffectSink
+            ?? throw new InvalidOperationException("Neurosurge requires writable prediction effects.");
+        effects.ApplyPower(typeof(NeurosurgePower), card.Owner.Creature,
+            card.DynamicVars["NeurosurgePower"].IntValue, card.Owner.Creature);
+    }
+
     public static void CompileDriverOnPlay(CompileDriver card, CardOnPlayMirrorContext context)
     {
         context.AttackSingle();

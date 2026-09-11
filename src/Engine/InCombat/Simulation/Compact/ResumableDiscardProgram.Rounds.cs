@@ -38,6 +38,7 @@ internal sealed partial class ResumableDiscardProgram
         }
         CleanupCards();
         EndSidePowerEffects(enemySide: false);
+        if (CheckWinCondition()) return;
         _round.BeginEnemy(State);
         Emit(EventKind.BeginSide, -2);
         CapturePowerTurnStart(1);
@@ -45,6 +46,8 @@ internal sealed partial class ResumableDiscardProgram
         TriggerPoison(-2, 1);
         if (CheckWinCondition()) return;
         ExecuteMonsterMove(1, CurrentMonsterMove);
+        if (CheckWinCondition()) return;
+        BeforeEndSidePowerEffects(enemySide: true);
         if (CheckWinCondition()) return;
         CleanupCards();
         EndSidePowerEffects(enemySide: true);
@@ -68,5 +71,15 @@ internal sealed partial class ResumableDiscardProgram
     {
         _round!.CleanCards(State);
         Emit(EventKind.CleanupCards, -1);
+    }
+
+    private void CompletePlayerSideStart()
+    {
+        // Native side-start runs before the first turn-setup selector consumes a choice,
+        // or after draw/Tools when no selector opens. The one-shot flag is branch state.
+        if (!RoundInProgress || !_round!.TryBeginPlayerSideStart(State)) return;
+        int index = _powers!.FindOrDefault(0, BasicPowerKind.Neurosurge);
+        if (index >= 0 && Power(index).Amount > 0)
+            ApplyPower(-1, 0, BasicPowerKind.Doom, Power(index).Amount);
     }
 }
