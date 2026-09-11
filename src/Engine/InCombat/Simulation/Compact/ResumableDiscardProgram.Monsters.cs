@@ -54,16 +54,28 @@ internal sealed partial class ResumableDiscardProgram
         }
     }
 
-    private void GenerateCards(int template, int count, int creator)
+    private void GenerateCards(int template, int count, int creator, CardGenerationPlacement placement = CardGenerationPlacement.Hand)
     {
         for (int index = 0; index < count && !Ending; index++)
         {
             int created = CardCount;
             Card definition = _definitions[template];
             _cardInstances.Append(State, [(long)(uint)template | (long)definition.CapturedX << 32]);
-            Pile destination = Count(Pile.Hand) < 10 ? Pile.Hand : Pile.Discard;
+            Pile destination = placement == CardGenerationPlacement.RandomDraw ? Pile.Draw
+                : Count(Pile.Hand) < 10 ? Pile.Hand : Pile.Discard;
+            int position = Count(destination);
+            if (placement == CardGenerationPlacement.RandomDraw)
+            {
+                // Native insertion consumes the shuffle stream even for an empty pile.
+                WriteRng(ShuffleRng.NextInt(checked(position + 1), out position));
+            }
             _piles[(int)destination].Append(State, [created]);
-            Emit(EventKind.Generated, created, template, target: creator);
+            for (int offset = Count(destination) - 1; offset > position; offset--)
+                _piles[(int)destination].Write(State, offset, CardAt(destination, offset - 1));
+            _piles[(int)destination].Write(State, position, created);
+            // Template follows the immutable instance definition. Record the resolved
+            // location so a compatibility reader never repeats the random command.
+            Emit(EventKind.Generated, created, position, target: creator, flags: (int)destination);
         }
     }
 }

@@ -112,7 +112,7 @@ internal sealed class CompactDiscardProjection
             combat.IsCapturedRootPowerSlot(power), power.AmountOnTurnStart, power.SkipNextDurationTick)).ToArray() : null;
         _identities = cards.Select(c => c.Original).ToArray();
         List<CardModel> generated = [];
-        int shivTemplate = -1, inkyShivTemplate = -1, burnTemplate = -1;
+        int shivTemplate = -1, inkyShivTemplate = -1, burnTemplate = -1, soulTemplate = -1, upgradedSoulTemplate = -1;
         if (cards.Any(card => card.Preview is CloakAndDagger))
         {
             shivTemplate = cards.Length + generated.Count;
@@ -130,11 +130,23 @@ internal sealed class CompactDiscardProjection
             burnTemplate = cards.Length + generated.Count;
             generated.Add(PredictionUtils.CreateCard(CanonicalModels.Card<Burn>(), player));
         }
+        foreach (bool upgraded in new[] { false, true })
+        {
+            if (!cards.Any(card => card.Preview is Dirge && card.Preview.IsUpgraded == upgraded)) continue;
+            if (upgraded) upgradedSoulTemplate = cards.Length + generated.Count;
+            else soulTemplate = cards.Length + generated.Count;
+            CardModel template = PredictionUtils.CreateCard(CanonicalModels.Card<Soul>(), player);
+            if (upgraded) PredictionUtils.UpgradeCard(template);
+            generated.Add(template);
+        }
         // Native BladeOfInk enchants after the entire generated batch. In this closed root
         // generation hooks have no observers, Inky has no OnEnchant/Modify effects and no
         // combat history event is emitted by enchanting. Capture the final immutable variant.
         _definitionModels = [.. cards.Select(card => card.Preview), .. generated];
-        ResumableDiscardProgram.Card[] definitions = _definitionModels.Select(card => CompactCardProgramCompiler.Compile(card, includeAttacks, shivTemplate, inkyShivTemplate)).ToArray();
+        // Dirge upgrades all Souls before insertion; admitted generation/upgrade hooks
+        // have no observers, so each template captures that final native variant.
+        ResumableDiscardProgram.Card[] definitions = _definitionModels.Select(card => CompactCardProgramCompiler.Compile(
+            card, includeAttacks, shivTemplate, inkyShivTemplate, soulTemplate, upgradedSoulTemplate)).ToArray();
         if (osty == null && definitions.Any(card => card.Effects.RequiresPet))
             throw new NotSupportedException("Compact summoning requires a captured pet identity; first creation is not represented.");
         _risks = _definitionModels.Select(card => card is Burn ? null : CardOnPlayMirrors.DescribeDispatch(card) switch
@@ -325,6 +337,8 @@ internal sealed class CompactDiscardProjection
 
     private static PileType NativePile(ResumableDiscardProgram.Pile pile) => pile switch
     {
+        ResumableDiscardProgram.Pile.Hand => PileType.Hand,
+        ResumableDiscardProgram.Pile.Draw => PileType.Draw,
         ResumableDiscardProgram.Pile.Discard => PileType.Discard,
         ResumableDiscardProgram.Pile.Exhaust => PileType.Exhaust,
         ResumableDiscardProgram.Pile.Removed => PileType.None,
@@ -390,10 +404,21 @@ internal sealed class CompactDiscardProjection
                     else if (item.Target != -1 || stack.Count != 0)
                         throw new InvalidOperationException("Generated event has an invalid creator or overlapping action.");
                     if (item.Card != cards.Count) throw new InvalidOperationException("Generated card identity is out of order.");
-                    PredictedCard created = CreateGeneratedCard(item.Value);
+                    PredictedCard created = CreateGeneratedCard(program.DefinitionIndex(item.Card));
                     cards.Add(created);
                     var generation = projection.History.CardGenerated(created, item.Target == 0 ? _player : null, CardGenerationResultKind.Fixed);
-                    projection.AddToPile(created, PileType.Hand);
+                    SimCardPile destination = (ResumableDiscardProgram.Pile)item.Flags switch
+                    {
+                        ResumableDiscardProgram.Pile.Hand => state.Hand,
+                        ResumableDiscardProgram.Pile.Draw => state.DrawPile,
+                        ResumableDiscardProgram.Pile.Discard => state.DiscardPile,
+                        _ => throw new InvalidOperationException("Generated card destination was not admitted.")
+                    };
+                    if ((uint)item.Value > (uint)destination.Cards.Count)
+                        throw new InvalidOperationException("Generated card insertion position is outside its pile.");
+                    projection.AddToPile(created, destination.Type);
+                    if (!destination.Remove(created)) throw new InvalidOperationException("Generated card left its captured destination.");
+                    destination.Insert(item.Value, created);
                     projection.History.CardGenerationResolved(generation, created);
                     continue;
                 }

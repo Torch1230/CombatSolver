@@ -536,3 +536,6 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 紧凑遗物封闭开关新增精确 `BoundPhylactery.AfterEnergyResetLate`：只在完整回合且已有宠物根准入，捕获非负整数召唤量，能量重置后、抽牌前调用既有值召唤。`BeforeCombatStart` 的首次创建属于捕获前效果，不能据此移植任意召唤或早期宠物存在观察者。登记点未开放；原能量重置顺序及未知 Hook 拒绝保持。[原生及搜索证据](performance/simulation-pet-turns-20260911.md)。
 
 紧凑卡牌封闭编译新增精确 `Cleanse`／`Afterlife`（共 35 类型），分别编译为召唤→抽牌堆消耗选择及召唤→自身消耗。消耗和洗牌检索虽来自相同牌堆，使用独立效果／来源合同；未知消耗观察者继续拒绝。没有新增第三方注册入口，已有 `CardChoiceMirrors` 和旧语义入口不变。[证据](performance/simulation-draw-exhaust-20260911.md)。
+
+
+紧凑封闭编译新增精确 `Dirge`／`Soul`（共 37 类型）；生成位置属于不可变指令配置，普通／升级灵魂模板在根捕获，X 修正与生成观察者仍通过整根门禁。随机插入使用现有 Shuffle 流，兼容事件的生成记录现在携带目标牌堆和位置，模板从实例定义解析；此内部格式不构成第三方注册 API。没有新增外部登记入口；首次宠物创建及未表示的生成／升级观察者仍须单独适配。[证据](performance/simulation-dirge-20260911.md)。

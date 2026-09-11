@@ -1,4 +1,5 @@
 # CombatSolver 文档导航
+- [挽歌与灵魂的值执行](performance/simulation-dirge-20260911.md)：逐次 X 召唤、随机插入、升级模板与跨回合生成身份对照。
 - [洁净与来生的值执行](performance/simulation-draw-exhaust-20260911.md)：召唤后的抽牌堆消耗选择、空牌堆、隐式选择和两回合对照。
 - [奥斯蒂每回合召唤](performance/simulation-pet-turns-20260911.md)：初始遗物的后置能量重置时点、三个回合与选牌中间态。
 - [奥斯蒂值执行与搜索](performance/simulation-osty-values-20260911.md)：承伤、复活、攻击和两回合原生对照，最大生命封顶与回合参与者修正。

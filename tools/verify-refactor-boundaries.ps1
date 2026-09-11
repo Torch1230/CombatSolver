@@ -1283,6 +1283,10 @@ foreach ($replay in @('.ManualPlay(', '.AutoPlay(', '.Fork(', 'HookMirrors.', 'C
     }
 }
 $compactReadGuards = @(
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Monsters.cs', 'WriteRng(ShuffleRng.NextInt(checked(position + 1), out position));'),
+    @('src/Prediction/Compact/CompactDiscardProjection.cs', 'CreateGeneratedCard(program.DefinitionIndex(item.Card))'),
+    @('src/Prediction/Compact/CompactDiscardProjection.cs', 'destination.Insert(item.Value, created);'),
+    @('src/Testing/UnattendedTestRunner.CompactDirge.cs', 'AssertCompactPetCardRouteAsync'),
     @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'state.AssertForkable();'),
     @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'model._owner = source.Owner;'),
     @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'private readonly PowerModel[] _replacementModels;'),
@@ -1359,7 +1363,7 @@ $compactReadGuards = @(
     @('src/Search/SimulatedCombatState.cs', 'history?.CreatureAttacks, combatHistory?.CreatureAttacks'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'State.Write(Frame + EffectIndexOffset, Read(Frame + EffectIndexOffset) + 1);'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'State.Write(Frame + FirstDrawnOffset, drawn);'),
-    @('src/Prediction/Compact/CompactDiscardProjection.cs', 'CompactCardProgramCompiler.Compile(card, includeAttacks, shivTemplate, inkyShivTemplate)'),
+    @('src/Prediction/Compact/CompactDiscardProjection.cs', 'card, includeAttacks, shivTemplate, inkyShivTemplate, soulTemplate, upgradedSoulTemplate)'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'State.Write(Frame + DrawResumeIpOffset, resumeIp);'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'private void ApplyTemporaryStrengthLoss(int card, int target, int amount)'),
     @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'if (!PreparePower(card, target, BasicPowerKind.PiercingWail, amount)) return;'),

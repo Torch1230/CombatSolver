@@ -394,3 +394,6 @@ renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或
 `CompactRoundRoot.TurnStartSummon` 保存完整根捕获的初始遗物召唤量；Prediction 只准入带既有宠物和完整回合的精确 `BoundPhylactery`。回合驱动在 ResetEnergy 后、建立抽牌帧前调用共享 `SummonPet`，避免选择恢复重复召唤。首次战前创建已经落在根中，不由此入口补演。[三个回合与挂起对照](performance/simulation-pet-turns-20260911.md)。
 
 `CardEffectProgram.ExhaustFromDraw` 在召唤完成后建立独立选择边界，`CompactPlanReplay` 按检索／消耗效果决定来源，不能仅按抽牌堆推断 Stratagem。选中牌复用 `ResultMoved(Exhaust)` 的有序牌堆／消耗历史语义；恢复推进下一指令，空牌堆直接继续。`ExhaustsCards` 显式关闭存活牌集合不变缓存。Prediction 编译精确 `Cleanse`／`Afterlife`，旧模拟器与投影不增加第二次效果写入。[原生与搜索验证](performance/simulation-draw-exhaust-20260911.md)。
+
+
+随机生成牌继续由 Engine 的通用 `GenerateCards` 执行：`CardGenerationPlacement.RandomDraw` 使用值状态的 Shuffle RNG，逐张记录目标牌堆和插入位置，模板通过实例定义索引读取。Prediction 在根捕获挽歌所需的普通／升级灵魂模板；兼容物化只导入位置，不重新调用随机插入。`RepeatForEnergyX` 保留逐次召唤命令。Testing 的 `CompactPetCardRoutes` 共用正式路线、完整状态／续用和原生生成身份对照，`CompactDirge` 与 `CompactDrawExhaust` 只拥有各自建局和效果断言。[证据](performance/simulation-dirge-20260911.md)。

@@ -8,10 +8,12 @@ internal enum CardInstructionKind
 }
 internal enum CardInstructionTarget { Owner, ChosenEnemy, AllEnemies }
 internal enum CardCategory { Other, Attack, Skill, Power, Status }
+internal enum CardGenerationPlacement { Hand, RandomDraw }
 
 internal readonly record struct CardInstruction(CardInstructionKind Kind, int Amount,
     BasicPowerKind Power = BasicPowerKind.Strength, CardInstructionTarget Target = CardInstructionTarget.Owner,
-    int EnergyXMultiplier = 0, CardCategory RequiredCategory = CardCategory.Skill, int Multiplier = 0, int CardTemplate = -1);
+    int EnergyXMultiplier = 0, CardCategory RequiredCategory = CardCategory.Skill, int Multiplier = 0, int CardTemplate = -1,
+    CardGenerationPlacement Placement = CardGenerationPlacement.Hand, bool RepeatForEnergyX = false);
 
 /// <summary>
 /// Immutable, fully admitted OnPlay instructions. Execution position belongs to the value
@@ -38,17 +40,22 @@ internal sealed class CardEffectProgram
         {
             CardInstruction instruction = _instructions[index];
             if (instruction.Amount is < -999_999_999 or > 999_999_999
-                || instruction.Kind != CardInstructionKind.ApplyBasicPower && (instruction.Amount < 0 || instruction.EnergyXMultiplier != 0)
+                || instruction.Kind != CardInstructionKind.ApplyBasicPower && instruction.Amount < 0
+                || instruction.Kind is not (CardInstructionKind.ApplyBasicPower or CardInstructionKind.GenerateCards) && instruction.EnergyXMultiplier != 0
                 || instruction.EnergyXMultiplier is < -1 or > 1
                 || instruction.Multiplier is < 0 or > 999_999_999
                 || instruction.Kind is not (CardInstructionKind.GainBlockFromPowerSum or CardInstructionKind.PetAttackTarget) && instruction.Multiplier != 0)
                 throw new ArgumentException("Compact instruction amount is outside the admitted range.");
-            if (instruction.Kind != CardInstructionKind.GenerateCards && instruction.CardTemplate != -1)
+            if (instruction.Kind != CardInstructionKind.GenerateCards && (instruction.CardTemplate != -1 || instruction.Placement != CardGenerationPlacement.Hand))
                 throw new ArgumentException("Only generation instructions can reference card templates.");
+            if (instruction.RepeatForEnergyX && instruction.Kind != CardInstructionKind.SummonPet)
+                throw new ArgumentException("Only summoning admits repeated X commands.");
+            RequiresEnergyX |= instruction.EnergyXMultiplier != 0 || instruction.RepeatForEnergyX;
             switch (instruction.Kind)
             {
                 case CardInstructionKind.GenerateCards:
-                    if (instruction.CardTemplate < 0 || instruction.Target != CardInstructionTarget.Owner)
+                    if (instruction.CardTemplate < 0 || instruction.Target != CardInstructionTarget.Owner
+                        || !Enum.IsDefined(instruction.Placement) || instruction.EnergyXMultiplier < 0)
                         throw new NotSupportedException("Generation requires an admitted owner card template.");
                     GeneratesCards = true;
                     break;
@@ -131,7 +138,6 @@ internal sealed class CardEffectProgram
                         throw new NotSupportedException("Power instruction is outside the admitted application domain.");
                     RequiresTarget |= instruction.Target == CardInstructionTarget.ChosenEnemy;
                     RequiresPowers = true;
-                    RequiresEnergyX |= instruction.EnergyXMultiplier != 0;
                     break;
                 default:
                     throw new NotSupportedException("Unknown compact card instruction.");

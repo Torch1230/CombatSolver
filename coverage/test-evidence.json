@@ -1,4 +1,12 @@
 {
+  "COMPACT-DIRGE-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeRandomGenerationDifferentialAndFixedSearchLifecycle",
+    "procedure": "两根分别普通／升级挽歌，X3与X0、灵魂抽牌及两完整回合；固定250节点搜索和两个受影响回归。",
+    "expected": "逐次召唤；每生成实例独立消耗Shuffle RNG，包括空堆；牌序、身份、升级、原键／续用保持等价。",
+    "observed": "dfe0ffba3c3340b1a173946adcb9333a COMPACT-DIRGE-NATIVE Passed; 9d527f1d48474cb2aefe5807e4ea09f2 COMPACT-DIRGE-SEARCH Passed; abda140bbca04bd6ad952cefe60a41ae COMPACT-DRAW-EXHAUST-NATIVE Passed; 8a5d6b44e316407aa0e878e15791a1b0 COMPACT-INKY-CARDS-NATIVE Passed",
+    "evidence": "docs/performance/simulation-dirge-20260911.json；docs/performance/simulation-dirge-20260911.md；2026-09-11。"
+  },
   "COMPACT-DRAW-EXHAUST-20260911": {
     "status": "Passed",
     "level": "HeadlessNativeChoiceDifferentialAndFixedSearchLifecycle",

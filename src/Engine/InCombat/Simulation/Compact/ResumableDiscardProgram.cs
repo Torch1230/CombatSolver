@@ -147,6 +147,8 @@ internal sealed partial class ResumableDiscardProgram
             var effect = definition.Effects[instruction];
             if (effect.Kind == CardInstructionKind.GenerateCards && (effect.CardTemplate < cards.Length || effect.CardTemplate >= definitions.Length))
                 throw new NotSupportedException("Generation references a template outside the captured closure.");
+            if (effect.Placement == CardGenerationPlacement.RandomDraw && comparisons == null)
+                throw new NotSupportedException("Random generation requires captured ordering and random state.");
         }
         if (monsterMoves != null)
         {
@@ -448,10 +450,12 @@ internal sealed partial class ResumableDiscardProgram
                 }
                 break;
             case CardInstructionKind.GenerateCards:
-                GenerateCards(instruction.CardTemplate, instruction.Amount, creator: 0);
+                GenerateCards(instruction.CardTemplate, checked(instruction.Amount + instruction.EnergyXMultiplier * Read(Frame + EnergyValueOffset)),
+                    creator: 0, instruction.Placement);
                 break;
             case CardInstructionKind.SummonPet:
-                SummonPet(card, instruction.Amount);
+                int repeats = instruction.RepeatForEnergyX ? Read(Frame + EnergyValueOffset) : 1;
+                for (int index = 0; index < repeats && !Ending; index++) SummonPet(card, instruction.Amount);
                 break;
             case CardInstructionKind.PetAttackTarget:
                 AttackCreature(card, PetIndex, Read(Frame + TargetOffset),
