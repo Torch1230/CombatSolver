@@ -18,7 +18,7 @@ internal static class CompactCardProgramCompiler
         typeof(UltimateDefend), typeof(Suppress), typeof(Footwork), typeof(Malaise), typeof(DeadlyPoison),
         typeof(Haze), typeof(Snakebite), typeof(Defy), typeof(EscapePlan), typeof(Outbreak), typeof(CalculatedGamble),
         typeof(BubbleBubble), typeof(Mirage), typeof(DodgeAndRoll), typeof(ToolsOfTheTrade), typeof(PiercingWail),
-        typeof(CloakAndDagger), typeof(Shiv), typeof(BladeOfInk), typeof(Burn), typeof(Neurosurge), typeof(Bodyguard), typeof(Unleash), typeof(Afterlife), typeof(Cleanse), typeof(Dirge), typeof(Soul), typeof(CaptureSpirit), typeof(Graveblast), typeof(Defile), typeof(Wisp), typeof(AscendersBane), typeof(BorrowedTime), typeof(Veilpiercer), typeof(Hang), typeof(SculptingStrike), typeof(Snap), typeof(SpiritOfAsh), typeof(DanseMacabre), typeof(Lethality), typeof(Panache), typeof(SharedFate), typeof(Pagestorm)
+        typeof(CloakAndDagger), typeof(Shiv), typeof(BladeOfInk), typeof(Burn), typeof(Neurosurge), typeof(Bodyguard), typeof(Unleash), typeof(Afterlife), typeof(Cleanse), typeof(Dirge), typeof(Soul), typeof(CaptureSpirit), typeof(Graveblast), typeof(Defile), typeof(Wisp), typeof(AscendersBane), typeof(BorrowedTime), typeof(Veilpiercer), typeof(Hang), typeof(SculptingStrike), typeof(Snap), typeof(SpiritOfAsh), typeof(DanseMacabre), typeof(Lethality), typeof(Panache), typeof(SharedFate), typeof(Pagestorm), typeof(CallOfTheVoid)
     ];
 
     internal static ResumableDiscardProgram.Card Compile(CardModel card, bool includeAttacks, int shivTemplate = -1, int inkyShivTemplate = -1, int soulTemplate = -1, int upgradedSoulTemplate = -1)
@@ -46,6 +46,7 @@ internal static class CompactCardProgramCompiler
             || card.HasSingleTurnRetain || card.HasTurnEndInHandEffect && card is not (Burn or AscendersBane)
             || card.LocalKeywords.Any(k => k is not (CardKeyword.Sly or CardKeyword.Ethereal or CardKeyword.Retain) && !(card is Malaise or CalculatedGamble or Mirage or PiercingWail or Shiv or Afterlife or Dirge or Soul or Graveblast or Wisp or SharedFate && k == CardKeyword.Exhaust)
                 && !(card is Suppress && k == CardKeyword.Innate)
+                && !(card is CallOfTheVoid && k == CardKeyword.Innate)
                 && !(card is Burn or AscendersBane && k == CardKeyword.Unplayable) && !(card is AscendersBane && k == CardKeyword.Eternal))
             || card.IsSlyThisTurn && card is not Prepared)
             throw new NotSupportedException($"Compact prototype cannot admit card state {card.Id.Entry}.");
@@ -56,6 +57,7 @@ internal static class CompactCardProgramCompiler
         decimal lethality = card is Lethality ? card.DynamicVars["LethalityPower"].BaseValue : 0;
         decimal panache = card is Panache ? card.DynamicVars["PanacheDamage"].BaseValue : 0;
         decimal pagestorm = card is Pagestorm ? card.DynamicVars.Cards.BaseValue : 0;
+        decimal voidCards = card is CallOfTheVoid ? card.DynamicVars.Cards.BaseValue : 0;
         decimal beforeCardPower = card is SpiritOfAsh ? card.DynamicVars["BlockOnExhaust"].BaseValue
             : card is DanseMacabre ? card.DynamicVars["DanseMacabrePower"].BaseValue : 0;
         decimal damage = card is Snap ? card.DynamicVars.OstyDamage.BaseValue : includeAttacks && card is StrikeSilent or StrikeNecrobinder or Neutralize or Suppress or Shiv or Burn or CaptureSpirit or Graveblast or Defile or Veilpiercer or Hang or SculptingStrike ? card.DynamicVars.Damage.BaseValue : 0;
@@ -84,6 +86,7 @@ internal static class CompactCardProgramCompiler
             || lethality != decimal.Truncate(lethality) || lethality is < 0 or > 999_999_999m
             || panache != decimal.Truncate(panache) || panache is < 0 or > 999_999_999m
             || pagestorm != decimal.Truncate(pagestorm) || pagestorm is < 0 or > 999_999_999m
+            || voidCards != decimal.Truncate(voidCards) || voidCards is < 0 or > 999_999_999m
             || beforeCardPower != decimal.Truncate(beforeCardPower) || beforeCardPower is < 0 or > 999_999_999m
             || ownStrengthLoss != decimal.Truncate(ownStrengthLoss) || ownStrengthLoss is < 0 or > 999_999_999m
             || enemyStrengthLoss != decimal.Truncate(enemyStrengthLoss) || enemyStrengthLoss is < 0 or > 999_999_999m
@@ -109,6 +112,10 @@ internal static class CompactCardProgramCompiler
                 new(CardInstructionKind.ApplyBasicPower, -(int)enemyStrengthLoss, BasicPowerKind.Strength, CardInstructionTarget.ChosenEnemy)]),
             Panache => new([new(CardInstructionKind.AddPanachePower, (int)panache)]),
             Pagestorm => new([new(CardInstructionKind.ApplyBasicPower, (int)pagestorm, BasicPowerKind.Pagestorm)]),
+            // A missing Power layout would silently drop the applied counter, so the
+            // draw/discard-only fixtures keep rejecting this card instead of inlining it.
+            CallOfTheVoid when includeAttacks => new([new(CardInstructionKind.ApplyBasicPower, (int)voidCards, BasicPowerKind.CallOfTheVoid)]),
+            CallOfTheVoid => throw new NotSupportedException("CallOfTheVoid requires an admitted Power layout."),
             SpiritOfAsh => new([new(CardInstructionKind.ApplyBasicPower, (int)beforeCardPower, BasicPowerKind.SpiritOfAsh)]),
             DanseMacabre => new([new(CardInstructionKind.ApplyBasicPower, (int)beforeCardPower, BasicPowerKind.DanseMacabre)]),
             BorrowedTime => new([new(CardInstructionKind.GainEnergy, (int)energyGain),

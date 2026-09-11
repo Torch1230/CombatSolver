@@ -48,7 +48,7 @@ internal sealed partial class ResumableDiscardProgram
                 case MonsterInstructionKind.GenerateCards:
                     // Native AddToCombatAndPreview checks its recipient before creating
                     // cards; the card-level AddGeneratedCards command has a later gate.
-                    if (Creature(0).CurrentHp > 0) GenerateCards(instruction.CardTemplate, instruction.Amount, creator: -1);
+                    if (Creature(0).CurrentHp > 0) GenerateCards(instruction.CardTemplate, instruction.Amount, creator: MonsterCreator);
                     break;
                 default:
                     throw new InvalidOperationException("Unknown captured monster command.");
@@ -93,7 +93,7 @@ internal sealed partial class ResumableDiscardProgram
     // Native pool generation selects every card with a full-pool shuffle of the frozen
     // candidates on this workspace's exclusive scratch before the whole batch enters a
     // pile; ethereal is part of the template.
-    private void GenerateFromPool(int pool, int count)
+    private void GenerateFromPool(int pool, int count, int creator)
     {
         int first = CardCount;
         for (int index = 0; index < count; index++)
@@ -109,7 +109,7 @@ internal sealed partial class ResumableDiscardProgram
             if (Ending)
             {
                 _piles[(int)Pile.Unplaced].Append(State, [created]);
-                Emit(EventKind.Generated, created, -1, target: 0, flags: (int)Pile.Unplaced);
+                Emit(EventKind.Generated, created, -1, target: creator, flags: (int)Pile.Unplaced);
                 continue;
             }
             // This placement never targets the random draw pile, so an overflowing hand
@@ -117,7 +117,7 @@ internal sealed partial class ResumableDiscardProgram
             Pile destination = Count(Pile.Hand) < 10 ? Pile.Hand : Pile.Discard;
             int position = Count(destination);
             _piles[(int)destination].Append(State, [created]);
-            Emit(EventKind.Generated, created, position, target: 0, flags: (int)destination);
+            Emit(EventKind.Generated, created, position, target: creator, flags: (int)destination);
         }
     }
 }

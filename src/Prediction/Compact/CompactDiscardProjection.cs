@@ -6,6 +6,7 @@ using MegaCrit.Sts2.Core.ValueProps;
 using System.Collections.Concurrent;
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.Common.Mirrors;
+using CombatSolver.Engine.InCombat.Extensions;
 using CombatSolver.Engine.InCombat.Simulation;
 using CombatSolver.Engine.InCombat.Simulation.Compact;
 using CombatSolver.Engine.InCombat.Mirrors.Cards.OnPlay;
@@ -74,7 +75,7 @@ internal sealed class CompactDiscardProjection
         if (combat.Players.Count != 1 || powers.Any(p => !IsBasicPower(p) && p is not PanachePower)
             || powers.Any(p => !(includeAttacks && p is PanachePower && p.Owner == player.Creature)
                 && !(p is StratagemPower && p.Owner == player.Creature && p.Amount is >= 1 and <= 10)
-                && !(includeAttacks ? p is not StratagemPower && IsBasicPower(p) && (p is not (BlockNextTurnPower or ToolsOfTheTradePower or NeurosurgePower or BorrowedTimePower or VeilpiercerPower or SpiritOfAshPower or DanseMacabrePower or LethalityPower or PagestormPower) || p.Owner == player.Creature)
+                && !(includeAttacks ? p is not StratagemPower && IsBasicPower(p) && (p is not (BlockNextTurnPower or ToolsOfTheTradePower or NeurosurgePower or BorrowedTimePower or VeilpiercerPower or SpiritOfAshPower or DanseMacabrePower or LethalityPower or PagestormPower or CallOfTheVoidPower) || p.Owner == player.Creature)
                     && (p is not (PiercingWailPower or HangPower) || p.Owner != player.Creature)
                     : p is StrengthPower && p.Owner != player.Creature))
             || combat.RootRunModSubscriberCount != 0 || combat.RootCombatModSubscriberCount != 0
@@ -150,6 +151,28 @@ internal sealed class CompactDiscardProjection
             if (upgraded) PredictionUtils.UpgradeCard(template);
             generated.Add(template);
         }
+        // CallOfTheVoid repeats one full-pool selection per count from the frozen complete
+        // character pool. Every candidate needs an immutable template and exact compilation;
+        // an unrepresented candidate rejects this root instead of shrinking the generation pool.
+        List<int>? voidPool = null;
+        if (cards.Any(card => card.Preview is CallOfTheVoid) || powers.Any(power => power is CallOfTheVoidPower))
+        {
+            if (!includeRounds)
+                throw new NotSupportedException("CallOfTheVoid generation requires the admitted round closure.");
+            if (!root.TryGetRootEligibleCharacterCardsForCombat(player, combat.CardMultiplayerConstraint, out var eligible)
+                || eligible.Count == 0)
+                throw new NotSupportedException("CallOfTheVoid generation requires the frozen full character pool.");
+            voidPool = new(eligible.Count);
+            foreach (CardModel candidate in eligible)
+            {
+                // Native applies Ethereal after selection. Admitted generation and keyword
+                // hooks have no observers, so the immutable template carries the final variant.
+                CardModel template = PredictionUtils.CreateCard(candidate, player);
+                template.AddKeyword(CardKeyword.Ethereal);
+                voidPool.Add(cards.Length + generated.Count);
+                generated.Add(template);
+            }
+        }
         // Native BladeOfInk enchants after the entire generated batch. In this closed root
         // generation hooks have no observers, Inky has no OnEnchant/Modify effects and no
         // combat history event is emitted by enchanting. Capture the final immutable variant.
@@ -184,6 +207,7 @@ internal sealed class CompactDiscardProjection
         int[] comparisons = _definitionModels.SelectMany(left => _definitionModels.Select(left.CompareTo)).ToArray();
         PredictionRngState rng = root.Rng.Shuffle.CaptureState();
         PredictionRngState energyRng = root.Rng.CombatEnergyCosts.CaptureState();
+        PredictionRngState generationRng = root.Rng.CombatCardGeneration.CaptureState();
         AbstractModel[] listeners = combat.IterateHookListeners().ToArray();
         int abacusIndex = Array.FindIndex(listeners, p => p is TheAbacus);
         int stratagemIndex = Array.FindIndex(listeners, p => p is StratagemPower);
@@ -213,8 +237,12 @@ internal sealed class CompactDiscardProjection
             powers.OfType<StratagemPower>().SingleOrDefault()?.Amount ?? 0,
             Block(relics.OfType<TheAbacus>().SingleOrDefault()), abacusIndex >= 0 && abacusIndex < stratagemIndex,
             includeAttacks ? _creatures.Select(c => { var v = root.State.GetCreature(c); return new CreatureVitals(v.CurrentHp, v.MaxHp, v.Block); }).ToArray() : null, powerDefinitions, definitions[cards.Length..],
-            new(energyRng.Counter, energyRng.State0, energyRng.State1, energyRng.State2, energyRng.State3), handEndAdmitted: includeHandEnd, monsterMoves: includeMechaMoves ? CaptureMechaCommands(root, burnTemplate) : null, powerPhasesAdmitted: includePowerPhases, monsterAi: ai,
-            round: includeRounds ? new(combat.RoundNumber, PlayerTurn, player.MaxEnergy, MegaCrit.Sts2.Core.Combat.CombatManager.baseHandDrawCount, (int)turnSummon) : null, pet: osty == null ? -1 : CreatureIndex(osty),
+            new(energyRng.Counter, energyRng.State0, energyRng.State1, energyRng.State2, energyRng.State3),
+            generationPools: voidPool == null ? null : [voidPool.ToArray()],
+            cardGenerationRng: voidPool == null ? null : new ValueRng(generationRng.Counter, generationRng.State0,
+                generationRng.State1, generationRng.State2, generationRng.State3),
+            handEndAdmitted: includeHandEnd, monsterMoves: includeMechaMoves ? CaptureMechaCommands(root, burnTemplate) : null, powerPhasesAdmitted: includePowerPhases, monsterAi: ai,
+            round: includeRounds ? new(combat.RoundNumber, PlayerTurn, player.MaxEnergy, MegaCrit.Sts2.Core.Combat.CombatManager.baseHandDrawCount, (int)turnSummon, voidPool == null ? -1 : 0) : null, pet: osty == null ? -1 : CreatureIndex(osty),
             // Idle roots contain completed plays; this getter uses frozen CardPlaysStarted history.
             attackCardStarts: combat.GetAttacksPlayedThisTurn(player.Creature), panache: panache);
         _panacheTemplate = Program.HasPanache ? CanonicalModels.Power<PanachePower>() : null;
@@ -279,6 +307,7 @@ internal sealed class CompactDiscardProjection
             if (kind == BasicPowerKind.Lethality && (owner != _player.Creature || !cards.Any(card => card.Preview is Lethality))) continue;
             if (kind == BasicPowerKind.Pagestorm && (owner != _player.Creature || !cards.Any(card => card.Preview is Pagestorm))) continue;
             if (kind == BasicPowerKind.DanseMacabre && (owner != _player.Creature || !cards.Any(card => card.Preview is DanseMacabre))) continue;
+            if (kind == BasicPowerKind.CallOfTheVoid && owner != _player.Creature) continue;
             if (kind == BasicPowerKind.Hang && (owner == _player.Creature || !cards.Any(card => card.Preview is Hang))) continue;
             if (owner.PetOwner != null && kind != BasicPowerKind.Strength) continue;
             if (kind is BasicPowerKind.Neurosurge or BasicPowerKind.Doom
@@ -317,7 +346,8 @@ internal sealed class CompactDiscardProjection
         [typeof(SpiritOfAshPower)] = BasicPowerKind.SpiritOfAsh,
         [typeof(DanseMacabrePower)] = BasicPowerKind.DanseMacabre,
         [typeof(LethalityPower)] = BasicPowerKind.Lethality,
-        [typeof(PagestormPower)] = BasicPowerKind.Pagestorm
+        [typeof(PagestormPower)] = BasicPowerKind.Pagestorm,
+        [typeof(CallOfTheVoidPower)] = BasicPowerKind.CallOfTheVoid
     };
     private static bool IsBasicPower(PowerModel power) => BasicKinds.ContainsKey(power.GetType());
     private static PowerModel CanonicalPower(BasicPowerKind kind) => kind switch
@@ -340,6 +370,7 @@ internal sealed class CompactDiscardProjection
         BasicPowerKind.SpiritOfAsh => CanonicalModels.Power<SpiritOfAshPower>(),
         BasicPowerKind.Lethality => CanonicalModels.Power<LethalityPower>(),
         BasicPowerKind.Pagestorm => CanonicalModels.Power<PagestormPower>(),
+        BasicPowerKind.CallOfTheVoid => CanonicalModels.Power<CallOfTheVoidPower>(),
         BasicPowerKind.DanseMacabre => CanonicalModels.Power<DanseMacabrePower>(),
         BasicPowerKind.Veilpiercer => CanonicalModels.Power<VeilpiercerPower>(),
         BasicPowerKind.DieForYou => CanonicalModels.Power<DieForYouPower>(),
@@ -461,12 +492,18 @@ internal sealed class CompactDiscardProjection
                             stack.Push((creator.Identity, creator.Play, creator.Scope, null));
                         }
                     }
+                    else if (item.Target == 1)
+                    {
+                        // The player turn-start Power generates between card actions.
+                        if (stack.Count != 0) throw new InvalidOperationException("Turn-start generation overlaps a card action.");
+                    }
                     else if (item.Target != -1 || stack.Count != 0)
                         throw new InvalidOperationException("Generated event has an invalid creator or overlapping action.");
                     if (item.Card != cards.Count) throw new InvalidOperationException("Generated card identity is out of order.");
                     PredictedCard created = CreateGeneratedCard(program.DefinitionIndex(item.Card));
                     cards.Add(created);
-                    var generation = projection.History.CardGenerated(created, item.Target == 0 ? _player : null, CardGenerationResultKind.Fixed);
+                    var generation = projection.History.CardGenerated(created, item.Target < 0 ? null : _player,
+                        item.Target == 1 ? CardGenerationResultKind.Random : CardGenerationResultKind.Fixed);
                     SimCardPile? destination = (ResumableDiscardProgram.Pile)item.Flags switch
                     {
                         ResumableDiscardProgram.Pile.Hand => state.Hand,
@@ -822,6 +859,9 @@ internal sealed class CompactDiscardProjection
         if (program.EnergyCostRng is { } energyRng)
             projection.Rng.CombatEnergyCosts.LoadFromSerializable(new()
                 { counter = energyRng.Counter, state0 = energyRng.State0, state1 = energyRng.State1, state2 = energyRng.State2, state3 = energyRng.State3 });
+        if (program.CardGenerationRng is { } cardGenerationRng)
+            projection.Rng.CombatCardGeneration.LoadFromSerializable(new()
+                { counter = cardGenerationRng.Counter, state0 = cardGenerationRng.State0, state1 = cardGenerationRng.State1, state2 = cardGenerationRng.State2, state3 = cardGenerationRng.State3 });
         ShuffleEvents.SetValue(projection, _root.ShuffleEventCount + program.ShuffleCount);
         probe?.End(CompactProfilePhase.ProjectEvents, eventsStart);
         return projection;
@@ -848,6 +888,12 @@ internal sealed class CompactDiscardProjection
             var expected = simulator.Rng.CombatEnergyCosts.CaptureState();
             if (energyRng != new ValueRng(expected.Counter, expected.State0, expected.State1, expected.State2, expected.State3))
                 throw new InvalidOperationException("Compact values disagree with energy-cost RNG state.");
+        }
+        if (program.CardGenerationRng is { } cardGenerationRng)
+        {
+            var expected = simulator.Rng.CombatCardGeneration.CaptureState();
+            if (cardGenerationRng != new ValueRng(expected.Counter, expected.State0, expected.State1, expected.State2, expected.State3))
+                throw new InvalidOperationException("Compact values disagree with card-generation RNG state.");
         }
         for (int index = 0; index < program.CreatureCount; index++)
         {
@@ -1024,6 +1070,7 @@ internal sealed class CompactDiscardProjection
             || type == typeof(ArtifactPower) && method is nameof(AbstractModel.TryModifyPowerAmountReceived) or nameof(AbstractModel.AfterModifyingPowerAmountReceived)
             || type == typeof(Slither) && method == nameof(AbstractModel.AfterCardDrawn)
             || type == typeof(PagestormPower) && method == nameof(AbstractModel.AfterCardDrawn)
+            || type == typeof(CallOfTheVoidPower) && method == nameof(AbstractModel.BeforeHandDraw)
             || type == typeof(DebufferModel) && method == nameof(AbstractModel.AfterPowerAmountChanged)
             || type == typeof(MultiplayerScalingModel) && method == nameof(AbstractModel.ModifyBlockMultiplicative)
             || method == nameof(AbstractModel.AfterCardPlayed)

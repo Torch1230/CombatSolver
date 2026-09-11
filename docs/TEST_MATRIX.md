@@ -3122,3 +3122,11 @@ pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId MONSTER-MOVES-BA
 `COMPACT-CALL-OF-THE-VOID-GENERATION` 复用 `COMPACT-GENERATION-CLOSURE-AUDIT` 的原始 NECROBINDER／AEONGLASS_BOSS 完整输入协议（38 牌、19 件遗物注入、保留初始遗物及两瓶药），注入 4 层 CallOfTheVoid 后执行三个批次；对照紧凑值层、旧 `TurnStartPowerSupport` 分支与原生 `BeforeHandDraw`，要求冻结池为 78 个候选。每批有序生成 ID 三方一致、五个 RNG 字段对齐、计数增量 308／616／924，12 张生成牌带虚无，第二批满手溢出转弃牌堆，逐实例 ID 递增且 `BORROWED_TIME` 跨批重复；撤销、确定性重放与实机后冻结根重放均验证。首跑通过：runId `b715d6a7100c4164b27c8c5bf7932152`（26.57 秒）。夹具沿用既有协议，120 秒上限、Instant，无新增双端字段。
 
 `COMPACT-PAGESTORM-SEARCH` 在最终 artifact-v4 上 Passed，runId `68c51d68693b4e79a1ea03da531e4f2e`（9.20 秒），确认值层改动未破坏搜索等价。[完整证据](performance/simulation-generation-metering-20260911.md)。
+
+## 虚空之唤生产编译与回合执行（2026-09-11，生产准入仍失败关闭）
+
+`COMPACT-CALL-OF-THE-VOID-GENERATION` 在原三方差分上增加生产编译器与闭包普查：`CallOfTheVoid` 编译为单条 `ApplyBasicPower(CallOfTheVoid)`（数量取 `DynamicVars.Cards.BaseValue`），升级版只加原生 `Innate` 且指令不变，异常关键字与抽弃牌专用域显式拒绝；78 个冻结候选中 18 个可精确编译、60 个不可（首个 `BANSHEES_CRY`）。runId `46c0ff46f6b74e66ba551d5deb2e63ee` Passed（3.89 秒，复用进程；含启动的同批审计 24.03 秒）。
+
+`COMPACT-CALL-OF-THE-VOID-ADMISSION`（新，SILENT／MECHA_KNIGHT_ELITE、`VH_PERF_MECHA`、30 张 RunCards、清空牌组且 Cards=[]）：先证明同形对照根通过完整准入，再实机施加 4 层 `CallOfTheVoidPower`，断言同一根在完整角色池第一个不可表示候选处被拒绝、拒绝不归因根内卡牌、单回合投影在回合闭包要求处拒绝且实机不变；潜行者池 78 个候选中 16 个可编译、62 个不可（首个 `ABRASIVE`）。runId `094fe477c6494317848cda39bfe0ca98` Passed（23.95 秒）。`COMPACT-SEARCH-LIFECYCLE` 用同一 30 牌根作回归哨兵：旧／紧凑 DOP1 与紧凑 DOP2 全部政策一致、并发 2、取消／失败排空、根复用与未迁移药水拒绝，runId `d1f51f1cd8614f41b2ed7c0ad9fd517f` Passed（5.11 秒）。
+
+纯值 `tools/CompactCreatureChecks` 新增回合开始生成合同（施加／叠加计数与获得顺序、事件排在起手抽牌前、五字段 RNG 消耗、撤销与八工作区、零层不推进、满手溢出、三种构造拒绝），23 项全通过。夹具输入错误保留为失败基线：首次 `COMPACT-CALL-OF-THE-VOID-ADMISSION` 与同形 `COMPACT-SEARCH-LIFECYCLE` 探针都因缺少 30 张 RunCards 失败（空战斗牌集合与牌组数量不足），改用 `coverage/unattended/compact-void-admission-silent-run-cards.json` 后通过。生产准入未扩大：亡灵完整根继续显式拒绝，池模板构建的正向路径在池闭包完成前没有可执行样例。[完整证据](performance/simulation-void-generation-20260911.md)。

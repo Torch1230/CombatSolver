@@ -2302,5 +2302,13 @@
     "expected": "黑暗之拥按实际虚无消耗次数延迟抽牌，包含自动打牌期间新生成的牌。",
     "observed": "基线5dc660636a54439c9ae036755c11e582下一回合手牌预测5/原生6；最终88166b32b56541479cb7fa666adeee09 Passed。",
     "evidence": "src/Testing/UnattendedTestRunner.ReportRound.cs；docs/TEST_MATRIX.md；2026-09-10。"
+  },
+  "COMPACT-VOID-GENERATION-PRODUCTION-20260911": {
+    "status": "Passed",
+    "level": "HeadlessCompactCompileRoundWiringAndFrozenPoolAdmission",
+    "procedure": "亡灵78池编译器闭包普查与三批原生差分；潜行者30牌对照根准入后实机施加CallOfTheVoidPower；同根回归哨兵搜索。",
+    "expected": "CallOfTheVoid精确编译为单条Power指令且只接受Innate升级；完整池逐候选编译，任何不可表示候选拒绝整根而不缩池；生产准入不扩大，亡灵根继续显式拒绝。",
+    "observed": "46c0ff46f6b74e66ba551d5deb2e63ee COMPACT-CALL-OF-THE-VOID-GENERATION Passed (78池18可编译/60不可, 首BANSHEES_CRY); 094fe477c6494317848cda39bfe0ca98 COMPACT-CALL-OF-THE-VOID-ADMISSION Passed (对照根已准入, 池候选ABRASIVE拒绝, 78池16/62); ae2f88366cdc46489d381beeea855581 COMPACT-GENERATION-CLOSURE-AUDIT Passed (FullRootExplicitlyRejected); d1f51f1cd8614f41b2ed7c0ad9fd517f COMPACT-SEARCH-LIFECYCLE Passed. 首跑夹具缺30张RunCards的失败保留为基线。",
+    "evidence": "docs/performance/simulation-void-generation-20260911.md；docs/performance/simulation-void-generation-20260911.json。"
   }
 }

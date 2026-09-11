@@ -1,6 +1,6 @@
 namespace CombatSolver.Engine.InCombat.Simulation.Compact;
 
-internal enum BasicPowerKind { Strength, Dexterity, Weak, Vulnerable, Frail, Poison, BlockNextTurn, ToolsOfTheTrade, PiercingWail, Artifact, Stratagem, Doom, Neurosurge, DieForYou, BorrowedTime, Veilpiercer, Hang, SpiritOfAsh, DanseMacabre, Lethality, Pagestorm }
+internal enum BasicPowerKind { Strength, Dexterity, Weak, Vulnerable, Frail, Poison, BlockNextTurn, ToolsOfTheTrade, PiercingWail, Artifact, Stratagem, Doom, Neurosurge, DieForYou, BorrowedTime, Veilpiercer, Hang, SpiritOfAsh, DanseMacabre, Lethality, Pagestorm, CallOfTheVoid }
 internal readonly record struct BasicPowerDefinition(BasicPowerKind Kind, int Owner, int Amount,
     int Applier, int Order, decimal Multiplier, bool RootSlot, int AmountOnTurnStart = 0, bool SkipNextDurationTick = false,
     int MinimumEnergyCost = 0);

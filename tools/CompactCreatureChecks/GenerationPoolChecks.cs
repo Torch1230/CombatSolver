@@ -115,6 +115,132 @@ internal static class GenerationPoolChecks
             + "rollback=true frozen_workers=8 empty_pool=true single_candidate=true boundaries=true");
     }
 
+    // The production turn-start path: the applied CallOfTheVoid counter selects one full
+    // pool shuffle per card after energy reset, before the synthetic hand draw.
+    internal static void RunBeforeHandDraw()
+    {
+        ValueRng initialRng = new(11, 0x1f2e3d4c5b6a7988, 0x1122334455667788, 0x99aabbccddeeff00, 0x0f1e2d3c4b5a6978);
+        int[] pool = [4, 5, 6, 7];
+        var caster = new ResumableDiscardProgram.Card(1, new([new(CardInstructionKind.ApplyBasicPower, 1, BasicPowerKind.CallOfTheVoid)]),
+            ResultPile: ResumableDiscardProgram.Pile.Removed);
+        var defender = new ResumableDiscardProgram.Card(0, new([new(CardInstructionKind.GainBlock, 1)]));
+        ResumableDiscardProgram.Card[] root = [caster, caster, defender, defender];
+        ResumableDiscardProgram.Card[] templates = Enumerable.Range(0, pool.Length)
+            .Select(_ => new ResumableDiscardProgram.Card(0, CardEffectProgram.Empty, Ethereal: true)).ToArray();
+        var lane = RoundLane(root, [[0, 1, 2], [3], [], [], []], templates, [pool], initialRng, baseDraw: 1);
+        var rootFreeze = lane.Freeze();
+        var mark = lane.State.Mark();
+        lane.Begin(0); lane.Run();
+        int powerIndex = VoidIndex(lane);
+        BasicPowerValues first = lane.Power(powerIndex);
+        if (first.Amount != 1 || first.Applier != 0 || first.Retired || first.Order <= 0)
+            throw new InvalidOperationException("Applied CallOfTheVoid lost its amount, applier or acquisition order.");
+        lane.Begin(1); lane.Run();
+        BasicPowerValues stacked = lane.Power(powerIndex);
+        if (stacked.Amount != 2 || stacked.Applier != 0 || stacked.Retired || stacked.Order != first.Order)
+            throw new InvalidOperationException("Stacked CallOfTheVoid changed its applier or acquisition order.");
+        lane.BeginNextPlayerTurn(ResumableDiscardProgram.HandEndStaging.Sequential);
+        lane.Run();
+        int[] expected = SelectTemplates(pool, 2, initialRng, out ValueRng oracle);
+        var events = Enumerable.Range(0, lane.EventCount).Select(lane.EventAt).ToArray();
+        var generated = events.Where(item => item.Kind == ResumableDiscardProgram.EventKind.Generated).ToArray();
+        int firstDraw = Array.FindIndex(events, item => item.Kind == ResumableDiscardProgram.EventKind.Draw);
+        if (generated.Length != 2 || firstDraw < 0
+            || generated.Any(item => item.Target != ResumableDiscardProgram.TurnStartPowerCreator)
+            || !generated.Select(item => item.Card).SequenceEqual(new[] { 4, 5 })
+            || !generated.Select(item => item.Value).SequenceEqual(new[] { 0, 1 })
+            || generated.Any(item => item.Flags != (int)ResumableDiscardProgram.Pile.Hand)
+            || !Enumerable.Range(0, 2).All(index => lane.DefinitionIndex(4 + index) == expected[index] && lane.IsEthereal(4 + index)))
+            throw new InvalidOperationException("BeforeHandDraw generation did not run before the hand draw with its frozen selection.");
+        if (lane.CardGenerationRng != oracle || oracle.Counter - initialRng.Counter != 2 * (pool.Length - 1)
+            || !lane.Cards(ResumableDiscardProgram.Pile.Hand).SequenceEqual(new[] { 4, 5, 3 }))
+            throw new InvalidOperationException("BeforeHandDraw generation consumed a different RNG stream or pile order.");
+
+        var completed = lane.Freeze();
+        lane.State.Rollback(mark);
+        if (!lane.State.Freeze().ContentEquals(rootFreeze.Open().State.Freeze()))
+            throw new InvalidOperationException("BeforeHandDraw generation did not roll back its Power, RNG or piles.");
+        lane.Begin(0); lane.Run(); lane.Begin(1); lane.Run();
+        lane.BeginNextPlayerTurn(ResumableDiscardProgram.HandEndStaging.Sequential); lane.Run();
+        if (!lane.State.Freeze().ContentEquals(completed.Open().State.Freeze()))
+            throw new InvalidOperationException("BeforeHandDraw replay did not reproduce the completed turn start.");
+        Parallel.For(0, 8, _ =>
+        {
+            var worker = completed.Open();
+            if (worker.Power(VoidIndex(worker)).Amount != 2 || worker.CardCount != 6
+                || !worker.Cards(ResumableDiscardProgram.Pile.Hand).SequenceEqual(new[] { 4, 5, 3 }))
+                throw new InvalidOperationException("Frozen BeforeHandDraw continuation retained sibling state.");
+        });
+
+        // A zero counter keeps the tick and its five-field stream untouched.
+        var idle = RoundLane(root, [[0, 1, 2], [3], [], [], []], templates, [pool], initialRng, baseDraw: 1);
+        idle.BeginNextPlayerTurn(ResumableDiscardProgram.HandEndStaging.Sequential); idle.Run();
+        if (idle.CardGenerationRng != initialRng || idle.CardCount != 4 || idle.Count(ResumableDiscardProgram.Pile.Hand) != 1
+            || Enumerable.Range(0, idle.EventCount).Select(idle.EventAt)
+                .Any(item => item.Kind == ResumableDiscardProgram.EventKind.Generated))
+            throw new InvalidOperationException("Zero CallOfTheVoid still generated a card or consumed the stream.");
+
+        // A full hand spills the rest of the batch into the discard pile in selection order.
+        ResumableDiscardProgram.Card retained = new(0, new([new(CardInstructionKind.GainBlock, 1)]), Retain: true);
+        ResumableDiscardProgram.Card[] capped = Enumerable.Repeat(retained, 8).ToArray();
+        int[] cappedPool = [8, 9, 10, 11];
+        var cappedTemplates = Enumerable.Range(0, cappedPool.Length)
+            .Select(_ => new ResumableDiscardProgram.Card(0, CardEffectProgram.Empty, Ethereal: true)).ToArray();
+        var overflow = RoundLane(capped, [Enumerable.Range(0, 8).ToArray(), [], [], [], []], cappedTemplates, [cappedPool], initialRng,
+            baseDraw: 0, voidAmount: 4);
+        overflow.BeginNextPlayerTurn(ResumableDiscardProgram.HandEndStaging.Sequential);
+        var cappedExpected = SelectTemplates(cappedPool, 4, initialRng, out ValueRng cappedOracle);
+        var spilled = Enumerable.Range(0, overflow.EventCount).Select(overflow.EventAt)
+            .Where(item => item.Kind == ResumableDiscardProgram.EventKind.Generated).ToArray();
+        if (overflow.CardGenerationRng != cappedOracle || spilled.Length != 4
+            || !Enumerable.Range(0, 4).All(index => overflow.DefinitionIndex(8 + index) == cappedExpected[index])
+            || overflow.Count(ResumableDiscardProgram.Pile.Hand) != 10 || overflow.Count(ResumableDiscardProgram.Pile.Discard) != 2
+            || !spilled.Take(2).All(item => item.Flags == (int)ResumableDiscardProgram.Pile.Hand)
+            || !spilled.Skip(2).All(item => item.Flags == (int)ResumableDiscardProgram.Pile.Discard)
+            || !spilled.Select(item => item.Value).SequenceEqual(new[] { 8, 9, 0, 1 }))
+            throw new InvalidOperationException("Full-hand BeforeHandDraw batch did not spill in selection order.");
+
+        // The round path only exists with a captured pool, a player slot and a real index.
+        Expect<NotSupportedException>(() => _ = new ResumableDiscardProgram(root, [[0, 1, 2], [3], [], [], []], 3, 0, 0,
+            new ValueRng(0, 1, 2, 3, 4), Comparisons(root.Length), creatures: Creatures(), powers: Powers(0),
+            handEndAdmitted: true, monsterMoves: [new([])], powerPhasesAdmitted: true, monsterAi: new(1, 0, [0], [0]),
+            round: new(7, 9, 3, 1, BeforeHandDrawPool: 0)));
+        Expect<NotSupportedException>(() => _ = new ResumableDiscardProgram(root, [[0, 1, 2], [3], [], [], []], 3, 0, 0,
+            new ValueRng(0, 1, 2, 3, 4), Comparisons(root.Length), creatures: Creatures(), powers: Powers(0, voidSlot: false),
+            generatedCards: templates, generationPools: [pool], cardGenerationRng: initialRng,
+            handEndAdmitted: true, monsterMoves: [new([])], powerPhasesAdmitted: true, monsterAi: new(1, 0, [0], [0]),
+            round: new(7, 9, 3, 1, BeforeHandDrawPool: 0)));
+        Expect<NotSupportedException>(() => _ = new ResumableDiscardProgram(root, [[0, 1, 2], [3], [], [], []], 3, 0, 0,
+            new ValueRng(0, 1, 2, 3, 4), Comparisons(root.Length), creatures: Creatures(), powers: Powers(0),
+            generatedCards: templates, generationPools: [pool], cardGenerationRng: initialRng,
+            handEndAdmitted: true, monsterMoves: [new([])], powerPhasesAdmitted: true, monsterAi: new(1, 0, [0], [0]),
+            round: new(7, 9, 3, 1, BeforeHandDrawPool: 1)));
+        Console.WriteLine("COMPACT_GENERATION_POOL_BEFORE_HAND_DRAW_OK stacked_counter=true order=true before_draw=true "
+            + "five_field_rng=true rollback=true frozen_workers=8 zero_counter=true full_hand_spill=true boundaries=true");
+    }
+
+    private static ResumableDiscardProgram RoundLane(ResumableDiscardProgram.Card[] cards, IReadOnlyList<int>[] piles,
+        ResumableDiscardProgram.Card[] templates, int[][]? pools, ValueRng rng, int baseDraw, int voidAmount = 0, int poolIndex = 0)
+        => new(cards, piles, 3, 0, 0, new ValueRng(0, 1, 2, 3, 4), Comparisons(cards.Length + templates.Length),
+            creatures: Creatures(), powers: Powers(voidAmount), generatedCards: templates, generationPools: pools,
+            cardGenerationRng: pools == null ? null : rng, handEndAdmitted: true, monsterMoves: [new([])],
+            powerPhasesAdmitted: true, monsterAi: new(1, 0, [0], [0]),
+            round: new(7, 9, 3, baseDraw, BeforeHandDrawPool: pools == null ? -1 : poolIndex));
+
+    private static CreatureVitals[] Creatures() => [new(80, 80, 0), new(200, 200, 0)];
+
+    private static int[] Comparisons(int definitions) => Enumerable.Range(0, definitions).SelectMany(left =>
+        Enumerable.Range(0, definitions).Select(right => left.CompareTo(right))).ToArray();
+
+    private static BasicPowerDefinition[] Powers(int voidAmount, bool voidSlot = true) => Enumerable.Range(0, 2).SelectMany(owner =>
+        Enum.GetValues<BasicPowerKind>().Where(kind => voidSlot || owner != 0 || kind != BasicPowerKind.CallOfTheVoid)
+            .Select(kind => new BasicPowerDefinition(kind, owner,
+                owner == 0 && kind == BasicPowerKind.CallOfTheVoid ? voidAmount : 0, -1, 0, 1m, false))).ToArray();
+
+    private static int VoidIndex(ResumableDiscardProgram lane)
+        => Enumerable.Range(0, lane.PowerCount).Single(index =>
+            lane.PowerDefinition(index) is { Owner: 0, Kind: BasicPowerKind.CallOfTheVoid });
+
     // Replays the native full-pool shuffle per selection and maps the frozen indices.
     private static int[] SelectTemplates(int[] pool, int count, ValueRng initial, out ValueRng final)
     {

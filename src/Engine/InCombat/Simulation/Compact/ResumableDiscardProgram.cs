@@ -29,6 +29,9 @@ internal sealed partial class ResumableDiscardProgram
     internal enum DamageTraits { Unpowered = 8, Unblockable = 16, NoDealer = 32, NoCard = 64, Poison = 128 }
     private const int EnergySlot = 0, BlockSlot = 1, DepthSlot = 2, AttackCardStartsSlot = 3;
     private const int RngSlot = 4, ShuffleCountSlot = 9;
+    // Committed Generated events identify their creator: a monster source, the owning
+    // card action, or the player turn-start Power that runs before the hand draw.
+    internal const int MonsterCreator = -1, CardActionCreator = 0, TurnStartPowerCreator = 1;
     private const int FrameWidth = 22, MaxFrames = 8, PileCount = 7;
     private const int CardOffset = 0, IpOffset = 1, AutoOffset = 2, BeforeBlockOffset = 3;
     private const int SelectedCountOffset = 4, NextAutoOffset = 5, SelectedOffset = 6;
@@ -93,8 +96,7 @@ internal sealed partial class ResumableDiscardProgram
     internal int CostModifierCount(int card) => Definition(card).DrawCost == null ? 0 : _drawCosts!.Count(State, card);
     internal int CostModifierAt(int card, int index) => _drawCosts!.At(State, card, index);
     internal ValueRng? EnergyCostRng => _drawCosts?.Rng(State);
-    internal ValueRng CardGenerationRng => (_generation
-        ?? throw new InvalidOperationException("No captured generation pools.")).Rng(State);
+    internal ValueRng? CardGenerationRng => _generation?.Rng(State);
     internal Pile ResultPile(int card) => Definition(card).ResultPile;
     internal bool CardRemoved(int card) => Contains(Pile.Removed, card);
     internal bool CardUnplaced(int card) => Contains(Pile.Unplaced, card);
@@ -214,6 +216,10 @@ internal sealed partial class ResumableDiscardProgram
             || round.Value.TurnStartSummon > 0 && pet < 0
             || powers!.Any(power => power.Owner == 0 && power.Kind == BasicPowerKind.Poison && power.Amount != 0)))
             throw new NotSupportedException("Round closure requires one enemy, all phases, ordering and no player Poison.");
+        if (round is { BeforeHandDrawPool: >= 0 }
+            && (generationPools == null || round.Value.BeforeHandDrawPool >= generationPools.Length
+                || powers!.All(power => power.Owner != 0 || power.Kind != BasicPowerKind.CallOfTheVoid)))
+            throw new NotSupportedException("Round BeforeHandDraw generation requires its captured pool and Power slot.");
         ValidateBlockReturns(definitions, powers);
         _definitions = definitions;
         _rootCardCount = cards.Length;
@@ -561,10 +567,10 @@ internal sealed partial class ResumableDiscardProgram
                 break;
             case CardInstructionKind.GenerateCards:
                 GenerateCards(instruction.CardTemplate, checked(instruction.Amount + instruction.EnergyXMultiplier * Read(Frame + EnergyValueOffset)),
-                    creator: 0, instruction.Placement);
+                    creator: CardActionCreator, instruction.Placement);
                 break;
             case CardInstructionKind.GenerateFromPool:
-                GenerateFromPool(instruction.GenerationPool, instruction.Amount);
+                GenerateFromPool(instruction.GenerationPool, instruction.Amount, CardActionCreator);
                 break;
             case CardInstructionKind.SummonPet:
                 int repeats = instruction.RepeatForEnergyX ? Read(Frame + EnergyValueOffset) : 1;

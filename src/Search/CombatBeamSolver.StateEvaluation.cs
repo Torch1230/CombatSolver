@@ -1223,7 +1223,7 @@ internal sealed partial class CombatBeamSolver
         AppendOrbs(ref key, simulator, playerState.OrbQueue);
         _run.Performance.End(SearchMetricPhase.PileFingerprint, pileFingerprintMeasurement);
         AppendRngState(ref key, view?.ShuffleRng ?? simulator.Rng.Shuffle.CaptureState());
-        AppendRngState(ref key, simulator.Rng.CombatCardGeneration);
+        AppendRngState(ref key, view?.CardGenerationRng ?? simulator.Rng.CombatCardGeneration.CaptureState());
         AppendRngState(ref key, simulator.Rng.CombatPotionGeneration);
         AppendRngState(ref key, simulator.Rng.CombatCardSelection);
         AppendRngState(ref key, view?.EnergyCostRng ?? simulator.Rng.CombatEnergyCosts.CaptureState());

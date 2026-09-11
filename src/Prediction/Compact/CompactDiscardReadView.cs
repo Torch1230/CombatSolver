@@ -319,6 +319,9 @@ internal sealed class CompactDiscardReadView : CompletedStateReadView
     internal override PredictionRngState? EnergyCostRng => _program.EnergyCostRng is { } rng
         ? new(rng.Counter, rng.State0, rng.State1, rng.State2, rng.State3) : null;
 
+    internal override PredictionRngState? CardGenerationRng => _program.CardGenerationRng is { } rng
+        ? new(rng.Counter, rng.State0, rng.State1, rng.State2, rng.State3) : null;
+
     private sealed class RosterView(CompactDiscardReadView owner) : IReadOnlyList<Creature>
     {
         public int Count

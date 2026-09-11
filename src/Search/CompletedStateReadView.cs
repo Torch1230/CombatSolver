@@ -38,6 +38,9 @@ internal abstract class CompletedStateReadView
     internal virtual int? CumulativePlayerHpLost => null;
     internal abstract PredictionRngState ShuffleRng { get; }
     internal virtual PredictionRngState? EnergyCostRng => null;
+    // Pool generation consumes the branch's card-generation stream; a lane that owns an
+    // explicit value exposes it so equivalence keys never read the stale context RNG.
+    internal virtual PredictionRngState? CardGenerationRng => null;
     // Consumers separately honor EnemyValuesInvariant and CardValuesInvariant, plus each
     // formula's dynamic input keys. A new stable root requires a new cache.
     internal CombatBeamSolver.ReadViewInvariantCache? Invariants { get; init; }

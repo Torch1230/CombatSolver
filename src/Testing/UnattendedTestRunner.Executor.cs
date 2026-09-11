@@ -54,6 +54,11 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertCompactCallOfTheVoidGenerationAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "COMPACT-CALL-OF-THE-VOID-ADMISSION")
+            {
+                await runner.AssertCompactCallOfTheVoidAdmissionAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "COMPACT-PAGESTORM-NATIVE")
             {
                 await runner.AssertCompactPagestormAsync(combatState, player);

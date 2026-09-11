@@ -165,7 +165,7 @@ internal sealed record ContinuationStamp(string StateText)
         AppendPowers(text, combat.EffectivePowers(), simulator);
         AppendRng(text,
             readView?.ShuffleRng ?? simulator.Rng.Shuffle.CaptureState(),
-            simulator.Rng.CombatCardGeneration.CaptureState(),
+            readView?.CardGenerationRng ?? simulator.Rng.CombatCardGeneration.CaptureState(),
             simulator.Rng.CombatPotionGeneration.CaptureState(),
             simulator.Rng.CombatCardSelection.CaptureState(),
             readView?.EnergyCostRng ?? simulator.Rng.CombatEnergyCosts.CaptureState(),

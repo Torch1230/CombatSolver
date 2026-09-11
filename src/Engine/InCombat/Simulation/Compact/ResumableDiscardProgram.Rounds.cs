@@ -76,6 +76,9 @@ internal sealed partial class ResumableDiscardProgram
         // BoundPhylactery runs after energy-reset hooks, before hand draw and any
         // selector. Pet existence checks in earlier hooks see the pre-summon state.
         if (PlayerTurn != 1) SummonPet(-1, _round.Root.TurnStartSummon);
+        // Native BeforeHandDraw runs after the energy reset and late summon hooks and
+        // before the hand draw frame, so an overflowing batch lands before any draw.
+        RunBeforeHandDraw();
         // A synthetic frame shares draw / shuffle / choice / child-card machinery.
         // It has no card identity, payment, play history or result pile.
         State.Write(DepthSlot, 1);
@@ -89,6 +92,15 @@ internal sealed partial class ResumableDiscardProgram
     {
         _round!.CleanCards(State);
         Emit(EventKind.CleanupCards, -1);
+    }
+
+    // The captured BeforeHandDraw Power repeats its full-pool selection for its current
+    // count. A zero count keeps the native effect and its RNG untouched.
+    private void RunBeforeHandDraw()
+    {
+        if (_round!.Root.BeforeHandDrawPool < 0 || _generation == null) return;
+        int amount = _powers!.Amount(State, 0, BasicPowerKind.CallOfTheVoid);
+        if (amount > 0) GenerateFromPool(_round.Root.BeforeHandDrawPool, amount, TurnStartPowerCreator);
     }
 
     private void CompletePlayerSideStart()
