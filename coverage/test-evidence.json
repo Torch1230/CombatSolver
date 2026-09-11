@@ -1,4 +1,12 @@
 {
+  "CHARACTER-GENERATION-ROOT-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeGenerationAndRootPoolOwnership",
+    "procedure": "完整亡灵输入；24次原生／旧路径／冻结池RNG对照，三次原生批量生成，12张虚无牌与满手溢出。",
+    "expected": "规范候选在主线程冻结并随Fork共享；随机流和可变牌属分支，自定义池保持原生成链。",
+    "observed": "33c4d4282bfc45b1ad7867af6457c0b4 COMPACT-GENERATION-CLOSURE-AUDIT Passed; 62c11688c6544026b02eeca6ed373ef6 CALL-OF-THE-VOID-GENERATION-ROOT Passed",
+    "evidence": "docs/performance/simulation-generation-root-20260911.md；docs/performance/simulation-generation-root-20260911.json。"
+  },
   "COMPACT-GENERATION-AUDIT-20260911": {
     "status": "Passed",
     "level": "HeadlessReadOnlyGenerationRootAudit",

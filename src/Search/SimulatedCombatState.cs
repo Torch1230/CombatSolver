@@ -473,6 +473,17 @@ internal sealed partial class SimulatedCombatState
     internal MapCoord? CurrentMapCoord => _currentMapCoord;
     public CardMultiplayerConstraint CardMultiplayerConstraint => _cardMultiplayerConstraint;
 
+    bool ICombatPredictionCardGenerationPoolSnapshot.TryGetRootEligibleCharacterCards(
+        Player player,
+        CardPoolModel cardPool,
+        CardMultiplayerConstraint multiplayerConstraint,
+        out IReadOnlyList<CardModel> cards)
+        => _rootCardGenerationPools.TryGetEligibleCharacterCards(
+            player,
+            cardPool,
+            multiplayerConstraint,
+            out cards);
+
     bool ICombatPredictionCardGenerationPoolSnapshot.TryGetRootEligibleCards(
         Player player,
         CardPoolModel cardPool,

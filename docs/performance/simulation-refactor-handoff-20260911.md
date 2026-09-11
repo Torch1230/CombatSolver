@@ -2,7 +2,7 @@
 
 本页是为用户新增的额度交接要求预先准备的检查点，不代表整项重构完成。分支 `perf/simulation-profile-20260910`。上游 `c2cc463` 已于 `136365c` 合并；书页风暴批次已验证通过，当前代码以本文件所在提交为准。`766fb27` 是较早的 52 种卡牌检查点。
 
-用户要求：**检测到周额度剩余不超过 1% 时，提交当前更改，写清目标、进度、验证和剩余工作，停止开发并交给另一位 AI。** 2026-09-11 12:58:42 UTC 的最新本地账号额度记录为周窗口已用 97%、剩余约 3%，尚未触发，继续开发并在后续批次检查。应用账号查询接口本次未返回，因此采用该近期记录；这不是未来额度保证。使用额度数据时，`usedPercent`／`used_percent` 是已用比例，剩余为 `max(0, min(100, 100-usedPercent))`；周窗口长度为 10,080 分钟。缺失或查询失败属于未知，不能记作 0%。不要自动购买额度或消耗重置。
+用户要求：**检测到周额度剩余不超过 1% 时，提交当前更改，写清目标、进度、验证和剩余工作，停止开发并交给另一位 AI。** 2026-09-11 13:12:50 UTC 的最新本地账号额度记录为周窗口已用 98%、剩余约 2%，尚未触发，继续开发并在后续批次检查。应用账号查询接口本次未返回，因此采用该近期记录；这不是未来额度保证。使用额度数据时，`usedPercent`／`used_percent` 是已用比例，剩余为 `max(0, min(100, 100-usedPercent))`；周窗口长度为 10,080 分钟。缺失或查询失败属于未知，不能记作 0%。不要自动购买额度或消耗重置。
 
 ## 1. 用户目标与当前授权
 
@@ -86,9 +86,9 @@
 
 合并前备份 stash `78fece6d99ffa440d8e509f7548164846bcdf020` 已恢复并整合。它只是旧检查点，**不要重新应用或把它当作更新版本**。本批 v2–v9 失败、夹具修正与真实缺口在结果文档中明确记录；尤其 v4 使用旧产物，不算有效新代码验证。
 
-完整生成池已完成只读审计，见[直接结果](simulation-generation-audit-20260911.md)。CallOfTheVoid 有 78 个候选，仅 19 个类型已准入；无色药水有 50 个候选，仅 3 个已准入。两池直接缺 106 个类型，尚不含进一步生成链；早期约 65% 的工作量估计不能继续用作剩余规模依据。原生每次生成前都洗乱完整池：该输入分别消耗 77／49 次 RNG；24 次选择与旧引擎完整五字段一致。根因非空药水首先显式拒绝。当前尚未扩充紧凑准入，下一步先冻结完整角色生成池，随后完成通用随机生成值执行和全部可达效果。
+完整生成池已完成只读审计，见[直接结果](simulation-generation-audit-20260911.md)。CallOfTheVoid 有 78 个候选，仅 19 个类型已准入；无色药水有 50 个候选，仅 3 个已准入。两池直接缺 106 个类型，尚不含进一步生成链；早期约 65% 的工作量估计不能继续用作剩余规模依据。原生每次生成前都洗乱完整池：该输入分别消耗 77／49 次 RNG；24 次选择与旧引擎完整五字段一致。根因非空药水首先显式拒绝。完整角色生成池随后已冻结并接入 CallOfTheVoid 旧模型生成，见[结果](simulation-generation-root-20260911.md)。24 次原生／旧链／缓存 RNG 与身份合同、12 张原生生成／溢出／虚无／冻结根通过。当前仍未扩充紧凑准入；下一步完成通用随机生成值执行和全部可达效果。
 
-CallOfTheVoid 已读原生卡牌与能力，尚未实现：本机 `.local/compact-lethality-20260911/native/CallOfTheVoid{,Power}.cs`。它在 BeforeHandDraw 从主人角色的解锁池排除 Basic／Ancient，每次用 CombatCardGeneration RNG 独立生成一张，赋虚无，再把这一批加入手牌；不同次数允许重复。升级只加 Innate。已定向核对 CardFactory.GetDistinctForCombat／TakeRandom／UnstableShuffle 及 AddGeneratedCardsToCombat：先生成整批并赋虚无，再逐张记录 Generated、入堆、AfterCardGeneratedForCombat；满手转弃牌，生成不触发 AfterCardDrawn。下一步须把这些顺序写入紧凑执行并做原生行为差分；它不是只加一个 Power 枚举即可完成。原始亡灵池与无色药水的全部可达效果仍须保持合法，不准静默缩池或只选择已支持牌。
+CallOfTheVoid 已冻结原生完整生成池，但紧凑值执行尚未实现：本机 `.local/compact-lethality-20260911/native/CallOfTheVoid{,Power}.cs`。它在 BeforeHandDraw 从主人角色的解锁池排除 Basic／Ancient，每次用 CombatCardGeneration RNG 独立生成一张，赋虚无，再把这一批加入手牌；不同次数允许重复。升级只加 Innate。已定向核对 CardFactory.GetDistinctForCombat／TakeRandom／UnstableShuffle 及 AddGeneratedCardsToCombat：先生成整批并赋虚无，再逐张记录 Generated、入堆、AfterCardGeneratedForCombat；满手转弃牌，生成不触发 AfterCardDrawn。下一步须把这些顺序写入紧凑执行并做原生行为差分；它不是只加一个 Power 枚举即可完成。原始亡灵池与无色药水的全部可达效果仍须保持合法，不准静默缩池或只选择已支持牌。
 
 ### 5.3 完整验收与 PR 准备
 
@@ -123,8 +123,8 @@ dotnet run --project tools/CompactCreatureChecks/CompactCreatureChecks.csproj -c
 本机资料供当前工作区接手者定位，不作为其他机器的固定配置：
 
 - checkout：`/home/ltlly/Code/nmslmod/.tools11/CombatSolver-open-source`；外层目录不是目标仓库。
-- 最新只读审计产物 `.local/compact-random-generation-20260911/artifact`（Release v5 零警告错误），结果 `audit-v5`。上一语义产物 `.local/compact-pagestorm-20260911/artifact`，原生／搜索结果为 `native-v9`、`search-v9`，共享回归为 `draw-exhaust-regression-v9`；对应日志为 `.local/compact-pagestorm-*.log`。
-- 检查点时任务拥有的 headless 实例 `compact-full-route-20260911`、PID `1846284` 记录为 READY，加载生成池审计 v5 DLL；结果本身标记 processReusable=false，后续以实例协议实际状态为准。PID 仅是记录，使用前须通过实例协议确认所有权，不能按过时 PID 杀进程。
+- 最新产物 `.local/character-generation-root-20260911/artifact`（Release v3 零警告错误），完整池和原生生成结果 `audit-v3`、`native-v3`。前一只读审计产物 `.local/compact-random-generation-20260911/artifact`（Release v5），结果 `audit-v5`。上一紧凑语义产物 `.local/compact-pagestorm-20260911/artifact`，原生／搜索结果为 `native-v9`、`search-v9`，共享回归为 `draw-exhaust-regression-v9`；对应日志为 `.local/compact-pagestorm-*.log`。
+- 检查点时任务拥有的 headless 实例 `compact-full-route-20260911`、PID `1868507` 记录为 READY，加载角色生成根 v3 DLL；结果本身标记 processReusable=false，后续以实例协议实际状态为准。PID 仅是记录，使用前须通过实例协议确认所有权，不能按过时 PID 杀进程。
 - **重编译后先停止持有旧 DLL 的本任务实例**：`./tools/run-unattended-test.sh --headless-instance compact-full-route-20260911 --stop-instance`。不要用不带正确 artifact 的 `--stop-owned-process` 替代，此前会触发无用游戏副本复制。重新启动时传入本批 artifact。
 - 本机磁盘空间紧：测试游戏快照约占 2 GB，最近约剩 1 GB。确实需要回收时，确认本任务实例已退出后，只删除其 `/home/ltlly/.local/state/CombatSolver/headless-instances/compact-full-route-20260911/game` 快照，保留原游戏、存档、其他实例和证据。
 - 当前支持游戏 `0.111.0 / 41cef1ea`；本机原生 DLL 在 `/home/ltlly/.local/share/Steam/steamapps/common/Slay the Spire 2/data_sts2_linuxbsd_x86_64/sts2.dll`。旧文档提到的 `.local/decompiled/sts2-v0.111.0` 在本机不存在。优先查已有 `.local/compact-*/native/`，避免反复反编译。

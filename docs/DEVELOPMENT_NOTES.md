@@ -8,6 +8,8 @@
 
 ## 下一版本（开发中）：极高配置完整搜索性能重构
 
+- [完整角色生成池冻结](performance/simulation-generation-root-20260911.md)：主线程捕获全部规范候选，CallOfTheVoid 读取冻结池，攻击候选共用同一来源；自定义池保持原生成链。分支仍独立完成随机洗牌和牌实例创建。
+
 - [完整随机生成池审计](performance/simulation-generation-audit-20260911.md)：保留原始建局并导出 CallOfTheVoid 的 78 种和无色药水的 50 种候选；目前分别准入 19／3 种。24 次原生选择／旧引擎完整 RNG 对照通过，完整根仍显式拒绝。
 
 - [书页风暴](performance/simulation-pagestorm-20260911.md)：显式可撤销抽牌栈保留嵌套洗牌选择、父卡随机费用和完成顺序；三根两回合完整原生、固定节点串并行和共享抽牌回归通过。

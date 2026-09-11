@@ -3084,3 +3084,7 @@ pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId MONSTER-MOVES-BA
 ## 完整生成池审计（2026-09-11）
 
 `COMPACT-GENERATION-CLOSURE-AUDIT` 使用原始 NECROBINDER／AEONGLASS_BOSS 输入，38 牌、19 件遗物注入、保留初始遗物及两瓶药；导出 78／50 个完整有序候选，24 次抽样对照全部五个 RNG 字段，确认真实状态不变与未迁移根显式拒绝。只验证原生筛选／选择方法和旧模型选牌，不执行生成入堆及回调，也不启动搜索。双端使用既有协议参数，无新字段；[完整命令及边界](performance/simulation-generation-audit-20260911.md)。
+
+## 完整角色生成池冻结（2026-09-11）
+
+`COMPACT-GENERATION-CLOSURE-AUDIT` 增加完整角色池的 Fork 共享、错误池／人数约束拒绝、24 次原生／旧路径／缓存路径全 RNG 与卡牌指纹对照、生成实例突变隔离，并调用既有攻击池和无色池缓存合同。`CALL-OF-THE-VOID-GENERATION-ROOT` 使用同一完整亡灵输入，注入 4 层能力，连续三次原生 BeforeHandDraw；对照 12 张虚无牌、满手溢出、完整快照／续用、Fork 和实机后冻结根。它是该生成命令的模型对照，不代表紧凑随机生成闭包或整场搜索通过。[直接结果](performance/simulation-generation-root-20260911.md)。

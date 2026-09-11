@@ -212,6 +212,8 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 ### 3.3 分支战斗状态
 
+`RootCombatCardGenerationPoolSnapshot` 在主线程冻结原生规范角色的完整可生成池，攻击池从同一有序规范候选投影；与无色池一同由根持有，Fork 只共享只读数组。`ICombatPredictionCardGenerationPoolSnapshot` 向引擎提供完整角色池读取，`TurnStartPowerSupport` 的 CallOfTheVoid 消费该入口；完整洗牌和新卡实例仍属于分支。身份、原生程序集、不可变模型、牌池数组身份和人数约束均须匹配；未知／自定义源保留旧模型路径，不因此进入紧凑后端。
+
 `SimulatedCombatState*.cs` 把内嵌引擎状态适配为搜索所需的战斗领域视图：
 
 - `Fork.cs`：统一稳定边界和对象图复制；

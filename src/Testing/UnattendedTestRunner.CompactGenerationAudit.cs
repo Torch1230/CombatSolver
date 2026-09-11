@@ -39,6 +39,20 @@ internal sealed partial class UnattendedTestRunner
             .Where(card => card.Rarity is not (CardRarity.Basic or CardRarity.Ancient)).ToArray();
         var colorlessOptions = ModelDb.CardPool<ColorlessCardPool>()
             .GetUnlockedCards(player.UnlockState, constraint).ToArray();
+        var poolSnapshot = (ICombatPredictionCardGenerationPoolSnapshot)simulator.State.CombatState;
+        var forkPoolSnapshot = (ICombatPredictionCardGenerationPoolSnapshot)simulator.Fork().State.CombatState;
+        if (!poolSnapshot.TryGetRootEligibleCharacterCards(player, player.Character.CardPool, constraint, out var rootEligible)
+            || !forkPoolSnapshot.TryGetRootEligibleCharacterCards(player, player.Character.CardPool, constraint, out var forkEligible)
+            || !ReferenceEquals(rootEligible, forkEligible)
+            || !simulator.TryGetRootEligibleCharacterCardsForCombat(player, constraint, out var productionEligible)
+            || !ReferenceEquals(rootEligible, productionEligible)
+            || !rootEligible.SequenceEqual(callOptions.FilterForCombatAndPlayerCount(constraint)))
+            throw new InvalidOperationException("Full character pool lost its root order, identities or shared ownership.");
+        foreach (var rejectedPool in new[] { player.Character.CardPool.ToMutable(), ModelDb.CardPool<ModCharacterPoolProbe>(), ModelDb.CardPool<ColorlessCardPool>() })
+            if (poolSnapshot.TryGetRootEligibleCharacterCards(player, rejectedPool, constraint, out _))
+                throw new InvalidOperationException("Full character pool accepted a mutable, custom or different pool.");
+        if (poolSnapshot.TryGetRootEligibleCharacterCards(player, player.Character.CardPool, CardMultiplayerConstraint.MultiplayerOnly, out _))
+            throw new InvalidOperationException("Full character pool accepted a different player-count constraint.");
         List<object> pools = [];
         foreach (var source in new[] { (Name: "CallOfTheVoid", Cards: callOptions), (Name: "ColorlessPotion", Cards: colorlessOptions) })
         {
@@ -53,15 +67,32 @@ internal sealed partial class UnattendedTestRunner
             {
                 var nativeRng = simulator.Rng.CombatCardGeneration.Clone();
                 var modelRng = simulator.Rng.CombatCardGeneration.Clone();
+                var cachedRng = simulator.Rng.CombatCardGeneration.Clone();
                 for (int sample = 0; sample < 12; sample++)
                 {
                     int requested = source.Name == "ColorlessPotion" ? 3 : 1;
                     var start = nativeRng.CaptureState();
                     var selected = nativeEligible.TakeRandom(requested, nativeRng).ToArray();
                     var predicted = source.Cards.GetDistinctForCombat(player, requested, modelRng, constraint).ToArray();
+                    var cached = source.Name == "CallOfTheVoid"
+                        ? rootEligible.GetDistinctForCombat(player, requested, cachedRng, constraint).ToArray()
+                        : simulator.GetDistinctUnlockedColorlessForCombat(player, requested, cachedRng, constraint).ToArray();
                     if (!selected.Select(card => card.Id).SequenceEqual(predicted.Select(card => card.Preview.Id))
-                        || !SameFiveFieldRngState(nativeRng.CaptureState(), modelRng.CaptureState()))
+                        || !SameFiveFieldRngState(nativeRng.CaptureState(), modelRng.CaptureState())
+                        || !SameFiveFieldRngState(nativeRng.CaptureState(), cachedRng.CaptureState())
+                        || predicted.Length != cached.Length
+                        || predicted.Where((card, index) => ReferenceEquals(card.Original, cached[index].Original)
+                            || CombatBeamSolver.CaptureCardStateFingerprintForTesting(card)
+                                != CombatBeamSolver.CaptureCardStateFingerprintForTesting(cached[index])).Any())
                         throw new InvalidOperationException($"Generation selection/RNG mismatch: {source.Name}/{sample}.");
+                    if (sample == 0)
+                    {
+                        var canonical = selected[0];
+                        int originalCount = canonical.BaseReplayCount, cachedCount = cached[0].Preview.BaseReplayCount;
+                        predicted[0].MutablePreview.BaseReplayCount++;
+                        if (canonical.BaseReplayCount != originalCount || cached[0].Preview.BaseReplayCount != cachedCount)
+                            throw new InvalidOperationException("Generated card mutation escaped its branch.");
+                    }
                     samples.Add(new { requested, ids = selected.Select(card => card.Id.Entry).ToArray(),
                         counterDelta = nativeRng.CaptureState().Counter - start.Counter });
                 }
@@ -72,6 +103,11 @@ internal sealed partial class UnattendedTestRunner
                 cards = nativeEligible.Select(card => new { id = card.Id.Entry, type = card.GetType().Name,
                     category = card.Type.ToString(), rarity = card.Rarity.ToString(),
                     currentExactType = admitted.Contains(card.GetType()) }).ToArray(), samples });
+        }
+        using (SimulationNotificationIsolation.Enter())
+        {
+            AssertRootCharacterAttackGenerationPoolCache(simulator, player);
+            AssertRootColorlessGenerationPoolCache(simulator, player);
         }
         bool rootAdmitted;
         string rejection;
@@ -93,6 +129,6 @@ internal sealed partial class UnattendedTestRunner
                 rootAdmitted, rejection, pools,
                 limitation = "Exact type membership is not full state, hook, or transitive generated-pool admission." },
                 new JsonSerializerOptions { WriteIndented = true }));
-        _completedChecks.Add($"CompactGenerationClosureAudit:Original38Cards19InjectedRelics2Potions:ActualRelics{player.Relics.Count}:CompleteOrderedPools:24SelectionSamples:FiveFieldRng:ActualUnchanged:FullRootExplicitlyRejected");
+        _completedChecks.Add($"CompactGenerationClosureAudit:Original38Cards19InjectedRelics2Potions:ActualRelics{player.Relics.Count}:CompleteOrderedPools:24NativeLegacyCachedSamples:FiveFieldRng:FullPoolForkOwnership:InvalidPoolsRejected:GeneratedCardIsolation:AttackAndColorlessRegression:ActualUnchanged:FullRootExplicitlyRejected");
     }
 }

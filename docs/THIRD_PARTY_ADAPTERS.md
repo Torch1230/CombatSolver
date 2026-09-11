@@ -511,6 +511,8 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 
 ## 6. 已知的封闭开关
 
+`RootCombatCardGenerationPoolSnapshot` 的完整角色池／攻击池缓存仅接受原生规范角色与牌池，校验类型程序集、不可变／非 mock、模型身份及 AllCards 数组身份。自定义或可变池继续走既有模型生成链，不能通过返回同名 ID 命中该缓存。`ICombatPredictionCardGenerationPoolSnapshot` 是内部冻结读取合同，不是新增登记 API；缓存候选不表示对应效果已准入紧凑后端。
+
 下面这些位置目前是按原版类型写死的开关，第三方登记不进去。要用只能 Harmony 打补丁，或者等
 对应扩展点合并。列在这里是为了让你知道撞上了什么，而不是以为自己写错了。
 

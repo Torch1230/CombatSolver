@@ -1,5 +1,7 @@
 # CombatSolver 文档导航
 
+- [完整角色生成池冻结](performance/simulation-generation-root-20260911.md)：原生池缓存、Fork 共享与生成回调对照。
+
 - [完整随机生成池审计](performance/simulation-generation-audit-20260911.md)：原始亡灵输入、128 种直接候选与 RNG 顺序。
 
 - [书页风暴与嵌套抽牌验证](performance/simulation-pagestorm-20260911.md)：完整父子抽牌时序与挂起恢复。

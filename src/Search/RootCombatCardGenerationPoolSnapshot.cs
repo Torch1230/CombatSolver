@@ -13,11 +13,12 @@ namespace CombatSolver;
 /// </summary>
 internal sealed class RootCombatCardGenerationPoolSnapshot
 {
-    private sealed record NativeCharacterAttackPoolEntry(
+    private sealed record NativeCharacterPoolEntry(
         object CharacterIdentity,
         CardPoolModel Pool,
         object AllCardsIdentity,
-        CardModel[] EligibleCards);
+        CardModel[] EligibleCards,
+        CardModel[] EligibleAttacks);
 
     private static readonly System.Reflection.Assembly NativeModelAssembly =
         typeof(CardModel).Assembly;
@@ -25,22 +26,22 @@ internal sealed class RootCombatCardGenerationPoolSnapshot
     private readonly object? _canonicalColorlessCardsIdentity;
     private readonly CardMultiplayerConstraint _multiplayerConstraint;
     private readonly IReadOnlyDictionary<Player, CardModel[]> _eligibleColorlessByPlayer;
-    private readonly IReadOnlyDictionary<Player, NativeCharacterAttackPoolEntry>
-        _eligibleCharacterAttacksByPlayer;
+    private readonly IReadOnlyDictionary<Player, NativeCharacterPoolEntry>
+        _eligibleCharacterPoolsByPlayer;
 
     private RootCombatCardGenerationPoolSnapshot(
         CardPoolModel? canonicalColorlessPool,
         object? canonicalColorlessCardsIdentity,
         CardMultiplayerConstraint multiplayerConstraint,
         IReadOnlyDictionary<Player, CardModel[]> eligibleColorlessByPlayer,
-        IReadOnlyDictionary<Player, NativeCharacterAttackPoolEntry>
-            eligibleCharacterAttacksByPlayer)
+        IReadOnlyDictionary<Player, NativeCharacterPoolEntry>
+            eligibleCharacterPoolsByPlayer)
     {
         _canonicalColorlessPool = canonicalColorlessPool;
         _canonicalColorlessCardsIdentity = canonicalColorlessCardsIdentity;
         _multiplayerConstraint = multiplayerConstraint;
         _eligibleColorlessByPlayer = eligibleColorlessByPlayer;
-        _eligibleCharacterAttacksByPlayer = eligibleCharacterAttacksByPlayer;
+        _eligibleCharacterPoolsByPlayer = eligibleCharacterPoolsByPlayer;
     }
 
     public static RootCombatCardGenerationPoolSnapshot Capture(
@@ -59,13 +60,13 @@ internal sealed class RootCombatCardGenerationPoolSnapshot
                 canonicalColorlessCardsIdentity: null,
                 multiplayerConstraint,
                 new Dictionary<Player, CardModel[]>(ReferenceEqualityComparer.Instance),
-                new Dictionary<Player, NativeCharacterAttackPoolEntry>(
+                new Dictionary<Player, NativeCharacterPoolEntry>(
                     ReferenceEqualityComparer.Instance));
         }
 
         Dictionary<Player, CardModel[]> eligibleByPlayer =
             new(players.Count, ReferenceEqualityComparer.Instance);
-        Dictionary<Player, NativeCharacterAttackPoolEntry> eligibleCharacterAttacksByPlayer =
+        Dictionary<Player, NativeCharacterPoolEntry> eligibleCharacterPoolsByPlayer =
             new(players.Count, ReferenceEqualityComparer.Instance);
         foreach (Player player in players)
         {
@@ -74,12 +75,12 @@ internal sealed class RootCombatCardGenerationPoolSnapshot
                 player.GetUnlockedCards(colorlessPool, multiplayerConstraint)
                     .FilterForCombatAndPlayerCount(multiplayerConstraint)
                     .ToArray());
-            if (TryCaptureNativeCharacterAttackPool(
+            if (TryCaptureNativeCharacterPool(
                     player,
                     multiplayerConstraint,
-                    out NativeCharacterAttackPoolEntry characterAttacks))
+                    out NativeCharacterPoolEntry characterPool))
             {
-                eligibleCharacterAttacksByPlayer.Add(player, characterAttacks);
+                eligibleCharacterPoolsByPlayer.Add(player, characterPool);
             }
         }
 
@@ -88,7 +89,7 @@ internal sealed class RootCombatCardGenerationPoolSnapshot
             allCards,
             multiplayerConstraint,
             eligibleByPlayer,
-            eligibleCharacterAttacksByPlayer);
+            eligibleCharacterPoolsByPlayer);
     }
 
     public bool TryGetEligibleCards(
@@ -112,39 +113,66 @@ internal sealed class RootCombatCardGenerationPoolSnapshot
         return false;
     }
 
+    public bool TryGetEligibleCharacterCards(
+        Player player,
+        CardPoolModel cardPool,
+        CardMultiplayerConstraint multiplayerConstraint,
+        out IReadOnlyList<CardModel> cards)
+    {
+        if (TryGetNativeCharacterEntry(player, cardPool, multiplayerConstraint, out var entry))
+        {
+            cards = entry.EligibleCards;
+            return true;
+        }
+        cards = [];
+        return false;
+    }
+
     public bool TryGetEligibleCharacterAttackCards(
         Player player,
         CardPoolModel cardPool,
         CardMultiplayerConstraint multiplayerConstraint,
         out IReadOnlyList<CardModel> cards)
     {
+        if (TryGetNativeCharacterEntry(player, cardPool, multiplayerConstraint, out var entry))
+        {
+            cards = entry.EligibleAttacks;
+            return true;
+        }
+        cards = [];
+        return false;
+    }
+
+    private bool TryGetNativeCharacterEntry(
+        Player player,
+        CardPoolModel cardPool,
+        CardMultiplayerConstraint multiplayerConstraint,
+        out NativeCharacterPoolEntry entry)
+    {
         if (multiplayerConstraint == _multiplayerConstraint
-            && _eligibleCharacterAttacksByPlayer.TryGetValue(
-                player,
-                out NativeCharacterAttackPoolEntry? entry)
-            && ReferenceEquals(player.Character, entry.CharacterIdentity)
-            && ReferenceEquals(cardPool, entry.Pool)
-            && ReferenceEquals(player.Character.CardPool, entry.Pool)
+            && _eligibleCharacterPoolsByPlayer.TryGetValue(player, out var captured)
+            && ReferenceEquals(player.Character, captured.CharacterIdentity)
+            && ReferenceEquals(cardPool, captured.Pool)
+            && ReferenceEquals(player.Character.CardPool, captured.Pool)
             && !player.Character.IsMutable
             && player.Character.GetType().Assembly == NativeModelAssembly
             && !cardPool.IsMutable
             && !cardPool.IsMock
             && cardPool.GetType().Assembly == NativeModelAssembly
             && ReferenceEquals(cardPool, ModelDb.GetById<CardPoolModel>(cardPool.Id))
-            && ReferenceEquals(cardPool.AllCards, entry.AllCardsIdentity))
+            && ReferenceEquals(cardPool.AllCards, captured.AllCardsIdentity))
         {
-            cards = entry.EligibleCards;
+            entry = captured;
             return true;
         }
-
-        cards = [];
+        entry = null!;
         return false;
     }
 
-    private static bool TryCaptureNativeCharacterAttackPool(
+    private static bool TryCaptureNativeCharacterPool(
         Player player,
         CardMultiplayerConstraint multiplayerConstraint,
-        out NativeCharacterAttackPoolEntry entry)
+        out NativeCharacterPoolEntry entry)
     {
         entry = null!;
         CardPoolModel cardPool = player.Character.CardPool;
@@ -155,11 +183,11 @@ internal sealed class RootCombatCardGenerationPoolSnapshot
             return false;
         }
 
-        // Preserve Metamorphosis' source order exactly: unlock filtering, then Attack,
-        // then the upstream in-combat and player-count predicates.
+        // Freeze the complete native combat pool once. Combat eligibility already
+        // excludes Basic/Ancient/Event, including CallOfTheVoid's source exclusions.
+        // Attack selection is a stable projection of these same canonical models.
         CardModel[] eligibleCards = player
             .GetUnlockedCards(cardPool, multiplayerConstraint)
-            .Where(static card => card.Type == CardType.Attack)
             .FilterForCombatAndPlayerCount(multiplayerConstraint)
             .ToArray();
         HashSet<CardModel> canonicalPoolCards = new(
@@ -173,11 +201,12 @@ internal sealed class RootCombatCardGenerationPoolSnapshot
             return false;
         }
 
-        entry = new NativeCharacterAttackPoolEntry(
+        entry = new NativeCharacterPoolEntry(
             player.Character,
             cardPool,
             allCards,
-            eligibleCards);
+            eligibleCards,
+            eligibleCards.Where(static card => card.Type == CardType.Attack).ToArray());
         return true;
     }
 

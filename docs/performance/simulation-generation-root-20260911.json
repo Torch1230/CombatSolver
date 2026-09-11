@@ -1,0 +1,245 @@
+{
+  "status": "Passed",
+  "scope": "Full canonical character generation pool captured at the root; no compact admission expansion.",
+  "validation": [
+    {
+      "runId": "33c4d4282bfc45b1ad7867af6457c0b4",
+      "scenarioId": "COMPACT-GENERATION-CLOSURE-AUDIT",
+      "status": "Passed",
+      "elapsedMilliseconds": 23891.8351,
+      "completedChecks": [
+        "CompactGenerationClosureAudit:Original38Cards19InjectedRelics2Potions:ActualRelics20:CompleteOrderedPools:24NativeLegacyCachedSamples:FiveFieldRng:FullPoolForkOwnership:InvalidPoolsRejected:GeneratedCardIsolation:AttackAndColorlessRegression:ActualUnchanged:FullRootExplicitlyRejected"
+      ],
+      "error": null
+    },
+    {
+      "runId": "62c11688c6544026b02eeca6ed373ef6",
+      "scenarioId": "CALL-OF-THE-VOID-GENERATION-ROOT",
+      "status": "Passed",
+      "elapsedMilliseconds": 3822.4291,
+      "completedChecks": [
+        "CallOfTheVoidGenerationRoot:ThreeNativeBatches:TwelveEtherealCards:HandOverflow:FullSnapshotAndContinuation:Fork:FrozenRootAfterNativeGeneration"
+      ],
+      "error": null
+    }
+  ],
+  "poolAudit": {
+    "actualRelicCount": 20,
+    "injectedRelicCount": 19,
+    "rootAdmitted": false,
+    "rejection": "Compact combat has unrepresented potion effects.",
+    "pools": [
+      {
+        "Name": "CallOfTheVoid",
+        "unlockedSourceCount": 80,
+        "eligibleCount": 78,
+        "exactTypeCount": 19,
+        "samples": [
+          {
+            "requested": 1,
+            "ids": [
+              "VEILPIERCER"
+            ],
+            "counterDelta": 77
+          },
+          {
+            "requested": 1,
+            "ids": [
+              "DANSE_MACABRE"
+            ],
+            "counterDelta": 77
+          },
+          {
+            "requested": 1,
+            "ids": [
+              "GRAVE_WARDEN"
+            ],
+            "counterDelta": 77
+          },
+          {
+            "requested": 1,
+            "ids": [
+              "UNDEATH"
+            ],
+            "counterDelta": 77
+          },
+          {
+            "requested": 1,
+            "ids": [
+              "INVOKE"
+            ],
+            "counterDelta": 77
+          },
+          {
+            "requested": 1,
+            "ids": [
+              "SENTRY_MODE"
+            ],
+            "counterDelta": 77
+          },
+          {
+            "requested": 1,
+            "ids": [
+              "COUNTDOWN"
+            ],
+            "counterDelta": 77
+          },
+          {
+            "requested": 1,
+            "ids": [
+              "BORROWED_TIME"
+            ],
+            "counterDelta": 77
+          },
+          {
+            "requested": 1,
+            "ids": [
+              "REAP"
+            ],
+            "counterDelta": 77
+          },
+          {
+            "requested": 1,
+            "ids": [
+              "PULL_AGGRO"
+            ],
+            "counterDelta": 77
+          },
+          {
+            "requested": 1,
+            "ids": [
+              "BORROWED_TIME"
+            ],
+            "counterDelta": 77
+          },
+          {
+            "requested": 1,
+            "ids": [
+              "NEUROSURGE"
+            ],
+            "counterDelta": 77
+          }
+        ]
+      },
+      {
+        "Name": "ColorlessPotion",
+        "unlockedSourceCount": 53,
+        "eligibleCount": 50,
+        "exactTypeCount": 3,
+        "samples": [
+          {
+            "requested": 3,
+            "ids": [
+              "JACK_OF_ALL_TRADES",
+              "PANACHE",
+              "MAYHEM"
+            ],
+            "counterDelta": 49
+          },
+          {
+            "requested": 3,
+            "ids": [
+              "CATASTROPHE",
+              "SPLASH",
+              "MIND_BLAST"
+            ],
+            "counterDelta": 49
+          },
+          {
+            "requested": 3,
+            "ids": [
+              "JACK_OF_ALL_TRADES",
+              "THINKING_AHEAD",
+              "FINESSE"
+            ],
+            "counterDelta": 49
+          },
+          {
+            "requested": 3,
+            "ids": [
+              "THRUMMING_HATCHET",
+              "AUTOMATION",
+              "GOLD_AXE"
+            ],
+            "counterDelta": 49
+          },
+          {
+            "requested": 3,
+            "ids": [
+              "ENTROPY",
+              "BOLAS",
+              "PROLONG"
+            ],
+            "counterDelta": 49
+          },
+          {
+            "requested": 3,
+            "ids": [
+              "BOLAS",
+              "SPLASH",
+              "CALAMITY"
+            ],
+            "counterDelta": 49
+          },
+          {
+            "requested": 3,
+            "ids": [
+              "FISTICUFFS",
+              "ENTROPY",
+              "FLASH_OF_STEEL"
+            ],
+            "counterDelta": 49
+          },
+          {
+            "requested": 3,
+            "ids": [
+              "STRATAGEM",
+              "MIND_BLAST",
+              "OMNISLICE"
+            ],
+            "counterDelta": 49
+          },
+          {
+            "requested": 3,
+            "ids": [
+              "OMNISLICE",
+              "THE_GAMBIT",
+              "SALVO"
+            ],
+            "counterDelta": 49
+          },
+          {
+            "requested": 3,
+            "ids": [
+              "NOSTALGIA",
+              "THRUMMING_HATCHET",
+              "CALAMITY"
+            ],
+            "counterDelta": 49
+          },
+          {
+            "requested": 3,
+            "ids": [
+              "EQUILIBRIUM",
+              "SHOCKWAVE",
+              "OMNISLICE"
+            ],
+            "counterDelta": 49
+          },
+          {
+            "requested": 3,
+            "ids": [
+              "PROLONG",
+              "THE_GAMBIT",
+              "ULTIMATE_STRIKE"
+            ],
+            "counterDelta": 49
+          }
+        ]
+      }
+    ]
+  },
+  "build": "Release v3, 0 warnings and 0 errors",
+  "boundaries": "Linux Passed, 94 Search files; equivalent PowerShell rules updated but not run.",
+  "performanceMeasured": false
+}

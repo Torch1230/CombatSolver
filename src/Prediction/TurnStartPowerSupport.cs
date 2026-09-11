@@ -161,9 +161,12 @@ internal static class TurnStartPowerSupport
             switch (power)
             {
                 case CallOfTheVoidPower:
-                    options = player.Character.CardPool
-                        .GetUnlockedCards(player.UnlockState, combat.CardMultiplayerConstraint)
-                        .Where(card => card.Rarity is not (CardRarity.Basic or CardRarity.Ancient));
+                    options = simulator.TryGetRootEligibleCharacterCardsForCombat(
+                        player, combat.CardMultiplayerConstraint, out var rootOptions)
+                        ? rootOptions
+                        : player.Character.CardPool
+                            .GetUnlockedCards(player.UnlockState, combat.CardMultiplayerConstraint)
+                            .Where(card => card.Rarity is not (CardRarity.Basic or CardRarity.Ancient));
                     ethereal = true;
                     generateOneAtATime = true;
                     break;

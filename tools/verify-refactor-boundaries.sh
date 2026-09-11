@@ -705,6 +705,11 @@ src/Prediction/RelicPredictionStateSupport.cs	CaptureRootState(
 src/Prediction/PowerPredictionStateSupport.cs	HardenedShellPredictionState(original)
 src/Search/SimulatedCombatState.cs	PowerPredictionStateSupport.CaptureRootState(simulator, mutable, power)
 src/Testing/UnattendedTestRunner.CombatRootSnapshot.cs	workerLiveConstructorRejected
+src/Search/SimulatedCombatState.cs	_rootCardGenerationPools = source._rootCardGenerationPools;
+src/Search/RootCombatCardGenerationPoolSnapshot.cs	TryGetEligibleCharacterCards(
+src/Search/RootCombatCardGenerationPoolSnapshot.cs	ReferenceEquals(cardPool.AllCards, captured.AllCardsIdentity)
+src/Engine/Common/PredictionForking.cs	TryGetRootEligibleCharacterCards(
+src/Prediction/TurnStartPowerSupport.cs	options = simulator.TryGetRootEligibleCharacterCardsForCombat(
 src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs	ICombatPredictionRootMaterializable materializable
 src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs	public CombatTerminalStamp? TerminalStamp { get; private set; }
 src/Search/CombatPlan.cs	public CombatTerminalStamp? TerminalStamp { get; } = terminalStamp;

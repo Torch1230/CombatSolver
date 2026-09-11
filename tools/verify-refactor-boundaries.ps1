@@ -707,6 +707,26 @@ $rootModelBoundaryChecks = @(
         Text = "workerLiveConstructorRejected"
     },
     @{
+        Path = Join-Path $repositoryRoot "src/Search/SimulatedCombatState.cs"
+        Text = "_rootCardGenerationPools = source._rootCardGenerationPools;"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src/Search/RootCombatCardGenerationPoolSnapshot.cs"
+        Text = "TryGetEligibleCharacterCards("
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src/Search/RootCombatCardGenerationPoolSnapshot.cs"
+        Text = "ReferenceEquals(cardPool.AllCards, captured.AllCardsIdentity)"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src/Engine/Common/PredictionForking.cs"
+        Text = "TryGetRootEligibleCharacterCards("
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src/Prediction/TurnStartPowerSupport.cs"
+        Text = "options = simulator.TryGetRootEligibleCharacterCardsForCombat("
+    },
+    @{
         Path = Join-Path $repositoryRoot "src\Engine\InCombat\Simulation\CombatPredictionSimulator.cs"
         Text = "ICombatPredictionRootMaterializable materializable"
     },

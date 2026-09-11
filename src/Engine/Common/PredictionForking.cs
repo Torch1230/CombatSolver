@@ -40,6 +40,12 @@ internal interface ICombatPredictionRunSnapshot
 
 internal interface ICombatPredictionCardGenerationPoolSnapshot
 {
+    bool TryGetRootEligibleCharacterCards(
+        MegaCrit.Sts2.Core.Entities.Players.Player player,
+        MegaCrit.Sts2.Core.Models.CardPoolModel cardPool,
+        MegaCrit.Sts2.Core.Entities.Cards.CardMultiplayerConstraint multiplayerConstraint,
+        out IReadOnlyList<MegaCrit.Sts2.Core.Models.CardModel> cards);
+
     bool TryGetRootEligibleCards(
         MegaCrit.Sts2.Core.Entities.Players.Player player,
         MegaCrit.Sts2.Core.Models.CardPoolModel cardPool,
