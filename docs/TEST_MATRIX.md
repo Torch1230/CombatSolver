@@ -4,8 +4,10 @@
 
 - `AdaptedOnPlayChecks`：通过 35 项合同。使用当前游戏 Harmony 2.4.2 在独立托管进程真实安装／卸载补丁；原生替换与前后缀组合分别和生产登记分派等价，验证完整组合、类别、owner、重载、优先级、排序约束、未知来源、禁止 Mod、重复登记、迟到登记、冻结选择、配置变化及 async MoveNext 拒绝。补丁工厂在 Harmony 排序调用前拒绝，断言工厂没有执行。
 - `--empty`：通过 2 项，无登记时不创建配置字段或选择表。运行命令见 [工具说明](../tools/AdaptedOnPlayChecks/README.md)。
-- 实体、trace 与模拟器外壳是测试替身；真实战斗、完整 simulator Fork、控制器采用／缓存／部署以及 T1→T2 差分未执行。配置变化证明标记失配，Runtime 的接线通过结构门禁约束，不冒充实机部署证明。
-- Release 编译使用游戏 0.111.0 与对应 RitsuLib，不部署到游戏目录，不运行性能 A/B。
+- 上述独立合同使用实体、trace 与模拟器外壳替身。后续隔离 macOS 可见游戏 0.111.0／RitsuLib 0.5.20 使用三个适配 PR 的组合构建：`ADAPTED-ONPLAY-INTEGRATION-CARD` / `d6c3f0c4844d4dea9130b14e55c6cca2` Passed，真实防御 OnPlay 替换原生执行恰好一次，完整快照、增量回放、Fork 与 T1→T2 一致；额外补丁改变 continuation、旧根保持冻结、新根拒绝未登记组合。
+- `ADAPTED-ONPLAY-INTEGRATION-STALE` / `98853fd6e005484ca0aad1f44cc0e652` Passed：真正搜索产出缓存路线后，额外补丁使 `SolverController.CanExecuteCurrentTurn` 为 false，移除后恢复 true。验证了执行资格门，不宣称执行中热换补丁安全。
+- `ADAPTED-ONPLAY-INTEGRATION-REUSE` / `a27cddaaa6494f86bf568dd999a1792b` Passed，第 2 回合精确续用、计划外重算 0。该次组合工作区额外启用模型状态夹具，并让敌我都有晚期伤害；三个独立 PR 合并后共同验证，不是三个独立发行 DLL 分别重测的结果。独立 PR 的该场景只登记 OnPlay 夹具。输入见 `coverage/unattended/adapted-*-integration.json`；注册用例每次须从新游戏进程运行。
+- Release 编译使用游戏 0.111.0 与对应 RitsuLib，两条修改测试代码的 PR 分支及组合构建均零警告／零错误。没有改动正常游戏安装或存档，没有性能 A/B，未覆盖完整长局或任意第三方 Mod。
 
 ## 0.36.3：策略摘要
 

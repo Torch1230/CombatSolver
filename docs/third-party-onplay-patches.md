@@ -35,4 +35,6 @@ live continuation 在主线程读取当前所有 CardModel.OnPlay 补丁的配�
 
 `tools/AdaptedOnPlayChecks` 使用游戏自带 Harmony，在独立 .NET 进程里真实安装／卸载补丁，比较中性托管模型的原生替换、前后缀组合与生产镜像分派。游戏实体和模拟器外壳由替身提供；该证明不等于真实战斗、跨回合续用或完整部署通过。
 
+游戏级夹具另外覆盖原生 OnPlay 完整替换、完整模拟器 Fork／增量回放、T1→T2 状态对账、控制器缓存执行资格和最早跨回合续用，输入在 `coverage/unattended/adapted-*-integration.json`，运行证据见测试矩阵。注册与测试补丁只在专用 scenario 中启用，必须使用隔离的新游戏进程；不在正常存档或玩家正在进行的战斗里运行。
+
 主线程配置核对成本随补丁数量和登记数量增长；每次 live stamp 会重新读取，不缓存可能过期的 Harmony 表。worker 增加一次类型查询，命中后沿现有精确 registry 分派。未做性能 A/B 或真实游戏性能结论。
