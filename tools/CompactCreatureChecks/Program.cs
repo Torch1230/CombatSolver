@@ -9,6 +9,7 @@ PowerExpressionChecks.Run();
 DeferredPowerChecks.Run();
 TemporaryStrengthChecks.Run();
 GeneratedCardChecks.Run();
+GenerationPoolChecks.Run();
 RandomCostChecks.Run();
 ArtifactChecks.Run();
 HandEndChecks.Run();

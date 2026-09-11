@@ -89,4 +89,35 @@ internal sealed partial class ResumableDiscardProgram
             Emit(EventKind.Generated, created, position, target: creator, flags: (int)destination);
         }
     }
+
+    // Native pool generation selects every card with a full-pool shuffle of the frozen
+    // candidates on this workspace's exclusive scratch before the whole batch enters a
+    // pile; ethereal is part of the template.
+    private void GenerateFromPool(int pool, int count)
+    {
+        int first = CardCount;
+        for (int index = 0; index < count; index++)
+        {
+            int template = _generation!.SelectOne(State, pool, _generationScratch!.AsSpan(0, _generation.PoolLength(pool)));
+            if (template < 0) return; // Native skips generation entirely for an empty pool.
+            Card definition = _definitions[template];
+            _cardInstances.Append(State, [new CardInstanceValue(template, definition.CapturedX,
+                EnchantmentDisabled: definition.EnchantmentInitiallyDisabled).Data]);
+        }
+        for (int created = first; created < CardCount; created++)
+        {
+            if (Ending)
+            {
+                _piles[(int)Pile.Unplaced].Append(State, [created]);
+                Emit(EventKind.Generated, created, -1, target: 0, flags: (int)Pile.Unplaced);
+                continue;
+            }
+            // This placement never targets the random draw pile, so an overflowing hand
+            // appends at the end of its destination exactly like the template path.
+            Pile destination = Count(Pile.Hand) < 10 ? Pile.Hand : Pile.Discard;
+            int position = Count(destination);
+            _piles[(int)destination].Append(State, [created]);
+            Emit(EventKind.Generated, created, position, target: 0, flags: (int)destination);
+        }
+    }
 }

@@ -5,7 +5,8 @@ internal enum CardInstructionKind
     AttackTarget, GainBlock, Draw, Discard, ApplyBasicPower, SkipIfDrawnCardNotType,
     TriggerBasicPower, DiscardHandAndDraw, SkipIfTargetLacksPower, GainBlockFromPowerSum,
     GainBlockAndApplyPower, ApplyTemporaryStrengthLoss, GenerateCards, GainEnergy, SummonPet, PetAttackTarget, ExhaustFromDraw,
-    LoseEnemyHp, RetrieveFromDiscard, ApplyPowerAtLeastCurrent, ApplyKeywordFromHand, DrawOnce, AddPanachePower
+    LoseEnemyHp, RetrieveFromDiscard, ApplyPowerAtLeastCurrent, ApplyKeywordFromHand, DrawOnce, AddPanachePower,
+    GenerateFromPool
 }
 internal enum CardInstructionTarget { Owner, ChosenEnemy, AllEnemies }
 internal enum CardCategory { Other, Attack, Skill, Power, Status }
@@ -15,7 +16,8 @@ internal readonly record struct CardInstruction(CardInstructionKind Kind, int Am
     BasicPowerKind Power = BasicPowerKind.Strength, CardInstructionTarget Target = CardInstructionTarget.Owner,
     int EnergyXMultiplier = 0, CardCategory RequiredCategory = CardCategory.Skill, int Multiplier = 0, int CardTemplate = -1,
     CardGenerationPlacement Placement = CardGenerationPlacement.Hand, bool RepeatForEnergyX = false,
-    BasicPowerKind? AttackMultiplierPower = null, CardKeywordFlags Keyword = CardKeywordFlags.None);
+    BasicPowerKind? AttackMultiplierPower = null, CardKeywordFlags Keyword = CardKeywordFlags.None,
+    int GenerationPool = -1);
 
 /// <summary>
 /// Immutable, fully admitted OnPlay instructions. Execution position belongs to the value
@@ -32,6 +34,7 @@ internal sealed class CardEffectProgram
     internal bool RequiresPowers { get; }
     internal bool RequiresEnergyX { get; }
     internal bool GeneratesCards { get; }
+    internal bool RequiresGenerationRng { get; }
     internal bool ExhaustsCards { get; }
     internal bool RequiresPet { get; }
     internal bool ChangesKeywords { get; }
@@ -55,6 +58,8 @@ internal sealed class CardEffectProgram
                 throw new ArgumentException("Compact instruction amount is outside the admitted range.");
             if (instruction.Kind != CardInstructionKind.GenerateCards && (instruction.CardTemplate != -1 || instruction.Placement != CardGenerationPlacement.Hand))
                 throw new ArgumentException("Only generation instructions can reference card templates.");
+            if (instruction.GenerationPool != -1 && instruction.Kind != CardInstructionKind.GenerateFromPool)
+                throw new ArgumentException("Only pool generation instructions can reference a generation pool.");
             if (instruction.RepeatForEnergyX && instruction.Kind != CardInstructionKind.SummonPet)
                 throw new ArgumentException("Only summoning admits repeated X commands.");
             if (instruction.Keyword != CardKeywordFlags.None && instruction.Kind != CardInstructionKind.ApplyKeywordFromHand)
@@ -77,6 +82,13 @@ internal sealed class CardEffectProgram
                         || !Enum.IsDefined(instruction.Placement) || instruction.EnergyXMultiplier < 0)
                         throw new NotSupportedException("Generation requires an admitted owner card template.");
                     GeneratesCards = true;
+                    break;
+                case CardInstructionKind.GenerateFromPool:
+                    if (instruction.GenerationPool < 0 || instruction.Target != CardInstructionTarget.Owner
+                        || instruction.Amount < 0)
+                        throw new NotSupportedException("Pool generation requires an admitted pool, owner target and count.");
+                    GeneratesCards = true;
+                    RequiresGenerationRng = true;
                     break;
                 case CardInstructionKind.SummonPet:
                     if (instruction.Target != CardInstructionTarget.Owner)

@@ -1,4 +1,12 @@
 {
+  "VALUE-GENERATION-METERING-20260911": {
+    "status": "Passed",
+    "level": "StandaloneMeteringAttributionAndCompactGenerationPoolValueLayer",
+    "procedure": "独立纯.NET计量程序引用真实ValueRng.cs，全模式5.5M次以上调用；审计尾部改为5块×5000次；紧凑池生成值层与四个场景重跑。",
+    "expected": "ValueRng原语无当前线程分配且RNG消耗精确；生产准入不扩大，完整亡灵根继续显式拒绝。",
+    "observed": "1c9d47f348ea4473ae29037b2601913b, 3ca8ef6137284d3dbffea37dce5100dc, a83926d065f247dc862bf1c1ea8c1304 COMPACT-GENERATION-CLOSURE-AUDIT Passed; b715d6a7100c4164b27c8c5bf7932152 COMPACT-CALL-OF-THE-VOID-GENERATION Passed; 68c51d68693b4e79a1ea03da531e4f2e COMPACT-PAGESTORM-SEARCH Passed. 原失败 3c479d36a88f4889b9d1f78f9d0c9251 归因为Godot进程内测试线程一次性宿主开销。",
+    "evidence": "docs/performance/simulation-generation-metering-20260911.md；docs/performance/simulation-generation-metering-20260911.json。"
+  },
   "VALUE-GENERATION-SELECTION-WIP-20260911": {
     "status": "Failed",
     "level": "IncompleteNativeValueSelectionAndAllocationContract",

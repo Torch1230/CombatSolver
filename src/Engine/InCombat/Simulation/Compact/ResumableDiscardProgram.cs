@@ -56,6 +56,10 @@ internal sealed partial class ResumableDiscardProgram
     private readonly ReversibleValueBuffer _cardInstances;
     private readonly ReversibleValueBuffer _events;
     private readonly RandomDrawCostLayout? _drawCosts;
+    private readonly CardGenerationPools? _generation;
+    // Every workspace owns its whole-pool selection scratch; the shared pool layout
+    // holds only frozen candidates and the RNG slot offsets.
+    private readonly int[]? _generationScratch;
     private readonly ReversibleValueBuffer? _drawFrames;
     private readonly int _pagestormIndex;
     internal ReversibleValueState State { get; }
@@ -89,6 +93,8 @@ internal sealed partial class ResumableDiscardProgram
     internal int CostModifierCount(int card) => Definition(card).DrawCost == null ? 0 : _drawCosts!.Count(State, card);
     internal int CostModifierAt(int card, int index) => _drawCosts!.At(State, card, index);
     internal ValueRng? EnergyCostRng => _drawCosts?.Rng(State);
+    internal ValueRng CardGenerationRng => (_generation
+        ?? throw new InvalidOperationException("No captured generation pools.")).Rng(State);
     internal Pile ResultPile(int card) => Definition(card).ResultPile;
     internal bool CardRemoved(int card) => Contains(Pile.Removed, card);
     internal bool CardUnplaced(int card) => Contains(Pile.Unplaced, card);
@@ -142,7 +148,8 @@ internal sealed partial class ResumableDiscardProgram
     internal ResumableDiscardProgram(Card[] cards, IReadOnlyList<int>[] piles, int energy, int block, int discardBlock,
         ValueRng shuffleRng = default, int[]? comparisons = null, int stratagem = 0, int shuffleBlock = 0,
         bool shuffleBlockFirst = false, CreatureVitals[]? creatures = null, BasicPowerDefinition[]? powers = null, Card[]? generatedCards = null,
-        ValueRng? energyCostRng = null, bool handEndAdmitted = false, MonsterEffectProgram[]? monsterMoves = null, bool powerPhasesAdmitted = false, DeterministicMonsterAi? monsterAi = null, CompactRoundRoot? round = null, int pet = -1, int attackCardStarts = 0, PanachePowerValues[]? panache = null)
+        ValueRng? energyCostRng = null, int[][]? generationPools = null, ValueRng? cardGenerationRng = null,
+        bool handEndAdmitted = false, MonsterEffectProgram[]? monsterMoves = null, bool powerPhasesAdmitted = false, DeterministicMonsterAi? monsterAi = null, CompactRoundRoot? round = null, int pet = -1, int attackCardStarts = 0, PanachePowerValues[]? panache = null)
     {
         if (attackCardStarts < 0) throw new ArgumentOutOfRangeException(nameof(attackCardStarts));
         Card[] definitions = [.. cards, .. generatedCards ?? []];
@@ -182,6 +189,8 @@ internal sealed partial class ResumableDiscardProgram
             var effect = definition.Effects[instruction];
             if (effect.Kind == CardInstructionKind.GenerateCards && (effect.CardTemplate < cards.Length || effect.CardTemplate >= definitions.Length))
                 throw new NotSupportedException("Generation references a template outside the captured closure.");
+            if (effect.Kind == CardInstructionKind.GenerateFromPool && !AdmitsGenerationPool(generationPools, effect.GenerationPool, definitions))
+                throw new NotSupportedException("Pool generation references a template outside the captured closure.");
             if (effect.Placement == CardGenerationPlacement.RandomDraw && comparisons == null)
                 throw new NotSupportedException("Random generation requires captured ordering and random state.");
         }
@@ -230,6 +239,11 @@ internal sealed partial class ResumableDiscardProgram
         _round = round is { } roundRoot ? new(State, roundRoot) : null;
         _drawCosts = cards.Any(card => card.DrawCost != null) ? new(State, cards.Select(card => card.DrawCost).ToArray(),
             energyCostRng ?? throw new NotSupportedException("Random draw costs require a captured RNG stream.")) : null;
+        // Pool selection creates unattributed instances, so every captured candidate
+        // carries the same restrictions as an explicitly generated template.
+        _generation = generationPools == null ? null : new(State, generationPools,
+            cardGenerationRng ?? throw new NotSupportedException("Pool generation requires a captured RNG stream."));
+        _generationScratch = _generation == null ? null : new int[_generation.MaxPoolLength];
         State.Write(EnergySlot, energy);
         State.Write(AttackCardStartsSlot, attackCardStarts);
         if (_combat == null) State.Write(BlockSlot, block);
@@ -239,6 +253,18 @@ internal sealed partial class ResumableDiscardProgram
             [new CardInstanceValue(card, cards[card].CapturedX, EnchantmentDisabled: cards[card].EnchantmentInitiallyDisabled).Data]);
         for (int p = 0; p < piles.Length; p++)
             foreach (int card in piles[p]) _piles[p].Append(State, [card]);
+    }
+
+    private static bool AdmitsGenerationPool(int[][]? pools, int pool, Card[] definitions)
+    {
+        if (pools == null || (uint)pool >= (uint)pools.Length || pools[pool] == null) return false;
+        foreach (int template in pools[pool])
+        {
+            if ((uint)template >= (uint)definitions.Length) return false;
+            Card definition = definitions[template];
+            if (definition.Sly || definition.SingleTurnSly || definition.DrawCost != null) return false;
+        }
+        return true;
     }
 
     private static void ValidateBlockReturns(Card[] cards, BasicPowerDefinition[]? powers)
@@ -270,6 +296,7 @@ internal sealed partial class ResumableDiscardProgram
     private ResumableDiscardProgram(Card[] cards, int rootCardCount, int discardBlock, int stratagem, int shuffleBlock,
         bool shuffleBlockFirst, CardComparer? cardComparer, CreatureAttackLayout? combat, BasicPowerLayout? powers,
         ReversibleValueBuffer[] piles, ReversibleValueBuffer cardInstances, ReversibleValueBuffer events, RandomDrawCostLayout? drawCosts,
+        CardGenerationPools? generation,
         bool handEndAdmitted, MonsterEffectProgram[]? monsterMoves, bool powerPhasesAdmitted, DeterministicMonsterAiLayout? monsterAi, CompactRoundLayout? round, PanachePowerLayout? panache, ReversibleValueBuffer? drawFrames, ReversibleValueState state)
     {
         _definitions = cards;
@@ -289,6 +316,8 @@ internal sealed partial class ResumableDiscardProgram
         _cardInstances = cardInstances;
         _events = events;
         _drawCosts = drawCosts;
+        _generation = generation;
+        _generationScratch = generation == null ? null : new int[generation.MaxPoolLength];
         _combat = combat;
         _powers = powers;
         _pagestormIndex = powers?.FindOrDefault(0, BasicPowerKind.Pagestorm) ?? -1;
@@ -317,6 +346,7 @@ internal sealed partial class ResumableDiscardProgram
         private readonly ReversibleValueBuffer[] _piles;
         private readonly ReversibleValueBuffer _cardInstances, _events;
         private readonly RandomDrawCostLayout? _drawCosts;
+        private readonly CardGenerationPools? _generation;
         private readonly ReversibleValueBuffer? _drawFrames;
         internal Candidate(ResumableDiscardProgram source)
         {
@@ -340,11 +370,12 @@ internal sealed partial class ResumableDiscardProgram
             _panache = source._panache;
             _events = source._events;
             _drawCosts = source._drawCosts;
+            _generation = source._generation;
             _drawFrames = source._drawFrames;
         }
         internal int PayloadBytes => _values.PayloadBytes;
         internal ResumableDiscardProgram Open() => new(_definitions, _rootCardCount, _discardBlock, _stratagem, _shuffleBlock,
-            _shuffleBlockFirst, _cardComparer, _combat, _powers, _piles, _cardInstances, _events, _drawCosts, _handEndAdmitted, _monsterMoves, _powerPhasesAdmitted, _monsterAi, _round, _panache, _drawFrames, _values.CreateWorkspace());
+            _shuffleBlockFirst, _cardComparer, _combat, _powers, _piles, _cardInstances, _events, _drawCosts, _generation, _handEndAdmitted, _monsterMoves, _powerPhasesAdmitted, _monsterAi, _round, _panache, _drawFrames, _values.CreateWorkspace());
         internal void RestoreInto(ResumableDiscardProgram workspace) => workspace.State.Restore(_values);
     }
 
@@ -531,6 +562,9 @@ internal sealed partial class ResumableDiscardProgram
             case CardInstructionKind.GenerateCards:
                 GenerateCards(instruction.CardTemplate, checked(instruction.Amount + instruction.EnergyXMultiplier * Read(Frame + EnergyValueOffset)),
                     creator: 0, instruction.Placement);
+                break;
+            case CardInstructionKind.GenerateFromPool:
+                GenerateFromPool(instruction.GenerationPool, instruction.Amount);
                 break;
             case CardInstructionKind.SummonPet:
                 int repeats = instruction.RepeatForEnergyX ? Read(Frame + EnergyValueOffset) : 1;

@@ -3113,4 +3113,12 @@ pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId MONSTER-MOVES-BA
 
 ## 值 RNG 的完整池选取（2026-09-11，未完成）
 
-`COMPACT-GENERATION-CLOSURE-AUDIT` 增加 78／50 个完整池的原生／旧链／缓存／值 RNG 四方对照；44 个边界组合覆盖空／单元素／双元素／完整池及负、零和超量请求，检查 scratch 尾部、容量不足拒绝、两池各 5,000 次复用选择的当前线程分配和完整 RNG 消耗。本轮 `3c479d36a88f4889b9d1f78f9d0c9251` Failed（23.945 秒），在首个池完成选择对照后，因分配／RNG 合并断言打印 160 字节而退出；没有完成第二个池和全部后续检查，分配归因待查。Release v2 和 Linux 结构门禁通过不代表该行为测试通过；保持失败断言及原生比较。
+`COMPACT-GENERATION-CLOSURE-AUDIT` 增加 78／50 个完整池的原生／旧链／缓存／值 RNG 四方对照；44 个边界组合覆盖空／单元素／双元素／完整池及负、零和超量请求，检查 scratch 尾部、容量不足拒绝、两池各 5,000 次复用选择的当前线程分配和完整 RNG 消耗。本轮 `3c479d36a88f4889b9d1f78f9d0c9251` Failed（23.945 秒），在首个池完成选择对照后，因分配／RNG 合并断言打印 160 字节而退出；没有完成第二个池和全部后续检查，分配归因待查。Release v2 和 Linux 结构门禁通过不代表该行为测试通过；保持失败断言及原生比较。后续归因已完成：160 字节为 Godot 进程内测试线程的一次性宿主开销，不是 `ValueRng` 原语；该场景现以独立的 RNG 与零分配块断言通过（见[新文档](performance/simulation-generation-metering-20260911.md)）。
+
+## 生成池计量归因与紧凑生成执行（2026-09-11）
+
+`COMPACT-GENERATION-CLOSURE-AUDIT` 的尾部计量更新为 5 块 × 5000 次（每池共 25,000 次）复用选择：RNG 消耗对全部块精确断言 `5×5000×(pool−1)`，分配断言改为“至少一块精确为 0 字节”（`min==0`），RNG 与分配各自独立抛出不同消息，不再使用合并断言或容差阈值。artifact-v3 连续两次与 artifact-v4 各一次 Passed，runId `1c9d47f348ea4473ae29037b2601913b`（24.03 秒）、`3ca8ef6137284d3dbffea37dce5100dc`（3.44 秒，复用进程）与 `a83926d065f247dc862bf1c1ea8c1304`（3.49 秒）。
+
+`COMPACT-CALL-OF-THE-VOID-GENERATION` 复用 `COMPACT-GENERATION-CLOSURE-AUDIT` 的原始 NECROBINDER／AEONGLASS_BOSS 完整输入协议（38 牌、19 件遗物注入、保留初始遗物及两瓶药），注入 4 层 CallOfTheVoid 后执行三个批次；对照紧凑值层、旧 `TurnStartPowerSupport` 分支与原生 `BeforeHandDraw`，要求冻结池为 78 个候选。每批有序生成 ID 三方一致、五个 RNG 字段对齐、计数增量 308／616／924，12 张生成牌带虚无，第二批满手溢出转弃牌堆，逐实例 ID 递增且 `BORROWED_TIME` 跨批重复；撤销、确定性重放与实机后冻结根重放均验证。首跑通过：runId `b715d6a7100c4164b27c8c5bf7932152`（26.57 秒）。夹具沿用既有协议，120 秒上限、Instant，无新增双端字段。
+
+`COMPACT-PAGESTORM-SEARCH` 在最终 artifact-v4 上 Passed，runId `68c51d68693b4e79a1ea03da531e4f2e`（9.20 秒），确认值层改动未破坏搜索等价。[完整证据](performance/simulation-generation-metering-20260911.md)。

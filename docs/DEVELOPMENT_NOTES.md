@@ -2456,3 +2456,5 @@ Beam 中间排序与最终选择分离。稳健预设把 `1 HP` 约视为 `3` �
 串行／并行现在共用独立的动作准备职责，续用文本直接消费完整值读视图并沿用原编码。机甲完整输入的兼容图物化降至 0；单线程／8 worker 的全部逻辑结果及 44 步续用文本一致，本次 headless 约 2.06x／2.00x，进程分配约减半。旧后端含选牌药水的 250 节点 DOP1/DOP2、取消／失败排空和原生三组回合通过；最终完整跨域验收仍未完成。[证据](performance/simulation-search-backend-20260911.md)。
 
 完整根准入现在由 Runtime 主线程选择紧凑后端；初始准备、增量诊断、非空药水槽及未迁移域明确保留模型后端。250 节点 DOP1/DOP2、取消／失败排空及原始机甲整场自动部署通过：T8、损失 6 HP、0 药、0 计划外重算。正常 NoGC 首次搜索旧／紧凑为 7.209／7.164 秒，分配 5.654／2.976 GB；耗时收益尚未建立，不能沿用非 Runtime NoGC 的约两倍数字。亡灵完整闭包与最终交错测量继续进行。[证据](performance/simulation-runtime-backend-20260911.md)。
+
+值生成选择失败断言的 160 字节分配经独立纯 .NET 计量归因为宿主进程一次性开销：直接引用真实 `ValueRng.cs` 的 5.5M 次以上调用在全部模式与 JIT／GC 环境矩阵下均为 0 字节，原语本身不分配。审计尾部计量改为 5 块 × 5000 次，RNG 消耗对全部块精确断言，分配断言改为“至少一块精确为 0 字节”（`min==0`），两条断言独立并保留原失败基线。紧凑池生成值层落地 `CardGenerationPools` 与 `GenerateFromPool`：五字段 RNG 槽随 `ReversibleValueState` 撤销，工作区独占 scratch，冻结模板承担虚无，满手溢出转弃牌堆；原生差分 `COMPACT-CALL-OF-THE-VOID-GENERATION` 与搜索等价回归 `COMPACT-PAGESTORM-SEARCH` 通过。生产准入未扩大，仍为 53 种精确类型，完整亡灵根继续显式拒绝。剩余范围仍包括生产生成接线、106 个未准入类型、无色药水、原版遗物／0.36.1 计数政策、AEONGLASS AI 及最终交错性能验收。[记录](performance/simulation-generation-metering-20260911.md)。
