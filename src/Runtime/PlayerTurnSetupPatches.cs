@@ -740,6 +740,7 @@ internal static class PlayerTurnSetupCoordinator
             try
             {
                 rootSnapshot = CombatRootSnapshot.Capture(combat);
+                searchPolicy = SearchBackendPolicy.Capture(rootSnapshot, searchPolicy);
             }
             finally
             {

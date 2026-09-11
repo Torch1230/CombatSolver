@@ -39,6 +39,12 @@ internal sealed partial class UnattendedTestRunner
             bool expectedCardPlayed = request.ExpectedPlayedCardId == null;
             bool expectedPotionUsed = request.ExpectedUsedPotionId == null;
             bool expectedPlayerPowerObserved = request.ExpectedObservedPlayerPowerId == null;
+            if (request.ScenarioId == "COMPACT-SEARCH-LIFECYCLE")
+            {
+                _ = ApplySettingsOverrides();
+                await runner.AssertCompactSearchLifecycleAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "COMPACT-SEARCH-BACKEND")
             {
                 _ = ApplySettingsOverrides();

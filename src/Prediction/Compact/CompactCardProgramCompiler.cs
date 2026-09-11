@@ -8,17 +8,26 @@ using MegaCrit.Sts2.Core.ValueProps;
 
 namespace CombatSolver;
 
-// Exact native card admission and immutable instruction compilation, shared by all test readers.
+// Exact native card admission and immutable instruction compilation.
 internal static class CompactCardProgramCompiler
 {
+    private static readonly HashSet<Type> AdmittedTypes =
+    [
+        typeof(Acrobatics), typeof(Prepared), typeof(Backflip), typeof(StrikeSilent), typeof(StrikeNecrobinder),
+        typeof(DefendSilent), typeof(DefendNecrobinder), typeof(Neutralize), typeof(Survivor), typeof(Finesse),
+        typeof(UltimateDefend), typeof(Suppress), typeof(Footwork), typeof(Malaise), typeof(DeadlyPoison),
+        typeof(Haze), typeof(Snakebite), typeof(Defy), typeof(EscapePlan), typeof(Outbreak), typeof(CalculatedGamble),
+        typeof(BubbleBubble), typeof(Mirage), typeof(DodgeAndRoll), typeof(ToolsOfTheTrade), typeof(PiercingWail),
+        typeof(CloakAndDagger), typeof(Shiv), typeof(BladeOfInk), typeof(Burn)
+    ];
+
     internal static ResumableDiscardProgram.Card Compile(CardModel card, bool includeAttacks, int shivTemplate = -1, int inkyShivTemplate = -1)
     {
-        if (card is not (Acrobatics or Prepared or Backflip or StrikeSilent or StrikeNecrobinder or DefendSilent or DefendNecrobinder
-                or Neutralize or Survivor or Finesse or UltimateDefend or Suppress or Footwork or Malaise
-                or DeadlyPoison or Haze or Snakebite or Defy or EscapePlan or Outbreak or CalculatedGamble or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail or CloakAndDagger or Shiv or BladeOfInk or Burn)
+        if (!AdmittedTypes.Contains(card.GetType())
             || card is Neutralize or Suppress or Footwork or Malaise or DeadlyPoison or Haze or Snakebite or Defy or Outbreak or BubbleBubble or Mirage or DodgeAndRoll or ToolsOfTheTrade or PiercingWail or CloakAndDagger or Shiv or BladeOfInk or Burn && !includeAttacks
             || card is Burn && (card.Enchantment != null || card.EnergyCost._base != -1 || card.IsUpgraded
                 || !card.LocalKeywords.Contains(CardKeyword.Unplayable) || card.DynamicVars.Damage.Props != (ValueProp.Unpowered | ValueProp.Move))
+            || card.Enchantment is { } enchantment && enchantment.GetType() != typeof(Inky) && enchantment.GetType() != typeof(Slither)
             || card.Enchantment != null && !(card is Shiv && card.Enchantment is Inky { Amount: 1, Status: EnchantmentStatus.Normal })
                 && card.Enchantment is not Slither { Amount: 1, Status: EnchantmentStatus.Normal, TestEnergyCostOverride: -1 }
             || card.Affliction != null || card.BaseReplayCount != 0

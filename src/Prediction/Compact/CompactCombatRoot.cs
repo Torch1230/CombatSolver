@@ -1,13 +1,14 @@
 using CombatSolver.Engine.InCombat.Simulation;
 using CombatSolver.Engine.InCombat.Simulation.Compact;
+using System.Diagnostics.CodeAnalysis;
 using MegaCrit.Sts2.Core.Entities.Players;
 
 namespace CombatSolver;
 
 /// <summary>
 /// Main-thread admission owns all model metadata. Workers receive immutable initial values
-/// and create private execution/read lanes. Runtime selection remains disabled until the
-/// complete supported-domain search differential has passed.
+/// and create private execution/read lanes. Runtime uses this only after full-root
+/// capability admission; unrepresented domains retain the existing model backend.
 /// </summary>
 internal sealed class CompactCombatRoot
 {
@@ -22,6 +23,25 @@ internal sealed class CompactCombatRoot
         Adapter = new(capturedRoot, player, includeAttacks: true, includeHandEnd: true,
             includeMechaMoves: true, includePowerPhases: true, includeMechaAi: true, includeRounds: true);
         Initial = Adapter.Program.Freeze();
+    }
+
+    // Only admission can choose the old backend. No execution or read exception is
+    // caught here, and a solver never changes backend after publishing its root.
+    internal static bool TryCreate(CombatPredictionSimulator capturedRoot, Player player,
+        [NotNullWhen(true)] out CompactCombatRoot? admitted, out string rejection)
+    {
+        try
+        {
+            admitted = new(capturedRoot, player);
+            rejection = "";
+            return true;
+        }
+        catch (NotSupportedException error)
+        {
+            admitted = null;
+            rejection = error.Message;
+            return false;
+        }
     }
 
     internal void RecordReplay(bool completed)

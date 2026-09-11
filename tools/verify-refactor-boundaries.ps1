@@ -1418,13 +1418,19 @@ Get-ChildItem (Join-Path $repositoryRoot 'src/Search'), (Join-Path $repositoryRo
     }
 }
 
-# Backend integration is opt-in through test-captured immutable policy, not live Runtime.
+# Runtime admission has one main-thread owner; workers only consume the captured policy.
 Get-ChildItem (Join-Path $repositoryRoot 'src/Runtime') -Recurse -Filter '*.cs' | ForEach-Object {
-    if ((Get-Content -LiteralPath $_.FullName -Raw).Contains('CompactRoot')) {
-        throw "Runtime compact selection requires separate supported-domain acceptance: $($_.FullName)"
+    if ($_.Name -ne 'SearchBackendPolicy.cs' -and (Get-Content -LiteralPath $_.FullName -Raw).Contains('CompactRoot')) {
+        throw "Runtime compact selection must belong to SearchBackendPolicy: $($_.FullName)"
     }
 }
 foreach ($rule in @(
+    @('src/Runtime/SearchBackendPolicy.cs', 'if (!NGame.IsMainThread())'),
+    @('src/Runtime/SearchBackendPolicy.cs', 'CompactCombatRoot.TryCreate(root.ForkSimulator(), root.PlayerIdentity, out compact, out rejection);'),
+    @('src/Runtime/SolverController.cs', 'searchPolicy = SearchBackendPolicy.Capture(rootSnapshot, searchPolicy);'),
+    @('src/Runtime/PlayerTurnSetupPatches.cs', 'searchPolicy = SearchBackendPolicy.Capture(rootSnapshot, searchPolicy);'),
+    @('src/Prediction/Compact/CompactDiscardProjection.cs', 'Any(slot => combat.GetPotionAtSlot(player, slot) != null)'),
+    @('src/Prediction/Compact/CompactCardProgramCompiler.cs', '!AdmittedTypes.Contains(card.GetType())'),
     @('src/Prediction/Compact/CompactDiscardProjection.cs', 'lock (_rootForkGate) return _root.Fork();'),
     @('src/Search/CombatPlan.cs', '_compact = null;'),
     @('src/Search/CombatPlan.cs', 'CompactPendingChoice = null;'),

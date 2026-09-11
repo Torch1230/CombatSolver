@@ -1,5 +1,9 @@
 # CombatSolver 文档导航
 
+- [紧凑后端运行时准入与 NoGC 验收](performance/simulation-runtime-backend-20260911.md)：整场零重算、未迁移域归属、正常 NoGC 与普通 GC 口径。
+- [紧凑候选、挂起选择与完整搜索 A/B](performance/simulation-search-backend-20260911.md)：原始机甲路线、政策读取与零兼容物化。
+- [原始机甲完整原生路线](performance/simulation-full-route-20260911.md)：44 原生动作及 424 个替代分支。
+
 - [紧凑完整回合与历史窗口](performance/simulation-rounds-20260911.md)：完整阶段、起手／嵌套选择、跨阵营历史清理与原生终局。
 
 - [紧凑确定性怪物 AI](performance/simulation-monster-ai-20260911.md)：机甲招式循环、增长日志、当前意图与冻结恢复。

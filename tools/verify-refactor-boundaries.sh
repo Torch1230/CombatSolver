@@ -1144,10 +1144,17 @@ for mutable_owner in 'ReversibleValueState _owner' 'ReversibleValueState _worksp
     forbid_fixed "$compact_frozen" "$mutable_owner" 'compact candidate must not retain mutable workers or ancestor chains:'
 done
 
-# Backend integration is opt-in through test-captured immutable policy, not live Runtime.
+# Runtime admission has one main-thread owner; workers only consume the captured policy.
 while IFS= read -r runtime_path; do
-    forbid_fixed "$runtime_path" 'CompactRoot' 'Runtime compact selection requires separate supported-domain acceptance:'
+    [[ $runtime_path == "$repository_root/src/Runtime/SearchBackendPolicy.cs" ]] && continue
+    forbid_fixed "$runtime_path" 'CompactRoot' 'Runtime compact selection must belong to SearchBackendPolicy:'
 done < <(rg --files "$repository_root/src/Runtime" -g '*.cs')
+require_fixed "$repository_root/src/Runtime/SearchBackendPolicy.cs" 'if (!NGame.IsMainThread())' 'backend admission must run on the main thread'
+require_fixed "$repository_root/src/Runtime/SearchBackendPolicy.cs" 'CompactCombatRoot.TryCreate(root.ForkSimulator(), root.PlayerIdentity, out compact, out rejection);' 'backend admission must use an owned captured root'
+require_fixed "$repository_root/src/Runtime/SolverController.cs" 'searchPolicy = SearchBackendPolicy.Capture(rootSnapshot, searchPolicy);' 'normal searches must select their backend before worker dispatch'
+require_fixed "$repository_root/src/Runtime/PlayerTurnSetupPatches.cs" 'searchPolicy = SearchBackendPolicy.Capture(rootSnapshot, searchPolicy);' 'initial setup must use explicit backend policy'
+require_fixed "$compact_projection" 'Any(slot => combat.GetPotionAtSlot(player, slot) != null)' 'unrepresented potion effects must be rejected during full-root admission'
+require_fixed "$compact_compiler" '!AdmittedTypes.Contains(card.GetType())' 'native card admission must reject inherited mod types'
 require_fixed "$compact_projection" 'lock (_rootForkGate) return _root.Fork();' 'shared compact metadata root requires a narrow Fork gate'
 require_fixed "$search_root/CombatPlan.cs" '_compact = null;' 'snapshot release must drop compact candidate ownership'
 require_fixed "$search_root/CombatPlan.cs" 'CompactPendingChoice = null;' 'snapshot release must drop owned pending previews'

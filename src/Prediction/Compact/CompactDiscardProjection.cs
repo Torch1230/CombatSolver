@@ -26,8 +26,8 @@ namespace CombatSolver;
 
 /// <summary>
 /// Captured model admission and compatibility projection for the compact executor. It decodes committed events;
-/// it never executes OnPlay, a choice resolver, or the discard hook again. Production search
-/// does not yet select this adapter. Full legacy fork/materialization/evaluation costs must be measured.
+/// it never executes OnPlay, a choice resolver, or the discard hook again. Production selects
+/// it only when the complete captured root is represented by this closed effect domain.
 /// </summary>
 internal sealed class CompactDiscardProjection
 {
@@ -55,10 +55,14 @@ internal sealed class CompactDiscardProjection
         _root = root;
         _player = player;
         var combat = (SimulatedCombatState)root.State.CombatState;
+        int potionSlots = ((ICombatPredictionPlayerLimits)combat).GetPotionSlotCount(player);
+        if (Enumerable.Range(0, potionSlots).Any(slot => combat.GetPotionAtSlot(player, slot) != null))
+            throw new NotSupportedException("Compact combat has unrepresented potion effects.");
         if (includeRounds) combat.AssertCompletedRoundRoot();
         SimPlayerCombatState state = root.State.GetPlayerCombatState(player);
         var powers = combat.EffectivePowers();
-        if (combat.Players.Count != 1 || powers.Any(p => !(p is StratagemPower && p.Owner == player.Creature && p.Amount is >= 1 and <= 10)
+        if (combat.Players.Count != 1 || powers.Any(p => !IsBasicPower(p))
+            || powers.Any(p => !(p is StratagemPower && p.Owner == player.Creature && p.Amount is >= 1 and <= 10)
                 && !(includeAttacks ? p is not StratagemPower && IsBasicPower(p) && (p is not (BlockNextTurnPower or ToolsOfTheTradePower) || p.Owner == player.Creature)
                     && (p is not PiercingWailPower || p.Owner != player.Creature)
                     : p is StrengthPower && p.Owner != player.Creature))
@@ -68,7 +72,8 @@ internal sealed class CompactDiscardProjection
             || root.HasPendingChoice || root.IsOverOrEnding)
             throw new NotSupportedException("Compact prototype requires an idle root with admitted Powers and no mod subscribers.");
         var relics = combat.RelicsOf(player);
-        if (relics.Any(r => r is not (ToughBandages or TheAbacus or RingOfTheSnake) || r.IsMelted)
+        if (relics.Any(r => r.GetType() != typeof(ToughBandages) && r.GetType() != typeof(TheAbacus)
+                && r.GetType() != typeof(RingOfTheSnake) || r.IsMelted)
             || relics.Select(r => r.GetType()).Distinct().Count() != relics.Count || powers.OfType<StratagemPower>().Count() > 1
             || combat.CurrentSide != player.Creature.Side)
             throw new NotSupportedException("Compact prototype requires admitted relics in player phase.");
@@ -86,7 +91,7 @@ internal sealed class CompactDiscardProjection
                 || !((ICombatPredictionCreatureSemantics)combat).IsPrimaryEnemy(c)
                 || !((ICombatPredictionCreatureSemantics)combat).ShouldRemoveAfterDeath(c))))
             throw new NotSupportedException("Compact attack requires living primary enemies without pending deaths or pets.");
-        if (includeMechaMoves && (!includeAttacks || _creatures.Length != 2 || _creatures[1].Monster is not MechaKnight))
+        if (includeMechaMoves && (!includeAttacks || _creatures.Length != 2 || _creatures[1].Monster?.GetType() != typeof(MechaKnight)))
             throw new NotSupportedException("Captured Mecha commands require exactly one MechaKnight and creature values.");
         _powerTemplates = includeAttacks ? CapturePowerTemplates(combat, powers) : [];
         PowerModel[] rootPowerOrder = powers.ToArray();
@@ -237,7 +242,21 @@ internal sealed class CompactDiscardProjection
         return result.ToArray();
     }
 
-    private static bool IsBasicPower(PowerModel power) => power is StrengthPower or DexterityPower or WeakPower or VulnerablePower or FrailPower or PoisonPower or BlockNextTurnPower or ToolsOfTheTradePower or PiercingWailPower or ArtifactPower or StratagemPower;
+    private static readonly Dictionary<Type, BasicPowerKind> BasicKinds = new()
+    {
+        [typeof(StrengthPower)] = BasicPowerKind.Strength,
+        [typeof(DexterityPower)] = BasicPowerKind.Dexterity,
+        [typeof(WeakPower)] = BasicPowerKind.Weak,
+        [typeof(VulnerablePower)] = BasicPowerKind.Vulnerable,
+        [typeof(FrailPower)] = BasicPowerKind.Frail,
+        [typeof(PoisonPower)] = BasicPowerKind.Poison,
+        [typeof(BlockNextTurnPower)] = BasicPowerKind.BlockNextTurn,
+        [typeof(ToolsOfTheTradePower)] = BasicPowerKind.ToolsOfTheTrade,
+        [typeof(PiercingWailPower)] = BasicPowerKind.PiercingWail,
+        [typeof(ArtifactPower)] = BasicPowerKind.Artifact,
+        [typeof(StratagemPower)] = BasicPowerKind.Stratagem
+    };
+    private static bool IsBasicPower(PowerModel power) => BasicKinds.ContainsKey(power.GetType());
     private static PowerModel CanonicalPower(BasicPowerKind kind) => kind switch
     {
         BasicPowerKind.Strength => CanonicalModels.Power<StrengthPower>(),
@@ -253,14 +272,7 @@ internal sealed class CompactDiscardProjection
         BasicPowerKind.ToolsOfTheTrade => CanonicalModels.Power<ToolsOfTheTradePower>(),
         _ => throw new InvalidOperationException("Unknown basic Power kind.")
     };
-    private static BasicPowerKind BasicKind(PowerModel power) => power switch
-    {
-        StrengthPower => BasicPowerKind.Strength, DexterityPower => BasicPowerKind.Dexterity, WeakPower => BasicPowerKind.Weak,
-        VulnerablePower => BasicPowerKind.Vulnerable, FrailPower => BasicPowerKind.Frail, PoisonPower => BasicPowerKind.Poison,
-        PiercingWailPower => BasicPowerKind.PiercingWail, ArtifactPower => BasicPowerKind.Artifact, StratagemPower => BasicPowerKind.Stratagem,
-        BlockNextTurnPower => BasicPowerKind.BlockNextTurn, ToolsOfTheTradePower => BasicPowerKind.ToolsOfTheTrade,
-        _ => throw new InvalidOperationException("Power has no compact basic kind.")
-    };
+    private static BasicPowerKind BasicKind(PowerModel power) => BasicKinds[power.GetType()];
     internal SimulatedCombatState.CompletedPowerReadBinding CreatePowerReadBinding(CombatPredictionSimulator context)
         => new((SimulatedCombatState)context.State.CombatState, _powerTemplates, _powerTemplates.Select(power => CanonicalPower(BasicKind(power))).ToArray());
     internal void CopyPowerReadValues(ResumableDiscardProgram program, CompletedPowerReadValues[] target)
