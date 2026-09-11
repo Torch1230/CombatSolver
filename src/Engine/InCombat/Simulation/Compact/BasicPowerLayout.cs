@@ -1,6 +1,6 @@
 namespace CombatSolver.Engine.InCombat.Simulation.Compact;
 
-internal enum BasicPowerKind { Strength, Dexterity, Weak, Vulnerable, Frail, Poison, BlockNextTurn, ToolsOfTheTrade, PiercingWail }
+internal enum BasicPowerKind { Strength, Dexterity, Weak, Vulnerable, Frail, Poison, BlockNextTurn, ToolsOfTheTrade, PiercingWail, Artifact }
 internal readonly record struct BasicPowerDefinition(BasicPowerKind Kind, int Owner, int Amount,
     int Applier, int Order, decimal Multiplier, bool RootSlot);
 internal readonly record struct BasicPowerValues(int Amount, int Applier, int Order, bool Retired);
@@ -13,11 +13,13 @@ internal sealed class BasicPowerLayout
     private readonly BasicPowerDefinition[] _definitions;
     private readonly int _start, _orderSlot;
     internal int Count => _definitions.Length;
+    internal bool HasArtifact { get; }
     internal BasicPowerDefinition Definition(int index) => _definitions[index];
 
     internal BasicPowerLayout(ReversibleValueState state, BasicPowerDefinition[] definitions)
     {
         _definitions = (BasicPowerDefinition[])definitions.Clone();
+        HasArtifact = definitions.Any(definition => definition.Kind == BasicPowerKind.Artifact);
         _start = state.Allocate(checked(definitions.Length * Width));
         _orderSlot = state.Allocate(1);
         for (int index = 0; index < Count; index++)
@@ -41,11 +43,14 @@ internal sealed class BasicPowerLayout
         state.Write(offset + 2, values.Order); state.Write(offset + 3, values.Retired ? 1 : 0);
     }
 
-    internal int Find(int owner, BasicPowerKind kind)
+    internal int Find(int owner, BasicPowerKind kind) => FindOrDefault(owner, kind) is var index && index >= 0 ? index
+        : throw new InvalidOperationException("Basic Power kind was not allocated for this creature.");
+
+    internal int FindOrDefault(int owner, BasicPowerKind kind)
     {
         for (int index = 0; index < Count; index++)
             if (_definitions[index].Owner == owner && _definitions[index].Kind == kind) return index;
-        throw new InvalidOperationException("Basic Power kind was not allocated for this creature.");
+        return -1;
     }
 
     internal int Amount(ReversibleValueState state, int owner, BasicPowerKind kind) => Read(state, Find(owner, kind)).Amount;

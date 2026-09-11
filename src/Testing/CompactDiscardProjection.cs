@@ -151,6 +151,8 @@ internal sealed class CompactDiscardProjection
         foreach (Creature owner in _creatures)
         foreach (BasicPowerKind kind in Enum.GetValues<BasicPowerKind>())
         {
+            // No admitted instruction creates Artifact. Only captured instances need slots.
+            if (kind == BasicPowerKind.Artifact) continue;
             if (kind is BasicPowerKind.BlockNextTurn or BasicPowerKind.ToolsOfTheTrade && owner != _player.Creature) continue;
             if (kind == BasicPowerKind.PiercingWail && owner == _player.Creature) continue;
             if (result.Any(p => p.Owner == owner && BasicKind(p) == kind)) continue;
@@ -163,7 +165,7 @@ internal sealed class CompactDiscardProjection
         return result.ToArray();
     }
 
-    private static bool IsBasicPower(PowerModel power) => power is StrengthPower or DexterityPower or WeakPower or VulnerablePower or FrailPower or PoisonPower or BlockNextTurnPower or ToolsOfTheTradePower or PiercingWailPower;
+    private static bool IsBasicPower(PowerModel power) => power is StrengthPower or DexterityPower or WeakPower or VulnerablePower or FrailPower or PoisonPower or BlockNextTurnPower or ToolsOfTheTradePower or PiercingWailPower or ArtifactPower;
     private static PowerModel CanonicalPower(BasicPowerKind kind) => kind switch
     {
         BasicPowerKind.Strength => CanonicalModels.Power<StrengthPower>(),
@@ -174,6 +176,7 @@ internal sealed class CompactDiscardProjection
         BasicPowerKind.Poison => CanonicalModels.Power<PoisonPower>(),
         BasicPowerKind.BlockNextTurn => CanonicalModels.Power<BlockNextTurnPower>(),
         BasicPowerKind.PiercingWail => CanonicalModels.Power<PiercingWailPower>(),
+        BasicPowerKind.Artifact => CanonicalModels.Power<ArtifactPower>(),
         BasicPowerKind.ToolsOfTheTrade => CanonicalModels.Power<ToolsOfTheTradePower>(),
         _ => throw new InvalidOperationException("Unknown basic Power kind.")
     };
@@ -181,7 +184,7 @@ internal sealed class CompactDiscardProjection
     {
         StrengthPower => BasicPowerKind.Strength, DexterityPower => BasicPowerKind.Dexterity, WeakPower => BasicPowerKind.Weak,
         VulnerablePower => BasicPowerKind.Vulnerable, FrailPower => BasicPowerKind.Frail, PoisonPower => BasicPowerKind.Poison,
-        PiercingWailPower => BasicPowerKind.PiercingWail,
+        PiercingWailPower => BasicPowerKind.PiercingWail, ArtifactPower => BasicPowerKind.Artifact,
         BlockNextTurnPower => BasicPowerKind.BlockNextTurn, ToolsOfTheTradePower => BasicPowerKind.ToolsOfTheTrade,
         _ => throw new InvalidOperationException("Power has no compact basic kind.")
     };
@@ -520,6 +523,7 @@ internal sealed class CompactDiscardProjection
         "BeforeDamageReceived", "AfterBlockBroken", "AfterCurrentHpChanged", "AfterDamageGiven", "AfterDamageReceived",
         "AfterModifyingHpLostAfterOsty", "BeforeDeath", "ShouldDie", "AfterDeath", "ShouldCreatureBeRemovedFromCombatAfterDeath",
         "ShouldAllowHitting", "BeforePowerAmountChanged", "ModifyPowerAmountGiven", "ModifyPowerAmountReceived",
+        "TryModifyPowerAmountGiven", "TryModifyPowerAmountReceived",
         "AfterModifyingPowerAmountGiven", "AfterModifyingPowerAmountReceived", "AfterPowerAmountChanged",
         "AfterCardExhausted", "AfterCardEnteredCombat", "AfterCardGeneratedForCombat", "ModifyXValue", "AfterModifyingDamageAmount", "AfterModifyingHpLostBeforeOsty"
     };
@@ -538,6 +542,7 @@ internal sealed class CompactDiscardProjection
             || (type == typeof(WeakPower) || type == typeof(VulnerablePower)) && method == nameof(AbstractModel.ModifyDamageMultiplicative)
             || type == typeof(FrailPower) && method == nameof(AbstractModel.ModifyBlockMultiplicative)
             || type == typeof(PiercingWailPower) && method == nameof(AbstractModel.AfterPowerAmountChanged)
+            || type == typeof(ArtifactPower) && method is nameof(AbstractModel.TryModifyPowerAmountReceived) or nameof(AbstractModel.AfterModifyingPowerAmountReceived)
             || type == typeof(Slither) && method == nameof(AbstractModel.AfterCardDrawn)
             || type == typeof(DebufferModel) && method == nameof(AbstractModel.AfterPowerAmountChanged)
             || type == typeof(MultiplayerScalingModel) && method == nameof(AbstractModel.ModifyBlockMultiplicative)

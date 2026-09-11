@@ -554,11 +554,13 @@ internal sealed class ResumableDiscardProgram
 
     private void ApplyTemporaryStrengthLoss(int card, int target, int amount)
     {
-        if (amount == 0 || Ending || !CreaturePresent(target) || Creature(target).CurrentHp <= 0) return;
+        // Native modifiers run before BeforeApplied. An Artifact blocks the entire temporary
+        // effect, including its nested first Strength command, and is consumed exactly once.
+        if (!PreparePower(card, target, BasicPowerKind.PiercingWail, amount)) return;
         // The first native Strength command precedes creation of the temporary counter.
         if (_powers!.Amount(State, target, BasicPowerKind.PiercingWail) == 0)
             ApplyPower(card, target, BasicPowerKind.Strength, -amount);
-        ApplyPower(card, target, BasicPowerKind.PiercingWail, amount);
+        CommitPower(card, target, BasicPowerKind.PiercingWail, amount);
         // Native callback compares the requested offset with the resulting counter,
         // including stacks whose counter is already at its cap.
         if (amount != _powers.Amount(State, target, BasicPowerKind.PiercingWail))
@@ -567,13 +569,35 @@ internal sealed class ResumableDiscardProgram
 
     private void ApplyPower(int card, int target, BasicPowerKind kind, int amount)
     {
-        if (amount != 0 && !Ending && CreaturePresent(target) && Creature(target).CurrentHp > 0)
+        if (PreparePower(card, target, kind, amount)) CommitPower(card, target, kind, amount);
+    }
+
+    private bool PreparePower(int card, int target, BasicPowerKind kind, int amount)
+    {
+        if (amount == 0 || Ending || !CreaturePresent(target) || Creature(target).CurrentHp <= 0) return false;
+        // All admitted debuffs are visible. Stat polarity depends on the requested amount,
+        // while counter debuffs retain their type independently of the owner's current amount.
+        bool debuff = kind is BasicPowerKind.Strength or BasicPowerKind.Dexterity ? amount < 0
+            : kind is BasicPowerKind.Weak or BasicPowerKind.Vulnerable or BasicPowerKind.Frail or BasicPowerKind.Poison or BasicPowerKind.PiercingWail;
+        if (debuff && _powers!.HasArtifact)
         {
-            int index = _powers!.Find(target, kind);
-            int before = _powers.Read(State, index).Amount;
-            _powers.Apply(State, index, amount, 0);
-            Emit(EventKind.PowerChange, card, _powers.Read(State, index).Amount - before, target: target, flags: (int)kind);
+            int artifact = _powers.FindOrDefault(target, BasicPowerKind.Artifact);
+            if (artifact >= 0 && _powers.Read(State, artifact) is { Amount: > 0 } current)
+            {
+                _powers.Apply(State, artifact, -1, current.Applier);
+                Emit(EventKind.PowerChange, card, -1, target: target, flags: (int)BasicPowerKind.Artifact);
+                return false;
+            }
         }
+        return true;
+    }
+
+    private void CommitPower(int card, int target, BasicPowerKind kind, int amount)
+    {
+        int index = _powers!.Find(target, kind);
+        int before = _powers.Read(State, index).Amount;
+        _powers.Apply(State, index, amount, 0);
+        Emit(EventKind.PowerChange, card, _powers.Read(State, index).Amount - before, target: target, flags: (int)kind);
     }
 
     private sealed class InstanceComparer(ResumableDiscardProgram owner, CardComparer definitions) : IComparer<int>

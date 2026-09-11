@@ -27,3 +27,5 @@
 `GeneratedCardChecks` 从十张满手牌生成 300 个实例，以完整列表比较手牌／弃牌的次序，验证模板绑定、完整编号事件、生成后攻击／消耗／洗牌、撤销与八工作区重新生成。原生状态与读取器模型池见[生成卡报告](../../docs/performance/simulation-generated-cards-20260911.md)。
 
 `RandomCostChecks` 覆盖 130 次抽牌费用列表／付款、四种结果、满手停止、撤销与八工作区续接；原生证据见[随机费用报告](../../docs/performance/simulation-random-costs-20260911.md)。
+
+`ArtifactChecks` 核对施加修改在临时力量内部效果之前生效，覆盖首次／叠加阻止、耗尽、零值、负属性、死亡、撤销和八工作区；[原生证据](../../docs/performance/simulation-compact-artifact-20260911.md)。
