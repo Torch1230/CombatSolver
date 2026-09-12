@@ -8,6 +8,8 @@
 
 ## 下一版本（开发中）：极高配置完整搜索性能重构
 
+- [局部数据结构研究](performance/simulation-data-layout-20260912.md)：新增独立布局探针及只写本地候选的生成器。相同 .NET 9 Release 配置下，类型计数辅助小表通过现有仓库合同，在一至两种类型的非空样例中每 Fork 少分配 96 B；列表包装合并原型在存储构造/首次写入时少分配 24 B，普通 Fork 不变。小对象 int→short、字典 int→byte 与 bool→flags 的实测大小未下降。只提交工具、报告和证据，生产字段及语义不变；没有新增整场搜索、RSS 或可见性能结论。当前优先级收紧为局部数据结构，不继续扩大完整战斗迁移。
+
 - [独立测试 ledger](../tools/TestLedger/README.md)：`tools/test-ledger.sh` 只读地从现有工具与矩阵入口（`tools/*/*.csproj`、`tools/*/run.py`／`presets.py`、`tools/*/package.json`、`tools/{verify,test}-*.{sh,ps1}` 和[测试矩阵](TEST_MATRIX.md#独立测试-ledger2026-09-12toolstest-ledgersh)的 Windows/Linux 命令块）生成机器可读 catalog，把每条入口统一记为 `Passed`／`Failed`／`Blocked`／`NotRun` 四态，默认策略拒绝会启动游戏或重写覆盖目录的 `CoverageCatalog`。当前 Linux pure-contract 基线实际总 536：21 Passed、3 Failed、507 Blocked、5 NotRun；`DiagnosticLogTests` 与 `NoVictoryRecoveryChecks` 两类现有失败保留原始日志，不能据此宣称全项目通过。完整游戏、Windows、Node 服务和可见 Steam 基准仍未完成。
 
 - [值 RNG 计量归因与生成池执行](performance/simulation-generation-metering-20260911.md)：审计尾部计量收紧为三阶段——100 次 warmup、与正式测量完全同形的 5×5000 稳定化（同一个 helper、同样块数，分配记录不读取且不参与分配断言，因此不作为通过证据）、5×5000 正式 steady-state；正式 5 个块必须全部精确 0 字节且无容差，warmup／稳定化与正式段的 RNG 次数分别精确断言。单块稳定化的中间形状在 Godot 首个正式块仍见 160 字节，runId `58268385f95c4d37a3383bfa46768b76` Failed 且失败 evidence 保留；同形稳定化后 runId `e039ec137c8b4f768cf46d7e8fbdfdd9` Passed（24.04 秒），最终 runId `537d20c96a944b48b505b90f0bf7fd34` Passed（24.15 秒）。这次的计量收紧只改测试与文档，不改变生产准入；整项极高配置完整搜索性能重构仍未完成。

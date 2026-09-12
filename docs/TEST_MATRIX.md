@@ -1,4 +1,10 @@
 # CombatSolver 测试清单
+
+## 局部数据布局研究（2026-09-12）
+
+- `tools/DataLayoutProbe`：.NET 9.0.19 / Linux x64 / Release / `DOTNET_TieredCompilation=0`，布局与分配探针通过；每形状 1,024 次预热、五块各 10,000 次分配一致。直接链接生产集合及值类型，另外检查研究列表的父兄弟隔离、捕获枚举器与修改失效，以及生产生命值范围和 64 位卡牌编码。合成形状与仅实现部分 API 的 MergedList 不计作完整游戏支持。
+- `tools/PredictionStateStoreChecks`：相同配置下分别链接 `2f5a6df` 生产源码与生成的 ListCounts 辅助表候选；明确开启 `CHECK_ENTRY_COUNTS`。读/Peek、类型计数、隔离/顺序、alias/remap、共享状态和边界/失败合同通过。每样例 10,000 次 Fork：空仓库 40→40 B；单状态 520→424 B；16 状态 1,384→1,288 B；16 状态/模型别名 1,992→1,896 B。
+- [复现入口](../tools/DataLayoutProbe/README.md)、[研究报告](performance/simulation-data-layout-20260912.md)、[完整数据](performance/simulation-data-layout-20260912.json)。未修改生产源文件，未运行游戏、Windows、完整测试 ledger、正常 NoGC 搜索或可见 Steam；这些是独立存储/分配证据，不是搜索加速与 RSS 验收。
 - 命运同担三根两回合原生对照 Passed：21 原生动作／42 分支／18 挂起、双方人工制品与负力量重获；完整状态、键、续用、九 RNG 及八工作区。[逐项范围与 runId](performance/simulation-shared-fate-20260911.md)。
 - 神气制胜独立实例验证：三根 24 原生动作／45 分支／18 挂起、六回合及 250 节点旧新／串并行；独立施加、两类末击和玩家死亡按原生完整状态对照。[逐项范围与 runId](performance/simulation-panache-20260911.md)。
 

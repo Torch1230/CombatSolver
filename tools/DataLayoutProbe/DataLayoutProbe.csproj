@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>13.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <NoWarn>$(NoWarn);CS0649</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/Search/ForkableCollections.cs" Link="Production/ForkableCollections.cs" />
+    <Compile Include="../../src/Engine/InCombat/Simulation/Compact/CreatureVitals.cs" Link="Production/CreatureVitals.cs" />
+    <Compile Include="../../src/Engine/InCombat/Simulation/Compact/CardInstanceValue.cs" Link="Production/CardInstanceValue.cs" />
+  </ItemGroup>
+</Project>

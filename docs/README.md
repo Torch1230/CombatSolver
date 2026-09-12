@@ -1,5 +1,8 @@
 # CombatSolver 文档导航
 
+- [局部字段与数据结构的内存研究](performance/simulation-data-layout-20260912.md)：.NET 9 实测类型缩窄、状态仓库辅助小表与容器包装；生产代码未改。
+- [模拟器长期维护成本研究](performance/simulation-maintenance-review-20260912.md)：单一语义来源、有限后端接入与迁移成本；当前优先验证局部数据结构。
+
 - [亡灵核心牌与灵魂生成的生产编译准入](performance/simulation-necro-soul-cards-20260911.md)：八张亡灵牌逐张反编译准入，灵魂随机插入／升级模板与原生终局门禁的独立结束变体。
 
 - [完整角色生成池冻结](performance/simulation-generation-root-20260911.md)：原生池缓存、Fork 共享与生成回调对照。
