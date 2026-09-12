@@ -6716,8 +6716,8 @@ internal sealed partial class CombatBeamSolver
                 rightWon,
                 StrategicHpDeficit(rightSnapshot, rightWon),
                 rightWon ? CompletedCombatTurn(right) : null,
-                leftSnapshot.StrategicHpCredit,
-                rightSnapshot.StrategicHpCredit,
+                leftSnapshot.StrategyGoalHpCredit,
+                rightSnapshot.StrategyGoalHpCredit,
                 leftSnapshot.StrategyGoalCount,
                 rightSnapshot.StrategyGoalCount);
             if (comparison != 0)

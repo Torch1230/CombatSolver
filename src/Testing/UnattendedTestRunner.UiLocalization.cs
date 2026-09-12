@@ -39,6 +39,32 @@ internal sealed partial class UnattendedTestRunner
                 LocManager.Instance.SetLanguage(target);
                 await _host.ToSignal(_host.GetTree(), SceneTree.SignalName.ProcessFrame);
                 bool english = target == "eng";
+                var displayNames = SolverDisplayNames.Capture(combat);
+                if (combat.Enemies.Select(displayNames.Creature).Distinct().Count() != combat.Enemies.Count)
+                    throw new InvalidOperationException("Enemy display names are ambiguous.");
+                var plainShiv = SolverOverlaySnapshot.CaptureAction(new PlanAction(PlanActionKind.PlayCard, 1, CardId: "SHIV"), []);
+                var inkyShiv = SolverOverlaySnapshot.CaptureAction(new PlanAction(PlanActionKind.PlayCard, 1, CardId: "SHIV", CardEnchantmentId: "INKY"), []);
+                if (plainShiv.Title == inkyShiv.Title || !inkyShiv.Tooltip.Contains(ModelDb.Enchantment<MegaCrit.Sts2.Core.Models.Enchantments.Inky>().Title.GetFormattedText()))
+                    throw new InvalidOperationException("Inky Shiv lost its enchantment display.");
+                _completedChecks.Add($"EntityIdentity:{target}:DistinctEnemies={combat.Enemies.Count}:PlainAndInkyShiv");
+                var counters = RelicCounterPolicy.Add(default, new(RelicCounterId.HappyFlower, 2, 2, 0, 3), 2);
+                counters = RelicCounterPolicy.Add(counters, new(RelicCounterId.PenNib, 7, 7, 0, 10), 4);
+                string outcome = SolverStrategyOutcomeText.Format(counters, new GrowthValues(TheHunt: 1, Feed: 2), true)!;
+                string incomplete = SolverStrategyOutcomeText.Format(counters, default, false)!;
+                if (!outcome.Contains(english ? "Counters aligned:" : "已卡：")
+                    || !outcome.Contains(ModelDb.Relic<MegaCrit.Sts2.Core.Models.Relics.HappyFlower>().Title.GetFormattedText() + " 2")
+                    || !outcome.Contains(ModelDb.Relic<MegaCrit.Sts2.Core.Models.Relics.PenNib>().Title.GetFormattedText() + (english ? " 7, actual 4" : " 7 实际 4"))
+                    || !outcome.Contains(english ? "Targets unmet:" : "未达标：")
+                    || !outcome.Contains(ModelDb.Card<TheHunt>().Title)
+                    || !outcome.Contains(ModelDb.Card<Feed>().Title + " ×2")
+                    || incomplete.Contains(english ? "Counters aligned:" : "已卡：")
+                    || SolverStrategyOutcomeText.Format(default, default, true) != null)
+                    throw new InvalidOperationException("Strategy outcome omitted achieved/unmet targets or marked partial counters complete.");
+                var entries = SolverStrategyOutcomeText.Capture(counters, new GrowthValues(TheHunt: 1), true);
+                if (entries.Count != 3 || !entries[0].Satisfied || entries[1].Satisfied || !entries[2].Satisfied
+                    || outcome.Contains(english ? "Projected outcome" : "预计路线结果"))
+                    throw new InvalidOperationException("Strategy outcome status colors or heading removal changed.");
+                _completedChecks.Add($"StrategyOutcome:{target}:AlignedAndUnmet:GrowthCounts:PartialRoute:EmptyHidden");
                 await AssertActionAnnotationLocalizationAsync(combat, english);
                 foreach ((string source, string translated) in catalog)
                 {
@@ -121,6 +147,7 @@ internal sealed partial class UnattendedTestRunner
             ("：全体伤害3", ": Damage to all 3"), ("：力量+1", ": Strength +1"),
             ("：力量+1 敏捷+2", ": Strength +1 Dexterity +2"),
             ("：手牌0费", ": Hand costs 0"), ("：复制到手牌", ": Copy to hand"), ("：升级", ": Upgrade"),
+            ("：本张免费", ": Free card"),
             ("：额外回合", ": Extra turn"), ("：复活", ": Revive"), ("×2", "×2"), ("", ""),
             ("第三方：力量宝珠", "第三方：力量宝珠"),
         };
@@ -142,7 +169,7 @@ internal sealed partial class UnattendedTestRunner
             || !snapshot.Tooltip.Contains(english ? "(Potion)" : "（药水）", StringComparison.Ordinal)
             || snapshot.Kills.Single() != kill)
             throw new InvalidOperationException("Secondary capsule labels and tooltips disagree.");
-        _completedChecks.Add($"ActionAnnotations:{language}:CapturedDamageSources:20RelicFormats:NestedChoices:Tooltip");
+        _completedChecks.Add($"ActionAnnotations:{language}:CapturedDamageSources:{effects.Length}RelicFormats:NestedChoices:Tooltip");
     }
 
     private async Task AssertCardLanguageRoundTripAsync()

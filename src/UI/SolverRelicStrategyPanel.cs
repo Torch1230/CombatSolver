@@ -8,7 +8,7 @@ namespace CombatSolver;
 internal sealed partial class SolverRelicStrategyPanel : PanelContainer
 {
     internal const float PreferredWidth = 390f;
-    private sealed record Row(RelicCounterCatalog.Entry Entry, CheckButton Enabled, SpinBox Minimum, SpinBox Maximum, SpinBox Hp, Label Status, Control Card, TextureRect Icon);
+    private sealed record Row(RelicCounterCatalog.Entry Entry, CheckButton Enabled, SpinBox Minimum, SpinBox Maximum, SpinBox Hp, SpinBox Priority, Label Status, Control Card, TextureRect Icon);
     private readonly List<Row> _rows = [];
     private readonly CheckButton _enabled;
     private bool _refreshing;
@@ -96,13 +96,26 @@ internal sealed partial class SolverRelicStrategyPanel : PanelContainer
             cost.AddChild(costInput);
             values.AddChild(cost);
             group.AddChild(values);
+            HBoxContainer priorityRow = new();
+            priorityRow.AddChild(Text("优先级（3 最高）"));
+            SpinBox priority = Number(priorityRow, 3, 70);
+            priority.MinValue = 1;
+            group.AddChild(priorityRow);
+            if (entry.Id == RelicCounterId.MeatOnTheBone)
+            {
+                range.Visible = false;
+                values.Visible = false;
+                priorityRow.Visible = false;
+                group.AddChild(Text("结合其他策略比较净战损，仅为有收益的半血回血额外卖血。"));
+            }
             _cards.AddChild(card);
-            Row row = new(entry, toggle, minimum, maximum, hp, status, card, icon);
+            Row row = new(entry, toggle, minimum, maximum, hp, priority, status, card, icon);
             _rows.Add(row);
             toggle.Toggled += _ => Publish();
             minimum.ValueChanged += _ => { if (!_refreshing && minimum.Value > maximum.Value) maximum.SetValueNoSignal(minimum.Value); Publish(); };
             maximum.ValueChanged += _ => { if (!_refreshing && maximum.Value < minimum.Value) minimum.SetValueNoSignal(maximum.Value); Publish(); };
             hp.ValueChanged += _ => Publish();
+            priority.ValueChanged += _ => Publish();
         }
         Button others = new() { Text = SolverText.Get("查看其他计数遗物"), ToggleMode = true };
         VBoxContainer inventory = new() { Visible = false, SizeFlagsHorizontal = SizeFlags.ExpandFill };
@@ -176,7 +189,7 @@ internal sealed partial class SolverRelicStrategyPanel : PanelContainer
                 row.Enabled.Disabled = disabled || !settings.RelicStrategyEnabled;
                 row.Enabled.SetPressedNoSignal(rule.Enabled);
                 bool editable = !disabled && settings.RelicStrategyEnabled && rule.Enabled;
-                foreach (var pair in new[] { (row.Minimum, rule.Minimum), (row.Maximum, rule.Maximum), (row.Hp, rule.HpAllowance) })
+                foreach (var pair in new[] { (row.Minimum, rule.Minimum), (row.Maximum, rule.Maximum), (row.Hp, rule.HpAllowance), (row.Priority, rule.Priority) })
                 {
                     pair.Item1.Editable = editable;
                     if (!pair.Item1.GetLineEdit().HasFocus()) pair.Item1.SetValueNoSignal(pair.Item2);
@@ -203,7 +216,7 @@ internal sealed partial class SolverRelicStrategyPanel : PanelContainer
     {
         if (_refreshing) return;
         var rules = _rows.Select(row => new RelicCounterRule(row.Entry.Id, row.Enabled.ButtonPressed,
-            (int)row.Minimum.Value, (int)row.Maximum.Value, (int)row.Hp.Value)).ToArray();
+            (int)row.Minimum.Value, (int)row.Maximum.Value, (int)row.Hp.Value, (int)row.Priority.Value)).ToArray();
         PolicyChanged?.Invoke(_enabled.ButtonPressed, rules);
     }
 
@@ -223,8 +236,8 @@ internal sealed partial class SolverRelicStrategyPanel : PanelContainer
         Row first = _rows[0];
         first.Hp.Value = 7;
         first.Enabled.ButtonPressed = false;
-        bool independent = changed is { Length: 10 } && !changed[0].Enabled && changed[0].HpAllowance == 7
-            && changed.Skip(1).All(rule => rule.Enabled);
+        bool independent = changed is { Length: 11 } && !changed[0].Enabled && changed[0].HpAllowance == 7
+            && changed.Skip(1).Where(rule => rule.Id != RelicCounterId.MeatOnTheBone).All(rule => rule.Enabled);
         _enabled.ButtonPressed = false;
         return independent && enabled == false && changed![0].HpAllowance == 7
             && _rows.All(row => row.Icon.Texture != null && row.Card.GetParent() == _cards);

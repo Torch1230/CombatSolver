@@ -171,6 +171,13 @@ internal static class AfterCardPlayedMirrors
         if (!context.CardPlay.IsAutoPlay && context.PreviewCard.Owner == relic.Owner)
         {
             var state = context.StateStore.Get(relic, () => new CounterPredictionState(relic._cardsPlayedThisTurn));
+            if (state.Value == relic.DynamicVars.Cards.IntValue - 1
+                && context.CardPlay.PlayIndex == 0
+                && context.CardPlay.Resources.EnergySpent == 0
+                && context.CardPlay.Resources.StarsSpent == 0
+                && !context.PreviewCard.EnergyCost.CostsX && !context.PreviewCard.HasStarCostX
+                && context.Simulator.IsRecordingActionRelicTriggers)
+                context.Simulator.RecordRelicTrigger(relic, "：本张免费");
             state.Value++;
         }
     }

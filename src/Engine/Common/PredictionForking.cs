@@ -207,6 +207,13 @@ internal interface ICombatPredictionEffectSink
 
     void SetPowerAmount(MegaCrit.Sts2.Core.Models.PowerModel power, int amount);
 
+    void ApplyPowerFromSource(
+        Type powerType,
+        MegaCrit.Sts2.Core.Entities.Creatures.Creature target,
+        int amount,
+        MegaCrit.Sts2.Core.Entities.Creatures.Creature? applier,
+        MegaCrit.Sts2.Core.Models.CardModel? cardSource);
+
     void SetPowerDynamicVar(
         CombatSolver.Engine.InCombat.Simulation.CombatPredictionSimulator simulator,
         MegaCrit.Sts2.Core.Models.PowerModel power,

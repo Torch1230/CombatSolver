@@ -23,6 +23,8 @@ internal sealed partial class SimulatedCombatState
 
     internal int ReadRelicCounter(CombatPredictionSimulator simulator, RelicModel relic) => relic switch
     {
+        MeatOnTheBone meat => simulator.State.GetCreature(meat.Owner.Creature).CurrentHp * 100
+            <= simulator.State.GetCreature(meat.Owner.Creature).MaxHp * meat.DynamicVars[MeatOnTheBone._hpThresholdKey].IntValue ? 1 : 0,
         HappyFlower or FakeHappyFlower or Pendulum or PollinousCore or GalacticDust => GetStatefulRelicState(relic).Current,
         Nunchaku n => RelicPredictionStateSupport.GetCounterValue(simulator, n, n.AttacksPlayed),
         TuningFork t => RelicPredictionStateSupport.GetCounterValue(simulator, t, t.SkillsPlayed),

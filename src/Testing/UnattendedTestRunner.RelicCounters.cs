@@ -21,7 +21,7 @@ internal sealed partial class UnattendedTestRunner
         {
             foreach (var relic in player.Relics.ToArray()) await RelicCmd.Remove(relic);
             foreach (var power in combat.Creatures.SelectMany(c => c.Powers).ToArray()) await PowerCmd.Remove(power);
-            foreach (var entry in RelicCounterCatalog.All)
+            foreach (var entry in RelicCounterCatalog.All.Where(entry => entry.Id != RelicCounterId.MeatOnTheBone))
             {
                 RelicModel relic = entry.Canonical().ToMutable();
                 player.AddRelicInternal(relic);
@@ -35,7 +35,7 @@ internal sealed partial class UnattendedTestRunner
                 };
                 SetRelicStateMember(relic, member, entry.Period - 1);
             }
-            var rules = RelicCounterCatalog.All.Select(entry => new RelicCounterRule(entry.Id, true, entry.Period - 1, entry.Period - 1, 2)).ToArray();
+            var rules = RelicCounterCatalog.All.Where(entry => entry.Id != RelicCounterId.MeatOnTheBone).Select(entry => new RelicCounterRule(entry.Id, true, entry.Period - 1, entry.Period - 1, 2)).ToArray();
             var settings = original with { AutomaticCalculationEnabled = false, RelicStrategyEnabled = true, RelicCounterRules = rules, GrowthBudgets = default, IgnoreLongTermRewards = false };
             var roundtrip = SolverSettings.RoundTripForTesting(settings);
             Check(roundtrip.RelicStrategyEnabled && roundtrip.RelicCounterRules.SequenceEqual(rules), "switches, ranges and allowances persist");

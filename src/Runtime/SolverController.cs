@@ -840,9 +840,18 @@ internal static class SolverController
     public static void RequestSearch(NGame host, CombatState state, SearchReason reason, bool deployWhenReady = false)
     {
         AssertMainThread();
+        int? searchTurn = LocalContext.GetMe(state)?.PlayerCombatState?.TurnNumber;
+        // Turn setup and TurnStarted can complete in either order. The first accepted
+        // request owns this turn; a late automatic callback must keep its active plan.
+        if (reason == SearchReason.AutoTurnStart
+            && (ReferenceEquals(_combat.State, state) && _combat.LatestResult?.StartTurnNumber == searchTurn
+                || _search is { } active && ReferenceEquals(active.State, state) && active.StartTurnNumber == searchTurn))
+        {
+            Entry.Logger.Info($"[CombatSolver/Test] AUTO_SEARCH_ALREADY_OWNED turn={searchTurn}");
+            return;
+        }
         _combat.StoppedSearch = null;
         SolverDispatcher.Ensure(host);
-        int? searchTurn = LocalContext.GetMe(state)?.PlayerCombatState?.TurnNumber;
         if (_combat.DeployAfterTurnSetupTurn == searchTurn)
         {
             deployWhenReady = true;
@@ -1062,6 +1071,7 @@ internal static class SolverController
                 deployWhenReady)
             {
                 ReplanCause = replanCause,
+                StartTurnNumber = searchTurn!.Value,
             };
             _search = search;
             CancellationToken token = search.Cancellation.Token;

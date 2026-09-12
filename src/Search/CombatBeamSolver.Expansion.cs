@@ -88,7 +88,7 @@ internal sealed partial class CombatBeamSolver
                         ReplayCount: Math.Max(0, card.Preview.GetEnchantedReplayCount()),
                         CardStateKey: cardStateKey,
                         CardStateOccurrence: cardStateOccurrence,
-                        CardUpgradeLevel: card.Preview.CurrentUpgradeLevel);
+                        CardEnchantmentId: card.Preview.Enchantment?.Id.Entry ?? "", CardUpgradeLevel: card.Preview.CurrentUpgradeLevel);
                     SimulationSnapshot probe = ReplayAction(seed, action);
                     try
                     {

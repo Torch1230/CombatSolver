@@ -62,6 +62,7 @@ internal sealed record SolverOverlaySnapshot(
     string? SearchLimitWarningText)
 {
     public string? UnrecoveredLootText { get; init; }
+    public IReadOnlyList<SolverStrategyOutcome> StrategyOutcomes { get; init; } = [];
     public static SolverOverlaySnapshot Capture(SolverResult result, bool unexpectedReplan)
         => CaptureWithReviewedWorldlines(result, unexpectedReplan, reviewedWorldlinesTotal: 0);
 
@@ -260,6 +261,8 @@ internal sealed record SolverOverlaySnapshot(
             hasRisk,
             BuildSearchLimitWarning(result.BoundaryReason))
         {
+            StrategyOutcomes = SolverStrategyOutcomeText.Capture(result.Snapshot.RelicCounters,
+                result.Snapshot.GrowthRewards, result.Snapshot.AllEnemiesDead),
             UnrecoveredLootText = result.OutstandingStolenResource <= 0 ? null
                 : result.Snapshot.UnrecoveredGold is { } gold && result.Snapshot.UnrecoveredCards is { } cards
                     ? SolverText.Format($"预计未追回：{cards} 张牌 / {gold} 金币")
@@ -342,7 +345,8 @@ internal sealed record SolverOverlaySnapshot(
                 action.GetActionChoicesInExecutionOrder().Select(choice =>
                     (IReadOnlyList<SolverCardTextIdentity>)choice.Cards.Select(card =>
                         new SolverCardTextIdentity(card.CardId, card.UpgradeLevel, card.Title)).ToArray()).ToArray(),
-                action.RelicEffects?.Select(effect => new SolverRelicTextIdentity(effect.RelicId, effect.RelicTitle, effect.Summary)).ToArray() ?? []));
+                action.RelicEffects?.Select(effect => new SolverRelicTextIdentity(effect.RelicId, effect.RelicTitle, effect.Summary)).ToArray() ?? [])
+                { CardEnchantmentId = action.CardEnchantmentId });
         return SolverActionTextIdentity.Refresh(snapshot);
     }
 

@@ -230,7 +230,7 @@ internal sealed partial class CombatBeamSolver
                 Score: node.Score,
                 CombatEndedTurn: won ? node.Snapshot.CombatEndedTurn : null)
             {
-                GrowthHpCredit = node.Snapshot.StrategicHpCredit,
+                GrowthHpCredit = node.Snapshot.StrategyGoalHpCredit,
                 TheftPolicy = _theftPolicy,
                 GrowthRewardCount = node.Snapshot.StrategyGoalCount,
             };

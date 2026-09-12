@@ -260,7 +260,7 @@ internal sealed partial class CombatBeamSolver
                     ? candidate.Features.OutstandingStolenResource : 0)
                 // Compare HP after the requested recovery objective.
                 .ThenBy(candidate => candidate.StrategicHpDeficit)
-                .ThenByDescending(candidate => candidate.Snapshot.StrategicHpCredit)
+                .ThenByDescending(candidate => candidate.Snapshot.StrategyGoalHpCredit)
                 .ThenByDescending(candidate => candidate.Snapshot.StrategyGoalCount)
                 .ThenBy(candidate => candidate.CombatEndedTurn ?? int.MaxValue)
                 .ThenBy(candidate => candidate.PolicyHpDeficit)
@@ -385,7 +385,7 @@ internal sealed partial class CombatBeamSolver
                 rightSnapshot.DeathSaveRelicHpRestored) - rightSnapshot.StrategicHpCredit);
         if (comparison != 0)
             return comparison;
-        comparison = rightSnapshot.StrategicHpCredit.CompareTo(leftSnapshot.StrategicHpCredit);
+        comparison = rightSnapshot.StrategyGoalHpCredit.CompareTo(leftSnapshot.StrategyGoalHpCredit);
         if (comparison != 0)
             return comparison;
         comparison = rightSnapshot.StrategyGoalCount.CompareTo(leftSnapshot.StrategyGoalCount);

@@ -1,0 +1,22 @@
+name: combatsolver-monitor
+services:
+  monitor:
+    build: .
+    image: combatsolver-monitor:local
+    container_name: combatsolver-presence
+    user: "1000:1000"
+    init: true
+    restart: unless-stopped
+    network_mode: host
+    env_file:
+      - path: ./private/docker.env
+        format: raw
+    volumes:
+      - ./private:/home/Torch/combatsolver-presence/private:ro
+      - ./data:/home/Torch/combatsolver-presence/data
+    mem_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}

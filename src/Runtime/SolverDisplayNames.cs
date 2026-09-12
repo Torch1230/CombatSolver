@@ -5,6 +5,7 @@ using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Powers;
+using MegaCrit.Sts2.Core.Nodes.Rooms;
 using CombatSolver.Engine.InCombat.Simulation;
 
 namespace CombatSolver;
@@ -63,21 +64,25 @@ internal sealed class SolverDisplayNames
             monsterNames.TryAdd(monster.Id.Entry, monster.Title.GetFormattedText());
         Dictionary<uint, string> creatureNames = [];
         Dictionary<string, int> enemyTypeCounts = state.Enemies
-            .GroupBy(CreatureTypeKey, StringComparer.Ordinal)
+            .GroupBy(creature => CaptureCreatureBaseName(creature, monsterNames), StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
         Dictionary<string, int> enemyTypeNumbers = new(StringComparer.Ordinal);
-        foreach (Creature creature in state.Creatures)
+        foreach (Creature creature in state.Creatures.OrderBy(creature => NCombatRoom.Instance?.GetCreatureNode(creature)?.GlobalPosition.X ?? 0))
         {
             if (creature.CombatId is not uint combatId)
                 continue;
             string baseName = CaptureCreatureBaseName(creature, monsterNames);
             if (creature.Side == CombatSide.Enemy
-                && enemyTypeCounts.GetValueOrDefault(CreatureTypeKey(creature)) > 1)
+                && enemyTypeCounts.GetValueOrDefault(baseName) > 1)
             {
-                string typeKey = CreatureTypeKey(creature);
+                string typeKey = baseName;
                 int number = enemyTypeNumbers.GetValueOrDefault(typeKey) + 1;
                 enemyTypeNumbers[typeKey] = number;
-                creatureNames[combatId] = $"{baseName} {number}";
+                bool positioned = NCombatRoom.Instance?.GetCreatureNode(creature) != null;
+                string position = positioned
+                    ? LocManager.Instance.Language is "zhs" or "zht" ? $"左起{number}" : $"#{number} from left"
+                    : $"#{number}";
+                creatureNames[combatId] = $"{baseName}（{position}）";
             }
             else
             {

@@ -12,7 +12,7 @@ internal sealed partial class SimulatedCombatState
 {
     private sealed class CardPowerApplicationScope(
         SimulatedCombatState owner,
-        CardModel card) : IDisposable
+        CardModel? card) : IDisposable
     {
         private bool _disposed;
 
@@ -32,7 +32,7 @@ internal sealed partial class SimulatedCombatState
         typeof(UnsettlingLamp).GetField("_isFinishedTriggering", BindingFlags.Instance | BindingFlags.NonPublic)
         ?? throw new MissingFieldException(typeof(UnsettlingLamp).FullName, "_isFinishedTriggering");
 
-    private List<CardModel>? _powerCardSources;
+    private List<CardModel?>? _powerCardSources;
     private Dictionary<UnsettlingLamp, CardModel>? _unsettlingLampTriggeringCards;
     private Dictionary<UnsettlingLamp, HashSet<Type>>? _unsettlingLampInternalPowerTypes;
 
@@ -40,7 +40,7 @@ internal sealed partial class SimulatedCombatState
         ? _powerCardSources[^1]
         : null;
 
-    public void BeginCardPowerApplication(CardModel card)
+    public void BeginCardPowerApplication(CardModel? card)
     {
         (_powerCardSources ??= []).Add(card);
     }
@@ -51,10 +51,10 @@ internal sealed partial class SimulatedCombatState
         return new CardPowerApplicationScope(this, card.Preview);
     }
 
-    public void CompleteCardPowerApplication(CardModel card)
+    public void CompleteCardPowerApplication(CardModel? card)
     {
         if (!ReferenceEquals(CurrentPowerCardSource, card))
-            throw new InvalidOperationException($"结束了未开始的卡牌 Power 结算：{card.Id.Entry}。");
+            throw new InvalidOperationException($"结束了未开始的卡牌 Power 结算：{card?.Id.Entry}。");
         if (_unsettlingLampTriggeringCards != null)
         {
             UnsettlingLamp[] completedLamps = _unsettlingLampTriggeringCards
@@ -69,6 +69,13 @@ internal sealed partial class SimulatedCombatState
             }
         }
         _powerCardSources!.RemoveAt(_powerCardSources.Count - 1);
+    }
+
+    public void ApplyPowerFromSource(Type powerType, Creature target, int amount, Creature? applier, CardModel? cardSource)
+    {
+        BeginCardPowerApplication(cardSource);
+        using var scope = new CardPowerApplicationScope(this, cardSource);
+        ApplyPower(powerType, target, amount, applier);
     }
 
     public int ModifyPowerAmountForRelics(

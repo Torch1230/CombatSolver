@@ -19,6 +19,7 @@ internal static class RelicCounterCatalog
         new(RelicCounterId.JossPaper, () => ModelDb.Relic<JossPaper>(), 5),
         new(RelicCounterId.IronClub, () => ModelDb.Relic<IronClub>(), 4),
         new(RelicCounterId.GalacticDust, () => ModelDb.Relic<GalacticDust>(), 10),
+        new(RelicCounterId.MeatOnTheBone, () => ModelDb.Relic<MeatOnTheBone>(), 2),
     });
 
     public static RelicCounterId? Identify(RelicModel relic) => relic switch
@@ -28,6 +29,7 @@ internal static class RelicCounterCatalog
         PenNib => RelicCounterId.PenNib, Nunchaku => RelicCounterId.Nunchaku,
         TuningFork => RelicCounterId.TuningFork, JossPaper => RelicCounterId.JossPaper,
         IronClub => RelicCounterId.IronClub, GalacticDust => RelicCounterId.GalacticDust,
+        MeatOnTheBone => RelicCounterId.MeatOnTheBone,
         _ => null,
     };
 
@@ -53,7 +55,7 @@ internal static class RelicCounterCatalog
             {
                 int period = All.Single(entry => entry.Id == rule.Id).Period;
                 if (rule.Maximum >= period) throw new ArgumentException("Relic range exceeds its counter period.");
-                return new RelicCounterTarget(rule.Id, rule.Minimum, rule.Maximum, rule.HpAllowance, period);
+                return new RelicCounterTarget(rule.Id, rule.Minimum, rule.Maximum, rule.HpAllowance, period, rule.Priority);
             })
             .Where(target => target.Minimum > 0 || target.Maximum < target.Period - 1)
             .OrderBy(target => target.Id).ToArray());

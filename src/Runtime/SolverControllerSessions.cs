@@ -162,6 +162,7 @@ internal sealed class SolverSearchSession(
     private readonly int[] _frameBuckets = new int[FrameBucketUpperBounds.Length];
 
     public int Generation { get; } = generation;
+    public int StartTurnNumber { get; init; }
     public ReplanCause ReplanCause { get; init; }
     public CombatState State { get; } = state;
     public LiveCombatStamp Stamp { get; } = stamp;

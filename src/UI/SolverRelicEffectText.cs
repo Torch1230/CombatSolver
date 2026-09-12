@@ -14,6 +14,7 @@ internal static partial class SolverRelicEffectText
         string? fixedText = summary switch
         {
             "：手牌0费" => ": Hand costs 0",
+            "：本张免费" => ": Free card",
             "：复制到手牌" => ": Copy to hand",
             "：升级" => ": Upgrade",
             "：额外回合" => ": Extra turn",

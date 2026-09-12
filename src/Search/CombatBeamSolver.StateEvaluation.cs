@@ -192,9 +192,16 @@ internal sealed partial class CombatBeamSolver
         int growthHpCredit = _growthBudgets.Credit(growthRewards);
         score += (double)growthHpCredit * hpWeight;
         RelicCounterEvaluation relicCounters = combat.EvaluateRelicCounters(simulator, _player, _relicTargets);
-        score += (double)relicCounters.HpCredit * hpWeight;
+        if (won && (relicCounters.SatisfiedMask & (1UL << (int)RelicCounterId.MeatOnTheBone)) != 0)
+        {
+            int thresholdHeal = root.PostCombatRelicHeal.HealFor(player.CurrentHp, player.MaxHp)
+                - root.PostCombatRelicHeal.MonotoneHealFor(player.CurrentHp, player.MaxHp);
+            relicCounters = relicCounters with { HealingHpCredit =
+                ActEndingBossPolicy.PersistentValueOfRecoveredHp(thresholdHeal, _strategicBossHpRelief) };
+        }
+        score += (double)(relicCounters.HpCredit + relicCounters.HealingHpCredit) * hpWeight;
         // Small, bounded tie guidance for free counter alignment; HP remains the primary cost.
-        score += relicCounters.SatisfiedCount * 0.1 - relicCounters.Distance * 0.001;
+        score += relicCounters.SatisfiedPriority * 0.1 - relicCounters.Distance * 0.001;
         int angerCopiesGenerated = combat.AngerCopiesGenerated;
         score += angerCopiesGenerated * SolverWeights.AngerCopyBeamPenalty;
         if (won && !uncertainVictory)

@@ -12,6 +12,7 @@ internal sealed record SolverActionTextIdentity(
     IReadOnlyList<IReadOnlyList<SolverCardTextIdentity>> Choices,
     IReadOnlyList<SolverRelicTextIdentity> Relics)
 {
+    public string CardEnchantmentId { get; init; } = "";
     public static SolverOverlayActionSnapshot Refresh(SolverOverlayActionSnapshot snapshot)
     {
         if (snapshot.TextIdentity is not { } identity) return snapshot;
@@ -20,6 +21,8 @@ internal sealed record SolverActionTextIdentity(
             : SolverUiModelNames.Card(identity.CardId, identity.Upgrade, snapshot.Title);
         string? choices = identity.Choices.Count == 0 ? null : string.Join(" / ", identity.Choices.Select(choice =>
             choice.Count == 0 ? SolverText.Get("不选") : SolverText.Format($"选 {string.Join("、", choice.Select(card => SolverUiModelNames.Card(card.Id, card.Upgrade, card.OriginalTitle)))}")));
+        if (identity.CardEnchantmentId == "INKY")
+            title += $"（{ModelDb.Enchantment<MegaCrit.Sts2.Core.Models.Enchantments.Inky>().Title.GetFormattedText()}）";
         string[] relics = identity.Relics.Select(relic => SolverUiModelNames.Relic(relic.Id, relic.OriginalTitle)
             + SolverRelicEffectText.Format(relic.Summary)).ToArray();
         string tooltip = (identity.EndTurn ? SolverText.Get("结束回合") : title)

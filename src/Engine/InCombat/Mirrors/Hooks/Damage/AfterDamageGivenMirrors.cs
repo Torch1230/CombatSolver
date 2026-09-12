@@ -56,7 +56,7 @@ internal static class AfterDamageGivenMirrors
             context.Props.IsPoweredAttack() &&
             context.Result.UnblockedDamage > 0)
         {
-            Effects(context).ApplyPower(typeof(PoisonPower), context.Target, power.Amount, power.Owner);
+            Effects(context).ApplyPowerFromSource(typeof(PoisonPower), context.Target, power.Amount, power.Owner, cardSource: null);
         }
     }
 
@@ -66,7 +66,7 @@ internal static class AfterDamageGivenMirrors
             context.Props.IsPoweredAttack() &&
             context.Result.UnblockedDamage > 0)
         {
-            Effects(context).ApplyPower(typeof(PoisonPower), context.Target, power.Amount, power.Owner);
+            Effects(context).ApplyPowerFromSource(typeof(PoisonPower), context.Target, power.Amount, power.Owner, cardSource: null);
         }
     }
 
