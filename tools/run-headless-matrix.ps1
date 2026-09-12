@@ -122,10 +122,16 @@ if ([Environment]::ProcessorCount -eq 1 -and -not $PSBoundParameters.ContainsKey
 }
 $runtimeContext = New-HeadlessRuntimeContext $repoRoot $Sts2GameRoot $HeadlessInstance `
     $HeadlessExecutionMode $HeadlessMemoryReservationMiB $HeadlessCpuReservation $HeadlessQueueTimeoutSeconds
+if ([string]::IsNullOrWhiteSpace($HeadlessInstance) -and [string]::IsNullOrWhiteSpace($env:COMBATSOLVER_HEADLESS_ROOT)) {
+    $runtimeContext = Select-HeadlessPoolContext $runtimeContext
+}
 $headlessRoot = $runtimeContext.Root
 New-Item -ItemType Directory -Path $headlessRoot -Force | Out-Null
-$launcherLock = [IO.File]::Open((Join-Path $headlessRoot 'launcher.lock'),
+$launcherLock = $runtimeContext['PoolLauncherLock']
+if ($null -eq $launcherLock) {
+    $launcherLock = [IO.File]::Open((Join-Path $headlessRoot 'launcher.lock'),
     [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+}
 try {
     Initialize-HeadlessRuntimeOwner $runtimeContext
     $matrixLockPath = Join-Path $headlessRoot 'matrix.lock'

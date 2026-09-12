@@ -8,6 +8,8 @@
 
 ## 下一版本（开发中）：极高配置完整搜索性能重构
 
+- headless 磁盘复用：Bash / PowerShell 的单请求和矩阵入口默认优先复用同工作树的空闲实例，最多两槽，满池排队；同时保护矩阵请求间隙和保持中的搜索。显式实例 ID / runtime root 仍固定定位。Linux 快照发布成功后删除本次旧副本，失败时清理未发布暂存目录，发布失败保留旧副本用于恢复；不自动删除历史实例和日志。无游戏基础设施测试覆盖复用、并发锁与快照故障，未改变战斗代码。
+
 - [局部数据结构研究](performance/simulation-data-layout-20260912.md)：新增独立布局探针及只写本地候选的生成器。相同 .NET 9 Release 配置下，类型计数辅助小表通过现有仓库合同，在一至两种类型的非空样例中每 Fork 少分配 96 B；列表包装合并原型在存储构造/首次写入时少分配 24 B，普通 Fork 不变。小对象 int→short、字典 int→byte 与 bool→flags 的实测大小未下降。只提交工具、报告和证据，生产字段及语义不变；没有新增整场搜索、RSS 或可见性能结论。当前优先级收紧为局部数据结构，不继续扩大完整战斗迁移。
 
 - [独立测试 ledger](../tools/TestLedger/README.md)：`tools/test-ledger.sh` 只读地从现有工具与矩阵入口（`tools/*/*.csproj`、`tools/*/run.py`／`presets.py`、`tools/*/package.json`、`tools/{verify,test}-*.{sh,ps1}` 和[测试矩阵](TEST_MATRIX.md#独立测试-ledger2026-09-12toolstest-ledgersh)的 Windows/Linux 命令块）生成机器可读 catalog，把每条入口统一记为 `Passed`／`Failed`／`Blocked`／`NotRun` 四态，默认策略拒绝会启动游戏或重写覆盖目录的 `CoverageCatalog`。当前 Linux pure-contract 基线实际总 536：21 Passed、3 Failed、507 Blocked、5 NotRun；`DiagnosticLogTests` 与 `NoVictoryRecoveryChecks` 两类现有失败保留原始日志，不能据此宣称全项目通过。完整游戏、Windows、Node 服务和可见 Steam 基准仍未完成。

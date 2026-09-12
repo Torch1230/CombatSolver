@@ -441,11 +441,19 @@ ritsu_variant_dll="$ritsu_workshop_root/lib/0.111.0/STS2-RitsuLib.dll"
 ritsu_manifest_source="$ritsu_workshop_root/mod_manifest.json"
 interactive_data_dir="$host_data_home/SlayTheSpire2"
 headless_instance="${option_value[headless-instance]}"
+source "$script_dir/headless-runtime.sh"
+headless_auto_pool=0
 if [[ -z $headless_instance ]]; then
     headless_instance="$(printf '%s' "$repo_root" | sha256sum)"
     headless_instance="worktree-${headless_instance:0:16}"
+    ((option_value[stop-instance] != 0)) || headless_auto_pool=1
 fi
 [[ $headless_instance =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$ ]] || die 'invalid --headless-instance (letters, digits, dot, underscore, dash; max 64)'
+if ((headless_auto_pool == 1)) && [[ -z ${COMBATSOLVER_HEADLESS_ROOT:-} ]]; then
+    hr_select_pool "${XDG_STATE_HOME:-${HOME}/.local/state}/CombatSolver/headless-instances" \
+        "$headless_instance" "${option_value[headless-queue-timeout-seconds]}" || die 'cannot select headless pool slot'
+    headless_instance=$HR_SELECTED_INSTANCE
+fi
 headless_root="${COMBATSOLVER_HEADLESS_ROOT:-${XDG_STATE_HOME:-${HOME}/.local/state}/CombatSolver/headless-instances/$headless_instance}"
 headless_root="$(realpath -m -- "$headless_root")"
 game_root="$headless_root/game"
@@ -476,7 +484,6 @@ fi
 
 [[ $headless_root != "$source_game_root" && $headless_root != "$source_game_root/"* && $source_game_root != "$headless_root/"* ]] || runtime_error 'source game and instance runtime must be disjoint'
 # shellcheck source=headless-runtime.sh
-source "$script_dir/headless-runtime.sh"
 hr_init "$headless_root" "$headless_instance" "$game_executable" "$headless_data_home" \
     "${option_value[headless-execution-mode]}" "${option_value[headless-memory-reservation-mib]}" \
     "${option_value[headless-cpu-reservation]}" "${option_value[headless-queue-timeout-seconds]}" || runtime_error 'could not claim headless instance'

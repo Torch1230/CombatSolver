@@ -140,16 +140,23 @@ signal_status=0
 case_pid=""
 case_pgid=""
 
+source "$script_dir/headless-runtime.sh"
+headless_auto_pool=0
 if [[ -z $headless_instance ]]; then
     headless_instance="$(printf '%s' "$repo_root" | sha256sum)"
     headless_instance="worktree-${headless_instance:0:16}"
+    headless_auto_pool=1
+fi
+if ((headless_auto_pool == 1)) && [[ -z ${COMBATSOLVER_HEADLESS_ROOT:-} ]]; then
+    hr_select_pool "${XDG_STATE_HOME:-${HOME}/.local/state}/CombatSolver/headless-instances" \
+        "$headless_instance" "$headless_queue_timeout_seconds" || die 'cannot select headless pool slot'
+    headless_instance=$HR_SELECTED_INSTANCE
 fi
 headless_root="${COMBATSOLVER_HEADLESS_ROOT:-${XDG_STATE_HOME:-${HOME}/.local/state}/CombatSolver/headless-instances/$headless_instance}"
 headless_root="$(realpath -m -- "$headless_root")"
 source_game_root="$(realpath -m -- "$sts2_game_root")"
 [[ $headless_root != "$source_game_root" && $headless_root != "$source_game_root/"* \
     && $source_game_root != "$headless_root/"* ]] || die 'matrix runtime must be separate from the source game'
-source "$script_dir/headless-runtime.sh"
 HR_WORKTREE="$repo_root"
 hr_init "$headless_root" "$headless_instance" "$headless_root/game/SlayTheSpire2" \
     "$headless_root/data" "$headless_execution_mode" "$headless_memory_reservation_mib" \

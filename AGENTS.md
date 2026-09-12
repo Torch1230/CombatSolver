@@ -166,6 +166,8 @@ CombatSolver 是《杀戮尖塔 2》的单人战斗路线求解器 Mod，使用 
 
 需要完整部署时固定 `Instant / 0 秒` 并断言计划外重算数量。一个 headless 进程复用同一批最小请求；重新编译后退出仍加载旧 DLL 的进程。
 
+headless 默认省略 `HeadlessInstance` / `--headless-instance`，由同工作树最多两槽的实例池优先复用空闲槽，全部占用时排队。不要用场景名、日期或随机 ID 为每个请求创建永久游戏副本。只有需要精确定位保持中的请求、独立固定环境或停止特定实例时才显式指定稳定 ID，并复用日志输出的实例名；不要为绕过忙碌实例而不断换名。显式 `COMBATSOLVER_HEADLESS_ROOT` 仍表示固定环境。
+
 Windows（PowerShell 7）常用命令：
 
 ```powershell

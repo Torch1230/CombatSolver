@@ -101,6 +101,58 @@ function New-HeadlessRuntimeContext(
     }
 }
 
+function Select-HeadlessPoolContext([hashtable]$Context) {
+    $deadline = [DateTime]::UtcNow.AddSeconds($Context.QueueSeconds)
+    $parent = [IO.Path]::GetDirectoryName($Context.Root)
+    while ($true) {
+        foreach ($existingOnly in @($true, $false)) {
+            foreach ($instance in @($Context.Instance, ($Context.Instance + '-2'))) {
+                $root = Join-Path $parent $instance
+                if ((Test-Path -LiteralPath $root) -ne $existingOnly) { continue }
+                $candidate = New-HeadlessRuntimeContext $Context.RepositoryRoot $Context.SourceGameRoot $instance `
+                    $Context.Mode $Context.MemoryMiB $Context.Cpu $Context.QueueSeconds
+                New-Item -ItemType Directory -Path $candidate.Root -Force | Out-Null
+                $lock = $null
+                $matrix = $null
+                try {
+                    $launcherPath = Join-Path $root 'launcher.lock'
+                    $matrixPath = Join-Path $root 'matrix.lock'
+                    Assert-HeadlessNoReparsePoint $launcherPath
+                    Assert-HeadlessNoReparsePoint $matrixPath
+                    try {
+                        $lock = [IO.File]::Open($launcherPath, 'OpenOrCreate', 'ReadWrite', 'None')
+                        $matrix = [IO.File]::Open($matrixPath, 'OpenOrCreate', 'ReadWrite', 'None')
+                    } catch [IO.IOException] {
+                        # Sharing violations mean occupied; other IO errors must surface.
+                        $code = $_.Exception.HResult -band 0xffff
+                        if ($code -notin @(32, 33) -and ($IsWindows -or $code -ne 11)) { throw }
+                        continue
+                    }
+                    $ready = Join-Path $root 'Roaming/SlayTheSpire2/combat_solver_test_ready.json'
+                    if ((Test-Path -LiteralPath $ready -PathType Leaf) -and
+                        (Get-Content -LiteralPath $ready -Raw | ConvertFrom-Json).held -eq $true) {
+                        $markerPath = Join-Path $root 'process.json'
+                        if (Test-Path -LiteralPath $markerPath -PathType Leaf) {
+                            $marker = Get-Content -LiteralPath $markerPath -Raw | ConvertFrom-Json
+                            $heldProcess = Get-Process -Id $marker.pid -ErrorAction SilentlyContinue
+                            if ($null -ne $heldProcess) { $heldProcess.Dispose(); continue }
+                        }
+                    }
+                    $candidate.PoolLauncherLock = $lock
+                    $lock = $null
+                    Write-Host "UNATTENDED_POOL_SELECTED instance=$instance root=$root"
+                    return $candidate
+                } finally {
+                    if ($null -ne $matrix) { $matrix.Dispose() }
+                    if ($null -ne $lock) { $lock.Dispose() }
+                }
+            }
+        }
+        if ([DateTime]::UtcNow -ge $deadline) { throw 'Headless instance pool busy (two slots); queue timeout.' }
+        Start-Sleep -Milliseconds 250
+    }
+}
+
 function Initialize-HeadlessRuntimeOwner([hashtable]$Context) {
     $path = Join-Path $Context.Root 'instance.json'
     if (Test-Path -LiteralPath $path -PathType Leaf) {

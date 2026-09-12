@@ -1,5 +1,13 @@
 # CombatSolver 测试清单
 
+## Headless 磁盘复用（2026-09-12）
+
+正常单请求和矩阵运行省略实例参数，优先复用默认工作树池中的现有空闲槽，忙碌时才启用第二槽；两槽都忙时按 queue timeout 有界排队，不创建第三份。池选择持有真实 launcher lock，并检查 matrix lock；已保持的活进程不会被取走。实例名由 `HEADLESS_POOL_SELECTED` / `UNATTENDED_POOL_SELECTED` 输出。后续精确保持/释放/停止使用该稳定名字；显式 ID 或 `COMBATSOLVER_HEADLESS_ROOT` 不自动换槽。不要为每个场景新编实例名。不同工作树仍独立，显式命名目录和历史目录不属于自动池上限。
+
+Linux 发布成功后删除本次 retired 旧快照；失败的 staging 自动清理，发布失败时保留 recoverable retired。已有历史目录不自动扫描删除。相同输入继续命中原有内容快照缓存；源码/Mod 变化仍重新冻结私有快照，更新期间可能临时同时占用新旧两份，不共享可写游戏文件。
+
+无游戏验证入口：`python3 tools/test-headless-pool.py`、`pwsh -NoProfile -File tools/test-headless-pool.ps1`、`bash tools/test-headless-runtime.sh --snapshots`、`bash tools/test-headless-runtime.sh --snapshot-failures`。覆盖空闲复用、占用回退、满池有界等待、矩阵锁、现有第二槽优先于重建第一槽、保持请求/失效标记，以及成功旧快照回收、失败暂存回收和发布故障恢复。Bash / PowerShell 矩阵基础设施模拟测试也通过，覆盖参数转发、取消、固定实例及外来身份拒绝。PowerShell 池和矩阵测试本轮在 Linux pwsh 执行，不等于 Windows 实机验收。
+
 ## 局部数据布局研究（2026-09-12）
 
 - `tools/DataLayoutProbe`：.NET 9.0.19 / Linux x64 / Release / `DOTNET_TieredCompilation=0`，布局与分配探针通过；每形状 1,024 次预热、五块各 10,000 次分配一致。直接链接生产集合及值类型，另外检查研究列表的父兄弟隔离、捕获枚举器与修改失效，以及生产生命值范围和 64 位卡牌编码。合成形状与仅实现部分 API 的 MergedList 不计作完整游戏支持。
