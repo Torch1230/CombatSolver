@@ -2,11 +2,13 @@
 
 **找到了两个值得继续验证的小切口：状态仓库的辅助类型计数表，以及 ForkableList 的内部存储包装。** 它们不要求新增战斗语义、重写 Hook 或切换搜索后端。本轮只提交研究工具、原型生成器与证据，生产 `src` 没有改变；下面的字节数是独立 .NET 分配测量，不是整场搜索或 RSS 改善。
 
+**后续真实场景复测见[合并上游后的真实机甲场景内存与耗时对照](simulation-real-scene-memory-20260912.md)。** 那次复测接入的是另一项 `PredictionStateStore` 无分配枚举候选（`ReadEntries<TState>()` 结构枚举器与可复用缓冲区），不是本文第 3 节的辅助类型计数表：模型后端累计分配中位数只变化 0.22%、Compact 约 0%，结束工作集没有下降，因此该枚举候选已撤回。本文两个候选（辅助计数表、列表包装合并）仍未做整场搜索 A/B，“生产未改变”的结论仍然成立。
+
 这也是对[长期维护成本研究](simulation-maintenance-review-20260912.md)的进一步收紧：当前优先寻找字段、容器与分配层的小改动。逐状态族迁移只保留为远期方向，暂不把它或完整 Compact 闭包作为下一批默认实现。
 
 ## 1. 测量范围
 
-源码基线 `2f5a6df`，SDK 9.0.120，运行时 .NET 9.0.19，Linux x64，Release，`DOTNET_TieredCompilation=0`。通用布局探针每个形状先预热 1,024 次，再测五块、每块 10,000 次；五块的每操作分配一致。对象经过静态引用发布，防止分配被消除；采用线程累计分配计数，不依赖 `Marshal.SizeOf` 推算托管对象。[探针与复现](../../tools/DataLayoutProbe/README.md)、[完整 JSON](simulation-data-layout-20260912.json)。
+源码基线 `2f5a6df`；此后到 `4b350d6` 的 `src/` 只有 `src/Testing/UnattendedTestRunner.SolverPolicy.cs` 变化，本文涉及的布局与生产类型未变。SDK 9.0.120，运行时 .NET 9.0.19，Linux x64，Release，`DOTNET_TieredCompilation=0`。通用布局探针每个形状先预热 1,024 次，再测五块、每块 10,000 次；五块的每操作分配一致。对象经过静态引用发布，防止分配被消除；采用线程累计分配计数，不依赖 `Marshal.SizeOf` 推算托管对象。[探针与复现](../../tools/DataLayoutProbe/README.md)、[完整 JSON](simulation-data-layout-20260912.json)。
 
 状态仓库另复用已有 `PredictionStateStoreChecks`，生产源码和独立候选分别编译，显式开启类型计数检查。每种仓库测 10,000 次 Fork，重映射替身复用并预热；这里只包含仓库及测试状态的分配，不包含完整模拟器、游戏模型克隆、搜索和 UI。两次短计时样本均保留在 JSON，但不据此宣称 CPU 加速。
 
@@ -106,5 +108,6 @@ Compact 的 `long` 槽也不是全部只装一个小整数。`CardInstanceValue.
 - 记录五块稳定分配测量、生产小表基线/候选合同与全部样例数据。
 - 将长期维护研究及其既有静态审计数据纳入 PR，当前工作优先级收紧为局部数据结构研究。
 - 生产代码、后端准入、搜索预算、版本号和发布产物未改变。
+- 后续真实场景 A/B 已在[单独报告](simulation-real-scene-memory-20260912.md)中完成；该报告不改变本篇“局部候选仍未接入生产”的结论。
 
-未执行当前整场游戏性能 A/B、可见 Steam、Windows 或完整模拟器差分；没有声称当前搜索提速或峰值 RSS 下降。独立检查足以证明这里列出的局部布局与候选合同结果，生产接入仍需相称的真实工作量验证。
+本文本身只证明局部布局与候选合同结果；它不单独证明整场搜索提速或峰值 RSS 下降。

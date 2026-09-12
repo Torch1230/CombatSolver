@@ -2,6 +2,8 @@
   "kind": "RealSceneMemoryAndTimeAB",
   "measuredAt": "2026-09-12",
   "sourceCommitBeforeMeasurement": "d419a80",
+  "measuredSourceTreeCommit": "4b350d6",
+  "sourceCommitNote": "The measured source tree was d419a80 plus the single-profile preset assertion fix; 4b350d6 records that fix and this report.",
   "upstreamMain": "eff8cf4",
   "scenarioId": "COMPACT-SEARCH-BACKEND",
   "input": {
@@ -23,6 +25,15 @@
     "pendingReplays": 19609,
     "materializations": 0,
     "equivalent": true
+  },
+  "bootstrapAttempt": {
+    "status": "FailedInPreflightBeforeGameLaunch",
+    "launcherScript": "tools/run-unattended-test.sh",
+    "cause": "Custom OutputPath build directory contained the DLL but not CombatSolver.json; CopyMod copies the manifest only to the mod output directory",
+    "launcherMessage": "built CombatSolver DLL/manifest not found; build with -p:CopyModOnBuild=false or supply --combat-solver-build-dir",
+    "rerun": "Manifest copied into the same artifact; same input and independent instances completed three samples",
+    "producedResultArtifacts": false,
+    "excludedFromSamples": true
   },
   "samples": [
     {
@@ -60,7 +71,7 @@
     "realSceneMedianModelWorkingSetEndBytesAfter": 1856774144,
     "realSceneMedianCompactWorkingSetEndBytesBefore": 1674252288,
     "realSceneMedianCompactWorkingSetEndBytesAfter": 1687633920,
-    "reason": "The isolated contract is allocation-free, but the real workload change is below measurement noise and does not lower end working set; production changes were reverted."
+    "reason": "The isolated contract is allocation-free, but real-scene medians show only 0.22% model allocation change (comparable to the 0.21% three-sample spread), approximately 0% compact change, and higher end working set in both backends (+2.97% model, +0.80% compact); production changes were reverted."
   },
   "limitations": [
     "Resources are process-wide deltas during the headless coordinator solve and include game/native background work.",
@@ -69,10 +80,9 @@
     "The 53.9% time and 49.6% allocation reduction compares the existing model and compact backends, not the rejected extra candidate."
   ],
   "evidence": {
-    "baselineDirectory": "{SCRATCH}/real-baseline-20260912",
-    "extraCandidateDirectory": "{SCRATCH}/real-memory-opt-20260912",
-    "buildLog": "{SCRATCH}/post-merge-baseline-build.log",
-    "gateLog": "{SCRATCH}/post-merge-baseline-gate.log",
-    "targetedCheckLog": "{SCRATCH}/prediction-state-store-checks.log"
+    "baselineArtifact": ".local/post-merge-baseline-20260912/artifact",
+    "extraCandidateArtifact": ".local/post-merge-memory-opt-20260912/artifact",
+    "scratchEvidence": "{SCRATCH}/real-baseline-20260912 and {SCRATCH}/real-memory-opt-20260912",
+    "note": "Scratch evidence and the first failed launcher stderr are private uncommitted artifacts; the bootstrap cause is recorded above and the successful aggregate values are retained in this JSON."
   }
 }
