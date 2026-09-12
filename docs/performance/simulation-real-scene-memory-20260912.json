@@ -1,0 +1,78 @@
+{
+  "kind": "RealSceneMemoryAndTimeAB",
+  "measuredAt": "2026-09-12",
+  "sourceCommitBeforeMeasurement": "d419a80",
+  "upstreamMain": "eff8cf4",
+  "scenarioId": "COMPACT-SEARCH-BACKEND",
+  "input": {
+    "character": "SILENT",
+    "seed": "VH_PERF_MECHA",
+    "encounter": "MECHA_KNIGHT_ELITE",
+    "runCards": "coverage/unattended/compact-void-admission-silent-run-cards.json",
+    "runCardCount": 30,
+    "performancePreset": "VeryHigh",
+    "dop": 8,
+    "headlessFastMode": "Instant",
+    "noGcRuntimeScope": false
+  },
+  "workload": {
+    "expandedNodes": 14344,
+    "transitions": 120179,
+    "choiceBranches": 69527,
+    "completedReplays": 100571,
+    "pendingReplays": 19609,
+    "materializations": 0,
+    "equivalent": true
+  },
+  "samples": [
+    {
+      "sample": 1,
+      "model": {"elapsedMilliseconds": 11370.3565, "allocatedBytes": 5066116952, "cpuMilliseconds": 36277.409, "managedHeapAtEndBytes": 361358008, "workingSetAtEndBytes": 1798221824, "gcCollections": 932},
+      "compact": {"elapsedMilliseconds": 5262.5715, "allocatedBytes": 2558616936, "cpuMilliseconds": 17474.013, "managedHeapAtEndBytes": 182318544, "workingSetAtEndBytes": 1688506368, "gcCollections": 409}
+    },
+    {
+      "sample": 2,
+      "model": {"elapsedMilliseconds": 11602.2512, "allocatedBytes": 5073540064, "cpuMilliseconds": 37185.008, "managedHeapAtEndBytes": 350656808, "workingSetAtEndBytes": 1803206656, "gcCollections": 930},
+      "compact": {"elapsedMilliseconds": 5353.8412, "allocatedBytes": 2558483240, "cpuMilliseconds": 17838.73, "managedHeapAtEndBytes": 214565888, "workingSetAtEndBytes": 1674252288, "gcCollections": 403}
+    },
+    {
+      "sample": 3,
+      "model": {"elapsedMilliseconds": 11701.0458, "allocatedBytes": 5076874408, "cpuMilliseconds": 37360.629, "managedHeapAtEndBytes": 192276896, "workingSetAtEndBytes": 1837760512, "gcCollections": 932},
+      "compact": {"elapsedMilliseconds": 5271.6067, "allocatedBytes": 2558652472, "cpuMilliseconds": 17638.955, "managedHeapAtEndBytes": 176885696, "workingSetAtEndBytes": 1651744768, "gcCollections": 408}
+    }
+  ],
+  "median": {
+    "model": {"elapsedMilliseconds": 11602.2512, "allocatedBytes": 5073540064, "cpuMilliseconds": 37185.008, "managedHeapAtEndBytes": 350656808, "workingSetAtEndBytes": 1803206656, "gcCollections": 932},
+    "compact": {"elapsedMilliseconds": 5271.6067, "allocatedBytes": 2558616936, "cpuMilliseconds": 17638.955, "managedHeapAtEndBytes": 182318544, "workingSetAtEndBytes": 1674252288, "gcCollections": 408},
+    "compactReductionPercent": {"elapsedMilliseconds": 53.8552, "allocatedBytes": 49.572, "cpuMilliseconds": 52.0271, "managedHeapAtEndBytes": 47.9771, "workingSetAtEndBytes": 7.1514, "gcCollections": 56.2232}
+  },
+  "extraCandidate": {
+    "name": "PredictionStateStore hot-path allocation-free enumeration",
+    "status": "rejected",
+    "targetedContract": {"calls": 500, "newPathAllocatedBytes": 0, "oldPathAllocatedBytes": 108000},
+    "realSceneMedianModelAllocatedBytesBefore": 5073540064,
+    "realSceneMedianModelAllocatedBytesAfter": 5062288960,
+    "realSceneModelAllocationReductionPercent": 0.2218,
+    "realSceneMedianCompactAllocatedBytesBefore": 2558616936,
+    "realSceneMedianCompactAllocatedBytesAfter": 2558645456,
+    "realSceneCompactAllocationReductionPercent": -0.0011,
+    "realSceneMedianModelWorkingSetEndBytesBefore": 1803206656,
+    "realSceneMedianModelWorkingSetEndBytesAfter": 1856774144,
+    "realSceneMedianCompactWorkingSetEndBytesBefore": 1674252288,
+    "realSceneMedianCompactWorkingSetEndBytesAfter": 1687633920,
+    "reason": "The isolated contract is allocation-free, but the real workload change is below measurement noise and does not lower end working set; production changes were reverted."
+  },
+  "limitations": [
+    "Resources are process-wide deltas during the headless coordinator solve and include game/native background work.",
+    "workingSetAtEndBytes is the value at the end of each backend measurement, not peak RSS/HWM.",
+    "The direct coordinator A/B does not enter the Runtime NoGC lifecycle; it is not a final visible-Steam benchmark.",
+    "The 53.9% time and 49.6% allocation reduction compares the existing model and compact backends, not the rejected extra candidate."
+  ],
+  "evidence": {
+    "baselineDirectory": "{SCRATCH}/real-baseline-20260912",
+    "extraCandidateDirectory": "{SCRATCH}/real-memory-opt-20260912",
+    "buildLog": "{SCRATCH}/post-merge-baseline-build.log",
+    "gateLog": "{SCRATCH}/post-merge-baseline-gate.log",
+    "targetedCheckLog": "{SCRATCH}/prediction-state-store-checks.log"
+  }
+}
