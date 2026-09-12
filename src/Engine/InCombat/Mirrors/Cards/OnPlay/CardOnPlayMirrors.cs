@@ -33,6 +33,8 @@ internal static class CardOnPlayMirrors
         return Registry.HasRegisteredHandler(card);
     }
 
+    internal static MirrorDispatchKind DescribeDispatch(CardModel card) => Registry.DescribeDispatch(card);
+
     public static bool IsOnPlayInvocation(PredictionInvocation invocation)
     {
         return ReferenceEquals(invocation.Method, OnPlay.BaseMethod);
@@ -89,6 +91,7 @@ internal static class CardOnPlayMirrors
         registry.Register<CalculatedGamble>(CardDrawCardMirrors.CalculatedGambleOnPlay);
         registry.Register<BurningPact>(static (_, _) => { });
         registry.Register<CompileDriver>(CardDrawCardMirrors.CompileDriverOnPlay);
+        registry.Register<Neurosurge>(CardDrawCardMirrors.NeurosurgeOnPlay);
         registry.Register<Constellation>(CardDrawCardMirrors.ConstellationOnPlay);
         registry.Register<EscapePlan>(CardDrawCardMirrors.EscapePlanOnPlay);
         registry.Register<Expertise>(CardDrawCardMirrors.ExpertiseOnPlay);

@@ -1,0 +1,271 @@
+{
+  "status": "Passed",
+  "scope": "160-byte metering attribution plus the compact pool-generation value layer; no compact admission expansion.",
+  "validation": [
+    {
+      "runId": "1c9d47f348ea4473ae29037b2601913b",
+      "scenarioId": "COMPACT-GENERATION-CLOSURE-AUDIT",
+      "status": "Passed",
+      "elapsedMilliseconds": 24026.2432,
+      "evidence": ".local/value-generation-selection-20260911/audit-v3",
+      "completedChecks": [
+        "CompactGenerationClosureAudit:Original38Cards19InjectedRelics2Potions:ActualRelics20:CompleteOrderedPools:24NativeLegacyCachedValueSamples:ValueSelectionEmptySingletonNegativeZeroOversize:FiveFieldRng:FullPoolForkOwnership:InvalidPoolsRejected:GeneratedCardIsolation:AttackAndColorlessRegression:ActualUnchanged:FullRootExplicitlyRejected"
+      ],
+      "error": null
+    },
+    {
+      "runId": "3ca8ef6137284d3dbffea37dce5100dc",
+      "scenarioId": "COMPACT-GENERATION-CLOSURE-AUDIT",
+      "status": "Passed",
+      "elapsedMilliseconds": 3439.1954,
+      "evidence": ".local/value-generation-selection-20260911/audit-v3-run2",
+      "note": "Reused process after audit-v3.",
+      "completedChecks": [
+        "CompactGenerationClosureAudit:Original38Cards19InjectedRelics2Potions:ActualRelics20:CompleteOrderedPools:24NativeLegacyCachedValueSamples:ValueSelectionEmptySingletonNegativeZeroOversize:FiveFieldRng:FullPoolForkOwnership:InvalidPoolsRejected:GeneratedCardIsolation:AttackAndColorlessRegression:ActualUnchanged:FullRootExplicitlyRejected"
+      ],
+      "error": null
+    },
+    {
+      "runId": "b715d6a7100c4164b27c8c5bf7932152",
+      "scenarioId": "COMPACT-CALL-OF-THE-VOID-GENERATION",
+      "status": "Passed",
+      "elapsedMilliseconds": 26574.8232,
+      "evidence": ".local/value-generation-selection-20260911/cotv-v1",
+      "completedChecks": [
+        "CompactCallOfTheVoidGeneration:FullPool78:ThreeBatchesTwelveEthereal:NativeLegacyCompactOrderedIds:FiveFieldRngParity:HandOverflowRetrieveReplay:PerInstanceIdentity:RollbackDeterministicReplay:FrozenRootAfterNative"
+      ],
+      "error": null
+    },
+    {
+      "runId": "a83926d065f247dc862bf1c1ea8c1304",
+      "scenarioId": "COMPACT-GENERATION-CLOSURE-AUDIT",
+      "status": "Passed",
+      "elapsedMilliseconds": 3488.4042,
+      "evidence": ".local/value-generation-selection-20260911/audit-v4",
+      "note": "Re-run on artifact-v4 after the metering-assertion fix.",
+      "completedChecks": [
+        "CompactGenerationClosureAudit:Original38Cards19InjectedRelics2Potions:ActualRelics20:CompleteOrderedPools:24NativeLegacyCachedValueSamples:ValueSelectionEmptySingletonNegativeZeroOversize:FiveFieldRng:FullPoolForkOwnership:InvalidPoolsRejected:GeneratedCardIsolation:AttackAndColorlessRegression:ActualUnchanged:FullRootExplicitlyRejected"
+      ],
+      "error": null
+    },
+    {
+      "runId": "68c51d68693b4e79a1ea03da531e4f2e",
+      "scenarioId": "COMPACT-PAGESTORM-SEARCH",
+      "status": "Passed",
+      "elapsedMilliseconds": 9203.6327,
+      "evidence": ".local/value-generation-selection-20260911/pagestorm-search-v4",
+      "completedChecks": [
+        "CompactSearchLifecycle:PagestormTrue:SharedFateFalse:PanacheFalse:LethalityFalse:CardHooksFalse:KeywordsFalse:HangFalse:CostPowersFalse:NecroCardsFalse:DirgeFalse:DrawExhaustFalse:NeurosurgeFalse:OstyFalse:TurnRelicFalse:250Nodes:LegacyEqualsCompact:DOP1EqualsDOP2:Concurrency2:CancelAndFailureDrained:RootReusable:UnsupportedPotionRejected:ActualUnchanged"
+      ],
+      "error": null
+    },
+    {
+      "runId": "e039ec137c8b4f768cf46d7e8fbdfdd9",
+      "scenarioId": "COMPACT-GENERATION-CLOSURE-AUDIT",
+      "status": "Passed",
+      "elapsedMilliseconds": 24042.8442,
+      "evidence": ".local/metering-strength-20260911/audit-run2-passed-shape-stabilization.json",
+      "note": "First pass of the same-shape stabilization; the earlier single-block stabilization attempt (58268385f95c4d37a3383bfa46768b76) stayed Failed with 160/0/0/0/0 bytes.",
+      "completedChecks": [
+        "CompactGenerationClosureAudit:Original38Cards19InjectedRelics2Potions:ActualRelics20:CompleteOrderedPools:24NativeLegacyCachedValueSamples:ValueSelectionEmptySingletonNegativeZeroOversize:FiveFieldRng:FullPoolForkOwnership:InvalidPoolsRejected:GeneratedCardIsolation:AttackAndColorlessRegression:ActualUnchanged:FullRootExplicitlyRejected"
+      ],
+      "error": null
+    },
+    {
+      "runId": "537d20c96a944b48b505b90f0bf7fd34",
+      "scenarioId": "COMPACT-GENERATION-CLOSURE-AUDIT",
+      "status": "Passed",
+      "elapsedMilliseconds": 24145.7136,
+      "evidence": ".local/metering-strength-20260911/audit/result.json",
+      "note": "Final strict-shape run: 100 warmup + 5x5000 same-shape stabilization + 5x5000 steady state; passes only when all 5 steady-state blocks are exactly 0 bytes. Stabilization records are not passing evidence.",
+      "completedChecks": [
+        "CompactGenerationClosureAudit:Original38Cards19InjectedRelics2Potions:ActualRelics20:CompleteOrderedPools:24NativeLegacyCachedValueSamples:ValueSelectionEmptySingletonNegativeZeroOversize:FiveFieldRng:FullPoolForkOwnership:InvalidPoolsRejected:GeneratedCardIsolation:AttackAndColorlessRegression:ActualUnchanged:FullRootExplicitlyRejected"
+      ],
+      "error": null
+    }
+  ],
+  "meteringAttribution": {
+    "observedFailure": {
+      "runId": "3c479d36a88f4889b9d1f78f9d0c9251",
+      "scenarioId": "COMPACT-GENERATION-CLOSURE-AUDIT",
+      "status": "Failed",
+      "message": "Value generation selection allocated 160 bytes or changed RNG consumption.",
+      "baselinePreserved": true
+    },
+    "intermediateFailedAttempt": {
+      "runId": "58268385f95c4d37a3383bfa46768b76",
+      "scenarioId": "COMPACT-GENERATION-CLOSURE-AUDIT",
+      "status": "Failed",
+      "shape": "single discarded stabilization block, then 5 asserted 5000-call blocks",
+      "message": "Value generation selection allocated in the steady state: 160/0/0/0/0 bytes; stabilization=0 bytes.",
+      "evidence": ".local/metering-strength-20260911/audit-run1-failed.log",
+      "resultFile": ".local/metering-strength-20260911/audit/result-run1-failed.json",
+      "baselinePreserved": true
+    },
+    "standaloneMeasurement": {
+      "harness": ".local/valuerng-metering-20260911/ValueRngMetering",
+      "output": ".local/valuerng-metering-20260911/output.txt",
+      "source": "pure .NET program referencing the real ValueRng.cs from src/",
+      "modes": [
+        "exact: 100 warmup then 6 consecutive 5000-call blocks (population=78)",
+        "percall: GC delta around each of 5000 calls",
+        "noinline: loop body inside a NoInlining method",
+        "inline: loop body directly in Main",
+        "osr: noinline then inline in one process",
+        "env matrix: TieredCompilation / TieredPGO / ReadyToRun / TC_OnStackReplacement / TC_QuickJitForLoops / gcServer / gcConcurrent"
+      ],
+      "callsMeasured": "5.5M+",
+      "allocatedBytes": 0,
+      "nonZeroPerCallCalls": 0,
+      "observedCounterDeltaPerBlock": 385000,
+      "expectedCounterDeltaPerBlock": 385000,
+      "counterFormula": "5000 * (78 - 1)",
+      "shippedShapeRerun": {
+        "harness": ".local/metering-strength-20260911/ValueRngMetering",
+        "output": "scratch metering-strength-checks.log section 2 (standalone source meter)",
+        "source": "pure .NET program referencing the real ValueRng.cs from src/, no game host",
+        "modes": [
+          "oneblock: 100-call warmup, single discarded stabilization block, then 5 asserted 5000-call blocks",
+          "sameshape: 100-call warmup, discarded stabilization batch identical to the asserted batch, then 5 asserted 5000-call blocks"
+        ],
+        "repetitionsPerMode": 10,
+        "populations": [
+          78,
+          50
+        ],
+        "allocatedBytes": 0,
+        "steadyStateBlocksAllZero": true,
+        "counterDeltaPopulation78": 1925000,
+        "counterDeltaPopulation50": 1225000,
+        "counterFormula": "5 * 5000 * (population - 1)",
+        "result": "METERING_STRENGTH_OK for both modes"
+      }
+    },
+    "conclusion": "The 160 bytes were a one-time host-process charge to the test thread inside the Godot game process; not the ValueRng primitive and not JIT tiering on the metering thread. Only a discarded stabilization phase with the same shape as the asserted batch moves that charge out of the steady state.",
+    "fix": {
+      "file": "src/Testing/UnattendedTestRunner.CompactGenerationAudit.cs",
+      "warmup": "100 calls before any assertion; allocation records are not asserted",
+      "stabilization": "5 blocks x 5000 calls through the same helper and shape as the asserted batch; records are never read and are never passing evidence",
+      "steadyState": "5 blocks x 5000 calls; every one of the 5 blocks must be exactly 0 bytes",
+      "rngAssertion": "warmup + stabilization counter delta == (100 + 5 * 5000) * (pool - 1) and steady-state counter delta == 5 * 5000 * (pool - 1), both exact",
+      "allocationAssertion": "all steady-state blocks exactly 0 bytes; no tolerance threshold and no min(blockAllocations)==0 relaxation; five-field and boundary comparisons untouched",
+      "independentMessages": true
+    }
+  },
+  "differential": {
+    "character": "NECROBINDER",
+    "encounter": "AEONGLASS_BOSS",
+    "seed": "SEARCH_PERF_NECROBINDER_POTION",
+    "poolSize": 78,
+    "batches": [
+      {
+        "batch": 0,
+        "requested": 4,
+        "compactIds": [
+          "VEILPIERCER",
+          "DANSE_MACABRE",
+          "GRAVE_WARDEN",
+          "UNDEATH"
+        ],
+        "legacyIds": [
+          "VEILPIERCER",
+          "DANSE_MACABRE",
+          "GRAVE_WARDEN",
+          "UNDEATH"
+        ],
+        "nativeIds": [
+          "VEILPIERCER",
+          "DANSE_MACABRE",
+          "GRAVE_WARDEN",
+          "UNDEATH"
+        ],
+        "destinations": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "instanceIds": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "rngCounterDelta": 308
+      },
+      {
+        "batch": 1,
+        "requested": 4,
+        "compactIds": [
+          "INVOKE",
+          "SENTRY_MODE",
+          "COUNTDOWN",
+          "BORROWED_TIME"
+        ],
+        "legacyIds": [
+          "INVOKE",
+          "SENTRY_MODE",
+          "COUNTDOWN",
+          "BORROWED_TIME"
+        ],
+        "nativeIds": [
+          "INVOKE",
+          "SENTRY_MODE",
+          "COUNTDOWN",
+          "BORROWED_TIME"
+        ],
+        "destinations": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "instanceIds": [
+          7,
+          8,
+          9,
+          10
+        ],
+        "rngCounterDelta": 616
+      },
+      {
+        "batch": 2,
+        "requested": 4,
+        "compactIds": [
+          "REAP",
+          "PULL_AGGRO",
+          "BORROWED_TIME",
+          "NEUROSURGE"
+        ],
+        "legacyIds": [
+          "REAP",
+          "PULL_AGGRO",
+          "BORROWED_TIME",
+          "NEUROSURGE"
+        ],
+        "nativeIds": [
+          "REAP",
+          "PULL_AGGRO",
+          "BORROWED_TIME",
+          "NEUROSURGE"
+        ],
+        "destinations": [
+          0,
+          0,
+          2,
+          2
+        ],
+        "instanceIds": [
+          11,
+          12,
+          13,
+          14
+        ],
+        "rngCounterDelta": 924
+      }
+    ]
+  },
+  "build": "Release, 0 warnings and 0 errors",
+  "boundaries": "Linux Passed, 96 Search files; equivalent PowerShell rules not run.",
+  "performanceMeasured": false
+}

@@ -1,0 +1,1911 @@
+{
+  "schemaVersion": 1,
+  "baseCommit": "97a0c37",
+  "artifact": ".local/compact-artifact-20260911/artifact-v1",
+  "native": {
+    "request": {
+      "schemaVersion": 1,
+      "runId": "10f13f49a6a24b03bd3d61bba40c19f2",
+      "scenarioId": "COMPACT-ARTIFACT-NATIVE",
+      "characterId": "SILENT",
+      "encounterId": "CORPSE_SLUGS_NORMAL",
+      "modifierIds": [],
+      "seed": "COMBATSOLVER",
+      "runSnapshotPath": null,
+      "loadRunSnapshotDirectly": false,
+      "targetActFloor": null,
+      "targetMapColumn": null,
+      "targetRoomType": "Monster",
+      "targetMapPointType": "Unassigned",
+      "preCombatPlayerCurrentHpOverride": null,
+      "preCombatSimulationSeed": null,
+      "preCombatInterveningMapPoints": [],
+      "expectedLoadedMods": [],
+      "replayStatePath": null,
+      "nativeStatePath": null,
+      "checkpointArchivePath": "",
+      "checkpointSelector": "latest",
+      "replayMode": "RestoreOnly",
+      "replayPolicyOverridePath": "",
+      "evidenceDirectory": "/home/ltlly/Code/nmslmod/.tools11/CombatSolver-open-source/.local/compact-artifact-20260911/native-v1",
+      "preserveNativeCombatStateForTest": false,
+      "ascension": 0,
+      "actIndexForTest": 0,
+      "markEncounterAsSecondBossForTest": false,
+      "enemyCurrentHp": 1,
+      "initialEnemyMaxHps": [],
+      "initialEnemyCurrentHps": [],
+      "initialEnemyBlocks": [],
+      "initialPlayerHp": null,
+      "initialPlayerMaxHp": null,
+      "initialPlayerBlock": null,
+      "initialPlayerEnergy": null,
+      "initialPlayerStars": null,
+      "initialRoundNumber": null,
+      "initialPlayerTurnNumber": null,
+      "initialEnemyStateLogs": [],
+      "reloadRunRngAfterStateInjection": false,
+      "cards": [
+        {
+          "cardId": "STRIKE_IRONCLAD",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 0,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        }
+      ],
+      "runCards": [],
+      "powers": [],
+      "orbs": [],
+      "orbChecks": [],
+      "potions": [],
+      "relics": [],
+      "combatRelics": [],
+      "potionCheck": null,
+      "potionChecks": [],
+      "monsterMoveCheck": null,
+      "monsterMoveChecks": [],
+      "additionalMonsterIds": [],
+      "initialEnemyMoveIds": [],
+      "timeoutSeconds": 120,
+      "expectedFinishedTurn": null,
+      "expectedFinishedTurnAtMost": null,
+      "expectedFinishedPlayerHpAtLeast": null,
+      "clearPlayerHand": false,
+      "clearPlayerPiles": false,
+      "clearRunDeck": false,
+      "clearAllPowers": false,
+      "verifyPredictionFailureBoundaries": false,
+      "verifySearchPolicySnapshot": false,
+      "verifyGrowthPolicy": false,
+      "verifyControllerSessionLifecycle": false,
+      "verifyForkBoundaries": false,
+      "verifyCombatRootSnapshot": false,
+      "verifyPreCombatForecastApi": false,
+      "verifyBaseLibCardModifierBoundary": false,
+      "stopAfterCombatRootSnapshotAssertion": false,
+      "verifyIncrementalSearch": false,
+      "forceShortSearchOnly": false,
+      "measureSearchPhases": false,
+      "holdAfterInitialSearch": false,
+      "shortSearchBudgetOverrideMilliseconds": null,
+      "deepSearchBudgetOverrideMilliseconds": null,
+      "searchMaxDegreeOfParallelismForTest": null,
+      "expectedInitialSearchPhase": null,
+      "expectedInitialDeepSearchTriggered": null,
+      "expectedInitialDeepSearchImprovedResult": null,
+      "expectedInitialExpandedNodesAtMost": null,
+      "expectedInitialTransitionsAtMost": null,
+      "expectedInitialTotalExpandedNodesAtMost": null,
+      "expectedInitialTotalTransitionsAtMost": null,
+      "expectedInitialBoundaryReason": null,
+      "expectedInitialTotalElapsedMillisecondsAtMost": null,
+      "expectedInitialTotalAllocatedBytesAtMost": null,
+      "expectedInitialGen2CollectionsAtMost": null,
+      "expectedInitialTotalGcPauseMillisecondsAtMost": null,
+      "expectedInitialMaxGcPauseMillisecondsAtMost": null,
+      "expectedInitialMaxMainThreadFrameGapMillisecondsAtMost": null,
+      "expectedInitialMainThreadFramesOver50MillisecondsAtMost": null,
+      "expectedInitialMainThreadFramesOver100MillisecondsAtMost": null,
+      "expectedInitialTransitionCacheHitsAtLeast": null,
+      "expectedInitialRepeatableNoProgressBranchesPrunedAtLeast": null,
+      "expectedInitialCycleShapesDetectedAtLeast": null,
+      "expectedInitialCycleProbeContinuationsExpandedAtLeast": null,
+      "expectedInitialCycleProbeContinuationsExpandedAtMost": null,
+      "expectedInitialCycleCandidatesProtectedAtLeast": null,
+      "expectedInitialCycleContinuationsStoppedAtLeast": null,
+      "expectedInitialCrossTurnCandidatesProtectedAtLeast": null,
+      "expectedInitialCrossTurnContinuationsStoppedAtLeast": null,
+      "expectedInitialNodeLimitSnapshotsReleasedAtLeast": null,
+      "expectedInitialChoiceBranchesEvaluatedAtLeast": null,
+      "expectedInitialExecutableActionCountAtLeast": null,
+      "expectedInitialSoldHp": null,
+      "expectedInitialSoldHpAtMost": null,
+      "expectedInitialSoldHpBranchesPrunedAtLeast": null,
+      "expectedInitialDeathSaveRelicHp": null,
+      "expectedInitialActionAdmissionRepresentativesProtectedAtLeast": null,
+      "expectedInitialHpInvestmentBranchesProtectedAtLeast": null,
+      "expectedInitialPotionCount": null,
+      "expectedInitialTheftPolicy": null,
+      "expectedInitialOutstandingStolenResource": null,
+      "expectedInitialPotionHpSavedAtLeast": null,
+      "expectedInitialPotionBranchesRejectedAtLeast": null,
+      "expectedInitialSearchedTurnsAtLeast": null,
+      "expectedInitialShufflesCrossedAtLeast": null,
+      "expectedInitialUnmirroredCount": null,
+      "expectedInitialHpLostAtMost": null,
+      "expectedInitialProjectedBattleHpLost": null,
+      "expectedInitialProjectedBattleHpLostAtMost": null,
+      "expectedInitialLongTermResourceValueAtLeast": null,
+      "expectedInitialGrowthRewardCount": null,
+      "expectedInitialFinalMaxHp": null,
+      "expectedInitialMaxBlockAtLeast": null,
+      "expectedInitialActualBlockAtLeast": null,
+      "expectedInitialActionCardId": null,
+      "expectedInitialAbsentActionCardId": null,
+      "expectedInitialFirstActionCardId": null,
+      "expectedInitialFirstActionChoiceCardId": null,
+      "expectedInitialFirstActionPotionId": null,
+      "expectedInitialActionTitle": null,
+      "expectedInitialActionReplayCount": null,
+      "expectedInitialOnlyDeathRoutesFound": null,
+      "expectedInitialCombatEndedTurn": null,
+      "expectedInitialDeathTurn": null,
+      "expectedInitialDeathTurnAtLeast": null,
+      "expectedInitialFinalEnemyHpAtMost": null,
+      "expectedInitialActEndingBoss": null,
+      "expectedInitialBossHpRelief": null,
+      "expectedInitialPlannedChoiceCardId": null,
+      "expectedInitialTurnStartChoiceTurn": null,
+      "expectedInitialTurnStartChoiceSourceId": null,
+      "expectedInitialTurnStartChoiceCardId": null,
+      "expectedInitialTurnStartChoiceStateContains": null,
+      "expectedInitialTurnStartChoiceStateExcludes": null,
+      "expectedInitialSetupChoiceCountAtLeast": null,
+      "expectedInitialSetupChoiceSourceId": null,
+      "expectedInitialSetupChoiceTextStartsWith": null,
+      "verifyInitialSetupWaitsForUserStart": false,
+      "verifyTurnSetupManualRecalculate": false,
+      "verifyTurnSetupManualRefresh": false,
+      "verifyTurnSetupControlsDuringInitialSearch": false,
+      "verifyTurnSetupSceneExitCancellation": false,
+      "stopAfterInitialSetupAssertion": false,
+      "stopAfterInitialSolverResultAssertion": false,
+      "expectedFullAutoPausedAtDeathTurn": false,
+      "expectedFullAutoPausedAfterWorseRecalculation": false,
+      "expectedFullAutoPausedAtLiveRisk": false,
+      "enableStopOnWorseRecalculationForTest": false,
+      "expectedInitialRelicEffectId": null,
+      "expectedInitialRelicEffectSummary": null,
+      "expectedReusedTurn": null,
+      "expectedReusedProjectedBattleHpLost": null,
+      "expectedUnexpectedReplansAtMost": null,
+      "stopAfterExpectedReuse": false,
+      "expectedPlayedCardId": null,
+      "expectedUsedPotionId": null,
+      "expectedObservedPlayerPowerId": null,
+      "expectedNativeChoiceOwnerPrefix": null,
+      "expectedNativeChoiceSurface": null,
+      "expectedNativeChoiceVisibleAtLeast": null,
+      "expectedNativeChoiceSearchStartedAtMost": null,
+      "stopAfterExpectedPlayerPower": false,
+      "expectedPlayerDeath": false,
+      "headlessFastModeForTest": "Instant",
+      "deploymentFastModeForTest": null,
+      "performancePresetForTest": null,
+      "shortMaxCardBranchesPerNodeForTest": null,
+      "deepMaxCardBranchesPerNodeForTest": null,
+      "potionPolicyForTest": null,
+      "theftPolicyForTest": null,
+      "enableNoGcRegionForTest": null,
+      "noGcRegionBudgetGigabytesForTest": null,
+      "deploymentInterActionDelaySecondsForTest": null,
+      "assertDeploymentSpeedRestored": false,
+      "exportBugReportAfterSetup": false,
+      "exportBugReportAfterCombat": false,
+      "enableDetailedDiagnosticLogsForTest": null,
+      "manualEndTurnAfterInitialSearch": false,
+      "singleStepAfterInitialSearch": false,
+      "singleStepResumeModeForTest": null,
+      "expectedTurnSetupToDeploymentDelayMillisecondsAtLeast": null,
+      "enableFullAutoAfterManualEndTurn": false,
+      "expectedManualDivergencesAtLeast": null,
+      "expectedUnexpectedReplansAtLeast": null,
+      "stopAfterExpectedUnexpectedReplan": false,
+      "expectedUnexpectedReplanWarning": false,
+      "exportBugReportAfterUnexpectedReplan": false,
+      "expectedBugReportControlMode": null,
+      "expectedNoGcRegionRolloversAtLeast": null,
+      "injectPlayerHpLossBeforeAutoSearchTurn": null,
+      "injectPlayerHpLossAmount": 0,
+      "clearPlayerBlockBeforeEndTurnForTest": null,
+      "exitOnComplete": false
+    },
+    "result": {
+      "processReusable": false,
+      "processId": 945898,
+      "schemaVersion": 1,
+      "runId": "10f13f49a6a24b03bd3d61bba40c19f2",
+      "scenarioId": "COMPACT-ARTIFACT-NATIVE",
+      "status": "Passed",
+      "stage": "passed",
+      "characterId": "CHARACTER.SILENT",
+      "encounterId": "ENCOUNTER.CORPSE_SLUGS_NORMAL",
+      "seed": "COMBATSOLVER",
+      "startedAtUtc": "2026-09-11T00:15:54.6872019+00:00",
+      "elapsedMilliseconds": 27378.8032,
+      "mainThread": true,
+      "combatEnded": false,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "managedHeapBytes": 81463968,
+      "managedFragmentedBytes": 13577208,
+      "workingSetBytes": 1406332928,
+      "privateMemoryBytes": 1570512896,
+      "solverMetrics": null,
+      "replayVerification": null,
+      "stageTimings": [
+        {
+          "stage": "created",
+          "startedMilliseconds": 0,
+          "durationMilliseconds": 20.7316
+        },
+        {
+          "stage": "game_startup",
+          "startedMilliseconds": 20.7316,
+          "durationMilliseconds": 12183.948
+        },
+        {
+          "stage": "start_run",
+          "startedMilliseconds": 12204.6796,
+          "durationMilliseconds": 11557.759900000001
+        },
+        {
+          "stage": "inject_run_relics",
+          "startedMilliseconds": 23762.4395,
+          "durationMilliseconds": 3.4279999999998836
+        },
+        {
+          "stage": "enter_encounter",
+          "startedMilliseconds": 23765.8675,
+          "durationMilliseconds": 1386.1159000000007
+        },
+        {
+          "stage": "wait_player_turn",
+          "startedMilliseconds": 25151.9834,
+          "durationMilliseconds": 9.212899999998626
+        },
+        {
+          "stage": "inject_state",
+          "startedMilliseconds": 25161.1963,
+          "durationMilliseconds": 2053.7021999999997
+        },
+        {
+          "stage": "cleanup",
+          "startedMilliseconds": 27214.8985,
+          "durationMilliseconds": 161.83940000000075
+        },
+        {
+          "stage": "passed",
+          "startedMilliseconds": 27376.7379,
+          "durationMilliseconds": 2.3646000000007916
+        }
+      ],
+      "completedChecks": [
+        "CompactArtifact:Mode0:11Branches:Frozen8Workers:AllSnapshotProperties",
+        "CompactArtifact:Mode1:4Branches:Frozen8Workers:AllSnapshotProperties",
+        "CompactArtifact:Native2Roots15Branches9Actions:FirstAndStackedTemporary:SignedStat:ZeroAmount:BuffUnaffected:Depletion:RootMetadata:Death:AllSnapshotProperties:AllRng:Frozen8Workers"
+      ],
+      "error": null,
+      "finishedAtUtc": "2026-09-11T00:16:22.066005+00:00"
+    },
+    "cases": [
+      {
+        "mode": 0,
+        "branches": 11,
+        "nativeActions": 7,
+        "finalEnergy": 0,
+        "powers": [
+          {
+            "definition": {
+              "Kind": 9,
+              "Owner": 0,
+              "Amount": 1,
+              "Applier": 0,
+              "Order": 1,
+              "Multiplier": 1,
+              "RootSlot": true
+            },
+            "value": {
+              "Amount": 1,
+              "Applier": 0,
+              "Order": 1,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 0,
+              "Owner": 1,
+              "Amount": 6,
+              "Applier": 1,
+              "Order": 2,
+              "Multiplier": 1,
+              "RootSlot": true
+            },
+            "value": {
+              "Amount": 6,
+              "Applier": 1,
+              "Order": 2,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 9,
+              "Owner": 1,
+              "Amount": 2,
+              "Applier": 1,
+              "Order": 3,
+              "Multiplier": 1,
+              "RootSlot": true
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": 1,
+              "Order": 0,
+              "Retired": true
+            }
+          },
+          {
+            "definition": {
+              "Kind": 0,
+              "Owner": 2,
+              "Amount": -2,
+              "Applier": 2,
+              "Order": 4,
+              "Multiplier": 1,
+              "RootSlot": true
+            },
+            "value": {
+              "Amount": -10,
+              "Applier": 2,
+              "Order": 4,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 8,
+              "Owner": 2,
+              "Amount": 2,
+              "Applier": 2,
+              "Order": 5,
+              "Multiplier": 1,
+              "RootSlot": true
+            },
+            "value": {
+              "Amount": 10,
+              "Applier": 2,
+              "Order": 5,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 9,
+              "Owner": 2,
+              "Amount": 1,
+              "Applier": 2,
+              "Order": 6,
+              "Multiplier": 1,
+              "RootSlot": true
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": 2,
+              "Order": 0,
+              "Retired": true
+            }
+          },
+          {
+            "definition": {
+              "Kind": 9,
+              "Owner": 3,
+              "Amount": 3,
+              "Applier": 3,
+              "Order": 7,
+              "Multiplier": 1,
+              "RootSlot": true
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": 3,
+              "Order": 0,
+              "Retired": true
+            }
+          },
+          {
+            "definition": {
+              "Kind": 0,
+              "Owner": 0,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 1,
+              "Owner": 0,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 2,
+              "Applier": 0,
+              "Order": 8,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 2,
+              "Owner": 0,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 0.75,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 3,
+              "Owner": 0,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1.5,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 4,
+              "Owner": 0,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 5,
+              "Owner": 0,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 6,
+              "Owner": 0,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 7,
+              "Owner": 0,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 1,
+              "Owner": 1,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 2,
+              "Owner": 1,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 0.75,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 1,
+              "Applier": 0,
+              "Order": 9,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 3,
+              "Owner": 1,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1.5,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 4,
+              "Owner": 1,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 5,
+              "Owner": 1,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 8,
+              "Owner": 1,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 1,
+              "Owner": 2,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 2,
+              "Owner": 2,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 0.75,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 3,
+              "Owner": 2,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1.5,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 4,
+              "Owner": 2,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 5,
+              "Owner": 2,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 5,
+              "Applier": 0,
+              "Order": 10,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 0,
+              "Owner": 3,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 1,
+              "Owner": 3,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 2,
+              "Owner": 3,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 0.75,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 27,
+              "Applier": 0,
+              "Order": 11,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 3,
+              "Owner": 3,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1.5,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 4,
+              "Owner": 3,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 5,
+              "Owner": 3,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 8,
+              "Owner": 3,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          }
+        ]
+      },
+      {
+        "mode": 1,
+        "branches": 4,
+        "nativeActions": 2,
+        "finalEnergy": 0,
+        "powers": [
+          {
+            "definition": {
+              "Kind": 9,
+              "Owner": 0,
+              "Amount": 1,
+              "Applier": 0,
+              "Order": 1,
+              "Multiplier": 1,
+              "RootSlot": true
+            },
+            "value": {
+              "Amount": 1,
+              "Applier": 0,
+              "Order": 1,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 0,
+              "Owner": 1,
+              "Amount": 6,
+              "Applier": 1,
+              "Order": 2,
+              "Multiplier": 1,
+              "RootSlot": true
+            },
+            "value": {
+              "Amount": 6,
+              "Applier": 1,
+              "Order": 2,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 9,
+              "Owner": 1,
+              "Amount": 2,
+              "Applier": 1,
+              "Order": 3,
+              "Multiplier": 1,
+              "RootSlot": true
+            },
+            "value": {
+              "Amount": 2,
+              "Applier": 1,
+              "Order": 3,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 0,
+              "Owner": 2,
+              "Amount": -2,
+              "Applier": 2,
+              "Order": 4,
+              "Multiplier": 1,
+              "RootSlot": true
+            },
+            "value": {
+              "Amount": -2,
+              "Applier": 2,
+              "Order": 4,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 8,
+              "Owner": 2,
+              "Amount": 2,
+              "Applier": 2,
+              "Order": 5,
+              "Multiplier": 1,
+              "RootSlot": true
+            },
+            "value": {
+              "Amount": 2,
+              "Applier": 2,
+              "Order": 5,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 9,
+              "Owner": 2,
+              "Amount": 1,
+              "Applier": 2,
+              "Order": 6,
+              "Multiplier": 1,
+              "RootSlot": true
+            },
+            "value": {
+              "Amount": 1,
+              "Applier": 2,
+              "Order": 6,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 9,
+              "Owner": 3,
+              "Amount": 3,
+              "Applier": 3,
+              "Order": 7,
+              "Multiplier": 1,
+              "RootSlot": true
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": 3,
+              "Order": 0,
+              "Retired": true
+            }
+          },
+          {
+            "definition": {
+              "Kind": 0,
+              "Owner": 0,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 1,
+              "Owner": 0,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 2,
+              "Owner": 0,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 0.75,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 3,
+              "Owner": 0,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1.5,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 4,
+              "Owner": 0,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 5,
+              "Owner": 0,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 6,
+              "Owner": 0,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 7,
+              "Owner": 0,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 1,
+              "Owner": 1,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 2,
+              "Owner": 1,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 0.75,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 3,
+              "Owner": 1,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1.5,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 4,
+              "Owner": 1,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 5,
+              "Owner": 1,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 8,
+              "Owner": 1,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 1,
+              "Owner": 2,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 2,
+              "Owner": 2,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 0.75,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 3,
+              "Owner": 2,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1.5,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 4,
+              "Owner": 2,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 5,
+              "Owner": 2,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 0,
+              "Owner": 3,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 1,
+              "Owner": 3,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 2,
+              "Owner": 3,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 0.75,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 3,
+              "Owner": 3,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1.5,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 4,
+              "Owner": 3,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 5,
+              "Owner": 3,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          },
+          {
+            "definition": {
+              "Kind": 8,
+              "Owner": 3,
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Multiplier": 1,
+              "RootSlot": false
+            },
+            "value": {
+              "Amount": 0,
+              "Applier": -1,
+              "Order": 0,
+              "Retired": false
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "sentinel": {
+    "request": {
+      "schemaVersion": 1,
+      "runId": "7cbc93b5ccd9442496f85ec7e51df4fd",
+      "scenarioId": "COMPACT-RANDOM-COSTS-NATIVE",
+      "characterId": "SILENT",
+      "encounterId": "CORPSE_SLUGS_NORMAL",
+      "modifierIds": [],
+      "seed": "COMBATSOLVER",
+      "runSnapshotPath": null,
+      "loadRunSnapshotDirectly": false,
+      "targetActFloor": null,
+      "targetMapColumn": null,
+      "targetRoomType": "Monster",
+      "targetMapPointType": "Unassigned",
+      "preCombatPlayerCurrentHpOverride": null,
+      "preCombatSimulationSeed": null,
+      "preCombatInterveningMapPoints": [],
+      "expectedLoadedMods": [],
+      "replayStatePath": null,
+      "nativeStatePath": null,
+      "checkpointArchivePath": "",
+      "checkpointSelector": "latest",
+      "replayMode": "RestoreOnly",
+      "replayPolicyOverridePath": "",
+      "evidenceDirectory": "/home/ltlly/Code/nmslmod/.tools11/CombatSolver-open-source/.local/compact-artifact-20260911/random-cost-sentinel",
+      "preserveNativeCombatStateForTest": false,
+      "ascension": 0,
+      "actIndexForTest": 0,
+      "markEncounterAsSecondBossForTest": false,
+      "enemyCurrentHp": 1,
+      "initialEnemyMaxHps": [],
+      "initialEnemyCurrentHps": [],
+      "initialEnemyBlocks": [],
+      "initialPlayerHp": null,
+      "initialPlayerMaxHp": null,
+      "initialPlayerBlock": null,
+      "initialPlayerEnergy": null,
+      "initialPlayerStars": null,
+      "initialRoundNumber": null,
+      "initialPlayerTurnNumber": null,
+      "initialEnemyStateLogs": [],
+      "reloadRunRngAfterStateInjection": false,
+      "cards": [
+        {
+          "cardId": "STRIKE_IRONCLAD",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 0,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        }
+      ],
+      "runCards": [],
+      "powers": [],
+      "orbs": [],
+      "orbChecks": [],
+      "potions": [],
+      "relics": [],
+      "combatRelics": [],
+      "potionCheck": null,
+      "potionChecks": [],
+      "monsterMoveCheck": null,
+      "monsterMoveChecks": [],
+      "additionalMonsterIds": [],
+      "initialEnemyMoveIds": [],
+      "timeoutSeconds": 120,
+      "expectedFinishedTurn": null,
+      "expectedFinishedTurnAtMost": null,
+      "expectedFinishedPlayerHpAtLeast": null,
+      "clearPlayerHand": false,
+      "clearPlayerPiles": false,
+      "clearRunDeck": false,
+      "clearAllPowers": false,
+      "verifyPredictionFailureBoundaries": false,
+      "verifySearchPolicySnapshot": false,
+      "verifyGrowthPolicy": false,
+      "verifyControllerSessionLifecycle": false,
+      "verifyForkBoundaries": false,
+      "verifyCombatRootSnapshot": false,
+      "verifyPreCombatForecastApi": false,
+      "verifyBaseLibCardModifierBoundary": false,
+      "stopAfterCombatRootSnapshotAssertion": false,
+      "verifyIncrementalSearch": false,
+      "forceShortSearchOnly": false,
+      "measureSearchPhases": false,
+      "holdAfterInitialSearch": false,
+      "shortSearchBudgetOverrideMilliseconds": null,
+      "deepSearchBudgetOverrideMilliseconds": null,
+      "searchMaxDegreeOfParallelismForTest": null,
+      "expectedInitialSearchPhase": null,
+      "expectedInitialDeepSearchTriggered": null,
+      "expectedInitialDeepSearchImprovedResult": null,
+      "expectedInitialExpandedNodesAtMost": null,
+      "expectedInitialTransitionsAtMost": null,
+      "expectedInitialTotalExpandedNodesAtMost": null,
+      "expectedInitialTotalTransitionsAtMost": null,
+      "expectedInitialBoundaryReason": null,
+      "expectedInitialTotalElapsedMillisecondsAtMost": null,
+      "expectedInitialTotalAllocatedBytesAtMost": null,
+      "expectedInitialGen2CollectionsAtMost": null,
+      "expectedInitialTotalGcPauseMillisecondsAtMost": null,
+      "expectedInitialMaxGcPauseMillisecondsAtMost": null,
+      "expectedInitialMaxMainThreadFrameGapMillisecondsAtMost": null,
+      "expectedInitialMainThreadFramesOver50MillisecondsAtMost": null,
+      "expectedInitialMainThreadFramesOver100MillisecondsAtMost": null,
+      "expectedInitialTransitionCacheHitsAtLeast": null,
+      "expectedInitialRepeatableNoProgressBranchesPrunedAtLeast": null,
+      "expectedInitialCycleShapesDetectedAtLeast": null,
+      "expectedInitialCycleProbeContinuationsExpandedAtLeast": null,
+      "expectedInitialCycleProbeContinuationsExpandedAtMost": null,
+      "expectedInitialCycleCandidatesProtectedAtLeast": null,
+      "expectedInitialCycleContinuationsStoppedAtLeast": null,
+      "expectedInitialCrossTurnCandidatesProtectedAtLeast": null,
+      "expectedInitialCrossTurnContinuationsStoppedAtLeast": null,
+      "expectedInitialNodeLimitSnapshotsReleasedAtLeast": null,
+      "expectedInitialChoiceBranchesEvaluatedAtLeast": null,
+      "expectedInitialExecutableActionCountAtLeast": null,
+      "expectedInitialSoldHp": null,
+      "expectedInitialSoldHpAtMost": null,
+      "expectedInitialSoldHpBranchesPrunedAtLeast": null,
+      "expectedInitialDeathSaveRelicHp": null,
+      "expectedInitialActionAdmissionRepresentativesProtectedAtLeast": null,
+      "expectedInitialHpInvestmentBranchesProtectedAtLeast": null,
+      "expectedInitialPotionCount": null,
+      "expectedInitialTheftPolicy": null,
+      "expectedInitialOutstandingStolenResource": null,
+      "expectedInitialPotionHpSavedAtLeast": null,
+      "expectedInitialPotionBranchesRejectedAtLeast": null,
+      "expectedInitialSearchedTurnsAtLeast": null,
+      "expectedInitialShufflesCrossedAtLeast": null,
+      "expectedInitialUnmirroredCount": null,
+      "expectedInitialHpLostAtMost": null,
+      "expectedInitialProjectedBattleHpLost": null,
+      "expectedInitialProjectedBattleHpLostAtMost": null,
+      "expectedInitialLongTermResourceValueAtLeast": null,
+      "expectedInitialGrowthRewardCount": null,
+      "expectedInitialFinalMaxHp": null,
+      "expectedInitialMaxBlockAtLeast": null,
+      "expectedInitialActualBlockAtLeast": null,
+      "expectedInitialActionCardId": null,
+      "expectedInitialAbsentActionCardId": null,
+      "expectedInitialFirstActionCardId": null,
+      "expectedInitialFirstActionChoiceCardId": null,
+      "expectedInitialFirstActionPotionId": null,
+      "expectedInitialActionTitle": null,
+      "expectedInitialActionReplayCount": null,
+      "expectedInitialOnlyDeathRoutesFound": null,
+      "expectedInitialCombatEndedTurn": null,
+      "expectedInitialDeathTurn": null,
+      "expectedInitialDeathTurnAtLeast": null,
+      "expectedInitialFinalEnemyHpAtMost": null,
+      "expectedInitialActEndingBoss": null,
+      "expectedInitialBossHpRelief": null,
+      "expectedInitialPlannedChoiceCardId": null,
+      "expectedInitialTurnStartChoiceTurn": null,
+      "expectedInitialTurnStartChoiceSourceId": null,
+      "expectedInitialTurnStartChoiceCardId": null,
+      "expectedInitialTurnStartChoiceStateContains": null,
+      "expectedInitialTurnStartChoiceStateExcludes": null,
+      "expectedInitialSetupChoiceCountAtLeast": null,
+      "expectedInitialSetupChoiceSourceId": null,
+      "expectedInitialSetupChoiceTextStartsWith": null,
+      "verifyInitialSetupWaitsForUserStart": false,
+      "verifyTurnSetupManualRecalculate": false,
+      "verifyTurnSetupManualRefresh": false,
+      "verifyTurnSetupControlsDuringInitialSearch": false,
+      "verifyTurnSetupSceneExitCancellation": false,
+      "stopAfterInitialSetupAssertion": false,
+      "stopAfterInitialSolverResultAssertion": false,
+      "expectedFullAutoPausedAtDeathTurn": false,
+      "expectedFullAutoPausedAfterWorseRecalculation": false,
+      "expectedFullAutoPausedAtLiveRisk": false,
+      "enableStopOnWorseRecalculationForTest": false,
+      "expectedInitialRelicEffectId": null,
+      "expectedInitialRelicEffectSummary": null,
+      "expectedReusedTurn": null,
+      "expectedReusedProjectedBattleHpLost": null,
+      "expectedUnexpectedReplansAtMost": null,
+      "stopAfterExpectedReuse": false,
+      "expectedPlayedCardId": null,
+      "expectedUsedPotionId": null,
+      "expectedObservedPlayerPowerId": null,
+      "expectedNativeChoiceOwnerPrefix": null,
+      "expectedNativeChoiceSurface": null,
+      "expectedNativeChoiceVisibleAtLeast": null,
+      "expectedNativeChoiceSearchStartedAtMost": null,
+      "stopAfterExpectedPlayerPower": false,
+      "expectedPlayerDeath": false,
+      "headlessFastModeForTest": "Instant",
+      "deploymentFastModeForTest": null,
+      "performancePresetForTest": null,
+      "shortMaxCardBranchesPerNodeForTest": null,
+      "deepMaxCardBranchesPerNodeForTest": null,
+      "potionPolicyForTest": null,
+      "theftPolicyForTest": null,
+      "enableNoGcRegionForTest": null,
+      "noGcRegionBudgetGigabytesForTest": null,
+      "deploymentInterActionDelaySecondsForTest": null,
+      "assertDeploymentSpeedRestored": false,
+      "exportBugReportAfterSetup": false,
+      "exportBugReportAfterCombat": false,
+      "enableDetailedDiagnosticLogsForTest": null,
+      "manualEndTurnAfterInitialSearch": false,
+      "singleStepAfterInitialSearch": false,
+      "singleStepResumeModeForTest": null,
+      "expectedTurnSetupToDeploymentDelayMillisecondsAtLeast": null,
+      "enableFullAutoAfterManualEndTurn": false,
+      "expectedManualDivergencesAtLeast": null,
+      "expectedUnexpectedReplansAtLeast": null,
+      "stopAfterExpectedUnexpectedReplan": false,
+      "expectedUnexpectedReplanWarning": false,
+      "exportBugReportAfterUnexpectedReplan": false,
+      "expectedBugReportControlMode": null,
+      "expectedNoGcRegionRolloversAtLeast": null,
+      "injectPlayerHpLossBeforeAutoSearchTurn": null,
+      "injectPlayerHpLossAmount": 0,
+      "clearPlayerBlockBeforeEndTurnForTest": null,
+      "exitOnComplete": false
+    },
+    "result": {
+      "processReusable": false,
+      "processId": 945898,
+      "schemaVersion": 1,
+      "runId": "7cbc93b5ccd9442496f85ec7e51df4fd",
+      "scenarioId": "COMPACT-RANDOM-COSTS-NATIVE",
+      "status": "Passed",
+      "stage": "passed",
+      "characterId": "CHARACTER.SILENT",
+      "encounterId": "ENCOUNTER.CORPSE_SLUGS_NORMAL",
+      "seed": "COMBATSOLVER",
+      "startedAtUtc": "2026-09-11T00:17:24.248654+00:00",
+      "elapsedMilliseconds": 4711.5265,
+      "mainThread": true,
+      "combatEnded": false,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "managedHeapBytes": 85772032,
+      "managedFragmentedBytes": 18746656,
+      "workingSetBytes": 1544183808,
+      "privateMemoryBytes": 1721110528,
+      "solverMetrics": null,
+      "replayVerification": null,
+      "stageTimings": [
+        {
+          "stage": "created",
+          "startedMilliseconds": 0,
+          "durationMilliseconds": 0.0036
+        },
+        {
+          "stage": "game_startup",
+          "startedMilliseconds": 0.0036,
+          "durationMilliseconds": 0.8039
+        },
+        {
+          "stage": "start_run",
+          "startedMilliseconds": 0.8075,
+          "durationMilliseconds": 2182.7219
+        },
+        {
+          "stage": "inject_run_relics",
+          "startedMilliseconds": 2183.5294,
+          "durationMilliseconds": 0.03830000000016298
+        },
+        {
+          "stage": "enter_encounter",
+          "startedMilliseconds": 2183.5677,
+          "durationMilliseconds": 1000.9996000000001
+        },
+        {
+          "stage": "wait_player_turn",
+          "startedMilliseconds": 3184.5673,
+          "durationMilliseconds": 0.0591999999996915
+        },
+        {
+          "stage": "inject_state",
+          "startedMilliseconds": 3184.6265,
+          "durationMilliseconds": 1427.0715999999998
+        },
+        {
+          "stage": "cleanup",
+          "startedMilliseconds": 4611.6981,
+          "durationMilliseconds": 99.1853000000001
+        },
+        {
+          "stage": "passed",
+          "startedMilliseconds": 4710.8834,
+          "durationMilliseconds": 0.6433999999999287
+        }
+      ],
+      "completedChecks": [
+        "CompactRandomCosts:Mode0:8Branches:Frozen8Workers:AllSnapshotProperties",
+        "CompactRandomCosts:Mode1:5Branches:Frozen8Workers:AllSnapshotProperties",
+        "CompactRandomCosts:Native2Roots13Branches9Actions:RepeatedDrawShuffle:Payment:FullModifierLists:FullHandGate:TwoRngStreams:RootAfterNative:AllSnapshotProperties:AllRng:Frozen8Workers"
+      ],
+      "error": null,
+      "finishedAtUtc": "2026-09-11T00:17:28.9601807+00:00"
+    },
+    "cases": [
+      {
+        "mode": 0,
+        "branches": 8,
+        "nativeActions": 6,
+        "costsAfterActions": [
+          [
+            0,
+            1,
+            1,
+            0
+          ],
+          [
+            0,
+            1,
+            1,
+            0
+          ],
+          [
+            0,
+            1,
+            1,
+            2
+          ],
+          [
+            0,
+            1,
+            1,
+            2
+          ],
+          [
+            0,
+            1,
+            1,
+            2
+          ],
+          [
+            0,
+            1,
+            1,
+            2
+          ]
+        ],
+        "finalEnergy": 24,
+        "shuffleRng": {
+          "Counter": 13,
+          "State0": 13534280732855867598,
+          "State1": 1264712116037907743,
+          "State2": 13809142260021581328,
+          "State3": 1477271670044413755
+        },
+        "energyCostRng": {
+          "Counter": 3,
+          "State0": 6681048722377529285,
+          "State1": 4526403353849079728,
+          "State2": 4490507388397494075,
+          "State3": 16231239706176964627
+        },
+        "modifiers": [
+          "FINESSE+0:::0:0:",
+          "BACKFLIP+0:::1:1:",
+          "BACKFLIP+0:::1:1:",
+          "OUTBREAK+1:SLITHER:1:3:2:3/Absolute/EndOfCombat/False;1/Absolute/EndOfCombat/False;0/Absolute/EndOfCombat/False;2/Absolute/EndOfCombat/False;2/Absolute/EndOfCombat/False"
+        ]
+      },
+      {
+        "mode": 1,
+        "branches": 5,
+        "nativeActions": 3,
+        "costsAfterActions": [
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            3
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            3
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            3
+          ]
+        ],
+        "finalEnergy": 27,
+        "shuffleRng": {
+          "Counter": 14,
+          "State0": 13753455221343068906,
+          "State1": 1584609418521099201,
+          "State2": 6161071634248388318,
+          "State3": 10899978430062213445
+        },
+        "energyCostRng": {
+          "Counter": 5,
+          "State0": 12890979832493285373,
+          "State1": 13423973133386719190,
+          "State2": 12416151864316555416,
+          "State3": 9580113225129489814
+        },
+        "modifiers": [
+          "BACKFLIP+0:::1:1:",
+          "BACKFLIP+0:::1:1:",
+          "DEFEND_SILENT+0:::1:1:",
+          "DEFEND_SILENT+0:::1:1:",
+          "DEFEND_SILENT+0:::1:1:",
+          "DEFEND_SILENT+0:::1:1:",
+          "DEFEND_SILENT+0:::1:1:",
+          "DEFEND_SILENT+0:::1:1:",
+          "DEFEND_SILENT+0:::1:1:",
+          "DEFEND_SILENT+0:::1:1:",
+          "STRIKE_SILENT+0:SLITHER:1:1:1:1/Absolute/EndOfCombat/False",
+          "OUTBREAK+1:SLITHER:1:3:3:3/Absolute/EndOfCombat/False"
+        ]
+      }
+    ]
+  },
+  "validation": {
+    "release": "Passed, 11.41s, 0 warnings/errors",
+    "pure": "Passed: Artifact and all existing creature/power/generation/random-cost contracts",
+    "linuxBoundaries": "Passed, search_files=88",
+    "powershellBoundaries": "Not run; maintained",
+    "headlessProcess": "945898 stopped"
+  },
+  "limitations": [
+    "Testing backend only",
+    "Only captured Artifact instances, no compact Artifact creation",
+    "Temporary round-end restore still legacy",
+    "No full original-input/production A/B proof",
+    "No new performance measurement"
+  ]
+}

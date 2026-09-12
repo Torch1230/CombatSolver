@@ -20,6 +20,12 @@ internal sealed partial class SimulatedCombatState
 {
     private ForkableDictionary<Creature, PredictedDeathPhase>? _deathPhases;
 
+    public void CompletePlayerDeath(MegaCrit.Sts2.Core.Entities.Players.Player player)
+    {
+        RemovePowersAfterDeath(player.Creature);
+        CompleteDeathPhase(player.Creature);
+    }
+
     public void SpawnStockReplacement(CombatPredictionSimulator simulator, StockPower power)
         => MonsterSpawnSupport.Spawn<Axebot>(simulator, this, power.Owner, power.Owner.SlotName,
             configure: axebot =>
@@ -240,11 +246,13 @@ internal sealed partial class SimulatedCombatState
     private void SetDeathPhase(Creature creature, PredictedDeathPhase phase)
         => (_deathPhases ??= [])[creature] = phase;
 
-    private void AppendDeathLifecycleFingerprint(ref StateFingerprintBuilder fingerprint)
+    private void AppendDeathLifecycleFingerprint(ref StateFingerprintBuilder fingerprint,
+        IReadOnlyDictionary<Creature, PredictedDeathPhase>? phases = null)
     {
-        if (_deathPhases == null)
+        phases ??= _deathPhases;
+        if (phases == null)
             return;
-        foreach ((Creature creature, PredictedDeathPhase phase) in _deathPhases
+        foreach ((Creature creature, PredictedDeathPhase phase) in phases
                      .OrderBy(entry => entry.Key.CombatId))
         {
             fingerprint.Add('L');

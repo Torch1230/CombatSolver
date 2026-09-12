@@ -1,5 +1,6 @@
 using System.Text;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Combat.History;
 using MegaCrit.Sts2.Core.Combat.History.Entries;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
@@ -15,6 +16,53 @@ namespace CombatSolver;
 
 internal sealed partial class SimulatedCombatState
 {
+    // Native history windows include round, side and player-turn identity. Actor
+    // ownership is not the window: player counters also expire on enemy-side entry.
+    private void ResetTurnHistoryWindow()
+    {
+        _unblockedDamageThisTurn = null;
+        _attacksPlayedThisTurn?.Clear();
+        _shivsPlayedThisTurn?.Clear();
+        _blockCardsPlayedThisTurn?.Clear();
+        _skillCardsPlayedThisTurn?.Clear();
+        _cardsExhaustedThisTurn?.Clear();
+        _cardsDiscardedThisTurn?.Clear();
+        _creatureAttacksThisTurn?.Clear();
+        _cardPlaySeriesStartedThisTurn?.Clear();
+        _zeroCostAttackStartsThisTurn?.Clear();
+        _cardPlayStartsThisTurn?.Clear();
+        _attackSkillStartsThisTurn?.Clear();
+        _cardsPlayedThisTurn?.Clear();
+        _manualCardsPlayedThisTurn?.Clear();
+        _energySpentThisTurn?.Clear();
+        _starsGainedThisTurn?.Clear();
+        _nonHandDrawsThisTurn?.Clear();
+        _statusCardsDrawnThisTurn?.Clear();
+        _poweredAttackHitsThisTurn?.Clear();
+        _doomAppliersThisTurn?.Clear();
+        _fetchCardsPlayedThisTurn?.Clear();
+        // These three counters are part of every completed continuation snapshot.
+        // Materialize their new zero window here, so taking that snapshot cannot
+        // introduce fresh map entries after a candidate's original key is computed.
+        foreach (Player player in _players)
+        {
+            (_statusCardsDrawnThisTurn ??= [])[player] = 0;
+            (_zeroCostAttackStartsThisTurn ??= [])[player.Creature] = 0;
+            (_cardPlayStartsThisTurn ??= [])[player.Creature] = 0;
+            (_attackSkillStartsThisTurn ??= [])[player.Creature] = 0;
+        }
+    }
+
+    private bool RootEntryHappenedThisTurn(CombatHistoryEntry entry)
+    {
+        if (entry.RoundNumber != RoundNumber || entry.CurrentSide != CurrentSide) return false;
+        foreach (var pair in entry._playerTurnNumbers)
+        {
+            Player? player = GetPlayer(pair.Key);
+            if (player == null || GetPlayerTurnNumber(player) != pair.Value) return false;
+        }
+        return true;
+    }
     // Each native replay has its own started entry. Capture scalar costs before the worker runs.
     private static int CaptureBrightestFlameMaxHpSpent(IEnumerable<CardPlayStartedEntry> entries)
         => entries.Where(entry => entry.CardPlay.Card is BrightestFlame)
@@ -73,7 +121,7 @@ internal sealed partial class SimulatedCombatState
         if (_statusCardsDrawnThisTurn?.TryGetValue(player, out int value) == true)
             return value;
         value = _rootHistory.CardsDrawn.Count(entry =>
-            entry.HappenedThisTurn(this)
+            RootEntryHappenedThisTurn(entry)
             && entry.Actor.Player == player
             && entry.Card.Type == CardType.Status);
         (_statusCardsDrawnThisTurn ??= [])[player] = value;
@@ -105,14 +153,14 @@ internal sealed partial class SimulatedCombatState
         text.Append(";FlameHp=").Append(CaptureBrightestFlameMaxHpSpent(CombatManager.Instance.History.CardPlaysStarted));
     }
 
-    public void AppendPredictedTurnCardHistory(StringBuilder text, Player player)
+    public void AppendPredictedTurnCardHistory(StringBuilder text, Player player, CardHistoryReadValues? values = null)
     {
         AppendTurnCardHistory(
             text,
-            GetStatusCardsDrawnThisTurn(player),
-            GetZeroCostAttackStartsThisTurn(player.Creature),
-            GetCardPlayStartsThisTurn(player.Creature),
-            GetAttackSkillStartsThisTurn(player.Creature));
+            values?.StatusDraws ?? GetStatusCardsDrawnThisTurn(player),
+            values?.ZeroCostAttackStarts ?? GetZeroCostAttackStartsThisTurn(player.Creature),
+            values?.Starts ?? GetCardPlayStartsThisTurn(player.Creature),
+            values?.AttackSkillStarts ?? GetAttackSkillStartsThisTurn(player.Creature));
         text.Append(";FlameHp=").Append(_brightestFlameMaxHpSpent);
     }
 
@@ -209,7 +257,7 @@ internal sealed partial class SimulatedCombatState
         if (_unblockedDamageThisTurn?.Contains(receiver) == true)
             return true;
         bool live = _rootHistory.DamageReceived.Any(entry =>
-            entry.HappenedThisTurn(this)
+            RootEntryHappenedThisTurn(entry)
             && entry.Receiver == receiver
             && entry.Result.UnblockedDamage > 0);
         if (live)
@@ -225,7 +273,7 @@ internal sealed partial class SimulatedCombatState
         if (_doomAppliersThisTurn?.Contains(applier) == true)
             return true;
         bool live = _rootHistory.PowerReceived.Any(entry =>
-            entry.HappenedThisTurn(this)
+            RootEntryHappenedThisTurn(entry)
             && entry.Power is DoomPower
             && entry.Applier == applier);
         if (live)
@@ -239,7 +287,7 @@ internal sealed partial class SimulatedCombatState
         if (_poweredAttackHitsThisTurn?.TryGetValue(key, out int value) == true)
             return value;
         value = _rootHistory.DamageReceived.Count(entry =>
-            entry.HappenedThisTurn(this)
+            RootEntryHappenedThisTurn(entry)
             && entry.Dealer == dealer
             && entry.Receiver == receiver
             && entry.Result.Props.IsPoweredAttack());
@@ -252,7 +300,7 @@ internal sealed partial class SimulatedCombatState
         if (_cardsDiscardedThisTurn?.TryGetValue(actor, out int value) == true)
             return value;
         value = _rootHistory.CardsDiscarded.Count(entry =>
-            entry.HappenedThisTurn(this) && entry.Actor == actor);
+            RootEntryHappenedThisTurn(entry) && entry.Actor == actor);
         (_cardsDiscardedThisTurn ??= [])[actor] = value;
         return value;
     }
@@ -262,7 +310,7 @@ internal sealed partial class SimulatedCombatState
         if (_creatureAttacksThisTurn?.TryGetValue(actor, out int value) == true)
             return value;
         value = _rootHistory.CreatureAttacked.Count(entry =>
-            entry.HappenedThisTurn(this) && entry.Actor == actor);
+            RootEntryHappenedThisTurn(entry) && entry.Actor == actor);
         (_creatureAttacksThisTurn ??= [])[actor] = value;
         return value;
     }
@@ -272,7 +320,7 @@ internal sealed partial class SimulatedCombatState
         if (_energySpentThisTurn?.TryGetValue(player, out int value) == true)
             return value;
         value = _rootHistory.EnergySpent
-            .Where(entry => entry.HappenedThisTurn(this) && entry.Actor.Player == player)
+            .Where(entry => RootEntryHappenedThisTurn(entry) && entry.Actor.Player == player)
             .Sum(entry => entry.Amount);
         (_energySpentThisTurn ??= [])[player] = value;
         return value;
@@ -283,7 +331,7 @@ internal sealed partial class SimulatedCombatState
         if (_starsGainedThisTurn?.TryGetValue(player, out int value) == true)
             return value;
         value = _rootHistory.StarsModified
-            .Where(entry => entry.HappenedThisTurn(this)
+            .Where(entry => RootEntryHappenedThisTurn(entry)
                 && entry.Actor.Player == player
                 && entry.Amount > 0)
             .Sum(entry => entry.Amount);
@@ -296,34 +344,64 @@ internal sealed partial class SimulatedCombatState
         if (_nonHandDrawsThisTurn?.TryGetValue(player, out int value) == true)
             return value;
         value = _rootHistory.CardsDrawn.Count(entry =>
-            entry.HappenedThisTurn(this)
+            RootEntryHappenedThisTurn(entry)
             && entry.Actor.Player == player
             && !entry.FromHandDraw);
         (_nonHandDrawsThisTurn ??= [])[player] = value;
         return value;
     }
 
-    private int GetCardsExhaustedThisTurn(Creature actor)
+    internal int GetCardsExhaustedThisTurn(Creature actor)
     {
         if (_cardsExhaustedThisTurn?.TryGetValue(actor, out int value) == true)
             return value;
         value = _rootHistory.CardsExhausted.Count(entry =>
-            entry.HappenedThisTurn(this) && entry.Actor == actor);
+            RootEntryHappenedThisTurn(entry) && entry.Actor == actor);
         (_cardsExhaustedThisTurn ??= [])[actor] = value;
         return value;
     }
 
+    internal CombatHistoryReadValues CaptureCombatHistoryReadValues()
+    {
+        CombatHistoryReadValues values = new();
+        if (_unblockedDamageThisTurn != null) values.LostHp.UnionWith(_unblockedDamageThisTurn);
+        if (_doomAppliersThisTurn != null) values.DoomAppliers.UnionWith(_doomAppliersThisTurn);
+        if (_poweredAttackHitsThisTurn != null)
+            foreach (var pair in _poweredAttackHitsThisTurn) values.PoweredHits.Add(pair.Key, pair.Value);
+        if (_creatureAttacksThisTurn != null)
+            foreach (var pair in _creatureAttacksThisTurn) values.CreatureAttacks.Add(pair.Key, pair.Value);
+        if (_lastAttackThisTurn != null)
+            foreach (var pair in _lastAttackThisTurn) values.LastAttacks.Add(pair.Key, pair.Value);
+        if (_lastAttackPreviousTurn != null)
+            foreach (var pair in _lastAttackPreviousTurn) values.PreviousTurnAttacks.Add(pair.Key, pair.Value);
+        if (_deathPhases != null)
+            foreach (var pair in _deathPhases) values.DeathPhases.Add(pair.Key, pair.Value);
+        return values;
+    }
+
+    // Import a lane-owned read projection. This does not apply a Power or invoke its hooks;
+    // all application effects and window resets have already committed to the value journal.
+    internal void ImportCompletedDoomAppliers(IReadOnlySet<Creature> appliers)
+    {
+        if (_doomAppliersThisTurn == null && appliers.Count == 0) return;
+        (_doomAppliersThisTurn ??= []).Clear();
+        foreach (Creature applier in appliers) _doomAppliersThisTurn.Add(applier);
+    }
+
     private static void AddPoweredAttackHits(
         ref StateFingerprintBuilder fingerprint,
-        ForkableDictionary<(Creature Dealer, Creature Receiver), int>? values)
+        ForkableDictionary<(Creature Dealer, Creature Receiver), int>? values,
+        Dictionary<(Creature Dealer, Creature Receiver), int>? readValues = null)
     {
         ulong first = 0;
         ulong second = 0;
         int count = 0;
-        if (values != null)
+        if (values != null || readValues != null)
         {
-            foreach (((Creature dealer, Creature receiver), int value) in values)
+            using var entries = readValues != null ? readValues.GetEnumerator() : values!.GetEnumerator();
+            while (entries.MoveNext())
             {
+                ((Creature dealer, Creature receiver), int value) = entries.Current;
                 StateFingerprintBuilder item = new();
                 item.Add(dealer.CombatId ?? uint.MaxValue);
                 item.Add(receiver.CombatId ?? uint.MaxValue);

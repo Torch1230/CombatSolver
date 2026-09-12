@@ -1,0 +1,421 @@
+{
+  "date": "2026-09-11",
+  "baseCommit": "8729341",
+  "productionBackendEnabled": false,
+  "fullSearchSpeedupClaim": false,
+  "admittedCardTypeCount": 23,
+  "newCardTypes": [
+    "BubbleBubble",
+    "Mirage"
+  ],
+  "builds": [
+    {
+      "artifact": "artifact-v1",
+      "seconds": 9.5,
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "artifact": "artifact-v2",
+      "seconds": 9.77,
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "artifact": "artifact-v3",
+      "seconds": 9.78,
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "artifact": "artifact-v4",
+      "seconds": 9.65,
+      "warnings": 0,
+      "errors": 0
+    }
+  ],
+  "pureChecks": {
+    "tool": "CompactCreatureChecks",
+    "status": "Passed",
+    "presence": true,
+    "retirementReacquisition": true,
+    "livingEnemySum": true,
+    "baseExtra": true,
+    "rounding": true,
+    "rollback": true,
+    "frozenWorkers": 8,
+    "invalidProgramRejected": true
+  },
+  "failedRuns": [
+    {
+      "runId": "8ac34446d124400e8037ce1074d88bfa",
+      "status": "Failed",
+      "elapsedMilliseconds": 24022.811,
+      "error": "System.InvalidOperationException: Card cannot begin this compact action.\n   at CombatSolver.Engine.InCombat.Simulation.Compact.ResumableDiscardProgram.Begin(Int32 card, Int32 target)\n   at CombatSolver.UnattendedTestRunner.<>c__DisplayClass55_0.<AssertCompactPoisonTriggerAsync>g__Play|5(ResumableDiscardProgram lane, Int32 card)\n   at CombatSolver.UnattendedTestRunner.AssertCompactPoisonTriggerAsync(CombatState combat, Player player, Boolean nonDefaultLifetime, Boolean powerExpressions)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()"
+    },
+    {
+      "runId": "e729e0969f1a4feaaa2140e1c89e90aa",
+      "status": "Failed",
+      "elapsedMilliseconds": 23823.639,
+      "error": "System.InvalidOperationException: Card cannot begin this compact action: card=8, target=-1, energy=7, cost=1, complete=True, ending=True, terminal=True, inHand=True, requiresTarget=False.\n   at CombatSolver.Engine.InCombat.Simulation.Compact.ResumableDiscardProgram.Begin(Int32 card, Int32 target)\n   at CombatSolver.UnattendedTestRunner.<>c__DisplayClass55_0.<AssertCompactPoisonTriggerAsync>g__Play|5(ResumableDiscardProgram lane, Int32 card)\n   at CombatSolver.UnattendedTestRunner.AssertCompactPoisonTriggerAsync(CombatState combat, Player player, Boolean nonDefaultLifetime, Boolean powerExpressions)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()"
+    },
+    {
+      "runId": "d5f3a7c60ac049598f7e3e5d78264ff9",
+      "status": "Failed",
+      "elapsedMilliseconds": 24083.6772,
+      "error": "System.InvalidOperationException: CompactPoisonTrigger.Native-0 一步模拟与真实行动不一致；首个差异：none\n   at CombatSolver.UnattendedTestRunner.AssertSnapshotEqual(MoveStateSnapshot predicted, MoveStateSnapshot actual, String monsterId, String moveId)\n   at CombatSolver.UnattendedTestRunner.AssertCompactPoisonTriggerAsync(CombatState combat, Player player, Boolean nonDefaultLifetime, Boolean powerExpressions)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()"
+    }
+  ],
+  "finalRun": {
+    "runId": "fbb8b2f392274928b5d27bc48ed4e9b8",
+    "scenarioId": "COMPACT-POWER-EXPRESSIONS-NATIVE",
+    "status": "Passed",
+    "elapsedMilliseconds": 24410.3808,
+    "combatEnded": true,
+    "completedChecks": [
+      "CompactPoisonTrigger:NativePreTeardownSnapshot",
+      "CompactPoisonTrigger:13Branches:NoDealerOrCardSource:UnpoweredUnblockable:NoAttackHistory:RootRetirementReacquisition:OriginalKeys:AllSnapshotProperties:Frozen8Workers:Native10Actions:PreTeardownFullState:CombatEnded",
+      "CompactPowerExpressions:TargetPresenceAfterRetirementReacquisition:LivingEnemySumAfterDeath:CalculationBaseExtra:ZeroAndFrailRounding:UpgradeExhaustion:Native10Actions"
+    ]
+  },
+  "evidence": {
+    "branches": [
+      {
+        "path": [
+          5
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 15007541487067561908,
+          "Second": 16398216638769177012
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 19
+      },
+      {
+        "path": [
+          6
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 15465947975097830959,
+          "Second": 3031882054818716028
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 19
+      },
+      {
+        "path": [
+          7
+        ],
+        "PlayerBlock": 4,
+        "StateKey": {
+          "First": 11209279652389404494,
+          "Second": 7576888422020882800
+        },
+        "removed": 0,
+        "exhausted": 1,
+        "Energy": 19
+      },
+      {
+        "path": [
+          8
+        ],
+        "PlayerBlock": 4,
+        "StateKey": {
+          "First": 1239973835911586393,
+          "Second": 17817662089918165091
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 19
+      },
+      {
+        "path": [
+          9
+        ],
+        "PlayerBlock": 10,
+        "StateKey": {
+          "First": 17231171888937880909,
+          "Second": 8658251288956102477
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 19
+      },
+      {
+        "path": [
+          0,
+          5
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 6633989831094631454,
+          "Second": 16506056913912500577
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 16
+      },
+      {
+        "path": [
+          0,
+          7
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 401090499560536687,
+          "Second": 6952116591709112275
+        },
+        "removed": 0,
+        "exhausted": 1,
+        "Energy": 16
+      },
+      {
+        "path": [
+          0,
+          3,
+          5,
+          8
+        ],
+        "PlayerBlock": 15,
+        "StateKey": {
+          "First": 1921176740401286562,
+          "Second": 10884590264625577007
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 14
+      },
+      {
+        "path": [
+          5,
+          0,
+          8
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 13358851193011542799,
+          "Second": 6394815129532490780
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 15
+      },
+      {
+        "path": [
+          6,
+          9
+        ],
+        "PlayerBlock": 37,
+        "StateKey": {
+          "First": 9876020367522906341,
+          "Second": 8676272327650948692
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 18
+      },
+      {
+        "path": [
+          4,
+          5,
+          8
+        ],
+        "PlayerBlock": 24,
+        "StateKey": {
+          "First": 12414772384296475130,
+          "Second": 17993134307194970815
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 16
+      },
+      {
+        "path": [
+          0,
+          3,
+          4,
+          1,
+          8
+        ],
+        "PlayerBlock": 15,
+        "StateKey": {
+          "First": 10933435544245295795,
+          "Second": 13761715170530430126
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 10
+      },
+      {
+        "path": [
+          0,
+          3,
+          4,
+          1,
+          9
+        ],
+        "PlayerBlock": 44,
+        "StateKey": {
+          "First": 12972397881297965536,
+          "Second": 6376342337272011629
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 10
+      }
+    ],
+    "riskSourceCount": 4,
+    "nativeRoute": [
+      {
+        "index": 0,
+        "Id": "OUTBREAK",
+        "Upgrade": 0
+      },
+      {
+        "index": 5,
+        "Id": "BUBBLE_BUBBLE",
+        "Upgrade": 0
+      },
+      {
+        "index": 7,
+        "Id": "MIRAGE",
+        "Upgrade": 0
+      },
+      {
+        "index": 3,
+        "Id": "DEADLY_POISON",
+        "Upgrade": 1
+      },
+      {
+        "index": 6,
+        "Id": "BUBBLE_BUBBLE",
+        "Upgrade": 1
+      },
+      {
+        "index": 9,
+        "Id": "MIRAGE",
+        "Upgrade": 1
+      },
+      {
+        "index": 4,
+        "Id": "HAZE",
+        "Upgrade": 1
+      },
+      {
+        "index": 1,
+        "Id": "OUTBREAK",
+        "Upgrade": 1
+      },
+      {
+        "index": 8,
+        "Id": "MIRAGE",
+        "Upgrade": 1
+      },
+      {
+        "index": 2,
+        "Id": "OUTBREAK",
+        "Upgrade": 0
+      }
+    ],
+    "nativeSteps": 10,
+    "nativePowers": [
+      [
+        "0:0:STRENGTH_POWER:50:0::0:False:",
+        "0:2:POISON_POWER:1:0::0:False:",
+        "1:0:WEAK_POWER:2:0::0:True:DamageDecrease=0.75",
+        "2:0:DEXTERITY_POWER:-1:0::0:False:",
+        "3:0:FRAIL_POWER:2:0::0:True:"
+      ],
+      [
+        "0:0:STRENGTH_POWER:50:0::0:False:",
+        "0:2:POISON_POWER:1:0::0:False:",
+        "1:0:WEAK_POWER:2:0::0:True:DamageDecrease=0.75",
+        "2:0:DEXTERITY_POWER:-1:0::0:False:",
+        "3:0:FRAIL_POWER:2:0::0:True:"
+      ],
+      [
+        "0:0:STRENGTH_POWER:50:0::0:False:",
+        "0:2:POISON_POWER:1:0::0:False:",
+        "1:0:WEAK_POWER:2:0::0:True:DamageDecrease=0.75",
+        "2:0:DEXTERITY_POWER:-1:0::0:False:",
+        "3:0:FRAIL_POWER:2:0::0:True:"
+      ],
+      [
+        "0:0:STRENGTH_POWER:50:0::0:False:",
+        "0:1:POISON_POWER:7:0::0:False:",
+        "0:2:POISON_POWER:1:0::0:False:",
+        "1:0:WEAK_POWER:2:0::0:True:DamageDecrease=0.75",
+        "2:0:DEXTERITY_POWER:-1:0::0:False:",
+        "3:0:FRAIL_POWER:2:0::0:True:"
+      ],
+      [
+        "0:0:STRENGTH_POWER:50:0::0:False:",
+        "0:1:POISON_POWER:7:0::0:False:",
+        "0:2:POISON_POWER:13:0::0:False:",
+        "1:0:WEAK_POWER:2:0::0:True:DamageDecrease=0.75",
+        "2:0:DEXTERITY_POWER:-1:0::0:False:",
+        "3:0:FRAIL_POWER:2:0::0:True:"
+      ],
+      [
+        "0:0:STRENGTH_POWER:50:0::0:False:",
+        "0:1:POISON_POWER:7:0::0:False:",
+        "0:2:POISON_POWER:13:0::0:False:",
+        "1:0:WEAK_POWER:2:0::0:True:DamageDecrease=0.75",
+        "2:0:DEXTERITY_POWER:-1:0::0:False:",
+        "3:0:FRAIL_POWER:2:0::0:True:"
+      ],
+      [
+        "0:0:STRENGTH_POWER:50:0::0:False:",
+        "0:1:POISON_POWER:13:0::0:False:",
+        "0:2:POISON_POWER:19:0::0:False:",
+        "0:3:POISON_POWER:6:0::0:False:",
+        "1:0:WEAK_POWER:2:0::0:True:DamageDecrease=0.75",
+        "1:1:WEAK_POWER:2:0::0:False:DamageDecrease=0.75",
+        "1:2:WEAK_POWER:2:0::0:False:DamageDecrease=0.75",
+        "1:3:WEAK_POWER:2:0::0:False:DamageDecrease=0.75",
+        "2:0:DEXTERITY_POWER:-1:0::0:False:",
+        "3:0:FRAIL_POWER:2:0::0:True:"
+      ],
+      [
+        "0:0:STRENGTH_POWER:50:0::0:False:",
+        "0:2:POISON_POWER:30:0::0:False:",
+        "1:0:WEAK_POWER:2:0::0:True:DamageDecrease=0.75",
+        "1:2:WEAK_POWER:2:0::0:False:DamageDecrease=0.75",
+        "2:0:DEXTERITY_POWER:-1:0::0:False:",
+        "3:0:FRAIL_POWER:2:0::0:True:"
+      ],
+      [
+        "0:0:STRENGTH_POWER:50:0::0:False:",
+        "0:2:POISON_POWER:30:0::0:False:",
+        "1:0:WEAK_POWER:2:0::0:True:DamageDecrease=0.75",
+        "1:2:WEAK_POWER:2:0::0:False:DamageDecrease=0.75",
+        "2:0:DEXTERITY_POWER:-1:0::0:False:",
+        "3:0:FRAIL_POWER:2:0::0:True:"
+      ],
+      [
+        "0:0:STRENGTH_POWER:50:0::0:False:",
+        "1:0:WEAK_POWER:2:0::0:True:DamageDecrease=0.75",
+        "2:0:DEXTERITY_POWER:-1:0::0:False:",
+        "3:0:FRAIL_POWER:2:0::0:True:"
+      ]
+    ],
+    "nonDefaultLifetime": false,
+    "powerExpressions": true,
+    "zeroBaseOutbreak": 0,
+    "productionBackendEnabled": false
+  },
+  "boundaries": {
+    "linux": "Passed",
+    "searchFiles": 88,
+    "powershell": "Updated, not executed"
+  },
+  "remaining": [
+    "Original full inputs and generated closure",
+    "Compact round advancement",
+    "Production integration and full A/B"
+  ]
+}

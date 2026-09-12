@@ -99,6 +99,19 @@ internal static class CombatCardGenerationExtensions
                 multiplayerConstraint);
     }
 
+    public static bool TryGetRootEligibleCharacterCardsForCombat(
+        this CombatPredictionSimulator simulator,
+        Player player,
+        CardMultiplayerConstraint multiplayerConstraint,
+        out IReadOnlyList<CardModel> cards)
+    {
+        if (simulator.State.CombatState is ICombatPredictionCardGenerationPoolSnapshot snapshot)
+            return snapshot.TryGetRootEligibleCharacterCards(
+                player, player.Character.CardPool, multiplayerConstraint, out cards);
+        cards = [];
+        return false;
+    }
+
     public static IEnumerable<PredictedCard> GetUnlockedCharacterAttacksForCombat(
         this CombatPredictionSimulator simulator,
         Player player,

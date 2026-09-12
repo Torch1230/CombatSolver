@@ -112,6 +112,7 @@ internal sealed partial class UnattendedTestRunner
             {
                 runner.SetStage("fork_boundaries");
                 AssertForkBoundaries(scenario.CombatState, scenario.Player);
+                runner.AssertRoundPrefixReplayBoundaries(scenario.CombatState, scenario.Player);
                 runner._completedChecks.Add("ForkBoundaries");
             }
             if (request.VerifyCombatRootSnapshot)

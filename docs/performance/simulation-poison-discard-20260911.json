@@ -1,0 +1,850 @@
+{
+  "date": "2026-09-11",
+  "baseCommit": "9a0589b",
+  "productionBackendEnabled": false,
+  "fullSearchSpeedupClaim": false,
+  "admittedCardTypeCount": 21,
+  "newCardTypes": [
+    "Outbreak",
+    "CalculatedGamble"
+  ],
+  "scope": [
+    "Poison trigger without Accelerant",
+    "Unpowered unblockable damage with null dealer/card source",
+    "Power decrement, retirement, reacquisition and canonical read metadata",
+    "Batch discard hooks then draw then captured Sly instances",
+    "Partial draw resumes after shuffle selection",
+    "Indirect final kill and terminal result-pile gate"
+  ],
+  "finalArtifact": "artifact-v3",
+  "builds": [
+    {
+      "artifact": "artifact-v1",
+      "seconds": 9.57,
+      "warnings": 0,
+      "errors": 0,
+      "nativeRun": false
+    },
+    {
+      "artifact": "artifact-v2",
+      "seconds": 9.71,
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "artifact": "artifact-v3",
+      "seconds": 9.76,
+      "warnings": 0,
+      "errors": 0
+    }
+  ],
+  "versionNote": "v2 contains final value executor and discard/draw fixture. v3 adds canonical replacement read models for retired root Powers and nondefault-lifetime native coverage. No Power binding exists in the discard/draw or draw-return roots, so their v2 results remain applicable.",
+  "pureChecks": {
+    "tool": "CompactCreatureChecks",
+    "status": "Passed",
+    "indirectDamageTraits": true,
+    "decrementRetirementReacquisition": true,
+    "partialAndFinalDeath": true,
+    "discardDrawSlyOrder": true,
+    "redrawnSly": true,
+    "emptyHand": true,
+    "frozenWorkers": 8,
+    "rollback": true,
+    "existingContracts": "Power, EffectProgram, CardLifecycle, ConditionalPower and 9 damage vectors Passed"
+  },
+  "nativeRuns": [
+    {
+      "input": "poison-v2",
+      "runId": "22e557b94d464cdc9b0e45713ff8be85",
+      "scenarioId": "COMPACT-POISON-TRIGGER-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 24206.7031,
+      "combatEnded": true,
+      "checks": [
+        "CompactPoisonTrigger:NativePreTeardownSnapshot",
+        "CompactPoisonTrigger:11Branches:NoDealerOrCardSource:UnpoweredUnblockable:NoAttackHistory:RootRetirementReacquisition:OriginalKeys:AllSnapshotProperties:Frozen8Workers:Native5Actions:PreTeardownFullState:CombatEnded"
+      ]
+    },
+    {
+      "input": "discard-draw-v2",
+      "runId": "a7496c81ae34441987e89f369789116a",
+      "scenarioId": "COMPACT-DISCARD-DRAW-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 4737.5829,
+      "combatEnded": false,
+      "checks": [
+        "CompactDiscardDraw:EmptyHandAnd24Branches:DiscardHookThenDrawThenSly:PartialDrawShuffleChoice:RedrawnSly:UpgradedRetainAndExhaust:FullStateHistoryRng:AllSnapshotProperties:Frozen8Workers:Native2Roots"
+      ]
+    },
+    {
+      "input": "draw-return-v2",
+      "runId": "3e816af38b8c4ef196ec034482652464",
+      "scenarioId": "COMPACT-DRAW-RETURN-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 4290.6741,
+      "combatEnded": false,
+      "checks": [
+        "CompactDrawReturn:Native4Roots:EmptyDraw:ShuffleRetrievedVersusDrawn:FullHandAfterRetrieve:FrozenChoice:Rollback:OriginalKeys:AllSnapshotProperties:History:AllRng"
+      ]
+    },
+    {
+      "input": "reacquire-v3",
+      "runId": "c16dead0c81c4818bf9996b6ecf898b1",
+      "scenarioId": "COMPACT-POWER-REACQUIRE-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 24173.801,
+      "combatEnded": true,
+      "checks": [
+        "CompactPoisonTrigger:NativePreTeardownSnapshot",
+        "CompactPoisonTrigger:11Branches:NoDealerOrCardSource:UnpoweredUnblockable:NoAttackHistory:RootRetirementReacquisition:OriginalKeys:AllSnapshotProperties:Frozen8Workers:Native5Actions:PreTeardownFullState:CombatEnded",
+        "CompactPowerReacquire:NonDefaultTurnStartAmountSkipTickTarget:NativeFreshInstance:ReverseRestore:Frozen8Workers"
+      ]
+    }
+  ],
+  "poisonEvidence": {
+    "branches": [
+      {
+        "path": [
+          0
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 13047013695203485100,
+          "Second": 7738781839062059644
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 17
+      },
+      {
+        "path": [
+          1
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 438023056783608235,
+          "Second": 7507581972908342003
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 17
+      },
+      {
+        "path": [
+          2
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 18441585618001371970,
+          "Second": 15610279209015138100
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 17
+      },
+      {
+        "path": [
+          3,
+          0
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 660797126341290685,
+          "Second": 9274372617939803381
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 16
+      },
+      {
+        "path": [
+          0,
+          3
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 11635695857782503302,
+          "Second": 2884820527770553624
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 16
+      },
+      {
+        "path": [
+          4,
+          0
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 10483481565694367386,
+          "Second": 8789729157548495513
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 15
+      },
+      {
+        "path": [
+          0,
+          4
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 9373865833225539657,
+          "Second": 4953597075682138239
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 15
+      },
+      {
+        "path": [
+          3,
+          4,
+          1
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 6923680577057900477,
+          "Second": 10240383236575617779
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 14
+      },
+      {
+        "path": [
+          4,
+          3,
+          1
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 14875902423476261914,
+          "Second": 16669243387983816969
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 14
+      },
+      {
+        "path": [
+          0,
+          3,
+          4,
+          1
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 15257841461597544623,
+          "Second": 833750335907234258
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 11
+      },
+      {
+        "path": [
+          0,
+          3,
+          4,
+          1,
+          2
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 12190859703303842515,
+          "Second": 13909993373976340446
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 8
+      }
+    ],
+    "riskSourceCount": 3,
+    "nativeRoute": [
+      {
+        "index": 0,
+        "Id": "OUTBREAK",
+        "Upgrade": 0
+      },
+      {
+        "index": 3,
+        "Id": "DEADLY_POISON",
+        "Upgrade": 1
+      },
+      {
+        "index": 4,
+        "Id": "HAZE",
+        "Upgrade": 1
+      },
+      {
+        "index": 1,
+        "Id": "OUTBREAK",
+        "Upgrade": 1
+      },
+      {
+        "index": 2,
+        "Id": "OUTBREAK",
+        "Upgrade": 0
+      }
+    ],
+    "nativeSteps": 5,
+    "nativePowers": [
+      [
+        "0:0:STRENGTH_POWER:50:0::0:False:",
+        "0:2:POISON_POWER:1:0::0:False:",
+        "1:0:WEAK_POWER:2:0::0:True:DamageDecrease=0.75"
+      ],
+      [
+        "0:0:STRENGTH_POWER:50:0::0:False:",
+        "0:1:POISON_POWER:7:0::0:False:",
+        "0:2:POISON_POWER:1:0::0:False:",
+        "1:0:WEAK_POWER:2:0::0:True:DamageDecrease=0.75"
+      ],
+      [
+        "0:0:STRENGTH_POWER:50:0::0:False:",
+        "0:1:POISON_POWER:13:0::0:False:",
+        "0:2:POISON_POWER:7:0::0:False:",
+        "0:3:POISON_POWER:6:0::0:False:",
+        "1:0:WEAK_POWER:2:0::0:True:DamageDecrease=0.75",
+        "1:1:WEAK_POWER:2:0::0:False:DamageDecrease=0.75",
+        "1:2:WEAK_POWER:2:0::0:False:DamageDecrease=0.75",
+        "1:3:WEAK_POWER:2:0::0:False:DamageDecrease=0.75"
+      ],
+      [
+        "0:0:STRENGTH_POWER:50:0::0:False:",
+        "0:2:POISON_POWER:18:0::0:False:",
+        "1:0:WEAK_POWER:2:0::0:True:DamageDecrease=0.75",
+        "1:2:WEAK_POWER:2:0::0:False:DamageDecrease=0.75"
+      ],
+      [
+        "0:0:STRENGTH_POWER:50:0::0:False:",
+        "1:0:WEAK_POWER:2:0::0:True:DamageDecrease=0.75"
+      ]
+    ],
+    "zeroBaseOutbreak": 0,
+    "productionBackendEnabled": false
+  },
+  "reacquireEvidence": {
+    "branches": [
+      {
+        "path": [
+          0
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 13047013695203485100,
+          "Second": 7738781839062059644
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 17
+      },
+      {
+        "path": [
+          1
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 438023056783608235,
+          "Second": 7507581972908342003
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 17
+      },
+      {
+        "path": [
+          2
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 18441585618001371970,
+          "Second": 15610279209015138100
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 17
+      },
+      {
+        "path": [
+          3,
+          0
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 2181939697392455956,
+          "Second": 16956862694958204542
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 16
+      },
+      {
+        "path": [
+          0,
+          3
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 11635695857782503302,
+          "Second": 2884820527770553624
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 16
+      },
+      {
+        "path": [
+          4,
+          0
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 1903046755259908863,
+          "Second": 4624151447698326303
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 15
+      },
+      {
+        "path": [
+          0,
+          4
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 9373865833225539657,
+          "Second": 4953597075682138239
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 15
+      },
+      {
+        "path": [
+          3,
+          4,
+          1
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 6923680577057900477,
+          "Second": 10240383236575617779
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 14
+      },
+      {
+        "path": [
+          4,
+          3,
+          1
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 14875902423476261914,
+          "Second": 16669243387983816969
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 14
+      },
+      {
+        "path": [
+          0,
+          3,
+          4,
+          1
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 15257841461597544623,
+          "Second": 833750335907234258
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 11
+      },
+      {
+        "path": [
+          0,
+          3,
+          4,
+          1,
+          2
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 12190859703303842515,
+          "Second": 13909993373976340446
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 8
+      }
+    ],
+    "riskSourceCount": 3,
+    "nativeRoute": [
+      {
+        "index": 0,
+        "Id": "OUTBREAK",
+        "Upgrade": 0
+      },
+      {
+        "index": 3,
+        "Id": "DEADLY_POISON",
+        "Upgrade": 1
+      },
+      {
+        "index": 4,
+        "Id": "HAZE",
+        "Upgrade": 1
+      },
+      {
+        "index": 1,
+        "Id": "OUTBREAK",
+        "Upgrade": 1
+      },
+      {
+        "index": 2,
+        "Id": "OUTBREAK",
+        "Upgrade": 0
+      }
+    ],
+    "nativeSteps": 5,
+    "nativePowers": [
+      [
+        "0:0:STRENGTH_POWER:50:0::0:False:",
+        "0:2:POISON_POWER:1:0::0:False:",
+        "1:0:WEAK_POWER:2:0::0:True:DamageDecrease=0.75"
+      ],
+      [
+        "0:0:STRENGTH_POWER:50:0::0:False:",
+        "0:1:POISON_POWER:7:0::0:False:",
+        "0:2:POISON_POWER:1:0::0:False:",
+        "1:0:WEAK_POWER:2:0::0:True:DamageDecrease=0.75"
+      ],
+      [
+        "0:0:STRENGTH_POWER:50:0::0:False:",
+        "0:1:POISON_POWER:13:0::0:False:",
+        "0:2:POISON_POWER:7:0::0:False:",
+        "0:3:POISON_POWER:6:0::0:False:",
+        "1:0:WEAK_POWER:2:0::0:True:DamageDecrease=0.75",
+        "1:1:WEAK_POWER:2:0::0:False:DamageDecrease=0.75",
+        "1:2:WEAK_POWER:2:0::0:False:DamageDecrease=0.75",
+        "1:3:WEAK_POWER:2:0::0:False:DamageDecrease=0.75"
+      ],
+      [
+        "0:0:STRENGTH_POWER:50:0::0:False:",
+        "0:2:POISON_POWER:18:0::0:False:",
+        "1:0:WEAK_POWER:2:0::0:True:DamageDecrease=0.75",
+        "1:2:WEAK_POWER:2:0::0:False:DamageDecrease=0.75"
+      ],
+      [
+        "0:0:STRENGTH_POWER:50:0::0:False:",
+        "1:0:WEAK_POWER:2:0::0:True:DamageDecrease=0.75"
+      ]
+    ],
+    "nonDefaultLifetime": true,
+    "zeroBaseOutbreak": 0,
+    "productionBackendEnabled": false
+  },
+  "discardDrawEvidence": {
+    "cases": [
+      {
+        "mode": 0,
+        "sample": 0,
+        "Block": 0,
+        "ShuffleCount": 0,
+        "StateKey": {
+          "First": 563981908176869897,
+          "Second": 5574646906375689798
+        },
+        "choiceCount": 0
+      },
+      {
+        "mode": 1,
+        "sample": 0,
+        "Block": 24,
+        "ShuffleCount": 1,
+        "StateKey": {
+          "First": 9603238616727593736,
+          "Second": 405851965222058248
+        },
+        "choiceCount": 2
+      },
+      {
+        "mode": 1,
+        "sample": 1,
+        "Block": 24,
+        "ShuffleCount": 1,
+        "StateKey": {
+          "First": 2355084602528911557,
+          "Second": 17265079747925094034
+        },
+        "choiceCount": 2
+      },
+      {
+        "mode": 1,
+        "sample": 2,
+        "Block": 24,
+        "ShuffleCount": 1,
+        "StateKey": {
+          "First": 253853975729941673,
+          "Second": 15405502889265484204
+        },
+        "choiceCount": 2
+      },
+      {
+        "mode": 1,
+        "sample": 3,
+        "Block": 24,
+        "ShuffleCount": 1,
+        "StateKey": {
+          "First": 5386749026428289355,
+          "Second": 3964808958266091054
+        },
+        "choiceCount": 2
+      },
+      {
+        "mode": 1,
+        "sample": 4,
+        "Block": 24,
+        "ShuffleCount": 1,
+        "StateKey": {
+          "First": 12417277981219311524,
+          "Second": 8183526722947901479
+        },
+        "choiceCount": 2
+      },
+      {
+        "mode": 1,
+        "sample": 5,
+        "Block": 24,
+        "ShuffleCount": 1,
+        "StateKey": {
+          "First": 2376288089288262565,
+          "Second": 7746225049357239639
+        },
+        "choiceCount": 2
+      },
+      {
+        "mode": 1,
+        "sample": 6,
+        "Block": 24,
+        "ShuffleCount": 1,
+        "StateKey": {
+          "First": 15991582020535610415,
+          "Second": 2697619748820287751
+        },
+        "choiceCount": 2
+      },
+      {
+        "mode": 1,
+        "sample": 7,
+        "Block": 24,
+        "ShuffleCount": 1,
+        "StateKey": {
+          "First": 17465049747677895431,
+          "Second": 14362954504880675604
+        },
+        "choiceCount": 2
+      },
+      {
+        "mode": 1,
+        "sample": 8,
+        "Block": 24,
+        "ShuffleCount": 1,
+        "StateKey": {
+          "First": 3069690638359218902,
+          "Second": 3330657365630090434
+        },
+        "choiceCount": 2
+      },
+      {
+        "mode": 1,
+        "sample": 9,
+        "Block": 24,
+        "ShuffleCount": 1,
+        "StateKey": {
+          "First": 16945731162772352274,
+          "Second": 12166889247247432574
+        },
+        "choiceCount": 2
+      },
+      {
+        "mode": 1,
+        "sample": 10,
+        "Block": 24,
+        "ShuffleCount": 1,
+        "StateKey": {
+          "First": 2355084602528911557,
+          "Second": 17265079747925094034
+        },
+        "choiceCount": 2
+      },
+      {
+        "mode": 1,
+        "sample": 11,
+        "Block": 24,
+        "ShuffleCount": 1,
+        "StateKey": {
+          "First": 15466743184132304659,
+          "Second": 14040811396760297499
+        },
+        "choiceCount": 2
+      },
+      {
+        "mode": 1,
+        "sample": 12,
+        "Block": 24,
+        "ShuffleCount": 1,
+        "StateKey": {
+          "First": 5744739076380366236,
+          "Second": 1695956558752083040
+        },
+        "choiceCount": 2
+      },
+      {
+        "mode": 1,
+        "sample": 13,
+        "Block": 24,
+        "ShuffleCount": 1,
+        "StateKey": {
+          "First": 12570020312059619047,
+          "Second": 18081821718884473177
+        },
+        "choiceCount": 2
+      },
+      {
+        "mode": 1,
+        "sample": 14,
+        "Block": 24,
+        "ShuffleCount": 1,
+        "StateKey": {
+          "First": 2376288089288262565,
+          "Second": 7746225049357239639
+        },
+        "choiceCount": 2
+      },
+      {
+        "mode": 1,
+        "sample": 15,
+        "Block": 24,
+        "ShuffleCount": 1,
+        "StateKey": {
+          "First": 4683426625554573329,
+          "Second": 2330698678596920085
+        },
+        "choiceCount": 2
+      },
+      {
+        "mode": 1,
+        "sample": 16,
+        "Block": 24,
+        "ShuffleCount": 1,
+        "StateKey": {
+          "First": 6514547461020363156,
+          "Second": 2873653658079556289
+        },
+        "choiceCount": 2
+      },
+      {
+        "mode": 1,
+        "sample": 17,
+        "Block": 24,
+        "ShuffleCount": 1,
+        "StateKey": {
+          "First": 3940761530203899069,
+          "Second": 10279560368533353188
+        },
+        "choiceCount": 2
+      },
+      {
+        "mode": 1,
+        "sample": 18,
+        "Block": 24,
+        "ShuffleCount": 1,
+        "StateKey": {
+          "First": 3069690638359218902,
+          "Second": 3330657365630090434
+        },
+        "choiceCount": 2
+      },
+      {
+        "mode": 1,
+        "sample": 19,
+        "Block": 24,
+        "ShuffleCount": 1,
+        "StateKey": {
+          "First": 2355084602528911557,
+          "Second": 17265079747925094034
+        },
+        "choiceCount": 2
+      },
+      {
+        "mode": 1,
+        "sample": 20,
+        "Block": 24,
+        "ShuffleCount": 1,
+        "StateKey": {
+          "First": 6460821108491099932,
+          "Second": 14837889836444202245
+        },
+        "choiceCount": 2
+      },
+      {
+        "mode": 1,
+        "sample": 21,
+        "Block": 24,
+        "ShuffleCount": 1,
+        "StateKey": {
+          "First": 2348380233849730668,
+          "Second": 1395711454102218346
+        },
+        "choiceCount": 2
+      },
+      {
+        "mode": 1,
+        "sample": 22,
+        "Block": 24,
+        "ShuffleCount": 1,
+        "StateKey": {
+          "First": 10124103221571401609,
+          "Second": 10813673948928532124
+        },
+        "choiceCount": 2
+      },
+      {
+        "mode": 1,
+        "sample": 23,
+        "Block": 24,
+        "ShuffleCount": 1,
+        "StateKey": {
+          "First": 2376288089288262565,
+          "Second": 7746225049357239639
+        },
+        "choiceCount": 2
+      }
+    ],
+    "productionBackendEnabled": false
+  },
+  "readBindingCost": "Each lane now prepares one additional canonical replacement clone per nonzero root Power; no per-leaf cloning. Setup cost is not measured as a speedup.",
+  "boundaries": {
+    "linux": "Passed",
+    "searchFiles": 88,
+    "powershell": "Updated, not executed"
+  },
+  "notYetImplemented": [
+    "Accelerant",
+    "General triggered Powers/relics",
+    "Compact round advancement",
+    "Original complete 30/38-card roots and generated closure",
+    "Production backend integration and full-input A/B"
+  ]
+}

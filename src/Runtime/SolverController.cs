@@ -1099,6 +1099,7 @@ internal static class SolverController
             try
             {
                 rootSnapshot = CombatRootSnapshot.Capture(state);
+                searchPolicy = SearchBackendPolicy.Capture(rootSnapshot, searchPolicy);
             }
             finally
             {
@@ -1183,6 +1184,7 @@ internal static class SolverController
                         token,
                         progress => PublishSearchProgress(search, progress));
                     finalizedResult = search.Interaction.FinalizeWorkerResult(result);
+                    SearchBackendPolicy.ReportCompleted(searchPolicy);
                     token.ThrowIfCancellationRequested();
                     if (!search.Interaction.StopRequested)
                         routeCache.StoreFirst(finalizedResult);

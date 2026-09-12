@@ -40,7 +40,7 @@ internal sealed partial class CombatPredictionSimulator
         return true;
     }
 
-    internal bool SimulateEndPlayerTurnAfterOrbPassives(int playerTurn)
+    internal bool SimulateEndPlayerTurnAfterOrbPassives(int playerTurn, bool stageHandEndCardsTogether = false)
     {
         if (IsOverOrEnding)
             return true;
@@ -48,7 +48,7 @@ internal sealed partial class CombatPredictionSimulator
 
         foreach (var player in playersEndingTurn)
         {
-            if (!DoTurnEnd(player))
+            if (!DoTurnEnd(player, stageHandEndCardsTogether))
                 return false;
         }
 
@@ -65,7 +65,7 @@ internal sealed partial class CombatPredictionSimulator
     /// <summary>
     /// Mirrors the prediction-relevant parts of <see cref="CombatManager.DoTurnEnd"/>.
     /// </summary>
-    private bool DoTurnEnd(Player player)
+    private bool DoTurnEnd(Player player, bool stageHandEndCardsTogether)
     {
         var playerState = State.GetPlayerCombatState(player);
         if (IsOverOrEnding)
@@ -100,18 +100,23 @@ internal sealed partial class CombatPredictionSimulator
         }
 
         if (turnEndCards != null)
-            return DoTurnEndCards(turnEndCards);
+            return DoTurnEndCards(turnEndCards, stageHandEndCardsTogether);
         return true;
     }
 
     /// <summary>
     /// Mirrors the prediction-relevant parts of <see cref="CombatManager.DoTurnEndCards"/>.
     /// </summary>
-    private bool DoTurnEndCards(IEnumerable<PredictedCard> cards)
+    private bool DoTurnEndCards(IReadOnlyList<PredictedCard> cards, bool stageTogether)
     {
+        // Native Instant visuals yield after starting each pile move, so all entries can
+        // precede the first effect. The caller must capture/admit this scheduling contract;
+        // the simulator never reads live animation settings on a worker.
+        if (stageTogether)
+            foreach (var card in cards) AddToPile(card, PileType.Play);
         foreach (var card in cards)
         {
-            AddToPile(card, PileType.Play);
+            if (!stageTogether) AddToPile(card, PileType.Play);
             CardOnTurnEndInHandMirrors.Invoke(this, card);
             if (HasPendingChoice)
                 return false;

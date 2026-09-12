@@ -1,3 +1,4 @@
+using CombatSolver.Engine.Common;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Enchantments;
@@ -12,22 +13,27 @@ internal static class PredictionCoverage
 {
     public static IReadOnlyList<PredictionGap> Collect(CombatPredictionSimulator simulator)
     {
-        return simulator.History.Entries
-            .OfType<CombatPredictionRiskEntry>()
-            .Select(ToGap)
-            .DistinctBy(gap => (gap.SourceId, gap.Method, gap.Reason, gap.Compensated))
+        return Normalize(simulator.History.Entries.OfType<CombatPredictionRiskEntry>().Select(ToGap));
+    }
+
+    internal static IReadOnlyList<PredictionGap> Normalize(IEnumerable<PredictionGap> gaps)
+        => gaps.DistinctBy(gap => (gap.SourceId, gap.Method, gap.Reason, gap.Compensated))
             .OrderBy(gap => gap.SourceId, StringComparer.Ordinal)
             .ThenBy(gap => gap.Method, StringComparer.Ordinal)
             .ToList();
-    }
 
     private static PredictionGap ToGap(CombatPredictionRiskEntry entry)
     {
         AbstractModel? source = entry.Trace?.Source;
-        string sourceId = source?.Id.Entry ?? source?.GetType().Name ?? "UNKNOWN";
         string method = entry.Trace?.Invocation.Method?.Name
             ?? entry.Trace?.Invocation.Action?.ToString()
             ?? "Unknown";
+        return FromSource(source, method, entry.Reason);
+    }
+
+    internal static PredictionGap FromSource(AbstractModel? source, string method, PredictionRiskReason reason)
+    {
+        string sourceId = source?.Id.Entry ?? source?.GetType().Name ?? "UNKNOWN";
         bool compensated = source switch
         {
             Armaments => true,
@@ -48,7 +54,7 @@ internal static class PredictionCoverage
             Enthralled or Normality when method == "ShouldPlay" => true,
             _ => false,
         };
-        return new PredictionGap(sourceId, method, entry.Reason.ToString(), compensated);
+        return new PredictionGap(sourceId, method, reason.ToString(), compensated);
     }
 
     private static bool IsVerifiedNativeRelicHook(RelicModel relic, string method)

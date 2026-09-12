@@ -52,6 +52,7 @@ internal sealed partial class SimulatedCombatState
     private readonly IReadOnlyList<string> _encounterSlots;
     private readonly RootCombatHistorySnapshot _rootHistory;
     private readonly IReadOnlySet<Creature> _rootCreatures;
+    private readonly IReadOnlyDictionary<Player, Creature?> _rootOsties;
     private readonly AbstractModel[] _rootHookListeners;
     private readonly AbstractModel[] _rootRunHookListeners;
     private readonly IReadOnlyDictionary<Player, RelicModel[]> _rootRelics;
@@ -251,6 +252,7 @@ internal sealed partial class SimulatedCombatState
         _cardMultiplayerConstraint = inner.RunState.CardMultiplayerConstraint;
         _playerCreatures = inner.PlayerCreatures.ToArray();
         _players = inner.Players.ToArray();
+        _rootOsties = _players.ToDictionary(player => player, player => player.Osty);
         _rootCardGenerationPools = RootCombatCardGenerationPoolSnapshot.Capture(
             _players,
             _cardMultiplayerConstraint);
@@ -259,7 +261,7 @@ internal sealed partial class SimulatedCombatState
         _rootHistory = RootCombatHistorySnapshot.Capture();
         _brightestFlameMaxHpSpent = CaptureBrightestFlameMaxHpSpent(_rootHistory.CardPlaysStarted);
         _rootCreatures = inner.Creatures
-            .Concat(inner.Players.Select(player => player.Osty).OfType<Creature>())
+            .Concat(_rootOsties.Values.OfType<Creature>())
             .ToHashSet();
         _rootDeadCreatures = _rootCreatures.Where(creature => creature.CurrentHp <= 0).ToHashSet();
         Dictionary<AbstractModel, AbstractModel> rootModelClones = [];
@@ -446,6 +448,7 @@ internal sealed partial class SimulatedCombatState
         _encounterSlots = source._encounterSlots;
         _rootHistory = source._rootHistory;
         _rootCreatures = source._rootCreatures;
+        _rootOsties = source._rootOsties;
         _rootHookListeners = source._rootHookListeners;
         _rootRunHookListeners = source._rootRunHookListeners;
         _rootRelics = source._rootRelics;
@@ -469,6 +472,17 @@ internal sealed partial class SimulatedCombatState
     internal RoomType? CurrentRoomType => _currentRoomType;
     internal MapCoord? CurrentMapCoord => _currentMapCoord;
     public CardMultiplayerConstraint CardMultiplayerConstraint => _cardMultiplayerConstraint;
+
+    bool ICombatPredictionCardGenerationPoolSnapshot.TryGetRootEligibleCharacterCards(
+        Player player,
+        CardPoolModel cardPool,
+        CardMultiplayerConstraint multiplayerConstraint,
+        out IReadOnlyList<CardModel> cards)
+        => _rootCardGenerationPools.TryGetEligibleCharacterCards(
+            player,
+            cardPool,
+            multiplayerConstraint,
+            out cards);
 
     bool ICombatPredictionCardGenerationPoolSnapshot.TryGetRootEligibleCards(
         Player player,
@@ -505,7 +519,7 @@ internal sealed partial class SimulatedCombatState
         get => _roundNumber;
         set
         {
-            if (_roundNumber != value) _unblockedDamageThisTurn = null;
+            if (_roundNumber != value) ResetTurnHistoryWindow();
             _roundNumber = value;
         }
     }
@@ -514,7 +528,7 @@ internal sealed partial class SimulatedCombatState
         get => _currentSide;
         set
         {
-            if (_currentSide != value) _unblockedDamageThisTurn = null;
+            if (_currentSide != value) ResetTurnHistoryWindow();
             _currentSide = value;
         }
     }
@@ -580,8 +594,8 @@ internal sealed partial class SimulatedCombatState
     {
         int nextTurn = GetPlayerTurnNumber(player) + 1;
         (_playerTurnNumbers ??= [])[player] = nextTurn;
-        // History's turn window changes before turn-start damage and draw effects run.
-        _unblockedDamageThisTurn = null;
+        // Extra turns also advance the history window without changing side or round.
+        ResetTurnHistoryWindow();
     }
 
     public void SnapshotPowerAmountsAtTurnStart(IEnumerable<Creature> participants)
@@ -602,20 +616,48 @@ internal sealed partial class SimulatedCombatState
     private int ApplyWithBeforeApplied<T>(Creature target, int amount, Creature? applier, Action<int>? beforeApplied)
         where T : PowerModel
     {
+        T? incoming = PreparePowerApplication<T>(target, ref amount, applier);
+        if (incoming == null) return 0;
+        int previousAmount = GetAmount<T>(target);
+        if (previousAmount == 0) beforeApplied?.Invoke(amount);
+        PowerModel applied = ApplyPreparedPower(target, incoming, amount, applier);
+        return applied.Amount - previousAmount;
+    }
+
+    public void ApplyInstancedPower<T>(Creature target, int amount, Creature? applier = null) where T : PowerModel
+    {
+        if (CanonicalModels.Power<T>().InstanceType != MegaCrit.Sts2.Core.Entities.Powers.PowerInstanceType.Instanced)
+            throw new ArgumentException("Independent Power application requires an instanced native type.");
+        T? incoming = PreparePowerApplication<T>(target, ref amount, applier);
+        if (incoming != null) ApplyPreparedPower(target, incoming, amount, applier, newInstance: true);
+    }
+
+    private T? PreparePowerApplication<T>(Creature target, ref int amount, Creature? applier) where T : PowerModel
+    {
         if (amount == 0 || !CanReceivePredictedPowers(target))
-            return 0;
-        T incoming = CreatePowerForApplication<T>(target, target, applier);
+            return null;
+        T incoming = CreatePowerForApplication<T>(target, null, applier);
         amount = ModifyPowerAmountForRelics(incoming, target, amount, applier);
         if (incoming.GetTypeForAmount(amount) == MegaCrit.Sts2.Core.Entities.Powers.PowerType.Debuff
             && ConsumeArtifact(target))
         {
-            return 0;
+            return null;
         }
-        if (GetAmount<T>(target) == 0)
-            beforeApplied?.Invoke(amount);
-        PowerModel simulated = GetOrCreatePower(target, incoming, applier);
+        return incoming;
+    }
+
+    private PowerModel ApplyPreparedPower<T>(Creature target, T incoming, int amount, Creature? applier, bool newInstance = false) where T : PowerModel
+    {
+        PowerModel simulated = newInstance ? incoming : GetOrCreatePower(target, incoming, applier);
+        if (newInstance) (_addedPowerInstances ??= []).Add(simulated);
         int previousAmount = simulated._amount;
         simulated._amount = Math.Clamp(simulated._amount + amount, -999_999_999, 999_999_999);
+        // Native creates the skip flag on a new player debuff. Stacking an existing
+        // instance never renews it. Counter debuffs also retain this native metadata,
+        // although only duration counters consume it during settlement.
+        if (previousAmount == 0 && simulated._amount != 0 && target.Side == CombatSide.Player
+            && simulated.Type == MegaCrit.Sts2.Core.Entities.Powers.PowerType.Debuff)
+            simulated.SkipNextDurationTick = true;
         UpdatePowerListenerOrder(simulated, previousAmount, simulated._amount);
         InvalidateHookListenersForAmountTransition(previousAmount, simulated._amount);
         int applied = simulated._amount - previousAmount;
@@ -638,7 +680,7 @@ internal sealed partial class SimulatedCombatState
                 throw new InvalidOperationException("击倒 Power 的施加者不是战斗中的玩家。");
             ((StringVar)knockdown.DynamicVars["Applier"]).StringValue = _playerNames[applyingPlayer];
         }
-        return applied;
+        return simulated;
     }
 
     public void ApplyPower(Type powerType, Creature target, int amount, Creature? applier = null)
@@ -659,7 +701,7 @@ internal sealed partial class SimulatedCombatState
         bool alreadyPresent = EffectivePowers().Any(power =>
             power.GetType() == powerType && ReferenceEquals(power.Owner, target) && power.Amount > 0);
         ApplyPower(powerType, target, amount, applier);
-        if (!alreadyPresent && amount > 0)
+        if (!PowerLifecycleSupport.UsesNativeDurationSkip(powerType) && !alreadyPresent && amount > 0)
             (_skipNextDurationTick ??= []).Add((target, powerType));
     }
 
@@ -721,7 +763,7 @@ internal sealed partial class SimulatedCombatState
     {
         bool alreadyPresent = GetAmount<T>(target) > 0;
         Apply<T>(target, amount, applier);
-        if (!alreadyPresent && amount > 0 && GetAmount<T>(target) > 0)
+        if (!PowerLifecycleSupport.UsesNativeDurationSkip(typeof(T)) && !alreadyPresent && amount > 0 && GetAmount<T>(target) > 0)
             (_skipNextDurationTick ??= []).Add((target, typeof(T)));
     }
 
@@ -876,7 +918,7 @@ internal sealed partial class SimulatedCombatState
     public void ResetTenderCardsPlayed(Creature owner)
         => (_tenderCardsPlayed ??= [])[owner] = 0;
 
-    private static T CreatePowerForApplication<T>(Creature owner, Creature target, Creature? applier)
+    private static T CreatePowerForApplication<T>(Creature owner, Creature? target, Creature? applier)
         where T : PowerModel
     {
         T incoming = PredictionUtils.CloneModelForSimulation(CanonicalModels.Power<T>());
@@ -903,7 +945,7 @@ internal sealed partial class SimulatedCombatState
             : PredictionUtils.CloneModelForSimulation(prototype);
         simulated._owner = target;
         simulated._applier = existingPower?.Applier ?? applier;
-        simulated._target = target;
+        simulated._target = existingPower != null ? existingPower.Target : prototype.Target;
         simulated._amount = existingPower?.Amount ?? 0;
         if (existingPower == null)
             simulated.AmountOnTurnStart = 0;
@@ -957,11 +999,28 @@ internal sealed partial class SimulatedCombatState
 
     public void ApplyTemporaryStrengthLoss<T>(Creature creature, int amount, Creature? applier)
         where T : PowerModel
-        => ApplyTemporaryStat<T, StrengthPower>(creature, amount, applier, -1);
+        => ApplyTemporaryStrength<T>(creature, amount, applier, -1);
 
     public void ApplyTemporaryStrengthGain<T>(Creature creature, int amount, Creature? applier)
         where T : PowerModel
-        => ApplyTemporaryStat<T, StrengthPower>(creature, amount, applier, 1);
+        => ApplyTemporaryStrength<T>(creature, amount, applier, 1);
+
+    private void ApplyTemporaryStrength<T>(Creature creature, int amount, Creature? applier, int sign)
+        where T : PowerModel
+    {
+        if (!typeof(TemporaryStrengthPower).IsAssignableFrom(typeof(T)))
+            throw new NotSupportedException("Temporary Strength application requires its native Power family.");
+        T? incoming = PreparePowerApplication<T>(creature, ref amount, applier);
+        if (incoming == null) return;
+        bool created = GetAmount<T>(creature) == 0;
+        // BeforeApplied runs before the new counter joins the owner's listener order.
+        if (created) Apply<StrengthPower>(creature, sign * amount, applier);
+        PowerModel applied = ApplyPreparedPower(creature, incoming, amount, applier);
+        // Native AfterPowerAmountChanged uses the requested, modified offset even when
+        // the counter is capped. Its first-application guard compares offset to Amount.
+        if (amount != applied.Amount)
+            Apply<StrengthPower>(creature, sign * amount, applier);
+    }
 
     public void ApplyTemporaryDexterity<T>(Creature creature, int amount, Creature? applier)
         where T : PowerModel
@@ -1148,8 +1207,8 @@ internal sealed partial class SimulatedCombatState
             (_starsGainedThisTurn ??= [])[ownerPlayer] = 0;
             (_nonHandDrawsThisTurn ??= [])[ownerPlayer] = 0;
             (_statusCardsDrawnThisTurn ??= [])[ownerPlayer] = 0;
-            // Osty is never a turn-start participant but acts during the player turn; reset its counters here.
-            if (ownerPlayer.Osty is { } osty)
+            // Pet attack counters share the owner's history window, including extra turns.
+            if (GetOsty(ownerPlayer) is { } osty)
             {
                 (_creatureAttacksThisTurn ??= [])[osty] = 0;
                 RemovePoweredAttackHitsDealtBy(osty);
@@ -1314,14 +1373,17 @@ internal sealed partial class SimulatedCombatState
     }
 
     public int EffectiveEnemyHp(Creature enemy, SimCreatureState state)
+        => EffectiveEnemyHp(enemy, state.CurrentHp, state.MaxHp);
+
+    internal int EffectiveEnemyHp(Creature enemy, int currentHp, int maxHp)
     {
         if (_steamEruptionPhases?.ContainsKey(enemy) == true)
             return 0;
         if (enemy.Monster is TestSubject)
-            return RemainingTestSubjectFormHp(enemy, state.CurrentHp);
-        if (state.CurrentHp > 0)
-            return state.CurrentHp;
-        return RevivingEnemyHp(enemy, state.MaxHp);
+            return RemainingTestSubjectFormHp(enemy, currentHp);
+        if (currentHp > 0)
+            return currentHp;
+        return RevivingEnemyHp(enemy, maxHp);
     }
 
     public int AdvanceAeonglassAdditionalStrength(Creature owner)
@@ -1434,13 +1496,16 @@ internal sealed partial class SimulatedCombatState
         out int energyCost,
         out int starCost)
     {
-        energyCost = 0;
-        starCost = 0;
-        if (IsCardPlayPrevented(simulator, card))
-            return false;
-        if (!simulator.CanPlay(card, out energyCost, out starCost))
-            return false;
-        return card.Preview.Affliction is not Smog;
+        return CanPlayCardAtResources(simulator, card, null, null, out energyCost, out starCost);
+    }
+
+    internal bool CanPlayCardAtResources(CombatPredictionSimulator simulator, PredictedCard card,
+        int? energy, int? stars, out int energyCost, out int starCost)
+    {
+        energyCost = starCost = 0;
+        if (IsCardPlayPrevented(simulator, card)) return false;
+        return simulator.CanPlayAtResources(card, energy, stars, out energyCost, out starCost)
+            && card.Preview.Affliction is not Smog;
     }
 
     public IReadOnlyList<PowerModel> EffectivePowers()
@@ -1989,7 +2054,7 @@ internal sealed partial class SimulatedCombatState
             _ = GetStarsGainedThisTurn(player);
             _ = GetNonHandDrawsThisTurn(player);
             _ = GetStatusCardsDrawnThisTurn(player);
-            _ = GetPreviousTurnAttack(simulator, player);
+            CaptureHistoryCourseCards(simulator, player);
         }
         _ = GetFetchCardsPlayedThisTurn();
         NormalizeSwordSageReplays(simulator);
@@ -2105,7 +2170,8 @@ internal sealed partial class SimulatedCombatState
 
     public void AppendFingerprint(
         ref StateFingerprintBuilder fingerprint,
-        CombatPredictionSimulator simulator)
+        CombatPredictionSimulator simulator, CardHistoryReadValues? history = null,
+        IReadOnlyList<Creature>? enemyRoster = null, CombatHistoryReadValues? combatHistory = null)
     {
         fingerprint.Add('P');
         int powerCount = 0;
@@ -2129,26 +2195,26 @@ internal sealed partial class SimulatedCombatState
         AddCreatureIntMap(ref fingerprint, 'G', _pressureGunBonus);
         AddCreatureIntMap(ref fingerprint, 'R', _steamEruptionDamage);
         AddSteamEruptionPhases(ref fingerprint, _steamEruptionPhases);
-        AddAeonglassCounters(ref fingerprint, 'A', _aeonglassAdditionalStrength, "AdditionalStrength");
-        AddAeonglassCounters(ref fingerprint, 'W', _aeonglassWitherUpgradeCount, "WitherUpgradeCount");
-        AddCreatureIntMap(ref fingerprint, 'a', _attacksPlayedThisTurn);
-        AddCreatureIntMap(ref fingerprint, 'j', _shivsPlayedThisTurn);
-        AddCreatureIntMap(ref fingerprint, 'b', _blockCardsPlayedThisTurn);
-        AddCreatureIntMap(ref fingerprint, 'l', _skillCardsPlayedThisTurn);
-        AddCreatureIntMap(ref fingerprint, 'x', _cardsExhaustedThisTurn);
+        AddAeonglassCounters(ref fingerprint, 'A', _aeonglassAdditionalStrength, "AdditionalStrength", enemyRoster);
+        AddAeonglassCounters(ref fingerprint, 'W', _aeonglassWitherUpgradeCount, "WitherUpgradeCount", enemyRoster);
+        AddCreatureIntMap(ref fingerprint, 'a', _attacksPlayedThisTurn, history?.Owner.Creature, history?.AttackPlays);
+        AddCreatureIntMap(ref fingerprint, 'j', _shivsPlayedThisTurn, history?.Owner.Creature, history?.ShivPlays);
+        AddCreatureIntMap(ref fingerprint, 'b', _blockCardsPlayedThisTurn, history?.Owner.Creature, history?.BlockPlays);
+        AddCreatureIntMap(ref fingerprint, 'l', _skillCardsPlayedThisTurn, history?.Owner.Creature, history?.SkillPlays);
+        AddCreatureIntMap(ref fingerprint, 'x', _cardsExhaustedThisTurn, history?.Owner.Creature, history?.Exhausts);
         AddCreatureSet(ref fingerprint, 'd', _doomAppliersThisTurn);
-        AddCreatureSet(ref fingerprint, 'L', _unblockedDamageThisTurn);
-        AddPoweredAttackHits(ref fingerprint, _poweredAttackHitsThisTurn);
-        AddCreatureIntMap(ref fingerprint, 'v', _cardsDiscardedThisTurn);
-        AddCreatureIntMap(ref fingerprint, 'u', _creatureAttacksThisTurn);
-        AddPlayerIntMap(ref fingerprint, 'e', _energySpentThisTurn);
+        AddCreatureSet(ref fingerprint, 'L', _unblockedDamageThisTurn, combatHistory?.LostHp);
+        AddPoweredAttackHits(ref fingerprint, _poweredAttackHitsThisTurn, combatHistory?.PoweredHits);
+        AddCreatureIntMap(ref fingerprint, 'v', _cardsDiscardedThisTurn, history?.Owner.Creature, history?.Discards);
+        AddCreatureIntMap(ref fingerprint, 'u', _creatureAttacksThisTurn, history?.Owner.Creature, history?.CreatureAttacks, combatHistory?.CreatureAttacks);
+        AddPlayerIntMap(ref fingerprint, 'e', _energySpentThisTurn, history?.Owner, history?.EnergySpent);
         AddPlayerIntMap(ref fingerprint, 'z', _starsGainedThisTurn);
-        AddPlayerIntMap(ref fingerprint, 'n', _nonHandDrawsThisTurn);
-        AddPlayerIntMap(ref fingerprint, 's', _statusCardsDrawnThisTurn);
-        AddCreatureIntMap(ref fingerprint, 'Q', _cardPlaySeriesStartedThisTurn);
-        AddCreatureIntMap(ref fingerprint, 'q', _zeroCostAttackStartsThisTurn);
-        AddCreatureIntMap(ref fingerprint, 'J', _cardPlayStartsThisTurn);
-        AddCreatureIntMap(ref fingerprint, 'N', _attackSkillStartsThisTurn);
+        AddPlayerIntMap(ref fingerprint, 'n', _nonHandDrawsThisTurn, history?.Owner, history?.Draws);
+        AddPlayerIntMap(ref fingerprint, 's', _statusCardsDrawnThisTurn, history?.Owner, history?.StatusDraws);
+        AddCreatureIntMap(ref fingerprint, 'Q', _cardPlaySeriesStartedThisTurn, history?.Owner.Creature, history?.Series);
+        AddCreatureIntMap(ref fingerprint, 'q', _zeroCostAttackStartsThisTurn, history?.Owner.Creature, history?.ZeroCostAttackStarts);
+        AddCreatureIntMap(ref fingerprint, 'J', _cardPlayStartsThisTurn, history?.Owner.Creature, history?.Starts);
+        AddCreatureIntMap(ref fingerprint, 'N', _attackSkillStartsThisTurn, history?.Owner.Creature, history?.AttackSkillStarts);
         AddCreatureIntMap(ref fingerprint, 'k', _knowledgeDemonCurseCounters);
         AddCreatureSet(ref fingerprint, 'i', _enemiesIntendingAttack);
         fingerprint.Add(_hasPredictedEnemyIntents);
@@ -2165,20 +2231,20 @@ internal sealed partial class SimulatedCombatState
         AddFeralStates(ref fingerprint, simulator, effectivePowers);
         AddJugglingStates(ref fingerprint, simulator, effectivePowers);
         AddTurnStartStates(ref fingerprint, simulator, effectivePowers);
-        AppendPowerLifecycleFingerprint(ref fingerprint);
+        AppendPowerLifecycleFingerprint(ref fingerprint, history?.SkillPlays.HasValue == true ? history?.Owner.Creature : null);
         AddNemesisStates(ref fingerprint, effectivePowers);
         AddTenderStates(ref fingerprint, effectivePowers);
-        AppendCardLifecycleFingerprint(ref fingerprint, simulator);
+        AppendCardLifecycleFingerprint(ref fingerprint, simulator, history);
         AppendStatefulRelicFingerprint(ref fingerprint, simulator);
         ModelPredictionStateMirrors.AppendPredicted(ref fingerprint, null, simulator, this);
         AppendRelicResourceFingerprint(ref fingerprint);
         AppendPotionFingerprint(ref fingerprint);
-        AppendMonsterAiFingerprint(ref fingerprint);
+        AppendMonsterAiFingerprint(ref fingerprint, enemyRoster);
         AppendMonsterStateFingerprint(ref fingerprint);
         AppendDampenFingerprint(ref fingerprint);
-        AppendDeathLifecycleFingerprint(ref fingerprint);
+        AppendDeathLifecycleFingerprint(ref fingerprint, combatHistory?.DeathPhases);
         AppendPossessFingerprint(ref fingerprint);
-        AppendAutoPlayFingerprint(ref fingerprint);
+        AppendAutoPlayFingerprint(ref fingerprint, combatHistory?.LastAttacks, combatHistory?.PreviousTurnAttacks);
         fingerprint.Add('T');
         fingerprint.Add(OutstandingStolenResource(simulator));
     }
@@ -2192,10 +2258,15 @@ internal sealed partial class SimulatedCombatState
         item.Add(power.Id.Entry);
         item.Add(power.Amount);
         item.Add(PowerLifecycleSupport.SemanticallyRelevantAmountOnTurnStart(power));
+        // Preserve existing keys when no effective skip is pending; a pending duration
+        // skip changes the next settlement even when all current amounts are identical.
+        if (PowerLifecycleSupport.SemanticallyRelevantSkipNextDurationTick(power)) item.Add('d');
         if (power is RitualPower ritual)
             item.Add(ritual._wasJustAppliedByEnemy);
         if (power is SurroundedPower surrounded)
             item.Add((int)PowerPredictionStateSupport.SurroundedFacing(simulator, surrounded));
+        if (power is PanachePower panache)
+            item.Add(PowerPredictionStateSupport.PanacheAlreadyApplied(simulator, panache));
         ulong dynamicFirst = 0;
         ulong dynamicSecond = 0;
         int dynamicCount = 0;
@@ -2405,7 +2476,7 @@ internal sealed partial class SimulatedCombatState
     private static void AddPlayerIntMap(
         ref StateFingerprintBuilder fingerprint,
         char marker,
-        ForkableDictionary<Player, int>? values)
+        ForkableDictionary<Player, int>? values, Player? replacedOwner = null, int? replacedValue = null)
     {
         ulong first = 0;
         ulong second = 0;
@@ -2414,6 +2485,7 @@ internal sealed partial class SimulatedCombatState
         {
             foreach ((Player player, int value) in values)
             {
+                if (replacedValue.HasValue && ReferenceEquals(player, replacedOwner)) continue;
                 StateFingerprintBuilder item = new();
                 item.Add(player.NetId);
                 item.Add(value);
@@ -2421,27 +2493,46 @@ internal sealed partial class SimulatedCombatState
                 count++;
             }
         }
+        if (replacedValue.HasValue)
+        {
+            StateFingerprintBuilder item = new();
+            item.Add(replacedOwner!.NetId);
+            item.Add(replacedValue.Value);
+            AddUnorderedItem(item.Finish(), ref first, ref second);
+            count++;
+        }
         AddUnordered(ref fingerprint, marker, count, first, second);
     }
 
     private static void AddCreatureIntMap(
         ref StateFingerprintBuilder fingerprint,
         char marker,
-        ForkableDictionary<Creature, int>? values)
+        ForkableDictionary<Creature, int>? values, Creature? replacedOwner = null, int? replacedValue = null, Dictionary<Creature, int>? readValues = null)
     {
         ulong first = 0;
         ulong second = 0;
         int count = 0;
-        if (values != null)
+        if (values != null || readValues != null)
         {
-            foreach ((Creature creature, int value) in values)
+            using var entries = readValues != null ? readValues.GetEnumerator() : values!.GetEnumerator();
+            while (entries.MoveNext())
             {
+                (Creature creature, int value) = entries.Current;
+                if (replacedValue.HasValue && ReferenceEquals(creature, replacedOwner)) continue;
                 StateFingerprintBuilder item = new();
                 item.Add(creature.CombatId ?? uint.MaxValue);
                 item.Add(value);
                 AddUnorderedItem(item.Finish(), ref first, ref second);
                 count++;
             }
+        }
+        if (replacedValue.HasValue)
+        {
+            StateFingerprintBuilder item = new();
+            item.Add(replacedOwner!.CombatId ?? uint.MaxValue);
+            item.Add(replacedValue.Value);
+            AddUnorderedItem(item.Finish(), ref first, ref second);
+            count++;
         }
         AddUnordered(ref fingerprint, marker, count, first, second);
     }
@@ -2471,15 +2562,19 @@ internal sealed partial class SimulatedCombatState
     private static void AddCreatureSet(
         ref StateFingerprintBuilder fingerprint,
         char marker,
-        ForkableSet<Creature>? values)
+        ForkableSet<Creature>? values, HashSet<Creature>? readValues = null)
     {
         ulong first = 0;
         ulong second = 0;
         int count = 0;
-        if (values != null)
+        if (values != null || readValues != null)
         {
-            foreach (Creature creature in values)
+            // Both stores expose the same value enumerator. Keep the legacy path free of
+            // interface boxing while sharing the original encoding with completed readers.
+            using var entries = readValues != null ? readValues.GetEnumerator() : values!.GetEnumerator();
+            while (entries.MoveNext())
             {
+                Creature creature = entries.Current;
                 StateFingerprintBuilder item = new();
                 item.Add(creature.CombatId ?? uint.MaxValue);
                 AddUnorderedItem(item.Finish(), ref first, ref second);
@@ -2514,12 +2609,12 @@ internal sealed partial class SimulatedCombatState
         ref StateFingerprintBuilder fingerprint,
         char marker,
         IReadOnlyDictionary<Creature, int>? simulatedValues,
-        string memberName)
+        string memberName, IReadOnlyList<Creature>? enemyRoster = null)
     {
         ulong first = 0;
         ulong second = 0;
         int count = 0;
-        foreach (Creature enemy in Enemies)
+        foreach (Creature enemy in enemyRoster ?? Enemies)
         {
             if (enemy.Monster?.GetType().Name != "Aeonglass")
                 continue;
@@ -2720,7 +2815,8 @@ internal sealed partial class SimulatedCombatState
         return true;
     }
     bool ICombatPredictionCreatureSemantics.ShouldRemoveAfterDeath(Creature creature)
-        => GetAmount<AdaptablePower>(creature) <= 0
+        => GetAmount<DieForYouPower>(creature) <= 0
+            && GetAmount<AdaptablePower>(creature) <= 0
             && GetAmount<IllusionPower>(creature) <= 0
             && GetAmount<ReattachPower>(creature) <= 0
             && GetAmount<SteamEruptionPower>(creature) <= 0;

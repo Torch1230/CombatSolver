@@ -183,6 +183,10 @@ internal sealed partial class CombatPredictionSimulator
     // Return the queried costs before excess-energy conversion. Search valuation uses the
     // unconverted prices too, and must not invoke the same read-only cost hooks a second time.
     public bool CanPlay(PredictedCard card, out int energyCost, out int starCost)
+        => CanPlayAtResources(card, null, null, out energyCost, out starCost);
+
+    internal bool CanPlayAtResources(PredictedCard card, int? availableEnergy, int? availableStars,
+        out int energyCost, out int starCost)
     {
         energyCost = 0;
         starCost = 0;
@@ -192,19 +196,23 @@ internal sealed partial class CombatPredictionSimulator
         }
 
         var ownerState = State.GetPlayerCombatState(card.Preview.Owner);
-        energyCost = card.GetEnergyCostWithModifiers(this, ownerState);
-        starCost = card.GetStarCostWithModifiers(this, ownerState);
+        int energy = availableEnergy ?? ownerState.Energy;
+        int stars = availableStars ?? ownerState.Stars;
+        // An X card consumes the supplied resource pool. Completed readers can evaluate
+        // a different pool from the private context's initial resources without mutating it.
+        energyCost = card.Preview.EnergyCost.CostsX ? energy : card.GetEnergyCostWithModifiers(this, ownerState);
+        starCost = card.Preview.HasStarCostX ? stars : card.GetStarCostWithModifiers(this, ownerState);
         int payableEnergy = energyCost;
         int payableStars = starCost;
 
-        if (payableEnergy > ownerState.Energy &&
+        if (payableEnergy > energy &&
             Hook.ShouldPayExcessEnergyCostWithStars(State.CombatState, card.Preview.Owner))
         {
-            payableStars += 2 * (payableEnergy - ownerState.Energy);
-            payableEnergy = ownerState.Energy;
+            payableStars += 2 * (payableEnergy - energy);
+            payableEnergy = energy;
         }
 
-        if (payableEnergy > ownerState.Energy || payableStars > ownerState.Stars)
+        if (payableEnergy > energy || payableStars > stars)
         {
             return false;
         }

@@ -20,6 +20,14 @@ internal static class PowerLifecycleSupport
             ? power.AmountOnTurnStart
             : 0;
 
+    // These native duration counters consume this flag. Other debuffs (e.g. Poison)
+    // can carry it after application without ever consulting it during settlement.
+    public static bool UsesNativeDurationSkip(Type type)
+        => type == typeof(WeakPower) || type == typeof(VulnerablePower) || type == typeof(FrailPower);
+
+    public static bool SemanticallyRelevantSkipNextDurationTick(PowerModel power)
+        => UsesNativeDurationSkip(power.GetType()) && power.SkipNextDurationTick;
+
     public static void UpdateSurroundedForTarget(
         CombatPredictionSimulator simulator,
         SimulatedCombatState combat,

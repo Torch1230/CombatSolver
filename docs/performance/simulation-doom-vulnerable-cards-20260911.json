@@ -1,0 +1,138 @@
+{
+  "status": "Passed",
+  "scope": "Deathbringer, NegativePulse, Scourge, Putrefy and Fear production compilation into the compact card program compiler; enemy Doom slot allocation; compiler to lane to materialization to native differential on both a single-enemy card route and a three-enemy roster. No admission expansion beyond the five exact card programs.",
+  "validation": [
+    {
+      "runId": "3c3af9d6368e4441b6f893b1d9b33fe6",
+      "scenarioId": "COMPACT-DOOM-ROSTER-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 3663,
+      "characterId": "NECROBINDER",
+      "encounterId": "CORPSE_SLUGS_NORMAL",
+      "enemyCount": 3,
+      "evidence": ".local/compact-doom-roster-20260912/final-roster",
+      "note": "Three living primary enemies plus the captured Osty; every compact materialization is compared with the real combat after the same native step.",
+      "observedPowerChanges": [
+        "DEATHBRINGER: Doom 21 -> enemies 1,2,3 then Weak 1 -> enemies 1,2,3",
+        "NEGATIVE_PULSE: block 5 then Doom 7 -> enemies 1,2,3",
+        "SCOURGE (target 2): Doom 13 -> enemy 2",
+        "PUTREFY (target 1): Weak 2 -> enemy 1, Vulnerable 2 -> enemy 1",
+        "FEAR (target 3): attack 7 then Vulnerable 1 -> enemy 3"
+      ],
+      "completedChecks": [
+        "CompactDoomRoster:ThreeEnemies:DeathbringerNegativePulseRosterPass:ScourgePutrefyFearChosenEnemy:ExactPowerOrderAndScope:MaterializationAndReaderKeys:NativePerStep:Rollback:FrozenAfterNative"
+      ],
+      "error": null
+    },
+    {
+      "runId": "5193feebe1d947ad8de1015470d0ae60",
+      "scenarioId": "COMPACT-DOOM-CARDS-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 7302,
+      "characterId": "NECROBINDER",
+      "encounterId": "MECHA_KNIGHT_ELITE",
+      "evidence": ".local/compact-doom-cards-20260912/cards",
+      "note": "Reused process; two upgrade modes, 8 native actions, 14 branches per mode.",
+      "completedChecks": [
+        "CompactDoomCards:Mode0:OmittedChoices4:FullContinuations",
+        "CompactDoomCards:Mode0:8NativeActions:14Branches:0NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative",
+        "CompactDoomCards:Mode0:CardAppliedDoomWeakVulnerable:CompilerLaneMaterializationNative:DoomCounterWithoutDuration:VulnerableMultiplier:ScourgeDrawOrder:PutrefyExhaust:FearEthereal:AttackStarts",
+        "CompactDoomCards:Mode1:OmittedChoices4:FullContinuations",
+        "CompactDoomCards:Mode1:8NativeActions:14Branches:0NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative",
+        "CompactDoomCards:Mode1:CardAppliedDoomWeakVulnerable:CompilerLaneMaterializationNative:DoomCounterWithoutDuration:VulnerableMultiplier:ScourgeDrawOrder:PutrefyExhaust:FearEthereal:AttackStarts"
+      ],
+      "error": null
+    },
+    {
+      "runId": "d7b250f96c4c4f15956f4c05645dea31",
+      "scenarioId": "COMPACT-DOOM-CARD-KILL-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 24444,
+      "characterId": "NECROBINDER",
+      "encounterId": "MECHA_KNIGHT_ELITE",
+      "evidence": ".local/compact-doom-cards-20260912/kill",
+      "completedChecks": [
+        "CompactDoomCardKill:CardAppliedDoom:NativeEnemySideBoundary:TerminalLock:NoDamageOrBlockLoss:PowerRetirement:FullKeysEvaluation:Rng:Rollback:FrozenRootAfterNative"
+      ],
+      "error": null
+    },
+    {
+      "runId": "56bd91d7145b432ab3a82d3d7c5ad1c5",
+      "scenarioId": "COMPACT-CALL-OF-THE-VOID-GENERATION",
+      "status": "Passed",
+      "elapsedMilliseconds": 3613,
+      "characterId": "NECROBINDER",
+      "encounterId": "MECHA_KNIGHT_ELITE",
+      "evidence": ".local/compact-doom-cards-20260912/void",
+      "note": "Reused process; CallOfTheVoid lane regression and complete pool census.",
+      "census": {
+        "poolSize": 78,
+        "admitted": 23,
+        "unsupported": 55,
+        "firstUnsupported": "BANSHEES_CRY",
+        "previousAdmitted": 18,
+        "previousUnsupported": 60,
+        "instruction": "ApplyBasicPower(CallOfTheVoid)",
+        "newlyAdmitted": ["DEATHBRINGER", "NEGATIVE_PULSE", "SCOURGE", "PUTREFY", "FEAR"]
+      },
+      "error": null
+    },
+    {
+      "runId": "a1a4963b61784a0485fd969a8cb2f24e",
+      "scenarioId": "COMPACT-GENERATION-CLOSURE-AUDIT",
+      "status": "Passed",
+      "elapsedMilliseconds": 3472,
+      "characterId": "NECROBINDER",
+      "encounterId": "AEONGLASS_BOSS",
+      "evidence": ".local/compact-doom-cards-20260912/closure",
+      "note": "Original 38-card, 19-relic, 2-potion input; CallOfTheVoid exact type membership 20 to 25.",
+      "completedChecks": [
+        "CompactGenerationClosureAudit:Original38Cards19InjectedRelics2Potions:ActualRelics20:CompleteOrderedPools:24NativeLegacyCachedValueSamples:ValueSelectionEmptySingletonNegativeZeroOversize:FiveFieldRng:FullPoolForkOwnership:InvalidPoolsRejected:GeneratedCardIsolation:AttackAndColorlessRegression:ActualUnchanged:FullRootExplicitlyRejected"
+      ],
+      "error": null
+    }
+  ],
+  "compilation": [
+    { "card": "DEATHBRINGER", "cost": 2, "category": "Skill", "resultPile": "Discard",
+      "base": ["ApplyBasicPower(Doom 21, AllEnemies)", "ApplyBasicPower(Weak 1, AllEnemies)"],
+      "upgraded": ["ApplyBasicPower(Doom 26, AllEnemies)", "ApplyBasicPower(Weak 1, AllEnemies)"] },
+    { "card": "NEGATIVE_PULSE", "cost": 1, "category": "Skill", "resultPile": "Discard",
+      "base": ["GainBlock 5", "ApplyBasicPower(Doom 7, AllEnemies)"],
+      "upgraded": ["GainBlock 6", "ApplyBasicPower(Doom 11, AllEnemies)"] },
+    { "card": "SCOURGE", "cost": 1, "category": "Skill", "resultPile": "Discard",
+      "base": ["ApplyBasicPower(Doom 13, ChosenEnemy)", "Draw 1"],
+      "upgraded": ["ApplyBasicPower(Doom 16, ChosenEnemy)", "Draw 2"] },
+    { "card": "PUTREFY", "cost": 1, "category": "Skill", "resultPile": "Exhaust",
+      "base": ["ApplyBasicPower(Weak 2, ChosenEnemy)", "ApplyBasicPower(Vulnerable 2, ChosenEnemy)"],
+      "upgraded": ["ApplyBasicPower(Weak 3, ChosenEnemy)", "ApplyBasicPower(Vulnerable 3, ChosenEnemy)"] },
+    { "card": "FEAR", "cost": 1, "category": "Attack", "resultPile": "Discard", "ethereal": true,
+      "base": ["AttackTarget 7", "ApplyBasicPower(Vulnerable 1, ChosenEnemy)"],
+      "upgraded": ["AttackTarget 8", "ApplyBasicPower(Vulnerable 2, ChosenEnemy)"] }
+  ],
+  "valueChecks": {
+    "suite": "tools/CompactCreatureChecks",
+    "completed": 24,
+    "newCheck": "COMPACT_DOOM_VULNERABLE_CHECKS_OK ordered_bulk=true doom_history=true artifact_block=true vulnerable_multiplier=true own_hit_order=true vulnerable_tick=true inclusive_threshold=true block_preserved=true rollback=true frozen_workers=8"
+  },
+  "build": {
+    "command": "dotnet build CombatSolver.csproj -c Release",
+    "warnings": 0,
+    "errors": 0,
+    "log": ".local/batchB-build.log"
+  },
+  "gate": {
+    "command": "./tools/verify-refactor-boundaries.sh",
+    "result": "REFACTOR_BOUNDARIES_OK search_files=96",
+    "log": ".local/batchB-gate.log"
+  },
+  "failureBaselines": [
+    "COMPACT-DOOM-CARDS-NATIVE first iteration hard-coded Scourge's draw count at one and failed the upgraded mode; the assertion now derives the count from the compiled program.",
+    "COMPACT-DOOM-CARD-KILL-NATIVE first rejected the lane action because an AllEnemies card was begun with a single target, then failed only the evaluation comparison because the model oracle had not reached its victory safe point.",
+    "COMPACT-DOOM-ROSTER-NATIVE first rejected its own root because the fixture removed the captured Osty's DieForYouPower; the roster setup now preserves that persistent protection Power."
+  ],
+  "notCovered": [
+    "Remaining 55 unrepresented candidates of the 78-candidate character pool, unrepresented relics and potions, AEONGLASS AI and the original complete Necrobinder input.",
+    "Positive execution of pool-generated Doom cards: the root is still rejected while the pool is not closed, so only compile admission and rejection paths exist.",
+    "No Steam, installation, packaging, publish or remote operations; no new performance comparison."
+  ]
+}

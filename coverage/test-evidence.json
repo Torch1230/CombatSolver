@@ -1,51 +1,163 @@
 {
-  "TEST-SUBJECT-ORIGINAL-REPORT": {
+  "VALUE-GENERATION-METERING-20260911": {
     "status": "Passed",
-    "level": "OriginalArchiveNativeActionAndTwoTurnDifferential",
-    "procedure": "恢复5cc95原包首个可操作根，重走三药水、SpectrumShift、Tyranny、HeavenlyDrill、Bulwark、结束回合及原Tyranny选择；逐动作和T2完整状态对账。",
-    "expected": "天钻按修正后的X值达到4时翻倍攻击次数，Boss在玩家回合倒地、敌方回合复活。",
-    "observed": "ebbcbc7c3e8d4f688944b20b87024b66复现原T2玩家HP97/103；9516db27445a487ea2cecad9d34e185c首错定位天钻后Boss8/0。最终2139e56df0aa41f5940ad6bca1cee627 Passed。",
-    "evidence": "src/Testing/UnattendedTestRunner.TestSubjectReport.cs；docs/TEST_MATRIX.md；2026-09-10。"
+    "level": "StandaloneMeteringAttributionAndCompactGenerationPoolValueLayer",
+    "procedure": "独立纯.NET计量程序引用真实ValueRng.cs，全模式5.5M次以上调用；审计尾部计量收紧为100次warmup＋5×5000同形稳定化＋5×5000正式steady-state，正式5个块必须全部精确0字节（无容差，稳定化不作为通过证据）；紧凑池生成值层与四个场景重跑。",
+    "expected": "ValueRng原语无当前线程分配且RNG消耗精确；稳定化只吸收一次性宿主／JIT形状开销、不参与通过判定；生产准入不扩大，完整亡灵根继续显式拒绝。",
+    "observed": "1c9d47f348ea4473ae29037b2601913b, 3ca8ef6137284d3dbffea37dce5100dc, a83926d065f247dc862bf1c1ea8c1304 COMPACT-GENERATION-CLOSURE-AUDIT Passed; b715d6a7100c4164b27c8c5bf7932152 COMPACT-CALL-OF-THE-VOID-GENERATION Passed; 68c51d68693b4e79a1ea03da531e4f2e COMPACT-PAGESTORM-SEARCH Passed。严格形状：58268385f95c4d37a3383bfa46768b76（单块稳定化）Failed: Value generation selection allocated in the steady state: 160/0/0/0/0 bytes; stabilization=0 bytes. 保留为中间失败基线；e039ec137c8b4f768cf46d7e8fbdfdd9 Passed（24.04秒）；537d20c96a944b48b505b90f0bf7fd34 最终 Passed（24.15秒，正式5块全部精确0字节）。原失败 3c479d36a88f4889b9d1f78f9d0c9251 归因为Godot进程内测试线程一次性宿主开销。",
+    "evidence": "docs/performance/simulation-generation-metering-20260911.md；docs/performance/simulation-generation-metering-20260911.json；.local/metering-strength-20260911/。"
   },
-  "REPORT-ROUND-DOOM-THRESHOLD-CARD": {
-    "status": "Passed",
-    "level": "HeadlessStrictNativeTwoTurnAndForkDifferential",
-    "procedure": "报告e476临界条件：Boss134HP、Doom34、SleightOfFlesh13、Duplication1，打出升级EndOfDays再跨回合；完整状态和增量/Fork对账。",
-    "expected": "施加Doom后先结算触发伤害再判断处决，第二次施放在108HP/108Doom时击杀，Boss按时复活。",
-    "observed": "基线d4ffe973627244df921d003d529bdf52预测玩家HP46/原生66；最终339f3bf702874325bf13a36ea0b9c37f Passed。",
-    "evidence": "src/Testing/UnattendedTestRunner.ReportRound.cs；docs/TEST_MATRIX.md；2026-09-10。"
+  "VALUE-GENERATION-SELECTION-WIP-20260911": {
+    "status": "Failed",
+    "level": "IncompleteNativeValueSelectionAndAllocationContract",
+    "procedure": "完整生成池与值 RNG 选取原语四方对照，包含边界及重复选择分配检查。",
+    "expected": "完整顺序和RNG一致；独占scratch复用后的计量段无额外当前线程分配。",
+    "observed": "3c479d36a88f4889b9d1f78f9d0c9251 Failed: Value generation selection allocated 160 bytes or changed RNG consumption. 首池计量阶段退出，归因和后续覆盖未完成。",
+    "evidence": "docs/TEST_MATRIX.md 值 RNG 未完成检查点；不是生产紧凑生成准入。"
   },
-  "REPLAY-BOUNDARY-CONTRACT": {
+  "CHARACTER-GENERATION-ROOT-20260911": {
     "status": "Passed",
-    "level": "HeadlessReplaySchemaAndFailureBoundaryContract",
-    "procedure": "比较旧两项/三项与当前四项历史，反例覆盖已记录计数和其他状态字段；边界观察器抛出异常后等待原生回放驱动。",
-    "expected": "只迁移旧格式缺失的派生字段，实际已记录差异均拒绝；观察器原异常使回放失败。",
-    "observed": "2ed7ea141baa48748df3b3fcaea69cb7 Passed。另两份原包开战/首个可操作状态对账通过，其中5cc95原生二进制也通过，e476旧编号表缺失明确未核验。",
-    "evidence": "src/Testing/UnattendedTestRunner.ReplayBoundary.cs；docs/TEST_MATRIX.md；2026-09-10。"
+    "level": "HeadlessNativeGenerationAndRootPoolOwnership",
+    "procedure": "完整亡灵输入；24次原生／旧路径／冻结池RNG对照，三次原生批量生成，12张虚无牌与满手溢出。",
+    "expected": "规范候选在主线程冻结并随Fork共享；随机流和可变牌属分支，自定义池保持原生成链。",
+    "observed": "33c4d4282bfc45b1ad7867af6457c0b4 COMPACT-GENERATION-CLOSURE-AUDIT Passed; 62c11688c6544026b02eeca6ed373ef6 CALL-OF-THE-VOID-GENERATION-ROOT Passed",
+    "evidence": "docs/performance/simulation-generation-root-20260911.md；docs/performance/simulation-generation-root-20260911.json。"
   },
-  "REPORT-ROUND-NOSTALGIA-STRIKE": {
+  "COMPACT-GENERATION-AUDIT-20260911": {
     "status": "Passed",
-    "level": "HeadlessStrictNativeTwoTurnAndForkDifferential",
-    "procedure": "Nostalgia1，T1 出攻击并结束回合，T2 再出攻击，比较完整状态与 Fork。",
-    "expected": "每回合第一张攻击/技能放回抽牌堆顶，分支计数隔离并清零。",
-    "observed": "基线 e1d57aa82cc54fd5890d8628508890a8 第二回合攻击进入弃牌堆；最终 fa776392afa3413b93ee93ce4e931550 Passed。增加四项检查点历史解析与篡改计数拒绝后，2bff954cd0a246c4abd406220823b202 Passed。",
-    "evidence": "src/Testing/UnattendedTestRunner.ReportRound.cs；docs/TEST_MATRIX.md；2026-09-10。"
+    "level": "HeadlessReadOnlyGenerationRootAudit",
+    "procedure": "原始38牌、19件遗物注入和两瓶药；保留原生初始遗物，完整有序候选池和24次RNG抽样。",
+    "expected": "池顺序与原生筛选一致，旧生成选择的全部RNG字段一致，真实状态不变，完整未迁移根显式拒绝。",
+    "observed": "13339699a6c142a2b456a493fab6e6c2 Passed; CallOfTheVoid 78/19, ColorlessPotion 50/3 (候选/已准入类型), actual relics 20.",
+    "evidence": "docs/performance/simulation-generation-audit-20260911.md；docs/performance/simulation-generation-audit-20260911.json。"
   },
-  "REPORT-CARDS-PALE-BLUE-ROOT": {
+  "COMPACT-PAGESTORM-20260911": {
     "status": "Passed",
-    "level": "HeadlessStrictNativeRootCaptureAndForkDifferential",
-    "procedure": "原生先出五张牌触发苍蓝星球，捕获根后预测和原生分别打第六张。",
-    "expected": "根保留已经触发标志，第六张不重复增加下回合抽牌。",
-    "observed": "基线12498ff2098a424eb7f9037a1f2ff5c4抽牌Power预测2/原生1；最终733ed99ebed048e1b9d2933512fd6899 Passed。",
-    "evidence": "src/Testing/UnattendedTestRunner.ReportCardSequence.cs；docs/TEST_MATRIX.md；2026-09-10。"
+    "level": "HeadlessNativeNestedDrawContinuationAndFixedSearchDifferential",
+    "procedure": "三根两回合24原生动作／63分支／32挂起；父子抽牌、随机费用、Swift／Sly、九层纯值与共享抽牌回归。",
+    "expected": "能力子抽牌及选择先完成，再处理父卡随机费用及DrawResolved；父返回与来源、历史、状态键及续用保持。",
+    "observed": "939b9de3d7e34db3afc3d5e4d030a426 COMPACT-PAGESTORM-NATIVE Passed; c3c34264a1aa4531a298e221c0f34487 COMPACT-PAGESTORM-SEARCH Passed; 74c469c76e3e489abd8e334724cab46e COMPACT-DRAW-EXHAUST-NATIVE Passed",
+    "evidence": "docs/performance/simulation-pagestorm-20260911.md；docs/performance/simulation-pagestorm-20260911.json。"
   },
-  "REPORT-ROUND-HOWL-MUSIC-BOX": {
+  "UPSTREAM-COMPACT-INTEGRATION-20260911": {
     "status": "Passed",
-    "level": "HeadlessStrictNativeTwoTurnAndForkDifferential",
-    "procedure": "MusicBox、DarkEmbrace1、消耗堆 HowlFromBeyond，八张手牌结束回合，比较生成复制牌的虚无消耗及下回合抽牌。",
-    "expected": "黑暗之拥按实际虚无消耗次数延迟抽牌，包含自动打牌期间新生成的牌。",
-    "observed": "基线5dc660636a54439c9ae036755c11e582下一回合手牌预测5/原生6；最终88166b32b56541479cb7fa666adeee09 Passed。",
-    "evidence": "src/Testing/UnattendedTestRunner.ReportRound.cs；docs/TEST_MATRIX.md；2026-09-10。"
+    "level": "HeadlessNativeRoundHistoryAndFixedSearchDifferential",
+    "procedure": "合并 c2cc463；三根两回合、死亡与独立实例原生差分；250 节点旧新／串并行。",
+    "expected": "玩家阶段、新历史计数与上游政策进入两种后端的相同状态／键／续用合同。",
+    "observed": "1afd0d4535574cbc862c4081f6a96206, a017c6546bd241d6b07115b2f6ddf482, af98ce1a1a3243d884cc2b519b570e9b, 746fca9b886648cfb7b9f86cce05e56f Passed",
+    "evidence": "docs/performance/simulation-upstream-merge-20260911.md"
+  },
+  "COMPACT-SHARED-FATE-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeOrderedStatApplicationsAndFixedSearchDifferential",
+    "procedure": "三根两回合21原生动作／42分支／18挂起；双方人工制品、零层重获、负值、迅速选择；250节点串并行。",
+    "expected": "玩家与敌人分别按原顺序施加负力量；负属性请求可被人工制品拦截，但不创建原生减益类型的持续标记。",
+    "observed": "c1c9ad4a063e4bd0be0d0f98212678c1 COMPACT-SHARED-FATE-NATIVE Passed; 7e507c349fa34294ab2cf68f0d578dab COMPACT-SHARED-FATE-SEARCH Passed",
+    "evidence": "docs/performance/simulation-shared-fate-20260911.md；docs/performance/simulation-shared-fate-20260911.json。"
+  },
+  "COMPACT-PANACHE-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeIndependentPowerAndTerminalDispatchWithFixedSearchDifferential",
+    "procedure": "三根两回合、24原生动作／45分支／18挂起；八牌独立施加；两类末击及玩家毁灭终局；250节点。",
+    "expected": "独立计数及首次应用随分支恢复；出牌完成保留终局例外；待失败后按原生安全点切换敌方、清格挡并跳过新普通回调。",
+    "observed": "1c9f76fa55234a27b35f360af22ab7b4 PANACHE-INSTANCES Passed; fbd15c301187409baa4a37c8de4f6947 COMPACT-PANACHE-NATIVE Passed; 2dedd4c990b44674a596de9b592a14e0 COMPACT-PANACHE-TERMINAL Passed; b2d1592ffaae421685999360818e5d26 COMPACT-PANACHE-SEARCH Passed; cdf0073661f340108611bd979bec08a4 COMPACT-PANACHE-PLAYER-DEATH Passed; b0c2c6d5ac9e435aa6547c2266e6852a COMPACT-PANACHE-CARD-TERMINAL Passed",
+    "evidence": "docs/performance/simulation-panache-20260911.md；docs/performance/simulation-panache-20260911.json。"
+  },
+  "COMPACT-LETHALITY-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeFirstAttackHistoryAndFixedSearchDifferential",
+    "procedure": "三个倍率根及三个后续回合根，27原生动作／60分支／21挂起；历史课原生两阶段失败基线与修复；250节点搜索。",
+    "expected": "首张攻击按开始历史和卡牌主人判定；当前与上一回合最后攻击在根捕获，空窗口不可从live补读。",
+    "observed": "180188de829747f68de6b475b17873a6 HISTORY-COURSE-WINDOW Passed; 3c77813aa47c4fccb32bc88820296d0c COMPACT-LETHALITY-NATIVE Passed; 9c3e4dc540294893b6b2acbc70b9c6ac COMPACT-LETHALITY-SEARCH Passed",
+    "evidence": "docs/performance/simulation-lethality-20260911.md；docs/performance/simulation-lethality-20260911.json。"
+  },
+  "COMPACT-CARD-HOOKS-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeOrderedCardHooksOneShotEnchantmentAndFixedSearchDifferential",
+    "procedure": "三根两回合、Sly、满手与零层、终局、死亡之舞费用基线、250节点及纯值合同。",
+    "expected": "出牌前按当前能力顺序查询解析费用；附魔失效、剩余抽牌和历史来源随分支恢复。",
+    "observed": "ffe1c758347c46a8928d77bc7b3bd211 COMPACT-CARD-HOOKS-NATIVE Passed; 2e80f39e9695451ab45e1b9c32ac84f1 COMPACT-SWIFT-AUTO Passed; 7fe2b123a64a43568c974a9a3c22d6c5 COMPACT-SWIFT-EMPTY Passed; ae17696b90f8428c9523a32aa74b5fdf COMPACT-SWIFT-TERMINAL Passed; da933dd7103a4f0bb0fbc127b3067759 DANSE-RESOLVED-NATIVE Passed; b60187e3b32348b8bd21dddff6f7f9fa COMPACT-CARD-HOOKS-SEARCH Passed",
+    "evidence": "docs/performance/simulation-card-hooks-20260911.json；docs/performance/simulation-card-hooks-20260911.md。"
+  },
+  "COMPACT-KEYWORDS-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeMutableKeywordsAndFixedSearchDifferential",
+    "procedure": "三根两回合、生成牌、空选项、双终局、250节点及纯值合同。",
+    "expected": "关键字、过滤实例、费用、X和回合末读取同一分支状态；终局不生成选择。",
+    "observed": "e78df34f87994051bb8dec3ebc807ade COMPACT-KEYWORDS-NATIVE Passed; 2fd5c638a699489eaaf77f7325819914 COMPACT-KEYWORD-GENERATED Passed; f0c4c6ec174c42dc84900fdff264bd76 COMPACT-KEYWORD-EMPTY Passed; e05e6eb4f1d849279776acfeaeda6c5b COMPACT-SCULPTING-STRIKE-TERMINAL Passed; 1bfcf8d218a14e4c9831cf5b935bbc5e COMPACT-SNAP-TERMINAL Passed; 7aea3ac9a0844a5790032bcdcb5ee3a6 COMPACT-KEYWORDS-SEARCH Passed",
+    "evidence": "docs/performance/simulation-keywords-20260911.json；docs/performance/simulation-keywords-20260911.md。"
+  },
+  "COMPACT-HANG-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeCardMultiplierCapTerminalAndFixedSearchDifferential",
+    "procedure": "两根两回合原生、四组层数封顶、终局与250节点串并行；八工作区、挂起、键及续用对照。",
+    "expected": "吊杀倍率只影响指定卡牌，力量后乘算，攻击后增长；封顶零偏移仍可被人工制品修饰。",
+    "observed": "b4e7e3f4b225421e8bb208cfe8582239 COMPACT-HANG-NATIVE Passed; 0eb616cb7eea425daf617758199a573b HANG-CAP-NATIVE Passed; 2067198c357a4a938e88df85cc4c6617 COMPACT-HANG-TERMINAL Passed; 07239771f5f34edb9d623a896e207aa8 COMPACT-HANG-SEARCH Passed",
+    "evidence": "docs/performance/simulation-hang-20260911.json；docs/performance/simulation-hang-20260911.md；2026-09-11。"
+  },
+  "COMPACT-COST-POWERS-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeGlobalCostPendingAndTerminalDifferentialWithFixedSearch",
+    "procedure": "两根两回合原生、选牌现场费用、终局、250节点串并行和公共查询／嵌套回归。",
+    "expected": "付款、虚无免费次数、当前牌堆费用和挂起估值一致；最后击杀后拒绝施加能力。",
+    "observed": "2f8573b2cfd243ac8a511bcdbd8d335e COMPACT-COST-POWERS-NATIVE Passed; cbeb37c1c0d24ab3bcbcaed3894777e0 COMPACT-COST-POWERS-TERMINAL Passed; 583e48948363436485040ca3b59c8d67 COMPACT-COST-POWERS-SEARCH Passed; 85ed2117253a42babb843078eee7eb57 TENDER-NESTED-SLY Passed; 4aa2a1051d0644848e4bd28c7d2cd841 HAND-POTENTIAL-COSTS Passed",
+    "evidence": "docs/performance/simulation-cost-powers-20260911.json；docs/performance/simulation-cost-powers-20260911.md；2026-09-11。"
+  },
+  "COMPACT-NECRO-CARD-OPERATIONS-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeTerminalGenerationDifferentialAndFixedSearchLifecycle",
+    "procedure": "五卡原生两回合、两种最后击杀、固定250节点搜索、怪物和消耗回归。",
+    "expected": "直接生命损失、弃牌回收和消耗/保留等价；保留未入堆生成历史，终局不产生不可部署选牌。",
+    "observed": "647e7d2bc55b46c28062f623f8e3455d COMPACT-NECRO-CARDS-NATIVE Passed；971a93e65f5f4e908916a7a6216983ba COMPACT-CAPTURE-SPIRIT-TERMINAL Passed；d482fbb86ff249238f87c6d84f918f83 COMPACT-GRAVEBLAST-TERMINAL Passed；7cc4d13f7a7a43c79980b4b84955a557 COMPACT-NECRO-CARDS-SEARCH Passed；9979547276584c02995513c883eed8bc COMPACT-MONSTER-COMMANDS-NATIVE Passed；b49db0f399534ef68277c6bfcd1edec7 COMPACT-DRAW-EXHAUST-NATIVE Passed",
+    "evidence": "docs/performance/simulation-necro-card-operations-20260911.json；docs/performance/simulation-necro-card-operations-20260911.md；2026-09-11。"
+  },
+  "COMPACT-DIRGE-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeRandomGenerationDifferentialAndFixedSearchLifecycle",
+    "procedure": "两根分别普通／升级挽歌，X3与X0、灵魂抽牌及两完整回合；固定250节点搜索和两个受影响回归。",
+    "expected": "逐次召唤；每生成实例独立消耗Shuffle RNG，包括空堆；牌序、身份、升级、原键／续用保持等价。",
+    "observed": "dfe0ffba3c3340b1a173946adcb9333a COMPACT-DIRGE-NATIVE Passed; 9d527f1d48474cb2aefe5807e4ea09f2 COMPACT-DIRGE-SEARCH Passed; abda140bbca04bd6ad952cefe60a41ae COMPACT-DRAW-EXHAUST-NATIVE Passed; 8a5d6b44e316407aa0e878e15791a1b0 COMPACT-INKY-CARDS-NATIVE Passed",
+    "evidence": "docs/performance/simulation-dirge-20260911.json；docs/performance/simulation-dirge-20260911.md；2026-09-11。"
+  },
+  "COMPACT-DRAW-EXHAUST-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeChoiceDifferentialAndFixedSearchLifecycle",
+    "procedure": "三个抽牌堆／宠物根各四张牌及两个原生回合；所有省略选择，固定250节点旧新和串并行对照。",
+    "expected": "召唤先于抽牌堆消耗，空堆无选择、隐式选择保留实例，消耗历史和牌库估值读取当前分支。",
+    "observed": "af8024b511d742c8b5d307f47f4ef495：18原生动作、39分支、15挂起和2次原生观察；7bd5f62560a84f92983af95a46d23b61：完整搜索结果一致、实际并发2、取消失败排空及根复用。v1仅测试生成身份核对失败，详见记录。",
+    "evidence": "docs/performance/simulation-draw-exhaust-20260911.json；docs/performance/simulation-draw-exhaust-20260911.md；2026-09-11。"
+  },
+  "COMPACT-OSTY-TURNS-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeTurnChoiceDifferentialAndFixedSearchLifecycle",
+    "procedure": "带初始遗物的三个奥斯蒂根各推进三个回合，逐个省略选择及原生选择前观察；同根固定250节点串并行和取消异常排空。",
+    "expected": "AfterEnergyResetLate后、抽牌选择前完成召唤，恢复不重复；存活增长与死亡复活、完整键／续用／历史和政策均一致。",
+    "observed": "c1dc1de5335a4496a097c6deba28f50d Passed：九原生回合、十五省略边界／十五原生观察、八工作区；5867870dfeb84722b29418430e5da657 Passed：旧新和DOP1/DOP2一致、实际并发2、失败后根复用。",
+    "evidence": "docs/performance/simulation-pet-turns-20260911.json；docs/performance/simulation-pet-turns-20260911.md；2026-09-11。"
+  },
+  "COMPACT-OSTY-VALUES-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeDifferentialAndFixedSearchLifecycle",
+    "procedure": "奥斯蒂三个根十五原生步骤、两回合、生命封顶两组、毁灭玩家连带宠物死亡、普通回合哨兵及固定250节点串并行／取消异常排空。",
+    "expected": "代伤从分支HP判断且不改变能力实例，伤害和攻击历史保留真实来源；死亡／复活／封顶治疗／普通回合参与者与原版一致，原键和完整搜索政策不变。",
+    "observed": "native-v8、cap-v8、defeat-v8、round-v8、search-v9全部Passed；八工作区冻结恢复、缓存开关、全Power元数据、九RNG及实机后根隔离通过；搜索DOP1/DOP2真实并发2。首次创建和原始亡灵完整域仍未准入。",
+    "evidence": "docs/performance/simulation-osty-values-20260911.json；docs/performance/simulation-osty-values-20260911.md；2026-09-11。"
+  },
+  "OSTY-STATE-LIFECYCLE-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeDifferentialAndFrozenRootIsolation",
+    "procedure": "空根原生首次召唤、活宠物五步承伤与两次复活、连续 Fork、8 workers 以及实机推进后两个根隔离。",
+    "expected": "宠物缺席从根捕获，普通能力在死亡后退休，代伤能力／身份保留，后续独立首次召唤不借用 live。",
+    "observed": "374cd6f8a9f743a689f6985e153cf21a Passed，五步完整快照、伤害结果、原状态键／估值／续用一致，23.48 秒。紧凑宠物执行尚未准入。",
+    "evidence": "docs/performance/simulation-osty-ownership-20260911.json；docs/performance/simulation-osty-ownership-20260911.md；2026-09-11。"
+  },
+  "COMPACT-NEUROSURGE-DOOM-20260911": {
+    "status": "Passed",
+    "level": "HeadlessNativeDifferentialAndFixedSearchLifecycle",
+    "procedure": "精神过载普通／选牌两组原生出牌和两回合，毁灭双方所属 Hook，值恢复／完整读取及固定 250 节点串并行和取消异常排空。",
+    "expected": "资源先于抽牌、能力后于选择、人工制品独立消耗，阵营开始不重入；直接死亡保留格挡且不伪造伤害历史；完整状态及搜索政策一致。",
+    "observed": "native-v6、choices-v6、双方 doom-v4、search-v7b、三模式 round-v7 全部 Passed；10 个精神过载分支／8 原生动作、5 个省略选择、8 工作区、DOP1/DOP2 实际并发2。原始亡灵完整域尚未迁移。",
+    "evidence": "docs/performance/simulation-necro-resources-20260911.json；docs/performance/simulation-necro-resources-20260911.md；2026-09-11。"
   },
   "MURDER-ROOT-HISTORY": {
     "status": "Passed",
@@ -2094,5 +2206,125 @@
     "expected": "开关不得改变节点、选中路线、战损或回合；启用时每个压力/层间回收点应安全退出、回收并重建 NoGC，关闭时由 CLR 常规 GC 管理。",
     "observed": "两次均为累计 27905/173477/74998、选中层 8687/59910/26619、战损 9、56 HP、T9、两药。4 GB NoGC 为 72151.169 ms、VmHWM 4396804 kB、GC 暂停 4822.405 ms；关闭为 97927.457 ms、VmHWM 2745000 kB、GC 暂停 29712.935 ms。NoGC 快约 26.3%，峰值多约 1.57 GiB；13 个压力检查点和 2 次层间整理均成功重建且无回退。",
     "evidence": "用户问题包 CombatSolver-AEONGLASS_BOSS-20260902-011550-694.zip；docs/TEST_MATRIX.md；runId 5f75b1cd2b604f34874be9e6243590db、6c187605b7a8451bbd163a800d9f25c4；验证日期 2026-09-03。"
+  },
+  "COMPACT-FULL-ROOT-NATIVE": {
+    "status": "Passed",
+    "level": "HeadlessCompactOriginalOpeningRootAndNativeActions",
+    "procedure": "原始机甲完整30牌、Slither附魔及蛇之戒，七起手单牌与两条续接，八工作区、缓存开关、逐步原生对照。",
+    "expected": "冻结根与分支隔离，完整状态、原键、历史、RNG、Power及估值一致。",
+    "observed": "7ef49b1ef6de4b56a82c6e6c180754b3 Passed，24.32秒，31牌组监听器、9分支、6原生动作；未推进紧凑回合。",
+    "evidence": "docs/performance/simulation-full-root-20260911.json"
+  },
+  "PLAYER-DEATH-POWERS-NATIVE": {
+    "status": "Passed",
+    "level": "HeadlessNativePlayerDeathAndFrozenDealerLiveness",
+    "procedure": "1HP/0格挡、Strength3/Dexterity4/Artifact2；灼伤回合末致死、原生严格差分及冻结根再次重放，两种Damage入口覆盖live与分支相反存活状态。",
+    "expected": "玩家死亡后Power清理；伤害只依赖分支施伤者状态，失败在安全检查点锁定。",
+    "observed": "75524a751dad411391589882d8d1b468证明Power未移除；1b1a06a2afe24fe1b305c7f6a23176e2证明live死亡泄漏；最终9215d87712ed4b01befaae18c76ee62b Passed。",
+    "evidence": "docs/performance/simulation-player-death-20260911.json"
+  },
+  "COMPACT-HAND-END-NATIVE": {
+    "status": "Passed",
+    "level": "HeadlessStrictNativeHandPhaseTwoSchedulingModesAndFrozenValueDifferential",
+    "procedure": "Normal 和 Instant 分别比较真实 DoTurnEnd：三组根、六条分支，三或四张灼伤、虚无、逃脱计划抽状态及防御兄弟。",
+    "expected": "无属性可格挡自身伤害、玩家阵容保留和 Power 清理、正确入场及结果牌堆、累计失血评分、状态抽取键、待失败与终局；各 lane 独立恢复。",
+    "observed": "final-v4 Instant 537ef792140f40368dc7b30b0b328a00／Normal a80cf738cde74758a4ceabbf6b01905e Passed；全部 Snapshot、源历史、九 RNG、五个有序牌堆、八工作区及原生死亡后重放通过。v3 普通攻击／Power 哨兵 92409a0ec76245eaad053b899a7f91b2 Passed。",
+    "evidence": "src/Testing/UnattendedTestRunner.CompactHandEnd.cs；docs/performance/simulation-hand-end-20260911.md；2026-09-11。仅手牌阶段，未接生产完整回合。"
+  },
+  "COMPACT-MONSTER-COMMANDS-NATIVE": {
+    "status": "Passed",
+    "level": "HeadlessStrictNativeMonsterBodiesAndFrozenValueDifferential",
+    "procedure": "三根／十三分支／十五原生动作；精确 MechaKnight 四指令、混合玩家小刀与灼伤、满手溢出及后续抽取、格挡与致死。",
+    "expected": "原版伤害修正与施加者、空创建者生成、怪物攻击次数及来源、完整牌堆／Power／历史／原键／Snapshot／九 RNG、撤销和独立恢复。",
+    "observed": "artifact-v2 1d46526236cc45f2bdb2ca0beee0600e Passed，八工作区和原生死亡后冻结重放通过；中毒共用投影哨兵 4bcff2265a254ddca7fa26e9d6c30bcd Passed。",
+    "evidence": "src/Testing/UnattendedTestRunner.CompactMonsterCommands.cs；docs/performance/simulation-monster-commands-20260911.md；2026-09-11。仅指令体，不含 AI、MonsterPerformedMove 历史或完整回合。"
+  },
+  "POWER-DURATION-KEYS-NATIVE": {
+    "status": "Passed",
+    "level": "HeadlessNativeDurationAndStateEquivalence",
+    "procedure": "捕获原生三种持续减益及中毒，仅在兄弟分支改变跳过标记；比较原键、续用与下一次结算。",
+    "expected": "虚弱／易伤／脆弱相同层数但不同递减未来必须区分；中毒无关标记保持等价；实机递减及冻结根重放一致。",
+    "observed": "基线 5535647e98f94d76889437630ee42a88 Failed；最终 application-final-v1 683bb123f72d4b5f86ac5fdfaf2a8bc8 Passed。",
+    "evidence": "src/Testing/UnattendedTestRunner.PowerDurationKeys.cs；docs/performance/simulation-duration-state-20260911.md；2026-09-11。"
+  },
+  "POWER-DURATION-APPLICATION-NATIVE": {
+    "status": "Passed",
+    "level": "HeadlessNativePowerLifecycleAndForkDifferential",
+    "procedure": "普通／怪物／按类型应用三个入口，16 个原生步骤，首次／叠加／跳过／消失／重获／人工制品阻止。",
+    "expected": "三种减益的新实例保留原生跳过标记，叠加不刷新、阻止不留残余，入口间状态等价及完整生命周期字段一致。",
+    "observed": "基线 0ea7b37d671b42d2b3d01cddfb3ed224 Failed；最终 54cd9ef622764de4845909b9f8abc3ad Passed，实机推进后冻结重放与等价键通过。",
+    "evidence": "src/Testing/UnattendedTestRunner.PowerDurationApplication.cs；docs/performance/simulation-duration-state-20260911.md；2026-09-11。"
+  },
+  "TEST-SUBJECT-ORIGINAL-REPORT": {
+    "status": "Passed",
+    "level": "OriginalArchiveNativeActionAndTwoTurnDifferential",
+    "procedure": "恢复5cc95原包首个可操作根，重走三药水、SpectrumShift、Tyranny、HeavenlyDrill、Bulwark、结束回合及原Tyranny选择；逐动作和T2完整状态对账。",
+    "expected": "天钻按修正后的X值达到4时翻倍攻击次数，Boss在玩家回合倒地、敌方回合复活。",
+    "observed": "ebbcbc7c3e8d4f688944b20b87024b66复现原T2玩家HP97/103；9516db27445a487ea2cecad9d34e185c首错定位天钻后Boss8/0。最终2139e56df0aa41f5940ad6bca1cee627 Passed。",
+    "evidence": "src/Testing/UnattendedTestRunner.TestSubjectReport.cs；docs/TEST_MATRIX.md；2026-09-10。"
+  },
+  "REPORT-ROUND-DOOM-THRESHOLD-CARD": {
+    "status": "Passed",
+    "level": "HeadlessStrictNativeTwoTurnAndForkDifferential",
+    "procedure": "报告e476临界条件：Boss134HP、Doom34、SleightOfFlesh13、Duplication1，打出升级EndOfDays再跨回合；完整状态和增量/Fork对账。",
+    "expected": "施加Doom后先结算触发伤害再判断处决，第二次施放在108HP/108Doom时击杀，Boss按时复活。",
+    "observed": "基线d4ffe973627244df921d003d529bdf52预测玩家HP46/原生66；最终339f3bf702874325bf13a36ea0b9c37f Passed。",
+    "evidence": "src/Testing/UnattendedTestRunner.ReportRound.cs；docs/TEST_MATRIX.md；2026-09-10。"
+  },
+  "REPLAY-BOUNDARY-CONTRACT": {
+    "status": "Passed",
+    "level": "HeadlessReplaySchemaAndFailureBoundaryContract",
+    "procedure": "比较旧两项/三项与当前四项历史，反例覆盖已记录计数和其他状态字段；边界观察器抛出异常后等待原生回放驱动。",
+    "expected": "只迁移旧格式缺失的派生字段，实际已记录差异均拒绝；观察器原异常使回放失败。",
+    "observed": "2ed7ea141baa48748df3b3fcaea69cb7 Passed。另两份原包开战/首个可操作状态对账通过，其中5cc95原生二进制也通过，e476旧编号表缺失明确未核验。",
+    "evidence": "src/Testing/UnattendedTestRunner.ReplayBoundary.cs；docs/TEST_MATRIX.md；2026-09-10。"
+  },
+  "REPORT-ROUND-NOSTALGIA-STRIKE": {
+    "status": "Passed",
+    "level": "HeadlessStrictNativeTwoTurnAndForkDifferential",
+    "procedure": "Nostalgia1，T1 出攻击并结束回合，T2 再出攻击，比较完整状态与 Fork。",
+    "expected": "每回合第一张攻击/技能放回抽牌堆顶，分支计数隔离并清零。",
+    "observed": "基线 e1d57aa82cc54fd5890d8628508890a8 第二回合攻击进入弃牌堆；最终 fa776392afa3413b93ee93ce4e931550 Passed。增加四项检查点历史解析与篡改计数拒绝后，2bff954cd0a246c4abd406220823b202 Passed。",
+    "evidence": "src/Testing/UnattendedTestRunner.ReportRound.cs；docs/TEST_MATRIX.md；2026-09-10。"
+  },
+  "REPORT-CARDS-PALE-BLUE-ROOT": {
+    "status": "Passed",
+    "level": "HeadlessStrictNativeRootCaptureAndForkDifferential",
+    "procedure": "原生先出五张牌触发苍蓝星球，捕获根后预测和原生分别打第六张。",
+    "expected": "根保留已经触发标志，第六张不重复增加下回合抽牌。",
+    "observed": "基线12498ff2098a424eb7f9037a1f2ff5c4抽牌Power预测2/原生1；最终733ed99ebed048e1b9d2933512fd6899 Passed。",
+    "evidence": "src/Testing/UnattendedTestRunner.ReportCardSequence.cs；docs/TEST_MATRIX.md；2026-09-10。"
+  },
+  "REPORT-ROUND-HOWL-MUSIC-BOX": {
+    "status": "Passed",
+    "level": "HeadlessStrictNativeTwoTurnAndForkDifferential",
+    "procedure": "MusicBox、DarkEmbrace1、消耗堆 HowlFromBeyond，八张手牌结束回合，比较生成复制牌的虚无消耗及下回合抽牌。",
+    "expected": "黑暗之拥按实际虚无消耗次数延迟抽牌，包含自动打牌期间新生成的牌。",
+    "observed": "基线5dc660636a54439c9ae036755c11e582下一回合手牌预测5/原生6；最终88166b32b56541479cb7fa666adeee09 Passed。",
+    "evidence": "src/Testing/UnattendedTestRunner.ReportRound.cs；docs/TEST_MATRIX.md；2026-09-10。"
+  },
+  "COMPACT-VOID-GENERATION-PRODUCTION-20260911": {
+    "status": "Passed",
+    "level": "HeadlessCompactCompileRoundWiringAndFrozenPoolAdmission",
+    "procedure": "亡灵78池编译器闭包普查与三批原生差分；潜行者30牌对照根准入后实机施加CallOfTheVoidPower；同根回归哨兵搜索。",
+    "expected": "CallOfTheVoid精确编译为单条Power指令且只接受Innate升级；完整池逐候选编译，任何不可表示候选拒绝整根而不缩池；生产准入不扩大，亡灵根继续显式拒绝。",
+    "observed": "46c0ff46f6b74e66ba551d5deb2e63ee COMPACT-CALL-OF-THE-VOID-GENERATION Passed (78池18可编译/60不可, 首BANSHEES_CRY); 094fe477c6494317848cda39bfe0ca98 COMPACT-CALL-OF-THE-VOID-ADMISSION Passed (对照根已准入, 池候选ABRASIVE拒绝, 78池16/62); ae2f88366cdc46489d381beeea855581 COMPACT-GENERATION-CLOSURE-AUDIT Passed (FullRootExplicitlyRejected); d1f51f1cd8614f41b2ed7c0ad9fd517f COMPACT-SEARCH-LIFECYCLE Passed. 首跑夹具缺30张RunCards的失败保留为基线。",
+    "evidence": "docs/performance/simulation-void-generation-20260911.md；docs/performance/simulation-void-generation-20260911.json。"
+  },
+  "COMPACT-DOOM-CARDS-PRODUCTION-20260911": {
+    "status": "Passed",
+    "level": "HeadlessCompactCompileLaneMaterializationAndNativeDifferential",
+    "procedure": "亡灵五张毁灭／虚弱／易伤牌（DEATHBRINGER／NEGATIVE_PULSE／SCOURGE／PUTREFY／FEAR）逐张反编译后迁入生产编译器；两种升级各六步出牌、两个完整回合与原生差分；卡牌施加的毁灭走真实敌方阵营结束边界完成直接死亡；同产物重跑 CallOfTheVoid 普查与完整根拒绝审计。",
+    "expected": "完整 OnPlay 只能由既有 ApplyBasicPower／GainBlock／Draw／AttackTarget 精确表示：整套指令顺序、目标域与升级值一致；自施／负值／X 缩放与抽弃牌专用域继续拒绝；敌人毁灭槽只在实际存在可施加来源时建立；78 候选池不缩池，完整亡灵根继续显式拒绝。",
+    "observed": "5193feebe1d947ad8de1015470d0ae60 COMPACT-DOOM-CARDS-NATIVE Passed (两模式 8 原生动作 14 分支, 完整状态键／估值／能力元数据／九 RNG／逆序／八工作区); 3c3af9d6368e4441b6f893b1d9b33fe6 COMPACT-DOOM-ROSTER-NATIVE Passed (三敌名单逐步原生对照, 全体/单体目标域与整轮 Power 顺序, 撤销与实机后冻结); d7b250f96c4c4f15956f4c05645dea31 COMPACT-DOOM-CARD-KILL-NATIVE Passed (卡牌施加毁灭在真实 BeforeSideTurnEnd 直接死亡, 保留格挡且无伤害历史); 56bd91d7145b432ab3a82d3d7c5ad1c5 COMPACT-CALL-OF-THE-VOID-GENERATION Passed (78 池 23 可编译/55 不可, 首 BANSHEES_CRY, 原 18/60); a1a4963b61784a0485fd969a8cb2f24e COMPACT-GENERATION-CLOSURE-AUDIT Passed (FullRootExplicitlyRejected)。纯值 COMPACT_DOOM_VULNERABLE_CHECKS_OK 通过，24 项全通过。",
+    "evidence": "docs/performance/simulation-doom-vulnerable-cards-20260911.md；docs/performance/simulation-doom-vulnerable-cards-20260911.json。"
+  },
+  "COMPACT-NECRO-SOUL-CARDS-PRODUCTION-20260911": {
+    "status": "Passed",
+    "level": "HeadlessCompactCompileLaneMaterializationAndNativeDifferential",
+    "procedure": "亡灵八张牌（BURY／REAP／PARSE／POKE／REANIMATE／PULL_AGGRO／GRAVE_WARDEN／REAVE）逐张反编译后迁入生产编译器；两种升级各八步出牌加两个完整回合的原生差分，未打出 Retain／Ethereal 的回合末夹具，升级 Reave 击杀最后一个敌人的终局生成夹具，以及生成模板铸造、旧模型结束门禁与投影方法作用域的回归。2026-09-11 评审补测加入 Poke 的缺席／已死／复活宠物原生差分与真实构造器的结束变体范围拒绝。",
+    "expected": "完整 OnPlay 只能由既有单目标攻击／抽牌／召唤／格挡／随机生成指令精确表示：费用、类型、目标域、升级值与结果牌堆一致；Poke 使用真实宠物施伤者，并在宠物缺席（根准入拒绝＋原生空操作）、已死（合法打出但整条命令跳过，无伤害与攻击完成历史）与复活（同一身份再次真实施伤）三种状态下与原生一致；Reap 的 Retain 与 Parse 的 Ethereal 在回合末正确生效；升级 Reave 在结束窗口留下未升级灵魂且不插入、不消耗随机流；结束变体与主模板必须落在生成槽区间；抽弃牌专用域、未表示实例状态与缺少生成模板的调用继续显式拒绝；78 候选池不缩池。",
+    "observed": "99a1dffc4d284ae086241c355559f5bd COMPACT-NECRO-SOUL-CARDS-NATIVE Passed (两模式 10 原生动作 14／15 分支 3 省略选择, 完整状态键／估值／能力元数据／九 RNG／逆序／八工作区); 96061cdd3a914638b09bd5bf69945b3e COMPACT-NECRO-HAND-END-NATIVE Passed (Retain 保留 + Ethereal 消耗); 03a7074467944531afea88b0539a271f COMPACT-REAVE-TERMINAL-NATIVE Passed (未入堆普通灵魂 + 无 RNG 消耗); 8afb816dd7b04e839f724726a8aae7a0 COMPACT-POKE-PET-STATE-NATIVE Passed (缺席根拒绝 + 原生空操作 300/3 不变, 已死宠物 1 原生动作无伤害无攻击完成历史, Reanimate 复活后 2 原生动作宠物 dealer 使敌人 300→297, 完整状态键／估值／九 RNG／八工作区／实机后冻结根); 0a57c23ed22c4fe2bf380dd6dbc960c5 COMPACT-CALL-OF-THE-VOID-GENERATION Passed (78 池 29 可编译/49 不可, 首 BANSHEES_CRY; 供给模板口径 33/45); e9d62783e1594f1e83300820f0cfa5ca COMPACT-GENERATION-CLOSURE-AUDIT Passed (FullRootExplicitlyRejected, 类型集合口径 25→33); 00ce3062a7ec4b44861bf51212ee2cb8 COMPACT-CARD-HOOKS-NATIVE 与 f5d4979c0f7a46dc816331d72996c876 COMPACT-DOOM-CARDS-NATIVE Passed 为投影与模板捕获回归。纯值 COMPACT_SOUL_GENERATION_CHECKS_OK（含真实构造器结束变体范围拒绝 ending_template_range=true）。Release 零警告／错误, Linux 结构门禁 Passed (96 个 Search 文件)。失败基线：普查模板解锁数写错、Reap／Parse 误判为打出后仍在手牌、投影生成历史方法作用域、回合末夹具带回合遗物、结束变体写成主模板索引、旧模型无条件升级灵魂、门禁注释字面量、结束变体漏掉根牌索引区间、宠物夹具亡灵开局自带 BoundPhylactery 宠物。",
+    "evidence": "docs/performance/simulation-necro-soul-cards-20260911.md；docs/performance/simulation-necro-soul-cards-20260911.json；.local/compact-necro-soul-cards-20260911/；.local/next-necro-review/poke-pet-state。"
   }
 }

@@ -1,0 +1,605 @@
+{
+  "kind": "StandaloneLayoutAndAllocationProbe",
+  "gameBenchmark": false,
+  "runtime": ".NET 9.0.19",
+  "architecture": "X64",
+  "os": "Arch Linux",
+  "iterationsPerBlock": 10000,
+  "blocks": 5,
+  "warmupIterations": 1024,
+  "managedValueSizes": {
+    "int": 4,
+    "short": 2,
+    "object_type_key": 16,
+    "object_byte_key": 16,
+    "dictionary_object_int_entry": 24,
+    "dictionary_object_byte_entry": 24,
+    "dictionary_object_type_object_entry": 32,
+    "flat_state_entry": 24,
+    "creature_vitals": 12,
+    "card_instance_value": 16
+  },
+  "checks": [
+    "parent_sibling_isolation",
+    "captured_enumerator_storage",
+    "missing_remove",
+    "mutation_version",
+    "native_vital_range",
+    "packed_card_roundtrip"
+  ],
+  "allocations": [
+    {
+      "name": "class_one_int",
+      "allocatedBytes": [
+        240000,
+        240000,
+        240000,
+        240000,
+        240000
+      ],
+      "bytesPerOperation": [
+        24,
+        24,
+        24,
+        24,
+        24
+      ]
+    },
+    {
+      "name": "class_one_short",
+      "allocatedBytes": [
+        240000,
+        240000,
+        240000,
+        240000,
+        240000
+      ],
+      "bytesPerOperation": [
+        24,
+        24,
+        24,
+        24,
+        24
+      ]
+    },
+    {
+      "name": "boxed_struct_int",
+      "allocatedBytes": [
+        240000,
+        240000,
+        240000,
+        240000,
+        240000
+      ],
+      "bytesPerOperation": [
+        24,
+        24,
+        24,
+        24,
+        24
+      ]
+    },
+    {
+      "name": "wrapper_three_refs_two_bools",
+      "allocatedBytes": [
+        480000,
+        480000,
+        480000,
+        480000,
+        480000
+      ],
+      "bytesPerOperation": [
+        48,
+        48,
+        48,
+        48,
+        48
+      ]
+    },
+    {
+      "name": "wrapper_three_refs_byte_flags",
+      "allocatedBytes": [
+        480000,
+        480000,
+        480000,
+        480000,
+        480000
+      ],
+      "bytesPerOperation": [
+        48,
+        48,
+        48,
+        48,
+        48
+      ]
+    },
+    {
+      "name": "long_array_64",
+      "allocatedBytes": [
+        5360000,
+        5360000,
+        5360000,
+        5360000,
+        5360000
+      ],
+      "bytesPerOperation": [
+        536,
+        536,
+        536,
+        536,
+        536
+      ]
+    },
+    {
+      "name": "int_array_64",
+      "allocatedBytes": [
+        2800000,
+        2800000,
+        2800000,
+        2800000,
+        2800000
+      ],
+      "bytesPerOperation": [
+        280,
+        280,
+        280,
+        280,
+        280
+      ]
+    },
+    {
+      "name": "short_array_64",
+      "allocatedBytes": [
+        1520000,
+        1520000,
+        1520000,
+        1520000,
+        1520000
+      ],
+      "bytesPerOperation": [
+        152,
+        152,
+        152,
+        152,
+        152
+      ]
+    },
+    {
+      "name": "bool_array_64",
+      "allocatedBytes": [
+        880000,
+        880000,
+        880000,
+        880000,
+        880000
+      ],
+      "bytesPerOperation": [
+        88,
+        88,
+        88,
+        88,
+        88
+      ]
+    },
+    {
+      "name": "bit_array_64",
+      "allocatedBytes": [
+        640000,
+        640000,
+        640000,
+        640000,
+        640000
+      ],
+      "bytesPerOperation": [
+        64,
+        64,
+        64,
+        64,
+        64
+      ]
+    },
+    {
+      "name": "int_array_1024",
+      "allocatedBytes": [
+        41200000,
+        41200000,
+        41200000,
+        41200000,
+        41200000
+      ],
+      "bytesPerOperation": [
+        4120,
+        4120,
+        4120,
+        4120,
+        4120
+      ]
+    },
+    {
+      "name": "short_array_1024",
+      "allocatedBytes": [
+        20720000,
+        20720000,
+        20720000,
+        20720000,
+        20720000
+      ],
+      "bytesPerOperation": [
+        2072,
+        2072,
+        2072,
+        2072,
+        2072
+      ]
+    },
+    {
+      "name": "bool_array_1024",
+      "allocatedBytes": [
+        10480000,
+        10480000,
+        10480000,
+        10480000,
+        10480000
+      ],
+      "bytesPerOperation": [
+        1048,
+        1048,
+        1048,
+        1048,
+        1048
+      ]
+    },
+    {
+      "name": "bit_array_1024",
+      "allocatedBytes": [
+        1840000,
+        1840000,
+        1840000,
+        1840000,
+        1840000
+      ],
+      "bytesPerOperation": [
+        184,
+        184,
+        184,
+        184,
+        184
+      ]
+    },
+    {
+      "name": "state_dictionary_1",
+      "allocatedBytes": [
+        2400000,
+        2400000,
+        2400000,
+        2400000,
+        2400000
+      ],
+      "bytesPerOperation": [
+        240,
+        240,
+        240,
+        240,
+        240
+      ]
+    },
+    {
+      "name": "state_entries_array_1",
+      "allocatedBytes": [
+        480000,
+        480000,
+        480000,
+        480000,
+        480000
+      ],
+      "bytesPerOperation": [
+        48,
+        48,
+        48,
+        48,
+        48
+      ]
+    },
+    {
+      "name": "state_dictionary_4",
+      "allocatedBytes": [
+        3840000,
+        3840000,
+        3840000,
+        3840000,
+        3840000
+      ],
+      "bytesPerOperation": [
+        384,
+        384,
+        384,
+        384,
+        384
+      ]
+    },
+    {
+      "name": "state_entries_array_4",
+      "allocatedBytes": [
+        1200000,
+        1200000,
+        1200000,
+        1200000,
+        1200000
+      ],
+      "bytesPerOperation": [
+        120,
+        120,
+        120,
+        120,
+        120
+      ]
+    },
+    {
+      "name": "state_dictionary_16",
+      "allocatedBytes": [
+        7440000,
+        7440000,
+        7440000,
+        7440000,
+        7440000
+      ],
+      "bytesPerOperation": [
+        744,
+        744,
+        744,
+        744,
+        744
+      ]
+    },
+    {
+      "name": "state_entries_array_16",
+      "allocatedBytes": [
+        4080000,
+        4080000,
+        4080000,
+        4080000,
+        4080000
+      ],
+      "bytesPerOperation": [
+        408,
+        408,
+        408,
+        408,
+        408
+      ]
+    },
+    {
+      "name": "forkable_list_empty_current",
+      "allocatedBytes": [
+        880000,
+        880000,
+        880000,
+        880000,
+        880000
+      ],
+      "bytesPerOperation": [
+        88,
+        88,
+        88,
+        88,
+        88
+      ]
+    },
+    {
+      "name": "forkable_list_empty_merged",
+      "allocatedBytes": [
+        640000,
+        640000,
+        640000,
+        640000,
+        640000
+      ],
+      "bytesPerOperation": [
+        64,
+        64,
+        64,
+        64,
+        64
+      ]
+    },
+    {
+      "name": "forkable_list_seed16_current",
+      "allocatedBytes": [
+        1760000,
+        1760000,
+        1760000,
+        1760000,
+        1760000
+      ],
+      "bytesPerOperation": [
+        176,
+        176,
+        176,
+        176,
+        176
+      ]
+    },
+    {
+      "name": "forkable_list_seed16_merged",
+      "allocatedBytes": [
+        1520000,
+        1520000,
+        1520000,
+        1520000,
+        1520000
+      ],
+      "bytesPerOperation": [
+        152,
+        152,
+        152,
+        152,
+        152
+      ]
+    },
+    {
+      "name": "forkable_list_fork_current",
+      "allocatedBytes": [
+        240000,
+        240000,
+        240000,
+        240000,
+        240000
+      ],
+      "bytesPerOperation": [
+        24,
+        24,
+        24,
+        24,
+        24
+      ]
+    },
+    {
+      "name": "forkable_list_fork_merged",
+      "allocatedBytes": [
+        240000,
+        240000,
+        240000,
+        240000,
+        240000
+      ],
+      "bytesPerOperation": [
+        24,
+        24,
+        24,
+        24,
+        24
+      ]
+    },
+    {
+      "name": "forkable_list_fork_write_current",
+      "allocatedBytes": [
+        1760000,
+        1760000,
+        1760000,
+        1760000,
+        1760000
+      ],
+      "bytesPerOperation": [
+        176,
+        176,
+        176,
+        176,
+        176
+      ]
+    },
+    {
+      "name": "forkable_list_fork_write_merged",
+      "allocatedBytes": [
+        1520000,
+        1520000,
+        1520000,
+        1520000,
+        1520000
+      ],
+      "bytesPerOperation": [
+        152,
+        152,
+        152,
+        152,
+        152
+      ]
+    }
+  ],
+  "sourceBaseline": "2f5a6df6b07db8c8a0f0c2601e45ad9aef8758c7",
+  "configuration": {
+    "DOTNET_TieredCompilation": "0",
+    "build": "Release",
+    "sdk": "9.0.120"
+  },
+  "stateStore": {
+    "current": {
+      "contracts": "PASS: read/peek, isolation/order, alias/model remap, shared-state remap, boundaries/failures",
+      "typeEntryCountChecksEnabled": true,
+      "samples": [
+        {
+          "scenario": "empty",
+          "iterations": 10000,
+          "allocatedBytes": 400000,
+          "bytesPerFork": 40,
+          "elapsedMs": 0.248571
+        },
+        {
+          "scenario": "one-state",
+          "iterations": 10000,
+          "allocatedBytes": 5200000,
+          "bytesPerFork": 520,
+          "elapsedMs": 3.807936
+        },
+        {
+          "scenario": "sixteen-same-type",
+          "iterations": 10000,
+          "allocatedBytes": 13840000,
+          "bytesPerFork": 1384,
+          "elapsedMs": 11.849516
+        },
+        {
+          "scenario": "sixteen-two-types",
+          "iterations": 10000,
+          "allocatedBytes": 13840000,
+          "bytesPerFork": 1384,
+          "elapsedMs": 12.4108
+        },
+        {
+          "scenario": "sixteen-remapped-models",
+          "iterations": 10000,
+          "allocatedBytes": 19920000,
+          "bytesPerFork": 1992,
+          "elapsedMs": 16.026231
+        }
+      ]
+    },
+    "listCountsCandidate": {
+      "contracts": "PASS: read/peek, isolation/order, alias/model remap, shared-state remap, boundaries/failures",
+      "typeEntryCountChecksEnabled": true,
+      "samples": [
+        {
+          "scenario": "empty",
+          "iterations": 10000,
+          "allocatedBytes": 400000,
+          "bytesPerFork": 40,
+          "elapsedMs": 0.243822
+        },
+        {
+          "scenario": "one-state",
+          "iterations": 10000,
+          "allocatedBytes": 4240000,
+          "bytesPerFork": 424,
+          "elapsedMs": 2.882373
+        },
+        {
+          "scenario": "sixteen-same-type",
+          "iterations": 10000,
+          "allocatedBytes": 12880000,
+          "bytesPerFork": 1288,
+          "elapsedMs": 11.475724
+        },
+        {
+          "scenario": "sixteen-two-types",
+          "iterations": 10000,
+          "allocatedBytes": 12880000,
+          "bytesPerFork": 1288,
+          "elapsedMs": 11.893614
+        },
+        {
+          "scenario": "sixteen-remapped-models",
+          "iterations": 10000,
+          "allocatedBytes": 18960000,
+          "bytesPerFork": 1896,
+          "elapsedMs": 15.649801
+        }
+      ]
+    }
+  },
+  "limitations": [
+    "Standalone allocation only, not current game memory, RSS, or search speed.",
+    "State-store harness reuses a stub remap context; full simulator clone costs are excluded.",
+    "ListCounts candidate retains the main state dictionary and eager state cloning.",
+    "ListCounts linear lookup cost depends on distinct state types; no current workload histogram was collected.",
+    "MergedList candidate exercises only its implemented operations, not all production APIs or parallel game contracts."
+  ]
+}

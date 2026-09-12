@@ -1,0 +1,111 @@
+{
+  "status": "Passed",
+  "scope": "CallOfTheVoid production compiler and round-start execution wiring; frozen complete character pool capture with fail-closed admission. No compact admission expansion.",
+  "validation": [
+    {
+      "runId": "ae2f88366cdc46489d381beeea855581",
+      "scenarioId": "COMPACT-GENERATION-CLOSURE-AUDIT",
+      "status": "Passed",
+      "elapsedMilliseconds": 24030.3125,
+      "evidence": ".local/compact-void-production-20260911/audit-v2",
+      "completedChecks": [
+        "CompactGenerationClosureAudit:Original38Cards19InjectedRelics2Potions:ActualRelics20:CompleteOrderedPools:24NativeLegacyCachedValueSamples:ValueSelectionEmptySingletonNegativeZeroOversize:FiveFieldRng:FullPoolForkOwnership:InvalidPoolsRejected:GeneratedCardIsolation:AttackAndColorlessRegression:ActualUnchanged:FullRootExplicitlyRejected"
+      ],
+      "error": null
+    },
+    {
+      "runId": "46c0ff46f6b74e66ba551d5deb2e63ee",
+      "scenarioId": "COMPACT-CALL-OF-THE-VOID-GENERATION",
+      "status": "Passed",
+      "elapsedMilliseconds": 3887.0,
+      "evidence": ".local/compact-void-production-20260911/cotv-v2",
+      "note": "Reused process after the closure audit.",
+      "completedChecks": [
+        "CompactCallOfTheVoidGeneration:FullPool78:ThreeBatchesTwelveEthereal:NativeLegacyCompactOrderedIds:FiveFieldRngParity:HandOverflowRetrieveReplay:PerInstanceIdentity:RollbackDeterministicReplay:FrozenRootAfterNative:CompiledPowerInstruction:InnateUpgradeAdmitted:UnrepresentedStateRejected:PoolClosureCensus"
+      ],
+      "census": {
+        "poolSize": 78,
+        "admitted": 18,
+        "unsupported": 60,
+        "firstUnsupported": "BANSHEES_CRY",
+        "instruction": "ApplyBasicPower(CallOfTheVoid)",
+        "powerAmount": 1,
+        "batches": 3,
+        "rngCounterDelta": [308, 616, 924],
+        "destinationsPerBatch": [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 2, 2]]
+      },
+      "error": null
+    },
+    {
+      "runId": "094fe477c6494317848cda39bfe0ca98",
+      "scenarioId": "COMPACT-CALL-OF-THE-VOID-ADMISSION",
+      "status": "Passed",
+      "elapsedMilliseconds": 23949.9,
+      "evidence": ".local/compact-void-production-20260911/admission-v2",
+      "completedChecks": [
+        "CompactCallOfTheVoidAdmission:ControlRootAdmitted:Pool78:Admitted16:Unsupported62:FirstUnsupportedABRASIVE:PoolCandidateRejection:RootCardNotBlamed:NonRoundRejected:ActualUnchanged"
+      ],
+      "census": {
+        "character": "SILENT",
+        "encounter": "MECHA_KNIGHT_ELITE",
+        "poolSize": 78,
+        "admitted": 16,
+        "unsupported": 62,
+        "firstUnsupported": "ABRASIVE",
+        "rejection": "Compact prototype cannot admit card state ABRASIVE.",
+        "poolContainsCallOfTheVoid": false,
+        "rootAdmittedWithPower": false,
+        "nonRoundProjectionRejected": true
+      },
+      "error": null
+    },
+    {
+      "runId": "d1f51f1cd8614f41b2ed7c0ad9fd517f",
+      "scenarioId": "COMPACT-SEARCH-LIFECYCLE",
+      "status": "Passed",
+      "elapsedMilliseconds": 5108.5,
+      "evidence": ".local/compact-void-production-20260911/lifecycle-v1",
+      "note": "Regression sentinel for the already admitted original Mecha root after the new Power slot and generation RNG ownership.",
+      "completedChecks": [
+        "CompactSearchLifecycle:PagestormFalse:SharedFateFalse:PanacheFalse:LethalityFalse:CardHooksFalse:KeywordsFalse:HangFalse:CostPowersFalse:NecroCardsFalse:DirgeFalse:DrawExhaustFalse:NeurosurgeFalse:OstyFalse:TurnRelicFalse:250Nodes:LegacyEqualsCompact:DOP1EqualsDOP2:Concurrency2:CancelAndFailureDrained:RootReusable:UnsupportedPotionRejected:ActualUnchanged"
+      ],
+      "error": null
+    }
+  ],
+  "failureBaselines": [
+    {
+      "scenarioId": "COMPACT-CALL-OF-THE-VOID-ADMISSION",
+      "status": "Failed",
+      "cause": "First attempt used the audit-shaped request without the curated 30-card RunCards deck; the control root had no combat cards and was rejected with 'Compact prototype capacity exceeded'. Fixture input error, not a product regression.",
+      "resolution": "Re-run with coverage/unattended/compact-void-admission-silent-run-cards.json."
+    },
+    {
+      "scenarioId": "COMPACT-SEARCH-LIFECYCLE",
+      "status": "Failed",
+      "cause": "Probe run with the same incomplete deck reported 'Compact lifecycle requires the original complete 30-card root'. Same fixture input error.",
+      "resolution": "Same deck file."
+    }
+  ],
+  "valueContracts": {
+    "command": "dotnet run --project tools/CompactCreatureChecks/CompactCreatureChecks.csproj -c Release",
+    "result": "Passed: 23 check groups including COMPACT_GENERATION_POOL_BEFORE_HAND_DRAW_OK",
+    "coverage": [
+      "applied and stacked CallOfTheVoid amount, applier and acquisition order",
+      "generation before the synthetic hand draw with TurnStartPowerCreator events",
+      "five-field RNG consumption count x (pool - 1)",
+      "rollback and eight frozen worker restores",
+      "zero counter keeps the stream and creates nothing",
+      "full hand spills the batch into the discard pile in selection order",
+      "construction rejects a missing pool, a missing player slot and an out-of-range pool index"
+    ]
+  },
+  "buildAndGate": {
+    "build": "dotnet build CombatSolver.csproj -c Release; 0 warnings, 0 errors",
+    "boundaryGate": "./tools/verify-refactor-boundaries.sh; REFACTOR_BOUNDARIES_OK search_files=96"
+  },
+  "notVerified": [
+    "Positive production pool-template path (a fully closed character pool) has no executable sample yet; only the rejection and value-layer paths are covered.",
+    "Full deployment, normal NoGC benchmarks, Windows gate and any speed conclusion.",
+    "The remaining 60 Necrobinder and 62 Silent pool candidates, unrepresented relics/potions and AEONGLASS AI."
+  ]
+}

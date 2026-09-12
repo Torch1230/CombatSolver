@@ -1,0 +1,93 @@
+{
+  "date": "2026-09-11",
+  "baseCommit": "ef1b96f",
+  "admittedCardTypeCount": 25,
+  "newCards": [
+    "DodgeAndRoll",
+    "ToolsOfTheTrade"
+  ],
+  "newPlayerPowerKinds": [
+    "BlockNextTurn",
+    "ToolsOfTheTrade"
+  ],
+  "productionBackendEnabled": false,
+  "fullSearchSpeedupClaim": false,
+  "build": {
+    "artifact": "artifact-v1",
+    "seconds": 9.88,
+    "warnings": 0,
+    "errors": 0
+  },
+  "pureChecks": {
+    "status": "Passed",
+    "fractionalBlockReturn": true,
+    "cap": true,
+    "stacking": true,
+    "zero": true,
+    "removal": true,
+    "applier": true,
+    "rollback": true,
+    "workers": 8,
+    "reachableZeroInstanceRejected": true
+  },
+  "nativeRuns": [
+    {
+      "runId": "6f3117a761c04843a78aa6aae746b538",
+      "scenarioId": "COMPACT-DEFERRED-POWERS-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 25821.8308,
+      "combatEnded": false,
+      "completedChecks": [
+        "CompactDeferredPowerRoot:Mode0:5Branches:Frozen8Workers:AllSnapshotProperties",
+        "CompactDeferredPowerRoot:Mode1:6Branches:Frozen8Workers:AllSnapshotProperties",
+        "CompactDeferredPowerRoot:Mode2:5Branches:Frozen8Workers:AllSnapshotProperties",
+        "DeferredBlockReturn:Native3Roots:CapAndFraction:Stacking:Zero:AllSnapshotFields:PowerMetadata:ForkIsolation:AfterBlockCleared",
+        "CompactDeferredPowers:Native3Roots10Actions:BlockReturnAndToolsCounter:Removal:AllSnapshotProperties:HistorySources:AllRng:Rollback:Frozen8Workers:LegacyAfterBlockCleared"
+      ]
+    },
+    {
+      "runId": "0ea7d01ece354b858df12471eb6ba5d4",
+      "scenarioId": "COMPACT-POWER-EXPRESSIONS-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 4342.6019,
+      "combatEnded": true,
+      "completedChecks": [
+        "CompactPoisonTrigger:NativePreTeardownSnapshot",
+        "CompactPoisonTrigger:13Branches:NoDealerOrCardSource:UnpoweredUnblockable:NoAttackHistory:RootRetirementReacquisition:OriginalKeys:AllSnapshotProperties:Frozen8Workers:Native10Actions:PreTeardownFullState:CombatEnded",
+        "CompactPowerExpressions:TargetPresenceAfterRetirementReacquisition:LivingEnemySumAfterDeath:CalculationBaseExtra:ZeroAndFrailRounding:UpgradeExhaustion:Native10Actions"
+      ]
+    }
+  ],
+  "branchCountsByRoot": [
+    5,
+    6,
+    5
+  ],
+  "cases": [
+    {
+      "mode": 0,
+      "nativeCards": 3,
+      "finalBlock": 3,
+      "powerRemoved": true
+    },
+    {
+      "mode": 1,
+      "nativeCards": 4,
+      "finalBlock": 7,
+      "powerRemoved": true
+    },
+    {
+      "mode": 2,
+      "nativeCards": 3,
+      "finalBlock": 0,
+      "powerRemoved": true
+    }
+  ],
+  "zeroInstanceGuard": "Conservative Dexterity interval with active Frail; pure admission contract and native source reference, not native zero-instance execution coverage",
+  "lifecycleBoundary": "Compact applies counters; existing prediction engine and native Hook.AfterBlockCleared validate redemption. ToolsOfTheTrade turn-start draw/discard and compact round advancement not implemented.",
+  "boundaries": {
+    "linux": "Passed",
+    "searchFiles": 88,
+    "powershell": "Updated, not executed"
+  }
+}

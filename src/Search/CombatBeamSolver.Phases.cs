@@ -47,6 +47,9 @@ internal sealed partial class CombatBeamSolver
                 $"[CombatSolver/Test] ROUTING_CHOICE_SUMMARIES scope=solver " +
                 $"builds={_run.RoutingChoiceSummaryBuilds} hits={_run.RoutingChoiceSummaryHits} " +
                 $"bypasses={_run.RoutingChoiceSummaryBypasses}");
+            policy.Diagnostics.Info(
+                $"[CombatSolver/Test] ROUND_PREFIX_REPLAY scope=solver " +
+                $"captures={_run.RoundPrefixCaptures} resumes={_run.RoundPrefixResumes}");
             HookLayoutCacheStatistics hookLayouts = root.HookLayoutCacheStatistics;
             HookListenerSegmentStatistics hookSegments = root.HookListenerSegmentStatistics;
             policy.Diagnostics.Info(

@@ -103,7 +103,9 @@ internal static partial class CardChoiceSupport
             SeekerStrike => BuildSeekerSpec(simulator, playedCard, owner),
             TrueGrit when card.IsUpgraded => Spec(owner, PlanChoiceEffect.Exhaust, PileType.Hand, 1, owner.Hand.Cards),
             Hologram => Spec(owner, PlanChoiceEffect.MoveToHand, PileType.Discard, 1, discardBeforeResolution),
-            Graveblast => Spec(owner, PlanChoiceEffect.MoveToHand, PileType.Discard, 1, discardBeforeResolution),
+            // Native FromCombatPile exits before requesting a selection when the hit
+            // ended combat. A phantom choice cannot be deployed or reconciled later.
+            Graveblast when !simulator.IsEnding => Spec(owner, PlanChoiceEffect.MoveToHand, PileType.Discard, 1, discardBeforeResolution),
             Headbutt => Spec(owner, PlanChoiceEffect.MoveToDrawTop, PileType.Discard, 1, discardBeforeResolution),
             CosmicIndifference => Spec(owner, PlanChoiceEffect.MoveToDrawTop, PileType.Discard, 1, discardBeforeResolution),
             SecretWeapon => Spec(owner, PlanChoiceEffect.MoveToHand, PileType.Draw, 1,
@@ -152,10 +154,10 @@ internal static partial class CardChoiceSupport
                 owner.Hand.Cards.Where(item => item.Preview.Type == CardType.Skill && !item.Preview.IsSlyThisTurn)),
             HeirloomHammer => Spec(owner, PlanChoiceEffect.Duplicate, PileType.Hand, 1,
                 owner.Hand.Cards.Where(item => item.Preview.VisualCardPool.IsColorless)),
-            SculptingStrike => Spec(owner, PlanChoiceEffect.ApplyEthereal, PileType.Hand, 1,
+            SculptingStrike when !simulator.IsEnding => Spec(owner, PlanChoiceEffect.ApplyEthereal, PileType.Hand, 1,
                 owner.Hand.Cards.Where(item => !item.Preview.GetKeywordsWithSources(KeywordSources.Local)
                     .Contains(CardKeyword.Ethereal))),
-            Snap => Spec(owner, PlanChoiceEffect.ApplyRetain, PileType.Hand, 1,
+            Snap when !simulator.IsEnding => Spec(owner, PlanChoiceEffect.ApplyRetain, PileType.Hand, 1,
                 owner.Hand.Cards.Where(item => !item.Preview.Keywords.Contains(CardKeyword.Retain))),
             DecisionsDecisions => Spec(owner, PlanChoiceEffect.AutoPlayRepeated, PileType.Hand, 1,
                 owner.Hand.Cards.Where(item => item.Preview.Type == CardType.Skill

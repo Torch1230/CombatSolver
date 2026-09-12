@@ -1,16 +1,101 @@
 # CombatSolver 文档导航
 
+- [局部字段与数据结构的内存研究](performance/simulation-data-layout-20260912.md)：.NET 9 实测类型缩窄、状态仓库辅助小表与容器包装；生产代码未改。
+- [模拟器长期维护成本研究](performance/simulation-maintenance-review-20260912.md)：单一语义来源、有限后端接入与迁移成本；当前优先验证局部数据结构。
+
+- [亡灵核心牌与灵魂生成的生产编译准入](performance/simulation-necro-soul-cards-20260911.md)：八张亡灵牌逐张反编译准入，灵魂随机插入／升级模板与原生终局门禁的独立结束变体。
+
+- [完整角色生成池冻结](performance/simulation-generation-root-20260911.md)：原生池缓存、Fork 共享与生成回调对照。
+
+- [虚空之唤生产编译与回合开始执行](performance/simulation-void-generation-20260911.md)：精确编译、冻结完整池捕获与失败关闭准入，池闭包仍未完成。
+
+- [毁灭／虚弱／易伤卡牌的生产编译准入](performance/simulation-doom-vulnerable-cards-20260911.md)：五张亡灵的毁灭／虚弱／易伤牌逐张反编译准入，卡牌施加的毁灭走真实阵营结束边界。
+
+- [值 RNG 计量归因与生成池执行](performance/simulation-generation-metering-20260911.md)：独立计量归因、5 块零分配断言与紧凑生成池原生差分。
+
+- [完整随机生成池审计](performance/simulation-generation-audit-20260911.md)：原始亡灵输入、128 种直接候选与 RNG 顺序。
+
+- [书页风暴与嵌套抽牌验证](performance/simulation-pagestorm-20260911.md)：完整父子抽牌时序与挂起恢复。
+
+
+- [上游 0.36.0 合并验证](performance/simulation-upstream-merge-20260911.md)：紧凑后端阶段／历史适配与同政策验证。
+
+
+- [性能重构交接与剩余工作](performance/simulation-refactor-handoff-20260911.md)：完整目标、额度交接条件、当前代码与验证、亡灵动态闭包和最终性能验收。
+- [命运同担与属性能力类型](performance/simulation-shared-fate-20260911.md)：有序力量削减、人工制品和负属性能力生命周期。
+- [神气制胜独立实例与终局分派](performance/simulation-panache-20260911.md)：独立计数、首次应用、末击与玩家死亡的完整回合边界。
+- [致死性与攻击历史窗口](performance/simulation-lethality-20260911.md)：首次攻击倍率和当前／上一回合最后攻击的冻结所有权。
+- [灰烬之灵、死亡之舞与迅速](performance/simulation-card-hooks-20260911.md)：出牌前顺序、当前费用与一次性附魔的分支恢复。
+- [雕琢打击、响指与动态关键字](performance/simulation-keywords-20260911.md)：过滤后的实例身份、生成牌标记、X 费与跨回合恢复。
+- [吊杀的卡牌倍率与层数](performance/simulation-hang-20260911.md)：特定来源倍率、能力封顶与跨回合值状态。
+- [预借时间与刺破帷幕费用](performance/simulation-cost-powers-20260911.md)：当前分支费用、选牌挂起时的只读查询与终局能力门禁。
+- [亡灵卡牌操作与终局生成](performance/simulation-necro-card-operations-20260911.md)：直接失血、弃牌回收、鬼火与虚无，区分生成历史和实际入堆。
+- [挽歌与灵魂的值执行](performance/simulation-dirge-20260911.md)：逐次 X 召唤、随机插入、升级模板与跨回合生成身份对照。
+- [洁净与来生的值执行](performance/simulation-draw-exhaust-20260911.md)：召唤后的抽牌堆消耗选择、空牌堆、隐式选择和两回合对照。
+- [奥斯蒂每回合召唤](performance/simulation-pet-turns-20260911.md)：初始遗物的后置能量重置时点、三个回合与选牌中间态。
+- [奥斯蒂值执行与搜索](performance/simulation-osty-values-20260911.md)：承伤、复活、攻击和两回合原生对照，最大生命封顶与回合参与者修正。
+- [奥斯蒂根身份与死亡清理](performance/simulation-osty-ownership-20260911.md)：实机首次召唤后的空根隔离、普通能力退休和连续复活。
+- [精神过载与毁灭](performance/simulation-necro-resources-20260911.md)：资源／选牌时序、死亡相位、原生差分与搜索生命周期。
+
+- [紧凑后端运行时准入与 NoGC 验收](performance/simulation-runtime-backend-20260911.md)：整场零重算、未迁移域归属、正常 NoGC 与普通 GC 口径。
+- [紧凑候选、挂起选择与完整搜索 A/B](performance/simulation-search-backend-20260911.md)：原始机甲路线、政策读取与零兼容物化。
+- [原始机甲完整原生路线](performance/simulation-full-route-20260911.md)：44 原生动作及 424 个替代分支。
+
+- [紧凑完整回合与历史窗口](performance/simulation-rounds-20260911.md)：完整阶段、起手／嵌套选择、跨阵营历史清理与原生终局。
+
+- [紧凑确定性怪物 AI](performance/simulation-monster-ai-20260911.md)：机甲招式循环、增长日志、当前意图与冻结恢复。
+
+- [紧凑 Power 阶段体](performance/simulation-power-phases-20260911.md)：回合初始字段、力量恢复、持续递减和下回合格挡，独立准入与原生对照。
+
+- [持续减益的跳过递减状态](performance/simulation-duration-state-20260911.md)：统一应用入口的分支 Power 字段，修复原键和续用遗漏。
+
+- [紧凑机械骑士指令体](performance/simulation-monster-commands-20260911.md)：怪物攻击／格挡／力量、无创建者灼伤生成、完整历史和原生对照。
+
+- [紧凑灼伤与手牌末尾阶段](performance/simulation-hand-end-20260911.md)：显式入场顺序、玩家失败、状态牌抽取与完整原生对照。
+
+- [玩家死亡清理与施伤者分支存活状态](performance/simulation-player-death-20260911.md)：原生致死差分与冻结根隔离修复。
+
+- [紧凑原始机甲首回合根](performance/simulation-full-root-20260911.md)：完整 30 牌／31 监听器、蛇之戒与原生分支对照。
+
 玩家安装、操作与兼容性说明见 [项目 README](../README.md)。源码规则见 [AGENTS.md](../AGENTS.md)。
 
 ## 当前文档
 
 | 要查什么 | 入口 |
 |---|---|
+| 临时力量首次施加、正负偏移与计数封顶 | [原生差分与修正](performance/simulation-temporary-strength-20260911.md) |
+- [紧凑人工制品与 Power 准入顺序](performance/simulation-compact-artifact-20260911.md)
+- [紧凑抽牌随机费用与第二条 RNG](performance/simulation-random-costs-20260911.md)
+- [紧凑附魔生成牌](performance/simulation-inky-cards-20260911.md)：固定模板折叠条件、完整差分与边界。
+- [紧凑生成卡牌与小刀实例](performance/simulation-generated-cards-20260911.md)
+- [交错分配的紧凑索引缓冲区](performance/simulation-indexed-buffer-20260911.md)
+- [紧凑临时力量与尖啸](performance/simulation-compact-temporary-strength-20260911.md)
+| 紧凑下回合格挡、必备工具计数与零层实例准入 | [下回合计数结果](performance/simulation-compact-deferred-powers-20260911.md) |
+| 闪躲翻滚在格挡上限处的下回合格挡修正 | [返回值差分](performance/simulation-deferred-block-return-20260911.md) |
+| 目标 Power 条件与存活敌人求和格挡 | [Power 表达式结果](performance/simulation-power-expressions-20260911.md) |
+| 中毒主动触发、整手弃抽／Sly 和 Power 重获 | [中毒与弃抽结果](performance/simulation-poison-discard-20260911.md) |
+| 有序群体中毒、条件抽牌返回值与虚无历史 | [群体与条件指令结果](performance/simulation-conditional-powers-20260911.md) |
+| 能力牌移除、消耗与 X 费用／完成读取 | [生命周期阶段结果](performance/simulation-card-lifecycle-20260911.md) |
+| 有序卡牌效果、嵌套选择与指令恢复 | [指令阶段结果](performance/simulation-effect-program-20260911.md) |
+| 基础 Power 值、原生攻击／格挡边界与单向评估读取 | [Power 值迁移结果](performance/simulation-compact-powers-20260911.md) |
 | 遗物独立开关、目标范围、血量额度与早停 | [战斗末遗物计数策略](relic-counters.md) |
 | 组件职责、状态所有权和调用链 | [架构与职责地图](ARCHITECTURE.md) |
-| 当前 UI 重设计、按钮区整理与 Gemini 建议审计 | [UI 建议复核与重构方案](audits/ui-redesign-gemini-review-20260911.md) |
+| 全部性能方案取舍、剩余评估与已实现的冻结恢复 | [方案账本](performance/simulation-strategy-ledger-20260911.md)、[候选存储结果](performance/simulation-candidate-storage-20260911.md) |
+| 紧凑洗牌／战略选择、原生两回合与特征复用 | [执行扩展结果](performance/simulation-expanded-chain-20260911.md) |
+| 紧凑状态直接读取、完整语义对照与复杂状态净变化 | [直接读取结果](performance/simulation-read-view-20260911.md) |
+| 紧凑原型估值瓶颈、测试上下文校正与下一迁移边界 | [估值与读模型调研](performance/simulation-evaluation-bottleneck-20260911.md) |
+| 紧凑可恢复内核的实现、原生对照与迁移门槛实测 | [R0–R2 原型结果](performance/simulation-kernel-prototype-20260910.md) |
 | 本批未发布改动、版本演进与开发记录 | [开发笔记](DEVELOPMENT_NOTES.md) |
 | 已执行测试、复跑方式和未验证范围 | [测试矩阵](TEST_MATRIX.md) |
+| 更大范围的执行/状态内核重写方案、进入条件与证据缺口 | [大幅重构再调研](performance/simulation-redesign-research-20260910.md) |
+| 模拟性能重构的阶段、工作量与验收标准 | [完整搜索重构计划](performance/simulation-refactor-plan-20260910.md) |
+| 重构首轮细分结果与候选取舍 | [P1 复用率与类型成本](performance/simulation-refactor-p1-20260910.md) |
+| 完整搜索性能重构最终交付、headless 收口与各阶段取舍 | [最终报告](performance/simulation-refactor-result-20260910.md) |
+| P2 / P4 等待选择快照及 Power 复制的 CPU 与所有权取舍 | [剩余候选决策](performance/simulation-refactor-p2-p4-decision-20260910.md) |
+| 线程 CPU 诊断、阶段提取与检查点验证状态 | [P5 选择前缀测量与回合检查点](performance/simulation-refactor-p5-20260910.md) |
+| 归一化原型验证、撤回与测量干扰 | [P3 实验记录](performance/simulation-refactor-p3-20260910.md) |
+| 最新极高配置整场搜索的 CPU 与分配热点 | [完整搜索模拟采样](performance/simulation-profile-20260910.md) |
+| 当前 UI 重设计、按钮区整理与 Gemini 建议审计 | [UI 建议复核与重构方案](audits/ui-redesign-gemini-review-20260911.md) |
 | 跨跑局卡顿、第三方 Mod 性能取证 | [进程全程性能录制](performance/long-session-recording.md) |
 | 三层秒级卡顿与自动回收 | [2026-09-11 实录诊断](performance/player-lag-diagnosis-20260911.md) |
 | 最新快照/重放复查与 PR 验证 | [快照与重放热点复查](performance/snapshot-replay-followup-20260909.md) |
@@ -38,7 +123,6 @@
 ## 专题目录
 
 | 目录 | 内容 |
-|---|---|
 | [releases/](releases/README.md) | 按版本整理的玩家更新日志与历史草案 |
 | [pr/](pr/README.md) | PR 审查、集成修正与验证记录 |
 | [refactoring/](refactoring/README.md) | 滚动重构路线与核验记录 |

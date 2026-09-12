@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>13.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TieredCompilation>false</TieredCompilation>
+    <CompactKernelRoot Condition="'$(CompactKernelRoot)' == ''">../../src/Engine/InCombat/Simulation/Compact</CompactKernelRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(CompactKernelRoot)/*.cs" Link="Kernel/%(Filename)%(Extension)" />
+    <Compile Include="../../src/Testing/CompactThreadCpu.cs" Link="CompactThreadCpu.cs" />
+  </ItemGroup>
+</Project>

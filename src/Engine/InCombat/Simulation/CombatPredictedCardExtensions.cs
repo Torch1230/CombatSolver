@@ -118,11 +118,19 @@ internal static class CombatPredictedCardExtensions
         return Math.Max(0, card.GetEnergyCostValueWithModifiers(simulator));
     }
 
+    // Mirrors CardEnergyCost.GetResolved: X keeps its captured payment, while ordinary
+    // cards query the current branch cost, including changes made by preceding hooks.
+    public static int GetResolvedEnergyCost(this PredictedCard card, CombatPredictionSimulator simulator)
+        => card.Preview.EnergyCost.CostsX ? card.Preview.EnergyCost.CapturedXValue
+            : Math.Max(0, card.GetEnergyCostValueWithModifiers(simulator));
+
     // Mirrors CardEnergyCost.GetWithModifiers(CostModifiers.All), preserving negative costs.
     public static int GetEnergyCostValueWithModifiers(
         this PredictedCard card,
         CombatPredictionSimulator simulator)
     {
+        if (simulator.CompletedEnergyCosts is { } completed)
+            return completed.ReadEnergyCost(card);
         var energyCost = card.Preview.EnergyCost;
 
         var cost = energyCost._base;

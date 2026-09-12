@@ -539,8 +539,6 @@ internal sealed partial class CombatBeamSolver
         }
         _run.Expanded++;
         ObserveSearchPath(node, SearchPathObservationStage.Expanded, "serial_parent");
-        CombatPredictionSimulator simulator = (CombatPredictionSimulator)snapshot.Simulator;
-        SimulatedCombatState simulatedCombat = (SimulatedCombatState)simulator.State.CombatState;
         using ExpansionBatch? cycleExitBatch = node.CycleProbeLease == null
             && node.CycleExitProbe == null
             ? null
@@ -551,163 +549,103 @@ internal sealed partial class CombatBeamSolver
             GenerateRawEndTurnCandidates(node, cycleExitBatch);
         }
 
-        SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(_player);
         List<ActionCandidate> nonDominated = new(16);
         List<ActionCandidate>? deferredCycleCandidates = null;
-        IReadOnlyList<PredictedCard> hand = playerState.Hand.Cards;
-        HandFingerprintBuffer seenCards = default;
-        int seenCardCount = 0;
-        for (int handIndex = 0; handIndex < hand.Count; handIndex++)
+        // Preparation returns only owned action metadata, so no borrowed models survive
+        // a child replay or an iterator yield. Serial and parallel use the same ordering.
+        foreach (PreparedCardAction prepared in PrepareCardActions(node))
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            PredictedCard card = hand[handIndex];
-            string cardId = card.Preview.Id.Entry;
-            int occurrence = 0;
-            for (int priorIndex = 0; priorIndex < handIndex; priorIndex++)
-            {
-                if (string.Equals(hand[priorIndex].Preview.Id.Entry, cardId, StringComparison.Ordinal))
-                    occurrence++;
-            }
-            if (!simulatedCombat.CanPlayCard(simulator, card))
-                continue;
-            StateFingerprint playableKey = BuildPlayableCardKey(card);
-            bool duplicate = false;
-            for (int seenIndex = 0; seenIndex < seenCardCount; seenIndex++)
-            {
-                if (seenCards[seenIndex] == playableKey)
-                {
-                    duplicate = true;
-                    break;
-                }
-            }
-            if (duplicate)
-            {
-                _run.DuplicateCardBranchesPruned++;
-                continue;
-            }
-            seenCards[seenCardCount++] = playableKey;
-            string cardStateKey = CardChoiceSupport.ChoiceCardKey(card);
-            int cardStateOccurrence = 0;
-            for (int priorIndex = 0; priorIndex < handIndex; priorIndex++)
-            {
-                if (string.Equals(
-                        CardChoiceSupport.ChoiceCardKey(hand[priorIndex]),
-                        cardStateKey,
-                        StringComparison.Ordinal))
-                {
-                    cardStateOccurrence++;
-                }
-            }
-            foreach ((int targetIndex, Creature? target) in TargetsFor(card, simulator))
-            {
-                // The first action after a partial-route restart still observes the live target gate.
-                if (node.ActionCount == 0 && !card.Original.CanPlayTargeting(target))
-                    continue;
-                string targetName = displayNames.Creature(target);
-                PlanAction action = new(
-                    PlanActionKind.PlayCard,
-                    node.Turn,
-                    card.Preview.Id.Entry,
-                    occurrence,
-                    targetIndex,
-                    target?.CombatId,
-                    displayNames.Card(card.Preview),
-                    targetName,
-                    ReplayCount: Math.Max(0, card.Preview.GetEnchantedReplayCount()),
-                    CardStateKey: cardStateKey,
-                    CardStateOccurrence: cardStateOccurrence,
-                        CardEnchantmentId: card.Preview.Enchantment?.Id.Entry ?? "", CardUpgradeLevel: card.Preview.CurrentUpgradeLevel);
-                SimulationSnapshot probeSnapshot = ReplayAction(node, action);
+            PlanAction action = prepared.Action;
+            SimulationSnapshot probeSnapshot = ReplayAction(node, action);
 
-                CardChoiceSpec? choiceSpec = BuildPrimaryCardChoiceSpec(probeSnapshot);
-                if (choiceSpec == null && CardChoiceSupport.RequiresUnsupportedExistingChoice(card.Preview))
+            CardChoiceSpec? choiceSpec = BuildPrimaryCardChoiceSpec(probeSnapshot);
+            if (choiceSpec == null && prepared.RequiresUnsupportedExistingChoice)
+            {
+                probeSnapshot.ReleaseSimulator();
+                continue;
+            }
+            PlanCardChoice? requiredEmptyChoice = prepared.RequiredEmptyChoice;
+            CardChoiceSpec? primaryChoiceSpec = choiceSpec
+                ?? BuildRequiredEmptyChoiceSpec(requiredEmptyChoice);
+            IEnumerable<(PlanAction Action, SimulationSnapshot Snapshot)> resolvedBranches =
+                HasChoiceBeforePrimary(probeSnapshot, primaryChoiceSpec)
+                    ? ResolveRoundChoiceBranches(
+                        node,
+                        action,
+                        probeSnapshot,
+                        BuildPrimaryChoiceMatch(primaryChoiceSpec),
+                        budgetPrimaryChoiceSpec: primaryChoiceSpec)
+                    : ResolvePrimaryCardChoiceBranches(
+                        node,
+                        action,
+                        probeSnapshot,
+                        choiceSpec,
+                        requiredEmptyChoice);
+            foreach ((PlanAction finalAction, SimulationSnapshot finalSnapshot) in resolvedBranches)
+            {
+                bool forcedTurnEnd = finalSnapshot.Turn > node.Turn;
+                PlanAction nodeAction = finalAction with { EndsPlayerTurn = forcedTurnEnd };
+                bool terminal = finalSnapshot.PlayerDead
+                    || finalSnapshot.AllEnemiesDead
+                    || finalSnapshot.BoundaryReason != SearchBoundaryReason.None;
+                double score = ApplySoldHpPenalty(
+                    finalSnapshot.Score,
+                    node.FutureSoldHp);
+                SearchNode child = new(
+                    nodeAction,
+                    node.ActionCount + 1,
+                    finalSnapshot.PotionUseCount,
+                    finalSnapshot.PotionStrategicCost,
+                    forcedTurnEnd ? node.Turn + 1 : node.Turn,
+                    node.Traits,
+                    node.FutureSoldHp,
+                    score,
+                    finalSnapshot.StateKey,
+                    finalSnapshot.HasRisk,
+                    finalSnapshot.BoundaryReason,
+                    terminal,
+                    node,
+                    finalSnapshot,
+                    forcedTurnEnd
+                        ? node.CombatProgress.Advance(finalSnapshot)
+                        : node.CombatProgress)
                 {
-                    probeSnapshot.ReleaseSimulator();
+                    CumulativeEnemyHpLost = AccumulateEnemyHpLost(node, finalSnapshot),
+                };
+                child = AttachCycleSchedulingEvidence(child);
+                PromoteOrderedMutationProgressTail(child);
+                CommitCycleExitObservation(child);
+                if (ShouldPruneCrossTurnNoProgress(child))
+                {
+                    _run.RepeatableNoProgressBranchesPruned++;
+                    finalSnapshot.ReleaseSimulator();
                     continue;
                 }
-                PlanCardChoice? requiredEmptyChoice = CardChoiceSupport.BuildRequiredEmptyChoice(card.Preview);
-                CardChoiceSpec? primaryChoiceSpec = choiceSpec
-                    ?? BuildRequiredEmptyChoiceSpec(requiredEmptyChoice);
-                IEnumerable<(PlanAction Action, SimulationSnapshot Snapshot)> resolvedBranches =
-                    HasChoiceBeforePrimary(probeSnapshot, primaryChoiceSpec)
-                        ? ResolveRoundChoiceBranches(
-                            node,
-                            action,
-                            probeSnapshot,
-                            BuildPrimaryChoiceMatch(primaryChoiceSpec),
-                            budgetPrimaryChoiceSpec: primaryChoiceSpec)
-                        : ResolvePrimaryCardChoiceBranches(
-                            node,
-                            action,
-                            probeSnapshot,
-                            choiceSpec,
-                            requiredEmptyChoice);
-                foreach ((PlanAction finalAction, SimulationSnapshot finalSnapshot) in resolvedBranches)
+                ActionCandidate actionCandidate = BuildCandidate(
+                    snapshot,
+                    finalSnapshot,
+                    child,
+                    prepared.CardType,
+                    prepared.TargetCombatId);
+                if (CanRetainOrderedMutationLease(_run, child))
                 {
-                    bool forcedTurnEnd = finalSnapshot.Turn > node.Turn;
-                    PlanAction nodeAction = finalAction with { EndsPlayerTurn = forcedTurnEnd };
-                    bool terminal = finalSnapshot.PlayerDead
-                        || finalSnapshot.AllEnemiesDead
-                        || finalSnapshot.BoundaryReason != SearchBoundaryReason.None;
-                    double score = ApplySoldHpPenalty(
-                        finalSnapshot.Score,
-                        node.FutureSoldHp);
-                    SearchNode child = new(
-                        nodeAction,
-                        node.ActionCount + 1,
-                        finalSnapshot.PotionUseCount,
-                        finalSnapshot.PotionStrategicCost,
-                        forcedTurnEnd ? node.Turn + 1 : node.Turn,
-                        node.Traits,
-                        node.FutureSoldHp,
-                        score,
-                        finalSnapshot.StateKey,
-                        finalSnapshot.HasRisk,
-                        finalSnapshot.BoundaryReason,
-                        terminal,
-                        node,
-                        finalSnapshot,
-                        forcedTurnEnd
-                            ? node.CombatProgress.Advance(finalSnapshot)
-                            : node.CombatProgress)
-                    {
-                        CumulativeEnemyHpLost = AccumulateEnemyHpLost(node, finalSnapshot),
-                    };
-                    child = AttachCycleSchedulingEvidence(child);
-                    PromoteOrderedMutationProgressTail(child);
-                    CommitCycleExitObservation(child);
-                    if (ShouldPruneCrossTurnNoProgress(child))
-                    {
-                        _run.RepeatableNoProgressBranchesPruned++;
-                        finalSnapshot.ReleaseSimulator();
-                        continue;
-                    }
-                    ActionCandidate actionCandidate = BuildCandidate(
-                        snapshot,
-                        finalSnapshot,
-                        child,
-                        card.Preview.Type,
-                        target?.CombatId);
-                    if (CanRetainOrderedMutationLease(_run, child))
-                    {
-                        // An admitted ordered-state lease has a bounded coordinator budget of
-                        // its own. Let its direct semantic options reach action admission before
-                        // ordinary transposition/dominance can erase the delayed-payoff edge.
-                        nonDominated.Add(actionCandidate);
-                    }
-                    else if (ShouldDeferCycleTranspositionUntilActionAdmission(child))
-                    {
-                        deferredCycleCandidates ??= [];
-                        deferredCycleCandidates.Add(actionCandidate);
-                    }
-                    else if (TryAcceptTransposition(child))
-                    {
-                        AddNonDominatedCandidate(nonDominated, actionCandidate);
-                    }
-                    else
-                    {
-                        finalSnapshot.ReleaseSimulator();
-                    }
+                    // An admitted ordered-state lease has a bounded coordinator budget of
+                    // its own. Let its direct semantic options reach action admission before
+                    // ordinary transposition/dominance can erase the delayed-payoff edge.
+                    nonDominated.Add(actionCandidate);
+                }
+                else if (ShouldDeferCycleTranspositionUntilActionAdmission(child))
+                {
+                    deferredCycleCandidates ??= [];
+                    deferredCycleCandidates.Add(actionCandidate);
+                }
+                else if (TryAcceptTransposition(child))
+                {
+                    AddNonDominatedCandidate(nonDominated, actionCandidate);
+                }
+                else
+                {
+                    finalSnapshot.ReleaseSimulator();
                 }
             }
         }
@@ -799,6 +737,8 @@ internal sealed partial class CombatBeamSolver
 
         if (_detailedDiagnostics && node.ActionCount == 0)
         {
+            SimulatedCombatState simulatedCombat = (SimulatedCombatState)
+                (ReadCompactPolicyState(snapshot)?.EvaluationContext ?? snapshot.Simulator).State.CombatState;
             policy.Diagnostics.Info(
                 $"[CombatSolver/Debug] ROOT_POTION_SLOTS count={root.PotionSlotCount} " +
                 $"potions={string.Join(',', Enumerable.Range(0, root.PotionSlotCount).Select(slot =>
@@ -807,127 +747,107 @@ internal sealed partial class CombatBeamSolver
                     return $"{slot}:{item?.Id.Entry ?? "-"}:{(item != null && PotionOnUseSupport.CanSearch(item))}";
                 }))}");
         }
-        if (_maximumPotionUses == null || ExplicitPotionUseCount(node) < _maximumPotionUses.Value)
-        for (int potionSlot = 0; potionSlot < root.PotionSlotCount; potionSlot++)
+        foreach (PreparedPotionAction prepared in PreparePotionActions(node))
         {
-            PotionModel? potion = simulatedCombat.GetPotionAtSlot(_player, potionSlot);
-            if (potion == null
-                || !simulatedCombat.IsPotionAvailable(_player, potionSlot)
-                || !PotionOnUseSupport.CanSearch(potion)
-                || !AllowsPotionUse(potionSlot, potion.Id.Entry)
-                || PotionUsePolicy.RequiresOpeningUse(potion)
-                    && node.HasNonPotionAction)
+            // Potion domains still need their owned compatibility state during choice replay.
+            CombatPredictionSimulator simulator = snapshot.Simulator;
+            PlanAction baseAction = prepared.Action;
+            PotionModel potion = prepared.Potion;
+            SimulationSnapshot? probeSnapshot = null;
+            IReadOnlyList<PlanCardChoice?> choices;
+            CardChoiceSpec? choiceSpec = null;
+            if (PotionChoiceSupport.RequiresChoice(potion))
             {
-                continue;
-            }
-
-            foreach ((int targetIndex, Creature? target) in TargetsForPotion(potion, simulator))
-            {
-                PlanAction baseAction = new(
-                    PlanActionKind.UsePotion,
-                    node.Turn,
-                    TargetIndex: targetIndex,
-                    TargetCombatId: target?.CombatId,
-                    TargetName: displayNames.Creature(target),
-                    PotionSlot: potionSlot,
-                    PotionId: potion.Id.Entry,
-                    PotionTitle: displayNames.Potion(potion));
-                SimulationSnapshot? probeSnapshot = null;
-                IReadOnlyList<PlanCardChoice?> choices;
-                CardChoiceSpec? choiceSpec = null;
-                if (PotionChoiceSupport.RequiresChoice(potion))
-                {
-                    CombatPredictionSimulator choiceSimulator = simulator;
-                    if (PotionChoiceSupport.GeneratesCardChoice(potion))
-                    {
-                        probeSnapshot = ReplayAction(node, baseAction);
-                        choiceSimulator = (CombatPredictionSimulator)probeSnapshot.Simulator;
-                    }
-                    choiceSpec = PotionChoiceSupport.GetSpec(choiceSimulator, potion);
-                    choices = CardChoiceSupport.BuildChoices(
-                            choiceSpec,
-                            displayNames,
-                            _profile.MaxPileChoiceBranchesPerAction,
-                            _profile.MaxHandChoiceBranchesPerAction)
-                        .Select(choice => choice with { SourceId = potion.Id.Entry })
-                        .Cast<PlanCardChoice?>()
-                        .ToList();
-                    probeSnapshot?.ReleaseSimulator();
-                    probeSnapshot = null;
-                }
-                else
+                CombatPredictionSimulator choiceSimulator = simulator;
+                if (PotionChoiceSupport.GeneratesCardChoice(potion))
                 {
                     probeSnapshot = ReplayAction(node, baseAction);
-                    choices = [null];
+                    choiceSimulator = (CombatPredictionSimulator)probeSnapshot.Simulator;
                 }
+                choiceSpec = PotionChoiceSupport.GetSpec(choiceSimulator, potion);
+                choices = CardChoiceSupport.BuildChoices(
+                        choiceSpec,
+                        displayNames,
+                        _profile.MaxPileChoiceBranchesPerAction,
+                        _profile.MaxHandChoiceBranchesPerAction)
+                    .Select(choice => choice with { SourceId = potion.Id.Entry })
+                    .Cast<PlanCardChoice?>()
+                    .ToList();
+                probeSnapshot?.ReleaseSimulator();
+                probeSnapshot = null;
+            }
+            else
+            {
+                probeSnapshot = ReplayAction(node, baseAction);
+                choices = [null];
+            }
+            if (_detailedDiagnostics && node.ActionCount == 0)
+            {
+                policy.Diagnostics.Info(
+                    $"[CombatSolver/Debug] ROOT_POTION_OPTIONS potion={potion.Id.Entry} " +
+                    $"choices={string.Join(';', choices.Select(choice => choice == null
+                        ? "-"
+                        : choice.Cards.Count == 0
+                            ? "skip"
+                            : string.Join(',', choice.Cards.Select(card => card.CardId))))}");
+            }
+            foreach ((PlanAction finalAction, SimulationSnapshot finalSnapshot) in
+                     ResolveExplicitCardChoiceBranches(
+                         node,
+                         baseAction,
+                         probeSnapshot,
+                         choices,
+                         choiceSpec))
+            {
+                bool terminal = finalSnapshot.PlayerDead
+                    || finalSnapshot.AllEnemiesDead
+                    || finalSnapshot.BoundaryReason != SearchBoundaryReason.None;
+                SearchNode child = new(
+                    finalAction,
+                    node.ActionCount + 1,
+                    finalSnapshot.PotionUseCount,
+                    finalSnapshot.PotionStrategicCost,
+                    node.Turn,
+                    ClassifyPotionTraits(node.Traits, snapshot, finalSnapshot),
+                    node.FutureSoldHp,
+                    ApplySoldHpPenalty(
+                        finalSnapshot.Score,
+                        node.FutureSoldHp),
+                    finalSnapshot.StateKey,
+                    finalSnapshot.HasRisk,
+                    finalSnapshot.BoundaryReason,
+                    terminal,
+                    node,
+                    finalSnapshot,
+                    node.CombatProgress)
+                {
+                    CumulativeEnemyHpLost = AccumulateEnemyHpLost(node, finalSnapshot),
+                };
+                child = AttachCycleSchedulingEvidence(child);
+                PromoteOrderedMutationProgressTail(child);
+                CommitCycleExitObservation(child);
+                EnsureBoundedCycleProbeLease(child);
+                if (ShouldRejectCycleCandidate(child))
+                {
+                    finalSnapshot.ReleaseSimulator();
+                    continue;
+                }
+                bool accepted = TryAcceptTransposition(child);
                 if (_detailedDiagnostics && node.ActionCount == 0)
                 {
+                    PlanCardChoice? resolvedChoice = finalAction.Choice;
                     policy.Diagnostics.Info(
-                        $"[CombatSolver/Debug] ROOT_POTION_OPTIONS potion={potion.Id.Entry} " +
-                        $"choices={string.Join(';', choices.Select(choice => choice == null
-                            ? "-"
-                            : choice.Cards.Count == 0
-                                ? "skip"
-                                : string.Join(',', choice.Cards.Select(card => card.CardId))))}");
+                        $"[CombatSolver/Debug] ROOT_POTION_BRANCH potion={potion.Id.Entry} " +
+                        $"choice={(resolvedChoice == null ? "-" : string.Join(',', resolvedChoice.Cards.Select(card => card.CardId)))} " +
+                        $"accepted={accepted} hp={finalSnapshot.PlayerHp} " +
+                        $"projected_hp={finalSnapshot.ProjectedPlayerHp} " +
+                        $"enemy_hp={finalSnapshot.EnemyHp} hand={finalSnapshot.HandCount} " +
+                        $"score={child.Score:0}");
                 }
-                foreach ((PlanAction finalAction, SimulationSnapshot finalSnapshot) in
-                         ResolveExplicitCardChoiceBranches(
-                             node,
-                             baseAction,
-                             probeSnapshot,
-                             choices,
-                             choiceSpec))
-                {
-                    bool terminal = finalSnapshot.PlayerDead
-                        || finalSnapshot.AllEnemiesDead
-                        || finalSnapshot.BoundaryReason != SearchBoundaryReason.None;
-                    SearchNode child = new(
-                        finalAction,
-                        node.ActionCount + 1,
-                        finalSnapshot.PotionUseCount,
-                        finalSnapshot.PotionStrategicCost,
-                        node.Turn,
-                        ClassifyPotionTraits(node.Traits, snapshot, finalSnapshot),
-                        node.FutureSoldHp,
-                        ApplySoldHpPenalty(
-                            finalSnapshot.Score,
-                            node.FutureSoldHp),
-                        finalSnapshot.StateKey,
-                        finalSnapshot.HasRisk,
-                        finalSnapshot.BoundaryReason,
-                        terminal,
-                        node,
-                        finalSnapshot,
-                        node.CombatProgress)
-                    {
-                        CumulativeEnemyHpLost = AccumulateEnemyHpLost(node, finalSnapshot),
-                    };
-                    child = AttachCycleSchedulingEvidence(child);
-                    PromoteOrderedMutationProgressTail(child);
-                    CommitCycleExitObservation(child);
-                    EnsureBoundedCycleProbeLease(child);
-                    if (ShouldRejectCycleCandidate(child))
-                    {
-                        finalSnapshot.ReleaseSimulator();
-                        continue;
-                    }
-                    bool accepted = TryAcceptTransposition(child);
-                    if (_detailedDiagnostics && node.ActionCount == 0)
-                    {
-                        PlanCardChoice? resolvedChoice = finalAction.Choice;
-                        policy.Diagnostics.Info(
-                            $"[CombatSolver/Debug] ROOT_POTION_BRANCH potion={potion.Id.Entry} " +
-                            $"choice={(resolvedChoice == null ? "-" : string.Join(',', resolvedChoice.Cards.Select(card => card.CardId)))} " +
-                            $"accepted={accepted} hp={finalSnapshot.PlayerHp} " +
-                            $"projected_hp={finalSnapshot.ProjectedPlayerHp} " +
-                            $"enemy_hp={finalSnapshot.EnemyHp} hand={finalSnapshot.HandCount} " +
-                            $"score={child.Score:0}");
-                    }
-                    if (accepted)
-                        yield return child;
-                    else
-                        finalSnapshot.ReleaseSimulator();
-                }
+                if (accepted)
+                    yield return child;
+                else
+                    finalSnapshot.ReleaseSimulator();
             }
         }
 
@@ -953,7 +873,8 @@ internal sealed partial class CombatBeamSolver
         if (!node.CrossTurnSemanticEvidenceAttached)
             return false;
 
-        CombatPredictionSimulator simulator = (CombatPredictionSimulator)node.Snapshot.Simulator;
+        CompletedStateReadView? view = ReadCompactPolicyState(node.Snapshot);
+        CombatPredictionSimulator simulator = view?.EvaluationContext ?? node.Snapshot.Simulator;
         SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
         int drawPerTurn = Math.Max(
             1,
@@ -997,15 +918,19 @@ internal sealed partial class CombatBeamSolver
 
     private IEnumerable<(PlanAction Action, SimulationSnapshot Snapshot)> BuildEndTurnBranches(
         SearchNode node,
-        IReadOnlyList<PlanCardChoice> choices)
+        IReadOnlyList<PlanCardChoice> choices,
+        bool reuseRoundPrefix = true)
     {
+        using RoundPrefixReplayContext? roundPrefix = reuseRoundPrefix && choices.Count == 0
+            ? new(node.Snapshot, node.Turn)
+            : null;
         PlanAction action = new(
             PlanActionKind.EndTurn,
             node.Turn,
             TurnStartChoices: choices.Count == 0 ? null : choices);
-        SimulationSnapshot snapshot = ReplayAction(node, action);
+        SimulationSnapshot snapshot = ReplayAction(node, action, roundPrefix: roundPrefix);
         foreach ((PlanAction resolvedAction, SimulationSnapshot resolvedSnapshot) in
-                 ResolveRoundChoiceBranches(node, action, snapshot))
+                 ResolveRoundChoiceBranches(node, action, snapshot, roundPrefix: roundPrefix))
         {
             yield return (resolvedAction, resolvedSnapshot);
         }
@@ -1043,7 +968,8 @@ internal sealed partial class CombatBeamSolver
 
     private readonly record struct PendingChoiceReplayBranch(
         PlanAction Action,
-        bool PruneInvalidBranch);
+        bool PruneInvalidBranch,
+        RoundPrefixReplayContext? RoundPrefix = null);
 
     private sealed record PrimaryCardChoiceLayer(
         IReadOnlyList<PlanCardChoice?> Choices,
@@ -1307,11 +1233,9 @@ internal sealed partial class CombatBeamSolver
             choiceSpec,
             semanticBranchCount);
 
-        SimulatedCombatState probeCombat =
-            (SimulatedCombatState)probeSnapshot.Simulator.State.CombatState;
         bool unregisteredPendingChoice = probeSnapshot.BoundaryReason == SearchBoundaryReason.PendingChoice
-            && probeCombat.PendingTurnStartChoice == null
-            && probeCombat.PendingKnowledgeDemonChoice == null;
+            && PendingCardChoice(probeSnapshot) == null
+            && LegacyChoiceState(probeSnapshot)?.PendingKnowledgeDemonChoice == null;
         return new PrimaryCardChoiceLayer(
             choices,
             unregisteredPendingChoice,
@@ -1869,7 +1793,8 @@ internal sealed partial class CombatBeamSolver
                          branchSnapshot,
                          candidate.UnresolvedPrimaryChoice,
                          branchBudget,
-                         collector))
+                         collector,
+                         candidate.Branch.RoundPrefix))
             {
                 yield return (finalAction, finalSnapshot);
             }
@@ -1878,18 +1803,22 @@ internal sealed partial class CombatBeamSolver
 
     private CardChoiceSpec? BuildPrimaryCardChoiceSpec(SimulationSnapshot probeSnapshot)
     {
-        CombatPredictionSimulator probeSimulator =
-            (CombatPredictionSimulator)probeSnapshot.Simulator;
-        SimulatedCombatState probeCombat =
-            (SimulatedCombatState)probeSnapshot.Simulator.State.CombatState;
-        return probeCombat.PendingTurnStartChoice is { } pendingChoice
+        if (probeSnapshot.BoundaryReason != SearchBoundaryReason.PendingChoice)
+            return null;
+        return PendingCardChoice(probeSnapshot) is { } pendingChoice
             && string.IsNullOrEmpty(pendingChoice.SourceId)
-                ? TurnStartChoiceSupport.BuildPendingSpec(
-                    probeSimulator,
-                    probeCombat,
-                    _player)
+                ? PendingCardChoiceSpec(probeSnapshot, pendingChoice)
                 : null;
     }
+
+    private static SimulatedCombatState? LegacyChoiceState(SimulationSnapshot snapshot)
+        => snapshot.CompactCandidate != null ? null : (SimulatedCombatState)snapshot.Simulator.State.CombatState;
+
+    private static TurnStartChoiceRequest? PendingCardChoice(SimulationSnapshot snapshot)
+        => snapshot.CompactPendingChoice ?? LegacyChoiceState(snapshot)?.PendingTurnStartChoice;
+
+    private CardChoiceSpec PendingCardChoiceSpec(SimulationSnapshot snapshot, TurnStartChoiceRequest request)
+        => request.Spec ?? TurnStartChoiceSupport.BuildSpec(snapshot.Simulator, _player, request);
 
     /// <summary>
     /// Inspects the pending boundary without advancing or mutating its simulator. Root-level
@@ -1903,9 +1832,7 @@ internal sealed partial class CombatBeamSolver
         if (snapshot.BoundaryReason != SearchBoundaryReason.PendingChoice)
             return null;
 
-        SimulatedCombatState combat =
-            (SimulatedCombatState)snapshot.Simulator.State.CombatState;
-        if (combat.PendingKnowledgeDemonChoice is { } knowledgeRequest)
+        if (LegacyChoiceState(snapshot)?.PendingKnowledgeDemonChoice is { } knowledgeRequest)
         {
             IReadOnlyList<PlanCardChoice> knowledgeBranches =
                 KnowledgeDemonChoiceSupport.BuildChoices(knowledgeRequest, displayNames);
@@ -1915,13 +1842,10 @@ internal sealed partial class CombatBeamSolver
                 TurnSetupLayer: null);
         }
 
-        if (combat.PendingTurnStartChoice is not { } request)
+        if (PendingCardChoice(snapshot) is not { } request)
             return null;
 
-        CombatPredictionSimulator simulator =
-            (CombatPredictionSimulator)snapshot.Simulator;
-        CardChoiceSpec spec =
-            TurnStartChoiceSupport.BuildPendingSpec(simulator, combat, _player);
+        CardChoiceSpec spec = PendingCardChoiceSpec(snapshot, request);
         IReadOnlyList<PlanCardChoice> branches = CardChoiceSupport.BuildChoices(
             spec,
             displayNames,
@@ -1969,9 +1893,8 @@ internal sealed partial class CombatBeamSolver
     {
         if (snapshot.BoundaryReason != SearchBoundaryReason.PendingChoice)
             return false;
-        SimulatedCombatState combat = (SimulatedCombatState)snapshot.Simulator.State.CombatState;
-        if (combat.PendingTurnStartChoice is not { } request)
-            return combat.PendingKnowledgeDemonChoice != null;
+        if (PendingCardChoice(snapshot) is not { } request)
+            return LegacyChoiceState(snapshot)?.PendingKnowledgeDemonChoice != null;
         return !MatchesPrimaryChoice(request, primaryChoiceSpec);
     }
 
@@ -2006,7 +1929,8 @@ internal sealed partial class CombatBeamSolver
         SimulationSnapshot snapshot,
         PrimaryChoiceMatch? unresolvedPrimaryChoice = null,
         WholeActionChoiceBudget? wholeActionBudget = null,
-        CardChoiceSpec? budgetPrimaryChoiceSpec = null)
+        CardChoiceSpec? budgetPrimaryChoiceSpec = null,
+        RoundPrefixReplayContext? roundPrefix = null)
     {
         WholeActionChoiceBudget budget;
         ChoiceOccurrenceCollector<DeferredOccurrenceChoiceBranch> occurrenceCollector;
@@ -2033,7 +1957,8 @@ internal sealed partial class CombatBeamSolver
                      snapshot,
                      unresolvedPrimaryChoice,
                      budget.SemanticSearchBudget,
-                     occurrenceCollector))
+                     occurrenceCollector,
+                     roundPrefix))
         {
             yield return (finalAction, finalSnapshot);
         }
@@ -2050,7 +1975,8 @@ internal sealed partial class CombatBeamSolver
         SimulationSnapshot snapshot,
         PrimaryChoiceMatch? unresolvedPrimaryChoice,
         ChoiceSearchBudget searchBudget,
-        ChoiceOccurrenceCollector<DeferredOccurrenceChoiceBranch> occurrenceCollector)
+        ChoiceOccurrenceCollector<DeferredOccurrenceChoiceBranch> occurrenceCollector,
+        RoundPrefixReplayContext? roundPrefix = null)
     {
         if (!GrowthCostPolicy.AllowsBrightestFlame(policy.BrightestFlameMaxHpLossLimit,
                 root.InitialBrightestFlameMaxHpSpent, snapshot.BrightestFlameMaxHpSpent))
@@ -2085,7 +2011,8 @@ internal sealed partial class CombatBeamSolver
                 snapshot,
                 unresolvedPrimaryChoice,
                 searchBudget,
-                occurrenceCollector);
+                occurrenceCollector,
+                roundPrefix);
         }
         catch
         {
@@ -2111,10 +2038,10 @@ internal sealed partial class CombatBeamSolver
         SimulationSnapshot snapshot,
         PrimaryChoiceMatch? unresolvedPrimaryChoice,
         ChoiceSearchBudget searchBudget,
-        ChoiceOccurrenceCollector<DeferredOccurrenceChoiceBranch> occurrenceCollector)
+        ChoiceOccurrenceCollector<DeferredOccurrenceChoiceBranch> occurrenceCollector,
+        RoundPrefixReplayContext? roundPrefix = null)
     {
-        SimulatedCombatState combat = (SimulatedCombatState)snapshot.Simulator.State.CombatState;
-        if (combat.PendingKnowledgeDemonChoice is { } knowledgeRequest)
+        if (LegacyChoiceState(snapshot)?.PendingKnowledgeDemonChoice is { } knowledgeRequest)
         {
             IReadOnlyList<PlanCardChoice> branches = KnowledgeDemonChoiceSupport.BuildChoices(
                 knowledgeRequest,
@@ -2132,15 +2059,15 @@ internal sealed partial class CombatBeamSolver
                 };
                 resolvedBranches.Add(new PendingChoiceReplayBranch(
                     resolvedAction,
-                    PruneInvalidBranch: true));
+                    PruneInvalidBranch: true,
+                    RoundPrefix: roundPrefix));
             }
             return new PendingChoiceReplayLayer(resolvedBranches);
         }
 
-        if (combat.PendingTurnStartChoice is { } request)
+        if (PendingCardChoice(snapshot) is { } request)
         {
-            CombatPredictionSimulator simulator = (CombatPredictionSimulator)snapshot.Simulator;
-            CardChoiceSpec spec = TurnStartChoiceSupport.BuildPendingSpec(simulator, combat, _player);
+            CardChoiceSpec spec = PendingCardChoiceSpec(snapshot, request);
             IReadOnlyList<PlanCardChoice> branches = CardChoiceSupport.BuildChoices(
                 spec,
                 displayNames,
@@ -2198,7 +2125,8 @@ internal sealed partial class CombatBeamSolver
                         };
                 resolvedBranches.Add(new PendingChoiceReplayBranch(
                     resolvedAction,
-                    PruneInvalidBranch: true));
+                    PruneInvalidBranch: true,
+                    RoundPrefix: roundPrefix));
             }
             if (identityChangingLayer)
             {
@@ -2247,7 +2175,8 @@ internal sealed partial class CombatBeamSolver
                          resolvedSnapshot,
                          unresolvedPrimaryChoice,
                          branchBudget,
-                         occurrenceCollector))
+                         occurrenceCollector,
+                         branch.RoundPrefix))
             {
                 yield return (finalAction, finalSnapshot);
             }
@@ -2259,8 +2188,8 @@ internal sealed partial class CombatBeamSolver
         PendingChoiceReplayBranch branch,
         ReplayForkSeed? replayForkSeed = null)
         => branch.PruneInvalidBranch
-            ? ReplayPlannedChoiceBranch(node, branch.Action, replayForkSeed)
-            : ReplayAction(node, branch.Action, replayForkSeed);
+            ? ReplayPlannedChoiceBranch(node, branch.Action, replayForkSeed, branch.RoundPrefix)
+            : ReplayAction(node, branch.Action, replayForkSeed, branch.RoundPrefix);
 
     private IReadOnlyList<(IReadOnlyList<PlanCardChoice> Choices, SimulationSnapshot Snapshot)>
         BuildTurnSetupRoots()
@@ -2651,9 +2580,15 @@ internal sealed partial class CombatBeamSolver
         int priorActionCount = 0,
         ActionRelicTriggerRecorder? triggerRecorder = null,
         ReplayForkSeed? replayForkSeed = null,
-        SearchReplayEvidence? replayEvidence = null)
+        SearchReplayEvidence? replayEvidence = null,
+        RoundPrefixReplayContext? roundPrefix = null)
     {
+        roundPrefix?.AssertOwner(parentSnapshot, startingTurn, actions, triggerRecorder, replayForkSeed);
+        bool resumeRoundPrefix = roundPrefix?.HasCheckpoint == true;
         _run.WorkPacer.YieldIfNeeded();
+        if (triggerRecorder == null && replayEvidence == null
+            && TryCompactReplay(actions, parentSnapshot, startingTurn, priorActionCount, replayForkSeed, out var compactSnapshot))
+            return compactSnapshot!;
         CombatPredictionSimulator simulator;
         SimulatedCombatState simulatedCombat;
         int turn;
@@ -2681,7 +2616,14 @@ internal sealed partial class CombatBeamSolver
             if (parentSnapshot.BoundaryReason != SearchBoundaryReason.None)
                 throw new InvalidOperationException("不能从已抵达搜索边界的模拟状态继续分叉。");
             _run.TransitionCount += actions.Count;
-            if (replayForkSeed == null)
+            if (resumeRoundPrefix)
+            {
+                _run.ForkCount++;
+                _run.RoundPrefixResumes++;
+                using (_run.Performance.Measure(SearchMetricPhase.Fork))
+                    (simulator, processedEnemyDeaths) = roundPrefix!.Fork();
+            }
+            else if (replayForkSeed == null)
             {
                 _run.ForkCount++;
                 SearchMeasurement forkMeasurement = _run.Performance.Begin();
@@ -2702,7 +2644,9 @@ internal sealed partial class CombatBeamSolver
             }
             simulatedCombat = (SimulatedCombatState)simulator.State.CombatState;
             turn = startingTurn;
-            shufflesCrossed = parentSnapshot.ShufflesCrossed;
+            shufflesCrossed = resumeRoundPrefix
+                ? roundPrefix!.ShufflesCrossed
+                : parentSnapshot.ShufflesCrossed;
         }
         if (triggerRecorder != null)
             simulator.ActionRelicTriggers = triggerRecorder;
@@ -2720,13 +2664,14 @@ internal sealed partial class CombatBeamSolver
                 SearchMeasurement roundMeasurement = _run.Performance.Begin();
                 try
                 {
-                    boundary = AdvanceRound(
-                        simulator,
-                        simulatedCombat,
-                        turn - _startTurnNumber,
-                        processedEnemyDeaths,
-                        ref shufflesCrossed,
-                        action.TurnStartChoices);
+                    boundary = resumeRoundPrefix
+                        ? ResumeRoundPrefix(
+                            simulator, simulatedCombat, processedEnemyDeaths,
+                            ref shufflesCrossed, action.TurnStartChoices, roundPrefix!)
+                        : AdvanceRound(
+                            simulator, simulatedCombat, turn - _startTurnNumber,
+                            processedEnemyDeaths, ref shufflesCrossed,
+                            action.TurnStartChoices, roundPrefix);
                 }
                 finally
                 {
@@ -3021,6 +2966,8 @@ internal sealed partial class CombatBeamSolver
         SearchMeasurement forkMeasurement = _run.Performance.Begin();
         try
         {
+            if (parentSnapshot.CompactCandidate is { } compact)
+                return new ReplayForkSeed(compact, ((ForkableSet<uint>)parentSnapshot.ProcessedEnemyDeaths).Fork());
             CombatPredictionSimulator simulator =
                 ((CombatPredictionSimulator)parentSnapshot.Simulator).Fork();
             ForkableSet<uint> processedEnemyDeaths =
@@ -3036,14 +2983,16 @@ internal sealed partial class CombatBeamSolver
     private SimulationSnapshot ReplayAction(
         SearchNode parent,
         PlanAction action,
-        ReplayForkSeed? replayForkSeed = null)
+        ReplayForkSeed? replayForkSeed = null,
+        RoundPrefixReplayContext? roundPrefix = null)
     {
         if (replayForkSeed != null && policy.VerifyIncrementalSearch)
             throw new InvalidOperationException("严格增量回放不能消费并行 Fork seed。");
         ReplayForkSeed? gatedSeed = null;
         try
         {
-            if (replayForkSeed == null && _parallelActionReplayForkGate != null)
+            if (replayForkSeed == null && roundPrefix?.HasCheckpoint != true
+                && _parallelActionReplayForkGate != null)
             {
                 gatedSeed = PrepareReplayForkSeed(
                     parent.Snapshot,
@@ -3061,7 +3010,8 @@ internal sealed partial class CombatBeamSolver
                     parent.Snapshot,
                     parent.Turn,
                     parent.ActionCount,
-                    replayForkSeed: replayForkSeed);
+                    replayForkSeed: replayForkSeed,
+                    roundPrefix: roundPrefix);
                 if (!policy.VerifyIncrementalSearch)
                     return incremental;
 
@@ -3110,11 +3060,12 @@ internal sealed partial class CombatBeamSolver
     private SimulationSnapshot? ReplayPlannedChoiceBranch(
         SearchNode parent,
         PlanAction action,
-        ReplayForkSeed? replayForkSeed = null)
+        ReplayForkSeed? replayForkSeed = null,
+        RoundPrefixReplayContext? roundPrefix = null)
     {
         try
         {
-            return ReplayAction(parent, action, replayForkSeed);
+            return ReplayAction(parent, action, replayForkSeed, roundPrefix);
         }
         catch (InvalidPlannedChoiceBranchException ex)
         {
@@ -3210,433 +3161,6 @@ internal sealed partial class CombatBeamSolver
         return null;
     }
 
-    private SearchBoundaryReason AdvanceRound(
-        CombatPredictionSimulator simulator,
-        SimulatedCombatState simulatedCombat,
-        int roundIndex,
-        ISet<uint> processedEnemyDeaths,
-        ref int shufflesCrossed,
-        IReadOnlyList<PlanCardChoice>? turnStartChoices)
-    {
-        if (!simulator.IsInProgress)
-            return SearchBoundaryReason.None;
-        SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(_player);
-        IReadOnlyList<PlanCardChoice>? roundChoicePlans = turnStartChoices?
-            .Where(choice => choice.Effect != PlanChoiceEffect.ApplyKnowledgeCurse)
-            .ToArray();
-        TurnStartChoiceCursor roundChoices = new(roundChoicePlans);
-        simulatedCombat.BeginActionChoices(roundChoices);
-        simulatedCombat.SetActionChoiceTiming(PlanChoiceTiming.PlayerTurnEnd);
-        try
-        {
-        int roundHistoryEntryStart = simulator.History.Entries.Count;
-        if (!simulatedCombat.TryPrepareExtraPlayerTurn(
-                simulator,
-                _player,
-                out bool takingExtraTurn,
-                out bool hasActiveEmotionChip))
-        {
-            return SearchBoundaryReason.PendingChoice;
-        }
-        int etherealExhaustCount = simulatedCombat.CountEtherealCardsInHand(simulator, _player);
-        {
-            using SearchMeasurementScope _ = _run.Performance.Measure(SearchMetricPhase.RoundPlayerEnd);
-            bool playerTurnEndCompleted;
-            using (_run.Performance.Measure(SearchMetricPhase.RoundEndSimulation))
-                playerTurnEndCompleted = PlayerTurnEndLifecycle.RunPhaseOne(
-                    simulator,
-                    simulatedCombat,
-                    _player,
-                    [_player.Creature]);
-            if (!playerTurnEndCompleted)
-                return SearchBoundaryReason.PendingChoice;
-            simulatedCombat.CommitHistoryCourseTurn(_player);
-            simulatedCombat.NormalizeAeonglassWithers(simulator);
-            simulatedCombat.NormalizeCardAfflictions(simulator);
-            if (!CorePowerSupport.ApplyEnemyDeathPowers(
-                    simulator,
-                    simulatedCombat,
-                    simulatedCombat.KnownEnemies,
-                    processedEnemyDeaths))
-            {
-                return SearchBoundaryReason.PendingChoice;
-            }
-            // Finish the already-started phase-one compensation above, but do not
-            // flush the hand or enter phase two after either native phase-one check ended combat.
-            if (!simulator.IsInProgress)
-                return SearchBoundaryReason.None;
-            using (_run.Performance.Measure(SearchMetricPhase.RoundFlush))
-                CorePowerSupport.FlushPlayerHandAtTurnEnd(simulator, simulatedCombat, _player);
-            int turnEndShuffleEvents = simulator.ShuffleEventCount;
-            bool playerTurnEndCompletedPhaseTwo;
-            using (_run.Performance.Measure(SearchMetricPhase.RoundPlayerEndPowers))
-            {
-                playerTurnEndCompletedPhaseTwo = PlayerTurnEndLifecycle.RunPhaseTwo(
-                    simulator,
-                    simulatedCombat,
-                    [_player.Creature],
-                    etherealExhaustCount);
-            }
-            shufflesCrossed += simulator.ShuffleEventCount - turnEndShuffleEvents;
-            if (!playerTurnEndCompletedPhaseTwo)
-                return SearchBoundaryReason.PendingChoice;
-            if (!CorePowerSupport.ApplyEnemyDeathPowers(
-                    simulator,
-                    simulatedCombat,
-                    simulatedCombat.KnownEnemies,
-                    processedEnemyDeaths))
-            {
-                return SearchBoundaryReason.PendingChoice;
-            }
-        }
-
-        SimCreatureState simulatedPlayer = simulator.State.GetCreature(_player.Creature);
-        if (!takingExtraTurn)
-        {
-            simulatedCombat.SetActionChoiceTiming(PlanChoiceTiming.EnemyTurn);
-            using SearchMeasurementScope _ = _run.Performance.Measure(SearchMetricPhase.RoundEnemyTurn);
-            Creature[] actingEnemies = simulatedCombat.Enemies.ToArray();
-            {
-                using SearchMeasurementScope enemyStart = _run.Performance.Measure(SearchMetricPhase.RoundEnemyStart);
-                simulatedCombat.CurrentSide = CombatSide.Enemy;
-                foreach (Creature enemy in simulatedCombat.Enemies)
-                    simulatedCombat.BeginSideTurn(enemy);
-                simulatedCombat.SnapshotPowerAmountsAtTurnStart(simulatedCombat.Enemies);
-                // 怪物方开始回合时，上一怪物回合留下的格挡先清除。
-                if (!TurnStartRelicSupport.TriggerBeforeSideTurnStart(
-                        simulator,
-                        simulatedCombat,
-                        simulatedCombat.Enemies))
-                {
-                    return SearchBoundaryReason.PendingChoice;
-                }
-                if (TurnStartPowerSupport.TriggerBeforeSideTurnStart(
-                        simulator,
-                        simulatedCombat,
-                        simulatedCombat.Enemies))
-                {
-                    return SearchBoundaryReason.PendingChoice;
-                }
-                foreach (Creature enemy in simulatedCombat.Enemies)
-                {
-                    SimCreatureState simulatedEnemy = simulator.State.GetCreature(enemy);
-                    if (simulatedEnemy.Block > 0)
-                    {
-                        if (simulatedCombat.ShouldClearBlock(enemy, out AbstractModel? preventer))
-                            simulatedEnemy.DamageBlock(simulatedEnemy.Block, ValueProp.Move);
-                        else
-                            PersistentRelicSupport.TriggerAfterPreventingBlockClear(simulator, preventer, enemy);
-                    }
-                    if (!CorePowerSupport.TriggerAfterBlockCleared(
-                            simulator,
-                            simulatedCombat,
-                            enemy))
-                    {
-                        return SearchBoundaryReason.PendingChoice;
-                    }
-                }
-                bool decrementEnemyPlating = simulatedCombat.RoundNumber > 1;
-                if (!simulatedCombat.TriggerSideTurnStart(
-                        simulator,
-                        CombatSide.Enemy,
-                        simulatedCombat.Enemies,
-                        decrementEnemyPlating))
-                {
-                    return SearchBoundaryReason.PendingChoice;
-                }
-                int enemyPoisonHistoryStart = simulator.History.Entries.Count;
-                if (!CorePowerSupport.TriggerPoison(
-                        simulator,
-                        simulatedCombat,
-                        simulatedCombat.Enemies.ToArray()))
-                {
-                    return SearchBoundaryReason.PendingChoice;
-                }
-                TriggeredPowerSupport.CompensateHistorySince(
-                    simulator,
-                    simulatedCombat,
-                    enemyPoisonHistoryStart);
-                if (simulatedCombat.HasPendingChoice)
-                    return SearchBoundaryReason.PendingChoice;
-                if (!CorePowerSupport.ApplyEnemyDeathPowers(
-                        simulator,
-                        simulatedCombat,
-                        simulatedCombat.KnownEnemies,
-                        processedEnemyDeaths))
-                {
-                    return SearchBoundaryReason.PendingChoice;
-                }
-            }
-            // Vanilla checks after the entire enemy-side start, not between listeners.
-            if (simulator.CheckWinCondition(simulatedCombat.GetPlayerTurnNumber(_player)))
-                return SearchBoundaryReason.None;
-            Dictionary<Creature, MoveState> performedMoves;
-            {
-                using SearchMeasurementScope enemyMoves = _run.Performance.Measure(SearchMetricPhase.RoundEnemyMoves);
-                performedMoves = new Dictionary<Creature, MoveState>(actingEnemies.Length);
-                foreach (Creature actingEnemy in actingEnemies)
-                {
-                    if (!simulatedCombat.CanPerformMonsterMove(simulator, actingEnemy))
-                        continue;
-                    ForecastMove move = simulatedCombat.CurrentMonsterMove(actingEnemy);
-                    if (simulatedCombat.ConsumeStunNextMove(actingEnemy))
-                    {
-                        performedMoves[actingEnemy] = move.Move;
-                        if (simulator.CheckWinCondition(simulatedCombat.GetPlayerTurnNumber(_player)))
-                            return SearchBoundaryReason.None;
-                        continue;
-                    }
-                    if (simulatedCombat.TryConsumeForcedMonsterMove(actingEnemy, out string forcedMove, out int forcedDamage))
-                    {
-                        performedMoves[actingEnemy] = move.Move;
-                        if (forcedMove == "EXPLODE_MOVE")
-                        {
-                            MonsterMoveSemantics.DamagePlayer(
-                                simulator,
-                                simulatedCombat,
-                                move.Owner,
-                                _player.Creature,
-                                forcedDamage);
-                            if (simulatedCombat.HasPendingChoice)
-                                return SearchBoundaryReason.PendingChoice;
-                            using (simulator.PushDamageSource(
-                                CombatDamageSource.For(
-                                    CombatDamageSourceKind.MonsterMove,
-                                    move.Owner.Monster?.Id.Entry)))
-                            {
-                                simulator.Kill(move.Owner, force: true);
-                            }
-                            if (simulatedCombat.HasPendingChoice)
-                                return SearchBoundaryReason.PendingChoice;
-                            if (!CorePowerSupport.ApplyEnemyDeathPowers(
-                                    simulator,
-                                    simulatedCombat,
-                                    simulatedCombat.KnownEnemies,
-                                    processedEnemyDeaths))
-                            {
-                                return SearchBoundaryReason.PendingChoice;
-                            }
-                        }
-                        if (simulator.CheckWinCondition(simulatedCombat.GetPlayerTurnNumber(_player)))
-                            return SearchBoundaryReason.None;
-                        continue;
-                    }
-                    bool playerDied = MonsterMoveSemantics.ApplyForecastMove(
-                            simulator,
-                            simulatedCombat,
-                            move,
-                            _player.Creature,
-                            processedEnemyDeaths,
-                            turnStartChoices);
-                    performedMoves[actingEnemy] = move.Move;
-                    if (move.Owner.CombatId is uint revivedCombatId
-                        && simulator.State.GetCreature(move.Owner).IsAlive)
-                    {
-                        processedEnemyDeaths.Remove(revivedCombatId);
-                    }
-                    if (simulatedCombat.HasPendingChoice)
-                        return SearchBoundaryReason.PendingChoice;
-                    // ApplyForecastMove has completed its attack finally and command tails.
-                    if (simulator.CheckWinCondition(simulatedCombat.GetPlayerTurnNumber(_player))
-                        || playerDied)
-                        return SearchBoundaryReason.None;
-                }
-            }
-
-            using (_run.Performance.Measure(SearchMetricPhase.RoundEnemyEndPowers))
-            {
-                if (!CorePowerSupport.TriggerEnemySideTurnEndEffects(
-                        simulator,
-                        simulatedCombat,
-                        simulatedCombat.Enemies.ToArray()))
-                {
-                    return SearchBoundaryReason.PendingChoice;
-                }
-                if (simulatedCombat.BattlewornDummyTimedOut)
-                    return SearchBoundaryReason.EventDefeat;
-                if (!CorePowerSupport.ApplyEnemyDeathPowers(
-                        simulator,
-                        simulatedCombat,
-                        simulatedCombat.KnownEnemies,
-                        processedEnemyDeaths))
-                {
-                    return SearchBoundaryReason.PendingChoice;
-                }
-                int playerPoisonHistoryStart = simulator.History.Entries.Count;
-                if (!CorePowerSupport.TriggerPoison(
-                        simulator,
-                        simulatedCombat,
-                        [_player.Creature]))
-                {
-                    return SearchBoundaryReason.PendingChoice;
-                }
-                TriggeredPowerSupport.CompensateHistorySince(
-                    simulator,
-                    simulatedCombat,
-                    playerPoisonHistoryStart);
-                if (simulatedCombat.HasPendingChoice)
-                    return SearchBoundaryReason.PendingChoice;
-                simulatedCombat.ClearNoDraw(_player.Creature);
-                simulatedCombat.RecordRelicRoundDamage(simulator, _player, roundHistoryEntryStart);
-            }
-            if (simulator.CheckWinCondition(simulatedCombat.GetPlayerTurnNumber(_player)))
-                return SearchBoundaryReason.None;
-            simulatedCombat.PrepareMonsterMovesForNextRound(simulator, performedMoves);
-        }
-        else
-        {
-            // An extra turn advances the player's turn number too, so damage from the
-            // just-finished turn becomes Emotion Chip's "previous turn" window.
-            if (hasActiveEmotionChip)
-                simulatedCombat.RecordRelicRoundDamage(simulator, _player, roundHistoryEntryStart);
-            simulatedCombat.ConsumeExtraTurnSources(_player);
-        }
-
-        {
-            simulatedCombat.SetActionChoiceTiming(PlanChoiceTiming.PlayerTurnStart);
-            using SearchMeasurementScope _ = _run.Performance.Measure(SearchMetricPhase.RoundPlayerStart);
-            simulatedCombat.CurrentSide = CombatSide.Player;
-            if (!takingExtraTurn)
-                simulatedCombat.RoundNumber++;
-            simulatedCombat.AdvancePlayerTurn(_player);
-            simulatedCombat.BeginSideTurn(_player.Creature);
-            simulatedCombat.SnapshotPowerAmountsAtTurnStart([_player.Creature]);
-
-            if (!TurnStartRelicSupport.TriggerBeforeSideTurnStart(
-                    simulator,
-                    simulatedCombat,
-                    [_player.Creature]))
-            {
-                return SearchBoundaryReason.PendingChoice;
-            }
-            if (TurnStartPowerSupport.TriggerBeforeSideTurnStart(
-                    simulator,
-                    simulatedCombat,
-                    [_player.Creature]))
-            {
-                return SearchBoundaryReason.PendingChoice;
-            }
-
-            if (simulatedPlayer.Block > 0)
-            {
-                if (simulatedCombat.ShouldClearBlock(_player.Creature, out AbstractModel? preventer))
-                    simulatedPlayer.DamageBlock(simulatedPlayer.Block, ValueProp.Move);
-                else
-                    PersistentRelicSupport.TriggerAfterPreventingBlockClear(
-                        simulator,
-                        preventer,
-                        _player.Creature);
-            }
-            if (!CorePowerSupport.TriggerAfterBlockCleared(
-                    simulator,
-                    simulatedCombat,
-                    _player.Creature))
-            {
-                return SearchBoundaryReason.PendingChoice;
-            }
-
-            if (PersistentRelicSupport.ShouldPlayerResetEnergy(simulatedCombat, _player))
-                playerState.LoseEnergy(playerState.Energy);
-            playerState.GainEnergy(PersistentPowerSupport.GetModifiedMaxEnergy(simulatedCombat, _player)
-                + simulatedCombat.ConsumeEnergyNextTurn(_player));
-            if (simulatedCombat.HasPendingChoice
-                || !PersistentPowerSupport.TriggerAfterEnergyReset(simulator, simulatedCombat, _player))
-            {
-                return SearchBoundaryReason.PendingChoice;
-            }
-            TurnStartRelicSupport.TriggerAfterEnergyReset(simulator, simulatedCombat, _player);
-            if (simulatedCombat.HasPendingChoice)
-                return SearchBoundaryReason.PendingChoice;
-            TurnStartRelicSupport.TriggerAfterEnergyResetLate(simulator, simulatedCombat, _player);
-            if (simulatedCombat.HasPendingChoice)
-                return SearchBoundaryReason.PendingChoice;
-            int beforeHandDrawShuffleEvents = simulator.ShuffleEventCount;
-            bool sideTurnStartTriggeredEarly = false;
-            using (roundChoices.BeforeNextTake(() =>
-                   {
-                       sideTurnStartTriggeredEarly = true;
-                       return simulatedCombat.TriggerSideTurnStart(
-                           simulator,
-                           CombatSide.Player,
-                           [_player.Creature],
-                           decrementPlating: simulatedCombat.GetPlayerTurnNumber(_player) != 1,
-                           takingExtraTurn);
-                   }))
-            {
-                if (simulatedCombat.PrepareBeforeHandDraw(simulator, _player, roundChoices))
-                    return SearchBoundaryReason.PendingChoice;
-                shufflesCrossed += simulator.ShuffleEventCount - beforeHandDrawShuffleEvents;
-                int drawCount = PersistentPowerSupport.ConsumeModifiedHandDraw(
-                    simulatedCombat,
-                    _player,
-                    CombatManager.baseHandDrawCount);
-                int effectiveDraw = Math.Min(
-                    drawCount,
-                    simulatedCombat.GetMaxHandSize(_player) - playerState.Hand.Cards.Count);
-                bool willShuffle = effectiveDraw > playerState.DrawPile.Cards.Count
-                    && !playerState.DiscardPile.IsEmpty;
-                int historyEntryStart = simulator.History.Entries.Count;
-                using (_run.Performance.Measure(SearchMetricPhase.RoundDraw))
-                    simulator.Draw(_player, drawCount, fromHandDraw: true);
-                if (willShuffle)
-                    shufflesCrossed++;
-                if (simulatedCombat.HasPendingChoice)
-                    return SearchBoundaryReason.PendingChoice;
-                TriggeredPowerSupport.CompensateHistorySince(simulator, simulatedCombat, historyEntryStart);
-                if (simulatedCombat.HasPendingChoice)
-                    return SearchBoundaryReason.PendingChoice;
-                if (simulatedCombat.TriggerAfterPlayerTurnStart(
-                        simulator,
-                        _player.Creature,
-                        roundChoices))
-                    return SearchBoundaryReason.PendingChoice;
-                if (!sideTurnStartTriggeredEarly)
-                {
-                    if (!simulatedCombat.TriggerSideTurnStart(
-                            simulator,
-                            CombatSide.Player,
-                            [_player.Creature],
-                            decrementPlating: simulatedCombat.GetPlayerTurnNumber(_player) != 1,
-                            takingExtraTurn))
-                    {
-                        return SearchBoundaryReason.PendingChoice;
-                    }
-                }
-            }
-            if (!CorePowerSupport.ApplyEnemyDeathPowers(
-                    simulator,
-                    simulatedCombat,
-                    simulatedCombat.KnownEnemies,
-                    processedEnemyDeaths))
-            {
-                return SearchBoundaryReason.PendingChoice;
-            }
-            EnchantmentLifecycleSupport.TriggerAfterTurnStartOrbs(simulator, _player);
-            if (simulatedCombat.TriggerAutoPrePlayEarly(
-                    simulator,
-                    _player,
-                    _startTurnNumber + roundIndex + 1,
-                    roundChoices,
-                    processedEnemyDeaths))
-            {
-                return SearchBoundaryReason.PendingChoice;
-            }
-            roundChoices.AssertConsumed();
-            simulatedCombat.NormalizeAeonglassWithers(simulator);
-            simulatedCombat.NormalizeCardAfflictions(simulator);
-            IReadOnlyList<ForecastMove> nextMoves = simulatedCombat.CurrentMonsterMoves();
-            simulatedCombat.SetPredictedEnemyIntents(
-                nextMoves.Where(move => move.AttackHits.Count > 0).Select(move => move.Owner));
-            simulator.CheckWinCondition(simulatedCombat.GetPlayerTurnNumber(_player));
-            return SearchBoundaryReason.None;
-        }
-        }
-        finally
-        {
-            simulatedCombat.EndActionChoices();
-        }
-    }
-
     private ActionCandidate BuildCandidate(
         SimulationSnapshot before,
         SimulationSnapshot after,
@@ -3650,18 +3174,16 @@ internal sealed partial class CombatBeamSolver
         int block = Math.Max(0, after.PlayerBlock - before.PlayerBlock);
         double resource = Math.Max(0.5d, energy + stars * 0.5d);
         double normalized = (damage + block * 0.8d) / resource;
-        CombatPredictionSimulator simulator = (CombatPredictionSimulator)after.Simulator;
-        bool pure = true;
-        foreach (CombatPredictionHistoryEntry entry in
-                 simulator.History.EntriesFrom(before.HistoryEntryCount))
+        bool pure = after.CompactCandidate is { } compact
+            ? compact.LastImpureHistoryIndex < before.HistoryEntryCount : IsPureLegacySuffix();
+        bool IsPureLegacySuffix()
         {
-            if (IsPureHistoryEntry(entry))
-                continue;
-            pure = false;
-            break;
+            foreach (var entry in after.Simulator.History.EntriesFrom(before.HistoryEntryCount))
+                if (!IsPureHistoryEntry(entry)) return false;
+            return true;
         }
         SimulatedCombatState beforeCombat = (SimulatedCombatState)
-            ((CombatPredictionSimulator)before.Simulator).State.CombatState;
+            (ReadCompactPolicyState(before)?.EvaluationContext ?? before.Simulator).State.CombatState;
         bool declinedExtraTurn = beforeCombat.RelicsOf(_player)
             .OfType<PaelsEye>()
             .Any(relic => !relic.IsMelted && beforeCombat.IsPaelsEyeUnused(relic));
@@ -3830,12 +3352,12 @@ internal sealed partial class CombatBeamSolver
 
         SearchNode parent = candidate.Node.Parent
             ?? throw new InvalidOperationException("资源追回动作缺少父节点。");
-        CombatPredictionSimulator simulator = (CombatPredictionSimulator)parent.Snapshot.Simulator;
+        CompletedStateReadView? view = ReadCompactPolicyState(parent.Snapshot);
+        CombatPredictionSimulator simulator = view?.EvaluationContext ?? parent.Snapshot.Simulator;
         SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
-        Creature? target = combat.Enemies.FirstOrDefault(enemy => enemy.CombatId == targetCombatId);
+        Creature? target = (view?.EnemyRoster ?? combat.Enemies).FirstOrDefault(enemy => enemy.CombatId == targetCombatId);
         return target != null
-            && combat.ContainsCreature(target)
-            && simulator.State.GetCreature(target).IsAlive
+            && ReadCreatureValues(simulator, target, view) is { Present: true, IsAlive: true }
             && combat.EffectivePowers().Any(power =>
                 power.Owner == target
                 && (power is HeistPower { Amount: > 0 }
@@ -4551,15 +4073,16 @@ internal sealed partial class CombatBeamSolver
 
     private IEnumerable<(int Index, Creature? Target)> TargetsFor(
         PredictedCard card,
-        CombatPredictionSimulator simulator)
+        CombatPredictionSimulator simulator,
+        CompletedStateReadView? view = null)
     {
         if (simulator.GetTargetType(card) == TargetType.AnyEnemy)
         {
-            IReadOnlyList<Creature> enemies = simulator.State.Enemies;
+            IReadOnlyList<Creature> enemies = view?.EnemyRoster ?? simulator.State.Enemies;
             for (int i = 0; i < enemies.Count; i++)
             {
                 Creature target = enemies[i];
-                if (simulator.State.IsHittable(target))
+                if (IsHittable(simulator, target, view))
                     yield return (i, target);
             }
             yield break;
@@ -4570,15 +4093,16 @@ internal sealed partial class CombatBeamSolver
 
     private IEnumerable<(int Index, Creature? Target)> TargetsForPotion(
         PotionModel potion,
-        CombatPredictionSimulator simulator)
+        CombatPredictionSimulator simulator,
+        CompletedStateReadView? view = null)
     {
         if (potion.TargetType == TargetType.AnyEnemy)
         {
-            IReadOnlyList<Creature> enemies = simulator.State.Enemies;
+            IReadOnlyList<Creature> enemies = view?.EnemyRoster ?? simulator.State.Enemies;
             for (int index = 0; index < enemies.Count; index++)
             {
                 Creature enemy = enemies[index];
-                if (simulator.State.IsHittable(enemy))
+                if (IsHittable(simulator, enemy, view))
                     yield return (index, enemy);
             }
             yield break;
@@ -4586,7 +4110,7 @@ internal sealed partial class CombatBeamSolver
 
         if (potion.TargetType is TargetType.AnyPlayer or TargetType.Self)
         {
-            if (simulator.State.GetCreature(_player.Creature).IsAlive)
+            if (ReadCreatureValues(simulator, _player.Creature, view).IsAlive)
                 yield return (-1, null);
             yield break;
         }

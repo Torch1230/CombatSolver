@@ -1,5 +1,183 @@
 # CombatSolver 测试清单
 
+## Headless 磁盘复用（2026-09-12）
+
+正常单请求和矩阵运行省略实例参数，优先复用默认工作树池中的现有空闲槽，忙碌时才启用第二槽；两槽都忙时按 queue timeout 有界排队，不创建第三份。池选择持有真实 launcher lock，并检查 matrix lock；已保持的活进程不会被取走。实例名由 `HEADLESS_POOL_SELECTED` / `UNATTENDED_POOL_SELECTED` 输出。后续精确保持/释放/停止使用该稳定名字；显式 ID 或 `COMBATSOLVER_HEADLESS_ROOT` 不自动换槽。不要为每个场景新编实例名。不同工作树仍独立，显式命名目录和历史目录不属于自动池上限。
+
+Linux 发布成功后删除本次 retired 旧快照；失败的 staging 自动清理，发布失败时保留 recoverable retired。已有历史目录不自动扫描删除。相同输入继续命中原有内容快照缓存；源码/Mod 变化仍重新冻结私有快照，更新期间可能临时同时占用新旧两份，不共享可写游戏文件。
+
+无游戏验证入口：`python3 tools/test-headless-pool.py`、`pwsh -NoProfile -File tools/test-headless-pool.ps1`、`bash tools/test-headless-runtime.sh --snapshots`、`bash tools/test-headless-runtime.sh --snapshot-failures`。覆盖空闲复用、占用回退、满池有界等待、矩阵锁、现有第二槽优先于重建第一槽、保持请求/失效标记，以及成功旧快照回收、失败暂存回收和发布故障恢复。Bash / PowerShell 矩阵基础设施模拟测试也通过，覆盖参数转发、取消、固定实例及外来身份拒绝。PowerShell 池和矩阵测试本轮在 Linux pwsh 执行，不等于 Windows 实机验收。
+
+## 局部数据布局研究（2026-09-12）
+
+- `tools/DataLayoutProbe`：.NET 9.0.19 / Linux x64 / Release / `DOTNET_TieredCompilation=0`，布局与分配探针通过；每形状 1,024 次预热、五块各 10,000 次分配一致。直接链接生产集合及值类型，另外检查研究列表的父兄弟隔离、捕获枚举器与修改失效，以及生产生命值范围和 64 位卡牌编码。合成形状与仅实现部分 API 的 MergedList 不计作完整游戏支持。
+- `tools/PredictionStateStoreChecks`：相同配置下分别链接 `2f5a6df` 生产源码与生成的 ListCounts 辅助表候选；明确开启 `CHECK_ENTRY_COUNTS`。读/Peek、类型计数、隔离/顺序、alias/remap、共享状态和边界/失败合同通过。每样例 10,000 次 Fork：空仓库 40→40 B；单状态 520→424 B；16 状态 1,384→1,288 B；16 状态/模型别名 1,992→1,896 B。
+- [复现入口](../tools/DataLayoutProbe/README.md)、[研究报告](performance/simulation-data-layout-20260912.md)、[完整数据](performance/simulation-data-layout-20260912.json)。未修改生产源文件，未运行游戏、Windows、完整测试 ledger、正常 NoGC 搜索或可见 Steam；这些是独立存储/分配证据，不是搜索加速与 RSS 验收。
+- 命运同担三根两回合原生对照 Passed：21 原生动作／42 分支／18 挂起、双方人工制品与负力量重获；完整状态、键、续用、九 RNG 及八工作区。[逐项范围与 runId](performance/simulation-shared-fate-20260911.md)。
+- 神气制胜独立实例验证：三根 24 原生动作／45 分支／18 挂起、六回合及 250 节点旧新／串并行；独立施加、两类末击和玩家死亡按原生完整状态对照。[逐项范围与 runId](performance/simulation-panache-20260911.md)。
+
+- 致死性与历史课窗口验证 Passed：27 原生动作、60 分支、21 挂起、九回合及 250 节点旧新／串并行；历史课两原生自动阶段对照覆盖根前攻击与空窗口。完整状态、键、续用、九 RNG、八工作区和冻结根一致。[逐项范围与 runId](performance/simulation-lethality-20260911.md)。
+
+- 出牌前能力与迅速六项验证 Passed：三根两回合、嵌套 Sly、满手／零层／已失效、终局、死亡之舞原生费用基线修复与 250 节点旧新串并行。完整状态／来源／估值／键／续用及八工作区一致；纯值 72 组编码和生成 X 暂停合同通过。[逐项 runId 与范围](performance/simulation-card-hooks-20260911.md)。
+
+- 动态关键字六项验证 Passed：雕琢打击／响指三根两回合、生成牌、空过滤、两种终局与250节点旧新串并行；同名牌实例、X／费用、完整状态／续用及八工作区。[逐项 runId、范围与失败基线](performance/simulation-keywords-20260911.md)。
+
+- `COMPACT-HANG-NATIVE`／`HANG-CAP-NATIVE`／`COMPACT-HANG-TERMINAL`／`COMPACT-HANG-SEARCH`：`b4e7e3f4b225421e8bb208cfe8582239`／`0eb616cb7eea425daf617758199a573b`／`2067198c357a4a938e88df85cc4c6617`／`07239771f5f34edb9d623a896e207aa8` Passed；两根16原生动作28分支8挂起、四组封顶、最后击杀及250节点串并行，完整状态／原键／续用／九RNG／八工作区。[范围、失败迭代与复现](performance/simulation-hang-20260911.md)。
+
+- `COMPACT-FULL-ROUTE-NATIVE`：`c42c12e1eb8b42ddbdf6cbe6b717bc80` Passed；原始 30 牌／31 监听器，44 原生动作、424 已准入替代分支，第 8 回合胜利、59/65 HP。完整状态／键／历史／Power／九 RNG／逐实例牌堆、双工作区和原生结束后冻结重放；原正式搜索生成路线，尚非紧凑生产搜索。[范围与复现](performance/simulation-full-route-20260911.md)。 六个适配文件移入 Prediction 后，代表请求 `ec8fa69959f742e4b8c1390566b2fc0a` Passed，完整路线取证对象与迁移前相同。
+
+- `COMPACT-ROUND-NATIVE`：`43aec28b796547a7b3d107003021bd01` Passed；3 根／20 分支／7 原生动作（6 次完整结束回合），覆盖起手洗牌、Tools、临时／永久 Sly、Power、AI、生成牌、保留与敌方中毒终局；完整状态／历史／原键／估值／九 RNG、冷根历史及八工作区恢复。[证据](performance/simulation-rounds-20260911.md)。
+
+- `COMPACT-MONSTER-AI-NATIVE`：`b7de315897af4c2782ce92a17f5c3cd7` Passed；`--character-id SILENT --encounter-id MECHA_KNIGHT_ELITE --enemy-current-hp 300 --cards-json '[]'`，3 根／10 分支／16 原生动作，完整 AI／状态／历史／九 RNG／估值／原键、逆序恢复及八工作区；纯值 300 次增长日志。原生侧调用 PerformMove 和 RollMove，尚非完整回合。[证据](performance/simulation-monster-ai-20260911.md)。
+
+- `COMPACT-POWER-PHASES-NATIVE`／`COMPACT-SHUFFLE-POWER-VALUES-NATIVE`：`1c179c6437ae46a0b09144cbe6de666a`／`d73115d6b55b4602810ee3e921a4353b` Passed；五路线／22 前缀／16 原生阶段及出牌步骤，完整 Power 字段、倒计时／恢复／重获、原键／全估值／九 RNG／八工作区；洗牌 24 分支与原生两回合对照（回合边界仍由旧引擎执行）。[阶段证据](performance/simulation-power-phases-20260911.md)。
+
+- `POWER-DURATION-KEYS-NATIVE`／`POWER-DURATION-APPLICATION-NATIVE`：最终 `683bb123f72d4b5f86ac5fdfaf2a8bc8`／`54cd9ef622764de4845909b9f8abc3ad` Passed；三种减益同层不同未来的键与续用区分、中毒等价，三个应用入口／16 原生步骤、叠加／递减／重获／人工制品阻止、完整 Power 字段和冻结重放。[失败基线与最终证据](performance/simulation-duration-state-20260911.md)。
+
+- `COMPACT-MONSTER-COMMANDS-NATIVE`：`1d46526236cc45f2bdb2ca0beee0600e` Passed；三根／十三分支／十五原生动作，四种机械骑士指令、伤害与格挡修正、施加者、无创建者生成、溢出洗牌抽灼伤、小刀混合与致死结束门，完整历史／原键／Snapshot／九 RNG 和八工作区。中毒哨兵 `4bcff2265a254ddca7fa26e9d6c30bcd` Passed；[范围与证据](performance/simulation-monster-commands-20260911.md)。完整回合与 AI 推进仍待迁移。
+
+- `COMPACT-HAND-END-NATIVE`：最终 Instant `537ef792140f40368dc7b30b0b328a00`／Normal `a80cf738cde74758a4ceabbf6b01905e` Passed；共六根／十二分支、八工作区、虚无先消耗、状态抽取、格挡／失血／致死、出牌区和完整历史／原键／Snapshot／九 RNG、原生死亡后冻结重放。攻击哨兵 `92409a0ec76245eaad053b899a7f91b2` 通过；[调度边界与证据](performance/simulation-hand-end-20260911.md)。完整回合与生产模式接线仍待迁移。
+
+- `PLAYER-DEATH-POWERS-NATIVE`（`9215d87712ed4b01befaae18c76ee62b`）Passed：灼伤致死后三个 Power 清理、完整状态、根／兄弟隔离、列表／单目标伤害的反向 live／分支存活状态及待失败→Defeat。保留两条失败证据，[报告](performance/simulation-player-death-20260911.md)。
+
+- `COMPACT-FULL-ROOT-NATIVE`（`7ef49b1ef6de4b56a82c6e6c180754b3`）Passed：原始机甲 30 牌／31 牌组监听器／蛇之戒，9 分支／八工作区／六次原生出牌；完整 Snapshot、键、历史、九 RNG、缓存开关和原生推进后根隔离一致，仅首回合行动边界。[证据](performance/simulation-full-root-20260911.md)。
+
+- `COMPACT-ARTIFACT-NATIVE`（`10f13f49a6a24b03bd3d61bba40c19f2`）Passed：两根／15 分支／八工作区／九次原生出牌，首次／叠加临时效果阻止、负属性、X=0、正增益、非默认字段／顺序／退休和死亡清理，完整 Snapshot／原键／历史／九 RNG。纯值合同及普通 Power／费用哨兵 `7cbc93b5ccd9442496f85ec7e51df4fd` 通过，[证据](performance/simulation-compact-artifact-20260911.md)。
+
+- `COMPACT-RANDOM-COSTS-NATIVE`（`98dee34da8de40eb8313653b87ddb9e9`）Passed：两根／13 分支／八工作区／九次原生出牌、三次重抽／付款、完整修饰前缀／列表、满手门、Shuffle 和 CombatEnergyCosts 五字段、全部 Snapshot／原键／九 RNG 及原生推进后的根隔离。纯值 130 次重抽通过；附魔生成 `22d19af3b151495cba380e6873724b0c` 和选择链 `ea9a51de7d294b9cad9405a57c5e9d1e` 同产物通过，[证据与边界](performance/simulation-random-costs-20260911.md)。
+
+- `COMPACT-INKY-CARDS-NATIVE`（`942a23f0b0e1423d9ea58cd91f04adbd`）Passed：两根／13 分支／八工作区／八次原生出牌，普通与附魔生成混合、满手溢出、洗牌、消耗及目标死亡后跳过虚弱，完整 Snapshot／原键／历史／逐卡指纹／九 RNG；[证据与模板折叠条件](performance/simulation-inky-cards-20260911.md)。
+
+- `COMPACT-GENERATED-CARDS-NATIVE`（`230fb3cfae674da49a61751b4f23da55`）Passed：两根／12 分支／八工作区／九次原生出牌，生成次序、满手溢出、小刀消耗／洗牌／死亡、全部 Snapshot／原键／历史／九 RNG；300 实例、索引截短复用的纯值合同通过。原选择链 `57b5d857e4354a63b1022738090d8fbf` Passed，成本与迭代失败见[报告](performance/simulation-generated-cards-20260911.md)。
+
+- 索引缓冲区合同 Passed：三列表／800 步交错分配、64／2048／65536 边界、八工作区、事件完整 32 位字段；512 次执行中穿插领域槽位。最终 `COMPACT-EFFECT-PROGRAM-NATIVE`（`70f16b4d11984d1c98d46718324c2034`）和中毒终局 `24a06feb94e54f17aa05414434226290` Passed；同 JIT 原产物成本请求 `2321744580d545658aa1abec3536982c` 保留作对照，[额外成本与证据](performance/simulation-indexed-buffer-20260911.md)。
+
+- `COMPACT-TEMPORARY-STRENGTH-NATIVE`（`73cfb42540b941beb3603a22310c1712`）Passed：两个原生根／9 分支／八工作区／五次出牌，尖啸首次、叠加封顶、力量退休重获、Power 非默认字段与敌人死亡，完整 Snapshot／原键／历史／九 RNG。共用 helper 的下回合计数哨兵 `b171994244b54caaafb6e479dca94365` Passed；侧回合末仍由旧引擎与原生定向回调对照，[证据](performance/simulation-compact-temporary-strength-20260911.md)。
+
+- `TEMPORARY-STRENGTH-ORDER-NATIVE`（`f2309b7ed0b1467e87d45a4d77f741ac`）与 `TEMPORARY-STRENGTH-CAP-NATIVE`（`fdcb17d80e1b4106870c33f5a98f04fb`）Passed：两条失败基线对应顺序与封顶偏移；最终覆盖尖啸、Artifact、+5／−2／−3、已有封顶与首次超上限、完整 Power 顺序／快照、Fork 和原生侧回合末恢复。普通 Power／中毒哨兵 `d44af93c1ae845358d699f44961cb116` 通过；[产物范围与证据](performance/simulation-temporary-strength-20260911.md)。
+
+- `COMPACT-DEFERRED-POWERS-NATIVE`（`6f3117a761c04843a78aa6aae746b538`）与新增 Power 槽后的中毒／表达式哨兵（`0ea7d01ece354b858df12471eb6ba5d4`）Passed：三个原生根、16 分支／八工作区、上限与小数返回、必备工具计数和移除；完整状态／历史／原键／Snapshot。兑现由旧引擎与原生定向触发 `AfterBlockCleared`，不是紧凑跨回合；[证据](performance/simulation-compact-deferred-powers-20260911.md)。
+
+- `DEFERRED-BLOCK-RETURN-NATIVE`：失败基线 `f061e289ecc44478bb7e2755653b3b05`（下回合格挡 1／3），最终 `c06b5d6fb97443589aea01f62f52672b` Passed。三个原生根覆盖上限与小数、叠加、零值，完整快照／Power 元数据、Fork 隔离和定向 `AfterBlockCleared`；[证据](performance/simulation-deferred-block-return-20260911.md)。
+
+- `COMPACT-POWER-EXPRESSIONS-NATIVE`（`fbb8b2f392274928b5d27bc48ed4e9b8`）Passed：13 分支、八工作区、原生十步；中毒存在／归零／重获、存活敌人求和、基础值与倍率、敏捷／脆弱取整、升级消耗、完整 Snapshot／原键／历史／九流 RNG 及终局清理前状态。纯值工具与 Linux 门禁通过；[失败夹具记录与最终证据](performance/simulation-power-expressions-20260911.md)。
+
+- `COMPACT-POISON-TRIGGER-NATIVE`（`22e557b94d464cdc9b0e45713ff8be85`）、`COMPACT-DISCARD-DRAW-NATIVE`（`a7496c81ae34441987e89f369789116a`）、普通抽牌哨兵（`3e816af38b8c4ef196ec034482652464`）和 `COMPACT-POWER-REACQUIRE-NATIVE`（`c16dead0c81c4818bf9996b6ecf898b1`）Passed：中毒 11 分支／五步击杀与清理前终局、24 弃抽分支／重新抽到的 Sly、空手牌、非默认回合初始值／计时／Target 重获、八工作区、完整状态／历史／Snapshot／原键。纯值合同与结构门禁通过；[证据与边界](performance/simulation-poison-discard-20260911.md)。
+
+- `COMPACT-CONDITIONAL-POWERS-NATIVE`（`0dda50623c92431687817928bbf2744f`）与 `COMPACT-DRAW-RETURN-NATIVE`（`e318d438c9d84b0fab75d17b48db46d8`）Passed：14 分支、八工作区、原生九步和四种原生抽牌根；群体中毒／虚弱顺序、条件格挡、固定施加者／死亡清理、虚无历史、全部 Snapshot／原键／九流 RNG 一致。编译器迁移后的旧生命周期（`2a8ad6be6fd8438bb89415106515af8c`）通过；[失败记录和适用范围](performance/simulation-conditional-powers-20260911.md)。
+
+- `COMPACT-CARD-LIFECYCLE-NATIVE`（`aa9d057433054489875622e192cb566a`）Passed：12 组合分支、六种风险来源、八工作区、原生九步覆盖能力牌移除、X=3／X=0、消耗历史与完整状态／Snapshot／原键。v5 终局缓存条件补充后的攻击哨兵（`7f451fc9bc8a4598875fccf00c3b70eb`）与 v4 嵌套选牌哨兵（`707c28338b8a452ab228ed9111d61b5c`）Passed；[证据与边界](performance/simulation-card-lifecycle-20260911.md)。
+
+- `COMPACT-EFFECT-PROGRAM-NATIVE`（`fd79e13365d845308fff3c6f825b78cf`）Passed：生存者→Sly 早有准备→部分抽牌／洗牌的 24 分支、完整状态／Snapshot／原键／历史／九流 RNG、八工作区及原生后空翻续接。原洗牌链（`df473de5246d45feb750f0510c97bf07`）与 Power／七步击杀链（`277e239f863f424c810cbe8ed161ddfb`）同产物通过。三组纯值工具通过；[证据与范围](performance/simulation-effect-program-20260911.md)。
+
+- `COMPACT-POWERS-NATIVE`（`6b2f26c48d4f4934b8959175a94271c1`）与 `COMPACT-POWER-BOUNDARIES-NATIVE`（`afe4886edcc945278a931a04dd758a31`）均 Passed：21 分支、五种基础 Power、原生七步击杀、八工作区，以及负属性／小数边界三步和旧引擎显式定向 Power。最终 Release `artifact-v8`；原生洗牌哨兵 `18e523f6b1b242ea91acae8073f90bbc`、混合 Power 顺序 `f6160c9671fa4d9785b37b9792edfc16` 均 Passed；[证据和边界](performance/simulation-compact-powers-20260911.md)。
+
+- `COMPACT-ATTACKS-NATIVE`：SILENT／CORPSE_SLUGS_NORMAL，120 秒 headless，最终 `c8bd3d9d609c4023a187a4a0479ce1a9` Passed。18 分支的全状态、完整评分／原键／来源历史，八工作区独立执行与读取，原生五步部分／最后击杀及 teardown 前完整终局对账；[证据与范围](performance/simulation-compact-attacks-20260911.md)。`CompactCreatureChecks` 增补目标、取消撤销、暂停恢复与结束门合同通过；洗牌原生哨兵 `6660eab2ce51440b9dcecb097d7541e1` Passed。
+
+## 2026-09-11：生物值与完整估值读取
+
+- [CompactCreatureChecks](../tools/CompactCreatureChecks/README.md) 九个边界伤害向量、治疗／限幅、跨页撤销及八工作区恢复通过。
+- `COMPACT-CREATURE-VALUES-NATIVE` 最终 `f79411f25e10403cab705060cd22d350` Passed，23.64 秒：三敌 16 状态的全部 Snapshot 属性／原键／排序／根恢复，12 个玩家与敌人原生伤害的完整状态。另单列 `SandpitPower` 评分 helper 的 owner／target／amount／分支 HP 读取，未把它计作完整 Power＋离场闭包。既有 24 分支、九 RNG 和两回合洗牌原生 `310ff556730f4086affc538afc587915` Passed。完整原输入、退化样本、失败原因及最终构建／门禁证据见[报告](performance/simulation-creature-values-20260911.md)。
+
+## 2026-09-11：可增长紧凑工作区
+
+- [CompactGrowthChecks](../tools/CompactGrowthChecks/README.md) 八组合同通过：600 步独立列表 oracle、页边界／不同长度恢复、嵌套撤销、八路隔离，以及第 256 次冻结后继续至 512 次执行并逐槽对照。现有结构工具四个候选各 ABBA 的 34 叶／逐槽合同通过；数据包含未保留实验。
+- 最终洗牌／战略选择原生 `a198b630720f4cfdb6c5bdac5655bfc1` 和 34 叶原生哨兵 `2de8f6b9cdca477ab8787dda5f2ca17c` 均 Passed。相同 JIT 的旧／新产物成本请求也均通过，完整 ID、成本退化与未迁移范围见[报告](performance/simulation-growable-state-20260911.md)。Release 0 警告／错误，Linux 门禁通过，PowerShell 未运行；测试实例已停止。
+
+## 2026-09-11：卡牌基础估值缓存完整复评（撤回）
+
+- 最小合同 `562da65df4654273bd870a0d5de7a622` Passed，覆盖升级、动态变量、COW 分支、并行读取和不透明模型旁路。两场完整原输入 ABBA 的八次测量均 Passed，88 项逻辑字段和完整路线一致；无预算覆盖或增量验证。约 2% 耗时差异不足以支持加入该缓存，分配略增且 GC 未稳定改善，生产源码与专用测试入口已撤回。具体 runId、命令、全部数据和局限见[报告](performance/simulation-card-value-cache-20260911.md)。
+
+## 2026-09-11：紧凑洗牌／战略选择与估值复用
+
+- `COMPACT-SHUFFLE-POWER-NATIVE` / `caf3dd7642e04d678278d1d30bdc0e5d` Passed，28.20 秒，T1→T2；24 个嵌套选择样本的完整状态／ContinuationStamp、九流五字段 RNG、原键、全部估值属性和历史来源对账；缓存开关一致，卡牌元数据不变，完整撤销，8 worker 从暂停洗牌候选独立恢复。原生再执行后空翻，旧引擎推进回合后，新根紧凑执行防御。已验证效果不等于完整紧凑跨回合、Power 数量变化或死亡。
+- 原 34 叶哨兵 `ce69f05dcfd04e2fb4be938848967191` Passed，4.83 秒，使用 v3；完整属性／原键／排序、冷暖 solver、根隔离和下一动作等继续通过。最终 v4 仅进一步缓存类型审计元数据并计入每批准入，未知 Power／临时费用的拒绝由 v4 原生场景覆盖。
+- 四组交错对照：含准入 3.31×，分配为旧重放的 19.35%；缓存本身 CPU −9.56%。数据、初次 RNG 测试表达式和目录写出失败、冷初始化成本及边界见[报告](performance/simulation-expanded-chain-20260911.md)／[原始数字](performance/simulation-expanded-chain-20260911.json)。Release 0 警告／错误，Linux 边界门禁通过；PowerShell 未执行，未跑完整战斗、增量搜索、Steam 或生产 Beam 性能。
+
+## 2026-09-11：紧凑完成状态直接读取
+
+- `COMPACT-KERNEL-NATIVE` / `0c14283a61414f3eacb81ebfe7f7f277` Passed，29.60 秒；根与 34 叶全部 Snapshot 属性、原键、投影洗牌／保留排序、卡牌元数据及根不变、外根／挂起拒绝、直接下一动作通过。原完整状态／ContinuationStamp／有序来源历史、冻结恢复的 8 worker 和原生嵌套链继续通过。最终四组交错完整批次约 2.87×，分配为原来的 16.53%，CPU 3× 联合门槛未通过。Release 0 警告／错误，Linux 门禁 `REFACTOR_BOUNDARIES_OK search_files=87`，实例已停止。
+- `MIXED-POWER-ACQUISITION-ORDER` / `c6987417df75415fa60154e7f089051a` Passed，4.08 秒，混合 Power／卡牌联动／重获六个稳定边界；`SUMMON-DEATH-POWER-ORDER` / `a48e596bf32c495db7516f36c91016f0` Passed，4.29 秒，T1→T3，原生召唤、击杀、Fork、完整状态和 MonsterAi／Niche 精确 RNG。使用本轮 v2，两个夹具后续没有语义改动；观察器默认关闭，净字段变化不冒充紧凑槽写入或瞬态 journal。
+- v1 `f35a810d682d4ac49bc29ba66c288c55` 因遗漏技能集合导致 StateKey 差分失败；v2 `7b18485c879541f7b699cf4c002025c8`、v3 `c811984ef331420088f55fce6c06dca4` 已通过各自启用的断言。v3 进一步覆盖根／外根／挂起拒绝与直接下一动作，之后只将共用牌堆遍历改为索引以消除新增装箱分配；最终受影响夹具重测记在上项。
+- Linux／PowerShell 门禁同步；最终验证结果及完整交错样本见[报告](performance/simulation-read-view-20260911.md)和[原始数字](performance/simulation-read-view-20260911.json)。头次门禁指出新的 ReadView partial 未列入白名单，已同步双端职责清单。未执行 PowerShell、完整战斗、增量、可见 Steam 或新后端 DOP 性能测试。
+
+## 2026-09-11：剩余瓶颈评估与紧凑候选存储
+
+- [存储探针](../tools/CompactCandidateChecks/README.md)直接链接内核：七组容量合同、零值与完整有符号值、页边界、嵌套回滚后冻结、活动事务/外根拒绝及 8 worker 复用恢复通过。0/1,024/8,192 历史值、8/512/1,024 核心写入的 128 个保留分支全部逐槽一致；这些是结构负载，不是 Power/RNG/死亡语义。A–B–B–A 固定测量完成，保留分配收益与密集退化；最初测试表达式优先级错误及修正见报告。
+- `COMPACT-KERNEL-NATIVE` / `ed3c059cd1a643b0aed19a65ab53597a` Passed，30.22 秒：同一 lane 恢复全部 34 个候选，8 worker 各四次恢复暂停候选；完整状态/ContinuationStamp、原键、Snapshot 全属性与顺序、历史及下一动作续接、原生嵌套链均通过。保持正式通知隔离与 await/原生部署边界。Release 0 警告/错误，未运行新后端整场或 headless 增量验证。
+- 当前原生产构建固定 Short 的 DOP8/1/2/4/8 分别为 `0c364b56a13f49c593fbac24b0476023`、`d24e093fddb54e4d934a21345090ad66`、`0f73e4cbd7054e568ac7edc750a74a73`、`d1b1ec9dc87a49fc8f98df13fa666349`、`28001fde029d42779321a25a9609d9c5`，均 Passed。34 项逻辑/质量指标相同，DOP2/4/8 最大并发达到 2/4/8；本轮没有比较全部动作或逐状态。首尾漂移、实际线程 CPU 与采样窗口局限保留，未据此修改调度。
+- Linux 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=85`；PowerShell 对应规则同步但未在本机执行。两个实例已停止。完整命令、CPU/分配样本、保留 payload、GC 证据边界及后续进入条件见[本轮报告](performance/simulation-candidate-storage-20260911.md)和[方案账本](performance/simulation-strategy-ledger-20260911.md)。
+
+## 2026-09-11：紧凑估值诊断与模拟上下文校正
+
+- `COMPACT-KERNEL-NATIVE` / `22e98eed11404f2cbb9287d29c7e889a` Passed，30.48 秒。测试与正式搜索共用通知隔离上下文，八任务 await 前与原生部署前显式退出；34 叶完整状态、ContinuationStamp、原状态键、全部 Snapshot 属性、有序历史、冻结续执行和原生嵌套链通过。
+- 新增预热 solver / 每 34 叶新建 solver 的全属性与排序对照，四组交错样本，每样本 256×34 叶；24 个唯一威胁缓存键，保留同批重复状态。线程 CPU、墙钟、分配与嵌套内部阶段分开记录。CPU 采样仅纳入诊断栈，不代表完整搜索、可见性能或 DOP8 合同。
+- 前两次 `810165f0484549aa98b845ff06769596` / `3612a4288755423e9cf0707c4f1c192b` 也通过其启用的断言，但遗漏正式隔离，第一轮另有计时漂移。它们与前一原型的 1.53× 样本保留为历史，不作为正确上下文的瓶颈依据。最终 Release 0 警告/错误；双端结构规则同步，实际执行 Linux 版。全部实例已停止。详见[报告与全部样本](performance/simulation-evaluation-bottleneck-20260911.md)。
+
+## 2026-09-10：紧凑可恢复执行原型
+
+- `COMPACT-KERNEL-NATIVE` / `c5c109a3766249aa8885298e5ebdc60c` Passed，隔离 headless 总时长 25.26 秒，120 秒上限未扩。30 张真实卡、34 个物理叶子：完整状态/ContinuationStamp、原 StateKey、全部 Snapshot 属性与历史来源配对一致；覆盖嵌套撤销、错误 LIFO/外根/重复消费、取消、冻结候选的八个独立任务与下一手动动作。一个原生嵌套链通过 actual/predicted；不是整场或 DOP8 全搜索验证。
+- 同请求内完成预热及四组正反交错固定工作量样本，完整模式包括冻结、旧模型投影、完整 Snapshot 和相同保留排序，CPU 均值约 1.53×、分配下降 4.54%；R2 门槛未通过。纯内核单列，不当作完整后端收益。原完整基准未缩减/运行；洗牌、RNG 写入、生成与跨回合尚未迁移。
+- 最终行为源码 Release 0 警告/错误，Linux 门禁 `REFACTOR_BOUNDARIES_OK search_files=85`；PowerShell 规则同步但未执行。三次开发失败及 v3 失败退出时的进程崩溃保留，成功后显式停止拥有的实例。命令、全部样本和范围见[结果报告](performance/simulation-kernel-prototype-20260910.md)及其 JSON。
+
+## 2026-09-10：大幅重构再调研（离线）
+
+- 基于 `6161e74` 源码与已完成的 P5 证据，离线复算四个 B 样本的请求均值、分配/转移；从亡灵 `43544da114824e169031be158500422d` 日志与 Coordinator 调用链核对六次 solver，提取 22 处 StateKey 排序源码行。JSON 中保留来源、原事件和计算口径，详见[调研报告](performance/simulation-redesign-research-20260910.md)。
+- 本轮验证仅 L0：新增 JSON、相对链接与差异格式。没有新编译、游戏请求或语义/性能测试；没有实现通用选择续执行、紧凑状态或撤销日志。旧测试不计作本轮通过，3×/分配≤20% 原型门槛与 10× 方向均未验证。
+
+## 2026-09-10：性能重构最终 headless 集成
+
+- 用户明确取消可见测试，以 headless 完成。本轮没有继续启动 Steam；隔离入口使用 `--headless --force-steam=off`。
+- 机甲 `170c7f252d1d4aa6b46a2a5f0b586b76`、亡灵 `dbc41031ba1e42e8b6933f1fe62edbf2` 完整原生部署均 Passed：VeryHigh / DOP8 / NoGC16GB，无搜索预算覆盖或增量验证，Instant / 0 秒部署；T7 / T13、实际结束 HP ≥59 / ≥32、零计划外重算。请求总时长 44.17 / 107.88 秒，均在 120 秒内。
+- 初始搜索 88 项逻辑字段及完整动作/回合结果/预测和 P5 候选全同；其后 6 / 12 个 `SEARCH_REUSED` 均为 `exact_state_text`，复用 RESULT 的展开与转移为零。日志退役后已停止拥有的实例。完整命令、请求、结果、逐次复用及取消前可见尝试的局限见[最终报告](performance/simulation-refactor-result-20260910.md)。行为构建和结构门禁复用 P5 已通过的相同冻结产物，收口只修改文档，未重跑同一成功行为验证。
+
+## 2026-09-10：P2 / P4 决策诊断
+
+- `1787f9d` 上临时测量 Snapshot / ForkPower / PowerFingerprint 的线程 CPU 与分配，Release 0 警告/错误。机甲 `9305c5edd5844f7188aa8f584a1bbbd4`、亡灵 `c64a0b392e57424e96a06b1dc6492db3` 两场完整正常请求 Passed；88 项逻辑字段及完整动作、回合结果/预测相同。
+- 没有短搜、预算覆盖或 headless 增量验证；源码已精确恢复、helper 已移除、拥有的实例已停止。CPU 采样和读钟开销的局限见[P2/P4 决策](performance/simulation-refactor-p2-p4-decision-20260910.md)。本轮不进入这两项 API/存储迁移，不声称通过了未实现的 COW 或待选择结果协议。
+
+## 2026-09-10：P5 回合检查点
+
+- Fork 合同 `9b709fcb76cf48c7979233b42981075b`，原生 Tools / Mayhem `94203d60bb9a4a38b612d400ada429c9` / `fc88e983d1f74a33b9a7cb2eeb8c1b45`，DOP1/DOP2 / 取消 / 失败排空 / 复用 `f9e7de49655940e1a92ea14a9f6fbf07` 均 Passed。七组影子检查点对原完整重放逐分支比动作、状态键、评分、完整状态、RNG/洗牌和逻辑工作；覆盖父子/live 隔离、提前释放与终局不捕获。
+- 冻结前 Release 0 警告/错误，Linux 结构门禁 85 个 Search 文件；双端规则同步，未执行 PowerShell。没有 headless 增量验证。
+- 两场原完整 VeryHigh / DOP8 / NoGC16GB 的 ABBAABBA 全部完成，每进程相同两场预热、16 次测量，131 项字段分类比较，88 项逻辑字段和 40/85 条完整动作零差异。机甲四对耗时下降 12.87%–18.80%、分配 −14.62%；亡灵四对下降 2.16%–9.52%、分配 −1.52%，同期基线漂移明显。采样 RSS 均值增加、最坏 GC 未改善，完整证据与局限见[P5 报告](performance/simulation-refactor-p5-20260910.md)。完整原生部署已由 P6 headless 补齐，用户取消可见帧验证。
+
+## 2026-09-10：P5 回合阶段职责迁移
+
+- Release 0 警告/错误，Linux 门禁 `REFACTOR_BOUNDARIES_OK search_files=85`。双端门禁同步文件集、阶段入口与禁止结算回流规则；本机没有执行 PowerShell。
+- 完整正常机甲场景 `03bc4c371cb04593abef0f4098af2bb6` Passed；VeryHigh / DOP8 / NoGC16GB，无预算覆盖、无增量验证。88 项逻辑字段与 40 条完整动作、7 项回合结果、7 项预测和本批基线相同；请求后退出拥有的实例。
+- 仅提取原回合推进及玩家开始阶段，没有新增状态、检查点、原生语义修复或性能结论。原始命令、完整结果和比较保留在 `.local/simulation-refactor-20260910/p5-phase-*`。
+
+## 2026-09-10：模拟性能重构 P3（原型撤回）
+
+- 候选 Release 0 警告/错误；Linux 结构门禁通过（84 个 Search 文件）。ForkBoundaries `27ab4415388d4b0aaa42cbe02eef6e02`，VitalSpark / Galvanic / Smoggy 原版严格差分 `7a6a4da5e99143058161d9d014cb2d90` / `4b6f4fd28e934e61969449d86111b7ac` / `796f720131104c93b7e28f53fe63f9a0` 均 Passed。
+- 预定完整 VeryHigh/DOP8/NoGC16GB 的 ABBAABBA，只完成前四个进程的两场各四个测量。全部 131 项 RESULT 字段比较，88 项逻辑字段与 85/40 条完整动作相同；调度、耗时、GC、内存差异另列。A4 遇桌面/Steam 启动干扰，A5 冷预热 `e0f73ea0c63046ac9632fad0673cbd08` 超过 120 秒、无 result.json、进程已停止；不是完成的稳定性能对照，不能把原始均值约 −11% 写成加速。
+- 原型及专用测试撤回，未保留生产变更；不追加 DOP/增量/整场部署/可见回归。已做与未做项、全部 runId、GC 与峰值 RSS、命令见[P3 报告和 JSON](performance/simulation-refactor-p3-20260910.md)。
+
+## 2026-09-10：模拟性能重构 P1（临时诊断）
+
+- 诊断版 Release 0 警告 / 0 错误。两场仍使用完整 VeryHigh / DOP8 / NoGC16GB，无预算覆盖或增量验证：亡灵契约师 `147c10b1ade1470181726cde97954d7e`、机甲骑士 `c8a2065b2632499ab50200e8444bf674` 均 Passed，九项工作/终局标量与 P0 相同；不作为逐动作等价或提速证据。
+- 记录真实投影签名复用、维护成本、归一化访问与首次入场、逐类型 ForkPower 分配。首场包装脚本日志路径错误发生在请求成功之后，已恢复同次完整计数，保留截断尾行；机甲请求正常退役日志。实例均已停止、临时源码已恢复，详见[P1 报告及数据](performance/simulation-refactor-p1-20260910.md)。
+- 最终只提交诊断报告、JSON 和计划状态，执行 L0 路径/链接、JSON 与 diff 检查；P3–P6 尚未完成，不追加未改行为的游戏回归。
+
+## 2026-09-10：模拟性能重构计划（仅文档）
+
+- 新增[分阶段执行计划](performance/simulation-refactor-plan-20260910.md)，约定完整正常配置的交错 A/B、严格差分、Fork/并行合同及最终可见验证。以上均为后续验收要求，不计为本轮通过。
+- 本轮仅做 L0 新增链接/路径及 diff 检查，未修改行为源码、重跑游戏、构建或新增性能结论。现有直接采样证据见下节。
+
+## 2026-09-10：0.34.6 极高配置完整搜索热点采样
+
+- 上游 `a6bc386`，Release 构建 0 警告 / 0 错误，`CopyModOnBuild=false`。两场均 VeryHigh、DOP8、NoGC 配置 16 GB，正常搜索整场路线并在首个完整请求返回后停止；不覆盖时间、节点、Beam 或选择预算，不启用 `ForceShortSearchOnly` 或增量验证。CPU 与分配分别采集，耗时包含 profiler 开销，不作速度 A/B。
+
+| 场景 | CPU runId / 分配 runId | 直接结果 |
+| --- | --- | --- |
+| 亡灵契约师 / AEONGLASS，38 牌、19 遗物、2 药，RequireAtLeastOne | `e4d7d876fdf043679e33b9d0236ae49d` / `4f810c9cfe014539bce8ed2884b53dd8` | 均 Passed；累计展开 150,035 / 转移 1,693,024 / 选择 1,024,228；预计战损 9、T13、2 药 |
+| 静默猎手 / 机甲骑士，维护中原生建局 fixture 的完整 30 牌及附魔，Smart | `418816fd5abc4e0f957f9ab0cf07adb7` / `5fd38f44839842f083546fcc91bb310e` | 均 Passed；累计展开 14,611 / 转移 119,407 / 选择 67,273；预计战损 6、T7、0 药 |
+
+- Linux perf 的可归因搜索样本分别 67,667 / 3,455；分配 trace 完整转换，事件丢失均为 0。CPU/分配对照只确认上述工作量与结果标量，未做逐动作严格等价。第一份 CPU 请求的退出日志有截断，不当作完整动作证据；perf 数据已成功解析，未因此重复场景。
+- 初期短搜采集链路检查不进入正式结论；旧部分机甲存档 `1c1134cbba904d8c995745f1e4247cd2` 在建局时因缺少角色 ID 失败，未进入搜索，排除后使用维护中的完整建局 fixture。采样实例已停止；原始证据保留在 `.local/simulation-profile-20260910/`，完整条件与命令见[采样报告](performance/simulation-profile-20260910.md)及其 JSON。
+- 只改诊断文档，执行 L0 文档链接、结构化结果及 diff 检查；没有算法修改、新语义回归、整场原生部署或正常可见 Steam FPS 结论。
+
 ## 0.36.4：摘要标题
 
 - 发布整合：客户端昵称字段与本次策略修正已共同通过 Release 编译；复用本轮已生成的 0.36.4 DLL/ZIP。昵称真实上传端到端未验证，策略与 UI 证据见下。
@@ -2915,9 +3093,125 @@ pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId MONSTER-MOVES-BA
 - “通过”必须有同一 `runId` 的 `Passed` 结果，并核对对应 `SEARCH_REQUEST`、`RESULT`、`ACTION`、`DEPLOY_*` 和真实怪物行动日志。
 - 只编译通过、只看到最终胜利或只看模拟结果都不能标记为通过。
 - `RID/resources still in use at exit` 当前记录为 Godot 退出噪音；任何 `CombatSolver/Unattended FAILED`、`SEARCH_FAILURE`、`DEPLOY_FAILURE` 或状态断言失败均判定场景失败。
+
+`COMPACT-SEARCH-BACKEND`（L3，原始 SILENT／MECHA_KNIGHT_ELITE、VH_PERF_MECHA、30 张 RunCards、清空原跑局牌组且 Cards=[]、VeryHigh、8 worker）：同一捕获根运行完整旧／紧凑搜索，逐项比较路线、全部 SolverSnapshot 和主要逻辑计数，断言实机不变；另报完成、挂起和兼容物化数。请求上限 120 秒，NoGC 配置断言不代表 Runtime 已进入 NoGC。双端脚本使用现有 ScenarioId/RunCards/Cards/ClearRunDeck 参数，无新增协议字段。[通过结果与分阶段性能](performance/simulation-search-backend-20260911.md)。
+
+`COMPACT-SEARCH-BACKEND` 现还校验原始战斗／跑局各 30 牌及完整 `Continuations`。政策读视图集成通过 `427def306b9748988a4088c10646bb4c`，既有完整路线和所有逻辑计数不变；物理成本单列，不能混同预算。
+
+挂起状态接入后，`COMPACT-SEARCH-BACKEND` 逐个截断完整路线的所有选牌前缀，比对挂起快照、请求、完整选项和来源实例，逆序检查冻结选择及预览未被复用覆盖，并对错误选择来源断言相同业务拒绝。单线程／8 worker 使用相同原输入及现有 DOP 参数。`COMPACT-ROUND-NATIVE` 增加同一 helper，覆盖 Stratagem、Tools、Sly 嵌套及回合内未发布意图；本轮三模式的省略边界为 5／3／0 个。纯值 `RoundChecks` 另覆盖空根 AI 日志、根当前招式与下一招式不同的挂起发布边界。
+
+`COMPACT-SEARCH-BACKEND` 现保存成功 A/B 的完整逻辑结果，并比对每个完成前缀的 ContinuationStamp，附进程级分配／CPU／GC 增量。单线程与 DOP8 的原完整路线和全部逻辑结果跨请求一致，物化均 0。`COMPACT-SERIAL-PREPARATION-SENTINEL` 使用 VerifySearchPolicySnapshot + StopAfterCombatRootSnapshotAssertion，固定 250 节点、SILENT／机械骑士 1000 HP、PREPARED／SURVIVOR／BACKFLIP 及 GAMBLERS_BREW／COLORLESS_POTION，验证旧路径 DOP1/DOP2、取消／失败排空。三模式 `COMPACT-ROUND-NATIVE` 的每步完成值还比对续用文本，覆盖非零根历史及 Power 初始字段。
+
+`COMPACT-SEARCH-LIFECYCLE`：原始 30 牌根、250 节点，旧／紧凑 DOP1 和紧凑 DOP2 全政策结果一致；真实双线程、取消／注入异常排空、失败后复用根、未迁移药水明确拒绝及实机不变。`COMPACT-RUNTIME-FULL-AUTO`：原始机甲、VeryHigh/DOP8/NoGC16GB、Instant/0，实际紧凑执行与 T2–T8 精确续用，T8 胜利／6 HP／0 药／零计划外重算。`COMPACT-RUNTIME-MODEL-FALLBACK`：增加 FIRE_POTION 后明确使用模型后端，首轮结果正常。`COMPACT-RUNTIME-MODEL-BASELINE`：启用前 67aa82d 产物、同原输入与正常 NoGC，首轮逻辑计数／评分／预计战损与紧凑样本一致；仅停止在首轮结果。均为 120 秒以内 headless 请求。[结果与限制](performance/simulation-runtime-backend-20260911.md)。
+
+### 精神过载与毁灭值执行（2026-09-11）
+
+`COMPACT-NEUROSURGE-NATIVE`／`COMPACT-NEUROSURGE-CHOICES` 比较两次出牌、两回合和全部省略选择边界；原生选择观察器核对资源先到账、能力后施加。`COMPACT-DOOM-PLAYER`／`COMPACT-DOOM-ENEMY` 比较双方正确／错误相位、阈值、直接死亡与格挡／历史保留。均有完整能力元数据、原键／估值／续用、九 RNG、逆序与八工作区隔离。`COMPACT-NEUROSURGE-SEARCH` 同根固定 250 节点、旧／新 DOP1 和紧凑 DOP2 全政策相等，取消／异常排空后根可复用；明确拒绝未迁移药水。所有请求限制 120 秒。[构建、回归与结构化证据](performance/simulation-necro-resources-20260911.md)。
+
+### 奥斯蒂根身份与死亡清理（2026-09-11）
+
+`OSTY-STATE-LIFECYCLE`：无宠物根捕获后原生首次召唤；活宠物根五步承伤／复活／增长／直接受伤／复活，逐步完整原生快照、伤害结果顺序、连续 Fork、全部键／估值、八工作区。实机推进后两个冻结根不变，空根后续独立生成实例与原生首次召唤一致。120 秒以内 L2，无正式搜索、无性能断言。[结果和重跑参数](performance/simulation-osty-ownership-20260911.md)。
+
+### 奥斯蒂值执行、生命封顶与搜索（2026-09-11）
+
+`COMPACT-OSTY-NATIVE`：三个根状态、十五个原生步骤，包括存活／死亡根、双方不同力量、部分／完全格挡代伤、死亡后空攻击、复活／增长、群体效果不触及宠物及两个完整回合；逐步比对完整状态、能力元数据、历史、九 RNG、原键／估值／续用、缓存开关、逆序／撤销与八工作区，实机推进后冻结根不变。`COMPACT-OSTY-CAP`：接近／达到最大生命上限两次原生召唤与三十组事件编码边界；`COMPACT-OSTY-DEFEAT`：毁灭直接杀死玩家及存活宠物，保留格挡、不伪造伤害历史、完整能力退休。`COMPACT-ROUND-NATIVE` 三模式回归覆盖二十分支和七个原生动作。
+
+`COMPACT-OSTY-SEARCH` 共用主场景原始建局并增加一层 Tools 触发选择，固定 250 节点，旧／新 DOP1 与紧凑 DOP2 比较完整政策及续用结果，验证实际并发、挂起候选、取消／注入异常排空、根可复用、未迁移药水拒绝及实机不变。全部使用 SILENT／MECHA_KNIGHT_ELITE、Cards=[]、HP300、Instant、120 秒上限，建局直接注入奥斯蒂；不依赖切换亡灵角色。[本轮结果与重跑命令](performance/simulation-osty-values-20260911.md)。
+
+`COMPACT-OSTY-TURN-NATIVE`：复用奥斯蒂三个根建局，额外注入初始遗物、Tools 和 Stratagem，每根连续三个完整回合；九个原生回合、十五个省略选择边界与十五次原生选择前观察，覆盖受击后复活、存活增长、完整元数据／历史／键／估值／续用、逆序／撤销、八工作区和实机后冻结恢复。`COMPACT-OSTY-TURN-SEARCH` 共用相同遗物根，固定 250 节点旧／新和串／并行完整政策、取消／失败排空及根复用。SILENT／MECHA_KNIGHT_ELITE、Cards=[]、HP300、Instant、120 秒，与现有双端参数兼容。[本轮记录](performance/simulation-pet-turns-20260911.md)。
+
+`COMPACT-DRAW-EXHAUST-NATIVE`：四张／单张／空抽牌堆，存活／死亡奥斯蒂；每根两种升级等级的洁净、来生和两个完整回合，18 原生动作、39 分支、15 个挂起边界及两次原生选择前观察。全快照、能力、九 RNG、历史、估值／原键／续用、生成身份、撤销／逆序／八工作区及实机后根隔离。`COMPACT-DRAW-EXHAUST-SEARCH` 固定 250 节点旧新串并行、取消失败排空和根复用。双端使用 SILENT／MECHA_KNIGHT_ELITE、Cards=[]、HP300、Instant、120 秒。[证据与夹具失败说明](performance/simulation-draw-exhaust-20260911.md)。
+
+
+`COMPACT-DIRGE-NATIVE`：普通／升级挽歌、存活／死亡宠物、非空／空抽牌堆和满手边界；每根 X=3 挽歌、灵巧、灵魂、X=0 挽歌和两个完整回合。12 原生动作、24 替代分支、8 挂起边界，逐次召唤与生成数量、Shuffle 计数／九流状态、牌序／身份／升级、完整原键／续用、撤销／逆序／八工作区和实机后根隔离。`COMPACT-DIRGE-SEARCH` 固定 250 节点，旧新串并行完整结果、实际并发 2、取消失败排空及根复用。公共生成与夹具提取回归 `COMPACT-DRAW-EXHAUST-NATIVE`、`COMPACT-INKY-CARDS-NATIVE`。双端参数沿用既有场景、Instant、120 秒；[本轮直接证据](performance/simulation-dirge-20260911.md)。
+
+
+`COMPACT-NECRO-CARDS-NATIVE`：两根包含五种新增类型与普通／升级实例；空／非空弃牌堆、满手、存活／死亡宠物；六次出牌及两个原生回合。对照全部快照、能力元数据、九 RNG、历史、原键／续用、根和生成实例指纹、撤销／逆序／八工作区及实机后根隔离。`COMPACT-CAPTURE-SPIRIT-TERMINAL` 验证击杀后 3 张未入堆灵魂的历史且不消费 RNG；`COMPACT-GRAVEBLAST-TERMINAL` 验证击杀后没有原生／预测选牌。终局在清理前捕获完整状态并等待真实结束事件。`COMPACT-NECRO-CARDS-SEARCH` 使用既有 250 节点串并行／取消异常排空合同；公共路径回归 `COMPACT-MONSTER-COMMANDS-NATIVE` 和 `COMPACT-DRAW-EXHAUST-NATIVE`。双端继续使用 SILENT／MECHA_KNIGHT_ELITE、Cards=[]、HP300、Instant、120 秒；[直接证据和失败基线](performance/simulation-necro-card-operations-20260911.md)。
+
+## 2026-09-11：费用能力与挂起查询（开发中）
+
+`COMPACT-COST-POWERS-NATIVE`：两根各九次出牌及两个原生回合，比较全牌堆费用、随机本地修饰、X／负基础费、初始能力／叠加／消耗／人工制品；22 原生动作、36 分支、8 挂起和 3 次原生免费费用观察。`COMPACT-COST-POWERS-ROOT-STACKS` 可单独运行已有能力根。`COMPACT-COST-POWERS-TERMINAL` 验证付款后最后击杀的能力门禁和全局费用停止。`COMPACT-COST-POWERS-SEARCH` 使用 250 节点完整旧新／串并行／取消异常排空合同。全快照、原键、续用、实例、RNG、冻结恢复和八工作区均比较。公共回归为 `TENDER-NESTED-SLY` 与 `HAND-POTENTIAL-COSTS`；后者只在 100ms 首结果停止，不作性能比较。[本轮证据与失败记录](performance/simulation-cost-powers-20260911.md)。
 # 0.34.7 跑局战绩验证
 
 - `dotnet run --project tools/RunStatisticsTests -c Release` 通过：胜负/放弃、空胜率、连续段中断、重复事件、离线收据与重启、原生结算恢复、历史快照隔离。
 - 在线服务 14 项测试通过，包含旧心跳、管理鉴权、持久登录、统计加权、筛选和战绩数据库重启恢复。
 - 日志服务 19 项测试通过，包含提交时战绩快照及小数百分比筛选；Windows 测试进程退出仍有原有 SQLite 临时文件清理占用提示。
 - UI-LOCALIZATION `42dce92d333e46e482ba556b9959e4eb` Passed，24.85 秒，覆盖 322 条中英资源与 headless 统计节点隔离。不是可见游戏结算/交互或帧率验收。
+
+## 上游 0.36.0 集成（2026-09-11）
+
+本轮重跑 COMPACT-SHARED-FATE-NATIVE／SEARCH、COMPACT-PANACHE-PLAYER-DEATH、PANACHE-INSTANCES，完整状态／键／续用与 250 节点串并行对照均通过；独立 CardHookReceiverChecks 78 项、PlayerDeathChecks 48 项及纯值／Linux 结构／覆盖门禁通过。详见[合并记录](performance/simulation-upstream-merge-20260911.md)。未重跑完整正常 NoGC 性能基准。
+
+## 书页风暴（2026-09-11）
+
+`COMPACT-PAGESTORM-NATIVE`：三根、24 原生动作／63 分支／32 挂起，嵌套选择观察、逆序 Slither、父返回值、根／新能力、Swift／Sly、动态虚无和两个回合。全部状态／能力／九 RNG／原键／续用及八工作区严格比较。`COMPACT-PAGESTORM-SEARCH` 使用相同根和 250 节点，旧新／串并行完整结果、取消异常排空及根复用通过。`COMPACT-DRAW-EXHAUST-NATIVE` 回归无新能力根；纯值另验证九层抽牌与满手、终局、撤销。沿用 SILENT／MECHA_KNIGHT_ELITE、Instant、120 秒，无新增双端协议字段。[证据与失败归类](performance/simulation-pagestorm-20260911.md)。
+
+## 完整生成池审计（2026-09-11）
+
+`COMPACT-GENERATION-CLOSURE-AUDIT` 使用原始 NECROBINDER／AEONGLASS_BOSS 输入，38 牌、19 件遗物注入、保留初始遗物及两瓶药；导出 78／50 个完整有序候选，24 次抽样对照全部五个 RNG 字段，确认真实状态不变与未迁移根显式拒绝。只验证原生筛选／选择方法和旧模型选牌，不执行生成入堆及回调，也不启动搜索。双端使用既有协议参数，无新字段；[完整命令及边界](performance/simulation-generation-audit-20260911.md)。
+
+## 完整角色生成池冻结（2026-09-11）
+
+`COMPACT-GENERATION-CLOSURE-AUDIT` 增加完整角色池的 Fork 共享、错误池／人数约束拒绝、24 次原生／旧路径／缓存路径全 RNG 与卡牌指纹对照、生成实例突变隔离，并调用既有攻击池和无色池缓存合同。`CALL-OF-THE-VOID-GENERATION-ROOT` 使用同一完整亡灵输入，注入 4 层能力，连续三次原生 BeforeHandDraw；对照 12 张虚无牌、满手溢出、完整快照／续用、Fork 和实机后冻结根。它是该生成命令的模型对照，不代表紧凑随机生成闭包或整场搜索通过。[直接结果](performance/simulation-generation-root-20260911.md)。
+
+## 上游 0.36.1 合并检查点（2026-09-11）
+
+- `COMPACT-PAGESTORM-SEARCH`：`4062afbaaa7749afa4b20ddca77d86c5` Passed，30.44 秒含启动；250 节点旧新／串并行、实际并发 2、取消／故障排空及根复用。
+- `RELIC-COUNTER-POLICY`：`6e67fdf96aaf4511a7e436e1de01b896` Passed，4.75 秒；十项根计数、Fork、实机推进隔离、设置/UI、真实搜索与原生末击；早停 2 节点，关闭后 17 节点。
+- Release 零警告／错误，Linux 结构门禁 Passed（96 个 Search 文件）；PowerShell 对应规则未执行。未重跑完整部署、正常 NoGC 基准或覆盖分类 verify。
+
+## 值 RNG 的完整池选取（2026-09-11，未完成）
+
+`COMPACT-GENERATION-CLOSURE-AUDIT` 增加 78／50 个完整池的原生／旧链／缓存／值 RNG 四方对照；44 个边界组合覆盖空／单元素／双元素／完整池及负、零和超量请求，检查 scratch 尾部、容量不足拒绝、两池各 5,000 次复用选择的当前线程分配和完整 RNG 消耗。本轮 `3c479d36a88f4889b9d1f78f9d0c9251` Failed（23.945 秒），在首个池完成选择对照后，因分配／RNG 合并断言打印 160 字节而退出；没有完成第二个池和全部后续检查，分配归因待查。Release v2 和 Linux 结构门禁通过不代表该行为测试通过；保持失败断言及原生比较。后续归因已完成：160 字节为 Godot 进程内测试线程的一次性宿主开销，不是 `ValueRng` 原语；该场景现以独立的 RNG 与零分配块断言通过（见[新文档](performance/simulation-generation-metering-20260911.md)）。
+
+## 生成池计量归因与紧凑生成执行（2026-09-11）
+
+`COMPACT-GENERATION-CLOSURE-AUDIT` 的尾部计量更新为 5 块 × 5000 次（每池共 25,000 次）复用选择：RNG 消耗对全部块精确断言 `5×5000×(pool−1)`，分配断言改为“至少一块精确为 0 字节”（`min==0`），RNG 与分配各自独立抛出不同消息，不再使用合并断言或容差阈值。artifact-v3 连续两次与 artifact-v4 各一次 Passed，runId `1c9d47f348ea4473ae29037b2601913b`（24.03 秒）、`3ca8ef6137284d3dbffea37dce5100dc`（3.44 秒，复用进程）与 `a83926d065f247dc862bf1c1ea8c1304`（3.49 秒）。
+
+`COMPACT-CALL-OF-THE-VOID-GENERATION` 复用 `COMPACT-GENERATION-CLOSURE-AUDIT` 的原始 NECROBINDER／AEONGLASS_BOSS 完整输入协议（38 牌、19 件遗物注入、保留初始遗物及两瓶药），注入 4 层 CallOfTheVoid 后执行三个批次；对照紧凑值层、旧 `TurnStartPowerSupport` 分支与原生 `BeforeHandDraw`，要求冻结池为 78 个候选。每批有序生成 ID 三方一致、五个 RNG 字段对齐、计数增量 308／616／924，12 张生成牌带虚无，第二批满手溢出转弃牌堆，逐实例 ID 递增且 `BORROWED_TIME` 跨批重复；撤销、确定性重放与实机后冻结根重放均验证。首跑通过：runId `b715d6a7100c4164b27c8c5bf7932152`（26.57 秒）。夹具沿用既有协议，120 秒上限、Instant，无新增双端字段。
+
+`COMPACT-PAGESTORM-SEARCH` 在最终 artifact-v4 上 Passed，runId `68c51d68693b4e79a1ea03da531e4f2e`（9.20 秒），确认值层改动未破坏搜索等价。[完整证据](performance/simulation-generation-metering-20260911.md)。
+
+严格形状（后续增补）：上述 `min==0` 形状已被三阶段计量取代——100 次 warmup；与正式测量完全同形的稳定化（同一个 `RunValueGenerationSelectionBlocks` helper、同样 5 块 × 5000 次，记录不读取、不计入分配断言，因此不作为通过证据）；正式 steady-state 5 块 × 5000 次，5 个块必须全部精确 0 字节，无容差阈值，也不再保留“至少一块为 0”的放宽。warmup／稳定化与正式段的 RNG 消耗分别精确断言（`(100+5×5000)×(pool−1)` 与 `5×5000×(pool−1)`），五字段比较与边界比较未删除。单块稳定化的中间形状在 Godot 首个正式块仍见 160 字节，runId `58268385f95c4d37a3383bfa46768b76` Failed，失败日志保留在 `.local/metering-strength-20260911/audit-run1-failed.log`；改为同形稳定化后 runId `e039ec137c8b4f768cf46d7e8fbdfdd9` Passed（24.04 秒），最终运行 runId `537d20c96a944b48b505b90f0bf7fd34` Passed（24.15 秒），证据目录 `.local/metering-strength-20260911/`。本批只收紧该审计计量形状，Release 零警告／错误、Linux 结构门禁 Passed（96 个 Search 文件）、PowerShell 未运行；整项极高配置完整搜索性能重构仍未完成。
+
+## 虚空之唤生产编译与回合执行（2026-09-11，生产准入仍失败关闭）
+
+`COMPACT-CALL-OF-THE-VOID-GENERATION` 在原三方差分上增加生产编译器与闭包普查：`CallOfTheVoid` 编译为单条 `ApplyBasicPower(CallOfTheVoid)`（数量取 `DynamicVars.Cards.BaseValue`），升级版只加原生 `Innate` 且指令不变，异常关键字与抽弃牌专用域显式拒绝；78 个冻结候选中 18 个可精确编译、60 个不可（首个 `BANSHEES_CRY`）。runId `46c0ff46f6b74e66ba551d5deb2e63ee` Passed（3.89 秒，复用进程；含启动的同批审计 24.03 秒）。
+
+`COMPACT-CALL-OF-THE-VOID-ADMISSION`（新，SILENT／MECHA_KNIGHT_ELITE、`VH_PERF_MECHA`、30 张 RunCards、清空牌组且 Cards=[]）：先证明同形对照根通过完整准入，再实机施加 4 层 `CallOfTheVoidPower`，断言同一根在完整角色池第一个不可表示候选处被拒绝、拒绝不归因根内卡牌、单回合投影在回合闭包要求处拒绝且实机不变；潜行者池 78 个候选中 16 个可编译、62 个不可（首个 `ABRASIVE`）。runId `094fe477c6494317848cda39bfe0ca98` Passed（23.95 秒）。`COMPACT-SEARCH-LIFECYCLE` 用同一 30 牌根作回归哨兵：旧／紧凑 DOP1 与紧凑 DOP2 全部政策一致、并发 2、取消／失败排空、根复用与未迁移药水拒绝，runId `d1f51f1cd8614f41b2ed7c0ad9fd517f` Passed（5.11 秒）。
+
+纯值 `tools/CompactCreatureChecks` 新增回合开始生成合同（施加／叠加计数与获得顺序、事件排在起手抽牌前、五字段 RNG 消耗、撤销与八工作区、零层不推进、满手溢出、三种构造拒绝），23 项全通过。夹具输入错误保留为失败基线：首次 `COMPACT-CALL-OF-THE-VOID-ADMISSION` 与同形 `COMPACT-SEARCH-LIFECYCLE` 探针都因缺少 30 张 RunCards 失败（空战斗牌集合与牌组数量不足），改用 `coverage/unattended/compact-void-admission-silent-run-cards.json` 后通过。生产准入未扩大：亡灵完整根继续显式拒绝，池模板构建的正向路径在池闭包完成前没有可执行样例。[完整证据](performance/simulation-void-generation-20260911.md)。
+
+`COMPACT-DOOM-CARDS-NATIVE`（亡灵／MECHA_KNIGHT_ELITE、Cards=[]、敌人 300 HP、Instant、120 秒）由测试内部建局并注入 `DEATHBRINGER`、`NEGATIVE_PULSE`、`SCOURGE`、`PUTREFY`、`FEAR` 与 `STRIKE_NECROBINDER`：两种升级各六步出牌、两个完整回合、8 个原生动作、14 分支、4 个省略选择边界。生产编译器、紧凑 lane、物化投影与实机逐动作对比毁灭 21/26＋7/11＋13/16、虚弱／易伤施加顺序、消耗与虚无结果位置、Scourge 抽牌、Fear 先攻击后施加易伤、后续攻击消费 1.5 倍易伤与敌方阵营结束的持续时间递减；完整状态键、估值、能力元数据、九条 RNG、逆序、八工作区与实机后冻结根一致，runId `5193feebe1d947ad8de1015470d0ae60` Passed。
+
+`COMPACT-DOOM-CARD-KILL-NATIVE`（同建局）实机先打出 `DEATHBRINGER`（`TryManualPlay(null)`，全体目标牌不传单体目标）并确认敌人仍存活，再由真实 `Hook.BeforeSideTurnEnd` 让生命低于等于毁灭层数的敌人直接死亡：保留格挡、无伤害历史、能力退休、终局锁定与撤销后无残留死亡状态，runId `d7b250f96c4c4f15956f4c05645dea31` Passed。
+
+纯值 `tools/CompactCreatureChecks` 新增 `COMPACT_DOOM_VULNERABLE_CHECKS_OK`（24 项全通过）：敌方指令域拒绝、两条原生命令的整轮名单顺序与施加历史、人工制品整条拦截、易伤倍率、同牌内攻击顺序、持续时间递减、包含等号的毁灭阈值、格挡保留、撤销与八工作区。`COMPACT-CALL-OF-THE-VOID-GENERATION` 普查回归为 78 池 23 可编译／55 不可（首个 `BANSHEES_CRY`，原 18／60），`COMPACT-GENERATION-CLOSURE-AUDIT` 继续 `FullRootExplicitlyRejected`。[完整证据](performance/simulation-doom-vulnerable-cards-20260911.md)。
+
+`COMPACT-DOOM-ROSTER-NATIVE`（亡灵／CORPSE_SLUGS_NORMAL、三敌、`--enemy-current-hp 256`、120 秒）在三个存活主敌人加已捕获奥斯蒂的名单上逐步执行这五张牌：紧凑 lane 的 `PowerChange` 序列逐条比对全体目标的毁灭／虚弱整轮名单、单目标的毁灭／虚弱／易伤与 Fear 先攻击后施加易伤，每一步的物化与读视图先自洽再与实机同一动作后的完整快照一致，撤销与实机后冻结候选重放一致，runId `3c3af9d6368e4441b6f893b1d9b33fe6` Passed（3.66 秒，复用进程）。它补上单敌夹具无法区分的 `AllEnemies`／`ChosenEnemy` 目标域。
+
+## 亡灵核心牌与灵魂生成生产编译（2026-09-11）
+
+`COMPACT-NECRO-SOUL-CARDS-NATIVE`（亡灵／MECHA_KNIGHT_ELITE、Cards=[]、敌人 300 HP、Instant、120 秒）由测试内部建局并注入 `BURY`、`REAP`、`PARSE`、`POKE`、`PULL_AGGRO`、`REANIMATE`、`GRAVE_WARDEN`、`REAVE` 与八张抽牌堆 `DEFEND_NECROBINDER`：两种升级各一条八步出牌路线加两个完整回合、10 个原生动作、14／15 分支、各 3 个省略选择边界。生产编译器、紧凑 lane、物化投影与实机逐动作对比单体攻击与力量加值、`Reap` 的 Retain 定义、`Parse` 的精确抽牌数与 Ethereal 定义、`Poke` 的宠物 dealer（宠物 2 点力量而非玩家 11 点）、`PullAggro` 的先召唤后格挡事件次序、`Reanimate` 的召唤与消耗结果牌堆、`GraveWarden`／`Reave` 的随机插入消耗一次洗牌流与普通／升级灵魂变体，以及攻击开始计数；完整状态键、估值、能力元数据、九条 RNG、逆序、八工作区与实机后冻结根一致。最终产物 runId `99a1dffc4d284ae086241c355559f5bd` Passed（7.89 秒，复用进程）。
+
+`COMPACT-NECRO-HAND-END-NATIVE`（同建局，无回合遗物）手牌只保留未打出的 `REAP` 与 `PARSE` 并走一次真实玩家结束回合：flush 后手牌恰好剩一张 Retain 牌（攻击指令 27 的 `Reap`），`Parse` 进入消耗堆；完整状态键、估值、RNG、八工作区与实机同一回合后的快照一致，runId `96061cdd3a914638b09bd5bf69945b3e` Passed（3.95 秒）。
+
+`COMPACT-REAVE-TERMINAL-NATIVE`（同建局）升级 `Reave` 的自身攻击击杀最后一个主敌人：紧凑 lane 落到胜利终局、敌人离场、生成身份进入 `Unplaced`、洗牌流未消耗，未入堆牌指纹（升级等级）与实机同一动作生成的灵魂一致——原生升级命令在结束窗口不升级，验证了独立的结束变体模板，runId `03a7074467944531afea88b0539a271f` Passed（3.66 秒）。
+
+`COMPACT-POKE-PET-STATE-NATIVE`（无宠物 `SILENT`／MECHA_KNIGHT_ELITE、Cards=[]、敌人 300 HP、Instant、120 秒，2026-09-11 评审补测）分三种捕获宠物状态验证 `POKE` 的 `Osty.CheckMissingWithAnim` 门：缺席时同一根被生产准入拒绝、原生 Poke 为合法空操作（敌人 300 HP／3 格挡、0 条生物攻击与受伤历史、未创建宠物）；已死宠物先真实击杀再捕获，Poke 打出后紧凑 lane 无伤害／攻击完成事件且原生攻击与受伤历史不变（1 原生动作、1 分支）；`Reanimate` 复活同一身份（20／20）后的 Poke 由真实宠物施伤（原生 `CreatureAttackedEntry` actor 为该宠物、敌人 300→297，2 原生动作、2 分支）。两条路线逐动作比对完整状态键、估值、能力元数据、九条 RNG、逆序、八工作区与实机后冻结根，runId `8afb816dd7b04e839f724726a8aae7a0` Passed（24.67 秒，含建局与进入遭遇）。
+
+纯值 `tools/CompactCreatureChecks` 新增 `COMPACT_SOUL_GENERATION_CHECKS_OK`：结束变体选择、非结束主模板、随机插入消耗、空落点位置、未入堆身份与无 RNG 消耗、撤销、八工作区，指令域拒绝（非生成指令携带结束变体、两种变体相同）与真实构造器对根牌索引及 `definitions.Length` 两个结束变体索引的拒绝。`COMPACT-CALL-OF-THE-VOID-GENERATION` 普查回归为 78 池 29 可编译／49 不可（首个 `BANSHEES_CRY`，原 23／55），供给模板口径 33／45；`COMPACT-CARD-HOOKS-NATIVE`、`COMPACT-DOOM-CARDS-NATIVE` 与三敌目标域 `COMPACT-DOOM-ROSTER-NATIVE`（runId `c16f73aa73e944279bf479aa65aaa624` Passed）作为投影与模板捕获改动的回归，`COMPACT-GENERATION-CLOSURE-AUDIT` 继续 `FullRootExplicitlyRejected`。[完整证据](performance/simulation-necro-soul-cards-20260911.md)。
+
+## 独立测试 ledger（2026-09-12，`tools/test-ledger.sh`）
+
+新增只读编排工具，把现有入口汇总为机器可读 catalog 并输出四态 ledger；它不替换矩阵 runner，也不以 `coverage/test-evidence.json` 的静态证据作为通过依据。catalog 来源为 `tools/*/*.csproj`、`tools/*/run.py`、`tools/*/presets.py`、`tools/*/package.json`、`tools/{verify,test}-*.{sh,ps1}` 与本文档的 Windows/Linux 命令块。
+
+```bash
+./tools/test-ledger.sh catalog
+./tools/test-ledger.sh run --scope pure-contract --ledger-dir /tmp/test-ledger
+./tools/test-ledger.sh selftest
+```
+
+四态为 `Passed`（真实执行、退出码 0 且声明 marker 命中）、`Failed`（非零退出码、超时或缺 marker）、`Blocked`（策略拒绝、目标/可执行文件缺失或依赖未满足）、`NotRun`（依赖满足但未被本次 scope/filter 选中）。`StaticPassed`、`Skipped`/`SkippedMissingFixture`、超时和缺失命令都不记为 `Passed`。默认策略拒绝会启动游戏的入口和会重写覆盖目录的 `CoverageCatalog`；需要显式开关才允许。
+
+工具说明和边界见 [tools/TestLedger/README.md](../tools/TestLedger/README.md)。当前 Linux 纯合同基线实际记录 536 个入口：21 Passed、3 Failed、507 Blocked、5 NotRun；失败项已保留原始日志，Blocked 主要是游戏/Windows/Node/覆盖目录策略或依赖限制，不是通过记录。该 ledger 不代表完整游戏、Windows、可见 Steam 或最终性能验收已经完成。

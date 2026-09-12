@@ -24,8 +24,10 @@ out = root / '.local/player-death-checks'
 out.mkdir(parents=True, exist_ok=True)
 handler = extract(args.damage_source, '    private bool HandlePlayerDeath(')
 cleanup = extract(root / 'src/Search/SimulatedCombatState.DeathLifecycle.cs', '    public void RemovePowersAfterDeath(')
+complete = extract(root / 'src/Search/SimulatedCombatState.DeathLifecycle.cs', '    public void CompletePlayerDeath(')
+complete = complete.replace('MegaCrit.Sts2.Core.Entities.Players.Player', 'Player')
 (out / 'Production.cs').write_text('namespace CombatSolver;\npartial class Simulator\n{\n' + handler
-    + '\n}\npartial class SimulatedCombatState\n{\n' + cleanup + '\n}\n')
+    + '\n}\npartial class SimulatedCombatState\n{\n' + cleanup + '\n' + complete + '\n}\n')
 (out / 'Program.cs').write_text((Path(__file__).parent / 'Program.cs').read_text())
 (out / 'Checks.csproj').write_text('''<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup>
 <OutputType>Exe</OutputType><TargetFramework>net9.0</TargetFramework><LangVersion>13</LangVersion>

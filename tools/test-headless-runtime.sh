@@ -440,11 +440,8 @@ run_snapshot_tests() {
     [[ "$a_next_id" != "$a_id" ]] || fail 'changed A build was not detected'
     prepare_snapshot a "$a_next_id" >"$case_root/update-a.log" 2>&1
     [[ "$(<"$a_root/game/mods/CombatSolver/CombatSolver.dll")" == artifact-a-v2 ]] || fail 'A update was not published'
-    retired_games=("$a_root"/retired.*/game)
-    ((${#retired_games[@]} == 1)) && [[ -d "${retired_games[0]}" ]] || fail 'old A snapshot was not retained exactly once'
-    [[ "$(<"${retired_games[0]}/mods/CombatSolver/CombatSolver.dll")" == artifact-a-v1 ]] || fail 'retired A DLL cannot be recovered'
-    [[ -x "${retired_games[0]}/SlayTheSpire2" ]] || fail 'retired snapshot lost its executable'
-    pass 'updating A preserves its previous snapshot as a recoverable retired tree'
+    [[ -z $(find "$a_root" -maxdepth 1 -name 'retired.*' -print -quit) ]] || fail 'successful update leaked its old snapshot'
+    pass 'successful update removes rollback snapshot after publishing the new ID'
 
     "$a_root/game/SlayTheSpire2" 180 &
     live_pid=$!
@@ -618,6 +615,7 @@ run_snapshot_failure_tests() {
             fail "$fault was masked by a later successful hash"
         fi
         [[ -f "$hit_path" ]] || fail "$fault failed without exercising its injected error"
+        [[ -z $(find "$instance_root" -maxdepth 1 -name 'snapshot.*' -print -quit) ]] || fail "$fault leaked an unpublished game copy"
         pass "$fault propagates failure even when later inputs are readable"
     done
 
@@ -634,6 +632,7 @@ run_snapshot_failure_tests() {
             fail "$fault was ignored and snapshot preparation reported success"
         fi
         [[ -f "$hit_path" ]] || fail "$fault failed without exercising its injected error"
+        [[ -z $(find "$instance_root" -maxdepth 1 -name 'snapshot.*' -print -quit) ]] || fail "$fault leaked an unpublished game copy"
         [[ ! -f "$hit_path.unsafe-target" ]] || fail "$fault attempted a move outside its temporary instance"
         if [[ -f "$instance_root/snapshot-id" ]]; then
             [[ "$(<"$instance_root/snapshot-id")" != "$expected_new" ]] || fail "$fault published the failed input ID"

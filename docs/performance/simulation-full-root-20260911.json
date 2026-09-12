@@ -1,0 +1,995 @@
+{
+  "schemaVersion": 1,
+  "baseCommit": "dcc4ab4",
+  "artifact": ".local/compact-full-root-20260911/artifact-v2",
+  "originalInput": {
+    "report": "simulation-refactor-result-20260910.json",
+    "runId": "170c7f252d1d4aa6b46a2a5f0b586b76"
+  },
+  "native": {
+    "request": {
+      "schemaVersion": 1,
+      "runId": "7ef49b1ef6de4b56a82c6e6c180754b3",
+      "scenarioId": "COMPACT-FULL-ROOT-NATIVE",
+      "characterId": "SILENT",
+      "encounterId": "MECHA_KNIGHT_ELITE",
+      "modifierIds": [],
+      "seed": "VH_PERF_MECHA",
+      "runSnapshotPath": null,
+      "loadRunSnapshotDirectly": false,
+      "targetActFloor": null,
+      "targetMapColumn": null,
+      "targetRoomType": "Monster",
+      "targetMapPointType": "Unassigned",
+      "preCombatPlayerCurrentHpOverride": null,
+      "preCombatSimulationSeed": null,
+      "preCombatInterveningMapPoints": [],
+      "expectedLoadedMods": [],
+      "replayStatePath": null,
+      "nativeStatePath": null,
+      "checkpointArchivePath": "",
+      "checkpointSelector": "latest",
+      "replayMode": "RestoreOnly",
+      "replayPolicyOverridePath": "",
+      "evidenceDirectory": "/home/ltlly/Code/nmslmod/.tools11/CombatSolver-open-source/.local/compact-full-root-20260911/native-v2-correct-input",
+      "preserveNativeCombatStateForTest": false,
+      "ascension": 0,
+      "actIndexForTest": 0,
+      "markEncounterAsSecondBossForTest": false,
+      "enemyCurrentHp": 300,
+      "initialEnemyMaxHps": [],
+      "initialEnemyCurrentHps": [],
+      "initialEnemyBlocks": [],
+      "initialPlayerHp": 65,
+      "initialPlayerMaxHp": 65,
+      "initialPlayerBlock": null,
+      "initialPlayerEnergy": null,
+      "initialPlayerStars": null,
+      "initialRoundNumber": null,
+      "initialPlayerTurnNumber": null,
+      "initialEnemyStateLogs": [],
+      "reloadRunRngAfterStateInjection": false,
+      "cards": [],
+      "runCards": [
+        {
+          "cardId": "STRIKE_SILENT",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 0,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "STRIKE_SILENT",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 0,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "STRIKE_SILENT",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 0,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "DEFEND_SILENT",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 0,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "DEFEND_SILENT",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 0,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "DEFEND_SILENT",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 0,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "SURVIVOR",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 0,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "OUTBREAK",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 1,
+          "enchantmentId": "SLITHER",
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "FOOTWORK",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 1,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "BACKFLIP",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 1,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "ESCAPE_PLAN",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 1,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "BLADE_OF_INK",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 0,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "SNAKEBITE",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 1,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "PIERCING_WAIL",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 1,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "CALCULATED_GAMBLE",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 1,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "CLOAK_AND_DAGGER",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 1,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "MALAISE",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 1,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "SUPPRESS",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 1,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "BUBBLE_BUBBLE",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 1,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "PREPARED",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 1,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "HAZE",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 1,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "DEADLY_POISON",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 1,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "DODGE_AND_ROLL",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 1,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "MIRAGE",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 1,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "TOOLS_OF_THE_TRADE",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 1,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "CALCULATED_GAMBLE",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 1,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "MALAISE",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 1,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "ULTIMATE_DEFEND",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 1,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "PIERCING_WAIL",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 1,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        },
+        {
+          "cardId": "FOOTWORK",
+          "pile": "Hand",
+          "count": 1,
+          "upgradeLevels": 1,
+          "enchantmentId": null,
+          "enchantmentAmount": 1,
+          "afflictionId": null,
+          "afflictionAmount": 1,
+          "treatAsDeckCard": false,
+          "dynamicVars": {},
+          "enumMembers": {}
+        }
+      ],
+      "powers": [],
+      "orbs": [],
+      "orbChecks": [],
+      "potions": [],
+      "relics": [],
+      "combatRelics": [],
+      "potionCheck": null,
+      "potionChecks": [],
+      "monsterMoveCheck": null,
+      "monsterMoveChecks": [],
+      "additionalMonsterIds": [],
+      "initialEnemyMoveIds": [],
+      "timeoutSeconds": 120,
+      "expectedFinishedTurn": null,
+      "expectedFinishedTurnAtMost": null,
+      "expectedFinishedPlayerHpAtLeast": null,
+      "clearPlayerHand": false,
+      "clearPlayerPiles": false,
+      "clearRunDeck": true,
+      "clearAllPowers": false,
+      "verifyPredictionFailureBoundaries": false,
+      "verifySearchPolicySnapshot": false,
+      "verifyGrowthPolicy": false,
+      "verifyControllerSessionLifecycle": false,
+      "verifyForkBoundaries": false,
+      "verifyCombatRootSnapshot": false,
+      "verifyPreCombatForecastApi": false,
+      "verifyBaseLibCardModifierBoundary": false,
+      "stopAfterCombatRootSnapshotAssertion": false,
+      "verifyIncrementalSearch": false,
+      "forceShortSearchOnly": false,
+      "measureSearchPhases": false,
+      "holdAfterInitialSearch": false,
+      "shortSearchBudgetOverrideMilliseconds": null,
+      "deepSearchBudgetOverrideMilliseconds": null,
+      "searchMaxDegreeOfParallelismForTest": 8,
+      "expectedInitialSearchPhase": null,
+      "expectedInitialDeepSearchTriggered": null,
+      "expectedInitialDeepSearchImprovedResult": null,
+      "expectedInitialExpandedNodesAtMost": null,
+      "expectedInitialTransitionsAtMost": null,
+      "expectedInitialTotalExpandedNodesAtMost": null,
+      "expectedInitialTotalTransitionsAtMost": null,
+      "expectedInitialBoundaryReason": null,
+      "expectedInitialTotalElapsedMillisecondsAtMost": null,
+      "expectedInitialTotalAllocatedBytesAtMost": null,
+      "expectedInitialGen2CollectionsAtMost": null,
+      "expectedInitialTotalGcPauseMillisecondsAtMost": null,
+      "expectedInitialMaxGcPauseMillisecondsAtMost": null,
+      "expectedInitialMaxMainThreadFrameGapMillisecondsAtMost": null,
+      "expectedInitialMainThreadFramesOver50MillisecondsAtMost": null,
+      "expectedInitialMainThreadFramesOver100MillisecondsAtMost": null,
+      "expectedInitialTransitionCacheHitsAtLeast": null,
+      "expectedInitialRepeatableNoProgressBranchesPrunedAtLeast": null,
+      "expectedInitialCycleShapesDetectedAtLeast": null,
+      "expectedInitialCycleProbeContinuationsExpandedAtLeast": null,
+      "expectedInitialCycleProbeContinuationsExpandedAtMost": null,
+      "expectedInitialCycleCandidatesProtectedAtLeast": null,
+      "expectedInitialCycleContinuationsStoppedAtLeast": null,
+      "expectedInitialCrossTurnCandidatesProtectedAtLeast": null,
+      "expectedInitialCrossTurnContinuationsStoppedAtLeast": null,
+      "expectedInitialNodeLimitSnapshotsReleasedAtLeast": null,
+      "expectedInitialChoiceBranchesEvaluatedAtLeast": null,
+      "expectedInitialExecutableActionCountAtLeast": null,
+      "expectedInitialSoldHp": null,
+      "expectedInitialSoldHpAtMost": null,
+      "expectedInitialSoldHpBranchesPrunedAtLeast": null,
+      "expectedInitialDeathSaveRelicHp": null,
+      "expectedInitialActionAdmissionRepresentativesProtectedAtLeast": null,
+      "expectedInitialHpInvestmentBranchesProtectedAtLeast": null,
+      "expectedInitialPotionCount": null,
+      "expectedInitialTheftPolicy": null,
+      "expectedInitialOutstandingStolenResource": null,
+      "expectedInitialPotionHpSavedAtLeast": null,
+      "expectedInitialPotionBranchesRejectedAtLeast": null,
+      "expectedInitialSearchedTurnsAtLeast": null,
+      "expectedInitialShufflesCrossedAtLeast": null,
+      "expectedInitialUnmirroredCount": null,
+      "expectedInitialHpLostAtMost": null,
+      "expectedInitialProjectedBattleHpLost": null,
+      "expectedInitialProjectedBattleHpLostAtMost": null,
+      "expectedInitialLongTermResourceValueAtLeast": null,
+      "expectedInitialGrowthRewardCount": null,
+      "expectedInitialFinalMaxHp": null,
+      "expectedInitialMaxBlockAtLeast": null,
+      "expectedInitialActualBlockAtLeast": null,
+      "expectedInitialActionCardId": null,
+      "expectedInitialAbsentActionCardId": null,
+      "expectedInitialFirstActionCardId": null,
+      "expectedInitialFirstActionChoiceCardId": null,
+      "expectedInitialFirstActionPotionId": null,
+      "expectedInitialActionTitle": null,
+      "expectedInitialActionReplayCount": null,
+      "expectedInitialOnlyDeathRoutesFound": null,
+      "expectedInitialCombatEndedTurn": null,
+      "expectedInitialDeathTurn": null,
+      "expectedInitialDeathTurnAtLeast": null,
+      "expectedInitialFinalEnemyHpAtMost": null,
+      "expectedInitialActEndingBoss": null,
+      "expectedInitialBossHpRelief": null,
+      "expectedInitialPlannedChoiceCardId": null,
+      "expectedInitialTurnStartChoiceTurn": null,
+      "expectedInitialTurnStartChoiceSourceId": null,
+      "expectedInitialTurnStartChoiceCardId": null,
+      "expectedInitialTurnStartChoiceStateContains": null,
+      "expectedInitialTurnStartChoiceStateExcludes": null,
+      "expectedInitialSetupChoiceCountAtLeast": null,
+      "expectedInitialSetupChoiceSourceId": null,
+      "expectedInitialSetupChoiceTextStartsWith": null,
+      "verifyInitialSetupWaitsForUserStart": false,
+      "verifyTurnSetupManualRecalculate": false,
+      "verifyTurnSetupManualRefresh": false,
+      "verifyTurnSetupControlsDuringInitialSearch": false,
+      "verifyTurnSetupSceneExitCancellation": false,
+      "stopAfterInitialSetupAssertion": false,
+      "stopAfterInitialSolverResultAssertion": false,
+      "expectedFullAutoPausedAtDeathTurn": false,
+      "expectedFullAutoPausedAfterWorseRecalculation": false,
+      "expectedFullAutoPausedAtLiveRisk": false,
+      "enableStopOnWorseRecalculationForTest": false,
+      "expectedInitialRelicEffectId": null,
+      "expectedInitialRelicEffectSummary": null,
+      "expectedReusedTurn": null,
+      "expectedReusedProjectedBattleHpLost": null,
+      "expectedUnexpectedReplansAtMost": null,
+      "stopAfterExpectedReuse": false,
+      "expectedPlayedCardId": null,
+      "expectedUsedPotionId": null,
+      "expectedObservedPlayerPowerId": null,
+      "expectedNativeChoiceOwnerPrefix": null,
+      "expectedNativeChoiceSurface": null,
+      "expectedNativeChoiceVisibleAtLeast": null,
+      "expectedNativeChoiceSearchStartedAtMost": null,
+      "stopAfterExpectedPlayerPower": false,
+      "expectedPlayerDeath": false,
+      "headlessFastModeForTest": "Instant",
+      "deploymentFastModeForTest": "Instant",
+      "performancePresetForTest": "VeryHigh",
+      "shortMaxCardBranchesPerNodeForTest": null,
+      "deepMaxCardBranchesPerNodeForTest": null,
+      "potionPolicyForTest": "Smart",
+      "theftPolicyForTest": null,
+      "enableNoGcRegionForTest": true,
+      "noGcRegionBudgetGigabytesForTest": 16,
+      "deploymentInterActionDelaySecondsForTest": 0,
+      "assertDeploymentSpeedRestored": false,
+      "exportBugReportAfterSetup": false,
+      "exportBugReportAfterCombat": false,
+      "enableDetailedDiagnosticLogsForTest": null,
+      "manualEndTurnAfterInitialSearch": false,
+      "singleStepAfterInitialSearch": false,
+      "singleStepResumeModeForTest": null,
+      "expectedTurnSetupToDeploymentDelayMillisecondsAtLeast": null,
+      "enableFullAutoAfterManualEndTurn": false,
+      "expectedManualDivergencesAtLeast": null,
+      "expectedUnexpectedReplansAtLeast": null,
+      "stopAfterExpectedUnexpectedReplan": false,
+      "expectedUnexpectedReplanWarning": false,
+      "exportBugReportAfterUnexpectedReplan": false,
+      "expectedBugReportControlMode": null,
+      "expectedNoGcRegionRolloversAtLeast": null,
+      "injectPlayerHpLossBeforeAutoSearchTurn": null,
+      "injectPlayerHpLossAmount": 0,
+      "clearPlayerBlockBeforeEndTurnForTest": null,
+      "exitOnComplete": false
+    },
+    "result": {
+      "processReusable": false,
+      "processId": 956969,
+      "schemaVersion": 1,
+      "runId": "7ef49b1ef6de4b56a82c6e6c180754b3",
+      "scenarioId": "COMPACT-FULL-ROOT-NATIVE",
+      "status": "Passed",
+      "stage": "passed",
+      "characterId": "CHARACTER.SILENT",
+      "encounterId": "ENCOUNTER.MECHA_KNIGHT_ELITE",
+      "seed": "VH_PERF_MECHA",
+      "startedAtUtc": "2026-09-11T00:30:04.682652+00:00",
+      "elapsedMilliseconds": 24322.7581,
+      "mainThread": true,
+      "combatEnded": false,
+      "startedTurn": 1,
+      "finishedTurn": 1,
+      "managedHeapBytes": 77824376,
+      "managedFragmentedBytes": 10336264,
+      "workingSetBytes": 1429004288,
+      "privateMemoryBytes": 1584345088,
+      "solverMetrics": null,
+      "replayVerification": null,
+      "stageTimings": [
+        {
+          "stage": "created",
+          "startedMilliseconds": 0,
+          "durationMilliseconds": 5.7301
+        },
+        {
+          "stage": "game_startup",
+          "startedMilliseconds": 5.7301,
+          "durationMilliseconds": 11035.5486
+        },
+        {
+          "stage": "start_run",
+          "startedMilliseconds": 11041.2787,
+          "durationMilliseconds": 11027.382899999999
+        },
+        {
+          "stage": "inject_run_relics",
+          "startedMilliseconds": 22068.6616,
+          "durationMilliseconds": 21.67369999999937
+        },
+        {
+          "stage": "enter_encounter",
+          "startedMilliseconds": 22090.3353,
+          "durationMilliseconds": 985.3096000000005
+        },
+        {
+          "stage": "wait_player_turn",
+          "startedMilliseconds": 23075.6449,
+          "durationMilliseconds": 2.376800000001822
+        },
+        {
+          "stage": "inject_state",
+          "startedMilliseconds": 23078.0217,
+          "durationMilliseconds": 1116.3777999999984
+        },
+        {
+          "stage": "cleanup",
+          "startedMilliseconds": 24194.3995,
+          "durationMilliseconds": 126.56369999999879
+        },
+        {
+          "stage": "passed",
+          "startedMilliseconds": 24320.9632,
+          "durationMilliseconds": 1.967900000003283
+        }
+      ],
+      "completedChecks": [
+        "CompactFullRoot:9Branches:Frozen8Workers:AllSnapshotProperties",
+        "CompactFullRoot:Original30Cards31DeckListeners:RingOfTheSnake:9Branches:6NativeActions:RootAfterNativeUnchanged"
+      ],
+      "error": null,
+      "finishedAtUtc": "2026-09-11T00:30:29.0053053+00:00"
+    },
+    "cases": {
+      "root": {
+        "deck": [
+          {
+            "id": "STRIKE_SILENT",
+            "CurrentUpgradeLevel": 0,
+            "enchantment": null
+          },
+          {
+            "id": "STRIKE_SILENT",
+            "CurrentUpgradeLevel": 0,
+            "enchantment": null
+          },
+          {
+            "id": "STRIKE_SILENT",
+            "CurrentUpgradeLevel": 0,
+            "enchantment": null
+          },
+          {
+            "id": "DEFEND_SILENT",
+            "CurrentUpgradeLevel": 0,
+            "enchantment": null
+          },
+          {
+            "id": "DEFEND_SILENT",
+            "CurrentUpgradeLevel": 0,
+            "enchantment": null
+          },
+          {
+            "id": "DEFEND_SILENT",
+            "CurrentUpgradeLevel": 0,
+            "enchantment": null
+          },
+          {
+            "id": "SURVIVOR",
+            "CurrentUpgradeLevel": 0,
+            "enchantment": null
+          },
+          {
+            "id": "OUTBREAK",
+            "CurrentUpgradeLevel": 1,
+            "enchantment": "SLITHER"
+          },
+          {
+            "id": "FOOTWORK",
+            "CurrentUpgradeLevel": 1,
+            "enchantment": null
+          },
+          {
+            "id": "BACKFLIP",
+            "CurrentUpgradeLevel": 1,
+            "enchantment": null
+          },
+          {
+            "id": "ESCAPE_PLAN",
+            "CurrentUpgradeLevel": 1,
+            "enchantment": null
+          },
+          {
+            "id": "BLADE_OF_INK",
+            "CurrentUpgradeLevel": 0,
+            "enchantment": null
+          },
+          {
+            "id": "SNAKEBITE",
+            "CurrentUpgradeLevel": 1,
+            "enchantment": null
+          },
+          {
+            "id": "PIERCING_WAIL",
+            "CurrentUpgradeLevel": 1,
+            "enchantment": null
+          },
+          {
+            "id": "CALCULATED_GAMBLE",
+            "CurrentUpgradeLevel": 1,
+            "enchantment": null
+          },
+          {
+            "id": "CLOAK_AND_DAGGER",
+            "CurrentUpgradeLevel": 1,
+            "enchantment": null
+          },
+          {
+            "id": "MALAISE",
+            "CurrentUpgradeLevel": 1,
+            "enchantment": null
+          },
+          {
+            "id": "SUPPRESS",
+            "CurrentUpgradeLevel": 1,
+            "enchantment": null
+          },
+          {
+            "id": "BUBBLE_BUBBLE",
+            "CurrentUpgradeLevel": 1,
+            "enchantment": null
+          },
+          {
+            "id": "PREPARED",
+            "CurrentUpgradeLevel": 1,
+            "enchantment": null
+          },
+          {
+            "id": "HAZE",
+            "CurrentUpgradeLevel": 1,
+            "enchantment": null
+          },
+          {
+            "id": "DEADLY_POISON",
+            "CurrentUpgradeLevel": 1,
+            "enchantment": null
+          },
+          {
+            "id": "DODGE_AND_ROLL",
+            "CurrentUpgradeLevel": 1,
+            "enchantment": null
+          },
+          {
+            "id": "MIRAGE",
+            "CurrentUpgradeLevel": 1,
+            "enchantment": null
+          },
+          {
+            "id": "TOOLS_OF_THE_TRADE",
+            "CurrentUpgradeLevel": 1,
+            "enchantment": null
+          },
+          {
+            "id": "CALCULATED_GAMBLE",
+            "CurrentUpgradeLevel": 1,
+            "enchantment": null
+          },
+          {
+            "id": "MALAISE",
+            "CurrentUpgradeLevel": 1,
+            "enchantment": null
+          },
+          {
+            "id": "ULTIMATE_DEFEND",
+            "CurrentUpgradeLevel": 1,
+            "enchantment": null
+          },
+          {
+            "id": "PIERCING_WAIL",
+            "CurrentUpgradeLevel": 1,
+            "enchantment": null
+          },
+          {
+            "id": "FOOTWORK",
+            "CurrentUpgradeLevel": 1,
+            "enchantment": null
+          }
+        ],
+        "hand": [
+          "SUPPRESS",
+          "BACKFLIP",
+          "STRIKE_SILENT",
+          "MIRAGE",
+          "DEFEND_SILENT",
+          "BLADE_OF_INK",
+          "ESCAPE_PLAN"
+        ],
+        "rootRunListeners": 31,
+        "Energy": 3,
+        "Block": 0
+      },
+      "paths": [
+        [
+          {
+            "card": "SUPPRESS",
+            "GeneratedOrdinal": -1,
+            "Target": 1
+          }
+        ],
+        [
+          {
+            "card": "BACKFLIP",
+            "GeneratedOrdinal": -1,
+            "Target": -1
+          }
+        ],
+        [
+          {
+            "card": "STRIKE_SILENT",
+            "GeneratedOrdinal": -1,
+            "Target": 1
+          }
+        ],
+        [
+          {
+            "card": "MIRAGE",
+            "GeneratedOrdinal": -1,
+            "Target": -1
+          }
+        ],
+        [
+          {
+            "card": "DEFEND_SILENT",
+            "GeneratedOrdinal": -1,
+            "Target": -1
+          }
+        ],
+        [
+          {
+            "card": "BLADE_OF_INK",
+            "GeneratedOrdinal": -1,
+            "Target": -1
+          }
+        ],
+        [
+          {
+            "card": "ESCAPE_PLAN",
+            "GeneratedOrdinal": -1,
+            "Target": -1
+          }
+        ],
+        [
+          {
+            "card": "SUPPRESS",
+            "GeneratedOrdinal": -1,
+            "Target": 1
+          },
+          {
+            "card": "BACKFLIP",
+            "GeneratedOrdinal": -1,
+            "Target": -1
+          },
+          {
+            "card": "STRIKE_SILENT",
+            "GeneratedOrdinal": -1,
+            "Target": 1
+          },
+          {
+            "card": "MIRAGE",
+            "GeneratedOrdinal": -1,
+            "Target": -1
+          },
+          {
+            "card": "ESCAPE_PLAN",
+            "GeneratedOrdinal": -1,
+            "Target": -1
+          },
+          {
+            "card": "TOOLS_OF_THE_TRADE",
+            "GeneratedOrdinal": -1,
+            "Target": -1
+          }
+        ],
+        [
+          {
+            "card": "ESCAPE_PLAN",
+            "GeneratedOrdinal": -1,
+            "Target": -1
+          },
+          {
+            "card": "DEFEND_SILENT",
+            "GeneratedOrdinal": -1,
+            "Target": -1
+          },
+          {
+            "card": "BLADE_OF_INK",
+            "GeneratedOrdinal": -1,
+            "Target": -1
+          },
+          {
+            "card": null,
+            "GeneratedOrdinal": 1,
+            "Target": 1
+          },
+          {
+            "card": null,
+            "GeneratedOrdinal": 0,
+            "Target": 1
+          },
+          {
+            "card": "DEFEND_SILENT",
+            "GeneratedOrdinal": -1,
+            "Target": -1
+          },
+          {
+            "card": "SUPPRESS",
+            "GeneratedOrdinal": -1,
+            "Target": 1
+          }
+        ]
+      ],
+      "nativeActions": 6,
+      "roundAdvanced": false
+    }
+  },
+  "failedInput": {
+    "runId": "ec00db2a6098433592d0b075e93c9303",
+    "reason": "Launcher default injected one extra card. Fixture rejected before compact admission. Corrected with explicit cards-json []."
+  },
+  "validation": {
+    "release": "Passed, 10.15s, 0 warnings/errors (v1 had test-only CardModel property compile error)",
+    "linuxBoundaries": "Passed, search_files=88",
+    "powershellBoundaries": "Not run; maintained",
+    "headlessProcess": "956969 stopped",
+    "localLinks": "Passed, 293 links; both JSON records parsed"
+  },
+  "limitations": [
+    "First player-action boundary only. No compact round advancement, complete search, complete deployment or new performance result.",
+    "Seven individual opening cards and two deterministic sequences; this fixture does not enumerate discard choices.",
+    "Full Necrobinder input and dynamic closure remain pending."
+  ]
+}

@@ -172,8 +172,8 @@ internal sealed partial class CombatPredictionSimulator
         if (HasPendingChoice)
             return false;
 
-        var unblockedDamageTarget = Hook.ModifyUnblockedDamageTarget(
-            State.CombatState,
+        var unblockedDamageTarget = HookMirrors.ModifyUnblockedDamageTarget(
+            this,
             originalTarget,
             unblockedDamage,
             props,
@@ -441,6 +441,12 @@ internal sealed partial class CombatPredictionSimulator
                 if (!HandlePlayerDeath(player))
                     return false;
             }
+            else if (creature.PetOwner != null && State.CombatState is ICombatPredictionEffectSink petEffects)
+            {
+                // Pets are not visited by the deferred enemy death sweep. Native clears
+                // ordinary Powers here while DieForYou keeps the dead Osty in the roster.
+                petEffects.RemovePowersAfterDeath(creature);
+            }
         }
         else
         {
@@ -469,9 +475,10 @@ internal sealed partial class CombatPredictionSimulator
     // Mirrors the player-death flow in CreatureCmd.KillWithoutCheckingWinCondition.
     private bool HandlePlayerDeath(Player player)
     {
-        if (State.CombatState is SimulatedCombatState combat)
-            combat.RemovePowersAfterDeath(player.Creature);
-
+        // Native removes the dead player's Powers before clearing their orbs and pet.
+        // Enemy cleanup is deferred to the solver's death sweep, which never visits players.
+        if (State.CombatState is ICombatPredictionEffectSink effects)
+            effects.CompletePlayerDeath(player);
         var playerState = State.GetPlayerCombatState(player);
         playerState.OrbQueue.Clear();
 

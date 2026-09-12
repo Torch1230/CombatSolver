@@ -1231,6 +1231,8 @@ internal sealed class SimulationSnapshot(
     CombatTerminalStamp? terminalStamp = null)
 {
     private CombatPredictionSimulator? _simulator = simulator;
+    private CompactCombatCandidate? _compact;
+    internal TurnStartChoiceRequest? CompactPendingChoice { get; private set; }
     private string? _releasedBy;
     private int _releasedAtLine;
 
@@ -1331,11 +1333,31 @@ internal sealed class SimulationSnapshot(
     public IReadOnlyList<PredictionGap> PredictionGaps { get; } = predictionGaps;
     public ContinuationStamp? Continuation { get; private set; }
 
-    public CombatPredictionSimulator Simulator => _simulator
-        ?? throw new InvalidOperationException(
-            $"搜索快照的模拟器已经释放：{_releasedBy ?? "unknown"}:{_releasedAtLine}。");
+    public CombatPredictionSimulator Simulator
+    {
+        get
+        {
+            if (_simulator != null) return _simulator;
+            if (_compact is { } compact)
+            {
+                // Compatibility reads are owned by the snapshot, never the frozen values.
+                // Parent readers can be concurrent; publishing a derived graph happens once.
+                lock (compact) return _simulator ??= compact.Materialize();
+            }
+            throw new InvalidOperationException(
+                $"搜索快照的模拟器已经释放：{_releasedBy ?? "unknown"}:{_releasedAtLine}。");
+        }
+    }
 
-    public bool HasSimulator => _simulator != null;
+    public bool HasSimulator => _simulator != null || _compact != null;
+    internal CompactCombatCandidate? CompactCandidate => _compact;
+
+    internal void AttachCompact(CompactCombatCandidate candidate, TurnStartChoiceRequest? pending = null)
+    {
+        if (HasSimulator) throw new InvalidOperationException("Completed compact snapshot already owns a state.");
+        _compact = candidate;
+        CompactPendingChoice = pending;
+    }
 
     public void SetContinuation(ContinuationStamp continuation)
         => Continuation = continuation;
@@ -1345,6 +1367,8 @@ internal sealed class SimulationSnapshot(
         [CallerLineNumber] int line = 0)
     {
         _simulator = null;
+        _compact = null;
+        CompactPendingChoice = null;
         _releasedBy = caller;
         _releasedAtLine = line;
     }

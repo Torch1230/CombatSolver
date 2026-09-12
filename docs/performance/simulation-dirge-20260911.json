@@ -1,0 +1,1078 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-11",
+  "baseCommit": "bfea43d",
+  "scope": "Exact Dirge/Soul with repeated X summons, random draw insertion and immutable upgraded generation templates",
+  "passes": [
+    {
+      "case": "native-v1",
+      "runId": "dfe0ffba3c3340b1a173946adcb9333a",
+      "scenarioId": "COMPACT-DIRGE-NATIVE",
+      "status": "Passed",
+      "processId": 1403647,
+      "startedAtUtc": "2026-09-11T07:37:50.1979047+00:00",
+      "finishedAtUtc": "2026-09-11T07:38:17.4816256+00:00",
+      "elapsedMilliseconds": 27283.7978,
+      "completedChecks": [
+        "CompactDirge:Mode0:OmittedChoices4:FullContinuations",
+        "CompactDirge:Mode0:6NativeActions:12Branches:0NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative",
+        "CompactDirge:Mode0:X3AndX0:SeparateSummons:RandomDrawInsertion:GenerationBeforeDraw:SelfExhaust",
+        "CompactDirge:Mode1:OmittedChoices4:FullContinuations",
+        "CompactDirge:Mode1:6NativeActions:12Branches:0NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative",
+        "CompactDirge:Mode1:X3AndX0:SeparateSummons:RandomDrawInsertion:GenerationBeforeDraw:SelfExhaust"
+      ],
+      "error": null
+    },
+    {
+      "case": "search-v1",
+      "runId": "9d527f1d48474cb2aefe5807e4ea09f2",
+      "scenarioId": "COMPACT-DIRGE-SEARCH",
+      "status": "Passed",
+      "processId": 1403647,
+      "startedAtUtc": "2026-09-11T07:38:46.3022782+00:00",
+      "finishedAtUtc": "2026-09-11T07:38:51.4562457+00:00",
+      "elapsedMilliseconds": 5153.9689,
+      "completedChecks": [
+        "CompactSearchLifecycle:DirgeTrue:DrawExhaustFalse:NeurosurgeFalse:OstyFalse:TurnRelicFalse:250Nodes:LegacyEqualsCompact:DOP1EqualsDOP2:Concurrency2:CancelAndFailureDrained:RootReusable:UnsupportedPotionRejected:ActualUnchanged"
+      ],
+      "error": null
+    },
+    {
+      "case": "draw-exhaust-sentinel-v1",
+      "runId": "abda140bbca04bd6ad952cefe60a41ae",
+      "scenarioId": "COMPACT-DRAW-EXHAUST-NATIVE",
+      "status": "Passed",
+      "processId": 1403647,
+      "startedAtUtc": "2026-09-11T07:39:19.8338065+00:00",
+      "finishedAtUtc": "2026-09-11T07:39:28.1270896+00:00",
+      "elapsedMilliseconds": 8293.2836,
+      "completedChecks": [
+        "CompactDrawExhaust:Mode0:OmittedChoices6:FullContinuations",
+        "CompactDrawExhaust:Mode0:6NativeActions:15Branches:2NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative",
+        "CompactDrawExhaust:Mode1:OmittedChoices5:FullContinuations",
+        "CompactDrawExhaust:Mode1:6NativeActions:12Branches:0NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative",
+        "CompactDrawExhaust:Mode2:OmittedChoices4:FullContinuations",
+        "CompactDrawExhaust:Mode2:6NativeActions:12Branches:0NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative"
+      ],
+      "error": null
+    },
+    {
+      "case": "hand-generation-sentinel-v1",
+      "runId": "8a5d6b44e316407aa0e878e15791a1b0",
+      "scenarioId": "COMPACT-INKY-CARDS-NATIVE",
+      "status": "Passed",
+      "processId": 1403647,
+      "startedAtUtc": "2026-09-11T07:40:16.5049653+00:00",
+      "finishedAtUtc": "2026-09-11T07:40:21.3563687+00:00",
+      "elapsedMilliseconds": 4851.4041,
+      "completedChecks": [
+        "CompactGeneratedCards:InkyTrue:Mode0:9Branches:Frozen8Workers:AllSnapshotProperties",
+        "CompactGeneratedCards:InkyTrue:Mode1:4Branches:Frozen8Workers:AllSnapshotProperties",
+        "CompactInkyCards:Native2Roots13Branches8Actions:MixedTemplates:RootUpgradedEnchantment:FullHandSpill:Shuffle:DeathBeforeWeak:FullCardFingerprints:AllSnapshotProperties:AllRng:Frozen8Workers"
+      ],
+      "error": null
+    }
+  ],
+  "failures": [],
+  "nativeModes": [
+    {
+      "mode": 0,
+      "rootPetDead": false,
+      "initialDrawCount": 2,
+      "initialHandCount": 3,
+      "branches": 12,
+      "actions": [
+        {
+          "card": "DIRGE",
+          "upgrade": 0,
+          "kind": 0,
+          "expectedPet": {
+            "CurrentHp": 14,
+            "MaxHp": 16,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 14,
+            "MaxHp": 16,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              1,
+              2
+            ],
+            [
+              3,
+              5,
+              4,
+              6,
+              7
+            ],
+            [],
+            [],
+            [
+              0
+            ]
+          ],
+          "actualPiles": [
+            [
+              1,
+              2
+            ],
+            [
+              3,
+              5,
+              4,
+              6,
+              7
+            ],
+            [],
+            [],
+            [
+              0
+            ]
+          ],
+          "expectedRng": {
+            "Shuffle": 14,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 14,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        },
+        {
+          "card": "FINESSE",
+          "upgrade": 0,
+          "kind": 0,
+          "expectedPet": {
+            "CurrentHp": 14,
+            "MaxHp": 16,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 14,
+            "MaxHp": 16,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              1,
+              3
+            ],
+            [
+              5,
+              4,
+              6,
+              7
+            ],
+            [
+              2
+            ],
+            [],
+            [
+              0
+            ]
+          ],
+          "actualPiles": [
+            [
+              1,
+              3
+            ],
+            [
+              5,
+              4,
+              6,
+              7
+            ],
+            [
+              2
+            ],
+            [],
+            [
+              0
+            ]
+          ],
+          "expectedRng": {
+            "Shuffle": 14,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 14,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        },
+        {
+          "card": "SOUL",
+          "upgrade": 0,
+          "kind": 0,
+          "expectedPet": {
+            "CurrentHp": 14,
+            "MaxHp": 16,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 14,
+            "MaxHp": 16,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              1,
+              5,
+              4
+            ],
+            [
+              6,
+              7
+            ],
+            [
+              2
+            ],
+            [],
+            [
+              0,
+              3
+            ]
+          ],
+          "actualPiles": [
+            [
+              1,
+              5,
+              4
+            ],
+            [
+              6,
+              7
+            ],
+            [
+              2
+            ],
+            [],
+            [
+              0,
+              3
+            ]
+          ],
+          "expectedRng": {
+            "Shuffle": 14,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 14,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        },
+        {
+          "card": "DIRGE",
+          "upgrade": 1,
+          "kind": 0,
+          "expectedPet": {
+            "CurrentHp": 14,
+            "MaxHp": 16,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 14,
+            "MaxHp": 16,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              5,
+              4
+            ],
+            [
+              6,
+              7
+            ],
+            [
+              2
+            ],
+            [],
+            [
+              0,
+              3,
+              1
+            ]
+          ],
+          "actualPiles": [
+            [
+              5,
+              4
+            ],
+            [
+              6,
+              7
+            ],
+            [
+              2
+            ],
+            [],
+            [
+              0,
+              3,
+              1
+            ]
+          ],
+          "expectedRng": {
+            "Shuffle": 14,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 14,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        },
+        {
+          "card": "",
+          "upgrade": 0,
+          "kind": 2,
+          "expectedPet": {
+            "CurrentHp": 1,
+            "MaxHp": 1,
+            "Block": 0
+          },
+          "actualPet": {
+            "CurrentHp": 1,
+            "MaxHp": 1,
+            "Block": 0
+          },
+          "expectedPiles": [
+            [
+              7,
+              4,
+              5,
+              2
+            ],
+            [],
+            [
+              6
+            ],
+            [],
+            [
+              0,
+              3,
+              1
+            ]
+          ],
+          "actualPiles": [
+            [
+              7,
+              4,
+              5,
+              2
+            ],
+            [],
+            [
+              6
+            ],
+            [],
+            [
+              0,
+              3,
+              1
+            ]
+          ],
+          "expectedRng": {
+            "Shuffle": 16,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 16,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        },
+        {
+          "card": "",
+          "upgrade": 0,
+          "kind": 2,
+          "expectedPet": {
+            "CurrentHp": 1,
+            "MaxHp": 1,
+            "Block": 0
+          },
+          "actualPet": {
+            "CurrentHp": 1,
+            "MaxHp": 1,
+            "Block": 0
+          },
+          "expectedPiles": [
+            [
+              9,
+              10,
+              11,
+              4,
+              2,
+              6,
+              5,
+              7
+            ],
+            [],
+            [
+              8
+            ],
+            [],
+            [
+              0,
+              3,
+              1
+            ]
+          ],
+          "actualPiles": [
+            [
+              9,
+              10,
+              11,
+              4,
+              2,
+              6,
+              5,
+              7
+            ],
+            [],
+            [
+              8
+            ],
+            [],
+            [
+              0,
+              3,
+              1
+            ]
+          ],
+          "expectedRng": {
+            "Shuffle": 20,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 20,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        }
+      ]
+    },
+    {
+      "mode": 1,
+      "rootPetDead": true,
+      "initialDrawCount": 0,
+      "initialHandCount": 10,
+      "branches": 12,
+      "actions": [
+        {
+          "card": "DIRGE",
+          "upgrade": 1,
+          "kind": 0,
+          "expectedPet": {
+            "CurrentHp": 12,
+            "MaxHp": 12,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 12,
+            "MaxHp": 12,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              0,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9
+            ],
+            [
+              12,
+              11,
+              10
+            ],
+            [],
+            [],
+            [
+              1
+            ]
+          ],
+          "actualPiles": [
+            [
+              0,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9
+            ],
+            [
+              12,
+              11,
+              10
+            ],
+            [],
+            [],
+            [
+              1
+            ]
+          ],
+          "expectedRng": {
+            "Shuffle": 23,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 23,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        },
+        {
+          "card": "FINESSE",
+          "upgrade": 0,
+          "kind": 0,
+          "expectedPet": {
+            "CurrentHp": 12,
+            "MaxHp": 12,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 12,
+            "MaxHp": 12,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              0,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              12
+            ],
+            [
+              11,
+              10
+            ],
+            [
+              2
+            ],
+            [],
+            [
+              1
+            ]
+          ],
+          "actualPiles": [
+            [
+              0,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              12
+            ],
+            [
+              11,
+              10
+            ],
+            [
+              2
+            ],
+            [],
+            [
+              1
+            ]
+          ],
+          "expectedRng": {
+            "Shuffle": 23,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 23,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        },
+        {
+          "card": "SOUL",
+          "upgrade": 1,
+          "kind": 0,
+          "expectedPet": {
+            "CurrentHp": 12,
+            "MaxHp": 12,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 12,
+            "MaxHp": 12,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              0,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              11,
+              10
+            ],
+            [],
+            [
+              2
+            ],
+            [],
+            [
+              1,
+              12
+            ]
+          ],
+          "actualPiles": [
+            [
+              0,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              11,
+              10
+            ],
+            [],
+            [
+              2
+            ],
+            [],
+            [
+              1,
+              12
+            ]
+          ],
+          "expectedRng": {
+            "Shuffle": 23,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 23,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        },
+        {
+          "card": "DIRGE",
+          "upgrade": 0,
+          "kind": 0,
+          "expectedPet": {
+            "CurrentHp": 12,
+            "MaxHp": 12,
+            "Block": 2
+          },
+          "actualPet": {
+            "CurrentHp": 12,
+            "MaxHp": 12,
+            "Block": 2
+          },
+          "expectedPiles": [
+            [
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              11,
+              10
+            ],
+            [],
+            [
+              2
+            ],
+            [],
+            [
+              1,
+              12,
+              0
+            ]
+          ],
+          "actualPiles": [
+            [
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              11,
+              10
+            ],
+            [],
+            [
+              2
+            ],
+            [],
+            [
+              1,
+              12,
+              0
+            ]
+          ],
+          "expectedRng": {
+            "Shuffle": 23,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 23,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        },
+        {
+          "card": "",
+          "upgrade": 0,
+          "kind": 2,
+          "expectedPet": {
+            "CurrentHp": 1,
+            "MaxHp": 1,
+            "Block": 0
+          },
+          "actualPet": {
+            "CurrentHp": 1,
+            "MaxHp": 1,
+            "Block": 0
+          },
+          "expectedPiles": [
+            [
+              11,
+              6,
+              4,
+              5,
+              7,
+              9
+            ],
+            [
+              3,
+              10,
+              2
+            ],
+            [
+              8
+            ],
+            [],
+            [
+              1,
+              12,
+              0
+            ]
+          ],
+          "actualPiles": [
+            [
+              11,
+              6,
+              4,
+              5,
+              7,
+              9
+            ],
+            [
+              3,
+              10,
+              2
+            ],
+            [
+              8
+            ],
+            [],
+            [
+              1,
+              12,
+              0
+            ]
+          ],
+          "expectedRng": {
+            "Shuffle": 32,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 32,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        },
+        {
+          "card": "",
+          "upgrade": 0,
+          "kind": 2,
+          "expectedPet": {
+            "CurrentHp": 1,
+            "MaxHp": 1,
+            "Block": 0
+          },
+          "actualPet": {
+            "CurrentHp": 1,
+            "MaxHp": 1,
+            "Block": 0
+          },
+          "expectedPiles": [
+            [
+              14,
+              15,
+              16,
+              3,
+              10,
+              2,
+              11,
+              4,
+              5
+            ],
+            [
+              6,
+              7,
+              9,
+              8
+            ],
+            [
+              13
+            ],
+            [],
+            [
+              1,
+              12,
+              0
+            ]
+          ],
+          "actualPiles": [
+            [
+              14,
+              15,
+              16,
+              3,
+              10,
+              2,
+              11,
+              4,
+              5
+            ],
+            [
+              6,
+              7,
+              9,
+              8
+            ],
+            [
+              13
+            ],
+            [],
+            [
+              1,
+              12,
+              0
+            ]
+          ],
+          "expectedRng": {
+            "Shuffle": 38,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          },
+          "actualRng": {
+            "Shuffle": 38,
+            "CombatCardGeneration": 0,
+            "CombatPotionGeneration": 0,
+            "CombatCardSelection": 0,
+            "CombatEnergyCosts": 0,
+            "CombatTargets": 0,
+            "CombatOrbGeneration": 0,
+            "MonsterAi": 0,
+            "Niche": 1
+          }
+        }
+      ]
+    }
+  ],
+  "validation": {
+    "build": {
+      "case": "v1",
+      "seconds": 11.89,
+      "warnings": 0,
+      "errors": 0
+    },
+    "linuxBoundaries": "Passed: search_files=93",
+    "powerShellBoundaries": "Maintained, not executed",
+    "coverageCatalog": "No registry or mirror metadata change; not rerun"
+  },
+  "limitations": [
+    "Captured pet identity required; first pet creation remains outside this domain",
+    "Original full Necrobinder inputs and all dynamic observers still require closure validation",
+    "Request elapsed time includes fixture setup; no performance speedup claim",
+    "No Steam launch, install, package, release or remote push"
+  ]
+}

@@ -84,6 +84,7 @@ internal sealed partial class UnattendedTestRunner
             CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
             CombatBeamSolver driver = new(root, SolverDisplayNames.Capture(combat), BattleDamageTracker.Observe(combat),
                 SolverController.CaptureSearchPolicy(SolverSettings.Capture(), combat, false, null));
+            var before = CaptureWriteDensity(root.ForkSimulator(), player, source);
             List<PlanAction> actions = [];
             if (victim != null) actions.Add(new PlanAction(PlanActionKind.PlayCard, root.StartTurnNumber,
                 CardId: "STRIKE_IRONCLAD", TargetCombatId: victim.CombatId));
@@ -105,6 +106,7 @@ internal sealed partial class UnattendedTestRunner
                 }
                 await AdvanceMercuryActualTurnAsync(combat, player, expectVictory: false);
                 AssertSnapshotEqual(expected, CaptureActual(combat, player, source), "SummonDeathPowerOrder", "NativeNextTurn");
+                RecordWriteDensity(victim is null ? "SummonAndNextTurn" : "KillSummonedEnemyAndNextTurn", before, simulator, player, source);
             }
             finally { predicted.ReleaseSimulator(); }
         }

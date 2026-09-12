@@ -444,10 +444,10 @@
     "testId": "MONSTER-MOVES-BATCH-034"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.DieForYouPower|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyUnblockedDamageTarget(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
-    "status": "SolverCompensation",
-    "source": "RandomForeseer 0.13.7 CombatPredictionSimulator.Damage + src/Prediction/MonsterMoveSemantics.cs + src/Search/CombatBeamSolver.cs",
-    "notes": "Uses the native redirect and overkill pipeline while Osty is alive, then suppresses the live-object hook after simulated Osty dies so later hits in the same multi-hit move reach the player; projected threat applies the same absorption and overkill semantics.",
-    "testId": "MONSTER-MOVES-BATCH-034"
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/Damage/ModifyUnblockedDamageTargetMirrors.cs + src/Engine/InCombat/Mirrors/HookMirrors.cs",
+    "notes": "Chains native redirection targets using branch-local pet HP, including ending-time dispatch, without removing or recreating DieForYou. Native living/dead roots, fully blocked and overflow damage, revival and two ordinary turns preserve full Power metadata and damage history.",
+    "testId": "COMPACT-OSTY-VALUES-20260911"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.DieForYouPower|MegaCrit.Sts2.Core.Models.AbstractModel.ShouldAllowHitting(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
     "status": "EngineInferred",

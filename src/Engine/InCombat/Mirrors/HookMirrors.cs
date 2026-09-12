@@ -431,12 +431,12 @@ internal static class HookMirrors
             };
         }
 
-        foreach (var listener in IterateCombatHookListeners(simulator, MirroredHookMask.TryModifyEnergyCostInCombat))
+        foreach (var listener in IterateCombatHookListeners(simulator, MirroredHookMask.TryModifyEnergyCostInCombat, allowPendingRead: true))
         {
             context.Cost = ModifyEnergyCostInCombatMirrors.Invoke(listener, context);
         }
 
-        foreach (var listener in IterateCombatHookListeners(simulator, MirroredHookMask.TryModifyEnergyCostInCombatLate))
+        foreach (var listener in IterateCombatHookListeners(simulator, MirroredHookMask.TryModifyEnergyCostInCombatLate, allowPendingRead: true))
         {
             context.Cost = ModifyEnergyCostInCombatMirrors.InvokeLate(listener, context);
         }
@@ -752,8 +752,23 @@ internal static class HookMirrors
         => value.ToString("0.##", CultureInfo.InvariantCulture);
 
     /// <summary>
-    /// Mirrors <see cref="Hook.ModifyHpLost"/>.
+    /// Mirrors <see cref="Hook.ModifyUnblockedDamageTarget"/>.
     /// </summary>
+    public static Creature ModifyUnblockedDamageTarget(CombatPredictionSimulator simulator, Creature target,
+        decimal amount, ValueProp props, Creature? dealer)
+    {
+        var context = new ModifyUnblockedDamageTargetMirrorContext
+            { Simulator = simulator, Target = target, Amount = amount, Props = props, Dealer = dealer };
+        // Native damage redirection bypasses the ending guard and chains each listener's
+        // returned recipient into the next. No Power instance is removed or recreated.
+        var listeners = simulator.State.CombatState is ICombatPredictionHookListenerSource source
+            ? source.MirroredHookListeners : simulator.State.IterateHookListeners();
+        foreach (var listener in new HookListenerEnumerable(simulator, listeners, MirroredHookMask.ModifyUnblockedDamageTarget))
+            context.Target = ModifyUnblockedDamageTargetMirrors.Invoke(listener, context);
+        return context.Target;
+    }
+
+    /// <summary>Mirrors <see cref="Hook.ModifyHpLost"/>.</summary>
     public static decimal ModifyHpLost(
         CombatPredictionSimulator simulator,
         Creature target,
@@ -1210,14 +1225,15 @@ internal static class HookMirrors
     /// </summary>
     private static HookListenerEnumerable IterateCombatHookListeners(
         CombatPredictionSimulator simulator,
-        MirroredHookMask mask = MirroredHookMask.All)
+        MirroredHookMask mask = MirroredHookMask.All,
+        bool allowPendingRead = false)
     {
         IReadOnlyList<AbstractModel> listeners = simulator.IsOverOrEnding
             ? Array.Empty<AbstractModel>()
             : simulator.State.CombatState is ICombatPredictionHookListenerSource source
                 ? source.MirroredHookListeners
                 : simulator.State.IterateHookListeners();
-        return new HookListenerEnumerable(simulator, listeners, mask);
+        return new HookListenerEnumerable(simulator, listeners, mask, allowPendingRead);
     }
 
     // IReadOnlyList<T>.GetEnumerator returns an interface enumerator and boxes List/array
@@ -1232,12 +1248,14 @@ internal static class HookMirrors
 
         private readonly CombatPredictionSimulator _simulator;
         private readonly MirroredHookMask _mask;
+        private readonly bool _allowPendingRead;
 
         public HookListenerEnumerable(CombatPredictionSimulator simulator, IReadOnlyList<AbstractModel> listeners,
-            MirroredHookMask mask = MirroredHookMask.All)
+            MirroredHookMask mask = MirroredHookMask.All, bool allowPendingRead = false)
         {
             _simulator = simulator;
             _mask = mask;
+            _allowPendingRead = allowPendingRead;
             if (listeners is MirroredHookListenerSnapshot snapshot && !snapshot.HasAny(mask))
                 listeners = Array.Empty<AbstractModel>();
             if (listeners is ISegmentedModelList segmented)
@@ -1253,7 +1271,7 @@ internal static class HookMirrors
         }
 
         public Enumerator GetEnumerator()
-            => new(_simulator, _first, _second, _mask);
+            => new(_simulator, _first, _second, _mask, _allowPendingRead);
 
         public bool Contains(AbstractModel candidate)
         {
@@ -1276,7 +1294,8 @@ internal static class HookMirrors
             CombatPredictionSimulator simulator,
             IReadOnlyList<AbstractModel> first,
             IReadOnlyList<AbstractModel>? second,
-            MirroredHookMask mask)
+            MirroredHookMask mask,
+            bool allowPendingRead)
         {
             private IReadOnlyList<AbstractModel> _segment = first;
             private IReadOnlyList<AbstractModel>? _pending = second;
@@ -1290,7 +1309,9 @@ internal static class HookMirrors
                 // Mirrored listeners are synchronous projections of async vanilla hooks. A
                 // nested card choice is their suspension boundary: no later listener or later
                 // hook phase may run until the containing action is replayed with that choice.
-                if (simulator.HasPendingChoice)
+                // Explicit read-only cost queries still evaluate the visible pending state;
+                // native card selectors do not suspend those synchronous queries.
+                if (!allowPendingRead && simulator.HasPendingChoice)
                     return false;
                 int next = _index + 1;
                 if (_filtered is { } filtered)

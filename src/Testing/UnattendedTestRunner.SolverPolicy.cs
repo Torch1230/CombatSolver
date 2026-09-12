@@ -18,39 +18,32 @@ internal sealed partial class UnattendedTestRunner
         if (preset == SolverPerformancePreset.Custom)
         {
             _completedChecks.Add(
-                $"PerformancePreset:Custom:{snapshot.Profile.SoftTimeBudgetMilliseconds}/" +
-                $"{snapshot.Profile.SoftTimeBudgetMilliseconds}ms:" +
-                $"Beam={snapshot.Profile.BeamWidth}/{snapshot.Profile.BeamWidth}:" +
-                $"Nodes={snapshot.Profile.MaxExpandedNodes}/{snapshot.Profile.MaxExpandedNodes}:" +
-                $"Branches={snapshot.Profile.MaxCardBranchesPerNode}/" +
-                $"{snapshot.Profile.MaxCardBranchesPerNode}:" +
+                $"PerformancePreset:Custom:{snapshot.Profile.SoftTimeBudgetMilliseconds}ms:" +
+                $"Beam={snapshot.Profile.BeamWidth}:Nodes={snapshot.Profile.MaxExpandedNodes}:" +
+                $"Branches={snapshot.Profile.MaxCardBranchesPerNode}:" +
                 $"NoGC={snapshot.EnableNoGcRegion}/{snapshot.NoGcRegionBudgetBytes}");
             return;
         }
-        (int ShortMs, int DeepMs, int ShortBeam, int DeepBeam, int ShortNodes, int DeepNodes,
-            int ShortBranches, int DeepBranches) expected = preset switch
+        (int SoftTimeBudgetMilliseconds, int BeamWidth, int MaxExpandedNodes,
+            int MaxCardBranchesPerNode) expected = preset switch
         {
-            SolverPerformancePreset.Low => (5_000, 60_000, 18, 45, 1_200, 6_000, 14, 24),
-            SolverPerformancePreset.Medium => (8_000, 120_000, 24, 60, 2_400, 12_000, 20, 32),
-            SolverPerformancePreset.High => (12_000, 180_000, 36, 90, 5_000, 25_000, 30, 48),
-            SolverPerformancePreset.VeryHigh => (20_000, 300_000, 54, 135, 10_000, 50_000, 45, 72),
+            SolverPerformancePreset.Low => (60_000, 45, 12_000, 24),
+            SolverPerformancePreset.Medium => (120_000, 60, 24_000, 32),
+            SolverPerformancePreset.High => (180_000, 90, 50_000, 48),
+            SolverPerformancePreset.VeryHigh => (300_000, 135, 100_000, 72),
             _ => throw new ArgumentOutOfRangeException(nameof(preset)),
         };
-        if (snapshot.Profile.SoftTimeBudgetMilliseconds != expected.ShortMs
-            || snapshot.Profile.SoftTimeBudgetMilliseconds != expected.DeepMs
-            || snapshot.Profile.BeamWidth != expected.ShortBeam
-            || snapshot.Profile.BeamWidth != expected.DeepBeam
-            || snapshot.Profile.MaxExpandedNodes != expected.ShortNodes
-            || snapshot.Profile.MaxExpandedNodes != expected.DeepNodes
-            || snapshot.Profile.MaxCardBranchesPerNode != expected.ShortBranches
-            || snapshot.Profile.MaxCardBranchesPerNode != expected.DeepBranches)
+        if (snapshot.Profile.SoftTimeBudgetMilliseconds != expected.SoftTimeBudgetMilliseconds
+            || snapshot.Profile.BeamWidth != expected.BeamWidth
+            || snapshot.Profile.MaxExpandedNodes != expected.MaxExpandedNodes
+            || snapshot.Profile.MaxCardBranchesPerNode != expected.MaxCardBranchesPerNode)
         {
             throw new InvalidOperationException($"性能预设 {preset} 解析结果与固定规格不一致。");
         }
         _completedChecks.Add(
-            $"PerformancePreset:{preset}:{expected.ShortMs}/{expected.DeepMs}ms:" +
-            $"Beam={expected.ShortBeam}/{expected.DeepBeam}:Nodes={expected.ShortNodes}/{expected.DeepNodes}:" +
-            $"Branches={expected.ShortBranches}/{expected.DeepBranches}:" +
+            $"PerformancePreset:{preset}:{expected.SoftTimeBudgetMilliseconds}ms:" +
+            $"Beam={expected.BeamWidth}:Nodes={expected.MaxExpandedNodes}:" +
+            $"Branches={expected.MaxCardBranchesPerNode}:" +
             $"NoGC={snapshot.EnableNoGcRegion}/{snapshot.NoGcRegionBudgetBytes}");
     }
 

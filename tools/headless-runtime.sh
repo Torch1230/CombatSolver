@@ -35,6 +35,43 @@ hr_checked_game_state() {
     fi
     [[ $(readlink -f -- "/proc/$pid/exe" 2>/dev/null) == "$executable" ]] || return 2
 }
+# Select and lock one of two stable per-worktree slots. Explicit roots/IDs
+# remain pinned; matrices keep matrix.lock across the gaps between requests.
+hr_select_pool() {
+    local parent="$1" base="$2" timeout="$3" deadline=$((SECONDS + $3)) slot root fd matrix_fd pass marker pid birth identity
+    while :; do
+        for pass in existing new; do
+            for slot in "$base" "$base-2"; do
+                root="$parent/$slot"
+                if [[ $pass == existing ]]; then [[ -d $root ]] || continue
+                else [[ ! -e $root ]] || continue; fi
+                [[ ! -L $root && ! -L $root/launcher.lock && ! -L $root/matrix.lock ]] || return 1
+                mkdir -p -- "$root" || return 1
+                exec {fd}>"$root/launcher.lock" || return 1
+                if ! flock -n "$fd"; then exec {fd}>&-; continue; fi
+                exec {matrix_fd}>"$root/matrix.lock" || { exec {fd}>&-; return 1; }
+                if ! flock -n "$matrix_fd"; then exec {matrix_fd}>&-; exec {fd}>&-; continue; fi
+                exec {matrix_fd}>&-
+                # A held search is intentionally reserved for its caller.
+                if [[ -f $root/data/SlayTheSpire2/combat_solver_test_ready.json ]] &&
+                    jq -e '.held == true' "$root/data/SlayTheSpire2/combat_solver_test_ready.json" >/dev/null; then
+                    marker="$root/process.json"
+                    if [[ -f $marker ]]; then
+                        pid=$(jq -er '.pid' "$marker") || { exec {fd}>&-; return 1; }
+                        birth=$(jq -er '.procStartTimeTicks' "$marker") || { exec {fd}>&-; return 1; }
+                        identity=0; hr_identity_state "$pid" "$birth" || identity=$?
+                        if ((identity != 1)); then exec {fd}>&-; continue; fi
+                    fi
+                fi
+                HR_SELECTED_ROOT="$root"; HR_SELECTED_INSTANCE="$slot"; HR_SELECTED_FD=$fd
+                echo "HEADLESS_POOL_SELECTED instance=$slot root=$root" >&2
+                return 0
+            done
+        done
+        ((SECONDS < deadline)) || { hr_error 'instance pool busy (two slots); queue timeout'; return 1; }
+        sleep 0.25
+    done
+}
 hr_init() {
     HR_ROOT="$(realpath -m -- "$1")"; HR_INSTANCE="$2"
     HR_EXECUTABLE="$(realpath -m -- "$3")"; HR_DATA="$4"
@@ -56,7 +93,12 @@ hr_init() {
         [[ ! -L $HR_ROOT/$child ]] || { hr_error "managed path cannot be a symlink: $child"; return 1; }
     done
     mkdir -p -- "$HR_ROOT" "$HR_HOST/leases" || return 1
-    exec {HR_INSTANCE_FD}>"$HR_ROOT/launcher.lock" || return 1
+    if [[ ${HR_SELECTED_ROOT:-} == "$HR_ROOT" && -n ${HR_SELECTED_FD:-} ]]; then
+        HR_INSTANCE_FD=$HR_SELECTED_FD
+        unset HR_SELECTED_FD
+    else
+        exec {HR_INSTANCE_FD}>"$HR_ROOT/launcher.lock" || return 1
+    fi
     flock -n "$HR_INSTANCE_FD" || { hr_error "instance already has a producer: $HR_ROOT"; return 1; }
     local owner="$HR_ROOT/runtime-owner.json" worktree="${HR_WORKTREE:-$PWD}"
     worktree="$(realpath -m -- "$worktree")"
@@ -275,9 +317,10 @@ hr_snapshot_id() {
         for file in "$@"; do sha256sum -- "$file" || return 1; done
     } | sha256sum | cut -d ' ' -f 1
 }
-hr_prepare_snapshot() {
+hr_prepare_snapshot() (
     local source="$1" dll="$2" manifest="$3" ritsu="$4" ritsu_manifest="$5" expected="$6" staging old directory actual id_temp
     [[ $HR_ROOT != "$source" && $HR_ROOT != "$source/"* && $source != "$HR_ROOT/"* ]] || { hr_error 'source and runtime must be disjoint'; return 1; }
+    trap 'result=$?; if [[ -n ${staging:-} && -d $staging ]]; then rm -rf -- "$staging" || result=1; fi; if [[ -n ${id_temp:-} ]]; then rm -f -- "$id_temp" || result=1; fi; exit "$result"' EXIT
     local candidate
     for candidate in /proc/[0-9]*/exe; do
         [[ $(readlink -f -- "$candidate" 2>/dev/null) != "$HR_EXECUTABLE" ]] || { hr_error 'cannot publish snapshot while its executable is alive'; return 1; }
@@ -296,7 +339,7 @@ hr_prepare_snapshot() {
     printf '%s\n' 'CombatSolver isolated headless dependency' >"$staging/mods/CombatSolverHeadlessRitsuLib/.combatsolver-headless-only" || return 1
     actual="$(hr_snapshot_id "$source" "$dll" "$manifest" "$ritsu" "$ritsu_manifest")" || return 1
     [[ $actual == "$expected" ]] || {
-        hr_error "snapshot source changed while copying; unpublished snapshot retained at $staging"; return 1;
+        hr_error "snapshot source changed while copying; unpublished snapshot will be removed"; return 1;
     }
     id_temp="$(mktemp --tmpdir="$HR_ROOT" .snapshot-id.XXXXXX)" || return 1
     printf '%s\n' "$expected" >"$id_temp" || return 1
@@ -312,4 +355,7 @@ hr_prepare_snapshot() {
     fi
     mv -- "$staging" "$HR_ROOT/game" || return 1
     mv -f -- "$id_temp" "$HR_ROOT/snapshot-id" || return 1
-}
+    # Commit succeeded: the rollback image is no longer needed. Failures above
+    # retain it for recovery; successful rebuilds must not accumulate full games.
+    if [[ -n ${old:-} ]]; then rm -rf -- "$old" || return 1; fi
+)

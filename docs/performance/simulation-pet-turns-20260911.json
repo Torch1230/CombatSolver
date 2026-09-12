@@ -1,0 +1,186 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-11",
+  "scope": "Exact captured BoundPhylactery at AfterEnergyResetLate with an existing pet and full compact round closure",
+  "passes": [
+    {
+      "case": "native-v1",
+      "runId": "c1dc1de5335a4496a097c6deba28f50d",
+      "scenarioId": "COMPACT-OSTY-TURN-NATIVE",
+      "status": "Passed",
+      "processId": 1372463,
+      "startedAtUtc": "2026-09-11T07:08:47.552752+00:00",
+      "finishedAtUtc": "2026-09-11T07:09:17.1516785+00:00",
+      "elapsedMilliseconds": 29598.9995,
+      "completedChecks": [
+        "CompactOstyTurns:Mode0:OmittedChoices5:FullPendingEvaluation",
+        "CompactOsty:TurnRelicTrue:Mode0:NativeChoices5:3NativeSteps:FullSnapshotsKeysHistoryRngPowerMetadata:ReverseRollback:EightWorkers:FrozenAfterNative",
+        "CompactOstyTurns:Mode1:OmittedChoices5:FullPendingEvaluation",
+        "CompactOsty:TurnRelicTrue:Mode1:NativeChoices5:3NativeSteps:FullSnapshotsKeysHistoryRngPowerMetadata:ReverseRollback:EightWorkers:FrozenAfterNative",
+        "CompactOstyTurns:Mode2:OmittedChoices5:FullPendingEvaluation",
+        "CompactOsty:TurnRelicTrue:Mode2:NativeChoices5:3NativeSteps:FullSnapshotsKeysHistoryRngPowerMetadata:ReverseRollback:EightWorkers:FrozenAfterNative"
+      ],
+      "error": null
+    },
+    {
+      "case": "search-v1",
+      "runId": "5867870dfeb84722b29418430e5da657",
+      "scenarioId": "COMPACT-OSTY-TURN-SEARCH",
+      "status": "Passed",
+      "processId": 1372463,
+      "startedAtUtc": "2026-09-11T07:09:48.4654704+00:00",
+      "finishedAtUtc": "2026-09-11T07:09:53.3660882+00:00",
+      "elapsedMilliseconds": 4900.6188,
+      "completedChecks": [
+        "CompactSearchLifecycle:NeurosurgeFalse:OstyTrue:TurnRelicTrue:250Nodes:LegacyEqualsCompact:DOP1EqualsDOP2:Concurrency2:CancelAndFailureDrained:RootReusable:UnsupportedPotionRejected:ActualUnchanged"
+      ],
+      "error": null
+    }
+  ],
+  "nativePetVitals": [
+    {
+      "mode": 0,
+      "step": 0,
+      "expected": {
+        "CurrentHp": 1,
+        "MaxHp": 1,
+        "Block": 0
+      },
+      "actual": {
+        "CurrentHp": 1,
+        "MaxHp": 1,
+        "Block": 0
+      }
+    },
+    {
+      "mode": 0,
+      "step": 1,
+      "expected": {
+        "CurrentHp": 1,
+        "MaxHp": 1,
+        "Block": 0
+      },
+      "actual": {
+        "CurrentHp": 1,
+        "MaxHp": 1,
+        "Block": 0
+      }
+    },
+    {
+      "mode": 0,
+      "step": 2,
+      "expected": {
+        "CurrentHp": 2,
+        "MaxHp": 2,
+        "Block": 0
+      },
+      "actual": {
+        "CurrentHp": 2,
+        "MaxHp": 2,
+        "Block": 0
+      }
+    },
+    {
+      "mode": 1,
+      "step": 0,
+      "expected": {
+        "CurrentHp": 6,
+        "MaxHp": 8,
+        "Block": 0
+      },
+      "actual": {
+        "CurrentHp": 6,
+        "MaxHp": 8,
+        "Block": 0
+      }
+    },
+    {
+      "mode": 1,
+      "step": 1,
+      "expected": {
+        "CurrentHp": 1,
+        "MaxHp": 1,
+        "Block": 0
+      },
+      "actual": {
+        "CurrentHp": 1,
+        "MaxHp": 1,
+        "Block": 0
+      }
+    },
+    {
+      "mode": 1,
+      "step": 2,
+      "expected": {
+        "CurrentHp": 2,
+        "MaxHp": 2,
+        "Block": 0
+      },
+      "actual": {
+        "CurrentHp": 2,
+        "MaxHp": 2,
+        "Block": 0
+      }
+    },
+    {
+      "mode": 2,
+      "step": 0,
+      "expected": {
+        "CurrentHp": 1,
+        "MaxHp": 1,
+        "Block": 0
+      },
+      "actual": {
+        "CurrentHp": 1,
+        "MaxHp": 1,
+        "Block": 0
+      }
+    },
+    {
+      "mode": 2,
+      "step": 1,
+      "expected": {
+        "CurrentHp": 1,
+        "MaxHp": 1,
+        "Block": 0
+      },
+      "actual": {
+        "CurrentHp": 1,
+        "MaxHp": 1,
+        "Block": 0
+      }
+    },
+    {
+      "mode": 2,
+      "step": 2,
+      "expected": {
+        "CurrentHp": 2,
+        "MaxHp": 2,
+        "Block": 0
+      },
+      "actual": {
+        "CurrentHp": 2,
+        "MaxHp": 2,
+        "Block": 0
+      }
+    }
+  ],
+  "build": {
+    "revision": "v1",
+    "status": "Passed",
+    "seconds": 11.08,
+    "warnings": 0,
+    "errors": 0
+  },
+  "validation": {
+    "linuxBoundaries": "Passed: search_files=93",
+    "powershellBoundaries": "Maintained, not executed",
+    "coverageCatalog": "Not rerun: no mirror registration changed",
+    "linksAndJson": "Passed: 312 local Markdown links and changed JSON parsed"
+  },
+  "limits": [
+    "No first creation or arbitrary pet-existence observers admitted.",
+    "Original full Necrobinder inputs and dynamic pools remain incomplete.",
+    "No new performance claim; tests are headless, request times include setup."
+  ]
+}

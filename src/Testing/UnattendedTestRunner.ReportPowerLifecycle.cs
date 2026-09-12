@@ -90,6 +90,7 @@ internal sealed partial class UnattendedTestRunner
             await PlayHistorySensitiveFixtureCardAsync(
                 simulator, shadow, combat, player, enemy, cards[index], $"HistoryPrimer{index}");
 
+        var acquisitionBefore = CaptureWriteDensity(simulator, player, enemy);
         shadow.Apply<PhantomBladesPower>(player.Creature, 9);
         shadow.Apply<StrengthPower>(player.Creature, 2);
         shadow.AddPowerInstance<OrbitPower>(player.Creature, 1);
@@ -107,6 +108,7 @@ internal sealed partial class UnattendedTestRunner
         MoveStateSnapshot acquired = CaptureSimulated(simulator, shadow, player, enemy);
         AssertSnapshotEqual(acquired, CaptureActual(combat, player, enemy),
             _request.ScenarioId, "HistorySensitiveAcquisition");
+        RecordWriteDensity("PowerAcquisition", acquisitionBefore, simulator, player, enemy);
         CombatPredictionSimulator initialFork = simulator.Fork();
         AssertSnapshotEqual(acquired, CaptureSimulated(initialFork,
                 (SimulatedCombatState)initialFork.State.CombatState, player, enemy),
@@ -128,6 +130,7 @@ internal sealed partial class UnattendedTestRunner
         CombatPredictionSimulator reapplicationFork = simulator.Fork();
         SimulatedCombatState reapplicationState =
             (SimulatedCombatState)reapplicationFork.State.CombatState;
+        var reapplicationBefore = CaptureWriteDensity(reapplicationFork, player, enemy);
         reapplicationState.SetAmount<StrengthPower>(player.Creature, 0);
         reapplicationState.Apply<StrengthPower>(player.Creature, 4);
         PowerLifecycleSupport.ResolvePowerAmountChanges(reapplicationFork, reapplicationState);
@@ -140,6 +143,7 @@ internal sealed partial class UnattendedTestRunner
             { PowerId = "STRENGTH_POWER", Target = "Player", Amount = 4 });
         AssertSnapshotEqual(reacquired, CaptureActual(combat, player, enemy),
             _request.ScenarioId, "Reacquisition");
+        RecordWriteDensity("PowerReacquisition", reapplicationBefore, reapplicationFork, player, enemy);
     }
 
     private async Task PlayHistorySensitiveFixtureCardAsync(
@@ -156,6 +160,7 @@ internal sealed partial class UnattendedTestRunner
         Creature? target = liveCard.TargetType == MegaCrit.Sts2.Core.Entities.Cards.TargetType.AnyEnemy
             ? enemy
             : null;
+        var before = CaptureWriteDensity(simulator, player, enemy);
         PlaySimulatedCard(simulator, shadow, predictedCard, target, [enemy]);
         if (!liveCard.TryManualPlay(target))
             throw new InvalidOperationException($"Native fixture action was refused: {liveCard.Id.Entry}");
@@ -165,5 +170,6 @@ internal sealed partial class UnattendedTestRunner
             CaptureActual(combat, player, enemy),
             _request.ScenarioId,
             $"{step}:{liveCard.Id.Entry}");
+        RecordWriteDensity($"{step}:{liveCard.Id.Entry}", before, simulator, player, enemy);
     }
 }

@@ -163,6 +163,8 @@ internal sealed class MethodMirrorRegistry<TBase, TContext>(MirrorMethodSpec met
             registration.Kind is MirrorDispatchKind.Handled;
     }
 
+    internal MirrorDispatchKind DescribeDispatch(TBase receiver) => Lookup(receiver.GetType()).Kind;
+
     /// <summary>
     /// Invokes only an explicit exact-type registration, without resolving inference or unsupported fallbacks.
     /// </summary>

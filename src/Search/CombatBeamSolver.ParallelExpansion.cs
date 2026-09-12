@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.ExceptionServices;
 using MegaCrit.Sts2.Core.Entities.Cards;
-using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
 using CombatSolver.Engine.Common;
@@ -25,15 +24,6 @@ internal sealed partial class CombatBeamSolver
         SearchNode Node,
         CardType CardType,
         uint? TargetCombatId);
-
-    private readonly record struct PreparedCardAction(
-        PlanAction Action,
-        CardType CardType,
-        uint? TargetCombatId,
-        bool RequiresUnsupportedExistingChoice,
-        PlanCardChoice? RequiredEmptyChoice);
-
-    private readonly record struct PreparedPotionAction(PlanAction Action, PotionModel Potion);
 
     private sealed class DeferredCardActionProbe(
         PreparedCardAction action,
@@ -61,16 +51,31 @@ internal sealed partial class CombatBeamSolver
     /// tail and several COW containers publish a shared bit during Fork. Lanes serialize seed
     /// creation through the parent's gate; each worker then consumes only its private fork.
     /// </summary>
-    private sealed class ReplayForkSeed(
-        CombatPredictionSimulator simulator,
-        ForkableSet<uint> processedEnemyDeaths) : IDisposable
+    private sealed class ReplayForkSeed : IDisposable
     {
-        private CombatPredictionSimulator? _simulator = simulator;
-        private ForkableSet<uint>? _processedEnemyDeaths = processedEnemyDeaths;
+        private CombatPredictionSimulator? _simulator;
+        private CompactCombatCandidate? _compact;
+        private ForkableSet<uint>? _processedEnemyDeaths;
+
+        public ReplayForkSeed(CombatPredictionSimulator simulator, ForkableSet<uint> processedEnemyDeaths)
+        { _simulator = simulator; _processedEnemyDeaths = processedEnemyDeaths; }
+
+        public ReplayForkSeed(CompactCombatCandidate compact, ForkableSet<uint> processedEnemyDeaths)
+        { _compact = compact; _processedEnemyDeaths = processedEnemyDeaths; }
+
+        public ForkableSet<uint> TakeCompact(CompactCombatCandidate parent)
+        {
+            if (!ReferenceEquals(_compact, parent))
+                throw new InvalidOperationException("Compact replay seed belongs to a different parent.");
+            _compact = null;
+            return Interlocked.Exchange(ref _processedEnemyDeaths, null)
+                ?? throw new InvalidOperationException("Compact replay seed was already consumed.");
+        }
 
         public (CombatPredictionSimulator Simulator, ForkableSet<uint> ProcessedEnemyDeaths) Take()
         {
-            CombatPredictionSimulator ownedSimulator = Interlocked.Exchange(ref _simulator, null)
+            CompactCombatCandidate? compact = Interlocked.Exchange(ref _compact, null);
+            CombatPredictionSimulator ownedSimulator = Interlocked.Exchange(ref _simulator, null) ?? compact?.Materialize()
                 ?? throw new InvalidOperationException("并行动作 Fork seed 已被消费或释放。");
             ForkableSet<uint> ownedDeaths = Interlocked.Exchange(ref _processedEnemyDeaths, null)
                 ?? throw new InvalidOperationException("并行动作死亡集合 seed 已被消费或释放。");
@@ -82,6 +87,7 @@ internal sealed partial class CombatBeamSolver
             // Simulators do not own native resources. Clearing both roots is the explicit release
             // boundary for a seed that failed before dispatch or was canceled before consumption.
             Interlocked.Exchange(ref _simulator, null);
+            Interlocked.Exchange(ref _compact, null);
             Interlocked.Exchange(ref _processedEnemyDeaths, null);
         }
     }
@@ -437,93 +443,6 @@ internal sealed partial class CombatBeamSolver
         }
     }
 
-    private List<PreparedCardAction> PrepareCardActions(SearchNode node)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        SimulationSnapshot snapshot = node.Snapshot;
-        CombatPredictionSimulator simulator = (CombatPredictionSimulator)snapshot.Simulator;
-        SimulatedCombatState simulatedCombat = (SimulatedCombatState)simulator.State.CombatState;
-        if (snapshot.PlayerDead || snapshot.AllEnemiesDead)
-            return [];
-
-        SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(_player);
-        IReadOnlyList<PredictedCard> hand = playerState.Hand.Cards;
-        List<PreparedCardAction> actions = new(hand.Count);
-        HandFingerprintBuffer seenCards = default;
-        int seenCardCount = 0;
-        for (int handIndex = 0; handIndex < hand.Count; handIndex++)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            PredictedCard card = hand[handIndex];
-            string cardId = card.Preview.Id.Entry;
-            int occurrence = 0;
-            for (int priorIndex = 0; priorIndex < handIndex; priorIndex++)
-            {
-                if (string.Equals(hand[priorIndex].Preview.Id.Entry, cardId, StringComparison.Ordinal))
-                    occurrence++;
-            }
-            if (!simulatedCombat.CanPlayCard(simulator, card))
-                continue;
-            StateFingerprint playableKey = BuildPlayableCardKey(card);
-            bool duplicate = false;
-            for (int seenIndex = 0; seenIndex < seenCardCount; seenIndex++)
-            {
-                if (seenCards[seenIndex] == playableKey)
-                {
-                    duplicate = true;
-                    break;
-                }
-            }
-            if (duplicate)
-            {
-                _run.DuplicateCardBranchesPruned++;
-                continue;
-            }
-            seenCards[seenCardCount++] = playableKey;
-            string cardStateKey = CardChoiceSupport.ChoiceCardKey(card);
-            bool requiresUnsupportedExistingChoice =
-                CardChoiceSupport.RequiresUnsupportedExistingChoice(card.Preview);
-            PlanCardChoice? requiredEmptyChoice =
-                CardChoiceSupport.BuildRequiredEmptyChoice(card.Preview);
-            int cardStateOccurrence = 0;
-            for (int priorIndex = 0; priorIndex < handIndex; priorIndex++)
-            {
-                if (string.Equals(
-                        CardChoiceSupport.ChoiceCardKey(hand[priorIndex]),
-                        cardStateKey,
-                        StringComparison.Ordinal))
-                {
-                    cardStateOccurrence++;
-                }
-            }
-            foreach ((int targetIndex, Creature? target) in TargetsFor(card, simulator))
-            {
-                if (node.ActionCount == 0 && !card.Original.CanPlayTargeting(target))
-                    continue;
-                PlanAction planAction = new(
-                    PlanActionKind.PlayCard,
-                    node.Turn,
-                    card.Preview.Id.Entry,
-                    occurrence,
-                    targetIndex,
-                    target?.CombatId,
-                    displayNames.Card(card.Preview),
-                    displayNames.Creature(target),
-                    ReplayCount: Math.Max(0, card.Preview.GetEnchantedReplayCount()),
-                    CardStateKey: cardStateKey,
-                    CardStateOccurrence: cardStateOccurrence,
-                        CardEnchantmentId: card.Preview.Enchantment?.Id.Entry ?? "", CardUpgradeLevel: card.Preview.CurrentUpgradeLevel);
-                actions.Add(new PreparedCardAction(
-                    planAction,
-                    card.Preview.Type,
-                    target?.CombatId,
-                    requiresUnsupportedExistingChoice,
-                    requiredEmptyChoice));
-            }
-        }
-        return actions;
-    }
-
     private DeferredCardActionProbe? GeneratePreparedCardAction(
         SearchNode node,
         PreparedCardAction action,
@@ -753,49 +672,6 @@ internal sealed partial class CombatBeamSolver
         }
     }
 
-    private List<PreparedPotionAction> PreparePotionActions(SearchNode node)
-    {
-        SimulationSnapshot snapshot = node.Snapshot;
-        if (snapshot.PlayerDead || snapshot.AllEnemiesDead
-            || _maximumPotionUses != null
-                && ExplicitPotionUseCount(node) >= _maximumPotionUses.Value)
-        {
-            return [];
-        }
-
-        CombatPredictionSimulator simulator = (CombatPredictionSimulator)snapshot.Simulator;
-        SimulatedCombatState simulatedCombat = (SimulatedCombatState)simulator.State.CombatState;
-        List<PreparedPotionAction> actions = [];
-        for (int potionSlot = 0; potionSlot < root.PotionSlotCount; potionSlot++)
-        {
-            PotionModel? potion = simulatedCombat.GetPotionAtSlot(_player, potionSlot);
-            if (potion == null
-                || !simulatedCombat.IsPotionAvailable(_player, potionSlot)
-                || !PotionOnUseSupport.CanSearch(potion)
-                || !AllowsPotionUse(potionSlot, potion.Id.Entry)
-                || PotionUsePolicy.RequiresOpeningUse(potion)
-                    && node.HasNonPotionAction)
-            {
-                continue;
-            }
-
-            foreach ((int targetIndex, Creature? target) in TargetsForPotion(potion, simulator))
-            {
-                PlanAction baseAction = new(
-                    PlanActionKind.UsePotion,
-                    node.Turn,
-                    TargetIndex: targetIndex,
-                    TargetCombatId: target?.CombatId,
-                    TargetName: displayNames.Creature(target),
-                    PotionSlot: potionSlot,
-                    PotionId: potion.Id.Entry,
-                    PotionTitle: displayNames.Potion(potion));
-                actions.Add(new PreparedPotionAction(baseAction, potion));
-            }
-        }
-        return actions;
-    }
-
     private PrimaryChoiceReplayFrontier? GeneratePreparedPotionAction(
         SearchNode node,
         PreparedPotionAction action,
@@ -962,6 +838,8 @@ internal sealed partial class CombatBeamSolver
         _run.HpInvestmentBranchesProtected += source.HpInvestmentBranchesProtected;
         _run.ReplayCount += source.ReplayCount;
         _run.ForkCount += source.ForkCount;
+        _run.RoundPrefixCaptures += source.RoundPrefixCaptures;
+        _run.RoundPrefixResumes += source.RoundPrefixResumes;
         _run.TransitionCount += source.TransitionCount;
         _run.RepeatableNoProgressBranchesPruned +=
             source.RepeatableNoProgressBranchesPruned;
@@ -995,6 +873,8 @@ internal sealed partial class CombatBeamSolver
         source.HpInvestmentBranchesProtected = 0;
         source.ReplayCount = 0;
         source.ForkCount = 0;
+        source.RoundPrefixCaptures = 0;
+        source.RoundPrefixResumes = 0;
         source.TransitionCount = 0;
         source.RepeatableNoProgressBranchesPruned = 0;
         source.CycleShapesDetected = 0;

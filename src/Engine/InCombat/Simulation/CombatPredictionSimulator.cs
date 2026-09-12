@@ -86,6 +86,7 @@ internal sealed partial class CombatPredictionSimulator
     /// 所以复用范围绑定在单个模拟器上。取用方负责先摘空这个槽位以防重入。
     /// </remarks>
     internal Mirrors.Hooks.Card.ModifyEnergyCostInCombatMirrorContext? EnergyCostMirrorScratch;
+    internal ICompletedEnergyCostReadSource? CompletedEnergyCosts { get; set; }
 
     /// <summary>
     /// Mirrors <see cref="CombatTurnState.IsInProgress"/>.

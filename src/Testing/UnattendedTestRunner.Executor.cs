@@ -39,6 +39,381 @@ internal sealed partial class UnattendedTestRunner
             bool expectedCardPlayed = request.ExpectedPlayedCardId == null;
             bool expectedPotionUsed = request.ExpectedUsedPotionId == null;
             bool expectedPlayerPowerObserved = request.ExpectedObservedPlayerPowerId == null;
+            if (request.ScenarioId == "CALL-OF-THE-VOID-GENERATION-ROOT")
+            {
+                await runner.AssertCallOfTheVoidGenerationRootAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-GENERATION-CLOSURE-AUDIT")
+            {
+                runner.AssertCompactGenerationClosureAudit(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-CALL-OF-THE-VOID-GENERATION")
+            {
+                await runner.AssertCompactCallOfTheVoidGenerationAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-CALL-OF-THE-VOID-ADMISSION")
+            {
+                await runner.AssertCompactCallOfTheVoidAdmissionAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-PAGESTORM-NATIVE")
+            {
+                await runner.AssertCompactPagestormAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-SHARED-FATE-NATIVE")
+            {
+                await runner.AssertCompactSharedFateAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "PANACHE-INSTANCES")
+            {
+                await runner.AssertPanacheInstancesAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-PANACHE-NATIVE")
+            {
+                await runner.AssertCompactPanacheAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "COMPACT-PANACHE-TERMINAL" or "COMPACT-PANACHE-CARD-TERMINAL")
+            {
+                await runner.AssertCompactPanacheTerminalAsync(combatState, player, request.ScenarioId == "COMPACT-PANACHE-CARD-TERMINAL");
+                return Observation(combatEnded: true);
+            }
+            if (request.ScenarioId == "COMPACT-PANACHE-PLAYER-DEATH")
+            {
+                await runner.AssertCompactPanachePlayerDeathAsync(combatState, player);
+                return Observation(combatEnded: true);
+            }
+            if (request.ScenarioId == "HISTORY-COURSE-WINDOW")
+            {
+                await runner.AssertHistoryCourseWindowAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-LETHALITY-NATIVE")
+            {
+                await runner.AssertCompactLethalityAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "DANSE-RESOLVED-NATIVE")
+            {
+                await runner.AssertDanseResolvedNativeAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-CARD-HOOKS-NATIVE")
+            {
+                await runner.AssertCompactCardHooksAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-SWIFT-AUTO")
+            {
+                await runner.AssertCompactSwiftAutoAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-SWIFT-EMPTY")
+            {
+                await runner.AssertCompactSwiftEmptyAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-SWIFT-TERMINAL")
+            {
+                await runner.AssertCompactSwiftTerminalAsync(combatState, player);
+                return Observation(combatEnded: true);
+            }
+            if (request.ScenarioId == "COMPACT-KEYWORD-GENERATED")
+            {
+                await runner.AssertCompactKeywordGeneratedAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "COMPACT-SNAP-TERMINAL" or "COMPACT-SCULPTING-STRIKE-TERMINAL")
+            {
+                await runner.AssertCompactKeywordTerminalAsync(combatState, player);
+                return Observation(combatEnded: true);
+            }
+            if (request.ScenarioId == "COMPACT-KEYWORD-EMPTY")
+            {
+                await runner.AssertCompactKeywordEmptyAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-KEYWORDS-NATIVE")
+            {
+                await runner.AssertCompactKeywordsAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-HANG-TERMINAL")
+            {
+                await runner.AssertCompactHangTerminalAsync(combatState, player);
+                return Observation(combatEnded: true);
+            }
+            if (request.ScenarioId == "COMPACT-HANG-NATIVE")
+            {
+                await runner.AssertCompactHangAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "HANG-CAP-NATIVE")
+            {
+                await runner.AssertHangCapAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-COST-POWERS-TERMINAL")
+            {
+                await runner.AssertCompactCostPowersTerminalAsync(combatState, player);
+                return Observation(combatEnded: true);
+            }
+            if (request.ScenarioId is "COMPACT-COST-POWERS-NATIVE" or "COMPACT-COST-POWERS-ROOT-STACKS")
+            {
+                await runner.AssertCompactCostPowersAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-NECRO-CARDS-NATIVE")
+            {
+                await runner.AssertCompactNecroCardsAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "COMPACT-CAPTURE-SPIRIT-TERMINAL" or "COMPACT-GRAVEBLAST-TERMINAL")
+            {
+                await runner.AssertCompactNecroTerminalAsync(combatState, player);
+                return Observation(combatEnded: true);
+            }
+            if (request.ScenarioId == "COMPACT-DIRGE-NATIVE")
+            {
+                await runner.AssertCompactDirgeAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-DRAW-EXHAUST-NATIVE")
+            {
+                await runner.AssertCompactDrawExhaustAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-OSTY-CAP")
+            {
+                await runner.AssertCompactOstyCapAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "COMPACT-OSTY-NATIVE" or "COMPACT-OSTY-TURN-NATIVE")
+            {
+                await runner.AssertCompactOstyAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "OSTY-STATE-LIFECYCLE")
+            {
+                await runner.AssertOstyStateLifecycleAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "COMPACT-DOOM-PLAYER" or "COMPACT-DOOM-ENEMY" or "COMPACT-OSTY-DEFEAT")
+            {
+                await runner.AssertCompactDoomAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-DOOM-CARDS-NATIVE")
+            {
+                await runner.AssertCompactDoomCardsAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-NECRO-SOUL-CARDS-NATIVE")
+            {
+                await runner.AssertCompactNecroSoulCardsAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-REAVE-TERMINAL-NATIVE")
+            {
+                await runner.AssertCompactReaveTerminalAsync(combatState, player);
+                return Observation(combatEnded: true);
+            }
+            if (request.ScenarioId == "COMPACT-NECRO-HAND-END-NATIVE")
+            {
+                await runner.AssertCompactNecroHandEndAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-POKE-PET-STATE-NATIVE")
+            {
+                await runner.AssertCompactPokePetStateAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-DOOM-CARD-KILL-NATIVE")
+            {
+                await runner.AssertCompactDoomCardKillAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-DOOM-ROSTER-NATIVE")
+            {
+                await runner.AssertCompactDoomRosterAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "COMPACT-NEUROSURGE-NATIVE" or "COMPACT-NEUROSURGE-CHOICES")
+            {
+                await runner.AssertCompactNeurosurgeAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "COMPACT-SEARCH-LIFECYCLE" or "COMPACT-NEUROSURGE-SEARCH" or "COMPACT-OSTY-SEARCH" or "COMPACT-OSTY-TURN-SEARCH" or "COMPACT-DRAW-EXHAUST-SEARCH" or "COMPACT-DIRGE-SEARCH" or "COMPACT-NECRO-CARDS-SEARCH" or "COMPACT-COST-POWERS-SEARCH" or "COMPACT-HANG-SEARCH" or "COMPACT-KEYWORDS-SEARCH" or "COMPACT-CARD-HOOKS-SEARCH" or "COMPACT-LETHALITY-SEARCH" or "COMPACT-PANACHE-SEARCH" or "COMPACT-SHARED-FATE-SEARCH" or "COMPACT-PAGESTORM-SEARCH")
+            {
+                _ = ApplySettingsOverrides();
+                await runner.AssertCompactSearchLifecycleAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-SEARCH-BACKEND")
+            {
+                _ = ApplySettingsOverrides();
+                await runner.AssertCompactSearchBackendAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-FULL-ROUTE-NATIVE")
+            {
+                _ = ApplySettingsOverrides();
+                await runner.AssertCompactFullRouteAsync(combatState, player);
+                return Observation(combatEnded: !CombatManager.Instance.IsInProgress);
+            }
+            if (request.ScenarioId == "COMPACT-POWER-PHASES-NATIVE")
+            {
+                await runner.AssertCompactPowerPhasesAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "POWER-DURATION-APPLICATION-NATIVE")
+            {
+                await runner.AssertPowerDurationApplicationAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "POWER-DURATION-KEYS-NATIVE")
+            {
+                await runner.AssertPowerDurationKeysAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-ROUND-NATIVE")
+            {
+                await runner.AssertCompactRoundsAsync(combatState, player);
+                return Observation(combatEnded: !CombatManager.Instance.IsInProgress);
+            }
+            if (request.ScenarioId == "COMPACT-MONSTER-AI-NATIVE")
+            {
+                await runner.AssertCompactMonsterCommandsAsync(combatState, player, advanceAi: true);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-MONSTER-COMMANDS-NATIVE")
+            {
+                await runner.AssertCompactMonsterCommandsAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-HAND-END-NATIVE")
+            {
+                await runner.AssertCompactHandEndAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "PLAYER-DEATH-POWERS-NATIVE")
+            {
+                await runner.AssertPlayerDeathPowersAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-FULL-ROOT-NATIVE")
+            {
+                await runner.AssertCompactFullRootAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-ARTIFACT-NATIVE")
+            {
+                await runner.AssertCompactArtifactAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-RANDOM-COSTS-NATIVE")
+            {
+                await runner.AssertCompactRandomCostsAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "COMPACT-GENERATED-CARDS-NATIVE" or "COMPACT-INKY-CARDS-NATIVE")
+            {
+                await runner.AssertCompactGeneratedCardsAsync(combatState, player, request.ScenarioId == "COMPACT-INKY-CARDS-NATIVE");
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-TEMPORARY-STRENGTH-NATIVE")
+            {
+                await runner.AssertTemporaryStrengthAsync(combatState, player, capped: false, compact: true);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "TEMPORARY-STRENGTH-ORDER-NATIVE" or "TEMPORARY-STRENGTH-CAP-NATIVE")
+            {
+                await runner.AssertTemporaryStrengthAsync(combatState, player, request.ScenarioId == "TEMPORARY-STRENGTH-CAP-NATIVE");
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-DEFERRED-POWERS-NATIVE")
+            {
+                await runner.AssertDeferredBlockReturnAsync(combatState, player, compact: true);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "DEFERRED-BLOCK-RETURN-NATIVE")
+            {
+                await runner.AssertDeferredBlockReturnAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-POWER-EXPRESSIONS-NATIVE")
+            {
+                await runner.AssertCompactPoisonTriggerAsync(combatState, player, powerExpressions: true);
+                return Observation(combatEnded: true);
+            }
+            if (request.ScenarioId == "COMPACT-POWER-REACQUIRE-NATIVE")
+            {
+                await runner.AssertCompactPoisonTriggerAsync(combatState, player, nonDefaultLifetime: true);
+                return Observation(combatEnded: true);
+            }
+            if (request.ScenarioId == "COMPACT-DISCARD-DRAW-NATIVE")
+            {
+                await runner.AssertCompactDiscardDrawAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-POISON-TRIGGER-NATIVE")
+            {
+                await runner.AssertCompactPoisonTriggerAsync(combatState, player);
+                return Observation(combatEnded: true);
+            }
+            if (request.ScenarioId == "COMPACT-DRAW-RETURN-NATIVE")
+            {
+                await runner.AssertCompactDrawReturnAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-CONDITIONAL-POWERS-NATIVE")
+            {
+                await runner.AssertCompactConditionalPowersAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-CARD-LIFECYCLE-NATIVE")
+            {
+                await runner.AssertCompactCardLifecycleAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-POWER-BOUNDARIES-NATIVE")
+            {
+                await runner.AssertCompactPowerBoundariesAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "COMPACT-ATTACKS-NATIVE" or "COMPACT-POWERS-NATIVE")
+            {
+                await runner.AssertCompactAttacksAsync(combatState, player, request.ScenarioId == "COMPACT-POWERS-NATIVE");
+                return Observation(combatEnded: true);
+            }
+            if (request.ScenarioId == "COMPACT-CREATURE-VALUES-NATIVE")
+            {
+                await runner.AssertCreatureValuesAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "COMPACT-KERNEL-NATIVE")
+            {
+                await runner.AssertCompactKernelAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "COMPACT-SHUFFLE-POWER-NATIVE" or "COMPACT-SHUFFLE-POWER-VALUES-NATIVE" or "COMPACT-EFFECT-PROGRAM-NATIVE")
+            {
+                await runner.AssertCompactShufflePowerAsync(combatState, player, request.ScenarioId == "COMPACT-EFFECT-PROGRAM-NATIVE");
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "P5-ROUND-PREFIX-NATIVE-TOOLS" or "P5-ROUND-PREFIX-NATIVE-MAYHEM"
+                or "P5-ROUND-PREFIX-PARALLEL")
+            {
+                await runner.AssertRoundPrefixNativeAsync(combatState, player);
+                runner._completedChecks.Add(request.ScenarioId);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId.StartsWith("TURN-SETUP-UI-", StringComparison.Ordinal))
                 return Observation(combatEnded: false);
             if (request.ScenarioId == "GROWTH-ANCIENT-POLICY")

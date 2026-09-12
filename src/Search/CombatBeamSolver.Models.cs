@@ -109,7 +109,7 @@ internal sealed partial class CombatBeamSolver
         public long BestSetupValue;
     }
 
-    private readonly record struct ThreatFocus(
+    internal readonly record struct ThreatFocus(
         uint? CombatId,
         int Pressure,
         int RemainingHp,
@@ -207,6 +207,8 @@ internal sealed partial class CombatBeamSolver
         public int HpInvestmentBranchesProtected;
         public int ReplayCount;
         public int ForkCount;
+        public int RoundPrefixCaptures;
+        public int RoundPrefixResumes;
         public int TransitionCount;
         public int ReusedNodeSnapshots;
         public int TranspositionBranchesPruned;

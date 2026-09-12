@@ -488,8 +488,10 @@ done
 
 expected_beam_files=(
     CombatBeamSolver.cs
+    CombatBeamSolver.ActionPreparation.cs
     CombatBeamSolver.AdmittedExpansion.cs
     CombatBeamSolver.BeamRetentionPolicy.cs
+    CombatBeamSolver.CompactReplay.cs
     CombatBeamSolver.CrossTurnPlanning.cs
     CombatBeamSolver.CyclePlanning.cs
     CombatBeamSolver.CycleRegionRetention.cs
@@ -502,8 +504,10 @@ expected_beam_files=(
     CombatBeamSolver.PathDiagnostics.cs
     CombatBeamSolver.Phases.cs
     CombatBeamSolver.PrimaryChoiceReplay.cs
+    CombatBeamSolver.ReadView.cs
     CombatBeamSolver.Retention.cs
     CombatBeamSolver.RetentionJobs.cs
+    CombatBeamSolver.RoundLifecycle.cs
     CombatBeamSolver.StateEvaluation.cs
     CombatBeamSolver.StandPatJobs.cs
     CombatBeamSolver.Terminal.cs
@@ -580,6 +584,15 @@ CombatBeamSolver.Retention.cs	end.ReleaseSimulator();
 CombatBeamSolver.ParallelExpansion.cs	private void CommitExpansionBatch(
 CombatBeamSolver.Phases.cs	public SolverResult Solve()
 CombatBeamSolver.Expansion.cs	private IEnumerable<SearchNode> Expand(SearchNode node)
+CombatBeamSolver.RoundLifecycle.cs	private SearchBoundaryReason AdvanceRound(
+CombatBeamSolver.RoundLifecycle.cs	private SearchBoundaryReason AdvancePlayerTurnStart(
+CombatBeamSolver.RoundLifecycle.cs	return AdvancePlayerTurnStart(
+CombatBeamSolver.RoundLifecycle.cs	private sealed class RoundPrefixReplayContext(
+CombatBeamSolver.RoundLifecycle.cs	private SearchBoundaryReason ResumeRoundPrefix(
+CombatBeamSolver.Expansion.cs	using RoundPrefixReplayContext? roundPrefix
+SimulatedCombatState.ActionChoices.cs	internal CombatPredictionSimulator ForkCompletedRoundPrefix(
+SimulatedCombatState.ActionChoices.cs	!cursor.IsEmptyCompletedPhaseCursor
+SimulatedCombatState.ActionChoices.cs	return simulator.Fork();
 CombatBeamSolver.BeamRetentionPolicy.cs	public List<SearchNode> RankFinal(IEnumerable<SearchNode> nodes)
 CombatBeamSolver.FinalPlanOrdering.cs	private sealed class FinalPlanOrdering(
 CombatBeamSolver.FinalPlanOrdering.cs	public FinalPlanSelection Select(
@@ -591,6 +604,10 @@ require_fixed \
     "$search_root/CombatBeamSolver.Expansion.cs" \
     'CreateWholeActionChoiceBudget' \
     'repeated card choices are missing their whole-action branch quota:'
+
+if rg -q 'private SearchBoundaryReason (AdvanceRound|AdvancePlayerTurnStart)\(' "$search_root/CombatBeamSolver.Expansion.cs"; then
+    add_violation 'CombatBeamSolver.Expansion.cs: round lifecycle must remain in RoundLifecycle'
+fi
 
 path_diagnostics_path="$search_root/CombatBeamSolver.PathDiagnostics.cs"
 require_fixed "$search_root/CombatBeamSolver.BeamRetentionPolicy.cs" 'HasRetainedRoutingChoice: RetainedRoutingChoice(node) != null' 'ordinary tactical ties must use the existing retained routing semantics:'
@@ -688,6 +705,12 @@ src/Prediction/RelicPredictionStateSupport.cs	CaptureRootState(
 src/Prediction/PowerPredictionStateSupport.cs	HardenedShellPredictionState(original)
 src/Search/SimulatedCombatState.cs	PowerPredictionStateSupport.CaptureRootState(simulator, mutable, power)
 src/Testing/UnattendedTestRunner.CombatRootSnapshot.cs	workerLiveConstructorRejected
+src/Search/SimulatedCombatState.cs	_rootCardGenerationPools = source._rootCardGenerationPools;
+src/Search/RootCombatCardGenerationPoolSnapshot.cs	TryGetEligibleCharacterCards(
+src/Search/RootCombatCardGenerationPoolSnapshot.cs	ReferenceEquals(cardPool.AllCards, captured.AllCardsIdentity)
+src/Engine/Common/PredictionForking.cs	TryGetRootEligibleCharacterCards(
+src/Engine/InCombat/Simulation/Compact/ValueRng.cs	TakeDistinctIndices(
+src/Prediction/TurnStartPowerSupport.cs	options = simulator.TryGetRootEligibleCharacterCardsForCombat(
 src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs	ICombatPredictionRootMaterializable materializable
 src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs	public CombatTerminalStamp? TerminalStamp { get; private set; }
 src/Search/CombatPlan.cs	public CombatTerminalStamp? TerminalStamp { get; } = terminalStamp;
@@ -996,6 +1019,283 @@ done < <(
         rg --no-filename -o '(listener|modifier)\.[A-Za-z][A-Za-z0-9]*\(' "$repository_root/src/Engine/InCombat/Mirrors/HookMirrors.cs" | sed -E 's/(listener|modifier)\.([A-Za-z0-9]+)\(/\2/'
     } | sort -u
 )
+
+# Native duration skips affect both search equivalence and live continuation checks.
+for duration_consumer in src/Search/SimulatedCombatState.cs src/Runtime/ContinuationStamp.cs; do
+    require_fixed "$repository_root/$duration_consumer" 'PowerLifecycleSupport.SemanticallyRelevantSkipNextDurationTick(power)' 'duration skip semantics must be shared by keys and continuation'
+done
+require_fixed "$repository_root/src/Prediction/PowerLifecycleSupport.cs" 'UsesNativeDurationSkip(power.GetType()) && power.SkipNextDurationTick' 'irrelevant debuff metadata must not split state equivalence'
+
+require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" 'simulated.SkipNextDurationTick = true;' 'new native duration state must belong to the owned Power'
+require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" '!PowerLifecycleSupport.UsesNativeDurationSkip(powerType) && !alreadyPresent' 'typed duration application must not duplicate native skip state'
+require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" '!PowerLifecycleSupport.UsesNativeDurationSkip(typeof(T)) && !alreadyPresent' 'monster duration application must not duplicate native skip state'
+
+# The value executor is admitted only through the captured-root search replay seam.
+while IFS= read -r compact_path; do
+    for native_reference in 'MegaCrit.' 'Godot' 'CombatPredictionSimulator' 'SimulatedCombatState' 'CardModel' 'Task' 'IEnumerator' 'Func<' 'Action<'; do
+        forbid_fixed "$compact_path" "$native_reference" 'compact execution must contain only owned values:'
+    done
+done < <(rg --files "$repository_root/src/Engine/InCombat/Simulation/Compact" -g '*.cs')
+while IFS= read -r production_path; do
+    for prototype_reference in 'ResumableDiscardProgram' 'CompactDiscardProjection' 'CompactDiscardReadView' 'CompactPhaseProbe' 'CompactCardMetadataReadBinding' 'CompactCardProgramCompiler' 'MonsterEffectProgram' 'DeterministicMonsterAi' 'CompactMonsterAiReadBinding' 'CompactRoundRoot' 'CompactRoundLayout' 'CompactPlanReplay'; do
+        if [[ $production_path == "$search_root/CombatBeamSolver.CompactReplay.cs" &&
+              $prototype_reference =~ ^(ResumableDiscardProgram|CompactDiscardReadView|CompactPlanReplay)$ ]]; then continue; fi
+        forbid_fixed "$production_path" "$prototype_reference" 'compact model admission escaped the captured-root replay seam:'
+    done
+done < <(rg --files "$search_root" "$repository_root/src/Runtime" -g '*.cs')
+require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" 'private T? PreparePowerApplication<T>' 'Power preparation must remain separate from ordered application'
+require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" 'private PowerModel ApplyPreparedPower<T>' 'Power application must preserve the prepared command'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" '_events.Append(State, [item.Data, item.Metadata]);' 'event identities must retain full-width indexed storage'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ReversibleValueBuffer.cs" 'state.Write(_header + TailOffset, leaf);' 'buffer append cursor must belong to reversible values'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'private readonly ReversibleValueBuffer[] _piles;' 'growing piles must use reversible indexed buffers'
+require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" "history?.Owner.Creature, history?.ShivPlays" 'Shiv history must participate in completed state reads'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" '!card.Effects.ExhaustsCards' 'selected-card exhaustion must invalidate live-card invariant caches'
+require_fixed "$repository_root/src/Prediction/Compact/CompactPlanReplay.cs" 'bool retrieve = lane.ChoiceRetrieves;' 'choice effect/source must not be inferred solely from its draw pile'
+compact_projection="$repository_root/src/Prediction/Compact/CompactDiscardProjection.cs"
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/MonsterEffectProgram.cs" '_instructions = instructions.ToArray();' 'monster commands must own immutable captured instructions'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Monsters.cs" 'if (_monsterMoves == null || !Complete || Terminal || Ending' 'monster execution must require root admission and an idle boundary'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" '_monsterMoves = source._monsterMoves;' 'frozen candidates must retain monster admission and commands'
+require_fixed "$compact_projection" 'metadata.CurrentMonsterMove(_creatures[1])' 'monster parameters must come from captured branch metadata'
+require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" 'history?.CreatureAttacks, combatHistory?.CreatureAttacks' 'completed creature attack counts must share the original map encoding'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Rounds.cs" 'if (PlayerTurn != 1) SummonPet(-1, _round.Root.TurnStartSummon);' 'captured turn summon must use the shared value command'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Rounds.cs" 'Emit(EventKind.CommitPlayerTurnHistory, -1);' 'completed player history must survive frozen rounds'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Rounds.cs" '_round!.TryBeginPlayerSideStart(State)' 'side-start completion must belong to the reversible round state'
+require_fixed "$repository_root/src/Prediction/Compact/CompactDiscardReadView.cs" 'combat.ImportCompletedDoomAppliers(_combatHistory.DoomAppliers);' 'Doom application history must be imported from committed values'
+require_fixed "$search_root/SimulatedCombatState.cs" 'combatHistory?.LastAttacks, combatHistory?.PreviousTurnAttacks' 'completed reads must preserve both attack-history windows'
+compact_round_reads="$search_root/SimulatedCombatState.CompletedRoundReads.cs"
+for replay in '.Fork(' '.ManualPlay(' 'TriggerSideTurnStart(' 'SnapshotPowerAmountsAtTurnStart(' '.State.Write('; do
+    forbid_fixed "$compact_round_reads" "$replay" 'completed round reads must only import clock and history maps:'
+done
+while IFS= read -r production_path; do
+    [[ $production_path == "$compact_round_reads" ]] && continue
+    forbid_fixed "$production_path" 'CompletedRoundReadBinding' 'completed round binding is not admitted to production execution:'
+done < <(rg --files "$search_root" "$repository_root/src/Runtime" -g '*.cs')
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" '_round = source._round;' 'frozen candidates must retain round layout and admission'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Rounds.cs" 'Emit(EventKind.BeginSide, -1);' 'side-start history must be committed in the value event tape'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Draw.cs" 'Emit(EventKind.Draw, drawn, fromHandDraw ? 1 : 0, flags: deferred ? 1 : 0);' 'hand draw provenance must survive suspended round execution'
+compact_ai_reads="$search_root/SimulatedCombatState.CompletedMonsterAiReads.cs"
+for replay in '.Fork(' 'RollMove(' 'AdvanceMonsterAi(' 'BranchMonsterAi.Capture(' '.State.Write('; do
+    forbid_fixed "$compact_ai_reads" "$replay" 'completed monster AI reads may only import supplied values:'
+done
+while IFS= read -r production_path; do
+    [[ $production_path == "$compact_ai_reads" ]] && continue
+    forbid_fixed "$production_path" 'CompletedMonsterAiReadBinding' 'completed AI binding is not admitted to production execution:'
+done < <(rg --files "$search_root" "$repository_root/src/Runtime" -g '*.cs')
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/DeterministicMonsterAi.cs" '_log.Append(state, [next]);' 'monster move history must belong to reversible values'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" '_monsterAi = source._monsterAi;' 'frozen candidates must retain AI layout and admission'
+require_fixed "$compact_projection" 'combat.RequireCapturedMonsterAi(_creatures[1])' 'monster AI admission must consume captured root state'
+require_fixed "$repository_root/src/Prediction/Compact/CompactDiscardReadView.cs" '_monsterAiBinding?.Read(program);' 'completed AI reads must consume current candidate values'
+damage_simulator="$repository_root/src/Engine/InCombat/Simulation/CombatPredictionSimulator.Damage.cs"
+forbid_fixed "$damage_simulator" 'dealer?.IsDead' 'damage dealers must read branch vitals'
+require_fixed "$damage_simulator" 'effects.CompletePlayerDeath(player);' 'player death must run its domain cleanup before orb/pet handling'
+require_fixed "$damage_simulator" 'petEffects.RemovePowersAfterDeath(creature);' 'pet death must clean Powers outside the enemy sweep'
+require_fixed "$search_root/SimulatedCombatState.cs" '_rootOsties = source._rootOsties;' 'pet root identities and absence must survive forks'
+forbid_fixed "$search_root/SimulatedCombatState.CardLifecycle.cs" '?? player.Osty' 'pet reads must not fall through to live ownership'
+for semantic_replay in '.ManualPlay(' '.AutoPlay(' '.Discard(' 'CardOnPlayMirrors.Invoke(' 'HookMirrors.'; do
+    forbid_fixed "$compact_projection" "$semantic_replay" 'compact projection must decode events without replaying effects:'
+done
+require_fixed "$compact_projection" 'Program.State.HasSameRoot(program.State)' 'compact projection lost root ownership guard'
+require_fixed "$compact_projection" 'AssertRepresentedHooks(runListeners[index], runPrefix: true, includeHandEnd, includePowerPhases, includeRounds);' 'compact deck listeners need a separate run-hook audit'
+require_fixed "$compact_projection" '(key.RunPrefix || !RepresentedHook(key.Type, method.Name))' 'compact deck hooks cannot borrow combat effect exemptions'
+require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactKernelProfile.cs" 'if (!SimulationNotificationIsolation.IsActive)' 'compact measurements lost production simulation context guard'
+require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactKernel.cs" 'initialIsolation.Dispose();' 'compact thread-static isolation must close before worker await'
+require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactKernel.cs" 'continuationIsolation.Dispose();' 'compact simulation isolation must close before native deployment'
+compact_reader="$repository_root/src/Prediction/Compact/CompactDiscardReadView.cs"
+for replay_or_write in '.Materialize(' '.ManualPlay(' '.AutoPlay(' '.MutablePreview' '.State.Write('; do
+    forbid_fixed "$compact_reader" "$replay_or_write" 'completed reader must not reconstruct or mutate branch models:'
+done
+compact_power_reads="$search_root/SimulatedCombatState.CompletedPowerReads.cs"
+for replay in '.ManualPlay(' '.AutoPlay(' '.Fork(' 'HookMirrors.' 'PowerCmd.' '.State.Write('; do
+    forbid_fixed "$compact_power_reads" "$replay" 'completed Power binding may only import supplied values:'
+done
+while IFS= read -r production_path; do
+    [[ $production_path == "$compact_power_reads" ]] && continue
+    forbid_fixed "$production_path" 'CompletedPowerReadBinding' 'completed Power binding is not admitted to production execution:'
+done < <(rg --files "$search_root" "$repository_root/src/Runtime" -g '*.cs')
+require_fixed "$compact_power_reads" 'state.AssertForkable();' 'completed Power binding requires a stable setup root'
+require_fixed "$compact_power_reads" 'model._owner = source.Owner;' 'Power clone must restore captured ownership'
+require_fixed "$compact_power_reads" 'private readonly PowerModel[] _replacementModels;' 'reacquired Power metadata must have its own prepared read model'
+require_fixed "$compact_power_reads" 'PowerModel model = index < _ordinaryCount && value.Retired ? _replacementModels[index] : _models[index];' 'Power read lifetime must follow journaled root retirement'
+require_fixed "$compact_power_reads" 'model._amount = value.Amount;' 'completed Power reads lost supplied amount authority'
+require_fixed "$compact_power_reads" '_state.InvalidateBaseHookListeners();' 'roster changes must invalidate Power owner-anchor order'
+compact_card_reads="$repository_root/src/Prediction/Compact/CompactCardMetadataReadBinding.cs"
+for replay in '.ManualPlay(' '.AutoPlay(' '.Fork(' 'HookMirrors.' 'CardCmd.' '.State.Write('; do
+    forbid_fixed "$compact_card_reads" "$replay" 'card metadata binding may only import supplied completed values:'
+done
+require_fixed "$compact_card_reads" 'private readonly List<Binding> _active;' 'card read previews must belong to a private binding'
+require_fixed "$repository_root/src/Prediction/Compact/CompactPlanReplay.cs" 'int[] options = lane.ChoiceOptions();' 'filtered choices must use option occurrences'
+require_fixed "$repository_root/src/Prediction/Compact/CompactPlanReplay.cs" 'options, cards, ReplacementValue: 0d)' 'filtered choices must retain their complete source'
+require_fixed "$repository_root/src/Prediction/Compact/CompactCardMetadataReadBinding.cs" '_keywordsCanChange && ImportKeywords(model, program, card)' 'mutable keyword imports must belong to the private reader'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" '(CardInstance(card) with { CapturedX = value }).Data' 'X payment must retain instance keyword bits'
+require_fixed "$repository_root/src/Search/CardChoiceSupport.cs" 'SculptingStrike when !simulator.IsEnding' 'sculpting hand choices must honor native ending gate'
+require_fixed "$repository_root/src/Search/CardChoiceSupport.cs" 'Snap when !simulator.IsEnding' 'snap hand choices must honor native ending gate'
+require_fixed "$compact_card_reads" 'model.EnergyCost.CapturedXValue = captured;' 'completed card metadata lost captured X values'
+require_fixed "$compact_card_reads" 'model.HasBeenRemovedFromState = removed;' 'completed card metadata lost removal state'
+require_fixed "$compact_reader" '_cards.Read(program);' 'completed card metadata must come from the current program'
+require_fixed "$compact_card_reads" '? _costProgram.EnergyCost(identity)' 'completed global costs must use current value identities'
+require_fixed "$compact_reader" '_context.CompletedEnergyCosts = _cards;' 'global cost reads must belong to the private reader'
+require_fixed "$repository_root/src/Prediction/Compact/CompactCardProgramCompiler.cs" 'AttackMultiplierPower: BasicPowerKind.Hang' 'card-specific multipliers must be compiled in Prediction'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'instruction.AttackMultiplierPower)' 'attack execution must preserve its source multiplier'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/BasicPowerLayout.cs" 'definition.Kind == cardMultiplier && definition.Owner == target' 'card multiplier must belong to the hit target'
+
+require_fixed "$repository_root/src/Prediction/CardEffectSpecRegistry.cs" 'if (simulator.IsEnding) break;' 'parameterized Power commands must honor native ending gate'
+require_fixed "$repository_root/src/Engine/InCombat/Mirrors/HookMirrors.cs" 'if (!allowPendingRead && simulator.HasPendingChoice)' 'effect hooks must retain their choice suspension boundary'
+require_fixed "$repository_root/src/Engine/InCombat/Mirrors/HookMirrors.cs" 'MirroredHookMask.TryModifyEnergyCostInCombatLate, allowPendingRead: true' 'late cost queries must observe pending values'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'if (!HasGlobalEnergyCosts || Ending)' 'global cost queries must honor native ending gate'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/CombatPredictedCardExtensions.cs" 'return completed.ReadEnergyCost(card);' 'shared cost formulas must consume completed values'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'BeforeCardPlayed(card);' 'before-card effects must precede play history'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/BasicPowerLayout.cs" 'NextBeforeCardPower(ReversibleValueState state, int afterOrder)' 'before-card order must use current Power values'
+require_fixed "$repository_root/src/Engine/InCombat/Mirrors/Hooks/Card/BeforeCardPlayedMirrors.cs" 'context.Card.GetResolvedEnergyCost(context.Simulator)' 'Danse must query current resolved cost'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'if (!DrawCards(card, CurrentInstruction.Amount, 11)) return;' 'one-shot resume must continue its existing draw'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/CardInstanceValue.cs" 'bool EnchantmentDisabled = false' 'one-shot status must belong to card instance values'
+require_fixed "$compact_card_reads" 'swift._status = status;' 'one-shot status import must update the private preview'
+require_fixed "$compact_projection" 'projection.PushMethodSource(enchantment, EnchantmentOnPlay)' 'enchantment draws must retain their own history source'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'AttackCardStartsSlot = 3' 'attack-card starts must belong to the reversible workspace'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'firstCardAttack: source >= 0 && AttackCardStarts <= 1' 'first-card damage must use card ownership and start history'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Rounds.cs" 'State.Write(AttackCardStartsSlot, 0);' 'side windows must reset attack-card starts'
+require_fixed "$repository_root/src/Prediction/Compact/CompactDiscardProjection.cs" 'attackCardStarts: combat.GetAttacksPlayedThisTurn(player.Creature)' 'initial attack history must come from the frozen root'
+require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" 'CaptureHistoryCourseCards(simulator, player);' 'both history-course windows must be captured before workers'
+require_fixed "$repository_root/src/Search/SimulatedCombatState.AutoPlay.cs" '=> _lastAttackPreviousTurn?.GetValueOrDefault(player);' 'empty previous-turn attack must not refill from live history'
+require_fixed "$search_root/SimulatedCombatState.cs" "history?.Owner.Creature, history?.Exhausts" 'completed keys lost supplied exhaust history'
+require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'view?.CardValuesInvariant == true ? view.Invariants : null, skillsExhaust' 'card-set changes must bypass invariant strategic summaries'
+require_fixed "$compact_reader" '_adapter.CopyPowerReadValues(program, values);' 'completed Power inputs must come from the value program'
+require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'SnapshotCore(view.EvaluationContext,' 'completed evaluator must consume the lane-owned evaluation context'
+require_fixed "$compact_reader" '!_adapter.Program.State.HasSameRoot(program.State) || !program.Complete' 'completed reader lost ownership/stability guard'
+require_fixed "$compact_reader" 'ValueRng rng = _program.ShuffleRng;' 'completed reader lost authoritative shuffle state'
+require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'view?.ShuffleRng ?? simulator.Rng.Shuffle.CaptureState()' 'completed state key lost branch shuffle RNG'
+require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'view is null ? simulator.TerminalStamp : view.TerminalStamp' 'completed terminal values must not fall back to stale root state'
+require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'view?.CardHistory, view?.EnemyRoster, view?.CombatHistory' 'completed state key lost the ordered branch roster'
+require_fixed "$search_root/CombatBeamSolver.ReadView.cs" 'view?.EnemyValuesInvariant == true ? view.Invariants : null' 'mutable enemy values must bypass root invariant summaries'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/SimCreatureState.cs" '_values.LoseHp(amount)' 'legacy and compact scalar damage must share one arithmetic implementation'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/CreatureValueSlots.cs" 'state.Write(Offset + 3, present ? 1 : 0)' 'creature roster membership must remain journaled separately from HP'
+require_fixed "$compact_projection" '=> new(this, ForkRoot(), _player, _risks)' 'each completed reader must own legacy simulator scratch'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'if (ResultPile(card) == Pile.Removed || !Ending)' 'last-hit result movement must respect the native ending gate'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs" 'if (target != 0 && target != Pet) _creatures[target].SetPresent(state, false);' 'only enemy death may remove roster membership'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs" 'internal int EnemyEnd => Pet < 0 ? Count : Pet;' 'pet identity must be outside the primary enemy range'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs" 'state.Write(_petSummonedSlot, 1);' 'summon lifetime must belong to reversible values'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/BasicPowerLayout.cs" '_definitions[index].Kind == BasicPowerKind.DieForYou' 'pet protection must survive ordinary death cleanup'
+require_fixed "$repository_root/src/Prediction/Compact/CompactDiscardReadView.cs" 'int dealer = item.Dealer;' 'damage history must retain the actual attacker'
+require_fixed "$repository_root/src/Search/SimulatedCombatState.CompletedOstyReads.cs" '_combat._simulatedOstyMaxHp = summoned || _hadMap ? _maxHp : null;' 'pet reads must preserve the captured max-HP map shape'
+require_fixed "$repository_root/src/Engine/InCombat/Mirrors/Hooks/Damage/ModifyUnblockedDamageTargetMirrors.cs" 'context.State.GetCreature(power.Owner).IsAlive' 'pet redirection must read branch HP'
+require_fixed "$search_root/CombatBeamSolver.RoundLifecycle.cs" 'participants = takingExtraTurn ? [_player.Creature] : simulatedCombat.Allies.ToArray();' 'ordinary turns must capture retained allied participants'
+forbid_fixed "$repository_root/src/Prediction/MonsterMoveSemantics.cs" 'SetAmount<DieForYouPower>' 'monster damage must not suppress pet protection by retiring Powers'
+for replay in 'SummonOsty(' '.Damage(' '.Fork(' 'HookMirrors.' 'PowerCmd.' '.State.Write('; do
+    forbid_fixed "$search_root/SimulatedCombatState.CompletedOstyReads.cs" "$replay" 'pet read binding may only import supplied values:'
+done
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs" 'state.Write(_terminalSlot, DeathCompleted(state, 0) ? 2 : 1);' 'compact victory and defeat must be journaled'
+require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" 'history?.Owner, history?.StatusDraws' 'status draws must participate in the original history key'
+require_fixed "$repository_root/src/Search/CombatBeamSolver.StateEvaluation.cs" 'view?.CumulativePlayerHpLost ?? combat.GetCumulativeHpLost(_player.Creature)' 'completed evaluation must use current cumulative HP loss'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.HandEnd.cs" 'if (!_handEndAdmitted || !Complete || !Enum.IsDefined(staging))' 'hand-end execution must require root phase admission'
+forbid_fixed "$repository_root/src/Engine/InCombat/Simulation/CombatPredictionSimulator.EndTurn.cs" 'SaveManager' 'turn-end execution must not read live animation settings'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.PowerPhases.cs" 'if (!_powerPhasesAdmitted || !Complete' 'Power phases require independent root admission'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" '_powerPhasesAdmitted = source._powerPhasesAdmitted;' 'frozen candidates must preserve Power phase admission'
+require_fixed "$repository_root/src/Search/SimulatedCombatState.CompletedPowerReads.cs" 'model.AmountOnTurnStart = value.AmountOnTurnStart;' 'Power reads must import current turn snapshots'
+require_fixed "$repository_root/src/Search/SimulatedCombatState.CompletedPowerReads.cs" 'model.SkipNextDurationTick = value.SkipNextDurationTick;' 'Power reads must import current duration state'
+require_fixed "$search_root/CompletedStateReadView.cs" 'A new stable root requires a new cache.' 'completed invariant cache lost its root lifetime contract'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/CardEffectProgram.cs" '_instructions = instructions.ToArray();' 'compact definitions must own immutable instruction storage'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'State.Write(Frame + EffectIndexOffset, Read(Frame + EffectIndexOffset) + 1);' 'compact effect position must belong to journaled values'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Draw.cs" 'State.Write(Frame + FirstDrawnOffset, drawn);' 'draw return values must survive in the journaled frame'
+require_fixed "$compact_projection" 'card, includeAttacks, shivTemplate, inkyShivTemplate, soulTemplate, upgradedSoulTemplate)' 'card admission must use the shared immutable program compiler'
+require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'view?.EnergyCostRng ?? simulator.Rng.CombatEnergyCosts.CaptureState()' 'completed keys must read branch energy-cost RNG'
+require_fixed "$compact_card_reads" 'int amount = program.CostModifierAt(card, index);' 'cost previews must import the complete ordered branch modifiers'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/RandomDrawCost.cs" 'Buffer(card).Append(state, [cost]);' 'random draw-cost modifiers must remain journaled'
+compact_compiler="$repository_root/src/Prediction/Compact/CompactCardProgramCompiler.cs"
+for replay in '.ManualPlay(' '.AutoPlay(' 'CardOnPlayMirrors.Invoke(' 'HookMirrors.' 'CardCmd.' 'PowerCmd.'; do
+    forbid_fixed "$compact_compiler" "$replay" 'card admission must compile definitions without executing effects:'
+done
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Draw.cs" 'State.Write(Frame + DrawResumeIpOffset, resumeIp);' 'shuffle return must retain the pending draw stage'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" '_drawFrames = source._drawFrames;' 'frozen draw continuations must retain their reversible layout'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Draw.cs" 'frames.Write(State, offset + DrawPendingCard, drawn);' 'draw hook parents must remain in authoritative values'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Draw.cs" 'offset == 0 && card < 0' 'nested power draws must not inherit hand-draw provenance'
+require_fixed "$repository_root/src/Prediction/Compact/CompactDiscardProjection.cs" 'projection.History.CardDrawResolved(pendingDraw.Entry, card);' 'draw completion must retain its original history entry'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'sum = checked(sum + _powers!.Amount(State, target, instruction.Power));' 'calculated Power sums must read current values'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'if (CreaturePresent(target) && Creature(target).CurrentHp > 0)' 'calculated Power sums must exclude removed and dead enemies'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'if (!PreparePower(card, target, BasicPowerKind.PiercingWail, amount)) return;' 'temporary effects must pass modifiers before their nested first application'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'CommitPower(card, target, BasicPowerKind.PiercingWail, amount);' 'prepared temporary effects must not apply modifiers twice'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'private void ApplyTemporaryStrengthLoss(int card, int target, int amount)' 'temporary Strength ordering must belong to the value program'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'ValidateBlockReturns(definitions, powers);' 'block-return admission must exclude unrepresented zero-amount instances'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'ApplyPower(card, 0, instruction.Power, (int)returned);' 'deferred Power must use the block command return'
+require_fixed "$compact_reader" 'ResumableDiscardProgram.DamageTraits.Unpowered | ResumableDiscardProgram.DamageTraits.NoDealer' 'indirect damage must not count as powered attack hits'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'WriteRng(rng);' 'compact shuffle lost journaled RNG writes'
+require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactShufflePower.cs" 'isolation.Dispose();' 'expanded compact isolation must close before worker/native awaits'
+require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" '=> SnapshotCore(simulator, turn, actionCount, shufflesCrossed, boundary, processedEnemyDeaths, null);' 'legacy and completed readers must share full SnapshotCore'
+require_fixed "$search_root/CombatBeamSolver.StateEvaluation.cs" 'result.ReleaseSimulator();' 'completed evaluations must release their borrowed root'
+while IFS= read -r production_path; do
+    [[ $production_path == "$search_root/CombatBeamSolver.StateEvaluation.cs" || $production_path == "$search_root/CombatBeamSolver.CompactReplay.cs" ]] && continue
+    forbid_fixed "$production_path" 'SnapshotFromReadView(' 'closed completed reader is not admitted to production execution:'
+done < <(rg --files "$search_root" "$repository_root/src/Runtime" -g '*.cs')
+compact_values="$repository_root/src/Engine/InCombat/Simulation/Compact/ReversibleValueState.cs"
+compact_frozen="$repository_root/src/Engine/InCombat/Simulation/Compact/ReversibleValueState.FrozenValues.cs"
+require_fixed "$compact_values" 'private long[] _values;' 'compact workspace lost exclusive values'
+require_fixed "$compact_values" '_dirtyPages[entry.Slot / PageWidth] = true;' 'compact rollback must invalidate frozen pages'
+require_fixed "$compact_values" 'if (!source.HasRoot(_rootIdentity))' 'compact restore lost root ownership guard'
+require_fixed "$compact_values" 'if (_checkpoints.Count != 0)' 'compact restore lost active checkpoint guard'
+require_fixed "$compact_values" 'Resize(checkpoint.SlotCount);' 'compact rollback lost allocated slot ownership'
+require_fixed "$compact_frozen" 'workspace.Resize(Count);' 'compact restore lost candidate slot count'
+require_fixed "$compact_frozen" '_pages = source._pages.AsSpan(0, PageCount(source.Count)).ToArray();' 'compact candidate must own its published page directory'
+require_fixed "$compact_frozen" 'private readonly long[] _values = values;' 'compact page values must remain private and immutable'
+for mutable_owner in 'ReversibleValueState _owner' 'ReversibleValueState _workspace' 'FrozenValues _parent'; do
+    forbid_fixed "$compact_frozen" "$mutable_owner" 'compact candidate must not retain mutable workers or ancestor chains:'
+done
+
+# Runtime admission has one main-thread owner; workers only consume the captured policy.
+while IFS= read -r runtime_path; do
+    [[ $runtime_path == "$repository_root/src/Runtime/SearchBackendPolicy.cs" ]] && continue
+    forbid_fixed "$runtime_path" 'CompactRoot' 'Runtime compact selection must belong to SearchBackendPolicy:'
+done < <(rg --files "$repository_root/src/Runtime" -g '*.cs')
+require_fixed "$repository_root/src/Runtime/SearchBackendPolicy.cs" 'if (!NGame.IsMainThread())' 'backend admission must run on the main thread'
+require_fixed "$repository_root/src/Runtime/SearchBackendPolicy.cs" 'CompactCombatRoot.TryCreate(root.ForkSimulator(), root.PlayerIdentity, out compact, out rejection);' 'backend admission must use an owned captured root'
+require_fixed "$repository_root/src/Runtime/SolverController.cs" 'searchPolicy = SearchBackendPolicy.Capture(rootSnapshot, searchPolicy);' 'normal searches must select their backend before worker dispatch'
+require_fixed "$repository_root/src/Runtime/PlayerTurnSetupPatches.cs" 'searchPolicy = SearchBackendPolicy.Capture(rootSnapshot, searchPolicy);' 'initial setup must use explicit backend policy'
+require_fixed "$compact_projection" 'Any(slot => combat.GetPotionAtSlot(player, slot) != null)' 'unrepresented potion effects must be rejected during full-root admission'
+require_fixed "$compact_compiler" '!AdmittedTypes.Contains(card.GetType())' 'native card admission must reject inherited mod types'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Monsters.cs" 'WriteRng(ShuffleRng.NextInt(checked(position + 1), out position));' 'random insertion must consume captured reversible RNG even for empty piles'
+require_fixed "$compact_projection" 'CreateGeneratedCard(program.DefinitionIndex(item.Card))' 'generation metadata must follow the immutable instance definition'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs" 'internal bool CardUnplaced(int card)' 'unplaced generation must be separate from removed models'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Monsters.cs" '_piles[(int)Pile.Unplaced].Append(State, [created]);' 'ending generation history must retain reversible identities'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Monsters.cs" 'if (Creature(0).CurrentHp > 0) GenerateCards(' 'monster status generation must preserve the native recipient gate'
+require_fixed "$search_root/CardChoiceSupport.cs" 'Graveblast when !simulator.IsEnding' 'native ending gate must prevent phantom discard retrieval plans'
+require_fixed "$repository_root/src/Prediction/Compact/CompactPlanReplay.cs" 'ResumableDiscardProgram.Pile.Discard => PileType.Discard,' 'discard retrieval must preserve its native source pile'
+require_fixed "$compact_projection" 'destination.Insert(item.Value, created);' 'generation projection must import the captured insertion position'
+require_fixed "$repository_root/src/Testing/UnattendedTestRunner.CompactDirge.cs" 'AssertCompactPetCardRouteAsync' 'random generation must share full route and native identity verification'
+require_fixed "$compact_projection" 'lock (_rootForkGate) return _root.Fork();' 'shared compact metadata root requires a narrow Fork gate'
+require_fixed "$search_root/CombatPlan.cs" '_compact = null;' 'snapshot release must drop compact candidate ownership'
+require_fixed "$search_root/CombatPlan.cs" 'CompactPendingChoice = null;' 'snapshot release must drop owned pending previews'
+require_fixed "$compact_reader" '!_adapter.Program.State.HasSameRoot(program.State) || !program.NeedsChoice' 'pending reader requires its own suspended selector'
+require_fixed "$repository_root/src/Prediction/Compact/CompactPlanReplay.cs" 'var cursor = new TurnStartChoiceCursor(choices);' 'compact plan replay must share choice matching and invalid branch semantics'
+require_fixed "$repository_root/src/Prediction/Compact/CompactPlanReplay.cs" '_metadata[id].Clone()' 'pending previews must not alias a reusable lane'
+require_fixed "$repository_root/src/Prediction/Compact/CompactMonsterAiReadBinding.cs" '_attacks[program.PublishedMonsterIntentMove]' 'pending round intents must retain native publication timing'
+require_fixed "$search_root/CombatBeamSolver.CompactReplay.cs" 'SnapshotFromReadView(lane.Reader,' 'compact replay must share the complete existing evaluation'
+require_fixed "$search_root/CombatBeamSolver.ParallelExpansion.cs" 'ReferenceEquals(_compact, parent)' 'compact seeds must verify their exact immutable parent'
+
+require_fixed "$search_root/CombatBeamSolver.CompactReplay.cs" 'private sealed class CompactPolicyReadLane' 'synchronous compact policy reads need a separate lane'
+require_fixed "$search_root/CombatBeamSolver.ActionPreparation.cs" 'TargetsFor(card, simulator, view)' 'prepared actions must use the authoritative target roster'
+require_fixed "$search_root/CombatBeamSolver.Expansion.cs" 'foreach (PreparedCardAction prepared in PrepareCardActions(node))' 'serial expansion must share owned action preparation'
+require_fixed "$search_root/CombatBeamSolver.Expansion.cs" 'foreach (PreparedPotionAction prepared in PreparePotionActions(node))' 'serial expansion must share potion preparation'
+require_fixed "$repository_root/src/Runtime/ContinuationStamp.cs" '!ReferenceEquals(simulator, readView.EvaluationContext)' 'continuation values require matching metadata ownership'
+require_fixed "$repository_root/src/Runtime/ContinuationStamp.cs" 'combat.AppendPredictedTurnCardHistory(text, player, readView?.CardHistory);' 'continuation history must consume current supplied counters'
+require_fixed "$repository_root/src/Runtime/ContinuationStamp.cs" 'readView?.EnergyCostRng ?? simulator.Rng.CombatEnergyCosts.CaptureState()' 'continuation must preserve the complete branch random-cost stream'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/CombatPredictionState.cs" 'internal bool IsHittable(Creature creature, bool presentAndAlive)' 'target semantics must share the original implementation with supplied life values'
+
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/PanachePowerLayout.cs" 'private readonly ReversibleValueBuffer _values;' 'independent Power values must grow in the reversible workspace'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Panache.cs" '_panache!.Write(State, index, value with { CardsLeft = left, AlreadyApplied = true });' 'after-card counters must be committed per instance'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.PowerPhases.cs" 'ResetPanacheTurn();' 'independent counters must reset in their owner phase'
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/BasicPowerLayout.cs" 'internal int NextOrder(ReversibleValueState state)' 'ordinary and independent Powers must share acquisition order'
+require_fixed "$repository_root/src/Search/SimulatedCombatState.CompletedPowerReads.cs" 'for (int index = values.Length; index < _models.Count; index++) _models[index]._amount = 0;' 'restoring fewer instances must deactivate pooled siblings'
+require_fixed "$repository_root/src/Search/SimulatedCombatState.CompletedPowerReads.cs" 'hidden.CardsLeft = value.CardsLeft; hidden.AlreadyApplied = value.AlreadyApplied;' 'completed Power reads must import independent hidden state'
+require_fixed "$repository_root/src/Prediction/CardPowerOnPlaySupport.cs" 'combat.ApplyInstancedPower<PanachePower>' 'native instanced Powers must not merge counters'
+require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" 'item.Add(PowerPredictionStateSupport.PanacheAlreadyApplied(simulator, panache));' 'activation lifetime must distinguish state keys'
+require_fixed "$repository_root/src/Runtime/ContinuationStamp.cs" 'PowerPredictionStateSupport.PanacheAlreadyApplied(simulator, panache)' 'activation lifetime must be checked during continuation'
+
+require_fixed "$repository_root/src/Search/CombatBeamSolver.RoundLifecycle.cs" 'if (!simulator.IsOverOrEnding && !CorePowerSupport.TriggerAfterBlockCleared(' 'enemy-start Hook compensation must preserve native dispatch-entry ending gates'
+
+require_fixed "$repository_root/src/Prediction/Compact/CompactCardProgramCompiler.cs" 'SharedFate => new([new(CardInstructionKind.ApplyBasicPower, -(int)ownStrengthLoss, BasicPowerKind.Strength),' 'Shared Fate must compile its own Strength application first'
+require_fixed "$compact_compiler" 'Deathbringer => new([new(CardInstructionKind.ApplyBasicPower, (int)doom, BasicPowerKind.Doom, CardInstructionTarget.AllEnemies),' 'bulk Power commands must keep their complete roster pass before the next command'
+
+require_fixed "$repository_root/src/Engine/InCombat/Simulation/Compact/BasicPowerLayout.cs" 'HasDebuffType(_definitions[index].Kind)' 'native duration metadata must use model type rather than signed incoming amount'
+
+require_fixed "$repository_root/src/Prediction/Compact/CompactDiscardReadView.cs" 'case ResumableDiscardProgram.EventKind.DrawPowerStart:' 'draw method-source markers must be explicitly consumed without synthetic history'
+require_fixed "$repository_root/src/Prediction/Compact/CompactDiscardReadView.cs" 'case ResumableDiscardProgram.EventKind.DrawPowerFinish:' 'nested draw method scopes must not escape the read event contract'
 
 if ((${#violations[@]} > 0)); then
     printf '%s\n' "${violations[@]}" >&2

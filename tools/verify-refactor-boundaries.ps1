@@ -465,8 +465,10 @@ foreach ($check in $rootSnapshotChecks) {
 
 $expectedBeamFiles = @(
     "CombatBeamSolver.cs",
+    "CombatBeamSolver.ActionPreparation.cs",
     "CombatBeamSolver.AdmittedExpansion.cs",
     "CombatBeamSolver.BeamRetentionPolicy.cs",
+    "CombatBeamSolver.CompactReplay.cs",
     "CombatBeamSolver.CrossTurnPlanning.cs",
     "CombatBeamSolver.CyclePlanning.cs",
     "CombatBeamSolver.CycleRegionRetention.cs",
@@ -479,8 +481,10 @@ $expectedBeamFiles = @(
     "CombatBeamSolver.PathDiagnostics.cs",
     "CombatBeamSolver.Phases.cs",
     "CombatBeamSolver.PrimaryChoiceReplay.cs",
+    "CombatBeamSolver.ReadView.cs",
     "CombatBeamSolver.Retention.cs",
     "CombatBeamSolver.RetentionJobs.cs",
+    "CombatBeamSolver.RoundLifecycle.cs",
     "CombatBeamSolver.StateEvaluation.cs",
     "CombatBeamSolver.StandPatJobs.cs",
     "CombatBeamSolver.Terminal.cs"
@@ -596,6 +600,15 @@ $beamStructureChecks = @(
     @{ File = "CombatBeamSolver.ParallelExpansion.cs"; Text = "private void CommitExpansionBatch(" },
     @{ File = "CombatBeamSolver.Phases.cs"; Text = "public SolverResult Solve()" },
     @{ File = "CombatBeamSolver.Expansion.cs"; Text = "private IEnumerable<SearchNode> Expand(SearchNode node)" },
+    @{ File = "CombatBeamSolver.RoundLifecycle.cs"; Text = "private SearchBoundaryReason AdvanceRound(" },
+    @{ File = "CombatBeamSolver.RoundLifecycle.cs"; Text = "private SearchBoundaryReason AdvancePlayerTurnStart(" },
+    @{ File = "CombatBeamSolver.RoundLifecycle.cs"; Text = "return AdvancePlayerTurnStart(" },
+    @{ File = "CombatBeamSolver.RoundLifecycle.cs"; Text = "private sealed class RoundPrefixReplayContext(" },
+    @{ File = "CombatBeamSolver.RoundLifecycle.cs"; Text = "private SearchBoundaryReason ResumeRoundPrefix(" },
+    @{ File = "CombatBeamSolver.Expansion.cs"; Text = "using RoundPrefixReplayContext? roundPrefix" },
+    @{ File = "SimulatedCombatState.ActionChoices.cs"; Text = "internal CombatPredictionSimulator ForkCompletedRoundPrefix(" },
+    @{ File = "SimulatedCombatState.ActionChoices.cs"; Text = "!cursor.IsEmptyCompletedPhaseCursor" },
+    @{ File = "SimulatedCombatState.ActionChoices.cs"; Text = "return simulator.Fork();" },
     @{ File = "CombatBeamSolver.BeamRetentionPolicy.cs"; Text = "public List<SearchNode> RankFinal(IEnumerable<SearchNode> nodes)" },
     @{ File = "CombatBeamSolver.FinalPlanOrdering.cs"; Text = "private sealed class FinalPlanOrdering(" },
     @{ File = "CombatBeamSolver.FinalPlanOrdering.cs"; Text = "public FinalPlanSelection Select(" },
@@ -610,6 +623,9 @@ foreach ($check in $beamStructureChecks) {
 }
 if (-not (Select-String -LiteralPath (Join-Path $searchRoot "CombatBeamSolver.Expansion.cs") -SimpleMatch "CreateWholeActionChoiceBudget" -Quiet)) {
     $violations.Add("CombatBeamSolver.Expansion.cs: repeated card choices are missing their whole-action branch quota")
+}
+if (Select-String -LiteralPath (Join-Path $searchRoot "CombatBeamSolver.Expansion.cs") -Pattern 'private SearchBoundaryReason (AdvanceRound|AdvancePlayerTurnStart)\(' -Quiet) {
+    $violations.Add("CombatBeamSolver.Expansion.cs: round lifecycle must remain in RoundLifecycle")
 }
 $beamEntryPath = Join-Path $searchRoot "CombatBeamSolver.cs"
 if (Select-String -LiteralPath $beamEntryPath -SimpleMatch "public SolverResult Solve()" -Quiet) {
@@ -689,6 +705,30 @@ $rootModelBoundaryChecks = @(
     @{
         Path = Join-Path $repositoryRoot "src\Testing\UnattendedTestRunner.CombatRootSnapshot.cs"
         Text = "workerLiveConstructorRejected"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src/Search/SimulatedCombatState.cs"
+        Text = "_rootCardGenerationPools = source._rootCardGenerationPools;"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src/Search/RootCombatCardGenerationPoolSnapshot.cs"
+        Text = "TryGetEligibleCharacterCards("
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src/Search/RootCombatCardGenerationPoolSnapshot.cs"
+        Text = "ReferenceEquals(cardPool.AllCards, captured.AllCardsIdentity)"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src/Engine/Common/PredictionForking.cs"
+        Text = "TryGetRootEligibleCharacterCards("
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src/Engine/InCombat/Simulation/Compact/ValueRng.cs"
+        Text = "TakeDistinctIndices("
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src/Prediction/TurnStartPowerSupport.cs"
+        Text = "options = simulator.TryGetRootEligibleCharacterCardsForCombat("
     },
     @{
         Path = Join-Path $repositoryRoot "src\Engine\InCombat\Simulation\CombatPredictionSimulator.cs"
@@ -1237,6 +1277,264 @@ foreach ($hookName in $mirroredHookNames) {
     }
 }
 
+# The value executor is admitted only through the captured-root search replay seam.
+$compactRoot = Join-Path $repositoryRoot 'src/Engine/InCombat/Simulation/Compact'
+foreach ($file in Get-ChildItem -LiteralPath $compactRoot -Filter *.cs -File -Recurse) {
+    foreach ($reference in @('MegaCrit.', 'Godot', 'CombatPredictionSimulator', 'SimulatedCombatState', 'CardModel', 'Task', 'IEnumerator', 'Func<', 'Action<')) {
+        foreach ($match in Select-String -LiteralPath $file.FullName -SimpleMatch $reference) {
+            $violations.Add("$($match.Path):$($match.LineNumber): compact execution must contain only owned values: $reference")
+        }
+    }
+}
+$compactProductionFiles = @($searchFiles) + @(Get-ChildItem -LiteralPath (Join-Path $repositoryRoot 'src/Runtime') -Filter *.cs -File -Recurse)
+foreach ($file in $compactProductionFiles) {
+    foreach ($reference in @('ResumableDiscardProgram', 'CompactDiscardProjection', 'CompactDiscardReadView', 'CompactPhaseProbe', 'CompactCardMetadataReadBinding', 'CompactCardProgramCompiler', 'MonsterEffectProgram', 'DeterministicMonsterAi', 'CompactMonsterAiReadBinding', 'CompactRoundRoot', 'CompactRoundLayout', 'CompactPlanReplay')) {
+        if ($file.Name -eq 'CombatBeamSolver.CompactReplay.cs' -and $reference -in @('ResumableDiscardProgram', 'CompactDiscardReadView', 'CompactPlanReplay')) { continue }
+        foreach ($match in Select-String -LiteralPath $file.FullName -SimpleMatch $reference) {
+            $violations.Add("$($match.Path):$($match.LineNumber): compact model admission escaped the captured-root replay seam: $reference")
+        }
+    }
+}
+$compactProjection = Join-Path $repositoryRoot 'src/Prediction/Compact/CompactDiscardProjection.cs'
+if (-not ([IO.File]::ReadAllText((Join-Path $compactRoot 'ResumableDiscardProgram.Rounds.cs'))).Contains('_round!.TryBeginPlayerSideStart(State)')) {
+    $violations.Add('Side-start completion must belong to the reversible round state.')
+}
+if (-not ([IO.File]::ReadAllText((Join-Path $repositoryRoot 'src/Prediction/Compact/CompactDiscardReadView.cs'))).Contains('combat.ImportCompletedDoomAppliers(_combatHistory.DoomAppliers);')) {
+    $violations.Add('Doom application history must be imported from committed values.')
+}
+$damageSimulator = [IO.File]::ReadAllText((Join-Path $repositoryRoot 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.Damage.cs'))
+if ($damageSimulator.Contains('dealer?.IsDead')) { $violations.Add('Damage dealers must read branch vitals.') }
+if (-not $damageSimulator.Contains('effects.CompletePlayerDeath(player);')) { $violations.Add('Player death lost domain cleanup before orb/pet handling.') }
+if (-not $damageSimulator.Contains('petEffects.RemovePowersAfterDeath(creature);')) { $violations.Add('Pet death must clean Powers outside the enemy sweep.') }
+if (-not ([IO.File]::ReadAllText((Join-Path $searchRoot 'SimulatedCombatState.cs'))).Contains('_rootOsties = source._rootOsties;')) { $violations.Add('Pet root identities and absence must survive forks.') }
+if (([IO.File]::ReadAllText((Join-Path $searchRoot 'SimulatedCombatState.CardLifecycle.cs'))).Contains('?? player.Osty')) { $violations.Add('Pet reads must not fall through to live ownership.') }
+if (([IO.File]::ReadAllText((Join-Path $repositoryRoot 'src/Prediction/MonsterMoveSemantics.cs'))).Contains('SetAmount<DieForYouPower>')) { $violations.Add('Monster damage must not retire pet protection Powers.') }
+$compactPetReads = [IO.File]::ReadAllText((Join-Path $searchRoot 'SimulatedCombatState.CompletedOstyReads.cs'))
+foreach ($replay in @('SummonOsty(', '.Damage(', '.Fork(', 'HookMirrors.', 'PowerCmd.', '.State.Write(')) {
+    if ($compactPetReads.Contains($replay)) { $violations.Add("Pet read binding may only import supplied values: $replay") }
+}
+if ([IO.File]::ReadAllText((Join-Path $repositoryRoot 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.EndTurn.cs')).Contains('SaveManager')) { $violations.Add('Turn-end execution must not read live animation settings.') }
+foreach ($required in @('AssertRepresentedHooks(runListeners[index], runPrefix: true, includeHandEnd, includePowerPhases, includeRounds);', '(key.RunPrefix || !RepresentedHook(key.Type, method.Name))')) {
+    if (-not ([IO.File]::ReadAllText($compactProjection)).Contains($required)) {
+        $violations.Add("Compact deck listeners lost their independent run-hook audit: $required")
+    }
+}
+foreach ($reference in @('.ManualPlay(', '.AutoPlay(', '.Discard(', 'CardOnPlayMirrors.Invoke(', 'HookMirrors.')) {
+    foreach ($match in Select-String -LiteralPath $compactProjection -SimpleMatch $reference) {
+        $violations.Add("$($match.Path):$($match.LineNumber): compact projection must decode events without replaying effects: $reference")
+    }
+}
+if (-not ([IO.File]::ReadAllText($compactProjection)).Contains('Program.State.HasSameRoot(program.State)')) {
+    $violations.Add('Compact projection lost root ownership guard.')
+}
+$compactContextGuards = @(
+    @('src/Testing/UnattendedTestRunner.CompactKernelProfile.cs', 'if (!SimulationNotificationIsolation.IsActive)'),
+    @('src/Testing/UnattendedTestRunner.CompactKernel.cs', 'initialIsolation.Dispose();'),
+    @('src/Testing/UnattendedTestRunner.CompactKernel.cs', 'continuationIsolation.Dispose();')
+)
+foreach ($guard in $compactContextGuards) {
+    if (-not ([IO.File]::ReadAllText((Join-Path $repositoryRoot $guard[0]))).Contains($guard[1])) {
+        $violations.Add("Compact profile lost simulation context boundary: $($guard[0]) / $($guard[1])")
+    }
+}
+$compactCompiler = Join-Path $repositoryRoot 'src/Prediction/Compact/CompactCardProgramCompiler.cs'
+foreach ($reference in @('.ManualPlay(', '.AutoPlay(', 'CardOnPlayMirrors.Invoke(', 'HookMirrors.', 'CardCmd.', 'PowerCmd.')) {
+    foreach ($match in Select-String -LiteralPath $compactCompiler -SimpleMatch $reference) {
+        $violations.Add("$($match.Path):$($match.LineNumber): card admission must compile definitions without executing effects: $reference")
+    }
+}
+$compactReader = Join-Path $repositoryRoot 'src/Prediction/Compact/CompactDiscardReadView.cs'
+foreach ($reference in @('.Materialize(', '.ManualPlay(', '.AutoPlay(', '.MutablePreview', '.State.Write(')) {
+    foreach ($match in Select-String -LiteralPath $compactReader -SimpleMatch $reference) {
+        $violations.Add("$($match.Path):$($match.LineNumber): completed reader must not reconstruct or mutate branch models: $reference")
+    }
+}
+$compactPowerReads = Join-Path $searchRoot 'SimulatedCombatState.CompletedPowerReads.cs'
+foreach ($reference in @('.ManualPlay(', '.AutoPlay(', '.Fork(', 'HookMirrors.', 'PowerCmd.', '.State.Write(')) {
+    foreach ($match in Select-String -LiteralPath $compactPowerReads -SimpleMatch $reference) {
+        $violations.Add("$($match.Path):$($match.LineNumber): completed Power binding may only import supplied values: $reference")
+    }
+}
+foreach ($file in $compactProductionFiles) {
+    if ($file.FullName -eq $compactPowerReads) { continue }
+    foreach ($match in Select-String -LiteralPath $file.FullName -SimpleMatch 'CompletedPowerReadBinding') {
+        $violations.Add("$($match.Path):$($match.LineNumber): completed Power binding is not admitted to production execution.")
+    }
+}
+$compactCardReads = Join-Path $repositoryRoot 'src/Prediction/Compact/CompactCardMetadataReadBinding.cs'
+foreach ($replay in @('.ManualPlay(', '.AutoPlay(', '.Fork(', 'HookMirrors.', 'CardCmd.', '.State.Write(')) {
+    foreach ($match in Select-String -LiteralPath $compactCardReads -SimpleMatch $replay) {
+        $violations.Add("Card metadata binding may only import supplied completed values: $($match.LineNumber) / $replay")
+    }
+}
+$compactReadGuards = @(
+    @('src/Search/CardChoiceSupport.cs', 'Graveblast when !simulator.IsEnding'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'internal bool CardUnplaced(int card)'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Monsters.cs', '_piles[(int)Pile.Unplaced].Append(State, [created]);'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Monsters.cs', 'if (Creature(0).CurrentHp > 0) GenerateCards('),
+    @('src/Prediction/Compact/CompactPlanReplay.cs', 'ResumableDiscardProgram.Pile.Discard => PileType.Discard,'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Monsters.cs', 'WriteRng(ShuffleRng.NextInt(checked(position + 1), out position));'),
+    @('src/Prediction/Compact/CompactDiscardProjection.cs', 'CreateGeneratedCard(program.DefinitionIndex(item.Card))'),
+    @('src/Prediction/Compact/CompactDiscardProjection.cs', 'destination.Insert(item.Value, created);'),
+    @('src/Testing/UnattendedTestRunner.CompactDirge.cs', 'AssertCompactPetCardRouteAsync'),
+    @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'state.AssertForkable();'),
+    @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'model._owner = source.Owner;'),
+    @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'private readonly PowerModel[] _replacementModels;'),
+    @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'PowerModel model = index < _ordinaryCount && value.Retired ? _replacementModels[index] : _models[index];'),
+    @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'model._amount = value.Amount;'),
+    @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', '_state.InvalidateBaseHookListeners();'),
+    @('src/Prediction/Compact/CompactCardMetadataReadBinding.cs', 'private readonly List<Binding> _active;'),
+    @('src/Prediction/Compact/CompactPlanReplay.cs', 'int[] options = lane.ChoiceOptions();'),
+    @('src/Prediction/Compact/CompactPlanReplay.cs', 'options, cards, ReplacementValue: 0d)'),
+    @('src/Prediction/Compact/CompactCardMetadataReadBinding.cs', '_keywordsCanChange && ImportKeywords(model, program, card)'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', '(CardInstance(card) with { CapturedX = value }).Data'),
+    @('src/Search/CardChoiceSupport.cs', 'SculptingStrike when !simulator.IsEnding'),
+    @('src/Search/CardChoiceSupport.cs', 'Snap when !simulator.IsEnding'),
+    @('src/Prediction/Compact/CompactCardMetadataReadBinding.cs', 'model.EnergyCost.CapturedXValue = captured;'),
+    @('src/Prediction/Compact/CompactCardMetadataReadBinding.cs', 'model.HasBeenRemovedFromState = removed;'),
+    @('src/Prediction/Compact/CompactDiscardReadView.cs', '_cards.Read(program);'),
+    @('src/Prediction/Compact/CompactCardMetadataReadBinding.cs', '? _costProgram.EnergyCost(identity)'),
+    @('src/Prediction/Compact/CompactDiscardReadView.cs', '_context.CompletedEnergyCosts = _cards;'),
+    @('src/Prediction/Compact/CompactCardProgramCompiler.cs', 'AttackMultiplierPower: BasicPowerKind.Hang'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'instruction.AttackMultiplierPower)'),
+    @('src/Engine/InCombat/Simulation/Compact/BasicPowerLayout.cs', 'definition.Kind == cardMultiplier && definition.Owner == target'),
+    @('src/Prediction/CardEffectSpecRegistry.cs', 'if (simulator.IsEnding) break;'),
+    @('src/Engine/InCombat/Mirrors/HookMirrors.cs', 'if (!allowPendingRead && simulator.HasPendingChoice)'),
+    @('src/Engine/InCombat/Mirrors/HookMirrors.cs', 'MirroredHookMask.TryModifyEnergyCostInCombatLate, allowPendingRead: true'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'if (!HasGlobalEnergyCosts || Ending)'),
+    @('src/Engine/InCombat/Simulation/CombatPredictedCardExtensions.cs', 'return completed.ReadEnergyCost(card);'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'BeforeCardPlayed(card);'),
+    @('src/Engine/InCombat/Simulation/Compact/BasicPowerLayout.cs', 'NextBeforeCardPower(ReversibleValueState state, int afterOrder)'),
+    @('src/Engine/InCombat/Mirrors/Hooks/Card/BeforeCardPlayedMirrors.cs', 'context.Card.GetResolvedEnergyCost(context.Simulator)'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'if (!DrawCards(card, CurrentInstruction.Amount, 11)) return;'),
+    @('src/Engine/InCombat/Simulation/Compact/CardInstanceValue.cs', 'bool EnchantmentDisabled = false'),
+    @('src/Prediction/Compact/CompactCardMetadataReadBinding.cs', 'swift._status = status;'),
+    @('src/Prediction/Compact/CompactDiscardProjection.cs', 'projection.PushMethodSource(enchantment, EnchantmentOnPlay)'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'AttackCardStartsSlot = 3'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'firstCardAttack: source >= 0 && AttackCardStarts <= 1'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Rounds.cs', 'State.Write(AttackCardStartsSlot, 0);'),
+    @('src/Prediction/Compact/CompactDiscardProjection.cs', 'attackCardStarts: combat.GetAttacksPlayedThisTurn(player.Creature)'),
+    @('src/Search/SimulatedCombatState.cs', 'CaptureHistoryCourseCards(simulator, player);'),
+    @('src/Search/SimulatedCombatState.AutoPlay.cs', '=> _lastAttackPreviousTurn?.GetValueOrDefault(player);'),
+    @('src/Search/SimulatedCombatState.cs', 'history?.Owner.Creature, history?.Exhausts'),
+    @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'view?.CardValuesInvariant == true ? view.Invariants : null, skillsExhaust'),
+    @('src/Prediction/Compact/CompactDiscardReadView.cs', '_adapter.CopyPowerReadValues(program, values);'),
+    @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'SnapshotCore(view.EvaluationContext,'),
+    @('src/Prediction/Compact/CompactDiscardReadView.cs', '!_adapter.Program.State.HasSameRoot(program.State) || !program.Complete'),
+    @('src/Prediction/Compact/CompactDiscardReadView.cs', 'ValueRng rng = _program.ShuffleRng;'),
+    @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'view?.EnergyCostRng ?? simulator.Rng.CombatEnergyCosts.CaptureState()'),
+    @('src/Prediction/Compact/CompactCardMetadataReadBinding.cs', 'int amount = program.CostModifierAt(card, index);'),
+    @('src/Engine/InCombat/Simulation/Compact/RandomDrawCost.cs', 'Buffer(card).Append(state, [cost]);'),
+    @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'view?.ShuffleRng ?? simulator.Rng.Shuffle.CaptureState()'),
+    @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'view is null ? simulator.TerminalStamp : view.TerminalStamp'),
+    @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'view?.CardHistory, view?.EnemyRoster, view?.CombatHistory'),
+    @('src/Search/CombatBeamSolver.ReadView.cs', 'view?.EnemyValuesInvariant == true ? view.Invariants : null'),
+    @('src/Engine/InCombat/Simulation/SimCreatureState.cs', '_values.LoseHp(amount)'),
+    @('src/Engine/InCombat/Simulation/Compact/CreatureValueSlots.cs', 'state.Write(Offset + 3, present ? 1 : 0)'),
+    @('src/Prediction/Compact/CompactDiscardProjection.cs', '=> new(this, ForkRoot(), _player, _risks)'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'if (ResultPile(card) == Pile.Removed || !Ending)'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', '!card.Effects.ExhaustsCards'),
+    @('src/Prediction/Compact/CompactPlanReplay.cs', 'bool retrieve = lane.ChoiceRetrieves;'),
+    @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', 'if (target != 0 && target != Pet) _creatures[target].SetPresent(state, false);'),
+    @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', 'internal int EnemyEnd => Pet < 0 ? Count : Pet;'),
+    @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', 'state.Write(_petSummonedSlot, 1);'),
+    @('src/Engine/InCombat/Simulation/Compact/BasicPowerLayout.cs', '_definitions[index].Kind == BasicPowerKind.DieForYou'),
+    @('src/Prediction/Compact/CompactDiscardReadView.cs', 'int dealer = item.Dealer;'),
+    @('src/Search/SimulatedCombatState.CompletedOstyReads.cs', '_combat._simulatedOstyMaxHp = summoned || _hadMap ? _maxHp : null;'),
+    @('src/Engine/InCombat/Mirrors/Hooks/Damage/ModifyUnblockedDamageTargetMirrors.cs', 'context.State.GetCreature(power.Owner).IsAlive'),
+    @('src/Search/CombatBeamSolver.RoundLifecycle.cs', 'participants = takingExtraTurn ? [_player.Creature] : simulatedCombat.Allies.ToArray();'),
+    @('src/Engine/InCombat/Simulation/Compact/CreatureAttackLayout.cs', 'state.Write(_terminalSlot, DeathCompleted(state, 0) ? 2 : 1);'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Rounds.cs', 'if (PlayerTurn != 1) SummonPet(-1, _round.Root.TurnStartSummon);'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Rounds.cs', 'Emit(EventKind.CommitPlayerTurnHistory, -1);'),
+    @('src/Search/SimulatedCombatState.cs', 'combatHistory?.LastAttacks, combatHistory?.PreviousTurnAttacks'),
+    @('src/Search/SimulatedCombatState.cs', 'history?.Owner, history?.StatusDraws'),
+    @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'view?.CumulativePlayerHpLost ?? combat.GetCumulativeHpLost(_player.Creature)'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.HandEnd.cs', 'if (!_handEndAdmitted || !Complete || !Enum.IsDefined(staging))'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.PowerPhases.cs', 'if (!_powerPhasesAdmitted || !Complete'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', '_powerPhasesAdmitted = source._powerPhasesAdmitted;'),
+    @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'model.AmountOnTurnStart = value.AmountOnTurnStart;'),
+    @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'model.SkipNextDurationTick = value.SkipNextDurationTick;'),
+    @('src/Search/CompletedStateReadView.cs', 'A new stable root requires a new cache.'),
+    @('src/Search/SimulatedCombatState.cs', 'private T? PreparePowerApplication<T>'),
+    @('src/Search/SimulatedCombatState.cs', 'private PowerModel ApplyPreparedPower<T>'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', '_events.Append(State, [item.Data, item.Metadata]);'),
+    @('src/Engine/InCombat/Simulation/Compact/ReversibleValueBuffer.cs', 'state.Write(_header + TailOffset, leaf);'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'private readonly ReversibleValueBuffer[] _piles;'),
+    @('src/Search/SimulatedCombatState.cs', 'history?.Owner.Creature, history?.ShivPlays'),
+    @('src/Engine/InCombat/Simulation/Compact/CardEffectProgram.cs', '_instructions = instructions.ToArray();'),
+    @('src/Search/SimulatedCombatState.cs', 'PowerLifecycleSupport.SemanticallyRelevantSkipNextDurationTick(power)'),
+    @('src/Runtime/ContinuationStamp.cs', 'PowerLifecycleSupport.SemanticallyRelevantSkipNextDurationTick(power)'),
+    @('src/Prediction/PowerLifecycleSupport.cs', 'UsesNativeDurationSkip(power.GetType()) && power.SkipNextDurationTick'),
+    @('src/Search/SimulatedCombatState.cs', 'simulated.SkipNextDurationTick = true;'),
+    @('src/Search/SimulatedCombatState.cs', '!PowerLifecycleSupport.UsesNativeDurationSkip(powerType) && !alreadyPresent'),
+    @('src/Search/SimulatedCombatState.cs', '!PowerLifecycleSupport.UsesNativeDurationSkip(typeof(T)) && !alreadyPresent'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', '_round = source._round;'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Rounds.cs', 'Emit(EventKind.BeginSide, -1);'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Draw.cs', 'Emit(EventKind.Draw, drawn, fromHandDraw ? 1 : 0, flags: deferred ? 1 : 0);'),
+    @('src/Engine/InCombat/Simulation/Compact/DeterministicMonsterAi.cs', '_log.Append(state, [next]);'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', '_monsterAi = source._monsterAi;'),
+    @('src/Prediction/Compact/CompactDiscardProjection.cs', 'combat.RequireCapturedMonsterAi(_creatures[1])'),
+    @('src/Prediction/Compact/CompactDiscardReadView.cs', '_monsterAiBinding?.Read(program);'),
+    @('src/Engine/InCombat/Simulation/Compact/MonsterEffectProgram.cs', '_instructions = instructions.ToArray();'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Monsters.cs', 'if (_monsterMoves == null || !Complete || Terminal || Ending'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', '_monsterMoves = source._monsterMoves;'),
+    @('src/Prediction/Compact/CompactDiscardProjection.cs', 'metadata.CurrentMonsterMove(_creatures[1])'),
+    @('src/Search/SimulatedCombatState.cs', 'history?.CreatureAttacks, combatHistory?.CreatureAttacks'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'State.Write(Frame + EffectIndexOffset, Read(Frame + EffectIndexOffset) + 1);'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Draw.cs', 'State.Write(Frame + FirstDrawnOffset, drawn);'),
+    @('src/Prediction/Compact/CompactDiscardProjection.cs', 'card, includeAttacks, shivTemplate, inkyShivTemplate, soulTemplate, upgradedSoulTemplate)'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Draw.cs', 'State.Write(Frame + DrawResumeIpOffset, resumeIp);'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', '_drawFrames = source._drawFrames;'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Draw.cs', 'frames.Write(State, offset + DrawPendingCard, drawn);'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Draw.cs', 'offset == 0 && card < 0'),
+    @('src/Prediction/Compact/CompactDiscardProjection.cs', 'projection.History.CardDrawResolved(pendingDraw.Entry, card);'),
+    @('src/Prediction/Compact/CompactDiscardReadView.cs', 'case ResumableDiscardProgram.EventKind.DrawPowerStart:'),
+    @('src/Prediction/Compact/CompactDiscardReadView.cs', 'case ResumableDiscardProgram.EventKind.DrawPowerFinish:'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'private void ApplyTemporaryStrengthLoss(int card, int target, int amount)'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'if (!PreparePower(card, target, BasicPowerKind.PiercingWail, amount)) return;'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'CommitPower(card, target, BasicPowerKind.PiercingWail, amount);'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'ValidateBlockReturns(definitions, powers);'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'ApplyPower(card, 0, instruction.Power, (int)returned);'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'sum = checked(sum + _powers!.Amount(State, target, instruction.Power));'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'if (CreaturePresent(target) && Creature(target).CurrentHp > 0)'),
+    @('src/Prediction/Compact/CompactDiscardReadView.cs', 'ResumableDiscardProgram.DamageTraits.Unpowered | ResumableDiscardProgram.DamageTraits.NoDealer'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.cs', 'WriteRng(rng);'),
+    @('src/Testing/UnattendedTestRunner.CompactShufflePower.cs', 'isolation.Dispose();'),
+    @('src/Search/CombatBeamSolver.StateEvaluation.cs', '=> SnapshotCore(simulator, turn, actionCount, shufflesCrossed, boundary, processedEnemyDeaths, null);'),
+    @('src/Search/CombatBeamSolver.StateEvaluation.cs', 'result.ReleaseSimulator();')
+)
+foreach ($guard in $compactReadGuards) {
+    if (-not ([IO.File]::ReadAllText((Join-Path $repositoryRoot $guard[0]))).Contains($guard[1])) {
+        $violations.Add("Completed reader lost ownership/formula boundary: $($guard[0]) / $($guard[1])")
+    }
+}
+foreach ($file in $compactProductionFiles) {
+    if ($file.Name -in @('CombatBeamSolver.StateEvaluation.cs', 'CombatBeamSolver.CompactReplay.cs')) { continue }
+    foreach ($match in Select-String -LiteralPath $file.FullName -SimpleMatch 'SnapshotFromReadView(') {
+        $violations.Add("$($match.Path):$($match.LineNumber): closed completed reader is not admitted to production execution.")
+    }
+}
+$compactStorageGuards = @(
+    @('ReversibleValueState.cs', 'private long[] _values;'),
+    @('ReversibleValueState.cs', '_dirtyPages[entry.Slot / PageWidth] = true;'),
+    @('ReversibleValueState.cs', 'if (!source.HasRoot(_rootIdentity))'),
+    @('ReversibleValueState.cs', 'if (_checkpoints.Count != 0)'),
+    @('ReversibleValueState.cs', 'Resize(checkpoint.SlotCount);'),
+    @('ReversibleValueState.FrozenValues.cs', 'workspace.Resize(Count);'),
+    @('ReversibleValueState.FrozenValues.cs', '_pages = source._pages.AsSpan(0, PageCount(source.Count)).ToArray();'),
+    @('ReversibleValueState.FrozenValues.cs', 'private readonly long[] _values = values;')
+)
+foreach ($guard in $compactStorageGuards) {
+    if (-not ([IO.File]::ReadAllText((Join-Path $compactRoot $guard[0]))).Contains($guard[1])) {
+        $violations.Add("Compact storage lost ownership boundary: $($guard[0]) / $($guard[1])")
+    }
+}
+foreach ($reference in @('ReversibleValueState _owner', 'ReversibleValueState _workspace', 'FrozenValues _parent')) {
+    foreach ($match in Select-String -LiteralPath (Join-Path $compactRoot 'ReversibleValueState.FrozenValues.cs') -SimpleMatch $reference) {
+        $violations.Add("$($match.Path):$($match.LineNumber): compact candidate must not retain mutable workers or ancestor chains: $reference")
+    }
+}
+
 if ($violations.Count -gt 0) {
     $violations | ForEach-Object { Write-Error $_ }
     throw "Refactor boundary verification failed with $($violations.Count) violation(s)."
@@ -1250,4 +1548,92 @@ $nativeReplay = [IO.File]::ReadAllText((Join-Path $repositoryRoot 'src/Testing/U
 if ($nativeReplay.Contains('ApplyReplayStateAsync(')) {
     throw 'Native recorded replay must reconstruct state through native actions.'
 }
+
+$compactRoundReads = Join-Path $repositoryRoot 'src/Search/SimulatedCombatState.CompletedRoundReads.cs'
+$compactRoundText = Get-Content -LiteralPath $compactRoundReads -Raw
+foreach ($forbidden in @('.Fork(', '.ManualPlay(', 'TriggerSideTurnStart(', 'SnapshotPowerAmountsAtTurnStart(', '.State.Write(')) {
+    if ($compactRoundText.Contains($forbidden)) { throw "Completed round reads must only import clock and history maps: $forbidden" }
+}
+Get-ChildItem (Join-Path $repositoryRoot 'src/Search'), (Join-Path $repositoryRoot 'src/Runtime') -Recurse -Filter '*.cs' | ForEach-Object {
+    if ($_.FullName -ne $compactRoundReads -and (Get-Content -LiteralPath $_.FullName -Raw).Contains('CompletedRoundReadBinding')) {
+        throw "Completed round binding is not admitted to production execution: $($_.FullName)"
+    }
+}
+
+$compactAiReads = Join-Path $repositoryRoot 'src/Search/SimulatedCombatState.CompletedMonsterAiReads.cs'
+$compactAiText = Get-Content -LiteralPath $compactAiReads -Raw
+foreach ($forbidden in @('.Fork(', 'RollMove(', 'AdvanceMonsterAi(', 'BranchMonsterAi.Capture(', '.State.Write(')) {
+    if ($compactAiText.Contains($forbidden)) { throw "Completed monster AI reads may only import supplied values: $forbidden" }
+}
+Get-ChildItem (Join-Path $repositoryRoot 'src/Search'), (Join-Path $repositoryRoot 'src/Runtime') -Recurse -Filter '*.cs' | ForEach-Object {
+    if ($_.FullName -ne $compactAiReads -and (Get-Content -LiteralPath $_.FullName -Raw).Contains('CompletedMonsterAiReadBinding')) {
+        throw "Completed AI binding is not admitted to production execution: $($_.FullName)"
+    }
+}
+
+# Runtime admission has one main-thread owner; workers only consume the captured policy.
+Get-ChildItem (Join-Path $repositoryRoot 'src/Runtime') -Recurse -Filter '*.cs' | ForEach-Object {
+    if ($_.Name -ne 'SearchBackendPolicy.cs' -and (Get-Content -LiteralPath $_.FullName -Raw).Contains('CompactRoot')) {
+        throw "Runtime compact selection must belong to SearchBackendPolicy: $($_.FullName)"
+    }
+}
+foreach ($rule in @(
+    @('src/Runtime/SearchBackendPolicy.cs', 'if (!NGame.IsMainThread())'),
+    @('src/Runtime/SearchBackendPolicy.cs', 'CompactCombatRoot.TryCreate(root.ForkSimulator(), root.PlayerIdentity, out compact, out rejection);'),
+    @('src/Runtime/SolverController.cs', 'searchPolicy = SearchBackendPolicy.Capture(rootSnapshot, searchPolicy);'),
+    @('src/Runtime/PlayerTurnSetupPatches.cs', 'searchPolicy = SearchBackendPolicy.Capture(rootSnapshot, searchPolicy);'),
+    @('src/Prediction/Compact/CompactDiscardProjection.cs', 'Any(slot => combat.GetPotionAtSlot(player, slot) != null)'),
+    @('src/Prediction/Compact/CompactCardProgramCompiler.cs', '!AdmittedTypes.Contains(card.GetType())'),
+    @('src/Prediction/Compact/CompactDiscardProjection.cs', 'lock (_rootForkGate) return _root.Fork();'),
+    @('src/Search/CombatPlan.cs', '_compact = null;'),
+    @('src/Search/CombatPlan.cs', 'CompactPendingChoice = null;'),
+    @('src/Prediction/Compact/CompactDiscardReadView.cs', '!_adapter.Program.State.HasSameRoot(program.State) || !program.NeedsChoice'),
+    @('src/Prediction/Compact/CompactPlanReplay.cs', 'var cursor = new TurnStartChoiceCursor(choices);'),
+    @('src/Prediction/Compact/CompactPlanReplay.cs', '_metadata[id].Clone()'),
+    @('src/Prediction/Compact/CompactMonsterAiReadBinding.cs', '_attacks[program.PublishedMonsterIntentMove]'),
+    @('src/Search/CombatBeamSolver.CompactReplay.cs', 'SnapshotFromReadView(lane.Reader,'),
+    @('src/Search/CombatBeamSolver.ParallelExpansion.cs', 'ReferenceEquals(_compact, parent)'),
+    @('src/Search/CombatBeamSolver.CompactReplay.cs', 'private sealed class CompactPolicyReadLane'),
+    @('src/Search/CombatBeamSolver.ActionPreparation.cs', 'TargetsFor(card, simulator, view)'),
+    @('src/Search/CombatBeamSolver.Expansion.cs', 'foreach (PreparedCardAction prepared in PrepareCardActions(node))'),
+    @('src/Search/CombatBeamSolver.Expansion.cs', 'foreach (PreparedPotionAction prepared in PreparePotionActions(node))'),
+    @('src/Runtime/ContinuationStamp.cs', '!ReferenceEquals(simulator, readView.EvaluationContext)'),
+    @('src/Runtime/ContinuationStamp.cs', 'combat.AppendPredictedTurnCardHistory(text, player, readView?.CardHistory);'),
+    @('src/Runtime/ContinuationStamp.cs', 'readView?.EnergyCostRng ?? simulator.Rng.CombatEnergyCosts.CaptureState()'),
+    @('src/Engine/InCombat/Simulation/CombatPredictionState.cs', 'internal bool IsHittable(Creature creature, bool presentAndAlive)')
+)) {
+    if (-not (Get-Content -LiteralPath (Join-Path $repositoryRoot $rule[0]) -Raw).Contains($rule[1])) {
+        throw "Compact captured-root ownership/evaluation guard missing: $($rule[0]): $($rule[1])"
+    }
+}
+
+foreach ($rule in @(
+    @('src/Search/CombatBeamSolver.RoundLifecycle.cs', 'if (!simulator.IsOverOrEnding && !CorePowerSupport.TriggerAfterBlockCleared('),
+    @('src/Engine/InCombat/Simulation/Compact/PanachePowerLayout.cs', 'private readonly ReversibleValueBuffer _values;'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.Panache.cs', '_panache!.Write(State, index, value with { CardsLeft = left, AlreadyApplied = true });'),
+    @('src/Engine/InCombat/Simulation/Compact/ResumableDiscardProgram.PowerPhases.cs', 'ResetPanacheTurn();'),
+    @('src/Engine/InCombat/Simulation/Compact/BasicPowerLayout.cs', 'internal int NextOrder(ReversibleValueState state)'),
+    @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'for (int index = values.Length; index < _models.Count; index++) _models[index]._amount = 0;'),
+    @('src/Search/SimulatedCombatState.CompletedPowerReads.cs', 'hidden.CardsLeft = value.CardsLeft; hidden.AlreadyApplied = value.AlreadyApplied;'),
+    @('src/Prediction/CardPowerOnPlaySupport.cs', 'combat.ApplyInstancedPower<PanachePower>'),
+    @('src/Search/SimulatedCombatState.cs', 'item.Add(PowerPredictionStateSupport.PanacheAlreadyApplied(simulator, panache));'),
+    @('src/Runtime/ContinuationStamp.cs', 'PowerPredictionStateSupport.PanacheAlreadyApplied(simulator, panache)')
+)) {
+    if (-not (Get-Content -LiteralPath (Join-Path $repositoryRoot $rule[0]) -Raw).Contains($rule[1])) {
+        throw "Independent Power ownership guard missing: $($rule[0]): $($rule[1])"
+    }
+}
+
+if (-not (Get-Content -LiteralPath (Join-Path $repositoryRoot 'src/Prediction/Compact/CompactCardProgramCompiler.cs') -Raw).Contains('SharedFate => new([new(CardInstructionKind.ApplyBasicPower, -(int)ownStrengthLoss, BasicPowerKind.Strength),')) {
+    throw 'Shared Fate must compile its own Strength application first.'
+}
+
+if (-not (Get-Content -LiteralPath (Join-Path $repositoryRoot 'src/Prediction/Compact/CompactCardProgramCompiler.cs') -Raw).Contains('Deathbringer => new([new(CardInstructionKind.ApplyBasicPower, (int)doom, BasicPowerKind.Doom, CardInstructionTarget.AllEnemies),')) {
+    throw 'bulk Power commands must keep their complete roster pass before the next command.'
+}
+
+if (-not (Get-Content -LiteralPath (Join-Path $repositoryRoot 'src/Engine/InCombat/Simulation/Compact/BasicPowerLayout.cs') -Raw).Contains('HasDebuffType(_definitions[index].Kind)')) {
+    throw 'Native duration metadata must use model type rather than signed incoming amount.'
+}
+
 Write-Output "REFACTOR_BOUNDARIES_OK search_files=$($searchFiles.Count)"

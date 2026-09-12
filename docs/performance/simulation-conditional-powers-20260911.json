@@ -1,0 +1,483 @@
+{
+  "date": "2026-09-11",
+  "baseCommit": "65e2435",
+  "productionBackendEnabled": false,
+  "newFullSearchPerformanceClaim": false,
+  "admittedCardTypeCount": 19,
+  "newCardTypes": [
+    "DeadlyPoison",
+    "Haze",
+    "Snakebite",
+    "Defy",
+    "EscapePlan"
+  ],
+  "newPowerKind": "Poison",
+  "newPowerTriggerImplemented": false,
+  "finalArtifact": "artifact-v3",
+  "builds": [
+    {
+      "artifact": "artifact-v1",
+      "seconds": 9.43,
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "artifact": "artifact-v2",
+      "seconds": 10.36,
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "artifact": "artifact-v3",
+      "seconds": 9.85,
+      "warnings": 0,
+      "errors": 0
+    }
+  ],
+  "evidenceVersionNote": "v2 contains final execution/compiler/projection code; v3 only corrects native fixture instance selection among duplicate Defends. Retain v2 main native success without repeating it.",
+  "pureChecks": {
+    "status": "Passed",
+    "tool": "tools/CompactCreatureChecks",
+    "drawCategories": 4,
+    "emptyDraw": true,
+    "shuffleReturn": true,
+    "frozenWorkers": 8,
+    "orderedBulkTargets": true,
+    "removedTarget": true,
+    "rollback": true,
+    "invalidBranchRejected": true,
+    "priorDamageVectors": 9
+  },
+  "nativeRuns": [
+    {
+      "input": "native-v1",
+      "runId": "4a930088b717483ca844c19e7eaeb63a",
+      "scenarioId": "COMPACT-CONDITIONAL-POWERS-NATIVE",
+      "status": "Failed",
+      "elapsedMilliseconds": 23741.9538,
+      "checks": [],
+      "error": "System.InvalidOperationException: ConditionalPowers history/source differs at branch-6-6\n   at CombatSolver.UnattendedTestRunner.<>c__DisplayClass40_1.<AssertCompactConditionalPowersAsync>g__Compare|6(ResumableDiscardProgram values, CombatPredictionSimulator oracle, String stage)\n   at CombatSolver.UnattendedTestRunner.AssertCompactConditionalPowersAsync(CombatState combat, Player player)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()"
+    },
+    {
+      "input": "native-v2",
+      "runId": "0dda50623c92431687817928bbf2744f",
+      "scenarioId": "COMPACT-CONDITIONAL-POWERS-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 24820.6989,
+      "checks": [
+        "CompactConditionalPowers:14Branches:ConditionalSkillAttackPowerDraw:OrderedBulkPoisonWeak:RetainEthereal:PoisonApplierAndDeath:OriginalKeys:AllSnapshotProperties:RootRestore:Frozen8Workers:Native9Actions"
+      ],
+      "error": null
+    },
+    {
+      "input": "draw-return-v2",
+      "runId": "0be932d72f0a458e8ce337e8b82a84e8",
+      "scenarioId": "COMPACT-DRAW-RETURN-NATIVE",
+      "status": "Failed",
+      "elapsedMilliseconds": 4095.6124,
+      "checks": [],
+      "error": "System.InvalidOperationException: Choice contains an absent or repeated instance.\n   at CombatSolver.Engine.InCombat.Simulation.Compact.ResumableDiscardProgram.SupplyChoice(ReadOnlySpan`1 selected)\n   at CombatSolver.UnattendedTestRunner.AssertCompactDrawReturnAsync(CombatState combat, Player player)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()"
+    },
+    {
+      "input": "draw-return-v3",
+      "runId": "e318d438c9d84b0fab75d17b48db46d8",
+      "scenarioId": "COMPACT-DRAW-RETURN-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 24423.2579,
+      "checks": [
+        "CompactDrawReturn:Native4Roots:EmptyDraw:ShuffleRetrievedVersusDrawn:FullHandAfterRetrieve:FrozenChoice:Rollback:OriginalKeys:AllSnapshotProperties:History:AllRng"
+      ],
+      "error": null
+    },
+    {
+      "input": "lifecycle-v3",
+      "runId": "2a8ad6be6fd8438bb89415106515af8c",
+      "scenarioId": "COMPACT-CARD-LIFECYCLE-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 4832.6913,
+      "checks": [
+        "CompactCardLifecycle:12Branches:FootworkFinesseOrder:RemovedPowers:XCostAndZeroX:ExhaustHistory:OriginalKeys:AllSnapshotProperties:RootRestore:Frozen8Workers:Native9Actions"
+      ],
+      "error": null
+    }
+  ],
+  "branchEvidence": {
+    "branches": [
+      {
+        "path": [
+          0
+        ],
+        "PlayerBlock": 4,
+        "StateKey": {
+          "First": 18317994902207827333,
+          "Second": 59983475586120797
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 12
+      },
+      {
+        "path": [
+          1
+        ],
+        "PlayerBlock": 6,
+        "StateKey": {
+          "First": 1747573582017062197,
+          "Second": 2127774613342687269
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 12
+      },
+      {
+        "path": [
+          0,
+          1,
+          2
+        ],
+        "PlayerBlock": 4,
+        "StateKey": {
+          "First": 4713561896486499398,
+          "Second": 10920267531846208941
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 12
+      },
+      {
+        "path": [
+          2,
+          1,
+          0
+        ],
+        "PlayerBlock": 6,
+        "StateKey": {
+          "First": 17857136310904550360,
+          "Second": 9599102692627646779
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 12
+      },
+      {
+        "path": [
+          3
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 7567376057530466836,
+          "Second": 2828027729060411984
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 11
+      },
+      {
+        "path": [
+          4
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 5293253726114563385,
+          "Second": 9628978787905844766
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 10
+      },
+      {
+        "path": [
+          3,
+          4
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 10446913445381997534,
+          "Second": 15659006729295436177
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 9
+      },
+      {
+        "path": [
+          4,
+          3
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 16334321339995247387,
+          "Second": 14604674329271159203
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 9
+      },
+      {
+        "path": [
+          5
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 11484190691749037770,
+          "Second": 15135104100552230225
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 10
+      },
+      {
+        "path": [
+          3,
+          5
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 11511489916233453744,
+          "Second": 16105072934598948383
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 9
+      },
+      {
+        "path": [
+          5,
+          3
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 9823882122169959728,
+          "Second": 1480164953027611149
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 9
+      },
+      {
+        "path": [
+          6
+        ],
+        "PlayerBlock": 9,
+        "StateKey": {
+          "First": 4120853536252125056,
+          "Second": 3601367193019373046
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 11
+      },
+      {
+        "path": [
+          4,
+          7
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 5665673418199030115,
+          "Second": 16479249025754076665
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 9
+      },
+      {
+        "path": [
+          7,
+          4
+        ],
+        "PlayerBlock": 3,
+        "StateKey": {
+          "First": 16981718089726502149,
+          "Second": 5550788363296822883
+        },
+        "removed": 0,
+        "exhausted": 0,
+        "Energy": 9
+      }
+    ],
+    "riskSourceCount": 5,
+    "nativeRoute": [
+      {
+        "index": 0,
+        "Id": "ESCAPE_PLAN",
+        "Upgrade": 0
+      },
+      {
+        "index": 1,
+        "Id": "ESCAPE_PLAN",
+        "Upgrade": 1
+      },
+      {
+        "index": 2,
+        "Id": "ESCAPE_PLAN",
+        "Upgrade": 1
+      },
+      {
+        "index": 3,
+        "Id": "DEADLY_POISON",
+        "Upgrade": 1
+      },
+      {
+        "index": 4,
+        "Id": "HAZE",
+        "Upgrade": 1
+      },
+      {
+        "index": 5,
+        "Id": "SNAKEBITE",
+        "Upgrade": 1
+      },
+      {
+        "index": 6,
+        "Id": "DEFY",
+        "Upgrade": 1
+      },
+      {
+        "index": 7,
+        "Id": "STRIKE_SILENT",
+        "Upgrade": 0
+      },
+      {
+        "index": 8,
+        "Id": "FOOTWORK",
+        "Upgrade": 0
+      }
+    ],
+    "nativeSteps": 9,
+    "nativePowers": [
+      [
+        "0:0:DEXTERITY_POWER:-1:0::0:False:",
+        "0:1:POISON_POWER:2:2::0:False:",
+        "1:0:FRAIL_POWER:2:0::0:True:",
+        "1:1:STRENGTH_POWER:1:1::0:False:"
+      ],
+      [
+        "0:0:DEXTERITY_POWER:-1:0::0:False:",
+        "0:1:POISON_POWER:2:2::0:False:",
+        "1:0:FRAIL_POWER:2:0::0:True:",
+        "1:1:STRENGTH_POWER:1:1::0:False:"
+      ],
+      [
+        "0:0:DEXTERITY_POWER:-1:0::0:False:",
+        "0:1:POISON_POWER:2:2::0:False:",
+        "1:0:FRAIL_POWER:2:0::0:True:",
+        "1:1:STRENGTH_POWER:1:1::0:False:"
+      ],
+      [
+        "0:0:DEXTERITY_POWER:-1:0::0:False:",
+        "0:1:POISON_POWER:9:2::0:False:",
+        "1:0:FRAIL_POWER:2:0::0:True:",
+        "1:1:STRENGTH_POWER:1:1::0:False:"
+      ],
+      [
+        "0:0:DEXTERITY_POWER:-1:0::0:False:",
+        "0:1:POISON_POWER:15:2::0:False:",
+        "0:2:POISON_POWER:6:0::0:False:",
+        "0:3:POISON_POWER:6:0::0:False:",
+        "1:0:FRAIL_POWER:2:0::0:True:",
+        "1:1:STRENGTH_POWER:1:1::0:False:",
+        "1:2:WEAK_POWER:2:0::0:False:DamageDecrease=0.75",
+        "1:3:WEAK_POWER:2:0::0:False:DamageDecrease=0.75",
+        "2:1:WEAK_POWER:2:0::0:False:DamageDecrease=0.75"
+      ],
+      [
+        "0:0:DEXTERITY_POWER:-1:0::0:False:",
+        "0:1:POISON_POWER:15:2::0:False:",
+        "0:2:POISON_POWER:16:0::0:False:",
+        "0:3:POISON_POWER:6:0::0:False:",
+        "1:0:FRAIL_POWER:2:0::0:True:",
+        "1:1:STRENGTH_POWER:1:1::0:False:",
+        "1:2:WEAK_POWER:2:0::0:False:DamageDecrease=0.75",
+        "1:3:WEAK_POWER:2:0::0:False:DamageDecrease=0.75",
+        "2:1:WEAK_POWER:2:0::0:False:DamageDecrease=0.75"
+      ],
+      [
+        "0:0:DEXTERITY_POWER:-1:0::0:False:",
+        "0:1:POISON_POWER:15:2::0:False:",
+        "0:2:POISON_POWER:16:0::0:False:",
+        "0:3:POISON_POWER:6:0::0:False:",
+        "1:0:FRAIL_POWER:2:0::0:True:",
+        "1:1:STRENGTH_POWER:1:1::0:False:",
+        "1:2:WEAK_POWER:2:0::0:False:DamageDecrease=0.75",
+        "1:3:WEAK_POWER:3:0::0:False:DamageDecrease=0.75",
+        "2:1:WEAK_POWER:2:0::0:False:DamageDecrease=0.75"
+      ],
+      [
+        "0:0:DEXTERITY_POWER:-1:0::0:False:",
+        "0:1:POISON_POWER:15:2::0:False:",
+        "0:2:POISON_POWER:16:0::0:False:",
+        "1:0:FRAIL_POWER:2:0::0:True:",
+        "1:1:STRENGTH_POWER:1:1::0:False:",
+        "1:2:WEAK_POWER:2:0::0:False:DamageDecrease=0.75",
+        "2:1:WEAK_POWER:2:0::0:False:DamageDecrease=0.75"
+      ],
+      [
+        "0:0:DEXTERITY_POWER:1:0::0:False:",
+        "0:1:POISON_POWER:15:2::0:False:",
+        "0:2:POISON_POWER:16:0::0:False:",
+        "1:0:FRAIL_POWER:2:0::0:True:",
+        "1:1:STRENGTH_POWER:1:1::0:False:",
+        "1:2:WEAK_POWER:2:0::0:False:DamageDecrease=0.75",
+        "2:1:WEAK_POWER:2:0::0:False:DamageDecrease=0.75"
+      ]
+    ],
+    "productionBackendEnabled": false
+  },
+  "drawReturnEvidence": {
+    "cases": [
+      {
+        "mode": 0,
+        "actualDraws": 0,
+        "Block": 2,
+        "ShuffleCount": 0,
+        "StateKey": {
+          "First": 4047027540946520924,
+          "Second": 9667216041375095571
+        }
+      },
+      {
+        "mode": 1,
+        "actualDraws": 1,
+        "Block": 7,
+        "ShuffleCount": 1,
+        "StateKey": {
+          "First": 17578543397135721704,
+          "Second": 17079342350176578256
+        }
+      },
+      {
+        "mode": 2,
+        "actualDraws": 1,
+        "Block": 2,
+        "ShuffleCount": 1,
+        "StateKey": {
+          "First": 2104955757397950403,
+          "Second": 17507839498715074942
+        }
+      },
+      {
+        "mode": 3,
+        "actualDraws": 0,
+        "Block": 2,
+        "ShuffleCount": 1,
+        "StateKey": {
+          "First": 8716048796981264067,
+          "Second": 13019307458033289303
+        }
+      }
+    ],
+    "productionBackendEnabled": false
+  },
+  "boundaries": {
+    "linux": "Passed",
+    "searchFiles": 88,
+    "powershell": "Updated, not executed"
+  },
+  "unverified": [
+    "Native Outbreak poison trigger",
+    "Compact round advancement",
+    "Complete original 30/38-card roots and generated closure",
+    "Production integration and original full-input A/B"
+  ]
+}

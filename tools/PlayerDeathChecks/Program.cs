@@ -17,6 +17,7 @@ foreach (bool pending in new[] { false, true })
     sim.OnKill = () =>
     {
         Require(removed.Amount == 0 && debuff.Amount == 0, "Dead player's powers leaked into pet death hooks");
+        Require(combat.CompletedDeaths.Contains(player.Creature), "Player death phase must finish before pet cleanup");
         Require(preserved.Amount == 1, "Death-persistent power removed");
         Require(enemyPower.Amount == 2, "Other owner's power removed");
         Require(sim.PlayerState.OrbQueue.Count == 0, "Orbs must clear before pet cleanup");
@@ -28,6 +29,7 @@ foreach (bool pending in new[] { false, true })
     Require(sim.Forced == hasOsty, "Existing forced pet cleanup changed");
     Require(combat.Mutations == 2, "Power removal must occur once per active power");
     Require(sim.PlayerState.OrbQueue.Count == 0, "Orb cleanup missing");
+    Require(combat.CompletedDeaths.SetEquals([player.Creature]), "Only the player's death phase should be committed by this entry");
     combat.RemovePowersAfterDeath(player.Creature);
     Require(combat.Mutations == 2, "Repeated cleanup duplicated removals");
 }
@@ -63,10 +65,13 @@ namespace CombatSolver
         public bool ShouldPowerBeRemovedAfterOwnerDeath() => removeOnDeath;
     }
     internal sealed class IllusionPower(Creature owner) : PowerModel(owner, false, 1);
-    internal sealed partial class SimulatedCombatState
+    internal interface ICombatPredictionEffectSink { void CompletePlayerDeath(Player player); }
+    internal sealed partial class SimulatedCombatState : ICombatPredictionEffectSink
     {
         public List<PowerModel> Powers = [];
         public List<Creature> Creatures = [];
+        public HashSet<Creature> CompletedDeaths = [];
+        private void CompleteDeathPhase(Creature creature) => CompletedDeaths.Add(creature);
         public int Mutations;
         private IEnumerable<PowerModel> EffectivePowers() => Powers;
         private bool ContainsCreature(Creature owner) => Creatures.Contains(owner);

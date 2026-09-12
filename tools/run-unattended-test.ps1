@@ -335,6 +335,9 @@ if ([Environment]::ProcessorCount -eq 1 -and -not $PSBoundParameters.ContainsKey
 }
 $runtimeContext = New-HeadlessRuntimeContext $repositoryRoot $sourceGameRoot $HeadlessInstance `
     $HeadlessExecutionMode $HeadlessMemoryReservationMiB $HeadlessCpuReservation $HeadlessQueueTimeoutSeconds
+if ([string]::IsNullOrWhiteSpace($HeadlessInstance) -and [string]::IsNullOrWhiteSpace($env:COMBATSOLVER_HEADLESS_ROOT) -and -not $StopInstance) {
+    $runtimeContext = Select-HeadlessPoolContext $runtimeContext
+}
 $gameRoot = $runtimeContext.GameRoot
 $gameExe = Join-Path $gameRoot "SlayTheSpire2.exe"
 $gameModsRoot = Join-Path $gameRoot "mods"
@@ -403,7 +406,7 @@ if ($StopAfterExpectedPlayerPower.IsPresent -and [string]::IsNullOrWhiteSpace($E
 }
 
 New-Item -ItemType Directory -Path $headlessRoot -Force | Out-Null
-$launcherLock = $null
+$launcherLock = $runtimeContext['PoolLauncherLock']
 while ($null -eq $launcherLock) {
     try {
         $launcherLock = [IO.File]::Open(

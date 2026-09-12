@@ -1,0 +1,199 @@
+{
+  "status": "Passed",
+  "scope": "Bury, Reap, Parse, Poke, Reanimate, PullAggro, GraveWarden and Reave production compilation into the compact card program compiler; the new ending-template generation variant, the Soul template capture and the legacy Reave ending gate. Review follow-up adds the generated-slot range for the ending variant and native Poke evidence for absent, dead and revived pets. No admission expansion beyond these exact card programs and no pool shrinking.",
+  "validation": [
+    {
+      "runId": "99a1dffc4d284ae086241c355559f5bd",
+      "scenarioId": "COMPACT-NECRO-SOUL-CARDS-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 7891,
+      "characterId": "NECROBINDER",
+      "encounterId": "MECHA_KNIGHT_ELITE",
+      "evidence": ".local/compact-necro-soul-cards-20260911/final-cards",
+      "note": "Reused process; two upgrade modes, 10 native actions, 14 and 15 branches, 3 omitted choice boundaries each.",
+      "observedInstructions": [
+        "BURY: AttackTarget 52/63, 4 energy, Attack, discard",
+        "REAP: AttackTarget 27/33 with canonical Retain, 3 energy, Attack, discard",
+        "PARSE: Draw 3/4 with canonical Ethereal, 1 energy, Skill, discard",
+        "POKE: PetAttackTarget 6/9, 0 energy, Attack, discard",
+        "REANIMATE: SummonPet 20/25, 3 energy, Skill, exhaust",
+        "PULL_AGGRO: SummonPet 4/5 then GainBlock 7/9, 2 energy, Skill, discard",
+        "GRAVE_WARDEN: GainBlock 8/11 then GenerateCards(1 plain Soul, random draw), 1 energy, Skill, discard",
+        "REAVE: AttackTarget 10/13 then GenerateCards(1 Soul, random draw); upgraded carries EndingCardTemplate for the plain variant"
+      ],
+      "completedChecks": [
+        "CompactNecroSoulCards:Mode0:OmittedChoices3:FullContinuations",
+        "CompactNecroSoulCards:Mode0:10NativeActions:14Branches:0NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative",
+        "CompactNecroSoulCards:Mode0:EightCompiledCards:PlainAndUpgraded:RetainAcrossFlush:EtherealHandEnd:PetDealerAttack:SummonBeforeBlock:SoulRandomDrawInsertion:AttackStarts",
+        "CompactNecroSoulCards:Mode1:10NativeActions:15Branches:0NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative"
+      ],
+      "error": null
+    },
+    {
+      "runId": "96061cdd3a914638b09bd5bf69945b3e",
+      "scenarioId": "COMPACT-NECRO-HAND-END-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 3948,
+      "characterId": "NECROBINDER",
+      "encounterId": "MECHA_KNIGHT_ELITE",
+      "evidence": ".local/compact-necro-soul-cards-20260911/final-hand-end",
+      "note": "Unplayed Reap and Parse held across one real player end turn; one native action, one branch.",
+      "completedChecks": [
+        "CompactNecroHandEnd:Mode0:1NativeActions:1Branches:0NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative",
+        "CompactNecroHandEnd:RetainedReapKeptInHand:EtherealParseExhaustedAtFlush:FullNativeComparison"
+      ],
+      "error": null
+    },
+    {
+      "runId": "03a7074467944531afea88b0539a271f",
+      "scenarioId": "COMPACT-REAVE-TERMINAL-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 3656,
+      "characterId": "NECROBINDER",
+      "encounterId": "MECHA_KNIGHT_ELITE",
+      "evidence": ".local/compact-necro-soul-cards-20260911/final-reave-terminal",
+      "note": "Upgraded Reave kills the last primary enemy; unplaced generation identity 3 is the plain Soul and the shuffle stream is untouched, matching the native ending gate.",
+      "completedChecks": [
+        "CompactReaveTerminal:NativePreTeardownSnapshot",
+        "CompactReaveTerminal:Mode1:1NativeActions:1Branches:0NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative",
+        "CompactReaveTerminal:LastEnemyDeath:UnplacedPlainSoulFromNativeUpgradeGate:NoRandomConsumption:FullNativeComparison"
+      ],
+      "error": null
+    },
+    {
+      "runId": "8afb816dd7b04e839f724726a8aae7a0",
+      "scenarioId": "COMPACT-POKE-PET-STATE-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 24672,
+      "characterId": "SILENT",
+      "encounterId": "MECHA_KNIGHT_ELITE",
+      "evidence": ".local/next-necro-review/poke-pet-state",
+      "note": "A pet-free start (SILENT, as in OSTY-STATE-LIFECYCLE) closes the Poke gap: the absent root is rejected while the native play is a legal no-op, the captured dead pet keeps Poke legal but skips the whole command, and Reanimate revives the same identity so Poke attacks as the real pet again.",
+      "completedChecks": [
+        "CompactPokePetStateDead:Mode0:OmittedChoices0:FullContinuations",
+        "CompactPokePetStateDead:Mode0:1NativeActions:1Branches:0NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative",
+        "CompactPokePetStateRevived:Mode1:OmittedChoices0:FullContinuations",
+        "CompactPokePetStateRevived:Mode1:2NativeActions:2Branches:0NativeResourceChoices:FullStateKeysHistoryRng:EightWorkers:FrozenAfterNative",
+        "CompactPokePetState:AbsentRootRejected:NativeAbsentNoOp:DeadPetSkippedAttack:ReviveThenPetDealer:FullNativeComparison"
+      ],
+      "error": null
+    },
+    {
+      "runId": "0a57c23ed22c4fe2bf380dd6dbc960c5",
+      "scenarioId": "COMPACT-CALL-OF-THE-VOID-GENERATION",
+      "status": "Passed",
+      "elapsedMilliseconds": 3679,
+      "characterId": "NECROBINDER",
+      "encounterId": "MECHA_KNIGHT_ELITE",
+      "evidence": ".local/compact-necro-soul-cards-20260911/final-void",
+      "note": "Reused process; frozen 78-candidate census regression: 29 exactly compilable, 49 not, first BANSHEES_CRY (was 23/55).",
+      "completedChecks": [
+        "CompactCallOfTheVoidGeneration:FullPool78:ThreeBatchesTwelveEthereal:NativeLegacyCompactOrderedIds:FiveFieldRngParity:HandOverflowRetrieveReplay:PerInstanceIdentity:RollbackDeterministicReplay:FrozenRootAfterNative:CompiledPowerInstruction:InnateUpgradeAdmitted:UnrepresentedStateRejected:PoolClosureCensus"
+      ],
+      "error": null
+    },
+    {
+      "runId": "e9d62783e1594f1e83300820f0cfa5ca",
+      "scenarioId": "COMPACT-GENERATION-CLOSURE-AUDIT",
+      "status": "Passed",
+      "elapsedMilliseconds": 24106,
+      "characterId": "NECROBINDER",
+      "encounterId": "AEONGLASS_BOSS",
+      "evidence": ".local/compact-necro-soul-cards-20260911/final-closure",
+      "note": "Original 38-card, 19-injected-relic, two-potion Necrobinder input; 78/50 ordered candidates; CallOfTheVoid exact type membership 25 -> 33. Full root still rejected at the unrepresented potions.",
+      "completedChecks": [
+        "CompactGenerationClosureAudit:Original38Cards19InjectedRelics2Potions:ActualRelics20:CompleteOrderedPools:24NativeLegacyCachedValueSamples:ValueSelectionEmptySingletonNegativeZeroOversize:FiveFieldRng:FullPoolForkOwnership:InvalidPoolsRejected:GeneratedCardIsolation:AttackAndColorlessRegression:ActualUnchanged:FullRootExplicitlyRejected"
+      ],
+      "error": null
+    },
+    {
+      "runId": "00ce3062a7ec4b44861bf51212ee2cb8",
+      "scenarioId": "COMPACT-CARD-HOOKS-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 10750,
+      "characterId": "SILENT",
+      "encounterId": "MECHA_KNIGHT_ELITE",
+      "evidence": ".local/compact-necro-soul-cards-20260911/final-card-hooks",
+      "note": "Regression for the generalized completion-table generation trace scope (CloakAndDagger path): 9 native actions, 19 branches.",
+      "completedChecks": [
+        "CompactCardHooks:Mode0:BeforeCardOrder:UnpoweredBlock:NewAndStackedPowers:SwiftOnce:XAndKeywords:TwoRounds:NativeSwiftChoices1"
+      ],
+      "error": null
+    },
+    {
+      "runId": "f5d4979c0f7a46dc816331d72996c876",
+      "scenarioId": "COMPACT-DOOM-CARDS-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 7056,
+      "characterId": "NECROBINDER",
+      "encounterId": "MECHA_KNIGHT_ELITE",
+      "evidence": ".local/compact-necro-soul-cards-20260911/final-doom-cards",
+      "note": "Previous batch regression after the projection and template-capture changes.",
+      "completedChecks": [
+        "CompactDoomCards:Mode0:CardAppliedDoomWeakVulnerable:CompilerLaneMaterializationNative:DoomCounterWithoutDuration:VulnerableMultiplier:ScourgeDrawOrder:PutrefyExhaust:FearEthereal:AttackStarts"
+      ],
+      "error": null
+    },
+    {
+      "runId": "c16f73aa73e944279bf479aa65aaa624",
+      "scenarioId": "COMPACT-DOOM-ROSTER-NATIVE",
+      "status": "Passed",
+      "elapsedMilliseconds": 24189,
+      "characterId": "NECROBINDER",
+      "encounterId": "CORPSE_SLUGS_NORMAL",
+      "evidence": ".local/compact-necro-soul-cards-20260911/final-doom-roster",
+      "note": "Three-enemy target-domain regression: the previous batch's three living primary enemies plus the captured Osty still separate AllEnemies from ChosenEnemy after the projection change.",
+      "completedChecks": [
+        "CompactDoomRoster:ThreeEnemies:DeathbringerNegativePulseRosterPass:ScourgePutrefyFearChosenEnemy:ExactPowerOrderAndScope:MaterializationAndReaderKeys:NativePerStep:Rollback:FrozenAfterNative"
+      ],
+      "error": null
+    }
+  ],
+  "valueLayer": {
+    "check": "COMPACT_SOUL_GENERATION_CHECKS_OK",
+    "procedure": "Pure .NET CompactCreatureChecks contract for the ending-template generation variant, including constructor-driven range rejections for both variants.",
+    "observed": "ending_template=plain placed_template=upgraded shuffle_rng=true unplaced_history=true rollback=true frozen_workers=8 domain_rejections=true ending_template_range=true",
+    "command": "dotnet run --project tools/CompactCreatureChecks/CompactCreatureChecks.csproj -c Release"
+  },
+  "census": {
+    "pool": 78,
+    "admittedDefaultTemplates": {
+      "before": 23,
+      "after": 29
+    },
+    "unsupportedDefaultTemplates": {
+      "before": 55,
+      "after": 49
+    },
+    "firstUnsupported": "BANSHEES_CRY",
+    "admittedWithCapturedTemplates": 33,
+    "unsupportedWithCapturedTemplates": 45,
+    "templateDependentCandidates": [
+      "DIRGE",
+      "CAPTURE_SPIRIT",
+      "GRAVE_WARDEN",
+      "REAVE"
+    ],
+    "auditedTypeMembership": {
+      "before": 25,
+      "after": 33
+    }
+  },
+  "failureBaselines": [
+    "The first census assertion expected two template-unlocked candidates and failed; Dirge and CaptureSpirit are the other two.",
+    "The first Reap step assertion required the played card to stay in hand; Retain only applies to the end-of-turn flush.",
+    "The first Parse step assertion read the drawn card from the hand instead of the played instance.",
+    "The first GraveWarden route failed the legacy history comparison because completion-table generation runs outside the inferred OnPlay scope.",
+    "The first hand-end fixture carried the turn relic, whose ToolsOfTheTrade discard may legitimately discard the retained copy.",
+    "The first ending-template executor wrote the primary template index into the generated instance and kept the upgraded variant.",
+    "The legacy Reave completion upgraded generated Souls unconditionally while the native upgrade command returns during the ending window.",
+    "The boundary gate first rejected a native command literal in a compiler comment; only the comment changed.",
+    "The ending-template check only rejected indices at or past definitions.Length, so a root-card index could become a generated ending variant; SoulGenerationChecks now drives the real constructor for both a root index and the first out-of-range index.",
+    "The first pet-state fixture started from Necrobinder, whose BoundPhylactery relic already summons the pet at combat start; the fixture moved to the pet-free SILENT/mecha-knight setup used by OSTY-STATE-LIFECYCLE without relaxing any admission."
+  ],
+  "notDone": [
+    "45 pool candidates under the default-template census, unregistered relics and potions, AEONGLASS AI and the original complete Necrobinder root",
+    "The positive production generation-pool execution path (pool closure still incomplete)",
+    "No Steam, clean install, packaging, publishing or remote operation; no performance conclusion from these runs"
+  ]
+}

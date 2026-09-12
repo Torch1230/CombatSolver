@@ -162,7 +162,9 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 | `CombatBeamSolver.Models.cs` | 转置标签、`SearchFeatures`、单次运行 `SearchRunContext` |
 | `CombatBeamSolver.Phases.cs` | `Solve`、阶段循环、总预算与回合层预算保留、当前回合预览、约 `200 ms` 刷新的动态推演路线，以及玩家采用路线/执行当前回合的收束检查点；动态路线显式携带战斗是否结束，未完成路线不产生整场战损数值 |
 | `CombatBeamSolver.Expansion.cs` | 可执行卡牌/药水/结束回合候选展开和动作回放入口 |
-| `CombatBeamSolver.ParallelExpansion.cs` | 固定 worker lane、卡牌/药水动作准备与原始候选物化、按输入顺序串行提交 |
+| `CombatBeamSolver.RoundLifecycle.cs` | 回合推进及唯一的玩家回合开始阶段；保持选择事务、Hook/抽牌顺序与历史/死亡补偿 |
+| `CombatBeamSolver.ActionPreparation.cs` | 串行／并行共用的卡牌与药水动作准备；同步消费当前值，返回独占动作元数据 |
+| `CombatBeamSolver.ParallelExpansion.cs` | 固定 worker lane、原始候选物化、按输入顺序串行提交 |
 | `CombatBeamSolver.AdmittedExpansion.cs` | 已准入父节点的准备、动作探测、选择准备/回放/续接、药水/目标与回合尾部作业；有界派发、快照移交、取消/异常排空 |
 | `CombatBeamSolver.PrimaryChoiceReplay.cs` | 原预算保证必经的首层回放、唯一快照暂存与原序消费；动态预算和实例补充仍由一个续接作业独占 |
 | `CombatBeamSolver.StandPatJobs.cs` | 对原保路规则必经的 EndTurn 探针批量求值，复用固定 lane、回传标量，缓存和选择仍由 coordinator 原序完成 |
@@ -196,6 +198,8 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 准备作业先冻结父节点的卡牌 action/target 与药水/target 表。各父节点轮流派发，已完成的 PendingChoice probe 优先作为独立选择链作业续接；药水完整选择链也作为独立作业运行，避免绑在回合尾部串行等待。首层回放每份作业合并 `clamp(N/DOP, 1, 4)` 次、末份截短，N≥DOP 的 singleton 仍至少有 DOP 份可派发作业，减少细碎结果反复进出邮箱。每个父节点有自己的窄 Fork gate，worker 在 gate 内串行生成 seed，离开后独占自己的分支模拟器；不同父节点不共享这个 gate。卡牌和药水在各自原序数组中归并，只有该父节点全部卡牌/选择/药水完成后，尾部作业才独占 aggregate 执行 EndTurn 并发布 stand-pat 基线。最终 TT、dominance、fallback 与接受顺序仍由 coordinator 按父节点连续前缀提交。
 
+直接 EndTurn 的 `BuildEndTurnBranches` 枚举独占 `RoundPrefixReplayContext`，其嵌套与逐实例分支只借用同一上下文。前面回合阶段已完成且游标确为空时，`ForkCompletedRoundPrefix` 仅临时分离该空游标，仍调用严格 Fork 并在 finally 恢复；其他未完成事务不得复制。检查点通过同一 Fork 合同拥有模型、历史、RNG 与死亡集合，附带洗牌数、回合索引和额外回合标记；恢复调用唯一 `AdvancePlayerTurnStart`，随后进入原结算与快照。当前只为已知玩家开始选择机制建立检查点，不扩大选择或预算。捕获/恢复是物理计数，与原逻辑 Fork/转移分开。上下文不保存在发布快照、父链或 worker 全局中，枚举完成、失败、取消和提前 Dispose 均清除冻结图。
+
 同一动作内的动态选择配额和物理实例补充收集器由一个续接作业独占，前一分支的未用额度仍返还给后一分支。直接首层有 N 个非空语义选择，且原最终候选额度 F 与回放额度 R 均至少为 N、N 至少为 2 时，原分支租约 `ceil(F/N), ceil(R/N)` 即使耗尽也至少给后续 N−1 个兄弟各留下一个名额。因此 `PrimaryChoiceReplayFrontier` 只提前派发每个兄弟必经的第一次回放，不增加物理回放次数。快照先由完成结果持有，再交给 frontier；全部首层作业完成后，唯一续接作业在原遍历位置取走快照并扣原逻辑额度。嵌套回放、失败分支的剩余额度返还、物理实例补充与最终候选枚举保持原序；不满足保证条件或首层之前已有挂起选择时走原完整选择链。没有按完成次序竞争共享额度，也没有改变 512 次 replay 上限、候选规则或身份补充分配。
 
 并行搜索失败提示保留本次请求的 DOP；DOP 大于 1 时先引导上传问题包，再建议切换为“关闭（单线程）”。coordinator 消费完成邮箱、归并该 worker 的指标后才复用 lane；probe 和 raw batch 持有独立 lease。提交前完整保留已预约父节点和所有在途作业的所有权，异常停止派发，释放 dispatch sentinel 并等待全部 lane 完成，再释放未移交的 probe/batch/root。`OwnedExpansionBatch.TransferPotionTo` 与卡牌移交使用同样的先接纳、后移出规则，部分失败仍由原租约负责；旧 Dispose 不触碰后续租户。等待提交的父窗口最多 `2×DOP`，同时执行的作业最多 DOP；这是数量界和高水位预约，不是固定字节界。
@@ -220,6 +224,8 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 ### 3.3 分支战斗状态
 
+`RootCombatCardGenerationPoolSnapshot` 在主线程冻结原生规范角色的完整可生成池，攻击池从同一有序规范候选投影；与无色池一同由根持有，Fork 只共享只读数组。`ICombatPredictionCardGenerationPoolSnapshot` 向引擎提供完整角色池读取，`TurnStartPowerSupport` 的 CallOfTheVoid 消费该入口；完整洗牌和新卡实例仍属于分支。身份、原生程序集、不可变模型、牌池数组身份和人数约束均须匹配；未知／自定义源保留旧模型路径，不因此进入紧凑后端。
+
 `SimulatedCombatState*.cs` 把内嵌引擎状态适配为搜索所需的战斗领域视图：
 
 - `Fork.cs`：统一稳定边界和对象图复制；
@@ -227,6 +233,7 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 - `DeathLifecycle.cs`：死亡、复活与阵容事务；
 - `ActionChoices.cs` / `TurnStartChoices.cs` / `AutoPlay.cs`：嵌套选择与自动出牌；
 - `CardLifecycle.cs` / `CardPowerHistory.cs` / `PowerLifecycle.cs`：卡牌和 Power 跨事件状态；
+- `CardEventHistory.cs` 的历史查询缓存按回合／阵营／玩家回合整体失效，独立于参与者 Power 字段；续用三个计数在新窗口显式归零。根条目匹配使用分支玩家回合号，不调用会读取 live 玩家状态的原生匹配方法；完整回合与冷根原生证据见[历史窗口报告](performance/simulation-rounds-20260911.md)。
 - 凡庸在 `ShouldPlayMirrors` 使用同一分支手牌/开始次数入口约束手动与自动打牌。`_cardPlayStartsThisTurn` 包含重复播放和仍在执行的外层卡牌，根来自 CardPlaysStarted，随 Fork 复制、回合开始清零，进入 fingerprint 和 `CardEventHistory` 的 live/predicted 续用文本；不能以完成次数或手动系列数代替。
 - `Relics.cs`、`PowerRelics.cs`、`ReactiveRelics.cs` 等：遗物与组合事务；
 - `Potions.cs`：药水槽和使用状态。
@@ -239,11 +246,14 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 ## 4. 内嵌模拟引擎
 
+`SimulatedCombatState.Apply<T>` 共用 `PreparePowerApplication` 与 `ApplyPreparedPower`：前者保持修正与 Artifact 拦截，后者独占模型获得、数量／顺序和变更记录。临时力量入口在首次写入计数之前施加 Strength，随后按原版请求偏移与当前数量条件处理回调；叠加封顶仍传递原偏移。普通 Power 不走临时力量回调，不重复准备。
 `SimPlayerCombatState.Phase` 在主线程根捕获，Fork 按值复制，阶段推进写入分支状态并进入搜索状态键。它决定 UnceasingTop 的触发窗口；续用只在稳定 Play 阶段比较，最小跨回合夹具另显式核对原生阶段。结束回合按 AutoPostPlay、BeforeSideTurnEnd、球被动、手牌回合末效果的顺序推进。
 
 `PredictionUtils.CloneModelForSimulation` 对卡牌在 DeepCloneFields 前清除 CardModel 事件委托；原版克隆阶段会重新附着附魔并发出事件，不能让这些事件调用源卡的 UI 订阅者。深拷贝和 AfterCloned 仍使用原版实现。
 
 ### 4.1 基础层
+
+`ValueRng.TakeDistinctIndices` 在调用者独占的 Span 中按完整池大小执行原生整池洗牌，返回值 RNG 和选中前缀长度；不持有 Model、不分配牌堆、不保存跨分支 scratch。零／负请求仍完成整池洗牌，空／单元素池不推进随机流。当前仅为紧凑随机生成原语；将它接入生成命令时，必须把 CombatCardGeneration 的全部五字段纳入可撤销值状态，并按完整冻结池映射定义，不得自行缩池。
 
 `src/Engine/InCombat/Simulation/` 负责通用战斗命令时序、伤害、牌堆、历史、RNG、球和 Fork。它不包含单张卡、单个 Power 或具体怪物的搜索策略。历史卡牌 Started/Finished 与 DamageReceived 的卡牌来源使用不可变卡牌快照；当前动作是否开始以精确 trace-frame 身份判定，保留原生 `CardPlay` 身份，不以 Original 卡牌身份合并兄弟分支。`CombatPredictionHistory` 以不可变 prefix segment + 分支本地 mutable tail 保存事件；动作后缀消费者必须使用冻结上界的 `EntriesFrom/EntriesBetween`，不能先遍历完整 prefix 再 `Skip`，否则长线会把一次局部查询放大为随深度增长的重复工作。
 
@@ -253,9 +263,43 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 `CombatPredictionSimulator.TerminalStamp` 在与原版对应的完整动作/阶段安全检查点首次锁定胜负及影子玩家回合号，按值 Fork；`IsEnding` 仍是无副作用查询，不在单个 Hook 监听器之间提前终止正在结算的序列。`SimulationSnapshot` 独立保留此值，释放模拟器后，终局标注、临时结果、最终排序和已知胜利上界仍读取同一时点。`PlanAction.Turn` 只表示发起动作的回合，不能代表该动作跨回合结算后的终局回合。
 
+`Simulation/Compact/` 已接入搜索候选，Runtime 由 `SearchBackendPolicy` 在主线程对完整根准入后选择，未迁移域使用旧模型后端。`ReversibleValueState` 独占连续值槽、撤销日志、单次 LIFO 检查点及派生页缓存；普通写入和 rollback 都将对应页失效。`ReversibleValueState.FrozenValues` 独占发布时复制的页表，共享只含位图和非零值的私有不可变 64 槽页，不持有 worker、祖先候选或旧模型。恢复要求同根且目标没有活动 checkpoint；只重写失效或不同的页，清除旧候选遗留的零槽，目标容量足够时复用恢复不分配，容量不足时由 lane 扩容。追加槽位属于当前分支；检查点保存逻辑长度，撤销删除后缀并清零，后续分支复用索引不能看见旧值。候选只复制实际使用范围的页表，恢复可跨同根不同逻辑长度，工作区余量不进入候选。事件带通过 `ReversibleValueBuffer` 索引按需分配的块：64 值叶与 32 路索引的长度、树根、高度和尾叶指针都在工作区，允许其他领域状态在事件之间追加。事件用两个值保留完整 32 位实例／目标／金额，避免生成实例编号被截断；布局不持有分支缓存。页表及恢复扫描仍随实际槽数量增长；该接口只负责值存储；生成实例由程序分配，通用跨回合语义仍未迁移。`ResumableDiscardProgram` 将牌堆、资源、显式执行帧、选择和事件游标全部写入同一值槽，并共享不可变卡牌定义。卡牌定义与实例分离，生成实例的定义／捕获 X 和六个有序牌堆使用可增长缓冲区；根实例的定义固定，模板在根捕获。生成事件保留逐实例顺序与满手转入弃牌堆的结果，生成后的洗牌按定义比较；小刀出牌次数通过原指纹字段读取。完成读取器拥有按实例／定义复用的模型池，池不进入候选。`CardEffectProgram` 私有复制有序指令数组，Prediction/Compact 将已准入原版卡牌编译为效果序列；每帧的指令索引与抽牌进度属于同一值槽。选择／自动牌结束后继续当前或下一条指令，不重放父牌前缀；生存者增加格挡后弃牌。候选支持新建工作区或 `RestoreInto` 复用已有 lane。诊断写入/事件计数仍累计在各 lane，不属于恢复的战斗状态。内核不引用原生 Model、Simulator、Task 或委托。当前扩展到抽弃牌、自动出牌、防御／后空翻格挡、洗牌、战略选牌与两个遗物的格挡触发；Shuffle 的五字段与计数进入相同撤销槽，比较矩阵保留原版同名卡排序关系。允许洗牌时最多一个 Sly 实例；容量或未支持效果明确失败。`CreatureAttackLayout` 另提供主要敌人基础 Power 域的打击、格挡／生命伤害、离场和永久死亡槽位，执行帧与事件同时保存目标。最后一击遵守原出牌区结束门，终局在完整动作后的显式安全检查点锁定；恢复／撤销包含死亡与终局。`BasicPowerLayout` 将力量、敏捷、虚弱、易伤、脆弱、中毒的数量、施加者、获得顺序与根槽退休标记纳入同一工作区；中和可创建／叠加敌方虚弱，死亡清理所属 Power，伤害与格挡保留 decimal 修正直到原标量边界。卡牌定义现明确费用形式和结果位置；付款 X、逐帧资源值和移除集合属于同一工作区，结果移动事件区分弃牌／消耗／移除。带符号的基础 Power 指令使用捕获 X；新增能力牌移除与 X 消耗流程。群体施加按稳定阵容先完成当前指令的全部目标，再执行下一指令；已离场目标由命令门排除。抽牌返回的第一张实例保存在各帧独立值槽，条件分支只判断实际抽到的牌，不把洗牌检索当抽牌；空返回直接跳过对应效果。卡牌类型与不可变虚无标记属于定义，完成事件保留原虚无历史。中毒主动触发现进入同一伤害／死亡值流程，事件保留无攻击者／无卡牌来源、无属性修正与穿透标记；存活后递减，零层退休，重新获得保留新顺序。整手弃抽捕获原手牌与数量，逐牌弃牌 Hook 后抽牌，抽牌完成后才处理捕获的 Sly 列表；洗牌返回位置随帧保存，不能重做弃牌。目标 Power 条件与存活敌人 Power 总量在执行指令时读取值槽；基础值与额外倍率由编译器捕获，求和结果再经过敏捷／脆弱和格挡取整，不能把根预览值当作分支结果。玩家下回合格挡与必备工具计数现在也使用 Power 值槽，按种类仅增加玩家槽；格挡→Power 指令传递修正后的返回值，准入按可达敏捷区间排除正小数生成零层实例的未表示语义。敌方临时力量计数使用独立 Power 槽，尖啸先执行首次 Strength 再加入计数，叠加按请求偏移处理；敌人死亡清除计数与力量，退休标记随撤销恢复。复杂 Power 和复杂死亡仍未迁移；完整回合仅限下述已准入单敌闭包，不能将其称为通用新后端。
+
+`Prediction/Compact/CompactDiscardProjection.cs` 负责整根封闭能力准入及旧模型事件投影，`Prediction/Compact/CompactCardProgramCompiler.cs` 负责精确卡牌状态准入及不可变指令编译；当前共六十七种精确卡牌类型（亡灵池 78 个候选中 29 个可精确编译），包含单体／群体中毒、主动中毒触发、整手弃抽、条件抽牌及防御后虚弱。未镜像 OnPlay 的补偿在原方法作用域退出后投影，间接伤害来源不能伪造为 OnPlay 内的卡牌攻击。投影仅用于完整状态／历史与原生差分，不再次执行 OnPlay、弃牌 Hook 或选择器。`Prediction/Compact/CompactDiscardReadView.cs` 在同一准入闭包内直接读取值牌堆、资源、Shuffle RNG 和已提交事件；根卡牌及其他生命周期只作已证明不变的元数据。每读取器独占一个根副本供旧公式的可变 scratch 使用，另一个初始化副本取得会惰性物化的历史初值，保留读取根的缺席／零值区别；两个副本的成本计入初始化，每叶不再 Fork 或物化旧图。风险来源由原 registry 区分未镜像与不完整镜像，经 `PredictionCoverage` 原分类／排序规范化；每读取器只缓存实际出现的组合，不预建全部子集，支持根内最多 64 个独立来源。`Prediction/Compact/CompactCardMetadataReadBinding.cs` 在读取器初始化时取得独占预览，逐叶只单向导入 X 值和移除标志、失效相关缓存；旧模型不是第二份执行权威。`CardHistoryReadValues.Exhausts` 提供当前消耗历史；卡牌集合／元数据变化时旁路卡牌和策略摘要缓存。`SimulatedCombatState.CompletedPowerReads.cs` 提供每读取器私有的 `CompletedPowerReadBinding`：初始化克隆原实例，并为非零根 Power 准备独立的规范新实例；根据撤销状态的根槽退休标记选择读取模型，使重获后的回合初始数量、跳过持续计时标记、额外 Target 与动态变量恢复原生默认值，逆向恢复仍使用原模型。两组模型仅在初始化克隆并恢复原归属；每次读取仅单向替换提供的 Power 数量／施加者、回合初始量／跳过递减标志、退休集合、获得序列和阵容，失效监听器缓存，由既有 owner-anchor 算法得出有效顺序。它不执行命令、Hook、随机数或数量通知，不回写值程序，也不逐叶克隆。
+
+`CompactRoundLayout` 保存回合、玩家回合、当前阵营、首次终局回合和卡牌清理标志；`ResumableDiscardProgram.Rounds` 仅在完整阶段、确定性单敌 AI 及排序均准入后推进回合。手牌 flush 跳过弃牌 Hook，保留关键词与临时 Sly 分别捕获；起手抽牌／洗牌／Tools／嵌套 Sly 共用可暂停帧，抽牌事件标记是否属于起手。`SimulatedCombatState.CompletedRoundReads` 每个 lane 准备可复用的历史映射，逐叶从根形状及阶段标记导入时钟和重置；`BeginSideTurn` 在这里仅复用历史记账，不调用效果或 Hook。执行候选不保留旧读取器。手牌末尾完成后提交 `CommitPlayerTurnHistory` 值事件，再检查终局；本回合与上回合最后攻击牌由不同读取映射保存，沿用原键编码。`Testing/CompactPlanReplay` 使用正式计划的实例键、出现序号和选择顺序驱动工作区，每个桥接器只准备一次私有卡牌元数据。该 Testing 准入目前拒绝玩家中毒、待抽牌与额外行动；原始机甲完整路线及各前缀的已准入替代分支已有[原生对照](performance/simulation-full-route-20260911.md)，亡灵闭包与正式搜索后端仍需迁移。
+
+`DeterministicMonsterAi` 私有复制整根确定性图、当前招式和日志；`DeterministicMonsterAiLayout` 将当前索引与可增长日志写入同一撤销状态。Testing 仅准入精确单体 `MechaKnight` 四节点图，AI 独立要求已准入命令体；选择边界只推进后继，不再次执行招式。`SimulatedCombatState.CompletedMonsterAiReads` 从已捕获根准备每个招式的旧记录和 lane 私有日志，`CompactMonsterAiReadBinding` 逐叶导入当前值及意图；它不运行 AI、不从 live 补捕获、不进入候选，也不逐叶创建旧记录。原生行动条目目前没有游戏语义消费者且不属于旧预测历史合同，测试单独核对其实际招式与目标；不为凑条目数改变 Snapshot 计数。完整回合时间与阶段由下述独立准入驱动承担。
+
+`ResumableDiscardProgram.PowerPhases` 独占已准入 Power 阶段体：记录参与者的回合初始量、清除格挡并兑现下回合格挡、敌方临时力量恢复及虚弱／易伤／脆弱递减。`BasicPowerLayout` 在现有第四槽的高 32 位保存有符号初始量，低位分别保存退休／跳过标志；新建重置初始量并按玩家持续减益规则设置跳过。根上的`StratagemPower`也捕获为值槽，使其回合初始字段不再依赖旧投影；没有创建／修改`StratagemPower`的指令。Testing 独立审计回合末及 Late／格挡清除 Hook，准入标志随冻结候选保留。该接口不改变侧别、回合号、AI、阶段历史或起手，不等同于完整回合；[原生阶段证据](performance/simulation-power-phases-20260911.md)。
+
+`BasicPowerLayout` 还捕获既有人工制品实例，数量、施加者、获得顺序及退休随值状态恢复；没有创建指令时不额外预留空实例。`PreparePower` 在零值／结束／死亡门之后处理负面施加的阻止与消耗，`CommitPower` 写入准备后的数量；临时力量先准备外层计数，再执行首次内部力量和单次计数提交。具体[原生证据](performance/simulation-compact-artifact-20260911.md)。
+
+`RandomDrawCost` 只保存复制的根修饰前缀，`RandomDrawCostLayout` 只保存不可变值位置；按卡牌增长的完整修饰列表与费用 RNG 五字段均在撤销状态。`ValueRng` 为各流共用纯值算法，流状态独立；`Slither` 真正抽入手牌时追加本场绝对费用，付款读取当前列表末项。读取器单向导入列表并复用私有修饰对象，`CompletedStateReadView.EnergyCostRng` 进入原键的原字段位置；没有费用效果时继续使用根值。详见[原生与成本证据](performance/simulation-random-costs-20260911.md)。
+
+生成附魔的编译折叠仅用于已核对的 `BLADE_OF_INK`／正常 1 层 `Inky` 小刀：全部生成监听器无中间观察者，附魔没有战斗历史或修改效果。最终定义仍在根捕获，新增监听器／修饰时重新证明；[原生证据](performance/simulation-inky-cards-20260911.md)。
+
+`Search/CompletedStateReadView.cs` 是同步已完成状态的读取合同，既有 Snapshot 与 `SnapshotFromReadView` 共用 `SnapshotCore`、合法性、完整估值、投影洗牌与原键编码。`CombatBeamSolver.ReadView.cs` 持有共用的值牌堆编码与可选的根内不变特征缓存；敌人摘要、威胁焦点、卡牌估值与策略上下文仍调用原公式，只在准入证明敌人／AI、Power 与存活牌集合及元数据不变时复用。每个稳定根新建缓存，不保留跨回合或跨根条目；仅已准入的值读取入口启用对应缓存。`SimulatedCombatState.AppendFingerprint` 在原序列中替换已改变的 owner 历史项和技能集合；`CombatHistoryReadValues` 保存读取器派生的受伤集合、攻击命中对、上一张攻击与死亡阶段，编码仍由原方法负责。读取结果立即释放借用 Simulator；读取器不能逃入保留候选，也不建立旧图与值状态的双写权威。读取合同的 `EvaluationContext` 表示私有评估上下文，不再暗示其中 Power 始终停留在根值。所有未提供字段必须在准入程序内不变；因此不能将当前合同用于任意 Power 变化、复杂死亡或其他随机流写入。双端门禁只允许 `SearchBackendPolicy` 选择根及 `CompactReplay` 执行已准入值程序；阶段探针仍只属于 Testing。
+
+生物标量现在由纯值 `CreatureVitals` 保存并统一实现扣格挡、扣血、治疗与最大生命限幅；生产 `SimCreatureState` 持有该值，负责稳定 Creature 身份、显示值和原 `DamageResult` 外壳。`CreatureValueSlots` 仅是不可变布局位置，向程序所属工作区读写 HP／MaxHp／Block／Present，生命归零不会自动移出阵容。它不包含伤害 Hook、攻击事务、历史或死亡回调。
+
+完成状态合同另提供逐生物数值、有序敌方 roster 和显式可空的终局时点。完整快照的分布、集火、威胁与原键共用这些值；AI／沙漏计数的原键仍按活动 roster 原序编码。敌人值可变时禁用该根的敌人／焦点缓存，卡牌元数据复用仍要求自身闭包成立。`UnattendedTestRunner.CreatureValues` 用三敌 16 状态对照全部 Snapshot 属性／原键／排序，并以 12 个原生非致命伤害样例验证基础算术；这只是伤害执行迁移的基础，尚未迁移 Power／死亡历史、宠物生命周期及攻击命令。根内未迁移的 Hook／AI／领域公式也必须与已变化数值无关，不能仅凭 Power 数量未变就认定可借用根。
+
+牌组根监听器的准入独立于战斗监听器：`CompactDiscardProjection` 按原版运行级派发检查不可变根前缀，任何覆盖均拒绝；战斗表仅允许精确已表示的类型／方法。只缓存 CLR 元数据，根值仍逐次检查。蛇之戒在当前玩家行动域不变，原始机甲 30 牌／31 监听器经过完整读取与原生差分；起手与后续回合没有因此迁移。
+
+`ResumableDiscardProgram.HandEnd` 独占已准入手牌末尾的值执行，先处理无末尾效果的虚无牌，再按显式入场顺序处理状态牌伤害。是否准入此阶段属于不可变候选配置，未准入根调用前拒绝。入场顺序由调用者的根合同提供，不能在 worker 读取动画配置；真实 Normal／Instant 下的差异及当前生产默认路径限制见[阶段证据](performance/simulation-hand-end-20260911.md)。玩家死亡保留 roster、清理所属 Power，待失败与 Defeat 安全点分开。`CompletedStateReadView.CumulativePlayerHpLost` 进入原评分公式，`CardHistoryReadValues.StatusDraws` 进入原状态牌抽取字段；方法作用域事件保留 `OnTurnEndInHand` 来源，不增加出牌／攻击次数。该手牌阶段由 `ResumableDiscardProgram.Rounds` 组合为已准入完整回合；生产搜索和部署接线仍未完成。
+
+`MonsterEffectProgram` 只持有复制的不可变指令，`ResumableDiscardProgram.Monsters` 复用值伤害、格挡、Power 和生成状态；负事件来源表示怪物，生成事件另存空／玩家创建者。Prediction/Compact 目前仅捕获单个机械骑士的四种指令体，伤害来自冻结怪物元数据；AI 选择及阶段顺序不由此程序承担。`CombatHistoryReadValues.CreatureAttacks` 提供完整生物攻击计数，原映射编码同时保留玩家单项替换与缺席／零值语义。读取器初始化取得历史基数，每叶仅累加事件；投影不能调用怪物效果或重新执行指令。见[指令体证据与完整回合边界](performance/simulation-monster-commands-20260911.md)。
+
+持续减益的跳过标记由独占 Power 持有。`PowerLifecycleSupport.UsesNativeDurationSkip` 识别原生使用此字段的虚弱／易伤／脆弱；`ApplyPreparedPower` 只在新建玩家实例时设置，普通、怪物及按类型应用对这三类共用同一表示。其他旧阶段补偿的集合未扩展至这些原生字段。`GetPowerFingerprint` 与 `ContinuationStamp.AppendPowers` 共用有效标记分类，保留无标记及无关 Power 的原编码；[基线和原生生命周期证据](performance/simulation-duration-state-20260911.md)覆盖同层不同未来及被人工制品阻止后的状态。
+
+`Testing/CompactPhaseProbe.cs` 与 `UnattendedTestRunner.CompactKernelProfile.cs` 独占原型的阶段计量和新旧 solver 缓存对照，不进入生产 Search/Runtime。直接调用 Snapshot 的实验必须进入正式 `SolveCore` 使用的 `SimulationNotificationIsolation`，否则既有第三方空能力快速路径会旁路。该作用域使用线程静态状态，必须在 await 前和原生部署前退出；恢复后的模拟重新进入。诊断输出实际线程 CPU、独立墙钟和分配，内部既有 Snapshot 指标仍是嵌套墙钟；冻结候选不保留计量器、solver 或读取视图。
+
 通用命令和 Hook 调用遇到 `PendingChoice` 时立即向上传播未完成状态，不再执行其后的监听器、抽牌、资源变更、死亡处理或卡牌收尾。Search 为待处理选择补齐计划后，从稳定父节点精确重放该动作，按原顺序通过挂起点；未完成事务不作为可继续执行的稳定 Fork。自动出牌将外层来源与上下文身份带入 `OnPlayWrapper`，在来源牌仍位于 Play 时消费嵌套选择，等待嵌套自动出牌结束后才移动来源牌和执行费用清理。原版挂起位置、顺序与卡牌实例身份属于模拟语义，不能由 Beam 或部署层补偿。
 
 `CombatPredictionSimulator.CardPile.cs` 的抽牌安全边界只约束当前同步调用栈：抽牌 Hook 再次自动出牌、自动出牌又抽牌时，嵌套深度最多 `100` 层，继续嵌套会明确失败，不返回部分抽牌结果。深度在 `finally` 中退出；普通动作结束后、跨回合或从稳定边界 Fork 后继续抽牌，都不因已经累计的抽牌历史而减少合法抽牌。历史记录不再承担整个分支生命周期的 `100` 次抽牌额度，正常长线与有效循环仍受 Search 的节点、时间和调度预算约束。
+
+玩家死亡由通用伤害入口经 `ICombatPredictionEffectSink.CompletePlayerDeath` 通知 `SimulatedCombatState.DeathLifecycle`，后者复用 Power 退休／移除和死亡阶段的分支所有权。该通知发生在球与宠物清理前，不借用只遍历敌人的后续清扫。列表与单目标伤害入口都从分支读取施伤者存活状态，真实 Creature 仅作为身份。
 
 ### 4.2 Mirror
 
@@ -404,6 +448,63 @@ NativeReplayDriver 保存开战/结束观察器抛出的原始异常，由 Advan
 
 纯职责移动至少运行 Release 编译与当前平台的结构门禁。改变语义、搜索或显示行为时，再按影响面选择严格差分、完整 headless、CoverageCatalog 或可见 Steam。
 
+紧凑候选搜索接缝由 `CombatBeamSolver.CompactReplay.cs` 独占，`SearchPolicySnapshot.CompactRoot` 仅传递主线程捕获根，Runtime 通过 `SearchBackendPolicy` 选择。`CompactCombatRoot` 属于 Prediction；冻结候选仅持有共享根、不可变值和历史纯度标量，每 lane 独占执行／读取上下文。`SimulationSnapshot` 按需拥有派生兼容图并在释放时同时清空两种状态；`ReplayForkSeed` 移交精确不可变父候选及私有死亡集合。缺选择时冻结执行帧并由专门的 `ReadPending` 导入完整评分；快照独占请求与选项预览，释放时一并清空。完整动作和回合共享原评分及逻辑计数。根 Fork 的 COW 发布有窄锁，完整回放不串行化。完整原输入搜索路线和逻辑计数已一致，挂起选择迁移后的 headless 样本已有加速；[结果与限制](performance/simulation-search-backend-20260911.md)。
+
+`CompactReplay` 另拥有独立 `CompactPolicyReadLane`，为同步政策消费者提供冻结值读取；不与执行 lane 共用可变模型，不让 hand/model 视图跨子回放或 yield 逃逸。动作准备、无进展抽牌数、父节点遗物和目标读取因此不再重建完整历史。合法性仍共享 `CanPlayCardAtResources` 与生命输入可显式提供的 `CombatPredictionState.IsHittable`；完成续用状态和完整搜索计数继续对账。
+
+挂起读取只接受同根且 `NeedsChoice` 的程序；完成读取仍要求 `Complete`。选项只克隆当前来源牌，不保存 lane 模型池。计划消费共用 `TurnStartChoiceCursor`，保留来源／上下文／时点匹配与业务无效分支异常。回合开始选牌尚未结束时，AI 当前值／日志已前进，但公开意图仍读前一招式；根日志为空或末项不同于当前招式时，以捕获的根当前值为准。
+
+串行展开与并行调度共用 `ActionPreparation`，避免保留借用手牌／模型跨子回放或 yield。`ContinuationStamp.CapturePredicted` 接受可选完成读视图，仍使用原编码器；动态生物、牌堆、卡牌计数与两条变化 RNG 来自读视图，其余值必须属于该闭包内不变或已单向导入的上下文。元数据上下文需精确匹配，返回文本可以保留，读视图不能随快照逃逸。
+
+`Runtime/SearchBackendPolicy.cs` 独占主线程后端选择，正常根与初始准备根都调用它；初始准备／增量诊断明确保留模型后端。`CompactCombatRoot.TryCreate` 只在完整准入构造期间捕获已定义的 NotSupportedException，记录拒绝原因；执行和读取错误继续传播，不中途切换。卡牌、Power、遗物、附魔和机械骑士按精确原生类型准入，全部非空药水槽当前拒绝。准入分配纳入根捕获生命周期；日志报告后端、准备耗时与紧凑完成／挂起／物化次数。[生命周期、全自动与正常 NoGC 证据](performance/simulation-runtime-backend-20260911.md)。
+
+精神过载与毁灭的值扩展：资源指令、阵营开始一次性标记和 Kill/Death 事件由 `Simulation/Compact` 独占；模型类型、可创建模板和能量／死亡 Hook 审计由 Prediction/Compact 独占。`CombatHistoryReadValues.DoomAppliers` 随事件窗口重置，读取器导入 lane 所属旧原键字段，不重放效果。旧精神过载由 `CardDrawCardMirrors.NeurosurgeOnPlay` 精确实现获得能量→抽牌→能力，CardEffectSpecRegistry 不再重复补偿。通用 Power 新实例按实际玩家 Debuff 设置持续跳过标记，语义指纹仍只区分三种持续减益。[边界与原生证据](performance/simulation-necro-resources-20260911.md)。
+
+宠物身份由 `SimulatedCombatState._rootOsties` 在主线程捕获（包括空值），Fork 共享不可变身份表；`CardLifecycle.GetOsty` 优先分支生成映射，禁止回落 live。宠物死亡由通用 Damage 入口在 AfterDeath 后通知 `ICombatPredictionEffectSink.RemovePowersAfterDeath`，使用同一领域清理，DieForYou 保留阵容及自身能力。敌人死亡阶段扫描不承担宠物清理。[根隔离与五步原生证据](performance/simulation-osty-ownership-20260911.md)。
+
+宠物值执行由 `CreatureAttackLayout` 的独立末尾槽与 `EnemyEnd` 管理，死亡保留身份；`BasicPowerLayout` 保留代伤能力，`ResumableDiscardProgram` 保存实际施伤者及双结果顺序，玩家死亡独立连带杀死存活宠物。`CompletedOstyReadBinding` 属于每 lane 的派生兼容上下文，只导入当前 HP／最大生命／格挡及原最大生命映射的缺席形状，不运行召唤、伤害或 Power 命令。`ContinuationStamp` 从读视图取得宠物 HP，其他宠物读取消费同一绑定上下文。首次创建仍在根准入时拒绝。
+
+`ModifyUnblockedDamageTargetMirrors` 独占代伤 Hook 的精确分支状态实现，按原版链式传递目标且保留战斗结束时的分发；未知覆盖显式拒绝。怪物行动不再临时移除代伤 Power。普通玩家回合在 Hook 前冻结 `Allies` 参与者（包括死亡但保留的宠物），先快照全部能力，清完全部格挡后再逐个 AfterBlockCleared；额外玩家回合只选择玩家。召唤增长按封顶后的实际最大生命增量治疗。[原生对照与边界](performance/simulation-osty-values-20260911.md)。
+
+`CompactRoundRoot.TurnStartSummon` 保存完整根捕获的初始遗物召唤量；Prediction 只准入带既有宠物和完整回合的精确 `BoundPhylactery`。回合驱动在 ResetEnergy 后、建立抽牌帧前调用共享 `SummonPet`，避免选择恢复重复召唤。首次战前创建已经落在根中，不由此入口补演。[三个回合与挂起对照](performance/simulation-pet-turns-20260911.md)。
+
+`CardEffectProgram.ExhaustFromDraw` 在召唤完成后建立独立选择边界，`CompactPlanReplay` 按检索／消耗效果决定来源，不能仅按抽牌堆推断 Stratagem。选中牌复用 `ResultMoved(Exhaust)` 的有序牌堆／消耗历史语义；恢复推进下一指令，空牌堆直接继续。`ExhaustsCards` 显式关闭存活牌集合不变缓存。Prediction 编译精确 `Cleanse`／`Afterlife`，旧模拟器与投影不增加第二次效果写入。[原生与搜索验证](performance/simulation-draw-exhaust-20260911.md)。
+
+
+随机生成牌继续由 Engine 的通用 `GenerateCards` 执行：`CardGenerationPlacement.RandomDraw` 使用值状态的 Shuffle RNG，逐张记录目标牌堆和插入位置，模板通过实例定义索引读取。Prediction 在根捕获挽歌所需的普通／升级灵魂模板；兼容物化只导入位置，不重新调用随机插入。`RepeatForEnergyX` 保留逐次召唤命令。Testing 的 `CompactPetCardRoutes` 共用正式路线、完整状态／续用和原生生成身份对照，`CompactDirge` 与 `CompactDrawExhaust` 只拥有各自建局和效果断言。[证据](performance/simulation-dirge-20260911.md)。
+
+
+紧凑卡牌操作扩展：`LoseEnemyHp` 使用不受力量／格挡修正的伤害属性，保留施伤者与卡牌来源，不提交攻击完成；`RetrieveFromDiscard` 在攻击后独立挂起，计划来源保留弃牌堆。`Unplaced` 与 `Removed` 分开持有身份：前者保留终局生成历史，没有牌堆和移除标记，也不消费插入 RNG。兼容物化只恢复生成历史；旧历史仅保留标量卡牌快照，原生清理前观察另外核对完整模板指纹。怪物状态牌入口保留接收者存活门禁。Testing 的共享宠物路线通过现有终局观察器的可选快照回调捕获牌序／能力／生成元数据，回调只读且在原版清理之前执行。旧 `CardChoiceSupport` 的坟冢爆射规格遵循原生 `IsEnding` 门禁。[证据](performance/simulation-necro-card-operations-20260911.md)。
+
+紧凑费用读取扩展：`BorrowedTime`／`Veilpiercer` 编译为已有能量、攻击与能力指令；费用先应用本地修饰、再加预借时间、最后按当前手牌／出牌区位置处理刺破帷幕，负基础费用与 X 跳过全局修改，结束门禁同原生。付款值保存在帧中，免费层数在出牌开始之前直接递减。`ICompletedEnergyCostReadSource` 是 Engine 的内部只读合同，由每个 `CompactCardMetadataReadBinding` 按当前实例映射到权威值程序；只挂在其私有评估 Simulator，Fork 不复制，不随候选保留。评估模型的根牌堆不能用于全局费用的位置判定。旧 Hook 派发允许两阶段同步能量费用查询在选牌挂起时读取，效果 Hook 仍默认暂停。[证据](performance/simulation-cost-powers-20260911.md)。
+
+参数化 `CardEffectSpecRegistry.PowerEffects` 仍是旧后端这些能力效果的权威入口；每项施加检查 `simulator.IsEnding`，对应原版 PowerCmd.Apply，保留同牌其他资源／生成效果各自的命令规则。
+
+
+吊杀的卡牌身份只由 Prediction 精确编译：`AttackMultiplierPower` 是不可变攻击指令元数据，Engine 在力量加值之后按目标能力乘算，普通卡牌／怪物／宠物攻击默认不携带该标记。`ApplyPowerAtLeastCurrent` 在攻击完成后读取当前目标层数；当前闭包唯一的施加修饰为人工制品，仍运行修饰再使用共享提交封顶，与原生封顶零请求仍可消耗人工制品的结果相同。未知请求量观察者仍在根准入时拒绝，不能将此等价变换扩展到开放 Hook 集合。能力继续使用原有层数／顺序／退休／回合快照槽和只读绑定。[原生与搜索证据](performance/simulation-hang-20260911.md)。
+
+
+雕琢打击／响指由 Prediction 编译为攻击／奥斯蒂攻击后 `ApplyKeywordFromHand`。`CardInstanceValue` 把定义编号、捕获 X 和两种新增关键字保存在原实例槽；X 上限 999999999 占 30 位，关键字不会在付款时被覆盖。原有关键字来自不可变定义，新增虚无／保留来自撤销状态，全部费用、结束历史、手牌末尾和保留读取同一来源。关键字选择的候选先过滤；计划 token 的 OptionOccurrence 用过滤集合，SourceOccurrence 与完整来源保留独立身份。完成读视图仅修改私有模型的局部关键字并失效缓存，恢复旧候选会移除后加标记；未知全局关键字 Hook 仍拒绝。旧选牌规格为这两张牌补上原生结束门禁。[证据](performance/simulation-keywords-20260911.md)。
+
+出牌前能力扩展：灰烬之灵／死亡之舞与刺破帷幕按当前能力获得顺序执行，查询、递减及非威力格挡都在 CardPlayStarted 之前。死亡之舞的能量门槛在根捕获为不可变配置，普通牌每次查询当前费用，X 使用捕获的付款值；旧镜像与纯值路径均遵循 GetResolved。迅速编译为末尾 DrawOnce，先将实例状态标成失效，再进入可暂停抽牌帧；恢复到该帧不会重启附魔。定义编号使用 31 位、失效状态一位、X 30 位及新增关键字两位，仍为一个可撤销实例槽。兼容投影为附魔抽牌建立独立来源作用域，读取器只导入私有预览状态、失效缓存。最后击杀后仍执行失效赋值，Draw 的结束门禁阻止抽牌与洗牌。[证据](performance/simulation-card-hooks-20260911.md)。
+
+
+致死性扩展：`ResumableDiscardProgram` 使用既有预留槽保存攻击牌开始次数，根值从已冻结的当前回合历史捕获，在 CardPlayStarted 时增加、双方阵营开始时归零；暂停、冻结和撤销包含该槽。`BasicPowerLayout` 在力量加值后按卡牌主人和开始次数应用倍率，宠物实际施伤者保留自己的力量／虚弱；当前闭包仅含 Play 中首次 OnPlay，重放和外部卡牌来源仍拒绝。旧 `SimulatedCombatState` 在主线程一次捕获当前／上一玩家回合的非复制最后攻击，后续只消费分支映射；空窗口不能从 live 回合号补读。两份映射沿用统一 Fork 重映射与原键编码。[证据](performance/simulation-lethality-20260911.md)。
+
+
+神气制胜的独立实例由 `PanachePowerLayout` 持有可增长的撤销缓冲区，保存每个实例的数量、施加者、获得顺序、回合初始值、倒计数、首次应用与持续标记。`BasicPowerLayout.NextOrder` 为两种能力布局提供共同的获得序列；`ResumableDiscardProgram.Panache` 在卡牌结束历史之后执行监听器，逐实例更新与非威力群体伤害、回合重置和玩家死亡清理均消费值状态。末击后的剩余监听器仍完成计数重置。Prediction 保留能力方法来源作用域；Search 的 `CompletedPowerReadBinding` 池化独立读取模型，仅在超过该 lane 历史最大实例数时扩容，恢复较少实例时停用多余模型，并保留根单槽／多实例映射。旧神气制胜施加改用 `ApplyInstancedPower`，沿用命令门禁／修改和数量回调；原键及完整续用显式读取分支 `AlreadyApplied`。[证据](performance/simulation-panache-20260911.md)。
+
+玩家回合末第二阶段标记待失败后，原生仍切换到敌方、捕获能力起始值并清格挡，直到敌方开始安全点才提交终局。普通 Hook 分派入口遇到 IsOverOrEnding 时整批跳过（AfterCardPlayed 等原生明确例外除外）；已开始分派不能逐监听器中止。中毒和延迟格挡属于新分派，不能提前结束整个回合，也不能继续补偿这些效果。终局原生观察分别绑定胜利清理和 ProcessPendingLoss，验证清理前完整状态。
+
+同一能力的原生 Type 与按请求量计算的 GetTypeForAmount 不能混用。人工制品按请求量判断负力量／负敏捷为减益，首次持续计数标记却依据原生 Type；两种属性能力本身仍为增益。基础值布局保留独立判定，在原生差分中覆盖归零后重获、初始负值、双方人工制品、不同施加者、附魔选择和完整回合。
+
+命运同担由 `CompactCardProgramCompiler` 编译为玩家／目标两条有序负力量施加，沿用基础 Power 值槽、人工制品、退休／重获和读取投影；52 种精确卡牌的准入仍在 Prediction，内核不识别卡牌类型。[证据](performance/simulation-shared-fate-20260911.md)。
 ### 回合末卡牌 Hook 的接收者身份
 
 `HookMirrors.BeforeSideTurnEnd` 的常规阶段先通过 `CardHookReceiver` 固定监听成员与对应分支 `PredictedCard`，再按原序读取当前 Preview。前一监听者触发 COW 时，不把已脱离牌堆的旧预览传给后一卡牌 Hook；不重新枚举成员，不保留跨阶段或跨分支接收者。
+
+上游 0.36.0 集成后，紧凑内核的 `PlayerPhaseChanged` 事件记录玩家阶段，物化与直接读取共用 Prediction 的枚举映射；读视图每次从根阶段恢复。`CardHistoryReadValues.AttackSkillStarts` 与原历史字段一样消费开始事件和双方窗口重置，进入原键及完整续用。战略摘要缓存包含 `skillsExhaust`，消耗抽牌时序按当前手牌独立附加。[验证边界](performance/simulation-upstream-merge-20260911.md)。
+
+书页风暴通过 `ResumableDiscardProgram.Draw` 的独立可撤销缓冲区保存父／子抽牌请求、返回数与待完成卡；全部抽牌共用 BeginDrawCard。内核只识别 Power 枚举和虚无标记，卡牌身份与 Hook 准入仍属于 Prediction。投影拥有未完成抽牌历史栈和方法来源栈，直接读取器只计真正历史事件；无相关 Hook 的根不创建该栈。Testing 的可选语义路线 helper 使用正式动作准备及选择解析器，固定节点搜索继续原政策。[原生与搜索证据](performance/simulation-pagestorm-20260911.md)。
+
+虚空之唤的生产职责分工：`CompactCardProgramCompiler` 负责精确类型、实例状态与 `Innate` 升级准入，并把它编译成一条 `ApplyBasicPower(CallOfTheVoid)`；`BasicPowerKind.CallOfTheVoid` 复用 `BasicPowerLayout` 的数量／施加者／获得顺序／退休值槽，内核不识别卡名。`CompactRoundRoot.BeforeHandDrawPool` 保存捕获的池索引，`ResumableDiscardProgram.Rounds` 在能量重置与 `AfterEnergyResetLate` 宠物生成之后、合成起手抽牌帧之前执行整批生成；`Generated` 事件的创建者区分怪物／卡牌动作／玩家回合开始能力，回合开始批次使用 `Random` 结果类型。Pool 捕获属于 Prediction/Compact：只有根中实际出现该卡或 `CallOfTheVoidPower` 时才从 `TryGetRootEligibleCharacterCardsForCombat` 取持有人角色的完整冻结池，逐候选建立携带原生 `Ethereal` 的不可变模板并精确编译；任何不可表示候选、缺失回合闭包或缺失池索引都拒绝整根，不缩小生成池、不回退模型后端。五字段生成流由 `CardGenerationPools` 分配在 `ReversibleValueState`，`CompletedStateReadView.CardGenerationRng` 把 lane 值暴露给状态键与续用，未持有显式值的程序保持旧行为。生产准入未扩大，完整未闭包根继续显式拒绝。[记录](performance/simulation-void-generation-20260911.md)。
