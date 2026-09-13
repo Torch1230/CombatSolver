@@ -95,9 +95,6 @@ internal static class SolverWeights
     public const double OutstandingStolenResourcePenalty = -1_000_000d;
     // HP 本身已按 30_000 计价；额外 20_000 使主动卖血总成本仍约等于 5 点伤害。
     public const double SoldHpPenalty = -20_000d;
-    public const int NormalSoldHpThreshold = 5;
-    public const int EliteSoldHpThreshold = 10;
-    public const int BossSoldHpThreshold = 15;
     public const int PotionMinimumHpSaved = 9;
 
     // 一次性保命遗物（蜥蜴尾巴）用掉就没了。除了不把复活回的血当成路线赚到的血，还要按复活血量的

@@ -594,11 +594,10 @@ internal sealed class NativeChoiceSession : IDisposable
                 throw new InvalidOperationException("无候选的原生选择包含计划卡牌。");
             return;
         }
-        if (selected.Count != request.Options.Count
-            || selected.Any(card => !request.Options.Contains(card)))
+        if (!selected.SequenceEqual(request.Options))
         {
             throw new InvalidOperationException(
-                $"原版会隐式选择全部 {request.Options.Count} 张牌，但计划选择了 {selected.Count} 张。");
+                $"原版按候选顺序隐式选择全部 {request.Options.Count} 张牌，计划必须保持同样的实例与顺序。");
         }
     }
 

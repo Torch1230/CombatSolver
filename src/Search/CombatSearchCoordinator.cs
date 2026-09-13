@@ -1431,7 +1431,7 @@ internal static partial class CombatSearchCoordinator
             EnemyHp: result.Snapshot.EnemyHp,
             Score: result.BestNode.Score)
         {
-            GrowthHpCredit = result.Snapshot.StrategicHpCredit,
+            GrowthHpCredit = result.Snapshot.StrategyGoalHpCredit,
             TheftPolicy = policy.TheftPolicy,
             GrowthRewardCount = result.Snapshot.StrategyGoalCount,
         };
@@ -1514,8 +1514,8 @@ internal static partial class CombatSearchCoordinator
             IsCompleteVictory(current),
             StrategicHpDeficit(root, policy, current),
             current.CombatEndedTurn,
-            candidate.Snapshot.StrategicHpCredit,
-            current.Snapshot.StrategicHpCredit,
+            candidate.Snapshot.StrategyGoalHpCredit,
+            current.Snapshot.StrategyGoalHpCredit,
             candidate.Snapshot.StrategyGoalCount,
             current.Snapshot.StrategyGoalCount);
     }

@@ -324,7 +324,7 @@ foreach ($check in @(
     @{ RelativePath = "src/Search/CombatBeamSolver.ParallelExpansion.cs"; Text = "new(_run.ExpansionBatchPool)" },
     @{ RelativePath = "src/Search/CombatBeamSolver.Models.cs"; Text = "SnapshotListBuffer<PredictedCard> SnapshotLiveCards = new()" },
     @{ RelativePath = "src/Search/CombatBeamSolver.StateEvaluation.cs"; Text = "_run.SnapshotLiveCards.Rent()" },
-    @{ RelativePath = "src/Search/CombatBeamSolver.Phases.cs"; Text = "SearchWaveMemoryPolicy.Capacity(" })) {
+    @{ RelativePath = "src/Search/CombatBeamSolver.Phases.cs"; Text = "SearchWaveMemoryPolicy.ParentWaveCapacity(" })) {
     $checkPath = Join-Path $repositoryRoot $check.RelativePath
     if (-not (Select-String -LiteralPath $checkPath -SimpleMatch $check.Text -Quiet)) {
         $violations.Add("${checkPath}: missing GC research ownership boundary '$($check.Text)'")
@@ -466,6 +466,7 @@ foreach ($check in $rootSnapshotChecks) {
 $expectedBeamFiles = @(
     "CombatBeamSolver.cs",
     "CombatBeamSolver.AdmittedExpansion.cs",
+    "CombatBeamSolver.EndTurnChoiceReplay.cs",
     "CombatBeamSolver.BeamRetentionPolicy.cs",
     "CombatBeamSolver.CrossTurnPlanning.cs",
     "CombatBeamSolver.CyclePlanning.cs",
@@ -474,6 +475,7 @@ $expectedBeamFiles = @(
     "CombatBeamSolver.Expansion.cs",
     "CombatBeamSolver.FinalPlanOrdering.cs",
     "CombatBeamSolver.Models.cs",
+    "CombatBeamSolver.Transpositions.cs",
     "CombatBeamSolver.OrderedMutationRetention.cs",
     "CombatBeamSolver.ParallelExpansion.cs",
     "CombatBeamSolver.PathDiagnostics.cs",
@@ -553,7 +555,7 @@ $beamStructureChecks = @(
     @{ File = "CombatBeamSolver.BeamRetentionPolicy.cs"; Text = "public void Clear() => NodesByChoice.Clear();" },
     @{ File = "CombatBeamSolver.BeamRetentionPolicy.cs"; Text = "routingNodes = new RoutingChoiceNodes(node);" },
     @{ File = "CombatBeamSolver.BeamRetentionPolicy.cs"; Text = "ReturnRoutingChoiceScratch(scratch);" },
-    @{ File = "CombatBeamSolver.Models.cs"; Text = "private readonly record struct TranspositionLabel(" },
+    @{ File = "CombatBeamSolver.Transpositions.cs"; Text = "private readonly record struct TranspositionLabel(" },
     @{ File = "CombatBeamSolver.Models.cs"; Text = "private sealed class SearchRunContext(" },
     @{ File = "CombatBeamSolver.Models.cs"; Text = "private readonly record struct SearchFeatures(" },
     @{ File = "CombatBeamSolver.ParallelExpansion.cs"; Text = "private sealed partial class ParallelExpansionExecutor : IDisposable" },
@@ -566,19 +568,26 @@ $beamStructureChecks = @(
     @{ File = "CombatBeamSolver.AdmittedExpansion.cs"; Text = "_coordinator.MergeExpansionWorker(outcome.Worker, outcome.AllocatedBytes);" },
     @{ File = "CombatBeamSolver.AdmittedExpansion.cs"; Text = "wave.BackgroundCompleted.Wait();" },
     @{ File = "CombatBeamSolver.AdmittedExpansion.cs"; Text = "while (committed < parents.Length && parents[committed]!.TailCompleted)" },
-    @{ File = "CombatBeamSolver.AdmittedExpansion.cs"; Text = "_completedActions == Actions.Count && _completedPotions == Potions.Count" },
+    @{ File = "CombatBeamSolver.AdmittedExpansion.cs"; Text = "_completedActions != Actions!.Count" },
+    @{ File = "CombatBeamSolver.AdmittedExpansion.cs"; Text = "_completedPotions != Potions!.Count" },
+    @{ File = "CombatBeamSolver.EndTurnChoiceReplay.cs"; Text = "private PreparedEndTurnEvaluation EvaluatePreparedEndTurn(" },
+    @{ File = "CombatBeamSolver.AdmittedExpansion.cs"; Text = "endTurn.TransferEndTurnTo(Aggregate!, candidate);" },
+    @{ File = "CombatBeamSolver.AdmittedExpansion.cs"; Text = "PublishCrossTurnStandPatBaselines(Node, _endTurnBaselines);" },
     @{ File = "CombatBeamSolver.AdmittedExpansion.cs"; Text = "ready.TransferPotionTo(Aggregate!, candidate);" },
     @{ File = "CombatBeamSolver.PrimaryChoiceReplay.cs"; Text = "private sealed class PrimaryChoiceReplayFrontier : IDisposable" },
     @{ File = "CombatBeamSolver.PrimaryChoiceReplay.cs"; Text = "=> branches >= 2 && finals >= branches && attempts >= branches;" },
     @{ File = "CombatBeamSolver.PrimaryChoiceReplay.cs"; Text = "public bool CanDispatchContinuation => CompletedReplays == Actions.Length" },
     @{ File = "CombatBeamSolver.PrimaryChoiceReplay.cs"; Text = "if (!budget.TrySpendReplayAttempt())" },
     @{ File = "CombatBeamSolver.PrimaryChoiceReplay.cs"; Text = "frontier.AssertConsumed();" },
+    @{ File = "CombatBeamSolver.EndTurnChoiceReplay.cs"; Text = "CanReservePrimaryReplayPrefix(layer.Layer.Branches.Count," },
+    @{ File = "CombatBeamSolver.EndTurnChoiceReplay.cs"; Text = "ResolveCollectedOccurrenceChoiceBranches(parent, layer.Occurrences)" },
+    @{ File = "CombatBeamSolver.AdmittedExpansion.cs"; Text = "_endTurnFrontier?.Dispose();" },
     @{ File = "CombatBeamSolver.PrimaryChoiceReplay.cs"; Text = "if (index != NextReplay || count < 1 || count > 4 || index + count > Actions.Length)" },
     @{ File = "CombatBeamSolver.Models.cs"; Text = "public ParallelExpansionExecutor? ActiveParallelExpansion;" },
     @{ File = "CombatBeamSolver.ParallelExpansion.cs"; Text = "_coordinator._run.ActiveParallelExpansion = null;" },
     @{ File = "CombatBeamSolver.StandPatJobs.cs"; Text = "private void PrepareStandPatProbes(IEnumerable<SearchNode> nodes)" },
     @{ File = "CombatBeamSolver.StandPatJobs.cs"; Text = "seen.Add(node.StateKey)" },
-    @{ File = "CombatBeamSolver.StandPatJobs.cs"; Text = "_run.StandPatCache.Add(pending[index].StateKey, evaluations[index]);" },
+    @{ File = "CombatBeamSolver.StandPatJobs.cs"; Text = "_run.StandPatCache.Add(batch[index].StateKey, evaluations[index]);" },
     @{ File = "CombatBeamSolver.StandPatJobs.cs"; Text = "ExpansionLane[] lanes = EnsureBackgroundLanes();" },
     @{ File = "CombatBeamSolver.StandPatJobs.cs"; Text = "_coordinator.MergeExpansionWorker(outcome.Worker, outcome.AllocatedBytes);" },
     @{ File = "CombatBeamSolver.StandPatJobs.cs"; Text = "wave.Completed.Wait();" },
@@ -1235,6 +1244,19 @@ foreach ($hookName in $mirroredHookNames) {
     if (-not $mirroredFilterText.Contains("nameof(AbstractModel.$hookName)")) {
         $violations.Add("Missing mirrored hook participation metadata: $hookName")
     }
+}
+
+# Native clone eligibility stays outside search scheduling and keeps the runtime gate.
+foreach ($requiredCloneBoundary in @(
+    @{ Path = 'src/Runtime/BaseLibCloneConcurrencyPatch.cs'; Text = 'BaseLibCloneConcurrency.Enter()' },
+    @{ Path = 'src/Engine/Common/PredictionUtils.cs'; Text = 'NativeModelCloneConcurrency.CanCloneIndependently(source)' }
+)) {
+    if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot $requiredCloneBoundary.Path) -SimpleMatch $requiredCloneBoundary.Text -Quiet)) {
+        $violations.Add("Missing clone boundary: $($requiredCloneBoundary.Path)")
+    }
+}
+if (Select-String -LiteralPath (Join-Path $repositoryRoot 'src/Engine/Common/NativeModelCloneConcurrency.cs') -SimpleMatch 'CombatSolver.Search' -Quiet) {
+    $violations.Add('Clone eligibility depends on search policy.')
 }
 
 if ($violations.Count -gt 0) {

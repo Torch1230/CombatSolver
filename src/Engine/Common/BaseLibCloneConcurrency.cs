@@ -9,9 +9,11 @@ internal static class BaseLibCloneConcurrency
         () => AppDomain.CurrentDomain.GetAssemblies().Any(
             assembly => assembly.GetType(BaseLibClonePatchTypeName, throwOnError: false) != null));
 
+    public static bool IsRequired => BaseLibClonePatchLoaded.Value;
+
     public static bool Enter()
     {
-        if (!BaseLibClonePatchLoaded.Value)
+        if (!IsRequired)
             return false;
         Monitor.Enter(Gate);
         return true;

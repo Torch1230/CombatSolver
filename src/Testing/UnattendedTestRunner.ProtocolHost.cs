@@ -28,6 +28,8 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyIncrementalSearch { get; private set; }
         public bool FixedSearchBudget { get; private set; }
         public void ApplyRecordedShortSearchMode(bool enabled) => FixedSearchBudget = enabled;
+        public bool? Act3BossStrategyOverride { get; private set; }
+        public void ApplyAct3BossStrategyOverride(bool? enabled) => Act3BossStrategyOverride = enabled;
         public bool MeasureSearchPhases { get; private set; }
         public int? SearchMaxDegreeOfParallelismOverride { get; private set; }
         public int? SearchBudgetOverrideMilliseconds { get; private set; }
@@ -335,6 +337,7 @@ internal sealed partial class UnattendedTestRunner
             FixedSearchBudget = false;
             MeasureSearchPhases = false;
             SearchMaxDegreeOfParallelismOverride = null;
+            Act3BossStrategyOverride = null;
             _injectPlayerHpLossTurn = 0;
             _injectPlayerHpLossAmount = 0;
             _injectedPlayerHpLoss = 0;

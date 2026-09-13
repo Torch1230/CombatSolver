@@ -58,9 +58,7 @@ internal static class AfterDamageReceivedMirrors
     {
         var registry = new Registry(AfterDamageReceived);
 
-        // Combat predictions are scoped to outcomes that can still affect the current player turn.
-        // Models that only mutate later-turn or room-end state are ignored here.
-        registry.RegisterIgnored<AsleepPower>();
+        registry.Register<AsleepPower>(HandleAsleepPower);
         registry.Register<BeatingRemnant>(HandleBeatingRemnant);
         registry.Register<CentennialPuzzle>(HandleCentennialPuzzle);
         registry.Register<CurlUpPower>(HandleCurlUpPower);
@@ -79,10 +77,39 @@ internal static class AfterDamageReceivedMirrors
         registry.Register<SelfFormingClay>(HandleSelfFormingClay);
         registry.Register<ShriekPower>(HandleShriekPower);
         registry.Register<SlipperyPower>(HandleSlipperyPower);
-        registry.RegisterIgnored<SlumberPower>();
+        registry.Register<SlumberPower>(HandleSlumberPower);
         registry.Register<TheGambitPower>(HandleTheGambitPower);
 
         return registry;
+    }
+
+    private static void HandleAsleepPower(AsleepPower power, AfterDamageReceivedMirrorContext context)
+    {
+        if (context.Target == power.Owner && context.Result.UnblockedDamage != 0)
+        {
+            ICombatPredictionEffectSink effects = Effects(context);
+            if (context.CombatState is not ICombatPredictionHookListenerSource listeners
+                || context.CombatState is not ICombatPredictionMonsterStateSink monsterState)
+                throw new InvalidOperationException("Asleep requires branch power and monster state.");
+            foreach (PlatingPower plating in listeners.HookListeners.OfType<PlatingPower>()
+                         .Where(current => current.Owner == power.Owner).ToArray())
+                effects.SetPowerAmount(plating, 0);
+            monsterState.SetMonsterBool(power.Owner, "_isAwake", true);
+            effects.ForceStunnedMove(power.Owner, "SLASH_MOVE");
+            effects.SetPowerAmount(power, 0);
+        }
+    }
+
+    private static void HandleSlumberPower(SlumberPower power, AfterDamageReceivedMirrorContext context)
+    {
+        if (context.Target == power.Owner && context.Result.UnblockedDamage != 0)
+        {
+            ICombatPredictionEffectSink effects = Effects(context);
+            int remaining = power.Amount - 1;
+            effects.SetPowerAmount(power, remaining);
+            if (remaining <= 0)
+                effects.ForceStunnedMove(power.Owner, "ROLL_OUT_MOVE");
+        }
     }
 
     private static void HandleBeatingRemnant(BeatingRemnant relic, AfterDamageReceivedMirrorContext context)

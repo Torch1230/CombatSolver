@@ -18,6 +18,63 @@ internal sealed partial class UnattendedTestRunner
         public async Task RunBeforeExecutionAsync(ScenarioContext scenario)
         {
             UnattendedTestRequest request = runner._request;
+            if (request.ScenarioId == "POTION-LINEAGE-CONTRACT")
+            {
+                runner.SetStage("potion_lineage_contract");
+                CombatBeamSolver.VerifyPotionUseLineageKeyForTesting();
+                runner._completedChecks.Add("PotionLineage:Empty:Ordinal:Duplicates:LongRoute:SharedParent:Cached:MissingId");
+            }
+            if (request.ScenarioId == "EXTRA-GENERATION-CACHE-PERF")
+            {
+                runner.SetStage("extra_generation_cache_measurement");
+                string before = ContinuationStamp.CaptureLive(scenario.CombatState).StateText;
+                runner._completedChecks.Add(MeasureExtraGenerationCache(scenario.CombatState, scenario.Player));
+                if (ContinuationStamp.CaptureLive(scenario.CombatState).StateText != before)
+                    throw new InvalidOperationException("Generation cache measurement changed live combat.");
+            }
+            if (request.ScenarioId == "EXTRA-GENERATION-CACHE")
+            {
+                runner.SetStage("extra_generation_cache");
+                string before = ContinuationStamp.CaptureLive(scenario.CombatState).StateText;
+                runner._completedChecks.Add(AssertExtraGenerationCacheContract(
+                    scenario.CombatState, scenario.Player));
+                if (ContinuationStamp.CaptureLive(scenario.CombatState).StateText != before)
+                    throw new InvalidOperationException("Generation cache contract changed live combat.");
+            }
+            if (request.ScenarioId == "SNAPSHOT-COVERAGE-CONTRACT")
+            {
+                runner.SetStage("snapshot_coverage_contract");
+                string before = ContinuationStamp.CaptureLive(scenario.CombatState).StateText;
+                runner._completedChecks.Add(AssertSnapshotCoverageContract(scenario.CombatState));
+                if (ContinuationStamp.CaptureLive(scenario.CombatState).StateText != before)
+                    throw new InvalidOperationException("Snapshot coverage contract changed live combat.");
+            }
+            if (request.ScenarioId == "CHOICE-COMBINATION-CONTRACT")
+            {
+                runner.SetStage("choice_combination_contract");
+                string before = ContinuationStamp.CaptureLive(scenario.CombatState).StateText;
+                runner._completedChecks.Add(AssertChoiceCombinationContract(scenario.Player,
+                    SolverDisplayNames.Capture(scenario.CombatState)));
+                if (ContinuationStamp.CaptureLive(scenario.CombatState).StateText != before)
+                    throw new InvalidOperationException("Choice combination contract changed live combat.");
+            }
+            if (request.ScenarioId == "CHOICE-TOKEN-CONTRACT")
+            {
+                runner.SetStage("choice_token_contract");
+                runner._completedChecks.Add(AssertChoiceTokenContract(scenario.Player));
+            }
+            if (request.ScenarioId == "GENERATION-HISTORY-CONTRACT")
+            {
+                runner.SetStage("generation_history_contract");
+                AssertGenerationHistoryContract(scenario.Player);
+                runner._completedChecks.Add("GenerationHistory:LatestIdentity:Missing:NullTrace:Original:Preview:ForkIsolation:LongPrefix");
+            }
+            if (request.ScenarioId == "CARD-PLAY-CLEANUP-CONTRACT")
+            {
+                runner.SetStage("card_play_cleanup_contract");
+                AssertCardPlayCleanupContract(scenario.CombatState, scenario.Player);
+                runner._completedChecks.Add("CardPlayCleanup:Empty:Present:OtherPlay:Complete:Abort:Removed:ForkIsolation");
+            }
             if (request.ScenarioId == "MIRRORED-HOOK-FILTER")
             {
                 runner.SetStage("mirrored_hook_filter");
@@ -82,6 +139,32 @@ internal sealed partial class UnattendedTestRunner
                 runner.SetStage("prediction_failure_boundaries");
                 AssertPredictionFailureBoundaries(scenario.CombatState, scenario.Player);
                 runner._completedChecks.Add("PredictionFailureBoundaries");
+            }
+            if (request.ScenarioId == "MODEL-CLONE-CONCURRENCY")
+            {
+                runner.SetStage("model_clone_concurrency");
+                AssertModelCloneConcurrency(scenario.CombatState);
+                AssertPowerCloneConcurrency(scenario.CombatState);
+                runner._completedChecks.Add("PowerCloneConcurrency");
+                runner._completedChecks.Add("ModelCloneConcurrency");
+            }
+            if (request.ScenarioId == "END-TURN-CHOICE-REPLAY")
+            {
+                runner.SetStage("end_turn_choice_replay");
+                await AssertEndTurnChoiceReplayAsync(scenario.CombatState);
+                runner._completedChecks.Add("EndTurnChoiceReplay");
+            }
+            if (request.ScenarioId == "EARLY-END-TURN")
+            {
+                runner.SetStage("early_end_turn");
+                await AssertEarlyEndTurnAsync(scenario.CombatState);
+                runner._completedChecks.Add("EarlyEndTurn");
+            }
+            if (request.ScenarioId == "STAND-PAT-MEMORY-BOUNDARY")
+            {
+                runner.SetStage("stand_pat_memory_boundary");
+                await AssertStandPatMemoryBoundaryAsync(scenario.CombatState);
+                runner._completedChecks.Add("StandPatMemoryBoundary");
             }
             if (request.VerifySearchPolicySnapshot)
             {

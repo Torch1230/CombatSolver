@@ -106,6 +106,9 @@ internal sealed partial class CombatBeamSolver
 
         public void AddEndTurn(SearchNode candidate)
             => base.AddEndTurn(candidate.Snapshot, candidate);
+
+        public void TransferEndTurnTo(ExpansionBatch target, SearchNode candidate)
+            => base.TransferEndTurnTo(target, candidate.Snapshot, candidate);
     }
 
     private sealed record ExpansionWorkerOutcome(
@@ -512,7 +515,7 @@ internal sealed partial class CombatBeamSolver
                     ReplayCount: Math.Max(0, card.Preview.GetEnchantedReplayCount()),
                     CardStateKey: cardStateKey,
                     CardStateOccurrence: cardStateOccurrence,
-                        CardUpgradeLevel: card.Preview.CurrentUpgradeLevel);
+                        CardEnchantmentId: card.Preview.Enchantment?.Id.Entry ?? "", CardUpgradeLevel: card.Preview.CurrentUpgradeLevel);
                 actions.Add(new PreparedCardAction(
                     planAction,
                     card.Preview.Type,
@@ -893,17 +896,19 @@ internal sealed partial class CombatBeamSolver
         }
     }
 
-    private void GenerateRawEndTurnCandidates(SearchNode node, ExpansionBatch batch)
+    private IReadOnlyList<CrossTurnStandPatBaseline>? GenerateRawEndTurnCandidates(
+        SearchNode node, ExpansionBatch batch, bool publishBaselines = true,
+        IEnumerable<(PlanAction Action, SimulationSnapshot Snapshot)>? resolvedBranches = null)
     {
         SimulationSnapshot snapshot = node.Snapshot;
         if (snapshot.PlayerDead || snapshot.AllEnemiesDead)
-            return;
+            return null;
 
         List<CrossTurnStandPatBaseline>? directStandPatBaselines =
             ReferenceEquals(FindTurnStart(node), node)
             ? []
             : null;
-        foreach ((PlanAction endAction, SimulationSnapshot endSnapshot) in BuildEndTurnBranches(node, []))
+        foreach ((PlanAction endAction, SimulationSnapshot endSnapshot) in resolvedBranches ?? BuildEndTurnBranches(node, []))
         {
             int nextTurn = endSnapshot.Turn;
             bool combatEnded = endSnapshot.PlayerDead || endSnapshot.AllEnemiesDead;
@@ -937,8 +942,9 @@ internal sealed partial class CombatBeamSolver
             }
             batch.AddEndTurn(endNode);
         }
-        if (directStandPatBaselines != null)
+        if (publishBaselines && directStandPatBaselines != null)
             PublishCrossTurnStandPatBaselines(node, directStandPatBaselines);
+        return directStandPatBaselines;
     }
 
     private void MergeExpansionWorker(ExpansionWorkerOutcome outcome)

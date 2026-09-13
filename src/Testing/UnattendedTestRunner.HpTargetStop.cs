@@ -30,6 +30,7 @@ internal sealed partial class UnattendedTestRunner
             SetEnergy(player, 3);
             SearchPolicySnapshot policy = SolverController.CaptureSearchPolicy(SolverSettings.Capture(), combat, false, null) with
             {
+                Act3BossStrategy = true,
                 FixedBudget = true, BudgetOverrideMilliseconds = 1500,
                 PotionPolicy = SolverPotionPolicy.Disabled, MaxDegreeOfParallelism = 1,
                 DetailedDiagnostics = false, VerifyIncrementalSearch = false,

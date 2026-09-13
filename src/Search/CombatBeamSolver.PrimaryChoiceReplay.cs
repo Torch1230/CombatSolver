@@ -35,7 +35,11 @@ internal sealed partial class CombatBeamSolver
         private readonly SimulationSnapshot?[] _snapshots;
         private readonly bool[] _received;
         private int _consumed;
-        public PrimaryCardChoiceLayer Layer { get; }
+        private readonly PrimaryCardChoiceLayer? _layer;
+        public PrimaryCardChoiceLayer Layer => _layer
+            ?? throw new InvalidOperationException("回合尾部没有卡牌主选择层。");
+        public EndTurnChoiceLayer? EndTurn { get; }
+        public bool IsEndTurn => EndTurn != null;
         public PreparedCardAction? Card { get; }
         public PreparedPotionAction? Potion { get; }
         public bool IsPotion => Potion.HasValue;
@@ -56,13 +60,21 @@ internal sealed partial class CombatBeamSolver
         {
             if (card.HasValue == potion.HasValue)
                 throw new ArgumentException("选择回放 frontier 必须有且只有一个动作所有者。");
-            Layer = layer;
+            _layer = layer;
             Card = card;
             Potion = potion;
             PlanAction action = card?.Action ?? potion!.Value.Action;
             Actions = new PlanAction[layer.SemanticBranchCount];
             for (int index = 0; index < Actions.Length; index++)
                 Actions[index] = action with { Choice = layer.Choices[index] };
+            _snapshots = new SimulationSnapshot?[Actions.Length];
+            _received = new bool[Actions.Length];
+        }
+
+        public PrimaryChoiceReplayFrontier(EndTurnChoiceLayer endTurn)
+        {
+            EndTurn = endTurn;
+            Actions = endTurn.Layer.Branches.Select(branch => branch.Action).ToArray();
             _snapshots = new SimulationSnapshot?[Actions.Length];
             _received = new bool[Actions.Length];
         }
@@ -124,7 +136,8 @@ internal sealed partial class CombatBeamSolver
     private SimulationSnapshot? ReplayPrimaryChoice(
         SearchNode parent,
         PlanAction action,
-        object forkGate)
+        object forkGate,
+        bool pruneInvalidBranch = true)
     {
         if (_parallelActionReplayForkGate != null)
             throw new InvalidOperationException("不能嵌套首层选择回放的 Fork 上下文。");
@@ -135,7 +148,20 @@ internal sealed partial class CombatBeamSolver
             _run.WorkPacer.YieldIfNeeded();
             _run.ChoiceReplayAttempts++;
             _run.ChoiceBranchesEvaluated++;
-            return ReplayPlannedChoiceBranch(parent, action);
+            SimulationSnapshot? snapshot = ReplayPendingChoiceBranch(parent,
+                new PendingChoiceReplayBranch(action, pruneInvalidBranch));
+            try
+            {
+                if (action.Kind == PlanActionKind.EndTurn)
+                    ObserveSearchPath(parent, SearchPathObservationStage.EndTurnChoiceReplay,
+                        "mandatory_end_turn_choice_replayed");
+                return snapshot;
+            }
+            catch
+            {
+                snapshot?.ReleaseSimulator();
+                throw;
+            }
         }
         finally
         {

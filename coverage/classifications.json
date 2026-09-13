@@ -1,4 +1,28 @@
 {
+  "Card|MegaCrit.Sts2.Core.Models.Cards.Adrenaline|MegaCrit.Sts2.Core.Models.CardModel.OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Cards/OnPlay/CardDrawCardMirrors.cs",
+    "notes": "Native command ordering with draw-triggered resource changes and ordered pile verification.",
+    "testId": "REPORT-CARDS-RESOURCE-DRAW-ORDER"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.Offering|MegaCrit.Sts2.Core.Models.CardModel.OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Cards/OnPlay/CardDrawCardMirrors.cs",
+    "notes": "Native command ordering with draw-triggered resource changes and ordered pile verification.",
+    "testId": "REPORT-CARDS-RESOURCE-DRAW-ORDER"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.Neurosurge|MegaCrit.Sts2.Core.Models.CardModel.OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Cards/OnPlay/CardDrawCardMirrors.cs",
+    "notes": "Native command ordering with draw-triggered resource changes and ordered pile verification.",
+    "testId": "REPORT-CARDS-RESOURCE-DRAW-ORDER"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.SpoilsOfBattle|MegaCrit.Sts2.Core.Models.CardModel.OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Cards/OnPlay/CardDrawCardMirrors.cs",
+    "notes": "Native command ordering with draw-triggered resource changes and ordered pile verification.",
+    "testId": "REPORT-CARDS-RESOURCE-DRAW-ORDER"
+  },
   "Card|MegaCrit.Sts2.Core.Models.Cards.HeavenlyDrill|MegaCrit.Sts2.Core.Models.CardModel.OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
     "status": "EngineExact",
     "source": "src/Engine/InCombat/Mirrors/Cards/OnPlay/BespokeCardMirrors.cs",
@@ -498,10 +522,10 @@
     "testId": "MONSTER-MOVES-BATCH-034"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.LethalityPower|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyDamageMultiplicative(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
-    "status": "SolverCompensation",
-    "source": "RandomForeseer 0.13.7 damage fallback + src/Search/SimulatedCombatState.cs",
-    "notes": "Applies the percentage bonus only to the owner's first predicted Attack each turn; the solver replaces live CombatManager history with a fingerprinted predicted counter.",
-    "testId": "MONSTER-MOVES-BATCH-034"
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/Damage/ModifyDamageMirrors.cs; src/Search/SimulatedCombatState.CardLifecycle.cs",
+    "notes": "Uses branch attack-start history, the queried source card's play pile, and its replay index; off-card damage queries observe the already-started attack.",
+    "testId": "ATTACK-START-HISTORY"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.OneForAllPower|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyDamageAdditive(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
     "status": "EngineInferred",
@@ -511,9 +535,9 @@
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.PhantomBladesPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCardEnteredCombat(MegaCrit.Sts2.Core.Models.CardModel)": {
     "status": "SolverCompensation",
-    "source": "src/Search/SimulatedCombatState.cs",
-    "notes": "Applies Retain to every newly generated Shiv in simulated combat.",
-    "testId": "MONSTER-MOVES-BATCH-034"
+    "source": "src/Engine/InCombat/Mirrors/Hooks/Card/PhantomBladesPowerMirrors.cs; src/Search/SimulatedCombatState.CardEventHistory.cs",
+    "notes": "Grants Retain at the exact card-entry callback, including clones; later normalization preserves native keyword changes.",
+    "testId": "PHANTOM-RETAIN-LIFECYCLE"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.PhantomBladesPower|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyDamageAdditive(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
     "status": "SolverCompensation",
@@ -523,9 +547,9 @@
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.PhantomBladesPower|MegaCrit.Sts2.Core.Models.PowerModel.AfterApplied(MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel)": {
     "status": "SolverCompensation",
-    "source": "src/Search/SimulatedCombatState.cs",
-    "notes": "Normalizes all existing Shiv cards to Retain when the simulated power is active.",
-    "testId": "MONSTER-MOVES-BATCH-034"
+    "source": "src/Engine/InCombat/Mirrors/Hooks/Card/PhantomBladesPowerMirrors.cs; src/Search/SimulatedCombatState.cs",
+    "notes": "Grants existing Shivs Retain on a new application. Stacking and repeated normalization do not rerun AfterApplied.",
+    "testId": "PHANTOM-RETAIN-LIFECYCLE"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.SoarPower|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyDamageMultiplicative(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
     "status": "EngineInferred",
@@ -540,10 +564,10 @@
     "testId": "MONSTER-MOVES-BATCH-034"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.UnmovablePower|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyBlockMultiplicative(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Models.CardModel,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
-    "status": "SolverCompensation",
-    "source": "RandomForeseer 0.13.7 block fallback + src/Search/SimulatedCombatState.cs",
-    "notes": "Doubles the first N predicted card or monster-move block gains each turn using a fingerprinted counter instead of live CombatManager history.",
-    "testId": "MONSTER-MOVES-BATCH-034"
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/Block/ModifyBlockMultiplicativeMirrors.cs; src/Search/SimulatedCombatState.CardPowerHistory.cs",
+    "notes": "Counts positive powered card-block events and excludes the current CardPlay's own events, matching native history eligibility.",
+    "testId": "BLOCK-EVENT-HISTORY"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.CoveredPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
     "status": "NotCombatRelevant",
@@ -5336,8 +5360,8 @@
   "Power|MegaCrit.Sts2.Core.Models.Powers.NightmarePower|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeHandDraw(MegaCrit.Sts2.Core.Entities.Players.Player,MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.ICombatState)": {
     "status": "SolverCompensation",
     "source": "src/Search/SimulatedCombatState.CardLifecycle.cs",
-    "notes": "Adds the selected number of clean card copies to hand and removes the exact Nightmare instance before draw.",
-    "testId": "POWER-TURN-START-BATCH-049"
+    "notes": "Generates selected-card snapshots in native power acquisition order, removes the exact instance, and captures selected-card state across roots, forks, fingerprints and continuation comparisons.",
+    "testId": "NIGHTMARE-TURN-ORDER-AND-ROOT"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.SentryModePower|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeHandDraw(MegaCrit.Sts2.Core.Entities.Players.Player,MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.ICombatState)": {
     "status": "SolverCompensation",
@@ -5472,16 +5496,16 @@
     "testId": "NO-NATIVE-RESCAN-244"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.CrabRagePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "SolverCompensation",
-    "source": "src/Prediction/DeathPowerSupport.cs",
-    "notes": "When another same-side creature dies, applies canonical Strength and Block to the owner and removes the exact Crab Rage instance.",
-    "testId": "POWER-DEATH-BATCH-050"
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/Death/AfterDeathMirrors.cs",
+    "notes": "Companion death grants Strength and Block immediately before the next hit and removes the exact Crab Rage instance.",
+    "testId": "CRAB-RAGE-DEATH-TIMING"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.DampenPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "SolverCompensation",
-    "source": "src/Prediction/DeathPowerSupport.cs; src/Search/CombatBeamSolver.cs",
-    "notes": "该行为现由分支内状态完整结算，不再触发原生重扫；精确语义与跨回合一致性见关联测试证据。",
-    "testId": "NO-NATIVE-RESCAN-244"
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/Death/AfterDeathMirrors.cs",
+    "notes": "Caster death restores card upgrades during AfterDeath, before the killing card continues its own growth effects.",
+    "testId": "DAMPEN-DEATH-GROWTH"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.DampenPower|MegaCrit.Sts2.Core.Models.PowerModel.AfterApplied(MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel)": {
     "status": "SolverCompensation",
@@ -5676,10 +5700,10 @@
     "testId": "NO-NATIVE-RESCAN-244"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.AsleepPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDamageReceived(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Entities.Creatures.DamageResult,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel)": {
-    "status": "SolverCompensation",
-    "source": "src/Prediction/TriggeredPowerSupport.cs",
-    "notes": "该行为现由分支内状态完整结算，不再触发原生重扫；精确语义与跨回合一致性见关联测试证据。",
-    "testId": "NO-NATIVE-RESCAN-244"
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/Damage/AfterDamageReceivedMirrors.cs",
+    "notes": "Wake effects execute in the receiving damage hook, including relic damage between card actions.",
+    "testId": "RELIC-DAMAGE-WAKE"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.AsleepPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
     "status": "SolverCompensation",
@@ -5762,8 +5786,8 @@
   "Power|MegaCrit.Sts2.Core.Models.Powers.OrbitPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterEnergySpent(MegaCrit.Sts2.Core.Models.CardModel,System.Int32)": {
     "status": "SolverCompensation",
     "source": "src/Prediction/PowerLifecycleSupport.cs + src/Search/SimulatedCombatState.PowerLifecycle.cs",
-    "notes": "Tracks each instanced Orbit remainder and grants its Amount energy for every four energy spent; the remainder is included in the state fingerprint.",
-    "testId": "POWER-LIFECYCLE-BATCH-051"
+    "notes": "Captures each native Orbit remainder at root creation, initializes new instances to zero, isolates forks, and compares remainder in fingerprint and continuation.",
+    "testId": "ORBIT-CAPTURED-ROOT"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.PaleBlueDotPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCardPlayed(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
     "status": "SolverCompensation",
@@ -5790,10 +5814,10 @@
     "testId": "POWER-LIFECYCLE-BATCH-051"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.SlumberPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDamageReceived(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Entities.Creatures.DamageResult,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel)": {
-    "status": "SolverCompensation",
-    "source": "src/Prediction/TriggeredPowerSupport.cs",
-    "notes": "该行为现由分支内状态完整结算，不再触发原生重扫；精确语义与跨回合一致性见关联测试证据。",
-    "testId": "NO-NATIVE-RESCAN-244"
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/Damage/AfterDamageReceivedMirrors.cs",
+    "notes": "Wake effects execute in the receiving damage hook, including relic damage between card actions.",
+    "testId": "RELIC-DAMAGE-WAKE"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.SlumberPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
     "status": "SolverCompensation",
@@ -6697,9 +6721,9 @@
   },
   "Relic|MegaCrit.Sts2.Core.Models.Relics.GhostSeed|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCardEnteredCombat(MegaCrit.Sts2.Core.Models.CardModel)": {
     "status": "SolverCompensation",
-    "source": "src/Search/SimulatedCombatState.ReactiveRelics.cs; src/Search/SimulatedCombatState.cs",
-    "notes": "Normalizes every basic Strike- or Defend-tag card entering simulated combat to Ethereal, including generated or newly discovered cards.",
-    "testId": "RELIC-REACTIVE-BATCH-057"
+    "source": "src/Engine/InCombat/Mirrors/Hooks/Card/GhostSeedMirrors.cs; src/Search/SimulatedCombatState.CardEventHistory.cs",
+    "notes": "Root cards preserve captured native room-entry keywords; new and cloned basic Strike/Defend cards gain Ethereal only on entry. Later downgrade keyword changes remain authoritative.",
+    "testId": "GHOST-SEED-KEYWORD-LIFECYCLE"
   },
   "Relic|MegaCrit.Sts2.Core.Models.Relics.GoldPlatedCables|MegaCrit.Sts2.Core.Models.AbstractModel.AfterModifyingOrbPassiveTriggerCount(MegaCrit.Sts2.Core.Models.OrbModel)": {
     "status": "NotCombatRelevant",

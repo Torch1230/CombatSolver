@@ -439,13 +439,29 @@ internal sealed partial class UnattendedTestRunner
         return null;
     }
 
-    private static bool ReplayContinuationMatches(string expected, string actual)
+    private static bool ReplayContinuationMatches(string expected, string actual, bool allowLegacyZeroCounter = false)
     {
         if (string.Equals(expected, actual, StringComparison.Ordinal))
             return true;
 
         string[] expectedFields = expected.Split(';');
         string[] actualFields = actual.Split(';');
+        if (allowLegacyZeroCounter && actualFields.Length == expectedFields.Length + 1
+            && !expectedFields.Any(field => field.StartsWith("FlameHp=", StringComparison.Ordinal))
+            && actualFields.Count(field => field.StartsWith("FlameHp=", StringComparison.Ordinal)) == 1)
+        {
+            int historyIndex = Array.FindIndex(expectedFields, field => field.StartsWith("Y=", StringComparison.Ordinal));
+            if (historyIndex >= 0 && historyIndex + 1 < actualFields.Length
+                && expectedFields[historyIndex][2..].Split('/').Length is 2 or 3 or 4
+                && actualFields[historyIndex].StartsWith("Y=", StringComparison.Ordinal)
+                && actualFields[historyIndex][2..].Split('/').Length == 4
+                && actualFields[historyIndex + 1] == "FlameHp=0")
+            {
+                // The caller requires a native opening or a fully verified native checkpoint.
+                // Only the absent zero counter is migrated; all recorded fields are compared.
+                actualFields = actualFields.Where((_, index) => index != historyIndex + 1).ToArray();
+            }
+        }
         if (expectedFields.Length != actualFields.Length)
             return false;
         for (int index = 0; index < expectedFields.Length; index++)

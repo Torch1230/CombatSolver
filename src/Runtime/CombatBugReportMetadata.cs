@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Debug;
+using MegaCrit.Sts2.Core.Platform;
 
 namespace CombatSolver;
 
@@ -50,6 +51,8 @@ internal static class CombatBugReportMetadata
             modVersion = CombatBugReportDescription.CurrentModVersion,
             gameVersion = ReleaseInfoManager.Instance.ReleaseInfo?.Version,
             playerDescription = description ?? string.Empty,
+            submitterName = PlatformUtil.GetPlayerNameRaw(PlatformUtil.PrimaryPlatform,
+                PlatformUtil.GetLocalPlayerId(PlatformUtil.PrimaryPlatform)),
             runStatistics = RunStatistics.Snapshot,
             combat,
             classification,

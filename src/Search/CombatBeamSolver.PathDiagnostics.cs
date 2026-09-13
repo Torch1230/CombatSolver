@@ -1,3 +1,5 @@
+using CombatSolver.Engine.InCombat.Simulation;
+
 namespace CombatSolver;
 
 internal sealed partial class CombatBeamSolver
@@ -27,6 +29,56 @@ internal sealed partial class CombatBeamSolver
         if (observer == null || !observer.WantsState(node.StateKey))
             return;
         observer.Observe(CaptureSearchPathObservation(node, stage, reason, boundaryId));
+    }
+
+    internal StrategicEffectVector CaptureStrategicEffectsForTesting()
+    {
+        SimulationSnapshot snapshot = Replay([]);
+        try { return snapshot.StrategicEffects; }
+        finally { snapshot.ReleaseSimulator(); }
+    }
+
+    // The diagnostic caller owns the returned snapshot and releases it after freezing evidence.
+    internal SimulationSnapshot ReplayDiagnosticPrefix(IReadOnlyList<PlanAction> actions) => Replay(actions);
+    internal ContinuationStamp CaptureDiagnosticContinuation(SimulationSnapshot snapshot)
+        => ContinuationStamp.CapturePredicted(_player, snapshot.Simulator, snapshot.Turn, _forecast, _startTurnNumber);
+
+    internal IReadOnlyList<string> DescribeOpeningActionEffectsForTesting()
+    {
+        SimulationSnapshot snapshot = Replay([]);
+        SearchNode seed = new(
+            null,
+            0,
+            snapshot.PotionUseCount,
+            snapshot.PotionStrategicCost,
+            snapshot.Turn,
+            SearchRouteTraits.None,
+            0,
+            snapshot.Score,
+            snapshot.StateKey,
+            snapshot.HasRisk,
+            snapshot.BoundaryReason,
+            false,
+            null,
+            snapshot,
+            CombatProgressState.Capture(snapshot));
+        List<SearchNode> children = [];
+        List<string> effects = [];
+        try
+        {
+            foreach (SearchNode child in Expand(seed))
+            {
+                children.Add(child);
+                if (child.Action is not { Kind: PlanActionKind.PlayCard } action) continue;
+                effects.Add($"OpeningEffect:{action.CardId}:choices={string.Join(',', action.GetActionChoicesInExecutionOrder().SelectMany(choice => choice.Cards).Select(card => card.CardId))}:energy={seed.Snapshot.Energy}>{child.Snapshot.Energy}:hand={seed.Snapshot.HandCount}>{child.Snapshot.HandCount}:damage={EnemyDurabilityProgress.PositiveReduction(seed.Snapshot.EnemyDurabilityByCombatId, child.Snapshot.EnemyDurabilityByCombatId)}:setup={child.Snapshot.StrategicEffects.RetentionValue - seed.Snapshot.StrategicEffects.RetentionValue}:boundary={child.Snapshot.BoundaryReason}");
+            }
+            return effects;
+        }
+        finally
+        {
+            foreach (SearchNode child in children) child.Snapshot.ReleaseSimulator();
+            seed.Snapshot.ReleaseSimulator();
+        }
     }
 
     private SearchPathObservation CaptureSearchPathObservation(

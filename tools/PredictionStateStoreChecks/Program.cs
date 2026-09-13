@@ -49,6 +49,7 @@ internal static class StoreChecks
         CheckReadAndPeek();
 #if CHECK_ENTRY_COUNTS
         CheckEntryCounts();
+        CheckCountOverflowAndFactoryReentry();
 #endif
         CheckForkIsolationAndOrder();
         CheckInterleavedForkOrder();
@@ -101,6 +102,99 @@ internal static class StoreChecks
         store.Remove<OtherCounter>(model);
         PredictionStateStore emptyFork = store.Fork(new());
         Require(!emptyFork.HasEntries<Counter>() && !emptyFork.HasEntries<OtherCounter>(), "Empty Fork kept type entries.");
+    }
+#endif
+
+#if CHECK_ENTRY_COUNTS
+    private sealed class TypedCounter<T> : IPredictionStateForkable
+    {
+        public int Value { get; set; }
+        public object Fork(PredictionForkContext context) => MemberwiseClone();
+    }
+
+    private sealed record CountCase(
+        Action<PredictionStateStore, AbstractModel, int> Set,
+        Func<PredictionStateStore, AbstractModel, int?> Read,
+        Func<PredictionStateStore, AbstractModel, bool> Remove,
+        Func<PredictionStateStore, int> Count,
+        Func<PredictionStateStore, bool> Has);
+
+    private static CountCase MakeCountCase<T>() => new(
+        (store, model, value) => store.Get<TypedCounter<T>>(model).Value = value,
+        (store, model) => store.TryGetReadOnly<TypedCounter<T>>(model, out var state)
+            ? state!.Value : null,
+        (store, model) => store.Remove<TypedCounter<T>>(model),
+        store => store.ReadEntries<TypedCounter<T>>().Count(),
+        store => store.HasEntries<TypedCounter<T>>());
+
+    private static void CheckCountOverflowAndFactoryReentry()
+    {
+        CountCase[] cases = [MakeCountCase<int>(), MakeCountCase<long>(),
+            MakeCountCase<string>(), MakeCountCase<bool>(), MakeCountCase<decimal>(),
+            MakeCountCase<byte>(), MakeCountCase<double>(), MakeCountCase<DateTime>()];
+        AbstractModel[] models = Enumerable.Range(0, 4).Select(i => new AbstractModel($"count-{i}")).ToArray();
+        PredictionStateStore store = new();
+        Dictionary<(int Type, int Model), int> expected = [];
+        Random random = new(41512);
+        int checks = 0;
+        void Compare(PredictionStateStore target)
+        {
+            for (int type = 0; type < cases.Length; type++)
+            {
+                int count = expected.Keys.Count(key => key.Type == type);
+                Require(cases[type].Has(target) == (count > 0) && cases[type].Count(target) == count,
+                    "Type count or filtered enumeration changed after overflow/Fork.");
+                for (int model = 0; model < models.Length; model++)
+                    Require(cases[type].Read(target, models[model])
+                        == (expected.TryGetValue((type, model), out int value) ? value : (int?)null),
+                        "Overflow lost state value or model membership.");
+                checks++;
+            }
+        }
+        for (int step = 0; step < 4096; step++)
+        {
+            int type = random.Next(cases.Length), model = random.Next(models.Length);
+            if (random.Next(3) == 0)
+                Require(cases[type].Remove(store, models[model]) == expected.Remove((type, model)),
+                    "Remove return changed in overflow map.");
+            else
+            {
+                expected[(type, model)] = step;
+                cases[type].Set(store, models[model], step);
+            }
+            Compare(store);
+            if (step % 23 == 0)
+            {
+                PredictionStateStore child = store.Fork(new());
+                Compare(child);
+                cases[type].Set(child, models[model], -1);
+                Compare(store);
+            }
+            if (step % 127 == 0)
+            {
+                foreach (var key in expected.Keys.ToArray())
+                    cases[key.Type].Remove(store, models[key.Model]);
+                expected.Clear();
+                store = store.Fork(new());
+                Compare(store);
+            }
+        }
+        // A factory may recursively add enough states to resize both dictionaries.
+        // No dictionary ref may survive across that callback.
+        PredictionStateStore reentrant = new();
+        Counter outer = reentrant.Get(models[0], () =>
+        {
+            for (int type = 0; type < cases.Length; type++)
+                cases[type].Set(reentrant, models[1], type);
+            return new Counter { Value = 41 };
+        });
+        PredictionStateStore fork = reentrant.Fork(new());
+        Require(outer.Value == 41 && fork.Get<Counter>(models[0]).Value == 41,
+            "Reentrant factory lost outer state.");
+        for (int type = 0; type < cases.Length; type++)
+            Require(cases[type].Read(fork, models[1]) == type && cases[type].Count(fork) == 1,
+                "Reentrant factory lost inner state or type count.");
+        Console.WriteLine($"PASS: type-count overflow, zero compaction, independent Fork, reentrant factory ({checks} checks)");
     }
 #endif
 

@@ -98,7 +98,7 @@ export function createRunStatistics(db, now) {
       for(const [key,column] of [['sessionId','installation'],['profileId','profile']])if(filters[key]){scope.push(column+'=?');args.push(filters[key]);}
       const where=scope.length?' WHERE '+scope.join(' AND '):'';
       if(filters.source==='historical') {
-        for(const row of db.prepare('SELECT * FROM run_history_snapshots'+where).all(...args)) {
+        for(const row of db.prepare('SELECT * FROM run_history_snapshots'+where).iterate(...args)) {
           const h=JSON.parse(row.payload), chars=h.characters.filter(c=>!filters.character || c.characterId===filters.character);
           if(!chars.length)continue;
           const wins=chars.reduce((s,c)=>s+c.wins,0),losses=chars.reduce((s,c)=>s+c.losses,0);
@@ -107,12 +107,21 @@ export function createRunStatistics(db, now) {
               bestStreak:filters.character?chars[0].bestStreak:null,completedRuns:wins+losses,winRate:wins+losses?wins/(wins+losses):null}});
         }
       } else {
-        for(const row of db.prepare('SELECT * FROM runs'+where).all(...args)) {
-          const key=row.installation+row.profile;
-          if(!groups.has(key))groups.set(key,{sessionId:row.installation,profileId:row.profile,runs:[]});
-          groups.get(key).runs.push(JSON.parse(row.payload));
+        // Only one profile's compact records are retained; battle identifiers are irrelevant to ranking.
+        const fields=['runId','startedAt','endedAt','outcome','participation','characterId','version','ascension'];
+        const projection=fields.map(key=>`'${key}',json_extract(payload,'$.${key}')`);
+        for(const key of ['solvedBattles','executedBattles','autoBattles'])
+          projection.push(`'${key}',json(CASE WHEN json_array_length(payload,'$.${key}')>0 THEN '[0]' ELSE '[]' END)`);
+        let current=null;
+        const flush=()=>{if(current)groups.set(current.sessionId+current.profileId,
+          {sessionId:current.sessionId,profileId:current.profileId,statistics:summarizeRuns(current.runs,filters)});};
+        for(const row of db.prepare(`SELECT installation,profile,json_object(${projection.join(',')}) AS summary FROM runs${where} ORDER BY installation,profile`).iterate(...args)) {
+          if(!current || current.sessionId!==row.installation || current.profileId!==row.profile) {
+            flush();current={sessionId:row.installation,profileId:row.profile,runs:[]};
+          }
+          current.runs.push(JSON.parse(row.summary));
         }
-        for(const [key,g] of groups) groups.set(key,{sessionId:g.sessionId,profileId:g.profileId,statistics:summarizeRuns(g.runs,filters)});
+        flush();
       }
       const entries=[...groups.values()].filter(g=>matchesStatistics(g.statistics,filters));
       const sort={streak:'currentStreak',best:'bestStreak',rate:'winRate',wins:'wins',losses:'losses'}[filters.sort];

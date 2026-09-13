@@ -66,7 +66,9 @@ internal static class ModifyBlockMultiplicativeMirrors
 
         SimulatedCombatState combat = context.State.CombatState as SimulatedCombatState
             ?? throw new InvalidOperationException("Unmovable prediction requires SimulatedCombatState.");
-        return combat.GetBlockCardsPlayedThisTurn(power.Owner) < power.Amount ? 2m : 1m;
+        int earlierEvents = combat.GetBlockCardsPlayedThisTurn(power.Owner)
+            - context.Simulator.GetPoweredBlockEvents(context.CardPlay);
+        return earlierEvents < power.Amount ? 2m : 1m;
     }
 
     private static decimal HandleMultiplayerScaling(

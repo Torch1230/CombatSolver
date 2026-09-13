@@ -1452,7 +1452,11 @@ internal static class SolverOverlay
         _hpRecoveredOutcomeLabel.SizeFlagsHorizontal = Control.SizeFlags.ShrinkEnd;
         _hpRecoveredOutcomeLabel.HorizontalAlignment = HorizontalAlignment.Right;
         _routeHeadingRow.AddChild(_hpRecoveredOutcomeLabel);
-        _routeOutcomePanel.AddChild(_routeHeadingRow);
+        HBoxContainer routeSummary = new() { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        routeSummary.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Md);
+        routeSummary.AddChild(CreateTextLabel(SolverText.Get("当前路线摘要"), SolverUiTokens.Type.Body, TextPrimary, FontType.Bold));
+        routeSummary.AddChild(_routeHeadingRow);
+        _routeOutcomePanel.AddChild(routeSummary);
         _body.AddChild(_routeOutcomePanel);
         _body.MoveChild(_routeOutcomePanel, 0);
         VBoxContainer routes = new()

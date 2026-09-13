@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using MegaCrit.Sts2.Core.Models;
 
 namespace CombatSolver.Engine.Common;
@@ -10,7 +11,7 @@ internal sealed class PredictionStateStore
     private Dictionary<AbstractModel, AbstractModel>? _modelAliases;
     // 每种状态类型当前的条目数。ReadEntries<TState> 是热路径（每次动作后都要同步 Power 数量），
     // 绝大多数调用时该类型根本没有条目，用计数直接短路，避免整表扫描。
-    private Dictionary<Type, int>? _countByType;
+    private TypeEntryCounts? _countByType;
 
     public PredictionStateStore()
         : this(0, 0)
@@ -126,8 +127,7 @@ internal sealed class PredictionStateStore
     public bool HasEntries<TState>()
         where TState : class, IPredictionStateForkable
         => _countByType is not null
-            && _countByType.TryGetValue(typeof(TState), out int count)
-            && count != 0;
+            && _countByType.Get(typeof(TState)) != 0;
 
     public IEnumerable<(AbstractModel Model, TState State)> ReadEntries<TState>()
         where TState : class, IPredictionStateForkable
@@ -147,14 +147,13 @@ internal sealed class PredictionStateStore
         var key = (ResolveModel(model), typeof(TState));
         if (_states is null || !_states.Remove(key))
             return false;
-        _countByType![typeof(TState)]--;
+        _countByType!.Decrement(typeof(TState));
         return true;
     }
 
     private void IncrementCount(Type stateType)
     {
-        _countByType ??= [];
-        _countByType[stateType] = _countByType.GetValueOrDefault(stateType) + 1;
+        (_countByType ??= new()).Increment(stateType);
     }
 
     public void RemapModel(AbstractModel source, AbstractModel replacement)
@@ -216,11 +215,7 @@ internal sealed class PredictionStateStore
                 }
                 fork._states!.Add((forkedModel, stateType), forkedState);
             }
-            foreach ((Type stateType, int count) in _countByType!)
-            {
-                if (count != 0)
-                    (fork._countByType ??= [])[stateType] = count;
-            }
+            fork._countByType = _countByType!.Fork();
         }
         if (_modelAliases is not null)
         {
@@ -255,5 +250,117 @@ internal sealed class PredictionStateStore
         for (int guard = 0; guard < 16 && _modelAliases.TryGetValue(current, out AbstractModel? replacement); guard++)
             current = replacement;
         return current;
+    }
+
+    // Three common type counts stay in one object; unused stores still allocate none.
+    // Zero entries remain until Fork, just as they did in the dictionary representation.
+    private sealed class TypeEntryCounts
+    {
+        private Type? _first, _second, _third;
+        private int _firstCount, _secondCount, _thirdCount;
+        private Dictionary<Type, int>? _overflow;
+
+        public int Get(Type type)
+        {
+            if (_overflow is { } map)
+                return map.GetValueOrDefault(type);
+            if (ReferenceEquals(type, _first))
+                return _firstCount;
+            if (ReferenceEquals(type, _second))
+                return _secondCount;
+            return ReferenceEquals(type, _third) ? _thirdCount : 0;
+        }
+
+        public void Increment(Type type)
+        {
+            if (_overflow is { } map)
+            {
+                // Consume the ref immediately. State factories run before this method.
+                CollectionsMarshal.GetValueRefOrAddDefault(map, type, out _)++;
+                return;
+            }
+            Set(type, Get(type) + 1);
+        }
+
+        public void Decrement(Type type)
+        {
+            if (_overflow is { } map)
+            {
+                map[type]--;
+                return;
+            }
+            if (ReferenceEquals(type, _first))
+            {
+                _firstCount--;
+                return;
+            }
+            if (ReferenceEquals(type, _second))
+            {
+                _secondCount--;
+                return;
+            }
+            if (ReferenceEquals(type, _third))
+            {
+                _thirdCount--;
+                return;
+            }
+            throw new KeyNotFoundException();
+        }
+
+        private void Set(Type type, int count)
+        {
+            if (_overflow is { } map)
+            {
+                map[type] = count;
+                return;
+            }
+            if (ReferenceEquals(type, _first) || _first == null)
+            {
+                _first = type;
+                _firstCount = count;
+                return;
+            }
+            if (ReferenceEquals(type, _second) || _second == null)
+            {
+                _second = type;
+                _secondCount = count;
+                return;
+            }
+            if (ReferenceEquals(type, _third) || _third == null)
+            {
+                _third = type;
+                _thirdCount = count;
+                return;
+            }
+            _overflow = new(4)
+            {
+                [_first] = _firstCount,
+                [_second] = _secondCount,
+                [_third] = _thirdCount,
+                [type] = count,
+            };
+            _first = _second = _third = null;
+        }
+
+        public TypeEntryCounts? Fork()
+        {
+            TypeEntryCounts? copy = null;
+            if (_overflow is { } map)
+            {
+                foreach (var (type, count) in map)
+                    if (count != 0)
+                        (copy ??= new()).Set(type, count);
+            }
+            else
+            {
+                if (_firstCount != 0)
+                    (copy ??= new()).Set(_first!, _firstCount);
+                if (_secondCount != 0)
+                    (copy ??= new()).Set(_second!, _secondCount);
+                if (_thirdCount != 0)
+                    (copy ??= new()).Set(_third!, _thirdCount);
+            }
+            return copy;
+        }
     }
 }

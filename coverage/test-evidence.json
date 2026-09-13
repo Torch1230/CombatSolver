@@ -1,4 +1,180 @@
 {
+  "REPORT-CARDS-ORBIT-ENERGY-GATE": {
+    "status": "Passed",
+    "level": "HeadlessNativeDifferentialAndForkContract",
+    "procedure": "环绕轨道消费 GainEnergy 修正；禁止返能、移除限制、独立实例继续触发",
+    "expected": "被禁止的返能仍消耗本次四费触发，解除后两个实例正常返能；完整状态与RNG一致",
+    "observed": "baseline=1e0277417f9d457d8aea1d4205a5869c Failed energy 1/0; passed=2bec4ffb9a164481b5ace1a668f78906, eight native card plays, suppression removed after fourth play, two Orbit instances 1/2, 26.44 seconds",
+    "evidence": "src/Testing/UnattendedTestRunner.ReportCardSequence.cs; docs/issues/report-replans-20260913.md"
+  },
+  "REPORT-CARDS-RESOURCE-DRAW-ORDER": {
+    "status": "Passed",
+    "level": "HeadlessNativeDifferentialAndForkContract",
+    "procedure": "战利品铸造与抽牌顺序；Adrenaline/Offering/Neurosurge 返能先于虚空抽牌",
+    "expected": "有序牌堆、能量、HP、能力、卡牌状态与RNG匹配原版；满手时剑先占位",
+    "observed": "Spoils 7f9020a9cdc4412da48e30607c9335c0 Failed -> 1be7ac540f9a4ebcab455c7b77e48457 Passed; full-hand edee5895c8cc4ea195cc16d651926827; Adrenaline 7c55fe83182f4596b29ccbf357c0883d -> 8bf7b3754ad74e24af9e47ccf43afbd0; Offering b501384837294a6abbfdb8aed873dfa4 -> 2f6ed6da25e646d3aa584a47982842ef; Neurosurge 7e01d53cce3a49f6ba193558402ba0ea -> 0ae3660ccf914e7f9d55c6fc0dfa738b",
+    "evidence": "src/Testing/UnattendedTestRunner.ReportCardSequence.cs; docs/issues/report-replans-20260913.md"
+  },
+  "AUTO-DEPLOYMENT-REQUEST-OWNERSHIP": {
+    "status": "Passed",
+    "level": "HeadlessNativeDeploymentContract",
+    "procedure": "迟到自动请求丢失部署回合归属",
+    "expected": "复用后同回合自动回调；最小原生两张牌部署验证，非436包全量重跑。",
+    "observed": "baseline=7378bb2aa3af43219daa7dd48f4a2712, passed=8870e33fd0b344b6ae9c2393b59e902e",
+    "evidence": "src/Testing/UnattendedTestRunner.AutoTurnOwnership.cs; src/Testing/UnattendedTestRunner.Executor.cs; docs/issues/report-replans-20260913.md"
+  },
+  "SPAWN-POWER-ORDER": {
+    "status": "Passed",
+    "level": "HeadlessNativeDifferentialAndLifecycleContract",
+    "procedure": "召唤来源能力先于入场钩子施加",
+    "expected": "组装师原生召唤与贤者之石能力顺序。",
+    "observed": "baseline=7196457aa1a640b1840bafaf116764f5, passed=8ee41d141e1c40caa71d1adaf4f4d0f8",
+    "evidence": "; docs/issues/report-replans-20260913.md"
+  },
+  "INSTANCED-POWER-LIFECYCLE": {
+    "status": "Passed",
+    "level": "HeadlessNativeDifferentialAndLifecycleContract",
+    "procedure": "通用能力施加合并独立实例",
+    "expected": "自动化、滚石、定向偷窃属于一个实例身份机制。",
+    "observed": "baseline=55983c477ab849169dd1c0c36aca5152, passed=3502fcbd0a1a45ce8714bac2bb87a4a0; passed=4ca7a4ee808244f6896c0b921952505b; passed=bb2ac2b460e44c1b867361e5a033cd15",
+    "evidence": "src/Testing/UnattendedTestRunner.Executor.cs; src/Testing/UnattendedTestRunner.InstancedPower.cs; docs/issues/report-replans-20260913.md"
+  },
+  "SIGNED-GOLD-LOSS": {
+    "status": "Passed",
+    "level": "HeadlessNativeDifferentialAndLifecycleContract",
+    "procedure": "金币扣减拒绝原版带符号参数",
+    "expected": "负值黄金印代表吻合；其他金币首差仅候选。",
+    "observed": "baseline=0dd6c25a8f1c4f98ae7e96d8c7180481, passed=7877327a996f475db12dede147ffad5d",
+    "evidence": "src/Testing/UnattendedTestRunner.Executor.cs; src/Testing/UnattendedTestRunner.GoldLoss.cs; docs/issues/report-replans-20260913.md"
+  },
+  "EMOTION-CHIP-PREVENTED-DAMAGE": {
+    "status": "Passed",
+    "level": "HeadlessNativeDifferentialAndLifecycleContract",
+    "procedure": "受伤历史与原版未完全格挡判据不同",
+    "expected": "缓冲不扣血也能触发情感芯片；未将全部能量差异归入本类。",
+    "observed": "baseline=b865f0b9a3c64989a3050622c32dea55, passed=66c62e28bf1f4833bf15d2fce60681d5",
+    "evidence": "src/Testing/UnattendedTestRunner.EmotionChipDamage.cs; src/Testing/UnattendedTestRunner.Executor.cs; docs/issues/report-replans-20260913.md"
+  },
+  "SETUP-CAPTURED-HISTORY": {
+    "status": "Passed",
+    "level": "HeadlessNativeDifferentialAndLifecycleContract",
+    "procedure": "同回合准备重放重复清空历史",
+    "expected": "已获得星能在准备重放中丢失，辐射少算攻击次数。",
+    "observed": "baseline=8b05f81f0b9648d5b35ba8d476f0cc04, passed=7c729478f0d14270a5cf8ff4e0d000db",
+    "evidence": "src/Testing/UnattendedTestRunner.Executor.cs; src/Testing/UnattendedTestRunner.SetupHistory.cs; docs/issues/report-replans-20260913.md"
+  },
+  "BLOCK-EVENT-HISTORY": {
+    "status": "Passed",
+    "level": "HeadlessNativeDifferentialAndLifecycleContract",
+    "procedure": "用净格挡增量代替卡牌格挡事件",
+    "expected": "代码缺陷已复现修复；原包额外4格挡的来源未定位，日志关联未闭环。",
+    "observed": "baseline=cb0e848069e04c8283eabcbf29d2e4c7, passed=0f404dbcbe3b4e568e6c89579158774b",
+    "evidence": "src/Testing/UnattendedTestRunner.BlockEventHistory.cs; src/Testing/UnattendedTestRunner.Executor.cs; src/Testing/UnattendedTestRunner.ForkBoundaries.cs; docs/issues/report-replans-20260913.md"
+  },
+  "ZERO-BASE-BLOCK": {
+    "status": "Passed",
+    "level": "HeadlessNativeDifferentialAndLifecycleContract",
+    "procedure": "基础零格挡跳过修正链",
+    "expected": "无中毒目标的蜃景仍应获得敏捷加成。",
+    "observed": "baseline=22dccf98c4c74e528bfdfb117a970515, passed=e825941c7fcf4fc4aea55c9e90950def",
+    "evidence": "src/Testing/UnattendedTestRunner.Executor.cs; src/Testing/UnattendedTestRunner.ZeroBaseBlock.cs; docs/issues/report-replans-20260913.md"
+  },
+  "LAMP-INDIRECT-TEMPORARY-STRENGTH": {
+    "status": "Passed",
+    "level": "HeadlessNativeDifferentialAndLifecycleContract",
+    "procedure": "间接减益继承了外层卡牌来源",
+    "expected": "君王凝视间接减力量保留空来源，不消耗不安灯笼。",
+    "observed": "baseline=8ef8bc5c0a834483a0dad70b06766b5f, passed=5e6a572ec826440790e071cb2e931736",
+    "evidence": "src/Testing/UnattendedTestRunner.Executor.cs; src/Testing/UnattendedTestRunner.LampIndirectPoison.cs; docs/issues/report-replans-20260913.md"
+  },
+  "ORBIT-CAPTURED-ROOT": {
+    "status": "Passed",
+    "level": "HeadlessNativeDifferentialAndLifecycleContract",
+    "procedure": "轨道根捕获丢失实例花费余数",
+    "expected": "5场存在轨道且部署能量不足为候选；最小根捕获返能差分完成。",
+    "observed": "baseline=e218076e263c4f8f85153a848a7e75dd, passed=656deacd5dbc4afebe71929d6161d94a",
+    "evidence": "src/Testing/UnattendedTestRunner.Executor.cs; src/Testing/UnattendedTestRunner.OrbitRoot.cs; docs/issues/report-replans-20260913.md"
+  },
+  "GHOST-SEED-KEYWORD-LIFECYCLE": {
+    "status": "Passed",
+    "level": "HeadlessStrictNativeTwoTurnCardKeywordDifferential",
+    "procedure": "幽灵种子作用于升级防御，抑制降级后检查关键词；再生成普通卡和克隆，推进下一回合，比较完整状态/RNG及仅关键词变化的续用不等。",
+    "expected": "原有卡牌遵循降级重置，新进场卡牌正常获得虚无，本地关键词进入续用字段。",
+    "observed": "失败d2b7fffc0c8641a9b13e36958e1302eb中实际关键词不同但旧续用首差为none；ac64922583814c0690378914b6630b4d Passed。",
+    "evidence": "src/Testing/UnattendedTestRunner.GhostSeedKeywords.cs; docs/TEST_MATRIX.md; 2026-09-13"
+  },
+  "DAMPEN-DEATH-GROWTH": {
+    "status": "Passed",
+    "level": "HeadlessStrictNativeDeathAndCardGrowthDifferential",
+    "procedure": "升级爪击/巨镰被抑制降级，击杀1HP施法者后继续结算同一张牌的成长，比较完整状态/RNG。",
+    "expected": "施法者死亡立即解除抑制，随后使用恢复升级后的成长值。",
+    "observed": "爪击失败dbfd298906b4409a9f0b31c0aae60380为成长2/3；14ec10028e27418eb345a1d9a404e248与巨镰c5305c1973b94c14b75f960eed8faec3 Passed。",
+    "evidence": "src/Testing/UnattendedTestRunner.DampenDeath.cs; docs/TEST_MATRIX.md; 2026-09-13"
+  },
+  "PHANTOM-RETAIN-LIFECYCLE": {
+    "status": "Passed",
+    "level": "HeadlessStrictNativePowerAndCardLifecycleDifferential",
+    "procedure": "幻影之刃作用于升级小刀，再抑制降级、叠加能力、克隆入场及移除后重新施加，比较完整状态/RNG。",
+    "expected": "保留只在首次施加和入场时赋予，降级的关键词重置保持原版结果。",
+    "observed": "失败91737ac0e4bf4c1a81284168d0d44be7；153756412f0640438927d4cf37b70fb5 Passed。",
+    "evidence": "src/Testing/UnattendedTestRunner.PhantomRetain.cs; docs/TEST_MATRIX.md; 2026-09-13"
+  },
+  "ATTACK-START-HISTORY": {
+    "status": "Passed",
+    "level": "HeadlessStrictNativeTwoTurnAndForkDifferential",
+    "procedure": "致死性75下痛殴先攻击再吸收打击，复用痛殴再次攻击并进入下一回合，比较完整状态/RNG及根捕获、Fork隔离。",
+    "expected": "另一张手牌的伤害查询消耗已经发生的首攻窗口，下一回合重新开始计数。",
+    "observed": "失败a9b2864bbb3b46febb3332ccbd38f1b8为痛殴14.50/10；8d36d575f6854aaf815a240d28186263 Passed。",
+    "evidence": "src/Testing/UnattendedTestRunner.AttackStartHistory.cs; docs/TEST_MATRIX.md; 2026-09-13"
+  },
+  "IMPLICIT-HAND-CHOICE-ORDER": {
+    "status": "Passed",
+    "level": "HeadlessStrictNativeCardChoiceDifferential",
+    "procedure": "隐秘匕首要求弃2张，剩余打击/防御恰好2张；使用正常候选生成器与自动策略，比较原版隐式全弃和生成牌后的完整状态/RNG。",
+    "expected": "省略选牌界面时保持原候选顺序。",
+    "observed": "失败a486b3292369471085a61799fcc30eeb，预测防御在先；修复809f6943021d4578b339b71e3bd53955 Passed，打击/防御与原版一致。",
+    "evidence": "src/Testing/UnattendedTestRunner.ImplicitChoiceOrder.cs; docs/TEST_MATRIX.md; 2026-09-13"
+  },
+  "RECURRING-ENERGY-VALUATION": {
+    "status": "Passed",
+    "level": "HeadlessFixedBudgetQualityAndNativeDeployment",
+    "procedure": "环绕轨道250HP、自动化180HP的6000节点固定预算对照，14HP零损斩杀哨兵、600节点增量等价及Instant/0秒原版整场部署。",
+    "expected": "中间保路计入可消费的返能，长战获胜，短战保留斩杀，部署计划外重算0。",
+    "observed": "两项目标由死亡变为获胜；ef36ab823040497d807b192c6fa8fcec与7f8098525c3f4cbebddb3959fa2fc211实战HP10/6、重算0。自动化250HP探索对照仍死亡，未宣称全场景改善。",
+    "evidence": "src/Testing/UnattendedTestRunner.RecurringEnergyQuality.cs; docs/issues/recurring-energy-valuation-20260913.md; 2026-09-13"
+  },
+  "AUTOMATION-DRAW-LIFECYCLE": {
+    "status": "Passed",
+    "level": "HeadlessStrictNativeTwoTurnAndForkDifferential",
+    "procedure": "捕获剩1张抽牌的返能计数；原版抽牌与分支同步比较；另外只靠每回合自然抽5张推进两回合。",
+    "expected": "10张抽牌返能一次并复位，父分支隔离，自然抽牌同样触发。",
+    "observed": "a3152fff299c4db9bb1445c2076c3f9f与600c0898f3ca4b23a8d73fdc476bdb77 Passed，完整状态/RNG一致。",
+    "evidence": "src/Testing/UnattendedTestRunner.AutomationRoot.cs; docs/TEST_MATRIX.md; 2026-09-13"
+  },
+  "NIGHTMARE-TURN-ORDER-AND-ROOT": {
+    "status": "Passed",
+    "level": "HeadlessStrictNativeTwoTurnAndForkDifferential",
+    "procedure": "无限刀刃先于梦魇，完整两回合比较生成顺序；活动梦魇重新捕获、Fork/live隔离、状态键及续用比较。",
+    "expected": "按能力取得顺序生成副本，所选牌完整状态由分支独占。",
+    "observed": "顺序失败e3e990169f6a48dc8ec78d26df15d45a；通过fba8186242f44a93835b9f01955d8003与3649d93b13254fe88f34d0f3c5b842b4。",
+    "evidence": "src/Testing/UnattendedTestRunner.NightmareSnapshot.cs; docs/TEST_MATRIX.md; 2026-09-13"
+  },
+  "RELIC-DAMAGE-WAKE": {
+    "status": "Passed",
+    "level": "HeadlessStrictNativeDamageDifferential",
+    "procedure": "招架盾对熟睡甲虫或乐加维林族母造成伤害，比较完整单效果状态与RNG。",
+    "expected": "伤害发生时立即处理熟睡计数或睡眠唤醒。",
+    "observed": "失败3ccdcacbe9aa473e8a777b34ea99391e；通过252a8f9dc76e4610ac455f05388eebcf与1012870880214ac79bbc646c5e5d46a2。",
+    "evidence": "src/Testing/UnattendedTestRunner.WakeDamage.cs; docs/TEST_MATRIX.md; 2026-09-13"
+  },
+  "CRAB-RAGE-DEATH-TIMING": {
+    "status": "Passed",
+    "level": "HeadlessStrictNativeDeathAndNextHitDifferential",
+    "procedure": "蟹皇一只先死亡，再对存活个体施加下一次伤害；完成死亡清理后比较完整状态与RNG。",
+    "expected": "另一只的格挡在下一击前生效。",
+    "observed": "失败94557ad1b38945b297365a0228455829；通过cccecc62cf9d4c15891f02a218d59573。",
+    "evidence": "src/Testing/UnattendedTestRunner.DeathHookTiming.cs; docs/TEST_MATRIX.md; 2026-09-13"
+  },
   "TEST-SUBJECT-ORIGINAL-REPORT": {
     "status": "Passed",
     "level": "OriginalArchiveNativeActionAndTwoTurnDifferential",

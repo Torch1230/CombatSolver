@@ -5,12 +5,13 @@ using Buffer = CombatSolver.OwnedExpansionBatch<Resource, Resource, Resource>;
 CheckCrossThreadReturnAndOldLease();
 CheckPartialTransferFailure();
 CheckPotionTransferFailure();
+CheckEndTurnTransferFailure();
 CheckTransferredOwnership();
 CheckPoolBoundAndClear();
 CheckCapacityRejection();
 CheckConcurrentPoolUse();
 CheckClearedReferences();
-Console.WriteLine("Passed 8 expansion batch checks using the actual production storage/lease source.");
+Console.WriteLine("Passed 9 expansion batch checks using the actual production storage/lease source.");
 
 static Buffer.Pool CreatePool() => new(static resource => resource.Release());
 
@@ -102,6 +103,34 @@ static void CheckPotionTransferFailure()
     target.Dispose();
     Require(first.Releases == 1 && second.Releases == 1 && pending.Releases == 1
         && reused.Releases == 0, "Potion merge leaked, double released, or touched a later lease.");
+}
+
+static void CheckEndTurnTransferFailure()
+{
+    Buffer.Pool pool = CreatePool();
+    using TestBatch source = new(pool);
+    using TestBatch target = new(pool);
+    Resource first = new(), second = new(), pending = new();
+    source.EndTurn(first);
+    source.EndTurn(second);
+    source.EndTurn(pending);
+    source.MoveEndTurnTo(target, first);
+    source.MoveEndTurnTo(target, second);
+    Require(target.EndTurns.SequenceEqual([first, second]), "EndTurn merge changed input order.");
+    target.Dispose();
+    bool failed = false;
+    try { source.MoveEndTurnTo(target, pending); }
+    catch (ObjectDisposedException) { failed = true; }
+    Require(failed && source.CurrentStorage.Owned.Contains(pending),
+        "Failed end-turn merge lost the source lease.");
+    source.Dispose();
+    using TestBatch next = new(pool);
+    Resource reused = new();
+    next.EndTurn(reused);
+    source.Dispose();
+    target.Dispose();
+    Require(first.Releases == 1 && second.Releases == 1 && pending.Releases == 1
+        && reused.Releases == 0, "EndTurn merge leaked, double released, or touched a later lease.");
 }
 
 static void CheckPoolBoundAndClear()
@@ -207,4 +236,5 @@ internal sealed class TestBatch(Buffer.Pool pool) : Buffer(pool)
     public void EndTurn(Resource resource) => AddEndTurn(resource, resource);
     public void MoveTo(TestBatch target, Resource resource) => TransferTo(target, resource, resource);
     public void MovePotionTo(TestBatch target, Resource resource) => TransferPotionTo(target, resource, resource);
+    public void MoveEndTurnTo(TestBatch target, Resource resource) => TransferEndTurnTo(target, resource, resource);
 }

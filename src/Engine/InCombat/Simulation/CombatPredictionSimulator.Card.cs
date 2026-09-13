@@ -385,7 +385,7 @@ internal sealed partial class CombatPredictionSimulator
                 }
                 else
                 {
-                    cardBlockGained = TakeBlockGained(cardPlay);
+                    cardBlockGained = GetBlockGained(cardPlay);
                     effectSink?.ApplyCardPlayEffects(
                         this,
                         card,
@@ -490,6 +490,8 @@ internal sealed partial class CombatPredictionSimulator
                 if (HasPendingChoice)
                     return;
             }
+
+            _blockGainedByCardPlay.Remove(cardPlay);
 
             if (ownerCreature.IsDead)
             {

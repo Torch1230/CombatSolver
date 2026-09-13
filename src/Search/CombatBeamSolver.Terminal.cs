@@ -65,8 +65,6 @@ internal sealed partial class CombatBeamSolver
                 comparable));
         }
 
-        int availableFutureSoldHp = Math.Max(0, SoldHpThreshold() - battleDamage.SoldHpCommitted);
-        int absoluteFutureSoldHp = Math.Max(0, root.InitialPlayerHp - 1);
         List<SearchNode> annotated = [];
         foreach (IGrouping<(int Turn, StateFingerprint State, ulong PotionSlotsUsed), PendingTurnOutcome> group in pending.GroupBy(
                      item => (item.Turn, item.TurnStart.StateKey, item.PotionSlotsUsed)))
@@ -113,11 +111,7 @@ internal sealed partial class CombatBeamSolver
 
             PendingTurnOutcome[] comparable = retained.Where(item => item.IsComparable).ToArray();
             int minimumHpLost = comparable.Length == 0 ? 0 : comparable.Min(item => item.HpLost);
-            PendingTurnOutcome[] conservative = comparable
-                .Where(item => item.HpLost == minimumHpLost)
-                .ToArray();
             int maxBlock = retained.Max(item => item.ActualBlock);
-            List<(PendingTurnOutcome Outcome, int FutureSold)> deferredInvestments = [];
             foreach (PendingTurnOutcome outcome in retained)
             {
                 int soldThisTurn = outcome.IsComparable
@@ -125,75 +119,11 @@ internal sealed partial class CombatBeamSolver
                     : 0;
                 int previousSold = outcome.Node.Parent!.FutureSoldHp;
                 int futureSold = previousSold + soldThisTurn;
-                bool exceedsPolicyThreshold = futureSold > availableFutureSoldHp + outcome.Node.Snapshot.StrategicHpCredit;
-                bool protectsInvestment = exceedsPolicyThreshold
-                    && HasStrategicInvestmentPayoff(outcome, conservative);
-                if (futureSold > absoluteFutureSoldHp)
-                {
-                    _run.SoldHpBranchesPruned++;
-                    continue;
-                }
-                if (exceedsPolicyThreshold && !protectsInvestment)
-                {
-                    deferredInvestments.Add((outcome, futureSold));
-                    continue;
-                }
-                if (protectsInvestment)
-                    _run.HpInvestmentBranchesProtected++;
                 annotated.Add(AnnotateTurnOutcome(
                     outcome,
                     soldThisTurn,
                     futureSold,
-                    maxBlock,
-                    exceedsPolicyThreshold));
-            }
-
-            // Immediate scalar payoff is not a proof that a route is worthwhile, and its
-            // absence is not a proof that it is useless. Preserve a tiny structural portfolio
-            // for delayed HP investments; the cross-turn lease supplies the hard time bound.
-            List<(PendingTurnOutcome Outcome, int FutureSold)> deferredRepresentatives =
-                deferredInvestments
-                    .GroupBy(item => (
-                        item.Outcome.Node.Snapshot.CycleShapeKey,
-                        item.Outcome.Node.StateKey))
-                    .Select(family => family
-                        .OrderBy(item => item.FutureSold)
-                        .ThenByDescending(item => item.Outcome.Node.ActionCount)
-                        .ThenByDescending(item => item.Outcome.Node.Snapshot.ProjectedPlayerHp)
-                        .ThenByDescending(item => item.Outcome.Node.Score)
-                        .First())
-                    .ToList();
-            List<(PendingTurnOutcome Outcome, int FutureSold)> retainedDeferred = [];
-            (PendingTurnOutcome Outcome, int FutureSold)? safest = deferredRepresentatives
-                .OrderBy(item => item.FutureSold)
-                .ThenByDescending(item => item.Outcome.Node.Snapshot.ProjectedPlayerHp)
-                .ThenByDescending(item => item.Outcome.Node.ActionCount)
-                .ThenByDescending(item => item.Outcome.Node.Score)
-                .Select(item => ((PendingTurnOutcome, int)?)item)
-                .FirstOrDefault();
-            if (safest is { } safeInvestment)
-                retainedDeferred.Add(safeInvestment);
-            (PendingTurnOutcome Outcome, int FutureSold)? furthest = deferredRepresentatives
-                .Where(item => !retainedDeferred.Contains(item))
-                .OrderByDescending(item => item.Outcome.Node.ActionCount)
-                .ThenBy(item => item.FutureSold)
-                .ThenByDescending(item => item.Outcome.Node.Snapshot.ProjectedPlayerHp)
-                .ThenByDescending(item => item.Outcome.Node.Score)
-                .Select(item => ((PendingTurnOutcome, int)?)item)
-                .FirstOrDefault();
-            if (furthest is { } furthestInvestment)
-                retainedDeferred.Add(furthestInvestment);
-            _run.SoldHpBranchesPruned += deferredInvestments.Count - retainedDeferred.Count;
-            foreach ((PendingTurnOutcome outcome, int futureSold) in retainedDeferred)
-            {
-                int soldThisTurn = Math.Max(0, futureSold - outcome.Node.Parent!.FutureSoldHp);
-                _run.HpInvestmentBranchesProtected++;
-                annotated.Add(AnnotateTurnOutcome(
-                    outcome,
-                    soldThisTurn,
-                    futureSold,
-                    maxBlock,
-                    isInvestment: true));
+                    maxBlock));
             }
         }
         ObserveSearchPathTurnSelection(ended, annotated, pathBoundaryId);
@@ -204,8 +134,7 @@ internal sealed partial class CombatBeamSolver
         PendingTurnOutcome outcome,
         int soldThisTurn,
         int futureSold,
-        int maxBlock,
-        bool isInvestment)
+        int maxBlock)
     {
         double scoreWithoutSoldPenalty = outcome.Node.Score
             - outcome.Node.FutureSoldHp * SoldHpPenalty();
@@ -213,9 +142,6 @@ internal sealed partial class CombatBeamSolver
         {
             FutureSoldHp = futureSold,
             Score = ApplySoldHpPenalty(scoreWithoutSoldPenalty, futureSold),
-            Traits = isInvestment
-                ? outcome.Node.Traits | SearchRouteTraits.HpInvestment
-                : outcome.Node.Traits,
             Outcome = new TurnOutcome(
                 outcome.Turn,
                 outcome.HpLost,
@@ -230,25 +156,6 @@ internal sealed partial class CombatBeamSolver
                 outcome.ActualBlock,
                 outcome.EnergyLeft),
         };
-    }
-
-    private static bool HasStrategicInvestmentPayoff(
-        PendingTurnOutcome outcome,
-        IReadOnlyList<PendingTurnOutcome> conservative)
-    {
-        SimulationSnapshot candidate = outcome.Node.Snapshot;
-        if (candidate.PlayerDead || candidate.ProjectedPlayerHp <= 0 || conservative.Count == 0)
-            return false;
-        CycleExitQuality candidateQuality = MeasureCycleExitQuality(
-            outcome.TurnStart,
-            outcome.Node);
-        // Compare against real conservative routes one by one. Combining each route's best
-        // coordinate into an unattainable synthetic baseline incorrectly deletes Pareto-safe
-        // investments.
-        return !conservative.Any(item => MeasureCycleExitQuality(
-                item.TurnStart,
-                item.Node)
-            .DominatesOrEquals(candidateQuality));
     }
 
     private static ulong CurrentTurnPotionSlotsUsed(SearchNode turnStart, SearchNode outcome)
@@ -392,40 +299,6 @@ internal sealed partial class CombatBeamSolver
         while (current.Parent is { } parent && parent.Turn == current.Turn)
             current = parent;
         return current;
-    }
-
-    private int SoldHpThreshold()
-        => ResolveSoldHpThreshold(
-            root.InitialPlayerMaxHp,
-            root.EncounterRoomType,
-            _strategicBossHpRelief,
-            _theftPolicy);
-
-    internal static int ResolveSoldHpThreshold(
-        int initialPlayerMaxHp,
-        RoomType? encounterRoomType,
-        BossHpRelief bossHpRelief,
-        SolverTheftPolicy? theftPolicy)
-    {
-        if (theftPolicy == SolverTheftPolicy.PreserveResources)
-            return initialPlayerMaxHp;
-        int survivalLimit = Math.Max(0, initialPlayerMaxHp - 1);
-        if (bossHpRelief == BossHpRelief.RunEnding)
-            return survivalLimit;
-        if (bossHpRelief == BossHpRelief.ActClearHeal)
-        {
-            return Math.Min(
-                survivalLimit,
-                ActEndingBossPolicy.RawHpRequiredForPersistentValue(
-                    SolverWeights.BossSoldHpThreshold,
-                    bossHpRelief));
-        }
-        return encounterRoomType switch
-        {
-            RoomType.Boss => SolverWeights.BossSoldHpThreshold,
-            RoomType.Elite => SolverWeights.EliteSoldHpThreshold,
-            _ => SolverWeights.NormalSoldHpThreshold,
-        };
     }
 
     private double ApplySoldHpPenalty(double score, int futureSoldHp)

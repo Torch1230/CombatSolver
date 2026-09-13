@@ -1,6 +1,8 @@
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models.Cards;
+using MegaCrit.Sts2.Core.Models.Powers;
+using MegaCrit.Sts2.Core.ValueProps;
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.InCombat.Simulation;
 
@@ -8,6 +10,49 @@ namespace CombatSolver.Engine.InCombat.Mirrors.Cards.OnPlay;
 
 internal static class CardDrawCardMirrors
 {
+    public static void AdrenalineOnPlay(Adrenaline card, CardOnPlayMirrorContext context)
+    {
+        context.Simulator.GainEnergy(card.Owner, card.DynamicVars.Energy.IntValue);
+        if (context.Simulator.HasPendingChoice)
+            return;
+        context.Simulator.Draw(card.Owner, card.DynamicVars.Cards.BaseValue);
+    }
+
+    public static void OfferingOnPlay(Offering card, CardOnPlayMirrorContext context)
+    {
+        context.Simulator.Damage([card.Owner.Creature], card.DynamicVars.HpLoss.BaseValue,
+            ValueProp.Unblockable | ValueProp.Unpowered | ValueProp.Move,
+            card.Owner.Creature, context.Card, context.CardPlay);
+        if (context.Simulator.HasPendingChoice)
+            return;
+        context.Simulator.GainEnergy(card.Owner, card.DynamicVars.Energy.IntValue);
+        if (context.Simulator.HasPendingChoice)
+            return;
+        context.Simulator.Draw(card.Owner, card.DynamicVars.Cards.BaseValue);
+    }
+
+    public static void NeurosurgeOnPlay(Neurosurge card, CardOnPlayMirrorContext context)
+    {
+        context.Simulator.GainEnergy(card.Owner, card.DynamicVars.Energy.IntValue);
+        if (context.Simulator.HasPendingChoice)
+            return;
+        context.Simulator.Draw(card.Owner, card.DynamicVars.Cards.BaseValue);
+        if (context.Simulator.HasPendingChoice)
+            return;
+        SimulatedCombatState combat = context.State.CombatState as SimulatedCombatState
+            ?? throw new InvalidOperationException("Neurosurge requires simulated combat state.");
+        combat.Apply<NeurosurgePower>(card.Owner.Creature, card.DynamicVars["NeurosurgePower"].IntValue,
+            card.Owner.Creature);
+    }
+
+    public static void SpoilsOfBattleOnPlay(SpoilsOfBattle card, CardOnPlayMirrorContext context)
+    {
+        PersistentPowerSupport.Forge(context.Simulator, card.Owner, card.DynamicVars.Forge.IntValue);
+        if (context.Simulator.HasPendingChoice)
+            return;
+        context.Simulator.Draw(card.Owner, card.DynamicVars.Cards.BaseValue);
+    }
+
     public static void CompileDriverOnPlay(CompileDriver card, CardOnPlayMirrorContext context)
     {
         context.AttackSingle();
