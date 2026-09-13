@@ -47,12 +47,13 @@ internal static class MonsterSpawnSupport
     {
         combat.AddPredictedMonster(creature);
         ApplyNativeEntrancePowers(combat, creature);
-        if (minion && combat.GetAmount<MinionPower>(creature) <= 0)
-            combat.Apply<MinionPower>(creature, 1, source);
         if (creature.Side == CombatSide.Enemy && combat.Modifiers.Any(static modifier => modifier is Murderous))
             combat.Apply<StrengthPower>(creature, 3);
         ApplyCreatureAddedRelics(simulator, combat, creature);
         combat.PreparePredictedMonster(simulator, creature);
+        // The summoning move applies Minion after CreatureCmd.Add and its entrance hooks finish.
+        if (minion && combat.GetAmount<MinionPower>(creature) <= 0)
+            combat.Apply<MinionPower>(creature, 1, source);
     }
 
     public static string? NextSlot(SimulatedCombatState combat)

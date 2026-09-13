@@ -48,6 +48,7 @@ internal sealed partial class SimulatedCombatState
             _statusCardsDrawnThisTurn = _statusCardsDrawnThisTurn?.Fork(),
             _cardPlaySeriesStartedThisTurn = _cardPlaySeriesStartedThisTurn?.Fork(),
             _zeroCostAttackStartsThisTurn = _zeroCostAttackStartsThisTurn?.Fork(),
+            _attackPlayStartsThisTurn = _attackPlayStartsThisTurn?.Fork(),
             _cardPlayStartsThisTurn = _cardPlayStartsThisTurn?.Fork(),
             _attackSkillStartsThisTurn = _attackSkillStartsThisTurn?.Fork(),
             _enemiesIntendingAttack = _enemiesIntendingAttack?.Fork(),
@@ -129,7 +130,10 @@ internal sealed partial class SimulatedCombatState
         {
             // 观察者只往卡上写一个回调，不读也不写任何被 ForkCard 改动的状态，
             // 所以可以和分叉同一趟走完：卡的顺序、ForkCard 的调用序列都不变。
-            List<PredictedCard> registeredCombatCards = new(_registeredCombatCards.Count);
+            // Generation/transformation first registers one card before removing a replacement.
+            // One spare slot prevents that first insertion from copying the entire forked list.
+            List<PredictedCard> registeredCombatCards = new(
+                _registeredCombatCards.Count == 0 ? 0 : _registeredCombatCards.Count + 1);
             foreach (PredictedCard card in _registeredCombatCards)
             {
                 PredictedCard forkedCard = ForkCard(card, context);
@@ -333,7 +337,7 @@ internal sealed partial class SimulatedCombatState
     {
         if (source is null)
             return null;
-        List<PredictedCard> fork = new(source.Count);
+        List<PredictedCard> fork = new(source.Count == 0 ? 0 : source.Count + 1);
         foreach (PredictedCard card in source)
             fork.Add(ForkCard(card, context));
         return fork;

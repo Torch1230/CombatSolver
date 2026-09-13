@@ -1,0 +1,8 @@
+*
+!Dockerfile
+!package.json
+!package-lock.json
+!*.mjs
+!public/
+!public/**
+public/prototype.html

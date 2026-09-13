@@ -8,20 +8,32 @@ using CombatSolver.Engine.InCombat.Simulation;
 
 namespace CombatSolver;
 
-internal static class PredictionCoverage
+internal static partial class PredictionCoverage
 {
     public static IReadOnlyList<PredictionGap> Collect(CombatPredictionSimulator simulator)
     {
-        return simulator.History.Entries
-            .OfType<CombatPredictionRiskEntry>()
-            .Select(ToGap)
-            .DistinctBy(gap => (gap.SourceId, gap.Method, gap.Reason, gap.Compensated))
+        return CollectUniqueGaps(simulator)
             .OrderBy(gap => gap.SourceId, StringComparer.Ordinal)
             .ThenBy(gap => gap.Method, StringComparer.Ordinal)
             .ToList();
     }
 
-    private static PredictionGap ToGap(CombatPredictionRiskEntry entry)
+    private static IEnumerable<PredictionGap> CollectUniqueGaps(CombatPredictionSimulator simulator)
+    {
+        HashSet<(string SourceId, string Method, string Reason, bool Compensated)>? seen = null;
+        foreach (CombatPredictionHistoryEntry entry in simulator.History)
+        {
+            if (entry is not CombatPredictionRiskEntry risk)
+                continue;
+            // Classify every original occurrence, preserving callback/lookup order.
+            // Only the result object is delayed until after the same four-field dedup.
+            var gap = DescribeGap(risk);
+            if ((seen ??= []).Add(gap))
+                yield return new PredictionGap(gap.SourceId, gap.Method, gap.Reason, gap.Compensated);
+        }
+    }
+
+    private static (string SourceId, string Method, string Reason, bool Compensated) DescribeGap(CombatPredictionRiskEntry entry)
     {
         AbstractModel? source = entry.Trace?.Source;
         string sourceId = source?.Id.Entry ?? source?.GetType().Name ?? "UNKNOWN";
@@ -48,7 +60,7 @@ internal static class PredictionCoverage
             Enthralled or Normality when method == "ShouldPlay" => true,
             _ => false,
         };
-        return new PredictionGap(sourceId, method, entry.Reason.ToString(), compensated);
+        return (sourceId, method, entry.Reason.ToString(), compensated);
     }
 
     private static bool IsVerifiedNativeRelicHook(RelicModel relic, string method)

@@ -31,7 +31,10 @@ internal sealed partial class UnattendedTestRunner
             await InjectCardAsync(combat, player, new UnattendedCardInjection { CardId = "FORBIDDEN_GRIMOIRE", Pile = "Hand" });
             SetEnergy(player, 3);
             var root = CombatRootSnapshot.Capture(combat);
-            var policy = SolverController.CaptureSearchPolicy(SolverSettings.Capture(), combat, false, null);
+            var policy = SolverController.CaptureSearchPolicy(SolverSettings.Capture(), combat, false, null) with
+            {
+                Act3BossStrategy = true,
+            };
             Check(policy.BrightestFlameMaxHpLossLimit == 4 && policy.HasGrowthTargets, "root policy capture");
             var driver = new CombatBeamSolver(root, SolverDisplayNames.Capture(combat), BattleDamageTracker.Observe(combat), policy);
             PlanAction[] actions = [new(PlanActionKind.PlayCard,root.StartTurnNumber,CardId:"BRIGHTEST_FLAME"),new(PlanActionKind.PlayCard,root.StartTurnNumber,CardId:"FORBIDDEN_GRIMOIRE")];
@@ -71,7 +74,7 @@ internal sealed partial class UnattendedTestRunner
             SetEnergy(player,3);
             var searchRoot = CombatRootSnapshot.Capture(combat);
             policy = SolverController.CaptureSearchPolicy(SolverSettings.Capture(),combat,false,null) with
-            { FixedBudget=true, BudgetOverrideMilliseconds=1500, PotionPolicy=SolverPotionPolicy.Disabled, MaxDegreeOfParallelism=1, VerifyIncrementalSearch=true };
+            { Act3BossStrategy=true, FixedBudget=true, BudgetOverrideMilliseconds=1500, PotionPolicy=SolverPotionPolicy.Disabled, MaxDegreeOfParallelism=1, VerifyIncrementalSearch=true };
             var names = SolverDisplayNames.Capture(combat); var damage = BattleDamageTracker.Observe(combat);
             SolverResult result = await Task.Run(()=>CombatSearchCoordinator.Solve(searchRoot,names,damage,policy,CancellationToken.None,null));
             Check(result.Snapshot.AllEnemiesDead && result.Snapshot.GrowthRewards.ForbiddenGrimoire == 1

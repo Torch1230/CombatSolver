@@ -51,6 +51,8 @@ internal static class AfterCardPlayedMirrors
         CardPlay cardPlay,
         bool completed)
     {
+        if (!simulator.StateStore.HasEntries<PaelsLegionPredictionState>())
+            return;
         foreach ((AbstractModel model, PaelsLegionPredictionState state) in
                  simulator.StateStore.ReadEntries<PaelsLegionPredictionState>())
         {

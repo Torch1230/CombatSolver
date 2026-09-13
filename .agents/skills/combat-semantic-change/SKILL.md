@@ -119,3 +119,8 @@ writeLive 和 writePredicted，复用 store 的 Fork context。状态描述按�
 提交前同步受影响的 `docs/DEVELOPMENT_NOTES.md`、`docs/TEST_MATRIX.md` 和必要的结构化证据。职责边界有变化时同时更新 `docs/ARCHITECTURE.md` 与结构门禁。
 
 普通语义修复直接提交。是否随该项提升版本和打包，以 `AGENTS.md` 的活动发布批次和发布口令为准；不要由本 skill 另立发包规则。汇报应说明首个错误状态、权威实现层、状态所有权、实际运行的 fixture 和未执行项。
+
+- 预测卡牌/Power 克隆的免锁路径由 `NativeModelCloneConcurrency` 核对：仅隔离域、普通原版卡牌或默认内部初始化 Power、已物化原版变量、原生克隆阶段与精确 BaseLib/Ritsu 稀疏复制补丁组合。Power 还须核对默认 InitInternalData、AbstractModel.DeepCloneFields 与 Power.DynamicVars 物化保护补丁；自定义初始化、附魔/灾厄、第三方模型或变量、未知补丁均走原锁；不得为判定路径而物化共享源变量。证据限线程当前最外层隔离域，跨域刷新，不缓存模型或分支值；原版 `MutableClone` 的 BaseLib 锁保持。合同须真实加载 BaseLib，并持锁验证并行、变量独占与跨域补丁失效。
+
+- `PredictionStateStore` 的三槽计数表只保存 Type/条目数，不保存模型或 state；空 store 不创建计数对象，溢出仍使用独占字典，Fork 丢弃零计数。工厂可以重入并扩容，禁止跨工厂调用持有主字典 ref；计数更新的 ref 必须立即消费。验证覆盖溢出、清空后 Fork、父子隔离与工厂重入，不能只测常见一类状态。
+- 额外生成入口复用现有根无色/原生角色攻击池时，保持全部身份与约束门禁；不把 `GetForCombat` 的有放回 `NextItem` 和 `GetDistinctForCombat` 的 `TakeRandom` 混用，即使只取一张。候选模型只读共享，随机数与生成卡牌始终由当前分支独占；带额外过滤的调用方不能直接迁移。

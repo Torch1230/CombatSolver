@@ -762,7 +762,8 @@ internal static class HookMirrors
         Creature? dealer,
         PredictedCard? cardSource,
         HpLossHookPhase phases,
-        out List<AbstractModel> modifiers)
+        out List<AbstractModel> modifiers,
+        Func<AbstractModel, bool>? modifierFilter = null)
     {
         var context = new ModifyHpLostMirrorContext
         {
@@ -779,6 +780,7 @@ internal static class HookMirrors
         {
             foreach (var listener in IterateRunHookListeners(simulator, MirroredHookMask.ModifyHpLostBeforeOsty))
             {
+                if (modifierFilter != null && !modifierFilter(listener)) continue;
                 var previousAmount = context.Amount;
                 context.Amount = ModifyHpLostMirrors.InvokeBeforeOsty(listener, context);
                 if (decimal.Truncate(previousAmount) != decimal.Truncate(context.Amount))
@@ -789,6 +791,7 @@ internal static class HookMirrors
 
             foreach (var listener in IterateRunHookListeners(simulator, MirroredHookMask.ModifyHpLostBeforeOstyLate))
             {
+                if (modifierFilter != null && !modifierFilter(listener)) continue;
                 var previousAmount = context.Amount;
                 context.Amount = ModifyHpLostMirrors.InvokeBeforeOstyLate(listener, context);
                 if (decimal.Truncate(previousAmount) != decimal.Truncate(context.Amount))
@@ -802,6 +805,7 @@ internal static class HookMirrors
         {
             foreach (var listener in IterateRunHookListeners(simulator, MirroredHookMask.ModifyHpLostAfterOsty))
             {
+                if (modifierFilter != null && !modifierFilter(listener)) continue;
                 var previousAmount = context.Amount;
                 context.Amount = ModifyHpLostMirrors.InvokeAfterOsty(listener, context);
                 if (decimal.Truncate(previousAmount) != decimal.Truncate(context.Amount))
@@ -812,6 +816,7 @@ internal static class HookMirrors
 
             foreach (var listener in IterateRunHookListeners(simulator, MirroredHookMask.ModifyHpLostAfterOstyLate))
             {
+                if (modifierFilter != null && !modifierFilter(listener)) continue;
                 var previousAmount = context.Amount;
                 context.Amount = ModifyHpLostMirrors.InvokeAfterOstyLate(listener, context);
                 if (decimal.Truncate(previousAmount) != decimal.Truncate(context.Amount))

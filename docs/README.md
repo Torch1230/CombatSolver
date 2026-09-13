@@ -6,8 +6,28 @@
 
 | 要查什么 | 入口 |
 |---|---|
+| 943份计划外重算报告、16类已修机制及证据缺口 | [2026-09-13批次结果](issues/report-replans-20260913.md) |
+| 环绕轨道、自动化的持续返能估值与实战对照 | [返能能力估值](issues/recurring-energy-valuation-20260913.md) |
+| 后续六方向的当前诊断、逐项实现与对照 | [六方向开发记录](performance/six-directions-20260913.md) |
+| 当前性能PR全部改动、撤回方案与各轮指标 | [累计记录](performance/surgical-pr-summary-20260913.md) |
+| 提前计算回合尾部、所有权合同与16线程对照 | [尾部并行报告](performance/early-tail-parallelism-20260913.md) |
+| 普通Power免锁、理论收益模型与16并行实测 | [Power克隆并行](performance/power-clone-parallelism-20260913.md) |
+| 克隆优化后剩余Power锁、同父Fork和回合尾部并行瓶颈 | [并行瓶颈定位](performance/parallel-bottlenecks-20260913.md) |
+| 真实 BaseLib 下原版卡牌克隆并行、保守回退与验证限制 | [克隆并行边界](performance/native-clone-parallelism-20260913.md) |
+| 当前精简 fork、旧移植暂停、实测收益与小优化候选 | [手术刀式移植](performance/surgical-fixes-20260912.md) |
+| 盛碗虫群小区域并行预约、实测提速与边界验证 | [父节点预约优化](performance/bowlbugs-wave-admission-20260912.md) |
+| 盛碗虫群慢搜索：原包分析、诊断恢复与药水历史分配优化 | [慢搜索原包分析](performance/bowlbugs-slow-search-20260912.md) |
+| 通用选牌令牌计数、卡牌/药水生成查询的迁移与搜索耗时 | [选牌小优化验证](performance/choice-migration-20260912.md) |
+| 全量选牌来源、间接印牌/自动出牌放大器与逐项优化判断 | [213项来源盘点](performance/choice-source-inventory-20260912.md) |
+| 印牌长战斗、历史反向查询与累计分配验证 | [生成历史查询](performance/generation-history-20260912.md) |
+| 同次快照按需读取关键字，保持原模拟器与评分 | [快照内部局部复用](performance/snapshot-reuse-20260912.md) |
+| 当前 CPU 热点、快照释放优化与交错对照 | [热点可消除工作](performance/hotspot-cuts-20260912.md) |
+| 已开发的空状态清理、排名预计算及真实对照 | [精简优化开发结果](performance/surgical-development-20260912.md) |
+| 五个后续候选的工作量、原型与采用/撤回决策 | [五候选成本与验证](performance/five-candidates-20260913.md) |
+| 小改动优化文献、源码切口与独立分配探针 | [精简优化深入研究](performance/surgical-research-20260912.md) |
 | 遗物独立开关、目标范围、血量额度与早停 | [战斗末遗物计数策略](relic-counters.md) |
 | 组件职责、状态所有权和调用链 | [架构与职责地图](ARCHITECTURE.md) |
+| 当前搜索、卡牌评分、保路剪枝与最终选路 | [搜索逻辑详解（2026-09-12 开发快照）](strategy/search-logic-explained-20260912.md) |
 | 当前 UI 重设计、按钮区整理与 Gemini 建议审计 | [UI 建议复核与重构方案](audits/ui-redesign-gemini-review-20260911.md) |
 | 本批未发布改动、版本演进与开发记录 | [开发笔记](DEVELOPMENT_NOTES.md) |
 | 已执行测试、复跑方式和未验证范围 | [测试矩阵](TEST_MATRIX.md) |

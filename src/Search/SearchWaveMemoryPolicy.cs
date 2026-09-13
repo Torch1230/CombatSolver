@@ -3,6 +3,43 @@ namespace CombatSolver;
 /// <summary>Pure admission arithmetic; Runtime owns the source of the remaining budget.</summary>
 internal static class SearchWaveMemoryPolicy
 {
+    private const long ColdParentBytes = 64L * 1024 * 1024;
+
+    // The serial fallback retains its original single-parent floor. It does not
+    // need the extra allowance for several independently evolving parents.
+    public static long SingleParentReserve(long observedParentBytes)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(observedParentBytes);
+        return Reserve(Math.Max(ColdParentBytes, observedParentBytes));
+    }
+
+    // The cold estimate covers each unobserved parent. After a complete observation,
+    // retain it once per drained wave as burst headroom, in addition to the buffered
+    // whole-search parent high water. This is a predictor, not a hard allocation bound.
+    public static long ParentWaveReserve(long observedParentBytes, int count = 1)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(observedParentBytes);
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
+        if (count == 0)
+            return 0;
+        if (observedParentBytes == 0)
+            return Reserve(ColdParentBytes, count);
+        long headroom = Reserve(ColdParentBytes);
+        long observed = Reserve(observedParentBytes, count);
+        return observed > long.MaxValue - headroom ? long.MaxValue : observed + headroom;
+    }
+
+    public static int ParentWaveCapacity(int desiredCapacity, long observedParentBytes, long remainingBytes)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(observedParentBytes);
+        ArgumentOutOfRangeException.ThrowIfNegative(remainingBytes);
+        if (observedParentBytes == 0)
+            return Capacity(desiredCapacity, Reserve(ColdParentBytes), remainingBytes);
+        long headroom = Reserve(ColdParentBytes);
+        return Capacity(desiredCapacity, Math.Max(1, Reserve(observedParentBytes)),
+            Math.Max(0, remainingBytes - headroom));
+    }
+
     /// <summary>Parent reservation cap; the remaining allocation budget may reduce it.</summary>
     public static int MaximumQueuedParents(int degreeOfParallelism)
     {

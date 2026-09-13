@@ -1,0 +1,45 @@
+diff --git a/src/Search/CombatBeamSolver.AdmittedExpansion.cs b/src/Search/CombatBeamSolver.AdmittedExpansion.cs
+index bfe8af2..5b40499 100644
+--- a/src/Search/CombatBeamSolver.AdmittedExpansion.cs
++++ b/src/Search/CombatBeamSolver.AdmittedExpansion.cs
+@@ -280,6 +280,9 @@ internal sealed partial class CombatBeamSolver
+             private PrimaryChoiceReplayFrontier? _endTurnFrontier;
+             private bool _prepareDispatched;
+             private bool _tailDispatched;
++            // Readiness changes only when the coordinator dispatches or receives work.
++            // A negative scan can be reused across the other lanes' parent-slot probes.
++            private bool _noReadyChoiceJob;
+             private ExpansionBatch? _endTurnBatch;
+             private IReadOnlyList<CrossTurnStandPatBaseline>? _endTurnBaselines;
+             private int _completedActions;
+@@ -302,6 +305,8 @@ internal sealed partial class CombatBeamSolver
+ 
+             public ChoiceJob? FindChoiceJob()
+             {
++                if (_noReadyChoiceJob)
++                    return null;
+                 for (int family = 0; family < 2; family++)
+                 {
+                     PrimaryChoiceReplayFrontier?[]? frontiers = family == 0 ? _cardFrontiers : _potionFrontiers;
+@@ -331,11 +336,13 @@ internal sealed partial class CombatBeamSolver
+                             return new ChoiceJob(ParallelExpansionWorkProfile.Kind.Choice,
+                                 index, Frontier: null, ReplayIndex: -1);
+                 }
++                _noReadyChoiceJob = true;
+                 return null;
+             }
+ 
+             public void MarkDispatched(AdmittedExpansionJob job)
+             {
++                _noReadyChoiceJob = false;
+                 switch (job.Kind)
+                 {
+                     case ParallelExpansionWorkProfile.Kind.Prepare:
+@@ -367,6 +374,7 @@ internal sealed partial class CombatBeamSolver
+ 
+             public void Receive(AdmittedJobOutcome outcome)
+             {
++                _noReadyChoiceJob = false;
+                 AllocatedBytes = SaturatingAdd(AllocatedBytes, outcome.AllocatedBytes);
+                 if (outcome.Job.Kind == ParallelExpansionWorkProfile.Kind.Prepare)
+                 {

@@ -227,7 +227,7 @@ internal sealed partial class CombatBeamSolver
                 Score: node.Score,
                 CombatEndedTurn: won ? node.Snapshot.CombatEndedTurn : null)
             {
-                GrowthHpCredit = node.Snapshot.StrategicHpCredit,
+                GrowthHpCredit = node.Snapshot.StrategyGoalHpCredit,
                 TheftPolicy = _theftPolicy,
                 GrowthRewardCount = node.Snapshot.StrategyGoalCount,
             };
@@ -454,7 +454,6 @@ internal sealed partial class CombatBeamSolver
             int potionBranchesRejected = ordering.PotionBranchesRejected;
             int potionHpSaved = ordering.PotionHpSaved;
             int potionHpRequired = ordering.PotionHpRequired;
-            int sellThreshold = SoldHpThreshold();
             int annotatedFutureSold = materializedAnnotations.SoldHpByTurn.Values.Sum();
             if (annotatedFutureSold != selectedCandidate.FutureSold)
             {
@@ -737,7 +736,6 @@ internal sealed partial class CombatBeamSolver
                 PotionBranchesRejected = potionBranchesRejected,
                 TheftPolicy = _theftPolicy,
                 OutstandingStolenResource = finalSnapshot.OutstandingStolenResource,
-                SoldHpThreshold = sellThreshold,
                 SoldHpByTurn = annotations.SoldHpByTurn,
                 HpLostByTurn = annotations.HpLostByTurn,
                 HpRecoveredByTurn = annotations.HpRecoveredByTurn,
@@ -1021,16 +1019,20 @@ internal sealed partial class CombatBeamSolver
         // A cheap first parent is not a safe predictor for the rest of a later play depth.
         // Retain the largest observed parent for the whole search so a new depth cannot
         // immediately rematerialize a wide wave that exceeds the No-GC allocation budget.
-        long parentAllocatedHighWater = 64L * 1024 * 1024;
-        // Pruning is another allocation-heavy commit. Keep a fixed cold-start floor, then scale
-        // the largest observed total bytes per input node. Using total allocation is intentionally
-        // conservative: subtracting an assumed fixed cost can badly underestimate a later frontier
-        // when the real fixed portion was smaller than the floor.
+        // Keep the cold estimate separate: after observing complete parents, it is
+        // additional burst headroom for the wave, not a permanent per-parent floor.
+        long parentAllocatedHighWater = 0;
+        // Keep each metadata interval indivisible, with checkpoints only at drained
+        // ranking/probe boundaries. Estimate it separately using measured probe bytes;
+        // never require the sum of every transient probe to fit a single No-GC region.
         const long pruneAllocationFloorBytes = 64L * 1024 * 1024;
         long pruneAllocatedBytesPerInputHighWater = 0;
+        string pruneHighWaterInterval = "cold";
+        int pruneHighWaterInputCount = 0;
+        long pruneHighWaterAllocatedBytes = 0;
 
         long ParentAllocationReserve()
-            => BufferedAllocationReserve(parentAllocatedHighWater);
+            => SearchWaveMemoryPolicy.SingleParentReserve(parentAllocatedHighWater);
 
         long PruneAllocationReserve(int inputCount)
             => PredictScaledPruneAllocationReserve(
@@ -1044,7 +1046,7 @@ internal sealed partial class CombatBeamSolver
                 parentAllocatedHighWater = allocatedBytes;
         }
 
-        void ObservePruneAllocation(long allocatedBytes, int inputCount)
+        void ObservePruneAllocation(long allocatedBytes, int inputCount, string interval)
         {
             if (inputCount <= 0)
                 return;
@@ -1052,7 +1054,12 @@ internal sealed partial class CombatBeamSolver
                 allocatedBytes,
                 inputCount);
             if (bytesPerInput > pruneAllocatedBytesPerInputHighWater)
+            {
                 pruneAllocatedBytesPerInputHighWater = bytesPerInput;
+                pruneHighWaterInterval = interval;
+                pruneHighWaterInputCount = inputCount;
+                pruneHighWaterAllocatedBytes = allocatedBytes;
+            }
         }
 
         void ReclaimAtCommittedBoundary(
@@ -1073,6 +1080,8 @@ internal sealed partial class CombatBeamSolver
                 $"parent_reserve={ParentAllocationReserve()} " +
                 $"prune_floor={pruneAllocationFloorBytes} " +
                 $"prune_bytes_per_input={pruneAllocatedBytesPerInputHighWater} " +
+                $"prune_interval={pruneHighWaterInterval} prune_sample_inputs={pruneHighWaterInputCount} " +
+                $"prune_sample_allocated={pruneHighWaterAllocatedBytes} " +
                 $"expanded={_run.Expanded} " +
                 $"turn_layer={searchedTurnLayers} play_depth={playDepth}");
             PublishProgress(
@@ -1209,6 +1218,60 @@ internal sealed partial class CombatBeamSolver
                 "已切换常规 GC，继续搜索",
                 force: true);
         }
+        List<SearchNode> PruneAtMemoryBoundary(
+            IEnumerable<SearchNode> nodes,
+            int inputCount,
+            string reason,
+            int playDepth,
+            int endedNodes)
+        {
+            if (_run.EnsurePruneMemory != null)
+                throw new InvalidOperationException("剪枝内存边界不能嵌套。");
+            long nonProbeReserve = PruneAllocationReserve(inputCount);
+            if (inputCount > 0)
+                EnsureMemoryForIndivisibleCommit(
+                    nonProbeReserve, reason, playDepth, inputCount, endedNodes);
+            _run.EnsurePruneMemory = probeReserve => EnsureMemoryForIndivisibleCommit(
+                probeReserve,
+                "within_prune_stand_pat", playDepth, inputCount, endedNodes);
+            // Region counters reset at a checkpoint, while process samples also include
+            // unrelated threads and allocation quanta. Use coordinator + merged lane bytes,
+            // then subtract the probe intervals measured with the same ownership scope.
+            long allocatedBefore = OwnedSearchAllocatedBytes();
+            long probesBefore = _run.StandPatBatchAllocatedBytes;
+            string metadataInterval = "global_rank";
+            void ObserveMetadataInterval()
+            {
+                long allocated = OwnedSearchAllocatedBytes() - allocatedBefore;
+                long probes = _run.StandPatBatchAllocatedBytes - probesBefore;
+                ObservePruneAllocation(Math.Max(0, allocated - probes), inputCount, metadataInterval);
+            }
+            _run.CheckpointPruneMetadata = nextInterval =>
+            {
+                ObserveMetadataInterval();
+                metadataInterval = nextInterval;
+                // Use the same conservative high-water policy for each independently drained
+                // interval. Do not reserve the sum of global ranking and the metadata tail.
+                long metadataReserve = PruneAllocationReserve(inputCount);
+                if (inputCount > 0)
+                    EnsureMemoryForIndivisibleCommit(
+                        metadataReserve,
+                        "within_prune_metadata", playDepth, inputCount, endedNodes);
+                allocatedBefore = OwnedSearchAllocatedBytes();
+                probesBefore = _run.StandPatBatchAllocatedBytes;
+            };
+            try
+            {
+                return Prune(nodes);
+            }
+            finally
+            {
+                ObserveMetadataInterval();
+                _run.CheckpointPruneMetadata = null;
+                _run.EnsurePruneMemory = null;
+            }
+        }
+
         int reservedTurnLayers = root.EncounterRoomType == RoomType.Boss
                 ? SolverWeights.BossEnemyStrengthSuppressionHorizon
                 : SolverWeights.StandardEnemyStrengthSuppressionHorizon;
@@ -1269,6 +1332,7 @@ internal sealed partial class CombatBeamSolver
                         => stopwatch.ElapsedMilliseconds < _profile.SoftTimeBudgetMilliseconds
                             && (searchedTurnLayers >= reservedTurnLayers - 1
                                 || ended.Count == 0
+                                || policy.Act3BossStrategy
                                 || stopwatch.ElapsedMilliseconds - turnLayerStartedMs < turnLayerBudgetMs)
                             && _interaction?.CurrentTakeoverRequest == null;
                     if (!CanContinueDeferredReplay()
@@ -1296,12 +1360,10 @@ internal sealed partial class CombatBeamSolver
                         }
                         if (restored.Count > 0)
                         {
-                            EnsureMemoryForIndivisibleCommit(
-                                PruneAllocationReserve(restored.Count), "before_deferred_prune",
-                                playDepth, restored.Count, ended.Count);
                             // Re-enter all final arbiters without repeating action admission or
                             // advancing a cycle epoch solely for a restore/empty retry.
-                            active = Prune(restored);
+                            active = PruneAtMemoryBoundary(restored, restored.Count,
+                                "before_deferred_prune", playDepth, ended.Count);
                         }
                     }
                     finally
@@ -1339,7 +1401,11 @@ internal sealed partial class CombatBeamSolver
                 }
                 long turnLayerElapsedMs = stopwatch.ElapsedMilliseconds - turnLayerStartedMs;
                 int turnLayerExpanded = _run.Expanded - turnLayerStartedExpanded;
-                bool turnLayerTimeSpent = turnLayerElapsedMs >= turnLayerBudgetMs;
+                // Boss setup chains use the existing per-layer node share. A local wall-clock
+                // slice otherwise cuts different action depths under JIT/GC load, even when
+                // the request has ample time left. The global time and node limits still apply.
+                bool turnLayerTimeSpent = !policy.Act3BossStrategy
+                    && turnLayerElapsedMs >= turnLayerBudgetMs;
                 bool turnLayerNodesSpent = turnLayerExpanded >= turnLayerNodeBudget;
                 if (!policy.VerifyIncrementalSearch
                     && searchedTurnLayers < reservedTurnLayers - 1
@@ -1487,7 +1553,7 @@ internal sealed partial class CombatBeamSolver
                     : maximumQueuedParents;
 
                 long ParallelWaveAllocationReserve(int parentCount)
-                    => SearchWaveMemoryPolicy.Reserve(parentAllocatedHighWater, parentCount);
+                    => SearchWaveMemoryPolicy.ParentWaveReserve(parentAllocatedHighWater, parentCount);
 
                 int MemorySafeParallelWaveCapacity(int desiredCapacity)
                 {
@@ -1498,8 +1564,8 @@ internal sealed partial class CombatBeamSolver
                             ? Math.Min(2, desiredCapacity)
                             : desiredCapacity;
                     }
-                    return SearchWaveMemoryPolicy.Capacity(
-                        desiredCapacity, ParentAllocationReserve(), signal.RemainingBytes);
+                    return SearchWaveMemoryPolicy.ParentWaveCapacity(
+                        desiredCapacity, parentAllocatedHighWater, signal.RemainingBytes);
                 }
 
                 void ReclaimAfterCommittedWork(string reason)
@@ -1721,6 +1787,33 @@ internal sealed partial class CombatBeamSolver
                     else
                         ReleaseNodeLimitSnapshot(active[activeIndex]);
                 }
+                if (policy.Act3BossStrategy && searchedTurnLayers == 0 && !acceptableBattleHpLossReached)
+                {
+                    // Settle a fetched, payable power's next decision before ranking the
+                    // intermediate selection. Expand all legal successors using the normal
+                    // transposition and node accounting; ordinary alternatives remain legal.
+                    SearchNode[] commitments = nextPlays.Where(HasPlayableFetchedPower).ToArray();
+                    foreach (SearchNode commitment in commitments)
+                    {
+                        if (_run.Expanded >= _profile.MaxExpandedNodes || acceptableBattleHpLossReached
+                            || !policy.VerifyIncrementalSearch
+                                && stopwatch.ElapsedMilliseconds >= _profile.SoftTimeBudgetMilliseconds)
+                            break;
+                        EnsureMemoryForIndivisibleCommit(ParentAllocationReserve(),
+                            "before_fetched_power_followup", playDepth, nextPlays.Count, ended.Count);
+                        long allocatedBefore = policy.MemoryPressureSignal.AllocatedBytes;
+                        foreach (SearchNode successor in Expand(commitment))
+                        {
+                            AcceptExpandedChild(commitment, successor);
+                            if (_run.Expanded >= _profile.MaxExpandedNodes || acceptableBattleHpLossReached)
+                                break;
+                        }
+                        nextPlays.Remove(commitment);
+                        commitment.Snapshot.ReleaseSimulator();
+                        ObserveParentAllocation(Math.Max(0, policy.MemoryPressureSignal.AllocatedBytes - allocatedBefore));
+                        ReclaimAfterCommittedWork("after_fetched_power_followup");
+                    }
+                }
                 if (acceptableBattleHpLossReached)
                 {
                     foreach (SearchNode pending in nextPlays)
@@ -1728,22 +1821,8 @@ internal sealed partial class CombatBeamSolver
                     active = [];
                     break;
                 }
-                if (nextPlays.Count > 0)
-                {
-                    EnsureMemoryForIndivisibleCommit(
-                        PruneAllocationReserve(nextPlays.Count),
-                        "before_play_prune",
-                        playDepth,
-                        nextPlays.Count,
-                        ended.Count);
-                }
-                long pruneAllocatedBefore = policy.MemoryPressureSignal.AllocatedBytes;
-                List<SearchNode> prunedPlays = Prune(nextPlays);
-                ObservePruneAllocation(
-                    Math.Max(
-                        0,
-                        policy.MemoryPressureSignal.AllocatedBytes - pruneAllocatedBefore),
-                    nextPlays.Count);
+                List<SearchNode> prunedPlays = PruneAtMemoryBoundary(
+                    nextPlays, nextPlays.Count, "before_play_prune", playDepth, ended.Count);
                 CaptureDeferredFrontier(nextPlays, prunedPlays);
                 ReleaseDroppedSnapshots(nextPlays, prunedPlays);
                 nextPlays.Clear();
@@ -1809,24 +1888,10 @@ internal sealed partial class CombatBeamSolver
                 if (!candidate.IsTerminal)
                     turnPruneCandidateCount++;
             }
-            if (turnPruneCandidateCount > 0 && !acceptableBattleHpLossReached)
-            {
-                EnsureMemoryForIndivisibleCommit(
-                    PruneAllocationReserve(turnPruneCandidateCount),
-                    "before_turn_prune",
-                    playDepth: 0,
-                    frontierNodes: turnPruneCandidateCount,
-                    endedNodes: ended.Count);
-            }
-            long turnPruneAllocatedBefore = policy.MemoryPressureSignal.AllocatedBytes;
             frontier = acceptableBattleHpLossReached
                 ? []
-                : Prune(ended.Where(node => !node.IsTerminal));
-            ObservePruneAllocation(
-                Math.Max(
-                    0,
-                    policy.MemoryPressureSignal.AllocatedBytes - turnPruneAllocatedBefore),
-                turnPruneCandidateCount);
+                : PruneAtMemoryBoundary(ended.Where(node => !node.IsTerminal),
+                    turnPruneCandidateCount, "before_turn_prune", playDepth: 0, ended.Count);
             foreach (SearchNode node in frontier)
                 CaptureContinuation(node);
             List<SearchNode> retainedAfterRound = [.. completed, .. frontier];
@@ -2171,6 +2236,27 @@ internal sealed partial class CombatBeamSolver
 
     internal static void VerifyPruneMemoryCheckpointPolicyForTesting()
     {
+        if (ResolveStandPatBatchSize(100, 600, 100) != 6
+            || ResolveStandPatBatchSize(3, 600, 100) != 3
+            || ResolveStandPatBatchSize(100, 99, 100) != 1
+            || ResolveStandPatBatchSize(100, 0, 100) != 1
+            || ResolveStandPatBatchSize(100, long.MaxValue, 100) != 100
+            || ResolveStandPatBatchSize(int.MaxValue, long.MaxValue - 1, 1) != int.MaxValue)
+            throw new InvalidOperationException("待命评估批次没有按可用内存分批或正确处理单项/无上限边界。");
+        SearchRunContext checkpointRun = new(false, new SearchFramePressureSignal());
+        StateFingerprint sentinelKey = new(123, 456);
+        StandPatEvaluation sentinel = new(true, 7, 8, 9);
+        checkpointRun.StandPatCache.Add(sentinelKey, sentinel);
+        checkpointRun.EnsurePruneMemory = _ => { };
+        checkpointRun.ResetReclaimableCaches();
+        if (!checkpointRun.StandPatCache.TryGetValue(sentinelKey, out StandPatEvaluation preserved)
+            || preserved != sentinel)
+            throw new InvalidOperationException("剪枝内回收丢失了准备阶段已跳过的缓存代表。");
+        checkpointRun.EnsurePruneMemory = null;
+        checkpointRun.ResetReclaimableCaches();
+        if (checkpointRun.StandPatCache.Count != 0)
+            throw new InvalidOperationException("离开剪枝后没有恢复正常的缓存释放边界。");
+
         const long fixedFloorBytes = 64L * 1024 * 1024;
         if (PredictScaledPruneAllocationReserve(
                 fixedFloorBytes,

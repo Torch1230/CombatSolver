@@ -13,7 +13,10 @@ namespace CombatSolver;
 
 internal sealed partial class SimulatedCombatState
 {
-    public void RecordCardPlayed(PredictedCard card, bool gainedBlock)
+    public void RecordPoweredCardBlockGained(Creature owner)
+        => (_blockCardsPlayedThisTurn ??= [])[owner] = GetBlockCardsPlayedThisTurn(owner) + 1;
+
+    public void RecordCardPlayed(PredictedCard card)
     {
         RecordHistoryCourseAttack(card);
         Creature owner = card.Preview.Owner.Creature;
@@ -23,9 +26,6 @@ internal sealed partial class SimulatedCombatState
             if (card.Preview.Tags.Contains(CardTag.Shiv))
                 (_shivsPlayedThisTurn ??= [])[owner] = GetShivsPlayedThisTurn(owner) + 1;
         }
-        if (gainedBlock)
-            (_blockCardsPlayedThisTurn ??= [])[owner] = GetBlockCardsPlayedThisTurn(owner) + 1;
-
         foreach (Creature creature in Creatures)
         {
             SlowPower? slow = GetPower<SlowPower>(creature);

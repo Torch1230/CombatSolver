@@ -34,6 +34,8 @@ Linux：
 
 原生模型表 hash 不同只作诊断。原生二进制相同时仍可完整验证；旧包二进制不同且没有保存原编号映射时，不能使用本机表解码。若全部已记录战斗状态对账通过，返回 `restored_continuation`、`continuationVerified=true`，同时保留 `restorationVerified=false`、`nativeStateVerified=false` 和 `legacy_model_id_mapping_not_recorded`。这表示状态恢复可用，但不称完整原生恢复验收；批量工具也不会把该状态算作完整验证成功。录制回放对应状态为 `recorded_continuation_only`。
 
+旧包未记录后来新增的 `FlameHp` 时，只允许迁移实际值为零的字段，且必须位于原生开局边界、首回合事件游标为零的可操作点，或已通过完整原生二进制状态校验。中途检查点缺少原生状态或编码不可比较时不适用。非零计数、位置错误、重复字段及任何已记录字段差异仍拒绝；迁移不补造历史或改变战斗状态。
+
 ## 旧包
 
 兼容旧 v1 索引、无索引 ZIP、已解压包和汇总 ZIP。保持 metadata、replay-state、native-state、run-state 原有目录，分别校验，不再同名覆盖。旧开战包从原生跑局存档加载，在首次抽牌前恢复检查点，到原始导出生命周期再对账。

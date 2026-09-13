@@ -22,6 +22,12 @@ internal static class SolverStrategyOutcomeText
             if ((counters.TargetMask & bit) == 0) continue;
             string name = entry.Canonical().Title.GetFormattedText();
             int value = counters.Value(entry.Id);
+            if (entry.Id == RelicCounterId.MeatOnTheBone)
+            {
+                ((counters.SatisfiedMask & bit) != 0 && victory ? completed : pending)
+                    .Add(name + "（" + SolverText.Get("半血回血") + "）");
+                continue;
+            }
             if ((counters.SatisfiedMask & bit) != 0 && victory) completed.Add($"{name} {value}");
             else
             {

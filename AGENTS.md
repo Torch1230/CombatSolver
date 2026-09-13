@@ -1,5 +1,9 @@
 # CombatSolver 仓库工作指令
 
+> **当前工作重点（2026-09-12）：** `perf/surgical-fixes-20260912` 从上游 `eff8cf4` 建立，只做小范围、可独立验证的性能与 bug 修复。`perf/simulation-profile-20260910` 已暂停开发；不移植 Compact 后端、不重写战斗流程、不改变搜索预算或决策质量。此次是开发分支整理，不提升版本、不发包或上传。
+
+> **当前批次验证约束：** 用户于 2026-09-12 明确停止可见测试，本批后续不启动可见 Steam 会话。性能报告限定为实际取得的无头数据，不外推 FPS、可见帧时间或可见性能收益。
+
 本文件约束所有在本仓库中工作的 coding agent。开始处理任务前完整阅读；子目录若有更具体的 `AGENTS.md`，其规则只补充对应目录，不能放宽这里的硬约束。
 
 ## 1. 项目边界
@@ -61,7 +65,7 @@ CombatSolver 是《杀戮尖塔 2》的单人战斗路线求解器 Mod，使用 
 - `src/Runtime/SearchMemoryPressureSignal.cs`：Runtime 注入 Search 的分配边界与回收续搜入口；Search 不直接读取设置或操作 GC 模式。
 - `src/Runtime/PlayerTurnSetupPatches.cs`：首回合选牌后搜索、全自动后续回合的计划重放，以及单步执行在下一回合原生选牌页交还玩家并允许执行/全自动入口接管既有选择。
 - `src/Runtime/NativeChoiceRuntime.cs`：原生选牌页面观察与计划卡牌逐实例匹配；不枚举搜索分支。
-- `src/Runtime/BaseLibCloneConcurrencyPatch.cs`：只在后台求解且 BaseLib 克隆扩展已加载时，串行保护原版 `MutableClone` 的第三方扩展段；不得扩大成整段搜索串行化。
+- `src/Runtime/BaseLibCloneConcurrencyPatch.cs`：BaseLib 克隆扩展已加载时，串行保护原版 `MutableClone` 的第三方扩展段；预测克隆只允许 `NativeModelCloneConcurrency` 核对过的隔离域普通原版卡牌及默认内部初始化 Power 旁路；不得扩大成整段搜索串行化。
 - `src/Runtime/PowerDynamicVarWarmup.cs`：主线程捕获根状态时物化规范 Power 与当前战斗 Power 的显示变量，禁止把惰性本地化工作带入 worker。
 - `src/Runtime/PowerDynamicVarMaterializationGuardPatch.cs`：搜索模拟期间禁止惰性创建 Power 显示变量；命中表示根捕获缺少必要实例的物化。
 

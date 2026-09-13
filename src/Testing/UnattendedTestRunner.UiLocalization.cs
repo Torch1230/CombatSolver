@@ -39,6 +39,14 @@ internal sealed partial class UnattendedTestRunner
                 LocManager.Instance.SetLanguage(target);
                 await _host.ToSignal(_host.GetTree(), SceneTree.SignalName.ProcessFrame);
                 bool english = target == "eng";
+                var displayNames = SolverDisplayNames.Capture(combat);
+                if (combat.Enemies.Select(displayNames.Creature).Distinct().Count() != combat.Enemies.Count)
+                    throw new InvalidOperationException("Enemy display names are ambiguous.");
+                var plainShiv = SolverOverlaySnapshot.CaptureAction(new PlanAction(PlanActionKind.PlayCard, 1, CardId: "SHIV"), []);
+                var inkyShiv = SolverOverlaySnapshot.CaptureAction(new PlanAction(PlanActionKind.PlayCard, 1, CardId: "SHIV", CardEnchantmentId: "INKY"), []);
+                if (plainShiv.Title == inkyShiv.Title || !inkyShiv.Tooltip.Contains(ModelDb.Enchantment<MegaCrit.Sts2.Core.Models.Enchantments.Inky>().Title.GetFormattedText()))
+                    throw new InvalidOperationException("Inky Shiv lost its enchantment display.");
+                _completedChecks.Add($"EntityIdentity:{target}:DistinctEnemies={combat.Enemies.Count}:PlainAndInkyShiv");
                 var counters = RelicCounterPolicy.Add(default, new(RelicCounterId.HappyFlower, 2, 2, 0, 3), 2);
                 counters = RelicCounterPolicy.Add(counters, new(RelicCounterId.PenNib, 7, 7, 0, 10), 4);
                 string outcome = SolverStrategyOutcomeText.Format(counters, new GrowthValues(TheHunt: 1, Feed: 2), true)!;

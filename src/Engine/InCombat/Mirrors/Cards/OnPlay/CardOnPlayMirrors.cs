@@ -87,6 +87,9 @@ internal static class CardOnPlayMirrors
         registry.Register<Alchemize>(PotionGenerationCardMirrors.AlchemizeOnPlay);
 
         registry.Register<CalculatedGamble>(CardDrawCardMirrors.CalculatedGambleOnPlay);
+        registry.Register<Adrenaline>(CardDrawCardMirrors.AdrenalineOnPlay);
+        registry.Register<Offering>(CardDrawCardMirrors.OfferingOnPlay);
+        registry.Register<Neurosurge>(CardDrawCardMirrors.NeurosurgeOnPlay);
         registry.Register<BurningPact>(static (_, _) => { });
         registry.Register<CompileDriver>(CardDrawCardMirrors.CompileDriverOnPlay);
         registry.Register<Constellation>(CardDrawCardMirrors.ConstellationOnPlay);
@@ -101,6 +104,7 @@ internal static class CardOnPlayMirrors
         registry.Register<Restlessness>(CardDrawCardMirrors.RestlessnessOnPlay);
         registry.Register<Scrape>(CardDrawCardMirrors.ScrapeOnPlay);
         registry.Register<Scrawl>(CardDrawCardMirrors.ScrawlOnPlay);
+        registry.Register<SpoilsOfBattle>(CardDrawCardMirrors.SpoilsOfBattleOnPlay);
 
         registry.Register<FlakCannon>(RandomTargetAttackCardMirrors.FlakCannonOnPlay);
         registry.Register<Ricochet>(RandomTargetAttackCardMirrors.RicochetOnPlay);

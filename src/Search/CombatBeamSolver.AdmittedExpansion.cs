@@ -202,7 +202,7 @@ internal sealed partial class CombatBeamSolver
                         continue;
                     AdmittedParent parent = outcome.Job.Parent;
                     parent.Receive(outcome);
-                    if (outcome.Job.Kind == ParallelExpansionWorkProfile.Kind.Tail)
+                    if (parent.TailCompleted)
                         _workProfile.Record(ParallelExpansionWorkProfile.Kind.Parent, parent.ElapsedTicks);
                     DispatchAvailable();
                     CommitReadyParents();
@@ -277,8 +277,11 @@ internal sealed partial class CombatBeamSolver
             private bool[]? _potionCompleted;
             private PrimaryChoiceReplayFrontier?[]? _cardFrontiers;
             private PrimaryChoiceReplayFrontier?[]? _potionFrontiers;
+            private PrimaryChoiceReplayFrontier? _endTurnFrontier;
             private bool _prepareDispatched;
             private bool _tailDispatched;
+            private ExpansionBatch? _endTurnBatch;
+            private IReadOnlyList<CrossTurnStandPatBaseline>? _endTurnBaselines;
             private int _completedActions;
             private int _completedPotions;
             private int _nextAppend;
@@ -295,9 +298,7 @@ internal sealed partial class CombatBeamSolver
                 : Actions == null ? null
                 : NextPotion < Potions!.Count ? ParallelExpansionWorkProfile.Kind.Potion
                 : NextAction < Actions.Count ? ParallelExpansionWorkProfile.Kind.Action
-                : _completedActions == Actions.Count && _completedPotions == Potions.Count
-                    && !_tailDispatched
-                    ? ParallelExpansionWorkProfile.Kind.Tail : null;
+                : !_tailDispatched ? ParallelExpansionWorkProfile.Kind.Tail : null;
 
             public ChoiceJob? FindChoiceJob()
             {
@@ -317,6 +318,12 @@ internal sealed partial class CombatBeamSolver
                                 index, frontier, ReplayIndex: -1);
                     }
                 }
+                if (_endTurnFrontier?.CanDispatchReplay == true)
+                    return new ChoiceJob(ParallelExpansionWorkProfile.Kind.PrimaryReplay,
+                        -1, _endTurnFrontier, _endTurnFrontier.NextReplay);
+                if (_endTurnFrontier?.CanDispatchContinuation == true)
+                    return new ChoiceJob(ParallelExpansionWorkProfile.Kind.Choice,
+                        -1, _endTurnFrontier, ReplayIndex: -1);
                 if (Probes != null)
                 {
                     for (int index = 0; index < Probes.Length; index++)
@@ -375,10 +382,22 @@ internal sealed partial class CombatBeamSolver
                     _cardFrontiers = new PrimaryChoiceReplayFrontier?[Actions.Count];
                     _potionFrontiers = new PrimaryChoiceReplayFrontier?[Potions.Count];
                 }
-                else if (outcome.Job.Kind == ParallelExpansionWorkProfile.Kind.Tail)
+                else if (outcome.Job.Kind == ParallelExpansionWorkProfile.Kind.Tail
+                    || outcome.Job.Frontier?.IsEndTurn == true
+                        && outcome.Job.Kind == ParallelExpansionWorkProfile.Kind.Choice)
                 {
-                    TailCompleted = true;
-                    ElapsedTicks = Stopwatch.GetTimestamp() - _startedAt;
+                    if (outcome.Frontier != null)
+                    {
+                        _endTurnFrontier = outcome.Frontier;
+                        outcome.Frontier = null;
+                        return;
+                    }
+                    _endTurnFrontier?.Dispose();
+                    _endTurnFrontier = null;
+                    _endTurnBatch = outcome.Batch
+                        ?? throw new InvalidOperationException("回合尾部作业没有返回独占候选批次。");
+                    outcome.Batch = null;
+                    _endTurnBaselines = outcome.EndTurnBaselines;
                 }
                 else if (outcome.Job.Kind == ParallelExpansionWorkProfile.Kind.PrimaryReplay)
                 {
@@ -444,11 +463,30 @@ internal sealed partial class CombatBeamSolver
                         _nextAppend++;
                     }
                 }
+                CompleteIfReady();
+            }
+
+            private void CompleteIfReady()
+            {
+                if (_endTurnBatch == null || _completedActions != Actions!.Count
+                    || _completedPotions != Potions!.Count)
+                    return;
+                using ExpansionBatch endTurn = _endTurnBatch;
+                _endTurnBatch = null;
+                foreach (SearchNode candidate in endTurn.EndTurns)
+                    endTurn.TransferEndTurnTo(Aggregate!, candidate);
+                if (_endTurnBaselines != null)
+                    PublishCrossTurnStandPatBaselines(Node, _endTurnBaselines);
+                _endTurnBaselines = null;
+                TailCompleted = true;
+                ElapsedTicks = Stopwatch.GetTimestamp() - _startedAt;
             }
 
             public void Dispose()
             {
                 Aggregate?.Dispose();
+                _endTurnBatch?.Dispose();
+                _endTurnFrontier?.Dispose();
                 if (_actionBatches != null)
                     foreach (ExpansionBatch? batch in _actionBatches)
                         batch?.Dispose();
@@ -475,6 +513,7 @@ internal sealed partial class CombatBeamSolver
             public List<PreparedCardAction>? Actions;
             public List<PreparedPotionAction>? Potions;
             public ExpansionBatch? Batch;
+            public IReadOnlyList<CrossTurnStandPatBaseline>? EndTurnBaselines;
             public DeferredCardActionProbe? Probe;
             public PrimaryChoiceReplayFrontier? Frontier;
             public SimulationSnapshot?[]? ReplaySnapshots;
@@ -577,7 +616,14 @@ internal sealed partial class CombatBeamSolver
                             outcome.Probe = evaluation.DeferredProbe;
                             break;
                         case ParallelExpansionWorkProfile.Kind.Choice:
-                            if (Frontier != null)
+                            if (Frontier?.IsEndTurn == true)
+                            {
+                                PreparedEndTurnEvaluation tail = worker.EvaluatePreparedEndTurn(
+                                    Parent.Node, Parent.ForkGate, Frontier);
+                                outcome.Batch = tail.Batch;
+                                outcome.EndTurnBaselines = tail.Baselines;
+                            }
+                            else if (Frontier != null)
                             {
                                 outcome.Batch = worker.CompletePrimaryChoices(Parent.Node, Frontier, Parent.ForkGate);
                             }
@@ -593,7 +639,8 @@ internal sealed partial class CombatBeamSolver
                             outcome.ReplaySnapshots = new SimulationSnapshot?[ReplayCount];
                             for (int offset = 0; offset < ReplayCount; offset++)
                                 outcome.ReplaySnapshots[offset] = worker.ReplayPrimaryChoice(
-                                    Parent.Node, Frontier!.Actions[ReplayIndex + offset], Parent.ForkGate);
+                                    Parent.Node, Frontier!.Actions[ReplayIndex + offset], Parent.ForkGate,
+                                    Frontier.EndTurn?.Layer.Branches[ReplayIndex + offset].PruneInvalidBranch ?? true);
                             break;
                         case ParallelExpansionWorkProfile.Kind.Potion:
                             PreparedChoiceEvaluation potion = worker.EvaluatePreparedPotionAction(
@@ -602,9 +649,11 @@ internal sealed partial class CombatBeamSolver
                             outcome.Frontier = potion.Frontier;
                             break;
                         case ParallelExpansionWorkProfile.Kind.Tail:
-                            // All card/choice/potion jobs have finished. Only this lane may now
-                            // write the aggregate or publish this parent's stand-pat baselines.
-                            worker.GenerateRawEndTurnCandidates(Parent.Node, Parent.Aggregate!);
+                            PreparedEndTurnEvaluation endTurn =
+                                worker.EvaluatePreparedEndTurn(Parent.Node, Parent.ForkGate);
+                            outcome.Batch = endTurn.Batch;
+                            outcome.EndTurnBaselines = endTurn.Baselines;
+                            outcome.Frontier = endTurn.Frontier;
                             break;
                         default:
                             throw new InvalidOperationException("非法的已准入作业类型。");

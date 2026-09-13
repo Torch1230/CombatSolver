@@ -29,9 +29,7 @@ internal static class PotionChoiceSupport
         SimPlayerCombatState state = simulator.State.GetPlayerCombatState(owner);
         if (GeneratesCardChoice(potion))
         {
-            CombatPredictionCardGenerationOptionsEntry generated = simulator.History
-                .OfType<CombatPredictionCardGenerationOptionsEntry>()
-                .LastOrDefault()
+            CombatPredictionCardGenerationOptionsEntry generated = simulator.History.FindLatestCardGenerationOptions()
                 ?? throw new InvalidOperationException($"药水 {potion.Id.Entry} 没有生成三选一候选。");
             return RangeSpec(
                 state,
@@ -89,9 +87,7 @@ internal static class PotionChoiceSupport
         List<PredictedCard> selected = new(choice.Cards.Count);
         if (choice.Effect == PlanChoiceEffect.GenerateToHand)
         {
-            CombatPredictionCardGenerationOptionsEntry generated = simulator.History
-                .OfType<CombatPredictionCardGenerationOptionsEntry>()
-                .LastOrDefault()
+            CombatPredictionCardGenerationOptionsEntry generated = simulator.History.FindLatestCardGenerationOptions()
                 ?? throw new InvalidOperationException($"药水 {potion.Id.Entry} 缺少生成候选。");
             foreach (PlanCardToken token in choice.Cards)
                 selected.Add(Find(generated.Options, token).Clone());

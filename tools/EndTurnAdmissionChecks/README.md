@@ -11,3 +11,5 @@ To reproduce against an older source, export its `CombatBeamSolver.Expansion.cs`
 ```sh
 python3 tools/EndTurnAdmissionChecks/run.py --expansion-source .local/end-turn-admission-baseline.cs
 ```
+
+The independent EndTurn preparation check verifies that baseline values and candidates can be prepared without publishing shared baselines or admitting children, and that unconsumed results release their snapshots.

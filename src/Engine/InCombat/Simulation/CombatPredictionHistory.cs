@@ -162,6 +162,24 @@ internal sealed class CombatPredictionHistory(PredictionTrace trace)
         }
     }
 
+    // Choice resolution needs the latest matching publication. Walk the persistent
+    // history backwards without materializing chronological segments or LINQ iterators.
+    // A null card preserves potion lookups that intentionally do not filter by source.
+    internal CombatPredictionCardGenerationOptionsEntry? FindLatestCardGenerationOptions(PredictedCard? card = null)
+    {
+        if (_tail is { } tail)
+            for (int i = tail.Count - 1; i >= 0; i--)
+                if (tail[i] is CombatPredictionCardGenerationOptionsEntry entry
+                    && (card is null || card.References(entry.Trace?.Source)))
+                    return entry;
+        for (HistorySegment? segment = _prefix; segment is not null; segment = segment.Parent)
+            for (int i = segment.Entries.Length - 1; i >= 0; i--)
+                if (segment.Entries[i] is CombatPredictionCardGenerationOptionsEntry entry
+                    && (card is null || card.References(entry.Trace?.Source)))
+                    return entry;
+        return null;
+    }
+
     public IEnumerable<TEntry> OfType<TEntry>()
         where TEntry : CombatPredictionHistoryEntry
         => Enumerable.OfType<TEntry>(this);

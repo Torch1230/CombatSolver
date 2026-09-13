@@ -156,9 +156,9 @@ internal static class ModifyDamageMirrors
         }
 
         bool inPlay = context.CardSource.GetPile(context.State)?.Type == PileType.Play;
-        if (inPlay && context.CardPlay?.PlayIndex > 0)
+        if (inPlay && context.CardSource.Preview.CurrentPlayIndex > 0)
             return 1;
-        return Combat(context).GetAttacksPlayedThisTurn(power.Owner) == 0
+        return Combat(context).GetAttackPlayStartsThisTurn(power.Owner) <= (inPlay ? 1 : 0)
             ? 1 + (decimal)power.Amount / 100m
             : 1;
     }

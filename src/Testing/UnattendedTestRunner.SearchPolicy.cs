@@ -65,6 +65,7 @@ internal sealed partial class UnattendedTestRunner
         AssertFullRngStateIdentity(combat);
         AssertRequiredPotionAuditSelectionAndTotals();
         CombatRootSnapshot rootSnapshot = CombatRootSnapshot.Capture(combat);
+        AssertTurnCounterResetFork(rootSnapshot);
         AssertNarrowBeamRecoveryPolicy(rootSnapshot, capturedPolicy);
         AssertNoVictoryEscalationPolicy();
         await AssertCanceledSearchWorkRecordedOnceAsync(
@@ -2221,7 +2222,6 @@ internal sealed partial class UnattendedTestRunner
         AddMismatch(mismatches, "potion_branches_rejected", expected.PotionBranchesRejected, actual.PotionBranchesRejected);
         AddMismatch(mismatches, "theft_policy", expected.TheftPolicy, actual.TheftPolicy);
         AddMismatch(mismatches, "outstanding_stolen", expected.OutstandingStolenResource, actual.OutstandingStolenResource);
-        AddMismatch(mismatches, "sold_hp_threshold", expected.SoldHpThreshold, actual.SoldHpThreshold);
         AddMismatch(mismatches, "combat_ended_turn", expected.CombatEndedTurn, actual.CombatEndedTurn);
         AddMismatch(mismatches, "death_turn", expected.DeathTurn, actual.DeathTurn);
         AddMismatch(mismatches, "only_death_routes", expected.OnlyDeathRoutesFound, actual.OnlyDeathRoutesFound);

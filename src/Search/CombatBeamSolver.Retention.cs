@@ -130,6 +130,9 @@ internal sealed partial class CombatBeamSolver
                 _profile.BeamWidth,
                 preserveDefensiveRoute: true,
                 observe: observeGlobalRetention);
+            // RankBest has drained its lanes and published its ordered result. The rest of
+            // retention is a separate allocation interval while the complete pool stays rooted.
+            _run.CheckpointPruneMetadata?.Invoke("resource_routes");
             List<SearchNode> selected = [.. global];
             HashSet<SearchNode> selectedSet = new(global, ReferenceEqualityComparer.Instance);
             // RankBest 的返回表按引用去重，保存/还原名次只需要一条与它同序的并行数组，
@@ -165,6 +168,7 @@ internal sealed partial class CombatBeamSolver
                     continue;
                 selected.Add(candidate);
             }
+            _run.CheckpointPruneMetadata?.Invoke("opening_routes");
             bool hasCyclePortfolioWork = false;
             bool hasCycleExitWork = false;
             bool hasCrossTurnWork = false;
@@ -244,9 +248,11 @@ internal sealed partial class CombatBeamSolver
                 }
             }
 
+            _run.CheckpointPruneMetadata?.Invoke("ordered_routes");
             CycleRegionRetentionTransaction? cycleRegionTransaction = null;
             if (hasOrderedMutationWork)
                 Retention.AddOrderedMutationPortfolio(pool, selected, selectedSet);
+            _run.CheckpointPruneMetadata?.Invoke("finalize_routes");
             if (hasCycleRegionWork)
             {
                 cycleRegionTransaction = ApplyCycleRegionRetention(
@@ -1184,15 +1190,11 @@ internal sealed partial class CombatBeamSolver
         long minimumHealthRisk = long.MaxValue;
         foreach (SearchNode node in eligible)
             minimumHealthRisk = Math.Min(minimumHealthRisk, CycleHealthRisk(node, bestMaxHp));
-        int availableFutureSoldHp = Math.Max(
-            0,
-            SoldHpThreshold() - battleDamage.SoldHpCommitted);
         List<SearchNode> retained = [];
         foreach (bool investmentBand in new[] { false, true })
         {
             bool InBand(SearchNode node)
-                => (node.FutureSoldHp > availableFutureSoldHp + node.Snapshot.StrategicHpCredit
-                        || CycleHealthRisk(node, bestMaxHp) > minimumHealthRisk)
+                => (CycleHealthRisk(node, bestMaxHp) > minimumHealthRisk)
                     == investmentBand;
 
             Dictionary<CrossTurnProbeFamilyKey, int> inFlightIndexes = [];
@@ -1510,6 +1512,20 @@ internal sealed partial class CombatBeamSolver
         IReadOnlyList<SearchNode> candidates,
         IReadOnlyList<SearchNode> retained)
     {
+        // Larger retained pools otherwise require a quadratic reference scan. Keep the
+        // allocation-free path for tiny pools; snapshot identity (not node identity) owns retention.
+        if (retained.Count > 8)
+        {
+            HashSet<SimulationSnapshot> retainedSnapshots = new(
+                retained.Count, ReferenceEqualityComparer.Instance);
+            foreach (SearchNode survivor in retained)
+                retainedSnapshots.Add(survivor.Snapshot);
+            foreach (SearchNode candidate in candidates)
+                if (!retainedSnapshots.Contains(candidate.Snapshot))
+                    candidate.Snapshot.ReleaseSimulator();
+            return;
+        }
+
         foreach (SearchNode candidate in candidates)
         {
             bool keepSnapshot = false;
@@ -1951,9 +1967,19 @@ internal sealed partial class CombatBeamSolver
     {
         if (_run.StandPatCache.TryGetValue(node.StateKey, out StandPatEvaluation cached))
             return cached;
+        _run.CheckpointPruneMetadata?.Invoke("stand_pat_single");
+        _run.EnsurePruneMemory?.Invoke(StandPatProbeAllocationReserve());
+        long allocatedBefore = OwnedSearchAllocatedBytes();
+        long threadAllocatedBefore = GC.GetAllocatedBytesForCurrentThread();
         StandPatEvaluation evaluation = ComputeStandPat(node);
+        _run.StandPatBatchAllocatedBytes += Math.Max(
+            0, OwnedSearchAllocatedBytes() - allocatedBefore);
+        _run.StandPatProbeAllocatedHighWater = Math.Max(
+            _run.StandPatProbeAllocatedHighWater,
+            GC.GetAllocatedBytesForCurrentThread() - threadAllocatedBefore);
         _run.StandPatCache.Add(node.StateKey, evaluation);
         _run.StandPatProbes++;
+        _run.CheckpointPruneMetadata?.Invoke("rank_after_stand_pat_single");
         return evaluation;
     }
 

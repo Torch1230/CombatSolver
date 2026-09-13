@@ -103,6 +103,9 @@ internal sealed partial class SimulatedCombatState
             && entry.CardPlay.Card.Type is CardType.Attack or CardType.Skill);
         AppendTurnCardHistory(text, statusCardsDrawn, zeroCostAttackStarts, cardPlayStarts, attackSkillStarts);
         text.Append(";FlameHp=").Append(CaptureBrightestFlameMaxHpSpent(CombatManager.Instance.History.CardPlaysStarted));
+        text.Append(";AttackStarts=").Append(CombatManager.Instance.History.CardPlaysStarted.Count(entry =>
+            entry.HappenedThisTurn(combatState) && entry.CardPlay.Player == player
+            && entry.CardPlay.Card.Type == CardType.Attack));
     }
 
     public void AppendPredictedTurnCardHistory(StringBuilder text, Player player)
@@ -114,6 +117,7 @@ internal sealed partial class SimulatedCombatState
             GetCardPlayStartsThisTurn(player.Creature),
             GetAttackSkillStartsThisTurn(player.Creature));
         text.Append(";FlameHp=").Append(_brightestFlameMaxHpSpent);
+        text.Append(";AttackStarts=").Append(GetAttackPlayStartsThisTurn(player.Creature));
     }
 
     private static void AppendTurnCardHistory(
@@ -134,6 +138,11 @@ internal sealed partial class SimulatedCombatState
     public void AfterCardEnteredCombat(CombatPredictionSimulator simulator, PredictedCard card)
     {
         RegisterGeneratedCombatCard(card);
+        foreach (PhantomBladesPower power in EffectivePowers().OfType<PhantomBladesPower>())
+            CombatSolver.Engine.InCombat.Mirrors.Hooks.Card.PhantomBladesPowerMirrors.AfterCardEnteredCombat(power, card);
+        foreach (var relic in RelicsOf(card.Preview.Owner).OfType<MegaCrit.Sts2.Core.Models.Relics.GhostSeed>())
+            if (!relic.IsMelted)
+                CombatSolver.Engine.InCombat.Mirrors.Hooks.Card.GhostSeedMirrors.AfterCardEnteredCombat(relic, card);
         CardModel preview = card.MutablePreview;
         if (preview.IsClone)
             return;

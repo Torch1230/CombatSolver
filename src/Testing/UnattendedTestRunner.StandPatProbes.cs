@@ -2,6 +2,27 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
+    private static async Task AssertStandPatMemoryBoundaryAsync(
+        MegaCrit.Sts2.Core.Combat.CombatState combat)
+    {
+        CombatBeamSolver.VerifyPruneMemoryCheckpointPolicyForTesting();
+        SolverSettingsSnapshot settings = SolverSettings.Capture();
+        SearchPolicySnapshot policy = SolverController.CaptureSearchPolicy(
+            settings, combat, includeTurnSetup: false,
+            theftPolicy: SolverController.ResolveTheftPolicy(combat)) with
+        {
+            FixedBudget = true,
+            VerifyIncrementalSearch = false,
+            DetailedDiagnostics = false,
+            MeasurePhasePerformance = false,
+            BudgetOverrideMilliseconds = null,
+        };
+        CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
+        AssertTurnCounterResetFork(root);
+        await AssertStandPatProbeBatchesAsync(root, SolverDisplayNames.Capture(combat),
+            BattleDamageTracker.Observe(combat), policy);
+    }
+
     private static async Task AssertStandPatProbeBatchesAsync(
         CombatRootSnapshot rootSnapshot,
         SolverDisplayNames displayNames,
@@ -100,6 +121,54 @@ internal sealed partial class UnattendedTestRunner
         if (parallel.StandPatProbes < 2 || serial.StandPatProbes < 2)
             throw new InvalidOperationException("Deep 固定预算测试未覆盖待命评估。");
         AssertEquivalentSearchResults(serial, parallel, "Deep stand-pat DOP1/DOP2");
+        // Exercise real probe work through artificial region boundaries, without modifying
+        // the process GC mode. The normal DOP1/DOP2 checks above remain exact work oracles.
+        SearchMemoryPressureSignal pressure = new();
+        int withinPruneCheckpoints = 0;
+        int activeProbeCallbacks = 0;
+        void ConfigurePressure()
+            => pressure.Configure(
+                GC.GetTotalAllocatedBytes(precise: false),
+                104L * 1024 * 1024,
+                0,
+                long.MaxValue,
+                (_, reason) =>
+                {
+                    if (Volatile.Read(ref activeProbeCallbacks) != 0)
+                        throw new InvalidOperationException("剪枝回收没有排空正在执行的待命评估。");
+                    if (reason.StartsWith("within_prune_", StringComparison.Ordinal))
+                        withinPruneCheckpoints++;
+                    ConfigurePressure();
+                },
+                _ => throw new InvalidOperationException("可分批的待命评估不应回退常规GC。"));
+        ConfigurePressure();
+        SearchPathObserver memoryObserver = new(_ => true, observation =>
+        {
+            if (observation.Stage != SearchPathObservationStage.StandPatProbe)
+                return;
+            Interlocked.Increment(ref activeProbeCallbacks);
+            try { Thread.SpinWait(1024); }
+            finally { Interlocked.Decrement(ref activeProbeCallbacks); }
+        });
+        SolverResult pressureResult = await Task.Run(() => new CombatBeamSolver(
+            rootSnapshot, displayNames, battleDamage,
+            capturedPolicy with
+            {
+                MaxDegreeOfParallelism = 2,
+                MemoryPressureSignal = pressure,
+                Diagnostics = new SearchDiagnosticsSink(
+                    capturedPolicy.Diagnostics.Info, capturedPolicy.Diagnostics.Debug, memoryObserver),
+            },
+            CancellationToken.None,
+            searchProfile: profile,
+            potionPolicyOverride: SolverPotionPolicy.Disabled).Solve());
+        if (withinPruneCheckpoints == 0 || activeProbeCallbacks != 0)
+            throw new InvalidOperationException("固定小预算未穿过已排空的剪枝内存检查点。");
+        AssertEquivalentSearchResults(serial, pressureResult, "stand-pat bounded memory");
+        capturedPolicy.Diagnostics.Info(
+            $"[CombatSolver/Test] STAND_PAT_MEMORY_CONTRACT checkpoints={withinPruneCheckpoints} " +
+            $"cache_representatives=True drained=True all_work_and_routes_equal=True");
+
         capturedPolicy.Diagnostics.Info(
             $"[CombatSolver/Test] STAND_PAT_BATCH_CONTRACT probes={parallel.StandPatProbes} " +
             $"expanded={parallel.ExpandedNodes} cancellation=True failure=True reuse=True");

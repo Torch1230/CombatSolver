@@ -27,7 +27,12 @@ internal static class PredictionUtils
     public static TModel CloneModelForSimulation<TModel>(TModel source)
         where TModel : AbstractModel
     {
-        bool entered = BaseLibCloneConcurrency.Enter();
+        // This helper does not call MutableClone's BaseLib postfix. Audited native card/Power stages
+        // can run independently in isolation; nested MutableClone calls still take the
+        // original gate through BaseLibCloneConcurrencyPatch.
+        bool entered = BaseLibCloneConcurrency.IsRequired
+            && !NativeModelCloneConcurrency.CanCloneIndependently(source)
+            && BaseLibCloneConcurrency.Enter();
         try
         {
             TModel clone = (TModel)InvokeMemberwiseClone(source);

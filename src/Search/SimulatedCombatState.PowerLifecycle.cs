@@ -54,11 +54,17 @@ internal sealed partial class SimulatedCombatState
             : string.Join(',', _pendingPowerAmountChanges.Select(change =>
                 $"{change.Power.Id.Entry}:{change.Delta}"));
 
+    private void InitializeOrbit(OrbitPower power, int remainder)
+        => (_orbitEnergyRemainders ??= [])[power] = remainder;
+
+    public int GetOrbitEnergyRemainder(OrbitPower power)
+        => _orbitEnergyRemainders != null && _orbitEnergyRemainders.TryGetValue(power, out int value)
+            ? value
+            : throw new InvalidOperationException("Orbit energy remainder was not initialized in branch state.");
+
     public int AdvanceOrbitEnergy(OrbitPower power, int energySpent)
     {
-        int remainder;
-        if (_orbitEnergyRemainders?.TryGetValue(power, out remainder) != true)
-            remainder = (4 - power.DisplayAmount) % 4;
+        int remainder = GetOrbitEnergyRemainder(power);
         int total = remainder + energySpent;
         (_orbitEnergyRemainders ??= [])[power] = total % 4;
         return total / 4;
@@ -283,11 +289,13 @@ internal sealed partial class SimulatedCombatState
         int count = 0;
         if (_orbitEnergyRemainders != null)
         {
-            foreach ((OrbitPower power, int remainder) in _orbitEnergyRemainders)
+            foreach (OrbitPower power in EffectivePowers().OfType<OrbitPower>())
             {
                 StateFingerprintBuilder item = new();
+                item.Add(count);
                 item.Add(power.Owner.CombatId ?? uint.MaxValue);
-                item.Add(remainder);
+                item.Add(power.Amount);
+                item.Add(GetOrbitEnergyRemainder(power));
                 AddUnorderedItem(item.Finish(), ref first, ref second);
                 count++;
             }
