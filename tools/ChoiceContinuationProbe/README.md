@@ -15,3 +15,11 @@ The template is an existing unattended argument array. Review its input archive,
 Output contains `continuation-census.json`, complete action/result `details.json`, command and regular request evidence. `compare.py` compares all result fields except explicitly enumerated runtime/scheduling counters, normalizes physical forks by round-prefix captures, and checks complete actions and remaining result text. It is a search-result oracle, not a continuation-state equivalence test.
 
 Counts group by actual parent-node reference plus action fingerprint with selection chains removed. Repeated counts do not prove legal prefix sharing. Initial eligibility rejects decorations and active/uninspected boundary states; read-only `AssertForkable` is invoked only for audited repository-owned implementations. Cumulative Stopwatch ticks are not wall time or CPU samples; scope allocations exclude outer Fork/snapshot and are diagnostic estimates. Both include first executions that cannot be eliminated. Tools are excluded from production compilation; local builds and full evidence are not committed.
+
+## Conditional benefit estimate
+
+```bash
+python3 tools/ChoiceContinuationProbe/estimate.py docs/performance/resumable-choice-research-20260913.json docs/performance/resumable-choice-benefit-inputs-20260913.json <output.json>
+```
+
+The estimate reuses existing evidence without another game run. Source versions differ: scope time ratios, equal average first/repeated cost, stable CPU phase mix and proportional wall scaling are explicit assumptions. Retained benefit is a sensitivity parameter, not a measured probability. See [model and limitations](../../docs/performance/resumable-choice-benefit-20260913.md).

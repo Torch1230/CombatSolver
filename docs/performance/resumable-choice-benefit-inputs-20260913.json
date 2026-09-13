@@ -1,0 +1,17 @@
+{
+  "cpuSourceCommit": "2352d08",
+  "cpuSampleCount": 26683,
+  "manualCpuFraction": 0.062211895214181315,
+  "choiceReplayInclusiveFraction": 0.5478,
+  "referenceSeconds": 21.257258,
+  "referenceAllocatedBytes": 16365232188,
+  "referenceGcSeconds": 2.2847150000000003,
+  "referenceSource": "c38a834 + round prefix checkpoint",
+  "assumptions": [
+    "CPU sample and census have different source commits; phase mix assumed stable for illustration",
+    "Within a card and eligibility class, first and repeated visits assumed equal average prefix cost",
+    "Cumulative scope time ratio assumed to approximate CPU cost ratio; GC, waits and instrumentation can bias this",
+    "Wall illustration assumes proportional CPU-to-wall scaling and unchanged parallelism/GC",
+    "No production continuation exists; capture, resume and differential fork costs are unknown"
+  ]
+}

@@ -1,0 +1,174 @@
+{
+  "kind": "conditional model, not benchmark",
+  "censusRunId": "ebf379e1a6494fe893495be05cfaddf6",
+  "inputs": {
+    "cpuSourceCommit": "2352d08",
+    "cpuSampleCount": 26683,
+    "manualCpuFraction": 0.062211895214181315,
+    "choiceReplayInclusiveFraction": 0.5478,
+    "referenceSeconds": 21.257258,
+    "referenceAllocatedBytes": 16365232188,
+    "referenceGcSeconds": 2.2847150000000003,
+    "referenceSource": "c38a834 + round prefix checkpoint",
+    "assumptions": [
+      "CPU sample and census have different source commits; phase mix assumed stable for illustration",
+      "Within a card and eligibility class, first and repeated visits assumed equal average prefix cost",
+      "Cumulative scope time ratio assumed to approximate CPU cost ratio; GC, waits and instrumentation can bias this",
+      "Wall illustration assumes proportional CPU-to-wall scaling and unchanged parallelism/GC",
+      "No production continuation exists; capture, resume and differential fork costs are unknown"
+    ]
+  },
+  "model": "manualCpuFraction * repeatedPrefixScopeTicks / allManualScopeTicks",
+  "rows": [
+    {
+      "scope": "single_card_initial_screen",
+      "groups": 2048,
+      "repeatVisits": 16378,
+      "estimatedRepeatedPrefixAllocatedBytes": 165287202.6492999,
+      "estimatedRepeatedPrefixScopeSeconds": 1.1203551470427655,
+      "grossCpuReductionPercent": 0.2410478462702142,
+      "grossAllocatedReductionPercent": 1.009989963787368,
+      "estimatedPrefixBytesPerRepeatedVisit": 10092.02605014653,
+      "sensitivity": [
+        {
+          "netRetention": 0,
+          "cpuReductionPercent": 0.0,
+          "conditionalWallSeconds": 21.257258,
+          "cpuSpeedup": 1.0
+        },
+        {
+          "netRetention": 0.25,
+          "cpuReductionPercent": 0.06026196156755355,
+          "conditionalWallSeconds": 21.245824773428957,
+          "cpuSpeedup": 1.0006029829850502
+        },
+        {
+          "netRetention": 0.5,
+          "cpuReductionPercent": 0.1205239231351071,
+          "conditionalWallSeconds": 21.234391546857907,
+          "cpuSpeedup": 1.0012066935858008
+        },
+        {
+          "netRetention": 0.75,
+          "cpuReductionPercent": 0.18078588470266066,
+          "conditionalWallSeconds": 21.222958320286857,
+          "cpuSpeedup": 1.0018111331200608
+        },
+        {
+          "netRetention": 1,
+          "cpuReductionPercent": 0.2410478462702142,
+          "conditionalWallSeconds": 21.211525093715814,
+          "cpuSpeedup": 1.0024163029088233
+        }
+      ]
+    },
+    {
+      "scope": "four_cards_initial_screen",
+      "groups": 5114,
+      "repeatVisits": 39559,
+      "estimatedRepeatedPrefixAllocatedBytes": 336502716.3182983,
+      "estimatedRepeatedPrefixScopeSeconds": 2.3973939684983683,
+      "grossCpuReductionPercent": 0.5158066656748037,
+      "grossAllocatedReductionPercent": 2.0562049621577803,
+      "estimatedPrefixBytesPerRepeatedVisit": 8506.350421352872,
+      "sensitivity": [
+        {
+          "netRetention": 0,
+          "cpuReductionPercent": 0.0,
+          "conditionalWallSeconds": 21.257258,
+          "cpuSpeedup": 1.0
+        },
+        {
+          "netRetention": 0.25,
+          "cpuReductionPercent": 0.12895166641870093,
+          "conditionalWallSeconds": 21.2327925896395,
+          "cpuSpeedup": 1.0012911816644599
+        },
+        {
+          "netRetention": 0.5,
+          "cpuReductionPercent": 0.25790333283740186,
+          "conditionalWallSeconds": 21.20832717927899,
+          "cpuSpeedup": 1.002585701939854
+        },
+        {
+          "netRetention": 0.75,
+          "cpuReductionPercent": 0.3868549992561028,
+          "conditionalWallSeconds": 21.18386176891849,
+          "cpuSpeedup": 1.003883573791925
+        },
+        {
+          "netRetention": 1,
+          "cpuReductionPercent": 0.5158066656748037,
+          "conditionalWallSeconds": 21.159396358557984,
+          "cpuSpeedup": 1.005184810253639
+        }
+      ]
+    },
+    {
+      "scope": "four_cards_all_shapes_optimistic",
+      "groups": 12009,
+      "repeatVisits": 120079,
+      "estimatedRepeatedPrefixAllocatedBytes": 1042918474.1271483,
+      "estimatedRepeatedPrefixScopeSeconds": 8.487238813828917,
+      "grossCpuReductionPercent": 1.8260554630864165,
+      "grossAllocatedReductionPercent": 6.372769186201223,
+      "estimatedPrefixBytesPerRepeatedVisit": 8685.269481983929,
+      "sensitivity": [
+        {
+          "netRetention": 0,
+          "cpuReductionPercent": 0.0,
+          "conditionalWallSeconds": 21.257258,
+          "cpuSpeedup": 1.0
+        },
+        {
+          "netRetention": 0.25,
+          "cpuReductionPercent": 0.45651386577160413,
+          "conditionalWallSeconds": 21.170645710515522,
+          "cpuSpeedup": 1.004586074724729
+        },
+        {
+          "netRetention": 0.5,
+          "cpuReductionPercent": 0.9130277315432083,
+          "conditionalWallSeconds": 21.084033421031044,
+          "cpuSpeedup": 1.0092144074103861
+        },
+        {
+          "netRetention": 0.75,
+          "cpuReductionPercent": 1.3695415973148124,
+          "conditionalWallSeconds": 20.99742113154656,
+          "cpuSpeedup": 1.013885584833473
+        },
+        {
+          "netRetention": 1,
+          "cpuReductionPercent": 1.8260554630864165,
+          "conditionalWallSeconds": 20.91080884206208,
+          "cpuSpeedup": 1.0186002046846536
+        }
+      ]
+    }
+  ],
+  "broadChoiceSensitivity": [
+    {
+      "removedFractionOfChoiceSubtree": 0.1,
+      "grossCpuReductionPercent": 5.478,
+      "speedup": 1.0579547618543832
+    },
+    {
+      "removedFractionOfChoiceSubtree": 0.25,
+      "grossCpuReductionPercent": 13.694999999999999,
+      "speedup": 1.1586814205434217
+    },
+    {
+      "removedFractionOfChoiceSubtree": 0.5,
+      "grossCpuReductionPercent": 27.389999999999997,
+      "speedup": 1.3772207684891888
+    },
+    {
+      "removedFractionOfChoiceSubtree": 1,
+      "grossCpuReductionPercent": 54.779999999999994,
+      "speedup": 2.21141088014153
+    }
+  ],
+  "requiredReductionForReferenceToTenSecondsPercent": 52.95724406223983,
+  "referenceGcSharePercent": 10.747929013233975
+}
