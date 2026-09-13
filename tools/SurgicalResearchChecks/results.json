@@ -1,0 +1,150 @@
+{
+  "runtime": "9.0.19",
+  "repetitions": 100000,
+  "results": [
+    {
+      "name": "empty iterator",
+      "bytesPerOperation": [
+        96,
+        96,
+        96
+      ],
+      "checksum": 0
+    },
+    {
+      "name": "guarded empty iterator",
+      "bytesPerOperation": [
+        0,
+        0,
+        0
+      ],
+      "checksum": 0
+    },
+    {
+      "name": "missing Peek scalar",
+      "bytesPerOperation": [
+        24,
+        24,
+        24
+      ],
+      "checksum": 5270000
+    },
+    {
+      "name": "missing TryGet scalar",
+      "bytesPerOperation": [
+        0,
+        0,
+        0
+      ],
+      "checksum": 5270000
+    },
+    {
+      "name": "present Peek scalar",
+      "bytesPerOperation": [
+        0,
+        0,
+        0
+      ],
+      "checksum": 8990000
+    },
+    {
+      "name": "present TryGet scalar",
+      "bytesPerOperation": [
+        0,
+        0,
+        0
+      ],
+      "checksum": 8990000
+    },
+    {
+      "name": "count table growing 1",
+      "bytesPerOperation": [
+        216,
+        216,
+        216
+      ],
+      "checksum": 310000
+    },
+    {
+      "name": "count table capacity 1",
+      "bytesPerOperation": [
+        216,
+        216,
+        216
+      ],
+      "checksum": 310000
+    },
+    {
+      "name": "count table growing 2",
+      "bytesPerOperation": [
+        216,
+        216,
+        216
+      ],
+      "checksum": 620000
+    },
+    {
+      "name": "count table capacity 2",
+      "bytesPerOperation": [
+        216,
+        216,
+        216
+      ],
+      "checksum": 620000
+    },
+    {
+      "name": "count table growing 4",
+      "bytesPerOperation": [
+        464,
+        464,
+        464
+      ],
+      "checksum": 1240000
+    },
+    {
+      "name": "count table capacity 4",
+      "bytesPerOperation": [
+        328,
+        328,
+        328
+      ],
+      "checksum": 1240000
+    },
+    {
+      "name": "count table growing 8",
+      "bytesPerOperation": [
+        992,
+        992,
+        992
+      ],
+      "checksum": 2480000
+    },
+    {
+      "name": "count table capacity 8",
+      "bytesPerOperation": [
+        440,
+        440,
+        440
+      ],
+      "checksum": 2480000
+    },
+    {
+      "name": "count table growing 16",
+      "bytesPerOperation": [
+        992,
+        992,
+        992
+      ],
+      "checksum": 4960000
+    },
+    {
+      "name": "count table capacity 16",
+      "bytesPerOperation": [
+        608,
+        608,
+        608
+      ],
+      "checksum": 4960000
+    }
+  ]
+}

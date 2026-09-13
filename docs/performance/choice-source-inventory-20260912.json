@@ -1,0 +1,5163 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "87c2b7f",
+  "gameVersion": "0.111.0",
+  "audit": {
+    "modelsScanned": 1284,
+    "methodsScanned": 5955,
+    "nativeCallSites": 202,
+    "nativeModelsWithMatchedCalls": 193,
+    "additionalPowerGrantingCards": 20,
+    "readFailures": 0,
+    "selectionCallSites": 85,
+    "selectionCatalogAdded": 0,
+    "selectionCatalogMissing": 0
+  },
+  "reviewedModelCount": 213,
+  "counts": {
+    "direct": {
+      "Cards": 42,
+      "Potions": 9,
+      "Powers": 5,
+      "Relics": 5
+    },
+    "indirect": {
+      "Cards": 79,
+      "Enchantments": 1,
+      "Potions": 6,
+      "Powers": 17,
+      "Relics": 13
+    },
+    "outside": {
+      "Relics": 36
+    }
+  },
+  "scope": "Native explicit card-selection surfaces plus generation/autoplay/forge helpers and cards granting matching powers; outside-combat sources retained as exclusions. Not all possible deck interactions or third-party dynamic registrations.",
+  "rows": [
+    {
+      "category": "Cards",
+      "model": "Abundance",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat",
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromChooseACardScreen"
+      ],
+      "grantedPowers": [],
+      "id": "ABUNDANCE",
+      "title": "富足",
+      "mechanisms": [
+        "generation",
+        "random_generation",
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "3选1，生成能力牌",
+      "assessment": "迁移结算阶段最近来源历史查询及令牌计数；生成池筛选可独立测量",
+      "guard": "必须选1；保留升级、当回合免费及来源实例",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "reverse-generation-history",
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "Acrobatics",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHandForDiscard"
+      ],
+      "grantedPowers": [],
+      "id": "ACROBATICS",
+      "title": "杂技",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "抽牌后手牌N选1弃牌",
+      "assessment": "令牌计数可迁移；抽牌后的候选只在本次选择内使用",
+      "guard": "候选来自抽牌后的手牌，保留弃牌触发与嵌套选择",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "Armaments",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHandForUpgrade"
+      ],
+      "grantedPowers": [],
+      "id": "ARMAMENTS",
+      "title": "武装",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "未升级时N选1升级；升级后全体",
+      "assessment": "只优化未升级的选择路径",
+      "guard": "升级版不应为本优化额外生成分支；保留可升级筛选",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "Begone",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Combat.ICombatState.CreateCard",
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHand"
+      ],
+      "grantedPowers": [],
+      "id": "BEGONE",
+      "title": "下去！",
+      "mechanisms": [
+        "creation",
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "手牌N选1变化",
+      "assessment": "共享令牌计数；变化身份代表逻辑继续保留",
+      "guard": "同名同值牌也可能有不同永久身份，不能粗并",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "Brand",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHand"
+      ],
+      "grantedPowers": [],
+      "id": "BRAND",
+      "title": "烙印",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "手牌N选1消耗",
+      "assessment": "共享令牌计数；消耗后的能力与死亡边界单独验证",
+      "guard": "保留失血、消耗与力量结算顺序",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "BurningPact",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHand"
+      ],
+      "grantedPowers": [],
+      "id": "BURNING_PACT",
+      "title": "燃烧契约",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "手牌N选1消耗，再抽牌",
+      "assessment": "共享计数；重点测消耗→抽牌的嵌套选择",
+      "guard": "不能把最终抽牌结果跨不同被消耗牌共享",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "Charge",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromCombatPile"
+      ],
+      "grantedPowers": [],
+      "id": "CHARGE",
+      "title": "冲锋！！",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "抽牌堆N选k变化",
+      "assessment": "优先测组合生成和身份代表构造，令牌计数可共用",
+      "guard": "保留k、原始顺序及持久身份代表",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "Cleanse",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromCombatPile"
+      ],
+      "grantedPowers": [],
+      "id": "CLEANSE",
+      "title": "洁净",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "抽牌堆N选1消耗",
+      "assessment": "共享计数，避免重复解析相同令牌",
+      "guard": "召唤和消耗不能合并成近似效果",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "CosmicIndifference",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromCombatPile"
+      ],
+      "grantedPowers": [],
+      "id": "COSMIC_INDIFFERENCE",
+      "title": "宇宙冷漠",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "弃牌堆N选1置于牌顶",
+      "assessment": "共享计数；回收循环应测多回合重复调用",
+      "guard": "有序牌堆、洗牌RNG和同名实例必须保留",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "DaggerThrow",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHandForDiscard"
+      ],
+      "grantedPowers": [],
+      "id": "DAGGER_THROW",
+      "title": "投掷匕首",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "攻击、抽牌后N选1弃牌",
+      "assessment": "令牌计数可迁移；应测攻击导致死亡后的选择边界",
+      "guard": "不能复用攻击前或抽牌前的列表",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "DecisionsDecisions",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "autoplay:MegaCrit.Sts2.Core.Commands.CardCmd.AutoPlay",
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHand"
+      ],
+      "grantedPowers": [],
+      "id": "DECISIONS_DECISIONS",
+      "title": "抉择，抉择",
+      "mechanisms": [
+        "autoplay",
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "选1技能，再重复自动打出",
+      "assessment": "历史/令牌可迁移，嵌套回放是主要待测对象",
+      "guard": "保留重复次数、当前合法性、每次嵌套选择和RNG",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "Discovery",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat",
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromChooseACardScreen"
+      ],
+      "grantedPowers": [],
+      "id": "DISCOVERY",
+      "title": "发现",
+      "mechanisms": [
+        "generation",
+        "random_generation",
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "生成候选后至多选1",
+      "assessment": "迁移结算阶段历史查询；复用已有根内卡池，不缓存RNG结果",
+      "guard": "保留允许放弃、候选顺序、生成类别与逐实例状态",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "reverse-generation-history",
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "Dredge",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromCombatPile"
+      ],
+      "grantedPowers": [],
+      "id": "DREDGE",
+      "title": "清淤",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "弃牌堆N选k回手，受手牌余量限制",
+      "assessment": "优先测组合中间列表；共享计数",
+      "guard": "k依当前手牌余量变化，不可跨状态缓存",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "bounded-combination-materialization",
+        "choice-scoring",
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "DualWield",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHand"
+      ],
+      "grantedPowers": [],
+      "id": "DUAL_WIELD",
+      "title": "双持",
+      "mechanisms": [
+        "generation",
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "攻击/能力N选1，再复制",
+      "assessment": "共享计数；复制只对已选实例执行",
+      "guard": "升级后的复制数量及复制状态不能省略",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "Glimmer",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHand"
+      ],
+      "grantedPowers": [],
+      "id": "GLIMMER",
+      "title": "微光",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "抽牌后手牌N选k放牌顶",
+      "assessment": "优先测组合与令牌扫描，继续使用现有有序回放",
+      "guard": "选择顺序及回顶后抽牌顺序不可改",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "bounded-combination-materialization",
+        "choice-scoring",
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "Graveblast",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromCombatPile"
+      ],
+      "grantedPowers": [],
+      "id": "GRAVEBLAST",
+      "title": "坟冢爆射",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "弃牌堆N选1回手",
+      "assessment": "共享计数；反复回收时测试当前来源列表",
+      "guard": "不可复用上一次回收前的选项",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "Guards",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Combat.ICombatState.CreateCard",
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHand"
+      ],
+      "grantedPowers": [],
+      "id": "GUARDS",
+      "title": "护驾！！！",
+      "mechanisms": [
+        "creation",
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "手牌任意子集变化，理论2^N",
+      "assessment": "重点候选：有界保存中间组合、单次评分、令牌计数",
+      "guard": "必须保留各张数代表、稳定排序及持久身份补充",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "bounded-combination-materialization",
+        "choice-scoring",
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "HandTrick",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHand"
+      ],
+      "grantedPowers": [],
+      "id": "HAND_TRICK",
+      "title": "手上技法",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "合法技能N选1添加奇巧",
+      "assessment": "共享计数；筛选后的当前只读列表可局部用一次",
+      "guard": "保留技能类型与已奇巧排除",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "Headbutt",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromCombatPile"
+      ],
+      "grantedPowers": [],
+      "id": "HEADBUTT",
+      "title": "头槌",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "弃牌堆N选1放牌顶",
+      "assessment": "共享计数；回收循环使用同根对照",
+      "guard": "排除规则与有序牌堆身份不变",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "HeirloomHammer",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHand"
+      ],
+      "grantedPowers": [],
+      "id": "HEIRLOOM_HAMMER",
+      "title": "传承之锤",
+      "mechanisms": [
+        "generation",
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "无色手牌N选1复制",
+      "assessment": "共享计数；只克隆实际选中的牌",
+      "guard": "无色判定与同名不同状态不能合并",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "HiddenDaggers",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation_helper:MegaCrit.Sts2.Core.Models.Cards.Shiv.CreateInHand",
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHandForDiscard"
+      ],
+      "grantedPowers": [],
+      "id": "HIDDEN_DAGGERS",
+      "title": "隐秘匕首",
+      "mechanisms": [
+        "generation_helper",
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "手牌N选k弃牌，再生成小刀",
+      "assessment": "优先测固定多选的代表筛选；计数可迁移",
+      "guard": "不能削弱奇巧、保留等代表；后续小刀按原流程生成",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "bounded-combination-materialization",
+        "choice-scoring",
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "Hologram",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromCombatPile"
+      ],
+      "grantedPowers": [],
+      "id": "HOLOGRAM",
+      "title": "全息影像",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "弃牌堆N选1回手",
+      "assessment": "共享计数；反复回收时测试当前来源列表",
+      "guard": "不可复用上一次回收前的选项",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "NeowsFury",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromCombatPile"
+      ],
+      "grantedPowers": [],
+      "id": "NEOWS_FURY",
+      "title": "涅奥之怒",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "弃牌堆选择0..k回手",
+      "assessment": "优先测每个张数的组合中间分配",
+      "guard": "保留每种选择张数以及手牌余量约束",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "bounded-combination-materialization",
+        "choice-scoring",
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "Nightmare",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHand"
+      ],
+      "grantedPowers": [
+        "NightmarePower"
+      ],
+      "id": "NIGHTMARE",
+      "title": "夜魇",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "N选1，下回合生成复制品",
+      "assessment": "计数可迁移；验证延迟复制的分支所有权",
+      "guard": "不可把本回合选项缓存成跨回合可变牌引用",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "PhotonCut",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHand"
+      ],
+      "grantedPowers": [],
+      "id": "PHOTON_CUT",
+      "title": "光子切割",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "抽牌后手牌N选k放牌顶",
+      "assessment": "优先测组合与令牌扫描，继续使用现有有序回放",
+      "guard": "选择顺序及回顶后抽牌顺序不可改",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "bounded-combination-materialization",
+        "choice-scoring",
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "Prepared",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHandForDiscard"
+      ],
+      "grantedPowers": [],
+      "id": "PREPARED",
+      "title": "早有准备",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "手牌N选k弃牌",
+      "assessment": "优先测多选组合/代表；共享计数",
+      "guard": "升级改变k；保留全部既有选择多样性",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "bounded-combination-materialization",
+        "choice-scoring",
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "Purity",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHand"
+      ],
+      "grantedPowers": [],
+      "id": "PURITY",
+      "title": "净化",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "手牌选择0..k消耗",
+      "assessment": "优先测组合中间集合；共享计数",
+      "guard": "空选、消耗触发及持久身份代表不变",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "Quasar",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat",
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromChooseACardScreen"
+      ],
+      "grantedPowers": [],
+      "id": "QUASAR",
+      "title": "类星体",
+      "mechanisms": [
+        "generation",
+        "random_generation",
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "生成候选后至多选1",
+      "assessment": "迁移结算阶段历史查询；复用已有根内卡池，不缓存RNG结果",
+      "guard": "保留允许放弃、候选顺序、生成类别与逐实例状态",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "reverse-generation-history",
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "Scavenge",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHand"
+      ],
+      "grantedPowers": [],
+      "id": "SCAVENGE",
+      "title": "内存清理",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "手牌N选1消耗，排除自身",
+      "assessment": "共享计数；保留选择后效果链",
+      "guard": "排除的是当前实例，不能按卡ID排除全部同名牌",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "SculptingStrike",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHand"
+      ],
+      "grantedPowers": [],
+      "id": "SCULPTING_STRIKE",
+      "title": "雕琢打击",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "尚无本地虚无的手牌N选1",
+      "assessment": "计数可迁移；关键词检查已有特定来源口径",
+      "guard": "必须继续查询本地虚无，不能改成所有来源",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "Seance",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromCombatPile"
+      ],
+      "grantedPowers": [],
+      "id": "SEANCE",
+      "title": "降灵",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "抽牌堆N选k变化",
+      "assessment": "优先测组合中间列表及身份代表",
+      "guard": "保留牌堆顺序、k与变化的身份语义",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "SecretTechnique",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromCombatPile"
+      ],
+      "grantedPowers": [],
+      "id": "SECRET_TECHNIQUE",
+      "title": "秘密技法",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "抽牌堆合法技能/攻击N选1",
+      "assessment": "共享计数，筛选结果限当前选择使用",
+      "guard": "类型过滤与回手后的费用状态不变",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "SecretWeapon",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromCombatPile"
+      ],
+      "grantedPowers": [],
+      "id": "SECRET_WEAPON",
+      "title": "秘密武器",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "抽牌堆合法技能/攻击N选1",
+      "assessment": "共享计数，筛选结果限当前选择使用",
+      "guard": "类型过滤与回手后的费用状态不变",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "SeekerStrike",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromCombatPile"
+      ],
+      "grantedPowers": [],
+      "id": "SEEKER_STRIKE",
+      "title": "探寻打击",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "抽牌堆限定前部候选中选1",
+      "assessment": "计数可迁移；保持现有候选上下文",
+      "guard": "不能替换为全抽牌堆或丢弃其上下文签名",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "Snap",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHand"
+      ],
+      "grantedPowers": [],
+      "id": "SNAP",
+      "title": "响指",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "尚未保留的手牌N选1",
+      "assessment": "共享计数；完整关键词读取需保留",
+      "guard": "本地与能力赋予保留不同，不能用LocalKeywords替代",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "Splash",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat",
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromChooseACardScreen"
+      ],
+      "grantedPowers": [],
+      "id": "SPLASH",
+      "title": "飞溅",
+      "mechanisms": [
+        "generation",
+        "random_generation",
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "生成候选后至多选1",
+      "assessment": "迁移结算阶段历史查询；复用已有根内卡池，不缓存RNG结果",
+      "guard": "保留允许放弃、候选顺序、生成类别与逐实例状态",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "reverse-generation-history",
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "Survivor",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHandForDiscard"
+      ],
+      "grantedPowers": [],
+      "id": "SURVIVOR",
+      "title": "生存者",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "手牌N选1弃牌",
+      "assessment": "迁移令牌计数，暂不新增单卡专用缓存",
+      "guard": "保留格挡后选择及弃牌触发",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "ThinkingAhead",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHand"
+      ],
+      "grantedPowers": [],
+      "id": "THINKING_AHEAD",
+      "title": "深谋远虑",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "抽牌后手牌N选1放牌顶",
+      "assessment": "共享计数，重复循环用相同输入衡量",
+      "guard": "抽牌及牌顶顺序必须精确",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "Transfigure",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHand"
+      ],
+      "grantedPowers": [],
+      "id": "TRANSFIGURE",
+      "title": "重构",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "手牌N选1永久修改",
+      "assessment": "共享计数，继续保留身份补充代表",
+      "guard": "不能按当前数值相同就合并不同实例",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "TrueGrit",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHand"
+      ],
+      "grantedPowers": [],
+      "id": "TRUE_GRIT",
+      "title": "坚毅",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "升级后N选1消耗；未升级由RNG决定",
+      "assessment": "只优化升级版令牌构造",
+      "guard": "未升级不是玩家枚举选择，不能额外展开或改随机流",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "Tutor",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromCombatPile"
+      ],
+      "grantedPowers": [],
+      "id": "TUTOR",
+      "title": "指导",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "多人专用选牌",
+      "assessment": "本分支单人范围不优化",
+      "guard": "继续明确多人边界",
+      "priority": "排除",
+      "section": "direct",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Wish",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromCombatPile"
+      ],
+      "grantedPowers": [],
+      "id": "WISH",
+      "title": "许愿",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "抽牌堆N选1回手",
+      "assessment": "共享计数；大牌堆时测令牌查找",
+      "guard": "保留可选全部牌及原有单选覆盖",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Potions",
+      "model": "Ashwater",
+      "nativeMethods": [
+        "OnUse"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHand"
+      ],
+      "grantedPowers": [],
+      "id": "ASHWATER",
+      "title": "灰水",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "手牌任意子集消耗，理论2^N",
+      "assessment": "优先测组合中间分配、计数与代表构造",
+      "guard": "不丢消耗触发/空选/持久身份代表",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "bounded-combination-materialization",
+        "choice-scoring",
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Potions",
+      "model": "AttackPotion",
+      "nativeMethods": [
+        "OnUse"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat",
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromChooseACardScreen"
+      ],
+      "grantedPowers": [],
+      "id": "ATTACK_POTION",
+      "title": "攻击药水",
+      "mechanisms": [
+        "generation",
+        "random_generation",
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "3选1，可空选",
+      "assessment": "最近生成历史的无来源过滤查询可迁移；共享令牌计数",
+      "guard": "必须保留原先“不按药水来源过滤”的口径及选后克隆/免费",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "reverse-generation-history",
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Potions",
+      "model": "ColorlessPotion",
+      "nativeMethods": [
+        "OnUse"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat",
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromChooseACardScreen"
+      ],
+      "grantedPowers": [],
+      "id": "COLORLESS_POTION",
+      "title": "无色药水",
+      "mechanisms": [
+        "generation",
+        "random_generation",
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "3选1，可空选",
+      "assessment": "最近生成历史的无来源过滤查询可迁移；共享令牌计数",
+      "guard": "必须保留原先“不按药水来源过滤”的口径及选后克隆/免费",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "reverse-generation-history",
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Potions",
+      "model": "DropletOfPrecognition",
+      "nativeMethods": [
+        "OnUse"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromCombatPile"
+      ],
+      "grantedPowers": [],
+      "id": "DROPLET_OF_PRECOGNITION",
+      "title": "预知之滴",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "抽牌堆N选1回手",
+      "assessment": "共享计数与按发生序号查找",
+      "guard": "保留有序牌堆和完整单选覆盖",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Potions",
+      "model": "GamblersBrew",
+      "nativeMethods": [
+        "OnUse"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHandForDiscard"
+      ],
+      "grantedPowers": [],
+      "id": "GAMBLERS_BREW",
+      "title": "赌徒特酿",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "手牌任意子集弃掉并补抽，理论2^N",
+      "assessment": "与赌博筹码共用组合/计数优化，优先实测",
+      "guard": "弃牌→奇巧等触发→补抽顺序以及各张数代表不能改",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "bounded-combination-materialization",
+        "choice-scoring",
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Potions",
+      "model": "LiquidMemories",
+      "nativeMethods": [
+        "OnUse"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromCombatPile"
+      ],
+      "grantedPowers": [],
+      "id": "LIQUID_MEMORIES",
+      "title": "液态记忆",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "弃牌堆N选1回手并本回合免费",
+      "assessment": "共享计数；只在选中后改费用",
+      "guard": "不能提前修改候选牌或复用改变费用前的键",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Potions",
+      "model": "PowerPotion",
+      "nativeMethods": [
+        "OnUse"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat",
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromChooseACardScreen"
+      ],
+      "grantedPowers": [],
+      "id": "POWER_POTION",
+      "title": "能力药水",
+      "mechanisms": [
+        "generation",
+        "random_generation",
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "3选1，可空选",
+      "assessment": "最近生成历史的无来源过滤查询可迁移；共享令牌计数",
+      "guard": "必须保留原先“不按药水来源过滤”的口径及选后克隆/免费",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "reverse-generation-history",
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Potions",
+      "model": "SkillPotion",
+      "nativeMethods": [
+        "OnUse"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat",
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromChooseACardScreen"
+      ],
+      "grantedPowers": [],
+      "id": "SKILL_POTION",
+      "title": "技能药水",
+      "mechanisms": [
+        "generation",
+        "random_generation",
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "3选1，可空选",
+      "assessment": "最近生成历史的无来源过滤查询可迁移；共享令牌计数",
+      "guard": "必须保留原先“不按药水来源过滤”的口径及选后克隆/免费",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "reverse-generation-history",
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Potions",
+      "model": "TouchOfInsanity",
+      "nativeMethods": [
+        "OnUse"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHand"
+      ],
+      "grantedPowers": [],
+      "id": "TOUCH_OF_INSANITY",
+      "title": "癫狂之触",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "符合能量/星费条件的N选1变免费",
+      "assessment": "共享计数；两个成本判定须保留全局/本地区别",
+      "guard": "永久费用、同名实例与身份代表不变",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Powers",
+      "model": "EntropyPower",
+      "nativeMethods": [
+        "AfterPlayerTurnStart"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHand"
+      ],
+      "grantedPowers": [],
+      "id": "ENTROPY_POWER",
+      "title": "熵",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "每回合手牌N选k变化",
+      "assessment": "组合/身份代表与计数共用；关注长战斗重复触发",
+      "guard": "叠层改变k，变化结果与RNG按分支保留",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Powers",
+      "model": "ForegoneConclusionPower",
+      "nativeMethods": [
+        "BeforeHandDraw"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromCombatPile"
+      ],
+      "grantedPowers": [],
+      "id": "FOREGONE_CONCLUSION_POWER",
+      "title": "既定事项",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "下回合抽牌堆N选k回手",
+      "assessment": "多选组合可优化，全取时已可走隐式全选",
+      "guard": "缺牌先洗牌的嵌套选择和能力消退不变",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Powers",
+      "model": "StratagemPower",
+      "nativeMethods": [
+        "AfterShuffle"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromCombatPile"
+      ],
+      "grantedPowers": [],
+      "id": "STRATAGEM_POWER",
+      "title": "计策",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "每次洗牌后从抽牌堆N选k回手",
+      "assessment": "优先测反复查询/令牌构造及嵌套选择重放",
+      "guard": "不是弃牌预视；洗牌后次序、叠层数和选择时机不可改",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Powers",
+      "model": "ToolsOfTheTradePower",
+      "nativeMethods": [
+        "AfterPlayerTurnStart"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHandForDiscard"
+      ],
+      "grantedPowers": [],
+      "id": "TOOLS_OF_THE_TRADE_POWER",
+      "title": "必备工具",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "每回合抽牌后N选k弃牌",
+      "assessment": "固定多选代表与令牌计数共用",
+      "guard": "保留抽牌后候选与弃牌触发",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Powers",
+      "model": "TyrannyPower",
+      "nativeMethods": [
+        "AfterPlayerTurnStart"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHand"
+      ],
+      "grantedPowers": [],
+      "id": "TYRANNY_POWER",
+      "title": "暴政",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "每回合抽牌后N选k消耗",
+      "assessment": "组合/身份代表与计数共用",
+      "guard": "保留能力叠层和消耗后的嵌套效果",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Relics",
+      "model": "ChoicesParadox",
+      "nativeMethods": [
+        "AfterPlayerTurnStart"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat",
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromSimpleGrid"
+      ],
+      "grantedPowers": [],
+      "id": "CHOICES_PARADOX",
+      "title": "选择悖论",
+      "mechanisms": [
+        "generation",
+        "random_generation",
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "仅开战，生成k张候选选1并保留",
+      "assessment": "共享令牌计数；候选已直接存于请求，无需迁移历史查询",
+      "guard": "保留候选增加保留关键字的时机",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Relics",
+      "model": "GamblingChip",
+      "nativeMethods": [
+        "AfterPlayerTurnStart"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHandForDiscard"
+      ],
+      "grantedPowers": [],
+      "id": "GAMBLING_CHIP",
+      "title": "赌博筹码",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "仅开战，手牌任意子集弃牌补抽",
+      "assessment": "最高优先级之一：组合中间集合、评分复算、令牌计数",
+      "guard": "候选是手牌副本数组，来源是手牌列表，不能视为同一引用",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "bounded-combination-materialization",
+        "choice-scoring",
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Relics",
+      "model": "ToastyMittens",
+      "nativeMethods": [
+        "AfterPlayerTurnStart"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromHand"
+      ],
+      "grantedPowers": [],
+      "id": "TOASTY_MITTENS",
+      "title": "烘焙手套",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "每回合手牌N选1消耗",
+      "assessment": "共享计数；跨回合重复触发比一次开战更值得测",
+      "guard": "原回合时序、消耗触发与力量授予不变",
+      "priority": "高",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Relics",
+      "model": "Toolbox",
+      "nativeMethods": [
+        "BeforeHandDraw"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat",
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromChooseACardScreen"
+      ],
+      "grantedPowers": [],
+      "id": "TOOLBOX",
+      "title": "工具箱",
+      "mechanisms": [
+        "generation",
+        "random_generation",
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "仅开战，随机候选选1",
+      "assessment": "共享计数；沿现有根卡池条件复用筛选",
+      "guard": "请求已带选项，不能硬改为历史查找",
+      "priority": "中",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Relics",
+      "model": "WhisperingEarring",
+      "nativeMethods": [
+        "AfterAutoPrePlayPhaseEnteredLate"
+      ],
+      "nativeCalls": [
+        "autoplay:MegaCrit.Sts2.Core.Commands.CardCmd.AutoPlay",
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.PushSelector"
+      ],
+      "grantedPowers": [],
+      "id": "WHISPERING_EARRING",
+      "title": "低语耳环",
+      "mechanisms": [
+        "autoplay",
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "首回合瓦库自动选择/出牌",
+      "assessment": "只迁移共用计数；保留确定性的选择策略",
+      "guard": "不是任意手牌子集枚举，不改变原生接管策略",
+      "priority": "低",
+      "section": "direct",
+      "candidateFamilies": [
+        "token-counting"
+      ]
+    },
+    {
+      "category": "Cards",
+      "model": "AdaptiveStrike",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat"
+      ],
+      "grantedPowers": [],
+      "id": "ADAPTIVE_STRIKE",
+      "title": "适应打击",
+      "mechanisms": [
+        "generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Anger",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat"
+      ],
+      "grantedPowers": [],
+      "id": "ANGER",
+      "title": "愤怒",
+      "mechanisms": [
+        "generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "BeatDown",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "autoplay:MegaCrit.Sts2.Core.Commands.CardCmd.AutoPlay"
+      ],
+      "grantedPowers": [],
+      "id": "BEAT_DOWN",
+      "title": "狠揍",
+      "mechanisms": [
+        "autoplay"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "自动出牌，遇到选牌效果可接出嵌套分支",
+      "assessment": "测每次自动牌的历史/令牌重复处理与回放分配；不跳过真实出牌",
+      "guard": "目标、顺序、自动/手动计数及每次嵌套选择不可合并",
+      "priority": "高",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "BeatIntoShape",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "forge:MegaCrit.Sts2.Core.Commands.ForgeCmd.Forge"
+      ],
+      "grantedPowers": [],
+      "id": "BEAT_INTO_SHAPE",
+      "title": "锻打成型",
+      "mechanisms": [
+        "forge"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "铸造/增强君王之剑，可能生成首把剑",
+      "assessment": "优先低成本检查已存在剑的查找及状态拷贝，不改铸造流程",
+      "guard": "剑的数量、所有权、费用/伤害和顺序效应保留",
+      "priority": "低",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "BigBang",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "forge:MegaCrit.Sts2.Core.Commands.ForgeCmd.Forge"
+      ],
+      "grantedPowers": [],
+      "id": "BIG_BANG",
+      "title": "大爆炸",
+      "mechanisms": [
+        "forge"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "铸造/增强君王之剑，可能生成首把剑",
+      "assessment": "优先低成本检查已存在剑的查找及状态拷贝，不改铸造流程",
+      "guard": "剑的数量、所有权、费用/伤害和顺序效应保留",
+      "priority": "低",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "BladeDance",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation_helper:MegaCrit.Sts2.Core.Models.Cards.Shiv.CreateInHand"
+      ],
+      "grantedPowers": [],
+      "id": "BLADE_DANCE",
+      "title": "刀刃之舞",
+      "mechanisms": [
+        "generation_helper"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "BladeOfInk",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation_helper:MegaCrit.Sts2.Core.Models.Cards.Shiv.CreateInHand"
+      ],
+      "grantedPowers": [],
+      "id": "BLADE_OF_INK",
+      "title": "墨之刃",
+      "mechanisms": [
+        "generation_helper"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "BladeSymphony",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation_helper:MegaCrit.Sts2.Core.Models.Cards.Shiv.CreateInHand"
+      ],
+      "grantedPowers": [],
+      "id": "BLADE_SYMPHONY",
+      "title": "刀刃交响曲",
+      "mechanisms": [
+        "generation_helper"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Bombardment",
+      "nativeMethods": [
+        "AfterAutoPrePlayPhaseEnteredEarly"
+      ],
+      "nativeCalls": [
+        "autoplay:MegaCrit.Sts2.Core.Commands.CardCmd.AutoPlay"
+      ],
+      "grantedPowers": [],
+      "id": "BOMBARDMENT",
+      "title": "轰击",
+      "mechanisms": [
+        "autoplay"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "自动出牌，遇到选牌效果可接出嵌套分支",
+      "assessment": "测每次自动牌的历史/令牌重复处理与回放分配；不跳过真实出牌",
+      "guard": "目标、顺序、自动/手动计数及每次嵌套选择不可合并",
+      "priority": "高",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "BoostAway",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Combat.ICombatState.CreateCard",
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat"
+      ],
+      "grantedPowers": [],
+      "id": "BOOST_AWAY",
+      "title": "高速脱离",
+      "mechanisms": [
+        "creation",
+        "generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Bulwark",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "forge:MegaCrit.Sts2.Core.Commands.ForgeCmd.Forge"
+      ],
+      "grantedPowers": [],
+      "id": "BULWARK",
+      "title": "铸墙",
+      "mechanisms": [
+        "forge"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "铸造/增强君王之剑，可能生成首把剑",
+      "assessment": "优先低成本检查已存在剑的查找及状态拷贝，不改铸造流程",
+      "guard": "剑的数量、所有权、费用/伤害和顺序效应保留",
+      "priority": "低",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "BundleOfJoy",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat"
+      ],
+      "grantedPowers": [],
+      "id": "BUNDLE_OF_JOY",
+      "title": "新生之喜",
+      "mechanisms": [
+        "generation",
+        "random_generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "按当前分支RNG产生牌；后续可选动作增多",
+      "assessment": "检查现有根内卡池缓存与旁路，再测生成克隆、关键词/Hook内部重复工作",
+      "guard": "不展开整个随机卡池，也不把不同分支RNG结果缓存为同一结果",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Calamity",
+      "nativeMethods": [],
+      "nativeCalls": [],
+      "grantedPowers": [
+        "CalamityPower"
+      ],
+      "id": "CALAMITY",
+      "title": "劫难",
+      "mechanisms": [],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "授予后续触发能力：劫难",
+      "assessment": "优化实际触发能力路径，避免只优化打出本牌的瞬间",
+      "guard": "能力叠层、首次/每回合时机、Fork状态和RNG保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "CallOfTheVoid",
+      "nativeMethods": [],
+      "nativeCalls": [],
+      "grantedPowers": [
+        "CallOfTheVoidPower"
+      ],
+      "id": "CALL_OF_THE_VOID",
+      "title": "虚空之唤",
+      "mechanisms": [],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "授予后续触发能力：虚空之唤",
+      "assessment": "优化实际触发能力路径，避免只优化打出本牌的瞬间",
+      "guard": "能力叠层、首次/每回合时机、Fork状态和RNG保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "CaptureSpirit",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardsToCombat",
+        "generation_helper:MegaCrit.Sts2.Core.Models.Cards.Soul.Create"
+      ],
+      "grantedPowers": [],
+      "id": "CAPTURE_SPIRIT",
+      "title": "捕捉灵魂",
+      "mechanisms": [
+        "generation",
+        "generation_helper"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Cascade",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "autoplay:MegaCrit.Sts2.Core.Commands.CardPileCmd.AutoPlayFromDrawPile"
+      ],
+      "grantedPowers": [],
+      "id": "CASCADE",
+      "title": "倾泻",
+      "mechanisms": [
+        "autoplay"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "自动出牌，遇到选牌效果可接出嵌套分支",
+      "assessment": "测每次自动牌的历史/令牌重复处理与回放分配；不跳过真实出牌",
+      "guard": "目标、顺序、自动/手动计数及每次嵌套选择不可合并",
+      "priority": "高",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Catastrophe",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "autoplay:MegaCrit.Sts2.Core.Commands.CardCmd.AutoPlay"
+      ],
+      "grantedPowers": [],
+      "id": "CATASTROPHE",
+      "title": "横祸",
+      "mechanisms": [
+        "autoplay"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "自动出牌，遇到选牌效果可接出嵌套分支",
+      "assessment": "测每次自动牌的历史/令牌重复处理与回放分配；不跳过真实出牌",
+      "guard": "目标、顺序、自动/手动计数及每次嵌套选择不可合并",
+      "priority": "高",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "CloakAndDagger",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation_helper:MegaCrit.Sts2.Core.Models.Cards.Shiv.CreateInHand"
+      ],
+      "grantedPowers": [],
+      "id": "CLOAK_AND_DAGGER",
+      "title": "斗篷与匕首",
+      "mechanisms": [
+        "generation_helper"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "CollisionCourse",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Combat.ICombatState.CreateCard",
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat"
+      ],
+      "grantedPowers": [],
+      "id": "COLLISION_COURSE",
+      "title": "碰撞轨迹",
+      "mechanisms": [
+        "creation",
+        "generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Compact",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Combat.ICombatState.CreateCard"
+      ],
+      "grantedPowers": [],
+      "id": "COMPACT",
+      "title": "压缩",
+      "mechanisms": [
+        "creation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "整只手牌的状态牌确定变化",
+      "assessment": "无玩家多选；仅考虑批量变化内部重复扫描",
+      "guard": "不是2^N子集选择，保留每张变化结果",
+      "priority": "低",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Conqueror",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "forge:MegaCrit.Sts2.Core.Commands.ForgeCmd.Forge"
+      ],
+      "grantedPowers": [],
+      "id": "CONQUEROR",
+      "title": "征服者",
+      "mechanisms": [
+        "forge"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "铸造/增强君王之剑，可能生成首把剑",
+      "assessment": "优先低成本检查已存在剑的查找及状态拷贝，不改铸造流程",
+      "guard": "剑的数量、所有权、费用/伤害和顺序效应保留",
+      "priority": "低",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "CrashLanding",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Combat.ICombatState.CreateCard",
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardsToCombat"
+      ],
+      "grantedPowers": [],
+      "id": "CRASH_LANDING",
+      "title": "迫降",
+      "mechanisms": [
+        "creation",
+        "generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "CreativeAi",
+      "nativeMethods": [],
+      "nativeCalls": [],
+      "grantedPowers": [
+        "CreativeAiPower"
+      ],
+      "id": "CREATIVE_AI",
+      "title": "创造性AI",
+      "mechanisms": [],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "授予后续触发能力：创造性AI",
+      "assessment": "优化实际触发能力路径，避免只优化打出本牌的瞬间",
+      "guard": "能力叠层、首次/每回合时机、Fork状态和RNG保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Dirge",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardsToCombat",
+        "generation_helper:MegaCrit.Sts2.Core.Models.Cards.Soul.Create"
+      ],
+      "grantedPowers": [],
+      "id": "DIRGE",
+      "title": "挽歌",
+      "mechanisms": [
+        "generation",
+        "generation_helper"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Distraction",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat"
+      ],
+      "grantedPowers": [],
+      "id": "DISTRACTION",
+      "title": "声东击西",
+      "mechanisms": [
+        "generation",
+        "random_generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "按当前分支RNG产生牌；后续可选动作增多",
+      "assessment": "检查现有根内卡池缓存与旁路，再测生成克隆、关键词/Hook内部重复工作",
+      "guard": "不展开整个随机卡池，也不把不同分支RNG结果缓存为同一结果",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Eidolon",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "autoplay:MegaCrit.Sts2.Core.Commands.CardCmd.AutoPlay"
+      ],
+      "grantedPowers": [],
+      "id": "EIDOLON",
+      "title": "幻景",
+      "mechanisms": [
+        "autoplay"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "自动出牌，遇到选牌效果可接出嵌套分支",
+      "assessment": "测每次自动牌的历史/令牌重复处理与回放分配；不跳过真实出牌",
+      "guard": "目标、顺序、自动/手动计数及每次嵌套选择不可合并",
+      "priority": "高",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Entropy",
+      "nativeMethods": [],
+      "nativeCalls": [],
+      "grantedPowers": [
+        "EntropyPower"
+      ],
+      "id": "ENTROPY",
+      "title": "熵",
+      "mechanisms": [],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "授予后续触发能力：熵",
+      "assessment": "优化实际触发能力路径，避免只优化打出本牌的瞬间",
+      "guard": "能力叠层、首次/每回合时机、Fork状态和RNG保留",
+      "priority": "高",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "FanOfKnives",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation_helper:MegaCrit.Sts2.Core.Models.Cards.Shiv.CreateInHand"
+      ],
+      "grantedPowers": [],
+      "id": "FAN_OF_KNIVES",
+      "title": "刀扇",
+      "mechanisms": [
+        "generation_helper"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "FightThrough",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Combat.ICombatState.CreateCard",
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat"
+      ],
+      "grantedPowers": [],
+      "id": "FIGHT_THROUGH",
+      "title": "强撑",
+      "mechanisms": [
+        "creation",
+        "generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "ForegoneConclusion",
+      "nativeMethods": [],
+      "nativeCalls": [],
+      "grantedPowers": [
+        "ForegoneConclusionPower"
+      ],
+      "id": "FOREGONE_CONCLUSION",
+      "title": "既定事项",
+      "mechanisms": [],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "授予后续触发能力：既定事项",
+      "assessment": "优化实际触发能力路径，避免只优化打出本牌的瞬间",
+      "guard": "能力叠层、首次/每回合时机、Fork状态和RNG保留",
+      "priority": "高",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Furnace",
+      "nativeMethods": [],
+      "nativeCalls": [],
+      "grantedPowers": [
+        "FurnacePower"
+      ],
+      "id": "FURNACE",
+      "title": "熔炉",
+      "mechanisms": [],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "授予后续触发能力：熔炉",
+      "assessment": "优化实际触发能力路径，避免只优化打出本牌的瞬间",
+      "guard": "能力叠层、首次/每回合时机、Fork状态和RNG保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "GlimpseBeyond",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardsToCombat",
+        "generation_helper:MegaCrit.Sts2.Core.Models.Cards.Soul.Create"
+      ],
+      "grantedPowers": [],
+      "id": "GLIMPSE_BEYOND",
+      "title": "彼岸一瞥",
+      "mechanisms": [
+        "generation",
+        "generation_helper"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "GraveWarden",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardsToCombat",
+        "generation_helper:MegaCrit.Sts2.Core.Models.Cards.Soul.Create"
+      ],
+      "grantedPowers": [],
+      "id": "GRAVE_WARDEN",
+      "title": "守墓人",
+      "mechanisms": [
+        "generation",
+        "generation_helper"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "GunkUp",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Combat.ICombatState.CreateCard",
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat"
+      ],
+      "grantedPowers": [],
+      "id": "GUNK_UP",
+      "title": "污秽攻击",
+      "mechanisms": [
+        "creation",
+        "generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "HammerTime",
+      "nativeMethods": [],
+      "nativeCalls": [],
+      "grantedPowers": [
+        "HammerTimePower"
+      ],
+      "id": "HAMMER_TIME",
+      "title": "锤子时间",
+      "mechanisms": [],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "授予后续触发能力：锤子时间",
+      "assessment": "优化实际触发能力路径，避免只优化打出本牌的瞬间",
+      "guard": "能力叠层、首次/每回合时机、Fork状态和RNG保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Havoc",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "autoplay:MegaCrit.Sts2.Core.Commands.CardPileCmd.AutoPlayFromDrawPile"
+      ],
+      "grantedPowers": [],
+      "id": "HAVOC",
+      "title": "破灭",
+      "mechanisms": [
+        "autoplay"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "自动出牌，遇到选牌效果可接出嵌套分支",
+      "assessment": "测每次自动牌的历史/令牌重复处理与回放分配；不跳过真实出牌",
+      "guard": "目标、顺序、自动/手动计数及每次嵌套选择不可合并",
+      "priority": "高",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "HelloWorld",
+      "nativeMethods": [],
+      "nativeCalls": [],
+      "grantedPowers": [
+        "HelloWorldPower"
+      ],
+      "id": "HELLO_WORLD",
+      "title": "你好世界",
+      "mechanisms": [],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "授予后续触发能力：你好世界",
+      "assessment": "优化实际触发能力路径，避免只优化打出本牌的瞬间",
+      "guard": "能力叠层、首次/每回合时机、Fork状态和RNG保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Hellraiser",
+      "nativeMethods": [],
+      "nativeCalls": [],
+      "grantedPowers": [
+        "HellraiserPower"
+      ],
+      "id": "HELLRAISER",
+      "title": "地狱狂徒",
+      "mechanisms": [],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "授予后续触发能力：地狱狂徒",
+      "assessment": "优化实际触发能力路径，避免只优化打出本牌的瞬间",
+      "guard": "能力叠层、首次/每回合时机、Fork状态和RNG保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "HowlFromBeyond",
+      "nativeMethods": [
+        "AfterAutoPostPlayPhaseEntered"
+      ],
+      "nativeCalls": [
+        "autoplay:MegaCrit.Sts2.Core.Commands.CardCmd.AutoPlay"
+      ],
+      "grantedPowers": [],
+      "id": "HOWL_FROM_BEYOND",
+      "title": "彼岸咆哮",
+      "mechanisms": [
+        "autoplay"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "自动出牌，遇到选牌效果可接出嵌套分支",
+      "assessment": "测每次自动牌的历史/令牌重复处理与回放分配；不跳过真实出牌",
+      "guard": "目标、顺序、自动/手动计数及每次嵌套选择不可合并",
+      "priority": "高",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "IAmInvincible",
+      "nativeMethods": [
+        "AfterAutoPostPlayPhaseEntered"
+      ],
+      "nativeCalls": [
+        "autoplay:MegaCrit.Sts2.Core.Commands.CardPileCmd.AutoPlayFromDrawPile"
+      ],
+      "grantedPowers": [],
+      "id": "I_AM_INVINCIBLE",
+      "title": "所向无敌",
+      "mechanisms": [
+        "autoplay"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "自动出牌，遇到选牌效果可接出嵌套分支",
+      "assessment": "测每次自动牌的历史/令牌重复处理与回放分配；不跳过真实出牌",
+      "guard": "目标、顺序、自动/手动计数及每次嵌套选择不可合并",
+      "priority": "高",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "ImitationLearning",
+      "nativeMethods": [],
+      "nativeCalls": [],
+      "grantedPowers": [
+        "ImitationLearningPower"
+      ],
+      "id": "IMITATION_LEARNING",
+      "title": "模仿学习",
+      "mechanisms": [],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "授予多人自动复制能力",
+      "assessment": "单人范围排除",
+      "guard": "保持既有多人边界",
+      "priority": "排除",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "InfernalBlade",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat"
+      ],
+      "grantedPowers": [],
+      "id": "INFERNAL_BLADE",
+      "title": "地狱之刃",
+      "mechanisms": [
+        "generation",
+        "random_generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "按当前分支RNG产生牌；后续可选动作增多",
+      "assessment": "检查现有根内卡池缓存与旁路，再测生成克隆、关键词/Hook内部重复工作",
+      "guard": "不展开整个随机卡池，也不把不同分支RNG结果缓存为同一结果",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "InfiniteBlades",
+      "nativeMethods": [],
+      "nativeCalls": [],
+      "grantedPowers": [
+        "InfiniteBladesPower"
+      ],
+      "id": "INFINITE_BLADES",
+      "title": "无尽刀刃",
+      "mechanisms": [],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "授予后续触发能力：无尽刀刃",
+      "assessment": "优化实际触发能力路径，避免只优化打出本牌的瞬间",
+      "guard": "能力叠层、首次/每回合时机、Fork状态和RNG保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "JackOfAllTrades",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat"
+      ],
+      "grantedPowers": [],
+      "id": "JACK_OF_ALL_TRADES",
+      "title": "花样百出",
+      "mechanisms": [
+        "generation",
+        "random_generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "按当前分支RNG产生牌；后续可选动作增多",
+      "assessment": "检查现有根内卡池缓存与旁路，再测生成克隆、关键词/Hook内部重复工作",
+      "guard": "不展开整个随机卡池，也不把不同分支RNG结果缓存为同一结果",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Jackpot",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetForCombat"
+      ],
+      "grantedPowers": [],
+      "id": "JACKPOT",
+      "title": "大奖",
+      "mechanisms": [
+        "generation",
+        "random_generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "按当前分支RNG产生牌；后续可选动作增多",
+      "assessment": "检查现有根内卡池缓存与旁路，再测生成克隆、关键词/Hook内部重复工作",
+      "guard": "不展开整个随机卡池，也不把不同分支RNG结果缓存为同一结果",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Juggling",
+      "nativeMethods": [],
+      "nativeCalls": [],
+      "grantedPowers": [
+        "JugglingPower"
+      ],
+      "id": "JUGGLING",
+      "title": "杂耍",
+      "mechanisms": [],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "授予后续触发能力：杂耍",
+      "assessment": "优化实际触发能力路径，避免只优化打出本牌的瞬间",
+      "guard": "能力叠层、首次/每回合时机、Fork状态和RNG保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "KnifeTrap",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "autoplay:MegaCrit.Sts2.Core.Commands.CardCmd.AutoPlay"
+      ],
+      "grantedPowers": [],
+      "id": "KNIFE_TRAP",
+      "title": "刀刃陷阱",
+      "mechanisms": [
+        "autoplay"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "自动出牌，遇到选牌效果可接出嵌套分支",
+      "assessment": "测每次自动牌的历史/令牌重复处理与回放分配；不跳过真实出牌",
+      "guard": "目标、顺序、自动/手动计数及每次嵌套选择不可合并",
+      "priority": "高",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Largesse",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat"
+      ],
+      "grantedPowers": [],
+      "id": "LARGESSE",
+      "title": "慷慨捐助",
+      "mechanisms": [
+        "generation",
+        "random_generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "向其他玩家生成牌",
+      "assessment": "单人范围不新增目标或兼容分支",
+      "guard": "遵循既有多人卡池约束",
+      "priority": "排除",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "LeadingStrike",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation_helper:MegaCrit.Sts2.Core.Models.Cards.Shiv.CreateInHand"
+      ],
+      "grantedPowers": [],
+      "id": "LEADING_STRIKE",
+      "title": "先制打击",
+      "mechanisms": [
+        "generation_helper"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "MadScience",
+      "nativeMethods": [
+        "ExecuteRider",
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat"
+      ],
+      "grantedPowers": [],
+      "id": "MAD_SCIENCE",
+      "title": "疯狂科学",
+      "mechanisms": [
+        "generation",
+        "random_generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "卡牌保存的变体/附带效果可能生成牌",
+      "assessment": "按实际附带效果决定是否有生成工作，不按类名一律跳过",
+      "guard": "变体字段与动态数值是语义状态",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "ManifestAuthority",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat"
+      ],
+      "grantedPowers": [],
+      "id": "MANIFEST_AUTHORITY",
+      "title": "君权自授",
+      "mechanisms": [
+        "generation",
+        "random_generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "随机生成1张无色牌；增加后续动作",
+      "assessment": "已有根内无色卡池缓存；测模型克隆、Hook和新增卡牌状态成本",
+      "guard": "不是从整个无色池枚举选择；RNG结果不能缓存跨分支",
+      "priority": "高",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Mayhem",
+      "nativeMethods": [],
+      "nativeCalls": [],
+      "grantedPowers": [
+        "MayhemPower"
+      ],
+      "id": "MAYHEM",
+      "title": "乱战",
+      "mechanisms": [],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "授予后续触发能力：乱战",
+      "assessment": "优化实际触发能力路径，避免只优化打出本牌的瞬间",
+      "guard": "能力叠层、首次/每回合时机、Fork状态和RNG保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Metamorphosis",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetForCombat"
+      ],
+      "grantedPowers": [],
+      "id": "METAMORPHOSIS",
+      "title": "羽化",
+      "mechanisms": [
+        "generation",
+        "random_generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "按当前分支RNG产生牌；后续可选动作增多",
+      "assessment": "检查现有根内卡池缓存与旁路，再测生成克隆、关键词/Hook内部重复工作",
+      "guard": "不展开整个随机卡池，也不把不同分支RNG结果缓存为同一结果",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Outrage",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat"
+      ],
+      "grantedPowers": [],
+      "id": "OUTRAGE",
+      "title": "群情激愤",
+      "mechanisms": [
+        "generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Overclock",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Combat.ICombatState.CreateCard",
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat"
+      ],
+      "grantedPowers": [],
+      "id": "OVERCLOCK",
+      "title": "超频",
+      "mechanisms": [
+        "creation",
+        "generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "PrimalForce",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Combat.ICombatState.CreateCard"
+      ],
+      "grantedPowers": [],
+      "id": "PRIMAL_FORCE",
+      "title": "原始力量",
+      "mechanisms": [
+        "creation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定地改变小刀形态",
+      "assessment": "测确定批量处理，非选择枚举",
+      "guard": "保留逐实例转换和目标类型",
+      "priority": "低",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Reave",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardsToCombat",
+        "generation_helper:MegaCrit.Sts2.Core.Models.Cards.Soul.Create"
+      ],
+      "grantedPowers": [],
+      "id": "REAVE",
+      "title": "剥夺",
+      "mechanisms": [
+        "generation",
+        "generation_helper"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "RefineBlade",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "forge:MegaCrit.Sts2.Core.Commands.ForgeCmd.Forge"
+      ],
+      "grantedPowers": [],
+      "id": "REFINE_BLADE",
+      "title": "淬炼刀刃",
+      "mechanisms": [
+        "forge"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "铸造/增强君王之剑，可能生成首把剑",
+      "assessment": "优先低成本检查已存在剑的查找及状态拷贝，不改铸造流程",
+      "guard": "剑的数量、所有权、费用/伤害和顺序效应保留",
+      "priority": "低",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "SeekingEdge",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "forge:MegaCrit.Sts2.Core.Commands.ForgeCmd.Forge"
+      ],
+      "grantedPowers": [],
+      "id": "SEEKING_EDGE",
+      "title": "追踪之刃",
+      "mechanisms": [
+        "forge"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "铸造/增强君王之剑，可能生成首把剑",
+      "assessment": "优先低成本检查已存在剑的查找及状态拷贝，不改铸造流程",
+      "guard": "剑的数量、所有权、费用/伤害和顺序效应保留",
+      "priority": "低",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "SentryMode",
+      "nativeMethods": [],
+      "nativeCalls": [],
+      "grantedPowers": [
+        "SentryModePower"
+      ],
+      "id": "SENTRY_MODE",
+      "title": "哨卫模式",
+      "mechanisms": [],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "授予后续触发能力：哨卫模式",
+      "assessment": "优化实际触发能力路径，避免只优化打出本牌的瞬间",
+      "guard": "能力叠层、首次/每回合时机、Fork状态和RNG保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Severance",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "generation_helper:MegaCrit.Sts2.Core.Models.Cards.Soul.Create"
+      ],
+      "grantedPowers": [],
+      "id": "SEVERANCE",
+      "title": "切断",
+      "mechanisms": [
+        "generation",
+        "generation_helper"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Soulbound",
+      "nativeMethods": [],
+      "nativeCalls": [],
+      "grantedPowers": [
+        "SoulboundPower"
+      ],
+      "id": "SOULBOUND",
+      "title": "灵魂绑定",
+      "mechanisms": [],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "授予后续触发能力：灵魂绑定",
+      "assessment": "优化实际触发能力路径，避免只优化打出本牌的瞬间",
+      "guard": "能力叠层、首次/每回合时机、Fork状态和RNG保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "SovereignBlade",
+      "nativeMethods": [
+        "AfterCardChangedPiles",
+        "AfterCloned"
+      ],
+      "nativeCalls": [
+        "generation_helper:MegaCrit.Sts2.Core.Models.Cards.SovereignBlade.get_CreatedThroughForge",
+        "generation_helper:MegaCrit.Sts2.Core.Models.Cards.SovereignBlade.set_CreatedThroughForge"
+      ],
+      "grantedPowers": [],
+      "id": "SOVEREIGN_BLADE",
+      "title": "君王之剑",
+      "mechanisms": [
+        "generation_helper"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "克隆/换堆时维护君王之剑关联",
+      "assessment": "内部生命周期辅助节点，核对所有权后才优化",
+      "guard": "不能把每次铸造误认为一次自由选牌",
+      "priority": "低",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "SpectrumShift",
+      "nativeMethods": [],
+      "nativeCalls": [],
+      "grantedPowers": [
+        "SpectrumShiftPower"
+      ],
+      "id": "SPECTRUM_SHIFT",
+      "title": "光谱偏移",
+      "mechanisms": [],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "授予后续触发能力：光谱偏移",
+      "assessment": "优化实际触发能力路径，避免只优化打出本牌的瞬间",
+      "guard": "能力叠层、首次/每回合时机、Fork状态和RNG保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "SpoilsOfBattle",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "forge:MegaCrit.Sts2.Core.Commands.ForgeCmd.Forge"
+      ],
+      "grantedPowers": [],
+      "id": "SPOILS_OF_BATTLE",
+      "title": "战利品",
+      "mechanisms": [
+        "forge"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "铸造/增强君王之剑，可能生成首把剑",
+      "assessment": "优先低成本检查已存在剑的查找及状态拷贝，不改铸造流程",
+      "guard": "剑的数量、所有权、费用/伤害和顺序效应保留",
+      "priority": "低",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Stampede",
+      "nativeMethods": [],
+      "nativeCalls": [],
+      "grantedPowers": [
+        "StampedePower"
+      ],
+      "id": "STAMPEDE",
+      "title": "惊逃",
+      "mechanisms": [],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "授予后续触发能力：惊逃",
+      "assessment": "优化实际触发能力路径，避免只优化打出本牌的瞬间",
+      "guard": "能力叠层、首次/每回合时机、Fork状态和RNG保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Stoke",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardsToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetForCombat"
+      ],
+      "grantedPowers": [],
+      "id": "STOKE",
+      "title": "添柴",
+      "mechanisms": [
+        "generation",
+        "random_generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "按当前分支RNG产生牌；后续可选动作增多",
+      "assessment": "检查现有根内卡池缓存与旁路，再测生成克隆、关键词/Hook内部重复工作",
+      "guard": "不展开整个随机卡池，也不把不同分支RNG结果缓存为同一结果",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "StormOfSteel",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation_helper:MegaCrit.Sts2.Core.Models.Cards.Shiv.CreateInHand"
+      ],
+      "grantedPowers": [],
+      "id": "STORM_OF_STEEL",
+      "title": "钢铁风暴",
+      "mechanisms": [
+        "generation_helper"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Stratagem",
+      "nativeMethods": [],
+      "nativeCalls": [],
+      "grantedPowers": [
+        "StratagemPower"
+      ],
+      "id": "STRATAGEM",
+      "title": "计策",
+      "mechanisms": [],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "授予后续触发能力：计策",
+      "assessment": "优化实际触发能力路径，避免只优化打出本牌的瞬间",
+      "guard": "能力叠层、首次/每回合时机、Fork状态和RNG保留",
+      "priority": "高",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "SummonForth",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "forge:MegaCrit.Sts2.Core.Commands.ForgeCmd.Forge"
+      ],
+      "grantedPowers": [],
+      "id": "SUMMON_FORTH",
+      "title": "征召上前",
+      "mechanisms": [
+        "forge"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "铸造/增强君王之剑，可能生成首把剑",
+      "assessment": "优先低成本检查已存在剑的查找及状态拷贝，不改铸造流程",
+      "guard": "剑的数量、所有权、费用/伤害和顺序效应保留",
+      "priority": "低",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "TheSmith",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "forge:MegaCrit.Sts2.Core.Commands.ForgeCmd.Forge"
+      ],
+      "grantedPowers": [],
+      "id": "THE_SMITH",
+      "title": "铸剑者",
+      "mechanisms": [
+        "forge"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "铸造/增强君王之剑，可能生成首把剑",
+      "assessment": "优先低成本检查已存在剑的查找及状态拷贝，不改铸造流程",
+      "guard": "剑的数量、所有权、费用/伤害和顺序效应保留",
+      "priority": "低",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "ToolsOfTheTrade",
+      "nativeMethods": [],
+      "nativeCalls": [],
+      "grantedPowers": [
+        "ToolsOfTheTradePower"
+      ],
+      "id": "TOOLS_OF_THE_TRADE",
+      "title": "必备工具",
+      "mechanisms": [],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "授予后续触发能力：必备工具",
+      "assessment": "优化实际触发能力路径，避免只优化打出本牌的瞬间",
+      "guard": "能力叠层、首次/每回合时机、Fork状态和RNG保留",
+      "priority": "高",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Turbo",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Combat.ICombatState.CreateCard",
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat"
+      ],
+      "grantedPowers": [],
+      "id": "TURBO",
+      "title": "内核加速",
+      "mechanisms": [
+        "creation",
+        "generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Tyranny",
+      "nativeMethods": [],
+      "nativeCalls": [],
+      "grantedPowers": [
+        "TyrannyPower"
+      ],
+      "id": "TYRANNY",
+      "title": "暴政",
+      "mechanisms": [],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "授予后续触发能力：暴政",
+      "assessment": "优化实际触发能力路径，避免只优化打出本牌的瞬间",
+      "guard": "能力叠层、首次/每回合时机、Fork状态和RNG保留",
+      "priority": "高",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Undeath",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat"
+      ],
+      "grantedPowers": [],
+      "id": "UNDEATH",
+      "title": "不死",
+      "mechanisms": [
+        "generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "UpMySleeve",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation_helper:MegaCrit.Sts2.Core.Models.Cards.Shiv.CreateInHand"
+      ],
+      "grantedPowers": [],
+      "id": "UP_MY_SLEEVE",
+      "title": "袖里乾坤",
+      "mechanisms": [
+        "generation_helper"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "Uproar",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "autoplay:MegaCrit.Sts2.Core.Commands.CardCmd.AutoPlay"
+      ],
+      "grantedPowers": [],
+      "id": "UPROAR",
+      "title": "骚动",
+      "mechanisms": [
+        "autoplay"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "自动出牌，遇到选牌效果可接出嵌套分支",
+      "assessment": "测每次自动牌的历史/令牌重复处理与回放分配；不跳过真实出牌",
+      "guard": "目标、顺序、自动/手动计数及每次嵌套选择不可合并",
+      "priority": "高",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "WhiteNoise",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat"
+      ],
+      "grantedPowers": [],
+      "id": "WHITE_NOISE",
+      "title": "白噪声",
+      "mechanisms": [
+        "generation",
+        "random_generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "按当前分支RNG产生牌；后续可选动作增多",
+      "assessment": "检查现有根内卡池缓存与旁路，再测生成克隆、关键词/Hook内部重复工作",
+      "guard": "不展开整个随机卡池，也不把不同分支RNG结果缓存为同一结果",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Cards",
+      "model": "WroughtInWar",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "nativeCalls": [
+        "forge:MegaCrit.Sts2.Core.Commands.ForgeCmd.Forge"
+      ],
+      "grantedPowers": [],
+      "id": "WROUGHT_IN_WAR",
+      "title": "战火铸就",
+      "mechanisms": [
+        "forge"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "铸造/增强君王之剑，可能生成首把剑",
+      "assessment": "优先低成本检查已存在剑的查找及状态拷贝，不改铸造流程",
+      "guard": "剑的数量、所有权、费用/伤害和顺序效应保留",
+      "priority": "低",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Enchantments",
+      "model": "Imbued",
+      "nativeMethods": [
+        "AfterAutoPrePlayPhaseEntered"
+      ],
+      "nativeCalls": [
+        "autoplay:MegaCrit.Sts2.Core.Commands.CardCmd.AutoPlay"
+      ],
+      "grantedPowers": [],
+      "id": "IMBUED",
+      "title": "注能",
+      "mechanisms": [
+        "autoplay"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "自动出牌，遇到选牌效果可接出嵌套分支",
+      "assessment": "测每次自动牌的历史/令牌重复处理与回放分配；不跳过真实出牌",
+      "guard": "目标、顺序、自动/手动计数及每次嵌套选择不可合并",
+      "priority": "高",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Potions",
+      "model": "CosmicConcoction",
+      "nativeMethods": [
+        "OnUse"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat"
+      ],
+      "grantedPowers": [],
+      "id": "COSMIC_CONCOCTION",
+      "title": "宇宙药剂",
+      "mechanisms": [
+        "generation",
+        "random_generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "按当前分支RNG产生牌；后续可选动作增多",
+      "assessment": "检查现有根内卡池缓存与旁路，再测生成克隆、关键词/Hook内部重复工作",
+      "guard": "不展开整个随机卡池，也不把不同分支RNG结果缓存为同一结果",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Potions",
+      "model": "CunningPotion",
+      "nativeMethods": [
+        "OnUse"
+      ],
+      "nativeCalls": [
+        "generation_helper:MegaCrit.Sts2.Core.Models.Cards.Shiv.CreateInHand"
+      ],
+      "grantedPowers": [],
+      "id": "CUNNING_POTION",
+      "title": "狡诈药水",
+      "mechanisms": [
+        "generation_helper"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Potions",
+      "model": "DistilledChaos",
+      "nativeMethods": [
+        "OnUse"
+      ],
+      "nativeCalls": [
+        "autoplay:MegaCrit.Sts2.Core.Commands.CardPileCmd.AutoPlayFromDrawPile"
+      ],
+      "grantedPowers": [],
+      "id": "DISTILLED_CHAOS",
+      "title": "精炼混沌",
+      "mechanisms": [
+        "autoplay"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "自动出牌，遇到选牌效果可接出嵌套分支",
+      "assessment": "测每次自动牌的历史/令牌重复处理与回放分配；不跳过真实出牌",
+      "guard": "目标、顺序、自动/手动计数及每次嵌套选择不可合并",
+      "priority": "高",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Potions",
+      "model": "KingsCourage",
+      "nativeMethods": [
+        "OnUse"
+      ],
+      "nativeCalls": [
+        "forge:MegaCrit.Sts2.Core.Commands.ForgeCmd.Forge"
+      ],
+      "grantedPowers": [],
+      "id": "KINGS_COURAGE",
+      "title": "王之勇气",
+      "mechanisms": [
+        "forge"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "铸造/增强君王之剑，可能生成首把剑",
+      "assessment": "优先低成本检查已存在剑的查找及状态拷贝，不改铸造流程",
+      "guard": "剑的数量、所有权、费用/伤害和顺序效应保留",
+      "priority": "低",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Potions",
+      "model": "OrobicAcid",
+      "nativeMethods": [
+        "OnUse"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardsToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat"
+      ],
+      "grantedPowers": [],
+      "id": "OROBIC_ACID",
+      "title": "欧洛巴斯之酸",
+      "mechanisms": [
+        "generation",
+        "random_generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "按当前分支RNG产生牌；后续可选动作增多",
+      "assessment": "检查现有根内卡池缓存与旁路，再测生成克隆、关键词/Hook内部重复工作",
+      "guard": "不展开整个随机卡池，也不把不同分支RNG结果缓存为同一结果",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Potions",
+      "model": "PotOfGhouls",
+      "nativeMethods": [
+        "OnUse"
+      ],
+      "nativeCalls": [
+        "generation_helper:MegaCrit.Sts2.Core.Models.Cards.Soul.CreateInHand"
+      ],
+      "grantedPowers": [],
+      "id": "POT_OF_GHOULS",
+      "title": "尸鬼瓮",
+      "mechanisms": [
+        "generation_helper"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Powers",
+      "model": "CalamityPower",
+      "nativeMethods": [
+        "AfterCardPlayed"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetForCombat"
+      ],
+      "grantedPowers": [],
+      "id": "CALAMITY_POWER",
+      "title": "劫难",
+      "mechanisms": [
+        "generation",
+        "random_generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "每次攻击后随机生成攻击牌",
+      "assessment": "重点测连锁生成每张牌的克隆/Hook；复用已验证根池",
+      "guard": "有进展的连锁不能按循环直接截断",
+      "priority": "高",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Powers",
+      "model": "CallOfTheVoidPower",
+      "nativeMethods": [
+        "BeforeHandDraw"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardsToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat"
+      ],
+      "grantedPowers": [],
+      "id": "CALL_OF_THE_VOID_POWER",
+      "title": "虚空之唤",
+      "mechanisms": [
+        "generation",
+        "random_generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "按当前分支RNG产生牌；后续可选动作增多",
+      "assessment": "检查现有根内卡池缓存与旁路，再测生成克隆、关键词/Hook内部重复工作",
+      "guard": "不展开整个随机卡池，也不把不同分支RNG结果缓存为同一结果",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Powers",
+      "model": "CreativeAiPower",
+      "nativeMethods": [
+        "BeforeHandDraw"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat"
+      ],
+      "grantedPowers": [],
+      "id": "CREATIVE_AI_POWER",
+      "title": "创造性AI",
+      "mechanisms": [
+        "generation",
+        "random_generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "按当前分支RNG产生牌；后续可选动作增多",
+      "assessment": "检查现有根内卡池缓存与旁路，再测生成克隆、关键词/Hook内部重复工作",
+      "guard": "不展开整个随机卡池，也不把不同分支RNG结果缓存为同一结果",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Powers",
+      "model": "FurnacePower",
+      "nativeMethods": [
+        "AfterSideTurnStart"
+      ],
+      "nativeCalls": [
+        "forge:MegaCrit.Sts2.Core.Commands.ForgeCmd.Forge"
+      ],
+      "grantedPowers": [],
+      "id": "FURNACE_POWER",
+      "title": "熔炉",
+      "mechanisms": [
+        "forge"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "铸造/增强君王之剑，可能生成首把剑",
+      "assessment": "优先低成本检查已存在剑的查找及状态拷贝，不改铸造流程",
+      "guard": "剑的数量、所有权、费用/伤害和顺序效应保留",
+      "priority": "低",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Powers",
+      "model": "HammerTimePower",
+      "nativeMethods": [
+        "AfterForge"
+      ],
+      "nativeCalls": [
+        "forge:MegaCrit.Sts2.Core.Commands.ForgeCmd.Forge"
+      ],
+      "grantedPowers": [],
+      "id": "HAMMER_TIME_POWER",
+      "title": "锤子时间",
+      "mechanisms": [
+        "forge"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "铸造/增强君王之剑，可能生成首把剑",
+      "assessment": "优先低成本检查已存在剑的查找及状态拷贝，不改铸造流程",
+      "guard": "剑的数量、所有权、费用/伤害和顺序效应保留",
+      "priority": "低",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Powers",
+      "model": "HelloWorldPower",
+      "nativeMethods": [
+        "BeforeHandDraw"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardsToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat"
+      ],
+      "grantedPowers": [],
+      "id": "HELLO_WORLD_POWER",
+      "title": "你好世界",
+      "mechanisms": [
+        "generation",
+        "random_generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "按当前分支RNG产生牌；后续可选动作增多",
+      "assessment": "检查现有根内卡池缓存与旁路，再测生成克隆、关键词/Hook内部重复工作",
+      "guard": "不展开整个随机卡池，也不把不同分支RNG结果缓存为同一结果",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Powers",
+      "model": "HellraiserPower",
+      "nativeMethods": [
+        "AfterCardDrawnEarly"
+      ],
+      "nativeCalls": [
+        "autoplay:MegaCrit.Sts2.Core.Commands.CardCmd.AutoPlay"
+      ],
+      "grantedPowers": [],
+      "id": "HELLRAISER_POWER",
+      "title": "地狱狂徒",
+      "mechanisms": [
+        "autoplay"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "自动出牌，遇到选牌效果可接出嵌套分支",
+      "assessment": "测每次自动牌的历史/令牌重复处理与回放分配；不跳过真实出牌",
+      "guard": "目标、顺序、自动/手动计数及每次嵌套选择不可合并",
+      "priority": "高",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Powers",
+      "model": "ImitationLearningPower",
+      "nativeMethods": [
+        "AfterCardPlayed"
+      ],
+      "nativeCalls": [
+        "autoplay:MegaCrit.Sts2.Core.Commands.CardCmd.AutoPlay"
+      ],
+      "grantedPowers": [],
+      "id": "IMITATION_LEARNING_POWER",
+      "title": "模仿学习",
+      "mechanisms": [
+        "autoplay"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "多人复制并自动出牌",
+      "assessment": "单人范围排除",
+      "guard": "保持既有多人边界",
+      "priority": "排除",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Powers",
+      "model": "InfiniteBladesPower",
+      "nativeMethods": [
+        "BeforeHandDraw"
+      ],
+      "nativeCalls": [
+        "generation_helper:MegaCrit.Sts2.Core.Models.Cards.Shiv.CreateInHand"
+      ],
+      "grantedPowers": [],
+      "id": "INFINITE_BLADES_POWER",
+      "title": "无尽刀刃",
+      "mechanisms": [
+        "generation_helper"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Powers",
+      "model": "JugglingPower",
+      "nativeMethods": [
+        "BeforeCardPlayed"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat"
+      ],
+      "grantedPowers": [],
+      "id": "JUGGLING_POWER",
+      "title": "杂耍",
+      "mechanisms": [
+        "generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "每回合第三张攻击复制",
+      "assessment": "测复制链与每回合历史读取",
+      "guard": "原出牌计数、自动牌与复制来源身份不变",
+      "priority": "高",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Powers",
+      "model": "MayhemPower",
+      "nativeMethods": [
+        "AfterAutoPrePlayPhaseEntered"
+      ],
+      "nativeCalls": [
+        "autoplay:MegaCrit.Sts2.Core.Commands.CardPileCmd.AutoPlayFromDrawPile"
+      ],
+      "grantedPowers": [],
+      "id": "MAYHEM_POWER",
+      "title": "乱战",
+      "mechanisms": [
+        "autoplay"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "自动出牌，遇到选牌效果可接出嵌套分支",
+      "assessment": "测每次自动牌的历史/令牌重复处理与回放分配；不跳过真实出牌",
+      "guard": "目标、顺序、自动/手动计数及每次嵌套选择不可合并",
+      "priority": "高",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Powers",
+      "model": "NightmarePower",
+      "nativeMethods": [
+        "BeforeHandDraw"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat"
+      ],
+      "grantedPowers": [],
+      "id": "NIGHTMARE_POWER",
+      "title": "夜魇",
+      "mechanisms": [
+        "generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "下一回合复制已经选定的牌",
+      "assessment": "优化实际副本创建，不再枚举已经做过的选择",
+      "guard": "保存的来源与跨回合生命周期不变",
+      "priority": "高",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Powers",
+      "model": "PersonalHivePower",
+      "nativeMethods": [
+        "AfterDamageReceived"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Combat.ICombatState.CreateCard",
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat"
+      ],
+      "grantedPowers": [],
+      "id": "PERSONAL_HIVE_POWER",
+      "title": "人体蜂房",
+      "mechanisms": [
+        "creation",
+        "generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "敌人受击后向抽牌堆生成晕眩",
+      "assessment": "环境放大器，测多段攻击下的生成/入堆分配",
+      "guard": "不是玩家选牌，不展开所有可能位置来冒充优化",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Powers",
+      "model": "SentryModePower",
+      "nativeMethods": [
+        "BeforeHandDraw"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Combat.ICombatState.CreateCard",
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat"
+      ],
+      "grantedPowers": [],
+      "id": "SENTRY_MODE_POWER",
+      "title": "哨卫模式",
+      "mechanisms": [
+        "creation",
+        "generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Powers",
+      "model": "SoulboundPower",
+      "nativeMethods": [
+        "AfterCardGeneratedForCombat"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardsToCombat",
+        "generation_helper:MegaCrit.Sts2.Core.Models.Cards.Soul.Create"
+      ],
+      "grantedPowers": [],
+      "id": "SOULBOUND_POWER",
+      "title": "灵魂绑定",
+      "mechanisms": [
+        "generation",
+        "generation_helper"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Powers",
+      "model": "SpectrumShiftPower",
+      "nativeMethods": [
+        "BeforeHandDraw"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardsToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat"
+      ],
+      "grantedPowers": [],
+      "id": "SPECTRUM_SHIFT_POWER",
+      "title": "光谱偏移",
+      "mechanisms": [
+        "generation",
+        "random_generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "按当前分支RNG产生牌；后续可选动作增多",
+      "assessment": "检查现有根内卡池缓存与旁路，再测生成克隆、关键词/Hook内部重复工作",
+      "guard": "不展开整个随机卡池，也不把不同分支RNG结果缓存为同一结果",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Powers",
+      "model": "StampedePower",
+      "nativeMethods": [
+        "AfterAutoPostPlayPhaseEntered"
+      ],
+      "nativeCalls": [
+        "autoplay:MegaCrit.Sts2.Core.Commands.CardCmd.AutoPlay"
+      ],
+      "grantedPowers": [],
+      "id": "STAMPEDE_POWER",
+      "title": "惊逃",
+      "mechanisms": [
+        "autoplay"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "自动出牌，遇到选牌效果可接出嵌套分支",
+      "assessment": "测每次自动牌的历史/令牌重复处理与回放分配；不跳过真实出牌",
+      "guard": "目标、顺序、自动/手动计数及每次嵌套选择不可合并",
+      "priority": "高",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "BigHat",
+      "nativeMethods": [
+        "AfterSideTurnStart"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardsToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat"
+      ],
+      "grantedPowers": [],
+      "id": "BIG_HAT",
+      "title": "大帽子",
+      "mechanisms": [
+        "generation",
+        "random_generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "按当前分支RNG产生牌；后续可选动作增多",
+      "assessment": "检查现有根内卡池缓存与旁路，再测生成克隆、关键词/Hook内部重复工作",
+      "guard": "不展开整个随机卡池，也不把不同分支RNG结果缓存为同一结果",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "BiiigHug",
+      "nativeMethods": [
+        "AfterObtained",
+        "AfterShuffle"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Combat.ICombatState.CreateCard",
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromDeckForRemoval"
+      ],
+      "grantedPowers": [],
+      "id": "BIIIG_HUG",
+      "title": "大～抱抱",
+      "mechanisms": [
+        "creation",
+        "generation",
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取移除牌；洗牌时生成煤灰",
+      "assessment": "战斗内只评估反复洗牌→生成状态牌的内部成本",
+      "guard": "拾取选牌不进入战斗搜索；不要混为同一选择",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "BlessedAntler",
+      "nativeMethods": [
+        "BeforeHandDraw"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Combat.ICombatState.CreateCard",
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardsToCombat"
+      ],
+      "grantedPowers": [],
+      "id": "BLESSED_ANTLER",
+      "title": "赐福鹿角",
+      "mechanisms": [
+        "creation",
+        "generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "BurningSticks",
+      "nativeMethods": [
+        "AfterCardExhausted"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat"
+      ],
+      "grantedPowers": [],
+      "id": "BURNING_STICKS",
+      "title": "燃烧木棍",
+      "mechanisms": [
+        "generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "每战首次消耗技能时复制",
+      "assessment": "可测复制分配，维持当前只复制实际触发牌",
+      "guard": "首次触发计数与消耗历史不能绕开",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "Crossbow",
+      "nativeMethods": [
+        "AfterSideTurnStart"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardsToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat"
+      ],
+      "grantedPowers": [],
+      "id": "CROSSBOW",
+      "title": "十字弓",
+      "mechanisms": [
+        "generation",
+        "random_generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "每回合随机攻击牌，当前回合免费",
+      "assessment": "沿已存在的原版角色攻击池缓存检查命中与旁路",
+      "guard": "每次生成和费用修改仍属于当前分支",
+      "priority": "高",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "FencingManual",
+      "nativeMethods": [
+        "AfterSideTurnStart"
+      ],
+      "nativeCalls": [
+        "forge:MegaCrit.Sts2.Core.Commands.ForgeCmd.Forge"
+      ],
+      "grantedPowers": [],
+      "id": "FENCING_MANUAL",
+      "title": "击剑指南",
+      "mechanisms": [
+        "forge"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "铸造/增强君王之剑，可能生成首把剑",
+      "assessment": "优先低成本检查已存在剑的查找及状态拷贝，不改铸造流程",
+      "guard": "剑的数量、所有权、费用/伤害和顺序效应保留",
+      "priority": "低",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "FuneraryMask",
+      "nativeMethods": [
+        "BeforeHandDraw"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Combat.ICombatState.CreateCard",
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat"
+      ],
+      "grantedPowers": [],
+      "id": "FUNERARY_MASK",
+      "title": "葬礼面具",
+      "mechanisms": [
+        "creation",
+        "generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "HistoryCourse",
+      "nativeMethods": [
+        "AfterAutoPrePlayPhaseEntered"
+      ],
+      "nativeCalls": [
+        "autoplay:MegaCrit.Sts2.Core.Commands.CardCmd.AutoPlay"
+      ],
+      "grantedPowers": [],
+      "id": "HISTORY_COURSE",
+      "title": "历史课",
+      "mechanisms": [
+        "autoplay"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "回合开始自动打出上一回合末次攻击的复制",
+      "assessment": "检查根冻结历史和回合历史的最近匹配查询，再考虑迁移",
+      "guard": "不能直接拿生成选项历史替代出牌历史",
+      "priority": "高",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "MusicBox",
+      "nativeMethods": [
+        "AfterCardPlayed"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat"
+      ],
+      "grantedPowers": [],
+      "id": "MUSIC_BOX",
+      "title": "音乐盒",
+      "mechanisms": [
+        "generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "每回合首张攻击复制为虚无牌",
+      "assessment": "可测复制与归一化内部冗余",
+      "guard": "每回合一次标志、虚无及来源状态必须独立",
+      "priority": "高",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "NinjaScroll",
+      "nativeMethods": [
+        "BeforeHandDraw"
+      ],
+      "nativeCalls": [
+        "generation_helper:MegaCrit.Sts2.Core.Models.Cards.Shiv.CreateInHand"
+      ],
+      "grantedPowers": [],
+      "id": "NINJA_SCROLL",
+      "title": "忍术卷轴",
+      "mechanisms": [
+        "generation_helper"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "OrangeDough",
+      "nativeMethods": [
+        "AfterSideTurnStart"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardsToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat"
+      ],
+      "grantedPowers": [],
+      "id": "ORANGE_DOUGH",
+      "title": "橙色团块",
+      "mechanisms": [
+        "generation",
+        "random_generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "按当前分支RNG产生牌；后续可选动作增多",
+      "assessment": "检查现有根内卡池缓存与旁路，再测生成克隆、关键词/Hook内部重复工作",
+      "guard": "不展开整个随机卡池，也不把不同分支RNG结果缓存为同一结果",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "RadiantPearl",
+      "nativeMethods": [
+        "BeforeHandDraw"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Combat.ICombatState.CreateCard",
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardsToCombat"
+      ],
+      "grantedPowers": [],
+      "id": "RADIANT_PEARL",
+      "title": "发光珍珠",
+      "mechanisms": [
+        "creation",
+        "generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "确定生成、复制或变化牌，扩展后续牌堆/动作",
+      "assessment": "可测生成列表与模型克隆分配；已有同牌去重不等于所有副本等价",
+      "guard": "逐实例属性、牌堆位置、生成Hook、RNG与分支隔离保留",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "VexingPuzzlebox",
+      "nativeMethods": [
+        "AfterPlayerTurnStart"
+      ],
+      "nativeCalls": [
+        "generation:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat",
+        "random_generation:MegaCrit.Sts2.Core.Factories.CardFactory.GetDistinctForCombat"
+      ],
+      "grantedPowers": [],
+      "id": "VEXING_PUZZLEBOX",
+      "title": "烦人机关盒",
+      "mechanisms": [
+        "generation",
+        "random_generation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "按当前分支RNG产生牌；后续可选动作增多",
+      "assessment": "检查现有根内卡池缓存与旁路，再测生成克隆、关键词/Hook内部重复工作",
+      "guard": "不展开整个随机卡池，也不把不同分支RNG结果缓存为同一结果",
+      "priority": "中",
+      "section": "indirect",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "ArchaicTooth",
+      "nativeMethods": [
+        "AfterObtained",
+        "GetTranscendenceTransformedCard",
+        "SetupForPlayer"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Runs.ICardScope.CreateCard"
+      ],
+      "grantedPowers": [],
+      "id": "ARCHAIC_TOOTH",
+      "title": "古老牙齿",
+      "mechanisms": [
+        "creation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "Astrolabe",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromDeckForTransformation"
+      ],
+      "grantedPowers": [],
+      "id": "ASTROLABE",
+      "title": "星盘",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "Claws",
+      "nativeMethods": [
+        "<AfterObtained>b__6_0",
+        "<AfterObtained>b__6_1",
+        "AfterObtained",
+        "CreateMaulFromOriginal"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Runs.ICardScope.CreateCard",
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromDeckForTransformation"
+      ],
+      "grantedPowers": [],
+      "id": "CLAWS",
+      "title": "利爪",
+      "mechanisms": [
+        "creation",
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "DistinguishedCape",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Runs.ICardScope.CreateCard"
+      ],
+      "grantedPowers": [],
+      "id": "DISTINGUISHED_CAPE",
+      "title": "卓越斗篷",
+      "mechanisms": [
+        "creation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "DollysMirror",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromDeckGeneric"
+      ],
+      "grantedPowers": [],
+      "id": "DOLLYS_MIRROR",
+      "title": "多利之镜",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "DowsingRod",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Runs.ICardScope.CreateCard"
+      ],
+      "grantedPowers": [],
+      "id": "DOWSING_ROD",
+      "title": "寻龙尺",
+      "mechanisms": [
+        "creation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "DustyTome",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Runs.ICardScope.CreateCard"
+      ],
+      "grantedPowers": [],
+      "id": "DUSTY_TOME",
+      "title": "尘封魔典",
+      "mechanisms": [
+        "creation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "ElectricShrymp",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromDeckForEnchantment"
+      ],
+      "grantedPowers": [],
+      "id": "ELECTRIC_SHRYMP",
+      "title": "放电异虾",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "EmptyCage",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromDeckForRemoval"
+      ],
+      "grantedPowers": [],
+      "id": "EMPTY_CAGE",
+      "title": "空鸟笼",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "GnarledHammer",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromDeckForEnchantment"
+      ],
+      "grantedPowers": [],
+      "id": "GNARLED_HAMMER",
+      "title": "扭曲锤子",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "HeftyTablet",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Runs.ICardScope.CreateCard",
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromChooseACardScreen"
+      ],
+      "grantedPowers": [],
+      "id": "HEFTY_TABLET",
+      "title": "沉重石板",
+      "mechanisms": [
+        "creation",
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "JewelryBox",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Runs.ICardScope.CreateCard"
+      ],
+      "grantedPowers": [],
+      "id": "JEWELRY_BOX",
+      "title": "珠宝盒",
+      "mechanisms": [
+        "creation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "Kifuda",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromDeckForEnchantment"
+      ],
+      "grantedPowers": [],
+      "id": "KIFUDA",
+      "title": "木札",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "LargeCapsule",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Runs.ICardScope.CreateCard"
+      ],
+      "grantedPowers": [],
+      "id": "LARGE_CAPSULE",
+      "title": "巨大扭蛋",
+      "mechanisms": [
+        "creation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "LeadPaperweight",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromChooseACardScreen"
+      ],
+      "grantedPowers": [],
+      "id": "LEAD_PAPERWEIGHT",
+      "title": "铅制镇纸",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "MassiveScroll",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromChooseACardScreen"
+      ],
+      "grantedPowers": [],
+      "id": "MASSIVE_SCROLL",
+      "title": "巨大卷轴",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "NeowsBones",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Runs.ICardScope.CreateCard"
+      ],
+      "grantedPowers": [],
+      "id": "NEOWS_BONES",
+      "title": "涅奥骨骰",
+      "mechanisms": [
+        "creation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "NeowsSacrifice",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Runs.ICardScope.CreateCard"
+      ],
+      "grantedPowers": [],
+      "id": "NEOWS_SACRIFICE",
+      "title": "涅奥的牺牲",
+      "mechanisms": [
+        "creation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "NeowsTorment",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Runs.ICardScope.CreateCard"
+      ],
+      "grantedPowers": [],
+      "id": "NEOWS_TORMENT",
+      "title": "涅奥的苦痛",
+      "mechanisms": [
+        "creation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "NewLeaf",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromDeckForTransformation"
+      ],
+      "grantedPowers": [],
+      "id": "NEW_LEAF",
+      "title": "新叶",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "PaelsGrowth",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromDeckForEnchantment"
+      ],
+      "grantedPowers": [],
+      "id": "PAELS_GROWTH",
+      "title": "佩尔的增生组织",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "PaelsHorn",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Runs.ICardScope.CreateCard"
+      ],
+      "grantedPowers": [],
+      "id": "PAELS_HORN",
+      "title": "佩尔之角",
+      "mechanisms": [
+        "creation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "PaelsTooth",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromDeckForRemoval"
+      ],
+      "grantedPowers": [],
+      "id": "PAELS_TOOTH",
+      "title": "佩尔之牙",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "Pomander",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromDeckForUpgrade"
+      ],
+      "grantedPowers": [],
+      "id": "POMANDER",
+      "title": "橙型香盒",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "PrecariousShears",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromDeckForRemoval"
+      ],
+      "grantedPowers": [],
+      "id": "PRECARIOUS_SHEARS",
+      "title": "松动羊毛剪",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "PreciseScissors",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromDeckForRemoval"
+      ],
+      "grantedPowers": [],
+      "id": "PRECISE_SCISSORS",
+      "title": "精准剪刀",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "PreservedFog",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromDeckForRemoval"
+      ],
+      "grantedPowers": [],
+      "id": "PRESERVED_FOG",
+      "title": "腌制活雾",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "PunchDagger",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromDeckForEnchantment"
+      ],
+      "grantedPowers": [],
+      "id": "PUNCH_DAGGER",
+      "title": "拳刃",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "RoyalStamp",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromDeckForEnchantment"
+      ],
+      "grantedPowers": [],
+      "id": "ROYAL_STAMP",
+      "title": "王室印章",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "ScrollBoxes",
+      "nativeMethods": [
+        "<AfterObtained>b__4_0",
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Runs.ICardScope.CreateCard",
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromChooseABundleScreen"
+      ],
+      "grantedPowers": [],
+      "id": "SCROLL_BOXES",
+      "title": "卷轴箱",
+      "mechanisms": [
+        "creation",
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "SeaGlass",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromSimpleGridForRewards"
+      ],
+      "grantedPowers": [],
+      "id": "SEA_GLASS",
+      "title": "海玻璃",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "SereTalon",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Runs.ICardScope.CreateCard"
+      ],
+      "grantedPowers": [],
+      "id": "SERE_TALON",
+      "title": "原初之爪",
+      "mechanisms": [
+        "creation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "Storybook",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Runs.ICardScope.CreateCard"
+      ],
+      "grantedPowers": [],
+      "id": "STORYBOOK",
+      "title": "故事书",
+      "mechanisms": [
+        "creation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "TanxsWhistle",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "creation:MegaCrit.Sts2.Core.Runs.ICardScope.CreateCard"
+      ],
+      "grantedPowers": [],
+      "id": "TANXS_WHISTLE",
+      "title": "坦克斯的哨子",
+      "mechanisms": [
+        "creation"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "TriBoomerang",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromDeckForEnchantment"
+      ],
+      "grantedPowers": [],
+      "id": "TRI_BOOMERANG",
+      "title": "三刃回旋镖",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    },
+    {
+      "category": "Relics",
+      "model": "YummyCookie",
+      "nativeMethods": [
+        "AfterObtained"
+      ],
+      "nativeCalls": [
+        "selection:MegaCrit.Sts2.Core.Commands.CardSelectCmd.FromDeckForUpgrade"
+      ],
+      "grantedPowers": [],
+      "id": "YUMMY_COOKIE",
+      "title": "美味饼干",
+      "mechanisms": [
+        "selection"
+      ],
+      "status": "静态逐项评估；未逐项性能验证",
+      "shape": "拾取/开局牌组建立阶段的选择或造牌",
+      "assessment": "排除本轮战斗搜索优化；这些动作改变的是搜索根输入",
+      "guard": "不修改战斗外选牌或遗物行为",
+      "priority": "排除",
+      "section": "outside",
+      "candidateFamilies": []
+    }
+  ]
+}

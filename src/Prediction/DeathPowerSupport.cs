@@ -45,30 +45,6 @@ internal static class DeathPowerSupport
                 continue;
             }
 
-            if (power is CrabRagePower
-                && !ReferenceEquals(power.Owner, dead)
-                && power.Owner.Side == dead.Side)
-            {
-                combat.Apply<StrengthPower>(
-                    power.Owner,
-                    power.DynamicVars.Strength.IntValue,
-                    power.Owner);
-                simulator.GainBlock(
-                    power.Owner,
-                    power.DynamicVars.Block.BaseValue,
-                    ValueProp.Unpowered);
-                if (simulator.HasPendingChoice)
-                    return false;
-                combat.SetPowerAmount(power, 0);
-                continue;
-            }
-
-            if (power is DampenPower)
-            {
-                combat.RemoveDampenCaster(dead);
-                continue;
-            }
-
             if (power is SurroundedPower
                 && dead.Side != power.Owner.Side
                 && power.Owner.Player is { } surroundedPlayer)

@@ -8,12 +8,20 @@ internal static class SimulationNotificationIsolation
     [ThreadStatic]
     private static bool _loggedSuppression;
 
+    [ThreadStatic]
+    private static object? _scopeIdentity;
+
+    internal static object? ScopeIdentity => _scopeIdentity;
+
     public static bool IsActive => _depth > 0;
 
     public static IDisposable Enter()
     {
         if (_depth++ == 0)
+        {
             _loggedSuppression = false;
+            _scopeIdentity = new object();
+        }
         return new Scope();
     }
 
@@ -36,6 +44,8 @@ internal static class SimulationNotificationIsolation
                 return;
             _disposed = true;
             _depth--;
+            if (_depth == 0)
+                _scopeIdentity = null;
         }
     }
 }

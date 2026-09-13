@@ -143,11 +143,7 @@ internal sealed partial class CombatBeamSolver
         {
             return false;
         }
-        int availableFutureSoldHp = Math.Max(
-            0,
-            SoldHpThreshold() - battleDamage.SoldHpCommitted);
         return node.CombatProgress.TurnsWithoutProgress > 0
-            || node.CrossTurnSemanticInvisibleToModeledQuality
-            || node.FutureSoldHp > availableFutureSoldHp + node.Snapshot.StrategicHpCredit;
+            || node.CrossTurnSemanticInvisibleToModeledQuality;
     }
 }

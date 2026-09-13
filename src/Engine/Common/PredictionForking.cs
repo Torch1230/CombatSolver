@@ -91,6 +91,8 @@ internal interface ICombatPredictionRootMaterializable
 
 internal interface ICombatPredictionCardEventSink
 {
+    void RecordPoweredCardBlockGained(MegaCrit.Sts2.Core.Entities.Creatures.Creature cardOwner);
+
     void RecordCardExhausted(MegaCrit.Sts2.Core.Entities.Creatures.Creature actor);
 
     void RecordDamageReceived(
@@ -238,7 +240,8 @@ internal interface ICombatPredictionEffectSink
         Type powerType,
         MegaCrit.Sts2.Core.Entities.Creatures.Creature target,
         int amount,
-        MegaCrit.Sts2.Core.Entities.Creatures.Creature? applier = null);
+        MegaCrit.Sts2.Core.Entities.Creatures.Creature? applier,
+        MegaCrit.Sts2.Core.Models.CardModel? cardSource);
 
     void ApplyTemporaryDexterity(
         Type powerType,

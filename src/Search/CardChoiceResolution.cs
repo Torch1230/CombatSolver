@@ -28,9 +28,7 @@ internal static partial class CardChoiceSupport
         }
         else if (choice.Effect == PlanChoiceEffect.GenerateToHand)
         {
-            CombatPredictionCardGenerationOptionsEntry entry = simulator.History
-                .OfType<CombatPredictionCardGenerationOptionsEntry>()
-                .LastOrDefault(candidate => playedCard.References(candidate.Trace?.Source))
+            CombatPredictionCardGenerationOptionsEntry entry = simulator.History.FindLatestCardGenerationOptions(playedCard)
                 ?? throw new InvalidOperationException($"卡牌 {playedCard.Preview.Id.Entry} 缺少生成选项。");
             selected = choice.Cards.Select(token => Find(entry.Options, token)).ToList();
         }

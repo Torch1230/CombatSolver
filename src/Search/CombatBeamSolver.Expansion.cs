@@ -88,7 +88,7 @@ internal sealed partial class CombatBeamSolver
                         ReplayCount: Math.Max(0, card.Preview.GetEnchantedReplayCount()),
                         CardStateKey: cardStateKey,
                         CardStateOccurrence: cardStateOccurrence,
-                        CardUpgradeLevel: card.Preview.CurrentUpgradeLevel);
+                        CardEnchantmentId: card.Preview.Enchantment?.Id.Entry ?? "", CardUpgradeLevel: card.Preview.CurrentUpgradeLevel);
                     SimulationSnapshot probe = ReplayAction(seed, action);
                     try
                     {
@@ -517,6 +517,17 @@ internal sealed partial class CombatBeamSolver
         }
     }
 
+    private bool HasPlayableFetchedPower(SearchNode node)
+    {
+        if (node.Action?.Choice is not { Effect: PlanChoiceEffect.MoveToHand } choice)
+            return false;
+        var simulator = (CombatPredictionSimulator)node.Snapshot.Simulator;
+        var combat = (SimulatedCombatState)simulator.State.CombatState;
+        return simulator.State.GetPlayerCombatState(_player).Hand.Cards.Any(card =>
+            card.Preview.Type == CardType.Power && combat.CanPlayCard(simulator, card)
+            && choice.Cards.Any(token => CardChoiceSupport.MatchesToken(card, token)));
+    }
+
     private IEnumerable<SearchNode> Expand(SearchNode node)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -616,7 +627,7 @@ internal sealed partial class CombatBeamSolver
                     ReplayCount: Math.Max(0, card.Preview.GetEnchantedReplayCount()),
                     CardStateKey: cardStateKey,
                     CardStateOccurrence: cardStateOccurrence,
-                        CardUpgradeLevel: card.Preview.CurrentUpgradeLevel);
+                        CardEnchantmentId: card.Preview.Enchantment?.Id.Entry ?? "", CardUpgradeLevel: card.Preview.CurrentUpgradeLevel);
                 SimulationSnapshot probeSnapshot = ReplayAction(node, action);
 
                 CardChoiceSpec? choiceSpec = BuildPrimaryCardChoiceSpec(probeSnapshot);
@@ -2222,7 +2233,8 @@ internal sealed partial class CombatBeamSolver
         PendingChoiceReplayLayer layer,
         PrimaryChoiceMatch? unresolvedPrimaryChoice,
         ChoiceSearchBudget searchBudget,
-        ChoiceOccurrenceCollector<DeferredOccurrenceChoiceBranch> occurrenceCollector)
+        ChoiceOccurrenceCollector<DeferredOccurrenceChoiceBranch> occurrenceCollector,
+        PrimaryChoiceReplayFrontier? replayedChoices = null)
     {
         for (int index = 0; index < layer.Branches.Count; index++)
         {
@@ -2235,9 +2247,11 @@ internal sealed partial class CombatBeamSolver
                 break;
             }
             PendingChoiceReplayBranch branch = layer.Branches[index];
-            if (!TrySpendChoiceReplayAttempt(branchBudget))
+            if (replayedChoices == null && !TrySpendChoiceReplayAttempt(branchBudget))
                 break;
-            SimulationSnapshot? resolvedSnapshot = ReplayPendingChoiceBranch(node, branch);
+            SimulationSnapshot? resolvedSnapshot = replayedChoices == null
+                ? ReplayPendingChoiceBranch(node, branch)
+                : replayedChoices.Take(index, branchBudget);
             if (resolvedSnapshot == null)
                 continue;
             foreach ((PlanAction finalAction, SimulationSnapshot finalSnapshot) in
@@ -2532,7 +2546,7 @@ internal sealed partial class CombatBeamSolver
         ISet<uint> processedEnemyDeaths)
     {
         SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(_player);
-        simulatedCombat.BeginSideTurn(_player.Creature);
+        // The setup root is already inside this turn. Preserve events that occurred before energy reset.
         if (PersistentRelicSupport.ShouldPlayerResetEnergy(simulatedCombat, _player))
             playerState.LoseEnergy(playerState.Energy);
         playerState.GainEnergy(PersistentPowerSupport.GetModifiedMaxEnergy(simulatedCombat, _player));

@@ -35,10 +35,13 @@ internal sealed partial class UnattendedTestRunner
         int? requiredRetentionStep = null,
         bool requirePotionFirstStep = false,
         bool proveRetentionAliases = false,
-        IReadOnlyDictionary<string, IReadOnlyList<KnownRoutePrefix>>? frozenVariants = null)
+        IReadOnlyDictionary<string, IReadOnlyList<KnownRoutePrefix>>? frozenVariants = null,
+        int? observedRetentionStep = null,
+        BossHpStrategy? finalBossStrategyOverride = null)
     {
         if (prefixes.Count == 0
-            || (requiredRetentionStep is { } step && (step < 1 || step > prefixes.Count)))
+            || (requiredRetentionStep is { } step && (step < 1 || step > prefixes.Count))
+            || (observedRetentionStep is { } observed && (observed < 1 || observed > prefixes.Count)))
             throw new InvalidOperationException("已知路径诊断缺少有效冻结前缀或保留边界。");
         if (requirePotionFirstStep
             && (prefixes[0].Action.Kind != PlanActionKind.UsePotion || prefixes[0].PotionsUsed != 1))
@@ -52,7 +55,7 @@ internal sealed partial class UnattendedTestRunner
         if (variants != null)
             watched.UnionWith(variants.Values.SelectMany(variant => variant.Prefixes)
                 .Select(prefix => prefix.StateKey));
-        HashSet<StateFingerprint>? retentionStates = requiredRetentionStep is { } retentionStep
+        HashSet<StateFingerprint>? retentionStates = (observedRetentionStep ?? requiredRetentionStep) is { } retentionStep
             ? variants == null ? [prefixes[retentionStep - 1].StateKey]
                 : variants.Values.Select(variant => variant.Prefixes[retentionStep - 1].StateKey).ToHashSet()
             : null;
@@ -82,6 +85,8 @@ internal sealed partial class UnattendedTestRunner
         SolverSettingsSnapshot settings = SolverSettings.Capture();
         SearchPolicySnapshot policy = SolverController.CaptureSearchPolicy(settings, combat,
             includeTurnSetup: false, theftPolicy: null);
+        if (finalBossStrategyOverride is { } finalBossStrategy)
+            policy = policy with { FinalBossHpStrategy = finalBossStrategy };
         SearchDiagnosticsSink original = policy.Diagnostics;
         policy = policy with { Diagnostics = new SearchDiagnosticsSink(original.Info, original.Debug, observer) };
         using CancellationTokenSource cancellation = new(TimeSpan.FromSeconds(

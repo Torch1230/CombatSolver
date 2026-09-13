@@ -78,7 +78,8 @@ internal static class AfterDamageGivenMirrors
                 typeof(MonarchsGazeStrengthDownPower),
                 context.Target,
                 power.Amount,
-                power.Owner);
+                power.Owner,
+                cardSource: null);
         }
     }
 

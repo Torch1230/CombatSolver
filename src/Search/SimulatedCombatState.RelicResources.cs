@@ -18,8 +18,6 @@ internal sealed partial class SimulatedCombatState
 
     public void LosePlayerGold(Player player, int amount)
     {
-        if (amount <= 0)
-            return;
         (_simulatedPlayerGold ??= [])[player] = Math.Max(0, GetPlayerGold(player) - amount);
     }
 

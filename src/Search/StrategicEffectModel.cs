@@ -92,6 +92,15 @@ internal readonly record struct StrategicEffectContext(
 {
     public int? AttackHits { get; init; }
     public int? ExhaustDrawPlays { get; init; }
+    public bool Act3BossInteractions { get; init; }
+    public int ReachableCards { get; init; }
+    public int EtherealDrawTriggers { get; init; }
+    public int PagestormBonusDrawCapacity { get; init; }
+    public int HighEnergyPlays { get; init; }
+    public int DemesneEnergyGain { get; init; }
+    public int DemesneDrawGain { get; init; }
+    public int FirstAttackDamage { get; init; }
+    public int RecurringEnergyGain { get; init; }
 
     internal StrategicEffectContext WithExhaustDrawTiming(IReadOnlyList<PowerModel> powers,
         IReadOnlyList<PredictedCard> hand, Creature owner)
@@ -267,7 +276,11 @@ internal readonly record struct StrategicEffectContext(
                         statusCount++;
                     break;
             }
-            bool exhaustsOnPlay = card.Keywords.Contains(CardKeyword.Exhaust)
+            // Keywords can consult the card's pile. Read Exhaust only for a requested
+            // metric, and reuse it only within this read-only card evaluation.
+            bool? hasExhaustKeyword = needsExhaustCount
+                ? card.Keywords.Contains(CardKeyword.Exhaust) : null;
+            bool exhaustsOnPlay = hasExhaustKeyword == true
                 || skillsExhaust && cardType == CardType.Skill;
             if (needsExhaustCount && exhaustsOnPlay)
                 exhaustCount++;
@@ -276,7 +289,8 @@ internal readonly record struct StrategicEffectContext(
                 if (card.Tags.Contains(CardTag.Shiv))
                 {
                     shivCount++;
-                    if (!card.Keywords.Contains(CardKeyword.Exhaust)) reusableShivCount++;
+                    hasExhaustKeyword ??= card.Keywords.Contains(CardKeyword.Exhaust);
+                    if (!hasExhaustKeyword.Value) reusableShivCount++;
                 }
                 if (card.GetType().Assembly == typeof(CardModel).Assembly)
                 {
@@ -285,7 +299,9 @@ internal readonly record struct StrategicEffectContext(
                         card.DynamicVars.TryGetValue("Shivs", out var shivsVar) ? shivsVar.IntValue : 0);
                     generatedShivCount += generated;
                     if (generated > 0) shivGeneratorCount++;
-                    if (generated > 0 && (cardType == CardType.Power || exhaustsOnPlay))
+                    if (generated > 0 && (cardType == CardType.Power
+                        || skillsExhaust && cardType == CardType.Skill
+                        || (hasExhaustKeyword ??= card.Keywords.Contains(CardKeyword.Exhaust)) == true))
                     {
                         singleUseGeneratedShivs += generated;
                         singleUseShivGenerators++;
@@ -367,6 +383,7 @@ internal readonly record struct StrategicEffectContext(
                 ? CardMechanismFacts.EstimatedAttackHits(attackHitCount, shivCount, generatedShivCount,
                     shivGeneratorCount, deckSize, reachableCards, reusableShivCount,
                     singleUseGeneratedShivs, singleUseShivGenerators) : null,
+            ReachableCards = reachableCards,
         };
     }
 
@@ -411,7 +428,9 @@ internal readonly record struct StrategicEffectContext(
 
 internal static class StrategicEffectModel
 {
-    public static StrategicEffectRequirements Requirements(PowerModel power)
+    public static StrategicEffectRequirements Requirements(
+        PowerModel power,
+        bool act3BossInteractions = false)
     {
         // 第三方登记优先。登记表为空时这是一次字典 Count 检查，热路径上可以忽略。
         if (StrategicEffectMirrors.TryGetRequirements(power, out StrategicEffectRequirements registered))
@@ -439,12 +458,21 @@ internal static class StrategicEffectModel
                 | StrategicEffectRequirements.AverageCardValue,
             CorruptionPower => StrategicEffectRequirements.SkillEnergySpend
                 | StrategicEffectRequirements.AverageCardValue,
+            OrbitPower or AutomationPower => StrategicEffectRequirements.RemainingTurns
+                | StrategicEffectRequirements.AverageCardValue,
             CreativeAiPower => StrategicEffectRequirements.RemainingTurns
                 | StrategicEffectRequirements.AverageCardValue,
             IterationPower => StrategicEffectRequirements.StatusDrawTriggers
                 | StrategicEffectRequirements.AverageCardValue,
             MasterPlannerPower => StrategicEffectRequirements.SkillPlays
                 | StrategicEffectRequirements.AverageCardValue,
+            PagestormPower when act3BossInteractions => StrategicEffectRequirements.RemainingTurns
+                | StrategicEffectRequirements.AverageCardValue,
+            DanseMacabrePower when act3BossInteractions => StrategicEffectRequirements.RemainingTurns,
+            DemesnePower when act3BossInteractions => StrategicEffectRequirements.RemainingTurns
+                | StrategicEffectRequirements.AverageCardValue,
+            PrepTimePower when act3BossInteractions => StrategicEffectRequirements.RemainingTurns
+                | StrategicEffectRequirements.AttackPlays,
             FocusPower or FurnacePower or ThunderPower or LightningRodPower
                 => StrategicEffectRequirements.RemainingTurns,
             _ => StrategicEffectRequirements.None,
@@ -478,6 +506,9 @@ internal static class StrategicEffectModel
             AccuracyPower => Damage(amount * context.ShivPlays, enemyHp),
             SleightOfFleshPower => Damage(amount * context.DebuffApplications, enemyHp),
             StrengthPower => Damage(amount * (context.AttackHits ?? context.AttackPlays), enemyHp),
+            LethalityPower when context.Act3BossInteractions && context.AttackPlays > 0 => Damage(
+                context.FirstAttackDamage * Math.Min(context.AttackPlays, context.RemainingTurns)
+                    * amount / 100, enemyHp),
             LethalityPower when context.AttackPlays > 0 => Damage(
                 context.AverageAttackValue
                     * Math.Min(context.AttackPlays, context.RemainingTurns)
@@ -496,11 +527,24 @@ internal static class StrategicEffectModel
             CuriousPower => Resource(
                 Math.Min(context.PowerEnergySpend, amount * context.PowerPlays) * energyUnit),
             CorruptionPower => Resource(context.SkillEnergySpend * energyUnit),
+            OrbitPower or AutomationPower => Resource(context.RecurringEnergyGain * energyUnit),
             CreativeAiPower => CardAccess(
                 amount * context.RemainingTurns * cardAccessUnit),
             IterationPower => CardAccess(
                 amount * context.StatusDrawTriggers * cardAccessUnit),
             MasterPlannerPower => CardAccess(context.SkillPlays * cardAccessUnit),
+            PagestormPower when context.Act3BossInteractions => CardAccess(
+                Math.Min(
+                    context.PagestormBonusDrawCapacity,
+                    amount * context.EtherealDrawTriggers) * cardAccessUnit),
+            DanseMacabrePower when context.Act3BossInteractions => Prevention(
+                amount * context.HighEnergyPlays,
+                context),
+            DemesnePower when context.Act3BossInteractions =>
+                Resource(context.DemesneEnergyGain * energyUnit)
+                + CardAccess(context.DemesneDrawGain * cardAccessUnit),
+            PrepTimePower when context.Act3BossInteractions => Damage(
+                amount * Math.Min(context.RemainingTurns, context.AttackPlays), enemyHp),
             FocusPower => Scaling(amount * context.RemainingTurns * 2),
             FurnacePower => Scaling(amount * context.RemainingTurns * 2),
             ThunderPower => Damage(amount * context.RemainingTurns, enemyHp),

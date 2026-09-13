@@ -1020,14 +1020,9 @@ internal sealed partial class UnattendedTestRunner
         }
         if (PotionUsePolicy.SmartRequiredHpSaved(
                 SolverWeights.PotionMinimumHpSaved,
-                BossHpRelief.ActClearHeal) != 45
-            || CombatBeamSolver.ResolveSoldHpThreshold(
-                initialPlayerMaxHp: 80,
-                RoomType.Boss,
-                BossHpRelief.ActClearHeal,
-                theftPolicy: null) != 75)
+                BossHpRelief.ActClearHeal) != 45)
         {
-            throw new InvalidOperationException("跨幕回复没有按 80% 同步缩放药水与卖血阈值。");
+            throw new InvalidOperationException("跨幕回复没有按 80% 缩放药水价值。");
         }
         if (ActEndingBossPolicy.DeathSaveRelicPremium(0, BossHpRelief.None) != 0
             || ActEndingBossPolicy.DeathSaveRelicPremium(40, BossHpRelief.None) != 360
@@ -1063,12 +1058,7 @@ internal sealed partial class UnattendedTestRunner
                 BossHpStrategy.MinimizeHpLoss) != BossHpRelief.None
             || PotionUsePolicy.SmartRequiredHpSaved(
                 SolverWeights.PotionMinimumHpSaved,
-                BossHpRelief.None) != SolverWeights.PotionMinimumHpSaved
-            || CombatBeamSolver.ResolveSoldHpThreshold(
-                initialPlayerMaxHp: 80,
-                RoomType.Boss,
-                BossHpRelief.None,
-                theftPolicy: null) != SolverWeights.BossSoldHpThreshold)
+                BossHpRelief.None) != SolverWeights.PotionMinimumHpSaved)
         {
             throw new InvalidOperationException("两类幕末 Boss 的最低战损策略没有独立恢复正常血量权重。");
         }

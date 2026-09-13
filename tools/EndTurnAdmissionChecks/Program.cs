@@ -136,6 +136,19 @@ partial class CombatBeamSolver
                 solver.inputs[0].ReleaseSimulator();
             }
         }
+        {
+            var solver = new CombatBeamSolver();
+            solver.inputs.AddRange([new() { StateKey = 10 }, new() { StateKey = 11 }]);
+            SearchNode parent = new(null, 0, 0, 0, 1, 0, 0, 0, 0, false, SearchBoundaryReason.None, false, null, new(), new());
+            using var batch = solver.RentExpansionBatch();
+            var baselines = solver.GenerateRawEndTurnCandidates(parent, batch, publishBaselines: false);
+            Require(solver.publishedBaselines == 0 && solver.admissions == 0,
+                "Independent EndTurn preparation published shared baselines or admitted children.");
+            Require(batch.EndTurns.Select(n => n.StateKey).SequenceEqual(new[] { 10, 11 })
+                && baselines?.Count == 2, "Independent preparation lost candidates or baseline values.");
+            batch.Dispose();
+            Require(solver.inputs.All(s => s.Releases == 1), "Unconsumed early EndTurn results leaked.");
+        }
         Console.WriteLine($"Passed {checks} end-turn admission pipeline checks.");
     }
 }

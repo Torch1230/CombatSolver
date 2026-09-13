@@ -24,39 +24,6 @@ namespace CombatSolver;
 
 internal sealed partial class CombatBeamSolver
 {
-    private readonly record struct TranspositionLabel(
-        int PotionCount,
-        int PotionStrategicCost,
-        int FutureSoldHp,
-        int CumulativePlayerHpLost,
-        int ActionCount,
-        double Score);
-
-    private sealed class TranspositionFrontier(TranspositionLabel first)
-    {
-        private readonly List<TranspositionLabel> _labels = [first];
-
-        public bool TryAccept(TranspositionLabel next)
-        {
-            foreach (TranspositionLabel current in _labels)
-            {
-                if (Dominates(current, next))
-                    return false;
-            }
-            _labels.RemoveAll(current => Dominates(next, current));
-            _labels.Add(next);
-            return true;
-        }
-
-        private static bool Dominates(TranspositionLabel left, TranspositionLabel right)
-            => left.PotionCount <= right.PotionCount
-                && left.PotionStrategicCost <= right.PotionStrategicCost
-                && left.FutureSoldHp <= right.FutureSoldHp
-                && left.CumulativePlayerHpLost <= right.CumulativePlayerHpLost
-                && left.ActionCount <= right.ActionCount
-                && left.Score >= right.Score;
-    }
-
     private readonly record struct StandPatEvaluation(
         bool AllEnemiesDead,
         int DelayedDamage,
@@ -142,6 +109,12 @@ internal sealed partial class CombatBeamSolver
         public Dictionary<StateFingerprint, TranspositionFrontier> Transpositions = [];
         public Dictionary<StateFingerprint, TranspositionFrontier> ExpandedTranspositions = [];
         public Dictionary<StateFingerprint, StandPatEvaluation> StandPatCache = [];
+        // Only the coordinator owns a prune checkpoint; probe lanes never receive it.
+        public Action<long>? EnsurePruneMemory;
+        public Action<string>? CheckpointPruneMetadata;
+        public long StandPatProbeAllocatedHighWater;
+        public long StandPatBatchAllocatedBytes;
+
         public readonly PotionStrategicCostLookup PotionStrategicCosts = new();
         public Dictionary<(StateFingerprint State, int RoundIndex), ThreatProjection> ThreatProjectionCache = [];
         public Dictionary<PredictionRiskSignature, CoverageSummary> CoverageCache = [];
@@ -277,7 +250,10 @@ internal sealed partial class CombatBeamSolver
         {
             ExpansionBatchPool.Clear();
             SnapshotLiveCards.Clear();
-            StandPatCache = [];
+            // A running prune may have skipped cached representatives when preparing its
+            // pending probes. Keep these scalar answers through its drained checkpoints.
+            if (EnsurePruneMemory == null)
+                StandPatCache = [];
             ThreatProjectionCache = [];
             CoverageCache = [];
         }

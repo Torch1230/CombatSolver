@@ -130,6 +130,33 @@ internal static class CombatCardGenerationExtensions
             .GetForCombat(player, count, rng, multiplayerConstraint);
     }
 
+    public static IEnumerable<PredictedCard> GetDistinctUnlockedCharacterAttacksForCombat(
+        this CombatPredictionSimulator simulator,
+        Player player,
+        int count,
+        Rng rng,
+        CardMultiplayerConstraint multiplayerConstraint)
+    {
+        CardPoolModel characterPool = player.Character.CardPool;
+        if (simulator.State.CombatState is ICombatPredictionCardGenerationPoolSnapshot snapshot
+            && snapshot.TryGetRootEligibleCharacterAttackCards(
+                player,
+                characterPool,
+                multiplayerConstraint,
+                out IReadOnlyList<CardModel>? cached))
+        {
+            // Distinct selection must retain TakeRandom's shuffle and RNG consumption;
+            // the with-replacement NextItem path is a different contract, even for one card.
+            return cached.AsEnumerable()
+                .TakeRandom(count, rng)
+                .Select(card => PredictedCard.Create(card, player));
+        }
+
+        return player.GetUnlockedCharacterCards(multiplayerConstraint)
+            .Where(static card => card.Type == CardType.Attack)
+            .GetDistinctForCombat(player, count, rng, multiplayerConstraint);
+    }
+
     // Mirrors CardFactory.GetForCombat, but returns PredictedCard instead of CardModel.
     public static IEnumerable<PredictedCard> GetForCombat(
         this IEnumerable<CardModel> cards,

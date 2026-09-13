@@ -1,0 +1,67 @@
+{
+  "scope": "Linux diagnostic derived archive, 15000 nodes per solve; native encoding unverified; B2 reuses B1 process and is warm, so no pooled timing claim",
+  "logicalFieldCount": 57,
+  "routeActionCounts": [
+    22,
+    19,
+    18
+  ],
+  "allComparedEqual": true,
+  "runs": [
+    {
+      "name": "A1",
+      "runId": "e4d7bf56983b4d5fb2ab80cea7fec848",
+      "pid": 3507449,
+      "elapsedMs": 25269.7695,
+      "allocatedBytes": 26641920688,
+      "gcPauseMs": 1661.428
+    },
+    {
+      "name": "B1",
+      "runId": "fd1cef57f7534d1ebd5b443a45c28daf",
+      "pid": 3512402,
+      "elapsedMs": 25707.0002,
+      "allocatedBytes": 26493627176,
+      "gcPauseMs": 1650.047
+    },
+    {
+      "name": "B2",
+      "runId": "1f783b6cf3ac401f86f6da67d4cbe066",
+      "pid": 3512402,
+      "elapsedMs": 17446.5891,
+      "allocatedBytes": 26280370904,
+      "gcPauseMs": 1952.984
+    },
+    {
+      "name": "A2",
+      "runId": "fac4891dd2364a1d85942f91f1f16904",
+      "pid": 3520221,
+      "elapsedMs": 25522.1241,
+      "allocatedBytes": 26626895592,
+      "gcPauseMs": 1718.501
+    }
+  ],
+  "probe": {
+    "callsAtLastSample": 282624,
+    "coldActionArraysAtLastSample": 244286,
+    "actionSlotsAtLastSample": 7038850,
+    "allocatedBytesAtLastSample": 186475624,
+    "elapsedMsAtLastSample": 128.436439,
+    "sampling": "aggregates saved every 1024 calls; lower bound on completed request; instrumentation excluded from A/B"
+  },
+  "sentinel": {
+    "runId": "f63cf487061448c6ae1289b11f0a6d67",
+    "status": "Passed",
+    "battleHpLost": 4,
+    "potions": 2,
+    "combatEndedTurn": 12,
+    "totalExpanded": 53236,
+    "totalTransitions": 589526
+  },
+  "validation": {
+    "releaseBuild": "Passed, 0 warnings, 0 errors",
+    "linuxBoundaries": "Passed, search_files=87",
+    "visibleSteam": "Not run",
+    "nativeStateEncoding": "Not comparable"
+  }
+}

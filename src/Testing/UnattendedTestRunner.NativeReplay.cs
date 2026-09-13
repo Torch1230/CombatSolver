@@ -59,7 +59,8 @@ internal sealed partial class UnattendedTestRunner
             if (events[index].Sequence != index)
                 throw new InvalidDataException($"recording_sequence_gap:{index}");
         JsonObject checkpoint = import["checkpoint"]!.AsObject();
-        int target = checked((int)checkpoint["eventCursor"]!.GetValue<long>());
+        int checkpointEventCursor = checked((int)checkpoint["eventCursor"]!.GetValue<long>());
+        int target = checkpointEventCursor;
         if ((uint)target > (uint)events.Length)
             throw new InvalidDataException("checkpoint_event_cursor_out_of_range");
         JsonObject metadata = JsonNode.Parse(await File.ReadAllTextAsync(
@@ -102,7 +103,8 @@ internal sealed partial class UnattendedTestRunner
         {
             if (combatStart)
             {
-                AssertRecordedContinuation(expectedState, combat, 0, _request.NativeStatePath);
+                AssertRecordedContinuation(expectedState, combat, 0, _request.NativeStatePath,
+                    allowLegacyBattleStart: checkpointEventCursor == 0);
                 openingVerified = true;
                 if (_request.ReplayMode is "SearchOnly" or "DeploySolver")
                 {
@@ -132,13 +134,15 @@ internal sealed partial class UnattendedTestRunner
         if (combatEnd && !endingVerified)
             throw new InvalidDataException("native_replay_missing_combat_end_boundary");
         if (!combatStart && !combatEnd)
-            AssertRecordedContinuation(expectedState, combatState, target, _request.NativeStatePath);
+            AssertRecordedContinuation(expectedState, combatState, target, _request.NativeStatePath,
+                allowLegacyBattleStart: target == 0 && player.PlayerCombatState?.TurnNumber == 1);
         if (readyCheckpoint != null)
         {
             JsonObject readyMetadata = JsonNode.Parse(await File.ReadAllTextAsync(Path.Combine(
                 _checkpointImportDirectory!, readyCheckpoint["metadataPath"]!.GetValue<string>())))!.AsObject();
             AssertRecordedContinuation(readyMetadata["exactContinuationState"]!.GetValue<string>(), combatState, target,
-                Path.Combine(_checkpointImportDirectory!, readyCheckpoint["nativeStatePath"]!.GetValue<string>()));
+                Path.Combine(_checkpointImportDirectory!, readyCheckpoint["nativeStatePath"]!.GetValue<string>()),
+                allowLegacyBattleStart: target == 0 && player.PlayerCombatState?.TurnNumber == 1);
             _writer.ReplayVerification!["readyCheckpointVerified"] = true;
         }
         if (!combatEnd && !combatStart && player.PlayerCombatState?.Phase.ToString() != "Play")
@@ -160,13 +164,16 @@ internal sealed partial class UnattendedTestRunner
             player.PlayerCombatState?.TurnNumber ?? 0, [], [], []);
     }
 
-    private void AssertRecordedContinuation(string expected, CombatState state, long cursor, string? nativePath)
+    private void AssertRecordedContinuation(string expected, CombatState state, long cursor, string? nativePath,
+        bool allowLegacyBattleStart = false)
     {
         string actual = ContinuationStamp.CaptureLive(state).StateText;
-        if (ReplayContinuationMatches(expected, actual))
+        bool differentEncoding = _writer.ReplayVerification!["modelSerializationComparison"] != null;
+        bool nativeVerified = AssertNativeCheckpoint(state, nativePath, differentEncoding);
+        // A fully verified native checkpoint also establishes the replayed game state
+        // for legacy reports whose derived zero counter was not serialized yet.
+        if (ReplayContinuationMatches(expected, actual, allowLegacyBattleStart || nativeVerified))
         {
-            bool differentEncoding = _writer.ReplayVerification!["modelSerializationComparison"] != null;
-            bool nativeVerified = AssertNativeCheckpoint(state, nativePath, differentEncoding);
             _writer.ReplayVerification["continuationVerified"] = true;
             _writer.ReplayVerification["nativeStateVerified"] = nativeVerified;
             if (!nativeVerified && differentEncoding && !string.IsNullOrWhiteSpace(nativePath))
@@ -190,6 +197,12 @@ internal sealed partial class UnattendedTestRunner
             new ContinuationStamp(expected).DescribeFirstDifference(new ContinuationStamp(actual)));
     }
 
+    private static bool IsRecordedActionWindow(uint? currentActionId, uint? recordedParentId,
+        bool executorRunning, IReadOnlySet<uint> completedActionIds)
+        => currentActionId == recordedParentId
+            || currentActionId == null && !executorRunning
+                && recordedParentId is uint parentId && completedActionIds.Contains(parentId);
+
     private sealed class NativeReplayDriver : ICardSelector, IDisposable
     {
         private readonly UnattendedTestRunner _runner;
@@ -197,6 +210,8 @@ internal sealed partial class UnattendedTestRunner
         private readonly int _target;
         private readonly Player _player;
         private readonly IDisposable _selector;
+        private readonly ActionExecutor _executor;
+        private readonly HashSet<uint> _completedActionIds = [];
         private Exception? _failure;
         private bool _disposed;
         private bool _openingTakeoverRequested;
@@ -210,6 +225,16 @@ internal sealed partial class UnattendedTestRunner
             _player = player;
             CombatReplayRecording.TestObserver = Observe;
             _selector = CardSelectCmd.PushSelector(this, localOnly: true);
+            _executor = RunManager.Instance.ActionExecutor;
+            _executor.AfterActionExecuted += ObserveCompletedAction;
+        }
+
+        private void ObserveCompletedAction(GameAction action)
+        {
+            if (action.Exception is Exception error)
+                _failure ??= error;
+            else if (action.Id is uint id)
+                _completedActionIds.Add(id);
         }
 
         private void Observe(RecordedCombatEvent actual)
@@ -281,7 +306,8 @@ internal sealed partial class UnattendedTestRunner
                     RecordedCombatEvent next = _events[Cursor];
                     CombatReplayEvent value = Decode(next);
                     if (value.eventType == CombatReplayEventType.GameAction && next.Origin != "system"
-                        && RunManager.Instance.ActionExecutor.CurrentlyRunningAction?.Id == next.DuringActionId
+                        && IsRecordedActionWindow(_executor.CurrentlyRunningAction?.Id, next.DuringActionId,
+                            _executor.IsRunning, _completedActionIds)
                         && _player.PlayerCombatState?.Phase.ToString() == "Play")
                     {
                         GameAction action = value.action!.ToGameAction(_player);
@@ -334,6 +360,7 @@ internal sealed partial class UnattendedTestRunner
             if (_disposed) return;
             _disposed = true;
             _selector.Dispose();
+            _executor.AfterActionExecuted -= ObserveCompletedAction;
             CombatReplayRecording.TestObserver = null;
             CombatReplayRecording.TestCombatStartObserver = null;
             CombatReplayRecording.TestCombatEndObserver = null;

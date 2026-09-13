@@ -25,7 +25,7 @@ internal static class TriggeredPowerSupport
                 switch (batch[batchIndex])
                 {
                     case CombatPredictionDamageReceivedEntry damage:
-                        CompensateWakeAndBurrow(simulator, combat, damage);
+                        CompensateBurrow(simulator, combat, damage);
                         break;
                 }
             }
@@ -37,33 +37,12 @@ internal static class TriggeredPowerSupport
         }
     }
 
-    private static void CompensateWakeAndBurrow(
+    private static void CompensateBurrow(
         CombatPredictionSimulator simulator,
         SimulatedCombatState combat,
         CombatPredictionDamageReceivedEntry entry)
     {
         Creature target = entry.Receiver;
-        if (entry.Result.UnblockedDamage != 0)
-        {
-            AsleepPower? asleep = combat.GetPower<AsleepPower>(target);
-            if (asleep is { Amount: > 0 })
-            {
-                combat.SetAmount<PlatingPower>(target, 0);
-                combat.SetPowerAmount(asleep, 0);
-                combat.SetMonsterBool(target, "_isAwake", true);
-                combat.ForceStunnedMove(target, "SLASH_MOVE");
-            }
-
-            SlumberPower? slumber = combat.GetPower<SlumberPower>(target);
-            if (slumber is { Amount: > 0 })
-            {
-                int remaining = slumber.Amount - 1;
-                combat.SetPowerAmount(slumber, remaining);
-                if (remaining <= 0)
-                    combat.ForceStunnedMove(target, "ROLL_OUT_MOVE");
-            }
-        }
-
         if (entry.Result.WasBlockBroken && combat.GetAmount<BurrowedPower>(target) > 0)
         {
             combat.SetAmount<BurrowedPower>(target, 0);

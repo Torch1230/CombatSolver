@@ -1,8 +1,16 @@
 # 第三方 Power 的战略估值登记
 
+三层首领上下文的 `FirstAttackDamage` 是首张攻击伤害潜力：按分支现有/正常回合能量筛选攻击，排除奥斯提攻击，根除计能量对应命中；不包括完整战术的最终伤害证明。该字段只在三层特化中填充，普通政策为0，原版致命估值使用它；登记器签名与优先级不变。
+
 当前上下文新增 `AttackHits`（通过 `StrategicEffectRequirements.AttackHits` 请求）和 `ExhaustDrawPlays`。前者按已识别多段与小刀生成估计可达命中，后者折算禁抽、虚无及回合末时序下的消耗抽牌机会。它们是分支局部的保路估值；未请求命中数时为 null，第三方自定义攻击尚无专用命中登记，按普通单次命中估计。真实动作仍由原有 mirror 与领域语义执行。
 
+三层首领特化的 `Act3BossInteractions` 标记表示本次冻结政策的范围；`ReachableCards` 复用已有视野估计。`EtherealDrawTriggers`、`PagestormBonusDrawCapacity`、`HighEnergyPlays`、`DemesneEnergyGain` 和 `DemesneDrawGain` 只为对应原版能力按当前分支计算，未参与计算时为 0，不是第三方可任意请求的通用触发统计。`StrategicEffectMirrors` 的 requirements/evaluate 登记继续优先；这些估计不改变终局收益和真实结算。
+
+`RecurringEnergyGain` 按原版环绕轨道/自动化的当前实例计数、既有可达牌视野与能量缺口计算，包含未来自然手牌抽取；多个实例共用可消费的能量缺口。它只用于中间保路，其他能力为0，不是第三方通用触发次数查询。第三方 requirements/evaluate 登记优先级和签名保持原约定。
+
 ## 这是给谁用的
+
+原版 `PrepTimePower` 在三层首领特化中请求 `RemainingTurns` 与 `AttackPlays`，只为存在攻击来源的分支估计重复精力收益；范围外保持原估值。第三方登记仍优先于这项原版规则，不需要更改登记签名。
 
 第三方 mod 加了一层 Power，而这层 Power 会改变**玩家该按什么顺序出牌**。
 

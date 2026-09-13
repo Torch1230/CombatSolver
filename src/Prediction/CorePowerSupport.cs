@@ -233,9 +233,10 @@ internal static class CorePowerSupport
                 combat.Apply<FocusPower>(owner, card.DynamicVars["FocusPower"].IntValue, owner);
                 break;
             case DodgeAndRoll:
-                int blockGained = Math.Max(0, simulator.State.GetCreature(owner).Block - ownerBlockBefore);
-                if (blockGained > 0)
-                    combat.Apply<BlockNextTurnPower>(owner, blockGained, owner);
+                // Native OnPlay forwards GainBlock's modified return value. The owner's
+                // net block gain can be smaller at the cap or after block-triggered effects.
+                if (cardBlockGained > 0m)
+                    combat.Apply<BlockNextTurnPower>(owner, (int)cardBlockGained, owner);
                 break;
             case DemonForm:
                 combat.Apply<DemonFormPower>(owner, card.DynamicVars["StrengthPower"].IntValue, owner);

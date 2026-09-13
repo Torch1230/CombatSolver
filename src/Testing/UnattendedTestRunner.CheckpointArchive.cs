@@ -67,6 +67,7 @@ internal sealed partial class UnattendedTestRunner
         _request = input.Deserialize<UnattendedTestRequest>(UnattendedTestFiles.JsonOptions)!;
         if (_checkpointImport["resolvedPolicy"]?["fixedBudget"] is JsonValue forceShort)
             _protocolHost.ApplyRecordedShortSearchMode(_request.FixedSearchBudget || forceShort.GetValue<bool>());
+        _protocolHost.ApplyAct3BossStrategyOverride(_checkpointImport["resolvedPolicy"]?["act3BossStrategy"]?.GetValue<bool>());
     }
 
     private void RecordCheckpointRestored()
@@ -186,7 +187,7 @@ internal sealed partial class UnattendedTestRunner
             HashSet<string> allowed = new(StringComparer.Ordinal)
             {
                 "potionPolicy", "potionDirectives", "growthBudgets", "relicStrategyEnabled", "relicCounterRules", "brightestFlameMaxHpLossLimit", "actTransitionBossHpStrategy", "finalBossHpStrategy",
-                "acceptableBattleHpLoss", "stopAtAcceptableBattleHpLoss", "searchMaxDegreeOfParallelism", "profile", "fixedBudget",
+                "acceptableBattleHpLoss", "stopAtAcceptableBattleHpLoss", "searchMaxDegreeOfParallelism", "profile", "fixedBudget", "act3BossStrategy",
             };
             foreach ((string key, JsonNode? value) in overrides)
             {

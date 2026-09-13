@@ -11,7 +11,9 @@ internal sealed partial class UnattendedTestRunner
 {
     private async Task AssertLampIndirectPoisonAsync(CombatState combat, Player player)
     {
-        foreach (string sourcePower in new[] { "ENVENOM_POWER", "CONCOCT_POWER" })
+        foreach (string sourcePower in _request.ScenarioId == "LAMP-INDIRECT-TEMPORARY-STRENGTH"
+                     ? new[] { "MONARCHS_GAZE_POWER" }
+                     : new[] { "ENVENOM_POWER", "CONCOCT_POWER" })
         {
         foreach (var relic in player.Relics.ToArray()) await RelicCmd.Remove(relic);
         foreach (var power in combat.Creatures.SelectMany(c => c.Powers).ToArray()) await PowerCmd.Remove(power);

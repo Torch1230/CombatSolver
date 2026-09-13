@@ -31,6 +31,8 @@ internal static class BeforeCardPlayedMirrors
 
     public static void CompleteOrAbort(CombatPredictionSimulator simulator, CardPlay cardPlay)
     {
+        if (!simulator.StateStore.HasEntries<CardPlayPairPredictionState>())
+            return;
         foreach ((_, CardPlayPairPredictionState state) in
                  simulator.StateStore.ReadEntries<CardPlayPairPredictionState>())
         {

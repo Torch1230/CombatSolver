@@ -39,6 +39,132 @@ internal sealed partial class UnattendedTestRunner
             bool expectedCardPlayed = request.ExpectedPlayedCardId == null;
             bool expectedPotionUsed = request.ExpectedUsedPotionId == null;
             bool expectedPlayerPowerObserved = request.ExpectedObservedPlayerPowerId == null;
+            if (request.ScenarioId is "ORBIT-SEARCH-QUALITY" or "ORBIT-SEARCH-QUALITY-SHORT" or "ORBIT-SEARCH-QUALITY-DEPLOY"
+                or "AUTOMATION-SEARCH-QUALITY" or "AUTOMATION-SEARCH-QUALITY-SHORT" or "AUTOMATION-SEARCH-QUALITY-DEPLOY")
+            {
+                await runner.ProbeRecurringEnergyQualityAsync(combatState, player);
+                return Observation(combatEnded: request.ScenarioId.EndsWith("-DEPLOY", StringComparison.Ordinal));
+            }
+            if (request.ScenarioId == "GHOST-SEED-KEYWORD-LIFECYCLE")
+            {
+                await runner.AssertGhostSeedKeywordLifecycleAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "DAMPEN-DEATH-CLAW" or "DAMPEN-DEATH-SCYTHE")
+            {
+                await runner.AssertDampenDeathTimingAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "PHANTOM-RETAIN-LIFECYCLE")
+            {
+                await runner.AssertPhantomRetainLifecycleAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "ATTACK-START-HISTORY")
+            {
+                await runner.AssertAttackStartHistoryAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "IMPLICIT-HAND-CHOICE-ORDER")
+            {
+                await runner.AssertImplicitChoiceOrderAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "AUTOMATION-NATURAL-DRAWS")
+            {
+                await runner.AssertAutomationNaturalDrawsAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "AUTOMATION-CAPTURED-ROOT")
+            {
+                await runner.AssertAutomationRootAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "ORBIT-CAPTURED-ROOT")
+            {
+                await runner.AssertOrbitRootAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "LAMP-INDIRECT-TEMPORARY-STRENGTH")
+            {
+                await runner.AssertLampIndirectPoisonAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "ZERO-BASE-BLOCK")
+            {
+                await runner.AssertZeroBaseBlockAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "BLOCK-EVENT-HISTORY")
+            {
+                await runner.AssertBlockEventHistoryAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "SETUP-CAPTURED-HISTORY")
+            {
+                await runner.AssertSetupHistoryAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "EMOTION-CHIP-PREVENTED-DAMAGE")
+            {
+                await runner.AssertEmotionChipPreventedDamageAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "SIGNED-GOLD-LOSS")
+            {
+                await runner.AssertSignedGoldLossAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "NIGHTMARE-CAPTURED-ROOT")
+            {
+                await runner.AssertNightmareCapturedRootAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "CRAB-RAGE-DEATH-TIMING")
+            {
+                await runner.AssertCrabRageDeathTimingAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "INSTANCED-POWER-TARGETED")
+            {
+                await runner.AssertTargetedPowerInstancesAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "INSTANCED-POWER-AUTOMATION" or "INSTANCED-POWER-BOULDER")
+            {
+                await runner.AssertInstancedPowerApplicationAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "RELIC-DAMAGE-WAKE")
+            {
+                await runner.AssertRelicWakeDamageAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "DEFERRED-BLOCK-RETURN-NATIVE")
+            {
+                await runner.AssertDeferredBlockReturnAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "TEMPORARY-STRENGTH-ORDER-NATIVE" or "TEMPORARY-STRENGTH-CAP-NATIVE")
+            {
+                await runner.AssertTemporaryStrengthAsync(combatState, player, request.ScenarioId == "TEMPORARY-STRENGTH-CAP-NATIVE");
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "PLAYER-DEATH-POWERS-NATIVE")
+            {
+                await runner.AssertPlayerDeathPowersAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "POWER-DURATION-KEYS-NATIVE")
+            {
+                await runner.AssertPowerDurationKeysAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "POWER-DURATION-APPLICATION-NATIVE")
+            {
+                await runner.AssertPowerDurationApplicationAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId.StartsWith("TURN-SETUP-UI-", StringComparison.Ordinal))
                 return Observation(combatEnded: false);
             if (request.ScenarioId == "GROWTH-ANCIENT-POLICY")
@@ -81,9 +207,29 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertAutoTurnRequestOwnershipAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "AUTO-DEPLOYMENT-REQUEST-OWNERSHIP")
+            {
+                await runner.AssertDeploymentTurnRequestOwnershipAsync(combatState, player);
+                return Observation(combatEnded: true);
+            }
             if (request.ScenarioId == "BRILLIANT-SCARF-COST")
             {
                 await runner.AssertBrilliantScarfAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "RELIC-PRIORITY-MEAT")
+            {
+                await runner.AssertRelicPriorityMeatAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "ACT3-BOSS-STRATEGY")
+            {
+                await runner.AssertAct3BossStrategyAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "ACT3-OPENING-EFFECTS")
+            {
+                await runner.DescribeAct3OpeningEffectsAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
             if (request.ScenarioId == "RELIC-COUNTER-POLICY")
@@ -498,6 +644,38 @@ internal sealed partial class UnattendedTestRunner
                 runner.SetStage("known_soul_retained_path_trace_prepare");
                 int finishedTurn = await runner.RunKnownSoulVariantPathTraceAsync(
                     combatState, player, proveRetainedAlias: true);
+                return new ExecutionOutcome(false, finishedTurn, expectedCardPlayed, expectedPotionUsed,
+                    expectedPlayerPowerObserved, InitialSearchHeld: false);
+            }
+
+            if (request.ScenarioId is "ACT3-HOURGLASS-OPENING-PATH" or "ACT3-HOURGLASS-POLICY-AB")
+            {
+                _ = ApplySettingsOverrides();
+                int finishedTurn = await runner.TraceAct3HourglassOpeningAsync(combatState, player);
+                return new ExecutionOutcome(false, finishedTurn, expectedCardPlayed, expectedPotionUsed,
+                    expectedPlayerPowerObserved, InitialSearchHeld: false);
+            }
+
+            if (request.ScenarioId == "ACT3-SUBJECT-BUFFER-PATH")
+            {
+                _ = ApplySettingsOverrides();
+                int finishedTurn = await runner.TraceAct3SubjectBufferAsync(combatState, player);
+                return new ExecutionOutcome(false, finishedTurn, expectedCardPlayed, expectedPotionUsed,
+                    expectedPlayerPowerObserved, InitialSearchHeld: false);
+            }
+
+            if (request.ScenarioId == "ACT3-HELLRAISER-PATH")
+            {
+                _ = ApplySettingsOverrides();
+                int finishedTurn = await runner.TraceAct3HellraiserAsync(combatState, player);
+                return new ExecutionOutcome(false, finishedTurn, expectedCardPlayed, expectedPotionUsed,
+                    expectedPlayerPowerObserved, InitialSearchHeld: false);
+            }
+
+            if (request.ScenarioId == "ACT3-SUBJECT-0530-PATH")
+            {
+                _ = ApplySettingsOverrides();
+                int finishedTurn = await runner.TraceAct3Subject0530Async(combatState, player);
                 return new ExecutionOutcome(false, finishedTurn, expectedCardPlayed, expectedPotionUsed,
                     expectedPlayerPowerObserved, InitialSearchHeld: false);
             }

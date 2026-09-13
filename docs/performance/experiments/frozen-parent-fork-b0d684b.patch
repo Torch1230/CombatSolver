@@ -1,0 +1,173 @@
+--- a/src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs
++++ b/src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs
+@@ -148,8 +148,11 @@
+         ActionRelicTriggers = actionRelicTriggers;
+     }
+ 
+-    public CombatPredictionSimulator Fork()
+-    {
++    public CombatPredictionSimulator Fork() => Fork(false, out _);
++
++    internal CombatPredictionSimulator Fork(bool inspectSources, out bool concurrentSource)
++    {
++        concurrentSource = false;
+         AssertForkable();
+ 
+         using PredictionForkContext context = new();
+@@ -157,6 +160,8 @@
+         CombatPredictionState state = State.Fork(context);
+         PredictionStateStore stateStore = StateStore.Fork(context);
+         CombatPredictionHistory history = History.Fork(trace);
++        concurrentSource = inspectSources && State.CombatState is SimulatedCombatState
++            && StateStore.HasNoForkCallbacks && context.HasOnlyConcurrentForkSources();
+         return new CombatPredictionSimulator(
+             trace,
+             state,
+--- a/src/Engine/Common/PredictionStateStore.cs
++++ b/src/Engine/Common/PredictionStateStore.cs
+@@ -235,6 +235,8 @@
+         return fork;
+     }
+ 
++    internal bool HasNoForkCallbacks => _states is not { Count: > 0 };
++
+     internal void AssertForkable()
+     {
+         if (_states is null)
+--- a/src/Engine/Common/PredictionForking.cs
++++ b/src/Engine/Common/PredictionForking.cs
+@@ -393,6 +393,27 @@
+         _forks = ArrayPool<object>.Shared.Rent(capacity);
+         if (capacity >= IndexedLookupThreshold)
+             BuildHashIndex(BucketCountFor(capacity));
++    }
++
++    internal bool HasOnlyConcurrentForkSources()
++    {
++        for (int index = 0; index < _count; index++)
++        {
++            bool safe = _sources[index] switch
++            {
++                PredictedCard card => card.CanForkConcurrently,
++                SimCardPile => true,
++                MegaCrit.Sts2.Core.Models.PowerModel power => NativeModelCloneConcurrency.CanCloneIndependently(power),
++                CombatSolver.Engine.InCombat.Simulation.SimCreatureState => true,
++                CombatSolver.Engine.InCombat.Simulation.SimPlayerCombatState => true,
++                CombatSolver.Engine.InCombat.Simulation.SimOrbQueue => true,
++                CombatSolver.Engine.InCombat.Simulation.CombatPredictionState => true,
++                SimulatedCombatState => true,
++                _ => false,
++            };
++            if (!safe) return false;
++        }
++        return true;
+     }
+ 
+     private static int BucketCountFor(int entryCapacity)
+--- a/src/Engine/Common/PredictedCard.cs
++++ b/src/Engine/Common/PredictedCard.cs
+@@ -145,6 +145,17 @@
+         {
+             _isolateAttachedModelsOnFork = _isolateAttachedModelsOnFork,
+         };
++    }
++
++    internal bool CanForkConcurrently
++    {
++        get
++        {
++            if (!_isolateAttachedModelsOnFork) return true;
++            CardModel source = _previewStorage.Preview ?? _previewStorage.Original;
++            return NativeModelCloneConcurrency.CanCloneIndependently(source)
++                && PredictionModModelSupport.GetCardAttachedListeners(source).Count == 0;
++        }
+     }
+ 
+     internal PredictedCard Fork(PredictionForkContext context)
+--- a/src/Search/CombatBeamSolver.AdmittedExpansion.cs
++++ b/src/Search/CombatBeamSolver.AdmittedExpansion.cs
+@@ -266,7 +266,7 @@
+         private sealed class AdmittedParent(SearchNode node) : IDisposable
+         {
+             public SearchNode Node { get; } = node;
+-            public object ForkGate { get; } = new();
++            public object ForkGate { get; } = new LocalFrozenParentFork(node.Snapshot);
+             public ExpansionBatch? Aggregate;
+             public List<PreparedCardAction>? Actions;
+             public List<PreparedPotionAction>? Potions;
+--- a/src/Search/CombatBeamSolver.Expansion.cs
++++ b/src/Search/CombatBeamSolver.Expansion.cs
+@@ -3009,23 +3009,41 @@
+         cancellationToken.ThrowIfCancellationRequested();
+         if (forkGate != null)
+         {
++            LocalFrozenParentFork? frozen = forkGate as LocalFrozenParentFork;
++            if (frozen?.Eligible == true && ReferenceEquals(frozen.Source, parentSnapshot))
++            {
++                LocalFrozenParentFork.Record(true);
++                return PrepareReplayForkSeedCore(parentSnapshot);
++            }
+             lock (forkGate)
+             {
+                 cancellationToken.ThrowIfCancellationRequested();
+-                return PrepareReplayForkSeedCore(parentSnapshot);
+-            }
++                if (frozen?.Eligible == true && ReferenceEquals(frozen.Source, parentSnapshot))
++                {
++                    // A sibling certified the source while this worker was waiting.
++                }
++                else
++                {
++                    LocalFrozenParentFork.Record(false);
++                    return PrepareReplayForkSeedCore(parentSnapshot,
++                        frozen is { Inspected: false } && ReferenceEquals(frozen.Source, parentSnapshot) ? frozen : null);
++                }
++            }
++            LocalFrozenParentFork.Record(true);
++            return PrepareReplayForkSeedCore(parentSnapshot);
+         }
+         return PrepareReplayForkSeedCore(parentSnapshot);
+     }
+ 
+-    private ReplayForkSeed PrepareReplayForkSeedCore(SimulationSnapshot parentSnapshot)
++    private ReplayForkSeed PrepareReplayForkSeedCore(SimulationSnapshot parentSnapshot, LocalFrozenParentFork? inspect = null)
+     {
+         _run.ForkCount++;
+         SearchMeasurement forkMeasurement = _run.Performance.Begin();
+         try
+         {
+             CombatPredictionSimulator simulator =
+-                ((CombatPredictionSimulator)parentSnapshot.Simulator).Fork();
++                ((CombatPredictionSimulator)parentSnapshot.Simulator).Fork(inspect != null, out bool eligible);
++            inspect?.Publish(eligible);
+             ForkableSet<uint> processedEnemyDeaths =
+                 ((ForkableSet<uint>)parentSnapshot.ProcessedEnemyDeaths).Fork();
+             return new ReplayForkSeed(simulator, processedEnemyDeaths);
+--- a/src/Search/CombatSearchCoordinator.cs
++++ b/src/Search/CombatSearchCoordinator.cs
+@@ -274,6 +274,7 @@
+                 takeoverResult = passTakeover;
+                 return passResult;
+             }
++            LocalFrozenParentFork.Dump();
+             if (!policy.PotionStrategy.HasForcedDirectives)
+             {
+                 if (HasReachedAcceptableBattleHpLoss(policy, passResult))
+--- /dev/null
++++ b/src/Search/LocalFrozenParentFork.cs
+@@ -0,0 +1,15 @@
++using System.Collections.Concurrent;
++namespace CombatSolver;
++internal sealed class LocalFrozenParentFork(SimulationSnapshot source)
++{
++    public SimulationSnapshot Source { get; } = source;
++    public bool Inspected;
++    public volatile bool Eligible;
++    private sealed class Counts { public long Fast, Slow, EligibleParents, FallbackParents; }
++    private static readonly ConcurrentBag<Counts> Threads = new();
++    [ThreadStatic] private static Counts? _counts;
++    private static Counts Current { get { if(_counts==null) { _counts=new();Threads.Add(_counts); } return _counts; } }
++    public static void Record(bool fast) { if(fast) Current.Fast++; else Current.Slow++; }
++    public void Publish(bool eligible) { Inspected=true;Eligible=eligible;if(eligible)Current.EligibleParents++;else Current.FallbackParents++; }
++    public static void Dump() => System.IO.File.WriteAllText("/tmp/frozen-parent-probe.json",System.Text.Json.JsonSerializer.Serialize(new {fast=Threads.Sum(t=>t.Fast),slow=Threads.Sum(t=>t.Slow),eligibleParents=Threads.Sum(t=>t.EligibleParents),fallbackParents=Threads.Sum(t=>t.FallbackParents)}));
++}

@@ -172,25 +172,6 @@ internal sealed partial class SimulatedCombatState
         simulator.Draw(player, 1);
     }
 
-    public void NormalizeGhostSeedCards(CombatPredictionSimulator simulator)
-    {
-        foreach (Player player in Players)
-        {
-            if (!RelicsOf(player).Any(static relic => !relic.IsMelted && relic is GhostSeed))
-                continue;
-            foreach (PredictedCard card in simulator.State.GetPlayerCombatState(player).AllCards)
-            {
-                CardModel preview = card.Preview;
-                if (preview.Rarity == CardRarity.Basic
-                    && (preview.Tags.Contains(CardTag.Strike) || preview.Tags.Contains(CardTag.Defend))
-                    && !preview.GetKeywordsWithSources(KeywordSources.Local).Contains(CardKeyword.Ethereal))
-                {
-                    card.MutablePreview.AddKeyword(CardKeyword.Ethereal);
-                }
-            }
-        }
-    }
-
     public void TriggerBookmarkAfterFlush(
         CombatPredictionSimulator simulator,
         Player player)
@@ -310,7 +291,7 @@ internal sealed partial class SimulatedCombatState
     public void RecordRelicDamageEntry(CombatPredictionHistoryEntry historyEntry)
     {
         if (historyEntry is not CombatPredictionDamageReceivedEntry entry
-            || entry.Result.UnblockedDamage <= 0
+            || entry.Result.WasFullyBlocked
             || entry.Receiver.Player is not { } player)
         {
             return;

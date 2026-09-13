@@ -4,7 +4,15 @@
 
 每份报告只证明其中注明的版本、场景和测量条件。当前测试入口见 [测试矩阵](../TEST_MATRIX.md)，架构约束见 [架构地图](../ARCHITECTURE.md)。
 
+## 当前工作重点
+
+`perf/surgical-fixes-20260912` 基于上游 `eff8cf4`；旧 `perf/simulation-profile-20260910` 已暂停开发。只接入独立小修复，不继续 Compact／战斗执行流程移植。
+
+- [精简移植、验证与性能研究](surgical-fixes-20260912.md)。
+
 ## 专题
+
+- [五项后续候选：工作量、原型与取舍](five-candidates-20260913.md)：Windows先行部署、三槽计数与窄生成入口复用，以及top-k/JIT/SIMD原型的取舍。
 
 - [三层卡顿与重复回收实录](player-lag-diagnosis-20260911.md)：秒级长帧与 GC 事件对账，大碎片、跨跑局对象存活、层间低收益重复回收及证据边界。
 

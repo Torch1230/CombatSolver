@@ -28,8 +28,8 @@ internal static class CardGenerationCardMirrors
 
     public static void BundleOfJoyOnPlay(BundleOfJoy card, CardOnPlayMirrorContext context)
     {
-        var cards = card.Owner.GetUnlockedColorlessCards(context.CardMultiplayerConstraint)
-            .GetDistinctForCombat(
+        var cards = context.Simulator
+            .GetDistinctUnlockedColorlessForCombat(
                 card.Owner,
                 card.DynamicVars.Cards.IntValue,
                 context.Rng.CombatCardGeneration,
@@ -69,9 +69,8 @@ internal static class CardGenerationCardMirrors
 
     public static void InfernalBladeOnPlay(InfernalBlade card, CardOnPlayMirrorContext context)
     {
-        var cards = card.Owner.GetUnlockedCharacterCards(context.CardMultiplayerConstraint)
-            .Where(candidate => candidate.Type == CardType.Attack)
-            .GetDistinctForCombat(
+        var cards = context.Simulator
+            .GetDistinctUnlockedCharacterAttacksForCombat(
                 card.Owner,
                 1,
                 context.Rng.CombatCardGeneration,
