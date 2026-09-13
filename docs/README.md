@@ -6,6 +6,9 @@
 
 | 要查什么 | 入口 |
 |---|---|
+| 女王原包为何恢复失败、为何频繁GC及本轮优化取舍 | [恢复与性能报告](performance/queen-replay-optimization-20260913.md) |
+| 未变状态共享、标签/大牌堆容器优化与女王GC问题 | [调查与实测](performance/state-sharing-20260913.md) |
+| 内存主要花在哪里，什么条件才能缩至十分之一 | [分配与峰值研究](performance/memory-tenfold-20260913.md) |
 | 后续六方向的当前诊断、逐项实现与对照 | [六方向开发记录](performance/six-directions-20260913.md) |
 | 当前性能PR全部改动、撤回方案与各轮指标 | [累计记录](performance/surgical-pr-summary-20260913.md) |
 | 提前计算回合尾部、所有权合同与16线程对照 | [尾部并行报告](performance/early-tail-parallelism-20260913.md) |
@@ -21,6 +24,8 @@
 | 同次快照按需读取关键字，保持原模拟器与评分 | [快照内部局部复用](performance/snapshot-reuse-20260912.md) |
 | 当前 CPU 热点、快照释放优化与交错对照 | [热点可消除工作](performance/hotspot-cuts-20260912.md) |
 | 已开发的空状态清理、排名预计算及真实对照 | [精简优化开发结果](performance/surgical-development-20260912.md) |
+| 合并到上游后的新性能分支、热点与优化对照 | [合并后的性能探索](performance/hotspot-exploration-20260913.md) |
+| 最终代码在 VeryHigh 极高负载样例中的结果 | [VeryHigh 最终压力测试](performance/veryhigh-final-20260913.md) |
 | 五个后续候选的工作量、原型与采用/撤回决策 | [五候选成本与验证](performance/five-candidates-20260913.md) |
 | 小改动优化文献、源码切口与独立分配探针 | [精简优化深入研究](performance/surgical-research-20260912.md) |
 | 遗物独立开关、目标范围、血量额度与早停 | [战斗末遗物计数策略](relic-counters.md) |

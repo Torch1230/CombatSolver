@@ -113,6 +113,8 @@ PR #43 集成修正：Mod 使用独立文件复制，游戏程序继续使用硬
 
 `src/Api` 禁止直接调用 `SolverController.RequestSearch`、`CombatManager.SetUpCombat` 或 `RunManager.EnterRoomDebug`。这些静态边界由 Windows/Linux 两份 `verify-refactor-boundaries` 脚本共同检查。隔离 worker 内通过 `COMBATSOLVER_PRECOMBAT_WORKER=1` 关闭 API，避免加载伴生 Mod 后递归创建 worker。
 
+`RitsuEmptyCapabilityFastPathPatches` 的标签入口只在模拟隔离域且已证明 capability 集为空时返回原 `IEnumerable<CardTag>`，不枚举、不复制、不缓存标签值；已有空集合和精确类型默认来源代次沿用公共判定。非空贡献者、晚注册默认来源及 live 调用仍执行框架管线。
+
 `RitsuBaseLibTargetTypeLookupPatch` 属于 Runtime 的第三方适配：只在模拟隔离域缓存目标桥的精确类型查询，以 Assembly 弱键持有准确 Type/缺失；具体回调由当前桥中唯一的 Assembly→Type 签名定位，适配不匹配显式失败。`RitsuBaseLibTargetTypeResolutionPatches` 还记录原版全程序集查询正常返回 null 时的缺失证据。`AssemblyTypeAbsenceCache` 用 AssemblyLoad 代次判定静态程序集集合是否变化，并在每次复用前重新查询弱引用中的动态程序集；加载新程序集、动态晚创建目标类型、原查询失败或找到类型时均不能复用旧缺失结论。live 调用仍走原桥。它们不缓存框架是否安装、注册表或目标谓词，不持有分支模型，也不参与搜索策略。 `TARGET_TYPE_ABSENCE_CACHE scope=process_cumulative` 记录命中、原查询和旁路；对单次请求取首尾差值，不能直接累加日志。
 
 玩家死亡被确认后，`CombatPredictionSimulator.HandlePlayerDeath` 先调用 `SimulatedCombatState.RemovePowersAfterDeath`，再清理球和宠物。敌人能力仍由原领域死亡清扫处理；玩家不能依赖仅遍历敌人的后续清扫。
@@ -130,6 +132,8 @@ PR #43 集成修正：Mod 使用独立文件复制，游戏程序继续使用硬
 根创建时，`PredictionModPatchAudit` 在 Prediction 层检查已有卡牌 OnPlay 的第三方 Harmony 补丁；每根按类型去重并读取当前补丁表。它只负责未支持行为的准入边界，不执行补丁或提供第三方镜像注册，后续生成卡牌和其他方法不在此入口覆盖范围。
 
 `BuildAcceptedEndTurnNodes` 是回合层/软时间预算收尾及普通串行回合尾的共同入口，复用 raw EndTurn 批次生成、跨回合剪枝与循环出口准入。全部直接选择分支在转置准入前结算临时观测；批次持有未转交快照，迭代器提前结束或生成失败时统一释放。
+
+`StateEvaluation.BuildProjectedDeathPrevention` 每次按分支遗物原序读取蜥蜴尾巴的使用状态，只替换查询的临时迭代器，不缓存跨快照的可变结果。Engine 的 `HookMirrors.ModifyHpLost` 返回只读修正者集合，空结果共享空数组，非空 List 独占；后续通知先取得原监听表，空集合只跳过通知遍历。回调顺序、成员身份与重复成员只调用一次的规则保持。
 
 ### 3.1 请求级编排
 
@@ -258,6 +262,8 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 `src/Engine/Common/` 提供 `PredictedCard`、`PredictionForkContext`、`PredictionStateStore` 和通用模型克隆。StateStore 直接持有可 Fork 的 state，空字典按需创建；类型计数独占一个按需创建的三槽对象，第四类回退字典，Fork 仅复制非零计数；主状态字典、别名和 state 的复制顺序不变，字典 ref 只用于不调用外部工厂的计数递增。仍在同一 context 中按原跨类型顺序 eager Fork，不能对调用者已借出的可变引用使用通用延迟 COW。一次 Fork 内的所有结构必须共享同一个 context；分支可变对象必须显式重映射。`BaseLibCloneConcurrency` 是原版与预测克隆共用的外部扩展并发边界，只包围模型深克隆阶段。预测普通原版卡牌与默认内部初始化 Power 的有限并行入口由 `NativeModelCloneConcurrency` 核对，原版 `MutableClone` 保护不变。
 
 `CombatCardGenerationExtensions` 中的根缓存仅复用已冻结的无色候选及原生角色攻击候选；`BundleOfJoyOnPlay` 与 `InfernalBladeOnPlay` 使用对应的 distinct 入口。它们保留 `TakeRandom` 的洗牌/抽取顺序与 RNG 消耗，不调用有放回的 `NextItem` 代替；来源模型只读，`PredictedCard.Create` 仍逐分支创建独占卡牌。带额外谓词、其他角色/类别的生成池未据此获得缓存资格，现有根身份/约束/自定义池回退门禁保持。
+
+`SimulatedCombatState.GetBaseHookListeners` 对可分段且注册卡牌数至少256的分支，先计数当前分支球、未移除卡牌及其附魔/灾厄，按确切容量分配后段列表，避免大附魔牌堆立即扩容。计数不运行Hook/追加器，不新增共享状态、缓存或失效规则；小牌堆及不透明附着监听根沿用单遍路径。
 
 `MirroredHookListenerFilter` 为 `HookMirrors` 和原生关键字空操作判定提供静态回调位图；原生/领域监听序列完整保留。只有确认没有 `TryModifyKeywordsInCombat` 参与者时，关键字查询才直接读取本地集合。根捕获重新检查相关 AbstractModel 基方法及原生 `Hook.ModifyKeywordsInCombat` 的 Harmony 补丁，有补丁时旁路；第三方/动态类型全部保留，BaseLib 不透明 CardModifier 根也旁路。`SimulatedCombatState` 的分支监听视图沿既有失效边界清空。不可变布局只含 Type/位图：优先复用分支旧布局，失配后查询同根有界共享表，哈希只选槽，完整类型顺序相同才复用；碰撞、并发覆盖和超长列表都不能误认序列。共享表不持有任何 Model，原接收者仍来自当前分支快照；它随根回收，不进入状态键或 ContinuationStamp。`HOOK_LAYOUT_CACHE scope=root_cumulative` 记录共享查询命中、未命中、碰撞和旁路，主搜/恢复日志不能相加。合同覆盖类型顺序、重复项、跨分支接收者、哈希碰撞、并发读取、关键字原生对照及根间补丁刷新。
 
@@ -417,3 +423,8 @@ NativeReplayDriver 保存开战/结束观察器抛出的原始异常，由 Advan
 ### 回合末卡牌 Hook 的接收者身份
 
 `HookMirrors.BeforeSideTurnEnd` 的常规阶段先通过 `CardHookReceiver` 固定监听成员与对应分支 `PredictedCard`，再按原序读取当前 Preview。前一监听者触发 COW 时，不把已脱离牌堆的旧预览传给后一卡牌 Hook；不重新枚举成员，不保留跨阶段或跨分支接收者。
+
+`UnattendedTestRunner.PrepareCheckpointRequest` 负责材料和政策导入；游戏MVID比较仅写入 `gameModuleComparison`，不作为恢复兼容性门禁。NativeReplay仍实际重建原生跑局并核对完整已记录ContinuationStamp与可比较的native-state；编号映射缺失继续限定为continuation验证，不伪造原生验证成功。
+
+
+`CardGenerationPotionMirrors.Generate` 的可选simulator将无色药水和CosmicConcoction的战斗生成接入既有根候选池；无simulator的预览保持原筛选。复用仅含原序候选模型，生成卡、升级、选择和RNG仍由当前分支拥有；两种AddsToHand形态不变。

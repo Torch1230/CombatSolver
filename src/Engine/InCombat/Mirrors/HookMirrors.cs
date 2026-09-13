@@ -762,7 +762,7 @@ internal static class HookMirrors
         Creature? dealer,
         PredictedCard? cardSource,
         HpLossHookPhase phases,
-        out List<AbstractModel> modifiers,
+        out IReadOnlyList<AbstractModel> modifiers,
         Func<AbstractModel, bool>? modifierFilter = null)
     {
         var context = new ModifyHpLostMirrorContext
@@ -774,7 +774,7 @@ internal static class HookMirrors
             Dealer = dealer,
             CardSource = cardSource
         };
-        modifiers = [];
+        List<AbstractModel>? changedModifiers = null;
 
         if (phases.HasFlag(HpLossHookPhase.BeforeOsty))
         {
@@ -785,7 +785,7 @@ internal static class HookMirrors
                 context.Amount = ModifyHpLostMirrors.InvokeBeforeOsty(listener, context);
                 if (decimal.Truncate(previousAmount) != decimal.Truncate(context.Amount))
                 {
-                    modifiers.Add(listener);
+                    (changedModifiers ??= []).Add(listener);
                 }
             }
 
@@ -796,7 +796,7 @@ internal static class HookMirrors
                 context.Amount = ModifyHpLostMirrors.InvokeBeforeOstyLate(listener, context);
                 if (decimal.Truncate(previousAmount) != decimal.Truncate(context.Amount))
                 {
-                    modifiers.Add(listener);
+                    (changedModifiers ??= []).Add(listener);
                 }
             }
         }
@@ -810,7 +810,7 @@ internal static class HookMirrors
                 context.Amount = ModifyHpLostMirrors.InvokeAfterOsty(listener, context);
                 if (decimal.Truncate(previousAmount) != decimal.Truncate(context.Amount))
                 {
-                    modifiers.Add(listener);
+                    (changedModifiers ??= []).Add(listener);
                 }
             }
 
@@ -821,11 +821,12 @@ internal static class HookMirrors
                 context.Amount = ModifyHpLostMirrors.InvokeAfterOstyLate(listener, context);
                 if (decimal.Truncate(previousAmount) != decimal.Truncate(context.Amount))
                 {
-                    modifiers.Add(listener);
+                    (changedModifiers ??= []).Add(listener);
                 }
             }
         }
 
+        modifiers = changedModifiers is null ? Array.Empty<AbstractModel>() : changedModifiers;
         return context.Amount;
     }
 
@@ -863,9 +864,14 @@ internal static class HookMirrors
         CombatPredictionSimulator simulator,
         IReadOnlyList<AbstractModel> modifiers)
     {
+        // Preserve listener materialization, including the generic source fallback, even
+        // when there is no modifier to notify. The empty pass invokes no callbacks.
+        HookListenerEnumerable listeners = IterateRunHookListeners(simulator);
+        if (modifiers.Count == 0)
+            return;
         var context = new AfterModifyingHpLostMirrorContext { Simulator = simulator };
 
-        foreach (var modifier in IterateRunHookListeners(simulator))
+        foreach (var modifier in listeners)
         {
             if (modifiers.Contains(modifier))
             {

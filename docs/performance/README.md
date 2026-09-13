@@ -6,11 +6,21 @@
 
 ## 当前工作重点
 
-`perf/surgical-fixes-20260912` 基于上游 `eff8cf4`；旧 `perf/simulation-profile-20260910` 已暂停开发。只接入独立小修复，不继续 Compact／战斗执行流程移植。
+PR #89 已合入上游0.37.0；当前 `perf/hotspot-exploration-20260913` 基于 `bcc15da`，重新采样并验证独立性能改动。旧分支记录保留为历史证据，不继续 Compact／战斗执行流程移植。
 
 - [精简移植、验证与性能研究](surgical-fixes-20260912.md)。
 
 ## 专题
+
+- [女王原包恢复与性能优化](queen-replay-optimization-20260913.md)：跨平台MVID修复、负向状态校验、实际原包采样、撤回原型与整PR对照。
+
+- [未变状态共享与临时分配调查](state-sharing-20260913.md)：分叉实际占比、空标签和大附魔牌堆容器对照，以及女王原包GC时序。
+
+- [内存缩至十分之一的条件](memory-tenfold-20260913.md)：当前分配栈、具体对象与算法放大器，以及1GB No-GC区域的峰值实验。
+
+- [合并后的性能探索](hotspot-exploration-20260913.md)：新上游CPU采样、六个候选的成本取舍、空容器优化与固定工作量及VeryHigh验证。
+
+- [最终代码的 VeryHigh 极高负载测试](veryhigh-final-20260913.md)：正常生产构建、四个独立进程，完整保留超时、内存压力与预测结果边界。
 
 - [五项后续候选：工作量、原型与取舍](five-candidates-20260913.md)：Windows先行部署、三槽计数与窄生成入口复用，以及top-k/JIT/SIMD原型的取舍。
 

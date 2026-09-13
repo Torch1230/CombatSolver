@@ -2,6 +2,8 @@ using System.Diagnostics;
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.InCombat.Extensions;
 using CombatSolver.Engine.InCombat.Mirrors.Cards.OnPlay;
+using CombatSolver.Engine.InCombat.Mirrors.Potions.OnUse;
+using MegaCrit.Sts2.Core.Models.Potions;
 using CombatSolver.Engine.InCombat.Simulation;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
@@ -14,6 +16,54 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
+    private static string AssertPotionGenerationCacheContract(CombatState combat, Player player)
+    {
+        string liveBefore = ContinuationStamp.CaptureLive(combat).StateText;
+        CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
+        using IDisposable isolation = SimulationNotificationIsolation.Enter();
+        CombatPredictionSimulator parent = root.ForkSimulator();
+        CardMultiplayerConstraint constraint =
+            ((ICombatPredictionRunSnapshot)parent.State.CombatState).CardMultiplayerConstraint;
+        AssertRootColorlessGenerationPoolCache(parent, player);
+        string Stamp(CombatPredictionSimulator simulator) => ContinuationStamp.CapturePredicted(
+            player, simulator, 1, root.Forecast, root.StartTurnNumber).StateText;
+        string parentBefore = Stamp(parent);
+        int comparisons = 0;
+        foreach (PotionModel canonical in new PotionModel[]
+            { ModelDb.Potion<ColorlessPotion>(), ModelDb.Potion<CosmicConcoction>() })
+        foreach (int skip in new[] { 0, 1, 7, 31 })
+        {
+            CombatPredictionSimulator branch = parent.Fork();
+            string branchBefore = Stamp(branch);
+            PotionModel potion = PredictionUtils.CreatePotion(canonical, player);
+            Rng baselineRng = branch.Rng.CombatCardGeneration.Clone();
+            Rng cachedRng = branch.Rng.CombatCardGeneration.Clone();
+            baselineRng.Advance(skip);
+            cachedRng.Advance(skip);
+            PotionCardGenerationResult baseline = CardGenerationPotionMirrors.Generate(
+                potion, player, baselineRng, constraint)!;
+            PotionCardGenerationResult cached = CardGenerationPotionMirrors.Generate(
+                potion, player, cachedRng, constraint, branch)!;
+            if (baseline.AddsToHand != cached.AddsToHand || baseline.Cards.Count != cached.Cards.Count
+                || !SameFiveFieldRngState(baselineRng.CaptureState(), cachedRng.CaptureState()))
+                throw new InvalidOperationException("Potion pool cache changed option shape or RNG.");
+            for (int index = 0; index < baseline.Cards.Count; index++)
+            {
+                PredictedCard expected = baseline.Cards[index], actual = cached.Cards[index];
+                if (ReferenceEquals(expected, actual) || ReferenceEquals(expected.Original, actual.Original)
+                    || CombatBeamSolver.CaptureCardStateFingerprintForTesting(expected)
+                        != CombatBeamSolver.CaptureCardStateFingerprintForTesting(actual))
+                    throw new InvalidOperationException("Potion pool cache changed card state or shared a mutable model.");
+            }
+            if (Stamp(branch) != branchBefore)
+                throw new InvalidOperationException("Generating potion options mutated the source branch.");
+            comparisons++;
+        }
+        if (Stamp(parent) != parentBefore || ContinuationStamp.CaptureLive(combat).StateText != liveBefore)
+            throw new InvalidOperationException("Potion generation cache changed its parent or live root.");
+        return $"PotionGenerationCache:comparisons={comparisons}:ordered_card_state=true:rng_five_fields=true:upgrades=true:mutable_cards_independent=true:parent_branch_live_unchanged=true";
+    }
+
     private static string AssertExtraGenerationCacheContract(CombatState combat, Player player)
     {
         CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);

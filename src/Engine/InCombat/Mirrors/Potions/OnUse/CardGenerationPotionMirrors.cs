@@ -30,7 +30,8 @@ internal static class CardGenerationPotionMirrors
             potion,
             player,
             context.Rng.CombatCardGeneration,
-            context.CardMultiplayerConstraint)
+            context.CardMultiplayerConstraint,
+            context.Simulator)
             ?? throw new UnreachableException($"No card generation policy for registered potion {potion.Id}.");
 
         if (result.Cards.Count == 0)
@@ -61,7 +62,8 @@ internal static class CardGenerationPotionMirrors
         PotionModel potion,
         Player target,
         Rng rng,
-        CardMultiplayerConstraint multiplayerConstraint)
+        CardMultiplayerConstraint multiplayerConstraint,
+        CombatPredictionSimulator? simulator = null)
     {
         return potion switch
         {
@@ -74,9 +76,9 @@ internal static class CardGenerationPotionMirrors
             PowerPotion => new(
                 GenerateCharacterCards(target, CardType.Power, 3, rng, multiplayerConstraint),
                 AddsToHand: false),
-            ColorlessPotion => new(GenerateColorlessCards(target, 3, rng, multiplayerConstraint), AddsToHand: false),
+            ColorlessPotion => new(GenerateColorlessCards(target, 3, rng, multiplayerConstraint, simulator), AddsToHand: false),
             CosmicConcoction => new(
-                [.. GenerateColorlessCards(target, potion.DynamicVars.Cards.IntValue, rng, multiplayerConstraint)
+                [.. GenerateColorlessCards(target, potion.DynamicVars.Cards.IntValue, rng, multiplayerConstraint, simulator)
                     .Select(static card => card.Upgrade())],
                 AddsToHand: true),
             OrobicAcid => new(GenerateOrobicAcidCards(target, rng, multiplayerConstraint), AddsToHand: true),
@@ -100,8 +102,12 @@ internal static class CardGenerationPotionMirrors
         Player player,
         int count,
         Rng rng,
-        CardMultiplayerConstraint multiplayerConstraint)
+        CardMultiplayerConstraint multiplayerConstraint,
+        CombatPredictionSimulator? simulator)
     {
+        if (simulator is not null)
+            return [.. simulator.GetDistinctUnlockedColorlessForCombat(
+                player, count, rng, multiplayerConstraint)];
         return [.. player.GetUnlockedColorlessCards(multiplayerConstraint)
             .GetDistinctForCombat(player, count, rng, multiplayerConstraint)];
     }

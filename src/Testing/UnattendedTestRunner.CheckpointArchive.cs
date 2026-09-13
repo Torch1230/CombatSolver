@@ -37,12 +37,19 @@ internal sealed partial class UnattendedTestRunner
         if (_checkpointImport["status"]!.GetValue<string>() != "materials_valid")
             throw new InvalidDataException(_checkpointImport["reason"]!.GetValue<string>());
         JsonObject index = _checkpointImport["index"]!.AsObject();
-        if (index["build"] is JsonObject build
-            && build["gameModuleId"]?.GetValue<string>() != typeof(MegaCrit.Sts2.Core.Combat.CombatState)
-                .Assembly.ManifestModule.ModuleVersionId.ToString())
+        if (index["build"] is JsonObject build)
         {
-            _writer.ReplayVerification["status"] = "environment_mismatch";
-            throw new InvalidDataException("environment_mismatch:gameModuleId");
+            string? expected = build["gameModuleId"]?.GetValue<string>();
+            string actual = typeof(MegaCrit.Sts2.Core.Combat.CombatState)
+                .Assembly.ManifestModule.ModuleVersionId.ToString();
+            // Platform builds can have different module identities for the same game
+            // version. Decoding and the existing state assertions establish compatibility.
+            _writer.ReplayVerification["gameModuleComparison"] = new JsonObject
+            {
+                ["expected"] = expected,
+                ["actual"] = actual,
+                ["matches"] = expected == null ? (bool?)null : expected == actual,
+            };
         }
         if (_request.ReplayMode == "ReplayRecorded" && !HasNativeRecording)
             throw new InvalidDataException("missing_native_event_recording");

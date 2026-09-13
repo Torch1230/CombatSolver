@@ -1,10 +1,57 @@
 # CombatSolver 测试清单
 
+## 女王原包恢复与性能（2026-09-13）
+
+- 修复前MVID拒绝复用上一轮3750da4d990f4bf59374d5ccb96f8558证据；修复后原包latest RestoreOnly / c739d8b31f4c4479af58fb526ad00478 Passed，restored_continuation。两侧MVID不等仍实际重建并比较全部已记录ContinuationStamp；模型编号表不同且原包缺映射，原生二进制未验证。仅把本地副本配对metadata/replay-state预期HP改为84的cb3cc9d0ed354ee2ba4fd0b1ed89123b按预期Failed，首差异HP84/85。
+- 原包AllocationTick / 248b58026f8c40e3b94fe5325f2355cd Passed，30000展开/578800转移/337802选牌、27.0985GB worker分配；采样252876搜索事件、加权27.4154GB、零缺栈/丢事件。采样不作测速。测试使用原Beam512/分支100、固定每Solve10000节点，未改生产默认设置。
+- POTION-GENERATION-CACHE / eb117f8356294d50abf2afe45a045099 Passed：无色药水和宇宙药剂各4个RNG起点、8组有序卡牌完整指纹、5字段RNG、升级/形态、可变实例独立及父/子/live不变，包含已有根池门禁合同。两端已有unattended入口以此ScenarioId、IRONCLAD/FUZZY_WURM_CRAWLER_WEAK、HP80、敌HP999、空遗物、StopAfterCombatRootSnapshotAssertion、120秒运行。
+- 已撤回空变量集合原型的MODEL-CLONE-CONCURRENCY / b0c51f73d66a4967af8df592108d0eab Passed，仅作该原型的语义证据。组合ABBA分配−1.774%、时间+3.415%，84字段/28动作相同；单药水优化探针f01002e0c45c4c79aa4b39029a00c081为26.8022GB，原型仅额外省约0.16GB，撤回原型实现及其专用合同改动，保留全部实验数据。
+- 最终保留代码相对上游bcc15da（双方同加恢复修复）四次ABBA：84字段/28步完整动作/其余结果文本一致，累计分配27.8830→26.8024GB（−3.8756%），耗时30.7162→31.0747秒（+1.167%），两对耗时方向不同。不能外推整场质量、Windows可见卡顿或使用其他场景的收益比例。
+- 最终正常构建原包原始profile（Beam512/100000节点/300000ms、无FixedBudget）2fd12be960ad45afbd6b74dedfe7f422在120秒请求上限超时，启动器已停止游戏；进程峰值RSS22.06464GB、无完整搜索指标，不能宣称大预算慢搜已解决。
+- 正常Release0警告/错误；Bash/PowerShell结构门禁89个Search文件通过。完整原包、派生负向包、日志和trace未提交。见[报告与结构化样本](performance/queen-replay-optimization-20260913.md)。
+
+## 状态共享与临时分配（2026-09-13）
+
+- 真实空标签合同RITSU-TAGS-FAST-PATH / b7a5a74bf1514ebdb5bfae888731c69b Passed：48组比较、惰性引用/延迟异常、原生Tags、非空贡献者顺序、null/empty、移除重获/原地变化、晚注册默认来源与live完整状态不变。10000次Host空查询1040160→0B。夹具未注册能力持久化，第一次651c155edd844f60932b8aa93ae613ad失败，改用现有合同式附着注入后通过；不作公开持久化API覆盖声明。
+- 生产构建MIRRORED-HOOK-FILTER / 946e991024e44247bab766d7fc8d7e13 Passed：55种回调/1670模型，顺序/重复项/外部接收者、Fork、失效、共享布局、根间补丁刷新、分段无锚点及有效前段复用。两端已有入口使用IRONCLAD/FUZZY_WURM_CRAWLER_WEAK、HP80、敌HP999、空遗物、stop-after-combat-root-snapshot-assertion、120秒；标签合同换ScenarioId即可。
+- Tags四次ABBA，10000节点/Beam135/FixedBudget/DOP16/NoGC16GB（正常coordinator共60000节点、893527转移）：84字段/48动作/其余结果文本相同，分配−11.132%，时间−0.262%低于漂移。容量优化四次BAAB，以Tags构建为A，2305卡100节点、794转移：84字段/7动作相同，分配−26.814%，时间−3.390%，四次GC暂停0。不能将这些短搜对照当native部署或完整VeryHigh。
+- 容量脚本第一轮基线标签误指候选，已完成样本按真实B记录，余下显式A-A-B；导出对零GC百分比除零修为null；保留失败，未改原样本。探针32节点不合法的初始化失败也与实际100节点结果分开记录。候选失败构建与修正见报告。
+- 女王包bc494904718141aab26bf81fa1ab1a25 Preflight材料通过；RestoreOnly / 3750da4d990f4bf59374d5ccb96f8558 Failed：environment_mismatch:gameModuleId。尚未进入状态对账，原包搜索/收益/部署均未验证；原Windows日志中7次回收及NoGC退出只作故障定位证据。
+- 最终生产VeryHigh（无FixedBudget，Beam135/100000节点/300000ms）四个独立进程：药水组合e80f424d20c94016ae93fc4c978de68b Passed，75.260秒/86.024GB，预测T12/战损2/两药；灵魂枢纽2b89ba7a002b46b2b5d8d2a6732e582a Passed，16.615秒/18.232GB，预测T9/战损6/零药。2305卡c2cb7c967ea74f67b3c8f86c88d8fe76、合成女王45eb05e954e44c4d928fe15c75d579bf均120秒启动器超时并停止游戏，无完整搜索指标；进程峰值RSS13.699/18.147GB。
+- 最终正常Release 0警告/错误，Bash/PowerShell结构门禁通过（89个Search文件）。全部新测试为Linux headless，未启动可见Steam或部署Windows。[报告与结构化样本](performance/state-sharing-20260913.md)。
+
+## 内存十倍目标调研（2026-09-13，无生产改动）
+
+- 基于`465a8cd`正常生产产物新增两项Linux headless诊断。Custom由VeryHigh派生，Beam135、每Solve10000节点、分支72/42/54、FixedBudget、DOP16，保持正常coordinator的药水审计/窄Beam恢复；单请求120秒。
+- AllocationTick采样`9dd48d084bf04394bf059735b1934588` Passed：60000展开、893527转移、560708选牌分支、48.400GB搜索分配。收集器exit0；464375个分配事件全部有栈，解析EventsLost=0；454945个搜索相关栈的加权分配48.927GB仅用于归因估计，不当作精确计数或正式测速。
+- 1GB No-GC单样本`04991da3f8314bfd9d2db860be7e4c6d` Passed：相同33项非时序工作/质量指标，50.357秒、48.513GB累计分配、3.566GB采样峰值RSS；与此前16GB普通候选样本的19.791–21.972GB并列，但不是新ABBA或完整动作等价测试。可用日志含85条去重完整回收记录，不声明日志覆盖所有回收。
+- 本轮验证限请求预测/配置与采样解析；未改生产代码或默认设置，未重跑完整VeryHigh四例、native全战部署、Windows/可见Steam或生产构建。文档路径/JSON与空白检查通过。见[研究报告与结构化指标](performance/memory-tenfold-20260913.md)。
+
+## 合并后性能分支的最小合同
+
+`HP-MODIFIER-COLLECTIONS` / `2e0e2b78e1594761a73e12ef6d8260f5` Passed：192组decimal/阶段/过滤器/Buffer/Intangible对照，168空/24非空，重复成员只通知一次，退役实例不消费重获Power；完整状态/RNG、父分支/live不变。蜥蜴尾巴未用/已消耗预测与源状态不变通过。实际构建基于上游`bcc15da`及本轮候选；[计数、对照与压力证据](performance/hotspot-exploration-20260913.md)。
+
+固定10,000节点/原VeryHigh其余维度的ABBA四次Passed，累计各60,000节点/893,527转移，84个非时序字段、48步完整动作及其余结果文本相同。平均分配−0.573%，耗时−0.546%低于漂移，GC均值更高；最终Release 0警告/错误，两端结构门禁89个Search文件通过。
+
+最终正常生产构建的完整VeryHigh（100000节点/300000ms、无FixedBudget）四项：死灵药水`781e12d50c544c229440a9cefed58d4c` Passed，77.198秒/93.423GB分配，预测T12胜利/战损2/两药；灵魂枢纽`b0609ac8477e467bab60d41f902c7c47` Passed，17.808秒/18.227GB，预测T9/战损6/零药。极端2305张牌堆`0571cf2d6fbd44dc8c67ed2a5e8ef4e5`和女王`b22552db2fb14ee3a893acf884e7df0b`均120秒启动器超时，没有完整结果；保留失败证据，不计全部通过。
+
+两端原生入口使用同一fixture（隔离headless实例与构建路径按本机参数指定）：
+
+```bash
+./tools/run-unattended-test.sh --scenario-id HP-MODIFIER-COLLECTIONS --character-id IRONCLAD --encounter-id FUZZY_WURM_CRAWLER_WEAK --enemy-current-hp 999 --initial-player-hp 80 --initial-player-max-hp 80 --relics-json '[{"relicId":"LIZARD_TAIL"}]' --stop-after-combat-root-snapshot-assertion --timeout-seconds 120
+```
+
+```powershell
+pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId HP-MODIFIER-COLLECTIONS -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 999 -InitialPlayerHp 80 -InitialPlayerMaxHp 80 -RelicsJson '[{"relicId":"LIZARD_TAIL"}]' -StopAfterCombatRootSnapshotAssertion -TimeoutSeconds 120
+```
+
 ## 0.37.0：性能更新与 PR #89 合并验证
 
 - 定版范围：PR #89 的已合并行为及已审核更新日志；版本与发布元数据变更复用以下验证，本次不重跑游戏场景，不作完整可见性能验收结论。
 
 - 2026-09-13：合入当前 main，保留双方开发与测试记录；合并结果通过 Windows Release 构建（0 警告、0 错误）及结构门禁（89 个 Search 文件）。首次构建的辅助程序引用程序集解析失败，单独构建辅助程序后整体构建通过。此次仅核对合并衔接，以下游戏行为与性能结果沿用贡献者记录，本轮未重跑。
+
+用户要求的最终VeryHigh压力测试（`e528749`）：四个独立headless进程，DOP16/NoGC16GB，原预设Beam135/100000节点/300000ms，不覆盖预算。灵魂枢纽`be412b0035104e85823b0363ad4e0704`通过（7.968秒、6.474GB分配、8.149GB峰值RSS，预测T9/战损6/零药，零GC）；死灵药水、2305张极端牌堆和女王生成选牌均为120秒启动器超时，不能记为通过或完整性能结果。见[本轮结果与复跑参数](performance/veryhigh-final-20260913.md)。
 
 五候选最终证据：实际StateStore源码新旧35,896项溢出/分叉/工厂重入检查通过；`8a251861ee034346b8f37788b7ba3aee`压力/取消/异常复用合同Passed。两组各四个新进程（3万/1万节点）分别85字段、22步路线一致；1万节点四次零GC。生成合同`a25ce6aae00e4e729d1adada8edb11f3`的16组完整状态/RNG比较Passed，独立计量`85f3392ba82d4a998c1c0225550a975b`Passed。原型的失败等价、未触发deferred请求、丢失的首版日志计量和被撤回方案均在[五候选报告](performance/five-candidates-20260913.md)单列。最终Release零警告/错误，两端结构门禁通过；Windows先行部署415da12，不代表本轮新改动已部署。
 

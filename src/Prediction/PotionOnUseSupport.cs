@@ -91,7 +91,8 @@ internal static class PotionOnUseSupport
                     potion,
                     PlayerTarget(),
                     simulator.Rng.CombatCardGeneration,
-                    combat.CardMultiplayerConstraint)
+                    combat.CardMultiplayerConstraint,
+                    simulator)
                     ?? throw new InvalidOperationException($"药水 {potion.Id.Entry} 没有生成牌策略。");
                 simulator.History.CardGenerationOptions(generated.Cards);
                 break;

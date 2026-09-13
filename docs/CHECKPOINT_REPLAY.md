@@ -79,3 +79,5 @@ v2 索引保存稳定战斗/检查点 ID、永久递增编号、原生事件位�
 可见原包恢复可使用同一脚本的 `-CheckpointArchivePath <ZIP> -CheckpointSelector start -ReplayMode RestoreOnly`；Linux 提供同名 kebab-case 参数。程序集清单差异只写入 `replayVerification.modEnvironmentComparison`，逐项列出 `missing`、`extra`、`build_changed`，不凭清单不同中止恢复，也不把差异自动认定为冲突。清单包含外观 Mod、加载器和依赖库，不能代表战斗语义。
 
 恢复继续执行游戏构建、模型解码、原生事件、完整 ContinuationStamp 与可比较的 native-state 校验。缺少实际使用的模型、事件无法解码或状态不同仍按具体错误失败；只有完整校验通过才标记 `restorationVerified=true`。求解器已有的第三方不兼容门禁保持独立。
+
+游戏模块标识（MVID）仅记录在 `replayVerification.gameModuleComparison` 的 `expected`、`actual` 与 `matches` 中，不因标识不同提前拒绝恢复。同一版本的不同平台构建可以有不同MVID；兼容性由实际模型/事件解码和状态对账决定，标识相同也不跳过对账。旧包缺少模型编号映射且编号表不同时，原生二进制仍标为不可比较，只有全部已记录ContinuationStamp字段匹配才报告 `restored_continuation`，不宣称完整原生状态恢复。

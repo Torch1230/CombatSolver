@@ -157,6 +157,29 @@ internal sealed class RitsuEmptyCardRarityFastPathPatch : IPatchMethod
     }
 }
 
+internal sealed class RitsuEmptyCardTagsFastPathPatch : IPatchMethod
+{
+    public static string PatchId => "combat_solver_ritsu_empty_card_tags_fast_path";
+    public static string Description => "求解模拟跳过空 Ritsu capability 的卡牌标签贡献管线";
+
+    public static ModPatchTarget[] GetTargets() =>
+    [
+        RitsuEmptyCapabilityFastPath.CardHostTarget(
+            "ApplyTags",
+            typeof(CardModel),
+            typeof(IEnumerable<CardTag>)),
+    ];
+
+    public static bool Prefix(CardModel card, IEnumerable<CardTag> current,
+        ref IEnumerable<CardTag> __result)
+    {
+        if (!RitsuEmptyCapabilityFastPath.CanSkip(card))
+            return true;
+        __result = current;
+        return false;
+    }
+}
+
 internal sealed class RitsuEmptyEnergyContributorFastPathPatch : IPatchMethod
 {
     public static string PatchId => "combat_solver_ritsu_empty_energy_contributor_fast_path";

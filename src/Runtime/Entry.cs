@@ -64,6 +64,7 @@ public static class Entry
         patcher.RegisterPatch<RitsuBaseLibTargetTypeEvidencePatch>();
         patcher.RegisterPatch<RitsuEmptyCardTypeFastPathPatch>();
         patcher.RegisterPatch<RitsuEmptyCardRarityFastPathPatch>();
+        patcher.RegisterPatch<RitsuEmptyCardTagsFastPathPatch>();
         patcher.RegisterPatch<RitsuEmptyEnergyContributorFastPathPatch>();
         patcher.RegisterPatch<RitsuEmptyEnergyCostFastPathPatch>();
         patcher.RegisterPatch<RitsuEmptyStarContributorFastPathPatch>();

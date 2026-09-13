@@ -1785,12 +1785,33 @@ internal sealed partial class SimulatedCombatState
             return _baseHookListeners;
         IReadOnlyList<AbstractModel> prefix = GetBaseHookListenerPrefix();
         IReadOnlyList<Player> players = Players;
-        List<AbstractModel> listeners = new((CanReuseHookListenerCache ? 0 : prefix.Count)
-            + (_registeredCombatCards?.Count ?? 0));
-        if (!CanReuseHookListenerCache)
-            listeners.AddRange(prefix);
         CombatPredictionState predictionState = _predictionState
             ?? throw new InvalidOperationException("Combat prediction state is not attached.");
+        int capacity = (CanReuseHookListenerCache ? 0 : prefix.Count)
+            + (_registeredCombatCards?.Count ?? 0);
+        if (CanReuseHookListenerCache && _registeredCombatCards is { Count: >= 256 } cards)
+        {
+            // Large enchanted decks otherwise allocate a card-sized array and immediately
+            // replace it while appending attachments. Only count branch-owned field values;
+            // opaque subscriber appenders keep the original single traversal below.
+            capacity = 0;
+            for (int index = 0; index < players.Count; index++)
+                capacity += predictionState.GetPlayerCombatState(players[index]).OrbQueue.Orbs.Count;
+            for (int index = 0; index < cards.Count; index++)
+            {
+                CardModel preview = cards[index].Preview;
+                if (preview.HasBeenRemovedFromState)
+                    continue;
+                capacity++;
+                if (preview.Affliction is not null)
+                    capacity++;
+                if (preview.Enchantment is not null)
+                    capacity++;
+            }
+        }
+        List<AbstractModel> listeners = new(capacity);
+        if (!CanReuseHookListenerCache)
+            listeners.AddRange(prefix);
         for (int playerIndex = 0; playerIndex < players.Count; playerIndex++)
             listeners.AddRange(predictionState.GetPlayerCombatState(players[playerIndex]).OrbQueue.Orbs);
         if (_registeredCombatCards != null)

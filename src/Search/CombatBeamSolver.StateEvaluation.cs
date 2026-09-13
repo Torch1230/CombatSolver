@@ -1391,9 +1391,17 @@ internal sealed partial class CombatBeamSolver
                 fairyCount++;
         }
 
-        LizardTail? lizardTail = combat.RelicsOf(_player)
-            .OfType<LizardTail>()
-            .FirstOrDefault(relic => !LizardTailMirrors.WasUsed(relic, simulator));
+        LizardTail? lizardTail = null;
+        IReadOnlyList<RelicModel> relics = combat.RelicsOf(_player);
+        for (int index = 0; index < relics.Count; index++)
+        {
+            if (relics[index] is LizardTail candidate
+                && !LizardTailMirrors.WasUsed(candidate, simulator))
+            {
+                lizardTail = candidate;
+                break;
+            }
+        }
         return new ProjectedDeathPrevention(
             fairyCount,
             (int)FairyInABottleMirrors.HealAmount(playerMaxHp),

@@ -18,6 +18,29 @@ internal sealed partial class UnattendedTestRunner
         public async Task RunBeforeExecutionAsync(ScenarioContext scenario)
         {
             UnattendedTestRequest request = runner._request;
+            if (request.ScenarioId == "POTION-GENERATION-CACHE")
+            {
+                runner.SetStage("potion_generation_cache");
+                runner._completedChecks.Add(AssertPotionGenerationCacheContract(
+                    scenario.CombatState, scenario.Player));
+            }
+            if (request.ScenarioId == "RITSU-TAGS-FAST-PATH")
+            {
+                runner.SetStage("ritsu_tags_fast_path");
+                string before = ContinuationStamp.CaptureLive(scenario.CombatState).StateText;
+                runner._completedChecks.Add(AssertRitsuTagFastPath(scenario.Player));
+                if (ContinuationStamp.CaptureLive(scenario.CombatState).StateText != before)
+                    throw new InvalidOperationException("Tag contract changed live combat.");
+            }
+            if (request.ScenarioId == "HP-MODIFIER-COLLECTIONS")
+            {
+                runner.SetStage("hp_modifier_collections");
+                string before = ContinuationStamp.CaptureLive(scenario.CombatState).StateText;
+                runner._completedChecks.Add(AssertHpModifierCollections(scenario.CombatState, scenario.Player));
+                runner._completedChecks.Add(AssertProjectedTailLookup(scenario.CombatState, scenario.Player));
+                if (ContinuationStamp.CaptureLive(scenario.CombatState).StateText != before)
+                    throw new InvalidOperationException("HP modifier contract changed live combat.");
+            }
             if (request.ScenarioId == "POTION-LINEAGE-CONTRACT")
             {
                 runner.SetStage("potion_lineage_contract");
