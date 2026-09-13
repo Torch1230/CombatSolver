@@ -10,6 +10,7 @@ using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.CardPools;
 using MegaCrit.Sts2.Core.Models.PotionPools;
 using MegaCrit.Sts2.Core.Models.RelicPools;
+using MegaCrit.Sts2.Core.Models.Relics;
 using MegaCrit.Sts2.Core.Rooms;
 
 namespace CombatSolver;
@@ -91,7 +92,7 @@ internal static class GeneratedCombatScenario
         CardModel[] characterCards = Native(character.CardPool.AllCards.Where(IsSingleplayerCard));
         CardModel[] colorlessCards = Native(ModelDb.CardPool<ColorlessCardPool>().AllCards.Where(IsSingleplayerCard));
         RelicModel[] relics = Native(character.RelicPool.AllRelics
-            .Concat(ModelDb.RelicPool<SharedRelicPool>().AllRelics));
+            .Concat(ModelDb.RelicPool<SharedRelicPool>().AllRelics).Where(IsSingleplayerRelic));
         PotionModel[] potions = Native(character.PotionPool.AllPotions
             .Concat(ModelDb.PotionPool<SharedPotionPool>().AllPotions));
         string[] reservedRelics = options.IncludeStartingRelics
@@ -106,7 +107,7 @@ internal static class GeneratedCombatScenario
                 characterCards.Where(IsRewardCard), options.Seed, "characterCards", distinct: false),
             ColorlessCards = Select(options.ColorlessCards, colorlessCards,
                 colorlessCards.Where(IsRewardCard), options.Seed, "colorlessCards", distinct: false),
-            Relics = Select(options.Relics, Native(ModelDb.AllRelics),
+            Relics = Select(options.Relics, Native(ModelDb.AllRelics.Where(IsSingleplayerRelic)),
                 relics.Where(r => r.Rarity is RelicRarity.Common or RelicRarity.Uncommon or RelicRarity.Rare or RelicRarity.Shop),
                 options.Seed, "relics", distinct: true, reservedRelics),
             Potions = Select(options.Potions, potions, potions, options.Seed, "potions", distinct: false),
@@ -124,6 +125,10 @@ internal static class GeneratedCombatScenario
         string fingerprint = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(catalog, JsonOptions)));
         return new(resolved, character, selected.Encounter, fingerprint, catalog);
     }
+
+    // Native MassiveScroll.IsAllowed requires multiple players and its reward is multiplayer-only.
+    // Other IsAllowed predicates govern floors/rewards, not singleplayer legality.
+    internal static bool IsSingleplayerRelic(RelicModel relic) => relic is not MassiveScroll;
 
     internal static bool IsSingleplayerCard(CardModel card)
         => card.MultiplayerConstraint != CardMultiplayerConstraint.MultiplayerOnly;

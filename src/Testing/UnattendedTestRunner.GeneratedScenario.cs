@@ -98,6 +98,10 @@ internal sealed partial class UnattendedTestRunner
                     throw new InvalidDataException("指定生命超过获取遗物后的实际最大生命。");
                 player.Creature.SetCurrentHpInternal(hp);
             }
+            if (state.Players.Count != 1
+                || player.Deck.Cards.Any(c => !GeneratedCombatScenario.IsSingleplayerCard(c))
+                || player.Relics.Any(r => !GeneratedCombatScenario.IsSingleplayerRelic(r)))
+                throw new InvalidDataException("生成场景必须为单人，且实际牌组与遗物不能包含多人专用内容。");
             int expectedBane = generated.Options.IncludeAscendersBane ? 1 : 0;
             if (player.Deck.Cards.Count(c => c is AscendersBane) != expectedBane
                 || state.AscensionLevel != generated.Options.Ascension)

@@ -57,12 +57,13 @@ internal sealed partial class UnattendedTestRunner
         }
         foreach (var card in ModelDb.CardPool<ColorlessCardPool>().AllCards.Where(c => !GeneratedCombatScenario.IsSingleplayerCard(c)))
             Reject(input with { ColorlessCards = new() { Ids = [card.Id.Entry] } });
+        Reject(input with { Relics = new() { Ids = ["MASSIVE_SCROLL"] } });
         Reject(input with { Ascension = 11 });
         Reject(input with { CharacterCards = new() { Count = -1 } });
         Reject(input with { CharacterCards = new() { Ids = ["NOT_A_REAL_CARD"] } });
         Reject(input with { Relics = new() { Ids = [fixedRelic, fixedRelic] } });
         Reject(input with { Relics = new() { Count = 101 } });
         Reject(input with { Potions = new() { Count = 0, Ids = ["FIRE_POTION"] } });
-        return "GeneratedResolver:RepeatSeed:ExplicitReplay:IndependentStreams:AllCharacters:SingleplayerPools:RejectMultiplayerCards:PartialIds:RequestIsolation:Budget:DeployReplans:RejectInvalid";
+        return "GeneratedResolver:RepeatSeed:ExplicitReplay:IndependentStreams:AllCharacters:SingleplayerPools:RejectMultiplayerCardsAndRelics:PartialIds:RequestIsolation:Budget:DeployReplans:RejectInvalid";
     }
 }
