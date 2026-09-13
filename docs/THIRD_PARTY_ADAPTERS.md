@@ -87,7 +87,7 @@ CrabRagePower 的同伴死亡结算由 `AfterDeathMirrors` 独占：力量、格
 
 ## 2. 登记点总表
 
-### 2.1 统一形状的镜像注册表（44 张）
+### 2.1 统一形状的镜像注册表（45 张）
 
 绝大多数登记走同一个形状：
 
@@ -95,7 +95,7 @@ CrabRagePower 的同伴死亡结算由 `AfterDeathMirrors` 独占：力量、格
 XxxMirrors.Registry.Register<TYourType>(handler);
 ```
 
-44 张注册表按域分布在 `src/Engine/InCombat/Mirrors/` 下：
+45 张注册表按域分布在 `src/Engine/InCombat/Mirrors/` 下：
 
 死亡后生成单位的镜像应保持原生生成时点。例如补货由 `AfterDeathMirrors` 调用分支生成入口，旧个体仍在阵容中，其最大生命参与替补生命判重。把生成延后到阵容清理后，即使 RNG 调用次数相同也会改变抽样结果；登记镜像时应同步移除原领域补偿中的同一生成动作。
 
@@ -105,17 +105,23 @@ XxxMirrors.Registry.Register<TYourType>(handler);
 
 | 目录 | 注册表数 | 覆盖什么 | 你多半要用的 |
 |---|---|---|---|
-| `Hooks/` | 37 | 战斗 hook：攻击、格挡、伤害、死亡、卡牌、球体、回合边界 | 按你重写了哪个 hook 挑，例如 `AfterDamageGivenMirrors` |
+| `Hooks/` | 38 | 战斗 hook：攻击、格挡、伤害、死亡、卡牌、球体、回合边界 | 按你重写了哪个 hook 挑，例如 `AfterDamageGivenMirrors` |
 | `Cards/` | 4 | 出牌、可打出性、回合结束留手、结算落点 | `CardOnPlayMirrors`、`CardIsPlayableMirrors` |
 | `Potions/` | 1 | 药水使用 | `PotionOnUseMirrors` |
 | `Enchantments/`、`Afflictions/` | 各 1 | 附魔与病症的出牌效果 | 少见 |
+
+**回合开始重置能量之后的能力结算走 `Hooks/Resources/AfterEnergyResetMirrors`。** 这一张是从
+`PersistentPowerSupport` 里那个写死五个原版类型的 switch 改过来的，所以以前第三方能力在这个
+时点既没有登记入口，漏了也不报——别的钩子漏登记会记一条 `MethodNotMirrored` 风险，那个 switch
+不经过注册表，只是静默跳过。重写了 `AfterEnergyReset` 的能力（每回合少一点能量、多一点能量、
+多抽一张这一类）现在必须在这里登记。层数为零的能力不分发，和原版每个重写第一件事都是空转一致。
 
 **注意目录里的文件数比注册表多。** `Cards/` 下有十几个 `*Mirrors.cs`，但注册表只有 4 张——
 `BespokeCardMirrors`、`CardGenerationCardMirrors` 这些是**处理器文件**，它们往
 `CardOnPlayMirrors.Registry` 这张共享注册表里登记，自己不持有注册表。找登记入口时认
 `static readonly Registry Registry` 这个字段，不要认文件名。
 
-**怎么知道自己要登记哪几个。** 把你的每个类型对基类虚方法的重写列出来，和这 44 张表逐一对照。
+**怎么知道自己要登记哪几个。** 把你的每个类型对基类虚方法的重写列出来，和这 45 张表逐一对照。
 只重写了求解器不分发的方法，不用登记；重写了它分发的方法，就要登记。这一步不要靠印象，
 要交叉核对——漏一个的表现是「效果看起来正常但其实没发生」。
 
