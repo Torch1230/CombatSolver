@@ -1,5 +1,6 @@
 using System.Text.Json;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.CardPools;
 
 namespace CombatSolver;
 
@@ -20,7 +21,7 @@ internal sealed partial class UnattendedTestRunner
         foreach (var character in ModelDb.AllCharacters.Where(c => c.GetType().Assembly == typeof(CharacterModel).Assembly))
         {
             var result = GeneratedCombatScenario.Resolve(input with { CharacterId = character.Id.Entry });
-            if (result.Options.CharacterCards.Ids.Any(id => !character.CardPool.AllCards.Any(c => c.Id.Entry == id))
+            if (result.Options.CharacterCards.Ids.Any(id => !character.CardPool.AllCards.Any(c => c.Id.Entry == id && GeneratedCombatScenario.IsSingleplayerCard(c)))
                 || result.Options.Relics.Ids.Distinct().Count() != result.Options.Relics.Ids.Length
                 || result.Options.Relics.Ids.Any(id => character.StartingRelics.Any(r => r.Id.Entry == id)))
                 throw new InvalidOperationException("角色牌池、遗物唯一性或初始遗物排除失败。");
@@ -49,12 +50,19 @@ internal sealed partial class UnattendedTestRunner
             catch (InvalidDataException) { return; }
             throw new InvalidOperationException("生成器接受了无效请求。");
         }
+        foreach (var character in ModelDb.AllCharacters.Where(c => c.GetType().Assembly == typeof(CharacterModel).Assembly))
+        {
+            foreach (var card in character.CardPool.AllCards.Where(c => !GeneratedCombatScenario.IsSingleplayerCard(c)))
+                Reject(input with { CharacterId = character.Id.Entry, CharacterCards = new() { Ids = [card.Id.Entry] } });
+        }
+        foreach (var card in ModelDb.CardPool<ColorlessCardPool>().AllCards.Where(c => !GeneratedCombatScenario.IsSingleplayerCard(c)))
+            Reject(input with { ColorlessCards = new() { Ids = [card.Id.Entry] } });
         Reject(input with { Ascension = 11 });
         Reject(input with { CharacterCards = new() { Count = -1 } });
         Reject(input with { CharacterCards = new() { Ids = ["NOT_A_REAL_CARD"] } });
         Reject(input with { Relics = new() { Ids = [fixedRelic, fixedRelic] } });
         Reject(input with { Relics = new() { Count = 101 } });
         Reject(input with { Potions = new() { Count = 0, Ids = ["FIRE_POTION"] } });
-        return "GeneratedResolver:RepeatSeed:ExplicitReplay:IndependentStreams:AllCharacters:PartialIds:RequestIsolation:Budget:DeployReplans:RejectInvalid";
+        return "GeneratedResolver:RepeatSeed:ExplicitReplay:IndependentStreams:AllCharacters:SingleplayerPools:RejectMultiplayerCards:PartialIds:RequestIsolation:Budget:DeployReplans:RejectInvalid";
     }
 }

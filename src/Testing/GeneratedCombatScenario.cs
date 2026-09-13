@@ -88,8 +88,8 @@ internal static class GeneratedCombatScenario
         if (candidates.Length == 0)
             throw new InvalidDataException("指定幕/遭遇类型/遭遇ID没有可用的原版普通战斗遭遇。");
         var selected = candidates[new Generator(options.Seed, "encounter").Next(candidates.Length)];
-        CardModel[] characterCards = Native(character.CardPool.AllCards);
-        CardModel[] colorlessCards = Native(ModelDb.CardPool<ColorlessCardPool>().AllCards);
+        CardModel[] characterCards = Native(character.CardPool.AllCards.Where(IsSingleplayerCard));
+        CardModel[] colorlessCards = Native(ModelDb.CardPool<ColorlessCardPool>().AllCards.Where(IsSingleplayerCard));
         RelicModel[] relics = Native(character.RelicPool.AllRelics
             .Concat(ModelDb.RelicPool<SharedRelicPool>().AllRelics));
         PotionModel[] potions = Native(character.PotionPool.AllPotions
@@ -124,6 +124,9 @@ internal static class GeneratedCombatScenario
         string fingerprint = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(catalog, JsonOptions)));
         return new(resolved, character, selected.Encounter, fingerprint, catalog);
     }
+
+    internal static bool IsSingleplayerCard(CardModel card)
+        => card.MultiplayerConstraint != CardMultiplayerConstraint.MultiplayerOnly;
 
     private static bool IsRewardCard(CardModel card)
         => card.Rarity is CardRarity.Common or CardRarity.Uncommon or CardRarity.Rare;
