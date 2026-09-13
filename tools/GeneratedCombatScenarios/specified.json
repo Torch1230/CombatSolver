@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "seed": "SPECIFIED-COMBAT-001",
+  "characterId": "SILENT",
+  "ascension": 10,
+  "actIndex": 0,
+  "encounterKind": "Elite",
+  "includeStartingDeck": true,
+  "includeStartingRelics": true,
+  "includeAscendersBane": true,
+  "characterCards": { "count": 6, "ids": ["ACROBATICS", "DAGGER_THROW"], "upgradeLevels": 1 },
+  "colorlessCards": { "count": 1 },
+  "relics": { "count": 3, "ids": ["VAJRA"] },
+  "potions": { "ids": ["FIRE_POTION", "BLOCK_POTION"] },
+  "mode": "Search"
+}

@@ -1,5 +1,8 @@
 # CombatSolver 文档导航
 
+通用随机/指定战斗测试入口：[场景生成与批量重跑](GENERATED_COMBAT_SCENARIOS.md)。
+
+
 玩家安装、操作与兼容性说明见 [项目 README](../README.md)。源码规则见 [AGENTS.md](../AGENTS.md)。
 
 ## 当前文档

@@ -800,7 +800,11 @@ src/Testing/UnattendedTestRunner.ProtocolHost.cs	private void Reset()
 src/Testing/UnattendedTestRunner.Writer.cs	private sealed class Writer(
 src/Testing/UnattendedTestRunner.Writer.cs	public RuntimeMemorySnapshot Write(
 src/Testing/UnattendedTestRunner.Writer.cs	private static void WriteResult(UnattendedTestResult result, UnattendedTestRequest request)
-src/Testing/UnattendedTestRunner.ScenarioBuilder.cs	private sealed class ScenarioBuilder(
+src/Testing/UnattendedTestRunner.ScenarioBuilder.cs	private sealed partial class ScenarioBuilder(
+src/Testing/GeneratedCombatScenario.cs	internal static ResolvedGeneratedCombatScenario Resolve(
+src/Testing/UnattendedTestRunner.GeneratedScenario.cs	private void PrepareGeneratedScenario()
+src/Testing/UnattendedTestRunner.GeneratedScenario.cs	private void CaptureGeneratedOpening(
+src/Testing/UnattendedTestRunner.Writer.cs	public void WriteGeneratedArtifact(
 src/Testing/UnattendedTestRunner.ScenarioBuilder.cs	public async Task<ScenarioContext> BuildAsync()
 src/Testing/UnattendedTestRunner.ScenarioBuilder.cs	public CombatState? CombatState { get; private set; }
 src/Testing/UnattendedTestRunner.Assertions.cs	private sealed class Assertions(

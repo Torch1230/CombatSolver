@@ -1,5 +1,35 @@
 # CombatSolver 测试清单
 
+## 通用战斗生成（2026-09-13）
+
+独立于玩家问题包，配置与口径见[工具说明](GENERATED_COMBAT_SCENARIOS.md)，[结构化证据](testing/generated-combat-scenarios-20260913.json)。本轮无可见Steam或Windows实机验证。
+
+| 验证 | runId / 结果 |
+| --- | --- |
+| 随机生成、全部原版角色池、独立随机流、非法输入 | `1a5b75d474084b0c983508d722caa3b4` Passed |
+| 全指定重放，完整配置/装备/开局相等 | `977049b4617842ca9d3309e17a7ff7e5` Passed |
+| 批量入口首结果搜索，DOP2 | `06d8563020e547edb5d1b6a405593f5a` Passed；801展开/3124转移，TimeLimit，非获胜结论 |
+| 指定A10第三幕Boss、无初始装备/进阶之灾、原生药水腰带获取及四槽 | `55c373dc3f5e4dec9a9b7570fc6a10d9` Passed |
+| 赌博筹码/工具箱建局选牌及显式重放，完整开局相等 | `467e5da2a032470cbc9ae892c115f1b4` / `c9d4e59f7a4b41f787743bb73d89f80f` Passed |
+| A10三瓶药水请求拒绝，不覆盖槽位 | `5fd3aedf9d7f4a14a184492764bcb3b2` 预期Failed，错误明确为3瓶/2槽 |
+| 批量入口完整部署通路 | `2ffecdf3d2974dbaa2ae3ce1d7fa9494` Passed，第9回合结束；此先行样本未带重算断言 |
+| 最终请求隔离/预算/模式合同与完整部署，Instant/0秒、零重算 | `a2e30360c6144d58a1532a5fad3d6c12` Passed，第10回合获胜，HP42、敌HP0、`UnexpectedReplans:0` |
+
+生成器Release构建零警告/错误；两平台结构门禁通过，PowerShell入口语法通过；批量失败后新进程继续、中断后清理的两项模拟启动器合同通过。不同源码阶段的先行证据保留，不冒充全部由最后一次构建重新运行。随机组合并不保证可胜或已获模拟支持。
+
+Linux代表入口（读取完整显式回归配置，显式要求结束后退出进程）：
+
+```bash
+./tools/run-unattended-test.sh --generated-scenario-path tools/GeneratedCombatScenarios/regression-necrobinder-elite.json --evidence-directory .local/generated-regression --scenario-id GENERATED-SCENARIO-CONTRACT --headless-instance generated-regression --timeout-seconds 120 --exit-on-complete --search-max-degree-of-parallelism-for-test 2 --enable-no-gc-region-for-test 0
+```
+
+Windows等价入口：
+
+```powershell
+./tools/run-unattended-test.ps1 -GeneratedScenarioPath tools/GeneratedCombatScenarios/regression-necrobinder-elite.json -EvidenceDirectory .local/generated-regression -ScenarioId GENERATED-SCENARIO-CONTRACT -HeadlessInstance generated-regression -TimeoutSeconds 120 -ExitOnComplete -SearchMaxDegreeOfParallelismForTest 2 -EnableNoGcRegionForTest 0
+```
+
+
 ## 0.38.0：计划外重算修复
 
 - 发布范围冻结在已验证行为提交 `d8ae412`：前两批18类机制及2张牌估值。后续木乃伊之手仅有诊断场景，没有验证成立的修复，已从发布源码移出。按用户要求将未发布准备版本0.37.1改为0.38.0，仅同步版本与中英玩家日志，沿用下列已完成的行为证据；官方名称从当前游戏PCK读取。版本输入变化后重新执行一次Release构建和最小ZIP，不重复行为测试或运行完整发布门禁。

@@ -311,6 +311,11 @@ internal sealed partial class UnattendedTestRunner
             _clearPlayerBlockBeforeEndTurn = request.ClearPlayerBlockBeforeEndTurnForTest ?? 0;
             _clearedPlayerBlock = 0;
             AutomaticTurnSearchEnabled = false;
+            ConfigureSearchOverrides(request);
+        }
+
+        public void ConfigureSearchOverrides(UnattendedTestRequest request)
+        {
             VerifyIncrementalSearch = request.VerifyIncrementalSearch;
             FixedSearchBudget = request.FixedSearchBudget;
             MeasureSearchPhases = request.MeasureSearchPhases;

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "seed": "GENERATED-COMBAT-001",
+  "ascension": 10,
+  "encounterKind": "EliteOrBoss",
+  "includeStartingDeck": true,
+  "includeStartingRelics": true,
+  "includeAscendersBane": true,
+  "characterCards": { "count": 8 },
+  "colorlessCards": { "count": 2 },
+  "relics": { "count": 5 },
+  "potions": { "count": 2 },
+  "mode": "Search"
+}

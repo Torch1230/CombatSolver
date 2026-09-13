@@ -367,6 +367,8 @@ renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或
 | `Assertions` | 执行前边界检查和执行后的回合、生命、出牌、药水、Power 断言 |
 | `Writer` | Passed/Held/Failed 公共协议字段、内存采集和结果文件原子替换 |
 
+`GeneratedCombatScenario` 只把配置解析为角色/遭遇/装备ID，原版池按ID排序、各类别独立种子流，不推进战斗RNG。`ScenarioBuilder` 的 `GeneratedScenario` 分片在主线程创建实际跑局，核对牌组/进阶之灾/药水槽与原生房间类型；`GeneratedScenarioCardSelector` 只在建局作用域提供确定性或显式选牌，退出建局即释放，不参与正式部署。`Writer` 独占解析配置、目录、战前装备与完整开局状态证据写入。`ProtocolHost.ConfigureSearchOverrides` 在建局配置解析后刷新同一套请求级开关；`Executor` 仍独占实际搜索/部署及设置恢复。批量Python工具只调度各平台原生启动器和证据目录，不接触游戏协议循环或搜索内部。详见[通用场景生成](GENERATED_COMBAT_SCENARIOS.md)。
+
 `UnattendedTestRunner.ReplayState.cs` 属于 `ScenarioBuilder` 的状态注入实现。它只接受同检查点的 `run-state` 与 schema 1 `replay-state` 组合，恢复后必须通过完整 `ContinuationStamp`；不能把部分字段相似的建局称为严格重放。
 
 `UnattendedTestRunner.CheckpointArchive.RecordCheckpointModDifferencesAfterStartup` 只生成程序集清单诊断，不决定恢复能否继续。两条原包恢复入口共用此方法，Writer 保存 `modEnvironmentComparison` 的逐名称缺失/新增/构建变化；模型解码、原生录制重放和严格状态对账继续拥有实际失败判定。

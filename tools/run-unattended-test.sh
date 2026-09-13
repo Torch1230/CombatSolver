@@ -73,6 +73,7 @@ add_option replay-policy-override-path "" string raw_string
 add_option evidence-directory "" string raw_string
 add_option preserve-native-combat-state-for-test 0 switch bool
 add_option progress-snapshot-path "" string none
+add_option generated-scenario-path "" string optional_string
 add_option ascension 0 int raw_int
 add_option act-index-for-test 0 int raw_int
 add_option mark-encounter-as-second-boss-for-test 0 switch bool
@@ -410,7 +411,7 @@ if ((option_value[stop-after-expected-player-power] == 1)) && is_blank "${option
 fi
 ((option_value[timeout-seconds] > 0)) || die "--timeout-seconds must be a positive integer"
 
-for path_option in replay-policy-override-path evidence-directory; do
+for path_option in replay-policy-override-path evidence-directory generated-scenario-path; do
     if [[ -n "${option_value[$path_option]}" ]]; then
         option_value[$path_option]="$(realpath -m -- "${option_value[$path_option]}")"
     fi
