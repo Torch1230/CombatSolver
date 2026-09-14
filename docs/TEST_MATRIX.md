@@ -1,6 +1,6 @@
 # CombatSolver 测试清单
 
-## Act 3 无伤 Boss 录像对局库（2026-09-14）
+## 0.38.5 发布范围：Act 3 无伤 Boss 录像对局库（2026-09-14）
 
 - CombatSolver 与私用录像 Mod 的 Release 构建通过，0 警告、0 错误；Windows PowerShell 结构门禁另记最终结果。按用户要求不执行 Bash 门禁，不启动可见 Steam。
 - 日志后台 Python 3.12 隔离环境完整 64 项单元测试通过；测试进程退出后既有 `test_reports_v2` 临时 SQLite 句柄出现一次 Windows 清理告警，不影响测试退出码和断言结果。
