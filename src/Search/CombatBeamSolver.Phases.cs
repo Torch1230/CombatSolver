@@ -205,7 +205,7 @@ internal sealed partial class CombatBeamSolver
                         + ActEndingBossPolicy.RankedPostCombatRelicHeal(
                             root.PostCombatRelicHeal, won, node.Snapshot.PlayerHp, node.Snapshot.PlayerMaxHp),
                     _strategicBossHpRelief,
-                    node.Snapshot.DeathSaveRelicHpRestored) - node.Snapshot.StrategicHpCredit,
+                    node.Snapshot.DeathSaveHpRestored) - node.Snapshot.StrategicHpCredit,
                 PotionStrategicCost: PotionUsePolicy.EffectiveStrategicHpCost(
                     node.PotionStrategicCost,
                     ambergrisCount,
@@ -218,6 +218,8 @@ internal sealed partial class CombatBeamSolver
                 GrowthHpCredit = node.Snapshot.StrategyGoalHpCredit,
                 TheftPolicy = _theftPolicy,
                 GrowthRewardCount = node.Snapshot.StrategyGoalCount,
+                Survives = !node.Snapshot.PlayerDead && node.Snapshot.ProjectedPlayerHp > 0,
+                DeathSaveUseCount = node.Snapshot.ProjectedDeathSaveUseCount,
             };
         }
 
@@ -307,6 +309,7 @@ internal sealed partial class CombatBeamSolver
                 && policy.RelicTargetsSatisfied(node.Snapshot.RelicCounters)
                 && TheftEncounterStrategy.RecoverySatisfied(_theftPolicy, node.Snapshot.OutstandingStolenResource)
                 && IsEligibleCompleteVictory(node)
+                && node.Snapshot.ProjectedDeathSaveUseCount == 0
                 && ExplicitPotionUseCount(node) <= earlyStopPotionUses
                 && battleDamage.HpLostSoFar + node.Snapshot.CumulativePlayerHpLost <= _acceptableBattleHpLoss;
 
@@ -580,6 +583,9 @@ internal sealed partial class CombatBeamSolver
                 finalSnapshot.BoundaryReason,
                 finalSnapshot.PredictionGaps.ToArray())
             {
+                DeathSavePotionHpRestored = finalSnapshot.DeathSavePotionHpRestored,
+                DeathSaveUseCount = finalSnapshot.DeathSaveUseCount,
+                ProjectedDeathSaveUseCount = finalSnapshot.ProjectedDeathSaveUseCount,
                 GrowthHpCredit = finalSnapshot.GrowthHpCredit,
                 RelicCounters = finalSnapshot.RelicCounters,
                 GrowthRewards = finalSnapshot.GrowthRewards,

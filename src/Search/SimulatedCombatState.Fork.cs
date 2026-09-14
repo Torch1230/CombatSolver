@@ -86,6 +86,8 @@ internal sealed partial class SimulatedCombatState
             _brightestFlameMaxHpSpent = _brightestFlameMaxHpSpent,
             _angerCopiesGenerated = _angerCopiesGenerated,
             _deathSaveRelicHpRestored = _deathSaveRelicHpRestored,
+            _deathSavePotionHpRestored = _deathSavePotionHpRestored,
+            _deathSaveUseCount = _deathSaveUseCount,
         };
 
         if (_addedPowerInstances is not null)

@@ -159,6 +159,8 @@ internal sealed record SolverInterimResult(
     int? CombatEndedTurn = null)
 {
     public SolverTheftPolicy? TheftPolicy { get; init; }
+    public bool Survives { get; init; }
+    public int DeathSaveUseCount { get; init; }
     public int GrowthHpCredit { get; init; }
     public int GrowthRewardCount { get; init; }
 }

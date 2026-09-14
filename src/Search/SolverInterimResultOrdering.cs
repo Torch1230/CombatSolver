@@ -28,9 +28,14 @@ internal static class SolverInterimResultOrdering
         int candidateGrowthHpCredit = 0,
         int currentGrowthHpCredit = 0,
         int candidateGrowthRewardCount = 0,
-        int currentGrowthRewardCount = 0)
+        int currentGrowthRewardCount = 0,
+        int candidateDeathSaveUseCount = 0,
+        int currentDeathSaveUseCount = 0)
     {
         int comparison = currentCompleteVictory.CompareTo(candidateCompleteVictory);
+        if (comparison != 0)
+            return comparison;
+        comparison = candidateDeathSaveUseCount.CompareTo(currentDeathSaveUseCount);
         if (comparison != 0)
             return comparison;
         comparison = candidateStrategicHpDeficit.CompareTo(currentStrategicHpDeficit);
@@ -51,6 +56,11 @@ internal static class SolverInterimResultOrdering
         int comparison = current.Won.CompareTo(candidate.Won);
         if (comparison != 0)
             return comparison < 0;
+        comparison = current.Survives.CompareTo(candidate.Survives);
+        if (comparison != 0)
+            return comparison < 0;
+        if (candidate.DeathSaveUseCount != current.DeathSaveUseCount)
+            return candidate.DeathSaveUseCount < current.DeathSaveUseCount;
         if (candidate.TheftPolicy == SolverTheftPolicy.PreserveResources
             && candidate.OutstandingStolenResource != current.OutstandingStolenResource)
             return candidate.OutstandingStolenResource < current.OutstandingStolenResource;
@@ -77,6 +87,8 @@ internal static class SolverInterimResultOrdering
         SolverInterimResult candidate,
         SolverInterimResult current)
         => (!candidate.Won
+                || candidate.Survives && !current.Survives
+                || candidate.DeathSaveUseCount < current.DeathSaveUseCount
                 || candidate.TheftPolicy == SolverTheftPolicy.PreserveResources
                     && candidate.OutstandingStolenResource < current.OutstandingStolenResource
                 || !current.Won

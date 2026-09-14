@@ -5,6 +5,8 @@ internal sealed partial class SimulatedCombatState
     private int _longTermResourceValue;
     private int _angerCopiesGenerated;
     private int _deathSaveRelicHpRestored;
+    private int _deathSavePotionHpRestored;
+    private int _deathSaveUseCount;
     private GrowthValues _growthRewards;
     private int _brightestFlameMaxHpSpent;
     public int BrightestFlameMaxHpSpent => _brightestFlameMaxHpSpent;
@@ -35,9 +37,15 @@ internal sealed partial class SimulatedCombatState
     /// The player really does get this HP, but it is not HP the route <em>earned</em>: the relic is a
     /// cross-combat resource that is gone afterwards, and the same revive would have been available in every
     /// later fight. Scoring takes it back out and charges a premium on top; see
-    /// <see cref="ActEndingBossPolicy.DeathSaveRelicPremium"/>.
+    /// <see cref="ActEndingBossPolicy.DeathSavePremium"/>.
     /// </remarks>
     public int DeathSaveRelicHpRestored => _deathSaveRelicHpRestored;
+
+    /// <summary>HP an automatic death-save potion put back on this route: currently Fairy in a Bottle.</summary>
+    public int DeathSavePotionHpRestored => _deathSavePotionHpRestored;
+
+    /// <summary>Number of one-shot death saves consumed by this route.</summary>
+    public int DeathSaveUseCount => _deathSaveUseCount;
 
     public void RecordLongTermResource(int value)
     {
@@ -54,5 +62,14 @@ internal sealed partial class SimulatedCombatState
         if (amount <= 0)
             throw new ArgumentOutOfRangeException(nameof(amount), amount, "保命遗物的回复量必须为正数。");
         _deathSaveRelicHpRestored = checked(_deathSaveRelicHpRestored + amount);
+        _deathSaveUseCount = checked(_deathSaveUseCount + 1);
+    }
+
+    public void RecordDeathSavePotionHpRestored(int amount)
+    {
+        if (amount <= 0)
+            throw new ArgumentOutOfRangeException(nameof(amount), amount, "保命药水的回复量必须为正数。");
+        _deathSavePotionHpRestored = checked(_deathSavePotionHpRestored + amount);
+        _deathSaveUseCount = checked(_deathSaveUseCount + 1);
     }
 }

@@ -1072,21 +1072,40 @@ internal sealed partial class UnattendedTestRunner
         {
             throw new InvalidOperationException("跨幕回复没有按 80% 缩放药水价值。");
         }
-        if (ActEndingBossPolicy.DeathSaveRelicPremium(0, BossHpRelief.None) != 0
-            || ActEndingBossPolicy.DeathSaveRelicPremium(40, BossHpRelief.None) != 360
-            || ActEndingBossPolicy.DeathSaveRelicPremium(40, BossHpRelief.ActClearHeal) != 360
-            || ActEndingBossPolicy.DeathSaveRelicPremium(40, BossHpRelief.RunEnding) != 0
-            || ActEndingBossPolicy.DeathSaveRelicBeamCost(40, BossHpRelief.None) != 400
-            || ActEndingBossPolicy.DeathSaveRelicBeamCost(40, BossHpRelief.RunEnding) != 0)
+        if (ActEndingBossPolicy.DeathSavePremium(0) != 0
+            || ActEndingBossPolicy.DeathSavePremium(40) != 360
+            || ActEndingBossPolicy.DeathSaveBeamCost(40) != 400)
         {
             throw new InvalidOperationException(
-                "一次性保命遗物的复活没有按用掉它的代价计价，或者整局最后一战没有免收。");
+                "一次性保命资源的复活没有按用掉它的代价计价。");
         }
         if (ActEndingBossPolicy.StrategicHpDeficit(20, 0, 56, BossHpRelief.None, 40) != 364
             || ActEndingBossPolicy.StrategicHpDeficit(20, 0, 56, BossHpRelief.ActClearHeal, 40) != 377
-            || ActEndingBossPolicy.StrategicHpDeficit(20, 0, 56, BossHpRelief.RunEnding, 40) != 20)
+            || ActEndingBossPolicy.StrategicHpDeficit(20, 0, 56, BossHpRelief.RunEnding, 40) != 380)
         {
-            throw new InvalidOperationException("路线治疗、战后回血与保命遗物消耗的组合计价不一致。");
+            throw new InvalidOperationException("路线治疗、战后回血与保命资源消耗的组合计价不一致。");
+        }
+        if (SolverInterimResultOrdering.ComparePrimaryQuality(
+                candidateCompleteVictory: true,
+                candidateStrategicHpDeficit: 100,
+                candidateCombatEndedTurn: 9,
+                currentCompleteVictory: true,
+                currentStrategicHpDeficit: 0,
+                currentCombatEndedTurn: 1,
+                candidateDeathSaveUseCount: 0,
+                currentDeathSaveUseCount: 1) >= 0
+            || SolverInterimResultOrdering.ComparePrimaryQuality(
+                candidateCompleteVictory: true,
+                candidateStrategicHpDeficit: 100,
+                candidateCombatEndedTurn: 9,
+                currentCompleteVictory: false,
+                currentStrategicHpDeficit: 0,
+                currentCombatEndedTurn: null,
+                candidateDeathSaveUseCount: 1,
+                currentDeathSaveUseCount: 0) >= 0)
+        {
+            throw new InvalidOperationException(
+                "完整胜利没有先保留一次性保命资源，或者无替代生还路线时拒绝复活。");
         }
         if (ActEndingBossPolicy.ResolveStrategicHpRelief(
                 BossHpRelief.ActClearHeal,

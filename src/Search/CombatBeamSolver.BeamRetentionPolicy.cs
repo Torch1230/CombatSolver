@@ -6707,6 +6707,9 @@ internal sealed partial class CombatBeamSolver
             SimulationSnapshot rightSnapshot = right.Snapshot;
             bool leftWon = IsCompleteVictory(left);
             bool rightWon = IsCompleteVictory(right);
+            int comparison = rightWon.CompareTo(leftWon);
+            if (comparison != 0)
+                return comparison;
             if (!leftWon && !rightWon)
             {
                 bool leftSurvives = !leftSnapshot.PlayerDead
@@ -6718,11 +6721,16 @@ internal sealed partial class CombatBeamSolver
                     return survivalComparison;
             }
 
+            comparison = leftSnapshot.ProjectedDeathSaveUseCount.CompareTo(
+                rightSnapshot.ProjectedDeathSaveUseCount);
+            if (comparison != 0)
+                return comparison;
+
             int recoveryComparison = TheftEncounterStrategy.CompareRecovery(_theftPolicy,
                 leftWon, leftSnapshot.OutstandingStolenResource, rightWon, rightSnapshot.OutstandingStolenResource);
             if (recoveryComparison != 0)
                 return recoveryComparison;
-            int comparison = SolverInterimResultOrdering.ComparePrimaryQuality(
+            comparison = SolverInterimResultOrdering.ComparePrimaryQuality(
                 leftWon,
                 StrategicHpDeficit(leftSnapshot, leftWon),
                 leftWon ? CompletedCombatTurn(left) : null,
@@ -6732,7 +6740,9 @@ internal sealed partial class CombatBeamSolver
                 leftSnapshot.StrategyGoalHpCredit,
                 rightSnapshot.StrategyGoalHpCredit,
                 leftSnapshot.StrategyGoalCount,
-                rightSnapshot.StrategyGoalCount);
+                rightSnapshot.StrategyGoalCount,
+                leftSnapshot.ProjectedDeathSaveUseCount,
+                rightSnapshot.ProjectedDeathSaveUseCount);
             if (comparison != 0)
                 return comparison;
 
@@ -6801,7 +6811,7 @@ internal sealed partial class CombatBeamSolver
                         snapshot.PlayerHp,
                         snapshot.PlayerMaxHp),
                 _bossHpRelief,
-                snapshot.DeathSaveRelicHpRestored) - snapshot.StrategicHpCredit;
+                snapshot.DeathSaveHpRestored) - snapshot.StrategicHpCredit;
 
         private int HealthResourceCost(SimulationSnapshot snapshot)
             => _initialPlayerHp - snapshot.PlayerHp

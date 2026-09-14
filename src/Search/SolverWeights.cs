@@ -104,7 +104,7 @@ internal static class SolverWeights
     // 光这一项就值一百多点血，所以按一比一收费时，靠复活换来的输出节奏仍然划算——实测就是这样，
     // 路线照样把尾巴烧掉。收到十倍之后，任何一条能活着打赢的路线都比烧尾巴强，而这个数量级仍然
     // 远低于 VictoryBonus 和 DeathPenalty：没有别的活路时，尾巴照用不误。
-    public const int DeathSaveRelicPremiumPercent = 900;
+    public const int DeathSavePremiumPercent = 900;
     /// <summary>Potions whose effect is worth roughly twice a baseline potion.</summary>
     public const int PotionHighValueHpSaved = PotionMinimumHpSaved * 2;
 

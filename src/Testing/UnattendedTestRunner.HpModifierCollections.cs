@@ -99,13 +99,47 @@ internal sealed partial class UnattendedTestRunner
             if (driver.ProjectDiagnosticHits(snapshot, combat.Enemies[0], 1000) != expectedRevive
                 || driver.CaptureDiagnosticContinuation(snapshot).StateText != before)
                 throw new InvalidOperationException("Unused tail forecast differs or mutates its branch.");
+
+            int unblockedHit = 0;
+            for (int hit = 1; hit <= 1000; hit++)
+            {
+                int projectedHp = driver.ProjectDiagnosticHits(snapshot, combat.Enemies[0], hit);
+                if (projectedHp > 0 && projectedHp < creature.CurrentHp)
+                {
+                    unblockedHit = hit;
+                    break;
+                }
+            }
+            if (unblockedHit == 0)
+                throw new InvalidOperationException("Gambit forecast fixture has no nonlethal unblocked hit.");
+            state.SetAmount<TheGambitPower>(player.Creature, 1);
+            before = driver.CaptureDiagnosticContinuation(snapshot).StateText;
+            var gambitThreat = driver.ProjectDiagnosticThreat(snapshot, combat.Enemies[0], unblockedHit);
+            if (gambitThreat.Hp != expectedRevive
+                || gambitThreat.DeathSaveUseCount != 1
+                || gambitThreat.DeathSaveHpRestored != expectedRevive
+                || driver.CaptureDiagnosticContinuation(snapshot).StateText != before)
+            {
+                throw new InvalidOperationException(
+                    "Gambit unblocked-damage forecast did not consume exactly one death save without mutating state.");
+            }
+            simulator.GainBlock(player.Creature, 1000, ValueProp.Unpowered);
+            before = driver.CaptureDiagnosticContinuation(snapshot).StateText;
+            var blockedGambitThreat = driver.ProjectDiagnosticThreat(snapshot, combat.Enemies[0], unblockedHit);
+            if (blockedGambitThreat.Hp != creature.CurrentHp
+                || blockedGambitThreat.DeathSaveUseCount != 0
+                || driver.CaptureDiagnosticContinuation(snapshot).StateText != before)
+            {
+                throw new InvalidOperationException(
+                    "Gambit forecast triggered through full block or mutated the branch.");
+            }
             simulator.StateStore.Get(tail, () => new LizardTailPredictionState(tail)).WasUsed = true;
             before = driver.CaptureDiagnosticContinuation(snapshot).StateText;
             int expectedLoss = creature.CurrentHp - Math.Max(0, 1000 - creature.Block);
             if (driver.ProjectDiagnosticHits(snapshot, combat.Enemies[0], 1000) != expectedLoss
                 || driver.CaptureDiagnosticContinuation(snapshot).StateText != before)
                 throw new InvalidOperationException("Consumed tail was reused by the forecast or changed state.");
-            return "ProjectedTailLookup:UnusedRevive:ConsumedBypass:CompleteStateUnchanged";
+            return "ProjectedTailLookup:UnusedRevive:GambitUnblockedDeath:GambitBlockedSafe:ConsumedBypass:CompleteStateUnchanged";
         }
         finally { snapshot.ReleaseSimulator(); }
     }

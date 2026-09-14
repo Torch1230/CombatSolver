@@ -2243,6 +2243,10 @@ internal sealed partial class SimulatedCombatState
         fingerprint.Add(_angerCopiesGenerated);
         fingerprint.Add('L');
         fingerprint.Add(_deathSaveRelicHpRestored);
+        fingerprint.Add('F');
+        fingerprint.Add(_deathSavePotionHpRestored);
+        fingerprint.Add('V');
+        fingerprint.Add(_deathSaveUseCount);
         AddFeralStates(ref fingerprint, simulator, effectivePowers);
         AddJugglingStates(ref fingerprint, simulator, effectivePowers);
         AddTurnStartStates(ref fingerprint, simulator, effectivePowers);

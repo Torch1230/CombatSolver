@@ -1,5 +1,11 @@
 # CombatSolver 测试清单
 
+## 下一版本（开发中，2026-09-14）
+
+- `HP-MODIFIER-COLLECTIONS` / `09f87bce86e74dc1b30f179d71e3dcd6` Passed：192 组 HP 修正集合合同保持；新增孤注一掷意图预测断言，非致命穿透伤害准确转为死亡并预测消耗一次蜥蜴尾巴，全额格挡保持安全，预测前后完整状态不变。
+- `DEATH-SAVE-ORDERING-FINAL` / `015992ad11e34b3eacdd34d2f527cbbd` Passed：控制器生命周期与搜索合同通过；纯排序断言证明同为完整胜利时零复活路线压过血量和回合更优的复活路线，而复活胜利仍压过无复活的失败路线。最终战不再免除保命资源成本。
+- `FAIRY-AUTOMATIC-RESCUE-DEATH-SAVE-FINAL` / `bb074141070441258c9f13191dabe520` Passed：1 HP 且只有瓶中精灵能存活的既有两回合场景仍自动复活并获胜，用药 1、计划外重算 0，证明新约束没有把万不得已的救命路线禁掉。三项均使用 Windows 隔离 headless；Release 构建 0 警告、0 错误，未启动可见 Steam。
+
 ## 0.38.3 发布范围（2026-09-14）
 
 - 问题包弹窗正文回归：`UI-LOCALIZATION` / `dc7da1036cb0461698c9b75f073ffbd0` Passed；尺寸合同增加“滚动容器不参与自然高度时仍取得 320 px 默认高度”的断言，继续覆盖三种视口的总尺寸、拖动边界及 eng/zhs/zht 控件。Release 构建 0 警告、0 错误；未启动可见 Steam 做人工排版验收。

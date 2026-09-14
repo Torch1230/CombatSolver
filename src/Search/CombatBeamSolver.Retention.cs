@@ -376,7 +376,7 @@ internal sealed partial class CombatBeamSolver
             maxHpDeficit: 0,
             snapshot.RecoveredPlayerHp + Math.Max(0, snapshot.PlayerMaxHp - snapshot.PlayerHp),
             bossHpRelief,
-            snapshot.DeathSaveRelicHpRestored);
+            snapshot.DeathSaveHpRestored);
 
     internal static bool ShouldPruneByPrimaryIncumbent(
         int strategicHpLowerBound,
@@ -396,10 +396,12 @@ internal sealed partial class CombatBeamSolver
         int candidateStrategicHpDeficit,
         int? candidateCombatEndedTurn,
         ref PrimarySearchIncumbent? incumbent,
-        SolverPotionPolicy? effectivePotionPolicy = null)
+        SolverPotionPolicy? effectivePotionPolicy = null,
+        int candidateDeathSaveUseCount = 0)
     {
         if (!candidateCompleteVictory
             || !candidateSatisfiesHardRules
+            || candidateDeathSaveUseCount > 0
             || candidateExplicitPotionUses != minimumPotionUses
             || candidateCombatEndedTurn is not { } combatEndedTurn)
         {
@@ -420,7 +422,9 @@ internal sealed partial class CombatBeamSolver
                 candidateCombatEndedTurn,
                 currentCompleteVictory: baseline.Won,
                 currentStrategicHpDeficit: baseline.HpDeficit,
-                currentCombatEndedTurn: baseline.CombatEndedTurn) < 0;
+                currentCombatEndedTurn: baseline.CombatEndedTurn,
+                candidateDeathSaveUseCount: candidateDeathSaveUseCount,
+                currentDeathSaveUseCount: baseline.DeathSaveUseCount) < 0;
         if (!eligiblePotionFreeVictory && !eligibleExactPotionVictory)
         {
             return false;
@@ -477,6 +481,7 @@ internal sealed partial class CombatBeamSolver
                 node.Snapshot.PlayerDead,
                 node.Snapshot.ProjectedPlayerHp);
             if (!completeVictory
+                || node.Snapshot.ProjectedDeathSaveUseCount > 0
                 || explicitPotionUses != _minimumPotionUses
                 || _enforcePotionDirectives
                     && !_potionStrategy.EvaluateForcedUses(
@@ -497,7 +502,7 @@ internal sealed partial class CombatBeamSolver
                     + ActEndingBossPolicy.RankedPostCombatRelicHeal(
                         root.PostCombatRelicHeal, true, node.Snapshot.PlayerHp, node.Snapshot.PlayerMaxHp),
                 _strategicBossHpRelief,
-                node.Snapshot.DeathSaveRelicHpRestored);
+                node.Snapshot.DeathSaveHpRestored);
             TryTightenPrimarySearchIncumbent(
                 _potionFreePolicyBaseline,
                 _minimumPotionUses,
@@ -508,7 +513,8 @@ internal sealed partial class CombatBeamSolver
                 strategicHpDeficit,
                 node.Snapshot.CombatEndedTurn,
                 ref tightened,
-                effectivePotionPolicy: _potionPolicy);
+                effectivePotionPolicy: _potionPolicy,
+                candidateDeathSaveUseCount: node.Snapshot.ProjectedDeathSaveUseCount);
         }
 
         if (Nullable.Equals(tightened, _primaryIncumbent))

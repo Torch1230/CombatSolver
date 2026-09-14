@@ -18,8 +18,13 @@ internal static class FairyInABottleMirrors
             throw new InvalidOperationException("瓶中仙女结算缺少可写的预测状态。");
         effects.ConsumePotion(potion);
         effects.BeforePotionUsed(context.Simulator, potion, context.Creature);
-        int maxHp = context.State.GetCreature(context.Creature).MaxHp;
+        SimCreatureState creature = context.State.GetCreature(context.Creature);
+        int hpBeforeRevive = creature.CurrentHp;
+        int maxHp = creature.MaxHp;
         context.Simulator.Heal(context.Creature, HealAmount(maxHp));
+        int restored = creature.CurrentHp - hpBeforeRevive;
+        if (restored > 0 && context.CombatState is SimulatedCombatState combat)
+            combat.RecordDeathSavePotionHpRestored(restored);
         if (context.State.GetCreature(context.Creature).IsAlive)
             effects.AfterPotionUsed(context.Simulator, potion, context.Creature);
     }
