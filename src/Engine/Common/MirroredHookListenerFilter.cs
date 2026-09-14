@@ -74,6 +74,7 @@ internal sealed class MirroredHookListenerFilter(bool enabled)
         [nameof(AbstractModel.AfterDamageReceived)] = MirroredHookMask.AfterDamageReceived,
         [nameof(AbstractModel.AfterDamageReceivedLate)] = MirroredHookMask.AfterDamageReceivedLate,
         [nameof(AbstractModel.AfterDeath)] = MirroredHookMask.AfterDeath,
+        [nameof(AbstractModel.AfterEnergyReset)] = MirroredHookMask.AfterEnergyReset,
         [nameof(AbstractModel.AfterModifyingBlockAmount)] = MirroredHookMask.AfterModifyingBlockAmount,
         [nameof(AbstractModel.AfterModifyingCardPlayCount)] = MirroredHookMask.AfterModifyingCardPlayCount,
         [nameof(AbstractModel.AfterModifyingCardPlayResultLocation)] = MirroredHookMask.AfterModifyingCardPlayResultLocation,
@@ -285,6 +286,7 @@ internal enum MirroredHookMask : ulong
     TryModifyStarCost = 1UL << 53,
     TryModifyKeywordsInCombat = 1UL << 54,
     AfterSideTurnEndLate = 1UL << 55,
+    AfterEnergyReset = 1UL << 56,
     All = ulong.MaxValue,
 }
 

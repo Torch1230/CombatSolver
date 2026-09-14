@@ -13,6 +13,7 @@ using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.ValueProps;
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.InCombat.Mirrors.Hooks.Card;
+using CombatSolver.Engine.InCombat.Mirrors.Hooks.Resources;
 using CombatSolver.Engine.InCombat.Simulation;
 
 namespace CombatSolver;
@@ -116,49 +117,22 @@ internal static class PersistentPowerSupport
             _ => 0m,
         };
 
-    public static bool ParticipatesInEnergyReset(PowerModel power)
-        => power.Amount > 0 && power is GenesisPower or LightningRodPower or RadiancePower
-            or SpinnerPower or StarNextTurnPower;
-
     public static bool TriggerAfterEnergyReset(
         CombatPredictionSimulator simulator,
         SimulatedCombatState combat,
         Player player)
     {
         Creature owner = player.Creature;
-        SimPlayerCombatState state = simulator.State.GetPlayerCombatState(player);
+        var context = new AfterEnergyResetMirrorContext { Simulator = simulator, Player = player };
 
         // Channel order affects the queue and the effects evoked when it is full.
         foreach (PowerModel power in combat.EffectivePowers())
         {
-            if (power.Owner != owner || !ParticipatesInEnergyReset(power))
+            // 层数为零的能力在原版里每一个重写都是空转：加零点星、抽零张、扣零点能量。
+            // 这道门保持原来的判据，顺带让没登记的第三方能力不会为了一次空转记风险。
+            if (power.Owner != owner || power.Amount <= 0)
                 continue;
-            switch (power)
-            {
-                case GenesisPower:
-                    simulator.GainStars(player, power.Amount);
-                    break;
-                case LightningRodPower:
-                    simulator.OrbChannel<LightningOrb>(player);
-                    if (simulator.HasPendingChoice)
-                        return false;
-                    combat.SetAmount<LightningRodPower>(owner, power.Amount - 1);
-                    break;
-                case RadiancePower:
-                    if (combat.GetAmount<NoEnergyGainPower>(owner) <= 0)
-                        state.GainEnergy(power.DynamicVars.Energy.IntValue);
-                    combat.SetAmount<RadiancePower>(owner, power.Amount - 1);
-                    break;
-                case SpinnerPower:
-                    simulator.OrbChannel<GlassOrb>(player, power.Amount);
-                    break;
-                case StarNextTurnPower:
-                    simulator.GainStars(player, power.Amount);
-                    if (simulator.HasPendingChoice)
-                        return false;
-                    combat.SetAmount<StarNextTurnPower>(owner, 0);
-                    break;
-            }
+            AfterEnergyResetMirrors.Invoke(power, context);
             if (simulator.HasPendingChoice)
                 return false;
         }
