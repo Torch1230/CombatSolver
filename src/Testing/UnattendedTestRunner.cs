@@ -79,6 +79,8 @@ internal sealed partial class UnattendedTestRunner
         _request = request;
         if (request.ScenarioId.StartsWith("MODEL-STATE-INTEGRATION", StringComparison.Ordinal))
             RegisterModelStateIntegrationAdapters();
+        if (request.ScenarioId.StartsWith("ADAPTED-ONPLAY-INTEGRATION", StringComparison.Ordinal))
+            RegisterAdaptedOnPlayIntegration();
         if (request.ScenarioId.StartsWith("TURN-SETUP-UI-", StringComparison.Ordinal))
             InitializeTurnSetupControlCheck();
         _protocolHost = protocolHost;
@@ -229,6 +231,7 @@ internal sealed partial class UnattendedTestRunner
         }
         finally
         {
+            _releaseAdaptedOnPlayIntegration?.Invoke();
             ReleaseTurnSetupControlCheck();
             _executor.RestoreSettings();
             RestoreHeadlessFastModeOverride();

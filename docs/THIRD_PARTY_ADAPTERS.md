@@ -428,7 +428,15 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 `NotSupportedException`，不会只标记风险后继续生成路线。
 完整签名、暂停和状态约束见[回合阶段镜像](third-party-turn-phase-mirrors.md)。
 
-### 2.11 还没有登记入口的地方
+### 2.11 已适配 OnPlay 补丁组合
+
+`AdaptedCardOnPlayMirrors.Register<TCard>` 登记精确目标、完整补丁组合与唯一完整预测实现。
+首次根／续用捕获后冻结；根选择通过标准 registry 分派，命中后不再执行原版 OnPlay/spec。
+组合核对包含实际顺序、owner、优先级和 before／after；不放行未知来源或明确不兼容 Mod。
+配置进入 continuation，旧根及路线沿既有边界核对失效；worker 不扫描补丁表。
+支持面、条件 descriptor、async／动态卡牌限制及测试见[OnPlay 补丁适配](third-party-onplay-patches.md)。
+
+### 2.12 还没有登记入口的地方
 
 见第 6 节。目前只能 Harmony 打补丁，或者等对应的扩展点合并。
 

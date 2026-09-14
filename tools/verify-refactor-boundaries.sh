@@ -369,6 +369,12 @@ for field in \
 done
 
 session_path="$repository_root/src/Runtime/SolverControllerSessions.cs"
+require_fixed "$repository_root/src/Prediction/PredictionModHookSubscriberCapture.cs" 'PredictionModPatchAudit.CaptureCardOnPlay' 'missing adapted OnPlay root capture'
+require_fixed "$repository_root/src/Search/SimulatedCombatState.cs" '_modHookSubscribers = source._modHookSubscribers;' 'missing immutable OnPlay fork ownership'
+require_fixed "$repository_root/src/Runtime/ContinuationStamp.cs" 'AdaptedCardOnPlayMirrors.CaptureLiveStamp()' 'missing live OnPlay configuration check'
+require_fixed "$repository_root/src/Runtime/ContinuationStamp.cs" 'adaptedOnPlay.Stamp' 'missing frozen predicted OnPlay configuration'
+require_fixed "$repository_root/src/Engine/InCombat/Mirrors/Cards/OnPlay/CardOnPlayMirrors.cs" 'return replacement;' 'missing exclusive adapted OnPlay dispatch'
+forbid_fixed "$repository_root/src/Engine/InCombat/Mirrors/Cards/OnPlay/CardOnPlayMirrors.cs" 'Harmony.GetPatchInfo' 'worker must not query Harmony'
 for session_type in SolverCombatSession SolverSearchSession SolverDeploymentSession; do
     require_fixed "$session_path" "class $session_type" 'missing controller session type'
 done

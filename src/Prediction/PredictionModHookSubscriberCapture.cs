@@ -28,6 +28,7 @@ internal sealed class PredictionModHookSubscriberCapture
     public IReadOnlyDictionary<Player, int> MaxHandSizes { get; }
     public IReadOnlySet<Player> EveryCardFreePlayers { get; }
     public bool HasBaseLibCardModifiers { get; }
+    public AdaptedOnPlaySnapshot? AdaptedOnPlay { get; private init; }
     public MirroredHookListenerFilter MirroredHookFilter { get; } = MirroredHookListenerFilter.Capture();
 
     private PredictionModHookSubscriberCapture(
@@ -57,7 +58,7 @@ internal sealed class PredictionModHookSubscriberCapture
             ValidateSubscriber(subscriber, "run");
         foreach (AbstractModel subscriber in combatSubscribers)
             ValidateSubscriber(subscriber, "combat");
-        PredictionModPatchAudit.ValidateCardOnPlay(EnumerateAuditableCards(runState, combat));
+        AdaptedOnPlaySnapshot? onPlay = PredictionModPatchAudit.CaptureCardOnPlay(EnumerateAuditableCards(runState, combat));
 
         Dictionary<Player, int> maxHandSizes = [];
         foreach (Player player in combat.Players)
@@ -77,7 +78,7 @@ internal sealed class PredictionModHookSubscriberCapture
             combatSubscribers,
             maxHandSizes,
             everyCardFreePlayers,
-            hasBaseLibCardModifiers);
+            hasBaseLibCardModifiers) { AdaptedOnPlay = onPlay };
     }
 
     public void AppendCardAttachedListeners(

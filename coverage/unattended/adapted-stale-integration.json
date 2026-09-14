@@ -1,0 +1,24 @@
+{
+  "scenarioId": "ADAPTED-ONPLAY-INTEGRATION-STALE",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "enemyCurrentHp": 18,
+  "clearPlayerPiles": true,
+  "cards": [
+    {
+      "cardId": "DEFEND_IRONCLAD",
+      "pile": "Hand",
+      "count": 1
+    },
+    {
+      "cardId": "STRIKE_IRONCLAD",
+      "pile": "Hand",
+      "count": 1
+    }
+  ],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 1500,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120
+}

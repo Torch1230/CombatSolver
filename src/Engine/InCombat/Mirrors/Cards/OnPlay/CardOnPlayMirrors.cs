@@ -46,6 +46,10 @@ internal static class CardOnPlayMirrors
         // The mutable preview is the receiver because OnPlay handlers may mutate the played card.
         // CardOnPlayMirrorContext maps its source back to the original card and exposes that same
         // original model as the StateStore key.
+        if (simulator.State.CombatState is SimulatedCombatState adaptedCombat
+            && adaptedCombat.AdaptedOnPlay is { } adapted
+            && adapted.TryInvoke(simulator, card, cardPlay, out MirrorDispatchResult replacement))
+            return replacement; // The complete adapted recipe owns both mirror and spec effects.
         MirrorDispatchResult result = Registry.Invoke(card.MutablePreview, new()
         {
             Simulator = simulator,
