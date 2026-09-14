@@ -36,13 +36,18 @@ internal sealed partial class UnattendedTestRunner
         IReadOnlyList<UnattendedPotionCheck> PotionChecks,
         IReadOnlyList<UnattendedMonsterMoveCheck> MonsterMoveChecks);
 
-    private sealed class ScenarioBuilder(UnattendedTestRunner runner)
+    private sealed partial class ScenarioBuilder(UnattendedTestRunner runner)
     {
         public CombatState? CombatState { get; private set; }
         public int StartedTurn { get; private set; }
 
         public async Task<ScenarioContext> BuildAsync()
         {
+            if (!string.IsNullOrWhiteSpace(runner._request.GeneratedScenarioPath)
+                && (!string.IsNullOrWhiteSpace(runner._request.CheckpointArchivePath)
+                    || !string.IsNullOrWhiteSpace(runner._request.RunSnapshotPath)
+                    || !string.IsNullOrWhiteSpace(runner._request.ReplayStatePath)))
+                throw new InvalidDataException("生成场景不能同时恢复问题包或快照。");
             runner.PrepareCheckpointRequest();
             runner._executor.PrepareArchiveSettings();
             if (runner.HasNativeRecording)
@@ -61,6 +66,9 @@ internal sealed partial class UnattendedTestRunner
             if (RunManager.Instance.IsInProgress)
                 throw new InvalidOperationException("无人测试要求从无进行中跑局的独立游戏进程启动。");
 
+            PrepareGeneratedScenario();
+            using IDisposable? generatedChoices = BeginGeneratedSetupChoices();
+            request = runner._request;
             CharacterModel character = ResolveUnique(ModelDb.AllCharacters, request.CharacterId, "角色");
             // AllEncounters is a curated pool and omits some event encounters.
             // The registry is authoritative for a caller-selected native model.
@@ -131,15 +139,19 @@ internal sealed partial class UnattendedTestRunner
                 runPlayer.Creature.SetCurrentHpInternal(preCombatPlayerHp);
                 runner._completedChecks.Add($"PreCombatPlayerHp:{preCombatPlayerHp}");
             }
+            PrepareGeneratedStartingRelics(runPlayer);
             foreach (UnattendedRelicInjection injection in request.Relics)
                 await InjectRelicAsync(runPlayer, injection);
             if (request.ClearRunDeck)
                 ClearRunDeck(runState, runPlayer);
+            await PrepareGeneratedAscendersBaneAsync(runState, runPlayer);
             foreach (UnattendedCardInjection injection in request.RunCards)
                 await InjectRunCardAsync(runState, runPlayer, injection);
+            PrepareGeneratedPotionSlots(runPlayer);
             if (request.PreserveNativeCombatStateForTest)
                 foreach (UnattendedPotionInjection injection in request.Potions)
                     InjectPotionForTest(runPlayer, injection.PotionId);
+            CaptureGeneratedLoadout(runState, runPlayer);
             if (request.VerifyPreCombatForecastApi)
                 await VerifyPreCombatForecastApiAsync(runState, encounter);
 
@@ -177,8 +189,8 @@ internal sealed partial class UnattendedTestRunner
             else
             {
                 await RunManager.Instance.EnterRoomDebug(
-                    RoomType.Monster,
-                    MapPointType.Unassigned,
+                    _generatedScenario != null ? request.TargetRoomType : RoomType.Monster,
+                    _generatedScenario != null ? targetMapPointType : MapPointType.Unassigned,
                     mutableEncounter);
             }
 
@@ -235,6 +247,7 @@ internal sealed partial class UnattendedTestRunner
             IReadOnlyList<UnattendedOrbCheck> orbChecks = request.OrbChecks;
             IReadOnlyList<UnattendedPotionCheck> potionChecks = runner.GetPotionChecks();
             IReadOnlyList<UnattendedMonsterMoveCheck> monsterMoveChecks = runner.GetMonsterMoveChecks();
+            CaptureGeneratedOpening(CombatState, player);
             if (request.PreserveNativeCombatStateForTest)
                 return new ScenarioContext(character, encounter, CombatState, player, StartedTurn, orbChecks, potionChecks, monsterMoveChecks);
             CombatReplayRecording.Pending?.MarkIncomplete("test_fixture_state_injection");

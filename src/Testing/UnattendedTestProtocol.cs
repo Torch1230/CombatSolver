@@ -22,6 +22,7 @@ internal sealed class UnattendedTestRequest
     public string EncounterId { get; init; } = "FUZZY_WURM_CRAWLER_WEAK";
     public string[] ModifierIds { get; init; } = [];
     public string Seed { get; init; } = "COMBATSOLVER";
+    public string? GeneratedScenarioPath { get; init; }
     public string? RunSnapshotPath { get; init; }
     public bool LoadRunSnapshotDirectly { get; init; }
     public int? TargetActFloor { get; init; }
@@ -484,6 +485,7 @@ internal sealed class UnattendedTestResult
     public long PrivateMemoryBytes { get; init; }
     public UnattendedSolverMetrics? SolverMetrics { get; init; }
     public System.Text.Json.Nodes.JsonObject? ReplayVerification { get; init; }
+    public System.Text.Json.Nodes.JsonObject? GeneratedScenario { get; init; }
     public UnattendedStageTiming[] StageTimings { get; init; } = [];
     public string[] CompletedChecks { get; init; } = [];
     public string? Error { get; init; }

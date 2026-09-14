@@ -24,6 +24,18 @@ internal sealed partial class UnattendedTestRunner
         public bool HasSolverMetrics => _solverMetrics != null;
         public System.Text.Json.Nodes.JsonObject? ReplayVerification { get; set; }
         public bool ProcessReusable { get; set; }
+        public System.Text.Json.Nodes.JsonObject? GeneratedScenario { get; set; }
+
+        public void WriteGeneratedArtifact(string name, object value)
+        {
+            string directory = getRequest().EvidenceDirectory
+                ?? throw new InvalidDataException("生成场景必须指定EvidenceDirectory。");
+            Directory.CreateDirectory(directory);
+            string path = Path.Combine(directory, name);
+            string temporary = path + ".tmp";
+            File.WriteAllText(temporary, JsonSerializer.Serialize(value, UnattendedTestFiles.JsonOptions));
+            File.Move(temporary, path, overwrite: true);
+        }
 
         public void CaptureSolverResult(SolverResult result)
         {
@@ -164,6 +176,7 @@ internal sealed partial class UnattendedTestRunner
                 PrivateMemoryBytes = memory.PrivateMemoryBytes,
                 SolverMetrics = _solverMetrics,
                 ReplayVerification = ReplayVerification,
+                GeneratedScenario = GeneratedScenario,
                 StageTimings = captureStageTimings(),
                 CompletedChecks = completedChecks.ToArray(),
                 Error = error,

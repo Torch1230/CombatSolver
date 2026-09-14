@@ -141,6 +141,12 @@ internal sealed partial class UnattendedTestRunner
                 return RunCompletion.InitialSearchHeld;
             }
             _assertions.AssertAfterExecution(scenario, outcome);
+            if (_writer.GeneratedScenario != null)
+            {
+                _writer.GeneratedScenario["combatEnded"] = outcome.CombatEnded;
+                _writer.GeneratedScenario["actualOutcome"] = JsonSerializer.SerializeToNode(
+                    CombatBugReportExporter.CaptureOutcome(combatState), UnattendedTestFiles.JsonOptions);
+            }
             if (_writer.ReplayVerification != null && outcome.CombatEnded)
             {
                 _writer.ReplayVerification["actualOutcome"] = JsonSerializer.SerializeToNode(

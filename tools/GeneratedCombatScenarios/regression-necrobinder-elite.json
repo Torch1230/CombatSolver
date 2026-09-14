@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "seed": "GENERATED-COMBAT-001",
+  "characterId": "NECROBINDER",
+  "ascension": 10,
+  "actIndex": 0,
+  "encounterId": "PHROG_PARASITE_ELITE",
+  "encounterKind": "Elite",
+  "includeStartingDeck": true,
+  "includeStartingRelics": true,
+  "includeAscendersBane": true,
+  "applyRelicObtainEffects": false,
+  "characterCards": {
+    "count": 8,
+    "ids": [
+      "BONE_SHARDS",
+      "DRAIN_POWER",
+      "GRAVE_WARDEN",
+      "REAVE",
+      "DEVOUR_LIFE",
+      "SOULBOUND",
+      "PULL_FROM_BELOW",
+      "SIC_EM"
+    ],
+    "upgradeLevels": 0
+  },
+  "colorlessCards": {
+    "count": 2,
+    "ids": [
+      "PROWESS",
+      "GOLD_AXE"
+    ],
+    "upgradeLevels": 0
+  },
+  "relics": {
+    "count": 5,
+    "ids": [
+      "PARRYING_SHIELD",
+      "GNARLED_HAMMER",
+      "BOWLER_HAT",
+      "TUNGSTEN_ROD",
+      "REPTILE_TRINKET"
+    ],
+    "upgradeLevels": 0
+  },
+  "potions": {
+    "count": 2,
+    "ids": [
+      "DISTILLED_CHAOS",
+      "BLESSING_OF_THE_FORGE"
+    ],
+    "upgradeLevels": 0
+  },
+  "setupChoices": [],
+  "playerCurrentHp": null,
+  "potionSlotCount": null,
+  "mode": "Deploy"
+}
