@@ -206,6 +206,7 @@
   "成长策略": "Growth",
   "设置": "Settings",
   "−  收起": "−  Hide",
+  "收起路线内容；Ctrl＋F9 显示或隐藏整个求解器界面。": "Collapse route details; Ctrl+F9 shows or hides the entire solver overlay.",
   "本场战斗出现战损，若对结果不满意可以前往 设置 > 性能，将性能预设调为高或极高后重试。点击本消息之后不再提示": "This fight has HP loss. For a better result, try High or Very High in Settings > Performance. Click to dismiss permanently.",
   "等待战斗状态": "Waiting for combat",
   "保牌/保钱": "Preserve",

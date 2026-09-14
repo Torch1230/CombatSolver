@@ -21,6 +21,9 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidOperationException("控制器会话测试要求求解器初始启用。");
         Player player = LocalContext.GetMe(combat)
             ?? throw new InvalidOperationException("药水策略 UI 测试找不到本地玩家。");
+        SolverOverlay.ShowManualCalculationReady(host, false);
+        if (!SolverOverlay.ExerciseVisibilityShortcutForTesting())
+            throw new InvalidOperationException("Ctrl+F9 没有独立切换求解器界面可见性。");
         (int Slot, PotionModel Potion)? strategyPotion = Enumerable.Range(0, player.PotionSlots.Count)
             .Select(slot => (Slot: slot, Potion: player.GetPotionAtSlotIndex(slot)))
             .Where(item => item.Potion != null && PotionOnUseSupport.CanSearch(item.Potion))

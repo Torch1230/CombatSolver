@@ -6,6 +6,7 @@ namespace CombatSolver;
 
 internal sealed partial class BugReportUploadDialog : CanvasLayer
 {
+    private static int _openCount;
     private readonly PanelContainer _dialogPanel;
     private readonly TextEdit _description;
     private bool _dragging;
@@ -15,6 +16,7 @@ internal sealed partial class BugReportUploadDialog : CanvasLayer
 
     public event Action<string>? UploadConfirmed;
     public event Action? DialogClosed;
+    internal static bool IsOpen => _openCount > 0;
 
     public BugReportUploadDialog(string contactQq)
     {
@@ -120,6 +122,9 @@ internal sealed partial class BugReportUploadDialog : CanvasLayer
     public override void _Ready()
         => TaskHelper.RunSafely(CenterOnScreenAsync());
 
+    public override void _EnterTree()
+        => _openCount++;
+
     private async Task CenterOnScreenAsync()
     {
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
@@ -186,6 +191,7 @@ internal sealed partial class BugReportUploadDialog : CanvasLayer
 
     public override void _ExitTree()
     {
+        _openCount--;
         if (_closed)
             return;
         _closed = true;
