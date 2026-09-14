@@ -1,6 +1,8 @@
 # CombatSolver 测试清单
 
-## 下一版本（开发中）：录像收录辅助 Mod 判定（2026-09-14）
+## 下一版本（开发中）：格挡药路线直插与录像收录辅助 Mod 判定（2026-09-14）
+
+- 格挡药路线直插：Release 隔离构建 0 警告、0 错误，Windows PowerShell 结构门禁通过（`search_files=91`），CoverageCatalog 取得 3035 项、0 未分析、0 待实现。新增 `BLOCK-POTION-ROUTE-INSERTION` 完整部署场景，断言 Smart 无药路线单回合战损达到 9 后直接插入格挡药、实际省血至少 9、T2 获胜且计划外重算为 0；本轮运行时因已有普通游戏进程占用宿主准入而未执行，不记为通过。
 
 - `REPORT-V2-CONTRACT` / `7c9972982bc4425b929247e149e6c790` Passed，22.84 秒。新增合同证明录像浏览器、统计、QuickSL 等 `affects_gameplay=false` 辅助 Mod，以及统一登记的 Loadout/RNG 复现工具不会阻止收录；声明修改玩法的新角色和数值重制 Mod 仍被拒绝。既有问题包上传、取消和 TLS 合同同时通过。
 - 最新实机日志确认 0.38.5 未上传的原因是旧逻辑把 23 个已加载 Mod 与两项 ID 白名单比较，在线统计实际开启，本地没有待上传包，服务端也没有收到请求。本轮不使用 Computer Use，不执行 Bash 门禁。

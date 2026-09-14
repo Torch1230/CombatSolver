@@ -138,6 +138,7 @@ internal sealed class UnattendedTestRequest
     public int? ExpectedInitialActionAdmissionRepresentativesProtectedAtLeast { get; init; }
     public int? ExpectedInitialHpInvestmentBranchesProtectedAtLeast { get; init; }
     public int? ExpectedInitialPotionCount { get; init; }
+    public bool? ExpectedInitialDeterministicBlockPotionInserted { get; init; }
     public SolverTheftPolicy? ExpectedInitialTheftPolicy { get; init; }
     public int? ExpectedInitialOutstandingStolenResource { get; init; }
     public int? ExpectedInitialPotionHpSavedAtLeast { get; init; }

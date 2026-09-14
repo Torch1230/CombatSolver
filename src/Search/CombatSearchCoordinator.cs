@@ -266,6 +266,11 @@ internal static partial class CombatSearchCoordinator
                 takeoverResult = passTakeover;
                 return passResult;
             }
+            if (passResult.DeterministicBlockPotionInserted)
+            {
+                passSettled = true;
+                return passResult;
+            }
             if (!policy.PotionStrategy.HasForcedDirectives)
             {
                 if (HasReachedAcceptableBattleHpLoss(policy, passResult))

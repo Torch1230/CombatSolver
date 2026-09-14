@@ -100,6 +100,7 @@ internal sealed partial class UnattendedTestRunner
             || _request.ExpectedInitialActionAdmissionRepresentativesProtectedAtLeast.HasValue
             || _request.ExpectedInitialHpInvestmentBranchesProtectedAtLeast.HasValue
             || _request.ExpectedInitialPotionCount.HasValue
+            || _request.ExpectedInitialDeterministicBlockPotionInserted.HasValue
             || _request.ExpectedInitialPotionHpSavedAtLeast.HasValue
             || _request.ExpectedInitialPotionBranchesRejectedAtLeast.HasValue
             || _request.ExpectedInitialTheftPolicy.HasValue
@@ -310,6 +311,19 @@ internal sealed partial class UnattendedTestRunner
         {
             throw new InvalidOperationException(
                 $"首轮路线使用药水 {result.PotionCount} 瓶，预期为 {expectedPotionCount} 瓶。");
+        }
+        if (_request.ExpectedInitialDeterministicBlockPotionInserted is { } expectedInsertion
+            && result.DeterministicBlockPotionInserted != expectedInsertion)
+        {
+            throw new InvalidOperationException(
+                $"首轮路线格挡药直接插入状态为 {result.DeterministicBlockPotionInserted}，" +
+                $"预期为 {expectedInsertion}。");
+        }
+        if (_request.ExpectedInitialDeterministicBlockPotionInserted.HasValue)
+        {
+            _completedChecks.Add(
+                $"InitialDeterministicBlockPotionInserted:" +
+                $"{result.DeterministicBlockPotionInserted}");
         }
         if (_request.ExpectedInitialTheftPolicy is { } expectedTheftPolicy
             && result.TheftPolicy != expectedTheftPolicy)

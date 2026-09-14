@@ -77,6 +77,22 @@ foreach ($file in $searchFiles) {
     }
 }
 
+$blockPotionInsertionPath = Join-Path $searchRoot "CombatBeamSolver.BlockPotionInsertion.cs"
+foreach ($requiredBlockPotionRule in @(
+    'HpLostByTurn',
+    'SolverWeights.PotionMinimumHpSaved',
+    'ReplayInsertedRoute(',
+    'ProjectedDeathSaveUseCount',
+    'expanded_nodes_added=0')) {
+    if (-not (Select-String -LiteralPath $blockPotionInsertionPath -SimpleMatch $requiredBlockPotionRule -Quiet)) {
+        $violations.Add("${blockPotionInsertionPath}: deterministic block-potion route rule is missing '$requiredBlockPotionRule'")
+    }
+}
+$searchCoordinatorPath = Join-Path $searchRoot "CombatSearchCoordinator.cs"
+if (-not (Select-String -LiteralPath $searchCoordinatorPath -SimpleMatch 'passResult.DeterministicBlockPotionInserted' -Quiet)) {
+    $violations.Add("${searchCoordinatorPath}: deterministic block-potion result must settle before supplemental potion audits")
+}
+
 # Cycle planning must infer recurrence and payoff from generic simulated-state deltas. Keeping
 # scenario names out of this policy file prevents a regression to card/power/relic/enemy allowlists.
 $scenarioSpecificCycleModelPattern = '\b(?:Body[\s_.-]*Slam|Lunar[\s_.-]*Blast|Gold[\s_.-]*Axe|Slow[\s_.-]*Power|Hellraiser|Pillage|Bloodletting|Particle[\s_.-]*Wall|Pale[\s_.-]*Blue[\s_.-]*Dot|Flash[\s_.-]*Of[\s_.-]*Steel|Finesse|Speedster|Black[\s_.-]*Hole|Glow|Alignment|Spoils[\s_.-]*Of[\s_.-]*Battle)\b'
@@ -520,6 +536,7 @@ $expectedBeamFiles = @(
     "CombatBeamSolver.EndTurnChoiceReplay.cs",
     "CombatBeamSolver.RoundTransition.cs",
     "CombatBeamSolver.BeamRetentionPolicy.cs",
+    "CombatBeamSolver.BlockPotionInsertion.cs",
     "CombatBeamSolver.CrossTurnPlanning.cs",
     "CombatBeamSolver.CyclePlanning.cs",
     "CombatBeamSolver.CycleRegionRetention.cs",
@@ -596,6 +613,7 @@ $beamStructureChecks = @(
     @{ File = "CombatBeamSolver.BeamRetentionPolicy.cs"; Text = "public List<SearchNode> RankBest(" },
     @{ File = "CombatBeamSolver.BeamRetentionPolicy.cs"; Text = "private sealed class RoutingChoiceNodes(SearchNode first) : List<SearchNode>" },
     @{ File = "CombatBeamSolver.BeamRetentionPolicy.cs"; Text = "public void Clear() => NodesByChoice.Clear();" },
+    @{ File = "CombatBeamSolver.BlockPotionInsertion.cs"; Text = "private BlockPotionInsertion? TryInsertBlockPotion(" },
     @{ File = "CombatBeamSolver.BeamRetentionPolicy.cs"; Text = "routingNodes = new RoutingChoiceNodes(node);" },
     @{ File = "CombatBeamSolver.BeamRetentionPolicy.cs"; Text = "ReturnRoutingChoiceScratch(scratch);" },
     @{ File = "CombatBeamSolver.Transpositions.cs"; Text = "private readonly record struct TranspositionLabel(" },

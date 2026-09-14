@@ -433,6 +433,16 @@ internal sealed partial class CombatBeamSolver
                 ? publishedCandidate.Node
                 : RefreshReleasedFallback(publishedCandidate.Node);
             RouteAnnotations materializedAnnotations = BuildRouteAnnotations(materializedNode);
+            BlockPotionInsertion? blockPotionInsertion = TryInsertBlockPotion(
+                materializedNode,
+                materializedAnnotations,
+                resultScope);
+            if (blockPotionInsertion != null)
+            {
+                materializedNode.Snapshot.ReleaseSimulator();
+                materializedNode = blockPotionInsertion.Node;
+                materializedAnnotations = blockPotionInsertion.Annotations;
+            }
             FinalPlanCandidate selectedCandidate = publishedCandidate with
             {
                 Node = materializedNode,
@@ -441,10 +451,15 @@ internal sealed partial class CombatBeamSolver
                 FutureSold = materializedNode.FutureSoldHp,
                 BattleSold = battleDamage.SoldHpCommitted + materializedNode.FutureSoldHp,
                 PotionCount = materializedNode.PotionCount,
+                Score = blockPotionInsertion == null
+                    ? publishedCandidate.Score
+                    : materializedNode.Score,
             };
             int potionBranchesRejected = ordering.PotionBranchesRejected;
-            int potionHpSaved = ordering.PotionHpSaved;
-            int potionHpRequired = ordering.PotionHpRequired;
+            int potionHpSaved = blockPotionInsertion?.HpSaved ?? ordering.PotionHpSaved;
+            int potionHpRequired = blockPotionInsertion == null
+                ? ordering.PotionHpRequired
+                : SolverWeights.PotionMinimumHpSaved;
             int annotatedFutureSold = materializedAnnotations.SoldHpByTurn.Values.Sum();
             if (annotatedFutureSold != selectedCandidate.FutureSold)
             {
@@ -596,6 +611,7 @@ internal sealed partial class CombatBeamSolver
             SolverResult result = new()
             {
                 ResultScope = resultScope,
+                DeterministicBlockPotionInserted = blockPotionInsertion != null,
                 TotalSearchElapsed = stopwatch.Elapsed,
                 TotalWorkerAllocatedBytes = workerAllocatedBytes,
                 TotalGen0Collections = gen0Collections,

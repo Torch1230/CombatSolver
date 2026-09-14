@@ -1411,6 +1411,7 @@ internal sealed class SolverResult
 {
     public bool WasRestoredFromCache { get; internal set; }
     public SolverResultScope ResultScope { get; internal set; } = SolverResultScope.SearchCompletion;
+    public bool DeterministicBlockPotionInserted { get; internal set; }
     public bool SingleSessionSearch { get; internal set; }
     public TimeSpan TotalSearchElapsed { get; internal set; }
     public long TotalWorkerAllocatedBytes { get; internal set; }
