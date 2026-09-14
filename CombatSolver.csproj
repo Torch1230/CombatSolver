@@ -1,10 +1,17 @@
 <Project Sdk="Godot.NET.Sdk/4.5.1">
   <Import Project="./local.props" Condition="Exists('./local.props')" />
   <Import Project="./.local/presence.props" Condition="Exists('./.local/presence.props')" />
+  <Import Project="./.local/showcase.props" Condition="Exists('./.local/showcase.props')" />
 
   <ItemGroup Condition="'$(PresenceEndpoint)' != ''">
     <AssemblyMetadata Include="PresenceEndpoint" Value="$(PresenceEndpoint)" />
     <AssemblyMetadata Include="PresenceCertificateSha256" Value="$(PresenceCertificateSha256)" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(ShowcaseEndpoint)' != ''">
+    <AssemblyMetadata Include="ShowcaseEndpoint" Value="$(ShowcaseEndpoint)" />
+    <AssemblyMetadata Include="ShowcaseUploadToken" Value="$(ShowcaseUploadToken)" />
+    <AssemblyMetadata Include="ShowcaseCertificateSha256" Value="$(ShowcaseCertificateSha256)" />
   </ItemGroup>
 
   <PropertyGroup>

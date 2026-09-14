@@ -405,6 +405,18 @@ $preCombatApiChecks = @(
         Text = "public static class PreCombatForecastApi"
     },
     @{
+        Path = Join-Path $repositoryRoot "src\Api\CombatShowcaseApi.cs"
+        Text = "public static class CombatShowcaseApi"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Runtime\CombatShowcaseRuntime.cs"
+        Text = "SolverController.AcceptShowcaseRoute"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Runtime\CombatShowcaseCollector.cs"
+        Text = "CombatShowcaseCollector.FlushPendingAsync"
+    },
+    @{
         Path = Join-Path $repositoryRoot "src\Api\PreCombatLiveStateSnapshot.cs"
         Text = "RunManager.Instance.ToSave(null)"
     },

@@ -76,7 +76,7 @@
   "性能录制失败：请勿继续测试": "Performance recording failed: stop the test",
   "性能录制中（状态日志＋调用栈）": "Performance recording active (metrics + stacks)",
   "性能录制待就绪／中断：请稍候": "Performance recording starting / interrupted: please wait",
-  "每 30 秒发送在线状态，并同步本档案的跑局胜负、放弃、求解器参与情况与历史战绩快照。作者后台保留匿名战绩用于胜率和连胜统计；历史成绩与求解器成绩分开。关闭后停止自动上传，最迟 90 秒从在线列表移除。": "Sends online status every 30 seconds and syncs this profile's run results, abandonments, solver participation, and historical statistics. Anonymous results are retained for win-rate and streak statistics. Historical and solver results are separate. Turning this off stops automatic uploads; the online entry expires within 90 seconds.",
+  "每 30 秒发送在线状态，并同步本档案的跑局统计；符合条件的进阶 10 第三幕 Boss 无伤路线会上传到私用录像库。关闭后停止上传、清除待上传录像包，并最迟 90 秒从在线列表移除。": "Sends online presence and run statistics every 30 seconds. Eligible Ascension 10 Act 3 boss routes with no damage are uploaded to the private showcase library. Turning this off stops uploads, removes pending showcase bundles, and removes you from the online list within 90 seconds.",
   "不选": "Skip choice",
   "（药水）": " (Potion)",
   "搜索初始化失败": "Search initialization failed",

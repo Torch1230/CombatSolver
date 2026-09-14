@@ -88,9 +88,13 @@ Entry / turn hooks
 | `src/Runtime/CombatBugReportDescription.cs` | 汇总本场结构化异常、重算和战损信号，提供诊断文字与标签 | 网络字段拼装、搜索决策 |
 | `src/Runtime/CombatBugReportMetadata.cs` | 主线程冻结战斗、角色及已观察怪物的稳定 ID 和显示名称；序列化 report.json v2 的身份、分类及预测战损比较 | 网络请求、搜索策略、后台读取 live 状态 |
 | `src/Runtime/CombatBugReportUploader.cs` | 通过不继承游戏进程代理的专用客户端直连接收服务；校验问题包与文本上限，以 multipart 流式上传并传播取消，限制服务端响应，并以反馈编号和实收字节数确认完整接收 | 问题包内容生成、隐私脱敏、UI 单实例与确认流程 |
+| `src/Runtime/CombatShowcaseCollector.cs` | 在严格合格的首个 Boss 搜索根冻结值材料，完整胜利后生成五文件录像包，并由在线统计同意状态控制待上传队列 | 搜索策略、后台读取 live 状态、监控后台 |
+| `src/Runtime/CombatShowcaseRuntime.cs` | 校验录像协议与文件摘要，从主菜单建立不保存跑局、恢复精确战斗根，并把预计算结果交给 Controller | 远端目录 UI、重新搜索、正式存档与统计写入 |
 | `src/Runtime/SearchCompletionNotifier.cs` | 搜索成功、失败、停止或过期后按设置决定是否通知；Windows 使用原生通知和系统提示音，先核对前台进程并在非 Windows/headless 环境停止 | 搜索生命周期、跨平台伪通知和自定义声音播放 |
 
 `SolverCombatSession` 持有本场路线、续用和重算状态；`SolverSearchSession` 持有 generation、取消、进度和帧观测；`SolverDeploymentSession` 持有部署取消。旧回调只能写回创建它的 search session。
+
+`src/Api/CombatShowcaseApi.cs` 是私用录像 Mod 的公开入口，只暴露协议兼容信息和按本地包路径进入临时对局的异步调用。API 不直接操作 Controller 或 CombatManager；Runtime 完成建局与恢复。录像会话使用既有精确 continuation 续接和部署入口，任何失配都停止会话，禁止调用重算。
 
 `SearchGcPolicy` 将活动搜索期间收到的后台回收请求保存在独立的 deferred 完成链中，所有搜索退出后才提升为实际后台回收。搜索内内存检查点只等待自己能够完成的回收，不能等待以该搜索退出为前提的任务；手动工作集释放继续等待搜索后的回收链。已覆盖的取消及 GC 转换后注入失败路径会协调 CLR 实际模式与内部所有权，并落定对应完成链、释放等待屏障；这些断言不穷举 CLR 转换前失败、OOM 或日志系统异常。搜索账本的存活与运行时 GC 模式互不混用。
 

@@ -25,6 +25,11 @@ namespace CombatSolver;
 
 internal static class CombatBugReportExporter
 {
+    internal sealed record ReplayCheckpointMaterial(
+        byte[] RunState,
+        byte[] ReplayState,
+        byte[] NativeState,
+        string ContinuationState);
     private const string ExportFolderName = "CombatSolver-BugReports";
     private const long MaximumCapturedSaveBytes = 4L * 1024 * 1024;
     private const int MaximumCheckpoints = 6;
@@ -277,6 +282,42 @@ internal static class CombatBugReportExporter
         EnsureSession(state);
         RecordCheckpointCore(state, label, result, replanAudit);
     }
+
+    internal static ReplayCheckpointMaterial CaptureReplayCheckpoint(CombatState state)
+    {
+        if (!NGame.IsMainThread())
+            throw new InvalidOperationException("战斗录像检查点只能从游戏主线程采集。");
+        ForensicReplayStateCapture replay = CaptureReplayState(state);
+        string continuation = ContinuationStamp.CaptureLive(state).StateText;
+        byte[] replayBytes = SerializeSnapshotToUtf8Bytes(new
+        {
+            schemaVersion = 1,
+            capturedAt = DateTimeOffset.Now,
+            restorableScope = "showcase_opening",
+            encounterId = replay.EncounterId,
+            encounterType = replay.EncounterType,
+            replay.RoundNumber,
+            currentSide = replay.CurrentSide,
+            replay.AscensionLevel,
+            replay.CurrentActIndex,
+            replay.ActFloor,
+            replay.TotalFloor,
+            exactContinuationState = continuation,
+            runRng = replay.RunRng,
+            actualPotionsUsedThisCombat = replay.ActualPotionsUsedThisCombat,
+            players = replay.Players,
+            creatures = replay.Creatures,
+            history = replay.History,
+        });
+        return new ReplayCheckpointMaterial(
+            SerializeInMemoryRunSave(CaptureInMemoryRunSave()),
+            replayBytes,
+            SerializeNativeCombatState(CaptureNativeCombatState(state)),
+            continuation);
+    }
+
+    internal static JsonElement CaptureShowcaseObjectState(object value)
+        => JsonSerializer.SerializeToElement(CaptureObjectFields(value), JsonOptions);
 
     public static Task CompleteCombat(string reason, SolverResult? result, string replanAudit)
     {
