@@ -180,6 +180,9 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 | `CombatBeamSolver.EndTurnChoiceReplay.cs` | EndTurn初始回放与首层挂起选择准备；复用必经回放槽位，原序解析嵌套/实体补充，独占返回候选和待命基线 |
 | `CombatBeamSolver.CardChoiceContinuation.cs` | 手动自身选牌检查点的同父/同动作匹配、串行选择链与并行frontier所有权、尝试/捕获/复用/回退计数；不改变预算或候选 |
 | `CombatBeamSolver.PotionChoiceContinuation.cs` | 9种手动药水的公共候选准备、同父同动作检查点、消耗/Use前缀与后置钩子之间的稳定复制；普通Fork、frontier所有权及物理工作计数 |
+| `CombatBeamSolver.ExecutionChoiceContinuation.cs` | 挂起选择层的seed/数据帧所有权、精确父动作与已消费选择前缀匹配、锁内复制、搜索计数及动作最终结算；逐层再次捕获，不改变预算 |
+| `CombatBeamSolver.TurnExecutionContinuation.cs` | 首回合与后续回合共用玩家准备阶段机；保存来源循环、抽牌补偿、提前SideTurnStart、自动牌及共享死亡集合进度 |
+| `CombatBeamSolver.ExecutionChoiceContinuation.Testing.cs` | Search内部合同入口，完整回放基线与生产选择层续跑逐分支对账；不依赖无人测试runner |
 | `CombatBeamSolver.RoundTransition.cs` | 玩家回合开始推进；在抽牌准备完成但尚未Draw或抽牌/历史补偿完成两个稳定点保存同父EndTurn前缀；frontier独占、同父gate复制、生产者排空后释放；不缓存挂起事务或改变候选预算 |
 | `CombatBeamSolver.StandPatJobs.cs` | 对原保路规则必经的 EndTurn 探针批量求值，复用固定 lane、回传标量，缓存和选择仍由 coordinator 原序完成 |
 | `CombatBeamSolver.RetentionJobs.cs` | 剪枝只读索引作业；复用空闲固定 lane，按原索引收集输出，排空后统一记账并传播取消/错误 |
@@ -276,6 +279,13 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 `Prediction/CardChoiceContinuation` 独占暂停 seed/frame/deaths 和 Fork 锁；最初 probe 只读消费 pending spec，随后释放。普通 Fork 拒绝该暂停种子，只有所属检查点能暂时取下 pending request、执行原稳定边界断言并复制。Search 的串行选择链或 `PrimaryChoiceReplayFrontier` 独占检查点直到所有作业排空；同父节点引用、完整原动作匹配，只有 primary Choice 可替换。再次遇到嵌套选择时子作用域全部退出，再从原父完整回放；额外物理 Fork 计入 `CardChoicePrefixFallbacks`，原 transition/choice lease 只扣一次。结果和跨回合续用只保留完成后的普通状态，不保存暂停帧、Task 或闭包。无附魔/污染、空显式选择、单层执行、已知历史、无不透明/事务 StateStore 是当前封闭适用范围，未命中继续原语义；不新增第三方注册能力。
 
 `Prediction/PotionChoiceContinuation` 独占普通稳定seed/deaths/frame及复制锁；`PotionExecutionSupport`提供手动药水唯一准备/完成时序。消费槽位、BeforePotionUsed和Use保存在前缀，选择应用、AfterPotionUsed及后续补偿在每个分支执行。四种生成药水原空选择probe也从前缀执行，保留AfterUse之后读取候选的顺序；其他五种从父状态构造候选。历史生成候选只读共享，选中牌仍由Apply克隆。串行展开及准备作业共用候选入口；frontier排空后释放，嵌套回退仍由原父完整重放。`PotionChoicePrefixForks`记录全部额外准备复制（包括未能保留的前缀），Captures记录成功保留，Reuses包含生成药水的原probe，Fallbacks记录恢复后的额外完整复制；worker合并和原序预算相互独立。
+
+
+嵌套选择由 `CombatPredictionSimulator.ExecutionContinuation` 保存从最内层选择至外层动作的纯数据帧，`Draw/Discard/AutoPlay/CardExecution/CardTailContinuation` 复用普通路径的循环与尾部。`HookMirrors.ExecutionContinuation` 保存已物化监听者和下一序号；`TurnStartPowerSupport/SimulatedCombatState.*ExecutionContinuation` 保存Power、遗物和自动牌进度。每帧包含trace、抽牌深度及显式领域作用域；`SimulatedCombatState.ExecutionScopes` 保存卡牌深度、Power来源和同一个死亡集合的别名，不保留CLR栈、Task或回调。恢复重新进入作用域后按原顺序执行，下一次选牌可再次封存。
+
+捕获必须退出全部CLR作用域，并通过领域事务、StateStore和历史合同。`CombatPredictionHistory.ExecutionContinuation` 要求延迟抽牌/生成条目及活动CardPlay与帧严格配对，未知条目拒绝特化；所有活动模型、候选、历史、trace、CardPlay与进度共享一次Fork context。外层抽牌/自动牌列表可能仍持有已离开所有牌堆的能力牌或复制牌，必须显式Fork这些wrapper，不能假设State.Fork已经登记。普通Fork仍拒绝捕获中、挂起或已准备的执行种子。未知派发未确认数据帧协议时拒绝整个续跑捕获，回到已有完整回放；这不扩大第三方语义支持。
+
+Search在首回合、EndTurn及已知可能嵌套/重复的卡牌回放建立捕获域；`PendingChoiceReplayLayer`独占检查点，frontier排空后Dispose清除全部图引用。匹配精确父节点、完整动作和已消费的选择前缀，只允许追加一个下一选择。`ExecutionChoiceCaptures/Reuses`记录捕获/复制；复用替代原来的一次转移Fork，不是额外前缀复制，不从物理Fork归一化中扣除。原单卡与药水稳定检查点仍保留优先或回退入口；不符合嵌套复制合同的路径继续完整回放，预算边界相同。
 
 
 `src/Engine/InCombat/Simulation/` 负责通用战斗命令时序、伤害、牌堆、历史、RNG、球和 Fork。它不包含单张卡、单个 Power 或具体怪物的搜索策略。历史卡牌 Started/Finished 与 DamageReceived 的卡牌来源使用不可变卡牌快照；当前动作是否开始以精确 trace-frame 身份判定，保留原生 `CardPlay` 身份，不以 Original 卡牌身份合并兄弟分支。`CombatPredictionHistory` 以不可变 prefix segment + 分支本地 mutable tail 保存事件；动作后缀消费者必须使用冻结上界的 `EntriesFrom/EntriesBetween`，不能先遍历完整 prefix 再 `Skip`，否则长线会把一次局部查询放大为随深度增长的重复工作。

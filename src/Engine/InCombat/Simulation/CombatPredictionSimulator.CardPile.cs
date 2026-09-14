@@ -58,46 +58,44 @@ internal sealed partial class CombatPredictionSimulator
             return [];
         }
 
-        var state = State.GetPlayerCombatState(player);
-        int maxHandSize = GetMaxHandSize(player);
         List<PredictedCard> drawnCards = [];
+        ContinueDrawExecution(player, drawCount, fromHandDraw, GetMaxHandSize(player), drawnCards, 0, null, null);
+        return drawnCards;
+    }
 
-        for (var i = 0; i < drawCount; i++)
+    private bool ContinueDrawExecution(Player player, int drawCount, bool fromHandDraw, int maxHandSize,
+        List<PredictedCard> drawnCards, int next, CombatPredictionCardDrawnEntry? pendingEntry,
+        PredictedCard? pendingCard)
+    {
+        var state = State.GetPlayerCombatState(player);
+        if (pendingEntry != null) History.CardDrawResolved(pendingEntry, pendingCard!);
+        for (int index = next; index < drawCount; index++)
         {
-            if (IsOverOrEnding)
-            {
-                break;
-            }
-
-            if (state.Hand.Cards.Count >= maxHandSize)
-            {
-                break;
-            }
-
+            if (IsOverOrEnding || state.Hand.Cards.Count >= maxHandSize) break;
             ShuffleIfNecessary(player);
-
             if (HasPendingChoice)
-                break;
-
-            if (state.DrawPile.IsEmpty || state.Hand.Cards.Count >= maxHandSize)
             {
-                break;
+                AppendExecutionContinuation(new DrawExecutionFrame(player, drawCount, fromHandDraw,
+                    maxHandSize, drawnCards, index, null, null));
+                return false;
             }
-
-            var card = state.DrawPile.Cards[0];
+            if (state.DrawPile.IsEmpty || state.Hand.Cards.Count >= maxHandSize) break;
+            PredictedCard card = state.DrawPile.Cards[0];
             drawnCards.Add(card);
             AddToPile(card, state.Hand);
             var entry = History.CardDrawn(card, fromHandDraw);
             if (State.CombatState is ICombatPredictionCardEventSink eventSink)
                 eventSink.RecordCardDrawn(card, fromHandDraw);
-
             HookMirrors.AfterCardDrawn(this, card, fromHandDraw);
             if (HasPendingChoice)
-                return drawnCards;
+            {
+                AppendExecutionContinuation(new DrawExecutionFrame(player, drawCount, fromHandDraw,
+                    maxHandSize, drawnCards, index + 1, entry, card));
+                return false;
+            }
             History.CardDrawResolved(entry, card);
         }
-
-        return drawnCards;
+        return true;
     }
 
     public int GetMaxHandSize(Player player)

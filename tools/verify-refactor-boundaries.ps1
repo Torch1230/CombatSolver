@@ -528,6 +528,9 @@ $expectedBeamFiles = @(
     "CombatBeamSolver.RoundTransition.cs",
     "CombatBeamSolver.CardChoiceContinuation.cs",
     "CombatBeamSolver.PotionChoiceContinuation.cs",
+    "CombatBeamSolver.ExecutionChoiceContinuation.cs",
+    "CombatBeamSolver.ExecutionChoiceContinuation.Testing.cs",
+    "CombatBeamSolver.TurnExecutionContinuation.cs",
     "CombatBeamSolver.BeamRetentionPolicy.cs",
     "CombatBeamSolver.CrossTurnPlanning.cs",
     "CombatBeamSolver.CyclePlanning.cs",
@@ -632,7 +635,7 @@ $beamStructureChecks = @(
     @{ File = "CombatBeamSolver.AdmittedExpansion.cs"; Text = "_completedActions != Actions!.Count" },
     @{ File = "CombatBeamSolver.AdmittedExpansion.cs"; Text = "_completedPotions != Potions!.Count" },
     @{ File = "CombatBeamSolver.EndTurnChoiceReplay.cs"; Text = "private PreparedEndTurnEvaluation EvaluatePreparedEndTurn(" },
-    @{ File = "CombatBeamSolver.RoundTransition.cs"; Text = "private SearchBoundaryReason CompleteRoundPlayerStart(" },
+    @{ File = "CombatBeamSolver.TurnExecutionContinuation.cs"; Text = "private static SearchBoundaryReason ContinuePlayerStart(" },
     @{ File = "CombatBeamSolver.RoundTransition.cs"; Text = "private sealed class RoundReplayCheckpoint(" },
     @{ File = "CombatBeamSolver.RoundTransition.cs"; Text = "combat.EndActionChoices();" },
     @{ File = "CombatBeamSolver.RoundTransition.cs"; Text = "combat.BeginActionChoices(cursor);" },
@@ -640,7 +643,7 @@ $beamStructureChecks = @(
     @{ File = "CombatBeamSolver.Models.cs"; Text = "public bool HasObservedPostDrawRoundChoice;" },
     @{ File = "CombatBeamSolver.Models.cs"; Text = "public HashSet<string>? ObservedHandDrawShuffleChoiceSources;" },
     @{ File = "CombatBeamSolver.RoundTransition.cs"; Text = "public void CaptureBeforeHandDraw(CombatBeamSolver owner, CombatPredictionSimulator simulator," },
-    @{ File = "CombatBeamSolver.RoundTransition.cs"; Text = "if (checkpoint.HandDrawCount is int drawCount)" },
+    @{ File = "CombatBeamSolver.RoundTransition.cs"; Text = "checkpoint.HandDrawCount.HasValue ? PlayerStartStage.Draw : PlayerStartStage.AfterPlayer" },
     @{ File = "RootCombatCardGenerationPoolSnapshot.cs"; Text = "public bool TryGetEligibleCharacterCards(" },
     @{ File = "CombatBeamSolver.Retention.cs"; Text = "var maximum = BeamRetentionPolicy.GetLongTermResourceMaximum(pool);" },
     @{ File = "CombatBeamSolver.Retention.cs"; Text = "if (maximum.Count == pool.Count)" },
@@ -823,7 +826,7 @@ $rootModelBoundaryChecks = @(
     },
     @{
         Path = Join-Path $repositoryRoot "src\Engine\InCombat\Simulation\CombatPredictionSimulator.CardPile.cs"
-        Text = "int maxHandSize = GetMaxHandSize(player)"
+        Text = "ContinueDrawExecution(player, drawCount, fromHandDraw, GetMaxHandSize(player)"
     },
     @{
         Path = Join-Path $repositoryRoot "src\Engine\InCombat\Simulation\CombatPredictionSimulator.CardPile.cs"
@@ -1355,6 +1358,41 @@ foreach ($rule in @(
 foreach ($forbidden in @('Task<', 'Func<', 'Action<')) {
     if (Select-String -LiteralPath (Join-Path $repositoryRoot 'src/Prediction/PotionChoiceContinuation.cs') -SimpleMatch $forbidden -Quiet) {
         $violations.Add("Potion continuation retained an executable closure: $forbidden")
+    }
+}
+
+# Nested execution saves owned data frames and preserves the ordinary transaction guards.
+foreach ($rule in @(
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs'; Text = 'GuardOrdinaryExecutionContinuationFork();' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.ExecutionContinuation.cs'; Text = 'if (_owner.HasCapturedExecutionContinuation && !_acknowledged)' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.ExecutionContinuation.cs'; Text = 'StateStore.SupportsManualCardChoiceContinuation' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.ExecutionContinuation.cs'; Text = 'DetachPendingExecutionChoice();' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.ExecutionContinuation.cs'; Text = 'CombatPredictionState state = State.Fork(context);' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.ExecutionContinuation.cs'; Text = 'step.Scopes?.Fork(context), step.Frame.Fork(context)' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.ExecutionContinuation.cs'; Text = 'using (_trace.ResumeExecution(step.Trace))' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.DrawContinuation.cs'; Text = 'mapped! : card.Fork(context)' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionHistory.ExecutionContinuation.cs'; Text = 'unresolved.SetEquals(deferred)' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionHistory.ExecutionContinuation.cs'; Text = 'active.SetEquals(activePlays)' },
+    @{ RelativePath = 'src/Search/SimulatedCombatState.ExecutionScopes.cs'; Text = 'ForkExecutionDeaths(Deaths, context);' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.ExecutionChoiceContinuation.cs'; Text = 'tail.ConsumedChoices != prefix.Count' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.ExecutionChoiceContinuation.cs'; Text = 'ReferenceEquals(_parent, candidate)' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.ExecutionChoiceContinuation.cs'; Text = 'lock (_gate)' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.ExecutionChoiceContinuation.cs'; Text = '_simulator = null; _parent = null; _action = null; _prefix = null; _continuation = null;' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.ParallelExpansion.cs'; Text = '_run.ExecutionChoiceReuses += source.ExecutionChoiceReuses;' }
+)) {
+    if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot $rule.RelativePath) -SimpleMatch $rule.Text -Quiet)) {
+        $violations.Add("Missing execution continuation ownership boundary: $($rule.RelativePath): $($rule.Text)")
+    }
+}
+foreach ($relativePath in @(
+    'src/Engine/InCombat/Simulation/CombatPredictionSimulator.ExecutionContinuation.cs',
+    'src/Search/SimulatedCombatState.ExecutionScopes.cs',
+    'src/Search/CombatBeamSolver.ExecutionChoiceContinuation.cs'
+)) {
+    foreach ($forbidden in @('Task<', 'Func<', 'Action<')) {
+        if (Select-String -LiteralPath (Join-Path $repositoryRoot $relativePath) -SimpleMatch $forbidden -Quiet) {
+            $violations.Add("Execution continuation retained an executable closure: $relativePath : $forbidden")
+        }
     }
 }
 

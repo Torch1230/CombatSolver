@@ -1,13 +1,36 @@
 # CombatSolver 测试清单
 
-## 选牌续执行批量实施（2026-09-14，进行中）
+## 选牌续执行批量实施（2026-09-14，未发布）
 
 - `CARD-CONTINUATION-EXPANDED` / `15ed72aac4504a0f8c56133251fe1c2c` Passed：NECROBINDER、41来源82普通/升级分支；80种选择共380候选、2种无选择；完整状态/历史/RNG/身份、兄弟与DOP2、10种代表原生结算。
 - `CARD-CONTINUATION-CONTRACT` / `18085ba4d6b044b58a0aef69bb4605b9` Passed：扩展后的原三牌边界、洗牌及原生合同。
 - `CARD-CONTINUATION-EXPANDED-SEARCH` / `5e70bf69886741e6abdc0dd97bfce87c`，`CARD-CONTINUATION-EXPANDED-INCREMENTAL` / `151a8484b2094687a8e28780453c855b` Passed：SILENT、实际搜索前缀逐分支及完整结果对照、取消/错误排空、严格增量。
 - `POTION-CONTINUATION-CONTRACT` / `bcf7b7f30d5c4b0691c08c6707a3060f` Passed：SILENT、九种药水41个选择、50次生产分支/再次访问、九种原生完整结算；状态/历史/RNG、消耗、BeltBuckle/ReptileTrinket、兄弟修改及DOP2。
 - `POTION-CONTINUATION-SEARCH` / `856b8d5db4604d5fa9bb27e2070d1174` 与 `POTION-CONTINUATION-INCREMENTAL` / `0d002f4702184b2da1e106666d60b131` Passed：旧路径/DOP1/DOP2完整结果，真实嵌套回退、同父并发取消/错误排空、严格增量。
-- 均用两端已有ScenarioId协议、FUZZY_WURM_CRAWLER_WEAK、敌HP999、NoGC关闭、120秒、根合同后停止；实际执行Linux无头。回合/嵌套与最终整场测量仍待完成，详见[阶段记录](performance/choice-continuation-expansion-implementation-20260914.md)。
+- 均用两端已有ScenarioId协议、FUZZY_WURM_CRAWLER_WEAK、敌HP999、NoGC关闭、120秒、根合同后停止；实际执行Linux无头。回合/嵌套、最终完整测量及原生部署见下；详见[阶段记录](performance/choice-continuation-expansion-implementation-20260914.md)。
+
+### 第三阶段与共享尾部回归
+
+以下场景仍使用同一双端ScenarioId协议，SILENT（全41卡合同使用NECROBINDER）、FUZZY_WURM_CRAWLER_WEAK、敌HP999、NoGC关闭、120秒、根合同后停止；原生跨回合额外使用Instant/0秒。
+
+| 场景 | 直接证据及范围 |
+| --- | --- |
+| `DRAW-EXECUTION-CONTINUATION` / `NESTED-DRAW-EXECUTION-CONTINUATION` | `fbdea0b824774494bc02e962669015d9` / `9deb4e09364545fab0195a71ef203273` Passed；部分抽牌、洗牌、再次捕获、全状态/历史/RNG、DOP2及原生 |
+| `TURN-AFTER-EXECUTION-CONTINUATION` / `TURN-NESTED-EXECUTION-CONTINUATION` | `076aece95fa041bfad376621e623cef4` / `74e26c01154f473eaa443b322f08596e` Passed；六来源及消耗/弃牌后的深层抽牌 |
+| `CARD-DECISIONS-EXECUTION-CONTINUATION` | `7e6063ff8bae4fa4af0d6e8d10094c17` Passed；重复子出牌、历史别名与原生。其他Before/Havoc/Cascade/Repeat独立完成项所在请求整体Failed，按[实施记录](performance/choice-continuation-expansion-implementation-20260914.md)的部分请求范围引用 |
+| `EXECUTION-CHOICE-SEARCH-CONTRACT` | `e23c68bf438b429c90a50c00ba435724` Passed；全来源92、Mayhem14、Cascade10、后续回合35分支，全部状态/历史/洗牌/一次transition与父/live隔离 |
+| `EXECUTION-CHOICE-SEARCH` / `EXECUTION-CHOICE-INCREMENTAL` | `e00560d9502d4faaaf1a6ccdbcbd59c1` / `71cd4c23b66e499e9ae05aeb626f81b5` Passed；完整Solve旧路径/DOP1/2、同父取消/异常排空及严格增量 |
+| `EXECUTION-CHOICE-SETUP-SEARCH` / `EXECUTION-CHOICE-SETUP-INCREMENTAL` | `3b5c082e119e4414ae1187f82c45db30` / `fe41c0e260a84ccfa2ec281013b21a4c` Passed；首回合三来源真实Solve及严格增量 |
+| `EXECUTION-CHOICE-SETUP-BUDGET` | `402c6f1cc87444d99332248b15bb892c` Passed；九层压力在两模式均到达相同有限预算边界，不以扩大预算获得完成根 |
+| `CARD-REMOVED-PREFIX-EXECUTION-CONTINUATION` | `3b6ca0a3f7154dc2b99128822c6d9fc6` Passed；Cascade先打出并移除能力牌，再两次选牌；原完整回放/历史/DOP/原生一致，覆盖完整蟹战暴露的非牌堆列表成员 |
+| `HAND-DRAW-SHUFFLE-CHOICE-REPLAY` | `c81dafb9cd84472db5e78a3bbb8f5b1b` Passed；关闭新执行续跑，保留旧稳定前缀的完整状态、DOP/取消/异常验证 |
+| `EXECUTION-CHOICE-ROUND-NATIVE` | `47f1e0e03065438abb271475d31aca5c` Passed；真实EndTurn进入第二回合、连续原生选择、完整StateText一致 |
+| 最终41卡/9药水与各自严格增量回归 | `b368988cf058462d8f52a1391f4d9e51` / `4866f778cb404aadb7b590f05aa4c503` / `e101b6d9dea14560a71c84d7f7a79800` / `22148a231efe482cacadb8dbe965041a` 均Passed |
+| L0 | Release 0警告/错误；Bash/PowerShell结构门禁search_files=101；16项性能比较器检查通过 |
+
+`CHOICE-CONTINUATION-STEP-AUDIT`：`88236e7e4ef748f0bead85422be84c67` Passed，73.689秒；以报告的原蟹战输入改为`mode:Setup`、VeryHigh、DOP2、NoGC关闭、120秒请求运行。内部固定20,000节点、两次主动用药，56,211次执行续接逐步对账完整状态、待选请求/有序候选、历史数量和洗牌；错误接受/拒绝分支均检查，并比较关闭续接的完整搜索结果。它是独立诊断搜索，不等同于协调器的完整三层药水审计，也不计入性能成绩。
+
+最终三场12份正常完整请求均Passed，完整动作/路线和决策质量一致；弃牌/携药轻场景的严格工作量也一致，原蟹战保留工作量差异，按用户要求不继续归因、不标为同工作量提速。全部样本、输入错误和比较结果见[结构化证据](performance/choice-continuation-expansion-implementation-20260914.json)。`CHOICE-EXPANSION-NATIVE-DEPLOY` / `ef6fd35b159a4aee974c826319755371` Passed，60.440秒，39动作原生执行到T1无伤胜利，HP56→56、敌HP0、`UnexpectedReplans:0`；Instant/0秒、120秒上限，使用最终正常Release。
 
 ## 自身弃牌续执行正式接入（2026-09-14，未发布）
 

@@ -43,47 +43,12 @@ internal sealed partial class SimulatedCombatState
             mayhem,
             CardPilePosition.Top);
         if (HasPendingChoice)
+        {
+            simulator.AppendExecutionContinuation(new ScheduledAutoPlayFrame(player, turnNumber,
+                processedEnemyDeaths, mayhemCards, 0));
             return true;
-        for (int index = 0; index < mayhemCards.Count; index++)
-        {
-            PredictedCard card = mayhemCards[index];
-            if (!AutoPlayWithChoice(
-                    simulator,
-                    card,
-                    CanonicalModels.Power<MegaCrit.Sts2.Core.Models.Powers.MayhemPower>().Id.Entry,
-                    $"{card.Preview.Id.Entry}+{card.Preview.CurrentUpgradeLevel}#{index}",
-                    choices,
-                    processedEnemyDeaths))
-            {
-                return true;
-            }
         }
-
-        if (turnNumber > 1)
-        {
-            PredictedCard? previousAttack = GetPreviousTurnAttack(simulator, player);
-            if (previousAttack != null)
-            {
-                foreach (HistoryCourse relic in RelicsOf(player)
-                             .OfType<HistoryCourse>()
-                             .Where(static relic => !relic.IsMelted))
-                {
-                    PredictedCard copy = previousAttack.CreateDupeForPlayer(player);
-                    if (!AutoPlayWithChoice(
-                            simulator,
-                            copy,
-                            relic.Id.Entry,
-                            $"{copy.Preview.Id.Entry}+{copy.Preview.CurrentUpgradeLevel}#0",
-                            choices,
-                            processedEnemyDeaths))
-                    {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        return false;
+        return ContinueScheduledAutoPlays(simulator, player, turnNumber, processedEnemyDeaths, mayhemCards, 0);
     }
 
     public bool TriggerWhisperingEarring(

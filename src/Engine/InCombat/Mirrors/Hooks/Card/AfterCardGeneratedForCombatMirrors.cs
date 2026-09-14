@@ -24,6 +24,7 @@ internal static class AfterCardGeneratedForCombatMirrors
 
     public static void Invoke(AbstractModel listener, AfterCardGeneratedForCombatMirrorContext context)
     {
+        using var dispatch = context.Simulator.BeginExecutionDispatch();
         Registry.Invoke(listener, context);
     }
 

@@ -182,6 +182,8 @@ internal sealed partial class CombatBeamSolver
         public int ForkCount;
         public int RoundReplayPrefixCaptures;
         public int RoundReplayPrefixReuses;
+        public int ExecutionChoiceCaptures;
+        public int ExecutionChoiceReuses;
         public int CardChoicePrefixAttempts;
         public int CardChoicePrefixCaptures;
         public int CardChoicePrefixReuses;

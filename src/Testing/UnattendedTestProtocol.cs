@@ -504,6 +504,8 @@ internal sealed class UnattendedSolverMetrics
     public int SelectedChoiceBranches { get; init; }
     public int RoundReplayPrefixCaptures { get; init; }
     public int RoundReplayPrefixReuses { get; init; }
+    public int ExecutionChoiceCaptures { get; init; }
+    public int ExecutionChoiceReuses { get; init; }
     public int CardChoicePrefixAttempts { get; init; }
     public int CardChoicePrefixCaptures { get; init; }
     public int CardChoicePrefixReuses { get; init; }

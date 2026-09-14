@@ -1,3 +1,6 @@
+using CombatSolver.Engine.Common;
+using CombatSolver.Engine.InCombat.Simulation;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models;
 
 namespace CombatSolver.Engine.InCombat.Mirrors.Cards.OnPlay;
@@ -11,17 +14,27 @@ internal enum CardEffectKind
 }
 
 /// <summary>
-/// A fully-accounted sequence of common card effects. Recipes are accepted only when the
-/// strict IL analyzer proves that every prediction-relevant operation in OnPlay is represented.
+/// An ordered sequence of common command templates owned by the card mirror. Adapter recipes
+/// additionally require the strict analyzer to account for every gameplay operation in OnPlay.
 /// </summary>
 internal sealed class CardEffectRecipe(IReadOnlyList<CardEffectKind> effects)
 {
-    public IReadOnlyList<CardEffectKind> Effects { get; } = effects;
+    public IReadOnlyList<CardEffectKind> Effects { get; } = effects.ToArray();
 
     public void Execute(CardModel card, CardOnPlayMirrorContext context)
     {
-        foreach (CardEffectKind effect in Effects)
+        context.Simulator.AcknowledgeExecutionDispatch();
+        Continue(card, context, 0);
+    }
+
+    private bool Continue(CardModel card, CardOnPlayMirrorContext context, int nextIndex)
+    {
+        for (int index = nextIndex; index < Effects.Count; index++)
         {
+            CardEffectKind effect = Effects[index];
+            using var dispatch = context.Simulator.BeginExecutionDispatch();
+            if (effect is CardEffectKind.OwnerDrawOne or CardEffectKind.OwnerDrawCards)
+                context.Simulator.AcknowledgeExecutionDispatch();
             switch (effect)
             {
                 case CardEffectKind.Attack:
@@ -40,7 +53,21 @@ internal sealed class CardEffectRecipe(IReadOnlyList<CardEffectKind> effects)
                     throw new ArgumentOutOfRangeException(nameof(effect), effect, null);
             }
             if (context.Simulator.HasPendingChoice)
-                return;
+            {
+                context.Simulator.AppendExecutionContinuation(new EffectExecutionFrame(this, context.Card, context.CardPlay, index + 1));
+                return false;
+            }
         }
+        return true;
+    }
+
+    private sealed record EffectExecutionFrame(CardEffectRecipe Recipe, PredictedCard Card, CardPlay Play, int NextIndex)
+        : ICombatPredictionExecutionFrame
+    {
+        public void PrepareFork(PredictionForkContext context) => CombatPredictionSimulator.PrepareExecutionCardPlay(Card, Play, context);
+        public ICombatPredictionExecutionFrame Fork(PredictionForkContext context)
+            => this with { Card = context.RequireRemap(Card), Play = context.RequireRemap(Play) };
+        public bool Resume(CombatPredictionSimulator simulator)
+            => Recipe.Continue(Card.MutablePreview, new CardOnPlayMirrorContext { Simulator = simulator, Card = Card, CardPlay = Play }, NextIndex);
     }
 }

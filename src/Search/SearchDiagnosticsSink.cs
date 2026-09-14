@@ -50,6 +50,7 @@ internal enum SearchPathObservationStage
     EndTurnChoiceReplay,
     CardChoiceContinuationReplay,
     PotionChoiceContinuationReplay,
+    ExecutionChoiceContinuationReplay,
 }
 
 internal readonly record struct SearchPathPolicyLabel(

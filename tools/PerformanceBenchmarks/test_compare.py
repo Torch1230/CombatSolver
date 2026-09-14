@@ -119,6 +119,18 @@ class ComparisonTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "physical Forks"):
             compare(self.a, self.b)
 
+    def test_execution_resume_replaces_one_original_transition_fork(self):
+        self.change("details.json", lambda x: x.update(result=x["result"].replace(
+            "forks=12", "forks=12 execution_choice_captures=3 execution_choice_reuses=8")))
+        self.change("result.json", lambda x: x["solverMetrics"].update(executionChoiceCaptures=3, executionChoiceReuses=8))
+        self.assertTrue(compare(self.a, self.b)["oracleEqual"])
+
+    def test_execution_reuse_count_cannot_hide_an_extra_copy(self):
+        self.change("details.json", lambda x: x.update(result=x["result"].replace(
+            "forks=12", "forks=13 execution_choice_reuses=1")))
+        with self.assertRaisesRegex(ValueError, "physical Forks"):
+            compare(self.a, self.b)
+
 
 if __name__ == "__main__":
     unittest.main()

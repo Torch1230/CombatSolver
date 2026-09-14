@@ -1422,6 +1422,7 @@ internal sealed class SolverResult
     public int MainThreadFramesOver100Milliseconds { get; internal set; }
     public SearchPhaseMetric ForkMetric { get; internal set; }
     public SearchPhaseMetric ActionMetric { get; internal set; }
+    public SearchPhaseMetric ExecutionChoiceResumeMetric { get; internal set; }
     public SearchPhaseMetric CardExecutionMetric { get; internal set; }
     public SearchPhaseMetric CardPostProcessingMetric { get; internal set; }
     public SearchPhaseMetric PotionExecutionMetric { get; internal set; }
@@ -1470,6 +1471,8 @@ internal sealed class SolverResult
     public required int ForkCount { get; init; }
     public int RoundReplayPrefixCaptures { get; init; }
     public int RoundReplayPrefixReuses { get; init; }
+    public int ExecutionChoiceCaptures { get; init; }
+    public int ExecutionChoiceReuses { get; init; }
     public int CardChoicePrefixAttempts { get; init; }
     public int CardChoicePrefixCaptures { get; init; }
     public int CardChoicePrefixReuses { get; init; }

@@ -134,6 +134,7 @@ internal sealed partial class CombatBeamSolver
         public void Dispose()
         {
             EndTurn?.Checkpoint?.Dispose();
+            EndTurn?.Layer.Dispose();
             CardCheckpoint?.Dispose();
             PotionCheckpoint?.Dispose();
             for (int index = 0; index < _snapshots.Length; index++)
@@ -151,7 +152,8 @@ internal sealed partial class CombatBeamSolver
         bool pruneInvalidBranch = true,
         RoundReplayCheckpoint? roundCheckpoint = null,
         CardChoiceReplayCheckpoint? cardCheckpoint = null,
-        PotionChoiceReplayCheckpoint? potionCheckpoint = null)
+        PotionChoiceReplayCheckpoint? potionCheckpoint = null,
+        ExecutionChoiceReplayCheckpoint? executionCheckpoint = null)
     {
         if (_parallelActionReplayForkGate != null)
             throw new InvalidOperationException("不能嵌套首层选择回放的 Fork 上下文。");
@@ -159,6 +161,7 @@ internal sealed partial class CombatBeamSolver
         _roundReplayCheckpoint = roundCheckpoint;
         _cardChoiceReplayCheckpoint = cardCheckpoint;
         _potionChoiceReplayCheckpoint = potionCheckpoint;
+        _executionChoiceReplayCheckpoint = executionCheckpoint;
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -178,6 +181,9 @@ internal sealed partial class CombatBeamSolver
                 if (potionCheckpoint != null)
                     ObserveSearchPath(parent, SearchPathObservationStage.PotionChoiceContinuationReplay,
                         "mandatory_potion_continuation_replayed");
+                if (executionCheckpoint != null)
+                    ObserveSearchPath(parent, SearchPathObservationStage.ExecutionChoiceContinuationReplay,
+                        "mandatory_execution_continuation_replayed");
                 return snapshot;
             }
             catch
@@ -192,6 +198,7 @@ internal sealed partial class CombatBeamSolver
             _roundReplayCheckpoint = null;
             _cardChoiceReplayCheckpoint = null;
             _potionChoiceReplayCheckpoint = null;
+            _executionChoiceReplayCheckpoint = null;
         }
     }
 

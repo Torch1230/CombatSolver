@@ -412,6 +412,8 @@ internal sealed partial class CombatBeamSolver
         worker._run.PathDiagnosticsSolverId = _run.PathDiagnosticsSolverId;
         worker._disableCardChoiceContinuationsForTesting = _disableCardChoiceContinuationsForTesting;
         worker._disablePotionChoiceContinuationsForTesting = _disablePotionChoiceContinuationsForTesting;
+        worker._disableExecutionChoiceContinuationsForTesting = _disableExecutionChoiceContinuationsForTesting;
+        worker._verifyChoiceContinuationStepsForTesting = _verifyChoiceContinuationStepsForTesting;
         return worker;
     }
 
@@ -971,6 +973,8 @@ internal sealed partial class CombatBeamSolver
         _run.ForkCount += source.ForkCount;
         _run.RoundReplayPrefixCaptures += source.RoundReplayPrefixCaptures;
         _run.RoundReplayPrefixReuses += source.RoundReplayPrefixReuses;
+        _run.ExecutionChoiceCaptures += source.ExecutionChoiceCaptures;
+        _run.ExecutionChoiceReuses += source.ExecutionChoiceReuses;
         _run.CardChoicePrefixAttempts += source.CardChoicePrefixAttempts;
         _run.CardChoicePrefixCaptures += source.CardChoicePrefixCaptures;
         _run.CardChoicePrefixReuses += source.CardChoicePrefixReuses;
@@ -1014,6 +1018,8 @@ internal sealed partial class CombatBeamSolver
         source.ForkCount = 0;
         source.RoundReplayPrefixCaptures = 0;
         source.RoundReplayPrefixReuses = 0;
+        source.ExecutionChoiceCaptures = 0;
+        source.ExecutionChoiceReuses = 0;
         source.CardChoicePrefixAttempts = 0;
         source.CardChoicePrefixCaptures = 0;
         source.CardChoicePrefixReuses = 0;

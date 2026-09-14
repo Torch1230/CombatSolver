@@ -38,11 +38,13 @@ internal static class AfterCardPlayedMirrors
 
     public static void Invoke(AbstractModel listener, AfterCardPlayedMirrorContext context)
     {
+        using var dispatch = context.Simulator.BeginExecutionDispatch();
         Registry.Invoke(listener, context);
     }
 
     public static void InvokeLate(AbstractModel listener, AfterCardPlayedMirrorContext context)
     {
+        using var dispatch = context.Simulator.BeginExecutionDispatch();
         LateRegistry.Invoke(listener, context);
     }
 

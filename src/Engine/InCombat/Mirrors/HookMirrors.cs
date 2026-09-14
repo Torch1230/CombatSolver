@@ -250,6 +250,12 @@ internal static partial class HookMirrors
         PredictedCard card,
         bool fromHandDraw)
     {
+        if (simulator.IsCapturingExecutionContinuation)
+        {
+            ResumeAfterDrawExecution(simulator, card, card.Preview, fromHandDraw, 0,
+                CaptureExecutionHookListeners(simulator, MirroredHookMask.AfterCardDrawnEarly), 0, false);
+            return;
+        }
         var context = new AfterCardDrawnMirrorContext
         {
             Simulator = simulator,
@@ -281,6 +287,12 @@ internal static partial class HookMirrors
         PredictedCard card,
         bool causedByEthereal)
     {
+        if (simulator.IsCapturingExecutionContinuation)
+        {
+            ResumeCardEventExecution(simulator, card, CardEventExecutionKind.Exhaust, causedByEthereal, null,
+                CaptureExecutionHookListeners(simulator, MirroredHookMask.AfterCardExhausted), 0);
+            return;
+        }
         var context = new AfterCardExhaustedMirrorContext
         {
             Simulator = simulator,
@@ -320,6 +332,12 @@ internal static partial class HookMirrors
     // Mirrors Hook.AfterShuffle.
     public static void AfterShuffle(CombatPredictionSimulator simulator, Player player)
     {
+        if (simulator.IsCapturingExecutionContinuation)
+        {
+            ResumeAfterShuffleExecution(simulator, player,
+                CaptureExecutionHookListeners(simulator, MirroredHookMask.AfterShuffle), 0);
+            return;
+        }
         var context = new AfterShuffleMirrorContext { Simulator = simulator, Player = player };
 
         foreach (var listener in IterateCombatHookListeners(simulator, MirroredHookMask.AfterShuffle))
@@ -335,6 +353,12 @@ internal static partial class HookMirrors
     // Mirrors Hook.AfterCardDiscarded.
     public static void AfterCardDiscarded(CombatPredictionSimulator simulator, PredictedCard card)
     {
+        if (simulator.IsCapturingExecutionContinuation)
+        {
+            ResumeCardEventExecution(simulator, card, CardEventExecutionKind.Discard, false, null,
+                CaptureExecutionHookListeners(simulator, MirroredHookMask.AfterCardDiscarded), 0);
+            return;
+        }
         var context = new AfterCardDiscardedMirrorContext { Simulator = simulator, Card = card };
 
         foreach (var listener in IterateCombatHookListeners(simulator, MirroredHookMask.AfterCardDiscarded))
@@ -351,6 +375,12 @@ internal static partial class HookMirrors
         PredictedCard card,
         Player? creator)
     {
+        if (simulator.IsCapturingExecutionContinuation)
+        {
+            ResumeCardEventExecution(simulator, card, CardEventExecutionKind.Generated, false, creator,
+                CaptureExecutionHookListeners(simulator, MirroredHookMask.AfterCardGeneratedForCombat), 0);
+            return;
+        }
         var context = new AfterCardGeneratedForCombatMirrorContext
         {
             Simulator = simulator,
@@ -625,6 +655,11 @@ internal static partial class HookMirrors
         PredictedCard card,
         CardPlay cardPlay)
     {
+        if (simulator.IsCapturingExecutionContinuation)
+        {
+            ResumeAfterPlayExecution(simulator, card, cardPlay, 0, CaptureUnfilteredExecutionHookListeners(simulator), 0);
+            return;
+        }
         var context = new AfterCardPlayedMirrorContext
         {
             Simulator = simulator,

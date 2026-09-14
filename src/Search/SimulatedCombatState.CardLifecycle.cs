@@ -417,30 +417,11 @@ internal sealed partial class SimulatedCombatState
                 .ToArray()
             : [];
         if (TurnStartPowerSupport.TriggerBeforeHandDraw(simulator, this, player, choices))
-            return true;
-        if (PrepareRelicsBeforeHandDraw(simulator, player, choices))
-            return true;
-
-        if (_returnToHandNextTurn != null)
         {
-            foreach (PredictedCard card in returningCards)
-            {
-                SimCardPile? pile = card.GetPile(simulator.State);
-                if (card.Preview.HasBeenRemovedFromState)
-                {
-                    _returnToHandNextTurn.Remove(card);
-                    continue;
-                }
-                if (pile?.Type != PileType.Hand)
-                {
-                    simulator.AddToPile(card, PileType.Hand);
-                    if (HasPendingChoice)
-                        return true;
-                }
-                _returnToHandNextTurn.Remove(card);
-            }
+            simulator.AppendExecutionContinuation(new BeforeHandDrawFrame(player, returningCards, BeforeHandDrawStage.Relics));
+            return true;
         }
-        return false;
+        return ContinueBeforeHandDraw(simulator, player, choices, returningCards, BeforeHandDrawStage.Relics);
     }
 
     public bool PrepareBeforeHandDraw(CombatPredictionSimulator simulator, Player player)
@@ -491,45 +472,9 @@ internal sealed partial class SimulatedCombatState
             .ExhaustPile.Cards
             .Where(card => card.Preview is Bombardment)
             .ToArray();
-        for (int index = 0; index < bombardments.Length; index++)
-        {
-            PredictedCard card = bombardments[index];
-            if (!AutoPlayWithChoice(
-                    simulator,
-                    card,
-                    card.Preview.Id.Entry,
-                    $"{card.Preview.Id.Entry}+{card.Preview.CurrentUpgradeLevel}#{index}",
-                    choices,
-                    processedEnemyDeaths))
-            {
-                return true;
-            }
-        }
-        if (TriggerScheduledAutoPlays(
-                simulator,
-                player,
-                turnNumber,
-                choices,
-                processedEnemyDeaths))
-            return true;
-        if (EnchantmentLifecycleSupport.TriggerAutoPrePlay(
-                simulator,
-                this,
-                player,
-                turnNumber,
-                choices,
-                processedEnemyDeaths))
-        {
-            return true;
-        }
-        bool completed = TriggerWhisperingEarring(
-            simulator,
-            player,
-            turnNumber,
-            processedEnemyDeaths);
-        if (completed)
-            simulator.State.GetPlayerCombatState(player).Phase = PlayerTurnPhase.Play;
-        return !completed;
+        simulator.AcknowledgeExecutionDispatch();
+        return ContinueAutoPrePlay(simulator, player, turnNumber, processedEnemyDeaths,
+            bombardments, AutoPrePlayStage.Bombardments);
     }
 
     public bool TriggerAutoPrePlayEarly(

@@ -129,10 +129,26 @@ internal sealed partial class SimulatedCombatState
         CombatPredictionSimulator simulator,
         Player player,
         TurnStartChoiceCursor choices)
+        => ContinueRelicsAfterPlayerTurnStart(simulator, player, choices, RelicsOf(player).ToArray(), GetPlayerTurnNumber(player), 0);
+
+    private bool ContinueRelicsAfterPlayerTurnStart(CombatPredictionSimulator simulator, Player player,
+        TurnStartChoiceCursor choices, IReadOnlyList<RelicModel> relics, int turn, int nextIndex, bool applyMittensStrength = false)
     {
-        int turn = GetPlayerTurnNumber(player);
-        foreach (RelicModel relic in RelicsOf(player).Where(static relic => !relic.IsMelted))
+        for (int relicIndex = nextIndex; relicIndex < relics.Count; relicIndex++)
         {
+            RelicModel relic = relics[relicIndex];
+            if (applyMittensStrength)
+            {
+                Apply<StrengthPower>(player.Creature, relic.DynamicVars.Strength.IntValue, player.Creature);
+                applyMittensStrength = false;
+                if (simulator.HasPendingChoice)
+                {
+                    simulator.RejectExecutionContinuation();
+                    return true;
+                }
+                continue;
+            }
+            if (relic.IsMelted) continue;
             switch (relic)
             {
                 case Bellows when turn <= 1:
@@ -173,13 +189,17 @@ internal sealed partial class SimulatedCombatState
                             options,
                             "AFTER_PLAYER_TURN_START"))
                     {
+                        simulator.AppendExecutionContinuation(new AfterPlayerTurnStartRelicFrame(player, relics, turn, relicIndex + 1));
                         return true;
                     }
                     break;
                 }
                 case EmotionChip value:
                     if (!TriggerEmotionChip(simulator, value))
+                    {
+                        simulator.RejectExecutionContinuation();
                         return true;
+                    }
                     break;
                 case FestivePopper when turn <= 1:
                     using (simulator.PushDamageSource(
@@ -201,6 +221,7 @@ internal sealed partial class SimulatedCombatState
                             relic.Id.Entry,
                             "AFTER_PLAYER_TURN_START"))
                     {
+                        simulator.AppendExecutionContinuation(new AfterPlayerTurnStartRelicFrame(player, relics, turn, relicIndex + 1));
                         return true;
                     }
                     break;
@@ -244,6 +265,7 @@ internal sealed partial class SimulatedCombatState
                             PlanChoiceEffect.Exhaust,
                             1))
                     {
+                        simulator.AppendExecutionContinuation(new AfterPlayerTurnStartRelicFrame(player, relics, turn, relicIndex, ApplyMittensStrength: true));
                         return true;
                     }
                     Apply<StrengthPower>(
@@ -272,7 +294,10 @@ internal sealed partial class SimulatedCombatState
                 }
             }
             if (simulator.HasPendingChoice)
+            {
+                simulator.RejectExecutionContinuation();
                 return true;
+            }
         }
         return false;
     }

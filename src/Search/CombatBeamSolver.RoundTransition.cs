@@ -79,122 +79,14 @@ internal sealed partial class CombatBeamSolver
         TurnStartRelicSupport.TriggerAfterEnergyResetLate(simulator, simulatedCombat, _player);
         if (simulatedCombat.HasPendingChoice)
             return SearchBoundaryReason.PendingChoice;
-        int beforeHandDrawShuffleEvents = simulator.ShuffleEventCount;
-        bool sideTurnStartTriggeredEarly = false;
-        using (roundChoices.BeforeNextTake(() =>
-               {
-                   sideTurnStartTriggeredEarly = true;
-                   return simulatedCombat.TriggerSideTurnStart(
-                       simulator,
-                       CombatSide.Player,
-                       [_player.Creature],
-                       decrementPlating: simulatedCombat.GetPlayerTurnNumber(_player) != 1,
-                       takingExtraTurn);
-               }))
-        {
-            if (simulatedCombat.PrepareBeforeHandDraw(simulator, _player, roundChoices))
-                return SearchBoundaryReason.PendingChoice;
-            shufflesCrossed += simulator.ShuffleEventCount - beforeHandDrawShuffleEvents;
-            int drawCount = PersistentPowerSupport.ConsumeModifiedHandDraw(
-                simulatedCombat,
-                _player,
-                CombatManager.baseHandDrawCount);
-            int effectiveDraw = Math.Min(
-                drawCount,
-                simulatedCombat.GetMaxHandSize(_player) - playerState.Hand.Cards.Count);
-            bool willShuffle = effectiveDraw > playerState.DrawPile.Cards.Count
-                && !playerState.DiscardPile.IsEmpty;
-            capture?.CaptureBeforeHandDraw(this, simulator, simulatedCombat, roundChoices,
-                processedEnemyDeaths, shufflesCrossed, takingExtraTurn,
-                sideTurnStartTriggeredEarly, drawCount, willShuffle);
-            if (!DrawPreparedPlayerHand(simulator, simulatedCombat, drawCount,
-                    willShuffle, ref shufflesCrossed))
-                return SearchBoundaryReason.PendingChoice;
-        }
-        capture?.Capture(this, simulator, simulatedCombat, roundChoices, processedEnemyDeaths,
-            shufflesCrossed, takingExtraTurn, sideTurnStartTriggeredEarly);
-        return CompleteRoundPlayerStart(simulator, simulatedCombat, roundIndex,
-            processedEnemyDeaths, roundChoices, takingExtraTurn, sideTurnStartTriggeredEarly);
+        var progress = new PlayerStartProgress(_player, _startTurnNumber + roundIndex + 1,
+            rootSetup: false, takingExtraTurn, processedEnemyDeaths, shufflesCrossed, simulator.ShuffleEventCount);
+        SearchBoundaryReason result = ContinuePlayerStart(simulator, simulatedCombat, progress,
+            PlayerStartStage.BeforeHand, this, capture, _run.Performance);
+        shufflesCrossed = progress.ShufflesCrossed;
+        return result;
     }
 
-    private bool DrawPreparedPlayerHand(
-        CombatPredictionSimulator simulator, SimulatedCombatState combat,
-        int drawCount, bool willShuffle, ref int shufflesCrossed)
-    {
-        int historyEntryStart = simulator.History.Entries.Count;
-        using (_run.Performance.Measure(SearchMetricPhase.RoundDraw))
-            simulator.Draw(_player, drawCount, fromHandDraw: true);
-        if (willShuffle)
-            shufflesCrossed++;
-        if (combat.HasPendingChoice)
-            return false;
-        TriggeredPowerSupport.CompensateHistorySince(simulator, combat, historyEntryStart);
-        return !combat.HasPendingChoice;
-    }
-
-    private SearchBoundaryReason CompleteRoundPlayerStart(
-        CombatPredictionSimulator simulator,
-        SimulatedCombatState simulatedCombat,
-        int roundIndex,
-        ISet<uint> processedEnemyDeaths,
-        TurnStartChoiceCursor roundChoices,
-        bool takingExtraTurn,
-        bool sideTurnStartTriggeredEarly)
-    {
-        using (sideTurnStartTriggeredEarly ? null : roundChoices.BeforeNextTake(() =>
-               {
-                   sideTurnStartTriggeredEarly = true;
-                   return simulatedCombat.TriggerSideTurnStart(
-                       simulator, CombatSide.Player, [_player.Creature],
-                       decrementPlating: simulatedCombat.GetPlayerTurnNumber(_player) != 1,
-                       takingExtraTurn);
-               }))
-        {
-            if (simulatedCombat.TriggerAfterPlayerTurnStart(
-                    simulator,
-                    _player.Creature,
-                    roundChoices))
-                return SearchBoundaryReason.PendingChoice;
-            if (!sideTurnStartTriggeredEarly)
-            {
-                if (!simulatedCombat.TriggerSideTurnStart(
-                        simulator,
-                        CombatSide.Player,
-                        [_player.Creature],
-                        decrementPlating: simulatedCombat.GetPlayerTurnNumber(_player) != 1,
-                        takingExtraTurn))
-                {
-                    return SearchBoundaryReason.PendingChoice;
-                }
-            }
-        }
-        if (!CorePowerSupport.ApplyEnemyDeathPowers(
-                simulator,
-                simulatedCombat,
-                simulatedCombat.KnownEnemies,
-                processedEnemyDeaths))
-        {
-            return SearchBoundaryReason.PendingChoice;
-        }
-        EnchantmentLifecycleSupport.TriggerAfterTurnStartOrbs(simulator, _player);
-        if (simulatedCombat.TriggerAutoPrePlayEarly(
-                simulator,
-                _player,
-                _startTurnNumber + roundIndex + 1,
-                roundChoices,
-                processedEnemyDeaths))
-        {
-            return SearchBoundaryReason.PendingChoice;
-        }
-        roundChoices.AssertConsumed();
-        simulatedCombat.NormalizeAeonglassWithers(simulator);
-        simulatedCombat.NormalizeCardAfflictions(simulator);
-        IReadOnlyList<ForecastMove> nextMoves = simulatedCombat.CurrentMonsterMoves();
-        simulatedCombat.SetPredictedEnemyIntents(
-            nextMoves.Where(move => move.AttackHits.Count > 0).Select(move => move.Owner));
-        simulator.CheckWinCondition(simulatedCombat.GetPlayerTurnNumber(_player));
-        return SearchBoundaryReason.None;
-    }
     private RoundReplayCheckpoint? _roundReplayCheckpoint;
 
     internal int VerifyRoundReplayCheckpointForTesting(
@@ -417,7 +309,7 @@ internal sealed partial class CombatBeamSolver
                 owner._run.ForkCount++;
                 owner._run.RoundReplayPrefixCaptures++;
                 using var measure = owner._run.Performance.Measure(SearchMetricPhase.Fork);
-                var fork = simulator.Fork();
+                var fork = simulator.ForkStableExecutionPrefix();
                 _checkpoint = new(parent, fork, ((ForkableSet<uint>)deaths).Fork(),
                     shufflesCrossed, takingExtraTurn, sideTurnStartTriggeredEarly, handDrawCount);
             }
@@ -451,25 +343,18 @@ internal sealed partial class CombatBeamSolver
         try
         {
             using var measure = _run.Performance.Measure(SearchMetricPhase.RoundPlayerStart);
-            bool sideTurnStartTriggeredEarly = checkpoint.SideTurnStartTriggeredEarly;
-            if (checkpoint.HandDrawCount is int drawCount)
+            var progress = new PlayerStartProgress(_player, _startTurnNumber + roundIndex + 1,
+                rootSetup: false, checkpoint.TakingExtraTurn, deaths, shufflesCrossed, simulator.ShuffleEventCount)
             {
-                using (sideTurnStartTriggeredEarly ? null : cursor.BeforeNextTake(() =>
-                       {
-                           sideTurnStartTriggeredEarly = true;
-                           return combat.TriggerSideTurnStart(simulator, CombatSide.Player,
-                               [_player.Creature],
-                               decrementPlating: combat.GetPlayerTurnNumber(_player) != 1,
-                               checkpoint.TakingExtraTurn);
-                       }))
-                {
-                    if (!DrawPreparedPlayerHand(simulator, combat, drawCount,
-                            willShuffle: true, ref shufflesCrossed))
-                        return SearchBoundaryReason.PendingChoice;
-                }
-            }
-            return CompleteRoundPlayerStart(simulator, combat, roundIndex, deaths, cursor,
-                checkpoint.TakingExtraTurn, sideTurnStartTriggeredEarly);
+                SideStarted = checkpoint.SideTurnStartTriggeredEarly,
+                DrawCount = checkpoint.HandDrawCount ?? 0,
+                WillShuffle = checkpoint.HandDrawCount.HasValue,
+            };
+            SearchBoundaryReason result = ContinuePlayerStart(simulator, combat, progress,
+                checkpoint.HandDrawCount.HasValue ? PlayerStartStage.Draw : PlayerStartStage.AfterPlayer,
+                metrics: _run.Performance);
+            shufflesCrossed = progress.ShufflesCrossed;
+            return result;
         }
         finally
         {

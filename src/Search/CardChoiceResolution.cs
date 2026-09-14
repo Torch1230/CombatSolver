@@ -18,6 +18,7 @@ internal static partial class CardChoiceSupport
         PlanCardChoice choice,
         ISet<uint>? processedEnemyDeaths = null)
     {
+        simulator.AcknowledgeExecutionDispatch();
         SimPlayerCombatState owner = simulator.State.GetPlayerCombatState(playedCard.Preview.Owner);
         List<PredictedCard> selected;
         if (choice.Effect == PlanChoiceEffect.ModDefined)
@@ -51,12 +52,7 @@ internal static partial class CardChoiceSupport
                 simulator.Discard(selected);
                 break;
             case PlanChoiceEffect.Exhaust:
-                foreach (PredictedCard card in selected)
-                {
-                    simulator.Exhaust(card);
-                    if (simulator.HasPendingChoice)
-                        return false;
-                }
+                TurnStartChoiceSupport.ContinueExhaustSelection(simulator, selected, 0);
                 break;
             case PlanChoiceEffect.Upgrade:
                 foreach (PredictedCard card in selected)
@@ -64,11 +60,17 @@ internal static partial class CardChoiceSupport
                 break;
             case PlanChoiceEffect.Transform:
                 if (!TransformSelectedCards(simulator, playedCard.Preview, selected))
+                {
+                    simulator.RejectExecutionContinuation();
                     return false;
+                }
                 break;
             case PlanChoiceEffect.Duplicate:
                 if (!DuplicateSelectedCard(simulator, playedCard.Preview, selected))
+                {
+                    simulator.RejectExecutionContinuation();
                     return false;
+                }
                 break;
             case PlanChoiceEffect.Modify:
                 ModifySelectedCard(playedCard.Preview, selected);
@@ -89,19 +91,14 @@ internal static partial class CardChoiceSupport
                     card.MutablePreview.AddKeyword(CardKeyword.Retain);
                 break;
             case PlanChoiceEffect.AutoPlayRepeated:
-                if (!AutoPlayRepeated(
-                    simulator,
-                    combat,
-                    playedCard.Preview,
-                    selected,
-                    processedEnemyDeaths ?? new HashSet<uint>()))
-                {
-                    return false;
-                }
+                AutoPlayRepeated(simulator, combat, playedCard, selected, processedEnemyDeaths ?? new HashSet<uint>());
                 break;
             case PlanChoiceEffect.GenerateToHand:
                 if (!AddGeneratedSelectionToHand(simulator, playedCard.Preview, selected))
+                {
+                    simulator.RejectExecutionContinuation();
                     return false;
+                }
                 break;
             case PlanChoiceEffect.ModDefined:
                 if (!CardChoiceMirrors.TryApply(
@@ -114,7 +111,10 @@ internal static partial class CardChoiceSupport
                         + "但没有登记方为它登记结算。");
                 }
                 if (!modDefinedCompleted)
+                {
+                    simulator.RejectExecutionContinuation();
                     return false;
+                }
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(choice));
@@ -125,7 +125,10 @@ internal static partial class CardChoiceSupport
         // continuing the outer card's post-choice effects. Search replays the whole action from its
         // parent with the additional planned choice, then reaches this boundary again.
         if (simulator.HasPendingChoice)
+        {
+            simulator.AppendExecutionContinuation(new PostSelectionExecutionFrame(playedCard));
             return false;
+        }
         return ApplyPostChoiceEffects(simulator, combat, playedCard);
     }
 
@@ -255,30 +258,11 @@ internal static partial class CardChoiceSupport
         return !simulator.HasPendingChoice;
     }
 
-    private static bool AutoPlayRepeated(
-        CombatPredictionSimulator simulator,
-        SimulatedCombatState combat,
-        CardModel source,
-        IReadOnlyList<PredictedCard> selected,
-        ISet<uint> processedEnemyDeaths)
+    private static bool AutoPlayRepeated(CombatPredictionSimulator simulator, SimulatedCombatState combat,
+        PredictedCard source, IReadOnlyList<PredictedCard> selected, ISet<uint> deaths)
     {
-        if (source is not DecisionsDecisions || selected.Count == 0)
-            return true;
-        for (int index = 0; index < source.DynamicVars.Repeat.IntValue; index++)
-        {
-            bool played = CardExecutionSupport.AutoPlay(
-                simulator,
-                combat,
-                selected[0],
-                target: null,
-                processedEnemyDeaths,
-                nestedChoiceSourceId: source.Id.Entry);
-            if (simulator.HasPendingChoice)
-                return false;
-            if (!played)
-                break;
-        }
-        return true;
+        if (source.Preview is not DecisionsDecisions || selected.Count == 0) return true;
+        return ContinueRepeatedSelection(simulator, combat, source, selected[0], deaths, 0, null);
     }
 
     private static bool AddGeneratedSelectionToHand(
@@ -354,7 +338,10 @@ internal static partial class CardChoiceSupport
                     simulator.AddToPile(playedCard, PileType.Play);
                 simulator.Draw(source.Owner, source.DynamicVars.Cards.IntValue);
                 if (simulator.HasPendingChoice)
+                {
+                    if (sourceAlreadyInDiscard) simulator.AppendExecutionContinuation(new RestoreBurningPactPileFrame(playedCard));
                     return false;
+                }
                 if (sourceAlreadyInDiscard && playedCard.GetPile(simulator.State)?.Type == PileType.Play)
                     simulator.AddToPile(playedCard, PileType.Discard);
                 return !simulator.HasPendingChoice;

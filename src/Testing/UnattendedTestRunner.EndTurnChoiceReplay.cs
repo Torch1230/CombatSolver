@@ -40,7 +40,8 @@ internal sealed partial class UnattendedTestRunner
         SolverSearchProfile profile = capturedPolicy.Profile with { BeamWidth = 24, MaxExpandedNodes = 200 };
         await Task.Run(() => new CombatBeamSolver(root, names, damage, capturedPolicy,
             CancellationToken.None, searchProfile: profile,
-            potionPolicyOverride: SolverPotionPolicy.Disabled).VerifyRoundReplayCheckpointForTesting(adaptive, handDrawShuffle));
+            potionPolicyOverride: SolverPotionPolicy.Disabled)
+            { DisableExecutionChoiceContinuationsForTesting = true }.VerifyRoundReplayCheckpointForTesting(adaptive, handDrawShuffle));
         SolverResult? parallelResult = null;
         foreach (int mode in new[] { 1, 2, 0 })
         {
@@ -89,7 +90,8 @@ internal sealed partial class UnattendedTestRunner
             {
                 SolverResult result = await Task.Run(() => new CombatBeamSolver(root, names, damage,
                     policy, cancellation.Token, searchProfile: profile,
-                    potionPolicyOverride: SolverPotionPolicy.Disabled).Solve());
+                    potionPolicyOverride: SolverPotionPolicy.Disabled)
+                    { DisableExecutionChoiceContinuationsForTesting = true }.Solve());
                 if (mode != 0) throw new InvalidOperationException($"EndTurn选择回放的在途失败未传播：mode={mode} claimed={claimed} "
                     + SolverDiagnostics.DescribeResult(result));
                 parallelResult = result;
@@ -103,7 +105,8 @@ internal sealed partial class UnattendedTestRunner
         }
         SolverResult serial = await Task.Run(() => new CombatBeamSolver(root, names, damage,
             capturedPolicy with { MaxDegreeOfParallelism = 1 }, CancellationToken.None,
-            searchProfile: profile, potionPolicyOverride: SolverPotionPolicy.Disabled).Solve());
+            searchProfile: profile, potionPolicyOverride: SolverPotionPolicy.Disabled)
+            { DisableExecutionChoiceContinuationsForTesting = true }.Solve());
         AssertEquivalentSearchResults(serial, parallelResult!, "EndTurn choice replay DOP1/DOP2");
         if (parallelResult!.RoundReplayPrefixCaptures <= 0 || parallelResult.RoundReplayPrefixReuses <= 0)
             throw new InvalidOperationException("EndTurn choice fixture did not exercise round prefix reuse.");

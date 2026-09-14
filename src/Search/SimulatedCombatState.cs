@@ -1153,7 +1153,10 @@ internal sealed partial class SimulatedCombatState
         Player player = owner.Player
             ?? throw new InvalidOperationException("玩家回合开始钩子的持有者没有 Player。");
         if (TurnStartPowerSupport.TriggerAfterPlayerTurnStart(simulator, this, player, choices))
+        {
+            simulator.AppendExecutionContinuation(new AfterPlayerTurnStartFrame(player));
             return true;
+        }
         if (TurnStartRelicSupport.TriggerAfterPlayerTurnStart(simulator, this, player, choices))
             return true;
         return false;

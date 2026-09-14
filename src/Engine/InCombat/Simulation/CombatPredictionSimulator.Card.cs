@@ -67,7 +67,10 @@ internal sealed partial class CombatPredictionSimulator
             eventSink.RecordCardDiscarded(card.Preview.Owner.Creature);
         HookMirrors.AfterCardDiscarded(this, card);
         if (HasPendingChoice)
+        {
+            if (isSly) AppendExecutionContinuation(new DiscardSlyExecutionFrame(card));
             return;
+        }
         if (isSly)
             AutoPlay(card, type: AutoPlayType.SlyDiscard, nestedChoiceSourceId: card.Preview.Id.Entry);
     }
@@ -87,38 +90,7 @@ internal sealed partial class CombatPredictionSimulator
             return;
         }
 
-        List<PredictedCard> slyCards = [];
-
-        foreach (var card in cardsToDiscard)
-        {
-            if (card.Preview.IsSlyThisTurn)
-            {
-                slyCards.Add(card);
-            }
-
-            AddToPile(card, PileType.Discard);
-            if (State.CombatState is ICombatPredictionCardEventSink eventSink)
-                eventSink.RecordCardDiscarded(card.Preview.Owner.Creature);
-            HookMirrors.AfterCardDiscarded(this, card);
-            if (HasPendingChoice)
-                return;
-        }
-
-        if (cardsToDraw > 0)
-        {
-            Draw(cardsToDiscard[0].Preview.Owner, cardsToDraw);
-            if (HasPendingChoice)
-                return;
-        }
-
-        foreach (var slyCard in slyCards)
-        {
-            AutoPlay(slyCard, type: AutoPlayType.SlyDiscard, nestedChoiceSourceId: slyCard.Preview.Id.Entry);
-            if (HasPendingChoice)
-            {
-                break;
-            }
-        }
+        ContinueDiscardAndDrawExecution(cardsToDiscard, cardsToDraw, [], DiscardExecutionStage.Discard, 0);
     }
 
     // Mirrors CardCmd.Exhaust.
@@ -160,6 +132,8 @@ internal sealed partial class CombatPredictionSimulator
             return false;
         }
         OnPlayWrapper(card, target, isAutoPlay: false, resources, out frame);
+        if (HasPendingChoice && History.HasCardPlayStartedSince(historyEntryStart, frame))
+            AppendExecutionContinuation(new FinishCardExecutionFrame());
         if (History.HasCardPlayStartedSince(historyEntryStart, frame)
             && !HasPendingChoice
             && State.CombatState is ICombatPredictionCardExecutionSink sink)
@@ -323,14 +297,20 @@ internal sealed partial class CombatPredictionSimulator
             resultLocation,
             out var resultLocationModifiers);
         if (HasPendingChoice)
+        {
+            RejectExecutionContinuation();
             return;
+        }
         HookMirrors.AfterModifyingCardPlayResultLocation(
             this,
             card,
             resultLocation,
             resultLocationModifiers);
         if (HasPendingChoice)
+        {
+            RejectExecutionContinuation();
             return;
+        }
 
         var playCount = card.GeneratePlayCount(this, target);
         var ownerCreature = State.GetCreature(originalOwner.Creature);
@@ -339,233 +319,17 @@ internal sealed partial class CombatPredictionSimulator
             return;
         }
 
-        for (var i = 0; i < playCount; i++)
-        {
-            if (IsOverOrEnding)
-            {
-                break;
-            }
-
-            previewCard.CurrentPlayIndex = i;
-            int ownerBlockBeforePlay = ownerCreature.Block;
-            int playHistoryEntryStart = History.Entries.Count;
-
-            var cardPlay = new CardPlay
-            {
-                Card = previewCard,
-                Player = originalOwner,
-                Target = target,
-                ResultPile = resultLocation.pileType,
-                Resources = resources,
-                IsAutoPlay = isAutoPlay,
-                PlayIndex = i,
-                PlayCount = playCount
-            };
-
-            HookMirrors.BeforeCardPlayed(this, card, cardPlay);
-            if (HasPendingChoice)
-            {
-                HookMirrors.AbortCardPlayed(this, cardPlay);
-                return;
-            }
-            SynchronizePowerAmountPredictionStates();
-            History.CardPlayStarted(card, cardPlay);
-            if (State.CombatState is ICombatPredictionCardExecutionSink startedSink)
-                startedSink.RecordCardPlayStarted(card, cardPlay);
-
-            ICombatPredictionCardExecutionSink? effectSink =
-                State.CombatState as ICombatPredictionCardExecutionSink;
-            decimal cardBlockGained;
-            using (effectSink?.BeginCardPowerApplication(card))
-            {
-                CardOnPlayMirrors.Invoke(this, card, cardPlay);
-                if (HasPendingChoice)
-                {
-                    cardBlockGained = 0m;
-                }
-                else
-                {
-                    cardBlockGained = GetBlockGained(cardPlay);
-                    effectSink?.ApplyCardPlayEffects(
-                        this,
-                        card,
-                        cardPlay,
-                        target,
-                        ownerBlockBeforePlay,
-                        cardBlockGained,
-                        playHistoryEntryStart);
-                }
-            }
-
-            // OnPlay can suspend on a triggered choice before the card's own selector opens.
-            if (State.CombatState is ICombatPredictionPendingChoiceState { HasPendingChoice: true })
-            {
-                HookMirrors.AbortCardPlayed(this, cardPlay);
-                return;
-            }
-
-            if (!isAutoPlay
-                && State.CombatState is ICombatPredictionManualCardChoiceSink choiceSink
-                && !choiceSink.ResolveManualCardChoice(this, card))
-            {
-                if (TryCaptureManualCardChoice(card, target, cardPlay, resultLocation, ownerBlockBeforePlay))
-                    return;
-                HookMirrors.AbortCardPlayed(this, cardPlay);
-                return;
-            }
-
-            // Vanilla awaits an auto-played card's own selection inside OnPlay, so the selected card
-            // reaches its pile before this card moves to its result pile.
-            if (isAutoPlay
-                && nestedChoiceSourceId != null
-                && !ResolveNestedAutoPlayChoice(
-                    card,
-                    nestedChoiceSourceId,
-                    nestedChoiceContextId))
-            {
-                HookMirrors.AbortCardPlayed(this, cardPlay);
-                return;
-            }
-
-            if (!CompleteManualCardPlayTail(card, target, cardPlay, ownerBlockBeforePlay))
-                return;
-        }
-
-        CompleteManualCardResultTail(card, originalOwner, resultLocation);
+        ContinueCardPlayExecution(card, target, isAutoPlay, resources, resultLocation, playCount,
+            nestedChoiceSourceId, nestedChoiceContextId, 0);
     }
 
     private bool CompleteManualCardPlayTail(PredictedCard card, Creature? target, CardPlay cardPlay,
         int ownerBlockBeforePlay)
-    {
-        var previewCard = card.MutablePreview;
-        var ownerCreature = State.GetCreature(cardPlay.Player.Creature);
-        if (ownerCreature.IsDead)
-        {
-            HookMirrors.AbortCardPlayed(this, cardPlay);
-            return false;
-        }
-
-        if (previewCard.Enchantment is { } enchantment)
-        {
-            EnchantmentOnPlayMirrors.Invoke(this, card, cardPlay, enchantment);
-
-            if (HasPendingChoice)
-            {
-                HookMirrors.AbortCardPlayed(this, cardPlay);
-                return false;
-            }
-
-            if (ownerCreature.IsDead)
-            {
-                HookMirrors.AbortCardPlayed(this, cardPlay);
-                return false;
-            }
-        }
-
-        if (previewCard.Affliction is { } affliction)
-        {
-            AfflictionOnPlayMirrors.Invoke(this, card, target, affliction);
-
-            if (HasPendingChoice)
-            {
-                HookMirrors.AbortCardPlayed(this, cardPlay);
-                return false;
-            }
-
-            if (ownerCreature.IsDead)
-            {
-                HookMirrors.AbortCardPlayed(this, cardPlay);
-                return false;
-            }
-        }
-
-        int completionHistoryEntryStart = History.Entries.Count;
-        History.CardPlayFinished(
-            card,
-            cardPlay,
-            card.HasKeyword(State, CardKeyword.Ethereal));
-        HookMirrors.AfterCardPlayed(this, card, cardPlay);
-
-        // An AfterCardPlayed listener can auto-play another card whose own selection suspends.
-        // This CardPlay has already recorded its finished history, so do not abort it; its
-        // after-hook dispatch remains suspended before later listeners and lifecycle effects.
-        if (HasPendingChoice)
-        {
-            return false;
-        }
-
-        if (State.CombatState is ICombatPredictionCardExecutionSink completionSink)
-        {
-            completionSink.CompleteCardPlayEffects(
-                this,
-                card,
-                ownerBlockBeforePlay,
-                completionHistoryEntryStart);
-            if (HasPendingChoice)
-                return false;
-        }
-
-        _blockGainedByCardPlay.Remove(cardPlay);
-
-        if (ownerCreature.IsDead)
-        {
-            return false;
-        }
-        return true;
-    }
+        => ContinueCardPlayTailExecution(card, target, cardPlay, ownerBlockBeforePlay, CardPlayTailStage.Enchantment, 0);
 
     private void CompleteManualCardResultTail(PredictedCard card,
         MegaCrit.Sts2.Core.Entities.Players.Player originalOwner, CardLocation resultLocation)
-    {
-        var previewCard = card.MutablePreview;
-        if (originalOwner != resultLocation.player && resultLocation.pileType != PileType.None)
-        {
-            GiveToAnotherPlayer(
-                card,
-                originalOwner,
-                resultLocation.player,
-                resultLocation.pileType,
-                resultLocation.position);
-            if (HasPendingChoice)
-                return;
-        }
-
-        if (card.GetPile(State)?.Type is PileType.Play)
-        {
-            switch (resultLocation.pileType)
-            {
-                case PileType.None:
-                    RemoveFromCombat(card);
-                    break;
-                case PileType.Exhaust:
-                    Exhaust(card);
-                    break;
-                default:
-                    AddToPile(card, resultLocation.pileType, resultLocation.position);
-                    break;
-            }
-        }
-
-        // Result-pile hooks (notably exhaust) may suspend on a nested choice. The
-        // remaining hand/cost/cache cleanup belongs after that awaited hook.
-        if (HasPendingChoice)
-            return;
-
-        if (State.CombatState is ICombatPredictionCardEventSink handSink)
-        {
-            handSink.AfterHandEmptied(this, originalOwner);
-            if (HasPendingChoice)
-                return;
-        }
-
-        previewCard.EnergyCost.AfterCardPlayedCleanup();
-        previewCard._temporaryStarCosts.RemoveAll(cost => cost.ClearsWhenCardIsPlayed);
-        card.InvalidateCaches();
-
-        previewCard.CurrentTarget = null;
-        previewCard.CurrentPlayIndex = 0;
-        SynchronizePowerAmountPredictionStates();
-    }
+        => ContinueCardResultExecution(card, originalOwner, resultLocation, CardResultStage.Transfer);
 
     // Mirrors CardModel.Afflict<T>.
     public T? Afflict<T>(PredictedCard card, decimal amount) where T : AfflictionModel

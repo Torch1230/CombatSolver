@@ -43,11 +43,13 @@ internal static class AfterCardDrawnMirrors
 
     public static void InvokeEarly(AbstractModel listener, AfterCardDrawnMirrorContext context)
     {
+        using var dispatch = context.Simulator.BeginExecutionDispatch();
         EarlyRegistry.Invoke(listener, context);
     }
 
     public static void Invoke(AbstractModel listener, AfterCardDrawnMirrorContext context)
     {
+        using var dispatch = context.Simulator.BeginExecutionDispatch();
         Registry.Invoke(listener, context);
     }
 
@@ -109,6 +111,7 @@ internal static class AfterCardDrawnMirrors
         {
             context.Simulator.AutoPlay(context.Card, nestedChoiceSourceId: power.Id.Entry);
         }
+        context.Simulator.AcknowledgeExecutionDispatch();
     }
 
     private static void HandleConfusedPower(ConfusedPower power, AfterCardDrawnMirrorContext context)
@@ -140,6 +143,7 @@ internal static class AfterCardDrawnMirrors
         {
             context.Simulator.Draw(player, power.Amount);
         }
+        context.Simulator.AcknowledgeExecutionDispatch();
     }
 
     private static void HandlePagestormPower(PagestormPower power, AfterCardDrawnMirrorContext context)
@@ -150,6 +154,7 @@ internal static class AfterCardDrawnMirrors
         {
             context.Simulator.Draw(player, power.Amount);
         }
+        context.Simulator.AcknowledgeExecutionDispatch();
     }
 
     private static void HandleChainsOfBindingPower(ChainsOfBindingPower power, AfterCardDrawnMirrorContext context)

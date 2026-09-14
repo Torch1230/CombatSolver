@@ -57,6 +57,8 @@ internal sealed partial class UnattendedTestRunner
                 ChoiceReplayAttempts = result.ChoiceReplayAttempts,
                 RoundReplayPrefixCaptures = result.RoundReplayPrefixCaptures,
                 RoundReplayPrefixReuses = result.RoundReplayPrefixReuses,
+                ExecutionChoiceCaptures = result.ExecutionChoiceCaptures,
+                ExecutionChoiceReuses = result.ExecutionChoiceReuses,
                 CardChoicePrefixAttempts = result.CardChoicePrefixAttempts,
                 CardChoicePrefixCaptures = result.CardChoicePrefixCaptures,
                 CardChoicePrefixReuses = result.CardChoicePrefixReuses,

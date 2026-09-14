@@ -257,6 +257,48 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertHpTargetStopAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "CHOICE-CONTINUATION-STEP-AUDIT")
+            {
+                await runner.AssertChoiceContinuationStepAuditAsync(combatState);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "EXECUTION-CHOICE-SEARCH" or "EXECUTION-CHOICE-INCREMENTAL" or "EXECUTION-CHOICE-SETUP-SEARCH" or "EXECUTION-CHOICE-SETUP-INCREMENTAL" or "EXECUTION-CHOICE-SETUP-BUDGET")
+            {
+                await runner.AssertExecutionChoiceSolveAsync(combatState, player,
+                    request.ScenarioId.EndsWith("INCREMENTAL", StringComparison.Ordinal),
+                    request.ScenarioId.Contains("SETUP", StringComparison.Ordinal),
+                    request.ScenarioId.EndsWith("BUDGET", StringComparison.Ordinal));
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "EXECUTION-CHOICE-SEARCH-CONTRACT" or "EXECUTION-CHOICE-ROUND-CONTRACT" or "EXECUTION-CHOICE-ROUND-NATIVE")
+            {
+                await runner.AssertExecutionChoiceSearchAsync(combatState, player,
+                    request.ScenarioId == "EXECUTION-CHOICE-SEARCH-CONTRACT" ? ["Sources", "Mayhem", "Cascade", "Round"] : ["Round"],
+                    nativeRound: request.ScenarioId == "EXECUTION-CHOICE-ROUND-NATIVE");
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "CARD-EXECUTION-CONTINUATION" or "CARD-REPEAT-EXECUTION-CONTINUATION" or "CARD-DECISIONS-EXECUTION-CONTINUATION" or "CARD-REMOVED-PREFIX-EXECUTION-CONTINUATION")
+            {
+                await runner.RunCardExecutionContinuationContractAsync(combatState, player,
+                    request.ScenarioId == "CARD-REMOVED-PREFIX-EXECUTION-CONTINUATION" ? ["RemovedPrefix"]
+                    : request.ScenarioId == "CARD-DECISIONS-EXECUTION-CONTINUATION" ? ["Decisions"]
+                    : request.ScenarioId == "CARD-REPEAT-EXECUTION-CONTINUATION" ? ["Repeat", "Decisions"]
+                    : ["Havoc", "Cascade", "DrawPrefix", "Repeat", "Decisions"]);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "TURN-EXECUTION-CONTINUATION" or "TURN-AFTER-EXECUTION-CONTINUATION" or "TURN-NESTED-EXECUTION-CONTINUATION")
+            {
+                await runner.RunTurnExecutionContinuationContractAsync(combatState, player,
+                    request.ScenarioId == "TURN-NESTED-EXECUTION-CONTINUATION" ? ["ExhaustNested", "GamblingNested"]
+                    : request.ScenarioId == "TURN-AFTER-EXECUTION-CONTINUATION" ? ["After"] : ["Before", "BeforeShuffle", "After"]);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "DRAW-EXECUTION-CONTINUATION" or "NESTED-DRAW-EXECUTION-CONTINUATION")
+            {
+                await runner.RunDrawExecutionContinuationContractAsync(combatState, player,
+                    nested: request.ScenarioId.StartsWith("NESTED-", StringComparison.Ordinal));
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "POTION-CONTINUATION-CONTRACT")
             {
                 await runner.RunPotionContinuationContractAsync(combatState, player);

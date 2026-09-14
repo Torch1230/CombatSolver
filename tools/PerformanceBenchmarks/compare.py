@@ -21,7 +21,7 @@ deferred_round_choice_finite_pending_fallbacks parallel_round_choice_waves
 parallel_round_choice_work_items""".split())
 PHYSICAL_FORKS = {"forks", "round_prefix_captures", "round_prefix_reuses", "card_prefix_attempts", "card_prefix_captures",
                   "card_prefix_reuses", "card_prefix_fallbacks", "potion_prefix_forks", "potion_prefix_captures",
-                  "potion_prefix_reuses", "potion_prefix_fallbacks"}
+                  "potion_prefix_reuses", "potion_prefix_fallbacks", "execution_choice_captures", "execution_choice_reuses"}
 METRIC_RUNTIME = set("""gcLifecycle elapsedMilliseconds totalElapsedMilliseconds
 workerAllocatedBytes totalWorkerAllocatedBytes totalGen0Collections totalGen1Collections
 totalGen2Collections totalGcPauseMilliseconds maxGcPauseMilliseconds
@@ -35,7 +35,8 @@ deferredRoundChoiceFinitePendingFallbacks parallelRoundChoiceReplayWaves
 parallelRoundChoiceReplayWorkItems""".split())
 METRIC_PHYSICAL = {"roundReplayPrefixCaptures", "roundReplayPrefixReuses", "cardChoicePrefixAttempts",
                    "cardChoicePrefixCaptures", "cardChoicePrefixReuses", "cardChoicePrefixFallbacks",
-                   "potionChoicePrefixForks", "potionChoicePrefixCaptures", "potionChoicePrefixReuses", "potionChoicePrefixFallbacks"}
+                   "potionChoicePrefixForks", "potionChoicePrefixCaptures", "potionChoicePrefixReuses", "potionChoicePrefixFallbacks",
+                   "executionChoiceCaptures", "executionChoiceReuses"}
 
 
 def read(path):
