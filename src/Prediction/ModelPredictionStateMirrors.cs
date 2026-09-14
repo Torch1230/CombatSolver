@@ -155,6 +155,7 @@ internal static class ModelPredictionStateMirrors
         if (Registry.Count == 0)
             return;
         ModelPredictionStateWriter writer = new(new StateFingerprintBuilder(), text);
+        writer.BindCardReferences(combat, null);
         foreach (Player player in combat.Players)
         {
             int slot = 0;
@@ -172,6 +173,7 @@ internal static class ModelPredictionStateMirrors
         if (Registry.Count == 0)
             return;
         ModelPredictionStateWriter writer = new(fingerprint, text);
+        writer.BindCardReferences(combat, simulator);
         for (int playerIndex = 0; playerIndex < combat.Players.Count; playerIndex++)
         {
             Player player = combat.Players[playerIndex];

@@ -5,6 +5,11 @@ namespace MegaCrit.Sts2.Core.Models
     internal abstract class AbstractModel;
     internal class RelicModel : AbstractModel;
     internal class ModifierModel : AbstractModel;
+    internal class CardModel(string id = "SAME_CARD") : AbstractModel
+    {
+        public string Id = id;
+        public int Upgrade;
+    }
 }
 
 namespace MegaCrit.Sts2.Core.Entities.Players
@@ -13,7 +18,17 @@ namespace MegaCrit.Sts2.Core.Entities.Players
     {
         public ulong NetId => netId;
         public List<Models.RelicModel> Relics { get; } = [];
+        public PlayerCombatState PlayerCombatState { get; } = new();
     }
+    internal sealed class PlayerCombatState
+    {
+        public Pile Hand { get; } = new();
+        public Pile DrawPile { get; } = new();
+        public Pile DiscardPile { get; } = new();
+        public Pile ExhaustPile { get; } = new();
+        public Pile PlayPile { get; } = new();
+    }
+    internal sealed class Pile { public List<Models.CardModel> Cards { get; } = []; }
 }
 
 namespace MegaCrit.Sts2.Core.Combat
@@ -43,11 +58,30 @@ namespace CombatSolver.Engine.InCombat.Simulation
     internal sealed class CombatPredictionSimulator(Common.PredictionStateStore? store = null)
     {
         public Common.PredictionStateStore StateStore { get; } = store ?? new();
+        public CombatPredictionState State { get; } = new();
+    }
+    internal sealed class CombatPredictionState
+    {
+        public readonly Dictionary<MegaCrit.Sts2.Core.Entities.Players.Player, SimPlayerCombatState> Players = [];
+        public SimPlayerCombatState GetPlayerCombatState(MegaCrit.Sts2.Core.Entities.Players.Player player) => Players[player];
+    }
+    internal sealed class SimPlayerCombatState
+    {
+        public List<Common.SimCardPile> AllPiles { get; } = [new(), new(), new(), new(), new()];
+        public IEnumerable<Common.PredictedCard> AllCards => AllPiles.SelectMany(pile => pile.Cards);
     }
 }
 
 namespace CombatSolver.Engine.Common
 {
+    internal sealed class PredictedCard(MegaCrit.Sts2.Core.Models.CardModel original,
+        MegaCrit.Sts2.Core.Models.CardModel? preview = null)
+    {
+        public MegaCrit.Sts2.Core.Models.CardModel Original => original;
+        public MegaCrit.Sts2.Core.Models.CardModel Preview => preview ?? original;
+        public bool References(object source) => ReferenceEquals(source, Original) || ReferenceEquals(source, Preview);
+    }
+    internal sealed class SimCardPile { public List<PredictedCard> Cards { get; } = []; }
     internal interface IPredictionStateForkable
     {
         object Fork(PredictionForkContext context);

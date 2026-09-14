@@ -9,6 +9,8 @@
   <ItemGroup>
     <Compile Include="../../src/Prediction/ModelPredictionStateMirrors.cs" Link="ModelPredictionStateMirrors.cs" />
     <Compile Include="../../src/Prediction/ModelPredictionStateWriter.cs" Link="ModelPredictionStateWriter.cs" />
+    <Compile Include="../../src/Prediction/ModelPredictionStateWriter.CardReferences.cs" Link="ModelPredictionStateWriter.CardReferences.cs" />
+    <Compile Include="../../src/Prediction/PredictionCardReferences.cs" Link="PredictionCardReferences.cs" />
     <Compile Include="../../src/Engine/Common/PredictionStateStore.cs" Link="PredictionStateStore.cs" />
     <Compile Include="../../src/Search/StateFingerprint.cs" Link="StateFingerprint.cs" />
   </ItemGroup>

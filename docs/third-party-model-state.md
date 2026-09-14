@@ -7,6 +7,18 @@
 这是开发中的接口。与现有内部镜像入口一样，外部适配程序集需要 publicizer；没有新增稳定的公开 SDK。
 状态登记不授予 Hook 支持，不修改 Harmony 补丁审计或 ModHelper subscriber 门禁。
 
+## 卡牌引用辅助接口
+
+- 根捕获用 `PredictionCardReferences.RequireCard(simulator.State.GetPlayerCombatState(owner), liveCard)`，按 Original／当前 Preview 的对象身份查找；缺失或多匹配明确失败。不要按卡牌 ID 或升级等级回退，也不要保存旧 COW Preview 作为长期句柄。
+- 状态保存 `PredictedCard`。Fork 用 `PredictionCardReferences.Remap(references, context)` 复制列表并逐个 `RequireRemap`；null 列表、null 元素、重复引用和顺序均保留。它复制这一层列表，不承诺任意对象图或列表容器之间的别名关系。
+- live writer 用 `AddCard(name, CardModel?)` / `AddCards(name, IReadOnlyList<CardModel?>?)`；predicted writer 用对应 `PredictedCard` 重载。两侧不能混用。单个 null 需要显式类型以选择重载。
+- 默认有序。只有结算确实无序时才传 `unordered: true`；规范化仍保留重复次数。每次观察按玩家 NetId、手／抽／弃／消耗／打出牌堆和堆内位置编码引用关系，不使用对象 hash、同名序号或新的全局 ID。
+- 只支持当前五个战斗牌堆内的引用。已经移除、悬浮、永久牌组、其他分支及无法映射的引用明确失败；适配者应在正确生命周期清除失效引用，不能将其改成 null 来掩盖缺失语义。
+
+位置是当前状态的关系标识，会随移动而改变；与牌堆状态一起参与去重和 continuation，对两张同名牌的引用也可区分。第一次写非 null 引用才建立位置索引，同一次完整观察的所有模型共用一张；复杂度为 O(战斗牌数 + 引用数)，无序列表额外 O(k log k) 及一个临时数组。仅写标量、空列表或 null 不建立索引。不缓存跨观察位置，不逐引用扫描全牌表。回调必须只读且同步，不得修改牌堆或复制并长期持有 writer。
+
+可编译的中性遗物／Modifier 示例见 `tools/ModelPredictionStateChecks/CardReferenceChecks.cs`：同一状态从 live 卡牌列表捕获预测引用，Fork 重映射，两个 writer 分别描述各自一侧。该工具替换游戏身份与模拟器外壳；真实模拟器／COW 断言位于 `MODEL-STATE-INTEGRATION`，本项尚未运行游戏场景。
+
 ## 登记与使用
 
 两种入口分别约束模型类型：
