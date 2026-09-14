@@ -4,6 +4,8 @@
 
 按版本倒序列出已有玩家更新日志，包括历史草案。是否正式发布以对应 Git 标签和发布记录为准；未发布改动见 [开发笔记](../DEVELOPMENT_NOTES.md)。发布 ZIP 存放在仓库根目录的 `releases/`，此处只保存文档。
 
+当前草案：[下一补丁](NEXT-RELEASE_NOTES.md)
+
 | 版本系列 | 更新日志 |
 |---|---|
 | 0.38 | [0.38.6](0.38.6-RELEASE_NOTES.md) · [0.38.5](0.38.5-RELEASE_NOTES.md) · [0.38.4](0.38.4-RELEASE_NOTES.md) · [0.38.3](0.38.3-RELEASE_NOTES.md) · [0.38.2](0.38.2-RELEASE_NOTES.md) · [0.38.1](0.38.1-RELEASE_NOTES.md) · [0.38.0](0.38.0-RELEASE_NOTES.md) |
