@@ -111,6 +111,10 @@ test('applied filters, explicit sample gate, source switching, scoped lookup and
     const offlineIdentity=`○ 离线 · ${players[1].sessionId}`;
     assert.ok((await page.locator('#run-rows').textContent()).includes(offlineIdentity));
     assert.ok(!(await page.locator('#run-rows').textContent()).includes('离线 · 离线玩家'));
+    await page.locator('[name=playerName]').fill('玩家 1');
+    await page.locator('#apply-filters').click();await page.waitForFunction(()=>!requests.has('runs'));
+    assert.equal(f.traffic.filter(u=>u.pathname==='/api/run-statistics').at(-1).searchParams.get('playerName'),'玩家 1');
+    assert.ok((await page.locator('#active-filters').textContent()).includes('玩家昵称：玩家 1'));
     await page.locator('[name=runs_min]').fill('10');assert.equal(await page.locator('#dirty-note').isVisible(),true);
     const before=f.traffic.filter(u=>u.pathname==='/api/run-statistics').length;
     await page.evaluate(()=>{document.activeElement.blur();attempts.set('runs',0);tick();});

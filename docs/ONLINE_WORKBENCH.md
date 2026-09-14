@@ -12,7 +12,7 @@ Steam GetPublishedFileDetails 的 subscriptions 是当前订阅数，区别于 l
 
 在线列表区分当前状态与最近完整计算结果，长昵称和战斗名截断，完整值在“详情”中可查看、选择复制。列表按稳定安装/档案 ID 更新既有行，避免整表 replaceChildren；数值零、未知和暂无样本分别展示。战绩表显示放弃包含在负场内，胜率同时显示样本量。
 
-战绩昵称只来自当前在线心跳，不持久保存。玩家离线后，战绩列表使用完整安装 ID 作为身份标题，同时保留在线状态和档案 ID；不再用“离线玩家”占位覆盖可用身份。
+战绩昵称只来自当前在线心跳，不持久保存。玩家离线后，战绩列表使用完整安装 ID 作为身份标题，同时保留在线状态和档案 ID；不再用“离线玩家”占位覆盖可用身份。战绩核心筛选区提供玩家昵称包含搜索，同名玩家一并返回；搜索范围明确限定为当前在线昵称，离线记录继续使用安装 ID 或档案 ID 精确查找。
 
 ## 筛选与刷新
 
@@ -31,7 +31,7 @@ Steam GetPublishedFileDetails 的 subscriptions 是当前订阅数，区别于 l
 ## 接口增量
 
 - `/api/players`：`sort=online|floor|hpLoss|lastSeen`，`order=asc|desc`，兼容默认 online/desc；与 q/page 共用。
-- `/api/run-statistics`：新增 `order=asc|desc`，`sessionId` / `profileId` 为 32 位小写十六进制精确筛选。身份参数用绑定值筛选 SQLite；分页、总胜负及百分比全部基于相同范围。
+- `/api/run-statistics`：支持 `order=asc|desc`，`sessionId` / `profileId` 为 32 位小写十六进制精确筛选；`playerName` 对当前在线昵称作不区分大小写的包含筛选。身份参数用绑定值筛选 SQLite；分页、总胜负及百分比全部基于相同范围。
 
 ## 验证
 
