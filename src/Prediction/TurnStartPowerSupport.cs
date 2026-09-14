@@ -160,7 +160,7 @@ internal static class TurnStartPowerSupport
                 continue;
             }
 
-            IEnumerable<CardModel>? options = null;
+            CharacterCombatGenerationPool? generationPool = null;
             int count = power.Amount;
             bool ethereal = false;
             bool generateOneAtATime = false;
@@ -168,29 +168,23 @@ internal static class TurnStartPowerSupport
             switch (power)
             {
                 case CallOfTheVoidPower:
-                    options = player.Character.CardPool
-                        .GetUnlockedCards(player.UnlockState, combat.CardMultiplayerConstraint)
-                        .Where(card => card.Rarity is not (CardRarity.Basic or CardRarity.Ancient));
+                    generationPool = CharacterCombatGenerationPool.NonBasicAndAncient;
                     ethereal = true;
                     generateOneAtATime = true;
                     break;
                 case CreativeAiPower:
-                    options = player.Character.CardPool
-                        .GetUnlockedCards(player.UnlockState, combat.CardMultiplayerConstraint)
-                        .Where(card => card.Type == CardType.Power);
+                    generationPool = CharacterCombatGenerationPool.Powers;
                     generateOneAtATime = true;
                     break;
                 case HelloWorldPower when power.AmountOnTurnStart >= 1:
-                    options = player.Character.CardPool
-                        .GetUnlockedCards(player.UnlockState, combat.CardMultiplayerConstraint)
-                        .Where(card => card.Rarity == CardRarity.Common);
+                    generationPool = CharacterCombatGenerationPool.Common;
                     count = power.AmountOnTurnStart;
                     break;
                 case SpectrumShiftPower:
                     generateColorless = true;
                     break;
             }
-            if ((!generateColorless && options == null) || count <= 0)
+            if ((!generateColorless && generationPool == null) || count <= 0)
                 continue;
 
             List<PredictedCard> generated;
@@ -200,31 +194,27 @@ internal static class TurnStartPowerSupport
                     player, count, simulator.Rng.CombatCardGeneration,
                     combat.CardMultiplayerConstraint).ToList();
             }
-            else if (generateOneAtATime)
-            {
-                generated = [];
-                for (int index = 0; index < count; index++)
-                {
-                    PredictedCard? card = options!
-                        .GetDistinctForCombat(
-                            player,
-                            1,
-                            simulator.Rng.CombatCardGeneration,
-                            combat.CardMultiplayerConstraint)
-                        .FirstOrDefault();
-                    if (card != null)
-                        generated.Add(card);
-                }
-            }
             else
             {
-                generated = options!
-                    .GetDistinctForCombat(
-                        player,
-                        count,
-                        simulator.Rng.CombatCardGeneration,
-                        combat.CardMultiplayerConstraint)
-                    .ToList();
+                var candidates = simulator.PrepareCharacterGenerationCandidates(
+                    player, player.Character.CardPool, generationPool!.Value,
+                    combat.CardMultiplayerConstraint);
+                if (generateOneAtATime)
+                {
+                    generated = [];
+                    for (int index = 0; index < count; index++)
+                    {
+                        PredictedCard? card = candidates.GetDistinctForCombat(
+                            player, 1, simulator.Rng.CombatCardGeneration).FirstOrDefault();
+                        if (card != null)
+                            generated.Add(card);
+                    }
+                }
+                else
+                {
+                    generated = candidates.GetDistinctForCombat(
+                        player, count, simulator.Rng.CombatCardGeneration).ToList();
+                }
             }
             if (ethereal)
             {

@@ -178,7 +178,7 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 | `CombatBeamSolver.AdmittedExpansion.cs` | 已准入父节点的准备、动作探测、选择准备/回放/续接、药水/目标与回合尾部作业；有界派发、快照移交、取消/异常排空 |
 | `CombatBeamSolver.PrimaryChoiceReplay.cs` | 原预算保证必经的首层回放、唯一快照暂存与原序消费；动态预算和实例补充仍由一个续接作业独占 |
 | `CombatBeamSolver.EndTurnChoiceReplay.cs` | EndTurn初始回放与首层挂起选择准备；复用必经回放槽位，原序解析嵌套/实体补充，独占返回候选和待命基线 |
-| `CombatBeamSolver.RoundTransition.cs` | 玩家回合开始推进；抽牌完成且无待处理选择的同父EndTurn前缀，frontier独占、同父gate复制、生产者排空后释放；不缓存挂起事务或改变候选预算 |
+| `CombatBeamSolver.RoundTransition.cs` | 玩家回合开始推进；在抽牌准备完成但尚未Draw或抽牌/历史补偿完成两个稳定点保存同父EndTurn前缀；frontier独占、同父gate复制、生产者排空后释放；不缓存挂起事务或改变候选预算 |
 | `CombatBeamSolver.StandPatJobs.cs` | 对原保路规则必经的 EndTurn 探针批量求值，复用固定 lane、回传标量，缓存和选择仍由 coordinator 原序完成 |
 | `CombatBeamSolver.RetentionJobs.cs` | 剪枝只读索引作业；复用空闲固定 lane，按原索引收集输出，排空后统一记账并传播取消/错误 |
 | `ParallelExpansionWorkProfile.cs` | coordinator 所有的作业经过时间分布与 wave/等待/提交计时；不代表 CPU 时间 |
@@ -200,7 +200,7 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 长期资源保路先在冻结候选池上扫描最高资源值和数量；全池同值（包括非零和空池）原本不产生独立资源路线，因此 `Retention` 在此时直接跳过祖先排名暂存。非均匀池继续按原序保存全局/祖先排名、应用资源祖先排名、选择最高资源群组，再恢复祖先和全局排名。不缓存跨调用的排名或资源群组，不改变剪枝回收检查点。
 
-回合前缀的 `HasObservedPostDrawRoundChoice` 也只属于当前 lane 的运行上下文：首次实际初探在稳定抽牌后产生有效选择层，才启用该 lane 后续父节点的前缀预留；ToolsOfTheTrade 保留原即时预留。`RoundTransition` 捕获同父、无挂起事务的稳定点，`EndTurnChoiceReplay` 在确认有效挂起层后登记观察；frontier 持有 checkpoint，同父 gate 串行 Fork，排空后释放。提示只决定是否付出额外复制成本，不改变动作、选择预算、原序消费或状态键；前缀不跨父节点、搜索或 lane 共享。
+回合前缀提示只属于当前 lane 的运行上下文。`HasObservedPostDrawRoundChoice` 记录抽牌后的有效选择，ToolsOfTheTrade 保留原即时预留。`ObservedHandDrawShuffleChoiceSources` 只保存实际在抽牌洗牌阶段产生有效选择层的SourceId字符串；后续父节点将洗牌且对应玩家Power当前仍有效时，才在抽牌准备及一次性修正消费完毕、Simulator.Draw之前预留更早前缀。其他路径保留较晚稳定点，未知非Power来源不启用提前捕获。抽牌前checkpoint保存drawCount，续接只执行原抽牌/历史补偿段，重建BeforeNextTake回调并保留SideTurnStart触发时序，不重复准备或消费修正。`EndTurnChoiceReplay` 在释放初探快照前取出来源字符串，确认有效挂起层后登记；frontier 持有同父无挂起事务的checkpoint，同父gate串行Fork，排空后释放。提示不改变动作、选择预算、原序消费或状态键；前缀不跨父节点、搜索或lane共享，原Knowledge/时序匹配限制与Fork事务断言保持。
 
 `BeamRetentionPolicy` 的 `RoutingChoiceScratch` 只复用一张路由签名字典的空桶。每次 `RankBest` 新建 `RoutingChoiceNodes`，把候选有序列表和原五项代表放在同一组内；首次节点初始化代表，后续仍调用原比较规则。组不池化，归还 scratch 时清空节点引用；分组填充结束后，以原 `Max/Min` 一次性冻结组内最高 Beam 分、最高父分和最低父排名；只供该次 routing block 的族/选项/上下文排序使用，全部消费早于 `AssignRetentionRanks`。父节点排名变化后的下一次调用重新建组，不缓存单节点父链。族/选项顺序与配额照旧，`ROUTING_CHOICE_SUMMARIES scope=solver` 记录构建、复用和旁路。这些临时聚合不进入战斗状态键或续用戳。
 
@@ -275,7 +275,7 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 `CombatPredictionRngSet` 的九条流共享不可变完整状态值，真正随机操作时才物化当前分支独占的原生 Rng。已经物化的流在 Fork 当时立即捕获计数器及四段内部状态，不能共享调用方可能仍持有的可变引用。指纹、续用与只读投影读取 `*State`，不触发物化；原生算法与序列保持不变。根捕获只读取主线程的 RunRngSet，后续子分支不访问 live RNG。
 
-`CombatCardGenerationExtensions` 中的根缓存仅复用已冻结的无色候选及原生角色攻击候选；`BundleOfJoyOnPlay` 与 `InfernalBladeOnPlay` 使用对应的 distinct 入口。它们保留 `TakeRandom` 的洗牌/抽取顺序与 RNG 消耗，不调用有放回的 `NextItem` 代替；来源模型只读，`PredictedCard.Create` 仍逐分支创建独占卡牌。带额外谓词、其他角色/类别的生成池未据此获得缓存资格，现有根身份/约束/自定义池回退门禁保持。
+`RootCombatCardGenerationPoolSnapshot` 在主线程冻结无色、原生角色攻击及逐项核对的非Basic/Ancient、Power、Common候选；后三类分别保持原CardPoolModel.GetUnlockedCards来源与调用方谓词。`CombatCardGenerationExtensions` 通过内部快照接口读取只读候选；`TurnStartPowerSupport` 每次Power触发准备一次，回退路径仍仅取一次GetUnlockedCards结果，谓词/战斗过滤在每次抽取时执行。CallOfTheVoid与CreativeAi保留逐次取一张，HelloWorld保留一次取多张；`BundleOfJoyOnPlay`、`InfernalBladeOnPlay` 等既有入口不变。所有distinct入口仍使用TakeRandom及原RNG顺序，不换成NextItem；来源模型只读，PredictedCard.Create逐分支生成独占卡牌。角色、规范池、AllCards引用身份、约束及原生模型门禁不变，自定义/可变池走原路径，其他过滤不会自动获得缓存资格。
 
 `SimulatedCombatState.GetBaseHookListeners` 对可分段且注册卡牌数至少256的分支，先计数当前分支球、未移除卡牌及其附魔/灾厄，按确切容量分配后段列表，避免大附魔牌堆立即扩容。计数不运行Hook/追加器，不新增共享状态、缓存或失效规则；小牌堆及不透明附着监听根沿用单遍路径。
 

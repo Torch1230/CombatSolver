@@ -494,6 +494,15 @@ internal sealed partial class SimulatedCombatState
             multiplayerConstraint,
             out cards);
 
+    bool ICombatPredictionCardGenerationPoolSnapshot.TryGetRootEligibleCharacterCards(
+        Player player,
+        CardPoolModel cardPool,
+        CardMultiplayerConstraint multiplayerConstraint,
+        CharacterCombatGenerationPool selection,
+        out IReadOnlyList<CardModel> cards)
+        => _rootCardGenerationPools.TryGetEligibleCharacterCards(
+            player, cardPool, multiplayerConstraint, selection, out cards);
+
     public IReadOnlyList<Creature> Allies => _allies;
     public IReadOnlyList<Creature> Enemies => _enemies;
     public IReadOnlyList<Creature> KnownEnemies => _knownEnemies;

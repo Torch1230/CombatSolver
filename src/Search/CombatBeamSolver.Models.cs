@@ -186,6 +186,7 @@ internal sealed partial class CombatBeamSolver
         // after an initial EndTurn probe reached the stable post-draw boundary and
         // produced a choice layer.
         public bool HasObservedPostDrawRoundChoice;
+        public HashSet<string>? ObservedHandDrawShuffleChoiceSources;
         public int TransitionCount;
         public int ReusedNodeSnapshots;
         public int TranspositionBranchesPruned;

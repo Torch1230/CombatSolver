@@ -104,21 +104,32 @@ internal sealed partial class CombatBeamSolver
                 simulatedCombat.GetMaxHandSize(_player) - playerState.Hand.Cards.Count);
             bool willShuffle = effectiveDraw > playerState.DrawPile.Cards.Count
                 && !playerState.DiscardPile.IsEmpty;
-            int historyEntryStart = simulator.History.Entries.Count;
-            using (_run.Performance.Measure(SearchMetricPhase.RoundDraw))
-                simulator.Draw(_player, drawCount, fromHandDraw: true);
-            if (willShuffle)
-                shufflesCrossed++;
-            if (simulatedCombat.HasPendingChoice)
-                return SearchBoundaryReason.PendingChoice;
-            TriggeredPowerSupport.CompensateHistorySince(simulator, simulatedCombat, historyEntryStart);
-            if (simulatedCombat.HasPendingChoice)
+            capture?.CaptureBeforeHandDraw(this, simulator, simulatedCombat, roundChoices,
+                processedEnemyDeaths, shufflesCrossed, takingExtraTurn,
+                sideTurnStartTriggeredEarly, drawCount, willShuffle);
+            if (!DrawPreparedPlayerHand(simulator, simulatedCombat, drawCount,
+                    willShuffle, ref shufflesCrossed))
                 return SearchBoundaryReason.PendingChoice;
         }
         capture?.Capture(this, simulator, simulatedCombat, roundChoices, processedEnemyDeaths,
             shufflesCrossed, takingExtraTurn, sideTurnStartTriggeredEarly);
         return CompleteRoundPlayerStart(simulator, simulatedCombat, roundIndex,
             processedEnemyDeaths, roundChoices, takingExtraTurn, sideTurnStartTriggeredEarly);
+    }
+
+    private bool DrawPreparedPlayerHand(
+        CombatPredictionSimulator simulator, SimulatedCombatState combat,
+        int drawCount, bool willShuffle, ref int shufflesCrossed)
+    {
+        int historyEntryStart = simulator.History.Entries.Count;
+        using (_run.Performance.Measure(SearchMetricPhase.RoundDraw))
+            simulator.Draw(_player, drawCount, fromHandDraw: true);
+        if (willShuffle)
+            shufflesCrossed++;
+        if (combat.HasPendingChoice)
+            return false;
+        TriggeredPowerSupport.CompensateHistorySince(simulator, combat, historyEntryStart);
+        return !combat.HasPendingChoice;
     }
 
     private SearchBoundaryReason CompleteRoundPlayerStart(
@@ -186,7 +197,8 @@ internal sealed partial class CombatBeamSolver
     }
     private RoundReplayCheckpoint? _roundReplayCheckpoint;
 
-    internal int VerifyRoundReplayCheckpointForTesting(bool learnFromProbe = false)
+    internal int VerifyRoundReplayCheckpointForTesting(
+        bool learnFromProbe = false, bool handDrawShuffle = false)
     {
         SimulationSnapshot rootSnapshot = Replay([]);
         SearchNode parent = new(null, 0, rootSnapshot.PotionUseCount,
@@ -200,22 +212,41 @@ internal sealed partial class CombatBeamSolver
         try
         {
             PlanAction endTurn = new(PlanActionKind.EndTurn, parent.Turn);
-            if (learnFromProbe)
+            if (learnFromProbe || handDrawShuffle)
             {
                 using RoundReplayCheckpointCapture discovery = new(parent);
                 SimulationSnapshot first = ReplayAction(parent, endTurn, roundCheckpointCapture: discovery);
                 try
                 {
-                    if (discovery.HasCheckpoint || !discovery.ReachedStablePrefix
+                    bool reachedExpectedPoint = handDrawShuffle
+                        ? discovery.ReachedHandDrawShuffle && !discovery.ReachedStablePrefix
+                        : discovery.ReachedStablePrefix;
+                    if (discovery.HasCheckpoint || !reachedExpectedPoint
                         || first.BoundaryReason != SearchBoundaryReason.PendingChoice)
-                        throw new InvalidOperationException("Adaptive prefix fixture did not learn from an uncached post-draw choice.");
-                    discovery.ObservePendingChoice(this);
+                        throw new InvalidOperationException("Adaptive prefix fixture did not learn from the expected uncached choice.");
+                    discovery.ObservePendingChoice(this,
+                        ((SimulatedCombatState)first.Simulator.State.CombatState).PendingTurnStartChoice?.SourceId);
                 }
                 finally { first.ReleaseSimulator(); }
+            }
+            if (handDrawShuffle)
+            {
+                var withoutSource = (CombatPredictionSimulator)rootSnapshot.Simulator.Fork();
+                var withoutSourceCombat = (SimulatedCombatState)withoutSource.State.CombatState;
+                withoutSourceCombat.SetAmount<StratagemPower>(_player.Creature, 0);
+                using RoundReplayCheckpointCapture inactive = new(parent);
+                inactive.CaptureBeforeHandDraw(this, withoutSource, withoutSourceCombat,
+                    new TurnStartChoiceCursor(null), new ForkableSet<uint>(), 0,
+                    takingExtraTurn: false, sideTurnStartTriggeredEarly: false,
+                    drawCount: 5, willShuffle: true);
+                if (inactive.HasCheckpoint)
+                    throw new InvalidOperationException("Inactive shuffle-choice source displaced the post-draw prefix.");
             }
             probe = ReplayAction(parent, endTurn, roundCheckpointCapture: capture);
             using RoundReplayCheckpoint checkpoint = capture.Take()
                 ?? throw new InvalidOperationException("Round prefix fixture did not capture a checkpoint.");
+            if (checkpoint.HandDrawCount.HasValue != handDrawShuffle)
+                throw new InvalidOperationException("Round prefix fixture captured the wrong continuation point.");
             SimulatedCombatState combat = (SimulatedCombatState)probe.Simulator.State.CombatState;
             var request = combat.PendingTurnStartChoice
                 ?? throw new InvalidOperationException("Round prefix fixture did not reach a turn-start choice.");
@@ -272,11 +303,13 @@ internal sealed partial class CombatBeamSolver
         ForkableSet<uint> deaths,
         int shufflesCrossed,
         bool takingExtraTurn,
-        bool sideTurnStartTriggeredEarly) : IDisposable
+        bool sideTurnStartTriggeredEarly,
+        int? handDrawCount = null) : IDisposable
     {
         private CombatPredictionSimulator? _simulator = simulator;
         private ForkableSet<uint>? _deaths = deaths;
         public int ShufflesCrossed { get; } = shufflesCrossed;
+        public int? HandDrawCount { get; } = handDrawCount;
         public bool TakingExtraTurn { get; } = takingExtraTurn;
         public bool SideTurnStartTriggeredEarly { get; } = sideTurnStartTriggeredEarly;
         public bool Matches(SearchNode candidate, PlanAction action)
@@ -312,11 +345,40 @@ internal sealed partial class CombatBeamSolver
     {
         private RoundReplayCheckpoint? _checkpoint;
         public bool ReachedStablePrefix { get; private set; }
+        public bool ReachedHandDrawShuffle { get; private set; }
         public bool HasCheckpoint => _checkpoint is not null;
-        public void ObservePendingChoice(CombatBeamSolver owner)
+        public void ObservePendingChoice(CombatBeamSolver owner, string? sourceId = null)
         {
             if (ReachedStablePrefix)
                 owner._run.HasObservedPostDrawRoundChoice = true;
+            else if (ReachedHandDrawShuffle && sourceId != null)
+                (owner._run.ObservedHandDrawShuffleChoiceSources ??= new(StringComparer.Ordinal)).Add(sourceId);
+        }
+        public void CaptureBeforeHandDraw(CombatBeamSolver owner, CombatPredictionSimulator simulator,
+            SimulatedCombatState combat, TurnStartChoiceCursor cursor,
+            ISet<uint> deaths, int shufflesCrossed, bool takingExtraTurn,
+            bool sideTurnStartTriggeredEarly, int drawCount, bool willShuffle)
+        {
+            if (!willShuffle || !simulator.IsInProgress || combat.PlayerTurnEndRequested
+                || combat.HasPendingChoice)
+                return;
+            ReachedHandDrawShuffle = true;
+            if (owner._run.ObservedHandDrawShuffleChoiceSources is not { Count: > 0 } sources)
+                return;
+            // Hints contain source identifiers only. Keep ordinary branches on the later
+            // post-draw prefix when their observed choice-producing power is absent.
+            IReadOnlyList<PowerModel> powers = combat.EffectivePowers();
+            for (int index = 0; index < powers.Count; index++)
+            {
+                PowerModel power = powers[index];
+                if (power.Amount > 0 && ReferenceEquals(power.Owner, owner._player.Creature)
+                    && sources.Contains(power.Id.Entry))
+                {
+                    CaptureCore(owner, simulator, combat, cursor, deaths, shufflesCrossed,
+                        takingExtraTurn, sideTurnStartTriggeredEarly, drawCount);
+                    return;
+                }
+            }
         }
         public void Capture(CombatBeamSolver owner, CombatPredictionSimulator simulator,
             SimulatedCombatState combat, TurnStartChoiceCursor cursor,
@@ -325,6 +387,10 @@ internal sealed partial class CombatBeamSolver
             if (!simulator.IsInProgress || combat.PlayerTurnEndRequested)
                 return;
             ReachedStablePrefix = true;
+            // A pre-draw prefix already covers this parent's earlier choice point.
+            // Other duplicate captures still fail in CaptureCore.
+            if (_checkpoint is { HandDrawCount: not null })
+                return;
             // Keep the existing immediate reservation, and learn other sources from a
             // completed probe. Outside the existing reservation, a lane pays for no
             // copies until it has observed a post-draw choice.
@@ -332,6 +398,14 @@ internal sealed partial class CombatBeamSolver
             if (!owner._run.HasObservedPostDrawRoundChoice
                 && combat.GetAmount<ToolsOfTheTradePower>(owner._player.Creature) <= 0)
                 return;
+            CaptureCore(owner, simulator, combat, cursor, deaths, shufflesCrossed,
+                takingExtraTurn, sideTurnStartTriggeredEarly, handDrawCount: null);
+        }
+        private void CaptureCore(CombatBeamSolver owner, CombatPredictionSimulator simulator,
+            SimulatedCombatState combat, TurnStartChoiceCursor cursor,
+            ISet<uint> deaths, int shufflesCrossed, bool takingExtraTurn,
+            bool sideTurnStartTriggeredEarly, int? handDrawCount)
+        {
             if (_checkpoint != null)
                 throw new InvalidOperationException("Round prefix captured twice.");
             PlanChoiceTiming timing = combat.ActiveActionChoiceTiming;
@@ -345,7 +419,7 @@ internal sealed partial class CombatBeamSolver
                 using var measure = owner._run.Performance.Measure(SearchMetricPhase.Fork);
                 var fork = simulator.Fork();
                 _checkpoint = new(parent, fork, ((ForkableSet<uint>)deaths).Fork(),
-                    shufflesCrossed, takingExtraTurn, sideTurnStartTriggeredEarly);
+                    shufflesCrossed, takingExtraTurn, sideTurnStartTriggeredEarly, handDrawCount);
             }
             finally
             {
@@ -377,8 +451,25 @@ internal sealed partial class CombatBeamSolver
         try
         {
             using var measure = _run.Performance.Measure(SearchMetricPhase.RoundPlayerStart);
+            bool sideTurnStartTriggeredEarly = checkpoint.SideTurnStartTriggeredEarly;
+            if (checkpoint.HandDrawCount is int drawCount)
+            {
+                using (sideTurnStartTriggeredEarly ? null : cursor.BeforeNextTake(() =>
+                       {
+                           sideTurnStartTriggeredEarly = true;
+                           return combat.TriggerSideTurnStart(simulator, CombatSide.Player,
+                               [_player.Creature],
+                               decrementPlating: combat.GetPlayerTurnNumber(_player) != 1,
+                               checkpoint.TakingExtraTurn);
+                       }))
+                {
+                    if (!DrawPreparedPlayerHand(simulator, combat, drawCount,
+                            willShuffle: true, ref shufflesCrossed))
+                        return SearchBoundaryReason.PendingChoice;
+                }
+            }
             return CompleteRoundPlayerStart(simulator, combat, roundIndex, deaths, cursor,
-                checkpoint.TakingExtraTurn, checkpoint.SideTurnStartTriggeredEarly);
+                checkpoint.TakingExtraTurn, sideTurnStartTriggeredEarly);
         }
         finally
         {

@@ -157,6 +157,44 @@ internal static class CombatCardGenerationExtensions
             .GetDistinctForCombat(player, count, rng, multiplayerConstraint);
     }
 
+    // Prepare exactly once for one power trigger. The fallback freezes the original
+    // GetUnlockedCards result once, while its predicates are still evaluated per draw.
+    public static CharacterGenerationCandidates PrepareCharacterGenerationCandidates(
+        this CombatPredictionSimulator simulator,
+        Player player,
+        CardPoolModel pool,
+        CharacterCombatGenerationPool selection,
+        CardMultiplayerConstraint multiplayerConstraint)
+    {
+        if (simulator.State.CombatState is ICombatPredictionCardGenerationPoolSnapshot snapshot
+            && snapshot.TryGetRootEligibleCharacterCards(
+                player, pool, multiplayerConstraint, selection, out IReadOnlyList<CardModel>? cached))
+        {
+            return new(cached, alreadyEligible: true, multiplayerConstraint);
+        }
+        IEnumerable<CardModel> unlocked = pool.GetUnlockedCards(player.UnlockState, multiplayerConstraint);
+        IEnumerable<CardModel> options = selection switch
+        {
+            CharacterCombatGenerationPool.NonBasicAndAncient => unlocked.Where(
+                static card => card.Rarity is not (CardRarity.Basic or CardRarity.Ancient)),
+            CharacterCombatGenerationPool.Powers => unlocked.Where(static card => card.Type == CardType.Power),
+            CharacterCombatGenerationPool.Common => unlocked.Where(static card => card.Rarity == CardRarity.Common),
+            _ => throw new ArgumentOutOfRangeException(nameof(selection)),
+        };
+        return new(options, alreadyEligible: false, multiplayerConstraint);
+    }
+
+    internal readonly struct CharacterGenerationCandidates(
+        IEnumerable<CardModel> options,
+        bool alreadyEligible,
+        CardMultiplayerConstraint multiplayerConstraint)
+    {
+        public IEnumerable<PredictedCard> GetDistinctForCombat(Player player, int count, Rng rng)
+            => (alreadyEligible ? options : options.FilterForCombatAndPlayerCount(multiplayerConstraint))
+                .TakeRandom(count, rng)
+                .Select(card => PredictedCard.Create(card, player));
+    }
+
     // Mirrors CardFactory.GetForCombat, but returns PredictedCard instead of CardModel.
     public static IEnumerable<PredictedCard> GetForCombat(
         this IEnumerable<CardModel> cards,

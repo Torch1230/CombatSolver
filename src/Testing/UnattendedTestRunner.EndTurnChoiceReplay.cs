@@ -7,7 +7,7 @@ namespace CombatSolver;
 internal sealed partial class UnattendedTestRunner
 {
     private static async Task AssertEndTurnChoiceReplayAsync(MegaCrit.Sts2.Core.Combat.CombatState combat,
-        bool adaptive = false)
+        bool adaptive = false, bool handDrawShuffle = false)
     {
         string liveBefore = ContinuationStamp.CaptureLive(combat).StateText;
         SearchPolicySnapshot capturedPolicy = SolverController.CaptureSearchPolicy(
@@ -22,7 +22,15 @@ internal sealed partial class UnattendedTestRunner
         CombatPredictionSimulator simulator = (CombatPredictionSimulator)typeof(CombatRootSnapshot)
             .GetField("_rootSimulator", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(root)!;
         SimulatedCombatState simulated = (SimulatedCombatState)simulator.State.CombatState;
-        if (adaptive)
+        if (handDrawShuffle)
+        {
+            simulated.Apply<StratagemPower>(combat.Players[0].Creature, 1, combat.Players[0].Creature);
+            simulated.Apply<EntropyPower>(combat.Players[0].Creature, 1, combat.Players[0].Creature);
+            simulated.AddDrawNextTurn(combat.Players[0], 2);
+            simulator.AddToPile(simulator.State.GetPlayerCombatState(combat.Players[0]).DrawPile.Cards.ToArray(),
+                MegaCrit.Sts2.Core.Entities.Cards.PileType.Discard);
+        }
+        else if (adaptive)
             simulated.Apply<EntropyPower>(combat.Players[0].Creature, 1, combat.Players[0].Creature);
         else
             simulated.Apply<ToolsOfTheTradePower>(combat.Players[0].Creature, 1, combat.Players[0].Creature);
@@ -32,7 +40,7 @@ internal sealed partial class UnattendedTestRunner
         SolverSearchProfile profile = capturedPolicy.Profile with { BeamWidth = 24, MaxExpandedNodes = 200 };
         await Task.Run(() => new CombatBeamSolver(root, names, damage, capturedPolicy,
             CancellationToken.None, searchProfile: profile,
-            potionPolicyOverride: SolverPotionPolicy.Disabled).VerifyRoundReplayCheckpointForTesting(adaptive));
+            potionPolicyOverride: SolverPotionPolicy.Disabled).VerifyRoundReplayCheckpointForTesting(adaptive, handDrawShuffle));
         SolverResult? parallelResult = null;
         foreach (int mode in new[] { 1, 2, 0 })
         {

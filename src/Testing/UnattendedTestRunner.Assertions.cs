@@ -64,6 +64,12 @@ internal sealed partial class UnattendedTestRunner
                 if (ContinuationStamp.CaptureLive(scenario.CombatState).StateText != before)
                     throw new InvalidOperationException("Generation cache contract changed live combat.");
             }
+            if (request.ScenarioId == "TURN-START-GENERATION-CACHE")
+            {
+                runner.SetStage("turn_start_generation_cache");
+                runner._completedChecks.Add(AssertTurnStartGenerationCacheContract(
+                    scenario.CombatState, scenario.Player));
+            }
             if (request.ScenarioId == "SNAPSHOT-COVERAGE-CONTRACT")
             {
                 runner.SetStage("snapshot_coverage_contract");
@@ -179,11 +185,13 @@ internal sealed partial class UnattendedTestRunner
                 runner._completedChecks.Add("PowerCloneConcurrency");
                 runner._completedChecks.Add("ModelCloneConcurrency");
             }
-            if (request.ScenarioId is "END-TURN-CHOICE-REPLAY" or "ADAPTIVE-END-TURN-CHOICE-REPLAY")
+            if (request.ScenarioId is "END-TURN-CHOICE-REPLAY" or "ADAPTIVE-END-TURN-CHOICE-REPLAY"
+                or "HAND-DRAW-SHUFFLE-CHOICE-REPLAY")
             {
                 runner.SetStage("end_turn_choice_replay");
                 await AssertEndTurnChoiceReplayAsync(scenario.CombatState,
-                    adaptive: request.ScenarioId == "ADAPTIVE-END-TURN-CHOICE-REPLAY");
+                    adaptive: request.ScenarioId == "ADAPTIVE-END-TURN-CHOICE-REPLAY",
+                    handDrawShuffle: request.ScenarioId == "HAND-DRAW-SHUFFLE-CHOICE-REPLAY");
                 runner._completedChecks.Add("EndTurnChoiceReplay");
             }
             if (request.ScenarioId == "EARLY-END-TURN")

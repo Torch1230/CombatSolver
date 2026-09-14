@@ -597,11 +597,15 @@ CombatBeamSolver.RoundTransition.cs	private SearchBoundaryReason CompleteRoundPl
 CombatBeamSolver.RoundTransition.cs	private sealed class RoundReplayCheckpoint(
 CombatBeamSolver.RoundTransition.cs	combat.EndActionChoices();
 CombatBeamSolver.RoundTransition.cs	combat.BeginActionChoices(cursor);
-CombatBeamSolver.RoundTransition.cs	internal int VerifyRoundReplayCheckpointForTesting(bool learnFromProbe = false)
+CombatBeamSolver.RoundTransition.cs	internal int VerifyRoundReplayCheckpointForTesting(
 CombatBeamSolver.Models.cs	public bool HasObservedPostDrawRoundChoice;
+CombatBeamSolver.Models.cs	public HashSet<string>? ObservedHandDrawShuffleChoiceSources;
+CombatBeamSolver.RoundTransition.cs	public void CaptureBeforeHandDraw(CombatBeamSolver owner, CombatPredictionSimulator simulator,
+CombatBeamSolver.RoundTransition.cs	if (checkpoint.HandDrawCount is int drawCount)
+RootCombatCardGenerationPoolSnapshot.cs	public bool TryGetEligibleCharacterCards(
 CombatBeamSolver.Retention.cs	var maximum = BeamRetentionPolicy.GetLongTermResourceMaximum(pool);
 CombatBeamSolver.Retention.cs	if (maximum.Count == pool.Count)
-CombatBeamSolver.EndTurnChoiceReplay.cs	capture.ObservePendingChoice(this);
+CombatBeamSolver.EndTurnChoiceReplay.cs	capture.ObservePendingChoice(this, pendingSourceId);
 CombatBeamSolver.AdmittedExpansion.cs	endTurn.TransferEndTurnTo(Aggregate!, candidate);
 CombatBeamSolver.AdmittedExpansion.cs	PublishCrossTurnStandPatBaselines(Node, _endTurnBaselines);
 CombatBeamSolver.AdmittedExpansion.cs	ready.TransferPotionTo(Aggregate!, candidate);

@@ -1,5 +1,19 @@
 # CombatSolver 测试清单
 
+## 蟹战后续延迟优化（2026-09-14，未发布）
+
+沿用3afbdd3的完整VeryHigh输入、DOP16与16GB NoGC，新增专用洗牌短fixture；全部非时序质量字段、开局、政策、动作/路线直接对照。原型、增量峰值反例、整批初始基线、每次数据与复现参数见[报告](performance/crab-latency-20260914.md)及[结构化证据](performance/crab-latency-20260914.json)。
+
+| 验证 | runId / 结果 |
+| --- | --- |
+| 最终生成池v3：27组有序候选/Power状态/RNG与历史事件类型顺序、兄弟/live隔离；三类可变池一次解锁读取回退 | `e9dc2207bfe34624807e8d95a4b3ea70` Passed |
+| 最终抽牌前缀v2：洗牌选择后继续变牌、延迟抽牌只消费一次、来源失效、完整状态/增量/兄弟隔离及洗牌次数/历史条目数、DOP1/2与取消/失败排空 | `edc5c7fac70244168f66a92e092179d5` Passed |
+| 最终组合既有即时/抽牌后学习前缀 | `dcdc9b5ef80d4db8821f22ac351fba86`、`0f51aa3c657b45389efe733355815257` Passed |
+| 最终完整蟹战A/F/F/A、轻场景A/C/C/A及C/A/A/C、专用短场景C/C及最初基线U/U | 全部严格oracle一致；不把原型速度或诊断时间当最终数字 |
+| 最终正常Release、双端结构门禁 | Release 0警告/0错误；Bash与PowerShell均通过，`search_files=90`；结果写入JSON verification |
+
+最小合同均用原生无人启动器、IRONCLAD、FUZZY_WURM_CRAWLER_WEAK、敌HP999、NoGC关闭、120秒上限、建局合同后停止。scenario-id分别为`TURN-START-GENERATION-CACHE`、`HAND-DRAW-SHUFFLE-CHOICE-REPLAY`、`END-TURN-CHOICE-REPLAY`与`ADAPTIVE-END-TURN-CHOICE-REPLAY`。新增生成池与前缀分别在对应源码定版后验证，合并时只重跑共享抽牌段相关既有合同并执行最终原始蟹战交互对照。初次测试编译的不存在GetHandCount调用及perf包装器返回码问题保留在报告，不计作通过；外部注册与CoverageCatalog分类未变，无全量门禁或可见Steam。
+
 ## 通用分配与重复工作优化（2026-09-14，未发布）
 
 基线为上游 `b1674f8`，双方使用相同生成器完整预算/NoGC回退测试支持。固定输入、全部开局、政策、动作与路线分别对账；短搜探针数字不作为完整极高性能结论。完整样本、失败、源码阶段和限制见[本批报告](performance/general-allocation-20260914.md)。

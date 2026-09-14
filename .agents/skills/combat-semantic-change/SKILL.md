@@ -126,9 +126,9 @@ writeLive 和 writePredicted，复用 store 的 Fork context。状态描述按�
 - 预测卡牌/Power 克隆的免锁路径由 `NativeModelCloneConcurrency` 核对：仅隔离域、普通原版卡牌或默认内部初始化 Power、已物化原版变量、原生克隆阶段与精确 BaseLib/Ritsu 稀疏复制补丁组合。Power 还须核对默认 InitInternalData、AbstractModel.DeepCloneFields 与 Power.DynamicVars 物化保护补丁；自定义初始化、附魔/灾厄、第三方模型或变量、未知补丁均走原锁；不得为判定路径而物化共享源变量。证据限线程当前最外层隔离域，跨域刷新，不缓存模型或分支值；原版 `MutableClone` 的 BaseLib 锁保持。合同须真实加载 BaseLib，并持锁验证并行、变量独占与跨域补丁失效。
 
 - `PredictionStateStore` 的三槽计数表只保存 Type/条目数，不保存模型或 state；空 store 不创建计数对象，溢出仍使用独占字典，Fork 丢弃零计数。工厂可以重入并扩容，禁止跨工厂调用持有主字典 ref；计数更新的 ref 必须立即消费。验证覆盖溢出、清空后 Fork、父子隔离与工厂重入，不能只测常见一类状态。
-- 额外生成入口复用现有根无色/原生角色攻击池时，保持全部身份与约束门禁；不把 `GetForCombat` 的有放回 `NextItem` 和 `GetDistinctForCombat` 的 `TakeRandom` 混用，即使只取一张。候选模型只读共享，随机数与生成卡牌始终由当前分支独占；带额外过滤的调用方不能直接迁移。
+- 根生成池仅缓存逐项核对的原生过滤：无色、角色攻击、非Basic/Ancient、Power及Common；保留角色/规范池/AllCards引用身份、约束、原生只读模型与自定义池回退门禁。后三类由TurnStartPowerSupport每次Power触发准备一次；回退路径GetUnlockedCards仍只调用一次，原谓词与战斗过滤仍逐次抽取执行，不能把取N次一张改成一次取N张。不得混用有放回NextItem与distinct TakeRandom，即使只取一张。候选模型只读共享，RNG与生成卡始终属当前分支；其他过滤未经核对不能获得缓存资格，合同须覆盖可变池回退调用次数与枚举语义。
 
-- `RoundTransition` 只在无计划选择的EndTurn初探中，于普通抽牌和历史补偿完成后保存无挂起选择的前缀；ToolsOfTheTradePower继续立即预留；其他来源只有在当前worker实际观察到初探经过该稳定点并形成有效选择层后，才为后续父节点预留。学习标志仅属worker的搜索运行上下文，不跨搜索、不共享模拟器，不进入战斗键/候选政策；未到稳定点的选牌不得启用。原Fork事务断言保持，复制前临时关闭空cursor并在finally恢复。前缀匹配父节点引用、EndTurn回合与PlayerTurnStart选择，Knowledge选择完整回放；不跨父/搜索共享。frontier拥有checkpoint，同父gate串行Fork，排空后释放。新增捕获计数包含额外物理Fork，DOP等价比较扣除该项后的转移Fork；完整状态/续用/历史与兄弟隔离须直接对账。
+- `RoundTransition` 只在无计划选择的EndTurn初探保存无挂起事务的前缀：普通抽牌与历史补偿后为原稳定点；抽牌准备及一次性抽牌修正消费完毕、Simulator.Draw之前为洗牌选择的更早稳定点。后者只在将发生洗牌、当前worker已观察到该处产生有效选择层、且对应SourceId的玩家Power当前仍有效时预留；提示只存字符串，不持有模型。未命中保留较晚稳定点，未知非Power来源完整回放。抽牌前checkpoint保存已消费的drawCount，续接重建BeforeNextTake回调且不重复消费修正或提前触发SideTurnStart。ToolsOfTheTradePower继续立即预留抽牌后前缀。学习提示仅属worker的运行上下文，不跨搜索、不进入战斗键/候选政策；未到稳定点的选牌不得启用。原Fork事务断言保持，复制前临时关闭空cursor并在finally恢复。前缀匹配父节点引用、EndTurn回合与PlayerTurnStart选择，Knowledge选择完整回放；frontier拥有checkpoint，同父gate串行Fork，排空后释放。新增捕获计数包含额外物理Fork，DOP等价比较扣除该项后的转移Fork；完整状态/续用/历史、连续洗牌与变牌选择、延迟抽牌修正及兄弟隔离须直接对账。
 
 - RNG 惰性物化只共享完整计数器/四段状态值的不可变快照；已有可变实例的流必须在 Fork 当时捕获，不能把原生 Rng 当成 COW 共享，因为调用方可能继续持有旧引用。只读状态键/续用/投影读取不物化源流，真正随机操作仍使用分支独占的原生实例。合同覆盖九条流的原生序列、保留引用、兄弟/多代 Fork、只读未物化与 live 不变；实际整搜分配和时间分别判断，不把未访问流比例当作整搜收益。
 
