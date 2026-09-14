@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "combatSolverVersion": "0.37.0",
+  "combatSolverVersion": "0.38.1",
   "gameVersion": "0.111.0",
   "simulationEngine": "embedded",
   "entries": [
@@ -40180,13 +40180,13 @@
       "scopeGuess": "Combat",
       "engineRegistration": "None",
       "engineDispatch": "None",
-      "status": "SolverCompensation",
-      "source": "src/Prediction/EndTurnPowerSupport.cs",
+      "status": "EngineExact",
+      "source": "src/Engine/InCombat/Mirrors/Hooks/TurnEnd/AfterSideTurnEndLateMirrors.cs",
       "notes": "Deals the amount as blockable, unpowered self-damage in the late side-turn-end phase without consuming the power.",
       "testId": "MONSTER-MOVES-BATCH-033",
       "effectiveStatus": "Exact",
       "verification": "Runtime",
-      "capability": "SolverCompensation",
+      "capability": "EngineMirror",
       "methodHash": "f0d593d7d49eecd9c80cf4ebd5a9f1cf3f03fc78cb891823a3fc2a2553a54f4e"
     },
     {

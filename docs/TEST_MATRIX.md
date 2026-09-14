@@ -1,5 +1,14 @@
 # CombatSolver 测试清单
 
+## PR #85–#88 合并验证（2026-09-14）
+
+- 基于当前 `main`（已含 0.38.1、PR #90 与在线 DAU 提交）依次合并 #85、#86、#87、#88。滚动文档冲突保留全部已发布与开发中记录；适配手册将回合末晚期、OnPlay 组合及尚未开放入口编号为 §2.10–§2.12。
+- #85 与 #88 都从旧基线占用监听掩码 bit 55；合并后保留 `AfterSideTurnEndLate=55`，将 `AfterEnergyReset` 置于 bit 56。两项新增 Hook 使镜像注册表总数为 46、`Hooks/` 为 39，并同步修正正文旧计数。
+- `TurnPhaseMirrorChecks` 25 项、`ModelPredictionStateChecks` 32 项、卡牌引用 28 项、空登记 3 项及 1,000 次哈希遍历 0 字节分配检查通过；`AdaptedOnPlayChecks` 35 项与空登记 2 项通过。
+- PowerShell 结构门禁通过，`search_files=90`。CoverageCatalog `--verify-effective --verify-runtime-evidence` 通过：3035 项，0 未分析、0 缺少有效运行证据；22 项仍明确位于回放视野外。
+- 合并产物的 `ADAPTED-ONPLAY-INTEGRATION-REUSE` / `820e50163dbd475da7ba798fb85af901` Passed：真实模拟器组合覆盖双方晚期结算、模型卡牌引用、OnPlay 适配与跨回合续用，精确复用到第 2 回合，计划外重算 0。
+- 最终 Release 构建成功，0 警告、0 错误。PR #88 的原版 handler 与旧 switch 已做源码逐项对照，但本轮没有仓库内第三方 `AfterEnergyReset` 专用游戏夹具；没有运行可见 Steam 或完整发布门禁。
+
 ## 下一版本（开发中）：精确 OnPlay 补丁适配
 
 - 游戏 0.111.0 的 Release 构建通过，零警告、零错误；Bash 结构门禁通过。
