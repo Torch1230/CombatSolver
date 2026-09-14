@@ -70,15 +70,6 @@ internal sealed partial class CombatBeamSolver
                     $"hits={_run.PotionStrategicCosts.Hits} misses={_run.PotionStrategicCosts.Misses} " +
                     $"entries={_run.PotionStrategicCosts.Count}");
             }
-            if (_run.DeferredFrontier != null)
-            {
-                _run.DeferredFrontier.Clear();
-                policy.Diagnostics.Info(
-                    $"[CombatSolver/Test] DEFERRED_FRONTIER completed " +
-                    $"captured={_run.DeferredFrontierCaptured} restored={_run.DeferredFrontierRestored} " +
-                    $"replay_roots={_run.DeferredFrontierReplayRoots} " +
-                    $"replay_actions={_run.DeferredFrontierReplayActions} expanded={_run.Expanded}");
-            }
             if (requestWorkTotals != null)
             {
                 RecordRequestWork(
@@ -195,9 +186,6 @@ internal sealed partial class CombatBeamSolver
         int searchedTurnLayers = 0;
         bool timeBudgetReached = false;
         bool acceptableBattleHpLossReached = false;
-        _run.DeferredFrontier = _profile.RecoverDeferredTurnFrontier
-            ? new DeferredTurnFrontier(_profile.BeamWidth, _profile.MaxExpandedNodes)
-            : null;
 
         SolverInterimResult SummarizeCandidate(SearchNode node, bool won)
         {
@@ -1325,66 +1313,10 @@ internal sealed partial class CombatBeamSolver
             PublishProgress(active.Min(node => node.Turn), searchedTurnLayers, 0, active.Count, 0,
                 "展开回合", force: true);
             for (int playDepth = 0;
-                 (active.Count > 0 || _run.DeferredFrontier?.Count > 0)
-                    && _run.Expanded < _profile.MaxExpandedNodes;
+                 active.Count > 0 && _run.Expanded < _profile.MaxExpandedNodes;
                  playDepth++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (active.Count == 0)
-                {
-                    bool CanContinueDeferredReplay()
-                        => stopwatch.ElapsedMilliseconds < _profile.SoftTimeBudgetMilliseconds
-                            && (searchedTurnLayers >= reservedTurnLayers - 1
-                                || ended.Count == 0
-                                || policy.Act3BossStrategy
-                                || stopwatch.ElapsedMilliseconds - turnLayerStartedMs < turnLayerBudgetMs)
-                            && _interaction?.CurrentTakeoverRequest == null;
-                    if (!CanContinueDeferredReplay()
-                        || HasHardPolicyVictory(completed)
-                        || HasHardPolicyVictory(ended))
-                    {
-                        break;
-                    }
-                    DeferredTurnFrontier bank = _run.DeferredFrontier!;
-                    List<SearchNode> restored = [];
-                    try
-                    {
-                        int restoreLimit = Math.Clamp(_profile.BeamWidth / 8, 1, 8);
-                        while (restored.Count < restoreLimit
-                            && bank.Take() is { } ticket
-                            && CanContinueDeferredReplay())
-                        {
-                            SearchNode? candidate = RestoreDeferredFrontierTicket(
-                                ticket, CanContinueDeferredReplay,
-                                () => EnsureMemoryForIndivisibleCommit(
-                                    ParentAllocationReserve(), "before_deferred_replay",
-                                    playDepth, restored.Count, ended.Count));
-                            if (candidate != null)
-                                restored.Add(candidate);
-                        }
-                        if (restored.Count > 0)
-                        {
-                            // Re-enter all final arbiters without repeating action admission or
-                            // advancing a cycle epoch solely for a restore/empty retry.
-                            active = PruneAtMemoryBoundary(restored, restored.Count,
-                                "before_deferred_prune", playDepth, ended.Count);
-                        }
-                    }
-                    finally
-                    {
-                        ReleaseDroppedSnapshots(restored, active);
-                    }
-                    if (active.Count == 0)
-                    {
-                        if (bank.Count == 0 || !CanContinueDeferredReplay())
-                            break;
-                        continue;
-                    }
-                    policy.Diagnostics.Info(
-                        $"[CombatSolver/Test] DEFERRED_FRONTIER resumed " +
-                        $"turn_layer={searchedTurnLayers} seeds={active.Count} pending={bank.Count} " +
-                        $"expanded={_run.Expanded} replay_actions={_run.DeferredFrontierReplayActions}");
-                }
                 BeginCyclePlanningLayer();
                 SearchTakeoverRequest? takeover = _interaction?.CurrentTakeoverRequest;
                 if (takeover?.Kind == SearchTakeoverKind.AdoptRoute
@@ -1827,7 +1759,6 @@ internal sealed partial class CombatBeamSolver
                 }
                 List<SearchNode> prunedPlays = PruneAtMemoryBoundary(
                     nextPlays, nextPlays.Count, "before_play_prune", playDepth, ended.Count);
-                CaptureDeferredFrontier(nextPlays, prunedPlays);
                 ReleaseDroppedSnapshots(nextPlays, prunedPlays);
                 nextPlays.Clear();
                 active = prunedPlays;
@@ -1849,7 +1780,6 @@ internal sealed partial class CombatBeamSolver
                 PublishProgress(_startTurnNumber + searchedTurnLayers, searchedTurnLayers, playDepth,
                     active.Count, ended.Count, "剪枝候选", force: true);
             }
-            _run.DeferredFrontier?.Clear();
             if (adoptionReached || requestedRouteAdoptionSeed != null)
                 break;
 

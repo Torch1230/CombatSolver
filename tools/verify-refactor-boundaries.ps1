@@ -9,6 +9,10 @@ $forbiddenSearchReferences = @(
     "ShortProfile",
     "DeepProfile",
     "shortCheckpointMilliseconds",
+    "SolveWithNarrowBeamRecovery",
+    "BuildNarrowBeamRecoveryProfile",
+    "RecoverDeferredTurnFrontier",
+    "DeferredTurnFrontier",
     "SolverSettings.Current",
     "Entry.Logger",
     "SolverController",
@@ -503,7 +507,6 @@ $expectedBeamFiles = @(
     "CombatBeamSolver.CrossTurnPlanning.cs",
     "CombatBeamSolver.CyclePlanning.cs",
     "CombatBeamSolver.CycleRegionRetention.cs",
-    "CombatBeamSolver.DeferredFrontier.cs",
     "CombatBeamSolver.Expansion.cs",
     "CombatBeamSolver.FinalPlanOrdering.cs",
     "CombatBeamSolver.Models.cs",
@@ -520,18 +523,10 @@ $expectedBeamFiles = @(
     "CombatBeamSolver.Terminal.cs"
 )
 $pathDiagnosticsPath = Join-Path $searchRoot "CombatBeamSolver.PathDiagnostics.cs"
-$deferredFrontierPath = Join-Path $searchRoot "CombatBeamSolver.DeferredFrontier.cs"
 foreach ($required in @(
     @{ Path = (Join-Path $searchRoot "CombatBeamSolver.BeamRetentionPolicy.cs"); Text = 'HasRetainedRoutingChoice: RetainedRoutingChoice(node) != null' },
     @{ Path = (Join-Path $searchRoot "CombatBeamSolver.BeamRetentionPolicy.cs"); Text = 'if (values.HasRetainedRoutingChoice)' },
     @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.SearchPolicy.cs"); Text = 'seven, [], [0, 7, 1, 4, 2, 5, 6], useTacticalOrder: true);' },
-    @{ Path = $deferredFrontierPath; Text = 'private sealed class DeferredTurnFrontier(' },
-    @{ Path = $deferredFrontierPath; Text = '_run.DeferredFrontierReplayActions++;' },
-    @{ Path = $deferredFrontierPath; Text = 'node with { Snapshot = replayed }' },
-    @{ Path = (Join-Path $searchRoot "CombatBeamSolver.Phases.cs"); Text = 'CaptureDeferredFrontier(nextPlays, prunedPlays);' },
-    @{ Path = (Join-Path $searchRoot "CombatSearchCoordinator.FailureRecovery.cs"); Text = 'RecoverDeferredTurnFrontier = true' },
-    @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.Executor.cs"); Text = 'KNOWN-CUSTOM-DEFERRED-FRONTIER-V0111' },
-    @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.KnownCustomDeferredFrontier.cs"); Text = 'MetadataContractOnly:NotFrontierQualityOrPerformance' },
     @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.Executor.cs"); Text = 'KNOWN-SOUL-GENERATION-CONTEXT-V0111' },
     @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.Executor.cs"); Text = 'KNOWN-SOUL-GENERATION-SUFFIX-V0111' },
     @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.Executor.cs"); Text = 'KNOWN-SOUL-VARIANT-PATH-TRACE-V0111' },

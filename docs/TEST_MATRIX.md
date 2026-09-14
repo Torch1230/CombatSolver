@@ -2,6 +2,7 @@
 
 ## 下一版本（开发中）
 
+- 失败窄搜移除：主搜索和 Smart 精确药水层直接使用原 profile，源码中不再存在 `NARROW_BEAM_RECOVERY`、`RecoverDeferredTurnFrontier` 或同回合落选前沿 fixture；请求级无胜利扩大搜索合同保留。Release 构建 0 警告、0 错误，PowerShell 结构门禁通过（`search_files=90`）；`NoVictoryRecoveryChecks` 最终通过 8 项请求合同及原策略断言，首次运行因检查工具仍引用已删除的旧 `Deep` profile 而未编译，改用当前 `Default` 后通过。按用户要求不执行 Bash 门禁。
 - 药水批量预设：四种纯策略转换及设置序列化断言已进入控制器生命周期测试；Release 构建 0 警告、0 错误。完整控制器场景继续到既有 Smart 药水补查断言后失败，该失败不在本项批量预设路径，未记整场通过。
 - `Ctrl+F9` 显隐：结构断言覆盖正确组合、错误功能键、键盘连发及隐藏后恢复原可见状态；输入节点独立于覆盖层。可见游戏未运行。
 - 问题包弹窗：`UI-LOCALIZATION` / `8fcb860ea114408c8a476d5bdee69334` Passed；纯尺寸合同覆盖 1920×1080、1280×720、960×540，正文为纵向滚动容器且标题/按钮位于其外，中英/简繁控件合同通过；可见排版未运行。

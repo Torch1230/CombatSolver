@@ -162,11 +162,6 @@ internal sealed partial class CombatBeamSolver
         public int OrderedMutationColdAtomicCommitted;
         public int OrderedMutationColdAtomicRejected;
         public int Expanded;
-        public DeferredTurnFrontier? DeferredFrontier;
-        public int DeferredFrontierCaptured;
-        public int DeferredFrontierRestored;
-        public int DeferredFrontierReplayRoots;
-        public int DeferredFrontierReplayActions;
         public int DominatedActionsPruned;
         public int TopQueueActionsDropped;
         public int ActionAdmissionRepresentativesProtected;

@@ -18,8 +18,7 @@ internal sealed partial class UnattendedTestRunner
     // DEPLOY_CHOICE_PLAN count of one (primary + nested), so there are no unrecorded nested choices.
     private int RunKnownCustomRouteReplay(CombatState combat, Player player,
         List<(PlanAction Action, MoveStateSnapshot State)>? nativePrefixes = null,
-        List<KnownRoutePrefix>? frozenPrefixes = null,
-        bool verifyDeferredFrontier = false)
+        List<KnownRoutePrefix>? frozenPrefixes = null)
     {
         string[] initialHand = ["BURNING_PACT", "BODY_SLAM", "POMMEL_STRIKE", "RAGE", "FEEL_NO_PAIN", "BLOODLETTING"];
         if (string.IsNullOrWhiteSpace(_request.RunSnapshotPath)
@@ -48,9 +47,6 @@ internal sealed partial class UnattendedTestRunner
             "BODY_SLAM", "POMMEL_STRIKE", "BODY_SLAM", "BURNING_PACT", "BODY_SLAM", "POMMEL_STRIKE", "BODY_SLAM"];
         List<PlanAction> actions = [];
         List<SimulationSnapshot> owned = [];
-        List<(PlanAction Action, SimulationSnapshot Snapshot)>? deferredPrefixes =
-            verifyDeferredFrontier ? [] : null;
-        ContinuationStamp? deferredLeafStamp = null;
         int completedPrefixes = 0;
         try
         {
@@ -165,11 +161,6 @@ internal sealed partial class UnattendedTestRunner
                         CaptureSimulated(incremental.Simulator,
                             (SimulatedCombatState)incremental.Simulator.State.CombatState, player, enemy),
                         incremental));
-                    deferredPrefixes?.Add((action, incremental));
-                    if (verifyDeferredFrontier && index == cardIds.Length - 2)
-                        deferredLeafStamp = ContinuationStamp.CapturePredicted(
-                            player, incremental.Simulator, incremental.Turn,
-                            root.Forecast, root.StartTurnNumber);
                     full.ReleaseSimulator();
                     if (!ReferenceEquals(parent, initial))
                         parent.ReleaseSimulator();
@@ -196,22 +187,6 @@ internal sealed partial class UnattendedTestRunner
                 AssertSnapshotEqual(CaptureSimulated(rootAfter.Simulator,
                     (SimulatedCombatState)rootAfter.Simulator.State.CombatState, player, enemy),
                     actualBefore, "KnownCustomRoute", "RootUnchanged");
-                if (verifyDeferredFrontier)
-                {
-                    foreach (SimulationSnapshot snapshot in owned)
-                        snapshot.ReleaseSimulator();
-                    AssertNarrowBeamRecoveryPolicy(root, capturedPolicy);
-                    _completedChecks.Add("DeferredFrontier:NarrowRecoveryOnly:SharedBudgetAndCancellationContract");
-                    AssertKnownCustomDeferredFrontierReplay(driver, initial,
-                        deferredPrefixes!, deferredLeafStamp
-                            ?? throw new InvalidOperationException("恢复合同缺少正式非终局前缀状态。"));
-                    SimulationSnapshot afterDeferred = ReplayKnownCustom(driver, [], null, 0, 0, owned);
-                    if (afterDeferred.StateKey != initial.StateKey)
-                        throw new InvalidOperationException("落选恢复合同修改了原始模拟根的状态键。");
-                    AssertSnapshotEqual(CaptureSimulated(afterDeferred.Simulator,
-                        (SimulatedCombatState)afterDeferred.Simulator.State.CombatState, player, enemy),
-                        actualBefore, "KnownCustomDeferredFrontier", "RootUnchanged");
-                }
                 _completedChecks.Add("KnownCustomRoute:ReconstructedRoute:19Actions:3Primary:0Nested:1Potion:7Shuffles:T1:Loss3:HP1");
             }
         }

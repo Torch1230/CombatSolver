@@ -8,9 +8,6 @@ internal sealed record SolverSearchProfile(
     int MaxHandChoiceBranchesPerAction,
     int SoftTimeBudgetMilliseconds)
 {
-    // Internal to the existing failed-layer retry; never enabled for a normal primary solve.
-    public bool RecoverDeferredTurnFrontier { get; init; }
-
     public static SolverSearchProfile Default { get; } = new(
         BeamWidth: 60,
         MaxExpandedNodes: 24_000,

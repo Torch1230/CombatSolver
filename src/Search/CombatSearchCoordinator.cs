@@ -226,8 +226,6 @@ internal static partial class CombatSearchCoordinator
         }
         SmartLayerMemoryForecast memoryForecast = new();
         // One search profile drives primary search and all supplemental audits.
-        // Beam 宽度增大
-        // 不保证跨层候选仍是超集；未找到胜利时可用本层剩余预算进行一次窄 Beam 恢复。
         SolverSearchProfile profile = policy.Profile;
         if (policy.BudgetOverrideMilliseconds is { } deepBudget)
             profile = profile with { SoftTimeBudgetMilliseconds = deepBudget };
@@ -246,21 +244,15 @@ internal static partial class CombatSearchCoordinator
         {
             long passAllocatedAtStart = GC.GetTotalAllocatedBytes(precise: false);
             long passTransitionsAtStart = policy.RequestWorkTotals?.Snapshot().TransitionCount ?? 0;
-            SolverResult passResult = SolveWithNarrowBeamRecovery(
+            SolverResult passResult = new CombatBeamSolver(
                 root,
+                displayNames,
+                battleDamage,
                 policy,
+                cancellationToken,
+                progressCallback,
                 passProfile,
-                cancellationToken,
-                cancellationToken,
-                (attemptProfile, attemptCancellationToken) => new CombatBeamSolver(
-                    root,
-                    displayNames,
-                    battleDamage,
-                    policy,
-                    attemptCancellationToken,
-                    progressCallback,
-                    attemptProfile,
-                    potionPolicyOverride: initialPotionPolicyOverride).Solve());
+                potionPolicyOverride: initialPotionPolicyOverride).Solve();
             ObserveSmartLayerMemory(
                 policy, memoryForecast, passAllocatedAtStart, passTransitionsAtStart,
                 passResult, passProfile, completedPotionCount: 0);
@@ -1172,25 +1164,19 @@ internal static partial class CombatSearchCoordinator
             SolverResult candidate;
             try
             {
-                candidate = SolveWithNarrowBeamRecovery(
+                candidate = new CombatBeamSolver(
                     root,
+                    displayNames,
+                    battleDamage,
                     policy,
-                    profile,
                     searchCancellationToken,
-                    callerCancellationToken,
-                    (attemptProfile, attemptCancellationToken) => new CombatBeamSolver(
-                        root,
-                        displayNames,
-                        battleDamage,
-                        policy,
-                        attemptCancellationToken,
-                        progressCallback,
-                        attemptProfile,
-                        SolverPotionPolicy.RequireAtLeastOne,
-                        baseline,
-                        maximumPotionUses: potionCount,
-                        minimumPotionUses: potionCount,
-                        primaryIncumbent: primaryIncumbent).Solve());
+                    progressCallback,
+                    profile,
+                    SolverPotionPolicy.RequireAtLeastOne,
+                    baseline,
+                    maximumPotionUses: potionCount,
+                    minimumPotionUses: potionCount,
+                    primaryIncumbent: primaryIncumbent).Solve();
                 observedLayerResult = candidate;
             }
             catch (PotionPolicyUnsatisfiedException)

@@ -313,6 +313,10 @@ for file in "${search_files[@]}"; do
         'ShortProfile' \
         'DeepProfile' \
         'shortCheckpointMilliseconds' \
+        'SolveWithNarrowBeamRecovery' \
+        'BuildNarrowBeamRecoveryProfile' \
+        'RecoverDeferredTurnFrontier' \
+        'DeferredTurnFrontier' \
         'SolverSettings.Current' \
         'Entry.Logger' \
         'SolverController' \
@@ -505,7 +509,6 @@ expected_beam_files=(
     CombatBeamSolver.CrossTurnPlanning.cs
     CombatBeamSolver.CyclePlanning.cs
     CombatBeamSolver.CycleRegionRetention.cs
-    CombatBeamSolver.DeferredFrontier.cs
     CombatBeamSolver.Expansion.cs
     CombatBeamSolver.FinalPlanOrdering.cs
     CombatBeamSolver.Models.cs
@@ -621,14 +624,6 @@ path_diagnostics_path="$search_root/CombatBeamSolver.PathDiagnostics.cs"
 require_fixed "$search_root/CombatBeamSolver.BeamRetentionPolicy.cs" 'HasRetainedRoutingChoice: RetainedRoutingChoice(node) != null' 'ordinary tactical ties must use the existing retained routing semantics:'
 require_fixed "$search_root/CombatBeamSolver.BeamRetentionPolicy.cs" 'if (values.HasRetainedRoutingChoice)' 'ordinary tactical ties must leave routing positions unchanged:'
 require_fixed "$repository_root/src/Testing/UnattendedTestRunner.SearchPolicy.cs" 'seven, [], [0, 7, 1, 4, 2, 5, 6], useTacticalOrder: true);' 'ordinary tactical ties lost the interleaved routing-position contract:'
-deferred_frontier_path="$search_root/CombatBeamSolver.DeferredFrontier.cs"
-require_fixed "$deferred_frontier_path" 'private sealed class DeferredTurnFrontier(' 'deferred frontier ownership is missing:'
-require_fixed "$deferred_frontier_path" '_run.DeferredFrontierReplayActions++;' 'deferred replay action accounting is missing:'
-require_fixed "$deferred_frontier_path" 'node with { Snapshot = replayed }' 'deferred replay must preserve post-final node history:'
-require_fixed "$search_root/CombatBeamSolver.Phases.cs" 'CaptureDeferredFrontier(nextPlays, prunedPlays);' 'deferred capture must follow final prune:'
-require_fixed "$search_root/CombatSearchCoordinator.FailureRecovery.cs" 'RecoverDeferredTurnFrontier = true' 'deferred frontier must remain tied to failed-layer recovery:'
-require_fixed "$repository_root/src/Testing/UnattendedTestRunner.Executor.cs" 'KNOWN-CUSTOM-DEFERRED-FRONTIER-V0111' 'deferred frontier contract lost its executor entry:'
-require_fixed "$repository_root/src/Testing/UnattendedTestRunner.KnownCustomDeferredFrontier.cs" 'MetadataContractOnly:NotFrontierQualityOrPerformance' 'deferred contract must distinguish metadata from search quality:'
 require_fixed "$repository_root/src/Testing/UnattendedTestRunner.Executor.cs" 'KNOWN-SOUL-GENERATION-CONTEXT-V0111' 'generation context replay lost its executor entry:'
 require_fixed "$repository_root/src/Testing/UnattendedTestRunner.Executor.cs" 'KNOWN-SOUL-GENERATION-SUFFIX-V0111' 'generation context frozen suffix replay lost its executor entry:'
 require_fixed "$repository_root/src/Testing/UnattendedTestRunner.Executor.cs" 'KNOWN-SOUL-VARIANT-PATH-TRACE-V0111' 'proved variant path trace lost its executor entry:'

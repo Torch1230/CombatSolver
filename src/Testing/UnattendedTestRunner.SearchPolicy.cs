@@ -66,7 +66,6 @@ internal sealed partial class UnattendedTestRunner
         AssertRequiredPotionAuditSelectionAndTotals();
         CombatRootSnapshot rootSnapshot = CombatRootSnapshot.Capture(combat);
         AssertTurnCounterResetFork(rootSnapshot);
-        AssertNarrowBeamRecoveryPolicy(rootSnapshot, capturedPolicy);
         AssertNoVictoryEscalationPolicy();
         await AssertCanceledSearchWorkRecordedOnceAsync(
             rootSnapshot,
