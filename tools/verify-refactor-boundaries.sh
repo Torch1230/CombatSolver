@@ -528,6 +528,7 @@ expected_beam_files=(
     CombatBeamSolver.AdmittedExpansion.cs
     CombatBeamSolver.EndTurnChoiceReplay.cs
     CombatBeamSolver.RoundTransition.cs
+    CombatBeamSolver.CardChoiceContinuation.cs
     CombatBeamSolver.BeamRetentionPolicy.cs
     CombatBeamSolver.CrossTurnPlanning.cs
     CombatBeamSolver.CyclePlanning.cs
@@ -1065,6 +1066,25 @@ done < <(
 require_fixed "$repository_root/src/Runtime/BaseLibCloneConcurrencyPatch.cs" 'BaseLibCloneConcurrency.Enter()' 'missing native framework clone gate'
 require_fixed "$repository_root/src/Engine/Common/PredictionUtils.cs" 'NativeModelCloneConcurrency.CanCloneIndependently(source)' 'missing audited prediction clone boundary'
 forbid_fixed "$repository_root/src/Engine/Common/NativeModelCloneConcurrency.cs" 'CombatSolver.Search' 'clone eligibility depends on search policy:'
+
+# A suspended own-discard frame belongs to its continuation; ordinary Fork remains strict.
+while IFS=$'\t' read -r relative_path text; do
+    require_fixed "$repository_root/$relative_path" "$text" 'missing card continuation ownership boundary'
+done <<'EOF'
+src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs	GuardOrdinaryCardContinuationFork();
+src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs	context.Register(source.Play, play);
+src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs	StateStore.SupportsManualCardChoiceContinuation
+src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs	DetachPendingManualCardChoice();
+src/Prediction/CardChoiceContinuation.cs	lock (_gate)
+src/Search/CombatBeamSolver.CardChoiceContinuation.cs	ReferenceEquals(_parent, candidate)
+src/Search/CombatBeamSolver.CardChoiceContinuation.cs	return Enumerate(this, checkpoint, branches);
+src/Search/CombatBeamSolver.Expansion.cs	countTransition: false
+src/Search/CombatBeamSolver.PrimaryChoiceReplay.cs	CardCheckpoint?.Dispose();
+src/Search/SimulatedCombatState.CardContinuation.cs	_cardExecutionScopeDepth != 0
+EOF
+for forbidden in 'Task<' 'Func<' 'Action<'; do
+    forbid_fixed "$repository_root/src/Prediction/CardChoiceContinuation.cs" "$forbidden" 'continuation retained an executable closure:'
+done
 
 if ((${#violations[@]} > 0)); then
     printf '%s\n' "${violations[@]}" >&2

@@ -1,0 +1,1123 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-14",
+  "request": "再研究一下 能不能快速为所有这种具备选牌机制的卡牌 遗物 药水等做该优化？",
+  "scope": "Feasibility research only; no broader production enablement. Reuses existing game 0.111.0 native IL inventory and checks current source dispatch / continuation constraints. Not a new exhaustive IL scan.",
+  "inventorySource": "choice-source-inventory-20260912.json",
+  "selectionCoverageSource": "../../coverage/combat-choice-sources.json",
+  "historicalAudit": {
+    "modelsScanned": 1284,
+    "methodsScanned": 5955,
+    "nativeCallSites": 202,
+    "nativeModelsWithMatchedCalls": 193,
+    "additionalPowerGrantingCards": 20,
+    "readFailures": 0,
+    "selectionCallSites": 85,
+    "selectionCatalogAdded": 0,
+    "selectionCatalogMissing": 0
+  },
+  "counts": {
+    "explicitNativeCallSites": 85,
+    "cardsSinglePlayer": 41,
+    "potions": 9,
+    "combatRelics": 5,
+    "powers": 5,
+    "outsideCombatRelics": 24,
+    "multiplayerCardsExcluded": 1,
+    "fixedPolicyCombatRelics": 1,
+    "conditionalProductionCards": 3
+  },
+  "families": {
+    "生成候选": 4,
+    "已正式接入（有条件）": 3,
+    "先获得格挡": 6,
+    "其他自身选牌": 21,
+    "召唤／奥斯提／随机候选": 3,
+    "选择后重复自动出牌": 1,
+    "抽牌／攻击后放回牌顶": 3,
+    "多人范围外": 1,
+    "药水牌堆选择": 5,
+    "药水生成候选": 4,
+    "回合抽牌后": 6,
+    "回合抽牌前": 2,
+    "洗牌内选择": 1,
+    "固定自动策略": 1
+  },
+  "sources": [
+    "../../src/Search/CardChoiceSupport.cs",
+    "../../src/Search/SimulatedCombatState.ActionChoices.cs",
+    "../../src/Search/CardChoiceResolution.cs",
+    "../../src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs",
+    "../../src/Engine/InCombat/Simulation/CombatPredictionHistory.CardContinuation.cs",
+    "../../src/Search/SimulatedCombatState.CardContinuation.cs",
+    "../../src/Search/PotionChoiceSupport.cs",
+    "../../src/Prediction/PotionOnUseSupport.cs",
+    "../../src/Search/CombatBeamSolver.ParallelExpansion.cs",
+    "../../src/Search/CombatBeamSolver.Expansion.cs",
+    "../../src/Search/CombatBeamSolver.RoundTransition.cs",
+    "../../src/Search/SimulatedCombatState.RelicTurnStart.cs",
+    "../../src/Search/SimulatedCombatState.Relics.cs",
+    "../../src/Search/SimulatedCombatState.AutoPlay.cs"
+  ],
+  "rows": [
+    {
+      "category": "Cards",
+      "model": "Abundance",
+      "id": "ABUNDANCE",
+      "title": "富足",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "3选1，生成能力牌",
+      "family": "生成候选",
+      "assessment": "补齐生成候选历史、尚未入牌堆的PredictedCard与trace重映射；保留RNG／升级／免费信息",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "Acrobatics",
+      "id": "ACROBATICS",
+      "title": "杂技",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "抽牌后手牌N选1弃牌",
+      "family": "已正式接入（有条件）",
+      "assessment": "已验证三张牌的自身弃牌；附魔、污染、复杂事务、其他来源历史或嵌套仍可能回退",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "Armaments",
+      "id": "ARMAMENTS",
+      "title": "武装",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "未升级时N选1升级；升级后全体",
+      "family": "先获得格挡",
+      "assessment": "补齐活动CardPlay格挡计数和格挡历史的同域复制；仍复用已有选择及结算尾部",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "Begone",
+      "id": "BEGONE",
+      "title": "下去！",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "手牌N选1变化",
+      "family": "其他自身选牌",
+      "assessment": "已有公共选择／结算尾部；逐项验证前置历史与后置身份／延迟效果，嵌套继续完整回放",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "Brand",
+      "id": "BRAND",
+      "title": "烙印",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "手牌N选1消耗",
+      "family": "其他自身选牌",
+      "assessment": "已有公共选择／结算尾部；逐项验证前置历史与后置身份／延迟效果，嵌套继续完整回放",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "BurningPact",
+      "id": "BURNING_PACT",
+      "title": "燃烧契约",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "手牌N选1消耗，再抽牌",
+      "family": "其他自身选牌",
+      "assessment": "已有公共选择／结算尾部；逐项验证前置历史与后置身份／延迟效果，嵌套继续完整回放",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "Charge",
+      "id": "CHARGE",
+      "title": "冲锋！！",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "抽牌堆N选k变化",
+      "family": "其他自身选牌",
+      "assessment": "已有公共选择／结算尾部；逐项验证前置历史与后置身份／延迟效果，嵌套继续完整回放",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "Cleanse",
+      "id": "CLEANSE",
+      "title": "洁净",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "抽牌堆N选1消耗",
+      "family": "召唤／奥斯提／随机候选",
+      "assessment": "分别核验召唤、攻击来源及候选随机历史，不能仅增加类型白名单",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "CosmicIndifference",
+      "id": "COSMIC_INDIFFERENCE",
+      "title": "宇宙冷漠",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "弃牌堆N选1置于牌顶",
+      "family": "先获得格挡",
+      "assessment": "补齐活动CardPlay格挡计数和格挡历史的同域复制；仍复用已有选择及结算尾部",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "DaggerThrow",
+      "id": "DAGGER_THROW",
+      "title": "投掷匕首",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "攻击、抽牌后N选1弃牌",
+      "family": "已正式接入（有条件）",
+      "assessment": "已验证三张牌的自身弃牌；附魔、污染、复杂事务、其他来源历史或嵌套仍可能回退",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "DecisionsDecisions",
+      "id": "DECISIONS_DECISIONS",
+      "title": "抉择，抉择",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "选1技能，再重复自动打出",
+      "family": "选择后重复自动出牌",
+      "assessment": "外层前缀可候选接入；内部续执行需要重复次数、队列、子出牌帧，初期嵌套继续完整回放",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "Discovery",
+      "id": "DISCOVERY",
+      "title": "发现",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "生成候选后至多选1",
+      "family": "生成候选",
+      "assessment": "补齐生成候选历史、尚未入牌堆的PredictedCard与trace重映射；保留RNG／升级／免费信息",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "Dredge",
+      "id": "DREDGE",
+      "title": "清淤",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "弃牌堆N选k回手，受手牌余量限制",
+      "family": "其他自身选牌",
+      "assessment": "已有公共选择／结算尾部；逐项验证前置历史与后置身份／延迟效果，嵌套继续完整回放",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "DualWield",
+      "id": "DUAL_WIELD",
+      "title": "双持",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "攻击/能力N选1，再复制",
+      "family": "其他自身选牌",
+      "assessment": "已有公共选择／结算尾部；逐项验证前置历史与后置身份／延迟效果，嵌套继续完整回放",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "Glimmer",
+      "id": "GLIMMER",
+      "title": "微光",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "抽牌后手牌N选k放牌顶",
+      "family": "抽牌／攻击后放回牌顶",
+      "assessment": "最接近现有执行帧；推广待选请求的效果／牌堆资格，验证顺序与洗牌后的嵌套回退",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "Graveblast",
+      "id": "GRAVEBLAST",
+      "title": "坟冢爆射",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "弃牌堆N选1回手",
+      "family": "其他自身选牌",
+      "assessment": "已有公共选择／结算尾部；逐项验证前置历史与后置身份／延迟效果，嵌套继续完整回放",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "Guards",
+      "id": "GUARDS",
+      "title": "护驾！！！",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "手牌任意子集变化，理论2^N",
+      "family": "其他自身选牌",
+      "assessment": "已有公共选择／结算尾部；逐项验证前置历史与后置身份／延迟效果，嵌套继续完整回放",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "HandTrick",
+      "id": "HAND_TRICK",
+      "title": "手上技法",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "合法技能N选1添加奇巧",
+      "family": "先获得格挡",
+      "assessment": "补齐活动CardPlay格挡计数和格挡历史的同域复制；仍复用已有选择及结算尾部",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "Headbutt",
+      "id": "HEADBUTT",
+      "title": "头槌",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "弃牌堆N选1放牌顶",
+      "family": "其他自身选牌",
+      "assessment": "已有公共选择／结算尾部；逐项验证前置历史与后置身份／延迟效果，嵌套继续完整回放",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "HeirloomHammer",
+      "id": "HEIRLOOM_HAMMER",
+      "title": "传承之锤",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "无色手牌N选1复制",
+      "family": "其他自身选牌",
+      "assessment": "已有公共选择／结算尾部；逐项验证前置历史与后置身份／延迟效果，嵌套继续完整回放",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "HiddenDaggers",
+      "id": "HIDDEN_DAGGERS",
+      "title": "隐秘匕首",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "手牌N选k弃牌，再生成小刀",
+      "family": "其他自身选牌",
+      "assessment": "已有公共选择／结算尾部；逐项验证前置历史与后置身份／延迟效果，嵌套继续完整回放",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "Hologram",
+      "id": "HOLOGRAM",
+      "title": "全息影像",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "弃牌堆N选1回手",
+      "family": "先获得格挡",
+      "assessment": "补齐活动CardPlay格挡计数和格挡历史的同域复制；仍复用已有选择及结算尾部",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "NeowsFury",
+      "id": "NEOWS_FURY",
+      "title": "涅奥之怒",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "弃牌堆选择0..k回手",
+      "family": "其他自身选牌",
+      "assessment": "已有公共选择／结算尾部；逐项验证前置历史与后置身份／延迟效果，嵌套继续完整回放",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "Nightmare",
+      "id": "NIGHTMARE",
+      "title": "夜魇",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "N选1，下回合生成复制品",
+      "family": "其他自身选牌",
+      "assessment": "已有公共选择／结算尾部；逐项验证前置历史与后置身份／延迟效果，嵌套继续完整回放",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "PhotonCut",
+      "id": "PHOTON_CUT",
+      "title": "光子切割",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "抽牌后手牌N选k放牌顶",
+      "family": "抽牌／攻击后放回牌顶",
+      "assessment": "最接近现有执行帧；推广待选请求的效果／牌堆资格，验证顺序与洗牌后的嵌套回退",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "Prepared",
+      "id": "PREPARED",
+      "title": "早有准备",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "手牌N选k弃牌",
+      "family": "已正式接入（有条件）",
+      "assessment": "已验证三张牌的自身弃牌；附魔、污染、复杂事务、其他来源历史或嵌套仍可能回退",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "Purity",
+      "id": "PURITY",
+      "title": "净化",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "手牌选择0..k消耗",
+      "family": "其他自身选牌",
+      "assessment": "已有公共选择／结算尾部；逐项验证前置历史与后置身份／延迟效果，嵌套继续完整回放",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "Quasar",
+      "id": "QUASAR",
+      "title": "类星体",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "生成候选后至多选1",
+      "family": "生成候选",
+      "assessment": "补齐生成候选历史、尚未入牌堆的PredictedCard与trace重映射；保留RNG／升级／免费信息",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "Scavenge",
+      "id": "SCAVENGE",
+      "title": "内存清理",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "手牌N选1消耗，排除自身",
+      "family": "其他自身选牌",
+      "assessment": "已有公共选择／结算尾部；逐项验证前置历史与后置身份／延迟效果，嵌套继续完整回放",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "SculptingStrike",
+      "id": "SCULPTING_STRIKE",
+      "title": "雕琢打击",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "尚无本地虚无的手牌N选1",
+      "family": "其他自身选牌",
+      "assessment": "已有公共选择／结算尾部；逐项验证前置历史与后置身份／延迟效果，嵌套继续完整回放",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "Seance",
+      "id": "SEANCE",
+      "title": "降灵",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "抽牌堆N选k变化",
+      "family": "其他自身选牌",
+      "assessment": "已有公共选择／结算尾部；逐项验证前置历史与后置身份／延迟效果，嵌套继续完整回放",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "SecretTechnique",
+      "id": "SECRET_TECHNIQUE",
+      "title": "秘密技法",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "抽牌堆合法技能/攻击N选1",
+      "family": "其他自身选牌",
+      "assessment": "已有公共选择／结算尾部；逐项验证前置历史与后置身份／延迟效果，嵌套继续完整回放",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "SecretWeapon",
+      "id": "SECRET_WEAPON",
+      "title": "秘密武器",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "抽牌堆合法技能/攻击N选1",
+      "family": "其他自身选牌",
+      "assessment": "已有公共选择／结算尾部；逐项验证前置历史与后置身份／延迟效果，嵌套继续完整回放",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "SeekerStrike",
+      "id": "SEEKER_STRIKE",
+      "title": "探寻打击",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "抽牌堆限定前部候选中选1",
+      "family": "召唤／奥斯提／随机候选",
+      "assessment": "分别核验召唤、攻击来源及候选随机历史，不能仅增加类型白名单",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "Snap",
+      "id": "SNAP",
+      "title": "响指",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "尚未保留的手牌N选1",
+      "family": "召唤／奥斯提／随机候选",
+      "assessment": "分别核验召唤、攻击来源及候选随机历史，不能仅增加类型白名单",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "Splash",
+      "id": "SPLASH",
+      "title": "飞溅",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "生成候选后至多选1",
+      "family": "生成候选",
+      "assessment": "补齐生成候选历史、尚未入牌堆的PredictedCard与trace重映射；保留RNG／升级／免费信息",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "Survivor",
+      "id": "SURVIVOR",
+      "title": "生存者",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "手牌N选1弃牌",
+      "family": "先获得格挡",
+      "assessment": "补齐活动CardPlay格挡计数和格挡历史的同域复制；仍复用已有选择及结算尾部",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "ThinkingAhead",
+      "id": "THINKING_AHEAD",
+      "title": "深谋远虑",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "抽牌后手牌N选1放牌顶",
+      "family": "抽牌／攻击后放回牌顶",
+      "assessment": "最接近现有执行帧；推广待选请求的效果／牌堆资格，验证顺序与洗牌后的嵌套回退",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "Transfigure",
+      "id": "TRANSFIGURE",
+      "title": "重构",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "手牌N选1永久修改",
+      "family": "其他自身选牌",
+      "assessment": "已有公共选择／结算尾部；逐项验证前置历史与后置身份／延迟效果，嵌套继续完整回放",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "TrueGrit",
+      "id": "TRUE_GRIT",
+      "title": "坚毅",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "升级后N选1消耗；未升级由RNG决定",
+      "family": "先获得格挡",
+      "assessment": "补齐活动CardPlay格挡计数和格挡历史的同域复制；仍复用已有选择及结算尾部",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "Tutor",
+      "id": "TUTOR",
+      "title": "指导",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "多人专用选牌",
+      "family": "多人范围外",
+      "assessment": "指导为多人专用，本仓库不支持多人",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Cards",
+      "model": "Wish",
+      "id": "WISH",
+      "title": "许愿",
+      "nativeMethods": [
+        "OnPlay"
+      ],
+      "shape": "抽牌堆N选1回手",
+      "family": "其他自身选牌",
+      "assessment": "已有公共选择／结算尾部；逐项验证前置历史与后置身份／延迟效果，嵌套继续完整回放",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Potions",
+      "model": "Ashwater",
+      "id": "ASHWATER",
+      "title": "灰水",
+      "nativeMethods": [
+        "OnUse"
+      ],
+      "shape": "手牌任意子集消耗，理论2^N",
+      "family": "药水牌堆选择",
+      "assessment": "五种共用手动使用尾部；保存已消耗槽位身份与history/shuffle/death信息，收益需测量",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Potions",
+      "model": "AttackPotion",
+      "id": "ATTACK_POTION",
+      "title": "攻击药水",
+      "nativeMethods": [
+        "OnUse"
+      ],
+      "shape": "3选1，可空选",
+      "family": "药水生成候选",
+      "assessment": "四种共用生成逻辑，优先试用Use后Apply前检查点；保留探测路径与AfterPotionUsed时序",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Potions",
+      "model": "ColorlessPotion",
+      "id": "COLORLESS_POTION",
+      "title": "无色药水",
+      "nativeMethods": [
+        "OnUse"
+      ],
+      "shape": "3选1，可空选",
+      "family": "药水生成候选",
+      "assessment": "四种共用生成逻辑，优先试用Use后Apply前检查点；保留探测路径与AfterPotionUsed时序",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Potions",
+      "model": "DropletOfPrecognition",
+      "id": "DROPLET_OF_PRECOGNITION",
+      "title": "预知之滴",
+      "nativeMethods": [
+        "OnUse"
+      ],
+      "shape": "抽牌堆N选1回手",
+      "family": "药水牌堆选择",
+      "assessment": "五种共用手动使用尾部；保存已消耗槽位身份与history/shuffle/death信息，收益需测量",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Potions",
+      "model": "GamblersBrew",
+      "id": "GAMBLERS_BREW",
+      "title": "赌徒特酿",
+      "nativeMethods": [
+        "OnUse"
+      ],
+      "shape": "手牌任意子集弃掉并补抽，理论2^N",
+      "family": "药水牌堆选择",
+      "assessment": "五种共用手动使用尾部；保存已消耗槽位身份与history/shuffle/death信息，收益需测量",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Potions",
+      "model": "LiquidMemories",
+      "id": "LIQUID_MEMORIES",
+      "title": "液态记忆",
+      "nativeMethods": [
+        "OnUse"
+      ],
+      "shape": "弃牌堆N选1回手并本回合免费",
+      "family": "药水牌堆选择",
+      "assessment": "五种共用手动使用尾部；保存已消耗槽位身份与history/shuffle/death信息，收益需测量",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Potions",
+      "model": "PowerPotion",
+      "id": "POWER_POTION",
+      "title": "能力药水",
+      "nativeMethods": [
+        "OnUse"
+      ],
+      "shape": "3选1，可空选",
+      "family": "药水生成候选",
+      "assessment": "四种共用生成逻辑，优先试用Use后Apply前检查点；保留探测路径与AfterPotionUsed时序",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Potions",
+      "model": "SkillPotion",
+      "id": "SKILL_POTION",
+      "title": "技能药水",
+      "nativeMethods": [
+        "OnUse"
+      ],
+      "shape": "3选1，可空选",
+      "family": "药水生成候选",
+      "assessment": "四种共用生成逻辑，优先试用Use后Apply前检查点；保留探测路径与AfterPotionUsed时序",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Potions",
+      "model": "TouchOfInsanity",
+      "id": "TOUCH_OF_INSANITY",
+      "title": "癫狂之触",
+      "nativeMethods": [
+        "OnUse"
+      ],
+      "shape": "符合能量/星费条件的N选1变免费",
+      "family": "药水牌堆选择",
+      "assessment": "五种共用手动使用尾部；保存已消耗槽位身份与history/shuffle/death信息，收益需测量",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Powers",
+      "model": "EntropyPower",
+      "id": "ENTROPY_POWER",
+      "title": "熵",
+      "nativeMethods": [
+        "AfterPlayerTurnStart"
+      ],
+      "shape": "每回合手牌N选k变化",
+      "family": "回合抽牌后",
+      "assessment": "已有回合前缀复用；进一步保存Power／Relic循环位置及源内进度，不重复前面触发器",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Powers",
+      "model": "ForegoneConclusionPower",
+      "id": "FOREGONE_CONCLUSION_POWER",
+      "title": "既定事项",
+      "nativeMethods": [
+        "BeforeHandDraw"
+      ],
+      "shape": "下回合抽牌堆N选k回手",
+      "family": "回合抽牌前",
+      "assessment": "扩展回合阶段及来源序号；当前抽牌前检查点在这些选牌之后，不能直接跳过其来源循环",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Powers",
+      "model": "StratagemPower",
+      "id": "STRATAGEM_POWER",
+      "title": "计策",
+      "nativeMethods": [
+        "AfterShuffle"
+      ],
+      "shape": "每次洗牌后从抽牌堆N选k回手",
+      "family": "洗牌内选择",
+      "assessment": "需要抽牌／洗牌的嵌套执行帧，现有三卡检查点不覆盖该暂停点",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Powers",
+      "model": "ToolsOfTheTradePower",
+      "id": "TOOLS_OF_THE_TRADE_POWER",
+      "title": "必备工具",
+      "nativeMethods": [
+        "AfterPlayerTurnStart"
+      ],
+      "shape": "每回合抽牌后N选k弃牌",
+      "family": "回合抽牌后",
+      "assessment": "已有回合前缀复用；进一步保存Power／Relic循环位置及源内进度，不重复前面触发器",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Powers",
+      "model": "TyrannyPower",
+      "id": "TYRANNY_POWER",
+      "title": "暴政",
+      "nativeMethods": [
+        "AfterPlayerTurnStart"
+      ],
+      "shape": "每回合抽牌后N选k消耗",
+      "family": "回合抽牌后",
+      "assessment": "已有回合前缀复用；进一步保存Power／Relic循环位置及源内进度，不重复前面触发器",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Relics",
+      "model": "ChoicesParadox",
+      "id": "CHOICES_PARADOX",
+      "title": "选择悖论",
+      "nativeMethods": [
+        "AfterPlayerTurnStart"
+      ],
+      "shape": "仅开战，生成k张候选选1并保留",
+      "family": "回合抽牌后",
+      "assessment": "已有回合前缀复用；进一步保存Power／Relic循环位置及源内进度，不重复前面触发器",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Relics",
+      "model": "GamblingChip",
+      "id": "GAMBLING_CHIP",
+      "title": "赌博筹码",
+      "nativeMethods": [
+        "AfterPlayerTurnStart"
+      ],
+      "shape": "仅开战，手牌任意子集弃牌补抽",
+      "family": "回合抽牌后",
+      "assessment": "已有回合前缀复用；进一步保存Power／Relic循环位置及源内进度，不重复前面触发器",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Relics",
+      "model": "ToastyMittens",
+      "id": "TOASTY_MITTENS",
+      "title": "烘焙手套",
+      "nativeMethods": [
+        "AfterPlayerTurnStart"
+      ],
+      "shape": "每回合手牌N选1消耗",
+      "family": "回合抽牌后",
+      "assessment": "已有回合前缀复用；进一步保存Power／Relic循环位置及源内进度，不重复前面触发器",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Relics",
+      "model": "Toolbox",
+      "id": "TOOLBOX",
+      "title": "工具箱",
+      "nativeMethods": [
+        "BeforeHandDraw"
+      ],
+      "shape": "仅开战，随机候选选1",
+      "family": "回合抽牌前",
+      "assessment": "扩展回合阶段及来源序号；当前抽牌前检查点在这些选牌之后，不能直接跳过其来源循环",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    },
+    {
+      "category": "Relics",
+      "model": "WhisperingEarring",
+      "id": "WHISPERING_EARRING",
+      "title": "低语耳环",
+      "nativeMethods": [
+        "AfterAutoPrePlayPhaseEnteredLate"
+      ],
+      "shape": "首回合瓦库自动选择/出牌",
+      "family": "固定自动策略",
+      "assessment": "低语耳环由固定Vakuu策略回答选择，当前没有可枚举的玩家选择兄弟；不列为优先收益对象",
+      "evidenceLevel": "current-source-review; performance unverified except the conditional three-card implementation"
+    }
+  ],
+  "outsideCombatSelections": [
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.Astrolabe.AfterObtained()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.Astrolabe",
+      "method": "AfterObtained()",
+      "selectionMethods": [
+        "FromDeckForTransformation"
+      ],
+      "classification": "OutsideCombat",
+      "evidence": "Relic acquisition choice resolves outside an active combat route"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.BiiigHug.AfterObtained()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.BiiigHug",
+      "method": "AfterObtained()",
+      "selectionMethods": [
+        "FromDeckForRemoval"
+      ],
+      "classification": "OutsideCombat",
+      "evidence": "Relic acquisition choice resolves outside an active combat route"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.Claws.AfterObtained()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.Claws",
+      "method": "AfterObtained()",
+      "selectionMethods": [
+        "FromDeckForTransformation"
+      ],
+      "classification": "OutsideCombat",
+      "evidence": "Relic acquisition choice resolves outside an active combat route"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.DollysMirror.AfterObtained()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.DollysMirror",
+      "method": "AfterObtained()",
+      "selectionMethods": [
+        "FromDeckGeneric"
+      ],
+      "classification": "OutsideCombat",
+      "evidence": "Relic acquisition choice resolves outside an active combat route"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.ElectricShrymp.AfterObtained()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.ElectricShrymp",
+      "method": "AfterObtained()",
+      "selectionMethods": [
+        "FromDeckForEnchantment"
+      ],
+      "classification": "OutsideCombat",
+      "evidence": "Relic acquisition choice resolves outside an active combat route"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.EmptyCage.AfterObtained()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.EmptyCage",
+      "method": "AfterObtained()",
+      "selectionMethods": [
+        "FromDeckForRemoval"
+      ],
+      "classification": "OutsideCombat",
+      "evidence": "Relic acquisition choice resolves outside an active combat route"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.GnarledHammer.AfterObtained()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.GnarledHammer",
+      "method": "AfterObtained()",
+      "selectionMethods": [
+        "FromDeckForEnchantment"
+      ],
+      "classification": "OutsideCombat",
+      "evidence": "Relic acquisition choice resolves outside an active combat route"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.HeftyTablet.AfterObtained()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.HeftyTablet",
+      "method": "AfterObtained()",
+      "selectionMethods": [
+        "FromChooseACardScreen"
+      ],
+      "classification": "OutsideCombat",
+      "evidence": "Relic acquisition choice resolves outside an active combat route"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.Kifuda.AfterObtained()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.Kifuda",
+      "method": "AfterObtained()",
+      "selectionMethods": [
+        "FromDeckForEnchantment"
+      ],
+      "classification": "OutsideCombat",
+      "evidence": "Relic acquisition choice resolves outside an active combat route"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.LeadPaperweight.AfterObtained()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.LeadPaperweight",
+      "method": "AfterObtained()",
+      "selectionMethods": [
+        "FromChooseACardScreen"
+      ],
+      "classification": "OutsideCombat",
+      "evidence": "Relic acquisition choice resolves outside an active combat route"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.MassiveScroll.AfterObtained()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.MassiveScroll",
+      "method": "AfterObtained()",
+      "selectionMethods": [
+        "FromChooseACardScreen"
+      ],
+      "classification": "OutsideCombat",
+      "evidence": "Relic acquisition choice resolves outside an active combat route"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.NewLeaf.AfterObtained()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.NewLeaf",
+      "method": "AfterObtained()",
+      "selectionMethods": [
+        "FromDeckForTransformation"
+      ],
+      "classification": "OutsideCombat",
+      "evidence": "Relic acquisition choice resolves outside an active combat route"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.PaelsGrowth.AfterObtained()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.PaelsGrowth",
+      "method": "AfterObtained()",
+      "selectionMethods": [
+        "FromDeckForEnchantment"
+      ],
+      "classification": "OutsideCombat",
+      "evidence": "Relic acquisition choice resolves outside an active combat route"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.PaelsTooth.AfterObtained()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.PaelsTooth",
+      "method": "AfterObtained()",
+      "selectionMethods": [
+        "FromDeckForRemoval"
+      ],
+      "classification": "OutsideCombat",
+      "evidence": "Relic acquisition choice resolves outside an active combat route"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.Pomander.AfterObtained()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.Pomander",
+      "method": "AfterObtained()",
+      "selectionMethods": [
+        "FromDeckForUpgrade"
+      ],
+      "classification": "OutsideCombat",
+      "evidence": "Relic acquisition choice resolves outside an active combat route"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.PrecariousShears.AfterObtained()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.PrecariousShears",
+      "method": "AfterObtained()",
+      "selectionMethods": [
+        "FromDeckForRemoval"
+      ],
+      "classification": "OutsideCombat",
+      "evidence": "Relic acquisition choice resolves outside an active combat route"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.PreciseScissors.AfterObtained()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.PreciseScissors",
+      "method": "AfterObtained()",
+      "selectionMethods": [
+        "FromDeckForRemoval"
+      ],
+      "classification": "OutsideCombat",
+      "evidence": "Relic acquisition choice resolves outside an active combat route"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.PreservedFog.AfterObtained()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.PreservedFog",
+      "method": "AfterObtained()",
+      "selectionMethods": [
+        "FromDeckForRemoval"
+      ],
+      "classification": "OutsideCombat",
+      "evidence": "Relic acquisition choice resolves outside an active combat route"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.PunchDagger.AfterObtained()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.PunchDagger",
+      "method": "AfterObtained()",
+      "selectionMethods": [
+        "FromDeckForEnchantment"
+      ],
+      "classification": "OutsideCombat",
+      "evidence": "Relic acquisition choice resolves outside an active combat route"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.RoyalStamp.AfterObtained()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.RoyalStamp",
+      "method": "AfterObtained()",
+      "selectionMethods": [
+        "FromDeckForEnchantment"
+      ],
+      "classification": "OutsideCombat",
+      "evidence": "Relic acquisition choice resolves outside an active combat route"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.ScrollBoxes.AfterObtained()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.ScrollBoxes",
+      "method": "AfterObtained()",
+      "selectionMethods": [
+        "FromChooseABundleScreen"
+      ],
+      "classification": "OutsideCombat",
+      "evidence": "Relic acquisition choice resolves outside an active combat route"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.SeaGlass.AfterObtained()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.SeaGlass",
+      "method": "AfterObtained()",
+      "selectionMethods": [
+        "FromSimpleGridForRewards"
+      ],
+      "classification": "OutsideCombat",
+      "evidence": "Relic acquisition choice resolves outside an active combat route"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.TriBoomerang.AfterObtained()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.TriBoomerang",
+      "method": "AfterObtained()",
+      "selectionMethods": [
+        "FromDeckForEnchantment"
+      ],
+      "classification": "OutsideCombat",
+      "evidence": "Relic acquisition choice resolves outside an active combat route"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.YummyCookie.AfterObtained()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.YummyCookie",
+      "method": "AfterObtained()",
+      "selectionMethods": [
+        "FromDeckForUpgrade"
+      ],
+      "classification": "OutsideCombat",
+      "evidence": "Relic acquisition choice resolves outside an active combat route"
+    }
+  ]
+}

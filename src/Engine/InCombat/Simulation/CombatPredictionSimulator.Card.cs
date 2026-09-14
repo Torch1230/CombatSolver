@@ -408,6 +408,8 @@ internal sealed partial class CombatPredictionSimulator
                 && State.CombatState is ICombatPredictionManualCardChoiceSink choiceSink
                 && !choiceSink.ResolveManualCardChoice(this, card))
             {
+                if (TryCaptureManualCardChoice(card, target, cardPlay, resultLocation, ownerBlockBeforePlay))
+                    return;
                 HookMirrors.AbortCardPlayed(this, cardPlay);
                 return;
             }
@@ -425,80 +427,97 @@ internal sealed partial class CombatPredictionSimulator
                 return;
             }
 
+            if (!CompleteManualCardPlayTail(card, target, cardPlay, ownerBlockBeforePlay))
+                return;
+        }
+
+        CompleteManualCardResultTail(card, originalOwner, resultLocation);
+    }
+
+    private bool CompleteManualCardPlayTail(PredictedCard card, Creature? target, CardPlay cardPlay,
+        int ownerBlockBeforePlay)
+    {
+        var previewCard = card.MutablePreview;
+        var ownerCreature = State.GetCreature(cardPlay.Player.Creature);
+        if (ownerCreature.IsDead)
+        {
+            HookMirrors.AbortCardPlayed(this, cardPlay);
+            return false;
+        }
+
+        if (previewCard.Enchantment is { } enchantment)
+        {
+            EnchantmentOnPlayMirrors.Invoke(this, card, cardPlay, enchantment);
+
+            if (HasPendingChoice)
+            {
+                HookMirrors.AbortCardPlayed(this, cardPlay);
+                return false;
+            }
+
             if (ownerCreature.IsDead)
             {
                 HookMirrors.AbortCardPlayed(this, cardPlay);
-                return;
-            }
-
-            if (previewCard.Enchantment is { } enchantment)
-            {
-                EnchantmentOnPlayMirrors.Invoke(this, card, cardPlay, enchantment);
-
-                if (HasPendingChoice)
-                {
-                    HookMirrors.AbortCardPlayed(this, cardPlay);
-                    return;
-                }
-
-                if (ownerCreature.IsDead)
-                {
-                    HookMirrors.AbortCardPlayed(this, cardPlay);
-                    return;
-                }
-            }
-
-            if (previewCard.Affliction is { } affliction)
-            {
-                AfflictionOnPlayMirrors.Invoke(this, card, target, affliction);
-
-                if (HasPendingChoice)
-                {
-                    HookMirrors.AbortCardPlayed(this, cardPlay);
-                    return;
-                }
-
-                if (ownerCreature.IsDead)
-                {
-                    HookMirrors.AbortCardPlayed(this, cardPlay);
-                    return;
-                }
-            }
-
-            int completionHistoryEntryStart = History.Entries.Count;
-            History.CardPlayFinished(
-                card,
-                cardPlay,
-                card.HasKeyword(State, CardKeyword.Ethereal));
-            HookMirrors.AfterCardPlayed(this, card, cardPlay);
-
-            // An AfterCardPlayed listener can auto-play another card whose own selection suspends.
-            // This CardPlay has already recorded its finished history, so do not abort it; its
-            // after-hook dispatch remains suspended before later listeners and lifecycle effects.
-            if (HasPendingChoice)
-            {
-                return;
-            }
-
-            if (State.CombatState is ICombatPredictionCardExecutionSink completionSink)
-            {
-                completionSink.CompleteCardPlayEffects(
-                    this,
-                    card,
-                    ownerBlockBeforePlay,
-                    completionHistoryEntryStart);
-                if (HasPendingChoice)
-                    return;
-            }
-
-            _blockGainedByCardPlay.Remove(cardPlay);
-
-            if (ownerCreature.IsDead)
-            {
-                return;
+                return false;
             }
         }
 
+        if (previewCard.Affliction is { } affliction)
+        {
+            AfflictionOnPlayMirrors.Invoke(this, card, target, affliction);
+
+            if (HasPendingChoice)
+            {
+                HookMirrors.AbortCardPlayed(this, cardPlay);
+                return false;
+            }
+
+            if (ownerCreature.IsDead)
+            {
+                HookMirrors.AbortCardPlayed(this, cardPlay);
+                return false;
+            }
+        }
+
+        int completionHistoryEntryStart = History.Entries.Count;
+        History.CardPlayFinished(
+            card,
+            cardPlay,
+            card.HasKeyword(State, CardKeyword.Ethereal));
+        HookMirrors.AfterCardPlayed(this, card, cardPlay);
+
+        // An AfterCardPlayed listener can auto-play another card whose own selection suspends.
+        // This CardPlay has already recorded its finished history, so do not abort it; its
+        // after-hook dispatch remains suspended before later listeners and lifecycle effects.
+        if (HasPendingChoice)
+        {
+            return false;
+        }
+
+        if (State.CombatState is ICombatPredictionCardExecutionSink completionSink)
+        {
+            completionSink.CompleteCardPlayEffects(
+                this,
+                card,
+                ownerBlockBeforePlay,
+                completionHistoryEntryStart);
+            if (HasPendingChoice)
+                return false;
+        }
+
+        _blockGainedByCardPlay.Remove(cardPlay);
+
+        if (ownerCreature.IsDead)
+        {
+            return false;
+        }
+        return true;
+    }
+
+    private void CompleteManualCardResultTail(PredictedCard card,
+        MegaCrit.Sts2.Core.Entities.Players.Player originalOwner, CardLocation resultLocation)
+    {
+        var previewCard = card.MutablePreview;
         if (originalOwner != resultLocation.player && resultLocation.pileType != PileType.None)
         {
             GiveToAnotherPlayer(

@@ -182,6 +182,10 @@ internal sealed partial class CombatBeamSolver
         public int ForkCount;
         public int RoundReplayPrefixCaptures;
         public int RoundReplayPrefixReuses;
+        public int CardChoicePrefixAttempts;
+        public int CardChoicePrefixCaptures;
+        public int CardChoicePrefixReuses;
+        public int CardChoicePrefixFallbacks;
         // Lane-local scheduling hint, never combat state or candidate policy. Learn only
         // after an initial EndTurn probe reached the stable post-draw boundary and
         // produced a choice layer.

@@ -1,5 +1,19 @@
 # CombatSolver 测试清单
 
+## 自身弃牌续执行正式接入（2026-09-14，未发布）
+
+原生两端无人启动器均可使用以下 `ScenarioId`，固定SILENT / FUZZY_WURM_CRAWLER_WEAK、敌HP999、NoGC关闭、120秒、根合同后停止：
+
+| 场景 | 本轮证据 |
+| --- | --- |
+| `CARD-CONTINUATION-CONTRACT` | `7bc12837a9de419095d2ed238da8dc1b` Passed；三张牌、杂技/早有准备普通与升级、原生完整结算、全部选择、历史/RNG/洗牌、兄弟/DOP2、取消与错误 |
+| `CARD-CONTINUATION-SEARCH` | 最终源码 `c37f7aea45c942d2be284d67c920dd99` Passed；真实选择链、嵌套回退、关闭复用/DOP1/DOP2完整结果、并发取消/异常排空 |
+| `CARD-CONTINUATION-INCREMENTAL` | 最终源码 `91e987fc05804e28a75099bf546ae5f7` Passed；严格增量，复用与回退均命中 |
+| Release、结构门禁、性能比较器 | 0警告/0错误；Bash/PowerShell `search_files=92`；12项比较器测试通过 |
+| 独立完整原生部署 | `5520c13005d24e43ab9f1a3ac92f5f44` Passed；初始39动作计划，原生T1结束、HP56→56、敌HP0、计划外重算0；Instant/0秒，120秒上限 |
+
+完整极高同工作量测量使用正常Search与独占新进程，不带增量开关；原蟹战、静默起始牌组死亡场景与独立弃牌获胜场景，共12个最终样本和9项完整对账通过。原两场保留A1后采最终F1/F2/A2，获胜场景独立ABBA；数据、GC不利变化、部署日志限制和全部runId见[报告](performance/choice-continuation-search-20260914.md)及[JSON](performance/choice-continuation-search-20260914.json)。既有CoverageCatalog分类与外部注册签名未变化，没有全量覆盖门禁或可见Steam测试。其他选牌来源的[扩展研究](performance/choice-continuation-expansion-20260914.md)仅做源码和清单核对，未写为通过语义或性能测试。
+
 ## 选牌暂停与恢复窄原型（2026-09-14，独立实验）
 
 基于 `1ef4601` 的实验 Release 构建 0 警告/错误，默认搜索与生产源码未修改。[报告](performance/choice-continuation-prototype-20260914.md)和[结构化证据](performance/choice-continuation-prototype-20260914.json)保存全部原始样本与失败尝试。此前投掷匕首计时受旧路径拒绝诊断污染，性能结论作废；以下三次均使用修正后的同一实验 DLL。

@@ -1470,6 +1470,10 @@ internal sealed class SolverResult
     public required int ForkCount { get; init; }
     public int RoundReplayPrefixCaptures { get; init; }
     public int RoundReplayPrefixReuses { get; init; }
+    public int CardChoicePrefixAttempts { get; init; }
+    public int CardChoicePrefixCaptures { get; init; }
+    public int CardChoicePrefixReuses { get; init; }
+    public int CardChoicePrefixFallbacks { get; init; }
     public required int TransitionCount { get; init; }
     public long TotalTransitionCount { get; internal set; }
     public required int ReusedNodeSnapshots { get; init; }

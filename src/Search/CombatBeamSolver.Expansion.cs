@@ -628,7 +628,8 @@ internal sealed partial class CombatBeamSolver
                     CardStateKey: cardStateKey,
                     CardStateOccurrence: cardStateOccurrence,
                         CardEnchantmentId: card.Preview.Enchantment?.Id.Entry ?? "", CardUpgradeLevel: card.Preview.CurrentUpgradeLevel);
-                SimulationSnapshot probeSnapshot = ReplayAction(node, action);
+                using CardChoiceReplayCapture? cardCapture = PrepareCardChoiceCapture(node, action);
+                SimulationSnapshot probeSnapshot = ReplayAction(node, action, cardChoiceCapture: cardCapture);
 
                 CardChoiceSpec? choiceSpec = BuildPrimaryCardChoiceSpec(probeSnapshot);
                 if (choiceSpec == null && CardChoiceSupport.RequiresUnsupportedExistingChoice(card.Preview))
@@ -653,6 +654,7 @@ internal sealed partial class CombatBeamSolver
                             probeSnapshot,
                             choiceSpec,
                             requiredEmptyChoice);
+                resolvedBranches = WithCardChoiceCheckpoint(cardCapture?.Take(), resolvedBranches);
                 foreach ((PlanAction finalAction, SimulationSnapshot finalSnapshot) in resolvedBranches)
                 {
                     bool forcedTurnEnd = finalSnapshot.Turn > node.Turn;
@@ -2667,7 +2669,10 @@ internal sealed partial class CombatBeamSolver
         ReplayForkSeed? replayForkSeed = null,
         SearchReplayEvidence? replayEvidence = null,
         RoundReplayCheckpoint? roundCheckpoint = null,
-        RoundReplayCheckpointCapture? roundCheckpointCapture = null)
+        RoundReplayCheckpointCapture? roundCheckpointCapture = null,
+        CardChoiceReplayCapture? cardChoiceCapture = null,
+        ManualCardChoiceFrame? cardChoiceFrame = null,
+        bool countTransition = true)
     {
         _run.WorkPacer.YieldIfNeeded();
         CombatPredictionSimulator simulator;
@@ -2696,7 +2701,7 @@ internal sealed partial class CombatBeamSolver
         {
             if (parentSnapshot.BoundaryReason != SearchBoundaryReason.None)
                 throw new InvalidOperationException("不能从已抵达搜索边界的模拟状态继续分叉。");
-            _run.TransitionCount += actions.Count;
+            if (countTransition) _run.TransitionCount += actions.Count;
             if (replayForkSeed == null)
             {
                 _run.ForkCount++;
@@ -2850,7 +2855,7 @@ internal sealed partial class CombatBeamSolver
             }
 
             SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(_player);
-            PredictedCard? card = FindCardForReplay(playerState.Hand.Cards, action);
+            PredictedCard? card = cardChoiceFrame?.Card ?? FindCardForReplay(playerState.Hand.Cards, action);
             if (card is null)
             {
                 string hand = string.Join(',', playerState.Hand.Cards.Select(candidate =>
@@ -2861,7 +2866,7 @@ internal sealed partial class CombatBeamSolver
                     $"state_occurrence={action.CardStateOccurrence} state_key={action.CardStateKey} hand={hand}。");
             }
             Creature? target = simulatedCombat.GetCreature(action.TargetCombatId);
-            if (!simulatedCombat.CanPlayCard(simulator, card))
+            if (cardChoiceFrame is null && !simulatedCombat.CanPlayCard(simulator, card))
             {
                 int energyCost = card.GetEnergyCostWithModifiers(simulator, playerState);
                 int starCost = card.GetStarCostWithModifiers(simulator, playerState);
@@ -2878,7 +2883,8 @@ internal sealed partial class CombatBeamSolver
                     $"choice={action.Choice?.Effect.ToString() ?? "-"}:{choiceCards} " +
                     $"hand={hand}。");
             }
-            int shuffleEvents = simulator.ShuffleEventCount;
+            int shuffleEvents = cardChoiceFrame?.ShuffleEventsBefore ?? simulator.ShuffleEventCount;
+            bool capturingChoice = cardChoiceCapture != null && simulator.BeginManualCardChoiceCapture(card);
             SearchMeasurement cardExecutionMeasurement = _run.Performance.Begin();
             simulatedCombat.BeginActionChoices(ActionChoicesForReplay(action));
             using IDisposable cardExecutionScope =
@@ -2886,10 +2892,13 @@ internal sealed partial class CombatBeamSolver
             bool cardPlayCompleted;
             try
             {
-                cardPlayCompleted = simulator.ManualPlay(card, target, out _);
+                cardPlayCompleted = cardChoiceFrame is null
+                    ? simulator.ManualPlay(card, target, out _)
+                    : simulator.ResumeManualCardChoice(cardChoiceFrame);
             }
             finally
             {
+                if (capturingChoice) simulator.EndManualCardChoiceCapture();
                 _run.Performance.End(SearchMetricPhase.CardExecution, cardExecutionMeasurement);
             }
             SearchMeasurement cardPostMeasurement = _run.Performance.Begin();
@@ -2932,6 +2941,17 @@ internal sealed partial class CombatBeamSolver
             LogAnnotatedReplayState(simulator, action, priorActionCount + actionOffset, turn, replayEvidence);
         }
         _run.Performance.End(SearchMetricPhase.Action, actionMeasurement);
+        if (cardChoiceFrame != null && boundary == SearchBoundaryReason.PendingChoice)
+        {
+            // This is the same logical choice attempt. The extra physical fork is observable,
+            // but cannot spend a second transition or branch-budget lease. All child scopes have
+            // unwound before replaying from the retained parent with the complete original action.
+            _run.CardChoicePrefixFallbacks++;
+            using ReplayForkSeed? fallbackSeed = _parallelActionReplayForkGate is null ? null
+                : PrepareReplayForkSeed(parentSnapshot!, _parallelActionReplayForkGate);
+            return Replay(actions, parentSnapshot, startingTurn, priorActionCount,
+                triggerRecorder, replayForkSeed: fallbackSeed, replayEvidence: replayEvidence, countTransition: false);
+        }
 
         SearchMeasurement snapshotMeasurement = _run.Performance.Begin();
         SimulationSnapshot snapshot = Snapshot(
@@ -2942,6 +2962,8 @@ internal sealed partial class CombatBeamSolver
             boundary,
             processedEnemyDeaths);
         _run.Performance.End(SearchMetricPhase.Snapshot, snapshotMeasurement);
+        try { cardChoiceCapture?.Receive(this, simulator, processedEnemyDeaths); }
+        catch { snapshot.ReleaseSimulator(); throw; }
         return snapshot;
     }
 
@@ -3052,16 +3074,27 @@ internal sealed partial class CombatBeamSolver
         SearchNode parent,
         PlanAction action,
         ReplayForkSeed? replayForkSeed = null,
-        RoundReplayCheckpointCapture? roundCheckpointCapture = null)
+        RoundReplayCheckpointCapture? roundCheckpointCapture = null,
+        CardChoiceReplayCapture? cardChoiceCapture = null)
     {
         if (replayForkSeed != null && policy.VerifyIncrementalSearch)
             throw new InvalidOperationException("严格增量回放不能消费并行 Fork seed。");
         ReplayForkSeed? gatedSeed = null;
+        ManualCardChoiceFrame? cardChoiceFrame = null;
+        CardChoiceReplayCheckpoint? cardCheckpoint = _cardChoiceReplayCheckpoint?.Matches(parent, action) == true
+            ? _cardChoiceReplayCheckpoint : null;
         RoundReplayCheckpoint? roundCheckpoint = !policy.VerifyIncrementalSearch
             && _roundReplayCheckpoint?.Matches(parent, action) == true ? _roundReplayCheckpoint : null;
         try
         {
-            if (roundCheckpoint != null)
+            if (cardCheckpoint != null)
+            {
+                if (replayForkSeed != null || roundCheckpoint != null || cardChoiceCapture != null)
+                    throw new InvalidOperationException("Card continuation cannot consume another replay seed or capture.");
+                gatedSeed = cardCheckpoint.Fork(this, out cardChoiceFrame);
+                replayForkSeed = gatedSeed;
+            }
+            else if (roundCheckpoint != null)
             {
                 if (replayForkSeed != null || _parallelActionReplayForkGate == null)
                     throw new InvalidOperationException("Round checkpoint requires its owning replay gate.");
@@ -3088,7 +3121,9 @@ internal sealed partial class CombatBeamSolver
                     parent.ActionCount,
                     replayForkSeed: replayForkSeed,
                     roundCheckpoint: roundCheckpoint,
-                    roundCheckpointCapture: roundCheckpointCapture);
+                    roundCheckpointCapture: roundCheckpointCapture,
+                    cardChoiceCapture: cardChoiceCapture,
+                    cardChoiceFrame: cardChoiceFrame);
                 if (!policy.VerifyIncrementalSearch)
                     return incremental;
 

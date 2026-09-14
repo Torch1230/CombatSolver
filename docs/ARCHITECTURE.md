@@ -178,6 +178,7 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 | `CombatBeamSolver.AdmittedExpansion.cs` | 已准入父节点的准备、动作探测、选择准备/回放/续接、药水/目标与回合尾部作业；有界派发、快照移交、取消/异常排空 |
 | `CombatBeamSolver.PrimaryChoiceReplay.cs` | 原预算保证必经的首层回放、唯一快照暂存与原序消费；动态预算和实例补充仍由一个续接作业独占 |
 | `CombatBeamSolver.EndTurnChoiceReplay.cs` | EndTurn初始回放与首层挂起选择准备；复用必经回放槽位，原序解析嵌套/实体补充，独占返回候选和待命基线 |
+| `CombatBeamSolver.CardChoiceContinuation.cs` | 手动自身弃牌检查点的同父/同动作匹配、串行选择链与并行frontier所有权、尝试/捕获/复用/回退计数；不改变预算或候选 |
 | `CombatBeamSolver.RoundTransition.cs` | 玩家回合开始推进；在抽牌准备完成但尚未Draw或抽牌/历史补偿完成两个稳定点保存同父EndTurn前缀；frontier独占、同父gate复制、生产者排空后释放；不缓存挂起事务或改变候选预算 |
 | `CombatBeamSolver.StandPatJobs.cs` | 对原保路规则必经的 EndTurn 探针批量求值，复用固定 lane、回传标量，缓存和选择仍由 coordinator 原序完成 |
 | `CombatBeamSolver.RetentionJobs.cs` | 剪枝只读索引作业；复用空闲固定 lane，按原索引收集输出，排空后统一记账并传播取消/错误 |
@@ -268,6 +269,10 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 `PredictionUtils.CloneModelForSimulation` 对卡牌在 DeepCloneFields 前清除 CardModel 事件委托；原版克隆阶段会重新附着附魔并发出事件，不能让这些事件调用源卡的 UI 订阅者。深拷贝和 AfterCloned 仍使用原版实现。`NativeModelCloneConcurrency` 仅在模拟隔离域放行无附魔/灾厄、动态变量已物化且均为原版类型、克隆阶段未改写的原版卡牌；同时严格核对变量 Clone 的 BaseLib/Ritsu 补丁及稀疏元数据复制保护。Power 还必须继承 PowerModel 的克隆阶段及默认 InitInternalData，并核对 AbstractModel.DeepCloneFields 与 Power.DynamicVars 的物化保护补丁；不共享可变 Power，不触发惰性变量创建。未知类型、阶段或补丁保留原锁。类型与补丁证据仅在线程当前最外层隔离域内缓存，不持有模型，跨域重新核对；不支持求解过程中动态变更补丁。
 
 ### 4.1 基础层
+
+自身弃牌续执行由 `CombatPredictionSimulator.CardContinuation` 保存唯一程序位置：原版投掷匕首、杂技、早有准备手动单次执行已完成抽牌/伤害、等待自己的弃牌选择。`CombatPredictionHistory.CardContinuation` 深拷贝活动后缀中的 CardPlay、trace、damage 和抽牌配对，过去的已封存历史仍共享；State、卡牌、StateStore、history 通过同一个 Fork context 重映射。Engine 通过 `ICombatPredictionCardContinuationState` 验证领域事务，不依赖 Search 的候选政策。
+
+`Prediction/CardChoiceContinuation` 独占暂停 seed/frame/deaths 和 Fork 锁；最初 probe 只读消费 pending spec，随后释放。普通 Fork 拒绝该暂停种子，只有所属检查点能暂时取下 pending request、执行原稳定边界断言并复制。Search 的串行选择链或 `PrimaryChoiceReplayFrontier` 独占检查点直到所有作业排空；同父节点引用、完整原动作匹配，只有 primary Choice 可替换。再次遇到嵌套选择时子作用域全部退出，再从原父完整回放；额外物理 Fork 计入 `CardChoicePrefixFallbacks`，原 transition/choice lease 只扣一次。结果和跨回合续用只保留完成后的普通状态，不保存暂停帧、Task 或闭包。无附魔/污染、空显式选择、单层执行、已知历史、无不透明/事务 StateStore 是当前封闭适用范围，未命中继续原语义；不新增第三方注册能力。
 
 `src/Engine/InCombat/Simulation/` 负责通用战斗命令时序、伤害、牌堆、历史、RNG、球和 Fork。它不包含单张卡、单个 Power 或具体怪物的搜索策略。历史卡牌 Started/Finished 与 DamageReceived 的卡牌来源使用不可变卡牌快照；当前动作是否开始以精确 trace-frame 身份判定，保留原生 `CardPlay` 身份，不以 Original 卡牌身份合并兄弟分支。`CombatPredictionHistory` 以不可变 prefix segment + 分支本地 mutable tail 保存事件；动作后缀消费者必须使用冻结上界的 `EntriesFrom/EntriesBetween`，不能先遍历完整 prefix 再 `Skip`，否则长线会把一次局部查询放大为随深度增长的重复工作。
 

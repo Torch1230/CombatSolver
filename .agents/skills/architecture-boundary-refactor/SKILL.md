@@ -100,3 +100,5 @@ description: 重构 CombatSolver 的 Search、Runtime 会话、UI snapshot、无
 普通架构重构直接提交，不自行提升版本、不计算文件哈希。版本和打包时机以 `AGENTS.md` 的活动发布批次和发布口令为准，再转 `release-gate`。
 
 - `RoundTransition` 只在无计划选择的EndTurn初探中，于普通抽牌和历史补偿完成后保存无挂起选择的前缀；当前仅ToolsOfTheTradePower存在时预留。原Fork事务断言保持，复制前临时关闭空cursor并在finally恢复。前缀匹配父节点引用、EndTurn回合与PlayerTurnStart选择，Knowledge选择完整回放；不跨父/搜索共享。frontier拥有checkpoint，同父gate串行Fork，排空后释放。新增捕获计数包含额外物理Fork，DOP等价比较扣除该项后的转移Fork；完整状态/续用/历史与兄弟隔离须直接对账。
+
+- 正式手动自身弃牌续执行仅支持无附魔/污染的原版投掷匕首、杂技、早有准备，且单次手动打出、空显式cursor、单层card scope、可重映射活动历史及无不透明/事务StateStore。Engine保存显式CardPlay/frame并复用唯一结算尾部；Prediction独占seed/frame/deaths和Fork锁，Search仅在同父同动作选择链或frontier内持有。普通Fork仍拒绝挂起种子；私有Fork临时移走所属pending request并运行原事务断言，全部模型/trace/play/history使用同一PredictionForkContext。再次挂起时退出全部子scope再完整回放，额外物理Fork单列fallback，不多扣逻辑transition/选择预算。旧路径不得运行捕获诊断或持有检查点；释放必须在生产者/消费者排空后完成。不保留Task/闭包，不跨父、搜索或战斗缓存。完整状态/历史/RNG、兄弟修改、原生结算、DOP、取消/异常排空与增量等价直接验证；三张牌的命中和整搜收益分别报告。

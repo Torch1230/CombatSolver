@@ -69,7 +69,7 @@ internal sealed class PredictionTraceFrame
 /// A trace is mutable only while simulation scopes are active and is not safe for concurrent use. Disposing scopes
 /// out of LIFO order is a programming error; popped frame objects remain valid immutable identities for history.
 /// </remarks>
-internal sealed class PredictionTrace
+internal sealed partial class PredictionTrace
 {
     // 绝大多数镜像分发在自己的作用域里一条历史都不记，帧对象建了就直接丢。改为只把
     // 来源/调用记进一段可复用的栈，等真的有人读 Current 时才物化，并把结果缓存在槽里。

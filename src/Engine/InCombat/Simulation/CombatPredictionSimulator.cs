@@ -150,6 +150,7 @@ internal sealed partial class CombatPredictionSimulator
 
     public CombatPredictionSimulator Fork()
     {
+        GuardOrdinaryCardContinuationFork();
         AssertForkable();
 
         using PredictionForkContext context = new();

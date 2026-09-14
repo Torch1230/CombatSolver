@@ -88,6 +88,18 @@ class ComparisonTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "did not pass"):
             compare(self.a, self.b)
 
+    def test_card_fallback_extra_copy_is_accounted(self):
+        self.change("details.json", lambda x: x.update(result=x["result"].replace(
+            "forks=12", "forks=13 card_prefix_fallbacks=1 card_prefix_captures=4 card_prefix_reuses=8")))
+        self.change("result.json", lambda x: x["solverMetrics"].update(cardChoicePrefixFallbacks=1))
+        self.assertTrue(compare(self.a, self.b)["oracleEqual"])
+
+    def test_card_fallback_cannot_hide_transition_drift(self):
+        self.change("details.json", lambda x: x.update(result=x["result"].replace(
+            "forks=12", "forks=13 card_prefix_fallbacks=2")))
+        with self.assertRaisesRegex(ValueError, "physical Forks"):
+            compare(self.a, self.b)
+
     def test_physical_forks_must_account_for_prefix_copies(self):
         self.change("details.json", lambda x: x.update(result=x["result"].replace("forks=12", "forks=13")))
         with self.assertRaisesRegex(ValueError, "physical Forks"):

@@ -257,6 +257,21 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertHpTargetStopAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "CARD-CONTINUATION-INCREMENTAL")
+            {
+                await AssertCardChoiceSearchAsync(combatState, player, strictOnly: true);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "CARD-CONTINUATION-SEARCH")
+            {
+                await AssertCardChoiceSearchAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "CARD-CONTINUATION-CONTRACT")
+            {
+                await runner.RunCardContinuationContractAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "NATIVE-HAND-CHOICE-REPLAY")
             {
                 await runner.AssertNativeHandChoiceReplayAsync(combatState, player);

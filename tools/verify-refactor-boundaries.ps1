@@ -526,6 +526,7 @@ $expectedBeamFiles = @(
     "CombatBeamSolver.AdmittedExpansion.cs",
     "CombatBeamSolver.EndTurnChoiceReplay.cs",
     "CombatBeamSolver.RoundTransition.cs",
+    "CombatBeamSolver.CardChoiceContinuation.cs",
     "CombatBeamSolver.BeamRetentionPolicy.cs",
     "CombatBeamSolver.CrossTurnPlanning.cs",
     "CombatBeamSolver.CyclePlanning.cs",
@@ -1333,6 +1334,29 @@ foreach ($requiredCloneBoundary in @(
 }
 if (Select-String -LiteralPath (Join-Path $repositoryRoot 'src/Engine/Common/NativeModelCloneConcurrency.cs') -SimpleMatch 'CombatSolver.Search' -Quiet) {
     $violations.Add('Clone eligibility depends on search policy.')
+}
+
+# A suspended own-discard frame belongs to its continuation; ordinary Fork remains strict.
+foreach ($rule in @(
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs'; Text = 'GuardOrdinaryCardContinuationFork();' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs'; Text = 'context.Register(source.Play, play);' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs'; Text = 'StateStore.SupportsManualCardChoiceContinuation' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs'; Text = 'DetachPendingManualCardChoice();' },
+    @{ RelativePath = 'src/Prediction/CardChoiceContinuation.cs'; Text = 'lock (_gate)' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.CardChoiceContinuation.cs'; Text = 'ReferenceEquals(_parent, candidate)' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.CardChoiceContinuation.cs'; Text = 'return Enumerate(this, checkpoint, branches);' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.Expansion.cs'; Text = 'countTransition: false' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.PrimaryChoiceReplay.cs'; Text = 'CardCheckpoint?.Dispose();' },
+    @{ RelativePath = 'src/Search/SimulatedCombatState.CardContinuation.cs'; Text = '_cardExecutionScopeDepth != 0' }
+)) {
+    if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot $rule.RelativePath) -SimpleMatch $rule.Text -Quiet)) {
+        $violations.Add("Missing card continuation ownership boundary: $($rule.RelativePath): $($rule.Text)")
+    }
+}
+foreach ($forbidden in @('Task<', 'Func<', 'Action<')) {
+    if (Select-String -LiteralPath (Join-Path $repositoryRoot 'src/Prediction/CardChoiceContinuation.cs') -SimpleMatch $forbidden -Quiet) {
+        $violations.Add("Continuation retained an executable closure: $forbidden")
+    }
 }
 
 if ($violations.Count -gt 0) {

@@ -24,6 +24,8 @@ internal sealed class TurnStartChoiceCursor(IReadOnlyList<PlanCardChoice>? choic
     private readonly IReadOnlyList<PlanCardChoice> _choices = choices ?? [];
     private readonly Func<TurnStartChoiceRequest, PlanCardChoice?>? _automaticPolicy;
     private int _index;
+    internal bool IsEmptyExplicitChoiceCursor => _choices.Count == 0 && _index == 0
+        && _automaticPolicy is null && _beforeNextTake is null;
     private Func<bool>? _beforeNextTake;
 
     private TurnStartChoiceCursor(

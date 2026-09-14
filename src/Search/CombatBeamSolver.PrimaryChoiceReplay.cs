@@ -12,7 +12,8 @@ internal sealed partial class CombatBeamSolver
     private static PrimaryChoiceReplayFrontier? PreparePrimaryChoiceReplays(
         PrimaryCardChoiceLayer layer,
         PreparedCardAction? card = null,
-        PreparedPotionAction? potion = null)
+        PreparedPotionAction? potion = null,
+        CardChoiceReplayCheckpoint? cardCheckpoint = null)
     {
         ChoiceSearchBudget budget = layer.WholeActionBudget.SemanticSearchBudget;
         if (!CanReservePrimaryReplayPrefix(
@@ -21,7 +22,7 @@ internal sealed partial class CombatBeamSolver
         {
             return null;
         }
-        return new PrimaryChoiceReplayFrontier(layer, card, potion);
+        return new PrimaryChoiceReplayFrontier(layer, card, potion, cardCheckpoint);
     }
 
     /// <summary>
@@ -41,6 +42,7 @@ internal sealed partial class CombatBeamSolver
         public EndTurnChoiceLayer? EndTurn { get; }
         public bool IsEndTurn => EndTurn != null;
         public PreparedCardAction? Card { get; }
+        public CardChoiceReplayCheckpoint? CardCheckpoint { get; }
         public PreparedPotionAction? Potion { get; }
         public bool IsPotion => Potion.HasValue;
         public PlanAction[] Actions { get; }
@@ -56,13 +58,15 @@ internal sealed partial class CombatBeamSolver
         public PrimaryChoiceReplayFrontier(
             PrimaryCardChoiceLayer layer,
             PreparedCardAction? card,
-            PreparedPotionAction? potion)
+            PreparedPotionAction? potion,
+            CardChoiceReplayCheckpoint? cardCheckpoint = null)
         {
             if (card.HasValue == potion.HasValue)
                 throw new ArgumentException("选择回放 frontier 必须有且只有一个动作所有者。");
             _layer = layer;
             Card = card;
             Potion = potion;
+            CardCheckpoint = cardCheckpoint;
             PlanAction action = card?.Action ?? potion!.Value.Action;
             Actions = new PlanAction[layer.SemanticBranchCount];
             for (int index = 0; index < Actions.Length; index++)
@@ -126,6 +130,7 @@ internal sealed partial class CombatBeamSolver
         public void Dispose()
         {
             EndTurn?.Checkpoint?.Dispose();
+            CardCheckpoint?.Dispose();
             for (int index = 0; index < _snapshots.Length; index++)
             {
                 _snapshots[index]?.ReleaseSimulator();
@@ -139,12 +144,14 @@ internal sealed partial class CombatBeamSolver
         PlanAction action,
         object forkGate,
         bool pruneInvalidBranch = true,
-        RoundReplayCheckpoint? roundCheckpoint = null)
+        RoundReplayCheckpoint? roundCheckpoint = null,
+        CardChoiceReplayCheckpoint? cardCheckpoint = null)
     {
         if (_parallelActionReplayForkGate != null)
             throw new InvalidOperationException("不能嵌套首层选择回放的 Fork 上下文。");
         _parallelActionReplayForkGate = forkGate;
         _roundReplayCheckpoint = roundCheckpoint;
+        _cardChoiceReplayCheckpoint = cardCheckpoint;
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -158,6 +165,9 @@ internal sealed partial class CombatBeamSolver
                 if (action.Kind == PlanActionKind.EndTurn)
                     ObserveSearchPath(parent, SearchPathObservationStage.EndTurnChoiceReplay,
                         "mandatory_end_turn_choice_replayed");
+                if (cardCheckpoint != null)
+                    ObserveSearchPath(parent, SearchPathObservationStage.CardChoiceContinuationReplay,
+                        "mandatory_card_continuation_replayed");
                 return snapshot;
             }
             catch
@@ -170,6 +180,7 @@ internal sealed partial class CombatBeamSolver
         {
             _parallelActionReplayForkGate = null;
             _roundReplayCheckpoint = null;
+            _cardChoiceReplayCheckpoint = null;
         }
     }
 
@@ -183,6 +194,7 @@ internal sealed partial class CombatBeamSolver
         ExpansionBatch batch = RentExpansionBatch();
         bool completed = false;
         _parallelActionReplayForkGate = forkGate;
+        _cardChoiceReplayCheckpoint = frontier.CardCheckpoint;
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -209,6 +221,7 @@ internal sealed partial class CombatBeamSolver
         finally
         {
             _parallelActionReplayForkGate = null;
+            _cardChoiceReplayCheckpoint = null;
             if (!completed)
                 batch.Dispose();
         }
