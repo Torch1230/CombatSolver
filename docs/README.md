@@ -9,6 +9,7 @@
 
 | 要查什么 | 入口 |
 |---|---|
+| 投掷匕首、杂技、早有准备的暂停恢复窄原型与修正后对照 | [选牌暂停与恢复原型](performance/choice-continuation-prototype-20260914.md) |
 | 蟹战后续延迟、抽牌洗牌前缀、生成池与全部反例 | [蟹战后续优化](performance/crab-latency-20260914.md) |
 | 极高慢/高内存场景的通用优化、完整对照与高成本TODO | [通用分配与重复工作](performance/general-allocation-20260914.md) |
 | PR #90全部性能尝试、采用/撤回与效果 | [尝试总账](performance/pr90-attempts-20260913.md) |

@@ -1,5 +1,17 @@
 # CombatSolver 测试清单
 
+## 选牌暂停与恢复窄原型（2026-09-14，独立实验）
+
+基于 `1ef4601` 的实验 Release 构建 0 警告/错误，默认搜索与生产源码未修改。[报告](performance/choice-continuation-prototype-20260914.md)和[结构化证据](performance/choice-continuation-prototype-20260914.json)保存全部原始样本与失败尝试。此前投掷匕首计时受旧路径拒绝诊断污染，性能结论作废；以下三次均使用修正后的同一实验 DLL。
+
+| 验证 | runId / 结果 |
+| --- | --- |
+| 投掷匕首全部9选择、完整历史/RNG/身份、兄弟与DOP2、取消/异常/释放、升级/历史前缀/真实洗牌、拒绝/嵌套回退、原生完整结算；固定工作量及受控保留堆 | `6c9670133f8242dcb2f29b4089eaa89a` Passed |
+| 杂技普通/升级全部9/10选择，抽3/4弃1，真实洗牌、历史/RNG/兄弟/DOP2/嵌套回退，两版分别原生完整结算及固定工作量 | `13cb642b0ac5459c897daf032503c078` Passed |
+| 早有准备普通/升级全部8/36选择或组合，抽弃1/1及2/2，真实洗牌、历史/RNG/兄弟/DOP2/嵌套回退，两版分别原生完整结算及固定工作量 | `f4559b26b5484ed5be592c706053c2fb` Passed |
+
+复跑先按[工具说明](../tools/ChoiceContinuationPrototype/README.md)在固定版本的独立 worktree 构建，使用新证据目录；runner 的 `--card dagger|acrobatics|prepared` 选择场景。Linux 无头、SILENT、FUZZY_WURM_CRAWLER_WEAK、敌HP999、关闭NoGC、每请求120秒；专属进程在结束/失败时清理。原生检查等待精确动作完成并核对完整 continuation。未执行默认 Search、完整蟹战、可见 Steam、Windows 或全量发布门禁，不作对应收益结论。
+
 ## 蟹战后续延迟优化（2026-09-14，未发布）
 
 沿用3afbdd3的完整VeryHigh输入、DOP16与16GB NoGC，新增专用洗牌短fixture；全部非时序质量字段、开局、政策、动作/路线直接对照。原型、增量峰值反例、整批初始基线、每次数据与复现参数见[报告](performance/crab-latency-20260914.md)及[结构化证据](performance/crab-latency-20260914.json)。
