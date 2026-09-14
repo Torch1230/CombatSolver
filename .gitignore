@@ -21,3 +21,4 @@ Thumbs.db
 *.bak
 .local/
 releases/*.zip
+releases/*.publish-state.json
