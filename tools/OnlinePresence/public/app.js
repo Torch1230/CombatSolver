@@ -778,6 +778,9 @@ function refreshRelease() {
   if (requests.has("release-save")) return;
   return load("release", "/api/release", renderRelease, "release-error");
 }
+function refreshDailyActive() {
+  return load('dau','/api/dau',window.renderDailyActive,'dau-error');
+}
 async function saveRelease(latestVersion) {
   requests.get("release")?.abort();
   requests.get("release-save")?.abort();
@@ -838,6 +841,7 @@ async function refreshNow() {
   }
   await Promise.all([
     refreshOverview(),
+    refreshDailyActive(),
     refreshRelease(),
     activeTab === "live" ? refreshPlayers() : refreshRuns(),
   ]);
@@ -845,7 +849,7 @@ async function refreshNow() {
 async function bootstrap() {
   const success = await refreshOverview();
   if (success && authenticated)
-    await Promise.all([refreshRelease(), activeTab === "live" ? refreshPlayers() : refreshRuns()]);
+    await Promise.all([refreshDailyActive(), refreshRelease(), activeTab === "live" ? refreshPlayers() : refreshRuns()]);
 }
 function tick() {
   setText($("auto-refresh"), automatic ? "暂停刷新" : "继续刷新");
@@ -864,6 +868,7 @@ function tick() {
         : `下次更新 ${Math.max(0, Math.ceil((interval - (Date.now() - last)) / 1000))} 秒后`,
   );
   if (!automatic || held) return;
+  if (Date.now()-(attempts.get('dau')||0)>=60000 && !requests.has('dau')) refreshDailyActive();
   if (
     Date.now() - (attempts.get("overview") || 0) >= 10000 &&
     !requests.has("overview")

@@ -1,6 +1,6 @@
 import http from 'node:http';
 import https from 'node:https';
-import { readFileSync, mkdirSync, writeFileSync, renameSync } from 'node:fs';
+import { readFileSync, mkdirSync } from 'node:fs';
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
@@ -32,7 +32,7 @@ export function validate(body) {
     && (body.hpLoss === null || Number.isInteger(body.hpLoss) && body.hpLoss >= 0 && body.hpLoss <= 10000000);
 }
 
-export function createApp({ database = ':memory:', password, now = Date.now, secureCookie = false, publicHost, metricsFile }) {
+export function createApp({ database = ':memory:', password, now = Date.now, secureCookie = false, publicHost }) {
   if (!password || password.length < 20) throw new Error('ADMIN_PASSWORD must contain at least 20 characters');
   const db = new DatabaseSync(database);
   const dau = createDailyActive(db,now);
@@ -71,10 +71,6 @@ export function createApp({ database = ':memory:', password, now = Date.now, sec
   function sample() {
     expire();
     dau.sample();
-    if(metricsFile) {
-      writeFileSync(metricsFile+'.tmp',JSON.stringify(dau.snapshot()),{mode:0o644});
-      renameSync(metricsFile+'.tmp',metricsFile);
-    }
     if (now() >= samplingReadyAt)
       historyInsert.run(Math.floor(now()/60000)*60000, players.size);
     historyDelete.run(now() - 90*86400000);
@@ -154,6 +150,7 @@ export function createApp({ database = ':memory:', password, now = Date.now, sec
   const files = new Map([
     ['/', ['public/index.html','text/html; charset=utf-8']],
     ['/app.js',['public/app.js','text/javascript; charset=utf-8']],
+    ['/dau.js',['public/dau.js','text/javascript; charset=utf-8']],
     ['/style.css',['public/style.css','text/css; charset=utf-8']],
     ['/chart.js',['node_modules/chart.js/dist/chart.umd.js','text/javascript; charset=utf-8']],
   ]);
@@ -254,12 +251,11 @@ export function createApp({ database = ':memory:', password, now = Date.now, sec
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   mkdirSync(resolve(root,'data'),{recursive:true,mode:0o700});
-  mkdirSync(resolve(root,'data/public-metrics'),{recursive:true,mode:0o755});
   const adminTls = process.env.ADMIN_TLS === 'true';
   const adminBind = process.env.ADMIN_BIND || '127.0.0.1';
   if (!['127.0.0.1','::1'].includes(adminBind) && (!adminTls || !process.env.ADMIN_PUBLIC_HOST))
     throw new Error('Public admin listener requires ADMIN_TLS and ADMIN_PUBLIC_HOST');
-  const app = createApp({database:process.env.DATABASE_PATH || resolve(root,'data/presence.sqlite'),password:process.env.ADMIN_PASSWORD,publicHost:process.env.ADMIN_PUBLIC_HOST,metricsFile:resolve(root,'data/public-metrics/dau.json')});
+  const app = createApp({database:process.env.DATABASE_PATH || resolve(root,'data/presence.sqlite'),password:process.env.ADMIN_PASSWORD,publicHost:process.env.ADMIN_PUBLIC_HOST});
   const tls = {key:readFileSync(process.env.TLS_KEY),cert:readFileSync(process.env.TLS_CERT),minVersion:'TLSv1.2'};
   const admin = (adminTls ? https : http).createServer({...(adminTls ? tls : {}),requestTimeout:10000,headersTimeout:10000,maxHeaderSize:8192},app.admin);
   admin.maxConnections = 30;

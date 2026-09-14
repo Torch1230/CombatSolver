@@ -6,6 +6,7 @@
     <title>Combat Solver · 监控工作台</title>
     <link rel="stylesheet" href="/style.css" />
     <script defer src="/chart.js"></script>
+    <script defer src="/dau.js"></script>
     <script defer src="/app.js"></script>
   </head>
   <body>
@@ -80,6 +81,19 @@
             <canvas id="chart" role="img" aria-label="历史在线人数"></canvas>
           </div>
           <p id="history-empty" hidden>暂无历史采样</p>
+        </details>
+        <details id="dau-panel" class="trend">
+          <summary>日活 DAU · 今日 <strong id="dau-today">—</strong> 人 · 曲线与同期对比</summary>
+          <div class="trend-toolbar">
+            <span>日环比：<strong id="dau-day">—</strong></span>
+            <span>周同比：<strong id="dau-week">—</strong></span>
+            <label>曲线范围 <select id="dau-range"><option value="7">7 天</option><option value="30">30 天</option><option value="90">90 天</option></select></label>
+          </div>
+          <p class="subtle" id="dau-status">正在读取日活统计…</p>
+          <p id="dau-error" class="error" role="alert" hidden></p>
+          <svg id="dau-chart" viewBox="0 0 1000 220" role="img" aria-label="最近每日活跃玩家数量曲线"></svg>
+          <p class="subtle">蓝点：完整采集；黄点：采集不完整。未采集日期留空，不补零。悬停查看数值。</p>
+          <details><summary>每日明细</summary><div class="dau-table-scroll"><table><thead><tr><th>日期</th><th>日活人数</th><th>采集状态</th></tr></thead><tbody id="dau-table"></tbody></table></div></details>
         </details>
         <nav class="tabs" role="tablist" aria-label="工作台">
           <button
