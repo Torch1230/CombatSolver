@@ -43,10 +43,12 @@ test('public run collection, admin auth, persistence and old heartbeat compatibi
     assert.equal((await fetch(a+'/api/run-statistics')).status,401);
     const login=await post(a+'/api/login',{password:'test-long-secret-for-run-statistics'},{Origin:a});
     const cookie=login.headers.get('set-cookie').split(';')[0];
-    const data=await fetch(a+'/api/run-statistics?streak_min=1',{headers:{Cookie:cookie}}).then(r=>r.json());
-    assert.equal(data.total,1);assert.equal(data.wins,1);
+    let data=await fetch(a+'/api/run-statistics?streak_min=1',{headers:{Cookie:cookie}}).then(r=>r.json());
+    assert.equal(data.total,1);assert.equal(data.wins,1);assert.equal(data.entries[0].name,null);assert.equal(data.entries[0].online,false);assert.equal(data.entries[0].sessionId,id);
     const old={sessionId:id,name:'player',character:'SILENT',floor:1,encounter:'A',hpLoss:0,version:'old'};
     assert.ok(validate(old));assert.equal((await post(c+'/v1/heartbeat',old)).status,200);
+    data=await fetch(a+'/api/run-statistics?streak_min=1',{headers:{Cookie:cookie}}).then(r=>r.json());
+    assert.equal(data.entries[0].name,'player');assert.equal(data.entries[0].online,true);
   } finally {server.closeAllConnections();admin.closeAllConnections();await Promise.all([new Promise(r=>server.close(r)),new Promise(r=>admin.close(r))]);app.close();}
 });
 test('settled runs and historical snapshots survive database restart',()=>{

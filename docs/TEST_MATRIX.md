@@ -1,5 +1,9 @@
 # CombatSolver 测试清单
 
+## 在线监控：离线战绩身份（2026-09-14）
+
+- `npm test` 22 项通过：服务接口覆盖战绩先于心跳上报时返回空昵称、离线状态和原始安装 ID，收到心跳后恢复当前昵称和在线状态。Edge headless 浏览器测试 10 项通过：覆盖离线行显示完整安装 ID，并禁止“离线 · 离线玩家”回流。默认 Playwright Chromium 首次因本机未安装对应浏览器而未执行页面逻辑，随后按项目既有 `BROWSER_CHANNEL=msedge` 入口完成验证。
+
 ## 下一版本（开发中）：格挡药路线直插与录像收录辅助 Mod 判定（2026-09-14）
 
 - 格挡药路线直插：Release 隔离构建 0 警告、0 错误，Windows PowerShell 结构门禁通过（`search_files=91`），CoverageCatalog 取得 3035 项、0 未分析、0 待实现。新增 `BLOCK-POTION-ROUTE-INSERTION` 完整部署场景，断言 Smart 无药路线单回合战损达到 9 后直接插入格挡药、实际省血至少 9、T2 获胜且计划外重算为 0；本轮运行时因已有普通游戏进程占用宿主准入而未执行，不记为通过。

@@ -523,7 +523,7 @@ function renderChips() {
 function runDetails(entry) {
   const s = entry.statistics;
   showDetails(
-    entry.name,
+    entry.name || entry.sessionId,
     [
       ["安装标识", entry.sessionId],
       ["档案标识", entry.profileId],
@@ -558,7 +558,7 @@ function renderRuns(data) {
       cell(
         row,
         0,
-        (p.online ? "● 在线 · " : "○ 离线 · ") + (p.name || "未命名玩家"),
+        (p.online ? "● 在线 · " : "○ 离线 · ") + (p.name || p.sessionId),
         "档案 " + p.profileId.slice(0, 8),
       );
       cell(

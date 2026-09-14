@@ -236,7 +236,7 @@ export function createApp({ database = ':memory:', password, now = Date.now, sec
         if(!Number.isSafeInteger(page) || page<1)return send(res,400);
         const result=runStatistics.query(filters);
         const pages=Math.max(1,Math.ceil(result.total/PAGE_SIZE)), current=Math.min(page,pages);
-        result.entries=result.entries.slice((current-1)*PAGE_SIZE,current*PAGE_SIZE).map(entry=>({...entry,name:players.get(entry.sessionId)?.name || '离线玩家',online:players.has(entry.sessionId)}));
+        result.entries=result.entries.slice((current-1)*PAGE_SIZE,current*PAGE_SIZE).map(entry=>({...entry,name:players.get(entry.sessionId)?.name || null,online:players.has(entry.sessionId)}));
         return send(res,200,{...result,page:current,totalPages:pages,pageSize:PAGE_SIZE});
       }
       return send(res,404);

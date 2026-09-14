@@ -29,7 +29,7 @@ test('period comparisons and workshop show counts, changes and missing data',asy
   }finally{await f.context.close();}
 });
 const players=Array.from({length:15},(_,i)=>({sessionId:installation(i+1),name:i===0?'长昵称'.repeat(42)+'ab':'玩家 '+(i+1),character:['铁甲战士','静默猎手','故障机器人'][i%3],floor:i+1,encounter:i===0?'超长战斗'.repeat(128):'六火亡魂、邪恶之眼',hpLoss:i===2?null:i===3?99999:i,version:'0.34.7',inCombat:i%3===0,inRun:i%3===1?true:i%3===0?true:false,lastSeen:1800000000000,onlineSeconds:3600*(i+1),rank:i+1,battleUpdatedAt:1800000000000,runStatistics:{profileId:installation(i+101)}}));
-function runs(params){const historical=params.get('source')==='historical',target=params.get('profileId');const entries=(target?[players.find(p=>p.runStatistics.profileId===target)].filter(Boolean):players.slice(0,4)).map((p,i)=>({sessionId:p.sessionId,profileId:p.runStatistics.profileId,name:p.name,online:i%2===0,statistics:{wins:20,losses:5,abandoned:historical?null:2,currentStreak:historical&&!params.get('character')?null:i,bestStreak:historical&&!params.get('character')?null:8,completedRuns:25,winRate:.8}}));return {now:1800000000000,source:historical?'historical':'solver',page:1,totalPages:1,pageSize:30,total:entries.length,wins:entries.length*20,losses:entries.length*5,winRate:entries.length?.8:null,entries};}
+function runs(params){const historical=params.get('source')==='historical',target=params.get('profileId');const entries=(target?[players.find(p=>p.runStatistics.profileId===target)].filter(Boolean):players.slice(0,4)).map((p,i)=>({sessionId:p.sessionId,profileId:p.runStatistics.profileId,name:i===1?null:p.name,online:i%2===0,statistics:{wins:20,losses:5,abandoned:historical?null:2,currentStreak:historical&&!params.get('character')?null:i,bestStreak:historical&&!params.get('character')?null:8,completedRuns:25,winRate:.8}}));return {now:1800000000000,source:historical?'historical':'solver',page:1,totalPages:1,pageSize:30,total:entries.length,wins:entries.length*20,losses:entries.length*5,winRate:entries.length?.8:null,entries};}
 async function setup(options={}){
   const context=await browser.newContext({viewport:{width:1440,height:900},...options.context});
   const page=await context.newPage(),traffic=[],errors=[];page.on('pageerror',e=>errors.push(e.message));
@@ -108,6 +108,9 @@ test('applied filters, explicit sample gate, source switching, scoped lookup and
     assert.equal(f.traffic.find(u=>u.pathname==='/api/run-statistics').searchParams.get('runs_min'),'5');
     assert.ok((await page.locator('#active-filters').textContent()).includes('至少完成局数：5'));
     assert.ok((await page.locator('#run-rows').textContent()).includes('样本：25 局'));
+    const offlineIdentity=`○ 离线 · ${players[1].sessionId}`;
+    assert.ok((await page.locator('#run-rows').textContent()).includes(offlineIdentity));
+    assert.ok(!(await page.locator('#run-rows').textContent()).includes('离线 · 离线玩家'));
     await page.locator('[name=runs_min]').fill('10');assert.equal(await page.locator('#dirty-note').isVisible(),true);
     const before=f.traffic.filter(u=>u.pathname==='/api/run-statistics').length;
     await page.evaluate(()=>{document.activeElement.blur();attempts.set('runs',0);tick();});
