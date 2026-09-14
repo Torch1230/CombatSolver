@@ -31,11 +31,12 @@ export function validateSnapshot(value) {
 export function parseStatisticsFilters(params) {
   const filters = {source:params.get('source') || 'solver', participation:params.get('participation') || 'full',
     character:params.get('character') || '', version:params.get('version') || '', activity:params.get('activity') || '', sort:params.get('sort') || 'streak',
-    order:params.get('order') || 'desc',sessionId:params.get('sessionId') || '',profileId:params.get('profileId') || ''};
+    order:params.get('order') || 'desc',sessionId:params.get('sessionId') || '',profileId:params.get('profileId') || '',playerName:(params.get('playerName') || '').trim()};
   if(!['asc','desc'].includes(filters.order) || [filters.sessionId,filters.profileId].some(value=>value && !id(value)))throw new RangeError('invalid identity or order');
   if (!['solver','historical'].includes(filters.source) || !['full','partial','none','all'].includes(filters.participation)
     || !['','solve','execute','auto'].includes(filters.activity) || !['streak','best','rate','wins','losses'].includes(filters.sort)
-    || filters.character.length>128 || filters.version.length>128) throw new RangeError('invalid statistics filter');
+    || filters.character.length>128 || filters.version.length>128 || filters.playerName.length>128
+    || /[\u0000-\u001f]/.test(filters.playerName)) throw new RangeError('invalid statistics filter');
   for (const key of ['streak_min','streak_max','best_min','best_max','rate_min','rate_max','wins_min','losses_min','abandoned_min','runs_min','ascension','since','until']) {
     const raw=params.get(key);
     if (raw===null || raw==='') continue;
@@ -96,6 +97,10 @@ export function createRunStatistics(db, now) {
       const groups=new Map();
       const scope=[],args=[];
       for(const [key,column] of [['sessionId','installation'],['profileId','profile']])if(filters[key]){scope.push(column+'=?');args.push(filters[key]);}
+      if(filters.sessionIds){
+        if(!filters.sessionIds.length)return {now:now(),source:filters.source,total:0,wins:0,losses:0,winRate:null,entries:[]};
+        scope.push(`installation IN (${filters.sessionIds.map(()=>'?').join(',')})`);args.push(...filters.sessionIds);
+      }
       const where=scope.length?' WHERE '+scope.join(' AND '):'';
       if(filters.source==='historical') {
         for(const row of db.prepare('SELECT * FROM run_history_snapshots'+where).iterate(...args)) {

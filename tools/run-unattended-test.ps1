@@ -151,6 +151,8 @@ param(
     [int]$ExpectedInitialActionAdmissionRepresentativesProtectedAtLeast = -1,
     [int]$ExpectedInitialHpInvestmentBranchesProtectedAtLeast = -1,
     [int]$ExpectedInitialPotionCount = -1,
+    [ValidateSet(-1, 0, 1)]
+    [int]$ExpectedInitialDeterministicBlockPotionInserted = -1,
     [int]$ExpectedInitialPotionHpSavedAtLeast = -1,
     [int]$ExpectedInitialPotionBranchesRejectedAtLeast = -1,
     [ValidateSet("", "PreserveResources", "LetEscape")]
@@ -827,6 +829,7 @@ $request = [ordered]@{
     expectedInitialActionAdmissionRepresentativesProtectedAtLeast = if ($ExpectedInitialActionAdmissionRepresentativesProtectedAtLeast -ge 0) { $ExpectedInitialActionAdmissionRepresentativesProtectedAtLeast } else { $null }
     expectedInitialHpInvestmentBranchesProtectedAtLeast = if ($ExpectedInitialHpInvestmentBranchesProtectedAtLeast -ge 0) { $ExpectedInitialHpInvestmentBranchesProtectedAtLeast } else { $null }
     expectedInitialPotionCount = if ($ExpectedInitialPotionCount -ge 0) { $ExpectedInitialPotionCount } else { $null }
+    expectedInitialDeterministicBlockPotionInserted = if ($ExpectedInitialDeterministicBlockPotionInserted -ge 0) { [bool]$ExpectedInitialDeterministicBlockPotionInserted } else { $null }
     expectedInitialPotionHpSavedAtLeast = if ($ExpectedInitialPotionHpSavedAtLeast -ge 0) { $ExpectedInitialPotionHpSavedAtLeast } else { $null }
     expectedInitialPotionBranchesRejectedAtLeast = if ($ExpectedInitialPotionBranchesRejectedAtLeast -ge 0) { $ExpectedInitialPotionBranchesRejectedAtLeast } else { $null }
     expectedInitialTheftPolicy = if ([string]::IsNullOrWhiteSpace($ExpectedInitialTheftPolicy)) { $null } else { $ExpectedInitialTheftPolicy }

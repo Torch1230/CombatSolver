@@ -1,6 +1,8 @@
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Models;
 using CombatSolver.Engine.InCombat.Simulation;
+using MegaCrit.Sts2.Core.Models.Enchantments;
 
 namespace CombatSolver;
 
@@ -26,9 +28,9 @@ internal sealed partial class UnattendedTestRunner
             return builder.Finish();
         }
 
-        // 登记表为空时的负对照：指纹与开这个口子之前逐位相同（八个 0，没有第三方段）。
+        // 登记表为空时的负对照：指纹与只写原版来源时逐位相同（没有第三方段）。
         StateFingerprintBuilder vanillaOnly = new();
-        for (int index = 0; index < 8; index++)
+        for (int index = 0; index < Enum.GetValues<GrowthSource>().Length; index++)
             vanillaOnly.Add(0);
         Check(Fingerprint(default) == vanillaOnly.Finish(), "empty table leaves the fingerprint bit-identical");
 
@@ -47,6 +49,12 @@ internal sealed partial class UnattendedTestRunner
             Check(GrowthSourceMirrors.IsRegistered(ThirdPartyGrowthTestId)
                 && !GrowthSourceMirrors.IsRegistered(ThirdPartyGrowthUnloadedId), "registration is visible");
             Check(GrowthValues.HasTarget(standIn), "the registered predicate reaches HasTarget");
+            GrowthOpportunityTargets legacyTarget = GrowthOpportunityPolicy.CaptureAvailableForTesting(
+                [standIn.ToMutable()], 1);
+            Check(!legacyTarget.IsBounded
+                && legacyTarget.UnboundedSources.Any(target => target.SourceId == ThirdPartyGrowthTestId
+                    && target.Reason == "target_not_registered"),
+                "a legacy registration without a target calculator keeps full search");
             try
             {
                 GrowthSourceMirrors.Register(ThirdPartyGrowthTestId, () => standIn, static _ => false);
@@ -112,5 +120,51 @@ internal sealed partial class UnattendedTestRunner
         finally { GrowthSourceMirrors.UnregisterForTesting(source); }
         Check(!GrowthSourceMirrors.IsRegistered(ThirdPartyGrowthTestId), "test registration cleaned up");
         Check(!GrowthValues.HasTarget(standIn), "cleanup takes the predicate back out of HasTarget");
+
+        GrowthOpportunityContext? frozenContext = null;
+        GrowthSourceHandle boundedSource = GrowthSourceMirrors.Register(
+            ThirdPartyGrowthTestId,
+            () => standIn,
+            card => card is MegaCrit.Sts2.Core.Models.Cards.DefendIronclad,
+            opportunityTarget: context =>
+            {
+                frozenContext = context;
+                return GrowthOpportunityTarget.Bounded(
+                    context.MatchingCards.Sum(card => checked(1 + card.FixedReplayCount)));
+            });
+        try
+        {
+            CardModel replayed = standIn.ToMutable();
+            CardCmd.Enchant<Spiral>(replayed, 1);
+            GrowthOpportunityTargets bounded = GrowthOpportunityPolicy.CaptureAvailableForTesting([replayed], 2);
+            Check(bounded.IsBounded && bounded.RequiredRewards.Get(boundedSource) == 2,
+                "the optional calculator counts one physical card plus its fixed enchantment replay");
+            Check(frozenContext is { EnemyCount: 2 }
+                && frozenContext.MatchingCards is [{ CardId: "DEFEND_IRONCLAD", FixedReplayCount: 1 }],
+                "the calculator receives only frozen root values");
+            try
+            {
+                GrowthOpportunityTarget.Bounded(-1);
+                Check(false, "negative target counts must throw");
+            }
+            catch (ArgumentOutOfRangeException) { }
+        }
+        finally { GrowthSourceMirrors.UnregisterForTesting(boundedSource); }
+
+        GrowthSourceHandle invalidSource = GrowthSourceMirrors.Register(
+            ThirdPartyGrowthTestId,
+            () => standIn,
+            card => card is MegaCrit.Sts2.Core.Models.Cards.DefendIronclad,
+            opportunityTarget: static _ => default);
+        try
+        {
+            try
+            {
+                GrowthOpportunityPolicy.CaptureAvailableForTesting([standIn.ToMutable()], 1);
+                Check(false, "an uninitialized target result must reject policy capture");
+            }
+            catch (InvalidDataException) { }
+        }
+        finally { GrowthSourceMirrors.UnregisterForTesting(invalidSource); }
     }
 }

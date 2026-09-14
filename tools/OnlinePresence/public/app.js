@@ -24,6 +24,7 @@ const labels = {
   source: "来源",
   participation: "运行覆盖",
   character: "角色",
+  playerName: "玩家昵称",
   runs_min: "至少完成局数",
   activity: "实际使用",
   version: "版本",
@@ -171,7 +172,7 @@ function markDirty() {
   $("dirty-note").hidden = !dirty();
   $("apply-filters").textContent = dirty() ? "应用修改" : "应用筛选";
   const count = [...draft()].filter(
-    ([k]) => !["source", "participation", "character", "runs_min"].includes(k),
+    ([k]) => !["source", "participation", "character", "playerName", "runs_min"].includes(k),
   ).length;
   setText($("advanced-count"), count ? `· 已填写 ${count} 项` : "");
 }
@@ -523,7 +524,7 @@ function renderChips() {
 function runDetails(entry) {
   const s = entry.statistics;
   showDetails(
-    entry.name,
+    entry.name || entry.sessionId,
     [
       ["安装标识", entry.sessionId],
       ["档案标识", entry.profileId],
@@ -558,7 +559,7 @@ function renderRuns(data) {
       cell(
         row,
         0,
-        (p.online ? "● 在线 · " : "○ 离线 · ") + (p.name || "未命名玩家"),
+        (p.online ? "● 在线 · " : "○ 离线 · ") + (p.name || p.sessionId),
         "档案 " + p.profileId.slice(0, 8),
       );
       cell(

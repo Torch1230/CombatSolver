@@ -90,7 +90,7 @@ internal sealed partial class CombatBeamSolver
                         maxHpDeficit,
                         features.RecoveredPlayerHp + relicHeal,
                         bossHpRelief,
-                        features.DeathSaveRelicHpRestored) - candidate.Snapshot.StrategicHpCredit;
+                        features.DeathSaveHpRestored) - candidate.Snapshot.StrategicHpCredit;
                     int healthResourceCost = initialHp - features.PlayerHp
                         + initialPlayerMaxHp - features.PlayerMaxHp;
                     int strategicSold = battleSold;
@@ -168,6 +168,9 @@ internal sealed partial class CombatBeamSolver
             int potionFreeOutstandingResource = hasPotionFreeBaseline
                 ? policyCandidates[potionFreeBaselineIndex].Features.OutstandingStolenResource
                 : int.MaxValue;
+            int potionFreeDeathSaveUseCount = hasPotionFreeBaseline
+                ? policyCandidates[potionFreeBaselineIndex].Snapshot.ProjectedDeathSaveUseCount
+                : int.MaxValue;
             if (potionFreePolicyBaseline is { } auditedBaseline)
             {
                 hasPotionFreeBaseline = true;
@@ -175,6 +178,7 @@ internal sealed partial class CombatBeamSolver
                 potionFreeStrategicHpDeficit = auditedBaseline.HpDeficit;
                 potionFreePlayerHp = auditedBaseline.PlayerHp;
                 potionFreeCombatEndedTurn = auditedBaseline.CombatEndedTurn;
+                potionFreeDeathSaveUseCount = auditedBaseline.DeathSaveUseCount;
             }
             bool anyRouteWon = potionFreeWon
                 || policyCandidates.Any(candidate => candidate.CompleteVictory);
@@ -215,7 +219,9 @@ internal sealed partial class CombatBeamSolver
                             candidate.CombatEndedTurn,
                             potionFreeWon,
                             potionFreeStrategicHpDeficit,
-                            potionFreeCombatEndedTurn) < 0;
+                            potionFreeCombatEndedTurn,
+                            candidateDeathSaveUseCount: candidate.Snapshot.ProjectedDeathSaveUseCount,
+                            currentDeathSaveUseCount: potionFreeDeathSaveUseCount) < 0;
                     bool passesSoftPotionPolicy = PotionUsePolicy.IsEligible(
                             candidate.EffectivePotionPolicy,
                             candidate.OptionalPotionCount,
@@ -256,6 +262,7 @@ internal sealed partial class CombatBeamSolver
                         || candidate.Snapshot.ProjectedPlayerHp <= 0)
                         ? 1
                         : 0)
+                .ThenBy(candidate => candidate.Snapshot.ProjectedDeathSaveUseCount)
                 .ThenBy(candidate => theftPolicy == SolverTheftPolicy.PreserveResources
                     ? candidate.Features.OutstandingStolenResource : 0)
                 // Compare HP after the requested recovery objective.
@@ -357,6 +364,10 @@ internal sealed partial class CombatBeamSolver
             if (comparison != 0)
                 return comparison;
         }
+        comparison = leftSnapshot.ProjectedDeathSaveUseCount.CompareTo(
+            rightSnapshot.ProjectedDeathSaveUseCount);
+        if (comparison != 0)
+            return comparison;
         comparison = TheftEncounterStrategy.CompareRecovery(theftPolicy,
             leftWon, leftSnapshot.OutstandingStolenResource, rightWon, rightSnapshot.OutstandingStolenResource);
         if (comparison != 0)
@@ -371,7 +382,7 @@ internal sealed partial class CombatBeamSolver
                         leftSnapshot.PlayerHp,
                         leftSnapshot.PlayerMaxHp),
                 bossHpRelief,
-                leftSnapshot.DeathSaveRelicHpRestored) - leftSnapshot.StrategicHpCredit)
+                leftSnapshot.DeathSaveHpRestored) - leftSnapshot.StrategicHpCredit)
             .CompareTo(ActEndingBossPolicy.StrategicHpDeficit(
                 rightSnapshot.CumulativePlayerHpLost,
                 Math.Max(0, initialPlayerMaxHp - rightSnapshot.PlayerMaxHp),
@@ -382,7 +393,7 @@ internal sealed partial class CombatBeamSolver
                         rightSnapshot.PlayerHp,
                         rightSnapshot.PlayerMaxHp),
                 bossHpRelief,
-                rightSnapshot.DeathSaveRelicHpRestored) - rightSnapshot.StrategicHpCredit);
+                rightSnapshot.DeathSaveHpRestored) - rightSnapshot.StrategicHpCredit);
         if (comparison != 0)
             return comparison;
         comparison = rightSnapshot.StrategyGoalHpCredit.CompareTo(leftSnapshot.StrategyGoalHpCredit);

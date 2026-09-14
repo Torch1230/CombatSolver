@@ -7,7 +7,7 @@ void Require(bool condition, string message) { checks++; if (!condition) throw n
 var root = new CombatRootSnapshot(); var policy = new SearchPolicySnapshot();
 SolverResult primary = new(false, 10);
 SolverResult Execute(Func<SolverSearchProfile, Stopwatch, SolverResult> pass, SolverResult? start = null, Func<bool>? stop = null)
-    => CombatSearchCoordinator.EscalateSearchWhenNoVictory(root,policy,SolverSearchProfile.Deep,Stopwatch.StartNew(),start ?? primary,pass,stop ?? (()=>false));
+    => CombatSearchCoordinator.EscalateSearchWhenNoVictory(root,policy,SolverSearchProfile.Default,Stopwatch.StartNew(),start ?? primary,pass,stop ?? (()=>false));
 var adopted = new SolverResult(false, 20, SolverResultScope.RouteAdoption);
 Require(ReferenceEquals(Execute((_,_)=>adopted), adopted), "Escalation discarded explicit route adoption.");
 int calls=0;
@@ -21,7 +21,7 @@ Require(ReferenceEquals(Execute((_,_)=>{calls++;return new(false,11);}),primary)
 calls=0;
 var improved=Execute((_,_)=>new(false,10-++calls));
 Require(calls==2&&improved.Quality==8,"Escalation count exceeded or lost improvement.");
-var capped=SolverSearchProfile.Deep with {BeamWidth=300,MaxExpandedNodes=int.MaxValue,MaxCardBranchesPerNode=100,MaxPileChoiceBranchesPerAction=100,MaxHandChoiceBranchesPerAction=100};
+var capped=SolverSearchProfile.Default with {BeamWidth=300,MaxExpandedNodes=int.MaxValue,MaxCardBranchesPerNode=100,MaxPileChoiceBranchesPerAction=100,MaxHandChoiceBranchesPerAction=100};
 Require(CombatSearchCoordinator.BuildNoVictoryEscalationProfile(capped,1,1,1)==null,"Identical saturated second pass repeated.");
 var branchOnly=capped with {BeamWidth=512,MaxCardBranchesPerNode=10};
 Require(CombatSearchCoordinator.BuildNoVictoryEscalationProfile(branchOnly,0,1,1)?.MaxCardBranchesPerNode==20,"Branch-only expansion was skipped.");

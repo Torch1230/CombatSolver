@@ -35,6 +35,7 @@ internal static class SolverOverlay
     private static Color Success => SolverUiTokens.Palette.Success;
 
     private static CanvasLayer? _layer;
+    private static SolverOverlayInputBridge? _inputBridge;
     private static PanelContainer? _panel;
     private static Viewport? _viewport;
     private static ScrollContainer? _routeScroll;
@@ -201,6 +202,7 @@ internal static class SolverOverlay
                 RowsUseIconAndTextForTesting: true,
                 UsesGridCardsForTesting: true,
                 IsSlimForTesting: true,
+                HasPresetControlsForTesting: true,
             };
     internal static bool PerformanceHintVisibleForTesting => _performanceHintButton?.Visible == true;
     internal static bool SearchLimitHintVisibleForTesting => _searchLimitHint?.Visible == true;
@@ -323,6 +325,27 @@ internal static class SolverOverlay
         if (!original)
             TogglePotionStrategy();
         return opened && _potionStrategyVisible == original;
+    }
+    internal static bool ExerciseVisibilityShortcutForTesting()
+    {
+        if (_inputBridge == null || _layer == null)
+            return false;
+        bool originalVisible = _layer.Visible;
+        InputEventKey wrong = new() { Pressed = true, CtrlPressed = true, Keycode = Key.F8 };
+        InputEventKey repeated = new() { Pressed = true, Echo = true, CtrlPressed = true, Keycode = Key.F9 };
+        InputEventKey shortcut = new() { Pressed = true, CtrlPressed = true, Keycode = Key.F9 };
+        try
+        {
+            bool ignored = !_inputBridge.Handle(wrong) && !_inputBridge.Handle(repeated)
+                && _layer.Visible == originalVisible;
+            bool first = _inputBridge.Handle(shortcut) && _layer.Visible != originalVisible;
+            bool second = _inputBridge.Handle(shortcut) && _layer.Visible == originalVisible;
+            return ignored && first && second;
+        }
+        finally
+        {
+            _layer.Visible = originalVisible;
+        }
     }
     internal static float OverlayOpacityForTesting => _panel?.Modulate.A ?? 1f;
     internal static int? CurrentSnapshotTurnForTesting => _lastSnapshot?.StartTurnNumber;
@@ -1310,6 +1333,11 @@ internal static class SolverOverlay
 
     private static void Create(Node host)
     {
+        if (_inputBridge == null || !GodotObject.IsInstanceValid(_inputBridge))
+        {
+            _inputBridge = new SolverOverlayInputBridge { Name = "CombatSolverOverlayInput" };
+            host.AddChild(_inputBridge);
+        }
         CanvasLayer layer = new()
         {
             Name = LayerName,
@@ -1390,6 +1418,7 @@ internal static class SolverOverlay
         _growthStrategyPanel.BrightestFlameLimitChanged += OnBrightestFlameLimitChanged;
         _growthStrategyPanel.IgnoreLongTermRewardsChanged += OnIgnoreLongTermRewardsChanged;
         _potionStrategyPanel.DirectiveChanged += OnPotionDirectiveChanged;
+        _potionStrategyPanel.PresetRequested += OnPotionPresetRequested;
 
         _body = new VBoxContainer
         {
@@ -1623,6 +1652,7 @@ internal static class SolverOverlay
 
         _collapseButton = CreateHeaderButton(SolverText.Get("−  收起"), 54);
         _collapseButton.Pressed += ToggleCollapsed;
+        _collapseButton.TooltipText = SolverText.Get("收起路线内容；Ctrl＋F9 显示或隐藏整个求解器界面。");
         if (SolverUiTokens.IsLightTheme)
         {
             _collapseButton.AddThemeColorOverride("font_color", Danger);
@@ -2163,6 +2193,23 @@ internal static class SolverOverlay
     {
         if (_layer != null)
             _layer.Visible = true;
+    }
+
+    internal static bool ToggleVisibilityFromShortcut()
+    {
+        CombatState? state = CombatManager.Instance.DebugOnlyGetState();
+        if (_layer == null
+            || !GodotObject.IsInstanceValid(_layer)
+            || !CombatManager.Instance.IsInProgress
+            || state == null
+            || state.Players.Count != 1
+            || BugReportUploadDialog.IsOpen)
+        {
+            return false;
+        }
+        _layer.Visible = !_layer.Visible;
+        Entry.Logger.Info($"[CombatSolver/Test] UI_ACTION action=toggle_visibility visible={_layer.Visible}");
+        return true;
     }
 
     private static void ToggleCollapsed()
@@ -3057,6 +3104,17 @@ internal static class SolverOverlay
         if (host == null || state == null || !CombatManager.Instance.IsInProgress)
             return;
         SolverController.SetPotionDirective(host, state, slot, potionId, directive);
+        _potionStrategyPanel?.Invalidate();
+        RefreshControls();
+    }
+
+    private static void OnPotionPresetRequested(PotionStrategyPreset preset)
+    {
+        NGame? host = NGame.Instance;
+        CombatState? state = CombatManager.Instance.DebugOnlyGetState();
+        if (host == null || state == null || !CombatManager.Instance.IsInProgress)
+            return;
+        SolverController.SetPotionPreset(host, state, preset);
         _potionStrategyPanel?.Invalidate();
         RefreshControls();
     }

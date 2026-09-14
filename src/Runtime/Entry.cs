@@ -86,6 +86,7 @@ public static class Entry
         patcher.RegisterPatch<RunStatisticsLaunchPatch>();
         patcher.RegisterPatch<RunStatisticsEndPatch>();
         patcher.RegisterPatch<UnattendedCombatStartReplayPatch>();
+        patcher.RegisterPatch<CombatShowcaseSaveIsolationPatch>();
         RitsuLibFramework.ApplyRequiredPatcher(patcher, DisableMod);
 
         if (Enabled)
@@ -100,6 +101,7 @@ public static class Entry
             if (host != null)
             {
                 SolverDispatcher.Ensure(host);
+                host.AddChild(new CombatShowcaseUploadNode());
                 host.TreeExiting += PreCombatForecastWorker.StopSessionAtProcessExit;
                 host.TreeExiting += Logger.Journal.Dispose;
             }

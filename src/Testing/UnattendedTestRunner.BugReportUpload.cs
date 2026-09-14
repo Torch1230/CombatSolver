@@ -11,6 +11,7 @@ internal sealed partial class UnattendedTestRunner
 {
     private async Task AssertBugReportUploadBoundariesAsync()
     {
+        AssertShowcaseModEligibility();
         if (!CombatBugReportUploader.ProductionTransportUsesDirectConnectionForTesting)
             throw new InvalidOperationException("正式上传仍然继承游戏进程代理设置。");
         string directory = ProjectSettings.GlobalizePath("user://combat-solver-test-upload");
@@ -210,6 +211,34 @@ internal sealed partial class UnattendedTestRunner
         {
             File.Delete(path);
         }
+    }
+
+    private static void AssertShowcaseModEligibility()
+    {
+        ShowcaseModDeclaration[] auxiliaryStack =
+        [
+            new("CombatSolver", "战斗路线求解器", false),
+            new("STS2-RitsuLib", "RitsuLib", false),
+            new("CombatShowcaseRecorder", "录像对局库", false),
+            new("STS2-RitsuMetrics", "RitsuMetrics", false),
+            new("QuickSL", "QuickSL", false),
+            new("Loadout", "Loadout", true),
+            new("LegacyRng107Compat", "RNG 兼容层", true),
+        ];
+        if (CombatShowcaseModEligibility.FindGameplayModificationNames(auxiliaryStack).Length != 0)
+            throw new InvalidOperationException("录像对局错误拒绝了辅助 Mod。");
+
+        ShowcaseModDeclaration[] gameplayStack =
+        [
+            .. auxiliaryStack,
+            new("NewCharacter", "新角色", true),
+            new("BalanceRewrite", "数值重制", true),
+        ];
+        string[] rejected = CombatShowcaseModEligibility.FindGameplayModificationNames(gameplayStack);
+        if (rejected.Length != 2
+            || !rejected.Contains("新角色 (NewCharacter)", StringComparer.Ordinal)
+            || !rejected.Contains("数值重制 (BalanceRewrite)", StringComparer.Ordinal))
+            throw new InvalidOperationException("录像对局没有拒绝玩法修改 Mod。");
     }
 
     private sealed class DirectTestProgress<T>(Action<T> report) : IProgress<T>

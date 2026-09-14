@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "BLOCK-POTION-ROUTE-INSERTION",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "BLOCKPOTIONINSERTION",
+  "enemyCurrentHp": 12,
+  "initialEnemyMoveIds": ["FIRST_ACID_GOOP"],
+  "initialPlayerHp": 30,
+  "initialPlayerMaxHp": 80,
+  "initialPlayerEnergy": 1,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "powers": [
+    { "powerId": "STRENGTH_POWER", "target": "Enemy", "amount": 5 }
+  ],
+  "cards": [
+    { "cardId": "STRIKE_IRONCLAD", "pile": "Hand", "count": 1 },
+    { "cardId": "STRIKE_IRONCLAD", "pile": "Draw", "count": 1 }
+  ],
+  "potions": [
+    { "potionId": "BLOCK_POTION" }
+  ],
+  "forceShortSearchOnly": true,
+  "potionPolicyForTest": "Smart",
+  "shortSearchBudgetOverrideMilliseconds": 5000,
+  "expectedInitialPotionCount": 1,
+  "expectedInitialDeterministicBlockPotionInserted": true,
+  "expectedInitialPotionHpSavedAtLeast": 9,
+  "expectedInitialCombatEndedTurn": 2,
+  "expectedFinishedTurn": 2,
+  "expectedFinishedPlayerHpAtLeast": 30,
+  "expectedUsedPotionId": "BLOCK_POTION",
+  "expectedUnexpectedReplansAtMost": 0,
+  "deploymentFastModeForTest": "Instant",
+  "deploymentInterActionDelaySecondsForTest": 0,
+  "timeoutSeconds": 120
+}

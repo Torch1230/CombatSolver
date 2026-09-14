@@ -226,8 +226,6 @@ internal static partial class CombatSearchCoordinator
         }
         SmartLayerMemoryForecast memoryForecast = new();
         // One search profile drives primary search and all supplemental audits.
-        // Beam 宽度增大
-        // 不保证跨层候选仍是超集；未找到胜利时可用本层剩余预算进行一次窄 Beam 恢复。
         SolverSearchProfile profile = policy.Profile;
         if (policy.BudgetOverrideMilliseconds is { } deepBudget)
             profile = profile with { SoftTimeBudgetMilliseconds = deepBudget };
@@ -246,21 +244,15 @@ internal static partial class CombatSearchCoordinator
         {
             long passAllocatedAtStart = GC.GetTotalAllocatedBytes(precise: false);
             long passTransitionsAtStart = policy.RequestWorkTotals?.Snapshot().TransitionCount ?? 0;
-            SolverResult passResult = SolveWithNarrowBeamRecovery(
+            SolverResult passResult = new CombatBeamSolver(
                 root,
+                displayNames,
+                battleDamage,
                 policy,
+                cancellationToken,
+                progressCallback,
                 passProfile,
-                cancellationToken,
-                cancellationToken,
-                (attemptProfile, attemptCancellationToken) => new CombatBeamSolver(
-                    root,
-                    displayNames,
-                    battleDamage,
-                    policy,
-                    attemptCancellationToken,
-                    progressCallback,
-                    attemptProfile,
-                    potionPolicyOverride: initialPotionPolicyOverride).Solve());
+                potionPolicyOverride: initialPotionPolicyOverride).Solve();
             ObserveSmartLayerMemory(
                 policy, memoryForecast, passAllocatedAtStart, passTransitionsAtStart,
                 passResult, passProfile, completedPotionCount: 0);
@@ -272,6 +264,11 @@ internal static partial class CombatSearchCoordinator
             if (ResolveTakeoverResult(passResult, policy.Interaction) is { } passTakeover)
             {
                 takeoverResult = passTakeover;
+                return passResult;
+            }
+            if (passResult.DeterministicBlockPotionInserted)
+            {
+                passSettled = true;
                 return passResult;
             }
             if (!policy.PotionStrategy.HasForcedDirectives)
@@ -1018,7 +1015,10 @@ internal static partial class CombatSearchCoordinator
             Won: true,
             HpDeficit: StrategicHpDeficit(root, policy, potionFree),
             PlayerHp: potionFree.Snapshot.PlayerHp,
-            CombatEndedTurn: potionFree.CombatEndedTurn);
+            CombatEndedTurn: potionFree.CombatEndedTurn)
+        {
+            DeathSaveUseCount = potionFree.Snapshot.ProjectedDeathSaveUseCount,
+        };
         SolverResult audited = new CombatBeamSolver(
             root,
             displayNames,
@@ -1130,7 +1130,10 @@ internal static partial class CombatSearchCoordinator
             potionFreeWon,
             potionFreeDeficit,
             potionFree.Snapshot.PlayerHp,
-            potionFree.CombatEndedTurn);
+            potionFree.CombatEndedTurn)
+        {
+            DeathSaveUseCount = potionFree.Snapshot.ProjectedDeathSaveUseCount,
+        };
         List<SolverResult> searches = [potionFree];
         SolverResult selected = potionFree;
         bool deadlineExpired = false;
@@ -1172,25 +1175,19 @@ internal static partial class CombatSearchCoordinator
             SolverResult candidate;
             try
             {
-                candidate = SolveWithNarrowBeamRecovery(
+                candidate = new CombatBeamSolver(
                     root,
+                    displayNames,
+                    battleDamage,
                     policy,
-                    profile,
                     searchCancellationToken,
-                    callerCancellationToken,
-                    (attemptProfile, attemptCancellationToken) => new CombatBeamSolver(
-                        root,
-                        displayNames,
-                        battleDamage,
-                        policy,
-                        attemptCancellationToken,
-                        progressCallback,
-                        attemptProfile,
-                        SolverPotionPolicy.RequireAtLeastOne,
-                        baseline,
-                        maximumPotionUses: potionCount,
-                        minimumPotionUses: potionCount,
-                        primaryIncumbent: primaryIncumbent).Solve());
+                    progressCallback,
+                    profile,
+                    SolverPotionPolicy.RequireAtLeastOne,
+                    baseline,
+                    maximumPotionUses: potionCount,
+                    minimumPotionUses: potionCount,
+                    primaryIncumbent: primaryIncumbent).Solve();
                 observedLayerResult = candidate;
             }
             catch (PotionPolicyUnsatisfiedException)
@@ -1434,6 +1431,8 @@ internal static partial class CombatSearchCoordinator
             GrowthHpCredit = result.Snapshot.StrategyGoalHpCredit,
             TheftPolicy = policy.TheftPolicy,
             GrowthRewardCount = result.Snapshot.StrategyGoalCount,
+            Survives = !result.Snapshot.PlayerDead && result.Snapshot.ProjectedPlayerHp > 0,
+            DeathSaveUseCount = result.Snapshot.ProjectedDeathSaveUseCount,
         };
 
 
@@ -1466,6 +1465,14 @@ internal static partial class CombatSearchCoordinator
         SolverInterimResult candidate,
         SolverInterimResult current)
     {
+        int victoryComparison = current.Won.CompareTo(candidate.Won);
+        if (victoryComparison != 0)
+            return victoryComparison < 0;
+        int survivalComparison = current.Survives.CompareTo(candidate.Survives);
+        if (survivalComparison != 0)
+            return survivalComparison < 0;
+        if (candidate.DeathSaveUseCount != current.DeathSaveUseCount)
+            return candidate.DeathSaveUseCount < current.DeathSaveUseCount;
         int recovery = TheftEncounterStrategy.CompareRecovery(theftPolicy,
             candidate.Won, candidate.OutstandingStolenResource, current.Won, current.OutstandingStolenResource);
         if (recovery != 0)
@@ -1480,7 +1487,9 @@ internal static partial class CombatSearchCoordinator
             candidate.GrowthHpCredit,
             current.GrowthHpCredit,
             candidate.GrowthRewardCount,
-            current.GrowthRewardCount);
+            current.GrowthRewardCount,
+            candidate.DeathSaveUseCount,
+            current.DeathSaveUseCount);
         if (primaryQuality != 0)
             return primaryQuality < 0;
         if (theftPolicy == SolverTheftPolicy.PreserveResources
@@ -1502,22 +1511,40 @@ internal static partial class CombatSearchCoordinator
         SolverResult candidate,
         SolverResult current)
     {
+        bool candidateWon = IsCompleteVictory(candidate);
+        bool currentWon = IsCompleteVictory(current);
+        int victoryComparison = currentWon.CompareTo(candidateWon);
+        if (victoryComparison != 0)
+            return victoryComparison;
+        bool candidateSurvives = !candidate.Snapshot.PlayerDead
+            && candidate.Snapshot.ProjectedPlayerHp > 0;
+        bool currentSurvives = !current.Snapshot.PlayerDead
+            && current.Snapshot.ProjectedPlayerHp > 0;
+        int survivalComparison = currentSurvives.CompareTo(candidateSurvives);
+        if (survivalComparison != 0)
+            return survivalComparison;
+        int deathSaveComparison = candidate.Snapshot.ProjectedDeathSaveUseCount.CompareTo(
+            current.Snapshot.ProjectedDeathSaveUseCount);
+        if (deathSaveComparison != 0)
+            return deathSaveComparison;
         int recovery = TheftEncounterStrategy.CompareRecovery(policy.TheftPolicy,
-            IsCompleteVictory(candidate), candidate.OutstandingStolenResource,
-            IsCompleteVictory(current), current.OutstandingStolenResource);
+            candidateWon, candidate.OutstandingStolenResource,
+            currentWon, current.OutstandingStolenResource);
         if (recovery != 0)
             return recovery;
         return SolverInterimResultOrdering.ComparePrimaryQuality(
-            IsCompleteVictory(candidate),
+            candidateWon,
             StrategicHpDeficit(root, policy, candidate),
             candidate.CombatEndedTurn,
-            IsCompleteVictory(current),
+            currentWon,
             StrategicHpDeficit(root, policy, current),
             current.CombatEndedTurn,
             candidate.Snapshot.StrategyGoalHpCredit,
             current.Snapshot.StrategyGoalHpCredit,
             candidate.Snapshot.StrategyGoalCount,
-            current.Snapshot.StrategyGoalCount);
+            current.Snapshot.StrategyGoalCount,
+            candidate.Snapshot.ProjectedDeathSaveUseCount,
+            current.Snapshot.ProjectedDeathSaveUseCount);
     }
 
     private static bool IsCompleteVictory(SolverResult result)
@@ -1533,6 +1560,7 @@ internal static partial class CombatSearchCoordinator
         => policy.GrowthTargetSatisfied(result.Snapshot.GrowthRewards)
             && policy.RelicTargetsSatisfied(result.Snapshot.RelicCounters)
             && TheftEncounterStrategy.RecoverySatisfied(policy.TheftPolicy, result.OutstandingStolenResource)
+            && result.Snapshot.ProjectedDeathSaveUseCount == 0
             && result.PotionCount == policy.MinimumRequiredPotionUses(result.BattlePotionsUsedSoFar)
             && policy.PotionStrategy.EvaluateForcedUses(result.BestNode.Actions, renewablePotionShapedRock: false).AllForcedUsesSatisfied
             && HasReachedAcceptableBattleHpLoss(
@@ -1552,6 +1580,7 @@ internal static partial class CombatSearchCoordinator
         SolverResult result)
         => !policy.EffectiveHasGrowthTargets
             && policy.RelicTargets.Count == 0
+            && result.Snapshot.ProjectedDeathSaveUseCount == 0
             && TheftEncounterStrategy.RecoverySatisfied(policy.TheftPolicy, result.OutstandingStolenResource)
             && HasReachedProvablePrimaryQualityLowerBound(
             IsCompleteVictory(result),
@@ -1583,7 +1612,11 @@ internal static partial class CombatSearchCoordinator
         SearchPolicySnapshot policy,
         SolverResult result)
     {
-        if (policy.EffectiveHasGrowthTargets || policy.RelicTargets.Count > 0 || !IsCompleteVictory(result) || result.CombatEndedTurn is not { } combatEndedTurn)
+        if (policy.EffectiveHasGrowthTargets
+            || policy.RelicTargets.Count > 0
+            || result.Snapshot.ProjectedDeathSaveUseCount > 0
+            || !IsCompleteVictory(result)
+            || result.CombatEndedTurn is not { } combatEndedTurn)
             return null;
         return new PrimarySearchIncumbent(
             StrategicHpDeficit(root, policy, result),
@@ -1641,7 +1674,7 @@ internal static partial class CombatSearchCoordinator
                     result.Snapshot.PlayerHp,
                     result.Snapshot.PlayerMaxHp),
             StrategicBossHpRelief(root, policy),
-            result.Snapshot.DeathSaveRelicHpRestored) - result.Snapshot.StrategicHpCredit;
+            result.Snapshot.DeathSaveHpRestored) - result.Snapshot.StrategicHpCredit;
 
     /// <summary>
     /// Best strategic HP result any route could still reach from this root.

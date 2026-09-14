@@ -49,7 +49,7 @@ internal sealed partial class UnattendedTestRunner
         }, VerifyOpening);
     }
 
-    private static async Task ApplyReplayStateAsync(
+    internal static async Task ApplyReplayStateAsync(
         CombatState combatState,
         Player player,
         string replayStatePath,

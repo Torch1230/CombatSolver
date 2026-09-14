@@ -1254,8 +1254,12 @@ internal sealed class SimulationSnapshot(
     public int RecoveredPlayerHp { get; } = recoveredPlayerHp;
 
     /// <summary>HP a one-shot death-save relic put back on this route.</summary>
-    /// <seealso cref="ActEndingBossPolicy.DeathSaveRelicPremium"/>
+    /// <seealso cref="ActEndingBossPolicy.DeathSavePremium"/>
     public int DeathSaveRelicHpRestored { get; } = deathSaveRelicHpRestored;
+    public int DeathSavePotionHpRestored { get; init; }
+    public int DeathSaveHpRestored => DeathSaveRelicHpRestored + DeathSavePotionHpRestored;
+    public int DeathSaveUseCount { get; init; }
+    public int ProjectedDeathSaveUseCount { get; init; }
 
     public int LongTermResourceValue { get; } = longTermResourceValue;
     public RelicCounterEvaluation RelicCounters { get; init; }
@@ -1384,6 +1388,10 @@ internal sealed record SolverSnapshot(
     SearchBoundaryReason BoundaryReason,
     IReadOnlyList<PredictionGap> PredictionGaps)
 {
+    public int DeathSavePotionHpRestored { get; init; }
+    public int DeathSaveHpRestored => DeathSaveRelicHpRestored + DeathSavePotionHpRestored;
+    public int DeathSaveUseCount { get; init; }
+    public int ProjectedDeathSaveUseCount { get; init; }
     public int? UnrecoveredGold { get; init; }
     public int? UnrecoveredCards { get; init; }
     public RelicCounterEvaluation RelicCounters { get; init; }
@@ -1403,6 +1411,7 @@ internal sealed class SolverResult
 {
     public bool WasRestoredFromCache { get; internal set; }
     public SolverResultScope ResultScope { get; internal set; } = SolverResultScope.SearchCompletion;
+    public bool DeterministicBlockPotionInserted { get; internal set; }
     public bool SingleSessionSearch { get; internal set; }
     public TimeSpan TotalSearchElapsed { get; internal set; }
     public long TotalWorkerAllocatedBytes { get; internal set; }

@@ -9,6 +9,10 @@ $forbiddenSearchReferences = @(
     "ShortProfile",
     "DeepProfile",
     "shortCheckpointMilliseconds",
+    "SolveWithNarrowBeamRecovery",
+    "BuildNarrowBeamRecoveryProfile",
+    "RecoverDeferredTurnFrontier",
+    "DeferredTurnFrontier",
     "SolverSettings.Current",
     "Entry.Logger",
     "SolverController",
@@ -71,6 +75,22 @@ foreach ($file in $searchFiles) {
             $violations.Add("$($file.FullName):$($match.LineNumber): forbidden Search reference '$reference'")
         }
     }
+}
+
+$blockPotionInsertionPath = Join-Path $searchRoot "CombatBeamSolver.BlockPotionInsertion.cs"
+foreach ($requiredBlockPotionRule in @(
+    'HpLostByTurn',
+    'SolverWeights.PotionMinimumHpSaved',
+    'ReplayInsertedRoute(',
+    'ProjectedDeathSaveUseCount',
+    'expanded_nodes_added=0')) {
+    if (-not (Select-String -LiteralPath $blockPotionInsertionPath -SimpleMatch $requiredBlockPotionRule -Quiet)) {
+        $violations.Add("${blockPotionInsertionPath}: deterministic block-potion route rule is missing '$requiredBlockPotionRule'")
+    }
+}
+$searchCoordinatorPath = Join-Path $searchRoot "CombatSearchCoordinator.cs"
+if (-not (Select-String -LiteralPath $searchCoordinatorPath -SimpleMatch 'passResult.DeterministicBlockPotionInserted' -Quiet)) {
+    $violations.Add("${searchCoordinatorPath}: deterministic block-potion result must settle before supplemental potion audits")
 }
 
 # Cycle planning must infer recurrence and payoff from generic simulated-state deltas. Keeping
@@ -428,6 +448,22 @@ $preCombatApiChecks = @(
         Text = "public static class PreCombatForecastApi"
     },
     @{
+        Path = Join-Path $repositoryRoot "src\Api\CombatShowcaseApi.cs"
+        Text = "public static class CombatShowcaseApi"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Runtime\CombatShowcaseRuntime.cs"
+        Text = "SolverController.AcceptShowcaseRoute"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Runtime\CombatShowcaseCollector.cs"
+        Text = "CombatShowcaseCollector.FlushPendingAsync"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Runtime\CombatShowcaseModEligibility.cs"
+        Text = "FindGameplayModificationNames"
+    },
+    @{
         Path = Join-Path $repositoryRoot "src\Api\PreCombatLiveStateSnapshot.cs"
         Text = "RunManager.Instance.ToSave(null)"
     },
@@ -532,10 +568,10 @@ $expectedBeamFiles = @(
     "CombatBeamSolver.ExecutionChoiceContinuation.Testing.cs",
     "CombatBeamSolver.TurnExecutionContinuation.cs",
     "CombatBeamSolver.BeamRetentionPolicy.cs",
+    "CombatBeamSolver.BlockPotionInsertion.cs",
     "CombatBeamSolver.CrossTurnPlanning.cs",
     "CombatBeamSolver.CyclePlanning.cs",
     "CombatBeamSolver.CycleRegionRetention.cs",
-    "CombatBeamSolver.DeferredFrontier.cs",
     "CombatBeamSolver.Expansion.cs",
     "CombatBeamSolver.FinalPlanOrdering.cs",
     "CombatBeamSolver.Models.cs",
@@ -552,18 +588,10 @@ $expectedBeamFiles = @(
     "CombatBeamSolver.Terminal.cs"
 )
 $pathDiagnosticsPath = Join-Path $searchRoot "CombatBeamSolver.PathDiagnostics.cs"
-$deferredFrontierPath = Join-Path $searchRoot "CombatBeamSolver.DeferredFrontier.cs"
 foreach ($required in @(
     @{ Path = (Join-Path $searchRoot "CombatBeamSolver.BeamRetentionPolicy.cs"); Text = 'HasRetainedRoutingChoice: RetainedRoutingChoice(node) != null' },
     @{ Path = (Join-Path $searchRoot "CombatBeamSolver.BeamRetentionPolicy.cs"); Text = 'if (values.HasRetainedRoutingChoice)' },
     @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.SearchPolicy.cs"); Text = 'seven, [], [0, 7, 1, 4, 2, 5, 6], useTacticalOrder: true);' },
-    @{ Path = $deferredFrontierPath; Text = 'private sealed class DeferredTurnFrontier(' },
-    @{ Path = $deferredFrontierPath; Text = '_run.DeferredFrontierReplayActions++;' },
-    @{ Path = $deferredFrontierPath; Text = 'node with { Snapshot = replayed }' },
-    @{ Path = (Join-Path $searchRoot "CombatBeamSolver.Phases.cs"); Text = 'CaptureDeferredFrontier(nextPlays, prunedPlays);' },
-    @{ Path = (Join-Path $searchRoot "CombatSearchCoordinator.FailureRecovery.cs"); Text = 'RecoverDeferredTurnFrontier = true' },
-    @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.Executor.cs"); Text = 'KNOWN-CUSTOM-DEFERRED-FRONTIER-V0111' },
-    @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.KnownCustomDeferredFrontier.cs"); Text = 'MetadataContractOnly:NotFrontierQualityOrPerformance' },
     @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.Executor.cs"); Text = 'KNOWN-SOUL-GENERATION-CONTEXT-V0111' },
     @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.Executor.cs"); Text = 'KNOWN-SOUL-GENERATION-SUFFIX-V0111' },
     @{ Path = (Join-Path $repositoryRoot "src/Testing/UnattendedTestRunner.Executor.cs"); Text = 'KNOWN-SOUL-VARIANT-PATH-TRACE-V0111' },
@@ -617,6 +645,7 @@ $beamStructureChecks = @(
     @{ File = "CombatBeamSolver.BeamRetentionPolicy.cs"; Text = "public List<SearchNode> RankBest(" },
     @{ File = "CombatBeamSolver.BeamRetentionPolicy.cs"; Text = "private sealed class RoutingChoiceNodes(SearchNode first) : List<SearchNode>" },
     @{ File = "CombatBeamSolver.BeamRetentionPolicy.cs"; Text = "public void Clear() => NodesByChoice.Clear();" },
+    @{ File = "CombatBeamSolver.BlockPotionInsertion.cs"; Text = "private BlockPotionInsertion? TryInsertBlockPotion(" },
     @{ File = "CombatBeamSolver.BeamRetentionPolicy.cs"; Text = "routingNodes = new RoutingChoiceNodes(node);" },
     @{ File = "CombatBeamSolver.BeamRetentionPolicy.cs"; Text = "ReturnRoutingChoiceScratch(scratch);" },
     @{ File = "CombatBeamSolver.Transpositions.cs"; Text = "private readonly record struct TranspositionLabel(" },

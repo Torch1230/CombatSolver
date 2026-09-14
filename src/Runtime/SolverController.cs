@@ -501,9 +501,7 @@ internal static class SolverController
             RelicTargets = RelicCounterCatalog.Capture(state, settings.RelicStrategyEnabled, settings.RelicCounterRules),
             StopAtAcceptableBattleHpLoss = settings.StopAtAcceptableBattleHpLoss,
             BrightestFlameMaxHpLossLimit = settings.BrightestFlameMaxHpLossLimit,
-            HasGrowthTargets = state.Players.SelectMany(player => player.PlayerCombatState!.AllCards).Any(GrowthValues.HasTarget),
-            FatalGrowthTarget = GrowthValues.CaptureFatalTarget(
-                state.Players.SelectMany(player => player.PlayerCombatState!.AllCards), state.Enemies.Count),
+            GrowthOpportunityTargets = GrowthOpportunityPolicy.Capture(state),
             IgnoreLongTermRewards = settings.IgnoreLongTermRewards,
         };
         CombatBugReportExporter.RecordSearchPolicy(state, policy);
@@ -526,6 +524,7 @@ internal static class SolverController
         LastReusedProjectedBattleHpLostForTesting = null;
         SearchGcPolicy.ResetCountersForTesting();
         BattleDamageTracker.Begin(state);
+        CombatShowcaseCollector.BeginCombat();
         CombatBugReportExporter.BeginCombat(state);
         _combat.TheftPolicy = state is CombatState combat && TheftEncounterStrategy.IsApplicable(combat)
             ? SolverTheftPolicy.PreserveResources
@@ -842,6 +841,11 @@ internal static class SolverController
     public static void RequestSearch(NGame host, CombatState state, SearchReason reason, bool deployWhenReady = false)
     {
         AssertMainThread();
+        if (_combat.ShowcaseMode && reason != SearchReason.AutoTurnStart)
+        {
+            StopShowcaseRoute(host, "战斗状态与录像路线不一致，已停止执行。");
+            return;
+        }
         int? searchTurn = LocalContext.GetMe(state)?.PlayerCombatState?.TurnNumber;
         // Turn setup and TurnStarted can complete in either order. The first accepted
         // request owns this turn; a late automatic callback must keep its active plan.
@@ -951,6 +955,7 @@ internal static class SolverController
             Entry.Logger.Info($"[CombatSolver/Test] SEARCH_REJECT reason={rejection}");
             return;
         }
+        CombatShowcaseCollector.TryCaptureInitialRoot(state, reason);
         CombatBugReportExporter.RecordCheckpoint(
             state,
             $"search_request_{reason}",
@@ -1066,6 +1071,11 @@ internal static class SolverController
                 }
             }
 
+            if (_combat.ShowcaseMode)
+            {
+                StopShowcaseRoute(host, "新回合状态与预计算续接点不一致。");
+                return;
+            }
             _combat.ContinuationSource = null;
             CancelSearch();
             SolverSearchSession search = new(
@@ -1429,6 +1439,10 @@ internal static class SolverController
     public static bool PrepareAutomaticSearchForTurn(NGame host, CombatState state)
     {
         AssertMainThread();
+        if (CombatShowcaseRuntime.ImportInProgress)
+            return false;
+        if (_combat.ShowcaseMode)
+            return !_combat.AutomaticSearchPaused;
         int turn = LocalContext.GetMe(state)?.PlayerCombatState?.TurnNumber ?? -1;
         if (_combat.AutomaticSearchPaused
             && _combat.AutomaticSearchPausedTurn is { } stoppedTurn
@@ -1804,6 +1818,52 @@ internal static class SolverController
         if (_combat.AutomaticSearchPaused || !AutomaticCalculationEnabled)
         {
             Entry.Logger.Info("[CombatSolver/Test] POTION_DIRECTIVE_RECALCULATION_SKIPPED reason=automatic_calculation_inactive");
+            return;
+        }
+        RequestSearch(host, state, SearchReason.Manual);
+    }
+
+    internal static void SetPotionPreset(
+        NGame host,
+        CombatState state,
+        PotionStrategyPreset preset)
+    {
+        AssertMainThread();
+        if (!Enum.IsDefined(preset))
+            throw new ArgumentOutOfRangeException(nameof(preset));
+        if (_deployment != null)
+        {
+            Entry.Logger.Info("[CombatSolver/Test] POTION_PRESET_REJECT reason=deploying");
+            return;
+        }
+
+        Player player = LocalContext.GetMe(state)
+            ?? throw new InvalidOperationException("当前战斗找不到本地玩家。");
+        SolverSettingsData current = SolverSettings.Current;
+        PotionStrategySnapshot currentStrategy = CapturePotionStrategy(state, current.PotionPolicy);
+        List<PotionSlotDirective> searchable = [];
+        for (int slot = 0; slot < player.PotionSlots.Count; slot++)
+        {
+            PotionModel? potion = player.GetPotionAtSlotIndex(slot);
+            if (potion == null || !PotionOnUseSupport.CanSearch(potion))
+                continue;
+            searchable.Add(new PotionSlotDirective(
+                slot,
+                potion.Id.Entry,
+                currentStrategy.Resolve(slot, potion.Id.Entry)));
+        }
+        SolverSettingsData updated = SolverSettings.ApplyPotionPreset(current, searchable, preset);
+        if (updated == current)
+            return;
+
+        SolverSettings.Update(updated);
+        _combat.ContinuationSource = null;
+        _combat.PendingCompleteProjectionBaseline = null;
+        Entry.Logger.Info($"[CombatSolver/Test] POTION_PRESET_CHANGED preset={preset} potions={searchable.Count}");
+        SolverOverlay.RefreshControls();
+        if (_combat.AutomaticSearchPaused || !AutomaticCalculationEnabled)
+        {
+            Entry.Logger.Info("[CombatSolver/Test] POTION_PRESET_RECALCULATION_SKIPPED reason=automatic_calculation_inactive");
             return;
         }
         RequestSearch(host, state, SearchReason.Manual);
@@ -2337,6 +2397,8 @@ internal static class SolverController
         if (UnattendedTestRunner.IsActive)
             LastCompletedResultForTesting = result;
         BattleDamageTracker.RegisterPlan(searchedState, result);
+        if (!currentTurnAdopted && !routeAdopted)
+            CombatShowcaseCollector.TryQueueCompletedRoute(searchedState, result);
         CombatBugReportExporter.RecordCheckpoint(
             searchedState,
             currentTurnAdopted
@@ -2424,6 +2486,41 @@ internal static class SolverController
             StatusText = "方案就绪 · 已采用当前路线",
             StatusTone = SolverOverlayTone.Success,
         };
+
+    internal static int SearchesStartedForShowcase => _combat.SearchesStarted;
+
+    internal static void AcceptShowcaseRoute(NGame host, CombatState state, SolverResult result)
+    {
+        AssertMainThread();
+        CancelSearch();
+        CancelDeployment();
+        _combat.State = state;
+        _combat.ShowcaseMode = true;
+        _combat.LatestResult = result;
+        _combat.LatestStamp = LiveCombatStamp.Capture(state);
+        _combat.ContinuationSource = result;
+        _combat.AutomaticSearchPaused = false;
+        _combat.FullAutoEnabled = false;
+        BattleDamageTracker.RegisterPlan(state, result);
+        SolverOverlaySnapshot snapshot = SolverOverlaySnapshot.CaptureWithReviewedWorldlines(result, false, 0) with
+        {
+            StatusText = "预计算录像路线 · 未启动本地搜索",
+            StatusTone = SolverOverlayTone.Success,
+        };
+        SolverOverlay.ShowResult(host, snapshot);
+        Entry.Logger.Info($"[CombatSolver/Showcase] ROUTE_ACCEPTED turn={result.StartTurnNumber} end_turn={result.CombatEndedTurn} local_searches=0");
+    }
+
+    private static void StopShowcaseRoute(NGame host, string message)
+    {
+        _combat.FullAutoEnabled = false;
+        _combat.AutomaticSearchPaused = true;
+        _combat.LatestResult = null;
+        _combat.LatestStamp = null;
+        _combat.ContinuationSource = null;
+        SolverOverlay.Show(host, $"[b]录像路线已停止[/b]\n{message}\n此临时对局不会自动重新计算。");
+        Entry.Logger.Warn("[CombatSolver/Showcase] ROUTE_MISMATCH stopped=true replan=false");
+    }
 
     private static void StartFullAutoDeployment(NGame host, CombatState state, SolverResult result)
     {

@@ -184,6 +184,7 @@ for name in \
     expected-initial-action-title; do
     add_option "$name" "" string optional_string
 done
+add_option expected-initial-deterministic-block-potion-inserted -1 int tri_bool
 add_option expected-initial-only-death-routes-found -1 int tri_bool
 add_option expected-initial-combat-ended-turn 0 int positive_int
 add_option expected-initial-death-turn 0 int positive_int

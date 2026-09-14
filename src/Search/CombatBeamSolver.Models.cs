@@ -162,11 +162,6 @@ internal sealed partial class CombatBeamSolver
         public int OrderedMutationColdAtomicCommitted;
         public int OrderedMutationColdAtomicRejected;
         public int Expanded;
-        public DeferredTurnFrontier? DeferredFrontier;
-        public int DeferredFrontierCaptured;
-        public int DeferredFrontierRestored;
-        public int DeferredFrontierReplayRoots;
-        public int DeferredFrontierReplayActions;
         public int DominatedActionsPruned;
         public int TopQueueActionsDropped;
         public int ActionAdmissionRepresentativesProtected;
@@ -333,7 +328,7 @@ internal sealed partial class CombatBeamSolver
         int PlayerMaxHp,
         int CumulativePlayerHpLost,
         int RecoveredPlayerHp,
-        int DeathSaveRelicHpRestored,
+        int DeathSaveHpRestored,
         int LongTermResourceValue,
         int AngerCopiesGenerated,
         int PlayerBlock,
@@ -374,7 +369,7 @@ internal sealed partial class CombatBeamSolver
                 snapshot.PlayerMaxHp,
                 snapshot.CumulativePlayerHpLost,
                 snapshot.RecoveredPlayerHp,
-                snapshot.DeathSaveRelicHpRestored,
+                snapshot.DeathSaveHpRestored,
                 snapshot.LongTermResourceValue,
                 snapshot.AngerCopiesGenerated,
                 snapshot.PlayerBlock,

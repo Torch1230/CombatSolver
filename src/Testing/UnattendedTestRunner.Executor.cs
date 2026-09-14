@@ -798,17 +798,6 @@ internal sealed partial class UnattendedTestRunner
                     expectedPlayerPowerObserved, InitialSearchHeld: false);
             }
 
-            if (request.ScenarioId.Equals("KNOWN-CUSTOM-DEFERRED-FRONTIER-V0111", StringComparison.OrdinalIgnoreCase))
-            {
-                if (scenario.OrbChecks.Count > 0 || scenario.PotionChecks.Count > 0
-                    || scenario.MonsterMoveChecks.Count > 0 || request.VerifyIncrementalSearch)
-                    throw new InvalidOperationException("落选恢复合同不能混入其他差分或正式搜索请求。");
-                runner.SetStage("known_custom_deferred_frontier");
-                int finishedTurn = runner.RunKnownCustomDeferredFrontier(combatState, player);
-                return new ExecutionOutcome(false, finishedTurn, expectedCardPlayed, expectedPotionUsed,
-                    expectedPlayerPowerObserved, InitialSearchHeld: false);
-            }
-
             if (request.ScenarioId.Equals(RelicStatTerminalScenarioId, StringComparison.OrdinalIgnoreCase))
             {
                 if (scenario.OrbChecks.Count > 0 || scenario.PotionChecks.Count > 0

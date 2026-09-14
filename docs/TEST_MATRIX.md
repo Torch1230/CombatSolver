@@ -1,5 +1,15 @@
 # CombatSolver 测试清单
 
+## 0.38.6 上游合并后的性能 PR 验证（2026-09-15，未发布）
+
+- 对当前上游三场12份完整ABBA均通过严格oracle；蟹战耗时−15.95%、分配−15.51%、峰值−1.64%，扩展弃牌耗时−5.42%，携药轻场景−2.25%；后两场分配与峰值均下降。仅限本机无头样本。
+
+- 正常Release 14.56秒、0警告/错误；Bash与PowerShell结构门禁通过，`search_files=102`。比较器源码未修改，复用此前16项通过证据。
+- 四组严格增量：卡牌扩展 `ae00c0b92e1b485b83c04c65328d5441`、药水 `a8a8a40b79b548659aab223a2220caf4`、动作/EndTurn嵌套 `5feed9b8a4ad481096bd03980af551d0`、首回合准备 `358e83a8965841db9f40e7c5d2562ef8`，均Passed。
+- 原生跨回合连续选择 `98135e17d0c84660b9bc5958547180af` Passed，35分支与完整状态对账；上游成长/药水早停 `3a599fbe370848258b538fa12fde2e7a` Passed。
+- 格挡药夹具首次 `7f79df25a74f486aa7388e33a20fcc28` Failed：本场只掉4血，未达到断言所需9血。仅补敌方5层力量并将上限设为120秒；修正后 `36e20d691de1424e9b5e7e14196623ce` Passed，实际省9血、T2无伤获胜、零计划外重算。Linux启动器支持与PowerShell相同的 `expected-initial-deterministic-block-potion-inserted` 三态断言。
+- 全部合同上限120秒，实际部署Instant/0秒；当前上游完整请求ABBA、基线Testing支持补齐及所有失败见[正式 PR 验收](performance/performance-pr-20260915.md)。无可见Steam或Windows帧时间结论。
+
 ## 选牌续执行批量实施（2026-09-14，未发布）
 
 - `CARD-CONTINUATION-EXPANDED` / `15ed72aac4504a0f8c56133251fe1c2c` Passed：NECROBINDER、41来源82普通/升级分支；80种选择共380候选、2种无选择；完整状态/历史/RNG/身份、兄弟与DOP2、10种代表原生结算。
@@ -93,6 +103,42 @@
 资源保路夹具先保留两次失败：`eea19a6790b349858d7d5294f99a2ba1` 暴露旧反射回放入口漏传两个新增可选参数，已同步真实签名；`cc7e15d2b9e942f2aabd9a3ad6498da0` 对零资源错误调用只接受正增量的领域方法，改为保留零初值后通过。两次均未执行到排名对照，不能算生产候选错误或通过。
 
 复跑最小合同使用原生启动器、`--scenario-id` 对应 `LAZY-RNG-FORK`、`ADAPTIVE-END-TURN-CHOICE-REPLAY`、`END-TURN-CHOICE-REPLAY`、`POWER-AFFLICTION-ENTRY`、`FROZEN-ROOT-LISTENERS`、`LONG-TERM-RESOURCE-STAGING`。选牌/入场/资源合同用IRONCLAD、敌HP999；入场/冻结监听用清空战斗牌堆后加入手牌INFLAME与DEFEND_IRONCLAD。请求上限120秒，关闭NoGC，仅检查建局合同并停止；PowerShell使用对应PascalCase参数。生成器另用解析后的指定样本。Linux无头不证明可见FPS、Windows或完整自动部署。
+
+## 在线监控：离线战绩身份（2026-09-14）
+
+- 最终 `npm test` 22 项通过，Edge headless 浏览器测试 10 项通过。服务接口覆盖战绩先于心跳上报时返回空昵称、离线状态和原始安装 ID，收到心跳后恢复当前昵称和在线状态；昵称包含搜索只从当前在线名单映射安装 ID，无匹配时返回空范围。浏览器测试覆盖离线行显示完整安装 ID、禁止“离线 · 离线玩家”回流，以及玩家昵称筛选参数和已应用标签。默认 Playwright Chromium 首次因本机未安装对应浏览器而未执行页面逻辑，后续均按项目既有 `BROWSER_CHANNEL=msedge` 入口验证。
+
+## 0.38.6 发布范围：格挡药路线直插与录像收录辅助 Mod 判定（2026-09-14）
+
+- 格挡药路线直插：Release 隔离构建 0 警告、0 错误，Windows PowerShell 结构门禁通过（`search_files=91`），CoverageCatalog 取得 3035 项、0 未分析、0 待实现。新增 `BLOCK-POTION-ROUTE-INSERTION` 完整部署场景，断言 Smart 无药路线单回合战损达到 9 后直接插入格挡药、实际省血至少 9、T2 获胜且计划外重算为 0；本轮运行时因已有普通游戏进程占用宿主准入而未执行，不记为通过。
+
+- `REPORT-V2-CONTRACT` / `7c9972982bc4425b929247e149e6c790` Passed，22.84 秒。新增合同证明录像浏览器、统计、QuickSL 等 `affects_gameplay=false` 辅助 Mod，以及统一登记的 Loadout/RNG 复现工具不会阻止收录；声明修改玩法的新角色和数值重制 Mod 仍被拒绝。既有问题包上传、取消和 TLS 合同同时通过。
+- 最新实机日志确认 0.38.5 未上传的原因是旧逻辑把 23 个已加载 Mod 与两项 ID 白名单比较，在线统计实际开启，本地没有待上传包，服务端也没有收到请求。本轮不使用 Computer Use，不执行 Bash 门禁。
+
+## 0.38.5 发布范围：Act 3 无伤 Boss 录像对局库（2026-09-14）
+
+- CombatSolver 与私用录像 Mod 的 Release 构建通过，0 警告、0 错误；Windows PowerShell 结构门禁另记最终结果。按用户要求不执行 Bash 门禁，不启动可见 Steam。
+- 日志后台 Python 3.12 隔离环境完整 64 项单元测试通过；测试进程退出后既有 `test_reports_v2` 临时 SQLite 句柄出现一次 Windows 清理告警，不影响测试退出码和断言结果。
+- 服务端合同覆盖五文件白名单、文件摘要、客户端/路线结束回合一致性、从动作时间线重新计算结束回合及用药数、1/3/多回合、同根质量替换、每组前 100、只读鉴权、后台展示/下载/删除。
+- 实机全职业/全原版第三幕 Boss 的精确导入与路线部署尚未运行；因此当前验证不宣称这些组合已逐项实机通过。
+
+## 0.38.4 发布范围（2026-09-14）
+
+- `HP-MODIFIER-COLLECTIONS` / `09f87bce86e74dc1b30f179d71e3dcd6` Passed：192 组 HP 修正集合合同保持；新增孤注一掷意图预测断言，非致命穿透伤害准确转为死亡并预测消耗一次蜥蜴尾巴，全额格挡保持安全，预测前后完整状态不变。
+- `DEATH-SAVE-ORDERING-FINAL` / `015992ad11e34b3eacdd34d2f527cbbd` Passed：控制器生命周期与搜索合同通过；纯排序断言证明同为完整胜利时零复活路线压过血量和回合更优的复活路线，而复活胜利仍压过无复活的失败路线。最终战不再免除保命资源成本。
+- `FAIRY-AUTOMATIC-RESCUE-DEATH-SAVE-FINAL` / `bb074141070441258c9f13191dabe520` Passed：1 HP 且只有瓶中精灵能存活的既有两回合场景仍自动复活并获胜，用药 1、计划外重算 0，证明新约束没有把万不得已的救命路线禁掉。三项均使用 Windows 隔离 headless；Release 构建 0 警告、0 错误，未启动可见 Steam。
+
+## 0.38.3 发布范围（2026-09-14）
+
+- 问题包弹窗正文回归：`UI-LOCALIZATION` / `dc7da1036cb0461698c9b75f073ffbd0` Passed；尺寸合同增加“滚动容器不参与自然高度时仍取得 320 px 默认高度”的断言，继续覆盖三种视口的总尺寸、拖动边界及 eng/zhs/zht 控件。Release 构建 0 警告、0 错误；未启动可见 Steam 做人工排版验收。
+- 夸克打包版：直接调用统一发布脚本中的 `New-QuarkReleaseBundle`，以 `CombatSolver-0.38.2.zip` 为基础加入未解压的 `STS2 RitsuLib 0.5.20.zip`。临时外层包为 22,036,563 字节，严格超过 10 MiB；嵌套条目恰好一项，名称保持不变，条目原始长度 20,161,342 字节与前置文件一致。未执行上传、移动或发布。
+- 失败窄搜移除：主搜索和 Smart 精确药水层直接使用原 profile，源码中不再存在 `NARROW_BEAM_RECOVERY`、`RecoverDeferredTurnFrontier` 或同回合落选前沿 fixture；请求级无胜利扩大搜索合同保留。Release 构建 0 警告、0 错误，PowerShell 结构门禁通过（`search_files=90`）；`NoVictoryRecoveryChecks` 最终通过 8 项请求合同及原策略断言，首次运行因检查工具仍引用已删除的旧 `Deep` profile 而未编译，改用当前 `Default` 后通过。按用户要求不执行 Bash 门禁。
+- 药水批量预设：四种纯策略转换及设置序列化断言已进入控制器生命周期测试；Release 构建 0 警告、0 错误。完整控制器场景继续到既有 Smart 药水补查断言后失败，该失败不在本项批量预设路径，未记整场通过。
+- `Ctrl+F9` 显隐：结构断言覆盖正确组合、错误功能键、键盘连发及隐藏后恢复原可见状态；输入节点独立于覆盖层。可见游戏未运行。
+- 问题包弹窗：`UI-LOCALIZATION` / `8fcb860ea114408c8a476d5bdee69334` Passed；纯尺寸合同覆盖 1920×1080、1280×720、960×540，正文为纵向滚动容器且标题/按钮位于其外，中英/简繁控件合同通过；可见排版未运行。
+- 原生选牌覆盖等待：`NATIVE-CHOICE-COVERED-WAIT-0383` / `fa7d612ef12e40e3a40f8e552d4f6a6a` Passed；纯状态合同覆盖预期页、其他覆盖层和真实缺失三态，10 秒真实缺失、60 秒遮挡、再 19.999 秒缺失不超时，累计真实缺失到 30 秒才超时；控制器生命周期与零损首回合搜索通过。工具箱下实际打开卡组未运行可见测试。
+- 成长机会目标：`SEARCH-HP-TARGET-STOP` / `26431b92993144bd9ac1f7d1a0513ce1` Passed，23.49 秒；覆盖能力牌未打出实体、消耗牌未消耗实体、永久牌组实例、固定重放目标与逐次实际收益、黏糊强化、炼制药水不按空槽裁剪、致命来源竞争、动态重放和消耗回收。零损早停 1 节点、关闭后 4 节点，狩猎兑现后早停、强制/至少一瓶药水合同保持。前两次独立实例因默认实例持有独占租约而在主机准入阶段超时，未执行场景；随后按受管标记复用默认实例并通过。
+- 第三方与额度：`GROWTH-POLICY-FREE-FIRST` / `c26a45b17e174cd7a6861188ed35d69f` Passed，21.48 秒；`GROWTH-POLICY-PAID` / `a9314d72f9cf43aaa162431515a90171` Passed，21.51 秒。覆盖旧登记不提供目标时保持完整搜索、可选计算器只读冻结快照、固定 Spiral 附魔重放、负次数与无效返回拒绝，以及零额度拒绝付血、足额额度取得成长、IgnoreLongTermRewards 清零。先行失败 `8d6dcdf7ca5e4c2ea3e01f76d9e2d3e8` 修正旧测试硬编码八个来源，`e203b483afae45918bea2a718a0c7b7a` 修正“成长存在即永不早停”的旧断言，`c8c16d90b32f4cd09258cf2ade57dc4f` 把额度排序与早停测试职责拆开；失败均未记通过。最终 Release 构建 0 警告、0 错误；可见 Steam 未运行。
 
 ## 0.38.2 发布范围（2026-09-14）
 

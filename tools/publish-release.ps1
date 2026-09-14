@@ -19,6 +19,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName System.IO.Compression
 
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 Set-Location -LiteralPath $repoRoot
@@ -46,6 +47,41 @@ function Resolve-RequiredDirectory {
     return (Resolve-Path -LiteralPath $Path).Path
 }
 
+function New-QuarkReleaseBundle {
+    param(
+        [string]$MinimalReleaseZip,
+        [string]$PrerequisiteZip,
+        [string]$OutputPath
+    )
+
+    $temporaryPath = "$OutputPath.$([Guid]::NewGuid().ToString('N')).tmp"
+    Copy-Item -LiteralPath $MinimalReleaseZip -Destination $temporaryPath
+    $archive = [System.IO.Compression.ZipFile]::Open(
+        $temporaryPath,
+        [System.IO.Compression.ZipArchiveMode]::Update)
+    try {
+        $entryName = Split-Path -Leaf $PrerequisiteZip
+        if ($null -ne $archive.GetEntry($entryName)) {
+            throw "夸克打包版中已存在前置 ZIP：$entryName"
+        }
+        $null = [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
+            $archive,
+            $PrerequisiteZip,
+            $entryName,
+            [System.IO.Compression.CompressionLevel]::NoCompression)
+    }
+    finally {
+        $archive.Dispose()
+    }
+
+    $bundle = Get-Item -LiteralPath $temporaryPath
+    if ($bundle.Length -le 10MB) {
+        throw "夸克打包版必须超过 10 MiB，实际为 $($bundle.Length) 字节。"
+    }
+    Move-Item -LiteralPath $temporaryPath -Destination $OutputPath -Force
+    return Get-Item -LiteralPath $OutputPath
+}
+
 foreach ($command in @('git', 'gh', 'node', 'bash')) {
     if (-not (Get-Command $command -ErrorAction SilentlyContinue)) {
         throw "缺少发布命令：$command"
@@ -54,6 +90,8 @@ foreach ($command in @('git', 'gh', 'node', 'bash')) {
 
 $manifestPath = Resolve-RequiredFile (Join-Path $repoRoot 'CombatSolver.json') 'manifest'
 $releaseZipPath = Resolve-RequiredFile (Join-Path $repoRoot "releases\CombatSolver-$Version.zip") '最小发布包'
+$ritsuLibZipPath = Resolve-RequiredFile (Join-Path $repoRoot 'releases\STS2 RitsuLib 0.5.20.zip') 'RitsuLib 前置 ZIP'
+$quarkReleaseZipPath = Join-Path $repoRoot "releases\CombatSolver-$Version-Quark.zip"
 $releaseNotesPath = Resolve-RequiredFile (Join-Path $repoRoot "docs\releases\$Version-RELEASE_NOTES.md") '玩家更新日志'
 $solverDllPath = Resolve-RequiredFile (Join-Path $repoRoot '.godot\mono\temp\bin\Release\CombatSolver.dll') 'Release DLL'
 $memoryCleanerPath = Resolve-RequiredFile (Join-Path $repoRoot 'tools\CombatSolver.MemoryCleaner\bin\Release\net48\CombatSolver.MemoryCleaner.exe') 'MemoryCleaner'
@@ -198,6 +236,9 @@ if ($ValidateOnly) {
         version = $Version
         sourceCommit = $sourceCommit
         releaseZip = $releaseZipPath
+        quarkReleaseZip = $quarkReleaseZipPath
+        quarkPrerequisiteZip = $ritsuLibZipPath
+        quarkMinimumBytesExclusive = 10MB
         releaseNotes = $releaseNotesPath
         workshop = $resolvedWorkshopDirectory
         githubTag = $tagName
@@ -246,6 +287,15 @@ if (-not $state.github) {
 }
 
 if (-not $state.quarkRelease -or -not $state.quarkNotes) {
+    $quarkBundle = if (-not $state.quarkRelease) {
+        New-QuarkReleaseBundle `
+            -MinimalReleaseZip $releaseZipPath `
+            -PrerequisiteZip $ritsuLibZipPath `
+            -OutputPath $quarkReleaseZipPath
+    }
+    else {
+        $null
+    }
     $rootItems = @(Get-QuarkItems -Arguments @(
         'search', '--keyword', '战斗路线求解器', '--search-type', 'dir', '--stdout-only'
     ))
@@ -257,7 +307,7 @@ if (-not $state.quarkRelease -or -not $state.quarkNotes) {
 
     if (-not $state.quarkRelease) {
         $latestItems = @(Get-QuarkItems -Arguments @('browse', '--parent-fid', [string]$latestFolder.fid, '--all'))
-        $releaseName = Split-Path -Leaf $releaseZipPath
+        $releaseName = $quarkBundle.Name
         $currentRelease = @($latestItems | Where-Object {
             [string]$_.filename -ceq $releaseName -and [string]$_.file_type -eq '1'
         })
@@ -277,7 +327,7 @@ if (-not $state.quarkRelease -or -not $state.quarkNotes) {
         }
         if ($currentRelease.Count -eq 0) {
             $null = Invoke-Quark -Arguments @(
-                'upload', $releaseZipPath, '--parent-fid', [string]$latestFolder.fid
+                'upload', $quarkBundle.FullName, '--parent-fid', [string]$latestFolder.fid
             )
         }
         $state.quarkRelease = $true
@@ -309,6 +359,8 @@ if (-not $state.quarkRelease -or -not $state.quarkNotes) {
     workshop = [bool]$state.workshop
     github = [bool]$state.github
     quarkRelease = [bool]$state.quarkRelease
+    quarkReleaseZip = $quarkReleaseZipPath
+    quarkPrerequisiteZip = $ritsuLibZipPath
     quarkNotes = [bool]$state.quarkNotes
     monitoringBackend = '由用户维护'
     stateFile = $statePath

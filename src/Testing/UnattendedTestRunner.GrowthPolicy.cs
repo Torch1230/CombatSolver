@@ -76,14 +76,21 @@ internal sealed partial class UnattendedTestRunner
         };
         bool paidFixture = _request.ScenarioId == "GROWTH-POLICY-PAID";
         int allowance = paidFixture ? 100 : 2;
-        SolverResult baseline = await Task.Run(() => CombatSearchCoordinator.Solve(root, names, damage, policy, CancellationToken.None, null));
+        SearchPolicySnapshot exhaustivePolicy = policy with { StopAtAcceptableBattleHpLoss = false };
+        SolverResult baseline = await Task.Run(() => CombatSearchCoordinator.Solve(
+            root, names, damage, exhaustivePolicy, CancellationToken.None, null));
         Check(baseline.Snapshot.GrowthHpCredit == 0 && baseline.Snapshot.GrowthRewards.GeneticAlgorithm == (paidFixture ? 0 : 1),
             "zero budget takes free growth and rejects paid growth");
         SearchPolicySnapshot growthPolicy = policy with { GrowthBudgets = new GrowthValues(GeneticAlgorithm: allowance) };
-        Check(CombatSearchCoordinator.HasReachedAcceptableBattleHpLoss(policy with { HasGrowthTargets = false }, baseline), "no-target early stop");
-        Check(!CombatSearchCoordinator.HasReachedAcceptableBattleHpLoss(policy, baseline), "free growth overrides early stop");
-        Check(!CombatSearchCoordinator.HasReachedAcceptableBattleHpLoss(growthPolicy, baseline), "growth overrides early stop");
-        SolverResult growth = await Task.Run(() => CombatSearchCoordinator.Solve(root, names, damage, growthPolicy, CancellationToken.None, null));
+        Check(CombatSearchCoordinator.HasReachedAcceptableBattleHpLoss(
+            policy with { GrowthOpportunityTargets = GrowthOpportunityTargets.Empty }, baseline), "no-target early stop");
+        Check(policy.GrowthOpportunityTargets.RequiredRewards.GeneticAlgorithm == 1
+            && CombatSearchCoordinator.HasReachedAcceptableBattleHpLoss(policy, baseline) == !paidFixture,
+            "bounded growth permits early stop exactly when the route fulfilled it");
+        Check(CombatSearchCoordinator.HasReachedAcceptableBattleHpLoss(growthPolicy, baseline) == !paidFixture,
+            "the HP budget does not invent another growth opportunity");
+        SolverResult growth = await Task.Run(() => CombatSearchCoordinator.Solve(
+            root, names, damage, growthPolicy with { StopAtAcceptableBattleHpLoss = false }, CancellationToken.None, null));
         Check(growth.Snapshot.AllEnemiesDead && !growth.Snapshot.PlayerDead, "growth route wins");
         Check(growth.Snapshot.GrowthRewards.GeneticAlgorithm == 1 && growth.Snapshot.GrowthHpCredit == allowance,
             $"permanent growth reached through search and replay: rewards={growth.Snapshot.GrowthRewards} credit={growth.Snapshot.GrowthHpCredit} actions={string.Join(',', growth.BestNode.Actions.Select(action => action.CardId))}");
@@ -95,14 +102,19 @@ internal sealed partial class UnattendedTestRunner
         Check(!new SolverSettingsData().IgnoreLongTermRewards, "the ignore switch defaults to off");
         Check(SolverSettings.RoundTripForTesting(original with { IgnoreLongTermRewards = true }).IgnoreLongTermRewards,
             "the ignore switch round trips through settings");
-        SearchPolicySnapshot ignoring = growthPolicy with { IgnoreLongTermRewards = true };
+        SearchPolicySnapshot ignoring = growthPolicy with
+        {
+            IgnoreLongTermRewards = true,
+            StopAtAcceptableBattleHpLoss = false,
+        };
         Check(ignoring.GrowthBudgets == growthPolicy.GrowthBudgets && ignoring.EffectiveGrowthBudgets == default,
             "the raw budget is kept and only the effective one is zeroed");
-        Check((policy with { HasGrowthTargets = true }).EffectiveHasGrowthTargets
-            && !(policy with { HasGrowthTargets = true, IgnoreLongTermRewards = true }).EffectiveHasGrowthTargets,
+        GrowthOpportunityTargets unresolvedGrowth = GrowthOpportunityTargets.UnboundedForTesting("test:unresolved_growth");
+        Check((policy with { GrowthOpportunityTargets = unresolvedGrowth }).EffectiveHasGrowthTargets
+            && !(policy with { GrowthOpportunityTargets = unresolvedGrowth, IgnoreLongTermRewards = true }).EffectiveHasGrowthTargets,
             "ignoring takes growth targets back out");
         Check(CombatSearchCoordinator.HasReachedAcceptableBattleHpLoss(
-                policy with { HasGrowthTargets = true, IgnoreLongTermRewards = true }, baseline),
+                policy with { GrowthOpportunityTargets = unresolvedGrowth, IgnoreLongTermRewards = true }, baseline),
             "ignoring re-enables the early stop that growth targets had switched off");
         SolverResult ignored = await Task.Run(() => CombatSearchCoordinator.Solve(root, names, damage, ignoring, CancellationToken.None, null));
         Check(ignored.Snapshot.AllEnemiesDead && !ignored.Snapshot.PlayerDead, "the ignoring route still wins");

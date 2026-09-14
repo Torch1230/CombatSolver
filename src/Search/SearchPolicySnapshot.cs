@@ -1,7 +1,5 @@
 namespace CombatSolver;
 
-internal readonly record struct FatalGrowthSearchTarget(GrowthSource Source, int KillCount);
-
 internal sealed record SearchPolicySnapshot(
     SolverSearchProfile Profile,
     SolverPotionPolicy PotionPolicy,
@@ -29,13 +27,14 @@ internal sealed record SearchPolicySnapshot(
     public bool RelicTargetsSatisfied(RelicCounterEvaluation value)
         => RelicTargets.All(target => (value.SatisfiedMask & (1UL << (int)target.Id)) != 0);
     public int? BrightestFlameMaxHpLossLimit { get; init; }
-    public bool HasGrowthTargets { get; init; }
+    public GrowthOpportunityTargets GrowthOpportunityTargets { get; init; } = GrowthOpportunityTargets.Empty;
+    public bool HasGrowthTargets => GrowthOpportunityTargets.HasTargets;
     public bool StopAtAcceptableBattleHpLoss { get; init; } = true;
-    public bool CanStopAtHpTarget => StopAtAcceptableBattleHpLoss && !EffectiveHasGrowthTargets;
-    public FatalGrowthSearchTarget? FatalGrowthTarget { get; init; }
+    public bool CanStopAtHpTarget => StopAtAcceptableBattleHpLoss
+        && (!EffectiveHasGrowthTargets || GrowthOpportunityTargets.IsBounded);
     public bool GrowthTargetSatisfied(GrowthValues rewards)
-        => CanStopAtHpTarget || StopAtAcceptableBattleHpLoss && FatalGrowthTarget is { } target
-            && rewards.Get(target.Source) >= target.KillCount;
+        => CanStopAtHpTarget
+            && (!EffectiveHasGrowthTargets || GrowthOpportunityTargets.IsSatisfiedBy(rewards));
     public int MinimumRequiredPotionUses(int alreadyUsed)
         => Math.Max(PotionStrategy.Directives.Count(d => d.Directive == SolverPotionDirective.Force),
             PotionPolicy == SolverPotionPolicy.RequireAtLeastOne && alreadyUsed == 0 ? 1 : 0);

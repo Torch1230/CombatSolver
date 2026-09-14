@@ -60,7 +60,7 @@ internal sealed class SolvedRouteCache(string path)
             policy.RelicTargets,
             policy.Act3BossStrategy,
             policy.BrightestFlameMaxHpLossLimit,
-            policy.HasGrowthTargets,
+            policy.GrowthOpportunityTargets,
             policy.IgnoreLongTermRewards,
             policy.IncludeTurnSetup,
             policy.TheftPolicy,
@@ -68,7 +68,6 @@ internal sealed class SolvedRouteCache(string path)
             policy.FinalBossHpStrategy,
             policy.AcceptableBattleHpLoss,
             policy.StopAtAcceptableBattleHpLoss,
-            policy.FatalGrowthTarget,
             policy.FixedBudget,
             policy.BudgetOverrideMilliseconds,
         });
@@ -88,6 +87,13 @@ internal sealed class SolvedRouteCache(string path)
         return result;
     }
 
+    internal static byte[] SerializeRoute(SolverResult result)
+        => JsonSerializer.SerializeToUtf8Bytes(result, Options(result.Forecast));
+
+    internal static SolverResult DeserializeRoute(ReadOnlySpan<byte> bytes, IntentForecast currentForecast)
+        => JsonSerializer.Deserialize<SolverResult>(bytes, Options(currentForecast))
+           ?? throw new InvalidDataException("录像包中的预计算路线为空。");
+
     public void StoreFirst(SolverResult result)
     {
         if (result.WasRestoredFromCache
@@ -96,7 +102,7 @@ internal sealed class SolvedRouteCache(string path)
             return;
         string directory = System.IO.Path.GetDirectoryName(Path)!;
         Directory.CreateDirectory(directory);
-        byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(result, Options(result.Forecast));
+        byte[] bytes = SerializeRoute(result);
         string temporary = Path + ".tmp";
         File.WriteAllBytes(temporary, bytes);
         File.Move(temporary, Path);

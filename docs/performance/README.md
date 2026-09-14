@@ -8,11 +8,13 @@
 
 ## 当前工作重点
 
-当前 `perf/general-allocation-20260914` 已整合上游0.38.2，并完成通用分配优化及蟹战后续局部优化。用户随后授权选牌暂停与恢复窄原型，已完成投掷匕首、杂技和早有准备共用的[独立实验与对照](choice-continuation-prototype-20260914.md)，随后按用户授权接入正式搜索，见[正式接入与整搜对照](choice-continuation-search-20260914.md)。旧研究分支保留为历史证据，不继续Compact／战斗执行流程移植。
+当前 `perf/general-allocation-20260914` 已整合上游0.38.6，并完成通用分配、生成池与选牌续执行三阶段。当前上游的合并验证与整批对照见[正式 PR 验收](performance-pr-20260915.md)。用户随后授权选牌暂停与恢复窄原型，已完成投掷匕首、杂技和早有准备共用的[独立实验与对照](choice-continuation-prototype-20260914.md)，随后按用户授权接入正式搜索，见[正式接入与整搜对照](choice-continuation-search-20260914.md)。旧研究分支保留为历史证据，不继续Compact／战斗执行流程移植。
 
 - [精简移植、验证与性能研究](surgical-fixes-20260912.md)。
 
 ## 专题
+
+- [正式 PR 验收：整合0.38.6与当前基线](performance-pr-20260915.md)：三阶段最终范围、合并合同、当前上游完整ABBA与测量限制。
 
 - [自身弃牌续执行正式接入与整搜对照](choice-continuation-search-20260914.md)：正式所有权、回退与计数、搜索/增量合同和完整预算ABBA。
 - [选牌续执行批量扩展可行性](choice-continuation-expansion-20260914.md)：41张单人卡、9种药水、战斗内5件遗物和5种Power的阶段划分、已支持范围与复制状态缺口；研究不等于启用或性能验证。

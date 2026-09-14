@@ -148,6 +148,7 @@ internal sealed class SolverCombatSession
     public IReadOnlyList<string> LastContinuationDifferences { get; set; } = [];
     public int? LastSolverDeployedTurn { get; set; }
     public bool ManualControlObserved { get; set; }
+    public bool ShowcaseMode { get; set; }
     public CombatBugReportIssueLedger BugReportIssues { get; } = new();
 }
 
