@@ -30,6 +30,8 @@ param(
     [int]$PreCombatPlayerCurrentHpOverride = -1,
     [string]$PreCombatInterveningMapPointsJson = "",
     [string]$ReplayStatePath = "",
+    [string]$ShowcaseRoutePath = "",
+    [string]$ShowcaseBundlePath = "",
     [string]$CheckpointArchivePath = "",
     [string]$CheckpointSelector = "latest",
     [ValidateSet("Preflight", "RestoreOnly", "ReplayRecorded", "SearchOnly", "DeploySolver")]
@@ -668,6 +670,16 @@ $resolvedReplayStatePath = if ([string]::IsNullOrWhiteSpace($ReplayStatePath)) {
 } else {
     (Resolve-Path -LiteralPath $ReplayStatePath).Path
 }
+$resolvedShowcaseRoutePath = if ([string]::IsNullOrWhiteSpace($ShowcaseRoutePath)) {
+    $null
+} else {
+    (Resolve-Path -LiteralPath $ShowcaseRoutePath).Path
+}
+$resolvedShowcaseBundlePath = if ([string]::IsNullOrWhiteSpace($ShowcaseBundlePath)) {
+    $null
+} else {
+    (Resolve-Path -LiteralPath $ShowcaseBundlePath).Path
+}
 $runId = [Guid]::NewGuid().ToString("N")
 $replayStateCards = $null
 if (-not [string]::IsNullOrWhiteSpace($ReplayStateCardsPath)) {
@@ -734,6 +746,8 @@ $request = [ordered]@{
         ConvertFrom-Json -InputObject $PreCombatInterveningMapPointsJson -NoEnumerate
     }
     replayStatePath = $resolvedReplayStatePath
+    showcaseRoutePath = $resolvedShowcaseRoutePath
+    showcaseBundlePath = $resolvedShowcaseBundlePath
     checkpointArchivePath = if ($CheckpointArchivePath) { $CheckpointArchivePath } else { $null }
     evidenceDirectory = if ($EvidenceDirectory) { $EvidenceDirectory } else { $null }
     checkpointSelector = $CheckpointSelector

@@ -90,6 +90,10 @@ internal static class CombatShowcaseCollector
 
         CombatBugReportExporter.ReplayCheckpointMaterial checkpoint =
             CombatBugReportExporter.CaptureReplayCheckpoint(state);
+        checkpoint = checkpoint with
+        {
+            NativeState = CombatShowcaseNativeState.CaptureNormalized(state),
+        };
         _root = new RootCapture(
             state,
             checkpoint,

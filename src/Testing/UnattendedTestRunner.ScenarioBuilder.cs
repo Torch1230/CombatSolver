@@ -74,6 +74,36 @@ internal sealed partial class UnattendedTestRunner
             // The registry is authoritative for a caller-selected native model.
             EncounterModel encounter = ResolveUnique(ModelDb.All.OfType<EncounterModel>(), request.EncounterId, "遭遇");
             AssertExpectedLoadedMods(request.ExpectedLoadedMods);
+            if (!string.IsNullOrWhiteSpace(request.ShowcaseBundlePath))
+            {
+                runner.SetStage("showcase_bundle_import");
+                CombatShowcaseEnterResult entered =
+                    await CombatShowcaseRuntime.EnterAsync(request.ShowcaseBundlePath);
+                CombatState = CombatManager.Instance.DebugOnlyGetState()
+                    ?? throw new InvalidOperationException("录像包导入后没有战斗状态。");
+                Player importedPlayer = LocalContext.GetMe(CombatState)
+                    ?? throw new InvalidOperationException("录像包导入后没有本地玩家。");
+                EncounterModel importedEncounter = CombatState.Encounter
+                    ?? throw new InvalidOperationException("录像包导入后没有遭遇。");
+                StartedTurn = importedPlayer.PlayerCombatState?.TurnNumber
+                    ?? throw new InvalidOperationException("录像包导入后玩家没有战斗状态。");
+                CombatShowcaseNativeState.VerifyContractForTesting(CombatState);
+                if (!ModelMatches(importedPlayer.Character, entered.CharacterId)
+                    || !ModelMatches(importedEncounter, entered.EncounterId))
+                    throw new InvalidDataException("录像包导入结果与当前战斗身份不一致。");
+                runner._completedChecks.Add(
+                    $"ShowcaseBundleImport:EndTurn={entered.CombatEndedTurn}:" +
+                    $"LocalSearches={entered.LocalSearchStarts}:CanonicalNativeState");
+                return new ScenarioContext(
+                    importedPlayer.Character,
+                    importedEncounter,
+                    CombatState,
+                    importedPlayer,
+                    StartedTurn,
+                    [],
+                    [],
+                    []);
+            }
             ModifierModel[] modifiers = request.ModifierIds
                 .Select(id => ResolveUnique(
                     ModelDb.GoodModifiers.Concat(ModelDb.BadModifiers),

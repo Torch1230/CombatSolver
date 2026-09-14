@@ -34,6 +34,8 @@ internal sealed class UnattendedTestRequest
     public UnattendedPreCombatMapStep[] PreCombatInterveningMapPoints { get; init; } = [];
     public string[] ExpectedLoadedMods { get; init; } = [];
     public string? ReplayStatePath { get; init; }
+    public string? ShowcaseRoutePath { get; init; }
+    public string? ShowcaseBundlePath { get; init; }
     public string? NativeStatePath { get; init; }
     public string? CheckpointArchivePath { get; init; }
     public string CheckpointSelector { get; init; } = "latest";

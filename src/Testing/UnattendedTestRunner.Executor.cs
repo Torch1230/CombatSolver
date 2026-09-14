@@ -595,6 +595,16 @@ internal sealed partial class UnattendedTestRunner
                 return Observation(combatEnded: restoreOnly);
             }
 
+            if (request.ScenarioId == "SHOWCASE-ROUTE-IMPORT-V0111")
+            {
+                runner.SetStage("showcase_route_import");
+                runner.AssertShowcaseRouteImport(combatState);
+                return Observation(combatEnded: false);
+            }
+
+            if (request.ScenarioId == "SHOWCASE-BUNDLE-IMPORT-V0111")
+                return Observation(combatEnded: false);
+
             if (request.ScenarioId.Equals("GC-CHECKPOINT-BACKGROUND-V0111", StringComparison.OrdinalIgnoreCase))
             {
                 if (scenario.OrbChecks.Count > 0 || scenario.PotionChecks.Count > 0

@@ -88,7 +88,16 @@ internal static class CombatShowcaseRuntime
                 player,
                 bundle.ReplayStatePath,
                 bundle.RunStatePath,
+                nativeStatePath: null);
+            bool nativeStateVerified = CombatShowcaseNativeState.AssertMatches(
+                state,
                 bundle.NativeStatePath);
+            if (!nativeStateVerified)
+            {
+                Entry.Logger.Warn(
+                    "[CombatSolver/Showcase] LEGACY_NATIVE_STATE comparison=exact_replay_state " +
+                    "reason=patched_packet_format");
+            }
             CombatBugReportExporter.ResetOutcomeAtRestoredRoot(state);
 
             using JsonDocument routeDocument = JsonDocument.Parse(await File.ReadAllBytesAsync(bundle.RoutePath));
@@ -113,10 +122,23 @@ internal static class CombatShowcaseRuntime
                 route.GetProperty("turnCount").GetInt32(),
                 localSearchStarts);
         }
-        catch
+        catch (Exception importError)
         {
             if (RunManager.Instance.IsInProgress && NGame.Instance is { } host)
-                await host.ReturnToMainMenu();
+            {
+                try
+                {
+                    await host.ReturnToMainMenu();
+                }
+                catch (Exception cleanupError)
+                {
+                    Entry.Logger.Error(
+                        $"[CombatSolver/Showcase] IMPORT_FAILED error={importError} cleanup_error={cleanupError}");
+                    throw new InvalidOperationException(
+                        $"录像对局导入失败：{importError.Message}；返回主菜单清理失败：{cleanupError.Message}",
+                        new AggregateException(importError, cleanupError));
+                }
+            }
             throw;
         }
         finally
