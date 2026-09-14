@@ -151,9 +151,9 @@ internal static class CombatShowcaseRuntime
             {
                 ZipArchiveEntry entry = archive.GetEntry(name)!;
                 string destination = Path.Combine(directory, name);
-                using Stream input = entry.Open();
-                using FileStream output = File.Create(destination);
-                input.CopyTo(output);
+                using (Stream input = entry.Open())
+                using (FileStream output = File.Create(destination))
+                    input.CopyTo(output);
                 if (name == "showcase.json")
                     continue;
                 JsonElement descriptor = fileManifest.GetProperty(name);
