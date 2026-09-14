@@ -27,6 +27,8 @@ test('startup skips incomplete rosters for a full TTL, preserves the previous bu
     time+=60000;
     assert.equal((await post(c+'/v1/heartbeat',{sessionId:'a'.repeat(32),name:'test',character:'SILENT',floor:1,encounter:'A',hpLoss:0,version:'test'})).status,200);
     app.sample();assert.equal(db.prepare('SELECT COUNT(*) AS n FROM history').get().n,1);
+    assert.equal((await fetch(a+'/api/dau',{headers:{Cookie:cookie}}).then(r=>r.json())).today,1);
+    assert.equal((await fetch(a+'/api/dau')).status,401);
     time+=TTL-60000-1;app.sample();assert.equal(db.prepare('SELECT COUNT(*) AS n FROM history').get().n,1);
     time++;app.sample();assert.equal((await overview()).samplingReady,true);
     const recoveredBucket=Math.floor(time/60000)*60000;

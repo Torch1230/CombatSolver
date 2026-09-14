@@ -1,6 +1,6 @@
 import http from 'node:http';
 import https from 'node:https';
-import { readFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, mkdirSync, writeFileSync, renameSync } from 'node:fs';
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
@@ -8,6 +8,7 @@ import { resolve } from 'node:path';
 import { aggregateHistory } from './history.mjs';
 import { comparePeriods } from './comparisons.mjs';
 import { createWorkshopCounter } from './workshop.mjs';
+import { createDailyActive } from './dau.mjs';
 import { createRunStatistics, validateRun, validateHistory, validateSnapshot, parseStatisticsFilters } from './run-statistics.mjs';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
@@ -31,9 +32,10 @@ export function validate(body) {
     && (body.hpLoss === null || Number.isInteger(body.hpLoss) && body.hpLoss >= 0 && body.hpLoss <= 10000000);
 }
 
-export function createApp({ database = ':memory:', password, now = Date.now, secureCookie = false, publicHost }) {
+export function createApp({ database = ':memory:', password, now = Date.now, secureCookie = false, publicHost, metricsFile }) {
   if (!password || password.length < 20) throw new Error('ADMIN_PASSWORD must contain at least 20 characters');
   const db = new DatabaseSync(database);
+  const dau = createDailyActive(db,now);
   const runStatistics = createRunStatistics(db,now);
   const workshop = createWorkshopCounter(db,{now});
   db.exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000; CREATE TABLE IF NOT EXISTS history (time INTEGER PRIMARY KEY, count INTEGER NOT NULL) STRICT;');
@@ -68,6 +70,11 @@ export function createApp({ database = ':memory:', password, now = Date.now, sec
   }
   function sample() {
     expire();
+    dau.sample();
+    if(metricsFile) {
+      writeFileSync(metricsFile+'.tmp',JSON.stringify(dau.snapshot()),{mode:0o644});
+      renameSync(metricsFile+'.tmp',metricsFile);
+    }
     if (now() >= samplingReadyAt)
       historyInsert.run(Math.floor(now()/60000)*60000, players.size);
     historyDelete.run(now() - 90*86400000);
@@ -132,6 +139,7 @@ export function createApp({ database = ':memory:', password, now = Date.now, sec
     const elapsed = previous ? Math.max(0, receivedAt-previous.last_seen) : 0;
     const totalMs = (previous?.total_ms ?? 0) + (elapsed < TTL ? elapsed : 0);
     durationWrite.run(body.sessionId,totalMs,receivedAt);
+    dau.record(body.sessionId,receivedAt);
     const prior = players.get(body.sessionId);
     const inCombat = body.inCombat ?? Boolean(body.encounter);
     const complete = body.character.length > 0 && body.floor !== null && body.encounter.length > 0 && body.hpLoss !== null;
@@ -172,6 +180,7 @@ export function createApp({ database = ':memory:', password, now = Date.now, sec
     const token = /(?:^|;\s*)cs_presence_session=([a-f0-9]{64})(?:;|$)/.exec(req.headers.cookie || '')?.[1];
     if (url.pathname.startsWith('/api/')) {
       if (!token || (sessionRead.get(sessionKey(token))?.expires_at ?? 0) <= now()) return send(res,401);
+      if (req.method === 'GET' && url.pathname === '/api/dau') return send(res,200,dau.snapshot());
       if (req.method === 'GET' && url.pathname === '/api/release')
         return send(res,200,currentRelease());
       if (req.method === 'POST' && url.pathname === '/api/release') {
@@ -245,11 +254,12 @@ export function createApp({ database = ':memory:', password, now = Date.now, sec
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   mkdirSync(resolve(root,'data'),{recursive:true,mode:0o700});
+  mkdirSync(resolve(root,'data/public-metrics'),{recursive:true,mode:0o755});
   const adminTls = process.env.ADMIN_TLS === 'true';
   const adminBind = process.env.ADMIN_BIND || '127.0.0.1';
   if (!['127.0.0.1','::1'].includes(adminBind) && (!adminTls || !process.env.ADMIN_PUBLIC_HOST))
     throw new Error('Public admin listener requires ADMIN_TLS and ADMIN_PUBLIC_HOST');
-  const app = createApp({database:process.env.DATABASE_PATH || resolve(root,'data/presence.sqlite'),password:process.env.ADMIN_PASSWORD,publicHost:process.env.ADMIN_PUBLIC_HOST});
+  const app = createApp({database:process.env.DATABASE_PATH || resolve(root,'data/presence.sqlite'),password:process.env.ADMIN_PASSWORD,publicHost:process.env.ADMIN_PUBLIC_HOST,metricsFile:resolve(root,'data/public-metrics/dau.json')});
   const tls = {key:readFileSync(process.env.TLS_KEY),cert:readFileSync(process.env.TLS_CERT),minVersion:'TLSv1.2'};
   const admin = (adminTls ? https : http).createServer({...(adminTls ? tls : {}),requestTimeout:10000,headersTimeout:10000,maxHeaderSize:8192},app.admin);
   admin.maxConnections = 30;
