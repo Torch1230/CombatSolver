@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>13.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/Engine/Common/Mirrors/MethodMirror*.cs" Link="%(Filename)%(Extension)" />
+    <Compile Include="../../src/Engine/Common/Mirrors/MirrorMethodSpec.cs" Link="MirrorMethodSpec.cs" />
+    <Compile Include="../../src/Engine/InCombat/Mirrors/Hooks/TurnEnd/AfterSideTurnEndLateMirrors.cs" Link="AfterSideTurnEndLateMirrors.cs" />
+    <Compile Include="../../src/Engine/InCombat/Mirrors/HookMirrors.TurnEnd.cs" Link="HookMirrors.TurnEnd.cs" />
+    <Compile Include="../../src/Engine/InCombat/Mirrors/CardHookReceiver.cs" Link="CardHookReceiver.cs" />
+  </ItemGroup>
+</Project>

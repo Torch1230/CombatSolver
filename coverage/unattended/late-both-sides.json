@@ -1,0 +1,13 @@
+{
+  "scenarioId": "REPORT-ROUND-LATE-BOTH-SIDES",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "enemyCurrentHp": 50,
+  "clearPlayerPiles": true,
+  "cards": [{ "cardId": "DEFEND_IRONCLAD", "pile": "Hand", "count": 1 }],
+  "powers": [
+    { "powerId": "DISINTEGRATION_POWER", "target": "Player", "amount": 1 },
+    { "powerId": "DISINTEGRATION_POWER", "target": "Enemy", "amount": 3 }
+  ],
+  "timeoutSeconds": 120
+}

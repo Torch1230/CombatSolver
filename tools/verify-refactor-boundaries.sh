@@ -134,7 +134,7 @@ for relative_path in \
     for reference in \
         'CorePowerSupport.TriggerPlayerRegularSideTurnEndEffects(' \
         'TurnStartRelicSupport.TriggerAfterSideTurnEnd(' \
-        'EndTurnPowerSupport.TriggerLate('; do
+        'HookMirrors.AfterSideTurnEndLate('; do
         forbid_fixed "$repository_root/$relative_path" "$reference" \
             'player phase two must use PlayerTurnEndLifecycle'
     done

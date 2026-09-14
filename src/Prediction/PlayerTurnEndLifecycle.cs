@@ -1,6 +1,7 @@
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Combat;
+using CombatSolver.Engine.InCombat.Mirrors;
 using CombatSolver.Engine.InCombat.Simulation;
 
 namespace CombatSolver;
@@ -17,7 +18,7 @@ internal static class PlayerTurnEndLifecycle
                 simulator, combat, participants, etherealExhaustCount)
             || !TurnStartRelicSupport.TriggerAfterSideTurnEnd(
                 simulator, combat, participants, etherealExhaustCount)
-            || !EndTurnPowerSupport.TriggerLate(simulator, combat, participants))
+            || !HookMirrors.AfterSideTurnEndLate(simulator, CombatSide.Player, participants))
         {
             return false;
         }
