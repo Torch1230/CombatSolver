@@ -274,38 +274,13 @@ internal readonly record struct GrowthValues(
         + ForbiddenGrimoire + _extras.Total);
 
     public static bool HasTarget(CardModel card)
-        => card is Cards.HandOfGreed or Cards.TheHunt or Cards.Feed or Cards.Royalties or Cards.Alchemize or Cards.ForbiddenGrimoire
-            || card.DeckVersion != null && (card is Cards.GeneticAlgorithm or Cards.TheScythe || card.Enchantment is Enchantments.Goopy)
+        => HasBuiltInTarget(card)
             || GrowthSourceMirrors.HasTarget(card);
 
-    // Early stopping asks each currently available fatal card to realize its reward once,
-    // bounded by the enemies present. This is a search goal, not a theoretical farming bound.
-    // Non-fatal and mixed sources retain the existing growth search policy.
-    public static FatalGrowthSearchTarget? CaptureFatalTarget(IEnumerable<CardModel> cards, int enemyCount)
-    {
-        GrowthSource? source = null;
-        int availableCards = 0;
-        foreach (CardModel card in cards.Where(HasTarget))
-        {
-            GrowthSource? candidate = card switch
-            {
-                Cards.TheHunt => GrowthSource.TheHunt,
-                Cards.Feed => GrowthSource.Feed,
-                Cards.HandOfGreed => GrowthSource.HandOfGreed,
-                _ => null,
-            };
-            if (candidate == null || card.Enchantment is Enchantments.Goopy
-                || GrowthSourceMirrors.HasTarget(card) || (source.HasValue && source != candidate))
-                return null;
-            source = candidate;
-            if (card.Pile?.Type != MegaCrit.Sts2.Core.Entities.Cards.PileType.Exhaust)
-                availableCards++;
-        }
-        return source is { } selected && enemyCount > 0
-            ? new FatalGrowthSearchTarget(selected,
-                selected == GrowthSource.HandOfGreed && availableCards > 0 ? enemyCount : Math.Min(availableCards, enemyCount))
-            : null;
-    }
+    internal static bool HasBuiltInTarget(CardModel card)
+        => card is Cards.HandOfGreed or Cards.TheHunt or Cards.Feed or Cards.Royalties or Cards.Alchemize or Cards.ForbiddenGrimoire
+            || card.DeckVersion != null && (card is Cards.GeneticAlgorithm or Cards.TheScythe || card.Enchantment is Enchantments.Goopy)
+            ;
     public int Get(GrowthSource source) => source switch
     {
         GrowthSource.HandOfGreed => HandOfGreed,
@@ -346,6 +321,21 @@ internal readonly record struct GrowthValues(
         + Alchemize * rewards.Alchemize + GeneticAlgorithm * rewards.GeneticAlgorithm
         + TheScythe * rewards.TheScythe + Goopy * rewards.Goopy
         + ForbiddenGrimoire * rewards.ForbiddenGrimoire + _extras.Credit(rewards._extras));
+
+    public bool Satisfies(GrowthValues required)
+    {
+        foreach (GrowthSource source in Enum.GetValues<GrowthSource>())
+        {
+            if (Get(source) < required.Get(source))
+                return false;
+        }
+        foreach (KeyValuePair<string, int> entry in required.Extras.Entries)
+        {
+            if (_extras.Get(entry.Key) < entry.Value)
+                return false;
+        }
+        return true;
+    }
 
     public void ValidateBudgets()
     {

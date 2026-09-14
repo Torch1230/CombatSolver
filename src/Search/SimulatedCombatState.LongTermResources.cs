@@ -19,7 +19,7 @@ internal sealed partial class SimulatedCombatState
 
     /// <summary>
     /// 记一次第三方来源的局外收益到手。句柄从
-    /// <see cref="GrowthSourceMirrors.Register(string, Func{MegaCrit.Sts2.Core.Models.CardModel}, Func{MegaCrit.Sts2.Core.Models.CardModel, bool}, Func{MegaCrit.Sts2.Core.Models.CardModel, string})"/>
+    /// <see cref="GrowthSourceMirrors.Register(string, Func{MegaCrit.Sts2.Core.Models.CardModel}, Func{MegaCrit.Sts2.Core.Models.CardModel, bool}, Func{MegaCrit.Sts2.Core.Models.CardModel, string}, Func{GrowthOpportunityContext, GrowthOpportunityTarget})"/>
     /// 取得。和原版八个来源一样，每次成功触发各记一次，额度逐次累计。
     /// </summary>
     public void RecordGrowthReward(GrowthSourceHandle source)

@@ -60,7 +60,7 @@ internal sealed class SolvedRouteCache(string path)
             policy.RelicTargets,
             policy.Act3BossStrategy,
             policy.BrightestFlameMaxHpLossLimit,
-            policy.HasGrowthTargets,
+            policy.GrowthOpportunityTargets,
             policy.IgnoreLongTermRewards,
             policy.IncludeTurnSetup,
             policy.TheftPolicy,
@@ -68,7 +68,6 @@ internal sealed class SolvedRouteCache(string path)
             policy.FinalBossHpStrategy,
             policy.AcceptableBattleHpLoss,
             policy.StopAtAcceptableBattleHpLoss,
-            policy.FatalGrowthTarget,
             policy.FixedBudget,
             policy.BudgetOverrideMilliseconds,
         });

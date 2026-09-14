@@ -86,7 +86,9 @@ internal sealed partial class UnattendedTestRunner
                 "real search aligns before the killing card");
             Check(CombatSearchCoordinator.HasReachedAcceptableBattleHpLoss(policy, aligned)
                 && !CombatSearchCoordinator.HasReachedAcceptableBattleHpLoss(policy, baseline), "only satisfied goals unblock zero-loss stopping");
-            Check(!CombatSearchCoordinator.HasReachedAcceptableBattleHpLoss(policy with { HasGrowthTargets = true }, aligned), "existing growth gate remains");
+            Check(!CombatSearchCoordinator.HasReachedAcceptableBattleHpLoss(
+                policy with { GrowthOpportunityTargets = GrowthOpportunityTargets.UnboundedForTesting("test:unresolved_growth") }, aligned),
+                "unprovable growth gate remains");
             Check(!CombatSearchCoordinator.HasReachedAcceptableBattleHpLoss(policy with { StopAtAcceptableBattleHpLoss = false }, aligned), "stop switch remains authoritative");
             var continued = await Search(policy with { StopAtAcceptableBattleHpLoss = false });
             Check(aligned.TotalExpandedNodes <= continued.TotalExpandedNodes, "satisfied goals do not disable stopping globally");

@@ -1218,6 +1218,9 @@ internal static class CombatBugReportExporter
         captured["searchMaxDegreeOfParallelism"] = policy.MaxDegreeOfParallelism;
         captured["includeTurnSetup"] = policy.IncludeTurnSetup;
         captured["act3BossStrategy"] = policy.Act3BossStrategy;
+        captured["growthOpportunityTarget"] = JsonSerializer.SerializeToNode(
+            policy.GrowthOpportunityTargets,
+            JsonOptions);
         session.LatestEffectivePolicy = captured;
         object record = new { checkpointId = session.SearchRootId, eventCursor = session.Recording?.EventCursor, policy = captured };
         _ = QueueBackground(() => { session.SearchPolicies.Add(record); return true; });

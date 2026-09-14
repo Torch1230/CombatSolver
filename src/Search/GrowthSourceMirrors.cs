@@ -4,7 +4,7 @@ namespace CombatSolver;
 
 /// <summary>
 /// 一个第三方成长来源的句柄。只能从
-/// <see cref="GrowthSourceMirrors.Register(string, Func{CardModel}, Func{CardModel, bool}, Func{CardModel, string})"/>
+/// <see cref="GrowthSourceMirrors.Register(string, Func{CardModel}, Func{CardModel, bool}, Func{CardModel, string}, Func{GrowthOpportunityContext, GrowthOpportunityTarget})"/>
 /// 取得，别自己拼——拼出来的 id 没有登记，额度永远是 0，侧栏里也不会出现。
 /// </summary>
 internal readonly record struct GrowthSourceHandle(string Id)
@@ -31,7 +31,7 @@ internal readonly record struct GrowthSourceHandle(string Id)
 /// <list type="bullet">
 /// <item>在成长策略侧栏里多一行，有自己的图标、标题和额度输入框；</item>
 /// <item>额度按登记时给的 id 存进设置文件，也进问题包的有效策略；</item>
-/// <item>让 <c>HasGrowthTargets</c> 认得这张牌，从而关掉"打到可接受战损就提早收手"那条捷径；</item>
+/// <item>让 <c>HasGrowthTargets</c> 认得这张牌；未登记次数时保持完整搜索，登记有界次数时在兑现后允许早停；</item>
 /// <item>可以用 <c>combat.RecordGrowthReward(handle)</c> 记一次实际到手的收益，进搜索的状态指纹。</item>
 /// </list>
 /// </para>
@@ -51,7 +51,8 @@ internal static class GrowthSourceMirrors
         string Id,
         Func<CardModel> Card,
         Func<CardModel, bool> HasTarget,
-        Func<CardModel, string>? Title);
+        Func<CardModel, string>? Title,
+        Func<GrowthOpportunityContext, GrowthOpportunityTarget>? OpportunityTarget);
 
     private static readonly List<Entry> Entries = [];
 
@@ -86,11 +87,16 @@ internal static class GrowthSourceMirrors
     /// 留空用牌自己的名字；只有"牌名说明不了这个来源"的时候才填，
     /// 比如原版把黏稠强化那一行显示成"防御 + 强化名"。
     /// </param>
+    /// <param name="opportunityTarget">
+    /// 可选的本场最大兑现次数计算器。输入只有已冻结的匹配牌快照和敌人数，不能读取或修改实机战斗。
+    /// 返回有界非负次数时允许在全部成长目标兑现后早停；返回不可证明或留空时继续完整搜索。
+    /// </param>
     public static GrowthSourceHandle Register(
         string id,
         Func<CardModel> card,
         Func<CardModel, bool> hasTarget,
-        Func<CardModel, string>? title = null)
+        Func<CardModel, string>? title = null,
+        Func<GrowthOpportunityContext, GrowthOpportunityTarget>? opportunityTarget = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(id);
         ArgumentNullException.ThrowIfNull(card);
@@ -101,7 +107,7 @@ internal static class GrowthSourceMirrors
             if (string.Equals(existing.Id, id, StringComparison.Ordinal))
                 throw new ArgumentException($"第三方成长来源 {id} 已经登记过。", nameof(id));
         }
-        Entries.Add(new Entry(id, card, hasTarget, title));
+        Entries.Add(new Entry(id, card, hasTarget, title, opportunityTarget));
         return new GrowthSourceHandle(id);
     }
 

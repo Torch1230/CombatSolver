@@ -501,9 +501,7 @@ internal static class SolverController
             RelicTargets = RelicCounterCatalog.Capture(state, settings.RelicStrategyEnabled, settings.RelicCounterRules),
             StopAtAcceptableBattleHpLoss = settings.StopAtAcceptableBattleHpLoss,
             BrightestFlameMaxHpLossLimit = settings.BrightestFlameMaxHpLossLimit,
-            HasGrowthTargets = state.Players.SelectMany(player => player.PlayerCombatState!.AllCards).Any(GrowthValues.HasTarget),
-            FatalGrowthTarget = GrowthValues.CaptureFatalTarget(
-                state.Players.SelectMany(player => player.PlayerCombatState!.AllCards), state.Enemies.Count),
+            GrowthOpportunityTargets = GrowthOpportunityPolicy.Capture(state),
             IgnoreLongTermRewards = settings.IgnoreLongTermRewards,
         };
         CombatBugReportExporter.RecordSearchPolicy(state, policy);
