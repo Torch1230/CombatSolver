@@ -163,6 +163,14 @@ internal sealed partial class UnattendedTestRunner
                 AssertPredictionFailureBoundaries(scenario.CombatState, scenario.Player);
                 runner._completedChecks.Add("PredictionFailureBoundaries");
             }
+            if (request.ScenarioId == "LAZY-RNG-FORK")
+            {
+                runner.SetStage("lazy_rng_fork");
+                string before = ContinuationStamp.CaptureLive(scenario.CombatState).StateText;
+                runner._completedChecks.Add(AssertLazyRngFork(scenario.CombatState.RunState.Rng));
+                if (ContinuationStamp.CaptureLive(scenario.CombatState).StateText != before)
+                    throw new InvalidOperationException("RNG Fork contract changed live combat.");
+            }
             if (request.ScenarioId == "MODEL-CLONE-CONCURRENCY")
             {
                 runner.SetStage("model_clone_concurrency");
@@ -171,10 +179,11 @@ internal sealed partial class UnattendedTestRunner
                 runner._completedChecks.Add("PowerCloneConcurrency");
                 runner._completedChecks.Add("ModelCloneConcurrency");
             }
-            if (request.ScenarioId == "END-TURN-CHOICE-REPLAY")
+            if (request.ScenarioId is "END-TURN-CHOICE-REPLAY" or "ADAPTIVE-END-TURN-CHOICE-REPLAY")
             {
                 runner.SetStage("end_turn_choice_replay");
-                await AssertEndTurnChoiceReplayAsync(scenario.CombatState);
+                await AssertEndTurnChoiceReplayAsync(scenario.CombatState,
+                    adaptive: request.ScenarioId == "ADAPTIVE-END-TURN-CHOICE-REPLAY");
                 runner._completedChecks.Add("EndTurnChoiceReplay");
             }
             if (request.ScenarioId == "EARLY-END-TURN")
@@ -219,6 +228,24 @@ internal sealed partial class UnattendedTestRunner
                 runner.SetStage("fork_boundaries");
                 AssertForkBoundaries(scenario.CombatState, scenario.Player);
                 runner._completedChecks.Add("ForkBoundaries");
+            }
+            if (request.ScenarioId == "POWER-AFFLICTION-ENTRY")
+            {
+                var card = scenario.Player.PlayerCombatState!.Hand.Cards[0];
+                AssertSparsePowerAfflictionCardTracking(scenario.CombatState, scenario.Player, card);
+                AssertVitalSparkKeepsStackedTaintedAmount(scenario.CombatState, scenario.Player);
+                runner._completedChecks.Add("PowerAfflictionEntry:Fork:Clone:Reentry:TaintedAmounts");
+            }
+            if (request.ScenarioId == "FROZEN-ROOT-LISTENERS")
+            {
+                AssertFrozenRootRunListeners(scenario.CombatState, scenario.Player);
+                AssertPowerListenerCacheTransitionsAndForkIsolation(scenario.CombatState, scenario.Player);
+                runner._completedChecks.Add("FrozenRootRunListeners:ParentChildGrandchild:CardMutation:PowerRemap");
+            }
+            if (request.ScenarioId == "LONG-TERM-RESOURCE-STAGING")
+            {
+                AssertLongTermResourceStaging(scenario.CombatState, scenario.Player);
+                runner._completedChecks.Add("LongTermResourceStaging:Uniform:Mixed:AncestorRanks:LiveIsolation");
             }
             if (request.VerifyCombatRootSnapshot)
             {

@@ -846,11 +846,11 @@ internal sealed partial class CombatBeamSolver
         // StableShuffle sorts a second List copy before shuffling. This list is already private
         // to the snapshot, so performing the same sort and shuffle in place avoids
         // another deck-sized backing array without changing RNG consumption or ordering.
-        var shuffleRng = simulator.Rng.Shuffle.Clone();
+        var shuffleRng = simulator.Rng.ShuffleState.ToRng();
         StableShuffleProjection(cards, shuffleRng);
 
         StateFingerprintBuilder key = new();
-        key.Add(simulator.Rng.Shuffle.Counter());
+        key.Add(simulator.Rng.ShuffleState.Counter);
         key.Add(cards.Count);
         int value = 0;
         for (int index = 0; index < cards.Count; index++)
@@ -1551,15 +1551,15 @@ internal sealed partial class CombatBeamSolver
         AppendPile(ref key, playerState.ExhaustPile, 'X');
         AppendOrbs(ref key, simulator, playerState.OrbQueue);
         _run.Performance.End(SearchMetricPhase.PileFingerprint, pileFingerprintMeasurement);
-        AppendRngState(ref key, simulator.Rng.Shuffle);
-        AppendRngState(ref key, simulator.Rng.CombatCardGeneration);
-        AppendRngState(ref key, simulator.Rng.CombatPotionGeneration);
-        AppendRngState(ref key, simulator.Rng.CombatCardSelection);
-        AppendRngState(ref key, simulator.Rng.CombatEnergyCosts);
-        AppendRngState(ref key, simulator.Rng.CombatTargets);
-        AppendRngState(ref key, simulator.Rng.CombatOrbGeneration);
-        AppendRngState(ref key, simulator.Rng.MonsterAi);
-        AppendRngState(ref key, simulator.Rng.Niche);
+        AppendRngState(ref key, simulator.Rng.ShuffleState);
+        AppendRngState(ref key, simulator.Rng.CombatCardGenerationState);
+        AppendRngState(ref key, simulator.Rng.CombatPotionGenerationState);
+        AppendRngState(ref key, simulator.Rng.CombatCardSelectionState);
+        AppendRngState(ref key, simulator.Rng.CombatEnergyCostsState);
+        AppendRngState(ref key, simulator.Rng.CombatTargetsState);
+        AppendRngState(ref key, simulator.Rng.CombatOrbGenerationState);
+        AppendRngState(ref key, simulator.Rng.MonsterAiState);
+        AppendRngState(ref key, simulator.Rng.NicheState);
         ulong deathsFirst = 0;
         ulong deathsSecond = 0;
         foreach (uint combatId in processedEnemyDeaths)
@@ -1578,7 +1578,11 @@ internal sealed partial class CombatBeamSolver
 
     private static void AppendRngState(ref StateFingerprintBuilder key, Rng rng)
     {
-        PredictionRngState state = rng.CaptureState();
+        AppendRngState(ref key, rng.CaptureState());
+    }
+
+    private static void AppendRngState(ref StateFingerprintBuilder key, PredictionRngState state)
+    {
         key.Add(state.Counter);
         key.Add(state.State0);
         key.Add(state.State1);

@@ -2532,81 +2532,89 @@ internal sealed partial class UnattendedTestRunner
         Player player,
         CardModel liveCard)
     {
-        SimulatedCombatState entryCombat = new(combat);
-        CombatPredictionSimulator entrySimulator = new(entryCombat);
-        SimPlayerCombatState entryState = entrySimulator.State.GetPlayerCombatState(player);
-        PredictedCard entryCard = entryState.FindCard(liveCard)
-            ?? throw new InvalidOperationException("Power affliction 首张生成牌测试找不到父卡牌。");
-        PredictedCard firstGeneratedCard = entryCard.CreateClone();
-        entryState.DiscardPile.Add(firstGeneratedCard);
-        entryCombat.RegisterGeneratedCombatCard(firstGeneratedCard);
-        entryCombat.NormalizePowerCardState(entrySimulator);
-        HashSet<PredictedCard> entryKnown = GetPowerAfflictionKnownCards(entryCombat)
-            ?? throw new InvalidOperationException("Power affliction 漏记第一张生成牌。");
-        if (entryKnown.Count != 1 || !entryKnown.Contains(firstGeneratedCard))
-            throw new InvalidOperationException("Power affliction 把第一张生成牌误认成根卡牌。");
-
         SimulatedCombatState parentCombat = new(combat);
         CombatPredictionSimulator parentSimulator = new(parentCombat);
         SimPlayerCombatState parentState = parentSimulator.State.GetPlayerCombatState(player);
-        PredictedCard parentCard = parentState.FindCard(liveCard)
-            ?? throw new InvalidOperationException("Power affliction 稀疏集合测试找不到父卡牌。");
-
+        PredictedCard rootCard = parentState.FindCard(liveCard)
+            ?? throw new InvalidOperationException("Power affliction 首次进场测试找不到根卡牌。");
         parentCombat.NormalizePowerCardState(parentSimulator);
-        if (GetPowerAfflictionKnownCards(parentCombat) is not null)
-        {
-            throw new InvalidOperationException(
-                "Power affliction 首次归一化不应记录战斗快照中的初始牌。");
-        }
+        if (!rootCard.HasCheckedPowerAfflictionEntry)
+            throw new InvalidOperationException("Power affliction 没有记录根卡牌已经完成进场检查。");
+        parentCombat.Apply<GalvanicPower>(player.Creature, 1);
+        PowerLifecycleSupport.ResolvePowerAmountChanges(parentSimulator, parentCombat);
 
-        PredictedCard generatedCard = parentCard.CreateClone();
-        parentState.DiscardPile.Add(generatedCard);
-        parentCombat.RegisterGeneratedCombatCard(generatedCard);
+        // A new wrapper with a root Original still belongs to the captured root set.
+        // Clearing its inspection bit must not turn it into a newly generated card.
+        PredictedCard rootClone = rootCard.Clone();
+        var rootCloneAffliction = rootClone.Preview.Affliction;
+        if (rootClone.HasCheckedPowerAfflictionEntry)
+            throw new InvalidOperationException("根卡牌 Clone 错误继承了已检查标记。");
+        parentState.DiscardPile.Add(rootClone);
         parentCombat.NormalizePowerCardState(parentSimulator);
-        HashSet<PredictedCard> parentKnown = GetPowerAfflictionKnownCards(parentCombat)
-            ?? throw new InvalidOperationException("Power affliction 没有记录生成牌。");
-        if (parentKnown.Count != 1 || !parentKnown.Contains(generatedCard))
-            throw new InvalidOperationException("Power affliction 稀疏集合记录了非生成牌或漏掉生成牌。");
+        if (!rootClone.HasCheckedPowerAfflictionEntry || !ReferenceEquals(rootClone.Preview.Affliction, rootCloneAffliction))
+            throw new InvalidOperationException("根卡牌 Clone 未保留根身份的首次入场语义。");
 
-        parentCombat.NormalizePowerCardState(parentSimulator);
-        if (parentKnown.Count != 1)
-            throw new InvalidOperationException("Power affliction 重复归一化再次记录了同一生成牌。");
-
+        PredictedCard generated = PredictedCard.Create(CanonicalModels.Card<Inflame>(), player);
+        parentState.DiscardPile.Add(generated);
+        parentCombat.RegisterGeneratedCombatCard(generated);
+        if (generated.HasCheckedPowerAfflictionEntry)
+            throw new InvalidOperationException("新生成 wrapper 不应提前记录归一化。");
+        // Fork before the first normalization must leave each branch independently unrecorded.
         CombatPredictionSimulator childSimulator = parentSimulator.Fork();
         SimulatedCombatState childCombat = (SimulatedCombatState)childSimulator.State.CombatState;
-        PredictedCard childGeneratedCard = childSimulator.State
-            .GetPlayerCombatState(player)
-            .FindCard(generatedCard.Original)
+        PredictedCard childCard = childSimulator.State.GetPlayerCombatState(player).FindCard(generated.Original)
             ?? throw new InvalidOperationException("Power affliction Fork 后找不到生成牌。");
-        HashSet<PredictedCard> childKnown = GetPowerAfflictionKnownCards(childCombat)
-            ?? throw new InvalidOperationException("Power affliction Fork 后丢失生成牌集合。");
-        if (childKnown.Count != 1
-            || !childKnown.Contains(childGeneratedCard)
-            || childKnown.Contains(generatedCard)
-            || !parentKnown.Contains(generatedCard)
-            || parentKnown.Contains(childGeneratedCard))
-        {
-            throw new InvalidOperationException("Power affliction 稀疏集合没有按 Fork 重映射或隔离。");
-        }
+        childCombat.NormalizePowerCardState(childSimulator);
+        if (!childCard.HasCheckedPowerAfflictionEntry || childCard.Preview.Affliction is not Galvanized
+            || generated.HasCheckedPowerAfflictionEntry || generated.Preview.Affliction != null)
+            throw new InvalidOperationException("子分支首次进场处理污染了尚未归一化的父分支。");
+        parentCombat.NormalizePowerCardState(parentSimulator);
+        if (!generated.HasCheckedPowerAfflictionEntry || generated.Preview.Affliction is not Galvanized)
+            throw new InvalidOperationException("父分支没有独立完成首次进场污染。");
 
-        if (!parentState.DiscardPile.Remove(generatedCard))
+        generated.ClearAffliction();
+        parentCombat.NormalizePowerCardState(parentSimulator);
+        if (generated.Preview.Affliction != null)
+            throw new InvalidOperationException("重复归一化把已处理的生成牌再次视为首次进场。");
+        CombatPredictionSimulator grandchildSimulator = parentSimulator.Fork();
+        SimulatedCombatState grandchildCombat = (SimulatedCombatState)grandchildSimulator.State.CombatState;
+        PredictedCard grandchildCard = grandchildSimulator.State.GetPlayerCombatState(player).FindCard(generated.Original)
+            ?? throw new InvalidOperationException("已处理的生成牌在 Fork 后丢失。");
+        grandchildCombat.NormalizePowerCardState(grandchildSimulator);
+        if (!grandchildCard.HasCheckedPowerAfflictionEntry || grandchildCard.Preview.Affliction != null)
+            throw new InvalidOperationException("Fork 没有保留已经完成首次进场处理的状态。");
+
+        // Clone deliberately shares Original. The old set distinguished wrapper identity,
+        // so a new clone must receive entry effects while the existing wrapper stays untouched.
+        PredictedCard sameOriginalClone = generated.Clone();
+        if (!ReferenceEquals(generated.Original, sameOriginalClone.Original)
+            || sameOriginalClone.HasCheckedPowerAfflictionEntry)
+            throw new InvalidOperationException("Clone 未保留原身份或错误继承了进场标记。");
+        parentState.DiscardPile.Add(sameOriginalClone);
+        parentCombat.RegisterGeneratedCombatCard(sameOriginalClone);
+        parentCombat.NormalizePowerCardState(parentSimulator);
+        if (!sameOriginalClone.HasCheckedPowerAfflictionEntry
+            || sameOriginalClone.Preview.Affliction is not Galvanized
+            || generated.Preview.Affliction != null)
+            throw new InvalidOperationException("首次进场未区分共享 Original 的两个独立 wrapper。");
+
+        if (!parentState.DiscardPile.Remove(generated))
             throw new InvalidOperationException("Power affliction 测试无法移除生成牌。");
-        parentCombat.UnregisterGeneratedCombatCard(generatedCard);
-        parentState.DiscardPile.Add(generatedCard);
-        parentCombat.RegisterGeneratedCombatCard(generatedCard);
+        parentCombat.UnregisterGeneratedCombatCard(generated);
+        parentState.DiscardPile.Add(generated);
+        parentCombat.RegisterGeneratedCombatCard(generated);
         parentCombat.NormalizePowerCardState(parentSimulator);
-        if (parentKnown.Count != 1)
-        {
-            throw new InvalidOperationException(
-                "Power affliction 把同一 wrapper 重新入场误判为新的生成牌。");
-        }
+        if (generated.Preview.Affliction != null || !generated.HasCheckedPowerAfflictionEntry)
+            throw new InvalidOperationException("同一 wrapper 重新入场被错误视作新生成牌。");
 
-        PredictedCard secondGeneratedCard = parentCard.CreateClone();
-        parentState.DiscardPile.Add(secondGeneratedCard);
-        parentCombat.RegisterGeneratedCombatCard(secondGeneratedCard);
+        PredictedCard gameplayClone = generated.CreateClone();
+        if (gameplayClone.HasCheckedPowerAfflictionEntry)
+            throw new InvalidOperationException("原生语义复制继承了源 wrapper 的首次进场标记。");
+        parentState.DiscardPile.Add(gameplayClone);
+        parentCombat.RegisterGeneratedCombatCard(gameplayClone);
         parentCombat.NormalizePowerCardState(parentSimulator);
-        if (parentKnown.Count != 2 || !parentKnown.Contains(secondGeneratedCard))
-            throw new InvalidOperationException("Power affliction 没有区分两个独立生成牌 wrapper。");
+        if (!gameplayClone.HasCheckedPowerAfflictionEntry || gameplayClone.Preview.Affliction is not Galvanized)
+            throw new InvalidOperationException("原生语义复制没有独立记录首次进场。");
     }
 
     /// <summary>
@@ -2662,18 +2670,6 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidOperationException(
                 "生命火花数量变化后归一化没有把污染层数同步成新的数量。");
         }
-    }
-
-    private static HashSet<PredictedCard>? GetPowerAfflictionKnownCards(
-        SimulatedCombatState combat)
-    {
-        FieldInfo field = typeof(SimulatedCombatState).GetField(
-            "_powerAfflictionKnownCards",
-            BindingFlags.Instance | BindingFlags.NonPublic)
-            ?? throw new MissingFieldException(
-                typeof(SimulatedCombatState).FullName,
-                "_powerAfflictionKnownCards");
-        return (HashSet<PredictedCard>?)field.GetValue(combat);
     }
 
     private static void AssertProjectedShuffleEquivalence(

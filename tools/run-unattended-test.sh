@@ -231,6 +231,8 @@ add_option performance-preset-for-test "" string optional_string "Low|Medium|Hig
 add_option potion-policy-for-test "" string optional_string "Disabled|Smart|RequireAtLeastOne"
 add_option theft-policy-for-test "" string optional_string "PreserveResources|LetEscape"
 add_option enable-no-gc-region-for-test -1 int tri_bool
+add_option expect-no-gc-fallback-for-test 0 switch bool
+add_option allow-no-gc-fallback-for-test 0 switch bool
 add_option no-gc-region-budget-gigabytes-for-test -1 number positive_number
 add_option deployment-inter-action-delay-seconds-for-test -1 number nonnegative_number
 for name in assert-deployment-speed-restored export-bug-report-after-setup export-bug-report-after-combat; do

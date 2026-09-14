@@ -210,6 +210,8 @@ internal sealed class UnattendedTestRequest
     public SolverPotionPolicy? PotionPolicyForTest { get; init; }
     public SolverTheftPolicy? TheftPolicyForTest { get; init; }
     public bool? EnableNoGcRegionForTest { get; init; }
+    public bool ExpectNoGcFallbackForTest { get; init; }
+    public bool AllowNoGcFallbackForTest { get; init; }
     public double? NoGcRegionBudgetGigabytesForTest { get; init; }
     public double? DeploymentInterActionDelaySecondsForTest { get; init; }
     public bool AssertDeploymentSpeedRestored { get; init; }

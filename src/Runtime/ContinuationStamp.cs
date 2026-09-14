@@ -164,15 +164,15 @@ internal sealed record ContinuationStamp(string StateText)
             text.Append(";onplay_configuration=").Append(adaptedOnPlay.Stamp);
         AppendPowers(text, combat.EffectivePowers(), simulator);
         AppendRng(text,
-            simulator.Rng.Shuffle.CaptureState(),
-            simulator.Rng.CombatCardGeneration.CaptureState(),
-            simulator.Rng.CombatPotionGeneration.CaptureState(),
-            simulator.Rng.CombatCardSelection.CaptureState(),
-            simulator.Rng.CombatEnergyCosts.CaptureState(),
-            simulator.Rng.CombatTargets.CaptureState(),
-            simulator.Rng.CombatOrbGeneration.CaptureState(),
-            simulator.Rng.MonsterAi.CaptureState(),
-            simulator.Rng.Niche.CaptureState());
+            simulator.Rng.ShuffleState,
+            simulator.Rng.CombatCardGenerationState,
+            simulator.Rng.CombatPotionGenerationState,
+            simulator.Rng.CombatCardSelectionState,
+            simulator.Rng.CombatEnergyCostsState,
+            simulator.Rng.CombatTargetsState,
+            simulator.Rng.CombatOrbGenerationState,
+            simulator.Rng.MonsterAiState,
+            simulator.Rng.NicheState);
         return new ContinuationStamp(text.ToString());
     }
 

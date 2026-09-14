@@ -198,6 +198,10 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 `PotionStrategicCostLookup` 同样归单次 `SearchRunContext` 所有，中间保路与终局排序共用规范药水 ID/可再生条件对应的只读代价值；未命中仍调用原目录的 `Single` 查询，保留缺失/重复 ID 的失败行为。每个 worker 有独立表，不存药水实例或分支值，也不跨并发 solver 共享修改。快照内 Power 是否贡献战略估值只判定一次并暂存在当前调用的栈/数组中，需求收集与评分复用同一判定，不跨快照缓存。
 
+长期资源保路先在冻结候选池上扫描最高资源值和数量；全池同值（包括非零和空池）原本不产生独立资源路线，因此 `Retention` 在此时直接跳过祖先排名暂存。非均匀池继续按原序保存全局/祖先排名、应用资源祖先排名、选择最高资源群组，再恢复祖先和全局排名。不缓存跨调用的排名或资源群组，不改变剪枝回收检查点。
+
+回合前缀的 `HasObservedPostDrawRoundChoice` 也只属于当前 lane 的运行上下文：首次实际初探在稳定抽牌后产生有效选择层，才启用该 lane 后续父节点的前缀预留；ToolsOfTheTrade 保留原即时预留。`RoundTransition` 捕获同父、无挂起事务的稳定点，`EndTurnChoiceReplay` 在确认有效挂起层后登记观察；frontier 持有 checkpoint，同父 gate 串行 Fork，排空后释放。提示只决定是否付出额外复制成本，不改变动作、选择预算、原序消费或状态键；前缀不跨父节点、搜索或 lane 共享。
+
 `BeamRetentionPolicy` 的 `RoutingChoiceScratch` 只复用一张路由签名字典的空桶。每次 `RankBest` 新建 `RoutingChoiceNodes`，把候选有序列表和原五项代表放在同一组内；首次节点初始化代表，后续仍调用原比较规则。组不池化，归还 scratch 时清空节点引用；分组填充结束后，以原 `Max/Min` 一次性冻结组内最高 Beam 分、最高父分和最低父排名；只供该次 routing block 的族/选项/上下文排序使用，全部消费早于 `AssignRetentionRanks`。父节点排名变化后的下一次调用重新建组，不缓存单节点父链。族/选项顺序与配额照旧，`ROUTING_CHOICE_SUMMARIES scope=solver` 记录构建、复用和旁路。这些临时聚合不进入战斗状态键或续用戳。
 
 循环调度另有三类不可重建账本，均由 `SearchRunContext` 持有并在内存检查点清理缓存后继续存活。`CycleFamily` 用回合、最小动作周期与规范动作序列识别同族，兄弟分支在相同动作深度共享已支付的观察工作，出口票据只展开一次；严格进展最多获得四级扩展，单族保留深度最多 `128`、出口探针展开最多 `256`，单个出口最多继续 `32` 个动作和两次回合转移。`CycleRegion` 不含精确动作排列，只按回合与控制形状合并组合爆炸；每区域普通保留为 `64–256`、探针保留为 `64–128`，同一回合还共享普通最多 `512`、探针最多 `256` 的总额度。进展可以扩展有限额度，不能通过制造新排列或新形状重置已消耗工作。区域进展续接仅以 `WeakReference<SearchNode>` 记录应匹配的直接父节点身份，候选自身强持有 `Parent`；每次更新新建且不再改写弱引用句柄，暂存账本与已提交账本不会互相修改目标，也不会由长期账本额外强持有旧节点链。这是所有权边界，不代表已实测的 GC 节约。
@@ -255,6 +259,10 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 ## 4. 内嵌模拟引擎
 
+冻结的 `_rootRunHookListeners` 只包含捕获时根牌组的 CardModel/Enchantment。跑局拼接视图前缀与它引用相同时，Fork 直接复用该前缀：此前的 `State.Fork` 只登记 wrapper、creature、orb 和 power，`StateStore.Fork` 仍在监听恢复之后，不会命中这些根模型。其他前缀与战斗后缀继续通过原 context 重映射；不得把此规则扩展到分支 Power 或改变上述复制顺序而不复核。
+
+卡牌 Power 灾厄的首次进场检查位于 `PredictedCard.HasCheckedPowerAfflictionEntry`。根牌和生成牌都在第一次归一化后标记，Fork 继承，Clone 重新检查；根卡身份 HashSet 只捕获一次、只读共享，代替各分支重复 Fork 的集合。污染清除与数量变化继续逐次归一化，检查位不代替效果状态，也不按卡名合并实例。
+
 `SimPlayerCombatState.Phase` 在主线程根捕获，Fork 按值复制，阶段推进写入分支状态并进入搜索状态键。它决定 UnceasingTop 的触发窗口；续用只在稳定 Play 阶段比较，最小跨回合夹具另显式核对原生阶段。结束回合按 AutoPostPlay、BeforeSideTurnEnd、球被动、手牌回合末效果的顺序推进。
 
 `PredictionUtils.CloneModelForSimulation` 对卡牌在 DeepCloneFields 前清除 CardModel 事件委托；原版克隆阶段会重新附着附魔并发出事件，不能让这些事件调用源卡的 UI 订阅者。深拷贝和 AfterCloned 仍使用原版实现。`NativeModelCloneConcurrency` 仅在模拟隔离域放行无附魔/灾厄、动态变量已物化且均为原版类型、克隆阶段未改写的原版卡牌；同时严格核对变量 Clone 的 BaseLib/Ritsu 补丁及稀疏元数据复制保护。Power 还必须继承 PowerModel 的克隆阶段及默认 InitInternalData，并核对 AbstractModel.DeepCloneFields 与 Power.DynamicVars 的物化保护补丁；不共享可变 Power，不触发惰性变量创建。未知类型、阶段或补丁保留原锁。类型与补丁证据仅在线程当前最外层隔离域内缓存，不持有模型，跨域重新核对；不支持求解过程中动态变更补丁。
@@ -264,6 +272,8 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 `src/Engine/InCombat/Simulation/` 负责通用战斗命令时序、伤害、牌堆、历史、RNG、球和 Fork。它不包含单张卡、单个 Power 或具体怪物的搜索策略。历史卡牌 Started/Finished 与 DamageReceived 的卡牌来源使用不可变卡牌快照；当前动作是否开始以精确 trace-frame 身份判定，保留原生 `CardPlay` 身份，不以 Original 卡牌身份合并兄弟分支。`CombatPredictionHistory` 以不可变 prefix segment + 分支本地 mutable tail 保存事件；动作后缀消费者必须使用冻结上界的 `EntriesFrom/EntriesBetween`，不能先遍历完整 prefix 再 `Skip`，否则长线会把一次局部查询放大为随深度增长的重复工作。
 
 `src/Engine/Common/` 提供 `PredictedCard`、`PredictionForkContext`、`PredictionStateStore` 和通用模型克隆。StateStore 直接持有可 Fork 的 state，空字典按需创建；类型计数独占一个按需创建的三槽对象，第四类回退字典，Fork 仅复制非零计数；主状态字典、别名和 state 的复制顺序不变，字典 ref 只用于不调用外部工厂的计数递增。仍在同一 context 中按原跨类型顺序 eager Fork，不能对调用者已借出的可变引用使用通用延迟 COW。一次 Fork 内的所有结构必须共享同一个 context；分支可变对象必须显式重映射。`BaseLibCloneConcurrency` 是原版与预测克隆共用的外部扩展并发边界，只包围模型深克隆阶段。预测普通原版卡牌与默认内部初始化 Power 的有限并行入口由 `NativeModelCloneConcurrency` 核对，原版 `MutableClone` 保护不变。
+
+`CombatPredictionRngSet` 的九条流共享不可变完整状态值，真正随机操作时才物化当前分支独占的原生 Rng。已经物化的流在 Fork 当时立即捕获计数器及四段内部状态，不能共享调用方可能仍持有的可变引用。指纹、续用与只读投影读取 `*State`，不触发物化；原生算法与序列保持不变。根捕获只读取主线程的 RunRngSet，后续子分支不访问 live RNG。
 
 `CombatCardGenerationExtensions` 中的根缓存仅复用已冻结的无色候选及原生角色攻击候选；`BundleOfJoyOnPlay` 与 `InfernalBladeOnPlay` 使用对应的 distinct 入口。它们保留 `TakeRandom` 的洗牌/抽取顺序与 RNG 消耗，不调用有放回的 `NextItem` 代替；来源模型只读，`PredictedCard.Create` 仍逐分支创建独占卡牌。带额外谓词、其他角色/类别的生成池未据此获得缓存资格，现有根身份/约束/自定义池回退门禁保持。
 

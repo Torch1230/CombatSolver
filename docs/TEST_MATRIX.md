@@ -1,5 +1,27 @@
 # CombatSolver 测试清单
 
+## 通用分配与重复工作优化（2026-09-14，未发布）
+
+基线为上游 `b1674f8`，双方使用相同生成器完整预算/NoGC回退测试支持。固定输入、全部开局、政策、动作与路线分别对账；短搜探针数字不作为完整极高性能结论。完整样本、失败、源码阶段和限制见[本批报告](performance/general-allocation-20260914.md)。
+
+| 验证 | runId / 结果 |
+| --- | --- |
+| 九条RNG原生序列、完整状态、保留引用、父子/兄弟/多代及冷读取不物化 | `c665b52b8d2d4b55876c513477e19a2c` Passed |
+| 通用抽牌后前缀发现、完整状态/历史/续用/RNG、DOP1/DOP2工作与动作、并发/取消/失败排空 | `65c8ad5d55414cbdaf4ef5696a81badc` Passed |
+| 原 ToolsOfTheTrade 即时前缀及选牌回放合同 | `3d17b2c8b693488e8ca7e78255b7ceaf` Passed |
+| 生成器固定/正常预算映射与既有建局合同 | `8ac328b1c2964837816806a03bb3a77c` Passed |
+| 根牌/生成牌/Clone/多代Fork首次入场、父子隔离及污染增减 | `b5af79fada6a4797b22016c8d4d979c7` Passed，最终根共享实现 |
+| 冻结跑局前缀身份/顺序、可变Power映射、卡牌变异和多代Fork | `bc8eb0fc6c1f43d9bcd98fbb3c259b6d` Passed，最终根共享实现 |
+| 长期资源均匀/非均匀池旧实现对照、选中身份/顺序、共享祖先及全部排名恢复 | `152b0f1432a84433bf224c3afda896a7` Passed；保留原List遍历方式的最终候选 `50397d3aba5b4b9ea919f9a0f9bd7649` Passed |
+| 最终候选十种完整VeryHigh开局，蟹战/静默女王追加交错复核 | 24次候选请求Passed；22次严格oracle相同，亡灵契约师女王两次总转移少1、动作/路线一致，排除严格同工作量提速；全部runId及差异见[结构化证据](performance/general-allocation-20260914.json) |
+| 最终正常Release、比较器单元测试、启动器语法与结构边界 | Release 0警告/0错误；比较器10项通过；Bash/PowerShell启动器语法通过；最终双端结构门禁通过，`search_files=90` |
+
+保留两个夹具失败：`e0d1edede32e4300b67c9478cba1b1ff` 的敌人过早死亡，未覆盖前缀复用；改为敌HP999后覆盖。`94ba920946634fd0b3a1dafeeb37caa2` 缺少既有污染断言所需技能牌；加入DEFEND_IRONCLAD后覆盖。早期入场测试 `5527c75b597b43e59ba966c7e1f1c5a9` 通过，不能替代最终根共享合同。原120秒重场景内环未返回结果，作为超时保存；最终完整请求属于预先确定的独立测量层。
+
+资源保路夹具先保留两次失败：`eea19a6790b349858d7d5294f99a2ba1` 暴露旧反射回放入口漏传两个新增可选参数，已同步真实签名；`cc7e15d2b9e942f2aabd9a3ad6498da0` 对零资源错误调用只接受正增量的领域方法，改为保留零初值后通过。两次均未执行到排名对照，不能算生产候选错误或通过。
+
+复跑最小合同使用原生启动器、`--scenario-id` 对应 `LAZY-RNG-FORK`、`ADAPTIVE-END-TURN-CHOICE-REPLAY`、`END-TURN-CHOICE-REPLAY`、`POWER-AFFLICTION-ENTRY`、`FROZEN-ROOT-LISTENERS`、`LONG-TERM-RESOURCE-STAGING`。选牌/入场/资源合同用IRONCLAD、敌HP999；入场/冻结监听用清空战斗牌堆后加入手牌INFLAME与DEFEND_IRONCLAD。请求上限120秒，关闭NoGC，仅检查建局合同并停止；PowerShell使用对应PascalCase参数。生成器另用解析后的指定样本。Linux无头不证明可见FPS、Windows或完整自动部署。
+
 ## 0.38.2 发布范围（2026-09-14）
 
 - 定版范围为 PR #85–#88 的回合末晚期、卡牌引用、精确 OnPlay 补丁组合与能量重置适配，以及 PR #92 的通用战斗测试工具；不改变正式搜索预算或策略。

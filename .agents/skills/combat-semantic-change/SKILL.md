@@ -128,4 +128,9 @@ writeLive 和 writePredicted，复用 store 的 Fork context。状态描述按�
 - `PredictionStateStore` 的三槽计数表只保存 Type/条目数，不保存模型或 state；空 store 不创建计数对象，溢出仍使用独占字典，Fork 丢弃零计数。工厂可以重入并扩容，禁止跨工厂调用持有主字典 ref；计数更新的 ref 必须立即消费。验证覆盖溢出、清空后 Fork、父子隔离与工厂重入，不能只测常见一类状态。
 - 额外生成入口复用现有根无色/原生角色攻击池时，保持全部身份与约束门禁；不把 `GetForCombat` 的有放回 `NextItem` 和 `GetDistinctForCombat` 的 `TakeRandom` 混用，即使只取一张。候选模型只读共享，随机数与生成卡牌始终由当前分支独占；带额外过滤的调用方不能直接迁移。
 
-- `RoundTransition` 只在无计划选择的EndTurn初探中，于普通抽牌和历史补偿完成后保存无挂起选择的前缀；当前仅ToolsOfTheTradePower存在时预留。原Fork事务断言保持，复制前临时关闭空cursor并在finally恢复。前缀匹配父节点引用、EndTurn回合与PlayerTurnStart选择，Knowledge选择完整回放；不跨父/搜索共享。frontier拥有checkpoint，同父gate串行Fork，排空后释放。新增捕获计数包含额外物理Fork，DOP等价比较扣除该项后的转移Fork；完整状态/续用/历史与兄弟隔离须直接对账。
+- `RoundTransition` 只在无计划选择的EndTurn初探中，于普通抽牌和历史补偿完成后保存无挂起选择的前缀；ToolsOfTheTradePower继续立即预留；其他来源只有在当前worker实际观察到初探经过该稳定点并形成有效选择层后，才为后续父节点预留。学习标志仅属worker的搜索运行上下文，不跨搜索、不共享模拟器，不进入战斗键/候选政策；未到稳定点的选牌不得启用。原Fork事务断言保持，复制前临时关闭空cursor并在finally恢复。前缀匹配父节点引用、EndTurn回合与PlayerTurnStart选择，Knowledge选择完整回放；不跨父/搜索共享。frontier拥有checkpoint，同父gate串行Fork，排空后释放。新增捕获计数包含额外物理Fork，DOP等价比较扣除该项后的转移Fork；完整状态/续用/历史与兄弟隔离须直接对账。
+
+- RNG 惰性物化只共享完整计数器/四段状态值的不可变快照；已有可变实例的流必须在 Fork 当时捕获，不能把原生 Rng 当成 COW 共享，因为调用方可能继续持有旧引用。只读状态键/续用/投影读取不物化源流，真正随机操作仍使用分支独占的原生实例。合同覆盖九条流的原生序列、保留引用、兄弟/多代 Fork、只读未物化与 live 不变；实际整搜分配和时间分别判断，不把未访问流比例当作整搜收益。
+
+- 卡牌首次进场检查由 `PredictedCard.HasCheckedPowerAfflictionEntry` 按 wrapper 保存，根牌也标记已经检查；Fork继承，Clone重新检查，根身份集合仅捕获一次、只读共享。不得改成按卡名判断或把新wrapper当作旧卡已经处理。污染清除及数量变化仍在每次归一化检查。
+- 跑局监听表仅在前缀与 `_rootRunHookListeners` 引用相同时省去重映射；该冻结前缀只含根牌组CardModel/Enchantment，State.Fork不会登记这些模型，StateStore.Fork仍在其后。其他前缀、战斗后缀与Power继续原重映射/失效逻辑。更改Fork顺序或模型登记范围时必须重新核对这条前提。

@@ -186,7 +186,7 @@ internal sealed partial class CombatBeamSolver
     }
     private RoundReplayCheckpoint? _roundReplayCheckpoint;
 
-    internal int VerifyRoundReplayCheckpointForTesting()
+    internal int VerifyRoundReplayCheckpointForTesting(bool learnFromProbe = false)
     {
         SimulationSnapshot rootSnapshot = Replay([]);
         SearchNode parent = new(null, 0, rootSnapshot.PotionUseCount,
@@ -200,6 +200,19 @@ internal sealed partial class CombatBeamSolver
         try
         {
             PlanAction endTurn = new(PlanActionKind.EndTurn, parent.Turn);
+            if (learnFromProbe)
+            {
+                using RoundReplayCheckpointCapture discovery = new(parent);
+                SimulationSnapshot first = ReplayAction(parent, endTurn, roundCheckpointCapture: discovery);
+                try
+                {
+                    if (discovery.HasCheckpoint || !discovery.ReachedStablePrefix
+                        || first.BoundaryReason != SearchBoundaryReason.PendingChoice)
+                        throw new InvalidOperationException("Adaptive prefix fixture did not learn from an uncached post-draw choice.");
+                    discovery.ObservePendingChoice(this);
+                }
+                finally { first.ReleaseSimulator(); }
+            }
             probe = ReplayAction(parent, endTurn, roundCheckpointCapture: capture);
             using RoundReplayCheckpoint checkpoint = capture.Take()
                 ?? throw new InvalidOperationException("Round prefix fixture did not capture a checkpoint.");
@@ -298,14 +311,26 @@ internal sealed partial class CombatBeamSolver
     private sealed class RoundReplayCheckpointCapture(SearchNode parent) : IDisposable
     {
         private RoundReplayCheckpoint? _checkpoint;
+        public bool ReachedStablePrefix { get; private set; }
+        public bool HasCheckpoint => _checkpoint is not null;
+        public void ObservePendingChoice(CombatBeamSolver owner)
+        {
+            if (ReachedStablePrefix)
+                owner._run.HasObservedPostDrawRoundChoice = true;
+        }
         public void Capture(CombatBeamSolver owner, CombatPredictionSimulator simulator,
             SimulatedCombatState combat, TurnStartChoiceCursor cursor,
             ISet<uint> deaths, int shufflesCrossed, bool takingExtraTurn, bool sideTurnStartTriggeredEarly)
         {
-            // Reserve a copy only for the known post-draw discard source. Other choice
-            // sources keep complete replay; this gate changes work, never candidate policy.
-            if (!simulator.IsInProgress || combat.PlayerTurnEndRequested
-                || combat.GetAmount<ToolsOfTheTradePower>(owner._player.Creature) <= 0)
+            if (!simulator.IsInProgress || combat.PlayerTurnEndRequested)
+                return;
+            ReachedStablePrefix = true;
+            // Keep the existing immediate reservation, and learn other sources from a
+            // completed probe. Outside the existing reservation, a lane pays for no
+            // copies until it has observed a post-draw choice.
+            // Every copy still belongs to this parent; the hint never shares state.
+            if (!owner._run.HasObservedPostDrawRoundChoice
+                && combat.GetAmount<ToolsOfTheTradePower>(owner._player.Creature) <= 0)
                 return;
             if (_checkpoint != null)
                 throw new InvalidOperationException("Round prefix captured twice.");

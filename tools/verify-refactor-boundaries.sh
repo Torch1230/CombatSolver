@@ -448,6 +448,33 @@ src/Runtime/SolverController.cs	SearchGcPolicy.EnterSearchScope(
 src/Search/CombatBeamSolver.Models.cs	ExpansionBatchPool = new(static snapshot => snapshot.ReleaseSimulator())
 src/Search/CombatBeamSolver.ParallelExpansion.cs	new(_run.ExpansionBatchPool)
 src/Search/CombatBeamSolver.Phases.cs	SearchWaveMemoryPolicy.ParentWaveCapacity(
+src/Engine/InCombat/Simulation/CombatPredictionRngSet.cs	private sealed class FrozenStream(PredictionRngState state)
+src/Engine/InCombat/Simulation/CombatPredictionRngSet.cs	new FrozenStream(_mutable.CaptureState())
+src/Testing/UnattendedTestRunner.Assertions.cs	AssertLazyRngFork(scenario.CombatState.RunState.Rng)
+src/Search/CombatBeamSolver.StateEvaluation.cs	AppendRngState(ref key, simulator.Rng.ShuffleState);
+src/Runtime/ContinuationStamp.cs	simulator.Rng.ShuffleState
+src/Search/CombatBeamSolver.StateEvaluation.cs	AppendRngState(ref key, simulator.Rng.CombatCardGenerationState);
+src/Runtime/ContinuationStamp.cs	simulator.Rng.CombatCardGenerationState
+src/Search/CombatBeamSolver.StateEvaluation.cs	AppendRngState(ref key, simulator.Rng.CombatPotionGenerationState);
+src/Runtime/ContinuationStamp.cs	simulator.Rng.CombatPotionGenerationState
+src/Search/CombatBeamSolver.StateEvaluation.cs	AppendRngState(ref key, simulator.Rng.CombatCardSelectionState);
+src/Runtime/ContinuationStamp.cs	simulator.Rng.CombatCardSelectionState
+src/Search/CombatBeamSolver.StateEvaluation.cs	AppendRngState(ref key, simulator.Rng.CombatEnergyCostsState);
+src/Runtime/ContinuationStamp.cs	simulator.Rng.CombatEnergyCostsState
+src/Search/CombatBeamSolver.StateEvaluation.cs	AppendRngState(ref key, simulator.Rng.CombatTargetsState);
+src/Runtime/ContinuationStamp.cs	simulator.Rng.CombatTargetsState
+src/Search/CombatBeamSolver.StateEvaluation.cs	AppendRngState(ref key, simulator.Rng.CombatOrbGenerationState);
+src/Runtime/ContinuationStamp.cs	simulator.Rng.CombatOrbGenerationState
+src/Search/CombatBeamSolver.StateEvaluation.cs	AppendRngState(ref key, simulator.Rng.MonsterAiState);
+src/Runtime/ContinuationStamp.cs	simulator.Rng.MonsterAiState
+src/Search/CombatBeamSolver.StateEvaluation.cs	AppendRngState(ref key, simulator.Rng.NicheState);
+src/Runtime/ContinuationStamp.cs	simulator.Rng.NicheState
+src/Engine/Common/PredictedCard.cs	internal bool TryMarkPowerAfflictionEntryChecked()
+src/Engine/Common/PredictedCard.cs	HasCheckedPowerAfflictionEntry = HasCheckedPowerAfflictionEntry,
+src/Search/SimulatedCombatState.PowerLifecycle.cs	private HashSet<CardModel>? _liveCardsAtSnapshot;
+src/Search/SimulatedCombatState.Fork.cs	_liveCardsAtSnapshot = _liveCardsAtSnapshot,
+src/Search/SimulatedCombatState.Fork.cs	ReferenceEquals(view.Prefix, _rootRunHookListeners)
+src/Testing/UnattendedTestRunner.Assertions.cs	AssertFrozenRootRunListeners(scenario.CombatState, scenario.Player);
 src/Search/CombatBeamSolver.Models.cs	SnapshotListBuffer<PredictedCard> SnapshotLiveCards = new()
 src/Search/CombatBeamSolver.StateEvaluation.cs	_run.SnapshotLiveCards.Rent()
 EOF
@@ -570,7 +597,11 @@ CombatBeamSolver.RoundTransition.cs	private SearchBoundaryReason CompleteRoundPl
 CombatBeamSolver.RoundTransition.cs	private sealed class RoundReplayCheckpoint(
 CombatBeamSolver.RoundTransition.cs	combat.EndActionChoices();
 CombatBeamSolver.RoundTransition.cs	combat.BeginActionChoices(cursor);
-CombatBeamSolver.RoundTransition.cs	internal int VerifyRoundReplayCheckpointForTesting()
+CombatBeamSolver.RoundTransition.cs	internal int VerifyRoundReplayCheckpointForTesting(bool learnFromProbe = false)
+CombatBeamSolver.Models.cs	public bool HasObservedPostDrawRoundChoice;
+CombatBeamSolver.Retention.cs	var maximum = BeamRetentionPolicy.GetLongTermResourceMaximum(pool);
+CombatBeamSolver.Retention.cs	if (maximum.Count == pool.Count)
+CombatBeamSolver.EndTurnChoiceReplay.cs	capture.ObservePendingChoice(this);
 CombatBeamSolver.AdmittedExpansion.cs	endTurn.TransferEndTurnTo(Aggregate!, candidate);
 CombatBeamSolver.AdmittedExpansion.cs	PublishCrossTurnStandPatBaselines(Node, _endTurnBaselines);
 CombatBeamSolver.AdmittedExpansion.cs	ready.TransferPotionTo(Aggregate!, candidate);

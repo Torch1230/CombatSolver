@@ -165,4 +165,11 @@ description: 在战斗语义已证明正确后，审计或修改 CombatSolver �
 
 - 按消费者省略战略上下文字段时，核对外部登记器可读取的既有字段；登记表非空保留原上下文，不因第三方未声明新需求标志就返回0。原版与第三方字段消费者分别用最小合同覆盖。
 
-- `RoundTransition` 只在无计划选择的EndTurn初探中，于普通抽牌和历史补偿完成后保存无挂起选择的前缀；当前仅ToolsOfTheTradePower存在时预留。原Fork事务断言保持，复制前临时关闭空cursor并在finally恢复。前缀匹配父节点引用、EndTurn回合与PlayerTurnStart选择，Knowledge选择完整回放；不跨父/搜索共享。frontier拥有checkpoint，同父gate串行Fork，排空后释放。新增捕获计数包含额外物理Fork，DOP等价比较扣除该项后的转移Fork；完整状态/续用/历史与兄弟隔离须直接对账。
+- `RoundTransition` 只在无计划选择的EndTurn初探中，于普通抽牌和历史补偿完成后保存无挂起选择的前缀；ToolsOfTheTradePower继续立即预留；其他来源只有在当前worker实际观察到初探经过该稳定点并形成有效选择层后，才为后续父节点预留。学习标志仅属worker的搜索运行上下文，不跨搜索、不共享模拟器，不进入战斗键/候选政策；未到稳定点的选牌不得启用。原Fork事务断言保持，复制前临时关闭空cursor并在finally恢复。前缀匹配父节点引用、EndTurn回合与PlayerTurnStart选择，Knowledge选择完整回放；不跨父/搜索共享。frontier拥有checkpoint，同父gate串行Fork，排空后释放。新增捕获计数包含额外物理Fork，DOP等价比较扣除该项后的转移Fork；完整状态/续用/历史与兄弟隔离须直接对账。
+
+- RNG 惰性物化只共享完整计数器/四段状态值的不可变快照；已有可变实例的流必须在 Fork 当时捕获，不能把原生 Rng 当成 COW 共享，因为调用方可能继续持有旧引用。只读状态键/续用/投影读取不物化源流，真正随机操作仍使用分支独占的原生实例。合同覆盖九条流的原生序列、保留引用、兄弟/多代 Fork、只读未物化与 live 不变；实际整搜分配和时间分别判断，不把未访问流比例当作整搜收益。
+
+- 卡牌首次进场检查由 `PredictedCard.HasCheckedPowerAfflictionEntry` 按 wrapper 保存，根牌也标记已经检查；Fork继承，Clone重新检查，根身份集合仅捕获一次、只读共享。不得改成按卡名判断或把新wrapper当作旧卡已经处理。污染清除及数量变化仍在每次归一化检查。
+- 跑局监听表仅在前缀与 `_rootRunHookListeners` 引用相同时省去重映射；该冻结前缀只含根牌组CardModel/Enchantment，State.Fork不会登记这些模型，StateStore.Fork仍在其后。其他前缀、战斗后缀与Power继续原重映射/失效逻辑。更改Fork顺序或模型登记范围时必须重新核对这条前提。
+
+- 长期资源保路的均匀判定必须使用当前完整冻结候选池；空池和全池同值原本均返回空资源路线，可以在此前省去祖先排名暂存。非均匀池保持最高值并列成员原序、原RankBest与祖先/全局恢复顺序，不跨调用缓存最大值或排名；合同核对共享祖先、既有排名、完整选中身份和顺序。
