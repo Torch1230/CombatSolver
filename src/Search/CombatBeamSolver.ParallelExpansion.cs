@@ -411,6 +411,7 @@ internal sealed partial class CombatBeamSolver
         worker._run.InitialRetainedAttackValue = _run.InitialRetainedAttackValue;
         worker._run.PathDiagnosticsSolverId = _run.PathDiagnosticsSolverId;
         worker._disableCardChoiceContinuationsForTesting = _disableCardChoiceContinuationsForTesting;
+        worker._disablePotionChoiceContinuationsForTesting = _disablePotionChoiceContinuationsForTesting;
         return worker;
     }
 
@@ -821,60 +822,44 @@ internal sealed partial class CombatBeamSolver
         ExpansionBatch batch,
         bool allowPrimaryReplays = false)
     {
-        SimulationSnapshot snapshot = node.Snapshot;
-        CombatPredictionSimulator simulator = (CombatPredictionSimulator)snapshot.Simulator;
         PlanAction baseAction = action.Action;
-        PotionModel potion = action.Potion;
         SimulationSnapshot? probeSnapshot = null;
-        IReadOnlyList<PlanCardChoice?> choices;
-        CardChoiceSpec? choiceSpec = null;
-        if (PotionChoiceSupport.RequiresChoice(potion))
+        PotionChoiceReplayCheckpoint? checkpoint = null;
+        try
         {
-            CombatPredictionSimulator choiceSimulator = simulator;
-            if (PotionChoiceSupport.GeneratesCardChoice(potion))
+            checkpoint = PreparePotionChoiceOptions(node, baseAction, action.Potion,
+                out probeSnapshot, out IReadOnlyList<PlanCardChoice?> choices, out CardChoiceSpec? choiceSpec);
+            if (allowPrimaryReplays && choices.Count >= 2)
             {
-                probeSnapshot = ReplayAction(node, baseAction);
-                choiceSimulator = (CombatPredictionSimulator)probeSnapshot.Simulator;
+                bool identityChangingLayer = choiceSpec != null
+                    && CardChoiceSupport.IsIdentityChangingPersistentChoiceEffect(choiceSpec.Effect);
+                int semanticCount = identityChangingLayer
+                    ? CardChoiceSupport.CountSemanticChoices(
+                        choices.Where(choice => choice != null).Cast<PlanCardChoice>().ToList())
+                    : choices.Count;
+                PrimaryCardChoiceLayer layer = new(choices, UnregisteredPendingChoice: false,
+                    semanticCount, identityChangingLayer,
+                    CreateWholeActionChoiceBudget(choiceSpec, semanticCount));
+                PrimaryChoiceReplayFrontier? frontier = PreparePrimaryChoiceReplays(
+                    layer, potion: action, potionCheckpoint: checkpoint);
+                if (frontier != null)
+                {
+                    checkpoint = null; // All replay producers and the ordered consumer now own it.
+                    return frontier;
+                }
             }
-            choiceSpec = PotionChoiceSupport.GetSpec(choiceSimulator, potion);
-            choices = CardChoiceSupport.BuildChoices(
-                    choiceSpec,
-                    displayNames,
-                    _profile.MaxPileChoiceBranchesPerAction,
-                    _profile.MaxHandChoiceBranchesPerAction)
-                .Select(choice => choice with { SourceId = potion.Id.Entry })
-                .Cast<PlanCardChoice?>()
-                .ToList();
-            probeSnapshot?.ReleaseSimulator();
+            var branches = ResolveExplicitCardChoiceBranches(node, baseAction, probeSnapshot, choices, choiceSpec);
             probeSnapshot = null;
+            var ownedCheckpoint = checkpoint;
+            checkpoint = null;
+            AddResolvedPotionCandidates(node, WithPotionChoiceCheckpoint(ownedCheckpoint, branches), batch);
+            return null;
         }
-        else
+        finally
         {
-            probeSnapshot = ReplayAction(node, baseAction);
-            choices = [null];
+            checkpoint?.Dispose();
+            probeSnapshot?.ReleaseSimulator();
         }
-        if (allowPrimaryReplays && choices.Count >= 2)
-        {
-            bool identityChangingLayer = choiceSpec != null
-                && CardChoiceSupport.IsIdentityChangingPersistentChoiceEffect(choiceSpec.Effect);
-            int semanticCount = identityChangingLayer
-                ? CardChoiceSupport.CountSemanticChoices(
-                    choices.Where(choice => choice != null).Cast<PlanCardChoice>().ToList())
-                : choices.Count;
-            PrimaryCardChoiceLayer layer = new(choices, UnregisteredPendingChoice: false,
-                semanticCount, identityChangingLayer,
-                CreateWholeActionChoiceBudget(choiceSpec, semanticCount));
-            PrimaryChoiceReplayFrontier? frontier = PreparePrimaryChoiceReplays(layer, potion: action);
-            if (frontier != null)
-            {
-                probeSnapshot?.ReleaseSimulator();
-                return frontier;
-            }
-        }
-        AddResolvedPotionCandidates(node,
-            ResolveExplicitCardChoiceBranches(node, baseAction, probeSnapshot, choices, choiceSpec),
-            batch);
-        return null;
     }
 
     private void AddResolvedPotionCandidates(
@@ -990,6 +975,10 @@ internal sealed partial class CombatBeamSolver
         _run.CardChoicePrefixCaptures += source.CardChoicePrefixCaptures;
         _run.CardChoicePrefixReuses += source.CardChoicePrefixReuses;
         _run.CardChoicePrefixFallbacks += source.CardChoicePrefixFallbacks;
+        _run.PotionChoicePrefixForks += source.PotionChoicePrefixForks;
+        _run.PotionChoicePrefixCaptures += source.PotionChoicePrefixCaptures;
+        _run.PotionChoicePrefixReuses += source.PotionChoicePrefixReuses;
+        _run.PotionChoicePrefixFallbacks += source.PotionChoicePrefixFallbacks;
         _run.TransitionCount += source.TransitionCount;
         _run.RepeatableNoProgressBranchesPruned +=
             source.RepeatableNoProgressBranchesPruned;
@@ -1029,6 +1018,10 @@ internal sealed partial class CombatBeamSolver
         source.CardChoicePrefixCaptures = 0;
         source.CardChoicePrefixReuses = 0;
         source.CardChoicePrefixFallbacks = 0;
+        source.PotionChoicePrefixForks = 0;
+        source.PotionChoicePrefixCaptures = 0;
+        source.PotionChoicePrefixReuses = 0;
+        source.PotionChoicePrefixFallbacks = 0;
         source.TransitionCount = 0;
         source.RepeatableNoProgressBranchesPruned = 0;
         source.CycleShapesDetected = 0;

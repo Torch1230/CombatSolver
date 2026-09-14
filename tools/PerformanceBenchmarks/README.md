@@ -19,6 +19,6 @@ python3 -m unittest discover -s tools/PerformanceBenchmarks -p 'test_*.py'
 
 生成器的Search执行入口明确发起Manual请求，该入口绕过路线缓存；准备阶段的AutoTurnStart可能只展示磁盘中的旧缓存结果。因此不能用日志中第一条RESULT代替本次请求的 `details.json` / `result.json`，也不能把缓存携带的历史耗时当作本进程发生的搜索。
 
-比较器要求相同的原输入、解析配置、配装、开局、设置、政策、全部动作及路线。文本结果和结构化求解指标中的未知字段默认参与比较；只排除明确列出的运行时与调度计数，并验证 `forks - round_prefix_captures - card_prefix_fallbacks == transitions`。失败、缺失峰值、PID不一致及TimeLimit不能得到相同工作量提速结论。显式排除的运行时信息仍完整保留在测量中，方便核对GC建立、意外退出及恢复。
+比较器要求相同的原输入、解析配置、配装、开局、设置、政策、全部动作及路线。文本结果和结构化求解指标中的未知字段默认参与比较；只排除明确列出的运行时与调度计数，并验证 `forks - round_prefix_captures - card_prefix_fallbacks - potion_prefix_forks - potion_prefix_fallbacks == transitions`。失败、缺失峰值、PID不一致及TimeLimit不能得到相同工作量提速结论。显式排除的运行时信息仍完整保留在测量中，方便核对GC建立、意外退出及恢复。
 
 按预先固定的ABBA或其他交错顺序保留全部样本。`changePercent` 是单对测量值，不能独自证明稳定收益；报告须保留各次时间/峰值、跨轮漂移、失败和质量差异。通过无人请求只代表断言完成，不代表胜利或完整自动部署。Linux无头数据不外推Windows与可见帧时间。

@@ -20,7 +20,8 @@ deferred_round_choice_finite_fallbacks deferred_round_choice_finite_primary_laye
 deferred_round_choice_finite_pending_fallbacks parallel_round_choice_waves
 parallel_round_choice_work_items""".split())
 PHYSICAL_FORKS = {"forks", "round_prefix_captures", "round_prefix_reuses", "card_prefix_attempts", "card_prefix_captures",
-                  "card_prefix_reuses", "card_prefix_fallbacks"}
+                  "card_prefix_reuses", "card_prefix_fallbacks", "potion_prefix_forks", "potion_prefix_captures",
+                  "potion_prefix_reuses", "potion_prefix_fallbacks"}
 METRIC_RUNTIME = set("""gcLifecycle elapsedMilliseconds totalElapsedMilliseconds
 workerAllocatedBytes totalWorkerAllocatedBytes totalGen0Collections totalGen1Collections
 totalGen2Collections totalGcPauseMilliseconds maxGcPauseMilliseconds
@@ -33,7 +34,8 @@ deferredRoundChoiceFiniteQuotaFallbacks deferredRoundChoiceFinitePrimaryLayers
 deferredRoundChoiceFinitePendingFallbacks parallelRoundChoiceReplayWaves
 parallelRoundChoiceReplayWorkItems""".split())
 METRIC_PHYSICAL = {"roundReplayPrefixCaptures", "roundReplayPrefixReuses", "cardChoicePrefixAttempts",
-                   "cardChoicePrefixCaptures", "cardChoicePrefixReuses", "cardChoicePrefixFallbacks"}
+                   "cardChoicePrefixCaptures", "cardChoicePrefixReuses", "cardChoicePrefixFallbacks",
+                   "potionChoicePrefixForks", "potionChoicePrefixCaptures", "potionChoicePrefixReuses", "potionChoicePrefixFallbacks"}
 
 
 def read(path):
@@ -50,7 +52,7 @@ def read(path):
         raise ValueError(f"{path}: time-limited work cannot establish equal-work performance")
     lines = details["result"].splitlines()
     fields = dict(re.findall(r"(\w+)=([^ ]+)", lines[0]))
-    if int(fields["forks"]) - int(fields["round_prefix_captures"]) - int(fields.get("card_prefix_fallbacks", 0)) != int(fields["transitions"]):
+    if int(fields["forks"]) - int(fields["round_prefix_captures"]) - int(fields.get("card_prefix_fallbacks", 0)) - int(fields.get("potion_prefix_forks", 0)) - int(fields.get("potion_prefix_fallbacks", 0)) != int(fields["transitions"]):
         raise ValueError(f"{path}: physical Forks minus prefix captures/fallbacks do not match transitions")
     fixed = {k: v for k, v in fields.items() if k not in RUNTIME | SCHEDULING | PHYSICAL_FORKS}
     environment = load("environment.json") if (path / "environment.json").exists() else None
@@ -117,7 +119,7 @@ def main():
         "excludedSchedulingFields": sorted(SCHEDULING),
         "excludedMetricRuntimeFields": sorted(METRIC_RUNTIME),
         "excludedMetricSchedulingFields": sorted(METRIC_SCHEDULING),
-        "forkNormalization": "forks - round_prefix_captures - card_prefix_fallbacks == transitions",
+        "forkNormalization": "forks - round_prefix_captures - card_prefix_fallbacks - potion_prefix_forks - potion_prefix_fallbacks == transitions",
         "comparisons": comparisons,
     }, ensure_ascii=False, indent=2) + "\n")
     return 0 if all(c["oracleEqual"] for c in comparisons) else 1

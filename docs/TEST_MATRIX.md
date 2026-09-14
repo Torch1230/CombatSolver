@@ -5,7 +5,9 @@
 - `CARD-CONTINUATION-EXPANDED` / `15ed72aac4504a0f8c56133251fe1c2c` Passed：NECROBINDER、41来源82普通/升级分支；80种选择共380候选、2种无选择；完整状态/历史/RNG/身份、兄弟与DOP2、10种代表原生结算。
 - `CARD-CONTINUATION-CONTRACT` / `18085ba4d6b044b58a0aef69bb4605b9` Passed：扩展后的原三牌边界、洗牌及原生合同。
 - `CARD-CONTINUATION-EXPANDED-SEARCH` / `5e70bf69886741e6abdc0dd97bfce87c`，`CARD-CONTINUATION-EXPANDED-INCREMENTAL` / `151a8484b2094687a8e28780453c855b` Passed：SILENT、实际搜索前缀逐分支及完整结果对照、取消/错误排空、严格增量。
-- 均用两端已有ScenarioId协议、FUZZY_WURM_CRAWLER_WEAK、敌HP999、NoGC关闭、120秒、根合同后停止；实际执行Linux无头。药水、回合/嵌套与最终整场测量仍待完成，详见[阶段记录](performance/choice-continuation-expansion-implementation-20260914.md)。
+- `POTION-CONTINUATION-CONTRACT` / `bcf7b7f30d5c4b0691c08c6707a3060f` Passed：SILENT、九种药水41个选择、50次生产分支/再次访问、九种原生完整结算；状态/历史/RNG、消耗、BeltBuckle/ReptileTrinket、兄弟修改及DOP2。
+- `POTION-CONTINUATION-SEARCH` / `856b8d5db4604d5fa9bb27e2070d1174` 与 `POTION-CONTINUATION-INCREMENTAL` / `0d002f4702184b2da1e106666d60b131` Passed：旧路径/DOP1/DOP2完整结果，真实嵌套回退、同父并发取消/错误排空、严格增量。
+- 均用两端已有ScenarioId协议、FUZZY_WURM_CRAWLER_WEAK、敌HP999、NoGC关闭、120秒、根合同后停止；实际执行Linux无头。回合/嵌套与最终整场测量仍待完成，详见[阶段记录](performance/choice-continuation-expansion-implementation-20260914.md)。
 
 ## 自身弃牌续执行正式接入（2026-09-14，未发布）
 

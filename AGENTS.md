@@ -4,7 +4,7 @@
 
 > **当前批次验证约束：** 用户于 2026-09-12 明确停止可见测试，本批后续不启动可见 Steam 会话。性能报告限定为实际取得的无头数据，不外推 FPS、可见帧时间或可见性能收益。
 
-> **后续目标（2026-09-14）：** 用户已要求完成[批量扩展研究](docs/performance/choice-continuation-expansion-20260914.md)中的卡牌、药水及回合/嵌套三阶段。当前先将自身选牌检查点扩展到41张原版单人卡；其他阶段仍须完成和验证，不把这一步当作整个目标完成。进度与证据见 `docs/performance/choice-continuation-expansion-implementation-20260914.md`。此前不启动可见Steam、不提升版本或发包的约束继续有效。
+> **后续目标（2026-09-14）：** 用户已要求完成[批量扩展研究](docs/performance/choice-continuation-expansion-20260914.md)中的卡牌、药水及回合/嵌套三阶段。当前已完成41张原版单人卡和9种手动选牌药水的检查点及原生/搜索合同；回合/嵌套与最终联合验收仍须完成，不把前两步当作整个目标完成。进度与证据见 `docs/performance/choice-continuation-expansion-implementation-20260914.md`。此前不启动可见Steam、不提升版本或发包的约束继续有效。
 
 本文件约束所有在本仓库中工作的 coding agent。开始处理任务前完整阅读；子目录若有更具体的 `AGENTS.md`，其规则只补充对应目录，不能放宽这里的硬约束。
 

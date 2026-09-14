@@ -1474,6 +1474,10 @@ internal sealed class SolverResult
     public int CardChoicePrefixCaptures { get; init; }
     public int CardChoicePrefixReuses { get; init; }
     public int CardChoicePrefixFallbacks { get; init; }
+    public int PotionChoicePrefixForks { get; init; }
+    public int PotionChoicePrefixCaptures { get; init; }
+    public int PotionChoicePrefixReuses { get; init; }
+    public int PotionChoicePrefixFallbacks { get; init; }
     public required int TransitionCount { get; init; }
     public long TotalTransitionCount { get; internal set; }
     public required int ReusedNodeSnapshots { get; init; }

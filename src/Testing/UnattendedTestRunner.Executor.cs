@@ -257,6 +257,17 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertHpTargetStopAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "POTION-CONTINUATION-CONTRACT")
+            {
+                await runner.RunPotionContinuationContractAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "POTION-CONTINUATION-SEARCH" or "POTION-CONTINUATION-INCREMENTAL")
+            {
+                await AssertPotionChoiceSearchAsync(combatState, player,
+                    strictOnly: request.ScenarioId.EndsWith("-INCREMENTAL", StringComparison.Ordinal));
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "CARD-CONTINUATION-INCREMENTAL")
             {
                 await AssertCardChoiceSearchAsync(combatState, player, strictOnly: true);

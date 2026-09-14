@@ -100,6 +100,20 @@ class ComparisonTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "physical Forks"):
             compare(self.a, self.b)
 
+    def test_potion_prefix_and_fallback_copies_are_accounted(self):
+        self.change("details.json", lambda x: x.update(result=x["result"].replace(
+            "forks=12", "forks=17 potion_prefix_forks=4 potion_prefix_captures=3 potion_prefix_reuses=8 potion_prefix_fallbacks=1")))
+        self.change("result.json", lambda x: x["solverMetrics"].update(
+            potionChoicePrefixForks=4, potionChoicePrefixCaptures=3,
+            potionChoicePrefixReuses=8, potionChoicePrefixFallbacks=1))
+        self.assertTrue(compare(self.a, self.b)["oracleEqual"])
+
+    def test_potion_capture_count_cannot_replace_prefix_forks(self):
+        self.change("details.json", lambda x: x.update(result=x["result"].replace(
+            "forks=12", "forks=17 potion_prefix_forks=3 potion_prefix_captures=4 potion_prefix_fallbacks=1")))
+        with self.assertRaisesRegex(ValueError, "physical Forks"):
+            compare(self.a, self.b)
+
     def test_physical_forks_must_account_for_prefix_copies(self):
         self.change("details.json", lambda x: x.update(result=x["result"].replace("forks=12", "forks=13")))
         with self.assertRaisesRegex(ValueError, "physical Forks"):

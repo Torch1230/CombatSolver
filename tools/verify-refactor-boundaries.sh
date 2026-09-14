@@ -529,6 +529,7 @@ expected_beam_files=(
     CombatBeamSolver.EndTurnChoiceReplay.cs
     CombatBeamSolver.RoundTransition.cs
     CombatBeamSolver.CardChoiceContinuation.cs
+    CombatBeamSolver.PotionChoiceContinuation.cs
     CombatBeamSolver.BeamRetentionPolicy.cs
     CombatBeamSolver.CrossTurnPlanning.cs
     CombatBeamSolver.CyclePlanning.cs
@@ -1066,6 +1067,23 @@ done < <(
 require_fixed "$repository_root/src/Runtime/BaseLibCloneConcurrencyPatch.cs" 'BaseLibCloneConcurrency.Enter()' 'missing native framework clone gate'
 require_fixed "$repository_root/src/Engine/Common/PredictionUtils.cs" 'NativeModelCloneConcurrency.CanCloneIndependently(source)' 'missing audited prediction clone boundary'
 forbid_fixed "$repository_root/src/Engine/Common/NativeModelCloneConcurrency.cs" 'CombatSolver.Search' 'clone eligibility depends on search policy:'
+
+# Stable manual-potion prefixes share action completion and retain ordinary Fork guards.
+while IFS=$'\t' read -r relative_path text; do
+    require_fixed "$repository_root/$relative_path" "$text" 'missing potion continuation ownership boundary'
+done <<'EOF'
+src/Prediction/PotionChoiceContinuation.cs	seed.AssertForkable();
+src/Prediction/PotionChoiceContinuation.cs	lock (_gate)
+src/Prediction/PotionChoiceContinuation.cs	!PotionChoiceMirrors.RequiresChoice(potion)
+src/Search/CombatBeamSolver.PotionChoiceContinuation.cs	ReferenceEquals(_parent, candidate)
+src/Search/CombatBeamSolver.PotionChoiceContinuation.cs	_run.PotionChoicePrefixForks++;
+src/Search/CombatBeamSolver.Expansion.cs	PotionExecutionSupport.Complete(
+src/Search/CombatBeamSolver.PrimaryChoiceReplay.cs	PotionCheckpoint?.Dispose();
+src/Search/CombatBeamSolver.ParallelExpansion.cs	_run.PotionChoicePrefixForks += source.PotionChoicePrefixForks;
+EOF
+for forbidden in 'Task<' 'Func<' 'Action<'; do
+    forbid_fixed "$repository_root/src/Prediction/PotionChoiceContinuation.cs" "$forbidden" 'potion continuation retained an executable closure:'
+done
 
 # A suspended own-choice frame belongs to its continuation; ordinary Fork remains strict.
 while IFS=$'\t' read -r relative_path text; do

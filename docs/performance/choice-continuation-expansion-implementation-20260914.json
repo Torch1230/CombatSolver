@@ -16,9 +16,13 @@
       "remaining": "Final combined performance measurement after all phases."
     },
     "manualPotions": {
-      "status": "pending",
+      "status": "implemented_and_semantically_verified",
       "nativePotionCount": 9,
-      "priorityGenerationPotions": 4
+      "priorityGenerationPotions": 4,
+      "choiceBranches": 41,
+      "productionSearchBranchesIncludingRevisit": 50,
+      "nativeRepresentatives": 9,
+      "remaining": "Nested continuation stage and final combined performance measurement."
     },
     "turnAndNested": {
       "status": "pending",
@@ -182,6 +186,49 @@
       "status": "Passed",
       "elapsedMilliseconds": 4248.3852,
       "completedChecks": []
+    },
+    {
+      "evidence": ".local/choice-expansion-20260914/potions-v3-potion-continuation-contract/result.json",
+      "runId": "bcf7b7f30d5c4b0691c08c6707a3060f",
+      "scenarioId": "POTION-CONTINUATION-CONTRACT",
+      "status": "Passed",
+      "elapsedMilliseconds": 30220.4006,
+      "completedChecks": [
+        "PotionContinuation:ATTACK_POTION:choices=4:search-choices=5:state:history:RNG:post-hooks:siblings:DOP2",
+        "PotionContinuation:ATTACK_POTION:native-full-continuation",
+        "PotionContinuation:SKILL_POTION:choices=4:search-choices=5:state:history:RNG:post-hooks:siblings:DOP2",
+        "PotionContinuation:SKILL_POTION:native-full-continuation",
+        "PotionContinuation:POWER_POTION:choices=4:search-choices=5:state:history:RNG:post-hooks:siblings:DOP2",
+        "PotionContinuation:POWER_POTION:native-full-continuation",
+        "PotionContinuation:COLORLESS_POTION:choices=4:search-choices=5:state:history:RNG:post-hooks:siblings:DOP2",
+        "PotionContinuation:COLORLESS_POTION:native-full-continuation",
+        "PotionContinuation:ASHWATER:choices=8:search-choices=9:state:history:RNG:post-hooks:siblings:DOP2",
+        "PotionContinuation:ASHWATER:native-full-continuation",
+        "PotionContinuation:DROPLET_OF_PRECOGNITION:choices=3:search-choices=4:state:history:RNG:post-hooks:siblings:DOP2",
+        "PotionContinuation:DROPLET_OF_PRECOGNITION:native-full-continuation",
+        "PotionContinuation:GAMBLERS_BREW:choices=8:search-choices=9:state:history:RNG:post-hooks:siblings:DOP2",
+        "PotionContinuation:GAMBLERS_BREW:native-full-continuation",
+        "PotionContinuation:LIQUID_MEMORIES:choices=3:search-choices=4:state:history:RNG:post-hooks:siblings:DOP2",
+        "PotionContinuation:LIQUID_MEMORIES:native-full-continuation",
+        "PotionContinuation:TOUCH_OF_INSANITY:choices=3:search-choices=4:state:history:RNG:post-hooks:siblings:DOP2",
+        "PotionContinuation:TOUCH_OF_INSANITY:native-full-continuation"
+      ]
+    },
+    {
+      "evidence": ".local/choice-expansion-20260914/potions-v3-potion-continuation-search/result.json",
+      "runId": "856b8d5db4604d5fa9bb27e2070d1174",
+      "scenarioId": "POTION-CONTINUATION-SEARCH",
+      "status": "Passed",
+      "elapsedMilliseconds": 4771.6146,
+      "completedChecks": []
+    },
+    {
+      "evidence": ".local/choice-expansion-20260914/potions-v3-potion-continuation-incremental/result.json",
+      "runId": "0d002f4702184b2da1e106666d60b131",
+      "scenarioId": "POTION-CONTINUATION-INCREMENTAL",
+      "status": "Passed",
+      "elapsedMilliseconds": 4155.3602,
+      "completedChecks": []
     }
   ],
   "failedFixtureRequests": [
@@ -216,10 +263,19 @@
       "warnings": 0,
       "errors": 0,
       "usedFor": "original and expanded production search contracts; engine unchanged from v4"
+    },
+    {
+      "name": "potions-v3",
+      "status": "Passed",
+      "seconds": 11.15,
+      "warnings": 0,
+      "errors": 0,
+      "usedFor": "All nine potion and production search contracts. Earlier successful v1/v2 builds were development builds, with no behavioral requests."
     }
   ],
   "structureGates": {
-    "bash": "Passed; search_files=92",
-    "powershell": "Passed; search_files=92"
+    "bash": "Passed; search_files=93",
+    "powershell": "Passed; search_files=93",
+    "performanceComparisonTests": "14 Passed; includes potion extra-prefix Fork count and mismatch rejection"
   }
 }

@@ -5,6 +5,13 @@ namespace CombatSolver;
 
 internal sealed partial class SimulatedCombatState : ICombatPredictionCardContinuationState
 {
+    internal bool CanCaptureStableChoicePrefix => _activeActionChoices is null
+        && _cardExecutionScopeDepth == 0 && _activeCardExecutionDeaths is null
+        && !_playerTurnEndRequested && _powerCardSources is not { Count: > 0 }
+        && !HasPendingChoice && _pendingPowerAmountChanges is not { Count: > 0 }
+        && _unsettlingLampTriggeringCards is not { Count: > 0 }
+        && _unsettlingLampInternalPowerTypes is not { Count: > 0 };
+
     private bool HasOwnManualChoiceRequest => PendingTurnStartChoice is
         { SourceId: "", Effect: not PlanChoiceEffect.ModDefined,
             Timing: PlanChoiceTiming.Action, Spec: not null };

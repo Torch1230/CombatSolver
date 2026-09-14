@@ -2105,8 +2105,10 @@ internal sealed partial class UnattendedTestRunner
         // EndTurn may reserve a prefix copy; a resumed card may need a full-replay fallback.
         // Both extra physical copies stay counted; compare the original transition Fork work.
         AddMismatch(mismatches, "transition_forks",
-            expected.ForkCount - expected.RoundReplayPrefixCaptures - expected.CardChoicePrefixFallbacks,
-            actual.ForkCount - actual.RoundReplayPrefixCaptures - actual.CardChoicePrefixFallbacks);
+            expected.ForkCount - expected.RoundReplayPrefixCaptures - expected.CardChoicePrefixFallbacks
+                - expected.PotionChoicePrefixForks - expected.PotionChoicePrefixFallbacks,
+            actual.ForkCount - actual.RoundReplayPrefixCaptures - actual.CardChoicePrefixFallbacks
+                - actual.PotionChoicePrefixForks - actual.PotionChoicePrefixFallbacks);
         AddMismatch(mismatches, "reused", expected.ReusedNodeSnapshots, actual.ReusedNodeSnapshots);
         AddMismatch(mismatches, "tt_pruned", expected.TranspositionBranchesPruned, actual.TranspositionBranchesPruned);
         AddMismatch(mismatches, "repeatable", expected.RepeatableNoProgressBranchesPruned, actual.RepeatableNoProgressBranchesPruned);

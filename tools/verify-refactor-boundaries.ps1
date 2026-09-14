@@ -527,6 +527,7 @@ $expectedBeamFiles = @(
     "CombatBeamSolver.EndTurnChoiceReplay.cs",
     "CombatBeamSolver.RoundTransition.cs",
     "CombatBeamSolver.CardChoiceContinuation.cs",
+    "CombatBeamSolver.PotionChoiceContinuation.cs",
     "CombatBeamSolver.BeamRetentionPolicy.cs",
     "CombatBeamSolver.CrossTurnPlanning.cs",
     "CombatBeamSolver.CyclePlanning.cs",
@@ -1334,6 +1335,27 @@ foreach ($requiredCloneBoundary in @(
 }
 if (Select-String -LiteralPath (Join-Path $repositoryRoot 'src/Engine/Common/NativeModelCloneConcurrency.cs') -SimpleMatch 'CombatSolver.Search' -Quiet) {
     $violations.Add('Clone eligibility depends on search policy.')
+}
+
+# Stable manual-potion prefixes share action completion and retain ordinary Fork guards.
+foreach ($rule in @(
+    @{ RelativePath = 'src/Prediction/PotionChoiceContinuation.cs'; Text = 'seed.AssertForkable();' },
+    @{ RelativePath = 'src/Prediction/PotionChoiceContinuation.cs'; Text = 'lock (_gate)' },
+    @{ RelativePath = 'src/Prediction/PotionChoiceContinuation.cs'; Text = '!PotionChoiceMirrors.RequiresChoice(potion)' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.PotionChoiceContinuation.cs'; Text = 'ReferenceEquals(_parent, candidate)' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.PotionChoiceContinuation.cs'; Text = '_run.PotionChoicePrefixForks++;' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.Expansion.cs'; Text = 'PotionExecutionSupport.Complete(' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.PrimaryChoiceReplay.cs'; Text = 'PotionCheckpoint?.Dispose();' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.ParallelExpansion.cs'; Text = '_run.PotionChoicePrefixForks += source.PotionChoicePrefixForks;' }
+)) {
+    if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot $rule.RelativePath) -SimpleMatch $rule.Text -Quiet)) {
+        $violations.Add("Missing potion continuation ownership boundary: $($rule.RelativePath): $($rule.Text)")
+    }
+}
+foreach ($forbidden in @('Task<', 'Func<', 'Action<')) {
+    if (Select-String -LiteralPath (Join-Path $repositoryRoot 'src/Prediction/PotionChoiceContinuation.cs') -SimpleMatch $forbidden -Quiet) {
+        $violations.Add("Potion continuation retained an executable closure: $forbidden")
+    }
 }
 
 # A suspended own-choice frame belongs to its continuation; ordinary Fork remains strict.

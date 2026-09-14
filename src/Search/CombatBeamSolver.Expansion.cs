@@ -845,34 +845,9 @@ internal sealed partial class CombatBeamSolver
                     PotionSlot: potionSlot,
                     PotionId: potion.Id.Entry,
                     PotionTitle: displayNames.Potion(potion));
-                SimulationSnapshot? probeSnapshot = null;
-                IReadOnlyList<PlanCardChoice?> choices;
-                CardChoiceSpec? choiceSpec = null;
-                if (PotionChoiceSupport.RequiresChoice(potion))
-                {
-                    CombatPredictionSimulator choiceSimulator = simulator;
-                    if (PotionChoiceSupport.GeneratesCardChoice(potion))
-                    {
-                        probeSnapshot = ReplayAction(node, baseAction);
-                        choiceSimulator = (CombatPredictionSimulator)probeSnapshot.Simulator;
-                    }
-                    choiceSpec = PotionChoiceSupport.GetSpec(choiceSimulator, potion);
-                    choices = CardChoiceSupport.BuildChoices(
-                            choiceSpec,
-                            displayNames,
-                            _profile.MaxPileChoiceBranchesPerAction,
-                            _profile.MaxHandChoiceBranchesPerAction)
-                        .Select(choice => choice with { SourceId = potion.Id.Entry })
-                        .Cast<PlanCardChoice?>()
-                        .ToList();
-                    probeSnapshot?.ReleaseSimulator();
-                    probeSnapshot = null;
-                }
-                else
-                {
-                    probeSnapshot = ReplayAction(node, baseAction);
-                    choices = [null];
-                }
+                using PotionChoiceReplayCheckpoint? checkpoint = PreparePotionChoiceOptions(
+                    node, baseAction, potion, out SimulationSnapshot? probeSnapshot,
+                    out IReadOnlyList<PlanCardChoice?> choices, out CardChoiceSpec? choiceSpec);
                 if (_detailedDiagnostics && node.ActionCount == 0)
                 {
                     policy.Diagnostics.Info(
@@ -884,12 +859,8 @@ internal sealed partial class CombatBeamSolver
                                 : string.Join(',', choice.Cards.Select(card => card.CardId))))}");
                 }
                 foreach ((PlanAction finalAction, SimulationSnapshot finalSnapshot) in
-                         ResolveExplicitCardChoiceBranches(
-                             node,
-                             baseAction,
-                             probeSnapshot,
-                             choices,
-                             choiceSpec))
+                         WithPotionChoiceCheckpoint(checkpoint, ResolveExplicitCardChoiceBranches(
+                             node, baseAction, probeSnapshot, choices, choiceSpec)))
                 {
                     bool terminal = finalSnapshot.PlayerDead
                         || finalSnapshot.AllEnemiesDead
@@ -2672,6 +2643,7 @@ internal sealed partial class CombatBeamSolver
         RoundReplayCheckpointCapture? roundCheckpointCapture = null,
         CardChoiceReplayCapture? cardChoiceCapture = null,
         ManualCardChoiceFrame? cardChoiceFrame = null,
+        PotionChoiceFrame? potionChoiceFrame = null,
         bool countTransition = true)
     {
         _run.WorkPacer.YieldIfNeeded();
@@ -2765,69 +2737,30 @@ internal sealed partial class CombatBeamSolver
 
             if (action.Kind == PlanActionKind.UsePotion)
             {
-                PotionModel potion = simulatedCombat.GetPotionAtSlot(_player, action.PotionSlot)
+                PotionModel potion = potionChoiceFrame?.Potion ?? simulatedCombat.GetPotionAtSlot(_player, action.PotionSlot)
                     ?? throw new InvalidOperationException($"回放时药水槽位 {action.PotionSlot} 为空。");
                 if (!string.Equals(potion.Id.Entry, action.PotionId, StringComparison.Ordinal))
                 {
                     throw new InvalidOperationException(
                         $"回放时药水槽位 {action.PotionSlot} 为 {potion.Id.Entry}，预期 {action.PotionId}。");
                 }
-                if (!simulatedCombat.IsPotionAvailable(_player, action.PotionSlot))
+                if (potionChoiceFrame == null && !simulatedCombat.IsPotionAvailable(_player, action.PotionSlot))
                     throw new InvalidOperationException($"回放时药水 {action.PotionId} 已被消耗。");
                 Creature? potionTarget = simulatedCombat.GetCreature(action.TargetCombatId);
-                int potionShuffleEvents = simulator.ShuffleEventCount;
-                int potionHistoryEntryStart = simulator.History.Entries.Count;
+                int potionShuffleEvents = potionChoiceFrame?.ShuffleEventsBefore ?? simulator.ShuffleEventCount;
+                int potionHistoryEntryStart = potionChoiceFrame?.HistoryStart ?? simulator.History.Entries.Count;
                 SearchMeasurement potionMeasurement = _run.Performance.Begin();
                 simulatedCombat.BeginActionChoices(action.NestedChoices);
                 try
                 {
-                    simulatedCombat.ConsumePotion(_player, action.PotionSlot);
-                    simulatedCombat.BeforePotionUsed(simulator, potion, potionTarget);
-                    if (simulatedCombat.HasPendingChoice
-                        || !PotionOnUseSupport.Use(simulator, simulatedCombat, potion, potionTarget))
+                    if (potionChoiceFrame == null && !PotionExecutionSupport.Prepare(
+                            simulator, simulatedCombat, potion, action.PotionSlot, potionTarget))
                     {
                         boundary = SearchBoundaryReason.PendingChoice;
                         break;
                     }
-                    if (action.Choice != null
-                        && !PotionChoiceSupport.Apply(simulator, potion, action.Choice))
-                    {
-                        boundary = SearchBoundaryReason.PendingChoice;
-                        break;
-                    }
-                    if (simulatedCombat.HasPendingChoice)
-                    {
-                        boundary = SearchBoundaryReason.PendingChoice;
-                        break;
-                    }
-                    if (simulator.State.GetCreature(potion.Owner.Creature).IsAlive)
-                        simulatedCombat.AfterPotionUsed(simulator, potion, potionTarget);
-                    if (simulatedCombat.HasPendingChoice)
-                    {
-                        boundary = SearchBoundaryReason.PendingChoice;
-                        break;
-                    }
-                    simulator.SynchronizePowerAmountPredictionStates();
-                    PowerLifecycleSupport.ResolvePowerAmountChanges(simulator, simulatedCombat);
-                    if (simulatedCombat.HasPendingChoice)
-                    {
-                        boundary = SearchBoundaryReason.PendingChoice;
-                        break;
-                    }
-                    TriggeredPowerSupport.CompensateHistorySince(
-                        simulator,
-                        simulatedCombat,
-                        potionHistoryEntryStart);
-                    if (simulatedCombat.HasPendingChoice)
-                    {
-                        boundary = SearchBoundaryReason.PendingChoice;
-                        break;
-                    }
-                    if (!CorePowerSupport.ApplyEnemyDeathPowers(
-                            simulator,
-                            simulatedCombat,
-                            simulatedCombat.KnownEnemies,
-                            processedEnemyDeaths))
+                    if (!PotionExecutionSupport.Complete(simulator, simulatedCombat, potion, potionTarget,
+                            action.Choice, potionHistoryEntryStart, processedEnemyDeaths))
                     {
                         boundary = SearchBoundaryReason.PendingChoice;
                         break;
@@ -2941,12 +2874,13 @@ internal sealed partial class CombatBeamSolver
             LogAnnotatedReplayState(simulator, action, priorActionCount + actionOffset, turn, replayEvidence);
         }
         _run.Performance.End(SearchMetricPhase.Action, actionMeasurement);
-        if (cardChoiceFrame != null && boundary == SearchBoundaryReason.PendingChoice)
+        if ((cardChoiceFrame != null || potionChoiceFrame != null) && boundary == SearchBoundaryReason.PendingChoice)
         {
             // This is the same logical choice attempt. The extra physical fork is observable,
             // but cannot spend a second transition or branch-budget lease. All child scopes have
             // unwound before replaying from the retained parent with the complete original action.
-            _run.CardChoicePrefixFallbacks++;
+            if (cardChoiceFrame != null) _run.CardChoicePrefixFallbacks++;
+            else _run.PotionChoicePrefixFallbacks++;
             using ReplayForkSeed? fallbackSeed = _parallelActionReplayForkGate is null ? null
                 : PrepareReplayForkSeed(parentSnapshot!, _parallelActionReplayForkGate);
             return Replay(actions, parentSnapshot, startingTurn, priorActionCount,
@@ -3081,6 +3015,9 @@ internal sealed partial class CombatBeamSolver
             throw new InvalidOperationException("严格增量回放不能消费并行 Fork seed。");
         ReplayForkSeed? gatedSeed = null;
         ManualCardChoiceFrame? cardChoiceFrame = null;
+        PotionChoiceFrame? potionChoiceFrame = null;
+        PotionChoiceReplayCheckpoint? potionCheckpoint = _potionChoiceReplayCheckpoint?.Matches(parent, action) == true
+            ? _potionChoiceReplayCheckpoint : null;
         CardChoiceReplayCheckpoint? cardCheckpoint = _cardChoiceReplayCheckpoint?.Matches(parent, action) == true
             ? _cardChoiceReplayCheckpoint : null;
         RoundReplayCheckpoint? roundCheckpoint = !policy.VerifyIncrementalSearch
@@ -3092,6 +3029,13 @@ internal sealed partial class CombatBeamSolver
                 if (replayForkSeed != null || roundCheckpoint != null || cardChoiceCapture != null)
                     throw new InvalidOperationException("Card continuation cannot consume another replay seed or capture.");
                 gatedSeed = cardCheckpoint.Fork(this, out cardChoiceFrame);
+                replayForkSeed = gatedSeed;
+            }
+            else if (potionCheckpoint != null)
+            {
+                if (replayForkSeed != null || roundCheckpoint != null || cardChoiceCapture != null)
+                    throw new InvalidOperationException("Potion continuation cannot consume another replay seed or capture.");
+                gatedSeed = potionCheckpoint.Fork(this, out potionChoiceFrame);
                 replayForkSeed = gatedSeed;
             }
             else if (roundCheckpoint != null)
@@ -3123,7 +3067,8 @@ internal sealed partial class CombatBeamSolver
                     roundCheckpoint: roundCheckpoint,
                     roundCheckpointCapture: roundCheckpointCapture,
                     cardChoiceCapture: cardChoiceCapture,
-                    cardChoiceFrame: cardChoiceFrame);
+                    cardChoiceFrame: cardChoiceFrame,
+                    potionChoiceFrame: potionChoiceFrame);
                 if (!policy.VerifyIncrementalSearch)
                     return incremental;
 
