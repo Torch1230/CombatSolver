@@ -380,6 +380,8 @@ Mod 准入，具体契约见[模型状态适配](third-party-model-state.md)。
 
 renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或 `ModelDb`。部署需要的标量由 Runtime 单独持有，不从控件反向读取。
 
+`SolverRouteRow` 只保留上一份只读回合显示快照，整行成功构建后才发布，失败半行不形成复用资格。同语言下，完整动作显示值、嵌套选牌及遗物的本地化身份相同才复用胶囊；回合指标仍由Overlay逐次更新，Populate重置部署高亮。状态页或变化行清空旧引用并重建；主题沿既有整层重建。语言事件仍每帧合并一次，但即使一帧内切回原语言也通知现有控件，覆盖中途新建的胶囊。
+
 `SolverSettingsPanel` 是设置页的单一控件所有者，按 partial 分离构建职责：主文件负责标题、常规/性能/反馈三页切换、重载、提交、恢复默认和固定状态栏；`General` 负责求解器、通知、自动执行，以及第一/二幕与最终 Boss 相互独立的血量取舍；`Performance` 负责预设、并行度、NoGC 开关、独立内存预算、排队式手动回收和折叠的自定义搜索参数；`BugReports` 负责诊断、联系方式与问题包导出/上传；`Controls` 只提供本面板共享的 Godot 控件样式、输入校验和行布局。partial 之间不建立第二份设置状态，持久化仍只写 `SolverSettingsData`。
 
 `BossHpRelief` 只描述战斗事实：第一、二幕战后回复 80%，最终 Boss 后无后续战斗。`BossHpStrategy` 决定搜索如何使用该事实；通关优先沿用实际回复折算，最低战损把对应战斗恢复为普通 HP 权重。最终排序、智能药水开层和卖血阈值必须消费同一个有效策略，结果与诊断仍保留真实 `BossHpRelief`。

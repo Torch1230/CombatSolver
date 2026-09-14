@@ -1,6 +1,8 @@
 # CombatSolver 仓库工作指令
 
-> **当前工作重点（2026-09-15）：** `perf/general-allocation-20260914` 已整合上游 `cd66b1d`（0.38.6）的搜索、药水、复活与录像改动，完成通用分配、生成池及选牌续执行三阶段优化，合并验证与当前上游三场完整ABBA均已通过，正在提交正式 PR。早期对照使用各报告明确记录的基线，不把旧基线数字当作当前上游的收益。通用优化见 `docs/performance/general-allocation-20260914.md`，生成池与抽牌前缀见 `docs/performance/crab-latency-20260914.md`，三阶段实施见 `docs/performance/choice-continuation-expansion-implementation-20260914.md`。用户已授权推送任务分支并提交正式 PR；本批不另提升版本、不发包或上传创意工坊。正式发布规则继续由下文统一脚本管理，监控后台最新版提示由用户维护。
+> **本轮追加（2026-09-15）：** 用户授权继续完成成本较低且有收益的复用，并更新正式PR #96。保留路线行按完整显示值/本地化身份复用，以及同帧语言往返通知修复；投影洗牌缓存经两场8份完整对照后撤回，追加提交不改变Search/Engine/Runtime。路线、语言、部署显示合同及两端门禁通过，记录见 `docs/performance/performance-pr-20260915.md` 的后续追加章节。本批不启动可见Steam、不提升版本、不发包或上传创意工坊。
+
+> **当前工作重点（2026-09-15）：** `perf/general-allocation-20260914` 已整合上游 `cd66b1d`（0.38.6）的搜索、药水、复活与录像改动，完成通用分配、生成池及选牌续执行三阶段优化，合并验证与当前上游三场完整ABBA均已通过，已提交正式 PR #96。早期对照使用各报告明确记录的基线，不把旧基线数字当作当前上游的收益。通用优化见 `docs/performance/general-allocation-20260914.md`，生成池与抽牌前缀见 `docs/performance/crab-latency-20260914.md`，三阶段实施见 `docs/performance/choice-continuation-expansion-implementation-20260914.md`。用户已授权推送任务分支并提交正式 PR；本批不另提升版本、不发包或上传创意工坊。正式发布规则继续由下文统一脚本管理，监控后台最新版提示由用户维护。
 
 > **当前批次验证约束：** 用户于 2026-09-12 明确停止可见测试，本批后续不启动可见 Steam 会话。性能报告限定为实际取得的无头数据，不外推 FPS、可见帧时间或可见性能收益。
 

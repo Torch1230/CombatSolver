@@ -39,6 +39,11 @@ internal sealed partial class UnattendedTestRunner
             bool expectedCardPlayed = request.ExpectedPlayedCardId == null;
             bool expectedPotionUsed = request.ExpectedUsedPotionId == null;
             bool expectedPlayerPowerObserved = request.ExpectedObservedPlayerPowerId == null;
+            if (request.ScenarioId == "ROUTE-ROW-REUSE")
+            {
+                await runner.AssertRouteRowReuseAndMeasureAsync();
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId is "ORBIT-SEARCH-QUALITY" or "ORBIT-SEARCH-QUALITY-SHORT" or "ORBIT-SEARCH-QUALITY-DEPLOY"
                 or "AUTOMATION-SEARCH-QUALITY" or "AUTOMATION-SEARCH-QUALITY-SHORT" or "AUTOMATION-SEARCH-QUALITY-DEPLOY")
             {

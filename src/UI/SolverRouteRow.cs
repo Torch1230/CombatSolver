@@ -1,4 +1,5 @@
 using Godot;
+using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Localization.Fonts;
 
 namespace CombatSolver;
@@ -7,6 +8,8 @@ internal sealed partial class SolverRouteRow : PanelContainer
 {
     private readonly List<CanvasItem> _deploymentActions = [];
     private CanvasItem? _endTurnAction;
+    private SolverOverlayTurnSnapshot? _populatedTurn;
+    private string? _populatedLanguage;
 
     public Label TurnLabel { get; }
     public HFlowContainer ActionFlow { get; }
@@ -116,6 +119,14 @@ internal sealed partial class SolverRouteRow : PanelContainer
 
     public void Populate(SolverOverlayTurnSnapshot turn)
     {
+        if (HasSameActions(turn))
+        {
+            // Populate starts a fresh presentation even when its controls survive.
+            // Deployment indexes still refer to this row's executable actions only.
+            SetDeploymentProgress(0, null);
+            SetEndTurnDeploymentState(active: false, completed: false);
+            return;
+        }
         ClearActions();
         foreach (string choice in turn.TurnStartChoices)
         {
@@ -130,6 +141,7 @@ internal sealed partial class SolverRouteRow : PanelContainer
                 : SolverActionPill.Create(turn.EndTurnAction);
             ActionFlow.AddChild(endTurn);
             _endTurnAction = endTurn;
+            RememberPopulated(turn);
             return;
         }
 
@@ -146,6 +158,27 @@ internal sealed partial class SolverRouteRow : PanelContainer
             ActionFlow.AddChild(endTurn);
             _endTurnAction = endTurn;
         }
+        RememberPopulated(turn);
+    }
+
+    private void RememberPopulated(SolverOverlayTurnSnapshot turn)
+    {
+        _populatedLanguage = LocManager.Instance.Language;
+        _populatedTurn = turn;
+    }
+
+    private bool HasSameActions(SolverOverlayTurnSnapshot turn)
+    {
+        if (_populatedTurn is not { } previous
+            || _populatedLanguage != LocManager.Instance.Language
+            || !previous.TurnStartChoices.SequenceEqual(turn.TurnStartChoices)
+            || previous.Actions.Count != turn.Actions.Count)
+            return false;
+        for (int index = 0; index < turn.Actions.Count; index++)
+            if (!previous.Actions[index].HasSamePresentation(turn.Actions[index])) return false;
+        return ReferenceEquals(previous.EndTurnAction, turn.EndTurnAction)
+            || previous.EndTurnAction is { } endTurn && turn.EndTurnAction is { } nextEndTurn
+                && endTurn.HasSamePresentation(nextEndTurn);
     }
 
     public void SetDeploymentProgress(int completedActions, int? activeActionIndex)
@@ -207,6 +240,8 @@ internal sealed partial class SolverRouteRow : PanelContainer
 
     private void ClearActions()
     {
+        _populatedTurn = null;
+        _populatedLanguage = null;
         _deploymentActions.Clear();
         _endTurnAction = null;
         foreach (Node child in ActionFlow.GetChildren())

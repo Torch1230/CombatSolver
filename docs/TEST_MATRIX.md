@@ -1,5 +1,12 @@
 # CombatSolver 测试清单
 
+## 路线界面复用与派生计算实验（2026-09-15，未发布）
+
+- 交付场景 [`ROUTE-ROW-REUSE`](../coverage/unattended/route-row-reuse.json)，runId `83d3d63b552f4393b8ffc03e8fba9060` Passed（25.374秒）：实际Godot控件身份、同值新数组、全部显示/本地化字段变化、选牌/击杀/顺序、空路线、状态页、构建失败后重试、部署索引/高亮、语言往返和订阅清理。原生双端ScenarioId入口，IRONCLAD、FUZZY_WURM_CRAWLER_WEAK、敌HP999、NoGC关闭、120秒、显式EvidenceDirectory；不启动搜索。
+- `UI-LOCALIZATION` / `483a2e7173044a26a730997020c911b3` Passed（6.812秒）：eng/zhs/zht、415条目录、保留/恢复路线卡名、升级/嵌套选牌、序列化和无计划外重算。卡牌投影、名称与语言通知源码与交付源码相同；行缓存成功后发布的边界由交付合同另行覆盖。首次复用进程运行暴露同帧语言通知遗漏，失败与修正后证据同时保留。
+- 交付Release 11.10秒、0警告/错误；Bash/PowerShell结构门禁均为 `search_files=102`。搜索层没有追加差异，投影洗牌缓存及专用缓存合同已从生产源树撤回。
+- 已撤回实验的两场8份完整请求、原生120份牌序对照及严格增量结果仍记录于[正式PR追加报告](performance/performance-pr-20260915.md)和[结构化证据](performance/derived-work-reuse-20260915.json)；不把这些实验数字称为交付搜索提速。不启动可见Steam，未验证FPS或可见帧时间。
+
 ## 0.38.6 上游合并后的性能 PR 验证（2026-09-15，未发布）
 
 - 对当前上游三场12份完整ABBA均通过严格oracle；蟹战耗时−15.95%、分配−15.51%、峰值−1.64%，扩展弃牌耗时−5.42%，携药轻场景−2.25%；后两场分配与峰值均下降。仅限本机无头样本。

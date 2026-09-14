@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "ROUTE-ROW-REUSE",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "enemyCurrentHp": 999,
+  "enableNoGcRegionForTest": false,
+  "timeoutSeconds": 120
+}
