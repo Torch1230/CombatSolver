@@ -32,6 +32,13 @@ internal enum NativeChoiceSurfaceKind
     HandUpgrade,
 }
 
+internal enum NativeChoiceSurfaceState
+{
+    ExpectedVisible,
+    CoveredByOtherOverlay,
+    Missing,
+}
+
 internal readonly record struct NativeChoiceObservedOption(
     string CardId,
     int UpgradeLevel,
@@ -297,12 +304,23 @@ internal sealed class NativeChoiceSession : IDisposable
         }
 
         NativeChoiceRequest request = await _firstVisibleRequest.Task.WaitAsync(token);
-        long deadline = System.Environment.TickCount64 + 30_000;
-        while (!NativeChoiceSurface.IsVisible(request.Surface))
+        NativeChoiceSurfaceWaitBudget waitBudget = new(System.Environment.TickCount64);
+        NativeChoiceSurfaceState previousState = NativeChoiceSurfaceState.Missing;
+        while (true)
         {
             token.ThrowIfCancellationRequested();
             if (phaseTask.IsCompleted) return false;
-            if (System.Environment.TickCount64 >= deadline)
+            NativeChoiceSurfaceState state = NativeChoiceSurface.GetState(request.Surface, out _);
+            if (state == NativeChoiceSurfaceState.ExpectedVisible)
+                break;
+            if (state != previousState)
+            {
+                Entry.Logger.Info(
+                    $"[CombatSolver/Test] NATIVE_CHOICE_SURFACE owner={Owner} sequence={request.Sequence} " +
+                    $"surface={request.Surface} state={state}");
+                previousState = state;
+            }
+            if (waitBudget.IsExpired(state, System.Environment.TickCount64))
                 throw new NativeChoiceSurfaceTimeoutException($"30 秒内没有出现原生选牌页面 {request.Surface}（来源 {request.SourceId}）。");
             await host.ToSignal(host.GetTree(), SceneTree.SignalName.ProcessFrame);
         }
@@ -659,21 +677,55 @@ internal static class NativeChoiceSurface
     private const ulong MultiSelectStepMilliseconds = 150;
 
     public static bool IsVisible(NativeChoiceSurfaceKind kind)
-        => FindSurface(kind) is CanvasItem canvas
-           && canvas.IsInsideTree()
-           && canvas.IsVisibleInTree();
+        => GetState(kind, out _) == NativeChoiceSurfaceState.ExpectedVisible;
+
+    internal static NativeChoiceSurfaceState GetState(
+        NativeChoiceSurfaceKind kind,
+        out Node? surface)
+    {
+        Node? overlayTop = NOverlayStack.Instance?.Peek() as Node;
+        surface = FindSurface(kind);
+        bool isHand = kind is NativeChoiceSurfaceKind.Hand or NativeChoiceSurfaceKind.HandUpgrade;
+        bool expectedVisible = surface is CanvasItem canvas
+            && canvas.IsInsideTree()
+            && canvas.IsVisibleInTree()
+            && (!isHand || overlayTop == null);
+        bool covered = overlayTop != null
+            && (!ReferenceEquals(overlayTop, surface) || !expectedVisible);
+        return Classify(expectedVisible, covered);
+    }
+
+    private static NativeChoiceSurfaceState Classify(bool expectedVisible, bool covered)
+        => expectedVisible
+            ? NativeChoiceSurfaceState.ExpectedVisible
+            : covered
+                ? NativeChoiceSurfaceState.CoveredByOtherOverlay
+                : NativeChoiceSurfaceState.Missing;
+
+    internal static bool VerifyCoveredSurfaceWaitPolicyForTesting()
+    {
+        NativeChoiceSurfaceWaitBudget budget = new(0);
+        return Classify(expectedVisible: true, covered: false) == NativeChoiceSurfaceState.ExpectedVisible
+            && Classify(expectedVisible: false, covered: true) == NativeChoiceSurfaceState.CoveredByOtherOverlay
+            && Classify(expectedVisible: false, covered: false) == NativeChoiceSurfaceState.Missing
+            && !budget.IsExpired(NativeChoiceSurfaceState.Missing, 10_000)
+            && !budget.IsExpired(NativeChoiceSurfaceState.CoveredByOtherOverlay, 70_000)
+            && !budget.IsExpired(NativeChoiceSurfaceState.Missing, 89_999)
+            && budget.IsExpired(NativeChoiceSurfaceState.Missing, 90_000);
+    }
 
     public static async Task<NativeChoiceSurfaceLock> WaitAndLockAsync(
         NGame host,
         NativeChoiceRequest request,
         CancellationToken token)
     {
-        long deadline = System.Environment.TickCount64 + SurfaceTimeoutMilliseconds;
+        NativeChoiceSurfaceWaitBudget waitBudget = new(System.Environment.TickCount64);
+        NativeChoiceSurfaceState previousState = NativeChoiceSurfaceState.Missing;
         while (true)
         {
             token.ThrowIfCancellationRequested();
-            Node? surface = FindSurface(request.Surface);
-            if (surface is CanvasItem canvas && surface.IsInsideTree() && canvas.IsVisibleInTree())
+            NativeChoiceSurfaceState state = GetState(request.Surface, out Node? surface);
+            if (state == NativeChoiceSurfaceState.ExpectedVisible && surface != null)
             {
                 Control blocker = new()
                 {
@@ -690,7 +742,14 @@ internal static class NativeChoiceSurface
                 blocker.CallDeferred(Control.MethodName.GrabFocus);
                 return new NativeChoiceSurfaceLock(request, surface, blocker, hand, handUnhandledInput);
             }
-            if (System.Environment.TickCount64 >= deadline)
+            if (state != previousState)
+            {
+                Entry.Logger.Info(
+                    $"[CombatSolver/Test] NATIVE_CHOICE_SURFACE sequence={request.Sequence} " +
+                    $"surface={request.Surface} state={state}");
+                previousState = state;
+            }
+            if (waitBudget.IsExpired(state, System.Environment.TickCount64))
             {
                 throw new NativeChoiceSurfaceTimeoutException(
                     $"30 秒内没有出现原生选牌页面 {request.Surface}（来源 {request.SourceId}）。");
@@ -943,6 +1002,23 @@ internal static class NativeChoiceSurface
             foreach (T descendant in Descendants<T>(child))
                 yield return descendant;
         }
+    }
+}
+
+internal sealed class NativeChoiceSurfaceWaitBudget(long startedAt)
+{
+    private long _lastObservedAt = startedAt;
+    private long _missingMillisecondsRemaining = 30_000;
+
+    public bool IsExpired(NativeChoiceSurfaceState state, long observedAt)
+    {
+        if (observedAt < _lastObservedAt)
+            throw new ArgumentOutOfRangeException(nameof(observedAt));
+        long elapsed = observedAt - _lastObservedAt;
+        _lastObservedAt = observedAt;
+        if (state == NativeChoiceSurfaceState.Missing)
+            _missingMillisecondsRemaining -= elapsed;
+        return _missingMillisecondsRemaining <= 0;
     }
 }
 

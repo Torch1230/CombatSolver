@@ -15,6 +15,8 @@ internal sealed partial class UnattendedTestRunner
     {
         CombatBeamSolver.VerifyCycleTranspositionLeasePolicyForTesting();
         AssertPotionPresetPolicy();
+        if (!NativeChoiceSurface.VerifyCoveredSurfaceWaitPolicyForTesting())
+            throw new InvalidOperationException("原生选牌页面被其他覆盖层遮挡时仍消耗了缺失超时。");
         NGame host = NGame.Instance
             ?? throw new InvalidOperationException("控制器会话测试找不到 NGame。");
         if (SolverController.SolverDisabled)
