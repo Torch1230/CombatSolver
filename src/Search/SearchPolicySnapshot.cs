@@ -54,6 +54,24 @@ internal sealed record SearchPolicySnapshot(
     /// 于是「打到可接受战损就提早收手」那条捷径会重新生效——不要收益了，就没有理由继续搜下去。
     /// </summary>
     public bool EffectiveHasGrowthTargets => !IgnoreLongTermRewards && HasGrowthTargets;
+
+    /// <summary>
+    /// 主搜索改用 <see cref="BeamWidthPortfolio" />：若干个只有 Beam 宽度不同的成员共享同一份节点预算，
+    /// 按既有比较规则取最优。默认关闭，关闭时生产行为逐位不变。
+    /// </summary>
+    public bool UseBeamWidthPortfolio { get; init; }
+
+    /// <summary>
+    /// 组合成员宽度。首项由 <see cref="BeamWidthPortfolio.ProductionWidths" /> 强制成基线宽度；
+    /// 为空时用默认的 [基线, 基线−1, 基线+1, 96]。
+    /// </summary>
+    public IReadOnlyList<int>? BeamWidthPortfolioWidths { get; init; }
+
+    /// <summary>
+    /// 请求级的组合诊断，由 <see cref="CombatSearchCoordinator.Solve" /> 建立并挂到返回结果上。
+    /// 开关关闭时同样记录（单成员一行）。
+    /// </summary>
+    public BeamWidthPortfolioTelemetry? PortfolioTelemetry { get; init; }
     public SearchRequestWorkTotals? RequestWorkTotals { get; init; }
     public SearchInteractionState? Interaction { get; init; }
 }

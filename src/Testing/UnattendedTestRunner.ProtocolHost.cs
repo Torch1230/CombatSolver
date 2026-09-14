@@ -32,6 +32,8 @@ internal sealed partial class UnattendedTestRunner
         public void ApplyAct3BossStrategyOverride(bool? enabled) => Act3BossStrategyOverride = enabled;
         public bool MeasureSearchPhases { get; private set; }
         public int? SearchMaxDegreeOfParallelismOverride { get; private set; }
+        public bool UseBeamWidthPortfolioOverride { get; private set; }
+        public IReadOnlyList<int>? BeamWidthPortfolioWidthsOverride { get; private set; }
         public int? SearchBudgetOverrideMilliseconds { get; private set; }
 
         public void TryStart(NGame? host)
@@ -328,6 +330,20 @@ internal sealed partial class UnattendedTestRunner
                     $"实际为 {maxDegreeOfParallelism}。");
             }
             SearchMaxDegreeOfParallelismOverride = request.SearchMaxDegreeOfParallelismForTest;
+            if (request.BeamWidthPortfolioWidthsForTest is { Length: > 0 } widths
+                && widths.Any(static width => width < 1))
+            {
+                throw new InvalidOperationException("组合成员 Beam 宽度必须为正。");
+            }
+            if (request.BeamWidthPortfolioWidthsForTest is { Length: > 0 }
+                && request.UseBeamWidthPortfolioForTest != true)
+            {
+                throw new InvalidOperationException("成员宽度只能与 useBeamWidthPortfolioForTest 一起给出。");
+            }
+            UseBeamWidthPortfolioOverride = request.UseBeamWidthPortfolioForTest == true;
+            BeamWidthPortfolioWidthsOverride = request.BeamWidthPortfolioWidthsForTest is { Length: > 0 } configured
+                ? configured
+                : null;
             SearchBudgetOverrideMilliseconds = request.SearchBudgetOverrideMilliseconds
                 ?? (request.FixedSearchBudget
                     ? request.LegacyShortSearchBudgetMilliseconds ?? request.LegacyDeepSearchBudgetMilliseconds
@@ -342,6 +358,8 @@ internal sealed partial class UnattendedTestRunner
             FixedSearchBudget = false;
             MeasureSearchPhases = false;
             SearchMaxDegreeOfParallelismOverride = null;
+            UseBeamWidthPortfolioOverride = false;
+            BeamWidthPortfolioWidthsOverride = null;
             Act3BossStrategyOverride = null;
             _injectPlayerHpLossTurn = 0;
             _injectPlayerHpLossAmount = 0;

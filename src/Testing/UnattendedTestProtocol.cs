@@ -106,6 +106,15 @@ internal sealed class UnattendedTestRequest
     [System.Text.Json.Serialization.JsonPropertyName("deepSearchBudgetOverrideMilliseconds")]
     public int? LegacyDeepSearchBudgetMilliseconds { get; init; }
     public int? SearchMaxDegreeOfParallelismForTest { get; init; }
+
+    /// <summary>生产协调器的主搜索改用 Beam 宽度组合；普通游戏默认关。</summary>
+    public bool? UseBeamWidthPortfolioForTest { get; init; }
+
+    /// <summary>
+    /// 组合成员宽度；缺省为 [基线, 基线−1, 基线+1, 96]。首项由实现强制成基线宽度，重复项和
+    /// 小于 1 的值会被丢掉。
+    /// </summary>
+    public int[]? BeamWidthPortfolioWidthsForTest { get; init; }
     public int? ExpectedInitialExpandedNodesAtMost { get; init; }
     public int? ExpectedInitialTransitionsAtMost { get; init; }
     public long? ExpectedInitialTotalExpandedNodesAtMost { get; init; }
@@ -554,6 +563,15 @@ internal sealed class UnattendedSolverMetrics
     public int FinalEnemyHp { get; init; }
     public int? CombatEndedTurn { get; init; }
     public double CapturedAtElapsedMilliseconds { get; init; }
+
+    /// <summary>基线成员发布给覆盖层的时刻，相对本次搜索请求开始。组合关闭时是那次单成员搜索的完成时刻。</summary>
+    public double? FirstRoutePublishedMilliseconds { get; init; }
+
+    /// <summary>逐成员明细；组合关闭时是一行。</summary>
+    public BeamWidthPortfolioMemberReport[] PortfolioMembers { get; init; } = [];
+
+    /// <summary>各成员结束后 <c>GC.GetTotalMemory(false)</c> 的最大值。</summary>
+    public long PeakManagedHeapBytes { get; init; }
     public long ManagedLiveBytes { get; init; }
     public long ManagedHeapBytes { get; init; }
     public long ManagedFragmentedBytes { get; init; }
