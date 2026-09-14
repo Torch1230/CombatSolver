@@ -6,9 +6,13 @@ namespace CombatSolver;
 
 internal sealed partial class BugReportUploadDialog : CanvasLayer
 {
+    private const float ViewportMargin = 16f;
+    private const float PreferredWidth = 420f;
     private static int _openCount;
     private readonly PanelContainer _dialogPanel;
     private readonly TextEdit _description;
+    private readonly ScrollContainer _contentScroll;
+    private readonly VBoxContainer _content;
     private bool _dragging;
     private bool _closed;
     private bool _truncatingDescription;
@@ -34,7 +38,7 @@ internal sealed partial class BugReportUploadDialog : CanvasLayer
         _dialogPanel = new PanelContainer
         {
             MouseFilter = Control.MouseFilterEnum.Stop,
-            CustomMinimumSize = new Vector2(420, 0),
+            CustomMinimumSize = new Vector2(PreferredWidth, 0),
         };
         _dialogPanel.AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
             SolverUiTokens.Palette.Surface,
@@ -45,14 +49,15 @@ internal sealed partial class BugReportUploadDialog : CanvasLayer
             shadow: true));
         backdrop.AddChild(_dialogPanel);
 
-        VBoxContainer root = new()
+        VBoxContainer shell = new()
         {
             MouseFilter = Control.MouseFilterEnum.Pass,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
         };
-        root.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Sm);
-        _dialogPanel.AddChild(root);
+        shell.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Sm);
+        _dialogPanel.AddChild(shell);
 
-        root.AddChild(CreateHeaderRow());
+        shell.AddChild(CreateHeaderRow());
 
         ColorRect divider = new()
         {
@@ -60,9 +65,26 @@ internal sealed partial class BugReportUploadDialog : CanvasLayer
             CustomMinimumSize = new Vector2(0, 1),
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
-        root.AddChild(divider);
+        shell.AddChild(divider);
 
-        root.AddChild(SolverUiTokens.CreateLabel(
+        _contentScroll = new ScrollContainer
+        {
+            Name = "ContentScroll",
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
+        };
+        _content = new VBoxContainer
+        {
+            Name = "Content",
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        _content.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Sm);
+        _contentScroll.AddChild(_content);
+        shell.AddChild(_contentScroll);
+
+        _content.AddChild(SolverUiTokens.CreateLabel(
             SolverText.Format($"问题描述（选填，最多 {CombatBugReportDescription.MaximumPlayerDescriptionCharacters} 字）"),
             SolverUiTokens.Type.Caption,
             SolverUiTokens.Palette.TextSecondary));
@@ -87,7 +109,7 @@ internal sealed partial class BugReportUploadDialog : CanvasLayer
             SolverUiTokens.Radius.Small,
             SolverUiTokens.Spacing.Sm,
             SolverUiTokens.Spacing.Xs));
-        root.AddChild(_description);
+        _content.AddChild(_description);
 
         Label contactHint = SolverUiTokens.CreateLabel(
             string.IsNullOrWhiteSpace(contactQq)
@@ -96,7 +118,7 @@ internal sealed partial class BugReportUploadDialog : CanvasLayer
             SolverUiTokens.Type.Caption,
             SolverUiTokens.Palette.TextMuted);
         contactHint.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        root.AddChild(contactHint);
+        _content.AddChild(contactHint);
 
         HBoxContainer buttons = new()
         {
@@ -116,23 +138,49 @@ internal sealed partial class BugReportUploadDialog : CanvasLayer
             Close();
         };
         buttons.AddChild(confirm);
-        root.AddChild(buttons);
+        shell.AddChild(buttons);
     }
 
     public override void _Ready()
-        => TaskHelper.RunSafely(CenterOnScreenAsync());
+    {
+        GetViewport().SizeChanged += OnViewportSizeChanged;
+        TaskHelper.RunSafely(ApplyViewportBoundsAsync(center: true));
+    }
 
     public override void _EnterTree()
         => _openCount++;
 
-    private async Task CenterOnScreenAsync()
+    private async Task ApplyViewportBoundsAsync(bool center)
     {
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         if (!GodotObject.IsInstanceValid(this) || !GodotObject.IsInstanceValid(_dialogPanel))
             return;
         Vector2 viewportSize = GetViewport().GetVisibleRect().Size;
-        _dialogPanel.Position = ((viewportSize - _dialogPanel.Size) / 2f).Round();
+        Vector2 naturalSize = _dialogPanel.GetCombinedMinimumSize();
+        Vector2 targetSize = ResolveDialogSize(viewportSize, naturalSize);
+        _dialogPanel.CustomMinimumSize = targetSize;
+        _dialogPanel.Size = targetSize;
+        _dialogPanel.Position = center
+            ? ((viewportSize - targetSize) / 2f).Round()
+            : ClampPosition(_dialogPanel.Position, viewportSize, targetSize);
     }
+
+    private void OnViewportSizeChanged()
+        => TaskHelper.RunSafely(ApplyViewportBoundsAsync(center: false));
+
+    private static Vector2 ResolveDialogSize(Vector2 viewportSize, Vector2 naturalSize)
+    {
+        float maximumWidth = Math.Max(0f, viewportSize.X - ViewportMargin * 2f);
+        float maximumHeight = Math.Max(0f, viewportSize.Y - ViewportMargin * 2f);
+        return new Vector2(
+            Math.Min(PreferredWidth, maximumWidth),
+            Math.Min(naturalSize.Y, maximumHeight));
+    }
+
+    private static Vector2 ClampPosition(Vector2 position, Vector2 viewportSize, Vector2 panelSize)
+        => new(
+            Math.Clamp(position.X, 0f, Math.Max(0f, viewportSize.X - panelSize.X)),
+            Math.Clamp(position.Y, 0f, Math.Max(0f, viewportSize.Y - panelSize.Y)));
 
     private void OnHeaderGuiInput(InputEvent inputEvent)
     {
@@ -147,11 +195,7 @@ internal sealed partial class BugReportUploadDialog : CanvasLayer
             return;
         Vector2 viewportSize = GetViewport().GetVisibleRect().Size;
         Vector2 position = GetViewport().GetMousePosition() - _dragOffset;
-        float maxX = Math.Max(0, viewportSize.X - _dialogPanel.Size.X);
-        float maxY = Math.Max(0, viewportSize.Y - _dialogPanel.Size.Y);
-        _dialogPanel.Position = new Vector2(
-            Math.Clamp(position.X, 0, maxX),
-            Math.Clamp(position.Y, 0, maxY));
+        _dialogPanel.Position = ClampPosition(position, viewportSize, _dialogPanel.Size);
     }
 
     private Control CreateHeaderRow()
@@ -191,6 +235,8 @@ internal sealed partial class BugReportUploadDialog : CanvasLayer
 
     public override void _ExitTree()
     {
+        if (GodotObject.IsInstanceValid(GetViewport()))
+            GetViewport().SizeChanged -= OnViewportSizeChanged;
         _openCount--;
         if (_closed)
             return;
@@ -211,4 +257,28 @@ internal sealed partial class BugReportUploadDialog : CanvasLayer
     }
 
     private void Close() => QueueFree();
+
+    internal bool ExerciseResponsiveBoundsForTesting()
+    {
+        foreach (Vector2 viewport in new[]
+                 {
+                     new Vector2(1920, 1080),
+                     new Vector2(1280, 720),
+                     new Vector2(960, 540),
+                 })
+        {
+            Vector2 size = ResolveDialogSize(viewport, new Vector2(PreferredWidth, 900));
+            Vector2 position = ClampPosition(new Vector2(9999, 9999), viewport, size);
+            if (size.X > viewport.X - ViewportMargin * 2f
+                || size.Y > viewport.Y - ViewportMargin * 2f
+                || position.X + size.X > viewport.X
+                || position.Y + size.Y > viewport.Y)
+            {
+                return false;
+            }
+        }
+        return _contentScroll.VerticalScrollMode == ScrollContainer.ScrollMode.Auto
+            && _contentScroll.GetParent() == _dialogPanel.GetChild(0)
+            && _content.GetParent() == _contentScroll;
+    }
 }

@@ -91,6 +91,8 @@ internal sealed partial class UnattendedTestRunner
                         throw new InvalidOperationException($"Settings localization failed: {target}");
                     BugReportUploadDialog dialog = new("");
                     harness.AddChild(dialog);
+                    if (!dialog.ExerciseResponsiveBoundsForTesting())
+                        throw new InvalidOperationException($"Upload dialog bounds failed: {target}");
                     if (english)
                         AssertEnglishControls(harness);
                     if (!settings.ExerciseUploadCompletionTransitionForTesting())
