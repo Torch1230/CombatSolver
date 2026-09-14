@@ -63,7 +63,7 @@ internal sealed record SearchPolicySnapshot(
 
     /// <summary>
     /// 组合成员宽度。首项由 <see cref="BeamWidthPortfolio.ProductionWidths" /> 强制成基线宽度；
-    /// 为空时用默认的 [基线, 基线−1, 基线+1, 96]。
+    /// 为空时用默认的 [基线, 基线×2/3, 基线×3/2]。
     /// </summary>
     public IReadOnlyList<int>? BeamWidthPortfolioWidths { get; init; }
 

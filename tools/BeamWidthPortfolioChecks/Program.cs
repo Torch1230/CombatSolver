@@ -38,13 +38,15 @@ BeamWidthPortfolioOutcome<SolverInterimResult> Portfolio(
         reject);
 }
 
-// 1. Production membership: baseline first, then the two neighbours and the wide refinement.
-Require(BeamWidthPortfolio.ProductionWidths(24, null).SequenceEqual([24, 23, 25, 96]),
+// 1. Production membership: baseline first, then the narrow (2/3) and wide (3/2) refinements.
+Require(BeamWidthPortfolio.ProductionWidths(24, null).SequenceEqual([24, 16, 36]),
     "Production default membership changed.");
-Require(BeamWidthPortfolio.ProductionWidths(96, null).SequenceEqual([96, 95, 97]),
-    "Production membership repeated the baseline width.");
-Require(BeamWidthPortfolio.ProductionWidths(1, null).SequenceEqual([1, 2, 96]),
-    "Production membership admitted a non-positive width.");
+Require(BeamWidthPortfolio.ProductionWidths(45, null).SequenceEqual([45, 30, 68]),
+    "Act-ending boss baseline membership changed.");
+Require(BeamWidthPortfolio.ProductionWidths(135, null).SequenceEqual([135, 90, 203]),
+    "VeryHigh baseline membership changed.");
+Require(BeamWidthPortfolio.ProductionWidths(1, null).SequenceEqual([1, 2]),
+    "Production membership repeated the baseline width or admitted a non-positive width.");
 Require(BeamWidthPortfolio.ProductionWidths(24, [24, 23, 25, 96]).SequenceEqual([24, 23, 25, 96]),
     "A configured membership was rewritten.");
 Require(BeamWidthPortfolio.ProductionWidths(24, [96, 0, -3, 96, 23]).SequenceEqual([24, 96, 23]),

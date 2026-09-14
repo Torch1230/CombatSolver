@@ -82,13 +82,14 @@ internal static class BeamWidthPortfolio
     internal const string SelectionBest = "Best";
     internal const string SelectionStopped = "StopPortfolio";
 
-    /// <summary>生产默认里那个明显更宽的成员。</summary>
-    internal const int WideRefinementBeamWidth = 96;
+    /// <summary>默认成员相对基线宽度的比例：先窄后宽。</summary>
+    internal const double NarrowRefinementRatio = 2d / 3d;
+    internal const double WideRefinementRatio = 3d / 2d;
 
     /// <summary>
     /// 生产成员列表。首项强制是基线宽度（基线成员必须逐位等于今天的单次搜索），其后按给定顺序
     /// 去重追加，丢掉小于 1 的值。<paramref name="configuredWidths" /> 为空时用默认的
-    /// [基线, 基线−1, 基线+1, 96]。
+    /// [基线, 基线×2/3, 基线×3/2]（四舍五入，例如基线 24 是 [24, 16, 36]，基线 135 是 [135, 90, 203]）。
     /// </summary>
     internal static IReadOnlyList<int> ProductionWidths(
         int baselineBeamWidth,
@@ -97,7 +98,7 @@ internal static class BeamWidthPortfolio
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(baselineBeamWidth);
         IReadOnlyList<int> requested = configuredWidths is { Count: > 0 }
             ? configuredWidths
-            : [baselineBeamWidth - 1, baselineBeamWidth + 1, WideRefinementBeamWidth];
+            : [ScaledWidth(baselineBeamWidth, NarrowRefinementRatio), ScaledWidth(baselineBeamWidth, WideRefinementRatio)];
         List<int> widths = [baselineBeamWidth];
         foreach (int width in requested)
         {
@@ -106,6 +107,9 @@ internal static class BeamWidthPortfolio
         }
         return widths;
     }
+
+    internal static int ScaledWidth(int baselineBeamWidth, double ratio)
+        => Math.Max(1, (int)Math.Round(baselineBeamWidth * ratio, MidpointRounding.AwayFromZero));
 
     /// <param name="memberBeamWidths">成员宽度，首项为基线宽度。</param>
     /// <param name="sharedMaxExpandedNodes">全部成员共用的节点上限。</param>
