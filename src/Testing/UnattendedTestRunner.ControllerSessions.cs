@@ -14,6 +14,7 @@ internal sealed partial class UnattendedTestRunner
     private async Task AssertControllerSessionLifecycleAsync(CombatState combat)
     {
         CombatBeamSolver.VerifyCycleTranspositionLeasePolicyForTesting();
+        AssertPotionPresetPolicy();
         NGame host = NGame.Instance
             ?? throw new InvalidOperationException("控制器会话测试找不到 NGame。");
         if (SolverController.SolverDisabled)
@@ -706,6 +707,48 @@ internal sealed partial class UnattendedTestRunner
                 $"scheduled={deploymentLifecycle.ReleasesScheduled} " +
                 $"completed={deploymentLifecycle.ReleasesCompleted} " +
                 $"cts_disposed={deploymentLifecycle.CancellationsDisposed}。");
+        }
+    }
+
+    private static void AssertPotionPresetPolicy()
+    {
+        PotionSlotDirective[] potions =
+        [
+            new(0, "SMART", SolverPotionDirective.Smart),
+            new(1, "FORCED", SolverPotionDirective.Force),
+            new(2, "PROTECTED", SolverPotionDirective.Disabled),
+        ];
+
+        static SolverPotionDirective Resolve(SolverSettingsData data, int slot, string id)
+        {
+            foreach (PersistedPotionDirective directive in data.PotionDirectives)
+            {
+                if (directive.Slot == slot && directive.PotionId == id)
+                    return directive.Directive;
+            }
+            return SolverPotionDirective.Smart;
+        }
+
+        SolverSettingsData allSmart = SolverSettings.ApplyPotionPreset(new SolverSettingsData(), potions,
+            PotionStrategyPreset.AllSmart);
+        SolverSettingsData allProtected = SolverSettings.ApplyPotionPreset(new SolverSettingsData(), potions,
+            PotionStrategyPreset.AllProtected);
+        SolverSettingsData allForced = SolverSettings.ApplyPotionPreset(new SolverSettingsData(), potions,
+            PotionStrategyPreset.AllForced);
+        SolverSettingsData onlyForced = SolverSettings.ApplyPotionPreset(new SolverSettingsData(), potions,
+            PotionStrategyPreset.OnlyForced);
+        SolverSettingsData roundTrippedOnlyForced = SolverSettings.RoundTripForTesting(onlyForced);
+        if (allSmart.PotionDirectives.Length != 0
+            || potions.Any(potion => Resolve(allProtected, potion.Slot, potion.PotionId) != SolverPotionDirective.Disabled)
+            || potions.Any(potion => Resolve(allForced, potion.Slot, potion.PotionId) != SolverPotionDirective.Force)
+            || Resolve(onlyForced, 0, "SMART") != SolverPotionDirective.Disabled
+            || Resolve(onlyForced, 1, "FORCED") != SolverPotionDirective.Force
+            || Resolve(onlyForced, 2, "PROTECTED") != SolverPotionDirective.Disabled
+            || Resolve(roundTrippedOnlyForced, 0, "SMART") != SolverPotionDirective.Disabled
+            || Resolve(roundTrippedOnlyForced, 1, "FORCED") != SolverPotionDirective.Force
+            || Resolve(roundTrippedOnlyForced, 2, "PROTECTED") != SolverPotionDirective.Disabled)
+        {
+            throw new InvalidOperationException("药水批量预设没有保持智能、保护、强制和仅强制语义。");
         }
     }
 

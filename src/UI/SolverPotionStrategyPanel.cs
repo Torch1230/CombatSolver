@@ -13,6 +13,7 @@ internal sealed partial class SolverPotionStrategyPanel : PanelContainer
     internal const float PreferredWidth = 360f;
     private const float CardMinimumWidth = 280f;
     private readonly GridContainer _cards;
+    private readonly Button _onlyForced;
     private string? _renderedSignature;
 
     public SolverPotionStrategyPanel()
@@ -45,6 +46,21 @@ internal sealed partial class SolverPotionStrategyPanel : PanelContainer
         heading.Name = "StrategyHeading";
         layout.AddChild(heading);
 
+        GridContainer presets = new()
+        {
+            Name = "PotionPresets",
+            Columns = 2,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        presets.AddThemeConstantOverride("h_separation", SolverUiTokens.Spacing.Sm);
+        presets.AddThemeConstantOverride("v_separation", SolverUiTokens.Spacing.Sm);
+        presets.AddChild(CreatePresetButton(SolverText.Get("全部智能"), PotionStrategyPreset.AllSmart));
+        presets.AddChild(CreatePresetButton(SolverText.Get("全部保护"), PotionStrategyPreset.AllProtected));
+        presets.AddChild(CreatePresetButton(SolverText.Get("全部强制"), PotionStrategyPreset.AllForced));
+        _onlyForced = CreatePresetButton(SolverText.Get("仅用已强制"), PotionStrategyPreset.OnlyForced);
+        presets.AddChild(_onlyForced);
+        layout.AddChild(presets);
+
         _cards = new GridContainer
         {
             Name = "PotionCards",
@@ -72,12 +88,14 @@ internal sealed partial class SolverPotionStrategyPanel : PanelContainer
     }
 
     public event Action<int, string, SolverPotionDirective>? DirectiveChanged;
+    public event Action<PotionStrategyPreset>? PresetRequested;
 
     internal int RowCountForTesting { get; private set; }
     internal bool RowsUseIconAndTextForTesting { get; private set; }
     internal bool UsesGridCardsForTesting { get; private set; }
     internal bool IsSlimForTesting
         => CustomMinimumSize.X == PreferredWidth && _cards.Columns == 1;
+    internal bool HasPresetControlsForTesting { get; private set; }
 
     public void Refresh(CombatState? state, bool controlsDisabled)
     {
@@ -105,6 +123,20 @@ internal sealed partial class SolverPotionStrategyPanel : PanelContainer
             return;
         _renderedSignature = signature;
         RebuildRows(potions, controlsDisabled);
+        _onlyForced.Disabled = controlsDisabled
+            || !potions.Any(item => item.Searchable && item.Directive == SolverPotionDirective.Force);
+        HasPresetControlsForTesting = !controlsDisabled
+            && GetNode<GridContainer>("PotionStrategyLayout/PotionPresets").GetChildCount() == 4;
+    }
+
+    private Button CreatePresetButton(string text, PotionStrategyPreset preset)
+    {
+        Button button = SolverUiTokens.CreateButton(text, SolverButtonStyle.Secondary);
+        button.Name = preset.ToString();
+        button.CustomMinimumSize = new Vector2(0, SolverUiTokens.Size.ButtonHeight);
+        button.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        button.Pressed += () => PresetRequested?.Invoke(preset);
+        return button;
     }
 
     public void Invalidate() => _renderedSignature = null;

@@ -403,6 +403,31 @@ internal static class SolverSettings
         };
     }
 
+    internal static SolverSettingsData ApplyPotionPreset(
+        SolverSettingsData data,
+        IReadOnlyList<PotionSlotDirective> potions,
+        PotionStrategyPreset preset)
+    {
+        if (!Enum.IsDefined(preset))
+            throw new ArgumentOutOfRangeException(nameof(preset));
+        SolverSettingsData updated = data;
+        foreach (PotionSlotDirective potion in potions)
+        {
+            SolverPotionDirective directive = preset switch
+            {
+                PotionStrategyPreset.AllSmart => SolverPotionDirective.Smart,
+                PotionStrategyPreset.AllProtected => SolverPotionDirective.Disabled,
+                PotionStrategyPreset.AllForced => SolverPotionDirective.Force,
+                PotionStrategyPreset.OnlyForced when potion.Directive == SolverPotionDirective.Force
+                    => SolverPotionDirective.Force,
+                PotionStrategyPreset.OnlyForced => SolverPotionDirective.Disabled,
+                _ => throw new ArgumentOutOfRangeException(nameof(preset)),
+            };
+            updated = ApplyPotionDirective(updated, potion.Slot, potion.PotionId, directive);
+        }
+        return updated;
+    }
+
     internal static void ApplyForTesting(SolverSettingsData data)
     {
         Validate(data);

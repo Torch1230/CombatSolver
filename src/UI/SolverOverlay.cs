@@ -201,6 +201,7 @@ internal static class SolverOverlay
                 RowsUseIconAndTextForTesting: true,
                 UsesGridCardsForTesting: true,
                 IsSlimForTesting: true,
+                HasPresetControlsForTesting: true,
             };
     internal static bool PerformanceHintVisibleForTesting => _performanceHintButton?.Visible == true;
     internal static bool SearchLimitHintVisibleForTesting => _searchLimitHint?.Visible == true;
@@ -1390,6 +1391,7 @@ internal static class SolverOverlay
         _growthStrategyPanel.BrightestFlameLimitChanged += OnBrightestFlameLimitChanged;
         _growthStrategyPanel.IgnoreLongTermRewardsChanged += OnIgnoreLongTermRewardsChanged;
         _potionStrategyPanel.DirectiveChanged += OnPotionDirectiveChanged;
+        _potionStrategyPanel.PresetRequested += OnPotionPresetRequested;
 
         _body = new VBoxContainer
         {
@@ -3057,6 +3059,17 @@ internal static class SolverOverlay
         if (host == null || state == null || !CombatManager.Instance.IsInProgress)
             return;
         SolverController.SetPotionDirective(host, state, slot, potionId, directive);
+        _potionStrategyPanel?.Invalidate();
+        RefreshControls();
+    }
+
+    private static void OnPotionPresetRequested(PotionStrategyPreset preset)
+    {
+        NGame? host = NGame.Instance;
+        CombatState? state = CombatManager.Instance.DebugOnlyGetState();
+        if (host == null || state == null || !CombatManager.Instance.IsInProgress)
+            return;
+        SolverController.SetPotionPreset(host, state, preset);
         _potionStrategyPanel?.Invalidate();
         RefreshControls();
     }

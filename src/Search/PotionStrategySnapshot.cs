@@ -7,6 +7,14 @@ internal enum SolverPotionDirective
     Disabled,
 }
 
+internal enum PotionStrategyPreset
+{
+    AllSmart,
+    AllProtected,
+    AllForced,
+    OnlyForced,
+}
+
 internal readonly record struct PotionSlotDirective(
     int Slot,
     string PotionId,

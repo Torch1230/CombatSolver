@@ -1809,6 +1809,52 @@ internal static class SolverController
         RequestSearch(host, state, SearchReason.Manual);
     }
 
+    internal static void SetPotionPreset(
+        NGame host,
+        CombatState state,
+        PotionStrategyPreset preset)
+    {
+        AssertMainThread();
+        if (!Enum.IsDefined(preset))
+            throw new ArgumentOutOfRangeException(nameof(preset));
+        if (_deployment != null)
+        {
+            Entry.Logger.Info("[CombatSolver/Test] POTION_PRESET_REJECT reason=deploying");
+            return;
+        }
+
+        Player player = LocalContext.GetMe(state)
+            ?? throw new InvalidOperationException("当前战斗找不到本地玩家。");
+        SolverSettingsData current = SolverSettings.Current;
+        PotionStrategySnapshot currentStrategy = CapturePotionStrategy(state, current.PotionPolicy);
+        List<PotionSlotDirective> searchable = [];
+        for (int slot = 0; slot < player.PotionSlots.Count; slot++)
+        {
+            PotionModel? potion = player.GetPotionAtSlotIndex(slot);
+            if (potion == null || !PotionOnUseSupport.CanSearch(potion))
+                continue;
+            searchable.Add(new PotionSlotDirective(
+                slot,
+                potion.Id.Entry,
+                currentStrategy.Resolve(slot, potion.Id.Entry)));
+        }
+        SolverSettingsData updated = SolverSettings.ApplyPotionPreset(current, searchable, preset);
+        if (updated == current)
+            return;
+
+        SolverSettings.Update(updated);
+        _combat.ContinuationSource = null;
+        _combat.PendingCompleteProjectionBaseline = null;
+        Entry.Logger.Info($"[CombatSolver/Test] POTION_PRESET_CHANGED preset={preset} potions={searchable.Count}");
+        SolverOverlay.RefreshControls();
+        if (_combat.AutomaticSearchPaused || !AutomaticCalculationEnabled)
+        {
+            Entry.Logger.Info("[CombatSolver/Test] POTION_PRESET_RECALCULATION_SKIPPED reason=automatic_calculation_inactive");
+            return;
+        }
+        RequestSearch(host, state, SearchReason.Manual);
+    }
+
     internal static void SetPotionDirectiveForTesting(
         CombatState state,
         int slot,
