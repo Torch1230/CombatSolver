@@ -8,6 +8,7 @@ internal sealed partial class BugReportUploadDialog : CanvasLayer
 {
     private const float ViewportMargin = 16f;
     private const float PreferredWidth = 420f;
+    private const float PreferredHeight = 320f;
     private static int _openCount;
     private readonly PanelContainer _dialogPanel;
     private readonly TextEdit _description;
@@ -174,7 +175,7 @@ internal sealed partial class BugReportUploadDialog : CanvasLayer
         float maximumHeight = Math.Max(0f, viewportSize.Y - ViewportMargin * 2f);
         return new Vector2(
             Math.Min(PreferredWidth, maximumWidth),
-            Math.Min(naturalSize.Y, maximumHeight));
+            Math.Min(Math.Max(PreferredHeight, naturalSize.Y), maximumHeight));
     }
 
     private static Vector2 ClampPosition(Vector2 position, Vector2 viewportSize, Vector2 panelSize)
@@ -268,9 +269,11 @@ internal sealed partial class BugReportUploadDialog : CanvasLayer
                  })
         {
             Vector2 size = ResolveDialogSize(viewport, new Vector2(PreferredWidth, 900));
+            Vector2 compactSize = ResolveDialogSize(viewport, new Vector2(PreferredWidth, 120));
             Vector2 position = ClampPosition(new Vector2(9999, 9999), viewport, size);
             if (size.X > viewport.X - ViewportMargin * 2f
                 || size.Y > viewport.Y - ViewportMargin * 2f
+                || compactSize.Y != Math.Min(PreferredHeight, viewport.Y - ViewportMargin * 2f)
                 || position.X + size.X > viewport.X
                 || position.Y + size.Y > viewport.Y)
             {

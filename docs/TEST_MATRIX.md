@@ -2,6 +2,7 @@
 
 ## 下一版本（开发中）
 
+- 问题包弹窗正文回归：`UI-LOCALIZATION` / `dc7da1036cb0461698c9b75f073ffbd0` Passed；尺寸合同增加“滚动容器不参与自然高度时仍取得 320 px 默认高度”的断言，继续覆盖三种视口的总尺寸、拖动边界及 eng/zhs/zht 控件。Release 构建 0 警告、0 错误；未启动可见 Steam 做人工排版验收。
 - 夸克打包版：直接调用统一发布脚本中的 `New-QuarkReleaseBundle`，以 `CombatSolver-0.38.2.zip` 为基础加入未解压的 `STS2 RitsuLib 0.5.20.zip`。临时外层包为 22,036,563 字节，严格超过 10 MiB；嵌套条目恰好一项，名称保持不变，条目原始长度 20,161,342 字节与前置文件一致。未执行上传、移动或发布。
 - 失败窄搜移除：主搜索和 Smart 精确药水层直接使用原 profile，源码中不再存在 `NARROW_BEAM_RECOVERY`、`RecoverDeferredTurnFrontier` 或同回合落选前沿 fixture；请求级无胜利扩大搜索合同保留。Release 构建 0 警告、0 错误，PowerShell 结构门禁通过（`search_files=90`）；`NoVictoryRecoveryChecks` 最终通过 8 项请求合同及原策略断言，首次运行因检查工具仍引用已删除的旧 `Deep` profile 而未编译，改用当前 `Default` 后通过。按用户要求不执行 Bash 门禁。
 - 药水批量预设：四种纯策略转换及设置序列化断言已进入控制器生命周期测试；Release 构建 0 警告、0 错误。完整控制器场景继续到既有 Smart 药水补查断言后失败，该失败不在本项批量预设路径，未记整场通过。
