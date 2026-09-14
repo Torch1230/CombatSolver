@@ -91,8 +91,8 @@
           </div>
           <p class="subtle" id="dau-status">正在读取日活统计…</p>
           <p id="dau-error" class="error" role="alert" hidden></p>
-          <svg id="dau-chart" viewBox="0 0 1000 220" role="img" aria-label="最近每日活跃玩家数量曲线"></svg>
-          <p class="subtle">蓝点：完整采集；黄点：采集不完整。未采集日期留空，不补零。悬停查看数值。</p>
+          <div class="chart"><canvas id="dau-chart" role="img" aria-label="最近每日活跃玩家数量曲线"></canvas></div>
+          <p class="subtle">悬停查看日活人数和采集状态；未采集日期留空，不补零。</p>
           <details><summary>每日明细</summary><div class="dau-table-scroll"><table><thead><tr><th>日期</th><th>日活人数</th><th>采集状态</th></tr></thead><tbody id="dau-table"></tbody></table></div></details>
         </details>
         <nav class="tabs" role="tablist" aria-label="工作台">

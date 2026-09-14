@@ -2,7 +2,7 @@
   const panel=document.getElementById('dau-panel');
   if(!panel)return;
   const el=id=>document.getElementById(id);
-  let data=null;
+  let data=null,chart;
   const number=value=>value===null?'—':value.toLocaleString('zh-CN');
   function comparison(value) {
     if(!value.ready)return '数据不足（缺少完整同期采集）';
@@ -16,20 +16,29 @@
     el('dau-week').textContent=comparison(data.comparisons.previousWeek);
     el('dau-status').textContent=(data.stale?'采集更新已延迟。':'')+'北京时间每日去重安装数；仅统计开启在线统计的玩家。今天为截至当前累计值，比较截至 '+new Date(data.comparisonThrough).toLocaleTimeString('zh-CN',{timeZone:'Asia/Shanghai',hour12:false})+'，与昨天 / 上周同一时刻对齐。';
     const rows=data.series.slice(-Number(el('dau-range').value));
-    const svg=el('dau-chart');svg.replaceChildren();
-    const ns='http://www.w3.org/2000/svg';
-    function add(tag,attrs,text) {const node=document.createElementNS(ns,tag);for(const [k,v] of Object.entries(attrs))node.setAttribute(k,v);if(text!==undefined)node.textContent=text;svg.append(node);return node;}
-    const max=Math.max(1,...rows.map(r=>r.count||0)),x=i=>50+i*900/(rows.length-1),y=n=>180-n/max*150;
-    for(let i=0;i<=3;i++){const v=Math.round(max*i/3),py=y(v);add('line',{x1:50,x2:950,y1:py,y2:py,stroke:'#303946'});add('text',{x:42,y:py+4,fill:'#8b949e','text-anchor':'end','font-size':12},number(v));}
-    let previous=null;
-    rows.forEach((r,i)=>{
-      if(r.count===null){previous=null;return;}
-      const p={x:x(i),y:y(r.count)};
-      if(previous){const mid=(p.x+previous.x)/2;add('path',{d:`M ${previous.x} ${previous.y} C ${mid} ${previous.y}, ${mid} ${p.y}, ${p.x} ${p.y}`,fill:'none',stroke:'#58a6ff','stroke-width':2});}
-      const dot=add('circle',{cx:p.x,cy:p.y,r:3.5,fill:r.complete?'#58a6ff':'#e3b341'});
-      const title=document.createElementNS(ns,'title');title.textContent=`${r.date}：${number(r.count)} 人${r.ongoing?'（今日累计）':''}${r.complete?'':'（采集不完整）'}`;dot.append(title);previous=p;
-    });
-    [0,Math.floor(rows.length/2),rows.length-1].forEach(i=>add('text',{x:x(i),y:208,fill:'#8b949e','text-anchor':'middle','font-size':12},rows[i].date));
+    if(panel.open) {
+      const points=rows.map(r=>({...r,x:Date.parse(r.date+'T00:00:00+08:00'),y:r.count}));
+      const radius=points.filter(p=>p.y!==null).length===1?3:0;
+      if(!chart)chart=new Chart(el('dau-chart'),{
+        type:'line',
+        data:{datasets:[{label:'日活人数',data:points,borderColor:'#237c62',backgroundColor:'#237c6210',fill:true,borderWidth:2,pointRadius:radius,spanGaps:false,cubicInterpolationMode:'monotone'}]},
+        options:{animation:false,maintainAspectRatio:false,parsing:false,
+          interaction:{mode:'nearest',axis:'x',intersect:false},
+          plugins:{legend:{display:false},tooltip:{callbacks:{
+            title:items=>items[0].raw.date,
+            label:item=>`日活：${number(item.parsed.y)} 人${item.raw.ongoing?'（今日累计）':''}`,
+            afterLabel:item=>item.raw.complete?'完整采集':'采集不完整',
+          }}},
+          scales:{x:{type:'linear',grid:{display:false},ticks:{maxTicksLimit:6,callback:value=>new Date(value).toLocaleDateString('zh-CN',{timeZone:'Asia/Shanghai',month:'numeric',day:'numeric'})}},
+            y:{beginAtZero:true,suggestedMax:5,ticks:{precision:0},grid:{color:'#edf1ee'}}},
+        },
+      });
+      chart.data.datasets[0].data=points;
+      chart.data.datasets[0].pointRadius=radius;
+      chart.options.scales.x.min=points[0].x;
+      chart.options.scales.x.max=points.at(-1).x;
+      chart.update();
+    }
     el('dau-table').replaceChildren();
     for(const r of [...rows].reverse()) {
       const tr=document.createElement('tr');
@@ -39,4 +48,5 @@
   }
   window.renderDailyActive = snapshot => {data=snapshot;render();};
   el('dau-range').addEventListener('change',render);
+  panel.addEventListener('toggle',()=>{if(panel.open)render();});
 })();
