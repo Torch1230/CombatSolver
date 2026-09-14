@@ -1,0 +1,225 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-14",
+  "baselineCommit": "7dd46d7",
+  "goal": "Complete the card, manual potion, and turn/nested continuation expansion plan.",
+  "goalStatus": "in_progress",
+  "stages": {
+    "ownCards": {
+      "status": "implemented_and_semantically_verified",
+      "nativeCardCount": 41,
+      "upgradeVariants": 82,
+      "choiceVariants": 80,
+      "choiceBranches": 380,
+      "noChoiceVariants": 2,
+      "nativeRepresentatives": 10,
+      "remaining": "Final combined performance measurement after all phases."
+    },
+    "manualPotions": {
+      "status": "pending",
+      "nativePotionCount": 9,
+      "priorityGenerationPotions": 4
+    },
+    "turnAndNested": {
+      "status": "pending",
+      "combatRelics": 5,
+      "fixedPolicyRelics": 1,
+      "powers": 5,
+      "requirements": [
+        "save turn stage and source loop progress",
+        "save draw/shuffle progress",
+        "save child card execution and enclosing sequence progress"
+      ]
+    },
+    "finalValidation": {
+      "status": "pending",
+      "requirements": [
+        "full selected searches with unchanged budgets and complete route equality",
+        "native complete deployment",
+        "final documentation, portable gates and commit"
+      ]
+    }
+  },
+  "exclusions": [
+    "24 explicit outside-combat relic selections",
+    "multiplayer Tutor",
+    "third-party opaque continuation state without a copy contract"
+  ],
+  "tests": [
+    {
+      "evidence": ".local/choice-expansion-20260914/cards-v4-card-continuation-expanded/result.json",
+      "runId": "15ed72aac4504a0f8c56133251fe1c2c",
+      "scenarioId": "CARD-CONTINUATION-EXPANDED",
+      "status": "Passed",
+      "elapsedMilliseconds": 66483.203,
+      "completedChecks": [
+        "ExpandedCardContinuation:ABUNDANCE+0:choices=3:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:ABUNDANCE+0:native-full-continuation",
+        "ExpandedCardContinuation:ABUNDANCE+1:choices=3:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:ACROBATICS+0:choices=7:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:ACROBATICS+1:choices=8:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:ARMAMENTS+0:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:ARMAMENTS+0:native-full-continuation",
+        "ExpandedCardContinuation:ARMAMENTS+1:no-selection:no-checkpoint",
+        "ExpandedCardContinuation:BEGONE+0:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:BEGONE+1:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:BRAND+0:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:BRAND+1:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:BURNING_PACT+0:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:BURNING_PACT+1:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:CHARGE+0:choices=6:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:CHARGE+1:choices=6:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:CLEANSE+0:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:CLEANSE+0:native-full-continuation",
+        "ExpandedCardContinuation:CLEANSE+1:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:COSMIC_INDIFFERENCE+0:choices=3:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:COSMIC_INDIFFERENCE+1:choices=3:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:DAGGER_THROW+0:choices=5:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:DAGGER_THROW+1:choices=5:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:DECISIONS_DECISIONS+0:choices=5:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:DECISIONS_DECISIONS+1:choices=6:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:DISCOVERY+0:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:DISCOVERY+1:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:DREDGE+0:choices=1:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:DREDGE+1:choices=1:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:DUAL_WIELD+0:choices=1:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:DUAL_WIELD+1:choices=1:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:GLIMMER+0:choices=7:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:GLIMMER+0:native-full-continuation",
+        "ExpandedCardContinuation:GLIMMER+1:choices=8:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:GRAVEBLAST+0:choices=3:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:GRAVEBLAST+1:choices=3:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:GUARDS+0:choices=16:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:GUARDS+1:choices=16:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:HAND_TRICK+0:choices=3:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:HAND_TRICK+1:choices=3:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:HEADBUTT+0:choices=3:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:HEADBUTT+1:choices=3:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:HEIRLOOM_HAMMER+0:choices=1:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:HEIRLOOM_HAMMER+1:choices=1:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:HIDDEN_DAGGERS+0:choices=6:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:HIDDEN_DAGGERS+1:choices=6:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:HOLOGRAM+0:choices=3:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:HOLOGRAM+0:native-full-continuation",
+        "ExpandedCardContinuation:HOLOGRAM+1:choices=3:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:NEOWS_FURY+0:choices=7:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:NEOWS_FURY+1:choices=8:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:NIGHTMARE+0:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:NIGHTMARE+1:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:PHOTON_CUT+0:choices=5:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:PHOTON_CUT+0:native-full-continuation",
+        "ExpandedCardContinuation:PHOTON_CUT+1:choices=6:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:PREPARED+0:choices=5:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:PREPARED+1:choices=15:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:PURITY+0:choices=15:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:PURITY+1:choices=16:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:QUASAR+0:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:QUASAR+1:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:SCAVENGE+0:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:SCAVENGE+1:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:SCULPTING_STRIKE+0:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:SCULPTING_STRIKE+1:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:SEANCE+0:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:SEANCE+1:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:SECRET_TECHNIQUE+0:choices=2:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:SECRET_TECHNIQUE+1:choices=2:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:SECRET_WEAPON+0:choices=2:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:SECRET_WEAPON+1:choices=2:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:SEEKER_STRIKE+0:choices=3:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:SEEKER_STRIKE+0:native-full-continuation",
+        "ExpandedCardContinuation:SEEKER_STRIKE+1:choices=3:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:SNAP+0:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:SNAP+0:native-full-continuation",
+        "ExpandedCardContinuation:SNAP+1:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:SPLASH+0:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:SPLASH+1:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:SURVIVOR+0:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:SURVIVOR+0:native-full-continuation",
+        "ExpandedCardContinuation:SURVIVOR+1:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:THINKING_AHEAD+0:choices=6:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:THINKING_AHEAD+0:native-full-continuation",
+        "ExpandedCardContinuation:THINKING_AHEAD+1:choices=6:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:TRANSFIGURE+0:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:TRANSFIGURE+1:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:TRUE_GRIT+0:no-selection:no-checkpoint",
+        "ExpandedCardContinuation:TRUE_GRIT+1:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:WISH+0:choices=4:state:history:RNG:identity:siblings:DOP2",
+        "ExpandedCardContinuation:WISH+1:choices=4:state:history:RNG:identity:siblings:DOP2"
+      ]
+    },
+    {
+      "evidence": ".local/choice-expansion-20260914/cards-v5-card-continuation-contract/result.json",
+      "runId": "18085ba4d6b044b58a0aef69bb4605b9",
+      "scenarioId": "CARD-CONTINUATION-CONTRACT",
+      "status": "Passed",
+      "elapsedMilliseconds": 29528.4667,
+      "completedChecks": [
+        "CardContinuationContract:AllOptions:FullStateRngHistory:Identity:SiblingMutation:Revisit:DOP2:Cancel:InvalidChoice",
+        "CardContinuationContract:PriorHistory:Shuffle:Upgrade:FallbackReplayAttachmentPairSly:OwnedDamage",
+        "CardContinuationContract:NativeDaggerThrow:FullContinuation",
+        "CardContinuationContract:ACROBATICS+0:all=9:draw=3:discard=1:full-state-history-rng:shuffle:DOP2:nested-fallback",
+        "CardContinuationContract:ACROBATICS+0:杂技:native-full-continuation",
+        "CardContinuationContract:ACROBATICS+1:all=10:draw=4:discard=1:full-state-history-rng:shuffle:DOP2:nested-fallback",
+        "CardContinuationContract:ACROBATICS+1:杂技+:native-full-continuation",
+        "CardContinuationContract:PREPARED+0:all=8:draw=1:discard=1:full-state-history-rng:shuffle:DOP2:nested-fallback",
+        "CardContinuationContract:PREPARED+0:早有准备:native-full-continuation",
+        "CardContinuationContract:PREPARED+1:all=36:draw=2:discard=2:full-state-history-rng:shuffle:DOP2:nested-fallback",
+        "CardContinuationContract:PREPARED+1:早有准备+:native-full-continuation"
+      ]
+    },
+    {
+      "evidence": ".local/choice-expansion-20260914/cards-v5-card-continuation-expanded-search/result.json",
+      "runId": "5e70bf69886741e6abdc0dd97bfce87c",
+      "scenarioId": "CARD-CONTINUATION-EXPANDED-SEARCH",
+      "status": "Passed",
+      "elapsedMilliseconds": 4584.1756,
+      "completedChecks": []
+    },
+    {
+      "evidence": ".local/choice-expansion-20260914/cards-v5-card-continuation-expanded-incremental/result.json",
+      "runId": "151a8484b2094687a8e28780453c855b",
+      "scenarioId": "CARD-CONTINUATION-EXPANDED-INCREMENTAL",
+      "status": "Passed",
+      "elapsedMilliseconds": 4248.3852,
+      "completedChecks": []
+    }
+  ],
+  "failedFixtureRequests": [
+    {
+      "evidence": ".local/choice-expansion-20260914/cards-v2-card-continuation-expanded/result.json",
+      "runId": "74ce6813a28b405a8be8269000907830",
+      "status": "Failed",
+      "error": "System.InvalidOperationException: 找不到卡牌 GOOD_INSTINCTS。\n   at CombatSolver.UnattendedTestRunner.ResolveUnique[TModel](IEnumerable`1 candidates, String input, String kind)\n   at CombatSolver.UnattendedTestRunner.InjectCardAsync(CombatState combatState, Player player, UnattendedCardInjection injection, Boolean restoreSnapshot)\n   at CombatSolver.UnattendedTestRunner.RunExpandedCardContinuationContractAsync(CombatState live, Player player)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()",
+      "scope": "Fixture card id rejected before continuation execution; corrected using current native model catalog. Not a passing test."
+    },
+    {
+      "evidence": ".local/choice-expansion-20260914/cards-v3-card-continuation-expanded/result.json",
+      "runId": "e5208b7573a943b888f239f4918d48bd",
+      "status": "Failed",
+      "error": "System.InvalidOperationException: 找不到卡牌 CLEAVE。\n   at CombatSolver.UnattendedTestRunner.ResolveUnique[TModel](IEnumerable`1 candidates, String input, String kind)\n   at CombatSolver.UnattendedTestRunner.InjectCardAsync(CombatState combatState, Player player, UnattendedCardInjection injection, Boolean restoreSnapshot)\n   at CombatSolver.UnattendedTestRunner.RunExpandedCardContinuationContractAsync(CombatState live, Player player)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()",
+      "scope": "Fixture card id rejected before continuation execution; corrected using current native model catalog. Not a passing test."
+    }
+  ],
+  "builds": [
+    {
+      "name": "cards-v4",
+      "status": "Passed",
+      "seconds": 10.97,
+      "warnings": 0,
+      "errors": 0,
+      "usedFor": "all 41 card contracts"
+    },
+    {
+      "name": "cards-v5",
+      "status": "Passed",
+      "seconds": 10.86,
+      "warnings": 0,
+      "errors": 0,
+      "usedFor": "original and expanded production search contracts; engine unchanged from v4"
+    }
+  ],
+  "structureGates": {
+    "bash": "Passed; search_files=92",
+    "powershell": "Passed; search_files=92"
+  }
+}

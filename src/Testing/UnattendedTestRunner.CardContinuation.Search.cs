@@ -7,14 +7,20 @@ namespace CombatSolver;
 internal sealed partial class UnattendedTestRunner
 {
     private static async Task AssertCardChoiceSearchAsync(MegaCrit.Sts2.Core.Combat.CombatState combat,
-        MegaCrit.Sts2.Core.Entities.Players.Player player, bool strictOnly = false)
+        MegaCrit.Sts2.Core.Entities.Players.Player player, bool strictOnly = false, bool expanded = false)
     {
         foreach (var relic in player.Relics.ToArray()) await MegaCrit.Sts2.Core.Commands.RelicCmd.Remove(relic);
         await ClearPlayerPilesAsync(player);
-        foreach (string id in new[] { "PREPARED", "ACROBATICS", "DAGGER_THROW", "SURVIVOR", "DEFEND_SILENT" })
+        string[] hand = expanded
+            ? ["PREPARED", "THINKING_AHEAD", "GLIMMER", "PHOTON_CUT", "SURVIVOR", "HOLOGRAM", "SEEKER_STRIKE", "ABUNDANCE"]
+            : ["PREPARED", "ACROBATICS", "DAGGER_THROW", "SURVIVOR", "DEFEND_SILENT"];
+        foreach (string id in hand)
             await InjectCardAsync(combat, player, new UnattendedCardInjection { CardId = id, Pile = "Hand" });
         foreach (string id in new[] { "STRIKE_SILENT", "WOUND", "BACKFLIP", "DEADLY_POISON" })
             await InjectCardAsync(combat, player, new UnattendedCardInjection { CardId = id, Pile = "Draw" });
+        if (expanded)
+            foreach (string id in new[] { "DEFEND_SILENT", "STRIKE_IRONCLAD", "DEFEND_IRONCLAD" })
+                await InjectCardAsync(combat, player, new UnattendedCardInjection { CardId = id, Pile = "Discard" });
         SetEnergy(player, 3);
         string liveBefore = ContinuationStamp.CaptureLive(combat).StateText;
         SearchPolicySnapshot capturedPolicy = SolverController.CaptureSearchPolicy(

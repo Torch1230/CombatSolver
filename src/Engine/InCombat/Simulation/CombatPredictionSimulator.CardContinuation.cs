@@ -10,7 +10,8 @@ namespace CombatSolver.Engine.InCombat.Simulation;
 // Root model references are stable identities; branch-mutable play/card/history is remapped.
 internal sealed record ManualCardChoiceFrame(PredictedCard Card, Creature? Target, CardPlay Play,
     CardLocation Result, int OwnerBlockBefore, PredictionTraceFrame Trace, int HistoryStart,
-    int ShuffleEventsBefore);
+    int ShuffleEventsBefore, ICombatPredictionCapturedCardChoice Choice,
+    (decimal Amount, int PoweredEvents)? Block);
 
 internal sealed partial class CombatPredictionSimulator
 {
@@ -21,8 +22,23 @@ internal sealed partial class CombatPredictionSimulator
     private int _manualChoiceShuffleEvents;
 
     internal static bool SupportsManualCardChoiceContinuation(CardModel card)
-        => card is DaggerThrow or Acrobatics or Prepared
+        => card.GetType().Assembly == typeof(DaggerThrow).Assembly
+            && SupportsManualCardChoiceContinuation(card.Id.Entry)
             && card.Enchantment is null && card.Affliction is null;
+
+    internal static bool SupportsManualCardChoiceContinuation(string cardId)
+        => cardId is
+            "ABUNDANCE" or "ACROBATICS" or "ARMAMENTS" or "BEGONE"
+            or "BRAND" or "BURNING_PACT" or "CHARGE" or "CLEANSE"
+            or "COSMIC_INDIFFERENCE" or "DAGGER_THROW" or "DECISIONS_DECISIONS" or "DISCOVERY"
+            or "DREDGE" or "DUAL_WIELD" or "GLIMMER" or "GRAVEBLAST"
+            or "GUARDS" or "HAND_TRICK" or "HEADBUTT" or "HEIRLOOM_HAMMER"
+            or "HIDDEN_DAGGERS" or "HOLOGRAM" or "NEOWS_FURY" or "NIGHTMARE"
+            or "PHOTON_CUT" or "PREPARED" or "PURITY" or "QUASAR"
+            or "SCAVENGE" or "SCULPTING_STRIKE" or "SEANCE" or "SECRET_TECHNIQUE"
+            or "SECRET_WEAPON" or "SEEKER_STRIKE" or "SNAP" or "SPLASH"
+            or "SURVIVOR" or "THINKING_AHEAD" or "TRANSFIGURE" or "TRUE_GRIT"
+            or "WISH";
 
     private void GuardOrdinaryCardContinuationFork()
     {
@@ -65,12 +81,14 @@ internal sealed partial class CombatPredictionSimulator
             || play.IsAutoPlay || play.PlayCount != 1 || play.PlayIndex != 0
             || CurrentFrame is not { Parent: null } trace
             || _damageSource != null || _activeDrawDepth != 0 || ActionRelicTriggers != null
-            || _blockGainedByCardPlay.Count != 0 || !StateStore.SupportsManualCardChoiceContinuation
-            || State.CombatState is not ICombatPredictionCardContinuationState { CanCaptureManualCardChoice: true }
+            || _blockGainedByCardPlay.Count > (_blockGainedByCardPlay.ContainsKey(play) ? 1 : 0)
+            || !StateStore.SupportsManualCardChoiceContinuation
+            || State.CombatState is not ICombatPredictionCardContinuationState { CanCaptureManualCardChoice: true } choices
             || !History.SupportsManualCardChoice(_manualChoiceHistoryStart, trace, play))
             return false;
         _capturedManualCardChoice = new(card, target, play, result, ownerBlockBefore,
-            trace, _manualChoiceHistoryStart, _manualChoiceShuffleEvents);
+            trace, _manualChoiceHistoryStart, _manualChoiceShuffleEvents, choices.CaptureManualCardChoice(),
+            _blockGainedByCardPlay.TryGetValue(play, out var block) ? block : null);
         return true;
     }
 
@@ -98,18 +116,20 @@ internal sealed partial class CombatPredictionSimulator
         PredictionTraceFrame action = new() { Source = source.Trace.Source,
             Invocation = source.Trace.Invocation, Parent = null };
         context.Register(source.Trace, action);
-        frame = source with { Card = card, Play = play, Trace = action };
         PredictionStateStore store = StateStore.Fork(context);
         CombatPredictionHistory history = History.ForkManualCardChoice(trace, context, source.HistoryStart);
-        return new CombatPredictionSimulator(trace, state, Rng.Fork(), store, history,
+        frame = source with { Card = card, Play = play, Trace = action, Choice = source.Choice.Fork(context) };
+        var child = new CombatPredictionSimulator(trace, state, Rng.Fork(), store, history,
             IsInProgress, IsAboutToLose, TerminalStamp, ShuffleEventCount, null);
+        if (frame.Block is { } block) child._blockGainedByCardPlay.Add(play, block);
+        return child;
     }
 
     internal bool ResumeManualCardChoice(ManualCardChoiceFrame frame)
     {
         using (_trace.ResumeManualCardChoice(frame.Trace))
         {
-            if (!((ICombatPredictionManualCardChoiceSink)State.CombatState).ResolveManualCardChoice(this, frame.Card))
+            if (!frame.Choice.Resolve(this, frame.Card))
                 return false;
             if (CompleteManualCardPlayTail(frame.Card, frame.Target, frame.Play, frame.OwnerBlockBefore))
                 CompleteManualCardResultTail(frame.Card, frame.Play.Player, frame.Result);

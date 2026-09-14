@@ -11,6 +11,7 @@
 |---|---|
 | 自身弃牌续执行正式接入、搜索等价与整场对照 | [正式续执行与整搜](performance/choice-continuation-search-20260914.md) |
 | 卡牌、药水、遗物与Power选牌续执行的批量扩展可行性 | [选牌续执行扩展研究](performance/choice-continuation-expansion-20260914.md) |
+| 选牌续执行三阶段实施进度与验证 | [选牌续执行批量实施](performance/choice-continuation-expansion-implementation-20260914.md) |
 | 投掷匕首、杂技、早有准备的暂停恢复窄原型与修正后对照 | [选牌暂停与恢复原型](performance/choice-continuation-prototype-20260914.md) |
 | 蟹战后续延迟、抽牌洗牌前缀、生成池与全部反例 | [蟹战后续优化](performance/crab-latency-20260914.md) |
 | 极高慢/高内存场景的通用优化、完整对照与高成本TODO | [通用分配与重复工作](performance/general-allocation-20260914.md) |

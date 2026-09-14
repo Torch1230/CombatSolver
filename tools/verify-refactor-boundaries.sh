@@ -1067,7 +1067,7 @@ require_fixed "$repository_root/src/Runtime/BaseLibCloneConcurrencyPatch.cs" 'Ba
 require_fixed "$repository_root/src/Engine/Common/PredictionUtils.cs" 'NativeModelCloneConcurrency.CanCloneIndependently(source)' 'missing audited prediction clone boundary'
 forbid_fixed "$repository_root/src/Engine/Common/NativeModelCloneConcurrency.cs" 'CombatSolver.Search' 'clone eligibility depends on search policy:'
 
-# A suspended own-discard frame belongs to its continuation; ordinary Fork remains strict.
+# A suspended own-choice frame belongs to its continuation; ordinary Fork remains strict.
 while IFS=$'\t' read -r relative_path text; do
     require_fixed "$repository_root/$relative_path" "$text" 'missing card continuation ownership boundary'
 done <<'EOF'
@@ -1075,6 +1075,11 @@ src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs	GuardOrdinaryCardCon
 src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs	context.Register(source.Play, play);
 src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs	StateStore.SupportsManualCardChoiceContinuation
 src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs	DetachPendingManualCardChoice();
+src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs	source.Choice.Fork(context)
+src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs	frame.Choice.Resolve(this, frame.Card)
+src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs	child._blockGainedByCardPlay.Add(play, block)
+src/Engine/InCombat/Simulation/CombatPredictionHistory.CardContinuation.cs	e.Options.Select(CopyOption)
+src/Search/SimulatedCombatState.CardContinuation.cs	Options = spec.Options.Select(context.RequireRemap)
 src/Prediction/CardChoiceContinuation.cs	lock (_gate)
 src/Search/CombatBeamSolver.CardChoiceContinuation.cs	ReferenceEquals(_parent, candidate)
 src/Search/CombatBeamSolver.CardChoiceContinuation.cs	return Enumerate(this, checkpoint, branches);

@@ -1,8 +1,10 @@
 # CombatSolver 仓库工作指令
 
-> **当前工作重点（2026-09-14）：** `perf/general-allocation-20260914` 已快进整合上游 `b1674f8`（0.38.2），完成本批五项通用分配/重复工作优化，并追加原生生成池与抽牌洗牌前缀优化；后续完整蟹战、逐场反例及高成本待审项见 `docs/performance/crab-latency-20260914.md`，最初整批对照见 `docs/performance/general-allocation-20260914.md`。后续仍保持搜索预算、决策质量及完整动作，逐场检查耗时/峰值而非只看累计分配。历史PR #90已合入。用户随后明确授权“选牌执行的暂停与恢复做窄原型”，并优先要求杂技、早有准备；已完成这两张牌普通/升级版与投掷匕首共用的独立实验工具，见 `docs/performance/choice-continuation-prototype-20260914.md`。原型代码保留在 `tools/ChoiceContinuationPrototype/`。用户随后授权正式接入与整场收益测试，当前新增三张牌的自身弃牌续执行，完整对照见 `docs/performance/choice-continuation-search-20260914.md`，单卡原型收益不外推整搜。不重写模拟器、不大幅重构、不提升版本、不发包或上传。
+> **当前工作重点（2026-09-14）：** `perf/general-allocation-20260914` 已快进整合上游 `b1674f8`（0.38.2），完成本批五项通用分配/重复工作优化，并追加原生生成池与抽牌洗牌前缀优化；后续完整蟹战、逐场反例及高成本待审项见 `docs/performance/crab-latency-20260914.md`，最初整批对照见 `docs/performance/general-allocation-20260914.md`。后续仍保持搜索预算、决策质量及完整动作，逐场检查耗时/峰值而非只看累计分配。历史PR #90已合入。用户随后明确授权“选牌执行的暂停与恢复做窄原型”，并优先要求杂技、早有准备；已完成这两张牌普通/升级版与投掷匕首共用的独立实验工具，见 `docs/performance/choice-continuation-prototype-20260914.md`。原型代码保留在 `tools/ChoiceContinuationPrototype/`。用户随后授权正式接入与整场收益测试，首批接入三张牌的自身弃牌续执行，完整对照见 `docs/performance/choice-continuation-search-20260914.md`，单卡原型收益不外推整搜。不重写模拟器、不大幅重构、不提升版本、不发包或上传。
 
 > **当前批次验证约束：** 用户于 2026-09-12 明确停止可见测试，本批后续不启动可见 Steam 会话。性能报告限定为实际取得的无头数据，不外推 FPS、可见帧时间或可见性能收益。
+
+> **后续目标（2026-09-14）：** 用户已要求完成[批量扩展研究](docs/performance/choice-continuation-expansion-20260914.md)中的卡牌、药水及回合/嵌套三阶段。当前先将自身选牌检查点扩展到41张原版单人卡；其他阶段仍须完成和验证，不把这一步当作整个目标完成。进度与证据见 `docs/performance/choice-continuation-expansion-implementation-20260914.md`。此前不启动可见Steam、不提升版本或发包的约束继续有效。
 
 本文件约束所有在本仓库中工作的 coding agent。开始处理任务前完整阅读；子目录若有更具体的 `AGENTS.md`，其规则只补充对应目录，不能放宽这里的硬约束。
 

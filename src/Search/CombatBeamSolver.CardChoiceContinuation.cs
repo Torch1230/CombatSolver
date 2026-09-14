@@ -23,7 +23,7 @@ internal sealed partial class CombatBeamSolver
         try
         {
             foreach (PreparedCardAction prepared in PrepareCardActions(parent)
-                .Where(c => c.Action.CardId is "PREPARED" or "ACROBATICS" or "DAGGER_THROW"))
+                .Where(c => CombatPredictionSimulator.SupportsManualCardChoiceContinuation(c.Action.CardId)))
             {
                 PlanAction action = prepared.Action;
                 using CardChoiceReplayCapture capture = PrepareCardChoiceCapture(parent, action)!;
@@ -74,7 +74,7 @@ internal sealed partial class CombatBeamSolver
     private CardChoiceReplayCapture? PrepareCardChoiceCapture(SearchNode parent, PlanAction action)
     {
         if (_disableCardChoiceContinuationsForTesting || action.Kind != PlanActionKind.PlayCard
-            || action.CardId is not ("DAGGER_THROW" or "ACROBATICS" or "PREPARED")
+            || !CombatPredictionSimulator.SupportsManualCardChoiceContinuation(action.CardId)
             || action.ReplayCount != 0 || action.Choice != null
             || action.NestedChoices is { Count: > 0 } || action.TurnStartChoices is { Count: > 0 })
             return null;

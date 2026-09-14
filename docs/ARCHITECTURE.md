@@ -178,7 +178,7 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 | `CombatBeamSolver.AdmittedExpansion.cs` | 已准入父节点的准备、动作探测、选择准备/回放/续接、药水/目标与回合尾部作业；有界派发、快照移交、取消/异常排空 |
 | `CombatBeamSolver.PrimaryChoiceReplay.cs` | 原预算保证必经的首层回放、唯一快照暂存与原序消费；动态预算和实例补充仍由一个续接作业独占 |
 | `CombatBeamSolver.EndTurnChoiceReplay.cs` | EndTurn初始回放与首层挂起选择准备；复用必经回放槽位，原序解析嵌套/实体补充，独占返回候选和待命基线 |
-| `CombatBeamSolver.CardChoiceContinuation.cs` | 手动自身弃牌检查点的同父/同动作匹配、串行选择链与并行frontier所有权、尝试/捕获/复用/回退计数；不改变预算或候选 |
+| `CombatBeamSolver.CardChoiceContinuation.cs` | 手动自身选牌检查点的同父/同动作匹配、串行选择链与并行frontier所有权、尝试/捕获/复用/回退计数；不改变预算或候选 |
 | `CombatBeamSolver.RoundTransition.cs` | 玩家回合开始推进；在抽牌准备完成但尚未Draw或抽牌/历史补偿完成两个稳定点保存同父EndTurn前缀；frontier独占、同父gate复制、生产者排空后释放；不缓存挂起事务或改变候选预算 |
 | `CombatBeamSolver.StandPatJobs.cs` | 对原保路规则必经的 EndTurn 探针批量求值，复用固定 lane、回传标量，缓存和选择仍由 coordinator 原序完成 |
 | `CombatBeamSolver.RetentionJobs.cs` | 剪枝只读索引作业；复用空闲固定 lane，按原索引收集输出，排空后统一记账并传播取消/错误 |
@@ -270,7 +270,7 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 ### 4.1 基础层
 
-自身弃牌续执行由 `CombatPredictionSimulator.CardContinuation` 保存唯一程序位置：原版投掷匕首、杂技、早有准备手动单次执行已完成抽牌/伤害、等待自己的弃牌选择。`CombatPredictionHistory.CardContinuation` 深拷贝活动后缀中的 CardPlay、trace、damage 和抽牌配对，过去的已封存历史仍共享；State、卡牌、StateStore、history 通过同一个 Fork context 重映射。Engine 通过 `ICombatPredictionCardContinuationState` 验证领域事务，不依赖 Search 的候选政策。
+自身选牌续执行由 `CombatPredictionSimulator.CardContinuation` 保存唯一程序位置：清单中41张原版单人卡的手动单次执行已完成前置效果、等待自己的选择。`CombatPredictionHistory.CardContinuation` 深拷贝活动后缀中的 CardPlay、trace、damage、抽牌/生成配对及候选wrapper，过去的已封存历史仍共享；State、卡牌、StateStore、history 通过同一个 Fork context 重映射。Engine 通过 `ICombatPredictionCardContinuationState` 验证领域事务，不依赖 Search 的候选政策。`ICombatPredictionCapturedCardChoice` 由领域层保存并重映射已生成的请求/spec，恢复时直接调用既有选择解析，不重新运行会消耗RNG的GetSpec；格挡金额与事件计数按重映射后的CardPlay恢复。
 
 `Prediction/CardChoiceContinuation` 独占暂停 seed/frame/deaths 和 Fork 锁；最初 probe 只读消费 pending spec，随后释放。普通 Fork 拒绝该暂停种子，只有所属检查点能暂时取下 pending request、执行原稳定边界断言并复制。Search 的串行选择链或 `PrimaryChoiceReplayFrontier` 独占检查点直到所有作业排空；同父节点引用、完整原动作匹配，只有 primary Choice 可替换。再次遇到嵌套选择时子作用域全部退出，再从原父完整回放；额外物理 Fork 计入 `CardChoicePrefixFallbacks`，原 transition/choice lease 只扣一次。结果和跨回合续用只保留完成后的普通状态，不保存暂停帧、Task 或闭包。无附魔/污染、空显式选择、单层执行、已知历史、无不透明/事务 StateStore 是当前封闭适用范围，未命中继续原语义；不新增第三方注册能力。
 

@@ -20,7 +20,10 @@ internal sealed partial class CombatPredictionHistory
                 starts++;
             }
             else if (entry is not (CombatPredictionRiskEntry or CombatPredictionDamageReceivedEntry or CombatPredictionCreatureAttackedEntry
-                or CombatPredictionCardDrawnEntry or CombatPredictionCardDrawResolvedEntry))
+                or CombatPredictionCardDrawnEntry or CombatPredictionCardDrawResolvedEntry
+                or CombatPredictionCardsSelectedEntry or CombatPredictionCardCostsRandomizedEntry
+                or CombatPredictionCardGenerationOptionsEntry or CombatPredictionCardGeneratedEntry
+                or CombatPredictionCardGenerationResolvedEntry))
                 return false;
             if (entry.Trace is null) return false;
             bool foundRoot = false;
@@ -63,6 +66,8 @@ internal sealed partial class CombatPredictionHistory
             context.Register(source, copy);
             return copy;
         }
+        PredictedCard CopyOption(PredictedCard source)
+            => context.TryRemap(source, out PredictedCard? mapped) ? mapped! : source.Fork(context);
         foreach (var entry in _tail)
         {
             CombatPredictionHistoryEntry copy = entry switch
@@ -77,6 +82,14 @@ internal sealed partial class CombatPredictionHistory
                 CombatPredictionCardDrawnEntry e => new CombatPredictionCardDrawnEntry
                     { Card = e.Card, FromHandDraw = e.FromHandDraw },
                 CombatPredictionCardDrawResolvedEntry e => new CombatPredictionCardDrawResolvedEntry
+                    { Card = e.Card, OriginalEntry = context.RequireRemap(e.OriginalEntry) },
+                CombatPredictionCardsSelectedEntry e => new CombatPredictionCardsSelectedEntry { Cards = e.Cards },
+                CombatPredictionCardCostsRandomizedEntry e => new CombatPredictionCardCostsRandomizedEntry { Cards = e.Cards },
+                CombatPredictionCardGenerationOptionsEntry e => new CombatPredictionCardGenerationOptionsEntry
+                    { Cards = e.Cards, Options = e.Options.Select(CopyOption).ToArray() },
+                CombatPredictionCardGeneratedEntry e => new CombatPredictionCardGeneratedEntry
+                    { Card = e.Card, Creator = e.Creator, ResultKind = e.ResultKind },
+                CombatPredictionCardGenerationResolvedEntry e => new CombatPredictionCardGenerationResolvedEntry
                     { Card = e.Card, OriginalEntry = context.RequireRemap(e.OriginalEntry) },
                 _ => throw new InvalidOperationException("Unqualified manual card continuation history entry: " + entry.GetType().Name),
             };

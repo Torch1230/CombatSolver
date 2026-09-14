@@ -1336,12 +1336,17 @@ if (Select-String -LiteralPath (Join-Path $repositoryRoot 'src/Engine/Common/Nat
     $violations.Add('Clone eligibility depends on search policy.')
 }
 
-# A suspended own-discard frame belongs to its continuation; ordinary Fork remains strict.
+# A suspended own-choice frame belongs to its continuation; ordinary Fork remains strict.
 foreach ($rule in @(
     @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs'; Text = 'GuardOrdinaryCardContinuationFork();' },
     @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs'; Text = 'context.Register(source.Play, play);' },
     @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs'; Text = 'StateStore.SupportsManualCardChoiceContinuation' },
     @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs'; Text = 'DetachPendingManualCardChoice();' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs'; Text = 'source.Choice.Fork(context)' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs'; Text = 'frame.Choice.Resolve(this, frame.Card)' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs'; Text = 'child._blockGainedByCardPlay.Add(play, block)' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionHistory.CardContinuation.cs'; Text = 'e.Options.Select(CopyOption)' },
+    @{ RelativePath = 'src/Search/SimulatedCombatState.CardContinuation.cs'; Text = 'Options = spec.Options.Select(context.RequireRemap)' },
     @{ RelativePath = 'src/Prediction/CardChoiceContinuation.cs'; Text = 'lock (_gate)' },
     @{ RelativePath = 'src/Search/CombatBeamSolver.CardChoiceContinuation.cs'; Text = 'ReferenceEquals(_parent, candidate)' },
     @{ RelativePath = 'src/Search/CombatBeamSolver.CardChoiceContinuation.cs'; Text = 'return Enumerate(this, checkpoint, branches);' },

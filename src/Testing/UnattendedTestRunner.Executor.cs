@@ -262,6 +262,17 @@ internal sealed partial class UnattendedTestRunner
                 await AssertCardChoiceSearchAsync(combatState, player, strictOnly: true);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "CARD-CONTINUATION-EXPANDED")
+            {
+                await runner.RunExpandedCardContinuationContractAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "CARD-CONTINUATION-EXPANDED-SEARCH" or "CARD-CONTINUATION-EXPANDED-INCREMENTAL")
+            {
+                await AssertCardChoiceSearchAsync(combatState, player,
+                    strictOnly: request.ScenarioId.EndsWith("-INCREMENTAL", StringComparison.Ordinal), expanded: true);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "CARD-CONTINUATION-SEARCH")
             {
                 await AssertCardChoiceSearchAsync(combatState, player);

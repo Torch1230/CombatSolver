@@ -199,6 +199,7 @@ internal sealed partial class UnattendedTestRunner
             Enum e => e.ToString(),
             Creature c => c.CombatId,
             Player p => p.Creature.CombatId,
+            PredictedCard c => Value(c.Preview),
             CardModel c => new { key = CardChoiceSupport.ChoiceCardKey(c), target = c.CurrentTarget?.CombatId, index = c.CurrentPlayIndex },
             AbstractModel m => new { model = m.Id.Entry, type = m.GetType().FullName },
             CombatPredictionHistoryEntry e => e.Index,
