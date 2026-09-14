@@ -1,5 +1,10 @@
 # CombatSolver 测试清单
 
+## 下一版本（开发中）：录像收录辅助 Mod 判定（2026-09-14）
+
+- `REPORT-V2-CONTRACT` / `7c9972982bc4425b929247e149e6c790` Passed，22.84 秒。新增合同证明录像浏览器、统计、QuickSL 等 `affects_gameplay=false` 辅助 Mod，以及统一登记的 Loadout/RNG 复现工具不会阻止收录；声明修改玩法的新角色和数值重制 Mod 仍被拒绝。既有问题包上传、取消和 TLS 合同同时通过。
+- 最新实机日志确认 0.38.5 未上传的原因是旧逻辑把 23 个已加载 Mod 与两项 ID 白名单比较，在线统计实际开启，本地没有待上传包，服务端也没有收到请求。本轮不使用 Computer Use，不执行 Bash 门禁。
+
 ## 0.38.5 发布范围：Act 3 无伤 Boss 录像对局库（2026-09-14）
 
 - CombatSolver 与私用录像 Mod 的 Release 构建通过，0 警告、0 错误；Windows PowerShell 结构门禁另记最终结果。按用户要求不执行 Bash 门禁，不启动可见 Steam。

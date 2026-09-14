@@ -417,6 +417,10 @@ $preCombatApiChecks = @(
         Text = "CombatShowcaseCollector.FlushPendingAsync"
     },
     @{
+        Path = Join-Path $repositoryRoot "src\Runtime\CombatShowcaseModEligibility.cs"
+        Text = "FindGameplayModificationNames"
+    },
+    @{
         Path = Join-Path $repositoryRoot "src\Api\PreCombatLiveStateSnapshot.cs"
         Text = "RunManager.Instance.ToSave(null)"
     },

@@ -28,6 +28,7 @@ internal static class CombatShowcaseCollector
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
     private static RootCapture? _root;
+    private static bool _openingCaptureDecisionMade;
     private static CancellationTokenSource _uploadCancellation = new();
 
     internal sealed record RootCapture(
@@ -49,7 +50,11 @@ internal static class CombatShowcaseCollector
         string SolverVersion,
         string RitsuLibVersion);
 
-    internal static void BeginCombat() => _root = null;
+    internal static void BeginCombat()
+    {
+        _root = null;
+        _openingCaptureDecisionMade = false;
+    }
 
     internal static void SettingsChanged()
     {
@@ -73,10 +78,15 @@ internal static class CombatShowcaseCollector
 
     internal static void TryCaptureInitialRoot(CombatState state, SearchReason reason)
     {
-        if (_root != null || reason != SearchReason.AutoTurnStart
-            || !SolverSettings.Current.OnlineStatisticsEnabled
-            || !IsEligibleOpening(state, out Player? player, out string ritsuVersion))
+        if (_root != null || _openingCaptureDecisionMade || reason != SearchReason.AutoTurnStart
+            || !SolverSettings.Current.OnlineStatisticsEnabled)
             return;
+        _openingCaptureDecisionMade = true;
+        if (!IsEligibleOpening(state, out Player? player, out string ritsuVersion, out string rejection))
+        {
+            Entry.Logger.Info($"[CombatSolver/Showcase] OPENING_SKIPPED reason={rejection}");
+            return;
+        }
 
         CombatBugReportExporter.ReplayCheckpointMaterial checkpoint =
             CombatBugReportExporter.CaptureReplayCheckpoint(state);
@@ -105,17 +115,48 @@ internal static class CombatShowcaseCollector
     {
         RootCapture? root = _root;
         _root = null;
-        if (root == null || !ReferenceEquals(root.State, state)
-            || !SolverSettings.Current.OnlineStatisticsEnabled
-            || result.StartTurnNumber != root.StartTurn
-            || result.CombatEndedTurn is not { } endedTurn
-            || !result.Snapshot.AllEnemiesDead
-            || result.ProjectedBattleHpLost != 0
-            || result.SoldHp != 0
-            || result.Snapshot.DeathSaveUseCount != 0
-            || result.Snapshot.ProjectedDeathSaveUseCount != 0
-            || result.Snapshot.PlayerMaxHp < root.StartMaxHp)
+        if (root == null)
             return;
+        if (!ReferenceEquals(root.State, state))
+        {
+            SkipRoute("combat_state_changed");
+            return;
+        }
+        if (!SolverSettings.Current.OnlineStatisticsEnabled)
+        {
+            SkipRoute("online_statistics_disabled");
+            return;
+        }
+        if (result.StartTurnNumber != root.StartTurn)
+        {
+            SkipRoute($"start_turn_{result.StartTurnNumber}");
+            return;
+        }
+        if (result.CombatEndedTurn is not { } endedTurn || !result.Snapshot.AllEnemiesDead)
+        {
+            SkipRoute("not_complete_victory");
+            return;
+        }
+        if (result.ProjectedBattleHpLost != 0)
+        {
+            SkipRoute($"projected_hp_lost_{result.ProjectedBattleHpLost}");
+            return;
+        }
+        if (result.SoldHp != 0)
+        {
+            SkipRoute($"sold_hp_{result.SoldHp}");
+            return;
+        }
+        if (result.Snapshot.DeathSaveUseCount != 0 || result.Snapshot.ProjectedDeathSaveUseCount != 0)
+        {
+            SkipRoute("death_save_used");
+            return;
+        }
+        if (result.Snapshot.PlayerMaxHp < root.StartMaxHp)
+        {
+            SkipRoute($"max_hp_{root.StartMaxHp}_to_{result.Snapshot.PlayerMaxHp}");
+            return;
+        }
 
         int turnCount = endedTurn - root.StartTurn + 1;
         if (turnCount <= 0)
@@ -154,8 +195,12 @@ internal static class CombatShowcaseCollector
         Directory.CreateDirectory(directory);
         string path = Path.Combine(directory, $"{Guid.NewGuid():N}.zip");
         File.WriteAllBytes(path, archive);
+        Entry.Logger.Info($"[CombatSolver/Showcase] BUNDLE_QUEUED file={Path.GetFileName(path)} bytes={archive.LongLength}");
         _ = UploadPendingAsync(path, CurrentCancellationToken());
     }
+
+    private static void SkipRoute(string reason)
+        => Entry.Logger.Info($"[CombatSolver/Showcase] ROUTE_SKIPPED reason={reason}");
 
     internal static async Task FlushPendingAsync()
     {
@@ -171,28 +216,52 @@ internal static class CombatShowcaseCollector
             await UploadPendingAsync(path, CurrentCancellationToken()).ConfigureAwait(false);
     }
 
-    private static bool IsEligibleOpening(CombatState state, out Player player, out string ritsuVersion)
+    private static bool IsEligibleOpening(
+        CombatState state,
+        out Player player,
+        out string ritsuVersion,
+        out string rejection)
     {
         player = LocalContext.GetMe(state)!;
         ritsuVersion = string.Empty;
+        rejection = string.Empty;
         BattleDamageSnapshot damage = BattleDamageTracker.Observe(state);
-        if (state.Players.Count != 1 || player?.PlayerCombatState?.TurnNumber != 1
-            || state.RunState.GameMode != GameMode.Standard
-            || state.RunState.AscensionLevel != 10
-            || state.RunState.CurrentActIndex != 2
-            || state.Encounter?.RoomType != RoomType.Boss
-            || damage.HpLostSoFar != 0
-            || damage.PotionsUsedSoFar != 0
-            || HasPlayerCardPlay(player))
-            return false;
+        if (state.Players.Count != 1)
+            return Reject("player_count", out rejection);
+        if (player?.PlayerCombatState?.TurnNumber != 1)
+            return Reject("not_first_turn", out rejection);
+        if (state.RunState.GameMode != GameMode.Standard)
+            return Reject("not_standard_mode", out rejection);
+        if (state.RunState.AscensionLevel != 10)
+            return Reject($"ascension_{state.RunState.AscensionLevel}", out rejection);
+        if (state.RunState.CurrentActIndex != 2)
+            return Reject($"act_index_{state.RunState.CurrentActIndex}", out rejection);
+        if (state.Encounter?.RoomType != RoomType.Boss)
+            return Reject("not_boss_room", out rejection);
+        if (damage.HpLostSoFar != 0 || damage.PotionsUsedSoFar != 0 || HasPlayerCardPlay(player))
+            return Reject("player_action_already_observed", out rejection);
+
         var mods = ModManager.GetLoadedMods().Where(static mod => mod.manifest?.id != null).ToArray();
-        string[] ids = mods.Select(static mod => mod.manifest!.id!).OrderBy(static id => id, StringComparer.Ordinal).ToArray();
-        if (!ids.SequenceEqual([Entry.ModId, "STS2-RitsuLib"], StringComparer.Ordinal))
-            return false;
-        var ritsu = mods.Single(static mod => mod.manifest?.id == "STS2-RitsuLib");
-        ritsuVersion = ritsu.manifest!.version?.ToString()
+        string[] gameplayMods = CombatShowcaseModEligibility.FindGameplayModificationNames(
+            mods.Select(static mod => new ShowcaseModDeclaration(
+                mod.manifest!.id!,
+                mod.manifest.name ?? string.Empty,
+                mod.manifest.affectsGameplay)));
+        if (gameplayMods.Length > 0)
+            return Reject("gameplay_mods=" + string.Join(",", gameplayMods), out rejection);
+
+        var ritsu = mods.SingleOrDefault(static mod => mod.manifest?.id == "STS2-RitsuLib");
+        if (ritsu?.manifest == null)
+            return Reject("ritsulib_missing", out rejection);
+        ritsuVersion = ritsu.manifest.version?.ToString()
             ?? throw new InvalidDataException("RitsuLib 清单缺少版本号。");
         return true;
+    }
+
+    private static bool Reject(string reason, out string rejection)
+    {
+        rejection = reason;
+        return false;
     }
 
     private static bool HasPlayerCardPlay(Player player)
