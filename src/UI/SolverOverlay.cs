@@ -354,6 +354,7 @@ internal static class SolverOverlay
     internal static SolverOverlayTheme ActiveThemeForTesting => SolverUiTokens.IsLightTheme
         ? SolverOverlayTheme.Light
         : SolverOverlayTheme.Dark;
+    internal static bool WaitingForNextTurnPlanForTesting => _waitingForNextTurnPlan;
     internal static bool ExerciseUploadCompletionTransitionForTesting()
         => _settingsPanel?.ExerciseUploadCompletionTransitionForTesting() == true;
     internal static bool ExercisePerformancePresetPersistenceForTesting()
@@ -1242,94 +1243,192 @@ internal static class SolverOverlay
         SolverUiTokens.ConfigureTheme(SolverSettings.Current.OverlayTheme);
         if (_layer == null || !GodotObject.IsInstanceValid(_layer))
             return;
-        Node host = _layer.GetParent()
-            ?? throw new InvalidOperationException("CombatSolver overlay has no host node.");
-        bool wasVisible = _layer.Visible;
-        bool wasSettingsVisible = _settingsVisible;
-        bool wasPotionStrategyVisible = _potionStrategyVisible;
-        bool wasGrowthStrategyVisible = _growthStrategyVisible;
-        bool wasRelicStrategyVisible = _relicStrategyVisible;
-        bool wasCollapsed = _collapsed;
-        bool wereDetailsVisible = _detailsVisible;
-        SolverOverlayPresentation presentation = _presentation;
-        bool wasWaitingForNextTurnPlan = _waitingForNextTurnPlan;
-        CanvasLayer oldLayer = _layer;
-        oldLayer.Visible = false;
-        oldLayer.QueueFree();
-        if (_viewport != null && GodotObject.IsInstanceValid(_viewport))
-            _viewport.SizeChanged -= ApplyResponsiveLayout;
-        _layer = null;
-        _panel = null;
-        _viewport = null;
-        _rightResizeHandle = null;
-        _bottomResizeHandle = null;
-        _cornerResizeHandle = null;
-        _resizing = false;
-        _layoutQueued = false;
-        _remainingLayoutPasses = 0;
-        _renderedExecuteButtonStyle = null;
-        _renderedAdoptRouteButtonStyle = null;
-        _renderedTheftPolicy = null;
 
-        if (_lastSnapshot is { } snapshot)
-        {
-            ShowResult(host, snapshot);
-            if (presentation == SolverOverlayPresentation.Deploying)
-                ShowDeploying(host, _lastDeploymentTurn, _lastDeploymentActionCount);
-            else if (presentation == SolverOverlayPresentation.ExecutedHistory)
-            {
-                ShowDeploymentComplete(
-                    host,
-                    _lastDeploymentTurn,
-                    _lastDeploymentActionCount,
-                    _lastDeploymentEndedTurn);
-                if (wasWaitingForNextTurnPlan)
-                    ShowWaitingForNextTurnPlan(host);
-            }
-            if (SolverController.AutomaticSearchPaused)
-                ShowSearchStopped(host);
-        }
-        else if (SolverController.SolverDisabled)
-        {
-            ShowDisabled(host);
-        }
-        else if (SolverController.AutomaticSearchPaused)
-        {
-            ShowSearchStopped(host);
-        }
-        else if (SolverController.IsSearching)
-        {
-            ShowSearching(
-                host,
-                _lastSearchingTurn,
-                _lastSearchDeployWhenReady,
-                _lastReviewedWorldlinesBeforeSearch);
-        }
-        else if (!SolverController.AutomaticCalculationEnabled)
-        {
-            ShowManualCalculationReady(host, SolverController.HasCalculatedThisCombat);
-        }
-        else
-        {
-            Show(host, _lastMessageText ?? SolverText.Get("界面主题已应用。"));
-        }
+        RefreshThemeInPlace();
 
-        _settingsVisible = wasSettingsVisible;
-        _potionStrategyVisible = wasPotionStrategyVisible;
-        _growthStrategyVisible = wasGrowthStrategyVisible;
-        _relicStrategyVisible = wasRelicStrategyVisible;
-        if (wasSettingsVisible)
-            _settingsPanel?.Reload();
-        SetCollapsed(wasSettingsVisible ? false : wasCollapsed);
-        if (!wasSettingsVisible && !wasCollapsed && wereDetailsVisible && _lastSnapshot != null)
-            SetDetailsVisible(true);
         ApplyContentVisibility();
         ApplyOverlayOpacity();
-        if (!wasVisible)
-            Hide();
         Entry.Logger.Info(
             $"[CombatSolver/Test] UI_THEME_APPLIED theme={SolverSettings.Current.OverlayTheme} " +
             $"opacity={SolverSettings.Current.OverlayOpacity:0.##}");
+    }
+
+    private static void RefreshThemeInPlace()
+    {
+        if (_panel != null && GodotObject.IsInstanceValid(_panel))
+        {
+            _panel.AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
+                Background,
+                Border,
+                SolverUiTokens.Radius.Large,
+                SolverUiTokens.Spacing.Md,
+                SolverUiTokens.Spacing.Md,
+                shadow: true));
+        }
+
+        if (_summaryStatusBadge != null && GodotObject.IsInstanceValid(_summaryStatusBadge))
+        {
+            _summaryStatusBadge.AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
+                SolverUiTokens.Palette.SurfaceRaised,
+                SolverUiTokens.Palette.BorderSubtle,
+                SolverUiTokens.Radius.Pill,
+                horizontalPadding: SolverUiTokens.Spacing.Sm,
+                verticalPadding: 2));
+        }
+
+        if (_summaryStateLabel != null && GodotObject.IsInstanceValid(_summaryStateLabel))
+            SolverUiTokens.ApplyTextOutline(_summaryStateLabel);
+
+        if (_summaryContextLabel != null && GodotObject.IsInstanceValid(_summaryContextLabel))
+        {
+            _summaryContextLabel.AddThemeColorOverride("font_color", SolverUiTokens.Palette.TextSecondary);
+            SolverUiTokens.ApplyTextOutline(_summaryContextLabel);
+        }
+
+        if (_solverEnabledButton != null && GodotObject.IsInstanceValid(_solverEnabledButton))
+            SolverUiTokens.ApplyButtonStyle(_solverEnabledButton, SolverButtonStyle.Secondary);
+        if (_potionStrategyButton != null && GodotObject.IsInstanceValid(_potionStrategyButton))
+            SolverUiTokens.ApplyButtonStyle(_potionStrategyButton, SolverButtonStyle.Secondary);
+        if (_growthStrategyButton != null && GodotObject.IsInstanceValid(_growthStrategyButton))
+            SolverUiTokens.ApplyButtonStyle(_growthStrategyButton, SolverButtonStyle.Secondary);
+        if (_relicStrategyButton != null && GodotObject.IsInstanceValid(_relicStrategyButton))
+            SolverUiTokens.ApplyButtonStyle(_relicStrategyButton, SolverButtonStyle.Secondary);
+        if (_settingsButton != null && GodotObject.IsInstanceValid(_settingsButton))
+            SolverUiTokens.ApplyButtonStyle(_settingsButton, SolverButtonStyle.Secondary);
+        if (_collapseButton != null && GodotObject.IsInstanceValid(_collapseButton))
+            SolverUiTokens.ApplyButtonStyle(_collapseButton, SolverButtonStyle.Secondary);
+
+        if (_performanceHintButton != null && GodotObject.IsInstanceValid(_performanceHintButton))
+            SolverUiTokens.ApplyButtonStyle(_performanceHintButton, SolverButtonStyle.Secondary);
+
+        if (_bossHpStrategyHintButton != null && GodotObject.IsInstanceValid(_bossHpStrategyHintButton))
+            SolverUiTokens.ApplyButtonStyle(_bossHpStrategyHintButton, SolverButtonStyle.Secondary);
+
+        if (_detailsButton != null && GodotObject.IsInstanceValid(_detailsButton))
+            SolverUiTokens.ApplyButtonStyle(_detailsButton, SolverButtonStyle.Secondary);
+
+        if (_summaryPanel != null && GodotObject.IsInstanceValid(_summaryPanel))
+        {
+            _summaryPanel.AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
+                SolverUiTokens.Palette.SurfaceRaised,
+                SolverUiTokens.Palette.BorderSubtle,
+                SolverUiTokens.Radius.Medium,
+                SolverUiTokens.Spacing.Sm,
+                SolverUiTokens.Spacing.Sm));
+        }
+
+        if (_summaryText != null && GodotObject.IsInstanceValid(_summaryText))
+        {
+            _summaryText.AddThemeColorOverride("default_color", TextPrimary);
+            SolverUiTokens.ApplyTextOutline(_summaryText);
+            _summaryText.Text = SolverUiTokens.AdaptRichTextToActiveTheme(_summaryText.Text);
+        }
+
+        if (_detailsPanel != null && GodotObject.IsInstanceValid(_detailsPanel))
+        {
+            _detailsPanel.AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
+                SolverUiTokens.Palette.SurfaceRaised,
+                SolverUiTokens.Palette.BorderSubtle,
+                SolverUiTokens.Radius.Medium,
+                SolverUiTokens.Spacing.Sm,
+                SolverUiTokens.Spacing.Sm));
+        }
+
+        if (_detailsText != null && GodotObject.IsInstanceValid(_detailsText))
+        {
+            _detailsText.AddThemeColorOverride("default_color", TextPrimary);
+            SolverUiTokens.ApplyTextOutline(_detailsText);
+            _detailsText.Text = SolverUiTokens.AdaptRichTextToActiveTheme(_detailsText.Text);
+        }
+
+        if (_routeOutcomePanel != null && GodotObject.IsInstanceValid(_routeOutcomePanel))
+        {
+            _routeOutcomePanel.AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
+                Surface,
+                SolverUiTokens.Palette.BorderSubtle,
+                SolverUiTokens.Radius.Medium,
+                SolverUiTokens.Spacing.Sm,
+                SolverUiTokens.Spacing.Sm));
+        }
+
+        if (_routeHeadingLabel != null && GodotObject.IsInstanceValid(_routeHeadingLabel))
+        {
+            _routeHeadingLabel.AddThemeColorOverride("font_color", TextPrimary);
+            SolverUiTokens.ApplyTextOutline(_routeHeadingLabel);
+        }
+
+        if (_deathOutcomeLabel != null && GodotObject.IsInstanceValid(_deathOutcomeLabel))
+        {
+            _deathOutcomeLabel.AddThemeColorOverride("font_color", Danger);
+            SolverUiTokens.ApplyTextOutline(_deathOutcomeLabel);
+        }
+
+        if (_potionOutcomeLabel != null && GodotObject.IsInstanceValid(_potionOutcomeLabel))
+        {
+            _potionOutcomeLabel.AddThemeColorOverride("font_color", Warning);
+            SolverUiTokens.ApplyTextOutline(_potionOutcomeLabel);
+        }
+
+        if (_stolenResourceOutcomeLabel != null && GodotObject.IsInstanceValid(_stolenResourceOutcomeLabel))
+        {
+            _stolenResourceOutcomeLabel.AddThemeColorOverride("font_color", Danger);
+            SolverUiTokens.ApplyTextOutline(_stolenResourceOutcomeLabel);
+        }
+
+        if (_hpOutcomeLabel != null && GodotObject.IsInstanceValid(_hpOutcomeLabel))
+            SolverUiTokens.ApplyTextOutline(_hpOutcomeLabel);
+
+        if (_hpRecoveredOutcomeLabel != null && GodotObject.IsInstanceValid(_hpRecoveredOutcomeLabel))
+        {
+            _hpRecoveredOutcomeLabel.AddThemeColorOverride("font_color", Success);
+            SolverUiTokens.ApplyTextOutline(_hpRecoveredOutcomeLabel);
+        }
+
+        if (_feedbackBannerLabel != null && GodotObject.IsInstanceValid(_feedbackBannerLabel))
+        {
+            _feedbackBannerLabel.AddThemeColorOverride("font_color", TextPrimary);
+            SolverUiTokens.ApplyTextOutline(_feedbackBannerLabel);
+        }
+
+        if (_cornerResizeHandle is TextureRect textureRect && GodotObject.IsInstanceValid(textureRect))
+        {
+            Color gripColor = SolverUiTokens.IsLightTheme ? SolverUiTokens.Palette.TextSecondary : TextMuted;
+            textureRect.Texture = SolverUiTokens.CreateResizeGripTexture(gripColor);
+        }
+
+        foreach (SolverRouteRow row in RouteRows)
+        {
+            if (row != null && GodotObject.IsInstanceValid(row))
+                row.ApplyTheme();
+        }
+
+        if (_preserveResourcesButton != null && GodotObject.IsInstanceValid(_preserveResourcesButton))
+            SolverUiTokens.ApplyButtonStyle(_preserveResourcesButton, SolverButtonStyle.Secondary);
+        if (_letEscapeButton != null && GodotObject.IsInstanceValid(_letEscapeButton))
+            SolverUiTokens.ApplyButtonStyle(_letEscapeButton, SolverButtonStyle.Secondary);
+        if (_recalculateButton != null && GodotObject.IsInstanceValid(_recalculateButton))
+            SolverUiTokens.ApplyButtonStyle(_recalculateButton, SolverButtonStyle.Secondary);
+        if (_stopSearchButton != null && GodotObject.IsInstanceValid(_stopSearchButton))
+            SolverUiTokens.ApplyButtonStyle(_stopSearchButton, SolverButtonStyle.Danger);
+        if (_adoptRouteButton != null && GodotObject.IsInstanceValid(_adoptRouteButton))
+            SolverUiTokens.ApplyButtonStyle(_adoptRouteButton, _renderedAdoptRouteButtonStyle ?? SolverButtonStyle.Primary);
+        if (_executeButton != null && GodotObject.IsInstanceValid(_executeButton))
+            SolverUiTokens.ApplyButtonStyle(_executeButton, _renderedExecuteButtonStyle ?? SolverButtonStyle.Positive);
+        if (_fullAutoButton != null && GodotObject.IsInstanceValid(_fullAutoButton))
+            SolverUiTokens.ApplyButtonStyle(_fullAutoButton, SolverController.FullAutoEnabled ? SolverButtonStyle.Positive : SolverButtonStyle.Secondary);
+        if (_systemMemoryReleaseButton != null && GodotObject.IsInstanceValid(_systemMemoryReleaseButton))
+            SolverUiTokens.ApplyButtonStyle(_systemMemoryReleaseButton, SolverButtonStyle.Secondary);
+
+        _memoryUsageBar?.ApplyTheme();
+
+        if (_settingsPanel != null && GodotObject.IsInstanceValid(_settingsPanel))
+            _settingsPanel.Reload();
+        if (_potionStrategyPanel != null && GodotObject.IsInstanceValid(_potionStrategyPanel))
+            SolverUiTokens.StyleStrategyPanel(_potionStrategyPanel);
+        if (_growthStrategyPanel != null && GodotObject.IsInstanceValid(_growthStrategyPanel))
+            SolverUiTokens.StyleStrategyPanel(_growthStrategyPanel);
+        if (_relicStrategyPanel != null && GodotObject.IsInstanceValid(_relicStrategyPanel))
+            SolverUiTokens.StyleStrategyPanel(_relicStrategyPanel);
     }
 
     private static void EnsureCreated(Node host)

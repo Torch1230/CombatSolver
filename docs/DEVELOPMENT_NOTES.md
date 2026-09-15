@@ -1,5 +1,13 @@
 # CombatSolver 开发笔记与未来构想
 
+## 未发布：UI 视觉重构与浅色模式修复（2026-09-15）
+
+- 重构 `CombatSolver` 游戏内 UI 视觉规范，对齐 `CombatShowcaseRecorder` 的分层卡片与现代深色/浅色交互语言：
+  - `SolverUiTokens`：重做配色系统，浅色模式（Light Mode）采用高对比度现代灰白调体系（Background `#f4f6f9fa`，Surface `#fffffffa`，Border `#cbd5e1eb`，TextPrimary `#1a202cff`，TextSecondary `#4a5568ff`），解决浅色模式次要按钮在 hover/pressed 时的白底白字悬停问题；浅色模式下移除粗黑描边（`outline_size = 0`），并引入专用高对比度动作文字色（`AttackText`、`SkillText`、`PowerText` 等）。
+  - 原位主题动态切换（In-Place Theme Refresh）：`SolverUiTokens` 暴露 `ThemeChanged` 事件，`SolverRouteRow`、`SolverActionPill`、`SolverMemoryUsageBar` 接入树生命周期监听；`SolverOverlay` 废弃销毁重建树节点（`QueueFree`）的旧做法，改为 `RefreshThemeInPlace()` 原位递归更新面板 StyleBox、指示条、文字色及胶囊样式，完全避免主题切换导致的路线快照与控件重建开销。
+  - 胶囊与路线行微调：`SolverActionPill` 与 `SolverRouteRow` 强化左侧索引指示条与圆角边界层次，文字尺寸微调提升紧凑度，保留现有完整的路线行复用（`ROUTE-ROW-REUSE`）逻辑与无头契约。
+  - 职责边界保持：严格遵守 `verify-refactor-boundaries.ps1`，UI 渲染层未引用可变搜索状态，未修改搜索算法、评分逻辑、保路与网络协议。
+
 ## 未发布：录像回放临时费用与充能球恢复（2026-09-15）
 
 - 修复亡灵契约师录像中，临时生成牌的本回合费用和星能费用没有随第一回合状态恢复，导致严格对账把实际 0 费牌重建为基础费用并中止导入的问题。录像导入现在恢复有序的本地费用修正及其清除时机，也恢复临时星能费用；基础费用定义仍与当前游戏严格核对。

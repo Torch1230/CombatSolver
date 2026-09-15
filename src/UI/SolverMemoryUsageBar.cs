@@ -97,6 +97,29 @@ internal sealed partial class SolverMemoryUsageBar : PanelContainer
         _progress.AddChild(segments);
         content.AddChild(_progress);
         RefreshDisplay();
+
+        Action themeListener = ApplyTheme;
+        TreeEntered += () => SolverUiTokens.ThemeChanged += themeListener;
+        TreeExiting += () => SolverUiTokens.ThemeChanged -= themeListener;
+    }
+
+    public void ApplyTheme()
+    {
+        AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
+            SolverUiTokens.Palette.SurfaceRaised,
+            SolverUiTokens.Palette.Border,
+            SolverUiTokens.Radius.Medium,
+            SolverUiTokens.Spacing.Sm,
+            SolverUiTokens.Spacing.Xs));
+        _progress.AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
+            SolverUiTokens.Palette.ProgressBackground,
+            SolverUiTokens.Palette.BorderSubtle,
+            SolverUiTokens.Radius.Small,
+            0,
+            0));
+        _label.AddThemeColorOverride("font_color", SolverUiTokens.Palette.TextSecondary);
+        SolverUiTokens.ApplyTextOutline(_label);
+        RefreshDisplay();
     }
 
     public override void _Process(double delta)
