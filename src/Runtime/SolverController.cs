@@ -493,8 +493,8 @@ internal static class SolverController
             new SearchMemoryPressureSignal())
         {
             Interaction = interaction,
-            // 普通游戏没有开关，只有无人测试请求能把它打开；关闭时主搜索逐位不变。
-            UseBeamWidthPortfolio = UnattendedTestRunner.UseBeamWidthPortfolioOverride,
+            UseBeamWidthPortfolio = settings.UseBeamWidthPortfolio
+                || UnattendedTestRunner.UseBeamWidthPortfolioOverride,
             BeamWidthPortfolioWidths = UnattendedTestRunner.BeamWidthPortfolioWidthsOverride,
             Act3BossStrategy = UnattendedTestRunner.Act3BossStrategyOverride != false
                 && SearchPolicySnapshot.IsAct3BossEncounter(state.RunState.CurrentActIndex, state.Encounter?.Id.Entry),

@@ -40,6 +40,61 @@ internal sealed partial class UnattendedTestRunner
             _completedChecks.Add($"NativeHandChoice:BurningPact:ThrowingAxe={replay}:exhausted={exhausted}");
         }
         foreach (var relic in player.Relics.ToArray()) await RelicCmd.Remove(relic);
+        SolverSettingsData settingsBeforeSurvivor = SolverSettings.Current;
+        try
+        {
+            SolverSettings.ApplyForTesting(settingsBeforeSurvivor with
+            {
+                DeploymentFastMode = SolverDeploymentFastMode.Instant,
+            });
+            if (CombatInstantModePatch.Resolve(MegaCrit.Sts2.Core.Saves.SaveManager.Instance.PrefsSave)
+                != MegaCrit.Sts2.Core.Settings.FastModeType.Instant)
+            {
+                throw new InvalidOperationException("Combat instant mode did not resolve to Instant.");
+            }
+            await ClearPlayerPilesAsync(player);
+            foreach (string id in new[] { "SURVIVOR", "DEFEND_SILENT", "STRIKE_SILENT" })
+                await InjectCardAsync(combat, player, new UnattendedCardInjection { CardId = id, Pile = "Hand" });
+            SetEnergy(player, 3);
+            CardModel[] survivorHand = player.PlayerCombatState!.Hand.Cards.ToArray();
+            PlanCardChoice survivorChoice = new(
+                PlanChoiceEffect.Discard,
+                PileType.Hand,
+                [new PlanCardToken(
+                    survivorHand[1].Id.Entry,
+                    survivorHand[1].CurrentUpgradeLevel,
+                    CardChoiceSupport.ChoiceCardKey(survivorHand[1]),
+                    0,
+                    0,
+                    survivorHand[1].Title)],
+                SourceId: "SURVIVOR");
+            using CancellationTokenSource survivorDeadline = new(TimeSpan.FromSeconds(12));
+            using NativeChoiceSession survivorSession = NativeChoiceRuntime.Begin(combat, player, "test:survivor");
+            survivorSession.SetPlanAndStartDriving(NGame.Instance!, [survivorChoice], survivorDeadline.Token);
+            GameAction survivorAction = await SolverController.EnqueueAndCaptureActionAsync(
+                queued => queued is PlayCardAction played
+                    && ReferenceEquals(played.NetCombatCard.ToCardModelOrNull(), survivorHand[0]),
+                () =>
+                {
+                    if (!survivorHand[0].TryManualPlay(null))
+                        throw new InvalidOperationException("Survivor was not playable.");
+                },
+                survivorDeadline.Token);
+            await survivorSession.AwaitProducerAndCompleteAsync(survivorAction.CompletionTask)
+                .WaitAsync(survivorDeadline.Token);
+            if (MegaCrit.Sts2.Core.Nodes.Combat.NPlayerHand.Instance!.IsInCardSelection
+                || player.PlayerCombatState.DiscardPile.Cards.Count(card =>
+                    card.Id.Entry is "SURVIVOR" or "DEFEND_SILENT") != 2)
+            {
+                throw new InvalidOperationException("Survivor discard selection did not complete cleanly.");
+            }
+            _completedChecks.Add("NativeHandChoice:Survivor:Discard:ActionCompleted:FastMode=Instant");
+        }
+        finally
+        {
+            SolverSettings.ApplyForTesting(settingsBeforeSurvivor);
+        }
+
         await ClearPlayerPilesAsync(player);
         foreach (string id in new[] { "BURNING_PACT", "DEFEND_IRONCLAD", "STRIKE_IRONCLAD" })
             await InjectCardAsync(combat, player, new UnattendedCardInjection { CardId = id, Pile = "Hand" });

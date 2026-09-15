@@ -124,7 +124,7 @@ function Get-HeadlessSnapshotPlan(
     [string]$CombatSolverDll,
     [string]$CombatSolverManifest,
     [string]$MemoryCleaner,
-    [string]$RitsuDll,
+    [string]$RitsuRoot,
     [string]$RitsuManifest
 ) {
     # Every payload is bound, including other mods and non-DLL mod assets. No
@@ -141,8 +141,23 @@ function Get-HeadlessSnapshotPlan(
     $sources['mods\CombatSolver\CombatSolver.dll'] = $CombatSolverDll
     $sources['mods\CombatSolver\CombatSolver.json'] = $CombatSolverManifest
     $sources['mods\CombatSolver\CombatSolver.MemoryCleaner.exe'] = $MemoryCleaner
-    $sources['mods\.combatsolver-headless-ritsulib\STS2-RitsuLib.dll'] = $RitsuDll
     $sources['mods\.combatsolver-headless-ritsulib\STS2-RitsuLib.json'] = $RitsuManifest
+    $variantManifest = Join-Path $RitsuRoot 'ritsulib-variants.manifest'
+    if (Test-Path -LiteralPath $variantManifest -PathType Leaf) {
+        foreach ($item in Get-ChildItem -LiteralPath $RitsuRoot -Recurse -Force) {
+            if ($item.PSIsContainer -or $item.Name -in @('mod_manifest.json', 'RitsuLib.References.props')) {
+                continue
+            }
+            if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+                throw "Cannot freeze a RitsuLib bundle containing a reparse point: $($item.FullName)"
+            }
+            $relative = [IO.Path]::GetRelativePath($RitsuRoot, $item.FullName)
+            $sources[(Join-Path 'mods\.combatsolver-headless-ritsulib' $relative)] = $item.FullName
+        }
+    } else {
+        $legacyDll = Join-Path $RitsuRoot 'lib\0.111.0\STS2-RitsuLib.dll'
+        $sources['mods\.combatsolver-headless-ritsulib\STS2-RitsuLib.dll'] = $legacyDll
+    }
     $files = [Collections.Generic.List[object]]::new()
     $identity = [Text.StringBuilder]::new()
     foreach ($relative in @($sources.Keys | Sort-Object -CaseSensitive)) {

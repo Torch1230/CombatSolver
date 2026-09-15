@@ -175,6 +175,8 @@ internal static class SolverOverlay
             && button.GetIndex() > bar.GetIndex();
     internal static bool NoGcControlsConfiguredForTesting
         => _settingsPanel?.NoGcControlsConfiguredForTesting == true;
+    internal static bool BeamWidthPortfolioControlConfiguredForTesting
+        => _settingsPanel?.BeamWidthPortfolioControlConfiguredForTesting == true;
     internal static bool MemoryUsageBarConfiguredForTesting
         => _memoryUsageBar != null
             && GodotObject.IsInstanceValid(_memoryUsageBar)
@@ -629,10 +631,11 @@ internal static class SolverOverlay
         bool changingPotionGradient = progress.Phase.StartsWith(
             "切换用药路线",
             StringComparison.Ordinal);
+        bool refiningRoute = string.Equals(progress.Phase, "正在精炼路线", StringComparison.Ordinal);
         SetStatus(
             reclaimingMemory
                 ? changingPotionGradient ? SolverText.Get("切换用药路线") : SolverText.Get("正在整理内存")
-                : SolverText.Get("后台计算中"),
+                : refiningRoute ? SolverText.Get("正在精炼路线") : SolverText.Get("后台计算中"),
             reclaimingMemory ? Warning : Accent,
             deployWhenReady ? SolverText.Format($"{routeContext}    已排队执行") : routeContext);
         if (_routeHeadingLabel != null)
@@ -644,12 +647,17 @@ internal static class SolverOverlay
         }
         string potionSearchPhase = progress.Phase.StartsWith("正在搜索", StringComparison.Ordinal)
             || reclaimingMemory
+            || refiningRoute
                 ? progress.Phase
                 : string.Empty;
         string reviewedWorldlinesText =
             SolverText.Format($"已查阅 {reviewedWorldlinesBeforeSearch + progress.ReviewedWorldlines:N0} 条世界线");
         SetReviewText(SolverText.IsEnglish && potionSearchPhase.Length > 0
-            ? reclaimingMemory ? SolverText.Get("正在整理内存") : SolverText.Get("后台计算中")
+            ? reclaimingMemory
+                ? SolverText.Get("正在整理内存")
+                : refiningRoute
+                    ? SolverText.Get("正在精炼路线")
+                    : SolverText.Get("后台计算中")
             : potionSearchPhase);
         if (_summaryText != null)
         {

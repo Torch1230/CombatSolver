@@ -272,7 +272,13 @@ hr_snapshot_id() {
     {
         (cd -- "$source" && find -L . -type f -print0 | LC_ALL=C sort -z | xargs -0 -r sha256sum --) || return 1
         shift
-        for file in "$@"; do sha256sum -- "$file" || return 1; done
+        for file in "$@"; do
+            if [[ -d $file ]]; then
+                (cd -- "$file" && find -L . -type f -print0 | LC_ALL=C sort -z | xargs -0 -r sha256sum --) || return 1
+            else
+                sha256sum -- "$file" || return 1
+            fi
+        done
     } | sha256sum | cut -d ' ' -f 1
 }
 hr_prepare_snapshot() {
@@ -291,7 +297,13 @@ hr_prepare_snapshot() {
     done
     cp -- "$dll" "$staging/mods/CombatSolver/CombatSolver.dll" || return 1
     cp -- "$manifest" "$staging/mods/CombatSolver/CombatSolver.json" || return 1
-    cp -- "$ritsu" "$staging/mods/CombatSolverHeadlessRitsuLib/STS2-RitsuLib.dll" || return 1
+    if [[ -d $ritsu ]]; then
+        cp -a -- "$ritsu/." "$staging/mods/CombatSolverHeadlessRitsuLib/" || return 1
+        rm -f -- "$staging/mods/CombatSolverHeadlessRitsuLib/mod_manifest.json" \
+            "$staging/mods/CombatSolverHeadlessRitsuLib/RitsuLib.References.props" || return 1
+    else
+        cp -- "$ritsu" "$staging/mods/CombatSolverHeadlessRitsuLib/STS2-RitsuLib.dll" || return 1
+    fi
     cp -- "$ritsu_manifest" "$staging/mods/CombatSolverHeadlessRitsuLib/STS2-RitsuLib.json" || return 1
     printf '%s\n' 'CombatSolver isolated headless dependency' >"$staging/mods/CombatSolverHeadlessRitsuLib/.combatsolver-headless-only" || return 1
     actual="$(hr_snapshot_id "$source" "$dll" "$manifest" "$ritsu" "$ritsu_manifest")" || return 1

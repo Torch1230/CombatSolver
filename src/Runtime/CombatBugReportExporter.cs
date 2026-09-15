@@ -1217,6 +1217,8 @@ internal static class CombatBugReportExporter
             settings.RelicCounterRules,
             settings.BrightestFlameMaxHpLossLimit,
             settings.IgnoreLongTermRewards,
+            useBeamWidthPortfolio = settings.UseBeamWidthPortfolio
+                || UnattendedTestRunner.UseBeamWidthPortfolioOverride,
             searchMaxDegreeOfParallelism = UnattendedTestRunner.SearchMaxDegreeOfParallelismOverride ?? settings.SearchMaxDegreeOfParallelism,
             profile = settings.Profile with { SoftTimeBudgetMilliseconds = UnattendedTestRunner.SearchBudgetOverrideMilliseconds
                 ?? settings.Profile.SoftTimeBudgetMilliseconds },
@@ -1259,6 +1261,10 @@ internal static class CombatBugReportExporter
         captured["searchMaxDegreeOfParallelism"] = policy.MaxDegreeOfParallelism;
         captured["includeTurnSetup"] = policy.IncludeTurnSetup;
         captured["act3BossStrategy"] = policy.Act3BossStrategy;
+        captured["useBeamWidthPortfolio"] = policy.UseBeamWidthPortfolio;
+        captured["beamWidthPortfolioWidths"] = JsonSerializer.SerializeToNode(
+            policy.BeamWidthPortfolioWidths,
+            JsonOptions);
         captured["growthOpportunityTarget"] = JsonSerializer.SerializeToNode(
             policy.GrowthOpportunityTargets,
             JsonOptions);
@@ -1311,7 +1317,7 @@ internal static class CombatBugReportExporter
             "solverDisabled", "automaticCalculationEnabled", "stopFullAutoOnCombatEnd", "stopFullAutoOnDeathTurn", "relicStrategyEnabled", "relicCounterRules",
             "stopFullAutoOnWorseRecalculation", "enableDetailedDiagnosticLogs", "potionDirectives",
             "actTransitionBossHpStrategy", "finalBossHpStrategy", "acceptableBattleHpLoss", "stopAtAcceptableBattleHpLoss", "growthBudgets", "brightestFlameMaxHpLossLimit", "performancePreset",
-            "searchMaxDegreeOfParallelism", "shortTimeLimitSeconds", "deepTimeLimitSeconds", "enableNoGcRegion",
+            "searchMaxDegreeOfParallelism", "useBeamWidthPortfolio", "shortTimeLimitSeconds", "deepTimeLimitSeconds", "enableNoGcRegion",
             "noGcRegionBudgetGigabytes", "shortBeamWidth", "deepBeamWidth", "shortMaxExpandedNodes", "deepMaxExpandedNodes",
             "shortMaxCardBranchesPerNode", "deepMaxCardBranchesPerNode", "shortMaxPileChoiceBranchesPerAction",
             "deepMaxPileChoiceBranchesPerAction", "shortMaxHandChoiceBranchesPerAction", "deepMaxHandChoiceBranchesPerAction",

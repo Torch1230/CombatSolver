@@ -448,8 +448,17 @@ else
     combat_solver_manifest="$repo_root/CombatSolver.json"
 fi
 ritsu_workshop_root="$(realpath -m -- "${option_value[ritsu-workshop-root]}")"
-ritsu_variant_dll="$ritsu_workshop_root/lib/0.111.0/STS2-RitsuLib.dll"
+ritsu_legacy_dll="$ritsu_workshop_root/lib/0.111.0/STS2-RitsuLib.dll"
+ritsu_bundle_dll="$ritsu_workshop_root/STS2-RitsuLib.dll"
+ritsu_bundle_index="$ritsu_workshop_root/ritsulib-variants.manifest"
+ritsu_bundle_runtime="$ritsu_workshop_root/compat/0.111.0/STS2-RitsuLib.Runtime.dll"
+ritsu_bundle_shared="$ritsu_workshop_root/shared/STS2-RitsuLib.Shared.dll"
 ritsu_manifest_source="$ritsu_workshop_root/mod_manifest.json"
+if [[ -f $ritsu_bundle_dll && -f $ritsu_bundle_index && -f $ritsu_bundle_runtime && -f $ritsu_bundle_shared ]]; then
+    ritsu_source="$ritsu_workshop_root"
+else
+    ritsu_source="$ritsu_legacy_dll"
+fi
 interactive_data_dir="$host_data_home/SlayTheSpire2"
 headless_instance="${option_value[headless-instance]}"
 if [[ -z $headless_instance ]]; then
@@ -479,7 +488,7 @@ if ((option_value[stop-instance] == 0)); then
 [[ -x "$source_game_root/SlayTheSpire2" ]] || runtime_error "game executable not found: $source_game_root/SlayTheSpire2"
 [[ -f "$combat_solver_dll" && -f "$combat_solver_manifest" ]] || runtime_error \
     "built CombatSolver DLL/manifest not found; build with -p:CopyModOnBuild=false or supply --combat-solver-build-dir"
-[[ -f "$ritsu_variant_dll" && -f "$ritsu_manifest_source" ]] || \
+[[ -e "$ritsu_source" && -f "$ritsu_manifest_source" ]] || \
     runtime_error "headless RitsuLib source not found under: $ritsu_workshop_root"
 fi
 [[ "$(realpath -m -- "$data_dir")" != "$(realpath -m -- "$interactive_data_dir")" ]] || \
@@ -1054,7 +1063,7 @@ combat_solver_dll_sha256="$(sha256sum -- "$combat_solver_dll")"
 combat_solver_dll_sha256="${combat_solver_dll_sha256%% *}"
 combat_solver_manifest_sha256="$(sha256sum -- "$combat_solver_manifest")"
 combat_solver_manifest_sha256="${combat_solver_manifest_sha256%% *}"
-artifact_id="$(hr_snapshot_id "$source_game_root" "$combat_solver_dll" "$combat_solver_manifest" "$ritsu_variant_dll" "$ritsu_manifest_source")"
+artifact_id="$(hr_snapshot_id "$source_game_root" "$combat_solver_dll" "$combat_solver_manifest" "$ritsu_source" "$ritsu_manifest_source")"
 
 process_pid=""
 process_identity_start_time=""
@@ -1119,7 +1128,7 @@ fi
 
 hr_acquire "$process_pid" "$process_identity_start_time" || runtime_error 'headless host admission failed'
 if [[ -z $process_pid ]]; then
-    hr_prepare_snapshot "$source_game_root" "$combat_solver_dll" "$combat_solver_manifest" "$ritsu_variant_dll" "$ritsu_manifest_source" "$artifact_id" || runtime_error 'could not prepare frozen game snapshot'
+    hr_prepare_snapshot "$source_game_root" "$combat_solver_dll" "$combat_solver_manifest" "$ritsu_source" "$ritsu_manifest_source" "$artifact_id" || runtime_error 'could not prepare frozen game snapshot'
 fi
 
 # Publish only after every process-safety check. An already-running protocol

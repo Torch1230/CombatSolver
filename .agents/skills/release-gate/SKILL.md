@@ -73,7 +73,7 @@ ZIP 创建命令成功就是完成证据。不要重新打开、解压、枚举�
 
 ### 3.1 夸克专用打包版
 
-GitHub Release 继续上传第 3 节的最小 ZIP，创意工坊继续暂存四个发布内容文件。夸克网盘单独使用 `releases/CombatSolver-<版本号>-Quark.zip`：以最小 ZIP 为基础，在外层压缩包顶层加入 `releases/STS2 RitsuLib 0.5.20.zip` 这个完整文件。前置 ZIP 不解压、不改名、不把内部条目散放进 CombatSolver 包。
+GitHub Release 继续上传第 3 节的最小 ZIP，创意工坊继续暂存四个发布内容文件。夸克网盘单独使用 `releases/CombatSolver-<版本号>-Quark.zip`：以最小 ZIP 为基础，在外层压缩包顶层加入 `releases/STS2 RitsuLib 0.6.0.zip` 这个完整文件。前置 ZIP 不解压、不改名、不把内部条目散放进 CombatSolver 包。
 
 统一发布脚本负责生成夸克打包版，并要求最终文件严格大于 `10 MiB`；未达到时停止发布。前置 ZIP 由用户放入仓库 `releases/`，不从本机工坊目录反向复制，也不从夸克网盘下载。夸克打包版和前置 ZIP 均由 Git 忽略，不进入源码提交。
 
@@ -117,7 +117,7 @@ Linux 不使用上述 Windows 路径。上传前必须设置 `COMBATSOLVER_MOD_U
 脚本执行前必须满足：
 
 - 当前分支为 `main`，已跟踪文件干净，manifest、annotated tag 与 HEAD 的 release source commit 一致；
-- 第 3 节的 `releases/CombatSolver-<版本号>.zip`、`releases/STS2 RitsuLib 0.5.20.zip`、同版本中英玩家更新日志、Release DLL、MemoryCleaner 与第三方许可均存在；
+- 第 3 节的 `releases/CombatSolver-<版本号>.zip`、`releases/STS2 RitsuLib 0.6.0.zip`、同版本中英玩家更新日志、Release DLL、MemoryCleaner 与第三方许可均存在；
 - `workshop.json` 的 changeNote 已按本版本更新；脚本只暂存四个发布内容文件，保留工坊介绍、语言、封面、示例图、标签和依赖；
 - 完整读取全局 `quarkclouddrive` skill 的 `SKILL.md`、`references/file-search.md`、`references/file-ops.md` 与 `references/file-upload.md`。将用户本次发布原话和同一对话的夸克 session ID 传给脚本，不把授权码写进参数、仓库或状态文件。
 
@@ -130,7 +130,7 @@ pwsh -NoProfile -File tools\publish-release.ps1 -Version <版本号> -QuarkSessi
 夸克网盘固定使用 `战斗路线求解器` 下三个发布子目录：
 
 1. 浏览 `最新版` 的全部直接子项，把目标版本 ZIP 以外的原文件移动到 `老版本`；
-2. 生成第 3.1 节的 `CombatSolver-<版本号>-Quark.zip`，把 `STS2 RitsuLib 0.5.20.zip` 作为完整 ZIP 文件加入其中；
+2. 生成第 3.1 节的 `CombatSolver-<版本号>-Quark.zip`，把 `STS2 RitsuLib 0.6.0.zip` 作为完整 ZIP 文件加入其中；
 3. 将夸克专用打包版上传到 `最新版`；恢复执行时若目标文件已存在则复用；
 4. 将 `docs/releases/<版本号>-RELEASE_NOTES.md` 上传到 `更新日志`；同名日志已存在时复用。
 

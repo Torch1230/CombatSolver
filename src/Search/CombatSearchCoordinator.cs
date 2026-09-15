@@ -251,15 +251,21 @@ internal static partial class CombatSearchCoordinator
         {
             long passAllocatedAtStart = GC.GetTotalAllocatedBytes(precise: false);
             long passTransitionsAtStart = policy.RequestWorkTotals?.Snapshot().TransitionCount ?? 0;
-            SolverResult SolveMember(SolverSearchProfile memberProfile) => new CombatBeamSolver(
-                root,
-                displayNames,
-                battleDamage,
-                policy,
-                cancellationToken,
-                progressCallback,
-                memberProfile,
-                potionPolicyOverride: initialPotionPolicyOverride).Solve();
+            SolverResult SolveMember(SolverSearchProfile memberProfile, bool refinement)
+            {
+                Action<SolverProgress>? memberProgressCallback = refinement && progressCallback != null
+                    ? progress => progressCallback(progress with { Phase = "正在精炼路线" })
+                    : progressCallback;
+                return new CombatBeamSolver(
+                    root,
+                    displayNames,
+                    battleDamage,
+                    policy,
+                    cancellationToken,
+                    memberProgressCallback,
+                    memberProfile,
+                    potionPolicyOverride: initialPotionPolicyOverride).Solve();
+            }
             // 基线成员一跑完就按今天的方式把完整结果发布给覆盖层（覆盖层的中途路线走
             // SolverProgress，见 RunBeamWidthPortfolioPass 的注释）；精炼成员只有更优时才会
             // 在本轮末尾再发布一次，所以同一份结果不会发布两遍。
@@ -370,7 +376,7 @@ internal static partial class CombatSearchCoordinator
         SearchPolicySnapshot policy,
         SolverSearchProfile profile,
         Stopwatch passClock,
-        Func<SolverSearchProfile, SolverResult> solveMember,
+        Func<SolverSearchProfile, bool, SolverResult> solveMember,
         Action<SolverResult>? publishBaseline)
     {
         SearchRequestWorkTotals totals = policy.RequestWorkTotals
@@ -399,7 +405,7 @@ internal static partial class CombatSearchCoordinator
             SearchRequestWorkSnapshot before = totals.Snapshot();
             long allocatedBefore = GC.GetTotalAllocatedBytes(precise: false);
             long startedMilliseconds = passClock.ElapsedMilliseconds;
-            SolverResult memberResult = solveMember(effectiveProfile);
+            SolverResult memberResult = solveMember(effectiveProfile, baselineObserved);
             long memberElapsed = Math.Max(0, passClock.ElapsedMilliseconds - startedMilliseconds);
             long memberAllocated = Math.Max(
                 0, GC.GetTotalAllocatedBytes(precise: false) - allocatedBefore);

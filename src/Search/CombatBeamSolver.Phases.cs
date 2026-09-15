@@ -59,10 +59,6 @@ internal sealed partial class CombatBeamSolver
                 $"[CombatSolver/Test] HOOK_LAYOUT_CACHE scope=root_cumulative " +
                 $"hits={hookLayouts.Hits} misses={hookLayouts.Misses} " +
                 $"collisions={hookLayouts.Collisions} bypasses={hookLayouts.Bypasses}");
-            var targetTypes = root.TargetTypeAbsenceCounts;
-            policy.Diagnostics.Info(
-                $"[CombatSolver/Test] TARGET_TYPE_ABSENCE_CACHE scope=process_cumulative " +
-                $"hits={targetTypes.Hits} probes={targetTypes.Probes} bypasses={targetTypes.Bypasses}");
             if (_run.PotionStrategicCosts.Misses > 0)
             {
                 policy.Diagnostics.Info(

@@ -29,13 +29,18 @@
     <Sts2Dir Condition="'$(Sts2Dir)' == ''">$(SteamRoot)/steamapps/common/Slay the Spire 2</Sts2Dir>
     <Sts2DataDir Condition="'$(Sts2DataDir)' == '' and '$(OS)' == 'Windows_NT'">$(Sts2Dir)/data_sts2_windows_x86_64</Sts2DataDir>
     <Sts2DataDir Condition="'$(Sts2DataDir)' == ''">$(Sts2Dir)/data_sts2_linuxbsd_x86_64</Sts2DataDir>
+    <RitsuWorkshopRoot Condition="'$(RitsuWorkshopRoot)' == ''">$(SteamRoot)/steamapps/workshop/content/2868840/3747602295</RitsuWorkshopRoot>
     <RitsuLibDir Condition="'$(RitsuLibDir)' == ''">$(SteamRoot)/steamapps/workshop/content/2868840/3747602295/lib/0.111.0</RitsuLibDir>
+    <RitsuLibReferenceTarget Condition="'$(RitsuLibReferenceTarget)' == ''">0.111.0</RitsuLibReferenceTarget>
+    <RitsuLibReferencesProps>$(RitsuWorkshopRoot)/RitsuLib.References.props</RitsuLibReferencesProps>
     <ModOutputDir>$(Sts2Dir)/mods/CombatSolver</ModOutputDir>
     <CopyModOnBuild Condition="'$(CopyModOnBuild)' == ''">true</CopyModOnBuild>
     <NoWarn>$(NoWarn);CS0436</NoWarn>
     <MemoryCleanerProject>$(MSBuildProjectDirectory)/tools/CombatSolver.MemoryCleaner/CombatSolver.MemoryCleaner.csproj</MemoryCleanerProject>
     <MemoryCleanerOutput>$(MSBuildProjectDirectory)/tools/CombatSolver.MemoryCleaner/bin/$(Configuration)/net48/CombatSolver.MemoryCleaner.exe</MemoryCleanerOutput>
   </PropertyGroup>
+
+  <Import Project="$(RitsuLibReferencesProps)" Condition="Exists('$(RitsuLibReferencesProps)')" />
 
   <ItemGroup>
     <Compile Remove="tools/**/*.cs" />
@@ -49,12 +54,14 @@
     <Reference Include="sts2" HintPath="$(Sts2DataDir)/sts2.dll" Private="false" />
     <Reference Include="0Harmony" HintPath="$(Sts2DataDir)/0Harmony.dll" Private="false" />
     <Reference Include="GodotSharp" HintPath="$(Sts2DataDir)/GodotSharp.dll" Private="false" />
-    <Reference Include="STS2-RitsuLib" HintPath="$(RitsuLibDir)/STS2-RitsuLib.dll" Private="false" />
+    <Reference Include="STS2-RitsuLib" HintPath="$(RitsuLibDir)/STS2-RitsuLib.dll" Private="false"
+               Condition="!Exists('$(RitsuLibReferencesProps)')" />
   </ItemGroup>
 
   <Target Name="ValidateSts2GameInstall" BeforeTargets="ResolveAssemblyReferences">
     <Error Condition="!Exists('$(Sts2DataDir)/sts2.dll')" Text="找不到 $(Sts2DataDir)/sts2.dll。请检查 SteamRoot 或 local.props。" />
-    <Error Condition="!Exists('$(RitsuLibDir)/STS2-RitsuLib.dll')" Text="找不到当前游戏版本的 RitsuLib。请检查 SteamRoot 或 local.props。" />
+    <Error Condition="!Exists('$(RitsuLibReferencesProps)') and !Exists('$(RitsuLibDir)/STS2-RitsuLib.dll')"
+           Text="找不到当前游戏版本的 RitsuLib。请检查 SteamRoot、RitsuWorkshopRoot 或 local.props。" />
   </Target>
 
   <Target Name="BuildMemoryCleaner" BeforeTargets="Build" Condition="'$(OS)' == 'Windows_NT'">

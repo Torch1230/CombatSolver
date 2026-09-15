@@ -12,6 +12,9 @@
 - 合入 PR #94/#96 后，Windows Release 构建通过，0 警告、0 错误；PowerShell 结构门禁通过（`search_files=105`）；Beam 宽度组合离线合同通过（`BEAM_WIDTH_PORTFOLIO_OK checks=59`），其中包含默认关闭、门控、预算和最终质量仲裁。
 - `ROUTE-ROW-REUSE` / `91fe2c42bc3c44d6bdec080606ac9967` Passed，23.97 秒：覆盖同值复用、显示字段变化、选择/击杀/顺序、空路线、失败重试、部署状态和语言往返。
 - `CARD-CONTINUATION-EXPANDED-SEARCH` / `56398494c8b24ff9abe44bef784d7a0c` Passed，8.95 秒：实际穿过扩展后的卡牌选牌续执行和搜索边界。两项均在 Windows 隔离无头实例执行；完成后实例已停止，本次没有运行 Bash 门禁或可见 Steam 测试。
+- RitsuLib 0.6.0 失败基线 `UI-LOCALIZATION` / `1a41b720610146afb894f3c9a25c5c18` 在 120 秒上限退出；日志直接定位为旧 `RitsuBaseLibTargetTypeLookupPatch` 找不到已经被框架改写的 `Assembly -> Type` 私有闭包，CombatSolver 初始化在应用自身补丁前中断。删除重复适配后，同一完整 0.6.0 分包启动并运行 `UI-LOCALIZATION` / `8d5c7bcdac8d438396cc12fb4d3459a4` Passed，28.53 秒，eng/zhs/zht 与 420 项目录通过。
+- `NATIVE-HAND-CHOICE-REPLAY` / `fd5b50d371c041129e4c0e82d266a858` Passed，29.82 秒：RitsuLib 0.6.0 下两组燃烧契约选择、失配后人工恢复保持；新增生存者在 `Instant` 模式打出、选择防御弃牌、退出原生手牌选择并完成动作的直接合同。
+- `BEAM-PORTFOLIO-SETTINGS-0387` / `0064d9a37309472db95ba9c1fd7fe353` Passed，29.35 秒：开关默认关闭，设置往返、性能页控件与搜索请求冻结一致；首回合原生部署完成。组合器与门控离线检查 `BEAM_WIDTH_PORTFOLIO_OK checks=59`，Windows PowerShell 结构门禁通过（`search_files=105`）。没有运行 Bash 门禁或可见 Steam 测试。
 
 ## 路线界面复用与派生计算实验（2026-09-15，未发布）
 

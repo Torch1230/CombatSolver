@@ -1018,22 +1018,12 @@ forbid_fixed \
     '_monsterAiStates?.Remove(creature)' \
     'active-roster removal must retain known-monster AI state through move completion:'
 
-for rule in 'ConditionalWeakTable<Assembly, Resolution>' 'SimulationNotificationIsolation.IsActive' '__0.IsDynamic' 'callbacks.Length != 1'; do
-    require_fixed "$repository_root/src/Runtime/RitsuBaseLibTargetTypeLookupPatch.cs" "$rule" 'missing metadata cache boundary'
-done
-
 while IFS=$'\t' read -r relative_path text; do
     require_fixed "$repository_root/$relative_path" "$text" 'missing exact metadata reuse boundary'
 done <<'EOF'
 src/Runtime/PowerAmountComparisonPatch.cs	Enum.GetUnderlyingType(typeof(PowerStackType)) != typeof(int)
 src/Runtime/PowerAmountComparisonPatch.cs	if (matches.Count != 2
 src/Runtime/PowerAmountComparisonPatch.cs	code[i].labels.Count != 0 || code[i].blocks.Count != 0
-src/Runtime/AssemblyTypeAbsenceCache.cs	WeakReference<Assembly>[] DynamicAssemblies
-src/Runtime/AssemblyTypeAbsenceCache.cs	AppDomain.CurrentDomain.AssemblyLoad
-src/Runtime/AssemblyTypeAbsenceCache.cs	absence.Generation == Volatile.Read(ref _assemblyGeneration)
-src/Runtime/AssemblyTypeAbsenceCache.cs	assembly.GetType(markerTypeName, throwOnError: false)
-src/Runtime/RitsuBaseLibTargetTypeResolutionPatches.cs	!SimulationNotificationIsolation.IsActive
-src/Runtime/RitsuBaseLibTargetTypeResolutionPatches.cs	MissingType.ObserveResult(__state, __result)
 src/Search/SimulatedCombatState.cs	IReadOnlyList<PowerModel>? powers = effectivePrefix is not null ? _effectivePowers : null;
 src/Search/SimulatedCombatState.cs	_effectiveHookListenerPrefix = null;
 src/Search/SimulatedCombatState.Fork.cs	ReferenceEquals(_activeHookListenerPrefix, _effectiveHookListenerPrefix)

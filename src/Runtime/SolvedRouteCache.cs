@@ -68,6 +68,8 @@ internal sealed class SolvedRouteCache(string path)
             policy.FinalBossHpStrategy,
             policy.AcceptableBattleHpLoss,
             policy.StopAtAcceptableBattleHpLoss,
+            policy.UseBeamWidthPortfolio,
+            policy.BeamWidthPortfolioWidths,
             policy.FixedBudget,
             policy.BudgetOverrideMilliseconds,
         });

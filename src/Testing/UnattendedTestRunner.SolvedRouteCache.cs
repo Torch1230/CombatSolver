@@ -43,6 +43,9 @@ internal sealed partial class UnattendedTestRunner
             if (SolvedRouteCache.Capture(combat, root,
                     policy with { AcceptableBattleHpLoss = policy.AcceptableBattleHpLoss + 1 }, damage).Path == cache.Path)
                 throw new InvalidOperationException("路线缓存没有隔离策略变化。");
+            if (SolvedRouteCache.Capture(combat, root,
+                    policy with { UseBeamWidthPortfolio = !policy.UseBeamWidthPortfolio }, damage).Path == cache.Path)
+                throw new InvalidOperationException("路线缓存没有隔离多宽度精炼设置变化。");
             int hp = player.Creature.CurrentHp;
             await CreatureCmd.SetCurrentHp(player.Creature, hp - 1);
             CombatRootSnapshot changed = CombatRootSnapshot.Capture(combat);

@@ -258,6 +258,8 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidOperationException("强制释放内存按钮没有位于主界面内存条右侧。");
         if (!SolverOverlay.NoGcControlsConfiguredForTesting)
             throw new InvalidOperationException("NoGC 开关或预算输入没有归属性能设置页。");
+        if (!SolverOverlay.BeamWidthPortfolioControlConfiguredForTesting)
+            throw new InvalidOperationException("多宽度路线精炼开关没有归属性能设置页或状态未同步。");
         bool memoryUsageBarConfigured = SolverOverlay.MemoryUsageBarConfiguredForTesting;
         bool memoryUsageBarFormatting = SolverOverlay.ExerciseMemoryUsageBarForTesting();
         if (!memoryUsageBarConfigured || !memoryUsageBarFormatting)
@@ -372,6 +374,7 @@ internal sealed partial class UnattendedTestRunner
         SolverSettingsData notificationDefaults = new();
         if (SolverSettings.ResolvePerformancePreset(notificationDefaults)
                 != SolverPerformancePreset.Medium
+            || notificationDefaults.UseBeamWidthPortfolio
             || !notificationDefaults.EnableNoGcRegion
             || notificationDefaults.NoGcRegionBudgetGigabytes
                 != SolverSettings.DefaultNoGcRegionBudgetGigabytes)
@@ -432,6 +435,20 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidOperationException("上传任务结束前按钮状态提前切回空闲，可能重新打开确认弹窗。");
         if (!SolverOverlay.ExercisePerformancePresetPersistenceForTesting())
             throw new InvalidOperationException("0.24.3 性能迁移或预设/内存独立持久化失败。");
+        SolverSettingsSnapshot portfolioSettings = SolverSettings.Capture();
+        SearchPolicySnapshot portfolioEnabled = SolverController.CaptureSearchPolicy(
+            portfolioSettings with { UseBeamWidthPortfolio = true },
+            combat,
+            includeTurnSetup: false,
+            theftPolicy: null);
+        SearchPolicySnapshot portfolioDisabled = SolverController.CaptureSearchPolicy(
+            portfolioSettings with { UseBeamWidthPortfolio = false },
+            combat,
+            includeTurnSetup: false,
+            theftPolicy: null);
+        if (!portfolioEnabled.UseBeamWidthPortfolio || portfolioDisabled.UseBeamWidthPortfolio)
+            throw new InvalidOperationException("多宽度路线精炼设置没有按搜索请求冻结。");
+        _completedChecks.Add("BeamWidthPortfolio:SettingsRoundTrip:UiControl:PolicySnapshot");
         AssertDefaultSearchParallelism();
         string parallelFailure = SolverController.FormatSearchFailureForTesting(
             new InvalidOperationException("parallel failure"),

@@ -123,7 +123,7 @@ PR #43 集成修正：Mod 使用独立文件复制，游戏程序继续使用硬
 
 `RitsuEmptyCapabilityFastPathPatches` 的标签入口只在模拟隔离域且已证明 capability 集为空时返回原 `IEnumerable<CardTag>`，不枚举、不复制、不缓存标签值；已有空集合和精确类型默认来源代次沿用公共判定。非空贡献者、晚注册默认来源及 live 调用仍执行框架管线。
 
-`RitsuBaseLibTargetTypeLookupPatch` 属于 Runtime 的第三方适配：只在模拟隔离域缓存目标桥的精确类型查询，以 Assembly 弱键持有准确 Type/缺失；具体回调由当前桥中唯一的 Assembly→Type 签名定位，适配不匹配显式失败。`RitsuBaseLibTargetTypeResolutionPatches` 还记录原版全程序集查询正常返回 null 时的缺失证据。`AssemblyTypeAbsenceCache` 用 AssemblyLoad 代次判定静态程序集集合是否变化，并在每次复用前重新查询弱引用中的动态程序集；加载新程序集、动态晚创建目标类型、原查询失败或找到类型时均不能复用旧缺失结论。live 调用仍走原桥。它们不缓存框架是否安装、注册表或目标谓词，不持有分支模型，也不参与搜索策略。 `TARGET_TYPE_ABSENCE_CACHE scope=process_cumulative` 记录命中、原查询和旁路；对单次请求取首尾差值，不能直接累加日志。
+RitsuLib 0.6.0 自身拥有 BaseLib 目标类型的外部登记查询、按程序集弱键缓存和动态程序集旁路。CombatSolver 不再修补该桥的私有查询闭包或重复维护缺失证据；目标类型语义继续通过 RitsuLib 的公开能力入口读取。项目构建导入 RitsuLib 随包提供的多程序集引用表，Windows/Linux 无头快照复制同一完整版本包，避免编译期与运行期落在不同兼容分支。
 
 玩家死亡被确认后，`CombatPredictionSimulator.HandlePlayerDeath` 先调用 `SimulatedCombatState.RemovePowersAfterDeath`，再清理球和宠物。敌人能力仍由原领域死亡清扫处理；玩家不能依赖仅遍历敌人的后续清扫。
 
@@ -156,7 +156,7 @@ PR #43 集成修正：Mod 使用独立文件复制，游戏程序继续使用硬
 
 `ActionRelicTriggerRecorder` 仅存在于最终路线回放，附带 Damage/Heal 的来源、请求/修正数值和 HP 前后值；普通 Beam 分支保持 null，不分配取证列表。直接字段赋值等绕过 Damage/Heal 的变更尚无来源事件，不能把这份记录宣称为所有语义写点的完整追踪。
 
-`BeamWidthPortfolio.cs` 是一个与 Beam 算法无关的组合器：按顺序在同一个根上跑若干只有 Beam 宽度不同的成员，共享一份节点预算（首个成员拿全额，其后各成员的上限是扣掉前面实际展开数后的余量，扣光即停），撞节点上限又没到终局的成员不参与比较，其余按调用方传入的既有比较规则整条取最优，同分保留先出现的基线成员。它不含比较规则、不改保留逻辑、状态键、评分或常量；展开数、转移数和终止原因都由调用方按各自既有口径给出。`SearchPolicySnapshot.UseBeamWidthPortfolio` 默认关闭，关闭时主搜索行为逐位不变。做法与数据来源见[宽度组合](strategy/beam-width-portfolio.md)。
+`BeamWidthPortfolio.cs` 是一个与 Beam 算法无关的组合器：按顺序在同一个根上跑若干只有 Beam 宽度不同的成员，共享一份节点预算（首个成员拿全额，其后各成员的上限是扣掉前面实际展开数后的余量，扣光即停），撞节点上限又没到终局的成员不参与比较，其余按调用方传入的既有比较规则整条取最优，同分保留先出现的基线成员。它不含比较规则、不改保留逻辑、状态键、评分或常量；展开数、转移数和终止原因都由调用方按各自既有口径给出。`SolverSettings.UseBeamWidthPortfolio` 默认关闭，由 Runtime 冻结进 `SearchPolicySnapshot`；关闭时主搜索行为逐位不变。做法与数据来源见[宽度组合](strategy/beam-width-portfolio.md)。
 
 `BeamWidthPortfolioGate.cs` 是精炼成员的准入判断，只做算术与比较，不看搜索状态：基线必须已经把自己这一宽度搜干净（`BoundaryReason == None`）、不是已证明最优的零战损胜利、耗时不超过时间预算的四分之一，且共享节点余量、剩余时间、`SearchMemoryPressureSignal.RemainingBytes` 都装得下「基线实测 × 成员宽度 ÷ 基线宽度 × 3/2」的估算，才启动下一位成员；否则该成员不运行、不花预算，只留一行原因。成员顺序执行不并行，精炼成员的软时间预算收紧到本轮剩余部分。`BeamWidthPortfolioTelemetry.cs` 是请求级诊断，记首条路线发布时刻、逐成员开销与各成员结束后的托管堆峰值，挂在 `SolverResult.PortfolioTelemetry` 上供测试写出；组合关闭时同样记录，那时是单成员一行。基线成员一完成就走协调器已有的 interim 回调发布给界面（中途路线本来就由 `SolverProgress` 承载），精炼不影响玩家看到第一条路线的时刻。Search 仍然不读设置：开关与成员宽度由运行时写进 `SearchPolicySnapshot`。
 

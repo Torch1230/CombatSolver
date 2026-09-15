@@ -90,7 +90,7 @@ foreach ($command in @('git', 'gh', 'node', 'bash')) {
 
 $manifestPath = Resolve-RequiredFile (Join-Path $repoRoot 'CombatSolver.json') 'manifest'
 $releaseZipPath = Resolve-RequiredFile (Join-Path $repoRoot "releases\CombatSolver-$Version.zip") '最小发布包'
-$ritsuLibZipPath = Resolve-RequiredFile (Join-Path $repoRoot 'releases\STS2 RitsuLib 0.5.20.zip') 'RitsuLib 前置 ZIP'
+$ritsuLibZipPath = Resolve-RequiredFile (Join-Path $repoRoot 'releases\STS2 RitsuLib 0.6.0.zip') 'RitsuLib 前置 ZIP'
 $quarkReleaseZipPath = Join-Path $repoRoot "releases\CombatSolver-$Version-Quark.zip"
 $releaseNotesPath = Resolve-RequiredFile (Join-Path $repoRoot "docs\releases\$Version-RELEASE_NOTES.md") '玩家更新日志'
 $solverDllPath = Resolve-RequiredFile (Join-Path $repoRoot '.godot\mono\temp\bin\Release\CombatSolver.dll') 'Release DLL'

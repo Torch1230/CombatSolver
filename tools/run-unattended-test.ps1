@@ -356,7 +356,11 @@ $memoryCleaner = if ([string]::IsNullOrWhiteSpace($CombatSolverBuildDir)) {
     Join-Path $repositoryRoot 'tools\CombatSolver.MemoryCleaner\bin\Release\net48\CombatSolver.MemoryCleaner.exe'
 } else { Join-Path $buildDirectory 'CombatSolver.MemoryCleaner.exe' }
 $resolvedRitsuWorkshopRoot = [IO.Path]::GetFullPath($RitsuWorkshopRoot)
-$ritsuVariantDll = Join-Path $resolvedRitsuWorkshopRoot "lib\0.111.0\STS2-RitsuLib.dll"
+$ritsuLegacyDll = Join-Path $resolvedRitsuWorkshopRoot "lib\0.111.0\STS2-RitsuLib.dll"
+$ritsuBundleDll = Join-Path $resolvedRitsuWorkshopRoot "STS2-RitsuLib.dll"
+$ritsuBundleIndex = Join-Path $resolvedRitsuWorkshopRoot "ritsulib-variants.manifest"
+$ritsuBundleRuntime = Join-Path $resolvedRitsuWorkshopRoot "compat\0.111.0\STS2-RitsuLib.Runtime.dll"
+$ritsuBundleShared = Join-Path $resolvedRitsuWorkshopRoot "shared\STS2-RitsuLib.Shared.dll"
 $ritsuManifestSource = Join-Path $resolvedRitsuWorkshopRoot "mod_manifest.json"
 $headlessDependencyDir = Join-Path $gameModsRoot ".combatsolver-headless-ritsulib"
 $headlessDependencyMarker = Join-Path $headlessDependencyDir ".combatsolver-headless-only"
@@ -382,7 +386,12 @@ if (-not (Test-Path -LiteralPath $combatSolverDll -PathType Leaf) -or
     -not (Test-Path -LiteralPath $memoryCleaner -PathType Leaf)) {
     throw "Built CombatSolver DLL/manifest/MemoryCleaner not found: $combatSolverDll ; $combatSolverManifest ; $memoryCleaner"
 }
-if (-not (Test-Path -LiteralPath $ritsuVariantDll -PathType Leaf) -or
+$hasLegacyRitsu = Test-Path -LiteralPath $ritsuLegacyDll -PathType Leaf
+$hasBundledRitsu = (Test-Path -LiteralPath $ritsuBundleDll -PathType Leaf) -and
+    (Test-Path -LiteralPath $ritsuBundleIndex -PathType Leaf) -and
+    (Test-Path -LiteralPath $ritsuBundleRuntime -PathType Leaf) -and
+    (Test-Path -LiteralPath $ritsuBundleShared -PathType Leaf)
+if ((-not $hasLegacyRitsu -and -not $hasBundledRitsu) -or
     -not (Test-Path -LiteralPath $ritsuManifestSource -PathType Leaf)) {
     throw "Headless RitsuLib source not found under: $resolvedRitsuWorkshopRoot"
 }
@@ -1044,7 +1053,7 @@ if (-not [string]::IsNullOrWhiteSpace($PowerId)) {
     )
 }
 
-$snapshotPlan = Get-HeadlessSnapshotPlan $runtimeContext $combatSolverDll $combatSolverManifest $memoryCleaner $ritsuVariantDll $ritsuManifestSource
+$snapshotPlan = Get-HeadlessSnapshotPlan $runtimeContext $combatSolverDll $combatSolverManifest $memoryCleaner $resolvedRitsuWorkshopRoot $ritsuManifestSource
 $runtimeContext.ArtifactId = $snapshotPlan.id
 $combatSolverDllSha256 = @($snapshotPlan.files | Where-Object { $_.relative -eq 'mods\CombatSolver\CombatSolver.dll' })[0].sha256
 $combatSolverManifestSha256 = @($snapshotPlan.files | Where-Object { $_.relative -eq 'mods\CombatSolver\CombatSolver.json' })[0].sha256

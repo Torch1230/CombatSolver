@@ -1288,23 +1288,10 @@ if (Select-String -LiteralPath (Join-Path $repositoryRoot "src\Search\SimulatedC
     $violations.Add("SimulatedCombatState.cs: active-roster removal must retain known-monster AI state through move completion")
 }
 
-$ritsuTargetLookupPath = Join-Path $repositoryRoot "src/Runtime/RitsuBaseLibTargetTypeLookupPatch.cs"
-foreach ($rule in @('ConditionalWeakTable<Assembly, Resolution>', 'SimulationNotificationIsolation.IsActive', '__0.IsDynamic', 'callbacks.Length != 1')) {
-    if (-not (Select-String -LiteralPath $ritsuTargetLookupPath -SimpleMatch $rule -Quiet)) {
-        $violations.Add("${ritsuTargetLookupPath}: missing metadata cache boundary '$rule'")
-    }
-}
-
 $metadataReuseChecks = @(
     @{ File = 'src/Runtime/PowerAmountComparisonPatch.cs'; Text = 'Enum.GetUnderlyingType(typeof(PowerStackType)) != typeof(int)' },
     @{ File = 'src/Runtime/PowerAmountComparisonPatch.cs'; Text = 'if (matches.Count != 2' },
     @{ File = 'src/Runtime/PowerAmountComparisonPatch.cs'; Text = 'code[i].labels.Count != 0 || code[i].blocks.Count != 0' },
-    @{ File = 'src/Runtime/AssemblyTypeAbsenceCache.cs'; Text = 'WeakReference<Assembly>[] DynamicAssemblies' },
-    @{ File = 'src/Runtime/AssemblyTypeAbsenceCache.cs'; Text = 'AppDomain.CurrentDomain.AssemblyLoad' },
-    @{ File = 'src/Runtime/AssemblyTypeAbsenceCache.cs'; Text = 'absence.Generation == Volatile.Read(ref _assemblyGeneration)' },
-    @{ File = 'src/Runtime/AssemblyTypeAbsenceCache.cs'; Text = 'assembly.GetType(markerTypeName, throwOnError: false)' },
-    @{ File = 'src/Runtime/RitsuBaseLibTargetTypeResolutionPatches.cs'; Text = '!SimulationNotificationIsolation.IsActive' },
-    @{ File = 'src/Runtime/RitsuBaseLibTargetTypeResolutionPatches.cs'; Text = 'MissingType.ObserveResult(__state, __result)' },
     @{ File = 'src/Search/SimulatedCombatState.cs'; Text = 'IReadOnlyList<PowerModel>? powers = effectivePrefix is not null ? _effectivePowers : null;' },
     @{ File = 'src/Search/SimulatedCombatState.cs'; Text = '_effectiveHookListenerPrefix = null;' },
     @{ File = 'src/Search/SimulatedCombatState.Fork.cs'; Text = 'ReferenceEquals(_activeHookListenerPrefix, _effectiveHookListenerPrefix)' },

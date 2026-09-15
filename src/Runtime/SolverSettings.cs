@@ -107,6 +107,7 @@ internal sealed record SolverSettingsData
     public int PerformanceMigrationVersion { get; init; }
     public SolverPerformancePreset? PerformancePreset { get; init; } = SolverPerformancePreset.Medium;
     public int? SearchMaxDegreeOfParallelism { get; init; }
+    public bool UseBeamWidthPortfolio { get; init; }
     public double? SearchTimeLimitSeconds { get; init; }
     public bool EnableNoGcRegion { get; init; } = true;
     public double? NoGcRegionBudgetGigabytes { get; init; } = 16d;
@@ -152,6 +153,7 @@ internal sealed record SolverSettingsSnapshot(
     public GrowthValues GrowthBudgets { get; init; }
     public int? BrightestFlameMaxHpLossLimit { get; init; }
     public bool IgnoreLongTermRewards { get; init; }
+    public bool UseBeamWidthPortfolio { get; init; }
 }
 
 internal static class SolverSettings
@@ -248,6 +250,7 @@ internal static class SolverSettings
             $"potion_policy={migrated.PotionPolicy} " +
             $"potion_directives={migrated.PotionDirectives.Length} " +
             $"performance_preset={ResolvePerformancePreset(migrated)} " +
+            $"beam_width_portfolio={migrated.UseBeamWidthPortfolio.ToString().ToLowerInvariant()} " +
             $"max_dop={Capture().SearchMaxDegreeOfParallelism} " +
             $"search_budget_ms={Capture().Profile.SoftTimeBudgetMilliseconds} " +
             $"no_gc_enabled={Capture().EnableNoGcRegion.ToString().ToLowerInvariant()} " +
@@ -292,6 +295,7 @@ internal static class SolverSettings
             StopAtAcceptableBattleHpLoss = data.StopAtAcceptableBattleHpLoss,
             BrightestFlameMaxHpLossLimit = data.BrightestFlameMaxHpLossLimit,
             IgnoreLongTermRewards = data.IgnoreLongTermRewards,
+            UseBeamWidthPortfolio = data.UseBeamWidthPortfolio,
         };
     }
 
