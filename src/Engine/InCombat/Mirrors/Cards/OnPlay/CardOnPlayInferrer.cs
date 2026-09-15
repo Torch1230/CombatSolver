@@ -35,7 +35,7 @@ internal static class CardOnPlayInferrer
         }
 
         HashSet<EffectKind> effects = [];
-        List<CardOnPlayAction> actions = [];
+        List<CardEffectKind> actions = [];
 
         for (var i = 0; i < body.Instructions.Count; i++)
         {
@@ -48,21 +48,21 @@ internal static class CardOnPlayInferrer
             {
                 if (effects.Add(EffectKind.Attack))
                 {
-                    actions.Add(GeneralCardMirrors.GeneralAttackOnPlay);
+                    actions.Add(CardEffectKind.Attack);
                 }
             }
             else if (IsBlockGain(calledMethod))
             {
                 if (effects.Add(EffectKind.Block))
                 {
-                    actions.Add(GeneralCardMirrors.GeneralBlockOnPlay);
+                    actions.Add(CardEffectKind.Block);
                 }
             }
-            else if (TryInferOwnerDraw(body.Instructions, i, calledMethod, out var mirror, out _))
+            else if (TryInferOwnerDraw(body.Instructions, i, calledMethod, out _, out CardEffectKind drawEffect))
             {
                 if (effects.Add(EffectKind.OwnerDraw))
                 {
-                    actions.Add(mirror);
+                    actions.Add(drawEffect);
                 }
             }
         }
@@ -72,7 +72,7 @@ internal static class CardOnPlayInferrer
             return null;
         }
 
-        return (card, context) => ExecuteInferredActions(actions, card, context);
+        return new CardEffectRecipe(actions).Execute;
     }
 
     internal static void ExecuteInferredActions(

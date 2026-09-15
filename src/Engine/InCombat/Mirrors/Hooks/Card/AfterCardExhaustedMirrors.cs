@@ -29,6 +29,7 @@ internal static class AfterCardExhaustedMirrors
 
     public static void Invoke(AbstractModel listener, AfterCardExhaustedMirrorContext context)
     {
+        using var dispatch = context.Simulator.BeginExecutionDispatch();
         Registry.Invoke(listener, context);
     }
 
@@ -71,6 +72,7 @@ internal static class AfterCardExhaustedMirrors
 
     private static void HandleDarkEmbracePower(DarkEmbracePower power, AfterCardExhaustedMirrorContext context)
     {
+        context.Simulator.AcknowledgeExecutionDispatch();
         if (context.PreviewCard.Owner.Creature == power.Owner && power.Owner.Player is { } player)
         {
             if (context.CausedByEthereal)

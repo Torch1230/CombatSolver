@@ -28,6 +28,17 @@ internal static class PredictionExtensions
         return clone;
     }
 
+    public static Rng ToRng(this PredictionRngState state)
+    {
+        Rng rng = new(0UL);
+        rng._counter = state.Counter;
+        rng._random._s0 = state.State0;
+        rng._random._s1 = state.State1;
+        rng._random._s2 = state.State2;
+        rng._random._s3 = state.State3;
+        return rng;
+    }
+
     public static int Counter(this Rng rng) => rng._counter;
 
     public static PredictionRngState CaptureState(this Rng rng)

@@ -2101,11 +2101,13 @@ internal sealed partial class UnattendedTestRunner
             expected.HpInvestmentBranchesProtected,
             actual.HpInvestmentBranchesProtected);
         AddMismatch(mismatches, "replays", expected.ReplayCount, actual.ReplayCount);
-        // Parallel EndTurn may reserve an extra prefix copy; physical copies remain counted.
-        // Compare the original transition Fork work after removing only those explicit captures.
+        // EndTurn may reserve a prefix copy; a resumed card may need a full-replay fallback.
+        // Both extra physical copies stay counted; compare the original transition Fork work.
         AddMismatch(mismatches, "transition_forks",
-            expected.ForkCount - expected.RoundReplayPrefixCaptures,
-            actual.ForkCount - actual.RoundReplayPrefixCaptures);
+            expected.ForkCount - expected.RoundReplayPrefixCaptures - expected.CardChoicePrefixFallbacks
+                - expected.PotionChoicePrefixForks - expected.PotionChoicePrefixFallbacks,
+            actual.ForkCount - actual.RoundReplayPrefixCaptures - actual.CardChoicePrefixFallbacks
+                - actual.PotionChoicePrefixForks - actual.PotionChoicePrefixFallbacks);
         AddMismatch(mismatches, "reused", expected.ReusedNodeSnapshots, actual.ReusedNodeSnapshots);
         AddMismatch(mismatches, "tt_pruned", expected.TranspositionBranchesPruned, actual.TranspositionBranchesPruned);
         AddMismatch(mismatches, "repeatable", expected.RepeatableNoProgressBranchesPruned, actual.RepeatableNoProgressBranchesPruned);

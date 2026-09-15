@@ -32,6 +32,10 @@ internal sealed partial class UnattendedTestRunner
             || !applied.StopAfterCombatRootSnapshotAssertion || !applied.PreserveNativeCombatStateForTest)
             throw new InvalidOperationException("生成请求未保留指定预算、隔离原请求或选择正确建局模式。");
         var deployed = GeneratedCombatScenario.Apply(request, first with { Options = first.Options with { Mode = "Deploy" } });
+        var full = GeneratedCombatScenario.Apply(request,
+            first with { Options = first.Options with { FixedSearchBudget = false } });
+        if (full.FixedSearchBudget || full.SearchBudgetOverrideMilliseconds != 765)
+            throw new InvalidOperationException("完整搜索模式未保留显式预算或仍禁止正常补搜。");
         if (deployed.ExpectedUnexpectedReplansAtMost != 0 || deployed.StopAfterCombatRootSnapshotAssertion
             || deployed.StopAfterInitialSolverResultAssertion)
             throw new InvalidOperationException("生成部署未要求零计划外重算或被错误提前终止。");

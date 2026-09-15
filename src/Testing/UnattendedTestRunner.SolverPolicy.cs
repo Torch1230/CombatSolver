@@ -51,7 +51,9 @@ internal sealed partial class UnattendedTestRunner
     {
         if (!_request.PerformancePresetForTest.HasValue
             && !_request.EnableNoGcRegionForTest.HasValue
-            && !_request.NoGcRegionBudgetGigabytesForTest.HasValue)
+            && !_request.NoGcRegionBudgetGigabytesForTest.HasValue
+            && !_request.ExpectNoGcFallbackForTest
+            && !_request.AllowNoGcFallbackForTest)
         {
             return;
         }
@@ -62,8 +64,11 @@ internal sealed partial class UnattendedTestRunner
         long establishedBudget = SearchGcPolicy.LastEstablishedNoGcRegionBudgetBytesForTesting;
         if (configured.EnableNoGcRegion)
         {
-            if (!actualActive
-                || actualBudget <= 0
+            bool runtimeMatchesExpectation = _request.ExpectNoGcFallbackForTest
+                ? !actualActive && actualBudget == 0
+                : actualActive && actualBudget > 0
+                    || _request.AllowNoGcFallbackForTest && !actualActive && actualBudget == 0;
+            if (!runtimeMatchesExpectation
                 || actualBudget > configured.NoGcRegionBudgetBytes
                 || establishedBudget <= 0
                 || establishedBudget > configured.NoGcRegionBudgetBytes)
@@ -71,15 +76,18 @@ internal sealed partial class UnattendedTestRunner
                 throw new InvalidOperationException(
                     $"No-GC 搜索没有按配置建立并保留战斗级区域：" +
                     $"configured_enabled=true configured_budget={configured.NoGcRegionBudgetBytes} " +
+                    $"expected_fallback={_request.ExpectNoGcFallbackForTest} " +
+                    $"allowed_fallback={_request.AllowNoGcFallbackForTest} " +
                     $"established_budget={establishedBudget} " +
                     $"actual_active={actualActive} actual_budget={actualBudget} " +
                     $"latency={GCSettings.LatencyMode}。");
             }
         }
-        else if (actualActive || actualBudget != 0)
+        else if (actualActive || actualBudget != 0 || _request.ExpectNoGcFallbackForTest
+            || _request.AllowNoGcFallbackForTest)
         {
             throw new InvalidOperationException(
-                $"关闭 No-GC 后仍保留运行时区域：" +
+                $"No-GC 运行状态与关闭配置或回退预期不一致：" +
                 $"configured_budget={configured.NoGcRegionBudgetBytes} " +
                 $"actual_active={actualActive} actual_budget={actualBudget} " +
                 $"latency={GCSettings.LatencyMode}。");
@@ -88,12 +96,15 @@ internal sealed partial class UnattendedTestRunner
         _completedChecks.Add(
             $"NoGcConfigurationApplied:Configured={configured.EnableNoGcRegion}/" +
             $"{configured.NoGcRegionBudgetBytes}:Established={establishedBudget}:" +
-            $"Actual={actualActive}/{actualBudget}:" +
+            $"Actual={actualActive}/{actualBudget}:ExpectedFallback={_request.ExpectNoGcFallbackForTest}:" +
+            $"AllowedFallback={_request.AllowNoGcFallbackForTest}:" +
             $"Latency={GCSettings.LatencyMode}");
     }
 
     private bool HasInitialSolverExpectation()
-        => _request.ExpectedInitialSoldHp.HasValue
+        => _request.ExpectNoGcFallbackForTest
+            || _request.AllowNoGcFallbackForTest
+            || _request.ExpectedInitialSoldHp.HasValue
             || _request.ExpectedInitialSoldHpAtMost.HasValue
             || _request.ExpectedInitialSoldHpBranchesPrunedAtLeast.HasValue
             || _request.ExpectedInitialDeathSaveRelicHp.HasValue

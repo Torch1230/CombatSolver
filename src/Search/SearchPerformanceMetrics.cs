@@ -7,6 +7,7 @@ internal enum SearchMetricPhase
     Fork,
     Action,
     CardExecution,
+    ExecutionChoiceResume,
     CardPostProcessing,
     PotionExecution,
     RoundAdvance,

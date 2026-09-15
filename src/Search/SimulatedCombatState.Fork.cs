@@ -73,7 +73,7 @@ internal sealed partial class SimulatedCombatState
             _manualCardsPlayedThisTurn = _manualCardsPlayedThisTurn?.Fork(),
             _fetchCardsPlayedThisTurn = _fetchCardsPlayedThisTurn?.Fork(),
             _simulatedPlayerGold = _simulatedPlayerGold?.Fork(),
-            _liveCardsAtSnapshot = _liveCardsAtSnapshot?.Fork(),
+            _liveCardsAtSnapshot = _liveCardsAtSnapshot,
             _swordSageCardsInitialized = _swordSageCardsInitialized,
             _lastNormalizedVitalSparkAmount = _lastNormalizedVitalSparkAmount,
             _skillsPlayedThisTurn = _skillsPlayedThisTurn?.Fork(),
@@ -124,7 +124,6 @@ internal sealed partial class SimulatedCombatState
         }
         fork._returnToHandNextTurn = ForkCardSet(_returnToHandNextTurn, context);
         fork._swordSageReplayBonuses = ForkCardDictionary(_swordSageReplayBonuses, context);
-        fork._powerAfflictionKnownCards = ForkCardSet(_powerAfflictionKnownCards, context);
         fork._dampenOriginalUpgrades = ForkDampenCards(context);
         fork._lastAttackThisTurn = ForkHistoryCourseCards(_lastAttackThisTurn, context);
         fork._lastAttackPreviousTurn = ForkHistoryCourseCards(_lastAttackPreviousTurn, context);
@@ -227,7 +226,12 @@ internal sealed partial class SimulatedCombatState
                 // 逐元素重映射对拼接是可分配的：remap(前缀 ++ 后缀) == remap(前缀) ++ remap(后缀)。
                 // 后缀就是刚刚重映射好的战斗监听表，前缀是根牌组快照（只含 CardModel/Enchantment，
                 // 从不作为 Fork 源登记），两段都没变时连视图对象一起复用。
-                IReadOnlyList<AbstractModel> forkedPrefix = RemapCachedModels(view.Prefix, context);
+                // This exact prefix contains only captured deck cards/enchantments.
+                // State.Fork registers wrappers, creatures, orbs and powers, never these
+                // root models; StateStore.Fork runs afterward. Other prefixes still
+                // use the ordinary mapping path.
+                IReadOnlyList<AbstractModel> forkedPrefix = ReferenceEquals(view.Prefix, _rootRunHookListeners)
+                    ? _rootRunHookListeners : RemapCachedModels(view.Prefix, context);
                 fork._effectiveRunHookListeners =
                     ReferenceEquals(forkedPrefix, view.Prefix)
                         && ReferenceEquals(forkedSuffix, view.Suffix)

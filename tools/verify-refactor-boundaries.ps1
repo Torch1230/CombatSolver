@@ -373,6 +373,33 @@ foreach ($check in @(
     @{ RelativePath = "src/Runtime/SolverController.cs"; Text = "SearchGcPolicy.EnterSearchScope(" },
     @{ RelativePath = "src/Search/CombatBeamSolver.Models.cs"; Text = "ExpansionBatchPool = new(static snapshot => snapshot.ReleaseSimulator())" },
     @{ RelativePath = "src/Search/CombatBeamSolver.ParallelExpansion.cs"; Text = "new(_run.ExpansionBatchPool)" },
+    @{ RelativePath = "src/Engine/InCombat/Simulation/CombatPredictionRngSet.cs"; Text = "private sealed class FrozenStream(PredictionRngState state)" },
+    @{ RelativePath = "src/Engine/InCombat/Simulation/CombatPredictionRngSet.cs"; Text = "new FrozenStream(_mutable.CaptureState())" },
+    @{ RelativePath = "src/Testing/UnattendedTestRunner.Assertions.cs"; Text = "AssertLazyRngFork(scenario.CombatState.RunState.Rng)" },
+    @{ RelativePath = "src/Search/CombatBeamSolver.StateEvaluation.cs"; Text = "AppendRngState(ref key, simulator.Rng.ShuffleState);" },
+    @{ RelativePath = "src/Runtime/ContinuationStamp.cs"; Text = "simulator.Rng.ShuffleState" },
+    @{ RelativePath = "src/Search/CombatBeamSolver.StateEvaluation.cs"; Text = "AppendRngState(ref key, simulator.Rng.CombatCardGenerationState);" },
+    @{ RelativePath = "src/Runtime/ContinuationStamp.cs"; Text = "simulator.Rng.CombatCardGenerationState" },
+    @{ RelativePath = "src/Search/CombatBeamSolver.StateEvaluation.cs"; Text = "AppendRngState(ref key, simulator.Rng.CombatPotionGenerationState);" },
+    @{ RelativePath = "src/Runtime/ContinuationStamp.cs"; Text = "simulator.Rng.CombatPotionGenerationState" },
+    @{ RelativePath = "src/Search/CombatBeamSolver.StateEvaluation.cs"; Text = "AppendRngState(ref key, simulator.Rng.CombatCardSelectionState);" },
+    @{ RelativePath = "src/Runtime/ContinuationStamp.cs"; Text = "simulator.Rng.CombatCardSelectionState" },
+    @{ RelativePath = "src/Search/CombatBeamSolver.StateEvaluation.cs"; Text = "AppendRngState(ref key, simulator.Rng.CombatEnergyCostsState);" },
+    @{ RelativePath = "src/Runtime/ContinuationStamp.cs"; Text = "simulator.Rng.CombatEnergyCostsState" },
+    @{ RelativePath = "src/Search/CombatBeamSolver.StateEvaluation.cs"; Text = "AppendRngState(ref key, simulator.Rng.CombatTargetsState);" },
+    @{ RelativePath = "src/Runtime/ContinuationStamp.cs"; Text = "simulator.Rng.CombatTargetsState" },
+    @{ RelativePath = "src/Search/CombatBeamSolver.StateEvaluation.cs"; Text = "AppendRngState(ref key, simulator.Rng.CombatOrbGenerationState);" },
+    @{ RelativePath = "src/Runtime/ContinuationStamp.cs"; Text = "simulator.Rng.CombatOrbGenerationState" },
+    @{ RelativePath = "src/Search/CombatBeamSolver.StateEvaluation.cs"; Text = "AppendRngState(ref key, simulator.Rng.MonsterAiState);" },
+    @{ RelativePath = "src/Runtime/ContinuationStamp.cs"; Text = "simulator.Rng.MonsterAiState" },
+    @{ RelativePath = "src/Search/CombatBeamSolver.StateEvaluation.cs"; Text = "AppendRngState(ref key, simulator.Rng.NicheState);" },
+    @{ RelativePath = "src/Runtime/ContinuationStamp.cs"; Text = "simulator.Rng.NicheState" },
+    @{ RelativePath = "src/Engine/Common/PredictedCard.cs"; Text = "internal bool TryMarkPowerAfflictionEntryChecked()" },
+    @{ RelativePath = "src/Engine/Common/PredictedCard.cs"; Text = "HasCheckedPowerAfflictionEntry = HasCheckedPowerAfflictionEntry," },
+    @{ RelativePath = "src/Search/SimulatedCombatState.PowerLifecycle.cs"; Text = "private HashSet<CardModel>? _liveCardsAtSnapshot;" },
+    @{ RelativePath = "src/Search/SimulatedCombatState.Fork.cs"; Text = "_liveCardsAtSnapshot = _liveCardsAtSnapshot," },
+    @{ RelativePath = "src/Search/SimulatedCombatState.Fork.cs"; Text = "ReferenceEquals(view.Prefix, _rootRunHookListeners)" },
+    @{ RelativePath = "src/Testing/UnattendedTestRunner.Assertions.cs"; Text = "AssertFrozenRootRunListeners(scenario.CombatState, scenario.Player);" },
     @{ RelativePath = "src/Search/CombatBeamSolver.Models.cs"; Text = "SnapshotListBuffer<PredictedCard> SnapshotLiveCards = new()" },
     @{ RelativePath = "src/Search/CombatBeamSolver.StateEvaluation.cs"; Text = "_run.SnapshotLiveCards.Rent()" },
     @{ RelativePath = "src/Search/CombatBeamSolver.Phases.cs"; Text = "SearchWaveMemoryPolicy.ParentWaveCapacity(" })) {
@@ -535,6 +562,11 @@ $expectedBeamFiles = @(
     "CombatBeamSolver.AdmittedExpansion.cs",
     "CombatBeamSolver.EndTurnChoiceReplay.cs",
     "CombatBeamSolver.RoundTransition.cs",
+    "CombatBeamSolver.CardChoiceContinuation.cs",
+    "CombatBeamSolver.PotionChoiceContinuation.cs",
+    "CombatBeamSolver.ExecutionChoiceContinuation.cs",
+    "CombatBeamSolver.ExecutionChoiceContinuation.Testing.cs",
+    "CombatBeamSolver.TurnExecutionContinuation.cs",
     "CombatBeamSolver.BeamRetentionPolicy.cs",
     "CombatBeamSolver.BlockPotionInsertion.cs",
     "CombatBeamSolver.CrossTurnPlanning.cs",
@@ -632,11 +664,19 @@ $beamStructureChecks = @(
     @{ File = "CombatBeamSolver.AdmittedExpansion.cs"; Text = "_completedActions != Actions!.Count" },
     @{ File = "CombatBeamSolver.AdmittedExpansion.cs"; Text = "_completedPotions != Potions!.Count" },
     @{ File = "CombatBeamSolver.EndTurnChoiceReplay.cs"; Text = "private PreparedEndTurnEvaluation EvaluatePreparedEndTurn(" },
-    @{ File = "CombatBeamSolver.RoundTransition.cs"; Text = "private SearchBoundaryReason CompleteRoundPlayerStart(" },
+    @{ File = "CombatBeamSolver.TurnExecutionContinuation.cs"; Text = "private static SearchBoundaryReason ContinuePlayerStart(" },
     @{ File = "CombatBeamSolver.RoundTransition.cs"; Text = "private sealed class RoundReplayCheckpoint(" },
     @{ File = "CombatBeamSolver.RoundTransition.cs"; Text = "combat.EndActionChoices();" },
     @{ File = "CombatBeamSolver.RoundTransition.cs"; Text = "combat.BeginActionChoices(cursor);" },
-    @{ File = "CombatBeamSolver.RoundTransition.cs"; Text = "internal int VerifyRoundReplayCheckpointForTesting()" },
+    @{ File = "CombatBeamSolver.RoundTransition.cs"; Text = "internal int VerifyRoundReplayCheckpointForTesting(" },
+    @{ File = "CombatBeamSolver.Models.cs"; Text = "public bool HasObservedPostDrawRoundChoice;" },
+    @{ File = "CombatBeamSolver.Models.cs"; Text = "public HashSet<string>? ObservedHandDrawShuffleChoiceSources;" },
+    @{ File = "CombatBeamSolver.RoundTransition.cs"; Text = "public void CaptureBeforeHandDraw(CombatBeamSolver owner, CombatPredictionSimulator simulator," },
+    @{ File = "CombatBeamSolver.RoundTransition.cs"; Text = "checkpoint.HandDrawCount.HasValue ? PlayerStartStage.Draw : PlayerStartStage.AfterPlayer" },
+    @{ File = "RootCombatCardGenerationPoolSnapshot.cs"; Text = "public bool TryGetEligibleCharacterCards(" },
+    @{ File = "CombatBeamSolver.Retention.cs"; Text = "var maximum = BeamRetentionPolicy.GetLongTermResourceMaximum(pool);" },
+    @{ File = "CombatBeamSolver.Retention.cs"; Text = "if (maximum.Count == pool.Count)" },
+    @{ File = "CombatBeamSolver.EndTurnChoiceReplay.cs"; Text = "capture.ObservePendingChoice(this, pendingSourceId);" },
     @{ File = "CombatBeamSolver.AdmittedExpansion.cs"; Text = "endTurn.TransferEndTurnTo(Aggregate!, candidate);" },
     @{ File = "CombatBeamSolver.AdmittedExpansion.cs"; Text = "PublishCrossTurnStandPatBaselines(Node, _endTurnBaselines);" },
     @{ File = "CombatBeamSolver.AdmittedExpansion.cs"; Text = "ready.TransferPotionTo(Aggregate!, candidate);" },
@@ -815,7 +855,7 @@ $rootModelBoundaryChecks = @(
     },
     @{
         Path = Join-Path $repositoryRoot "src\Engine\InCombat\Simulation\CombatPredictionSimulator.CardPile.cs"
-        Text = "int maxHandSize = GetMaxHandSize(player)"
+        Text = "ContinueDrawExecution(player, drawCount, fromHandDraw, GetMaxHandSize(player)"
     },
     @{
         Path = Join-Path $repositoryRoot "src\Engine\InCombat\Simulation\CombatPredictionSimulator.CardPile.cs"
@@ -1327,6 +1367,90 @@ foreach ($requiredCloneBoundary in @(
 }
 if (Select-String -LiteralPath (Join-Path $repositoryRoot 'src/Engine/Common/NativeModelCloneConcurrency.cs') -SimpleMatch 'CombatSolver.Search' -Quiet) {
     $violations.Add('Clone eligibility depends on search policy.')
+}
+
+# Stable manual-potion prefixes share action completion and retain ordinary Fork guards.
+foreach ($rule in @(
+    @{ RelativePath = 'src/Prediction/PotionChoiceContinuation.cs'; Text = 'seed.AssertForkable();' },
+    @{ RelativePath = 'src/Prediction/PotionChoiceContinuation.cs'; Text = 'lock (_gate)' },
+    @{ RelativePath = 'src/Prediction/PotionChoiceContinuation.cs'; Text = '!PotionChoiceMirrors.RequiresChoice(potion)' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.PotionChoiceContinuation.cs'; Text = 'ReferenceEquals(_parent, candidate)' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.PotionChoiceContinuation.cs'; Text = '_run.PotionChoicePrefixForks++;' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.Expansion.cs'; Text = 'PotionExecutionSupport.Complete(' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.PrimaryChoiceReplay.cs'; Text = 'PotionCheckpoint?.Dispose();' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.ParallelExpansion.cs'; Text = '_run.PotionChoicePrefixForks += source.PotionChoicePrefixForks;' }
+)) {
+    if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot $rule.RelativePath) -SimpleMatch $rule.Text -Quiet)) {
+        $violations.Add("Missing potion continuation ownership boundary: $($rule.RelativePath): $($rule.Text)")
+    }
+}
+foreach ($forbidden in @('Task<', 'Func<', 'Action<')) {
+    if (Select-String -LiteralPath (Join-Path $repositoryRoot 'src/Prediction/PotionChoiceContinuation.cs') -SimpleMatch $forbidden -Quiet) {
+        $violations.Add("Potion continuation retained an executable closure: $forbidden")
+    }
+}
+
+# Nested execution saves owned data frames and preserves the ordinary transaction guards.
+foreach ($rule in @(
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs'; Text = 'GuardOrdinaryExecutionContinuationFork();' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.ExecutionContinuation.cs'; Text = 'if (_owner.HasCapturedExecutionContinuation && !_acknowledged)' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.ExecutionContinuation.cs'; Text = 'StateStore.SupportsManualCardChoiceContinuation' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.ExecutionContinuation.cs'; Text = 'DetachPendingExecutionChoice();' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.ExecutionContinuation.cs'; Text = 'CombatPredictionState state = State.Fork(context);' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.ExecutionContinuation.cs'; Text = 'step.Scopes?.Fork(context), step.Frame.Fork(context)' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.ExecutionContinuation.cs'; Text = 'using (_trace.ResumeExecution(step.Trace))' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.DrawContinuation.cs'; Text = 'mapped! : card.Fork(context)' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionHistory.ExecutionContinuation.cs'; Text = 'unresolved.SetEquals(deferred)' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionHistory.ExecutionContinuation.cs'; Text = 'active.SetEquals(activePlays)' },
+    @{ RelativePath = 'src/Search/SimulatedCombatState.ExecutionScopes.cs'; Text = 'ForkExecutionDeaths(Deaths, context);' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.ExecutionChoiceContinuation.cs'; Text = 'tail.ConsumedChoices != prefix.Count' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.ExecutionChoiceContinuation.cs'; Text = 'ReferenceEquals(_parent, candidate)' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.ExecutionChoiceContinuation.cs'; Text = 'lock (_gate)' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.ExecutionChoiceContinuation.cs'; Text = '_simulator = null; _parent = null; _action = null; _prefix = null; _continuation = null;' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.ParallelExpansion.cs'; Text = '_run.ExecutionChoiceReuses += source.ExecutionChoiceReuses;' }
+)) {
+    if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot $rule.RelativePath) -SimpleMatch $rule.Text -Quiet)) {
+        $violations.Add("Missing execution continuation ownership boundary: $($rule.RelativePath): $($rule.Text)")
+    }
+}
+foreach ($relativePath in @(
+    'src/Engine/InCombat/Simulation/CombatPredictionSimulator.ExecutionContinuation.cs',
+    'src/Search/SimulatedCombatState.ExecutionScopes.cs',
+    'src/Search/CombatBeamSolver.ExecutionChoiceContinuation.cs'
+)) {
+    foreach ($forbidden in @('Task<', 'Func<', 'Action<')) {
+        if (Select-String -LiteralPath (Join-Path $repositoryRoot $relativePath) -SimpleMatch $forbidden -Quiet) {
+            $violations.Add("Execution continuation retained an executable closure: $relativePath : $forbidden")
+        }
+    }
+}
+
+# A suspended own-choice frame belongs to its continuation; ordinary Fork remains strict.
+foreach ($rule in @(
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs'; Text = 'GuardOrdinaryCardContinuationFork();' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs'; Text = 'context.Register(source.Play, play);' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs'; Text = 'StateStore.SupportsManualCardChoiceContinuation' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs'; Text = 'DetachPendingManualCardChoice();' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs'; Text = 'source.Choice.Fork(context)' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs'; Text = 'frame.Choice.Resolve(this, frame.Card)' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs'; Text = 'child._blockGainedByCardPlay.Add(play, block)' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionHistory.CardContinuation.cs'; Text = 'e.Options.Select(CopyOption)' },
+    @{ RelativePath = 'src/Search/SimulatedCombatState.CardContinuation.cs'; Text = 'Options = spec.Options.Select(context.RequireRemap)' },
+    @{ RelativePath = 'src/Prediction/CardChoiceContinuation.cs'; Text = 'lock (_gate)' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.CardChoiceContinuation.cs'; Text = 'ReferenceEquals(_parent, candidate)' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.CardChoiceContinuation.cs'; Text = 'return Enumerate(this, checkpoint, branches);' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.Expansion.cs'; Text = 'countTransition: false' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.PrimaryChoiceReplay.cs'; Text = 'CardCheckpoint?.Dispose();' },
+    @{ RelativePath = 'src/Search/SimulatedCombatState.CardContinuation.cs'; Text = '_cardExecutionScopeDepth != 0' }
+)) {
+    if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot $rule.RelativePath) -SimpleMatch $rule.Text -Quiet)) {
+        $violations.Add("Missing card continuation ownership boundary: $($rule.RelativePath): $($rule.Text)")
+    }
+}
+foreach ($forbidden in @('Task<', 'Func<', 'Action<')) {
+    if (Select-String -LiteralPath (Join-Path $repositoryRoot 'src/Prediction/CardChoiceContinuation.cs') -SimpleMatch $forbidden -Quiet) {
+        $violations.Add("Continuation retained an executable closure: $forbidden")
+    }
 }
 
 if ($violations.Count -gt 0) {

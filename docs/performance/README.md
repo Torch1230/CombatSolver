@@ -1,17 +1,25 @@
 # 性能研究与复现
 
+本批极高场景的优化与证据：[通用分配和重复工作（2026-09-14）](general-allocation-20260914.md)；后续[蟹战延迟优化、完整复测与反例](crab-latency-20260914.md)。
+
 [返回文档导航](../README.md)
 
 每份报告只证明其中注明的版本、场景和测量条件。当前测试入口见 [测试矩阵](../TEST_MATRIX.md)，架构约束见 [架构地图](../ARCHITECTURE.md)。
 
 ## 当前工作重点
 
-PR #89 已合入上游0.37.0；当前 `perf/hotspot-exploration-20260913` 基于 `bcc15da`，重新采样并验证独立性能改动。旧分支记录保留为历史证据，不继续 Compact／战斗执行流程移植。
+当前 `perf/general-allocation-20260914` 已整合上游0.38.6，并完成通用分配、生成池与选牌续执行三阶段。当前上游的合并验证与整批对照见[正式 PR 验收](performance-pr-20260915.md)。用户随后授权选牌暂停与恢复窄原型，已完成投掷匕首、杂技和早有准备共用的[独立实验与对照](choice-continuation-prototype-20260914.md)，随后按用户授权接入正式搜索，见[正式接入与整搜对照](choice-continuation-search-20260914.md)。旧研究分支保留为历史证据，不继续Compact／战斗执行流程移植。
 
 - [精简移植、验证与性能研究](surgical-fixes-20260912.md)。
 
 ## 专题
 
+- [正式 PR 验收：整合0.38.6与当前基线](performance-pr-20260915.md)：三阶段最终范围、合并合同、当前上游完整ABBA与测量限制。
+
+- [自身弃牌续执行正式接入与整搜对照](choice-continuation-search-20260914.md)：正式所有权、回退与计数、搜索/增量合同和完整预算ABBA。
+- [选牌续执行批量扩展可行性](choice-continuation-expansion-20260914.md)：41张单人卡、9种药水、战斗内5件遗物和5种Power的阶段划分、已支持范围与复制状态缺口；研究不等于启用或性能验证。
+- [选牌续执行批量实施](choice-continuation-expansion-implementation-20260914.md)：按用户后续目标实施上述三阶段，逐项记录当前实现、合同证据及剩余工作。
+- [选牌暂停与恢复窄原型](choice-continuation-prototype-20260914.md)：三张牌共用机制、杂技/早有准备升级组合、完整状态和原生对照、修正后全部性能样本及限制。
 - [PR #90全部性能尝试与效果总账](pr90-attempts-20260913.md)：采用、撤回、仅调查、失败/超时及不可相加的收益范围。
 - [女王回合前缀与10秒目标](queen-round-prefix-20260913.md)。
 - [女王CPU与回放归因](queen-cpu-20260913.md)。

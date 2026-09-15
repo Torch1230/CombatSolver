@@ -452,6 +452,33 @@ src/Runtime/SolverController.cs	SearchGcPolicy.EnterSearchScope(
 src/Search/CombatBeamSolver.Models.cs	ExpansionBatchPool = new(static snapshot => snapshot.ReleaseSimulator())
 src/Search/CombatBeamSolver.ParallelExpansion.cs	new(_run.ExpansionBatchPool)
 src/Search/CombatBeamSolver.Phases.cs	SearchWaveMemoryPolicy.ParentWaveCapacity(
+src/Engine/InCombat/Simulation/CombatPredictionRngSet.cs	private sealed class FrozenStream(PredictionRngState state)
+src/Engine/InCombat/Simulation/CombatPredictionRngSet.cs	new FrozenStream(_mutable.CaptureState())
+src/Testing/UnattendedTestRunner.Assertions.cs	AssertLazyRngFork(scenario.CombatState.RunState.Rng)
+src/Search/CombatBeamSolver.StateEvaluation.cs	AppendRngState(ref key, simulator.Rng.ShuffleState);
+src/Runtime/ContinuationStamp.cs	simulator.Rng.ShuffleState
+src/Search/CombatBeamSolver.StateEvaluation.cs	AppendRngState(ref key, simulator.Rng.CombatCardGenerationState);
+src/Runtime/ContinuationStamp.cs	simulator.Rng.CombatCardGenerationState
+src/Search/CombatBeamSolver.StateEvaluation.cs	AppendRngState(ref key, simulator.Rng.CombatPotionGenerationState);
+src/Runtime/ContinuationStamp.cs	simulator.Rng.CombatPotionGenerationState
+src/Search/CombatBeamSolver.StateEvaluation.cs	AppendRngState(ref key, simulator.Rng.CombatCardSelectionState);
+src/Runtime/ContinuationStamp.cs	simulator.Rng.CombatCardSelectionState
+src/Search/CombatBeamSolver.StateEvaluation.cs	AppendRngState(ref key, simulator.Rng.CombatEnergyCostsState);
+src/Runtime/ContinuationStamp.cs	simulator.Rng.CombatEnergyCostsState
+src/Search/CombatBeamSolver.StateEvaluation.cs	AppendRngState(ref key, simulator.Rng.CombatTargetsState);
+src/Runtime/ContinuationStamp.cs	simulator.Rng.CombatTargetsState
+src/Search/CombatBeamSolver.StateEvaluation.cs	AppendRngState(ref key, simulator.Rng.CombatOrbGenerationState);
+src/Runtime/ContinuationStamp.cs	simulator.Rng.CombatOrbGenerationState
+src/Search/CombatBeamSolver.StateEvaluation.cs	AppendRngState(ref key, simulator.Rng.MonsterAiState);
+src/Runtime/ContinuationStamp.cs	simulator.Rng.MonsterAiState
+src/Search/CombatBeamSolver.StateEvaluation.cs	AppendRngState(ref key, simulator.Rng.NicheState);
+src/Runtime/ContinuationStamp.cs	simulator.Rng.NicheState
+src/Engine/Common/PredictedCard.cs	internal bool TryMarkPowerAfflictionEntryChecked()
+src/Engine/Common/PredictedCard.cs	HasCheckedPowerAfflictionEntry = HasCheckedPowerAfflictionEntry,
+src/Search/SimulatedCombatState.PowerLifecycle.cs	private HashSet<CardModel>? _liveCardsAtSnapshot;
+src/Search/SimulatedCombatState.Fork.cs	_liveCardsAtSnapshot = _liveCardsAtSnapshot,
+src/Search/SimulatedCombatState.Fork.cs	ReferenceEquals(view.Prefix, _rootRunHookListeners)
+src/Testing/UnattendedTestRunner.Assertions.cs	AssertFrozenRootRunListeners(scenario.CombatState, scenario.Player);
 src/Search/CombatBeamSolver.Models.cs	SnapshotListBuffer<PredictedCard> SnapshotLiveCards = new()
 src/Search/CombatBeamSolver.StateEvaluation.cs	_run.SnapshotLiveCards.Rent()
 EOF
@@ -500,12 +527,24 @@ for targeting_rule in \
     require_fixed "$card_targeting_path" "$targeting_rule" 'missing simulated card targeting rule'
 done
 
+block_potion_insertion_path="$search_root/CombatBeamSolver.BlockPotionInsertion.cs"
+for required_rule in 'HpLostByTurn' 'SolverWeights.PotionMinimumHpSaved' 'ReplayInsertedRoute(' 'ProjectedDeathSaveUseCount' 'expanded_nodes_added=0'; do
+    require_fixed "$block_potion_insertion_path" "$required_rule" 'deterministic block-potion route rule is missing'
+done
+require_fixed "$search_root/CombatSearchCoordinator.cs" 'passResult.DeterministicBlockPotionInserted' 'deterministic block-potion result must settle before supplemental potion audits'
+
 expected_beam_files=(
     CombatBeamSolver.cs
     CombatBeamSolver.AdmittedExpansion.cs
     CombatBeamSolver.EndTurnChoiceReplay.cs
     CombatBeamSolver.RoundTransition.cs
+    CombatBeamSolver.CardChoiceContinuation.cs
+    CombatBeamSolver.PotionChoiceContinuation.cs
+    CombatBeamSolver.ExecutionChoiceContinuation.cs
+    CombatBeamSolver.ExecutionChoiceContinuation.Testing.cs
+    CombatBeamSolver.TurnExecutionContinuation.cs
     CombatBeamSolver.BeamRetentionPolicy.cs
+    CombatBeamSolver.BlockPotionInsertion.cs
     CombatBeamSolver.CrossTurnPlanning.cs
     CombatBeamSolver.CyclePlanning.cs
     CombatBeamSolver.CycleRegionRetention.cs
@@ -569,11 +608,19 @@ CombatBeamSolver.AdmittedExpansion.cs	while (committed < parents.Length && paren
 CombatBeamSolver.AdmittedExpansion.cs	_completedActions != Actions!.Count
 CombatBeamSolver.AdmittedExpansion.cs	_completedPotions != Potions!.Count
 CombatBeamSolver.EndTurnChoiceReplay.cs	private PreparedEndTurnEvaluation EvaluatePreparedEndTurn(
-CombatBeamSolver.RoundTransition.cs	private SearchBoundaryReason CompleteRoundPlayerStart(
+CombatBeamSolver.TurnExecutionContinuation.cs	private static SearchBoundaryReason ContinuePlayerStart(
 CombatBeamSolver.RoundTransition.cs	private sealed class RoundReplayCheckpoint(
 CombatBeamSolver.RoundTransition.cs	combat.EndActionChoices();
 CombatBeamSolver.RoundTransition.cs	combat.BeginActionChoices(cursor);
-CombatBeamSolver.RoundTransition.cs	internal int VerifyRoundReplayCheckpointForTesting()
+CombatBeamSolver.RoundTransition.cs	internal int VerifyRoundReplayCheckpointForTesting(
+CombatBeamSolver.Models.cs	public bool HasObservedPostDrawRoundChoice;
+CombatBeamSolver.Models.cs	public HashSet<string>? ObservedHandDrawShuffleChoiceSources;
+CombatBeamSolver.RoundTransition.cs	public void CaptureBeforeHandDraw(CombatBeamSolver owner, CombatPredictionSimulator simulator,
+CombatBeamSolver.RoundTransition.cs	checkpoint.HandDrawCount.HasValue ? PlayerStartStage.Draw : PlayerStartStage.AfterPlayer
+RootCombatCardGenerationPoolSnapshot.cs	public bool TryGetEligibleCharacterCards(
+CombatBeamSolver.Retention.cs	var maximum = BeamRetentionPolicy.GetLongTermResourceMaximum(pool);
+CombatBeamSolver.Retention.cs	if (maximum.Count == pool.Count)
+CombatBeamSolver.EndTurnChoiceReplay.cs	capture.ObservePendingChoice(this, pendingSourceId);
 CombatBeamSolver.AdmittedExpansion.cs	endTurn.TransferEndTurnTo(Aggregate!, candidate);
 CombatBeamSolver.AdmittedExpansion.cs	PublishCrossTurnStandPatBaselines(Node, _endTurnBaselines);
 CombatBeamSolver.AdmittedExpansion.cs	ready.TransferPotionTo(Aggregate!, candidate);
@@ -720,7 +767,7 @@ src/Search/SimulatedCombatState.cs	MultiplayerScalingRunStateField.SetValue(deta
 src/Engine/InCombat/Mirrors/Hooks/Block/ModifyBlockMultiplicativeMirrors.cs	registry.Register<MultiplayerScalingModel>(HandleMultiplayerScaling)
 src/Prediction/PredictionModHookSubscriberCapture.cs	ModHelper.IterateAllRunStateSubscribers(runState)
 src/Engine/Common/PredictionUtils.cs	PredictionModModelSupport.CloneCardAttachedModels(source, clone)
-src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardPile.cs	int maxHandSize = GetMaxHandSize(player)
+src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardPile.cs	ContinueDrawExecution(player, drawCount, fromHandDraw, GetMaxHandSize(player)
 src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardPile.cs	limits.GetMaxHandSize(player)
 src/Search/SimulatedCombatState.cs	.Take(standardCombatListenerCount)
 src/Search/SimulatedCombatState.cs	UpdatePowerListenerOrder(
@@ -1025,6 +1072,77 @@ done < <(
 require_fixed "$repository_root/src/Runtime/BaseLibCloneConcurrencyPatch.cs" 'BaseLibCloneConcurrency.Enter()' 'missing native framework clone gate'
 require_fixed "$repository_root/src/Engine/Common/PredictionUtils.cs" 'NativeModelCloneConcurrency.CanCloneIndependently(source)' 'missing audited prediction clone boundary'
 forbid_fixed "$repository_root/src/Engine/Common/NativeModelCloneConcurrency.cs" 'CombatSolver.Search' 'clone eligibility depends on search policy:'
+
+# Stable manual-potion prefixes share action completion and retain ordinary Fork guards.
+while IFS=$'\t' read -r relative_path text; do
+    require_fixed "$repository_root/$relative_path" "$text" 'missing potion continuation ownership boundary'
+done <<'EOF'
+src/Prediction/PotionChoiceContinuation.cs	seed.AssertForkable();
+src/Prediction/PotionChoiceContinuation.cs	lock (_gate)
+src/Prediction/PotionChoiceContinuation.cs	!PotionChoiceMirrors.RequiresChoice(potion)
+src/Search/CombatBeamSolver.PotionChoiceContinuation.cs	ReferenceEquals(_parent, candidate)
+src/Search/CombatBeamSolver.PotionChoiceContinuation.cs	_run.PotionChoicePrefixForks++;
+src/Search/CombatBeamSolver.Expansion.cs	PotionExecutionSupport.Complete(
+src/Search/CombatBeamSolver.PrimaryChoiceReplay.cs	PotionCheckpoint?.Dispose();
+src/Search/CombatBeamSolver.ParallelExpansion.cs	_run.PotionChoicePrefixForks += source.PotionChoicePrefixForks;
+EOF
+for forbidden in 'Task<' 'Func<' 'Action<'; do
+    forbid_fixed "$repository_root/src/Prediction/PotionChoiceContinuation.cs" "$forbidden" 'potion continuation retained an executable closure:'
+done
+
+# Nested execution saves owned data frames and preserves the ordinary transaction guards.
+while IFS=$'\t' read -r relative_path text; do
+    require_fixed "$repository_root/$relative_path" "$text" 'missing execution continuation ownership boundary'
+done <<'EOF'
+src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs	GuardOrdinaryExecutionContinuationFork();
+src/Engine/InCombat/Simulation/CombatPredictionSimulator.ExecutionContinuation.cs	if (_owner.HasCapturedExecutionContinuation && !_acknowledged)
+src/Engine/InCombat/Simulation/CombatPredictionSimulator.ExecutionContinuation.cs	StateStore.SupportsManualCardChoiceContinuation
+src/Engine/InCombat/Simulation/CombatPredictionSimulator.ExecutionContinuation.cs	DetachPendingExecutionChoice();
+src/Engine/InCombat/Simulation/CombatPredictionSimulator.ExecutionContinuation.cs	CombatPredictionState state = State.Fork(context);
+src/Engine/InCombat/Simulation/CombatPredictionSimulator.ExecutionContinuation.cs	step.Scopes?.Fork(context), step.Frame.Fork(context)
+src/Engine/InCombat/Simulation/CombatPredictionSimulator.ExecutionContinuation.cs	using (_trace.ResumeExecution(step.Trace))
+src/Engine/InCombat/Simulation/CombatPredictionSimulator.DrawContinuation.cs	mapped! : card.Fork(context)
+src/Engine/InCombat/Simulation/CombatPredictionHistory.ExecutionContinuation.cs	unresolved.SetEquals(deferred)
+src/Engine/InCombat/Simulation/CombatPredictionHistory.ExecutionContinuation.cs	active.SetEquals(activePlays)
+src/Search/SimulatedCombatState.ExecutionScopes.cs	ForkExecutionDeaths(Deaths, context);
+src/Search/CombatBeamSolver.ExecutionChoiceContinuation.cs	tail.ConsumedChoices != prefix.Count
+src/Search/CombatBeamSolver.ExecutionChoiceContinuation.cs	ReferenceEquals(_parent, candidate)
+src/Search/CombatBeamSolver.ExecutionChoiceContinuation.cs	lock (_gate)
+src/Search/CombatBeamSolver.ExecutionChoiceContinuation.cs	_simulator = null; _parent = null; _action = null; _prefix = null; _continuation = null;
+src/Search/CombatBeamSolver.ParallelExpansion.cs	_run.ExecutionChoiceReuses += source.ExecutionChoiceReuses;
+EOF
+for relative_path in \
+    src/Engine/InCombat/Simulation/CombatPredictionSimulator.ExecutionContinuation.cs \
+    src/Search/SimulatedCombatState.ExecutionScopes.cs \
+    src/Search/CombatBeamSolver.ExecutionChoiceContinuation.cs; do
+    for forbidden in 'Task<' 'Func<' 'Action<'; do
+        forbid_fixed "$repository_root/$relative_path" "$forbidden" 'execution continuation retained an executable closure:'
+    done
+done
+
+# A suspended own-choice frame belongs to its continuation; ordinary Fork remains strict.
+while IFS=$'\t' read -r relative_path text; do
+    require_fixed "$repository_root/$relative_path" "$text" 'missing card continuation ownership boundary'
+done <<'EOF'
+src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs	GuardOrdinaryCardContinuationFork();
+src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs	context.Register(source.Play, play);
+src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs	StateStore.SupportsManualCardChoiceContinuation
+src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs	DetachPendingManualCardChoice();
+src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs	source.Choice.Fork(context)
+src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs	frame.Choice.Resolve(this, frame.Card)
+src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs	child._blockGainedByCardPlay.Add(play, block)
+src/Engine/InCombat/Simulation/CombatPredictionHistory.CardContinuation.cs	e.Options.Select(CopyOption)
+src/Search/SimulatedCombatState.CardContinuation.cs	Options = spec.Options.Select(context.RequireRemap)
+src/Prediction/CardChoiceContinuation.cs	lock (_gate)
+src/Search/CombatBeamSolver.CardChoiceContinuation.cs	ReferenceEquals(_parent, candidate)
+src/Search/CombatBeamSolver.CardChoiceContinuation.cs	return Enumerate(this, checkpoint, branches);
+src/Search/CombatBeamSolver.Expansion.cs	countTransition: false
+src/Search/CombatBeamSolver.PrimaryChoiceReplay.cs	CardCheckpoint?.Dispose();
+src/Search/SimulatedCombatState.CardContinuation.cs	_cardExecutionScopeDepth != 0
+EOF
+for forbidden in 'Task<' 'Func<' 'Action<'; do
+    forbid_fixed "$repository_root/src/Prediction/CardChoiceContinuation.cs" "$forbidden" 'continuation retained an executable closure:'
+done
 
 if ((${#violations[@]} > 0)); then
     printf '%s\n' "${violations[@]}" >&2

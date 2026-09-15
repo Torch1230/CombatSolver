@@ -1,0 +1,2599 @@
+{
+  "schemaVersion": 2,
+  "kind": "experimental-own-discard-continuation",
+  "sourceCommit": "1ef46012e5518422e56ba947b24859a80c5cc67e",
+  "defaultSearchIntegration": false,
+  "gameVersion": "0.111.0",
+  "runtime": ".NET 9 / Linux headless",
+  "setup": {
+    "characterId": "SILENT",
+    "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+    "enemyCurrentHp": 999,
+    "seed": "COMBATSOLVER",
+    "noGcRegion": false,
+    "requestTimeoutSeconds": 120,
+    "build": "prototype-priority-v2-build",
+    "priorityCards": [
+      "ACROBATICS",
+      "PREPARED"
+    ]
+  },
+  "timingPolicy": {
+    "work": "legacy discovery + N full action replays vs pause + N child resumes; includes forks, history remapping and common postprocessing",
+    "control": "Both modes run in the same experimental assembly and share extracted completion tails; not a binary A/B against unmodified shipping code.",
+    "order": "ABBAABBA at each branch count",
+    "warmUp": "one second of paired mode execution before every branch count; Dagger Throw also has 400 initial paired families",
+    "familiesPerSample": {
+      "DAGGER_THROW": 4000,
+      "ACROBATICS": 2000,
+      "PREPARED": 2000
+    },
+    "samplesPerModePerBranchCount": 4,
+    "branchCounts": {
+      "DAGGER_THROW": [
+        1,
+        2,
+        4,
+        8
+      ],
+      "ACROBATICS": [
+        2,
+        4,
+        8
+      ],
+      "PREPARED": [
+        2,
+        4,
+        8
+      ],
+      "PREPARED+": [
+        2,
+        4,
+        8,
+        32
+      ]
+    },
+    "options": "same prebuilt legal choices in both modes; option preparation excluded from timing; all legal combinations checked separately",
+    "isolation": "shared simulation scope per measurement loop",
+    "gc": "ordinary GC; no forced collection inside timing",
+    "elapsedMeasure": "wall time per family; summary uses all four samples and reports median plus min/max",
+    "allocationMeasure": "GC.GetAllocatedBytesForCurrentThread delta per family",
+    "notMeasured": [
+      "complete search",
+      "search budget/accounting integration",
+      "real-search eligibility hit rate",
+      "CPU time",
+      "RSS peak by variant",
+      "visible performance",
+      "Windows"
+    ]
+  },
+  "retentionPolicy": {
+    "order": "ABBA",
+    "familiesHeld": 128,
+    "childrenPerFamily": 8,
+    "additionalHeldState": "one legacy pending state or one checkpoint per family",
+    "measure": "GC.GetTotalMemory(true) after - before; all held objects kept alive through collection",
+    "notEquivalentTo": "full-search peak RSS",
+    "cardsMeasured": [
+      "DAGGER_THROW"
+    ],
+    "measureScope": "controlled managed live held-state high-water mark; not process RSS or full search peak"
+  },
+  "finalRuns": [
+    {
+      "runId": "6c9670133f8242dcb2f29b4089eaa89a",
+      "scenarioId": "CHOICE-PROTOTYPE",
+      "status": "Passed",
+      "elapsedMilliseconds": 35702.6129,
+      "startedAtUtc": "2026-09-14T12:35:27.9491106+00:00",
+      "finishedAtUtc": "2026-09-14T12:36:03.6516516+00:00",
+      "completedChecks": [
+        "ChoicePrototype:AllOptions:FullStateRngHistory:Identity:SiblingMutation:Revisit:DOP2:Cancel:InvalidChoice",
+        "ChoicePrototype:PriorHistory:Shuffle:Upgrade:FallbackReplayAttachmentPairSly:OwnedDamage",
+        "ChoicePrototype:FixedWork:ABBA:Branches1_2_4_8",
+        "ChoicePrototype:NativeDaggerThrow:FullContinuation"
+      ],
+      "error": null,
+      "localEvidence": ".local/choice-prototype-20260914/dagger-corrected"
+    },
+    {
+      "runId": "13cb642b0ac5459c897daf032503c078",
+      "scenarioId": "CHOICE-PROTOTYPE-ACROBATICS",
+      "status": "Passed",
+      "elapsedMilliseconds": 36632.2962,
+      "startedAtUtc": "2026-09-14T12:31:35.2198344+00:00",
+      "finishedAtUtc": "2026-09-14T12:32:11.8520308+00:00",
+      "completedChecks": [
+        "ChoicePrototype:ACROBATICS+0:all=9:draw=3:discard=1:full-state-history-rng:shuffle:DOP2:nested-fallback",
+        "ChoicePrototype:ACROBATICS+0:杂技:native-full-continuation:fixed-work-ABBA",
+        "ChoicePrototype:ACROBATICS+1:all=10:draw=4:discard=1:full-state-history-rng:shuffle:DOP2:nested-fallback",
+        "ChoicePrototype:ACROBATICS+1:杂技+:native-full-continuation:fixed-work-ABBA"
+      ],
+      "error": null,
+      "localEvidence": ".local/choice-prototype-20260914/acrobatics"
+    },
+    {
+      "runId": "f4559b26b5484ed5be592c706053c2fb",
+      "scenarioId": "CHOICE-PROTOTYPE-PREPARED",
+      "status": "Passed",
+      "elapsedMilliseconds": 42044.0854,
+      "startedAtUtc": "2026-09-14T12:33:02.3530261+00:00",
+      "finishedAtUtc": "2026-09-14T12:33:44.3970132+00:00",
+      "completedChecks": [
+        "ChoicePrototype:PREPARED+0:all=8:draw=1:discard=1:full-state-history-rng:shuffle:DOP2:nested-fallback",
+        "ChoicePrototype:PREPARED+0:早有准备:native-full-continuation:fixed-work-ABBA",
+        "ChoicePrototype:PREPARED+1:all=36:draw=2:discard=2:full-state-history-rng:shuffle:DOP2:nested-fallback",
+        "ChoicePrototype:PREPARED+1:早有准备+:native-full-continuation:fixed-work-ABBA"
+      ],
+      "error": null,
+      "localEvidence": ".local/choice-prototype-20260914/prepared"
+    }
+  ],
+  "variants": [
+    {
+      "cardId": "DAGGER_THROW",
+      "upgrade": 0,
+      "title": "投掷匕首",
+      "runId": "6c9670133f8242dcb2f29b4089eaa89a",
+      "localEvidence": ".local/choice-prototype-20260914/dagger-corrected",
+      "rawMeasurement": {
+        "source": "1ef4601",
+        "choices": 9,
+        "samples": [
+          {
+            "branches": 1,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 90.4307,
+            "bytes": 135808000
+          },
+          {
+            "branches": 1,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 68.9937,
+            "bytes": 108096000
+          },
+          {
+            "branches": 1,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 69.3224,
+            "bytes": 108096000
+          },
+          {
+            "branches": 1,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 91.6484,
+            "bytes": 135808000
+          },
+          {
+            "branches": 1,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 91.0951,
+            "bytes": 135808000
+          },
+          {
+            "branches": 1,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 68.5982,
+            "bytes": 108096000
+          },
+          {
+            "branches": 1,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 69.4526,
+            "bytes": 108096000
+          },
+          {
+            "branches": 1,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 92.2067,
+            "bytes": 135808000
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 142.5358,
+            "bytes": 207968000
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 95.0457,
+            "bytes": 150816000
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 93.9098,
+            "bytes": 150816000
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 142.5551,
+            "bytes": 207968000
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 142.432,
+            "bytes": 207968000
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 95.4423,
+            "bytes": 150816000
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 94.7464,
+            "bytes": 150816000
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 143.4586,
+            "bytes": 207968000
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 246.6112,
+            "bytes": 352288000
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 145.4556,
+            "bytes": 236256000
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 147.007,
+            "bytes": 236256000
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 246.9287,
+            "bytes": 352288000
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 247.7851,
+            "bytes": 352288000
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 146.0519,
+            "bytes": 236256000
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 145.796,
+            "bytes": 236256000
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 247.4386,
+            "bytes": 352288000
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 456.473,
+            "bytes": 640928000
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 247.6994,
+            "bytes": 407136000
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 247.6415,
+            "bytes": 407136000
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 453.8474,
+            "bytes": 640928000
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 454.999,
+            "bytes": 640928000
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 248.5898,
+            "bytes": 407136000
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 246.3183,
+            "bytes": 407136000
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 447.5039,
+            "bytes": 640928000
+          }
+        ],
+        "retainedSamples": [
+          {
+            "resume": false,
+            "families": 128,
+            "branches": 8,
+            "before": 76639584,
+            "after": 90140456,
+            "retainedBytes": 13500872
+          },
+          {
+            "resume": true,
+            "families": 128,
+            "branches": 8,
+            "before": 76639664,
+            "after": 86644000,
+            "retainedBytes": 10004336
+          },
+          {
+            "resume": true,
+            "families": 128,
+            "branches": 8,
+            "before": 76639720,
+            "after": 86644032,
+            "retainedBytes": 10004312
+          },
+          {
+            "resume": false,
+            "families": 128,
+            "branches": 8,
+            "before": 76640176,
+            "after": 90141848,
+            "retainedBytes": 13501672
+          }
+        ]
+      },
+      "summary": {
+        "timingAndAllocation": [
+          {
+            "branches": 1,
+            "replay": {
+              "samples": 4,
+              "microsecondsMedian": 22.842937499999998,
+              "microsecondsRange": [
+                22.607675,
+                23.051675
+              ],
+              "bytesMedian": 33952.0
+            },
+            "resume": {
+              "samples": 4,
+              "microsecondsMedian": 17.2895125,
+              "microsecondsRange": [
+                17.14955,
+                17.36315
+              ],
+              "bytesMedian": 27024.0
+            },
+            "elapsedReductionPercent": 24.311343495117466,
+            "allocationReductionPercent": 20.405278039585294
+          },
+          {
+            "branches": 2,
+            "replay": {
+              "samples": 4,
+              "microsecondsMedian": 35.636362500000004,
+              "microsecondsRange": [
+                35.608,
+                35.86465
+              ],
+              "bytesMedian": 51992.0
+            },
+            "resume": {
+              "samples": 4,
+              "microsecondsMedian": 23.7240125,
+              "microsecondsRange": [
+                23.47745,
+                23.860575
+              ],
+              "bytesMedian": 37704.0
+            },
+            "elapsedReductionPercent": 33.427513821030416,
+            "allocationReductionPercent": 27.481150946299426
+          },
+          {
+            "branches": 4,
+            "replay": {
+              "samples": 4,
+              "microsecondsMedian": 61.7959125,
+              "microsecondsRange": [
+                61.6528,
+                61.946275
+              ],
+              "bytesMedian": 88072.0
+            },
+            "resume": {
+              "samples": 4,
+              "microsecondsMedian": 36.4809875,
+              "microsecondsRange": [
+                36.3639,
+                36.75175
+              ],
+              "bytesMedian": 59064.0
+            },
+            "elapsedReductionPercent": 40.96537129377287,
+            "allocationReductionPercent": 32.93668816422927
+          },
+          {
+            "branches": 8,
+            "replay": {
+              "samples": 4,
+              "microsecondsMedian": 113.6058,
+              "microsecondsRange": [
+                111.875975,
+                114.11825
+              ],
+              "bytesMedian": 160232.0
+            },
+            "resume": {
+              "samples": 4,
+              "microsecondsMedian": 61.917612500000004,
+              "microsecondsRange": [
+                61.579575,
+                62.14745
+              ],
+              "bytesMedian": 101784.0
+            },
+            "elapsedReductionPercent": 45.497842099611105,
+            "allocationReductionPercent": 36.477108193119975
+          }
+        ],
+        "controlledRetainedState": {
+          "replay": {
+            "bytesPerFamilyMedian": 105478.6875,
+            "range": [
+              105475.5625,
+              105481.8125
+            ]
+          },
+          "resume": {
+            "bytesPerFamilyMedian": 78158.78125,
+            "range": [
+              78158.6875,
+              78158.875
+            ]
+          },
+          "reductionPercent": 25.900878080228296
+        },
+        "scope": "Headless single-card families, not search time, CPU time, RSS, or visible performance. Inspect ranges for warm-up drift."
+      }
+    },
+    {
+      "cardId": "ACROBATICS",
+      "upgrade": 0,
+      "title": "杂技",
+      "runId": "13cb642b0ac5459c897daf032503c078",
+      "localEvidence": ".local/choice-prototype-20260914/acrobatics",
+      "rawMeasurement": {
+        "source": "1ef4601",
+        "cardId": "ACROBATICS",
+        "title": "杂技",
+        "upgrade": 0,
+        "draws": 3,
+        "discards": 1,
+        "choices": 9,
+        "samples": [
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 54.8486,
+            "bytes": 81760048
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 42.0705,
+            "bytes": 67648048
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 40.5951,
+            "bytes": 67648048
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 56.1939,
+            "bytes": 81760048
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 65.1239,
+            "bytes": 81760560
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 41.6283,
+            "bytes": 67648048
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 40.5995,
+            "bytes": 67648048
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 55.0907,
+            "bytes": 81760048
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 98.1731,
+            "bytes": 139360048
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 67.9781,
+            "bytes": 110080048
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 69.5529,
+            "bytes": 110080048
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 99.236,
+            "bytes": 139360048
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 97.4367,
+            "bytes": 139360048
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 68.897,
+            "bytes": 110080048
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 67.4333,
+            "bytes": 110080048
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 95.9311,
+            "bytes": 139360048
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 181.5045,
+            "bytes": 254560048
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 118.8646,
+            "bytes": 194944048
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 119.6273,
+            "bytes": 194944048
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 178.8174,
+            "bytes": 254560048
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 180.9391,
+            "bytes": 254560048
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 119.583,
+            "bytes": 194944048
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 118.7924,
+            "bytes": 194944048
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 182.2496,
+            "bytes": 254560048
+          }
+        ]
+      },
+      "summary": {
+        "timingAndAllocation": [
+          {
+            "branches": 2,
+            "replay": {
+              "samples": 4,
+              "microsecondsMedian": 27.82115,
+              "microsecondsRange": [
+                27.4243,
+                32.56195
+              ],
+              "bytesMedian": 40880.024
+            },
+            "resume": {
+              "samples": 4,
+              "microsecondsMedian": 20.55695,
+              "microsecondsRange": [
+                20.297550000000005,
+                21.03525
+              ],
+              "bytesMedian": 33824.024
+            },
+            "elapsedReductionPercent": 26.1103512974841,
+            "allocationReductionPercent": 17.260263839375433
+          },
+          {
+            "branches": 4,
+            "replay": {
+              "samples": 4,
+              "microsecondsMedian": 48.90245,
+              "microsecondsRange": [
+                47.96555,
+                49.618
+              ],
+              "bytesMedian": 69680.024
+            },
+            "resume": {
+              "samples": 4,
+              "microsecondsMedian": 34.218775,
+              "microsecondsRange": [
+                33.71665,
+                34.77645
+              ],
+              "bytesMedian": 55040.024
+            },
+            "elapsedReductionPercent": 30.02646084194146,
+            "allocationReductionPercent": 21.010325714009525
+          },
+          {
+            "branches": 8,
+            "replay": {
+              "samples": 4,
+              "microsecondsMedian": 90.6109,
+              "microsecondsRange": [
+                89.4087,
+                91.1248
+              ],
+              "bytesMedian": 127280.024
+            },
+            "resume": {
+              "samples": 4,
+              "microsecondsMedian": 59.6119,
+              "microsecondsRange": [
+                59.3962,
+                59.81365
+              ],
+              "bytesMedian": 97472.024
+            },
+            "elapsedReductionPercent": 34.211115881201934,
+            "allocationReductionPercent": 23.419228770729962
+          }
+        ],
+        "controlledRetainedState": {},
+        "scope": "Headless single-card families, not search time, CPU time, RSS, or visible performance. Inspect ranges for warm-up drift."
+      }
+    },
+    {
+      "cardId": "ACROBATICS",
+      "upgrade": 1,
+      "title": "杂技+",
+      "runId": "13cb642b0ac5459c897daf032503c078",
+      "localEvidence": ".local/choice-prototype-20260914/acrobatics",
+      "rawMeasurement": {
+        "source": "1ef4601",
+        "cardId": "ACROBATICS",
+        "title": "杂技+",
+        "upgrade": 1,
+        "draws": 4,
+        "discards": 1,
+        "choices": 10,
+        "samples": [
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 59.3225,
+            "bytes": 85424048
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 45.0589,
+            "bytes": 70896048
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 43.9706,
+            "bytes": 70896048
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 57.9854,
+            "bytes": 85424048
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 59.0787,
+            "bytes": 85424048
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 43.0271,
+            "bytes": 70896048
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 43.0624,
+            "bytes": 70896048
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 58.6978,
+            "bytes": 85424048
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 100.5894,
+            "bytes": 145264048
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 68.5654,
+            "bytes": 114960048
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 68.7841,
+            "bytes": 114960048
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 100.156,
+            "bytes": 145264048
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 100.878,
+            "bytes": 145264048
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 68.0447,
+            "bytes": 114960048
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 72.0218,
+            "bytes": 114960048
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 100.8405,
+            "bytes": 145264048
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 189.9394,
+            "bytes": 264944048
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 124.3456,
+            "bytes": 203088048
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 123.2218,
+            "bytes": 203088048
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 185.7631,
+            "bytes": 264944048
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 186.2413,
+            "bytes": 264944048
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 121.7743,
+            "bytes": 203088048
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 122.6009,
+            "bytes": 203088048
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 185.5762,
+            "bytes": 264944048
+          }
+        ]
+      },
+      "summary": {
+        "timingAndAllocation": [
+          {
+            "branches": 2,
+            "replay": {
+              "samples": 4,
+              "microsecondsMedian": 29.444125,
+              "microsecondsRange": [
+                28.9927,
+                29.66125
+              ],
+              "bytesMedian": 42712.024
+            },
+            "resume": {
+              "samples": 4,
+              "microsecondsMedian": 21.758249999999997,
+              "microsecondsRange": [
+                21.51355,
+                22.52945
+              ],
+              "bytesMedian": 35448.024
+            },
+            "elapsedReductionPercent": 26.103254893803108,
+            "allocationReductionPercent": 17.0069205804904
+          },
+          {
+            "branches": 4,
+            "replay": {
+              "samples": 4,
+              "microsecondsMedian": 50.357475,
+              "microsecondsRange": [
+                50.078,
+                50.439
+              ],
+              "bytesMedian": 72632.024
+            },
+            "resume": {
+              "samples": 4,
+              "microsecondsMedian": 34.337374999999994,
+              "microsecondsRange": [
+                34.02235,
+                36.0109
+              ],
+              "bytesMedian": 57480.024
+            },
+            "elapsedReductionPercent": 31.812754710199442,
+            "allocationReductionPercent": 20.861321446859314
+          },
+          {
+            "branches": 8,
+            "replay": {
+              "samples": 4,
+              "microsecondsMedian": 93.00110000000001,
+              "microsecondsRange": [
+                92.7881,
+                94.9697
+              ],
+              "bytesMedian": 132472.024
+            },
+            "resume": {
+              "samples": 4,
+              "microsecondsMedian": 61.455675,
+              "microsecondsRange": [
+                60.88715,
+                62.1728
+              ],
+              "bytesMedian": 101544.024
+            },
+            "elapsedReductionPercent": 33.919410630626956,
+            "allocationReductionPercent": 23.346816230421595
+          }
+        ],
+        "controlledRetainedState": {},
+        "scope": "Headless single-card families, not search time, CPU time, RSS, or visible performance. Inspect ranges for warm-up drift."
+      }
+    },
+    {
+      "cardId": "PREPARED",
+      "upgrade": 0,
+      "title": "早有准备",
+      "runId": "f4559b26b5484ed5be592c706053c2fb",
+      "localEvidence": ".local/choice-prototype-20260914/prepared",
+      "rawMeasurement": {
+        "source": "1ef4601",
+        "cardId": "PREPARED",
+        "title": "早有准备",
+        "upgrade": 0,
+        "draws": 1,
+        "discards": 1,
+        "choices": 8,
+        "samples": [
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 49.9707,
+            "bytes": 75792048
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 38.1806,
+            "bytes": 64400048
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 38.2735,
+            "bytes": 64400048
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 50.2174,
+            "bytes": 75792048
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 49.594,
+            "bytes": 75792048
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 39.2786,
+            "bytes": 64400048
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 39.1299,
+            "bytes": 64400048
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 48.7436,
+            "bytes": 75792048
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 86.3313,
+            "bytes": 129328048
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 63.1875,
+            "bytes": 105872048
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 64.6521,
+            "bytes": 105872048
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 87.3981,
+            "bytes": 129328048
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 87.5933,
+            "bytes": 129328048
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 64.3705,
+            "bytes": 105872048
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 64.5224,
+            "bytes": 105872048
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 86.4225,
+            "bytes": 129328048
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 163.0722,
+            "bytes": 236400048
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 114.4125,
+            "bytes": 188816048
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 115.5609,
+            "bytes": 188816048
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 162.0659,
+            "bytes": 236400048
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 164.1596,
+            "bytes": 236400048
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 116.1699,
+            "bytes": 188816048
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 115.8232,
+            "bytes": 188816048
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 163.3309,
+            "bytes": 236400048
+          }
+        ]
+      },
+      "summary": {
+        "timingAndAllocation": [
+          {
+            "branches": 2,
+            "replay": {
+              "samples": 4,
+              "microsecondsMedian": 24.891175000000004,
+              "microsecondsRange": [
+                24.3718,
+                25.108699999999995
+              ],
+              "bytesMedian": 37896.024
+            },
+            "resume": {
+              "samples": 4,
+              "microsecondsMedian": 19.35085,
+              "microsecondsRange": [
+                19.0903,
+                19.6393
+              ],
+              "bytesMedian": 32200.024
+            },
+            "elapsedReductionPercent": 22.258189900637483,
+            "allocationReductionPercent": 15.030600571711684
+          },
+          {
+            "branches": 4,
+            "replay": {
+              "samples": 4,
+              "microsecondsMedian": 43.45515,
+              "microsecondsRange": [
+                43.16565,
+                43.79665
+              ],
+              "bytesMedian": 64664.024
+            },
+            "resume": {
+              "samples": 4,
+              "microsecondsMedian": 32.223225,
+              "microsecondsRange": [
+                31.59375,
+                32.32605
+              ],
+              "bytesMedian": 52936.024
+            },
+            "elapsedReductionPercent": 25.847166561385716,
+            "allocationReductionPercent": 18.13682365328827
+          },
+          {
+            "branches": 8,
+            "replay": {
+              "samples": 4,
+              "microsecondsMedian": 81.600775,
+              "microsecondsRange": [
+                81.03295,
+                82.0798
+              ],
+              "bytesMedian": 118200.024
+            },
+            "resume": {
+              "samples": 4,
+              "microsecondsMedian": 57.846025,
+              "microsecondsRange": [
+                57.20625,
+                58.08495
+              ],
+              "bytesMedian": 94408.024
+            },
+            "elapsedReductionPercent": 29.11093675274531,
+            "allocationReductionPercent": 20.12859151365316
+          }
+        ],
+        "controlledRetainedState": {},
+        "scope": "Headless single-card families, not search time, CPU time, RSS, or visible performance. Inspect ranges for warm-up drift."
+      }
+    },
+    {
+      "cardId": "PREPARED",
+      "upgrade": 1,
+      "title": "早有准备+",
+      "runId": "f4559b26b5484ed5be592c706053c2fb",
+      "localEvidence": ".local/choice-prototype-20260914/prepared",
+      "rawMeasurement": {
+        "source": "1ef4601",
+        "cardId": "PREPARED",
+        "title": "早有准备+",
+        "upgrade": 1,
+        "draws": 2,
+        "discards": 2,
+        "choices": 36,
+        "samples": [
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 55.2433,
+            "bytes": 79680048
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 43.0662,
+            "bytes": 67264048
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 42.1365,
+            "bytes": 67264048
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 55.2553,
+            "bytes": 79680048
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 54.7717,
+            "bytes": 79680048
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 43.2486,
+            "bytes": 67264048
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 42.443,
+            "bytes": 67264048
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 54.1718,
+            "bytes": 79680048
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 96.2162,
+            "bytes": 136000048
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 70.3643,
+            "bytes": 110304048
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 69.7983,
+            "bytes": 110304048
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 97.3388,
+            "bytes": 136000048
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 96.8818,
+            "bytes": 136000048
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 70.1164,
+            "bytes": 110304048
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 69.037,
+            "bytes": 110304048
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 97.1405,
+            "bytes": 136000048
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 179.6374,
+            "bytes": 248640048
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 125.2008,
+            "bytes": 196384048
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 123.7683,
+            "bytes": 196384048
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 177.8773,
+            "bytes": 248640048
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 180.676,
+            "bytes": 248640048
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 125.7387,
+            "bytes": 196384048
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 126.0186,
+            "bytes": 196384048
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 179.6509,
+            "bytes": 248640048
+          },
+          {
+            "branches": 32,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 675.7344,
+            "bytes": 924480048
+          },
+          {
+            "branches": 32,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 460.8507,
+            "bytes": 712864048
+          },
+          {
+            "branches": 32,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 458.9147,
+            "bytes": 712864048
+          },
+          {
+            "branches": 32,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 678.5737,
+            "bytes": 924480048
+          },
+          {
+            "branches": 32,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 679.5621,
+            "bytes": 924480048
+          },
+          {
+            "branches": 32,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 458.4732,
+            "bytes": 712864048
+          },
+          {
+            "branches": 32,
+            "resume": true,
+            "repetitions": 2000,
+            "ms": 457.8699,
+            "bytes": 712864048
+          },
+          {
+            "branches": 32,
+            "resume": false,
+            "repetitions": 2000,
+            "ms": 662.0126,
+            "bytes": 924480048
+          }
+        ]
+      },
+      "summary": {
+        "timingAndAllocation": [
+          {
+            "branches": 2,
+            "replay": {
+              "samples": 4,
+              "microsecondsMedian": 27.50375,
+              "microsecondsRange": [
+                27.0859,
+                27.62765
+              ],
+              "bytesMedian": 39840.024
+            },
+            "resume": {
+              "samples": 4,
+              "microsecondsMedian": 21.377299999999998,
+              "microsecondsRange": [
+                21.06825,
+                21.6243
+              ],
+              "bytesMedian": 33632.024
+            },
+            "elapsedReductionPercent": 22.27496250511295,
+            "allocationReductionPercent": 15.582319930329358
+          },
+          {
+            "branches": 4,
+            "replay": {
+              "samples": 4,
+              "microsecondsMedian": 48.505575,
+              "microsecondsRange": [
+                48.1081,
+                48.6694
+              ],
+              "bytesMedian": 68000.024
+            },
+            "resume": {
+              "samples": 4,
+              "microsecondsMedian": 34.978674999999996,
+              "microsecondsRange": [
+                34.5185,
+                35.18215
+              ],
+              "bytesMedian": 55152.024
+            },
+            "elapsedReductionPercent": 27.887309860773748,
+            "allocationReductionPercent": 18.894110978549072
+          },
+          {
+            "branches": 8,
+            "replay": {
+              "samples": 4,
+              "microsecondsMedian": 89.82207500000001,
+              "microsecondsRange": [
+                88.93865,
+                90.338
+              ],
+              "bytesMedian": 124320.024
+            },
+            "resume": {
+              "samples": 4,
+              "microsecondsMedian": 62.734875,
+              "microsecondsRange": [
+                61.88415,
+                63.0093
+              ],
+              "bytesMedian": 98192.024
+            },
+            "elapsedReductionPercent": 30.156506627129254,
+            "allocationReductionPercent": 21.01672695944782
+          },
+          {
+            "branches": 32,
+            "replay": {
+              "samples": 4,
+              "microsecondsMedian": 338.57702500000005,
+              "microsecondsRange": [
+                331.0063,
+                339.78105
+              ],
+              "bytesMedian": 462240.024
+            },
+            "resume": {
+              "samples": 4,
+              "microsecondsMedian": 229.346975,
+              "microsecondsRange": [
+                228.93495,
+                230.42535
+              ],
+              "bytesMedian": 356432.024
+            },
+            "elapsedReductionPercent": 32.26150681665422,
+            "allocationReductionPercent": 22.89027226253346
+          }
+        ],
+        "controlledRetainedState": {},
+        "scope": "Headless single-card families, not search time, CPU time, RSS, or visible performance. Inspect ranges for warm-up drift."
+      }
+    }
+  ],
+  "supersededAttempts": [
+    {
+      "runId": "256fe95da14241b6923c3a60845b2c0f",
+      "status": "Failed",
+      "elapsedMilliseconds": 24345.3913,
+      "completedChecks": [],
+      "error": "System.InvalidOperationException: Plain Dagger Throw was rejected by prototype eligibility.\n   at CombatSolver.UnattendedTestRunner.<>c__DisplayClass0_0.<RunChoicePrototypeAsync>g__Pause|4()\n   at CombatSolver.UnattendedTestRunner.RunChoicePrototypeAsync(CombatState live, Player player)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()",
+      "variant": "v0-eligibility",
+      "localEvidence": ".local/choice-prototype-20260914/attempt1",
+      "performanceUse": "not-measured",
+      "semanticUse": "failed"
+    },
+    {
+      "runId": "df23ea12f94a495dbf4c3d2d23070bb9",
+      "status": "Failed",
+      "elapsedMilliseconds": 24319.6795,
+      "completedChecks": [],
+      "error": "System.InvalidOperationException: Plain Dagger Throw was rejected by prototype eligibility: capture=True,play=0/1,traceRoot=True,damage=,draw=0,block=0,store=True:empty,combat=True,history=False:CombatPredictionCardPlayStartedEntry:DAGGER_THROW;CombatPredictionRiskEntry:DAGGER_THROW,DAGGER_THROW;CombatPredictionDamageReceivedEntry:DAGGER_THROW,DAGGER_THROW;CombatPredictionCreatureAttackedEntry:DAGGER_THROW,DAGGER_THROW;CombatPredictionCardDrawnEntry:DAGGER_THROW,DAGGER_THROW;CombatPredictionCardDrawResolvedEntry:DAGGER_THROW,DAGGER_THROW\n   at CombatSolver.UnattendedTestRunner.<>c__DisplayClass0_0.<RunChoicePrototypeAsync>g__Pause|4()\n   at CombatSolver.UnattendedTestRunner.RunChoicePrototypeAsync(CombatState live, Player player)\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()",
+      "variant": "v0-diagnostic-and-owned-damage",
+      "localEvidence": ".local/choice-prototype-20260914/attempt2",
+      "performanceUse": "not-measured",
+      "semanticUse": "failed"
+    },
+    {
+      "runId": "481e24ac4308447d81e8f8d85a330571",
+      "status": "Passed",
+      "elapsedMilliseconds": 25970.0379,
+      "completedChecks": [
+        "ChoicePrototype:AllOptions:FullStateRngHistory:Identity:SiblingMutation:Revisit:DOP2:Cancel:InvalidChoice",
+        "ChoicePrototype:FixedWork:ABBA:Branches1_2_4_8",
+        "ChoicePrototype:NativeDaggerThrow:FullContinuation"
+      ],
+      "error": null,
+      "variant": "v1-basic",
+      "localEvidence": ".local/choice-prototype-20260914/attempt3",
+      "rawMeasurement": {
+        "source": "1ef4601",
+        "choices": 9,
+        "samples": [
+          {
+            "branches": 1,
+            "resume": false,
+            "repetitions": 100,
+            "ms": 27.8051,
+            "bytes": 10152192
+          },
+          {
+            "branches": 1,
+            "resume": true,
+            "repetitions": 100,
+            "ms": 23.1613,
+            "bytes": 8974472
+          },
+          {
+            "branches": 1,
+            "resume": true,
+            "repetitions": 100,
+            "ms": 22.6851,
+            "bytes": 8955248
+          },
+          {
+            "branches": 1,
+            "resume": false,
+            "repetitions": 100,
+            "ms": 28.1949,
+            "bytes": 10200136
+          },
+          {
+            "branches": 1,
+            "resume": false,
+            "repetitions": 100,
+            "ms": 26.0163,
+            "bytes": 10123152
+          },
+          {
+            "branches": 1,
+            "resume": true,
+            "repetitions": 100,
+            "ms": 21.9492,
+            "bytes": 9002088
+          },
+          {
+            "branches": 1,
+            "resume": true,
+            "repetitions": 100,
+            "ms": 26.3388,
+            "bytes": 9078288
+          },
+          {
+            "branches": 1,
+            "resume": false,
+            "repetitions": 100,
+            "ms": 28.6644,
+            "bytes": 10140800
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 100,
+            "ms": 30.8521,
+            "bytes": 11998808
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 100,
+            "ms": 24.2762,
+            "bytes": 10084120
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 100,
+            "ms": 23.348,
+            "bytes": 10011296
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 100,
+            "ms": 30.8537,
+            "bytes": 11978608
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 100,
+            "ms": 31.3428,
+            "bytes": 11998576
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 100,
+            "ms": 23.3495,
+            "bytes": 10018072
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 100,
+            "ms": 23.8269,
+            "bytes": 10011104
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 100,
+            "ms": 31.8684,
+            "bytes": 11941032
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 100,
+            "ms": 45.5235,
+            "bytes": 15708480
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 100,
+            "ms": 29.9504,
+            "bytes": 12206752
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 100,
+            "ms": 29.929,
+            "bytes": 12176712
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 100,
+            "ms": 51.0078,
+            "bytes": 15765168
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 100,
+            "ms": 52.6772,
+            "bytes": 15776616
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 100,
+            "ms": 31.9286,
+            "bytes": 12179896
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 100,
+            "ms": 32.4675,
+            "bytes": 12223920
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 100,
+            "ms": 45.5643,
+            "bytes": 15717392
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 100,
+            "ms": 41.7729,
+            "bytes": 22939128
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 100,
+            "ms": 22.7005,
+            "bytes": 16443648
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 100,
+            "ms": 21.6932,
+            "bytes": 16450552
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 100,
+            "ms": 31.0935,
+            "bytes": 22843840
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 100,
+            "ms": 28.453,
+            "bytes": 22695656
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 100,
+            "ms": 20.1781,
+            "bytes": 16383152
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 100,
+            "ms": 20.1299,
+            "bytes": 16431808
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 100,
+            "ms": 24.0678,
+            "bytes": 22706464
+          }
+        ]
+      },
+      "performanceUse": "invalid-control-superseded",
+      "semanticUse": "passed-for-that-variant",
+      "supersededReason": "Legacy discovery accidentally executed prototype rejection diagnostics, biasing elapsed time, allocations and held state. Superseded by capture-disabled early return and one-second paired warm-up at every branch count."
+    },
+    {
+      "runId": "34ed57555ae8417597ce44ea2a32f05e",
+      "status": "Passed",
+      "elapsedMilliseconds": 27451.1513,
+      "completedChecks": [
+        "ChoicePrototype:AllOptions:FullStateRngHistory:Identity:SiblingMutation:Revisit:DOP2:Cancel:InvalidChoice",
+        "ChoicePrototype:PriorHistory:Shuffle:Upgrade:FallbackReplayAttachmentPairSly:OwnedDamage",
+        "ChoicePrototype:FixedWork:ABBA:Branches1_2_4_8",
+        "ChoicePrototype:NativeDaggerThrow:FullContinuation"
+      ],
+      "error": null,
+      "variant": "v2-boundaries",
+      "localEvidence": ".local/choice-prototype-20260914/attempt4",
+      "rawMeasurement": {
+        "source": "1ef4601",
+        "choices": 9,
+        "samples": [
+          {
+            "branches": 1,
+            "resume": false,
+            "repetitions": 1000,
+            "ms": 112.7569,
+            "bytes": 38854016
+          },
+          {
+            "branches": 1,
+            "resume": true,
+            "repetitions": 1000,
+            "ms": 83.3179,
+            "bytes": 27408000
+          },
+          {
+            "branches": 1,
+            "resume": true,
+            "repetitions": 1000,
+            "ms": 82.4312,
+            "bytes": 27408000
+          },
+          {
+            "branches": 1,
+            "resume": false,
+            "repetitions": 1000,
+            "ms": 117.592,
+            "bytes": 38855520
+          },
+          {
+            "branches": 1,
+            "resume": false,
+            "repetitions": 1000,
+            "ms": 128.3937,
+            "bytes": 38855520
+          },
+          {
+            "branches": 1,
+            "resume": true,
+            "repetitions": 1000,
+            "ms": 64.26,
+            "bytes": 27372288
+          },
+          {
+            "branches": 1,
+            "resume": true,
+            "repetitions": 1000,
+            "ms": 41.6527,
+            "bytes": 27216000
+          },
+          {
+            "branches": 1,
+            "resume": false,
+            "repetitions": 1000,
+            "ms": 46.2181,
+            "bytes": 38471520
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 1000,
+            "ms": 53.386,
+            "bytes": 56310192
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 1000,
+            "ms": 37.6152,
+            "bytes": 37704512
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 1000,
+            "ms": 26.6506,
+            "bytes": 37704000
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 1000,
+            "ms": 38.4092,
+            "bytes": 56132032
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 1000,
+            "ms": 39.3135,
+            "bytes": 56130528
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 1000,
+            "ms": 24.4373,
+            "bytes": 37704000
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 1000,
+            "ms": 24.0247,
+            "bytes": 37704000
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 1000,
+            "ms": 38.5507,
+            "bytes": 56130528
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 1000,
+            "ms": 65.0328,
+            "bytes": 92216544
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 1000,
+            "ms": 37.0861,
+            "bytes": 59064000
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 1000,
+            "ms": 38.3972,
+            "bytes": 59064000
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 1000,
+            "ms": 64.1649,
+            "bytes": 92218048
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 1000,
+            "ms": 65.8542,
+            "bytes": 92216544
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 1000,
+            "ms": 36.936,
+            "bytes": 59064000
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 1000,
+            "ms": 37.7629,
+            "bytes": 59064000
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 1000,
+            "ms": 64.6572,
+            "bytes": 92218048
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 1000,
+            "ms": 116.4845,
+            "bytes": 164390080
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 1000,
+            "ms": 64.3895,
+            "bytes": 101784000
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 1000,
+            "ms": 63.9486,
+            "bytes": 101784000
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 1000,
+            "ms": 117.7555,
+            "bytes": 164391584
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 1000,
+            "ms": 116.4574,
+            "bytes": 164390080
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 1000,
+            "ms": 65.2521,
+            "bytes": 101784000
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 1000,
+            "ms": 63.7286,
+            "bytes": 101784000
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 1000,
+            "ms": 117.385,
+            "bytes": 164391584
+          }
+        ]
+      },
+      "performanceUse": "invalid-control-superseded",
+      "semanticUse": "passed-for-that-variant",
+      "supersededReason": "Legacy discovery accidentally executed prototype rejection diagnostics, biasing elapsed time, allocations and held state. Superseded by capture-disabled early return and one-second paired warm-up at every branch count."
+    },
+    {
+      "runId": "01b7a3891456496d9248371974866655",
+      "status": "Passed",
+      "elapsedMilliseconds": 33221.5333,
+      "completedChecks": [
+        "ChoicePrototype:AllOptions:FullStateRngHistory:Identity:SiblingMutation:Revisit:DOP2:Cancel:InvalidChoice",
+        "ChoicePrototype:PriorHistory:Shuffle:Upgrade:FallbackReplayAttachmentPairSly:OwnedDamage",
+        "ChoicePrototype:FixedWork:ABBA:Branches1_2_4_8",
+        "ChoicePrototype:NativeDaggerThrow:FullContinuation"
+      ],
+      "error": null,
+      "variant": "v3-guard-and-retention",
+      "localEvidence": ".local/choice-prototype-20260914/final",
+      "rawMeasurement": {
+        "source": "1ef4601",
+        "choices": 9,
+        "samples": [
+          {
+            "branches": 1,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 362.924,
+            "bytes": 154813600
+          },
+          {
+            "branches": 1,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 121.3004,
+            "bytes": 108864000
+          },
+          {
+            "branches": 1,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 122.8479,
+            "bytes": 108794288
+          },
+          {
+            "branches": 1,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 117.7042,
+            "bytes": 152343712
+          },
+          {
+            "branches": 1,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 103.2614,
+            "bytes": 152343712
+          },
+          {
+            "branches": 1,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 71.2978,
+            "bytes": 108096000
+          },
+          {
+            "branches": 1,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 71.6279,
+            "bytes": 108096000
+          },
+          {
+            "branches": 1,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 103.0296,
+            "bytes": 152344960
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 157.7872,
+            "bytes": 224513696
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 100.4475,
+            "bytes": 150816000
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 99.1945,
+            "bytes": 150816000
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 158.1983,
+            "bytes": 224514944
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 156.4199,
+            "bytes": 224512448
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 99.4514,
+            "bytes": 150816000
+          },
+          {
+            "branches": 2,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 99.7023,
+            "bytes": 150816000
+          },
+          {
+            "branches": 2,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 158.5236,
+            "bytes": 224513696
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 269.0305,
+            "bytes": 368856160
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 154.3817,
+            "bytes": 236256000
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 154.3796,
+            "bytes": 236256000
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 270.0548,
+            "bytes": 368856160
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 266.6828,
+            "bytes": 368854912
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 156.3563,
+            "bytes": 236256000
+          },
+          {
+            "branches": 4,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 154.2912,
+            "bytes": 236256000
+          },
+          {
+            "branches": 4,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 267.1054,
+            "bytes": 368856160
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 482.5284,
+            "bytes": 657537344
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 258.6616,
+            "bytes": 407136000
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 258.1493,
+            "bytes": 407136000
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 479.8853,
+            "bytes": 657538592
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 481.7139,
+            "bytes": 657538592
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 258.0944,
+            "bytes": 407136000
+          },
+          {
+            "branches": 8,
+            "resume": true,
+            "repetitions": 4000,
+            "ms": 258.4016,
+            "bytes": 407136000
+          },
+          {
+            "branches": 8,
+            "resume": false,
+            "repetitions": 4000,
+            "ms": 489.3567,
+            "bytes": 657539840
+          }
+        ],
+        "retainedSamples": [
+          {
+            "resume": false,
+            "families": 128,
+            "branches": 8,
+            "before": 76834312,
+            "after": 90233984,
+            "retainedBytes": 13399672
+          },
+          {
+            "resume": true,
+            "families": 128,
+            "branches": 8,
+            "before": 76619184,
+            "after": 86623496,
+            "retainedBytes": 10004312
+          },
+          {
+            "resume": true,
+            "families": 128,
+            "branches": 8,
+            "before": 76619240,
+            "after": 86623576,
+            "retainedBytes": 10004336
+          },
+          {
+            "resume": false,
+            "families": 128,
+            "branches": 8,
+            "before": 76619296,
+            "after": 90234976,
+            "retainedBytes": 13615680
+          }
+        ]
+      },
+      "performanceUse": "invalid-control-superseded",
+      "semanticUse": "passed-for-that-variant",
+      "supersededReason": "Legacy discovery accidentally executed prototype rejection diagnostics, biasing elapsed time, allocations and held state. Superseded by capture-disabled early return and one-second paired warm-up at every branch count."
+    }
+  ],
+  "controlCorrection": {
+    "reason": "Legacy discovery accidentally executed prototype rejection diagnostics, biasing elapsed time, allocations and held state. Superseded by capture-disabled early return and one-second paired warm-up at every branch count.",
+    "oldPublishedSummary": {
+      "timingAndAllocation": [
+        {
+          "branches": 1,
+          "replay": {
+            "samples": 4,
+            "microsecondsMedian": 27.6207,
+            "microsecondsRange": [
+              25.7574,
+              90.731
+            ],
+            "bytesMedian": 38086.084
+          },
+          "resume": {
+            "samples": 4,
+            "microsecondsMedian": 24.116037499999997,
+            "microsecondsRange": [
+              17.82445,
+              30.711975
+            ],
+            "bytesMedian": 27111.286
+          },
+          "elapsedReductionPercent": 12.68853613413129,
+          "allocationReductionPercent": 28.815769035220317
+        },
+        {
+          "branches": 2,
+          "replay": {
+            "samples": 4,
+            "microsecondsMedian": 39.4981875,
+            "microsecondsRange": [
+              39.104975,
+              39.6309
+            ],
+            "bytesMedian": 56128.424
+          },
+          "resume": {
+            "samples": 4,
+            "microsecondsMedian": 24.894212500000002,
+            "microsecondsRange": [
+              24.798625,
+              25.111875
+            ],
+            "bytesMedian": 37704.0
+          },
+          "elapsedReductionPercent": 36.97378518951028,
+          "allocationReductionPercent": 32.8254789409373
+        },
+        {
+          "branches": 4,
+          "replay": {
+            "samples": 4,
+            "microsecondsMedian": 67.0169875,
+            "microsecondsRange": [
+              66.6707,
+              67.5137
+            ],
+            "bytesMedian": 92214.04
+          },
+          "resume": {
+            "samples": 4,
+            "microsecondsMedian": 38.5951625,
+            "microsecondsRange": [
+              38.5728,
+              39.089075
+            ],
+            "bytesMedian": 59064.0
+          },
+          "elapsedReductionPercent": 42.409881524441836,
+          "allocationReductionPercent": 35.94901600667316
+        },
+        {
+          "branches": 8,
+          "replay": {
+            "samples": 4,
+            "microsecondsMedian": 120.5302875,
+            "microsecondsRange": [
+              119.971325,
+              122.339175
+            ],
+            "bytesMedian": 164384.648
+          },
+          "resume": {
+            "samples": 4,
+            "microsecondsMedian": 64.5688625,
+            "microsecondsRange": [
+              64.5236,
+              64.6654
+            ],
+            "bytesMedian": 101784.0
+          },
+          "elapsedReductionPercent": 46.42934664865875,
+          "allocationReductionPercent": 38.081809196683615
+        }
+      ],
+      "controlledRetainedState": {
+        "replay": {
+          "bytesPerFamilyMedian": 105528.71875,
+          "range": [
+            104684.9375,
+            106372.5
+          ]
+        },
+        "resume": {
+          "bytesPerFamilyMedian": 78158.78125,
+          "range": [
+            78158.6875,
+            78158.875
+          ]
+        },
+        "reductionPercent": 25.936008533222143
+      },
+      "scope": "Headless single-card families, not search time, CPU time, RSS, or visible performance. Inspect ranges for warm-up drift."
+    },
+    "oldPublishedSummaryValid": false,
+    "guard": "TryCaptureChoicePrototype returns before diagnostics whenever capture is disabled; both contract fixtures assert the default rejection marker remains unchanged."
+  },
+  "verification": {
+    "releaseBuild": {
+      "variant": "priority-v2, corrected shared engine",
+      "success": true,
+      "warnings": 0,
+      "errors": 0,
+      "elapsedSeconds": 10.56
+    },
+    "productionSourceChanged": false,
+    "coverageRegistrationChanged": false,
+    "nativeRepresentatives": [
+      "DAGGER_THROW",
+      "ACROBATICS",
+      "ACROBATICS+",
+      "PREPARED",
+      "PREPARED+"
+    ],
+    "nativeComparison": "exact GameAction CompletionTask awaited; full predicted/live ContinuationStamp compared",
+    "simulationComparison": "all ordinary choices/combinations: full continuation, domain fingerprint, nine RNG streams, ordered piles, terminal/shuffle values, full history payloads and trace graph",
+    "boundaries": [
+      "active CardPlay and child MutablePreview identity",
+      "draw original/resolved pairing",
+      "owned mutable DamageResult and hit arrays",
+      "completed immutable prefix sharing",
+      "real shuffle",
+      "upgraded variants",
+      "sibling mutation and revisit",
+      "completed ordinary Fork",
+      "DOP2 overlap inside separate child scopes",
+      "pre/in-flight cancellation",
+      "invalid choice and original injected exception identity",
+      "checkpoint reuse after child failure",
+      "dispose weak seed release",
+      "ordinary Fork rejects owned suspended seed",
+      "replay, enchantment and paired-hook rejection",
+      "nested Sly full replay fallback"
+    ]
+  },
+  "decision": "Retain as independently reproducible narrow prototype for three cards, with shared checkpoint/history/continuation mechanism. Default search integration and whole-crab speedup remain unimplemented/unmeasured."
+}

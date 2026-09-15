@@ -15,7 +15,7 @@ using CombatSolver.Engine.InCombat.Simulation;
 
 namespace CombatSolver;
 
-internal static class TurnStartPowerSupport
+internal static partial class TurnStartPowerSupport
 {
     public static void PrepareVoidFormApplication(
         CombatPredictionSimulator simulator,
@@ -122,27 +122,45 @@ internal static class TurnStartPowerSupport
         SimulatedCombatState combat,
         Player player,
         TurnStartChoiceCursor choices)
+        => ContinueBeforeHandDraw(simulator, combat, player, choices, combat.EffectivePowers().ToArray(), 0);
+
+    private static bool ContinueBeforeHandDraw(CombatPredictionSimulator simulator, SimulatedCombatState combat,
+        Player player, TurnStartChoiceCursor choices, IReadOnlyList<PowerModel> powers, int nextIndex,
+        ForegoneStage stage = ForegoneStage.Start)
     {
-        foreach (PowerModel power in combat.EffectivePowers().ToArray())
+        for (int powerIndex = nextIndex; powerIndex < powers.Count; powerIndex++)
         {
+            PowerModel power = powers[powerIndex];
+            if (stage == ForegoneStage.Reset)
+            {
+                combat.SetPowerAmount(power, 0);
+                stage = ForegoneStage.Start;
+                continue;
+            }
             if (power.Amount <= 0 || !ReferenceEquals(power.Owner.Player, player))
                 continue;
 
             if (power is NightmarePower or InfiniteBladesPower or SentryModePower)
             {
                 if (combat.GenerateTurnStartPowerCards(simulator, player, power))
+                {
+                    simulator.RejectExecutionContinuation();
                     return true;
+                }
                 continue;
             }
 
             if (power is ForegoneConclusionPower)
             {
                 SimPlayerCombatState state = simulator.State.GetPlayerCombatState(player);
-                if (state.DrawPile.IsEmpty && !state.DiscardPile.IsEmpty)
+                if (stage == ForegoneStage.Start && state.DrawPile.IsEmpty && !state.DiscardPile.IsEmpty)
                 {
                     simulator.Shuffle(player);
                     if (combat.HasPendingChoice)
+                    {
+                        simulator.AppendExecutionContinuation(new BeforeHandDrawPowerFrame(player, powers, powerIndex, ForegoneStage.Select));
                         return true;
+                    }
                 }
                 if (!TurnStartChoiceSupport.Resolve(
                         simulator,
@@ -154,13 +172,15 @@ internal static class TurnStartPowerSupport
                         power.Amount,
                         PileType.Draw))
                 {
+                    simulator.AppendExecutionContinuation(new BeforeHandDrawPowerFrame(player, powers, powerIndex, ForegoneStage.Reset));
                     return true;
                 }
+                stage = ForegoneStage.Start;
                 combat.SetPowerAmount(power, 0);
                 continue;
             }
 
-            IEnumerable<CardModel>? options = null;
+            CharacterCombatGenerationPool? generationPool = null;
             int count = power.Amount;
             bool ethereal = false;
             bool generateOneAtATime = false;
@@ -168,29 +188,23 @@ internal static class TurnStartPowerSupport
             switch (power)
             {
                 case CallOfTheVoidPower:
-                    options = player.Character.CardPool
-                        .GetUnlockedCards(player.UnlockState, combat.CardMultiplayerConstraint)
-                        .Where(card => card.Rarity is not (CardRarity.Basic or CardRarity.Ancient));
+                    generationPool = CharacterCombatGenerationPool.NonBasicAndAncient;
                     ethereal = true;
                     generateOneAtATime = true;
                     break;
                 case CreativeAiPower:
-                    options = player.Character.CardPool
-                        .GetUnlockedCards(player.UnlockState, combat.CardMultiplayerConstraint)
-                        .Where(card => card.Type == CardType.Power);
+                    generationPool = CharacterCombatGenerationPool.Powers;
                     generateOneAtATime = true;
                     break;
                 case HelloWorldPower when power.AmountOnTurnStart >= 1:
-                    options = player.Character.CardPool
-                        .GetUnlockedCards(player.UnlockState, combat.CardMultiplayerConstraint)
-                        .Where(card => card.Rarity == CardRarity.Common);
+                    generationPool = CharacterCombatGenerationPool.Common;
                     count = power.AmountOnTurnStart;
                     break;
                 case SpectrumShiftPower:
                     generateColorless = true;
                     break;
             }
-            if ((!generateColorless && options == null) || count <= 0)
+            if ((!generateColorless && generationPool == null) || count <= 0)
                 continue;
 
             List<PredictedCard> generated;
@@ -200,31 +214,27 @@ internal static class TurnStartPowerSupport
                     player, count, simulator.Rng.CombatCardGeneration,
                     combat.CardMultiplayerConstraint).ToList();
             }
-            else if (generateOneAtATime)
-            {
-                generated = [];
-                for (int index = 0; index < count; index++)
-                {
-                    PredictedCard? card = options!
-                        .GetDistinctForCombat(
-                            player,
-                            1,
-                            simulator.Rng.CombatCardGeneration,
-                            combat.CardMultiplayerConstraint)
-                        .FirstOrDefault();
-                    if (card != null)
-                        generated.Add(card);
-                }
-            }
             else
             {
-                generated = options!
-                    .GetDistinctForCombat(
-                        player,
-                        count,
-                        simulator.Rng.CombatCardGeneration,
-                        combat.CardMultiplayerConstraint)
-                    .ToList();
+                var candidates = simulator.PrepareCharacterGenerationCandidates(
+                    player, player.Character.CardPool, generationPool!.Value,
+                    combat.CardMultiplayerConstraint);
+                if (generateOneAtATime)
+                {
+                    generated = [];
+                    for (int index = 0; index < count; index++)
+                    {
+                        PredictedCard? card = candidates.GetDistinctForCombat(
+                            player, 1, simulator.Rng.CombatCardGeneration).FirstOrDefault();
+                        if (card != null)
+                            generated.Add(card);
+                    }
+                }
+                else
+                {
+                    generated = candidates.GetDistinctForCombat(
+                        player, count, simulator.Rng.CombatCardGeneration).ToList();
+                }
             }
             if (ethereal)
             {
@@ -238,7 +248,10 @@ internal static class TurnStartPowerSupport
                 CardPilePosition.Bottom,
                 CardGenerationResultKind.Random);
             if (combat.HasPendingChoice)
+            {
+                simulator.RejectExecutionContinuation();
                 return true;
+            }
         }
         return false;
     }
@@ -248,10 +261,15 @@ internal static class TurnStartPowerSupport
         SimulatedCombatState combat,
         Player player,
         TurnStartChoiceCursor choices)
+        => ContinueAfterPlayerTurnStart(simulator, combat, player, choices, combat.EffectivePowers().ToArray(), 0);
+
+    private static bool ContinueAfterPlayerTurnStart(CombatPredictionSimulator simulator, SimulatedCombatState combat,
+        Player player, TurnStartChoiceCursor choices, IReadOnlyList<PowerModel> powers, int nextIndex)
     {
         Creature owner = player.Creature;
-        foreach (var power in combat.EffectivePowers().ToArray())
+        for (int powerIndex = nextIndex; powerIndex < powers.Count; powerIndex++)
         {
+            PowerModel power = powers[powerIndex];
             if (power.Amount <= 0 || !ReferenceEquals(power.Owner, owner))
                 continue;
 
@@ -267,6 +285,7 @@ internal static class TurnStartPowerSupport
                             PlanChoiceEffect.Transform,
                             power.Amount))
                     {
+                        simulator.AppendExecutionContinuation(new AfterPlayerTurnStartPowerFrame(player, powers, powerIndex + 1));
                         return true;
                     }
                     break;
@@ -281,7 +300,10 @@ internal static class TurnStartPowerSupport
                             owner);
                     }
                     if (combat.HasPendingChoice)
+                    {
+                        simulator.RejectExecutionContinuation();
                         return true;
+                    }
                     simulator.GainBlock(owner, mantle.Amount, ValueProp.Unpowered);
                     break;
                 case HibernatePower:
@@ -298,7 +320,10 @@ internal static class TurnStartPowerSupport
                             owner);
                     }
                     if (combat.HasPendingChoice)
+                    {
+                        simulator.RejectExecutionContinuation();
                         return true;
+                    }
                     break;
                 case LoopPower:
                     SimOrbQueue queue = simulator.State.GetPlayerCombatState(player).OrbQueue;
@@ -308,7 +333,10 @@ internal static class TurnStartPowerSupport
                     {
                         simulator.OrbPassive(queue.Orbs[0]);
                         if (combat.HasPendingChoice)
+                        {
+                            simulator.RejectExecutionContinuation();
                             return true;
+                        }
                     }
                     break;
                 case RollingBoulderPower rolling:
@@ -318,13 +346,19 @@ internal static class TurnStartPowerSupport
                         simulator.Damage(combat.HittableEnemies, rolling.Amount, ValueProp.Unpowered, owner);
                     }
                     if (combat.HasPendingChoice)
+                    {
+                        simulator.RejectExecutionContinuation();
                         return true;
+                    }
                     combat.SetPowerAmount(rolling, rolling.Amount + rolling.DynamicVars.Damage.IntValue);
                     break;
                 case SummonNextTurnPower:
                     combat.SummonOsty(simulator, player, power.Amount);
                     if (combat.HasPendingChoice)
+                    {
+                        simulator.RejectExecutionContinuation();
                         return true;
+                    }
                     combat.SetPowerAmount(power, 0);
                     break;
                 case ToolsOfTheTradePower:
@@ -337,6 +371,7 @@ internal static class TurnStartPowerSupport
                             PlanChoiceEffect.Discard,
                             power.Amount))
                     {
+                        simulator.AppendExecutionContinuation(new AfterPlayerTurnStartPowerFrame(player, powers, powerIndex + 1));
                         return true;
                     }
                     break;
@@ -350,12 +385,16 @@ internal static class TurnStartPowerSupport
                             PlanChoiceEffect.Exhaust,
                             power.Amount))
                     {
+                        simulator.AppendExecutionContinuation(new AfterPlayerTurnStartPowerFrame(player, powers, powerIndex + 1));
                         return true;
                     }
                     break;
             }
             if (combat.HasPendingChoice)
+            {
+                simulator.RejectExecutionContinuation();
                 return true;
+            }
         }
         return false;
     }

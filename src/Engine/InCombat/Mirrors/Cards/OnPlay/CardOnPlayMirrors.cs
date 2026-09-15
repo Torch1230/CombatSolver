@@ -12,7 +12,7 @@ namespace CombatSolver.Engine.InCombat.Mirrors.Cards.OnPlay;
 using Registry = MethodMirrorRegistry<CardModel, CardOnPlayMirrorContext>;
 
 // Simulation-facing facade and central registration index for mirrored CardModel.OnPlay behavior.
-internal static class CardOnPlayMirrors
+internal static partial class CardOnPlayMirrors
 {
     private static readonly MirrorMethodSpec OnPlay = new(
         typeof(CardModel),
@@ -46,19 +46,25 @@ internal static class CardOnPlayMirrors
         // The mutable preview is the receiver because OnPlay handlers may mutate the played card.
         // CardOnPlayMirrorContext maps its source back to the original card and exposes that same
         // original model as the StateStore key.
-        if (simulator.State.CombatState is SimulatedCombatState adaptedCombat
-            && adaptedCombat.AdaptedOnPlay is { } adapted
-            && adapted.TryInvoke(simulator, card, cardPlay, out MirrorDispatchResult replacement))
-            return replacement; // The complete adapted recipe owns both mirror and spec effects.
-        MirrorDispatchResult result = Registry.Invoke(card.MutablePreview, new()
+        using (simulator.BeginExecutionDispatch())
         {
-            Simulator = simulator,
-            Card = card,
-            CardPlay = cardPlay
-        });
-        if (!simulator.HasPendingChoice
-            && simulator.State.CombatState is SimulatedCombatState combat)
-            CardEffectSpecRegistry.Apply(simulator, combat, card, cardPlay.Target);
+            if (simulator.State.CombatState is SimulatedCombatState adaptedCombat
+                && adaptedCombat.AdaptedOnPlay is { } adapted
+                && adapted.TryInvoke(simulator, card, cardPlay, out MirrorDispatchResult replacement))
+                return replacement;
+        }
+        MirrorDispatchResult result;
+        using (simulator.BeginExecutionDispatch())
+            result = Registry.Invoke(card.MutablePreview, new()
+            {
+                Simulator = simulator,
+                Card = card,
+                CardPlay = cardPlay
+            });
+        if (simulator.HasPendingChoice)
+            simulator.AppendExecutionContinuation(new CardSpecExecutionFrame(card, cardPlay.Target));
+        else
+            ApplyRemainingCardSpec(simulator, card, cardPlay.Target);
         return result;
     }
 

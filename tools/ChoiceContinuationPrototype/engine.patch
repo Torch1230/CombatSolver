@@ -1,0 +1,245 @@
+diff --git a/src/Engine/Common/PredictionStateStore.cs b/src/Engine/Common/PredictionStateStore.cs
+index b318629..17aa463 100644
+--- a/src/Engine/Common/PredictionStateStore.cs
++++ b/src/Engine/Common/PredictionStateStore.cs
+@@ -3,7 +3,7 @@ using MegaCrit.Sts2.Core.Models;
+
+ namespace CombatSolver.Engine.Common;
+
+-internal sealed class PredictionStateStore
++internal sealed partial class PredictionStateStore
+ {
+     // State values are already owned and eagerly forked. A separate heap-allocated entry
+     // around every value adds no isolation; keep the value directly in the same ordered table.
+diff --git a/src/Engine/Common/PredictionTrace.cs b/src/Engine/Common/PredictionTrace.cs
+index 3056281..e690338 100644
+--- a/src/Engine/Common/PredictionTrace.cs
++++ b/src/Engine/Common/PredictionTrace.cs
+@@ -69,7 +69,7 @@ internal sealed class PredictionTraceFrame
+ /// A trace is mutable only while simulation scopes are active and is not safe for concurrent use. Disposing scopes
+ /// out of LIFO order is a programming error; popped frame objects remain valid immutable identities for history.
+ /// </remarks>
+-internal sealed class PredictionTrace
++internal sealed partial class PredictionTrace
+ {
+     // 绝大多数镜像分发在自己的作用域里一条历史都不记，帧对象建了就直接丢。改为只把
+     // 来源/调用记进一段可复用的栈，等真的有人读 Current 时才物化，并把结果缓存在槽里。
+diff --git a/src/Engine/InCombat/Simulation/CombatPredictionHistory.cs b/src/Engine/InCombat/Simulation/CombatPredictionHistory.cs
+index 5c66d04..3a74ab4 100644
+--- a/src/Engine/InCombat/Simulation/CombatPredictionHistory.cs
++++ b/src/Engine/InCombat/Simulation/CombatPredictionHistory.cs
+@@ -11,7 +11,7 @@ namespace CombatSolver.Engine.InCombat.Simulation;
+ /// Deferred events use separate original and resolved entries; the resolved entry carries the final snapshot and
+ /// risk boundary while the original entry determines semantic order.
+ /// </summary>
+-internal sealed class CombatPredictionHistory(PredictionTrace trace)
++internal sealed partial class CombatPredictionHistory(PredictionTrace trace)
+     : IReadOnlyList<CombatPredictionHistoryEntry>
+ {
+     public readonly struct HistoryEntryRange
+diff --git a/src/Engine/InCombat/Simulation/CombatPredictionSimulator.Card.cs b/src/Engine/InCombat/Simulation/CombatPredictionSimulator.Card.cs
+index f897415..5c57b47 100644
+--- a/src/Engine/InCombat/Simulation/CombatPredictionSimulator.Card.cs
++++ b/src/Engine/InCombat/Simulation/CombatPredictionSimulator.Card.cs
+@@ -408,6 +408,8 @@ internal sealed partial class CombatPredictionSimulator
+                 && State.CombatState is ICombatPredictionManualCardChoiceSink choiceSink
+                 && !choiceSink.ResolveManualCardChoice(this, card))
+             {
++                if (TryCaptureChoicePrototype(card, target, cardPlay, resultLocation, ownerBlockBeforePlay))
++                    return;
+                 HookMirrors.AbortCardPlayed(this, cardPlay);
+                 return;
+             }
+@@ -425,80 +427,97 @@ internal sealed partial class CombatPredictionSimulator
+                 return;
+             }
+
+-            if (ownerCreature.IsDead)
+-            {
+-                HookMirrors.AbortCardPlayed(this, cardPlay);
++            if (!CompleteChoicePlayTail(card, target, cardPlay, ownerBlockBeforePlay))
+                 return;
+-            }
++        }
+
+-            if (previewCard.Enchantment is { } enchantment)
+-            {
+-                EnchantmentOnPlayMirrors.Invoke(this, card, cardPlay, enchantment);
++        CompleteChoiceResultTail(card, originalOwner, resultLocation);
++    }
+
+-                if (HasPendingChoice)
+-                {
+-                    HookMirrors.AbortCardPlayed(this, cardPlay);
+-                    return;
+-                }
++    private bool CompleteChoicePlayTail(PredictedCard card, Creature? target, CardPlay cardPlay,
++        int ownerBlockBeforePlay)
++    {
++        var previewCard = card.MutablePreview;
++        var ownerCreature = State.GetCreature(cardPlay.Player.Creature);
++        if (ownerCreature.IsDead)
++        {
++            HookMirrors.AbortCardPlayed(this, cardPlay);
++            return false;
++        }
+
+-                if (ownerCreature.IsDead)
+-                {
+-                    HookMirrors.AbortCardPlayed(this, cardPlay);
+-                    return;
+-                }
+-            }
++        if (previewCard.Enchantment is { } enchantment)
++        {
++            EnchantmentOnPlayMirrors.Invoke(this, card, cardPlay, enchantment);
+
+-            if (previewCard.Affliction is { } affliction)
++            if (HasPendingChoice)
+             {
+-                AfflictionOnPlayMirrors.Invoke(this, card, target, affliction);
+-
+-                if (HasPendingChoice)
+-                {
+-                    HookMirrors.AbortCardPlayed(this, cardPlay);
+-                    return;
+-                }
++                HookMirrors.AbortCardPlayed(this, cardPlay);
++                return false;
++            }
+
+-                if (ownerCreature.IsDead)
+-                {
+-                    HookMirrors.AbortCardPlayed(this, cardPlay);
+-                    return;
+-                }
++            if (ownerCreature.IsDead)
++            {
++                HookMirrors.AbortCardPlayed(this, cardPlay);
++                return false;
+             }
++        }
+
+-            int completionHistoryEntryStart = History.Entries.Count;
+-            History.CardPlayFinished(
+-                card,
+-                cardPlay,
+-                card.HasKeyword(State, CardKeyword.Ethereal));
+-            HookMirrors.AfterCardPlayed(this, card, cardPlay);
++        if (previewCard.Affliction is { } affliction)
++        {
++            AfflictionOnPlayMirrors.Invoke(this, card, target, affliction);
+
+-            // An AfterCardPlayed listener can auto-play another card whose own selection suspends.
+-            // This CardPlay has already recorded its finished history, so do not abort it; its
+-            // after-hook dispatch remains suspended before later listeners and lifecycle effects.
+             if (HasPendingChoice)
+             {
+-                return;
++                HookMirrors.AbortCardPlayed(this, cardPlay);
++                return false;
+             }
+
+-            if (State.CombatState is ICombatPredictionCardExecutionSink completionSink)
++            if (ownerCreature.IsDead)
+             {
+-                completionSink.CompleteCardPlayEffects(
+-                    this,
+-                    card,
+-                    ownerBlockBeforePlay,
+-                    completionHistoryEntryStart);
+-                if (HasPendingChoice)
+-                    return;
++                HookMirrors.AbortCardPlayed(this, cardPlay);
++                return false;
+             }
++        }
+
+-            _blockGainedByCardPlay.Remove(cardPlay);
++        int completionHistoryEntryStart = History.Entries.Count;
++        History.CardPlayFinished(
++            card,
++            cardPlay,
++            card.HasKeyword(State, CardKeyword.Ethereal));
++        HookMirrors.AfterCardPlayed(this, card, cardPlay);
+
+-            if (ownerCreature.IsDead)
+-            {
+-                return;
+-            }
++        // An AfterCardPlayed listener can auto-play another card whose own selection suspends.
++        // This CardPlay has already recorded its finished history, so do not abort it; its
++        // after-hook dispatch remains suspended before later listeners and lifecycle effects.
++        if (HasPendingChoice)
++        {
++            return false;
+         }
+
++        if (State.CombatState is ICombatPredictionCardExecutionSink completionSink)
++        {
++            completionSink.CompleteCardPlayEffects(
++                this,
++                card,
++                ownerBlockBeforePlay,
++                completionHistoryEntryStart);
++            if (HasPendingChoice)
++                return false;
++        }
++
++        _blockGainedByCardPlay.Remove(cardPlay);
++
++        if (ownerCreature.IsDead)
++        {
++            return false;
++        }
++        return true;
++    }
++
++    private void CompleteChoiceResultTail(PredictedCard card,
++        MegaCrit.Sts2.Core.Entities.Players.Player originalOwner, CardLocation resultLocation)
++    {
++        var previewCard = card.MutablePreview;
+         if (originalOwner != resultLocation.player && resultLocation.pileType != PileType.None)
+         {
+             GiveToAnotherPlayer(
+diff --git a/src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs b/src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs
+index 1338a33..fb85971 100644
+--- a/src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs
++++ b/src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs
+@@ -150,6 +150,7 @@ internal sealed partial class CombatPredictionSimulator
+
+     public CombatPredictionSimulator Fork()
+     {
++        GuardOrdinaryChoicePrototypeFork();
+         AssertForkable();
+
+         using PredictionForkContext context = new();
+diff --git a/src/Prediction/TurnStartChoiceSupport.cs b/src/Prediction/TurnStartChoiceSupport.cs
+index 4d27100..c1af606 100644
+--- a/src/Prediction/TurnStartChoiceSupport.cs
++++ b/src/Prediction/TurnStartChoiceSupport.cs
+@@ -24,6 +24,8 @@ internal sealed class TurnStartChoiceCursor(IReadOnlyList<PlanCardChoice>? choic
+     private readonly IReadOnlyList<PlanCardChoice> _choices = choices ?? [];
+     private readonly Func<TurnStartChoiceRequest, PlanCardChoice?>? _automaticPolicy;
+     private int _index;
++    internal bool IsEmptyChoicePrototype => _choices.Count == 0 && _index == 0
++        && _automaticPolicy is null && _beforeNextTake is null;
+     private Func<bool>? _beforeNextTake;
+
+     private TurnStartChoiceCursor(
+diff --git a/src/Testing/UnattendedTestRunner.Executor.cs b/src/Testing/UnattendedTestRunner.Executor.cs
+index fc39da6..6fb5bc3 100644
+--- a/src/Testing/UnattendedTestRunner.Executor.cs
++++ b/src/Testing/UnattendedTestRunner.Executor.cs
+@@ -257,6 +257,11 @@ internal sealed partial class UnattendedTestRunner
+                 await runner.AssertHpTargetStopAsync(combatState, player);
+                 return Observation(combatEnded: false);
+             }
++            if (request.ScenarioId.StartsWith("CHOICE-PROTOTYPE", StringComparison.Ordinal))
++            {
++                await runner.RunChoicePrototypeAsync(combatState, player);
++                return Observation(combatEnded: false);
++            }
+             if (request.ScenarioId == "NATIVE-HAND-CHOICE-REPLAY")
+             {
+                 await runner.AssertNativeHandChoiceReplayAsync(combatState, player);

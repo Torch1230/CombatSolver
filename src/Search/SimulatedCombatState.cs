@@ -494,6 +494,15 @@ internal sealed partial class SimulatedCombatState
             multiplayerConstraint,
             out cards);
 
+    bool ICombatPredictionCardGenerationPoolSnapshot.TryGetRootEligibleCharacterCards(
+        Player player,
+        CardPoolModel cardPool,
+        CardMultiplayerConstraint multiplayerConstraint,
+        CharacterCombatGenerationPool selection,
+        out IReadOnlyList<CardModel> cards)
+        => _rootCardGenerationPools.TryGetEligibleCharacterCards(
+            player, cardPool, multiplayerConstraint, selection, out cards);
+
     public IReadOnlyList<Creature> Allies => _allies;
     public IReadOnlyList<Creature> Enemies => _enemies;
     public IReadOnlyList<Creature> KnownEnemies => _knownEnemies;
@@ -1144,7 +1153,10 @@ internal sealed partial class SimulatedCombatState
         Player player = owner.Player
             ?? throw new InvalidOperationException("玩家回合开始钩子的持有者没有 Player。");
         if (TurnStartPowerSupport.TriggerAfterPlayerTurnStart(simulator, this, player, choices))
+        {
+            simulator.AppendExecutionContinuation(new AfterPlayerTurnStartFrame(player));
             return true;
+        }
         if (TurnStartRelicSupport.TriggerAfterPlayerTurnStart(simulator, this, player, choices))
             return true;
         return false;

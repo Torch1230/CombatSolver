@@ -37,9 +37,12 @@ internal sealed partial class CombatBeamSolver
 
     private sealed class DeferredCardActionProbe(
         PreparedCardAction action,
-        SimulationSnapshot snapshot) : IDisposable
+        SimulationSnapshot snapshot, CardChoiceReplayCheckpoint? checkpoint = null) : IDisposable
     {
         private SimulationSnapshot? _snapshot = snapshot;
+        private CardChoiceReplayCheckpoint? _checkpoint = checkpoint;
+        public CardChoiceReplayCheckpoint? TakeCheckpoint() => Interlocked.Exchange(ref _checkpoint, null);
+        public void AttachCheckpoint(CardChoiceReplayCheckpoint? value) => _checkpoint = value;
 
         public PreparedCardAction Action { get; } = action;
 
@@ -49,7 +52,10 @@ internal sealed partial class CombatBeamSolver
                     "并行卡牌动作的 deferred probe 已被消费或释放。");
 
         public void Dispose()
-            => Interlocked.Exchange(ref _snapshot, null)?.ReleaseSimulator();
+        {
+            Interlocked.Exchange(ref _snapshot, null)?.ReleaseSimulator();
+            Interlocked.Exchange(ref _checkpoint, null)?.Dispose();
+        }
     }
 
     private sealed record PreparedCardActionEvaluation(
@@ -404,6 +410,10 @@ internal sealed partial class CombatBeamSolver
         worker._run.InitialEnemyWeakTurns = _run.InitialEnemyWeakTurns;
         worker._run.InitialRetainedAttackValue = _run.InitialRetainedAttackValue;
         worker._run.PathDiagnosticsSolverId = _run.PathDiagnosticsSolverId;
+        worker._disableCardChoiceContinuationsForTesting = _disableCardChoiceContinuationsForTesting;
+        worker._disablePotionChoiceContinuationsForTesting = _disablePotionChoiceContinuationsForTesting;
+        worker._disableExecutionChoiceContinuationsForTesting = _disableExecutionChoiceContinuationsForTesting;
+        worker._verifyChoiceContinuationStepsForTesting = _verifyChoiceContinuationStepsForTesting;
         return worker;
     }
 
@@ -542,13 +552,16 @@ internal sealed partial class CombatBeamSolver
         {
             cancellationToken.ThrowIfCancellationRequested();
             SimulationSnapshot snapshot = node.Snapshot;
-            SimulationSnapshot probeSnapshot = ReplayAction(node, action.Action, seed);
+            using CardChoiceReplayCapture? cardCapture = PrepareCardChoiceCapture(node, action.Action);
+            SimulationSnapshot probeSnapshot = ReplayAction(node, action.Action, seed, cardChoiceCapture: cardCapture);
             if (allowPendingChoiceDeferral
                 && probeSnapshot.BoundaryReason == SearchBoundaryReason.PendingChoice)
             {
                 try
                 {
-                    return new DeferredCardActionProbe(action, probeSnapshot);
+                    var probe = new DeferredCardActionProbe(action, probeSnapshot);
+                    probe.AttachCheckpoint(cardCapture?.Take());
+                    return probe;
                 }
                 catch
                 {
@@ -581,7 +594,8 @@ internal sealed partial class CombatBeamSolver
                         probeSnapshot,
                         choiceSpec,
                         action.RequiredEmptyChoice);
-            AddResolvedCardCandidates(node, action, resolvedBranches, batch);
+            AddResolvedCardCandidates(node, action,
+                WithCardChoiceCheckpoint(cardCapture?.Take(), resolvedBranches), batch);
             return null;
         }
         finally
@@ -655,6 +669,7 @@ internal sealed partial class CombatBeamSolver
         _run.DeferredRoundChoiceActions++;
         PreparedCardAction preparedAction = deferredProbe.Action;
         SimulationSnapshot? snapshot = deferredProbe.TakeSnapshot();
+        CardChoiceReplayCheckpoint? checkpoint = deferredProbe.TakeCheckpoint();
         try
         {
             CardChoiceSpec? choiceSpec = BuildPrimaryCardChoiceSpec(snapshot);
@@ -697,11 +712,12 @@ internal sealed partial class CombatBeamSolver
                 }
                 RecordDeferredRoundChoiceLayer(layer.Choices.Count, finitePrimaryLayer: true);
                 PrimaryChoiceReplayFrontier? frontier = PreparePrimaryChoiceReplays(
-                    layer, card: preparedAction);
+                    layer, card: preparedAction, cardCheckpoint: checkpoint);
                 if (frontier != null)
                 {
                     snapshot.ReleaseSimulator();
                     snapshot = null;
+                    checkpoint = null; // The frontier now owns the checkpoint until all lanes drain.
                     return frontier;
                 }
                 resolvedBranches = ResolvePrimaryCardChoiceLayer(
@@ -711,6 +727,8 @@ internal sealed partial class CombatBeamSolver
                     layer);
             }
 
+            resolvedBranches = WithCardChoiceCheckpoint(checkpoint, resolvedBranches);
+            checkpoint = null;
             snapshot = null; // The iterator now owns the original probe, including early failure.
             AddResolvedCardCandidates(
                 node,
@@ -722,6 +740,7 @@ internal sealed partial class CombatBeamSolver
         finally
         {
             snapshot?.ReleaseSimulator();
+            checkpoint?.Dispose();
         }
     }
 
@@ -805,60 +824,44 @@ internal sealed partial class CombatBeamSolver
         ExpansionBatch batch,
         bool allowPrimaryReplays = false)
     {
-        SimulationSnapshot snapshot = node.Snapshot;
-        CombatPredictionSimulator simulator = (CombatPredictionSimulator)snapshot.Simulator;
         PlanAction baseAction = action.Action;
-        PotionModel potion = action.Potion;
         SimulationSnapshot? probeSnapshot = null;
-        IReadOnlyList<PlanCardChoice?> choices;
-        CardChoiceSpec? choiceSpec = null;
-        if (PotionChoiceSupport.RequiresChoice(potion))
+        PotionChoiceReplayCheckpoint? checkpoint = null;
+        try
         {
-            CombatPredictionSimulator choiceSimulator = simulator;
-            if (PotionChoiceSupport.GeneratesCardChoice(potion))
+            checkpoint = PreparePotionChoiceOptions(node, baseAction, action.Potion,
+                out probeSnapshot, out IReadOnlyList<PlanCardChoice?> choices, out CardChoiceSpec? choiceSpec);
+            if (allowPrimaryReplays && choices.Count >= 2)
             {
-                probeSnapshot = ReplayAction(node, baseAction);
-                choiceSimulator = (CombatPredictionSimulator)probeSnapshot.Simulator;
+                bool identityChangingLayer = choiceSpec != null
+                    && CardChoiceSupport.IsIdentityChangingPersistentChoiceEffect(choiceSpec.Effect);
+                int semanticCount = identityChangingLayer
+                    ? CardChoiceSupport.CountSemanticChoices(
+                        choices.Where(choice => choice != null).Cast<PlanCardChoice>().ToList())
+                    : choices.Count;
+                PrimaryCardChoiceLayer layer = new(choices, UnregisteredPendingChoice: false,
+                    semanticCount, identityChangingLayer,
+                    CreateWholeActionChoiceBudget(choiceSpec, semanticCount));
+                PrimaryChoiceReplayFrontier? frontier = PreparePrimaryChoiceReplays(
+                    layer, potion: action, potionCheckpoint: checkpoint);
+                if (frontier != null)
+                {
+                    checkpoint = null; // All replay producers and the ordered consumer now own it.
+                    return frontier;
+                }
             }
-            choiceSpec = PotionChoiceSupport.GetSpec(choiceSimulator, potion);
-            choices = CardChoiceSupport.BuildChoices(
-                    choiceSpec,
-                    displayNames,
-                    _profile.MaxPileChoiceBranchesPerAction,
-                    _profile.MaxHandChoiceBranchesPerAction)
-                .Select(choice => choice with { SourceId = potion.Id.Entry })
-                .Cast<PlanCardChoice?>()
-                .ToList();
-            probeSnapshot?.ReleaseSimulator();
+            var branches = ResolveExplicitCardChoiceBranches(node, baseAction, probeSnapshot, choices, choiceSpec);
             probeSnapshot = null;
+            var ownedCheckpoint = checkpoint;
+            checkpoint = null;
+            AddResolvedPotionCandidates(node, WithPotionChoiceCheckpoint(ownedCheckpoint, branches), batch);
+            return null;
         }
-        else
+        finally
         {
-            probeSnapshot = ReplayAction(node, baseAction);
-            choices = [null];
+            checkpoint?.Dispose();
+            probeSnapshot?.ReleaseSimulator();
         }
-        if (allowPrimaryReplays && choices.Count >= 2)
-        {
-            bool identityChangingLayer = choiceSpec != null
-                && CardChoiceSupport.IsIdentityChangingPersistentChoiceEffect(choiceSpec.Effect);
-            int semanticCount = identityChangingLayer
-                ? CardChoiceSupport.CountSemanticChoices(
-                    choices.Where(choice => choice != null).Cast<PlanCardChoice>().ToList())
-                : choices.Count;
-            PrimaryCardChoiceLayer layer = new(choices, UnregisteredPendingChoice: false,
-                semanticCount, identityChangingLayer,
-                CreateWholeActionChoiceBudget(choiceSpec, semanticCount));
-            PrimaryChoiceReplayFrontier? frontier = PreparePrimaryChoiceReplays(layer, potion: action);
-            if (frontier != null)
-            {
-                probeSnapshot?.ReleaseSimulator();
-                return frontier;
-            }
-        }
-        AddResolvedPotionCandidates(node,
-            ResolveExplicitCardChoiceBranches(node, baseAction, probeSnapshot, choices, choiceSpec),
-            batch);
-        return null;
     }
 
     private void AddResolvedPotionCandidates(
@@ -970,6 +973,16 @@ internal sealed partial class CombatBeamSolver
         _run.ForkCount += source.ForkCount;
         _run.RoundReplayPrefixCaptures += source.RoundReplayPrefixCaptures;
         _run.RoundReplayPrefixReuses += source.RoundReplayPrefixReuses;
+        _run.ExecutionChoiceCaptures += source.ExecutionChoiceCaptures;
+        _run.ExecutionChoiceReuses += source.ExecutionChoiceReuses;
+        _run.CardChoicePrefixAttempts += source.CardChoicePrefixAttempts;
+        _run.CardChoicePrefixCaptures += source.CardChoicePrefixCaptures;
+        _run.CardChoicePrefixReuses += source.CardChoicePrefixReuses;
+        _run.CardChoicePrefixFallbacks += source.CardChoicePrefixFallbacks;
+        _run.PotionChoicePrefixForks += source.PotionChoicePrefixForks;
+        _run.PotionChoicePrefixCaptures += source.PotionChoicePrefixCaptures;
+        _run.PotionChoicePrefixReuses += source.PotionChoicePrefixReuses;
+        _run.PotionChoicePrefixFallbacks += source.PotionChoicePrefixFallbacks;
         _run.TransitionCount += source.TransitionCount;
         _run.RepeatableNoProgressBranchesPruned +=
             source.RepeatableNoProgressBranchesPruned;
@@ -1005,6 +1018,16 @@ internal sealed partial class CombatBeamSolver
         source.ForkCount = 0;
         source.RoundReplayPrefixCaptures = 0;
         source.RoundReplayPrefixReuses = 0;
+        source.ExecutionChoiceCaptures = 0;
+        source.ExecutionChoiceReuses = 0;
+        source.CardChoicePrefixAttempts = 0;
+        source.CardChoicePrefixCaptures = 0;
+        source.CardChoicePrefixReuses = 0;
+        source.CardChoicePrefixFallbacks = 0;
+        source.PotionChoicePrefixForks = 0;
+        source.PotionChoicePrefixCaptures = 0;
+        source.PotionChoicePrefixReuses = 0;
+        source.PotionChoicePrefixFallbacks = 0;
         source.TransitionCount = 0;
         source.RepeatableNoProgressBranchesPruned = 0;
         source.CycleShapesDetected = 0;

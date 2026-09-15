@@ -5,3 +5,8 @@
 *.md text eol=lf
 *.ps1 text eol=crlf
 *.sh text eol=lf
+
+# Generated benchmark evidence stays available without obscuring source review.
+docs/performance/*-20260914.json linguist-generated=true
+docs/performance/performance-pr-20260915.json linguist-generated=true
+docs/performance/derived-work-reuse-20260915.json linguist-generated=true

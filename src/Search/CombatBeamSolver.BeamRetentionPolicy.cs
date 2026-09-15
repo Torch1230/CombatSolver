@@ -705,14 +705,9 @@ internal sealed partial class CombatBeamSolver
                     right.OptionalAmbergrisFinalPlayerHpCohort);
         }
 
-        public List<SearchNode> RankLongTermResource(
-            IReadOnlyList<SearchNode> nodes,
-            int limit)
+        public static (int Value, int Count) GetLongTermResourceMaximum(
+            IReadOnlyList<SearchNode> nodes)
         {
-            if (nodes.Count == 0)
-                return [];
-            // Max / All / Where 三次遍历外加三个委托，合成一次扫描：最高值、命中数与命中集合
-            // 全部按原顺序一次算出，筛选结果与 Where 的产出逐条相同。
             int highestValue = int.MinValue;
             int highestCount = 0;
             for (int index = 0; index < nodes.Count; index++)
@@ -728,12 +723,20 @@ internal sealed partial class CombatBeamSolver
                     highestCount++;
                 }
             }
-            if (highestCount == nodes.Count)
+            return (highestValue, highestCount);
+        }
+
+        public List<SearchNode> RankLongTermResource(
+            IReadOnlyList<SearchNode> nodes,
+            int limit,
+            (int Value, int Count) maximum)
+        {
+            if (maximum.Count == nodes.Count)
                 return [];
-            List<SearchNode> highest = new(highestCount);
+            List<SearchNode> highest = new(maximum.Count);
             for (int index = 0; index < nodes.Count; index++)
             {
-                if (nodes[index].Snapshot.LongTermResourceValue == highestValue)
+                if (nodes[index].Snapshot.LongTermResourceValue == maximum.Value)
                     highest.Add(nodes[index]);
             }
             return RankBest(

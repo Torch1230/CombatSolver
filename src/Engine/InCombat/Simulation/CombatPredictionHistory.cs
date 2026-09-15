@@ -11,7 +11,7 @@ namespace CombatSolver.Engine.InCombat.Simulation;
 /// Deferred events use separate original and resolved entries; the resolved entry carries the final snapshot and
 /// risk boundary while the original entry determines semantic order.
 /// </summary>
-internal sealed class CombatPredictionHistory(PredictionTrace trace)
+internal sealed partial class CombatPredictionHistory(PredictionTrace trace)
     : IReadOnlyList<CombatPredictionHistoryEntry>
 {
     public readonly struct HistoryEntryRange

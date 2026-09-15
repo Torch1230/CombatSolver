@@ -59,6 +59,19 @@ internal sealed class PredictedCard : IComparable<PredictedCard>
     private bool _observeEveryPreviewMutation;
     private bool _isolateAttachedModelsOnFork;
 
+    // Entry inspection belongs to this wrapper, including root cards that need no
+    // entry effect. Fork preserves it; Clone starts unchecked. Root membership is
+    // frozen for the search, so a checked card never needs another root-set lookup.
+    internal bool HasCheckedPowerAfflictionEntry { get; private set; }
+
+    internal bool TryMarkPowerAfflictionEntryChecked()
+    {
+        if (HasCheckedPowerAfflictionEntry)
+            return false;
+        HasCheckedPowerAfflictionEntry = true;
+        return true;
+    }
+
     public PredictedCard(CardModel original, CardModel? preview = null)
     {
         _previewStorage = new PreviewStorage(original, preview);
@@ -165,6 +178,7 @@ internal sealed class PredictedCard : IComparable<PredictedCard>
         PredictedCard fork = new(forkStorage)
         {
             _isolateAttachedModelsOnFork = _isolateAttachedModelsOnFork,
+            HasCheckedPowerAfflictionEntry = HasCheckedPowerAfflictionEntry,
         };
         context.Register(this, fork);
         return fork;

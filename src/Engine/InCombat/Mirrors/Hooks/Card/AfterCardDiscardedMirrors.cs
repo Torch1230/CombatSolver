@@ -18,6 +18,7 @@ internal static class AfterCardDiscardedMirrors
 
     public static void Invoke(AbstractModel listener, AfterCardDiscardedMirrorContext context)
     {
+        using var dispatch = context.Simulator.BeginExecutionDispatch();
         Registry.Invoke(listener, context);
     }
 

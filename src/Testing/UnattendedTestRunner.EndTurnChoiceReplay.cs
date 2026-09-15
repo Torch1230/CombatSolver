@@ -6,7 +6,8 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
-    private static async Task AssertEndTurnChoiceReplayAsync(MegaCrit.Sts2.Core.Combat.CombatState combat)
+    private static async Task AssertEndTurnChoiceReplayAsync(MegaCrit.Sts2.Core.Combat.CombatState combat,
+        bool adaptive = false, bool handDrawShuffle = false)
     {
         string liveBefore = ContinuationStamp.CaptureLive(combat).StateText;
         SearchPolicySnapshot capturedPolicy = SolverController.CaptureSearchPolicy(
@@ -17,18 +18,30 @@ internal sealed partial class UnattendedTestRunner
             MeasurePhasePerformance = false, BudgetOverrideMilliseconds = null,
         };
         CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
-        // Change only the isolated root: the next player turn must discard from its drawn hand.
+        // Change only the isolated root: the next player turn must choose from its drawn hand.
         CombatPredictionSimulator simulator = (CombatPredictionSimulator)typeof(CombatRootSnapshot)
             .GetField("_rootSimulator", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(root)!;
         SimulatedCombatState simulated = (SimulatedCombatState)simulator.State.CombatState;
-        simulated.Apply<ToolsOfTheTradePower>(combat.Players[0].Creature, 1, combat.Players[0].Creature);
+        if (handDrawShuffle)
+        {
+            simulated.Apply<StratagemPower>(combat.Players[0].Creature, 1, combat.Players[0].Creature);
+            simulated.Apply<EntropyPower>(combat.Players[0].Creature, 1, combat.Players[0].Creature);
+            simulated.AddDrawNextTurn(combat.Players[0], 2);
+            simulator.AddToPile(simulator.State.GetPlayerCombatState(combat.Players[0]).DrawPile.Cards.ToArray(),
+                MegaCrit.Sts2.Core.Entities.Cards.PileType.Discard);
+        }
+        else if (adaptive)
+            simulated.Apply<EntropyPower>(combat.Players[0].Creature, 1, combat.Players[0].Creature);
+        else
+            simulated.Apply<ToolsOfTheTradePower>(combat.Players[0].Creature, 1, combat.Players[0].Creature);
         _ = simulated.DrainPowerAmountChanges();
         SolverDisplayNames names = SolverDisplayNames.Capture(combat);
         BattleDamageSnapshot damage = BattleDamageTracker.Observe(combat);
         SolverSearchProfile profile = capturedPolicy.Profile with { BeamWidth = 24, MaxExpandedNodes = 200 };
         await Task.Run(() => new CombatBeamSolver(root, names, damage, capturedPolicy,
             CancellationToken.None, searchProfile: profile,
-            potionPolicyOverride: SolverPotionPolicy.Disabled).VerifyRoundReplayCheckpointForTesting());
+            potionPolicyOverride: SolverPotionPolicy.Disabled)
+            { DisableExecutionChoiceContinuationsForTesting = true }.VerifyRoundReplayCheckpointForTesting(adaptive, handDrawShuffle));
         SolverResult? parallelResult = null;
         foreach (int mode in new[] { 1, 2, 0 })
         {
@@ -77,7 +90,8 @@ internal sealed partial class UnattendedTestRunner
             {
                 SolverResult result = await Task.Run(() => new CombatBeamSolver(root, names, damage,
                     policy, cancellation.Token, searchProfile: profile,
-                    potionPolicyOverride: SolverPotionPolicy.Disabled).Solve());
+                    potionPolicyOverride: SolverPotionPolicy.Disabled)
+                    { DisableExecutionChoiceContinuationsForTesting = true }.Solve());
                 if (mode != 0) throw new InvalidOperationException($"EndTurn选择回放的在途失败未传播：mode={mode} claimed={claimed} "
                     + SolverDiagnostics.DescribeResult(result));
                 parallelResult = result;
@@ -91,7 +105,8 @@ internal sealed partial class UnattendedTestRunner
         }
         SolverResult serial = await Task.Run(() => new CombatBeamSolver(root, names, damage,
             capturedPolicy with { MaxDegreeOfParallelism = 1 }, CancellationToken.None,
-            searchProfile: profile, potionPolicyOverride: SolverPotionPolicy.Disabled).Solve());
+            searchProfile: profile, potionPolicyOverride: SolverPotionPolicy.Disabled)
+            { DisableExecutionChoiceContinuationsForTesting = true }.Solve());
         AssertEquivalentSearchResults(serial, parallelResult!, "EndTurn choice replay DOP1/DOP2");
         if (parallelResult!.RoundReplayPrefixCaptures <= 0 || parallelResult.RoundReplayPrefixReuses <= 0)
             throw new InvalidOperationException("EndTurn choice fixture did not exercise round prefix reuse.");

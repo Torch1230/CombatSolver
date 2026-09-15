@@ -112,6 +112,43 @@ internal sealed partial class CombatBeamSolver
         };
     }
 
+    private List<SearchNode> RankLongTermResourceWithAncestorRanks(
+        List<SearchNode> pool,
+        List<SearchNode> global)
+    {
+        // Uniform pools have no independent resource route. Determine that before staging
+        // ancestor ranks: the resource selector never consumes those ranks in this case.
+        var maximum = BeamRetentionPolicy.GetLongTermResourceMaximum(pool);
+        if (maximum.Count == pool.Count)
+            return [];
+        // RankBest 的返回表按引用去重，保存/还原名次只需要一条与它同序的并行数组，
+        // 还原顺序与原来按插入序枚举字典完全一致。
+        int[] globalRetentionRanks = new int[global.Count];
+        for (int index = 0; index < global.Count; index++)
+            globalRetentionRanks[index] = global[index].RetentionRank;
+        Dictionary<SearchNode, int> ancestorRetentionRanks = new(ReferenceEqualityComparer.Instance);
+        foreach (SearchNode candidate in pool)
+        {
+            for (SearchNode? ancestor = candidate.Parent; ancestor != null; ancestor = ancestor.Parent)
+            {
+                // The first visit records this ancestor and its complete parent chain.
+                // A repeated ancestor therefore proves every remaining parent is recorded too.
+                if (!ancestorRetentionRanks.TryAdd(ancestor, ancestor.RetentionRank))
+                    break;
+                if (ancestor.LongTermResourceRetentionRank != int.MaxValue)
+                    ancestor.RetentionRank = ancestor.LongTermResourceRetentionRank;
+            }
+        }
+        List<SearchNode> longTermResource = Retention.RankLongTermResource(pool, _profile.BeamWidth, maximum);
+        foreach (SearchNode candidate in longTermResource)
+            candidate.LongTermResourceRetentionRank = candidate.RetentionRank;
+        foreach ((SearchNode ancestor, int retentionRank) in ancestorRetentionRanks)
+            ancestor.RetentionRank = retentionRank;
+        for (int index = 0; index < global.Count; index++)
+            global[index].RetentionRank = globalRetentionRanks[index];
+        return longTermResource;
+    }
+
     private List<SearchNode> Prune(IEnumerable<SearchNode> nodes)
     {
         SearchMeasurement measurement = _run.Performance.Begin();
@@ -135,31 +172,7 @@ internal sealed partial class CombatBeamSolver
             _run.CheckpointPruneMetadata?.Invoke("resource_routes");
             List<SearchNode> selected = [.. global];
             HashSet<SearchNode> selectedSet = new(global, ReferenceEqualityComparer.Instance);
-            // RankBest 的返回表按引用去重，保存/还原名次只需要一条与它同序的并行数组，
-            // 还原顺序与原来按插入序枚举字典完全一致。
-            int[] globalRetentionRanks = new int[global.Count];
-            for (int index = 0; index < global.Count; index++)
-                globalRetentionRanks[index] = global[index].RetentionRank;
-            Dictionary<SearchNode, int> ancestorRetentionRanks = new(ReferenceEqualityComparer.Instance);
-            foreach (SearchNode candidate in pool)
-            {
-                for (SearchNode? ancestor = candidate.Parent; ancestor != null; ancestor = ancestor.Parent)
-                {
-                    // The first visit records this ancestor and its complete parent chain.
-                    // A repeated ancestor therefore proves every remaining parent is recorded too.
-                    if (!ancestorRetentionRanks.TryAdd(ancestor, ancestor.RetentionRank))
-                        break;
-                    if (ancestor.LongTermResourceRetentionRank != int.MaxValue)
-                        ancestor.RetentionRank = ancestor.LongTermResourceRetentionRank;
-                }
-            }
-            List<SearchNode> longTermResource = Retention.RankLongTermResource(pool, _profile.BeamWidth);
-            foreach (SearchNode candidate in longTermResource)
-                candidate.LongTermResourceRetentionRank = candidate.RetentionRank;
-            foreach ((SearchNode ancestor, int retentionRank) in ancestorRetentionRanks)
-                ancestor.RetentionRank = retentionRank;
-            for (int index = 0; index < global.Count; index++)
-                global[index].RetentionRank = globalRetentionRanks[index];
+            List<SearchNode> longTermResource = RankLongTermResourceWithAncestorRanks(pool, global);
             foreach (SearchNode candidate in longTermResource
                          .OrderBy(node => node.RetentionRank)
                          .ThenByDescending(node => node.Score))

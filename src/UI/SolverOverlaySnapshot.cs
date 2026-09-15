@@ -30,7 +30,17 @@ internal sealed record SolverOverlayActionSnapshot(
     string Tooltip,
     SolverOverlayActionVisualKind VisualKind,
     int ReplayCount,
-    SolverActionTextIdentity? TextIdentity = null);
+    SolverActionTextIdentity? TextIdentity = null)
+{
+    public bool HasSamePresentation(SolverOverlayActionSnapshot other)
+        => Title == other.Title && TargetName == other.TargetName
+            && ChoiceText == other.ChoiceText && Tooltip == other.Tooltip
+            && VisualKind == other.VisualKind && ReplayCount == other.ReplayCount
+            && RelicLabels.SequenceEqual(other.RelicLabels)
+            && Kills.SequenceEqual(other.Kills)
+            && (ReferenceEquals(TextIdentity, other.TextIdentity)
+                || TextIdentity?.HasSameIdentity(other.TextIdentity) == true);
+}
 
 internal sealed record SolverOverlayTurnSnapshot(
     int Turn,

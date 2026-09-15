@@ -222,6 +222,8 @@ internal sealed class UnattendedTestRequest
     public SolverPotionPolicy? PotionPolicyForTest { get; init; }
     public SolverTheftPolicy? TheftPolicyForTest { get; init; }
     public bool? EnableNoGcRegionForTest { get; init; }
+    public bool ExpectNoGcFallbackForTest { get; init; }
+    public bool AllowNoGcFallbackForTest { get; init; }
     public double? NoGcRegionBudgetGigabytesForTest { get; init; }
     public double? DeploymentInterActionDelaySecondsForTest { get; init; }
     public bool AssertDeploymentSpeedRestored { get; init; }
@@ -514,6 +516,16 @@ internal sealed class UnattendedSolverMetrics
     public int SelectedChoiceBranches { get; init; }
     public int RoundReplayPrefixCaptures { get; init; }
     public int RoundReplayPrefixReuses { get; init; }
+    public int ExecutionChoiceCaptures { get; init; }
+    public int ExecutionChoiceReuses { get; init; }
+    public int CardChoicePrefixAttempts { get; init; }
+    public int CardChoicePrefixCaptures { get; init; }
+    public int CardChoicePrefixReuses { get; init; }
+    public int CardChoicePrefixFallbacks { get; init; }
+    public int PotionChoicePrefixForks { get; init; }
+    public int PotionChoicePrefixCaptures { get; init; }
+    public int PotionChoicePrefixReuses { get; init; }
+    public int PotionChoicePrefixFallbacks { get; init; }
     public int ChoiceReplayAttempts { get; init; }
     public int ChoiceReplayBudgetExhaustions { get; init; }
     public int ChoiceBranchesDroppedByBudget { get; init; }

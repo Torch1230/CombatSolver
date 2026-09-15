@@ -27,8 +27,8 @@ internal sealed partial class SimulatedCombatState
     private Dictionary<OrbitPower, int>? _orbitEnergyRemainders;
     private Dictionary<PaleBlueDotPower, bool>? _paleBlueDotActivated;
     private Dictionary<PredictedCard, int>? _swordSageReplayBonuses;
-    private ForkableSet<CardModel>? _liveCardsAtSnapshot;
-    private HashSet<PredictedCard>? _powerAfflictionKnownCards;
+    // Captured once and never mutated. Fork shares only this frozen root membership.
+    private HashSet<CardModel>? _liveCardsAtSnapshot;
     private bool _swordSageCardsInitialized;
     private int? _lastNormalizedVitalSparkAmount;
     private ForkableSet<Creature>? _skillsPlayedThisTurn;
@@ -137,7 +137,7 @@ internal sealed partial class SimulatedCombatState
     {
         if (_liveCardsAtSnapshot != null)
             throw new InvalidOperationException("Power affliction root cards were captured more than once.");
-        _liveCardsAtSnapshot = new ForkableSet<CardModel>(Players
+        _liveCardsAtSnapshot = new HashSet<CardModel>(Players
             .SelectMany(player => simulator.State.GetPlayerCombatState(player).AllCards)
             .Select(card => card.Original));
     }
@@ -171,7 +171,7 @@ internal sealed partial class SimulatedCombatState
     /// </remarks>
     private void NormalizePowerAfflictions(CombatPredictionSimulator simulator)
     {
-        ForkableSet<CardModel> liveCardsAtSnapshot = _liveCardsAtSnapshot
+        HashSet<CardModel> liveCardsAtSnapshot = _liveCardsAtSnapshot
             ?? throw new InvalidOperationException("Power affliction root cards were not captured.");
         IReadOnlyList<PowerModel> powers = EffectivePowers();
         int vitalSparkAmount = 0;
@@ -198,12 +198,11 @@ internal sealed partial class SimulatedCombatState
             // Skill, not creatures on the Power owner's side.
             foreach (PredictedCard card in simulator.State.GetPlayerCombatState(player).AllCards)
             {
-                // Root cards are already represented by _liveCardsAtSnapshot, so recording every
-                // one here only makes each search fork clone a deck-sized HashSet. Track generated
-                // cards sparsely; they still need identity-based first-entry detection across forks.
-                bool enteredCombat = false;
-                if (!liveCardsAtSnapshot.Contains(card.Original))
-                    enteredCombat = (_powerAfflictionKnownCards ??= []).Add(card);
+                // Root identity never changes. Both root and generated wrappers need
+                // this membership lookup only on their first normalization; the bit
+                // survives Fork, while a new Clone is independently inspected.
+                bool enteredCombat = card.TryMarkPowerAfflictionEntryChecked()
+                    && !liveCardsAtSnapshot.Contains(card.Original);
                 if (card.Preview.Affliction is Tainted tainted)
                 {
                     // VitalSparkPower.AfterRemoved 会清掉所有污染。

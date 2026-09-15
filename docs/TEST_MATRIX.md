@@ -10,6 +10,117 @@
 - 日志后台 Python 3.12 全部 65 项测试通过，其中录像库合同覆盖收藏读写、独立筛选、收藏阻止同根替换，以及收藏不占分组自动清理额度；生产默认普通录像上限为每组 2000。退出后既有 `test_reports_v2` 临时 SQLite 句柄出现一次 Windows 清理告警，不影响测试退出码和断言结果。CombatShowcaseRecorder 1.0.2 与 CombatSolver Release 构建均为 0 警告、0 错误；Windows PowerShell 结构门禁通过（`search_files=91`）。
 - 本轮只运行隔离无头恢复和 Release 构建，不使用 Computer Use、不启动可见 Steam、不执行 Bash 门禁。测试结束后已停止隔离游戏进程。
 
+## 路线界面复用与派生计算实验（2026-09-15，未发布）
+
+- 交付场景 [`ROUTE-ROW-REUSE`](../coverage/unattended/route-row-reuse.json)，runId `83d3d63b552f4393b8ffc03e8fba9060` Passed（25.374秒）：实际Godot控件身份、同值新数组、全部显示/本地化字段变化、选牌/击杀/顺序、空路线、状态页、构建失败后重试、部署索引/高亮、语言往返和订阅清理。原生双端ScenarioId入口，IRONCLAD、FUZZY_WURM_CRAWLER_WEAK、敌HP999、NoGC关闭、120秒、显式EvidenceDirectory；不启动搜索。
+- `UI-LOCALIZATION` / `483a2e7173044a26a730997020c911b3` Passed（6.812秒）：eng/zhs/zht、415条目录、保留/恢复路线卡名、升级/嵌套选牌、序列化和无计划外重算。卡牌投影、名称与语言通知源码与交付源码相同；行缓存成功后发布的边界由交付合同另行覆盖。首次复用进程运行暴露同帧语言通知遗漏，失败与修正后证据同时保留。
+- 交付Release 11.10秒、0警告/错误；Bash/PowerShell结构门禁均为 `search_files=102`。搜索层没有追加差异，投影洗牌缓存及专用缓存合同已从生产源树撤回。
+- 已撤回实验的两场8份完整请求、原生120份牌序对照及严格增量结果仍记录于[正式PR追加报告](performance/performance-pr-20260915.md)和[结构化证据](performance/derived-work-reuse-20260915.json)；不把这些实验数字称为交付搜索提速。不启动可见Steam，未验证FPS或可见帧时间。
+
+## 0.38.6 上游合并后的性能 PR 验证（2026-09-15，未发布）
+
+- 对当前上游三场12份完整ABBA均通过严格oracle；蟹战耗时−15.95%、分配−15.51%、峰值−1.64%，扩展弃牌耗时−5.42%，携药轻场景−2.25%；后两场分配与峰值均下降。仅限本机无头样本。
+
+- 正常Release 14.56秒、0警告/错误；Bash与PowerShell结构门禁通过，`search_files=102`。比较器源码未修改，复用此前16项通过证据。
+- 四组严格增量：卡牌扩展 `ae00c0b92e1b485b83c04c65328d5441`、药水 `a8a8a40b79b548659aab223a2220caf4`、动作/EndTurn嵌套 `5feed9b8a4ad481096bd03980af551d0`、首回合准备 `358e83a8965841db9f40e7c5d2562ef8`，均Passed。
+- 原生跨回合连续选择 `98135e17d0c84660b9bc5958547180af` Passed，35分支与完整状态对账；上游成长/药水早停 `3a599fbe370848258b538fa12fde2e7a` Passed。
+- 格挡药夹具首次 `7f79df25a74f486aa7388e33a20fcc28` Failed：本场只掉4血，未达到断言所需9血。仅补敌方5层力量并将上限设为120秒；修正后 `36e20d691de1424e9b5e7e14196623ce` Passed，实际省9血、T2无伤获胜、零计划外重算。Linux启动器支持与PowerShell相同的 `expected-initial-deterministic-block-potion-inserted` 三态断言。
+- 全部合同上限120秒，实际部署Instant/0秒；当前上游完整请求ABBA、基线Testing支持补齐及所有失败见[正式 PR 验收](performance/performance-pr-20260915.md)。无可见Steam或Windows帧时间结论。
+
+## 选牌续执行批量实施（2026-09-14，未发布）
+
+- `CARD-CONTINUATION-EXPANDED` / `15ed72aac4504a0f8c56133251fe1c2c` Passed：NECROBINDER、41来源82普通/升级分支；80种选择共380候选、2种无选择；完整状态/历史/RNG/身份、兄弟与DOP2、10种代表原生结算。
+- `CARD-CONTINUATION-CONTRACT` / `18085ba4d6b044b58a0aef69bb4605b9` Passed：扩展后的原三牌边界、洗牌及原生合同。
+- `CARD-CONTINUATION-EXPANDED-SEARCH` / `5e70bf69886741e6abdc0dd97bfce87c`，`CARD-CONTINUATION-EXPANDED-INCREMENTAL` / `151a8484b2094687a8e28780453c855b` Passed：SILENT、实际搜索前缀逐分支及完整结果对照、取消/错误排空、严格增量。
+- `POTION-CONTINUATION-CONTRACT` / `bcf7b7f30d5c4b0691c08c6707a3060f` Passed：SILENT、九种药水41个选择、50次生产分支/再次访问、九种原生完整结算；状态/历史/RNG、消耗、BeltBuckle/ReptileTrinket、兄弟修改及DOP2。
+- `POTION-CONTINUATION-SEARCH` / `856b8d5db4604d5fa9bb27e2070d1174` 与 `POTION-CONTINUATION-INCREMENTAL` / `0d002f4702184b2da1e106666d60b131` Passed：旧路径/DOP1/DOP2完整结果，真实嵌套回退、同父并发取消/错误排空、严格增量。
+- 均用两端已有ScenarioId协议、FUZZY_WURM_CRAWLER_WEAK、敌HP999、NoGC关闭、120秒、根合同后停止；实际执行Linux无头。回合/嵌套、最终完整测量及原生部署见下；详见[阶段记录](performance/choice-continuation-expansion-implementation-20260914.md)。
+
+### 第三阶段与共享尾部回归
+
+以下场景仍使用同一双端ScenarioId协议，SILENT（全41卡合同使用NECROBINDER）、FUZZY_WURM_CRAWLER_WEAK、敌HP999、NoGC关闭、120秒、根合同后停止；原生跨回合额外使用Instant/0秒。
+
+| 场景 | 直接证据及范围 |
+| --- | --- |
+| `DRAW-EXECUTION-CONTINUATION` / `NESTED-DRAW-EXECUTION-CONTINUATION` | `fbdea0b824774494bc02e962669015d9` / `9deb4e09364545fab0195a71ef203273` Passed；部分抽牌、洗牌、再次捕获、全状态/历史/RNG、DOP2及原生 |
+| `TURN-AFTER-EXECUTION-CONTINUATION` / `TURN-NESTED-EXECUTION-CONTINUATION` | `076aece95fa041bfad376621e623cef4` / `74e26c01154f473eaa443b322f08596e` Passed；六来源及消耗/弃牌后的深层抽牌 |
+| `CARD-DECISIONS-EXECUTION-CONTINUATION` | `7e6063ff8bae4fa4af0d6e8d10094c17` Passed；重复子出牌、历史别名与原生。其他Before/Havoc/Cascade/Repeat独立完成项所在请求整体Failed，按[实施记录](performance/choice-continuation-expansion-implementation-20260914.md)的部分请求范围引用 |
+| `EXECUTION-CHOICE-SEARCH-CONTRACT` | `e23c68bf438b429c90a50c00ba435724` Passed；全来源92、Mayhem14、Cascade10、后续回合35分支，全部状态/历史/洗牌/一次transition与父/live隔离 |
+| `EXECUTION-CHOICE-SEARCH` / `EXECUTION-CHOICE-INCREMENTAL` | `e00560d9502d4faaaf1a6ccdbcbd59c1` / `71cd4c23b66e499e9ae05aeb626f81b5` Passed；完整Solve旧路径/DOP1/2、同父取消/异常排空及严格增量 |
+| `EXECUTION-CHOICE-SETUP-SEARCH` / `EXECUTION-CHOICE-SETUP-INCREMENTAL` | `3b5c082e119e4414ae1187f82c45db30` / `fe41c0e260a84ccfa2ec281013b21a4c` Passed；首回合三来源真实Solve及严格增量 |
+| `EXECUTION-CHOICE-SETUP-BUDGET` | `402c6f1cc87444d99332248b15bb892c` Passed；九层压力在两模式均到达相同有限预算边界，不以扩大预算获得完成根 |
+| `CARD-REMOVED-PREFIX-EXECUTION-CONTINUATION` | `3b6ca0a3f7154dc2b99128822c6d9fc6` Passed；Cascade先打出并移除能力牌，再两次选牌；原完整回放/历史/DOP/原生一致，覆盖完整蟹战暴露的非牌堆列表成员 |
+| `HAND-DRAW-SHUFFLE-CHOICE-REPLAY` | `c81dafb9cd84472db5e78a3bbb8f5b1b` Passed；关闭新执行续跑，保留旧稳定前缀的完整状态、DOP/取消/异常验证 |
+| `EXECUTION-CHOICE-ROUND-NATIVE` | `47f1e0e03065438abb271475d31aca5c` Passed；真实EndTurn进入第二回合、连续原生选择、完整StateText一致 |
+| 最终41卡/9药水与各自严格增量回归 | `b368988cf058462d8f52a1391f4d9e51` / `4866f778cb404aadb7b590f05aa4c503` / `e101b6d9dea14560a71c84d7f7a79800` / `22148a231efe482cacadb8dbe965041a` 均Passed |
+| L0 | Release 0警告/错误；Bash/PowerShell结构门禁search_files=101；16项性能比较器检查通过 |
+
+`CHOICE-CONTINUATION-STEP-AUDIT`：`88236e7e4ef748f0bead85422be84c67` Passed，73.689秒；以报告的原蟹战输入改为`mode:Setup`、VeryHigh、DOP2、NoGC关闭、120秒请求运行。内部固定20,000节点、两次主动用药，56,211次执行续接逐步对账完整状态、待选请求/有序候选、历史数量和洗牌；错误接受/拒绝分支均检查，并比较关闭续接的完整搜索结果。它是独立诊断搜索，不等同于协调器的完整三层药水审计，也不计入性能成绩。
+
+最终三场12份正常完整请求均Passed，完整动作/路线和决策质量一致；弃牌/携药轻场景的严格工作量也一致，原蟹战保留工作量差异，按用户要求不继续归因、不标为同工作量提速。全部样本、输入错误和比较结果见[结构化证据](performance/choice-continuation-expansion-implementation-20260914.json)。`CHOICE-EXPANSION-NATIVE-DEPLOY` / `ef6fd35b159a4aee974c826319755371` Passed，60.440秒，39动作原生执行到T1无伤胜利，HP56→56、敌HP0、`UnexpectedReplans:0`；Instant/0秒、120秒上限，使用最终正常Release。
+
+## 自身弃牌续执行正式接入（2026-09-14，未发布）
+
+原生两端无人启动器均可使用以下 `ScenarioId`，固定SILENT / FUZZY_WURM_CRAWLER_WEAK、敌HP999、NoGC关闭、120秒、根合同后停止：
+
+| 场景 | 本轮证据 |
+| --- | --- |
+| `CARD-CONTINUATION-CONTRACT` | `7bc12837a9de419095d2ed238da8dc1b` Passed；三张牌、杂技/早有准备普通与升级、原生完整结算、全部选择、历史/RNG/洗牌、兄弟/DOP2、取消与错误 |
+| `CARD-CONTINUATION-SEARCH` | 最终源码 `c37f7aea45c942d2be284d67c920dd99` Passed；真实选择链、嵌套回退、关闭复用/DOP1/DOP2完整结果、并发取消/异常排空 |
+| `CARD-CONTINUATION-INCREMENTAL` | 最终源码 `91e987fc05804e28a75099bf546ae5f7` Passed；严格增量，复用与回退均命中 |
+| Release、结构门禁、性能比较器 | 0警告/0错误；Bash/PowerShell `search_files=92`；12项比较器测试通过 |
+| 独立完整原生部署 | `5520c13005d24e43ab9f1a3ac92f5f44` Passed；初始39动作计划，原生T1结束、HP56→56、敌HP0、计划外重算0；Instant/0秒，120秒上限 |
+
+完整极高同工作量测量使用正常Search与独占新进程，不带增量开关；原蟹战、静默起始牌组死亡场景与独立弃牌获胜场景，共12个最终样本和9项完整对账通过。原两场保留A1后采最终F1/F2/A2，获胜场景独立ABBA；数据、GC不利变化、部署日志限制和全部runId见[报告](performance/choice-continuation-search-20260914.md)及[JSON](performance/choice-continuation-search-20260914.json)。既有CoverageCatalog分类与外部注册签名未变化，没有全量覆盖门禁或可见Steam测试。其他选牌来源的[扩展研究](performance/choice-continuation-expansion-20260914.md)仅做源码和清单核对，未写为通过语义或性能测试。
+
+## 选牌暂停与恢复窄原型（2026-09-14，独立实验）
+
+基于 `1ef4601` 的实验 Release 构建 0 警告/错误，默认搜索与生产源码未修改。[报告](performance/choice-continuation-prototype-20260914.md)和[结构化证据](performance/choice-continuation-prototype-20260914.json)保存全部原始样本与失败尝试。此前投掷匕首计时受旧路径拒绝诊断污染，性能结论作废；以下三次均使用修正后的同一实验 DLL。
+
+| 验证 | runId / 结果 |
+| --- | --- |
+| 投掷匕首全部9选择、完整历史/RNG/身份、兄弟与DOP2、取消/异常/释放、升级/历史前缀/真实洗牌、拒绝/嵌套回退、原生完整结算；固定工作量及受控保留堆 | `6c9670133f8242dcb2f29b4089eaa89a` Passed |
+| 杂技普通/升级全部9/10选择，抽3/4弃1，真实洗牌、历史/RNG/兄弟/DOP2/嵌套回退，两版分别原生完整结算及固定工作量 | `13cb642b0ac5459c897daf032503c078` Passed |
+| 早有准备普通/升级全部8/36选择或组合，抽弃1/1及2/2，真实洗牌、历史/RNG/兄弟/DOP2/嵌套回退，两版分别原生完整结算及固定工作量 | `f4559b26b5484ed5be592c706053c2fb` Passed |
+
+复跑先按[工具说明](../tools/ChoiceContinuationPrototype/README.md)在固定版本的独立 worktree 构建，使用新证据目录；runner 的 `--card dagger|acrobatics|prepared` 选择场景。Linux 无头、SILENT、FUZZY_WURM_CRAWLER_WEAK、敌HP999、关闭NoGC、每请求120秒；专属进程在结束/失败时清理。原生检查等待精确动作完成并核对完整 continuation。未执行默认 Search、完整蟹战、可见 Steam、Windows 或全量发布门禁，不作对应收益结论。
+
+## 蟹战后续延迟优化（2026-09-14，未发布）
+
+沿用3afbdd3的完整VeryHigh输入、DOP16与16GB NoGC，新增专用洗牌短fixture；全部非时序质量字段、开局、政策、动作/路线直接对照。原型、增量峰值反例、整批初始基线、每次数据与复现参数见[报告](performance/crab-latency-20260914.md)及[结构化证据](performance/crab-latency-20260914.json)。
+
+| 验证 | runId / 结果 |
+| --- | --- |
+| 最终生成池v3：27组有序候选/Power状态/RNG与历史事件类型顺序、兄弟/live隔离；三类可变池一次解锁读取回退 | `e9dc2207bfe34624807e8d95a4b3ea70` Passed |
+| 最终抽牌前缀v2：洗牌选择后继续变牌、延迟抽牌只消费一次、来源失效、完整状态/增量/兄弟隔离及洗牌次数/历史条目数、DOP1/2与取消/失败排空 | `edc5c7fac70244168f66a92e092179d5` Passed |
+| 最终组合既有即时/抽牌后学习前缀 | `dcdc9b5ef80d4db8821f22ac351fba86`、`0f51aa3c657b45389efe733355815257` Passed |
+| 最终完整蟹战A/F/F/A、轻场景A/C/C/A及C/A/A/C、专用短场景C/C及最初基线U/U | 全部严格oracle一致；不把原型速度或诊断时间当最终数字 |
+| 最终正常Release、双端结构门禁 | Release 0警告/0错误；Bash与PowerShell均通过，`search_files=90`；结果写入JSON verification |
+
+最小合同均用原生无人启动器、IRONCLAD、FUZZY_WURM_CRAWLER_WEAK、敌HP999、NoGC关闭、120秒上限、建局合同后停止。scenario-id分别为`TURN-START-GENERATION-CACHE`、`HAND-DRAW-SHUFFLE-CHOICE-REPLAY`、`END-TURN-CHOICE-REPLAY`与`ADAPTIVE-END-TURN-CHOICE-REPLAY`。新增生成池与前缀分别在对应源码定版后验证，合并时只重跑共享抽牌段相关既有合同并执行最终原始蟹战交互对照。初次测试编译的不存在GetHandCount调用及perf包装器返回码问题保留在报告，不计作通过；外部注册与CoverageCatalog分类未变，无全量门禁或可见Steam。
+
+## 通用分配与重复工作优化（2026-09-14，未发布）
+
+基线为上游 `b1674f8`，双方使用相同生成器完整预算/NoGC回退测试支持。固定输入、全部开局、政策、动作与路线分别对账；短搜探针数字不作为完整极高性能结论。完整样本、失败、源码阶段和限制见[本批报告](performance/general-allocation-20260914.md)。
+
+| 验证 | runId / 结果 |
+| --- | --- |
+| 九条RNG原生序列、完整状态、保留引用、父子/兄弟/多代及冷读取不物化 | `c665b52b8d2d4b55876c513477e19a2c` Passed |
+| 通用抽牌后前缀发现、完整状态/历史/续用/RNG、DOP1/DOP2工作与动作、并发/取消/失败排空 | `65c8ad5d55414cbdaf4ef5696a81badc` Passed |
+| 原 ToolsOfTheTrade 即时前缀及选牌回放合同 | `3d17b2c8b693488e8ca7e78255b7ceaf` Passed |
+| 生成器固定/正常预算映射与既有建局合同 | `8ac328b1c2964837816806a03bb3a77c` Passed |
+| 根牌/生成牌/Clone/多代Fork首次入场、父子隔离及污染增减 | `b5af79fada6a4797b22016c8d4d979c7` Passed，最终根共享实现 |
+| 冻结跑局前缀身份/顺序、可变Power映射、卡牌变异和多代Fork | `bc8eb0fc6c1f43d9bcd98fbb3c259b6d` Passed，最终根共享实现 |
+| 长期资源均匀/非均匀池旧实现对照、选中身份/顺序、共享祖先及全部排名恢复 | `152b0f1432a84433bf224c3afda896a7` Passed；保留原List遍历方式的最终候选 `50397d3aba5b4b9ea919f9a0f9bd7649` Passed |
+| 最终候选十种完整VeryHigh开局，蟹战/静默女王追加交错复核 | 24次候选请求Passed；22次严格oracle相同，亡灵契约师女王两次总转移少1、动作/路线一致，排除严格同工作量提速；全部runId及差异见[结构化证据](performance/general-allocation-20260914.json) |
+| 最终正常Release、比较器单元测试、启动器语法与结构边界 | Release 0警告/0错误；比较器10项通过；Bash/PowerShell启动器语法通过；最终双端结构门禁通过，`search_files=90` |
+
+保留两个夹具失败：`e0d1edede32e4300b67c9478cba1b1ff` 的敌人过早死亡，未覆盖前缀复用；改为敌HP999后覆盖。`94ba920946634fd0b3a1dafeeb37caa2` 缺少既有污染断言所需技能牌；加入DEFEND_IRONCLAD后覆盖。早期入场测试 `5527c75b597b43e59ba966c7e1f1c5a9` 通过，不能替代最终根共享合同。原120秒重场景内环未返回结果，作为超时保存；最终完整请求属于预先确定的独立测量层。
+
+资源保路夹具先保留两次失败：`eea19a6790b349858d7d5294f99a2ba1` 暴露旧反射回放入口漏传两个新增可选参数，已同步真实签名；`cc7e15d2b9e942f2aabd9a3ad6498da0` 对零资源错误调用只接受正增量的领域方法，改为保留零初值后通过。两次均未执行到排名对照，不能算生产候选错误或通过。
+
+复跑最小合同使用原生启动器、`--scenario-id` 对应 `LAZY-RNG-FORK`、`ADAPTIVE-END-TURN-CHOICE-REPLAY`、`END-TURN-CHOICE-REPLAY`、`POWER-AFFLICTION-ENTRY`、`FROZEN-ROOT-LISTENERS`、`LONG-TERM-RESOURCE-STAGING`。选牌/入场/资源合同用IRONCLAD、敌HP999；入场/冻结监听用清空战斗牌堆后加入手牌INFLAME与DEFEND_IRONCLAD。请求上限120秒，关闭NoGC，仅检查建局合同并停止；PowerShell使用对应PascalCase参数。生成器另用解析后的指定样本。Linux无头不证明可见FPS、Windows或完整自动部署。
+
 ## 在线监控：离线战绩身份（2026-09-14）
 
 - 最终 `npm test` 22 项通过，Edge headless 浏览器测试 10 项通过。服务接口覆盖战绩先于心跳上报时返回空昵称、离线状态和原始安装 ID，收到心跳后恢复当前昵称和在线状态；昵称包含搜索只从当前在线名单映射安装 ID，无匹配时返回空范围。浏览器测试覆盖离线行显示完整安装 ID、禁止“离线 · 离线玩家”回流，以及玩家昵称筛选参数和已应用标签。默认 Playwright Chromium 首次因本机未安装对应浏览器而未执行页面逻辑，后续均按项目既有 `BROWSER_CHANNEL=msedge` 入口验证。

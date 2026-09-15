@@ -13,6 +13,19 @@ internal sealed record SolverActionTextIdentity(
     IReadOnlyList<SolverRelicTextIdentity> Relics)
 {
     public string CardEnchantmentId { get; init; } = "";
+
+    public bool HasSameIdentity(SolverActionTextIdentity? other)
+    {
+        if (other == null || CardId != other.CardId || Upgrade != other.Upgrade
+            || PotionId != other.PotionId || EndTurn != other.EndTurn
+            || DirectEndTurn != other.DirectEndTurn || CardEnchantmentId != other.CardEnchantmentId
+            || Choices.Count != other.Choices.Count || !Relics.SequenceEqual(other.Relics))
+            return false;
+        for (int index = 0; index < Choices.Count; index++)
+            if (!Choices[index].SequenceEqual(other.Choices[index])) return false;
+        return true;
+    }
+
     public static SolverOverlayActionSnapshot Refresh(SolverOverlayActionSnapshot snapshot)
     {
         if (snapshot.TextIdentity is not { } identity) return snapshot;

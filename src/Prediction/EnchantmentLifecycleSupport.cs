@@ -10,7 +10,7 @@ using CombatSolver.Engine.InCombat.Simulation;
 
 namespace CombatSolver;
 
-internal static class EnchantmentLifecycleSupport
+internal static partial class EnchantmentLifecycleSupport
 {
     public static void BeforeFlush(CombatPredictionSimulator simulator, Player player)
     {
@@ -35,21 +35,36 @@ internal static class EnchantmentLifecycleSupport
         PredictedCard[] imbuedCards = simulator.State.GetPlayerCombatState(player).AllCards
             .Where(card => card.Preview.Enchantment is Imbued)
             .ToArray();
-        for (int index = 0; index < imbuedCards.Length; index++)
+        return ContinueImbuedAutoPlay(simulator, combat, processedEnemyDeaths, imbuedCards, 0);
+    }
+
+    private static bool ContinueImbuedAutoPlay(CombatPredictionSimulator simulator, SimulatedCombatState combat,
+        ISet<uint> deaths, IReadOnlyList<PredictedCard> cards, int nextIndex)
+    {
+        for (int index = nextIndex; index < cards.Count; index++)
         {
-            PredictedCard card = imbuedCards[index];
-            if (!combat.AutoPlayWithChoice(
-                    simulator,
-                    card,
-                    card.Preview.Enchantment!.Id.Entry,
-                    $"{card.Preview.Id.Entry}+{card.Preview.CurrentUpgradeLevel}#{index}",
-                    choices,
-                    processedEnemyDeaths))
-            {
-                return true;
-            }
+            PredictedCard card = cards[index];
+            if (combat.AutoPlayWithChoice(simulator, card, card.Preview.Enchantment!.Id.Entry,
+                $"{card.Preview.Id.Entry}+{card.Preview.CurrentUpgradeLevel}#{index}", combat.ActiveExecutionChoices, deaths)) continue;
+            simulator.AppendExecutionContinuation(new ImbuedAutoPlayFrame(deaths, cards, index + 1));
+            return true;
         }
         return false;
+    }
+
+    private sealed record ImbuedAutoPlayFrame(ISet<uint> Deaths, IReadOnlyList<PredictedCard> Cards, int NextIndex)
+        : ICombatPredictionExecutionFrame
+    {
+        public void PrepareFork(PredictionForkContext context)
+        {
+            SimulatedCombatState.ForkExecutionDeaths(Deaths, context);
+            foreach (PredictedCard card in Cards)
+                if (!context.TryRemap(card, out PredictedCard? _)) card.Fork(context);
+        }
+        public ICombatPredictionExecutionFrame Fork(PredictionForkContext context)
+            => this with { Deaths = context.RequireRemap(Deaths), Cards = Cards.Select(context.RequireRemap).ToArray() };
+        public bool Resume(CombatPredictionSimulator simulator)
+            => !ContinueImbuedAutoPlay(simulator, (SimulatedCombatState)simulator.State.CombatState, Deaths, Cards, NextIndex);
     }
 
     public static void TriggerAfterTurnStartOrbs(CombatPredictionSimulator simulator, Player player)

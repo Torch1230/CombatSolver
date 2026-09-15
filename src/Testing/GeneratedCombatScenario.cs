@@ -46,6 +46,7 @@ internal sealed record GeneratedCombatScenarioOptions
     public int? PlayerCurrentHp { get; init; }
     public int? PotionSlotCount { get; init; }
     public string Mode { get; init; } = "Search";
+    public bool FixedSearchBudget { get; init; } = true;
 }
 
 internal sealed record ResolvedGeneratedCombatScenario(
@@ -225,7 +226,7 @@ internal static class GeneratedCombatScenario
             Set("expectedUnexpectedReplansAtMost", request.ExpectedUnexpectedReplansAtMost ?? 0);
         Set("deploymentFastModeForTest", request.DeploymentFastModeForTest ?? SolverDeploymentFastMode.Instant);
         Set("deploymentInterActionDelaySecondsForTest", request.DeploymentInterActionDelaySecondsForTest ?? 0);
-        Set("fixedSearchBudget", true);
+        Set("fixedSearchBudget", spec.FixedSearchBudget);
         Set("searchBudgetOverrideMilliseconds", request.SearchBudgetOverrideMilliseconds ?? 1000);
         Set("performancePresetForTest", request.PerformancePresetForTest ?? SolverPerformancePreset.Medium);
         Set("potionPolicyForTest", request.PotionPolicyForTest ?? SolverPotionPolicy.Smart);

@@ -8,13 +8,11 @@ internal static class SolverLocaleRefresh
     private static readonly HashSet<Action> Refreshers = [];
     private static bool _subscribed;
     private static bool _queued;
-    private static string? _language;
 
     public static void Bind(Control owner, Action refresh)
     {
         if (!_subscribed)
         {
-            _language = LocManager.Instance.Language;
             LocManager.Instance.SubscribeToLocaleChange(Queue);
             _subscribed = true;
         }
@@ -32,9 +30,8 @@ internal static class SolverLocaleRefresh
     private static void Refresh()
     {
         _queued = false;
-        string language = LocManager.Instance.Language;
-        if (_language == language) return;
-        _language = language;
+        // A control can enter the tree between two coalesced language changes.
+        // Even a round trip back to the previous language must refresh that control.
         foreach (Action refresh in Refreshers.ToArray()) refresh();
     }
 

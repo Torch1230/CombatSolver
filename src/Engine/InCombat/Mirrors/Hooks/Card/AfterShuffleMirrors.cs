@@ -22,6 +22,7 @@ internal static class AfterShuffleMirrors
 
     public static void Invoke(AbstractModel listener, AfterShuffleMirrorContext context)
     {
+        using var dispatch = context.Simulator.BeginExecutionDispatch();
         Registry.Invoke(listener, context);
     }
 
@@ -62,6 +63,7 @@ internal static class AfterShuffleMirrors
                 PileType.Draw,
                 power.Amount);
         }
+        context.Simulator.AcknowledgeExecutionDispatch();
     }
 
     private static void HandleTheAbacus(TheAbacus relic, AfterShuffleMirrorContext context)

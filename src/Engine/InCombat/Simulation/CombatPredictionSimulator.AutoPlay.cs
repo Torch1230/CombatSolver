@@ -61,6 +61,8 @@ internal sealed partial class CombatPredictionSimulator
             out var frame,
             nestedChoiceSourceId,
             nestedChoiceContextId);
+        if (HasPendingChoice && History.HasCardPlayStartedSince(historyEntryStart, frame))
+            AppendExecutionContinuation(new FinishCardExecutionFrame());
         if (History.HasCardPlayStartedSince(historyEntryStart, frame)
             && !HasPendingChoice
             && State.CombatState is ICombatPredictionCardExecutionSink sink)
@@ -118,20 +120,13 @@ internal sealed partial class CombatPredictionSimulator
 
         using IDisposable? scope = (State.CombatState as ICombatPredictionCardExecutionSink)
             ?.BeginCardExecutionScope();
-        foreach (var card in MoveCardsForAutoPlay(player, count, position))
+        IReadOnlyList<PredictedCard> cards = MoveCardsForAutoPlay(player, count, position);
+        if (HasPendingChoice)
         {
-            if (State.GetCreature(card.Preview.Owner.Creature).IsDead)
-            {
-                break;
-            }
-
-            card.MutablePreview.ExhaustOnNextPlay = forceExhaust;
-            AutoPlay(card, nestedChoiceSourceId: card.Preview.Id.Entry);
-            if (HasPendingChoice)
-            {
-                break;
-            }
+            AppendExecutionContinuation(new AutoPlayCardsExecutionFrame(cards, forceExhaust, 0));
+            return;
         }
+        ContinueAutoPlayCards(cards, forceExhaust, 0);
     }
 
     // Mirrors CardPileCmd.AutoPlayFromDrawPile until the card is moved to the play pile.
@@ -141,32 +136,7 @@ internal sealed partial class CombatPredictionSimulator
         CardPilePosition position)
     {
         var cards = new List<PredictedCard>(count);
-        var playerCombatState = State.GetPlayerCombatState(player);
-        var drawPile = playerCombatState.DrawPile;
-
-        for (var i = 0; i < count; i++)
-        {
-            ShuffleIfNecessary(player);
-            if (HasPendingChoice)
-                break;
-            var card = position switch
-            {
-                CardPilePosition.Top => drawPile.TopCard,
-                CardPilePosition.Bottom => drawPile.BottomCard,
-                CardPilePosition.Random => Rng.CombatCardSelection.NextItem(drawPile.Cards),
-                _ => null
-            };
-
-            if (card is null)
-            {
-                break;
-            }
-
-            cards.Add(card);
-            AddToPile(card, playerCombatState.PlayPile);
-            History.AutoPlayFromDrawPile(card);
-        }
-
+        ContinueMoveCardsForAutoPlay(player, count, position, cards, 0);
         return cards;
     }
 

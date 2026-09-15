@@ -41,9 +41,13 @@ internal sealed partial class CombatBeamSolver
                 PlanAction action = new(PlanActionKind.EndTurn, parent.Turn);
                 using RoundReplayCheckpointCapture capture = new(parent);
                 SimulationSnapshot snapshot = ReplayAction(parent, action, roundCheckpointCapture: capture);
+                string? pendingSourceId = capture.ReachedHandDrawShuffle && !capture.ReachedStablePrefix
+                    ? ((SimulatedCombatState)snapshot.Simulator.State.CombatState).PendingTurnStartChoice?.SourceId
+                    : null;
                 EndTurnChoiceLayer? layer = PrepareEndTurnChoiceLayer(parent, action, snapshot);
                 if (layer != null)
                 {
+                    capture.ObservePendingChoice(this, pendingSourceId);
                     ownedCheckpoint = capture.Take();
                     layer = layer with { Checkpoint = ownedCheckpoint };
                     _roundReplayCheckpoint = ownedCheckpoint;

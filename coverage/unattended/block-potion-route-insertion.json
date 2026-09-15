@@ -11,6 +11,9 @@
   "initialPlayerEnergy": 1,
   "clearPlayerPiles": true,
   "clearAllPowers": true,
+  "powers": [
+    { "powerId": "STRENGTH_POWER", "target": "Enemy", "amount": 5 }
+  ],
   "cards": [
     { "cardId": "STRIKE_IRONCLAD", "pile": "Hand", "count": 1 },
     { "cardId": "STRIKE_IRONCLAD", "pile": "Draw", "count": 1 }
@@ -31,5 +34,5 @@
   "expectedUnexpectedReplansAtMost": 0,
   "deploymentFastModeForTest": "Instant",
   "deploymentInterActionDelaySecondsForTest": 0,
-  "timeoutSeconds": 180
+  "timeoutSeconds": 120
 }

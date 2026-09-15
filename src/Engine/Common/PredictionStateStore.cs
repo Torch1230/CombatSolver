@@ -3,7 +3,7 @@ using MegaCrit.Sts2.Core.Models;
 
 namespace CombatSolver.Engine.Common;
 
-internal sealed class PredictionStateStore
+internal sealed partial class PredictionStateStore
 {
     // State values are already owned and eagerly forked. A separate heap-allocated entry
     // around every value adds no isolation; keep the value directly in the same ordered table.

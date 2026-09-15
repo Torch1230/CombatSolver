@@ -149,7 +149,7 @@ description: 在战斗语义已证明正确后，审计或修改 CombatSolver �
 - 选牌组合的评分仅可在单次BuildChoices的不可变组合中惰性复用，未消费评分的路径不提前计算；不跨spec、模型变化、Fork或调用缓存。组合去重预计算须保持原[start,i)语义，张数上限按该张数新增条目计数，固定多弃牌与物理实例代表规则不变。
 
 - `PredictionStateStore` 的三槽计数表只保存 Type/条目数，不保存模型或 state；空 store 不创建计数对象，溢出仍使用独占字典，Fork 丢弃零计数。工厂可以重入并扩容，禁止跨工厂调用持有主字典 ref；计数更新的 ref 必须立即消费。验证覆盖溢出、清空后 Fork、父子隔离与工厂重入，不能只测常见一类状态。
-- 额外生成入口复用现有根无色/原生角色攻击池时，保持全部身份与约束门禁；不把 `GetForCombat` 的有放回 `NextItem` 和 `GetDistinctForCombat` 的 `TakeRandom` 混用，即使只取一张。候选模型只读共享，随机数与生成卡牌始终由当前分支独占；带额外过滤的调用方不能直接迁移。
+- 根生成池仅缓存逐项核对的原生过滤：无色、角色攻击、非Basic/Ancient、Power及Common；保留角色/规范池/AllCards引用身份、约束、原生只读模型与自定义池回退门禁。后三类由TurnStartPowerSupport每次Power触发准备一次；回退路径GetUnlockedCards仍只调用一次，原谓词与战斗过滤仍逐次抽取执行，不能把取N次一张改成一次取N张。不得混用有放回NextItem与distinct TakeRandom，即使只取一张。候选模型只读共享，RNG与生成卡始终属当前分支；其他过滤未经核对不能获得缓存资格，合同须覆盖可变池回退调用次数与枚举语义。
 
 - `ModifyHpLost` 的修正者输出是只读集合：空结果使用共享空数组，非空结果独占 List；四阶段顺序、过滤器和 decimal 截断后变化判定保持原样。`AfterModifyingHpLostAfterOsty` 的空通知仍先物化原监听来源，只省略空成员遍历及通知 context；非空按当前监听顺序/成员身份调用一次，不按修正者列表顺序直接派发。移除/重获、重复成员、完整状态与 RNG 必须对账。
 - 威胁预测查找蜥蜴尾巴按分支遗物的原顺序选择首个未使用实例，不缓存 WasUsed，也不增加原查询没有的熔化/存活过滤条件。
@@ -163,4 +163,17 @@ description: 在战斗语义已证明正确后，审计或修改 CombatSolver �
 
 - 按消费者省略战略上下文字段时，核对外部登记器可读取的既有字段；登记表非空保留原上下文，不因第三方未声明新需求标志就返回0。原版与第三方字段消费者分别用最小合同覆盖。
 
-- `RoundTransition` 只在无计划选择的EndTurn初探中，于普通抽牌和历史补偿完成后保存无挂起选择的前缀；当前仅ToolsOfTheTradePower存在时预留。原Fork事务断言保持，复制前临时关闭空cursor并在finally恢复。前缀匹配父节点引用、EndTurn回合与PlayerTurnStart选择，Knowledge选择完整回放；不跨父/搜索共享。frontier拥有checkpoint，同父gate串行Fork，排空后释放。新增捕获计数包含额外物理Fork，DOP等价比较扣除该项后的转移Fork；完整状态/续用/历史与兄弟隔离须直接对账。
+- `RoundTransition` 只在无计划选择的EndTurn初探保存无挂起事务的前缀：普通抽牌与历史补偿后为原稳定点；抽牌准备及一次性抽牌修正消费完毕、Simulator.Draw之前为洗牌选择的更早稳定点。后者只在将发生洗牌、当前worker已观察到该处产生有效选择层、且对应SourceId的玩家Power当前仍有效时预留；提示只存字符串，不持有模型。未命中保留较晚稳定点，未知非Power来源完整回放。抽牌前checkpoint保存已消费的drawCount，续接重建BeforeNextTake回调且不重复消费修正或提前触发SideTurnStart。ToolsOfTheTradePower继续立即预留抽牌后前缀。学习提示仅属worker的运行上下文，不跨搜索、不进入战斗键/候选政策；未到稳定点的选牌不得启用。原Fork事务断言保持，复制前临时关闭空cursor并在finally恢复。前缀匹配父节点引用、EndTurn回合与PlayerTurnStart选择，Knowledge选择完整回放；frontier拥有checkpoint，同父gate串行Fork，排空后释放。新增捕获计数包含额外物理Fork，DOP等价比较扣除该项后的转移Fork；完整状态/续用/历史、连续洗牌与变牌选择、延迟抽牌修正及兄弟隔离须直接对账。
+
+- RNG 惰性物化只共享完整计数器/四段状态值的不可变快照；已有可变实例的流必须在 Fork 当时捕获，不能把原生 Rng 当成 COW 共享，因为调用方可能继续持有旧引用。只读状态键/续用/投影读取不物化源流，真正随机操作仍使用分支独占的原生实例。合同覆盖九条流的原生序列、保留引用、兄弟/多代 Fork、只读未物化与 live 不变；实际整搜分配和时间分别判断，不把未访问流比例当作整搜收益。
+
+- 卡牌首次进场检查由 `PredictedCard.HasCheckedPowerAfflictionEntry` 按 wrapper 保存，根牌也标记已经检查；Fork继承，Clone重新检查，根身份集合仅捕获一次、只读共享。不得改成按卡名判断或把新wrapper当作旧卡已经处理。污染清除及数量变化仍在每次归一化检查。
+- 跑局监听表仅在前缀与 `_rootRunHookListeners` 引用相同时省去重映射；该冻结前缀只含根牌组CardModel/Enchantment，State.Fork不会登记这些模型，StateStore.Fork仍在其后。其他前缀、战斗后缀与Power继续原重映射/失效逻辑。更改Fork顺序或模型登记范围时必须重新核对这条前提。
+
+- 长期资源保路的均匀判定必须使用当前完整冻结候选池；空池和全池同值原本均返回空资源路线，可以在此前省去祖先排名暂存。非均匀池保持最高值并列成员原序、原RankBest与祖先/全局恢复顺序，不跨调用缓存最大值或排名；合同核对共享祖先、既有排名、完整选中身份和顺序。
+
+- 正式手动自身选牌续执行支持当前清单中的41张原版单人卡，要求无附魔/污染、单次手动打出、空显式cursor、单层card scope、可重映射活动历史及无不透明/事务StateStore。Engine保存显式CardPlay/frame并复用唯一结算尾部；Prediction独占seed/frame/deaths和Fork锁，Search仅在同父同动作选择链或frontier内持有。普通Fork仍拒绝挂起种子；私有Fork临时移走所属pending request并运行原事务断言，全部模型/trace/play/history使用同一PredictionForkContext。再次挂起时退出全部子scope再完整回放，额外物理Fork单列fallback，不多扣逻辑transition/选择预算。旧路径不得运行捕获诊断或持有检查点；释放必须在生产者/消费者排空后完成。不保留Task/闭包，不跨父、搜索或战斗缓存。完整状态/历史/RNG、兄弟修改、原生结算、DOP、取消/异常排空与增量等价直接验证；各来源的命中和整搜收益分别报告。已生成的请求/spec必须一并捕获，不能在恢复时再次GetSpec（探寻打击会再次消耗RNG）；同一个Fork context复制请求候选、生成历史中的非牌堆wrapper、CardPlay及其格挡金额/事件计数。
+
+- 9种原版手动选牌药水共用 `PotionExecutionSupport.Prepare/Complete`；检查点在消费槽位和Use完成后、选择应用及AfterPotionUsed之前，种子仍须通过普通Fork断言。四种生成药水从检查点运行原空选择探测，使用后钩子执行完才读取候选；其他五种仍从父状态准备候选。Search的串行/并行准备共用入口，同父完整动作匹配且仅Choice可替换；frontier或串行枚举拥有检查点并在排空后释放。生成候选历史只读共享，Apply继续Clone选中牌；分支可变牌/RNG由普通Fork隔离。嵌套再次挂起从原父完整回放；额外前缀Fork与fallback分别记账，不改变transition/choice预算；worker合并和归零须包含四个药水计数。第三方药水或登记覆盖原版选择的药水不进入此特化。不保存Task或闭包。验证全部九种原生结算、完整状态/历史/RNG、消耗/后置钩子、兄弟修改及DOP/取消/异常/增量对账。
+
+- 嵌套执行检查点保存纯数据帧与明确程序阶段/下一循环序号。所有CLR作用域退出后，核对领域事务、StateStore、活动CardPlay及延迟抽牌/生成历史的精确配对；普通Fork继续拒绝捕获/挂起/已准备种子。一次PredictionForkContext重映射状态、帧、候选、历史、CardPlay、Power来源及共享死亡集合，保留trace来源身份和抽牌深度限制；外层列表所持但已离开所有牌堆的wrapper也必须显式Fork，不能假设State已登记。未知派发必须拒绝整次捕获，继续原完整回放，不能默认缺失尾部已执行。已确认的抽牌、弃牌、Hook、重复子出牌与回合来源循环复用唯一普通执行体，恢复可以再次挂起。Search匹配同父完整动作及已消费选择前缀，只追加下一选择；选择层/frontier排空后释放全部图引用。不保存Task/闭包，不跨搜索缓存；严格增量基线禁用捕获。ExecutionChoiceCaptures/Reuses不扣选择预算，reuse替代一次原转移Fork，不能作为额外物理Fork从比较器扣除。源循环、深层选牌、DOP/取消/异常、有限预算耗尽与原生完整状态分别验证。

@@ -36,10 +36,15 @@ internal sealed partial class SimulatedCombatState
         CombatPredictionSimulator simulator,
         Player player,
         TurnStartChoiceCursor choices)
+        => ContinueRelicsBeforeHandDraw(simulator, player, choices, RelicsOf(player).ToArray(), GetPlayerTurnNumber(player), 0);
+
+    private bool ContinueRelicsBeforeHandDraw(CombatPredictionSimulator simulator, Player player,
+        TurnStartChoiceCursor choices, IReadOnlyList<RelicModel> relics, int turn, int nextIndex)
     {
-        int turn = GetPlayerTurnNumber(player);
-        foreach (RelicModel relic in RelicsOf(player).Where(static relic => !relic.IsMelted))
+        for (int relicIndex = nextIndex; relicIndex < relics.Count; relicIndex++)
         {
+            RelicModel relic = relics[relicIndex];
+            if (relic.IsMelted) continue;
             StatefulRelicState state;
             switch (relic)
             {
@@ -107,13 +112,17 @@ internal sealed partial class SimulatedCombatState
                             options,
                             "BEFORE_HAND_DRAW"))
                     {
+                        simulator.AppendExecutionContinuation(new BeforeHandDrawRelicFrame(player, relics, turn, relicIndex + 1));
                         return true;
                     }
                     break;
                 }
             }
             if (simulator.HasPendingChoice)
+            {
+                simulator.RejectExecutionContinuation();
                 return true;
+            }
         }
         return false;
     }

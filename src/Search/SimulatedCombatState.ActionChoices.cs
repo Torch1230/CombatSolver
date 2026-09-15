@@ -12,6 +12,7 @@ internal sealed partial class SimulatedCombatState :
 {
     private TurnStartChoiceCursor? _activeActionChoices;
     private PlanChoiceTiming _activeActionChoiceTiming = PlanChoiceTiming.Action;
+    internal int LastActionChoicesConsumed { get; private set; }
 
     public PlanChoiceTiming ActiveActionChoiceTiming => _activeActionChoiceTiming;
 
@@ -41,6 +42,7 @@ internal sealed partial class SimulatedCombatState :
             ?? throw new InvalidOperationException("模拟状态没有活动的动作选择游标。");
         if (PendingTurnStartChoice == null)
             cursor.AssertConsumed();
+        LastActionChoicesConsumed = cursor.ConsumedExplicitChoiceCount;
         _activeActionChoices = null;
         _activeActionChoiceTiming = PlanChoiceTiming.Action;
     }
@@ -124,10 +126,17 @@ internal sealed partial class SimulatedCombatState :
         if (!choices.TryTake(request, out PlanCardChoice? choice))
         {
             if (!HasPendingChoice)
+            {
                 SetPendingTurnStartChoice(request);
+                if (spec.Effect != PlanChoiceEffect.ModDefined)
+                    simulator.CaptureExecutionChoice(new CardSelectionExecutionFrame(playedCard, request));
+            }
+            else
+                simulator.AppendExecutionContinuation(new CardSelectionExecutionFrame(playedCard, request));
             return false;
         }
-        CardChoiceSupport.Apply(simulator, this, playedCard, choice!, processedEnemyDeaths);
+        using (simulator.BeginExecutionDispatch())
+            CardChoiceSupport.Apply(simulator, this, playedCard, choice!, processedEnemyDeaths);
         // Applying an outer choice can auto-play another card which opens its own selector.
         // Propagate that suspension so the outer card remains inside its OnPlay transaction;
         // its result pile and AfterCardPlayed hooks must wait for the nested request.

@@ -238,6 +238,8 @@ param(
     [string]$TheftPolicyForTest = "",
     [ValidateSet(-1, 0, 1)]
     [int]$EnableNoGcRegionForTest = -1,
+    [switch]$ExpectNoGcFallbackForTest,
+    [switch]$AllowNoGcFallbackForTest,
     [double]$NoGcRegionBudgetGigabytesForTest = -1,
     [double]$DeploymentInterActionDelaySecondsForTest = -1,
     [switch]$AssertDeploymentSpeedRestored,
@@ -914,6 +916,8 @@ $request = [ordered]@{
     potionPolicyForTest = if ([string]::IsNullOrWhiteSpace($PotionPolicyForTest)) { $null } else { $PotionPolicyForTest }
     theftPolicyForTest = if ([string]::IsNullOrWhiteSpace($TheftPolicyForTest)) { $null } else { $TheftPolicyForTest }
     enableNoGcRegionForTest = if ($EnableNoGcRegionForTest -ge 0) { [bool]$EnableNoGcRegionForTest } else { $null }
+    expectNoGcFallbackForTest = [bool]$ExpectNoGcFallbackForTest
+    allowNoGcFallbackForTest = [bool]$AllowNoGcFallbackForTest
     noGcRegionBudgetGigabytesForTest = if ($NoGcRegionBudgetGigabytesForTest -gt 0) { $NoGcRegionBudgetGigabytesForTest } else { $null }
     deploymentInterActionDelaySecondsForTest = if ($DeploymentInterActionDelaySecondsForTest -ge 0) { $DeploymentInterActionDelaySecondsForTest } else { $null }
     assertDeploymentSpeedRestored = $AssertDeploymentSpeedRestored.IsPresent
