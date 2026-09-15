@@ -16,10 +16,12 @@ using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Nodes;
+using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Random;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.Saves;
+using MegaCrit.Sts2.Core.TestSupport;
 using CombatSolver.Api;
 
 namespace CombatSolver;
@@ -91,6 +93,19 @@ internal sealed partial class UnattendedTestRunner
                 if (!ModelMatches(importedPlayer.Character, entered.CharacterId)
                     || !ModelMatches(importedEncounter, entered.EncounterId))
                     throw new InvalidDataException("录像包导入结果与当前战斗身份不一致。");
+                if (TestMode.IsOff)
+                {
+                    CardModel[] modelHand = importedPlayer.PlayerCombatState!.Hand.Cards.ToArray();
+                    CardModel?[] visualHand = (NPlayerHand.Instance
+                            ?? throw new InvalidOperationException("录像包导入后没有手牌节点。"))
+                        .ActiveHolders
+                        .Select(static holder => holder.CardNode?.Model)
+                        .ToArray();
+                    if (!visualHand.SequenceEqual(modelHand))
+                        throw new InvalidDataException("录像包导入后的界面手牌与模型手牌不一致。");
+                    runner._completedChecks.Add(
+                        $"ShowcaseHandVisuals:Models={modelHand.Length}:Holders={visualHand.Length}");
+                }
                 runner._completedChecks.Add(
                     $"ShowcaseBundleImport:EndTurn={entered.CombatEndedTurn}:" +
                     $"LocalSearches={entered.LocalSearchStarts}:CanonicalNativeState");

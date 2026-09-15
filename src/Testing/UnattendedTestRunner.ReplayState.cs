@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text.Json;
+using Godot;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Combat.History.Entries;
 using MegaCrit.Sts2.Core.Commands;
@@ -10,7 +11,11 @@ using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.MonsterMoves.MonsterMoveStateMachine;
+using MegaCrit.Sts2.Core.Nodes;
+using MegaCrit.Sts2.Core.Nodes.Cards;
+using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Runs;
+using MegaCrit.Sts2.Core.TestSupport;
 
 namespace CombatSolver;
 
@@ -121,8 +126,17 @@ internal sealed partial class UnattendedTestRunner
 
         RestoreReplayInventory(player, savedPlayer);
         await RestoreReplayOrbsAsync(player, savedPlayer.GetProperty("orbs"));
-        await ClearPlayerPilesAsync(player);
+        bool restoreVisuals = TestMode.IsOff;
+        await ClearPlayerPilesAsync(player, skipVisuals: !restoreVisuals);
+        if (restoreVisuals)
+        {
+            NGame host = NGame.Instance
+                ?? throw new InvalidOperationException("replay-state 恢复手牌视觉时游戏主节点不存在。");
+            await host.ToSignal(host.GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
         await RestoreReplayPilesAsync(combatState, player, savedPlayer.GetProperty("piles"));
+        if (restoreVisuals)
+            RestoreReplayHandVisuals(player);
         await RunManager.Instance.ActionExecutor.FinishedExecutingActions();
         RebuildReplayDampenState(player);
         RestoreReplayTurnCardHistory(
@@ -538,6 +552,29 @@ internal sealed partial class UnattendedTestRunner
                 RestoreReplayCardKeywords(restored, savedCard.GetProperty("keywords"));
             }
         }
+    }
+
+    private static void RestoreReplayHandVisuals(Player player)
+    {
+        NPlayerHand hand = NPlayerHand.Instance
+            ?? throw new InvalidOperationException("replay-state 恢复手牌视觉时手牌节点不存在。");
+        if (hand.ActiveHolders.Count != 0)
+            throw new InvalidOperationException("replay-state 清除旧手牌后仍残留手牌节点。");
+
+        CardModel[] cards = player.PlayerCombatState?.Hand.Cards.ToArray()
+            ?? throw new InvalidOperationException("replay-state 恢复手牌视觉时玩家没有战斗状态。");
+        foreach (CardModel card in cards)
+        {
+            NCard cardNode = NCard.Create(card)
+                ?? throw new InvalidOperationException($"replay-state 无法为 {card.Id.Entry} 创建手牌节点。");
+            hand.Add(cardNode);
+        }
+
+        CardModel?[] visualCards = hand.ActiveHolders
+            .Select(static holder => holder.CardNode?.Model)
+            .ToArray();
+        if (!visualCards.SequenceEqual(cards))
+            throw new InvalidOperationException("replay-state 恢复后的手牌视觉顺序与战斗状态不一致。");
     }
 
     private static void RestoreReplayCardKeywords(CardModel card, JsonElement savedKeywordsElement)

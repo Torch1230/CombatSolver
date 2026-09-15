@@ -925,7 +925,7 @@ internal sealed partial class UnattendedTestRunner
         }
     }
 
-    private static async Task ClearPlayerPilesAsync(Player player)
+    private static async Task ClearPlayerPilesAsync(Player player, bool skipVisuals = true)
     {
         PlayerCombatState playerCombatState = player.PlayerCombatState!;
         CardModel[] cards =
@@ -935,7 +935,7 @@ internal sealed partial class UnattendedTestRunner
             .. playerCombatState.DiscardPile.Cards,
             .. playerCombatState.ExhaustPile.Cards,
         ];
-        await CardPileCmd.RemoveFromCombat(cards, skipVisuals: true);
+        await CardPileCmd.RemoveFromCombat(cards, skipVisuals);
         await RunManager.Instance.ActionExecutor.FinishedExecutingActions();
     }
 }
