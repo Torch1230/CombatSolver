@@ -234,6 +234,8 @@ param(
     [int]$DeepMaxCardBranchesPerNodeForTest = -1,
     [ValidateSet("", "Disabled", "Smart", "RequireAtLeastOne")]
     [string]$PotionPolicyForTest = "",
+    [ValidateSet(-1, 0, 1)]
+    [int]$LowLossPotionForTest = -1,
     [ValidateSet("", "PreserveResources", "LetEscape")]
     [string]$TheftPolicyForTest = "",
     [ValidateSet(-1, 0, 1)]
@@ -923,6 +925,7 @@ $request = [ordered]@{
     shortMaxCardBranchesPerNodeForTest = if ($ShortMaxCardBranchesPerNodeForTest -gt 0) { $ShortMaxCardBranchesPerNodeForTest } else { $null }
     deepMaxCardBranchesPerNodeForTest = if ($DeepMaxCardBranchesPerNodeForTest -gt 0) { $DeepMaxCardBranchesPerNodeForTest } else { $null }
     potionPolicyForTest = if ([string]::IsNullOrWhiteSpace($PotionPolicyForTest)) { $null } else { $PotionPolicyForTest }
+    lowLossPotionForTest = if ($LowLossPotionForTest -lt 0) { $null } else { $LowLossPotionForTest -eq 1 }
     theftPolicyForTest = if ([string]::IsNullOrWhiteSpace($TheftPolicyForTest)) { $null } else { $TheftPolicyForTest }
     enableNoGcRegionForTest = if ($EnableNoGcRegionForTest -ge 0) { [bool]$EnableNoGcRegionForTest } else { $null }
     expectNoGcFallbackForTest = [bool]$ExpectNoGcFallbackForTest

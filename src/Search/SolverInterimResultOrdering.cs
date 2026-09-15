@@ -87,6 +87,7 @@ internal static class SolverInterimResultOrdering
         SolverInterimResult candidate,
         SolverInterimResult current)
         => (!candidate.Won
+                || candidate.LowLossPotionApplied
                 || candidate.Survives && !current.Survives
                 || candidate.DeathSaveUseCount < current.DeathSaveUseCount
                 || candidate.TheftPolicy == SolverTheftPolicy.PreserveResources

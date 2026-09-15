@@ -426,7 +426,8 @@ internal sealed partial class CombatBeamSolver
         bool _renewablePotionShapedRock,
         SearchRunContext _run,
         Func<SearchNode, StandPatEvaluation> _evaluateStandPat,
-        Action<IEnumerable<SearchNode>>? _prepareStandPat = null)
+        Action<IEnumerable<SearchNode>>? _prepareStandPat = null,
+        LowLossPotionAllowance? _lowLossPotionAllowance = null)
     {
         private void ForEachRetentionIndex(
             int count,
@@ -472,7 +473,8 @@ internal sealed partial class CombatBeamSolver
             int OptionalPotionStrategicCost,
             int OptionalAmbergrisCount,
             bool TheftEscapeEligible,
-            int OptionalAmbergrisFinalPlayerHpCohort);
+            int OptionalAmbergrisFinalPlayerHpCohort,
+            bool LowLossQualified = false);
 
         public List<SearchNode> RankFinal(IEnumerable<SearchNode> nodes)
         {
@@ -649,6 +651,10 @@ internal sealed partial class CombatBeamSolver
                 candidate.PotionCount,
                 candidate.Snapshot.OutstandingStolenResource,
                 potionFreeOutstandingResource);
+            bool won = SolverInterimResultOrdering.IsCompleteVictory(candidate.ActionCount,
+                candidate.Snapshot.AllEnemiesDead, candidate.Snapshot.PlayerDead,
+                candidate.Snapshot.ProjectedPlayerHp);
+            int deficit = _lowLossPotionAllowance == null ? 0 : StrategicHpDeficit(candidate.Snapshot, won);
             return new FinalPolicyQualificationSignature(
                 true,
                 facts.ExplicitPotionUseCount,
@@ -659,7 +665,10 @@ internal sealed partial class CombatBeamSolver
                 theftEscapeEligible,
                 FinalPolicyOptionalAmbergrisPlayerHpCohort(
                     facts.OptionalAmbergrisCount,
-                    candidate.Snapshot.PlayerHp));
+                    candidate.Snapshot.PlayerHp),
+                _lowLossPotionAllowance?.Qualifies(won, facts.ExplicitPotionUseCount, deficit,
+                    deficit + candidate.Snapshot.StrategicHpCredit,
+                    candidate.Snapshot.OutstandingStolenResource) == true);
         }
 
         internal static int FinalPolicyOptionalAmbergrisPlayerHpCohort(
@@ -681,6 +690,9 @@ internal sealed partial class CombatBeamSolver
             FinalPolicyQualificationSignature right)
         {
             int comparison = right.ForcedUsesSatisfied.CompareTo(left.ForcedUsesSatisfied);
+            if (comparison != 0)
+                return comparison;
+            comparison = right.LowLossQualified.CompareTo(left.LowLossQualified);
             if (comparison != 0)
                 return comparison;
             comparison = left.ExplicitPotionUseCount.CompareTo(right.ExplicitPotionUseCount);

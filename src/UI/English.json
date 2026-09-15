@@ -1,4 +1,6 @@
 {
+  "省血少也允许用药": "Allow small HP savings",
+  "仅本场；允许选择一瓶未保护药水，减少至少 1 点预计后续战损，不限制无药战损上限。本场用过药后恢复正常规则。保牌／保钱优先。": "This combat only: allow one unprotected potion to save at least 1 HP of expected remaining damage, with no upper limit on potion-free HP loss. Normal rules resume once a potion has been used. Recovering stolen cards or gold takes priority.",
   "遗物": "Relics",
   "控制战斗结束时的遗物计数": "Set up relic counters for the next combat",
   "总开关与单项开关同时开启才生效。范围包含两端；每项达标最多折算一次额外战损，多个遗物额度相加。": "Enable both the master switch and each relic. Ranges include both ends. Each aligned relic grants its HP allowance once; allowances add together.",

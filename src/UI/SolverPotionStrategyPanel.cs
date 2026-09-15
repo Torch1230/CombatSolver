@@ -13,6 +13,7 @@ internal sealed partial class SolverPotionStrategyPanel : PanelContainer
     internal const float PreferredWidth = 360f;
     private const float CardMinimumWidth = 280f;
     private readonly GridContainer _cards;
+    private readonly CheckButton _lowLossToggle;
     private readonly Button _onlyForced;
     private string? _renderedSignature;
 
@@ -46,6 +47,15 @@ internal sealed partial class SolverPotionStrategyPanel : PanelContainer
         heading.Name = "StrategyHeading";
         layout.AddChild(heading);
 
+        _lowLossToggle = new CheckButton
+        {
+            Name = "LowLossPotionToggle",
+            Text = SolverText.Get("省血少也允许用药"),
+            TooltipText = SolverText.Get("仅本场；允许选择一瓶未保护药水，减少至少 1 点预计后续战损，不限制无药战损上限。本场用过药后恢复正常规则。保牌／保钱优先。"),
+            FocusMode = FocusModeEnum.None,
+        };
+        _lowLossToggle.Toggled += enabled => LowLossChanged?.Invoke(enabled);
+        layout.AddChild(_lowLossToggle);
         GridContainer presets = new()
         {
             Name = "PotionPresets",
@@ -88,6 +98,8 @@ internal sealed partial class SolverPotionStrategyPanel : PanelContainer
     }
 
     public event Action<int, string, SolverPotionDirective>? DirectiveChanged;
+    public event Action<bool>? LowLossChanged;
+    internal CheckButton LowLossToggleForTesting => _lowLossToggle;
     public event Action<PotionStrategyPreset>? PresetRequested;
 
     internal int RowCountForTesting { get; private set; }
@@ -99,6 +111,8 @@ internal sealed partial class SolverPotionStrategyPanel : PanelContainer
 
     public void Refresh(CombatState? state, bool controlsDisabled)
     {
+        _lowLossToggle.SetPressedNoSignal(SolverController.LowLossPotionEnabled);
+        _lowLossToggle.Disabled = state == null || controlsDisabled;
         Player? player = state == null ? null : LocalContext.GetMe(state);
         List<(int Slot, PotionModel Potion, SolverPotionDirective Directive, bool Searchable)> potions = [];
         if (player != null)

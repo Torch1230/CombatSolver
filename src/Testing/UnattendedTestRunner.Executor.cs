@@ -17,11 +17,21 @@ internal sealed partial class UnattendedTestRunner
     private sealed class Executor(UnattendedTestRunner runner)
     {
         private SolverSettingsData? _settingsBeforeTest;
+        private bool? _lowLossBeforeTest;
+
+        private void ApplyCombatPolicy()
+        {
+            _lowLossBeforeTest ??= SolverController.LowLossPotionEnabled;
+            SolverController.SetLowLossPotionForTesting(runner._request.LowLossPotionForTest
+                ?? ReadRecordedLowLossPotionPolicy(runner._checkpointImport?["resolvedPolicy"] as System.Text.Json.Nodes.JsonObject));
+        }
 
         public void RestoreSettings()
         {
             if (_settingsBeforeTest != null)
                 SolverSettings.ApplyForTesting(_settingsBeforeTest);
+            if (_lowLossBeforeTest is { } lowLoss)
+                SolverController.SetLowLossPotionForTesting(lowLoss);
         }
         public void PrepareArchiveSettings()
         {
@@ -36,6 +46,7 @@ internal sealed partial class UnattendedTestRunner
             CombatState combatState = scenario.CombatState;
             Player player = scenario.Player;
             int startedTurn = scenario.StartedTurn;
+            ApplyCombatPolicy();
             bool expectedCardPlayed = request.ExpectedPlayedCardId == null;
             bool expectedPotionUsed = request.ExpectedUsedPotionId == null;
             bool expectedPlayerPowerObserved = request.ExpectedObservedPlayerPowerId == null;
@@ -262,6 +273,19 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertHpTargetStopAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "LOW-LOSS-POTION")
+            {
+                await runner.AssertLowLossPotionAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "LOW-LOSS-POTION-CACHE")
+            {
+                runner.SetStage("low_loss_potion_cache");
+                await runner.AssertLowLossPotionCacheAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "LOW-LOSS-POTION-DEPLOY")
+                await runner.PrepareLowLossPotionDeploymentAsync(combatState, player);
             if (request.ScenarioId == "CHOICE-CONTINUATION-STEP-AUDIT")
             {
                 await runner.AssertChoiceContinuationStepAuditAsync(combatState);
@@ -354,6 +378,11 @@ internal sealed partial class UnattendedTestRunner
             if (request.ScenarioId is "NORMALITY-AUTOPLAY" or "NORMALITY-AUTOPLAY-REPLAY")
             {
                 await runner.AssertNormalityAutoPlayAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "LOW-LOSS-POTION-UI")
+            {
+                await runner.AssertLowLossPotionLocalizationAsync(combatState);
                 return Observation(combatEnded: false);
             }
             if (request.ScenarioId == "UI-LOCALIZATION")
@@ -1020,6 +1049,7 @@ internal sealed partial class UnattendedTestRunner
             if (SolverController.LastTurnSetupResultForTesting == null
                 && !request.PreserveNativeCombatStateForTest && !runner.HasNativeRecording)
                 SolverController.BeginCombat(combatState);
+            ApplyCombatPolicy();
             if (request.TheftPolicyForTest is { } theftPolicy)
                 SolverController.SetTheftPolicyForTesting(combatState, theftPolicy);
             SolverController.SetStopFullAutoOnCombatEnd(false, persist: false);
@@ -1485,6 +1515,8 @@ internal sealed partial class UnattendedTestRunner
             if (runner._writer.ReplayVerification != null)
                 runner._writer.ReplayVerification["executedPolicy"] = System.Text.Json.JsonSerializer.SerializeToNode(
                     new { snapshot.PotionPolicy, SolverSettings.Current.PotionDirectives,
+                        lowLossPotionEnabled = request.LowLossPotionForTest
+                            ?? ReadRecordedLowLossPotionPolicy(runner._checkpointImport?["resolvedPolicy"] as System.Text.Json.Nodes.JsonObject),
                         snapshot.ActTransitionBossHpStrategy, snapshot.FinalBossHpStrategy,
                         snapshot.Profile, snapshot.SearchMaxDegreeOfParallelism },
                     UnattendedTestFiles.JsonOptions);

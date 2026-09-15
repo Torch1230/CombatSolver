@@ -1409,6 +1409,7 @@ internal sealed record CachedContinuation(
 
 internal sealed class SolverResult
 {
+    public bool LowLossPotionApplied { get; init; }
     public bool WasRestoredFromCache { get; internal set; }
     public SolverResultScope ResultScope { get; internal set; } = SolverResultScope.SearchCompletion;
     public bool DeterministicBlockPotionInserted { get; internal set; }
@@ -1711,7 +1712,9 @@ internal sealed class SolverResult
             PotionCount = remainingPotionCount,
             ExplicitPotionCount = remainingExplicitPotionCount,
             PotionHpSaved = remainingPotionCount == 0 ? 0 : PotionHpSaved,
-            PotionHpRequired = remainingPotionCost,
+            LowLossPotionApplied = LowLossPotionApplied && remainingExplicitPotionCount == 1,
+            PotionHpRequired = LowLossPotionApplied && remainingExplicitPotionCount == 1
+                ? LowLossPotionAllowance.RequiredHpSaved : remainingPotionCost,
             PotionBranchesRejected = 0,
             TheftPolicy = TheftPolicy,
             OutstandingStolenResource = Snapshot.OutstandingStolenResource,

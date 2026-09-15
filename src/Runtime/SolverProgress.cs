@@ -158,6 +158,7 @@ internal sealed record SolverInterimResult(
     double Score,
     int? CombatEndedTurn = null)
 {
+    public bool LowLossPotionApplied { get; init; }
     public SolverTheftPolicy? TheftPolicy { get; init; }
     public bool Survives { get; init; }
     public int DeathSaveUseCount { get; init; }

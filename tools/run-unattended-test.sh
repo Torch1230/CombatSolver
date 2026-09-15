@@ -230,6 +230,7 @@ add_option headless-fast-mode-for-test "Instant" string optional_string "FollowG
 add_option deployment-fast-mode-for-test "" string optional_string "FollowGame|Normal|Fast|Instant"
 add_option performance-preset-for-test "" string optional_string "Low|Medium|High|VeryHigh|Custom"
 add_option potion-policy-for-test "" string optional_string "Disabled|Smart|RequireAtLeastOne"
+add_option low-loss-potion-for-test -1 int tri_bool
 add_option theft-policy-for-test "" string optional_string "PreserveResources|LetEscape"
 add_option enable-no-gc-region-for-test -1 int tri_bool
 add_option expect-no-gc-fallback-for-test 0 switch bool
@@ -393,7 +394,7 @@ search_max_dop="${option_value[search-max-degree-of-parallelism-for-test]}"
 ((search_max_dop == -1 || (search_max_dop >= 1 && search_max_dop <= 16))) || \
     die "--search-max-degree-of-parallelism-for-test must be -1 or between 1 and 16"
 for name in expected-initial-only-death-routes-found expected-initial-act-ending-boss \
-    enable-no-gc-region-for-test enable-detailed-diagnostic-logs-for-test; do
+    low-loss-potion-for-test enable-no-gc-region-for-test enable-detailed-diagnostic-logs-for-test; do
     value="${option_value[$name]}"
     ((value == -1 || value == 0 || value == 1)) || die "--$name must be -1, 0, or 1"
 done
