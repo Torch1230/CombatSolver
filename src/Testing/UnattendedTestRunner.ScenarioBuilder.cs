@@ -17,6 +17,7 @@ using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Nodes.Combat;
+using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Random;
 using MegaCrit.Sts2.Core.Runs;
@@ -105,6 +106,23 @@ internal sealed partial class UnattendedTestRunner
                         throw new InvalidDataException("录像包导入后的界面手牌与模型手牌不一致。");
                     runner._completedChecks.Add(
                         $"ShowcaseHandVisuals:Models={modelHand.Length}:Holders={visualHand.Length}");
+                    NCombatUi ui = NCombatRoom.Instance?.Ui
+                        ?? throw new InvalidOperationException("录像包导入后没有战斗界面。");
+                    PlayerCombatState pileState = importedPlayer.PlayerCombatState;
+                    (NCombatCardPile Control, int Count)[] pileCounters =
+                    [
+                        (ui.DrawPile, pileState.DrawPile.Cards.Count),
+                        (ui.DiscardPile, pileState.DiscardPile.Cards.Count),
+                        (ui.ExhaustPile, pileState.ExhaustPile.Cards.Count),
+                    ];
+                    foreach ((NCombatCardPile control, int count) in pileCounters)
+                    {
+                        if (control._currentCount != count || control._countLabel.Text != count.ToString())
+                            throw new InvalidDataException("录像包导入后的牌堆显示数量与模型不一致。");
+                    }
+                    runner._completedChecks.Add(
+                        $"ShowcasePileCounters:Draw={pileCounters[0].Count}:" +
+                        $"Discard={pileCounters[1].Count}:Exhaust={pileCounters[2].Count}");
                 }
                 runner._completedChecks.Add(
                     $"ShowcaseBundleImport:EndTurn={entered.CombatEndedTurn}:" +

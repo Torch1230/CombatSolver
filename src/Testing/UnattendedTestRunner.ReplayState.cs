@@ -8,12 +8,15 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.Helpers;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.MonsterMoves.MonsterMoveStateMachine;
 using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Nodes.Cards;
+using MegaCrit.Sts2.Core.Nodes.Cards.Holders;
 using MegaCrit.Sts2.Core.Nodes.Combat;
+using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.TestSupport;
 
@@ -127,16 +130,15 @@ internal sealed partial class UnattendedTestRunner
         RestoreReplayInventory(player, savedPlayer);
         await RestoreReplayOrbsAsync(player, savedPlayer.GetProperty("orbs"));
         bool restoreVisuals = TestMode.IsOff;
-        await ClearPlayerPilesAsync(player, skipVisuals: !restoreVisuals);
         if (restoreVisuals)
-        {
-            NGame host = NGame.Instance
-                ?? throw new InvalidOperationException("replay-state 恢复手牌视觉时游戏主节点不存在。");
-            await host.ToSignal(host.GetTree(), SceneTree.SignalName.ProcessFrame);
-        }
+            ClearReplayHandVisuals(player);
+        await ClearPlayerPilesAsync(player, skipVisuals: true);
         await RestoreReplayPilesAsync(combatState, player, savedPlayer.GetProperty("piles"));
         if (restoreVisuals)
+        {
             RestoreReplayHandVisuals(player);
+            SynchronizeReplayPileCounters(player);
+        }
         await RunManager.Instance.ActionExecutor.FinishedExecutingActions();
         RebuildReplayDampenState(player);
         RestoreReplayTurnCardHistory(
@@ -570,11 +572,57 @@ internal sealed partial class UnattendedTestRunner
             hand.Add(cardNode);
         }
 
+        NHandCardHolder[] holders = hand.ActiveHolders.ToArray();
+        int count = holders.Length;
+        Vector2 scale = HandPosHelper.GetScale(count);
+        for (int index = 0; index < count; index++)
+        {
+            NHandCardHolder holder = holders[index];
+            Vector2 position = HandPosHelper.GetPosition(count, index);
+            float angle = HandPosHelper.GetAngle(count, index);
+            holder.Position = position;
+            holder.SetTargetPosition(position);
+            holder.SetAngleInstantly(angle);
+            holder.SetTargetAngle(angle);
+            holder.SetScaleInstantly(scale);
+            holder.SetTargetScale(scale);
+        }
+
         CardModel?[] visualCards = hand.ActiveHolders
             .Select(static holder => holder.CardNode?.Model)
             .ToArray();
         if (!visualCards.SequenceEqual(cards))
             throw new InvalidOperationException("replay-state 恢复后的手牌视觉顺序与战斗状态不一致。");
+    }
+
+    private static void ClearReplayHandVisuals(Player player)
+    {
+        NPlayerHand hand = NPlayerHand.Instance
+            ?? throw new InvalidOperationException("replay-state 清除手牌视觉时手牌节点不存在。");
+        CardModel[] cards = player.PlayerCombatState?.Hand.Cards.ToArray()
+            ?? throw new InvalidOperationException("replay-state 清除手牌视觉时玩家没有战斗状态。");
+        foreach (CardModel card in cards)
+            hand.Remove(card);
+        if (hand.ActiveHolders.Count != 0)
+            throw new InvalidOperationException("replay-state 即时清除旧手牌后仍残留手牌节点。");
+    }
+
+    private static void SynchronizeReplayPileCounters(Player player)
+    {
+        NCombatUi ui = NCombatRoom.Instance?.Ui
+            ?? throw new InvalidOperationException("replay-state 同步牌堆计数时战斗界面不存在。");
+        PlayerCombatState state = player.PlayerCombatState
+            ?? throw new InvalidOperationException("replay-state 同步牌堆计数时玩家没有战斗状态。");
+        SynchronizeReplayPileCounter(ui.DrawPile, state.DrawPile);
+        SynchronizeReplayPileCounter(ui.DiscardPile, state.DiscardPile);
+        SynchronizeReplayPileCounter(ui.ExhaustPile, state.ExhaustPile);
+    }
+
+    private static void SynchronizeReplayPileCounter(NCombatCardPile control, CardPile pile)
+    {
+        control._currentCount = pile.Cards.Count;
+        control._countLabel.SetTextAutoSize(control._currentCount.ToString());
+        control._countLabel.PivotOffset = control._countLabel.Size * 0.5f;
     }
 
     private static void RestoreReplayCardKeywords(CardModel card, JsonElement savedKeywordsElement)
