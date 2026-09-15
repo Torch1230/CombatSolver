@@ -99,6 +99,21 @@ internal sealed partial class SolverSettingsPanel : PanelContainer
         SetProcess(false);
         UpdatePageVisibility();
         Reload();
+
+        Action themeListener = ApplyTheme;
+        TreeEntered += () => SolverUiTokens.ThemeChanged += themeListener;
+        TreeExiting += () => SolverUiTokens.ThemeChanged -= themeListener;
+    }
+
+    public void ApplyTheme()
+    {
+        AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
+            SolverUiTokens.Palette.Surface,
+            SolverUiTokens.Palette.BorderSubtle,
+            SolverUiTokens.Radius.Medium,
+            SolverUiTokens.Spacing.Md,
+            SolverUiTokens.Spacing.Md));
+        UpdatePageVisibility();
     }
 
     public void Reload()

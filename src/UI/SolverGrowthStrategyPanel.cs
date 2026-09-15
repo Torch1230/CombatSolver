@@ -117,6 +117,22 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
             IgnoreLongTermRewardsChanged?.Invoke(ignore);
         };
         Refresh(false);
+
+        Action themeListener = ApplyTheme;
+        TreeEntered += () => SolverUiTokens.ThemeChanged += themeListener;
+        TreeExiting += () => SolverUiTokens.ThemeChanged -= themeListener;
+    }
+
+    public void ApplyTheme()
+    {
+        AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
+            SolverUiTokens.Palette.Surface,
+            SolverUiTokens.Palette.BorderSubtle,
+            SolverUiTokens.Radius.Medium,
+            SolverUiTokens.Spacing.Sm,
+            SolverUiTokens.Spacing.Sm));
+        SolverUiTokens.StyleStrategyPanel(this);
+        Refresh(false);
     }
 
     private static CardModel SourceCard(GrowthSource source) => source switch

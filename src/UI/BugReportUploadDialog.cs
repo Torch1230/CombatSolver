@@ -30,7 +30,7 @@ internal sealed partial class BugReportUploadDialog : CanvasLayer
 
         ColorRect backdrop = new()
         {
-            Color = new Color(0f, 0f, 0f, 0.55f),
+            Color = new Color(0f, 0f, 0f, SolverUiTokens.IsLightTheme ? 0.35f : 0.55f),
             MouseFilter = Control.MouseFilterEnum.Stop,
         };
         backdrop.SetAnchorsPreset(Control.LayoutPreset.FullRect);
@@ -98,9 +98,14 @@ internal sealed partial class BugReportUploadDialog : CanvasLayer
         _description.TextChanged += OnDescriptionTextChanged;
         _description.AddThemeFontSizeOverride("font_size", SolverUiTokens.Type.Body);
         _description.AddThemeColorOverride("font_color", SolverUiTokens.Palette.TextPrimary);
+        _description.AddThemeColorOverride("caret_color", SolverUiTokens.Palette.TextPrimary);
         _description.AddThemeStyleboxOverride("normal", SolverUiTokens.CreateBox(
-            SolverUiTokens.Palette.Background,
-            SolverUiTokens.Palette.BorderSubtle,
+            SolverUiTokens.IsLightTheme
+                ? SolverUiTokens.Palette.Surface
+                : SolverUiTokens.Palette.Background,
+            SolverUiTokens.IsLightTheme
+                ? SolverUiTokens.Palette.Border
+                : SolverUiTokens.Palette.BorderSubtle,
             SolverUiTokens.Radius.Small,
             SolverUiTokens.Spacing.Sm,
             SolverUiTokens.Spacing.Xs));

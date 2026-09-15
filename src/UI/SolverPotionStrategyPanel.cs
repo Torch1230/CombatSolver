@@ -85,6 +85,22 @@ internal sealed partial class SolverPotionStrategyPanel : PanelContainer
         AddChild(layout);
         SolverUiTokens.StyleStrategyPanel(this);
         Resized += UpdateGridColumns;
+
+        Action themeListener = ApplyTheme;
+        TreeEntered += () => SolverUiTokens.ThemeChanged += themeListener;
+        TreeExiting += () => SolverUiTokens.ThemeChanged -= themeListener;
+    }
+
+    public void ApplyTheme()
+    {
+        AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
+            SolverUiTokens.Palette.Surface,
+            SolverUiTokens.Palette.BorderSubtle,
+            SolverUiTokens.Radius.Medium,
+            SolverUiTokens.Spacing.Sm,
+            SolverUiTokens.Spacing.Sm));
+        SolverUiTokens.StyleStrategyPanel(this);
+        Invalidate();
     }
 
     public event Action<int, string, SolverPotionDirective>? DirectiveChanged;

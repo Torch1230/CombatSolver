@@ -2,10 +2,10 @@
 
 ## UI 视觉重构与浅色模式修复（2026-09-15，未发布）
 
-- `UI-LOCALIZATION` / `30cdd5c88f64452e9921586c5c7f6ef3` Passed（27.37秒）：涵盖多语言本地化、浅色/深色主题切换、次要按钮 hover 字体对比度断言、浅色模式无黑边规则（`outline_size = 0`）、各类型动作胶囊前景文字对比度（相对亮度阈值 < 0.45）及往返模式复原。
+- `UI-LOCALIZATION` / `8271d8d3038e462db4381c8f1e88bc3f` Passed（27.86秒）：涵盖多语言本地化、浅色/深色主题切换、次要按钮 hover 字体对比度断言、浅色模式无黑边规则（`outline_size = 0`）、各类型动作胶囊前景文字对比度（相对亮度阈值 < 0.45）及设置/策略侧栏/上传弹窗主题刷新往返。
 - `ROUTE-ROW-REUSE` / `d1b56f53a0d146999c398b1d39cb47df` Passed（24.45秒）：原位主题刷新及视觉样式增强后，路线行复用、值相等性比较、控件复用逻辑、快照比对及全字段变更刷新均保持 100% 正常。
 - 架构门禁：PowerShell `verify-refactor-boundaries.ps1` 校验通过（`REFACTOR_BOUNDARIES_OK search_files=105`）。
-- 构建验证：Release 配置下编译 0 警告、0 错误；生成及部署至 `D:\Steam\steamapps\common\Slay the Spire 2\mods\CombatSolver\CombatSolver.dll` 的二进制 SHA-256 均为 `F87E74346038CF9B61CCE460D311E41B776E8713DECE3380C24522C8A64453EB`。
+- 构建验证：Release 配置下编译 0 警告、0 错误；生成及部署至 `D:\Steam\steamapps\common\Slay the Spire 2\mods\CombatSolver\CombatSolver.dll` 的二进制 SHA-256 均为 `CEA0F4F42BE2F8CF22BA75D5F069E64E8DC9E06583D39CBF6C8EB65D8B3557E3`。
 - 参考库隔离：`CombatShowcaseRecorder` 仓库工作区完全未被修改（`git status` 干净）。
 
 ## 录像回放临时费用与充能球恢复（2026-09-15，未发布）
