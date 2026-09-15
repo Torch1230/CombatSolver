@@ -493,6 +493,9 @@ internal static class SolverController
             new SearchMemoryPressureSignal())
         {
             Interaction = interaction,
+            // 普通游戏没有开关，只有无人测试请求能把它打开；关闭时主搜索逐位不变。
+            UseBeamWidthPortfolio = UnattendedTestRunner.UseBeamWidthPortfolioOverride,
+            BeamWidthPortfolioWidths = UnattendedTestRunner.BeamWidthPortfolioWidthsOverride,
             Act3BossStrategy = UnattendedTestRunner.Act3BossStrategyOverride != false
                 && SearchPolicySnapshot.IsAct3BossEncounter(state.RunState.CurrentActIndex, state.Encounter?.Id.Entry),
             // 这里记的是玩家填的原始值；「不考虑局外收益」的折算交给快照上的 Effective* 一处做，

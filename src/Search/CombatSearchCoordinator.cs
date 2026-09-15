@@ -14,7 +14,12 @@ internal static partial class CombatSearchCoordinator
         Action<SolverProgress>? progressCallback)
     {
         SearchRequestWorkTotals requestWorkTotals = new();
-        policy = policy with { RequestWorkTotals = requestWorkTotals };
+        BeamWidthPortfolioTelemetry portfolioTelemetry = new();
+        policy = policy with
+        {
+            RequestWorkTotals = requestWorkTotals,
+            PortfolioTelemetry = portfolioTelemetry,
+        };
         SearchInteractionState? interaction = policy.Interaction;
         SolverResult? currentCompleteAdoptableResult = null;
         SolverInterimResult? currentDisplayedResult = null;
@@ -145,6 +150,7 @@ internal static partial class CombatSearchCoordinator
                 selected = currentCompleteAdoptableResult;
             }
             PopulateRequestWorkTotals(selected, requestWorkTotals);
+            selected.PortfolioTelemetry = portfolioTelemetry;
             return selected;
         }
         catch (OperationCanceledException)
@@ -156,6 +162,7 @@ internal static partial class CombatSearchCoordinator
                 $"potions={currentCompleteAdoptableResult.ProjectedBattlePotionCount} " +
                 $"projected_battle_hp_lost={currentCompleteAdoptableResult.ProjectedBattleHpLost}");
             PopulateRequestWorkTotals(currentCompleteAdoptableResult, requestWorkTotals);
+            currentCompleteAdoptableResult.PortfolioTelemetry = portfolioTelemetry;
             return currentCompleteAdoptableResult;
         }
     }
@@ -244,15 +251,29 @@ internal static partial class CombatSearchCoordinator
         {
             long passAllocatedAtStart = GC.GetTotalAllocatedBytes(precise: false);
             long passTransitionsAtStart = policy.RequestWorkTotals?.Snapshot().TransitionCount ?? 0;
-            SolverResult passResult = new CombatBeamSolver(
+            SolverResult SolveMember(SolverSearchProfile memberProfile) => new CombatBeamSolver(
                 root,
                 displayNames,
                 battleDamage,
                 policy,
                 cancellationToken,
                 progressCallback,
-                passProfile,
+                memberProfile,
                 potionPolicyOverride: initialPotionPolicyOverride).Solve();
+            // 基线成员一跑完就按今天的方式把完整结果发布给覆盖层（覆盖层的中途路线走
+            // SolverProgress，见 RunBeamWidthPortfolioPass 的注释）；精炼成员只有更优时才会
+            // 在本轮末尾再发布一次，所以同一份结果不会发布两遍。
+            SolverResult? publishedBaseline = null;
+            Action<SolverResult>? publishBaseline =
+                policy.UseBeamWidthPortfolio && interimResultCallback != null
+                    ? baseline =>
+                    {
+                        publishedBaseline = baseline;
+                        interimResultCallback(baseline);
+                    }
+                    : null;
+            SolverResult passResult = RunBeamWidthPortfolioPass(
+                root, policy, passProfile, passClock, SolveMember, publishBaseline);
             ObserveSmartLayerMemory(
                 policy, memoryForecast, passAllocatedAtStart, passTransitionsAtStart,
                 passResult, passProfile, completedPotionCount: 0);
@@ -260,7 +281,8 @@ internal static partial class CombatSearchCoordinator
                 policy.Diagnostics.Info(SolverDiagnostics.DescribeSearchPhasePerformance(passResult));
             passResult.SingleSessionSearch = true;
             PopulateSingleSessionTotals(passResult);
-            interimResultCallback?.Invoke(passResult);
+            if (!ReferenceEquals(passResult, publishedBaseline))
+                interimResultCallback?.Invoke(passResult);
             if (ResolveTakeoverResult(passResult, policy.Interaction) is { } passTakeover)
             {
                 takeoverResult = passTakeover;
@@ -320,6 +342,229 @@ internal static partial class CombatSearchCoordinator
             $"total_budget_ms={profile.SoftTimeBudgetMilliseconds}");
         return result;
     }
+
+    /// <summary>
+    /// 主搜索的宽度组合接线，开关开关两种情况都走这里，所以逐成员诊断和
+    /// <see cref="BeamWidthPortfolioTelemetry" /> 在关闭时同样存在（单成员一行）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// **基线成员逐位不变**：关闭时用请求自己的 <paramref name="profile" /> 实例直接求解；打开时
+    /// 组合器把全部共享预算给首个成员，宽度就是基线宽度，其余 Profile 维度照抄。成员只有 Beam
+    /// 宽度、分到的节点上限，以及（仅精炼成员）收紧到剩余时间的软时间预算三处不同。
+    /// </para>
+    /// <para>
+    /// 界面的中途路线走 <c>SolverProgress</c> 回调：搜索发布进度，运行时把进度里的
+    /// <c>SpeculativeRoutePreview</c> / <c>CurrentTurnPreview</c> 渲染出来。因此基线成员一完成就用
+    /// <paramref name="publishBaseline" />（协调器已有的 interim 回调）把完整结果推出去，
+    /// 玩家看到第一条路线的时刻不受后面的精炼影响。
+    /// </para>
+    /// <para>
+    /// 精炼成员的准入全部交给 <see cref="BeamWidthPortfolioGate" />：基线必须已经把这一宽度搜干净、
+    /// 自己没吃掉超过四分之一的时间预算，剩余节点、剩余时间、现有内存压力信号报告的余量都够按宽度
+    /// 外推的估算，才会启动。成员顺序执行，不并行。
+    /// </para>
+    /// </remarks>
+    private static SolverResult RunBeamWidthPortfolioPass(
+        CombatRootSnapshot root,
+        SearchPolicySnapshot policy,
+        SolverSearchProfile profile,
+        Stopwatch passClock,
+        Func<SolverSearchProfile, SolverResult> solveMember,
+        Action<SolverResult>? publishBaseline)
+    {
+        SearchRequestWorkTotals totals = policy.RequestWorkTotals
+            ?? throw new InvalidOperationException("Beam 宽度组合需要请求级工作量记录。");
+        BeamWidthPortfolioTelemetry telemetry = policy.PortfolioTelemetry
+            ?? throw new InvalidOperationException("Beam 宽度组合需要请求级诊断记录。");
+        List<BeamWidthPortfolioMemberCost> costs = [];
+        BeamWidthPortfolioBaseline baseline = default;
+        bool baselineObserved = false;
+        long expandedByMembers = 0;
+
+        long RemainingMilliseconds()
+            => profile.SoftTimeBudgetMilliseconds - passClock.ElapsedMilliseconds;
+
+        BeamWidthPortfolioRun<SolverResult> RunMember(SolverSearchProfile memberProfile)
+        {
+            // 精炼成员沿用现有的软时间预算取消：把它收紧到本轮预算的剩余部分，成员自己就会在
+            // 预算耗尽时停下，不必另造一套超时。基线成员原样不动。
+            SolverSearchProfile effectiveProfile = baselineObserved
+                ? memberProfile with
+                {
+                    SoftTimeBudgetMilliseconds = (int)Math.Clamp(
+                        RemainingMilliseconds(), 1, memberProfile.SoftTimeBudgetMilliseconds),
+                }
+                : memberProfile;
+            SearchRequestWorkSnapshot before = totals.Snapshot();
+            long allocatedBefore = GC.GetTotalAllocatedBytes(precise: false);
+            long startedMilliseconds = passClock.ElapsedMilliseconds;
+            SolverResult memberResult = solveMember(effectiveProfile);
+            long memberElapsed = Math.Max(0, passClock.ElapsedMilliseconds - startedMilliseconds);
+            long memberAllocated = Math.Max(
+                0, GC.GetTotalAllocatedBytes(precise: false) - allocatedBefore);
+            long managedHeapAfter = GC.GetTotalMemory(forceFullCollection: false);
+            SearchRequestWorkSnapshot after = totals.Snapshot();
+            long expanded = after.ExpandedNodes - before.ExpandedNodes;
+            expandedByMembers += expanded;
+            costs.Add(new BeamWidthPortfolioMemberCost(memberElapsed, memberAllocated, managedHeapAfter));
+            bool won = IsCompleteVictory(memberResult);
+            bool terminal = won || memberResult.Snapshot.PlayerDead;
+            if (!baselineObserved)
+            {
+                baseline = new BeamWidthPortfolioBaseline(
+                    memberResult.BoundaryReason == SearchBoundaryReason.None,
+                    IsProvenZeroDamageRoute(root, policy, memberResult),
+                    memberElapsed,
+                    expanded,
+                    memberAllocated,
+                    effectiveProfile.BeamWidth);
+                baselineObserved = true;
+                telemetry.RecordFirstRoutePublished(passClock.Elapsed.TotalMilliseconds);
+                publishBaseline?.Invoke(memberResult);
+            }
+            return new BeamWidthPortfolioRun<SolverResult>(
+                memberResult,
+                expanded,
+                after.TransitionCount - before.TransitionCount,
+                memberResult.BoundaryReason.ToString(),
+                terminal,
+                won,
+                terminal ? memberResult.ProjectedBattleHpLost : null,
+                memberResult.PotionCount)
+            {
+                StopPortfolio = memberResult.ResultScope != SolverResultScope.SearchCompletion,
+            };
+        }
+
+        string? RejectMember(int memberBeamWidth)
+            => baselineObserved
+                ? BeamWidthPortfolioGate.RejectRefinement(
+                    baseline,
+                    memberBeamWidth,
+                    profile.MaxExpandedNodes - expandedByMembers,
+                    RemainingMilliseconds(),
+                    profile.SoftTimeBudgetMilliseconds,
+                    policy.MemoryPressureSignal.RemainingBytes)
+                : null;
+
+        BeamWidthPortfolioOutcome<SolverResult> outcome = policy.UseBeamWidthPortfolio
+            ? BeamWidthPortfolio.Run(
+                BeamWidthPortfolio.ProductionWidths(profile.BeamWidth, policy.BeamWidthPortfolioWidths),
+                profile.MaxExpandedNodes,
+                profile,
+                RunMember,
+                (candidate, current) => IsBetterPotionPolicyResult(root, policy, candidate, current),
+                RejectMember,
+                policy.Diagnostics.Info)
+            : SingleMemberOutcome(profile, RunMember);
+        RecordPortfolioMembers(policy, telemetry, outcome, costs);
+        return outcome.Selected;
+    }
+
+    /// <summary>
+    /// 组合关闭时的一条成员明细。求解走请求自己的 Profile 实例，可比性与选中理由按组合器同一条
+    /// 规矩判定，A/B 才能并排读同一张表。
+    /// </summary>
+    private static BeamWidthPortfolioOutcome<SolverResult> SingleMemberOutcome(
+        SolverSearchProfile profile,
+        Func<SolverSearchProfile, BeamWidthPortfolioRun<SolverResult>> runMember)
+    {
+        BeamWidthPortfolioRun<SolverResult> run = runMember(profile);
+        bool comparable = run.Terminal
+            || !string.Equals(
+                run.Termination, BeamWidthPortfolio.NodeLimitTermination, StringComparison.Ordinal);
+        string selectionReason = run.StopPortfolio
+            ? BeamWidthPortfolio.SelectionStopped
+            : comparable
+                ? BeamWidthPortfolio.SelectionBest
+                : BeamWidthPortfolio.SelectionBaselineFallback;
+        BeamWidthPortfolioMember member = new(
+            profile.BeamWidth,
+            profile.MaxExpandedNodes,
+            Ran: true,
+            run.ExpandedNodes,
+            run.TransitionCount,
+            run.Termination,
+            run.Terminal,
+            run.Won,
+            run.BattleHpLost,
+            run.PotionCount,
+            Compared: run.StopPortfolio || comparable,
+            SkippedReason: run.StopPortfolio || comparable
+                ? null
+                : BeamWidthPortfolio.SkippedNodeLimitNotTerminal);
+        return new BeamWidthPortfolioOutcome<SolverResult>(
+            run.Result, 0, selectionReason, [member], run.ExpandedNodes, run.TransitionCount);
+    }
+
+    /// <summary>逐成员一行诊断，同时把明细与托管堆峰值写进请求级记录。</summary>
+    private static void RecordPortfolioMembers(
+        SearchPolicySnapshot policy,
+        BeamWidthPortfolioTelemetry telemetry,
+        BeamWidthPortfolioOutcome<SolverResult> outcome,
+        IReadOnlyList<BeamWidthPortfolioMemberCost> costs)
+    {
+        int costIndex = 0;
+        for (int index = 0; index < outcome.Members.Count; index++)
+        {
+            BeamWidthPortfolioMember member = outcome.Members[index];
+            BeamWidthPortfolioMemberCost cost = member.Ran
+                ? costs[costIndex++]
+                : default;
+            BeamWidthPortfolioMemberReport report = new(
+                member.BeamWidth,
+                member.NodeBudget,
+                member.Ran,
+                Selected: index == outcome.SelectedIndex,
+                member.Compared,
+                member.SkippedReason,
+                member.ExpandedNodes,
+                member.TransitionCount,
+                member.Termination,
+                member.Terminal,
+                member.Won,
+                member.BattleHpLost,
+                member.PotionCount,
+                cost.ElapsedMilliseconds,
+                cost.AllocatedBytes,
+                cost.ManagedHeapBytesAfter);
+            telemetry.RecordMember(report);
+            policy.Diagnostics.Info(
+                $"[CombatSolver/Test] BEAM_WIDTH_PORTFOLIO_MEMBER index={index} " +
+                $"beam={report.BeamWidth} nodes={report.NodeBudget} ran={report.Ran} " +
+                $"selected={report.Selected} compared={report.Compared} " +
+                $"skipped={report.SkippedReason ?? "-"} " +
+                $"elapsed_ms={report.ElapsedMilliseconds} " +
+                $"allocated_delta={report.AllocatedBytes} " +
+                $"managed_heap_after={report.ManagedHeapBytesAfter} " +
+                $"expanded={report.ExpandedNodes} transitions={report.TransitionCount} " +
+                $"termination={report.Termination ?? "-"} won={report.Won?.ToString() ?? "-"} " +
+                $"battle_hp_lost={report.BattleHpLost?.ToString() ?? "-"} " +
+                $"potions={report.PotionCount?.ToString() ?? "-"}");
+        }
+        if (costIndex != costs.Count)
+        {
+            throw new InvalidOperationException(
+                $"组合成员明细与实测开销条数不一致：明细 {costIndex} 条，实测 {costs.Count} 条。");
+        }
+    }
+
+    /// <summary>
+    /// 基线是否已经拿到「证明最优」的那一类结果：零战损、零主动用药、没卖血、满血且最大生命没掉。
+    /// 与搜索里 <c>ProvenZeroDamage</c> 提前收手的条件同一套，只是从返回结果上复算，不在搜索里加观察点。
+    /// </summary>
+    private static bool IsProvenZeroDamageRoute(
+        CombatRootSnapshot root,
+        SearchPolicySnapshot policy,
+        SolverResult result)
+        => !policy.EffectiveHasGrowthTargets
+            && IsCompleteVictory(result)
+            && result.ExplicitPotionCount == 0
+            && result.FutureSoldHp == 0
+            && result.ProjectedBattleHpLost - result.BattleHpLostSoFar == 0
+            && result.Snapshot.PlayerMaxHp >= root.InitialPlayerMaxHp
+            && result.Snapshot.PlayerHp >= result.Snapshot.PlayerMaxHp;
 
     private static SolverResult RunSupplementalAudits(
         CombatRootSnapshot root,

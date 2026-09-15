@@ -128,6 +128,10 @@ internal sealed partial class UnattendedTestRunner
                 FinalEnemyHp = result.Snapshot.EnemyHp,
                 CombatEndedTurn = result.CombatEndedTurn,
                 CapturedAtElapsedMilliseconds = stopwatch.Elapsed.TotalMilliseconds,
+                // 组合开关关闭时这三项照样有（单成员一行），A/B 才能直接并排比。
+                FirstRoutePublishedMilliseconds = result.PortfolioTelemetry?.FirstRoutePublishedMilliseconds,
+                PortfolioMembers = result.PortfolioTelemetry?.Members.ToArray() ?? [],
+                PeakManagedHeapBytes = result.PortfolioTelemetry?.PeakManagedHeapBytes ?? 0,
                 ManagedLiveBytes = GC.GetTotalMemory(forceFullCollection: false),
                 ManagedHeapBytes = memory.ManagedHeapBytes,
                 ManagedFragmentedBytes = memory.ManagedFragmentedBytes,

@@ -1413,6 +1413,12 @@ internal sealed class SolverResult
     public SolverResultScope ResultScope { get; internal set; } = SolverResultScope.SearchCompletion;
     public bool DeterministicBlockPotionInserted { get; internal set; }
     public bool SingleSessionSearch { get; internal set; }
+
+    /// <summary>
+    /// 本次请求的宽度组合诊断（首条路线发布时刻、逐成员明细、各成员结束后的托管堆峰值）。
+    /// 组合开关关闭时也有，那时是单成员一行。
+    /// </summary>
+    public BeamWidthPortfolioTelemetry? PortfolioTelemetry { get; internal set; }
     public TimeSpan TotalSearchElapsed { get; internal set; }
     public long TotalWorkerAllocatedBytes { get; internal set; }
     public int TotalGen0Collections { get; internal set; }
