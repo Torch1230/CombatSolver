@@ -19,6 +19,9 @@ internal sealed record SearchPolicySnapshot(
     SearchFramePressureSignal FramePressureSignal,
     SearchMemoryPressureSignal MemoryPressureSignal)
 {
+    public bool UseNoveltyPortfolio { get; init; }
+    public NoveltySearchOptions? NoveltySearch { get; init; }
+    public NoveltyPortfolioBudget NoveltyBudget { get; init; } = NoveltyPortfolioBudget.Default;
     public bool Act3BossStrategy { get; init; }
     internal static bool IsAct3BossEncounter(int actIndex, string? encounterId)
         => actIndex == 2 && encounterId is "TEST_SUBJECT_BOSS" or "AEONGLASS_BOSS" or "QUEEN_BOSS";

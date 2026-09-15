@@ -9,6 +9,7 @@
 
 | 要查什么 | 入口 |
 |---|---|
+| 无需训练的有界新颖性／Beam 组合、实验开关和完整对照 | [有界多策略搜索](strategy/bounded-novelty-search-20260916.md) |
 | 完整性能优化正式 PR、路线控件复用、0.38.6 合并验证与对照 | [正式 PR 验收](performance/performance-pr-20260915.md) |
 | 自身弃牌续执行正式接入、搜索等价与整场对照 | [正式续执行与整搜](performance/choice-continuation-search-20260914.md) |
 | 卡牌、药水、遗物与Power选牌续执行的批量扩展可行性 | [选牌续执行扩展研究](performance/choice-continuation-expansion-20260914.md) |

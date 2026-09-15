@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "seed": "CHOICE-EXPANSION-POTIONS-20260914",
+  "characterId": "SILENT",
+  "ascension": 10,
+  "actIndex": 0,
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "encounterKind": "Monster",
+  "includeStartingDeck": false,
+  "includeStartingRelics": true,
+  "includeAscendersBane": false,
+  "applyRelicObtainEffects": false,
+  "characterCards": {
+    "count": 8,
+    "ids": [
+      "DAGGER_THROW",
+      "DAGGER_THROW",
+      "ACROBATICS",
+      "SURVIVOR",
+      "TACTICIAN",
+      "REFLEX",
+      "MURDER",
+      "LEG_SWEEP"
+    ],
+    "upgradeLevels": 1
+  },
+  "colorlessCards": {
+    "count": 1,
+    "ids": [
+      "THINKING_AHEAD"
+    ],
+    "upgradeLevels": 1
+  },
+  "relics": {
+    "count": 0,
+    "ids": [],
+    "upgradeLevels": 0
+  },
+  "potions": {
+    "count": 3,
+    "ids": [
+      "ATTACK_POTION",
+      "COLORLESS_POTION",
+      "GAMBLERS_BREW"
+    ],
+    "upgradeLevels": 0
+  },
+  "setupChoices": [],
+  "playerCurrentHp": null,
+  "potionSlotCount": 3,
+  "mode": "Search",
+  "fixedSearchBudget": true
+}

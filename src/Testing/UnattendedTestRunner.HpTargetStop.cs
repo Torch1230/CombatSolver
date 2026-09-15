@@ -6,7 +6,7 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
-    private async Task AssertHpTargetStopAsync(CombatState combat, Player player)
+    private async Task AssertHpTargetStopAsync(CombatState combat, Player player, bool noveltyPortfolio = false)
     {
         static void Check(bool value, string message)
         {
@@ -31,10 +31,11 @@ internal sealed partial class UnattendedTestRunner
             SearchPolicySnapshot policy = SolverController.CaptureSearchPolicy(SolverSettings.Capture(), combat, false, null) with
             {
                 Act3BossStrategy = true,
-                FixedBudget = true, BudgetOverrideMilliseconds = 1500,
+                FixedBudget = true, BudgetOverrideMilliseconds = noveltyPortfolio ? 10000 : 1500,
                 PotionPolicy = SolverPotionPolicy.Disabled, MaxDegreeOfParallelism = 1,
                 DetailedDiagnostics = false, VerifyIncrementalSearch = false,
-                Profile = SolverSearchProfile.Default with { MaxExpandedNodes = 128 },
+                Profile = SolverSearchProfile.Default with { MaxExpandedNodes = noveltyPortfolio ? 4000 : 128 },
+                UseNoveltyPortfolio = noveltyPortfolio,
             };
             Check(policy.StopAtAcceptableBattleHpLoss && !policy.HasGrowthTargets && policy.CanStopAtHpTarget,
                 "saved allowance without matching cards permits stopping");
@@ -45,6 +46,8 @@ internal sealed partial class UnattendedTestRunner
                     new BattleDamageSnapshot(alreadyLost, 0, 0), requested, CancellationToken.None, null));
             SolverResult stopped = await Search(policy);
             Check(stopped.Snapshot.AllEnemiesDead && stopped.ProjectedBattleHpLost == 0, "zero-loss complete victory");
+            if (noveltyPortfolio)
+                Check(stopped.NoveltyPortfolio?.ExplorationDetails != null, "novelty exploration actually ran");
             SolverResult continued = await Search(policy with { StopAtAcceptableBattleHpLoss = false });
             Check(continued.Snapshot.AllEnemiesDead && continued.ProjectedBattleHpLost == 0
                 && stopped.TotalExpandedNodes < continued.TotalExpandedNodes, "switch stops before remaining combinations");
@@ -58,7 +61,8 @@ internal sealed partial class UnattendedTestRunner
             root = CombatRootSnapshot.Capture(combat);
             SolverResult parallel = await Search(policy with { MaxDegreeOfParallelism = 2 });
             Check(parallel.Snapshot.AllEnemiesDead && parallel.ProjectedBattleHpLost == 0
-                && parallel.MaxParallelExpansionConcurrency == 2, "parallel wave drains and returns winner");
+                && (noveltyPortfolio ? parallel.NoveltyPortfolio?.ExplorationDetails != null
+                    : parallel.MaxParallelExpansionConcurrency == 2), "parallel policy returns winner");
             await CreatureCmd.SetCurrentHp(combat.Enemies[0], 1);
             await InjectCardAsync(combat, player, new UnattendedCardInjection { CardId = "FORBIDDEN_GRIMOIRE", Pile = "Hand" });
             player.PlayerCombatState!.Hand.Cards.Single(card => card.Id.Entry == "FORBIDDEN_GRIMOIRE").BaseReplayCount = 1;

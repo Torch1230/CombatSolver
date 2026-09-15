@@ -170,6 +170,18 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 普通 Beam 保持原有评分、动作数、`OffensiveProgressValue` 初始排序及必保候选构造。在必保候选置换之后、药水配额处理之前，定位原排序中最后一个实际存活的普通候选，仅对跨越该截线且 `BeamRankScore` 与动作数都精确相等的块做有限多样性保留：同一 `PotionCount` 内按进展值分组，值从高到低轮流取代表。组内仅无既有保留路由签名的候选按当前回合和完整转置标签隔离，再以零费可执行牌数、可达手牌价值、手牌数稳定排序，写回各组原位置；带签名节点的原组内位置不动。签名存在性直接复用 `RetainedRoutingChoice`，包括其既有跨回合例外，不重新定义时效或依赖观察器。必保候选、各标签和该块各药量已有席数、其他评分块、总容量和工作预算不变；单值组、单席组、完整终局优先模式及含获胜候选的块旁路。这避免同分截线被单一进展值占满，不使用卡牌或遭遇身份，也不保证有限宽搜索完备。
 
+### 多策略路线搜索
+
+`SolverSettings.UseNoveltyPortfolio` 默认关闭，由 Runtime 冻结到 `SearchPolicySnapshot`；设置、路线缓存和问题包均记录该值。`CombatSearchCoordinator.NoveltyPortfolio` 在主搜索内先做有界新颖性探索，再把实际剩余时间和节点交给既有 Beam／多宽度入口，之后照常执行药水审计。只在原有战损／成长／遗物／用药条件达标或玩家接管时提前返回；完整候选沿 `IsBetterPotionPolicyResult` 比较，不合并两个搜索的 frontier 或转置表。必要用药未满足是明确的搜索边界，仍可用剩余预算运行 Beam；模拟错误和取消继续传播。
+
+`NoveltyPortfolioBudget` 只管理预算算术：非首领至多一半时间，章节首领至多四分之一，且最多5秒、2500节点及总节点的四分之一；不足2秒或1000节点时保留原搜索。原始预算是上限，下一成员扣除实际工作而非预约额度；不可分割父节点排空可略过软时间边界。主搜索中的多宽度成员继续扣同一份节点余量；药水审计复用请求时间截止点，节点仍按上游每审计层的 Profile 上限执行。这里没有新增全请求节点硬上限。
+
+`CombatBeamSolver.NoveltySearch` 使用原 `Expand`、回合标注、终局排序与重放；`Phases` 注入父节点内存预约、进度和接管边界。它按生成时的新颖度、已有评分和稳定序号出队。`BfwsPackedNovelty` 只保存类型化特征、整数ID及一／二元组；同分区下跳过父节点已完整记录的未变元组。特征来自当前影子快照，包含牌区／升级／数量、抽牌前缀、能力和资源，不能替代完整状态键。表历史与运行时scratch由单次 `SearchRunContext.Novelty` 拥有，普通 Beam 不创建它。
+
+`BfwsBoundedOpen` 以稳定双端有序集合限制到2048项，满时移除最差项；历史元组上限100万。释放须等当前父节点全部子项确定归属后，按快照引用身份保护已发布兄弟；正常、取消和异常退出均释放剩余模拟器。上限限制条目数，不是硬字节承诺，临时父批次继续遵守 Runtime 内存信号。`BfwsEscapeBudget` 可让同一最近新颖祖先的熟悉后代共享有限配额，当前候选采用0：本轮试验中额外配额在小树有用，但短预算收益不足以抵销开销。
+
+`NoveltySearchTelemetry` 记录纯值工作量、停止原因与改善过程；`NoveltyPortfolioTelemetry` 描述主搜索组合的两个成员，后续药水审计换结果对象时仍保留。最终请求的胜负、用药和全部工作量以 `SolverResult` / `SearchRequestWorkTotals` 为准。算法与验证见[有界新颖性组合](strategy/bounded-novelty-search-20260916.md)。
+
 ### 3.2 CombatBeamSolver 分片
 
 | 文件 | 权威职责 |
@@ -201,6 +213,7 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 | `CombatBeamSolver.OrderedMutationRetention.cs` | 有序操作碰撞的谱系、租约、成对激活和预算账本；统一处理续接、到期与普通通道回退 |
 | `CombatBeamSolver.FinalPlanOrdering.cs` | 终局胜负、偷窃、战损、药水、卖血和搜索边界排序 |
 | `CombatBeamSolver.StateEvaluation.cs` | 搜索快照、评分、威胁、stand-pat 和状态特征；手牌可达价值的纯背包计算委托 `ReachableHandValue` |
+| `CombatBeamSolver.NoveltySearch.cs` | 有界新颖性队列与影子特征提取；复用既有展开、终局与 Phases 注入边界 |
 | `CombatBeamSolver.Terminal.cs` | 终局精确回放、逐回合结果、击杀与遗物标注 |
 | `StrategicEffectModel.cs` | 把 Power 的实际触发语义投影为伤害、防伤、资源、牌访问和成长效果；不决定终局胜负 |
 

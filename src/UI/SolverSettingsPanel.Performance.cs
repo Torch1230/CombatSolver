@@ -7,6 +7,7 @@ internal sealed partial class SolverSettingsPanel
 {
     private OptionButton _performancePreset = null!;
     private CheckButton _beamWidthPortfolioEnabled = null!;
+    private CheckButton _noveltyPortfolioEnabled = null!;
     private CheckButton _noGcRegionEnabled = null!;
     private LineEdit _noGcRegionBudget = null!;
     private Control _advancedParameters = null!;
@@ -24,6 +25,7 @@ internal sealed partial class SolverSettingsPanel
                     PerformanceMigrationVersion = 0,
                     PerformancePreset = SolverPerformancePreset.VeryHigh,
                     UseBeamWidthPortfolio = true,
+                    UseNoveltyPortfolio = true,
                     EnableNoGcRegion = false,
                     NoGcRegionBudgetGigabytes = 8d,
                 });
@@ -31,6 +33,7 @@ internal sealed partial class SolverSettingsPanel
                     == SolverSettings.CurrentPerformanceMigrationVersion
                 && SolverSettings.ResolvePerformancePreset(migrated) == SolverPerformancePreset.Medium
                 && migrated.UseBeamWidthPortfolio
+                && migrated.UseNoveltyPortfolio
                 && !migrated.EnableNoGcRegion
                 && migrated.NoGcRegionBudgetGigabytes == SolverSettings.DefaultNoGcRegionBudgetGigabytes;
             string legacyJson =
@@ -44,6 +47,7 @@ internal sealed partial class SolverSettingsPanel
                 original with
                 {
                     UseBeamWidthPortfolio = true,
+                    UseNoveltyPortfolio = true,
                     EnableNoGcRegion = false,
                     NoGcRegionBudgetGigabytes = 64d,
                 },
@@ -55,6 +59,7 @@ internal sealed partial class SolverSettingsPanel
                    && legacyDefaultApplied
                    && preset.NoGcRegionBudgetGigabytes == 64d
                    && roundTripped.UseBeamWidthPortfolio
+                   && roundTripped.UseNoveltyPortfolio
                    && !roundTripped.EnableNoGcRegion
                    && roundTripped.NoGcRegionBudgetGigabytes == 64d
                    && CommitPending()
@@ -62,6 +67,8 @@ internal sealed partial class SolverSettingsPanel
                    == SolverPerformancePreset.High
                    && SolverSettings.Current.UseBeamWidthPortfolio
                    && _beamWidthPortfolioEnabled.ButtonPressed
+                   && SolverSettings.Current.UseNoveltyPortfolio
+                   && _noveltyPortfolioEnabled.ButtonPressed
                    && !SolverSettings.Current.EnableNoGcRegion
                    && SolverSettings.Current.NoGcRegionBudgetGigabytes == 64d
                    && !_noGcRegionBudget.Editable;
@@ -98,6 +105,18 @@ internal sealed partial class SolverSettingsPanel
             SolverText.Get("多宽度路线精炼（实验）"),
             _beamWidthPortfolioEnabled,
             SolverText.Get("先按当前性能预设正常搜索。首轮较快完成、路线仍有改善空间且剩余时间、节点和内存充足时，再尝试两种不同的搜索宽度并选择更优路线。可能提高路线质量，也会增加耗时和内存占用；不会突破当前设置的时间和节点上限。"));
+        _noveltyPortfolioEnabled = CreateToggle();
+        _reloadInputs.Add(data => _noveltyPortfolioEnabled.ButtonPressed = data.UseNoveltyPortfolio);
+        _noveltyPortfolioEnabled.Toggled += enabled =>
+        {
+            if (_loading) return;
+            SolverSettings.Update(SolverSettings.Current with { UseNoveltyPortfolio = enabled });
+            SetStatus(SolverText.Get(enabled
+                ? "多策略路线搜索已启用，下次搜索生效"
+                : "多策略路线搜索已关闭"), SolverUiTokens.Palette.Success);
+        };
+        AddBasicRow(budgetGrid, SolverText.Get("多策略路线搜索（实验）"), _noveltyPortfolioEnabled,
+            SolverText.Get("先用部分预算尝试不同路线，再用剩余预算进行常规搜索，并按当前战损、成长和药水规则选优。可能更快找到好路线，也可能因预算分配而改变结果。与常规搜索共用时间和节点上限；下次搜索生效。"));
         AddBasicRow(
             budgetGrid,
             SolverText.Get("搜索并行度"),
@@ -216,13 +235,16 @@ internal sealed partial class SolverSettingsPanel
 
     internal bool BeamWidthPortfolioControlConfiguredForTesting
         => _performancePage.IsAncestorOf(_beamWidthPortfolioEnabled)
-           && _beamWidthPortfolioEnabled.ButtonPressed == SolverSettings.Current.UseBeamWidthPortfolio;
+           && _beamWidthPortfolioEnabled.ButtonPressed == SolverSettings.Current.UseBeamWidthPortfolio
+           && _performancePage.IsAncestorOf(_noveltyPortfolioEnabled)
+           && _noveltyPortfolioEnabled.ButtonPressed == SolverSettings.Current.UseNoveltyPortfolio;
 
     private void ReloadPerformancePage(SolverSettingsData data)
     {
         SolverPerformancePreset preset = SolverSettings.ResolvePerformancePreset(data);
         _performancePreset.Selected = _performancePreset.GetItemIndex((int)preset);
         _beamWidthPortfolioEnabled.ButtonPressed = data.UseBeamWidthPortfolio;
+        _noveltyPortfolioEnabled.ButtonPressed = data.UseNoveltyPortfolio;
         _noGcRegionEnabled.ButtonPressed = data.EnableNoGcRegion;
         _noGcRegionBudget.Editable = data.EnableNoGcRegion;
         SetAdvancedParametersExpanded(preset == SolverPerformancePreset.Custom);

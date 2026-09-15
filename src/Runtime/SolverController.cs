@@ -39,7 +39,7 @@ internal enum ReplanCause
     ExplicitRequest,
 }
 
-internal static class SolverController
+internal static partial class SolverController
 {
     private static SolverCombatSession _combat = new();
     private static SolverSearchSession? _search;
@@ -493,6 +493,7 @@ internal static class SolverController
             new SearchMemoryPressureSignal())
         {
             Interaction = interaction,
+            UseNoveltyPortfolio = settings.UseNoveltyPortfolio,
             UseBeamWidthPortfolio = settings.UseBeamWidthPortfolio
                 || UnattendedTestRunner.UseBeamWidthPortfolioOverride,
             BeamWidthPortfolioWidths = UnattendedTestRunner.BeamWidthPortfolioWidthsOverride,

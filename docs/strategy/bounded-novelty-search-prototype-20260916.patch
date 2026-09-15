@@ -1,0 +1,1081 @@
+diff --git a/src/Runtime/SolverController.cs b/src/Runtime/SolverController.cs
+index 72dfb63..583d758 100644
+--- a/src/Runtime/SolverController.cs
++++ b/src/Runtime/SolverController.cs
+@@ -39,7 +39,7 @@ internal enum ReplanCause
+     ExplicitRequest,
+ }
+ 
+-internal static class SolverController
++internal static partial class SolverController
+ {
+     private static SolverCombatSession _combat = new();
+     private static SolverSearchSession? _search;
+diff --git a/src/Search/CombatBeamSolver.Models.cs b/src/Search/CombatBeamSolver.Models.cs
+index de38350..4850b69 100644
+--- a/src/Search/CombatBeamSolver.Models.cs
++++ b/src/Search/CombatBeamSolver.Models.cs
+@@ -95,6 +95,7 @@ internal sealed partial class CombatBeamSolver
+         bool measurePhasePerformance,
+         SearchFramePressureSignal framePressureSignal)
+     {
++        public readonly ResearchRun Research = new();
+         public Guid PathDiagnosticsSolverId;
+         public int PathDiagnosticsBoundaryId;
+         public long RoutingChoiceSummaryBuilds;
+diff --git a/src/Search/CombatBeamSolver.Phases.cs b/src/Search/CombatBeamSolver.Phases.cs
+index 96d8a52..5e2012b 100644
+--- a/src/Search/CombatBeamSolver.Phases.cs
++++ b/src/Search/CombatBeamSolver.Phases.cs
+@@ -649,6 +649,7 @@ internal sealed partial class CombatBeamSolver
+                 Forecast = _forecast,
+                 ExpandedNodes = _run.Expanded,
+                 TotalExpandedNodes = _run.Expanded,
++                ExperimentalBfws = _research.Describe(),
+                 DominatedActionsPruned = _run.DominatedActionsPruned,
+                 TopQueueActionsDropped = _run.TopQueueActionsDropped,
+                 ActionAdmissionRepresentativesProtected = _run.ActionAdmissionRepresentativesProtected,
+@@ -1297,6 +1298,51 @@ internal sealed partial class CombatBeamSolver
+                 ? SolverWeights.BossEnemyStrengthSuppressionHorizon
+                 : SolverWeights.StandardEnemyStrengthSuppressionHorizon;
+ 
++        if (policy.Research is { Scheduler: not "beam" })
++        {
++            long noveltyParentAllocatedAtStart = 0;
++            bool BeforeNoveltyParent(SearchNode node, int openCount, int completedCount)
++            {
++                SearchTakeoverRequest? request = _interaction?.CurrentTakeoverRequest;
++                if (request?.Kind == SearchTakeoverKind.AdoptRoute && request.RouteAdoptionSeed != null)
++                {
++                    requestedRouteAdoptionSeed = request.RouteAdoptionSeed;
++                    return false;
++                }
++                if (request?.Kind == SearchTakeoverKind.ApplyCurrentTurn
++                    && (currentBestNode != null || currentTurnCandidateNode != null))
++                {
++                    adoptionReached = true;
++                    currentTurnAdoptionReached = currentBestNode == null;
++                    return false;
++                }
++                EnsureMemoryForIndivisibleCommit(ParentAllocationReserve(),
++                    "before_novelty_parent", node.ActionCount, openCount + 1, completedCount);
++                noveltyParentAllocatedAtStart = policy.MemoryPressureSignal.AllocatedBytes;
++                return true;
++            }
++            void ObserveNoveltyBoundary(SearchNode node)
++            {
++                ConsiderCompleteVictory(node);
++                ConsiderCurrentTurnCandidate(node);
++            }
++            void AfterNoveltyParent(SearchNode node, int openCount, int completedCount)
++            {
++                ObserveParentAllocation(Math.Max(0,
++                    policy.MemoryPressureSignal.AllocatedBytes - noveltyParentAllocatedAtStart));
++                if (progressCallback != null && stopwatch.ElapsedMilliseconds - lastProgressMs >= 100)
++                {
++                    RefreshCurrentTurnPreview();
++                    PublishRoutePreview(completed);
++                }
++                PublishProgress(node.Turn, Math.Max(0, node.Turn - _startTurnNumber),
++                    node.ActionCount, openCount, completedCount, "探索不同路线");
++            }
++            timeBudgetReached = RunResearchOpen(frontier, completed, stopwatch, ref fallback,
++                MeetsHpTarget, BeforeNoveltyParent, AfterNoveltyParent, ObserveNoveltyBoundary,
++                out acceptableBattleHpLossReached, out searchedTurnLayers);
++        }
++
+         while (frontier.Count > 0
+             && (!policy.VerifyIncrementalSearch
+                 || searchedTurnLayers < SolverWeights.IncrementalVerificationMaxTurns)
+@@ -1472,6 +1518,7 @@ internal sealed partial class CombatBeamSolver
+                 List<SearchNode> nextPlays = [];
+                 void AcceptExpandedChild(SearchNode node, SearchNode child)
+                 {
++                    ObserveResearchCandidate(child, stopwatch);
+                     ObserveSearchPath(child, SearchPathObservationStage.ActionAdmitted, "expansion_commit");
+                     if (child.Score > fallback.Score)
+                         fallback = child;
+diff --git a/src/Search/CombatPlan.cs b/src/Search/CombatPlan.cs
+index 764bec4..a232e1e 100644
+--- a/src/Search/CombatPlan.cs
++++ b/src/Search/CombatPlan.cs
+@@ -1470,6 +1470,7 @@ internal sealed class SolverResult
+     public required IntentForecast Forecast { get; init; }
+     public required int ExpandedNodes { get; init; }
+     public long TotalExpandedNodes { get; internal set; }
++    public object? ExperimentalBfws { get; internal set; }
+     public required int DominatedActionsPruned { get; init; }
+     public required int TopQueueActionsDropped { get; init; }
+     public required int ActionAdmissionRepresentativesProtected { get; init; }
+diff --git a/src/Search/CombatSearchCoordinator.cs b/src/Search/CombatSearchCoordinator.cs
+index fd365ea..363d010 100644
+--- a/src/Search/CombatSearchCoordinator.cs
++++ b/src/Search/CombatSearchCoordinator.cs
+@@ -251,6 +251,9 @@ internal static partial class CombatSearchCoordinator
+         {
+             long passAllocatedAtStart = GC.GetTotalAllocatedBytes(precise: false);
+             long passTransitionsAtStart = policy.RequestWorkTotals?.Snapshot().TransitionCount ?? 0;
++            SearchPolicySnapshot beamPolicy = policy.Research is { Scheduler: "portfolio" } exploration
++                ? policy with { Research = exploration with { Scheduler = "beam" } }
++                : policy;
+             SolverResult SolveMember(SolverSearchProfile memberProfile, bool refinement)
+             {
+                 Action<SolverProgress>? memberProgressCallback = refinement && progressCallback != null
+@@ -260,7 +263,7 @@ internal static partial class CombatSearchCoordinator
+                     root,
+                     displayNames,
+                     battleDamage,
+-                    policy,
++                    beamPolicy,
+                     cancellationToken,
+                     memberProgressCallback,
+                     memberProfile,
+@@ -278,8 +281,15 @@ internal static partial class CombatSearchCoordinator
+                         interimResultCallback(baseline);
+                     }
+                     : null;
+-            SolverResult passResult = RunBeamWidthPortfolioPass(
+-                root, policy, passProfile, passClock, SolveMember, publishBaseline);
++            SolverResult RunBaseline(SolverSearchProfile baselineProfile)
++                => RunBeamWidthPortfolioPass(root, beamPolicy, baselineProfile,
++                    ReferenceEquals(baselineProfile, passProfile) ? passClock : Stopwatch.StartNew(),
++                    SolveMember, publishBaseline);
++            SolverResult passResult = policy.Research is { Scheduler: "portfolio" }
++                ? RunNoveltyPortfolioPass(root, displayNames, battleDamage, policy, passProfile,
++                    passClock, initialPotionPolicyOverride, cancellationToken, progressCallback,
++                    interimResultCallback, RunBaseline)
++                : RunBaseline(passProfile);
+             ObserveSmartLayerMemory(
+                 policy, memoryForecast, passAllocatedAtStart, passTransitionsAtStart,
+                 passResult, passProfile, completedPotionCount: 0);
+@@ -310,7 +320,7 @@ internal static partial class CombatSearchCoordinator
+                     root,
+                     displayNames,
+                     battleDamage,
+-                    policy,
++                    beamPolicy,
+                     cancellationToken,
+                     progressCallback,
+                     passProfile,
+diff --git a/src/Search/SearchPolicySnapshot.cs b/src/Search/SearchPolicySnapshot.cs
+index 72220df..b10305d 100644
+--- a/src/Search/SearchPolicySnapshot.cs
++++ b/src/Search/SearchPolicySnapshot.cs
+@@ -19,6 +19,7 @@ internal sealed record SearchPolicySnapshot(
+     SearchFramePressureSignal FramePressureSignal,
+     SearchMemoryPressureSignal MemoryPressureSignal)
+ {
++    public BfwsResearchOptions? Research { get; init; }
+     public bool Act3BossStrategy { get; init; }
+     internal static bool IsAct3BossEncounter(int actIndex, string? encounterId)
+         => actIndex == 2 && encounterId is "TEST_SUBJECT_BOSS" or "AEONGLASS_BOSS" or "QUEEN_BOSS";
+diff --git a/src/Testing/UnattendedTestRunner.Executor.cs b/src/Testing/UnattendedTestRunner.Executor.cs
+index 43fb30e..8c448e5 100644
+--- a/src/Testing/UnattendedTestRunner.Executor.cs
++++ b/src/Testing/UnattendedTestRunner.Executor.cs
+@@ -39,6 +39,12 @@ internal sealed partial class UnattendedTestRunner
+             bool expectedCardPlayed = request.ExpectedPlayedCardId == null;
+             bool expectedPotionUsed = request.ExpectedUsedPotionId == null;
+             bool expectedPlayerPowerObserved = request.ExpectedObservedPlayerPowerId == null;
++            if (request.ScenarioId == "GENERATED-BFWS-RESEARCH")
++            {
++                _ = ApplySettingsOverrides();
++                await runner.RunBfwsResearchAsync(combatState, player);
++                return Observation(combatEnded: !CombatManager.Instance.IsInProgress);
++            }
+             if (request.ScenarioId == "ROUTE-ROW-REUSE")
+             {
+                 await runner.AssertRouteRowReuseAndMeasureAsync();
+diff --git a/src/Runtime/SolverController.BfwsResearch.cs b/src/Runtime/SolverController.BfwsResearch.cs
+new file mode 100644
+index 0000000..cce5174
+--- /dev/null
++++ b/src/Runtime/SolverController.BfwsResearch.cs
+@@ -0,0 +1,30 @@
++using Godot;
++using MegaCrit.Sts2.Core.Combat;
++using MegaCrit.Sts2.Core.Nodes;
++
++namespace CombatSolver;
++
++internal static partial class SolverController
++{
++    // Isolated experiment only: install the already measured result at the normal deployment boundary.
++    internal static void StartBfwsResearchDeployment(NGame host, CombatState state, SolverResult result, Action<CombatState> onCombatEnd)
++    {
++        AssertMainThread();
++        BeginCombat(state);
++        if (CombatReplayRecording.TestCombatEndObserver != null)
++            throw new InvalidOperationException("Research deployment cannot replace an active replay observer.");
++        CombatReplayRecording.TestCombatEndObserver = onCombatEnd;
++        _combat.AutomaticSearchPaused = false;
++        _combat.AutomaticSearchPausedTurn = null;
++        _combat.LatestResult = result;
++        _combat.LatestStamp = LiveCombatStamp.Capture(state);
++        _combat.ContinuationSource = result;
++        _combat.FullAutoEnabled = true;
++        _combat.SearchesStarted = 1;
++        _combat.ReplanCounts[ReplanCause.InitialSearch] = 1;
++        LastCompletedResultForTesting = result;
++        BattleDamageTracker.RegisterPlan(state, result);
++        SolverOverlay.ShowResult(host, SolverOverlaySnapshot.Capture(result, unexpectedReplan: false));
++        StartFullAutoDeployment(host, state, result);
++    }
++}
+diff --git a/src/Search/BfwsBoundedOpen.cs b/src/Search/BfwsBoundedOpen.cs
+new file mode 100644
+index 0000000..2a1f22c
+--- /dev/null
++++ b/src/Search/BfwsBoundedOpen.cs
+@@ -0,0 +1,33 @@
++namespace CombatSolver;
++
++// A stable double-ended queue releases the worst entry as soon as the frontier
++// reaches its bound. It never retains tombstones containing simulation graphs.
++internal sealed class BfwsBoundedOpen<T>(int capacity)
++{
++    private readonly SortedSet<Entry> _entries = new(Comparer<Entry>.Create(
++        (a, b) => a.Priority.CompareTo(b.Priority)));
++    private sealed record Entry(T Value, (double Primary, double Secondary, long Sequence) Priority);
++
++    public int Count => _entries.Count;
++    public IEnumerable<T> Values => _entries.Select(entry => entry.Value);
++
++    public bool Enqueue(T value, (double, double, long) priority, out T dropped)
++    {
++        if (!_entries.Add(new(value, priority)))
++            throw new InvalidOperationException("OPEN priorities require a unique sequence.");
++        if (_entries.Count <= capacity) { dropped = default!; return false; }
++        Entry worst = _entries.Max!;
++        _entries.Remove(worst);
++        dropped = worst.Value;
++        return true;
++    }
++
++    public T Dequeue()
++    {
++        Entry best = _entries.Min ?? throw new InvalidOperationException("OPEN is empty.");
++        _entries.Remove(best);
++        return best.Value;
++    }
++
++    public void Clear() => _entries.Clear();
++}
+diff --git a/src/Search/BfwsEscapeBudget.cs b/src/Search/BfwsEscapeBudget.cs
+new file mode 100644
+index 0000000..da38b6d
+--- /dev/null
++++ b/src/Search/BfwsEscapeBudget.cs
+@@ -0,0 +1,15 @@
++namespace CombatSolver;
++
++// Shared by all familiar descendants of one nearest novel ancestor. A novel
++// descendant starts its own allowance; siblings never replenish this allowance.
++internal sealed class BfwsEscapeBudget(int maximum)
++{
++    public int Admitted { get; private set; }
++
++    public bool TryAdmit()
++    {
++        if (Admitted >= maximum) return false;
++        Admitted++;
++        return true;
++    }
++}
+diff --git a/src/Search/BfwsPackedNovelty.cs b/src/Search/BfwsPackedNovelty.cs
+new file mode 100644
+index 0000000..2518e44
+--- /dev/null
++++ b/src/Search/BfwsPackedNovelty.cs
+@@ -0,0 +1,108 @@
++namespace CombatSolver;
++
++internal enum BfwsFactKind : byte { Scalar, Energy, Block, Hp, Zone, Draw, Power }
++
++// Identity only: names are immutable model IDs, never live model references or rendered text.
++internal readonly record struct BfwsFact(BfwsFactKind Kind, int Slot = 0, string? Key = null,
++    int Value = 0, int Detail = 0);
++
++internal sealed class BfwsPackedNovelty(int width, int maximumEntries)
++{
++    private readonly Dictionary<BfwsFact, int> _atoms = [];
++    private readonly Dictionary<(int Health, int Potions), HashSet<ulong>> _tables = [];
++    private readonly List<int> _facts = [];
++    private readonly List<int> _changed = [];
++    private readonly HashSet<int> _parentFacts = [];
++    private (int Health, int Potions)? _parentPartition;
++    private bool _parentComplete;
++
++    public int Entries { get; private set; }
++    public int AtomCount => _atoms.Count;
++    public int Partitions => _tables.Count;
++    public bool LimitReached { get; private set; }
++    public long Unary { get; private set; }
++    public long Binary { get; private set; }
++    public long Familiar { get; private set; }
++    public long PairVisits { get; private set; }
++
++    // Every tuple of this already-generated parent is in its partition's history. Within
++    // that same partition, pairs of unchanged facts therefore need neither lookup nor insertion.
++    public void PrepareParent((int Health, int Potions) partition, IReadOnlyList<BfwsFact> facts)
++    {
++        _parentPartition = partition;
++        _parentComplete = !LimitReached;
++        _parentFacts.Clear();
++        foreach (BfwsFact fact in facts)
++        {
++            if (!_atoms.TryGetValue(fact, out int id))
++                throw new InvalidOperationException("Novelty parent was not previously generated.");
++            _parentFacts.Add(id);
++        }
++    }
++
++    public int Evaluate((int Health, int Potions) partition, IReadOnlyList<BfwsFact> features)
++    {
++        if (width is < 1 or > 2) throw new ArgumentOutOfRangeException(nameof(width));
++        _facts.Clear();
++        foreach (BfwsFact feature in features)
++        {
++            if (!_atoms.TryGetValue(feature, out int id))
++                _atoms.Add(feature, id = _atoms.Count + 1);
++            _facts.Add(id);
++        }
++        _facts.Sort();
++        int distinct = 0;
++        for (int i = 0; i < _facts.Count; i++)
++            if (distinct == 0 || _facts[i] != _facts[distinct - 1])
++                _facts[distinct++] = _facts[i];
++        if (distinct < _facts.Count) _facts.RemoveRange(distinct, _facts.Count - distinct);
++        if (!_tables.TryGetValue(partition, out HashSet<ulong>? seen))
++            _tables.Add(partition, seen = []);
++
++        bool reuseParent = _parentComplete && _parentPartition == partition;
++        _changed.Clear();
++        int novelty = width + 1;
++        for (int i = 0; i < _facts.Count; i++)
++        {
++            if (reuseParent && _parentFacts.Contains(_facts[i])) continue;
++            _changed.Add(i);
++            if (Record((uint)_facts[i], seen)) novelty = 1;
++        }
++        if (width == 2)
++        {
++            int changedCursor = 0;
++            for (int i = 0; i < _facts.Count; i++)
++            {
++                bool changed = changedCursor < _changed.Count && _changed[changedCursor] == i;
++                if (changed)
++                {
++                    changedCursor++;
++                    for (int j = i + 1; j < _facts.Count; j++) ObservePair(i, j);
++                }
++                else
++                {
++                    for (int c = changedCursor; c < _changed.Count; c++) ObservePair(i, _changed[c]);
++                }
++            }
++        }
++        if (novelty == 1) Unary++; else if (novelty == 2 && width == 2) Binary++; else Familiar++;
++        return novelty;
++
++        void ObservePair(int i, int j)
++        {
++            PairVisits++;
++            // Preserve the original increasing-(i,j) insertion order, including at capacity.
++            if (Record(((ulong)(uint)_facts[i] << 32) | (uint)_facts[j], seen) && novelty > 1)
++                novelty = 2;
++        }
++    }
++
++    private bool Record(ulong tuple, HashSet<ulong> seen)
++    {
++        if (seen.Contains(tuple)) return false;
++        if (Entries >= maximumEntries) { LimitReached = true; return true; }
++        seen.Add(tuple);
++        Entries++;
++        return true;
++    }
++}
+diff --git a/src/Search/BfwsResearchNovelty.cs b/src/Search/BfwsResearchNovelty.cs
+new file mode 100644
+index 0000000..ae95981
+--- /dev/null
++++ b/src/Search/BfwsResearchNovelty.cs
+@@ -0,0 +1,69 @@
++namespace CombatSolver;
++
++// Research-only pure-value novelty table: evaluated and frozen at generation time.
++internal sealed class BfwsResearchNovelty(int width, int maximumEntries)
++{
++    private readonly Dictionary<string, int> _atoms = new(StringComparer.Ordinal);
++    private readonly Dictionary<(int Health, int Potions), HashSet<ulong>> _tables = [];
++    public int Entries { get; private set; }
++    public int AtomCount => _atoms.Count;
++    public int Partitions => _tables.Count;
++    public bool LimitReached { get; private set; }
++    public long Unary { get; private set; }
++    public long Binary { get; private set; }
++    public long Familiar { get; private set; }
++
++    public int Evaluate((int Health, int Potions) partition, IEnumerable<string> features)
++    {
++        if (width is < 1 or > 2) throw new ArgumentOutOfRangeException(nameof(width));
++        int[] facts = features.Distinct(StringComparer.Ordinal).Select(fact =>
++        {
++            if (!_atoms.TryGetValue(fact, out int id)) _atoms.Add(fact, id = _atoms.Count + 1);
++            return id;
++        }).Order().ToArray();
++        if (!_tables.TryGetValue(partition, out HashSet<ulong>? seen))
++            _tables.Add(partition, seen = []);
++        int novelty = width + 1;
++        foreach (int atom in facts)
++            if (!seen.Contains((uint)atom)) novelty = 1;
++        if (width == 2 && novelty > 1)
++            for (int i = 0; i < facts.Length; i++)
++                for (int j = i + 1; j < facts.Length; j++)
++                    if (!seen.Contains(Pair(facts[i], facts[j]))) novelty = 2;
++        // Insert all true tuples even when novelty is already 1. This matters on later states.
++        foreach (int atom in facts) Add((uint)atom);
++        if (width == 2)
++            for (int i = 0; i < facts.Length; i++)
++                for (int j = i + 1; j < facts.Length; j++) Add(Pair(facts[i], facts[j]));
++        if (novelty == 1) Unary++; else if (novelty == 2 && width == 2) Binary++; else Familiar++;
++        return novelty;
++        void Add(ulong tuple)
++        {
++            if (seen.Contains(tuple)) return;
++            if (Entries >= maximumEntries) { LimitReached = true; return; }
++            seen.Add(tuple); Entries++;
++        }
++    }
++    internal static bool IsPrunedByWidth(int novelty, int maximumWidth, bool enabled)
++        => enabled && novelty > maximumWidth;
++
++    private static ulong Pair(int a, int b) => ((ulong)(uint)a << 32) | (uint)b;
++}
++
++internal sealed record BfwsResearchOptions
++{
++    public string Scheduler { get; init; } = "beam"; // beam, gbfs, bfws, exact
++    public string Features { get; init; } = "coarse"; // coarse, structured
++    public string Encoding { get; init; } = "legacy"; // legacy, packed, delta
++    public int Width { get; init; } = 1;
++    public bool RawFinite { get; init; }
++    public bool PruneNonNovel { get; init; }
++    public int FamiliarAllowance { get; init; }
++    public bool BoundedOpen { get; init; }
++    public int ExplorationTimeDivisor { get; init; } = 4;
++    public int ExplorationMaxNodes { get; init; } = 1500;
++    public int MaxActions { get; init; } = 128;
++    public int MaxTurns { get; init; } = 32;
++    public int MaxOpen { get; init; } = 2048;
++    public int MaxNoveltyEntries { get; init; } = 1_000_000;
++}
+diff --git a/src/Search/CombatBeamSolver.BfwsResearch.cs b/src/Search/CombatBeamSolver.BfwsResearch.cs
+new file mode 100644
+index 0000000..a46b87a
+--- /dev/null
++++ b/src/Search/CombatBeamSolver.BfwsResearch.cs
+@@ -0,0 +1,327 @@
++using System.Diagnostics;
++using System.Numerics;
++using CombatSolver.Engine.InCombat.Simulation;
++
++namespace CombatSolver;
++
++internal sealed partial class CombatBeamSolver
++{
++    private ResearchRun _research => _run.Research;
++    private sealed class ResearchRun
++    {
++        public long Generated;
++        public int PeakOpen;
++        public int HorizonLeaves;
++        public int NonNovelPruned;
++        public int FamiliarAdmitted;
++        public int OpenDropped;
++        public int Wins;
++        public long? FirstVictoryMs;
++        public int? FirstVictoryExpanded;
++        public int? MinimumCumulativeLoss;
++        public int? MinimumLossExpanded;
++        public long? MinimumLossMs;
++        public IReadOnlyList<PlanAction>? MinimumLossActions;
++        public string Stop = "not_started";
++        public int NoveltyEntries;
++        public int NoveltyAtoms;
++        public int NoveltyPartitions;
++        public long Unary;
++        public long Binary;
++        public long Familiar;
++        public List<object> Improvements = [];
++        public List<BfwsFact> Facts = [];
++        public Dictionary<(string Id, int Upgrade), int> ZoneCounts = [];
++        public List<(string Id, int Upgrade)> ZoneOrder = [];
++        public object Describe() => new { Generated, PeakOpen, HorizonLeaves, NonNovelPruned, FamiliarAdmitted, OpenDropped, Wins, FirstVictoryMs,
++            FirstVictoryExpanded, MinimumCumulativeLoss, MinimumLossExpanded, MinimumLossMs,
++            MinimumLossActions, Stop, NoveltyEntries, NoveltyAtoms, NoveltyPartitions,
++            Unary, Binary, Familiar, Improvements };
++    }
++    private void ObserveResearchCandidate(SearchNode node, Stopwatch clock)
++    {
++        if (policy.Research == null) return;
++        _research.Generated++;
++        var s = node.Snapshot;
++        if (!s.AllEnemiesDead || s.PlayerDead || s.HasRisk || s.BoundaryReason != SearchBoundaryReason.None) return;
++        _research.Wins++;
++        _research.FirstVictoryMs ??= clock.ElapsedMilliseconds;
++        _research.FirstVictoryExpanded ??= _run.Expanded;
++        if (_research.MinimumCumulativeLoss is { } previous && previous <= s.CumulativePlayerHpLost) return;
++        _research.MinimumCumulativeLoss = s.CumulativePlayerHpLost;
++        _research.MinimumLossExpanded = _run.Expanded;
++        _research.MinimumLossMs = clock.ElapsedMilliseconds;
++        _research.MinimumLossActions = node.Actions.ToArray();
++        _research.Improvements.Add(new { elapsedMs = clock.ElapsedMilliseconds, expanded = _run.Expanded,
++            loss = s.CumulativePlayerHpLost, potions = node.PotionCount, turn = node.Turn });
++    }
++
++    private bool RunResearchOpen(List<SearchNode> initial, List<SearchNode> completed,
++        Stopwatch clock, ref SearchNode fallback, Func<SearchNode, bool> hpTarget,
++        Func<SearchNode, int, int, bool> beforeParent,
++        Action<SearchNode, int, int> afterParent, Action<SearchNode> observeBoundary,
++        out bool targetReached, out int turnLayers)
++    {
++        BfwsResearchOptions options = policy.Research!;
++        if (options.Scheduler is not ("gbfs" or "bfws" or "exact")
++            || options.Features is not ("coarse" or "structured") || options.MaxOpen < 1
++            || options.Encoding is not ("legacy" or "packed" or "delta")
++            || options.MaxTurns < 1 || options.MaxActions < 1 || options.FamiliarAllowance < 0)
++            throw new InvalidOperationException("Invalid research search options.");
++        PriorityQueue<(SearchNode Node, BfwsEscapeBudget? Escape), (double Primary, double Secondary, long Sequence)> open = new();
++        BfwsBoundedOpen<(SearchNode Node, BfwsEscapeBudget? Escape)>? bounded = options.BoundedOpen ? new(options.MaxOpen) : null;
++        int OpenCount() => bounded?.Count ?? open.Count;
++        IEnumerable<(SearchNode Node, BfwsEscapeBudget? Escape)> OpenEntries()
++            => bounded?.Values ?? open.UnorderedItems.Select(item => item.Element);
++        var novelty = new BfwsResearchNovelty(options.Width, options.MaxNoveltyEntries);
++        BfwsPackedNovelty? packed = options.Encoding == "legacy" ? null : new(options.Width, options.MaxNoveltyEntries);
++        long sequence = 0;
++        List<SearchNode> noveltyDropped = [];
++        int maximumTurn = _startTurnNumber;
++        bool stopped = false;
++        targetReached = false;
++        _research.Stop = "open_exhausted";
++        foreach (SearchNode seed in initial) Enqueue(seed, initialSeed: true);
++        initial.Clear();
++        try
++        {
++            while (OpenCount() > 0)
++            {
++                cancellationToken.ThrowIfCancellationRequested();
++                if (_run.Expanded >= _profile.MaxExpandedNodes) { _research.Stop = "node_limit"; break; }
++                if (clock.ElapsedMilliseconds >= _profile.SoftTimeBudgetMilliseconds)
++                { _research.Stop = "time_limit"; stopped = true; break; }
++                var (parent, escape) = bounded is null ? open.Dequeue() : bounded.Dequeue();
++                try
++                {
++                    if (parent.ActionCount >= options.MaxActions || parent.Turn >= _startTurnNumber + options.MaxTurns)
++                    { _research.HorizonLeaves++; continue; }
++                    if (!options.RawFinite && !beforeParent(parent, OpenCount(), completed.Count))
++                    { _research.Stop = "adoption"; stopped = true; break; }
++                    BeginCyclePlanningLayer();
++                    if (options.Scheduler == "bfws" && options.Encoding == "delta")
++                        packed!.PrepareParent((parent.Snapshot.EnemyHp / 10, parent.PotionCount), CapturePackedFacts(parent, options.Features));
++                    List<SearchNode> children = [];
++                    try
++                    {
++                        foreach (SearchNode generated in options.RawFinite ? ExpandResearchRaw(parent) : Expand(parent)) children.Add(generated);
++                        if (!options.RawFinite)
++                        {
++                            List<SearchNode> boundaries = children.Where(n => n.IsTerminal || n.Turn > parent.Turn).ToList();
++                            List<SearchNode> annotated = AnnotateTurnOutcomes(boundaries);
++                            ReleaseDroppedSnapshots(boundaries, annotated);
++                            children = children.Where(n => !n.IsTerminal && n.Turn == parent.Turn).Concat(annotated).ToList();
++                        }
++                        foreach (SearchNode child in children)
++                        {
++                            ObserveResearchCandidate(child, clock);
++                            maximumTurn = Math.Max(maximumTurn, child.Turn);
++                            if (child.Score > fallback.Score) fallback = child;
++                            if (!options.RawFinite && (child.IsTerminal || child.Turn > parent.Turn))
++                                observeBoundary(child);
++                            if (child.IsTerminal)
++                            {
++                                if (options.Scheduler == "bfws") _ = NoveltyFor(child);
++                                completed.Add(child);
++                                if (!options.RawFinite) targetReached |= hpTarget(child);
++                            }
++                            else Enqueue(child, parentEscape: escape);
++                        }
++                        if (noveltyDropped.Count > 0)
++                        {
++                            // A published sibling can share the same snapshot. Release by snapshot
++                            // identity only after every successor has reached its final owner.
++                            List<SearchNode> retained = OpenEntries().Select(item => item.Node)
++                                .Concat(completed).Append(parent).ToList();
++                            ReleaseDroppedSnapshots(noveltyDropped, retained);
++                            noveltyDropped.Clear();
++                        }
++                        children.Clear(); // Ownership moved to OPEN or completed, or released above.
++                    }
++                    finally { foreach (SearchNode child in children) child.Snapshot.ReleaseSimulator(); }
++                    if (completed.Count > 64)
++                    {
++                        List<SearchNode> ranked = Retention.RankFinal(completed);
++                        ReleaseDroppedSnapshots(completed, ranked);
++                        completed.Clear(); completed.AddRange(ranked);
++                    }
++                }
++                finally { parent.Snapshot.ReleaseSimulator(); }
++                if (!options.RawFinite) afterParent(parent, OpenCount(), completed.Count);
++                if (targetReached) { _research.Stop = "hp_target"; break; }
++                if (open.Count > options.MaxOpen) { _research.Stop = "open_limit"; break; }
++                if (packed?.LimitReached ?? novelty.LimitReached) { _research.Stop = "novelty_limit"; break; }
++            }
++            turnLayers = Math.Max(0, maximumTurn - _startTurnNumber);
++            return stopped;
++        }
++        finally
++        {
++            foreach (var pending in OpenEntries()) pending.Node.Snapshot.ReleaseSimulator();
++            open.Clear();
++            bounded?.Clear();
++            foreach (SearchNode dropped in noveltyDropped) dropped.Snapshot.ReleaseSimulator();
++            noveltyDropped.Clear();
++            _research.NoveltyEntries = packed?.Entries ?? novelty.Entries;
++            _research.NoveltyAtoms = packed?.AtomCount ?? novelty.AtomCount;
++            _research.NoveltyPartitions = packed?.Partitions ?? novelty.Partitions;
++            _research.Unary = packed?.Unary ?? novelty.Unary;
++            _research.Binary = packed?.Binary ?? novelty.Binary;
++            _research.Familiar = packed?.Familiar ?? novelty.Familiar;
++        }
++        int NoveltyFor(SearchNode node) => packed is null
++            ? novelty.Evaluate((node.Snapshot.EnemyHp / 10, node.PotionCount), CaptureResearchFeatures(node, options.Features))
++            : packed.Evaluate((node.Snapshot.EnemyHp / 10, node.PotionCount), CapturePackedFacts(node, options.Features));
++        void Enqueue(SearchNode node, bool initialSeed = false, BfwsEscapeBudget? parentEscape = null)
++        {
++            int w = options.Scheduler == "bfws"
++                ? NoveltyFor(node) : 0;
++            if (!initialSeed && options.Scheduler == "bfws" && BfwsResearchNovelty.IsPrunedByWidth(w, options.Width, options.PruneNonNovel))
++            {
++                if (parentEscape?.TryAdmit() != true)
++                {
++                    _research.NonNovelPruned++;
++                    noveltyDropped.Add(node);
++                    return;
++                }
++                _research.FamiliarAdmitted++;
++            }
++            BfwsEscapeBudget? escape = options.Scheduler == "bfws" && options.PruneNonNovel && options.FamiliarAllowance > 0
++                ? initialSeed || w <= options.Width ? new(options.FamiliarAllowance) : parentEscape
++                : null;
++            var rank = options.Scheduler == "exact"
++                ? (-(double)node.ActionCount, 0d, sequence++)
++                : options.Scheduler == "gbfs" ? (-node.Score, 0d, sequence++) : ((double)w, -node.Score, sequence++);
++            if (bounded is null) open.Enqueue((node, escape), rank);
++            else if (bounded.Enqueue((node, escape), rank, out var evicted))
++            {
++                _research.OpenDropped++;
++                noveltyDropped.Add(evicted.Node);
++            }
++            _research.PeakOpen = Math.Max(_research.PeakOpen, OpenCount());
++        }
++    }
++
++    private IReadOnlyList<BfwsFact> CapturePackedFacts(SearchNode node, string mode)
++    {
++        List<BfwsFact> facts = _research.Facts;
++        facts.Clear();
++        var s = node.Snapshot;
++        ReadOnlySpan<int> values = [s.Energy, s.Stars, s.HandCount, s.ZeroCostPlayableCount,
++            s.ReachableHandValue, s.PersistentBuffValue, s.LatentSetupValue, s.FutureResourceValue,
++            s.RetainedAttackValue, s.ReplayPotentialValue, s.DelayedDamageValue, s.ReactiveDamageValue,
++            s.StrategicEffects.DamagePotential, s.StrategicEffects.PreventionPotential,
++            s.StrategicEffects.ResourcePotential, s.StrategicEffects.CardAccessPotential,
++            s.StrategicEffects.ScalingPotential, s.EnemyStrengthSuppression, s.EnemyWeakTurns, s.EnemyVulnerableTurns];
++        for (int i = 0; i < values.Length; i++)
++            if (values[i] > 0)
++                facts.Add(new(BfwsFactKind.Scalar, i, Value: i < 4 || i >= 18 ? Math.Min(7, values[i]) : Math.Min(7, 1 + BitOperations.Log2((uint)values[i]))));
++        if (mode != "structured") return facts;
++        facts.Add(new(BfwsFactKind.Energy, Value: s.Energy));
++        facts.Add(new(BfwsFactKind.Block, Value: s.PlayerBlock / 5));
++        facts.Add(new(BfwsFactKind.Hp, Value: s.PlayerHp / 5));
++        var simulator = (CombatPredictionSimulator)s.Simulator;
++        var playerState = simulator.State.GetPlayerCombatState(_player);
++        for (int zone = 0; zone < 4; zone++)
++        {
++            var cards = zone switch { 0 => playerState.Hand.Cards, 1 => playerState.DrawPile.Cards,
++                2 => playerState.DiscardPile.Cards, _ => playerState.ExhaustPile.Cards };
++            _research.ZoneCounts.Clear(); _research.ZoneOrder.Clear();
++            foreach (var card in cards)
++            {
++                var key = (card.Preview.Id.Entry, card.Preview.CurrentUpgradeLevel);
++                if (_research.ZoneCounts.TryGetValue(key, out int count)) _research.ZoneCounts[key] = count + 1;
++                else { _research.ZoneCounts.Add(key, 1); _research.ZoneOrder.Add(key); }
++            }
++            foreach (var key in _research.ZoneOrder)
++                facts.Add(new(BfwsFactKind.Zone, zone, key.Id, key.Upgrade, Math.Min(3, _research.ZoneCounts[key])));
++        }
++        for (int i = 0; i < Math.Min(3, playerState.DrawPile.Cards.Count); i++)
++            facts.Add(new(BfwsFactKind.Draw, i, playerState.DrawPile.Cards[i].Preview.Id.Entry));
++        var combat = (SimulatedCombatState)simulator.State.CombatState;
++        foreach (var power in combat.EffectivePowers())
++            facts.Add(new(BfwsFactKind.Power, ReferenceEquals(power.Owner, _player.Creature) ? 0 : 1, power.Id.Entry, power.Amount));
++        return facts;
++    }
++
++    private IEnumerable<string> CaptureResearchFeatures(SearchNode node, string mode)
++    {
++        var s = node.Snapshot;
++        int[] values = [s.Energy, s.Stars, s.HandCount, s.ZeroCostPlayableCount,
++            s.ReachableHandValue, s.PersistentBuffValue, s.LatentSetupValue, s.FutureResourceValue,
++            s.RetainedAttackValue, s.ReplayPotentialValue, s.DelayedDamageValue, s.ReactiveDamageValue,
++            s.StrategicEffects.DamagePotential, s.StrategicEffects.PreventionPotential,
++            s.StrategicEffects.ResourcePotential, s.StrategicEffects.CardAccessPotential,
++            s.StrategicEffects.ScalingPotential, s.EnemyStrengthSuppression, s.EnemyWeakTurns, s.EnemyVulnerableTurns];
++        for (int i = 0; i < values.Length; i++)
++            if (values[i] > 0) yield return $"scalar:{i}:{(i < 4 || i >= 18 ? Math.Min(7, values[i]) : Math.Min(7, 1 + BitOperations.Log2((uint)values[i])))}";
++        if (mode != "structured") yield break;
++        yield return $"energy:{s.Energy}";
++        yield return $"block:{s.PlayerBlock / 5}";
++        yield return $"hp:{s.PlayerHp / 5}";
++        var simulator = (CombatPredictionSimulator)s.Simulator;
++        var playerState = simulator.State.GetPlayerCombatState(_player);
++        var zones = new[] { playerState.Hand.Cards, playerState.DrawPile.Cards, playerState.DiscardPile.Cards, playerState.ExhaustPile.Cards };
++        for (int zone = 0; zone < zones.Length; zone++)
++        {
++            foreach (var group in zones[zone].GroupBy(c => (c.Preview.Id.Entry, c.Preview.CurrentUpgradeLevel)))
++                yield return $"zone:{zone}:{group.Key.Entry}:{group.Key.CurrentUpgradeLevel}:{Math.Min(3, group.Count())}";
++        }
++        // Preserve leading draw order without physical IDs, RNG counters or action history.
++        for (int i = 0; i < Math.Min(3, playerState.DrawPile.Cards.Count); i++)
++            yield return $"draw:{i}:{playerState.DrawPile.Cards[i].Preview.Id.Entry}";
++        var combat = (SimulatedCombatState)simulator.State.CombatState;
++        foreach (var power in combat.EffectivePowers())
++            yield return $"power:{(ReferenceEquals(power.Owner, _player.Creature) ? "player" : "enemy")}:{power.Id.Entry}:{power.Amount}";
++    }
++
++    // Complete physical-card/target action tree for explicitly choice-free, potion-free small roots.
++    // No TT, dominance, top-k or heuristic pruning. Finite action/turn limits are explicit.
++    private IEnumerable<SearchNode> ExpandResearchRaw(SearchNode parent)
++    {
++        _run.Expanded++;
++        var simulator = (CombatPredictionSimulator)parent.Snapshot.Simulator;
++        var combat = (SimulatedCombatState)simulator.State.CombatState;
++        var hand = simulator.State.GetPlayerCombatState(_player).Hand.Cards;
++        List<PlanAction> actions = [];
++        for (int i = 0; i < hand.Count; i++)
++        {
++            var card = hand[i];
++            if (!combat.CanPlayCard(simulator, card)) continue;
++            string cardKey = CardChoiceSupport.ChoiceCardKey(card);
++            int occurrence = hand.Take(i).Count(c => c.Preview.Id.Entry == card.Preview.Id.Entry);
++            int stateOccurrence = hand.Take(i).Count(c => CardChoiceSupport.ChoiceCardKey(c) == cardKey);
++            foreach (var (index, target) in TargetsFor(card, simulator))
++                actions.Add(new PlanAction(PlanActionKind.PlayCard, parent.Turn, card.Preview.Id.Entry,
++                    occurrence, index, target?.CombatId, CardStateKey: cardKey, CardStateOccurrence: stateOccurrence,
++                    CardUpgradeLevel: card.Preview.CurrentUpgradeLevel));
++        }
++        actions.Add(new PlanAction(PlanActionKind.EndTurn, parent.Turn));
++        foreach (PlanAction action in actions)
++        {
++            cancellationToken.ThrowIfCancellationRequested();
++            var s = ReplayAction(parent, action);
++            if (s.HasRisk || s.BoundaryReason != SearchBoundaryReason.None || BuildPrimaryCardChoiceSpec(s) != null)
++            {
++                s.ReleaseSimulator();
++                throw new InvalidOperationException($"Finite raw fixture contains a choice or unsupported boundary: {action.CardId}.");
++            }
++            bool terminal = s.PlayerDead || s.AllEnemiesDead;
++            SearchNode child = new(action with { EndsPlayerTurn = s.Turn > parent.Turn }, parent.ActionCount + 1,
++                s.PotionUseCount, s.PotionStrategicCost, s.Turn, parent.Traits, 0, s.Score, s.StateKey,
++                s.HasRisk, s.BoundaryReason, terminal, parent, s, parent.CombatProgress.Advance(s))
++                { CumulativeEnemyHpLost = AccumulateEnemyHpLost(parent, s) };
++            if (terminal || s.Turn > parent.Turn)
++            {
++                SearchNode start = FindTurnStart(parent);
++                int block = s.Turn > parent.Turn ? parent.Snapshot.PlayerBlock : s.PlayerBlock;
++                child = child with { Outcome = new TurnOutcome(action.Turn,
++                    Math.Max(0, s.CumulativePlayerHpLost - start.Snapshot.CumulativePlayerHpLost),
++                    Math.Max(0, s.RecoveredPlayerHp - start.Snapshot.RecoveredPlayerHp),
++                    child.CumulativeEnemyHpLost - start.CumulativeEnemyHpLost, 0, block, block,
++                    s.Turn > parent.Turn ? parent.Snapshot.Energy : s.Energy) };
++            }
++            yield return child;
++        }
++    }
++}
+diff --git a/src/Search/CombatSearchCoordinator.NoveltyPortfolio.cs b/src/Search/CombatSearchCoordinator.NoveltyPortfolio.cs
+new file mode 100644
+index 0000000..170c437
+--- /dev/null
++++ b/src/Search/CombatSearchCoordinator.NoveltyPortfolio.cs
+@@ -0,0 +1,58 @@
++using System.Diagnostics;
++
++namespace CombatSolver;
++
++internal static partial class CombatSearchCoordinator
++{
++    private static SolverResult RunNoveltyPortfolioPass(
++        CombatRootSnapshot root, SolverDisplayNames names, BattleDamageSnapshot damage,
++        SearchPolicySnapshot policy, SolverSearchProfile profile, Stopwatch clock,
++        SolverPotionPolicy? potionOverride, CancellationToken cancellation,
++        Action<SolverProgress>? progress, Action<SolverResult>? publish,
++        Func<SolverSearchProfile, SolverResult> solveBaseline)
++    {
++        BfwsResearchOptions options = policy.Research!;
++        if (options.ExplorationTimeDivisor < 2 || options.ExplorationMaxNodes < 1)
++            throw new InvalidOperationException("Exploration requires a bounded share of the request.");
++        SearchRequestWorkTotals totals = policy.RequestWorkTotals!;
++        long expandedBefore = totals.Snapshot().ExpandedNodes;
++        var explorationProfile = profile with
++        {
++            SoftTimeBudgetMilliseconds = Math.Max(1, profile.SoftTimeBudgetMilliseconds / options.ExplorationTimeDivisor),
++            MaxExpandedNodes = Math.Min(profile.MaxExpandedNodes, options.ExplorationMaxNodes),
++        };
++        SolverResult exploration = new CombatBeamSolver(root, names, damage,
++            policy with { Research = options with { Scheduler = "bfws" } }, cancellation,
++            progress, explorationProfile, potionPolicyOverride: potionOverride).Solve();
++        long explorationExpanded = totals.Snapshot().ExpandedNodes - expandedBefore;
++        long explorationElapsed = clock.ElapsedMilliseconds;
++        object? explorationDetails = exploration.ExperimentalBfws;
++        if (IsCompleteVictory(exploration)) publish?.Invoke(exploration);
++        bool settled = exploration.ResultScope != SolverResultScope.SearchCompletion
++            || !policy.PotionStrategy.HasForcedDirectives && HasReachedAcceptableBattleHpLoss(policy, exploration);
++        int remainingNodes = (int)Math.Max(0, profile.MaxExpandedNodes - explorationExpanded);
++        int remainingMs = (int)Math.Max(0, profile.SoftTimeBudgetMilliseconds - clock.ElapsedMilliseconds);
++        if (settled || remainingNodes == 0 || remainingMs == 0)
++        {
++            exploration.ExperimentalBfws = new { stop = "portfolio_exploration", explorationExpanded,
++                explorationElapsed, explorationDetails, baselineRan = false, settled, remainingNodes, remainingMs };
++            return exploration;
++        }
++        cancellation.ThrowIfCancellationRequested();
++        SolverResult baseline = solveBaseline(profile with
++        {
++            MaxExpandedNodes = remainingNodes,
++            SoftTimeBudgetMilliseconds = remainingMs,
++        });
++        bool selectExploration = baseline.ResultScope == SolverResultScope.SearchCompletion
++            && IsCompleteVictory(exploration)
++            && IsBetterPotionPolicyResult(root, policy, exploration, baseline);
++        SolverResult selected = selectExploration ? exploration : baseline;
++        selected.ExperimentalBfws = new { stop = "portfolio", explorationExpanded, explorationElapsed,
++            explorationDetails, baselineRan = true, selected = selectExploration ? "exploration" : "beam",
++            explorationLoss = exploration.ProjectedBattleHpLost, explorationWon = IsCompleteVictory(exploration),
++            baselineLoss = baseline.ProjectedBattleHpLost, baselineWon = IsCompleteVictory(baseline),
++            remainingNodes, remainingMs };
++        return selected;
++    }
++}
+diff --git a/src/Testing/UnattendedTestRunner.BfwsResearch.cs b/src/Testing/UnattendedTestRunner.BfwsResearch.cs
+new file mode 100644
+index 0000000..e642945
+--- /dev/null
++++ b/src/Testing/UnattendedTestRunner.BfwsResearch.cs
+@@ -0,0 +1,96 @@
++using System.Text.Json;
++using MegaCrit.Sts2.Core.Combat;
++using MegaCrit.Sts2.Core.Entities.Players;
++
++namespace CombatSolver;
++
++internal sealed partial class UnattendedTestRunner
++{
++    private async Task RunBfwsResearchAsync(CombatState combat, Player player)
++    {
++        string area = _request.EvidenceDirectory ?? throw new InvalidOperationException("Research requires output directory.");
++        string input = File.ReadAllText(Path.Combine(area, "research-options.json"));
++        BfwsResearchOptions[] variants = input.TrimStart().StartsWith('[')
++            ? JsonSerializer.Deserialize<BfwsResearchOptions[]>(input, UnattendedTestFiles.JsonOptions)!
++            : [JsonSerializer.Deserialize<BfwsResearchOptions>(input, UnattendedTestFiles.JsonOptions)!];
++        if (variants.Length is < 1 or > 5 || variants.Any(v => v == null)) throw new InvalidDataException("Research batch requires 1..5 variants.");
++        ContinuationStamp before = ContinuationStamp.CaptureLive(combat);
++        var enemies = combat.Enemies.ToArray();
++        var liveBefore = enemies.Select(enemy => CaptureActual(combat, player, enemy)).ToArray();
++        CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
++        var rootBefore = CaptureKnownRouteRootStates(root, player, enemies);
++        var names = SolverDisplayNames.Capture(combat);
++        var damage = BattleDamageTracker.Observe(combat);
++        var settings = SolverSettings.Capture();
++        var captured = SolverController.CaptureSearchPolicy(settings, combat, false, null);
++        bool smart = File.Exists(Path.Combine(area, "smart.flag"));
++        bool native = File.Exists(Path.Combine(area, "native.flag"));
++        if (native && variants.Length != 1) throw new InvalidOperationException("Native deployment requires one selected variant.");
++        List<object> reports = [];
++        using CancellationTokenSource cancellation = new(TimeSpan.FromSeconds(Math.Max(1, _request.TimeoutSeconds - _stopwatch.Elapsed.TotalSeconds)));
++        foreach (BfwsResearchOptions options in variants)
++        {
++            var policy = captured with { Research = options, MaxDegreeOfParallelism = 1, FixedBudget = true,
++                Profile = captured.Profile with { SoftTimeBudgetMilliseconds = captured.BudgetOverrideMilliseconds ?? captured.Profile.SoftTimeBudgetMilliseconds } };
++            SetStage($"bfws_research_{options.Scheduler}_{options.Features}_{options.Width}");
++            // A direct single solver with explicit potions disabled isolates scheduling.
++            SolverResult result = await Task.Run(() => smart
++                ? CombatSearchCoordinator.Solve(root, names, damage, policy, cancellation.Token, null)
++                : new CombatBeamSolver(root, names, damage, policy, cancellation.Token,
++                    searchProfile: policy.Profile, potionPolicyOverride: SolverPotionPolicy.Disabled,
++                    maximumPotionUses: 0).Solve(), cancellation.Token);
++            _writer.CaptureSolverResult(result);
++            var report = new { options, policy.Profile, ordinal = reports.Count,
++                result = SolverDiagnostics.DescribeResult(result), research = result.ExperimentalBfws,
++                actions = result.BestNode.Actions, effectivePolicy = CombatBugReportExporter.LatestEffectivePolicy };
++            reports.Add(report);
++            _writer.WriteGeneratedArtifact($"research-{reports.Count - 1}.json", report);
++            _writer.WriteGeneratedArtifact("research-batch.json", reports);
++            _writer.WriteGeneratedArtifact("research.json", report);
++            if (ContinuationStamp.CaptureLive(combat) != before) throw new InvalidOperationException("Research changed live root.");
++            var rootAfter = CaptureKnownRouteRootStates(root, player, enemies);
++            for (int i = 0; i < enemies.Length; i++)
++            {
++                AssertSnapshotEqual(liveBefore[i], CaptureActual(combat, player, enemies[i]), "BfwsResearch", "live_root");
++                AssertSnapshotEqual(rootBefore[i], rootAfter[i], "BfwsResearch", "shadow_root");
++            }
++            _completedChecks.Add($"BfwsResearch:{reports.Count}:LiveAndShadowRootUnchanged");
++            if (native)
++            {
++                if (!result.Snapshot.AllEnemiesDead || result.Snapshot.PlayerDead || result.Snapshot.HasRisk)
++                    throw new InvalidOperationException("Native research deployment requires a predicted safe victory.");
++                using var ledger = new CombatReplayOutcome(combat);
++                SolverController.SetStopFullAutoOnCombatEnd(false, persist: false);
++                SolverController.SetStopFullAutoOnDeathTurn(false, persist: false);
++                SolverController.SetStopFullAutoOnWorseRecalculation(false, persist: false);
++                _protocolHost.EnableAutomaticTurnSearch();
++                bool observedEnd = false;
++                try
++                {
++                    SolverController.StartBfwsResearchDeployment(_host, combat, result, state =>
++                    {
++                        observedEnd = true;
++                        ledger.Complete(state);
++                    });
++                    while (CombatManager.Instance.IsInProgress)
++                    {
++                        EnsureWithinDeadline();
++                        if (SolverController.UnexpectedReplanCount != 0 || SolverController.LastSearchFailureForTesting != null)
++                            throw new InvalidOperationException("Native research deployment replanned or failed: " + SolverController.ReplanAuditForBugReport);
++                        await NextFrameAsync();
++                    }
++                    var outcome = ledger.Capture(combat, ended: true);
++                    _writer.WriteGeneratedArtifact("native-outcome.json", new { outcome, expectedLoss = result.ProjectedBattleHpLost,
++                        expectedPotions = result.ProjectedBattlePotionCount, unexpectedReplans = SolverController.UnexpectedReplanCount,
++                        observedEnd, finalPlayerMaxHp = player.Creature.MaxHp, forensicOutcome = CombatBugReportExporter.CaptureOutcome(combat) });
++                    if (!observedEnd || !outcome.Survived || outcome.FinalEnemyHp != 0 || outcome.HpLost != result.ProjectedBattleHpLost
++                        || outcome.Potions.Length != result.ProjectedBattlePotionCount || outcome.UnattributedHpLoss != 0
++                        || SolverController.UnexpectedReplanCount != 0)
++                        throw new InvalidOperationException("Native battle outcome differed from the frozen initial result.");
++                    _completedChecks.Add("BfwsResearch:NativeVictory:ExactLossPotions:NoUnexpectedReplans");
++                }
++                finally { CombatReplayRecording.TestCombatEndObserver = null; }
++            }
++        }
++    }
++}
+diff --git a/tools/BfwsResearchChecks/BfwsResearchChecks.csproj b/tools/BfwsResearchChecks/BfwsResearchChecks.csproj
+new file mode 100644
+index 0000000..43ebee1
+--- /dev/null
++++ b/tools/BfwsResearchChecks/BfwsResearchChecks.csproj
+@@ -0,0 +1 @@
++<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net9.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup><ItemGroup><Compile Include="../../src/Search/BfwsResearchNovelty.cs" Link="BfwsResearchNovelty.cs" /><Compile Include="../../src/Search/BfwsPackedNovelty.cs" Link="BfwsPackedNovelty.cs" /><Compile Include="../../src/Search/BfwsEscapeBudget.cs" Link="BfwsEscapeBudget.cs" /><Compile Include="../../src/Search/BfwsBoundedOpen.cs" Link="BfwsBoundedOpen.cs" /></ItemGroup></Project>
+diff --git a/tools/BfwsResearchChecks/Program.cs b/tools/BfwsResearchChecks/Program.cs
+new file mode 100644
+index 0000000..b667bd7
+--- /dev/null
++++ b/tools/BfwsResearchChecks/Program.cs
+@@ -0,0 +1,96 @@
++using CombatSolver;
++int checks = 0;
++void Check(bool value, string name) { if (!value) throw new Exception(name); checks++; }
++var w1 = new BfwsResearchNovelty(1, 1000);
++Check(w1.Evaluate((0,0), ["a","b"]) == 1, "first generated state");
++Check(w1.Evaluate((0,0), ["b","a","a"]) == 2, "fact order and duplicates irrelevant");
++Check(w1.Evaluate((0,0), ["a","c"]) == 1, "unary new atom");
++Check(w1.Evaluate((1,0), ["a","b"]) == 1, "partition by h");
++Check(w1.Evaluate((0,1), ["a","b"]) == 1, "partition by potion label");
++var w2 = new BfwsResearchNovelty(2, 1000);
++Check(w2.Evaluate((0,0), ["a","b"]) == 1, "width2 first");
++Check(w2.Evaluate((0,0), ["c","d"]) == 1, "width2 second");
++Check(w2.Evaluate((0,0), ["b","c"]) == 2, "old facts new pair");
++Check(w2.Evaluate((0,0), ["c","b"]) == 3, "pair canonical order");
++Check(w2.Evaluate((0,0), ["a","b"]) == 3, "first novelty1 state records every pair");
++Check(w2.Entries == 7, "exact total unary and pair count");
++var cap = new BfwsResearchNovelty(2, 2);
++cap.Evaluate((0,0), ["a","b","c"]);
++Check(cap.LimitReached && cap.Entries == 2, "table cap explicit and hard");
++var independent = new BfwsResearchNovelty(1, 1000);
++Check(independent.Evaluate((0,0), ["a"]) == 1, "no cross run history");
++var q = new PriorityQueue<string,(double,double,long)>();
++q.Enqueue("familiar high heuristic",(2,-100,0)); q.Enqueue("new low heuristic",(1,0,1));
++q.Enqueue("new better heuristic",(1,-10,2)); q.Enqueue("new equal later",(1,-10,3));
++Check(q.Dequeue() == "new better heuristic", "w then h");
++Check(q.Dequeue() == "new equal later", "stable sequence tie");
++Check(q.Dequeue() == "new low heuristic", "novelty before heuristic");
++Check(q.Dequeue() == "familiar high heuristic", "familiar state retained in open");
++Check(!BfwsResearchNovelty.IsPrunedByWidth(3, 1, false), "unpruned BFWS retains familiar states");
++Check(BfwsResearchNovelty.IsPrunedByWidth(2, 1, true), "k1 prunes above threshold");
++Check(!BfwsResearchNovelty.IsPrunedByWidth(2, 2, true), "k2 retains new pair");
++Check(BfwsResearchNovelty.IsPrunedByWidth(3, 2, true), "k2 prunes familiar");
++Console.WriteLine($"Passed {checks} novelty and scheduling contracts.");
++
++var rootAllowance = new BfwsEscapeBudget(2);
++var siblingAllowance = rootAllowance;
++Check(rootAllowance.TryAdmit(), "root admits first familiar child");
++Check(siblingAllowance.TryAdmit(), "sibling consumes same ancestor allowance");
++Check(!rootAllowance.TryAdmit(), "familiar grandchild cannot reset allowance");
++var novelAllowance = new BfwsEscapeBudget(2);
++Check(novelAllowance.TryAdmit() && novelAllowance.TryAdmit(), "novel child starts an independent allowance");
++Check(!novelAllowance.TryAdmit() && !rootAllowance.TryAdmit(), "both exhausted independently");
++Check(!new BfwsEscapeBudget(0).TryAdmit(), "zero allowance is strict width pruning");
++Console.WriteLine("Passed 6 shared familiar-descendant allowance contracts.");
++
++int comparisons = 0;
++foreach (int width in new[] { 1, 2 })
++foreach (int capacity in new[] { 0, 1, 7, 100, 1_000_000 })
++{
++    var random = new Random(8100 + width * 7 + capacity);
++    var reference = new BfwsResearchNovelty(width, capacity);
++    var packed = new BfwsPackedNovelty(width, capacity);
++    var delta = new BfwsPackedNovelty(width, capacity);
++    List<((int, int) Partition, BfwsFact[] Facts)> history = [];
++    for (int step = 0; step < 1200; step++)
++    {
++        (int, int) partition = (random.Next(5), random.Next(2));
++        List<BfwsFact> facts = [];
++        if (history.Count > 0)
++        {
++            var parent = history[random.Next(history.Count)];
++            delta.PrepareParent(parent.Partition, parent.Facts);
++            if (random.Next(4) != 0) partition = parent.Partition;
++            facts.AddRange(parent.Facts.Where(_ => random.Next(4) != 0));
++        }
++        for (int add = 0; add < random.Next(10); add++)
++            facts.Add(new((BfwsFactKind)random.Next(7), random.Next(12), Key: "id" + random.Next(4), Value: random.Next(6), Detail: random.Next(4)));
++        if (facts.Count > 0) facts.Add(facts[random.Next(facts.Count)]);
++        facts = facts.OrderBy(_ => random.Next()).Take(30).ToList();
++        BfwsFact[] frozen = facts.ToArray();
++        int expected = reference.Evaluate(partition, facts.Select(f => $"{f.Kind}:{f.Slot}:{f.Key}:{f.Value}:{f.Detail}"));
++        int actualPacked = packed.Evaluate(partition, frozen);
++        int actualDelta = delta.Evaluate(partition, frozen);
++        if (expected != actualPacked || expected != actualDelta || reference.Entries != packed.Entries
++            || reference.Entries != delta.Entries || reference.AtomCount != delta.AtomCount
++            || reference.Partitions != delta.Partitions || reference.LimitReached != delta.LimitReached
++            || reference.Unary != delta.Unary || reference.Binary != delta.Binary || reference.Familiar != delta.Familiar)
++            throw new Exception($"Packed/delta mismatch width={width}, capacity={capacity}, step={step}");
++        history.Add((partition, frozen));
++        comparisons++;
++    }
++    if (capacity == 1_000_000 && width == 2 && delta.PairVisits >= packed.PairVisits)
++        throw new Exception("Parent tuples were not skipped in the unrestricted stream.");
++}
++Console.WriteLine($"Passed {comparisons} generated-state packed/delta comparisons against original novelty, including history caps and cross-partition parents.");
++
++var frontier = new BfwsBoundedOpen<string>(2);
++Check(!frontier.Enqueue("old", (1, 0, 0), out _), "first frontier admission");
++Check(!frontier.Enqueue("worst", (2, -10, 1), out _), "frontier fills");
++Check(frontier.Enqueue("new", (1, 0, 2), out string dropped) && dropped == "worst", "evict worst immediately");
++Check(frontier.Count == 2 && frontier.Dequeue() == "old" && frontier.Dequeue() == "new", "bounded frontier preserves stable best order");
++Check(!frontier.Enqueue("kept", (1, 0, 3), out _), "empty frontier reuse");
++frontier.Enqueue("kept2", (1, 0, 4), out _);
++Check(frontier.Enqueue("rejected", (3, 0, 5), out dropped) && dropped == "rejected", "inferior newcomer loses");
++Check(frontier.Values.SequenceEqual(new[] { "kept", "kept2" }), "no evicted graph retained");
++Console.WriteLine("Passed 7 bounded OPEN contracts.");
