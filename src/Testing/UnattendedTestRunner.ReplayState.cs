@@ -369,7 +369,7 @@ internal sealed partial class UnattendedTestRunner
         {
             orbManager = NCombatRoom.Instance?.GetCreatureNode(player.Creature)?.OrbManager
                 ?? throw new InvalidOperationException("replay-state 导入充能球时球位界面不存在。");
-            orbManager.ClearOrbs();
+            ClearReplayOrbVisuals(orbManager);
         }
 
         playerState.OrbQueue.Clear();
@@ -407,6 +407,17 @@ internal sealed partial class UnattendedTestRunner
                 throw new InvalidOperationException($"replay-state 无法恢复充能球 {orb.Id.Entry}。");
             orbManager?.AddOrbAnim();
         }
+    }
+
+    private static void ClearReplayOrbVisuals(NOrbManager orbManager)
+    {
+        orbManager._curTween?.Kill();
+        foreach (NOrb orb in orbManager._orbContainer.GetChildren().OfType<NOrb>().ToArray())
+        {
+            orbManager._orbContainer.RemoveChildSafely(orb);
+            orb.QueueFreeSafely();
+        }
+        orbManager._orbs.Clear();
     }
 
     private static void RestoreReplayPrimitiveState(

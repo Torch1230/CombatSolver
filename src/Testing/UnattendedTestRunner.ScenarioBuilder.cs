@@ -133,6 +133,15 @@ internal sealed partial class UnattendedTestRunner
                     OrbModel?[] visualOrbs = orbManager._orbs
                         .Select(static orb => orb.Model)
                         .ToArray();
+                    NOrb[] containerOrbs = orbManager._orbContainer
+                        .GetChildren()
+                        .OfType<NOrb>()
+                        .ToArray();
+                    if (containerOrbs.Length != orbManager._orbs.Count
+                        || containerOrbs.Any(orb => !orbManager._orbs.Contains(orb)))
+                    {
+                        throw new InvalidDataException("录像包导入后的球位容器残留孤儿节点。");
+                    }
                     if (visualOrbs.Length != pileState.OrbQueue.Capacity
                         || !visualOrbs.Take(modelOrbs.Length).SequenceEqual(modelOrbs)
                         || visualOrbs.Skip(modelOrbs.Length).Any(static orb => orb != null))

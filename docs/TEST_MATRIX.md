@@ -4,6 +4,7 @@
 
 - 亡灵契约师/女王原包修复前 `71f63f33ad1d4e65bb52e66ba1cc50e8` 在严格导入时失败：手牌第 8 张 `SPUR` 记录为带 `EndOfTurn, WhenPlayed` 清除时机的 0 费，导入后为基础 1 费。修复后同一原包 `SHOWCASE-BUNDLE-IMPORT-V0111` / `d65e84b66d3f40319cc9495822aaa7f0` Passed，23.78 秒；8 张模型手牌与界面节点一致，牌堆计数一致，录像路线接纳且本地搜索 0 次。
 - 故障机器人/女王原包的实机日志在首张 `DUALCAST` 进入 `NOrbManager.EvokeOrbAnim` 时抛出“Sequence contains no matching element”，随后路线在第 19 步因首张牌未完成而失配。修复后同一原包 `SHOWCASE-DEFECT-DUALCAST-0390` / `e0969979ed5d4373aef7a96cf615e44d` Passed，20.11 秒；球队列 1 个模型与 3 个原生可见槽位引用一致，首张双重释放正常结算，完整预计算路线第一回合无伤击杀，计划外重算 0，并经原生终端按钮返回主菜单。
+- 最新实机日志 `combat-09f187ae444d4c538f6ba63efb85f308.jsonl` 显示同一机器人路线 38 步完整结束、四次 `DUALCAST` 均完成且状态失配为 0，确认新增反馈属于可见节点生命周期。补充容器检查后，同一原包基线 `SHOWCASE-BUNDLE-IMPORT-V0111` / `170ad140151c43769d9cce3c2b1ab7bc` 明确失败：管理列表外仍有旧 `NOrb` 留在容器。即时清理后 `SHOWCASE-DEFECT-DUALCAST-ORPHAN-UI` / `474124f84c1c4e2fafbf04f5c08275a1` Passed，35.67 秒；容器节点与管理列表一一对应，完整 38 步路线第一回合无伤击杀，四次双重释放及中间推球完成，计划外重算 0。
 - Release 构建通过，0 警告、0 错误。两项均使用 Windows 隔离无头实例和玩家本次实际下载的原始 `ShowcaseBundleV1`；未启动可见 Steam，未执行 Bash 门禁。
 
 ## 0.39.0：多宽度路线精炼与 RitsuLib 0.6.0 适配（2026-09-15）
