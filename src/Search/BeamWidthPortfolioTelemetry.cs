@@ -11,6 +11,7 @@ internal readonly record struct BeamWidthPortfolioMemberCost(
 /// </summary>
 internal sealed record BeamWidthPortfolioMemberReport(
     int BeamWidth,
+    bool SecondRankBand,
     int NodeBudget,
     bool Ran,
     bool Selected,

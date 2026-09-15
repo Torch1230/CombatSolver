@@ -383,7 +383,7 @@
   "搜索预算": "Search budget",
   "性能预设": "Performance preset",
   "多宽度路线精炼（实验）": "Multi-width route refinement (experimental)",
-  "先按当前性能预设正常搜索。首轮较快完成、路线仍有改善空间且剩余时间、节点和内存充足时，再尝试两种不同的搜索宽度并选择更优路线。可能提高路线质量，也会增加耗时和内存占用；不会突破当前设置的时间和节点上限。": "Search normally with the current preset first. If that pass finishes early, still has room to improve, and enough time, node and memory headroom remains, try two other beam widths and keep the best route. This may improve route quality but can use more time and memory. It never exceeds the configured time or node limits.",
+  "先按当前性能预设正常搜索。首轮较快完成、路线仍有改善空间且剩余时间、节点和内存充足时，再尝试几种不同的搜索方式并选择更优路线。可能提高路线质量，也会增加耗时和内存占用；不会突破当前设置的时间和节点上限。": "Search normally with the current preset first. If that pass finishes early, still has room to improve, and enough time, node and memory headroom remains, try a few other search variants and keep the best route. This may improve route quality but can use more time and memory. It never exceeds the configured time or node limits.",
   "多宽度路线精炼已启用，下次搜索生效": "Multi-width route refinement enabled for the next search",
   "多宽度路线精炼已关闭": "Multi-width route refinement disabled",
   "正在精炼路线": "Refining route",

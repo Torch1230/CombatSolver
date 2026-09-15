@@ -443,11 +443,11 @@ internal static partial class CombatSearchCoordinator
             };
         }
 
-        string? RejectMember(int memberBeamWidth)
+        string? RejectMember(BeamWidthPortfolioMemberSpec member)
             => baselineObserved
                 ? BeamWidthPortfolioGate.RejectRefinement(
                     baseline,
-                    memberBeamWidth,
+                    member.BeamWidth,
                     profile.MaxExpandedNodes - expandedByMembers,
                     RemainingMilliseconds(),
                     profile.SoftTimeBudgetMilliseconds,
@@ -456,7 +456,7 @@ internal static partial class CombatSearchCoordinator
 
         BeamWidthPortfolioOutcome<SolverResult> outcome = policy.UseBeamWidthPortfolio
             ? BeamWidthPortfolio.Run(
-                BeamWidthPortfolio.ProductionWidths(profile.BeamWidth, policy.BeamWidthPortfolioWidths),
+                BeamWidthPortfolio.ProductionMembers(profile.BeamWidth, policy.BeamWidthPortfolioWidths),
                 profile.MaxExpandedNodes,
                 profile,
                 RunMember,
@@ -487,6 +487,7 @@ internal static partial class CombatSearchCoordinator
                 : BeamWidthPortfolio.SelectionBaselineFallback;
         BeamWidthPortfolioMember member = new(
             profile.BeamWidth,
+            profile.SecondRankBand,
             profile.MaxExpandedNodes,
             Ran: true,
             run.ExpandedNodes,
@@ -520,6 +521,7 @@ internal static partial class CombatSearchCoordinator
                 : default;
             BeamWidthPortfolioMemberReport report = new(
                 member.BeamWidth,
+                member.SecondRankBand,
                 member.NodeBudget,
                 member.Ran,
                 Selected: index == outcome.SelectedIndex,
@@ -538,7 +540,8 @@ internal static partial class CombatSearchCoordinator
             telemetry.RecordMember(report);
             policy.Diagnostics.Info(
                 $"[CombatSolver/Test] BEAM_WIDTH_PORTFOLIO_MEMBER index={index} " +
-                $"beam={report.BeamWidth} nodes={report.NodeBudget} ran={report.Ran} " +
+                $"beam={report.BeamWidth} second_rank_band={report.SecondRankBand} " +
+                $"nodes={report.NodeBudget} ran={report.Ran} " +
                 $"selected={report.Selected} compared={report.Compared} " +
                 $"skipped={report.SkippedReason ?? "-"} " +
                 $"elapsed_ms={report.ElapsedMilliseconds} " +
