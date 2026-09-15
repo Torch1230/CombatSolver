@@ -9,6 +9,9 @@
 - `SHOWCASE-PILE-VISUAL-RESTORE` / `dda17ba3d52947cab53699441bfd77b4` Passed，83.56 秒。使用玩家本次实际下载的最新静默猎手/永世沙漏包恢复：手牌模型 7 张、可见 holder 7 个；抽牌堆模型与按钮均为 4，弃牌堆与消耗堆模型/按钮均为 0。随后沿包内路线第一回合无伤击杀，本地搜索 0 次，并通过原生终端按钮返回主菜单。恢复源码已移除可见 `RemoveFromCombat` 路径并将新 holder 同帧放到最终位置；无头测试不构成肉眼动画验收。
 - 日志后台 Python 3.12 全部 65 项测试通过，其中录像库合同覆盖收藏读写、独立筛选、收藏阻止同根替换，以及收藏不占分组自动清理额度；生产默认普通录像上限为每组 2000。退出后既有 `test_reports_v2` 临时 SQLite 句柄出现一次 Windows 清理告警，不影响测试退出码和断言结果。CombatShowcaseRecorder 1.0.2 与 CombatSolver Release 构建均为 0 警告、0 错误；Windows PowerShell 结构门禁通过（`search_files=91`）。
 - 本轮只运行隔离无头恢复和 Release 构建，不使用 Computer Use、不启动可见 Steam、不执行 Bash 门禁。测试结束后已停止隔离游戏进程。
+- 合入 PR #94/#96 后，Windows Release 构建通过，0 警告、0 错误；PowerShell 结构门禁通过（`search_files=105`）；Beam 宽度组合离线合同通过（`BEAM_WIDTH_PORTFOLIO_OK checks=59`），其中包含默认关闭、门控、预算和最终质量仲裁。
+- `ROUTE-ROW-REUSE` / `91fe2c42bc3c44d6bdec080606ac9967` Passed，23.97 秒：覆盖同值复用、显示字段变化、选择/击杀/顺序、空路线、失败重试、部署状态和语言往返。
+- `CARD-CONTINUATION-EXPANDED-SEARCH` / `56398494c8b24ff9abe44bef784d7a0c` Passed，8.95 秒：实际穿过扩展后的卡牌选牌续执行和搜索边界。两项均在 Windows 隔离无头实例执行；完成后实例已停止，本次没有运行 Bash 门禁或可见 Steam 测试。
 
 ## 路线界面复用与派生计算实验（2026-09-15，未发布）
 
