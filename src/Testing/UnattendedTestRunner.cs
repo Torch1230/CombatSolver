@@ -162,7 +162,10 @@ internal sealed partial class UnattendedTestRunner
             SolverController.ReleaseUnattendedResultReferencesForTesting();
 
             SetStage("cleanup");
-            await _host.ReturnToMainMenu();
+            if (outcome.CombatEnded && !string.IsNullOrWhiteSpace(_request.ShowcaseBundlePath))
+                await ReturnShowcaseToMainMenuThroughTerminalRewardsAsync();
+            else
+                await _host.ReturnToMainMenu();
             EnsureWithinDeadline();
             if (_request.ExportBugReportAfterCombat)
             {

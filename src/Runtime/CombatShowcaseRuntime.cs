@@ -4,11 +4,15 @@ using System.Text.Json;
 using Godot;
 using MegaCrit.Sts2.Core.Assets;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Entities.Players;
+using MegaCrit.Sts2.Core.Helpers;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Multiplayer;
 using MegaCrit.Sts2.Core.Nodes;
+using MegaCrit.Sts2.Core.Nodes.Audio;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.Saves;
@@ -19,7 +23,10 @@ namespace CombatSolver;
 internal static class CombatShowcaseRuntime
 {
     private const long MaxExpandedBundleBytes = 32L * 1024 * 1024;
+    private static readonly Action TerminalRewardsOverride = OnTerminalRewardsProceed;
     private static int _importing;
+    private static int _showcaseRunActive;
+    private static int _returningToMainMenu;
     internal static bool ImportInProgress => Volatile.Read(ref _importing) != 0;
 
     internal static CombatShowcaseCompatibility GetCompatibility()
@@ -55,13 +62,19 @@ internal static class CombatShowcaseRuntime
                 JsonSerializationUtility.GetTypeInfo<SerializableRun>())
                 ?? throw new InvalidDataException("录像包的跑局快照为空。");
             RunState run = RunState.FromSerializable(save);
+            NGame host = NGame.Instance ?? throw new InvalidOperationException("游戏主节点不存在。");
             await RunManager.Instance.SetUpSavedSingleplayer(run, save);
             RunManager.Instance.ShouldSave = false;
             RunManager.Instance.CombatReplayWriter.IsEnabled = false;
+            NAudioManager.Instance?.StopMusic();
+            SfxCmd.Play(run.Players[0].Character.CharacterTransitionSfx);
+            await host.Transition.FadeOut(
+                0.8f,
+                run.Players[0].Character.CharacterSelectTransitionPath);
+            host.ReactionContainer.InitializeNetworking(new NetSingleplayerGameService());
             await PreloadManager.LoadRunAssets(run.Players.Select(static player => player.Character));
             await PreloadManager.LoadActAssets(run.Act);
             RunManager.Instance.Launch();
-            NGame host = NGame.Instance ?? throw new InvalidOperationException("游戏主节点不存在。");
             host.RootSceneContainer.SetCurrentScene(NRun.Create(run));
             await RunManager.Instance.GenerateMap();
 
@@ -114,6 +127,8 @@ internal static class CombatShowcaseRuntime
             int localSearchStarts = SolverController.SearchesStartedForShowcase - before;
             if (localSearchStarts != 0)
                 throw new InvalidOperationException("导入录像路线时意外启动了本地搜索。");
+            BeginShowcaseRun();
+            await host.Transition.FadeIn();
             return new CombatShowcaseEnterResult(
                 RequiredString(metadata, "bundleId"),
                 RequiredString(metadata, "characterId"),
@@ -219,6 +234,37 @@ internal static class CombatShowcaseRuntime
         => element.GetProperty(name).GetString()
            ?? throw new InvalidDataException($"录像包字段 {name} 为空。");
 
+    private static void BeginShowcaseRun()
+    {
+        if (RunManager.Instance.debugAfterCombatRewardsOverride is { } existing
+            && !ReferenceEquals(existing, TerminalRewardsOverride))
+        {
+            throw new InvalidOperationException("原生终端奖励流程已有其他覆盖入口。");
+        }
+        RunManager.Instance.debugAfterCombatRewardsOverride = TerminalRewardsOverride;
+        Volatile.Write(ref _showcaseRunActive, 1);
+        Volatile.Write(ref _returningToMainMenu, 0);
+    }
+
+    private static void OnTerminalRewardsProceed()
+    {
+        if (Volatile.Read(ref _showcaseRunActive) == 0)
+            throw new InvalidOperationException("录像对局终端返回入口在非录像跑局中被调用。");
+        if (Interlocked.CompareExchange(ref _returningToMainMenu, 1, 0) != 0)
+            return;
+        NGame host = NGame.Instance ?? throw new InvalidOperationException("游戏主节点不存在。");
+        Entry.Logger.Info("[CombatSolver/Showcase] TERMINAL_PROCEED destination=main_menu transition=native");
+        TaskHelper.RunSafely(host.ReturnToMainMenuAfterRun());
+    }
+
+    internal static void EndShowcaseRun()
+    {
+        if (ReferenceEquals(RunManager.Instance.debugAfterCombatRewardsOverride, TerminalRewardsOverride))
+            RunManager.Instance.debugAfterCombatRewardsOverride = null;
+        Volatile.Write(ref _showcaseRunActive, 0);
+        Volatile.Write(ref _returningToMainMenu, 0);
+    }
+
     private sealed record ValidatedBundle(
         string Directory,
         string MetadataPath,
@@ -244,4 +290,15 @@ internal sealed class CombatShowcaseSaveIsolationPatch : STS2RitsuLib.Patching.M
         __result = Task.CompletedTask;
         return false;
     }
+}
+
+internal sealed class CombatShowcaseCleanupPatch : STS2RitsuLib.Patching.Models.IPatchMethod
+{
+    public static string PatchId => "combat_solver_showcase_cleanup";
+    public static string Description => "录像临时跑局清理终端返回入口";
+    public static STS2RitsuLib.Patching.Models.ModPatchTarget[] GetTargets()
+        => [new(typeof(RunManager), nameof(RunManager.CleanUp), [typeof(bool)])];
+
+    public static void Postfix()
+        => CombatShowcaseRuntime.EndShowcaseRun();
 }

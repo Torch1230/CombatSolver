@@ -87,6 +87,7 @@ public static class Entry
         patcher.RegisterPatch<RunStatisticsEndPatch>();
         patcher.RegisterPatch<UnattendedCombatStartReplayPatch>();
         patcher.RegisterPatch<CombatShowcaseSaveIsolationPatch>();
+        patcher.RegisterPatch<CombatShowcaseCleanupPatch>();
         RitsuLibFramework.ApplyRequiredPatcher(patcher, DisableMod);
 
         if (Enabled)
