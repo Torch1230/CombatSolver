@@ -3447,6 +3447,11 @@ internal sealed partial class CombatBeamSolver
             }
 
             List<SearchNode> quotaPool = ranked.ToList();
+            // 次段成员（见 SolverSearchProfile.SecondRankBand）：只在全局剪枝（limit 就是 Beam 宽度）里，
+            // 把分数序前 effectiveLimit 位挪到队尾再截断，于是普通席位落在第 W+1 至 2W 位；挪走的
+            // 一段只在后面候选不够时回填。quotaPool 仍是纯分数序，必保置换、边界多样化和药水配额照旧。
+            if (_profile.SecondRankBand && limit == _profile.BeamWidth && !finalQualityFirst)
+                BeamWidthPortfolio.MoveLeadingBandToTail(ranked, effectiveLimit);
             if (ranked.Count > effectiveLimit)
                 ranked.RemoveRange(effectiveLimit, ranked.Count - effectiveLimit);
             foreach (SearchNode requiredNode in required)

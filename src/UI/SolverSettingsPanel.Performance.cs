@@ -97,7 +97,7 @@ internal sealed partial class SolverSettingsPanel
             budgetGrid,
             SolverText.Get("多宽度路线精炼（实验）"),
             _beamWidthPortfolioEnabled,
-            SolverText.Get("先按当前性能预设正常搜索。首轮较快完成、路线仍有改善空间且剩余时间、节点和内存充足时，再尝试两种不同的搜索宽度并选择更优路线。可能提高路线质量，也会增加耗时和内存占用；不会突破当前设置的时间和节点上限。"));
+            SolverText.Get("先按当前性能预设正常搜索。首轮较快完成、路线仍有改善空间且剩余时间、节点和内存充足时，再尝试几种不同的搜索方式并选择更优路线。可能提高路线质量，也会增加耗时和内存占用；不会突破当前设置的时间和节点上限。"));
         AddBasicRow(
             budgetGrid,
             SolverText.Get("搜索并行度"),
