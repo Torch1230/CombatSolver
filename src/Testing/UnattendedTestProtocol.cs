@@ -220,6 +220,7 @@ internal sealed class UnattendedTestRequest
     public int? ShortMaxCardBranchesPerNodeForTest { get; init; }
     public int? DeepMaxCardBranchesPerNodeForTest { get; init; }
     public SolverPotionPolicy? PotionPolicyForTest { get; init; }
+    public bool? LowLossPotionForTest { get; init; }
     public SolverTheftPolicy? TheftPolicyForTest { get; init; }
     public bool? EnableNoGcRegionForTest { get; init; }
     public bool ExpectNoGcFallbackForTest { get; init; }

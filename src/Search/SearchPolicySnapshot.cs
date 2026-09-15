@@ -22,6 +22,7 @@ internal sealed record SearchPolicySnapshot(
     public bool Act3BossStrategy { get; init; }
     internal static bool IsAct3BossEncounter(int actIndex, string? encounterId)
         => actIndex == 2 && encounterId is "TEST_SUBJECT_BOSS" or "AEONGLASS_BOSS" or "QUEEN_BOSS";
+    public bool LowLossPotionEnabled { get; init; }
     public GrowthValues GrowthBudgets { get; init; }
     public IReadOnlyList<RelicCounterTarget> RelicTargets { get; init; } = Array.Empty<RelicCounterTarget>();
     public bool RelicTargetsSatisfied(RelicCounterEvaluation value)

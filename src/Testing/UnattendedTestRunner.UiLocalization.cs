@@ -86,6 +86,7 @@ internal sealed partial class UnattendedTestRunner
                     SolverSettingsPanel settings = new();
                     harness.AddChild(settings);
                     settings.Reload();
+                    AssertLowLossPotionControls(combat, harness, english);
                     if (!settings.SettingsTabsConfiguredForTesting || !settings.UploadProgressConfiguredForTesting
                         || !settings.ExerciseSettingsTabSwitchingForTesting())
                         throw new InvalidOperationException($"Settings localization failed: {target}");
@@ -116,6 +117,55 @@ internal sealed partial class UnattendedTestRunner
             LocManager.Instance.SetLanguage(language);
             SolverOverlay.Hide();
         }
+    }
+
+    private async Task AssertLowLossPotionLocalizationAsync(CombatState combat)
+    {
+        AssertPotionPresetPolicy();
+        string language = LocManager.Instance.Language;
+        try
+        {
+            foreach (string target in new[] { "eng", "zhs", "zht" })
+            {
+                LocManager.Instance.SetLanguage(target);
+                await _host.ToSignal(_host.GetTree(), SceneTree.SignalName.ProcessFrame);
+                Control harness = new();
+                _host.AddChild(harness);
+                try { AssertLowLossPotionControls(combat, harness, target == "eng"); }
+                finally { harness.Free(); }
+                _completedChecks.Add($"LowLossPotionUi:{target}:Label:Tooltip:PresetCoexistence:DisabledDuringDeployment");
+            }
+        }
+        finally { LocManager.Instance.SetLanguage(language); }
+    }
+
+    private static void AssertLowLossPotionControls(CombatState combat, Control harness, bool english)
+    {
+        SolverPotionStrategyPanel potions = new();
+        harness.AddChild(potions);
+        potions.Refresh(combat, controlsDisabled: false);
+        if (!potions.HasPresetControlsForTesting)
+            throw new InvalidOperationException("Potion presets disappeared beside the low-loss control.");
+        List<PotionStrategyPreset> requested = [];
+        potions.PresetRequested += requested.Add;
+        bool enabled = potions.LowLossToggleForTesting.ButtonPressed;
+        PotionStrategyPreset[] presets = [PotionStrategyPreset.AllSmart, PotionStrategyPreset.AllProtected,
+            PotionStrategyPreset.AllForced, PotionStrategyPreset.OnlyForced];
+        foreach (PotionStrategyPreset preset in presets)
+            potions.GetNode<Button>($"PotionStrategyLayout/PotionPresets/{preset}")
+                .EmitSignal(BaseButton.SignalName.Pressed);
+        if (!requested.SequenceEqual(presets) || potions.LowLossToggleForTesting.ButtonPressed != enabled)
+            throw new InvalidOperationException("Potion preset events changed the session preference or lost their binding.");
+        if (potions.LowLossToggleForTesting.Text != (english
+                ? "Allow small HP savings" : "省血少也允许用药")
+            || !potions.LowLossToggleForTesting.TooltipText.Contains(english
+                ? "with no upper limit on potion-free HP loss" : "不限制无药战损上限", StringComparison.Ordinal)
+            || potions.LowLossToggleForTesting.Disabled)
+            throw new InvalidOperationException("Low-loss potion control localization failed.");
+        if (english) AssertEnglishControls(potions);
+        potions.Refresh(combat, controlsDisabled: true);
+        if (!potions.LowLossToggleForTesting.Disabled)
+            throw new InvalidOperationException("Low-loss potion control remained enabled during deployment.");
     }
 
     private async Task AssertActionAnnotationLocalizationAsync(CombatState combat, bool english)

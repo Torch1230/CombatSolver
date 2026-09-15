@@ -110,6 +110,7 @@ internal sealed partial class UnattendedTestRunner
         result.BestNode, result.Snapshot, result.Continuations, result.KillsAfterAction,
         result.HpLostByTurn, result.HpRecoveredByTurn, result.PotionCountByTurn,
         result.PotionHpSaved, result.PotionHpRequired, result.PostCombatRelicHeal,
+        result.LowLossPotionApplied,
         result.CombatEndedTurn, result.ProjectedBattleHpLost,
     });
 }

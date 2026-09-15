@@ -26,6 +26,7 @@ internal enum SearchReason
     FullAuto,
     DeploymentDrift,
     PlanExhausted,
+    PotionPreferenceChanged,
 }
 
 internal enum ReplanCause
@@ -498,6 +499,7 @@ internal static class SolverController
             BeamWidthPortfolioWidths = UnattendedTestRunner.BeamWidthPortfolioWidthsOverride,
             Act3BossStrategy = UnattendedTestRunner.Act3BossStrategyOverride != false
                 && SearchPolicySnapshot.IsAct3BossEncounter(state.RunState.CurrentActIndex, state.Encounter?.Id.Entry),
+            LowLossPotionEnabled = _combat.LowLossPotionEnabled,
             // 这里记的是玩家填的原始值；「不考虑局外收益」的折算交给快照上的 Effective* 一处做，
             // 免得两边各判一次而走岔。问题包里两样都在，方便看出当时是填了额度还是开了开关。
             GrowthBudgets = settings.GrowthBudgets,
@@ -887,7 +889,7 @@ internal static class SolverController
         // A direct request can arrive after the barrier opened but before the deferred
         // callback reached the dispatcher. The newest request owns the search slot.
         CancelDeferredSearch();
-        if (reason == SearchReason.Manual)
+        if (reason is SearchReason.Manual or SearchReason.PotionPreferenceChanged)
         {
             if (_combat.AutomaticSearchPaused)
                 Entry.Logger.Info("[CombatSolver/Test] AUTOMATIC_SEARCH_RESUMED reason=manual_recalculate");
@@ -1174,6 +1176,7 @@ internal static class SolverController
             {
                 if (!searchPolicy.VerifyIncrementalSearch && !searchPolicy.MeasurePhasePerformance
                     && reason is SearchReason.AutoTurnStart or SearchReason.Deploy or SearchReason.FullAuto
+                        or SearchReason.PotionPreferenceChanged
                     && routeCache.Read(rootSnapshot.Forecast) is { } cached)
                 {
                     token.ThrowIfCancellationRequested();
@@ -1779,6 +1782,37 @@ internal static class SolverController
         SolverOverlay.RefreshControls();
         if (!_combat.AutomaticSearchPaused && AutomaticCalculationEnabled)
             RequestSearch(host, state, SearchReason.Manual);
+    }
+
+    internal static bool LowLossPotionEnabled => _combat.LowLossPotionEnabled;
+
+    internal static void SetLowLossPotionEnabled(NGame host, CombatState state, bool enabled)
+    {
+        AssertMainThread();
+        if (_deployment != null || _combat.LowLossPotionEnabled == enabled)
+            return;
+        _combat.LowLossPotionEnabled = enabled;
+        _combat.ContinuationSource = null;
+        _combat.PendingCompleteProjectionBaseline = null;
+        _combat.LatestResult = null;
+        _combat.LatestStamp = null;
+        _combat.StoppedSearch = null;
+        Entry.Logger.Info($"[CombatSolver/Test] LOW_LOSS_POTION_CHANGED enabled={enabled}");
+        // Cancel the old request even when automatic calculation is paused.
+        CancelSearch();
+        SolverOverlay.RefreshControls();
+        if (!_combat.AutomaticSearchPaused && AutomaticCalculationEnabled)
+            // Changing this session-only preference can restore a matching disk route.
+            // An explicit Manual recalculation must still search for a new result.
+            RequestSearch(host, state, SearchReason.PotionPreferenceChanged);
+    }
+
+    internal static void SetLowLossPotionForTesting(bool enabled)
+    {
+        AssertMainThread();
+        if (!UnattendedTestRunner.IsActive)
+            throw new InvalidOperationException("Low-loss potion override requires an unattended test.");
+        _combat.LowLossPotionEnabled = enabled;
     }
 
     internal static void SetPotionDirective(

@@ -133,6 +133,9 @@ internal sealed partial class UnattendedTestRunner
         };
     }
 
+    internal static bool ReadRecordedLowLossPotionPolicy(JsonObject? policy)
+        => policy?["lowLossPotionEnabled"]?.GetValue<bool>() ?? false;
+
     private void ReleaseCheckpointImport()
     {
         CombatReplayRecording.TestObserver = null;

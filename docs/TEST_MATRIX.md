@@ -3495,3 +3495,16 @@ pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId MONSTER-MOVES-BA
 - 在线服务 14 项测试通过，包含旧心跳、管理鉴权、持久登录、统计加权、筛选和战绩数据库重启恢复。
 - 日志服务 19 项测试通过，包含提交时战绩快照及小数百分比筛选；Windows 测试进程退出仍有原有 SQLite 临时文件清理占用提示。
 - UI-LOCALIZATION `42dce92d333e46e482ba556b9959e4eb` Passed，24.85 秒，覆盖 322 条中英资源与 headless 统计节点隔离。不是可见游戏结算/交互或帧率验收。
+
+## PR：本场少量省血用药偏好
+
+复跑入口与验证结果见 [PR 专题](pr/low-loss-potion.md#验证)。
+
+| 场景 | 检查边界 |
+| --- | --- |
+| `LOW-LOSS-POTION` | 单瓶少量省血采用、保护/强制/已用药边界、终局与显示一致、增量回放、原有策略哨兵 |
+| `LOW-LOSS-POTION-CACHE` | 真实开关入口、会话重建、缓存命中/未命中与显式重算 |
+| `LOW-LOSS-POTION-UI` | eng/zhs/zht 文案、上游预设与偏好控件共存、部署禁用 |
+| `LOW-LOSS-POTION-DEPLOY` | Instant / 0 秒部署、最早第二回合续用、计划外重算 0 |
+
+稳定血清与开心小花计数目标的存档回归需另备相同测试存档；仓库内置场景覆盖基础行为、会话、UI 与部署边界。

@@ -130,6 +130,7 @@ internal sealed class SolverCombatSession
     public SearchInteractionState? StoppedSearch { get; set; }
     public bool FullAutoEnabled { get; set; }
     public SolverTheftPolicy? TheftPolicy { get; set; }
+    public bool LowLossPotionEnabled { get; set; }
     public CompleteProjectionBaseline? PendingCompleteProjectionBaseline { get; set; }
     public ManualProjectionBaseline? PendingManualProjectionBaseline { get; set; }
     public ManualProjectionComparison? LastManualProjectionComparison { get; set; }

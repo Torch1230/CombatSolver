@@ -1197,6 +1197,7 @@ internal static class CombatBugReportExporter
         => new
         {
             settings.PotionPolicy,
+            lowLossPotionEnabled = SolverController.LowLossPotionEnabled,
             potionDirectives = LocalContext.GetMe(state) is { } player
                 ? Enumerable.Range(0, player.PotionSlots.Count)
                     .Where(slot => player.GetPotionAtSlotIndex(slot) != null)
@@ -1261,6 +1262,7 @@ internal static class CombatBugReportExporter
         captured["searchMaxDegreeOfParallelism"] = policy.MaxDegreeOfParallelism;
         captured["includeTurnSetup"] = policy.IncludeTurnSetup;
         captured["act3BossStrategy"] = policy.Act3BossStrategy;
+        captured["lowLossPotionEnabled"] = policy.LowLossPotionEnabled;
         captured["useBeamWidthPortfolio"] = policy.UseBeamWidthPortfolio;
         captured["beamWidthPortfolioWidths"] = JsonSerializer.SerializeToNode(
             policy.BeamWidthPortfolioWidths,

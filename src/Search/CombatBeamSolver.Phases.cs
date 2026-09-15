@@ -121,6 +121,8 @@ internal sealed partial class CombatBeamSolver
         }
         if (root.PlayerCount != 1)
             throw new NotSupportedException("第一版只支持单人战斗。");
+        if (_lowLossPotionAllowance != null && (_minimumPotionUses != 1 || _maximumPotionUses != 1))
+            throw new InvalidOperationException("Low-loss allowance requires the exact one-potion layer.");
         if (root.Enemies.Count > 64)
             throw new NotSupportedException("单场战斗超过 64 个敌人，无法编码路线存活位图。");
         PlayerTurnPhase requiredPhase = _includeTurnSetup
@@ -189,7 +191,7 @@ internal sealed partial class CombatBeamSolver
             int ambergrisCount = node.Actions.Count(action =>
                 action.Kind == PlanActionKind.UsePotion
                 && string.Equals(action.PotionId, "AMBERGRIS", StringComparison.Ordinal));
-            return new SolverInterimResult(
+            SolverInterimResult summary = new(
                 Won: won,
                 OutstandingStolenResource: node.Snapshot.OutstandingStolenResource,
                 ProjectedBattleHpLost: battleDamage.HpLostSoFar
@@ -217,6 +219,13 @@ internal sealed partial class CombatBeamSolver
                 Survives = !node.Snapshot.PlayerDead && node.Snapshot.ProjectedPlayerHp > 0,
                 DeathSaveUseCount = node.Snapshot.ProjectedDeathSaveUseCount,
             };
+            return _lowLossPotionAllowance?.Qualifies(won, ExplicitPotionUseCount(node),
+                summary.StrategicHpDeficit,
+                summary.StrategicHpDeficit + node.Snapshot.StrategicHpCredit,
+                node.Snapshot.OutstandingStolenResource) == true
+                    ? summary with { PotionStrategicCost = LowLossPotionAllowance.RequiredHpSaved,
+                        LowLossPotionApplied = true }
+                    : summary;
         }
 
 
@@ -287,6 +296,22 @@ internal sealed partial class CombatBeamSolver
         int requiredPotionUses = Math.Max(_minimumPotionUses,
             _potionPolicy == SolverPotionPolicy.RequireAtLeastOne ? 1 : 0);
         int earlyStopPotionUses = policy.MinimumRequiredPotionUses(battleDamage.PotionsUsedSoFar);
+        bool LowLossLayerAllows(SearchNode node)
+        {
+            if (_lowLossPotionAllowance == null) return true;
+            SolverInterimResult summary = SummarizeCandidate(node, true);
+            return _lowLossPotionAllowance.AllowsCandidate(true, ExplicitPotionUseCount(node),
+                summary.StrategicHpDeficit, summary.StrategicHpDeficit + node.Snapshot.StrategicHpCredit,
+                node.Snapshot.OutstandingStolenResource, node.PotionStrategicCost);
+        }
+        bool MeetsLowLossZeroTarget(SearchNode node)
+        {
+            if (node.Snapshot.CumulativePlayerHpLost != 0) return false;
+            SolverInterimResult summary = SummarizeCandidate(node, true);
+            return _lowLossPotionAllowance!.Qualifies(true, ExplicitPotionUseCount(node),
+                summary.StrategicHpDeficit, summary.StrategicHpDeficit + node.Snapshot.StrategicHpCredit,
+                node.Snapshot.OutstandingStolenResource);
+        }
         bool IsEligibleCompleteVictory(SearchNode node)
             => ExplicitPotionUseCount(node) >= requiredPotionUses
                 && (!_enforcePotionDirectives
@@ -298,7 +323,8 @@ internal sealed partial class CombatBeamSolver
                     node.ActionCount,
                     node.Snapshot.AllEnemiesDead,
                     node.Snapshot.PlayerDead,
-                    node.Snapshot.ProjectedPlayerHp);
+                    node.Snapshot.ProjectedPlayerHp)
+                && LowLossLayerAllows(node);
 
         bool MeetsHpTarget(SearchNode node)
             => policy.GrowthTargetSatisfied(node.Snapshot.GrowthRewards)
@@ -306,8 +332,10 @@ internal sealed partial class CombatBeamSolver
                 && TheftEncounterStrategy.RecoverySatisfied(_theftPolicy, node.Snapshot.OutstandingStolenResource)
                 && IsEligibleCompleteVictory(node)
                 && node.Snapshot.ProjectedDeathSaveUseCount == 0
-                && ExplicitPotionUseCount(node) <= earlyStopPotionUses
-                && battleDamage.HpLostSoFar + node.Snapshot.CumulativePlayerHpLost <= _acceptableBattleHpLoss;
+                && (_lowLossPotionAllowance != null
+                    ? MeetsLowLossZeroTarget(node)
+                    : ExplicitPotionUseCount(node) <= earlyStopPotionUses
+                        && battleDamage.HpLostSoFar + node.Snapshot.CumulativePlayerHpLost <= _acceptableBattleHpLoss);
 
         void ConsiderCompleteVictory(SearchNode node)
         {
@@ -606,6 +634,7 @@ internal sealed partial class CombatBeamSolver
             ValidateOrderedMutationAdmissionLedger(_run);
             SolverResult result = new()
             {
+                LowLossPotionApplied = ordering.LowLossPotionApplied,
                 ResultScope = resultScope,
                 DeterministicBlockPotionInserted = blockPotionInsertion != null,
                 TotalSearchElapsed = stopwatch.Elapsed,

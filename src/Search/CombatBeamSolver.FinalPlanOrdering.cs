@@ -16,7 +16,8 @@ internal sealed partial class CombatBeamSolver
         SearchDiagnosticsSink diagnostics,
         bool detailedDiagnostics,
         BattleDamageSnapshot battleDamage,
-        PotionStrategicCostLookup? potionStrategicCosts = null)
+        PotionStrategicCostLookup? potionStrategicCosts = null,
+        LowLossPotionAllowance? lowLossPotionAllowance = null)
     {
         private readonly PotionStrategicCostLookup _potionStrategicCosts = potionStrategicCosts ?? new();
         /// <summary>
@@ -94,8 +95,12 @@ internal sealed partial class CombatBeamSolver
                     int healthResourceCost = initialHp - features.PlayerHp
                         + initialPlayerMaxHp - features.PlayerMaxHp;
                     int strategicSold = battleSold;
+                    bool lowLossQualified = lowLossPotionAllowance?.Qualifies(
+                        completeVictory, explicitPotionCount, strategicHpDeficit,
+                        strategicHpDeficit + candidate.Snapshot.StrategicHpCredit,
+                        features.OutstandingStolenResource) == true;
                     int policyHpDeficit = strategicHpDeficit
-                        + (effectivePotionPolicy == SolverPotionPolicy.RequireAtLeastOne
+                        + (!lowLossQualified && effectivePotionPolicy == SolverPotionPolicy.RequireAtLeastOne
                             ? PotionUsePolicy.AdditionalRequiredUseStrategicHpCost(
                                 optionalPotionStrategicCost)
                             : 0);
@@ -112,7 +117,8 @@ internal sealed partial class CombatBeamSolver
                         OptionalPotionCount: optionalPotionCount,
                         OptionalPotionStrategicCost: optionalPotionStrategicCost,
                         OptionalAmbergrisCount: optionalAmbergrisCount,
-                        EffectivePotionPolicy: effectivePotionPolicy);
+                        EffectivePotionPolicy: effectivePotionPolicy,
+                        LowLossQualified: lowLossQualified);
                 })
                 .ToList();
             if (emitDiagnostics && detailedDiagnostics)
@@ -246,10 +252,18 @@ internal sealed partial class CombatBeamSolver
                             initialPlayerMaxHp,
                             potionFreePlayerHp,
                             candidate.Snapshot.PlayerHp);
+                    // The optional one-potion layer must not let a no-benefit or growth-only
+                    // candidate hide a route that actually satisfies the low-loss allowance.
+                    bool passesLowLossLayer = lowLossPotionAllowance == null
+                        || lowLossPotionAllowance.AllowsCandidate(candidate.CompleteVictory,
+                            candidate.ExplicitPotionCount, candidate.StrategicHpDeficit,
+                            candidate.StrategicHpDeficit + candidate.Snapshot.StrategicHpCredit,
+                            candidate.Features.OutstandingStolenResource, candidate.OptionalPotionStrategicCost);
                     return candidate.ForcedUsesSatisfied
                         && candidate.ExplicitPotionCount >= minimumPotionUses
-                        && passesSoftPotionPolicy
-                        && passesAmbergrisPolicy;
+                        && passesLowLossLayer
+                        && (passesSoftPotionPolicy || candidate.LowLossQualified)
+                        && (passesAmbergrisPolicy || candidate.LowLossQualified);
                 })
                 .ToList();
             var selected = policyEligibleCandidates
@@ -317,6 +331,8 @@ internal sealed partial class CombatBeamSolver
                 potionHpRequired = PotionUsePolicy.AdditionalRequiredUseStrategicHpCost(
                     potionHpRequired);
             }
+            if (selectedCandidate.LowLossQualified)
+                potionHpRequired = LowLossPotionAllowance.RequiredHpSaved;
             return new FinalPlanSelection(
                 new FinalPlanCandidate(
                     selectedCandidate.Node,
@@ -328,7 +344,8 @@ internal sealed partial class CombatBeamSolver
                     selectedCandidate.Score),
                 potionBranchesRejected,
                 potionHpSaved,
-                potionHpRequired);
+                potionHpRequired,
+                selectedCandidate.LowLossQualified);
         }
     }
 

@@ -55,6 +55,7 @@ internal sealed class SolvedRouteCache(string path)
             damage,
             policy.Profile,
             policy.PotionPolicy,
+            policy.LowLossPotionEnabled,
             policy.PotionStrategy.Directives,
             policy.GrowthBudgets,
             policy.RelicTargets,

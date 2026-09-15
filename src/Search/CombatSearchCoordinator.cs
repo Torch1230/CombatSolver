@@ -301,7 +301,8 @@ internal static partial class CombatSearchCoordinator
             }
             if (!policy.PotionStrategy.HasForcedDirectives)
             {
-                if (HasReachedAcceptableBattleHpLoss(policy, passResult))
+                if (HasReachedAcceptableBattleHpLoss(policy, passResult)
+                    && CreateLowLossPotionAllowance(root, policy, battleDamage, passResult) == null)
                 {
                     passSettled = true;
                     return passResult;
@@ -611,7 +612,8 @@ internal static partial class CombatSearchCoordinator
                 selected);
             if (ResolveTakeoverResult(selected, policy.Interaction) is { } requiredTakeoverResult)
                 return requiredTakeoverResult;
-            if (HasReachedAcceptableBattleHpLoss(policy, selected))
+            if (HasReachedAcceptableBattleHpLoss(policy, selected)
+                && CreateLowLossPotionAllowance(root, policy, battleDamage, selected) == null)
                 return selected;
             selected = AuditSmartPotionUse(
                 root,
@@ -1364,11 +1366,15 @@ internal static partial class CombatSearchCoordinator
             && !potionFree.Snapshot.PlayerDead
             && potionFree.Snapshot.ProjectedPlayerHp > 0;
         int potionFreeDeficit = StrategicHpDeficit(root, policy, potionFree);
+        LowLossPotionAllowance? lowLossAllowance = CreateLowLossPotionAllowance(
+            root, policy, battleDamage, potionFree);
         int maximumPotionUses = MaximumSmartPotionUses(
             root,
             policy,
             potionFreeWon,
             potionFreeDeficit);
+        if (lowLossAllowance != null)
+            maximumPotionUses = Math.Max(1, maximumPotionUses);
         if (maximumPotionUses == 0)
         {
             policy.Diagnostics.Info(
@@ -1438,7 +1444,8 @@ internal static partial class CombatSearchCoordinator
                     baseline,
                     maximumPotionUses: potionCount,
                     minimumPotionUses: potionCount,
-                    primaryIncumbent: primaryIncumbent).Solve();
+                    primaryIncumbent: primaryIncumbent,
+                    lowLossPotionAllowance: potionCount == 1 ? lowLossAllowance : null).Solve();
                 observedLayerResult = candidate;
             }
             catch (PotionPolicyUnsatisfiedException)
@@ -1477,7 +1484,7 @@ internal static partial class CombatSearchCoordinator
                 : candidateWon
                     ? Math.Max(0, candidate.Snapshot.PlayerHp - potionFree.Snapshot.PlayerHp)
                     : 0;
-            int hpRequired = SmartPotionHpRequired(root, policy, candidate);
+            int hpRequired = EffectivePotionHpRequired(root, policy, candidate);
             bool protectsLoot = policy.TheftPolicy == SolverTheftPolicy.PreserveResources
                 && candidate.OutstandingStolenResource < potionFree.OutstandingStolenResource;
             bool acceptable = IsSmartPotionGradientCandidateAcceptable(
@@ -1499,6 +1506,7 @@ internal static partial class CombatSearchCoordinator
                 $"[CombatSolver/Test] SMART_POTION_GRADIENT layer={potionCount} " +
                 $"won={candidateWon} hp_deficit={candidateDeficit} saved={hpSaved} " +
                 $"required={hpRequired} protects_loot={protectsLoot} acceptable={acceptable} " +
+                $"low_loss_applied={candidate.LowLossPotionApplied} " +
                 $"selected={improvesSelection} " +
                 $"expanded={candidate.ExpandedNodes} transitions={candidate.TransitionCount} " +
                 $"choice_branches={candidate.ChoiceBranchesEvaluated} " +
@@ -1673,12 +1681,13 @@ internal static partial class CombatSearchCoordinator
             OutstandingStolenResource: result.OutstandingStolenResource,
             ProjectedBattleHpLost: result.ProjectedBattleHpLost,
             StrategicHpDeficit: StrategicHpDeficit(root, policy, result),
-            PotionStrategicCost: SmartPotionHpRequired(root, policy, result),
+            PotionStrategicCost: EffectivePotionHpRequired(root, policy, result),
             ProjectedBattlePotionCount: result.ProjectedBattlePotionCount,
             CombatEndedTurn: result.CombatEndedTurn,
             EnemyHp: result.Snapshot.EnemyHp,
             Score: result.BestNode.Score)
         {
+            LowLossPotionApplied = result.LowLossPotionApplied,
             GrowthHpCredit = result.Snapshot.StrategyGoalHpCredit,
             TheftPolicy = policy.TheftPolicy,
             GrowthRewardCount = result.Snapshot.StrategyGoalCount,
@@ -1889,6 +1898,28 @@ internal static partial class CombatSearchCoordinator
             return null;
         }
     }
+
+    internal static LowLossPotionAllowance? CreateLowLossPotionAllowance(
+        CombatRootSnapshot root, SearchPolicySnapshot policy, BattleDamageSnapshot battleDamage,
+        SolverResult potionFree)
+    {
+        if (!policy.LowLossPotionEnabled || potionFree.ExplicitPotionCount != 0)
+            return null;
+        int deficit = StrategicHpDeficit(root, policy, potionFree);
+        int lifeDeficit = deficit + potionFree.Snapshot.StrategicHpCredit;
+        if (!LowLossPotionAllowance.CanOffer(policy, battleDamage.PotionsUsedSoFar,
+                IsCompleteVictory(potionFree), deficit, lifeDeficit)
+            || !root.SearchablePotions.Any(p => policy.PotionStrategy.AllowsExplicitUse(
+                p.Slot, p.PotionId, SolverPotionPolicy.Smart, forceAllDisabled: false)))
+            return null;
+        return new(deficit, lifeDeficit, potionFree.OutstandingStolenResource,
+            policy.TheftPolicy == SolverTheftPolicy.PreserveResources);
+    }
+
+    private static int EffectivePotionHpRequired(
+        CombatRootSnapshot root, SearchPolicySnapshot policy, SolverResult result)
+        => result.LowLossPotionApplied ? LowLossPotionAllowance.RequiredHpSaved
+            : SmartPotionHpRequired(root, policy, result);
 
     private static int SmartPotionHpRequired(
         CombatRootSnapshot root,

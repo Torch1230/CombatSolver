@@ -38,7 +38,8 @@ internal sealed partial class CombatBeamSolver(
     int? maximumPotionUses = null,
     IReadOnlyList<PlanAction>? fixedPrefixActions = null,
     int? minimumPotionUses = null,
-    PrimarySearchIncumbent? primaryIncumbent = null)
+    PrimarySearchIncumbent? primaryIncumbent = null,
+    LowLossPotionAllowance? lowLossPotionAllowance = null)
 {
     private readonly SolverSearchProfile _profile = searchProfile ?? SolverSearchProfile.Default;
     private readonly SearchRunContext _run = new(
@@ -63,6 +64,7 @@ internal sealed partial class CombatBeamSolver(
     private readonly bool _detailedDiagnostics = policy.DetailedDiagnostics;
     private readonly int? _maximumPotionUses = maximumPotionUses;
     private readonly int _minimumPotionUses = minimumPotionUses ?? 0;
+    private readonly LowLossPotionAllowance? _lowLossPotionAllowance = lowLossPotionAllowance;
     private readonly PotionFreePolicyBaseline? _potionFreePolicyBaseline = potionFreePolicyBaseline;
     private PrimarySearchIncumbent? _primaryIncumbent = primaryIncumbent;
     private readonly SearchInteractionState? _interaction = policy.Interaction;
@@ -101,7 +103,8 @@ internal sealed partial class CombatBeamSolver(
         root.HasRenewablePotionShapedRock,
         _run,
         EvaluateStandPat,
-        PrepareStandPatProbes);
+        PrepareStandPatProbes,
+        _lowLossPotionAllowance);
     private FinalPlanOrdering? _finalOrdering;
     private FinalPlanOrdering FinalOrdering => _finalOrdering ??= new FinalPlanOrdering(
         _potionPolicy,
@@ -117,7 +120,8 @@ internal sealed partial class CombatBeamSolver(
         policy.Diagnostics,
         _detailedDiagnostics,
         battleDamage,
-        _run.PotionStrategicCosts);
+        _run.PotionStrategicCosts,
+        _lowLossPotionAllowance);
 
     private bool AllowsPotionUse(int slot, string potionId)
         => _potionStrategy.AllowsExplicitUse(

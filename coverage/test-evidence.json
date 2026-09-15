@@ -1,4 +1,36 @@
 {
+  "LOW-LOSS-POTION-CACHE": {
+    "status": "Passed",
+    "level": "HeadlessControllerSessionResetAndDiskRouteRestore",
+    "procedure": "固定512节点/3000ms、DOP1、NoGC关闭，记录无药1损和偏好单瓶0损，重建会话后通过实际开关入口恢复两种缓存。",
+    "expected": "默认关闭与开/关/再开累计恢复4次且新搜索0次，完整计划、放宽标记与1HP门槛往返一致，预测绑定新根；显式重算绕过缓存，关闭自动计算时等待。",
+    "observed": "0.39.0合并后770872c96ac54469b41f9bc48f4bbd40 Passed，7.61秒；实际开关入口恢复4次、新搜索0次，完整计划和门槛往返、显式重算及自动计算关闭通过。",
+    "evidence": "src/Testing/UnattendedTestRunner.LowLossPotionCache.cs；docs/pr/low-loss-potion.md；2026-09-15。"
+  },
+  "LOW-LOSS-POTION": {
+    "status": "Passed",
+    "level": "HeadlessShortSearchIncrementalAndPolicyContract",
+    "procedure": "固定 512 节点/3000ms、DOP1、NoGC关闭，原8/7/5/0三瓶保护场景后切换13/12/5和20/19/5基线；开关、单点收益、正数早停、零收益和零损同批比较，合格候选增量回放。",
+    "expected": "开启时13→5与13→12采用单瓶，关闭保留13损；正常20→5用药不退化，保护与本场机会有效，中途/最终放宽门槛均为1。",
+    "observed": "0.39.0合并后c067c0a351fd428e9c854ac43408b9e1 Passed，23.83秒；13→5、13→12、正常20→5及原哨兵、增量回放通过。",
+    "evidence": "src/Testing/UnattendedTestRunner.LowLossPotion.cs；docs/pr/low-loss-potion.md；2026-09-15。"
+  },
+  "LOW-LOSS-POTION-DEPLOY": {
+    "status": "Passed",
+    "level": "HeadlessIncrementalAndEarliestContinuationDeployment",
+    "procedure": "敌方一击13、手牌防御5、下一回合抽打击击杀，原生格挡药水；固定3000ms、Instant/0秒，最早T2停止并严格核对续用。",
+    "expected": "首回合一瓶从8损降至0，下一回合续用，计划外重算0。",
+    "observed": "0.39.0合并后461eb9d51f9d4be1a9300bae4afd1b30 Passed，7.20秒；原生两回合部署、增量回放，Potion=1、Saved=8/1、Reuse:Turn=2、UnexpectedReplans:0。",
+    "evidence": "src/Testing/UnattendedTestRunner.LowLossPotion.cs；docs/pr/low-loss-potion.md；2026-09-15。"
+  },
+  "LOW-LOSS-POTION-UI": {
+    "status": "Passed",
+    "level": "HeadlessLocalizedControlContract",
+    "procedure": "独立药水面板在eng/zhs/zht切换时检查省血少也允许用药的新标签及无药损失无上限提示，并检查部署禁用和英文控件。",
+    "expected": "标签/提示随语言选择，不再暗示无药1～8损限制；部署不能切换，zht沿用中文回退。",
+    "observed": "0.39.0合并后5c947a0a40b3438c8936ca438b2700f4 Passed，20.38秒；eng/zhs/zht、上游四个预设事件与偏好共存、预设策略往返及部署禁用通过，不宣称可见排版验收。",
+    "evidence": "src/Testing/UnattendedTestRunner.UiLocalization.cs；docs/pr/low-loss-potion.md；2026-09-15。"
+  },
   "REPORT-CARDS-ORBIT-ENERGY-GATE": {
     "status": "Passed",
     "level": "HeadlessNativeDifferentialAndForkContract",
