@@ -120,6 +120,7 @@ Linux 不使用上述 Windows 路径。上传前必须设置 `COMBATSOLVER_MOD_U
 - 第 3 节的 `releases/CombatSolver-<版本号>.zip`、`releases/STS2 RitsuLib 0.6.0.zip`、同版本中英玩家更新日志、Release DLL、MemoryCleaner 与第三方许可均存在；
 - `workshop.json` 的 changeNote 已按本版本更新；脚本只暂存四个发布内容文件，保留工坊介绍、语言、封面、示例图、标签和依赖；
 - 完整读取全局 `quarkclouddrive` skill 的 `SKILL.md`、`references/file-search.md`、`references/file-ops.md` 与 `references/file-upload.md`。将用户本次发布原话和同一对话的夸克 session ID 传给脚本，不把授权码写进参数、仓库或状态文件。
+- Windows 统一脚本直接使用已安装的 Node 与夸克 CLI，不调用 Bash 安装器；缺少任一命令或文件时原样停止。
 
 Windows 入口：
 

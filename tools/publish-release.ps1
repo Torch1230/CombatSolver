@@ -82,7 +82,7 @@ function New-QuarkReleaseBundle {
     return Get-Item -LiteralPath $OutputPath
 }
 
-foreach ($command in @('git', 'gh', 'node', 'bash')) {
+foreach ($command in @('git', 'gh', 'node')) {
     if (-not (Get-Command $command -ErrorAction SilentlyContinue)) {
         throw "缺少发布命令：$command"
     }
@@ -101,7 +101,6 @@ $resolvedWorkshopDirectory = Resolve-RequiredDirectory $WorkshopDirectory '创�
 $workshopContentDirectory = Resolve-RequiredDirectory (Join-Path $resolvedWorkshopDirectory 'content') '创意工坊 content'
 $workshopJsonPath = Resolve-RequiredFile (Join-Path $resolvedWorkshopDirectory 'workshop.json') 'workshop.json'
 $resolvedQuarkSkillDirectory = Resolve-RequiredDirectory $QuarkSkillDirectory '夸克网盘 Skill'
-$quarkInstallPath = Resolve-RequiredFile (Join-Path $resolvedQuarkSkillDirectory 'scripts\install.sh') '夸克网盘安装检查'
 $quarkCliPath = Resolve-RequiredFile (Join-Path $resolvedQuarkSkillDirectory 'scripts\quark-drive.cjs') '夸克网盘 CLI'
 
 $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
@@ -169,9 +168,6 @@ function Invoke-Quark {
 
     Push-Location -LiteralPath $resolvedQuarkSkillDirectory
     try {
-        & bash 'scripts/install.sh' | Out-Host
-        Assert-ExitCode $LASTEXITCODE '夸克网盘环境检查'
-
         $commandArguments = @($quarkCliPath) + $Arguments + @(
             '--session-input', $QuarkSessionInput,
             '--session-id', $QuarkSessionId
