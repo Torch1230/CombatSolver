@@ -16,6 +16,7 @@ using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Nodes.Cards;
 using MegaCrit.Sts2.Core.Nodes.Cards.Holders;
 using MegaCrit.Sts2.Core.Nodes.Combat;
+using MegaCrit.Sts2.Core.Nodes.Orbs;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.TestSupport;
@@ -127,9 +128,9 @@ internal sealed partial class UnattendedTestRunner
         SetStars(player, savedPlayer.GetProperty("stars").GetInt32());
         player.Gold = savedPlayer.GetProperty("gold").GetInt32();
 
-        RestoreReplayInventory(player, savedPlayer);
-        await RestoreReplayOrbsAsync(player, savedPlayer.GetProperty("orbs"));
         bool restoreVisuals = TestMode.IsOff;
+        RestoreReplayInventory(player, savedPlayer);
+        await RestoreReplayOrbsAsync(player, savedPlayer.GetProperty("orbs"), restoreVisuals);
         if (restoreVisuals)
             ClearReplayHandVisuals(player);
         await ClearPlayerPilesAsync(player, skipVisuals: true);
@@ -352,7 +353,10 @@ internal sealed partial class UnattendedTestRunner
         }
     }
 
-    private static async Task RestoreReplayOrbsAsync(Player player, JsonElement savedOrbs)
+    private static async Task RestoreReplayOrbsAsync(
+        Player player,
+        JsonElement savedOrbs,
+        bool restoreVisuals)
     {
         PlayerCombatState playerState = player.PlayerCombatState
             ?? throw new InvalidOperationException("replay-state 导入充能球时玩家没有战斗状态。");
@@ -360,8 +364,17 @@ internal sealed partial class UnattendedTestRunner
         if (capacity is < 0 or > 10)
             throw new InvalidOperationException($"replay-state 充能球槽位超出范围：{capacity}。");
 
+        NOrbManager? orbManager = null;
+        if (restoreVisuals)
+        {
+            orbManager = NCombatRoom.Instance?.GetCreatureNode(player.Creature)?.OrbManager
+                ?? throw new InvalidOperationException("replay-state 导入充能球时球位界面不存在。");
+            orbManager.ClearOrbs();
+        }
+
         playerState.OrbQueue.Clear();
         playerState.OrbQueue.AddCapacity(capacity);
+        orbManager?.AddSlotAnim(capacity);
         JsonElement[] savedItems = savedOrbs.GetProperty("items").EnumerateArray().ToArray();
         if (savedItems.Length > capacity)
         {
@@ -392,6 +405,7 @@ internal sealed partial class UnattendedTestRunner
             }
             if (!await playerState.OrbQueue.TryEnqueue(orb))
                 throw new InvalidOperationException($"replay-state 无法恢复充能球 {orb.Id.Entry}。");
+            orbManager?.AddOrbAnim();
         }
     }
 
@@ -551,9 +565,59 @@ internal sealed partial class UnattendedTestRunner
                     restored,
                     typeof(AbstractModel),
                     savedCard.GetProperty("fields"));
+                RestoreReplayCardCosts(restored, savedCard);
                 RestoreReplayCardKeywords(restored, savedCard.GetProperty("keywords"));
             }
         }
+    }
+
+    private static void RestoreReplayCardCosts(CardModel card, JsonElement savedCard)
+    {
+        JsonElement savedEnergyCost = savedCard.GetProperty("energyCost");
+        int expectedCanonical = savedEnergyCost.GetProperty("canonical").GetInt32();
+        bool expectedCostsX = savedEnergyCost.GetProperty("costsX").GetBoolean();
+        if (card.EnergyCost.Canonical != expectedCanonical || card.EnergyCost.CostsX != expectedCostsX)
+        {
+            throw new InvalidOperationException(
+                $"replay-state 卡牌 {card.Id.Entry} 的基础费用定义与当前游戏不一致。");
+        }
+
+        JsonElement energyFields = savedEnergyCost.GetProperty("fields");
+        RestoreReplayPrimitiveState(card.EnergyCost, typeof(object), energyFields);
+        FieldInfo localModifiersField = typeof(CardEnergyCost).GetField(
+                "_localModifiers",
+                BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new MissingFieldException(typeof(CardEnergyCost).FullName, "_localModifiers");
+        JsonElement savedModifiers = energyFields.GetProperty("CardEnergyCost._localModifiers");
+        List<LocalCostModifier> localModifiers = [];
+        foreach (JsonElement savedModifier in savedModifiers.EnumerateArray())
+        {
+            int amount = savedModifier.GetProperty("<Amount>k__BackingField").GetInt32();
+            LocalCostType type = Enum.Parse<LocalCostType>(
+                RequiredString(savedModifier, "<Type>k__BackingField"),
+                false);
+            LocalCostModifierExpiration expiration = Enum.Parse<LocalCostModifierExpiration>(
+                RequiredString(savedModifier, "<Expiration>k__BackingField"),
+                false);
+            bool isReduceOnly = savedModifier.GetProperty("<IsReduceOnly>k__BackingField").GetBoolean();
+            localModifiers.Add(new LocalCostModifier(amount, type, expiration, isReduceOnly));
+        }
+        localModifiersField.SetValue(card.EnergyCost, localModifiers);
+
+        JsonElement cardFields = savedCard.GetProperty("fields");
+        JsonElement savedStarCosts = cardFields.GetProperty("CardModel._temporaryStarCosts");
+        List<TemporaryCardCost> temporaryStarCosts = [];
+        foreach (JsonElement savedStarCost in savedStarCosts.EnumerateArray())
+        {
+            TemporaryCardCost temporaryStarCost = new();
+            RestoreReplayPrimitiveState(temporaryStarCost, typeof(object), savedStarCost);
+            temporaryStarCosts.Add(temporaryStarCost);
+        }
+        FieldInfo temporaryStarCostsField = typeof(CardModel).GetField(
+                "_temporaryStarCosts",
+                BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new MissingFieldException(typeof(CardModel).FullName, "_temporaryStarCosts");
+        temporaryStarCostsField.SetValue(card, temporaryStarCosts);
     }
 
     private static void RestoreReplayHandVisuals(Player player)

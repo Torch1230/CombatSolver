@@ -17,6 +17,7 @@ using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Nodes.Combat;
+using MegaCrit.Sts2.Core.Nodes.Orbs;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Random;
@@ -123,6 +124,23 @@ internal sealed partial class UnattendedTestRunner
                     runner._completedChecks.Add(
                         $"ShowcasePileCounters:Draw={pileCounters[0].Count}:" +
                         $"Discard={pileCounters[1].Count}:Exhaust={pileCounters[2].Count}");
+
+                    NOrbManager orbManager = NCombatRoom.Instance
+                            ?.GetCreatureNode(importedPlayer.Creature)
+                            ?.OrbManager
+                        ?? throw new InvalidOperationException("录像包导入后没有球位界面。");
+                    OrbModel[] modelOrbs = pileState.OrbQueue.Orbs.ToArray();
+                    OrbModel?[] visualOrbs = orbManager._orbs
+                        .Select(static orb => orb.Model)
+                        .ToArray();
+                    if (visualOrbs.Length != pileState.OrbQueue.Capacity
+                        || !visualOrbs.Take(modelOrbs.Length).SequenceEqual(modelOrbs)
+                        || visualOrbs.Skip(modelOrbs.Length).Any(static orb => orb != null))
+                    {
+                        throw new InvalidDataException("录像包导入后的球位界面与模型不一致。");
+                    }
+                    runner._completedChecks.Add(
+                        $"ShowcaseOrbVisuals:Capacity={visualOrbs.Length}:Models={modelOrbs.Length}");
                 }
                 runner._completedChecks.Add(
                     $"ShowcaseBundleImport:EndTurn={entered.CombatEndedTurn}:" +

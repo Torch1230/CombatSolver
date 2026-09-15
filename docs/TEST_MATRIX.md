@@ -1,5 +1,11 @@
 # CombatSolver 测试清单
 
+## 录像回放临时费用与充能球恢复（2026-09-15，未发布）
+
+- 亡灵契约师/女王原包修复前 `71f63f33ad1d4e65bb52e66ba1cc50e8` 在严格导入时失败：手牌第 8 张 `SPUR` 记录为带 `EndOfTurn, WhenPlayed` 清除时机的 0 费，导入后为基础 1 费。修复后同一原包 `SHOWCASE-BUNDLE-IMPORT-V0111` / `d65e84b66d3f40319cc9495822aaa7f0` Passed，23.78 秒；8 张模型手牌与界面节点一致，牌堆计数一致，录像路线接纳且本地搜索 0 次。
+- 故障机器人/女王原包的实机日志在首张 `DUALCAST` 进入 `NOrbManager.EvokeOrbAnim` 时抛出“Sequence contains no matching element”，随后路线在第 19 步因首张牌未完成而失配。修复后同一原包 `SHOWCASE-DEFECT-DUALCAST-0390` / `e0969979ed5d4373aef7a96cf615e44d` Passed，20.11 秒；球队列 1 个模型与 3 个原生可见槽位引用一致，首张双重释放正常结算，完整预计算路线第一回合无伤击杀，计划外重算 0，并经原生终端按钮返回主菜单。
+- Release 构建通过，0 警告、0 错误。两项均使用 Windows 隔离无头实例和玩家本次实际下载的原始 `ShowcaseBundleV1`；未启动可见 Steam，未执行 Bash 门禁。
+
 ## 0.39.0：多宽度路线精炼与 RitsuLib 0.6.0 适配（2026-09-15）
 
 - 使用本次实际下载的 `ShowcaseBundleV1` 在 Windows 上验证五个协议文件全部解压，其中四个负载文件均在关闭写句柄后通过大小与 SHA-256 校验，未再出现共享冲突。

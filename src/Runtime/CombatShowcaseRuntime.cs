@@ -139,6 +139,7 @@ internal static class CombatShowcaseRuntime
         }
         catch (Exception importError)
         {
+            Entry.Logger.Error($"[CombatSolver/Showcase] IMPORT_FAILED error={importError}");
             if (RunManager.Instance.IsInProgress && NGame.Instance is { } host)
             {
                 try
@@ -148,7 +149,7 @@ internal static class CombatShowcaseRuntime
                 catch (Exception cleanupError)
                 {
                     Entry.Logger.Error(
-                        $"[CombatSolver/Showcase] IMPORT_FAILED error={importError} cleanup_error={cleanupError}");
+                        $"[CombatSolver/Showcase] IMPORT_CLEANUP_FAILED error={cleanupError}");
                     throw new InvalidOperationException(
                         $"录像对局导入失败：{importError.Message}；返回主菜单清理失败：{cleanupError.Message}",
                         new AggregateException(importError, cleanupError));
