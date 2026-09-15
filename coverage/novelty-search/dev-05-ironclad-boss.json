@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "seed": "NOVELTY-DEV-20260915-05",
+  "characterId": "IRONCLAD",
+  "ascension": 10,
+  "actIndex": 1,
+  "encounterKind": "Boss",
+  "includeStartingDeck": true,
+  "includeStartingRelics": true,
+  "includeAscendersBane": true,
+  "applyRelicObtainEffects": false,
+  "characterCards": {
+    "count": 12,
+    "ids": [],
+    "upgradeLevels": 1
+  },
+  "colorlessCards": {
+    "count": 2,
+    "ids": []
+  },
+  "relics": {
+    "count": 3,
+    "ids": []
+  },
+  "potions": {
+    "count": 2,
+    "ids": []
+  },
+  "mode": "Search",
+  "fixedSearchBudget": true
+}

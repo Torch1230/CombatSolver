@@ -39,6 +39,12 @@ internal sealed partial class UnattendedTestRunner
             bool expectedCardPlayed = request.ExpectedPlayedCardId == null;
             bool expectedPotionUsed = request.ExpectedUsedPotionId == null;
             bool expectedPlayerPowerObserved = request.ExpectedObservedPlayerPowerId == null;
+            if (request.ScenarioId == "GENERATED-NOVELTY-SEARCH")
+            {
+                _ = ApplySettingsOverrides();
+                await runner.RunNoveltySearchBenchmarkAsync(combatState, player);
+                return Observation(combatEnded: !CombatManager.Instance.IsInProgress);
+            }
             if (request.ScenarioId == "ROUTE-ROW-REUSE")
             {
                 await runner.AssertRouteRowReuseAndMeasureAsync();
@@ -257,9 +263,10 @@ internal sealed partial class UnattendedTestRunner
                 await AssertTheftRecoveryPolicyAsync(combatState);
                 return Observation(combatEnded: false);
             }
-            if (request.ScenarioId == "SEARCH-HP-TARGET-STOP")
+            if (request.ScenarioId is "SEARCH-HP-TARGET-STOP" or "NOVELTY-HP-TARGET-STOP")
             {
-                await runner.AssertHpTargetStopAsync(combatState, player);
+                await runner.AssertHpTargetStopAsync(combatState, player,
+                    request.ScenarioId == "NOVELTY-HP-TARGET-STOP");
                 return Observation(combatEnded: false);
             }
             if (request.ScenarioId == "CHOICE-CONTINUATION-STEP-AUDIT")
@@ -354,6 +361,11 @@ internal sealed partial class UnattendedTestRunner
             if (request.ScenarioId is "NORMALITY-AUTOPLAY" or "NORMALITY-AUTOPLAY-REPLAY")
             {
                 await runner.AssertNormalityAutoPlayAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "NOVELTY-PORTFOLIO-SETTINGS")
+            {
+                runner.AssertSearchPortfolioSettings(combatState);
                 return Observation(combatEnded: false);
             }
             if (request.ScenarioId == "UI-LOCALIZATION")

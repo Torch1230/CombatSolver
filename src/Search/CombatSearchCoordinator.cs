@@ -251,6 +251,8 @@ internal static partial class CombatSearchCoordinator
         {
             long passAllocatedAtStart = GC.GetTotalAllocatedBytes(precise: false);
             long passTransitionsAtStart = policy.RequestWorkTotals?.Snapshot().TransitionCount ?? 0;
+            SearchPolicySnapshot beamPolicy = policy.NoveltySearch == null
+                ? policy : policy with { NoveltySearch = null };
             SolverResult SolveMember(SolverSearchProfile memberProfile, bool refinement)
             {
                 Action<SolverProgress>? memberProgressCallback = refinement && progressCallback != null
@@ -260,7 +262,7 @@ internal static partial class CombatSearchCoordinator
                     root,
                     displayNames,
                     battleDamage,
-                    policy,
+                    beamPolicy,
                     cancellationToken,
                     memberProgressCallback,
                     memberProfile,
@@ -278,8 +280,16 @@ internal static partial class CombatSearchCoordinator
                         interimResultCallback(baseline);
                     }
                     : null;
-            SolverResult passResult = RunBeamWidthPortfolioPass(
-                root, policy, passProfile, passClock, SolveMember, publishBaseline);
+            SolverResult RunBaseline(SolverSearchProfile baselineProfile)
+                => RunBeamWidthPortfolioPass(root, beamPolicy, baselineProfile,
+                    ReferenceEquals(baselineProfile, passProfile) ? passClock : Stopwatch.StartNew(),
+                    SolveMember, publishBaseline);
+            SolverResult passResult = policy.UseNoveltyPortfolio
+                ? RunNoveltyPortfolioPass(root, displayNames, battleDamage, policy, passProfile,
+                    passClock, initialPotionPolicyOverride, cancellationToken, progressCallback,
+                    interimResultCallback, RunBaseline)
+                : RunBaseline(passProfile);
+            NoveltyPortfolioTelemetry? noveltyPass = passResult.NoveltyPortfolio;
             ObserveSmartLayerMemory(
                 policy, memoryForecast, passAllocatedAtStart, passTransitionsAtStart,
                 passResult, passProfile, completedPotionCount: 0);
@@ -310,7 +320,7 @@ internal static partial class CombatSearchCoordinator
                     root,
                     displayNames,
                     battleDamage,
-                    policy,
+                    beamPolicy,
                     cancellationToken,
                     progressCallback,
                     passProfile,
@@ -318,6 +328,9 @@ internal static partial class CombatSearchCoordinator
                     passResult,
                     memoryForecast,
                     interimResultCallback);
+                // The final potion audit may return another result object. Keep the
+                // primary-pass observations alongside the request's final outcome.
+                passResult.NoveltyPortfolio = noveltyPass;
             }
             return passResult;
         }

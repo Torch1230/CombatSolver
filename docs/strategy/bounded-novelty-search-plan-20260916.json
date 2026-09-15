@@ -1,0 +1,99 @@
+{
+  "base": "7f806de",
+  "candidate": {
+    "width": 2,
+    "familiarAllowance": 0,
+    "boundedOpen": 2048,
+    "tupleEntries": 1000000,
+    "maximumExplorationNodes": 2500,
+    "maximumExplorationMs": 5000,
+    "timeDivisor": 2,
+    "bossTimeDivisor": 4,
+    "beamUsesRemainder": true
+  },
+  "method": "Fresh process per variant per root; alternate A/B and B/A by root; full Smart coordinator; root artifacts compared exactly; no training or per-card/encounter decisions",
+  "cases": [
+    {
+      "name": "dev-00-ironclad-elite",
+      "input": "../../coverage/novelty-search/dev-00-ironclad-elite.json"
+    },
+    {
+      "name": "dev-01-silent-elite",
+      "input": "../../coverage/novelty-search/dev-01-silent-elite.json"
+    },
+    {
+      "name": "dev-02-defect-elite",
+      "input": "../../coverage/novelty-search/dev-02-defect-elite.json"
+    },
+    {
+      "name": "dev-03-regent-elite",
+      "input": "../../coverage/novelty-search/dev-03-regent-elite.json"
+    },
+    {
+      "name": "dev-04-necrobinder-elite",
+      "input": "../../coverage/novelty-search/dev-04-necrobinder-elite.json"
+    },
+    {
+      "name": "dev-05-ironclad-boss",
+      "input": "../../coverage/novelty-search/dev-05-ironclad-boss.json"
+    },
+    {
+      "name": "dev-06-silent-boss",
+      "input": "../../coverage/novelty-search/dev-06-silent-boss.json"
+    },
+    {
+      "name": "dev-07-defect-boss",
+      "input": "../../coverage/novelty-search/dev-07-defect-boss.json"
+    },
+    {
+      "name": "dev-08-regent-boss",
+      "input": "../../coverage/novelty-search/dev-08-regent-boss.json"
+    },
+    {
+      "name": "dev-09-necrobinder-boss",
+      "input": "../../coverage/novelty-search/dev-09-necrobinder-boss.json"
+    },
+    {
+      "name": "dev-10-ironclad-monster",
+      "input": "../../coverage/novelty-search/dev-10-ironclad-monster.json"
+    },
+    {
+      "name": "dev-11-silent-monster",
+      "input": "../../coverage/novelty-search/dev-11-silent-monster.json"
+    },
+    {
+      "name": "sentinel-discard",
+      "input": "../../coverage/novelty-search/sentinel-discard.json",
+      "source": ".local/formal-pr-20260915/inputs/expanded-discard.json"
+    },
+    {
+      "name": "sentinel-potions",
+      "input": "../../coverage/novelty-search/sentinel-potions.json",
+      "source": ".local/formal-pr-20260915/inputs/potions.json"
+    }
+  ],
+  "heldout": [
+    {
+      "name": "holdout-00-ironclad",
+      "input": "../../coverage/novelty-search/holdout-00-ironclad.json"
+    },
+    {
+      "name": "holdout-01-silent",
+      "input": "../../coverage/novelty-search/holdout-01-silent.json"
+    },
+    {
+      "name": "holdout-02-defect",
+      "input": "../../coverage/novelty-search/holdout-02-defect.json"
+    },
+    {
+      "name": "holdout-03-regent",
+      "input": "../../coverage/novelty-search/holdout-03-regent.json"
+    },
+    {
+      "name": "holdout-04-necrobinder",
+      "input": "../../coverage/novelty-search/holdout-04-necrobinder.json"
+    }
+  ],
+  "defaultEnabled": false,
+  "settings": "../../coverage/novelty-search/settings.json"
+}

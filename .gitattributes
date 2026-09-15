@@ -10,3 +10,5 @@
 docs/performance/*-20260914.json linguist-generated=true
 docs/performance/performance-pr-20260915.json linguist-generated=true
 docs/performance/derived-work-reuse-20260915.json linguist-generated=true
+docs/strategy/bounded-novelty-search-20260916.json linguist-generated=true
+docs/strategy/bounded-novelty-search-prototype-20260916.patch linguist-generated=true -whitespace

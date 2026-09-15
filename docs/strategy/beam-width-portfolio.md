@@ -4,7 +4,7 @@
 
 同一个根只改 Beam 宽度就能让搜索结果双向变化，而且没有「更宽必然更好」的方向性。既然差一格的宽度不是单调的，那就把若干次不同宽度的搜索当成若干个抽样，用搜索里既有的比较规则整条选优。这就是 `BeamWidthPortfolio`：一个与 Beam 算法无关的组合器，只调整每个成员的宽度和分到的节点上限。
 
-开关 `SearchPolicySnapshot.UseBeamWidthPortfolio` 默认关闭。关闭时主搜索仍只运行一次 `CombatBeamSolver`，使用请求自己的 Profile 实例，逐位不变。
+开关 `SearchPolicySnapshot.UseBeamWidthPortfolio` 默认关闭。本节描述 Beam 阶段；同时开启[多策略搜索](bounded-novelty-search-20260916.md)时，该阶段接收前置探索实际消耗后的剩余预算。两个开关都关闭时，主搜索只运行一次 `CombatBeamSolver`，使用请求自己的 Profile 实例，逐位不变。
 
 ## 做法
 

@@ -418,5 +418,9 @@
   "并行搜索已关闭，下次搜索使用单线程": "Parallel search off; next search uses one thread",
   "搜索并行度已设为 {0}，下次搜索生效": "Parallelism set to {0} for the next search",
   "请输入 {0}–{1} 的整数": "Enter an integer from {0} to {1}",
-  "收起自定义参数": "Hide custom parameters"
+  "收起自定义参数": "Hide custom parameters",
+  "多策略路线搜索已启用，下次搜索生效": "Multi-strategy search enabled for the next search",
+  "多策略路线搜索已关闭": "Multi-strategy search disabled",
+  "多策略路线搜索（实验）": "Multi-strategy search (experimental)",
+  "先用部分预算尝试不同路线，再用剩余预算进行常规搜索，并按当前战损、成长和药水规则选优。可能更快找到好路线，也可能因预算分配而改变结果。与常规搜索共用时间和节点上限；下次搜索生效。": "Use part of the budget to explore different routes, then run the usual search with the remaining budget. Select using the current HP loss, growth and potion rules. This may find good routes sooner, but dividing the budget can also change the result. Both searches share the time and node limits. Applies to the next search."
 }

@@ -11,6 +11,30 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
+    private void AssertSearchPortfolioSettings(CombatState combat)
+    {
+        if (new SolverSettingsData().UseNoveltyPortfolio)
+            throw new InvalidOperationException("多策略搜索必须默认关闭。");
+        SolverOverlay.ShowManualCalculationReady(NGame.Instance!, false);
+        if (!SolverOverlay.ExercisePerformancePresetPersistenceForTesting())
+            throw new InvalidOperationException("0.24.3 性能迁移或预设/内存独立持久化失败。");
+        SolverSettingsSnapshot portfolioSettings = SolverSettings.Capture();
+        SearchPolicySnapshot portfolioEnabled = SolverController.CaptureSearchPolicy(
+            portfolioSettings with { UseBeamWidthPortfolio = true, UseNoveltyPortfolio = true },
+            combat,
+            includeTurnSetup: false,
+            theftPolicy: null);
+        SearchPolicySnapshot portfolioDisabled = SolverController.CaptureSearchPolicy(
+            portfolioSettings with { UseBeamWidthPortfolio = false, UseNoveltyPortfolio = false },
+            combat,
+            includeTurnSetup: false,
+            theftPolicy: null);
+        if (!portfolioEnabled.UseBeamWidthPortfolio || portfolioDisabled.UseBeamWidthPortfolio
+            || !portfolioEnabled.UseNoveltyPortfolio || portfolioDisabled.UseNoveltyPortfolio)
+            throw new InvalidOperationException("组合搜索设置没有按搜索请求冻结。");
+        _completedChecks.Add("SearchPortfolios:DefaultOff:SettingsRoundTrip:UiControl:PolicySnapshot");
+    }
+
     private async Task AssertControllerSessionLifecycleAsync(CombatState combat)
     {
         CombatBeamSolver.VerifyCycleTranspositionLeasePolicyForTesting();
@@ -375,6 +399,7 @@ internal sealed partial class UnattendedTestRunner
         if (SolverSettings.ResolvePerformancePreset(notificationDefaults)
                 != SolverPerformancePreset.Medium
             || notificationDefaults.UseBeamWidthPortfolio
+            || notificationDefaults.UseNoveltyPortfolio
             || !notificationDefaults.EnableNoGcRegion
             || notificationDefaults.NoGcRegionBudgetGigabytes
                 != SolverSettings.DefaultNoGcRegionBudgetGigabytes)
@@ -433,22 +458,7 @@ internal sealed partial class UnattendedTestRunner
         }
         if (!SolverOverlay.ExerciseUploadCompletionTransitionForTesting())
             throw new InvalidOperationException("上传任务结束前按钮状态提前切回空闲，可能重新打开确认弹窗。");
-        if (!SolverOverlay.ExercisePerformancePresetPersistenceForTesting())
-            throw new InvalidOperationException("0.24.3 性能迁移或预设/内存独立持久化失败。");
-        SolverSettingsSnapshot portfolioSettings = SolverSettings.Capture();
-        SearchPolicySnapshot portfolioEnabled = SolverController.CaptureSearchPolicy(
-            portfolioSettings with { UseBeamWidthPortfolio = true },
-            combat,
-            includeTurnSetup: false,
-            theftPolicy: null);
-        SearchPolicySnapshot portfolioDisabled = SolverController.CaptureSearchPolicy(
-            portfolioSettings with { UseBeamWidthPortfolio = false },
-            combat,
-            includeTurnSetup: false,
-            theftPolicy: null);
-        if (!portfolioEnabled.UseBeamWidthPortfolio || portfolioDisabled.UseBeamWidthPortfolio)
-            throw new InvalidOperationException("多宽度路线精炼设置没有按搜索请求冻结。");
-        _completedChecks.Add("BeamWidthPortfolio:SettingsRoundTrip:UiControl:PolicySnapshot");
+        AssertSearchPortfolioSettings(combat);
         AssertDefaultSearchParallelism();
         string parallelFailure = SolverController.FormatSearchFailureForTesting(
             new InvalidOperationException("parallel failure"),
