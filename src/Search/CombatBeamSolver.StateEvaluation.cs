@@ -452,7 +452,23 @@ internal sealed partial class CombatBeamSolver
             Creature enemy = knownEnemies[enemyIndex];
             if (!combat.ContainsCreature(enemy) || !simulator.State.GetCreature(enemy).IsAlive)
                 continue;
-            int strengthSuppression = -combat.GetAmount<StrengthPower>(enemy);
+            int rawStrengthSuppression = -combat.GetAmount<StrengthPower>(enemy);
+            // 临时减力量（尖啸等 TemporaryStrengthPower）在回合结束时归还，它只保护当回合，
+            // 而威胁投影已经按当前减力量算过这一回合的伤害。这里从"力量压制"里剔除临时部分，
+            // 避免把一次性效果按 8 个回合的 Boss 视野重复计价。
+            int temporaryStrengthLoss = 0;
+            IReadOnlyList<PowerModel> enemyPowers = combat.EffectivePowers();
+            for (int powerIndex = 0; powerIndex < enemyPowers.Count; powerIndex++)
+            {
+                PowerModel power = enemyPowers[powerIndex];
+                if (power.Amount > 0
+                    && power is TemporaryStrengthPower
+                    && ReferenceEquals(power.Target, enemy))
+                {
+                    temporaryStrengthLoss += power.Amount;
+                }
+            }
+            int strengthSuppression = rawStrengthSuppression - temporaryStrengthLoss;
             int weakTurns = Math.Max(0, combat.GetAmount<WeakPower>(enemy));
             int vulnerableTurns = Math.Max(0, combat.GetAmount<VulnerablePower>(enemy));
             enemyStrengthSuppression += strengthSuppression;
@@ -466,7 +482,8 @@ internal sealed partial class CombatBeamSolver
                 mostVulnerableTargetCombatId = enemy.CombatId;
             }
             enemyControlDistribution.Add(enemy.CombatId ?? uint.MaxValue);
-            enemyControlDistribution.Add(strengthSuppression);
+            // 指纹保留原始有符号值：永久力量与临时力量在状态键里本来就是不同的能力列表。
+            enemyControlDistribution.Add(rawStrengthSuppression);
             enemyControlDistribution.Add(weakTurns);
             enemyControlDistribution.Add(vulnerableTurns);
         }
