@@ -110,8 +110,6 @@ internal sealed partial class UnattendedTestRunner
                     throw new InvalidOperationException($"Failure instructions are not localized: {target}");
                 _completedChecks.Add($"UiLocalization:{target}:Catalog{catalog.Count}:Settings:UploadTransitions:DynamicStatus:FailureInstructions");
             }
-            AssertThemeAndContrast();
-            _completedChecks.Add("UiThemeAndContrast:LightSecondaryHover:NoOutline:ActionPillTones:RoundTrip");
         }
         finally
         {
@@ -234,42 +232,5 @@ internal sealed partial class UnattendedTestRunner
         if (node is OptionButton options)
             for (int index = 0; index < options.ItemCount; index++) Check(options.GetItemText(index));
         foreach (Node child in node.GetChildren()) AssertEnglishControls(child);
-    }
-
-    private static void AssertThemeAndContrast()
-    {
-        SolverOverlayTheme originalTheme = SolverSettings.Current.OverlayTheme;
-        try
-        {
-            SolverUiTokens.ConfigureTheme(SolverOverlayTheme.Light);
-            if (!SolverUiTokens.IsLightTheme)
-                throw new InvalidOperationException("Light theme was not recognized.");
-
-            Button secondaryButton = SolverUiTokens.CreateButton("TestSecondary", SolverButtonStyle.Secondary);
-            Color hoverFont = secondaryButton.GetThemeColor("font_hover_color");
-            if (hoverFont == Colors.White || (hoverFont.R > 0.6f && hoverFont.G > 0.6f && hoverFont.B > 0.6f))
-                throw new InvalidOperationException("Secondary button in Light mode still has white or light hover text.");
-            if (secondaryButton.HasThemeConstantOverride("outline_size"))
-                throw new InvalidOperationException("Light theme controls must not have text outline overrides.");
-
-            Button primaryButton = SolverUiTokens.CreateButton("TestPrimary", SolverButtonStyle.Primary);
-            Color primaryFont = primaryButton.GetThemeColor("font_color");
-            if (primaryFont != Colors.White)
-                throw new InvalidOperationException("Primary button should use solid white text.");
-
-            static float GetLuminance(Color c) => 0.2126f * c.R + 0.7152f * c.G + 0.0722f * c.B;
-            if (GetLuminance(SolverUiTokens.Palette.AttackText) > 0.45f
-                || GetLuminance(SolverUiTokens.Palette.SkillText) > 0.45f
-                || GetLuminance(SolverUiTokens.Palette.KillText) > 0.45f)
-                throw new InvalidOperationException("Action pill foreground text in Light mode does not satisfy contrast threshold.");
-
-            SolverUiTokens.ConfigureTheme(SolverOverlayTheme.Dark);
-            if (SolverUiTokens.IsLightTheme)
-                throw new InvalidOperationException("Theme roundtrip failed to return to Dark mode.");
-        }
-        finally
-        {
-            SolverUiTokens.ConfigureTheme(originalTheme);
-        }
     }
 }

@@ -10,8 +10,6 @@ internal sealed partial class SolverRouteRow : PanelContainer
     private CanvasItem? _endTurnAction;
     private SolverOverlayTurnSnapshot? _populatedTurn;
     private string? _populatedLanguage;
-    private readonly int _index;
-    private readonly ColorRect _accentBar;
 
     public Label TurnLabel { get; }
     public HFlowContainer ActionFlow { get; }
@@ -22,7 +20,6 @@ internal sealed partial class SolverRouteRow : PanelContainer
 
     public SolverRouteRow(int index)
     {
-        _index = index;
         Name = $"Route{index + 1}";
         CustomMinimumSize = new Vector2(0, SolverUiTokens.Size.RouteRowHeight);
         MouseFilter = MouseFilterEnum.Ignore;
@@ -44,14 +41,13 @@ internal sealed partial class SolverRouteRow : PanelContainer
             SizeFlagsVertical = SizeFlags.ExpandFill,
         };
         layout.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Sm);
-        _accentBar = new ColorRect
+        layout.AddChild(new ColorRect
         {
             Color = index == 0 ? SolverUiTokens.Palette.Accent : Godot.Colors.Transparent,
             CustomMinimumSize = new Vector2(3, 24),
             SizeFlagsVertical = SizeFlags.ShrinkCenter,
             MouseFilter = MouseFilterEnum.Ignore,
-        };
-        layout.AddChild(_accentBar);
+        });
 
         TurnLabel = SolverUiTokens.CreateLabel(
             SolverText.Format($"第 {index + 1} 回合"),
@@ -119,36 +115,6 @@ internal sealed partial class SolverRouteRow : PanelContainer
         outcomeLayout.AddChild(EnergyLabel);
         layout.AddChild(outcomeLayout);
         AddChild(layout);
-
-        Action themeListener = ApplyTheme;
-        TreeEntered += () => SolverUiTokens.ThemeChanged += themeListener;
-        TreeExiting += () => SolverUiTokens.ThemeChanged -= themeListener;
-    }
-
-    public void ApplyTheme()
-    {
-        AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
-            _index == 0 ? SolverUiTokens.Palette.SurfaceRaised : SolverUiTokens.Palette.Surface,
-            _index == 0
-                ? SolverUiTokens.IsLightTheme
-                    ? SolverUiTokens.Palette.Border
-                    : SolverUiTokens.Palette.Accent
-                : SolverUiTokens.Palette.BorderSubtle,
-            SolverUiTokens.Radius.Medium,
-            SolverUiTokens.Spacing.Sm,
-            SolverUiTokens.Spacing.Sm));
-
-        _accentBar.Color = _index == 0 ? SolverUiTokens.Palette.Accent : Godot.Colors.Transparent;
-        TurnLabel.AddThemeColorOverride("font_color", _index == 0 ? SolverUiTokens.Palette.Accent : SolverUiTokens.Palette.TextPrimary);
-        SolverUiTokens.ApplyTextOutline(TurnLabel);
-
-        EnemyDamageLabel.AddThemeColorOverride("font_color", SolverUiTokens.Palette.Warning);
-        SolverUiTokens.ApplyTextOutline(EnemyDamageLabel);
-
-        SolverUiTokens.ApplyTextOutline(OutcomeLabel);
-
-        EnergyLabel.AddThemeColorOverride("font_color", SolverUiTokens.Palette.TextSecondary);
-        SolverUiTokens.ApplyTextOutline(EnergyLabel, SolverUiTokens.IsLightTheme ? 0 : 1);
     }
 
     public void Populate(SolverOverlayTurnSnapshot turn)
