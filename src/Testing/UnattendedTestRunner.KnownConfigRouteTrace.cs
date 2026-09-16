@@ -100,6 +100,12 @@ internal sealed partial class UnattendedTestRunner
                     prefixes.Add(FreezeKnownRoutePrefix(action, CaptureSimulated(parent.Simulator,
                         (SimulatedCombatState)parent.Simulator.State.CombatState, player, combat.Enemies[0]),
                         parent));
+                    Entry.Logger.Info($"[CombatSolver/Test] KNOWN_CONFIG_PREFIX step={actions.Count} " +
+                        $"state={parent.StateKey.First:x16}/{parent.StateKey.Second:x16} " +
+                        $"score={parent.Score:F0} hp={parent.PlayerHp} proj_hp={parent.ProjectedPlayerHp} " +
+                        $"enemy={parent.EnemyHp} loss={parent.CumulativePlayerHpLost} " +
+                        $"setup={parent.PersistentBuffValue} latent={parent.LatentSetupValue} " +
+                        $"turn={parent.Turn} shuffles={parent.ShufflesCrossed}");
                 }
             }
         }
