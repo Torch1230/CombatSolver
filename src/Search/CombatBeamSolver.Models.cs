@@ -95,6 +95,7 @@ internal sealed partial class CombatBeamSolver
         bool measurePhasePerformance,
         SearchFramePressureSignal framePressureSignal)
     {
+        public NoveltySearchRun? Novelty;
         public Guid PathDiagnosticsSolverId;
         public int PathDiagnosticsBoundaryId;
         public long RoutingChoiceSummaryBuilds;

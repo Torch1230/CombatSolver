@@ -551,6 +551,7 @@ expected_beam_files=(
     CombatBeamSolver.Expansion.cs
     CombatBeamSolver.FinalPlanOrdering.cs
     CombatBeamSolver.Models.cs
+    CombatBeamSolver.NoveltySearch.cs
     CombatBeamSolver.Transpositions.cs
     CombatBeamSolver.OrderedMutationRetention.cs
     CombatBeamSolver.ParallelExpansion.cs
@@ -583,6 +584,16 @@ done <<'EOF'
 CombatBeamSolver.cs	internal sealed partial class CombatBeamSolver(
 GrowthPolicy.cs	internal readonly record struct GrowthValues(
 SearchPolicySnapshot.cs	public GrowthValues GrowthBudgets { get; init; }
+SearchPolicySnapshot.cs	public bool UseNoveltyPortfolio { get; init; }
+CombatBeamSolver.Models.cs	public NoveltySearchRun? Novelty;
+CombatBeamSolver.NoveltySearch.cs	private bool RunNoveltyOpen(
+CombatBeamSolver.NoveltySearch.cs	CaptureNoveltyFacts(SearchNode node)
+CombatSearchCoordinator.NoveltyPortfolio.cs	NoveltyPortfolioBudget.Remaining(profile,
+CombatSearchCoordinator.NoveltyPortfolio.cs	IsBetterPotionPolicyResult(root, policy, exploration, baseline)
+BfwsPackedNovelty.cs	Dictionary<BfwsFact, int> _atoms
+BfwsPackedNovelty.cs	_parentPartition == partition
+BfwsBoundedOpen.cs	private readonly SortedSet<Entry> _entries
+NoveltyPortfolioBudget.cs	profile.MaxExpandedNodes - (int)expandedNodes
 CombatBeamSolver.cs	private readonly SearchRunContext _run = new(
 CombatBeamSolver.cs	private BeamRetentionPolicy Retention =>
 CombatBeamSolver.cs	private FinalPlanOrdering FinalOrdering =>

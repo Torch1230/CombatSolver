@@ -1,5 +1,16 @@
 # CombatSolver 测试清单
 
+## 有界新颖性组合（2026-09-16，未发布）
+
+- 新增默认关闭的多策略开关，当前上游 `7f806de`、游戏 0.111.0、RitsuLib 0.6.2。14 个固定根的 28 份完整 Smart 请求全部运行成功，两边均 12 个完整胜利；其中 3 根投影战损下降，其他根战损相同。每份样本独立进程、交替 AB/BA，核对五份输入/原生开局 JSON，使用请求 `total_*` 指标。具体成本、反例与未完成胜利见[报告](strategy/bounded-novelty-search-20260916.md)。
+- 离线合同：21 项参考调度 + 6 项祖先配额 + 7 项有界队列 + 9 项共享预算；12,000 个混合状态与参考新颖性完全一致。两个原生结构门禁均通过，`search_files=113`；最终 Release 11.48 秒、0 警告/错误。
+- `GENERATED-NOVELTY-SEARCH` 加 `control-checks.flag` / `2d59455a85d34d82b28540efe4b4a12b` Passed：实际 DOP2 接管当前回合、逐动作接管已显示路线、取消向外传播、工作只计一次及 live/shadow 根不变。
+- `UI-LOCALIZATION` / `49c873258c7f4a32a68311311f5078a7` Passed，eng/zhs/zht、424 项目录；`NOVELTY-PORTFOLIO-SETTINGS` / `60e2e21739604b578dbaa6c2e197a9d5` Passed，默认关闭、持久化、性能页控件与请求冻结。
+- `NOVELTY-HP-TARGET-STOP` / `07da6f2abdd0486f947f02fe1e4c922a` Passed：真实前置探索、目标战损、固定重放成长、致命成长、强制一药/保留备用药及至少一药；`ROUTE-CACHE-RECORD-V0111` / `0f890408d5784ecca93e939f84f079ae` Passed，新增策略隔离缓存身份并保留恢复/手动重算语义。
+- 综合 `CONTROLLER-SESSIONS-527` / `51d1ea6438c646bca26081bc9f5c9a89` 在窗口缩放/尺寸持久化断言失败（`configured=True, persistence=False`），尚未到新增设置断言。完整综合场景未通过，新增设置改用上述独立同源合同验证；不把失败归因为新搜索或记成通过。
+- 双组合开关 / `1bb9e9c368824ce892b3efef1bef228b` Passed：30秒请求中实际运行3个Beam宽度，探索加全部Beam成员11,443节点≤24,000主搜索上限；上游药水审计仍按每层节点预算及请求截止时间执行。
+- 原生两端 ScenarioId 参数通用；[复跑方式](../tools/BfwsResearchChecks/README.md) 同时说明 PowerShell/Bash 协议与 Linux 独立进程包装器。5 个新根的 10 份对照完整获胜且终局策略摘要相同，但多数成本更高；另有两个场景8份独立ABBA。三场原生部署与首次预测的战损/药水一致且计划外重算0，包含DOP2与真实1GB NoGC预算4次回收续搜；runId和全部代价见报告。没有可见 Steam、FPS 或 Windows 实机性能结论。
+
 ## 录像回放临时费用与充能球恢复（2026-09-15，未发布）
 
 - 亡灵契约师/女王原包修复前 `71f63f33ad1d4e65bb52e66ba1cc50e8` 在严格导入时失败：手牌第 8 张 `SPUR` 记录为带 `EndOfTurn, WhenPlayed` 清除时机的 0 费，导入后为基础 1 费。修复后同一原包 `SHOWCASE-BUNDLE-IMPORT-V0111` / `d65e84b66d3f40319cc9495822aaa7f0` Passed，23.78 秒；8 张模型手牌与界面节点一致，牌堆计数一致，录像路线接纳且本地搜索 0 次。

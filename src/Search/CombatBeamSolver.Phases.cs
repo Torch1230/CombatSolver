@@ -649,6 +649,7 @@ internal sealed partial class CombatBeamSolver
                 Forecast = _forecast,
                 ExpandedNodes = _run.Expanded,
                 TotalExpandedNodes = _run.Expanded,
+                NoveltySearch = _run.Novelty?.Describe(),
                 DominatedActionsPruned = _run.DominatedActionsPruned,
                 TopQueueActionsDropped = _run.TopQueueActionsDropped,
                 ActionAdmissionRepresentativesProtected = _run.ActionAdmissionRepresentativesProtected,
@@ -1296,6 +1297,51 @@ internal sealed partial class CombatBeamSolver
         int reservedTurnLayers = root.EncounterRoomType == RoomType.Boss
                 ? SolverWeights.BossEnemyStrengthSuppressionHorizon
                 : SolverWeights.StandardEnemyStrengthSuppressionHorizon;
+
+        if (policy.NoveltySearch != null)
+        {
+            long noveltyParentAllocatedAtStart = 0;
+            bool BeforeNoveltyParent(SearchNode node, int openCount, int completedCount)
+            {
+                SearchTakeoverRequest? request = _interaction?.CurrentTakeoverRequest;
+                if (request?.Kind == SearchTakeoverKind.AdoptRoute && request.RouteAdoptionSeed != null)
+                {
+                    requestedRouteAdoptionSeed = request.RouteAdoptionSeed;
+                    return false;
+                }
+                if (request?.Kind == SearchTakeoverKind.ApplyCurrentTurn
+                    && (currentBestNode != null || currentTurnCandidateNode != null))
+                {
+                    adoptionReached = true;
+                    currentTurnAdoptionReached = currentBestNode == null;
+                    return false;
+                }
+                EnsureMemoryForIndivisibleCommit(ParentAllocationReserve(),
+                    "before_novelty_parent", node.ActionCount, openCount + 1, completedCount);
+                noveltyParentAllocatedAtStart = policy.MemoryPressureSignal.AllocatedBytes;
+                return true;
+            }
+            void ObserveNoveltyBoundary(SearchNode node)
+            {
+                ConsiderCompleteVictory(node);
+                ConsiderCurrentTurnCandidate(node);
+            }
+            void AfterNoveltyParent(SearchNode node, int openCount, int completedCount)
+            {
+                ObserveParentAllocation(Math.Max(0,
+                    policy.MemoryPressureSignal.AllocatedBytes - noveltyParentAllocatedAtStart));
+                if (progressCallback != null && stopwatch.ElapsedMilliseconds - lastProgressMs >= 100)
+                {
+                    RefreshCurrentTurnPreview();
+                    PublishRoutePreview(completed);
+                }
+                PublishProgress(node.Turn, Math.Max(0, node.Turn - _startTurnNumber),
+                    node.ActionCount, openCount, completedCount, "探索不同路线");
+            }
+            timeBudgetReached = RunNoveltyOpen(frontier, completed, stopwatch, ref fallback,
+                MeetsHpTarget, BeforeNoveltyParent, AfterNoveltyParent, ObserveNoveltyBoundary,
+                out acceptableBattleHpLossReached, out searchedTurnLayers);
+        }
 
         while (frontier.Count > 0
             && (!policy.VerifyIncrementalSearch
