@@ -32,7 +32,14 @@ internal static partial class CombatSearchCoordinator
     /// <item>Beam 512 / 100 000：赢（第 8 回合斩杀、剩 3 血），只用了 26 671 个节点。</item>
     /// </list>
     /// <para>
-    /// 这是一个检查点上的观察，不是普遍规律；更宽的搜索也不保证一定有更优解。
+    /// 所以两边必须一起抬：只抬节点，窄 Beam 花不掉；只抬 Beam，节点又不够。
+    /// </para>
+    /// <para>
+    /// 两条触发路径：整份请求**一条胜利路线都没有**（原有行为，逐位不变），或者已经有胜利
+    /// 但战略战损仍不低于 <see cref="SolverWeights.HighLossEscalationMinimumHp" /> 且超过
+    /// 玩家设置的可接受战损（高损胜利重搜）。后者让大战损局面不再只在同一条分支上继续
+    /// 微调，而是用更宽的搜索面去找结构不同的路线；两条路径都只在整轮严格变好时采用结果。
+    /// 触发时多花的，正是玩家在档位里配了却一直没被用掉的那段时间。
     /// </para>
     /// </remarks>
     internal static SolverResult EscalateSearchWhenNoVictory(
@@ -48,12 +55,16 @@ internal static partial class CombatSearchCoordinator
         long lastPassMilliseconds = requestClock.ElapsedMilliseconds;
         for (int completedEscalations = 0; ; completedEscalations++)
         {
-            if (IsCompleteVictory(selected)
-                || selected.ResultScope != SolverResultScope.SearchCompletion
+            if (selected.ResultScope != SolverResultScope.SearchCompletion
                 || stopRequested())
             {
                 return selected;
             }
+            bool completeVictory = IsCompleteVictory(selected);
+            // 无胜利路径保持原样；已有胜利但战损很大的局面也允许加宽重搜一次，
+            // 让搜索有机会换一条分支，而不是在原有分支上继续做低效益微调。
+            if (completeVictory && !ShouldEscalateHighLossVictory(root, policy, selected))
+                return selected;
             SolverSearchProfile? escalated = BuildNoVictoryEscalationProfile(
                 configured,
                 completedEscalations,
@@ -64,6 +75,7 @@ internal static partial class CombatSearchCoordinator
 
             policy.Diagnostics.Info(
                 $"[CombatSolver/Test] NO_VICTORY_ESCALATION start " +
+                $"kind={(completeVictory ? "high_loss_victory" : "no_victory")} " +
                 $"attempt={completedEscalations + 1} " +
                 $"beam={configured.BeamWidth}->{escalated.BeamWidth} " +
                 $"nodes={configured.MaxExpandedNodes}->{escalated.MaxExpandedNodes} " +
@@ -88,6 +100,20 @@ internal static partial class CombatSearchCoordinator
                 return selected;
             selected = candidate;
         }
+    }
+
+    /// <summary>
+    /// 高损胜利是否值得加宽重搜：战损超过玩家设置的可接受值，并且不低于最小绝对值。
+    /// 只有完整胜利才讨论「战损大」；没有胜利的局面本来就会走无胜利加宽。
+    /// </summary>
+    private static bool ShouldEscalateHighLossVictory(
+        CombatRootSnapshot root,
+        SearchPolicySnapshot policy,
+        SolverResult selected)
+    {
+        int deficit = StrategicHpDeficit(root, policy, selected);
+        return deficit > policy.AcceptableBattleHpLoss
+            && deficit >= SolverWeights.HighLossEscalationMinimumHp;
     }
 
     internal static SolverSearchProfile? BuildNoVictoryEscalationProfile(

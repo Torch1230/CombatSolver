@@ -30,8 +30,12 @@ internal static class SolverWeights
     // 任意一个生效后立刻饱和，Beam 无法区分完整成长引擎和单张能力。
     public const int PersistentBuffDeltaBeamCap = 32;
     public const double PersistentBuffDeltaBeamValue = 50_000d;
-    public const int StandardPersistentBuffDeltaBeamCap = 4;
-    public const double StandardPersistentBuffDeltaBeamValue = 150_000d;
+    // 普通战斗之前是 4 点封顶：一张 +2 力量按预估攻击命中折算就有 20 点，第一张能力就把
+    // 通道打满，第二张能力对排序的边际贡献恰好为 0，而打击/格挡每个动作都继续得分，
+    // 成长引擎线会被当回合收益挤掉。改成和首领相同的 32 点梯度、单价减半：总上限仍然
+    // 明显低于首领（80 万对 160 万），但连续开能力能继续增值。
+    public const int StandardPersistentBuffDeltaBeamCap = 32;
+    public const double StandardPersistentBuffDeltaBeamValue = 25_000d;
     public const int LatentSetupBeamCap = 24;
     public const double LatentSetupBeamValue = 12_000d;
     // This represents future attack quality that is still present in live piles. It prevents a
@@ -63,6 +67,12 @@ internal static class SolverWeights
     /// 这是那一个检查点上的观察，不是 Beam 宽度与获胜所需节点数的单调关系或固定比例保证。
     /// </remarks>
     public const int NoVictoryEscalationFactor = 2;
+    /// <summary>
+    /// 已经获胜但战损仍不低于这个值、且没有达到玩家设置的可接受战损时，也按无胜利加宽的
+    /// 同一套机制重搜一轮。大战损局面里，单条分支上的低效益微调会让搜索错过结构完全不同的
+    /// 路线；加宽仍然只花玩家配了却没用掉的时间，并且只在整轮严格变好时采用。
+    /// </summary>
+    public const int HighLossEscalationMinimumHp = 10;
     /// <summary>
     /// 最多抬这么多次（配合 <see cref="NoVictoryEscalationFactor" />，上限是 4 倍）。
     /// </summary>
