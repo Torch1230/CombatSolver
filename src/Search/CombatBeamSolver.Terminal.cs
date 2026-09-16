@@ -335,14 +335,29 @@ internal sealed partial class CombatBeamSolver
             ContinuationStamp? expected = node.Snapshot.Continuation;
             if (expected == null)
             {
-                SimulationSnapshot replayed = Replay(node.Actions);
-                expected = ContinuationStamp.CapturePredicted(
-                    _player,
-                    replayed.Simulator,
-                    node.Turn,
-                    _forecast,
-                    _startTurnNumber);
-                replayed.ReleaseSimulator();
+                SimulationSnapshot? turnSetupRoot = _includeTurnSetup
+                    ? ReplayTurnSetup(node.GetTurnSetupChoices())
+                    : null;
+                SimulationSnapshot? replayed = null;
+                try
+                {
+                    replayed = Replay(
+                        node.Actions,
+                        turnSetupRoot,
+                        _startTurnNumber,
+                        priorActionCount: 0);
+                    expected = ContinuationStamp.CapturePredicted(
+                        _player,
+                        replayed.Simulator,
+                        node.Turn,
+                        _forecast,
+                        _startTurnNumber);
+                }
+                finally
+                {
+                    replayed?.ReleaseSimulator();
+                    turnSetupRoot?.ReleaseSimulator();
+                }
             }
             continuations.Add(new CachedContinuation(expected, node.Turn, forecastOffset));
         }

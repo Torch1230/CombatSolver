@@ -72,9 +72,24 @@ internal sealed partial class CombatBeamSolver
         _novelty.Stop = "open_exhausted";
         try
         {
-            foreach (SearchNode seed in initial) Enqueue(seed, initialSeed: true);
+            foreach (SearchNode seed in initial)
+            {
+                maximumTurn = Math.Max(maximumTurn, seed.Turn);
+                if (!seed.IsTerminal)
+                {
+                    Enqueue(seed, initialSeed: true);
+                    continue;
+                }
+
+                _ = NoveltyFor(seed);
+                if (seed.Score > fallback.Score) fallback = seed;
+                observeBoundary(seed);
+                completed.Add(seed);
+                targetReached |= hpTarget(seed);
+            }
             initial.Clear();
-            while (open.Count > 0)
+            if (targetReached) _novelty.Stop = "hp_target";
+            while (open.Count > 0 && !targetReached)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (_run.Expanded >= _profile.MaxExpandedNodes) { _novelty.Stop = "node_limit"; break; }

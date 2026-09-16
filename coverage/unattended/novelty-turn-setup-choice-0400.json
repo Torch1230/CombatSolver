@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "NOVELTY-TURN-SETUP-CHOICE-0400",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "NOVELTY-TURN-SETUP-CHOICE-0400",
+  "relics": [
+    { "relicId": "TOASTY_MITTENS", "addWithoutObtainedEffects": true }
+  ],
+  "fixedSearchBudget": true,
+  "searchBudgetOverrideMilliseconds": 5000,
+  "searchMaxDegreeOfParallelismForTest": 2,
+  "useNoveltyPortfolioForTest": true,
+  "performancePresetForTest": "Low",
+  "expectedInitialSetupChoiceCountAtLeast": 1,
+  "expectedInitialSetupChoiceSourceId": "TOASTY_MITTENS",
+  "stopAfterInitialSetupAssertion": true,
+  "timeoutSeconds": 120,
+  "exitOnComplete": true
+}

@@ -56,6 +56,7 @@ internal sealed partial class UnattendedTestRunner
     public static bool MeasureSearchPhases => Host.MeasureSearchPhases;
     public static int? SearchBudgetOverrideMilliseconds => Host.SearchBudgetOverrideMilliseconds;
     public static int? SearchMaxDegreeOfParallelismOverride => Host.SearchMaxDegreeOfParallelismOverride;
+    public static bool UseNoveltyPortfolioOverride => Host.UseNoveltyPortfolioOverride;
     public static bool UseBeamWidthPortfolioOverride => Host.UseBeamWidthPortfolioOverride;
     public static IReadOnlyList<int>? BeamWidthPortfolioWidthsOverride => Host.BeamWidthPortfolioWidthsOverride;
     public static bool? Act3BossStrategyOverride => Host.Act3BossStrategyOverride;

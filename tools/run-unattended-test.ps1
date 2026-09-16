@@ -117,6 +117,7 @@ param(
     [switch]$MeasureSearchPhases,
     [ValidateSet(-1, 1, 2, 3, 4, 5, 6, 7, 8)]
     [int]$SearchMaxDegreeOfParallelismForTest = -1,
+    [switch]$UseNoveltyPortfolioForTest,
     [switch]$HoldAfterInitialSearch,
     [int]$ShortSearchBudgetOverrideMilliseconds = -1,
     [int]$DeepSearchBudgetOverrideMilliseconds = -1,
@@ -817,6 +818,7 @@ $request = [ordered]@{
     searchBudgetOverrideMilliseconds = if ($SearchBudgetOverrideMilliseconds -gt 0) { $SearchBudgetOverrideMilliseconds } else { $null }
     measureSearchPhases = $MeasureSearchPhases.IsPresent
     searchMaxDegreeOfParallelismForTest = if ($SearchMaxDegreeOfParallelismForTest -gt 0) { $SearchMaxDegreeOfParallelismForTest } else { $null }
+    useNoveltyPortfolioForTest = if ($UseNoveltyPortfolioForTest.IsPresent) { $true } else { $null }
     holdAfterInitialSearch = $HoldAfterInitialSearch.IsPresent
     shortSearchBudgetOverrideMilliseconds = if ($ShortSearchBudgetOverrideMilliseconds -gt 0) { $ShortSearchBudgetOverrideMilliseconds } else { $null }
     deepSearchBudgetOverrideMilliseconds = if ($DeepSearchBudgetOverrideMilliseconds -gt 0) { $DeepSearchBudgetOverrideMilliseconds } else { $null }

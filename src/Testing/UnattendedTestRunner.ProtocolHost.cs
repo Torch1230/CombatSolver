@@ -32,6 +32,7 @@ internal sealed partial class UnattendedTestRunner
         public void ApplyAct3BossStrategyOverride(bool? enabled) => Act3BossStrategyOverride = enabled;
         public bool MeasureSearchPhases { get; private set; }
         public int? SearchMaxDegreeOfParallelismOverride { get; private set; }
+        public bool UseNoveltyPortfolioOverride { get; private set; }
         public bool UseBeamWidthPortfolioOverride { get; private set; }
         public IReadOnlyList<int>? BeamWidthPortfolioWidthsOverride { get; private set; }
         public int? SearchBudgetOverrideMilliseconds { get; private set; }
@@ -330,6 +331,7 @@ internal sealed partial class UnattendedTestRunner
                     $"实际为 {maxDegreeOfParallelism}。");
             }
             SearchMaxDegreeOfParallelismOverride = request.SearchMaxDegreeOfParallelismForTest;
+            UseNoveltyPortfolioOverride = request.UseNoveltyPortfolioForTest == true;
             if (request.BeamWidthPortfolioWidthsForTest is { Length: > 0 } widths
                 && widths.Any(static width => width < 1))
             {
@@ -358,6 +360,7 @@ internal sealed partial class UnattendedTestRunner
             FixedSearchBudget = false;
             MeasureSearchPhases = false;
             SearchMaxDegreeOfParallelismOverride = null;
+            UseNoveltyPortfolioOverride = false;
             UseBeamWidthPortfolioOverride = false;
             BeamWidthPortfolioWidthsOverride = null;
             Act3BossStrategyOverride = null;

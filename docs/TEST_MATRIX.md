@@ -1,5 +1,15 @@
 # CombatSolver 测试清单
 
+## 下一版本（开发中）：多策略回合准备选牌修复（2026-09-16）
+
+- 日志站基线：0.40.0 共取得 12 份 `TurnSetupFailure` 问题包，覆盖烤手套、能力牌及多个职业/遭遇；12 份异常栈均进入 `RunNoveltyPortfolioPass -> CombatBeamSolver.RunNoveltyOpen`。11 份在 `BuildContinuations -> Replay` 因未回放准备选牌而找不到首张手牌，1 份由终结准备根进入 `Expand`。服务端筛选结果是玩家主动提交的问题包，不作为总体发生率统计。
+- `NOVELTY-TURN-SETUP-CHOICE-0400` / `26117906a7a4464c83cc1a9a10ac803f` Passed：显式强制多策略路线搜索、固定 5 秒预算、DOP2，真实烤手套准备选牌被路线保留；最终搜索 1,578 个节点、10,669 次转移，3 回合零战损获胜，没有准备阶段失败。Release 构建 0 警告、0 错误。
+- 两个全新无头实例在建局时停在原生 `There's another modal already open`，均到 120 秒后由启动器停止，未进入搜索且不计为回归失败或通过；改用此前已完成初始化的隔离实例后，同一请求正常通过。
+
+```powershell
+pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId NOVELTY-TURN-SETUP-CHOICE-0400 -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -Seed NOVELTY-TURN-SETUP-CHOICE-0400 -RelicsJson '[{"relicId":"TOASTY_MITTENS","addWithoutObtainedEffects":true}]' -FixedSearchBudget -SearchBudgetOverrideMilliseconds 5000 -SearchMaxDegreeOfParallelismForTest 2 -UseNoveltyPortfolioForTest -PerformancePresetForTest Low -ExpectedInitialSetupChoiceCountAtLeast 1 -ExpectedInitialSetupChoiceSourceId TOASTY_MITTENS -StopAfterInitialSetupAssertion -TimeoutSeconds 120 -ExitOnComplete
+```
+
 ## 0.40.0：有界新颖性组合与设置迁移（2026-09-16）
 
 - 引导横幅回归：`UI-LOCALIZATION` / `56c829a25d294a95bed3959f98322c7f` Passed，eng/zhs/zht 共 426 项目录，验证多策略与皮皮极速横幅的当前语言文案、点击永久隐藏和设置往返；`NOVELTY-PORTFOLIO-SETTINGS` / `1bb50f409cd843e797a2b16669219da4` Passed，验证精炼默认开启、多策略默认关闭、旧设置缺失横幅字段时采用显示默认值、两类横幅关闭选择持久化及搜索请求冻结。Release 构建 0 警告、0 错误；两项均使用隔离无头实例并在完成后退出，未启动可见 Steam，因此不把无头结果写成真实排版验收。

@@ -122,7 +122,7 @@ for name in \
     verify-controller-session-lifecycle verify-fork-boundaries \
     verify-combat-root-snapshot verify-pre-combat-forecast-api verify-base-lib-card-modifier-boundary \
     stop-after-combat-root-snapshot-assertion verify-incremental-search \
-    force-short-search-only fixed-search-budget measure-search-phases hold-after-initial-search; do
+    force-short-search-only fixed-search-budget measure-search-phases use-novelty-portfolio-for-test hold-after-initial-search; do
     add_option "$name" 0 switch bool
 done
 add_option short-search-budget-override-milliseconds -1 int positive_int
