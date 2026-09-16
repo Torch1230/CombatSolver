@@ -13,6 +13,16 @@
 - 适配 RitsuLib 0.6.0 的多程序集版本包：构建改为导入框架提供的兼容程序集与共享程序集引用，无头快照冻结完整版本包，清单最低依赖同步提升到 0.6.0；统一发布脚本的夸克打包前置也改为严格要求完整的 `STS2 RitsuLib 0.6.0.zip`，不回退旧版。RitsuLib 已接管 BaseLib 目标类型的登记与弱缓存，CombatSolver 删除对旧私有查询闭包的重复补丁；该补丁在 0.6.0 中找不到目标并中断初始化，连带造成瞬间出牌补丁和原生弃牌观察补丁未应用。现在初始化可完整应用全部补丁，瞬间模式下生存者的原生弃牌选择能够完成并收束出牌动作。
 - 合入 PR #96 的选牌执行续接、生成池与派生工作复用，以及路线行控件复用。搜索预算、动作顺序、路线政策和未知语义的完整回放边界保持不变；详细实现与原 PR 验证记录保留在后续未发布章节。
 
+## 未发布：离线搜索宿主（2026-09-16）
+
+- 新增 `tools/OfflineSearchHarness/`：不启动 Godot，在普通 .NET 9 进程里建出一场战斗、推进到玩家第一回合，再调 `CombatRootSnapshot.Capture` 与 `CombatSearchCoordinator.Solve`（或单次 `CombatBeamSolver`）跑一次固定预算搜索。用途是批量测量搜索量与路线，不做正确性验收；用法、口径、绕过表与限制见 [离线搜索宿主](OFFLINE_SEARCH_HARNESS.md)。
+- 为此在 `src/` 加了四处入口，都不改搜索、评分、保留与协调器的任何行为，且在宿主不用它们时游戏内路径与改动前一致：
+  - `CombatSolver.csproj` 加 `<InternalsVisibleTo Include="OfflineSearchHarness" />`，宿主对模组本体不做公开化。
+  - `UnattendedTestRunner.BeginOfflineSession(OfflineSessionOptions)`：把固定预算、预算毫秒、并行度、宽度组合开关按无人测试请求的同一段映射（`ProtocolHost.ConfigureSearchOverrides`）写进协议主机，返回的作用域释放即还原。
+  - `UnattendedTestRunner.OfflineScenarioSession`：建一个不挂在 `NGame` 上的 runner，把 `ScenarioBuilder` 的生成场景注入方法与装备注入静态方法原样转出去；宿主因此不再用反射写私有成员或造未初始化实例。
+  - `SolverController.DisplayServerNameProvider`：显示服务器名字的取值口，默认仍直接问 Godot，只有离线进程把它换成固定的 `"headless"`。
+- `tools/verify-refactor-boundaries.sh` / `.ps1` 的两条边界声明随之改为 `partial`（`ProtocolHost`、`Writer`），没有新增或删除边界。
+
 ## 未发布：路线界面复用与语言通知修复（2026-09-15）
 
 - 搜索进度重复显示同一行时，按完整动作显示值、嵌套选牌/遗物的本地化身份复用现有胶囊；变化行照常重建，Populate重置部署高亮，状态页清空旧快照，回合指标与Runtime采用路线继续更新。

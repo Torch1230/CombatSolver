@@ -48,6 +48,8 @@
     <EmbeddedResource Include="src/UI/English.json" LogicalName="CombatSolver.UI.English.json" />
     <PackageReference Include="Krafs.Publicizer" Version="2.3.0" PrivateAssets="all" />
     <Publicize Include="sts2" IncludeVirtualMembers="false" IncludeCompilerGeneratedMembers="false" />
+    <!-- 离线搜索宿主（tools/OfflineSearchHarness）走 internal 入口，不对模组自己做公开化。 -->
+    <InternalsVisibleTo Include="OfflineSearchHarness" />
   </ItemGroup>
 
   <ItemGroup>

@@ -9,6 +9,7 @@
 
 | 要查什么 | 入口 |
 |---|---|
+| 不启动 Godot 批量跑搜索、量宽度与预算 | [离线搜索宿主](OFFLINE_SEARCH_HARNESS.md) |
 | 完整性能优化正式 PR、路线控件复用、0.38.6 合并验证与对照 | [正式 PR 验收](performance/performance-pr-20260915.md) |
 | 自身弃牌续执行正式接入、搜索等价与整场对照 | [正式续执行与整搜](performance/choice-continuation-search-20260914.md) |
 | 卡牌、药水、遗物与Power选牌续执行的批量扩展可行性 | [选牌续执行扩展研究](performance/choice-continuation-expansion-20260914.md) |

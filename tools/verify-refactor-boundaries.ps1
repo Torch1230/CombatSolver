@@ -1092,11 +1092,11 @@ $unattendedAssertionsPath = Join-Path $repositoryRoot "src\Testing\UnattendedTes
 $unattendedExecutorPath = Join-Path $repositoryRoot "src\Testing\UnattendedTestRunner.Executor.cs"
 foreach ($check in @(
     @{ Path = $unattendedEntryPath; Text = "private static readonly ProtocolHost Host = new();" },
-    @{ Path = $unattendedProtocolHostPath; Text = "private sealed class ProtocolHost" },
+    @{ Path = $unattendedProtocolHostPath; Text = "private sealed partial class ProtocolHost" },
     @{ Path = $unattendedProtocolHostPath; Text = "private async Task RunRequestLoopAsync(NGame host)" },
     @{ Path = $unattendedProtocolHostPath; Text = "private void Activate(UnattendedTestRequest request)" },
     @{ Path = $unattendedProtocolHostPath; Text = "private void Reset()" },
-    @{ Path = $unattendedWriterPath; Text = "private sealed class Writer(" },
+    @{ Path = $unattendedWriterPath; Text = "private sealed partial class Writer(" },
     @{ Path = $unattendedWriterPath; Text = "public RuntimeMemorySnapshot Write(" },
     @{ Path = $unattendedWriterPath; Text = "private static void WriteResult(UnattendedTestResult result, UnattendedTestRequest request)" },
     @{ Path = $unattendedScenarioBuilderPath; Text = "private sealed partial class ScenarioBuilder(" },
