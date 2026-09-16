@@ -636,6 +636,33 @@ internal sealed partial class CombatBeamSolver
             return best;
         }
 
+        /// <summary>
+        /// 输出进度代表：按实际打掉的敌人血量（含受复活影响的等效血量）选一条"抢速度"路线。
+        /// 现有各通道的主键几乎都是玩家投射血量，敌人血量只做末位 tie-break，大战损局面里
+        /// 防守线会在每一层赢下全部代表席位，把"挨血换输出、更早击杀"的路线挤出 Beam，
+        /// 实机表现就是同一分支上反复微调战损、输给敌人的成长。这里只加一个有名额的显式
+        /// 席位，不改变任何评分或终局排序。同血量时优先真正掉的血、更少动作、更高分数。
+        /// </summary>
+        private static SearchNode? FindBestRaceProgress(IReadOnlyList<SearchNode> nodes)
+        {
+            SearchNode? best = null;
+            foreach (SearchNode node in nodes)
+            {
+                if (best == null
+                    || node.Snapshot.EnemyHp < best.Snapshot.EnemyHp
+                    || node.Snapshot.EnemyHp == best.Snapshot.EnemyHp
+                        && (node.Snapshot.RawEnemyHp < best.Snapshot.RawEnemyHp
+                            || node.Snapshot.RawEnemyHp == best.Snapshot.RawEnemyHp
+                                && (node.ActionCount < best.ActionCount
+                                    || node.ActionCount == best.ActionCount
+                                        && node.Score > best.Score)))
+                {
+                    best = node;
+                }
+            }
+            return best;
+        }
+
         private static int LaneValue(SimulationSnapshot snapshot, SearchRouteTraits trait)
             => trait switch
             {
