@@ -25,11 +25,22 @@ BeamWidthPortfolioOutcome<SolverInterimResult> Portfolio(
     int sharedNodes,
     IReadOnlyList<Func<SolverSearchProfile, BeamWidthPortfolioRun<SolverInterimResult>>> members,
     Func<int, string?>? reject = null)
+    => PortfolioOf(
+        [.. widths.Select(width => new BeamWidthPortfolioMemberSpec(width))],
+        sharedNodes,
+        members,
+        reject == null ? null : member => reject(member.BeamWidth));
+
+BeamWidthPortfolioOutcome<SolverInterimResult> PortfolioOf(
+    IReadOnlyList<BeamWidthPortfolioMemberSpec> specs,
+    int sharedNodes,
+    IReadOnlyList<Func<SolverSearchProfile, BeamWidthPortfolioRun<SolverInterimResult>>> members,
+    Func<BeamWidthPortfolioMemberSpec, string?>? reject = null)
 {
     observed.Clear();
     int next = 0;
     return BeamWidthPortfolio.Run(
-        widths,
+        specs,
         sharedNodes,
         baseProfile,
         profile => { observed.Add(profile); return members[next++](profile); },
@@ -38,19 +49,68 @@ BeamWidthPortfolioOutcome<SolverInterimResult> Portfolio(
         reject);
 }
 
-// 1. Production membership: baseline first, then the narrow (2/3) and wide (3/2) refinements.
-Require(BeamWidthPortfolio.ProductionWidths(24, null).SequenceEqual([24, 16, 36]),
+static BeamWidthPortfolioMemberSpec Width(int width) => new(width);
+static BeamWidthPortfolioMemberSpec Band(int width) => new(width, SecondRankBand: true);
+static BeamWidthPortfolioMemberSpec Base(int width) => new(width, BaseScoreOnly: true);
+
+// 1. Production membership: baseline first, the narrow (2/3) and wide (3/2) refinements, then the
+// second-rank-band member and the base-score-only member at the baseline width.
+Require(BeamWidthPortfolio.ProductionMembers(24, null).SequenceEqual([Width(24), Width(16), Width(36), Band(24), Base(24)]),
     "Production default membership changed.");
-Require(BeamWidthPortfolio.ProductionWidths(45, null).SequenceEqual([45, 30, 68]),
+Require(BeamWidthPortfolio.ProductionMembers(45, null).SequenceEqual([Width(45), Width(30), Width(68), Band(45), Base(45)]),
     "Act-ending boss baseline membership changed.");
-Require(BeamWidthPortfolio.ProductionWidths(135, null).SequenceEqual([135, 90, 203]),
+Require(BeamWidthPortfolio.ProductionMembers(135, null).SequenceEqual([Width(135), Width(90), Width(203), Band(135), Base(135)]),
     "VeryHigh baseline membership changed.");
-Require(BeamWidthPortfolio.ProductionWidths(1, null).SequenceEqual([1, 2]),
+Require(BeamWidthPortfolio.ProductionMembers(1, null).SequenceEqual([Width(1), Width(2), Band(1), Base(1)]),
     "Production membership repeated the baseline width or admitted a non-positive width.");
-Require(BeamWidthPortfolio.ProductionWidths(24, [24, 23, 25, 96]).SequenceEqual([24, 23, 25, 96]),
-    "A configured membership was rewritten.");
-Require(BeamWidthPortfolio.ProductionWidths(24, [96, 0, -3, 96, 23]).SequenceEqual([24, 96, 23]),
+Require(BeamWidthPortfolio.ProductionMembers(24, [24, 23, 25, 96]).SequenceEqual([Width(24), Width(23), Width(25), Width(96)]),
+    "A configured membership was rewritten or gained a band or base-score member.");
+Require(BeamWidthPortfolio.ProductionMembers(24, [96, 0, -3, 96, 23]).SequenceEqual([Width(24), Width(96), Width(23)]),
     "Configured membership did not force the baseline first, drop duplicates and drop non-positive widths.");
+Require(BeamWidthPortfolio.ProductionMembers(24, null).Count(member => member.SecondRankBand) == 1
+    && BeamWidthPortfolio.ProductionMembers(24, null).Count(member => member.BaseScoreOnly) == 1
+    && BeamWidthPortfolio.ProductionMembers(24, null)[0] == Width(24)
+    && !BeamWidthPortfolio.ProductionMembers(24, null).Any(member => member.SecondRankBand && member.BaseScoreOnly),
+    "The baseline member must be a plain width member; the default has exactly one band and one base-score member, never combined.");
+
+// 1a. The base-score member only flips BaseScoreOnly on its member profile.
+var based = PortfolioOf([Width(24), Base(24)], 1000,
+    [Finished(400, Outcome(true, 50)), Finished(100, Outcome(true, 40))]);
+Require(observed.Count == 2 && !observed[0].BaseScoreOnly && !observed[0].SecondRankBand,
+    "Baseline member profile changed when a base-score member is configured.");
+Require(observed[1] == (baseProfile with { BaseScoreOnly = true, MaxExpandedNodes = 600 }),
+    "Base-score member profile differs from the base profile in more than the flag and the node budget.");
+Require(based.SelectedIndex == 1 && based.Members[1] is { BeamWidth: 24, BaseScoreOnly: true, SecondRankBand: false, Ran: true, Compared: true },
+    "Base-score member detail or selection is wrong.");
+Require(!SolverSearchProfile.Default.BaseScoreOnly, "The default profile must not be a base-score profile.");
+
+// 1b. The band member only flips SecondRankBand on its member profile; the baseline stays plain.
+var banded = PortfolioOf([Width(24), Band(24)], 1000,
+    [Finished(400, Outcome(true, 50)), Finished(100, Outcome(true, 40))]);
+Require(observed.Count == 2 && !observed[0].SecondRankBand && observed[0] == (baseProfile with { MaxExpandedNodes = 1000 }),
+    "Baseline member profile changed when a band member is configured.");
+Require(observed[1] == (baseProfile with { SecondRankBand = true, MaxExpandedNodes = 600 }),
+    "Band member profile differs from the base profile in more than the band flag and the node budget.");
+Require(banded.SelectedIndex == 1 && banded.Members[1] is { BeamWidth: 24, SecondRankBand: true, Ran: true, Compared: true }
+    && banded.Members[0] is { SecondRankBand: false },
+    "Band member detail or selection is wrong.");
+Require(!SolverSearchProfile.Default.SecondRankBand, "The default profile must not be a band profile.");
+
+// 1c. The band rotation used by the retention policy: leading W entries go to the tail, so a cut at W
+// keeps ranks W+1..2W; short pools top up from the moved entries in their original order.
+List<int> pool = [.. Enumerable.Range(1, 10)];
+BeamWidthPortfolio.MoveLeadingBandToTail(pool, 4);
+Require(pool.SequenceEqual([5, 6, 7, 8, 9, 10, 1, 2, 3, 4]), "Band rotation did not move the leading band to the tail.");
+Require(pool.Take(4).SequenceEqual([5, 6, 7, 8]), "A cut at W after the rotation did not keep ranks W+1..2W.");
+List<int> shortPool = [.. Enumerable.Range(1, 6)];
+BeamWidthPortfolio.MoveLeadingBandToTail(shortPool, 4);
+Require(shortPool.Take(4).SequenceEqual([5, 6, 1, 2]), "A short pool did not top up from the moved band in order.");
+List<int> tinyPool = [.. Enumerable.Range(1, 4)];
+BeamWidthPortfolio.MoveLeadingBandToTail(tinyPool, 4);
+Require(tinyPool.SequenceEqual([1, 2, 3, 4]), "A pool that is not cut was reordered.");
+List<int> emptyPool = [];
+BeamWidthPortfolio.MoveLeadingBandToTail(emptyPool, 4);
+Require(emptyPool.Count == 0, "An empty pool was changed.");
 
 // 2. Shared budget: the first member gets everything, later members get what is left.
 var budgets = Portfolio([24, 23, 25], 1000,

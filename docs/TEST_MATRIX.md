@@ -23,6 +23,13 @@
 - `NATIVE-HAND-CHOICE-REPLAY` / `fd5b50d371c041129e4c0e82d266a858` Passed，29.82 秒：RitsuLib 0.6.0 下两组燃烧契约选择、失配后人工恢复保持；新增生存者在 `Instant` 模式打出、选择防御弃牌、退出原生手牌选择并完成动作的直接合同。
 - `BEAM-PORTFOLIO-SETTINGS-0387` / `0064d9a37309472db95ba9c1fd7fe353` Passed，29.35 秒：开关默认关闭，设置往返、性能页控件与搜索请求冻结一致；首回合原生部署完成。组合器与门控离线检查 `BEAM_WIDTH_PORTFOLIO_OK checks=59`，Windows PowerShell 结构门禁通过（`search_files=105`）。没有运行 Bash 门禁或可见 Steam 测试。
 
+## 多宽度路线精炼扩展成员类型（2026-09-16，未发布）
+
+- 组合器与门控离线检查 `python3 tools/BeamWidthPortfolioChecks/run.py`：`BEAM_WIDTH_PORTFOLIO_OK checks=73`，新增默认成员含且仅含一个次段成员和一个基础分成员、基线成员是普通宽度成员、两种成员的 Profile 各只多一个标志、显式宽度列表不追加、`MoveLeadingBandToTail` 四种情形。Bash 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=105`，Release 构建 0 警告、0 错误。
+- 一致性：本分支 DLL 在两个标志都未置位时，与 0.39.0 main（`7f806de`）的 DLL 在同一离线宿主、同一 5 根生成场景（Very High、固定节点预算、DOP 1）上 61 项 `solverMetrics`、全部动作与根戳记逐字段相同。
+- 开关对照：同一 DLL、120 根生成场景每 4 根取 1 的 30 根，基线（两个标志都关）与次段开、基础分开各跑一次。次段作为组合成员：Very High 净 +51 HP 当量（变好 5、变差 0，1 根死转活），Medium 净 +21（4 / 1，1 根死转活）。基础分作为组合成员：Very High 净 +41（4 / 0，1 根死转活），Medium 净 +86（9 / 0，1 根死转活）。次段两组与基础分 Medium 组 30 根全部有效；基础分 Very High 组有一根（IRONCLAD-ELITE-04）撞 600 秒时间保险，该根在基线下同样撞保险。
+- 本轮只运行离线宿主与离线检查，没有可见 Steam、Windows 无人测试或生产路径计时。
+
 ## 路线界面复用与派生计算实验（2026-09-15，未发布）
 
 - 交付场景 [`ROUTE-ROW-REUSE`](../coverage/unattended/route-row-reuse.json)，runId `83d3d63b552f4393b8ffc03e8fba9060` Passed（25.374秒）：实际Godot控件身份、同值新数组、全部显示/本地化字段变化、选牌/击杀/顺序、空路线、状态页、构建失败后重试、部署索引/高亮、语言往返和订阅清理。原生双端ScenarioId入口，IRONCLAD、FUZZY_WURM_CRAWLER_WEAK、敌HP999、NoGC关闭、120秒、显式EvidenceDirectory；不启动搜索。

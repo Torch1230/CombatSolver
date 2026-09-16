@@ -1,9 +1,24 @@
 namespace CombatSolver;
 
 /// <summary>
+/// 一个组合成员的定义：Beam 宽度，以及排序方式。次段成员的宽度与基线相同，但全局剪枝的普通席位取
+/// 分数排名第 W+1 至 2W 位（见 <see cref="SolverSearchProfile.SecondRankBand" />）；基础分成员的宽度也与
+/// 基线相同，但中途排序只用基础分（见 <see cref="SolverSearchProfile.BaseScoreOnly" />）。
+/// </summary>
+internal readonly record struct BeamWidthPortfolioMemberSpec(
+    int BeamWidth,
+    bool SecondRankBand = false,
+    bool BaseScoreOnly = false)
+{
+    public override string ToString()
+        => BeamWidth + (SecondRankBand ? "+band" : string.Empty) + (BaseScoreOnly ? "+base" : string.Empty);
+}
+
+/// <summary>
 /// 一个组合成员跑完之后的实测结果。展开数、转移数、终止原因和终局判定都由调用方按它自己
 /// 已有的口径给出：生产路径读 <c>SearchRequestWorkTotals</c> 的增量和
-/// <c>SolverResult.BoundaryReason</c>。组合器不重算这些量，也不碰 Beam 算法、保留逻辑、状态键或评分。
+/// <c>SolverResult.BoundaryReason</c>。组合器不重算这些量，也不碰状态键或评分；成员之间的差别
+/// 全部通过 <see cref="SolverSearchProfile" /> 表达（宽度、节点上限、次段标志）。
 /// </summary>
 internal readonly record struct BeamWidthPortfolioRun<TResult>(
     TResult Result,
@@ -25,6 +40,8 @@ internal readonly record struct BeamWidthPortfolioRun<TResult>(
 /// <summary>一个成员的明细；未运行的成员也保留一行，附不运行的原因。</summary>
 internal sealed record BeamWidthPortfolioMember(
     int BeamWidth,
+    bool SecondRankBand,
+    bool BaseScoreOnly,
     int NodeBudget,
     bool Ran,
     long ExpandedNodes,
@@ -46,7 +63,9 @@ internal sealed record BeamWidthPortfolioOutcome<TResult>(
     long TotalTransitionCount);
 
 /// <summary>
-/// 按顺序在同一个根上跑若干个只有 Beam 宽度不同的成员，共享一份节点预算，取最优结果。
+/// 按顺序在同一个根上跑若干个成员，共享一份节点预算，取最优结果。成员之间只有 Beam 宽度不同，
+/// 或者是与基线同宽度、只改中途排序的成员：「次段」（普通席位取分数排名第 W+1 至 2W 位）或
+/// 「基础分」（排序不加附加分）。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -88,60 +107,91 @@ internal static class BeamWidthPortfolio
     /// <summary>
     /// 生产成员列表。首项强制是基线宽度（基线成员必须逐位等于今天的单次搜索），其后按给定顺序
     /// 去重追加，丢掉小于 1 的值。<paramref name="configuredWidths" /> 为空时用默认的
-    /// [基线, 基线×2/3, 基线×3/2]（四舍五入，例如基线 24 是 [24, 16, 36]，基线 135 是 [135, 90, 203]）。
+    /// [基线, 基线×2/3, 基线×3/2, 次段 基线, 基础分 基线]（四舍五入，例如基线 24 是
+    /// [24, 16, 36, 24+band, 24+base]，基线 135 是 [135, 90, 203, 135+band, 135+base]）；
+    /// 显式给出宽度列表时只有宽度成员，不追加次段与基础分成员。
     /// </summary>
-    internal static IReadOnlyList<int> ProductionWidths(
+    internal static IReadOnlyList<BeamWidthPortfolioMemberSpec> ProductionMembers(
         int baselineBeamWidth,
         IReadOnlyList<int>? configuredWidths)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(baselineBeamWidth);
-        IReadOnlyList<int> requested = configuredWidths is { Count: > 0 }
-            ? configuredWidths
-            : [ScaledWidth(baselineBeamWidth, NarrowRefinementRatio), ScaledWidth(baselineBeamWidth, WideRefinementRatio)];
-        List<int> widths = [baselineBeamWidth];
-        foreach (int width in requested)
+        List<BeamWidthPortfolioMemberSpec> members = [new(baselineBeamWidth)];
+        if (configuredWidths is { Count: > 0 })
         {
-            if (width >= 1 && !widths.Contains(width))
-                widths.Add(width);
+            foreach (int width in configuredWidths)
+            {
+                BeamWidthPortfolioMemberSpec member = new(width);
+                if (width >= 1 && !members.Contains(member))
+                    members.Add(member);
+            }
+            return members;
         }
-        return widths;
+        foreach (int width in new[]
+                 {
+                     ScaledWidth(baselineBeamWidth, NarrowRefinementRatio),
+                     ScaledWidth(baselineBeamWidth, WideRefinementRatio),
+                 })
+        {
+            BeamWidthPortfolioMemberSpec member = new(width);
+            if (!members.Contains(member))
+                members.Add(member);
+        }
+        members.Add(new BeamWidthPortfolioMemberSpec(baselineBeamWidth, SecondRankBand: true));
+        members.Add(new BeamWidthPortfolioMemberSpec(baselineBeamWidth, BaseScoreOnly: true));
+        return members;
     }
 
     internal static int ScaledWidth(int baselineBeamWidth, double ratio)
         => Math.Max(1, (int)Math.Round(baselineBeamWidth * ratio, MidpointRounding.AwayFromZero));
 
-    /// <param name="memberBeamWidths">成员宽度，首项为基线宽度。</param>
+    /// <summary>
+    /// 次段成员的普通席位（由保留策略的全局剪枝调用）：把分数降序的 <paramref name="ranked" /> 前
+    /// <paramref name="bandWidth" /> 位挪到队尾，随后按 <paramref name="bandWidth" /> 截断时留下的就是
+    /// 第 W+1 至 2W 位；候选不足 2W 个时，挪走的那段按原顺序回填。候选不超过 W 个时本来一个不砍，保持不动。
+    /// </summary>
+    internal static void MoveLeadingBandToTail<T>(List<T> ranked, int bandWidth)
+    {
+        ArgumentNullException.ThrowIfNull(ranked);
+        if (bandWidth <= 0 || ranked.Count <= bandWidth)
+            return;
+        List<T> leading = ranked.GetRange(0, bandWidth);
+        ranked.RemoveRange(0, bandWidth);
+        ranked.AddRange(leading);
+    }
+
+    /// <param name="memberSpecs">成员定义，首项为基线宽度。</param>
     /// <param name="sharedMaxExpandedNodes">全部成员共用的节点上限。</param>
-    /// <param name="baseProfile">除 Beam 宽度和节点上限外，每个成员都照抄这份 Profile。</param>
+    /// <param name="baseProfile">除 Beam 宽度、排序方式标志和节点上限外，每个成员都照抄这份 Profile。</param>
     /// <param name="solve">按 Profile 求解并报告实测工作量与终止方式。</param>
     /// <param name="isBetter">既有比较规则；严格更优才换人，因此同分保留先出现的成员。</param>
-    /// <param name="rejectMemberWidth">
-    /// 合同拒绝钩子：返回非空即表示该宽度不被允许（生产路径传的是
+    /// <param name="rejectMember">
+    /// 合同拒绝钩子：返回非空即表示该成员不被允许（生产路径传的是
     /// <see cref="BeamWidthPortfolioGate.RejectRefinement" />）。被拒绝的成员不运行、不花预算，但保留明细行。
     /// </param>
     internal static BeamWidthPortfolioOutcome<TResult> Run<TResult>(
-        IReadOnlyList<int> memberBeamWidths,
+        IReadOnlyList<BeamWidthPortfolioMemberSpec> memberSpecs,
         int sharedMaxExpandedNodes,
         SolverSearchProfile baseProfile,
         Func<SolverSearchProfile, BeamWidthPortfolioRun<TResult>> solve,
         Func<TResult, TResult, bool> isBetter,
-        Func<int, string?>? rejectMemberWidth = null,
+        Func<BeamWidthPortfolioMemberSpec, string?>? rejectMember = null,
         Action<string>? log = null)
     {
-        ArgumentNullException.ThrowIfNull(memberBeamWidths);
+        ArgumentNullException.ThrowIfNull(memberSpecs);
         ArgumentNullException.ThrowIfNull(baseProfile);
         ArgumentNullException.ThrowIfNull(solve);
         ArgumentNullException.ThrowIfNull(isBetter);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sharedMaxExpandedNodes);
-        if (memberBeamWidths.Count == 0)
-            throw new ArgumentException("组合器至少需要一个成员宽度。", nameof(memberBeamWidths));
-        for (int index = 0; index < memberBeamWidths.Count; index++)
+        if (memberSpecs.Count == 0)
+            throw new ArgumentException("组合器至少需要一个成员。", nameof(memberSpecs));
+        for (int index = 0; index < memberSpecs.Count; index++)
         {
-            if (memberBeamWidths[index] <= 0)
-                throw new ArgumentOutOfRangeException(nameof(memberBeamWidths), "成员 Beam 宽度必须为正。");
+            if (memberSpecs[index].BeamWidth <= 0)
+                throw new ArgumentOutOfRangeException(nameof(memberSpecs), "成员 Beam 宽度必须为正。");
         }
 
-        List<BeamWidthPortfolioMember> members = new(memberBeamWidths.Count);
+        List<BeamWidthPortfolioMember> members = new(memberSpecs.Count);
         long remainingNodes = sharedMaxExpandedNodes;
         long totalExpanded = 0;
         long totalTransitions = 0;
@@ -151,23 +201,25 @@ internal static class BeamWidthPortfolio
         int firstRanIndex = -1;
         bool stopped = false;
 
-        for (int index = 0; index < memberBeamWidths.Count; index++)
+        for (int index = 0; index < memberSpecs.Count; index++)
         {
-            int width = memberBeamWidths[index];
-            if (rejectMemberWidth?.Invoke(width) is { } rejection)
+            BeamWidthPortfolioMemberSpec spec = memberSpecs[index];
+            if (rejectMember?.Invoke(spec) is { } rejection)
             {
-                members.Add(Skipped(width, rejection));
+                members.Add(Skipped(spec, rejection));
                 continue;
             }
             if (remainingNodes <= 0)
             {
-                members.Add(Skipped(width, SkippedBudgetExhausted));
+                members.Add(Skipped(spec, SkippedBudgetExhausted));
                 continue;
             }
 
             SolverSearchProfile memberProfile = baseProfile with
             {
-                BeamWidth = width,
+                BeamWidth = spec.BeamWidth,
+                SecondRankBand = spec.SecondRankBand,
+                BaseScoreOnly = spec.BaseScoreOnly,
                 MaxExpandedNodes = (int)remainingNodes,
             };
             BeamWidthPortfolioRun<TResult> run = solve(memberProfile);
@@ -185,7 +237,7 @@ internal static class BeamWidthPortfolio
 
             if (run.StopPortfolio)
             {
-                members.Add(Ran(width, memberProfile.MaxExpandedNodes, run, compared: true, skippedReason: null));
+                members.Add(Ran(spec, memberProfile.MaxExpandedNodes, run, compared: true, skippedReason: null));
                 selected = run.Result;
                 selectedIndex = index;
                 stopped = true;
@@ -199,7 +251,7 @@ internal static class BeamWidthPortfolio
                 selected = run.Result;
                 selectedIndex = index;
             }
-            members.Add(Ran(width, memberProfile.MaxExpandedNodes, run,
+            members.Add(Ran(spec, memberProfile.MaxExpandedNodes, run,
                 compared: comparable,
                 skippedReason: comparable ? null : SkippedNodeLimitNotTerminal));
             // 顺序执行的代价只有在上一位成员真的放手之后才成立：明细已经记完，这里把这一轮的
@@ -230,9 +282,11 @@ internal static class BeamWidthPortfolio
 
         log?.Invoke(
             $"[CombatSolver/Test] BEAM_WIDTH_PORTFOLIO result " +
-            $"members={memberBeamWidths.Count} ran={members.Count(member => member.Ran)} " +
+            $"members={memberSpecs.Count} ran={members.Count(member => member.Ran)} " +
             $"compared={members.Count(member => member.Compared)} " +
             $"selected_index={selectedIndex} selected_beam={members[selectedIndex].BeamWidth} " +
+            $"selected_second_rank_band={members[selectedIndex].SecondRankBand} " +
+            $"selected_base_score_only={members[selectedIndex].BaseScoreOnly} " +
             $"reason={selectionReason} shared_nodes={sharedMaxExpandedNodes} " +
             $"total_expanded={totalExpanded} total_transitions={totalTransitions}");
         return new BeamWidthPortfolioOutcome<TResult>(
@@ -243,16 +297,16 @@ internal static class BeamWidthPortfolio
             totalExpanded,
             totalTransitions);
 
-        static BeamWidthPortfolioMember Skipped(int width, string reason)
-            => new(width, 0, false, 0, 0, null, null, null, null, null, false, reason);
+        static BeamWidthPortfolioMember Skipped(BeamWidthPortfolioMemberSpec spec, string reason)
+            => new(spec.BeamWidth, spec.SecondRankBand, spec.BaseScoreOnly, 0, false, 0, 0, null, null, null, null, null, false, reason);
 
         static BeamWidthPortfolioMember Ran(
-            int width,
+            BeamWidthPortfolioMemberSpec spec,
             int nodeBudget,
             BeamWidthPortfolioRun<TResult> run,
             bool compared,
             string? skippedReason)
-            => new(width, nodeBudget, true, run.ExpandedNodes, run.TransitionCount,
+            => new(spec.BeamWidth, spec.SecondRankBand, spec.BaseScoreOnly, nodeBudget, true, run.ExpandedNodes, run.TransitionCount,
                 run.Termination, run.Terminal, run.Won, run.BattleHpLost, run.PotionCount,
                 compared, skippedReason);
     }
