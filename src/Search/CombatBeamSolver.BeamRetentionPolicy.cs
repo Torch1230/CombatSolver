@@ -1586,6 +1586,7 @@ internal sealed partial class CombatBeamSolver
                 AddRequired(required, FindBestTacticalEnabler(group), limit);
                 AddRequired(required, FindBestSetup(group), limit);
                 AddRequired(required, FindBestRaceProgress(group), limit);
+                AddRequired(required, FindBestSafeSetup(group), limit);
                 if (_theftPolicy == SolverTheftPolicy.PreserveResources)
                 {
                     AddRequired(required, group.Aggregate(

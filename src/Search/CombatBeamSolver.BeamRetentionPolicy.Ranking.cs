@@ -663,6 +663,41 @@ internal sealed partial class CombatBeamSolver
             return best;
         }
 
+        /// <summary>
+        /// 安全引擎代表：在"接近本组最低已发生战损"的候选里选持续能力最完整的一个。
+        /// 现有通道里最保血、最深引擎、最低敌人血量各自独立，实机零战损通关线所在的
+        /// "满血 + 完整引擎"平衡态不在任何单通道的极值上，需要单独的席位保它。
+        /// </summary>
+        private static SearchNode? FindBestSafeSetup(IReadOnlyList<SearchNode> nodes)
+        {
+            int minimumLoss = int.MaxValue;
+            foreach (SearchNode node in nodes)
+                minimumLoss = Math.Min(minimumLoss, node.Snapshot.CumulativePlayerHpLost);
+            SearchNode? best = null;
+            foreach (SearchNode node in nodes)
+            {
+                if (node.Snapshot.CumulativePlayerHpLost
+                    > minimumLoss + SolverWeights.SafeSetupHpLossSlack)
+                {
+                    continue;
+                }
+                if (best == null
+                    || node.Snapshot.PersistentBuffValue > best.Snapshot.PersistentBuffValue
+                    || node.Snapshot.PersistentBuffValue == best.Snapshot.PersistentBuffValue
+                        && (node.Snapshot.CumulativePlayerHpLost < best.Snapshot.CumulativePlayerHpLost
+                            || node.Snapshot.CumulativePlayerHpLost == best.Snapshot.CumulativePlayerHpLost
+                                && (node.Snapshot.ProjectedPlayerHp > best.Snapshot.ProjectedPlayerHp
+                                    || node.Snapshot.ProjectedPlayerHp == best.Snapshot.ProjectedPlayerHp
+                                        && (node.Snapshot.EnemyHp < best.Snapshot.EnemyHp
+                                            || node.Snapshot.EnemyHp == best.Snapshot.EnemyHp
+                                                && node.Score > best.Score))))
+                {
+                    best = node;
+                }
+            }
+            return best;
+        }
+
         private static int LaneValue(SimulationSnapshot snapshot, SearchRouteTraits trait)
             => trait switch
             {
