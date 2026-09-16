@@ -1,0 +1,73 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    离线搜索宿主：不启动 Godot 引擎，在普通 .NET 9 控制台进程里初始化游戏静态状态、
+    建出一场战斗、推进到玩家第一回合，再在进程内调模组自己的 CombatSearchCoordinator.Solve /
+    CombatBeamSolver 跑一次固定预算搜索。用法见 docs/OFFLINE_SEARCH_HARNESS.md。
+
+    路径解析与 CombatSolver.csproj 同一套：先 Import 仓库根的 local.props，
+    再按操作系统给 SteamRoot / Sts2Dir / Sts2DataDir / RitsuLibDir 的默认值。
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>13.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>OfflineSearchHarness</AssemblyName>
+    <RootNamespace>OfflineSearchHarness</RootNamespace>
+    <NoWarn>$(NoWarn);CS0436</NoWarn>
+    <RepoRoot>$(MSBuildProjectDirectory)/../..</RepoRoot>
+  </PropertyGroup>
+
+  <Import Project="$(RepoRoot)/local.props" Condition="Exists('$(RepoRoot)/local.props')" />
+
+  <PropertyGroup>
+    <SteamRoot Condition="'$(SteamRoot)' == '' and '$(OS)' == 'Windows_NT' and Exists('D:/Steam')">D:/Steam</SteamRoot>
+    <SteamRoot Condition="'$(SteamRoot)' == '' and '$(OS)' == 'Windows_NT'">$(MSBuildProgramFiles32)/Steam</SteamRoot>
+    <SteamRoot Condition="'$(SteamRoot)' == ''">$(HOME)/.local/share/Steam</SteamRoot>
+    <Sts2Dir Condition="'$(Sts2Dir)' == ''">$(SteamRoot)/steamapps/common/Slay the Spire 2</Sts2Dir>
+    <Sts2DataDir Condition="'$(Sts2DataDir)' == '' and '$(OS)' == 'Windows_NT'">$(Sts2Dir)/data_sts2_windows_x86_64</Sts2DataDir>
+    <Sts2DataDir Condition="'$(Sts2DataDir)' == ''">$(Sts2Dir)/data_sts2_linuxbsd_x86_64</Sts2DataDir>
+    <RitsuWorkshopRoot Condition="'$(RitsuWorkshopRoot)' == ''">$(SteamRoot)/steamapps/workshop/content/2868840/3747602295</RitsuWorkshopRoot>
+    <RitsuLibDir Condition="'$(RitsuLibDir)' == ''">$(RitsuWorkshopRoot)/lib/0.111.0</RitsuLibDir>
+    <RitsuLibReferenceTarget Condition="'$(RitsuLibReferenceTarget)' == ''">0.111.0</RitsuLibReferenceTarget>
+    <RitsuLibReferencesProps>$(RitsuWorkshopRoot)/RitsuLib.References.props</RitsuLibReferencesProps>
+    <!-- Godot.NET.Sdk 把模组产物放在 .godot/mono/temp 下；保留 bin/ 作为回退。 -->
+    <CombatSolverDll Condition="'$(CombatSolverDll)' == '' and Exists('$(RepoRoot)/.godot/mono/temp/bin/Release/CombatSolver.dll')">$(RepoRoot)/.godot/mono/temp/bin/Release/CombatSolver.dll</CombatSolverDll>
+    <CombatSolverDll Condition="'$(CombatSolverDll)' == ''">$(RepoRoot)/bin/Release/net9.0/CombatSolver.dll</CombatSolverDll>
+  </PropertyGroup>
+
+  <Import Project="$(RitsuLibReferencesProps)" Condition="Exists('$(RitsuLibReferencesProps)')" />
+
+  <ItemGroup>
+    <!-- 对 sts2 与模组本体的做法分开：sts2 沿用模组自己的公开化，模组本体走 InternalsVisibleTo。 -->
+    <PackageReference Include="Krafs.Publicizer" Version="2.3.0" PrivateAssets="all" />
+    <Publicize Include="sts2" IncludeVirtualMembers="false" IncludeCompilerGeneratedMembers="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="sts2" HintPath="$(Sts2DataDir)/sts2.dll" Private="false" />
+    <Reference Include="GodotSharp" HintPath="$(Sts2DataDir)/GodotSharp.dll" Private="false" />
+    <Reference Include="0Harmony" HintPath="$(Sts2DataDir)/0Harmony.dll" Private="false" />
+    <Reference Include="STS2-RitsuLib" HintPath="$(RitsuLibDir)/STS2-RitsuLib.dll" Private="false"
+               Condition="!Exists('$(RitsuLibReferencesProps)')" />
+    <Reference Include="CombatSolver" HintPath="$(CombatSolverDll)" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 运行期 AssemblyBootstrap 用这几项解析 sts2 / RitsuLib / CombatSolver。 -->
+    <RuntimeHostConfigurationOption Include="Sts2DataDir" Value="$(Sts2DataDir)" />
+    <RuntimeHostConfigurationOption Include="RitsuLibDir" Value="$(RitsuLibDir)" />
+    <RuntimeHostConfigurationOption Include="RitsuLibCompatDir" Value="$(RitsuWorkshopRoot)/compat/$(RitsuLibReferenceTarget)" />
+    <RuntimeHostConfigurationOption Include="RitsuLibSharedDir" Value="$(RitsuWorkshopRoot)/shared" />
+    <RuntimeHostConfigurationOption Include="CombatSolverDll" Value="$(CombatSolverDll)" />
+  </ItemGroup>
+
+  <Target Name="ValidateOfflineHarnessInputs" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(Sts2DataDir)/sts2.dll')" Text="找不到 $(Sts2DataDir)/sts2.dll。检查 SteamRoot 或 local.props。" />
+    <Error Condition="!Exists('$(RitsuLibReferencesProps)') and !Exists('$(RitsuLibDir)/STS2-RitsuLib.dll')"
+           Text="找不到当前游戏版本的 RitsuLib。检查 SteamRoot、RitsuWorkshopRoot 或 local.props。" />
+    <Error Condition="!Exists('$(CombatSolverDll)')"
+           Text="找不到 $(CombatSolverDll)。先跑 dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false。" />
+  </Target>
+</Project>

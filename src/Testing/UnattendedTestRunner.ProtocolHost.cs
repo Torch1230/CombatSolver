@@ -13,7 +13,7 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
-    private sealed class ProtocolHost
+    private sealed partial class ProtocolHost
     {
         private bool _requestLoopStarted;
         private int _acceptedRequestCount;

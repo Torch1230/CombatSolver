@@ -13,7 +13,7 @@ internal sealed partial class UnattendedTestRunner
         long WorkingSetBytes,
         long PrivateMemoryBytes);
 
-    private sealed class Writer(
+    private sealed partial class Writer(
         Func<UnattendedTestRequest> getRequest,
         Stopwatch stopwatch,
         IReadOnlyList<string> completedChecks,

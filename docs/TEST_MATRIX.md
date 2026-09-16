@@ -44,6 +44,16 @@
 - 开关对照：同一 DLL、120 根生成场景每 4 根取 1 的 30 根，基线（两个标志都关）与次段开、基础分开各跑一次。次段作为组合成员：Very High 净 +51 HP 当量（变好 5、变差 0，1 根死转活），Medium 净 +21（4 / 1，1 根死转活）。基础分作为组合成员：Very High 净 +41（4 / 0，1 根死转活），Medium 净 +86（9 / 0，1 根死转活）。次段两组与基础分 Medium 组 30 根全部有效；基础分 Very High 组有一根（IRONCLAD-ELITE-04）撞 600 秒时间保险，该根在基线下同样撞保险。
 - 本轮只运行离线宿主与离线检查，没有可见 Steam、Windows 无人测试或生产路径计时。
 
+## 离线搜索宿主（2026-09-16，未发布）
+
+- macOS Release 构建：`CombatSolver.csproj` 与 `tools/OfflineSearchHarness/OfflineSearchHarness.csproj` 均 0 警告、0 错误。
+- Bash 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=105`；Beam 宽度组合离线检查 `BEAM_WIDTH_PORTFOLIO_OK checks=59`。两条 `partial` 边界声明已同步到 `.sh` 与 `.ps1`。
+- 新宿主对旧研究版宿主逐字段一致（同一份 0.39.0 DLL、同一批生成场景请求、`VeryHigh`/beam 135/nodes 100000/分支 72-42-54、`--dop 1`、`--budget-ms 600000`、`searchMode=Evaluate`）：BASE5 五根比 466 个字段，30 根子集比 2719 个字段，全部相同，没有单边多出来的根。比较口径见 `tools/OfflineSearchHarness/compare_results.py`（`solverMetrics` 排除时间/内存/GC 字段、选中路线逐动作、根 `ContinuationStamp`、目录指纹）。
+- `--search-mode Coordinator --use-portfolio` 三根（`High` 预设、60 秒预算）全部 Passed，`solverMetrics.portfolioMembers` 各 3 个成员，宽度 `[90, 60, 135]`，即默认的 `[W, 2W/3, 3W/2]`；开关关闭时只有 1 个成员。
+- 本轮只在 macOS 上跑离线宿主与 Bash 门禁，没有启动游戏、没有跑无人测试、没有 Windows 验证。
+- 合并到当前主线后的 Windows 首次验证发现宿主工程缺少多版本 RitsuLib 的 `0.111.0` 引用目标，补齐后编译通过；首次运行随后发现解析器只查旧单目录，无法加载 `STS2-RitsuLib.Runtime`，已改为同时解析版本兼容目录与共享程序集目录。宿主原默认遭遇 `JAW_WORM` 在当前目录不存在，已改用项目现有的 `FUZZY_WURM_CRAWLER_WEAK`。最终运行结果记录在本次合并提交。
+- Windows 合并验证：CombatSolver Release 与 OfflineSearchHarness Release 均 0 警告、0 错误；PowerShell 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=113`。离线宿主默认场景最小烟测通过，推进到玩家第一回合并完成 Evaluate 搜索：182 展开、507 转移、预计战损 4，未启动 Godot 或可见 Steam。
+
 ## 路线界面复用与派生计算实验（2026-09-15，未发布）
 
 - 交付场景 [`ROUTE-ROW-REUSE`](../coverage/unattended/route-row-reuse.json)，runId `83d3d63b552f4393b8ffc03e8fba9060` Passed（25.374秒）：实际Godot控件身份、同值新数组、全部显示/本地化字段变化、选牌/击杀/顺序、空路线、状态页、构建失败后重试、部署索引/高亮、语言往返和订阅清理。原生双端ScenarioId入口，IRONCLAD、FUZZY_WURM_CRAWLER_WEAK、敌HP999、NoGC关闭、120秒、显式EvidenceDirectory；不启动搜索。

@@ -5,6 +5,8 @@
 
 这是测试基础设施，不是单场搜索多核优化，也不支持多可见游戏窗口。游戏内请求仍串行，由各进程的 ProtocolHost 处理；不同实例才能并行。
 
+只想批量量搜索指标（宽度、预算、保留规则的对照）而不需要无人测试的断言时，用[离线搜索宿主](OFFLINE_SEARCH_HARNESS.md)：它不启动 Godot，几十根可以在一台机器上连着跑。行为改动的正确性验收仍然走本文这套流程。
+
 ## 用法
 
 回收生命周期的最小独立验证可用 `dotnet run --project tools/CombatSolver.GcPolicyChecks/CombatSolver.GcPolicyChecks.csproj -c Release -- checkpoint`，不启动 Godot；该模式链接生产 GC 政策，建立真实 NoGC 区域并验证续用与收集中取消。它不替代完整游戏里的延迟手动请求及引用释放 epoch 合同。

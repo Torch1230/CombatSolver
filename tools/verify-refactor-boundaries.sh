@@ -862,11 +862,11 @@ while IFS=$'\t' read -r relative_path text; do
     require_fixed "$repository_root/$relative_path" "$text" 'missing unattended protocol boundary'
 done <<'EOF'
 src/Testing/UnattendedTestRunner.cs	private static readonly ProtocolHost Host = new();
-src/Testing/UnattendedTestRunner.ProtocolHost.cs	private sealed class ProtocolHost
+src/Testing/UnattendedTestRunner.ProtocolHost.cs	private sealed partial class ProtocolHost
 src/Testing/UnattendedTestRunner.ProtocolHost.cs	private async Task RunRequestLoopAsync(NGame host)
 src/Testing/UnattendedTestRunner.ProtocolHost.cs	private void Activate(UnattendedTestRequest request)
 src/Testing/UnattendedTestRunner.ProtocolHost.cs	private void Reset()
-src/Testing/UnattendedTestRunner.Writer.cs	private sealed class Writer(
+src/Testing/UnattendedTestRunner.Writer.cs	private sealed partial class Writer(
 src/Testing/UnattendedTestRunner.Writer.cs	public RuntimeMemorySnapshot Write(
 src/Testing/UnattendedTestRunner.Writer.cs	private static void WriteResult(UnattendedTestResult result, UnattendedTestRequest request)
 src/Testing/UnattendedTestRunner.ScenarioBuilder.cs	private sealed partial class ScenarioBuilder(

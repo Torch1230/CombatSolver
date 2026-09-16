@@ -429,6 +429,8 @@ renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或
 
 `GeneratedCombatScenario` 只把配置解析为角色/遭遇/装备ID，原版池按ID排序、各类别独立种子流，不推进战斗RNG。`ScenarioBuilder` 的 `GeneratedScenario` 分片在主线程创建实际跑局，核对牌组/进阶之灾/药水槽与原生房间类型；`GeneratedScenarioCardSelector` 只在建局作用域提供确定性或显式选牌，退出建局即释放，不参与正式部署。`Writer` 独占解析配置、目录、战前装备与完整开局状态证据写入。`ProtocolHost.ConfigureSearchOverrides` 在建局配置解析后刷新同一套请求级开关；`Executor` 仍独占实际搜索/部署及设置恢复。批量Python工具只调度各平台原生启动器和证据目录，不接触游戏协议循环或搜索内部。详见[通用场景生成](GENERATED_COMBAT_SCENARIOS.md)。
 
+`tools/OfflineSearchHarness` 是不启动 Godot 的测量宿主，只通过 `UnattendedTestRunner.BeginOfflineSession` 和 `OfflineScenarioSession` 复用协议开关、生成场景注入与结果折叠；`SolverController.DisplayServerNameProvider` 只允许宿主提供固定的 headless 显示服务器名。宿主不拥有正确性断言，也不替代无人测试；搜索行为改动仍由游戏内无人场景验收。详见[离线搜索宿主](OFFLINE_SEARCH_HARNESS.md)。
+
 `UnattendedTestRunner.ReplayState.cs` 属于 `ScenarioBuilder` 的状态注入实现。它只接受同检查点的 `run-state` 与 schema 1 `replay-state` 组合，恢复后必须通过完整 `ContinuationStamp`；不能把部分字段相似的建局称为严格重放。
 
 `UnattendedTestRunner.CheckpointArchive.RecordCheckpointModDifferencesAfterStartup` 只生成程序集清单诊断，不决定恢复能否继续。两条原包恢复入口共用此方法，Writer 保存 `modEnvironmentComparison` 的逐名称缺失/新增/构建变化；模型解码、原生录制重放和严格状态对账继续拥有实际失败判定。

@@ -35,7 +35,18 @@
 - 组合成员从"一个宽度"扩成"宽度 + 排序方式"（`BeamWidthPortfolioMemberSpec`：宽度、是否次段、是否只用基础分）。次段成员的宽度与基线相同，`SolverSearchProfile.SecondRankBand` 置位后，`RankBest` 只在全局剪枝（`limit` 等于 Beam 宽度）里把分数序前 W 位挪到队尾再截断，普通席位因此落在第 W+1 至 2W 位；必保通道置换、边界多样化和药水配额仍按纯分数序的候选池进行。基础分成员的宽度也与基线相同，`SolverSearchProfile.BaseScoreOnly` 置位后 `BeamRankScore` 只返回 `node.Score`，不加九项附加分；终局排序与路线比较不变。默认成员列表变为 `[基线, 基线×2/3, 基线×3/2, 次段 基线, 基础分 基线]`；无人测试显式给出宽度列表时只有宽度成员。开关仍默认关闭，两个标志未置位时保留逻辑与排序逐位不变。
 - 动机：离线定位的 19 个"更优路线被剪掉"的位置里 12 个是分数截断，被剪掉的候选排名都在该层后 30%，次段成员直接搜这一区间；基础分成员去掉附加分对能量、铺垫等的偏好。120 根离线批次（口径同 PR #94）：两种成员单独替代基线都不是改善（次段 Very High 净 +125，变好 32 变差 23，Medium −27；基础分 Very High +60，29 / 20，Medium −172）；作为组合成员次段 Very High +222（21 / 2）、Medium +113（12 / 2），基础分 Very High +148（23 / 3）、Medium +113（13 / 3）；叠加：Very High 90+200 的 +276 → 加次段 +330 → 再加基础分 +371，Medium 16+36 的 +314 → +380 → +432。试过的四种排序变体只有"做减法"的两种有效；去能量加分的变体单独 +184 / +109，但叠在次段之上只剩 +14 / 0，不进默认列表；改持续效果口径与增加铺垫项的两种无效。另外两种取段方式收益不高于整段或有超时根，未采用。
 - 成本：两种成员都不改变单节点的模拟与评分成本，展开数为基线的 0.92 到 1.10 倍（次段）与 0.91 到 1.03 倍（基础分）；生产路径上它们是首轮之后按顺序多跑的搜索，经过同一套门控，不超过配置的时间与节点上限，峰值内存取各成员最大值。基础分成员在 Very High 120 根里有两根（IRONCLAD-BOSS-03、SILENT-ELITE-10）搜索时间超过 600 秒（基线 328 s / 127 s），由剩余预算截断。成员明细与 `solverMetrics.portfolioMembers` 增加 `secondRankBand`、`baseScoreOnly` 字段，`BEAM_WIDTH_PORTFOLIO_MEMBER` 日志同步。
-- 验证：PR 分支 DLL 两个标志都不置位时，与 0.39.0 main 在 5 根上 61 项指标、全部动作与根戳记逐字段相同。同一 DLL 上 120 根每 4 根取 1 的 30 根开关对照：次段作为成员 Very High 净 +51（5 / 0，1 根死转活）、Medium +21（4 / 1，1 根死转活）；基础分作为成员 Very High +41（4 / 0，1 根死转活）、Medium +86（9 / 0，1 根死转活）；与研究分支 DLL 在同一子集上的结果方向一致。离线检查 `BEAM_WIDTH_PORTFOLIO_OK checks=73`，Bash 结构门禁 `search_files=105`，Release 构建零警告零错误。未运行可见 Steam 或 Windows 无人测试；生产路径的时间与内存数据仍以 PR #94 的 A/B 为准。
+- 验证：PR 分支 DLL 两个标志都不置位时，与 0.39.0 main 在 5 根上 61 项指标、全部动作与根戳记逐字段相同。同一 DLL 上 120 根每 4 根取 1 的 30 根开关对照：次段作为成员 Very High 净 +51（5 / 0，1 根死转活）、Medium +21（4 / 1，1 根死转活）；基础分作为成员 Very High 净 +41（4 / 0，1 根死转活）、Medium +86（9 / 0，1 根死转活）；与研究分支 DLL 在同一子集上的结果方向一致。离线检查 `BEAM_WIDTH_PORTFOLIO_OK checks=73`，Bash 结构门禁 `search_files=105`，Release 构建零警告零错误。未运行可见 Steam 或 Windows 无人测试；生产路径的时间与内存数据仍以 PR #94 的 A/B 为准。
+
+## 未发布：离线搜索宿主（2026-09-16）
+
+- 新增 `tools/OfflineSearchHarness/`：不启动 Godot，在普通 .NET 9 进程里建出一场战斗、推进到玩家第一回合，再调 `CombatRootSnapshot.Capture` 与 `CombatSearchCoordinator.Solve`（或单次 `CombatBeamSolver`）跑一次固定预算搜索。用途是批量测量搜索量与路线，不做正确性验收；用法、口径、绕过表与限制见 [离线搜索宿主](OFFLINE_SEARCH_HARNESS.md)。
+- 为此在 `src/` 加了四处入口，都不改搜索、评分、保留与协调器的任何行为，且在宿主不用它们时游戏内路径与改动前一致：
+  - `CombatSolver.csproj` 加 `<InternalsVisibleTo Include="OfflineSearchHarness" />`，宿主对模组本体不做公开化。
+  - `UnattendedTestRunner.BeginOfflineSession(OfflineSessionOptions)`：把固定预算、预算毫秒、并行度、宽度组合开关按无人测试请求的同一段映射（`ProtocolHost.ConfigureSearchOverrides`）写进协议主机，返回的作用域释放即还原。
+  - `UnattendedTestRunner.OfflineScenarioSession`：建一个不挂在 `NGame` 上的 runner，把 `ScenarioBuilder` 的生成场景注入方法与装备注入静态方法原样转出去；宿主因此不再用反射写私有成员或造未初始化实例。
+  - `SolverController.DisplayServerNameProvider`：显示服务器名字的取值口，默认仍直接问 Godot，只有离线进程把它换成固定的 `"headless"`。
+- `tools/verify-refactor-boundaries.sh` / `.ps1` 的两条边界声明随之改为 `partial`（`ProtocolHost`、`Writer`），没有新增或删除边界。
+- 合并到当前 Windows 主线时补齐离线宿主导入多版本 RitsuLib 引用所需的 `0.111.0` 目标，并让运行期解析器同时查找该版本的兼容程序集与共享程序集；宿主与模组工程现在使用同一完整版本包。
 
 ## 未发布：路线界面复用与语言通知修复（2026-09-15）
 
