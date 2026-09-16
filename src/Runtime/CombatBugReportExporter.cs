@@ -1320,7 +1320,7 @@ internal static class CombatBugReportExporter
             "solverDisabled", "automaticCalculationEnabled", "stopFullAutoOnCombatEnd", "stopFullAutoOnDeathTurn", "relicStrategyEnabled", "relicCounterRules",
             "stopFullAutoOnWorseRecalculation", "enableDetailedDiagnosticLogs", "potionDirectives",
             "actTransitionBossHpStrategy", "finalBossHpStrategy", "acceptableBattleHpLoss", "stopAtAcceptableBattleHpLoss", "growthBudgets", "brightestFlameMaxHpLossLimit", "performancePreset",
-            "searchMaxDegreeOfParallelism", "useBeamWidthPortfolio", "useNoveltyPortfolio", "shortTimeLimitSeconds", "deepTimeLimitSeconds", "enableNoGcRegion",
+            "searchMaxDegreeOfParallelism", "useBeamWidthPortfolio", "useNoveltyPortfolio", "showNoveltyPortfolioHint", "showSpeedXWarning", "shortTimeLimitSeconds", "deepTimeLimitSeconds", "enableNoGcRegion",
             "noGcRegionBudgetGigabytes", "shortBeamWidth", "deepBeamWidth", "shortMaxExpandedNodes", "deepMaxExpandedNodes",
             "shortMaxCardBranchesPerNode", "deepMaxCardBranchesPerNode", "shortMaxPileChoiceBranchesPerAction",
             "deepMaxPileChoiceBranchesPerAction", "shortMaxHandChoiceBranchesPerAction", "deepMaxHandChoiceBranchesPerAction",

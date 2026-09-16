@@ -64,7 +64,9 @@ internal sealed partial class SolverSettingsPanel
                 ",\"noGcRegionBudgetGigabytes\":32}";
             SolverSettingsData legacy = SolverSettings.DeserializeForTesting(legacyJson);
             bool legacyDefaultApplied = legacy.EnableNoGcRegion
-                                        && legacy.NoGcRegionBudgetGigabytes == 32d;
+                                        && legacy.NoGcRegionBudgetGigabytes == 32d
+                                        && legacy.ShowNoveltyPortfolioHint
+                                        && legacy.ShowSpeedXWarning;
             SolverSettingsData preset = SolverSettings.ApplyPerformancePreset(
                 original with
                 {
@@ -134,7 +136,14 @@ internal sealed partial class SolverSettingsPanel
         _noveltyPortfolioEnabled.Toggled += enabled =>
         {
             if (_loading) return;
-            SolverSettings.Update(SolverSettings.Current with { UseNoveltyPortfolio = enabled });
+            SolverSettings.Update(SolverSettings.Current with
+            {
+                UseNoveltyPortfolio = enabled,
+                ShowNoveltyPortfolioHint = enabled
+                    ? false
+                    : SolverSettings.Current.ShowNoveltyPortfolioHint,
+            });
+            SolverOverlay.RefreshGuidanceHints();
             SetStatus(SolverText.Get(enabled
                 ? "多策略路线搜索已启用，下次搜索生效"
                 : "多策略路线搜索已关闭"), SolverUiTokens.Palette.Success);

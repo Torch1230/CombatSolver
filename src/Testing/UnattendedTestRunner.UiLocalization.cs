@@ -104,6 +104,8 @@ internal sealed partial class UnattendedTestRunner
                 if (SolverOverlay.RouteHeadingForTesting != (english ? "Current candidate (unverified)" : "求解器当前考虑（尚未验证）")
                     || SolverOverlay.AdoptRouteButtonTextForTesting != (english ? "Use candidate" : "采用当前路线"))
                     throw new InvalidOperationException($"Dynamic overlay localization failed: {target}");
+                if (!SolverOverlay.ExerciseGuidanceHintsForTesting())
+                    throw new InvalidOperationException($"Guidance banner localization or dismissal failed: {target}");
                 string failure = SolverController.FormatSearchFailureForTesting(new InvalidOperationException(untouched), true);
                 if (!failure.Contains(english ? "Search failed" : "计算失败", StringComparison.Ordinal)
                     || !failure.Contains(english ? "Off (one thread)" : "关闭（单线程）", StringComparison.Ordinal))

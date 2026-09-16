@@ -85,6 +85,8 @@ internal sealed record SolverSettingsData
     public bool ShowBattleDamagePerformanceHint { get; init; } = true;
     public bool ShowActTransitionBossHpStrategyHint { get; init; } = true;
     public bool ShowFinalBossHpStrategyHint { get; init; } = true;
+    public bool ShowNoveltyPortfolioHint { get; init; } = true;
+    public bool ShowSpeedXWarning { get; init; } = true;
     public bool SearchCompletionNotificationsEnabled { get; init; } = true;
     public SolverSearchCompletionNotificationMode SearchCompletionNotificationMode { get; init; }
         = SolverSearchCompletionNotificationMode.OnlyWhenGameInBackground;
@@ -245,6 +247,8 @@ internal static class SolverSettings
             $"stop_on_worse_recalculation={migrated.StopFullAutoOnWorseRecalculation} " +
             $"detailed_diagnostic_logs={migrated.EnableDetailedDiagnosticLogs} " +
             $"show_battle_damage_performance_hint={migrated.ShowBattleDamagePerformanceHint} " +
+            $"show_novelty_portfolio_hint={migrated.ShowNoveltyPortfolioHint} " +
+            $"show_speedx_warning={migrated.ShowSpeedXWarning} " +
             $"act_transition_boss_hp_strategy={migrated.ActTransitionBossHpStrategy} " +
             $"final_boss_hp_strategy={migrated.FinalBossHpStrategy} " +
             $"acceptable_battle_hp_loss={migrated.AcceptableBattleHpLoss} " +

@@ -17,6 +17,19 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidOperationException("多宽度路线精炼必须默认开启。");
         if (new SolverSettingsData().UseNoveltyPortfolio)
             throw new InvalidOperationException("多策略搜索必须默认关闭。");
+        if (!new SolverSettingsData().ShowNoveltyPortfolioHint
+            || !new SolverSettingsData().ShowSpeedXWarning)
+        {
+            throw new InvalidOperationException("新增功能与皮皮极速引导横幅必须默认显示。");
+        }
+        SolverSettingsData dismissedHints = SolverSettings.RoundTripForTesting(
+            new SolverSettingsData()
+            {
+                ShowNoveltyPortfolioHint = false,
+                ShowSpeedXWarning = false,
+            });
+        if (dismissedHints.ShowNoveltyPortfolioHint || dismissedHints.ShowSpeedXWarning)
+            throw new InvalidOperationException("引导横幅的不再提示选择没有持久化。");
         SolverOverlay.ShowManualCalculationReady(NGame.Instance!, false);
         if (!SolverOverlay.ExercisePerformancePresetPersistenceForTesting())
             throw new InvalidOperationException("0.24.3 性能迁移或预设/内存独立持久化失败。");
@@ -34,7 +47,7 @@ internal sealed partial class UnattendedTestRunner
         if (!portfolioEnabled.UseBeamWidthPortfolio || portfolioDisabled.UseBeamWidthPortfolio
             || !portfolioEnabled.UseNoveltyPortfolio || portfolioDisabled.UseNoveltyPortfolio)
             throw new InvalidOperationException("组合搜索设置没有按搜索请求冻结。");
-        _completedChecks.Add("SearchPortfolios:RefinementDefaultOn:NoveltyDefaultOff:SettingsRoundTrip:UiControl:PolicySnapshot");
+        _completedChecks.Add("SearchPortfolios:RefinementDefaultOn:NoveltyDefaultOff:GuidanceHints:SettingsRoundTrip:UiControl:PolicySnapshot");
     }
 
     private async Task AssertControllerSessionLifecycleAsync(CombatState combat)
