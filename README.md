@@ -4,7 +4,7 @@ Combat Solver 是一个面向《杀戮尖塔 2》单人模式的战斗路线求�
 
 玩家可以只查看建议，也可以让求解器执行当前回合，或连续接管整场战斗。搜索不会修改游戏 RNG，也不会在后台操作真实战斗状态。
 
-当前本地版本为 **0.36.4**：新增遗物优先级和半血回血目标，区分同名敌人与墨之刃小刀，并补充路线摘要标题。详见 [更新日志](docs/releases/0.36.4-RELEASE_NOTES.md)。
+当前版本为 **0.40.0**：默认开启多宽度路线精炼，提高各档节点预算，并新增可选的多策略路线搜索。详见 [更新日志](docs/releases/0.40.0-RELEASE_NOTES.md)。
 
 **English UI:** Set the game language to English and restart the game. CombatSolver provides a recommended route; use **Play turn** for one turn or **Auto: On** for continuous play. Configure potions, growth and search budgets in the overlay. **Settings > Reports > Upload report** submits a bug report. Logs, raw errors and some detailed diagnostics retain their original text. Single-player only.
 
@@ -75,7 +75,7 @@ if (PreCombatForecastApi.IsAvailable)
 运行要求：
 
 - 《杀戮尖塔 2》`0.111.0`
-- [RitsuLib](https://steamcommunity.com/sharedfiles/filedetails/?id=3747602295) `0.5.18` 或更高版本
+- [RitsuLib](https://steamcommunity.com/sharedfiles/filedetails/?id=3747602295) `0.6.0` 或更高版本
 - 单人战斗模式
 
 推荐通过 Steam 创意工坊订阅。使用 GitHub Release 手动安装时，在游戏目录的 `mods/CombatSolver` 下放置以下文件：
@@ -116,10 +116,10 @@ THIRD_PARTY_NOTICES.md
 
 | 预设 | 搜索时间 | 搜索节点 | 适用场景 |
 | --- | ---: | ---: | --- |
-| 低 | `60s` | `12,000` | 资源有限或希望快速获得建议 |
-| 中（默认） | `120s` | `24,000` | 日常使用 |
-| 高 | `180s` | `50,000` | 复杂战斗与更宽搜索 |
-| 极高 | `300s` | `100,000` | 更充分的路线搜索 |
+| 低 | `60s` | `60,000` | 资源有限或希望快速获得建议 |
+| 中（默认） | `120s` | `120,000` | 日常使用 |
+| 高 | `180s` | `250,000` | 复杂战斗与更宽搜索 |
+| 极高 | `300s` | `500,000` | 更充分的路线搜索 |
 
 现有配置与新安装均默认启用 NoGC，并使用独立于性能预设的 `16 GB` 区域请求预算；这不是进程总内存上限。可手动关闭并使用 CLR 常规分代 GC：稳定关闭状态不建立 No-GC 区域、不切换 GC latency，也不新增自动内存检查点或补账回收；若同一场战斗从开启切到关闭，仍会先安全完成此前已登记的区域退出与回收义务。关闭不会清除预算值，重新启用时会继续使用原设置。
 
