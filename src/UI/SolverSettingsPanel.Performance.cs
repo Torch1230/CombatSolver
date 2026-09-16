@@ -36,6 +36,28 @@ internal sealed partial class SolverSettingsPanel
                 && migrated.UseNoveltyPortfolio
                 && !migrated.EnableNoGcRegion
                 && migrated.NoGcRegionBudgetGigabytes == SolverSettings.DefaultNoGcRegionBudgetGigabytes;
+            SolverSettingsData refinementMigrated = SolverSettings.ApplyCurrentPerformanceMigrationForTesting(
+                original with
+                {
+                    PerformanceMigrationVersion = SolverSettings.CurrentPerformanceMigrationVersion - 1,
+                    PerformancePreset = SolverPerformancePreset.Custom,
+                    SearchMaxExpandedNodes = 1_000_001,
+                    UseBeamWidthPortfolio = false,
+                    UseNoveltyPortfolio = true,
+                    EnableNoGcRegion = false,
+                    NoGcRegionBudgetGigabytes = 64d,
+                });
+            SolverSettings.ApplyForTesting(refinementMigrated);
+            bool refinementMigrationApplied = refinementMigrated.PerformanceMigrationVersion
+                    == SolverSettings.CurrentPerformanceMigrationVersion
+                && SolverSettings.ResolvePerformancePreset(refinementMigrated) == SolverPerformancePreset.Custom
+                && SolverSettings.ResolvePerformanceValues(refinementMigrated).Profile.MaxExpandedNodes == 1_000_001
+                && refinementMigrated.UseBeamWidthPortfolio
+                && refinementMigrated.UseNoveltyPortfolio
+                && !refinementMigrated.EnableNoGcRegion
+                && refinementMigrated.NoGcRegionBudgetGigabytes == 64d;
+            bool postMigrationPreferencePreserved = !SolverSettings.ApplyCurrentPerformanceMigrationForTesting(
+                refinementMigrated with { UseBeamWidthPortfolio = false }).UseBeamWidthPortfolio;
             string legacyJson =
                 "{\"performanceMigrationVersion\":" +
                 SolverSettings.CurrentPerformanceMigrationVersion +
@@ -56,6 +78,8 @@ internal sealed partial class SolverSettingsPanel
             SolverSettings.ApplyForTesting(preset);
             Reload();
             return migrationApplied
+                   && refinementMigrationApplied
+                   && postMigrationPreferencePreserved
                    && legacyDefaultApplied
                    && preset.NoGcRegionBudgetGigabytes == 64d
                    && roundTripped.UseBeamWidthPortfolio
@@ -203,8 +227,8 @@ internal sealed partial class SolverSettingsPanel
             data => SolverSettings.ResolvePerformanceValues(data).Profile.MaxExpandedNodes,
             (data, value) => AsCustomPerformance(data with { SearchMaxExpandedNodes = value }),
             100,
-            100_000,
-            SolverText.Get("单次搜索最多展开的状态数量。提高后搜索范围更大，也会增加耗时和内存占用。"));
+            null,
+            SolverText.Get("单次搜索最多展开的状态数量。自定义数值不设额外上限；提高后搜索范围更大，也会增加耗时和内存占用。"));
         AddIntRow(
             searchGrid,
             SolverText.Get("单节点出牌分支"),
@@ -317,7 +341,7 @@ internal sealed partial class SolverSettingsPanel
         Func<SolverSettingsData, int> getDeep,
         Func<SolverSettingsData, int, SolverSettingsData> setDeep,
         int minimum,
-        int maximum,
+        int? maximum,
         string tooltip)
     {
         Label rowLabel = CreateRowLabel(label);
@@ -349,17 +373,20 @@ internal sealed partial class SolverSettingsPanel
         Func<SolverSettingsData, int> getter,
         Func<SolverSettingsData, int, SolverSettingsData> setter,
         int minimum,
-        int maximum)
+        int? maximum)
     {
         LineEdit input = CreateInput(string.Empty);
         _reloadInputs.Add(data => input.Text = getter(data).ToString(CultureInfo.InvariantCulture));
         bool Commit()
         {
             string text = input.Text.Trim();
-            if (!int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int value)
-                || value < minimum || value > maximum)
+            bool parsed = int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int value);
+            bool aboveMaximum = maximum is { } configuredMaximum && value > configuredMaximum;
+            if (!parsed || value < minimum || aboveMaximum)
             {
-                ShowInvalid(input, SolverText.Format($"请输入 {minimum}–{maximum} 的整数"));
+                ShowInvalid(input, maximum.HasValue
+                    ? SolverText.Format($"请输入 {minimum}–{maximum.Value} 的整数")
+                    : SolverText.Format($"请输入不小于 {minimum} 的整数"));
                 return false;
             }
             if (getter(SolverSettings.Current) == value)

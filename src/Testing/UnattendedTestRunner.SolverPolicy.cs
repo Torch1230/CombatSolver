@@ -27,10 +27,10 @@ internal sealed partial class UnattendedTestRunner
         (int SoftTimeBudgetMilliseconds, int BeamWidth, int MaxExpandedNodes,
             int MaxCardBranchesPerNode) expected = preset switch
         {
-            SolverPerformancePreset.Low => (60_000, 45, 12_000, 24),
-            SolverPerformancePreset.Medium => (120_000, 60, 24_000, 32),
-            SolverPerformancePreset.High => (180_000, 90, 50_000, 48),
-            SolverPerformancePreset.VeryHigh => (300_000, 135, 100_000, 72),
+            SolverPerformancePreset.Low => (60_000, 45, 60_000, 24),
+            SolverPerformancePreset.Medium => (120_000, 60, 120_000, 32),
+            SolverPerformancePreset.High => (180_000, 90, 250_000, 48),
+            SolverPerformancePreset.VeryHigh => (300_000, 135, 500_000, 72),
             _ => throw new ArgumentOutOfRangeException(nameof(preset)),
         };
         if (snapshot.Profile.SoftTimeBudgetMilliseconds != expected.SoftTimeBudgetMilliseconds

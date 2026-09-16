@@ -24,7 +24,7 @@ internal sealed record SolverSearchProfile(
 
     public static SolverSearchProfile Default { get; } = new(
         BeamWidth: 60,
-        MaxExpandedNodes: 24_000,
+        MaxExpandedNodes: 120_000,
         MaxCardBranchesPerNode: 32,
         MaxPileChoiceBranchesPerAction: 18,
         MaxHandChoiceBranchesPerAction: 24,

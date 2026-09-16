@@ -8,7 +8,7 @@ internal sealed partial class UnattendedTestRunner
     private async Task AssertSingleSearchProfileAsync(CombatState combat)
     {
         SolverSettingsData legacy = SolverSettings.DeserializeForTesting(
-            """{"performanceMigrationVersion":243,"performancePreset":"Custom","shortTimeLimitSeconds":1,"deepTimeLimitSeconds":123,"shortBeamWidth":5,"deepBeamWidth":77,"deepMaxExpandedNodes":12345}""");
+            """{"performanceMigrationVersion":244,"performancePreset":"Custom","shortTimeLimitSeconds":1,"deepTimeLimitSeconds":123,"shortBeamWidth":5,"deepBeamWidth":77,"deepMaxExpandedNodes":12345}""");
         SolverSearchProfile migrated = SolverSettings.ResolvePerformanceValues(legacy).Profile;
         if (migrated.SoftTimeBudgetMilliseconds != 123000 || migrated.BeamWidth != 77 || migrated.MaxExpandedNodes != 12345)
             throw new InvalidOperationException("Legacy deep custom budget was not preserved.");
