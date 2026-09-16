@@ -888,10 +888,7 @@ internal sealed partial class CombatBeamSolver
             return node.Score
                 + Math.Min(SolverWeights.CurrentEnergyBeamCap, node.Snapshot.Energy)
                     * SolverWeights.CurrentEnergyBeamValue
-                + Math.Min(
-                        persistentBuffCap,
-                        Math.Max(0, node.Snapshot.PersistentBuffValue - _run.InitialPersistentBuffValue))
-                    * persistentBuffValue
+                + PersistentBuffBeamValue(node.Snapshot, persistentBuffCap, persistentBuffValue)
                 + (useLatentSetup
                     ? Math.Min(SolverWeights.LatentSetupBeamCap, node.Snapshot.LatentSetupValue)
                         * SolverWeights.LatentSetupBeamValue
@@ -925,6 +922,24 @@ internal sealed partial class CombatBeamSolver
             => Math.Min(
                 SolverWeights.RetainedAttackGrowthBeamCap,
                 Math.Max(0, snapshot.RetainedAttackValue - _run.InitialRetainedAttackValue));
+
+        /// <summary>
+        /// 持续能力通道：前 <paramref name="cap" /> 个单位按主单价计分，之后按溢出单价继续计分。
+        /// 硬封顶会让"整套引擎"和"半套引擎"在 Beam 里同分；溢出单价保留完整引擎的区分度，
+        /// 且每个单位的总权重有上界。终局排序不受影响。
+        /// </summary>
+        private double PersistentBuffBeamValue(
+            SimulationSnapshot snapshot,
+            int cap,
+            double primaryValue)
+        {
+            int delta = Math.Max(0, snapshot.PersistentBuffValue - _run.InitialPersistentBuffValue);
+            double overflowValue = _isActEndingBoss
+                ? SolverWeights.PersistentBuffOverflowBeamValue
+                : SolverWeights.StandardPersistentBuffOverflowBeamValue;
+            return Math.Min(cap, delta) * primaryValue
+                + Math.Max(0, delta - cap) * overflowValue;
+        }
 
     }
 

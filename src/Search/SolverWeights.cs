@@ -30,12 +30,17 @@ internal static class SolverWeights
     // 任意一个生效后立刻饱和，Beam 无法区分完整成长引擎和单张能力。
     public const int PersistentBuffDeltaBeamCap = 32;
     public const double PersistentBuffDeltaBeamValue = 50_000d;
+    // 主梯度封顶后按约 1/10 单价继续计分。实机日志（永世沙漏，余像+双灵动步法+精准+
+    // 计划妥当+蛇之形态）里完整引擎合计 190–280 单位，32 的硬上限让整套引擎和半套引擎
+    // 在 Beam 里完全同分，完整引擎线反而保不下来；溢出单价保留区分度，总权重仍有界。
+    public const double PersistentBuffOverflowBeamValue = 5_000d;
     // 普通战斗之前是 4 点封顶：一张 +2 力量按预估攻击命中折算就有 20 点，第一张能力就把
     // 通道打满，第二张能力对排序的边际贡献恰好为 0，而打击/格挡每个动作都继续得分，
     // 成长引擎线会被当回合收益挤掉。改成和首领相同的 32 点梯度、单价减半：总上限仍然
     // 明显低于首领（80 万对 160 万），但连续开能力能继续增值。
     public const int StandardPersistentBuffDeltaBeamCap = 32;
     public const double StandardPersistentBuffDeltaBeamValue = 25_000d;
+    public const double StandardPersistentBuffOverflowBeamValue = 2_500d;
     public const int LatentSetupBeamCap = 24;
     public const double LatentSetupBeamValue = 12_000d;
     // This represents future attack quality that is still present in live piles. It prevents a
