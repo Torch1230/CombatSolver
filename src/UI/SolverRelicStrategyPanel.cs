@@ -132,22 +132,6 @@ internal sealed partial class SolverRelicStrategyPanel : PanelContainer
         _showUnowned.Toggled += _ => Refresh(SolverController.IsDeploying);
         SolverUiTokens.StyleStrategyPanel(this);
         Refresh(false);
-
-        Action themeListener = ApplyTheme;
-        TreeEntered += () => SolverUiTokens.ThemeChanged += themeListener;
-        TreeExiting += () => SolverUiTokens.ThemeChanged -= themeListener;
-    }
-
-    public void ApplyTheme()
-    {
-        AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
-            SolverUiTokens.Palette.Surface,
-            SolverUiTokens.Palette.BorderSubtle,
-            SolverUiTokens.Radius.Medium,
-            SolverUiTokens.Spacing.Sm,
-            SolverUiTokens.Spacing.Sm));
-        SolverUiTokens.StyleStrategyPanel(this);
-        Refresh(false);
     }
 
     private static Label Text(string text, bool localized = false)
