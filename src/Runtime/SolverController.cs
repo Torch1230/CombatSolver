@@ -1100,6 +1100,12 @@ internal static partial class SolverController
             }
             _combat.ContinuationSource = null;
             CancelSearch();
+            // 只有「结果不会被自动部署」的搜索（玩家查看路线/手动执行）才允许空闲内存释放；
+            // 全自动、自动执行和无人测试继续沿用战斗结束前保留 No-GC 区域的策略。
+            SearchGcPolicy.SetIdleReclaimPermitted(
+                !deployWhenReady
+                && !_combat.FullAutoEnabled
+                && !UnattendedTestRunner.IsActive);
             SolverSearchSession search = new(
                 ++_nextSearchGeneration,
                 state,
@@ -2614,6 +2620,7 @@ internal static partial class SolverController
 
     private static void StartDeployment(NGame host, CombatState state, SolverResult result)
     {
+        SearchGcPolicy.SetIdleReclaimPermitted(false);
         bool hasCurrentTurnPlan = result.BestNode.Actions.Any(action =>
             action.Turn == result.StartTurnNumber
             && (action.IsExecutable || action.Kind == PlanActionKind.EndTurn));

@@ -8,6 +8,9 @@ namespace CombatSolver;
 internal static partial class SearchGcPolicy
 {
     private const long BackgroundReclaimThresholdBytes = 256L * 1024 * 1024;
+    // 搜索结束、结果不会被自动部署时的空闲释放等待时间。给玩家看路线/思考留出窗口，
+    // 期间任何新搜索、部署或回收请求都会取消这次空闲回收。
+    private const int IdleReclaimGraceMilliseconds = 6_000;
     private const int ReclaimReferenceReleaseDelayMilliseconds = 250;
     private const int ReclaimCompletionTimeoutMilliseconds = 30_000;
     private const int ConcurrentSearchExitPollMilliseconds = 10;
@@ -33,6 +36,11 @@ internal static partial class SearchGcPolicy
     private static bool _reclaimRequired;
     private static bool _reclaimRequested;
     private static bool _reclaimActive;
+    // Idle release: armed at search exit only when the runtime permits it (manual/inspection
+    // results, not auto-deployed searches or unattended tests) and a heavy search left
+    // reclaimable garbage. Generation invalidates a stale timer when anything new happens.
+    private static bool _idleReclaimPermitted;
+    private static int _idleReclaimGeneration;
     // A background reclaim cannot start while a search owns the process-wide GC mode. Keep
     // active-search requests on a separate completion chain so an in-search memory checkpoint
     // never waits on work which itself requires that search to exit.
@@ -359,7 +367,11 @@ internal static partial class SearchGcPolicy
         if (!enableNoGcRegion)
             return EnterDefaultGcSearch(memoryPressureSignal, cancellationToken);
         lock (Gate)
+        {
             _automaticGcLifecycleUsed = true;
+            // A new search supersedes any pending idle release immediately.
+            _idleReclaimGeneration++;
+        }
         long noGcRegionLohBudgetBytes = Math.Max(
             256L * 1024 * 1024,
             noGcRegionBudgetBytes / 6);
@@ -716,6 +728,7 @@ internal static partial class SearchGcPolicy
         bool restoreLatencyMode = _latencyModeOwned;
         GCLatencyMode previousMode = _previousMode;
         _regionExitOnlyRequested = false;
+        _idleReclaimGeneration++;
         _noGcRegionExitWithoutCollectionCountForTesting++;
 
         bool isCombatEnd = reason is not ("no_gc_region_rollover"
@@ -1336,8 +1349,60 @@ internal static partial class SearchGcPolicy
         }
     }
 
+    /// <summary>
+    /// 运行时在每次搜索请求时决定是否允许空闲回收：结果只供查看/手动部署（不会自动执行）
+    /// 时为 true；全自动、自动执行或无人测试时为 false，保持原有区域复用策略不变。
+    /// </summary>
+    internal static void SetIdleReclaimPermitted(bool permitted)
+    {
+        lock (Gate)
+        {
+            _idleReclaimPermitted = permitted;
+            if (!permitted)
+                _idleReclaimGeneration++;
+        }
+    }
+
+    /// <summary>
+    /// 搜索结束且区域被保留时的空闲释放：等待一段宽限时间后，如果没有新搜索、部署或
+    /// 任何已登记的回收请求，就走现有自动回收链清掉上半场积累的垃圾，让下一次搜索用
+    /// 完整预算重新建立 No-GC 区域。只请求后台非压缩 Gen2，不新增压缩或阻塞路径。
+    /// </summary>
+    private static void ScheduleIdleReclaimLocked()
+    {
+        if (!_idleReclaimPermitted || !_reclaimRequired || !_noGcRegionActive)
+            return;
+        int generation = ++_idleReclaimGeneration;
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(IdleReclaimGraceMilliseconds).ConfigureAwait(false);
+            lock (Gate)
+            {
+                if (generation != _idleReclaimGeneration
+                    || !_idleReclaimPermitted
+                    || !_reclaimRequired
+                    || !_noGcRegionActive
+                    || _activeSearches != 0
+                    || _regionExitRequired
+                    || _regionExitOnlyRequested
+                    || _reclaimRequested
+                    || _reclaimActive
+                    || _deferredReclaimRequested
+                    || _manualReclaimRequested)
+                {
+                    return;
+                }
+                Entry.Logger.Info(
+                    $"[CombatSolver/Test] MEMORY_RECLAIM stage=idle_after_search " +
+                    $"idle_ms={IdleReclaimGraceMilliseconds} " + DescribeProcessMemory());
+                RequestReclaimLocked("idle_after_search");
+            }
+        });
+    }
+
     private static Task RequestReclaimLocked(string reason)
     {
+        _idleReclaimGeneration++;
         _regionExitRequired = true;
         if (_activeSearches > 0)
         {
@@ -1879,6 +1944,7 @@ internal static partial class SearchGcPolicy
             }
             if (_noGcRegionActive)
             {
+                ScheduleIdleReclaimLocked();
                 Entry.Logger.Info(
                     "[CombatSolver/Test] GC_LATENCY no_gc_region_retained_until_combat_reset=true");
                 return;
