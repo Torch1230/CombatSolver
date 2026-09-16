@@ -2010,6 +2010,7 @@ internal sealed partial class CombatBeamSolver
                     }
                 }
             }
+            LogTurnLayerStats(policy, frontier, completed, searchedTurnLayers);
             PublishProgress(_startTurnNumber + searchedTurnLayers, searchedTurnLayers, 0,
                 frontier.Count, completed.Count, "回合层完成", force: true);
             SearchTakeoverRequest? layerTakeover = _interaction?.CurrentTakeoverRequest;
@@ -2459,5 +2460,45 @@ internal sealed partial class CombatBeamSolver
             throw new InvalidOperationException(
                 "剪枝回收后仍装不下时没有切换 CLR 常规 GC。");
         }
+    }
+
+    /// <summary>
+    /// 诊断：每个回合层结束时输出保留前沿的只读标量概览（实机日志复盘用，无行为逻辑）。
+    /// min_enemy_hp / low_dmg_min_enemy 反映最快进攻线，max_setup 反映铺场最完整的线。
+    /// </summary>
+    private void LogTurnLayerStats(
+        SearchPolicySnapshot policy,
+        IReadOnlyList<SearchNode> frontier,
+        IReadOnlyList<SearchNode> completedCandidates,
+        int searchedTurnLayers)
+    {
+        int minEnemyHp = int.MaxValue;
+        int maxSetup = int.MinValue;
+        int maxProjectedHp = int.MinValue;
+        int setupEnemyHp = -1;
+        int setupProjectedHp = -1;
+        int lowDamageMinEnemyHp = int.MaxValue;
+        foreach (SearchNode candidate in frontier)
+        {
+            SimulationSnapshot snapshot = candidate.Snapshot;
+            minEnemyHp = Math.Min(minEnemyHp, snapshot.EnemyHp);
+            maxProjectedHp = Math.Max(maxProjectedHp, snapshot.ProjectedPlayerHp);
+            if (snapshot.PersistentBuffValue > maxSetup)
+            {
+                maxSetup = snapshot.PersistentBuffValue;
+                setupEnemyHp = snapshot.EnemyHp;
+                setupProjectedHp = snapshot.ProjectedPlayerHp;
+            }
+            if (snapshot.CumulativePlayerHpLost <= 20)
+                lowDamageMinEnemyHp = Math.Min(lowDamageMinEnemyHp, snapshot.EnemyHp);
+        }
+        policy.Diagnostics.Info(
+            $"[CombatSolver/Test] LAYER_STATS turn={_startTurnNumber + searchedTurnLayers} " +
+            $"frontier={frontier.Count} completed={completedCandidates.Count} " +
+            $"min_enemy_hp={(frontier.Count == 0 ? -1 : minEnemyHp)} " +
+            $"low_dmg_min_enemy={(lowDamageMinEnemyHp == int.MaxValue ? -1 : lowDamageMinEnemyHp)} " +
+            $"max_setup={(frontier.Count == 0 ? -1 : maxSetup)} " +
+            $"max_proj_hp={(frontier.Count == 0 ? -1 : maxProjectedHp)} " +
+            $"setup_enemy_hp={setupEnemyHp} setup_proj_hp={setupProjectedHp}");
     }
 }
