@@ -64,10 +64,11 @@ dotnet clean -c Release
 - `CombatSolver.json`；
 - 刚完成的 Release `CombatSolver.dll`；
 - Windows 发布还包括同次构建的 `CombatSolver.MemoryCleaner.exe`；
+- 根目录 `LICENSE`；
 - 根目录 `THIRD_PARTY_NOTICES.md`；
 - manifest 将来明确要求的其他资产。
 
-`THIRD_PARTY_NOTICES.md` 是 Random Foreseer 书面许可要求的二进制分发文件，不得省略。不得加入源码、日志、问题包、存档、fixture、游戏依赖 DLL、`bin/obj/.godot/.local` 或旧 DLL。
+`LICENSE` 和 `THIRD_PARTY_NOTICES.md` 是 MIT 许可及 Random Foreseer 来源署名文件，不得省略。不得加入源码、日志、问题包、存档、fixture、游戏依赖 DLL、`bin/obj/.godot/.local` 或旧 DLL。
 
 ZIP 创建命令成功就是完成证据。不要重新打开、解压、枚举条目、读取 DLL 版本或计算哈希。
 
@@ -95,7 +96,7 @@ Linux 不使用上述 Windows 路径。上传前必须设置 `COMBATSOLVER_MOD_U
 
 上传前只做一次本地暂存：
 
-1. 用当前 release source 的 `CombatSolver.json`、刚完成的 Release DLL、Windows `CombatSolver.MemoryCleaner.exe` 和根目录 `THIRD_PARTY_NOTICES.md` 覆盖 `CombatSolverWorkshop/content/`；
+1. 用当前 release source 的 `CombatSolver.json`、刚完成的 Release DLL、Windows `CombatSolver.MemoryCleaner.exe`、根目录 `LICENSE` 和 `THIRD_PARTY_NOTICES.md` 覆盖 `CombatSolverWorkshop/content/`；
 2. 保留标题、长描述、作者、封面、效果图、标签、依赖和可见性，除非用户明确要求修改或兼容性事实已经变化；
 3. 将该版本玩家更新日志提炼为 `workshop.json` 的 `changeNote`；
 4. Windows 执行一次 `ModUploader.exe upload -w .\CombatSolverWorkshop`；Linux 执行一次 `"$COMBATSOLVER_MOD_UPLOADER" upload -w "$COMBATSOLVER_WORKSHOP_DIR"`。
@@ -117,8 +118,8 @@ Linux 不使用上述 Windows 路径。上传前必须设置 `COMBATSOLVER_MOD_U
 脚本执行前必须满足：
 
 - 当前分支为 `main`，已跟踪文件干净，manifest、annotated tag 与 HEAD 的 release source commit 一致；
-- 第 3 节的 `releases/CombatSolver-<版本号>.zip`、`releases/STS2 RitsuLib 0.6.0.zip`、同版本中英玩家更新日志、Release DLL、MemoryCleaner 与第三方许可均存在；
-- `workshop.json` 的 changeNote 已按本版本更新；脚本只暂存四个发布内容文件，保留工坊介绍、语言、封面、示例图、标签和依赖；
+- 第 3 节的 `releases/CombatSolver-<版本号>.zip`、`releases/STS2 RitsuLib 0.6.0.zip`、同版本中英玩家更新日志、Release DLL、MemoryCleaner、`LICENSE` 与第三方来源说明均存在；
+- `workshop.json` 的 changeNote 已按本版本更新；脚本只暂存五个发布内容文件，保留工坊介绍、语言、封面、示例图、标签和依赖；
 - 完整读取全局 `quarkclouddrive` skill 的 `SKILL.md`、`references/file-search.md`、`references/file-ops.md` 与 `references/file-upload.md`。将用户本次发布原话和同一对话的夸克 session ID 传给脚本，不把授权码写进参数、仓库或状态文件。
 - Windows 统一脚本直接使用已安装的 Node 与夸克 CLI，不调用 Bash 安装器；缺少任一命令或文件时原样停止。
 

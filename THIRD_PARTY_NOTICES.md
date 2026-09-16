@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-Last updated: 2026-08-28
+Last updated: 2026-09-16
 
 ## Random Foreseer
 
@@ -12,6 +12,12 @@ Combat Solver's built-in combat simulation core uses and modifies portions of th
 - Author and copyright holder: hotwords123
 - GitHub: https://github.com/hotwords123/StS2.RandomForeseer
 - Steam Workshop: https://steamcommunity.com/sharedfiles/filedetails/?id=3747531952
+
+### Upstream License
+
+Random Foreseer is published under the MIT License. Its copyright notice is retained in Combat Solver's root `LICENSE` file:
+
+Copyright (c) 2026 hotwords123
 
 ### Permission Grant
 
@@ -26,8 +32,8 @@ This file records that permission and is the NOTICE required by its conditions. 
 
 ## Scope and Ownership
 
-Random Foreseer code and the portions of Combat Solver derived from it remain subject to hotwords123's copyright and the permission above. Combat Solver's modifications, search system, deployment system, user interface, diagnostics, tests, documentation, and other original work are copyright Torch and their respective contributors.
+Random Foreseer code and the portions of Combat Solver derived from it remain subject to hotwords123's copyright and are distributed under the MIT License. Combat Solver's modifications, search system, deployment system, user interface, diagnostics, tests, documentation, and other original work are copyright Torch and their respective contributors and are also distributed under the MIT License.
 
 Combat Solver does not load or distribute the Random Foreseer assembly as a runtime dependency. This runtime separation does not alter the source relationship described above.
 
-At the time this permission was granted, the Random Foreseer repository did not contain a public software license. The permission recorded here does not place Random Foreseer-derived code under any separate license that may apply to Torch-authored portions of Combat Solver. If Random Foreseer later publishes a license, this notice will be updated to record the resulting licensing arrangement without removing the attribution and source history above.
+At the time the permission above was granted, the Random Foreseer repository did not contain a public software license. Random Foreseer now publishes its repository under the MIT License. The earlier permission record remains here to preserve the attribution and source history under which the integration began.
