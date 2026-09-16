@@ -71,12 +71,6 @@ internal static class SolverWeights
     /// 需要 83 423 个节点。两者是乘的关系，Beam 越宽同一条线需要的节点越少（Beam 512 只要 26 671）。
     /// 这是那一个检查点上的观察，不是 Beam 宽度与获胜所需节点数的单调关系或固定比例保证。
     /// </remarks>
-    /// <summary>
-    /// "安全引擎"席位允许比本组最低战损多出的血量。实机零战损通关线是"全程满血 +
-    /// 逐步铺满引擎"的平衡态；现有通道要么保最残血的深引擎、要么保最完整的血线，
-    /// 这个席位在低战损候选里选铺场最完整的一个，允许少量已发生的战损。
-    /// </summary>
-    public const int SafeSetupHpLossSlack = 8;
     public const int NoVictoryEscalationFactor = 2;
     /// <summary>
     /// 已经获胜但战损仍不低于这个值、且没有达到玩家设置的可接受战损时，也按无胜利加宽的
