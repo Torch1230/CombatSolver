@@ -1,6 +1,6 @@
 # CombatSolver 测试清单
 
-## 下一版本（开发中）：多策略回合准备选牌修复（2026-09-16）
+## 0.40.1：多策略回合准备选牌修复（2026-09-16）
 
 - 夸克打包结构合同通过：用现有 `CombatSolver-0.40.0.zip` 与 `STS2 RitsuLib 0.6.0.zip` 调用独立打包函数，临时产物为 18,657,400 字节，保留 5 个 CombatSolver 根条目，并把 46 个 RitsuLib 条目全部映射到 `RitsuLib/`；外层不存在完整 RitsuLib 分发 ZIP，严格超过 10 MiB。未执行上传、网盘移动或正式发布。
 - 日志站基线：0.40.0 共取得 12 份 `TurnSetupFailure` 问题包，覆盖烤手套、能力牌及多个职业/遭遇；12 份异常栈均进入 `RunNoveltyPortfolioPass -> CombatBeamSolver.RunNoveltyOpen`。11 份在 `BuildContinuations -> Replay` 因未回放准备选牌而找不到首张手牌，1 份由终结准备根进入 `Expand`。服务端筛选结果是玩家主动提交的问题包，不作为总体发生率统计。
