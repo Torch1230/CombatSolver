@@ -166,6 +166,7 @@ internal sealed partial class CombatBeamSolver
                 pool,
                 _profile.BeamWidth,
                 preserveDefensiveRoute: true,
+                useSecondRankBand: true,
                 observe: observeGlobalRetention);
             // RankBest has drained its lanes and published its ordered result. The rest of
             // retention is a separate allocation interval while the complete pool stays rooted.

@@ -13,6 +13,8 @@ internal sealed partial class UnattendedTestRunner
 {
     private void AssertSearchPortfolioSettings(CombatState combat)
     {
+        if (!new SolverSettingsData().UseBeamWidthPortfolio)
+            throw new InvalidOperationException("多宽度路线精炼必须默认开启。");
         if (new SolverSettingsData().UseNoveltyPortfolio)
             throw new InvalidOperationException("多策略搜索必须默认关闭。");
         SolverOverlay.ShowManualCalculationReady(NGame.Instance!, false);
@@ -32,7 +34,7 @@ internal sealed partial class UnattendedTestRunner
         if (!portfolioEnabled.UseBeamWidthPortfolio || portfolioDisabled.UseBeamWidthPortfolio
             || !portfolioEnabled.UseNoveltyPortfolio || portfolioDisabled.UseNoveltyPortfolio)
             throw new InvalidOperationException("组合搜索设置没有按搜索请求冻结。");
-        _completedChecks.Add("SearchPortfolios:DefaultOff:SettingsRoundTrip:UiControl:PolicySnapshot");
+        _completedChecks.Add("SearchPortfolios:RefinementDefaultOn:NoveltyDefaultOff:SettingsRoundTrip:UiControl:PolicySnapshot");
     }
 
     private async Task AssertControllerSessionLifecycleAsync(CombatState combat)
@@ -398,7 +400,7 @@ internal sealed partial class UnattendedTestRunner
         SolverSettingsData notificationDefaults = new();
         if (SolverSettings.ResolvePerformancePreset(notificationDefaults)
                 != SolverPerformancePreset.Medium
-            || notificationDefaults.UseBeamWidthPortfolio
+            || !notificationDefaults.UseBeamWidthPortfolio
             || notificationDefaults.UseNoveltyPortfolio
             || !notificationDefaults.EnableNoGcRegion
             || notificationDefaults.NoGcRegionBudgetGigabytes

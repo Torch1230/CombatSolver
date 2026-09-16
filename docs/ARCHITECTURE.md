@@ -156,7 +156,7 @@ RitsuLib 0.6.0 自身拥有 BaseLib 目标类型的外部登记查询、按程�
 
 `ActionRelicTriggerRecorder` 仅存在于最终路线回放，附带 Damage/Heal 的来源、请求/修正数值和 HP 前后值；普通 Beam 分支保持 null，不分配取证列表。直接字段赋值等绕过 Damage/Heal 的变更尚无来源事件，不能把这份记录宣称为所有语义写点的完整追踪。
 
-`BeamWidthPortfolio.cs` 是一个与 Beam 算法无关的组合器：按顺序在同一个根上跑若干只有 Beam 宽度不同的成员，共享一份节点预算（首个成员拿全额，其后各成员的上限是扣掉前面实际展开数后的余量，扣光即停），撞节点上限又没到终局的成员不参与比较，其余按调用方传入的既有比较规则整条取最优，同分保留先出现的基线成员。它不含比较规则、不改保留逻辑、状态键、评分或常量；展开数、转移数和终止原因都由调用方按各自既有口径给出。`SolverSettings.UseBeamWidthPortfolio` 默认关闭，由 Runtime 冻结进 `SearchPolicySnapshot`；关闭时主搜索行为逐位不变。做法与数据来源见[宽度组合](strategy/beam-width-portfolio.md)。
+`BeamWidthPortfolio.cs` 是一个与 Beam 算法无关的组合器：按顺序在同一个根上跑若干宽度或中途排序不同的成员，共享一份节点预算（首个成员拿全额，其后各成员的上限是扣掉前面实际展开数后的余量，扣光即停），撞节点上限又没到终局的成员不参与比较，其余按调用方传入的既有比较规则整条取最优，同分保留先出现的基线成员。它不含比较规则、状态键或终局排序；展开数、转移数和终止原因都由调用方按各自既有口径给出。`SolverSettings.UseBeamWidthPortfolio` 默认开启，由 Runtime 冻结进 `SearchPolicySnapshot`；关闭时只运行基线成员。做法与数据来源见[宽度组合](strategy/beam-width-portfolio.md)。
 
 `BeamWidthPortfolioGate.cs` 是精炼成员的准入判断，只做算术与比较，不看搜索状态：基线必须已经把自己这一宽度搜干净（`BoundaryReason == None`）、不是已证明最优的零战损胜利、耗时不超过时间预算的四分之一，且共享节点余量、剩余时间、`SearchMemoryPressureSignal.RemainingBytes` 都装得下「基线实测 × 成员宽度 ÷ 基线宽度 × 3/2」的估算，才启动下一位成员；否则该成员不运行、不花预算，只留一行原因。成员顺序执行不并行，精炼成员的软时间预算收紧到本轮剩余部分。`BeamWidthPortfolioTelemetry.cs` 是请求级诊断，记首条路线发布时刻、逐成员开销与各成员结束后的托管堆峰值，挂在 `SolverResult.PortfolioTelemetry` 上供测试写出；组合关闭时同样记录，那时是单成员一行。基线成员一完成就走协调器已有的 interim 回调发布给界面（中途路线本来就由 `SolverProgress` 承载），精炼不影响玩家看到第一条路线的时刻。Search 仍然不读设置：开关与成员宽度由运行时写进 `SearchPolicySnapshot`。
 

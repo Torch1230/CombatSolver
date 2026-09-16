@@ -107,7 +107,7 @@ internal sealed record SolverSettingsData
     public int PerformanceMigrationVersion { get; init; }
     public SolverPerformancePreset? PerformancePreset { get; init; } = SolverPerformancePreset.Medium;
     public int? SearchMaxDegreeOfParallelism { get; init; }
-    public bool UseBeamWidthPortfolio { get; init; }
+    public bool UseBeamWidthPortfolio { get; init; } = true;
     public bool UseNoveltyPortfolio { get; init; }
     public double? SearchTimeLimitSeconds { get; init; }
     public bool EnableNoGcRegion { get; init; } = true;

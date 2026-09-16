@@ -4,7 +4,7 @@
 
 同一个根只改 Beam 宽度就能让搜索结果双向变化，而且没有「更宽必然更好」的方向性。既然差一格的宽度不是单调的，那就把若干次不同宽度的搜索当成若干个抽样，用搜索里既有的比较规则整条选优。这就是 `BeamWidthPortfolio`：一个组合器，按成员定义调整每个成员的 Profile（Beam 宽度、分到的节点上限，以及是否为「次段」成员）并逐个求解。
 
-开关 `SearchPolicySnapshot.UseBeamWidthPortfolio` 默认关闭。本节描述 Beam 阶段；同时开启[多策略搜索](bounded-novelty-search-20260916.md)时，该阶段接收前置探索实际消耗后的剩余预算。两个开关都关闭时，主搜索只运行一次 `CombatBeamSolver`，使用请求自己的 Profile 实例，逐位不变。
+开关 `SearchPolicySnapshot.UseBeamWidthPortfolio` 默认开启。本节描述 Beam 阶段；同时开启[多策略搜索](bounded-novelty-search-20260916.md)时，该阶段接收前置探索实际消耗后的剩余预算。关闭精炼时，主搜索只运行一次 `CombatBeamSolver`，使用请求自己的 Profile 实例。
 
 ## 做法
 
@@ -12,7 +12,7 @@
 
 - **基础分成员**（`SolverSearchProfile.BaseScoreOnly`）。宽度与基线相同，但 `BeamRankScore` 只返回状态基础分 `node.Score`，不加当前能量、持续效果增量、铺垫潜力、后续资源、再利用潜力、保留攻击、延迟伤害、Sandpit、敌方压制/虚弱这九项附加分；终局排序与路线比较规则不变。标志未置位时排序逐位不变。
 
-- **次段成员**（`SolverSearchProfile.SecondRankBand`）。宽度与基线相同，但全局剪枝按分数填充普通席位时不取排名前 W 位，而取第 W+1 至 2W 位：`RankBest` 在分数截断前把前 W 位挪到队尾（`BeamWidthPortfolio.MoveLeadingBandToTail`），候选不足 2W 个时挪走的那段按原顺序回填。必保通道置换、边界多样化和药水配额仍按纯分数序的 `quotaPool` 进行，不受影响。只在 `limit` 等于 Beam 宽度的全局剪枝里生效，其他 `RankBest` 调用（长期资源分组、开局通道、终局排序）不变；标志未置位时这段代码不执行。
+- **次段成员**（`SolverSearchProfile.SecondRankBand`）。宽度与基线相同，但全局剪枝按分数填充普通席位时不取排名前 W 位，而取第 W+1 至 2W 位：`RankBest` 在分数截断前把前 W 位挪到队尾（`BeamWidthPortfolio.MoveLeadingBandToTail`），候选不足 2W 个时挪走的那段按原顺序回填。必保通道置换、边界多样化和药水配额仍按纯分数序的 `quotaPool` 进行，不受影响。只有全局剪枝入口显式启用该取段，其他 `RankBest` 调用（长期资源分组、开局通道、终局排序）不变；标志未置位时这段代码不执行。
 - **共享一份节点预算**。首个成员拿到本轮的全额上限，跑完按它的实际展开数扣减，下一个成员的 `MaxExpandedNodes` 就是剩下的余量，扣光即停。因此成员列表只有一项时，它的 Profile 与直接求解逐位相同。
 - **首项永远是基线宽度**。`ProductionMembers` 把请求 Profile 的宽度强制排在第一位，再按给定顺序去重追加其余宽度，丢掉小于 1 的值；没有显式宽度列表时最后追加一个次段成员和一个基础分成员。基线成员拿满额预算，所以它就是今天那次单次搜索。
 - **比较规则不在组合器里**。协调器传入既有的 `IsBetterPotionPolicyResult`，严格更优才换人，于是同分保留先出现的成员，也就是基线。
@@ -44,7 +44,7 @@ Search 仍然不读设置。开关与成员宽度由运行时写进 `SearchPolic
 
 | 快照字段 | 含义 |
 |---|---|
-| `UseBeamWidthPortfolio` | 主搜索是否走组合。默认 false |
+| `UseBeamWidthPortfolio` | 主搜索是否走组合。默认 true |
 | `BeamWidthPortfolioWidths` | 成员宽度；为空用默认值（含次段与基础分成员），显式给出时只有宽度成员 |
 | `PortfolioTelemetry` | 请求级诊断，由 `CombatSearchCoordinator.Solve` 建立并挂到返回结果上 |
 

@@ -2582,6 +2582,7 @@ internal sealed partial class CombatBeamSolver
             int limit,
             bool preserveDefensiveRoute = false,
             bool finalQualityFirst = false,
+            bool useSecondRankBand = false,
             Action<GlobalRetentionDecision>? observe = null)
         {
             Dictionary<SearchNode, RoutingChoiceSignature>? observedRoutingSignatures =
@@ -3447,10 +3448,10 @@ internal sealed partial class CombatBeamSolver
             }
 
             List<SearchNode> quotaPool = ranked.ToList();
-            // 次段成员（见 SolverSearchProfile.SecondRankBand）：只在全局剪枝（limit 就是 Beam 宽度）里，
+            // 次段成员（见 SolverSearchProfile.SecondRankBand）：只由全局剪枝入口显式启用，
             // 把分数序前 effectiveLimit 位挪到队尾再截断，于是普通席位落在第 W+1 至 2W 位；挪走的
             // 一段只在后面候选不够时回填。quotaPool 仍是纯分数序，必保置换、边界多样化和药水配额照旧。
-            if (_profile.SecondRankBand && limit == _profile.BeamWidth && !finalQualityFirst)
+            if (_profile.SecondRankBand && useSecondRankBand)
                 BeamWidthPortfolio.MoveLeadingBandToTail(ranked, effectiveLimit);
             if (ranked.Count > effectiveLimit)
                 ranked.RemoveRange(effectiveLimit, ranked.Count - effectiveLimit);
