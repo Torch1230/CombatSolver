@@ -1,12 +1,17 @@
 namespace CombatSolver;
 
 /// <summary>
-/// 一个组合成员的定义：Beam 宽度，以及是否为「次段」成员。次段成员的宽度与基线相同，
-/// 但全局剪枝的普通席位取分数排名第 W+1 至 2W 位（见 <see cref="SolverSearchProfile.SecondRankBand" />）。
+/// 一个组合成员的定义：Beam 宽度，以及排序方式。次段成员的宽度与基线相同，但全局剪枝的普通席位取
+/// 分数排名第 W+1 至 2W 位（见 <see cref="SolverSearchProfile.SecondRankBand" />）；基础分成员的宽度也与
+/// 基线相同，但中途排序只用基础分（见 <see cref="SolverSearchProfile.BaseScoreOnly" />）。
 /// </summary>
-internal readonly record struct BeamWidthPortfolioMemberSpec(int BeamWidth, bool SecondRankBand = false)
+internal readonly record struct BeamWidthPortfolioMemberSpec(
+    int BeamWidth,
+    bool SecondRankBand = false,
+    bool BaseScoreOnly = false)
 {
-    public override string ToString() => SecondRankBand ? $"{BeamWidth}+band" : BeamWidth.ToString();
+    public override string ToString()
+        => BeamWidth + (SecondRankBand ? "+band" : string.Empty) + (BaseScoreOnly ? "+base" : string.Empty);
 }
 
 /// <summary>
@@ -36,6 +41,7 @@ internal readonly record struct BeamWidthPortfolioRun<TResult>(
 internal sealed record BeamWidthPortfolioMember(
     int BeamWidth,
     bool SecondRankBand,
+    bool BaseScoreOnly,
     int NodeBudget,
     bool Ran,
     long ExpandedNodes,
@@ -58,7 +64,8 @@ internal sealed record BeamWidthPortfolioOutcome<TResult>(
 
 /// <summary>
 /// 按顺序在同一个根上跑若干个成员，共享一份节点预算，取最优结果。成员之间只有 Beam 宽度不同，
-/// 或者是与基线同宽度的「次段」成员（普通席位取分数排名第 W+1 至 2W 位）。
+/// 或者是与基线同宽度、只改中途排序的成员：「次段」（普通席位取分数排名第 W+1 至 2W 位）或
+/// 「基础分」（排序不加附加分）。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -100,8 +107,9 @@ internal static class BeamWidthPortfolio
     /// <summary>
     /// 生产成员列表。首项强制是基线宽度（基线成员必须逐位等于今天的单次搜索），其后按给定顺序
     /// 去重追加，丢掉小于 1 的值。<paramref name="configuredWidths" /> 为空时用默认的
-    /// [基线, 基线×2/3, 基线×3/2, 次段 基线]（四舍五入，例如基线 24 是 [24, 16, 36, 24+band]，
-    /// 基线 135 是 [135, 90, 203, 135+band]）；显式给出宽度列表时只有宽度成员，不追加次段成员。
+    /// [基线, 基线×2/3, 基线×3/2, 次段 基线, 基础分 基线]（四舍五入，例如基线 24 是
+    /// [24, 16, 36, 24+band, 24+base]，基线 135 是 [135, 90, 203, 135+band, 135+base]）；
+    /// 显式给出宽度列表时只有宽度成员，不追加次段与基础分成员。
     /// </summary>
     internal static IReadOnlyList<BeamWidthPortfolioMemberSpec> ProductionMembers(
         int baselineBeamWidth,
@@ -130,6 +138,7 @@ internal static class BeamWidthPortfolio
                 members.Add(member);
         }
         members.Add(new BeamWidthPortfolioMemberSpec(baselineBeamWidth, SecondRankBand: true));
+        members.Add(new BeamWidthPortfolioMemberSpec(baselineBeamWidth, BaseScoreOnly: true));
         return members;
     }
 
@@ -153,7 +162,7 @@ internal static class BeamWidthPortfolio
 
     /// <param name="memberSpecs">成员定义，首项为基线宽度。</param>
     /// <param name="sharedMaxExpandedNodes">全部成员共用的节点上限。</param>
-    /// <param name="baseProfile">除 Beam 宽度、次段标志和节点上限外，每个成员都照抄这份 Profile。</param>
+    /// <param name="baseProfile">除 Beam 宽度、排序方式标志和节点上限外，每个成员都照抄这份 Profile。</param>
     /// <param name="solve">按 Profile 求解并报告实测工作量与终止方式。</param>
     /// <param name="isBetter">既有比较规则；严格更优才换人，因此同分保留先出现的成员。</param>
     /// <param name="rejectMember">
@@ -210,6 +219,7 @@ internal static class BeamWidthPortfolio
             {
                 BeamWidth = spec.BeamWidth,
                 SecondRankBand = spec.SecondRankBand,
+                BaseScoreOnly = spec.BaseScoreOnly,
                 MaxExpandedNodes = (int)remainingNodes,
             };
             BeamWidthPortfolioRun<TResult> run = solve(memberProfile);
@@ -276,6 +286,7 @@ internal static class BeamWidthPortfolio
             $"compared={members.Count(member => member.Compared)} " +
             $"selected_index={selectedIndex} selected_beam={members[selectedIndex].BeamWidth} " +
             $"selected_second_rank_band={members[selectedIndex].SecondRankBand} " +
+            $"selected_base_score_only={members[selectedIndex].BaseScoreOnly} " +
             $"reason={selectionReason} shared_nodes={sharedMaxExpandedNodes} " +
             $"total_expanded={totalExpanded} total_transitions={totalTransitions}");
         return new BeamWidthPortfolioOutcome<TResult>(
@@ -287,7 +298,7 @@ internal static class BeamWidthPortfolio
             totalTransitions);
 
         static BeamWidthPortfolioMember Skipped(BeamWidthPortfolioMemberSpec spec, string reason)
-            => new(spec.BeamWidth, spec.SecondRankBand, 0, false, 0, 0, null, null, null, null, null, false, reason);
+            => new(spec.BeamWidth, spec.SecondRankBand, spec.BaseScoreOnly, 0, false, 0, 0, null, null, null, null, null, false, reason);
 
         static BeamWidthPortfolioMember Ran(
             BeamWidthPortfolioMemberSpec spec,
@@ -295,7 +306,7 @@ internal static class BeamWidthPortfolio
             BeamWidthPortfolioRun<TResult> run,
             bool compared,
             string? skippedReason)
-            => new(spec.BeamWidth, spec.SecondRankBand, nodeBudget, true, run.ExpandedNodes, run.TransitionCount,
+            => new(spec.BeamWidth, spec.SecondRankBand, spec.BaseScoreOnly, nodeBudget, true, run.ExpandedNodes, run.TransitionCount,
                 run.Termination, run.Terminal, run.Won, run.BattleHpLost, run.PotionCount,
                 compared, skippedReason);
     }

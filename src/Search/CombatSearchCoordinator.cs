@@ -488,6 +488,7 @@ internal static partial class CombatSearchCoordinator
         BeamWidthPortfolioMember member = new(
             profile.BeamWidth,
             profile.SecondRankBand,
+            profile.BaseScoreOnly,
             profile.MaxExpandedNodes,
             Ran: true,
             run.ExpandedNodes,
@@ -522,6 +523,7 @@ internal static partial class CombatSearchCoordinator
             BeamWidthPortfolioMemberReport report = new(
                 member.BeamWidth,
                 member.SecondRankBand,
+                member.BaseScoreOnly,
                 member.NodeBudget,
                 member.Ran,
                 Selected: index == outcome.SelectedIndex,
@@ -541,6 +543,7 @@ internal static partial class CombatSearchCoordinator
             policy.Diagnostics.Info(
                 $"[CombatSolver/Test] BEAM_WIDTH_PORTFOLIO_MEMBER index={index} " +
                 $"beam={report.BeamWidth} second_rank_band={report.SecondRankBand} " +
+                $"base_score_only={report.BaseScoreOnly} " +
                 $"nodes={report.NodeBudget} ran={report.Ran} " +
                 $"selected={report.Selected} compared={report.Compared} " +
                 $"skipped={report.SkippedReason ?? "-"} " +

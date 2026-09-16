@@ -7513,6 +7513,9 @@ internal sealed partial class CombatBeamSolver
 
         private double BeamRankScore(SearchNode node)
         {
+            // 基础分成员（见 SolverSearchProfile.BaseScoreOnly）：中途排序只用基础分；未置位时下面逐位不变。
+            if (_profile.BaseScoreOnly)
+                return node.Score;
             int persistentBuffCap = _isActEndingBoss
                 ? SolverWeights.PersistentBuffDeltaBeamCap
                 : SolverWeights.StandardPersistentBuffDeltaBeamCap;
