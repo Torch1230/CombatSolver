@@ -58,6 +58,7 @@ default_headless_cpu=2
 add_option headless-cpu-reservation "$default_headless_cpu" int none
 add_option headless-queue-timeout-seconds 120 int none
 add_option run-snapshot-path "" string none
+add_option known-route-trace-config-path "" string optional_string
 add_option load-run-snapshot-directly 0 switch bool
 add_option target-act-floor -1 int positive_int
 add_option target-map-column -1 int nonnegative_int

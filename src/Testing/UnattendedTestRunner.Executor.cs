@@ -814,6 +814,18 @@ internal sealed partial class UnattendedTestRunner
                     expectedPlayerPowerObserved, InitialSearchHeld: false);
             }
 
+            if (request.ScenarioId.Equals("KNOWN-CONFIG-ROUTE-TRACE-V0111", StringComparison.OrdinalIgnoreCase))
+            {
+                if (scenario.OrbChecks.Count > 0 || scenario.PotionChecks.Count > 0
+                    || scenario.MonsterMoveChecks.Count > 0 || request.VerifyIncrementalSearch)
+                    throw new InvalidOperationException("已知路径诊断不能混入其他差分或增量搜索请求。");
+                _ = ApplySettingsOverrides();
+                runner.SetStage("known_config_route_trace_prepare");
+                int finishedTurn = await runner.RunKnownConfigRouteTraceAsync(combatState, player);
+                return new ExecutionOutcome(false, finishedTurn, expectedCardPlayed, expectedPotionUsed,
+                    expectedPlayerPowerObserved, InitialSearchHeld: false);
+            }
+
             if (request.ScenarioId.Equals("KNOWN-SOUL-GENERATION-CONTEXT-V0111", StringComparison.OrdinalIgnoreCase))
             {
                 if (scenario.OrbChecks.Count > 0 || scenario.PotionChecks.Count > 0
