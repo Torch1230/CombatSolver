@@ -102,6 +102,57 @@ def load_run(path):
             "selected": next((m for m in ran if m.get("Selected")), None)}
 
 
+def declared_beam(extra, fallback):
+    """臂自己声明的 --beam（后给的覆盖全局值），没声明就是全局值。"""
+    beam = fallback
+    for index, token in enumerate(extra):
+        if token == "--beam" and index + 1 < len(extra):
+            beam = int(extra[index + 1])
+    return beam
+
+
+def validate_arm_declarations(arms, fallback_beam):
+    """有任何一个臂改写束宽时，其余臂必须也写明自己的束宽。
+
+    这条规则来自一次真实错误：对照臂漏写 --beam，静默继承了全局的窄束宽，
+    整轮"生产宽度标定"其实测的不是生产宽度，而报告表面看上去完全正常。
+    只比对"声明值 vs 观测值"抓不到它——没声明的臂声明的就是它继承到的值，必然自洽。
+    所以必须在开跑前就把这种歧义挡掉。
+    """
+    declares = {arm: [token for token in extra if token == "--beam"] for arm, extra in arms.items()}
+    silent = sorted(arm for arm, tokens in declares.items() if not tokens)
+    overriding = sorted(arm for arm, tokens in declares.items() if tokens)
+    if overriding and silent:
+        raise SystemExit(
+            f"臂 {overriding} 改写了 --beam，但臂 {silent} 没有声明，会静默继承全局束宽 "
+            f"{fallback_beam}。请给每个臂都写明 --beam，或在全局统一指定束宽。")
+
+
+def audit_arm_configuration(rows, arms, fallback_beam):
+    """每个臂实际跑出的成员宽度必须自证身份。
+
+    这一条是因为真的犯过一次：对照臂忘了写 --beam，于是静默继承了全局的窄束宽，
+    整轮"生产宽度标定"其实测的不是生产宽度，而结果表面上看仍然完整。
+    这里把观测到的宽度写进报告，并在臂声明的束宽没出现在观测里时直接失败。
+    """
+    observed = {}
+    for by_arm in rows.values():
+        for arm, run in by_arm.items():
+            widths = {m["BeamWidth"] for m in run["ran"] if m.get("BeamWidth")}
+            if widths:
+                observed.setdefault(arm, set()).update(widths)
+    audit = {}
+    for arm, extra in arms.items():
+        widths = sorted(observed.get(arm, set()))
+        expected = declared_beam(extra, fallback_beam)
+        audit[arm] = {"declaredBeam": expected, "observedWidths": widths}
+        if widths and expected not in widths:
+            raise SystemExit(
+                f"臂 {arm} 声明束宽 {expected}，但实际观测到的成员宽度是 {widths}。"
+                f"检查 --arm 的额外参数是否漏了 --beam。")
+    return audit
+
+
 def summarize(rows, arms, control):
     """每一条非对照臂都与对照臂在相同战斗上配对，质量用同一代理，成本同时报毫秒与节点。"""
     report = {}
@@ -194,6 +245,12 @@ def main():
     options = {"repo": str(args.repo.resolve()), "beam": args.beam, "nodes": args.nodes,
                "budget_ms": args.budget_ms}
     names = list(arms)
+    validate_arm_declarations(arms, args.beam)
+    # 先把每个臂实际会用的束宽打出来：漏写 --beam 时它会静默继承全局值，看不到就会白跑一轮。
+    for arm, extra in arms.items():
+        token = "--beam" if "--beam" in extra else "--beam (继承全局)"
+        print(f"臂 {arm}: 束宽={declared_beam(extra, args.beam)} 来自 {token}；额外参数={extra or '(无)'}",
+              flush=True)
     jobs = []
     # 交错：相邻战斗轮换臂的先后，机器负载漂移不会被算到某一臂头上。
     for index, label in enumerate(labels):
@@ -217,6 +274,7 @@ def main():
     report = {
         "composition": args.composition,
         "arms": {name: " ".join(extra) or "(none)" for name, extra in arms.items()},
+        "armConfiguration": audit_arm_configuration(rows, arms, args.beam),
         "control": args.control,
         "labels": labels,
         "failed": [{"label": r["label"], "arm": r["arm"], "exitCode": r["exitCode"]}
