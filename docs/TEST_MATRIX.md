@@ -3,11 +3,11 @@
 ## 0.40.2：能力牌估值框架与实例清理（2026-09-17）
 
 - 卡池目录静态核对通过：同版本六个 `CardPool` 的 `CardType.Power` 共112张，全部命中 `zhs/eng` 官方标题与中文效果；原版约束分为105张单人范围和7张 `MultiplayerOnly`，六份文档行数分别为20/18/22/19/20/13。普通与升级描述由对应原版卡牌实例格式化，未留下未解析变量或颜色标签。
-- `dotnet run --project tools/PowerCardValuationChecks/PowerCardValuationChecks.csproj -c Release` 通过，输出 `POWER_CARD_VALUATION_CHECKS_OK`：覆盖奖励饱和合计、负分量拒绝、净值可为负、精确类型登记、需求透传、卡池分类、重复登记拒绝和默认零模型旁路。
+- `dotnet run --project tools/PowerCardValuationChecks/PowerCardValuationChecks.csproj -c Release` 通过，输出 `POWER_CARD_VALUATION_CHECKS_OK silent_models=17`：除奖励饱和合计、负分量拒绝、净值可为负、精确类型登记、需求透传、重复登记拒绝和空登记旁路外，还覆盖静默猎手17张单人能力牌完整登记、其他卡池为空、升级差异、零触发稀缺、谋划专家的技能/弃牌优先时机、刀扇生成与群攻增量、毒雾跨回合延迟、幽魂形态逐次减伤与敏捷反协同。
 - `pwsh -NoProfile -File tools/test-headless-runtime.ps1` 通过，输出 `HEADLESS_RUNTIME_SELFTEST_PASS ... /instance-cleanup`；无游戏替身验证在租约释放、无存活私有游戏且所有权匹配时删除完整嵌套实例目录。
-- Release 编译通过，0 个编译警告、0 个错误；命令启动时另出现一次 PowerShell `Import-Clixml: Root element is missing.` 环境输出，未进入 MSBuild 诊断。PowerShell 结构门禁通过，`REFACTOR_BOUNDARIES_OK search_files=124`。
-- Bash 四个变更脚本的 `bash -n` 语法检查通过。WSL 缺少原生 `rg`，两次完整 Bash 结构门禁均在规则执行前失败；按用户要求停止处理 WSL，不记为通过。未运行 Linux helper 完整自测。
-- 未运行真实无头战斗或可见 Steam：当前登记表为空，生产搜索尚未读取新接口，没有能力牌行为变化可验收。
+- 静默猎手草案加入后，Release 编译通过，0 个编译警告、0 个错误；PowerShell 结构门禁通过，`REFACTOR_BOUNDARIES_OK search_files=130`。
+- 本轮按用户要求不处理 WSL，没有执行 Bash 结构门禁或 Linux helper 自测，不记为通过。
+- 未运行真实无头战斗或可见 Steam：生产搜索尚未读取新接口，没有能力牌行为变化可验收，也没有创建新的无头实例。
 
 
 ## 0.40.2：多策略路线搜索默认关闭与大战损引导（2026-09-17）

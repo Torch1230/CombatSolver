@@ -213,7 +213,7 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 | `CombatBeamSolver.OrderedMutationRetention.cs` | 有序操作碰撞的谱系、租约、成对激活和预算账本；统一处理续接、到期与普通通道回退 |
 | `CombatBeamSolver.FinalPlanOrdering.cs` | 终局胜负、偷窃、战损、药水、卖血和搜索边界排序 |
 | `CombatBeamSolver.StateEvaluation.cs` | 搜索快照、评分、威胁、stand-pat 和状态特征；手牌可达价值的纯背包计算委托 `ReachableHandValue` |
-| `PowerCardValuation/` | 用户逐卡确认的能力牌奖励、惩罚与时机模型；按六个卡池分目录，通过精确卡类型登记。空登记表合法，未登记卡牌保持既有行为；该接口不进入终局排序 |
+| `PowerCardValuation/` | 能力牌奖励、惩罚与时机模型；按六个卡池及机制组分目录，通过精确卡类型登记。静默猎手17张单人牌当前是待用户复核的 `QuantifiedDraft`，其他卡池为空；未登记卡牌保持既有行为，该接口不进入终局排序 |
 | `CombatBeamSolver.NoveltySearch.cs` | 有界新颖性队列与影子特征提取；复用既有展开、终局与 Phases 注入边界 |
 | `CombatBeamSolver.Terminal.cs` | 终局精确回放、逐回合结果、击杀与遗物标注 |
 | `StrategicEffectModel.cs` | 把 Power 的实际触发语义投影为伤害、防伤、资源、牌访问和成长效果；不决定终局胜负 |

@@ -1,8 +1,8 @@
 namespace CombatSolver;
 
 /// <summary>
-/// 用户逐张确认后的原版能力牌模型入口。每个角色只在自己的目录登记；
-/// 未登记卡牌继续使用现有估值，不在这里生成默认模型。
+/// 原版能力牌模型入口。每个角色只在自己的目录登记；未登记卡牌继续使用
+/// 现有估值，不在这里生成默认模型。模型的评审状态记录在对应卡池文档中。
 /// </summary>
 internal static class PowerCardValuationModels
 {

@@ -1,5 +1,6 @@
 using CombatSolver;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Cards;
 
 PowerCardValuationReward reward = new(
     damage: int.MaxValue,
@@ -35,41 +36,174 @@ TestPowerCardModel model = new();
 PowerCardValuationRegistry registry = new([model]);
 Require(registry.Count == 1, "登记表没有保存模型。");
 Require(registry.RequirementsFor(typeof(TestPowerCard)) ==
-        (PowerCardValuationRequirements.CurrentTurnSkills | PowerCardValuationRequirements.FutureSkills),
+        (PowerCardValuationRequirements.CurrentTurnCards |
+         PowerCardValuationRequirements.FutureCards),
     "登记需求不正确。");
-PowerCardValuationContext context = new(
-    EnemyHp: 50,
-    IncomingDamage: 12,
-    IncomingHitCount: 2,
-    RemainingTurns: 3,
-    CurrentEnergy: 3,
-    CurrentStars: 0,
-    EffectiveEnergyCost: 1,
-    EffectiveStarCost: 0,
-    CurrentTurnAttacks: 0,
-    CurrentTurnSkills: 2,
-    CurrentTurnPowers: 0,
-    CurrentTurnExhausts: 0,
-    FutureAttacks: 0,
-    FutureSkills: 5,
-    FuturePowers: 0,
-    FutureExhausts: 0,
-    AverageCardValue: 8,
-    BestCardValue: 12,
-    ExpiresAtTurnEnd: false);
+PowerCardValuationContext context = Context();
 Require(registry.TryEvaluate(new TestPowerCard(), in context, out PowerCardValuationResult result),
     "已登记卡牌没有命中模型。");
-Require(result.Reward.CardAccess == 7 && result.Penalty.ActivationCost == 1,
+Require(result.Reward.CardAccess == 6 && result.Penalty.ActivationCost == 1,
     "模型没有收到统一上下文。");
 Require(result.Timing == PowerCardTiming.BeforeSkill,
     "模型时机没有透传。");
 Require(registry.RegisteredCardTypes(PowerCardPool.Silent).SequenceEqual([typeof(TestPowerCard)]),
     "角色卡池分类不正确。");
-Require(PowerCardValuationModels.Registry.Count == 0,
-    "用户尚未确认任何能力牌，默认登记表必须为空。");
 RequireThrows<InvalidOperationException>(() => new PowerCardValuationRegistry([model, model]));
 
-Console.WriteLine("POWER_CARD_VALUATION_CHECKS_OK");
+PowerCardValuationRegistry silent = PowerCardValuationModels.Registry;
+Require(silent.Count == 17, "静默猎手单人能力牌没有完整登记。");
+Require(silent.RegisteredCardTypes(PowerCardPool.Silent).Count == 17,
+    "静默猎手卡池登记数量不正确。");
+Require(Enum.GetValues<PowerCardPool>()
+        .Where(pool => pool != PowerCardPool.Silent)
+        .All(pool => silent.RegisteredCardTypes(pool).Count == 0),
+    "首批模型越过了静默猎手卡池边界。");
+
+PowerCardValuationResult masterPlanner = Evaluate(silent, new MasterPlanner(), Context());
+Require(masterPlanner.Reward.CardAccess == 40,
+    "谋划专家没有按可奇巧技能与弃牌窗口的交集计价。");
+Require(masterPlanner.Penalty.ActivationCost == 8 && masterPlanner.Penalty.DelayedPayoff == 4,
+    "谋划专家没有计入启动与延迟兑现成本。");
+Require(masterPlanner.Timing.HasFlag(PowerCardTiming.BeforeSkill) &&
+        masterPlanner.Timing.HasFlag(PowerCardTiming.BeforeDiscard),
+    "谋划专家没有要求先于技能和弃牌窗口。");
+
+PowerCardValuationResult accuracy = Evaluate(silent, new Accuracy(), Context());
+PowerCardValuationResult upgradedAccuracy = Evaluate(
+    silent,
+    new Accuracy { IsUpgraded = true },
+    Context());
+Require(accuracy.Reward.Damage == 24 && upgradedAccuracy.Reward.Damage == 36,
+    "精准的普通与升级小刀增伤不正确。");
+PowerCardValuationResult idleAccuracy = Evaluate(
+    silent,
+    new Accuracy(),
+    Context(current: new(), future: new()));
+Require(idleAccuracy.Reward.Damage == 0 && idleAccuracy.Penalty.TriggerScarcity == 8,
+    "精准在没有小刀时没有受到触发稀缺惩罚。");
+
+PowerCardValuationResult fan = Evaluate(silent, new FanOfKnives(), Context());
+Require(fan.Reward.Damage == 84,
+    "刀扇没有合计生成小刀伤害与现有小刀的群攻增量。");
+
+PowerCardValuationResult noxious = Evaluate(silent, new NoxiousFumes(), Context());
+Require(noxious.Reward.Damage == 16 && noxious.Penalty.DelayedPayoff == 4,
+    "毒雾没有按未来回合开始次数和敌人数估值。");
+
+Require(Evaluate(silent, new Abrasive(), Context()).Reward ==
+        new PowerCardValuationReward(damage: 28, prevention: 5),
+    "磨蚀没有合计荆棘与敏捷收益。");
+Require(Evaluate(silent, new Accelerant(), Context()).Reward.Damage == 9,
+    "触媒没有按额外中毒触发伤害估值。");
+Require(Evaluate(silent, new Afterimage(), Context()).Reward.Prevention == 10,
+    "余像没有按后续出牌数估值。");
+Require(Evaluate(silent, new Envenom(), Context()).Reward.Damage == 16,
+    "涂毒没有按未格挡攻击命中估值。");
+Require(Evaluate(silent, new Footwork(), Context()).Reward.Prevention == 10,
+    "灵动步法没有按后续格挡技能估值。");
+Require(Evaluate(silent, new InfiniteBlades(), Context()).Reward.Damage == 12,
+    "无尽刀刃没有按未来回合开始次数估值。");
+Require(Evaluate(silent, new PhantomBlades(), Context()).Reward.Damage == 27,
+    "幻影之刃没有限制每回合第一张小刀的触发次数。");
+Require(Evaluate(silent, new SerpentForm(), Context()).Reward.Damage == 40,
+    "群蛇形态没有按后续出牌数估值。");
+Require(Evaluate(silent, new Speedster(), Context()).Reward.Damage == 20,
+    "速行者没有按回合内抽牌与敌人数估值。");
+Require(Evaluate(silent, new ToolsOfTheTrade(), Context()).Reward.CardAccess == 22,
+    "必备工具没有按未来回合的选牌和弃牌收益估值。");
+Require(Evaluate(silent, new Tracking(), Context()).Reward.Damage == 30,
+    "跟踪没有按虚弱目标攻击伤害的50%估值。");
+Require(Evaluate(silent, new WellLaidPlans(), Context()).Reward.CardAccess == 15,
+    "计划妥当没有使用整手牌保留价值。");
+
+PowerCardValuationContext wraithContext = Context(
+    effectiveEnergyCost: 3,
+    nextTurnIncomingDamage: 12,
+    nextTurnIncomingHitCount: 2,
+    followingTurnIncomingDamage: 9,
+    followingTurnIncomingHitCount: 1,
+    dexterityLossValue: 4);
+PowerCardValuationResult wraith = Evaluate(silent, new WraithForm(), wraithContext);
+PowerCardValuationResult upgradedWraith = Evaluate(
+    silent,
+    new WraithForm { IsUpgraded = true },
+    wraithContext);
+Require(wraith.Reward.Prevention == 22 && upgradedWraith.Reward.Prevention == 30,
+    "幽魂形态没有按无实体覆盖的逐次伤害估值。");
+Require(wraith.Penalty.AntiSynergy == 4,
+    "幽魂形态没有计入敏捷流失代价。");
+
+Console.WriteLine("POWER_CARD_VALUATION_CHECKS_OK silent_models=17");
+
+static PowerCardValuationResult Evaluate(
+    PowerCardValuationRegistry registry,
+    CardModel card,
+    PowerCardValuationContext context)
+{
+    Require(registry.TryEvaluate(card, in context, out PowerCardValuationResult result),
+        $"{card.GetType().Name} 没有命中估值模型。");
+    return result;
+}
+
+static PowerCardValuationContext Context(
+    int effectiveEnergyCost = 1,
+    int nextTurnIncomingDamage = 12,
+    int nextTurnIncomingHitCount = 2,
+    int followingTurnIncomingDamage = 9,
+    int followingTurnIncomingHitCount = 1,
+    int dexterityLossValue = 4,
+    PowerCardTurnProjection? current = null,
+    PowerCardTurnProjection? future = null)
+    => new(
+        EnemyHp: 500,
+        EnemyCount: 2,
+        RemainingTurns: 3,
+        CurrentEnergy: 3,
+        CurrentStars: 0,
+        EffectiveEnergyCost: effectiveEnergyCost,
+        EffectiveStarCost: 0,
+        AverageCardValue: 8,
+        BestCardValue: 12,
+        ShivDamage: 6,
+        ShivTargetsPerPlay: 1,
+        PoisonStackValue: 2,
+        PoisonTriggerDamage: 9,
+        RetainedHandValue: 15,
+        SlyCardValue: 10,
+        DiscardPayoffValue: 3,
+        NextTurnIncomingDamage: nextTurnIncomingDamage,
+        NextTurnIncomingHitCount: nextTurnIncomingHitCount,
+        FollowingTurnIncomingDamage: followingTurnIncomingDamage,
+        FollowingTurnIncomingHitCount: followingTurnIncomingHitCount,
+        DexterityLossValue: dexterityLossValue,
+        CurrentTurn: current ?? new PowerCardTurnProjection(
+            UsefulCardPlays: 4,
+            AttackPlays: 2,
+            UnblockedAttackHits: 3,
+            SkillPlays: 2,
+            BlockSkillPlays: 2,
+            PowerPlays: 0,
+            Exhausts: 0,
+            ShivPlays: 2,
+            DrawsAfterOpening: 2,
+            Discards: 1,
+            WeakTargetAttackDamage: 20,
+            IncomingDamage: 15,
+            IncomingHitCount: 3),
+        Future: future ?? new PowerCardTurnProjection(
+            UsefulCardPlays: 6,
+            AttackPlays: 3,
+            UnblockedAttackHits: 5,
+            SkillPlays: 4,
+            BlockSkillPlays: 3,
+            PowerPlays: 0,
+            Exhausts: 0,
+            ShivPlays: 4,
+            DrawsAfterOpening: 3,
+            Discards: 3,
+            WeakTargetAttackDamage: 40,
+            IncomingDamage: 20,
+            IncomingHitCount: 4));
 
 static void Require(bool condition, string message)
 {
@@ -96,15 +230,15 @@ internal sealed class TestPowerCardModel : PowerCardValuationModel<TestPowerCard
 {
     public override PowerCardPool Pool => PowerCardPool.Silent;
     public override PowerCardValuationRequirements Requirements =>
-        PowerCardValuationRequirements.CurrentTurnSkills |
-        PowerCardValuationRequirements.FutureSkills;
+        PowerCardValuationRequirements.CurrentTurnCards |
+        PowerCardValuationRequirements.FutureCards;
 
     protected override PowerCardValuationResult Evaluate(
         TestPowerCard card,
         in PowerCardValuationContext context)
         => new(
             new PowerCardValuationReward(cardAccess:
-                context.CurrentTurnSkills + context.FutureSkills),
+                context.CurrentTurn.SkillPlays + context.Future.SkillPlays),
             new PowerCardValuationPenalty(activationCost:
                 context.EffectiveEnergyCost + context.EffectiveStarCost),
             PowerCardTiming.BeforeSkill);

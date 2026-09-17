@@ -15,52 +15,84 @@ internal enum PowerCardValuationRequirements
 {
     None = 0,
     EnemyHp = 1 << 0,
-    IncomingDamage = 1 << 1,
+    EnemyCount = 1 << 1,
     RemainingTurns = 1 << 2,
-    CurrentTurnAttacks = 1 << 3,
-    CurrentTurnSkills = 1 << 4,
-    CurrentTurnPowers = 1 << 5,
-    CurrentTurnExhausts = 1 << 6,
-    FutureAttacks = 1 << 7,
-    FutureSkills = 1 << 8,
-    FuturePowers = 1 << 9,
-    FutureExhausts = 1 << 10,
-    CardValues = 1 << 11,
-    Resources = 1 << 12,
+    CurrentTurnCards = 1 << 3,
+    FutureCards = 1 << 4,
+    UnblockedAttackHits = 1 << 5,
+    BlockSkills = 1 << 6,
+    Shivs = 1 << 7,
+    Draws = 1 << 8,
+    Discards = 1 << 9,
+    IncomingForecast = 1 << 10,
+    Poison = 1 << 11,
+    WeakTargetDamage = 1 << 12,
+    CardValues = 1 << 13,
+    Resources = 1 << 14,
+    RetainedHandValue = 1 << 15,
+    SlyValue = 1 << 16,
+    DiscardPayoff = 1 << 17,
+    DexterityLoss = 1 << 18,
 }
 
 [Flags]
 internal enum PowerCardTiming
 {
     None = 0,
-    BeforeAttack = 1 << 0,
-    BeforeSkill = 1 << 1,
-    BeforePower = 1 << 2,
-    BeforeExhaust = 1 << 3,
-    CurrentTurn = 1 << 4,
-    ExpiresAtTurnEnd = 1 << 5,
+    BeforeCard = 1 << 0,
+    BeforeAttack = 1 << 1,
+    BeforeSkill = 1 << 2,
+    BeforePower = 1 << 3,
+    BeforeExhaust = 1 << 4,
+    BeforeDraw = 1 << 5,
+    BeforeDiscard = 1 << 6,
+    BeforePoison = 1 << 7,
+    BeforeIncomingDamage = 1 << 8,
+    BeforeTurnEnd = 1 << 9,
+    CurrentTurn = 1 << 10,
+    FutureTurns = 1 << 11,
+    ExpiresAtTurnEnd = 1 << 12,
 }
+
+internal readonly record struct PowerCardTurnProjection(
+    int UsefulCardPlays,
+    int AttackPlays,
+    int UnblockedAttackHits,
+    int SkillPlays,
+    int BlockSkillPlays,
+    int PowerPlays,
+    int Exhausts,
+    int ShivPlays,
+    int DrawsAfterOpening,
+    int Discards,
+    int WeakTargetAttackDamage,
+    int IncomingDamage,
+    int IncomingHitCount);
 
 internal readonly record struct PowerCardValuationContext(
     int EnemyHp,
-    int IncomingDamage,
-    int IncomingHitCount,
+    int EnemyCount,
     int RemainingTurns,
     int CurrentEnergy,
     int CurrentStars,
     int EffectiveEnergyCost,
     int EffectiveStarCost,
-    int CurrentTurnAttacks,
-    int CurrentTurnSkills,
-    int CurrentTurnPowers,
-    int CurrentTurnExhausts,
-    int FutureAttacks,
-    int FutureSkills,
-    int FuturePowers,
-    int FutureExhausts,
     int AverageCardValue,
     int BestCardValue,
-    bool ExpiresAtTurnEnd);
+    int ShivDamage,
+    int ShivTargetsPerPlay,
+    int PoisonStackValue,
+    int PoisonTriggerDamage,
+    int RetainedHandValue,
+    int SlyCardValue,
+    int DiscardPayoffValue,
+    int NextTurnIncomingDamage,
+    int NextTurnIncomingHitCount,
+    int FollowingTurnIncomingDamage,
+    int FollowingTurnIncomingHitCount,
+    int DexterityLossValue,
+    PowerCardTurnProjection CurrentTurn,
+    PowerCardTurnProjection Future);
 
 internal readonly record struct PowerCardValuationReward
 {
@@ -156,5 +188,18 @@ internal static class PowerCardValuationMath
         foreach (int value in values)
             total += value;
         return (int)Math.Min(int.MaxValue, total);
+    }
+
+    public static int SaturatingProduct(params ReadOnlySpan<int> values)
+    {
+        long product = 1;
+        foreach (int value in values)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
+            product *= value;
+            if (product >= int.MaxValue)
+                return int.MaxValue;
+        }
+        return (int)product;
     }
 }
