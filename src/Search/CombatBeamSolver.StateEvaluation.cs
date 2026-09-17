@@ -264,7 +264,7 @@ internal sealed partial class CombatBeamSolver
                 policy.Act3BossStrategy);
             needsExhaustDrawTiming |= power is DarkEmbracePower;
             skillsExhaust |= power is CorruptionPower && ReferenceEquals(power.Owner, _player.Creature);
-            hasRecurringEnergy |= power is OrbitPower or AutomationPower;
+            hasRecurringEnergy |= power is OrbitPower or AutomationPower or RadiancePower;
             if (policy.Act3BossStrategy)
             {
                 hasPagestorm |= power is PagestormPower;
@@ -347,6 +347,13 @@ internal sealed partial class CombatBeamSolver
                     () => new AutomationPredictionState(automation)).CardsLeft;
                 int triggers = refundDraws < cardsLeft ? 0 : 1 + (refundDraws - cardsLeft) / 10;
                 int gain = (int)Math.Min(refundEnergyCapacity, (long)triggers * automation.Amount);
+                refundEnergyCapacity -= gain;
+                effectContext = effectContext with { RecurringEnergyGain = gain };
+            }
+            else if (power is RadiancePower radiance)
+            {
+                int turns = Math.Min(Math.Max(1, radiance.Amount), Math.Max(1, effectContext.RemainingTurns));
+                int gain = (int)Math.Min(refundEnergyCapacity, (long)radiance.DynamicVars.Energy.IntValue * turns);
                 refundEnergyCapacity -= gain;
                 effectContext = effectContext with { RecurringEnergyGain = gain };
             }

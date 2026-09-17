@@ -524,10 +524,8 @@ internal static class StrategicEffectModel
             CuriousPower => Resource(
                 Math.Min(context.PowerEnergySpend, amount * context.PowerPlays) * energyUnit),
             CorruptionPower => Resource(context.SkillEnergySpend * energyUnit),
-            OrbitPower or AutomationPower => Resource(context.RecurringEnergyGain * energyUnit),
-            RadiancePower => Resource(
-                power.DynamicVars.Energy.IntValue
-                * Math.Min(amount, context.RemainingTurns) * energyUnit),
+            OrbitPower or AutomationPower or RadiancePower => Resource(
+                context.RecurringEnergyGain * energyUnit),
             CreativeAiPower => CardAccess(
                 amount * context.RemainingTurns * cardAccessUnit),
             IterationPower => CardAccess(
