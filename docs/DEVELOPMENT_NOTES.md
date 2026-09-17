@@ -1,5 +1,16 @@
 # CombatSolver 开发笔记与未来构想
 
+## 0.40.2：No-GC 区域准入下限（2026-09-17）
+
+- 修复搜索在内存紧张机器上陷入「建立 No-GC 区域 → 搜索耗尽 → 检查点拆除并强制回收 → 重建区域」死循环的问题。准入原来只是一个布尔量 `enableNoGcRegion`，没有任何「这台机器实际能给出多少」的下限判定；而 `TryStartNoGcRegionWithSizeFallback` 会把预算对半砍最多 12 次（下限 `MinimumNoGcRegionBudgetBytes = 512 MiB`）并置 `Capped = true`，但**任何 `Started` 结果都会被建立**。玩家问题包（`0.40.2-TEST_SUBJECT_BOSS`）实测：配置 12 GiB、实际拿到 2 967 362 558 字节（24.75%），随后 33 次 `SEARCH_MEMORY_CHECKPOINT`、362 次 `HEAP_RECLAIM`、回收累计 578.6 秒、GC 暂停 83.3 秒、末段吞吐 63.6 节点/秒、导出时无已完成路线。
+- 新增 `IsNoGcRegionBudgetWorthEntering(configured, achieved)`：`achieved >= max(MinimumNoGcRegionBudgetBytes, configured × MinimumNoGcRegionBudgetPercent / 100)`，`MinimumNoGcRegionBudgetPercent = 50`。首次准入与检查点重启两处调用；不满足时调用 `EndNoGcRegion()`、记 `GC_NO_GC_REGION_DECLINED`、把结果改写为 `SystemHeadroomInsufficient`，交由既有 `else` 分支处理。
+- **只对系统余量造成的缩水生效。** `Capped` 在 `ResolveEffectiveNoGcRegionBudget` 里等价于 `effectiveBudget < configuredBudgetBytes`，即机器给不出所请求的预算；而尺寸回退循环是为**平台 SOH 预留上限**（macOS/regions GC 上限无公开查询接口）准备的合法机制。判定标志在回退循环**之前**捕获，因此平台上限缩水的区域照旧建立，macOS 玩家不会因这条判定失去 NoGC。
+- **拒绝后检查点在构造上不可能触发。** 改写后的 outcome 走既有回退路径 `UseDefaultGcFallback(systemHeadroomConstrained: true, allowNoGcRecovery: true)`，其内部 `DisableLimits()` 把 `_allocationLimitBytes` 置为 `long.MaxValue`。回收与区域拆建一并消失，同时要求保守并发；`allowNoGcRecovery` 保留恢复文件里有界的 3 次探测，内存真正释放后 NoGC 会回来。这与恢复路径既有注释「不要立刻长回原始请求，否则会重现压力事件」是同一条判断，本轮把它延伸到**首次准入**。
+- **改动是减法**：未新增状态机、线程或计数器，只复用既有 outcome 与既有回退路径；职责边界不变（Runtime 仍是 Runtime），未触及 Search、Engine、UI、设置或发布流程。
+- 验证：`tools/CombatSolver.GcPolicyChecks` 新增 `GcRegionAdmissionChecks`（6 项，含问题包原文数值 12 GiB→2 967 362 558 必须被拒绝、12 GiB→8 GiB 必须进入、2 GiB→1800 MiB 尺度无关、4 GiB→300 MiB 低于下限被拒绝、8 GiB→4 GiB 阈值含等号、拒绝后信号 `RemainingBytes == long.MaxValue`）。全套无回归：base 20→26 项、`scopes` 8、`recovery` 6、`recovery-lifecycle` 2、`memory` 1、`parallelism` 15。Release 构建 0 警告、0 错误。
+- **未验证**：本机内存充裕、`Capped` 不会为真，**拒绝分支未在真实运行中被触发过**，因此收益量级由问题包的循环计数与代码路径推断，**不是实测加速比**；也未测改用默认 GC 后的帧时间代价（搜索不再被 park、时间大幅缩短，与回收回到游戏线程方向相反，需实机权衡）；阈值 50% 是工程判据而非实测最优值，常量独立可调。未启动可见 Steam。详见[本轮报告](performance/no-gc-region-admission-20260917.md)。
+- **同批未解决**：搜索保留集仍然无界。`SearchRunContext` 的 `Transpositions`、`ExpandedTranspositions`、`StandPatCache`、`ThreatProjectionCache`、`CoverageCache` 均无裁剪、无上限（已 grep 确认无 `Clear`/`Remove`/`TrimExcess`），且部分 ledger 因「检查点重建表会改变语义」而被设计成不可释放。问题包实测托管堆 9.68 GiB、其中碎片 4.99 GiB（52%）、live 4.69 GiB；全部 409 次回收均为非紧凑（`compacting: false`），紧凑路径只挂在手动「释放内存」上。这解释了为何回收中位拿到 0 MiB。本轮**只修准入**，把内存从「输出」变成「输入」需要给 `BeamRetentionPolicy`（8039 行）加容量维度，属语义改动，未在本轮动。
+
 ## 0.40.2：多策略路线搜索默认关闭与大战损引导（2026-09-17）
 
 - 「多策略路线搜索（实验）」对新安装保持默认关闭；设置迁移版本提升到 246，但升级时完整保留玩家当前的开启或关闭选择。多宽度路线精炼仍默认开启且没有独立横幅，设置页的开关与状态反馈保持不变。

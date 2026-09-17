@@ -1,5 +1,14 @@
 # CombatSolver 测试清单
 
+## 0.40.2：No-GC 区域准入下限（2026-09-17）
+
+- `tools/CombatSolver.GcPolicyChecks` 新增 `GcRegionAdmissionChecks`（6 项），可直接无头运行且**直接编译生产源码**，不需要游戏进程：`dotnet run --project tools/CombatSolver.GcPolicyChecks/CombatSolver.GcPolicyChecks.csproj -c Release -- admission`。输出 `GC_REGION_ADMISSION_OK declined the reported 12GiB-to-2.97GiB region; partial caps, small-machine budgets and the inclusive threshold passed.`
+- 覆盖场景：问题包原文数值 12 GiB → 2 967 362 558 字节**必须被拒绝**；12 GiB → 8 GiB 必须进入（部分缩水不等于失效）；2 GiB → 1800 MiB 必须进入（尺度无关）；4 GiB → 300 MiB 必须拒绝（低于 `MinimumNoGcRegionBudgetBytes`）；8 GiB → 4 GiB 必须进入（阈值含等号）；被拒绝后 `SearchMemoryPressureSignal` 必须满足 `!IsLimitReached() && RemainingBytes == long.MaxValue`（证明检查点在构造上不再可能触发）。
+- 全套复跑无回归：base 无参数 20→**26 项**通过（原 20 + 新增 6）、`scopes` 8 项、`recovery` 6 项、`recovery-lifecycle` 2 项、`memory` 1 项、`parallelism` 15 项，退出码全部为 0。Release 构建 0 警告、0 错误。
+- **未执行**：本机内存充裕，`Capped` 不会为真，**拒绝分支未在任何真实运行（无人战斗或可见 Steam）中被触发**；因此本轮没有任何实机 `GC_NO_GC_REGION_DECLINED` 证据，也没有端到端加速比。构建与静态检查通过不等于真实游戏或 Windows 的性能证明（与 `GcPolicyChecks` 既有 README 的口径一致）。未启动可见 Steam，未运行无人战斗场景。详见[性能报告](performance/no-gc-region-admission-20260917.md)。
+- 回归面已知为**局部**：`TryStartNoGcRegionWithSizeFallback`、`MinimumNoGcRegionBudgetBytes`、`GC_NO_GC_REGION_SIZE_FALLBACK`、`no_gc_region_unavailable`、`Capped` 在整个仓库各只出现在 `src/Runtime/SearchGcPolicy.cs` 一个文件（`Testing` 层零引用），因此本次改动未触及既有无人战斗合同。
+- 相关既有门槛未变：`UnattendedTestRunner.SearchPolicy.cs` 中 1 GiB 测试预算仍断言区域由 CLR 真实建立；只有在 headroom 低于 1 GiB 时新判定才会拒绝它，本机不满足该条件。
+
 ## 0.40.2：多策略路线搜索默认关闭与大战损引导（2026-09-17）
 
 - 设置与 UI 合同已更新：新安装默认关闭多策略路线搜索；245→246 迁移只推进版本，完整保留玩家已有的开启／关闭状态与永久隐藏横幅选择。多宽度路线精炼仍默认开启且没有独立横幅。
