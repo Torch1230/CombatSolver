@@ -67,7 +67,7 @@ internal sealed partial class UnattendedTestRunner
         {
             lock (observationGate)
             {
-                if (observations.Count < 16_384)
+                if (observations.Count < 65_536)
                     observations.Add(observation);
                 else
                     dropped++;
