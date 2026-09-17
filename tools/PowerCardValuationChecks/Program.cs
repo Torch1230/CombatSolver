@@ -51,7 +51,6 @@ Require(registry.RegisteredCardTypes(PowerCardPool.Silent).SequenceEqual([typeof
 RequireThrows<InvalidOperationException>(() => new PowerCardValuationRegistry([model, model]));
 Require(PowerCardValuationRegistry.CardIdFor(typeof(WellLaidPlans)) == "WELL_LAID_PLANS",
     "卡牌类型没有稳定转换为运行时 CardId。");
-
 PowerCardValuationRegistry silent = PowerCardValuationModels.Registry;
 Require(silent.Count == 17, "静默猎手单人能力牌没有完整登记。");
 Require(silent.RegisteredCardTypes(PowerCardPool.Silent).Count == 17,
@@ -60,6 +59,14 @@ Require(Enum.GetValues<PowerCardPool>()
         .Where(pool => pool != PowerCardPool.Silent)
         .All(pool => silent.RegisteredCardTypes(pool).Count == 0),
     "首批模型越过了静默猎手卡池边界。");
+foreach (Type cardType in silent.RegisteredCardTypes(PowerCardPool.Silent))
+{
+    string cardId = PowerCardValuationRegistry.CardIdFor(cardType);
+    Require(silent.TryGetCommitmentDescriptor(cardId, out PowerCommitmentDescriptor descriptor)
+        && descriptor.Family != PowerCommitmentFamily.None
+        && descriptor.Card != SilentPowerCardIdentity.None,
+        $"{cardId} 没有完整的能力承诺描述符。");
+}
 
 PowerCardValuationResult masterPlanner = Evaluate(silent, new MasterPlanner(), Context());
 Require(masterPlanner.Reward.CardAccess == 40,
@@ -185,6 +192,90 @@ RetainedHandTransitionResult cloggedRetain = RetainedHandTransition.Evaluate(
     nextDrawValues: [8, 8, 8, 8, 8]);
 Require(cloggedRetain.NetValue < 0,
     "计划妥当塞满低价值手牌时没有扣除被阻塞的抽牌。");
+
+MasterPlannerSkillFact[] plannerSkills =
+[
+    new(Value: 12, EnergyCost: 1, TurnsUntilSeed: 0, TurnsUntilPayoff: 1),
+    new(Value: 8, EnergyCost: 1, TurnsUntilSeed: 0, TurnsUntilPayoff: 1),
+];
+MasterPlannerProjectionResult earlyPlanner = MasterPlannerProjection.Evaluate(
+    currentEnergy: 2,
+    futureEnergyPerTurn: 3,
+    remainingTurns: 4,
+    discardWindows: 1,
+    plannerSkills);
+Require(earlyPlanner is { SeededSkillCount: 1, EarliestPayoffTurns: 1, CardAccessValue: 12 },
+    "谋划专家没有选择当前可支付且价值最高的技能建立奇巧循环。");
+MasterPlannerProjectionResult latePlanner = MasterPlannerProjection.Evaluate(
+    currentEnergy: 1,
+    futureEnergyPerTurn: 3,
+    remainingTurns: 4,
+    discardWindows: 1,
+    [plannerSkills[1]]);
+Require(latePlanner.CardAccessValue == 8 && earlyPlanner.CardAccessValue > latePlanner.CardAccessValue,
+    "谋划专家晚于高价值技能打出时没有失去对应潜力。");
+Require(!MasterPlannerProjection.Evaluate(
+        2, 3, 4, discardWindows: 0, plannerSkills).HasPayoff,
+    "没有弃牌窗口时谋划专家虚构了奇巧兑现。");
+Require(!MasterPlannerProjection.Evaluate(
+        2, 3, 1, discardWindows: 1, plannerSkills).HasPayoff,
+    "战斗在重新入手前结束时谋划专家仍获得了未来收益。");
+MasterPlannerProjectionResult futurePlanner = MasterPlannerProjection.Evaluate(
+    currentEnergy: 0,
+    futureEnergyPerTurn: 3,
+    remainingTurns: 4,
+    discardWindows: 1,
+    [new(Value: 10, EnergyCost: 2, TurnsUntilSeed: 1, TurnsUntilPayoff: 2)]);
+Require(futurePlanner is { SeededSkillCount: 1, EarliestPayoffTurns: 2, CardAccessValue: 5 },
+    "谋划专家没有保留两回合窗口内可播种并重新入手的技能。");
+Require(SilentDiscardWindowFacts.Capacity("PREPARED", selectedCards: 2, handCount: 5) == 2
+    && SilentDiscardWindowFacts.Capacity("CALCULATED_GAMBLE", selectedCards: 0, handCount: 5) == 4
+    && SilentDiscardWindowFacts.Capacity("STRIKE_SILENT", selectedCards: 0, handCount: 5) == 0,
+    "静默猎手弃牌窗口事实不正确。");
+
+PowerCommitmentDescriptor plannerDescriptor = new(
+    PowerCommitmentFamily.HandEngine,
+    SilentPowerCardIdentity.MasterPlanner);
+PowerCommitment lifecycle = PowerCommitmentLifecycle.Create(
+    plannerDescriptor,
+    turn: 1,
+    actionCount: 1,
+    historyEntryCount: 10,
+    investment: 8,
+    provisionalPotential: 12);
+PowerCommitmentAdvanceResult progressed = PowerCommitmentLifecycle.Advance(
+    lifecycle,
+    parentTurn: 1,
+    childTurn: 1,
+    maximumTransitions: 2,
+    progressEvidence: 5,
+    realizedEvidence: 0,
+    terminal: false);
+Require(progressed.Disposition == PowerCommitmentDisposition.Active
+    && progressed.Commitment is { ProgressEvidence: 5, ProvisionalPotential: 12 },
+    "中间奇巧证据错误消耗了尚未兑现的能力潜力。");
+PowerCommitmentAdvanceResult realized = PowerCommitmentLifecycle.Advance(
+    progressed.Commitment!,
+    parentTurn: 1,
+    childTurn: 2,
+    maximumTransitions: 2,
+    progressEvidence: 0,
+    realizedEvidence: 12,
+    terminal: false);
+Require(realized.Disposition == PowerCommitmentDisposition.Realized
+    && realized.Commitment == null,
+    "真实奇巧自动出牌后能力承诺没有退出。");
+PowerCommitmentAdvanceResult expired = PowerCommitmentLifecycle.Advance(
+    lifecycle,
+    parentTurn: 1,
+    childTurn: 4,
+    maximumTransitions: 2,
+    progressEvidence: 0,
+    realizedEvidence: 0,
+    terminal: false);
+Require(expired.Disposition == PowerCommitmentDisposition.Expired
+    && expired.Commitment == null,
+    "能力承诺越过回合上限后没有到期。");
 
 Console.WriteLine("POWER_CARD_VALUATION_CHECKS_OK silent_models=17");
 

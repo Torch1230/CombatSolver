@@ -18,6 +18,7 @@ internal static class PowerCommitmentRetention
                 node.Turn))
             .Select(group => group
                 .OrderByDescending(node => node.PowerCommitment!.RealizedEvidence)
+                .ThenByDescending(node => node.PowerCommitment!.ProgressEvidence)
                 .ThenByDescending(node => node.PowerCommitment!.NetUnrealizedValue)
                 .ThenBy(node => node.PowerCommitment!.OpenedActionCount)
                 .ThenBy(node => node.PowerCommitment!.RoundTransitions)
@@ -27,6 +28,7 @@ internal static class PowerCommitmentRetention
                 .ThenBy(node => node.ActionCount)
                 .First())
             .OrderByDescending(node => node.PowerCommitment!.RealizedEvidence)
+            .ThenByDescending(node => node.PowerCommitment!.ProgressEvidence)
             .ThenByDescending(node => node.PowerCommitment!.NetUnrealizedValue)
             .ThenBy(node => node.PowerCommitment!.OpenedActionCount)
             .ThenBy(node => node.PowerCommitment!.RoundTransitions)

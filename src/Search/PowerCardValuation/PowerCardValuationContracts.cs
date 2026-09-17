@@ -22,6 +22,33 @@ internal enum PowerCommitmentFamily
 }
 
 [Flags]
+internal enum SilentPowerCardIdentity : ulong
+{
+    None = 0,
+    Abrasive = 1UL << 0,
+    Accelerant = 1UL << 1,
+    Accuracy = 1UL << 2,
+    Afterimage = 1UL << 3,
+    Envenom = 1UL << 4,
+    FanOfKnives = 1UL << 5,
+    Footwork = 1UL << 6,
+    InfiniteBlades = 1UL << 7,
+    MasterPlanner = 1UL << 8,
+    NoxiousFumes = 1UL << 9,
+    PhantomBlades = 1UL << 10,
+    SerpentForm = 1UL << 11,
+    Speedster = 1UL << 12,
+    ToolsOfTheTrade = 1UL << 13,
+    Tracking = 1UL << 14,
+    WellLaidPlans = 1UL << 15,
+    WraithForm = 1UL << 16,
+}
+
+internal readonly record struct PowerCommitmentDescriptor(
+    PowerCommitmentFamily Family,
+    SilentPowerCardIdentity Card);
+
+[Flags]
 internal enum PowerCardValuationRequirements
 {
     None = 0,

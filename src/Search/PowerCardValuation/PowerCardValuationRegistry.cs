@@ -41,13 +41,27 @@ internal sealed class PowerCardValuationRegistry
         string cardId,
         out PowerCommitmentFamily family)
     {
+        if (TryGetCommitmentDescriptor(cardId, out PowerCommitmentDescriptor descriptor))
+        {
+            family = descriptor.Family;
+            return true;
+        }
+        family = PowerCommitmentFamily.None;
+        return false;
+    }
+
+    public bool TryGetCommitmentDescriptor(
+        string cardId,
+        out PowerCommitmentDescriptor descriptor)
+    {
         if (_modelsByCardId.TryGetValue(cardId, out IPowerCardValuationModel? model)
             && model.Pool == PowerCardPool.Silent)
         {
-            family = SilentFamily(cardId);
-            return family != PowerCommitmentFamily.None;
+            descriptor = SilentDescriptor(cardId);
+            return descriptor.Family != PowerCommitmentFamily.None
+                && descriptor.Card != SilentPowerCardIdentity.None;
         }
-        family = PowerCommitmentFamily.None;
+        descriptor = default;
         return false;
     }
 
@@ -100,19 +114,45 @@ internal sealed class PowerCardValuationRegistry
             .OrderBy(type => type.FullName, StringComparer.Ordinal)
             .ToArray();
 
-    private static PowerCommitmentFamily SilentFamily(string cardId)
+    private static PowerCommitmentDescriptor SilentDescriptor(string cardId)
         => cardId switch
         {
             "ABRASIVE" or "AFTERIMAGE" or "FOOTWORK" or "WRAITH_FORM"
-                => PowerCommitmentFamily.DefenseEfficiency,
+                => new(PowerCommitmentFamily.DefenseEfficiency, cardId switch
+                {
+                    "ABRASIVE" => SilentPowerCardIdentity.Abrasive,
+                    "AFTERIMAGE" => SilentPowerCardIdentity.Afterimage,
+                    "FOOTWORK" => SilentPowerCardIdentity.Footwork,
+                    _ => SilentPowerCardIdentity.WraithForm,
+                }),
             "ACCURACY" or "FAN_OF_KNIVES" or "INFINITE_BLADES" or "PHANTOM_BLADES"
-                => PowerCommitmentFamily.ShivEngine,
+                => new(PowerCommitmentFamily.ShivEngine, cardId switch
+                {
+                    "ACCURACY" => SilentPowerCardIdentity.Accuracy,
+                    "FAN_OF_KNIVES" => SilentPowerCardIdentity.FanOfKnives,
+                    "INFINITE_BLADES" => SilentPowerCardIdentity.InfiniteBlades,
+                    _ => SilentPowerCardIdentity.PhantomBlades,
+                }),
             "ACCELERANT" or "ENVENOM" or "NOXIOUS_FUMES"
-                => PowerCommitmentFamily.PoisonEngine,
+                => new(PowerCommitmentFamily.PoisonEngine, cardId switch
+                {
+                    "ACCELERANT" => SilentPowerCardIdentity.Accelerant,
+                    "ENVENOM" => SilentPowerCardIdentity.Envenom,
+                    _ => SilentPowerCardIdentity.NoxiousFumes,
+                }),
             "MASTER_PLANNER" or "SPEEDSTER" or "TOOLS_OF_THE_TRADE" or "WELL_LAID_PLANS"
-                => PowerCommitmentFamily.HandEngine,
+                => new(PowerCommitmentFamily.HandEngine, cardId switch
+                {
+                    "MASTER_PLANNER" => SilentPowerCardIdentity.MasterPlanner,
+                    "SPEEDSTER" => SilentPowerCardIdentity.Speedster,
+                    "TOOLS_OF_THE_TRADE" => SilentPowerCardIdentity.ToolsOfTheTrade,
+                    _ => SilentPowerCardIdentity.WellLaidPlans,
+                }),
             "SERPENT_FORM" or "TRACKING"
-                => PowerCommitmentFamily.DamageEngine,
-            _ => PowerCommitmentFamily.None,
+                => new(PowerCommitmentFamily.DamageEngine,
+                    cardId == "SERPENT_FORM"
+                        ? SilentPowerCardIdentity.SerpentForm
+                        : SilentPowerCardIdentity.Tracking),
+            _ => default,
         };
 }

@@ -12,6 +12,9 @@
     <Compile Include="../../src/Search/PowerCardValuation/PowerCardValuationRegistry.cs" Link="PowerCardValuationRegistry.cs" />
     <Compile Include="../../src/Search/PowerCardValuation/PowerCardValuationModels.cs" Link="PowerCardValuationModels.cs" />
     <Compile Include="../../src/Search/PowerCardValuation/Projection/*.cs" LinkBase="Projection" />
+    <Compile Include="../../src/Search/PowerCardValuation/Commitments/PowerCommitment.cs" LinkBase="Commitments" />
+    <Compile Include="../../src/Search/PowerCardValuation/Commitments/PowerCommitmentLifecycle.cs" LinkBase="Commitments" />
+    <Compile Include="../../src/Search/PowerCardValuation/Commitments/PowerCommitmentSeatPolicy.cs" LinkBase="Commitments" />
     <Compile Include="../../src/Search/PowerCardValuation/Cards/**/*.cs" LinkBase="Cards" />
   </ItemGroup>
 </Project>
