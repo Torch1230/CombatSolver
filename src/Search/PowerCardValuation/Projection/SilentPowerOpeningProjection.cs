@@ -1,6 +1,7 @@
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.InCombat.Simulation;
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.ValueProps;
 
@@ -14,16 +15,23 @@ internal sealed partial class CombatBeamSolver
         SearchNode child)
         => cardId switch
         {
+            "ABRASIVE" => FootworkProjectionPotential(parent, child),
+            "ACCELERANT" => AccelerantProjectionPotential(parent, child),
             "ACCURACY" => AccuracyProjectionPotential(parent, child),
             "AFTERIMAGE" => AfterimageProjectionPotential(child),
+            "ENVENOM" => EnvenomProjectionPotential(parent, child),
             "FAN_OF_KNIVES" => FanOfKnivesProjectionPotential(parent, child),
             "FOOTWORK" => FootworkProjectionPotential(parent, child),
             "INFINITE_BLADES" => InfiniteBladesProjectionPotential(parent, child),
             "MASTER_PLANNER" => MasterPlannerProjectionPotential(child),
+            "NOXIOUS_FUMES" => NoxiousFumesProjectionPotential(parent, child),
             "PHANTOM_BLADES" => PhantomBladesProjectionPotential(parent, child),
+            "SERPENT_FORM" => SerpentFormProjectionPotential(parent, child),
             "SPEEDSTER" => SpeedsterProjectionPotential(child),
             "TOOLS_OF_THE_TRADE" => ToolsOfTheTradeProjectionPotential(child),
+            "TRACKING" => TrackingProjectionPotential(parent, child),
             "WELL_LAID_PLANS" => WellLaidPlansProjectionPotential(child),
+            "WRAITH_FORM" => WraithFormProjectionPotential(parent, child),
             _ => 0,
         };
 
@@ -265,12 +273,24 @@ internal sealed partial class CombatBeamSolver
 
     private PowerTurnCardOption[] BuildCurrentHandOptions(
         SearchNode child,
-        int? shivTargetsOverride = null)
+        int? shivTargetsOverride = null,
+        int weakAttackBonusPercent = 0)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(weakAttackBonusPercent);
         CombatPredictionSimulator simulator = child.Snapshot.Simulator;
         SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
         SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(_player);
         int handCount = playerState.Hand.Cards.Count;
+        Creature[] aliveEnemies = combat.KnownEnemies
+            .Where(enemy => combat.ContainsCreature(enemy)
+                && simulator.State.GetCreature(enemy).IsAlive)
+            .ToArray();
+        int weakTargets = aliveEnemies.Count(enemy =>
+            combat.GetAmount<WeakPower>(enemy) > 0);
+        int minimumEnemyBlock = aliveEnemies
+            .Select(enemy => Math.Max(0, simulator.State.GetCreature(enemy).Block))
+            .DefaultIfEmpty(0)
+            .Min();
         int shivTargets = shivTargetsOverride ?? (
             combat.GetAmount<FanOfKnivesPower>(_player.Creature) > 0
                 ? Math.Max(1, child.Snapshot.AliveEnemyCount)
@@ -283,12 +303,22 @@ internal sealed partial class CombatBeamSolver
                     0,
                     card.GetEnergyCostWithModifiers(simulator, playerState));
                 bool isShiv = card.Preview.Tags.Contains(CardTag.Shiv);
-                int damage = card.Preview.Type == CardType.Attack
+                int baseDamage = card.Preview.Type == CardType.Attack
                     && card.Preview.DynamicVars.TryGetValue("Damage", out var damageVar)
                         ? Math.Max(0, damageVar.IntValue)
                         : 0;
+                int damage = baseDamage;
                 if (isShiv)
                     damage = (int)Math.Min(int.MaxValue, (long)damage * shivTargets);
+                if (baseDamage > 0 && weakTargets > 0 && weakAttackBonusPercent > 0)
+                {
+                    int affectedTargets = isShiv ? weakTargets : 1;
+                    damage = SaturatingPowerCommitmentAdd(
+                        damage,
+                        (int)Math.Min(
+                            int.MaxValue,
+                            (long)baseDamage * affectedTargets * weakAttackBonusPercent / 100));
+                }
                 int block = card.Preview.Type == CardType.Skill
                     && card.Preview.DynamicVars.TryGetValue("Block", out var blockVar)
                         ? Math.Max(0, blockVar.IntValue)
@@ -300,13 +330,25 @@ internal sealed partial class CombatBeamSolver
                     card.Preview.Id.Entry,
                     cards,
                     handCount);
+                int attackHits = baseDamage == 0
+                    ? 0
+                    : CardMechanismFacts.AttackHits(
+                        card.Preview.Id.Entry,
+                        card.Preview.DynamicVars.TryGetValue("Repeat", out var repeatVar)
+                            ? repeatVar.IntValue
+                            : 0);
+                int unblockedAttackHits = baseDamage == 0
+                    || (long)baseDamage * attackHits <= minimumEnemyBlock
+                        ? 0
+                        : Math.Max(1, attackHits - minimumEnemyBlock / baseDamage);
                 return new PowerTurnCardOption(
                     energyCost,
                     damage,
                     block,
                     CardAccess: draws,
                     Draws: draws,
-                    IsShiv: isShiv);
+                    IsShiv: isShiv,
+                    UnblockedAttackHits: unblockedAttackHits);
             })
             .Where(option => option.Damage > 0
                 || option.Block > 0

@@ -12,7 +12,7 @@
     <Compile Include="../../src/Search/PowerCardValuation/PowerCardValuationRegistry.cs" Link="PowerCardValuationRegistry.cs" />
     <Compile Include="../../src/Search/PowerCardValuation/PowerCardValuationModels.cs" Link="PowerCardValuationModels.cs" />
     <Compile Include="../../src/Search/PowerCardValuation/Projection/*.cs"
-             Exclude="../../src/Search/PowerCardValuation/Projection/SilentPowerOpeningProjection.cs;../../src/Search/PowerCardValuation/Projection/SilentShivPowerProjection.cs"
+             Exclude="../../src/Search/PowerCardValuation/Projection/SilentPowerOpeningProjection.cs;../../src/Search/PowerCardValuation/Projection/SilentShivPowerProjection.cs;../../src/Search/PowerCardValuation/Projection/SilentPoisonPowerProjection.cs;../../src/Search/PowerCardValuation/Projection/SilentDamageDefensePowerProjection.cs"
              LinkBase="Projection" />
     <Compile Include="../../src/Search/PowerCardValuation/Commitments/PowerCommitment.cs" LinkBase="Commitments" />
     <Compile Include="../../src/Search/PowerCardValuation/Commitments/PowerCommitmentLifecycle.cs" LinkBase="Commitments" />

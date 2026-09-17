@@ -6,7 +6,8 @@ internal readonly record struct PowerTurnCardOption(
     int Block,
     int CardAccess = 0,
     int Draws = 0,
-    bool IsShiv = false);
+    bool IsShiv = false,
+    int UnblockedAttackHits = 0);
 
 internal readonly record struct PowerTurnFrontierState(
     int HpLost,
@@ -31,7 +32,9 @@ internal static class PowerTurnFrontier
         int damagePerDraw = 0,
         int damageTargets = 1,
         int damagePerShiv = 0,
-        int firstShivDamageBonus = 0)
+        int firstShivDamageBonus = 0,
+        int damagePerCard = 0,
+        int damagePerUnblockedAttackHit = 0)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(energy);
         ArgumentOutOfRangeException.ThrowIfNegative(incomingDamage);
@@ -41,6 +44,8 @@ internal static class PowerTurnFrontier
         ArgumentOutOfRangeException.ThrowIfNegative(damageTargets);
         ArgumentOutOfRangeException.ThrowIfNegative(damagePerShiv);
         ArgumentOutOfRangeException.ThrowIfNegative(firstShivDamageBonus);
+        ArgumentOutOfRangeException.ThrowIfNegative(damagePerCard);
+        ArgumentOutOfRangeException.ThrowIfNegative(damagePerUnblockedAttackHit);
         List<(int Spent, int Damage, int Block, int CardAccess, bool ShivPlayed)> states =
             [(0, 0, 0, 0, false)];
         foreach (PowerTurnCardOption card in cards)
@@ -52,19 +57,26 @@ internal static class PowerTurnFrontier
                 int spent = prior.Spent + card.EnergyCost;
                 if (spent > energy)
                     continue;
+                int shivDamage = card.IsShiv
+                    ? SaturatingAdd(
+                        damagePerShiv,
+                        prior.ShivPlayed ? 0 : firstShivDamageBonus)
+                    : 0;
+                int triggerDamage = SaturatingAdd(
+                    SaturatingProduct(card.Draws, damagePerDraw, damageTargets),
+                    SaturatingAdd(
+                        shivDamage,
+                        SaturatingAdd(
+                            damagePerCard,
+                            SaturatingProduct(
+                                card.UnblockedAttackHits,
+                                damagePerUnblockedAttackHit,
+                                1))));
                 states.Add((
                     spent,
                     SaturatingAdd(
                         prior.Damage,
-                        SaturatingAdd(
-                            card.Damage,
-                            SaturatingAdd(
-                                SaturatingProduct(card.Draws, damagePerDraw, damageTargets),
-                                card.IsShiv
-                                    ? SaturatingAdd(
-                                        damagePerShiv,
-                                        prior.ShivPlayed ? 0 : firstShivDamageBonus)
-                                    : 0))),
+                        SaturatingAdd(card.Damage, triggerDamage)),
                     SaturatingAdd(
                         prior.Block,
                         card.Block

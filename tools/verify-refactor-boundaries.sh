@@ -689,9 +689,12 @@ PowerCardValuationModels.cs	internal static class PowerCardValuationModels
 Projection/PowerTurnFrontier.cs	internal static class PowerTurnFrontier
 Projection/RetainedHandTransition.cs	internal static class RetainedHandTransition
 Projection/DrawDiscardTransition.cs	internal static class DrawDiscardTransition
+Projection/PoisonStackProjection.cs	internal static class PoisonStackProjection
 Projection/MasterPlannerProjection.cs	internal static class MasterPlannerProjection
 Projection/SilentPowerOpeningProjection.cs	private int SilentPowerOpeningProjectionPotential
 Projection/SilentShivPowerProjection.cs	private int AccuracyProjectionPotential
+Projection/SilentPoisonPowerProjection.cs	private int AccelerantProjectionPotential
+Projection/SilentDamageDefensePowerProjection.cs	private int SerpentFormProjectionPotential
 Commitments/PowerCommitment.cs	internal sealed record PowerCommitment
 Commitments/PowerCommitmentLifecycle.cs	internal static class PowerCommitmentLifecycle
 Commitments/PowerCommitmentPolicy.cs	private void AttachPowerCommitment
@@ -710,6 +713,7 @@ Cards/Silent/SilentDiscardWindowFacts.cs	internal static class SilentDiscardWind
 Cards/Silent/SilentPowerRoutePolicy.cs	internal readonly record struct SilentPowerRoutePolicy
 Cards/Silent/SilentPowerRouteAdmission.cs	internal static class SilentPowerRouteAdmission
 Cards/Silent/SilentPowerTriggerEvidence.cs	private bool SilentPowerHasTriggerEvidence
+Cards/Silent/SilentWraithOpeningWindow.cs	internal static class SilentWraithOpeningWindow
 Cards/Silent/SilentDamagePowerCardValuationModels.cs	internal sealed class TrackingPowerCardValuationModel
 Cards/Defect/DefectPowerCardValuationModels.cs	internal static class DefectPowerCardValuationModels
 Cards/Regent/RegentPowerCardValuationModels.cs	internal static class RegentPowerCardValuationModels

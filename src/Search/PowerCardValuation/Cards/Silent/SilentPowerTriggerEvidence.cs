@@ -10,6 +10,7 @@ internal sealed partial class CombatBeamSolver
 {
     private bool SilentPowerHasTriggerEvidence(
         SilentPowerCardIdentity card,
+        SearchNode parent,
         SearchNode child)
     {
         CombatPredictionSimulator simulator = child.Snapshot.Simulator;
@@ -84,9 +85,25 @@ internal sealed partial class CombatBeamSolver
             SilentPowerCardIdentity.Tracking => HasWeak() && HasAttack(),
             SilentPowerCardIdentity.WellLaidPlans => RemainingTurns() > 1
                 && liveCards.Length > 0,
-            SilentPowerCardIdentity.WraithForm => child.Snapshot.AliveEnemyCount > 0,
+            SilentPowerCardIdentity.WraithForm => WraithTimingHasEvidence(
+                parent,
+                child,
+                RemainingTurns()),
             _ => false,
         };
+    }
+
+    private bool WraithTimingHasEvidence(
+        SearchNode parent,
+        SearchNode child,
+        int remainingTurns)
+    {
+        int intangibleTurns = PowerAmountGain<IntangiblePower>(parent, child);
+        return intangibleTurns > 0
+            && SilentWraithOpeningWindow.ShouldProtect(
+                remainingTurns,
+                intangibleTurns,
+                parent.Snapshot.ProjectedPlayerHp);
     }
 
     private int SilentPowerTriggerProjectionFloor(

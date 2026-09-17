@@ -112,6 +112,7 @@ internal sealed partial class CombatBeamSolver
     {
         bool hasTriggerEvidence = SilentPowerHasTriggerEvidence(
             playedPower.Descriptor.Card,
+            parent,
             child);
         SilentPowerRouteAdmissionResult result = SilentPowerRouteAdmission.Evaluate(new(
             playedPower.Descriptor.Card,

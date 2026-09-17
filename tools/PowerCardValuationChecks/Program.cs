@@ -160,6 +160,19 @@ Require(!SilentPowerRouteAdmission.Evaluate(new(
         TriggerProjectionFloor: 0,
         Investment: 24)).Admitted,
     "幽魂形态在没有当前防伤窗口时仍被过早保护。");
+Require(!SilentWraithOpeningWindow.ShouldProtect(
+        remainingTurns: 5,
+        intangibleTurns: 2,
+        projectedHpBeforeOpening: 20)
+    && SilentWraithOpeningWindow.ShouldProtect(
+        remainingTurns: 3,
+        intangibleTurns: 2,
+        projectedHpBeforeOpening: 20)
+    && SilentWraithOpeningWindow.ShouldProtect(
+        remainingTurns: 5,
+        intangibleTurns: 2,
+        projectedHpBeforeOpening: 0),
+    "幽魂形态没有区分长线过早启动、覆盖战斗尾段和致死救场。");
 Require(!SilentPowerRouteAdmission.Evaluate(new(
         Card: SilentPowerCardIdentity.MasterPlanner,
         IsAutoPlay: false,
@@ -310,6 +323,25 @@ IReadOnlyList<PowerTurnFrontierState> phantomShivs = PowerTurnFrontier.Build(
     0, 0, shivHand, firstShivDamageBonus: 9);
 Require(PowerTurnFrontier.DefensiveDamageUplift(plainShivs, phantomShivs) == 9,
     "幻影之刃把每回合第一张小刀增伤重复计算到了后续小刀。");
+PowerTurnCardOption[] triggerHand =
+[
+    new(EnergyCost: 1, Damage: 6, Block: 0, UnblockedAttackHits: 2),
+    new(EnergyCost: 1, Damage: 0, Block: 5),
+];
+IReadOnlyList<PowerTurnFrontierState> noCardTriggers = PowerTurnFrontier.Build(
+    2, 0, triggerHand);
+IReadOnlyList<PowerTurnFrontierState> withSerpent = PowerTurnFrontier.Build(
+    2, 0, triggerHand, damagePerCard: 4);
+Require(PowerTurnFrontier.DefensiveDamageUplift(noCardTriggers, withSerpent) == 8,
+    "群蛇形态没有按实际可打出的两张牌逐张触发伤害。");
+IReadOnlyList<PowerTurnFrontierState> withEnvenom = PowerTurnFrontier.Build(
+    2, 0, triggerHand, damagePerUnblockedAttackHit: 1);
+Require(PowerTurnFrontier.DefensiveDamageUplift(noCardTriggers, withEnvenom) == 2,
+    "涂毒没有按实际未格挡攻击命中兑现中毒。");
+Require(PoisonStackProjection.ExtraTriggerDamage(9, 1, 100) == 9,
+    "触媒没有按当前毒层兑现至少一次额外触发。");
+Require(PoisonStackProjection.RecurringApplicationDamage(2, 3, 100) == 9,
+    "毒雾没有在逐回合上毒后保留剩余毒层的滚动收益。");
 
 RetainedHandTransitionResult usefulRetain = RetainedHandTransition.Evaluate(
     nextTurnEnergy: 3,
