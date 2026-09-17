@@ -1,4 +1,12 @@
 {
+  "POWER-CARD-VALUATION-ALL-POOLS": {
+    "status": "Passed",
+    "level": "PureContractAndHeadlessShortSearch",
+    "procedure": "六个卡池104张单人能力牌登记完整性、唯一性、池/ID一致、MultiplayerOnly排除、纯战后收益不承诺、每池五类覆盖、零触发拒绝、免费与高费硬开差异、单/双能力承诺与生命周期；每角色一个 novelty-search 精英短场景集成验收",
+    "expected": "纯合同输出 POWER_CARD_VALUATION_CHECKS_OK；Release 编译0错误；结构门禁 REFACTOR_BOUNDARIES_OK；五个短场景全部 Passed 且实例目录清理为空",
+    "observed": "POWER_CARD_VALUATION_CHECKS_OK total=104 silent=17 ironclad=19 defect=20 regent=18 necrobinder=18 colorless=12; REFACTOR_BOUNDARIES_OK search_files=191; dev-00-ironclad-elite/dev-01-silent-elite/dev-02-defect-elite/dev-03-regent-elite/dev-04-necrobinder-elite 全部 Passed, error=null; headless-instances 为空",
+    "evidence": "tools/PowerCardValuationChecks/Program.cs; docs/TEST_MATRIX.md; docs/strategy/power-card-valuation/all-pools-implementation-20260917.md"
+  },
   "REPORT-CARDS-ORBIT-ENERGY-GATE": {
     "status": "Passed",
     "level": "HeadlessNativeDifferentialAndForkContract",

@@ -1,5 +1,16 @@
 # CombatSolver 开发笔记与未来构想
 
+## 0.40.2：全卡池单人能力牌建模（开发中，2026-09-17）
+
+- 把原来直接使用静默猎手枚举的公共能力承诺结构重构成卡池无关接口：`PowerCommitmentDescriptor` 改由卡池、稳定 CardId、机制族和 `PowerRouteAdmissionPolicy` 组成，`PowerCardValuationRegistry` 从各角色模型元数据构造描述，公共搜索层不再依赖静默猎手枚举；静默猎手第二版逐卡准入顺序提为公共 `PowerRouteAdmission`，行为逐项保持不变。逐卡语义继续留在各自卡池目录，公共层只按卡池路由（`PowerCardMechanismDispatch`），不合并成一个巨大 switch。
+- 除静默猎手外，铁甲战士19张、故障机器人20张、储君18张、亡灵契约师18张、无色12张单人能力牌已登记，合计104张。每个卡池拆分为注册入口、路线政策、触发证据、开局投影和若干机制族估值模型文件。MultiplayerOnly 的 TANK、ONE_FOR_ALL、HAMMER_TIME、CACOPHONY、SOULBOUND、BEACON_OF_HOPE 与静默猎手鬼祟明确排除；`ROYALTIES`、`FORBIDDEN_GRIMOIRE` 属纯战后收益，登记资料与估值但不创建战斗内承诺。无色能力按实际 CardId 识别，可在任意角色持有；跨色获得的原版能力按卡牌身份建模。
+- 新增请求/solver 级快速旁路：搜索根牌区不存在任何已登记能力牌时，完整跳过子节点能力承诺检查、Beam 能力席位扫描、泛能力组合成员和开局能力前缀构造与试放。没有能力牌的角色或牌组不再承担逐节点扫描与开局 Replay 成本。
+- 新卡池的触发证据与开局投影只读取冻结后的真实牌区、敌人、Power、球、星星、奥斯提、灾厄、虚无与意图事实；复杂机制的远期值使用有界保守代理（球被动/激发、星星花费、召唤、灾厄结算），保证存在值得搜索的路线而不是预测精确战损。逐卡兑现证据暂统一走通用状态改善回退，尚未像静默猎手那样逐卡专用。全部新模型标为 `QuantifiedDraft`，价值只用于准入与保路，不进入终局胜负/战损排序。
+- 修正故障机器人卡池资料：`WhiteNoise` 是 `CardType.Skill`，不属于能力牌模型范围；原卡池文档把它计入能力牌，现已修订。故障机器人的单人能力牌为20张单人加1张 MultiplayerOnly。
+- 验证：`dotnet run --project tools/PowerCardValuationChecks/PowerCardValuationChecks.csproj -c Release` 通过，输出 `POWER_CARD_VALUATION_CHECKS_OK total=104 silent=17 ironclad=19 defect=20 regent=18 necrobinder=18 colorless=12`，覆盖登记数量、唯一性、池/ID 一致、MultiplayerOnly 排除、纯战后收益不创建承诺、未登记不创建承诺、每池五类代表、零触发拒绝、免费与高费硬开差异、单/双能力承诺和静默猎手17张保持；Release 编译0错误；PowerShell 结构门禁输出 `REFACTOR_BOUNDARIES_OK search_files=191`（按用户约束未运行 Bash 门禁，不记为通过）。
+- 集成验收：铁甲战士、静默猎手、故障机器人、储君、亡灵契约师各取一个 `coverage/novelty-search` 精英场景短搜索，全部 `Passed` 且 `error=null`；每次调用使用 `-CleanupInstanceOnExit`，最终 `headless-instances` 为空。本轮未启动可见 Steam、未打包、未提升版本、未推送远端。
+- 尚未完成：新卡池逐卡玩家复核、复杂机制的可兑现事件逐卡专用证据、以及可见会话下的实际战损对照。工作记录与待复核项见[全卡池实施记录](strategy/power-card-valuation/all-pools-implementation-20260917.md)和[待玩家复核表](strategy/power-card-valuation/player-review-20260917.md)。
+
 ## 0.40.2：能力牌逐卡估值框架与无头实例回收（2026-09-17）
 
 - 建立独立的能力牌估值边界，按铁甲战士、静默猎手、故障机器人、储君、亡灵契约师和无色六个卡池拆分。统一输出伤害、防伤、资源、牌访问、成长、控制六类奖励，及启动成本、延迟兑现、触发稀缺、反协同、回合末失效五类惩罚，并附能力优先时机。每张卡仍可使用自己的公式，不把全部规则堆进单文件。

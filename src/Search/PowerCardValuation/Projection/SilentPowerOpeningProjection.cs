@@ -126,26 +126,6 @@ internal sealed partial class CombatBeamSolver
         return MarginalFrontierValue(baseline, powered);
     }
 
-    private int ForecastIncomingDamage(SearchNode child, int turnOffset)
-    {
-        int roundIndex = child.Turn - _startTurnNumber + turnOffset;
-        if (roundIndex < 0 || roundIndex >= _forecast.Rounds.Count)
-            return 0;
-        CombatPredictionSimulator simulator = child.Snapshot.Simulator;
-        SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
-        long total = 0;
-        foreach (ForecastMove move in _forecast.Rounds[roundIndex])
-        {
-            if (!combat.ContainsCreature(move.Owner)
-                || !simulator.State.GetCreature(move.Owner).IsAlive)
-            {
-                continue;
-            }
-            total += move.AttackHits.Sum(hit => Math.Max(0, hit.Damage));
-        }
-        return (int)Math.Min(int.MaxValue, total);
-    }
-
     private int MasterPlannerProjectionPotential(SearchNode child)
     {
         Interlocked.Increment(ref _run.PowerFrontierEvaluations);
@@ -222,20 +202,6 @@ internal sealed partial class CombatBeamSolver
             discardWindows,
             skills.ToArray());
         return projection.CardAccessValue;
-    }
-
-    private static int EstimateRemainingTurns(
-        SimulationSnapshot snapshot,
-        int drawPerTurn)
-    {
-        int damagePerTurn = Math.Max(
-            1,
-            snapshot.RetainedAttackValue * Math.Max(1, drawPerTurn)
-                / Math.Max(1, snapshot.LiveDeckSize));
-        return Math.Clamp(
-            (snapshot.EnemyHp + damagePerTurn - 1) / damagePerTurn,
-            1,
-            SolverWeights.SetupValueHorizonTurns);
     }
 
     private int SpeedsterProjectionPotential(SearchNode child)
@@ -326,113 +292,4 @@ internal sealed partial class CombatBeamSolver
             nextDrawCards);
         return Math.Max(0, transition.NetValue);
     }
-
-    private PowerTurnCardOption[] BuildCurrentHandOptions(
-        SearchNode child,
-        int? shivTargetsOverride = null,
-        int weakAttackBonusPercent = 0)
-    {
-        CombatPredictionSimulator simulator = child.Snapshot.Simulator;
-        SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(_player);
-        return BuildProjectedCardOptions(
-            child,
-            playerState.Hand.Cards,
-            playerState.Hand.Cards.Count,
-            shivTargetsOverride,
-            weakAttackBonusPercent);
-    }
-
-    private PowerTurnCardOption[] BuildProjectedCardOptions(
-        SearchNode child,
-        IReadOnlyList<PredictedCard> cards,
-        int projectedHandCount,
-        int? shivTargetsOverride = null,
-        int weakAttackBonusPercent = 0)
-    {
-        ArgumentOutOfRangeException.ThrowIfNegative(weakAttackBonusPercent);
-        ArgumentOutOfRangeException.ThrowIfNegative(projectedHandCount);
-        CombatPredictionSimulator simulator = child.Snapshot.Simulator;
-        SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
-        SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(_player);
-        Creature[] aliveEnemies = combat.KnownEnemies
-            .Where(enemy => combat.ContainsCreature(enemy)
-                && simulator.State.GetCreature(enemy).IsAlive)
-            .ToArray();
-        int weakTargets = aliveEnemies.Count(enemy =>
-            combat.GetAmount<WeakPower>(enemy) > 0);
-        int minimumEnemyBlock = aliveEnemies
-            .Select(enemy => Math.Max(0, simulator.State.GetCreature(enemy).Block))
-            .DefaultIfEmpty(0)
-            .Min();
-        int shivTargets = shivTargetsOverride ?? (
-            combat.GetAmount<FanOfKnivesPower>(_player.Creature) > 0
-                ? Math.Max(1, child.Snapshot.AliveEnemyCount)
-                : 1);
-        return cards
-            .Where(card => !card.HasKeyword(simulator.State, CardKeyword.Unplayable))
-            .Select(card =>
-            {
-                int energyCost = Math.Max(
-                    0,
-                    card.GetEnergyCostWithModifiers(simulator, playerState));
-                bool isShiv = card.Preview.Tags.Contains(CardTag.Shiv);
-                int baseDamage = card.Preview.Type == CardType.Attack
-                    && card.Preview.DynamicVars.TryGetValue("Damage", out var damageVar)
-                        ? Math.Max(0, damageVar.IntValue)
-                        : 0;
-                int damage = baseDamage;
-                if (isShiv)
-                    damage = (int)Math.Min(int.MaxValue, (long)damage * shivTargets);
-                if (baseDamage > 0 && weakTargets > 0 && weakAttackBonusPercent > 0)
-                {
-                    int affectedTargets = isShiv ? weakTargets : 1;
-                    damage = SaturatingPowerCommitmentAdd(
-                        damage,
-                        (int)Math.Min(
-                            int.MaxValue,
-                            (long)baseDamage * affectedTargets * weakAttackBonusPercent / 100));
-                }
-                int block = card.Preview.Type == CardType.Skill
-                    && card.Preview.DynamicVars.TryGetValue("Block", out var blockVar)
-                        ? Math.Max(0, blockVar.IntValue)
-                        : 0;
-                int cardCountValue = card.Preview.DynamicVars.TryGetValue("Cards", out var cardsVar)
-                    ? cardsVar.IntValue
-                    : 0;
-                int draws = SilentCardFlowFacts.DrawCount(
-                    card.Preview.Id.Entry,
-                    cardCountValue,
-                    projectedHandCount);
-                int attackHits = baseDamage == 0
-                    ? 0
-                    : CardMechanismFacts.AttackHits(
-                        card.Preview.Id.Entry,
-                        card.Preview.DynamicVars.TryGetValue("Repeat", out var repeatVar)
-                            ? repeatVar.IntValue
-                            : 0);
-                int unblockedAttackHits = baseDamage == 0
-                    || (long)baseDamage * attackHits <= minimumEnemyBlock
-                        ? 0
-                        : Math.Max(1, attackHits - minimumEnemyBlock / baseDamage);
-                return new PowerTurnCardOption(
-                    energyCost,
-                    damage,
-                    block,
-                    CardAccess: draws,
-                    Draws: draws,
-                    IsShiv: isShiv,
-                    UnblockedAttackHits: unblockedAttackHits);
-            })
-            .Where(option => option.Damage > 0
-                || option.Block > 0
-                || option.CardAccess > 0)
-            .ToArray();
-    }
-
-    private static int MarginalFrontierValue(
-        IReadOnlyList<PowerTurnFrontierState> baseline,
-        IReadOnlyList<PowerTurnFrontierState> powered)
-        => SaturatingPowerCommitmentAdd(
-            PowerTurnFrontier.DefensiveDamageUplift(baseline, powered),
-            PowerTurnFrontier.DefensiveHpUplift(baseline, powered) * 8);
 }

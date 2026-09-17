@@ -1,8 +1,8 @@
-using MegaCrit.Sts2.Core.Models.Cards;
+﻿using MegaCrit.Sts2.Core.Models.Cards;
 
 namespace CombatSolver;
 
-internal sealed class SerpentFormPowerCardValuationModel : PowerCardValuationModel<SerpentForm>
+internal sealed class SerpentFormPowerCardValuationModel : SilentPowerCardValuationModel<SerpentForm>
 {
     public override PowerCardPool Pool => PowerCardPool.Silent;
     public override PowerCardValuationRequirements Requirements =>
@@ -30,7 +30,7 @@ internal sealed class SerpentFormPowerCardValuationModel : PowerCardValuationMod
     }
 }
 
-internal sealed class TrackingPowerCardValuationModel : PowerCardValuationModel<Tracking>
+internal sealed class TrackingPowerCardValuationModel : SilentPowerCardValuationModel<Tracking>
 {
     public override PowerCardPool Pool => PowerCardPool.Silent;
     public override PowerCardValuationRequirements Requirements =>
@@ -55,3 +55,4 @@ internal sealed class TrackingPowerCardValuationModel : PowerCardValuationModel<
             PowerCardTiming.FutureTurns);
     }
 }
+

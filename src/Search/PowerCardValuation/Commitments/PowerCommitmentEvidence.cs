@@ -1,8 +1,8 @@
-using CombatSolver.Engine.Common;
 using CombatSolver.Engine.InCombat.Simulation;
-using MegaCrit.Sts2.Core.Entities.Cards;
 
 namespace CombatSolver;
+
+internal readonly record struct PowerEvidenceContribution(bool Handled, int Gain);
 
 internal sealed partial class CombatBeamSolver
 {
@@ -10,14 +10,13 @@ internal sealed partial class CombatBeamSolver
         PowerCommitment commitment,
         SearchNode parent,
         SearchNode child)
-    {
-        if (!commitment.Cards.HasFlag(SilentPowerCardIdentity.MasterPlanner))
-            return 0;
-        return Math.Max(
-            0,
-            SlySkillValue(child.Snapshot.Simulator)
-                - SlySkillValue(parent.Snapshot.Simulator));
-    }
+        => PowerCardValuationMath.SaturatingSum(
+            SilentPowerProgressEvidence(commitment, parent, child),
+            IroncladPowerProgressEvidence(commitment, parent, child),
+            DefectPowerProgressEvidence(commitment, parent, child),
+            RegentPowerProgressEvidence(commitment, parent, child),
+            NecrobinderPowerProgressEvidence(commitment, parent, child),
+            ColorlessPowerProgressEvidence(commitment, parent, child));
 
     private int PowerCommitmentRealizedEvidence(
         PowerCommitment commitment,
@@ -26,54 +25,21 @@ internal sealed partial class CombatBeamSolver
     {
         long gain = 0;
         bool hasSpecializedEvidence = false;
-        if (commitment.Cards.HasFlag(SilentPowerCardIdentity.Afterimage))
-        {
-            hasSpecializedEvidence = true;
-            if (child.Action is { Kind: PlanActionKind.PlayCard })
-                gain += Math.Max(1, child.Snapshot.PlayerBlock - parent.Snapshot.PlayerBlock);
-        }
-        if (commitment.Cards.HasFlag(SilentPowerCardIdentity.Footwork))
-        {
-            hasSpecializedEvidence = true;
-            if (child.Action is { Kind: PlanActionKind.PlayCard } action
-                && IsBlockSkill(child.Snapshot.Simulator, action.CardId))
-            {
-                gain += Math.Max(1, child.Snapshot.PlayerBlock - parent.Snapshot.PlayerBlock);
-                gain += Math.Max(
-                    0,
-                    child.Snapshot.ProjectedPlayerHp - parent.Snapshot.ProjectedPlayerHp);
-            }
-        }
-        if (commitment.Cards.HasFlag(SilentPowerCardIdentity.WellLaidPlans))
-        {
-            hasSpecializedEvidence = true;
-            if (child.Turn > parent.Turn)
-                gain += Math.Max(1, child.Snapshot.ReachableHandValue);
-        }
-        if (commitment.Cards.HasFlag(SilentPowerCardIdentity.MasterPlanner))
-        {
-            hasSpecializedEvidence = true;
-            gain += SlyAutoPlayValue(
-                child.Snapshot.Simulator,
-                parent.Snapshot.HistoryEntryCount);
-        }
-        if (commitment.Cards.HasFlag(SilentPowerCardIdentity.Speedster))
-        {
-            hasSpecializedEvidence = true;
-            gain += SpeedsterDrawDamage(
-                child.Snapshot.Simulator,
-                parent.Snapshot.HistoryEntryCount,
-                child.Snapshot.AliveEnemyCount);
-        }
-        if (commitment.Cards.HasFlag(SilentPowerCardIdentity.ToolsOfTheTrade))
-        {
-            hasSpecializedEvidence = true;
-            if (child.Turn > parent.Turn)
-                gain += Math.Max(1, child.Snapshot.ReachableHandValue);
-        }
+        AddEvidence(SilentPowerRealizedEvidence(commitment, parent, child));
+        AddEvidence(IroncladPowerRealizedEvidence(commitment, parent, child));
+        AddEvidence(DefectPowerRealizedEvidence(commitment, parent, child));
+        AddEvidence(RegentPowerRealizedEvidence(commitment, parent, child));
+        AddEvidence(NecrobinderPowerRealizedEvidence(commitment, parent, child));
+        AddEvidence(ColorlessPowerRealizedEvidence(commitment, parent, child));
         if (!hasSpecializedEvidence)
             gain += GenericPowerCommitmentEvidence(parent.Snapshot, child.Snapshot);
         return (int)Math.Min(int.MaxValue, gain);
+
+        void AddEvidence(PowerEvidenceContribution contribution)
+        {
+            hasSpecializedEvidence |= contribution.Handled;
+            gain += contribution.Gain;
+        }
     }
 
     private static int GenericPowerCommitmentEvidence(
@@ -85,69 +51,5 @@ internal sealed partial class CombatBeamSolver
         gain += Math.Max(0, after.ZeroCostPlayableCount - before.ZeroCostPlayableCount) * 4L;
         gain += Math.Max(0, after.ProjectedPlayerHp - before.ProjectedPlayerHp);
         return (int)Math.Min(int.MaxValue, gain);
-    }
-
-    private int SlySkillValue(CombatPredictionSimulator simulator)
-    {
-        SimPlayerCombatState state = simulator.State.GetPlayerCombatState(_player);
-        return state.Hand.Cards
-            .Concat(state.DrawPile.Cards)
-            .Concat(state.DiscardPile.Cards)
-            .Where(card => card.Preview.Type == CardType.Skill
-                && card.Preview.IsSlyThisTurn)
-            .Sum(card => Math.Max(
-                1,
-                (int)Math.Round(CardChoiceSupport.CardValue(card.Preview))));
-    }
-
-    private static int SlyAutoPlayValue(
-        CombatPredictionSimulator simulator,
-        int historyStart)
-    {
-        int value = 0;
-        foreach (CombatPredictionHistoryEntry entry in simulator.History.EntriesFrom(historyStart))
-        {
-            if (entry is not CombatPredictionCardPlayStartedEntry started
-                || !started.CardPlay.IsAutoPlay
-                || started.CardPlay.Card.Type != CardType.Skill
-                || !started.CardPlay.Card.IsSlyThisTurn)
-            {
-                continue;
-            }
-            value = SaturatingPowerCommitmentAdd(
-                value,
-                Math.Max(1, (int)Math.Round(
-                    CardChoiceSupport.CardValue(started.CardPlay.Card))));
-        }
-        return value;
-    }
-
-    private static int SpeedsterDrawDamage(
-        CombatPredictionSimulator simulator,
-        int historyStart,
-        int aliveEnemyCount)
-    {
-        int draws = 0;
-        foreach (CombatPredictionHistoryEntry entry in simulator.History.EntriesFrom(historyStart))
-        {
-            if (entry is CombatPredictionCardDrawnEntry { FromHandDraw: false })
-                draws++;
-        }
-        return (int)Math.Min(
-            int.MaxValue,
-            (long)draws * 2 * Math.Max(0, aliveEnemyCount));
-    }
-
-    private bool IsBlockSkill(CombatPredictionSimulator simulator, string cardId)
-    {
-        SimPlayerCombatState state = simulator.State.GetPlayerCombatState(_player);
-        PredictedCard? card = state.Hand.Cards
-            .Concat(state.DrawPile.Cards)
-            .Concat(state.DiscardPile.Cards)
-            .Concat(state.ExhaustPile.Cards)
-            .FirstOrDefault(candidate => candidate.Preview.Id.Entry == cardId);
-        return card?.Preview.Type == CardType.Skill
-            && card.Preview.DynamicVars._vars.Keys.Any(key =>
-                key.Contains("Block", StringComparison.OrdinalIgnoreCase));
     }
 }

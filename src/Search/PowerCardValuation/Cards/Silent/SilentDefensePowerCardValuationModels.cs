@@ -1,8 +1,8 @@
-using MegaCrit.Sts2.Core.Models.Cards;
+﻿using MegaCrit.Sts2.Core.Models.Cards;
 
 namespace CombatSolver;
 
-internal sealed class AbrasivePowerCardValuationModel : PowerCardValuationModel<Abrasive>
+internal sealed class AbrasivePowerCardValuationModel : SilentPowerCardValuationModel<Abrasive>
 {
     public override PowerCardPool Pool => PowerCardPool.Silent;
     public override PowerCardValuationRequirements Requirements =>
@@ -38,7 +38,7 @@ internal sealed class AbrasivePowerCardValuationModel : PowerCardValuationModel<
     }
 }
 
-internal sealed class AfterimagePowerCardValuationModel : PowerCardValuationModel<Afterimage>
+internal sealed class AfterimagePowerCardValuationModel : SilentPowerCardValuationModel<Afterimage>
 {
     public override PowerCardPool Pool => PowerCardPool.Silent;
     public override PowerCardValuationRequirements Requirements =>
@@ -61,7 +61,7 @@ internal sealed class AfterimagePowerCardValuationModel : PowerCardValuationMode
     }
 }
 
-internal sealed class FootworkPowerCardValuationModel : PowerCardValuationModel<Footwork>
+internal sealed class FootworkPowerCardValuationModel : SilentPowerCardValuationModel<Footwork>
 {
     public override PowerCardPool Pool => PowerCardPool.Silent;
     public override PowerCardValuationRequirements Requirements =>
@@ -86,7 +86,7 @@ internal sealed class FootworkPowerCardValuationModel : PowerCardValuationModel<
     }
 }
 
-internal sealed class WraithFormPowerCardValuationModel : PowerCardValuationModel<WraithForm>
+internal sealed class WraithFormPowerCardValuationModel : SilentPowerCardValuationModel<WraithForm>
 {
     public override PowerCardPool Pool => PowerCardPool.Silent;
     public override PowerCardValuationRequirements Requirements =>
@@ -128,3 +128,4 @@ internal sealed class WraithFormPowerCardValuationModel : PowerCardValuationMode
             PowerCardTiming.FutureTurns);
     }
 }
+

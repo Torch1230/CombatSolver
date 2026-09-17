@@ -1,8 +1,8 @@
-using MegaCrit.Sts2.Core.Models.Cards;
+﻿using MegaCrit.Sts2.Core.Models.Cards;
 
 namespace CombatSolver;
 
-internal sealed class AccuracyPowerCardValuationModel : PowerCardValuationModel<Accuracy>
+internal sealed class AccuracyPowerCardValuationModel : SilentPowerCardValuationModel<Accuracy>
 {
     public override PowerCardPool Pool => PowerCardPool.Silent;
     public override PowerCardValuationRequirements Requirements =>
@@ -30,7 +30,7 @@ internal sealed class AccuracyPowerCardValuationModel : PowerCardValuationModel<
     }
 }
 
-internal sealed class FanOfKnivesPowerCardValuationModel : PowerCardValuationModel<FanOfKnives>
+internal sealed class FanOfKnivesPowerCardValuationModel : SilentPowerCardValuationModel<FanOfKnives>
 {
     public override PowerCardPool Pool => PowerCardPool.Silent;
     public override PowerCardValuationRequirements Requirements =>
@@ -69,7 +69,7 @@ internal sealed class FanOfKnivesPowerCardValuationModel : PowerCardValuationMod
     }
 }
 
-internal sealed class InfiniteBladesPowerCardValuationModel : PowerCardValuationModel<InfiniteBlades>
+internal sealed class InfiniteBladesPowerCardValuationModel : SilentPowerCardValuationModel<InfiniteBlades>
 {
     public override PowerCardPool Pool => PowerCardPool.Silent;
     public override PowerCardValuationRequirements Requirements =>
@@ -100,7 +100,7 @@ internal sealed class InfiniteBladesPowerCardValuationModel : PowerCardValuation
     }
 }
 
-internal sealed class PhantomBladesPowerCardValuationModel : PowerCardValuationModel<PhantomBlades>
+internal sealed class PhantomBladesPowerCardValuationModel : SilentPowerCardValuationModel<PhantomBlades>
 {
     public override PowerCardPool Pool => PowerCardPool.Silent;
     public override PowerCardValuationRequirements Requirements =>
@@ -130,3 +130,4 @@ internal sealed class PhantomBladesPowerCardValuationModel : PowerCardValuationM
             PowerCardTiming.FutureTurns);
     }
 }
+

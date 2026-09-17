@@ -34,7 +34,8 @@ internal static class PowerTurnFrontier
         int damagePerShiv = 0,
         int firstShivDamageBonus = 0,
         int damagePerCard = 0,
-        int damagePerUnblockedAttackHit = 0)
+        int damagePerUnblockedAttackHit = 0,
+        int damagePerAttack = 0)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(energy);
         ArgumentOutOfRangeException.ThrowIfNegative(incomingDamage);
@@ -46,6 +47,7 @@ internal static class PowerTurnFrontier
         ArgumentOutOfRangeException.ThrowIfNegative(firstShivDamageBonus);
         ArgumentOutOfRangeException.ThrowIfNegative(damagePerCard);
         ArgumentOutOfRangeException.ThrowIfNegative(damagePerUnblockedAttackHit);
+        ArgumentOutOfRangeException.ThrowIfNegative(damagePerAttack);
         List<(int Spent, int Damage, int Block, int CardAccess, bool ShivPlayed)> states =
             [(0, 0, 0, 0, false)];
         foreach (PowerTurnCardOption card in cards)
@@ -67,11 +69,13 @@ internal static class PowerTurnFrontier
                     SaturatingAdd(
                         shivDamage,
                         SaturatingAdd(
-                            damagePerCard,
-                            SaturatingProduct(
-                                card.UnblockedAttackHits,
-                                damagePerUnblockedAttackHit,
-                                1))));
+                            card.Damage > 0 ? damagePerAttack : 0,
+                            SaturatingAdd(
+                                damagePerCard,
+                                SaturatingProduct(
+                                    card.UnblockedAttackHits,
+                                    damagePerUnblockedAttackHit,
+                                    1)))));
                 states.Add((
                     spent,
                     SaturatingAdd(

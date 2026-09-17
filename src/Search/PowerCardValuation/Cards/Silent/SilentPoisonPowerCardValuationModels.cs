@@ -1,8 +1,8 @@
-using MegaCrit.Sts2.Core.Models.Cards;
+﻿using MegaCrit.Sts2.Core.Models.Cards;
 
 namespace CombatSolver;
 
-internal sealed class AccelerantPowerCardValuationModel : PowerCardValuationModel<Accelerant>
+internal sealed class AccelerantPowerCardValuationModel : SilentPowerCardValuationModel<Accelerant>
 {
     public override PowerCardPool Pool => PowerCardPool.Silent;
     public override PowerCardValuationRequirements Requirements =>
@@ -30,7 +30,7 @@ internal sealed class AccelerantPowerCardValuationModel : PowerCardValuationMode
     }
 }
 
-internal sealed class EnvenomPowerCardValuationModel : PowerCardValuationModel<Envenom>
+internal sealed class EnvenomPowerCardValuationModel : SilentPowerCardValuationModel<Envenom>
 {
     public override PowerCardPool Pool => PowerCardPool.Silent;
     public override PowerCardValuationRequirements Requirements =>
@@ -61,7 +61,7 @@ internal sealed class EnvenomPowerCardValuationModel : PowerCardValuationModel<E
     }
 }
 
-internal sealed class NoxiousFumesPowerCardValuationModel : PowerCardValuationModel<NoxiousFumes>
+internal sealed class NoxiousFumesPowerCardValuationModel : SilentPowerCardValuationModel<NoxiousFumes>
 {
     public override PowerCardPool Pool => PowerCardPool.Silent;
     public override PowerCardValuationRequirements Requirements =>
@@ -95,3 +95,4 @@ internal sealed class NoxiousFumesPowerCardValuationModel : PowerCardValuationMo
             PowerCardTiming.FutureTurns);
     }
 }
+

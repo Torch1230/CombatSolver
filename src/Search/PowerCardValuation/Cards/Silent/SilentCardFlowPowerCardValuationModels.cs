@@ -1,8 +1,8 @@
-using MegaCrit.Sts2.Core.Models.Cards;
+﻿using MegaCrit.Sts2.Core.Models.Cards;
 
 namespace CombatSolver;
 
-internal sealed class MasterPlannerPowerCardValuationModel : PowerCardValuationModel<MasterPlanner>
+internal sealed class MasterPlannerPowerCardValuationModel : SilentPowerCardValuationModel<MasterPlanner>
 {
     public override PowerCardPool Pool => PowerCardPool.Silent;
     public override PowerCardValuationRequirements Requirements =>
@@ -36,7 +36,7 @@ internal sealed class MasterPlannerPowerCardValuationModel : PowerCardValuationM
     }
 }
 
-internal sealed class SpeedsterPowerCardValuationModel : PowerCardValuationModel<Speedster>
+internal sealed class SpeedsterPowerCardValuationModel : SilentPowerCardValuationModel<Speedster>
 {
     public override PowerCardPool Pool => PowerCardPool.Silent;
     public override PowerCardValuationRequirements Requirements =>
@@ -65,7 +65,7 @@ internal sealed class SpeedsterPowerCardValuationModel : PowerCardValuationModel
     }
 }
 
-internal sealed class ToolsOfTheTradePowerCardValuationModel : PowerCardValuationModel<ToolsOfTheTrade>
+internal sealed class ToolsOfTheTradePowerCardValuationModel : SilentPowerCardValuationModel<ToolsOfTheTrade>
 {
     public override PowerCardPool Pool => PowerCardPool.Silent;
     public override PowerCardValuationRequirements Requirements =>
@@ -99,7 +99,7 @@ internal sealed class ToolsOfTheTradePowerCardValuationModel : PowerCardValuatio
     }
 }
 
-internal sealed class WellLaidPlansPowerCardValuationModel : PowerCardValuationModel<WellLaidPlans>
+internal sealed class WellLaidPlansPowerCardValuationModel : SilentPowerCardValuationModel<WellLaidPlans>
 {
     public override PowerCardPool Pool => PowerCardPool.Silent;
     public override PowerCardValuationRequirements Requirements =>
@@ -119,3 +119,4 @@ internal sealed class WellLaidPlansPowerCardValuationModel : PowerCardValuationM
             PowerCardTiming.FutureTurns);
     }
 }
+

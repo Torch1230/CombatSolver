@@ -2,7 +2,8 @@ namespace CombatSolver;
 
 internal sealed record PowerCommitment(
     PowerCommitmentFamily Family,
-    SilentPowerCardIdentity Cards,
+    PowerRoutePriority Priority,
+    IReadOnlyList<string> Cards,
     int OpenedTurn,
     int OpenedActionCount,
     int OpenedHistoryEntryCount,
@@ -18,4 +19,14 @@ internal sealed record PowerCommitment(
         (long)ProvisionalPotential - Investment,
         int.MinValue,
         int.MaxValue);
+
+    public bool HasCard(string cardId)
+    {
+        for (int index = 0; index < Cards.Count; index++)
+        {
+            if (string.Equals(Cards[index], cardId, StringComparison.Ordinal))
+                return true;
+        }
+        return false;
+    }
 }

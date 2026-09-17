@@ -9,7 +9,7 @@ namespace CombatSolver;
 internal sealed partial class CombatBeamSolver
 {
     private bool SilentPowerHasTriggerEvidence(
-        SilentPowerCardIdentity card,
+        string cardId,
         SearchNode parent,
         SearchNode child)
     {
@@ -64,28 +64,28 @@ internal sealed partial class CombatBeamSolver
             DynamicVarValue(candidate, "Cards"),
             playerState.Hand.Cards.Count));
 
-        return card switch
+        return cardId switch
         {
-            SilentPowerCardIdentity.Abrasive => HasBlockSkill()
+            "ABRASIVE" => HasBlockSkill()
                 || child.Snapshot.ProjectedPlayerHp < child.Snapshot.PlayerHp,
-            SilentPowerCardIdentity.Accelerant => HasPoison(),
-            SilentPowerCardIdentity.Accuracy => HasShiv(),
-            SilentPowerCardIdentity.Afterimage => ReachableCardPlays() >= 5,
-            SilentPowerCardIdentity.Envenom => HasAttack() && RemainingTurns() > 1,
-            SilentPowerCardIdentity.FanOfKnives => child.Snapshot.AliveEnemyCount > 0,
-            SilentPowerCardIdentity.Footwork => HasBlockSkill(),
-            SilentPowerCardIdentity.InfiniteBlades => RemainingTurns() > 1,
-            SilentPowerCardIdentity.MasterPlanner => true,
-            SilentPowerCardIdentity.NoxiousFumes => RemainingTurns() > 1
+            "ACCELERANT" => HasPoison(),
+            "ACCURACY" => HasShiv(),
+            "AFTERIMAGE" => ReachableCardPlays() >= 5,
+            "ENVENOM" => HasAttack() && RemainingTurns() > 1,
+            "FAN_OF_KNIVES" => child.Snapshot.AliveEnemyCount > 0,
+            "FOOTWORK" => HasBlockSkill(),
+            "INFINITE_BLADES" => RemainingTurns() > 1,
+            "MASTER_PLANNER" => true,
+            "NOXIOUS_FUMES" => RemainingTurns() > 1
                 && child.Snapshot.AliveEnemyCount > 0,
-            SilentPowerCardIdentity.PhantomBlades => HasShiv(),
-            SilentPowerCardIdentity.SerpentForm => ReachableCardPlays() > 0,
-            SilentPowerCardIdentity.Speedster => DrawTriggers() > 0,
-            SilentPowerCardIdentity.ToolsOfTheTrade => RemainingTurns() > 1,
-            SilentPowerCardIdentity.Tracking => HasWeak() && HasAttack(),
-            SilentPowerCardIdentity.WellLaidPlans => RemainingTurns() > 1
+            "PHANTOM_BLADES" => HasShiv(),
+            "SERPENT_FORM" => ReachableCardPlays() > 0,
+            "SPEEDSTER" => DrawTriggers() > 0,
+            "TOOLS_OF_THE_TRADE" => RemainingTurns() > 1,
+            "TRACKING" => HasWeak() && HasAttack(),
+            "WELL_LAID_PLANS" => RemainingTurns() > 1
                 && liveCards.Length > 0,
-            SilentPowerCardIdentity.WraithForm => WraithTimingHasEvidence(
+            "WRAITH_FORM" => WraithTimingHasEvidence(
                 parent,
                 child,
                 RemainingTurns()),
@@ -106,19 +106,17 @@ internal sealed partial class CombatBeamSolver
                 parent.Snapshot.ProjectedPlayerHp);
     }
 
-    private int SilentPowerTriggerProjectionFloor(
-        SilentPowerCardIdentity card,
-        SearchNode child)
-        => card switch
+    private int SilentPowerTriggerProjectionFloor(string cardId, SearchNode child)
+        => cardId switch
         {
-            SilentPowerCardIdentity.FanOfKnives => Math.Max(1, child.Snapshot.AliveEnemyCount),
-            SilentPowerCardIdentity.Footwork => 1,
-            SilentPowerCardIdentity.InfiniteBlades => 1,
-            SilentPowerCardIdentity.NoxiousFumes => Math.Max(1, child.Snapshot.AliveEnemyCount),
-            SilentPowerCardIdentity.SerpentForm => 1,
-            SilentPowerCardIdentity.Speedster => 1,
-            SilentPowerCardIdentity.ToolsOfTheTrade => 1,
-            SilentPowerCardIdentity.WellLaidPlans => 1,
+            "FAN_OF_KNIVES" => Math.Max(1, child.Snapshot.AliveEnemyCount),
+            "FOOTWORK" => 1,
+            "INFINITE_BLADES" => 1,
+            "NOXIOUS_FUMES" => Math.Max(1, child.Snapshot.AliveEnemyCount),
+            "SERPENT_FORM" => 1,
+            "SPEEDSTER" => 1,
+            "TOOLS_OF_THE_TRADE" => 1,
+            "WELL_LAID_PLANS" => 1,
             _ => 0,
         };
 

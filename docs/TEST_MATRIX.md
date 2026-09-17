@@ -1,5 +1,13 @@
 # CombatSolver 测试清单
 
+## 0.40.2：全卡池单人能力牌建模（开发中，2026-09-17）
+
+- `dotnet run --project tools/PowerCardValuationChecks/PowerCardValuationChecks.csproj -c Release` 通过，输出 `POWER_CARD_VALUATION_CHECKS_OK total=104 silent=17 ironclad=19 defect=20 regent=18 necrobinder=18 colorless=12`：覆盖六个卡池登记总数与各池数量、每张牌唯一登记、卡池与推导 CardId 一致、MultiplayerOnly 七张明确排除、`WhiteNoise` 不作为能力牌登记、未登记牌不创建承诺、纯战后收益的 `ROYALTIES`/`FORBIDDEN_GRIMOIRE` 不创建战斗内承诺、无登记能力不增加组合成员；每池覆盖防御/成长、资源/牌流、延迟收益、反协同或启动风险、需专搜五类代表；路线准入覆盖零触发拒绝、当前/未来触发窗口与阈值边界、免费启动与高费硬开差异；承诺生命周期覆盖单能力与双能力（家族 OR、优先级取高、卡牌去重、真实兑现退出、越回合到期）；逐卡估值覆盖燃烧升级差异、倒数计时灾厄延迟、冰雹风暴零冰霜球拒绝、非凡技艺双属性、王国资产战后金币、碎片整理集中与球数。
+- Release 编译通过，0 个编译警告、0 个错误。
+- `pwsh -NoProfile -File tools/verify-refactor-boundaries.ps1` 通过，输出 `REFACTOR_BOUNDARIES_OK search_files=191`：门禁已更新为通用多卡池承诺边界，并确认能力估值仍未进入 `CombatBeamSolver.FinalPlanOrdering.cs`。按用户约束未运行 WSL/Bash 门禁，不记为通过。
+- 集成验收（每个角色一个 `coverage/novelty-search` 精英短场景，`-GeneratedScenarioPath` + `-EvidenceDirectory` + `-CleanupInstanceOnExit`）：`dev-00-ironclad-elite`、`dev-01-silent-elite`、`dev-02-defect-elite`、`dev-03-regent-elite`、`dev-04-necrobinder-elite` 全部 `status=Passed` 且 `error=null`，均完成一次完整搜索并给出 `InitialPolicy` 结果。每次调用后实例被删除，最终 `C:\Users\The_M\AppData\Local\CombatSolver\headless-instances` 为空。
+- 未执行：逐卡玩家复核、复杂机制逐卡专用兑现证据、可见 Steam 会话性能与战损对照，均在文档中明确标为未验证。
+
 ## 0.40.2：能力牌估值框架与实例清理（2026-09-17）
 
 - 卡池目录静态核对通过：同版本六个 `CardPool` 的 `CardType.Power` 共112张，全部命中 `zhs/eng` 官方标题与中文效果；原版约束分为105张单人范围和7张 `MultiplayerOnly`，六份文档行数分别为20/18/22/19/20/13。普通与升级描述由对应原版卡牌实例格式化，未留下未解析变量或颜色标签。

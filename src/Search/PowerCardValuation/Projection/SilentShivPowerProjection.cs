@@ -162,19 +162,6 @@ internal sealed partial class CombatBeamSolver
             Math.Max(0, (int)Math.Round(CardChoiceSupport.CardValue(card.Preview))),
             Math.Max(0, card.GetEnergyCostWithModifiers(simulator, state)));
 
-    private int PowerAmountGain<TPower>(SearchNode parent, SearchNode child)
-        where TPower : PowerModel
-    {
-        SimulatedCombatState parentCombat =
-            (SimulatedCombatState)parent.Snapshot.Simulator.State.CombatState;
-        SimulatedCombatState childCombat =
-            (SimulatedCombatState)child.Snapshot.Simulator.State.CombatState;
-        return Math.Max(
-            0,
-            childCombat.GetAmount<TPower>(_player.Creature)
-                - parentCombat.GetAmount<TPower>(_player.Creature));
-    }
-
     private int CurrentShivTargets(SearchNode child)
     {
         SimulatedCombatState combat =
@@ -187,22 +174,4 @@ internal sealed partial class CombatBeamSolver
     private int CountHandShivs(SearchNode node)
         => node.Snapshot.Simulator.State.GetPlayerCombatState(_player)
             .Hand.Cards.Count(card => card.Preview.Tags.Contains(CardTag.Shiv));
-
-    private static int CurrentIncomingDamage(SearchNode node)
-        => Math.Max(0, node.Snapshot.PlayerHp - node.Snapshot.ProjectedPlayerHp);
-
-    private static int SaturatingProduct(params int[] values)
-    {
-        long product = 1;
-        foreach (int value in values)
-        {
-            int factor = Math.Max(0, value);
-            if (factor == 0)
-                return 0;
-            if (product > int.MaxValue / factor)
-                return int.MaxValue;
-            product *= factor;
-        }
-        return (int)product;
-    }
 }

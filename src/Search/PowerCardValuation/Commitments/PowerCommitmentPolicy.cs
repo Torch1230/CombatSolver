@@ -4,6 +4,11 @@ internal sealed partial class CombatBeamSolver
 {
     private void AttachPowerCommitment(SearchNode child)
     {
+        if (!_hasRegisteredPowerCards)
+        {
+            child.PowerCommitment = null;
+            return;
+        }
         SearchNode? parent = child.Parent;
         if (parent == null)
         {
@@ -47,11 +52,11 @@ internal sealed partial class CombatBeamSolver
                     Math.Max(0, child.Snapshot.CumulativePlayerHpLost
                         - parent.Snapshot.CumulativePlayerHpLost));
             }
-            int projectedPotential = SilentPowerOpeningProjectionPotential(
+            int projectedPotential = PowerOpeningProjectionPotential(
                 playedPower.CardId,
                 parent,
                 child);
-            if (!TryBuildSilentPowerCommitmentPotential(
+            if (!TryBuildPowerCommitmentPotential(
                     playedPower,
                     parent,
                     child,
@@ -103,7 +108,7 @@ internal sealed partial class CombatBeamSolver
             realizedEvidence);
     }
 
-    private bool TryBuildSilentPowerCommitmentPotential(
+    private bool TryBuildPowerCommitmentPotential(
         in PowerCardPlayOccurrence playedPower,
         SearchNode parent,
         SearchNode child,
@@ -113,23 +118,23 @@ internal sealed partial class CombatBeamSolver
         int investment,
         out int potential)
     {
-        bool hasTriggerEvidence = SilentPowerHasTriggerEvidence(
-            playedPower.Descriptor.Card,
-            parent,
-            child);
-        SilentPowerRouteAdmissionResult result = SilentPowerRouteAdmission.Evaluate(new(
-            playedPower.Descriptor.Card,
-            playedPower.IsAutoPlay,
-            spentEnergy,
-            child.Snapshot.Energy,
-            hasTriggerEvidence,
-            Math.Max(
-                0,
-                child.Snapshot.ProjectedPlayerHp - parent.Snapshot.ProjectedPlayerHp),
-            setupGain,
-            projectedPotential,
-            SilentPowerTriggerProjectionFloor(playedPower.Descriptor.Card, child),
-            investment));
+        PowerCommitmentDescriptor descriptor = playedPower.Descriptor;
+        bool hasTriggerEvidence = PowerHasTriggerEvidence(descriptor, parent, child);
+        PowerRouteAdmissionResult result = PowerRouteAdmission.Evaluate(
+            new(
+                descriptor.CardId,
+                playedPower.IsAutoPlay,
+                spentEnergy,
+                child.Snapshot.Energy,
+                hasTriggerEvidence,
+                Math.Max(
+                    0,
+                    child.Snapshot.ProjectedPlayerHp - parent.Snapshot.ProjectedPlayerHp),
+                setupGain,
+                projectedPotential,
+                PowerTriggerProjectionFloor(descriptor, child),
+                investment),
+            descriptor.Admission);
         potential = result.Potential;
         return result.Admitted;
     }
@@ -178,7 +183,4 @@ internal sealed partial class CombatBeamSolver
         gain += Math.Max(0, after.LatentSetupValue - before.LatentSetupValue);
         return (int)Math.Min(int.MaxValue, gain);
     }
-
-    private static int SaturatingPowerCommitmentAdd(int left, int right)
-        => (int)Math.Clamp((long)left + right, 0L, int.MaxValue);
 }

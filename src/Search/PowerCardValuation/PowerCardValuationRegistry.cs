@@ -37,16 +37,14 @@ internal sealed class PowerCardValuationRegistry
     public bool ContainsCardId(string cardId)
         => _modelsByCardId.ContainsKey(cardId);
 
-    public bool TryGetCommitmentFamily(
-        string cardId,
-        out PowerCommitmentFamily family)
+    public bool TryGetPool(string cardId, out PowerCardPool pool)
     {
-        if (TryGetCommitmentDescriptor(cardId, out PowerCommitmentDescriptor descriptor))
+        if (_modelsByCardId.TryGetValue(cardId, out IPowerCardValuationModel? model))
         {
-            family = descriptor.Family;
+            pool = model.Pool;
             return true;
         }
-        family = PowerCommitmentFamily.None;
+        pool = default;
         return false;
     }
 
@@ -55,11 +53,15 @@ internal sealed class PowerCardValuationRegistry
         out PowerCommitmentDescriptor descriptor)
     {
         if (_modelsByCardId.TryGetValue(cardId, out IPowerCardValuationModel? model)
-            && model.Pool == PowerCardPool.Silent)
+            && model.CommitmentFamily != PowerCommitmentFamily.None
+            && !model.AdmissionPolicy.NoInCombatCommitment)
         {
-            descriptor = SilentDescriptor(cardId);
-            return descriptor.Family != PowerCommitmentFamily.None
-                && descriptor.Card != SilentPowerCardIdentity.None;
+            descriptor = new PowerCommitmentDescriptor(
+                model.Pool,
+                cardId,
+                model.CommitmentFamily,
+                model.AdmissionPolicy);
+            return true;
         }
         descriptor = default;
         return false;
@@ -114,45 +116,10 @@ internal sealed class PowerCardValuationRegistry
             .OrderBy(type => type.FullName, StringComparer.Ordinal)
             .ToArray();
 
-    private static PowerCommitmentDescriptor SilentDescriptor(string cardId)
-        => cardId switch
-        {
-            "ABRASIVE" or "AFTERIMAGE" or "FOOTWORK" or "WRAITH_FORM"
-                => new(PowerCommitmentFamily.DefenseEfficiency, cardId switch
-                {
-                    "ABRASIVE" => SilentPowerCardIdentity.Abrasive,
-                    "AFTERIMAGE" => SilentPowerCardIdentity.Afterimage,
-                    "FOOTWORK" => SilentPowerCardIdentity.Footwork,
-                    _ => SilentPowerCardIdentity.WraithForm,
-                }),
-            "ACCURACY" or "FAN_OF_KNIVES" or "INFINITE_BLADES" or "PHANTOM_BLADES"
-                => new(PowerCommitmentFamily.ShivEngine, cardId switch
-                {
-                    "ACCURACY" => SilentPowerCardIdentity.Accuracy,
-                    "FAN_OF_KNIVES" => SilentPowerCardIdentity.FanOfKnives,
-                    "INFINITE_BLADES" => SilentPowerCardIdentity.InfiniteBlades,
-                    _ => SilentPowerCardIdentity.PhantomBlades,
-                }),
-            "ACCELERANT" or "ENVENOM" or "NOXIOUS_FUMES"
-                => new(PowerCommitmentFamily.PoisonEngine, cardId switch
-                {
-                    "ACCELERANT" => SilentPowerCardIdentity.Accelerant,
-                    "ENVENOM" => SilentPowerCardIdentity.Envenom,
-                    _ => SilentPowerCardIdentity.NoxiousFumes,
-                }),
-            "MASTER_PLANNER" or "SPEEDSTER" or "TOOLS_OF_THE_TRADE" or "WELL_LAID_PLANS"
-                => new(PowerCommitmentFamily.HandEngine, cardId switch
-                {
-                    "MASTER_PLANNER" => SilentPowerCardIdentity.MasterPlanner,
-                    "SPEEDSTER" => SilentPowerCardIdentity.Speedster,
-                    "TOOLS_OF_THE_TRADE" => SilentPowerCardIdentity.ToolsOfTheTrade,
-                    _ => SilentPowerCardIdentity.WellLaidPlans,
-                }),
-            "SERPENT_FORM" or "TRACKING"
-                => new(PowerCommitmentFamily.DamageEngine,
-                    cardId == "SERPENT_FORM"
-                        ? SilentPowerCardIdentity.SerpentForm
-                        : SilentPowerCardIdentity.Tracking),
-            _ => default,
-        };
+    public IReadOnlyList<string> RegisteredCardIds(PowerCardPool pool)
+        => _modelsByCardId
+            .Where(pair => pair.Value.Pool == pool)
+            .Select(pair => pair.Key)
+            .OrderBy(cardId => cardId, StringComparer.Ordinal)
+            .ToArray();
 }

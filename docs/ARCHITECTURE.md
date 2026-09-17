@@ -215,7 +215,7 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 | `CombatBeamSolver.OrderedMutationRetention.cs` | 有序操作碰撞的谱系、租约、成对激活和预算账本；统一处理续接、到期与普通通道回退 |
 | `CombatBeamSolver.FinalPlanOrdering.cs` | 终局胜负、偷窃、战损、药水、卖血和搜索边界排序 |
 | `CombatBeamSolver.StateEvaluation.cs` | 搜索快照、评分、威胁、stand-pat 和状态特征；手牌可达价值的纯背包计算委托 `ReachableHandValue` |
-| `PowerCardValuation/` | 能力牌奖励、惩罚、时机及机制族登记；`Cards/Silent` 分别保存逐卡路线政策、纯准入规则、抽弃事实、幽魂启动窗口和只在开能力时读取的触发证据，强弱判断不充当终局分数。`Projection` 提供有界行动前沿、保留/抽弃转换、谋划专家两回合投影，以及小刀、中毒、直接伤害和防御窗口的专用投影；灵动读取当前手牌及后续两个已知抽牌窗口，并按对应敌方攻击比较格挡阈值与省能转攻。`Commitments` 从模拟历史识别正常或奇巧自动打出的能力，以纯生命周期保存不进入状态键的节点级有限租约并在普通 Beam 席位内置换代表；战斗前两回合的能量投资按冻结总楼层分三档降低，真实掉血不折算。静默猎手17张单人牌均已登记，生产保路框架不改终局排序；未登记卡牌保持既有行为 |
+| `PowerCardValuation/` | 能力牌奖励、惩罚、时机及机制族登记。公共层只持有卡池无关的 `PowerCommitmentDescriptor`（卡池、稳定 CardId、机制族、`PowerRouteAdmissionPolicy`），由 `PowerCardValuationRegistry` 从各卡池模型元数据构造；`PowerRouteAdmission` 是唯一准入判定，`PowerCardValueFacts`、`Projection/PowerCardProjectionSupport`、`Projection/PowerCardMechanismFacts` 提供公共尺度、有界前沿与冻结事实读取。`Cards/<Pool>` 各目录分别保存注册入口、逐卡路线政策、触发证据、开局投影、机制族估值模型与专用事实；公共协调器不含角色专属规则。`Commitments` 从模拟历史识别正常或自动打出的能力，以纯生命周期保存不进入状态键的节点级有限租约并在普通 Beam 席位内置换代表；`PowerCardMechanismDispatch` 只按卡池路由，不识别任何角色枚举。六个卡池共104张单人能力牌已登记（静默猎手17、铁甲战士19、故障机器人20、储君18、亡灵契约师18、无色12），生产保路框架不改终局排序；无已登记能力牌的根走请求级快速旁路，跳过子节点承诺检查、Beam 能力席位扫描、泛能力组合成员与开局能力前缀构造试放；未登记卡牌保持既有行为 |
 | `CombatBeamSolver.NoveltySearch.cs` | 有界新颖性队列与影子特征提取；复用既有展开、终局与 Phases 注入边界 |
 | `CombatBeamSolver.Terminal.cs` | 终局精确回放、逐回合结果、击杀与遗物标注 |
 | `StrategicEffectModel.cs` | 把 Power 的实际触发语义投影为伤害、防伤、资源、牌访问和成长效果；不决定终局胜负 |

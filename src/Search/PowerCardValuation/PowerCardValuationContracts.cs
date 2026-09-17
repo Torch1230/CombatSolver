@@ -1,4 +1,4 @@
-namespace CombatSolver;
+﻿namespace CombatSolver;
 
 internal enum PowerCardPool
 {
@@ -10,6 +10,9 @@ internal enum PowerCardPool
     Colorless,
 }
 
+/// <summary>
+/// 鑳藉姏鎵胯鐨勬満鍒舵棌銆傛墍鏈夎鑹插叡鐢ㄥ悓涓€缁勬棌鏍囩锛屽叿浣撳埌鍗＄墝鐨勫綊灞炵敱鍚勫崱姹犵洰褰曠櫥璁帮紱
+/// 鍏叡鎼滅储灞傚彧鎸夋棌涓庝紭鍏堢骇鍋氭湁鐣屼繚璺紝涓嶅尯鍒嗗叿浣撳崱鐗屻€?/// </summary>
 [Flags]
 internal enum PowerCommitmentFamily
 {
@@ -19,58 +22,102 @@ internal enum PowerCommitmentFamily
     PoisonEngine = 1 << 2,
     HandEngine = 1 << 3,
     DamageEngine = 1 << 4,
+    StrengthGrowth = 1 << 5,
+    DexterityGrowth = 1 << 6,
+    BlockTriggerEngine = 1 << 7,
+    ExhaustEngine = 1 << 8,
+    EnergyEngine = 1 << 9,
+    OrbEngine = 1 << 10,
+    FocusEngine = 1 << 11,
+    StarEngine = 1 << 12,
+    SummonEngine = 1 << 13,
+    DoomEngine = 1 << 14,
+    CardGenerationEngine = 1 << 15,
+    RetainEngine = 1 << 16,
+    CostReductionEngine = 1 << 17,
+    AutoPlayEngine = 1 << 18,
+    StatusAmplifier = 1 << 19,
+    LifeInvestment = 1 << 20,
+    CrossCombatGrowth = 1 << 21,
+    RandomGeneration = 1 << 22,
 }
 
-[Flags]
-internal enum SilentPowerCardIdentity : ulong
+/// <summary>鑳藉姏璺嚎鐨勪繚鐣欎紭鍏堢骇銆傚彧褰卞搷涓棿淇濊矾甯綅锛屼笉杩涘叆缁堝眬姣旇緝銆?/summary>
+internal enum PowerRoutePriority
 {
-    None = 0,
-    Abrasive = 1UL << 0,
-    Accelerant = 1UL << 1,
-    Accuracy = 1UL << 2,
-    Afterimage = 1UL << 3,
-    Envenom = 1UL << 4,
-    FanOfKnives = 1UL << 5,
-    Footwork = 1UL << 6,
-    InfiniteBlades = 1UL << 7,
-    MasterPlanner = 1UL << 8,
-    NoxiousFumes = 1UL << 9,
-    PhantomBlades = 1UL << 10,
-    SerpentForm = 1UL << 11,
-    Speedster = 1UL << 12,
-    ToolsOfTheTrade = 1UL << 13,
-    Tracking = 1UL << 14,
-    WellLaidPlans = 1UL << 15,
-    WraithForm = 1UL << 16,
+    Low,
+    Normal,
+    Strong,
+    Core,
+    Dedicated,
 }
 
+/// <summary>
+/// 閫愬崱璺嚎鍑嗗叆鏀跨瓥銆傚瓧娈垫部鐢ㄩ潤榛樼寧鎵嬬浜屾壒鐢熶骇璇箟锛屾柊澧炶鑹插彧鐧昏鏁版嵁锛屼笉鏀瑰叕鍏卞垽瀹氶『搴忋€?/// </summary>
+internal readonly record struct PowerRouteAdmissionPolicy(
+    PowerRoutePriority Priority = PowerRoutePriority.Low,
+    int MinimumProjection = 1,
+    bool AllowTriggerBackedProjectionFloor = false,
+    bool PreferFreeActivation = false,
+    bool RequireFreeOrSpareActivation = false,
+    bool RequireImmediateDefenseGain = false,
+    bool PreferDedicatedSearch = false,
+    bool RequirePositiveProjection = false,
+    bool NoInCombatCommitment = false);
+
+/// <summary>娉ㄥ唽琛ㄥ澶栨毚闇茬殑閫氱敤鑳藉姏鎵胯鎻忚堪銆傚叕鍏辨悳绱㈠眰鍙緷璧栧畠銆?/summary>
 internal readonly record struct PowerCommitmentDescriptor(
+    PowerCardPool Pool,
+    string CardId,
     PowerCommitmentFamily Family,
-    SilentPowerCardIdentity Card);
+    PowerRouteAdmissionPolicy Admission)
+{
+    public PowerRoutePriority Priority => Admission.Priority;
+}
 
 [Flags]
-internal enum PowerCardValuationRequirements
+internal enum PowerCardValuationRequirements : ulong
 {
     None = 0,
-    EnemyHp = 1 << 0,
-    EnemyCount = 1 << 1,
-    RemainingTurns = 1 << 2,
-    CurrentTurnCards = 1 << 3,
-    FutureCards = 1 << 4,
-    UnblockedAttackHits = 1 << 5,
-    BlockSkills = 1 << 6,
-    Shivs = 1 << 7,
-    Draws = 1 << 8,
-    Discards = 1 << 9,
-    IncomingForecast = 1 << 10,
-    Poison = 1 << 11,
-    WeakTargetDamage = 1 << 12,
-    CardValues = 1 << 13,
-    Resources = 1 << 14,
-    RetainedHandValue = 1 << 15,
-    SlyValue = 1 << 16,
-    DiscardPayoff = 1 << 17,
-    DexterityLoss = 1 << 18,
+    EnemyHp = 1UL << 0,
+    EnemyCount = 1UL << 1,
+    RemainingTurns = 1UL << 2,
+    CurrentTurnCards = 1UL << 3,
+    FutureCards = 1UL << 4,
+    UnblockedAttackHits = 1UL << 5,
+    BlockSkills = 1UL << 6,
+    Shivs = 1UL << 7,
+    Draws = 1UL << 8,
+    Discards = 1UL << 9,
+    IncomingForecast = 1UL << 10,
+    Poison = 1UL << 11,
+    WeakTargetDamage = 1UL << 12,
+    CardValues = 1UL << 13,
+    Resources = 1UL << 14,
+    RetainedHandValue = 1UL << 15,
+    SlyValue = 1UL << 16,
+    DiscardPayoff = 1UL << 17,
+    DexterityLoss = 1UL << 18,
+    Exhausts = 1UL << 19,
+    Orbs = 1UL << 20,
+    Focus = 1UL << 21,
+    Stars = 1UL << 22,
+    Summons = 1UL << 23,
+    Doom = 1UL << 24,
+    SelfDamage = 1UL << 25,
+    CardGeneration = 1UL << 26,
+    StatusCards = 1UL << 27,
+    Shuffles = 1UL << 28,
+    PowerPlays = 1UL << 29,
+    ZeroCostAttacks = 1UL << 30,
+    Debuffs = 1UL << 31,
+    EnergyGain = 1UL << 32,
+    Vulnerable = 1UL << 33,
+    Forge = 1UL << 34,
+    Vigor = 1UL << 35,
+    Plating = 1UL << 36,
+    EtherealPlays = 1UL << 37,
+    SoulPlays = 1UL << 38,
 }
 
 [Flags]
@@ -90,6 +137,8 @@ internal enum PowerCardTiming
     CurrentTurn = 1 << 10,
     FutureTurns = 1 << 11,
     ExpiresAtTurnEnd = 1 << 12,
+    BeforeStarSpend = 1 << 13,
+    BeforeOrbEvoke = 1 << 14,
 }
 
 internal readonly record struct PowerCardTurnProjection(
@@ -130,7 +179,37 @@ internal readonly record struct PowerCardValuationContext(
     int FollowingTurnIncomingHitCount,
     int DexterityLossValue,
     PowerCardTurnProjection CurrentTurn,
-    PowerCardTurnProjection Future);
+    PowerCardTurnProjection Future,
+    int OrbCount = 0,
+    int DistinctOrbTypes = 0,
+    int FrostOrbs = 0,
+    int LightningOrbs = 0,
+    int DarkOrbs = 0,
+    int FocusAmount = 0,
+    int StarGainTriggers = 0,
+    int StarSpendTriggers = 0,
+    int StarSpendAmount = 0,
+    int SummonTriggers = 0,
+    int SummonAmount = 0,
+    int OstyCount = 0,
+    int SoulPlays = 0,
+    int DoomApplicationTriggers = 0,
+    int EnemyDoom = 0,
+    int EnergyGainTriggers = 0,
+    int StatusCardTriggers = 0,
+    int GeneratedCardTriggers = 0,
+    int ShuffleTriggers = 0,
+    int PowerPlayTriggers = 0,
+    int SelfDamageTriggers = 0,
+    int DebuffTriggers = 0,
+    int ZeroCostAttackPlays = 0,
+    int PlayerHpLossWindows = 0,
+    int CurseOrStatusInHand = 0,
+    int EtherealPlays = 0,
+    int StrongestAttackDamage = 0,
+    int WeakTargetAttackCount = 0,
+    int VulnerableTargetAttackDamage = 0,
+    int ForgeAmount = 0);
 
 internal readonly record struct PowerCardValuationReward
 {
@@ -237,6 +316,24 @@ internal static class PowerCardValuationMath
             product *= value;
             if (product >= int.MaxValue)
                 return int.MaxValue;
+        }
+        return (int)product;
+    }
+
+    public static int SaturatingAddNonNegative(int left, int right)
+        => (int)Math.Clamp((long)left + right, 0L, int.MaxValue);
+
+    public static int SaturatingMultiplyNonNegative(params ReadOnlySpan<int> values)
+    {
+        long product = 1;
+        foreach (int value in values)
+        {
+            int factor = Math.Max(0, value);
+            if (factor == 0)
+                return 0;
+            if (product > int.MaxValue / factor)
+                return int.MaxValue;
+            product *= factor;
         }
         return (int)product;
     }

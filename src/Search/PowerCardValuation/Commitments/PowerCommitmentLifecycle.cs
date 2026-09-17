@@ -26,13 +26,14 @@ internal static class PowerCommitmentLifecycle
         ArgumentOutOfRangeException.ThrowIfNegative(investment);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(provisionalPotential);
         if (descriptor.Family == PowerCommitmentFamily.None
-            || descriptor.Card == SilentPowerCardIdentity.None)
+            || string.IsNullOrEmpty(descriptor.CardId))
         {
             throw new ArgumentException("能力承诺需要已登记的机制族和卡牌身份。", nameof(descriptor));
         }
         return new(
             descriptor.Family,
-            descriptor.Card,
+            descriptor.Priority,
+            [descriptor.CardId],
             turn,
             actionCount,
             historyEntryCount,
@@ -65,7 +66,10 @@ internal static class PowerCommitmentLifecycle
         return commitment with
         {
             Family = commitment.Family | descriptor.Family,
-            Cards = commitment.Cards | descriptor.Card,
+            Priority = descriptor.Priority > commitment.Priority
+                ? descriptor.Priority
+                : commitment.Priority,
+            Cards = AppendCard(commitment.Cards, descriptor.CardId),
             Investment = SaturatingAdd(commitment.Investment, investment),
             ProvisionalPotential = SaturatingAdd(
                 unrealizedPriorPotential,
@@ -125,6 +129,22 @@ internal static class PowerCommitmentLifecycle
                 ProvisionalPotential = remainingPotential,
             },
             PowerCommitmentDisposition.Active);
+    }
+
+    private static IReadOnlyList<string> AppendCard(
+        IReadOnlyList<string> cards,
+        string cardId)
+    {
+        for (int index = 0; index < cards.Count; index++)
+        {
+            if (string.Equals(cards[index], cardId, StringComparison.Ordinal))
+                return cards;
+        }
+        string[] result = new string[cards.Count + 1];
+        for (int index = 0; index < cards.Count; index++)
+            result[index] = cards[index];
+        result[^1] = cardId;
+        return result;
     }
 
     private static int SaturatingAdd(int left, int right)

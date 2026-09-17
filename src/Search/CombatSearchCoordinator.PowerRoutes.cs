@@ -21,6 +21,8 @@ internal static partial class CombatSearchCoordinator
         SolverPotionPolicy? potionPolicyOverride,
         SolverResult baseline)
     {
+        if (!root.PlayerCardIds.Any(PowerCardValuationModels.Registry.ContainsCardId))
+            return baseline;
         CombatBeamSolver prefixBuilder = new(
             root,
             displayNames,

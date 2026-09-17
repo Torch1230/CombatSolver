@@ -3545,6 +3545,8 @@ internal sealed partial class CombatBeamSolver
             List<SearchNode> required,
             int limit)
         {
+            if (_run.PowerCommitmentsCreated == 0)
+                return;
             int quota = PowerCommitmentSeatPolicy.SeatQuota(
                 limit,
                 _profile.AggressivePowerCommitment);
