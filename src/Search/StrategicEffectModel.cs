@@ -488,6 +488,8 @@ internal static class StrategicEffectModel
             AfterimagePower => Prevention(amount * context.UsefulCardPlays, context),
             BufferPower => Prevention(BufferPrevention(amount, context), context),
             PlatingPower => Prevention(amount * context.RemainingTurns, context),
+            // 幽影形态的每回合 -敏是代价不是收益；其他维度由 IntangiblePower 自身结算承担。
+            WraithFormPower => StrategicEffectVector.Zero,
             FeelNoPainPower => Prevention(amount * context.ExhaustPlays, context),
             DarkEmbracePower => CardAccess(amount * (context.ExhaustDrawPlays ?? context.ExhaustPlays) * cardAccessUnit),
             ThornsPower => Damage(amount * context.IncomingHitCount, enemyHp),
