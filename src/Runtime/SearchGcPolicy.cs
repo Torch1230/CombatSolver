@@ -13,6 +13,14 @@ internal static partial class SearchGcPolicy
     private const int ConcurrentSearchExitPollMilliseconds = 10;
     private const int SystemMemoryPressureLimitPercent = 95;
     private const long MinimumNoGcRegionBudgetBytes = 512L * 1024 * 1024;
+    /// <summary>
+    /// A no-GC region only earns its teardown cost when it can absorb a meaningful share of the
+    /// search's allocation. When system headroom caps the region to a small fraction of the
+    /// configured budget, the search exhausts it almost immediately and every following memory
+    /// checkpoint has to tear the region down, force a collection and restart it. Falling back to
+    /// the default collector for that search is cheaper than pretending the reservation held.
+    /// </summary>
+    private const int MinimumNoGcRegionBudgetPercent = 50;
     private static readonly Lock Gate = new();
     private static readonly SearchGcLifecycleCounters Lifecycle = new();
     private static int _activeSearches;
@@ -490,9 +498,35 @@ internal static partial class SearchGcPolicy
                             EffectiveNoGcRegionBudget effectiveBudget = ResolveEffectiveNoGcRegionBudget(
                                 noGcRegionBudgetBytes,
                                 noGcRegionLohBudgetBytes);
+                            // Captured before the size-fallback loop mutates it: only headroom
+                            // clamping, never a platform reservation ceiling, makes a smaller
+                            // region pointless to keep.
+                            bool headroomLimitedBudget = effectiveBudget.Capped;
                             NoGcRegionStartOutcome startOutcome = effectiveBudget.CanStart
                                 ? TryStartNoGcRegionWithSizeFallback(ref effectiveBudget, restartRequested)
                                 : NoGcRegionStartOutcome.SystemHeadroomInsufficient;
+                            if (startOutcome == NoGcRegionStartOutcome.Started
+                                && headroomLimitedBudget
+                                && !IsNoGcRegionBudgetWorthEntering(
+                                    noGcRegionBudgetBytes, effectiveBudget.TotalBytes))
+                            {
+                                // The runtime could only reserve a fraction of the configured budget.
+                                // Such a region cannot absorb a meaningful share of the search's
+                                // allocation, so the search exhausts it immediately and every later
+                                // memory checkpoint pays a full region teardown plus a forced
+                                // collection before restarting it. Declining the region also disables
+                                // the pressure signal, so the search runs to completion under the
+                                // default collector instead of thrashing against this loop.
+                                EndNoGcRegion();
+                                Entry.Logger.Info(
+                                    $"[CombatSolver/Test] GC_NO_GC_REGION_DECLINED " +
+                                    $"configured_budget={noGcRegionBudgetBytes} " +
+                                    $"achieved_budget={effectiveBudget.TotalBytes} " +
+                                    $"percent_of_configured={effectiveBudget.TotalBytes * 100 / noGcRegionBudgetBytes} " +
+                                    $"system_memory_load={effectiveBudget.MemoryLoadBytes} " +
+                                    $"system_memory_limit={effectiveBudget.SystemMemoryLimitBytes}");
+                                startOutcome = NoGcRegionStartOutcome.SystemHeadroomInsufficient;
+                            }
                             _noGcRegionActive = startOutcome == NoGcRegionStartOutcome.Started;
                             if (_noGcRegionActive)
                             {
@@ -2075,11 +2109,31 @@ internal static partial class SearchGcPolicy
                             : configuredRegionBudgetBytes,
                         configuredLohBudgetBytes);
                     bool restartAttempted = endNoGcRegion && effectiveBudget.CanStart;
+                    // Captured before the size-fallback loop mutates it; see the admission path.
+                    bool restartHeadroomLimitedBudget = effectiveBudget.Capped;
                     if (endNoGcRegion)
                     {
                         restartOutcome = effectiveBudget.CanStart
                             ? TryStartNoGcRegionWithSizeFallback(ref effectiveBudget, restart: true)
                             : NoGcRegionStartOutcome.SystemHeadroomInsufficient;
+                        if (restartOutcome == NoGcRegionStartOutcome.Started
+                            && restartHeadroomLimitedBudget
+                            && !IsNoGcRegionBudgetWorthEntering(
+                                configuredRegionBudgetBytes, effectiveBudget.TotalBytes))
+                        {
+                            // Restarting into a region this far below the configured budget would
+                            // resume the teardown/maintain cycle at a shorter period, which is the
+                            // outcome the recovery budget ceiling exists to avoid.
+                            EndNoGcRegion();
+                            Entry.Logger.Info(
+                                $"[CombatSolver/Test] GC_NO_GC_REGION_DECLINED stage=restart " +
+                                $"configured_budget={configuredRegionBudgetBytes} " +
+                                $"achieved_budget={effectiveBudget.TotalBytes} " +
+                                $"percent_of_configured={effectiveBudget.TotalBytes * 100 / configuredRegionBudgetBytes} " +
+                                $"system_memory_load={effectiveBudget.MemoryLoadBytes} " +
+                                $"system_memory_limit={effectiveBudget.SystemMemoryLimitBytes}");
+                            restartOutcome = NoGcRegionStartOutcome.SystemHeadroomInsufficient;
+                        }
                     }
                     _noGcRegionActive = restartOutcome == NoGcRegionStartOutcome.Started;
                     if (_noGcRegionActive)
@@ -2293,6 +2347,20 @@ internal static partial class SearchGcPolicy
     private static bool IsSystemHeadroomOutcome(NoGcRegionStartOutcome outcome)
         => outcome is NoGcRegionStartOutcome.SystemHeadroomInsufficient
             or NoGcRegionStartOutcome.InsufficientMemory;
+
+    /// <summary>
+    /// Decides whether a region that did start is worth keeping. Only system headroom can make
+    /// this question interesting: a region shrunk to fit a platform reservation ceiling is still
+    /// the best the platform can offer, so callers only consult this when the budget was already
+    /// headroom-capped before the size-fallback loop ran.
+    /// </summary>
+    internal static bool IsNoGcRegionBudgetWorthEntering(
+        long configuredBudgetBytes,
+        long achievedBudgetBytes)
+        => achievedBudgetBytes
+            >= Math.Max(
+                MinimumNoGcRegionBudgetBytes,
+                configuredBudgetBytes / 100 * MinimumNoGcRegionBudgetPercent);
 
     private static string FormatStartOutcome(NoGcRegionStartOutcome outcome)
         => outcome switch

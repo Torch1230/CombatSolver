@@ -1,5 +1,9 @@
 # CombatSolver 测试清单
 
+## 未发布：No-GC 区域准入下限（从 PR #114 提取）
+
+- `tools/CombatSolver.GcPolicyChecks` 的 `admission` 6 个准入合同覆盖 12 GiB 配置在系统余量下只得到 2.97 GiB 时拒绝、平台尺寸回退保持准入及边界值；原分支结果见[报告](performance/no-gc-region-admission-20260917.md)。与当前 main 组合的运行结果在最终集成记录中补充。
+
 ## 未发布：状态键补整场历史计数（2026-09-19）
 
 - 离线宿主对上游 0.41.0（High 90/50000、Coordinator、Smart、DOP 1、`fixedSearchBudget`，`compare_results.py` 排除耗时/内存字段）：EQ 10 根只有 `NECROBINDER-ELITE-00`（牌组含亡魂牵引）不一致，其余 9 根 983 字段一致；FULL 40 根只有 4 根不一致（`NECROBINDER-ELITE-00`、`SILENT-BOSS-01`、`SILENT-ELITE-03`、`SILENT-BOSS-03`），按生成场景 loadout 核对正是全部含金斧/亡魂牵引/谋杀的根，其余 36 根一致；GA 10 根（EQ 规格 + 无色牌固定含一张金斧）全部不一致。15 根受影响根：战损 2 根下降（48→29、9→8）、0 根上升、0 根胜负翻转，展开量比 0.997–1.000。
