@@ -27,6 +27,7 @@
 - [铁甲战士](ironclad.md)
 - [静默猎手](silent.md)
 - [静默猎手首版量化规格](silent-quantification-20260917.md)
+- [静默猎手第二版量化与路线保护方案](silent-v2-valuation-and-retention-plan-20260917.md)
 - [故障机器人](defect.md)
 - [储君](regent.md)
 - [亡灵契约师](necrobinder.md)
