@@ -216,7 +216,11 @@ internal static class BatchRunner
         void Arg(string ps, string sh, string? value = null) { start.ArgumentList.Add(windows ? "-" + ps : "--" + sh); if (value != null) start.ArgumentList.Add(value); }
         if (options.TryGetValue("--game-root", out string? game)) Arg("Sts2GameRoot", "sts2-game-root", Path.GetFullPath(game));
         if (options.TryGetValue("--ritsu-root", out string? ritsu)) Arg("RitsuWorkshopRoot", "ritsu-workshop-root", Path.GetFullPath(ritsu));
-        if (stop) Arg("StopOwnedProcess", "stop-owned-process");
+        if (stop)
+        {
+            Arg("StopInstance", "stop-instance");
+            Arg("CleanupInstanceOnExit", "cleanup-instance-on-exit");
+        }
         else
         {
             Arg("CheckpointArchivePath", "checkpoint-archive-path", archive!);
