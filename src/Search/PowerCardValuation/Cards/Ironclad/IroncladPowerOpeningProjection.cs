@@ -96,7 +96,8 @@ internal sealed partial class CombatBeamSolver
             "VICIOUS" => PowerPerTriggerResourcePotential(
                 PowerAmountGain<ViciousPower>(parent, child)
                     * Math.Max(1, PowerEnergyUnit(child)),
-                PowerCountWithVulnerable(child)),
+                PowerCountWithVulnerable(child)
+                    * Math.Max(1, child.Snapshot.AliveEnemyCount)),
             _ => 0,
         };
     }

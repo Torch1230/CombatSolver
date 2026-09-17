@@ -73,7 +73,7 @@ internal sealed partial class CombatBeamSolver
                 turns,
                 enemyCount),
             "ITERATION" => PowerPerTriggerResourcePotential(
-                PowerEnergyUnit(child),
+                PowerAmountGain<IterationPower>(parent, child) * PowerEnergyUnit(child),
                 statusSources),
             "LOOP" => PowerPerTurnResourcePotential(
                 Math.Max(1, orbs),

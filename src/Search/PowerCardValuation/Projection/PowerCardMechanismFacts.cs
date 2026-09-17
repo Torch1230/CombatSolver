@@ -206,6 +206,25 @@ internal sealed partial class CombatBeamSolver
         return Math.Max(3, (int)(total / cards.Length));
     }
 
+    private int PowerDrawPerTurn(SearchNode node)
+    {
+        SimulatedCombatState combat =
+            (SimulatedCombatState)node.Snapshot.Simulator.State.CombatState;
+        return Math.Max(
+            1,
+            PersistentPowerSupport.GetModifiedHandDraw(
+                combat,
+                _player,
+                MegaCrit.Sts2.Core.Combat.CombatManager.baseHandDrawCount));
+    }
+
+    private int PowerMaxEnergy(SearchNode node)
+    {
+        SimulatedCombatState combat =
+            (SimulatedCombatState)node.Snapshot.Simulator.State.CombatState;
+        return Math.Max(1, PersistentPowerSupport.GetModifiedMaxEnergy(combat, _player));
+    }
+
     private int PowerCountType(SearchNode node, CardType type)
         => PowerLiveCards(node).Count(card => card.Preview.Type == type);
 

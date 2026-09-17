@@ -48,9 +48,7 @@ internal sealed partial class CombatBeamSolver
                 PowerAmountGain<PlatingPower>(parent, child),
                 turns,
                 incoming),
-            "ORBIT" => PowerPerTriggerResourcePotential(
-                PowerEnergyUnit(child),
-                Math.Max(1, turns)),
+            "ORBIT" => OrbitPotential(parent, child, turns),
             "PALE_BLUE_DOT" => PowerPerTurnResourcePotential(
                 PowerAmountGain<PaleBlueDotPower>(parent, child) * PowerEnergyUnit(child),
                 turns),
@@ -86,6 +84,21 @@ internal sealed partial class CombatBeamSolver
                 turns),
             _ => 0,
         };
+    }
+
+    /// <summary>按每回合最大能量估算能量花费，每累计4点返还一次，不按回合数直接当作触发次数。</summary>
+    private int OrbitPotential(SearchNode parent, SearchNode child, int turns)
+    {
+        int amount = PowerAmountGain<OrbitPower>(parent, child);
+        if (amount == 0)
+            return 0;
+        int spent = SaturatingProduct(PowerMaxEnergy(child), Math.Max(0, turns));
+        int payouts = spent / 4;
+        return payouts <= 0
+            ? 0
+            : PowerPerTriggerResourcePotential(
+                amount * PowerEnergyUnit(child),
+                payouts);
     }
 }
 

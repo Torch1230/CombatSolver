@@ -41,10 +41,10 @@ internal static class IroncladTriggerPowerCardValuationModels
             Req.Vulnerable | Req.Debuffs | Req.Draws | Req.Resources,
             static (card, context) => PowerCardValueFacts.CardAccessPerTrigger(
                 card,
-                in context,
+                context,
                 PowerCardValueFacts.UpgradeValue(card.IsUpgraded, 1, 2),
                 context.DebuffTriggers,
-                delayed: true)),
+                delayed: false)),
     ];
 }
 

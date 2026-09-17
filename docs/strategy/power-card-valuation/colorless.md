@@ -56,3 +56,17 @@
 
 - 随机生成（灾难、熵）、洗牌与自动出牌的收益依赖运行时牌序，投影为保守代理。
 - 兑现证据暂统一走通用状态改善回退。
+
+## 玩家联合评审采纳（2026-09-17）
+
+| 卡牌 | 变化 | 依据 |
+|---|---|---|
+| AUTOMATION | Normal→Core，加入专搜，按实际抽牌折算每10抽返能 | 玩家判定为超强、优先级极高 |
+| CALAMITY | Strong→Normal，加入专搜 | 3费且随机攻击牌，当回合易亏费卡手 |
+| ENTROPY | Normal→Strong | 玩家判定很强、提供多变数 |
+| FASTEN | Strong→Core | 很强，优先开 |
+| MAYHEM | 加入专搜 | 回合开始免费打牌且控顶 |
+| NOSTALGIA | Normal→Strong，加入专搜 | 定点回抽核心牌，跨回合收益高 |
+| PANACHE | 移除专搜 | 0费即时反馈，普通搜索可识别 |
+| ROLLING_BOULDER | Core→Normal，不专搜 | 玩家判定一般没人抓 |
+| STRATAGEM | Normal→Strong，加入专搜 | 洗牌时点在未来，涉及分支选牌 |

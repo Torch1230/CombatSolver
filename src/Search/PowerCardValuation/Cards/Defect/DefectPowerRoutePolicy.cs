@@ -41,8 +41,9 @@ internal static class DefectPowerRoutePolicy
         => cardId switch
         {
             "BIASED_COGNITION" => new(
-                PowerRoutePriority.Core,
-                AllowTriggerBackedProjectionFloor: true),
+                PowerRoutePriority.Normal,
+                AllowTriggerBackedProjectionFloor: true,
+                PreferDedicatedSearch: true),
             "BUFFER" => new(
                 PowerRoutePriority.Strong,
                 RequireImmediateDefenseGain: true),
@@ -51,16 +52,18 @@ internal static class DefectPowerRoutePolicy
                 AllowTriggerBackedProjectionFloor: true),
             "CAPACITOR" => new(
                 PowerRoutePriority.Strong,
-                AllowTriggerBackedProjectionFloor: true),
+                AllowTriggerBackedProjectionFloor: true,
+                PreferDedicatedSearch: true),
             "CONSUMING_SHADOW" => new(
-                PowerRoutePriority.Strong,
-                AllowTriggerBackedProjectionFloor: true),
+                PowerRoutePriority.Low,
+                RequireFreeOrSpareActivation: true),
             "COOLANT" => new(
-                PowerRoutePriority.Strong,
-                AllowTriggerBackedProjectionFloor: true),
+                PowerRoutePriority.Low,
+                RequireFreeOrSpareActivation: true),
             "CREATIVE_AI" => new(
-                PowerRoutePriority.Core,
-                AllowTriggerBackedProjectionFloor: true),
+                PowerRoutePriority.Normal,
+                AllowTriggerBackedProjectionFloor: true,
+                PreferDedicatedSearch: true),
             "DEFRAGMENT" => new(
                 PowerRoutePriority.Core,
                 AllowTriggerBackedProjectionFloor: true),
@@ -73,24 +76,27 @@ internal static class DefectPowerRoutePolicy
                 PowerRoutePriority.Strong,
                 RequirePositiveProjection: true),
             "ITERATION" => new(
-                PowerRoutePriority.Normal,
+                PowerRoutePriority.Strong,
                 RequirePositiveProjection: true),
             "LOOP" => new(
                 PowerRoutePriority.Core,
                 AllowTriggerBackedProjectionFloor: true),
             "MACHINE_LEARNING" => new(
                 PowerRoutePriority.Core,
-                AllowTriggerBackedProjectionFloor: true),
+                AllowTriggerBackedProjectionFloor: true,
+                PreferDedicatedSearch: true),
             "SMOKESTACK" => new(PowerRoutePriority.Normal),
             "SPINNER" => new(
-                PowerRoutePriority.Strong,
+                PowerRoutePriority.Normal,
                 AllowTriggerBackedProjectionFloor: true),
             "STORM" => new(
                 PowerRoutePriority.Core,
-                RequirePositiveProjection: true),
+                RequirePositiveProjection: true,
+                PreferDedicatedSearch: true),
             "SUBROUTINE" => new(
                 PowerRoutePriority.Core,
-                RequirePositiveProjection: true),
+                RequirePositiveProjection: true,
+                PreferDedicatedSearch: true),
             "THUNDER" => new(
                 PowerRoutePriority.Strong,
                 RequirePositiveProjection: true),

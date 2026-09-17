@@ -17,9 +17,7 @@ internal sealed partial class CombatBeamSolver
         int attacks = Math.Max(1, PowerCountType(child, CardType.Attack));
         return cardId switch
         {
-            "AUTOMATION" => PowerPerTriggerResourcePotential(
-                PowerAmountGain<AutomationPower>(parent, child) * PowerEnergyUnit(child),
-                Math.Max(1, turns)),
+            "AUTOMATION" => AutomationPotential(parent, child, turns),
             "CALAMITY" => PowerPerTriggerDamagePotential(
                 child,
                 Math.Max(1, PowerMaxAttackDamage(child)),
@@ -62,6 +60,21 @@ internal sealed partial class CombatBeamSolver
                 turns),
             _ => 0,
         };
+    }
+
+    /// <summary>按预计剩余回合的实际抽牌量折算“每10抽返1能量”，而不是把剩余回合当作触发次数。</summary>
+    private int AutomationPotential(SearchNode parent, SearchNode child, int turns)
+    {
+        int amount = PowerAmountGain<AutomationPower>(parent, child);
+        if (amount == 0)
+            return 0;
+        int draws = SaturatingProduct(PowerDrawPerTurn(child), Math.Max(0, turns));
+        int payouts = draws / 10;
+        return payouts <= 0
+            ? 0
+            : PowerPerTriggerResourcePotential(
+                amount * PowerEnergyUnit(child),
+                payouts);
     }
 }
 

@@ -43,16 +43,19 @@ internal static class NecrobinderPowerRoutePolicy
                 RequirePositiveProjection: true),
             "CALL_OF_THE_VOID" => new(
                 PowerRoutePriority.Core,
-                AllowTriggerBackedProjectionFloor: true),
+                AllowTriggerBackedProjectionFloor: true,
+                PreferDedicatedSearch: true),
             "COUNTDOWN" => new(
                 PowerRoutePriority.Strong,
-                AllowTriggerBackedProjectionFloor: true),
+                AllowTriggerBackedProjectionFloor: true,
+                PreferDedicatedSearch: true),
             "DANSE_MACABRE" => new(
                 PowerRoutePriority.Strong,
                 RequirePositiveProjection: true),
             "DEMESNE" => new(
                 PowerRoutePriority.Core,
-                AllowTriggerBackedProjectionFloor: true),
+                AllowTriggerBackedProjectionFloor: true,
+                PreferDedicatedSearch: true),
             "DEVOUR_LIFE" => new(
                 PowerRoutePriority.Strong,
                 RequirePositiveProjection: true),
@@ -61,7 +64,8 @@ internal static class NecrobinderPowerRoutePolicy
                 NoInCombatCommitment: true),
             "FRIENDSHIP" => new(
                 PowerRoutePriority.Strong,
-                AllowTriggerBackedProjectionFloor: true),
+                AllowTriggerBackedProjectionFloor: true,
+                PreferDedicatedSearch: true),
             "HAUNT" => new(
                 PowerRoutePriority.Strong,
                 RequirePositiveProjection: true),
@@ -69,11 +73,12 @@ internal static class NecrobinderPowerRoutePolicy
                 PowerRoutePriority.Strong,
                 AllowTriggerBackedProjectionFloor: true),
             "NECRO_MASTERY" => new(
-                PowerRoutePriority.Core,
+                PowerRoutePriority.Normal,
                 AllowTriggerBackedProjectionFloor: true),
             "NEUROSURGE" => new(
                 PowerRoutePriority.Strong,
-                AllowTriggerBackedProjectionFloor: true),
+                AllowTriggerBackedProjectionFloor: true,
+                PreferDedicatedSearch: true),
             "PAGESTORM" => new(
                 PowerRoutePriority.Normal,
                 RequirePositiveProjection: true),
@@ -83,7 +88,8 @@ internal static class NecrobinderPowerRoutePolicy
                 PreferDedicatedSearch: true),
             "SENTRY_MODE" => new(
                 PowerRoutePriority.Strong,
-                AllowTriggerBackedProjectionFloor: true),
+                AllowTriggerBackedProjectionFloor: true,
+                PreferDedicatedSearch: true),
             "SHROUD" => new(
                 PowerRoutePriority.Strong,
                 RequirePositiveProjection: true),

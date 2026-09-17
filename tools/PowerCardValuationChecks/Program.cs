@@ -173,8 +173,37 @@ Require(all.TryGetCommitmentDescriptor("REAPER_FORM", out PowerCommitmentDescrip
     && reaper.Admission.PreferDedicatedSearch,
     "亡灵契约师缺少需要专搜的能力。");
 Require(all.TryGetCommitmentDescriptor("PANACHE", out PowerCommitmentDescriptor panache)
-    && panache.Admission.PreferDedicatedSearch,
-    "无色缺少需要专搜的能力。");
+    && !panache.Admission.PreferDedicatedSearch,
+    "神气制胜按玩家复核不应再占用专搜席位。");
+Require(all.TryGetCommitmentDescriptor("AUTOMATION", out PowerCommitmentDescriptor automation)
+    && automation.Admission.PreferDedicatedSearch
+    && automation.Admission.Priority == PowerRoutePriority.Core,
+    "自动化按玩家复核应取得核心优先级与专搜席位。");
+Require(all.TryGetCommitmentDescriptor("BARRICADE", out PowerCommitmentDescriptor barricade)
+    && barricade.Admission.PreferDedicatedSearch
+    && barricade.Admission.Priority == PowerRoutePriority.Strong,
+    "壁垒按玩家复核应取得专搜标记，但保留原优先级以避免劣化选路。");
+Require(all.TryGetCommitmentDescriptor("DARK_EMBRACE", out PowerCommitmentDescriptor darkEmbrace)
+    && darkEmbrace.Admission.PreferDedicatedSearch,
+    "黑暗之拥按玩家复核应取得专搜席位。");
+Require(all.TryGetCommitmentDescriptor("VICIOUS", out PowerCommitmentDescriptor vicious)
+    && vicious.Admission.Priority == PowerRoutePriority.Core,
+    "凶恶按玩家复核应提升为核心优先级。");
+Require(all.TryGetCommitmentDescriptor("CONSUMING_SHADOW", out PowerCommitmentDescriptor consuming)
+    && consuming.Admission.Priority == PowerRoutePriority.Low
+    && consuming.Admission.RequireFreeOrSpareActivation,
+    "吞噬暗影按玩家复核应降为低优先级且仅在免费或有余费时开启。");
+Require(all.TryGetCommitmentDescriptor("COOLANT", out PowerCommitmentDescriptor coolant)
+    && coolant.Admission.Priority == PowerRoutePriority.Low
+    && coolant.Admission.RequireFreeOrSpareActivation,
+    "冷却剂按玩家复核应降为低优先级且不卖血开启。");
+Require(all.TryGetCommitmentDescriptor("ORBIT", out PowerCommitmentDescriptor orbit)
+    && orbit.Admission.PreferDedicatedSearch
+    && orbit.Admission.Priority == PowerRoutePriority.Core,
+    "环绕轨道按玩家复核应提升优先级并取得专搜席位。");
+Require(all.TryGetCommitmentDescriptor("FURNACE", out PowerCommitmentDescriptor furnace)
+    && !furnace.Admission.PreferDedicatedSearch,
+    "熔炉按玩家复核不应占用专搜席位。");
 
 // 9. 路线准入：零触发拒绝、阈值、免费与高费硬开、当前/未来窗口。
 Require(!PowerRouteAdmission.Evaluate(new(

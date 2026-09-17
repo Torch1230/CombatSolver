@@ -41,34 +41,40 @@ internal static class RegentPowerRoutePolicy
         {
             "ARSENAL" => new(
                 PowerRoutePriority.Strong,
-                AllowTriggerBackedProjectionFloor: true),
+                AllowTriggerBackedProjectionFloor: true,
+                PreferDedicatedSearch: true),
             "BLACK_HOLE" => new(
                 PowerRoutePriority.Strong,
                 RequirePositiveProjection: true),
             "CHILD_OF_THE_STARS" => new(
                 PowerRoutePriority.Strong,
-                RequirePositiveProjection: true),
+                RequirePositiveProjection: true,
+                PreferDedicatedSearch: true),
             "FURNACE" => new(
                 PowerRoutePriority.Core,
                 AllowTriggerBackedProjectionFloor: true),
             "GENESIS" => new(
                 PowerRoutePriority.Core,
-                AllowTriggerBackedProjectionFloor: true),
+                AllowTriggerBackedProjectionFloor: true,
+                PreferDedicatedSearch: true),
             "MONARCHS_GAZE" => new(
                 PowerRoutePriority.Strong,
                 RequirePositiveProjection: true),
             "NEUTRON_AEGIS" => new(
                 PowerRoutePriority.Strong,
                 AllowTriggerBackedProjectionFloor: true),
-            "ORBIT" => new(PowerRoutePriority.Normal),
+            "ORBIT" => new(
+                PowerRoutePriority.Core,
+                PreferDedicatedSearch: true),
             "PALE_BLUE_DOT" => new(
                 PowerRoutePriority.Normal,
-                RequirePositiveProjection: true),
+                RequirePositiveProjection: true,
+                PreferDedicatedSearch: true),
             "PARRY" => new(
                 PowerRoutePriority.Strong,
                 RequirePositiveProjection: true),
             "PILLAR_OF_CREATION" => new(
-                PowerRoutePriority.Strong,
+                PowerRoutePriority.Core,
                 RequirePositiveProjection: true),
             "ROYALTIES" => new(
                 PowerRoutePriority.Low,
@@ -78,16 +84,20 @@ internal static class RegentPowerRoutePolicy
                 AllowTriggerBackedProjectionFloor: true),
             "SPECTRUM_SHIFT" => new(
                 PowerRoutePriority.Core,
-                AllowTriggerBackedProjectionFloor: true),
+                AllowTriggerBackedProjectionFloor: true,
+                PreferDedicatedSearch: true),
             "SWORD_SAGE" => new(
                 PowerRoutePriority.Strong,
-                RequirePositiveProjection: true),
+                RequirePositiveProjection: true,
+                PreferDedicatedSearch: true),
             "THE_SEALED_THRONE" => new(
                 PowerRoutePriority.Core,
-                RequirePositiveProjection: true),
+                RequirePositiveProjection: true,
+                PreferDedicatedSearch: true),
             "TYRANNY" => new(
                 PowerRoutePriority.Strong,
-                AllowTriggerBackedProjectionFloor: true),
+                AllowTriggerBackedProjectionFloor: true,
+                PreferDedicatedSearch: true),
             "VOID_FORM" => new(
                 PowerRoutePriority.Core,
                 AllowTriggerBackedProjectionFloor: true,

@@ -37,30 +37,36 @@ internal static class IroncladPowerRoutePolicy
     internal static PowerRouteAdmissionPolicy For(string cardId)
         => cardId switch
         {
-            "AGGRESSION" => new(PowerRoutePriority.Normal),
+            "AGGRESSION" => new(
+                PowerRoutePriority.Normal,
+                PreferDedicatedSearch: true),
             "BARRICADE" => new(
                 PowerRoutePriority.Strong,
-                AllowTriggerBackedProjectionFloor: true),
+                AllowTriggerBackedProjectionFloor: true,
+                PreferDedicatedSearch: true),
             "CORRUPTION" => new(
                 PowerRoutePriority.Strong,
                 AllowTriggerBackedProjectionFloor: true,
                 PreferDedicatedSearch: true),
             "CRIMSON_MANTLE" => new(
                 PowerRoutePriority.Strong,
-                AllowTriggerBackedProjectionFloor: true),
+                AllowTriggerBackedProjectionFloor: true,
+                PreferDedicatedSearch: true),
             "CRUELTY" => new(
-                PowerRoutePriority.Strong,
+                PowerRoutePriority.Normal,
                 RequirePositiveProjection: true),
             "DARK_EMBRACE" => new(
                 PowerRoutePriority.Core,
-                AllowTriggerBackedProjectionFloor: true),
+                AllowTriggerBackedProjectionFloor: true,
+                PreferDedicatedSearch: true),
             "DEMON_FORM" => new(
                 PowerRoutePriority.Core,
-                AllowTriggerBackedProjectionFloor: true),
+                AllowTriggerBackedProjectionFloor: true,
+                PreferDedicatedSearch: true),
             "FEEL_NO_PAIN" => new(
                 PowerRoutePriority.Core,
                 AllowTriggerBackedProjectionFloor: true),
-            "HELLRAISER" => new(PowerRoutePriority.Normal),
+            "HELLRAISER" => new(PowerRoutePriority.Low),
             "INFERNO" => new(
                 PowerRoutePriority.Strong,
                 AllowTriggerBackedProjectionFloor: true),
@@ -68,24 +74,27 @@ internal static class IroncladPowerRoutePolicy
                 PowerRoutePriority.Core,
                 AllowTriggerBackedProjectionFloor: true),
             "JUGGERNAUT" => new(
-                PowerRoutePriority.Strong,
+                PowerRoutePriority.Normal,
                 AllowTriggerBackedProjectionFloor: true),
-            "JUGGLING" => new(PowerRoutePriority.Normal),
+            "JUGGLING" => new(PowerRoutePriority.Low),
             "PYRE" => new(
                 PowerRoutePriority.Core,
-                AllowTriggerBackedProjectionFloor: true),
+                AllowTriggerBackedProjectionFloor: true,
+                PreferDedicatedSearch: true),
             "RUPTURE" => new(
                 PowerRoutePriority.Normal,
-                RequireFreeOrSpareActivation: true),
+                RequireFreeOrSpareActivation: true,
+                PreferDedicatedSearch: true),
             "STAMPEDE" => new(PowerRoutePriority.Normal),
             "STONE_ARMOR" => new(
                 PowerRoutePriority.Strong,
                 AllowTriggerBackedProjectionFloor: true),
             "UNMOVABLE" => new(
                 PowerRoutePriority.Strong,
-                AllowTriggerBackedProjectionFloor: true),
+                AllowTriggerBackedProjectionFloor: true,
+                PreferDedicatedSearch: true),
             "VICIOUS" => new(
-                PowerRoutePriority.Normal,
+                PowerRoutePriority.Core,
                 RequirePositiveProjection: true),
             _ => default,
         };

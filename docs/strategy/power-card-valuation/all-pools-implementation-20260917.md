@@ -96,3 +96,17 @@
 - 运行时 CardId 由类型名 SCREAMING_SNAKE 推导（与现有静默猎手一致，已被生产验证），未逐卡读取游戏 ID 表。
 - 部分原版效果含选择/随机目标/重放顺序，投影只保证“存在值得搜索的路线”，不预测精确战损。
 - 本批未启动可见 Steam；无头数据不能外推为可见性能收益。
+
+## 5. 玩家联合评审采纳（2026-09-17）
+
+玩家对 [逐卡复核表](player-review-20260917.md) 中 Gemini 建议逐条给出最终意见，原则是“以玩家意见为准”。实现按此更新了 87 张牌的路线优先级、专搜标记与部分数值口径：
+
+- 专搜（`PreferDedicatedSearch`）新增：铁甲战士 AGGRESSION、BARRICADE、CRIMSON_MANTLE、DARK_EMBRACE、DEMON_FORM、PYRE、RUPTURE、UNMOVABLE；故障机器人 BIASED_COGNITION、CAPACITOR、CREATIVE_AI、MACHINE_LEARNING、STORM、SUBROUTINE；储君 ARSENAL、CHILD_OF_THE_STARS、GENESIS、ORBIT、PALE_BLUE_DOT、SPECTRUM_SHIFT、SWORD_SAGE、THE_SEALED_THRONE、TYRANNY；亡灵契约师 CALL_OF_THE_VOID、COUNTDOWN、DEMESNE、FRIENDSHIP、NEUROSURGE、SENTRY_MODE；无色 AUTOMATION、CALAMITY、MAYHEM、NOSTALGIA、STRATAGEM。
+- 专搜移除：HELLRAISER、JUGGLING、LOOP、FURNACE、PANACHE、ROLLING_BOULDER、NECRO_MASTERY。
+- 优先级调整：BARRICADE、VICIOUS、ORBIT、PILLAR_OF_CREATION、AUTOMATION、FASTEN、ENTROPY、NOSTALGIA、STRATAGEM 上调；CRUELTY、JUGGERNAUT、JUGGLING、HELLRAISER、BIASED_COGNITION、CREATIVE_AI、SPINNER、CONSUMING_SHADOW、COOLANT、CALAMITY、ROLLING_BOULDER、NECRO_MASTERY 下调。
+- 数值口径：AUTOMATION 改为按预计剩余回合的实际抽牌量折算“每10抽返1能量”；ORBIT 改为按每回合最大能量估算每4费返能；VICIOUS 的抽牌按群体/重复易伤叠加；ITERATION 按能力实际抽牌量而非固定值；消耗暗影与冷却剂改为“仅免费或有余费时开”。
+- 专搜说明：本实现已对“当前可打出的每张已登记能力”从同一根运行固定前缀完整后验，因此这批评审标记的牌本来就会获得专搜；`PreferDedicatedSearch` 作为评审优先级标记保留。实测把它接入前缀构造顺序或承诺席位排序会让铁甲战士 `BARRICADE` 场景从 43 战损劣化为 62，故不改变路由，只作标记与文档。
+- 明确不动：`ROYALTIES`、`FORBIDDEN_GRIMOIRE` 完全保持 `NoInCombatCommitment`，不得为局外金币/删牌承担任何战损（玩家特别指令）。
+- 时序核对：`LETHALITY` 按源码作用于打出当回合的第一张攻击（能力牌本身不占首攻），不是从下回合开始；模型沿用。
+
+验证：Release 编译 0 错误 0 警告；纯合同 `POWER_CARD_VALUATION_CHECKS_OK total=104 ...`；PowerShell 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=191`。回归哨兵：铁甲战士 `dev-00-ironclad-elite` 短场景在改动前后均为 43 战损（降级并回退前缀排序后确认），说明这批评审没有劣化最终选路；其余四角色沿用先前通过的短场景，未在本次重跑。

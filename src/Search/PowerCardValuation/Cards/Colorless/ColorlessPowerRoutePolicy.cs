@@ -29,25 +29,30 @@ internal static class ColorlessPowerRoutePolicy
     internal static PowerRouteAdmissionPolicy For(string cardId)
         => cardId switch
         {
-            "AUTOMATION" => new(PowerRoutePriority.Normal),
+            "AUTOMATION" => new(
+                PowerRoutePriority.Core,
+                PreferDedicatedSearch: true),
             "CALAMITY" => new(
-                PowerRoutePriority.Strong,
-                RequirePositiveProjection: true),
-            "ENTROPY" => new(PowerRoutePriority.Normal),
+                PowerRoutePriority.Normal,
+                RequirePositiveProjection: true,
+                PreferDedicatedSearch: true),
+            "ENTROPY" => new(PowerRoutePriority.Strong),
             "ETERNAL_ARMOR" => new(
                 PowerRoutePriority.Strong,
                 AllowTriggerBackedProjectionFloor: true),
             "FASTEN" => new(
-                PowerRoutePriority.Strong,
+                PowerRoutePriority.Core,
                 RequirePositiveProjection: true),
             "MAYHEM" => new(
                 PowerRoutePriority.Core,
-                AllowTriggerBackedProjectionFloor: true),
-            "NOSTALGIA" => new(PowerRoutePriority.Normal),
+                AllowTriggerBackedProjectionFloor: true,
+                PreferDedicatedSearch: true),
+            "NOSTALGIA" => new(
+                PowerRoutePriority.Strong,
+                PreferDedicatedSearch: true),
             "PANACHE" => new(
                 PowerRoutePriority.Strong,
-                RequirePositiveProjection: true,
-                PreferDedicatedSearch: true),
+                RequirePositiveProjection: true),
             "PREP_TIME" => new(
                 PowerRoutePriority.Normal,
                 RequirePositiveProjection: true),
@@ -55,11 +60,12 @@ internal static class ColorlessPowerRoutePolicy
                 PowerRoutePriority.Core,
                 AllowTriggerBackedProjectionFloor: true),
             "ROLLING_BOULDER" => new(
-                PowerRoutePriority.Core,
+                PowerRoutePriority.Normal,
                 AllowTriggerBackedProjectionFloor: true),
             "STRATAGEM" => new(
-                PowerRoutePriority.Normal,
-                RequirePositiveProjection: true),
+                PowerRoutePriority.Strong,
+                RequirePositiveProjection: true,
+                PreferDedicatedSearch: true),
             _ => default,
         };
 }

@@ -181,8 +181,7 @@ internal static partial class CombatSearchCoordinator
         return selected;
     }
 
-    private static string PowerPrefixKey(IEnumerable<PlanAction> prefix)
-        => string.Join(
+    private static string PowerPrefixKey(IEnumerable<PlanAction> prefix)        => string.Join(
             '>',
             prefix.Select(action =>
                 $"{action.CardId}:{action.CardStateKey}:{action.CardStateOccurrence}:" +

@@ -74,3 +74,21 @@
 
 - 球被动/激发、集中与玻璃球的精确收益依赖运行时球状态，投影使用保守代理，需玩家复核。
 - 兑现证据暂统一走通用状态改善回退。
+
+## 玩家联合评审采纳（2026-09-17）
+
+| 卡牌 | 变化 | 依据 |
+|---|---|---|
+| BIASED_COGNITION | Core→Normal，加入专搜 | 适合短线斩杀，长线在后面几回合开；通常不抓 |
+| CAPACITOR | 加入专搜 | 求解器不区分被动流与激发流的球位时序 |
+| CONSUMING_SHADOW | Strong→Low，仅在免费或有余费时开 | 玩家判定为弱牌，不专搜 |
+| COOLANT | Strong→Low，不卖血开 | 牌效比低，通常不抓 |
+| CREATIVE_AI | Core→Normal，加入专搜 | 2-3费当回合零收益 |
+| ITERATION | Normal→Strong | 状态机体系很强 |
+| MACHINE_LEARNING | 加入专搜 | 多抽1很强，当回合纯亏费易被剪 |
+| SPINNER | Strong→Normal | 与关键球抢占球位的风险 |
+| STORM | 加入专搜 | 必须先于其他能力打出 |
+| SUBROUTINE | 加入专搜 | 作为能力链起手 |
+
+- LOOP 按玩家意见不专搜。
+- 数值：ITERATION 按能力牌实际抽牌量计，不再用每回合固定值。

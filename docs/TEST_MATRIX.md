@@ -7,6 +7,8 @@
 - `pwsh -NoProfile -File tools/verify-refactor-boundaries.ps1` 通过，输出 `REFACTOR_BOUNDARIES_OK search_files=191`：门禁已更新为通用多卡池承诺边界，并确认能力估值仍未进入 `CombatBeamSolver.FinalPlanOrdering.cs`。按用户约束未运行 WSL/Bash 门禁，不记为通过。
 - 集成验收（每个角色一个 `coverage/novelty-search` 精英短场景，`-GeneratedScenarioPath` + `-EvidenceDirectory` + `-CleanupInstanceOnExit`）：`dev-00-ironclad-elite`、`dev-01-silent-elite`、`dev-02-defect-elite`、`dev-03-regent-elite`、`dev-04-necrobinder-elite` 全部 `status=Passed` 且 `error=null`，均完成一次完整搜索并给出 `InitialPolicy` 结果。每次调用后实例被删除，最终 `C:\Users\The_M\AppData\Local\CombatSolver\headless-instances` 为空。
 - 未执行：逐卡玩家复核、复杂机制逐卡专用兑现证据、可见 Steam 会话性能与战损对照，均在文档中明确标为未验证。
+- 玩家联合评审采纳后复跑纯合同：`POWER_CARD_VALUATION_CHECKS_OK total=104 ...`，新增断言覆盖 `BARRICADE`、`AUTOMATION`、`DARK_EMBRACE`、`VICIOUS`、`CONSUMING_SHADOW`、`COOLANT`、`ORBIT`、`PANACHE`、`FURNACE` 等评审结论；Release 编译与 PowerShell 结构门禁仍通过。
+- 回归哨兵：铁甲战士 `dev-00-ironclad-elite` 短场景在评审接线前为 43 战损，把专搜标记接入前缀构造顺序/承诺席位排序后劣化为 62，撤回接线后恢复 43 并 `Passed`；`headless-instances` 为空。其余四角色沿用先前通过的短场景，未重复运行。
 
 ## 0.40.2：能力牌估值框架与实例清理（2026-09-17）
 
