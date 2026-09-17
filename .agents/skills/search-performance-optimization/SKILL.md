@@ -118,6 +118,8 @@ description: 在战斗语义已证明正确后，审计或修改 CombatSolver �
 - 准入必须有下限：区域只吸收本次搜索相当一部分分配时才值得进入。`TryStartNoGcRegionWithSizeFallback` 是对半砍到 `MinimumNoGcRegionBudgetBytes`，任何 `Started` 都会被建立，因此**只在尺寸回退循环之前捕获 `Capped`**（该标志等价于「机器给不出配置预算」）并在系统余量缩水到配置的一半以下时拒绝进入、改走默认 GC。平台 SOH 上限造成的缩水是合法机制，不能因此取消区域。拒绝后必须确认分配限额被释放（`RemainingBytes == long.MaxValue`），否则检查点仍会为不存在的区域付拆除成本。检查用 `tools/CombatSolver.GcPolicyChecks -- admission`，它直接编译生产 `SearchGcPolicy.cs`，不需要游戏进程。
 - 修 GC 策略前先确认保留集是否有界：`SearchRunContext` 的转置、StandPat、Coverage、ThreatProjection 等结构无裁剪、无上限，托管堆 52% 碎片时非紧凑回收中位只能拿回 0 MiB。**这类问题改 GC 策略治不了**，把内存从「输出」变成「输入」要落到 `BeamRetentionPolicy` 的容量维度，属语义改动，需完整等价性门禁。不要用准入/回收的复杂度去补保留集的无界。
 - 收益小且扩大语义验证面的微优化保留简单实现。
+- **按类型归因时必须取该类型的调用栈，不能从类型名猜调用点。** 分配 trace 只给出「哪个类型分配了多少」；`Func<CardPile,bool>` 这类泛型名会误导人去找同名形态的代码。先对目标类型取栈定位文件与行号，再改；改完必须用**同一类型**的前后字节数验证是否真的下降（总分配可能被其它来源淹没而看不出变化）。凭类型名推断曾把 `PredictedCard` 谓词当成 `CardPile` 谓词，改错文件：213 行改动换来总分配 +0.069%，只能回退。仓库自带的 `tools/GcTraceAnalysis` 每类型条目不带栈，需要加大 `--top` 后在 `topSearchStacks` 里按类型过滤，或按类别条目交叉核对。
+- 反编译核对游戏类型用 `.local/decompiled-tmp/sts2/`（按命名空间分目录）；`ilspycmd` 在本机安装失败（NuGet 包缺 `DotnetToolSettings.xml`），不要重复尝试。核对该目录时要用「实测调用栈里的方法链」交叉验证版本一致性。
 
 ## 5. 实验与验证
 
