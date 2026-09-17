@@ -493,6 +493,9 @@ internal static class StrategicEffectModel
             // 壁垒保留现有格挡：按当前格挡 × 保留视野线性折算（不按复利累计），入伤上限兜底。
             BarricadePower => Prevention(
                 context.PlayerBlock * Math.Min(context.RemainingTurns, 8), context),
+            // 再生层数每回合递减，治疗总量上限=amount × min(层数, 剩余回合)，入伤上限兜底。
+            RegenPower => Prevention(
+                amount * Math.Min(context.RemainingTurns, amount), context),
             // 幽影形态的每回合 -敏是代价不是收益；其他维度由 IntangiblePower 自身结算承担。
             WraithFormPower => StrategicEffectVector.Zero,
             FeelNoPainPower => Prevention(amount * context.ExhaustPlays, context),
