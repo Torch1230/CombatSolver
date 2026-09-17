@@ -1,16 +1,16 @@
 # CombatSolver 开发笔记与未来构想
 
-## 未发布：多策略路线搜索改回默认关闭（2026-09-17）
+## 0.40.2：多策略路线搜索默认关闭与大战损引导（2026-09-17）
 
 - 「多策略路线搜索（实验）」对新安装保持默认关闭；设置迁移版本提升到 246，但升级时完整保留玩家当前的开启或关闭选择。多宽度路线精炼仍默认开启且没有独立横幅，设置页的开关与状态反馈保持不变。
 - 两条战损引导统一改为预计损失至少 8 HP 时显示，并将玩家文案改为「大战损」；7 HP 及以下不显示，避免玩家在前期普通小额掉血时同时收到过多信息。多策略开启引导还要求功能处于关闭状态；点击横幅会永久隐藏，主动开启功能也会视为已经处理该引导。
 
-## 未发布：搜索进度改用请求级预算（2026-09-17）
+## 0.40.2：搜索进度改用请求级预算（2026-09-17）
 
 - 修复搜索进度条在第一轮节点增长较快时几乎填满、后续路线精炼、药水审计或追加搜索仍在继续却长期停在末端的问题。进度现在按整次请求已经消耗的时间预算推进，不再把某一个子搜索的节点上限当作整次计算的总工作量；世界线计数、搜索预算、路线质量与停止条件均不变。
 - 搜索仍在运行时进度最多显示到 95%，为软时间边界后的当前批次排空和最终候选复核保留明确余量；完成后继续切换到原结果状态。
 
-## 未发布：变形池根快照缓存（2026-09-17）
+## 0.40.2：变形池根快照缓存（2026-09-17）
 
 - 新增根级变形候选池快照 `RootCombatTransformationPoolSnapshot`，按 `(player, cardPool)` 缓存 `CardPoolModel.GetUnlockedCards` 的**未过滤原始序列**（保持上游顺序与实例身份），并在 `Fork` 间不可变共享（`SimulatedCombatState._rootTransformationPools`）。缓存只覆盖玩家角色池与规范无色池；可变池、非规范池、外来玩家或外来约束一律回退上游路径，不做猜测。所有进入缓存的卡都要求原版程序集、非 mutable 且与 `CanonicalInstance` 同一实例。
 - `TurnStartChoiceSupport.ResolveCapturedChoice` 的 `Transform` 分支改走 `CombatCardGenerationExtensions.CreateRandomCardForTransform`，命中快照时使用 sts2 已有的 options 重载 `CardFactory.CreateRandomCardForTransform(original, options, isInCombat, rng)`。逐分支的稀有度、`CanBeGeneratedInCombat`、`Id != original.Id` 与人数过滤仍由 `CardFactory.GetFilteredTransformationOptions` 执行。
