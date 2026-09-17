@@ -120,6 +120,12 @@ internal sealed class UnattendedTestRequest
     /// 小于 1 的值会被丢掉。
     /// </summary>
     public int[]? BeamWidthPortfolioWidthsForTest { get; init; }
+
+    /// <summary>
+    /// 是否保留那个只带基线宽度、不带任何排序修饰的组合成员。缺省保留；给出 false 时少跑一次真实搜索，
+    /// 候选比较不再保证"不差于今天的单次搜索"。只用于消融实验。
+    /// </summary>
+    public bool? BeamWidthPortfolioPlainBaselineMemberForTest { get; init; }
     public int? ExpectedInitialExpandedNodesAtMost { get; init; }
     public int? ExpectedInitialTransitionsAtMost { get; init; }
     public long? ExpectedInitialTotalExpandedNodesAtMost { get; init; }

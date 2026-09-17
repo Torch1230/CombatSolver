@@ -504,6 +504,8 @@ internal static partial class SolverController
             UseBeamWidthPortfolio = settings.UseBeamWidthPortfolio
                 || UnattendedTestRunner.UseBeamWidthPortfolioOverride,
             BeamWidthPortfolioWidths = UnattendedTestRunner.BeamWidthPortfolioWidthsOverride,
+            BeamWidthPortfolioPlainBaselineMember =
+                UnattendedTestRunner.BeamWidthPortfolioPlainBaselineMemberOverride,
             PortfolioExperiment = PortfolioSelectorRuntime.Capture(),
             Act3BossStrategy = UnattendedTestRunner.Act3BossStrategyOverride != false
                 && SearchPolicySnapshot.IsAct3BossEncounter(state.RunState.CurrentActIndex, state.Encounter?.Id.Entry),

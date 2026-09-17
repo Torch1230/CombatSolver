@@ -525,6 +525,7 @@ internal static partial class CombatSearchCoordinator
             // observation; it becomes input. Only captures that change simulation fidelity do.
             bool eligible = IsCompleteVictory(first) && !first.Snapshot.HasRisk
                 && !policy.UseNoveltyPortfolio && policy.BeamWidthPortfolioWidths == null
+                && policy.BeamWidthPortfolioPlainBaselineMember
                 && root.CapturedRunModSubscriberCount == 0 && root.CapturedCombatModSubscriberCount == 0
                 && !root.CapturedBaseLibCardModifiers;
             pendingDecision = !eligible ? "UnsupportedSemantics"
@@ -541,7 +542,10 @@ internal static partial class CombatSearchCoordinator
 
         BeamWidthPortfolioOutcome<SolverResult> outcome = policy.UseBeamWidthPortfolio
             ? BeamWidthPortfolio.Run(
-                BeamWidthPortfolio.ProductionMembers(profile.BeamWidth, policy.BeamWidthPortfolioWidths),
+                BeamWidthPortfolio.ProductionMembers(
+                    profile.BeamWidth,
+                    policy.BeamWidthPortfolioWidths,
+                    policy.BeamWidthPortfolioPlainBaselineMember),
                 profile.MaxExpandedNodes,
                 profile,
                 RunMember,

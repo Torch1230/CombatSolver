@@ -105,18 +105,24 @@ internal static class BeamWidthPortfolio
     internal const double WideRefinementRatio = 3d / 2d;
 
     /// <summary>
-    /// 生产成员列表。首项强制是基线宽度（基线成员必须逐位等于今天的单次搜索），其后按给定顺序
+    /// 生产成员列表。首项默认强制是基线宽度（基线成员必须逐位等于今天的单次搜索），其后按给定顺序
     /// 去重追加，丢掉小于 1 的值。<paramref name="configuredWidths" /> 为空时用默认的
     /// [基线, 基线×2/3, 基线×3/2, 次段 基线, 基础分 基线]（四舍五入，例如基线 24 是
     /// [24, 16, 36, 24+band, 24+base]，基线 135 是 [135, 90, 203, 135+band, 135+base]）；
     /// 显式给出宽度列表时只有宽度成员，不追加次段与基础分成员。
+    /// <paramref name="includePlainBaseline" /> 为 false 时不再追加那个只带基线宽度、不带任何排序修饰的
+    /// 成员，真实搜索因此少跑一次；此时候选比较不再保证"不差于今天的单次搜索"。
+    /// 实测依据：该成员在 152 场里只有 5 场严格优于其余全部成员（合计 19 HP），
+    /// 49% 的场次是与其余最好成员并列、靠"先出现者胜"判给自己，另有 48% 的场次更差。
     /// </summary>
     internal static IReadOnlyList<BeamWidthPortfolioMemberSpec> ProductionMembers(
         int baselineBeamWidth,
-        IReadOnlyList<int>? configuredWidths)
+        IReadOnlyList<int>? configuredWidths,
+        bool includePlainBaseline = true)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(baselineBeamWidth);
-        List<BeamWidthPortfolioMemberSpec> members = [new(baselineBeamWidth)];
+        List<BeamWidthPortfolioMemberSpec> members =
+            includePlainBaseline ? [new(baselineBeamWidth)] : [];
         if (configuredWidths is { Count: > 0 })
         {
             foreach (int width in configuredWidths)

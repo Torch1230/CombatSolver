@@ -139,6 +139,7 @@ internal static class ModRuntime
             SearchBudgetOverrideMilliseconds = options.BudgetMilliseconds,
             SearchMaxDegreeOfParallelism = options.MaxDegreeOfParallelism,
             UseBeamWidthPortfolio = options.UsePortfolio,
+            BeamWidthPortfolioPlainBaselineMember = options.NoPlainBaselineMember ? false : null,
         });
 
     private static int ApplySearchPatches()

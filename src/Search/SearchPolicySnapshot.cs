@@ -69,6 +69,13 @@ internal sealed record SearchPolicySnapshot(
     /// </summary>
     public IReadOnlyList<int>? BeamWidthPortfolioWidths { get; init; }
 
+    /// <summary>
+    /// 默认 true。置 false 时不再运行那个只带基线宽度、不带任何排序修饰的组合成员，
+    /// 少跑一次真实搜索；候选比较因此不再保证"不差于今天的单次搜索"。
+    /// 只由实验与针对性 A/B 置位，生产默认保持 true。
+    /// </summary>
+    public bool BeamWidthPortfolioPlainBaselineMember { get; init; } = true;
+
     internal BeamPortfolioExperiment? PortfolioExperiment { get; init; }
 
     /// <summary>

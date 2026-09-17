@@ -35,6 +35,7 @@ internal sealed partial class UnattendedTestRunner
         public bool UseNoveltyPortfolioOverride { get; private set; }
         public bool UseBeamWidthPortfolioOverride { get; private set; }
         public IReadOnlyList<int>? BeamWidthPortfolioWidthsOverride { get; private set; }
+        public bool? BeamWidthPortfolioPlainBaselineMemberOverride { get; private set; }
         public int? SearchBudgetOverrideMilliseconds { get; private set; }
 
         public void TryStart(NGame? host)
@@ -346,6 +347,8 @@ internal sealed partial class UnattendedTestRunner
             BeamWidthPortfolioWidthsOverride = request.BeamWidthPortfolioWidthsForTest is { Length: > 0 } configured
                 ? configured
                 : null;
+            BeamWidthPortfolioPlainBaselineMemberOverride =
+                request.BeamWidthPortfolioPlainBaselineMemberForTest;
             SearchBudgetOverrideMilliseconds = request.SearchBudgetOverrideMilliseconds
                 ?? (request.FixedSearchBudget
                     ? request.LegacyShortSearchBudgetMilliseconds ?? request.LegacyDeepSearchBudgetMilliseconds
@@ -363,6 +366,7 @@ internal sealed partial class UnattendedTestRunner
             UseNoveltyPortfolioOverride = false;
             UseBeamWidthPortfolioOverride = false;
             BeamWidthPortfolioWidthsOverride = null;
+            BeamWidthPortfolioPlainBaselineMemberOverride = null;
             Act3BossStrategyOverride = null;
             _injectPlayerHpLossTurn = 0;
             _injectPlayerHpLossAmount = 0;

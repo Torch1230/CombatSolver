@@ -37,6 +37,9 @@ internal sealed partial class UnattendedTestRunner
 
         /// <summary>组合成员宽度；不给就用协调器自己的默认成员集。</summary>
         public int[]? BeamWidthPortfolioWidths { get; init; }
+
+        /// <summary>是否保留普通基线成员；不给就是保留（生产缺省）。只用于消融实验。</summary>
+        public bool? BeamWidthPortfolioPlainBaselineMember { get; init; }
     }
 
     /// <summary>
@@ -60,6 +63,8 @@ internal sealed partial class UnattendedTestRunner
                 SearchMaxDegreeOfParallelismForTest = options.SearchMaxDegreeOfParallelism,
                 UseBeamWidthPortfolioForTest = options.UseBeamWidthPortfolio ? true : null,
                 BeamWidthPortfolioWidthsForTest = options.BeamWidthPortfolioWidths,
+                BeamWidthPortfolioPlainBaselineMemberForTest =
+                    options.BeamWidthPortfolioPlainBaselineMember,
             });
             IsActive = true;
             AutomaticTurnSearchEnabled = false;

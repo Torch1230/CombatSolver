@@ -72,6 +72,7 @@ internal sealed class SolvedRouteCache(string path)
             policy.UseNoveltyPortfolio,
             policy.NoveltyBudget,
             policy.BeamWidthPortfolioWidths,
+            policy.BeamWidthPortfolioPlainBaselineMember,
             PortfolioSelector = policy.PortfolioExperiment?.Model?.ModelId,
             policy.FixedBudget,
             policy.BudgetOverrideMilliseconds,
