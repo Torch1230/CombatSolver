@@ -1,5 +1,20 @@
 # CombatSolver 开发笔记与未来构想
 
+## 未发布：变形池根快照缓存（2026-09-17）
+
+- 新增根级变形候选池快照 `RootCombatTransformationPoolSnapshot`，按 `(player, cardPool)` 缓存 `CardPoolModel.GetUnlockedCards` 的**未过滤原始序列**（保持上游顺序与实例身份），并在 `Fork` 间不可变共享（`SimulatedCombatState._rootTransformationPools`）。缓存只覆盖玩家角色池与规范无色池；可变池、非规范池、外来玩家或外来约束一律回退上游路径，不做猜测。所有进入缓存的卡都要求原版程序集、非 mutable 且与 `CanonicalInstance` 同一实例。
+- `TurnStartChoiceSupport.ResolveCapturedChoice` 的 `Transform` 分支改走 `CombatCardGenerationExtensions.CreateRandomCardForTransform`，命中快照时使用 sts2 已有的 options 重载 `CardFactory.CreateRandomCardForTransform(original, options, isInCombat, rng)`。逐分支的稀有度、`CanBeGeneratedInCombat`、`Id != original.Id` 与人数过滤仍由 `CardFactory.GetFilteredTransformationOptions` 执行。
+- **RNG 语义不变**：`GetFilteredTransformationOptions` 在选取前一律 `.ToArray()` 物化，两条重载传给 `Rng.NextItem` 的都是 `CardModel[]`，`NextItem` 对数组直接使用否则 `ToArray()`，两者都只消费一次 `NextInt(0, length)`。因此缓存序列与上游同内容同顺序时，RNG 消耗逐字段相同。这是本改动唯一需要严格验证的语义点，已由契约覆盖。
+- 该路径此前每个展开节点都重复执行 `GetUnlockedCards` → `FilterThroughEpochs` → `ModelDb.GetId` → `ModelId.SlugifyCategory`（3 次正则 + 文化敏感 `EndsWith` 走 ICU 排序）。本轮之前的 `perf` 采样显示 `FilterThroughEpochs` 覆盖搜索展开样本的 49%、`SlugifyCategory` 26%、`ModelDb.GetId` 46%。
+- 职责边界：新增快照属于 Search 的根级只读投影，与既有 `RootCombatCardGenerationPoolSnapshot` 同层；接口在 `ICombatPredictionCardGenerationPoolSnapshot` 上扩展，卡牌生成扩展仍在 Engine。未改动 Runtime、部署编排、UI、设置或发布流程。
+- 真实无头 A/B（基线 `41f9478`，同根、`VeryHigh`、beam 48、`--dop 1`、顺序 ABBA）：KAISER_CRAB_BOSS @2000 节点 18.78 秒 → 9.07 秒（2.072 倍）。**加速比随工作量上升**：另造 4 个厚牌组 Boss 根并把预算标定到基线单场 ≥20 秒后，KNOWLEDGE_DEMON_BOSS 54.11→14.76 秒（3.667 倍）、THE_KIN_BOSS 41.78→14.43 秒（2.895 倍）、KAISER_CRAB_BOSS 37.32→14.86 秒（2.511 倍）、THE_INSATIABLE_BOSS 23.63→10.79 秒（2.191 倍）。**基线 >20 秒的 4 个根加速比 2.191–3.667 倍，重场景下收益不缩水**；成因未做采样取证，只作为实测趋势。收益**场景相关**：不走变形路径的提前穷尽根只有 1.041 倍（silent-discard）、1.426 倍（QUEEN_BOSS）。**对照组**实验把同批 Boss 遭遇改用默认薄牌组（不注入厚牌组），三者全部提前穷尽、加速比 0.984 / 1.015 / 0.990 倍，即收益为零（其中略低于 1.0 的是 1–3 秒量级的噪声，不记作退化），确认收益只来自真正执行变形选择的战斗，不能当作全局面板。详见[本轮报告](performance/transform-pool-root-snapshot-20260917.md)。
+- **并行度 8**（生产并行度）复测，预算 12000 节点、同根、顺序 ABBA：厚牌组 KAISER_CRAB_BOSS 46.27→17.91 秒（2.583 倍）、KNOWLEDGE_DEMON_BOSS 26.19→10.92 秒（2.398 倍）、THE_KIN_BOSS 34.40→15.80 秒（2.178 倍）、QUEEN_BOSS 7.26→3.89 秒（1.865 倍）、THE_INSATIABLE_BOSS 13.29→7.84 秒（1.696 倍）；薄牌组对照组 1.000 / 0.989 / 0.983 倍。并行度不会让收益消失，结论与 dop 1 一致。
+- **DOP 8 不能提供字段级等价性证据**：`compare_results.py` 在 DOP 8 下报 `DIFFERENT`，但差异只有 `roundReplayPrefixCaptures` 与 `executionChoiceReuses` 两个调度相关复用计数器，`route` / `rootState` / `catalog` 全部 0 处不同。决定性证据是**基线自比**在 DOP 8 下同样在这一个计数器上不同（A1 vs A2：7808 vs 7794；B1 vs B2：7802 vs 7799），即取决于哪个 worker 先命中复用缓存，是墙钟调度产物而非决策输出。因此该差异是并行非确定性，不可归因于本次改动；字段级等价性仍以 DOP 1 的 7 根全一致为准。
+- 瞬时分配同时减半：每节点总分配 2.06 MB → 1.04 MB。但**峰值工作集约 385 MB → 约 405 MB、峰值托管堆约 157 MB → 约 179 MB，没有改善、反而略升**。本轮只消除了变形路径的重复临时分配，**未触及节点局面的驻留内存**，最初「保存每个节点局面内存太大」的问题本次未处理；峰值上升的成因未取证，不记作结论。
+- 等价性用仓库自带 `tools/OfflineSearchHarness/compare_results.py` 对跑，**7 个根全部逐字段一致**（crab@2000 170 字段、KAISER_CRAB_BOSS@6000 242、silent-discard@6000 192、QUEEN_BOSS@6000 152、THE_KIN_BOSS@6000 174、KNOWLEDGE_DEMON_BOSS@6000 212、THE_INSATIABLE_BOSS@6000 234；`mismatched_roots=0`、无 `left_only`/`right_only`），覆盖 `solverMetrics` 非时间/内存字段、选中路线每个动作、根 `ContinuationStamp` 与 `catalogFingerprint`。
+- 契约 `TRANSFORMATION-POOL-CACHE` Passed：缓存序列与上游逐实例同序、跨 `Fork` 不可变共享、可变池/外来约束/外来池被拒绝、规范无色池被正确服务、缓存路径与原生路径产出同一张牌且 `CombatCardSelection` 五字段 RNG 状态与完整预测延续状态一致、父模拟与实机根未被改动。初版契约曾因断言无色池必须被拒绝而失败，查明为契约自身错误（无色池是合法回退池），实现无缺陷。
+- 未验证：可见 Steam 性能未测，上述倍数只是无头数据；峰值内存成因未取证；收益倍数场景相关（0.99–3.667 倍），不能外推为全局面板。Bash 结构门禁 `tools/verify-refactor-boundaries.sh` 通过（`REFACTOR_BOUNDARIES_OK search_files=114`，退出码 0；增量 1 即本次新增的快照文件）。
+
 ## 0.40.1：多策略回合准备选牌修复（2026-09-16）
 
 - 夸克专用发布包不再嵌套完整的 RitsuLib ZIP。统一发布脚本保留 CombatSolver 文件在外层根目录，并把 RitsuLib 分发内容解压写入并列的 `RitsuLib/` 文件夹；GitHub 最小包和创意工坊内容保持不变。
