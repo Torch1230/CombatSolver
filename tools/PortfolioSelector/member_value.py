@@ -131,6 +131,67 @@ def main():
                "deficitPerBattle": round(entry["deficit"] / battles, 3) if battles else None}
         for kind, entry in sorted(drop.items(), key=lambda kv: kv[1]["seconds"])
     }
+
+    # Named subsets answer the shipping question directly: what does a smaller portfolio cost?
+    # The first member is always the request's own baseline width and is never removable; remaining
+    # widths split into narrower / wider than that baseline. Members are independent searches from
+    # one root, so recorded per-member quality is reusable; dropping members also frees shared node
+    # budget for the rest, which stays unmodelled here.
+    def classify(index, member, baseline_width):
+        if index == 0:
+            return "baseline"
+        if member.get("BaseScoreOnly"):
+            return "base"
+        if member.get("SecondRankBand"):
+            return "band"
+        return "narrow" if member["BeamWidth"] < baseline_width else "wide"
+
+    subsets = {
+        "all": {"baseline", "narrow", "wide", "band", "base"},
+        "no-base": {"baseline", "narrow", "wide", "band"},
+        "no-band": {"baseline", "narrow", "wide", "base"},
+        "no-band-base": {"baseline", "narrow", "wide"},
+        "narrow-only": {"baseline", "narrow"},
+        "baseline-only": {"baseline"},
+    }
+    subset_report = {}
+    for name, keep_categories in subsets.items():
+        entry = {"battles": 0, "battlesWithCost": 0, "deficit": 0, "worst": 0,
+                 "savedSeconds": 0.0}
+        for result_path in sorted(args.runs.glob("*/harness-result.json")):
+            payload = json.loads(result_path.read_text())
+            members = [m for m in ((payload.get("solverMetrics") or {}).get("PortfolioMembers") or [])
+                       if m.get("Ran") and hp_equivalent(m) is not None]
+            if len(members) < 2:
+                continue
+            baseline_width = members[0]["BeamWidth"]
+            entry["battles"] += 1
+            actual = min(members, key=lambda m: (0 if m.get("Won") else 1, hp_equivalent(m)))
+            actual_hp, actual_won = hp_equivalent(actual), bool(actual.get("Won"))
+            keep, dropped = [], []
+            for index, member in enumerate(members):
+                (keep if classify(index, member, baseline_width) in keep_categories
+                 else dropped).append(member)
+            if not keep:
+                raise SystemExit(f"{name}: subset dropped every member of {result_path.name}")
+            entry["savedSeconds"] += sum(
+                (member.get("ElapsedMilliseconds") or 0) / 1000 for member in dropped)
+            best = min(keep, key=lambda m: (0 if m.get("Won") else 1, hp_equivalent(m)))
+            best_won = bool(best.get("Won"))
+            cost = 1 if best_won != actual_won else max(0, hp_equivalent(best) - actual_hp)
+            if cost > 0:
+                entry["battlesWithCost"] += 1
+                entry["deficit"] += cost
+                entry["worst"] = max(entry["worst"], cost)
+        subset_report[name] = {
+            **entry,
+            "keeps": sorted(keep_categories),
+            "savedSecondsPerBattle": round(entry["savedSeconds"] / entry["battles"], 2)
+            if entry["battles"] else None,
+            "deficitPerBattle": round(entry["deficit"] / entry["battles"], 3)
+            if entry["battles"] else None,
+        }
+    report["subsets"] = subset_report
     if args.out:
         args.out.write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report, indent=2, ensure_ascii=False))
