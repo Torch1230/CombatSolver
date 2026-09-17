@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using CombatSolver.Engine.Common;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Entities.Cards;
@@ -23,7 +23,7 @@ internal static class PredictionModPatchAudit
 {
     private static readonly string[] IncompatibleModIds = ["WheelchairSpire", "PengoTarot", "BetterCharacterRelics"];
 
-    private readonly record struct ForeignPatch(string ModId, string ModName, string Description);
+    internal readonly record struct ForeignPatch(string ModId, string ModName, string Description);
 
     /// <summary>
     /// Throws when any card reachable from the captured root has a third-party patch on its mirrored OnPlay.
@@ -46,25 +46,36 @@ internal static class PredictionModPatchAudit
             // Harmony patches can be installed or removed between root captures.
             Type type = card.GetType();
             if (!checkedTypes.Add(type)) continue;
-            MethodInfo target = AdaptedCardOnPlayMirrors.ResolveOnPlay(type)
-                ?? throw new PredictionUnsupportedException($"Missing OnPlay for {type.FullName}.");
-            Patches? patches = Harmony.GetPatchInfo(target);
-            ForeignPatch? firstForeign = null;
-            if (patches is not null)
-                foreach (var group in AdaptedCardOnPlayMirrors.Groups(patches))
-                    foreach (Patch patch in group.Patches)
-                    {
-                        // Resolve every source even when the full combination is registered.
-                        ForeignPatch? foreign = TryDescribeForeignPatch(patch, target);
-                        firstForeign ??= foreign;
-                    }
-            var selected = adapted ? AdaptedCardOnPlayMirrors.Select(type, target, patches) : null;
+            AdaptedCardOnPlayMirrors.Registration? selected =
+                AuditCardOnPlay(type, adapted, out ForeignPatch? firstForeign);
             if (selected is null && firstForeign is { } unsupported)
                 throw new IncompatibleGameplayModException(unsupported.ModId, unsupported.ModName,
                     unsupported.Description, "combat");
             selections?.Add(type, selected);
         }
         return selections is null ? null : new(selections, AdaptedCardOnPlayMirrors.CaptureLiveStamp()!);
+    }
+
+    /// <summary>
+    /// Audits one card type exactly the way root capture does, leaving the caller to decide what a foreign
+    /// patch means at that point.
+    /// </summary>
+    internal static AdaptedCardOnPlayMirrors.Registration? AuditCardOnPlay(
+        Type type, bool adapted, out ForeignPatch? firstForeign)
+    {
+        MethodInfo target = AdaptedCardOnPlayMirrors.ResolveOnPlay(type)
+            ?? throw new PredictionUnsupportedException($"Missing OnPlay for {type.FullName}.");
+        Patches? patches = Harmony.GetPatchInfo(target);
+        firstForeign = null;
+        if (patches is not null)
+            foreach (var group in AdaptedCardOnPlayMirrors.Groups(patches))
+                foreach (Patch patch in group.Patches)
+                {
+                    // Resolve every source even when the full combination is registered.
+                    ForeignPatch? foreign = TryDescribeForeignPatch(patch, target);
+                    firstForeign ??= foreign;
+                }
+        return adapted ? AdaptedCardOnPlayMirrors.Select(type, target, patches) : null;
     }
 
     internal static void ValidateLoadedMods(IEnumerable<Mod> mods)
