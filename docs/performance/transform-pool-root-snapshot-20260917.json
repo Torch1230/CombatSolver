@@ -1,0 +1,570 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-17",
+  "subject": "root transform-pool snapshot cache",
+  "baselineCommit": "1c31b9f",
+  "harness": "tools/OfflineSearchHarness",
+  "fixture": {
+    "request": ".local/formal-pr-20260915/measurements/A1/crab/request.json",
+    "scenario": "PERFORMANCE-GENERATED (Necrobinder / Kaiser Crab / TOOLBOX, has transform choices)",
+    "profile": "VeryHigh",
+    "beam": 48,
+    "nodes": 2000,
+    "dop": 1,
+    "milestone": "M2",
+    "order": "ABBA (A B B A) x2 reps = 8 runs"
+  },
+  "timingRuns": [
+    {
+      "label": "A1",
+      "side": "A",
+      "dll": "baseline",
+      "expanded": 2000,
+      "transitions": 36801,
+      "score": -4780022,
+      "hpLost": 34,
+      "wallSeconds": 18.87
+    },
+    {
+      "label": "B1",
+      "side": "B",
+      "dll": "candidate",
+      "expanded": 2000,
+      "transitions": 36801,
+      "score": -4780022,
+      "hpLost": 34,
+      "wallSeconds": 9.24
+    },
+    {
+      "label": "B1",
+      "side": "B",
+      "dll": "candidate",
+      "expanded": 2000,
+      "transitions": 36801,
+      "score": -4780022,
+      "hpLost": 34,
+      "wallSeconds": 9.0
+    },
+    {
+      "label": "A1",
+      "side": "A",
+      "dll": "baseline",
+      "expanded": 2000,
+      "transitions": 36801,
+      "score": -4780022,
+      "hpLost": 34,
+      "wallSeconds": 18.21
+    },
+    {
+      "label": "A2",
+      "side": "A",
+      "dll": "baseline",
+      "expanded": 2000,
+      "transitions": 36801,
+      "score": -4780022,
+      "hpLost": 34,
+      "wallSeconds": 18.31
+    },
+    {
+      "label": "B2",
+      "side": "B",
+      "dll": "candidate",
+      "expanded": 2000,
+      "transitions": 36801,
+      "score": -4780022,
+      "hpLost": 34,
+      "wallSeconds": 9.39
+    },
+    {
+      "label": "B2",
+      "side": "B",
+      "dll": "candidate",
+      "expanded": 2000,
+      "transitions": 36801,
+      "score": -4780022,
+      "hpLost": 34,
+      "wallSeconds": 9.05
+    },
+    {
+      "label": "A2",
+      "side": "A",
+      "dll": "baseline",
+      "expanded": 2000,
+      "transitions": 36801,
+      "score": -4780022,
+      "hpLost": 34,
+      "wallSeconds": 18.34
+    }
+  ],
+  "timingMeans": {
+    "A_baseline_seconds": 18.433,
+    "B_candidate_seconds": 9.17,
+    "speedup": 2.01
+  },
+  "searchSemanticsIdentical": true,
+  "memoryRuns": {
+    "A1": {
+      "side": "A",
+      "wallSeconds": 18.2123153,
+      "totalAllocatedBytes": 4117357976,
+      "allocPerNodeBytes": 2058678.988,
+      "peakWorkingSetBytes": 388726784,
+      "peakManagedHeapBytes": 156423808,
+      "peakManagedLiveBytes": 148798880,
+      "totalGcPauseMilliseconds": 1190.585,
+      "managedHeapBytes": 154987520,
+      "managedFragmentedBytes": 81631928,
+      "privateMemoryBytes": 323883008,
+      "memorySamples": 182
+    },
+    "A2": {
+      "side": "A",
+      "wallSeconds": 18.3447362,
+      "totalAllocatedBytes": 4118733056,
+      "allocPerNodeBytes": 2059366.528,
+      "peakWorkingSetBytes": 383430656,
+      "peakManagedHeapBytes": 158327128,
+      "peakManagedLiveBytes": 149971144,
+      "totalGcPauseMilliseconds": 1201.088,
+      "managedHeapBytes": 147343616,
+      "managedFragmentedBytes": 72829528,
+      "privateMemoryBytes": 318218240,
+      "memorySamples": 183
+    },
+    "B1": {
+      "side": "B",
+      "wallSeconds": 9.0046204,
+      "totalAllocatedBytes": 2070210616,
+      "allocPerNodeBytes": 1035105.308,
+      "peakWorkingSetBytes": 401813504,
+      "peakManagedHeapBytes": 175491280,
+      "peakManagedLiveBytes": 175046736,
+      "totalGcPauseMilliseconds": 1164.25,
+      "managedHeapBytes": 90012768,
+      "managedFragmentedBytes": 2873904,
+      "privateMemoryBytes": 299745280,
+      "memorySamples": 91
+    },
+    "B2": {
+      "side": "B",
+      "wallSeconds": 9.0535134,
+      "totalAllocatedBytes": 2076018000,
+      "allocPerNodeBytes": 1038009.0,
+      "peakWorkingSetBytes": 409116672,
+      "peakManagedHeapBytes": 182003128,
+      "peakManagedLiveBytes": 167271792,
+      "totalGcPauseMilliseconds": 1143.954,
+      "managedHeapBytes": 171970984,
+      "managedFragmentedBytes": 88952936,
+      "privateMemoryBytes": 343666688,
+      "memorySamples": 91
+    }
+  },
+  "equivalence": {
+    "tool": "tools/OfflineSearchHarness/compare_results.py",
+    "prefixes": "A -> B",
+    "roots": 2,
+    "comparedFields": 170,
+    "mismatchedRoots": 0,
+    "verdict": "IDENTICAL",
+    "groups": [
+      "solverMetrics(excl. time/memory/GC)",
+      "route(every action)",
+      "rootState(rootContinuationStamp)",
+      "catalog(catalogFingerprint)"
+    ]
+  },
+  "contract": {
+    "scenarioId": "TRANSFORMATION-POOL-CACHE",
+    "runId": "c8c552fc5f52400b849c1a77a77fefce",
+    "status": "Passed",
+    "check": "TransformationPoolCache:comparisons=4:ordered_identity=true:fork_shared_pool=true:mutable_colorless_constraint_bypass=true:native_path_equivalent=true:rng_equivalent=true:parent_live_unchanged=true"
+  },
+  "caveats": [
+    "Wall-clock labels A1/B1 were each written twice (dir overwritten by the repeat), so the retained per-label artifacts correspond to the 2nd run of that label; timing uses all 8 logged runs.",
+    "Peak working set and peak managed heap did NOT improve (slightly higher). The cause was not instrumented; no conclusion is drawn.",
+    "Visible-Steam performance was not measured; all figures are headless.",
+    "tools/verify-refactor-boundaries.sh was not executed this round.",
+    "Stress fixtures were derived from the working crab generated scenario by swapping only the encounter and its act index; WATERFALL_GIANT_BOSS is unreachable this way because act index 0 is shared by Overgrowth and Underdocks and the resolver only reaches Overgrowth."
+  ],
+  "stressRoots": [
+    {
+      "root": "KNOWLEDGE_DEMON_BOSS @6000",
+      "boundary": "None",
+      "A_mean_s": 54.11,
+      "B_mean_s": 14.755,
+      "speedup": 3.667,
+      "A_runs": [
+        54.44,
+        53.78
+      ],
+      "B_runs": [
+        14.83,
+        14.68
+      ],
+      "note": "search exhausts at 5990 nodes (54.5s); cannot reach 20.0s by raising the budget"
+    },
+    {
+      "root": "THE_KIN_BOSS @6000",
+      "boundary": "NodeLimit",
+      "A_mean_s": 41.78,
+      "B_mean_s": 14.43,
+      "speedup": 2.895,
+      "A_runs": [
+        41.81,
+        41.75
+      ],
+      "B_runs": [
+        14.11,
+        14.75
+      ],
+      "note": "node-limited at 6000 nodes, baseline 42.5s"
+    },
+    {
+      "root": "KAISER_CRAB_BOSS @6000",
+      "boundary": "NodeLimit",
+      "A_mean_s": 37.322,
+      "B_mean_s": 14.863,
+      "speedup": 2.511,
+      "A_runs": [
+        37.7608975,
+        36.8824676
+      ],
+      "B_runs": [
+        14.6568838,
+        15.0699885
+      ],
+      "note": "heavy stress"
+    },
+    {
+      "root": "THE_INSATIABLE_BOSS @6000",
+      "boundary": "NodeLimit",
+      "A_mean_s": 23.625,
+      "B_mean_s": 10.785,
+      "speedup": 2.191,
+      "A_runs": [
+        23.62,
+        23.63
+      ],
+      "B_runs": [
+        11.03,
+        10.54
+      ],
+      "note": "node-limited at 6000 nodes, baseline 23.5s"
+    },
+    {
+      "root": "KAISER_CRAB_BOSS @2000",
+      "boundary": "NodeLimit",
+      "A_mean_s": 18.78,
+      "B_mean_s": 9.065,
+      "speedup": 2.072,
+      "A_runs": [
+        18.5993902,
+        18.9605167
+      ],
+      "B_runs": [
+        9.1222444,
+        9.0071118
+      ],
+      "note": "rebased base 41f9478"
+    },
+    {
+      "root": "QUEEN_BOSS @6000",
+      "boundary": "None",
+      "A_mean_s": 11.515,
+      "B_mean_s": 8.075,
+      "speedup": 1.426,
+      "A_runs": [
+        11.67,
+        11.36
+      ],
+      "B_runs": [
+        8.29,
+        7.86
+      ],
+      "note": "search exhausts at 2539 nodes (11.1s); cannot reach 20.0s by raising the budget"
+    },
+    {
+      "root": "silent-discard @6000",
+      "boundary": "None",
+      "A_mean_s": 8.243,
+      "B_mean_s": 7.919,
+      "speedup": 1.041,
+      "A_runs": [
+        8.2252845,
+        8.2609792
+      ],
+      "B_runs": [
+        7.8932119,
+        7.9442923
+      ],
+      "note": "light root; does not exercise the transform path"
+    }
+  ],
+  "stressSummary": {
+    "rootsBaselineOver20s": 4,
+    "speedupsOver20s": [
+      2.191,
+      2.511,
+      2.895,
+      3.667
+    ],
+    "speedupRangeOver20s": [
+      2.191,
+      3.667
+    ],
+    "allRootsIdentical": false,
+    "note": "The ratio grows with workload on transform-bearing roots; no sampling was taken to attribute the trend, so it is reported as measured only."
+  },
+  "equivalenceAllRoots": {
+    "crab@2000 (P1)": "roots=2 fields=170 mismatched_roots=0 left_only=0 right_only=0 => IDENTICAL",
+    "KAISER_CRAB_BOSS@6000": "roots=2 fields=242 mismatched_roots=0 left_only=0 right_only=0 => IDENTICAL",
+    "silent-discard@6000": "roots=2 fields=192 mismatched_roots=0 left_only=0 right_only=0 => IDENTICAL",
+    "QUEEN_BOSS@6000": "roots=2 fields=152 mismatched_roots=0 left_only=0 right_only=0 => IDENTICAL",
+    "THE_KIN_BOSS@6000": "roots=2 fields=174 mismatched_roots=0 left_only=0 right_only=0 => IDENTICAL",
+    "KNOWLEDGE_DEMON_BOSS@6000": "roots=2 fields=212 mismatched_roots=0 left_only=0 right_only=0 => IDENTICAL",
+    "THE_INSATIABLE_BOSS@6000": "roots=2 fields=234 mismatched_roots=0 left_only=0 right_only=0 => IDENTICAL"
+  },
+  "controlGroup": {
+    "purpose": "Boss encounters run with the thin default starting deck instead of the injected thick deck; they exhaust the search early and never take the transform path, so they should gain nothing. They are reported to bound the claim.",
+    "roots": [
+      {
+        "root": "QUEEN_BOSS @8000 (default starting deck)",
+        "boundary": "None",
+        "exhaustedAtNodes": 891,
+        "A_mean_s": 1.71,
+        "B_mean_s": 1.685,
+        "speedup": 1.015,
+        "A_runs": [
+          1.61,
+          1.81
+        ],
+        "B_runs": [
+          1.69,
+          1.68
+        ],
+        "note": "thin default deck; search exhausts early and never takes the transform path",
+        "baselineWallS": 1.65
+      },
+      {
+        "root": "KAISER_CRAB_BOSS @8000 (default starting deck)",
+        "boundary": "None",
+        "exhaustedAtNodes": 1023,
+        "A_mean_s": 1.89,
+        "B_mean_s": 1.92,
+        "speedup": 0.984,
+        "A_runs": [
+          1.89,
+          1.89
+        ],
+        "B_runs": [
+          1.91,
+          1.93
+        ],
+        "note": "thin default deck; search exhausts early and never takes the transform path",
+        "baselineWallS": 1.9
+      },
+      {
+        "root": "THE_KIN_BOSS @8000 (default starting deck)",
+        "boundary": "None",
+        "exhaustedAtNodes": 1922,
+        "A_mean_s": 3.465,
+        "B_mean_s": 3.5,
+        "speedup": 0.99,
+        "A_runs": [
+          3.46,
+          3.47
+        ],
+        "B_runs": [
+          3.47,
+          3.53
+        ],
+        "note": "thin default deck; search exhausts early and never takes the transform path",
+        "baselineWallS": 3.5
+      }
+    ],
+    "reading": "All three land at ~1.0x (0.984-1.015). The two slightly below 1.0 are 1-3s runs where the difference is within noise, not a regression."
+  },
+  "dop8": {
+    "dop": 8,
+    "roots": [
+      {
+        "group": "thick",
+        "root": "KAISER_CRAB_BOSS",
+        "dop": 8,
+        "nodes": 12000,
+        "boundary": "NodeLimit",
+        "A_mean_s": 46.27,
+        "B_mean_s": 17.91,
+        "speedup": 2.583,
+        "A_walls": [
+          46.02,
+          46.52
+        ],
+        "B_walls": [
+          17.74,
+          18.08
+        ],
+        "summaryMetricsIdentical": true,
+        "note": "node-limited at 12000 nodes, baseline 45.3s"
+      },
+      {
+        "group": "thick",
+        "root": "THE_KIN_BOSS",
+        "dop": 8,
+        "nodes": 12000,
+        "boundary": "None",
+        "A_mean_s": 34.395,
+        "B_mean_s": 15.795,
+        "speedup": 2.178,
+        "A_walls": [
+          34.19,
+          34.6
+        ],
+        "B_walls": [
+          15.81,
+          15.78
+        ],
+        "summaryMetricsIdentical": true,
+        "note": "search exhausts at 9767 nodes (34.5s); budget cannot reach 20.0s"
+      },
+      {
+        "group": "thick",
+        "root": "THE_INSATIABLE_BOSS",
+        "dop": 8,
+        "nodes": 12000,
+        "boundary": "None",
+        "A_mean_s": 13.29,
+        "B_mean_s": 7.835,
+        "speedup": 1.696,
+        "A_walls": [
+          13.37,
+          13.21
+        ],
+        "B_walls": [
+          7.88,
+          7.79
+        ],
+        "summaryMetricsIdentical": true,
+        "note": "search exhausts at 6087 nodes (13.3s); budget cannot reach 20.0s"
+      },
+      {
+        "group": "thick",
+        "root": "KNOWLEDGE_DEMON_BOSS",
+        "dop": 8,
+        "nodes": 12000,
+        "boundary": "None",
+        "A_mean_s": 26.185,
+        "B_mean_s": 10.92,
+        "speedup": 2.398,
+        "A_walls": [
+          26.16,
+          26.21
+        ],
+        "B_walls": [
+          10.88,
+          10.96
+        ],
+        "summaryMetricsIdentical": true,
+        "note": "search exhausts at 5990 nodes (26.1s); budget cannot reach 20.0s"
+      },
+      {
+        "group": "thick",
+        "root": "QUEEN_BOSS",
+        "dop": 8,
+        "nodes": 12000,
+        "boundary": "None",
+        "A_mean_s": 7.255,
+        "B_mean_s": 3.89,
+        "speedup": 1.865,
+        "A_walls": [
+          7.26,
+          7.25
+        ],
+        "B_walls": [
+          3.86,
+          3.92
+        ],
+        "summaryMetricsIdentical": true,
+        "note": "search exhausts at 2539 nodes (6.9s); budget cannot reach 20.0s"
+      },
+      {
+        "group": "control",
+        "root": "KAISER_CRAB_BOSS",
+        "dop": 8,
+        "nodes": 12000,
+        "boundary": "None",
+        "A_mean_s": 0.98,
+        "B_mean_s": 0.98,
+        "speedup": 1.0,
+        "A_walls": [
+          0.98,
+          0.98
+        ],
+        "B_walls": [
+          0.98,
+          0.98
+        ],
+        "summaryMetricsIdentical": true,
+        "note": "thin default deck; does not take the transform path"
+      },
+      {
+        "group": "control",
+        "root": "QUEEN_BOSS",
+        "dop": 8,
+        "nodes": 12000,
+        "boundary": "None",
+        "A_mean_s": 0.89,
+        "B_mean_s": 0.9,
+        "speedup": 0.989,
+        "A_walls": [
+          0.87,
+          0.91
+        ],
+        "B_walls": [
+          0.89,
+          0.91
+        ],
+        "summaryMetricsIdentical": true,
+        "note": "thin default deck; does not take the transform path"
+      },
+      {
+        "group": "control",
+        "root": "THE_KIN_BOSS",
+        "dop": 8,
+        "nodes": 12000,
+        "boundary": "None",
+        "A_mean_s": 1.465,
+        "B_mean_s": 1.49,
+        "speedup": 0.983,
+        "A_walls": [
+          1.45,
+          1.48
+        ],
+        "B_walls": [
+          1.47,
+          1.51
+        ],
+        "summaryMetricsIdentical": true,
+        "note": "thin default deck; does not take the transform path"
+      }
+    ],
+    "fieldLevelVerdict": {
+      "note": "compare_results.py reports DIFFERENT at DOP 8, but not because of this change. The only differing fields are two scheduling-dependent reuse counters.",
+      "differingFields": [
+        "executionChoiceReuses",
+        "roundReplayPrefixCaptures"
+      ],
+      "route_fields_differing": 0,
+      "rootState_fields_differing": 0,
+      "catalog_fields_differing": 0,
+      "selfConsistency": {
+        "KAISER_CRAB_BOSS": {
+          "baselineA1_vs_A2": "roundReplayPrefixCaptures 7808 vs 7794",
+          "candidateB1_vs_B2": "roundReplayPrefixCaptures 7802 vs 7799"
+        },
+        "reading": "The baseline is not reproducible against ITSELF at DOP 8 on the same counter, so the A-vs-B counter difference is harness scheduling, not a semantic difference caused by the cache."
+      }
+    }
+  }
+}

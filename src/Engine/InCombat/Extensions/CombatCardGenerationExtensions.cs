@@ -157,6 +157,37 @@ internal static class CombatCardGenerationExtensions
             .GetDistinctForCombat(player, count, rng, multiplayerConstraint);
     }
 
+    // Mirrors CardFactory.GetDefaultTransformationOptions' pool choice, then reuses the root's
+    // already-computed unlock filtering. Rng.NextItem still receives the same ordered array:
+    // CardFactory.GetFilteredTransformationOptions materializes before selecting, and the cached
+    // array is the identical upstream GetUnlockedCards sequence for the same pool and unlock state.
+    public static CardModel CreateRandomCardForTransform(
+        this CombatPredictionSimulator simulator,
+        CardModel original,
+        bool isInCombat,
+        Rng rng)
+    {
+        CardPoolModel pool = TransformationOptionPool(original);
+        if (simulator.State.CombatState is ICombatPredictionCardGenerationPoolSnapshot snapshot
+            && snapshot.TryGetRootUnlockedTransformationCards(
+                original.Owner,
+                pool,
+                original.RunState!.CardMultiplayerConstraint,
+                out IReadOnlyList<CardModel>? cached))
+        {
+            return CardFactory.CreateRandomCardForTransform(original, cached, isInCombat, rng);
+        }
+
+        return CardFactory.CreateRandomCardForTransform(original, isInCombat, rng);
+    }
+
+    // Mirrors the pool choice in CardFactory.GetDefaultTransformationOptions verbatim.
+    private static CardPoolModel TransformationOptionPool(CardModel original)
+        => original.Type != CardType.Quest
+            && original.Rarity is not (CardRarity.Event or CardRarity.Ancient or CardRarity.Token)
+                ? original.Pool
+                : ModelDb.CardPool<ColorlessCardPool>();
+
     // Prepare exactly once for one power trigger. The fallback freezes the original
     // GetUnlockedCards result once, while its predicates are still evaluated per draw.
     public static CharacterGenerationCandidates PrepareCharacterGenerationCandidates(
