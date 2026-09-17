@@ -25,7 +25,8 @@ internal sealed partial class SolverSettingsPanel
                     PerformanceMigrationVersion = 0,
                     PerformancePreset = SolverPerformancePreset.VeryHigh,
                     UseBeamWidthPortfolio = true,
-                    UseNoveltyPortfolio = true,
+                    UseNoveltyPortfolio = false,
+                    ShowNoveltyPortfolioHint = false,
                     EnableNoGcRegion = false,
                     NoGcRegionBudgetGigabytes = 8d,
                 });
@@ -34,6 +35,7 @@ internal sealed partial class SolverSettingsPanel
                 && SolverSettings.ResolvePerformancePreset(migrated) == SolverPerformancePreset.Medium
                 && migrated.UseBeamWidthPortfolio
                 && migrated.UseNoveltyPortfolio
+                && migrated.ShowNoveltyPortfolioHint
                 && !migrated.EnableNoGcRegion
                 && migrated.NoGcRegionBudgetGigabytes == SolverSettings.DefaultNoGcRegionBudgetGigabytes;
             SolverSettingsData refinementMigrated = SolverSettings.ApplyCurrentPerformanceMigrationForTesting(
@@ -43,7 +45,8 @@ internal sealed partial class SolverSettingsPanel
                     PerformancePreset = SolverPerformancePreset.Custom,
                     SearchMaxExpandedNodes = 1_000_001,
                     UseBeamWidthPortfolio = false,
-                    UseNoveltyPortfolio = true,
+                    UseNoveltyPortfolio = false,
+                    ShowNoveltyPortfolioHint = false,
                     EnableNoGcRegion = false,
                     NoGcRegionBudgetGigabytes = 64d,
                 });
@@ -52,12 +55,21 @@ internal sealed partial class SolverSettingsPanel
                     == SolverSettings.CurrentPerformanceMigrationVersion
                 && SolverSettings.ResolvePerformancePreset(refinementMigrated) == SolverPerformancePreset.Custom
                 && SolverSettings.ResolvePerformanceValues(refinementMigrated).Profile.MaxExpandedNodes == 1_000_001
-                && refinementMigrated.UseBeamWidthPortfolio
+                && !refinementMigrated.UseBeamWidthPortfolio
                 && refinementMigrated.UseNoveltyPortfolio
+                && refinementMigrated.ShowNoveltyPortfolioHint
                 && !refinementMigrated.EnableNoGcRegion
                 && refinementMigrated.NoGcRegionBudgetGigabytes == 64d;
-            bool postMigrationPreferencePreserved = !SolverSettings.ApplyCurrentPerformanceMigrationForTesting(
-                refinementMigrated with { UseBeamWidthPortfolio = false }).UseBeamWidthPortfolio;
+            SolverSettingsData currentPreferences = SolverSettings.ApplyCurrentPerformanceMigrationForTesting(
+                refinementMigrated with
+                {
+                    UseBeamWidthPortfolio = false,
+                    UseNoveltyPortfolio = false,
+                    ShowNoveltyPortfolioHint = false,
+                });
+            bool postMigrationPreferencePreserved = !currentPreferences.UseBeamWidthPortfolio
+                && !currentPreferences.UseNoveltyPortfolio
+                && !currentPreferences.ShowNoveltyPortfolioHint;
             string legacyJson =
                 "{\"performanceMigrationVersion\":" +
                 SolverSettings.CurrentPerformanceMigrationVersion +
@@ -65,6 +77,7 @@ internal sealed partial class SolverSettingsPanel
             SolverSettingsData legacy = SolverSettings.DeserializeForTesting(legacyJson);
             bool legacyDefaultApplied = legacy.EnableNoGcRegion
                                         && legacy.NoGcRegionBudgetGigabytes == 32d
+                                        && legacy.UseNoveltyPortfolio
                                         && legacy.ShowNoveltyPortfolioHint
                                         && legacy.ShowSpeedXWarning;
             SolverSettingsData preset = SolverSettings.ApplyPerformancePreset(

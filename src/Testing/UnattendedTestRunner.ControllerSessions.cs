@@ -15,12 +15,12 @@ internal sealed partial class UnattendedTestRunner
     {
         if (!new SolverSettingsData().UseBeamWidthPortfolio)
             throw new InvalidOperationException("多宽度路线精炼必须默认开启。");
-        if (new SolverSettingsData().UseNoveltyPortfolio)
-            throw new InvalidOperationException("多策略搜索必须默认关闭。");
+        if (!new SolverSettingsData().UseNoveltyPortfolio)
+            throw new InvalidOperationException("多策略搜索必须默认开启。");
         if (!new SolverSettingsData().ShowNoveltyPortfolioHint
             || !new SolverSettingsData().ShowSpeedXWarning)
         {
-            throw new InvalidOperationException("新增功能与皮皮极速引导横幅必须默认显示。");
+            throw new InvalidOperationException("多策略功能与皮皮极速引导横幅必须默认显示。");
         }
         SolverSettingsData dismissedHints = SolverSettings.RoundTripForTesting(
             new SolverSettingsData()
@@ -47,7 +47,7 @@ internal sealed partial class UnattendedTestRunner
         if (!portfolioEnabled.UseBeamWidthPortfolio || portfolioDisabled.UseBeamWidthPortfolio
             || !portfolioEnabled.UseNoveltyPortfolio || portfolioDisabled.UseNoveltyPortfolio)
             throw new InvalidOperationException("组合搜索设置没有按搜索请求冻结。");
-        _completedChecks.Add("SearchPortfolios:RefinementDefaultOn:NoveltyDefaultOff:GuidanceHints:SettingsRoundTrip:UiControl:PolicySnapshot");
+        _completedChecks.Add("SearchPortfolios:RefinementDefaultOn:NoveltyDefaultOn:GuidanceHints:SettingsRoundTrip:UiControl:PolicySnapshot");
     }
 
     private async Task AssertControllerSessionLifecycleAsync(CombatState combat)
@@ -435,7 +435,7 @@ internal sealed partial class UnattendedTestRunner
         if (SolverSettings.ResolvePerformancePreset(notificationDefaults)
                 != SolverPerformancePreset.Medium
             || !notificationDefaults.UseBeamWidthPortfolio
-            || notificationDefaults.UseNoveltyPortfolio
+            || !notificationDefaults.UseNoveltyPortfolio
             || !notificationDefaults.EnableNoGcRegion
             || notificationDefaults.NoGcRegionBudgetGigabytes
                 != SolverSettings.DefaultNoGcRegionBudgetGigabytes)

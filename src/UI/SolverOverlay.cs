@@ -26,7 +26,7 @@ internal static class SolverOverlay
     private const long ResizeLayoutIntervalMilliseconds = 16;
     private const double ActiveSearchProgressMaximum = 0.95d;
     private const string NoveltyPortfolioHintText =
-        "我们推出了“多策略路线搜索（实验）”。期望寻找更优路线的玩家可以前往 设置 > 性能 手动开启；它会使用部分现有预算探索不同打法，结果可能因战斗而异。点击本消息后不再提示";
+        "我们推出了“多策略路线搜索（实验）”，现已默认开启。它会使用部分现有预算探索不同打法，结果可能因战斗而异；如需使用原先的常规搜索，可前往 设置 > 性能 关闭。点击本消息后不再提示";
     private const string SpeedXWarningText =
         "检测到皮皮极速（SpeedX）：其悬浮显示可能持续产生大量临时内存，触发频繁回收，加重长时间游玩时的卡顿。\n需要战斗加速时，建议使用求解器自带的“瞬间”：设置 > 常规 > 自动执行，将“自动出牌速度”设为“瞬间”，“牌间额外停顿（秒）”设为 0。玩家和怪物回合均加速，局外保持原速。点击本消息后不再提示";
     private static Color Background => SolverUiTokens.Palette.Background;
@@ -266,7 +266,7 @@ internal static class SolverOverlay
         {
             SolverSettings.Update(SolverSettings.RoundTripForTesting(originalSettings with
             {
-                UseNoveltyPortfolio = false,
+                UseNoveltyPortfolio = true,
                 ShowNoveltyPortfolioHint = true,
                 ShowSpeedXWarning = true,
             }));
@@ -277,13 +277,15 @@ internal static class SolverOverlay
                 && _speedXWarningButton.Text == SolverText.Get(SpeedXWarningText);
 
             _noveltyPortfolioHintButton.EmitSignal(Button.SignalName.Pressed);
-            bool noveltyDismissed = !SolverSettings.Current.ShowNoveltyPortfolioHint
+            bool noveltyDismissed = SolverSettings.Current.UseNoveltyPortfolio
+                && !SolverSettings.Current.ShowNoveltyPortfolioHint
                 && !NoveltyPortfolioHintVisibleForTesting;
             _speedXWarningButton.EmitSignal(Button.SignalName.Pressed);
             bool speedXDismissed = !SolverSettings.Current.ShowSpeedXWarning
                 && !SpeedXWarningVisibleForTesting;
             SolverSettingsData roundTripped = SolverSettings.RoundTripForTesting(SolverSettings.Current);
             return visible && noveltyDismissed && speedXDismissed
+                && roundTripped.UseNoveltyPortfolio
                 && !roundTripped.ShowNoveltyPortfolioHint
                 && !roundTripped.ShowSpeedXWarning;
         }
@@ -2277,7 +2279,7 @@ internal static class SolverOverlay
         SolverSettingsData settings = SolverSettings.Current;
         SetGuidanceHint(
             _noveltyPortfolioHintButton,
-            settings.ShowNoveltyPortfolioHint && !settings.UseNoveltyPortfolio,
+            settings.ShowNoveltyPortfolioHint && settings.UseNoveltyPortfolio,
             NoveltyPortfolioHintText);
         SetGuidanceHint(
             _speedXWarningButton,

@@ -109,10 +109,10 @@ internal sealed class UnattendedTestRequest
     public int? LegacyDeepSearchBudgetMilliseconds { get; init; }
     public int? SearchMaxDegreeOfParallelismForTest { get; init; }
 
-    /// <summary>生产协调器的主搜索启用多策略路线探索；普通游戏默认关。</summary>
+    /// <summary>生产协调器的主搜索启用多策略路线探索；普通游戏默认开。</summary>
     public bool? UseNoveltyPortfolioForTest { get; init; }
 
-    /// <summary>生产协调器的主搜索改用 Beam 宽度组合；普通游戏默认关。</summary>
+    /// <summary>生产协调器的主搜索改用 Beam 宽度组合；普通游戏默认开。</summary>
     public bool? UseBeamWidthPortfolioForTest { get; init; }
 
     /// <summary>
