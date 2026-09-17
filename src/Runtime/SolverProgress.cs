@@ -256,4 +256,5 @@ internal sealed record SolverProgress(
     SolverInterimResult? CurrentBestResult = null,
     SolverCurrentTurnPreview? CurrentTurnPreview = null,
     SolverSpeculativeRoutePreview? SpeculativeRoutePreview = null,
-    SolverRouteAdoptionSeed? RouteAdoptionSeed = null);
+    SolverRouteAdoptionSeed? RouteAdoptionSeed = null,
+    int RequestBudgetMilliseconds = 0);

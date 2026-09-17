@@ -24,6 +24,7 @@ internal static class SolverOverlay
 
     private const string LayerName = "CombatSolverOverlay";
     private const long ResizeLayoutIntervalMilliseconds = 16;
+    private const double ActiveSearchProgressMaximum = 0.95d;
     private const string NoveltyPortfolioHintText =
         "我们推出了“多策略路线搜索（实验）”。期望寻找更优路线的玩家可以前往 设置 > 性能 手动开启；它会使用部分现有预算探索不同打法，结果可能因战斗而异。点击本消息后不再提示";
     private const string SpeedXWarningText =
@@ -716,10 +717,15 @@ internal static class SolverOverlay
         if (_searchProgressBar != null)
         {
             _searchProgressBar.Visible = true;
-            double currentRatio = Math.Clamp(
-                progress.ExpandedNodes / (double)Math.Max(1, progress.MaxNodes),
-                0d,
-                1d);
+            double currentRatio = progress.RequestBudgetMilliseconds > 0
+                ? Math.Clamp(
+                    progress.ElapsedMilliseconds / (double)progress.RequestBudgetMilliseconds,
+                    0d,
+                    ActiveSearchProgressMaximum)
+                : Math.Clamp(
+                    progress.ExpandedNodes / (double)Math.Max(1, progress.MaxNodes),
+                    0d,
+                    1d);
             _lastSearchProgressRatio = Math.Max(_lastSearchProgressRatio, currentRatio);
             _searchProgressBar.MaxValue = 1d;
             _searchProgressBar.Value = _lastSearchProgressRatio;

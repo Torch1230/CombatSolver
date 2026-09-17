@@ -205,7 +205,8 @@ internal sealed partial class UnattendedTestRunner
                 FrontierNodes: 0,
                 EndedNodes: 0,
                 ElapsedMilliseconds: 500,
-                Phase: "test"),
+                Phase: "test",
+                RequestBudgetMilliseconds: 10_000),
             deployWhenReady: false,
             reviewedWorldlinesBeforeSearch: 5);
         if (SolverOverlay.SearchSummaryTextForTesting != "已查阅 42 条世界线")
@@ -234,11 +235,13 @@ internal sealed partial class UnattendedTestRunner
                     CombatEndedTurn: null,
                     EnemyHp: 1,
                     Score: 0d),
-                SpeculativeRoutePreview: progressPreview),
+                SpeculativeRoutePreview: progressPreview,
+                RequestBudgetMilliseconds: 10_000),
             deployWhenReady: false,
             reviewedWorldlinesBeforeSearch: 5,
             bestSnapshot: SolverOverlaySnapshot.CaptureSpeculativeRoute(progressPreview));
-        if (SolverOverlay.SearchProgressRatioForTesting < progressRatio
+        if (Math.Abs(progressRatio - 0.05d) > 0.0001d
+            || Math.Abs(SolverOverlay.SearchProgressRatioForTesting - 0.06d) > 0.0001d
             || SolverOverlay.ReviewSummaryTextForTesting?.Contains(
                 "正在搜索无药路线",
                 StringComparison.Ordinal) != true
@@ -249,8 +252,26 @@ internal sealed partial class UnattendedTestRunner
                 "预计战损 未知",
                 StringComparison.Ordinal) != true)
         {
-            throw new InvalidOperationException("药水补查开始后搜索进度条倒退。");
+            throw new InvalidOperationException("搜索进度条没有按整次请求的时间预算平稳推进。");
         }
+        SolverOverlay.ShowProgress(
+            new SolverProgress(
+                progressTurn,
+                progressTurn,
+                CompletedTurnLayers: 0,
+                PlayDepth: 0,
+                ExpandedNodes: 100,
+                ReviewedWorldlines: 100,
+                MaxNodes: 100,
+                FrontierNodes: 0,
+                EndedNodes: 0,
+                ElapsedMilliseconds: 15_000,
+                Phase: "复核最终候选",
+                RequestBudgetMilliseconds: 10_000),
+            deployWhenReady: false,
+            reviewedWorldlinesBeforeSearch: 5);
+        if (Math.Abs(SolverOverlay.SearchProgressRatioForTesting - 0.95d) > 0.0001d)
+            throw new InvalidOperationException("运行中的搜索进度条没有为收尾工作保留余量。");
         if (SolverController.IsSearching
             && (SolverOverlay.StopSearchButtonTextForTesting != "停止计算"
                 || SolverOverlay.StopSearchButtonDisabledForTesting))

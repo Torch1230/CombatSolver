@@ -207,6 +207,11 @@ internal static partial class CombatSearchCoordinator
             && !policy.PotionStrategy.HasForcedDirectives
                 ? SolverPotionPolicy.Disabled
                 : null;
+        // The progress bar represents the whole request. Individual Beam, novelty,
+        // refinement and potion-audit searches all consume this same time budget.
+        SolverSearchProfile profile = policy.Profile;
+        if (policy.BudgetOverrideMilliseconds is { } deepBudget)
+            profile = profile with { SoftTimeBudgetMilliseconds = deepBudget };
         if (progressCallback != null)
         {
             long completedSearches = 0;
@@ -228,14 +233,12 @@ internal static partial class CombatSearchCoordinator
                 {
                     ReviewedWorldlines = completedSearches + progress.ExpandedNodes,
                     ElapsedMilliseconds = completedElapsed + progress.ElapsedMilliseconds,
+                    RequestBudgetMilliseconds = profile.SoftTimeBudgetMilliseconds,
                 });
             };
         }
         SmartLayerMemoryForecast memoryForecast = new();
         // One search profile drives primary search and all supplemental audits.
-        SolverSearchProfile profile = policy.Profile;
-        if (policy.BudgetOverrideMilliseconds is { } deepBudget)
-            profile = profile with { SoftTimeBudgetMilliseconds = deepBudget };
         if (root.IsActEndingBoss && profile.BeamWidth < 45)
         {
             policy.Diagnostics.Info(
