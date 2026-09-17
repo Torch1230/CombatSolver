@@ -69,6 +69,8 @@ internal sealed record SearchPolicySnapshot(
     /// </summary>
     public IReadOnlyList<int>? BeamWidthPortfolioWidths { get; init; }
 
+    internal BeamPortfolioExperiment? PortfolioExperiment { get; init; }
+
     /// <summary>
     /// 请求级的组合诊断，由 <see cref="CombatSearchCoordinator.Solve" /> 建立并挂到返回结果上。
     /// 开关关闭时同样记录（单成员一行）。

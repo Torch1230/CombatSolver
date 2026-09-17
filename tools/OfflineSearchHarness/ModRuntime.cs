@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Reflection;
+using System.Text.Json;
 using CombatSolver;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Combat;
@@ -115,6 +116,7 @@ internal static class ModRuntime
             SearchMaxPileChoiceBranchesPerAction = profile.MaxPileChoiceBranchesPerAction,
             SearchMaxHandChoiceBranchesPerAction = profile.MaxHandChoiceBranchesPerAction,
             EnableNoGcRegion = false,
+            UseBeamWidthPortfolio = options.UsePortfolio,
             StopAtAcceptableBattleHpLoss = false,
             OnlineStatisticsEnabled = false,
             SearchCompletionNotificationsEnabled = false,
@@ -254,6 +256,10 @@ internal static class ModRuntime
         policy.VerifyIncrementalSearch,
         policy.DetailedDiagnostics,
         policy.MeasurePhasePerformance,
+        policy.UseBeamWidthPortfolio,
+        policy.BeamWidthPortfolioWidths,
+        portfolioSelector = policy.PortfolioExperiment?.Model?.ModelId,
+        observePortfolio = policy.PortfolioExperiment?.Observe != null,
     };
 
     internal sealed record SearchOutcome(
@@ -332,6 +338,21 @@ internal static class ModRuntime
         SolverSettingsSnapshot settings = SolverSettings.Capture();
         SearchPolicySnapshot policy = SolverController.CaptureSearchPolicy(
             settings, state, includeTurnSetup: false, theftPolicy: null);
+        List<BeamPortfolioObservation> observations = [];
+        if (options.ObservePortfolio || options.PortfolioModelPath != null)
+        {
+            BeamPortfolioSelector? model = options.PortfolioModelPath == null ? null
+                : BeamPortfolioSelector.Parse(File.ReadAllText(options.PortfolioModelPath));
+            policy = policy with
+            {
+                PortfolioExperiment = new BeamPortfolioExperiment(model, observation =>
+                {
+                    if (observations.Count >= 4096)
+                        throw new InvalidOperationException("Portfolio observation limit exceeded.");
+                    observations.Add(observation);
+                }),
+            };
+        }
         HarnessLog.Trace("search_policy");
         bool timeBoundary = false;
         object describedPolicy = DescribePolicy(policy);
@@ -341,6 +362,25 @@ internal static class ModRuntime
                 options.BudgetMilliseconds, loop, out describedPolicy, ref timeBoundary);
         HarnessLog.Trace("solved");
         watch.Stop();
+        File.WriteAllText(Path.Combine(options.OutputDirectory, "quality.json"), JsonSerializer.Serialize(new
+        {
+            quality = CombatSearchCoordinator.CapturePortfolioQuality(root, policy, result),
+            snapshot = result.Snapshot,
+            result.ResultScope,
+            result.BoundaryReason,
+        }, UnattendedTestFiles.JsonOptions));
+        if (policy.PortfolioExperiment != null)
+        {
+            File.WriteAllText(Path.Combine(options.OutputDirectory, "portfolio-observations.json"),
+                JsonSerializer.Serialize(new
+                {
+                    schemaVersion = BeamPortfolioSelector.SchemaVersion,
+                    solverAssemblyId = typeof(CombatSearchCoordinator).Module.ModuleVersionId.ToString(),
+                    gameAssemblyId = typeof(CombatState).Module.ModuleVersionId.ToString(),
+                    featureNames = BeamPortfolioSelector.FeatureNames,
+                    observations,
+                }, UnattendedTestFiles.JsonOptions));
+        }
 
         Dictionary<string, object?> rootCapture = new()
         {

@@ -1264,6 +1264,7 @@ internal static class CombatBugReportExporter
         captured["includeTurnSetup"] = policy.IncludeTurnSetup;
         captured["act3BossStrategy"] = policy.Act3BossStrategy;
         captured["useBeamWidthPortfolio"] = policy.UseBeamWidthPortfolio;
+        captured["portfolioSelector"] = policy.PortfolioExperiment?.Model?.ModelId;
         captured["useNoveltyPortfolio"] = policy.UseNoveltyPortfolio;
         captured["noveltyBudget"] = JsonSerializer.SerializeToNode(policy.NoveltyBudget, JsonOptions);
         captured["beamWidthPortfolioWidths"] = JsonSerializer.SerializeToNode(

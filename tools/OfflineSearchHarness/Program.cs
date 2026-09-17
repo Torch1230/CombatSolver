@@ -317,6 +317,8 @@ internal sealed record HarnessOptions
           --potion-policy <p>    药水政策（默认 Smart）
           --search-mode <m>      Evaluate（单次求解，不经协调器，默认）| Coordinator（生产协调器）
           --use-portfolio        开宽度组合（只对 --search-mode Coordinator 有效）
+          --observe-portfolio    导出追加搜索的特征与实际政策标签
+          --portfolio-model <p>  加载可选选择器 JSON；不匹配的版本回退原组合
           --milestone <M1|M2>    跑到哪个里程碑（默认 M2）
           --out <dir>            产物目录（默认 <workspace>/offline）
           --workspace <dir>      工作区目录（默认 .local/offline-harness）
@@ -340,6 +342,8 @@ internal sealed record HarnessOptions
     public string SearchMode { get; init; } = "Evaluate";
     /// <summary>开宽度组合（协调器的组合成员通道）；Evaluate 模式下没有意义。</summary>
     public bool UsePortfolio { get; init; }
+    public bool ObservePortfolio { get; init; }
+    public string? PortfolioModelPath { get; init; }
     public string Milestone { get; init; } = "M2";
     public string WorkspaceDirectory { get; init; } = string.Empty;
     public string OutputDirectory { get; init; } = string.Empty;
@@ -353,7 +357,8 @@ internal sealed record HarnessOptions
         string character = "IRONCLAD", encounter = "FUZZY_WURM_CRAWLER_WEAK", seed = "OFFLINEHARNESS1";
         int ascension = 0, actIndex = 0, dop = 1, budget = 600_000;
         int? beam = null, nodes = null, cardBranches = null, pileBranches = null, handBranches = null;
-        bool usePortfolio = false;
+        bool usePortfolio = false, observePortfolio = false;
+        string? portfolioModelPath = null;
         string potionPolicy = "Smart", milestone = "M2", language = "eng";
         string profile = "Custom", searchMode = "Evaluate", label = "offline";
         string? output = null, requestPath = null;
@@ -390,6 +395,8 @@ internal sealed record HarnessOptions
                 case "--potion-policy": potionPolicy = Value(); break;
                 case "--search-mode": searchMode = Value(); break;
                 case "--use-portfolio": usePortfolio = true; break;
+                case "--observe-portfolio": observePortfolio = true; break;
+                case "--portfolio-model": portfolioModelPath = Path.GetFullPath(Value()); break;
                 case "--milestone": milestone = Value(); break;
                 case "--out": output = Value(); break;
                 case "--workspace": workspace = Value(); break;
@@ -406,6 +413,8 @@ internal sealed record HarnessOptions
             throw new ArgumentException("--search-mode 只接受 Evaluate 或 Coordinator。");
         if (usePortfolio && searchMode != "Coordinator")
             throw new ArgumentException("--use-portfolio 只对 --search-mode Coordinator 有效。");
+        if ((observePortfolio || portfolioModelPath != null) && (!usePortfolio || searchMode != "Coordinator"))
+            throw new ArgumentException("选择器实验需要 --search-mode Coordinator --use-portfolio。");
         if (profile == "Custom" && requestPath == null)
         {
             beam ??= 24;
@@ -428,6 +437,8 @@ internal sealed record HarnessOptions
             PotionPolicy = potionPolicy,
             SearchMode = searchMode,
             UsePortfolio = usePortfolio,
+            ObservePortfolio = observePortfolio,
+            PortfolioModelPath = portfolioModelPath,
             Milestone = milestone,
             WorkspaceDirectory = Path.GetFullPath(workspace),
             OutputDirectory = Path.GetFullPath(output ?? Path.Combine(workspace, "offline")),

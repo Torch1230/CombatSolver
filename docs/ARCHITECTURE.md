@@ -81,6 +81,7 @@ Entry / turn hooks
 | `src/Runtime/SearchMemoryPressureSignal.cs` | 将 Runtime 的进程分配边界、回收入口、已排空边界的恢复探针和低系统余量下的保守并行标记注入搜索；不让 Search 直接操作 GC 模式 | 设置读取与搜索评分 |
 | `src/Runtime/SolverControllerSessions.cs` | 除会话状态外，向 UI 提供当前进程占用与活动搜索分配检查点的只读快照 | UI 样式与搜索内存政策 |
 | `src/Runtime/SolverSettings.cs` | 持久化性能、执行、搜索并行度、NoGC 开关与独立预算、逐槽药水策略和搜索结束通知设置，并在主线程捕获不可变搜索 snapshot | 搜索期读取全局设置 |
+| `src/Runtime/PortfolioSelectorRuntime.cs` | 仅当环境变量 `COMBATSOLVER_PORTFOLIO_SELECTOR` 指向模型文件时解析并缓存实验用组合成员选择器，把不可变实例挂到策略快照；文件缺失、超限或 schema 不合法时禁用并记一条日志 | 搜索期读文件或环境变量、放宽既有成员门控、参与搜索评分 |
 | `src/Runtime/PlayerTurnSetupPatches.cs` | 准备阶段稳定根搜索与既有选择重放；原生会话独占生命周期，每次搜索独立取消并排空，页面等待后原子确定唯一 worker 所有者；结果发布结束接管标志，手动提交淘汰旧根；后续回合无既有选择时捕获准备根；进入 Play 后交给 continuation 核对 | 普通 Play 阶段搜索与动作部署 |
 | `src/Runtime/NativeChoiceRuntime.cs` | 观测原生选择 Task 完成及页面序号，按卡牌语义状态匹配计划实例；搜索期间保留手动输入，实际驱动期间持有页面锁，清除尚未提交的手动勾选后选择计划实例 | 选择分支枚举和战斗结算 |
 | `src/Runtime/ClientUpdateNotice.cs` | 解析现有心跳响应、严格比较三段版本、发布线程安全纯值提醒；OnlinePresence 在主线程通知 Overlay 刷新 | 网络请求调度、安装更新或战斗操作 |
@@ -159,6 +160,8 @@ RitsuLib 0.6.0 自身拥有 BaseLib 目标类型的外部登记查询、按程�
 `BeamWidthPortfolio.cs` 是一个与 Beam 算法无关的组合器：按顺序在同一个根上跑若干宽度或中途排序不同的成员，共享一份节点预算（首个成员拿全额，其后各成员的上限是扣掉前面实际展开数后的余量，扣光即停），撞节点上限又没到终局的成员不参与比较，其余按调用方传入的既有比较规则整条取最优，同分保留先出现的基线成员。它不含比较规则、状态键或终局排序；展开数、转移数和终止原因都由调用方按各自既有口径给出。`SolverSettings.UseBeamWidthPortfolio` 默认开启，由 Runtime 冻结进 `SearchPolicySnapshot`；关闭时只运行基线成员。做法与数据来源见[宽度组合](strategy/beam-width-portfolio.md)。
 
 `BeamWidthPortfolioGate.cs` 是精炼成员的准入判断，只做算术与比较，不看搜索状态：基线必须已经把自己这一宽度搜干净（`BoundaryReason == None`）、不是已证明最优的零战损胜利、耗时不超过时间预算的四分之一，且共享节点余量、剩余时间、`SearchMemoryPressureSignal.RemainingBytes` 都装得下「基线实测 × 成员宽度 ÷ 基线宽度 × 3/2」的估算，才启动下一位成员；否则该成员不运行、不花预算，只留一行原因。成员顺序执行不并行，精炼成员的软时间预算收紧到本轮剩余部分。`BeamWidthPortfolioTelemetry.cs` 是请求级诊断，记首条路线发布时刻、逐成员开销与各成员结束后的托管堆峰值，挂在 `SolverResult.PortfolioTelemetry` 上供测试写出；组合关闭时同样记录，那时是单成员一行。基线成员一完成就走协调器已有的 interim 回调发布给界面（中途路线本来就由 `SolverProgress` 承载），精炼不影响玩家看到第一条路线的时刻。Search 仍然不读设置：开关与成员宽度由运行时写进 `SearchPolicySnapshot`。
+
+`BeamPortfolioSelector.cs` 是实验用的组合成员选择器（默认不启用）：Runtime 只有在显式给出模型文件时才注入，Search 只收到解析后的不可变实例。它只在 `BeamWidthPortfolioGate` 已经放行之后决定“这一位成员不跑”，不改评分、状态键、保路通道、必保候选或终局排序；模型缺失、求解器或游戏程序集 MVID 不一致、特征长度不符、特征非有限，或状态与配置超出训练范围时一律运行成员，计时与剩余预算字段不设范围约束，避免把负载漂移当成分布外。判定只用模型自带的常量树，不做 IO、不持有搜索对象。离线宿主用 `--observe-portfolio` 经同一路径导出特征与真实政策标签、用 `--portfolio-model` 应用模型；采集、划分、训练与对照见 [PortfolioSelector 工具](../tools/PortfolioSelector/README.md)，实测取舍见[学习型组合门控](strategy/learned-portfolio-gate-20260917.md)。
 
 周期候选在最多 32 步的窗口内比较重复动作、控制形状及伤害发生相位，避免把较长周期中的安静阶段当成整个循环。每周期伤害数值可以变化：动作、形状和伤害相位重复且实际刷新敌人耐久低点时，可取得伤害进展证据；精确转移增量是否一致仍单独记录，不把增长伤害伪装成相同增量。已证明刷新逐敌人历史最低耐久的路线可使用独立进展通道：每个 region 每层至多一个代表，最多保留该周期余下的 31 个安静动作，且只由实际保留节点的一个直接后代消费。只有新的最低耐久能续期；普通停滞、试探和顺序选择预算不因此重置。进展准入在最终仲裁后结算，并解除已经完成目标的旧出口探针；所有动作仍逐步模拟并受请求节点与时间限制。
 
