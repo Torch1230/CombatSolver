@@ -7,69 +7,50 @@ function New-QuarkReleaseBundle {
         [string]$MinimalReleaseZip,
 
         [Parameter(Mandatory)]
-        [string]$RitsuLibZip,
+        [string]$OutputPath,
 
-        [Parameter(Mandatory)]
-        [string]$OutputPath
+        [long]$MinimumBytesExclusive = 15MB
     )
 
+    $paddingEntryName = 'QUARK_UPLOAD_PADDING.bin'
     $temporaryPath = "$OutputPath.$([Guid]::NewGuid().ToString('N')).tmp"
     try {
         Copy-Item -LiteralPath $MinimalReleaseZip -Destination $temporaryPath
-        $archive = [System.IO.Compression.ZipFile]::Open(
-            $temporaryPath,
-            [System.IO.Compression.ZipArchiveMode]::Update)
-        $ritsuArchive = [System.IO.Compression.ZipFile]::OpenRead($RitsuLibZip)
-        try {
-            $entryNames = [System.Collections.Generic.HashSet[string]]::new(
-                [System.StringComparer]::OrdinalIgnoreCase)
-            foreach ($existingEntry in $archive.Entries) {
-                $null = $entryNames.Add($existingEntry.FullName)
-            }
-
-            foreach ($ritsuEntry in $ritsuArchive.Entries) {
-                $sourceName = $ritsuEntry.FullName.Replace('\', '/')
-                $segments = @($sourceName.Split('/', [System.StringSplitOptions]::RemoveEmptyEntries))
-                if ($sourceName.StartsWith('/') -or
-                    $segments.Count -eq 0 -or
-                    $segments -contains '.' -or
-                    $segments -contains '..') {
-                    throw "RitsuLib ZIP 包含非法条目：$($ritsuEntry.FullName)"
-                }
-
-                $entryName = "RitsuLib/$([string]::Join('/', $segments))"
-                if ($ritsuEntry.Name.Length -eq 0) {
-                    $entryName += '/'
-                }
-                if (-not $entryNames.Add($entryName)) {
-                    throw "夸克打包版中存在重复条目：$entryName"
-                }
-
-                $targetEntry = $archive.CreateEntry(
-                    $entryName,
-                    [System.IO.Compression.CompressionLevel]::Optimal)
-                $targetEntry.LastWriteTime = $ritsuEntry.LastWriteTime
-                if ($ritsuEntry.Name.Length -ne 0) {
-                    $sourceStream = $ritsuEntry.Open()
-                    $targetStream = $targetEntry.Open()
-                    try {
-                        $sourceStream.CopyTo($targetStream)
-                    }
-                    finally {
-                        $targetStream.Dispose()
-                        $sourceStream.Dispose()
-                    }
-                }
-            }
-        }
-        finally {
-            $ritsuArchive.Dispose()
-            $archive.Dispose()
-        }
-
         $bundle = Get-Item -LiteralPath $temporaryPath
-        if ($bundle.Length -le 10MB) {
-            throw "夸克打包版必须超过 10 MiB，实际为 $($bundle.Length) 字节。"
+        if ($bundle.Length -le $MinimumBytesExclusive) {
+            $paddingLength = $MinimumBytesExclusive - $bundle.Length + 1
+            $archive = [System.IO.Compression.ZipFile]::Open(
+                $temporaryPath,
+                [System.IO.Compression.ZipArchiveMode]::Update)
+            try {
+                if ($null -ne $archive.GetEntry($paddingEntryName)) {
+                    throw "夸克打包版中已存在填充条目：$paddingEntryName"
+                }
+                $paddingEntry = $archive.CreateEntry(
+                    $paddingEntryName,
+                    [System.IO.Compression.CompressionLevel]::NoCompression)
+                $paddingStream = $paddingEntry.Open()
+                try {
+                    $buffer = [byte[]]::new(1MB)
+                    $remaining = $paddingLength
+                    while ($remaining -gt 0) {
+                        $writeLength = [Math]::Min($buffer.Length, $remaining)
+                        $paddingStream.Write($buffer, 0, $writeLength)
+                        $remaining -= $writeLength
+                    }
+                }
+                finally {
+                    $paddingStream.Dispose()
+                }
+            }
+            finally {
+                $archive.Dispose()
+            }
+            $bundle = Get-Item -LiteralPath $temporaryPath
+        }
+
+        if ($bundle.Length -le $MinimumBytesExclusive) {
+            throw "夸克打包版必须超过 $MinimumBytesExclusive 字节，实际为 $($bundle.Length) 字节。"
         }
         Move-Item -LiteralPath $temporaryPath -Destination $OutputPath -Force
         return Get-Item -LiteralPath $OutputPath

@@ -55,7 +55,6 @@ foreach ($command in @('git', 'gh', 'node')) {
 
 $manifestPath = Resolve-RequiredFile (Join-Path $repoRoot 'CombatSolver.json') 'manifest'
 $releaseZipPath = Resolve-RequiredFile (Join-Path $repoRoot "releases\CombatSolver-$Version.zip") '最小发布包'
-$ritsuLibZipPath = Resolve-RequiredFile (Join-Path $repoRoot 'releases\STS2 RitsuLib 0.6.0.zip') 'RitsuLib 前置 ZIP'
 $quarkReleaseZipPath = Join-Path $repoRoot "releases\CombatSolver-$Version-Quark.zip"
 $releaseNotesPath = Resolve-RequiredFile (Join-Path $repoRoot "docs\releases\$Version-RELEASE_NOTES.md") '玩家更新日志'
 $solverDllPath = Resolve-RequiredFile (Join-Path $repoRoot '.godot\mono\temp\bin\Release\CombatSolver.dll') 'Release DLL'
@@ -199,9 +198,8 @@ if ($ValidateOnly) {
         sourceCommit = $sourceCommit
         releaseZip = $releaseZipPath
         quarkReleaseZip = $quarkReleaseZipPath
-        quarkRitsuLibSourceZip = $ritsuLibZipPath
-        quarkRitsuLibDirectory = 'RitsuLib'
-        quarkMinimumBytesExclusive = 10MB
+        quarkPaddingEntry = 'QUARK_UPLOAD_PADDING.bin'
+        quarkMinimumBytesExclusive = 15MB
         releaseNotes = $releaseNotesPath
         license = $licensePath
         workshop = $resolvedWorkshopDirectory
@@ -255,7 +253,6 @@ if (-not $state.quarkRelease -or -not $state.quarkNotes) {
     $quarkBundle = if (-not $state.quarkRelease) {
         New-QuarkReleaseBundle `
             -MinimalReleaseZip $releaseZipPath `
-            -RitsuLibZip $ritsuLibZipPath `
             -OutputPath $quarkReleaseZipPath
     }
     else {
@@ -325,8 +322,7 @@ if (-not $state.quarkRelease -or -not $state.quarkNotes) {
     github = [bool]$state.github
     quarkRelease = [bool]$state.quarkRelease
     quarkReleaseZip = $quarkReleaseZipPath
-    quarkRitsuLibSourceZip = $ritsuLibZipPath
-    quarkRitsuLibDirectory = 'RitsuLib'
+    quarkPaddingEntry = 'QUARK_UPLOAD_PADDING.bin'
     quarkNotes = [bool]$state.quarkNotes
     monitoringBackend = '由用户维护'
     stateFile = $statePath
