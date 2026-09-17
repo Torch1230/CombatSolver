@@ -2,14 +2,18 @@
 
 ## 简体中文
 
-- 优化了涉及卡牌变形效果的路线搜索，减少重复整理候选牌池的工作。这类复杂战斗现在可以更快完成计算；卡牌生成规则、随机结果和最终路线选择规则保持不变。
+- 本次更新最重要的性能优化来自 [ltlly](https://github.com/ltlly) 提交的 [PR #106](https://github.com/Torch1230/CombatSolver/pull/106)：大幅减少卡牌变形路线中的重复计算，让复杂长线搜索明显更快。
+- 在频繁触发卡牌变形的重型战斗中，计算速度最高可达原来的约 3–4 倍，同时显著减少长时间计算产生的临时内存分配。实际收益取决于牌组和战斗；较少涉及卡牌变形的战斗变化不大。卡牌生成规则、随机结果和路线选择规则保持不变。
 - 修正搜索进度条在计算开始后很快接近满格、随后长时间停在末端的问题。进度现在按整次计算的时间预算平稳推进，并在最终候选复核完成前保留明确余量。
-- “多策略路线搜索（实验）”保持默认关闭。常规搜索结果预计损失至少 8 HP 时，求解器会提示可以在“设置 > 性能”中尝试开启；这条提示可以永久隐藏。性能预设建议同样只在预计损失至少 8 HP 时显示。
+- “多策略路线搜索（实验）”对新安装保持默认关闭，升级不会改动玩家已有的开关选择。常规搜索结果预计损失至少 8 HP 时，求解器会提示可以在“设置 > 性能”中尝试开启；这条提示可以永久隐藏。性能预设建议同样只在预计损失至少 8 HP 时显示。
 - 夸克网盘安装包不再内置 RitsuLib。使用夸克包安装时，请按依赖列表单独安装 RitsuLib；Steam 创意工坊与 GitHub 安装包保持原有依赖方式。
+- 特别感谢 [ltlly](https://github.com/ltlly) 主动提交 PR #106，并完成这项对复杂长线战斗影响显著的性能优化。
 
 ## English
 
-- Optimized route search for card-transformation effects by removing repeated candidate-pool work. Complex combats that rely on these effects can now finish calculation faster, while card-generation rules, random outcomes, and final route-selection rules remain unchanged.
+- The headline performance improvement in this update comes from [ltlly](https://github.com/ltlly)'s [PR #106](https://github.com/Torch1230/CombatSolver/pull/106), which eliminates a large amount of repeated work in card-transformation routes and makes complex, long-running searches substantially faster.
+- In heavy combats that repeatedly transform cards, calculation speed can reach roughly 3–4× the previous level at the high end, with substantially less temporary allocation during long searches. Gains depend on the deck and encounter; fights that rarely use card transformation see little change. Card-generation rules, random outcomes, and route-selection rules remain unchanged.
 - Fixed the search progress bar filling almost immediately and then appearing stuck near the end. Progress now advances against the budget for the whole calculation and keeps clear room until final candidate review is complete.
-- “Multi-strategy Route Search (Experimental)” remains disabled by default. When the standard search projects at least 8 HP loss, the solver suggests trying it under Settings > Performance. This notice can be dismissed permanently. The performance-preset suggestion now uses the same threshold.
+- “Multi-strategy Route Search (Experimental)” remains disabled by default for new installations, and upgrading does not change the player's existing choice. When the standard search projects at least 8 HP loss, the solver suggests trying it under Settings > Performance. This notice can be dismissed permanently. The performance-preset suggestion now uses the same threshold.
 - The Quark Drive package no longer bundles RitsuLib. Install RitsuLib separately when using the Quark package. Steam Workshop and GitHub packages keep their existing dependency flow.
+- Special thanks to [ltlly](https://github.com/ltlly) for submitting PR #106 and delivering this major performance improvement for complex, long-running combats.

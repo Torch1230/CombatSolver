@@ -682,7 +682,6 @@ internal static class SolverSettings
             migrated = migrated with
             {
                 PerformanceMigrationVersion = CurrentPerformanceMigrationVersion,
-                UseNoveltyPortfolio = false,
             };
         }
         return migrated;
