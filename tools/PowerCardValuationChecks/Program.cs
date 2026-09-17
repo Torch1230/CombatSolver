@@ -173,6 +173,12 @@ Require(!SilentWraithOpeningWindow.ShouldProtect(
         intangibleTurns: 2,
         projectedHpBeforeOpening: 0),
     "幽魂形态没有区分长线过早启动、覆盖战斗尾段和致死救场。");
+Require(PowerActivationInvestmentPolicy.EnergyInvestment(1, totalFloor: 10, combatTurnOffset: 0) == 8
+    && PowerActivationInvestmentPolicy.EnergyInvestment(1, totalFloor: 20, combatTurnOffset: 0) == 5
+    && PowerActivationInvestmentPolicy.EnergyInvestment(1, totalFloor: 33, combatTurnOffset: 0) == 3,
+    "能力启动投资没有随楼层推进降低。");
+Require(PowerActivationInvestmentPolicy.EnergyInvestment(1, totalFloor: 33, combatTurnOffset: 2) == 8,
+    "楼层先验错误降低了战斗中后段的能力启动投资。");
 Require(!SilentPowerRouteAdmission.Evaluate(new(
         Card: SilentPowerCardIdentity.MasterPlanner,
         IsAutoPlay: false,

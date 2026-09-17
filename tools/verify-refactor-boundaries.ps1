@@ -761,6 +761,7 @@ foreach ($check in @(
     @{ Path = 'Commitments\PowerCardPlayOccurrence.cs'; Text = 'internal readonly record struct PowerCardPlayOccurrence' },
     @{ Path = 'Commitments\PowerCommitmentRetention.cs'; Text = 'internal static class PowerCommitmentRetention' },
     @{ Path = 'Commitments\PowerCommitmentSeatPolicy.cs'; Text = 'internal static class PowerCommitmentSeatPolicy' },
+    @{ Path = 'Commitments\PowerActivationInvestmentPolicy.cs'; Text = 'internal static class PowerActivationInvestmentPolicy' },
     @{ Path = 'Cards\Ironclad\IroncladPowerCardValuationModels.cs'; Text = 'internal static class IroncladPowerCardValuationModels' },
     @{ Path = 'Cards\Silent\SilentPowerCardValuationModels.cs'; Text = 'internal static class SilentPowerCardValuationModels' },
     @{ Path = 'Cards\Silent\SilentDefensePowerCardValuationModels.cs'; Text = 'internal sealed class WraithFormPowerCardValuationModel' },
@@ -788,6 +789,15 @@ foreach ($check in @(
 $powerPortfolioGatePath = Join-Path $searchRoot 'PowerCommitmentPortfolioGate.cs'
 if (-not (Select-String -LiteralPath $powerPortfolioGatePath -SimpleMatch 'internal static class PowerCommitmentPortfolioGate' -Quiet)) {
     $violations.Add("${powerPortfolioGatePath}: missing power commitment portfolio gate")
+}
+$powerRoutePortfolioPath = Join-Path $searchRoot 'CombatSearchCoordinator.PowerRoutes.cs'
+foreach ($powerRouteRule in @(
+    'private static SolverResult RunOpeningPowerRoutePortfolio(',
+    'fixedPrefixActions: prefix',
+    'PowerRoutePortfolioMemberReport')) {
+    if (-not (Select-String -LiteralPath $powerRoutePortfolioPath -SimpleMatch $powerRouteRule -Quiet)) {
+        $violations.Add("${powerRoutePortfolioPath}: missing power route portfolio boundary '$powerRouteRule'")
+    }
 }
 $finalOrderingPath = Join-Path $searchRoot 'CombatBeamSolver.FinalPlanOrdering.cs'
 if (Select-String -LiteralPath $finalOrderingPath -SimpleMatch 'PowerCardValuation' -Quiet) {

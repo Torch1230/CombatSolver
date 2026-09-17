@@ -702,6 +702,7 @@ Commitments/PowerCommitmentEvidence.cs	private int PowerCommitmentRealizedEviden
 Commitments/PowerCardPlayOccurrence.cs	internal readonly record struct PowerCardPlayOccurrence
 Commitments/PowerCommitmentRetention.cs	internal static class PowerCommitmentRetention
 Commitments/PowerCommitmentSeatPolicy.cs	internal static class PowerCommitmentSeatPolicy
+Commitments/PowerActivationInvestmentPolicy.cs	internal static class PowerActivationInvestmentPolicy
 Cards/Ironclad/IroncladPowerCardValuationModels.cs	internal static class IroncladPowerCardValuationModels
 Cards/Silent/SilentPowerCardValuationModels.cs	internal static class SilentPowerCardValuationModels
 Cards/Silent/SilentDefensePowerCardValuationModels.cs	internal sealed class WraithFormPowerCardValuationModel
@@ -724,6 +725,14 @@ EOF
 require_fixed "$search_root/PowerCommitmentPortfolioGate.cs" \
     'internal static class PowerCommitmentPortfolioGate' \
     'missing power commitment portfolio gate'
+for power_route_rule in \
+    'private static SolverResult RunOpeningPowerRoutePortfolio(' \
+    'fixedPrefixActions: prefix' \
+    'PowerRoutePortfolioMemberReport'; do
+    require_fixed "$search_root/CombatSearchCoordinator.PowerRoutes.cs" \
+        "$power_route_rule" \
+        'missing power route portfolio boundary'
+done
 forbid_fixed "$search_root/CombatBeamSolver.FinalPlanOrdering.cs" 'PowerCardValuation' \
     'power-card valuation must not enter final plan ordering:'
 

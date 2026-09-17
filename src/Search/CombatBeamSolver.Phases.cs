@@ -2072,9 +2072,15 @@ internal sealed partial class CombatBeamSolver
     }
 
     private SearchNode? ApplyFixedPrefix(SearchNode seed)
-        => ApplyFixedPrefix(seed, _fixedPrefixActions);
+        => ApplyFixedPrefix(
+            seed,
+            _fixedPrefixActions,
+            _resetFixedPrefixSchedulingBaseline);
 
-    private SearchNode? ApplyFixedPrefix(SearchNode seed, IReadOnlyList<PlanAction> prefix)
+    private SearchNode? ApplyFixedPrefix(
+        SearchNode seed,
+        IReadOnlyList<PlanAction> prefix,
+        bool resetSchedulingBaseline = false)
     {
         SearchNode node = seed;
         foreach (PlanAction action in prefix)
@@ -2128,6 +2134,21 @@ internal sealed partial class CombatBeamSolver
             };
             node = AttachOrderedMutationLineage(node);
             node.Parent!.Snapshot.ReleaseSimulator();
+        }
+        if (resetSchedulingBaseline && prefix.Count > 0)
+        {
+            // 固定前缀模拟的是“玩家已经完成这些动作后重新计算”。后续搜索必须以此刻真实状态
+            // 重新建立进展基线；沿用前缀之前的最低/最高值会让同一局面区别于手动动作后的新根。
+            node = node with
+            {
+                CombatProgress = CombatProgressState.Capture(node.Snapshot),
+                Cycle = null,
+            };
+            node.PowerCommitment = null;
+            node.OrderedMutationLineage = null;
+            node.OrderedMutationBoundaryLineage = null;
+            node.OrderedMutationRetentionLease = null;
+            node.OrderedMutationActivationTicket = null;
         }
         return node;
     }

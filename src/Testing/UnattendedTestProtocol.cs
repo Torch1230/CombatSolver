@@ -588,6 +588,9 @@ internal sealed class UnattendedSolverMetrics
     /// <summary>逐成员明细；组合关闭时是一行。</summary>
     public BeamWidthPortfolioMemberReport[] PortfolioMembers { get; init; } = [];
 
+    /// <summary>逐张或双能力固定开牌前缀的完整反事实搜索明细。</summary>
+    public PowerRoutePortfolioMemberReport[] PowerRouteMembers { get; init; } = [];
+
     /// <summary>各成员结束后 <c>GC.GetTotalMemory(false)</c> 的最大值。</summary>
     public long PeakManagedHeapBytes { get; init; }
     public long ManagedLiveBytes { get; init; }

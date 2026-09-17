@@ -282,68 +282,6 @@ internal sealed partial class CombatBeamSolver
         }
     }
 
-    internal PlanAction? BuildOpeningPowerOffensiveFollowUp(PlanAction openingPower)
-    {
-        SimulationSnapshot rootSnapshot = Replay([]);
-        SimulationSnapshot? powerSnapshot = null;
-        List<SearchNode> followUps = [];
-        try
-        {
-            SearchNode seed = new(
-                null,
-                0,
-                rootSnapshot.PotionUseCount,
-                rootSnapshot.PotionStrategicCost,
-                _startTurnNumber,
-                SearchRouteTraits.None,
-                0,
-                rootSnapshot.Score,
-                rootSnapshot.StateKey,
-                rootSnapshot.HasRisk,
-                rootSnapshot.BoundaryReason,
-                false,
-                null,
-                rootSnapshot,
-                CombatProgressState.Capture(rootSnapshot));
-            powerSnapshot = ReplayAction(seed, openingPower);
-            SearchNode powerNode = new(
-                openingPower,
-                1,
-                powerSnapshot.PotionUseCount,
-                powerSnapshot.PotionStrategicCost,
-                _startTurnNumber,
-                SearchRouteTraits.Scaling,
-                0,
-                powerSnapshot.Score,
-                powerSnapshot.StateKey,
-                powerSnapshot.HasRisk,
-                powerSnapshot.BoundaryReason,
-                false,
-                seed,
-                powerSnapshot,
-                CombatProgressState.Capture(powerSnapshot))
-            {
-                CumulativeEnemyHpLost = AccumulateEnemyHpLost(seed, powerSnapshot),
-            };
-            followUps.AddRange(Expand(powerNode).Where(node =>
-                node.Action is { Kind: PlanActionKind.PlayCard, Turn: var turn }
-                && turn == _startTurnNumber));
-            SearchNode? best = followUps
-                .Where(node => node.Snapshot.EnemyHp < powerSnapshot.EnemyHp)
-                .OrderBy(node => node.Snapshot.EnemyHp)
-                .ThenByDescending(node => node.Score)
-                .FirstOrDefault();
-            return best?.Action;
-        }
-        finally
-        {
-            foreach (SearchNode followUp in followUps)
-                followUp.Snapshot.ReleaseSimulator();
-            powerSnapshot?.ReleaseSimulator();
-            rootSnapshot.ReleaseSimulator();
-        }
-    }
-
     private SearchNode CreateOpeningFollowUpSeed(IReadOnlyList<PlanAction> prefix, SearchRouteTraits traits = SearchRouteTraits.Scaling)
     {
         SimulationSnapshot snapshot = Replay([]);

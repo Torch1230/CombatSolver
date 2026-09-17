@@ -111,6 +111,16 @@ internal static class BeamWidthPortfolio
     internal const double WideRefinementRatio = 3d / 2d;
 
     /// <summary>
+    /// 基线把配置节点用尽时，能力成员仍取得请求节点上限的五分之一作为专用预留。该预留只供能力
+    /// 成员使用，因此组合总展开数允许高于原共享上限；普通精炼仍严格共享原余量。
+    /// </summary>
+    internal static int DedicatedPowerNodeReserve(int sharedMaxExpandedNodes)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sharedMaxExpandedNodes);
+        return Math.Max(1, sharedMaxExpandedNodes / 5);
+    }
+
+    /// <summary>
     /// 生产成员列表。首项强制是基线宽度（基线成员必须逐位等于今天的单次搜索），其后按给定顺序
     /// 去重追加，丢掉小于 1 的值。<paramref name="configuredWidths" /> 为空时用默认的
     /// [基线, 基线×2/3, 基线×3/2, 次段 基线, 基础分 基线]（四舍五入，例如基线 24 是
@@ -222,7 +232,10 @@ internal static class BeamWidthPortfolio
                 members.Add(Skipped(spec, rejection));
                 continue;
             }
-            if (remainingNodes <= 0)
+            long memberNodeBudget = spec.AggressivePowerCommitment
+                ? Math.Max(remainingNodes, DedicatedPowerNodeReserve(sharedMaxExpandedNodes))
+                : remainingNodes;
+            if (memberNodeBudget <= 0)
             {
                 members.Add(Skipped(spec, SkippedBudgetExhausted));
                 continue;
@@ -234,13 +247,13 @@ internal static class BeamWidthPortfolio
                 SecondRankBand = spec.SecondRankBand,
                 BaseScoreOnly = spec.BaseScoreOnly,
                 AggressivePowerCommitment = spec.AggressivePowerCommitment,
-                MaxExpandedNodes = (int)remainingNodes,
+                MaxExpandedNodes = (int)Math.Min(int.MaxValue, memberNodeBudget),
             };
             BeamWidthPortfolioRun<TResult> run = solve(memberProfile);
             ArgumentOutOfRangeException.ThrowIfNegative(run.ExpandedNodes);
             ArgumentOutOfRangeException.ThrowIfNegative(run.TransitionCount);
             ArgumentNullException.ThrowIfNull(run.Termination);
-            remainingNodes -= run.ExpandedNodes;
+            remainingNodes = Math.Max(0, remainingNodes - run.ExpandedNodes);
             totalExpanded += run.ExpandedNodes;
             totalTransitions += run.TransitionCount;
             if (firstRanIndex < 0)

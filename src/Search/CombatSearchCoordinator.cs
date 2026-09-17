@@ -288,12 +288,25 @@ internal static partial class CombatSearchCoordinator
             SolverResult RunBaseline(SolverSearchProfile baselineProfile)
                 => RunBeamWidthPortfolioPass(root, beamPolicy, baselineProfile,
                     ReferenceEquals(baselineProfile, passProfile) ? passClock : Stopwatch.StartNew(),
-                    SolveMember, publishBaseline);
+                    cancellationToken, SolveMember, publishBaseline);
             SolverResult passResult = policy.UseNoveltyPortfolio
                 ? RunNoveltyPortfolioPass(root, displayNames, battleDamage, policy, passProfile,
                     passClock, initialPotionPolicyOverride, cancellationToken, progressCallback,
                     interimResultCallback, RunBaseline)
                 : RunBaseline(passProfile);
+            if (passResult.ResultScope == SolverResultScope.SearchCompletion)
+            {
+                passResult = RunOpeningPowerRoutePortfolio(
+                    root,
+                    displayNames,
+                    battleDamage,
+                    beamPolicy,
+                    cancellationToken,
+                    progressCallback,
+                    passProfile,
+                    initialPotionPolicyOverride,
+                    passResult);
+            }
             NoveltyPortfolioTelemetry? noveltyPass = passResult.NoveltyPortfolio;
             ObserveSmartLayerMemory(
                 policy, memoryForecast, passAllocatedAtStart, passTransitionsAtStart,
@@ -394,6 +407,7 @@ internal static partial class CombatSearchCoordinator
         SearchPolicySnapshot policy,
         SolverSearchProfile profile,
         Stopwatch passClock,
+        CancellationToken cancellationToken,
         Func<SolverSearchProfile, bool, SolverResult> solveMember,
         Action<SolverResult>? publishBaseline)
     {
@@ -415,13 +429,30 @@ internal static partial class CombatSearchCoordinator
         {
             // 精炼成员沿用现有的软时间预算取消：把它收紧到本轮预算的剩余部分，成员自己就会在
             // 预算耗尽时停下，不必另造一套超时。基线成员原样不动。
+            long remainingMilliseconds = RemainingMilliseconds();
+            long dedicatedPowerMilliseconds = Math.Clamp(
+                profile.SoftTimeBudgetMilliseconds / 5L,
+                1_000L,
+                30_000L);
             SolverSearchProfile effectiveProfile = baselineObserved
                 ? memberProfile with
                 {
                     SoftTimeBudgetMilliseconds = (int)Math.Clamp(
-                        RemainingMilliseconds(), 1, memberProfile.SoftTimeBudgetMilliseconds),
+                        memberProfile.AggressivePowerCommitment
+                            ? Math.Max(remainingMilliseconds, dedicatedPowerMilliseconds)
+                            : remainingMilliseconds,
+                        1,
+                        memberProfile.SoftTimeBudgetMilliseconds),
                 }
                 : memberProfile;
+            if (memberProfile.AggressivePowerCommitment
+                && policy.MemoryPressureSignal.IsEnabled
+                && !policy.MemoryPressureSignal.CanReachCommit(256L * 1024 * 1024))
+            {
+                policy.MemoryPressureSignal.ReclaimAndContinue(
+                    cancellationToken,
+                    "power_commitment_portfolio_member");
+            }
             SearchRequestWorkSnapshot before = totals.Snapshot();
             long allocatedBefore = GC.GetTotalAllocatedBytes(precise: false);
             long startedMilliseconds = passClock.ElapsedMilliseconds;
@@ -466,14 +497,7 @@ internal static partial class CombatSearchCoordinator
         string? RejectMember(BeamWidthPortfolioMemberSpec member)
             => baselineObserved
                 ? member.AggressivePowerCommitment
-                    ? PowerCommitmentPortfolioGate.Reject(
-                        hasReachablePower,
-                        baseline,
-                        member.BeamWidth,
-                        profile.MaxExpandedNodes - expandedByMembers,
-                        RemainingMilliseconds(),
-                        profile.SoftTimeBudgetMilliseconds,
-                        policy.MemoryPressureSignal.RemainingBytes)
+                    ? PowerCommitmentPortfolioGate.Reject(hasReachablePower)
                     : BeamWidthPortfolioGate.RejectRefinement(
                         baseline,
                         member.BeamWidth,
@@ -715,15 +739,6 @@ internal static partial class CombatSearchCoordinator
                 && battleDamage.PotionsUsedSoFar == 0)
             return primary;
 
-        IReadOnlyList<PlanAction> openingPowers = new CombatBeamSolver(
-                root,
-                displayNames,
-                battleDamage,
-                policy,
-                cancellationToken,
-                progressCallback,
-                profile)
-            .BuildOpeningPowerActions();
         IReadOnlyList<PlanAction> openingPotions = policy.PotionPolicy == SolverPotionPolicy.Disabled
             || maximumSmartPotionUses == 0
             ? []
@@ -783,98 +798,13 @@ internal static partial class CombatSearchCoordinator
             if (potionPowerPairs.Count == 4)
                 break;
         }
-        if (openingPowers.Count == 0
-            && potionPowerPairs.Count == 0
+        if (potionPowerPairs.Count == 0
             && generatedResourcePotions.Count == 0
             && openingResources.Count == 0)
             return primary;
 
         List<SolverResult> searches = [primary];
         SolverResult selected = primary;
-        foreach (PlanAction openingPower in openingPowers)
-        {
-            SolverResult posterior = new CombatBeamSolver(
-                root,
-                displayNames,
-                battleDamage,
-                policy,
-                cancellationToken,
-                progressCallback,
-                profile,
-                fixedPrefixActions: [openingPower]).Solve();
-            if (posterior.ResultScope != SolverResultScope.SearchCompletion)
-                return posterior;
-
-            posterior.SingleSessionSearch = true;
-            PopulateSingleSessionTotals(posterior);
-            searches.Add(posterior);
-            if (HasReachedAcceptableBattleHpLoss(policy, posterior))
-            {
-                MergeAuditTotals(posterior, searches.ToArray());
-                return posterior;
-            }
-
-            bool posteriorWon = posterior.Snapshot.AllEnemiesDead
-                && !posterior.Snapshot.PlayerDead
-                && posterior.Snapshot.ProjectedPlayerHp > 0;
-            int posteriorDeficit = StrategicHpDeficit(root, policy, posterior);
-            if (IsBetterCompletedResult(root, policy, posterior, selected))
-            {
-                selected = posterior;
-            }
-            policy.Diagnostics.Info(
-                $"[CombatSolver/Test] OPENING_POWER_POSTERIOR card={openingPower.CardId} " +
-                $"won={posteriorWon} hp_deficit={posteriorDeficit} " +
-                $"selected={ReferenceEquals(selected, posterior)}");
-
-            PlanAction? offensiveFollowUp = new CombatBeamSolver(
-                    root,
-                    displayNames,
-                    battleDamage,
-                    policy,
-                    cancellationToken,
-                    progressCallback,
-                    profile)
-                .BuildOpeningPowerOffensiveFollowUp(openingPower);
-            if (offensiveFollowUp == null)
-                continue;
-
-            SolverResult linkedPosterior = new CombatBeamSolver(
-                root,
-                displayNames,
-                battleDamage,
-                policy,
-                cancellationToken,
-                progressCallback,
-                profile,
-                fixedPrefixActions: [openingPower, offensiveFollowUp]).Solve();
-            if (linkedPosterior.ResultScope != SolverResultScope.SearchCompletion)
-                return linkedPosterior;
-
-            linkedPosterior.SingleSessionSearch = true;
-            PopulateSingleSessionTotals(linkedPosterior);
-            searches.Add(linkedPosterior);
-            if (HasReachedAcceptableBattleHpLoss(policy, linkedPosterior))
-            {
-                MergeAuditTotals(linkedPosterior, searches.ToArray());
-                return linkedPosterior;
-            }
-
-            bool linkedWon = linkedPosterior.Snapshot.AllEnemiesDead
-                && !linkedPosterior.Snapshot.PlayerDead
-                && linkedPosterior.Snapshot.ProjectedPlayerHp > 0;
-            int linkedDeficit = StrategicHpDeficit(root, policy, linkedPosterior);
-            if (IsBetterCompletedResult(root, policy, linkedPosterior, selected))
-            {
-                selected = linkedPosterior;
-            }
-            policy.Diagnostics.Info(
-                $"[CombatSolver/Test] OPENING_POWER_LINK_POSTERIOR " +
-                $"cards={openingPower.CardId}+{offensiveFollowUp.CardId} " +
-                $"won={linkedWon} hp_deficit={linkedDeficit} " +
-                $"selected={ReferenceEquals(selected, linkedPosterior)}");
-        }
-
         foreach (PlanAction openingResource in openingResources)
         {
             PlanAction? defensiveFollowUp = new CombatBeamSolver(

@@ -72,22 +72,78 @@ internal sealed partial class CombatBeamSolver
         if (dexterityGain == 0)
             return 0;
 
-        PowerTurnCardOption[] options = BuildCurrentHandOptions(child);
+        int potential = FootworkTurnPotential(
+            child.Snapshot.Energy,
+            Math.Max(0, child.Snapshot.PlayerHp - child.Snapshot.ProjectedPlayerHp),
+            BuildCurrentHandOptions(child),
+            dexterityGain);
+
+        CombatPredictionSimulator simulator = child.Snapshot.Simulator;
+        SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
+        SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(_player);
+        int drawCount = PersistentPowerSupport.GetModifiedHandDraw(
+            combat,
+            _player,
+            MegaCrit.Sts2.Core.Combat.CombatManager.baseHandDrawCount);
+        int futureEnergy = PersistentPowerSupport.GetModifiedMaxEnergy(combat, _player);
+        for (int turnOffset = 1; turnOffset <= 2; turnOffset++)
+        {
+            PowerTurnCardOption[] futureOptions = BuildProjectedCardOptions(
+                child,
+                playerState.DrawPile.Cards
+                    .Skip((turnOffset - 1) * drawCount)
+                    .Take(drawCount)
+                    .ToArray(),
+                drawCount);
+            potential = SaturatingPowerCommitmentAdd(
+                potential,
+                FootworkTurnPotential(
+                    futureEnergy,
+                    ForecastIncomingDamage(child, turnOffset),
+                    futureOptions,
+                    dexterityGain));
+        }
+        return potential;
+    }
+
+    private static int FootworkTurnPotential(
+        int energy,
+        int incomingDamage,
+        PowerTurnCardOption[] options,
+        int dexterityGain)
+    {
         if (options.Length == 0)
             return 0;
-        int incomingDamage = Math.Max(
-            0,
-            child.Snapshot.PlayerHp - child.Snapshot.ProjectedPlayerHp);
         IReadOnlyList<PowerTurnFrontierState> baseline = PowerTurnFrontier.Build(
-            child.Snapshot.Energy,
+            energy,
             incomingDamage,
             options);
         IReadOnlyList<PowerTurnFrontierState> powered = PowerTurnFrontier.Build(
-            child.Snapshot.Energy,
+            energy,
             incomingDamage,
             options,
             blockPerSkillBonus: dexterityGain);
         return MarginalFrontierValue(baseline, powered);
+    }
+
+    private int ForecastIncomingDamage(SearchNode child, int turnOffset)
+    {
+        int roundIndex = child.Turn - _startTurnNumber + turnOffset;
+        if (roundIndex < 0 || roundIndex >= _forecast.Rounds.Count)
+            return 0;
+        CombatPredictionSimulator simulator = child.Snapshot.Simulator;
+        SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
+        long total = 0;
+        foreach (ForecastMove move in _forecast.Rounds[roundIndex])
+        {
+            if (!combat.ContainsCreature(move.Owner)
+                || !simulator.State.GetCreature(move.Owner).IsAlive)
+            {
+                continue;
+            }
+            total += move.AttackHits.Sum(hit => Math.Max(0, hit.Damage));
+        }
+        return (int)Math.Min(int.MaxValue, total);
     }
 
     private int MasterPlannerProjectionPotential(SearchNode child)
@@ -276,11 +332,28 @@ internal sealed partial class CombatBeamSolver
         int? shivTargetsOverride = null,
         int weakAttackBonusPercent = 0)
     {
+        CombatPredictionSimulator simulator = child.Snapshot.Simulator;
+        SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(_player);
+        return BuildProjectedCardOptions(
+            child,
+            playerState.Hand.Cards,
+            playerState.Hand.Cards.Count,
+            shivTargetsOverride,
+            weakAttackBonusPercent);
+    }
+
+    private PowerTurnCardOption[] BuildProjectedCardOptions(
+        SearchNode child,
+        IReadOnlyList<PredictedCard> cards,
+        int projectedHandCount,
+        int? shivTargetsOverride = null,
+        int weakAttackBonusPercent = 0)
+    {
         ArgumentOutOfRangeException.ThrowIfNegative(weakAttackBonusPercent);
+        ArgumentOutOfRangeException.ThrowIfNegative(projectedHandCount);
         CombatPredictionSimulator simulator = child.Snapshot.Simulator;
         SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
         SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(_player);
-        int handCount = playerState.Hand.Cards.Count;
         Creature[] aliveEnemies = combat.KnownEnemies
             .Where(enemy => combat.ContainsCreature(enemy)
                 && simulator.State.GetCreature(enemy).IsAlive)
@@ -295,7 +368,7 @@ internal sealed partial class CombatBeamSolver
             combat.GetAmount<FanOfKnivesPower>(_player.Creature) > 0
                 ? Math.Max(1, child.Snapshot.AliveEnemyCount)
                 : 1);
-        return playerState.Hand.Cards
+        return cards
             .Where(card => !card.HasKeyword(simulator.State, CardKeyword.Unplayable))
             .Select(card =>
             {
@@ -323,13 +396,13 @@ internal sealed partial class CombatBeamSolver
                     && card.Preview.DynamicVars.TryGetValue("Block", out var blockVar)
                         ? Math.Max(0, blockVar.IntValue)
                         : 0;
-                int cards = card.Preview.DynamicVars.TryGetValue("Cards", out var cardsVar)
+                int cardCountValue = card.Preview.DynamicVars.TryGetValue("Cards", out var cardsVar)
                     ? cardsVar.IntValue
                     : 0;
                 int draws = SilentCardFlowFacts.DrawCount(
                     card.Preview.Id.Entry,
-                    cards,
-                    handCount);
+                    cardCountValue,
+                    projectedHandCount);
                 int attackHits = baseDamage == 0
                     ? 0
                     : CardMechanismFacts.AttackHits(

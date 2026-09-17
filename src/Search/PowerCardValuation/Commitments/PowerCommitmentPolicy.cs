@@ -36,7 +36,10 @@ internal sealed partial class CombatBeamSolver
             int spentEnergy = playedPower.IsAutoPlay
                 ? 0
                 : Math.Max(0, parent.Snapshot.Energy - child.Snapshot.Energy);
-            int investment = spentEnergy * 8;
+            int investment = PowerActivationInvestmentPolicy.EnergyInvestment(
+                spentEnergy,
+                _totalFloor,
+                Math.Max(0, child.Turn - _startTurnNumber));
             if (!playedPower.IsAutoPlay)
             {
                 investment = SaturatingPowerCommitmentAdd(

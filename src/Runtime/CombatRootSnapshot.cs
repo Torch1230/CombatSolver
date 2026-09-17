@@ -29,6 +29,7 @@ internal sealed class CombatRootSnapshot
     public ContinuationStamp ContinuationStamp { get; }
     public int PlayerCount { get; }
     public int StartTurnNumber { get; }
+    public int TotalFloor { get; }
     public int InitialPlayerHp { get; }
     public int InitialPlayerMaxHp { get; }
     public int InitialBrightestFlameMaxHpSpent
@@ -69,6 +70,7 @@ internal sealed class CombatRootSnapshot
         CombatPredictionSimulator rootSimulator,
         int playerCount,
         int startTurnNumber,
+        int totalFloor,
         int initialPlayerHp,
         int initialPlayerMaxHp,
         int potionSlotCount,
@@ -98,6 +100,7 @@ internal sealed class CombatRootSnapshot
         _rootSimulator = rootSimulator;
         PlayerCount = playerCount;
         StartTurnNumber = startTurnNumber;
+        TotalFloor = totalFloor;
         InitialPlayerHp = initialPlayerHp;
         InitialPlayerMaxHp = initialPlayerMaxHp;
         PotionSlotCount = potionSlotCount;
@@ -229,6 +232,7 @@ internal sealed class CombatRootSnapshot
             simulator,
             state.Players.Count,
             playerState.TurnNumber,
+            state.RunState.TotalFloor,
             player.Creature.CurrentHp,
             player.Creature.MaxHp,
             player.PotionSlots.Count,

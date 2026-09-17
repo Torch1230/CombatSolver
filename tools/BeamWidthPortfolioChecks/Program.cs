@@ -275,24 +275,19 @@ string? Gate(
 
 Require(Gate(Baseline()) == null, "A baseline with headroom on every axis was refused.");
 Require(PowerCommitmentPortfolioGate.Reject(
-        hasReachablePower: false,
-        baseline: Baseline(),
-        memberBeamWidth: 24,
-        remainingNodes: 16_000,
-        remainingMilliseconds: 55_000,
-        timeBudgetMilliseconds: Budget,
-        remainingMemoryBytes: long.MaxValue)
+        hasReachablePower: false)
         == PowerCommitmentPortfolioGate.SkippedNoReachablePower,
     "A root without a registered power admitted the power member.");
 Require(PowerCommitmentPortfolioGate.Reject(
-        hasReachablePower: true,
-        baseline: Baseline(),
-        memberBeamWidth: 24,
-        remainingNodes: 16_000,
-        remainingMilliseconds: 55_000,
-        timeBudgetMilliseconds: Budget,
-        remainingMemoryBytes: long.MaxValue) == null,
-    "A reachable power member with complete headroom was refused.");
+        hasReachablePower: true) == null,
+    "A reachable power member was refused by a generic refinement gate.");
+
+var reservedPower = PortfolioOf([Width(24), Power(24)], 1_000,
+    [Finished(1_000, Outcome(true, 30)), Finished(200, Outcome(true, 20))]);
+Require(observed.Count == 2 && observed[1].MaxExpandedNodes == 200,
+    "A power member did not receive its dedicated node reserve after the baseline exhausted the shared budget.");
+Require(reservedPower.SelectedIndex == 1 && reservedPower.TotalExpandedNodes == 1_200,
+    "Dedicated power reserve did not produce and compare a complete result.");
 
 // Baseline truncated by a limit: finish that width before spending the budget elsewhere.
 Require(Gate(Baseline(exhausted: false)) == BeamWidthPortfolioGate.SkippedBaselineNotFrontierExhausted,
