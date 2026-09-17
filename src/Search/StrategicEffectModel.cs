@@ -430,6 +430,7 @@ internal static class StrategicEffectModel
         {
             AfterimagePower => StrategicEffectRequirements.UsefulCardPlays,
             BufferPower => StrategicEffectRequirements.RemainingTurns,
+            PlatingPower => StrategicEffectRequirements.RemainingTurns,
             FeelNoPainPower => StrategicEffectRequirements.ExhaustPlays,
             DarkEmbracePower => StrategicEffectRequirements.ExhaustPlays
                 | StrategicEffectRequirements.AverageCardValue,
@@ -486,6 +487,7 @@ internal static class StrategicEffectModel
         {
             AfterimagePower => Prevention(amount * context.UsefulCardPlays, context),
             BufferPower => Prevention(BufferPrevention(amount, context), context),
+            PlatingPower => Prevention(amount * context.RemainingTurns, context),
             FeelNoPainPower => Prevention(amount * context.ExhaustPlays, context),
             DarkEmbracePower => CardAccess(amount * (context.ExhaustDrawPlays ?? context.ExhaustPlays) * cardAccessUnit),
             ThornsPower => Damage(amount * context.IncomingHitCount, enemyHp),
