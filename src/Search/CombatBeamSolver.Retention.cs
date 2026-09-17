@@ -218,50 +218,7 @@ internal sealed partial class CombatBeamSolver
             if (hasCrossTurnWork)
                 AddCrossTurnPortfolio(pool, selected, selectedSet);
             // Every independent retention channel must finish before the ordered coordinator.
-            // In particular a late opening-channel winner with an inherited lease must pay this
-            // layer's ordered admission (or lose only that lease) before CycleRegion arbitration.
-            if (pool.Count > _profile.BeamWidth
-                && root.HasUnusedCardReplayAllocator)
-            {
-                int channelWidth = Math.Clamp(_profile.BeamWidth / 12, 6, 12);
-                List<List<SearchNode>> openingChannels = pool
-                    .Select(node => (Node: node, Opening: FindOpeningCardNode(node)))
-                    .Where(item => item.Opening?.Parent is { } parent
-                        && (item.Opening.Snapshot.PersistentBuffValue
-                                > parent.Snapshot.PersistentBuffValue
-                            || item.Opening.Snapshot.StrategicEffects.RetentionValue
-                                > parent.Snapshot.StrategicEffects.RetentionValue))
-                    .GroupBy(item => (
-                        item.Node.PotionCount,
-                        FirstCardId: item.Opening!.Action!.CardId))
-                    .OrderByDescending(group => group.Max(item =>
-                        item.Opening!.Snapshot.StrategicEffects.RetentionValue))
-                    .ThenByDescending(group => group.Max(item => item.Node.Score))
-                    .Take(8)
-                    .Select(group => Retention.RankBest(
-                        group.Select(item => item.Node),
-                        channelWidth,
-                        preserveDefensiveRoute: true))
-                    .ToList();
-                int expandedLimit = Math.Min(
-                    pool.Count,
-                    checked(selected.Count + Math.Max(12, _profile.BeamWidth / 3)));
-                for (int round = 0;
-                     selected.Count < expandedLimit
-                         && openingChannels.Any(channel => round < channel.Count);
-                     round++)
-                {
-                    foreach (IReadOnlyList<SearchNode> channel in openingChannels)
-                    {
-                        if (round >= channel.Count || !selectedSet.Add(channel[round]))
-                            continue;
-                        selected.Add(channel[round]);
-                        if (selected.Count >= expandedLimit)
-                            break;
-                    }
-                }
-            }
-
+            // Power commitments are already settled inside RankBest and do not append candidates here.
             _run.CheckpointPruneMetadata?.Invoke("ordered_routes");
             CycleRegionRetentionTransaction? cycleRegionTransaction = null;
             if (hasOrderedMutationWork)

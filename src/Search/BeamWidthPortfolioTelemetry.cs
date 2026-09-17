@@ -13,6 +13,7 @@ internal sealed record BeamWidthPortfolioMemberReport(
     int BeamWidth,
     bool SecondRankBand,
     bool BaseScoreOnly,
+    bool AggressivePowerCommitment,
     int NodeBudget,
     bool Ran,
     bool Selected,

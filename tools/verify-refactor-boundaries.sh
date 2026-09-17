@@ -255,22 +255,26 @@ for ordered_metric in \
         "$ordered_metric" \
         'ordered-mutation acceptance metric is missing:'
 done
-opening_channel_line="$(rg --line-number --fixed-strings \
-    'List<List<SearchNode>> openingChannels = pool' \
-    "$search_root/CombatBeamSolver.Retention.cs" | head -n 1 | cut -d: -f1)"
 ordered_coordinator_line="$(rg --line-number --fixed-strings \
     'Retention.AddOrderedMutationPortfolio(pool, selected, selectedSet);' \
     "$search_root/CombatBeamSolver.Retention.cs" | head -n 1 | cut -d: -f1)"
 cycle_region_line="$(rg --line-number --fixed-strings \
     'cycleRegionTransaction = ApplyCycleRegionRetention(' \
     "$search_root/CombatBeamSolver.Retention.cs" | head -n 1 | cut -d: -f1)"
-if [[ -z "$opening_channel_line" || -z "$ordered_coordinator_line" \
+if [[ -z "$ordered_coordinator_line" \
     || -z "$cycle_region_line" \
-    || "$opening_channel_line" -ge "$ordered_coordinator_line" \
     || "$ordered_coordinator_line" -ge "$cycle_region_line" ]]; then
     add_violation \
-        "$search_root/CombatBeamSolver.Retention.cs: opening/independent channels must settle before ordered admission, which must settle before CycleRegion"
+        "$search_root/CombatBeamSolver.Retention.cs: ordered admission must settle before CycleRegion"
 fi
+forbid_fixed \
+    "$search_root/CombatBeamSolver.Retention.cs" \
+    'List<List<SearchNode>> openingChannels = pool' \
+    'legacy additive opening-power channel returned:'
+require_fixed \
+    "$search_root/CombatBeamSolver.BeamRetentionPolicy.cs" \
+    'AdmitPowerCommitmentRepresentatives(quotaPool, ranked, required, limit);' \
+    'bounded power commitment replacement is missing:'
 forbid_fixed \
     "$cycle_region_retention_path" \
     'selectedSet.Add(node);' \
@@ -682,6 +686,12 @@ PowerCardValuationContracts.cs	internal readonly record struct PowerCardValuatio
 IPowerCardValuationModel.cs	internal interface IPowerCardValuationModel
 PowerCardValuationRegistry.cs	internal sealed class PowerCardValuationRegistry
 PowerCardValuationModels.cs	internal static class PowerCardValuationModels
+Projection/PowerTurnFrontier.cs	internal static class PowerTurnFrontier
+Projection/RetainedHandTransition.cs	internal static class RetainedHandTransition
+Commitments/PowerCommitment.cs	internal sealed record PowerCommitment
+Commitments/PowerCommitmentPolicy.cs	private void AttachPowerCommitment
+Commitments/PowerCommitmentRetention.cs	internal static class PowerCommitmentRetention
+Commitments/PowerCommitmentSeatPolicy.cs	internal static class PowerCommitmentSeatPolicy
 Cards/Ironclad/IroncladPowerCardValuationModels.cs	internal static class IroncladPowerCardValuationModels
 Cards/Silent/SilentPowerCardValuationModels.cs	internal static class SilentPowerCardValuationModels
 Cards/Silent/SilentDefensePowerCardValuationModels.cs	internal sealed class WraithFormPowerCardValuationModel
@@ -694,6 +704,10 @@ Cards/Regent/RegentPowerCardValuationModels.cs	internal static class RegentPower
 Cards/Necrobinder/NecrobinderPowerCardValuationModels.cs	internal static class NecrobinderPowerCardValuationModels
 Cards/Colorless/ColorlessPowerCardValuationModels.cs	internal static class ColorlessPowerCardValuationModels
 EOF
+
+require_fixed "$search_root/PowerCommitmentPortfolioGate.cs" \
+    'internal static class PowerCommitmentPortfolioGate' \
+    'missing power commitment portfolio gate'
 forbid_fixed "$search_root/CombatBeamSolver.FinalPlanOrdering.cs" 'PowerCardValuation' \
     'power-card valuation must not enter final plan ordering:'
 

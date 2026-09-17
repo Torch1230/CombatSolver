@@ -1115,6 +1115,7 @@ internal sealed record SearchNode(
     public CycleExitObservation? CycleExitObservation { get; set; }
     public PendingCycleExitObservation? PendingCycleExitObservation { get; set; }
     public CrossTurnProbeState? CrossTurnProbe { get; set; }
+    public PowerCommitment? PowerCommitment { get; set; }
     public IReadOnlyList<CrossTurnStandPatBaseline>? CrossTurnStandPatBaselines { get; set; }
     public bool CrossTurnSemanticStateChanged { get; set; }
     public bool CrossTurnSemanticEvidenceAttached { get; set; }

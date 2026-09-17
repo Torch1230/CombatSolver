@@ -49,6 +49,8 @@ Require(result.Timing == PowerCardTiming.BeforeSkill,
 Require(registry.RegisteredCardTypes(PowerCardPool.Silent).SequenceEqual([typeof(TestPowerCard)]),
     "角色卡池分类不正确。");
 RequireThrows<InvalidOperationException>(() => new PowerCardValuationRegistry([model, model]));
+Require(PowerCardValuationRegistry.CardIdFor(typeof(WellLaidPlans)) == "WELL_LAID_PLANS",
+    "卡牌类型没有稳定转换为运行时 CardId。");
 
 PowerCardValuationRegistry silent = PowerCardValuationModels.Registry;
 Require(silent.Count == 17, "静默猎手单人能力牌没有完整登记。");
@@ -132,6 +134,57 @@ Require(wraith.Reward.Prevention == 22 && upgradedWraith.Reward.Prevention == 30
     "幽魂形态没有按无实体覆盖的逐次伤害估值。");
 Require(wraith.Penalty.AntiSynergy == 4,
     "幽魂形态没有计入敏捷流失代价。");
+
+PowerTurnCardOption[] thresholdHand =
+[
+    new(EnergyCost: 1, Damage: 0, Block: 5),
+    new(EnergyCost: 1, Damage: 0, Block: 5),
+    new(EnergyCost: 1, Damage: 9, Block: 0),
+];
+IReadOnlyList<PowerTurnFrontierState> baselineFrontier = PowerTurnFrontier.Build(
+    energy: 2,
+    incomingDamage: 8,
+    thresholdHand);
+IReadOnlyList<PowerTurnFrontierState> footworkFrontier = PowerTurnFrontier.Build(
+    energy: 2,
+    incomingDamage: 8,
+    thresholdHand,
+    blockPerSkillBonus: 3);
+Require(PowerTurnFrontier.DefensiveDamageUplift(baselineFrontier, footworkFrontier) == 9,
+    "灵动步法跨过格挡阈值后没有把省下的能量转成输出。");
+Require(PowerTurnFrontier.DefensiveHpUplift(baselineFrontier, footworkFrontier) == 3,
+    "灵动步法没有量化同等输出下减少的战损。");
+IReadOnlyList<PowerTurnFrontierState> noThresholdFrontier = PowerTurnFrontier.Build(
+    energy: 2,
+    incomingDamage: 9,
+    thresholdHand,
+    blockPerSkillBonus: 2);
+Require(noThresholdFrontier.Where(state => state.HpLost == 0).Max(state => state.Damage) == 0,
+    "未跨过同一防伤阈值时虚构了能量转化收益。");
+
+RetainedHandTransitionResult usefulRetain = RetainedHandTransition.Evaluate(
+    nextTurnEnergy: 3,
+    handLimit: 10,
+    normalDrawCount: 5,
+    retainedCards: [new(Value: 12, EnergyCost: 1)],
+    nextDrawValues: [4, 4, 4, 4, 4]);
+Require(usefulRetain.NetValue == 12,
+    "计划妥当没有保留可支付的高价值牌。");
+RetainedHandTransitionResult cloggedRetain = RetainedHandTransition.Evaluate(
+    nextTurnEnergy: 3,
+    handLimit: 5,
+    normalDrawCount: 5,
+    retainedCards:
+    [
+        new(Value: 1, EnergyCost: 2),
+        new(Value: 1, EnergyCost: 2),
+        new(Value: 1, EnergyCost: 2),
+        new(Value: 1, EnergyCost: 2),
+        new(Value: 1, EnergyCost: 2),
+    ],
+    nextDrawValues: [8, 8, 8, 8, 8]);
+Require(cloggedRetain.NetValue < 0,
+    "计划妥当塞满低价值手牌时没有扣除被阻塞的抽牌。");
 
 Console.WriteLine("POWER_CARD_VALUATION_CHECKS_OK silent_models=17");
 

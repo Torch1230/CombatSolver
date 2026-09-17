@@ -11,6 +11,7 @@
     <Compile Include="../../src/Search/PowerCardValuation/IPowerCardValuationModel.cs" Link="IPowerCardValuationModel.cs" />
     <Compile Include="../../src/Search/PowerCardValuation/PowerCardValuationRegistry.cs" Link="PowerCardValuationRegistry.cs" />
     <Compile Include="../../src/Search/PowerCardValuation/PowerCardValuationModels.cs" Link="PowerCardValuationModels.cs" />
+    <Compile Include="../../src/Search/PowerCardValuation/Projection/*.cs" LinkBase="Projection" />
     <Compile Include="../../src/Search/PowerCardValuation/Cards/**/*.cs" LinkBase="Cards" />
   </ItemGroup>
 </Project>

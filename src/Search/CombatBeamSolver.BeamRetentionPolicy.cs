@@ -3471,6 +3471,7 @@ internal sealed partial class CombatBeamSolver
                     throw new InvalidOperationException("Beam 容量不足以保留策略必需分支。");
                 ranked[replaceIndex] = requiredNode;
             }
+            AdmitPowerCommitmentRepresentatives(quotaPool, ranked, required, limit);
             DiversifyOrdinaryBeamBoundary(
                 quotaPool,
                 ranked,
@@ -3536,6 +3537,42 @@ internal sealed partial class CombatBeamSolver
                 observedRoutingSignatures, observedOptionLeaders, BeamRankScore));
             AssignRetentionRanks(ranked, required);
             return ranked;
+        }
+
+        private void AdmitPowerCommitmentRepresentatives(
+            IReadOnlyList<SearchNode> pool,
+            List<SearchNode> selected,
+            List<SearchNode> required,
+            int limit)
+        {
+            int quota = PowerCommitmentSeatPolicy.SeatQuota(
+                limit,
+                _profile.AggressivePowerCommitment);
+            _run.PowerValuationCandidates += pool.Count(node => node.PowerCommitment != null);
+            int retained = selected.Count(node => node.PowerCommitment != null);
+            _run.PowerCommitmentSeatsPeak = Math.Max(
+                _run.PowerCommitmentSeatsPeak,
+                Math.Min(retained, quota));
+            if (retained >= quota)
+                return;
+
+            foreach (SearchNode candidate in PowerCommitmentRetention.RankRepresentatives(pool, quota))
+            {
+                if (retained >= quota || ContainsReference(selected, candidate))
+                    continue;
+                int replaceIndex = selected.FindLastIndex(node =>
+                    node.PowerCommitment == null
+                    && !ContainsReference(required, node));
+                if (replaceIndex < 0)
+                    return;
+                selected[replaceIndex] = candidate;
+                AddRequired(required, candidate, limit);
+                retained++;
+                _run.PowerCommitmentsAdmitted++;
+                _run.PowerCommitmentSeatsPeak = Math.Max(
+                    _run.PowerCommitmentSeatsPeak,
+                    retained);
+            }
         }
 
         private SearchNode FindBestOrderedMutationRepresentative(

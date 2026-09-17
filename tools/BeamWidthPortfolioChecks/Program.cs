@@ -52,6 +52,7 @@ BeamWidthPortfolioOutcome<SolverInterimResult> PortfolioOf(
 static BeamWidthPortfolioMemberSpec Width(int width) => new(width);
 static BeamWidthPortfolioMemberSpec Band(int width) => new(width, SecondRankBand: true);
 static BeamWidthPortfolioMemberSpec Base(int width) => new(width, BaseScoreOnly: true);
+static BeamWidthPortfolioMemberSpec Power(int width) => new(width, AggressivePowerCommitment: true);
 
 // 1. Production membership: baseline first, the narrow (2/3) and wide (3/2) refinements, then the
 // second-rank-band member and the base-score-only member at the baseline width.
@@ -67,6 +68,12 @@ Require(BeamWidthPortfolio.ProductionMembers(24, [24, 23, 25, 96]).SequenceEqual
     "A configured membership was rewritten or gained a band or base-score member.");
 Require(BeamWidthPortfolio.ProductionMembers(24, [96, 0, -3, 96, 23]).SequenceEqual([Width(24), Width(96), Width(23)]),
     "Configured membership did not force the baseline first, drop duplicates and drop non-positive widths.");
+Require(BeamWidthPortfolio.ProductionMembers(24, null, includePowerCommitmentMember: true)
+        .SequenceEqual([Width(24), Power(24), Width(16), Width(36), Band(24), Base(24)]),
+    "Power commitment member was not scheduled immediately after the baseline.");
+Require(BeamWidthPortfolio.ProductionMembers(24, [24], includePowerCommitmentMember: true)
+        .SequenceEqual([Width(24), Power(24)]),
+    "Power-only scheduling gained unrelated width refinements.");
 Require(BeamWidthPortfolio.ProductionMembers(24, null).Count(member => member.SecondRankBand) == 1
     && BeamWidthPortfolio.ProductionMembers(24, null).Count(member => member.BaseScoreOnly) == 1
     && BeamWidthPortfolio.ProductionMembers(24, null)[0] == Width(24)
@@ -95,6 +102,32 @@ Require(banded.SelectedIndex == 1 && banded.Members[1] is { BeamWidth: 24, Secon
     && banded.Members[0] is { SecondRankBand: false },
     "Band member detail or selection is wrong.");
 Require(!SolverSearchProfile.Default.SecondRankBand, "The default profile must not be a band profile.");
+
+var powered = PortfolioOf([Width(24), Power(24)], 1000,
+    [Finished(400, Outcome(true, 50)), Finished(100, Outcome(true, 30))]);
+Require(observed[1] == (baseProfile with { AggressivePowerCommitment = true, MaxExpandedNodes = 600 }),
+    "Power member profile differs from the baseline in more than its commitment flag and budget.");
+Require(powered.SelectedIndex == 1
+    && powered.Members[1] is { AggressivePowerCommitment: true, Compared: true },
+    "A complete lower-loss power member was not selected.");
+var tiedPower = PortfolioOf([Width(24), Power(24)], 1000,
+    [Finished(400, Outcome(true, 30)), Finished(100, Outcome(true, 30))]);
+Require(tiedPower.SelectedIndex == 0,
+    "An equal-result power member displaced the earlier baseline.");
+var incompletePower = PortfolioOf([Width(24), Power(24)], 1000,
+    [Finished(400, Outcome(true, 30)),
+     Member(100, "FrontierExhausted", terminal: false, Outcome(true, 0))]);
+Require(incompletePower.SelectedIndex == 0
+    && incompletePower.Members[1] is { Compared: false, SkippedReason: BeamWidthPortfolio.SkippedPowerMemberNotTerminal },
+    "An incomplete power member competed with a complete baseline.");
+Require(!SolverSearchProfile.Default.AggressivePowerCommitment,
+    "The default profile must not be a power commitment profile.");
+Require(PowerCommitmentSeatPolicy.SeatQuota(60, aggressive: false) == 5,
+    "Normal power commitment quota changed from BeamWidth/12.");
+Require(PowerCommitmentSeatPolicy.SeatQuota(60, aggressive: true) == 20,
+    "Aggressive power commitment quota changed from ceil(BeamWidth/3).");
+Require(PowerCommitmentSeatPolicy.SeatQuota(5, aggressive: true) == 2,
+    "Aggressive power commitment quota consumed more than half of a small beam.");
 
 // 1c. The band rotation used by the retention policy: leading W entries go to the tail, so a cut at W
 // keeps ranks W+1..2W; short pools top up from the moved entries in their original order.
@@ -241,6 +274,25 @@ string? Gate(
         baseline, memberWidth, remainingNodes, remainingMilliseconds, Budget, remainingMemoryBytes);
 
 Require(Gate(Baseline()) == null, "A baseline with headroom on every axis was refused.");
+Require(PowerCommitmentPortfolioGate.Reject(
+        hasReachablePower: false,
+        baseline: Baseline(),
+        memberBeamWidth: 24,
+        remainingNodes: 16_000,
+        remainingMilliseconds: 55_000,
+        timeBudgetMilliseconds: Budget,
+        remainingMemoryBytes: long.MaxValue)
+        == PowerCommitmentPortfolioGate.SkippedNoReachablePower,
+    "A root without a registered power admitted the power member.");
+Require(PowerCommitmentPortfolioGate.Reject(
+        hasReachablePower: true,
+        baseline: Baseline(),
+        memberBeamWidth: 24,
+        remainingNodes: 16_000,
+        remainingMilliseconds: 55_000,
+        timeBudgetMilliseconds: Budget,
+        remainingMemoryBytes: long.MaxValue) == null,
+    "A reachable power member with complete headroom was refused.");
 
 // Baseline truncated by a limit: finish that width before spending the budget elsewhere.
 Require(Gate(Baseline(exhausted: false)) == BeamWidthPortfolioGate.SkippedBaselineNotFrontierExhausted,

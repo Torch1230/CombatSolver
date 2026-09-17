@@ -276,7 +276,9 @@ internal static partial class CombatSearchCoordinator
             // 在本轮末尾再发布一次，所以同一份结果不会发布两遍。
             SolverResult? publishedBaseline = null;
             Action<SolverResult>? publishBaseline =
-                policy.UseBeamWidthPortfolio && interimResultCallback != null
+                (policy.UseBeamWidthPortfolio
+                    || root.PlayerCardIds.Any(PowerCardValuationModels.Registry.ContainsCardId))
+                && interimResultCallback != null
                     ? baseline =>
                     {
                         publishedBaseline = baseline;
@@ -403,6 +405,8 @@ internal static partial class CombatSearchCoordinator
         BeamWidthPortfolioBaseline baseline = default;
         bool baselineObserved = false;
         long expandedByMembers = 0;
+        bool hasReachablePower = root.PlayerCardIds.Any(
+            PowerCardValuationModels.Registry.ContainsCardId);
 
         long RemainingMilliseconds()
             => profile.SoftTimeBudgetMilliseconds - passClock.ElapsedMilliseconds;
@@ -461,18 +465,30 @@ internal static partial class CombatSearchCoordinator
 
         string? RejectMember(BeamWidthPortfolioMemberSpec member)
             => baselineObserved
-                ? BeamWidthPortfolioGate.RejectRefinement(
-                    baseline,
-                    member.BeamWidth,
-                    profile.MaxExpandedNodes - expandedByMembers,
-                    RemainingMilliseconds(),
-                    profile.SoftTimeBudgetMilliseconds,
-                    policy.MemoryPressureSignal.RemainingBytes)
+                ? member.AggressivePowerCommitment
+                    ? PowerCommitmentPortfolioGate.Reject(
+                        hasReachablePower,
+                        baseline,
+                        member.BeamWidth,
+                        profile.MaxExpandedNodes - expandedByMembers,
+                        RemainingMilliseconds(),
+                        profile.SoftTimeBudgetMilliseconds,
+                        policy.MemoryPressureSignal.RemainingBytes)
+                    : BeamWidthPortfolioGate.RejectRefinement(
+                        baseline,
+                        member.BeamWidth,
+                        profile.MaxExpandedNodes - expandedByMembers,
+                        RemainingMilliseconds(),
+                        profile.SoftTimeBudgetMilliseconds,
+                        policy.MemoryPressureSignal.RemainingBytes)
                 : null;
 
-        BeamWidthPortfolioOutcome<SolverResult> outcome = policy.UseBeamWidthPortfolio
+        BeamWidthPortfolioOutcome<SolverResult> outcome = policy.UseBeamWidthPortfolio || hasReachablePower
             ? BeamWidthPortfolio.Run(
-                BeamWidthPortfolio.ProductionMembers(profile.BeamWidth, policy.BeamWidthPortfolioWidths),
+                BeamWidthPortfolio.ProductionMembers(
+                    profile.BeamWidth,
+                    policy.UseBeamWidthPortfolio ? policy.BeamWidthPortfolioWidths : [profile.BeamWidth],
+                    includePowerCommitmentMember: hasReachablePower),
                 profile.MaxExpandedNodes,
                 profile,
                 RunMember,
@@ -505,6 +521,7 @@ internal static partial class CombatSearchCoordinator
             profile.BeamWidth,
             profile.SecondRankBand,
             profile.BaseScoreOnly,
+            profile.AggressivePowerCommitment,
             profile.MaxExpandedNodes,
             Ran: true,
             run.ExpandedNodes,
@@ -540,6 +557,7 @@ internal static partial class CombatSearchCoordinator
                 member.BeamWidth,
                 member.SecondRankBand,
                 member.BaseScoreOnly,
+                member.AggressivePowerCommitment,
                 member.NodeBudget,
                 member.Ran,
                 Selected: index == outcome.SelectedIndex,
@@ -560,6 +578,7 @@ internal static partial class CombatSearchCoordinator
                 $"[CombatSolver/Test] BEAM_WIDTH_PORTFOLIO_MEMBER index={index} " +
                 $"beam={report.BeamWidth} second_rank_band={report.SecondRankBand} " +
                 $"base_score_only={report.BaseScoreOnly} " +
+                $"power_commitment={report.AggressivePowerCommitment} " +
                 $"nodes={report.NodeBudget} ran={report.Ran} " +
                 $"selected={report.Selected} compared={report.Compared} " +
                 $"skipped={report.SkippedReason ?? "-"} " +

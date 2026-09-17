@@ -47,6 +47,14 @@ internal sealed partial class CombatBeamSolver
                 $"[CombatSolver/Test] ROUTING_CHOICE_SUMMARIES scope=solver " +
                 $"builds={_run.RoutingChoiceSummaryBuilds} hits={_run.RoutingChoiceSummaryHits} " +
                 $"bypasses={_run.RoutingChoiceSummaryBypasses}");
+            policy.Diagnostics.Info(
+                $"[CombatSolver/Test] POWER_COMMITMENTS scope=solver " +
+                $"aggressive={_profile.AggressivePowerCommitment} " +
+                $"candidates={_run.PowerValuationCandidates} " +
+                $"frontier_evaluations={_run.PowerFrontierEvaluations} " +
+                $"created={_run.PowerCommitmentsCreated} admitted={_run.PowerCommitmentsAdmitted} " +
+                $"expired={_run.PowerCommitmentsExpired} realized={_run.PowerCommitmentsRealized} " +
+                $"seats_peak={_run.PowerCommitmentSeatsPeak}");
             HookLayoutCacheStatistics hookLayouts = root.HookLayoutCacheStatistics;
             HookListenerSegmentStatistics hookSegments = root.HookListenerSegmentStatistics;
             policy.Diagnostics.Info(

@@ -11,6 +11,17 @@ internal enum PowerCardPool
 }
 
 [Flags]
+internal enum PowerCommitmentFamily
+{
+    None = 0,
+    DefenseEfficiency = 1 << 0,
+    ShivEngine = 1 << 1,
+    PoisonEngine = 1 << 2,
+    HandEngine = 1 << 3,
+    DamageEngine = 1 << 4,
+}
+
+[Flags]
 internal enum PowerCardValuationRequirements
 {
     None = 0,

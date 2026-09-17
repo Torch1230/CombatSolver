@@ -171,15 +171,19 @@ foreach ($orderedMetric in @(
     }
 }
 $retentionPath = Join-Path $searchRoot "CombatBeamSolver.Retention.cs"
-$openingChannelMatch = Select-String -LiteralPath $retentionPath -SimpleMatch 'List<List<SearchNode>> openingChannels = pool' | Select-Object -First 1
 $orderedCoordinatorMatch = Select-String -LiteralPath $retentionPath -SimpleMatch 'Retention.AddOrderedMutationPortfolio(pool, selected, selectedSet);' | Select-Object -First 1
 $cycleRegionMatch = Select-String -LiteralPath $retentionPath -SimpleMatch 'cycleRegionTransaction = ApplyCycleRegionRetention(' | Select-Object -First 1
-if ($null -eq $openingChannelMatch `
-    -or $null -eq $orderedCoordinatorMatch `
+if ($null -eq $orderedCoordinatorMatch `
     -or $null -eq $cycleRegionMatch `
-    -or $openingChannelMatch.LineNumber -ge $orderedCoordinatorMatch.LineNumber `
     -or $orderedCoordinatorMatch.LineNumber -ge $cycleRegionMatch.LineNumber) {
-    $violations.Add("${retentionPath}: opening/independent channels must settle before ordered admission, which must settle before CycleRegion")
+    $violations.Add("${retentionPath}: ordered admission must settle before CycleRegion")
+}
+if (Select-String -LiteralPath $retentionPath -SimpleMatch 'List<List<SearchNode>> openingChannels = pool' -Quiet) {
+    $violations.Add("${retentionPath}: legacy additive opening-power channel returned")
+}
+$beamRetentionPolicyPath = Join-Path $searchRoot 'CombatBeamSolver.BeamRetentionPolicy.cs'
+if (-not (Select-String -LiteralPath $beamRetentionPolicyPath -SimpleMatch 'AdmitPowerCommitmentRepresentatives(quotaPool, ranked, required, limit);' -Quiet)) {
+    $violations.Add("${beamRetentionPolicyPath}: bounded power commitment replacement is missing")
 }
 foreach ($match in Select-String -LiteralPath $cycleRegionRetentionPath -SimpleMatch 'selectedSet.Add(node);') {
     $violations.Add("$($match.Path):$($match.LineNumber): CycleRegion rebuilt an O(pool) selected-set shadow")
@@ -741,6 +745,12 @@ foreach ($check in @(
     @{ Path = 'IPowerCardValuationModel.cs'; Text = 'internal interface IPowerCardValuationModel' },
     @{ Path = 'PowerCardValuationRegistry.cs'; Text = 'internal sealed class PowerCardValuationRegistry' },
     @{ Path = 'PowerCardValuationModels.cs'; Text = 'internal static class PowerCardValuationModels' },
+    @{ Path = 'Projection\PowerTurnFrontier.cs'; Text = 'internal static class PowerTurnFrontier' },
+    @{ Path = 'Projection\RetainedHandTransition.cs'; Text = 'internal static class RetainedHandTransition' },
+    @{ Path = 'Commitments\PowerCommitment.cs'; Text = 'internal sealed record PowerCommitment' },
+    @{ Path = 'Commitments\PowerCommitmentPolicy.cs'; Text = 'private void AttachPowerCommitment' },
+    @{ Path = 'Commitments\PowerCommitmentRetention.cs'; Text = 'internal static class PowerCommitmentRetention' },
+    @{ Path = 'Commitments\PowerCommitmentSeatPolicy.cs'; Text = 'internal static class PowerCommitmentSeatPolicy' },
     @{ Path = 'Cards\Ironclad\IroncladPowerCardValuationModels.cs'; Text = 'internal static class IroncladPowerCardValuationModels' },
     @{ Path = 'Cards\Silent\SilentPowerCardValuationModels.cs'; Text = 'internal static class SilentPowerCardValuationModels' },
     @{ Path = 'Cards\Silent\SilentDefensePowerCardValuationModels.cs'; Text = 'internal sealed class WraithFormPowerCardValuationModel' },
@@ -758,6 +768,10 @@ foreach ($check in @(
         -not (Select-String -LiteralPath $path -SimpleMatch $check.Text -Quiet)) {
         $violations.Add("${path}: missing power-card valuation boundary '$($check.Text)'")
     }
+}
+$powerPortfolioGatePath = Join-Path $searchRoot 'PowerCommitmentPortfolioGate.cs'
+if (-not (Select-String -LiteralPath $powerPortfolioGatePath -SimpleMatch 'internal static class PowerCommitmentPortfolioGate' -Quiet)) {
+    $violations.Add("${powerPortfolioGatePath}: missing power commitment portfolio gate")
 }
 $finalOrderingPath = Join-Path $searchRoot 'CombatBeamSolver.FinalPlanOrdering.cs'
 if (Select-String -LiteralPath $finalOrderingPath -SimpleMatch 'PowerCardValuation' -Quiet) {

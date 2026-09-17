@@ -20,6 +20,7 @@ internal sealed partial class CombatBeamSolver
 
     private SearchNode AttachCycleSchedulingEvidence(SearchNode child)
     {
+        AttachPowerCommitment(child);
         child = AttachOrderedMutationLineage(child);
         child = AttachCycleEvidence(child);
         AttachPropagatedCycleExitProbe(child);

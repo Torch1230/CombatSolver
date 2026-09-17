@@ -156,9 +156,9 @@ RitsuLib 0.6.0 自身拥有 BaseLib 目标类型的外部登记查询、按程�
 
 `ActionRelicTriggerRecorder` 仅存在于最终路线回放，附带 Damage/Heal 的来源、请求/修正数值和 HP 前后值；普通 Beam 分支保持 null，不分配取证列表。直接字段赋值等绕过 Damage/Heal 的变更尚无来源事件，不能把这份记录宣称为所有语义写点的完整追踪。
 
-`BeamWidthPortfolio.cs` 是一个与 Beam 算法无关的组合器：按顺序在同一个根上跑若干宽度或中途排序不同的成员，共享一份节点预算（首个成员拿全额，其后各成员的上限是扣掉前面实际展开数后的余量，扣光即停），撞节点上限又没到终局的成员不参与比较，其余按调用方传入的既有比较规则整条取最优，同分保留先出现的基线成员。它不含比较规则、状态键或终局排序；展开数、转移数和终止原因都由调用方按各自既有口径给出。`SolverSettings.UseBeamWidthPortfolio` 默认开启，由 Runtime 冻结进 `SearchPolicySnapshot`；关闭时只运行基线成员。做法与数据来源见[宽度组合](strategy/beam-width-portfolio.md)。
+`BeamWidthPortfolio.cs` 是一个与 Beam 算法无关的组合器：按顺序在同一个根上跑若干宽度或中途保留策略不同的成员，共享一份节点预算（首个成员拿全额，其后各成员的上限是扣掉前面实际展开数后的余量，扣光即停），撞节点上限又没到终局的成员不参与比较，其余按调用方传入的既有比较规则整条取最优，同分保留先出现的基线成员。根牌区存在已登记能力牌时，基线之后优先排同宽度的能力承诺成员；它只提高中间承诺席位，不改终局比较。`SolverSettings.UseBeamWidthPortfolio` 只控制后续宽度/次段/基础分成员，关闭时仍可运行这条能力成员。组合器不含比较规则、状态键或终局排序；展开数、转移数和终止原因都由调用方按各自既有口径给出。做法与数据来源见[宽度组合](strategy/beam-width-portfolio.md)及[静默猎手能力牌第二版方案](strategy/power-card-valuation/silent-v2-valuation-and-retention-plan-20260917.md)。
 
-`BeamWidthPortfolioGate.cs` 是精炼成员的准入判断，只做算术与比较，不看搜索状态：基线必须已经把自己这一宽度搜干净（`BoundaryReason == None`）、不是已证明最优的零战损胜利、耗时不超过时间预算的四分之一，且共享节点余量、剩余时间、`SearchMemoryPressureSignal.RemainingBytes` 都装得下「基线实测 × 成员宽度 ÷ 基线宽度 × 3/2」的估算，才启动下一位成员；否则该成员不运行、不花预算，只留一行原因。成员顺序执行不并行，精炼成员的软时间预算收紧到本轮剩余部分。`BeamWidthPortfolioTelemetry.cs` 是请求级诊断，记首条路线发布时刻、逐成员开销与各成员结束后的托管堆峰值，挂在 `SolverResult.PortfolioTelemetry` 上供测试写出；组合关闭时同样记录，那时是单成员一行。基线成员一完成就走协调器已有的 interim 回调发布给界面（中途路线本来就由 `SolverProgress` 承载），精炼不影响玩家看到第一条路线的时刻。Search 仍然不读设置：开关与成员宽度由运行时写进 `SearchPolicySnapshot`。
+`BeamWidthPortfolioGate.cs` 是普通精炼成员的准入判断，`PowerCommitmentPortfolioGate.cs` 先检查根牌区是否有已登记能力牌，再复用同一资源门槛。两者只做算术与比较：基线必须已经把自己这一宽度搜干净（`BoundaryReason == None`）、不是已证明最优的零战损胜利、耗时不超过时间预算的四分之一，且共享节点余量、剩余时间、`SearchMemoryPressureSignal.RemainingBytes` 都装得下「基线实测 × 成员宽度 ÷ 基线宽度 × 3/2」的估算，才启动下一位成员；否则该成员不运行、不花预算，只留一行原因。成员顺序执行不并行，后续成员的软时间预算收紧到本轮剩余部分。`BeamWidthPortfolioTelemetry.cs` 额外标记能力成员，继续记录首条路线发布时刻、逐成员开销与托管堆峰值。基线成员完成即沿既有 interim 回调发布；Search 仍不读取设置或实机状态。
 
 周期候选在最多 32 步的窗口内比较重复动作、控制形状及伤害发生相位，避免把较长周期中的安静阶段当成整个循环。每周期伤害数值可以变化：动作、形状和伤害相位重复且实际刷新敌人耐久低点时，可取得伤害进展证据；精确转移增量是否一致仍单独记录，不把增长伤害伪装成相同增量。已证明刷新逐敌人历史最低耐久的路线可使用独立进展通道：每个 region 每层至多一个代表，最多保留该周期余下的 31 个安静动作，且只由实际保留节点的一个直接后代消费。只有新的最低耐久能续期；普通停滞、试探和顺序选择预算不因此重置。进展准入在最终仲裁后结算，并解除已经完成目标的旧出口探针；所有动作仍逐步模拟并受请求节点与时间限制。
 
@@ -213,7 +213,7 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 | `CombatBeamSolver.OrderedMutationRetention.cs` | 有序操作碰撞的谱系、租约、成对激活和预算账本；统一处理续接、到期与普通通道回退 |
 | `CombatBeamSolver.FinalPlanOrdering.cs` | 终局胜负、偷窃、战损、药水、卖血和搜索边界排序 |
 | `CombatBeamSolver.StateEvaluation.cs` | 搜索快照、评分、威胁、stand-pat 和状态特征；手牌可达价值的纯背包计算委托 `ReachableHandValue` |
-| `PowerCardValuation/` | 能力牌奖励、惩罚与时机模型；按六个卡池及机制组分目录，通过精确卡类型登记。静默猎手17张单人牌当前是待用户复核的 `QuantifiedDraft`，其他卡池为空；未登记卡牌保持既有行为，该接口不进入终局排序 |
+| `PowerCardValuation/` | 能力牌奖励、惩罚、时机及机制族登记；`Projection` 提供有界行动前沿和保留手牌转换，`Commitments` 保存不进入状态键的节点级有限租约并在普通 Beam 席位内置换代表。静默猎手17张单人牌均已登记，首批生产保路框架不改终局排序；未登记卡牌保持既有行为 |
 | `CombatBeamSolver.NoveltySearch.cs` | 有界新颖性队列与影子特征提取；复用既有展开、终局与 Phases 注入边界 |
 | `CombatBeamSolver.Terminal.cs` | 终局精确回放、逐回合结果、击杀与遗物标注 |
 | `StrategicEffectModel.cs` | 把 Power 的实际触发语义投影为伤害、防伤、资源、牌访问和成长效果；不决定终局胜负 |
