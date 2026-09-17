@@ -109,7 +109,7 @@ cd tools/BeamOrderingAudit/BeamOrderingKeyChecks && dotnet run
 - `SameBand` 是并列带判据：只看目标自己的键，不看兜底附加分。
 - 约定"越大越好"，与 `BeamRankScore` 的既有用法（`OrderByDescending` / `Max` / `MaxBy`）一致。
 
-7 组判据、549742 次断言，其中三条直接对应上面的成本收益：
+8 组判据、549747 次断言，其中三条直接对应上面的成本收益：
 
 | 判据 | 说明 |
 |---|---|
@@ -117,7 +117,31 @@ cd tools/BeamOrderingAudit/BeamOrderingKeyChecks && dotnet run
 | `band covers the objective's own tie set` | 同带 ⟺ 生产比较器返回并列；跨带必有先后 |
 | `legacy weighted score loses to a leading key` | 构造出"标量更优但目标更差"的节点对（**证明可能发生，不下频率结论**；频率见 Demo 0） |
 | `key struct reuses existing LINQ call sites` | `Max` / `MaxBy` / `OrderByDescending` / `GroupBy().Max` / `ThenByDescending` / `Comparer<T>.Default` 原样可用 |
+| `band must be capped and ordered by the supplemental score` | **危险约束，不是收益声明**：未完成节点在目标键上大批并列，带必须设上界且带内顺序仍由附加分决定 |
 | `local result stub matches production` | stub 漂移会报警（本工程对测试保真度敏感） |
+
+## 外部证据：排序/并列打破是同等量级的杠杆
+
+以下数字来自独立文献（经 deep-research 工作流交叉核对），与 Demo 0 的方向一致：
+
+| 域 | 结果 | 出处 |
+|---|---|---|
+| 最优 Sokoban | 启发式不变、只把并列打破从 IF 换成 LI，解出实例 23 → 28；实例 #21 展开节点少 100 倍、省半小时以上 | Pereira et al., IJCAI 2016 |
+| 最优 Sokoban | 加一个新启发式是 20 → 28；也就是说**单靠并列打破的增益与新启发式相当** | 同上 |
+| 最优 A* 规划 | 代价自适应并列打破 `[f, hFF+1]` 解出 914/1724，比文献标准 `[f, hLM-cut]` 多 **152** 个 | Corrêa et al., IJCAI 2018 |
+| 经典规划 (BFWS) | 把新颖度升为**主序**、启发式降为并列打破：IPC-2014 覆盖 47 → 100（h_add）、55 → 104（h_ff）；**反向顺序比基线 78 更差** | Lipovetzky & Geffner, AAAI-17 |
+
+最后一行是本节最重的一条：**哪一项当主键、哪一项当并列打破，比启发式本身更值钱**——而且顺序反了会低于基线。这直接支持"排序函数是杠杆"，也警告不能随便换主键。
+
+### 外部证据里的反向警告
+
+同一批文献也给出必须承认的反面：
+
+- **更"准确"的组件可能因代价而更差**：Sokoban 里 2DE 因展开代价并未多解出实例；并列打破在时间上没有明显赢家（2DB+LI 在 13 个实例更慢、15 个更快）；四个已证最优代价的实例没解出，主因就是并列打破。
+- **"理论最优"的并列打破会输**：φ = g + h\* 被证明具有最优展开性质，但在主启发式未完全知情时**实际表现更差**；某个 ELEVATORS-UP 实例里按 g+h\* 排序展开 349108 个状态，而 `[g + hLM-cut; g + h*]` 只展开 18 个。
+- **确定性有实测代价**：并行 SAT 里非确定性 NPS-MCOMSPS 解出 830 个，确定性 DPS-MCOMSPS 解出 808 个（PAR-2 4386010 对 4636427），该评估称这个差距就是"保证可复现的代价"。所以本项目的任何随机化都必须走**带种子的确定性**，不能引入真随机。
+
+**由此修正设计表述**：不要"用目标键替换加权标量"，而是 **BFWS 形态——目标键决定边界（cut），加权标量决定带内顺序**。前瞻信息（能量、增益、铺垫、延迟伤害）不在终局比较的键里，它的价值必须保留。上面那个 `band must be capped` 判据就是把这条约束钉住。
 
 ## 候选修复的成本
 
@@ -141,14 +165,25 @@ cd tools/BeamOrderingAudit/BeamOrderingKeyChecks && dotnet run
 - 约 40 处 `OrderByDescending` / `Max` / `MaxBy` **无需改动**——已由判据
   `key struct reuses existing LINQ call sites` 验证，不是估计。
 
+**它顺带缓解的既有开销（生产路径已实测）**：现行 portfolio 的峰值托管堆比值中位数 1.26、最大 2.18，
+**未达预登记的"中位数 ≤ 1.10"**，因为各成员是完整独立搜索、不共享转置表也不共享候选池
+（`docs/strategy/beam-width-portfolio.md`）。成员越不必要，这个内存回退越小——这是时间之外的第二个收益轴。
+
 ## 尚未确立的部分
 
 - **带能带来多少收益没有实测。**Demo 0 量的是"排序杠杆有多大"（0.895–2.075 HP 当量/场），
   不是"这个具体键能拿回多少"。要实测必须把键接进搜索再 A/B，那是上表那 150–200 行的工作。
-- **带的成本没有实测。**带内多保留节点会多展开，量级未知。
+- **带内并列密度没有实测，这是当前最大的未知。**如果真实前沿上大量节点在目标键上并列
+  （未完成节点都没胜利，很可能如此），带就需要上界和带内选择器；上界取多少、带内是否仍用
+  现有加权标量，都还没有数据。外部的 S8/S10 警告表明"更正确的键"可能因代价而更差。
+- **带的展开成本没有实测。**带内多保留节点会多展开，量级未知。
 - **剪枝侧尚未定义。**本 demo 只覆盖排序侧（探索友好的乐观界）。证明性剪枝需要悲观界，
   是另一步，不在本目录结论内。
 - **质量代理不完整。**成员遥测只有 `Won` / `BattleHpLost` / `PotionCount`，没有战略 HP 亏损、
   成长信用和战斗结束回合。差异小于 1 HP 时看不见，所以这里的"严格不等"是真实分歧的**下界**，
   而"并列"**不等于**路由相同。
-- **两组数据都来自 `fixedSearchBudget` 的离线场景**，不是实机战斗。
+- **两组数据都来自 `fixedSearchBudget` 的离线场景**，不是实机战斗。离线批次是固定节点预算、DOP 1；
+  生产默认是 DOP 4、时间预算——**不是同一个预算维度**，所以本目录的数字不能直接当作生产延迟预测。
+- **并行执行下本地测量本身不可复现**：DOP 8 时基线与自身在调度相关计数上就不同
+  （`roundReplayPrefixCaptures` 7808 对 7794，见 `docs/performance/transform-pool-root-snapshot-20260917.json`）。
+- **仓库内没有任何 racing / bandit / successive-halving 实现**，所以那三个家族在本项目内没有实测。

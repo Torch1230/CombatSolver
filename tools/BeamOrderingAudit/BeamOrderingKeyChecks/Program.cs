@@ -74,6 +74,7 @@ internal static class Program
             ("legacy exact-double band is empty at a boundary", LegacyBandIsEmpty),
             ("legacy weighted score loses to a leading key", SupplementalNeverOutranksLeadingKey),
             ("key struct reuses existing LINQ call sites", PlumbingReuse),
+            ("band must be capped and ordered by the supplemental score", BandMustBeCapped),
             ("local result stub matches production", StubFidelity),
         ];
         int failures = 0;
@@ -232,6 +233,30 @@ internal static class Program
         // 结构体相等是逐字段的：这正好是"目标并列"需要的语义，而不是浮点相等。
         Check(nodes[0].Key.Equals(new BeamOrderingKey(true, 0, 30, 0, 0, 5, 100)),
             "record struct equality is structural");
+    }
+
+    /// <summary>
+    /// 这条不是收益声明，是危险约束。目标键在"未完成"节点上会大批并列：它们都还没胜利、
+    /// 药水数和回合也常相同，而前瞻信息（能量、增益、铺垫、延迟伤害）不在目标键里。
+    /// 所以带不能无限扩大——必须有上界，且带内顺序必须继续由兜底附加分决定，
+    /// 否则保留哪几个就取决于枚举顺序。外部证据同样警告：更"正确"的键可能因代价而更差。
+    /// </summary>
+    private static void BandMustBeCapped()
+    {
+        const int cap = 16;
+        List<BeamOrderingKey> frontier = [.. Enumerable.Range(0, 64).Select(index =>
+            new BeamOrderingKey(false, 0, 12, 0, 0, 3, 500 - index))];
+        Equal(frontier.Count, frontier.Count(node => node.SameBand(frontier[0])),
+            "unfinished nodes must tie on every objective key");
+        Check(frontier.Count(node => node.SameBand(frontier[0])) > cap,
+            "the uncapped band would exceed a plausible retention cap");
+
+        List<BeamOrderingKey> retained = [.. frontier.OrderByDescending(node => node).Take(cap)];
+        Equal(cap, retained.Count, "the cap must be met exactly");
+        Equal(cap, retained.Select(node => node.SupplementalScore).Distinct().Count(),
+            "the cap must not retain several nodes with one supplemental score");
+        Check(retained.All(node => node.SupplementalScore > 500 - cap - 1),
+            "within a band the cap must follow the supplemental score, not enumeration order");
     }
 
     /// <summary>本地 stub 只为让生产比较器文件编译通过；一旦漂移，本检查必须报警。</summary>
