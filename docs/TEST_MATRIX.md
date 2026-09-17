@@ -3,10 +3,10 @@
 ## 0.40.2：能力牌估值框架与实例清理（2026-09-17）
 
 - 卡池目录静态核对通过：同版本六个 `CardPool` 的 `CardType.Power` 共112张，全部命中 `zhs/eng` 官方标题与中文效果；原版约束分为105张单人范围和7张 `MultiplayerOnly`，六份文档行数分别为20/18/22/19/20/13。普通与升级描述由对应原版卡牌实例格式化，未留下未解析变量或颜色标签。
-- `dotnet run --project tools/PowerCardValuationChecks/PowerCardValuationChecks.csproj -c Release` 通过，输出 `POWER_CARD_VALUATION_CHECKS_OK silent_models=17`：除原有17张登记和首版公式合同外，覆盖17张卡的机制族与独立身份映射、灵动步法 5→8 跨阈值后的省能转攻和同等输出防伤、计划妥当高价值留牌与垃圾牌塞手，以及谋划专家早开/晚开差值、两回合未来播种、无弃牌窗口、来不及重新入手。承诺生命周期合同另断言奇巧附着只增加进展而不提前消耗潜力，真实自动出牌完成兑现，越过回合上限则到期。
+- `dotnet run --project tools/PowerCardValuationChecks/PowerCardValuationChecks.csproj -c Release` 通过，输出 `POWER_CARD_VALUATION_CHECKS_OK silent_models=17`：除原有17张登记和首版公式合同外，覆盖17张卡的机制族与独立身份映射、灵动步法 5→8 跨阈值后的省能转攻和同等输出防伤、余像出牌格挡、速行者回合内抽牌群伤、精准按两张实际小刀逐张增伤、幻影之刃两张小刀只触发一次首刀增伤、必备工具抽弃替换/满手损失/奇巧弃牌收益、计划妥当高价值留牌与垃圾牌塞手，以及谋划专家早开/晚开差值、两回合未来播种、无弃牌窗口、来不及重新入手。逐卡路线合同另覆盖磨蚀3费硬开与奇巧0费启动、余像5点准入边界、涂毒耗尽能量拒绝、计划妥当专搜优先级、幽魂无当前防伤拒绝和谋划专家无完整兑现链拒绝；生命周期断言奇巧附着只增加进展，真实自动出牌完成兑现，越过回合上限则到期。
 - `python tools/BeamWidthPortfolioChecks/run.py` 通过，输出 `BEAM_WIDTH_PORTFOLIO_OK checks=85`：能力成员固定排在基线之后，只置位 `AggressivePowerCommitment` 并使用共享节点余量；完整低战损终局可以接管，同分保留基线，未到终局的能力成员不参与比较；无可达能力的专用 Gate 拒绝成员。普通/激进席位合同分别覆盖 Beam 60 的5席/20席及小 Beam 至少保留一半普通席位。
 - `pwsh -NoProfile -File tools/test-headless-runtime.ps1` 通过，输出 `HEADLESS_RUNTIME_SELFTEST_PASS ... /instance-cleanup`；无游戏替身验证在租约释放、无存活私有游戏且所有权匹配时删除完整嵌套实例目录。
-- 第二版首个生产版本加入后，Release 编译通过，0 个编译警告、0 个错误；PowerShell 结构门禁通过，`REFACTOR_BOUNDARIES_OK search_files=137`。门禁确认能力投影、承诺、席位和专用成员 Gate 的职责文件存在，旧的额外扩容开局能力通道没有返回，能力估值仍未进入终局排序。
+- 第二版首个生产版本加入后，Release 编译通过，0 个编译警告、0 个错误；PowerShell 结构门禁通过，`REFACTOR_BOUNDARIES_OK search_files=149`，确认能力投影、触发事实、路线政策、承诺、席位和专用成员 Gate 的职责文件存在，旧的额外扩容开局能力通道没有返回，能力估值仍未进入终局排序。
 - 本轮按用户要求不处理 WSL，没有执行 Bash 结构门禁或 Linux helper 自测，不记为通过。
 - 未运行真实无头战斗或可见 Steam：本轮没有玩家问题包或固定战斗根可做行为 A/B，因此不能声称实战战损已经改善；也没有执行长线性能标定。未创建新的无头实例，结束时 `C:\Users\The_M\AppData\Local\CombatSolver\headless-instances` 数量为0。
 

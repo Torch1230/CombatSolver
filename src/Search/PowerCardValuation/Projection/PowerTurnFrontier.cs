@@ -4,7 +4,9 @@ internal readonly record struct PowerTurnCardOption(
     int EnergyCost,
     int Damage,
     int Block,
-    int CardAccess = 0);
+    int CardAccess = 0,
+    int Draws = 0,
+    bool IsShiv = false);
 
 internal readonly record struct PowerTurnFrontierState(
     int HpLost,
@@ -24,11 +26,23 @@ internal static class PowerTurnFrontier
         int energy,
         int incomingDamage,
         ReadOnlySpan<PowerTurnCardOption> cards,
-        int blockPerSkillBonus = 0)
+        int blockPerSkillBonus = 0,
+        int blockPerCardBonus = 0,
+        int damagePerDraw = 0,
+        int damageTargets = 1,
+        int damagePerShiv = 0,
+        int firstShivDamageBonus = 0)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(energy);
         ArgumentOutOfRangeException.ThrowIfNegative(incomingDamage);
-        List<(int Spent, int Damage, int Block, int CardAccess)> states = [(0, 0, 0, 0)];
+        ArgumentOutOfRangeException.ThrowIfNegative(blockPerSkillBonus);
+        ArgumentOutOfRangeException.ThrowIfNegative(blockPerCardBonus);
+        ArgumentOutOfRangeException.ThrowIfNegative(damagePerDraw);
+        ArgumentOutOfRangeException.ThrowIfNegative(damageTargets);
+        ArgumentOutOfRangeException.ThrowIfNegative(damagePerShiv);
+        ArgumentOutOfRangeException.ThrowIfNegative(firstShivDamageBonus);
+        List<(int Spent, int Damage, int Block, int CardAccess, bool ShivPlayed)> states =
+            [(0, 0, 0, 0, false)];
         foreach (PowerTurnCardOption card in cards)
         {
             int priorCount = states.Count;
@@ -40,9 +54,24 @@ internal static class PowerTurnFrontier
                     continue;
                 states.Add((
                     spent,
-                    SaturatingAdd(prior.Damage, card.Damage),
-                    SaturatingAdd(prior.Block, card.Block + (card.Block > 0 ? blockPerSkillBonus : 0)),
-                    SaturatingAdd(prior.CardAccess, card.CardAccess)));
+                    SaturatingAdd(
+                        prior.Damage,
+                        SaturatingAdd(
+                            card.Damage,
+                            SaturatingAdd(
+                                SaturatingProduct(card.Draws, damagePerDraw, damageTargets),
+                                card.IsShiv
+                                    ? SaturatingAdd(
+                                        damagePerShiv,
+                                        prior.ShivPlayed ? 0 : firstShivDamageBonus)
+                                    : 0))),
+                    SaturatingAdd(
+                        prior.Block,
+                        card.Block
+                            + (card.Block > 0 ? blockPerSkillBonus : 0)
+                            + blockPerCardBonus),
+                    SaturatingAdd(prior.CardAccess, card.CardAccess),
+                    prior.ShivPlayed || card.IsShiv));
             }
             Prune(states, energy, incomingDamage);
         }
@@ -102,7 +131,7 @@ internal static class PowerTurnFrontier
     }
 
     private static void Prune(
-        List<(int Spent, int Damage, int Block, int CardAccess)> states,
+        List<(int Spent, int Damage, int Block, int CardAccess, bool ShivPlayed)> states,
         int energy,
         int incomingDamage)
     {
@@ -116,14 +145,16 @@ internal static class PowerTurnFrontier
             comparison = left.Spent.CompareTo(right.Spent);
             return comparison != 0 ? comparison : right.CardAccess.CompareTo(left.CardAccess);
         });
-        List<(int Spent, int Damage, int Block, int CardAccess)> kept = new(MaximumStates);
+        List<(int Spent, int Damage, int Block, int CardAccess, bool ShivPlayed)> kept =
+            new(MaximumStates);
         foreach (var candidate in states)
         {
             if (kept.Any(other =>
                     Math.Max(0, incomingDamage - other.Block) <= Math.Max(0, incomingDamage - candidate.Block)
                     && other.Damage >= candidate.Damage
                     && other.Spent <= candidate.Spent
-                    && other.CardAccess >= candidate.CardAccess))
+                    && other.CardAccess >= candidate.CardAccess
+                    && (other.ShivPlayed == candidate.ShivPlayed || !other.ShivPlayed)))
             {
                 continue;
             }
@@ -137,4 +168,7 @@ internal static class PowerTurnFrontier
 
     private static int SaturatingAdd(int left, int right)
         => (int)Math.Clamp((long)left + right, 0L, int.MaxValue);
+
+    private static int SaturatingProduct(int first, int second, int third)
+        => (int)Math.Clamp((long)first * second * third, 0L, int.MaxValue);
 }

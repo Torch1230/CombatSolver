@@ -67,6 +67,111 @@ foreach (Type cardType in silent.RegisteredCardTypes(PowerCardPool.Silent))
         && descriptor.Card != SilentPowerCardIdentity.None,
         $"{cardId} 没有完整的能力承诺描述符。");
 }
+foreach (SilentPowerCardIdentity card in Enum.GetValues<SilentPowerCardIdentity>()
+             .Where(card => card != SilentPowerCardIdentity.None))
+{
+    _ = SilentPowerRoutePolicy.For(card);
+}
+Require(SilentPowerRoutePolicy.For(SilentPowerCardIdentity.Abrasive).PreferSlyActivation,
+    "磨蚀没有优先使用奇巧免费启动。");
+Require(SilentPowerRoutePolicy.For(SilentPowerCardIdentity.Afterimage).MinimumProjection == 5,
+    "余像没有执行累计至少5点格挡的开牌阈值。");
+Require(SilentPowerRoutePolicy.For(SilentPowerCardIdentity.Envenom).RequireFreeOrSpareActivation
+    && SilentPowerRoutePolicy.For(SilentPowerCardIdentity.InfiniteBlades).RequireFreeOrSpareActivation,
+    "低效率能力没有限制为免费或有余费启动。");
+Require(SilentPowerRoutePolicy.For(SilentPowerCardIdentity.WellLaidPlans).PreferDedicatedSearch,
+    "计划妥当没有标记为专用路线搜索优先。");
+Require(SilentPowerRoutePolicy.For(SilentPowerCardIdentity.WellLaidPlans).Priority
+        == SilentPowerRoutePriority.Dedicated,
+    "计划妥当没有取得高于普通强能力的专搜保留优先级。");
+Require(SilentPowerRoutePolicy.For(SilentPowerCardIdentity.WraithForm).RequireImmediateDefenseGain,
+    "幽魂形态没有要求当前防伤窗口，可能被过早保护。");
+Require(SilentPowerRoutePolicy.HighestPriority(
+        SilentPowerCardIdentity.ToolsOfTheTrade | SilentPowerCardIdentity.Envenom)
+        == SilentPowerRoutePriority.Core,
+    "多能力承诺没有保留最强牌的路线优先级。");
+Require(!SilentPowerRouteAdmission.Evaluate(new(
+        Card: SilentPowerCardIdentity.Abrasive,
+        IsAutoPlay: false,
+        SpentEnergy: 3,
+        RemainingEnergy: 0,
+        HasTriggerEvidence: true,
+        ImmediateDefenseGain: 0,
+        SetupGain: 10,
+        ProjectedPotential: 0,
+        TriggerProjectionFloor: 0,
+        Investment: 24)).Admitted
+    && SilentPowerRouteAdmission.Evaluate(new(
+        Card: SilentPowerCardIdentity.Abrasive,
+        IsAutoPlay: true,
+        SpentEnergy: 0,
+        RemainingEnergy: 0,
+        HasTriggerEvidence: true,
+        ImmediateDefenseGain: 0,
+        SetupGain: 10,
+        ProjectedPotential: 0,
+        TriggerProjectionFloor: 0,
+        Investment: 0)).Admitted,
+    "磨蚀没有区分3费硬开与奇巧免费开。");
+Require(!SilentPowerRouteAdmission.Evaluate(new(
+        Card: SilentPowerCardIdentity.Afterimage,
+        IsAutoPlay: false,
+        SpentEnergy: 1,
+        RemainingEnergy: 2,
+        HasTriggerEvidence: true,
+        ImmediateDefenseGain: 0,
+        SetupGain: 4,
+        ProjectedPotential: 0,
+        TriggerProjectionFloor: 4,
+        Investment: 8)).Admitted
+    && SilentPowerRouteAdmission.Evaluate(new(
+        Card: SilentPowerCardIdentity.Afterimage,
+        IsAutoPlay: false,
+        SpentEnergy: 1,
+        RemainingEnergy: 2,
+        HasTriggerEvidence: true,
+        ImmediateDefenseGain: 0,
+        SetupGain: 5,
+        ProjectedPotential: 0,
+        TriggerProjectionFloor: 5,
+        Investment: 8)).Admitted,
+    "余像没有执行累计5点格挡的路线准入边界。");
+Require(!SilentPowerRouteAdmission.Evaluate(new(
+        Card: SilentPowerCardIdentity.Envenom,
+        IsAutoPlay: false,
+        SpentEnergy: 2,
+        RemainingEnergy: 0,
+        HasTriggerEvidence: true,
+        ImmediateDefenseGain: 0,
+        SetupGain: 8,
+        ProjectedPotential: 0,
+        TriggerProjectionFloor: 0,
+        Investment: 16)).Admitted,
+    "涂毒在耗尽能量时仍取得了专用路线保护。");
+Require(!SilentPowerRouteAdmission.Evaluate(new(
+        Card: SilentPowerCardIdentity.WraithForm,
+        IsAutoPlay: false,
+        SpentEnergy: 3,
+        RemainingEnergy: 0,
+        HasTriggerEvidence: true,
+        ImmediateDefenseGain: 0,
+        SetupGain: 30,
+        ProjectedPotential: 0,
+        TriggerProjectionFloor: 0,
+        Investment: 24)).Admitted,
+    "幽魂形态在没有当前防伤窗口时仍被过早保护。");
+Require(!SilentPowerRouteAdmission.Evaluate(new(
+        Card: SilentPowerCardIdentity.MasterPlanner,
+        IsAutoPlay: false,
+        SpentEnergy: 1,
+        RemainingEnergy: 2,
+        HasTriggerEvidence: true,
+        ImmediateDefenseGain: 0,
+        SetupGain: 20,
+        ProjectedPotential: 0,
+        TriggerProjectionFloor: 0,
+        Investment: 8)).Admitted,
+    "谋划专家在没有重新入手与弃牌兑现链时仍取得了承诺。");
 
 PowerCardValuationResult masterPlanner = Evaluate(silent, new MasterPlanner(), Context());
 Require(masterPlanner.Reward.CardAccess == 40,
@@ -168,6 +273,43 @@ IReadOnlyList<PowerTurnFrontierState> noThresholdFrontier = PowerTurnFrontier.Bu
     blockPerSkillBonus: 2);
 Require(noThresholdFrontier.Where(state => state.HpLost == 0).Max(state => state.Damage) == 0,
     "未跨过同一防伤阈值时虚构了能量转化收益。");
+PowerTurnCardOption[] cardTriggerHand =
+[
+    new(EnergyCost: 1, Damage: 0, Block: 5),
+    new(EnergyCost: 1, Damage: 9, Block: 0),
+];
+IReadOnlyList<PowerTurnFrontierState> noAfterimage = PowerTurnFrontier.Build(
+    2, 8, cardTriggerHand);
+IReadOnlyList<PowerTurnFrontierState> withAfterimage = PowerTurnFrontier.Build(
+    2, 8, cardTriggerHand, blockPerCardBonus: 1);
+Require(PowerTurnFrontier.DefensiveHpUplift(noAfterimage, withAfterimage) == 2,
+    "余像没有按实际出牌序列改变同等输出下的格挡阈值。");
+PowerTurnCardOption[] drawHand =
+[
+    new(EnergyCost: 1, Damage: 0, Block: 0, CardAccess: 2, Draws: 2),
+    new(EnergyCost: 1, Damage: 9, Block: 0),
+];
+IReadOnlyList<PowerTurnFrontierState> noSpeedster = PowerTurnFrontier.Build(
+    2, 0, drawHand);
+IReadOnlyList<PowerTurnFrontierState> withSpeedster = PowerTurnFrontier.Build(
+    2, 0, drawHand, damagePerDraw: 2, damageTargets: 2);
+Require(PowerTurnFrontier.DefensiveDamageUplift(noSpeedster, withSpeedster) == 8,
+    "速行者没有把实际回合内抽牌转成多目标伤害前沿。");
+PowerTurnCardOption[] shivHand =
+[
+    new(EnergyCost: 0, Damage: 6, Block: 0, IsShiv: true),
+    new(EnergyCost: 0, Damage: 6, Block: 0, IsShiv: true),
+];
+IReadOnlyList<PowerTurnFrontierState> plainShivs = PowerTurnFrontier.Build(
+    0, 0, shivHand);
+IReadOnlyList<PowerTurnFrontierState> accurateShivs = PowerTurnFrontier.Build(
+    0, 0, shivHand, damagePerShiv: 4);
+Require(PowerTurnFrontier.DefensiveDamageUplift(plainShivs, accurateShivs) == 8,
+    "精准没有按实际可打出的两张小刀逐张兑现增伤。");
+IReadOnlyList<PowerTurnFrontierState> phantomShivs = PowerTurnFrontier.Build(
+    0, 0, shivHand, firstShivDamageBonus: 9);
+Require(PowerTurnFrontier.DefensiveDamageUplift(plainShivs, phantomShivs) == 9,
+    "幻影之刃把每回合第一张小刀增伤重复计算到了后续小刀。");
 
 RetainedHandTransitionResult usefulRetain = RetainedHandTransition.Evaluate(
     nextTurnEnergy: 3,
@@ -192,6 +334,44 @@ RetainedHandTransitionResult cloggedRetain = RetainedHandTransition.Evaluate(
     nextDrawValues: [8, 8, 8, 8, 8]);
 Require(cloggedRetain.NetValue < 0,
     "计划妥当塞满低价值手牌时没有扣除被阻塞的抽牌。");
+DrawDiscardTransitionResult usefulTool = DrawDiscardTransition.Evaluate(
+    handLimit: 5,
+    baseDrawCount: 2,
+    retainedCards: [],
+    nextDrawCards:
+    [
+        new(Value: 5),
+        new(Value: 4),
+        new(Value: 10),
+    ]);
+Require(usefulTool.NetValue == 6,
+    "必备工具没有用额外抽牌替换下一手最低价值牌。");
+DrawDiscardTransitionResult cloggedTool = DrawDiscardTransition.Evaluate(
+    handLimit: 5,
+    baseDrawCount: 5,
+    retainedCards:
+    [
+        new(Value: 1), new(Value: 1), new(Value: 1), new(Value: 1), new(Value: 1),
+    ],
+    nextDrawCards: []);
+Require(cloggedTool.NetValue == -1,
+    "必备工具在满手且无法抽牌时没有计入强制弃牌损失。");
+DrawDiscardTransitionResult slyTool = DrawDiscardTransition.Evaluate(
+    handLimit: 5,
+    baseDrawCount: 2,
+    retainedCards: [],
+    nextDrawCards:
+    [
+        new(Value: 5),
+        new(Value: 4),
+        new(Value: 1, DiscardPayoff: 8),
+    ]);
+Require(slyTool.NetValue == 8,
+    "必备工具没有把奇巧牌的真实弃牌收益计入换牌。");
+Require(SilentCardFlowFacts.DrawCount("BACKFLIP", cards: 2, handCount: 4) == 2
+    && SilentCardFlowFacts.DrawCount("CALCULATED_GAMBLE", cards: 0, handCount: 4) == 3
+    && SilentCardFlowFacts.DrawCount("BLADE_DANCE", cards: 3, handCount: 4) == 0,
+    "静默猎手回合内抽牌事实不正确。");
 
 MasterPlannerSkillFact[] plannerSkills =
 [

@@ -213,7 +213,7 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 | `CombatBeamSolver.OrderedMutationRetention.cs` | 有序操作碰撞的谱系、租约、成对激活和预算账本；统一处理续接、到期与普通通道回退 |
 | `CombatBeamSolver.FinalPlanOrdering.cs` | 终局胜负、偷窃、战损、药水、卖血和搜索边界排序 |
 | `CombatBeamSolver.StateEvaluation.cs` | 搜索快照、评分、威胁、stand-pat 和状态特征；手牌可达价值的纯背包计算委托 `ReachableHandValue` |
-| `PowerCardValuation/` | 能力牌奖励、惩罚、时机及机制族登记；`Projection` 提供有界行动前沿、保留手牌转换和谋划专家“技能播种→重新入手→显式弃牌”的两回合投影，`Commitments` 以纯生命周期保存不进入状态键的节点级有限租约并在普通 Beam 席位内置换代表。静默猎手17张单人牌均已登记，首批生产保路框架不改终局排序；未登记卡牌保持既有行为 |
+| `PowerCardValuation/` | 能力牌奖励、惩罚、时机及机制族登记；`Cards/Silent` 分别保存逐卡路线政策、纯准入规则、抽弃事实和只在开能力时读取的触发证据，强弱判断不充当终局分数。`Projection` 提供有界行动前沿、保留/抽弃转换、谋划专家两回合投影及小刀组专用投影；`Commitments` 从模拟历史识别正常或奇巧自动打出的能力，以纯生命周期保存不进入状态键的节点级有限租约并在普通 Beam 席位内置换代表。静默猎手17张单人牌均已登记，生产保路框架不改终局排序；未登记卡牌保持既有行为 |
 | `CombatBeamSolver.NoveltySearch.cs` | 有界新颖性队列与影子特征提取；复用既有展开、终局与 Phases 注入边界 |
 | `CombatBeamSolver.Terminal.cs` | 终局精确回放、逐回合结果、击杀与遗物标注 |
 | `StrategicEffectModel.cs` | 把 Power 的实际触发语义投影为伤害、防伤、资源、牌访问和成长效果；不决定终局胜负 |
