@@ -110,7 +110,7 @@ internal sealed record SolverSettingsData
     public SolverPerformancePreset? PerformancePreset { get; init; } = SolverPerformancePreset.Medium;
     public int? SearchMaxDegreeOfParallelism { get; init; }
     public bool UseBeamWidthPortfolio { get; init; } = true;
-    public bool UseNoveltyPortfolio { get; init; } = true;
+    public bool UseNoveltyPortfolio { get; init; }
     public double? SearchTimeLimitSeconds { get; init; }
     public bool EnableNoGcRegion { get; init; } = true;
     public double? NoGcRegionBudgetGigabytes { get; init; } = 16d;
@@ -170,7 +170,7 @@ internal static class SolverSettings
     public const float MaximumOverlaySize = 100_000f;
     private const int UnifiedPerformanceMigrationVersion = 243;
     private const int BeamWidthPortfolioDefaultMigrationVersion = 244;
-    internal const int CurrentPerformanceMigrationVersion = 245;
+    internal const int CurrentPerformanceMigrationVersion = 246;
     private static readonly SolverPerformanceValues LowPerformance = new(
         new SolverSearchProfile(
             BeamWidth: 45,
@@ -682,8 +682,7 @@ internal static class SolverSettings
             migrated = migrated with
             {
                 PerformanceMigrationVersion = CurrentPerformanceMigrationVersion,
-                UseNoveltyPortfolio = true,
-                ShowNoveltyPortfolioHint = true,
+                UseNoveltyPortfolio = false,
             };
         }
         return migrated;
