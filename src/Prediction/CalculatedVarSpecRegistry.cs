@@ -44,8 +44,15 @@ internal static class CalculatedVarSpecRegistry
         Creature? target,
         out decimal value)
     {
-        string key = card.Preview.DynamicVars
-            .FirstOrDefault(pair => ReferenceEquals(pair.Value, calculatedVar)).Key;
+        string? key = null;
+        // DynamicVarSet.GetEnumerator boxes this same dictionary's enumerator.
+        foreach (KeyValuePair<string, DynamicVar> pair in card.Preview.DynamicVars._vars)
+        {
+            if (!ReferenceEquals(pair.Value, calculatedVar))
+                continue;
+            key = pair.Key;
+            break;
+        }
         if (string.IsNullOrEmpty(key)
             || !TryMultiplier(simulator, card, target, out decimal multiplier))
         {
@@ -74,26 +81,21 @@ internal static class CalculatedVarSpecRegistry
         {
             PreciseCut => -playerState.Hand.Cards.Count,
             Stack => playerState.DiscardPile.Cards.Count,
-            Squeeze => playerState.AllCards.Count(candidate =>
-                candidate.Preview.Tags.Contains(CardTag.OstyAttack) && !candidate.References(model)),
-            Mirage => combat.Enemies
-                .Where(enemy => simulator.State.GetCreature(enemy).IsAlive)
-                .Sum(enemy => combat.GetAmount<PoisonPower>(enemy)),
+            Squeeze => CountOstyAttacks(playerState, model),
+            Mirage => SumLivingEnemyPoison(simulator, combat),
             Rattle => 1 + (simulator.State.GetOsty(model.Owner) is { } osty
                 ? combat.GetCreatureAttacksThisTurn(osty)
                 : 0),
             MindBlast => playerState.DrawPile.Cards.Count,
-            GangUp => target == null ? 0 : combat.Creatures
-                .Where(creature => creature != owner && creature.Side == owner.Side)
-                .Sum(creature => combat.GetPoweredAttackHitsThisTurn(creature, target)),
+            GangUp => target == null ? 0 : SumAlliedAttackHits(combat, owner, target),
             Mimic => target == null ? 0 : simulator.State.GetCreature(target).Block,
-            KnifeTrap => playerState.ExhaustPile.Cards.Count(candidate => candidate.Preview.Tags.Contains(CardTag.Shiv)),
+            KnifeTrap => CountExhaustedShivs(playerState),
             Unleash => simulator.State.GetOsty(model.Owner) is { } unleashOsty
                 && simulator.State.GetCreature(unleashOsty).IsAlive
                 ? simulator.State.GetCreature(unleashOsty).CurrentHp
                 : 0,
             Radiate => combat.GetStarsGainedThisTurn(model.Owner),
-            PerfectedStrike => playerState.AllCards.Count(candidate => candidate.Preview.Tags.Contains(CardTag.Strike)),
+            PerfectedStrike => CountStrikes(playerState),
             SovereignBlade => combat.GetAmount<ParryPower>(owner),
             Supermassive => CountGeneratedCards(simulator, model.Owner),
             Sacrifice => simulator.State.GetOsty(model.Owner) is { } sacrificeOsty
@@ -102,7 +104,7 @@ internal static class CalculatedVarSpecRegistry
                 : 0,
             TimesUp => target == null ? 0 : combat.GetAmount<DoomPower>(target),
             MementoMori => combat.GetCardsDiscardedThisTurn(owner),
-            SoulStorm => playerState.ExhaustPile.Cards.Count(candidate => candidate.Preview is Soul),
+            SoulStorm => CountExhaustedSouls(playerState),
             Voltaic => CountLightningChannels(simulator, model.Owner),
             TearAsunder => 1 + CountUnblockedDamageEvents(simulator, owner),
             ExpectAFight => Math.Max(0, combat.GetAmount<StrengthPower>(owner)),
@@ -110,7 +112,7 @@ internal static class CalculatedVarSpecRegistry
                 - card.GetEnergyCostWithModifiers(simulator, playerState)),
             PullFromBelow => CountEtherealPlays(simulator, model.Owner),
             Normality => Math.Min(3, combat.GetCardPlayStartsThisTurn(owner)),
-            Synchronize or CompileDriver => playerState.OrbQueue.Orbs.Select(orb => orb.Id).Distinct().Count(),
+            Synchronize or CompileDriver => CountDistinctOrbs(playerState.OrbQueue.Orbs),
             Protector => simulator.State.GetOsty(model.Owner) is { } protectorOsty
                 && simulator.State.GetCreature(protectorOsty).IsAlive
                 ? combat.GetOstyMaxHp(simulator, model.Owner)
@@ -119,15 +121,10 @@ internal static class CalculatedVarSpecRegistry
                 ? 0
                 : Math.Floor((decimal)combat.GetAmount<DoomPower>(target)
                     / model.DynamicVars["DoomThreshold"].BaseValue),
-            Flechettes => playerState.Hand.Cards.Count(candidate => candidate.Preview.Type == CardType.Skill),
-            Rend => target == null ? 0 : combat.EffectivePowers().Count(power =>
-                power.Owner == target
-                && power.TypeForCurrentAmount == PowerType.Debuff
-                && power is not ITemporaryPower),
+            Flechettes => CountHandSkills(playerState),
+            Rend => target == null ? 0 : CountPermanentDebuffs(combat, target),
             GoldAxe => CountFinishedCardPlays(simulator),
-            FlakCannon => playerState.AllCards.Count(candidate =>
-                candidate.Preview.Type == CardType.Status
-                && candidate.GetPile(simulator.State)?.Type != PileType.Exhaust),
+            FlakCannon => CountUnexhaustedStatuses(simulator, playerState),
             LunarBlast => combat.GetSkillCardsPlayedThisTurn(owner),
             Murder => CountDrawnCards(simulator, model.Owner),
             Finisher => combat.GetAttacksPlayedThisTurn(owner),
@@ -136,8 +133,7 @@ internal static class CalculatedVarSpecRegistry
             DeathMarch => combat.GetNonHandDrawsThisTurn(model.Owner),
             DemonicShield or BodySlam => simulator.State.GetCreature(owner).Block,
             Barrage => playerState.OrbQueue.Orbs.Count,
-            CrescentSpear => playerState.AllCards.Count(candidate =>
-                candidate.Preview.CanonicalStarCost >= 0 || candidate.Preview.HasStarCostX),
+            CrescentSpear => CountStarCards(playerState),
             AshenStrike => playerState.ExhaustPile.Cards.Count,
             _ => 0m,
         };
@@ -150,34 +146,208 @@ internal static class CalculatedVarSpecRegistry
             or DeathMarch or DemonicShield or Barrage or CrescentSpear or BodySlam or AshenStrike;
     }
 
+    // Count(predicate) and Sum(int) use checked int arithmetic, before conversion to decimal.
+    private static int CountOstyAttacks(SimPlayerCombatState playerState, CardModel model)
+    {
+        int count = 0;
+        foreach (PredictedCard candidate in playerState.AllCards)
+            if (candidate.Preview.Tags.Contains(CardTag.OstyAttack) && !candidate.References(model))
+                count = checked(count + 1);
+        return count;
+    }
+
+    private static int SumLivingEnemyPoison(CombatPredictionSimulator simulator, SimulatedCombatState combat)
+    {
+        int sum = 0;
+        IReadOnlyList<Creature> enemies = combat.Enemies;
+        for (int i = 0; i < enemies.Count; i++)
+        {
+            Creature enemy = enemies[i];
+            if (simulator.State.GetCreature(enemy).IsAlive)
+                sum = checked(sum + combat.GetAmount<PoisonPower>(enemy));
+        }
+        return sum;
+    }
+
+    private static int SumAlliedAttackHits(SimulatedCombatState combat, Creature owner, Creature target)
+    {
+        int sum = 0;
+        IReadOnlyList<Creature> creatures = combat.Creatures;
+        for (int i = 0; i < creatures.Count; i++)
+        {
+            Creature creature = creatures[i];
+            if (creature != owner && creature.Side == owner.Side)
+                sum = checked(sum + combat.GetPoweredAttackHitsThisTurn(creature, target));
+        }
+        return sum;
+    }
+
+    private static int CountExhaustedShivs(SimPlayerCombatState playerState)
+    {
+        int count = 0;
+        foreach (PredictedCard candidate in playerState.ExhaustPile.Cards)
+            if (candidate.Preview.Tags.Contains(CardTag.Shiv))
+                count = checked(count + 1);
+        return count;
+    }
+
+    private static int CountStrikes(SimPlayerCombatState playerState)
+    {
+        int count = 0;
+        foreach (PredictedCard candidate in playerState.AllCards)
+            if (candidate.Preview.Tags.Contains(CardTag.Strike))
+                count = checked(count + 1);
+        return count;
+    }
+
+    private static int CountExhaustedSouls(SimPlayerCombatState playerState)
+    {
+        int count = 0;
+        foreach (PredictedCard candidate in playerState.ExhaustPile.Cards)
+            if (candidate.Preview is Soul)
+                count = checked(count + 1);
+        return count;
+    }
+
+    private static int CountDistinctOrbs(IReadOnlyList<OrbModel> orbs)
+    {
+        int count = 0;
+        EqualityComparer<ModelId> comparer = EqualityComparer<ModelId>.Default;
+        // Id is immutable; scan the preceding small orb queue instead of allocating a HashSet.
+        for (int i = 0; i < orbs.Count; i++)
+        {
+            ModelId id = orbs[i].Id;
+            bool seen = false;
+            for (int j = 0; j < i; j++)
+            {
+                if (!comparer.Equals(orbs[j].Id, id))
+                    continue;
+                seen = true;
+                break;
+            }
+            if (!seen)
+                count = checked(count + 1);
+        }
+        return count;
+    }
+
+    private static int CountHandSkills(SimPlayerCombatState playerState)
+    {
+        int count = 0;
+        foreach (PredictedCard candidate in playerState.Hand.Cards)
+            if (candidate.Preview.Type == CardType.Skill)
+                count = checked(count + 1);
+        return count;
+    }
+
+    private static int CountPermanentDebuffs(SimulatedCombatState combat, Creature target)
+    {
+        int count = 0;
+        IReadOnlyList<PowerModel> powers = combat.EffectivePowers();
+        for (int i = 0; i < powers.Count; i++)
+        {
+            PowerModel power = powers[i];
+            if (power.Owner == target
+                && power.TypeForCurrentAmount == PowerType.Debuff
+                && power is not ITemporaryPower)
+                count = checked(count + 1);
+        }
+        return count;
+    }
+
+    private static int CountUnexhaustedStatuses(CombatPredictionSimulator simulator, SimPlayerCombatState playerState)
+    {
+        int count = 0;
+        foreach (PredictedCard candidate in playerState.AllCards)
+            if (candidate.Preview.Type == CardType.Status
+                && candidate.GetPile(simulator.State)?.Type != PileType.Exhaust)
+                count = checked(count + 1);
+        return count;
+    }
+
+    private static int CountStarCards(SimPlayerCombatState playerState)
+    {
+        int count = 0;
+        foreach (PredictedCard candidate in playerState.AllCards)
+            if (candidate.Preview.CanonicalStarCost >= 0 || candidate.Preview.HasStarCostX)
+                count = checked(count + 1);
+        return count;
+    }
+
+    // The live Entries property exposes this list; CardPlaysFinished is its OfType view.
+    // Keep the two checked counts separate: their final addition was unchecked in the original.
     private static int CountGeneratedCards(CombatPredictionSimulator simulator, Player player)
-        => CombatManager.Instance.History.Entries.OfType<CardGeneratedEntry>().Count(entry => entry.Creator == player)
-           + simulator.History.OfType<CombatPredictionCardGeneratedEntry>().Count(entry => entry.Creator == player);
+    {
+        int live = 0;
+        foreach (var item in CombatManager.Instance.History._entries)
+            if (item is CardGeneratedEntry entry && entry.Creator == player)
+                live = checked(live + 1);
+        int predicted = 0;
+        foreach (var item in simulator.History.EntriesFrom(0))
+            if (item is CombatPredictionCardGeneratedEntry entry && entry.Creator == player)
+                predicted = checked(predicted + 1);
+        return live + predicted;
+    }
 
     private static int CountLightningChannels(CombatPredictionSimulator simulator, Player player)
-        => CombatManager.Instance.History.Entries.OfType<OrbChanneledEntry>()
-               .Count(entry => entry.Actor.Player == player && entry.Orb is LightningOrb)
-           + simulator.History.OfType<CombatPredictionOrbChanneledEntry>()
-               .Count(entry => entry.Orb is LightningOrb && entry.Orb.Owner == player);
+    {
+        int live = 0;
+        foreach (var item in CombatManager.Instance.History._entries)
+            if (item is OrbChanneledEntry entry && entry.Actor.Player == player && entry.Orb is LightningOrb)
+                live = checked(live + 1);
+        int predicted = 0;
+        foreach (var item in simulator.History.EntriesFrom(0))
+            if (item is CombatPredictionOrbChanneledEntry entry && entry.Orb is LightningOrb && entry.Orb.Owner == player)
+                predicted = checked(predicted + 1);
+        return live + predicted;
+    }
 
     private static int CountUnblockedDamageEvents(CombatPredictionSimulator simulator, Creature owner)
-        => CombatManager.Instance.History.Entries.OfType<DamageReceivedEntry>()
-               .Count(entry => entry.Receiver == owner && entry.Result.UnblockedDamage > 0)
-           + simulator.History.OfType<CombatPredictionDamageReceivedEntry>()
-               .Count(entry => entry.Receiver == owner && entry.Result.UnblockedDamage > 0);
+    {
+        int live = 0;
+        foreach (var item in CombatManager.Instance.History._entries)
+            if (item is DamageReceivedEntry entry && entry.Receiver == owner && entry.Result.UnblockedDamage > 0)
+                live = checked(live + 1);
+        int predicted = 0;
+        foreach (var item in simulator.History.EntriesFrom(0))
+            if (item is CombatPredictionDamageReceivedEntry entry && entry.Receiver == owner && entry.Result.UnblockedDamage > 0)
+                predicted = checked(predicted + 1);
+        return live + predicted;
+    }
 
     private static int CountEtherealPlays(CombatPredictionSimulator simulator, Player player)
-        => CombatManager.Instance.History.CardPlaysFinished.Count(entry =>
-               entry.CardPlay.Player == player && entry.WasEthereal)
-           + simulator.History.OfType<CombatPredictionCardPlayFinishedEntry>()
-               .Count(entry => entry.CardPlay.Player == player && entry.WasEthereal);
+    {
+        int live = 0;
+        foreach (var item in CombatManager.Instance.History._entries)
+            if (item is CardPlayFinishedEntry entry && entry.CardPlay.Player == player && entry.WasEthereal)
+                live = checked(live + 1);
+        int predicted = 0;
+        foreach (var item in simulator.History.EntriesFrom(0))
+            if (item is CombatPredictionCardPlayFinishedEntry entry && entry.CardPlay.Player == player && entry.WasEthereal)
+                predicted = checked(predicted + 1);
+        return live + predicted;
+    }
 
     private static int CountFinishedCardPlays(CombatPredictionSimulator simulator)
-        => CombatManager.Instance.History.CardPlaysFinished.Count()
-           + simulator.History.OfType<CombatPredictionCardPlayFinishedEntry>().Count();
+    {
+        int live = 0;
+        foreach (var item in CombatManager.Instance.History._entries)
+            if (item is CardPlayFinishedEntry)
+                live = checked(live + 1);
+        int predicted = 0;
+        foreach (var item in simulator.History.EntriesFrom(0))
+            if (item is CombatPredictionCardPlayFinishedEntry)
+                predicted = checked(predicted + 1);
+        return live + predicted;
+    }
 
     private static int CountDrawnCards(CombatPredictionSimulator simulator, Player player)
-        => ((SimulatedCombatState)simulator.State.CombatState).GetCardsDrawnBeforePrediction(player)
-           + simulator.History.OfType<CombatPredictionCardDrawnEntry>()
-               .Count(entry => entry.Card.Owner == player);
+    {
+        int live = ((SimulatedCombatState)simulator.State.CombatState).GetCardsDrawnBeforePrediction(player);
+        int predicted = 0;
+        foreach (var item in simulator.History.EntriesFrom(0))
+            if (item is CombatPredictionCardDrawnEntry entry && entry.Card.Owner == player)
+                predicted = checked(predicted + 1);
+        return live + predicted;
+    }
 }
