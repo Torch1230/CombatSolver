@@ -12,6 +12,7 @@ Usage: verify-refactor-boundaries.sh
 
 Checks the repository's source ownership and architecture boundaries.
 EOF
+
 }
 
 if (($# > 0)); then
@@ -673,6 +674,24 @@ CombatBeamSolver.Terminal.cs	private List<SearchNode> AnnotateTurnOutcomes(List<
 CombatBeamSolver.StateEvaluation.cs	private SimulationSnapshot Snapshot(
 EOF
 
+while IFS=$'\t' read -r relative_path text; do
+    require_fixed "$search_root/PowerCardValuation/$relative_path" "$text" 'missing power-card valuation boundary'
+done <<'EOF'
+PowerCardValuationContracts.cs	internal readonly record struct PowerCardValuationReward
+PowerCardValuationContracts.cs	internal readonly record struct PowerCardValuationPenalty
+IPowerCardValuationModel.cs	internal interface IPowerCardValuationModel
+PowerCardValuationRegistry.cs	internal sealed class PowerCardValuationRegistry
+PowerCardValuationModels.cs	internal static class PowerCardValuationModels
+Cards/Ironclad/IroncladPowerCardValuationModels.cs	internal static class IroncladPowerCardValuationModels
+Cards/Silent/SilentPowerCardValuationModels.cs	internal static class SilentPowerCardValuationModels
+Cards/Defect/DefectPowerCardValuationModels.cs	internal static class DefectPowerCardValuationModels
+Cards/Regent/RegentPowerCardValuationModels.cs	internal static class RegentPowerCardValuationModels
+Cards/Necrobinder/NecrobinderPowerCardValuationModels.cs	internal static class NecrobinderPowerCardValuationModels
+Cards/Colorless/ColorlessPowerCardValuationModels.cs	internal static class ColorlessPowerCardValuationModels
+EOF
+forbid_fixed "$search_root/CombatBeamSolver.FinalPlanOrdering.cs" 'PowerCardValuation' \
+    'power-card valuation must not enter final plan ordering:'
+
 require_fixed \
     "$search_root/CombatBeamSolver.Expansion.cs" \
     'CreateWholeActionChoiceBudget' \
@@ -841,13 +860,19 @@ done <<'EOF'
 tools/run-unattended-test.sh	source "$script_dir/headless-runtime.sh"
 tools/run-unattended-test.sh	hr_acquire "$process_pid" "$process_identity_start_time"
 tools/run-unattended-test.sh	if ((option_value[stop-instance] == 1)); then
+tools/run-unattended-test.sh	add_option cleanup-instance-on-exit 0 switch none
+tools/run-unattended-test.sh	hr_remove_instance
 tools/run-unattended-test.ps1	. (Join-Path $PSScriptRoot 'headless-runtime.ps1')
 tools/run-unattended-test.ps1	if ($StopInstance) {
+tools/run-unattended-test.ps1	[switch]$CleanupInstanceOnExit
+tools/run-unattended-test.ps1	Remove-HeadlessRuntimeInstance $runtimeContext
 tools/run-headless-matrix.sh	--stop-instance
 tools/run-headless-matrix.ps1	"-StopInstance"
 tools/headless-runtime.sh	hr_prepare_snapshot() {
 tools/headless-runtime.sh	hr_bind() {
+tools/headless-runtime.sh	hr_remove_instance() {
 tools/headless-runtime.ps1	function Set-HeadlessGameSnapshot(
+tools/headless-runtime.ps1	function Remove-HeadlessRuntimeInstance(
 tools/headless-runtime.ps1	function Enter-HeadlessHostLease(
 tools/headless-runtime.ps1	function Set-HeadlessHostGame(
 EOF

@@ -734,6 +734,30 @@ foreach ($check in $beamStructureChecks) {
         $violations.Add("${path}: missing CombatBeamSolver stage member '$($check.Text)'")
     }
 }
+$powerValuationRoot = Join-Path $searchRoot 'PowerCardValuation'
+foreach ($check in @(
+    @{ Path = 'PowerCardValuationContracts.cs'; Text = 'internal readonly record struct PowerCardValuationReward' },
+    @{ Path = 'PowerCardValuationContracts.cs'; Text = 'internal readonly record struct PowerCardValuationPenalty' },
+    @{ Path = 'IPowerCardValuationModel.cs'; Text = 'internal interface IPowerCardValuationModel' },
+    @{ Path = 'PowerCardValuationRegistry.cs'; Text = 'internal sealed class PowerCardValuationRegistry' },
+    @{ Path = 'PowerCardValuationModels.cs'; Text = 'internal static class PowerCardValuationModels' },
+    @{ Path = 'Cards\Ironclad\IroncladPowerCardValuationModels.cs'; Text = 'internal static class IroncladPowerCardValuationModels' },
+    @{ Path = 'Cards\Silent\SilentPowerCardValuationModels.cs'; Text = 'internal static class SilentPowerCardValuationModels' },
+    @{ Path = 'Cards\Defect\DefectPowerCardValuationModels.cs'; Text = 'internal static class DefectPowerCardValuationModels' },
+    @{ Path = 'Cards\Regent\RegentPowerCardValuationModels.cs'; Text = 'internal static class RegentPowerCardValuationModels' },
+    @{ Path = 'Cards\Necrobinder\NecrobinderPowerCardValuationModels.cs'; Text = 'internal static class NecrobinderPowerCardValuationModels' },
+    @{ Path = 'Cards\Colorless\ColorlessPowerCardValuationModels.cs'; Text = 'internal static class ColorlessPowerCardValuationModels' }
+)) {
+    $path = Join-Path $powerValuationRoot $check.Path
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf) -or
+        -not (Select-String -LiteralPath $path -SimpleMatch $check.Text -Quiet)) {
+        $violations.Add("${path}: missing power-card valuation boundary '$($check.Text)'")
+    }
+}
+$finalOrderingPath = Join-Path $searchRoot 'CombatBeamSolver.FinalPlanOrdering.cs'
+if (Select-String -LiteralPath $finalOrderingPath -SimpleMatch 'PowerCardValuation' -Quiet) {
+    $violations.Add("${finalOrderingPath}: power-card valuation must not enter final plan ordering")
+}
 if (-not (Select-String -LiteralPath (Join-Path $searchRoot "CombatBeamSolver.Expansion.cs") -SimpleMatch "CreateWholeActionChoiceBudget" -Quiet)) {
     $violations.Add("CombatBeamSolver.Expansion.cs: repeated card choices are missing their whole-action branch quota")
 }
@@ -1068,13 +1092,19 @@ foreach ($check in @(
     @{ Path = 'tools/run-unattended-test.sh'; Text = 'source "$script_dir/headless-runtime.sh"' },
     @{ Path = 'tools/run-unattended-test.sh'; Text = 'hr_acquire "$process_pid" "$process_identity_start_time"' },
     @{ Path = 'tools/run-unattended-test.sh'; Text = 'if ((option_value[stop-instance] == 1)); then' },
+    @{ Path = 'tools/run-unattended-test.sh'; Text = 'add_option cleanup-instance-on-exit 0 switch none' },
+    @{ Path = 'tools/run-unattended-test.sh'; Text = 'hr_remove_instance' },
     @{ Path = 'tools/run-unattended-test.ps1'; Text = ". (Join-Path `$PSScriptRoot 'headless-runtime.ps1')" },
     @{ Path = 'tools/run-unattended-test.ps1'; Text = 'if ($StopInstance) {' },
+    @{ Path = 'tools/run-unattended-test.ps1'; Text = '[switch]$CleanupInstanceOnExit' },
+    @{ Path = 'tools/run-unattended-test.ps1'; Text = 'Remove-HeadlessRuntimeInstance $runtimeContext' },
     @{ Path = 'tools/run-headless-matrix.sh'; Text = '--stop-instance' },
     @{ Path = 'tools/run-headless-matrix.ps1'; Text = '"-StopInstance"' },
     @{ Path = 'tools/headless-runtime.sh'; Text = 'hr_prepare_snapshot() {' },
     @{ Path = 'tools/headless-runtime.sh'; Text = 'hr_bind() {' },
+    @{ Path = 'tools/headless-runtime.sh'; Text = 'hr_remove_instance() {' },
     @{ Path = 'tools/headless-runtime.ps1'; Text = 'function Set-HeadlessGameSnapshot(' },
+    @{ Path = 'tools/headless-runtime.ps1'; Text = 'function Remove-HeadlessRuntimeInstance(' },
     @{ Path = 'tools/headless-runtime.ps1'; Text = 'function Enter-HeadlessHostLease(' },
     @{ Path = 'tools/headless-runtime.ps1'; Text = 'function Set-HeadlessHostGame(' })) {
     $path = Join-Path $repositoryRoot $check.Path

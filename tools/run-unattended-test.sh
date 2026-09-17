@@ -261,6 +261,7 @@ add_option timeout-seconds 120 int raw_int
 add_option keep-game-open 0 switch none
 add_option stop-owned-process 0 switch none
 add_option exit-on-complete 0 switch bool
+add_option cleanup-instance-on-exit 0 switch none
 
 print_help() {
     cat <<'EOF'
@@ -397,8 +398,12 @@ for name in expected-initial-only-death-routes-found expected-initial-act-ending
     value="${option_value[$name]}"
     ((value == -1 || value == 0 || value == 1)) || die "--$name must be -1, 0, or 1"
 done
-if ((option_value[keep-game-open] == 1 && option_value[exit-on-complete] == 1)); then
-    die "--keep-game-open and --exit-on-complete cannot be used together"
+if ((option_value[keep-game-open] == 1 \
+    && (option_value[exit-on-complete] == 1 || option_value[cleanup-instance-on-exit] == 1))); then
+    die "--keep-game-open cannot be combined with --exit-on-complete or --cleanup-instance-on-exit"
+fi
+if ((option_value[cleanup-instance-on-exit] == 1)); then
+    option_value[exit-on-complete]=1
 fi
 if ((option_value[hold-after-initial-search] == 1 && option_value[keep-game-open] == 0)); then
     die "--hold-after-initial-search requires --keep-game-open"
@@ -1020,6 +1025,14 @@ cleanup_owned_launcher() {
         fi
     fi
     hr_release
+    if ((option_value[cleanup-instance-on-exit] == 1)); then
+        [[ -z ${launcher_lock_fd:-} ]] || exec {launcher_lock_fd}>&-
+        unset HR_INSTANCE_FD
+        if ! hr_remove_instance; then
+            echo 'run-unattended-test.sh: failed to remove owned headless instance' >&2
+            original_status=1
+        fi
+    fi
     exit "$original_status"
 }
 

@@ -1,5 +1,14 @@
 # CombatSolver 测试清单
 
+## 0.40.2：能力牌估值框架与实例清理（2026-09-17）
+
+- `dotnet run --project tools/PowerCardValuationChecks/PowerCardValuationChecks.csproj -c Release` 通过，输出 `POWER_CARD_VALUATION_CHECKS_OK`：覆盖奖励饱和合计、负分量拒绝、净值可为负、精确类型登记、需求透传、卡池分类、重复登记拒绝和默认零模型旁路。
+- `pwsh -NoProfile -File tools/test-headless-runtime.ps1` 通过，输出 `HEADLESS_RUNTIME_SELFTEST_PASS ... /instance-cleanup`；无游戏替身验证在租约释放、无存活私有游戏且所有权匹配时删除完整嵌套实例目录。
+- Release 编译通过，0 个编译警告、0 个错误；命令启动时另出现一次 PowerShell `Import-Clixml: Root element is missing.` 环境输出，未进入 MSBuild 诊断。PowerShell 结构门禁通过，`REFACTOR_BOUNDARIES_OK search_files=124`。
+- Bash 四个变更脚本的 `bash -n` 语法检查通过。WSL 缺少原生 `rg`，两次完整 Bash 结构门禁均在规则执行前失败；按用户要求停止处理 WSL，不记为通过。未运行 Linux helper 完整自测。
+- 未运行真实无头战斗或可见 Steam：当前登记表为空，生产搜索尚未读取新接口，没有能力牌行为变化可验收。
+
+
 ## 0.40.2：多策略路线搜索默认关闭与大战损引导（2026-09-17）
 
 - 设置与 UI 合同已更新：新安装默认关闭多策略路线搜索；245→246 迁移只推进版本，完整保留玩家已有的开启／关闭状态与永久隐藏横幅选择。多宽度路线精炼仍默认开启且没有独立横幅。

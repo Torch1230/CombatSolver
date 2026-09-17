@@ -193,6 +193,35 @@ function Remove-HeadlessOwnedGameTree([hashtable]$Context, [string]$Path) {
     Write-Host "UNATTENDED_SNAPSHOT_REMOVED path=$pathFull source_game_preserved=true"
 }
 
+function Remove-HeadlessRuntimeInstance([hashtable]$Context) {
+    $root = Get-HeadlessCanonicalPath $Context.Root
+    if (-not (Test-Path -LiteralPath $root -PathType Container)) { return }
+    if (Test-Path -LiteralPath $Context.LeasePath -PathType Leaf) {
+        throw "Cannot remove a headless runtime while its host lease exists: $($Context.LeasePath)"
+    }
+    if (Test-HeadlessUnboundGame $root) {
+        throw "Cannot remove a headless runtime while its private game is alive: $root"
+    }
+    $ownerPath = Join-Path $root 'instance.json'
+    if (-not (Test-Path -LiteralPath $ownerPath -PathType Leaf)) {
+        throw "Cannot remove a headless runtime without its ownership marker: $root"
+    }
+    $owner = Get-Content -LiteralPath $ownerPath -Raw | ConvertFrom-Json -AsHashtable
+    if ($owner.schemaVersion -ne 1 -or $owner.instance -ne $Context.Instance -or
+        -not [string]::Equals($owner.repositoryRoot, $Context.RepositoryRoot, [StringComparison]::OrdinalIgnoreCase) -or
+        -not [string]::Equals($owner.runtimeRoot, $root, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Cannot remove a headless runtime owned by another repository or instance: $root"
+    }
+    Assert-HeadlessNoReparsePoint $root
+    foreach ($entry in Get-ChildItem -LiteralPath $root -Recurse -Force) {
+        if (($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            throw "Refusing runtime cleanup through a reparse point: $($entry.FullName)"
+        }
+    }
+    Remove-Item -LiteralPath $root -Recurse -Force
+    Write-Host "UNATTENDED_INSTANCE_REMOVED path=$root"
+}
+
 function Set-HeadlessGameSnapshot([hashtable]$Context, [hashtable]$Plan) {
     Assert-HeadlessNoReparsePoint $Context.GameRoot
     $manifest = Join-Path $Context.GameRoot '.combatsolver-frozen-game.json'

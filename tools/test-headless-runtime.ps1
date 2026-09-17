@@ -119,7 +119,23 @@ try {
     $script:FakeGameAlive = $false
     Exit-HeadlessHostLease $a
     Assert-HostFixture (-not (Test-Path -LiteralPath $a.LeasePath)) 'exited warm game retained its reservation'
-    Write-Output 'HEADLESS_RUNTIME_SELFTEST_PASS parallel2/exclusive/resource/unknown/ownership/stale/warm'
+
+    $cleanupRoot = Join-Path $testRoot 'cleanup-owned-instance'
+    $cleanupContext = @{
+        Instance = 'cleanup-owned-instance'; Root = $cleanupRoot; GameRoot = Join-Path $cleanupRoot 'game'
+        HostRoot = $testRoot; LeasePath = Join-Path $testRoot 'cleanup-owned-instance.json'
+        RepositoryRoot = $testRoot; LeaseToken = ''; ArtifactId = ''
+    }
+    New-Item -ItemType Directory -Path (Join-Path $cleanupRoot 'nested') -Force | Out-Null
+    Write-HeadlessJson (Join-Path $cleanupRoot 'instance.json') @{
+        schemaVersion = 1; instance = $cleanupContext.Instance
+        runtimeRoot = $cleanupRoot; repositoryRoot = $testRoot
+    }
+    Set-Content -LiteralPath (Join-Path $cleanupRoot 'nested/payload.bin') -Value 'fixture'
+    Remove-HeadlessRuntimeInstance $cleanupContext
+    Assert-HostFixture (-not (Test-Path -LiteralPath $cleanupRoot)) 'owned runtime instance was not removed'
+
+    Write-Output 'HEADLESS_RUNTIME_SELFTEST_PASS parallel2/exclusive/resource/unknown/ownership/stale/warm/instance-cleanup'
 } finally {
     # This fresh directory contains only this fixture's leases and lock. Never
     # invoke the game snapshot cleaner or touch a production host pool here.

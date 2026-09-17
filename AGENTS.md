@@ -178,12 +178,14 @@ CombatSolver 是《杀戮尖塔 2》的单人战斗路线求解器 Mod，使用 
 
 需要完整部署时固定 `Instant / 0 秒` 并断言计划外重算数量。一个 headless 进程复用同一批最小请求；重新编译后退出仍加载旧 DLL 的进程。
 
+Coding agent 启动无头游戏测试时，PowerShell 必须使用 `-CleanupInstanceOnExit`，Bash 必须使用 `--cleanup-instance-on-exit`。同一批次确需复用实例时，只能在批次内部保留，最后一项必须带清理开关并确认启动器成功删除整个实例目录；`ExitOnComplete` 只退出进程，不满足目录清理要求。明确为人工性能分析保留现场时例外，但必须在测试证据中记录实例路径和后续清理责任。
+
 Windows（PowerShell 7）常用命令：
 
 ```powershell
 dotnet build CombatSolver.csproj -c Release
 pwsh -NoProfile -File tools\verify-refactor-boundaries.ps1
-pwsh -NoProfile -File tools\run-unattended-test.ps1 <fixture 参数>
+pwsh -NoProfile -File tools\run-unattended-test.ps1 <fixture 参数> -CleanupInstanceOnExit
 dotnet run --project tools\CoverageCatalog\CoverageCatalog.csproj -c Release -- . <verify 参数>
 pwsh -NoProfile -File tools\run-visible-steam-benchmark.ps1 <固定基准参数>
 ```
@@ -193,7 +195,7 @@ Linux（Bash）等价命令：
 ```bash
 dotnet build CombatSolver.csproj -c Release
 ./tools/verify-refactor-boundaries.sh
-./tools/run-unattended-test.sh <fixture 参数>
+./tools/run-unattended-test.sh <fixture 参数> --cleanup-instance-on-exit
 dotnet run --project tools/CoverageCatalog/CoverageCatalog.csproj -c Release -- . <verify 参数>
 ./tools/run-visible-steam-benchmark.sh <固定基准参数>
 ```
