@@ -293,6 +293,7 @@ internal sealed partial class CombatBeamSolver
                     liveCards, enemyHp, focus.TotalThreat, focus.IncomingHitCount, strategicRequirements, skillsExhaust) with
                 {
                     Act3BossInteractions = policy.Act3BossStrategy,
+                    PlayerBlock = Math.Max(0, simulator.State.GetCreature(_player.Creature).Block),
                     FirstAttackDamage = policy.Act3BossStrategy && needsFirstAttackDamage
                         ? CaptureFirstAttackDamage(simulator, combat, playerState, liveCards) : 0,
                 };

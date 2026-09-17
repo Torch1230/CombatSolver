@@ -90,6 +90,7 @@ internal readonly record struct StrategicEffectContext(
     public int HighEnergyPlays { get; init; }
     public int DemesneEnergyGain { get; init; }
     public int DemesneDrawGain { get; init; }
+    public int PlayerBlock { get; init; }
     public int FirstAttackDamage { get; init; }
     public int RecurringEnergyGain { get; init; }
 
@@ -431,6 +432,7 @@ internal static class StrategicEffectModel
             AfterimagePower => StrategicEffectRequirements.UsefulCardPlays,
             BufferPower => StrategicEffectRequirements.RemainingTurns,
             PlatingPower => StrategicEffectRequirements.RemainingTurns,
+            BarricadePower => StrategicEffectRequirements.RemainingTurns,
             FeelNoPainPower => StrategicEffectRequirements.ExhaustPlays,
             DarkEmbracePower => StrategicEffectRequirements.ExhaustPlays
                 | StrategicEffectRequirements.AverageCardValue,
@@ -488,6 +490,9 @@ internal static class StrategicEffectModel
             AfterimagePower => Prevention(amount * context.UsefulCardPlays, context),
             BufferPower => Prevention(BufferPrevention(amount, context), context),
             PlatingPower => Prevention(amount * context.RemainingTurns, context),
+            // 壁垒保留现有格挡：按当前格挡 × 保留视野线性折算（不按复利累计），入伤上限兜底。
+            BarricadePower => Prevention(
+                context.PlayerBlock * Math.Min(context.RemainingTurns, 8), context),
             // 幽影形态的每回合 -敏是代价不是收益；其他维度由 IntangiblePower 自身结算承担。
             WraithFormPower => StrategicEffectVector.Zero,
             FeelNoPainPower => Prevention(amount * context.ExhaustPlays, context),
