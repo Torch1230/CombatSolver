@@ -70,6 +70,16 @@ internal sealed partial class UnattendedTestRunner
                 runner._completedChecks.Add(AssertTurnStartGenerationCacheContract(
                     scenario.CombatState, scenario.Player));
             }
+            if (request.ScenarioId == "TRANSFORMATION-POOL-CACHE")
+            {
+                runner.SetStage("transformation_pool_cache");
+                string before = ContinuationStamp.CaptureLive(scenario.CombatState).StateText;
+                runner._completedChecks.Add(AssertTransformationPoolCacheContract(
+                    scenario.CombatState, scenario.Player));
+                if (ContinuationStamp.CaptureLive(scenario.CombatState).StateText != before)
+                    throw new InvalidOperationException(
+                        "Transformation pool cache contract changed live combat.");
+            }
             if (request.ScenarioId == "SNAPSHOT-COVERAGE-CONTRACT")
             {
                 runner.SetStage("snapshot_coverage_contract");

@@ -1,5 +1,17 @@
 # CombatSolver 测试清单
 
+## 未发布：变形池根快照缓存（2026-09-17）
+
+- `TRANSFORMATION-POOL-CACHE` / `c8c552fc5f52400b849c1a77a77fefce` Passed，23.89 秒：断言缓存序列与上游 `GetUnlockedCards` 逐实例同序、跨 `Fork` 不可变共享、可变池被拒绝、外来约束被拒绝、外来池被拒绝、规范无色池（Quest/Event/Ancient/Token 回退）被正确服务且同序、缓存路径与原生路径产出同一张牌且 `CombatCardSelection` 五字段 RNG 状态与完整预测延续状态一致、父模拟与实机根未被改动（`comparisons=4`）。使用隔离无头实例并在完成后退出，未启动可见 Steam。
+- 该契约初版在 `Transformation pool accepted a changed pool or constraint.` 失败。排查为**契约自身错误**：它断言无色池必须被拒绝，但无色池是合法回退池、本就应被服务；实现无缺陷。已改为具名的正/负断言并复跑通过。不把这次失败记作实现缺陷，也不把修正前的运行记作通过。
+- 等价性：`tools/OfflineSearchHarness/compare_results.py` 对基线 `41f9478` 与候选产物逐字段比较，**7 个根全部一致**：crab@2000 170 字段、KAISER_CRAB_BOSS@6000 242、silent-discard@6000 192、QUEEN_BOSS@6000 152、THE_KIN_BOSS@6000 174、KNOWLEDGE_DEMON_BOSS@6000 212、THE_INSATIABLE_BOSS@6000 234，全部 `mismatched_roots=0`、无 `left_only`/`right_only`，覆盖 `solverMetrics`（排除时间/内存/GC）、`route` 每个动作、根 `ContinuationStamp` 与 `catalogFingerprint`。
+- 固定工作量 A/B：同根、`VeryHigh`、beam 48、`--dop 1`、顺序 ABBA。KAISER_CRAB_BOSS @2000 节点 18.78 秒 → 9.07 秒（2.072 倍）。**压力场景**（沿用 crab 生成场景规格只换遭遇与幕索引，预算标定到基线 ≥20 秒）：KNOWLEDGE_DEMON_BOSS 54.11→14.76 秒（3.667 倍）、THE_KIN_BOSS 41.78→14.43 秒（2.895 倍）、KAISER_CRAB_BOSS 37.32→14.86 秒（2.511 倍）、THE_INSATIABLE_BOSS 23.63→10.79 秒（2.191 倍）；**基线 >20 秒的 4 个根加速比 2.191–3.667 倍**。不走变形路径的提前穷尽根为 1.041 倍（silent-discard）、1.426 倍（QUEEN_BOSS）；**对照组**把同批 Boss 遭遇改用默认薄牌组后三者全部提前穷尽、加速比 0.984 / 1.015 / 0.990 倍（收益为零，略低于 1.0 属 1–3 秒量级噪声，不记作退化）。Release 构建 0 警告、0 错误。
+- 内存：每节点总分配 2.06 MB → 1.04 MB；但峰值工作集约 385 MB → 约 405 MB、峰值托管堆约 157 MB → 约 179 MB，**未改善**。峰值成因未取证，不作为通过项。
+- **并行度 8** 复测（12000 节点、同根、顺序 ABBA）：厚牌组 2.583 / 2.398 / 2.178 / 1.865 / 1.696 倍（KAISER_CRAB_BOSS / KNOWLEDGE_DEMON_BOSS / THE_KIN_BOSS / QUEEN_BOSS / THE_INSATIABLE_BOSS），薄牌组对照组 1.000 / 0.989 / 0.983 倍。并行度不改变结论。
+- **DOP 8 的字段级等价性不可用**：`compare_results.py` 报 `DIFFERENT`，但差异仅 `roundReplayPrefixCaptures` / `executionChoiceReuses` 两个调度计数器，`route` / `rootState` / `catalog` 全为 0 处；且**基线自比**在 DOP 8 下同样在这一个计数器上不同（A1 vs A2 7808 vs 7794），证明是并行调度非确定性而非语义差异。不把 DOP 8 的 `DIFFERENT` 记作实现缺陷，也不把它记作通过；字段级等价性以 DOP 1 的 7 根全一致为准。
+- 结构门禁：Bash `tools/verify-refactor-boundaries.sh` 通过，`REFACTOR_BOUNDARIES_OK search_files=114`、退出码 0（增量 1 即本次新增的 `src/Search/RootCombatTransformationPoolSnapshot.cs`）。Release 构建 0 警告、0 错误。
+- 未执行：可见 Steam 性能未测，上述倍数只是无头数据，不外推为实机收益。详见[性能报告](performance/transform-pool-root-snapshot-20260917.md)。
+
 ## 0.40.1：多策略回合准备选牌修复（2026-09-16）
 
 - 夸克打包结构合同通过：只用现有 `CombatSolver-0.40.0.zip` 调用独立打包函数，临时产物为 15,728,765 字节，保留 5 个 CombatSolver 根条目并仅新增一个 13,663,763 字节的无压缩 `QUARK_UPLOAD_PADDING.bin`；RitsuLib 条目与嵌套 ZIP 均为 0，文件严格超过 15 MiB。未执行上传、网盘移动或正式发布。

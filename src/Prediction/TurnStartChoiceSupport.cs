@@ -3,6 +3,7 @@ using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Factories;
 using MegaCrit.Sts2.Core.Models;
 using CombatSolver.Engine.Common;
+using CombatSolver.Engine.InCombat.Extensions;
 using CombatSolver.Engine.InCombat.Simulation;
 
 namespace CombatSolver;
@@ -337,7 +338,7 @@ internal static partial class TurnStartChoiceSupport
             case PlanChoiceEffect.Transform:
                 foreach (PredictedCard card in selected)
                 {
-                    CardModel replacement = CardFactory.CreateRandomCardForTransform(
+                    CardModel replacement = simulator.CreateRandomCardForTransform(
                         card.Preview, isInCombat: true, simulator.Rng.CombatCardSelection);
                     CardChoiceSupport.TransformCardToGeneratedReplacement(simulator, card, replacement);
                     if (combat.HasPendingChoice)

@@ -73,6 +73,7 @@ internal sealed partial class SimulatedCombatState
     internal AdaptedOnPlaySnapshot? AdaptedOnPlay => _modHookSubscribers.AdaptedOnPlay;
     private readonly IReadOnlyDictionary<Player, int> _rootMaxHandSizes;
     private readonly RootCombatCardGenerationPoolSnapshot _rootCardGenerationPools;
+    private readonly RootCombatTransformationPoolSnapshot _rootTransformationPools;
 
     private sealed class CombinedRosterView(
         IReadOnlyList<Creature> first,
@@ -254,6 +255,9 @@ internal sealed partial class SimulatedCombatState
         _playerCreatures = inner.PlayerCreatures.ToArray();
         _players = inner.Players.ToArray();
         _rootCardGenerationPools = RootCombatCardGenerationPoolSnapshot.Capture(
+            _players,
+            _cardMultiplayerConstraint);
+        _rootTransformationPools = RootCombatTransformationPoolSnapshot.Capture(
             _players,
             _cardMultiplayerConstraint);
         _encounter = inner.Encounter;
@@ -440,6 +444,7 @@ internal sealed partial class SimulatedCombatState
         _modHookSubscribers = source._modHookSubscribers;
         _rootMaxHandSizes = source._rootMaxHandSizes;
         _rootCardGenerationPools = source._rootCardGenerationPools;
+        _rootTransformationPools = source._rootTransformationPools;
         _playerCreatures = source._playerCreatures;
         _players = source._players;
         _modifiers = source._modifiers;
@@ -502,6 +507,17 @@ internal sealed partial class SimulatedCombatState
         out IReadOnlyList<CardModel> cards)
         => _rootCardGenerationPools.TryGetEligibleCharacterCards(
             player, cardPool, multiplayerConstraint, selection, out cards);
+
+    bool ICombatPredictionCardGenerationPoolSnapshot.TryGetRootUnlockedTransformationCards(
+        Player player,
+        CardPoolModel cardPool,
+        CardMultiplayerConstraint multiplayerConstraint,
+        out IReadOnlyList<CardModel> cards)
+        => _rootTransformationPools.TryGetUnlockedTransformationCards(
+            player,
+            cardPool,
+            multiplayerConstraint,
+            out cards);
 
     public IReadOnlyList<Creature> Allies => _allies;
     public IReadOnlyList<Creature> Enemies => _enemies;
