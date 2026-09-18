@@ -8,6 +8,7 @@ namespace CombatSolver.Replay;
 // This layer understands archive contracts, never live game objects.
 internal static class CheckpointArchive
 {
+    public const string DefaultFixtureSelector = "start";
     public const string IndexPath = "replay/checkpoint.json";
     public const string LegacyIndexPath = "combat-solver/checkpoint.json";
     public const long MaximumArchiveBytes = 128L * 1024 * 1024;
@@ -21,7 +22,7 @@ internal static class CheckpointArchive
         WriteIndented = true,
     };
 
-    public static JsonObject Inspect(string archivePath, string selector = "latest")
+    public static JsonObject Inspect(string archivePath, string selector = DefaultFixtureSelector)
     {
         using ZipArchive archive = OpenValidated(archivePath);
         JsonObject index = archive.GetEntry(IndexPath) != null ? ReadObject(archive, IndexPath)

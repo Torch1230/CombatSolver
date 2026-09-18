@@ -30,7 +30,7 @@ Windows 使用 PowerShell 7.4 或更新版本，参数对应 `-HeadlessInstance`
 
 Coding agent 运行无头游戏测试时必须加 `-CleanupInstanceOnExit`，Bash 对应 `--cleanup-instance-on-exit`。它会强制请求在完成后退出，并在成功、失败、取消或超时的收束路径释放租约和实例锁，再删除完整私有实例。仅停止进程的 `ExitOnComplete` 不删除实例目录。批量复用只允许发生在同一批次内部，批次最后一次请求必须带清理开关。
 
-实例 ID 默认由 worktree 路径生成，也可显式指定（64 字符内的字母、数字、点、下划线、短横线）。同实例第二个 producer 立即拒绝，不能替换已有请求。每个实例拥有私有游戏可执行文件及 Mod 栈、APPDATA/LOCALAPPDATA 或 XDG 数据/配置/缓存、日志和协议文件。不会往源游戏目录安装临时 RitsuLib，也不会覆盖玩家存档。
+实例 ID 默认由 worktree 路径生成，也可显式指定（64 字符内的字母、数字、点、下划线、短横线）。默认实例根是当前仓库 `.local/headless-instances/<实例>`，完整游戏/Mod 快照不会写入 `%LOCALAPPDATA%`、XDG state 或其他用户目录；只有显式设置 `COMBATSOLVER_HEADLESS_ROOT` 才改变这个精确实例目录。同实例第二个 producer 立即拒绝，不能替换已有请求。每个实例拥有私有游戏可执行文件及 Mod 栈、APPDATA/LOCALAPPDATA 或 XDG 数据/配置/缓存、日志和协议文件。不会往源游戏目录安装临时 RitsuLib，也不会覆盖玩家存档。
 
 默认 DLL 来自本 worktree 的 Release 产物、manifest 来自仓库根；`--combat-solver-build-dir` / `-CombatSolverBuildDir` 可以指定包含 DLL 和 manifest 的冻结构建目录（Windows 还需要该构建的 MemoryCleaner）。其他游戏文件和 Mod 从指定源游戏复制，RitsuLib 从指定依赖路径复制；完整内容身份参与复用判断。构建、依赖或源游戏变化时，只停本实例精确认领的旧游戏，再发布新快照。Linux 优先 reflink；旧游戏快照移动到实例内 retired 目录，保留可回收证据，不自动删除用户目录。
 

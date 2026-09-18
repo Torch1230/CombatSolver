@@ -931,8 +931,11 @@ tools/run-unattended-test.sh	source "$script_dir/headless-runtime.sh"
 tools/run-unattended-test.sh	hr_acquire "$process_pid" "$process_identity_start_time"
 tools/run-unattended-test.sh	if ((option_value[stop-instance] == 1)); then
 tools/run-unattended-test.sh	add_option cleanup-instance-on-exit 0 switch none
+tools/run-unattended-test.sh	add_option checkpoint-selector "start" string raw_string
+tools/run-unattended-test.sh	$repo_root/.local/headless-instances/$headless_instance
 tools/run-unattended-test.sh	hr_remove_instance
 tools/run-unattended-test.ps1	. (Join-Path $PSScriptRoot 'headless-runtime.ps1')
+tools/run-unattended-test.ps1	[string]$CheckpointSelector = "start"
 tools/run-unattended-test.ps1	if ($StopInstance) {
 tools/run-unattended-test.ps1	[switch]$CleanupInstanceOnExit
 tools/run-unattended-test.ps1	Remove-HeadlessRuntimeInstance $runtimeContext
@@ -942,10 +945,22 @@ tools/headless-runtime.sh	hr_prepare_snapshot() {
 tools/headless-runtime.sh	hr_bind() {
 tools/headless-runtime.sh	hr_remove_instance() {
 tools/headless-runtime.ps1	function Set-HeadlessGameSnapshot(
+tools/headless-runtime.ps1	Join-Path $repository ".local\headless-instances\$Instance"
 tools/headless-runtime.ps1	function Remove-HeadlessRuntimeInstance(
 tools/headless-runtime.ps1	function Enter-HeadlessHostLease(
 tools/headless-runtime.ps1	function Set-HeadlessHostGame(
 EOF
+for legacy_instance_root in \
+    "$repository_root/tools/headless-runtime.ps1|CombatSolver\\headless-instances" \
+    "$repository_root/tools/run-unattended-test.sh|CombatSolver/headless-instances" \
+    "$repository_root/tools/run-headless-matrix.sh|CombatSolver/headless-instances"; do
+    legacy_path="${legacy_instance_root%%|*}"
+    legacy_text="${legacy_instance_root#*|}"
+    forbid_fixed "$legacy_path" "$legacy_text" 'user-local headless instance root returned:'
+done
+require_fixed "$repository_root/src/Replay/CheckpointArchive.cs" \
+    'public const string DefaultFixtureSelector = "start";' \
+    'checkpoint fixture default must remain combat start'
 for matrix in "$repository_root/tools/run-headless-matrix.sh" "$repository_root/tools/run-headless-matrix.ps1"; do
     forbid_fixed "$matrix" 'MATRIX-CLEANUP' 'matrix cleanup must not dispatch a new game request:'
 done

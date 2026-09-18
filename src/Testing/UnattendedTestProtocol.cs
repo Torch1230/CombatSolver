@@ -1,6 +1,7 @@
 using System.Runtime;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using CombatSolver.Replay;
 using Godot;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Rooms;
@@ -38,7 +39,7 @@ internal sealed class UnattendedTestRequest
     public string? ShowcaseBundlePath { get; init; }
     public string? NativeStatePath { get; init; }
     public string? CheckpointArchivePath { get; init; }
-    public string CheckpointSelector { get; init; } = "latest";
+    public string CheckpointSelector { get; init; } = CheckpointArchive.DefaultFixtureSelector;
     public string ReplayMode { get; init; } = "RestoreOnly";
     public string? ReplayPolicyOverridePath { get; init; }
     public string? EvidenceDirectory { get; init; }

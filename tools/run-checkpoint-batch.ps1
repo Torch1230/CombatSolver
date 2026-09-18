@@ -4,7 +4,7 @@ param(
     [Parameter(Mandatory)][Alias('ReportsRoot')][string]$InputPath,
     [string]$OutputDirectory,
     [ValidateSet('Preflight','RestoreOnly','ReplayRecorded','SearchOnly','DeploySolver')][string]$ReplayMode = 'RestoreOnly',
-    [string]$CheckpointSelector = 'latest',
+    [string]$CheckpointSelector = 'start',
     [string]$ReplayPolicyOverridePath,
     [string]$ManifestPath,
     [string]$Sts2GameRoot,

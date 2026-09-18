@@ -135,9 +135,9 @@ common=(--sts2-game-root "$test_root/source" --ritsu-workshop-root "$test_root/r
     --headless-cpu-reservation 1 --headless-queue-timeout-seconds 3
     --combat-solver-build-dir "$test_root/frozen build")
 bash "$runner" "${common[@]}" >"$test_root/default.log" 2>&1
-jq -se --arg state "$XDG_STATE_HOME" --arg build "$test_root/frozen build" '
+jq -se --arg repo "$repo" --arg build "$test_root/frozen build" '
     length==3 and ([.[].root]|unique|length)==1 and ([.[].instance]|unique|length)==1 and
-    (.[0].root|startswith($state+"/CombatSolver/headless-instances/worktree-")) and
+    (.[0].root|startswith($repo+"/.local/headless-instances/worktree-")) and
     .[2].scenario=="STOP-INSTANCE" and all(.[];.mode=="parallel" and .memory=="2048" and .cpu=="1" and .queue=="3" and .build==$build)' "$MATRIX_TEST_LOG" >/dev/null
 printf '%s\n' 'MATRIX_MOCK_PASS default-instance/warm-final-exit/parameter-forwarding'
 

@@ -11,7 +11,7 @@ description: 收到 CombatSolver 玩家问题 ZIP、战斗日志、存档或复�
 
 默认顺序是：读取包内证据 → 对照源码定位 → 最小测试验证修复。先看异常栈、首个状态差异及对应动作窗口；证据已经指向完整错误链时，直接进入修复验证。原包回放只用于补足缺失的定位证据、覆盖最小夹具表达不了的交互，或完成用户明确要求的恢复/部署验收。
 
-需要判断恢复材料是否可用时，使用 `run-unattended-test.ps1 -CheckpointArchivePath <ZIP> -ReplayMode Preflight`（Linux 对应 `--checkpoint-archive-path`、`--replay-mode`）盘点索引与材料，并保存完整结果、只输出关键摘要。v2、旧 v1 索引和无索引旧包由同一读取器识别。`RestoreOnly` 的严格状态验证通过后才可称该检查点已恢复；这不等于录制路线或整场部署通过。缺失历史、开战材料和实际政策应记录具体缺项，继续评估旧包可提供的恢复入口。
+需要判断恢复材料是否可用时，使用 `run-unattended-test.ps1 -CheckpointArchivePath <ZIP> -ReplayMode Preflight`（Linux 对应 `--checkpoint-archive-path`、`--replay-mode`）盘点索引与材料，并保存完整结果、只输出关键摘要。问题包 fixture 默认选择 `start`；搜索质量、部署和人工路线对照必须从 combat_start 开始。`latest` 只在明确诊断中途状态时显式传入，不能用其结果证明求解器能从战斗开局自主找到路线。v2、旧 v1 索引和无索引旧包由同一读取器识别。`RestoreOnly` 的严格状态验证通过后才可称该检查点已恢复；这不等于录制路线或整场部署通过。缺失历史、开战材料和实际政策应记录具体缺项，继续评估旧包可提供的恢复入口。
 
 程序集MVID（含游戏模块）和模型表 hash 差异只作诊断，实际模型/事件解码及状态差异才决定后续处理。游戏MVID比较输出在 `gameModuleComparison`，不得因跨平台或重新编译的模块标识不同而在恢复前拒绝；标识匹配也不能替代实际状态校验。旧包缺少编号映射而二进制不可比较时，`restored_continuation` 只表示已记录战斗状态对账通过；必须明确原生二进制未验证，不能称完整恢复验收。`start` 的 RestoreOnly 同时验证开战和首个可操作状态，范围仍为检查点。
 
@@ -24,6 +24,7 @@ description: 收到 CombatSolver 玩家问题 ZIP、战斗日志、存档或复�
 ## 1. 安全解包
 
 - 保留原始 ZIP，只解压到 `.local/issue-bundles/<issue-id>/raw/`。
+- 无头实例和完整游戏/Mod 快照只放在当前仓库 `.local/headless-instances/<实例>`；不使用 `%LOCALAPPDATA%/CombatSolver/headless-instances`。测试完成、失败、取消或超时后按无人测试规范删除实例。
 - 拒绝绝对路径、`..` 穿越、符号链接逃逸、加密条目和异常膨胀。
 - 记录相对路径、大小和压缩比；不要让 agent 全仓扫描解压目录。
 - 原始包、完整日志、截图、存档和二进制状态不进入源码提交。

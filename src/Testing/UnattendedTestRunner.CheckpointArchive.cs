@@ -21,8 +21,7 @@ internal sealed partial class UnattendedTestRunner
             ProjectSettings.GlobalizePath("user://checkpoint-imports"), Guid.NewGuid().ToString("N"));
         _checkpointImport = CheckpointArchive.Prepare(
             _request.CheckpointArchivePath,
-            _request.ReplayMode == "ReplayRecorded" && _request.CheckpointSelector == "latest"
-                ? "recorded" : _request.CheckpointSelector,
+            _request.CheckpointSelector,
             _checkpointImportDirectory);
         _writer.ReplayVerification = new JsonObject
         {

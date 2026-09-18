@@ -33,7 +33,7 @@ param(
     [string]$ShowcaseRoutePath = "",
     [string]$ShowcaseBundlePath = "",
     [string]$CheckpointArchivePath = "",
-    [string]$CheckpointSelector = "latest",
+    [string]$CheckpointSelector = "start",
     [ValidateSet("Preflight", "RestoreOnly", "ReplayRecorded", "SearchOnly", "DeploySolver")]
     [string]$ReplayMode = "RestoreOnly",
     [string]$ReplayPolicyOverridePath = "",

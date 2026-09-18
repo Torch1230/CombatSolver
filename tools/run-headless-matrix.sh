@@ -144,7 +144,7 @@ if [[ -z $headless_instance ]]; then
     headless_instance="$(printf '%s' "$repo_root" | sha256sum)"
     headless_instance="worktree-${headless_instance:0:16}"
 fi
-headless_root="${COMBATSOLVER_HEADLESS_ROOT:-${XDG_STATE_HOME:-${HOME}/.local/state}/CombatSolver/headless-instances/$headless_instance}"
+headless_root="${COMBATSOLVER_HEADLESS_ROOT:-$repo_root/.local/headless-instances/$headless_instance}"
 headless_root="$(realpath -m -- "$headless_root")"
 source_game_root="$(realpath -m -- "$sts2_game_root")"
 [[ $headless_root != "$source_game_root" && $headless_root != "$source_game_root/"* \

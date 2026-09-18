@@ -178,7 +178,7 @@ CombatSolver 是《杀戮尖塔 2》的单人战斗路线求解器 Mod，使用 
 
 需要完整部署时固定 `Instant / 0 秒` 并断言计划外重算数量。一个 headless 进程复用同一批最小请求；重新编译后退出仍加载旧 DLL 的进程。
 
-Coding agent 启动无头游戏测试时，PowerShell 必须使用 `-CleanupInstanceOnExit`，Bash 必须使用 `--cleanup-instance-on-exit`。同一批次确需复用实例时，只能在批次内部保留，最后一项必须带清理开关并确认启动器成功删除整个实例目录；`ExitOnComplete` 只退出进程，不满足目录清理要求。明确为人工性能分析保留现场时例外，但必须在测试证据中记录实例路径和后续清理责任。
+Coding agent 启动无头游戏测试时，PowerShell 必须使用 `-CleanupInstanceOnExit`，Bash 必须使用 `--cleanup-instance-on-exit`。实例默认且必须位于当前仓库 `.local/headless-instances/<实例>`；不得把游戏/Mod 快照放进 `%LOCALAPPDATA%/CombatSolver/headless-instances` 或其他用户目录。只有用户显式指定 `COMBATSOLVER_HEADLESS_ROOT` 时才可改用另一个精确实例目录。同一批次确需复用实例时，只能在批次内部保留，最后一项必须带清理开关并确认启动器成功删除整个实例目录；`ExitOnComplete` 只退出进程，不满足目录清理要求。明确为人工性能分析保留现场时例外，但必须在测试证据中记录实例路径和后续清理责任。
 
 Windows（PowerShell 7）常用命令：
 

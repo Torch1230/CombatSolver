@@ -16,9 +16,11 @@ internal static class ArchiveContractTests
             string metadata = result["paths"]!["metadataPath"]!.GetValue<string>();
             string replay = result["paths"]!["replayStatePath"]!.GetValue<string>();
             Check(metadata != replay && File.ReadAllText(metadata) != File.ReadAllText(replay), "separate_paired_json");
-            Check(result["checkpoint"]!["checkpointId"]!.GetValue<string>() == "s:1", "latest_is_playable_before_end");
+            Check(result["checkpoint"]!["checkpointId"]!.GetValue<string>() == "s:2", "latest_is_playable_before_end");
             Check(result["restorationVerified"]!.GetValue<bool>() == false, "preflight_is_not_restore_proof");
-            Check(CheckpointArchive.Inspect(valid, "end")["checkpoint"]!["checkpointId"]!.GetValue<string>() == "s:2", "explicit_end_selector");
+            Check(CheckpointArchive.Inspect(valid)["checkpoint"]!["checkpointId"]!.GetValue<string>() == "s:1", "default_selector_is_combat_start");
+            Check(CheckpointArchive.Inspect(valid, "end")["checkpoint"]!["checkpointId"]!.GetValue<string>() == "s:3", "explicit_end_selector");
+            Check(CheckpointArchive.Inspect(valid, "recorded")["checkpoint"]!["checkpointId"]!.GetValue<string>() == "s:3", "explicit_recorded_selector");
             string legacy = WriteFixture(root, "legacy", true);
             Check(CheckpointArchive.Inspect(legacy)["status"]!.GetValue<string>() == "materials_valid", "legacy_without_index");
             string mismatch = WriteFixture(root, "mismatch", false, wrongSession: true);
@@ -27,7 +29,7 @@ internal static class ArchiveContractTests
             Reject(() => CheckpointArchive.Inspect(duplicate), "duplicate_entry");
             string missing = WriteFixture(root, "missing", false);
             using (ZipArchive archive = ZipFile.Open(missing, ZipArchiveMode.Update))
-                archive.GetEntry("combat-solver/forensics/current/native-state/000001-search_completed.bin")!.Delete();
+                archive.GetEntry("combat-solver/forensics/current/native-state/000001-combat_start.bin")!.Delete();
             Check(CheckpointArchive.Inspect(missing)["status"]!.GetValue<string>() == "materials_missing", "missing_native_material");
             string aggregate = Path.Combine(root, "aggregate.zip");
             using (ZipArchive archive = ZipFile.Open(aggregate, ZipArchiveMode.Create))
@@ -48,6 +50,20 @@ internal static class ArchiveContractTests
             }, 1) == "restore_mismatch", "technical_failure_precedes_hp");
             Check(BatchRunner.Classify(null, 124) == "timeout", "launcher_timeout_classification");
             Check(BatchRunner.Classify(null, 1, new JsonObject { ["status"] = "timeout" }) == "timeout", "launcher_deadline_is_not_crash");
+            string? savedRuntimeRoot = Environment.GetEnvironmentVariable("COMBATSOLVER_HEADLESS_ROOT");
+            try
+            {
+                Environment.SetEnvironmentVariable("COMBATSOLVER_HEADLESS_ROOT", null);
+                string repository = Path.Combine(root, "repository");
+                string runtime = BatchRunner.RuntimeDirectory(repository);
+                string expectedParent = Path.Combine(Path.GetFullPath(repository), ".local", "headless-instances") + Path.DirectorySeparatorChar;
+                Check(runtime.StartsWith(expectedParent, StringComparison.OrdinalIgnoreCase), "batch_runtime_is_repository_local");
+                Check(Path.GetPathRoot(runtime) == Path.GetPathRoot(repository), "batch_runtime_stays_on_repository_volume");
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("COMBATSOLVER_HEADLESS_ROOT", savedRuntimeRoot);
+            }
             foreach (string fault in new[] { "diagnostic", "alias", "recording", "identity" })
             {
                 string faulty = WriteFixture(root, fault, false);
@@ -147,9 +163,14 @@ internal static class ArchiveContractTests
         string prefix = "combat-solver/forensics/current/";
         Write(prefix + "session.json", "{\"sessionId\":\"s\"}");
         JsonArray checkpoints = [];
-        for (int sequence = 1; sequence <= 2; sequence++)
+        for (int sequence = 1; sequence <= 3; sequence++)
         {
-            string label = sequence == 1 ? "search_completed" : "combat_end";
+            string label = sequence switch
+            {
+                1 => "combat_start",
+                2 => "search_completed",
+                _ => "combat_end",
+            };
             string file = $"{sequence:D6}-{label}.json";
             Write(prefix + "checkpoints/" + file, new JsonObject
             {
@@ -163,6 +184,8 @@ internal static class ArchiveContractTests
             checkpoints.Add(new JsonObject
             {
                 ["checkpointId"] = "s:" + sequence,
+                ["label"] = label,
+                ["canSearch"] = label != "combat_end",
                 ["metadataPath"] = prefix + "checkpoints/" + file,
                 ["replayStatePath"] = prefix + "replay-state/" + file,
                 ["nativeStatePath"] = prefix + "native-state/" + Path.ChangeExtension(file, ".bin"),
@@ -172,8 +195,8 @@ internal static class ArchiveContractTests
         if (!legacy)
             Write(CheckpointArchive.IndexPath, new JsonObject
             {
-                ["schemaVersion"] = 2, ["sessionId"] = "s", ["defaultCheckpointId"] = "s:1",
-                ["combatEndCheckpointId"] = "s:2", ["checkpoints"] = checkpoints,
+                ["schemaVersion"] = 2, ["sessionId"] = "s", ["defaultCheckpointId"] = "s:2",
+                ["combatStartCheckpointId"] = "s:1", ["combatEndCheckpointId"] = "s:3", ["checkpoints"] = checkpoints,
             }.ToJsonString());
         if (duplicate)
             Write(prefix + "session.json", "{}");

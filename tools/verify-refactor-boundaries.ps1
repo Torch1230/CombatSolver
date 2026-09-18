@@ -1165,8 +1165,11 @@ foreach ($check in @(
     @{ Path = 'tools/run-unattended-test.sh'; Text = 'hr_acquire "$process_pid" "$process_identity_start_time"' },
     @{ Path = 'tools/run-unattended-test.sh'; Text = 'if ((option_value[stop-instance] == 1)); then' },
     @{ Path = 'tools/run-unattended-test.sh'; Text = 'add_option cleanup-instance-on-exit 0 switch none' },
+    @{ Path = 'tools/run-unattended-test.sh'; Text = 'add_option checkpoint-selector "start" string raw_string' },
+    @{ Path = 'tools/run-unattended-test.sh'; Text = '$repo_root/.local/headless-instances/$headless_instance' },
     @{ Path = 'tools/run-unattended-test.sh'; Text = 'hr_remove_instance' },
     @{ Path = 'tools/run-unattended-test.ps1'; Text = ". (Join-Path `$PSScriptRoot 'headless-runtime.ps1')" },
+    @{ Path = 'tools/run-unattended-test.ps1'; Text = '[string]$CheckpointSelector = "start"' },
     @{ Path = 'tools/run-unattended-test.ps1'; Text = 'if ($StopInstance) {' },
     @{ Path = 'tools/run-unattended-test.ps1'; Text = '[switch]$CleanupInstanceOnExit' },
     @{ Path = 'tools/run-unattended-test.ps1'; Text = 'Remove-HeadlessRuntimeInstance $runtimeContext' },
@@ -1176,6 +1179,7 @@ foreach ($check in @(
     @{ Path = 'tools/headless-runtime.sh'; Text = 'hr_bind() {' },
     @{ Path = 'tools/headless-runtime.sh'; Text = 'hr_remove_instance() {' },
     @{ Path = 'tools/headless-runtime.ps1'; Text = 'function Set-HeadlessGameSnapshot(' },
+    @{ Path = 'tools/headless-runtime.ps1'; Text = 'Join-Path $repository ".local\headless-instances\$Instance"' },
     @{ Path = 'tools/headless-runtime.ps1'; Text = 'function Remove-HeadlessRuntimeInstance(' },
     @{ Path = 'tools/headless-runtime.ps1'; Text = 'function Enter-HeadlessHostLease(' },
     @{ Path = 'tools/headless-runtime.ps1'; Text = 'function Set-HeadlessHostGame(' })) {
@@ -1183,6 +1187,19 @@ foreach ($check in @(
     if (-not (Select-String -LiteralPath $path -SimpleMatch $check.Text -Quiet)) {
         $violations.Add("${path}: missing headless infrastructure ownership boundary '$($check.Text)'")
     }
+}
+foreach ($legacyInstanceRoot in @(
+    @{ Path = 'tools/headless-runtime.ps1'; Text = 'CombatSolver\headless-instances' },
+    @{ Path = 'tools/run-unattended-test.sh'; Text = 'CombatSolver/headless-instances' },
+    @{ Path = 'tools/run-headless-matrix.sh'; Text = 'CombatSolver/headless-instances' })) {
+    $path = Join-Path $repositoryRoot $legacyInstanceRoot.Path
+    if (Select-String -LiteralPath $path -SimpleMatch $legacyInstanceRoot.Text -Quiet) {
+        $violations.Add("${path}: user-local headless instance root returned '$($legacyInstanceRoot.Text)'")
+    }
+}
+$checkpointArchivePath = Join-Path $repositoryRoot 'src\Replay\CheckpointArchive.cs'
+if (-not (Select-String -LiteralPath $checkpointArchivePath -SimpleMatch 'public const string DefaultFixtureSelector = "start";' -Quiet)) {
+    $violations.Add("${checkpointArchivePath}: checkpoint fixture default must remain combat start")
 }
 foreach ($matrix in @('tools/run-headless-matrix.sh', 'tools/run-headless-matrix.ps1')) {
     $path = Join-Path $repositoryRoot $matrix

@@ -67,7 +67,7 @@ add_option pre-combat-player-current-hp-override -1 int positive_int
 add_option pre-combat-intervening-map-points-json "" string none
 add_option replay-state-path "" string none
 add_option checkpoint-archive-path "" string raw_string
-add_option checkpoint-selector "latest" string raw_string
+add_option checkpoint-selector "start" string raw_string
 add_option replay-mode "RestoreOnly" string raw_string "Preflight|RestoreOnly|ReplayRecorded|SearchOnly|DeploySolver"
 add_option replay-policy-override-path "" string raw_string
 add_option evidence-directory "" string raw_string
@@ -471,7 +471,7 @@ if [[ -z $headless_instance ]]; then
     headless_instance="worktree-${headless_instance:0:16}"
 fi
 [[ $headless_instance =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$ ]] || die 'invalid --headless-instance (letters, digits, dot, underscore, dash; max 64)'
-headless_root="${COMBATSOLVER_HEADLESS_ROOT:-${XDG_STATE_HOME:-${HOME}/.local/state}/CombatSolver/headless-instances/$headless_instance}"
+headless_root="${COMBATSOLVER_HEADLESS_ROOT:-$repo_root/.local/headless-instances/$headless_instance}"
 headless_root="$(realpath -m -- "$headless_root")"
 game_root="$headless_root/game"
 game_executable="$game_root/SlayTheSpire2"

@@ -63,7 +63,7 @@ function New-HeadlessRuntimeContext(
     }
     $localData = [Environment]::GetFolderPath('LocalApplicationData')
     $root = if ([string]::IsNullOrWhiteSpace($env:COMBATSOLVER_HEADLESS_ROOT)) {
-        Join-Path $localData "CombatSolver\headless-instances\$Instance"
+        Join-Path $repository ".local\headless-instances\$Instance"
     } else { $env:COMBATSOLVER_HEADLESS_ROOT }
     $root = Get-HeadlessCanonicalPath $root
     $hostRoot = if ([string]::IsNullOrWhiteSpace($env:COMBATSOLVER_HEADLESS_HOST_ROOT)) {
