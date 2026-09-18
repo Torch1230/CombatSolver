@@ -1,4 +1,3 @@
-using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models.Powers;
 
 namespace CombatSolver;
@@ -89,4 +88,3 @@ internal sealed partial class CombatBeamSolver
         };
     }
 }
-

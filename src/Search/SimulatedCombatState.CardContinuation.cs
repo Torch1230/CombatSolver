@@ -1,5 +1,4 @@
 using CombatSolver.Engine.Common;
-using MegaCrit.Sts2.Core.Entities.Cards;
 
 namespace CombatSolver;
 
