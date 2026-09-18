@@ -1,5 +1,12 @@
 # CombatSolver 测试清单
 
+## 未发布：技术债静态审计与分片整理
+
+- 安全清理仅普通Release与门禁；克隆复用、保路纯移动、展开纯移动各一次EQ10，均IDENTICAL（每批983项字段、600项剪枝计数）。
+- 最终仅一次EQ10+FULL40，IDENTICAL（4673项字段、3000项剪枝计数），双侧100份有效、无时间边界；复用指定0.41.0基线结果与比较器，未重跑基线。固定High 90/50000、Coordinator、Smart、DOP1、workers=2。
+- 229/100项保路/展开成员文本分别由Roslyn核对；保路5项字段声明顺序不变。BeamRankSortChecks独立合同720组/167280条目通过。最终Release 0警告/0错误，CopyModOnBuild=false；Bash门禁search_files=201。
+- 本轮没有原生游戏/无人场景验收；审计工具复跑说明在[CodeDebt](../tools/CodeDebt/README.md)，逐批产物位置见[技术债审计](refactoring/tech-debt-audit-2026-09-18.md)。
+
 ## 未发布：代码整洁度清理
 
 - 私有死代码与多余using清理：EQ 10根对上游0.41.0为 `IDENTICAL`（983项比较字段、600项剪枝计数）；循环出口共享排序后缀：EQ 10 + FULL 40根为 `IDENTICAL`（4673项比较字段、3000项剪枝计数），双侧100份结果有效且未触及时间边界。

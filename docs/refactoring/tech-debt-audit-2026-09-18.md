@@ -184,7 +184,7 @@ UnattendedTestRequest源码字段218个，其中100个未在coverage JSON出现�
 
 ### 1.10 本地化
 
-English.json有426键；直接Get字面调用缺英文0。结合Roslyn插值模板从初筛115个无原文字面命中的键缩到21个无调用候选；逐项见localization.json。Get转发入口只有既有控件文本包装、const/条件字符串及测试逐键遍历，Format接收还原的模板；未发现拼接这些旧键的动态生产入口。候选均为旧布局说明、旧短深搜索档位/提示，计划删除21个，保留405键；不改现用中文、模板、设置schema或测试逻辑。
+English.json有426键；直接Get字面调用缺英文0。结合Roslyn插值模板从初筛115个无原文字面命中的键缩到21个无调用候选；逐项见localization.json。Get转发入口只有既有控件文本包装、const/条件字符串及测试逐键遍历，Format接收还原的模板；未发现拼接这些旧键的动态生产入口。候选均为旧布局说明、旧短深搜索档位/提示，已删除21个，保留405键；不改现用中文、模板、设置schema或测试逻辑。
 
 ## 2. 实施与验证（随提交补齐）
 
@@ -240,6 +240,26 @@ Release 0警告/0错误（3.71秒，`clones-build.log`）；Bash门禁通过 `se
 原段按原位置拼回逐字符相同（`expansion-split-proof.json`）；Roslyn核对100项完整成员文本及所有者一致，0项字段声明顺序一致，语法错误0（`expansion-member-proof.json`）。`expansion-color-moved.diff`留存Git移动着色；短括号/空行受Git匹配阈值影响，完整成员文本证据覆盖这些行。
 
 两套门禁仅迁移既有检查路径/文件清单，原禁止规则覆盖所有新分片，没有新增策略规则或helper名称检查；架构文件表和skill同步。Release 0警告/0错误；Bash门禁 `REFACTOR_BOUNDARIES_OK search_files=201`。本批仅一次EQ10，983项字段与600项剪枝计数一致，双侧20份有效、无时间边界，`IDENTICAL`。日志见 `expansion-build.log`、`expansion-boundaries.log`，等价证据见 `expansion-comparison.json` / `expansion-validity.json`；本批宿主logs已删。
+
+### 批次六：工具路径与最终验收
+
+本提交6文件，+45/-7；仅工具适配与文档/验证记录，没有再改模组源码。
+
+拆分后补查直接读取源文件的工具：EndTurnAdmissionChecks提取的方法仍在Expansion根分片；BeamRankSortChecks需要同时读取保路根分片与Ranking分片，已同步两条确定路径。首次真正运行暴露工具缺少评分函数现已使用的_profile；保留失败日志beam-rank-contract-initial-failure.log，补链生产SolverSearchProfile.Default后720组、167280条目逐槽引用身份一致。没有改公式或断言；合同仍只覆盖普通Beam，不覆盖BaseScoreOnly成员。初始55项只证明构建/py_compile，不能代替脚本入口运行，此处不混淆两者。临时Checks工程只写本工作树.local。现用策略说明的源码导航同步，历史审计中的行号/实测仍按原快照保留。
+
+代码全部冻结后仅一次最终EQ10+FULL40：`IDENTICAL`，4673项比较字段、3000项剪枝计数一致，双侧100份有效、时间边界0。沿用指定比较器，排除递归时间/内存/GC遥测，比较路线字段、确定性工作量、组合成员结果、根状态与目录指纹；不是DLL二进制相同，也不覆盖未执行的游戏/异常路径。完整证据 `.local/debt/final-comparison.json`、`final-validity.json` 与 `final/runs/`。
+
+本轮离线共3批EQ10和1批最终50，合计80次候选运行；基线50份全部复用，没有重跑基线或追加最终批次。宿主workers=2，运行期未构建DLL；所有候选logs已清理，结果/路线保留。最后Release仍为0警告/0错误、CopyModOnBuild=false，Bash门禁search_files=201；PowerShell门禁同步路径但本机未执行，不冒充双平台运行证明。审计开始于9月18日，最终验收跨至9月19日。
+
+| 已完成代码批次提交 | 内容 |
+|---|---|
+| `5f12c09` | 补齐全量静态审计工具并清理私有方法签名 |
+| `80fd763` | 删除旧本地化键并修正搜索配置注释 |
+| `3310243` | 复用相同出口比较与开局节点构造逻辑 |
+| `9842d4d` | 按现有职责纯移动拆分保路策略文件 |
+| `d7118e8` | 按现有职责纯移动拆分展开与回放文件 |
+
+最终工具/报告提交在上述代码提交之后；不提升版本、不部署、不启动游戏或可见Steam，不推送、不操作GitHub。
 
 ## 3. 没动的与原因
 

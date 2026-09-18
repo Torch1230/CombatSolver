@@ -7,7 +7,10 @@ from xml.sax.saxutils import escape
 repo = Path(__file__).resolve().parents[2]
 output = repo / '.local/beam-rank-sort-checks'
 output.mkdir(parents=True, exist_ok=True)
-source = (repo / 'src/Search/CombatBeamSolver.BeamRetentionPolicy.cs').read_text()
+source = '\n'.join((repo / 'src/Search' / file).read_text() for file in (
+    'CombatBeamSolver.BeamRetentionPolicy.cs',
+    'CombatBeamSolver.BeamRetentionPolicy.Ranking.cs',
+))
 snapshot_source = (repo / 'src/Search/CombatPlan.cs').read_text()
 
 def block(signature):
@@ -42,12 +45,14 @@ internal sealed class Scorer(bool boss, int enemies, Run initial) {
 private readonly bool _isActEndingBoss = boss;
 private readonly int _initialEnemyCount = enemies;
 private readonly Run _run = initial;
+private readonly SolverSearchProfile _profile = SolverSearchProfile.Default;
 '''
 classes += '\n'.join([score, retained, compare, sort]) + '\n}'
 (output / 'Extracted.cs').write_text(classes)
 (output / 'Program.cs').write_bytes((repo / 'tools/BeamRankSortChecks/Program.cs').read_bytes())
 (output / 'Checks.csproj').write_text('''<Project Sdk="Microsoft.NET.Sdk">
 <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net9.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
-<ItemGroup><Compile Include="''' + escape(str(repo / 'src/Search/SolverWeights.cs')) + '''" /></ItemGroup>
+<ItemGroup><Compile Include="''' + escape(str(repo / 'src/Search/SolverWeights.cs')) + '''" />
+<Compile Include="''' + escape(str(repo / 'src/Search/SolverSearchProfile.cs')) + '''" /></ItemGroup>
 </Project>''')
 subprocess.run(['dotnet', 'run', '--project', str(output / 'Checks.csproj'), '-c', 'Release'], cwd=repo, check=True)
