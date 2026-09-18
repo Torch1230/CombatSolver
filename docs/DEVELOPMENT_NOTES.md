@@ -1,6 +1,6 @@
 # CombatSolver 开发笔记与未来构想
 
-## 0.40.2：问题包开战默认与仓库内无头实例（开发中，2026-09-18）
+## 0.41.0：问题包开战默认与仓库内无头实例（2026-09-18）
 
 - 修正问题包夹具默认语义：`CheckpointArchive`、CheckpointTool 批处理、Windows/Linux 无人入口和可见回放入口统一默认选择 `start`。SearchOnly/DeploySolver 因而从 `combat_start` 恢复并由求解器处理整场开局；`latest` 保留为显式的中途诊断选择，不再能因省略参数而把玩家干预后的检查点误当成整场质量证据。
 - 无头实例的完整游戏/Mod 快照默认根改为当前仓库 `.local/headless-instances/<实例>`。Windows 不再把实例放入 `%LOCALAPPDATA%/CombatSolver/headless-instances`，Linux 也采用同一仓库内语义；`COMBATSOLVER_HEADLESS_ROOT` 仍只作为显式精确实例覆盖。每用户主机租约继续留在用户状态目录，仅保存互斥和资源预约元数据。
@@ -9,7 +9,7 @@
 - 8 个非静默猎手能力反馈包按当前 VeryHigh（Beam 135、500000 节点、300 秒）从 `combat_start` / cursor 0 重跑。7 个完整胜利：`70b7d21a` 9/0药、`79d3f7e2` 8/0药、`869658e2` 20/4药、`9a1e882c` 14/1能力药、`bebfa1d7` 19/0药、`c2cc9348` 10/1再生药、`f25f8886` 0/0药；`dc708a1f` 在300秒外层超时，未产出路线，不计质量。与报告中的人工投影相比，仅 `f25f8886` 追平；`869658e2` 仅HP数相同但多耗4药，不能算追平。
 - 验证：CheckpointTool 纯合同 `archive_contract_tests_passed assertions=35`；Windows 无游戏 helper 输出 `HEADLESS_RUNTIME_SELFTEST_PASS repository-local-default/.../instance-cleanup`；Release 编译 0 警告/0 错误；PowerShell 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=192`。`c2cc9348` 修正后 RestoreOnly 返回 `restored`，SearchOnly 严格恢复并以10战损、1再生药、T8完整获胜。未运行可见 Steam；D盘项目实例目录为空，C盘旧实例目录不存在。
 
-## 0.40.2：能力承诺通用释放回退与投影/编码收尾（开发中，2026-09-17）
+## 0.41.0：能力承诺通用释放回退与投影/编码收尾（2026-09-17）
 
 - 重新界定能力承诺证据的语义：它是**路线进展／解除保护信号**，不是“收益由该能力造成”的因果归因。固定前缀专搜已经把能力路线算到底，承诺席位只负责避免刚开能力就被剪掉；路线一旦在攻击、防御或牌流上取得进展就应及时释放。`PowerCommitmentRealizedEvidence` 与 `GenericPowerCommitmentEvidence` 增加说明，后者明确衡量通用战术进展。
 - 撤回本轮“按卡池隔离 + 逐卡因果兑现”的实现（`NewPoolPowerRealizedEvidence` 机制族归因、铁甲壁垒/无惧疼痛/黑暗之拥专用兑现、迟到启用 `HasRegisteredPowerPlay`），恢复 `540e4cb6` 的通用进展释放。单因素回退把铁甲从 62 恢复到 43、储君从 52 恢复到 45，证明此前回归来自“非静默能力失去通用解除信号、承诺黏到租约结束”，而不是能力收益计算。
@@ -18,7 +18,7 @@
 - 编码收尾：整棵能力估值树的中文注释按 .NET GBK 码页反向恢复（先后 35 + 7 个文件），拆分被塞进正文的 `///` 行并补回丢失字符，被编码重写带坏缩进的 `PowerCardPlayOccurrence.cs` 恢复原格式；乱码与 `</summary>` 缺 `<` 扫描归零。
 - 验证：Release 编译 0 错误；纯合同 `POWER_CARD_VALUATION_CHECKS_OK total=104 silent=17 ironclad=19 defect=20 regent=18 necrobinder=18 colorless=12`；PowerShell 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=192`。短哨兵最终为铁甲 43、静默 40（行为未变沿用）、故障 13、储君 45、亡灵 25，全部与原结果一致；因果版曾为 62/40/13/52/25，已撤回。未启动后台 8 包、未启动可见 Steam、未打包、未推送。
 
-## 0.40.2：全卡池单人能力牌建模（开发中，2026-09-17）
+## 0.41.0：全卡池单人能力牌建模（2026-09-17）
 
 - 把原来直接使用静默猎手枚举的公共能力承诺结构重构成卡池无关接口：`PowerCommitmentDescriptor` 改由卡池、稳定 CardId、机制族和 `PowerRouteAdmissionPolicy` 组成，`PowerCardValuationRegistry` 从各角色模型元数据构造描述，公共搜索层不再依赖静默猎手枚举；静默猎手第二版逐卡准入顺序提为公共 `PowerRouteAdmission`，行为逐项保持不变。逐卡语义继续留在各自卡池目录，公共层只按卡池路由（`PowerCardMechanismDispatch`），不合并成一个巨大 switch。
 - 除静默猎手外，铁甲战士19张、故障机器人20张、储君18张、亡灵契约师18张、无色12张单人能力牌已登记，合计104张。每个卡池拆分为注册入口、路线政策、触发证据、开局投影和若干机制族估值模型文件。MultiplayerOnly 的 TANK、ONE_FOR_ALL、HAMMER_TIME、CACOPHONY、SOULBOUND、BEACON_OF_HOPE 与静默猎手鬼祟明确排除；`ROYALTIES`、`FORBIDDEN_GRIMOIRE` 属纯战后收益，登记资料与估值但不创建战斗内承诺。无色能力按实际 CardId 识别，可在任意角色持有；跨色获得的原版能力按卡牌身份建模。
@@ -32,7 +32,7 @@
 - 回归核对：把专搜标记接入前缀构造顺序或承诺席位排序会让铁甲战士 `BARRICADE` 短场景从 43 战损劣化为 62，因此撤回该接线；最终 `dev-00-ironclad-elite` 仍为 43 战损、实例清理为空。能力估值仍不进入终局胜负与战损排序。
 - `ROYALTIES`、`FORBIDDEN_GRIMOIRE` 按玩家明确指令完全不动其局外成长机制；`LETHALITY` 经源码核对作用于打出当回合的第一张攻击，不是下回合开始。
 
-## 0.40.2：能力牌逐卡估值框架与无头实例回收（2026-09-17）
+## 0.41.0：能力牌逐卡估值框架与无头实例回收（2026-09-17）
 
 - 建立独立的能力牌估值边界，按铁甲战士、静默猎手、故障机器人、储君、亡灵契约师和无色六个卡池拆分。统一输出伤害、防伤、资源、牌访问、成长、控制六类奖励，及启动成本、延迟兑现、触发稀缺、反协同、回合末失效五类惩罚，并附能力优先时机。每张卡仍可使用自己的公式，不把全部规则堆进单文件。
 - 用户明确授权先按实现者理解量化静默猎手后，17张单人能力牌已有首版草案，按防御、中毒、小刀、牌流和直接伤害拆成五组模型并登记；多人专属鬼祟不登记。草案统一计算启动、延迟和零触发惩罚，直接表达预计伤害、防伤、牌访问及幽魂形态的敏捷反协同。公式与不确定项见[静默猎手首版量化规格](strategy/power-card-valuation/silent-quantification-20260917.md)。

@@ -1,6 +1,6 @@
 # CombatSolver 测试清单
 
-## 0.40.2：问题包开战默认与仓库内无头实例（开发中，2026-09-18）
+## 0.41.0：问题包开战默认与仓库内无头实例（2026-09-18）
 
 - `dotnet run --project tools/CheckpointTool/CheckpointTool.csproj -c Release -- self-test` 通过，输出 `archive_contract_tests_passed assertions=35`：省略选择器命中 `combat_start`，显式 `latest` 命中最近可搜索检查点，显式 `end` / `recorded` 命中结束检查点；批处理运行目录保持仓库内且不跨卷。
 - `pwsh -NoProfile -File tools/test-headless-runtime.ps1` 通过，输出 `HEADLESS_RUNTIME_SELFTEST_PASS repository-local-default/parallel2/exclusive/resource/unknown/ownership/stale/warm/instance-cleanup`：不启动游戏，默认实例根位于传入仓库的 `.local/headless-instances/<实例>`，并与仓库处于同一文件系统根。
@@ -9,7 +9,7 @@
 - 8 个非静默猎手能力反馈包使用 selector `start`、当前 VeryHigh（Beam135、500000节点、卡牌/牌堆选择72/42/54、软时限300秒）与外层300秒运行。7个 `search_completed` 且均为 `combat_start` / cursor 0、严格恢复、敌方0HP完整胜利：`70b7d21a` 9战损/0药/T8/227130展开；`79d3f7e2` 8/0/T11/176545；`869658e2` 20/4/T12/58889；`9a1e882c` 14/1/T17/92263；`bebfa1d7` 19/0/T10/71460；`c2cc9348` 10/1/T8/38487；`f25f8886` 0/0/T10/19656。`dc708a1f` 在300秒外层超时、没有结果，不计质量，也未提高预算或重跑。
 - 未运行可见 Steam。测试结束后游戏进程为0，`D:\Desktop\sts2mod\CombatSolver\.local\headless-instances` 为空，`C:\Users\The_M\AppData\Local\CombatSolver\headless-instances` 不存在。
 
-## 0.40.2：全卡池单人能力牌建模（开发中，2026-09-17）
+## 0.41.0：全卡池单人能力牌建模（2026-09-17）
 
 - `dotnet run --project tools/PowerCardValuationChecks/PowerCardValuationChecks.csproj -c Release` 通过，输出 `POWER_CARD_VALUATION_CHECKS_OK total=104 silent=17 ironclad=19 defect=20 regent=18 necrobinder=18 colorless=12`：覆盖六个卡池登记总数与各池数量、每张牌唯一登记、卡池与推导 CardId 一致、MultiplayerOnly 七张明确排除、`WhiteNoise` 不作为能力牌登记、未登记牌不创建承诺、纯战后收益的 `ROYALTIES`/`FORBIDDEN_GRIMOIRE` 不创建战斗内承诺、无登记能力不增加组合成员；每池覆盖防御/成长、资源/牌流、延迟收益、反协同或启动风险、需专搜五类代表；路线准入覆盖零触发拒绝、当前/未来触发窗口与阈值边界、免费启动与高费硬开差异；承诺生命周期覆盖单能力与双能力（家族 OR、优先级取高、卡牌去重、真实兑现退出、越回合到期）；逐卡估值覆盖燃烧升级差异、倒数计时灾厄延迟、冰雹风暴零冰霜球拒绝、非凡技艺双属性、王国资产战后金币、碎片整理集中与球数。
 - Release 编译通过，0 个编译警告、0 个错误。
@@ -21,7 +21,7 @@
 - 审计后复跑（2026-09-17）：Release 编译 0 错误；纯合同 `POWER_CARD_VALUATION_CHECKS_OK total=104 silent=17 ironclad=19 defect=20 regent=18 necrobinder=18 colorless=12`；PowerShell 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=192`（新增 `src/Search/PowerCardValuation/Projection/PowerCardProjectionMath.cs`）。`PowerLiveCards` 排除消耗堆；群星之子改为按实际可花费星能点数（`PowerStarSpendCapacity`）而非牌张数；缓冲、凶恶、自动化、环绕轨道投影改用纯数学并加入合同断言。
 - 承诺证据语义改为“路线进展／解除保护信号”，撤回按卡池隔离与铁甲专用因果兑现（`NewPoolPowerRealizedEvidence`、迟到启用 `HasRegisteredPowerPlay`），恢复 `540e4cb6` 的通用进展释放。因果版哨兵为铁甲 62、静默 40、故障 13、储君 52、亡灵 25；单因素回退后铁甲 43、储君 45，再补跑故障 13、亡灵 25。最终五哨兵为铁甲 43、静默 40（行为未变沿用）、故障 13、储君 45、亡灵 25，全部与原结果一致，`headless-instances` 为空。未启动后台 8 包与可见 Steam。
 
-## 0.40.2：能力牌估值框架与实例清理（2026-09-17）
+## 0.41.0：能力牌估值框架与实例清理（2026-09-17）
 
 - 卡池目录静态核对通过：同版本六个 `CardPool` 的 `CardType.Power` 共112张，全部命中 `zhs/eng` 官方标题与中文效果；原版约束分为105张单人范围和7张 `MultiplayerOnly`，六份文档行数分别为20/18/22/19/20/13。普通与升级描述由对应原版卡牌实例格式化，未留下未解析变量或颜色标签。
 - `dotnet run --project tools/PowerCardValuationChecks/PowerCardValuationChecks.csproj -c Release` 通过，输出 `POWER_CARD_VALUATION_CHECKS_OK silent_models=17`：除原有17张登记和首版公式合同外，覆盖17张卡的机制族与独立身份映射、灵动步法 5→8 跨阈值后的省能转攻和同等输出防伤、余像出牌格挡、速行者回合内抽牌群伤、精准按两张实际小刀逐张增伤、幻影之刃两张小刀只触发一次首刀增伤、群蛇按两张实际出牌触发、涂毒按两次未格挡命中、触媒当前毒层额外触发、毒雾三回合上毒/衰减滚动、必备工具抽弃替换/满手损失/奇巧弃牌收益、计划妥当高价值留牌与垃圾牌塞手，以及谋划专家早开/晚开差值、两回合未来播种、无弃牌窗口、来不及重新入手。逐卡路线合同另覆盖磨蚀3费硬开与奇巧0费启动、余像5点准入边界、涂毒耗尽能量拒绝、计划妥当专搜优先级、幽魂无当前防伤拒绝、幽魂长线早开/尾段覆盖/致死救场，以及谋划专家无完整兑现链拒绝；生命周期断言奇巧附着只增加进展，真实自动出牌完成兑现，越过回合上限则到期。
