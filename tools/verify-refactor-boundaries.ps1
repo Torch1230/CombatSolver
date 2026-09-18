@@ -171,15 +171,19 @@ foreach ($orderedMetric in @(
     }
 }
 $retentionPath = Join-Path $searchRoot "CombatBeamSolver.Retention.cs"
-$openingChannelMatch = Select-String -LiteralPath $retentionPath -SimpleMatch 'List<List<SearchNode>> openingChannels = pool' | Select-Object -First 1
 $orderedCoordinatorMatch = Select-String -LiteralPath $retentionPath -SimpleMatch 'Retention.AddOrderedMutationPortfolio(pool, selected, selectedSet);' | Select-Object -First 1
 $cycleRegionMatch = Select-String -LiteralPath $retentionPath -SimpleMatch 'cycleRegionTransaction = ApplyCycleRegionRetention(' | Select-Object -First 1
-if ($null -eq $openingChannelMatch `
-    -or $null -eq $orderedCoordinatorMatch `
+if ($null -eq $orderedCoordinatorMatch `
     -or $null -eq $cycleRegionMatch `
-    -or $openingChannelMatch.LineNumber -ge $orderedCoordinatorMatch.LineNumber `
     -or $orderedCoordinatorMatch.LineNumber -ge $cycleRegionMatch.LineNumber) {
-    $violations.Add("${retentionPath}: opening/independent channels must settle before ordered admission, which must settle before CycleRegion")
+    $violations.Add("${retentionPath}: ordered admission must settle before CycleRegion")
+}
+if (Select-String -LiteralPath $retentionPath -SimpleMatch 'List<List<SearchNode>> openingChannels = pool' -Quiet) {
+    $violations.Add("${retentionPath}: legacy additive opening-power channel returned")
+}
+$beamRetentionPolicyPath = Join-Path $searchRoot 'CombatBeamSolver.BeamRetentionPolicy.cs'
+if (-not (Select-String -LiteralPath $beamRetentionPolicyPath -SimpleMatch 'AdmitPowerCommitmentRepresentatives(quotaPool, ranked, required, limit);' -Quiet)) {
+    $violations.Add("${beamRetentionPolicyPath}: bounded power commitment replacement is missing")
 }
 foreach ($match in Select-String -LiteralPath $cycleRegionRetentionPath -SimpleMatch 'selectedSet.Add(node);') {
     $violations.Add("$($match.Path):$($match.LineNumber): CycleRegion rebuilt an O(pool) selected-set shadow")
@@ -734,6 +738,98 @@ foreach ($check in $beamStructureChecks) {
         $violations.Add("${path}: missing CombatBeamSolver stage member '$($check.Text)'")
     }
 }
+$powerValuationRoot = Join-Path $searchRoot 'PowerCardValuation'
+foreach ($check in @(
+    @{ Path = 'PowerCardValuationContracts.cs'; Text = 'internal readonly record struct PowerCardValuationReward' },
+    @{ Path = 'PowerCardValuationContracts.cs'; Text = 'internal readonly record struct PowerCardValuationPenalty' },
+    @{ Path = 'IPowerCardValuationModel.cs'; Text = 'internal interface IPowerCardValuationModel' },
+    @{ Path = 'PowerCardValuationRegistry.cs'; Text = 'internal sealed class PowerCardValuationRegistry' },
+    @{ Path = 'PowerCardValuationModels.cs'; Text = 'internal static class PowerCardValuationModels' },
+    @{ Path = 'PowerCardValuationRegistration.cs'; Text = 'internal sealed class DelegatingPowerCardValuationModel' },
+    @{ Path = 'PowerRouteAdmission.cs'; Text = 'internal static class PowerRouteAdmission' },
+    @{ Path = 'PowerCardValueFacts.cs'; Text = 'internal static class PowerCardValueFacts' },
+    @{ Path = 'Projection\PowerCardProjectionSupport.cs'; Text = 'internal sealed partial class CombatBeamSolver' },
+    @{ Path = 'Projection\PowerCardMechanismFacts.cs'; Text = 'internal sealed partial class CombatBeamSolver' },
+    @{ Path = 'Projection\PowerTurnFrontier.cs'; Text = 'internal static class PowerTurnFrontier' },
+    @{ Path = 'Projection\RetainedHandTransition.cs'; Text = 'internal static class RetainedHandTransition' },
+    @{ Path = 'Projection\DrawDiscardTransition.cs'; Text = 'internal static class DrawDiscardTransition' },
+    @{ Path = 'Projection\PoisonStackProjection.cs'; Text = 'internal static class PoisonStackProjection' },
+    @{ Path = 'Projection\MasterPlannerProjection.cs'; Text = 'internal static class MasterPlannerProjection' },
+    @{ Path = 'Projection\SilentPowerOpeningProjection.cs'; Text = 'private int SilentPowerOpeningProjectionPotential' },
+    @{ Path = 'Projection\SilentShivPowerProjection.cs'; Text = 'private int AccuracyProjectionPotential' },
+    @{ Path = 'Projection\SilentPoisonPowerProjection.cs'; Text = 'private int AccelerantProjectionPotential' },
+    @{ Path = 'Projection\SilentDamageDefensePowerProjection.cs'; Text = 'private int SerpentFormProjectionPotential' },
+    @{ Path = 'Commitments\PowerCommitment.cs'; Text = 'internal sealed record PowerCommitment' },
+    @{ Path = 'Commitments\PowerCommitmentLifecycle.cs'; Text = 'internal static class PowerCommitmentLifecycle' },
+    @{ Path = 'Commitments\PowerCommitmentPolicy.cs'; Text = 'private void AttachPowerCommitment' },
+    @{ Path = 'Commitments\PowerCommitmentEvidence.cs'; Text = 'private int PowerCommitmentRealizedEvidence' },
+    @{ Path = 'Commitments\PowerCardPlayOccurrence.cs'; Text = 'internal readonly record struct PowerCardPlayOccurrence' },
+    @{ Path = 'Commitments\PowerCommitmentRetention.cs'; Text = 'internal static class PowerCommitmentRetention' },
+    @{ Path = 'Commitments\PowerCommitmentSeatPolicy.cs'; Text = 'internal static class PowerCommitmentSeatPolicy' },
+    @{ Path = 'Commitments\PowerActivationInvestmentPolicy.cs'; Text = 'internal static class PowerActivationInvestmentPolicy' },
+    @{ Path = 'Commitments\PowerCardMechanismDispatch.cs'; Text = 'private bool PowerHasTriggerEvidence' },
+    @{ Path = 'Cards\Ironclad\IroncladPowerCardValuationModels.cs'; Text = 'internal static class IroncladPowerCardValuationModels' },
+    @{ Path = 'Cards\Ironclad\IroncladPowerRoutePolicy.cs'; Text = 'internal static class IroncladPowerRoutePolicy' },
+    @{ Path = 'Cards\Ironclad\IroncladPowerTriggerEvidence.cs'; Text = 'private bool IroncladPowerHasTriggerEvidence' },
+    @{ Path = 'Cards\Ironclad\IroncladPowerOpeningProjection.cs'; Text = 'private int IroncladPowerOpeningProjectionPotential' },
+    @{ Path = 'Cards\Ironclad\IroncladStrengthPowerCardValuationModels.cs'; Text = 'internal static class IroncladStrengthPowerCardValuationModels' },
+    @{ Path = 'Cards\Silent\SilentPowerCardValuationModels.cs'; Text = 'internal static class SilentPowerCardValuationModels' },
+    @{ Path = 'Cards\Silent\SilentPowerCardValuationModel.cs'; Text = 'internal abstract class SilentPowerCardValuationModel' },
+    @{ Path = 'Cards\Silent\SilentDefensePowerCardValuationModels.cs'; Text = 'internal sealed class WraithFormPowerCardValuationModel' },
+    @{ Path = 'Cards\Silent\SilentPoisonPowerCardValuationModels.cs'; Text = 'internal sealed class NoxiousFumesPowerCardValuationModel' },
+    @{ Path = 'Cards\Silent\SilentShivPowerCardValuationModels.cs'; Text = 'internal sealed class FanOfKnivesPowerCardValuationModel' },
+    @{ Path = 'Cards\Silent\SilentCardFlowPowerCardValuationModels.cs'; Text = 'internal sealed class MasterPlannerPowerCardValuationModel' },
+    @{ Path = 'Cards\Silent\SilentCardFlowFacts.cs'; Text = 'internal static class SilentCardFlowFacts' },
+    @{ Path = 'Cards\Silent\SilentDiscardWindowFacts.cs'; Text = 'internal static class SilentDiscardWindowFacts' },
+    @{ Path = 'Cards\Silent\SilentPowerRoutePolicy.cs'; Text = 'internal static class SilentPowerRoutePolicy' },
+    @{ Path = 'Cards\Silent\SilentPowerTriggerEvidence.cs'; Text = 'private bool SilentPowerHasTriggerEvidence' },
+    @{ Path = 'Cards\Silent\SilentPowerCommitmentEvidence.cs'; Text = 'private int SilentPowerProgressEvidence' },
+    @{ Path = 'Cards\Silent\SilentWraithOpeningWindow.cs'; Text = 'internal static class SilentWraithOpeningWindow' },
+    @{ Path = 'Cards\Silent\SilentDamagePowerCardValuationModels.cs'; Text = 'internal sealed class TrackingPowerCardValuationModel' },
+    @{ Path = 'Cards\Defect\DefectPowerCardValuationModels.cs'; Text = 'internal static class DefectPowerCardValuationModels' },
+    @{ Path = 'Cards\Defect\DefectPowerRoutePolicy.cs'; Text = 'internal static class DefectPowerRoutePolicy' },
+    @{ Path = 'Cards\Defect\DefectPowerTriggerEvidence.cs'; Text = 'private bool DefectPowerHasTriggerEvidence' },
+    @{ Path = 'Cards\Defect\DefectPowerOpeningProjection.cs'; Text = 'private int DefectPowerOpeningProjectionPotential' },
+    @{ Path = 'Cards\Defect\DefectOrbPowerCardValuationModels.cs'; Text = 'internal static class DefectOrbPowerCardValuationModels' },
+    @{ Path = 'Cards\Regent\RegentPowerCardValuationModels.cs'; Text = 'internal static class RegentPowerCardValuationModels' },
+    @{ Path = 'Cards\Regent\RegentPowerRoutePolicy.cs'; Text = 'internal static class RegentPowerRoutePolicy' },
+    @{ Path = 'Cards\Regent\RegentPowerTriggerEvidence.cs'; Text = 'private bool RegentPowerHasTriggerEvidence' },
+    @{ Path = 'Cards\Regent\RegentPowerOpeningProjection.cs'; Text = 'private int RegentPowerOpeningProjectionPotential' },
+    @{ Path = 'Cards\Regent\RegentStarPowerCardValuationModels.cs'; Text = 'internal static class RegentStarPowerCardValuationModels' },
+    @{ Path = 'Cards\Necrobinder\NecrobinderPowerCardValuationModels.cs'; Text = 'internal static class NecrobinderPowerCardValuationModels' },
+    @{ Path = 'Cards\Necrobinder\NecrobinderPowerRoutePolicy.cs'; Text = 'internal static class NecrobinderPowerRoutePolicy' },
+    @{ Path = 'Cards\Necrobinder\NecrobinderPowerTriggerEvidence.cs'; Text = 'private bool NecrobinderPowerHasTriggerEvidence' },
+    @{ Path = 'Cards\Necrobinder\NecrobinderPowerOpeningProjection.cs'; Text = 'private int NecrobinderPowerOpeningProjectionPotential' },
+    @{ Path = 'Cards\Necrobinder\NecrobinderDoomPowerCardValuationModels.cs'; Text = 'internal static class NecrobinderDoomPowerCardValuationModels' },
+    @{ Path = 'Cards\Colorless\ColorlessPowerCardValuationModels.cs'; Text = 'internal static class ColorlessPowerCardValuationModels' },
+    @{ Path = 'Cards\Colorless\ColorlessPowerRoutePolicy.cs'; Text = 'internal static class ColorlessPowerRoutePolicy' },
+    @{ Path = 'Cards\Colorless\ColorlessPowerTriggerEvidence.cs'; Text = 'private bool ColorlessPowerHasTriggerEvidence' },
+    @{ Path = 'Cards\Colorless\ColorlessPowerOpeningProjection.cs'; Text = 'private int ColorlessPowerOpeningProjectionPotential' },
+    @{ Path = 'Cards\Colorless\ColorlessGrowthPowerCardValuationModels.cs'; Text = 'internal static class ColorlessGrowthPowerCardValuationModels' }
+)) {
+    $path = Join-Path $powerValuationRoot $check.Path
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf) -or
+        -not (Select-String -LiteralPath $path -SimpleMatch $check.Text -Quiet)) {
+        $violations.Add("${path}: missing power-card valuation boundary '$($check.Text)'")
+    }
+}
+$powerPortfolioGatePath = Join-Path $searchRoot 'PowerCommitmentPortfolioGate.cs'
+if (-not (Select-String -LiteralPath $powerPortfolioGatePath -SimpleMatch 'internal static class PowerCommitmentPortfolioGate' -Quiet)) {
+    $violations.Add("${powerPortfolioGatePath}: missing power commitment portfolio gate")
+}
+$powerRoutePortfolioPath = Join-Path $searchRoot 'CombatSearchCoordinator.PowerRoutes.cs'
+foreach ($powerRouteRule in @(
+    'private static SolverResult RunOpeningPowerRoutePortfolio(',
+    'fixedPrefixActions: prefix',
+    'PowerRoutePortfolioMemberReport')) {
+    if (-not (Select-String -LiteralPath $powerRoutePortfolioPath -SimpleMatch $powerRouteRule -Quiet)) {
+        $violations.Add("${powerRoutePortfolioPath}: missing power route portfolio boundary '$powerRouteRule'")
+    }
+}
+$finalOrderingPath = Join-Path $searchRoot 'CombatBeamSolver.FinalPlanOrdering.cs'
+if (Select-String -LiteralPath $finalOrderingPath -SimpleMatch 'PowerCardValuation' -Quiet) {
+    $violations.Add("${finalOrderingPath}: power-card valuation must not enter final plan ordering")
+}
 if (-not (Select-String -LiteralPath (Join-Path $searchRoot "CombatBeamSolver.Expansion.cs") -SimpleMatch "CreateWholeActionChoiceBudget" -Quiet)) {
     $violations.Add("CombatBeamSolver.Expansion.cs: repeated card choices are missing their whole-action branch quota")
 }
@@ -1068,19 +1164,42 @@ foreach ($check in @(
     @{ Path = 'tools/run-unattended-test.sh'; Text = 'source "$script_dir/headless-runtime.sh"' },
     @{ Path = 'tools/run-unattended-test.sh'; Text = 'hr_acquire "$process_pid" "$process_identity_start_time"' },
     @{ Path = 'tools/run-unattended-test.sh'; Text = 'if ((option_value[stop-instance] == 1)); then' },
+    @{ Path = 'tools/run-unattended-test.sh'; Text = 'add_option cleanup-instance-on-exit 0 switch none' },
+    @{ Path = 'tools/run-unattended-test.sh'; Text = 'add_option checkpoint-selector "start" string raw_string' },
+    @{ Path = 'tools/run-unattended-test.sh'; Text = '$repo_root/.local/headless-instances/$headless_instance' },
+    @{ Path = 'tools/run-unattended-test.sh'; Text = 'hr_remove_instance' },
     @{ Path = 'tools/run-unattended-test.ps1'; Text = ". (Join-Path `$PSScriptRoot 'headless-runtime.ps1')" },
+    @{ Path = 'tools/run-unattended-test.ps1'; Text = '[string]$CheckpointSelector = "start"' },
     @{ Path = 'tools/run-unattended-test.ps1'; Text = 'if ($StopInstance) {' },
+    @{ Path = 'tools/run-unattended-test.ps1'; Text = '[switch]$CleanupInstanceOnExit' },
+    @{ Path = 'tools/run-unattended-test.ps1'; Text = 'Remove-HeadlessRuntimeInstance $runtimeContext' },
     @{ Path = 'tools/run-headless-matrix.sh'; Text = '--stop-instance' },
     @{ Path = 'tools/run-headless-matrix.ps1'; Text = '"-StopInstance"' },
     @{ Path = 'tools/headless-runtime.sh'; Text = 'hr_prepare_snapshot() {' },
     @{ Path = 'tools/headless-runtime.sh'; Text = 'hr_bind() {' },
+    @{ Path = 'tools/headless-runtime.sh'; Text = 'hr_remove_instance() {' },
     @{ Path = 'tools/headless-runtime.ps1'; Text = 'function Set-HeadlessGameSnapshot(' },
+    @{ Path = 'tools/headless-runtime.ps1'; Text = 'Join-Path $repository ".local\headless-instances\$Instance"' },
+    @{ Path = 'tools/headless-runtime.ps1'; Text = 'function Remove-HeadlessRuntimeInstance(' },
     @{ Path = 'tools/headless-runtime.ps1'; Text = 'function Enter-HeadlessHostLease(' },
     @{ Path = 'tools/headless-runtime.ps1'; Text = 'function Set-HeadlessHostGame(' })) {
     $path = Join-Path $repositoryRoot $check.Path
     if (-not (Select-String -LiteralPath $path -SimpleMatch $check.Text -Quiet)) {
         $violations.Add("${path}: missing headless infrastructure ownership boundary '$($check.Text)'")
     }
+}
+foreach ($legacyInstanceRoot in @(
+    @{ Path = 'tools/headless-runtime.ps1'; Text = 'CombatSolver\headless-instances' },
+    @{ Path = 'tools/run-unattended-test.sh'; Text = 'CombatSolver/headless-instances' },
+    @{ Path = 'tools/run-headless-matrix.sh'; Text = 'CombatSolver/headless-instances' })) {
+    $path = Join-Path $repositoryRoot $legacyInstanceRoot.Path
+    if (Select-String -LiteralPath $path -SimpleMatch $legacyInstanceRoot.Text -Quiet) {
+        $violations.Add("${path}: user-local headless instance root returned '$($legacyInstanceRoot.Text)'")
+    }
+}
+$checkpointArchivePath = Join-Path $repositoryRoot 'src\Replay\CheckpointArchive.cs'
+if (-not (Select-String -LiteralPath $checkpointArchivePath -SimpleMatch 'public const string DefaultFixtureSelector = "start";' -Quiet)) {
+    $violations.Add("${checkpointArchivePath}: checkpoint fixture default must remain combat start")
 }
 foreach ($matrix in @('tools/run-headless-matrix.sh', 'tools/run-headless-matrix.ps1')) {
     $path = Join-Path $repositoryRoot $matrix

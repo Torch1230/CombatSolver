@@ -10,7 +10,7 @@ param(
     [string]$EvidenceDirectory,
     [string]$CheckpointArchivePath,
     [ValidateSet('RestoreOnly','ReplayRecorded','SearchOnly','DeploySolver')][string]$ReplayMode = 'RestoreOnly',
-    [string]$CheckpointSelector = 'latest'
+    [string]$CheckpointSelector = 'start'
 )
 
 $ErrorActionPreference = "Stop"

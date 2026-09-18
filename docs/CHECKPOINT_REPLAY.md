@@ -8,14 +8,14 @@ Windows：
 
 ```powershell
 pwsh -NoProfile -File tools/run-checkpoint-batch.ps1 -InputPath <包.zip或目录> -ReplayMode Preflight -OutputDirectory .local/checkpoint-batch/preflight
-pwsh -NoProfile -File tools/run-checkpoint-batch.ps1 -InputPath <包.zip或目录> -CheckpointSelector start -ReplayMode RestoreOnly -Sts2GameRoot <游戏目录> -OutputDirectory .local/checkpoint-batch/restore
+pwsh -NoProfile -File tools/run-checkpoint-batch.ps1 -InputPath <包.zip或目录> -ReplayMode RestoreOnly -Sts2GameRoot <游戏目录> -OutputDirectory .local/checkpoint-batch/restore
 ```
 
 Linux：
 
 ```bash
 ./tools/run-checkpoint-batch.sh <包.zip或目录> --mode Preflight --output .local/checkpoint-batch/preflight
-./tools/run-checkpoint-batch.sh <包.zip或目录> --selector start --mode RestoreOnly --game-root <游戏目录> --output .local/checkpoint-batch/restore
+./tools/run-checkpoint-batch.sh <包.zip或目录> --mode RestoreOnly --game-root <游戏目录> --output .local/checkpoint-batch/restore
 ```
 
 单包仍可使用 `run-unattended-test.ps1 -CheckpointArchivePath <ZIP> -EvidenceDirectory <目录>` 或 Linux 对应参数。`CheckpointTool` 与游戏共享相同的包读取代码。
@@ -24,11 +24,11 @@ Linux：
 | --- | --- |
 | Preflight | 不启动游戏，校验四份材料配对、路径、索引、原生事件连续性，列出检查点 |
 | RestoreOnly（默认） | 恢复选择的检查点，严格比较完整 ContinuationStamp 与原生二进制状态 |
-| ReplayRecorded | 按记录输入重放；默认选择结束检查点，否则只验证录制前缀，不启动搜索 |
+| ReplayRecorded | 按记录输入从选定检查点重放，默认从开战开始；显式选择中途检查点时只验证对应录制前缀，不启动搜索 |
 | SearchOnly | 已验证的根上运行求解，保存预测和指标 |
 | DeploySolver | 从已验证根执行求解器路线，Instant/0 秒，断言计划外重算为 0，保存实际结果 |
 
-选择器 `latest` 是最近稳定可搜索位置，`start` 是明确开战位置，`end` 是战斗结束位置，也可传稳定检查点 ID。开战 RestoreOnly 先校验开战，再推进录制的首次可操作入口；SearchOnly/DeploySolver 的开战选牌由求解器接管。动作中途和等待选牌时的导出保留上下文，默认入口指向此前稳定位置。
+所有问题包 fixture 默认选择 `start`，从明确的 combat_start 恢复；SearchOnly/DeploySolver 的开战选牌由求解器接管。`latest` 只用于显式要求从最近稳定可搜索位置继续的诊断，`end` / `recorded` 选择战斗结束位置，也可传稳定检查点 ID；模式不会暗中改写显式选择器。开战 RestoreOnly 先校验开战，再推进录制的首次可操作入口；动作中途和等待选牌时的导出仍保留上下文，但不会成为默认质量搜索起点。
 
 `start` 的 RestoreOnly 会同时对账开战及首个可操作检查点，`readyCheckpointVerified` 表示后者的 ContinuationStamp 已通过；`comparisonScope=checkpoint`，不是整场回放结论。旧历史 `Y` 的两项/三项格式逐项比较全部已记录计数，新格式四项同样全部比较。
 
@@ -48,11 +48,11 @@ Linux：
 
 ## 批量与证据
 
-默认一个隔离游戏进程串行执行，复用原版启动成本。建局前可清理的输入失败经过静稳检查后复用；运行中失败、崩溃和超时终止所持有进程，下包重新启动。单请求默认上限 120 秒，不自动延长或提高预设；批次结束关闭工具持有的测试进程。
+默认一个隔离游戏进程串行执行，复用原版启动成本。实例和完整游戏/Mod 快照位于当前仓库 `.local/headless-instances/<实例>`，不写入用户目录；建局前可清理的输入失败经过静稳检查后复用，运行中失败、崩溃和超时终止所持有进程，下包重新启动。单请求默认上限 120 秒，不自动延长或提高预设；批次结束关闭工具持有的测试进程并删除实例。
 
 `-Resume` / `--resume` 复用输入内容、检查点、模式、政策、工具、启动器、游戏和 Mod 构建身份一致的结果；失败默认也复用，加 `-RetryFailures` / `--retry-failures` 才重试。中断的 JSONL 尾记录另存，保留已完成项。每次重试有独立目录。
 
-每请求保存 preflight、request、result、policy、timings、difference、game.log、日志截断信息、启动器输出和 batch-result。汇总实时写 results.jsonl，并更新 results.json、results.csv、results.md。材料不足、环境不匹配、恢复不一致、录制动作不一致、执行失败、超时、崩溃优先显示；存在预测数字不会掩盖技术失败。
+每请求保存 preflight、request、result、policy、timings、difference、game.log、日志截断信息、启动器输出和 batch-result。汇总实时写 results.jsonl，并更新 results.json、results.csv、results.md；每行明确列出 selector、检查点标签、稳定 ID 和事件游标，避免把中途起点误读成整场起点。材料不足、环境不匹配、恢复不一致、录制动作不一致、执行失败、超时、崩溃优先显示；存在预测数字不会掩盖技术失败。
 
 清单 JSON 可为数组或 `{ "manifest": [...] }`，条目含 reportId 或 archivePath、note、originalLoss、manualLoss、comparisonCheckpointId。备注优先、已知减战损降序。表格中的原始数字默认视为报告预测；只有明确同根同区间时才计算预测差距。
 

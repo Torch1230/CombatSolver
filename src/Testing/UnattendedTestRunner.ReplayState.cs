@@ -353,6 +353,14 @@ internal sealed partial class UnattendedTestRunner
         }
     }
 
+    private static void RestoreReplayInventoryFromPath(Player player, string? replayStatePath)
+    {
+        if (string.IsNullOrWhiteSpace(replayStatePath) || !File.Exists(replayStatePath))
+            throw new FileNotFoundException("Native replay combat-start inventory snapshot is missing.", replayStatePath);
+        using JsonDocument document = JsonDocument.Parse(File.ReadAllText(replayStatePath));
+        RestoreReplayInventory(player, document.RootElement.GetProperty("players")[0]);
+    }
+
     private static async Task RestoreReplayOrbsAsync(
         Player player,
         JsonElement savedOrbs,
@@ -480,27 +488,49 @@ internal sealed partial class UnattendedTestRunner
         return null;
     }
 
-    private static bool ReplayContinuationMatches(string expected, string actual, bool allowLegacyZeroCounter = false)
+    private static bool ReplayContinuationMatches(
+        string expected,
+        string actual,
+        bool allowLegacyZeroCounter = false,
+        IReadOnlyDictionary<char, IReadOnlyList<string>>? legacyCardKeywords = null)
     {
         if (string.Equals(expected, actual, StringComparison.Ordinal))
             return true;
 
         string[] expectedFields = expected.Split(';');
         string[] actualFields = actual.Split(';');
-        if (allowLegacyZeroCounter && actualFields.Length == expectedFields.Length + 1
-            && !expectedFields.Any(field => field.StartsWith("FlameHp=", StringComparison.Ordinal))
-            && actualFields.Count(field => field.StartsWith("FlameHp=", StringComparison.Ordinal)) == 1)
+        if (allowLegacyZeroCounter)
         {
             int historyIndex = Array.FindIndex(expectedFields, field => field.StartsWith("Y=", StringComparison.Ordinal));
-            if (historyIndex >= 0 && historyIndex + 1 < actualFields.Length
+            string[] derivedZeroCounters = ["FlameHp", "AttackStarts"];
+            if (historyIndex >= 0
+                && historyIndex < actualFields.Length
                 && expectedFields[historyIndex][2..].Split('/').Length is 2 or 3 or 4
                 && actualFields[historyIndex].StartsWith("Y=", StringComparison.Ordinal)
-                && actualFields[historyIndex][2..].Split('/').Length == 4
-                && actualFields[historyIndex + 1] == "FlameHp=0")
+                && actualFields[historyIndex][2..].Split('/').Length == 4)
             {
+                List<string> migratedActual = actualFields.ToList();
+                int derivedIndex = historyIndex + 1;
+                foreach (string counter in derivedZeroCounters)
+                {
+                    bool expectedContainsCounter = expectedFields.Any(field =>
+                        field.StartsWith(counter + "=", StringComparison.Ordinal));
+                    int actualCounterCount = actualFields.Count(field =>
+                        field.StartsWith(counter + "=", StringComparison.Ordinal));
+                    if (actualCounterCount > 1)
+                        break;
+                    if (derivedIndex < migratedActual.Count
+                        && migratedActual[derivedIndex].StartsWith(counter + "=", StringComparison.Ordinal))
+                    {
+                        if (!expectedContainsCounter && migratedActual[derivedIndex] == counter + "=0")
+                            migratedActual.RemoveAt(derivedIndex);
+                        else
+                            derivedIndex++;
+                    }
+                }
                 // The caller requires a native opening or a fully verified native checkpoint.
-                // Only the absent zero counter is migrated; all recorded fields are compared.
-                actualFields = actualFields.Where((_, index) => index != historyIndex + 1).ToArray();
+                // Only absent zero-valued derived counters at their canonical positions are migrated.
+                actualFields = migratedActual.ToArray();
             }
         }
         if (expectedFields.Length != actualFields.Length)
@@ -511,6 +541,15 @@ internal sealed partial class UnattendedTestRunner
             string actualField = actualFields[index];
             if (string.Equals(expectedField, actualField, StringComparison.Ordinal))
                 continue;
+            if (expectedField.Length >= 2
+                && expectedField[1] == '='
+                && expectedField[0] is 'H' or 'D' or 'C' or 'X'
+                && !expectedField.Contains("/keywords=[", StringComparison.Ordinal)
+                && legacyCardKeywords?.TryGetValue(expectedField[0], out IReadOnlyList<string>? expectedKeywords) == true
+                && LegacyCardKeywordContinuationMatches(expectedField, actualField, expectedKeywords))
+            {
+                continue;
+            }
             if (expectedField.StartsWith("Y=", StringComparison.Ordinal)
                 && actualField.StartsWith("Y=", StringComparison.Ordinal))
             {
@@ -530,6 +569,103 @@ internal sealed partial class UnattendedTestRunner
             }
         }
         return true;
+    }
+
+    private static IReadOnlyDictionary<char, IReadOnlyList<string>>? LoadLegacyReplayCardKeywords(
+        string expectedContinuation,
+        string? replayStatePath)
+    {
+        if (expectedContinuation.Contains("/keywords=[", StringComparison.Ordinal)
+            || string.IsNullOrWhiteSpace(replayStatePath)
+            || !File.Exists(replayStatePath))
+        {
+            return null;
+        }
+
+        using JsonDocument document = JsonDocument.Parse(File.ReadAllText(replayStatePath));
+        JsonElement savedPlayer = document.RootElement.GetProperty("players")[0];
+        Dictionary<char, IReadOnlyList<string>> result = [];
+        foreach (JsonElement pile in savedPlayer.GetProperty("piles").EnumerateArray())
+        {
+            char marker = RequiredString(pile, "pile") switch
+            {
+                "Hand" => 'H',
+                "Draw" => 'D',
+                "Discard" => 'C',
+                "Exhaust" => 'X',
+                _ => '\0',
+            };
+            if (marker == '\0')
+                continue;
+            result.Add(marker, pile.GetProperty("cards").EnumerateArray()
+                .Select(card => string.Join(',', card.GetProperty("keywords").EnumerateArray()
+                    .Select(item => Enum.Parse<CardKeyword>(item.GetString()
+                        ?? throw new InvalidDataException("replay-state card keyword is null."), false))
+                    .Order()))
+                .ToArray());
+        }
+        return result;
+    }
+
+    private static bool LegacyCardKeywordContinuationMatches(
+        string expectedField,
+        string actualField,
+        IReadOnlyList<string> expectedKeywords)
+    {
+        IReadOnlyList<string> expectedCards = SplitReplayPileItems(expectedField[2..]);
+        IReadOnlyList<string> actualCards = SplitReplayPileItems(actualField[2..]);
+        if (expectedCards.Count != actualCards.Count || expectedCards.Count != expectedKeywords.Count)
+            return false;
+
+        const string keywordMarker = "/keywords=[";
+        const string followingMarker = "]/baselib=";
+        for (int index = 0; index < expectedCards.Count; index++)
+        {
+            string actualCard = actualCards[index];
+            int keywordStart = actualCard.IndexOf(keywordMarker, StringComparison.Ordinal);
+            int keywordEnd = keywordStart < 0
+                ? -1
+                : actualCard.IndexOf(followingMarker, keywordStart + keywordMarker.Length, StringComparison.Ordinal);
+            if (keywordStart < 0 || keywordEnd < 0
+                || !string.Equals(
+                    expectedKeywords[index],
+                    actualCard[(keywordStart + keywordMarker.Length)..keywordEnd],
+                    StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            string legacyActual = actualCard[..keywordStart] + actualCard[(keywordEnd + 1)..];
+            if (!string.Equals(expectedCards[index], legacyActual, StringComparison.Ordinal))
+                return false;
+        }
+        return true;
+    }
+
+    private static IReadOnlyList<string> SplitReplayPileItems(string value)
+    {
+        List<string> items = [];
+        int start = 0;
+        int bracketDepth = 0;
+        for (int index = 0; index < value.Length; index++)
+        {
+            switch (value[index])
+            {
+                case '[':
+                    bracketDepth++;
+                    break;
+                case ']':
+                    bracketDepth--;
+                    break;
+                case ',' when bracketDepth == 0:
+                    items.Add(value[start..index]);
+                    start = index + 1;
+                    break;
+            }
+        }
+        if (start < value.Length)
+            items.Add(value[start..]);
+        return items;
     }
 
     private static bool LegacyRngContinuationMatches(string expected, string actual)

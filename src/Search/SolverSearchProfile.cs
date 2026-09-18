@@ -22,6 +22,11 @@ internal sealed record SolverSearchProfile(
     /// </summary>
     public bool BaseScoreOnly { get; init; }
 
+    /// <summary>
+    /// 能力偏好完整成员使用更高的承诺席位，但不改变最终评分、状态键或终局比较。
+    /// </summary>
+    public bool AggressivePowerCommitment { get; init; }
+
     public static SolverSearchProfile Default { get; } = new(
         BeamWidth: 60,
         MaxExpandedNodes: 120_000,

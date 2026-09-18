@@ -13,6 +13,7 @@ internal sealed record BeamWidthPortfolioMemberReport(
     int BeamWidth,
     bool SecondRankBand,
     bool BaseScoreOnly,
+    bool AggressivePowerCommitment,
     int NodeBudget,
     bool Ran,
     bool Selected,
@@ -29,6 +30,23 @@ internal sealed record BeamWidthPortfolioMemberReport(
     long AllocatedBytes,
     long ManagedHeapBytesAfter);
 
+internal sealed record PowerRoutePortfolioMemberReport(
+    string Prefix,
+    int BeamWidth,
+    bool SecondRankBand,
+    bool BaseScoreOnly,
+    int NodeBudget,
+    int TimeBudgetMilliseconds,
+    long ExpandedNodes,
+    long TransitionCount,
+    string Termination,
+    bool Won,
+    int? BattleHpLost,
+    bool ImprovedIncumbent,
+    long ElapsedMilliseconds,
+    long AllocatedBytes,
+    long ManagedHeapBytesAfter);
+
 /// <summary>
 /// 请求级的组合诊断。开关关闭时也照样记录——那时是单成员一行，A/B 才能直接并排比。
 /// </summary>
@@ -40,6 +58,7 @@ internal sealed class BeamWidthPortfolioTelemetry
 {
     private readonly Lock _gate = new();
     private readonly List<BeamWidthPortfolioMemberReport> _members = [];
+    private readonly List<PowerRoutePortfolioMemberReport> _powerRouteMembers = [];
     private double? _firstRoutePublishedMilliseconds;
     private long _peakManagedHeapBytes;
 
@@ -60,6 +79,11 @@ internal sealed class BeamWidthPortfolioTelemetry
         get { lock (_gate) return _members.ToArray(); }
     }
 
+    public IReadOnlyList<PowerRoutePortfolioMemberReport> PowerRouteMembers
+    {
+        get { lock (_gate) return _powerRouteMembers.ToArray(); }
+    }
+
     public void RecordFirstRoutePublished(double elapsedMilliseconds)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(elapsedMilliseconds);
@@ -74,6 +98,17 @@ internal sealed class BeamWidthPortfolioTelemetry
         {
             _members.Add(member);
             if (member.Ran && member.ManagedHeapBytesAfter > _peakManagedHeapBytes)
+                _peakManagedHeapBytes = member.ManagedHeapBytesAfter;
+        }
+    }
+
+    public void RecordPowerRouteMember(PowerRoutePortfolioMemberReport member)
+    {
+        ArgumentNullException.ThrowIfNull(member);
+        lock (_gate)
+        {
+            _powerRouteMembers.Add(member);
+            if (member.ManagedHeapBytesAfter > _peakManagedHeapBytes)
                 _peakManagedHeapBytes = member.ManagedHeapBytesAfter;
         }
     }

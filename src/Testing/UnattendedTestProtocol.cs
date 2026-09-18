@@ -1,6 +1,7 @@
 using System.Runtime;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using CombatSolver.Replay;
 using Godot;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Rooms;
@@ -38,7 +39,7 @@ internal sealed class UnattendedTestRequest
     public string? ShowcaseBundlePath { get; init; }
     public string? NativeStatePath { get; init; }
     public string? CheckpointArchivePath { get; init; }
-    public string CheckpointSelector { get; init; } = "latest";
+    public string CheckpointSelector { get; init; } = CheckpointArchive.DefaultFixtureSelector;
     public string ReplayMode { get; init; } = "RestoreOnly";
     public string? ReplayPolicyOverridePath { get; init; }
     public string? EvidenceDirectory { get; init; }
@@ -608,6 +609,9 @@ internal sealed class UnattendedSolverMetrics
 
     /// <summary>逐成员明细；组合关闭时是一行。</summary>
     public BeamWidthPortfolioMemberReport[] PortfolioMembers { get; init; } = [];
+
+    /// <summary>逐张或双能力固定开牌前缀的完整反事实搜索明细。</summary>
+    public PowerRoutePortfolioMemberReport[] PowerRouteMembers { get; init; } = [];
 
     /// <summary>各成员结束后 <c>GC.GetTotalMemory(false)</c> 的最大值。</summary>
     public long PeakManagedHeapBytes { get; init; }

@@ -954,4 +954,22 @@ finish_driver unknown-blocked
 stop_fixture_process "$known_pid" "$known_birth" || fail 'could not stop enumerated fixture game'
 pass 'strict pgrep stub exercises unknown-game blocking and registered-game recognition'
 
+new_case
+cleanup_root="$case_root/instances/cleanup-owned-instance"
+(
+    export COMBATSOLVER_HEADLESS_HOST_ROOT="$case_root/host"
+    export HR_WORKTREE="$case_root/worktree-cleanup"
+    mkdir -p -- "$HR_WORKTREE"
+    source "$runtime_helper"
+    hr_init "$cleanup_root" cleanup-owned-instance "$cleanup_root/game/SlayTheSpire2" \
+        "$cleanup_root/data" parallel 1 1 10
+    mkdir -p -- "$cleanup_root/nested"
+    printf '%s\n' fixture >"$cleanup_root/nested/payload.bin"
+    exec {HR_INSTANCE_FD}>&-
+    unset HR_INSTANCE_FD
+    hr_remove_instance
+)
+[[ ! -e $cleanup_root ]] || fail 'owned runtime instance was not removed'
+pass 'owned inactive runtime is removed after its instance lock is released'
+
 echo "HEADLESS_RUNTIME_TESTS_PASSED count=$passed scope=helper_native_process_mock game_started=false"

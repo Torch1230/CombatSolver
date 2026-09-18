@@ -75,6 +75,27 @@ hr_init() {
     HR_TOKEN=""; HR_LAUNCHER_PID=$BASHPID
     HR_LAUNCHER_START="$(hr_start_time "$HR_LAUNCHER_PID")"
 }
+hr_remove_instance() {
+    [[ -d $HR_ROOT ]] || return 0
+    [[ ! -e $HR_LEASE_PATH ]] || { hr_error "cannot remove runtime while host lease exists: $HR_LEASE_PATH"; return 1; }
+    local owner="$HR_ROOT/runtime-owner.json" candidate root worktree
+    [[ -f $owner && ! -L $owner ]] || { hr_error "runtime ownership marker is missing: $HR_ROOT"; return 1; }
+    root="$(realpath -m -- "$HR_ROOT")"
+    worktree="$(realpath -m -- "${HR_WORKTREE:-$PWD}")"
+    jq -e --arg root "$root" --arg id "$HR_INSTANCE" --arg worktree "$worktree" \
+        '.schemaVersion == 1 and .root == $root and .instance == $id and .worktree == $worktree' \
+        "$owner" >/dev/null || { hr_error "runtime ownership does not match cleanup request: $root"; return 1; }
+    for candidate in /proc/[0-9]*/exe; do
+        [[ $(readlink -f -- "$candidate" 2>/dev/null) != "$HR_EXECUTABLE" ]] || {
+            hr_error "cannot remove runtime while its private game is alive: $root"; return 1;
+        }
+    done
+    [[ -z $(find "$root" -type l -print -quit) ]] || {
+        hr_error "refusing runtime cleanup through a symbolic link: $root"; return 1;
+    }
+    rm -rf -- "$root" || return 1
+    echo "UNATTENDED_INSTANCE_REMOVED path=$root"
+}
 hr_host_lock() { exec {HR_HOST_FD}>"$HR_HOST/coordinator.lock"; flock -w 5 "$HR_HOST_FD"; }
 hr_host_unlock() { flock -u "$HR_HOST_FD"; exec {HR_HOST_FD}>&-; unset HR_HOST_FD; }
 hr_write_lease() {

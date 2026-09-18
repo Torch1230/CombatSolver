@@ -6,6 +6,7 @@
 
 | 版本系列 | 更新日志 |
 |---|---|
+| 0.41 | [0.41.0](0.41.0-RELEASE_NOTES.md) |
 | 0.40 | [0.40.2](0.40.2-RELEASE_NOTES.md) · [0.40.1](0.40.1-RELEASE_NOTES.md) · [0.40.0](0.40.0-RELEASE_NOTES.md) |
 | 0.39 | [0.39.0](0.39.0-RELEASE_NOTES.md) |
 | 0.38 | [0.38.7](0.38.7-RELEASE_NOTES.md)（并入 0.39.0） · [0.38.6](0.38.6-RELEASE_NOTES.md) · [0.38.5](0.38.5-RELEASE_NOTES.md) · [0.38.4](0.38.4-RELEASE_NOTES.md) · [0.38.3](0.38.3-RELEASE_NOTES.md) · [0.38.2](0.38.2-RELEASE_NOTES.md) · [0.38.1](0.38.1-RELEASE_NOTES.md) · [0.38.0](0.38.0-RELEASE_NOTES.md) |

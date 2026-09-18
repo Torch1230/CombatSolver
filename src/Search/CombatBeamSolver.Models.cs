@@ -101,6 +101,13 @@ internal sealed partial class CombatBeamSolver
         public long RoutingChoiceSummaryBuilds;
         public long RoutingChoiceSummaryHits;
         public long RoutingChoiceSummaryBypasses;
+        public long PowerValuationCandidates;
+        public long PowerFrontierEvaluations;
+        public int PowerCommitmentsCreated;
+        public int PowerCommitmentsAdmitted;
+        public int PowerCommitmentsExpired;
+        public int PowerCommitmentsRealized;
+        public int PowerCommitmentSeatsPeak;
         public readonly SearchPerformanceMetrics Performance = new(measurePhasePerformance);
         public readonly SearchWorkPacer WorkPacer = new(framePressureSignal);
         public readonly OwnedExpansionBatch<SimulationSnapshot, RawCardCandidate, SearchNode>.Pool

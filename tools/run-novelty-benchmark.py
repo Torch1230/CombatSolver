@@ -65,9 +65,8 @@ def main():
         "gameRoot": str(args.game_root.resolve()),
         "ritsuWorkshopRoot": str(args.ritsu_workshop_root.resolve()) if args.ritsu_workshop_root else None,
     })
-    state_home = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state")))
     runtime = Path(os.environ.get("COMBATSOLVER_HEADLESS_ROOT", str(
-        state_home / "CombatSolver/headless-instances" / args.instance))).resolve()
+        root / ".local/headless-instances" / args.instance))).resolve()
     launcher = ["bash", str(root / "tools/run-unattended-test.sh")]
     stop = launcher + ["--headless-instance", args.instance, "--stop-instance"]
     # Let the native launcher establish/check ownership before touching settings.

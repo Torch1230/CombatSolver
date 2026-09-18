@@ -138,6 +138,23 @@ internal sealed partial class UnattendedTestRunner
         }
     }
 
+    private static void RestoreReplayOutOfCombatRngFromSnapshot(
+        RunState runState,
+        string snapshotPath)
+    {
+        using JsonDocument document = JsonDocument.Parse(File.ReadAllText(snapshotPath));
+        SerializableRunRngSet rng = ParseRunRng(document.RootElement.GetProperty("rng"));
+        foreach (RunRngType type in new[]
+                 {
+                     RunRngType.UpFront,
+                     RunRngType.UnknownMapPoint,
+                     RunRngType.TreasureRoomRelics,
+                 })
+        {
+            runState.Rng.GetRng(type).LoadFromSerializable(rng.Rngs[type]);
+        }
+    }
+
     private static void LoadRunRng(RunState runState, JsonElement root)
     {
         SerializableRunRngSet rng = ParseRunRng(root.GetProperty("rng"));

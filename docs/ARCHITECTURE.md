@@ -157,9 +157,11 @@ RitsuLib 0.6.0 自身拥有 BaseLib 目标类型的外部登记查询、按程�
 
 `ActionRelicTriggerRecorder` 仅存在于最终路线回放，附带 Damage/Heal 的来源、请求/修正数值和 HP 前后值；普通 Beam 分支保持 null，不分配取证列表。直接字段赋值等绕过 Damage/Heal 的变更尚无来源事件，不能把这份记录宣称为所有语义写点的完整追踪。
 
-`BeamWidthPortfolio.cs` 是一个与 Beam 算法无关的组合器：按顺序在同一个根上跑若干宽度或中途排序不同的成员，共享一份节点预算（首个成员拿全额，其后各成员的上限是扣掉前面实际展开数后的余量，扣光即停），撞节点上限又没到终局的成员不参与比较，其余按调用方传入的既有比较规则整条取最优，同分保留先出现的基线成员。它不含比较规则、状态键或终局排序；展开数、转移数和终止原因都由调用方按各自既有口径给出。`SolverSettings.UseBeamWidthPortfolio` 默认开启，由 Runtime 冻结进 `SearchPolicySnapshot`；关闭时只运行基线成员。做法与数据来源见[宽度组合](strategy/beam-width-portfolio.md)。
+`BeamWidthPortfolio.cs` 是一个与 Beam 算法无关的组合器：按顺序在同一个根上跑若干宽度或中途保留策略不同的成员。普通成员共享节点预算；根牌区存在已登记能力牌时，基线之后的同宽度能力成员至少取得请求节点上限的五分之一专用预留，因此组合总展开允许超过普通共享上限。撞节点上限又没到终局的成员不参与比较，其余按调用方传入的既有比较规则整条取最优，同分保留先出现的基线成员。`SolverSettings.UseBeamWidthPortfolio` 只控制后续宽度/次段/基础分成员，关闭时仍运行能力成员。组合器不含比较规则、状态键或终局排序；展开数、转移数和终止原因都由调用方按各自既有口径给出。做法与数据来源见[宽度组合](strategy/beam-width-portfolio.md)及[静默猎手能力牌第二版方案](strategy/power-card-valuation/silent-v2-valuation-and-retention-plan-20260917.md)。
 
-`BeamWidthPortfolioGate.cs` 是精炼成员的准入判断，只做算术与比较，不看搜索状态：基线必须已经把自己这一宽度搜干净（`BoundaryReason == None`）、不是已证明最优的零战损胜利、耗时不超过时间预算的四分之一，且共享节点余量、剩余时间、`SearchMemoryPressureSignal.RemainingBytes` 都装得下「基线实测 × 成员宽度 ÷ 基线宽度 × 3/2」的估算，才启动下一位成员；否则该成员不运行、不花预算，只留一行原因。成员顺序执行不并行，精炼成员的软时间预算收紧到本轮剩余部分。`BeamWidthPortfolioTelemetry.cs` 是请求级诊断，记首条路线发布时刻、逐成员开销与各成员结束后的托管堆峰值，挂在 `SolverResult.PortfolioTelemetry` 上供测试写出；组合关闭时同样记录，那时是单成员一行。基线成员一完成就走协调器已有的 interim 回调发布给界面（中途路线本来就由 `SolverProgress` 承载），精炼不影响玩家看到第一条路线的时刻。Search 仍然不读设置：开关与成员宽度由运行时写进 `SearchPolicySnapshot`。
+`BeamWidthPortfolioGate.cs` 只管理普通精炼成员；基线必须已经搜干净、不是零损最优，且节点、时间和内存估算都有余量才运行。`PowerCommitmentPortfolioGate.cs` 只检查根牌区是否有已登记能力，不再用累计分配量拒绝整条能力成员；能力成员至少取得五分之一节点预留和最多30秒的时间预留。成员开始前若连256 MiB单次提交都容不下，Coordinator 在已排空边界调用 Runtime 注入的回收信号，后续硬内存安全仍由搜索波次预约和检查点负责。`BeamWidthPortfolioTelemetry.cs` 记录首条路线、普通/能力成员、逐能力固定前缀成员及托管堆峰值。
+
+`CombatSearchCoordinator.PowerRoutes.cs` 在主搜索后、可接受战损提前返回之前，为当前可打的每张已登记能力运行固定前缀完整搜索，并有限补充双能力前缀。前缀结束后重建 `CombatProgressState`、清除临时承诺与有序变异调度元数据，后续按普通 Beam 搜索；能力已经真实在场，不继续套激进承诺。最多三个前缀时分别运行普通宽度、1.5倍宽度、次排名段和基础分四种后验，更多前缀时运行普通与宽 Beam。所有成员只以完整终局和既有战损政策选优。
 
 `BeamPortfolioSelector.cs` 是实验用的组合成员选择器（默认不启用）：Runtime 只有在显式给出模型文件时才注入，Search 只收到解析后的不可变实例。它只在 `BeamWidthPortfolioGate` 已经放行之后决定“这一位成员不跑”，不改评分、状态键、保路通道、必保候选或终局排序；模型缺失、求解器或游戏程序集 MVID 不一致、特征长度不符、特征非有限，或状态与配置超出训练范围时一律运行成员，计时与剩余预算字段不设范围约束，避免把负载漂移当成分布外。判定只用模型自带的常量树，不做 IO、不持有搜索对象。离线宿主用 `--observe-portfolio` 经同一路径导出特征与真实政策标签、用 `--portfolio-model` 应用模型；采集、划分、训练与对照见 [PortfolioSelector 工具](../tools/PortfolioSelector/README.md)，实测取舍见[学习型组合门控](strategy/learned-portfolio-gate-20260917.md)。
 
@@ -216,6 +218,7 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 | `CombatBeamSolver.OrderedMutationRetention.cs` | 有序操作碰撞的谱系、租约、成对激活和预算账本；统一处理续接、到期与普通通道回退 |
 | `CombatBeamSolver.FinalPlanOrdering.cs` | 终局胜负、偷窃、战损、药水、卖血和搜索边界排序 |
 | `CombatBeamSolver.StateEvaluation.cs` | 搜索快照、评分、威胁、stand-pat 和状态特征；手牌可达价值的纯背包计算委托 `ReachableHandValue` |
+| `PowerCardValuation/` | 能力牌奖励、惩罚、时机及机制族登记。公共层只持有卡池无关的 `PowerCommitmentDescriptor`（卡池、稳定 CardId、机制族、`PowerRouteAdmissionPolicy`），由 `PowerCardValuationRegistry` 从各卡池模型元数据构造；`PowerRouteAdmission` 是唯一准入判定，`PowerCardValueFacts`、`Projection/PowerCardProjectionSupport`、`Projection/PowerCardMechanismFacts` 提供公共尺度、有界前沿与冻结事实读取。`Cards/<Pool>` 各目录分别保存注册入口、逐卡路线政策、触发证据、开局投影、机制族估值模型与专用事实；公共协调器不含角色专属规则。`Commitments` 从模拟历史识别正常或自动打出的能力，以纯生命周期保存不进入状态键的节点级有限租约并在普通 Beam 席位内置换代表；`PowerCardMechanismDispatch` 只按卡池路由，不识别任何角色枚举。六个卡池共104张单人能力牌已登记（静默猎手17、铁甲战士19、故障机器人20、储君18、亡灵契约师18、无色12），生产保路框架不改终局排序；无已登记能力牌的根走请求级快速旁路，跳过子节点承诺检查、Beam 能力席位扫描、泛能力组合成员与开局能力前缀构造试放；未登记卡牌保持既有行为 |
 | `CombatBeamSolver.NoveltySearch.cs` | 有界新颖性队列与影子特征提取；复用既有展开、终局与 Phases 注入边界 |
 | `CombatBeamSolver.Terminal.cs` | 终局精确回放、逐回合结果、击杀与遗物标注 |
 | `StrategicEffectModel.cs` | 把 Power 的实际触发语义投影为伤害、防伤、资源、牌访问和成长效果；不决定终局胜负 |
@@ -440,7 +443,7 @@ renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或
 
 NativeReplayDriver 保存开战/结束观察器抛出的原始异常，由 AdvanceAsync 的等待链中止请求，防止生命周期事件分发隔离异常后变成“边界缺失”。开战 RestoreOnly 同时读取并核对首个可操作检查点；CheckpointArchive.Prepare 在既有安全解压边界内携带其材料。模型表 hash 是诊断；ReplayAssertions 先比较二进制，旧表不可解码时明确返回未核验，只有已记录 ContinuationStamp 全部匹配才可输出 `restored_continuation`。完整恢复标志与仅状态通过分开。
 
-`src/Replay/CheckpointArchive.cs` 是不依赖游戏的包协议读取器，负责 v2/v1 索引、旧包目录适配、材料配对校验和按原目录解包。`tools/CheckpointTool` 链接同一源文件提供离线预检，两端脚本不复制索引规则。`ScenarioBuilder` 经 `UnattendedTestRunner.CheckpointArchive.cs` 准备请求和临时材料；`Executor` 应用并恢复原包实际策略；`Writer` 输出独立的 `replayVerification`，区分材料检查、检查点恢复和后续执行。checkpoint 稳定 ID 不随六份快照的淘汰重编号。
+`src/Replay/CheckpointArchive.cs` 是不依赖游戏的包协议读取器，负责 v2/v1 索引、旧包目录适配、材料配对校验和按原目录解包。问题包 fixture 的统一默认选择器是 `start`，质量搜索从 combat_start 开始；`latest` 只接受调用方显式选择。`tools/CheckpointTool` 链接同一源文件提供离线预检，两端脚本不复制索引规则。`ScenarioBuilder` 经 `UnattendedTestRunner.CheckpointArchive.cs` 准备请求和临时材料；`Executor` 应用并恢复原包实际策略；`Writer` 输出独立的 `replayVerification`，区分材料检查、检查点恢复和后续执行。checkpoint 稳定 ID 不随六份快照的淘汰重编号。
 
 `CombatReplayRecording` 拥有单场原生输入观察与不可变事件；战前存档在原生 RecordInitialState 边界采集，后台不读取事件的 live 对象。`CombatReplayOutcome` 单独观察玩家HP变化，不推进求解器的战损账本。`UnattendedTestRunner.NativeReplay` 属于ScenarioBuilder/Executor的恢复实现，以单人原生流程、动作和录制选择重建状态，不调用旧字段注入器；`ReplayAssertions` 提供二进制原生状态对账。`UnattendedCombatStartReplay` 只为旧包在最后一个生物加入后、开战Hook前注入已经捕获的开战状态，作用域结束即解除挂钩。
 
@@ -470,8 +473,8 @@ NativeReplayDriver 保存开战/结束观察器抛出的原始异常，由 Advan
 
 ## 8. 工具与结构门禁
 
-- `tools/run-unattended-test.ps1` / `tools/run-unattended-test.sh`：Windows / Linux 的平台原生入口，保留请求协议、精确进程生命周期、结果与静稳 ACK；同实例同时只有一个 producer。
-- `tools/headless-runtime.ps1` / `tools/headless-runtime.sh`：拥有实例目录、私有游戏/Mod 内容快照与每用户主机租约。默认 exclusive，显式 parallel 最多两个游戏；CPU/内存预约随游戏进程存活，暖进程也占名额。它们不改变 Search DOP、NoGC、战斗语义或请求协议。详见 [实例与并行说明](HEADLESS_TESTING.md)。
+- `tools/run-unattended-test.ps1` / `tools/run-unattended-test.sh`：Windows / Linux 的平台原生入口，保留请求协议、精确进程生命周期、结果与静稳 ACK；同实例同时只有一个 producer。`CleanupInstanceOnExit` / `cleanup-instance-on-exit` 在请求收束后删除已验证归属的完整实例。
+- `tools/headless-runtime.ps1` / `tools/headless-runtime.sh`：拥有实例目录、私有游戏/Mod 内容快照与每用户主机租约。实例默认位于当前仓库 `.local/headless-instances/<实例>`；用户目录只保存跨任务互斥所需的小型主机租约，不保存游戏快照。默认 exclusive，显式 parallel 最多两个游戏；CPU/内存预约随游戏进程存活，暖进程也占名额。实例清理要求租约已释放、私有游戏已退出、所有权标记完全匹配且目录不含重解析点/符号链接。它们不改变 Search DOP、NoGC、战斗语义或请求协议。详见 [实例与并行说明](HEADLESS_TESTING.md)。
 
 - `tools/run-visible-steam-benchmark.ps1` / `tools/run-visible-steam-benchmark.sh`：Windows / Linux 的平台原生入口，负责正常可见 Steam 会话的搜索、GC 与帧口径。
 - `tools/CoverageCatalog/Program.cs`：当前程序集和 registry descriptor 的覆盖目录生成/验证。

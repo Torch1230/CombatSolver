@@ -141,6 +141,7 @@ internal sealed partial class UnattendedTestRunner
                 // 组合开关关闭时这三项照样有（单成员一行），A/B 才能直接并排比。
                 FirstRoutePublishedMilliseconds = result.PortfolioTelemetry?.FirstRoutePublishedMilliseconds,
                 PortfolioMembers = result.PortfolioTelemetry?.Members.ToArray() ?? [],
+                PowerRouteMembers = result.PortfolioTelemetry?.PowerRouteMembers.ToArray() ?? [],
                 PeakManagedHeapBytes = result.PortfolioTelemetry?.PeakManagedHeapBytes ?? 0,
                 ManagedLiveBytes = GC.GetTotalMemory(forceFullCollection: false),
                 ManagedHeapBytes = memory.ManagedHeapBytes,

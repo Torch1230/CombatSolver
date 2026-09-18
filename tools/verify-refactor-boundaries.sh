@@ -12,6 +12,7 @@ Usage: verify-refactor-boundaries.sh
 
 Checks the repository's source ownership and architecture boundaries.
 EOF
+
 }
 
 if (($# > 0)); then
@@ -254,22 +255,26 @@ for ordered_metric in \
         "$ordered_metric" \
         'ordered-mutation acceptance metric is missing:'
 done
-opening_channel_line="$(rg --line-number --fixed-strings \
-    'List<List<SearchNode>> openingChannels = pool' \
-    "$search_root/CombatBeamSolver.Retention.cs" | head -n 1 | cut -d: -f1)"
 ordered_coordinator_line="$(rg --line-number --fixed-strings \
     'Retention.AddOrderedMutationPortfolio(pool, selected, selectedSet);' \
     "$search_root/CombatBeamSolver.Retention.cs" | head -n 1 | cut -d: -f1)"
 cycle_region_line="$(rg --line-number --fixed-strings \
     'cycleRegionTransaction = ApplyCycleRegionRetention(' \
     "$search_root/CombatBeamSolver.Retention.cs" | head -n 1 | cut -d: -f1)"
-if [[ -z "$opening_channel_line" || -z "$ordered_coordinator_line" \
+if [[ -z "$ordered_coordinator_line" \
     || -z "$cycle_region_line" \
-    || "$opening_channel_line" -ge "$ordered_coordinator_line" \
     || "$ordered_coordinator_line" -ge "$cycle_region_line" ]]; then
     add_violation \
-        "$search_root/CombatBeamSolver.Retention.cs: opening/independent channels must settle before ordered admission, which must settle before CycleRegion"
+        "$search_root/CombatBeamSolver.Retention.cs: ordered admission must settle before CycleRegion"
 fi
+forbid_fixed \
+    "$search_root/CombatBeamSolver.Retention.cs" \
+    'List<List<SearchNode>> openingChannels = pool' \
+    'legacy additive opening-power channel returned:'
+require_fixed \
+    "$search_root/CombatBeamSolver.BeamRetentionPolicy.cs" \
+    'AdmitPowerCommitmentRepresentatives(quotaPool, ranked, required, limit);' \
+    'bounded power commitment replacement is missing:'
 forbid_fixed \
     "$cycle_region_retention_path" \
     'selectedSet.Add(node);' \
@@ -673,6 +678,90 @@ CombatBeamSolver.Terminal.cs	private List<SearchNode> AnnotateTurnOutcomes(List<
 CombatBeamSolver.StateEvaluation.cs	private SimulationSnapshot Snapshot(
 EOF
 
+while IFS=$'\t' read -r relative_path text; do
+    require_fixed "$search_root/PowerCardValuation/$relative_path" "$text" 'missing power-card valuation boundary'
+done <<'EOF'
+PowerCardValuationContracts.cs	internal readonly record struct PowerCardValuationReward
+PowerCardValuationContracts.cs	internal readonly record struct PowerCardValuationPenalty
+IPowerCardValuationModel.cs	internal interface IPowerCardValuationModel
+PowerCardValuationRegistry.cs	internal sealed class PowerCardValuationRegistry
+PowerCardValuationModels.cs	internal static class PowerCardValuationModels
+PowerCardValuationRegistration.cs	internal sealed class DelegatingPowerCardValuationModel
+PowerRouteAdmission.cs	internal static class PowerRouteAdmission
+PowerCardValueFacts.cs	internal static class PowerCardValueFacts
+Projection/PowerCardProjectionSupport.cs	internal sealed partial class CombatBeamSolver
+Projection/PowerCardMechanismFacts.cs	internal sealed partial class CombatBeamSolver
+Projection/PowerTurnFrontier.cs	internal static class PowerTurnFrontier
+Projection/RetainedHandTransition.cs	internal static class RetainedHandTransition
+Projection/DrawDiscardTransition.cs	internal static class DrawDiscardTransition
+Projection/PoisonStackProjection.cs	internal static class PoisonStackProjection
+Projection/MasterPlannerProjection.cs	internal static class MasterPlannerProjection
+Projection/SilentPowerOpeningProjection.cs	private int SilentPowerOpeningProjectionPotential
+Projection/SilentShivPowerProjection.cs	private int AccuracyProjectionPotential
+Projection/SilentPoisonPowerProjection.cs	private int AccelerantProjectionPotential
+Projection/SilentDamageDefensePowerProjection.cs	private int SerpentFormProjectionPotential
+Commitments/PowerCommitment.cs	internal sealed record PowerCommitment
+Commitments/PowerCommitmentLifecycle.cs	internal static class PowerCommitmentLifecycle
+Commitments/PowerCommitmentPolicy.cs	private void AttachPowerCommitment
+Commitments/PowerCommitmentEvidence.cs	private int PowerCommitmentRealizedEvidence
+Commitments/PowerCardPlayOccurrence.cs	internal readonly record struct PowerCardPlayOccurrence
+Commitments/PowerCommitmentRetention.cs	internal static class PowerCommitmentRetention
+Commitments/PowerCommitmentSeatPolicy.cs	internal static class PowerCommitmentSeatPolicy
+Commitments/PowerActivationInvestmentPolicy.cs	internal static class PowerActivationInvestmentPolicy
+Cards/Ironclad/IroncladPowerCardValuationModels.cs	internal static class IroncladPowerCardValuationModels
+Cards/Ironclad/IroncladPowerRoutePolicy.cs	internal static class IroncladPowerRoutePolicy
+Cards/Ironclad/IroncladPowerTriggerEvidence.cs	private bool IroncladPowerHasTriggerEvidence
+Cards/Ironclad/IroncladPowerOpeningProjection.cs	private int IroncladPowerOpeningProjectionPotential
+Cards/Ironclad/IroncladStrengthPowerCardValuationModels.cs	internal static class IroncladStrengthPowerCardValuationModels
+Cards/Silent/SilentPowerCardValuationModels.cs	internal static class SilentPowerCardValuationModels
+Cards/Silent/SilentPowerCardValuationModel.cs	internal abstract class SilentPowerCardValuationModel
+Cards/Silent/SilentDefensePowerCardValuationModels.cs	internal sealed class WraithFormPowerCardValuationModel
+Cards/Silent/SilentPoisonPowerCardValuationModels.cs	internal sealed class NoxiousFumesPowerCardValuationModel
+Cards/Silent/SilentShivPowerCardValuationModels.cs	internal sealed class FanOfKnivesPowerCardValuationModel
+Cards/Silent/SilentCardFlowPowerCardValuationModels.cs	internal sealed class MasterPlannerPowerCardValuationModel
+Cards/Silent/SilentCardFlowFacts.cs	internal static class SilentCardFlowFacts
+Cards/Silent/SilentDiscardWindowFacts.cs	internal static class SilentDiscardWindowFacts
+Cards/Silent/SilentPowerRoutePolicy.cs	internal static class SilentPowerRoutePolicy
+Cards/Silent/SilentPowerTriggerEvidence.cs	private bool SilentPowerHasTriggerEvidence
+Cards/Silent/SilentPowerCommitmentEvidence.cs	private int SilentPowerProgressEvidence
+Cards/Silent/SilentWraithOpeningWindow.cs	internal static class SilentWraithOpeningWindow
+Cards/Silent/SilentDamagePowerCardValuationModels.cs	internal sealed class TrackingPowerCardValuationModel
+Cards/Defect/DefectPowerCardValuationModels.cs	internal static class DefectPowerCardValuationModels
+Cards/Defect/DefectPowerRoutePolicy.cs	internal static class DefectPowerRoutePolicy
+Cards/Defect/DefectPowerTriggerEvidence.cs	private bool DefectPowerHasTriggerEvidence
+Cards/Defect/DefectPowerOpeningProjection.cs	private int DefectPowerOpeningProjectionPotential
+Cards/Defect/DefectOrbPowerCardValuationModels.cs	internal static class DefectOrbPowerCardValuationModels
+Cards/Regent/RegentPowerCardValuationModels.cs	internal static class RegentPowerCardValuationModels
+Cards/Regent/RegentPowerRoutePolicy.cs	internal static class RegentPowerRoutePolicy
+Cards/Regent/RegentPowerTriggerEvidence.cs	private bool RegentPowerHasTriggerEvidence
+Cards/Regent/RegentPowerOpeningProjection.cs	private int RegentPowerOpeningProjectionPotential
+Cards/Regent/RegentStarPowerCardValuationModels.cs	internal static class RegentStarPowerCardValuationModels
+Cards/Necrobinder/NecrobinderPowerCardValuationModels.cs	internal static class NecrobinderPowerCardValuationModels
+Cards/Necrobinder/NecrobinderPowerRoutePolicy.cs	internal static class NecrobinderPowerRoutePolicy
+Cards/Necrobinder/NecrobinderPowerTriggerEvidence.cs	private bool NecrobinderPowerHasTriggerEvidence
+Cards/Necrobinder/NecrobinderPowerOpeningProjection.cs	private int NecrobinderPowerOpeningProjectionPotential
+Cards/Necrobinder/NecrobinderDoomPowerCardValuationModels.cs	internal static class NecrobinderDoomPowerCardValuationModels
+Cards/Colorless/ColorlessPowerCardValuationModels.cs	internal static class ColorlessPowerCardValuationModels
+Cards/Colorless/ColorlessPowerRoutePolicy.cs	internal static class ColorlessPowerRoutePolicy
+Cards/Colorless/ColorlessPowerTriggerEvidence.cs	private bool ColorlessPowerHasTriggerEvidence
+Cards/Colorless/ColorlessPowerOpeningProjection.cs	private int ColorlessPowerOpeningProjectionPotential
+Cards/Colorless/ColorlessGrowthPowerCardValuationModels.cs	internal static class ColorlessGrowthPowerCardValuationModels
+EOF
+
+require_fixed "$search_root/PowerCommitmentPortfolioGate.cs" \
+    'internal static class PowerCommitmentPortfolioGate' \
+    'missing power commitment portfolio gate'
+for power_route_rule in \
+    'private static SolverResult RunOpeningPowerRoutePortfolio(' \
+    'fixedPrefixActions: prefix' \
+    'PowerRoutePortfolioMemberReport'; do
+    require_fixed "$search_root/CombatSearchCoordinator.PowerRoutes.cs" \
+        "$power_route_rule" \
+        'missing power route portfolio boundary'
+done
+forbid_fixed "$search_root/CombatBeamSolver.FinalPlanOrdering.cs" 'PowerCardValuation' \
+    'power-card valuation must not enter final plan ordering:'
+
 require_fixed \
     "$search_root/CombatBeamSolver.Expansion.cs" \
     'CreateWholeActionChoiceBudget' \
@@ -841,16 +930,37 @@ done <<'EOF'
 tools/run-unattended-test.sh	source "$script_dir/headless-runtime.sh"
 tools/run-unattended-test.sh	hr_acquire "$process_pid" "$process_identity_start_time"
 tools/run-unattended-test.sh	if ((option_value[stop-instance] == 1)); then
+tools/run-unattended-test.sh	add_option cleanup-instance-on-exit 0 switch none
+tools/run-unattended-test.sh	add_option checkpoint-selector "start" string raw_string
+tools/run-unattended-test.sh	$repo_root/.local/headless-instances/$headless_instance
+tools/run-unattended-test.sh	hr_remove_instance
 tools/run-unattended-test.ps1	. (Join-Path $PSScriptRoot 'headless-runtime.ps1')
+tools/run-unattended-test.ps1	[string]$CheckpointSelector = "start"
 tools/run-unattended-test.ps1	if ($StopInstance) {
+tools/run-unattended-test.ps1	[switch]$CleanupInstanceOnExit
+tools/run-unattended-test.ps1	Remove-HeadlessRuntimeInstance $runtimeContext
 tools/run-headless-matrix.sh	--stop-instance
 tools/run-headless-matrix.ps1	"-StopInstance"
 tools/headless-runtime.sh	hr_prepare_snapshot() {
 tools/headless-runtime.sh	hr_bind() {
+tools/headless-runtime.sh	hr_remove_instance() {
 tools/headless-runtime.ps1	function Set-HeadlessGameSnapshot(
+tools/headless-runtime.ps1	Join-Path $repository ".local\headless-instances\$Instance"
+tools/headless-runtime.ps1	function Remove-HeadlessRuntimeInstance(
 tools/headless-runtime.ps1	function Enter-HeadlessHostLease(
 tools/headless-runtime.ps1	function Set-HeadlessHostGame(
 EOF
+for legacy_instance_root in \
+    "$repository_root/tools/headless-runtime.ps1|CombatSolver\\headless-instances" \
+    "$repository_root/tools/run-unattended-test.sh|CombatSolver/headless-instances" \
+    "$repository_root/tools/run-headless-matrix.sh|CombatSolver/headless-instances"; do
+    legacy_path="${legacy_instance_root%%|*}"
+    legacy_text="${legacy_instance_root#*|}"
+    forbid_fixed "$legacy_path" "$legacy_text" 'user-local headless instance root returned:'
+done
+require_fixed "$repository_root/src/Replay/CheckpointArchive.cs" \
+    'public const string DefaultFixtureSelector = "start";' \
+    'checkpoint fixture default must remain combat start'
 for matrix in "$repository_root/tools/run-headless-matrix.sh" "$repository_root/tools/run-headless-matrix.ps1"; do
     forbid_fixed "$matrix" 'MATRIX-CLEANUP' 'matrix cleanup must not dispatch a new game request:'
 done

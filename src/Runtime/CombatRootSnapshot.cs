@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Collections.Frozen;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Entities.Creatures;
@@ -28,6 +29,7 @@ internal sealed class CombatRootSnapshot
     public ContinuationStamp ContinuationStamp { get; }
     public int PlayerCount { get; }
     public int StartTurnNumber { get; }
+    public int TotalFloor { get; }
     public int InitialPlayerHp { get; }
     public int InitialPlayerMaxHp { get; }
     public int InitialBrightestFlameMaxHpSpent
@@ -45,6 +47,7 @@ internal sealed class CombatRootSnapshot
     public bool IsActEndingBoss => BossHpRelief != BossHpRelief.None;
     public double CaptureElapsedMilliseconds { get; }
     public int CapturedCardCount { get; }
+    public IReadOnlySet<string> PlayerCardIds { get; }
     public int CapturedPowerCount { get; }
     public int CapturedHookListenerCount { get; }
     public int CapturedRunModSubscriberCount { get; }
@@ -67,6 +70,7 @@ internal sealed class CombatRootSnapshot
         CombatPredictionSimulator rootSimulator,
         int playerCount,
         int startTurnNumber,
+        int totalFloor,
         int initialPlayerHp,
         int initialPlayerMaxHp,
         int potionSlotCount,
@@ -78,6 +82,7 @@ internal sealed class CombatRootSnapshot
         BossHpRelief bossHpRelief,
         double captureElapsedMilliseconds,
         int capturedCardCount,
+        IReadOnlySet<string> playerCardIds,
         int capturedPowerCount,
         int capturedHookListenerCount,
         int capturedRunModSubscriberCount,
@@ -95,6 +100,7 @@ internal sealed class CombatRootSnapshot
         _rootSimulator = rootSimulator;
         PlayerCount = playerCount;
         StartTurnNumber = startTurnNumber;
+        TotalFloor = totalFloor;
         InitialPlayerHp = initialPlayerHp;
         InitialPlayerMaxHp = initialPlayerMaxHp;
         PotionSlotCount = potionSlotCount;
@@ -112,6 +118,7 @@ internal sealed class CombatRootSnapshot
         BossHpRelief = bossHpRelief;
         CaptureElapsedMilliseconds = captureElapsedMilliseconds;
         CapturedCardCount = capturedCardCount;
+        PlayerCardIds = playerCardIds;
         CapturedPowerCount = capturedPowerCount;
         CapturedHookListenerCount = capturedHookListenerCount;
         CapturedRunModSubscriberCount = capturedRunModSubscriberCount;
@@ -208,6 +215,11 @@ internal sealed class CombatRootSnapshot
         int cardCount = state.Players
             .Where(candidate => candidate.PlayerCombatState != null)
             .Sum(candidate => candidate.PlayerCombatState!.AllCards.Count());
+        IReadOnlySet<string> playerCardIds = playerState.Hand.Cards
+            .Concat(playerState.DrawPile.Cards)
+            .Concat(playerState.DiscardPile.Cards)
+            .Select(card => card.Id.Entry)
+            .ToFrozenSet(StringComparer.Ordinal);
         int powerCount = state.Creatures.Sum(creature => creature.Powers.Count);
         stopwatch.Stop();
 
@@ -220,6 +232,7 @@ internal sealed class CombatRootSnapshot
             simulator,
             state.Players.Count,
             playerState.TurnNumber,
+            state.RunState.TotalFloor,
             player.Creature.CurrentHp,
             player.Creature.MaxHp,
             player.PotionSlots.Count,
@@ -231,6 +244,7 @@ internal sealed class CombatRootSnapshot
             ActEndingBossPolicy.ResolveHpRelief(state),
             stopwatch.Elapsed.TotalMilliseconds,
             cardCount,
+            playerCardIds,
             powerCount,
             simulatedCombat.RootHookListenerCount,
             simulatedCombat.RootRunModSubscriberCount,

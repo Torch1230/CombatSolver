@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -28,8 +29,8 @@ internal static class BatchRunner
         if (mode is not ("Preflight" or "RestoreOnly" or "ReplayRecorded" or "SearchOnly" or "DeploySolver"))
             throw new ArgumentException("invalid_mode:" + mode);
         int timeout = int.Parse(Option("--timeout", "120"));
-        if (timeout is < 10 or > 120) throw new ArgumentException("timeout_must_be_10_to_120_seconds");
-        string selector = Option("--selector", "latest");
+        if (timeout is < 10 or > 3600) throw new ArgumentException("timeout_must_be_10_to_3600_seconds");
+        string selector = Option("--selector", CheckpointArchive.DefaultFixtureSelector);
         string output = Path.GetFullPath(Option("--output", Path.Combine(".local", "checkpoint-batch", DateTime.Now.ToString("yyyyMMdd-HHmmss"))));
         string project = FindProject();
         Directory.CreateDirectory(output);
@@ -58,7 +59,7 @@ internal static class BatchRunner
             JsonObject inspection;
             try
             {
-                inspection = input.Error == null ? CheckpointArchive.Inspect(input.ArchivePath!, mode == "ReplayRecorded" && selector == "latest" ? "recorded" : selector)
+                inspection = input.Error == null ? CheckpointArchive.Inspect(input.ArchivePath!, selector)
                     : new JsonObject { ["status"] = "invalid_archive", ["reason"] = input.Error };
             }
             catch (Exception error) when (error is IOException or InvalidDataException or JsonException or InvalidOperationException or ArgumentException)
@@ -78,8 +79,9 @@ internal static class BatchRunner
         {
             ["inputs"] = JsonSerializer.SerializeToNode(work.Select(item => item.Input)),
             ["duplicates"] = discovery.Duplicates, ["environment"] = environment.DeepClone(), ["mode"] = mode,
+            ["selector"] = selector,
         });
-        Console.WriteLine($"BATCH_INDEX inputs={work.Count} duplicates={discovery.Duplicates} mode={mode}");
+        Console.WriteLine($"BATCH_INDEX inputs={work.Count} duplicates={discovery.Duplicates} mode={mode} selector={selector}");
         List<JsonObject> results = [];
         bool launched = false;
         try
@@ -115,7 +117,10 @@ internal static class BatchRunner
                 JsonObject row = new()
                 {
                     ["key"] = key, ["inputIdentity"] = input.Identity, ["source"] = input.Source,
-                    ["mode"] = mode, ["checkpointId"] = inspection["checkpoint"]?["checkpointId"]?.DeepClone(),
+                    ["mode"] = mode, ["selector"] = selector,
+                    ["checkpointId"] = inspection["checkpoint"]?["checkpointId"]?.DeepClone(),
+                    ["checkpointLabel"] = inspection["checkpoint"]?["label"]?.DeepClone(),
+                    ["checkpointEventCursor"] = inspection["checkpoint"]?["eventCursor"]?.DeepClone(),
                     ["status"] = inspection["status"]?.DeepClone(), ["reason"] = inspection["reason"]?.DeepClone(),
                     ["note"] = Note(inspection, entry), ["reportedOriginalPrediction"] = entry?["originalLoss"]?.DeepClone(),
                     ["reportedManualPrediction"] = entry?["manualLoss"]?.DeepClone(),
@@ -126,7 +131,7 @@ internal static class BatchRunner
                 if (mode != "Preflight" && Text(inspection["status"]) == "materials_valid")
                 {
                     launched = true;
-                    string runtime = RuntimeDirectory();
+                    string runtime = RuntimeDirectory(project);
                     string log = Path.Combine(runtime, "godot-headless.log");
                     long logStart = File.Exists(log) ? new FileInfo(log).Length : 0;
                     JsonObject? beforeProcess = ReadObjectIfExists(Path.Combine(runtime, "process.json"));
@@ -216,7 +221,11 @@ internal static class BatchRunner
         void Arg(string ps, string sh, string? value = null) { start.ArgumentList.Add(windows ? "-" + ps : "--" + sh); if (value != null) start.ArgumentList.Add(value); }
         if (options.TryGetValue("--game-root", out string? game)) Arg("Sts2GameRoot", "sts2-game-root", Path.GetFullPath(game));
         if (options.TryGetValue("--ritsu-root", out string? ritsu)) Arg("RitsuWorkshopRoot", "ritsu-workshop-root", Path.GetFullPath(ritsu));
-        if (stop) Arg("StopOwnedProcess", "stop-owned-process");
+        if (stop)
+        {
+            Arg("StopInstance", "stop-instance");
+            Arg("CleanupInstanceOnExit", "cleanup-instance-on-exit");
+        }
         else
         {
             Arg("CheckpointArchivePath", "checkpoint-archive-path", archive!);
@@ -335,16 +344,17 @@ internal static class BatchRunner
     private static void Publish(string output, List<JsonObject> results)
     {
         Save(Path.Combine(output, "results.json"), JsonSerializer.SerializeToNode(results));
-        string[] fields = ["source", "status", "reason", "mode", "checkpointId", "note", "comparisonScope", "relativeToManual", "betterThanManual", "predictionGap", "elapsedMilliseconds", "evidence"];
+        string[] fields = ["source", "status", "reason", "mode", "selector", "checkpointId", "checkpointLabel", "checkpointEventCursor", "note", "comparisonScope", "relativeToManual", "betterThanManual", "predictionGap", "elapsedMilliseconds", "evidence"];
         string Csv(string value) => "\"" + value.Replace("\"", "\"\"") + "\"";
         File.WriteAllText(Path.Combine(output, "results.csv.tmp"), string.Join(',', fields) + "\n" + string.Join('\n', results.Select(row => string.Join(',', fields.Select(field => Csv(Text(row[field])))))) + "\n", new UTF8Encoding(true));
         File.Move(Path.Combine(output, "results.csv.tmp"), Path.Combine(output, "results.csv"), true);
         string Cell(JsonNode? node) => Text(node).Replace("|", "\\|").Replace("\r", " ").Replace("\n", " ");
-        StringBuilder markdown = new("# 汇总\n\n| 包 | 状态 | 模式 | 玩家备注 | 对照范围 | 优化后相对于人工 | 是否更优 | 预测差距 | 证据 |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n");
+        StringBuilder markdown = new("# 汇总\n\n| 包 | 状态 | 模式 | 搜索起点 | 玩家备注 | 对照范围 | 优化后相对于人工 | 是否更优 | 预测差距 | 证据 |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n");
         foreach (JsonObject row in results.OrderBy(row => Success.Contains(Text(row["status"])) ? 1 : 0))
         {
             string relative = row["relativeToManual"] == null ? "—" : Number(row["relativeToManual"]).ToString("+0;-0;0");
-            markdown.AppendLine($"| {Path.GetFileName(Cell(row["source"]))} | {Cell(row["status"])} | {Cell(row["mode"])} | {Cell(row["note"])} | {Cell(row["comparisonScope"])} | {relative} | {(row["betterThanManual"] == null ? "—" : row["betterThanManual"]!.GetValue<bool>() ? "是" : "否")} | {Cell(row["predictionGap"])} | [结果]({Cell(row["evidence"])}/batch-result.json) |");
+            string checkpoint = $"{Cell(row["selector"])} / {Cell(row["checkpointLabel"])} / {Cell(row["checkpointId"])}";
+            markdown.AppendLine($"| {Path.GetFileName(Cell(row["source"]))} | {Cell(row["status"])} | {Cell(row["mode"])} | {checkpoint} | {Cell(row["note"])} | {Cell(row["comparisonScope"])} | {relative} | {(row["betterThanManual"] == null ? "—" : row["betterThanManual"]!.GetValue<bool>() ? "是" : "否")} | {Cell(row["predictionGap"])} | [结果]({Cell(row["evidence"])}/batch-result.json) |");
         }
         File.WriteAllText(Path.Combine(output, "results.md.tmp"), markdown.ToString(), new UTF8Encoding(false));
         File.Move(Path.Combine(output, "results.md.tmp"), Path.Combine(output, "results.md"), true);
@@ -374,11 +384,14 @@ internal static class BatchRunner
             if (File.Exists(Path.Combine(directory.FullName, "CombatSolver.csproj"))) return directory.FullName;
         throw new DirectoryNotFoundException("CombatSolver project root not found");
     }
-    private static string RuntimeDirectory()
+    internal static string RuntimeDirectory(string project)
     {
-        if (OperatingSystem.IsWindows()) return Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData), "CombatSolver", "headless-runtime");
-        string home = System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile);
-        return System.Environment.GetEnvironmentVariable("COMBATSOLVER_HEADLESS_ROOT") ?? Path.Combine(
-            System.Environment.GetEnvironmentVariable("XDG_STATE_HOME") ?? Path.Combine(home, ".local/state"), "CombatSolver/headless-runtime");
+        string? overridden = System.Environment.GetEnvironmentVariable("COMBATSOLVER_HEADLESS_ROOT");
+        if (!string.IsNullOrWhiteSpace(overridden)) return Path.GetFullPath(overridden);
+        string repository = Path.GetFullPath(project).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string identity = OperatingSystem.IsWindows() ? repository.ToUpperInvariant() : repository;
+        string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity)))[..16].ToLowerInvariant();
+        string instance = (OperatingSystem.IsWindows() ? "wt-" : "worktree-") + hash;
+        return Path.Combine(repository, ".local", "headless-instances", instance);
     }
 }

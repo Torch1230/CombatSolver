@@ -26,3 +26,9 @@ releases/*.publish-state.json
 # Python caches for the analysis tools
 __pycache__/
 *.pyc
+# Local evidence output and release artifacts
+/outputs/
+/releases/
+
+# Scratch images kept in the working tree but never committed
+新封面1.png

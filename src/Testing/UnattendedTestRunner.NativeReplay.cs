@@ -103,7 +103,12 @@ internal sealed partial class UnattendedTestRunner
         {
             if (combatStart)
             {
+                RestoreReplayOutOfCombatRngFromSnapshot((RunState)combat.RunState,
+                    _request.RunSnapshotPath
+                    ?? throw new InvalidDataException("native_replay_run_snapshot_missing"));
+                RestoreReplayInventoryFromPath(player, _request.ReplayStatePath);
                 AssertRecordedContinuation(expectedState, combat, 0, _request.NativeStatePath,
+                    _request.ReplayStatePath,
                     allowLegacyBattleStart: checkpointEventCursor == 0);
                 openingVerified = true;
                 if (_request.ReplayMode is "SearchOnly" or "DeploySolver")
@@ -117,7 +122,8 @@ internal sealed partial class UnattendedTestRunner
         {
             if (combatEnd)
             {
-                AssertRecordedContinuation(expectedState, combat, target, _request.NativeStatePath);
+                AssertRecordedContinuation(expectedState, combat, target, _request.NativeStatePath,
+                    _request.ReplayStatePath);
                 endingVerified = true;
                 _writer.ReplayVerification!["recordedOutcome"] = JsonSerializer.SerializeToNode(
                     CombatBugReportExporter.CaptureOutcome(combat) with { CombatEnded = true }, UnattendedTestFiles.JsonOptions);
@@ -135,6 +141,7 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidDataException("native_replay_missing_combat_end_boundary");
         if (!combatStart && !combatEnd)
             AssertRecordedContinuation(expectedState, combatState, target, _request.NativeStatePath,
+                _request.ReplayStatePath,
                 allowLegacyBattleStart: target == 0 && player.PlayerCombatState?.TurnNumber == 1);
         if (readyCheckpoint != null)
         {
@@ -142,6 +149,7 @@ internal sealed partial class UnattendedTestRunner
                 _checkpointImportDirectory!, readyCheckpoint["metadataPath"]!.GetValue<string>())))!.AsObject();
             AssertRecordedContinuation(readyMetadata["exactContinuationState"]!.GetValue<string>(), combatState, target,
                 Path.Combine(_checkpointImportDirectory!, readyCheckpoint["nativeStatePath"]!.GetValue<string>()),
+                Path.Combine(_checkpointImportDirectory!, readyCheckpoint["replayStatePath"]!.GetValue<string>()),
                 allowLegacyBattleStart: target == 0 && player.PlayerCombatState?.TurnNumber == 1);
             _writer.ReplayVerification!["readyCheckpointVerified"] = true;
         }
@@ -165,6 +173,7 @@ internal sealed partial class UnattendedTestRunner
     }
 
     private void AssertRecordedContinuation(string expected, CombatState state, long cursor, string? nativePath,
+        string? replayStatePath,
         bool allowLegacyBattleStart = false)
     {
         string actual = ContinuationStamp.CaptureLive(state).StateText;
@@ -172,7 +181,13 @@ internal sealed partial class UnattendedTestRunner
         bool nativeVerified = AssertNativeCheckpoint(state, nativePath, differentEncoding);
         // A fully verified native checkpoint also establishes the replayed game state
         // for legacy reports whose derived zero counter was not serialized yet.
-        if (ReplayContinuationMatches(expected, actual, allowLegacyBattleStart || nativeVerified))
+        IReadOnlyDictionary<char, IReadOnlyList<string>>? legacyCardKeywords =
+            LoadLegacyReplayCardKeywords(expected, replayStatePath);
+        if (ReplayContinuationMatches(
+                expected,
+                actual,
+                allowLegacyBattleStart || nativeVerified,
+                legacyCardKeywords))
         {
             _writer.ReplayVerification["continuationVerified"] = true;
             _writer.ReplayVerification["nativeStateVerified"] = nativeVerified;

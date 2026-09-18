@@ -1,4 +1,12 @@
 {
+  "POWER-CARD-VALUATION-ALL-POOLS": {
+    "status": "Passed",
+    "level": "PureContractAndHeadlessShortSearch",
+    "procedure": "六个卡池104张单人能力牌登记完整性、唯一性、池/ID一致、MultiplayerOnly排除、纯战后收益不承诺、每池五类覆盖、零触发拒绝、免费与高费硬开差异、单/双能力承诺与生命周期；每角色一个 novelty-search 精英短场景集成验收",
+    "expected": "纯合同输出 POWER_CARD_VALUATION_CHECKS_OK；Release 编译0错误；结构门禁 REFACTOR_BOUNDARIES_OK；五个短场景全部 Passed 且实例目录清理为空",
+    "observed": "POWER_CARD_VALUATION_CHECKS_OK total=104 silent=17 ironclad=19 defect=20 regent=18 necrobinder=18 colorless=12; REFACTOR_BOUNDARIES_OK search_files=192（新增 Projection/PowerCardProjectionMath.cs）; dev-00/dev-01/dev-02/dev-03/dev-04 五个 novelty-search 精英场景全部 Passed, error=null; headless-instances 为空。审计后：PowerLiveCards 排除消耗堆；群星之子按实际可花费星能点数（PowerStarSpendCapacity）；缓冲/凶恶/自动化/环绕轨道改纯数学并加合同断言；承诺证据语义改为路线进展/解除保护，撤回按池隔离与铁甲专用因果兑现（因果版哨兵铁甲 62、储君 52），恢复 540e4cb6 的通用进展释放；最终五哨兵铁甲 43、静默 40（行为未变沿用）、故障 13、储君 45、亡灵 25，与原结果一致。玩家联合评审采纳：优先级与专搜标记更新并同步投影数值；专搜标记接入前缀顺序/承诺席位会使 ironclad-elite 由 43 劣化为 62，已撤回，最终仍为 43 战损。",
+    "evidence": "tools/PowerCardValuationChecks/Program.cs; docs/TEST_MATRIX.md; docs/strategy/power-card-valuation/all-pools-implementation-20260917.md"
+  },
   "REPORT-CARDS-ORBIT-ENERGY-GATE": {
     "status": "Passed",
     "level": "HeadlessNativeDifferentialAndForkContract",

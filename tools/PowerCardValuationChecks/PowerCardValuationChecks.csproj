@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>13.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/Search/PowerCardValuation/PowerCardValuationContracts.cs" Link="PowerCardValuationContracts.cs" />
+    <Compile Include="../../src/Search/PowerCardValuation/IPowerCardValuationModel.cs" Link="IPowerCardValuationModel.cs" />
+    <Compile Include="../../src/Search/PowerCardValuation/PowerCardValuationRegistry.cs" Link="PowerCardValuationRegistry.cs" />
+    <Compile Include="../../src/Search/PowerCardValuation/PowerCardValuationModels.cs" Link="PowerCardValuationModels.cs" />
+    <Compile Include="../../src/Search/PowerCardValuation/PowerCardValuationRegistration.cs" Link="PowerCardValuationRegistration.cs" />
+    <Compile Include="../../src/Search/PowerCardValuation/PowerRouteAdmission.cs" Link="PowerRouteAdmission.cs" />
+    <Compile Include="../../src/Search/PowerCardValuation/PowerCardValueFacts.cs" Link="PowerCardValueFacts.cs" />
+    <Compile Include="../../src/Search/PowerCardValuation/Projection/*.cs"
+             Exclude="../../src/Search/PowerCardValuation/Projection/PowerCardProjectionSupport.cs;../../src/Search/PowerCardValuation/Projection/PowerCardMechanismFacts.cs;../../src/Search/PowerCardValuation/Projection/SilentPowerOpeningProjection.cs;../../src/Search/PowerCardValuation/Projection/SilentShivPowerProjection.cs;../../src/Search/PowerCardValuation/Projection/SilentPoisonPowerProjection.cs;../../src/Search/PowerCardValuation/Projection/SilentDamageDefensePowerProjection.cs"
+             LinkBase="Projection" />
+    <Compile Include="../../src/Search/PowerCardValuation/Commitments/PowerCommitment.cs" LinkBase="Commitments" />
+    <Compile Include="../../src/Search/PowerCardValuation/Commitments/PowerCommitmentLifecycle.cs" LinkBase="Commitments" />
+    <Compile Include="../../src/Search/PowerCardValuation/Commitments/PowerCommitmentSeatPolicy.cs" LinkBase="Commitments" />
+    <Compile Include="../../src/Search/PowerCardValuation/Commitments/PowerActivationInvestmentPolicy.cs" LinkBase="Commitments" />
+    <Compile Include="../../src/Search/PowerCardValuation/Cards/**/*.cs"
+             Exclude="../../src/Search/PowerCardValuation/Cards/**/*PowerTriggerEvidence.cs;../../src/Search/PowerCardValuation/Cards/**/*PowerOpeningProjection.cs;../../src/Search/PowerCardValuation/Cards/**/*PowerCommitmentEvidence.cs"
+             LinkBase="Cards" />
+  </ItemGroup>
+</Project>

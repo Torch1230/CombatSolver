@@ -17,15 +17,16 @@ internal sealed partial class UnattendedTestRunner
             if (!ReplayContinuationMatches(recorded, "H=A;Y=2/1/3/2;R=9"))
                 throw new InvalidOperationException("Legacy history schema was rejected.");
         string[] legacyStarts = ["H=A;Y=0/0/0;R=9", "H=A;Y=0/0/0/0;R=9"];
-        const string currentStart = "H=A;Y=0/0/0/0;FlameHp=0;R=9";
+        const string currentStart = "H=A;Y=0/0/0/0;FlameHp=0;AttackStarts=0;R=9";
         foreach (string legacyStart in legacyStarts)
             if (!ReplayContinuationMatches(legacyStart, currentStart, allowLegacyZeroCounter: true)
                 || ReplayContinuationMatches(legacyStart, currentStart))
                 throw new InvalidOperationException("Zero legacy FlameHp is limited to an explicit native combat-start boundary.");
         foreach (string invalid in new[] {
-            "H=A;Y=0/0/0/0;FlameHp=1;R=9", "H=A;FlameHp=0;Y=0/0/0/0;R=9",
-            "H=A;Y=0/0/0/0;FlameHp=0;FlameHp=0;R=9", "H=B;Y=0/0/0/0;FlameHp=0;R=9",
-            "H=A;Y=0/1/0/0;FlameHp=0;R=9", "H=A;Y=0/0/0/0;FlameHp=0;R=10",
+            "H=A;Y=0/0/0/0;FlameHp=1;AttackStarts=0;R=9", "H=A;FlameHp=0;Y=0/0/0/0;AttackStarts=0;R=9",
+            "H=A;Y=0/0/0/0;FlameHp=0;FlameHp=0;AttackStarts=0;R=9", "H=A;Y=0/0/0/0;AttackStarts=0;FlameHp=0;R=9",
+            "H=A;Y=0/0/0/0;FlameHp=0;AttackStarts=1;R=9", "H=B;Y=0/0/0/0;FlameHp=0;AttackStarts=0;R=9",
+            "H=A;Y=0/1/0/0;FlameHp=0;AttackStarts=0;R=9", "H=A;Y=0/0/0/0;FlameHp=0;AttackStarts=0;R=10",
         })
             if (legacyStarts.Any(legacyStart =>
                     ReplayContinuationMatches(legacyStart, invalid, allowLegacyZeroCounter: true)))
@@ -37,6 +38,22 @@ internal sealed partial class UnattendedTestRunner
                  })
             if (ReplayContinuationMatches(recorded, "H=A;Y=2/1/3/2;R=9"))
                 throw new InvalidOperationException("A recorded state mismatch was accepted.");
+        const string legacyCards = "D=A/private=-/baselib=-,B/private=1/4/baselib=-,;Y=0/0/0/0;R=9";
+        const string currentCards = "D=A/private=-/keywords=[]/baselib=-,B/private=1/4/keywords=[Exhaust]/baselib=-,;Y=0/0/0/0;R=9";
+        IReadOnlyDictionary<char, IReadOnlyList<string>> savedKeywords =
+            new Dictionary<char, IReadOnlyList<string>> { ['D'] = [string.Empty, "Exhaust"] };
+        if (!ReplayContinuationMatches(legacyCards, currentCards, legacyCardKeywords: savedKeywords)
+            || ReplayContinuationMatches(
+                legacyCards,
+                currentCards.Replace("[Exhaust]", "[Retain]", StringComparison.Ordinal),
+                legacyCardKeywords: savedKeywords)
+            || ReplayContinuationMatches(
+                legacyCards,
+                currentCards.Replace("private=1/4", "private=1/5", StringComparison.Ordinal),
+                legacyCardKeywords: savedKeywords))
+        {
+            throw new InvalidOperationException("Legacy card keyword migration did not preserve exact saved keywords and card state.");
+        }
 
         using NativeReplayDriver driver = new(this, [], 0, player);
         InvalidDataException failure = new("replay_boundary_original_failure");

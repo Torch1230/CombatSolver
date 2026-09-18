@@ -37,6 +37,7 @@ internal sealed partial class CombatBeamSolver(
     PotionFreePolicyBaseline? potionFreePolicyBaseline = null,
     int? maximumPotionUses = null,
     IReadOnlyList<PlanAction>? fixedPrefixActions = null,
+    bool resetFixedPrefixSchedulingBaseline = false,
     int? minimumPotionUses = null,
     PrimarySearchIncumbent? primaryIncumbent = null)
 {
@@ -48,7 +49,10 @@ internal sealed partial class CombatBeamSolver(
     private readonly Player _player = root.PlayerIdentity;
     private readonly IntentForecast _forecast = root.Forecast;
     private readonly int _startTurnNumber = root.StartTurnNumber;
+    private readonly int _totalFloor = root.TotalFloor;
     private readonly int _initialEnemyCount = root.Enemies.Count;
+    private readonly bool _hasRegisteredPowerCards = root.PlayerCardIds.Any(
+        PowerCardValuationModels.Registry.ContainsCardId);
     private readonly bool _isActEndingBoss = root.IsActEndingBoss;
     private readonly BossHpRelief _bossHpRelief = root.BossHpRelief;
     private readonly BossHpRelief _strategicBossHpRelief = ActEndingBossPolicy.ResolveStrategicHpRelief(
@@ -67,6 +71,7 @@ internal sealed partial class CombatBeamSolver(
     private PrimarySearchIncumbent? _primaryIncumbent = primaryIncumbent;
     private readonly SearchInteractionState? _interaction = policy.Interaction;
     private readonly IReadOnlyList<PlanAction> _fixedPrefixActions = fixedPrefixActions ?? [];
+    private readonly bool _resetFixedPrefixSchedulingBaseline = resetFixedPrefixSchedulingBaseline;
     private readonly string? _progressPhaseOverride = DescribePotionProgressPhase(
         displayNames,
         potionPolicyOverride,

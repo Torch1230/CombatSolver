@@ -12,7 +12,7 @@ if (args.Length < 2 || args[0] is not ("preflight" or "prepare" or "batch"))
 try
 {
     if (args[0] == "batch") return await BatchRunner.Run(args[1..]);
-    string selector = args.Length > 2 ? args[2] : "latest";
+    string selector = args.Length > 2 ? args[2] : CheckpointArchive.DefaultFixtureSelector;
     JsonObject result = args[0] == "prepare"
         ? CheckpointArchive.Prepare(args[1], selector, args.Length == 4 ? args[3]
             : throw new ArgumentException("prepare requires OUTPUT"))

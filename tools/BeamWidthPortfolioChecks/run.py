@@ -29,6 +29,10 @@ search = root / 'src/Search'
     (search / 'BeamWidthPortfolio.cs').read_text(encoding='utf-8'), encoding='utf-8')
 (out / 'BeamWidthPortfolioGate.cs').write_text(
     (search / 'BeamWidthPortfolioGate.cs').read_text(encoding='utf-8'), encoding='utf-8')
+(out / 'PowerCommitmentPortfolioGate.cs').write_text(
+    (search / 'PowerCommitmentPortfolioGate.cs').read_text(encoding='utf-8'), encoding='utf-8')
+(out / 'PowerCommitmentSeatPolicy.cs').write_text(
+    (search / 'PowerCardValuation/Commitments/PowerCommitmentSeatPolicy.cs').read_text(encoding='utf-8'), encoding='utf-8')
 (out / 'SolverSearchProfile.cs').write_text(
     (search / 'SolverSearchProfile.cs').read_text(encoding='utf-8'), encoding='utf-8')
 (out / 'Ordering.cs').write_text(

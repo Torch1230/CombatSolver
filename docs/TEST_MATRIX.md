@@ -1,5 +1,40 @@
 # CombatSolver 测试清单
 
+## 0.41.0：问题包开战默认与仓库内无头实例（2026-09-18）
+
+- `dotnet run --project tools/CheckpointTool/CheckpointTool.csproj -c Release -- self-test` 通过，输出 `archive_contract_tests_passed assertions=35`：省略选择器命中 `combat_start`，显式 `latest` 命中最近可搜索检查点，显式 `end` / `recorded` 命中结束检查点；批处理运行目录保持仓库内且不跨卷。
+- `pwsh -NoProfile -File tools/test-headless-runtime.ps1` 通过，输出 `HEADLESS_RUNTIME_SELFTEST_PASS repository-local-default/parallel2/exclusive/resource/unknown/ownership/stale/warm/instance-cleanup`：不启动游戏，默认实例根位于传入仓库的 `.local/headless-instances/<实例>`，并与仓库处于同一文件系统根。
+- Release 编译通过，0 警告、0 错误；`pwsh -NoProfile -File tools/verify-refactor-boundaries.ps1` 通过，输出 `REFACTOR_BOUNDARIES_OK search_files=192`：固定问题包默认 `start`，要求 Windows/Linux 启动器使用仓库内实例根，并拒绝旧的用户目录实例路径回流。
+- Native 开战恢复修正由真实包验证：`c2cc9348214042d9b94222298e76ea9c` 的唯一初始差异是战斗外 `UnknownMapPoint` RNG（记录 counter 8，调试入场恢复 counter 7）。进入战斗后从配对检查点恢复 `UpFront`、`UnknownMapPoint`、`TreasureRoomRelics`，保留真实入场对 Shuffle／Niche／战斗 RNG 的推进；RestoreOnly 返回 `restored`，原生二进制和 continuation 均通过。曾尝试在入场前恢复整组 RNG，导致敌方124→130、洗牌331→347等重复推进，已撤回且不计为通过。
+- 8 个非静默猎手能力反馈包使用 selector `start`、当前 VeryHigh（Beam135、500000节点、卡牌/牌堆选择72/42/54、软时限300秒）与外层300秒运行。7个 `search_completed` 且均为 `combat_start` / cursor 0、严格恢复、敌方0HP完整胜利：`70b7d21a` 9战损/0药/T8/227130展开；`79d3f7e2` 8/0/T11/176545；`869658e2` 20/4/T12/58889；`9a1e882c` 14/1/T17/92263；`bebfa1d7` 19/0/T10/71460；`c2cc9348` 10/1/T8/38487；`f25f8886` 0/0/T10/19656。`dc708a1f` 在300秒外层超时、没有结果，不计质量，也未提高预算或重跑。
+- 未运行可见 Steam。测试结束后游戏进程为0，`D:\Desktop\sts2mod\CombatSolver\.local\headless-instances` 为空，`C:\Users\The_M\AppData\Local\CombatSolver\headless-instances` 不存在。
+
+## 0.41.0：全卡池单人能力牌建模（2026-09-17）
+
+- `dotnet run --project tools/PowerCardValuationChecks/PowerCardValuationChecks.csproj -c Release` 通过，输出 `POWER_CARD_VALUATION_CHECKS_OK total=104 silent=17 ironclad=19 defect=20 regent=18 necrobinder=18 colorless=12`：覆盖六个卡池登记总数与各池数量、每张牌唯一登记、卡池与推导 CardId 一致、MultiplayerOnly 七张明确排除、`WhiteNoise` 不作为能力牌登记、未登记牌不创建承诺、纯战后收益的 `ROYALTIES`/`FORBIDDEN_GRIMOIRE` 不创建战斗内承诺、无登记能力不增加组合成员；每池覆盖防御/成长、资源/牌流、延迟收益、反协同或启动风险、需专搜五类代表；路线准入覆盖零触发拒绝、当前/未来触发窗口与阈值边界、免费启动与高费硬开差异；承诺生命周期覆盖单能力与双能力（家族 OR、优先级取高、卡牌去重、真实兑现退出、越回合到期）；逐卡估值覆盖燃烧升级差异、倒数计时灾厄延迟、冰雹风暴零冰霜球拒绝、非凡技艺双属性、王国资产战后金币、碎片整理集中与球数。
+- Release 编译通过，0 个编译警告、0 个错误。
+- `pwsh -NoProfile -File tools/verify-refactor-boundaries.ps1` 通过，输出 `REFACTOR_BOUNDARIES_OK search_files=191`：门禁已更新为通用多卡池承诺边界，并确认能力估值仍未进入 `CombatBeamSolver.FinalPlanOrdering.cs`。按用户约束未运行 WSL/Bash 门禁，不记为通过。
+- 集成验收（每个角色一个 `coverage/novelty-search` 精英短场景，`-GeneratedScenarioPath` + `-EvidenceDirectory` + `-CleanupInstanceOnExit`）：`dev-00-ironclad-elite`、`dev-01-silent-elite`、`dev-02-defect-elite`、`dev-03-regent-elite`、`dev-04-necrobinder-elite` 全部 `status=Passed` 且 `error=null`，均完成一次完整搜索并给出 `InitialPolicy` 结果。每次调用后实例被删除，最终 `C:\Users\The_M\AppData\Local\CombatSolver\headless-instances` 为空。
+- 未执行：逐卡玩家复核、复杂机制逐卡专用兑现证据、可见 Steam 会话性能与战损对照，均在文档中明确标为未验证。
+- 玩家联合评审采纳后复跑纯合同：`POWER_CARD_VALUATION_CHECKS_OK total=104 ...`，新增断言覆盖 `BARRICADE`、`AUTOMATION`、`DARK_EMBRACE`、`VICIOUS`、`CONSUMING_SHADOW`、`COOLANT`、`ORBIT`、`PANACHE`、`FURNACE` 等评审结论；Release 编译与 PowerShell 结构门禁仍通过。
+- 回归哨兵：铁甲战士 `dev-00-ironclad-elite` 短场景在评审接线前为 43 战损，把专搜标记接入前缀构造顺序/承诺席位排序后劣化为 62，撤回接线后恢复 43 并 `Passed`；`headless-instances` 为空。其余四角色沿用先前通过的短场景，未重复运行。
+- 审计后复跑（2026-09-17）：Release 编译 0 错误；纯合同 `POWER_CARD_VALUATION_CHECKS_OK total=104 silent=17 ironclad=19 defect=20 regent=18 necrobinder=18 colorless=12`；PowerShell 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=192`（新增 `src/Search/PowerCardValuation/Projection/PowerCardProjectionMath.cs`）。`PowerLiveCards` 排除消耗堆；群星之子改为按实际可花费星能点数（`PowerStarSpendCapacity`）而非牌张数；缓冲、凶恶、自动化、环绕轨道投影改用纯数学并加入合同断言。
+- 承诺证据语义改为“路线进展／解除保护信号”，撤回按卡池隔离与铁甲专用因果兑现（`NewPoolPowerRealizedEvidence`、迟到启用 `HasRegisteredPowerPlay`），恢复 `540e4cb6` 的通用进展释放。因果版哨兵为铁甲 62、静默 40、故障 13、储君 52、亡灵 25；单因素回退后铁甲 43、储君 45，再补跑故障 13、亡灵 25。最终五哨兵为铁甲 43、静默 40（行为未变沿用）、故障 13、储君 45、亡灵 25，全部与原结果一致，`headless-instances` 为空。未启动后台 8 包与可见 Steam。
+
+## 0.41.0：能力牌估值框架与实例清理（2026-09-17）
+
+- 卡池目录静态核对通过：同版本六个 `CardPool` 的 `CardType.Power` 共112张，全部命中 `zhs/eng` 官方标题与中文效果；原版约束分为105张单人范围和7张 `MultiplayerOnly`，六份文档行数分别为20/18/22/19/20/13。普通与升级描述由对应原版卡牌实例格式化，未留下未解析变量或颜色标签。
+- `dotnet run --project tools/PowerCardValuationChecks/PowerCardValuationChecks.csproj -c Release` 通过，输出 `POWER_CARD_VALUATION_CHECKS_OK silent_models=17`：除原有17张登记和首版公式合同外，覆盖17张卡的机制族与独立身份映射、灵动步法 5→8 跨阈值后的省能转攻和同等输出防伤、余像出牌格挡、速行者回合内抽牌群伤、精准按两张实际小刀逐张增伤、幻影之刃两张小刀只触发一次首刀增伤、群蛇按两张实际出牌触发、涂毒按两次未格挡命中、触媒当前毒层额外触发、毒雾三回合上毒/衰减滚动、必备工具抽弃替换/满手损失/奇巧弃牌收益、计划妥当高价值留牌与垃圾牌塞手，以及谋划专家早开/晚开差值、两回合未来播种、无弃牌窗口、来不及重新入手。逐卡路线合同另覆盖磨蚀3费硬开与奇巧0费启动、余像5点准入边界、涂毒耗尽能量拒绝、计划妥当专搜优先级、幽魂无当前防伤拒绝、幽魂长线早开/尾段覆盖/致死救场，以及谋划专家无完整兑现链拒绝；生命周期断言奇巧附着只增加进展，真实自动出牌完成兑现，越过回合上限则到期。
+- `python tools/BeamWidthPortfolioChecks/run.py` 通过，输出 `BEAM_WIDTH_PORTFOLIO_OK checks=87`：能力成员固定排在基线之后；共享余量耗尽时仍取得请求节点上限20%的专用预留，完整低战损终局可以接管，同分保留基线，未到终局的能力成员不参与比较；无可达能力的专用 Gate 拒绝成员。普通/激进席位合同分别覆盖 Beam 60 的5席/20席及小 Beam 至少保留一半普通席位。
+- `pwsh -NoProfile -File tools/test-headless-runtime.ps1` 通过，输出 `HEADLESS_RUNTIME_SELFTEST_PASS ... /instance-cleanup`；无游戏替身验证在租约释放、无存活私有游戏且所有权匹配时删除完整嵌套实例目录。
+- 第二版第二批生产版本加入后，Release 编译通过，0 个编译警告、0 个错误；PowerShell 结构门禁通过，确认未来灵动投影、楼层投资、能力成员预留和逐能力后验职责存在，能力估值仍未进入终局排序。
+- 本轮按用户要求不处理 WSL，没有执行 Bash 结构门禁或 Linux helper 自测，不记为通过。
+- `ISSUE-3881-FOOTWORK-MULTI-POSTERIOR` / `170c25910ea0433baa695aa8fa8d7015` Passed：恢复知识恶魔原始 `:3` 根；普通与激进能力成员均从旧版跳过改为完整运行，基线15战损；灵动固定前缀的普通/宽/次段/基础分后验分别为1/3/24/2战损，普通后验21,596展开并以1战损接管，总工作55.14秒、42.82GB累计分配。原包旧版本玩家手动后为0战损，本次仍差1点，不写成完全解决。`:5` 同版本上界复跑在搜索前因原生事件药水槽3/玩家2槽不匹配失败，失败证据保留。全部无头调用使用 `-CleanupInstanceOnExit`，结束时实例目录为空；未运行可见 Steam或WSL。
+- `REPLAY-BOUNDARY-CONTRACT` / `39e3c670680749bc893d8e8a0451e187` Passed：旧指纹缺失卡牌关键词时必须逐张匹配 `replay-state` 保存值；旧开战边界允许规范位置缺失的零值 `FlameHp` / `AttackStarts`，非零、重复、错位及其他牌状态差异仍拒绝。Release编译0警告/错误。
+- 5份能力世界线主包全部恢复并完成当前VeryHigh搜索。`57144c6f`、`bfbb533b`、`c11060be` 的 continuation/native-state 均通过；`429834c8`、`5355faf5` continuation通过，旧模型编号映射未记录使native-state不可比。当前战损依次为16/24/5/15/1，旧报告为43/39/25/55/20，玩家投影为16/14/1/36/2；全部0药、完整胜利。能力固定前缀分别取得16/24/5/24/1；除实验体由15战损普通成员胜出外，其余四份的能力前缀就是当前最优。
+- 用户要求停止后未继续运行部署；已启动的代表部署请求在产出结果前终止，不计为通过。其进程与实例目录已删除，最终 `headless-instances` 为空。
+
+
 ## 0.40.2：No-GC 区域准入下限（2026-09-17）
 
 - `tools/CombatSolver.GcPolicyChecks` 新增 `GcRegionAdmissionChecks`（6 项），可直接无头运行且**直接编译生产源码**，不需要游戏进程：`dotnet run --project tools/CombatSolver.GcPolicyChecks/CombatSolver.GcPolicyChecks.csproj -c Release -- admission`。输出 `GC_REGION_ADMISSION_OK declined the reported 12GiB-to-2.97GiB region; partial caps, small-machine budgets and the inclusive threshold passed.`

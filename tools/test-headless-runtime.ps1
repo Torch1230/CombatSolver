@@ -51,6 +51,8 @@ if ($ProfileOnly) {
 
 $testRoot = Join-Path ([IO.Path]::GetTempPath()) ('combatsolver-headless-host-test-' + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $testRoot | Out-Null
+$savedInstanceRoot = $env:COMBATSOLVER_HEADLESS_ROOT
+$savedHostRoot = $env:COMBATSOLVER_HEADLESS_HOST_ROOT
 $script:UnknownGame = $false
 $contexts = @()
 foreach ($name in @('a', 'b', 'c')) {
@@ -62,6 +64,19 @@ foreach ($name in @('a', 'b', 'c')) {
     }
 }
 try {
+    $env:COMBATSOLVER_HEADLESS_ROOT = $null
+    $env:COMBATSOLVER_HEADLESS_HOST_ROOT = Join-Path $testRoot 'default-host'
+    $defaultRepository = Join-Path $testRoot 'repository'
+    $defaultSource = Join-Path $testRoot 'source-game'
+    New-Item -ItemType Directory -Path $defaultRepository, $defaultSource -Force | Out-Null
+    $defaultContext = New-HeadlessRuntimeContext $defaultRepository $defaultSource '' exclusive 4096 2 1
+    $expectedDefaultParent = Get-HeadlessCanonicalPath (Join-Path $defaultRepository '.local\headless-instances')
+    Assert-HostFixture ($defaultContext.Root.StartsWith(
+            $expectedDefaultParent + [IO.Path]::DirectorySeparatorChar,
+            [StringComparison]::OrdinalIgnoreCase)) 'default instance root is not repository-local'
+    Assert-HostFixture ([IO.Path]::GetPathRoot($defaultContext.Root) -eq [IO.Path]::GetPathRoot($defaultRepository)) `
+        'default instance root crossed filesystem roots'
+
     $a, $b, $c = $contexts
     Enter-HeadlessHostLease $a $null
     Enter-HeadlessHostLease $b $null
@@ -119,13 +134,38 @@ try {
     $script:FakeGameAlive = $false
     Exit-HeadlessHostLease $a
     Assert-HostFixture (-not (Test-Path -LiteralPath $a.LeasePath)) 'exited warm game retained its reservation'
-    Write-Output 'HEADLESS_RUNTIME_SELFTEST_PASS parallel2/exclusive/resource/unknown/ownership/stale/warm'
+
+    $cleanupRoot = Join-Path $testRoot 'cleanup-owned-instance'
+    $cleanupContext = @{
+        Instance = 'cleanup-owned-instance'; Root = $cleanupRoot; GameRoot = Join-Path $cleanupRoot 'game'
+        HostRoot = $testRoot; LeasePath = Join-Path $testRoot 'cleanup-owned-instance.json'
+        RepositoryRoot = $testRoot; LeaseToken = ''; ArtifactId = ''
+    }
+    New-Item -ItemType Directory -Path (Join-Path $cleanupRoot 'nested') -Force | Out-Null
+    Write-HeadlessJson (Join-Path $cleanupRoot 'instance.json') @{
+        schemaVersion = 1; instance = $cleanupContext.Instance
+        runtimeRoot = $cleanupRoot; repositoryRoot = $testRoot
+    }
+    Set-Content -LiteralPath (Join-Path $cleanupRoot 'nested/payload.bin') -Value 'fixture'
+    Remove-HeadlessRuntimeInstance $cleanupContext
+    Assert-HostFixture (-not (Test-Path -LiteralPath $cleanupRoot)) 'owned runtime instance was not removed'
+
+    Write-Output 'HEADLESS_RUNTIME_SELFTEST_PASS repository-local-default/parallel2/exclusive/resource/unknown/ownership/stale/warm/instance-cleanup'
 } finally {
+    $env:COMBATSOLVER_HEADLESS_ROOT = $savedInstanceRoot
+    $env:COMBATSOLVER_HEADLESS_HOST_ROOT = $savedHostRoot
     # This fresh directory contains only this fixture's leases and lock. Never
     # invoke the game snapshot cleaner or touch a production host pool here.
     foreach ($context in $contexts) { Exit-HeadlessHostLease $context }
     foreach ($file in Get-ChildItem -LiteralPath $testRoot -File) {
         Remove-Item -LiteralPath $file.FullName -Force
     }
-    Remove-Item -LiteralPath $testRoot -Force
+    $resolvedTestRoot = Get-HeadlessCanonicalPath $testRoot
+    $resolvedTempRoot = Get-HeadlessCanonicalPath ([IO.Path]::GetTempPath())
+    if (-not $resolvedTestRoot.StartsWith(
+            $resolvedTempRoot + [IO.Path]::DirectorySeparatorChar,
+            [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Refusing to remove headless helper fixture outside its temp root: $resolvedTestRoot"
+    }
+    Remove-Item -LiteralPath $resolvedTestRoot -Recurse -Force
 }

@@ -28,7 +28,9 @@ bash tools/run-unattended-test.sh --headless-instance semantic-b --headless-exec
 
 Windows 使用 PowerShell 7.4 或更新版本，参数对应 `-HeadlessInstance`、`-HeadlessExecutionMode Parallel`、`-HeadlessMemoryReservationMiB`、`-HeadlessCpuReservation`、`-HeadlessQueueTimeoutSeconds`；场景参数与已有原生启动器相同。
 
-实例 ID 默认由 worktree 路径生成，也可显式指定（64 字符内的字母、数字、点、下划线、短横线）。同实例第二个 producer 立即拒绝，不能替换已有请求。每个实例拥有私有游戏可执行文件及 Mod 栈、APPDATA/LOCALAPPDATA 或 XDG 数据/配置/缓存、日志和协议文件。不会往源游戏目录安装临时 RitsuLib，也不会覆盖玩家存档。
+Coding agent 运行无头游戏测试时必须加 `-CleanupInstanceOnExit`，Bash 对应 `--cleanup-instance-on-exit`。它会强制请求在完成后退出，并在成功、失败、取消或超时的收束路径释放租约和实例锁，再删除完整私有实例。仅停止进程的 `ExitOnComplete` 不删除实例目录。批量复用只允许发生在同一批次内部，批次最后一次请求必须带清理开关。
+
+实例 ID 默认由 worktree 路径生成，也可显式指定（64 字符内的字母、数字、点、下划线、短横线）。默认实例根是当前仓库 `.local/headless-instances/<实例>`，完整游戏/Mod 快照不会写入 `%LOCALAPPDATA%`、XDG state 或其他用户目录；只有显式设置 `COMBATSOLVER_HEADLESS_ROOT` 才改变这个精确实例目录。同实例第二个 producer 立即拒绝，不能替换已有请求。每个实例拥有私有游戏可执行文件及 Mod 栈、APPDATA/LOCALAPPDATA 或 XDG 数据/配置/缓存、日志和协议文件。不会往源游戏目录安装临时 RitsuLib，也不会覆盖玩家存档。
 
 默认 DLL 来自本 worktree 的 Release 产物、manifest 来自仓库根；`--combat-solver-build-dir` / `-CombatSolverBuildDir` 可以指定包含 DLL 和 manifest 的冻结构建目录（Windows 还需要该构建的 MemoryCleaner）。其他游戏文件和 Mod 从指定源游戏复制，RitsuLib 从指定依赖路径复制；完整内容身份参与复用判断。构建、依赖或源游戏变化时，只停本实例精确认领的旧游戏，再发布新快照。Linux 优先 reflink；旧游戏快照移动到实例内 retired 目录，保留可回收证据，不自动删除用户目录。
 
@@ -53,6 +55,8 @@ Windows 使用 PowerShell 7.4 或更新版本，参数对应 `-HeadlessInstance`
 ## 验证边界
 
 `bash tools/test-headless-runtime.sh` 使用原生子进程替身验证租约、排队与隔离，不启动游戏；`--snapshots` 单独验证产物隔离，`--snapshot-failures` 单独注入哈希/复制/发布失败。Windows helper 自测为 `pwsh -File tools/test-headless-runtime.ps1`，`-ProfileOnly` 单独检查资料复制与重解析点拒绝。这些结果不等于真实双游戏、真实 Mod 加载或 Windows 进程生命周期通过；真实验收另记入 TEST_MATRIX。
+
+两端 helper 自测同时验证完整实例清理：只有所有权标记匹配、租约不存在、私有游戏未运行且目录内没有重解析点/符号链接时才删除；归属不明时保留现场并失败。
 
 GC 研究分支移植时，Linux 暖进程准入改为只预约尚未兑现的增长量（预约减已用 RSS，最小为 0），与 Windows 口径一致；总预约、CPU 和主机余量限制仍生效。`bash tools/test-headless-runtime.sh --warm-memory` 定向覆盖该边界和等待期间的租约替换。HoldAfterInitialSearch 与 StopAfterInitialSolverResultAssertion 互斥，两端入口在准入前拒绝同时使用；采样停在初次结果时使用 Hold 保持游戏存活。
 

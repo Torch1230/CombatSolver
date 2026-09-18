@@ -67,7 +67,7 @@ add_option pre-combat-player-current-hp-override -1 int positive_int
 add_option pre-combat-intervening-map-points-json "" string none
 add_option replay-state-path "" string none
 add_option checkpoint-archive-path "" string raw_string
-add_option checkpoint-selector "latest" string raw_string
+add_option checkpoint-selector "start" string raw_string
 add_option replay-mode "RestoreOnly" string raw_string "Preflight|RestoreOnly|ReplayRecorded|SearchOnly|DeploySolver"
 add_option replay-policy-override-path "" string raw_string
 add_option evidence-directory "" string raw_string
@@ -261,6 +261,7 @@ add_option timeout-seconds 120 int raw_int
 add_option keep-game-open 0 switch none
 add_option stop-owned-process 0 switch none
 add_option exit-on-complete 0 switch bool
+add_option cleanup-instance-on-exit 0 switch none
 
 print_help() {
     cat <<'EOF'
@@ -397,8 +398,12 @@ for name in expected-initial-only-death-routes-found expected-initial-act-ending
     value="${option_value[$name]}"
     ((value == -1 || value == 0 || value == 1)) || die "--$name must be -1, 0, or 1"
 done
-if ((option_value[keep-game-open] == 1 && option_value[exit-on-complete] == 1)); then
-    die "--keep-game-open and --exit-on-complete cannot be used together"
+if ((option_value[keep-game-open] == 1 \
+    && (option_value[exit-on-complete] == 1 || option_value[cleanup-instance-on-exit] == 1))); then
+    die "--keep-game-open cannot be combined with --exit-on-complete or --cleanup-instance-on-exit"
+fi
+if ((option_value[cleanup-instance-on-exit] == 1)); then
+    option_value[exit-on-complete]=1
 fi
 if ((option_value[hold-after-initial-search] == 1 && option_value[keep-game-open] == 0)); then
     die "--hold-after-initial-search requires --keep-game-open"
@@ -466,7 +471,7 @@ if [[ -z $headless_instance ]]; then
     headless_instance="worktree-${headless_instance:0:16}"
 fi
 [[ $headless_instance =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$ ]] || die 'invalid --headless-instance (letters, digits, dot, underscore, dash; max 64)'
-headless_root="${COMBATSOLVER_HEADLESS_ROOT:-${XDG_STATE_HOME:-${HOME}/.local/state}/CombatSolver/headless-instances/$headless_instance}"
+headless_root="${COMBATSOLVER_HEADLESS_ROOT:-$repo_root/.local/headless-instances/$headless_instance}"
 headless_root="$(realpath -m -- "$headless_root")"
 game_root="$headless_root/game"
 game_executable="$game_root/SlayTheSpire2"
@@ -1020,6 +1025,14 @@ cleanup_owned_launcher() {
         fi
     fi
     hr_release
+    if ((option_value[cleanup-instance-on-exit] == 1)); then
+        [[ -z ${launcher_lock_fd:-} ]] || exec {launcher_lock_fd}>&-
+        unset HR_INSTANCE_FD
+        if ! hr_remove_instance; then
+            echo 'run-unattended-test.sh: failed to remove owned headless instance' >&2
+            original_status=1
+        fi
+    fi
     exit "$original_status"
 }
 
