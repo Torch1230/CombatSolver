@@ -1,5 +1,11 @@
 # CombatSolver 测试清单
 
+## 未发布：代码整洁度清理
+
+- 私有死代码与多余using清理：EQ 10根对上游0.41.0为 `IDENTICAL`（983项比较字段、600项剪枝计数）；循环出口共享排序后缀：EQ 10 + FULL 40根为 `IDENTICAL`（4673项比较字段、3000项剪枝计数），双侧100份结果有效且未触及时间边界。
+- 两阶段Release构建均为0警告/0错误，均带 `CopyModOnBuild=false`；Bash结构门禁均为 `REFACTOR_BOUNDARIES_OK search_files=192`。固定High 90/50000、Coordinator、Smart、DOP1，离线宿主workers=2；未运行原生游戏场景。
+- 比较器沿用已修正的递归遥测排除口径，保留路线、根状态、目录指纹、组合成员选择和确定性工作指标；不比较时间/内存。基线末根曾受一次误启动后取消的构建干扰，已排除并仅补跑该根。详细范围、原始失败记录、保留项及本地证据路径见[代码整洁度报告](refactoring/code-hygiene-review-2026-09-18.md)。
+
 ## 0.41.0：问题包开战默认与仓库内无头实例（2026-09-18）
 
 - `dotnet run --project tools/CheckpointTool/CheckpointTool.csproj -c Release -- self-test` 通过，输出 `archive_contract_tests_passed assertions=35`：省略选择器命中 `combat_start`，显式 `latest` 命中最近可搜索检查点，显式 `end` / `recorded` 命中结束检查点；批处理运行目录保持仓库内且不跨卷。

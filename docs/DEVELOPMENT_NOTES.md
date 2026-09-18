@@ -1,5 +1,10 @@
 # CombatSolver 开发笔记与未来构想
 
+## 未发布：代码整洁度清理
+
+- 根据分析器证据删除3个无引用私有方法及83个多余using；保留InlineArray、Harmony/反射入口、历史研究工具与旧设置迁移。
+- 循环出口三种比较器只抽取原本相同的质量排序后缀，保留独立租约前缀、短路顺序、集合顺序与搜索政策。审查及逐阶段验证见[代码整洁度报告](refactoring/code-hygiene-review-2026-09-18.md)。不提升版本、不部署或发包。
+
 ## 0.41.0：问题包开战默认与仓库内无头实例（2026-09-18）
 
 - 修正问题包夹具默认语义：`CheckpointArchive`、CheckpointTool 批处理、Windows/Linux 无人入口和可见回放入口统一默认选择 `start`。SearchOnly/DeploySolver 因而从 `combat_start` 恢复并由求解器处理整场开局；`latest` 保留为显式的中途诊断选择，不再能因省略参数而把玩家干预后的检查点误当成整场质量证据。
