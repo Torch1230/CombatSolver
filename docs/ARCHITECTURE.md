@@ -224,6 +224,8 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 `PotionStrategicCostLookup` 同样归单次 `SearchRunContext` 所有，中间保路与终局排序共用规范药水 ID/可再生条件对应的只读代价值；未命中仍调用原目录的 `Single` 查询，保留缺失/重复 ID 的失败行为。每个 worker 有独立表，不存药水实例或分支值，也不跨并发 solver 共享修改。快照内 Power 是否贡献战略估值只判定一次并暂存在当前调用的栈/数组中，需求收集与评分复用同一判定，不跨快照缓存。
 
+循环出口的族内、在途和最新候选比较器保留各自租约优先级前缀；仅在前缀同分后调用 `CombatBeamSolver.Retention.cs` 中的 `CompareCycleExitQuality`，按健康风险、药水成本、回合、动作数升序，再按玩家HP、分数降序及原确定性指纹排序。该私有方法属于既有保路分片，不承担区域、跨回合或终局排序；这些入口的键次序不同。
+
 长期资源保路先在冻结候选池上扫描最高资源值和数量；全池同值（包括非零和空池）原本不产生独立资源路线，因此 `Retention` 在此时直接跳过祖先排名暂存。非均匀池继续按原序保存全局/祖先排名、应用资源祖先排名、选择最高资源群组，再恢复祖先和全局排名。不缓存跨调用的排名或资源群组，不改变剪枝回收检查点。
 
 回合前缀提示只属于当前 lane 的运行上下文。`HasObservedPostDrawRoundChoice` 记录抽牌后的有效选择，ToolsOfTheTrade 保留原即时预留。`ObservedHandDrawShuffleChoiceSources` 只保存实际在抽牌洗牌阶段产生有效选择层的SourceId字符串；后续父节点将洗牌且对应玩家Power当前仍有效时，才在抽牌准备及一次性修正消费完毕、Simulator.Draw之前预留更早前缀。其他路径保留较晚稳定点，未知非Power来源不启用提前捕获。抽牌前checkpoint保存drawCount，续接只执行原抽牌/历史补偿段，重建BeforeNextTake回调并保留SideTurnStart触发时序，不重复准备或消费修正。`EndTurnChoiceReplay` 在释放初探快照前取出来源字符串，确认有效挂起层后登记；frontier 持有同父无挂起事务的checkpoint，同父gate串行Fork，排空后释放。提示不改变动作、选择预算、原序消费或状态键；前缀不跨父节点、搜索或lane共享，原Knowledge/时序匹配限制与Fork事务断言保持。
