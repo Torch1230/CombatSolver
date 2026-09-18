@@ -5,7 +5,9 @@
 - 修正问题包夹具默认语义：`CheckpointArchive`、CheckpointTool 批处理、Windows/Linux 无人入口和可见回放入口统一默认选择 `start`。SearchOnly/DeploySolver 因而从 `combat_start` 恢复并由求解器处理整场开局；`latest` 保留为显式的中途诊断选择，不再能因省略参数而把玩家干预后的检查点误当成整场质量证据。
 - 无头实例的完整游戏/Mod 快照默认根改为当前仓库 `.local/headless-instances/<实例>`。Windows 不再把实例放入 `%LOCALAPPDATA%/CombatSolver/headless-instances`，Linux 也采用同一仓库内语义；`COMBATSOLVER_HEADLESS_ROOT` 仍只作为显式精确实例覆盖。每用户主机租约继续留在用户状态目录，仅保存互斥和资源预约元数据。
 - CheckpointTool 的日志定位改为按仓库路径和同一实例 ID 算法解析实际实例，避免继续读取旧的用户目录；批量 index、JSONL、CSV 和 Markdown 汇总显式记录 selector、检查点标签、稳定 ID 与事件游标。结构门禁固定 `start` 默认和仓库内实例根；纯合同新增默认检查点断言，无游戏 Windows helper 新增同盘仓库本地根断言。相关问题包、架构和日志站 skills 已同步。
-- 验证：CheckpointTool 纯合同 `archive_contract_tests_passed assertions=35`；Windows 无游戏 helper 输出 `HEADLESS_RUNTIME_SELFTEST_PASS repository-local-default/.../instance-cleanup`；Release 编译 0 警告/0 错误；PowerShell 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=192`。未运行问题包完整搜索与可见 Steam；测试临时目录已删除，C 盘旧 `headless-instances` 空目录也已删除。
+- Native 问题包回放在进入战斗后，从配对检查点快照恢复 `UpFront`、`UnknownMapPoint`、`TreasureRoomRelics` 三条战斗外 RNG。调试入场不会重放地图导航阶段的 RNG 消耗，检查点快照才是开战边界的权威值；洗牌、敌人行动等战斗 RNG 继续由真实入场流程推进。`c2cc9348` 原先仅 `UnknownMapPoint` 为记录 8／恢复 7，修正后原生二进制与 continuation 均严格通过，没有关闭或放宽状态校验。
+- 8 个非静默猎手能力反馈包按当前 VeryHigh（Beam 135、500000 节点、300 秒）从 `combat_start` / cursor 0 重跑。7 个完整胜利：`70b7d21a` 9/0药、`79d3f7e2` 8/0药、`869658e2` 20/4药、`9a1e882c` 14/1能力药、`bebfa1d7` 19/0药、`c2cc9348` 10/1再生药、`f25f8886` 0/0药；`dc708a1f` 在300秒外层超时，未产出路线，不计质量。与报告中的人工投影相比，仅 `f25f8886` 追平；`869658e2` 仅HP数相同但多耗4药，不能算追平。
+- 验证：CheckpointTool 纯合同 `archive_contract_tests_passed assertions=35`；Windows 无游戏 helper 输出 `HEADLESS_RUNTIME_SELFTEST_PASS repository-local-default/.../instance-cleanup`；Release 编译 0 警告/0 错误；PowerShell 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=192`。`c2cc9348` 修正后 RestoreOnly 返回 `restored`，SearchOnly 严格恢复并以10战损、1再生药、T8完整获胜。未运行可见 Steam；D盘项目实例目录为空，C盘旧实例目录不存在。
 
 ## 0.40.2：能力承诺通用释放回退与投影/编码收尾（开发中，2026-09-17）
 

@@ -5,7 +5,9 @@
 - `dotnet run --project tools/CheckpointTool/CheckpointTool.csproj -c Release -- self-test` 通过，输出 `archive_contract_tests_passed assertions=35`：省略选择器命中 `combat_start`，显式 `latest` 命中最近可搜索检查点，显式 `end` / `recorded` 命中结束检查点；批处理运行目录保持仓库内且不跨卷。
 - `pwsh -NoProfile -File tools/test-headless-runtime.ps1` 通过，输出 `HEADLESS_RUNTIME_SELFTEST_PASS repository-local-default/parallel2/exclusive/resource/unknown/ownership/stale/warm/instance-cleanup`：不启动游戏，默认实例根位于传入仓库的 `.local/headless-instances/<实例>`，并与仓库处于同一文件系统根。
 - Release 编译通过，0 警告、0 错误；`pwsh -NoProfile -File tools/verify-refactor-boundaries.ps1` 通过，输出 `REFACTOR_BOUNDARIES_OK search_files=192`：固定问题包默认 `start`，要求 Windows/Linux 启动器使用仓库内实例根，并拒绝旧的用户目录实例路径回流。
-- 本轮未运行问题包完整搜索和可见 Steam。验证临时目录已删除；`C:\Users\The_M\AppData\Local\CombatSolver\headless-instances` 旧空目录已删除，`D:\Desktop\sts2mod\CombatSolver\.local\headless-instances` 未创建残留。
+- Native 开战恢复修正由真实包验证：`c2cc9348214042d9b94222298e76ea9c` 的唯一初始差异是战斗外 `UnknownMapPoint` RNG（记录 counter 8，调试入场恢复 counter 7）。进入战斗后从配对检查点恢复 `UpFront`、`UnknownMapPoint`、`TreasureRoomRelics`，保留真实入场对 Shuffle／Niche／战斗 RNG 的推进；RestoreOnly 返回 `restored`，原生二进制和 continuation 均通过。曾尝试在入场前恢复整组 RNG，导致敌方124→130、洗牌331→347等重复推进，已撤回且不计为通过。
+- 8 个非静默猎手能力反馈包使用 selector `start`、当前 VeryHigh（Beam135、500000节点、卡牌/牌堆选择72/42/54、软时限300秒）与外层300秒运行。7个 `search_completed` 且均为 `combat_start` / cursor 0、严格恢复、敌方0HP完整胜利：`70b7d21a` 9战损/0药/T8/227130展开；`79d3f7e2` 8/0/T11/176545；`869658e2` 20/4/T12/58889；`9a1e882c` 14/1/T17/92263；`bebfa1d7` 19/0/T10/71460；`c2cc9348` 10/1/T8/38487；`f25f8886` 0/0/T10/19656。`dc708a1f` 在300秒外层超时、没有结果，不计质量，也未提高预算或重跑。
+- 未运行可见 Steam。测试结束后游戏进程为0，`D:\Desktop\sts2mod\CombatSolver\.local\headless-instances` 为空，`C:\Users\The_M\AppData\Local\CombatSolver\headless-instances` 不存在。
 
 ## 0.40.2：全卡池单人能力牌建模（开发中，2026-09-17）
 

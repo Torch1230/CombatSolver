@@ -103,6 +103,9 @@ internal sealed partial class UnattendedTestRunner
         {
             if (combatStart)
             {
+                RestoreReplayOutOfCombatRngFromSnapshot((RunState)combat.RunState,
+                    _request.RunSnapshotPath
+                    ?? throw new InvalidDataException("native_replay_run_snapshot_missing"));
                 RestoreReplayInventoryFromPath(player, _request.ReplayStatePath);
                 AssertRecordedContinuation(expectedState, combat, 0, _request.NativeStatePath,
                     _request.ReplayStatePath,
