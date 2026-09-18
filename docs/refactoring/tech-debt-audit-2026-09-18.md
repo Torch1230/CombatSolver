@@ -198,6 +198,8 @@ English.json有426键；直接Get字面调用缺英文0。结合Roslyn插值模�
 
 批次一本地提交 `5f12c09`（含工具、报告与导航）：38文件，+988/-101。
 
+审查后撤回其中一组：五个卡池的 `*PowerProgressEvidence` / `*PowerRealizedEvidence` / `*PowerHasTriggerEvidence` 共 15 个方法，以及 `PowerCommitmentEvidence` / `PowerCardMechanismDispatch` 里的调用点。这些方法目前是按卡池预留的证据钩子（静默猎手那一路已有实现，其余卡池暂返回 0 / default，文档写明"逐卡兑现证据尚未专用"），`(commitment, parent, child)` 参数是接口契约，不是无用参数；分析器按"未读取"删掉它们会把预留接缝抹掉，并留下 `Method(\n)` 这种空参数列表。恢复提交单列在下表之后，7 个文件 +65/-35；恢复只加回未读取的参数与实例签名，不改任何可执行语句。
+
 ### 批次二：旧本地化键与注释
 
 删除21个无调用的旧目录键，426→405；其余键值逐项不变（`.local/debt/catalog-proof.json`）。修正SearchPolicySnapshot和SolverSearchProfile的组合成员来源/关闭行为及硬编码项数注释，保留上一轮历史实测。代码与资源3文件+8/-29；没有改现用模板或测试逻辑。Release 0警告/0错误（4.89秒，`catalog-build.log`），Bash门禁通过 `search_files=192`（`catalog-boundaries.log`）。按安全类口径不跑游戏或离线批次。提交 `80fd763`。
@@ -258,6 +260,7 @@ Release 0警告/0错误（3.71秒，`clones-build.log`）；Bash门禁通过 `se
 | `3310243` | 复用相同出口比较与开局节点构造逻辑 |
 | `9842d4d` | 按现有职责纯移动拆分保路策略文件 |
 | `d7118e8` | 按现有职责纯移动拆分展开与回放文件 |
+| `9cb77ff` | 恢复各卡池能力证据钩子的参数与实例签名（审查后对批次一的部分撤回） |
 
 最终工具/报告提交在上述代码提交之后；不提升版本、不部署、不启动游戏或可见Steam，不推送、不操作GitHub。
 
