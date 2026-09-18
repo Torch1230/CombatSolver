@@ -156,13 +156,17 @@ internal sealed partial class UnattendedTestRunner
             || new PotionRewardOutlook(1f, false, false).ReplacementHpCredit != 0
             || PotionRewardOutlook.None.ReplacementHpCredit != 0)
             throw new InvalidOperationException("药水补货额度计算错误。");
-        // 额度按路线只扣一次，不按瓶数重复扣，也不会把成本扣成负数。
+        // 额度按路线只扣一次，不按瓶数重复扣；门槛最低保留 1 HP，用药路线必须严格优于无药基线。
         if (PotionUsePolicy.ApplyReplacementCredit(18, 1, 9) != 9
-            || PotionUsePolicy.ApplyReplacementCredit(9, 2, 9) != 0
+            || PotionUsePolicy.ApplyReplacementCredit(9, 2, 9) != 1
             || PotionUsePolicy.ApplyReplacementCredit(18, 0, 9) != 18
             || PotionUsePolicy.ApplyReplacementCredit(18, 1, 0) != 18
-            || PotionUsePolicy.ApplyReplacementCredit(4, 1, 9) != 0)
+            || PotionUsePolicy.ApplyReplacementCredit(4, 1, 9) != 1)
             throw new InvalidOperationException("药水补货额度的路线级扣减错误。");
+        // 门槛为 1 时，省 0 HP 的用药路线不合格，省 1 HP 才合格。
+        if (PotionUsePolicy.IsEligible(SolverPotionPolicy.Smart, 1, 1, true, 30, true, true, 30)
+            || !PotionUsePolicy.IsEligible(SolverPotionPolicy.Smart, 1, 1, true, 30, true, true, 29))
+            throw new InvalidOperationException("1 HP 门槛没有挡住零收益的用药路线。");
         // 镜像出确定结果时按那瓶药的档位计价，镜像不出时才退回概率。
         if (new PotionRewardOutlook(0.4f, true, false) { Forecast = PotionRewardForecast.Drop, ForecastPotionId = "SWIFT_POTION", ForecastPotionStrategicHpCost = 18 }.ReplacementHpCredit != 18
             || new PotionRewardOutlook(0.9f, true, false) { Forecast = PotionRewardForecast.NoDrop }.ReplacementHpCredit != 0

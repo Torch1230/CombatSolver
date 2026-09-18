@@ -1141,7 +1141,10 @@ internal static partial class SolverController
                 $"listeners={rootSnapshot.CapturedHookListenerCount} " +
                 $"run_mod_subscribers={rootSnapshot.CapturedRunModSubscriberCount} " +
                 $"combat_mod_subscribers={rootSnapshot.CapturedCombatModSubscriberCount} " +
-                $"base_lib_card_modifiers={rootSnapshot.CapturedBaseLibCardModifiers}");
+                $"base_lib_card_modifiers={rootSnapshot.CapturedBaseLibCardModifiers} " +
+                $"potion_reward={rootSnapshot.PotionRewardOutlook.Forecast}" +
+                $"/{rootSnapshot.PotionRewardOutlook.ForecastPotionId ?? "-"}" +
+                $"/credit={rootSnapshot.PotionRewardOutlook.ReplacementHpCredit}");
             _combat.State = state;
             _combat.LatestResult = null;
             _combat.LatestStamp = null;
