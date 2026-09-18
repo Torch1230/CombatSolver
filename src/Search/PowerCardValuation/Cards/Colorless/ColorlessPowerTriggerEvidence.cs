@@ -10,6 +10,7 @@ internal sealed partial class CombatBeamSolver
 {
     private bool ColorlessPowerHasTriggerEvidence(
         string cardId,
+        SearchNode parent,
         SearchNode child)
     {
         int remainingTurns = PowerRemainingTurns(child);
@@ -56,11 +57,16 @@ internal sealed partial class CombatBeamSolver
         };
     }
 
-    private static int ColorlessPowerProgressEvidence(
-)
+    private int ColorlessPowerProgressEvidence(
+        PowerCommitment commitment,
+        SearchNode parent,
+        SearchNode child)
         => 0;
 
-    private static PowerEvidenceContribution ColorlessPowerRealizedEvidence(
-)
+    private PowerEvidenceContribution ColorlessPowerRealizedEvidence(
+        PowerCommitment commitment,
+        SearchNode parent,
+        SearchNode child)
         => default;
 }
+

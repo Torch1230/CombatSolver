@@ -12,12 +12,12 @@ internal sealed partial class CombatBeamSolver
         SearchNode child)
         => descriptor.Pool switch
         {
-            PowerCardPool.Ironclad => IroncladPowerHasTriggerEvidence(descriptor.CardId, child),
+            PowerCardPool.Ironclad => IroncladPowerHasTriggerEvidence(descriptor.CardId, parent, child),
             PowerCardPool.Silent => SilentPowerHasTriggerEvidence(descriptor.CardId, parent, child),
-            PowerCardPool.Defect => DefectPowerHasTriggerEvidence(descriptor.CardId, child),
-            PowerCardPool.Regent => RegentPowerHasTriggerEvidence(descriptor.CardId, child),
-            PowerCardPool.Necrobinder => NecrobinderPowerHasTriggerEvidence(descriptor.CardId, child),
-            PowerCardPool.Colorless => ColorlessPowerHasTriggerEvidence(descriptor.CardId, child),
+            PowerCardPool.Defect => DefectPowerHasTriggerEvidence(descriptor.CardId, parent, child),
+            PowerCardPool.Regent => RegentPowerHasTriggerEvidence(descriptor.CardId, parent, child),
+            PowerCardPool.Necrobinder => NecrobinderPowerHasTriggerEvidence(descriptor.CardId, parent, child),
+            PowerCardPool.Colorless => ColorlessPowerHasTriggerEvidence(descriptor.CardId, parent, child),
             _ => false,
         };
 

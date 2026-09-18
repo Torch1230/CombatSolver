@@ -11,6 +11,7 @@ internal sealed partial class CombatBeamSolver
 {
     private bool NecrobinderPowerHasTriggerEvidence(
         string cardId,
+        SearchNode parent,
         SearchNode child)
     {
         int remainingTurns = PowerRemainingTurns(child);
@@ -59,11 +60,16 @@ internal sealed partial class CombatBeamSolver
         };
     }
 
-    private static int NecrobinderPowerProgressEvidence(
-)
+    private int NecrobinderPowerProgressEvidence(
+        PowerCommitment commitment,
+        SearchNode parent,
+        SearchNode child)
         => 0;
 
-    private static PowerEvidenceContribution NecrobinderPowerRealizedEvidence(
-)
+    private PowerEvidenceContribution NecrobinderPowerRealizedEvidence(
+        PowerCommitment commitment,
+        SearchNode parent,
+        SearchNode child)
         => default;
 }
+
