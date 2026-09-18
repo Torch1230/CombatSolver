@@ -134,7 +134,7 @@ internal static class ModRuntime
         => Session = UnattendedTestRunner.BeginOfflineSession(new UnattendedTestRunner.OfflineSessionOptions
         {
             FixedSearchBudget = true,
-            MeasureSearchPhases = false,
+            MeasureSearchPhases = options.MeasureSearchPhases,
             VerifyIncrementalSearch = false,
             SearchBudgetOverrideMilliseconds = options.BudgetMilliseconds,
             SearchMaxDegreeOfParallelism = options.MaxDegreeOfParallelism,

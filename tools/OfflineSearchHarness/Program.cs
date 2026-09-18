@@ -320,6 +320,7 @@ internal sealed record HarnessOptions
           --no-plain-baseline    消融：丢掉普通基线成员（需 --use-portfolio）
           --unordered-pile-mask <0..15>  实验：状态键里顺序无关的牌堆（1手牌/2抽牌堆/4弃牌堆/8消耗堆）
           --state-key-salt <int> 实验：给状态指纹异或一个常量（双射，只改数值不改相等关系）
+          --measure-phases       开按阶段的耗时/分配统计（SEARCH_PHASE 行进运行日志）
           --disable-transposition-prune <0..3>  实验：关掉转置支配剪枝（1=候选准入/2=展开准入）
           --observe-portfolio    导出追加搜索的特征与实际政策标签
           --portfolio-model <p>  加载可选选择器 JSON；不匹配的版本回退原组合
@@ -352,6 +353,8 @@ internal sealed record HarnessOptions
     public int UnorderedPileMask { get; init; }
     /// <summary>实验：给状态指纹异或一个由该值导出的常量；双射，只改数值不改相等关系。0 即生产口径。</summary>
     public int StateKeySalt { get; init; }
+    /// <summary>开按阶段统计：每个阶段的耗时与分配字节，落到运行日志的 SEARCH_PHASE 行。</summary>
+    public bool MeasureSearchPhases { get; init; }
     /// <summary>实验：关掉转置支配剪枝的位（1=候选准入/2=展开准入）；0 即生产口径。</summary>
     public int TranspositionPruningDisabledMask { get; init; }
     public bool ObservePortfolio { get; init; }
@@ -369,6 +372,7 @@ internal sealed record HarnessOptions
         string character = "IRONCLAD", encounter = "FUZZY_WURM_CRAWLER_WEAK", seed = "OFFLINEHARNESS1";
         int ascension = 0, actIndex = 0, dop = 1, budget = 600_000, unorderedPileMask = 0, stateKeySalt = 0;
         int transpositionPruneOff = 0;
+        bool measurePhases = false;
         int? beam = null, nodes = null, cardBranches = null, pileBranches = null, handBranches = null;
         bool usePortfolio = false, observePortfolio = false, noPlainBaseline = false;
         string? portfolioModelPath = null;
@@ -411,6 +415,7 @@ internal sealed record HarnessOptions
                 case "--no-plain-baseline": noPlainBaseline = true; break;
                 case "--unordered-pile-mask": unorderedPileMask = int.Parse(Value()); break;
                 case "--state-key-salt": stateKeySalt = int.Parse(Value()); break;
+                case "--measure-phases": measurePhases = true; break;
                 case "--disable-transposition-prune": transpositionPruneOff = int.Parse(Value()); break;
                 case "--observe-portfolio": observePortfolio = true; break;
                 case "--portfolio-model": portfolioModelPath = Path.GetFullPath(Value()); break;
@@ -463,6 +468,7 @@ internal sealed record HarnessOptions
             NoPlainBaselineMember = noPlainBaseline,
             UnorderedPileMask = unorderedPileMask,
             StateKeySalt = stateKeySalt,
+            MeasureSearchPhases = measurePhases,
             TranspositionPruningDisabledMask = transpositionPruneOff,
             ObservePortfolio = observePortfolio,
             PortfolioModelPath = portfolioModelPath,

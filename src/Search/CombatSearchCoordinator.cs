@@ -594,6 +594,10 @@ internal static partial class CombatSearchCoordinator
                 policy.Diagnostics.Info)
             : SingleMemberOutcome(profile, RunMember);
         RecordPortfolioMembers(policy, telemetry, outcome, costs);
+        // 组合路径也要出阶段表：novelty 分支那条打印覆盖不到这里，于是开了 MeasurePhasePerformance
+        // 的组合跑批拿不到逐阶段耗时/分配归属。
+        if (policy.MeasurePhasePerformance)
+            policy.Diagnostics.Info(SolverDiagnostics.DescribeSearchPhasePerformance(outcome.Selected));
         return outcome.Selected;
     }
 
