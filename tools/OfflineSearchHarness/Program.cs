@@ -318,6 +318,7 @@ internal sealed record HarnessOptions
           --search-mode <m>      Evaluate（单次求解，不经协调器，默认）| Coordinator（生产协调器）
           --use-portfolio        开宽度组合（只对 --search-mode Coordinator 有效）
           --no-plain-baseline    消融：丢掉普通基线成员（需 --use-portfolio）
+          --unordered-pile-mask <0..15>  实验：状态键里顺序无关的牌堆（1手牌/2抽牌堆/4弃牌堆/8消耗堆）
           --observe-portfolio    导出追加搜索的特征与实际政策标签
           --portfolio-model <p>  加载可选选择器 JSON；不匹配的版本回退原组合
           --milestone <M1|M2>    跑到哪个里程碑（默认 M2）
@@ -345,6 +346,8 @@ internal sealed record HarnessOptions
     public bool UsePortfolio { get; init; }
     /// <summary>消融：丢掉只带基线宽度、不带排序修饰的组合成员，少跑一次真实搜索。</summary>
     public bool NoPlainBaselineMember { get; init; }
+    /// <summary>实验：状态键里哪些牌堆改成顺序无关哈希（手牌=1/抽牌堆=2/弃牌堆=4/消耗堆=8）；0 即生产口径。</summary>
+    public int UnorderedPileMask { get; init; }
     public bool ObservePortfolio { get; init; }
     public string? PortfolioModelPath { get; init; }
     public string Milestone { get; init; } = "M2";
@@ -358,7 +361,7 @@ internal sealed record HarnessOptions
     public static HarnessOptions Parse(string[] args)
     {
         string character = "IRONCLAD", encounter = "FUZZY_WURM_CRAWLER_WEAK", seed = "OFFLINEHARNESS1";
-        int ascension = 0, actIndex = 0, dop = 1, budget = 600_000;
+        int ascension = 0, actIndex = 0, dop = 1, budget = 600_000, unorderedPileMask = 0;
         int? beam = null, nodes = null, cardBranches = null, pileBranches = null, handBranches = null;
         bool usePortfolio = false, observePortfolio = false, noPlainBaseline = false;
         string? portfolioModelPath = null;
@@ -399,6 +402,7 @@ internal sealed record HarnessOptions
                 case "--search-mode": searchMode = Value(); break;
                 case "--use-portfolio": usePortfolio = true; break;
                 case "--no-plain-baseline": noPlainBaseline = true; break;
+                case "--unordered-pile-mask": unorderedPileMask = int.Parse(Value()); break;
                 case "--observe-portfolio": observePortfolio = true; break;
                 case "--portfolio-model": portfolioModelPath = Path.GetFullPath(Value()); break;
                 case "--milestone": milestone = Value(); break;
@@ -421,6 +425,8 @@ internal sealed record HarnessOptions
             throw new ArgumentException("选择器实验需要 --search-mode Coordinator --use-portfolio。");
         if (noPlainBaseline && (!usePortfolio || searchMode != "Coordinator"))
             throw new ArgumentException("--no-plain-baseline 需要 --search-mode Coordinator --use-portfolio。");
+        if (unorderedPileMask is < 0 or > 15)
+            throw new ArgumentException("--unordered-pile-mask 只接受 0..15（手牌=1/抽牌堆=2/弃牌堆=4/消耗堆=8）。");
         if (profile == "Custom" && requestPath == null)
         {
             beam ??= 24;
@@ -444,6 +450,7 @@ internal sealed record HarnessOptions
             SearchMode = searchMode,
             UsePortfolio = usePortfolio,
             NoPlainBaselineMember = noPlainBaseline,
+            UnorderedPileMask = unorderedPileMask,
             ObservePortfolio = observePortfolio,
             PortfolioModelPath = portfolioModelPath,
             Milestone = milestone,

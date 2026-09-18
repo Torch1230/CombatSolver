@@ -140,6 +140,7 @@ internal static class ModRuntime
             SearchMaxDegreeOfParallelism = options.MaxDegreeOfParallelism,
             UseBeamWidthPortfolio = options.UsePortfolio,
             BeamWidthPortfolioPlainBaselineMember = options.NoPlainBaselineMember ? false : null,
+            PileOrderInvariantMask = options.UnorderedPileMask,
         });
 
     private static int ApplySearchPatches()

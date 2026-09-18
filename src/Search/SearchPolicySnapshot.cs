@@ -76,6 +76,14 @@ internal sealed record SearchPolicySnapshot(
     /// </summary>
     public bool BeamWidthPortfolioPlainBaselineMember { get; init; } = true;
 
+    /// <summary>
+    /// 实验用：把指定牌堆在状态键里改成顺序无关（多重集）哈希，让只差这些牌堆顺序的两个状态
+    /// 落进同一条转置记录。位：手牌=1，抽牌堆=2，弃牌堆=4，消耗堆=8；默认 0，生产逐位不变。
+    /// 只有「本场战斗没有任何效果按位置读该牌堆」时那个位才成立：抽牌堆每次抽牌都读顶端，
+    /// 手牌会被随机取牌与“第一张可打出”按位置读，所以实际可用的通常只有弃牌堆与消耗堆。
+    /// </summary>
+    public int PileOrderInvariantMask { get; init; }
+
     internal BeamPortfolioExperiment? PortfolioExperiment { get; init; }
 
     /// <summary>

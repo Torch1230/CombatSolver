@@ -63,6 +63,9 @@ internal sealed partial class UnattendedTestRunner
     /// <summary>缺省保留普通基线成员；只有消融请求显式给出 false 时才丢掉它。</summary>
     public static bool BeamWidthPortfolioPlainBaselineMemberOverride
         => Host.BeamWidthPortfolioPlainBaselineMemberOverride ?? true;
+
+    /// <summary>实验用：状态键里顺序无关的牌堆位掩码；缺省 0，即生产口径。</summary>
+    public static int PileOrderInvariantMaskOverride => Host.PileOrderInvariantMaskOverride;
     public static bool? Act3BossStrategyOverride => Host.Act3BossStrategyOverride;
 
     private readonly NGame _host;

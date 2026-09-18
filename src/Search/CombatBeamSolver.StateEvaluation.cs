@@ -819,6 +819,15 @@ internal sealed partial class CombatBeamSolver
         return unordered.Finish();
     }
 
+    private static int PileOrderInvariantBit(char marker) => marker switch
+    {
+        'H' => 1,
+        'D' => 2,
+        'C' => 4,
+        'X' => 8,
+        _ => 0,
+    };
+
     private void AppendUnorderedPileKey(
         ref StateFingerprintBuilder unordered,
         SimCardPile pile,
@@ -1763,6 +1772,11 @@ internal sealed partial class CombatBeamSolver
 
     private void AppendPile(ref StateFingerprintBuilder key, SimCardPile pile, char marker)
     {
+        if ((policy.PileOrderInvariantMask & PileOrderInvariantBit(marker)) != 0)
+        {
+            AppendUnorderedPileKey(ref key, pile, marker);
+            return;
+        }
         key.Add(marker);
         key.Add(pile.Cards.Count);
         if (pile.TryGetCachedFingerprint(out ulong cachedFirst, out ulong cachedSecond))

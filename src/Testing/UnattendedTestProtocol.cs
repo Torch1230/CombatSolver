@@ -126,6 +126,11 @@ internal sealed class UnattendedTestRequest
     /// 候选比较不再保证"不差于今天的单次搜索"。只用于消融实验。
     /// </summary>
     public bool? BeamWidthPortfolioPlainBaselineMemberForTest { get; init; }
+
+    /// <summary>
+    /// 实验用：状态键里哪些牌堆改用顺序无关哈希（手牌=1/抽牌堆=2/弃牌堆=4/消耗堆=8）。缺省 0，即生产口径。
+    /// </summary>
+    public int? PileOrderInvariantMaskForTest { get; init; }
     public int? ExpectedInitialExpandedNodesAtMost { get; init; }
     public int? ExpectedInitialTransitionsAtMost { get; init; }
     public long? ExpectedInitialTotalExpandedNodesAtMost { get; init; }

@@ -40,6 +40,9 @@ internal sealed partial class UnattendedTestRunner
 
         /// <summary>是否保留普通基线成员；不给就是保留（生产缺省）。只用于消融实验。</summary>
         public bool? BeamWidthPortfolioPlainBaselineMember { get; init; }
+
+        /// <summary>实验用：状态键里顺序无关的牌堆位掩码（手牌=1/抽牌堆=2/弃牌堆=4/消耗堆=8）；缺省 0。</summary>
+        public int PileOrderInvariantMask { get; init; }
     }
 
     /// <summary>
@@ -65,6 +68,9 @@ internal sealed partial class UnattendedTestRunner
                 BeamWidthPortfolioWidthsForTest = options.BeamWidthPortfolioWidths,
                 BeamWidthPortfolioPlainBaselineMemberForTest =
                     options.BeamWidthPortfolioPlainBaselineMember,
+                PileOrderInvariantMaskForTest = options.PileOrderInvariantMask == 0
+                    ? null
+                    : options.PileOrderInvariantMask,
             });
             IsActive = true;
             AutomaticTurnSearchEnabled = false;
