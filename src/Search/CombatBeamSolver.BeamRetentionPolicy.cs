@@ -1987,7 +1987,7 @@ internal sealed partial class CombatBeamSolver
             return representatives;
         }
 
-        private OrderedMutationContinuationPacket BuildNaturalOrderedMutationAdmissionPacket(
+        private static OrderedMutationContinuationPacket BuildNaturalOrderedMutationAdmissionPacket(
             SearchNode candidate)
         {
             OrderedMutationRetentionLease lease = candidate.OrderedMutationRetentionLease
@@ -2014,7 +2014,7 @@ internal sealed partial class CombatBeamSolver
                 [candidate]);
         }
 
-        private OrderedMutationContinuationPacket BuildOrderedMutationHandoffPacket(
+        private static OrderedMutationContinuationPacket BuildOrderedMutationHandoffPacket(
             SearchNode candidate)
         {
             OrderedMutationRetentionLease lease = candidate.OrderedMutationRetentionLease
@@ -4729,7 +4729,7 @@ internal sealed partial class CombatBeamSolver
                 >= OrderedMutationInitialAdmissionLimit(lease)
                     - OrderedMutationRetentionLease.MaximumProtectedAdmissions;
 
-        private OrderedMutationContinuationPacket
+        private static OrderedMutationContinuationPacket
             RebuildOrderedMutationContinuationPacketForOutcome(
                 OrderedMutationContinuationPacket sourcePacket,
                 SearchNode candidate)
@@ -5377,7 +5377,7 @@ internal sealed partial class CombatBeamSolver
             };
         }
 
-        private OrderedMutationRetentionLease CreateOrderedMutationLease(
+        private static OrderedMutationRetentionLease CreateOrderedMutationLease(
             SearchNode node,
             OrderedMutationOutcomeFamilySignature family,
             StateFingerprint sequenceKey)

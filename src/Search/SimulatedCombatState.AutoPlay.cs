@@ -161,7 +161,7 @@ internal sealed partial class SimulatedCombatState
         return predicted;
     }
 
-    private Dictionary<Player, PredictedCard>? ForkHistoryCourseCards(
+    private static Dictionary<Player, PredictedCard>? ForkHistoryCourseCards(
         Dictionary<Player, PredictedCard>? source,
         PredictionForkContext context)
     {

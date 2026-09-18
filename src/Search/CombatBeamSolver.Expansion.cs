@@ -3446,8 +3446,6 @@ internal sealed partial class CombatBeamSolver
             node.Traits,
             before,
             after,
-            damage,
-            block,
             pure,
             declinedExtraTurn);
         ActionOptionFamily optionFamilies = ClassifyActionOptionFamilies(
@@ -3600,7 +3598,7 @@ internal sealed partial class CombatBeamSolver
         return selected;
     }
 
-    private bool IsStolenResourceRecoveryTarget(ActionCandidate candidate)
+    private static bool IsStolenResourceRecoveryTarget(ActionCandidate candidate)
     {
         if (candidate.TargetCombatId is not uint targetCombatId)
             return false;
@@ -3686,12 +3684,10 @@ internal sealed partial class CombatBeamSolver
         return families;
     }
 
-    private SearchRouteTraits ClassifyCardTraits(
+    private static SearchRouteTraits ClassifyCardTraits(
         SearchRouteTraits current,
         SimulationSnapshot before,
         SimulationSnapshot after,
-        int damage,
-        int block,
         bool pure,
         bool declinedExtraTurn)
     {

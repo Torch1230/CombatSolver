@@ -157,8 +157,7 @@ internal sealed partial class CombatBeamSolver
     private int PowerPerTriggerDamagePotential(SearchNode child, int perTrigger, int triggers)
         => Math.Min(PowerEnemyHp(child), SaturatingProduct(perTrigger, Math.Max(0, triggers)));
 
-    private int PowerPerTriggerBlockPotential(
-        SearchNode child,
+    private static int PowerPerTriggerBlockPotential(
         int perTrigger,
         int triggers,
         int incomingDamage)

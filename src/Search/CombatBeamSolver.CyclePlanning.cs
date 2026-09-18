@@ -2687,7 +2687,7 @@ internal sealed partial class CombatBeamSolver
             selected.Add(candidate);
     }
 
-    private SearchNode AttachCycleProbeLease(SearchNode child)
+    private static SearchNode AttachCycleProbeLease(SearchNode child)
     {
         if (child.Parent?.CycleProbeLease is not { } lease
             || child.Action is not { } action

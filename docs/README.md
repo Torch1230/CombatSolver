@@ -10,6 +10,7 @@
 | 要查什么 | 入口 |
 |---|---|
 | 0.41.0代码体量、死代码诊断与保持行为的轻度清理 | [代码整洁度审查](refactoring/code-hygiene-review-2026-09-18.md) |
+| 全量静态诊断、克隆、耦合与技术债分批清理 | [技术债深挖](refactoring/tech-debt-audit-2026-09-18.md) |
 | 能力牌逐卡建模、统一估值接口与后续独立搜索分支 | [能力牌优化计划](strategy/power-card-valuation-plan-20260917.md) |
 | 无需训练的有界新颖性／Beam 组合、实验开关和完整对照 | [有界多策略搜索](strategy/bounded-novelty-search-20260916.md) |
 | 不启动 Godot 批量跑搜索、量宽度与预算 | [离线搜索宿主](OFFLINE_SEARCH_HARNESS.md) |

@@ -52,7 +52,6 @@ internal sealed partial class CombatBeamSolver
                 turns,
                 incoming),
             "PILLAR_OF_CREATION" => PowerPerTriggerBlockPotential(
-                child,
                 PowerAmountGain<PillarOfCreationPower>(parent, child),
                 generatedSources,
                 incoming),
@@ -107,4 +106,3 @@ internal sealed partial class CombatBeamSolver
                 payouts);
     }
 }
-

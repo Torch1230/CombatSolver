@@ -11,11 +11,11 @@ internal sealed partial class CombatBeamSolver
         SearchNode child)
         => PowerCardValuationMath.SaturatingSum(
             SilentPowerProgressEvidence(commitment, parent, child),
-            IroncladPowerProgressEvidence(commitment, parent, child),
-            DefectPowerProgressEvidence(commitment, parent, child),
-            RegentPowerProgressEvidence(commitment, parent, child),
-            NecrobinderPowerProgressEvidence(commitment, parent, child),
-            ColorlessPowerProgressEvidence(commitment, parent, child));
+            IroncladPowerProgressEvidence(),
+            DefectPowerProgressEvidence(),
+            RegentPowerProgressEvidence(),
+            NecrobinderPowerProgressEvidence(),
+            ColorlessPowerProgressEvidence());
 
     /// <summary>
     /// 路线进展／解除保护信号，不是“收益由该能力造成”的因果归因。固定前缀专搜已负责把能力路线
@@ -30,11 +30,11 @@ internal sealed partial class CombatBeamSolver
         long gain = 0;
         bool hasSpecializedEvidence = false;
         AddEvidence(SilentPowerRealizedEvidence(commitment, parent, child));
-        AddEvidence(IroncladPowerRealizedEvidence(commitment, parent, child));
-        AddEvidence(DefectPowerRealizedEvidence(commitment, parent, child));
-        AddEvidence(RegentPowerRealizedEvidence(commitment, parent, child));
-        AddEvidence(NecrobinderPowerRealizedEvidence(commitment, parent, child));
-        AddEvidence(ColorlessPowerRealizedEvidence(commitment, parent, child));
+        AddEvidence(IroncladPowerRealizedEvidence());
+        AddEvidence(DefectPowerRealizedEvidence());
+        AddEvidence(RegentPowerRealizedEvidence());
+        AddEvidence(NecrobinderPowerRealizedEvidence());
+        AddEvidence(ColorlessPowerRealizedEvidence());
         if (!hasSpecializedEvidence)
             gain += GenericPowerCommitmentEvidence(parent.Snapshot, child.Snapshot);
         return (int)Math.Min(int.MaxValue, gain);

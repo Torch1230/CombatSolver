@@ -10,7 +10,6 @@ internal sealed partial class CombatBeamSolver
 {
     private bool DefectPowerHasTriggerEvidence(
         string cardId,
-        SearchNode parent,
         SearchNode child)
     {
         int remainingTurns = PowerRemainingTurns(child);
@@ -68,16 +67,11 @@ internal sealed partial class CombatBeamSolver
         };
     }
 
-    private int DefectPowerProgressEvidence(
-        PowerCommitment commitment,
-        SearchNode parent,
-        SearchNode child)
+    private static int DefectPowerProgressEvidence(
+)
         => 0;
 
-    private PowerEvidenceContribution DefectPowerRealizedEvidence(
-        PowerCommitment commitment,
-        SearchNode parent,
-        SearchNode child)
+    private static PowerEvidenceContribution DefectPowerRealizedEvidence(
+)
         => default;
 }
-
