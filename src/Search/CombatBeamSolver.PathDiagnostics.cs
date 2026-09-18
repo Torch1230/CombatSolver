@@ -190,6 +190,33 @@ internal sealed partial class CombatBeamSolver
     private Action<GlobalRetentionDecision> CreateMatchedGlobalRetentionCallback(int boundaryId)
         => decision => ObserveGlobalRetentionDecision(decision, boundaryId);
 
+    // Diagnostic capture of the exact dropped set at one prune boundary. Only watched
+    // known-route states are emitted, so a dropped deep prefix can be attributed to the
+    // boundary it lost. No observer means no work and no behavior change.
+    private void ObserveSearchPathDropped(
+        IReadOnlyList<SearchNode> pool,
+        IReadOnlyList<SearchNode> retained,
+        int boundaryId)
+    {
+        SearchPathObserver? observer = policy.Diagnostics.PathObserver;
+        if (observer == null)
+            return;
+        HashSet<SearchNode> kept = new(retained, ReferenceEqualityComparer.Instance);
+        for (int index = 0; index < pool.Count; index++)
+        {
+            SearchNode node = pool[index];
+            if (kept.Contains(node) || !observer.WantsState(node.StateKey))
+                continue;
+            observer.Observe(CaptureSearchPathObservation(
+                node, SearchPathObservationStage.PruneDropped, "outer_prune_dropped", boundaryId) with
+            {
+                Retention = new SearchPathRetentionDetails(
+                    PoolIndex: index,
+                    ParentRetentionRank: node.Parent?.RetentionRank),
+            });
+        }
+    }
+
     private void ObserveSearchPathRetentionPool(
         IReadOnlyList<SearchNode> nodes,
         SearchPathObservationStage stage,
