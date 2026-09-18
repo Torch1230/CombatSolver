@@ -125,7 +125,11 @@ internal sealed record SearchPathRetentionDetails(
     int? SelectedCount = null,
     SearchPathRoutingChoiceSignature? RoutingChoiceSignature = null,
     bool? IsRoutingOptionLeader = null,
-    SearchPathEvaluationValues? Evaluation = null);
+    SearchPathEvaluationValues? Evaluation = null,
+    int? WitnessRank = null,
+    int? WitnessCount = null,
+    int? WitnessDepthRank = null,
+    int? WitnessIncreaseCount = null);
 
 // Arrays/choices are detached value copies. This must not acquire a SearchNode, snapshot,
 // simulator, model, ledger, lazy enumerable, or callback that retains one of those objects.
@@ -155,6 +159,13 @@ internal sealed record SearchPathObservation(
     IReadOnlyList<PlanCardChoice> RootTurnSetupChoices)
 {
     public SearchPathRetentionDetails? Retention { get; init; }
+
+    // Experimental cross-boundary lease state. Null when leases are disabled or the node was
+    // never reached by the lease seat pass at its boundary. Pure diagnostic snapshot.
+    public int? LeaseId { get; init; }
+    public int? LeaseRemaining { get; init; }
+    public int? ParentLeaseId { get; init; }
+    public int? ParentLeaseRemaining { get; init; }
 
     public int PotionCount => PolicyLabel.PotionCount;
     public int PotionStrategicCost => PolicyLabel.PotionStrategicCost;

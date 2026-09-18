@@ -132,7 +132,13 @@ internal sealed partial class CombatBeamSolver
             node.Snapshot.ShufflesCrossed,
             node.CumulativeEnemyHpLost,
             Array.AsReadOnly(actions),
-            CopyObservedChoices(rootChoices));
+            CopyObservedChoices(rootChoices))
+        {
+            LeaseId = node.PersistentProgressLease?.LeaseId,
+            LeaseRemaining = node.PersistentProgressLease?.Remaining,
+            ParentLeaseId = node.Parent?.PersistentProgressLease?.LeaseId,
+            ParentLeaseRemaining = node.Parent?.PersistentProgressLease?.Remaining,
+        };
     }
 
     private static SearchPathPolicyLabel ObservedPolicyLabel(SearchNode node) => new(
@@ -192,7 +198,10 @@ internal sealed partial class CombatBeamSolver
 
     // Diagnostic capture of the exact dropped set at one prune boundary. Only watched
     // known-route states are emitted, so a dropped deep prefix can be attributed to the
-    // boundary it lost. No observer means no work and no behavior change.
+    // boundary it lost. WitnessRank positions each watched drop inside a bounded generic
+    // witness ordering (persistent/setup value, then depth, then score) so a phase-2
+    // capture budget can be judged against real lines. No observer means no work and no
+    // behavior change.
     private void ObserveSearchPathDropped(
         IReadOnlyList<SearchNode> pool,
         IReadOnlyList<SearchNode> retained,
@@ -202,17 +211,48 @@ internal sealed partial class CombatBeamSolver
         if (observer == null)
             return;
         HashSet<SearchNode> kept = new(retained, ReferenceEqualityComparer.Instance);
+        List<(SearchNode Node, int PoolIndex)> dropped = [];
         for (int index = 0; index < pool.Count; index++)
         {
             SearchNode node = pool[index];
-            if (kept.Contains(node) || !observer.WantsState(node.StateKey))
+            if (!kept.Contains(node))
+                dropped.Add((node, index));
+        }
+        if (dropped.Count == 0)
+            return;
+        List<(SearchNode Node, int PoolIndex)> ranked = dropped
+            .OrderByDescending(item => item.Node.Snapshot.PersistentBuffValue)
+            .ThenByDescending(item => item.Node.Snapshot.LatentSetupValue)
+            .ThenByDescending(item => item.Node.ActionCount)
+            .ThenByDescending(item => item.Node.Score)
+            .ToList();
+        List<(SearchNode Node, int PoolIndex)> depthRanked = dropped
+            .OrderByDescending(item => item.Node.ActionCount)
+            .ThenByDescending(item => item.Node.Score)
+            .ToList();
+        Dictionary<SearchNode, int> depthRanks = new(ReferenceEqualityComparer.Instance);
+        for (int rank = 0; rank < depthRanked.Count; rank++)
+            depthRanks[depthRanked[rank].Node] = rank + 1;
+        int increaseCount = dropped.Count(item =>
+            item.Node.Parent is { } parent
+            && (item.Node.Snapshot.PersistentBuffValue > parent.Snapshot.PersistentBuffValue
+                || item.Node.Snapshot.StrategicEffects.RetentionValue
+                    > parent.Snapshot.StrategicEffects.RetentionValue));
+        for (int rank = 0; rank < ranked.Count; rank++)
+        {
+            SearchNode node = ranked[rank].Node;
+            if (!observer.WantsState(node.StateKey))
                 continue;
             observer.Observe(CaptureSearchPathObservation(
                 node, SearchPathObservationStage.PruneDropped, "outer_prune_dropped", boundaryId) with
             {
                 Retention = new SearchPathRetentionDetails(
-                    PoolIndex: index,
-                    ParentRetentionRank: node.Parent?.RetentionRank),
+                    PoolIndex: ranked[rank].PoolIndex,
+                    ParentRetentionRank: node.Parent?.RetentionRank,
+                    WitnessRank: rank + 1,
+                    WitnessCount: ranked.Count,
+                    WitnessDepthRank: depthRanks[node],
+                    WitnessIncreaseCount: increaseCount),
             });
         }
     }
