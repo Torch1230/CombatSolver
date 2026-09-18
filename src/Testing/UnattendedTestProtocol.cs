@@ -131,6 +131,16 @@ internal sealed class UnattendedTestRequest
     /// 实验用：状态键里哪些牌堆改用顺序无关哈希（手牌=1/抽牌堆=2/弃牌堆=4/消耗堆=8）。缺省 0，即生产口径。
     /// </summary>
     public int? PileOrderInvariantMaskForTest { get; init; }
+
+    /// <summary>
+    /// 实验用：给状态指纹异或一个由该值导出的常量（双射，只改数值不改相等关系）。缺省 0，即生产口径。
+    /// </summary>
+    public int? StateKeySaltForTest { get; init; }
+
+    /// <summary>
+    /// 实验用：关掉转置支配剪枝的位（1=候选准入，2=展开准入）。缺省 0，即生产口径。
+    /// </summary>
+    public int? TranspositionPruningDisabledMaskForTest { get; init; }
     public int? ExpectedInitialExpandedNodesAtMost { get; init; }
     public int? ExpectedInitialTransitionsAtMost { get; init; }
     public long? ExpectedInitialTotalExpandedNodesAtMost { get; init; }

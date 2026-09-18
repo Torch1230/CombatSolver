@@ -86,6 +86,25 @@ def run_one(job):
             "processWallSeconds": round(wall, 2), "output": str(output)}
 
 
+def has_valid_result(path):
+    """跑完的结果和跑到一半失败的结果同名同位置，只能看内容区分。
+
+    这条路来自一次真实事故：跑批量 A/B 的过程中 /tmp（tmpfs）的 inode 被占满，
+    Harmony 打补丁时写临时文件失败，于是**每一场都在同一个地方抛
+    `Win32Exception: No space left on device`**。失败时 harness 照样写
+    `harness-result.json`，只是里面只有 `error` 与 `steps`、没有 `solverMetrics`。
+    只看文件存在会让 `--resume` 认为这些战斗已经跑过，于是无声地丢掉大部分样本。
+    """
+    result_path = path / "harness-result.json"
+    if not result_path.exists():
+        return False
+    try:
+        payload = json.loads(result_path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return False
+    return "solverMetrics" in payload
+
+
 def load_run(path):
     """Reads one finished harness run into the fields both arms are compared on."""
     result = json.loads((path / "harness-result.json").read_text())
@@ -95,11 +114,44 @@ def load_run(path):
     quality_path = path / "quality.json"
     if quality_path.exists():
         quality = json.loads(quality_path.read_text()).get("quality")
-    return {"members": members, "ran": ran, "quality": quality,
+    route_path = path / "route.json"
+    route = canonical_route(json.loads(route_path.read_text())) if route_path.exists() else None
+    return {"members": members, "ran": ran, "quality": quality, "route": route,
             "wallSeconds": result.get("wallSeconds"),
             "expanded": result.get("pruneCounters", {}).get("totalExpanded"),
             "memberMilliseconds": sum((m.get("ElapsedMilliseconds") or 0) for m in ran),
             "selected": next((m for m in ran if m.get("Selected")), None)}
+
+
+# 路线里只留下会改变游戏状态的字段。标题、本地化名、展示用计数都是同一决策的装饰，
+# 拿它们进比较会把"选择完全一致"误判成"选择不同"。
+ROUTE_FIELDS = ("kind", "turn", "cardId", "cardOccurrence", "targetIndex", "targetCombatId",
+                "choice", "nestedChoices", "nestedChoicesBeforePrimary", "potionSlot",
+                "potionId", "replayCount", "cardStateKey", "cardStateOccurrence", "cardUpgradeLevel")
+
+
+def canonical_route(actions):
+    def freeze(value):
+        return json.dumps(value, sort_keys=True, ensure_ascii=False) \
+            if isinstance(value, (dict, list)) else value
+    return [tuple(freeze(action.get(field)) for field in ROUTE_FIELDS) for action in actions]
+
+
+def composition(run):
+    """这一臂实际跑起来的成员身份（按排序形状）。"""
+    return tuple(sorted(M.member_kind(m) for m in run["ran"]))
+
+
+def work_signature(run):
+    """组合里每个成员各自展开了多少节点——搜索状态集合的逐成员指纹。
+
+    这个驱动原本就是为"绕过共享预算重建"写的：某一臂的实际工作量才是无偏成本。
+    对"只改指纹数值、不改相等关系"的开关（--state-key-salt）来说，它还是更强的判据：
+    相等关系没变，所以只要这个签名逐位相同，两条搜索轨迹就是同一个。
+    """
+    return sorted((m.get("BeamWidth"), m.get("ExpandedNodes"), m.get("TransitionCount"))
+                  for m in run["ran"])
+
 
 
 def declared_beam(extra, fallback):
@@ -175,6 +227,12 @@ def summarize(rows, arms, control):
             pairs.append({
                 "label": label,
                 "deficit": deficit,
+                "sameWork": work_signature(control_run) == work_signature(arm_run),
+                "sameComposition": composition(control_run) == composition(arm_run),
+                "controlComposition": composition(control_run),
+                "armComposition": composition(arm_run),
+                "sameRoute": control_run["route"] == arm_run["route"],
+                "sameQualityObject": control_run["quality"] == arm_run["quality"],
                 "controlSeconds": control_run["memberMilliseconds"] / 1000,
                 "armSeconds": arm_run["memberMilliseconds"] / 1000,
                 "controlWall": control_run["wallSeconds"],
@@ -207,6 +265,15 @@ def summarize(rows, arms, control):
             "armMembersPerBattle": round(sum(p["armMembers"] for p in pairs) / total, 2),
             "expandedSavedPerBattle": round(saved_nodes / total, 1),
             "expandedSavedShare": round(saved_nodes_share, 4) if saved_nodes_share else None,
+            "workIdenticalBattles": sum(1 for p in pairs if p["sameWork"]),
+            "compositionChangedBattles": sum(1 for p in pairs if not p["sameComposition"]),
+            "compositionChanges": [
+                {"label": p["label"], "control": list(p["controlComposition"]),
+                 "arm": list(p["armComposition"])}
+                for p in pairs if not p["sameComposition"]],
+            "routeIdenticalBattles": sum(1 for p in pairs if p["sameRoute"]),
+            "qualityIdenticalBattles": sum(1 for p in pairs if p["sameQualityObject"]),
+            "workDifferingBattles": [p["label"] for p in pairs if not p["sameWork"]],
         }
     return report
 
@@ -229,6 +296,8 @@ def main():
     parser.add_argument("--arm", action="append", default=[],
                         help="名字=额外 CLI 参数；可重复，后给的 --beam 会覆盖全局值")
     parser.add_argument("--control", default=ARM_CONTROL)
+    parser.add_argument("--resume", action="store_true",
+                        help="跳过已有有效结果的任务（按内容判断，不看文件是否存在）")
     args = parser.parse_args()
 
     arms = parse_arms(args.arm)
@@ -260,17 +329,21 @@ def main():
                          args.harness.resolve(), options, args.timeout))
 
     started = time.monotonic()
+    all_jobs = list(jobs)
+    if args.resume:
+        jobs = [job for job in jobs if not has_valid_result(out / f"{job[0]}-{job[1]}")]
+        print(f"--resume：跳过 {len(all_jobs) - len(jobs)} 个已有有效结果的任务，"
+              f"本次跑 {len(jobs)} 个。", flush=True)
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
         results = list(pool.map(run_one, jobs))
     failed = [r for r in results if r["exitCode"] != 0]
 
+    # 从磁盘读回，而不是只读本次跑出来的那些：`--resume` 跳过的那部分同样要进比较。
     rows = defaultdict(dict)
-    for result in results:
-        if result["exitCode"] != 0:
-            continue
-        path = Path(result["output"])
-        if (path / "harness-result.json").exists():
-            rows[result["label"]][result["arm"]] = load_run(path)
+    for label, arm in {(job[0], job[1]) for job in all_jobs}:
+        path = out / f"{label}-{arm}"
+        if has_valid_result(path):
+            rows[label][arm] = load_run(path)
     report = {
         "composition": args.composition,
         "arms": {name: " ".join(extra) or "(none)" for name, extra in arms.items()},

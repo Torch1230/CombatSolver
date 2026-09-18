@@ -43,6 +43,12 @@ internal sealed partial class UnattendedTestRunner
 
         /// <summary>实验用：状态键里顺序无关的牌堆位掩码（手牌=1/抽牌堆=2/弃牌堆=4/消耗堆=8）；缺省 0。</summary>
         public int PileOrderInvariantMask { get; init; }
+
+        /// <summary>实验用：状态指纹异或盐（双射，只改数值不改相等关系）；缺省 0。</summary>
+        public int StateKeySalt { get; init; }
+
+        /// <summary>实验用：关掉转置支配剪枝的位（1=候选准入，2=展开准入）；缺省 0。</summary>
+        public int TranspositionPruningDisabledMask { get; init; }
     }
 
     /// <summary>
@@ -71,6 +77,11 @@ internal sealed partial class UnattendedTestRunner
                 PileOrderInvariantMaskForTest = options.PileOrderInvariantMask == 0
                     ? null
                     : options.PileOrderInvariantMask,
+                StateKeySaltForTest = options.StateKeySalt == 0 ? null : options.StateKeySalt,
+                TranspositionPruningDisabledMaskForTest =
+                    options.TranspositionPruningDisabledMask == 0
+                        ? null
+                        : options.TranspositionPruningDisabledMask,
             });
             IsActive = true;
             AutomaticTurnSearchEnabled = false;

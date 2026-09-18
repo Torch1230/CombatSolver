@@ -4324,6 +4324,11 @@ internal sealed partial class CombatBeamSolver
             ObserveSearchPath(candidate, SearchPathObservationStage.AdmissionTransposition, "bypass_cycle_or_ordered_lease");
             return true;
         }
+        if ((policy.TranspositionPruningDisabledMask & 1) != 0)
+        {
+            ObserveSearchPath(candidate, SearchPathObservationStage.AdmissionTransposition, "disabled_for_measurement");
+            return true;
+        }
         TranspositionLabel next = new(
             candidate.PotionCount,
             candidate.PotionStrategicCost,
@@ -4369,6 +4374,11 @@ internal sealed partial class CombatBeamSolver
             || CanRetainOrderedMutationLease(_run, node))
         {
             ObserveSearchPath(node, SearchPathObservationStage.ExpansionTransposition, "bypass_cycle_or_ordered_lease");
+            return true;
+        }
+        if ((policy.TranspositionPruningDisabledMask & 2) != 0)
+        {
+            ObserveSearchPath(node, SearchPathObservationStage.ExpansionTransposition, "disabled_for_measurement");
             return true;
         }
         TranspositionLabel next = new(

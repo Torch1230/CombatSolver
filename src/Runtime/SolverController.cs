@@ -507,6 +507,9 @@ internal static partial class SolverController
             BeamWidthPortfolioPlainBaselineMember =
                 UnattendedTestRunner.BeamWidthPortfolioPlainBaselineMemberOverride,
             PileOrderInvariantMask = UnattendedTestRunner.PileOrderInvariantMaskOverride,
+            StateKeySalt = UnattendedTestRunner.StateKeySaltOverride,
+            TranspositionPruningDisabledMask =
+                UnattendedTestRunner.TranspositionPruningDisabledMaskOverride,
             PortfolioExperiment = PortfolioSelectorRuntime.Capture(),
             Act3BossStrategy = UnattendedTestRunner.Act3BossStrategyOverride != false
                 && SearchPolicySnapshot.IsAct3BossEncounter(state.RunState.CurrentActIndex, state.Encounter?.Id.Entry),

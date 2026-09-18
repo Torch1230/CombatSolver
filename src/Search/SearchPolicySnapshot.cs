@@ -84,6 +84,21 @@ internal sealed record SearchPolicySnapshot(
     /// </summary>
     public int PileOrderInvariantMask { get; init; }
 
+    /// <summary>
+    /// 实验用：给状态指纹的两个半字各异或一个由该值导出的常量。异或是双射，所以这个开关
+    /// 只改变指纹的<b>数值</b>，完全不影响它的相等关系——转置命中、支配判定与合并全部不变。
+    /// 用它来分离「合并错了」与「数值本身被下游当成排序键」这两种代价：束宽/牌堆顺序那类
+    /// 实验同时动了这两者，只有这个开关单独动后者。默认 0，生产逐位不变。
+    /// </summary>
+    public int StateKeySalt { get; init; }
+
+    /// <summary>
+    /// 实验用：关掉转置支配剪枝，量「状态等价剪枝本身值多少工作量」。位 1 = 候选准入，
+    /// 位 2 = 展开准入；缺省 0，即两条都开。关掉只会多探索状态、不会少探索，
+    /// 所以质量只可能变好或不变——它是这笔剪枝的收益上限的直接读数。默认 0，生产逐位不变。
+    /// </summary>
+    public int TranspositionPruningDisabledMask { get; init; }
+
     internal BeamPortfolioExperiment? PortfolioExperiment { get; init; }
 
     /// <summary>

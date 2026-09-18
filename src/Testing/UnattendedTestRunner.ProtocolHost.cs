@@ -37,6 +37,8 @@ internal sealed partial class UnattendedTestRunner
         public IReadOnlyList<int>? BeamWidthPortfolioWidthsOverride { get; private set; }
         public bool? BeamWidthPortfolioPlainBaselineMemberOverride { get; private set; }
         public int PileOrderInvariantMaskOverride { get; private set; }
+        public int StateKeySaltOverride { get; private set; }
+        public int TranspositionPruningDisabledMaskOverride { get; private set; }
         public int? SearchBudgetOverrideMilliseconds { get; private set; }
 
         public void TryStart(NGame? host)
@@ -351,6 +353,9 @@ internal sealed partial class UnattendedTestRunner
             BeamWidthPortfolioPlainBaselineMemberOverride =
                 request.BeamWidthPortfolioPlainBaselineMemberForTest;
             PileOrderInvariantMaskOverride = request.PileOrderInvariantMaskForTest ?? 0;
+            StateKeySaltOverride = request.StateKeySaltForTest ?? 0;
+            TranspositionPruningDisabledMaskOverride =
+                request.TranspositionPruningDisabledMaskForTest ?? 0;
             SearchBudgetOverrideMilliseconds = request.SearchBudgetOverrideMilliseconds
                 ?? (request.FixedSearchBudget
                     ? request.LegacyShortSearchBudgetMilliseconds ?? request.LegacyDeepSearchBudgetMilliseconds
@@ -370,6 +375,8 @@ internal sealed partial class UnattendedTestRunner
             BeamWidthPortfolioWidthsOverride = null;
             BeamWidthPortfolioPlainBaselineMemberOverride = null;
             PileOrderInvariantMaskOverride = 0;
+            StateKeySaltOverride = 0;
+            TranspositionPruningDisabledMaskOverride = 0;
             Act3BossStrategyOverride = null;
             _injectPlayerHpLossTurn = 0;
             _injectPlayerHpLossAmount = 0;

@@ -66,6 +66,13 @@ internal sealed partial class UnattendedTestRunner
 
     /// <summary>实验用：状态键里顺序无关的牌堆位掩码；缺省 0，即生产口径。</summary>
     public static int PileOrderInvariantMaskOverride => Host.PileOrderInvariantMaskOverride;
+
+    /// <summary>实验用：状态指纹的异或盐；缺省 0，即生产口径。</summary>
+    public static int StateKeySaltOverride => Host.StateKeySaltOverride;
+
+    /// <summary>实验用：关掉转置支配剪枝的位；缺省 0，即生产口径。</summary>
+    public static int TranspositionPruningDisabledMaskOverride =>
+        Host.TranspositionPruningDisabledMaskOverride;
     public static bool? Act3BossStrategyOverride => Host.Act3BossStrategyOverride;
 
     private readonly NGame _host;

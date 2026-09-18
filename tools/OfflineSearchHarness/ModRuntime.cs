@@ -141,6 +141,8 @@ internal static class ModRuntime
             UseBeamWidthPortfolio = options.UsePortfolio,
             BeamWidthPortfolioPlainBaselineMember = options.NoPlainBaselineMember ? false : null,
             PileOrderInvariantMask = options.UnorderedPileMask,
+            StateKeySalt = options.StateKeySalt,
+            TranspositionPruningDisabledMask = options.TranspositionPruningDisabledMask,
         });
 
     private static int ApplySearchPatches()
