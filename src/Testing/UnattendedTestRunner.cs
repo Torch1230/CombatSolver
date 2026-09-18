@@ -73,6 +73,10 @@ internal sealed partial class UnattendedTestRunner
     /// <summary>实验用：关掉转置支配剪枝的位；缺省 0，即生产口径。</summary>
     public static int TranspositionPruningDisabledMaskOverride =>
         Host.TranspositionPruningDisabledMaskOverride;
+
+    /// <summary>实验用：连续多少次无进展回收后提前收手；缺省 0，即关闭。</summary>
+    public static int MemoryNoProgressRecoveryLimitOverride =>
+        Host.MemoryNoProgressRecoveryLimitOverride;
     public static bool? Act3BossStrategyOverride => Host.Act3BossStrategyOverride;
 
     private readonly NGame _host;

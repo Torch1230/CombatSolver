@@ -1454,25 +1454,6 @@ internal sealed partial class CombatBeamSolver
         return opening;
     }
 
-    private void CaptureContinuation(SearchNode node)
-    {
-        if (node.Action is not { } action
-            || action.Kind != PlanActionKind.EndTurn && !action.EndsPlayerTurn
-            || node.Snapshot.Continuation != null
-            || node.Snapshot.PlayerDead
-            || node.Snapshot.AllEnemiesDead
-            || node.Snapshot.BoundaryReason != SearchBoundaryReason.None)
-        {
-            return;
-        }
-        node.Snapshot.SetContinuation(ContinuationStamp.CapturePredicted(
-            _player,
-            node.Snapshot.Simulator,
-            node.Turn,
-            _forecast,
-            _startTurnNumber));
-    }
-
     private static void ValidateHistoricalSimulatorsReleased(IReadOnlyList<SearchNode> candidates)
     {
         foreach (SearchNode candidate in candidates)

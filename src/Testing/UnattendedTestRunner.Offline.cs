@@ -49,6 +49,9 @@ internal sealed partial class UnattendedTestRunner
 
         /// <summary>实验用：关掉转置支配剪枝的位（1=候选准入，2=展开准入）；缺省 0。</summary>
         public int TranspositionPruningDisabledMask { get; init; }
+
+        /// <summary>实验用：连续多少次无进展回收后提前收手；缺省 0，即关闭。</summary>
+        public int MemoryNoProgressRecoveryLimit { get; init; }
     }
 
     /// <summary>
@@ -82,6 +85,9 @@ internal sealed partial class UnattendedTestRunner
                     options.TranspositionPruningDisabledMask == 0
                         ? null
                         : options.TranspositionPruningDisabledMask,
+                MemoryNoProgressRecoveryLimitForTest = options.MemoryNoProgressRecoveryLimit == 0
+                    ? null
+                    : options.MemoryNoProgressRecoveryLimit,
             });
             IsActive = true;
             AutomaticTurnSearchEnabled = false;

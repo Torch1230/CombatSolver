@@ -332,34 +332,32 @@ internal sealed partial class CombatBeamSolver
             if (!hasPlannedNextTurn)
                 continue;
             int forecastOffset = node.Turn - _startTurnNumber;
-            ContinuationStamp? expected = node.Snapshot.Continuation;
-            if (expected == null)
+            // 搜索期间不再为每条 frontier 立即拼续用戳；选中路径在这里按完整动作前缀重建。
+            // 选中的末尾节点可能已经释放模拟器，因此总是从 root 用相同 Replay 重建戳记。
+            SimulationSnapshot? turnSetupRoot = _includeTurnSetup
+                ? ReplayTurnSetup(node.GetTurnSetupChoices())
+                : null;
+            SimulationSnapshot? replayed = null;
+            try
             {
-                SimulationSnapshot? turnSetupRoot = _includeTurnSetup
-                    ? ReplayTurnSetup(node.GetTurnSetupChoices())
-                    : null;
-                SimulationSnapshot? replayed = null;
-                try
-                {
-                    replayed = Replay(
-                        node.Actions,
-                        turnSetupRoot,
-                        _startTurnNumber,
-                        priorActionCount: 0);
-                    expected = ContinuationStamp.CapturePredicted(
-                        _player,
-                        replayed.Simulator,
-                        node.Turn,
-                        _forecast,
-                        _startTurnNumber);
-                }
-                finally
-                {
-                    replayed?.ReleaseSimulator();
-                    turnSetupRoot?.ReleaseSimulator();
-                }
+                replayed = Replay(
+                    node.Actions,
+                    turnSetupRoot,
+                    _startTurnNumber,
+                    priorActionCount: 0);
+                ContinuationStamp expected = ContinuationStamp.CapturePredicted(
+                    _player,
+                    replayed.Simulator,
+                    node.Turn,
+                    _forecast,
+                    _startTurnNumber);
+                continuations.Add(new CachedContinuation(expected, node.Turn, forecastOffset));
             }
-            continuations.Add(new CachedContinuation(expected, node.Turn, forecastOffset));
+            finally
+            {
+                replayed?.ReleaseSimulator();
+                turnSetupRoot?.ReleaseSimulator();
+            }
         }
         return continuations;
     }

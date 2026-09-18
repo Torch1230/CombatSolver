@@ -510,6 +510,8 @@ internal static partial class SolverController
             StateKeySalt = UnattendedTestRunner.StateKeySaltOverride,
             TranspositionPruningDisabledMask =
                 UnattendedTestRunner.TranspositionPruningDisabledMaskOverride,
+            MemoryNoProgressRecoveryLimit =
+                UnattendedTestRunner.MemoryNoProgressRecoveryLimitOverride,
             PortfolioExperiment = PortfolioSelectorRuntime.Capture(),
             Act3BossStrategy = UnattendedTestRunner.Act3BossStrategyOverride != false
                 && SearchPolicySnapshot.IsAct3BossEncounter(state.RunState.CurrentActIndex, state.Encounter?.Id.Entry),

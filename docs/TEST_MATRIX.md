@@ -1,5 +1,13 @@
 # CombatSolver 测试清单
 
+## 未发布：搜索无进展内存截断与排他分配（2026-09-19）
+
+- `dotnet run --project tools/CombatSolver.GcPolicyChecks/CombatSolver.GcPolicyChecks.csproj -c Release -- recovery` 通过，输出 `GC policy checks passed: 9 scenarios.`：覆盖 limit=0 永不触发、阈值上下界、连续计数、有进展清零和按成员/请求重置。
+- 受控端到端（离线宿主 `--enable-no-gc-region`、1 GB No-GC、600 MiB 活球压）：未开启规则时默认短根 `boundary=None`、599 节点，路线与未加压力的基线逐字节相同；`--memory-no-progress-limit 1` 时得到 `boundary=MemoryNoProgress`、1 节点展开，并发布 `DEFEND_IRONCLAD + EndTurn` 两步可执行路线；Coordinator+portfolio 的成员明细为 `Termination=MemoryNoProgress`、`Compared=false`、`SkippedReason=MemoryTruncated`。
+- 续用戳延迟捕获：固定根 `sel-defect-elite-02` Beam16 Evaluate 顺序 B-C-C-B，分配 279.62/279.64 MB → 270.82/270.82 MB，墙钟 3304.2/3270.8 ms → 3250.6/3241.3 ms；动作路线、`cachedContinuations` 文本及除 `replayCount` 外的剪枝计数全部相同。Beam24 Coordinator+portfolio 6 个成员展开/转移/战损与 6 条续用戳全等，总 worker 分配 2,950,179,064 → 2,842,728,888 B。
+- 批量等价：`tools/OfflineSearchHarness/compare_results.py` 5 个生成场景根 `mismatched_roots=0`、`comparedFields=413`；另 5 个不同角色根逐项比较选中路线与全部 `cachedContinuations` 文本一致，selected worker 分配逐根减少 2.2–16.9 MB。
+- Release 构建 0 警告/0 错误；Linux `tools/verify-refactor-boundaries.sh` 输出 `REFACTOR_BOUNDARIES_OK search_files=193`。未启动可见 Steam、未运行 Windows 构建和原始 VeryHigh 问题包。
+
 ## 0.41.0：问题包开战默认与仓库内无头实例（2026-09-18）
 
 - `dotnet run --project tools/CheckpointTool/CheckpointTool.csproj -c Release -- self-test` 通过，输出 `archive_contract_tests_passed assertions=35`：省略选择器命中 `combat_start`，显式 `latest` 命中最近可搜索检查点，显式 `end` / `recorded` 命中结束检查点；批处理运行目录保持仓库内且不跨卷。

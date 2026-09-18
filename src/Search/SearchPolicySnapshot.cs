@@ -99,6 +99,14 @@ internal sealed record SearchPolicySnapshot(
     /// </summary>
     public int TranspositionPruningDisabledMask { get; init; }
 
+    /// <summary>
+    /// 实验用：连续多少次搜索内回收都没有腾出余量（阈值见
+    /// <see cref="SearchMemoryPressureSignal.NoProgressReclaimThresholdBytes" />）就提前收手，
+    /// 交给既有终局发布当前前沿的最优路线，不再重建区域重试。0 = 关闭，即生产口径逐位不变。
+    /// 触发时结果标成 <see cref="SearchBoundaryReason.MemoryNoProgress" />，不再参与成员间的整条选优。
+    /// </summary>
+    public int MemoryNoProgressRecoveryLimit { get; init; }
+
     internal BeamPortfolioExperiment? PortfolioExperiment { get; init; }
 
     /// <summary>

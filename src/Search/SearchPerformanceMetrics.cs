@@ -33,9 +33,9 @@ internal enum SearchMetricPhase
     FinalSelection,
 }
 
-internal readonly record struct SearchMeasurement(long Timestamp, long AllocatedBytes)
+internal readonly record struct SearchMeasurement(long Timestamp, long AllocatedBytes, int FrameId)
 {
-    public static SearchMeasurement Disabled => new(0, 0);
+    public static SearchMeasurement Disabled => new(0, 0, 0);
 }
 
 internal sealed class SearchPerformanceMetrics(bool enabled)
@@ -43,11 +43,33 @@ internal sealed class SearchPerformanceMetrics(bool enabled)
     private readonly bool _enabled = enabled;
     private readonly long[] _ticks = new long[Enum.GetValues<SearchMetricPhase>().Length];
     private readonly long[] _allocatedBytes = new long[Enum.GetValues<SearchMetricPhase>().Length];
+    private readonly List<ActiveFrame> _activeFrames = [];
+    private int _nextFrameId;
+
+    /// <summary>
+    /// 每个阶段只记"排他"增量：从父测量里扣掉所有已结束子测量的时间与分配，
+    /// 这样各阶段相加才有归属意义。测量范围必须与 Begin/End 调用严格后进先出；
+    /// 否则说明某个调用方在子范围里就结束了父范围，诊断直接失败而不是输出错账。
+    /// </summary>
+    private struct ActiveFrame(int id, long timestamp, long allocatedBytes)
+    {
+        public int Id = id;
+        public long Timestamp = timestamp;
+        public long AllocatedBytes = allocatedBytes;
+        public long ChildTicks;
+        public long ChildAllocatedBytes;
+    }
 
     public SearchMeasurement Begin()
-        => _enabled
-            ? new SearchMeasurement(Stopwatch.GetTimestamp(), GC.GetAllocatedBytesForCurrentThread())
-            : SearchMeasurement.Disabled;
+    {
+        if (!_enabled)
+            return SearchMeasurement.Disabled;
+        long timestamp = Stopwatch.GetTimestamp();
+        long allocatedBytes = GC.GetAllocatedBytesForCurrentThread();
+        int frameId = ++_nextFrameId;
+        _activeFrames.Add(new ActiveFrame(frameId, timestamp, allocatedBytes));
+        return new SearchMeasurement(timestamp, allocatedBytes, frameId);
+    }
 
     public SearchMeasurementScope Measure(SearchMetricPhase phase)
         => new(this, phase, Begin());
@@ -56,15 +78,36 @@ internal sealed class SearchPerformanceMetrics(bool enabled)
     {
         if (!_enabled)
             return;
+        if (_activeFrames.Count == 0
+            || _activeFrames[^1].Id != measurement.FrameId)
+        {
+            throw new InvalidOperationException(
+                $"搜索阶段测量不是后进先出：phase={phase} frame={measurement.FrameId} " +
+                $"active={(_activeFrames.Count == 0 ? "-" : _activeFrames[^1].Id.ToString())}。");
+        }
+        ActiveFrame frame = _activeFrames[^1];
+        _activeFrames.RemoveAt(_activeFrames.Count - 1);
+        long ticks = Math.Max(0, Stopwatch.GetTimestamp() - frame.Timestamp);
+        long allocatedBytes = Math.Max(
+            0, GC.GetAllocatedBytesForCurrentThread() - frame.AllocatedBytes);
         int index = (int)phase;
-        _ticks[index] += Stopwatch.GetTimestamp() - measurement.Timestamp;
-        _allocatedBytes[index] += GC.GetAllocatedBytesForCurrentThread() - measurement.AllocatedBytes;
+        _ticks[index] += Math.Max(0, ticks - frame.ChildTicks);
+        _allocatedBytes[index] += Math.Max(0, allocatedBytes - frame.ChildAllocatedBytes);
+        if (_activeFrames.Count > 0)
+        {
+            ActiveFrame parent = _activeFrames[^1];
+            parent.ChildTicks += ticks;
+            parent.ChildAllocatedBytes += allocatedBytes;
+            _activeFrames[^1] = parent;
+        }
     }
 
     /// <summary>合并并清空一个已经越过完成 barrier 的持久 worker 阶段指标。</summary>
     public void DrainFrom(SearchPerformanceMetrics worker)
     {
         ArgumentNullException.ThrowIfNull(worker);
+        if (worker._activeFrames.Count != 0)
+            throw new InvalidOperationException("不能合并仍有未结束阶段测量的 worker 指标。");
         for (int index = 0; index < _ticks.Length; index++)
         {
             if (_enabled)

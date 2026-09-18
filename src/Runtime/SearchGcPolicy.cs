@@ -2070,6 +2070,12 @@ internal static partial class SearchGcPolicy
             collectionCompleted = true;
             liveAfterCollection = GC.GetTotalMemory(false);
             heapAfterCollection = GC.GetGCMemoryInfo();
+            if (restartNoGcRegion)
+            {
+                // 有没有腾出空间只看回收后的堆：非压缩 Gen2 少回收多少活数据，重建出来的区域
+                // 就还是同一份压力。回退到常规 GC 的那条路径不重建区域，因此不参与记账。
+                signal.ObserveReclaimGain(Math.Max(0, liveBefore - liveAfterCollection));
+            }
             // Capture the forced collection before TryStartNoGCRegion can replace the latest
             // GC info with a bookkeeping collection that has no pause of its own.
             signal.ObserveReclaimGcPause(pauseObservation.ObserveMaximumSince());

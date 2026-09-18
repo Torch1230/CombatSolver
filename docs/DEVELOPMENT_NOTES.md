@@ -1,5 +1,14 @@
 # CombatSolver 开发笔记与未来构想
 
+## 未发布：搜索无进展内存截断、排他阶段指标与续用戳延迟捕获（2026-09-19）
+
+- 搜索内回收连续无进展达到 `MemoryNoProgressRecoveryLimit`（默认 0=关闭）时，成员提前收手并设 `SearchBoundaryReason.MemoryNoProgress`；既有收尾仍发布当前 incumbent 的可执行路线，组合器把该成员记为 `MemoryTruncated` 且不参与成员间整条选优。单次“无进展”定义为成功重建 No-GC 区域的回收拿回 `< 1 MiB`；每次成员搜索各自重置计数。
+- 受控端到端验证：离线宿主新增 `--enable-no-gc-region`、`--no-gc-region-budget-gigabytes`、`--signal-ballast-mb` 与 `--memory-no-progress-limit`。默认短根加 600 MiB 活球压后，limit=1 得到 `boundary=MemoryNoProgress`、`expanded=1` 且仍产出 `PlayCard + EndTurn` 路线；limit=0 对照组走完 599 节点且路线与未开 No-GC 的基线逐字节相同；Coordinator+portfolio 成员明细为 `Termination=MemoryNoProgress / Compared=false / SkippedReason=MemoryTruncated`。球压是受控注入，不是原始 VeryHigh 问题包复现。
+- `SearchPerformanceMetrics` 改为排他归属：`End` 从父测量帧扣除已结束子帧的时间和分配，phase 表可以相加归因；调用顺序非后进先出时诊断直接失败。`sel-defect-elite-02` 选中成员中 `action` 79.7 MB inclusive / 0.73 MB exclusive，`card_exec` 独占 42.7 MB、`fork` 36.5 MB、`snapshot` 11.1 MB。
+- 依据该表做一处分配削减：取消每回合对整条 frontier 的 eager `ContinuationStamp` 字符串捕获，改为只对最终选中路径在 `BuildContinuations` 里按动作前缀 `Replay` 重建。`sel-defect-elite-02` Beam16 Evaluate 四进程 B-C-C-B：分配 279.62/279.64 MB → 270.82/270.82 MB，墙钟 3304.2/3270.8 ms → 3250.6/3241.3 ms；路线、续用戳文本与除 `replayCount` 外的剪枝计数逐项相同。Beam24 组合根同样路线/6 条续用戳全等，总 worker 分配 2.950 GB → 2.843 GB；另外 5 个生成场景根 `compare_results.py` 413 字段全等，5 个不同角色根路线与续用戳全等。
+- 验证：Release 0 警告/0 错误；Linux 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=193`；`GcPolicyChecks recovery` 通过 `GC policy checks passed: 9 scenarios.`。未执行可见 Steam、Windows 构建或多机性能结论；离线数据与单样本墙钟不外推为实机收益。
+- 详细表、命令、结构产物与限制见 [搜索内存恢复与排他分配](performance/search-memory-recovery-20260919.md)。
+
 ## 0.41.0：问题包开战默认与仓库内无头实例（2026-09-18）
 
 - 修正问题包夹具默认语义：`CheckpointArchive`、CheckpointTool 批处理、Windows/Linux 无人入口和可见回放入口统一默认选择 `start`。SearchOnly/DeploySolver 因而从 `combat_start` 恢复并由求解器处理整场开局；`latest` 保留为显式的中途诊断选择，不再能因省略参数而把玩家干预后的检查点误当成整场质量证据。

@@ -61,6 +61,12 @@ internal enum SearchBoundaryReason
     TurnLimit,
     NodeLimit,
     TimeLimit,
+
+    /// <summary>
+    /// 连续若干次搜索内回收都没有腾出余量，本成员提前收手并发布当前前沿的最优路线。
+    /// 这是被内存截断的结果，不是完整搜索，因此不参与成员间的整条选优。
+    /// </summary>
+    MemoryNoProgress,
 }
 
 internal enum SolverResultScope
@@ -1334,16 +1340,11 @@ internal sealed class SimulationSnapshot(
     public IReadOnlySet<uint> ProcessedEnemyDeaths { get; } = processedEnemyDeaths;
     public SearchBoundaryReason BoundaryReason { get; } = boundaryReason;
     public IReadOnlyList<PredictionGap> PredictionGaps { get; } = predictionGaps;
-    public ContinuationStamp? Continuation { get; private set; }
-
     public CombatPredictionSimulator Simulator => _simulator
         ?? throw new InvalidOperationException(
             $"搜索快照的模拟器已经释放：{_releasedBy ?? "unknown"}:{_releasedAtLine}。");
 
     public bool HasSimulator => _simulator != null;
-
-    public void SetContinuation(ContinuationStamp continuation)
-        => Continuation = continuation;
 
     public void ReleaseSimulator(
         [CallerMemberName] string caller = "",

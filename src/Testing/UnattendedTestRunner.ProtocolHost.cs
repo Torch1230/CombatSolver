@@ -39,6 +39,7 @@ internal sealed partial class UnattendedTestRunner
         public int PileOrderInvariantMaskOverride { get; private set; }
         public int StateKeySaltOverride { get; private set; }
         public int TranspositionPruningDisabledMaskOverride { get; private set; }
+        public int MemoryNoProgressRecoveryLimitOverride { get; private set; }
         public int? SearchBudgetOverrideMilliseconds { get; private set; }
 
         public void TryStart(NGame? host)
@@ -356,6 +357,13 @@ internal sealed partial class UnattendedTestRunner
             StateKeySaltOverride = request.StateKeySaltForTest ?? 0;
             TranspositionPruningDisabledMaskOverride =
                 request.TranspositionPruningDisabledMaskForTest ?? 0;
+            if (request.MemoryNoProgressRecoveryLimitForTest is { } memoryNoProgressLimit
+                && memoryNoProgressLimit < 0)
+            {
+                throw new InvalidOperationException($"无进展回收上限不能为负，实际为 {memoryNoProgressLimit}。");
+            }
+            MemoryNoProgressRecoveryLimitOverride =
+                request.MemoryNoProgressRecoveryLimitForTest ?? 0;
             SearchBudgetOverrideMilliseconds = request.SearchBudgetOverrideMilliseconds
                 ?? (request.FixedSearchBudget
                     ? request.LegacyShortSearchBudgetMilliseconds ?? request.LegacyDeepSearchBudgetMilliseconds
@@ -377,6 +385,7 @@ internal sealed partial class UnattendedTestRunner
             PileOrderInvariantMaskOverride = 0;
             StateKeySaltOverride = 0;
             TranspositionPruningDisabledMaskOverride = 0;
+            MemoryNoProgressRecoveryLimitOverride = 0;
             Act3BossStrategyOverride = null;
             _injectPlayerHpLossTurn = 0;
             _injectPlayerHpLossAmount = 0;

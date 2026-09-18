@@ -475,9 +475,11 @@ internal static partial class CombatSearchCoordinator
             bool won = IsCompleteVictory(memberResult);
             bool terminal = won || memberResult.Snapshot.PlayerDead;
             // 与组合器同一条可比性规则。撞节点上限又没到终局的结果不参与质量比较，
-            // 否则它既会污染后续成员的 improved 标签，也会让 incumbent 不再代表当前最佳。
+            // 否则它既会污染后续成员的 improved 标签，也会让 incumbent 不再代表当前最佳；
+            // 被内存回收提前截断的结果同理。
             bool comparable = terminal
-                || memberResult.BoundaryReason != SearchBoundaryReason.NodeLimit;
+                || memberResult.BoundaryReason is not (SearchBoundaryReason.NodeLimit
+                    or SearchBoundaryReason.MemoryNoProgress);
             if (experiment != null && baselineObserved && pendingFeatures != null)
             {
                 bool improved = comparable && incumbent != null
@@ -518,6 +520,7 @@ internal static partial class CombatSearchCoordinator
                 memberResult.PotionCount)
             {
                 StopPortfolio = memberResult.ResultScope != SolverResultScope.SearchCompletion,
+                MemoryTruncated = memberResult.BoundaryReason == SearchBoundaryReason.MemoryNoProgress,
             };
         }
 
@@ -611,8 +614,9 @@ internal static partial class CombatSearchCoordinator
     {
         BeamWidthPortfolioRun<SolverResult> run = runMember(profile);
         bool comparable = run.Terminal
-            || !string.Equals(
-                run.Termination, BeamWidthPortfolio.NodeLimitTermination, StringComparison.Ordinal);
+            || (!run.MemoryTruncated
+                && !string.Equals(
+                    run.Termination, BeamWidthPortfolio.NodeLimitTermination, StringComparison.Ordinal));
         string selectionReason = run.StopPortfolio
             ? BeamWidthPortfolio.SelectionStopped
             : comparable
@@ -635,7 +639,9 @@ internal static partial class CombatSearchCoordinator
             Compared: run.StopPortfolio || comparable,
             SkippedReason: run.StopPortfolio || comparable
                 ? null
-                : BeamWidthPortfolio.SkippedNodeLimitNotTerminal);
+                : run.MemoryTruncated
+                    ? BeamWidthPortfolio.SkippedMemoryTruncated
+                    : BeamWidthPortfolio.SkippedNodeLimitNotTerminal);
         return new BeamWidthPortfolioOutcome<SolverResult>(
             run.Result, 0, selectionReason, [member], run.ExpandedNodes, run.TransitionCount);
     }

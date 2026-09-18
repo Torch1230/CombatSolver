@@ -140,6 +140,14 @@ internal static class Program
                     ["rootCapture"] = outcome.RootCapture,
                     ["solverMetrics"] = outcome.LegacyMetrics,
                     ["planActions"] = outcome.PlanActions,
+                    ["cachedContinuations"] = outcome.Result.Continuations
+                        .Select(item => new
+                        {
+                            item.StartTurnNumber,
+                            item.ForecastOffset,
+                            state = item.ExpectedState.StateText,
+                        })
+                        .ToArray(),
                     ["patchLog"] = ModRuntime.PatchLog.ToArray(),
                 };
                 // 与游戏内 result.json 同名同形的那一份（游戏自己的 Writer 造的）。
@@ -247,7 +255,10 @@ internal static class Program
             options.SearchMode,
             options.UsePortfolio,
             fixedSearchBudget = true,
-            enableNoGcRegion = false,
+            enableNoGcRegion = options.EnableNoGcRegion,
+            noGcRegionBudgetGigabytes = options.EnableNoGcRegion
+                ? options.NoGcRegionBudgetGigabytes
+                : (double?)null,
         };
     }
 
@@ -322,6 +333,10 @@ internal sealed record HarnessOptions
           --state-key-salt <int> 实验：给状态指纹异或一个常量（双射，只改数值不改相等关系）
           --measure-phases       开按阶段的耗时/分配统计（SEARCH_PHASE 行进运行日志）
           --disable-transposition-prune <0..3>  实验：关掉转置支配剪枝（1=候选准入/2=展开准入）
+          --memory-no-progress-limit <int>  实验：连续多少次无进展回收后提前收手（0=关闭）
+          --enable-no-gc-region   开 Runtime 的搜索内 No-GC 生命周期（默认关闭）
+          --no-gc-region-budget-gigabytes <double>  No-GC 区域预算，单位十进制 GB（默认 1）
+          --signal-ballast-mb <int>  进 No-GC scope 后先持有 N MiB 活对象，制造回收腾不出余量的压力
           --observe-portfolio    导出追加搜索的特征与实际政策标签
           --portfolio-model <p>  加载可选选择器 JSON；不匹配的版本回退原组合
           --milestone <M1|M2>    跑到哪个里程碑（默认 M2）
@@ -357,6 +372,14 @@ internal sealed record HarnessOptions
     public bool MeasureSearchPhases { get; init; }
     /// <summary>实验：关掉转置支配剪枝的位（1=候选准入/2=展开准入）；0 即生产口径。</summary>
     public int TranspositionPruningDisabledMask { get; init; }
+    /// <summary>实验：连续多少次无进展回收后提前收手；0 即关闭（生产口径）。</summary>
+    public int MemoryNoProgressRecoveryLimit { get; init; }
+    /// <summary>实验：走 Runtime 的搜索内 No-GC 生命周期，供无头宿主复现内存回收与截断。</summary>
+    public bool EnableNoGcRegion { get; init; }
+    /// <summary>No-GC 区域预算；只在 <see cref="EnableNoGcRegion" /> 开启时生效。</summary>
+    public double NoGcRegionBudgetGigabytes { get; init; } = 1d;
+    /// <summary>进入 No-GC scope 后先持有的活对象 MiB，用于制造“回收腾不出余量”的受控压力。</summary>
+    public int SignalBallastMegabytes { get; init; }
     public bool ObservePortfolio { get; init; }
     public string? PortfolioModelPath { get; init; }
     public string Milestone { get; init; } = "M2";
@@ -371,8 +394,10 @@ internal sealed record HarnessOptions
     {
         string character = "IRONCLAD", encounter = "FUZZY_WURM_CRAWLER_WEAK", seed = "OFFLINEHARNESS1";
         int ascension = 0, actIndex = 0, dop = 1, budget = 600_000, unorderedPileMask = 0, stateKeySalt = 0;
-        int transpositionPruneOff = 0;
-        bool measurePhases = false;
+        int transpositionPruneOff = 0, memoryNoProgressLimit = 0;
+        bool measurePhases = false, enableNoGcRegion = false;
+        double noGcRegionBudgetGigabytes = 1d;
+        int signalBallastMegabytes = 0;
         int? beam = null, nodes = null, cardBranches = null, pileBranches = null, handBranches = null;
         bool usePortfolio = false, observePortfolio = false, noPlainBaseline = false;
         string? portfolioModelPath = null;
@@ -417,6 +442,10 @@ internal sealed record HarnessOptions
                 case "--state-key-salt": stateKeySalt = int.Parse(Value()); break;
                 case "--measure-phases": measurePhases = true; break;
                 case "--disable-transposition-prune": transpositionPruneOff = int.Parse(Value()); break;
+                case "--memory-no-progress-limit": memoryNoProgressLimit = int.Parse(Value()); break;
+                case "--enable-no-gc-region": enableNoGcRegion = true; break;
+                case "--no-gc-region-budget-gigabytes": noGcRegionBudgetGigabytes = double.Parse(Value()); break;
+                case "--signal-ballast-mb": signalBallastMegabytes = int.Parse(Value()); break;
                 case "--observe-portfolio": observePortfolio = true; break;
                 case "--portfolio-model": portfolioModelPath = Path.GetFullPath(Value()); break;
                 case "--milestone": milestone = Value(); break;
@@ -443,6 +472,14 @@ internal sealed record HarnessOptions
             throw new ArgumentException("--unordered-pile-mask 只接受 0..15（手牌=1/抽牌堆=2/弃牌堆=4/消耗堆=8）。");
         if (transpositionPruneOff is < 0 or > 3)
             throw new ArgumentException("--disable-transposition-prune 只接受 0..3（1=候选准入/2=展开准入）。");
+        if (memoryNoProgressLimit < 0)
+            throw new ArgumentException("--memory-no-progress-limit 只接受非负数（0=关闭）。");
+        if (noGcRegionBudgetGigabytes < 1d || noGcRegionBudgetGigabytes > 256d)
+            throw new ArgumentException("--no-gc-region-budget-gigabytes 只接受 1..256。");
+        if (signalBallastMegabytes is < 0 or > 4096)
+            throw new ArgumentException("--signal-ballast-mb 只接受 0..4096。");
+        if (signalBallastMegabytes > 0 && !enableNoGcRegion)
+            throw new ArgumentException("--signal-ballast-mb 需要 --enable-no-gc-region。");
         if (profile == "Custom" && requestPath == null)
         {
             beam ??= 24;
@@ -470,6 +507,10 @@ internal sealed record HarnessOptions
             StateKeySalt = stateKeySalt,
             MeasureSearchPhases = measurePhases,
             TranspositionPruningDisabledMask = transpositionPruneOff,
+            MemoryNoProgressRecoveryLimit = memoryNoProgressLimit,
+            EnableNoGcRegion = enableNoGcRegion,
+            NoGcRegionBudgetGigabytes = noGcRegionBudgetGigabytes,
+            SignalBallastMegabytes = signalBallastMegabytes,
             ObservePortfolio = observePortfolio,
             PortfolioModelPath = portfolioModelPath,
             Milestone = milestone,

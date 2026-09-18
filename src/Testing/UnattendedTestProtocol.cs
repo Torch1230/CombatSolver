@@ -142,6 +142,11 @@ internal sealed class UnattendedTestRequest
     /// 实验用：关掉转置支配剪枝的位（1=候选准入，2=展开准入）。缺省 0，即生产口径。
     /// </summary>
     public int? TranspositionPruningDisabledMaskForTest { get; init; }
+
+    /// <summary>
+    /// 实验用：连续多少次搜索内回收没有腾出余量就提前收手（0/缺省 = 关闭，即生产口径）。
+    /// </summary>
+    public int? MemoryNoProgressRecoveryLimitForTest { get; init; }
     public int? ExpectedInitialExpandedNodesAtMost { get; init; }
     public int? ExpectedInitialTransitionsAtMost { get; init; }
     public long? ExpectedInitialTotalExpandedNodesAtMost { get; init; }

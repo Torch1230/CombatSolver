@@ -76,6 +76,7 @@ internal sealed class SolvedRouteCache(string path)
             policy.PileOrderInvariantMask,
             policy.StateKeySalt,
             policy.TranspositionPruningDisabledMask,
+            policy.MemoryNoProgressRecoveryLimit,
             PortfolioSelector = policy.PortfolioExperiment?.Model?.ModelId,
             policy.FixedBudget,
             policy.BudgetOverrideMilliseconds,

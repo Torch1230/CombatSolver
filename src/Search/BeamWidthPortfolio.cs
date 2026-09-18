@@ -39,6 +39,12 @@ internal readonly record struct BeamWidthPortfolioRun<TResult>(
     /// 后续成员不再运行，保持协调器遇到非 SearchCompletion 时立刻返回的既有规则。
     /// </summary>
     public bool StopPortfolio { get; init; }
+
+    /// <summary>
+    /// 该成员被连续无进展的内存回收提前截断（见 <see cref="SearchBoundaryReason.MemoryNoProgress" />）。
+    /// 它仍可作回退结果发布，但不能像完整结果那样参与成员间的整条选优。
+    /// </summary>
+    public bool MemoryTruncated { get; init; }
 }
 
 /// <summary>一个成员的明细；未运行的成员也保留一行，附不运行的原因。</summary>
@@ -99,6 +105,9 @@ internal static class BeamWidthPortfolio
 
     /// <summary>与 <c>SearchBoundaryReason.NodeLimit</c> 的名称一致。</summary>
     internal const string NodeLimitTermination = "NodeLimit";
+
+    /// <summary>被内存回收提前截断：这一条不是完整结果，仍然保留在成员明细里。</summary>
+    internal const string SkippedMemoryTruncated = "MemoryTruncated";
 
     /// <summary>没有任何成员可比时退回第一个真正跑过的成员。</summary>
     internal const string SelectionBaselineFallback = "BaselineFallback";
@@ -277,10 +286,12 @@ internal static class BeamWidthPortfolio
                 break;
             }
 
+            // 与节点上限同一条处理：被内存截断的成员不参与整条选优，只在没有可比结果时作回退。
             bool comparable = spec.AggressivePowerCommitment
                 ? run.Terminal
                 : run.Terminal
-                    || !string.Equals(run.Termination, NodeLimitTermination, StringComparison.Ordinal);
+                    || (!run.MemoryTruncated
+                        && !string.Equals(run.Termination, NodeLimitTermination, StringComparison.Ordinal));
             if (comparable && (selectedIndex < 0 || isBetter(run.Result, selected!)))
             {
                 selected = run.Result;
@@ -290,9 +301,11 @@ internal static class BeamWidthPortfolio
                 compared: comparable,
                 skippedReason: comparable
                     ? null
-                    : spec.AggressivePowerCommitment
-                        ? SkippedPowerMemberNotTerminal
-                        : SkippedNodeLimitNotTerminal));
+                    : run.MemoryTruncated
+                        ? SkippedMemoryTruncated
+                        : spec.AggressivePowerCommitment
+                            ? SkippedPowerMemberNotTerminal
+                            : SkippedNodeLimitNotTerminal));
             // 顺序执行的代价只有在上一位成员真的放手之后才成立：明细已经记完，这里把这一轮的
             // 结果引用清掉，别让它活到下一位成员跑完。
             run = default;

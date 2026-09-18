@@ -128,6 +128,55 @@ internal static class GcRecoveryChecks
             PolicyCheck.Require(backoff.Attempts == 3 && !backoff.ShouldObserve(long.MaxValue),
                 "Repeated external collections cannot cause an unbounded restart loop.");
         });
+        PolicyCheck.Run("no-progress reclaim rule stays off at limit zero", () =>
+        {
+            SearchMemoryPressureSignal signal = new();
+            for (int i = 0; i < 5; i++)
+                signal.ObserveReclaimGain(0);
+            PolicyCheck.Require(signal.ConsecutiveNoProgressReclaims == 5
+                && !signal.ShouldStopForNoProgressReclaims(0)
+                && !signal.ShouldStopForNoProgressReclaims(-1),
+                "Limit 0 is the production default and must never stop a search, however many gainless reclaims happen.");
+        });
+        PolicyCheck.Run("no-progress reclaim rule fires once per cap and re-arms on progress", () =>
+        {
+            const int limit = 3;
+            long belowThreshold = SearchMemoryPressureSignal.NoProgressReclaimThresholdBytes - 1;
+            SearchMemoryPressureSignal signal = new();
+            for (int i = 0; i < limit - 1; i++)
+            {
+                signal.ObserveReclaimGain(belowThreshold);
+                PolicyCheck.Require(!signal.ShouldStopForNoProgressReclaims(limit),
+                    "The rule must stay silent below the cap.");
+            }
+            signal.ObserveReclaimGain(belowThreshold);
+            PolicyCheck.Require(signal.ConsecutiveNoProgressReclaims == limit
+                && signal.LastReclaimRegainedBytes == belowThreshold
+                && signal.ShouldStopForNoProgressReclaims(limit),
+                "A gain just under the threshold counts as no progress, and reaching the cap stops the search.");
+            signal.ObserveReclaimGain(SearchMemoryPressureSignal.NoProgressReclaimThresholdBytes);
+            PolicyCheck.Require(signal.ConsecutiveNoProgressReclaims == 0
+                && !signal.ShouldStopForNoProgressReclaims(limit),
+                "A recovery that reaches the threshold re-arms the whole allowance.");
+            for (int i = 0; i < limit - 1; i++)
+                signal.ObserveReclaimGain(0);
+            PolicyCheck.Require(!signal.ShouldStopForNoProgressReclaims(limit),
+                "After progress the rule needs the full cap again, not a single gainless recovery.");
+        });
+        PolicyCheck.Run("no-progress counting resets per member search", () =>
+        {
+            const int limit = 2;
+            SearchMemoryPressureSignal signal = new();
+            signal.ObserveReclaimGain(0);
+            signal.ObserveReclaimGain(0);
+            PolicyCheck.Require(signal.ShouldStopForNoProgressReclaims(limit),
+                "A search stops once its own allowance is spent.");
+            signal.ResetNoProgressReclaimTracking();
+            PolicyCheck.Require(signal.ConsecutiveNoProgressReclaims == 0
+                && signal.LastReclaimRegainedBytes == 0
+                && !signal.ShouldStopForNoProgressReclaims(limit),
+                "The next member or request starts with the full allowance again.");
+        });
         PolicyCheck.Run("recovery reservation leaves physical hysteresis and honors configuration", () =>
         {
             PolicyCheck.Require(SearchGcPolicy.RecoveryBudget(16_000_000_000, 29_228_695_790, 29_291_520_000) == 0,

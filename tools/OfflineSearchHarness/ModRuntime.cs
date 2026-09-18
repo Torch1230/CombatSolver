@@ -115,7 +115,8 @@ internal static class ModRuntime
             SearchMaxCardBranchesPerNode = profile.MaxCardBranchesPerNode,
             SearchMaxPileChoiceBranchesPerAction = profile.MaxPileChoiceBranchesPerAction,
             SearchMaxHandChoiceBranchesPerAction = profile.MaxHandChoiceBranchesPerAction,
-            EnableNoGcRegion = false,
+            EnableNoGcRegion = options.EnableNoGcRegion,
+            NoGcRegionBudgetGigabytes = options.NoGcRegionBudgetGigabytes,
             UseBeamWidthPortfolio = options.UsePortfolio,
             StopAtAcceptableBattleHpLoss = false,
             OnlineStatisticsEnabled = false,
@@ -143,6 +144,7 @@ internal static class ModRuntime
             PileOrderInvariantMask = options.UnorderedPileMask,
             StateKeySalt = options.StateKeySalt,
             TranspositionPruningDisabledMask = options.TranspositionPruningDisabledMask,
+            MemoryNoProgressRecoveryLimit = options.MemoryNoProgressRecoveryLimit,
         });
 
     private static int ApplySearchPatches()
@@ -360,10 +362,43 @@ internal static class ModRuntime
         HarnessLog.Trace("search_policy");
         bool timeBoundary = false;
         object describedPolicy = DescribePolicy(policy);
-        SolverResult result = options.SearchMode == "Coordinator"
-            ? CombatSearchCoordinator.Solve(root, names, damage, policy, CancellationToken.None, null)
-            : SolveEvaluate(root, names, damage, policy, settings,
-                options.BudgetMilliseconds, loop, out describedPolicy, ref timeBoundary);
+        SolverResult result;
+        if (options.EnableNoGcRegion)
+        {
+            if (options.SignalBallastMegabytes > 0)
+            {
+                // 先收掉建局阶段的可回收对象，让球压测试只面对 scope 开头之后分配的对象。
+                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: false);
+                GC.WaitForPendingFinalizers();
+                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: false);
+            }
+            using ISearchGcScope gcScope = SearchGcPolicy.EnterSearchScope(
+                enableNoGcRegion: true,
+                settings.NoGcRegionBudgetBytes,
+                policy.MemoryPressureSignal,
+                CancellationToken.None);
+            byte[]? ballast = options.SignalBallastMegabytes > 0
+                ? new byte[options.SignalBallastMegabytes * 1024L * 1024L]
+                : null;
+            try
+            {
+                result = options.SearchMode == "Coordinator"
+                    ? CombatSearchCoordinator.Solve(root, names, damage, policy, CancellationToken.None, null)
+                    : SolveEvaluate(root, names, damage, policy, settings,
+                        options.BudgetMilliseconds, loop, out describedPolicy, ref timeBoundary);
+            }
+            finally
+            {
+                GC.KeepAlive(ballast);
+            }
+        }
+        else
+        {
+            result = options.SearchMode == "Coordinator"
+                ? CombatSearchCoordinator.Solve(root, names, damage, policy, CancellationToken.None, null)
+                : SolveEvaluate(root, names, damage, policy, settings,
+                    options.BudgetMilliseconds, loop, out describedPolicy, ref timeBoundary);
+        }
         HarnessLog.Trace("solved");
         watch.Stop();
         File.WriteAllText(Path.Combine(options.OutputDirectory, "quality.json"), JsonSerializer.Serialize(new
