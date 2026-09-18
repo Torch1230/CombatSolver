@@ -3,7 +3,7 @@ using Req = CombatSolver.PowerCardValuationRequirements;
 
 namespace CombatSolver;
 
-/// <summary>閾佺敳鎴樺＋闃插尽鏃忥紙Draft锛夈€?/summary>
+/// <summary>铁甲战士防御族（Draft）。</summary>
 internal static class IroncladDefensePowerCardValuationModels
 {
     internal static IReadOnlyList<IPowerCardValuationModel> All { get; } =

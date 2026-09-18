@@ -1,9 +1,9 @@
-﻿using MegaCrit.Sts2.Core.Models.Cards;
+using MegaCrit.Sts2.Core.Models.Cards;
 using Req = CombatSolver.PowerCardValuationRequirements;
 
 namespace CombatSolver;
 
-/// <summary>鍌ㄥ悰鏄熸槦銆侀摳閫犱笌鐢熸垚鐗屾棌锛圖raft锛夈€?/summary>
+/// <summary>储君星星、铸造与生成牌族（Draft）㡣</summary>
 internal static class RegentStarPowerCardValuationModels
 {
     internal static IReadOnlyList<IPowerCardValuationModel> All { get; } =

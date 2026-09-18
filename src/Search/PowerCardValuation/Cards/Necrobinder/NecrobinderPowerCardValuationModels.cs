@@ -1,7 +1,9 @@
-﻿namespace CombatSolver;
+namespace CombatSolver;
 
 /// <summary>
-/// 浜＄伒濂戠害甯堝崟浜鸿兘鍔涚墝鐧昏鍏ュ彛銆?8 寮犲崟浜?CardType.Power锛汳ultiplayerOnly 鐨?/// CACOPHONY 涓?SOULBOUND 涓嶇櫥璁般€侳ORBIDDEN_GRIMOIRE 鍙櫥璁拌祫鏂欎笌浼板€硷紝鎴樺悗鏀剁泭涓嶅垱寤烘垬鏂楀唴鎵胯銆?/// </summary>
+/// 亡灵契约师单人能力牌登记入口。18 张单人 CardType.Power；MultiplayerOnly 的
+/// CACOPHONY 与 SOULBOUND 不登记。FORBIDDEN_GRIMOIRE 只登记资料与估值，战后收益不创建战斗内承诺。
+/// </summary>
 internal static class NecrobinderPowerCardValuationModels
 {
     internal static IReadOnlyList<IPowerCardValuationModel> All { get; } =

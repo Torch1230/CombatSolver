@@ -9,6 +9,8 @@
 - 未执行：逐卡玩家复核、复杂机制逐卡专用兑现证据、可见 Steam 会话性能与战损对照，均在文档中明确标为未验证。
 - 玩家联合评审采纳后复跑纯合同：`POWER_CARD_VALUATION_CHECKS_OK total=104 ...`，新增断言覆盖 `BARRICADE`、`AUTOMATION`、`DARK_EMBRACE`、`VICIOUS`、`CONSUMING_SHADOW`、`COOLANT`、`ORBIT`、`PANACHE`、`FURNACE` 等评审结论；Release 编译与 PowerShell 结构门禁仍通过。
 - 回归哨兵：铁甲战士 `dev-00-ironclad-elite` 短场景在评审接线前为 43 战损，把专搜标记接入前缀构造顺序/承诺席位排序后劣化为 62，撤回接线后恢复 43 并 `Passed`；`headless-instances` 为空。其余四角色沿用先前通过的短场景，未重复运行。
+- 审计后复跑（2026-09-17）：Release 编译 0 错误；纯合同 `POWER_CARD_VALUATION_CHECKS_OK total=104 silent=17 ironclad=19 defect=20 regent=18 necrobinder=18 colorless=12`；PowerShell 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=192`（新增 `src/Search/PowerCardValuation/Projection/PowerCardProjectionMath.cs`）。`PowerLiveCards` 排除消耗堆；群星之子改为按实际可花费星能点数（`PowerStarSpendCapacity`）而非牌张数；缓冲、凶恶、自动化、环绕轨道投影改用纯数学并加入合同断言。
+- 承诺证据语义改为“路线进展／解除保护信号”，撤回按卡池隔离与铁甲专用因果兑现（`NewPoolPowerRealizedEvidence`、迟到启用 `HasRegisteredPowerPlay`），恢复 `540e4cb6` 的通用进展释放。因果版哨兵为铁甲 62、静默 40、故障 13、储君 52、亡灵 25；单因素回退后铁甲 43、储君 45，再补跑故障 13、亡灵 25。最终五哨兵为铁甲 43、静默 40（行为未变沿用）、故障 13、储君 45、亡灵 25，全部与原结果一致，`headless-instances` 为空。未启动后台 8 包与可见 Steam。
 
 ## 0.40.2：能力牌估值框架与实例清理（2026-09-17）
 

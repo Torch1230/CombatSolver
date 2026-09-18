@@ -1,4 +1,4 @@
-﻿namespace CombatSolver;
+namespace CombatSolver;
 
 internal enum PowerCardPool
 {
@@ -11,8 +11,9 @@ internal enum PowerCardPool
 }
 
 /// <summary>
-/// 鑳藉姏鎵胯鐨勬満鍒舵棌銆傛墍鏈夎鑹插叡鐢ㄥ悓涓€缁勬棌鏍囩锛屽叿浣撳埌鍗＄墝鐨勫綊灞炵敱鍚勫崱姹犵洰褰曠櫥璁帮紱
-/// 鍏叡鎼滅储灞傚彧鎸夋棌涓庝紭鍏堢骇鍋氭湁鐣屼繚璺紝涓嶅尯鍒嗗叿浣撳崱鐗屻€?/// </summary>
+/// 能力承诺的机制族。所有角色共用同一组族标签，具体到卡牌的归属由各卡池目录登记；
+/// 公共搜索层只按族与优先级做有界保路，不区分具体卡牌。
+/// </summary>
 [Flags]
 internal enum PowerCommitmentFamily
 {
@@ -42,7 +43,7 @@ internal enum PowerCommitmentFamily
     RandomGeneration = 1 << 22,
 }
 
-/// <summary>鑳藉姏璺嚎鐨勪繚鐣欎紭鍏堢骇銆傚彧褰卞搷涓棿淇濊矾甯綅锛屼笉杩涘叆缁堝眬姣旇緝銆?/summary>
+/// <summary>能力路线的保留优先级。只影响中间保路席位，不进入终局比较。</summary>
 internal enum PowerRoutePriority
 {
     Low,
@@ -53,7 +54,8 @@ internal enum PowerRoutePriority
 }
 
 /// <summary>
-/// 閫愬崱璺嚎鍑嗗叆鏀跨瓥銆傚瓧娈垫部鐢ㄩ潤榛樼寧鎵嬬浜屾壒鐢熶骇璇箟锛屾柊澧炶鑹插彧鐧昏鏁版嵁锛屼笉鏀瑰叕鍏卞垽瀹氶『搴忋€?/// </summary>
+/// 逐卡路线准入政策。字段沿用静默猎手第二批生产语义，新增角色只登记数据，不改公共判定顺序。
+/// </summary>
 internal readonly record struct PowerRouteAdmissionPolicy(
     PowerRoutePriority Priority = PowerRoutePriority.Low,
     int MinimumProjection = 1,
@@ -65,7 +67,7 @@ internal readonly record struct PowerRouteAdmissionPolicy(
     bool RequirePositiveProjection = false,
     bool NoInCombatCommitment = false);
 
-/// <summary>娉ㄥ唽琛ㄥ澶栨毚闇茬殑閫氱敤鑳藉姏鎵胯鎻忚堪銆傚叕鍏辨悳绱㈠眰鍙緷璧栧畠銆?/summary>
+/// <summary>注册表对外暴露的通用能力承诺描述。公共搜索层只依赖它。</summary>
 internal readonly record struct PowerCommitmentDescriptor(
     PowerCardPool Pool,
     string CardId,

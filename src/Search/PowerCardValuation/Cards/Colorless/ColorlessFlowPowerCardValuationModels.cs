@@ -1,9 +1,9 @@
-﻿using MegaCrit.Sts2.Core.Models.Cards;
+using MegaCrit.Sts2.Core.Models.Cards;
 using Req = CombatSolver.PowerCardValuationRequirements;
 
 namespace CombatSolver;
 
-/// <summary>鏃犺壊鐗屾祦銆佺敓鎴愪笌寤惰繜浼ゅ鏃忥紙Draft锛夈€傛棤鑹茶兘鍔涘彲鍦ㄤ换鎰忚鑹叉寔鏈夈€?/summary>
+/// <summary>无色牌流、生成与延迟伤害族（Draft）。无色能力可在任意角色持有。</summary>
 internal static class ColorlessFlowPowerCardValuationModels
 {
     internal static IReadOnlyList<IPowerCardValuationModel> All { get; } =

@@ -463,6 +463,33 @@ Require(royalties.Reward.Scaling == 30, "王国资产没有按战后金币估值
 PowerCardValuationResult defragment = Evaluate(new Defragment(), Context(orbCount: 2));
 Require(defragment.Reward.Scaling == 6, "碎片整理没有按集中与球数计价。");
 
+// 11b. 生产投影公式的纯合同（这些公式被 solver partial 调用）。
+Require(PowerCardProjectionMath.AutomationPayouts(drawsPerTurn: 5, turns: 3) == 1
+    && PowerCardProjectionMath.AutomationPayouts(drawsPerTurn: 10, turns: 2) == 2
+    && PowerCardProjectionMath.AutomationPayouts(drawsPerTurn: 4, turns: 2) == 0,
+    "自动化没有按实际抽牌量折算每10抽返能。");
+Require(PowerCardProjectionMath.OrbitPayouts(maxEnergy: 3, turns: 3) == 2
+    && PowerCardProjectionMath.OrbitPayouts(maxEnergy: 4, turns: 1) == 1,
+    "环绕轨道没有按每回合最大能量折算每4费返能。");
+Require(PowerCardProjectionMath.ChildOfTheStarsTriggers(stars: 5, starSpendCapacity: 2) == 2
+    && PowerCardProjectionMath.ChildOfTheStarsTriggers(stars: 0, starSpendCapacity: 3) == 0
+    && PowerCardProjectionMath.ChildOfTheStarsTriggers(stars: 5, starSpendCapacity: 5) == 5
+    && PowerCardProjectionMath.ChildOfTheStarsBlock(amountPerStar: 3, triggers: 5) == 15,
+    "群星之子应按实际可花费星能点数（而非牌张数）线性换算格挡，一张5星牌应计5点。");
+Require(PowerCardProjectionMath.ChildOfTheStarsBlock(3, 4)
+        == 2 * PowerCardProjectionMath.ChildOfTheStarsBlock(3, 2),
+    "群星之子格挡应随触发次数线性增长，而不是平方级。");
+Require(PowerCardProjectionMath.BufferPrevention(charges: 1, incomingDamage: 15, incomingHits: 3) == 5
+    && PowerCardProjectionMath.BufferPrevention(charges: 2, incomingDamage: 15, incomingHits: 3) == 10
+    && PowerCardProjectionMath.BufferPrevention(charges: 1, incomingDamage: 0, incomingHits: 3) == 0,
+    "缓冲没有按多段攻击的每次伤害折算。");
+Require(PowerCardProjectionMath.ViciousDrawTriggers(vulnerableSources: 3) == 3,
+    "凶恶没有按易伤来源数计触发，而不是按敌人数放大。");
+RequireThrows<ArgumentOutOfRangeException>(
+    () => PowerCardProjectionMath.AutomationPayouts(-1, 1));
+RequireThrows<ArgumentOutOfRangeException>(
+    () => PowerCardProjectionMath.BufferPrevention(-1, 1, 1));
+
 // 12. 存在性：无已登记能力时不增加组合成员。
 Require(!all.ContainsCardId("STRIKE_IRONCLAD") && !all.ContainsCardId("DEFEND_SILENT"),
     "普通牌被错误登记为能力牌。");

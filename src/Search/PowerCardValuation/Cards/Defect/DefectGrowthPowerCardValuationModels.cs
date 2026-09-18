@@ -3,7 +3,7 @@ using Req = CombatSolver.PowerCardValuationRequirements;
 
 namespace CombatSolver;
 
-/// <summary>鏁呴殰鏈哄櫒浜哄睘鎬ф垚闀夸笌璐圭敤鏃忥紙Draft锛夈€?/summary>
+/// <summary>故障机器人属性成长与费用族（Draft）。</summary>
 internal static class DefectGrowthPowerCardValuationModels
 {
     internal static IReadOnlyList<IPowerCardValuationModel> All { get; } =

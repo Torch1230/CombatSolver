@@ -1,9 +1,11 @@
-﻿using MegaCrit.Sts2.Core.Models.Powers;
+using MegaCrit.Sts2.Core.Models.Powers;
 
 namespace CombatSolver;
 
 /// <summary>
-/// 鍌ㄥ悰鑳藉姏瑙﹀彂璇佹嵁锛圖raft锛夈€傛槦鏄熴€侀摳閫犮€佸悰鐜嬩箣鍓戜笌鐢熸垚鐗屾潵婧愰兘鎸夌湡瀹炵墝鍖轰笌 Power 鍒ゅ畾銆?/// 绾垬鍚庢敹鐩婄殑 ROYALTIES 涓嶅垱寤烘壙璇猴紙鍑嗗叆鏀跨瓥 NoInCombatCommitment锛夈€?/// </summary>
+/// 储君能力触发证据（Draft）。星星、铸造、君王之剑与生成牌来源都按真实牌区与 Power 判定。
+/// 纯战后收益的 ROYALTIES 不创建承诺（准入政策 NoInCombatCommitment）。
+/// </summary>
 internal sealed partial class CombatBeamSolver
 {
     private bool RegentPowerHasTriggerEvidence(

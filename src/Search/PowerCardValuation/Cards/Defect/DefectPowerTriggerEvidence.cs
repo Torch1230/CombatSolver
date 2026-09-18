@@ -1,10 +1,11 @@
-﻿using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models.Orbs;
 
 namespace CombatSolver;
 
 /// <summary>
-/// 鏁呴殰鏈哄櫒浜鸿兘鍔涜Е鍙戣瘉鎹紙Draft锛夈€傜悆銆侀泦涓€佺姸鎬佺墝涓庤兘閲忕墝閮芥寜鍐荤粨鍚庣殑鐪熷疄鐘舵€佸垽瀹氥€?/// </summary>
+/// 故障机器人能力触发证据（Draft）。球、集中、状态牌与能量牌都按冻结后的真实状态判定。
+/// </summary>
 internal sealed partial class CombatBeamSolver
 {
     private bool DefectPowerHasTriggerEvidence(

@@ -1,12 +1,13 @@
-﻿using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models.Orbs;
 using MegaCrit.Sts2.Core.Models.Powers;
 
 namespace CombatSolver;
 
 /// <summary>
-/// 鏁呴殰鏈哄櫒浜哄紑灞€鑳藉姏鎶曞奖锛圖raft锛夈€傜悆浣嶃€侀泦涓笌鍏呰兘鏉ユ簮閮借鍙栫湡瀹炴ā鎷熺姸鎬侊紱
-/// 澶嶆潅鐞冩満鍒剁殑杩滄湡鍊间娇鐢ㄦ湁鐣屼繚瀹堜唬鐞嗭紝浠呯敤浜庤矾绾夸繚娲汇€?/// </summary>
+/// 故障机器人开局能力投影（Draft）。球位、集中与充能来源都读取真实模拟状态；
+/// 复杂球机制的远期值使用有界保守代理，仅用于路线保活。
+/// </summary>
 internal sealed partial class CombatBeamSolver
 {
     private int DefectPowerOpeningProjectionPotential(
@@ -27,13 +28,7 @@ internal sealed partial class CombatBeamSolver
                 PowerAmountGain<FocusPower>(parent, child),
                 orbs,
                 1),
-            "BUFFER" => PowerPerTriggerBlockPotential(
-                child,
-                1,
-                SaturatingProduct(
-                    PowerAmountGain<BufferPower>(parent, child),
-                    Math.Max(1, incoming)),
-                incoming),
+            "BUFFER" => BufferPotential(parent, child, incoming),
             "BULK_UP" => PowerGrowthFrontierPotential(
                 child,
                 blockPerSkillBonus: PowerAmountGain<DexterityPower>(parent, child),
@@ -102,6 +97,17 @@ internal sealed partial class CombatBeamSolver
                 statusSources),
             _ => 0,
         };
+    }
+
+    /// <summary>缓冲只阻止若干次生命损失，按平均单次伤害计；多段小伤害不按总伤害整体抵消。</summary>
+    private int BufferPotential(SearchNode parent, SearchNode child, int incoming)
+    {
+        int charges = PowerAmountGain<BufferPower>(parent, child);
+        int raw = PowerCardProjectionMath.BufferPrevention(
+            charges,
+            incoming,
+            PowerForecastIncomingHits(child, 1));
+        return BoundedPrevention(raw, incoming);
     }
 }
 

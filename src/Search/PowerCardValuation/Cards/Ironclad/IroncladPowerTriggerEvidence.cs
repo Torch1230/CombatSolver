@@ -1,10 +1,12 @@
-﻿using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models.Powers;
 
 namespace CombatSolver;
 
 /// <summary>
-/// 閾佺敳鎴樺＋鑳藉姏瑙﹀彂璇佹嵁锛圖raft锛夈€傚彧璇诲彇鍐荤粨鍚庣殑鐪熷疄鐗屽尯銆佹晫浜轰笌 Power 浜嬪疄锛?/// 娌℃湁瀵瑰簲鏉ユ簮鏃朵笉鍒涘缓鎵胯銆傚厬鐜拌瘉鎹部鐢ㄩ€氱敤鐘舵€佹敼鍠勫洖閫€銆?/// </summary>
+/// 铁甲战士能力触发证据（Draft）。只读取冻结后的真实牌区、敌人与 Power 事实。
+/// 没有对应来源时不创建承诺。兑现证据沿用通用状态改善回退。
+/// </summary>
 internal sealed partial class CombatBeamSolver
 {
     private bool IroncladPowerHasTriggerEvidence(

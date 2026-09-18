@@ -1,10 +1,12 @@
-﻿using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models.Powers;
 
 namespace CombatSolver;
 
 /// <summary>
-/// 浜＄伒濂戠害甯堣兘鍔涜Е鍙戣瘉鎹紙Draft锛夈€傚ゥ鏂彁銆佺伒榄傘€佺伨鍘勩€佽櫄鏃犱笌 2 璐圭墝鏉ユ簮閮芥寜鐪熷疄鐘舵€佸垽瀹氥€?/// 绾垬鍚庢敹鐩婄殑 FORBIDDEN_GRIMOIRE 涓嶅垱寤烘壙璇恒€?/// </summary>
+/// 亡灵契约师能力触发证据（Draft）。奥斯提、灵魂、灾厄、虚无与 2 费牌来源都按真实状态判定。
+/// 纯战后收益的 FORBIDDEN_GRIMOIRE 不创建承诺。
+/// </summary>
 internal sealed partial class CombatBeamSolver
 {
     private bool NecrobinderPowerHasTriggerEvidence(

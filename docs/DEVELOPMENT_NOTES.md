@@ -1,5 +1,14 @@
 # CombatSolver 开发笔记与未来构想
 
+## 0.40.2：能力承诺通用释放回退与投影/编码收尾（开发中，2026-09-17）
+
+- 重新界定能力承诺证据的语义：它是**路线进展／解除保护信号**，不是“收益由该能力造成”的因果归因。固定前缀专搜已经把能力路线算到底，承诺席位只负责避免刚开能力就被剪掉；路线一旦在攻击、防御或牌流上取得进展就应及时释放。`PowerCommitmentRealizedEvidence` 与 `GenericPowerCommitmentEvidence` 增加说明，后者明确衡量通用战术进展。
+- 撤回本轮“按卡池隔离 + 逐卡因果兑现”的实现（`NewPoolPowerRealizedEvidence` 机制族归因、铁甲壁垒/无惧疼痛/黑暗之拥专用兑现、迟到启用 `HasRegisteredPowerPlay`），恢复 `540e4cb6` 的通用进展释放。单因素回退把铁甲从 62 恢复到 43、储君从 52 恢复到 45，证明此前回归来自“非静默能力失去通用解除信号、承诺黏到租约结束”，而不是能力收益计算。
+- 保留独立成立的修正：`PowerLiveCards` 只取手牌、抽牌堆、弃牌堆（消耗堆不参与未来牌源）；群星之子触发次数改为按实际可花费星能点数（`PowerStarSpendCapacity`，X 费按剩余星能，受星能上限约束），而不是可支付牌张数；缓冲改为按平均单次伤害 × 层数、凶恶改为只按易伤来源数；自动化、环绕轨道、群星之子、缓冲、凶恶的公式抽到纯静态 `Projection/PowerCardProjectionMath.cs` 并加入纯合同断言。
+- 根级快速旁路保持根牌区冻结的 `_hasRegisteredPowerCards`，不再迟到启用；已知边界是根内没有能力牌时，战斗中由白噪声/变化牌生成的能力牌不创建承诺，已在代码注释与实施记录标注。
+- 编码收尾：整棵能力估值树的中文注释按 .NET GBK 码页反向恢复（先后 35 + 7 个文件），拆分被塞进正文的 `///` 行并补回丢失字符，被编码重写带坏缩进的 `PowerCardPlayOccurrence.cs` 恢复原格式；乱码与 `</summary>` 缺 `<` 扫描归零。
+- 验证：Release 编译 0 错误；纯合同 `POWER_CARD_VALUATION_CHECKS_OK total=104 silent=17 ironclad=19 defect=20 regent=18 necrobinder=18 colorless=12`；PowerShell 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=192`。短哨兵最终为铁甲 43、静默 40（行为未变沿用）、故障 13、储君 45、亡灵 25，全部与原结果一致；因果版曾为 62/40/13/52/25，已撤回。未启动后台 8 包、未启动可见 Steam、未打包、未推送。
+
 ## 0.40.2：全卡池单人能力牌建模（开发中，2026-09-17）
 
 - 把原来直接使用静默猎手枚举的公共能力承诺结构重构成卡池无关接口：`PowerCommitmentDescriptor` 改由卡池、稳定 CardId、机制族和 `PowerRouteAdmissionPolicy` 组成，`PowerCardValuationRegistry` 从各角色模型元数据构造描述，公共搜索层不再依赖静默猎手枚举；静默猎手第二版逐卡准入顺序提为公共 `PowerRouteAdmission`，行为逐项保持不变。逐卡语义继续留在各自卡池目录，公共层只按卡池路由（`PowerCardMechanismDispatch`），不合并成一个巨大 switch。

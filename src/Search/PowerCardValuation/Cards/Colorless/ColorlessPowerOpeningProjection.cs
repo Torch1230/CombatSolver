@@ -1,9 +1,9 @@
-﻿using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models.Powers;
 
 namespace CombatSolver;
 
-/// <summary>鏃犺壊鑳藉姏寮€灞€鎶曞奖锛圖raft锛夈€傛棤鑹茶兘鍔涘彲鍦ㄤ换鎰忚鑹叉寔鏈夛紝鎶曞奖鍙鐪熷疄鐗屽尯涓?Power銆?/summary>
+/// <summary>无色能力开局投影（Draft）。无色能力可在任意角色持有，投影只读真实牌区与 Power。</summary>
 internal sealed partial class CombatBeamSolver
 {
     private int ColorlessPowerOpeningProjectionPotential(
@@ -68,8 +68,9 @@ internal sealed partial class CombatBeamSolver
         int amount = PowerAmountGain<AutomationPower>(parent, child);
         if (amount == 0)
             return 0;
-        int draws = SaturatingProduct(PowerDrawPerTurn(child), Math.Max(0, turns));
-        int payouts = draws / 10;
+        int payouts = PowerCardProjectionMath.AutomationPayouts(
+            PowerDrawPerTurn(child),
+            Math.Max(0, turns));
         return payouts <= 0
             ? 0
             : PowerPerTriggerResourcePotential(

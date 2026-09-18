@@ -1,7 +1,8 @@
-﻿namespace CombatSolver;
+namespace CombatSolver;
 
 /// <summary>
-/// 鏁呴殰鏈哄櫒浜洪€愬崱璺嚎鏀跨瓥锛圖raft锛屽緟鐜╁澶嶆牳锛夈€傚彧鐧昏鏈哄埗鏃忎笌鍑嗗叆鏁版嵁銆?/// </summary>
+/// 故障机器人逐卡路线政策（Draft，待玩家复核）。只登记机制族与准入数据。
+/// </summary>
 internal static class DefectPowerRoutePolicy
 {
     internal static PowerCommitmentFamily FamilyFor(string cardId)

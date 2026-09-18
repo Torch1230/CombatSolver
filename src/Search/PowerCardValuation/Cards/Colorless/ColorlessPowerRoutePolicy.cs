@@ -1,7 +1,8 @@
-﻿namespace CombatSolver;
+namespace CombatSolver;
 
 /// <summary>
-/// 鏃犺壊鑳藉姏鐗岄€愬崱璺嚎鏀跨瓥锛圖raft锛屽緟鐜╁澶嶆牳锛夈€傛棤鑹茶兘鍔涘彲鍦ㄤ换鎰忚鑹叉寔鏈夛紝鎸夊疄闄?CardId 璇嗗埆銆?/// </summary>
+/// 无色能力牌逐卡路线政策（Draft，待玩家复核）。无色能力可在任意角色持有，按实际 CardId 识别。
+/// </summary>
 internal static class ColorlessPowerRoutePolicy
 {
     internal static PowerCommitmentFamily FamilyFor(string cardId)

@@ -94,6 +94,10 @@ internal sealed class PowerCardValuationRegistry
             : PowerCardValuationRequirements.None;
     }
 
+    /// <summary>
+    /// 按精确卡牌类型求逐卡估值。当前只有合同检查与文档使用；生产搜索尚未构造
+    /// <see cref="PowerCardValuationContext" />，因此返回值不影响准入、保路、专搜或终局排序。
+    /// </summary>
     public bool TryEvaluate(
         CardModel card,
         in PowerCardValuationContext context,

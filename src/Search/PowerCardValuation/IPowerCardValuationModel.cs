@@ -2,6 +2,12 @@ using MegaCrit.Sts2.Core.Models;
 
 namespace CombatSolver;
 
+/// <summary>
+/// 逐卡能力估值模型。当前状态：这是**合同与文档层**，不是生产搜索消费者。
+/// 生产搜索使用 <see cref="PowerCommitmentDescriptor" />（登记/机制族/优先级/准入）、各卡池
+/// 开局投影与触发证据，以及当前可打能力的固定前缀完整后验；本接口的 Reward/Penalty/Timing
+/// 还没有接入候选准入、Beam 保路或终局排序。不要把它描述成“已经投入生产的量化”。
+/// </summary>
 internal interface IPowerCardValuationModel
 {
     Type CardType { get; }

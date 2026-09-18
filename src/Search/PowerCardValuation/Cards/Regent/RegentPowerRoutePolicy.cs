@@ -1,7 +1,8 @@
-﻿namespace CombatSolver;
+namespace CombatSolver;
 
 /// <summary>
-/// 鍌ㄥ悰閫愬崱璺嚎鏀跨瓥锛圖raft锛屽緟鐜╁澶嶆牳锛夈€傚彧鐧昏鏈哄埗鏃忎笌鍑嗗叆鏁版嵁銆?/// </summary>
+/// 储君逐卡路线政策（Draft，待玩家复核）。只登记机制族与准入数据。
+/// </summary>
 internal static class RegentPowerRoutePolicy
 {
     internal static PowerCommitmentFamily FamilyFor(string cardId)

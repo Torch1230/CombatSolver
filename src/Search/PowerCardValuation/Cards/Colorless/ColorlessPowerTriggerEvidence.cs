@@ -1,10 +1,11 @@
-﻿using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models.Powers;
 
 namespace CombatSolver;
 
 /// <summary>
-/// 鏃犺壊鑳藉姏瑙﹀彂璇佹嵁锛圖raft锛夈€傛棤鑹茶兘鍔涙寜瀹為檯 CardId 璇嗗埆锛屽彲鍦ㄤ换鎰忚鑹叉寔鏈夈€?/// </summary>
+/// 无色能力触发证据（Draft）。无色能力按实际 CardId 识别，可在任意角色持有。
+/// </summary>
 internal sealed partial class CombatBeamSolver
 {
     private bool ColorlessPowerHasTriggerEvidence(

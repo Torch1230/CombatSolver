@@ -1,9 +1,9 @@
-﻿using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models.Powers;
 
 namespace CombatSolver;
 
-/// <summary>鍌ㄥ悰寮€灞€鑳藉姏鎶曞奖锛圖raft锛夈€傛槦鏄熴€侀摳閫犮€佸悰鐜嬩箣鍓戜笌鐢熸垚鐗屾潵婧愰兘璇诲彇鐪熷疄鐘舵€併€?/summary>
+/// <summary>储君开局能力投影（Draft）。星星、铸造、君王之剑与生成牌来源都读取真实状态。</summary>
 internal sealed partial class CombatBeamSolver
 {
     private int RegentPowerOpeningProjectionPotential(
@@ -26,13 +26,7 @@ internal sealed partial class CombatBeamSolver
                 child,
                 PowerAmountGain<BlackHolePower>(parent, child),
                 PowerStars(child) + PowerCountWithStarCost(child)),
-            "CHILD_OF_THE_STARS" => PowerPerTriggerBlockPotential(
-                child,
-                SaturatingProduct(
-                    PowerAmountGain<ChildOfTheStarsPower>(parent, child),
-                    Math.Max(1, PowerStars(child) + PowerCountWithStarCost(child))),
-                Math.Max(1, PowerStars(child)),
-                incoming),
+            "CHILD_OF_THE_STARS" => ChildOfTheStarsPotential(parent, child, incoming),
             "FURNACE" => PowerPerTurnResourcePotential(
                 PowerAmountGain<FurnacePower>(parent, child),
                 turns),
@@ -86,14 +80,26 @@ internal sealed partial class CombatBeamSolver
         };
     }
 
+    /// <summary>群星之子：每花费一点星能获得能力层数格挡，触发次数按实际可花费星能点数计。</summary>
+    private int ChildOfTheStarsPotential(SearchNode parent, SearchNode child, int incoming)
+    {
+        int amount = PowerAmountGain<ChildOfTheStarsPower>(parent, child);
+        int triggers = PowerCardProjectionMath.ChildOfTheStarsTriggers(
+            PowerStars(child),
+            PowerStarSpendCapacity(child));
+        int raw = PowerCardProjectionMath.ChildOfTheStarsBlock(amount, triggers);
+        return BoundedPrevention(raw, incoming);
+    }
+
     /// <summary>按每回合最大能量估算能量花费，每累计4点返还一次，不按回合数直接当作触发次数。</summary>
     private int OrbitPotential(SearchNode parent, SearchNode child, int turns)
     {
         int amount = PowerAmountGain<OrbitPower>(parent, child);
         if (amount == 0)
             return 0;
-        int spent = SaturatingProduct(PowerMaxEnergy(child), Math.Max(0, turns));
-        int payouts = spent / 4;
+        int payouts = PowerCardProjectionMath.OrbitPayouts(
+            PowerMaxEnergy(child),
+            Math.Max(0, turns));
         return payouts <= 0
             ? 0
             : PowerPerTriggerResourcePotential(

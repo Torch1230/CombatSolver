@@ -1,9 +1,9 @@
-﻿using MegaCrit.Sts2.Core.Models.Cards;
+using MegaCrit.Sts2.Core.Models.Cards;
 using Req = CombatSolver.PowerCardValuationRequirements;
 
 namespace CombatSolver;
 
-/// <summary>浜＄伒濂戠害甯堣兘閲忋€佹墜鐗屼笌鐢熸垚鏃忥紙Draft锛夈€?/summary>
+/// <summary>亡灵契约师能量㡣�手牌与生成族（Draft）㡣</summary>
 internal static class NecrobinderCardFlowPowerCardValuationModels
 {
     internal static IReadOnlyList<IPowerCardValuationModel> All { get; } =

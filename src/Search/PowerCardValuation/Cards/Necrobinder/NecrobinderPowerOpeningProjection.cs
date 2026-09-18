@@ -1,9 +1,9 @@
-﻿using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models.Powers;
 
 namespace CombatSolver;
 
-/// <summary>浜＄伒濂戠害甯堝紑灞€鑳藉姏鎶曞奖锛圖raft锛夈€傚ゥ鏂彁銆佺伒榄傘€佺伨鍘勪笌铏氭棤鏉ユ簮閮借鍙栫湡瀹炵姸鎬併€?/summary>
+/// <summary>亡灵契约师开局能力投影（Draft）。奥斯提、灵魂、灾厄与虚无来源都读取真实状态。</summary>
 internal sealed partial class CombatBeamSolver
 {
     private int NecrobinderPowerOpeningProjectionPotential(

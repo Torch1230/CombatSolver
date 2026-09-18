@@ -4,6 +4,8 @@ internal sealed partial class CombatBeamSolver
 {
     private void AttachPowerCommitment(SearchNode child)
     {
+        // 根牌区没有已登记能力时请求级快速旁路：不扫描子节点历史、不做证据或投影。
+        // 代价是根内不存在、之后才由白噪声/变化牌生成的能力牌不创建承诺（已知边界，见文档）。
         if (!_hasRegisteredPowerCards)
         {
             child.PowerCommitment = null;

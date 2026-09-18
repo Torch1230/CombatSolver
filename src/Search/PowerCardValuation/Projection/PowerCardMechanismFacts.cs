@@ -14,13 +14,16 @@ namespace CombatSolver;
 /// </summary>
 internal sealed partial class CombatBeamSolver
 {
+    /// <summary>
+    /// 未来仍可打出的牌：手牌、抽牌堆、弃牌堆。消耗堆不参与，已消耗的牌正常情况下不会再回来，
+    /// 不能继续提供触发证据或抬高投影。
+    /// </summary>
     private PredictedCard[] PowerLiveCards(SearchNode node)
     {
         SimPlayerCombatState state = node.Snapshot.Simulator.State.GetPlayerCombatState(_player);
         return state.Hand.Cards
             .Concat(state.DrawPile.Cards)
             .Concat(state.DiscardPile.Cards)
-            .Concat(state.ExhaustPile.Cards)
             .ToArray();
     }
 
@@ -223,6 +226,32 @@ internal sealed partial class CombatBeamSolver
         SimulatedCombatState combat =
             (SimulatedCombatState)node.Snapshot.Simulator.State.CombatState;
         return Math.Max(1, PersistentPowerSupport.GetModifiedMaxEnergy(combat, _player));
+    }
+
+    /// <summary>
+    /// 本回合手牌里可支付的星能花费上限：按每张星能牌的实际星能费用求和（X 费按剩余星能计），
+    /// 再受当前星能总量限制。用于群星之子按真实花费点数兑现格挡。
+    /// </summary>
+    private int PowerStarSpendCapacity(SearchNode node)
+    {
+        SimPlayerCombatState state = node.Snapshot.Simulator.State.GetPlayerCombatState(_player);
+        int stars = Math.Max(0, state.Stars);
+        if (stars == 0)
+            return 0;
+        CombatPredictionSimulator simulator = node.Snapshot.Simulator;
+        long spend = 0;
+        foreach (PredictedCard card in state.Hand.Cards)
+        {
+            if (card.HasKeyword(simulator.State, CardKeyword.Unplayable))
+                continue;
+            if (card.Preview.HasStarCostX)
+            {
+                spend += stars;
+                continue;
+            }
+            spend += Math.Max(0, card.Preview.CurrentStarCost);
+        }
+        return (int)Math.Min(stars, spend);
     }
 
     private int PowerCountType(SearchNode node, CardType type)

@@ -1,9 +1,9 @@
-﻿using MegaCrit.Sts2.Core.Models.Cards;
+using MegaCrit.Sts2.Core.Models.Cards;
 using Req = CombatSolver.PowerCardValuationRequirements;
 
 namespace CombatSolver;
 
-/// <summary>鏁呴殰鏈哄櫒浜虹墝娴併€佽兘閲忎笌鐘舵€佹斁澶ф棌锛圖raft锛夈€?/summary>
+/// <summary>故障机器人牌流、能量与状态放大族（Draft）。</summary>
 internal static class DefectCardFlowPowerCardValuationModels
 {
     internal static IReadOnlyList<IPowerCardValuationModel> All { get; } =

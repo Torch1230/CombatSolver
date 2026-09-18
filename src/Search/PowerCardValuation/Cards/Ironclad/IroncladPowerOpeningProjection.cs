@@ -1,11 +1,12 @@
-﻿using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models.Powers;
 
 namespace CombatSolver;
 
 /// <summary>
-/// 閾佺敳鎴樺＋寮€灞€鑳藉姏鎶曞奖锛圖raft锛夈€傚彧璇诲彇鐪熷疄鐗屽尯銆佹晫浜恒€丳ower 涓庡喕缁撴剰鍥撅紱
-/// 鏁板€兼槸鏈夌晫娼滃姏锛屽彧鐢ㄤ簬鎵胯淇濊矾锛屼笉杩涘叆缁堝眬姣旇緝銆?/// </summary>
+/// 铁甲战士开局能力投影（Draft）。只读取真实牌区、敌人、Power 与冻结意图；
+/// 数值是有界潜力，只用于承诺保路，不进入终局比较。
+/// </summary>
 internal sealed partial class CombatBeamSolver
 {
     private int IroncladPowerOpeningProjectionPotential(
@@ -96,8 +97,7 @@ internal sealed partial class CombatBeamSolver
             "VICIOUS" => PowerPerTriggerResourcePotential(
                 PowerAmountGain<ViciousPower>(parent, child)
                     * Math.Max(1, PowerEnergyUnit(child)),
-                PowerCountWithVulnerable(child)
-                    * Math.Max(1, child.Snapshot.AliveEnemyCount)),
+                PowerCardProjectionMath.ViciousDrawTriggers(PowerCountWithVulnerable(child))),
             _ => 0,
         };
     }

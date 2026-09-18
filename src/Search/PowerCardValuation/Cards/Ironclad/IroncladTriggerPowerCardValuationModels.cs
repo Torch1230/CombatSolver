@@ -3,7 +3,7 @@ using Req = CombatSolver.PowerCardValuationRequirements;
 
 namespace CombatSolver;
 
-/// <summary>閾佺敳鎴樺＋瑙﹀彂浼ゅ涓庣姸鎬佹斁澶ф棌锛圖raft锛夈€?/summary>
+/// <summary>铁甲战士触发伤害与状态放大族（Draft）。</summary>
 internal static class IroncladTriggerPowerCardValuationModels
 {
     internal static IReadOnlyList<IPowerCardValuationModel> All { get; } =
