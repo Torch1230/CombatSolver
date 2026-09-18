@@ -4,6 +4,11 @@
 
 | 日期 | 样例 | 玩家备注 | 优化前求解器 | 当前求解器 | 人工 | 优化幅度 | 相对人工 | 是否更优 |
 | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| 2026-09-18 | `ecaf220d148740139c6164283400cf79` | 社区群报告（mod 0.38.1）；0.41.0 合并版开战根 | 44 | 死亡 / 44，T?，0药 | 21 | — | -23 | 否；0.41.0 仍未修复 |
+| 2026-09-18 | `9434499f204b45979334c065de801b8e` | 社区群报告（mod 0.38.1）；0.41.0 合并版开战根 | 21 | 21 / 0药，T7 | 3 | — | -18 | 否；0.41.0 仍未修复 |
+| 2026-09-18 | `81415185d1ce4e54aaae9ab53723938c` | 社区群报告（mod 0.38.1）；0.41.0 合并版开战根 | 14 | 9 / 0药，T10 | 6 | — | -3 | 否；仍差3 |
+| 2026-09-18 | `59f11b22b2c34f6387ebf402197087b9` | 社区群报告（mod 0.38.1）；0.41.0 合并版开战根 | 6 | 6 / 0药，T4 | 0 | — | -6 | 否；仍差6 |
+| 2026-09-18 | `f2582928`（社区包） | 社区群报告（mod 0.38.1）；0.41.0 合并版开战根 | 30 | 23 / 1药，T5 | 21 | — | -2 | 否；仍差2 |
 | 2026-09-18 | `70b7d21a8c154a5595578a30bad26bc6` | 黑暗之拥路线；`combat_start` / cursor 0 严格恢复 | 38 | 9 / 0药，T8 | 3 | 29 | -6 | 否；明显改善但仍差6 |
 | 2026-09-18 | `79d3f7e23e7347dba1fe4f3fc0ca3353` | 群星之子；`combat_start` / cursor 0 严格恢复 | 19 | 8 / 0药，T11 | 6 | 11 | -2 | 否；仍差2 |
 | 2026-09-18 | `869658e269db4e3a95d6c93851fc4d2b` | 不重视能力；`combat_start` / cursor 0 严格恢复 | 80 | 20 / 4药，T12 | 20 | 60 | 0（仅HP） | HP数相同，但多耗4药，不算追平 |
@@ -82,6 +87,123 @@
 | 2026-08-31 | `8695fa0ff6184117a737608f34157968` | 留一费导致少防御 | 21 | 8 | 8 | 13 | 0 | 否（追平） |
 | 2026-08-31 | `ee98a833f3194c3eb9649448a52f02e2` | 优化路线 | 27 | 17 | 17 | 10 | 0 | 否（追平） |
 
+## 2026-09-17 夜：上游 0.40.2 合并复验（PR 前置完成）
+
+上游发布 0.40.0→0.40.2（26 提交，125 文件 +20781 行：多宽度路线精炼默认开启、精炼成员扩至五个与 W+1..2W 普通席位、节点预算上调、有界新颖性组合、离线搜索宿主、变形池根快照缓存）。合并 `c2990ef`：
+
+- **文本冲突仅 2 个文档**（AGENTS.md、DEVELOPMENT_NOTES.md 进度行），全部 Search/Runtime/Testing/tools 文件自动合并干净；
+- **语义复验**（0.40.2 纯净 `8411164` vs 合并 `c2990ef`，差分=恰好我们 22 提交）：配对 broad-12 **11/12 场逐位一致**，001（SOUL_NEXUS_ELITE）为高方差场景——同 DLL 重复运行区间 58/70/82/86/92，两侧完全重叠，判定为并行噪声；
+- 结构门禁合并后绿（`REFACTOR_BOUNDARIES_OK search_files=114`，含上游新增 8 个搜索文件）；
+- 运维：C 盘曾 100% 满（无头实例积 52G），一次性实例全清后恢复 43G；批量驱动新增 `CS_HEADLESS_ROOT_PARENT` 支持把实例放到 D 盘（harness `COMBATSOLVER_HEADLESS_ROOT` 覆盖，本次实测通过）。
+
+**PR 就绪结论**：我们的改动在上游 0.40.2 新基线上零退化成立，PR diff 回到净 22 提交（19 文件 +601/−36）。
+
+## 2026-09-18 中午：跨层租约原型（G2 候选 B · 默认关闭实验）
+
+**机制**：`SearchNode.PersistentProgressLease`（3 步可继承租约）；某步相对父节点出现 `PersistentBuffValue` 或 `RetentionValue` 增量时铸租约，剪枝时按池序至多 `leaseSeats` 席保入（子节点继承 `Remaining-1`）。`SolverSearchProfile.PersistentProgressLeaseSeats` 默认 0；本轮仅 trace 配置 `leaseSeats` 与实验构建（VeryHigh=16/32）启用。
+
+**固定根（同根同策略 paired）**：
+
+| 根 | 基线 | lease32 | lease16 |
+| --- | --- | --- | --- |
+| WF 瀑布巨兽 | onlyDeath(48)/必败 | **胜利 38** | **胜利 45** |
+| QN 蜂后前缀 | 53 | 50 | **41** |
+| TS 试验体 | 33 | 31 | 33 |
+| AEONGLASS（位移敏感历史根） | 37 | — | 37（持平） |
+
+**broad-12 配对检查（两轮基线自噪声 ±15，单例小差异不可归因）**：
+- lease32：7/10 相同，001/007/008/010 轻微变差（+3~+10，在噪声带内但方向一致）；007 两轮 72/72 vs 基线 52-67、010 29/37 vs 27/27。
+- lease16：001=89（基线 83-98）、003=**24**（基线 29-33，更好）、007=67、008=68、010=27（与基线一致）——无可归因退化。
+
+**第三轮配对复跑（lease16 vs 基线，broad-12 全量）**：12/12 可比场景逐位一致（001 +1 在噪声带内）。三轮配对合并：000-011 全部落在基线自噪声内（003 曾一轮 24 vs 基线 29-33 更好），无一致性退化。
+
+**4pack 位移敏感根（同构建配对，与历史基线一致）**：
+
+| 根（包） | 基线 | lease16 |
+| --- | --- | --- |
+| A2 AEONGLASS `8e2082b8` | 37 | 37 |
+| A2 AEONGLASS `c6cf5c78` | 37 | 37 |
+| Q1 QUEEN `18306ec0` | 34 | 34 |
+| Q2 QUEEN `2ab68ac6` | 34 | 34 |
+
+**结论**：机制成立且参数敏感（32 有过收/位移迹象，16 在全部配对中干净）；记录线所在 beam 的 step4 由 `PruneDropped` 变 `PruneFinal`，胜出路线与记录线同族。**当前证据：固定根改善（WF 必败→胜利 45、QN 53→41、TS 持平、4pack 与 broad-12 零退化）**。默认保持关闭；产品化需设置面（预算字段）+ 全量门 + 与作者对齐，或作为 PR 内的实验通道提出。
+
+## 2026-09-18 上午：G2 第一步（剪枝丢弃见证捕获，仅诊断）
+
+- 新增 `SearchPathObservationStage.PruneDropped`：`Prune` 在应用全部保留通道与 incumbent 之后，把被丢弃的池成员中**与观看的已知路线状态匹配**的节点发出观测（`outer_prune_dropped`，含 PoolIndex/ParentRetentionRank）。仅在已知路线 trace 附加了 PathObserver 时生效：生产路径零开销、选择行为不变。
+- 三根验证（同 R1 路线配置，诊断构建 `.local/regression/build-r1`）：
+  - **WF**：记录线 step4（JUGGLING）以**完整动作标识**被 depth-4 前沿剪枝捕获（poolIndex 168，父 step3 rank 42/392）；step5 从未生成（无节点可捕）
+  - **QN**：step4/step5 完整标识捕获（poolIndex 278/25，父 rank 83/4）；step15/16 状态级等价命中
+  - **TS**：step4/step6 状态级等价命中（动作标识不同=经换序到达同一状态）；step2 在此前边界已被剪（早于前沿丢弃点）
+- **含义**：见证捕获点选对了——三个包记录线的深前缀都能在「被丢弃前」被稳定抓到；下一步接「有界见证 + 重放续搜 + 真实终局重排」（设计稿候选 A 余下部分）。
+- **G2 第二步校准（WF 边界，丢弃集 176/221/886）**：记录线 step4 在两类静态排序下都排不进有界预算——价值优先（PBV/Latent/depth/score）rank **28/176**，深度优先 rank **102/176**（beam 270 时 426/886、772/886）；该边界「带持续成长增量」的丢弃候选就有 **42**（beam 270 时 287）。结论：**单边界静态准则无法识别记录线**（它的价值只在续搜后兑现），「后验重排」不能以「按当前值取 top-K 见证」实现；可行性收敛到**生成时租约**（候选 B：持续成长增量发生时给 lineage 发有界可继承租约，跨剪枝存续 N 个边界），续搜全量候选的预算不可行（42-287/边界）。
+- 门禁：`verify-refactor-boundaries.sh` OK（search_files=114）；构建 0 错误（2 既有 warning）。
+
+## 2026-09-18 凌晨：T1 跨 archetype 泛化验证（R1 · autopilot abba31386533）
+
+**方法**：三新包 0.40.2 实机报告（WF=瀑布巨兽·铁甲 / TS=试验体·铁甲 / QN=蜂后·机械师）逐包从包内 `recording/events.jsonl` 还原全程行动路线（含选牌与药水目标），转成 `KNOWN-CONFIG-ROUTE-TRACE-V0111` 已知路线配置，从开战根（无需原生事件回放，绕开 0.40.2 包 restore 兼容坑）以包原策略跑全新搜索并观察前缀的生成/展开/保留（beam 90/135/203/270 + Smart 用药梯度层）。
+
+**结果**：
+- **WF**（38 动作 / 8 回合 / 2 药）：记录线第 5–38 步在全部 beam 与用药梯度层（layer1/2 均实际运行）从未生成/展开，第 3–4 步仅宽 beam 存活。搜索自身 = `onlyDeathRoutes`、预计战损 48、必败；同构建完整模拟回放该记录线获胜（战损 22、敌方 0，RootUnchanged/LiveUnchanged 全过）。**win vs loss 级 materiality**。
+- **TS**（8 动作 / 1 回合 / 2 药）：记录线第 2 步（第二瓶药）生成/admitted 后未展开，第 3 步起从未生成；2 药梯度层 `route_missing=true`（连恰好 2 药的路线都搜不到）；记录线比搜索好 33→32（-1）。
+- **QN**（116 动作 / 20 回合 / 0 药）：全长重放在 T7 遇同名牌副本解析歧义；改为可安全重放的前 42 动作前缀评估：**step3 过 depth-3（池 29/249、RawRank 52、SelectedIndex 52），step5 admitted 后未展开，step6 起从未生成**（beam 90/135/270 一致）。注：QN 包无 BetterWorldline 声明（仅 SearchResultStale），该行为辅助证据。
+- **截断停点定量（三包一致）**：记录线的 3-4 步前缀能生成/入池甚至过 depth-3，但在**更深边界处 admitted 后被剪掉（拿不到展开）**，更深的动作根本不生成：WF step4 生成后未展开（step5+ 从未生成）、TS step2 生成后未展开（同键兄弟出现 `rejected_dominated`）、QN step4-5 同类。即问题不是「单层排名把 step3 丢掉」，而是**前缀无法跨边界存续到兑现**——直接支持跨层机制（推荐线后验重排/深度租约）而非单层席位。
+- **预注册裁决**：WF+TS 明确同源（2/3），QN 前缀评估同型 → **GO T1 跨层机制**（首选推荐线后验重排；备选深度席位租约）。
+
+**证据与产物**（目录不提交）：`.local/checkpoint-batch/r1-trc-wf2` / `r1-trc-ts` / `r1-trc-qn2`；路线配置 `.local/regression/inputs/{wf,ts,qn}-recording.json`；诊断构建 `.local/regression/build-r1`；逐包提取脚本 `/tmp/opencode/r1/`（会话内）。
+
+**包侧兼容坑（记录，不计本项目缺陷）**：0.40.2 包的原生事件回放恢复在 WF（potion slot index 越界）与 TS（`net action type 11` 无映射）失败；`LoadRunSnapshotDirectly` 直恢复因地图控制状态被拒。
+
+## 2026-09-17 晚：估值通道扩展第三批（Barricade/Regen，缺口封顶纪律落实）
+
+- **BarricadePower（b3b0fc5）**：壁垒「格挡不清空」按 `Prevention(当前格挡 × min(剩余回合, 8))` 线性折算（刻意不按复利），共享入伤上限兜底；StrategicEffectContext 新增 PlayerBlock init 字段（单点 Build 调用点填充，签名不变）。配对 broad-12 全部逐位一致；专用根（壁垒+格挡牌 vs Boss，单线程）49/49——lane 未达排序门槛，materiality 待块缺场景。
+- **RegenPower（cb58a9f）**：再生按 `Prevention(amount × min(剩余回合, amount))`（层数递减天然有界）。配对 broad-12 仅 001 在噪声带内（92 vs 85），其余零差。materiality 根（RegenPotion×2 + RequireAtLeastOne 强制饮酒，单线程 Boss 根）：base/fix 均 20，通道活跃但未达门槛。
+- **materiality 现状**：Radiance（缺口封顶版）与 Regen 在专用根上通道确实活跃（饮酒后状态含能力、估值路径命中），但数值幅度未改变路线；Barricade/Plating 的专用根路线未命中被测能力。结论：通道机制与边界均正确且零退化，**是否带来战损改善仍未证实**，在作者认可前不宣称收益——这也支撑在 PR 里提出「希望作者提供跨 archetype 报告包用于泛化验证」的请求。
+- TheBomb/生成牌/加抽引擎候选继续排队（生成牌引擎涉及 ImmediateShivSupply 交互，工程量较大，单独批次）。
+
+## 2026-09-17 傍晚：位移差分工具化与通道形态验证（T1 第三批）
+
+**诊断工具**：路径观察缓冲 16384→65536（21d766b，仅 trace 场景活跃），位移差分从此可完整导出。
+
+**AEONGLASS 深度3层完整差分（base 37 / fix 64，同一观察器）**：base 池 2068/选 135，fix 池 2138/选 135；**被完全位移的 base 选中成员 23 个，全部是 beam −1.28M~−1.31M 级的优质 SURVIVOR 兑现线**（(准备,生存者,步法/削骨) 等），而新增入池的选项 leader lane 成员仅 beam −1.47M 级——配额置换净亏。这解释了全部 fix 变体在 AEONGLASS 的 +26/27 退化。
+
+**通道形态验证（追加式 option-leader 通道）**：把 option leader 改为追加到扩展区（不占 routing 配额、零位移）后 AEONGLASS=68——**无位移但保留集扩到 ~225 导致每线展开预算稀释，结果与配额版同级劣化**。三种合并形态（配额置换 / leaders-first 配额 / 无位移追加通道）全部收敛：签名族通道的短期扩张/位移成本 > 长期兑现价值。
+
+**T1 最终结论（本日）**：签名线深前缀的价值只在回合末兑现，beam 的逐层短视排序无法用「单层席位/通道」解决；正确方向=**跨层机制**——「推荐线验证」（后验兑现重排，把投资线打完整场后按实际兑现值回排）或「家族内深度席位租约跨剪枝存续」。全部实现变体已撤回（工作区=HEAD），诊断工具与全部定量证据已入库留档。
+
+## 2026-09-17 下午：位移诊断与估值通道实测（同日第二批）
+
+**T1 跨层诊断（双 trace，AEONGLASS 根）**：fix 变体（多卡选项键+leader优先配额）重建后双 trace 确认：签名线 step3 在 depth-3 剪枝存活并 Expanded，**step4 首次被生成**（打破昨夜「step4-6 从未生成」结论的前半部分）；但 step4 随后被**转置去重**吸收——(余像,步法+,准备+弃[尖啸,打击],步法+) 与 (步法,余像,准备+弃[尖啸,打击],步法+) 是同一 StateKey，兄弟变体存活，状态本身未丢失。AEONGLASS 63/64 退化源于 routing 重排本身的位移（哪些既有席位被挤掉未定位，需要 base/fix 深度池完整差分，观察缓冲 16384 事件上限会先溢出）。T1 修复维持撤回状态，跨层机制设计留下一工作块。
+
+**RadiancePower 估值修正（1b1a15a）**：专用 materiality 根（RadiantTincture×2 + RequireAtLeastOne 药水策略，单线程确定性）实测 9379f1e 原始估值（energy×turns 无缺口估计）**退化 7→16**；改为加入已验证的 RecurringEnergyGain 可消费缺口路径（CaptureEnergyRefundWindow 封顶、多实例共享 refundEnergyCapacity）后回归 7/7 一致。教训：持续返能类估值必须走缺口封顶，不能裸用「每回合 × 剩余回合」。
+
+**RitualPower 三角成长估值（已试并撤回）**：按 DemonForm 同构公式实现后，专用根（Mazaleth's Gift×2 + RequireAtLeastOne，单线程）实测 base=74/fix=79（+5 退化）。按「负结果不累积」纪律撤回。与 Radiance 裸估值同型问题：每回合成长收益假设未来攻击按剩余回合均摊兑现，未做兑现窗口约束；后续若重试需先设计兑现约束。
+
+**WraithForm 方向性修正（f55e9a8）**：幽影形态每回合 -敏此前落默认 Scaling 被当收益计，现计零（IntangiblePower 卡值另行处理）。配对回归零一致差异。
+
+**PhaseE 评估记录**：7 个全库无引用 Power（Coordinate/Fade/HammerTime/HardToKill/Leadership/OneForAll/Tank）与 CalcifyPower 镜像缺失属于「连模拟都没有」的语义层工作，规模需逐卡评估，不属估值批次。
+
+## 2026-09-17：能力卡持续收益估值首批补值（RadiancePower/PlatingPower）
+
+两张持续收益能力走中间保路估值补值（`StrategicEffectVector` 保留通道，仿已验证的 OrbitPower/AutomationPower RecurringEnergyGain 同族机制，不进 Score/终局排序/状态键）：
+
+- **RadiancePower（9379f1e）**：辉光每回合返能按 `energy × min(层数, 剩余回合) × energyUnit` 计入 Resource 维度；此前落默认 Scaling(层数) 单点分。
+- **PlatingPower（998437d）**：石甲每回合末 +amount 甲按 `Prevention(amount × RemainingTurns)` 计入，复用共享 IncomingDamage 上限防威胁有限战斗双重计价；此前同样是单点分。
+
+**验证方法学发现（对后续所有小估值改动重要）**：
+1. broad-12 回归套件为 4 路并行搜索，同一 DLL 重跑同场景战损可差 ±8~33（QUEEN 随机样例 65/68/32），**套件 Δ 小于噪声带时不可归因**；
+2. 2026-09-16 深夜记录的回归基线属「Mod 栈时代」数字，与当前干净栈（仅 RitsuLib）不同环境，不可直接对比；
+3. 12 个回归场景 loadout 均不含 Radiance/StoneArmor，新增通道在套件上不活跃，配对验证只能证明零退化（无一致差异），不能证明估值收益；
+4. 专用固定根（RADIANT_TINCTURE×2 → DECIMILLIPEDE_ELITE 单线程、STONE_ARMOR+INFLAME → EliteOrBoss 单线程）两侧路线未发生变化（70/70、18/18）——固定根上路线未饮用/未按预期出牌时通道不生效，materiality 未验证，已在两份提交信息中如实声明。
+
+**本轮不宣称任何战损改善**；通道价值主张=机制对齐（与已验证同族一致的估值完整性），materiality 验证待设计「路线实际饮用辉光/打出石甲且能量或甲为瓶颈」的固定根。
+
+### 附：能力卡持续收益盘点（T2 盘点轮产出，2026-09-17）
+
+「已模拟但中间保路估值漏算」剩余候选：BarricadePower（格挡跨回合保存）、RitualPower（每回合+力，与 DemonForm 同构）、RegenPower（每回合回血）、InfiniteBlades/HelloWorld/SentryMode（每回合生成牌，CardAccess 维度）、MachineLearning/ToolsOfTheTrade/SpectrumShift/Aggression（每回合加抽）、TheBombPower（延迟引爆进 DelayedDamage 维度）、LoopPower/CoolantPower/FanOfKnivesPower（依赖球队列/命中数等新快照字段，工程量更大）。
+完全未模拟（连模拟都没有，非估值问题）：CoordinatePower、FadePower、HammerTimePower、HardToKillPower、LeadershipPower、OneForAllPower、TankPower（全库无引用 7 个）；CalcifyPower 已施加但 Engine 镜像无 handler（MethodNotMirrored 风险，PredictionCoverage 会报 PredictionGap）。
+WraithFormPower 估值方向性错误：默认 Scaling(amount) 把每回合 -敏代价当收益计，修正时需注意。
+
 ## 2026-09-02：通用循环与跨回合收益迭代（开发中）
 
 - 玩家反馈的核心不是某一套无限组合，而是 Beam 会过早丢弃“前几次动作评分低，隐藏相位或下一回合才产生数百伤害”的路线；同时，卖血和烧牌可能是必要启动成本。验收目标继续按真实质量排序：先减少整场生命/资源损失；损失相同才减少战斗回合，不能用更多战损换一个更短回合数后宣称更优。
@@ -91,10 +213,86 @@
 - 开发中 A/B 证据：隐藏三相位 DOP1/DOP2 都为 `6` 动作、`0` 战损、第 `1` 回合结束（`b45f4b96e831476d916541ce6056a564` / `ba2489070de945808d8c035f887f341b`）；抽弃循环均为 `20` 动作、`19` 次洗牌、`0` 战损、第 `1` 回合结束（`2e1b006693ff4e7187d6312d05a222a5` / `963e6b2c55b84130beef87c0d6f1c7cf`）；必要生命投资为 `3` 动作、`3` 战损、第 `1` 回合结束（`3cd14cf8ab3d413b9f92726884bf0072`）；存在零损解时选择 `5` 动作零损路线且不采用卖血动作（`037c48a0866c4cd4a1140cb437290b1e`）。最终 PR 复测数字仍待填，不能把这些中途 runId 当作发布结果。
 - 未采用宏循环、多动作捷径或“检测到循环就直接判无限/击杀”。当前仍受 Beam、候选截断、时间/节点、最多 `8` 动作周期、最多 `4` 个探测族和有限出口视野限制，因此不数学完备；漏掉更长或更晚兑现路线时，应补充通用状态/收益表达与独立 fixture，而不是新增专有代码。完整 fixture 和 Linux/Windows 命令见 `docs/TEST_MATRIX.md`。
 
+## 2026-09-18 下午：社区群 37 包试点（0.41.0 合并后外部验证）
+
+- 数据来源：mod 交流群导出的 37 份社区问题包（mod 0.38.1，均为 `BetterWorldline` 人工优于旧求解器），本地目录 `.local/community-files/`。方法沿用 R1：从包内 `recording/events.jsonl` 还原已知路线为 `KnownRouteTraceConfig`，selector 取 `sessionId:0`（开战根，无需原生事件回放），在 0.41.0 合并版构建上跑 `KNOWN-CONFIG-ROUTE-TRACE-V0111`；`exact` = 记录线在搜索中被完整生成并展开的最大步。
+- 新增本地工具（`.local/regression/`）：`tools/decode_replay_events.py`（按游戏 DLL 位级 `PacketWriter` 格式解码 `PlayerChoice`；CombatCard 选择=16 位 native id，52 条全部与 `ChoiceContext.Options.NativeId` 对账通过）、`tools/events_to_route.py`（事件→路线配置，含选择挂接与目标/药水槽换算）、`run-community-trace.py`、`analyze-comm-trace.py`。
+- 覆盖率：37 包中 25 个在 0.41.0 上完成追踪（含 3 个前缀截断）。阻塞类型：旧包原生恢复/事件回放异常（`41d66f28`、`5888467b`、`470b2f06` 药水政策）、开战抽牌 RNG 不一致（`35a46c5b`、`6b21ada6` 全 24 步、`21dee9b1`）、单 choice 表达不了 BURST 双选牌（`be967852`）、药水/能力 Index 选择（`89e02332` 等 6 个）、严格回放不一致（`9fd65807`）。
+
+| 样例 | 遭遇 | 人工 | 0.41.0 求解器 | exact/总步 | 判定 |
+| --- | --- | ---: | ---: | ---: | --- |
+| `ecaf220d` | AEONGLASS_BOSS | 21 | 死亡 / 44 | 2/19 | 缺口 |
+| `9434499f` | INFESTED_PRISMS_ELITE | 3 | 21，T7 | 4/13 | 缺口 |
+| `81415185` | TERROR_EEL_ELITE | 6 | 9，T10 | 6/40 | 缺口 |
+| `59f11b22` | EXOSKELETONS_WEAK | 0 | 6，T4 | 5/15 | 缺口 |
+| `f2582928` | INFESTED_PRISMS_ELITE | 21 | 23，T5，1药 | 4/10 | 略差 |
+| `bac28e34` | DECIMILLIPEDE_ELITE | 6 | 16，T8，1药 | 1/1 | 明显差 |
+| `a86fbffc` | THE_LOST_AND_FORGOTTEN | 2 | 7，T3 | 1/1 | 缺口 |
+| `30fac14c` | THE_KIN_BOSS | 19 | 21，T9 | 7/10 | 略差 |
+| `efed9228` | SNAPPING_JAXFRUIT | 7 | 7，T6 | 3/6 | 追平 |
+| `5465906e` | TERROR_EEL_ELITE | 9 | 9，T7，1药 | 9/15 | 追平 |
+| `6f23df31`（截 41 步） | QUEEN_BOSS | 0 | 0 | 5/41 | 追平 |
+| `c3ab14fb` | TERROR_EEL_ELITE | 3 | 3，T6，2药 | 1/1 | 追平（多2药） |
+| `6b21ada6`（截 7 步） | SPINY_TOAD_NORMAL | 1 | 3 | 7/7 | 接近 |
+| `f1bf7c4b` | KNIGHTS_ELITE | 2 | 2，T3 | 2/12 | 追平 |
+| `b44a6f28` | QUEEN_BOSS | 35 | 27，T14，1药 | 4/16 | 更优 |
+| `7b7caa9e` | QUEEN_BOSS | 31 | 26，T12 | 5/15 | 更优 |
+| `a824f1e0` | QUEEN_BOSS | 30 | 19，T9 | 4/12 | 更优 |
+| `ce563f11` | SOUL_FYSH_BOSS | 20 | 16，T17 | 16/57 | 更优 |
+| `f5e8db3a` | WATERFALL_GIANT_BOSS | 30 | 19，T20 | 22/42 | 更优 |
+| `a917c8a5` | SOUL_NEXUS_ELITE | 3 | 1，T8 | 13/28 | 更优 |
+| `16c074fa` | TUNNELER_WEAK | 9 | 7，T6 | 8/8 | 更优 |
+| `cb32ae91` | KAISER_CRAB_BOSS | 20 | 19，T5 | 4/4 | 更优 |
+| `e98a44a5` | SOUL_FYSH_BOSS | 7 | 8，T12 | 8/8 | 接近 |
+| `3c1b5bba`（截 33 步） | WATERFALL_GIANT_BOSS | 0 | 1，T11，1药 | 12/33 | 接近 |
+| `900ff293` | ENTOMANCER_ELITE | 77 | 72，T10 | 6/6 | 更优 |
+
+- 结论：① 0.41.0 在多数社区根上已追平/反超人工（25 个中 21 个 ≤ 人工+2 或更优），明确缺口收缩为 `ecaf220d`（永世沙漏）、`9434499f`（感染棱柱）、`81415185`、`59f11b22`、`f2582928`、`bac28e34`、`a86fbffc`；② T1 签名（记录线在搜索中被中途剪掉）仍普遍存在（25 个中 19 个 exact < 总步），但只有求解器结果劣于人工时才有害；③ **lease16 在合并版上只对 WF 类深线有效**（0.40.2 WF 对照：基线 48 死亡 → lease16 45 胜利；4 个社区缺口根上无改善，`81415185` 9→8），支持「保持实验通道/只扩 WF 类证据」，不支持直接产品化；④ 0.38.1 旧包路线还原可行率约 2/3，RNG/原生恢复类阻塞已分类记录；⑤ 社区包可用于持续回归：修复或调参后可用同一批根复跑对照。
+
+## 2026-09-18 傍晚：已知路线诊断配置扩展（探索分支）
+
+- `KnownRouteTraceActionConfig` 新增 `nestedChoices`：同一次出牌的多段选择（BURST 双倍弃牌等）按执行顺序表达；嵌套选择允许延迟 token（选牌由动作自身生成/抽到时不在动作前状态里，回放匹配器按 CardId+升级+occurrence 在执行时解析）。
+- 药水步骤支持 `choice`：Index 选择（药水三选一）按选项卡生成延迟 token；生成牌药水用 `GenerateToHand/PileType.None`，其余药水仍用 `PotionChoiceSupport.GetSpec` 静态规格。
+- 含延迟 token 的路线在精确步比较时忽略选择 token 的 StateKey（空 key 无法与搜索生成 key 比较），其余身份字段仍严格。
+- 解锁结果（合并版 0.41.0 + 探索构建）：`be967852`（BURST 双弃牌）追踪通过，10 战损胜利，exact 3/32；`89e02332`（最大缺口，无色药水三选一）追踪通过，14 战损胜利（人工 0、旧报告 46），exact 2/13。回归：`ecaf220d` 结果与 exact 深度不变（死亡 44、exact 2）。
+- 保留限制：CanonicalCard/MutableCard 选择、旧包 RNG 不一致（`35a46c5b` 等）仍不可还原。
+- 扩展后的解锁结果（探索构建 = 0.41.0 + 诊断扩展；人工=报告内玩家实测）：
+  - `8300823a` 感染棱柱/故障：15 战损胜利（人工 0），exact 5/5（记录线全程保留）；
+  - `6cf311a0` 感染棱柱/静默：14 战损胜利（人工 2），exact 6/21；
+  - `3c1b5bba` 瀑布巨兽/储君：1 战损胜利（人工 0），exact 12/36，state-only 到 36；
+  - `ddc378b9` 多尼斯异鸟/铁甲：34 战损胜利（人工 26），exact 7/9；
+  - `21dee9b1` 女王/静默（第 7 步 occurrence=1）：15 战损胜利（人工 27），exact 2/15；
+  - `89e02332`、`be967852` 见上节；
+  - `43af84b6` 实验体/亡灵：求解器 8 战损胜利（人工 7），但首步选择身份与搜索生成规格不一致，路径断言未过（结果仍可用）；
+  - `470b2f06` 仍被药水强制政策阻塞（搜索必须使用 AMBERGRIS/DEXTERITY，未找到路线）。
+- 覆盖变化：社区 37 包中可追踪根从 25 个提升到 31 个（含 2 个仅结果可用的部分追踪）；剩余阻塞=旧包 RNG/原生恢复 4 个、实例特定不可打出 1 个、政策/身份 2 个。
+- 缺口根的剪枝阶段归因（PATH_TRACE 证据，0.41.0 基线）：
+  - `ecaf220d`（永世沙漏，死亡 vs 人工 21）：记录线 step1 完整保留；step2 状态被 `rejected_dominated`（准入支配拒绝）后从未展开；step3 的状态经另一动作路径生成但止于 `outer_prune_dropped`。→ 单层席位租约覆盖不到 step2 的支配拒绝。
+  - `9434499f`（感染棱柱，21 vs 人工 3）：step1-3 完整保留（含 StandPatProbe）；step4 状态生成、准入、进入剪枝输入后在 `outer_prune_dropped` 被丢弃，且没有任何 state-only 替身。→ 丢点在剪枝席位而非准入，但该节点没有触发增量租约。
+- lease16 在探索构建上的补充配对：`6cf311a0` 14→9（改善 5）、`8300823a` 15→17（劣化 2）、`ddc378b9` 未跑（长路线）、WF 对照仍 48 死亡→45 胜利。→ 租约收益仍以 WF 类深线为主，且出现单根劣化，支持保持实验通道 + 逐根配对门，不支持默认开启。
+- lease16 社区配对完整汇总（0.41.0 合并/探索构建，同一根同配置仅差 `leaseSeats`）：WF 对照 48 死亡→45 胜利（改善）；`6cf311a0` 14→9（改善 5）；`81415185` 9→8（改善 1）；`8300823a` 15→17（**劣化 2**）；`ddc378b9` 34→34、`3c1b5bba` 1→1、`ecaf220d` 44 死亡→44 死亡、`9434499f` 21→21、`59f11b22` 6→6（持平）。→ 净收益为正但存在单根劣化，结论：保持实验通道 + 逐根配对门，不支持默认开启。
+- 下一步机制候选（由归因得出）：`ecaf220d` 的丢点是 **准入支配拒绝**（step2 `rejected_dominated`）。支配规则是 `TranspositionLabel`（已用药数/战略成本/未来卖血/累计战损/动作数/分数）在同一状态键上的逐维比较：记录线花掉双药到达该状态，被另一条花费更少药水、同状态键的路线按「已用药数 ≤」判为支配。已核实：主状态键（`BuildStateKey`）包含回合/HP/能量/牌堆顺序/RNG/敌人/战斗镜像，但**不含药水腰带**（腰带只在 `cycleShapeKey`）；支配拒绝在给定等价类下是合理的（同状态、少用药的路线严格不差）。但 PATH_TRACE 的 state-only 证据显示：step2/step3 的同状态替身来自**药水顺序相反**的路线（`DEXTERITY_POTION, STRENGTH_POTION, NEUTRALIZE`），它被准入并在 step2 展开、step3 经 StandPatProbe 后 `PruneDropped`；记录线的动作身份（STR→DEX）在 step2 被支配拒绝，其状态线靠置换顺序替身延续到 step3 后在 outer prune 被丢弃（step4 起无替身）。→ 下一会话先按置换替身追 step3 的 outer-prune 丢点（该步无增量，租约不触发），而不是先动支配规则。`9434499f` 的丢点是 `outer_prune_dropped`，需要保留池排名对增量节点的席位保护。租约只加剪枝席位，覆盖不到上述两类丢点。
+
+## 2026-09-18 夜：ecaf220d 替身丢点归因与租约席实验（价值排序负结果）
+
+**诊断扩展（已入库）**：`SearchPathObservation` 增加租约快照字段 `LeaseId`/`LeaseRemaining`/`ParentLeaseId`/`ParentLeaseRemaining`（仅 trace 观察生效，生产零开销）。
+
+**ecaf220d 丢点归因（lease16 池序，PATH_TRACE）**：
+- step1 铸租约 `1/3`；step2 替身（DEX→STR）在 b=2 观察到 `parentLease=1/3` 但自身 `lease=None`——**租约循环在 16 个新增席位用完后 break，未走到该节点**；step3 因此 `parentLease=None`，在 b=3 `outer_prune_dropped`（与基线一致）。b=3 另有 3 个「父有租约但自身未处理」节点。→ 失败点不是「该步无增量」，而是**按池插入序发席位，高价值深线在宽池里排不到**；支配规则无关。
+
+**价值排序租约席实验（已撤回，负结果）**：`leaseSeats>0` 时改为按见证序（PBV/Latent/depth/score）处理候选，同 DLL 同根配对。
+- ecaf220d：step2 `1/2`、step3 `1/1` 保留并展开（不再丢）；step4 在一个 lane 铸新租约 `69/3` 保留后，在 b=4/b=5 又被席位竞争丢弃（b=4 丢点见证 rank 34/772）；`lease48` 时 step5 也进过保留集，最终结果仍为 44 死亡 onlyDeath。**前缀多活 1-2 个边界，质量无变化**。
+- 每租约单席变体：同租约兄弟按价值先抢唯一席位，记录线 step3 反而在 b=3 丢掉（比不设限更差）——撤回。
+- 社区配对（lease16：价值序 vs 池序）：WF **48 死亡 vs 45 胜利（阳性对照丢失）**、`6cf311a0` 13 vs 9（退化）、`8300823a` 15 vs 17（修回基线）、`81415185` 8=8、`9434499f` 21=21、`59f11b22` 6=6。
+- 裁定：席位排序根敏感，价值序救前缀但牺牲 WF 胜局；按负结果纪律**撤回价值序与单席变体**，仅保留租约快照诊断。
+
+**含义**：有界每边界席位在宽池高竞争战斗无法保证 6-8 个边界连续存续（ecaf 记录线 payoff 在 step5+ 才出现），只能把前缀推进 1-2 步；候选 B（生成时租约）当前形态不足以转正该根。后续候选：①租约线「粘性席位」（活跃租约不逐边界重新竞争，总量≤N）；②候选 A（见证重放）按实测见证 rank 重估预算（ecaf step3 20/647、step4 34/772；WF step4 28/176）。
+
 ## 待处理
 
 | 样例 | 当前证据 | 状态 |
 | --- | --- | --- |
+| Q1+Q2 / A1+A2 签名线（能力卡方向 T1 缺口） | KNOWN-CONFIG-ROUTE-TRACE 双战斗验证（QUEEN/AEONGLASS start 根，beam135/270/512 一致）：签名线 T1 前缀在 step3（准备+弃2）后被层间排名截断——RawRank 1652/2527、BeamRank −2,430,003 对切线 +283,997（差 ~270 万）；step4-6 状态从未生成；完整线终态 −4,600,006 优于当时保留末位 → 中途截断而非终局劣势。三个既有保护机制均不覆盖家族内深度前缀：谱系代表（家族内同排名）、opening_channels（投斧遗物门控 `HasUnusedCardReplayAllocator`，39b5e22）、cross-turn 隐形收益租约（仅回合末语义分歧，Terminal.cs）。**2026-09-18 泛化验证：WF/TS/QN 三新包已知路线全新搜索均在 3-5 步深前缀处被剪（WF 记录线可胜、搜索 onlyDeath；TS 少 1；QN step3 过 depth-3 但 step5 admitted 后未展开），预注册 ≥2/3 达成 → GO 跨层机制** | 修复=跨层机制（推荐线后验重排优先 / 深度席位租约备选，结构级）；待与上游作者评审。诊断工具 `KNOWN-CONFIG-ROUTE-TRACE-V0111`（6815a84）与池观测（7257a96）已提交可复用 |
 | `dc708a1f086e4bc68246cb98271f00c2` | 当前 VeryHigh 从 `combat_start` / cursor 0 进入残杀千足虫战斗，外层 300s 超时，未产出路线 | 超时不计质量；未提高预算、未重复运行 |
 | `5355faf5b3e44d5cba0d81694e88fcb1` | 当前VeryHigh 24战损/0药，玩家14；普通34，最佳能力前缀幻影刀＋余像24。多能力拆分后每成员25000节点，多条宽成员触发NodeLimit | 仍差10；继续处理多能力组合预算，不能只提高泛能力权重 |
 | `57144c6fbf5f49e8b7a317e7ff2d2ea1` | 当前VeryHigh 5战损/0药，玩家1；普通与泛能力均55，毒雾和毒雾＋灵动后验降到5 | 仍差4；本次未由计划妥当固定前缀取胜，不能宣称计划妥当模型已追平 |

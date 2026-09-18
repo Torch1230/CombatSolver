@@ -49,6 +49,11 @@
 - 根据分析器证据删除3个无引用私有方法及83个多余using；保留InlineArray、Harmony/反射入口、历史研究工具与旧设置迁移。
 - 循环出口三种比较器只抽取原本相同的质量排序后缀，保留独立租约前缀、短路顺序、集合顺序与搜索政策。审查及逐阶段验证见[代码整洁度报告](refactoring/code-hygiene-review-2026-09-18.md)。不提升版本、不部署或发包。
 
+## 未发布：能力卡持续收益估值通道（2026-09-17）
+
+- 新增四条持续收益保路估值通道：辉光（RadiantTincture 施加的 RadiancePower）按已验证的 RecurringEnergyGain 可消费缺口路径折算每回合返能；石甲（StoneArmor 施加的 PlatingPower）每回合末 +甲按 `层数 × 剩余回合` 折算进 Prevention 并沿用共享入伤上限；壁垒（Barricade）按 `当前格挡 × min(剩余回合, 8)` 线性保留折算（上下文新增 PlayerBlock init 字段，Build 签名不变）；再生按 `治疗量 × min(剩余回合, 层数)`（层数递减天然有界）。幽影形态每回合 -敏此前被默认 Scaling 当收益计，现计零（IntangiblePower 卡值另行处理）。
+- 需求声明补充 `RemainingTurns`，第三方 Power 登记优先级不变。RitualPower 按 DemonForm 同构三角公式实测退化（74→79，单线程确定性），已按负结果纪律撤回。
+- 已验证：各通道配对同环境 broad-12 回归逐位一致或仅并行噪声带内差异（同 DLL 重跑方差 ±8~33 已量化）；专用单线程 materiality 根上 Radiance/Regen 通道确认活跃但未改变路线，Barricade/Plating 根路线未命中被测能力。**不据此宣称战损改善**，泛化验证待跨 archetype 玩家报告包。
 ## 0.41.0：问题包开战默认与仓库内无头实例（2026-09-18）
 
 - 修正问题包夹具默认语义：`CheckpointArchive`、CheckpointTool 批处理、Windows/Linux 无人入口和可见回放入口统一默认选择 `start`。SearchOnly/DeploySolver 因而从 `combat_start` 恢复并由求解器处理整场开局；`latest` 保留为显式的中途诊断选择，不再能因省略参数而把玩家干预后的检查点误当成整场质量证据。

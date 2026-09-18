@@ -1,7 +1,8 @@
 # CombatSolver 仓库工作指令
 
-> **当前批次（2026-09-16）：** 用户授权实现无需训练的搜索改进并提交新PR；基线为上游 `7f806de`（0.39.0）。新增可选有界新颖性／Beam组合，独立队列、共享请求预算及既有终局政策；说明与本轮证据见 [有界新颖性组合](docs/strategy/bounded-novelty-search-20260916.md)。不启动可见Steam、不提升版本、不发包或上传创意工坊。
+> **本轮追加（2026-09-17）：** 能力卡方向白天批次：T1 签名线截断修复三变体实测后撤回（QUEEN 34→22 可达但 AEONGLASS 稳定退化 +26/27，机制精确定位为「多卡选择 RoutingChoiceSignature 坍缩 + depth-4/5/6 连锁截断」，跨层机制留下一工作块）；T2 补值 RadiancePower（9379f1e，后经 1b1a15a 改可消费缺口路径）、PlatingPower（998437d）、BarricadePower（b3b0fc5）、RegenPower（cb58a9f）与 WraithForm 方向性纠错（f55e9a8）走 StrategicEffectVector 保留通道（全部零退化已验证、materiality 状态已声明）；Ritual 三角成长实测退化已撤回。持续收益盘点（8 候选+7 未模拟）与**验证方法学发现**（broad-12 套件 4 路并行重跑方差 ±8~33、小估值改动 Δ 小于噪声带不可归因、旧基线属 Mod 栈时代不可比）记录在 `docs/strategy/STRATEGY_OPTIMIZATION_LOG.md` 2026-09-17 节。本批不启动可见Steam、不提升版本、不发包。
 
+> **当前批次（2026-09-16）：** 用户授权实现无需训练的搜索改进并提交新PR；基线为上游 `7f806de`（0.39.0）。新增可选有界新颖性／Beam组合，独立队列、共享请求预算及既有终局政策；说明与本轮证据见 [有界新颖性组合](docs/strategy/bounded-novelty-search-20260916.md)。不启动可见Steam、不提升版本、不发包或上传创意工坊。
 
 > **本轮追加（2026-09-15）：** 用户授权继续完成成本较低且有收益的复用，并更新正式PR #96。保留路线行按完整显示值/本地化身份复用，以及同帧语言往返通知修复；投影洗牌缓存经两场8份完整对照后撤回，追加提交不改变Search/Engine/Runtime。路线、语言、部署显示合同及两端门禁通过，记录见 `docs/performance/performance-pr-20260915.md` 的后续追加章节。本批不启动可见Steam、不提升版本、不发包或上传创意工坊。
 
