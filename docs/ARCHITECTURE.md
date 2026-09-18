@@ -193,7 +193,11 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 | `CombatBeamSolver.Models.cs` | `SearchFeatures`、单次运行 `SearchRunContext` |
 | `CombatBeamSolver.Transpositions.cs` | 转置标签与支配前沿；单标签内联，多标签保持原序List，缩回单标签即释放额外容器 |
 | `CombatBeamSolver.Phases.cs` | `Solve`、阶段循环、总预算与回合层预算保留、当前回合预览、约 `200 ms` 刷新的动态推演路线，以及玩家采用路线/执行当前回合的收束检查点；动态路线显式携带战斗是否结束，未完成路线不产生整场战损数值 |
-| `CombatBeamSolver.Expansion.cs` | 可执行卡牌/药水/结束回合候选展开和动作回放入口；识别选牌后手中实际可支付的能力。三层首领的首个搜索回合由Phases在普通父节点提交完成后提前展开这些中间态，复用Expand的去重/节点计数，不注入固定答案或终局奖励 |
+| `CombatBeamSolver.Expansion.cs` | 可执行卡牌/药水/结束回合候选展开与跨回合无进展剪枝；三层首领首个搜索回合由Phases在普通父节点提交后提前展开中间态，复用Expand去重/节点计数，不注入固定答案或终局奖励 |
+| `CombatBeamSolver.Expansion.Opening.cs` | 开局能力/药水/资源及后续动作构造；识别选牌后手中实际可支付的能力，保留各调用方的筛选和快照生命周期 |
+| `CombatBeamSolver.Expansion.Choices.cs` | 首层与挂起选择枚举、完整动作选择预算、实体补充和既有预算合同验证 |
+| `CombatBeamSolver.Expansion.Replay.cs` | 回合准备根、动作/前缀回放、增量等价与回合推进；原失败、暂停及释放顺序不变 |
+| `CombatBeamSolver.Expansion.Candidates.cs` | 动作候选构造/选择、路线特征、支配、转置准入租约与目标枚举 |
 | `CombatBeamSolver.ParallelExpansion.cs` | 固定 worker lane、卡牌/药水动作准备与原始候选物化、按输入顺序串行提交 |
 | `CombatBeamSolver.AdmittedExpansion.cs` | 已准入父节点的准备、动作探测、选择准备/回放/续接、药水/目标与回合尾部作业；有界派发、快照移交、取消/异常排空 |
 | `CombatBeamSolver.PrimaryChoiceReplay.cs` | 原预算保证必经的首层回放、唯一快照暂存与原序消费；动态预算和实例补充仍由一个续接作业独占 |

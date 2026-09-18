@@ -225,6 +225,22 @@ Release 0警告/0错误（3.71秒，`clones-build.log`）；Bash门禁通过 `se
 
 两套门禁仅迁移既有检查路径/文件清单，原禁止规则覆盖所有新分片，没有新增策略规则或helper名称检查；架构文件表和skill同步。Release 0警告/0错误；Bash门禁 `REFACTOR_BOUNDARIES_OK search_files=197`。本批仅一次EQ10，983项字段与600项剪枝计数一致，双侧20份有效、无时间边界，`IDENTICAL`。日志见 `retention-build.log`、`retention-boundaries.log`，等价证据见 `retention-comparison.json` / `retention-validity.json`；本批宿主logs已删。
 
+### 批次五：展开文件纯移动
+
+移动前4376行，拆为5文件；按原连续成员段迁移，没有改方法体、可见性、调用或集合顺序。源码diff +3951/-3863，净增加88行来自文件头与partial外壳。
+
+| 文件 | 行数 |
+|---|---:|
+| `CombatBeamSolver.Expansion.cs` | 513 |
+| `CombatBeamSolver.Expansion.Opening.cs` | 453 |
+| `CombatBeamSolver.Expansion.Choices.cs` | 1263 |
+| `CombatBeamSolver.Expansion.Replay.cs` | 1244 |
+| `CombatBeamSolver.Expansion.Candidates.cs` | 991 |
+
+原段按原位置拼回逐字符相同（`expansion-split-proof.json`）；Roslyn核对100项完整成员文本及所有者一致，0项字段声明顺序一致，语法错误0（`expansion-member-proof.json`）。`expansion-color-moved.diff`留存Git移动着色；短括号/空行受Git匹配阈值影响，完整成员文本证据覆盖这些行。
+
+两套门禁仅迁移既有检查路径/文件清单，原禁止规则覆盖所有新分片，没有新增策略规则或helper名称检查；架构文件表和skill同步。Release 0警告/0错误；Bash门禁 `REFACTOR_BOUNDARIES_OK search_files=201`。本批仅一次EQ10，983项字段与600项剪枝计数一致，双侧20份有效、无时间边界，`IDENTICAL`。日志见 `expansion-build.log`、`expansion-boundaries.log`，等价证据见 `expansion-comparison.json` / `expansion-validity.json`；本批宿主logs已删。
+
 ## 3. 没动的与原因
 
 不改Engine/Prediction语义、公开/internal签名、设置schema、搜索政策或预算；不动catch语义；不拆Testing可变夹具。CA2000/CA2213的原生和租约所有权必须另作生命周期审计，不能机械Dispose。归一化克隆不等价于同一政策。沿用上一轮研究证据与反射/InlineArray裁决，删除实验目录0、设置迁移0、测试夹具0。

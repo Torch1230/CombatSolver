@@ -41,6 +41,10 @@ if (-not $normalityMirror.Contains('registry.Register<Normality>(HandleNormality
 }
 $playerTurnEndCallers = @(
     "src/Search/CombatBeamSolver.Expansion.cs",
+    "src/Search/CombatBeamSolver.Expansion.Candidates.cs",
+    "src/Search/CombatBeamSolver.Expansion.Choices.cs",
+    "src/Search/CombatBeamSolver.Expansion.Opening.cs",
+    "src/Search/CombatBeamSolver.Expansion.Replay.cs",
     "src/Runtime/LiveEndTurnRiskEvaluator.cs",
     "src/Testing/UnattendedTestRunner.cs",
     "src/Testing/UnattendedTestRunner.Potions.cs"
@@ -66,6 +70,10 @@ $cyclePolicyPaths = @(
 )
 $legacyLoopGuardPaths = @(
     (Join-Path $searchRoot "CombatBeamSolver.Expansion.cs"),
+    (Join-Path $searchRoot "CombatBeamSolver.Expansion.Candidates.cs"),
+    (Join-Path $searchRoot "CombatBeamSolver.Expansion.Choices.cs"),
+    (Join-Path $searchRoot "CombatBeamSolver.Expansion.Opening.cs"),
+    (Join-Path $searchRoot "CombatBeamSolver.Expansion.Replay.cs"),
     (Join-Path $searchRoot "CombatBeamSolver.ParallelExpansion.cs"),
     (Join-Path $searchRoot "SolverWeights.cs")
 )
@@ -582,6 +590,10 @@ $expectedBeamFiles = @(
     "CombatBeamSolver.CyclePlanning.cs",
     "CombatBeamSolver.CycleRegionRetention.cs",
     "CombatBeamSolver.Expansion.cs",
+    "CombatBeamSolver.Expansion.Candidates.cs",
+    "CombatBeamSolver.Expansion.Choices.cs",
+    "CombatBeamSolver.Expansion.Opening.cs",
+    "CombatBeamSolver.Expansion.Replay.cs",
     "CombatBeamSolver.FinalPlanOrdering.cs",
     "CombatBeamSolver.Models.cs",
     "CombatBeamSolver.NoveltySearch.cs",
@@ -835,8 +847,8 @@ $finalOrderingPath = Join-Path $searchRoot 'CombatBeamSolver.FinalPlanOrdering.c
 if (Select-String -LiteralPath $finalOrderingPath -SimpleMatch 'PowerCardValuation' -Quiet) {
     $violations.Add("${finalOrderingPath}: power-card valuation must not enter final plan ordering")
 }
-if (-not (Select-String -LiteralPath (Join-Path $searchRoot "CombatBeamSolver.Expansion.cs") -SimpleMatch "CreateWholeActionChoiceBudget" -Quiet)) {
-    $violations.Add("CombatBeamSolver.Expansion.cs: repeated card choices are missing their whole-action branch quota")
+if (-not (Select-String -LiteralPath (Join-Path $searchRoot "CombatBeamSolver.Expansion.Choices.cs") -SimpleMatch "CreateWholeActionChoiceBudget" -Quiet)) {
+    $violations.Add("CombatBeamSolver.Expansion.Choices.cs: repeated card choices are missing their whole-action branch quota")
 }
 $beamEntryPath = Join-Path $searchRoot "CombatBeamSolver.cs"
 if (Select-String -LiteralPath $beamEntryPath -SimpleMatch "public SolverResult Solve()" -Quiet) {
@@ -1385,7 +1397,7 @@ foreach ($check in @(
     @{ File = 'src/Search/CombatBeamSolver.Phases.cs'; Text = 'policy.RelicTargetsSatisfied(node.Snapshot.RelicCounters)' },
     @{ File = 'src/Search/CombatSearchCoordinator.cs'; Text = 'policy.RelicTargetsSatisfied(result.Snapshot.RelicCounters)' },
     @{ File = 'src/Runtime/SolvedRouteCache.cs'; Text = 'policy.RelicTargets' },
-    @{ File = 'src/Search/CombatBeamSolver.Expansion.cs'; Text = 'ApplyFixedPrefix(seed, prefix)' },
+    @{ File = 'src/Search/CombatBeamSolver.Expansion.Opening.cs'; Text = 'ApplyFixedPrefix(seed, prefix)' },
     @{ File = 'src/UI/SolverRelicStrategyPanel.cs'; Text = 'row.Enabled.ButtonPressed' })) {
     if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot $check.File) -SimpleMatch $check.Text -Quiet)) {
         $violations.Add("$($check.File): missing relic policy ownership '$($check.Text)'")
@@ -1498,7 +1510,7 @@ foreach ($rule in @(
     @{ RelativePath = 'src/Prediction/PotionChoiceContinuation.cs'; Text = '!PotionChoiceMirrors.RequiresChoice(potion)' },
     @{ RelativePath = 'src/Search/CombatBeamSolver.PotionChoiceContinuation.cs'; Text = 'ReferenceEquals(_parent, candidate)' },
     @{ RelativePath = 'src/Search/CombatBeamSolver.PotionChoiceContinuation.cs'; Text = '_run.PotionChoicePrefixForks++;' },
-    @{ RelativePath = 'src/Search/CombatBeamSolver.Expansion.cs'; Text = 'PotionExecutionSupport.Complete(' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.Expansion.Replay.cs'; Text = 'PotionExecutionSupport.Complete(' },
     @{ RelativePath = 'src/Search/CombatBeamSolver.PrimaryChoiceReplay.cs'; Text = 'PotionCheckpoint?.Dispose();' },
     @{ RelativePath = 'src/Search/CombatBeamSolver.ParallelExpansion.cs'; Text = '_run.PotionChoicePrefixForks += source.PotionChoicePrefixForks;' }
 )) {
@@ -1561,7 +1573,7 @@ foreach ($rule in @(
     @{ RelativePath = 'src/Prediction/CardChoiceContinuation.cs'; Text = 'lock (_gate)' },
     @{ RelativePath = 'src/Search/CombatBeamSolver.CardChoiceContinuation.cs'; Text = 'ReferenceEquals(_parent, candidate)' },
     @{ RelativePath = 'src/Search/CombatBeamSolver.CardChoiceContinuation.cs'; Text = 'return Enumerate(this, checkpoint, branches);' },
-    @{ RelativePath = 'src/Search/CombatBeamSolver.Expansion.cs'; Text = 'countTransition: false' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.Expansion.Replay.cs'; Text = 'countTransition: false' },
     @{ RelativePath = 'src/Search/CombatBeamSolver.PrimaryChoiceReplay.cs'; Text = 'CardCheckpoint?.Dispose();' },
     @{ RelativePath = 'src/Search/SimulatedCombatState.CardContinuation.cs'; Text = '_cardExecutionScopeDepth != 0' }
 )) {

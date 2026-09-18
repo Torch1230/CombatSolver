@@ -129,6 +129,10 @@ forbid_regex() {
 
 for relative_path in \
     src/Search/CombatBeamSolver.Expansion.cs \
+    src/Search/CombatBeamSolver.Expansion.Candidates.cs \
+    src/Search/CombatBeamSolver.Expansion.Choices.cs \
+    src/Search/CombatBeamSolver.Expansion.Opening.cs \
+    src/Search/CombatBeamSolver.Expansion.Replay.cs \
     src/Runtime/LiveEndTurnRiskEvaluator.cs \
     src/Testing/UnattendedTestRunner.cs \
     src/Testing/UnattendedTestRunner.Potions.cs; do
@@ -156,6 +160,10 @@ cycle_policy_paths=(
 )
 legacy_loop_guard_paths=(
     "$search_root/CombatBeamSolver.Expansion.cs"
+    "$search_root/CombatBeamSolver.Expansion.Candidates.cs"
+    "$search_root/CombatBeamSolver.Expansion.Choices.cs"
+    "$search_root/CombatBeamSolver.Expansion.Opening.cs"
+    "$search_root/CombatBeamSolver.Expansion.Replay.cs"
     "$search_root/CombatBeamSolver.ParallelExpansion.cs"
     "$search_root/SolverWeights.cs"
 )
@@ -561,6 +569,10 @@ expected_beam_files=(
     CombatBeamSolver.CyclePlanning.cs
     CombatBeamSolver.CycleRegionRetention.cs
     CombatBeamSolver.Expansion.cs
+    CombatBeamSolver.Expansion.Candidates.cs
+    CombatBeamSolver.Expansion.Choices.cs
+    CombatBeamSolver.Expansion.Opening.cs
+    CombatBeamSolver.Expansion.Replay.cs
     CombatBeamSolver.FinalPlanOrdering.cs
     CombatBeamSolver.Models.cs
     CombatBeamSolver.NoveltySearch.cs
@@ -770,7 +782,7 @@ forbid_fixed "$search_root/CombatBeamSolver.FinalPlanOrdering.cs" 'PowerCardValu
     'power-card valuation must not enter final plan ordering:'
 
 require_fixed \
-    "$search_root/CombatBeamSolver.Expansion.cs" \
+    "$search_root/CombatBeamSolver.Expansion.Choices.cs" \
     'CreateWholeActionChoiceBudget' \
     'repeated card choices are missing their whole-action branch quota:'
 
@@ -1134,7 +1146,7 @@ src/Search/SearchPolicySnapshot.cs	IReadOnlyList<RelicCounterTarget> RelicTarget
 src/Search/CombatBeamSolver.Phases.cs	policy.RelicTargetsSatisfied(node.Snapshot.RelicCounters)
 src/Search/CombatSearchCoordinator.cs	policy.RelicTargetsSatisfied(result.Snapshot.RelicCounters)
 src/Runtime/SolvedRouteCache.cs	policy.RelicTargets
-src/Search/CombatBeamSolver.Expansion.cs	ApplyFixedPrefix(seed, prefix)
+src/Search/CombatBeamSolver.Expansion.Opening.cs	ApplyFixedPrefix(seed, prefix)
 src/UI/SolverRelicStrategyPanel.cs	row.Enabled.ButtonPressed
 EOF
 for rule in 'SimulationNotificationIsolation.IsActive' '"DynamicVarUpgrades"' 'table.TryGetValue(source' 'Tips.TryGetValue(__0'; do
@@ -1200,7 +1212,7 @@ src/Prediction/PotionChoiceContinuation.cs	lock (_gate)
 src/Prediction/PotionChoiceContinuation.cs	!PotionChoiceMirrors.RequiresChoice(potion)
 src/Search/CombatBeamSolver.PotionChoiceContinuation.cs	ReferenceEquals(_parent, candidate)
 src/Search/CombatBeamSolver.PotionChoiceContinuation.cs	_run.PotionChoicePrefixForks++;
-src/Search/CombatBeamSolver.Expansion.cs	PotionExecutionSupport.Complete(
+src/Search/CombatBeamSolver.Expansion.Replay.cs	PotionExecutionSupport.Complete(
 src/Search/CombatBeamSolver.PrimaryChoiceReplay.cs	PotionCheckpoint?.Dispose();
 src/Search/CombatBeamSolver.ParallelExpansion.cs	_run.PotionChoicePrefixForks += source.PotionChoicePrefixForks;
 EOF
@@ -1254,7 +1266,7 @@ src/Search/SimulatedCombatState.CardContinuation.cs	Options = spec.Options.Selec
 src/Prediction/CardChoiceContinuation.cs	lock (_gate)
 src/Search/CombatBeamSolver.CardChoiceContinuation.cs	ReferenceEquals(_parent, candidate)
 src/Search/CombatBeamSolver.CardChoiceContinuation.cs	return Enumerate(this, checkpoint, branches);
-src/Search/CombatBeamSolver.Expansion.cs	countTransition: false
+src/Search/CombatBeamSolver.Expansion.Replay.cs	countTransition: false
 src/Search/CombatBeamSolver.PrimaryChoiceReplay.cs	CardCheckpoint?.Dispose();
 src/Search/SimulatedCombatState.CardContinuation.cs	_cardExecutionScopeDepth != 0
 EOF
