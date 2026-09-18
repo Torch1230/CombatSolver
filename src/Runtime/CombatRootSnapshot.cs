@@ -180,7 +180,7 @@ internal sealed class CombatRootSnapshot
             simulatedCombat.RelicsOf(player));
         PotionRewardOutlook potionRewardOutlook = PotionRewardOutlook.Capture(
             player,
-            state.Encounter?.RoomType,
+            state,
             simulatedCombat.RelicsOf(player));
         SearchablePotionSlotSnapshot[] searchablePotions = player.PotionSlots
             .Select((potion, slot) => (Potion: potion, Slot: slot))

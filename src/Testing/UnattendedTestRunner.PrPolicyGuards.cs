@@ -5,6 +5,7 @@ using MegaCrit.Sts2.Core.Models.Potions;
 using MegaCrit.Sts2.Core.Models.Relics;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Rooms;
+using MegaCrit.Sts2.Core.Rewards;
 using HarmonyLib;
 using CombatSolver.Engine.Common;
 using MegaCrit.Sts2.Core.Modding;
@@ -162,17 +163,61 @@ internal sealed partial class UnattendedTestRunner
             || PotionUsePolicy.ApplyReplacementCredit(18, 1, 0) != 18
             || PotionUsePolicy.ApplyReplacementCredit(4, 1, 9) != 0)
             throw new InvalidOperationException("药水补货额度的路线级扣减错误。");
+        // 镜像出确定结果时按那瓶药的档位计价，镜像不出时才退回概率。
+        if (new PotionRewardOutlook(0.4f, true, false) { Forecast = PotionRewardForecast.Drop, ForecastPotionId = "SWIFT_POTION", ForecastPotionStrategicHpCost = 18 }.ReplacementHpCredit != 18
+            || new PotionRewardOutlook(0.9f, true, false) { Forecast = PotionRewardForecast.NoDrop }.ReplacementHpCredit != 0
+            || new PotionRewardOutlook(0.9f, true, false) { Forecast = PotionRewardForecast.NoRewards }.ReplacementHpCredit != 0
+            || new PotionRewardOutlook(1f, false, false) { Forecast = PotionRewardForecast.Drop, ForecastPotionId = "FIRE_POTION", ForecastPotionStrategicHpCost = 9 }.ReplacementHpCredit != 0)
+            throw new InvalidOperationException("镜像掉落结果的额度计算错误。");
         // 根快照读到的是当前玩家保存的概率、真实房间类型与药水栏占用。
         Player player = combat.Players[0];
         RoomType? roomType = combat.Encounter?.RoomType;
-        PotionRewardOutlook expected = roomType is { } room && room.IsCombatRoom()
-            ? new PotionRewardOutlook(
-                PotionRewardOutlook.DropChanceFor(player.PlayerOdds.PotionReward.CurrentValue, room),
-                player.PotionSlots.Count > 0 && player.PotionSlots.All(potion => potion != null),
-                player.Relics.OfType<Sozu>().Any())
-            : PotionRewardOutlook.None;
-        if (root.PotionRewardOutlook != expected)
+        PotionRewardOutlook actual = root.PotionRewardOutlook;
+        if (roomType is { } room && room.IsCombatRoom())
+        {
+            float expectedChance = PotionRewardOutlook.DropChanceFor(player.PlayerOdds.PotionReward.CurrentValue, room);
+            bool expectedBeltFull = player.PotionSlots.Count > 0 && player.PotionSlots.All(potion => potion != null);
+            if (actual.DropChance != expectedChance
+                || actual.BeltFull != expectedBeltFull
+                || actual.ProcureBlocked != player.Relics.OfType<Sozu>().Any()
+                || actual.Forecast is PotionRewardForecast.Unknown or PotionRewardForecast.NoRewards
+                || actual.Forecast == PotionRewardForecast.Drop != (actual.ForecastPotionId != null))
+                throw new InvalidOperationException($"根快照的药水掉落前景 {actual} 与实况不符。");
+        }
+        else if (actual != PotionRewardOutlook.None)
+        {
+            throw new InvalidOperationException($"非战斗房间不应有药水掉落前景：{actual}。");
+        }
+    }
+
+    /// <summary>
+    /// 开战时镜像的掉落结论与药水身份，必须和原版奖励生成在同一条奖励 RNG 上给出的结果逐项一致。
+    /// 这里直接让原版 <see cref="RewardsSet"/> 为当前房间生成并填充奖励（消耗真实奖励 RNG，只在测试实例里做）。
+    /// </summary>
+    private async Task AssertPotionRewardForecastAsync(CombatState combat, Player player)
+    {
+        CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
+        PotionRewardOutlook outlook = root.PotionRewardOutlook;
+        if (outlook.Forecast is PotionRewardForecast.Unknown or PotionRewardForecast.NoRewards)
+            throw new InvalidOperationException($"测试房间应能镜像掉落结论，实际 {outlook}。");
+        if (player.RunState.CurrentRoom is not CombatRoom room)
+            throw new InvalidOperationException("当前房间不是战斗房间，无法生成原版奖励。");
+        int counterBefore = player.PlayerRng.Rewards._counter;
+        RewardsSet rewards = new RewardsSet(player).WithRewardsFromRoom(room);
+        await rewards.GenerateWithoutOffering();
+        PotionReward? potionReward = rewards.Rewards.OfType<PotionReward>().FirstOrDefault();
+        string? actualPotion = potionReward?.Potion?.Id.Entry;
+        bool actualDrop = potionReward != null;
+        bool expectedDrop = outlook.Forecast == PotionRewardForecast.Drop;
+        if (actualDrop != expectedDrop || !string.Equals(actualPotion, outlook.ForecastPotionId, StringComparison.Ordinal))
             throw new InvalidOperationException(
-                $"根快照的药水掉落前景 {root.PotionRewardOutlook} 与实况 {expected} 不符。");
+                $"药水掉落预测 {outlook.Forecast}/{outlook.ForecastPotionId ?? "-"} 与原版奖励 " +
+                $"{(actualDrop ? "Drop" : "NoDrop")}/{actualPotion ?? "-"} 不符（room={room.RoomType} " +
+                $"odds={player.PlayerOdds.PotionReward.CurrentValue:0.###} counter={counterBefore}→{player.PlayerRng.Rewards._counter}）。");
+        Entry.Logger.Info(
+            $"[CombatSolver/Test] POTION_REWARD_FORECAST_CHECK room={room.RoomType} forecast={outlook.Forecast} " +
+            $"potion={outlook.ForecastPotionId ?? "-"} chance={outlook.DropChance:0.###} " +
+            $"counter={counterBefore}->{player.PlayerRng.Rewards._counter} belt_full={outlook.BeltFull} credit={outlook.ReplacementHpCredit}");
+        _completedChecks.Add($"PotionRewardForecast:{room.RoomType}:{outlook.Forecast}:{outlook.ForecastPotionId ?? "none"}");
     }
 }

@@ -679,6 +679,8 @@ internal sealed partial class UnattendedTestRunner
             }
             if (request.ScenarioId == "PR15-POTION-VALUE-TIERS")
                 runner.AssertPotionValueTiers(combatState);
+            if (request.ScenarioId == "POTION-REWARD-FORECAST")
+                await runner.AssertPotionRewardForecastAsync(combatState, player);
             if (request.ScenarioId == "PR18-FOREIGN-ONPLAY-BOUNDARY")
                 runner.AssertForeignCardPatchBoundary(combatState);
 
