@@ -5,6 +5,7 @@ using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
+using MegaCrit.Sts2.Core.Models;
 
 namespace CombatSolver;
 
@@ -30,6 +31,9 @@ internal sealed class KnownRouteTraceActionConfig
     public int PotionSlot { get; init; } = -1;
     public string PotionId { get; init; } = string.Empty;
     public KnownRouteTraceChoiceItemConfig[] Choice { get; init; } = [];
+    // Additional choices produced by the same play (e.g. BURST doubling a discard effect). The
+    // first choice stays in Choice; every later choice is appended here in execution order.
+    public KnownRouteTraceChoiceItemConfig[][] NestedChoices { get; init; } = [];
 }
 
 internal sealed class KnownRouteTraceChoiceItemConfig
@@ -118,7 +122,9 @@ internal sealed partial class UnattendedTestRunner
                 throw new InvalidOperationException("Known-config 路线回放修改了实战根。");
         }
         if (config.RetentionStep is { } retentionStep && (retentionStep < 1 || retentionStep > prefixes.Count))
-            throw new InvalidOperationException("Known-config 路径诊断的保留边界越界。");
+            throw new InvalidOperationException(
+                $"Known-config 路径诊断的保留边界越界：retentionStep={retentionStep}，" +
+                $"已冻结前缀={prefixes.Count}（要求 1..{prefixes.Count}）。");
         return await RunKnownRoutePathTraceAsync(combat, player, prefixes, config.Sample,
             "known_config_route_path", observedRetentionStep: config.RetentionStep,
             leaseSeats: config.LeaseSeats);
@@ -126,15 +132,18 @@ internal sealed partial class UnattendedTestRunner
 
     private static string DescribeKnownConfigStep(KnownRouteTraceActionConfig step)
     {
-        string choice = step.Choice.Length == 0
-            ? string.Empty
-            : $" choice=[{string.Join(',', step.Choice.Select(item =>
+        string DescribeChoices(KnownRouteTraceChoiceItemConfig[] items) =>
+            $"[{string.Join(',', items.Select(item =>
                 $"{item.CardId}+{item.UpgradeLevel}#{item.Occurrence}"))}]";
+        string choice = step.Choice.Length == 0 ? string.Empty : $" choice={DescribeChoices(step.Choice)}";
+        string nested = step.NestedChoices.Length == 0
+            ? string.Empty
+            : $" nested={string.Join(';', step.NestedChoices.Select(DescribeChoices))}";
         return step.Kind switch
         {
             "endTurn" => "endTurn",
             "potion" => $"potion {step.PotionId}@slot{step.PotionSlot}",
-            _ => $"play {step.CardId}#{step.Occurrence}{choice}",
+            _ => $"play {step.CardId}#{step.Occurrence}{choice}{nested}",
         };
     }
 
@@ -148,8 +157,11 @@ internal sealed partial class UnattendedTestRunner
         {
             if (step.PotionSlot < 0 || string.IsNullOrWhiteSpace(step.PotionId))
                 throw new InvalidOperationException("Known-config 用药步骤需要 PotionSlot 与 PotionId。");
+            PlanCardChoice? potionChoice = step.Choice.Length == 0
+                ? null : BuildKnownConfigPotionChoice(step.Choice, step, parent, player);
             return new PlanAction(PlanActionKind.UsePotion, turn, PotionSlot: step.PotionSlot,
-                PotionId: step.PotionId, TargetIndex: step.TargetIndex, TargetCombatId: step.TargetCombatId);
+                PotionId: step.PotionId, TargetIndex: step.TargetIndex, TargetCombatId: step.TargetCombatId,
+                Choice: potionChoice);
         }
         if (!string.Equals(step.Kind, "play", StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException($"Known-config 路线包含未知动作类型 {step.Kind}。");
@@ -169,17 +181,51 @@ internal sealed partial class UnattendedTestRunner
             .TakeWhile(candidate => !ReferenceEquals(candidate, card))
             .Count(candidate => CardChoiceSupport.ChoiceCardKey(candidate) == stateKey);
         PlanCardChoice? choice = step.Choice.Length == 0
-            ? null : BuildKnownConfigChoice(step, parent, player);
+            ? null : BuildKnownConfigChoice(step.Choice, step, parent, player);
+        IReadOnlyList<PlanCardChoice> nested = step.NestedChoices.Length == 0
+            ? []
+            : step.NestedChoices
+                .Select(items => BuildKnownConfigChoice(items, step, parent, player,
+                    allowDeferredTokens: true))
+                .ToArray();
         int replayCount = Math.Max(0, card.Preview.GetEnchantedReplayCount());
         return new PlanAction(PlanActionKind.PlayCard, turn,
             CardId: step.CardId, CardOccurrence: step.Occurrence,
             TargetIndex: step.TargetIndex, TargetCombatId: step.TargetCombatId,
             CardStateKey: stateKey, CardStateOccurrence: stateOccurrence,
-            Choice: choice, ReplayCount: replayCount);
+            Choice: choice, NestedChoices: nested, ReplayCount: replayCount);
+    }
+
+    // Potion choices select generated or existing cards; generated options do not exist in the
+    // pre-action parent, so their tokens are deferred and resolved by the replay matcher.
+    private PlanCardChoice BuildKnownConfigPotionChoice(
+        KnownRouteTraceChoiceItemConfig[] items, KnownRouteTraceActionConfig step,
+        SimulationSnapshot parent, Player player)
+    {
+        SimulatedCombatState simulatedCombat = (SimulatedCombatState)parent.Simulator.State.CombatState;
+        PotionModel potion = simulatedCombat.GetPotionAtSlot(player, step.PotionSlot)
+            ?? throw new InvalidOperationException(
+                $"Known-config 用药选择找不到槽位 {step.PotionSlot} 的药水。");
+        if (!string.Equals(potion.Id.Entry, step.PotionId, StringComparison.Ordinal))
+            throw new InvalidOperationException(
+                $"Known-config 用药选择槽位 {step.PotionSlot} 是 {potion.Id.Entry}，配置要求 {step.PotionId}。");
+        CardChoiceSpec? spec = PotionChoiceSupport.GeneratesCardChoice(potion)
+            ? null : PotionChoiceSupport.GetSpec(parent.Simulator, potion);
+        if (spec != null && (items.Length < spec.MinCount || items.Length > spec.MaxCount))
+            throw new InvalidOperationException(
+                $"Known-config 药水 {step.PotionId} 选择数量 {items.Length} 越界 [{spec.MinCount},{spec.MaxCount}]。");
+        PlanChoiceEffect effect = spec?.Effect ?? PlanChoiceEffect.GenerateToHand;
+        PileType pile = spec?.SourcePile ?? PileType.None;
+        PlanCardToken[] tokens = items.Select(item => new PlanCardToken(
+            item.CardId, item.UpgradeLevel, string.Empty,
+            item.Occurrence, item.Occurrence, item.CardId)).ToArray();
+        return new PlanCardChoice(effect, pile, tokens, SourceId: potion.Id.Entry,
+            ContextId: spec?.ContextId ?? string.Empty);
     }
 
     private PlanCardChoice BuildKnownConfigChoice(
-        KnownRouteTraceActionConfig step, SimulationSnapshot parent, Player player)
+        KnownRouteTraceChoiceItemConfig[] items, KnownRouteTraceActionConfig step,
+        SimulationSnapshot parent, Player player, bool allowDeferredTokens = false)
     {
         PlanAction descriptor = new(PlanActionKind.PlayCard, parent.Turn,
             CardId: step.CardId, CardOccurrence: step.Occurrence);
@@ -190,20 +236,30 @@ internal sealed partial class UnattendedTestRunner
         CardChoiceSpec spec = CardChoiceSupport.GetSpec(parent.Simulator, playedCard)
             ?? throw new InvalidOperationException(
                 $"Known-config 出牌 {step.CardId} 在当前父状态没有登记的选牌需求。");
-        if (step.Choice.Length < spec.MinCount || step.Choice.Length > spec.MaxCount)
+        if (items.Length < spec.MinCount || items.Length > spec.MaxCount)
             throw new InvalidOperationException(
-                $"Known-config {step.CardId} 选择数量 {step.Choice.Length} 越界 [{spec.MinCount},{spec.MaxCount}]。");
+                $"Known-config {step.CardId} 选择数量 {items.Length} 越界 [{spec.MinCount},{spec.MaxCount}]。");
         List<PlanCardToken> tokens = [];
-        foreach (KnownRouteTraceChoiceItemConfig item in step.Choice)
+        foreach (KnownRouteTraceChoiceItemConfig item in items)
         {
-            PredictedCard selected = spec.SourceCards
+            PredictedCard? selected = spec.SourceCards
                 .Where(card => string.Equals(card.Preview.Id.Entry, item.CardId, StringComparison.Ordinal)
                     && card.Preview.CurrentUpgradeLevel == item.UpgradeLevel)
                 .Skip(item.Occurrence)
-                .FirstOrDefault()
-                ?? throw new InvalidPlannedChoiceBranchException(
-                    $"Known-config 选择项 {item.CardId}+{item.UpgradeLevel}#{item.Occurrence} 不在 {step.CardId} 的候选内：" +
-                    $"候选={string.Join(',', spec.Options.Select(CardChoiceSupport.ChoiceCardKey))}。");
+                .FirstOrDefault();
+            if (selected is null)
+            {
+                // Nested choices can select cards created by the action itself (draws, generation),
+                // so they are not present in the pre-action parent. The replay matcher resolves
+                // tokens by CardId+upgrade+occurrence at execution time, which is enough here.
+                if (!allowDeferredTokens)
+                    throw new InvalidPlannedChoiceBranchException(
+                        $"Known-config 选择项 {item.CardId}+{item.UpgradeLevel}#{item.Occurrence} 不在 {step.CardId} 的候选内：" +
+                        $"候选={string.Join(',', spec.Options.Select(CardChoiceSupport.ChoiceCardKey))}。");
+                tokens.Add(new PlanCardToken(item.CardId, item.UpgradeLevel, string.Empty,
+                    item.Occurrence, item.Occurrence, item.CardId));
+                continue;
+            }
             string tokenKey = CardChoiceSupport.ChoiceCardKey(selected);
             int sourceOccurrence = parent.Simulator.State.GetPlayerCombatState(player).Hand.Cards
                 .TakeWhile(candidate => !ReferenceEquals(candidate, selected))

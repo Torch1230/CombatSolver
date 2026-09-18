@@ -60,7 +60,15 @@ internal sealed partial class UnattendedTestRunner
             ? variants == null ? [prefixes[retentionStep - 1].StateKey]
                 : variants.Values.Select(variant => variant.Prefixes[retentionStep - 1].StateKey).ToHashSet()
             : null;
-        string[] expectedActions = prefixes.Select(prefix => KnownRouteActionIdentity(prefix.Action)).ToArray();
+        // Deferred choice tokens (potion/generated-card selections) carry no state key until the
+        // replay resolves them, so traces containing such tokens compare choice identity without
+        // token state keys instead of failing every step.
+        bool ignoreChoiceTokenState = prefixes.Any(prefix =>
+            (prefix.Action.Choice?.Cards.Any(card => string.IsNullOrEmpty(card.StateKey)) ?? false)
+            || (prefix.Action.NestedChoices?.Any(choice =>
+                choice.Cards.Any(card => string.IsNullOrEmpty(card.StateKey))) ?? false));
+        string[] expectedActions = prefixes
+            .Select(prefix => KnownRouteActionIdentity(prefix.Action, ignoreChoiceTokenState)).ToArray();
         List<SearchPathObservation> observations = [];
         object observationGate = new();
         int dropped = 0;
@@ -148,7 +156,8 @@ internal sealed partial class UnattendedTestRunner
         {
             int[] stateSteps = Enumerable.Range(0, prefixes.Count)
                 .Where(index => prefixes[index].StateKey == observation.StateKey).ToArray();
-            string[] observedActions = observation.Actions.Select(KnownRouteActionIdentity).ToArray();
+            string[] observedActions = observation.Actions
+                .Select(action => KnownRouteActionIdentity(action, ignoreChoiceTokenState)).ToArray();
             int[] exact = stateSteps.Where(index => observation.ActionCount == index + 1
                 && observation.Turn == prefixes[index].Turn
                 && observation.CumulativePlayerHpLost == prefixes[index].HpLost
@@ -448,26 +457,31 @@ internal sealed partial class UnattendedTestRunner
         };
     }
 
-    private static object? KnownRouteChoiceIdentity(PlanCardChoice? choice)
+    private static object? KnownRouteChoiceIdentity(PlanCardChoice? choice, bool ignoreTokenState = false)
         => choice == null ? null : new
         {
             choice.Effect, choice.SourcePile, choice.SourceId, choice.ContextId, choice.Timing,
             Cards = choice.Cards.Select(card => new
             {
-                card.CardId, card.UpgradeLevel, card.StateKey, card.SourceOccurrence, card.OptionOccurrence,
+                card.CardId, card.UpgradeLevel,
+                StateKey = ignoreTokenState ? string.Empty : card.StateKey,
+                card.SourceOccurrence, card.OptionOccurrence,
             }).ToArray(),
         };
 
-    private static string KnownRouteActionIdentity(PlanAction action)
+    private static string KnownRouteActionIdentity(PlanAction action, bool ignoreChoiceTokenState = false)
     {
         return JsonSerializer.Serialize(new
         {
             action.Kind, action.Turn, action.CardId, action.CardOccurrence, action.CardStateKey,
             action.CardStateOccurrence, action.TargetIndex, action.TargetCombatId,
             action.PotionSlot, action.PotionId, action.ReplayCount, action.EndsPlayerTurn,
-            action.NestedChoicesBeforePrimary, Primary = KnownRouteChoiceIdentity(action.Choice),
-            Nested = (action.NestedChoices ?? []).Select(KnownRouteChoiceIdentity).ToArray(),
-            TurnStart = (action.TurnStartChoices ?? []).Select(KnownRouteChoiceIdentity).ToArray(),
+            action.NestedChoicesBeforePrimary,
+            Primary = KnownRouteChoiceIdentity(action.Choice, ignoreChoiceTokenState),
+            Nested = (action.NestedChoices ?? []).Select(choice =>
+                KnownRouteChoiceIdentity(choice, ignoreChoiceTokenState)).ToArray(),
+            TurnStart = (action.TurnStartChoices ?? []).Select(choice =>
+                KnownRouteChoiceIdentity(choice, ignoreChoiceTokenState)).ToArray(),
         });
     }
 }

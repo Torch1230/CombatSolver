@@ -14,8 +14,8 @@ internal sealed partial class UnattendedTestRunner
     private static string KnownRouteObservedPathIdentity(SearchPathObservation observation)
         => JsonSerializer.Serialize(new
         {
-            Actions = observation.Actions.Select(KnownRouteActionIdentity).ToArray(),
-            RootChoices = observation.RootTurnSetupChoices.Select(KnownRouteChoiceIdentity).ToArray(),
+            Actions = observation.Actions.Select(action => KnownRouteActionIdentity(action)).ToArray(),
+            RootChoices = observation.RootTurnSetupChoices.Select(choice => KnownRouteChoiceIdentity(choice)).ToArray(),
         });
 
     private static KnownRouteAliasAnchor KnownRouteAliasAnchorFor(SearchPathObservation observation)
