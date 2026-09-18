@@ -209,7 +209,12 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 | `ParallelExpansionWorkProfile.cs` | coordinator 所有的作业经过时间分布与 wave/等待/提交计时；不代表 CPU 时间 |
 | `CombatBeamSolver.PathDiagnostics.cs` | 可选路径观察的值复制与边界配对；分别记录生成、两类转置、实际展开、动作准入、完整保留及回合注释，不写搜索策略或账本 |
 | `CombatBeamSolver.Retention.cs` | prune/retention 调用边界与相关小型辅助 |
-| `CombatBeamSolver.BeamRetentionPolicy.cs` | 状态去重、中间分数排序、多样性通道、动作/回合开始选牌保路、药水配额和小型 Pareto |
+| `CombatBeamSolver.BeamRetentionPolicy.cs` | 保路主构造与字段、既有合同类型、RankFinal/RankBest协调、状态去重、多样性通道及路由分组；初始化顺序保持在此文件 |
+| `CombatBeamSolver.BeamRetentionPolicy.OrderedMutation.cs` | 有序变异组合的统一准入、服务额度与续接群组结算 |
+| `CombatBeamSolver.BeamRetentionPolicy.OrderedMutationScheduling.cs` | 有序变异代表质量、包/声明公平调度、迟到初始项节奏、租约交接与确定性键 |
+| `CombatBeamSolver.BeamRetentionPolicy.Routing.cs` | 路由签名、上下文交错、保留选择识别及药水配额 |
+| `CombatBeamSolver.BeamRetentionPolicy.Ranking.cs` | 防御/进攻/资源代表、终局候选比较与Beam分数计算 |
+| `CombatBeamSolver.BeamRetentionPolicy.Testing.cs` | 既有保路合同验证入口；仍属于Search，不依赖Testing runner |
 | `CombatBeamSolver.CyclePlanning.cs` | 精确动作周期、通用收益与出口探针；按周期族和回合记账的有限观察与成长预算 |
 | `CombatBeamSolver.CycleRegionRetention.cs` | 合并同回合、同控制形状的动作排列；对最终存活候选事务式提交区域保留预算与进展证据 |
 | `CombatBeamSolver.OrderedMutationRetention.cs` | 有序操作碰撞的谱系、租约、成对激活和预算账本；统一处理续接、到期与普通通道回退 |

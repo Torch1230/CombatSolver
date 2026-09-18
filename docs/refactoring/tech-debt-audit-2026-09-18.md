@@ -139,8 +139,7 @@ partial提供导航而非访问隔离：Phases/Expansion对同一solver私有状
 
 ### 1.5 开关与设置
 
-审计137个bool/枚举项/常量及Novelty选项，逐项声明、读取位置、写入位置、测试/UI/工具/文档提及见 `switch-audit.json`。零已绑定读者候选如下；未绑定名字必须另查，不能直接删：
-
+审计137个bool/枚举项/常量及Novelty选项，逐项声明、读取位置、写入位置、测试/UI/工具/文档提及见 `switch-audit.json`。零已绑定读者候选0；84项有编译期常量值，53项依赖运行时输入。常量枚举成员本身只有一个值，不等同于消费枚举的分支恒定；未绑定名字也不能当作无引用。
 
 bool两支可达不等于都在本轮执行。持久化设置、API/测试覆盖值与record with赋值保留，不能按默认值判死。Novelty FamiliarAllowance的生产创建沿默认0，正额度仅研究检查使用；这是生产配置不可达的熟悉节点扩展路径，不是可删除schema或研究证据。UseBeamWidthPortfolio=false仍允许能力成员，注释“只运行基线”已经过时；SecondRankBand/BaseScoreOnly也在PowerRoutes配置，不再只由BeamWidthPortfolio置位。旧设置迁移不重审、不删除。
 
@@ -151,21 +150,14 @@ bool两支可达不等于都在本轮执行。持久化设置、API/测试覆盖
 | 可疑catch位置 | 类型 | 返回值 | continue |
 |---|---|---|---:|
 | `src/Api/PreCombatForecastApi.cs:178` | Exception | return Task.FromResult(Failure(PreCombatForecastStatus.Failed, requestId, ex.Message)); | 0 |
-| `src/Api/PreCombatForecastApi.cs:263` | Exception | return Task.FromResult(Failure(
-                PreCombatForecastStatus.Unsupported,
-                requestId,
-                $"The planning run snapshot could not be restored: {exception.GetBaseException().Message}")); | 0 |
+| `src/Api/PreCombatForecastApi.cs:263` | Exception | 返回Unsupported失败结果，附根异常消息 | 0 |
 | `src/Api/PreCombatForecastApi.cs:310` | Exception | return Task.FromResult(Failure(PreCombatForecastStatus.Failed, requestId, exception.Message)); | 0 |
 | `src/Api/PreCombatForecastApi.cs:398` | Exception | return Task.FromResult(Failure(PreCombatForecastStatus.Failed, requestId, ex.Message)); | 0 |
 | `src/Api/PreCombatForecastApi.cs:523` | Exception |  | 0 |
 | `src/Api/PreCombatForecastApi.cs:560` | Exception |  | 0 |
 | `src/Api/PreCombatForecastApi.cs:604` | Exception | return; | 0 |
 | `src/Api/PreCombatForecastWorker.cs:92` | Exception |  | 0 |
-| `src/Api/PreCombatForecastWorker.cs:376` | Exception | return PreCombatForecastApi.Failure(
-                PreCombatForecastStatus.Failed,
-                requestId,
-                ex.GetBaseException().Message,
-                diagnosticLogPath); | 0 |
+| `src/Api/PreCombatForecastWorker.cs:376` | Exception | 返回Failed结果，附根异常消息和诊断路径 | 0 |
 | `src/Api/PreCombatForecastWorker.cs:580` | Exception |  | 0 |
 | `src/Api/PreCombatForecastWorker.cs:652` | <all> |  | 0 |
 | `src/Api/PreCombatForecastWorker.cs:956` | Exception |  | 0 |
@@ -215,6 +207,23 @@ English.json有426键；直接Get字面调用缺英文0。结合Roslyn插值模�
 PendingCycleExit准入比较器的21行方法体与既有质量比较器原文一致，改为调用该helper；两处16行开局SearchNode构造原文一致，提取private static工厂，参数表达式与求值顺序不变。另一处使用_startTurnNumber的相似构造保留。2个源码文件+23/-53，净减30行；原文和比对断言见 `.local/debt/clone-proof.json`。
 
 Release 0警告/0错误（3.71秒，`clones-build.log`）；Bash门禁通过 `search_files=192`（`clones-boundaries.log`）。单次EQ10全部 `IDENTICAL`：983项比较字段、600项剪枝计数，双侧20份结果有效，时间边界0。证据 `clones-comparison.json`、`clones-validity.json`；本批logs已删，结构化结果保留。同步架构与skill中待准入比较器的职责说明，没有添加helper名称门禁。
+
+### 批次四：保路文件纯移动
+
+移动前8075行，拆为6文件；按原连续成员段迁移，没有改方法体、可见性、调用或集合顺序。源码diff +7260/-7120，净增加140行来自文件头与partial外壳。
+
+| 文件 | 行数 |
+|---|---:|
+| `CombatBeamSolver.BeamRetentionPolicy.cs` | 1819 |
+| `CombatBeamSolver.BeamRetentionPolicy.OrderedMutation.cs` | 1788 |
+| `CombatBeamSolver.BeamRetentionPolicy.OrderedMutationScheduling.cs` | 1898 |
+| `CombatBeamSolver.BeamRetentionPolicy.Testing.cs` | 1256 |
+| `CombatBeamSolver.BeamRetentionPolicy.Routing.cs` | 550 |
+| `CombatBeamSolver.BeamRetentionPolicy.Ranking.cs` | 904 |
+
+原段按原位置拼回逐字符相同（`retention-split-proof.json`）；Roslyn核对229项完整成员文本及所有者一致，5项字段声明顺序一致，语法错误0（`retention-member-proof.json`）。`retention-color-moved.diff`留存Git移动着色；短括号/空行受Git匹配阈值影响，完整成员文本证据覆盖这些行。
+
+两套门禁仅迁移既有检查路径/文件清单，原禁止规则覆盖所有新分片，没有新增策略规则或helper名称检查；架构文件表和skill同步。Release 0警告/0错误；Bash门禁 `REFACTOR_BOUNDARIES_OK search_files=197`。本批仅一次EQ10，983项字段与600项剪枝计数一致，双侧20份有效、无时间边界，`IDENTICAL`。日志见 `retention-build.log`、`retention-boundaries.log`，等价证据见 `retention-comparison.json` / `retention-validity.json`；本批宿主logs已删。
 
 ## 3. 没动的与原因
 

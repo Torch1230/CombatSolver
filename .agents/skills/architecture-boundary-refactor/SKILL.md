@@ -37,6 +37,7 @@ description: 重构 CombatSolver 的 Search、Runtime 会话、UI snapshot、无
 - `src/Api/PreCombat*` 拥有公开 API v5 的战前请求、状态/设置令牌与独立游戏 worker。主线程捕获，worker 通过无人协议恢复并复核完整跑局；Mod 使用独立副本、当前账号设置映射到 worker，求解设置变化使缓存及 worker 失效。跨请求停止/期限不能只等待繁忙锁；此边界不把 headless 等同操作系统沙箱。
 - `CombatBeamSolver.cs` 只负责构造和接线；阶段循环、展开、评估、中间保路、终局排序和终局回放各在现有分片。
 - 单次搜索可变状态属于 `SearchRunContext`；中间候选属于 `BeamRetentionPolicy`；终局政策属于 `FinalPlanOrdering`。
+- `BeamRetentionPolicy` 的主构造、字段和初始化顺序留在根分片；OrderedMutation、OrderedMutationScheduling、Routing、Ranking、Testing只分组已有成员，仍共享同一个策略实例，不引入新的状态所有者。
 - 循环出口的族内、在途和最新候选仅在各自租约前缀同分后共用 `Retention` 内的 `CompareCycleExitQuality`；待准入候选直接使用该质量顺序。区域、跨回合和终局比较器的键次序不同，不因字段相似合并；共享方法不新增状态或依赖。
 - `AdmittedExpansion` 只调度已预约父节点内的作业，固定 lane 排空并归并后才复用；提交仍按父节点和动作原序。提前 EndTurn 使用同父 Fork gate，独占批次和暂存基线；全部兄弟动作/选择/药水结束后才移交快照并发布基线，不让worker写父Aggregate。`PrimaryChoiceReplayFrontier` 独占必经首层回放的暂存快照，所有生产作业结束后才移交一个续接消费者；动态预算和 occurrence collector 不跨 lane 共享修改。异常先排空，再释放 probe、frontier、batch 与根。
 - 已撤回的`AdmittedParent`否定就绪缓存实验只能在coordinator内使用；任何改变选择就绪条件的路径都必须失效，实验入口是`MarkDispatched`和`Receive`。worker不能直接改这些条件，正结果继续保持原扫描优先级。
