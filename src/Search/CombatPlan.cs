@@ -1029,6 +1029,14 @@ internal sealed record OrderedMutationRetentionLease(
 }
 
 /// <summary>
+/// A bounded inherited lease for a lineage that increased persistent/setup value on a step.
+/// Remaining counts the further play-depth boundaries on which the lineage may still claim one
+/// retention seat; children derive <c>Remaining - 1</c> from their parent. Identity is local to
+/// one solver run and carries no content knowledge.
+/// </summary>
+internal sealed record PersistentProgressLease(int LeaseId, int Remaining);
+
+/// <summary>
 /// Transient identity for the two distinct orderings that first prove an unordered outcome
 /// collision. It exists only through the coordinator prune that activates the pair and is never
 /// propagated to an expanded child.
@@ -1098,6 +1106,7 @@ internal sealed record SearchNode(
     public int CycleRetentionRank { get; set; } = int.MaxValue;
     public int CycleExitRetentionRank { get; set; } = int.MaxValue;
     public int CrossTurnRetentionRank { get; set; } = int.MaxValue;
+    public PersistentProgressLease? PersistentProgressLease { get; set; }
     public OrderedMutationLineage? OrderedMutationLineage { get; set; }
     public OrderedMutationBoundaryLineage? OrderedMutationBoundaryLineage { get; set; }
     public OrderedMutationRetentionLease? OrderedMutationRetentionLease { get; set; }

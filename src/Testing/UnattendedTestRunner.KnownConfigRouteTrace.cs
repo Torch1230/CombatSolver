@@ -15,6 +15,7 @@ internal sealed class KnownRouteTraceConfig
     public int? MinTurn { get; init; }
     public int? MaxTurn { get; init; }
     public int? RetentionStep { get; init; }
+    public int LeaseSeats { get; init; }
     public KnownRouteTraceActionConfig[] Actions { get; init; } = [];
 }
 
@@ -119,7 +120,8 @@ internal sealed partial class UnattendedTestRunner
         if (config.RetentionStep is { } retentionStep && (retentionStep < 1 || retentionStep > prefixes.Count))
             throw new InvalidOperationException("Known-config 路径诊断的保留边界越界。");
         return await RunKnownRoutePathTraceAsync(combat, player, prefixes, config.Sample,
-            "known_config_route_path", observedRetentionStep: config.RetentionStep);
+            "known_config_route_path", observedRetentionStep: config.RetentionStep,
+            leaseSeats: config.LeaseSeats);
     }
 
     private static string DescribeKnownConfigStep(KnownRouteTraceActionConfig step)

@@ -228,6 +228,7 @@ internal sealed partial class CombatBeamSolver
                     pool,
                     selected);
             }
+            AddPersistentProgressLeaseSeats(pool, selected, selectedSet);
             SortRetained(selected);
             List<SearchNode> finalized = FinalizePrunedSelection(
                 pool,
@@ -251,6 +252,48 @@ internal sealed partial class CombatBeamSolver
         finally
         {
             _run.Performance.End(SearchMetricPhase.Prune, measurement);
+        }
+    }
+
+    // Bounded cross-boundary lease for persistent/setup progress. A lineage that increases
+    // PersistentBuffValue or RetentionValue on a step may claim one extra seat per boundary for
+    // a few steps; children derive the remaining count from their parent. The seat budget is
+    // per-prune and zero by default, so ordinary searches are unchanged.
+    private const int PersistentProgressLeaseSteps = 3;
+
+    private void AddPersistentProgressLeaseSeats(
+        IReadOnlyList<SearchNode> pool,
+        List<SearchNode> selected,
+        HashSet<SearchNode> selectedSet)
+    {
+        int seats = _profile.PersistentProgressLeaseSeats;
+        if (seats <= 0)
+            return;
+        int added = 0;
+        foreach (SearchNode node in pool)
+        {
+            PersistentProgressLease? lease = node.PersistentProgressLease
+                ?? (node.Parent?.PersistentProgressLease is { Remaining: > 1 } inherited
+                    ? inherited with { Remaining = inherited.Remaining - 1 }
+                    : null);
+            if (lease == null)
+            {
+                if (node.Parent is not { } parent)
+                    continue;
+                bool increases = node.Snapshot.PersistentBuffValue > parent.Snapshot.PersistentBuffValue
+                    || node.Snapshot.StrategicEffects.RetentionValue
+                        > parent.Snapshot.StrategicEffects.RetentionValue;
+                if (!increases)
+                    continue;
+                lease = new PersistentProgressLease(++_run.PersistentProgressLeaseId,
+                    PersistentProgressLeaseSteps);
+            }
+            node.PersistentProgressLease = lease;
+            if (!selectedSet.Add(node))
+                continue;
+            selected.Add(node);
+            if (++added >= seats)
+                break;
         }
     }
 

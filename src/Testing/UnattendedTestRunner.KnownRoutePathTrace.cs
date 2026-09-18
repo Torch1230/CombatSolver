@@ -37,7 +37,8 @@ internal sealed partial class UnattendedTestRunner
         bool proveRetentionAliases = false,
         IReadOnlyDictionary<string, IReadOnlyList<KnownRoutePrefix>>? frozenVariants = null,
         int? observedRetentionStep = null,
-        BossHpStrategy? finalBossStrategyOverride = null)
+        BossHpStrategy? finalBossStrategyOverride = null,
+        int leaseSeats = 0)
     {
         if (prefixes.Count == 0
             || (requiredRetentionStep is { } step && (step < 1 || step > prefixes.Count))
@@ -87,6 +88,8 @@ internal sealed partial class UnattendedTestRunner
             includeTurnSetup: false, theftPolicy: null);
         if (finalBossStrategyOverride is { } finalBossStrategy)
             policy = policy with { FinalBossHpStrategy = finalBossStrategy };
+        if (leaseSeats > 0)
+            policy = policy with { Profile = policy.Profile with { PersistentProgressLeaseSeats = leaseSeats } };
         SearchDiagnosticsSink original = policy.Diagnostics;
         policy = policy with { Diagnostics = new SearchDiagnosticsSink(original.Info, original.Debug, observer) };
         using CancellationTokenSource cancellation = new(TimeSpan.FromSeconds(
