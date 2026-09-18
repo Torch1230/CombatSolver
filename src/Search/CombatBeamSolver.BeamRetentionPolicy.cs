@@ -424,6 +424,7 @@ internal sealed partial class CombatBeamSolver
         PotionStrategySnapshot _potionStrategy,
         bool _enforcePotionDirectives,
         bool _renewablePotionShapedRock,
+        int _potionReplacementHpCredit,
         SearchRunContext _run,
         Func<SearchNode, StandPatEvaluation> _evaluateStandPat,
         Action<IEnumerable<SearchNode>>? _prepareStandPat = null)
@@ -604,9 +605,10 @@ internal sealed partial class CombatBeamSolver
 
             int explicitPotionUseCount = ExplicitPotionUseCount(node);
             int optionalPotionUseCount = Math.Max(0, explicitPotionUseCount - forcedUseCount);
-            int optionalPotionStrategicCost = Math.Max(
-                0,
-                explicitPotionStrategicCost - forcedStrategicHpCost);
+            int optionalPotionStrategicCost = PotionUsePolicy.ApplyReplacementCredit(
+                Math.Max(0, explicitPotionStrategicCost - forcedStrategicHpCost),
+                optionalPotionUseCount,
+                _potionReplacementHpCredit);
             int optionalAmbergrisCount = Math.Max(0, explicitAmbergrisCount - forcedAmbergrisCount);
             SolverPotionPolicy effectivePotionPolicy = _potionPolicy switch
             {

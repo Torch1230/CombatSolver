@@ -67,6 +67,14 @@ internal sealed partial class CombatBeamSolver
                 $"[CombatSolver/Test] HOOK_LAYOUT_CACHE scope=root_cumulative " +
                 $"hits={hookLayouts.Hits} misses={hookLayouts.Misses} " +
                 $"collisions={hookLayouts.Collisions} bypasses={hookLayouts.Bypasses}");
+            if (root.PotionRewardOutlook.ReplacementHpCredit > 0)
+            {
+                PotionRewardOutlook outlook = root.PotionRewardOutlook;
+                policy.Diagnostics.Info(
+                    $"[CombatSolver/Test] POTION_REWARD_OUTLOOK " +
+                    $"chance={outlook.DropChance:0.###} belt_full={outlook.BeltFull} " +
+                    $"credit={outlook.ReplacementHpCredit}");
+            }
             if (_run.PotionStrategicCosts.Misses > 0)
             {
                 policy.Diagnostics.Info(

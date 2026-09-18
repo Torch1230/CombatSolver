@@ -1869,8 +1869,13 @@ internal static partial class CombatSearchCoordinator
         int ambergrisCount = result.BestNode.Actions.Count(action =>
             action.Kind == PlanActionKind.UsePotion
             && string.Equals(action.PotionId, "AMBERGRIS", StringComparison.Ordinal));
+        int explicitPotionCount = result.BestNode.Actions.Count(action =>
+            action.Kind == PlanActionKind.UsePotion);
         int strategicHpCost = PotionUsePolicy.EffectiveStrategicHpCost(
-            result.PotionStrategicCostByTurn.Values.Sum(),
+            PotionUsePolicy.ApplyReplacementCredit(
+                result.PotionStrategicCostByTurn.Values.Sum(),
+                explicitPotionCount,
+                root.PotionRewardOutlook.ReplacementHpCredit),
             ambergrisCount,
             root.InitialPlayerMaxHp);
         return PotionUsePolicy.SmartRequiredHpSaved(
@@ -1936,12 +1941,22 @@ internal static partial class CombatSearchCoordinator
             .ToArray();
         if (!potionFreeWon || policy.TheftPolicy == SolverTheftPolicy.PreserveResources)
             return allowedPotions.Length;
+        BossHpRelief bossHpRelief = StrategicBossHpRelief(root, policy);
         int paidPotionHpRequired = PotionUsePolicy.SmartRequiredHpSaved(
             SolverWeights.PotionMinimumHpSaved,
-            StrategicBossHpRelief(root, policy));
+            bossHpRelief);
+        // The reward credit is taken off a route once, so only the first paid potion gets the cheaper bar.
+        int firstPaidPotionHpRequired = PotionUsePolicy.SmartRequiredHpSaved(
+            PotionUsePolicy.ApplyReplacementCredit(
+                SolverWeights.PotionMinimumHpSaved,
+                1,
+                root.PotionRewardOutlook.ReplacementHpCredit),
+            bossHpRelief);
         int paidPotionCapacity = paidPotionHpRequired >= int.MaxValue / 4
             ? 0
-            : Math.Max(0, potionFreeHpDeficit) / paidPotionHpRequired;
+            : Math.Max(0, potionFreeHpDeficit) < firstPaidPotionHpRequired
+                ? 0
+                : 1 + (Math.Max(0, potionFreeHpDeficit) - firstPaidPotionHpRequired) / paidPotionHpRequired;
         return Math.Min(
             allowedPotions.Length,
             allowedPotions.Count(potion => potion.StrategicHpCost == 0) + paidPotionCapacity);

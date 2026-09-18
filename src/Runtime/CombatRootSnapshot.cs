@@ -56,6 +56,7 @@ internal sealed class CombatRootSnapshot
     public bool HasUnusedCardReplayAllocator { get; }
     public bool HasRenewablePotionShapedRock { get; }
     public PostCombatRelicHealProfile PostCombatRelicHeal { get; }
+    public PotionRewardOutlook PotionRewardOutlook { get; }
     internal HookLayoutCacheStatistics HookLayoutCacheStatistics
         => ((SimulatedCombatState)_rootSimulator.State.CombatState).HookLayoutCacheStatistics;
     internal HookListenerSegmentStatistics HookListenerSegmentStatistics
@@ -90,7 +91,8 @@ internal sealed class CombatRootSnapshot
         bool capturedBaseLibCardModifiers,
         bool hasUnusedCardReplayAllocator,
         bool hasRenewablePotionShapedRock,
-        PostCombatRelicHealProfile postCombatRelicHeal)
+        PostCombatRelicHealProfile postCombatRelicHeal,
+        PotionRewardOutlook potionRewardOutlook)
     {
         PlayerIdentity = playerIdentity;
         Enemies = enemies;
@@ -127,6 +129,7 @@ internal sealed class CombatRootSnapshot
         HasUnusedCardReplayAllocator = hasUnusedCardReplayAllocator;
         HasRenewablePotionShapedRock = hasRenewablePotionShapedRock;
         PostCombatRelicHeal = postCombatRelicHeal;
+        PotionRewardOutlook = potionRewardOutlook;
     }
 
     public static CombatRootSnapshot Capture(CombatState state)
@@ -174,6 +177,10 @@ internal sealed class CombatRootSnapshot
             .OfType<PetrifiedToad>()
             .Any(relic => !relic.IsMelted);
         PostCombatRelicHealProfile postCombatRelicHeal = CapturePostCombatRelicHeal(
+            simulatedCombat.RelicsOf(player));
+        PotionRewardOutlook potionRewardOutlook = PotionRewardOutlook.Capture(
+            player,
+            state.Encounter?.RoomType,
             simulatedCombat.RelicsOf(player));
         SearchablePotionSlotSnapshot[] searchablePotions = player.PotionSlots
             .Select((potion, slot) => (Potion: potion, Slot: slot))
@@ -252,7 +259,8 @@ internal sealed class CombatRootSnapshot
             simulatedCombat.RootHasBaseLibCardModifiers,
             hasUnusedCardReplayAllocator,
             hasRenewablePotionShapedRock,
-            postCombatRelicHeal);
+            postCombatRelicHeal,
+            potionRewardOutlook);
     }
 
     /// <summary>

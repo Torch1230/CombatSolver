@@ -82,6 +82,19 @@ internal static class PotionUsePolicy
         return StrategicHpCost(potion, renewablePotionShapedRock);
     }
 
+    /// <summary>
+    /// The strategic cost a route's optional potion uses must justify once the expected post-combat reward is
+    /// counted. See <see cref="PotionRewardOutlook"/>: the credit stands for the one reward a freed slot can
+    /// receive, so it is taken off the route total once, never per potion, and never below zero.
+    /// </summary>
+    public static int ApplyReplacementCredit(
+        int optionalPotionStrategicCost,
+        int optionalPotionCount,
+        int replacementHpCredit)
+        => optionalPotionCount > 0 && replacementHpCredit > 0
+            ? Math.Max(0, optionalPotionStrategicCost - replacementHpCredit)
+            : optionalPotionStrategicCost;
+
     public static int HpSaved(int potionFreeHpDeficit, int potionRouteHpDeficit)
         => Math.Max(0, potionFreeHpDeficit - potionRouteHpDeficit);
 

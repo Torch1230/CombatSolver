@@ -2,6 +2,9 @@ using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Potions;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Potions;
+using MegaCrit.Sts2.Core.Models.Relics;
+using MegaCrit.Sts2.Core.Entities.Players;
+using MegaCrit.Sts2.Core.Rooms;
 using HarmonyLib;
 using CombatSolver.Engine.Common;
 using MegaCrit.Sts2.Core.Modding;
@@ -134,6 +137,42 @@ internal sealed partial class UnattendedTestRunner
         CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
         if (!root.SearchablePotions.Any(potion => potion.PotionId == "SWIFT_POTION" && potion.StrategicHpCost == 18))
             throw new InvalidOperationException("搜索根没有捕获 Swift 药水的 18 HP 成本。");
-        _completedChecks.Add("PotionValueTiers:Thresholds:Free:Ambergris:Rescue:Forced:Root");
+        AssertPotionRewardOutlook(combat, root);
+        _completedChecks.Add("PotionValueTiers:Thresholds:Free:Ambergris:Rescue:Forced:Root:RewardOutlook");
+    }
+
+    private static void AssertPotionRewardOutlook(CombatState combat, CombatRootSnapshot root)
+    {
+        // 掷骰阈值与原版 PotionRewardOdds.Roll 一致：保存的概率加半份精英加成，夹在 [0, 1]。
+        if (Math.Abs(PotionRewardOutlook.DropChanceFor(0.4f, RoomType.Elite) - 0.525f) > 0.0001f
+            || PotionRewardOutlook.DropChanceFor(1.2f, RoomType.Monster) != 1f
+            || PotionRewardOutlook.DropChanceFor(0.4f, RoomType.Boss) != 0.4f)
+            throw new InvalidOperationException("药水掉落概率镜像与原版掷骰阈值不符。");
+        // 额度只在药水栏已满且能获得药水时存在，按基线档位乘概率四舍五入。
+        if (new PotionRewardOutlook(1f, true, false).ReplacementHpCredit != SolverWeights.PotionMinimumHpSaved
+            || new PotionRewardOutlook(0.4f, true, false).ReplacementHpCredit != 4
+            || new PotionRewardOutlook(0.5f, true, true).ReplacementHpCredit != 0
+            || new PotionRewardOutlook(1f, false, false).ReplacementHpCredit != 0
+            || PotionRewardOutlook.None.ReplacementHpCredit != 0)
+            throw new InvalidOperationException("药水补货额度计算错误。");
+        // 额度按路线只扣一次，不按瓶数重复扣，也不会把成本扣成负数。
+        if (PotionUsePolicy.ApplyReplacementCredit(18, 1, 9) != 9
+            || PotionUsePolicy.ApplyReplacementCredit(9, 2, 9) != 0
+            || PotionUsePolicy.ApplyReplacementCredit(18, 0, 9) != 18
+            || PotionUsePolicy.ApplyReplacementCredit(18, 1, 0) != 18
+            || PotionUsePolicy.ApplyReplacementCredit(4, 1, 9) != 0)
+            throw new InvalidOperationException("药水补货额度的路线级扣减错误。");
+        // 根快照读到的是当前玩家保存的概率、真实房间类型与药水栏占用。
+        Player player = combat.Players[0];
+        RoomType? roomType = combat.Encounter?.RoomType;
+        PotionRewardOutlook expected = roomType is { } room && room.IsCombatRoom()
+            ? new PotionRewardOutlook(
+                PotionRewardOutlook.DropChanceFor(player.PlayerOdds.PotionReward.CurrentValue, room),
+                player.PotionSlots.Count > 0 && player.PotionSlots.All(potion => potion != null),
+                player.Relics.OfType<Sozu>().Any())
+            : PotionRewardOutlook.None;
+        if (root.PotionRewardOutlook != expected)
+            throw new InvalidOperationException(
+                $"根快照的药水掉落前景 {root.PotionRewardOutlook} 与实况 {expected} 不符。");
     }
 }
