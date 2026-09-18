@@ -204,6 +204,12 @@ English.json有426键；直接Get字面调用缺英文0。结合Roslyn插值模�
 
 先做安全清理，再做克隆复用，最后分两个提交纯移动BeamRetentionPolicy与Expansion。中风险各批EQ10，全部完成后仅一次EQ10+FULL40。基线直接复用hygiene已有50份，不重跑；比较器也复用指定的时序/内存字段排除版本。宿主最多2个进程；所有主工程构建通过build.sh拒绝离线批次并行，固定CopyModOnBuild=false。
 
+批次一本地提交 `5f12c09`（含工具、报告与导航）：38文件，+988/-101。
+
+### 批次二：旧本地化键与注释
+
+删除21个无调用的旧目录键，426→405；其余键值逐项不变（`.local/debt/catalog-proof.json`）。修正SearchPolicySnapshot和SolverSearchProfile的组合成员来源/关闭行为及硬编码项数注释，保留上一轮历史实测。代码与资源3文件+7/-28；没有改现用模板或测试逻辑。Release 0警告/0错误（4.89秒，`catalog-build.log`），Bash门禁通过 `search_files=192`（`catalog-boundaries.log`）。按安全类口径不跑游戏或离线批次。
+
 ## 3. 没动的与原因
 
 不改Engine/Prediction语义、公开/internal签名、设置schema、搜索政策或预算；不动catch语义；不拆Testing可变夹具。CA2000/CA2213的原生和租约所有权必须另作生命周期审计，不能机械Dispose。归一化克隆不等价于同一政策。沿用上一轮研究证据与反射/InlineArray裁决，删除实验目录0、设置迁移0、测试夹具0。

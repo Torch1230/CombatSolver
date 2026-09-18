@@ -58,8 +58,8 @@ internal sealed record SearchPolicySnapshot(
     public bool EffectiveHasGrowthTargets => !IgnoreLongTermRewards && HasGrowthTargets;
 
     /// <summary>
-    /// 主搜索改用 <see cref="BeamWidthPortfolio" />：若干个宽度或中途排序不同的成员共享同一份节点预算，
-    /// 按既有比较规则取最优。默认开启；关闭时只运行基线成员。
+    /// 控制 <see cref="BeamWidthPortfolio" /> 的普通精炼成员，按既有比较规则取最优。
+    /// Runtime默认开启；关闭时仍运行基线及满足根准入条件的能力成员。
     /// </summary>
     public bool UseBeamWidthPortfolio { get; init; }
 
@@ -71,7 +71,7 @@ internal sealed record SearchPolicySnapshot(
 
     /// <summary>
     /// 请求级的组合诊断，由 <see cref="CombatSearchCoordinator.Solve" /> 建立并挂到返回结果上。
-    /// 开关关闭时同样记录（单成员一行）。
+    /// 开关关闭时同样记录实际执行的成员，包含满足根准入条件的能力成员。
     /// </summary>
     public BeamWidthPortfolioTelemetry? PortfolioTelemetry { get; init; }
     public SearchRequestWorkTotals? RequestWorkTotals { get; init; }
