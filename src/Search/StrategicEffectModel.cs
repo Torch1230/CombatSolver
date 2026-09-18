@@ -1,6 +1,5 @@
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
-using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Powers;
 using CombatSolver.Engine.Common;
@@ -57,14 +56,6 @@ internal readonly record struct StrategicEffectVector(
             SaturatingAdd(left.ResourcePotential, right.ResourcePotential),
             SaturatingAdd(left.CardAccessPotential, right.CardAccessPotential),
             SaturatingAdd(left.ScalingPotential, right.ScalingPotential));
-
-    private static int SaturatingSum(params int[] values)
-    {
-        long total = 0;
-        foreach (int value in values)
-            total += value;
-        return (int)Math.Clamp(total, 0L, int.MaxValue);
-    }
 
     private static int SaturatingAdd(int left, int right)
         => (int)Math.Clamp((long)left + right, 0L, int.MaxValue);
