@@ -208,7 +208,13 @@ English.json有426键；直接Get字面调用缺英文0。结合Roslyn插值模�
 
 ### 批次二：旧本地化键与注释
 
-删除21个无调用的旧目录键，426→405；其余键值逐项不变（`.local/debt/catalog-proof.json`）。修正SearchPolicySnapshot和SolverSearchProfile的组合成员来源/关闭行为及硬编码项数注释，保留上一轮历史实测。代码与资源3文件+7/-28；没有改现用模板或测试逻辑。Release 0警告/0错误（4.89秒，`catalog-build.log`），Bash门禁通过 `search_files=192`（`catalog-boundaries.log`）。按安全类口径不跑游戏或离线批次。
+删除21个无调用的旧目录键，426→405；其余键值逐项不变（`.local/debt/catalog-proof.json`）。修正SearchPolicySnapshot和SolverSearchProfile的组合成员来源/关闭行为及硬编码项数注释，保留上一轮历史实测。代码与资源3文件+8/-29；没有改现用模板或测试逻辑。Release 0警告/0错误（4.89秒，`catalog-build.log`），Bash门禁通过 `search_files=192`（`catalog-boundaries.log`）。按安全类口径不跑游戏或离线批次。提交 `80fd763`。
+
+### 批次三：相同克隆复用
+
+PendingCycleExit准入比较器的21行方法体与既有质量比较器原文一致，改为调用该helper；两处16行开局SearchNode构造原文一致，提取private static工厂，参数表达式与求值顺序不变。另一处使用_startTurnNumber的相似构造保留。2个源码文件+23/-53，净减30行；原文和比对断言见 `.local/debt/clone-proof.json`。
+
+Release 0警告/0错误（3.71秒，`clones-build.log`）；Bash门禁通过 `search_files=192`（`clones-boundaries.log`）。单次EQ10全部 `IDENTICAL`：983项比较字段、600项剪枝计数，双侧20份结果有效，时间边界0。证据 `clones-comparison.json`、`clones-validity.json`；本批logs已删，结构化结果保留。同步架构与skill中待准入比较器的职责说明，没有添加helper名称门禁。
 
 ## 3. 没动的与原因
 

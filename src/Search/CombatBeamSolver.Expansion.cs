@@ -118,22 +118,7 @@ internal sealed partial class CombatBeamSolver
         List<SearchNode> children = [];
         try
         {
-            SearchNode seed = new(
-                null,
-                0,
-                rootSnapshot.PotionUseCount,
-                rootSnapshot.PotionStrategicCost,
-                rootSnapshot.Turn,
-                SearchRouteTraits.None,
-                0,
-                rootSnapshot.Score,
-                rootSnapshot.StateKey,
-                rootSnapshot.HasRisk,
-                rootSnapshot.BoundaryReason,
-                false,
-                null,
-                rootSnapshot,
-                CombatProgressState.Capture(rootSnapshot));
+            SearchNode seed = CreateOpeningSearchSeed(rootSnapshot);
             children.AddRange(Expand(seed));
             return children
                 .Where(node => node.Action?.Kind == PlanActionKind.UsePotion)
@@ -152,6 +137,26 @@ internal sealed partial class CombatBeamSolver
     internal IReadOnlyList<PlanAction> BuildPreferredOpeningPotionActions()
         => BuildPreferredPotionActionsAfterPrefix([]);
 
+    private static SearchNode CreateOpeningSearchSeed(SimulationSnapshot rootSnapshot)
+    {
+        return new(
+            null,
+            0,
+            rootSnapshot.PotionUseCount,
+            rootSnapshot.PotionStrategicCost,
+            rootSnapshot.Turn,
+            SearchRouteTraits.None,
+            0,
+            rootSnapshot.Score,
+            rootSnapshot.StateKey,
+            rootSnapshot.HasRisk,
+            rootSnapshot.BoundaryReason,
+            false,
+            null,
+            rootSnapshot,
+            CombatProgressState.Capture(rootSnapshot));
+    }
+
     internal IReadOnlyList<PlanAction> BuildOpeningResourceActions()
     {
         SimulationSnapshot rootSnapshot = Replay([]);
@@ -163,22 +168,7 @@ internal sealed partial class CombatBeamSolver
             IReadOnlyDictionary<string, CardType> cardTypes = openingHand
                 .GroupBy(card => card.Preview.Id.Entry)
                 .ToDictionary(group => group.Key, group => group.First().Preview.Type);
-            SearchNode seed = new(
-                null,
-                0,
-                rootSnapshot.PotionUseCount,
-                rootSnapshot.PotionStrategicCost,
-                rootSnapshot.Turn,
-                SearchRouteTraits.None,
-                0,
-                rootSnapshot.Score,
-                rootSnapshot.StateKey,
-                rootSnapshot.HasRisk,
-                rootSnapshot.BoundaryReason,
-                false,
-                null,
-                rootSnapshot,
-                CombatProgressState.Capture(rootSnapshot));
+            SearchNode seed = CreateOpeningSearchSeed(rootSnapshot);
             children.AddRange(Expand(seed).Where(node =>
                 node.Action is { Kind: PlanActionKind.PlayCard, Turn: var turn }
                 && turn == rootSnapshot.Turn));
