@@ -7,6 +7,7 @@
 - 同根 **DOP16 3+3 交错**：分配中位 6.7347 → 5.8182 GiB（−13.56%）、KB/转移 55.53 → 47.89、RSS 7.06 → 6.13 GiB、墙钟中位 13.25 → 12.79 s（−3.46%）；六次转移 127180、选择分支 7619 全同，剪枝与决策全同。
 - 无 Crossbow 哨兵 `sel-necrobinder-monster-04` DOP1：转移 87165、剪枝与决策逐位相同，分配 3.2959 → 3.2956 GiB（−0.01%）。
 - 回退的三组（等价性成立、收益未建立）：Toolbox 语料根 `sel-necrobinder-monster-04` DOP16 3+3 分配 3.817 → 3.819 GiB（+0.1%）；OrangeDough 构造根（`inj-orange_dough-sel-ironclad-elite-01`）2.070 → 2.071 GiB（+0.0%）；VexingPuzzlebox 语料根 `sel-regent-boss-00` 1.6768 → 1.6767 GiB（−0.01%）；BigHat 构造根（`inj-big_hat-sel-regent-boss-00`）2.3485 → 2.3483 GiB（−0.01%）。四组的转移/分支/剪枝/决策全部逐位相同。
+- 重型根复测（含遗物语料首领根，20k/12GB/DOP1，`all6` vs `Crossbow-only`）：`sel-silent-boss-04`（Toolbox）分配 −0.25%、`sel-necrobinder-boss-04`（Toolbox）−0.08%、`sel-silent-boss-10`（VexingPuzzlebox）−0.02%、`sel-regent-elite-13`（OrangeDough，148,872 转移）−0.01%；四根转移/分支/剪枝/决策逐位相同。
 - 休眠证据：基线 DLL 对含 Toolbox 的根做 20k `dotnet-trace` 全栈聚合，整个 `Toolbox` 栈 0.0002 GiB / 已覆盖 4.12 GiB（0.005%），`GetUnlockedCards` 全部 0.0003 GiB；排他阶段表 `round_player_start` 两侧同为 0.1845 GiB。原因是搜索根在玩家第一回合 Play 阶段捕获，`turn <= 1` 的回合开始/抽牌前块已在根状态里。
 - Release 构建 0 警告/0 错误；`./tools/verify-refactor-boundaries.sh` 输出 `REFACTOR_BOUNDARIES_OK`。未执行：可见 Steam、Windows 构建、500k 节点完整 VeryHigh。构造根不是语料根。
 - 完整表、命令与「其它角色卡池根快照」提案见[遗物印牌站点复用](performance/relic-generation-pool-reuse-20260919.md)。
