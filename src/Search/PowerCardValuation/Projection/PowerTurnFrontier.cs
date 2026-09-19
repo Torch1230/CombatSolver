@@ -89,7 +89,7 @@ internal static class PowerTurnFrontier
                     SaturatingAdd(prior.CardAccess, card.CardAccess),
                     prior.ShivPlayed || card.IsShiv));
             }
-            Prune(states, energy, incomingDamage);
+            Prune(states, incomingDamage);
         }
 
         return states
@@ -148,7 +148,6 @@ internal static class PowerTurnFrontier
 
     private static void Prune(
         List<(int Spent, int Damage, int Block, int CardAccess, bool ShivPlayed)> states,
-        int energy,
         int incomingDamage)
     {
         states.Sort((left, right) =>

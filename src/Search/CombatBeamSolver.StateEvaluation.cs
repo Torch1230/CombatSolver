@@ -149,7 +149,7 @@ internal sealed partial class CombatBeamSolver
         }
         else if (!_run.ThreatProjectionCache.TryGetValue((key, roundIndex), out threat))
         {
-            threat = ProjectHpAfterThreat(simulator, player, roundIndex);
+            threat = ProjectHpAfterThreat(simulator, player);
             _run.ThreatProjectionCache.Add((key, roundIndex), threat);
         }
         int projectedHp = threat.Hp;
@@ -1266,8 +1266,7 @@ internal sealed partial class CombatBeamSolver
 
     private ThreatProjection ProjectHpAfterThreat(
         CombatPredictionSimulator simulator,
-        SimCreatureState player,
-        int roundIndex)
+        SimCreatureState player)
     {
         int hp = player.CurrentHp;
         int block = player.Block;

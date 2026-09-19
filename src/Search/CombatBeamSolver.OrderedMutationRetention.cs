@@ -26,7 +26,7 @@ internal sealed partial class CombatBeamSolver
     /// Carries order-sensitive mutation identity with O(choices on this edge) work. No ancestor
     /// walk is needed on the expansion or retention hot paths.
     /// </summary>
-    private SearchNode AttachOrderedMutationLineage(SearchNode child)
+    private static SearchNode AttachOrderedMutationLineage(SearchNode child)
     {
         if (child.Parent is not { } parent || child.Action is not { } action)
             return child;
@@ -493,7 +493,7 @@ internal sealed partial class CombatBeamSolver
         PromoteOrderedMutationProgressTail(node, ledger);
     }
 
-    private bool HasRecentOrderedMutationObservationProgress(SearchNode node)
+    private static bool HasRecentOrderedMutationObservationProgress(SearchNode node)
     {
         SimulationSnapshot current = node.Snapshot;
         SearchNode? cursor = node.Parent;

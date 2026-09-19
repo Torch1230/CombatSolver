@@ -10,6 +10,13 @@
 - 合并接入（2026-09-19，Windows 仓库内隔离无头）：`PR15-POTION-VALUE-TIERS` 静默猎手默认关闭 1 场 Passed，断言设置默认/持久化、关闭时根无前景、零成本药水不被抬价；同场 `RequireAtLeastOne` 强制一瓶另跑 1 场 Passed，终局回放与摘要的用药身份/数量一致。`POTION-REWARD-FORECAST` 静默猎手、A10、满栏两瓶 1 场 Passed：原生奖励与预测同为 `FRUIT_JUICE`，开启时完整胜利摘要显示掉药；`UI-LOCALIZATION` 1 场 Passed，eng/zhs/zht 共 438 个模板并核对新设置控件。四场均报告 `UNATTENDED_INSTANCE_REMOVED`。首次使用全新铁甲战士档案跑 PR15 时旧断言把教程 `Unknown` 当失败；改用非教程角色后通过，本批未改教程规则。
 - 主 DLL 使用 Windows 游戏依赖、跳过本机未安装的 .NET Framework 4.8 辅助程序目标完成 Release 编译，0 警告 0 错误；Windows 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=193`。完整 Windows `dotnet build` 因缺少 .NET Framework 4.8 引用程序集失败；无头入口使用同仓库现成的 MemoryCleaner 辅助程序副本。未做可见 Steam 人工排版验收，历史离线 FULL 对照是原始无开关的开启前景实验，不作为本次默认关闭质量结论。
 
+## 未发布：技术债静态审计与分片整理
+
+- 安全清理仅普通Release与门禁；克隆复用、保路纯移动、展开纯移动各一次EQ10，均IDENTICAL（每批983项字段、600项剪枝计数）。
+- 最终仅一次EQ10+FULL40，IDENTICAL（4673项字段、3000项剪枝计数），双侧100份有效、无时间边界；复用指定0.41.0基线结果与比较器，未重跑基线。固定High 90/50000、Coordinator、Smart、DOP1、workers=2。
+- 229/100项保路/展开成员文本分别由Roslyn核对；保路5项字段声明顺序不变。BeamRankSortChecks独立合同720组/167280条目通过。最终Release 0警告/0错误，CopyModOnBuild=false；Bash门禁search_files=201。
+- 本轮没有原生游戏/无人场景验收；审计工具复跑说明在[CodeDebt](../tools/CodeDebt/README.md)，逐批产物位置见[技术债审计](refactoring/tech-debt-audit-2026-09-18.md)。
+
 ## 未发布：代码整洁度清理
 
 - 私有死代码与多余using清理：EQ 10根对上游0.41.0为 `IDENTICAL`（983项比较字段、600项剪枝计数）；循环出口共享排序后缀：EQ 10 + FULL 40根为 `IDENTICAL`（4673项比较字段、3000项剪枝计数），双侧100份结果有效且未触及时间边界。
