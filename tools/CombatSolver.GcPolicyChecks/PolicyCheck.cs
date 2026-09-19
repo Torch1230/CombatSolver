@@ -38,7 +38,7 @@ internal static class PolicyCheck
 }
 
 // Only game-host glue is substituted. The runtime policy itself is linked from production source;
-// these checks never request a NoGC region, force GC or trim the process working set.
+// lifecycle modes exercise real CLR regions and collections; no game host is loaded.
 internal static class Entry
 {
     public static CheckLogger Logger { get; } = new();
@@ -52,7 +52,7 @@ internal sealed class CheckLogger
     public void Error(string message) => throw new InvalidOperationException(message);
 }
 
-internal static class UnattendedTestRunner
+internal sealed partial class UnattendedTestRunner
 {
     public static bool IsActive { get; set; }
 }

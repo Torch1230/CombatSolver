@@ -453,7 +453,7 @@ forbid_fixed "$repository_root/src/Runtime/SearchGcPolicy.Recovery.cs" \
     'CollectGeneration2' 'NoGC recovery must not enter the reclaim chain:'
 for gc_chain_rule in \
     'return WaitForReclaimChainAsync(_reclaimTask)' \
-    'CollectGeneration2ForAutomaticReclaimAsync(inSearchCheckpoint: true)' \
+    'inSearchCheckpoint: true, exitOwnedNoGcRegion: directBackgroundExit)' \
     '_inSearchManualReclaimTask = manualCompletion.Task' \
     'failure == null && (_regionExitRequired || _reclaimRequired)'; do
     require_fixed "$search_gc_policy_path" "$gc_chain_rule" 'missing serialized reclaim-chain rule'
@@ -467,6 +467,8 @@ forbid_fixed \
 while IFS=$'\t' read -r relative_path text; do
     require_fixed "$repository_root/$relative_path" "$text" 'missing GC research ownership boundary'
 done <<'EOF'
+src/Testing/UnattendedTestRunner.GcLifecycleContracts.cs	private static async Task AssertDeferredReclaimSurvivesFaultedCheckpointAsync
+tools/CombatSolver.GcPolicyChecks/CombatSolver.GcPolicyChecks.csproj	../../src/Testing/UnattendedTestRunner.GcLifecycleContracts.cs
 src/Runtime/SearchGcPolicy.cs	scope.CompleteLifecycle(CaptureLifecycle())
 src/Runtime/SolverController.cs	SearchGcPolicy.EnterSearchScope(
 src/Search/CombatBeamSolver.Models.cs	ExpansionBatchPool = new(static snapshot => snapshot.ReleaseSimulator())

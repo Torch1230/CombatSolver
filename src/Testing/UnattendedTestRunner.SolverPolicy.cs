@@ -67,14 +67,15 @@ internal sealed partial class UnattendedTestRunner
             bool runtimeMatchesExpectation = _request.ExpectNoGcFallbackForTest
                 ? !actualActive && actualBudget == 0
                 : actualActive && actualBudget > 0
-                    || _request.AllowNoGcFallbackForTest && !actualActive && actualBudget == 0;
+                    || (OperatingSystem.IsWindows() || _request.AllowNoGcFallbackForTest)
+                        && !actualActive && actualBudget == 0;
             if (!runtimeMatchesExpectation
                 || actualBudget > configured.NoGcRegionBudgetBytes
                 || establishedBudget <= 0
                 || establishedBudget > configured.NoGcRegionBudgetBytes)
             {
                 throw new InvalidOperationException(
-                    $"No-GC 搜索没有按配置建立并保留战斗级区域：" +
+                    $"No-GC 搜索没有按配置建立并完成区域生命周期：" +
                     $"configured_enabled=true configured_budget={configured.NoGcRegionBudgetBytes} " +
                     $"expected_fallback={_request.ExpectNoGcFallbackForTest} " +
                     $"allowed_fallback={_request.AllowNoGcFallbackForTest} " +
@@ -196,6 +197,11 @@ internal sealed partial class UnattendedTestRunner
             await NextFrameAsync();
         }
 
+        // Windows ends the region asynchronously after search. Observe that completed
+        // lifecycle before asserting the stable runtime mode, without requesting another GC.
+        if (OperatingSystem.IsWindows() && SearchGcPolicy.IsBackgroundReclaiming)
+            await SearchGcPolicy.ReclaimIfPendingAsync("unattended_search_complete",
+                forceCollection: false, includeCombatLifecyclePressure: false);
         _writer.CaptureSolverResult(result);
         AssertAppliedNoGcConfiguration();
         long reviewedWorldlines = result.TotalExpandedNodes;

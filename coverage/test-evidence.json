@@ -1,4 +1,11 @@
 {
+  "GC-WINDOWS-BACKGROUND-TRANSITION": {
+    "status": "Passed",
+    "level": "WindowsHeadlessAndProductionClrLifecycle",
+    "procedure": "Windows游戏内GC-CHECKPOINT-BACKGROUND-V0111八项、Windows/Linux链接同一分片的background-tail四项；真实checkpoint/commit-window/recovery-lifecycle/scopes及准入上限检查。女王DOP16 ABBA和独立线程暂停采样另列报告。",
+    "observed": "故障路径默认GCMemoryInfo二次异常导致完成链挂起，改为可空诊断后游戏内八项及独立尾部四项通过；Linux最终基础27项与checkpoint通过；两套结构门禁通过。 Windows ABBA四份Passed，基线最大GC4324–4928ms，候选22.9–24.1ms；主成员非时序字段及36条路线记录一致。独立长搜索Passed，60秒严格EventPipe零丢失、最大线程暂停40.030ms（非完整请求）。远端测试根与本次转储删除、相关进程0。",
+    "evidence": "docs/performance/windows-gc-background-transition-20260920.md"
+  },
   "GC-COMMIT-WINDOW": {
     "status": "Passed",
     "level": "ProductionClrCheckpointAndRecovery",

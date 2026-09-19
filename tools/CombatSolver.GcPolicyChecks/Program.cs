@@ -1,6 +1,12 @@
 using CombatSolver;
 
-if (args is ["commit-window"])
+// Workstation CLR deliberately avoids background GC for a tiny old heap. Model the
+// game's already loaded heap so lifecycle checks exercise actual concurrent collection.
+byte[]? runtimeHeapAnchor = OperatingSystem.IsWindows() ? new byte[8 * 1024 * 1024] : null;
+
+if (args is ["background-tail"])
+    UnattendedTestRunner.RunBackgroundTailChecks();
+else if (args is ["commit-window"])
     GcCommitWindowChecks.Run();
 else if (args is ["recovery-lifecycle"])
 {
@@ -25,5 +31,7 @@ else if (args.Length == 0)
     GcRegionAdmissionChecks.Run();
 }
 else
-    throw new ArgumentException("Expected no arguments, 'admission', 'parallelism', 'scopes', 'checkpoint', 'memory', 'recovery', 'recovery-lifecycle' or 'commit-window'.");
+    throw new ArgumentException("Expected no arguments, 'admission', 'parallelism', 'scopes', 'checkpoint', 'memory', 'recovery', 'recovery-lifecycle', 'background-tail' or 'commit-window'.");
 Console.WriteLine($"GC policy checks passed: {PolicyCheck.Completed} scenarios.");
+
+GC.KeepAlive(runtimeHeapAnchor);

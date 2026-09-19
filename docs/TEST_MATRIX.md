@@ -1,5 +1,11 @@
 # CombatSolver 测试清单
 
+## 下一版本（开发中）：Windows后台GC切换（2026-09-20）
+
+- 最终Windows真实CLR、后台完成/取消/手动请求/引用释放epoch合同和女王DOP16请求对照统一见[本轮证据](performance/windows-gc-background-transition-20260920.md)。早期直接退出候选首检查点仍阻塞1.47–1.52秒，已追加后台就绪确认，不能把该候选计为最终通过。
+- `GC-CHECKPOINT-BACKGROUND-V0111` Windows游戏内八项通过；`background-tail` Windows/Linux共享四项通过，覆盖故障恢复、手动吸收与释放epoch。最终Linux基础27项及checkpoint通过；两端结构门禁通过。
+- 新准入合同覆盖Windows4GB上限、较低配置保持、其他平台不变；实际检查点合同覆盖原延迟模式恢复、诱发结束计数以及Windows正常scope结束后的后台清理。小堆Windows测试保留8MiB加载堆来满足CLR后台收集资格。
+
 ## 下一版本（开发中）：女王 NoGC 有效窗口（2026-09-20）
 
 - Windows追加：真实CLR小窗口基线失败、候选及其余19项通过；同一原包DOP16、1GB、1,000节点主成员的ABBA四份请求通过，两对非时序指标/执行政策/29条路线回放记录一致。12GB较大请求两侧总超时，未取得完整结果。所有7个游戏实例、测试目录及本次崩溃转储已清理；见[Windows报告与限制](performance/queen-gc-windows-20260920.md)。

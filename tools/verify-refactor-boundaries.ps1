@@ -376,7 +376,7 @@ foreach ($forbiddenRecoveryCall in @("GC.Collect(", "CollectGeneration2")) {
 }
 foreach ($gcChainRule in @(
     "return WaitForReclaimChainAsync(_reclaimTask)",
-    "CollectGeneration2ForAutomaticReclaimAsync(inSearchCheckpoint: true)",
+    "inSearchCheckpoint: true, exitOwnedNoGcRegion: directBackgroundExit)",
     "_inSearchManualReclaimTask = manualCompletion.Task",
     "failure == null && (_regionExitRequired || _reclaimRequired)")) {
     if (-not (Select-String -LiteralPath $searchGcPolicyPath -SimpleMatch $gcChainRule -Quiet)) {
@@ -389,6 +389,8 @@ if (Select-String -LiteralPath $searchGcPolicyPath -SimpleMatch "ReclaimAfterAct
 
 # GC admission accounting and scratch-container ownership remain in their existing layers.
 foreach ($check in @(
+    @{ RelativePath = "src/Testing/UnattendedTestRunner.GcLifecycleContracts.cs"; Text = "private static async Task AssertDeferredReclaimSurvivesFaultedCheckpointAsync" },
+    @{ RelativePath = "tools/CombatSolver.GcPolicyChecks/CombatSolver.GcPolicyChecks.csproj"; Text = "../../src/Testing/UnattendedTestRunner.GcLifecycleContracts.cs" },
     @{ RelativePath = "src/Runtime/SearchGcPolicy.cs"; Text = "scope.CompleteLifecycle(CaptureLifecycle())" },
     @{ RelativePath = "src/Runtime/SolverController.cs"; Text = "SearchGcPolicy.EnterSearchScope(" },
     @{ RelativePath = "src/Search/CombatBeamSolver.Models.cs"; Text = "ExpansionBatchPool = new(static snapshot => snapshot.ReleaseSimulator())" },

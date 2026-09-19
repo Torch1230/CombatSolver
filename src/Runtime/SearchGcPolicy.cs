@@ -229,6 +229,7 @@ internal static partial class SearchGcPolicy
         InsufficientMemory,
         RegionSizeUnsupported,
         PlatformUnsupported,
+        BackgroundUnavailable,
         SystemHeadroomInsufficient,
         CommitWindowInsufficient,
     }
@@ -377,6 +378,9 @@ internal static partial class SearchGcPolicy
             return EnterDefaultGcSearch(memoryPressureSignal, cancellationToken);
         lock (Gate)
             _automaticGcLifecycleUsed = true;
+        // Bound reservation work as well as GC pauses. On Windows, reserving a large
+        // replacement region suspends managed threads even when no GC is recorded.
+        noGcRegionBudgetBytes = LimitNoGcRegionReservation(noGcRegionBudgetBytes, OperatingSystem.IsWindows());
         long noGcRegionLohBudgetBytes = Math.Max(
             256L * 1024 * 1024,
             noGcRegionBudgetBytes / 6);
@@ -509,6 +513,9 @@ internal static partial class SearchGcPolicy
                         {
                             // All admission waits have completed and this gate still excludes
                             // the next request. Include this scope's own region-start attempts.
+                            bool backgroundReady = noGcRegionBudgetBytes < MinimumNoGcRegionBudgetBytes
+                                || !OperatingSystem.IsWindows() || PrepareWindowsBackgroundCollection();
+                            cancellationToken.ThrowIfCancellationRequested();
                             SearchGcLifecycleSnapshot lifecycleAtEntry = CaptureLifecycle();
                             _previousMode = GCSettings.LatencyMode;
                             _latencyModeOwned = true;
@@ -519,9 +526,11 @@ internal static partial class SearchGcPolicy
                             // clamping, never a platform reservation ceiling, makes a smaller
                             // region pointless to keep.
                             bool headroomLimitedBudget = effectiveBudget.Capped;
-                            NoGcRegionStartOutcome startOutcome = effectiveBudget.CanStart
-                                ? TryStartNoGcRegionWithSizeFallback(ref effectiveBudget, restartRequested)
-                                : NoGcRegionStartOutcome.SystemHeadroomInsufficient;
+                            NoGcRegionStartOutcome startOutcome = !backgroundReady
+                                ? NoGcRegionStartOutcome.BackgroundUnavailable
+                                : effectiveBudget.CanStart
+                                    ? TryStartNoGcRegionWithSizeFallback(ref effectiveBudget, restartRequested)
+                                    : NoGcRegionStartOutcome.SystemHeadroomInsufficient;
                             if (startOutcome == NoGcRegionStartOutcome.Started
                                 && headroomLimitedBudget
                                 && !IsNoGcRegionBudgetWorthEntering(
@@ -1514,12 +1523,14 @@ internal static partial class SearchGcPolicy
                 TimeSpan pauseBefore = GC.GetTotalPauseDuration();
                 Stopwatch stopwatch = Stopwatch.StartNew();
 
-                if (endNoGcRegion)
+                bool directBackgroundExit = OperatingSystem.IsWindows()
+                    && endNoGcRegion && collectGeneration2 && !trimWorkingSet;
+                if (endNoGcRegion && !directBackgroundExit)
                     EndNoGcRegion();
-                if (restoreLatencyMode)
+                if (restoreLatencyMode && !directBackgroundExit)
                     GCSettings.LatencyMode = previousMode;
                 Entry.Logger.Info(
-                    $"[CombatSolver/Test] MEMORY_RECLAIM stage=region_exited " +
+                    $"[CombatSolver/Test] MEMORY_RECLAIM stage={(directBackgroundExit ? "region_exit_deferred" : "region_exited")} " +
                     $"id={reclaimSequence} reason={reason} " +
                     DescribeProcessMemory());
 
@@ -1545,7 +1556,8 @@ internal static partial class SearchGcPolicy
                         afterCoverageCapture: true);
                     completedCollection = trimWorkingSet
                         ? CollectGeneration2ForManualMemoryRelease()
-                        : await CollectGeneration2ForAutomaticReclaimAsync();
+                        : await CollectGeneration2ForAutomaticReclaimAsync(
+                            exitOwnedNoGcRegion: directBackgroundExit);
                     lock (Gate)
                     {
                         _backgroundGen2CompletedCountForTesting++;
@@ -1623,6 +1635,10 @@ internal static partial class SearchGcPolicy
             {
                 lock (Gate)
                 {
+                    // Keep ownership coherent even if preparation or collection failed.
+                    ReconcileRegionOwnershipAfterTransitionLocked(previousMode, restoreLatencyMode);
+                    if (!_noGcRegionActive)
+                        RestoreLatencyModeLocked();
                     _reclaimActive = false;
                     _reclaimCompletion = null;
                     _activeReclaimCollectsGeneration2 = false;
@@ -1701,8 +1717,45 @@ internal static partial class SearchGcPolicy
         => new($"后台 Gen2 回收在 {ReclaimCompletionTimeoutMilliseconds} ms 内没有确认完成；" +
             "已通过阻塞回收排空，未恢复 NoGC。");
 
+    private static long _lastConfirmedBackgroundCollectionTick = long.MinValue;
+
+    private static bool PrepareWindowsBackgroundCollection()
+    {
+        // Called under admission Gate, with no active search or owned region. Workstation
+        // CLR retires its idle BGC thread. Recreating it can fall back to blocking compaction
+        // even after GCStart reports BackgroundGC. Confirm readiness before accumulating a
+        // multi-GB young heap. A recent completed BGC already provides this evidence.
+        long last = Volatile.Read(ref _lastConfirmedBackgroundCollectionTick);
+        if (last != long.MinValue && Environment.TickCount64 - last < 10_000)
+            return true;
+        GCLatencyMode previous = GCSettings.LatencyMode;
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        try
+        {
+            GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
+            for (int attempt = 1; attempt <= 2; attempt++)
+            {
+                BackgroundGen2Completion completion = CollectGeneration2ForAutomaticReclaimAsync()
+                    .GetAwaiter().GetResult();
+                Entry.Logger.Info($"[CombatSolver/Test] GC_BACKGROUND_PREPARE attempt={attempt} " +
+                    $"completion_kind={completion.Kind} concurrent={completion.Concurrent} " +
+                    $"elapsed_ms={stopwatch.Elapsed.TotalMilliseconds:F1}");
+                if (completion.TimedOut)
+                    throw BackgroundCollectionTimeout();
+                if (completion.Concurrent)
+                    return true;
+            }
+            // Do not build a large young heap when this CLR cannot currently run BGC.
+            return false;
+        }
+        finally
+        {
+            GCSettings.LatencyMode = previous;
+        }
+    }
+
     private static async Task<BackgroundGen2Completion> CollectGeneration2InBackgroundAsync(
-        bool inSearchCheckpoint = false)
+        bool inSearchCheckpoint = false, bool exitOwnedNoGcRegion = false)
     {
         // A forced background collection can join an automatic Gen2 that was already marking.
         // Such a collection cannot reclaim allocations created after its mark began. A fresh
@@ -1734,6 +1787,7 @@ internal static partial class SearchGcPolicy
                     if (observation == BackgroundCollectionObservation.CompletedBackground)
                     {
                         confirmedOrDrained = true;
+                        Volatile.Write(ref _lastConfirmedBackgroundCollectionTick, Environment.TickCount64);
                         return new BackgroundGen2Completion(
                             "background", background.Index, requests, background.Concurrent);
                     }
@@ -1770,12 +1824,38 @@ internal static partial class SearchGcPolicy
                     backgroundIndexBefore = background.Index;
                     fullBlockingIndexBefore = fullBlocking.Index;
                     requests++;
+                    bool endingRegion = exitOwnedNoGcRegion && requests == 1;
+                    if (endingRegion)
+                    {
+                        Lifecycle.RecordEndAttempt();
+                        if (GCSettings.LatencyMode != GCLatencyMode.NoGCRegion)
+                        {
+                            Lifecycle.RecordUnexpectedLoss();
+                            throw new InvalidOperationException("后台回收前当前 NoGC 区域已意外结束。");
+                        }
+                    }
+                    // On Windows, EndNoGCRegion first restores the old allocation budgets.
+                    // An allocation on another thread can then trigger a foreground collection
+                    // of the large young heap before this background request gets a chance.
+                    // An induced collection itself ends NoGC: request it while still protected,
+                    // with the sentinel already allocated, avoiding that unprotected interval.
                     Lifecycle.RecordForcedCollection();
                     GC.Collect(
                         GC.MaxGeneration,
                         GCCollectionMode.Forced,
                         blocking: false,
                         compacting: false);
+                    if (endingRegion)
+                    {
+                        if (GCSettings.LatencyMode == GCLatencyMode.NoGCRegion)
+                            throw new InvalidOperationException("后台收集请求没有结束当前 NoGC 区域。");
+                        Lifecycle.RecordEnded();
+                        if (inSearchCheckpoint)
+                        {
+                            lock (Gate)
+                                ReconcileRegionOwnershipAfterTransitionLocked(_previousMode, _latencyModeOwned);
+                        }
+                    }
                     if (inSearchCheckpoint && requests == 1)
                         timeoutForTesting = await PauseInSearchCollectionForTestingAsync()
                             .ConfigureAwait(false);
@@ -1797,8 +1877,8 @@ internal static partial class SearchGcPolicy
     }
 
     private static Task<BackgroundGen2Completion> CollectGeneration2ForAutomaticReclaimAsync(
-        bool inSearchCheckpoint = false)
-        => CollectGeneration2InBackgroundAsync(inSearchCheckpoint);
+        bool inSearchCheckpoint = false, bool exitOwnedNoGcRegion = false)
+        => CollectGeneration2InBackgroundAsync(inSearchCheckpoint, exitOwnedNoGcRegion);
 
     internal static async Task<string> CollectAutomaticReclaimForTesting()
         => (await CollectGeneration2ForAutomaticReclaimAsync()).Kind;
@@ -1896,8 +1976,19 @@ internal static partial class SearchGcPolicy
             }
             if (_noGcRegionActive)
             {
-                Entry.Logger.Info(
-                    "[CombatSolver/Test] GC_LATENCY no_gc_region_retained_until_combat_reset=true");
+                if (OperatingSystem.IsWindows())
+                {
+                    // A retained region can outlive the workstation BGC thread's idle
+                    // timeout. Drain while the collector is warm, rather than carrying a
+                    // large young heap into a cold collector on the next player action.
+                    _reclaimRequired = true;
+                    RequestReclaimLocked("windows_search_complete");
+                }
+                else
+                {
+                    Entry.Logger.Info(
+                        "[CombatSolver/Test] GC_LATENCY no_gc_region_retained_until_combat_reset=true");
+                }
                 return;
             }
             RestoreLatencyModeLocked();
@@ -2052,37 +2143,51 @@ internal static partial class SearchGcPolicy
         bool collectionCompleted = false;
         BackgroundGen2Completion completedCollection = default;
         long liveAfterCollection = 0;
-        GCMemoryInfo heapAfterCollection = default;
+        GCMemoryInfo? heapAfterCollection = null;
         long liveBefore = GC.GetTotalMemory(forceFullCollection: false);
         using Process processBefore = Process.GetCurrentProcess();
         long workingSetBefore = processBefore.WorkingSet64;
         long privateBefore = processBefore.PrivateMemorySize64;
         TimeSpan pauseBefore = GC.GetTotalPauseDuration();
         SearchGcPauseSnapshot pauseObservation = SearchGcPauseSnapshot.Capture();
+        double regionExitMilliseconds = 0, collectionMilliseconds = 0;
+        TimeSpan pauseAfterRegionExit = pauseBefore, pauseAfterCollection = pauseBefore;
         Stopwatch stopwatch = Stopwatch.StartNew();
         try
         {
             PauseInSearchCheckpointForTesting();
-            if (endNoGcRegion)
+            bool directBackgroundExit = OperatingSystem.IsWindows() && endNoGcRegion;
+            if (endNoGcRegion && !directBackgroundExit)
                 EndNoGcRegion();
-            if (restoreLatencyMode)
-                GCSettings.LatencyMode = previousMode;
-            lock (Gate)
+            if (restoreLatencyMode && !directBackgroundExit)
+                GCSettings.LatencyMode = OperatingSystem.IsWindows() && restartNoGcRegion
+                    ? GCLatencyMode.SustainedLowLatency : previousMode;
+            if (!directBackgroundExit)
             {
-                ReconcileRegionOwnershipAfterTransitionLocked(
-                    previousMode,
-                    restoreLatencyMode);
+                lock (Gate)
+                    ReconcileRegionOwnershipAfterTransitionLocked(previousMode, restoreLatencyMode);
+                ThrowInjectedInSearchCheckpointFailureForTesting();
             }
-            ThrowInjectedInSearchCheckpointFailureForTesting();
+            regionExitMilliseconds = stopwatch.Elapsed.TotalMilliseconds;
+            pauseAfterRegionExit = GC.GetTotalPauseDuration();
             lock (Gate)
             {
                 // This is only the manual-request cutoff, not a claim to cover deferred
                 // reference-release epochs. Those retain their post-search completion chain.
                 _activeGeneration2CollectionStarted = true;
             }
-            completedCollection = CollectGeneration2ForAutomaticReclaimAsync(inSearchCheckpoint: true)
+            completedCollection = CollectGeneration2ForAutomaticReclaimAsync(
+                inSearchCheckpoint: true, exitOwnedNoGcRegion: directBackgroundExit)
                 .GetAwaiter().GetResult();
+            if (directBackgroundExit)
+            {
+                lock (Gate)
+                    ReconcileRegionOwnershipAfterTransitionLocked(previousMode, restoreLatencyMode);
+                ThrowInjectedInSearchCheckpointFailureForTesting();
+            }
             collectionCompleted = true;
+            collectionMilliseconds = stopwatch.Elapsed.TotalMilliseconds - regionExitMilliseconds;
+            pauseAfterCollection = GC.GetTotalPauseDuration();
             liveAfterCollection = GC.GetTotalMemory(false);
             heapAfterCollection = GC.GetGCMemoryInfo();
             if (restartNoGcRegion)
@@ -2120,7 +2225,8 @@ internal static partial class SearchGcPolicy
                 }
                 else
                 {
-                    _previousMode = GCSettings.LatencyMode;
+                    if (!_latencyModeOwned)
+                        _previousMode = GCSettings.LatencyMode;
                     _latencyModeOwned = true;
                     // Keep the recovered reservation ceiling for this scope. Immediately
                     // growing back to the original request recreates the pressure episode.
@@ -2238,14 +2344,19 @@ internal static partial class SearchGcPolicy
                 $"no_gc_region_restart={FormatStartOutcome(restartOutcome)} " +
                 $"fallback_latched={(restartOutcome != NoGcRegionStartOutcome.Started).ToString().ToLowerInvariant()} " +
                 $"elapsed_ms={stopwatch.Elapsed.TotalMilliseconds:F1} " +
+                $"region_exit_ms={regionExitMilliseconds:F1} collection_ms={collectionMilliseconds:F1} " +
+                $"restart_ms={Math.Max(0, stopwatch.Elapsed.TotalMilliseconds - regionExitMilliseconds - collectionMilliseconds):F1} " +
+                $"region_exit_pause_ms={(pauseAfterRegionExit - pauseBefore).TotalMilliseconds:F1} " +
+                $"collection_pause_ms={(pauseAfterCollection - pauseAfterRegionExit).TotalMilliseconds:F1} " +
+                $"restart_pause_ms={(GC.GetTotalPauseDuration() - pauseAfterCollection).TotalMilliseconds:F1} " +
                 $"gc_pause_delta_ms={(GC.GetTotalPauseDuration() - pauseBefore).TotalMilliseconds:F1} " +
                 $"max_observed_gc_pause_ms={signal.LastReclaimMaxObservedGcPause.TotalMilliseconds:F1} " +
                 CaptureLifecycle().DeltaFrom(lifecycleBefore).ToDiagnosticString() + " " +
                 $"collection_completed={collectionCompleted.ToString().ToLowerInvariant()} " +
                 $"managed_live_after_collect={liveAfterCollection} " +
-                $"heap_after_collect={heapAfterCollection.HeapSizeBytes} " +
-                $"fragmented_after_collect={heapAfterCollection.FragmentedBytes} " +
-                $"committed_after_collect={heapAfterCollection.TotalCommittedBytes} " +
+                $"heap_after_collect={heapAfterCollection?.HeapSizeBytes ?? 0} " +
+                $"fragmented_after_collect={heapAfterCollection?.FragmentedBytes ?? 0} " +
+                $"committed_after_collect={heapAfterCollection?.TotalCommittedBytes ?? 0} " +
                 $"managed_live_before={liveBefore} managed_live_after={GC.GetTotalMemory(false)} " +
                 $"working_set_before={workingSetBefore} working_set_after={processAfter.WorkingSet64} " +
                 $"private_before={privateBefore} private_after={processAfter.PrivateMemorySize64}");
@@ -2333,10 +2444,17 @@ internal static partial class SearchGcPolicy
     {
         if (!NoGcRegionSupported)
             return NoGcRegionStartOutcome.PlatformUnsupported;
+        GCLatencyMode previous = GCSettings.LatencyMode;
+        bool started = false;
         try
         {
+            // The induced collection restores the CLR's mode saved at region entry.
+            // Keep automatic foreground Gen2 suppressed during background collection;
+            // policy ownership separately preserves the caller's original mode.
+            if (OperatingSystem.IsWindows())
+                GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
             Lifecycle.RecordStartAttempt();
-            bool started = GC.TryStartNoGCRegion(
+            started = GC.TryStartNoGCRegion(
                 totalSize,
                 lohSize,
                 disallowFullBlockingGC: true);
@@ -2348,6 +2466,13 @@ internal static partial class SearchGcPolicy
         {
             // The maximum SOH reservation is runtime-specific and has no public query API.
             return NoGcRegionStartOutcome.RegionSizeUnsupported;
+        }
+        finally
+        {
+            if (!started && OperatingSystem.IsWindows()
+                && GCSettings.LatencyMode != GCLatencyMode.NoGCRegion
+                && GCSettings.LatencyMode != previous)
+                GCSettings.LatencyMode = previous;
         }
     }
 
@@ -2413,6 +2538,7 @@ internal static partial class SearchGcPolicy
             NoGcRegionStartOutcome.InsufficientMemory => "insufficient_memory",
             NoGcRegionStartOutcome.RegionSizeUnsupported => "region_size_unsupported",
             NoGcRegionStartOutcome.PlatformUnsupported => "platform_unsupported",
+            NoGcRegionStartOutcome.BackgroundUnavailable => "background_unavailable",
             NoGcRegionStartOutcome.SystemHeadroomInsufficient => "system_headroom_insufficient",
             NoGcRegionStartOutcome.CommitWindowInsufficient => "commit_window_insufficient",
             _ => throw new ArgumentOutOfRangeException(nameof(outcome)),
@@ -2424,20 +2550,15 @@ internal static partial class SearchGcPolicy
     {
         GCMemoryInfo memory = GC.GetGCMemoryInfo();
         long systemLimit = ResolveSystemMemoryLimit(memory);
-        // A background collection leaves reusable holes inside the already committed heap.
-        // Reusing those holes is allocation, but does not consume the same amount of new
-        // physical memory. Use live physical pressure while searching on Windows; platforms
-        // with only last-GC memory samples retain the conservative allocation projection.
+        // FragmentedBytes describes all heap generations, not the SOH segments that
+        // TryStartNoGCRegion can reserve. Do not credit those holes as physical headroom
+        // for another reservation. The active search's allocation forecast is separate.
         long memoryLoad = OperatingSystem.IsWindows()
             ? PhysicalMemoryUsage.Capture(memory).UsedBytes
             : Math.Max(0, memory.MemoryLoadBytes);
-        long reusableHeap = OperatingSystem.IsWindows()
-            ? CalculateReusableHeapBytes(memory.HeapSizeBytes, memory.FragmentedBytes,
-                GC.GetTotalMemory(forceFullCollection: false))
-            : 0;
-        long effectiveBudget = CalculateAllocationCapacity(configuredBudgetBytes, systemLimit, memoryLoad, reusableHeap);
+        long effectiveBudget = CalculateAllocationCapacity(configuredBudgetBytes, systemLimit, memoryLoad, 0);
         Entry.Logger.Info($"[CombatSolver/Test] GC_ALLOCATION_CAPACITY physical_load={memoryLoad} " +
-            $"system_limit={systemLimit} reusable_heap={reusableHeap} effective_budget={effectiveBudget}");
+            $"system_limit={systemLimit} reservation_reusable_heap=0 effective_budget={effectiveBudget}");
         if (effectiveBudget < MinimumNoGcRegionBudgetBytes)
             effectiveBudget = 0;
         long effectiveLohBudget = effectiveBudget == 0
@@ -2452,6 +2573,9 @@ internal static partial class SearchGcPolicy
             systemLimit,
             effectiveBudget < configuredBudgetBytes);
     }
+
+    internal static long LimitNoGcRegionReservation(long requestedBytes, bool isWindows)
+        => isWindows ? Math.Min(requestedBytes, 4_000_000_000L) : requestedBytes;
 
     private static long CaptureCurrentPhysicalMemoryLoad()
         => PhysicalMemoryUsage.Capture(GC.GetGCMemoryInfo()).UsedBytes;

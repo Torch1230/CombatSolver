@@ -12,6 +12,14 @@ internal static class GcRegionAdmissionChecks
 
     public static void Run()
     {
+        PolicyCheck.Run("Windows reservation cap preserves lower requests and other platforms", () =>
+        {
+            PolicyCheck.Require(SearchGcPolicy.LimitNoGcRegionReservation(12_000_000_000, true) == 4_000_000_000
+                && SearchGcPolicy.LimitNoGcRegionReservation(2_000_000_000, true) == 2_000_000_000
+                && SearchGcPolicy.LimitNoGcRegionReservation(12_000_000_000, false) == 12_000_000_000,
+                "Only Windows large reservations are capped; lower user budgets remain effective.");
+        });
+
         PolicyCheck.Run("headroom-capped region far below the configured budget is declined", () =>
         {
             // Reported 0.40.2 boss-fight trace: 12 GiB configured, 2_967_362_558 bytes granted,

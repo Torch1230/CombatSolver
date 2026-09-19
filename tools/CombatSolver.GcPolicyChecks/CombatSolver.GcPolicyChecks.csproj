@@ -8,6 +8,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../src/Testing/UnattendedTestRunner.GcLifecycleContracts.cs" Link="Production/GcLifecycleContracts.cs" />
     <Compile Include="../../src/Search/SmartLayerMemoryForecast.cs" Link="Production/SmartLayerMemoryForecast.cs" />
     <Compile Include="../ExperimentalAdaptiveGc/SearchParallelismController.cs" Link="Experimental/SearchParallelismController.cs" />
     <Compile Include="../../src/Runtime/SearchGcLifecycleMetrics.cs" Link="Production/SearchGcLifecycleMetrics.cs" />
