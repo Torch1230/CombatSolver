@@ -118,7 +118,7 @@ internal sealed record SolverOverlaySnapshot(
             .LastOrDefault(action => action.Kind == PlanActionKind.EndTurn);
         SolverOverlayTurnSnapshot currentTurn = new(
             preview.Turn,
-            TurnStartChoices: [],
+            TurnStartChoices: FormatTurnStartChoices(preview.TurnStartChoices),
             actions,
             endTurn == null ? null : CaptureAction(endTurn, [], actions.Length == 0),
             EnemyHpDamageLost: preview.EnemyHpLost,
@@ -200,7 +200,7 @@ internal sealed record SolverOverlaySnapshot(
             .LastOrDefault(action => action.Kind == PlanActionKind.EndTurn);
         return new SolverOverlayTurnSnapshot(
             frontier.Turn,
-            TurnStartChoices: [],
+            TurnStartChoices: FormatTurnStartChoices(frontier.TurnStartChoices),
             frontierActions,
             frontierEndTurn == null ? null : CaptureAction(frontierEndTurn, [], frontierActions.Length == 0),
             EnemyHpDamageLost: frontier.EnemyHpLost,
@@ -350,11 +350,8 @@ internal sealed record SolverOverlaySnapshot(
             .FirstOrDefault(action => action.Turn == turn - 1 && action.TurnStartChoices is { Count: > 0 })
             ?.TurnStartChoices
             ?? [];
-        IReadOnlyList<string> turnStartChoices = initialSetupChoices
-            .Concat(continuedTurnChoices)
-            .Where(choice => choice.Effect != PlanChoiceEffect.ApplyKnowledgeCurse)
-            .Select(FormatTurnStartChoice)
-            .ToArray();
+        IReadOnlyList<string> turnStartChoices = FormatTurnStartChoices(
+            initialSetupChoices.Concat(continuedTurnChoices));
         SolverOverlayActionSnapshot[] actions = result.BestNode.Actions
             .Select((action, actionIndex) => (Action: action, Index: actionIndex))
             .Where(item => item.Action.Turn == turn && item.Action.IsExecutable)
@@ -453,6 +450,11 @@ internal sealed record SolverOverlaySnapshot(
         }
         return index;
     }
+
+    private static IReadOnlyList<string> FormatTurnStartChoices(IEnumerable<PlanCardChoice> choices)
+        => choices.Where(choice => choice.Effect != PlanChoiceEffect.ApplyKnowledgeCurse)
+            .Select(FormatTurnStartChoice)
+            .ToArray();
 
     private static string FormatTurnStartChoice(PlanCardChoice choice)
     {
