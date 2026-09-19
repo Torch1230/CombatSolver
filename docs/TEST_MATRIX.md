@@ -1,5 +1,11 @@
 # CombatSolver 测试清单
 
+## 未发布：状态键补整场历史计数（2026-09-19）
+
+- 离线宿主对上游 0.41.0（High 90/50000、Coordinator、Smart、DOP 1、`fixedSearchBudget`，`compare_results.py` 排除耗时/内存字段）：EQ 10 根只有 `NECROBINDER-ELITE-00`（牌组含自下而上）不一致，其余 9 根 983 字段一致；FULL 40 根只有 4 根不一致（`NECROBINDER-ELITE-00`、`SILENT-BOSS-01`、`SILENT-ELITE-03`、`SILENT-BOSS-03`），按生成场景 loadout 核对正是全部含金斧/自下而上/谋杀的根，其余 36 根一致；GA 10 根（EQ 规格 + 无色牌固定含一张金斧）全部不一致。15 根受影响根：战损 2 根下降（48→29、9→8）、0 根上升、0 根胜负翻转，展开量比 0.997–1.000。
+- 无条件追加的对照（未采用）：46/50 根路线变化、胜负 3 负 1 正，见[状态键历史计数报告](strategy/state-key-history-counters-20260919.md)。
+- Release 编译 0 警告 0 错误（`CopyModOnBuild=false`）；Bash 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=193`。未运行可见 Steam、未跑游戏内无人场景。
+
 ## 0.41.0：问题包开战默认与仓库内无头实例（2026-09-18）
 
 - `dotnet run --project tools/CheckpointTool/CheckpointTool.csproj -c Release -- self-test` 通过，输出 `archive_contract_tests_passed assertions=35`：省略选择器命中 `combat_start`，显式 `latest` 命中最近可搜索检查点，显式 `end` / `recorded` 命中结束检查点；批处理运行目录保持仓库内且不跨卷。

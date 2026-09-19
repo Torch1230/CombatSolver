@@ -9,6 +9,7 @@
 
 | 要查什么 | 入口 |
 |---|---|
+| 状态键为什么要含整场历史计数、条件式与无条件追加的对照 | [状态键历史计数报告](strategy/state-key-history-counters-20260919.md) |
 | 能力牌逐卡建模、统一估值接口与后续独立搜索分支 | [能力牌优化计划](strategy/power-card-valuation-plan-20260917.md) |
 | 无需训练的有界新颖性／Beam 组合、实验开关和完整对照 | [有界多策略搜索](strategy/bounded-novelty-search-20260916.md) |
 | 不启动 Godot 批量跑搜索、量宽度与预算 | [离线搜索宿主](OFFLINE_SEARCH_HARNESS.md) |

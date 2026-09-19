@@ -222,7 +222,9 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 `SearchRunContext` 只活于一次 solver：计数器、性能指标、节流器、转置表、stand-pat/威胁/coverage/路由缓存和 `OwnedExpansionBatch` 容器池均在这里。每个 lane 最多保留两个已清空 storage，单容器容量上限 4096；批次 lease 独立且 Dispose 幂等，检查点丢弃空闲池，不池化 simulator/model。根配置留在 solver，不把可变运行状态退回入口文件。 `SnapshotListBuffer<PredictedCard>` 也归各自 `_run` 所有，只缓存一个已清空、实际容量不超过 4096 的临时列表；快照内用栈上 lease，嵌套租用取独立 storage，generation 防止旧 lease 触碰新租户。牌序与 Shuffle RNG 克隆照旧，列表不得逃出 Snapshot，worker 排空后的缓存检查点丢弃空闲 storage。
 
-`PotionStrategicCostLookup` 同样归单次 `SearchRunContext` 所有，中间保路与终局排序共用规范药水 ID/可再生条件对应的只读代价值；未命中仍调用原目录的 `Single` 查询，保留缺失/重复 ID 的失败行为。每个 worker 有独立表，不存药水实例或分支值，也不跨并发 solver 共享修改。快照内 Power 是否贡献战略估值只判定一次并暂存在当前调用的栈/数组中，需求收集与评分复用同一判定，不跨快照缓存。
+`PotionStrategicCostLookup` 同样归单次 `SearchRunContext` 所有，中间保路与终局排序共用规范药水 ID/可再生条件对应的只读代价值；未命中仍调用原目录的 `Single` 查询，保留缺失/重复 ID 的失败行为。每个 worker 有独立表，不存药水实例或分支值，也不跨并发 solver 共享修改。
+
+状态键（`BuildStateKey`）必须覆盖模拟会读到的全部输入。`CalculatedVarSpecRegistry` 里六张牌（金斧、伏特、撕裂、自下而上、谋杀、超大质量）读的是整场历史计数，不在逐回合计数里；`CombatHistoryCounterKey` 在根牌组含其中任一张时遍历一次模拟历史，把这六个计数追加进键，其余战斗的键逐位不变；读者中途才生成的战斗是已知缺口（无条件追加的代价见策略报告）。根之前的实况历史整场恒定，不进键。快照内 Power 是否贡献战略估值只判定一次并暂存在当前调用的栈/数组中，需求收集与评分复用同一判定，不跨快照缓存。
 
 长期资源保路先在冻结候选池上扫描最高资源值和数量；全池同值（包括非零和空池）原本不产生独立资源路线，因此 `Retention` 在此时直接跳过祖先排名暂存。非均匀池继续按原序保存全局/祖先排名、应用资源祖先排名、选择最高资源群组，再恢复祖先和全局排名。不缓存跨调用的排名或资源群组，不改变剪枝回收检查点。
 
