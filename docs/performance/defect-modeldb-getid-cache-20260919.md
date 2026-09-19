@@ -242,7 +242,76 @@ DOP16 侧的剪枝计数随轨迹变化（`dominatedActionsPruned` 6,795 → 8,5
 2. 300 根语料每根只注入 2 张无色牌，5.7% 是该语料下的比例；实机取决于玩家实际抓到的无色牌（商店、事件、无色药水），不能直接当成玩家端比例。
 3. 节点预算、DOP、Beam 不影响结论方向：补丁去掉的是每次调用的固定成本，但这些数字只在本机 20k/100k 与 DOP16 下实测过；500,000 节点的完整 VeryHigh 未运行（内存与时长风险）。
 
-## 8. 限制与未验证项
+## 8. 生产默认路径（Coordinator + portfolio）验证
+
+§3 用的是 `--search-mode Evaluate`（单棵树）。生产默认是 `--search-mode Coordinator --use-portfolio`，主搜索 + 药水反事实审计 + 多成员组合；这一节在同一模板上换到该路径重测。
+
+```bash
+TMPDIR="$PWD/.local/tmp" timeout 900 dotnet tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
+  --request "$PWD/.local/learned-selector/data3/requests/sel-defect-elite-01.json" --label <label> \
+  --out .local/learned-selector/memory-e2e/<label> \
+  --profile VeryHigh --nodes 100000 --dop 16 --budget-ms 600000 \
+  --search-mode Coordinator --use-portfolio \
+  --enable-no-gc-region --no-gc-region-budget-gigabytes 12 --milestone M2
+```
+
+### 8.1 `sel-defect-elite-01` @100k，交错 3+3
+
+| 指标 | 基线中位（范围） | 候选中位（范围） | 变化 |
+|---|---:|---:|---:|
+| **请求级墙钟 s** | 233.25（206.31~266.09） | **74.81**（73.37~74.95） | **−67.93%** |
+| 搜索 s（`ElapsedMilliseconds`） | 73.27（71.04~73.71） | 28.36（27.88~28.87） | −61.29% |
+| 全进程分配 GiB（`totalAllocatedBytes`） | 312.80（292.40~335.07） | **98.44**（98.30~98.65） | **−68.53%** |
+| 搜索分配 GiB（`WorkerAllocatedBytes`） | 118.42（116.99~119.00） | **30.54**（30.05~31.00） | **−74.21%** |
+| 峰值 RSS GiB | 35.47（31.83~35.70） | **20.78**（17.03~22.12） | **−41.43%** |
+| GC 暂停 ms | 4393（4352~4891） | 2207（2072~3825） | −49.76% |
+| 选中成员展开 | 100000 | 100000 | 0 |
+| 选中成员转移 | 567979 | 552377（548803~561774） | −2.75%（§6 的调度产物） |
+| score / 战损 | 10000374964 / 31 | 10000374964 / 31 | 全同 |
+| planActions 条数 | 36 | 36 | 全同 |
+| `cachedContinuations` 条数 | 8 | 8 | 全同 |
+| 被跳过成员数 | 4 | 4 | 0 |
+| 其中 `MemoryHeadroomInsufficient` | **0** | **0** | 0 |
+
+**公平性门禁**：两侧被跳过成员都是 4 个，原因在模组日志里都是 `skipped=BaselineNotFrontierExhausted`（基线成员 frontier 未穷尽，组合器按原规则跳过其余席位），**没有** `MemoryHeadroomInsufficient` 的成员；成员结构与预算逐项相同，因此这一对比是公平的，没有为了好看的数字调预算或节点数。
+
+### 8.2 生产路径的语义等价（DOP1 @20k）
+
+`--dop 1`、20,000 节点、其余同上：`planActions`(36) 与全部 `cachedContinuations` 文本、score `10000374964`、战损 31、选中展开 20000、成员结构与跳过明细（`BaselineNotFrontierExhausted`×4、`PowerMemberNotTerminal`×1）**逐项相同**；请求墙钟 124.20 → 41.59 s、分配 29.74 → 17.97 GiB。
+
+### 8.3 路线/续用戳一致性抽检（Coordinator 路径，@20k）
+
+| 根 | 类型 | planActions | cachedContinuations | score / 战损 | 成员与跳过结构 |
+|---|---|---|---|---|---|
+| `sel-defect-boss-12` | 含 SPLASH | 30/30 全同 | 6/6 全同 | 全同 | **不同（见下）** |
+| `sel-ironclad-elite-03` | 含 SPLASH | 18/18 全同 | 4/4 全同 | 全同 | **不同（见下）** |
+| `sel-silent-boss-15` | 含 SPLASH | 39/39 全同 | 5/5 全同 | 全同 | 全同 |
+| `sel-defect-elite-02` | 哨兵（无 SPLASH） | 23/23 全同 | 3/3 全同 | 全同 | 全同 |
+| `sel-silent-boss-01` | 哨兵（无 SPLASH） | 55/55 全同 | 9/9 全同 | 全同 | 全同 |
+
+**如实写出差异（不调参凑对比）**：`sel-defect-boss-12` 与 `sel-ironclad-elite-03` 两侧的**成员运行集合不同**——基线因内存余量不足跳过的席位（`skipped=MemoryHeadroomInsufficient`），候选在同样预算下有富余、于是真的跑了（`sel-defect-boss-12` 多跑 Beam 90；`sel-ironclad-elite-03` 多跑 Beam 203 并触及 NodeLimit）。这是**优化的直接后果**（释放出来的内存余量被组合器用掉），不是把两次运行调成同一个形状：两侧的路线、全部续用戳、score、战损仍然逐项相同。除这两根外，其余三根（含两个哨兵）成员与跳过明细完全一致。
+
+因为这两根不可直接比墙钟，它们的墙钟数字只作参考：`defect-boss-12` 18.44 → 11.41 s、`ironclad-elite-03` 26.05 → 16.50 s、`silent-boss-15`（可比）21.13 → 18.35 s（−13.1%，分配 23.10 → 17.78 GiB）。两个哨兵可比且持平：`defect-elite-02` 11.38 → 11.39 s、分配 8.69 → 8.65 GiB；`silent-boss-01` 91.73 → 90.70 s、分配 104.97 → 104.85 GiB、搜索分配 21.30 → 21.30 GiB。
+
+### 8.4 总账口径：缓存没有把成本挪到主线程
+
+Coordinator 路径下 `totalAllocatedBytes − WorkerAllocatedBytes` 与 `wallSeconds − ElapsedMilliseconds` 都是「搜索之外」的残差（含主线程根捕获、建局、成员调度与组合器审计），不是纯根捕获，但**它的增量**正好回答「成本有没有被搬到主线程」：
+
+| 口径 | 基线中位 | 候选中位 | 变化 |
+|---|---:|---:|---:|
+| 搜索之外分配 GiB | 194.38 | **67.90** | −65.1% |
+| 搜索之外墙钟 s | 159.98 | **46.45** | −71.0% |
+
+两侧同宿主、同建局、同组合器配置，唯一变量是模组 DLL。搜索之外的分配与墙钟**都大幅下降**（不是不变、更不是上升）：GetId 记忆化同时削掉了主线程根捕获期间以及协调器/成员调度期间走过的同一条 `ModelDb.GetId` 路径。因此不存在「把枚举从搜索挪进主线程」的形态——那正是方案 B 被放弃的理由，而本轮保留的改动没有这个问题。
+
+### 8.5 生产路径的限制
+
+1. 仍是离线无头宿主；不是可见 Steam 会话，不外推帧时间或玩家可感知卡顿。
+2. 只有 `sel-defect-elite-01` 用了 100,000 节点；§8.3 的抽检是 20,000 节点。
+3. 生产预设的 500,000 节点与 300 s 软预算没有跑（内存与时长风险）。
+4. 组合器在内存富余时会启用更多成员，因此组合成员数不是常量；比较必须同时看成员集合与跳过原因，本轮已如实列出。
+
+## 9. 限制与未验证项
 
 1. 全部数据来自离线无头宿主，不是可见 Steam 会话；按仓库规则不外推 FPS、帧时间或玩家可感知收益。
 2. 100,000 节点是 VeryHigh 预设（Beam 135 / 500,000 节点 / 300 s）的 1/5；`sel-silent-boss-01` 用 20,000 节点。

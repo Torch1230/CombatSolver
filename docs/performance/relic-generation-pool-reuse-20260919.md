@@ -102,7 +102,19 @@ TMPDIR="$PWD/.local/tmp" timeout 900 dotnet tools/OfflineSearchHarness/bin/Relea
 - 只测了离线无头宿主、20k 节点、DOP16/DOP1、No-GC 12 GB；没有可见 Steam 会话、没有 Windows 构建、没有 500k 节点完整 VeryHigh。
 - Crossbow 在实机的获取频率未知（不在本语料的 Common/Uncommon/Rare/Shop 随机池里），所以这是「该遗物出现时的单根收益」，不是整批期望收益。
 
-## 5. 提案（未实现）：其它角色卡池的根快照，覆盖 SPLASH 剩余枚举
+## 5. 提案（已评估后放弃）：其它角色卡池的根快照，覆盖 SPLASH 剩余枚举
+
+**决定：不做（2026-09-19）。** 下面保留完整的提案、门禁清单与成本/收益上限，作为将来若出现「战前预测」这类在**第一回合开始之前**捕获搜索根的入口时的备查记录。放弃理由按重要性：
+
+1. **方向与「主线程卡顿优先」相反。** `CombatRootSnapshot.Capture` 在主线程捕获并验证 live 状态（见 [AGENTS.md](../../AGENTS.md) 4.1），搜索是后台任务。这个方案把卡池枚举从后台搜索挪进主线程根捕获：搜索内数字会变好看，但玩家可能感知到主线程卡顿；这属于「把成本挪个地方」，不是优化。
+2. **收益上限小且窄。** 同一根分配再降约 10%、墙钟 1~2%，且只对含 `SPLASH` 的根有效（语料 5.7%）；那根已经拿到 −66% 分配 / −57% 墙钟，边际价值低。
+3. **要证明它不是负优化，必须扩语义面。** 需要新 `ScenarioId` 夹具 + 五类合同断言 + 逐次无头实例运行，成本大于收益上限。
+
+另外两条前置事实也削弱了它的必要性：触发路径全仓只有 `SplashOnPlay` 一处；GetId 记忆化之后那条路径的剩余成本是纯 LINQ/池遍历，没有第二个「正则级」的支配项。
+
+**若将来要做，下面是当时的完整设计。**
+
+
 
 **目标**：把 `SplashOnPlay` 对 `UnlockState.CharacterCardPools`（其它角色卡池）的每次枚举也换成根级只读快照。上一轮的分配 trace 显示，GetId 记忆化之后这条路径仍占 defect 根已覆盖栈的约 10%（`CardModel[]` 0.244 + `Func<CardModel,bool>` 0.199 + `AbstractModel[]` 0.184 + `List<CardModel>` 0.178 GiB，共 6.16 GiB）。**收益上限**：`sel-defect-elite-01` @100k 分配 33.47 GiB → 约 30 GiB（≈ −10%），墙钟估计 −1%~−2%；只对含 `SPLASH` 的根（语料 5.7%）有效。
 

@@ -33,7 +33,8 @@
 - 纯度核对：`.local/bench/ilprobe`（未入库的临时探针）反射读 `sts2.dll` 方法体确认 `GetEntry`/`GetCategory` 只依赖类型名、`Slugify` 用 `ToUpperInvariant`、`ModelId` 是不可变 record。
 - Release 构建 0 警告/0 错误；`./tools/verify-refactor-boundaries.sh` 输出 `REFACTOR_BOUNDARIES_OK search_files=193`。
 - **生产 No-GC 12 GB 与推广范围**：`sel-defect-elite-01` @100k、`--no-gc-region-budget-gigabytes 12`，墙钟 70.26 → 30.45 s（−56.7%）、分配 92.70 → 31.99 GiB（−65.5%）、峰值 RSS 21.32 → 10.54 GiB、KB/转移 163.9 → 52.9，score/战损/planActions 全同。`--milestone M1` 解析全部 300 个请求牌组：17 根（5.7%）含 `SPLASH`，覆盖五个角色与三种遭遇类型；`SplashOnPlay` 是全仓唯一枚举其它角色卡池的入口。@20k/12 GB 抽样：8/8 含 SPLASH 的根分配下降 10.7%~72.8%、墙钟 5.3%~56.7%（defect-boss-12、defect-elite-01、ironclad-elite-03、silent-boss-15、necrobinder-elite-01、ironclad-monster-11、necrobinder-boss-02、regent-monster-05），12/12 不含 SPLASH 的根在 ±2% 内，决策全部逐项相同。
-- 未执行：可见 Steam、Windows 构建、`--verify-incremental-search`、Coordinator/portfolio 主路径、完整部署与原生重放；500,000 节点完整 VeryHigh 未运行（内存与时长风险）。GC 暂停在本机双峰（同侧 10 ms ~ 2.5 s），只记范围不作结论。
+- 生产默认路径（Coordinator + portfolio，No-GC 12 GB，`sel-defect-elite-01` @100k 交错 3+3）：请求墙钟 233.25 → 74.81 s（−67.9%）、全进程分配 312.80 → 98.44 GiB、搜索分配 118.42 → 30.54 GiB、峰值 RSS 35.47 → 20.78 GiB、GC 暂停 4393 → 2207 ms；score/战损/planActions(36)/cachedContinuations(8)/选中 expanded(100000) 全同；两侧被跳过成员均 4 个且均为 `BaselineNotFrontierExhausted`（`MemoryHeadroomInsufficient`=0）。DOP1 @20k 生产路径含成员与跳过明细逐项相同。总账：搜索之外残差分配 194.38 → 67.90 GiB、墙钟 159.98 → 46.45 s。抽检 3 个含 SPLASH 根 + 2 哨兵根：路线/续用戳/score/战损全同；`sel-defect-boss-12`、`sel-ironclad-elite-03` 成员运行集合不同（基线内存余量不足跳过、候选跑了），如实记录。
+- 未执行：可见 Steam、Windows 构建、`--verify-incremental-search`、完整部署与原生重放；500,000 节点完整 VeryHigh 未运行（内存与时长风险）。GC 暂停在本机双峰（同侧 10 ms ~ 2.5 s），只记范围不作结论。
 - 完整表、命令与限制见[ModelDb.GetId 记忆化](performance/defect-modeldb-getid-cache-20260919.md)。
 
 ## 未发布：搜索无进展内存截断与排他分配（2026-09-19）
