@@ -3,6 +3,7 @@
 [返回文档导航](../README.md)
 
 - [滚动重构路线](refactor-roadmap.md)：批次进度与明确不做项。
+- [0.41.0 代码整洁度审查](code-hygiene-review-2026-09-18.md)：分析器证据、保留裁决与轻度清理验证。
 - [4117eb0 核验记录](verified-audit-4117eb0.md)：对应基线的历史证据。
 
 当前职责以 [架构地图](../ARCHITECTURE.md) 为准。历史核验不替代本次改动的构建或测试。

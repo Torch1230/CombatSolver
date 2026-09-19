@@ -10,6 +10,12 @@
 - 合并接入（2026-09-19，Windows 仓库内隔离无头）：`PR15-POTION-VALUE-TIERS` 静默猎手默认关闭 1 场 Passed，断言设置默认/持久化、关闭时根无前景、零成本药水不被抬价；同场 `RequireAtLeastOne` 强制一瓶另跑 1 场 Passed，终局回放与摘要的用药身份/数量一致。`POTION-REWARD-FORECAST` 静默猎手、A10、满栏两瓶 1 场 Passed：原生奖励与预测同为 `FRUIT_JUICE`，开启时完整胜利摘要显示掉药；`UI-LOCALIZATION` 1 场 Passed，eng/zhs/zht 共 438 个模板并核对新设置控件。四场均报告 `UNATTENDED_INSTANCE_REMOVED`。首次使用全新铁甲战士档案跑 PR15 时旧断言把教程 `Unknown` 当失败；改用非教程角色后通过，本批未改教程规则。
 - 主 DLL 使用 Windows 游戏依赖、跳过本机未安装的 .NET Framework 4.8 辅助程序目标完成 Release 编译，0 警告 0 错误；Windows 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=193`。完整 Windows `dotnet build` 因缺少 .NET Framework 4.8 引用程序集失败；无头入口使用同仓库现成的 MemoryCleaner 辅助程序副本。未做可见 Steam 人工排版验收，历史离线 FULL 对照是原始无开关的开启前景实验，不作为本次默认关闭质量结论。
 
+## 未发布：代码整洁度清理
+
+- 私有死代码与多余using清理：EQ 10根对上游0.41.0为 `IDENTICAL`（983项比较字段、600项剪枝计数）；循环出口共享排序后缀：EQ 10 + FULL 40根为 `IDENTICAL`（4673项比较字段、3000项剪枝计数），双侧100份结果有效且未触及时间边界。
+- 两阶段Release构建均为0警告/0错误，均带 `CopyModOnBuild=false`；Bash结构门禁均为 `REFACTOR_BOUNDARIES_OK search_files=192`。固定High 90/50000、Coordinator、Smart、DOP1，离线宿主workers=2；未运行原生游戏场景。
+- 比较器沿用已修正的递归遥测排除口径，保留路线、根状态、目录指纹、组合成员选择和确定性工作指标；不比较时间/内存。基线末根曾受一次误启动后取消的构建干扰，已排除并仅补跑该根。详细范围、原始失败记录、保留项及本地证据路径见[代码整洁度报告](refactoring/code-hygiene-review-2026-09-18.md)。
+
 ## 0.41.0：问题包开战默认与仓库内无头实例（2026-09-18）
 
 - `dotnet run --project tools/CheckpointTool/CheckpointTool.csproj -c Release -- self-test` 通过，输出 `archive_contract_tests_passed assertions=35`：省略选择器命中 `combat_start`，显式 `latest` 命中最近可搜索检查点，显式 `end` / `recorded` 命中结束检查点；批处理运行目录保持仓库内且不跨卷。

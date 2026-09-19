@@ -1,5 +1,4 @@
 using MegaCrit.Sts2.Core.Entities.Creatures;
-using CombatSolver.Engine.Common;
 
 namespace CombatSolver;
 

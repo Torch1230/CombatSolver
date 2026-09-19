@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using MegaCrit.Sts2.Core.Combat;
 
 namespace CombatSolver;
 

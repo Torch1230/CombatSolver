@@ -1,5 +1,4 @@
 using MegaCrit.Sts2.Core.Entities.Cards;
-using MegaCrit.Sts2.Core.Models;
 using CombatSolver.Engine.InCombat.Simulation;
 using System.Globalization;
 using System.Runtime.CompilerServices;
