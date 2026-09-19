@@ -74,7 +74,8 @@ internal static class CombatCardGenerationExtensions
         Player player,
         int count,
         Rng rng,
-        CardMultiplayerConstraint multiplayerConstraint)
+        CardMultiplayerConstraint multiplayerConstraint,
+        Func<CardModel, bool>? filter = null)
     {
         CardPoolModel colorlessPool = ModelDb.CardPool<ColorlessCardPool>();
         if (simulator.State.CombatState is ICombatPredictionCardGenerationPoolSnapshot snapshot
@@ -85,18 +86,24 @@ internal static class CombatCardGenerationExtensions
                 out IReadOnlyList<CardModel>? cached))
         {
             // Keep the upstream TakeRandom/UnstableShuffle RNG behavior and create a fresh
-            // prediction-owned card for every branch. Only eligibility filtering is cached.
-            return cached.AsEnumerable()
+            // prediction-owned card for every branch. Only eligibility filtering is cached;
+            // the caller-specific predicate stays before random selection, same as fallback.
+            IEnumerable<CardModel> candidates = filter == null
+                ? cached
+                : cached.Where(filter);
+            return candidates
                 .TakeRandom(count, rng)
                 .Select(card => PredictedCard.Create(card, player));
         }
 
-        return player.GetUnlockedCards(colorlessPool, multiplayerConstraint)
-            .GetDistinctForCombat(
-                player,
-                count,
-                rng,
-                multiplayerConstraint);
+        IEnumerable<CardModel> unlocked = player.GetUnlockedCards(colorlessPool, multiplayerConstraint);
+        if (filter != null)
+            unlocked = unlocked.Where(filter);
+        return unlocked.GetDistinctForCombat(
+            player,
+            count,
+            rng,
+            multiplayerConstraint);
     }
 
     public static IEnumerable<PredictedCard> GetUnlockedCharacterAttacksForCombat(
