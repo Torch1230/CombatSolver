@@ -271,7 +271,7 @@ internal static class SolverUiTokens
             button.AddThemeColorOverride("font_color", Palette.TextPrimary);
             button.AddThemeColorOverride("font_hover_color", Godot.Colors.White);
             button.AddThemeColorOverride("font_pressed_color", Godot.Colors.White);
-            ApplyButtonFont(button, style);
+            ApplyButtonFont(button);
             return;
         }
 
@@ -309,10 +309,10 @@ internal static class SolverUiTokens
         button.AddThemeColorOverride("font_color", font);
         button.AddThemeColorOverride("font_hover_color", font);
         button.AddThemeColorOverride("font_pressed_color", font);
-        ApplyButtonFont(button, style);
+        ApplyButtonFont(button);
     }
 
-    private static void ApplyButtonFont(Button button, SolverButtonStyle style)
+    private static void ApplyButtonFont(Button button)
     {
         button.ApplyLocaleFontSubstitution(FontType.Bold, "font");
     }

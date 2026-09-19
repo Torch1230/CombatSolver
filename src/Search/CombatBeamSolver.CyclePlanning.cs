@@ -598,27 +598,7 @@ internal sealed partial class CombatBeamSolver
         SearchNode right,
         int bestMaxHp)
     {
-        int comparison = CycleHealthRisk(left, bestMaxHp)
-            .CompareTo(CycleHealthRisk(right, bestMaxHp));
-        if (comparison != 0)
-            return comparison;
-        comparison = left.PotionStrategicCost.CompareTo(right.PotionStrategicCost);
-        if (comparison != 0)
-            return comparison;
-        comparison = left.Turn.CompareTo(right.Turn);
-        if (comparison != 0)
-            return comparison;
-        comparison = left.ActionCount.CompareTo(right.ActionCount);
-        if (comparison != 0)
-            return comparison;
-        comparison = right.Snapshot.ProjectedPlayerHp.CompareTo(
-            left.Snapshot.ProjectedPlayerHp);
-        if (comparison != 0)
-            return comparison;
-        comparison = right.Score.CompareTo(left.Score);
-        return comparison != 0
-            ? comparison
-            : CompareCycleCandidateDeterministicFingerprints(left, right);
+        return CompareCycleExitQuality(left, right, bestMaxHp);
     }
 
     private static CycleExitQuality MeasureCycleExitQuality(
@@ -2687,7 +2667,7 @@ internal sealed partial class CombatBeamSolver
             selected.Add(candidate);
     }
 
-    private SearchNode AttachCycleProbeLease(SearchNode child)
+    private static SearchNode AttachCycleProbeLease(SearchNode child)
     {
         if (child.Parent?.CycleProbeLease is not { } lease
             || child.Action is not { } action
