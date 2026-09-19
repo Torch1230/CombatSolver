@@ -122,10 +122,7 @@ internal sealed partial class CombatBeamSolver
                         outcome.ElapsedTicks, outcome.Concurrency);
                     firstError ??= outcome.Error;
                     if (firstError != null)
-                    {
-                        // 同 AdmittedExpansion：失败的 lane 不再合并指标，原错误优先。
                         continue;
-                    }
                     _coordinator.MergeExpansionWorker(outcome.Worker, outcome.AllocatedBytes);
                     evaluations[outcome.Job.Index] = outcome.Evaluation;
                     if (next < nodes.Count)

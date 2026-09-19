@@ -20,6 +20,7 @@ internal sealed record SearchPolicySnapshot(
     SearchMemoryPressureSignal MemoryPressureSignal)
 {
     public bool UseNoveltyPortfolio { get; init; }
+    public bool PredictPotionReward { get; init; }
     public NoveltySearchOptions? NoveltySearch { get; init; }
     public NoveltyPortfolioBudget NoveltyBudget { get; init; } = NoveltyPortfolioBudget.Default;
     public bool Act3BossStrategy { get; init; }
@@ -67,8 +68,8 @@ internal sealed record SearchPolicySnapshot(
     public bool EffectiveHasGrowthTargets => !IgnoreLongTermRewards && HasGrowthTargets;
 
     /// <summary>
-    /// 主搜索改用 <see cref="BeamWidthPortfolio" />：若干个宽度或中途排序不同的成员共享同一份节点预算，
-    /// 按既有比较规则取最优。默认开启；关闭时只运行基线成员。
+    /// 控制 <see cref="BeamWidthPortfolio" /> 的普通精炼成员，按既有比较规则取最优。
+    /// Runtime默认开启；关闭时仍运行基线及满足根准入条件的能力成员。
     /// </summary>
     public bool UseBeamWidthPortfolio { get; init; }
 
@@ -104,7 +105,7 @@ internal sealed record SearchPolicySnapshot(
     /// <summary>
     /// 实验用：关掉转置支配剪枝，量「状态等价剪枝本身值多少工作量」。位 1 = 候选准入，
     /// 位 2 = 展开准入；缺省 0，即两条都开。关掉只会多探索状态、不会少探索，
-    /// 所以质量只可能变好或不变——它是这笔剪枝的收益上限的直接读数。默认 0，生产逐位不变。
+    /// 有界搜索的候选次序与预算可能因此变化；该消融不提供路线质量上界。默认 0，生产逐位不变。
     /// </summary>
     public int TranspositionPruningDisabledMask { get; init; }
 
@@ -120,7 +121,7 @@ internal sealed record SearchPolicySnapshot(
 
     /// <summary>
     /// 请求级的组合诊断，由 <see cref="CombatSearchCoordinator.Solve" /> 建立并挂到返回结果上。
-    /// 开关关闭时同样记录（单成员一行）。
+    /// 开关关闭时同样记录实际执行的成员，包含满足根准入条件的能力成员。
     /// </summary>
     public BeamWidthPortfolioTelemetry? PortfolioTelemetry { get; init; }
     public SearchRequestWorkTotals? RequestWorkTotals { get; init; }

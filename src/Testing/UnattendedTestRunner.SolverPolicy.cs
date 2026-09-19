@@ -203,6 +203,14 @@ internal sealed partial class UnattendedTestRunner
             result,
             unexpectedReplan: false,
             reviewedWorldlines);
+        if (result.BattlePotionIdsUsedSoFar.Length != result.BattlePotionsUsedSoFar
+            || result.PlannedPotionIds.Length != result.PotionCount
+            || (reviewSnapshot.UsedPotionOutcomeText != null) != (result.BattlePotionsUsedSoFar > 0)
+            || (reviewSnapshot.PlannedPotionOutcomeText != null) != (result.PotionCount > 0)
+            || (reviewSnapshot.RewardOutcomeText != null) != (result.PotionRewardOutlook.Enabled
+                && result.CombatEndedTurn.HasValue && result.Snapshot.AllEnemiesDead && !result.Snapshot.PlayerDead))
+            throw new InvalidOperationException("路线摘要的用药身份或掉药显示条件不一致。");
+        _completedChecks.Add("PotionOutcomeNamesAndRewardGate");
         bool validReviewSummary = result.WasReused
             ? reviewSnapshot.ReviewSummaryText.StartsWith("路线已复用，共查阅了 ", StringComparison.Ordinal)
             : reviewSnapshot.ReviewSummaryText.StartsWith("花费了 ", StringComparison.Ordinal)

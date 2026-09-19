@@ -69,7 +69,7 @@ plan 每项的字段：`label`（必填，简单目录名）、`request`（必�
 
 产物在 `<workspace>/runs/<label>/`，另有 `<workspace>/runs.jsonl` 与 `plan-summary.json`。
 
-`tools/OfflineSearchHarness/compare_results.py` 把两份 `runs/` 目录逐字段比较（`solverMetrics` 里
+`tools/OfflineSearchHarness/compare_results.py` 把两份 `runs/` 目录逐字段比较（两侧都提供时还比较选中路径的续用戳；`solverMetrics` 里
 与时间/内存/GC 无关的字段、选中路线每个动作的 `turn/kind/cardId/potionId/targetCombatId/cardStateKey`、
 根 `ContinuationStamp`、生成场景目录指纹），全等返回 0，有差异返回 1 并把明细写进 `--out`。
 

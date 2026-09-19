@@ -1,23 +1,17 @@
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using MegaCrit.Sts2.Core.Combat;
-using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.Hooks;
 using MegaCrit.Sts2.Core.Models;
-using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Events;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Models.Relics;
 using MegaCrit.Sts2.Core.MonsterMoves.MonsterMoveStateMachine;
 using MegaCrit.Sts2.Core.Rooms;
-using MegaCrit.Sts2.Core.ValueProps;
 using CombatSolver.Engine.Common;
-using CombatSolver.Engine.InCombat.Mirrors;
 using CombatSolver.Engine.InCombat.Simulation;
-using BufferCard = MegaCrit.Sts2.Core.Models.Cards.Buffer;
 
 namespace CombatSolver;
 
@@ -67,6 +61,16 @@ internal sealed partial class CombatBeamSolver
                 $"[CombatSolver/Test] HOOK_LAYOUT_CACHE scope=root_cumulative " +
                 $"hits={hookLayouts.Hits} misses={hookLayouts.Misses} " +
                 $"collisions={hookLayouts.Collisions} bypasses={hookLayouts.Bypasses}");
+            if (root.PotionRewardOutlook.Forecast != PotionRewardForecast.Unknown
+                || root.PotionRewardOutlook.ReplacementHpCredit > 0)
+            {
+                PotionRewardOutlook outlook = root.PotionRewardOutlook;
+                policy.Diagnostics.Info(
+                    $"[CombatSolver/Test] POTION_REWARD_OUTLOOK " +
+                    $"chance={outlook.DropChance:0.###} forecast={outlook.Forecast} " +
+                    $"potion={outlook.ForecastPotionId ?? "-"} belt_full={outlook.BeltFull} " +
+                    $"blocked={outlook.ProcureBlocked} credit={outlook.ReplacementHpCredit}");
+            }
             if (_run.PotionStrategicCosts.Misses > 0)
             {
                 policy.Diagnostics.Info(
@@ -557,6 +561,13 @@ internal sealed partial class CombatBeamSolver
             RouteAnnotations replayAnnotations = BuildRouteAnnotations(best, relicTriggerRecorder);
             replayEvidence.Publish(policy.Diagnostics, "selected_route", relicTriggerRecorder);
             annotations = annotations with { KillsAfterAction = replayAnnotations.KillsAfterAction };
+            string[] plannedPotionIds = ((SimulatedCombatState)((CombatPredictionSimulator)annotationReplay.Simulator)
+                .State.CombatState).PotionUses.Select(use => use.PotionId).ToArray();
+            if (plannedPotionIds.Length != selectedCandidate.PotionCount)
+            {
+                annotationReplay.ReleaseSimulator();
+                throw new InvalidOperationException("路线用药数量与回放药水身份不一致。");
+            }
             annotationReplay.ReleaseSimulator();
             IReadOnlyList<PlanAction> annotatedActions = resultScope == SolverResultScope.RouteAdoption
                 && routeAdoptionActions != null
@@ -773,6 +784,9 @@ internal sealed partial class CombatBeamSolver
                 BattleHpLostSoFar = battleDamage.HpLostSoFar,
                 ProjectedBattleHpLost = battleDamage.HpLostSoFar + futureHpLost,
                 BattlePotionsUsedSoFar = battleDamage.PotionsUsedSoFar,
+                BattlePotionIdsUsedSoFar = battleDamage.PotionIdsUsedSoFar,
+                PlannedPotionIds = plannedPotionIds,
+                PotionRewardOutlook = root.PotionRewardOutlook,
                 PotionCount = selectedCandidate.PotionCount,
                 ExplicitPotionCount = annotatedActions.Count(action =>
                     action.Kind == PlanActionKind.UsePotion),
@@ -1964,9 +1978,7 @@ internal sealed partial class CombatBeamSolver
                 ? []
                 : PruneAtMemoryBoundary(ended.Where(node => !node.IsTerminal),
                     turnPruneCandidateCount, "before_turn_prune", playDepth: 0, ended.Count);
-            // 续用戳不是搜索决策输入，只供最终选中路线构造 CachedContinuation。
-            // 以前在每个回合边界为整条 frontier 立即拼字符串，绝大多数节点随后被剪掉；
-            // 现在不捕获，由 BuildContinuations 只对最终路径按 Replay 重建。
+            // 续用戳只供最终选中路线，淘汰候选无需提前拼接字符串。
             List<SearchNode> retainedAfterRound = [.. completed, .. frontier];
             ReleaseDroppedSnapshots(ended, retainedAfterRound);
             foreach (SearchNode candidate in retainedAfterRound)

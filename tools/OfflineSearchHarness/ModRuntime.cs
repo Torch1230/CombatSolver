@@ -313,6 +313,7 @@ internal static class ModRuntime
         string RootLiveStamp,
         object[] RouteActions,
         string[] PlanActions,
+        object[] Continuations,
         bool TimeBoundaryObserved,
         double WallSeconds);
 
@@ -440,6 +441,8 @@ internal static class ModRuntime
                 : SolveEvaluate(root, names, damage, policy, settings,
                     options.BudgetMilliseconds, loop, out describedPolicy, ref timeBoundary);
         }
+        if (options.SearchMode == "Coordinator" && policy.MeasurePhasePerformance)
+            LastPhasePerformance = SolverDiagnostics.DescribeSearchPhasePerformance(result);
         HarnessLog.Trace("solved");
         watch.Stop();
         File.WriteAllText(Path.Combine(options.OutputDirectory, "quality.json"), JsonSerializer.Serialize(new
@@ -484,6 +487,12 @@ internal static class ModRuntime
                 .Select(action => $"{action.Turn}:{action.Kind}:{action.CardId ?? action.PotionId ?? "-"}"
                     + $":target={action.TargetCombatId?.ToString() ?? "-"}:key={action.CardStateKey}")
                 .ToArray(),
+            result.Continuations.Select(continuation => (object)new
+            {
+                continuation.StartTurnNumber,
+                continuation.ForecastOffset,
+                continuation.ExpectedState.StateText,
+            }).ToArray(),
             timeBoundary,
             watch.Elapsed.TotalSeconds);
     }
@@ -558,6 +567,7 @@ internal static class ModRuntime
             ["combatEndedTurn"] = result.CombatEndedTurn,
             ["transpositionCount"] = result.TranspositionCount,
             ["expandedTranspositionCount"] = result.ExpandedTranspositionCount,
+            ["transpositionLimitBypasses"] = result.TranspositionLimitBypasses,
             ["standPatCacheCount"] = result.StandPatCacheCount,
             ["threatProjectionCacheCount"] = result.ThreatProjectionCacheCount,
             ["coverageCacheCount"] = result.CoverageCacheCount,

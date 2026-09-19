@@ -1,10 +1,8 @@
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
-using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.Hooks;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
@@ -53,6 +51,7 @@ internal sealed partial class CombatBeamSolver(
     private readonly int _initialEnemyCount = root.Enemies.Count;
     private readonly bool _hasRegisteredPowerCards = root.PlayerCardIds.Any(
         PowerCardValuationModels.Registry.ContainsCardId);
+    private readonly bool _keysCombatHistoryCounters = CombatHistoryCounterKey.AppliesTo(root.PlayerCardIds);
     private readonly bool _isActEndingBoss = root.IsActEndingBoss;
     private readonly BossHpRelief _bossHpRelief = root.BossHpRelief;
     private readonly BossHpRelief _strategicBossHpRelief = ActEndingBossPolicy.ResolveStrategicHpRelief(
@@ -104,6 +103,7 @@ internal sealed partial class CombatBeamSolver(
         _potionStrategy,
         _enforcePotionDirectives,
         root.HasRenewablePotionShapedRock,
+        root.PotionRewardOutlook.ReplacementHpCredit,
         _run,
         EvaluateStandPat,
         PrepareStandPatProbes);
@@ -113,6 +113,7 @@ internal sealed partial class CombatBeamSolver(
         _potionStrategy,
         _enforcePotionDirectives,
         root.HasRenewablePotionShapedRock,
+        root.PotionRewardOutlook.ReplacementHpCredit,
         _theftPolicy,
         _strategicBossHpRelief,
         root.PostCombatRelicHeal,

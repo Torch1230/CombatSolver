@@ -1,9 +1,7 @@
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.InCombat.Simulation;
 using MegaCrit.Sts2.Core.Entities.Cards;
-using MegaCrit.Sts2.Core.Entities.Orbs;
 using MegaCrit.Sts2.Core.Models;
-using MegaCrit.Sts2.Core.Models.Orbs;
 using MegaCrit.Sts2.Core.Models.Powers;
 
 namespace CombatSolver;
@@ -85,7 +83,7 @@ internal sealed partial class CombatBeamSolver
         return EstimateRemainingTurns(node.Snapshot, Math.Max(1, drawPerTurn));
     }
 
-    private int PowerEnemyHp(SearchNode node)
+    private static int PowerEnemyHp(SearchNode node)
     {
         CombatPredictionSimulator simulator = node.Snapshot.Simulator;
         SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
@@ -166,7 +164,7 @@ internal sealed partial class CombatBeamSolver
     private int PowerOstyCount(SearchNode node)
         => PowerHasOsty(node) ? 1 : 0;
 
-    private int PowerIncomingDamage(SearchNode node)
+    private static int PowerIncomingDamage(SearchNode node)
         => Math.Max(0, node.Snapshot.PlayerHp - node.Snapshot.ProjectedPlayerHp);
 
     private int PowerForecastIncomingHits(SearchNode child, int turnOffset)

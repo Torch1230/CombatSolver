@@ -26,6 +26,8 @@ from pathlib import Path
 # 固定节点预算下与时间/内存/GC 相关的字段不可比，逐项排除。
 EXCLUDED = {
     'capturedAtElapsedMilliseconds', 'elapsedMilliseconds', 'totalElapsedMilliseconds',
+    'firstRoutePublishedMilliseconds', 'peakManagedHeapBytes',
+    'allocatedBytes', 'managedHeapBytesAfter',
     'workerAllocatedBytes', 'totalWorkerAllocatedBytes', 'managedHeapBytes',
     'managedLiveBytes', 'managedFragmentedBytes', 'workingSetBytes', 'privateMemoryBytes',
     'totalGen0Collections', 'totalGen1Collections', 'totalGen2Collections',
@@ -54,12 +56,22 @@ def collect(runs, prefix):
     return out
 
 
+def strip_excluded(value, excluded):
+    """组合成员、能力路线成员这类字典列表里也带各自的耗时/分配字段，比较前同样剥掉。"""
+    if isinstance(value, dict):
+        return {k: strip_excluded(v, excluded) for k, v in value.items() if k not in excluded}
+    if isinstance(value, list):
+        return [strip_excluded(item, excluded) for item in value]
+    return value
+
+
 def diff_dict(left, right, excluded=frozenset()):
     rows = []
     for key in sorted(set(left or {}) | set(right or {})):
         if key in excluded:
             continue
         a, b = (left or {}).get(key, '<缺>'), (right or {}).get(key, '<缺>')
+        a, b = strip_excluded(a, excluded), strip_excluded(b, excluded)
         rows.append({'field': key, 'left': a, 'right': b, 'same': a == b})
     return rows
 
@@ -89,6 +101,10 @@ def compare_root(root, left, right):
             {'catalogFingerprint': left_result.get('catalogFingerprint')},
             {'catalogFingerprint': right_result.get('catalogFingerprint')}),
     }
+    if 'continuations' in left_result and 'continuations' in right_result:
+        groups['continuations'] = diff_dict(
+            {'continuations': left_result['continuations']},
+            {'continuations': right_result['continuations']})
     return {
         'root': root,
         'groups': groups,

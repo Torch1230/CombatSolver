@@ -197,7 +197,11 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 | `CombatBeamSolver.Models.cs` | `SearchFeatures`、单次运行 `SearchRunContext` |
 | `CombatBeamSolver.Transpositions.cs` | 转置标签与支配前沿；单标签内联，多标签保持原序List，缩回单标签即释放额外容器 |
 | `CombatBeamSolver.Phases.cs` | `Solve`、阶段循环、总预算与回合层预算保留、当前回合预览、约 `200 ms` 刷新的动态推演路线，以及玩家采用路线/执行当前回合的收束检查点；动态路线显式携带战斗是否结束，未完成路线不产生整场战损数值 |
-| `CombatBeamSolver.Expansion.cs` | 可执行卡牌/药水/结束回合候选展开和动作回放入口；识别选牌后手中实际可支付的能力。三层首领的首个搜索回合由Phases在普通父节点提交完成后提前展开这些中间态，复用Expand的去重/节点计数，不注入固定答案或终局奖励 |
+| `CombatBeamSolver.Expansion.cs` | 可执行卡牌/药水/结束回合候选展开与跨回合无进展剪枝；三层首领首个搜索回合由Phases在普通父节点提交后提前展开中间态，复用Expand去重/节点计数，不注入固定答案或终局奖励 |
+| `CombatBeamSolver.Expansion.Opening.cs` | 开局能力/药水/资源及后续动作构造；识别选牌后手中实际可支付的能力，保留各调用方的筛选和快照生命周期 |
+| `CombatBeamSolver.Expansion.Choices.cs` | 首层与挂起选择枚举、完整动作选择预算、实体补充和既有预算合同验证 |
+| `CombatBeamSolver.Expansion.Replay.cs` | 回合准备根、动作/前缀回放、增量等价与回合推进；原失败、暂停及释放顺序不变 |
+| `CombatBeamSolver.Expansion.Candidates.cs` | 动作候选构造/选择、路线特征、支配、转置准入租约与目标枚举 |
 | `CombatBeamSolver.ParallelExpansion.cs` | 固定 worker lane、卡牌/药水动作准备与原始候选物化、按输入顺序串行提交 |
 | `CombatBeamSolver.AdmittedExpansion.cs` | 已准入父节点的准备、动作探测、选择准备/回放/续接、药水/目标与回合尾部作业；有界派发、快照移交、取消/异常排空 |
 | `CombatBeamSolver.PrimaryChoiceReplay.cs` | 原预算保证必经的首层回放、唯一快照暂存与原序消费；动态预算和实例补充仍由一个续接作业独占 |
@@ -213,7 +217,12 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 | `ParallelExpansionWorkProfile.cs` | coordinator 所有的作业经过时间分布与 wave/等待/提交计时；不代表 CPU 时间 |
 | `CombatBeamSolver.PathDiagnostics.cs` | 可选路径观察的值复制与边界配对；分别记录生成、两类转置、实际展开、动作准入、完整保留及回合注释，不写搜索策略或账本 |
 | `CombatBeamSolver.Retention.cs` | prune/retention 调用边界与相关小型辅助 |
-| `CombatBeamSolver.BeamRetentionPolicy.cs` | 状态去重、中间分数排序、多样性通道、动作/回合开始选牌保路、药水配额和小型 Pareto |
+| `CombatBeamSolver.BeamRetentionPolicy.cs` | 保路主构造与字段、既有合同类型、RankFinal/RankBest协调、状态去重、多样性通道及路由分组；初始化顺序保持在此文件 |
+| `CombatBeamSolver.BeamRetentionPolicy.OrderedMutation.cs` | 有序变异组合的统一准入、服务额度与续接群组结算 |
+| `CombatBeamSolver.BeamRetentionPolicy.OrderedMutationScheduling.cs` | 有序变异代表质量、包/声明公平调度、迟到初始项节奏、租约交接与确定性键 |
+| `CombatBeamSolver.BeamRetentionPolicy.Routing.cs` | 路由签名、上下文交错、保留选择识别及药水配额 |
+| `CombatBeamSolver.BeamRetentionPolicy.Ranking.cs` | 防御/进攻/资源代表、终局候选比较与Beam分数计算 |
+| `CombatBeamSolver.BeamRetentionPolicy.Testing.cs` | 既有保路合同验证入口；仍属于Search，不依赖Testing runner |
 | `CombatBeamSolver.CyclePlanning.cs` | 精确动作周期、通用收益与出口探针；按周期族和回合记账的有限观察与成长预算 |
 | `CombatBeamSolver.CycleRegionRetention.cs` | 合并同回合、同控制形状的动作排列；对最终存活候选事务式提交区域保留预算与进展证据 |
 | `CombatBeamSolver.OrderedMutationRetention.cs` | 有序操作碰撞的谱系、租约、成对激活和预算账本；统一处理续接、到期与普通通道回退 |
@@ -226,7 +235,19 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 `SearchRunContext` 只活于一次 solver：计数器、性能指标、节流器、转置表、stand-pat/威胁/coverage/路由缓存和 `OwnedExpansionBatch` 容器池均在这里。每个 lane 最多保留两个已清空 storage，单容器容量上限 4096；批次 lease 独立且 Dispose 幂等，检查点丢弃空闲池，不池化 simulator/model。根配置留在 solver，不把可变运行状态退回入口文件。 `SnapshotListBuffer<PredictedCard>` 也归各自 `_run` 所有，只缓存一个已清空、实际容量不超过 4096 的临时列表；快照内用栈上 lease，嵌套租用取独立 storage，generation 防止旧 lease 触碰新租户。牌序与 Shuffle RNG 克隆照旧，列表不得逃出 Snapshot，worker 排空后的缓存检查点丢弃空闲 storage。
 
-`PotionStrategicCostLookup` 同样归单次 `SearchRunContext` 所有，中间保路与终局排序共用规范药水 ID/可再生条件对应的只读代价值；未命中仍调用原目录的 `Single` 查询，保留缺失/重复 ID 的失败行为。每个 worker 有独立表，不存药水实例或分支值，也不跨并发 solver 共享修改。快照内 Power 是否贡献战略估值只判定一次并暂存在当前调用的栈/数组中，需求收集与评分复用同一判定，不跨快照缓存。
+`Expansion.Candidates` 在准入与展开两处让 `Transpositions` 和 `ExpandedTranspositions` 共用每次 solver 默认 1,000,000 条的预算：旧状态仍按原支配标签更新，额度满后只对新状态停止记账并放行。它改变超长搜索的剪枝，不约束一个请求里多个成员的总字节数；实验用关闭剪枝、状态键盐与牌堆顺序商均由默认零值隔离。
+
+回合前沿不再为每个候选构造续用戳；`Terminal.BuildContinuations` 从最终选中路线的动作前缀重放并生成戳记，释放重放快照后只保存纯值 `CachedContinuation`。`SearchPerformanceMetrics` 在显式阶段度量启用时按后进先出收口并记排他时间/分配；失败 lane 排空但不合并未完成的指标，保留首因异常。普通生产搜索不启用逐阶段度量。
+
+`PotionStrategicCostLookup` 同样归单次 `SearchRunContext` 所有，中间保路与终局排序共用规范药水 ID/可再生条件对应的只读代价值；未命中仍调用原目录的 `Single` 查询，保留缺失/重复 ID 的失败行为。每个 worker 有独立表，不存药水实例或分支值，也不跨并发 solver 共享修改。
+
+`PotionRewardOutlook` 在主线程根捕获时读取战后药水掉落前景：先取玩家存档里的 `PotionRewardOdds` 概率（精英 +12.5%，白兽像强制），再克隆玩家的奖励 RNG，按原版 `RewardsSet` 的顺序（掉落判定 → 金币数量 → 药水稀有度与池内抽取）重放，得到确定的掉落结论与药水身份；教程奖励集不镜像，最终 Boss 无奖励。它冻结在 `CombatRootSnapshot.PotionRewardOutlook`，后台不再读取 live。`ReplacementHpCredit` 只在药水栏已满且未被 Sozu 阻断时非零：镜像出掉落按那瓶药的档位计，镜像出不掉为 0，只有概率时按基线档位乘概率。额度按**路线**扣一次、门槛最低保留 1 HP（`PotionUsePolicy.ApplyReplacementCredit`；额度只让用药变得不花钱，用药路线仍必须严格优于无药基线），终局排序、Beam 保路的资格事实与 Smart 梯度的用药上限三处共用同一份，不进入节点分数、状态键或转置比较。快照内 Power 是否贡献战略估值只判定一次并暂存在当前调用的栈/数组中，需求收集与评分复用同一判定，不跨快照缓存。
+
+状态键（`BuildStateKey`）必须覆盖模拟会读到的全部输入。`CalculatedVarSpecRegistry` 里六张牌（金斧、电流相生、扯碎、亡魂牵引、谋杀、超质量体）读的是整场历史计数，不在逐回合计数里；`CombatHistoryCounterKey` 在根牌组含其中任一张时遍历一次模拟历史，把这六个计数追加进键，其余战斗的键逐位不变。根牌组不含战斗中途才生成的读者牌，也不含根捕获时已在消耗堆、之后可能回收的读者牌；这两种情况是条件式修法的已知缺口。根之前的实况历史整场恒定，不进键。
+
+“预知战后药水奖励”是常规设置的显式开关，默认关闭；关闭时根不读取奖励 RNG 前景，所有搜索层取得零折抵，摘要也不显示预测。设置冻结进请求政策和路线缓存键；切换时废弃旧续用并重新计算或提示手动重算。开启时只在完整获胜路线显示掉落结论。零成本药水维持零门槛，不被折抵函数抬高。`BattleDamageTracker` 冻结本场已用药水身份，终局精确回放冻结后续消耗身份；`SolverResult` 只保留字符串数组，续用按已消费数量切分，UI 投影本地化药名并分别显示已用/后续用药。
+
+循环出口的族内、在途和最新候选比较器保留各自租约优先级前缀；仅在前缀同分后调用 `CombatBeamSolver.Retention.cs` 中的 `CompareCycleExitQuality`，按健康风险、药水成本、回合、动作数升序，再按玩家HP、分数降序及原确定性指纹排序。待准入候选直接复用同一质量顺序。该私有方法属于既有保路分片，不承担区域、跨回合或终局排序；这些入口的键次序不同。
 
 长期资源保路先在冻结候选池上扫描最高资源值和数量；全池同值（包括非零和空池）原本不产生独立资源路线，因此 `Retention` 在此时直接跳过祖先排名暂存。非均匀池继续按原序保存全局/祖先排名、应用资源祖先排名、选择最高资源群组，再恢复祖先和全局排名。不缓存跨调用的排名或资源群组，不改变剪枝回收检查点。
 
@@ -384,7 +405,7 @@ Mod 准入，具体契约见[模型状态适配](third-party-model-state.md)。
 
 状态摘要采用首行徽章/路线摘要/右侧详情，次行搜索上下文/耗时/统计的结构；`ShowResult` 使用已有 SummaryText 中的回合信息，不重复显示规划回合上下文。搜索中的上下文标签关闭内部换行，流式统计行负责整项换行；`SolverDetailsButton` 保留展开事件与箭头，使用轻量无背景样式。
 
-常规设置按开始计算、出牌速度、自动执行暂停条件、幕末 Boss、显示与通知、在线统计分组；性能设置按搜索预算、搜索停止条件、内存管理及折叠自定义参数分组。`Controls.AddSettingsSection` 提供统一分组容器，输入仍使用原保存/重载事件，页面滚动沿用伸展布局。结果卡片位于状态摘要上方，以流式排列显示原快照的扣血、药水、失窃与回血；收起时迁移同一结果卡片，展开时恢复正文首位，避免重复结果状态。
+常规设置按开始计算、出牌速度、自动执行暂停条件、幕末 Boss、药水奖励预测、显示与通知、在线统计分组；性能设置按搜索预算、搜索停止条件、内存管理及折叠自定义参数分组。`Controls.AddSettingsSection` 提供统一分组容器，输入仍使用原保存/重载事件，页面滚动沿用伸展布局。结果卡片位于状态摘要上方，以流式排列显示原快照的扣血、药水、失窃与回血；收起时迁移同一结果卡片，展开时恢复正文首位，避免重复结果状态。
 
 `SolverActionBar` 独占底部动作行、自动模式行及收起布局，通过只读 `SolverActionBarState` 更新可见性。它不读取 Controller、搜索结果或战斗对象；Overlay 保留命令绑定、可用性判断和按钮文案。全局启停位于标题栏，偷窃策略位于路线摘要之后。全自动作为绿色主按钮固定在动作行首位，执行与采用为次级按钮；“自动开启全自动”偏好开关位于按钮行最右侧；下一行左侧为纯显示内存条，右侧为“强制释放内存”按钮。Overlay 沿用原释放流程，等待期间按钮显示进行状态并禁用重复触发。当前阶段只迁移布局所有权，未把 Runtime 操作能力重复实现为新的状态机。
 

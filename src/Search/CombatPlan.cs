@@ -1,5 +1,4 @@
 using MegaCrit.Sts2.Core.Entities.Cards;
-using MegaCrit.Sts2.Core.Models;
 using CombatSolver.Engine.InCombat.Simulation;
 using System.Globalization;
 using System.Runtime.CompilerServices;
@@ -61,11 +60,7 @@ internal enum SearchBoundaryReason
     TurnLimit,
     NodeLimit,
     TimeLimit,
-
-    /// <summary>
-    /// 连续若干次搜索内回收都没有腾出余量，本成员提前收手并发布当前前沿的最优路线。
-    /// 这是被内存截断的结果，不是完整搜索，因此不参与成员间的整条选优。
-    /// </summary>
+    /// <summary>搜索内连续回收未腾出余量，本成员发布当前前沿后停止。</summary>
     MemoryNoProgress,
 }
 
@@ -1340,6 +1335,7 @@ internal sealed class SimulationSnapshot(
     public IReadOnlySet<uint> ProcessedEnemyDeaths { get; } = processedEnemyDeaths;
     public SearchBoundaryReason BoundaryReason { get; } = boundaryReason;
     public IReadOnlyList<PredictionGap> PredictionGaps { get; } = predictionGaps;
+
     public CombatPredictionSimulator Simulator => _simulator
         ?? throw new InvalidOperationException(
             $"搜索快照的模拟器已经释放：{_releasedBy ?? "unknown"}:{_releasedAtLine}。");
@@ -1561,6 +1557,9 @@ internal sealed class SolverResult
     public required int BattleHpLostSoFar { get; init; }
     public required int ProjectedBattleHpLost { get; init; }
     public required int BattlePotionsUsedSoFar { get; init; }
+    public required string[] BattlePotionIdsUsedSoFar { get; init; }
+    public required string[] PlannedPotionIds { get; init; }
+    public required PotionRewardOutlook PotionRewardOutlook { get; init; }
     public required int PotionCount { get; init; }
     public required int ExplicitPotionCount { get; init; }
     public int ProjectedBattlePotionCount => BattlePotionsUsedSoFar + PotionCount;
@@ -1595,12 +1594,8 @@ internal sealed class SolverResult
     public required BossHpRelief BossHpRelief { get; init; }
     public required TimeSpan Elapsed { get; init; }
     public required IReadOnlyList<CachedContinuation> Continuations { get; init; }
-
-    /// <summary>诊断计数：本次运行保留的转置/缓存表条目数，不参与搜索决策。</summary>
     public int TranspositionCount { get; init; }
     public int ExpandedTranspositionCount { get; init; }
-
-    /// <summary>诊断计数：因合并条目上限而未写入的新转置状态数，不参与搜索决策。</summary>
     public int TranspositionLimitBypasses { get; init; }
     public int StandPatCacheCount { get; init; }
     public int ThreatProjectionCacheCount { get; init; }
@@ -1728,6 +1723,9 @@ internal sealed class SolverResult
             BattleHpLostSoFar = battleDamage.HpLostSoFar,
             ProjectedBattleHpLost = battleDamage.HpLostSoFar + totalRemainingLoss,
             BattlePotionsUsedSoFar = battleDamage.PotionsUsedSoFar,
+            BattlePotionIdsUsedSoFar = battleDamage.PotionIdsUsedSoFar,
+            PlannedPotionIds = PlannedPotionIds.Skip(PotionCount - remainingPotionCount).ToArray(),
+            PotionRewardOutlook = PotionRewardOutlook,
             PotionCount = remainingPotionCount,
             ExplicitPotionCount = remainingExplicitPotionCount,
             PotionHpSaved = remainingPotionCount == 0 ? 0 : PotionHpSaved,

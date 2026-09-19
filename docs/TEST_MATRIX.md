@@ -1,56 +1,59 @@
 # CombatSolver 测试清单
 
-## 未发布：遗物印牌站点根生成池复用（只保留 Crossbow）（2026-09-19）
+## 未发布：PR #114 原始分支与 #115 集成
 
-- 命令形状：`--request <请求> --profile VeryHigh --nodes 20000 --dop 16|1 --budget-ms 600000 --search-mode Evaluate --enable-no-gc-region --no-gc-region-budget-gigabytes 12 --milestone M2`；两侧同一宿主二进制，仅用 `OFFLINE_HARNESS_COMBATSOLVER_DLL` 切换模组 DLL。
-- 保留的 Crossbow（构造根 `inj-crossbow-defect-elite-01`：`CROSSBOW` 显式注入 `sel-defect-elite-01`；语料 150 件可随机遗物里没有它）：**DOP1 分配 6.4657 → 5.5030 GiB（−14.89%）**、RSS 6.71 → 5.75 GiB、墙钟 18.55 → 17.36 s，转移 131514、选择分支 8612、全部非时序剪枝计数（dominated 778 / duplicateCard 1761 / transposition 7752 / reusedNodeSnapshots 20550 / standPatProbes 4989 / forkCount 131514 / cycleRegionsDetected 430、其余 0）与 score 10002114981 / 战损 2 / finalHp 73 / T4 / planActions 19 **逐位相同**。
-- 同根 **DOP16 3+3 交错**：分配中位 6.7347 → 5.8182 GiB（−13.56%）、KB/转移 55.53 → 47.89、RSS 7.06 → 6.13 GiB、墙钟中位 13.25 → 12.79 s（−3.46%）；六次转移 127180、选择分支 7619 全同，剪枝与决策全同。
-- 无 Crossbow 哨兵 `sel-necrobinder-monster-04` DOP1：转移 87165、剪枝与决策逐位相同，分配 3.2959 → 3.2956 GiB（−0.01%）。
-- 回退的三组（等价性成立、收益未建立）：Toolbox 语料根 `sel-necrobinder-monster-04` DOP16 3+3 分配 3.817 → 3.819 GiB（+0.1%）；OrangeDough 构造根（`inj-orange_dough-sel-ironclad-elite-01`）2.070 → 2.071 GiB（+0.0%）；VexingPuzzlebox 语料根 `sel-regent-boss-00` 1.6768 → 1.6767 GiB（−0.01%）；BigHat 构造根（`inj-big_hat-sel-regent-boss-00`）2.3485 → 2.3483 GiB（−0.01%）。四组的转移/分支/剪枝/决策全部逐位相同。
-- 重型根复测（含遗物语料首领根，20k/12GB/DOP1，`all6` vs `Crossbow-only`）：`sel-silent-boss-04`（Toolbox）分配 −0.25%、`sel-necrobinder-boss-04`（Toolbox）−0.08%、`sel-silent-boss-10`（VexingPuzzlebox）−0.02%、`sel-regent-elite-13`（OrangeDough，148,872 转移）−0.01%；四根转移/分支/剪枝/决策逐位相同。
-- 休眠证据：基线 DLL 对含 Toolbox 的根做 20k `dotnet-trace` 全栈聚合，整个 `Toolbox` 栈 0.0002 GiB / 已覆盖 4.12 GiB（0.005%），`GetUnlockedCards` 全部 0.0003 GiB；排他阶段表 `round_player_start` 两侧同为 0.1845 GiB。原因是搜索根在玩家第一回合 Play 阶段捕获，`turn <= 1` 的回合开始/抽牌前块已在根状态里。
-- Release 构建 0 警告/0 错误；`./tools/verify-refactor-boundaries.sh` 输出 `REFACTOR_BOUNDARIES_OK`。未执行：可见 Steam、Windows 构建、500k 节点完整 VeryHigh。构造根不是语料根。
-- 完整表、命令与「其它角色卡池根快照」提案见[遗物印牌站点复用](performance/relic-generation-pool-reuse-20260919.md)。
+- 原分支的 `PortfolioSelectorChecks` 12 组 410 断言、`BeamOrderingKeyChecks` 8 组 549747 断言、`BeamWidthPortfolioChecks` 93 项，以及 No-GC 和内存截断、转置表上下限的原始对照均属 PR #114 基线证据，见各研究报告；不能当作现行主线组合已通过。当前整合后的验证和未通过项在本节续记。
+- 默认值核对：转置支配表合计上限 1,000,000 为唯一新增的默认搜索决策；无进展截断=0、基线组合成员=true、状态键盐/牌堆顺序商/转置消融=0；无有效环境模型时学习型门控不启用。低于上限的原分支对照不能证明触顶后的路线质量，完整关闭剪枝的消融也不是质量代价上界。
+- 本次原分支并入现行 main 后，Windows 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=204`；主 DLL Release 编译 0 警告，完整工程只因本机缺 .NET Framework 4.8 引用程序集停在 MemoryCleaner；离线宿主 Release 0 警告/错误。`GcPolicyChecks` 基础 26 项和 `recovery` 9 项、`PortfolioSelectorChecks` 12 组 410 断言、`BeamOrderingKeyChecks` 8 组 549747 断言、`BeamWidthPortfolioChecks` 93 项通过。
+- 当前合并组合的固定故障机器人/FUZZY_WURM 根（Custom、beam 30、nodes 2000、DOP1、Coordinator+组合）对已合入 #115 的同根产物比较 72 字段 `IDENTICAL`，包含路线和续用文本；默认 100 万条对同一代码的无限制版也是 72 字段 `IDENTICAL`、展开 236、转移 832。测试上限设为 50 时两表恰好 34+16 条、`transpositionLimitBypasses=957`；这一个根的 72 个决策字段仍相同，不代表其他根的触顶质量。原 #114 新宿主不能直接加载旧 #115 DLL（实验策略接口不同），跨版本对照沿用此前 #115 宿主产物，不把失败的直接加载记为通过。
+- 内存截断受控样本（铁甲战士/FUZZY_WURM、1 GB No-GC、600 MiB 活压力、阈值 1）得到 `MemoryNoProgress`、展开 1、可执行的防御牌 + EndTurn 两步路线、组合成员 `MemoryTruncated`；这是注入压力，不代表真实长搜的质量。DOP2 组合测量完整结束，实际最大并发 2，`phasePerformance` 写入宿主结果；首次整合时该字段为空，已修复并复测。尚无默认 100 万条触顶后的广泛整场质量对照，也未跑可见 Steam/正常会话性能。
 
-## 未发布：重型根 ModelDb.GetId 纯值记忆化（2026-09-19）
+## 未发布：选中路线续用戳与诊断指标收口（从 PR #114 提取）
 
-- 命令模板（两侧同一宿主二进制，仅用 `OFFLINE_HARNESS_COMBATSOLVER_DLL` 切换模组产物）：
+- 本轮只提取最终选中路径的续用戳构造和显式度量失败路径；不引入内存无进展截断、转置表默认上限或实验开关。Windows 隔离无头 `SINGLE-SEARCH-PROFILE -MeasureSearchPhases` Passed，覆盖四档预设、单一进度阶段与固定工作量；离线宿主当前 main 对提取组合的故障机器人/FUZZY_WURM 单根（DOP 1、beam 30、2000 节点）72 个字段 `IDENTICAL`，包含第 2/3 回合两份非空续用状态文本，双方展开 236、转移 832。重型 `SEARCH-POLICY-SNAPSHOT` 在 120 秒上限内未完成，未将失败 lane 排空的原生合同记作通过；原生实例已清理。
 
-  ```bash
-  TMPDIR="$PWD/.local/tmp" timeout 900 dotnet tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
-    --request "$PWD/.local/learned-selector/data3/requests/<root>.json" --label <label> \
-    --out .local/learned-selector/memory-e2e/<label> \
-    --profile VeryHigh --nodes 100000 --dop 16 --budget-ms 600000 --search-mode Evaluate \
-    --enable-no-gc-region --no-gc-region-budget-gigabytes 16 --milestone M2
-  ```
+## 未发布：生成卡池复用（从 PR #114 提取）
 
-- 补丁装载核对：候选侧 M0.3 行走行 `patches_applied=10/14`、`patchLog` 有 `CombatSolver.ModelDbGetIdCachePatch: 已装 1 个目标`；基线侧 `9/14` 且为 `缺少类型，跳过`。两侧其余补丁与冻结状态一致。
-- **主目标 `sel-defect-elite-01` @100k DOP16（每种 3 次、交错）**：墙钟 67.46 → **32.19 s**（−52.3%）、selected 分配 90.83 → **33.47 GiB**（−63.2%）、峰值 RSS 28.68 → **14.03 GiB**（−51.1%）、KB/转移 155.9 → **54.3**（−65.1%）、CPU（user+sys）426.4 → 270.7 s、Gen2 20 → 6；`expanded=100000`、`score=10000514973`、战损 29、`finalHp=46`、结束回合 6、planActions 27 两侧逐项相同。基线范围 66.78~67.86 s / 88.86~91.04 GiB；候选范围 31.96~32.82 s / 33.47~33.49 GiB。
-- **决策等价（DOP1）**：同根 @20k `--dop 1`，两侧转移 113574、选择分支 11460、`expanded=20000`、score/战损/finalHp/结束回合/planActions **逐位相同**；墙钟 34.30 → 15.79 s、分配 8.05 → 5.37 GiB。DOP1 没有并行调度自由度，因此 DOP16 的轨迹差异（转移 611114 → 645830、选择分支 41288 → 67554、`parallel_waves` 7820 → 3690）只能来自准入窗口变化，不是候选/剪枝/保路语义变化。
-- 哨兵：`sel-defect-elite-02` @20k（整树 10,814 展开穷尽）转移 42,752、选择分支 2,422，两侧**逐位相同**，墙钟 4.43 s 持平、分配 1.72 GiB 持平；`sel-silent-boss-01` @20k 转移 544,653、选择分支 465,076 两侧**逐位相同**，墙钟中位 26.71 → 26.56 s、分配中位 24.33 → 24.28 GiB（3 次，范围重叠）。
-- 第二重型根 `sel-necrobinder-elite-01` @100k（各 3 次）：分配中位 43.84 → 41.99 GiB、KB/转移 59.71 → 54.76、score/战损/finalHp/结束回合/planActions 全同；墙钟中位 35.19 → 37.14 s（+5.5%）落在基线自身范围 32.67~36.51 s 内，判收益未建立。**同版本基线三次运行转移为 771425 / 635834 / 771425（双峰），候选三次全部 804057**；上一轮把 635834 与 771425 分别归给两个源码版本属于运行间非确定性，本轮更正。
-- 分配 trace 归因（`dotnet-trace collect --providers Microsoft-Windows-DotNETRuntime:0x1:5 --buffersize 512`，20k 节点，`GcTraceAnalysis --top 100000`）：confirmed search 20.98 GB 中 12.31 GiB（约 59%）在 `StringHelper.Slugify`/`ModelId.SlugifyCategory` 正则下；`Epoch.get_Cards() → ModelDb.Card → ModelDb.GetId(Type)` 是唯一链，发起方为 `SplashOnPlay` 遍历角色卡池。修复后同一采样降到 confirmed search 6.31 GB、slug 0 GiB；最大单一类型 `CardModel[]` 0.244 GiB（已覆盖栈 4.0%）。
-- 纯度核对：`.local/bench/ilprobe`（未入库的临时探针）反射读 `sts2.dll` 方法体确认 `GetEntry`/`GetCategory` 只依赖类型名、`Slugify` 用 `ToUpperInvariant`、`ModelId` 是不可变 record。
-- Release 构建 0 警告/0 错误；`./tools/verify-refactor-boundaries.sh` 输出 `REFACTOR_BOUNDARIES_OK search_files=193`。
-- **生产 No-GC 12 GB 与推广范围**：`sel-defect-elite-01` @100k、`--no-gc-region-budget-gigabytes 12`，墙钟 70.26 → 30.45 s（−56.7%）、分配 92.70 → 31.99 GiB（−65.5%）、峰值 RSS 21.32 → 10.54 GiB、KB/转移 163.9 → 52.9，score/战损/planActions 全同。`--milestone M1` 解析全部 300 个请求牌组：17 根（5.7%）含 `SPLASH`，覆盖五个角色与三种遭遇类型；`SplashOnPlay` 是全仓唯一枚举其它角色卡池的入口。@20k/12 GB 抽样：8/8 含 SPLASH 的根分配下降 10.7%~72.8%、墙钟 5.3%~56.7%（defect-boss-12、defect-elite-01、ironclad-elite-03、silent-boss-15、necrobinder-elite-01、ironclad-monster-11、necrobinder-boss-02、regent-monster-05），12/12 不含 SPLASH 的根在 ±2% 内，决策全部逐项相同。
-- 生产默认路径（Coordinator + portfolio，No-GC 12 GB，`sel-defect-elite-01` @100k 交错 3+3）：请求墙钟 233.25 → 74.81 s（−67.9%）、全进程分配 312.80 → 98.44 GiB、搜索分配 118.42 → 30.54 GiB、峰值 RSS 35.47 → 20.78 GiB、GC 暂停 4393 → 2207 ms；score/战损/planActions(36)/cachedContinuations(8)/选中 expanded(100000) 全同；两侧被跳过成员均 4 个且均为 `BaselineNotFrontierExhausted`（`MemoryHeadroomInsufficient`=0）。DOP1 @20k 生产路径含成员与跳过明细逐项相同。总账：搜索之外残差分配 194.38 → 67.90 GiB、墙钟 159.98 → 46.45 s。抽检 3 个含 SPLASH 根 + 2 哨兵根：路线/续用戳/score/战损全同；`sel-defect-boss-12`、`sel-ironclad-elite-03` 成员运行集合不同（基线内存余量不足跳过、候选跑了），如实记录。
-- 未执行：可见 Steam、Windows 构建、`--verify-incremental-search`、完整部署与原生重放；500,000 节点完整 VeryHigh 未运行（内存与时长风险）。GC 暂停在本机双峰（同侧 10 ms ~ 2.5 s），只记范围不作结论。
-- 完整表、命令与限制见[ModelDb.GetId 记忆化](performance/defect-modeldb-getid-cache-20260919.md)。
+- 原分支 Crossbow 站点的定向 A/B 与其它遗物站点回退依据见[遗物印牌站点复用](performance/relic-generation-pool-reuse-20260919.md)。本轮 Windows 隔离无头 `TURN-START-GENERATION-CACHE` Passed（27 项对照：顺序、Fork 共享、可变约束回退、完整 RNG/历史、独立生成卡和父/实况不变）；`POTION-GENERATION-CACHE` Passed（8 项对照：卡牌状态、五字段 RNG、升级和父/实况不变）。这两项不代表当前 main 的受控提速或可见帧结论。
 
-## 未发布：搜索无进展内存截断与排他分配（2026-09-19）
+## 未发布：模型 ID 纯值缓存（从 PR #114 提取）
 
-- `dotnet run --project tools/CombatSolver.GcPolicyChecks/CombatSolver.GcPolicyChecks.csproj -c Release -- recovery` 通过，输出 `GC policy checks passed: 9 scenarios.`：覆盖 limit=0 永不触发、阈值上下界、连续计数、有进展清零和按成员/请求重置。
-- 受控端到端（离线宿主 `--enable-no-gc-region`、1 GB No-GC、600 MiB 活球压）：未开启规则时默认短根 `boundary=None`、599 节点，路线与未加压力的基线逐字节相同；`--memory-no-progress-limit 1` 时得到 `boundary=MemoryNoProgress`、1 节点展开，并发布 `DEFEND_IRONCLAD + EndTurn` 两步可执行路线；Coordinator+portfolio 的成员明细为 `Termination=MemoryNoProgress`、`Compared=false`、`SkippedReason=MemoryTruncated`。
-- 续用戳延迟捕获：固定根 `sel-defect-elite-02` Beam16 Evaluate 顺序 B-C-C-B，分配 279.62/279.64 MB → 270.82/270.82 MB，墙钟 3304.2/3270.8 ms → 3250.6/3241.3 ms；动作路线、`cachedContinuations` 文本及除 `replayCount` 外的剪枝计数全部相同。Beam24 Coordinator+portfolio 6 个成员展开/转移/战损与 6 条续用戳全等，总 worker 分配 2,950,179,064 → 2,842,728,888 B。
-- 批量等价：`tools/OfflineSearchHarness/compare_results.py` 5 个生成场景根 `mismatched_roots=0`、`comparedFields=413`；另 5 个不同角色根逐项比较选中路线与全部 `cachedContinuations` 文本一致，selected worker 分配逐根减少 2.2–16.9 MB。
-- Release 构建 0 警告/0 错误；Linux `tools/verify-refactor-boundaries.sh` 输出 `REFACTOR_BOUNDARIES_OK search_files=193`。未启动可见 Steam、未运行 Windows 构建和原始 VeryHigh 问题包。
-- 生成池复用（`aaed815`、`622e8d9`）：6 个实际打出无色/角色生成牌的根，同请求 Beam16 Evaluate A/B；selected worker 分配逐根下降 5.7%～19.7%，选中路线、全部 `cachedContinuations`、展开/转移/分数/战损相同，`compare_results.py` 539 字段全等。Release 0 警告/0 错误，结构门禁 `search_files=193`。
-- 保留表计数诊断（`a02d160`）：60,000 展开长搜输出 `transpositions=318265 expanded_transpositions=58622 stand_pat_cache=51354 threat_cache=172500 coverage_cache=11012`；仅诊断，不改变搜索。转置表上限方案与决策点见[保留表规模报告](performance/search-retention-bounds-20260919.md)，尚未实现默认上限。
-- 离线宿主保真（RitsuLib 内容注册冻结）：M0.3 行走行输出 `mod_card_piles=frozen=True definitions=0 freeze=frozen=True`；冻结前后对 `sel-defect-elite-02`、`sel-necrobinder-elite-14`、`sel-regent-monster-11`、`sel-silent-boss-01` 的展开数、战损与分数逐项相同。
-- 16 并行 / 极高 / No-GC 16 GB、20,000 节点、4 根 × 3 次中位墙钟与 selected worker 分配：4.39 s / 1,847 MB、3.21 s / 1,328 MB、8.62 s / 4,886 MB、26.57 s / 26,129 MB；对应冻结前基线为 4.48 s / 1,895 MB、3.30 s / 1,376 MB、8.88 s / 5,073 MB、29.34 s / 28,061 MB，三次样本墙钟离散度 ≤0.5%。
-- 阶段诊断健壮性：`sel-regent-monster-11` + `--measure-phases` 修复前 3/3 在 1.2 s 内以二手异常终止，修复后完整跑完 8.6 s 且展开/转移/分数/战损与不开阶段相同；阶段表随 `harness-result.json` 的 `phasePerformance` 一并落盘。细节见[离线基线与阶段归因](performance/dop16-veryhigh-fidelity-20260919.md)。
-- 转置表合并条目上限（生产默认 1,000,000）：20,000 节点根 `transposition_limit_bypass=0`，展开/转移/分数/战损与不设上限基线逐项相同（defect 10,814/42,752、necrobinder 7,999/27,255、regent 20,000/113,906）；`--transposition-entry-limit 20000` 时两表恰好停在 16,381+3,619=20,000、`bypass=82,314`，分数/战损不变、墙钟 8.62→9.40 s；长搜 A/B（重根约 25,500 展开）两表 489,707→149,999 条、分配 31.01→29.65 GB、峰值 RSS 14.55→13.78 GB、战损同为 6。证据与限制见[保留表规模与上限决策](performance/search-retention-bounds-20260919.md)。
-- 生产默认路径（`--search-mode Coordinator --use-portfolio`，16 并行、20,000 节点上限、No-GC 16 GB，每根 2 次）：`sel-defect-elite-02` 11.23/11.46 s、1,661 MB、RSS 7.46 GB；`sel-necrobinder-elite-14` 9.37/9.35 s、1,145 MB、6.78 GB；`sel-regent-monster-11` 9.04/9.03 s、714 MB、6.57 GB；`sel-silent-boss-01` 89.61/89.29 s、22,856 MB、RSS 20.12 GB，GC 暂停 9,591 ms。VeryHigh 预设为 Beam 135 / 500,000 节点 / 300 s，跑批节点上限被压到 20,000。
+- 原分支的定向根及 A/B 范围见[ModelDb.GetId 记忆化](performance/defect-modeldb-getid-cache-20260919.md)；本轮组合离线单根字段级对照见上方，不将旧分支的时间、分配数字外推到本次 main 或可见帧。
+
+## 未发布：No-GC 区域准入下限（从 PR #114 提取）
+
+- `tools/CombatSolver.GcPolicyChecks` 在本轮提取组合上全部 26 项通过，其中 `admission` 6 项覆盖 12 GiB 配置在系统余量下只得到 2.97 GiB 时拒绝、平台尺寸回退保持准入及边界值；原分支结果见[报告](performance/no-gc-region-admission-20260917.md)。Windows 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=203`，主 DLL Release 编译 0 警告；完整工程构建因本机缺少 .NET Framework 4.8 参考程序集停在 MemoryCleaner 辅助程序。未做可见 Steam、广泛战斗质量或受控墙钟对照。
+
+## 未发布：状态键补整场历史计数（2026-09-19）
+
+- 离线宿主对上游 0.41.0（High 90/50000、Coordinator、Smart、DOP 1、`fixedSearchBudget`，`compare_results.py` 排除耗时/内存字段）：EQ 10 根只有 `NECROBINDER-ELITE-00`（牌组含亡魂牵引）不一致，其余 9 根 983 字段一致；FULL 40 根只有 4 根不一致（`NECROBINDER-ELITE-00`、`SILENT-BOSS-01`、`SILENT-ELITE-03`、`SILENT-BOSS-03`），按生成场景 loadout 核对正是全部含金斧/亡魂牵引/谋杀的根，其余 36 根一致；GA 10 根（EQ 规格 + 无色牌固定含一张金斧）全部不一致。15 根受影响根：战损 2 根下降（48→29、9→8）、0 根上升、0 根胜负翻转，展开量比 0.997–1.000。
+- 无条件追加的对照（未采用）：46/50 根路线变化、胜负 3 负 1 正，见[状态键历史计数报告](strategy/state-key-history-counters-20260919.md)。
+- PR 原分支 Release 编译 0 警告 0 错误（`CopyModOnBuild=false`）；Bash 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=193`。以上是合并前证据；本次合并后的验证另记于下方。
+- 合并到含 #111/#112 的 main 后，`COMBAT-HISTORY-COUNTER-KEY` 在 Windows 仓库内隔离无人实例 Passed：根手牌含金斧与防御，两个同根分支只有子分支追加一次已完成出牌历史；金斧动态伤害相差 1，完整搜索状态键不同，Fork 后子键不变、父键不变。命令：`pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId COMBAT-HISTORY-COUNTER-KEY -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 100 -ClearPlayerPiles -CardsJson '[{"CardId":"GOLD_AXE","Pile":"Hand"},{"CardId":"DEFEND_IRONCLAD","Pile":"Hand"}]' -CleanupInstanceOnExit -TimeoutSeconds 120`；结果 `UNATTENDED_INSTANCE_REMOVED`。夹具比较搜索 Snapshot 的真实 `StateKey`，不声称这份合成历史是原生完整出牌差分。
+- 本轮 Windows 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=203`。主 DLL Release 编译 0 警告；完整 `dotnet build` 因本机缺少 .NET Framework 4.8 参考程序集，停在 MemoryCleaner 辅助程序。未跑整场、可见 Steam 或合并组合的离线 EQ/FULL 对照；历史性能没有受控墙钟结论。
+
+## 未发布：预测战后掉药与满栏用药门槛（2026-09-18）
+
+- `POTION-REWARD-FORECAST` 新场景（`coverage/unattended/potion-reward-forecast.json`）：开战捕获根后，让原版 `RewardsSet` 在同一条奖励 RNG 上真实生成奖励并逐项比对掉落结论与药水 ID。macOS 隔离无头实例（`.local/headless-mac/run_mac_unattended.sh`，`--headless --force-steam=off`，HOME 隔离）8/8 Passed：SILENT / FUZZY_WURM_CRAWLER_WEAK / Monster 四个种子（Drop FRUIT_JUICE、NoDrop、Drop FLEX_POTION、NoDrop）、BYGONE_EFFIGY_ELITE / Elite 两个种子（Drop FRUIT_JUICE、NoDrop）、QUEEN_BOSS / Boss（Drop FRUIT_JUICE）、未满栏 1 瓶（NoDrop）。铁甲战士在全新 profile 下前几场是教程奖励集，镜像退回 `Unknown`，场景据此改用静默猎手。
+- `PR15-POTION-VALUE-TIERS` Passed（同一无头实例）：新增概率镜像（精英 +0.125、夹在 [0,1]）、额度（Drop 按档位、NoDrop/NoRewards 为 0、Unknown 按概率 × 9、未满栏或 Sozu 为 0）、路线级扣减（只扣一次、下限 1 HP）与 1 HP 门槛挡住零收益用药的断言，以及根快照前景字段与实况一致。
+- 离线宿主等价性：`EQ` 10 根（5 角色 × 精英/Boss，A10，1 瓶药未满栏，High 90/50000，Coordinator，Smart，DOP 1），上游 0.41.0 DLL 对本分支 DLL `compare_results.py` 983 字段 `IDENTICAL`。比较脚本本轮新增排除首条路线发布时间、峰值堆与组合成员内嵌的耗时/分配字段。
+- 离线宿主满栏对照：`FULL` 40 根（同语料 × 4 种子，2 瓶药 = A10 满栏）：3 根变化，全部战损下降（27→22、52→32、18→14，合计 −29），用药 +4，完整胜利 25/25 不变，两版搜索工作量逐根相同。额度扣到 0 的第一版有 2 根坏变化（多掉 15 血；白用一瓶），改为下限 1 HP 后消失。详见[战后掉药预测报告](strategy/potion-reward-outlook-20260918.md)。
+- Release 编译 0 警告 0 错误；Bash 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=193`。未运行可见 Steam、未运行 Windows/Linux 无人入口。
+- 合并接入（2026-09-19，Windows 仓库内隔离无头）：`PR15-POTION-VALUE-TIERS` 静默猎手默认关闭 1 场 Passed，断言设置默认/持久化、关闭时根无前景、零成本药水不被抬价；同场 `RequireAtLeastOne` 强制一瓶另跑 1 场 Passed，终局回放与摘要的用药身份/数量一致。`POTION-REWARD-FORECAST` 静默猎手、A10、满栏两瓶 1 场 Passed：原生奖励与预测同为 `FRUIT_JUICE`，开启时完整胜利摘要显示掉药；`UI-LOCALIZATION` 1 场 Passed，eng/zhs/zht 共 438 个模板并核对新设置控件。四场均报告 `UNATTENDED_INSTANCE_REMOVED`。首次使用全新铁甲战士档案跑 PR15 时旧断言把教程 `Unknown` 当失败；改用非教程角色后通过，本批未改教程规则。
+- 主 DLL 使用 Windows 游戏依赖、跳过本机未安装的 .NET Framework 4.8 辅助程序目标完成 Release 编译，0 警告 0 错误；Windows 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=193`。完整 Windows `dotnet build` 因缺少 .NET Framework 4.8 引用程序集失败；无头入口使用同仓库现成的 MemoryCleaner 辅助程序副本。未做可见 Steam 人工排版验收，历史离线 FULL 对照是原始无开关的开启前景实验，不作为本次默认关闭质量结论。
+
+## 未发布：技术债静态审计与分片整理
+
+- 安全清理仅普通Release与门禁；克隆复用、保路纯移动、展开纯移动各一次EQ10，均IDENTICAL（每批983项字段、600项剪枝计数）。
+- 最终仅一次EQ10+FULL40，IDENTICAL（4673项字段、3000项剪枝计数），双侧100份有效、无时间边界；复用指定0.41.0基线结果与比较器，未重跑基线。固定High 90/50000、Coordinator、Smart、DOP1、workers=2。
+- 229/100项保路/展开成员文本分别由Roslyn核对；保路5项字段声明顺序不变。BeamRankSortChecks独立合同720组/167280条目通过。最终Release 0警告/0错误，CopyModOnBuild=false；Bash门禁search_files=201。
+- 本轮没有原生游戏/无人场景验收；审计工具复跑说明在[CodeDebt](../tools/CodeDebt/README.md)，逐批产物位置见[技术债审计](refactoring/tech-debt-audit-2026-09-18.md)。
+
+## 未发布：代码整洁度清理
+
+- 私有死代码与多余using清理：EQ 10根对上游0.41.0为 `IDENTICAL`（983项比较字段、600项剪枝计数）；循环出口共享排序后缀：EQ 10 + FULL 40根为 `IDENTICAL`（4673项比较字段、3000项剪枝计数），双侧100份结果有效且未触及时间边界。
+- 两阶段Release构建均为0警告/0错误，均带 `CopyModOnBuild=false`；Bash结构门禁均为 `REFACTOR_BOUNDARIES_OK search_files=192`。固定High 90/50000、Coordinator、Smart、DOP1，离线宿主workers=2；未运行原生游戏场景。
+- 比较器沿用已修正的递归遥测排除口径，保留路线、根状态、目录指纹、组合成员选择和确定性工作指标；不比较时间/内存。基线末根曾受一次误启动后取消的构建干扰，已排除并仅补跑该根。详细范围、原始失败记录、保留项及本地证据路径见[代码整洁度报告](refactoring/code-hygiene-review-2026-09-18.md)。
 
 ## 0.41.0：问题包开战默认与仓库内无头实例（2026-09-18）
 
@@ -86,15 +89,6 @@
 - 5份能力世界线主包全部恢复并完成当前VeryHigh搜索。`57144c6f`、`bfbb533b`、`c11060be` 的 continuation/native-state 均通过；`429834c8`、`5355faf5` continuation通过，旧模型编号映射未记录使native-state不可比。当前战损依次为16/24/5/15/1，旧报告为43/39/25/55/20，玩家投影为16/14/1/36/2；全部0药、完整胜利。能力固定前缀分别取得16/24/5/24/1；除实验体由15战损普通成员胜出外，其余四份的能力前缀就是当前最优。
 - 用户要求停止后未继续运行部署；已启动的代表部署请求在产出结果前终止，不计为通过。其进程与实例目录已删除，最终 `headless-instances` 为空。
 
-
-## 0.40.2：No-GC 区域准入下限（2026-09-17）
-
-- `tools/CombatSolver.GcPolicyChecks` 新增 `GcRegionAdmissionChecks`（6 项），可直接无头运行且**直接编译生产源码**，不需要游戏进程：`dotnet run --project tools/CombatSolver.GcPolicyChecks/CombatSolver.GcPolicyChecks.csproj -c Release -- admission`。输出 `GC_REGION_ADMISSION_OK declined the reported 12GiB-to-2.97GiB region; partial caps, small-machine budgets and the inclusive threshold passed.`
-- 覆盖场景：问题包原文数值 12 GiB → 2 967 362 558 字节**必须被拒绝**；12 GiB → 8 GiB 必须进入（部分缩水不等于失效）；2 GiB → 1800 MiB 必须进入（尺度无关）；4 GiB → 300 MiB 必须拒绝（低于 `MinimumNoGcRegionBudgetBytes`）；8 GiB → 4 GiB 必须进入（阈值含等号）；被拒绝后 `SearchMemoryPressureSignal` 必须满足 `!IsLimitReached() && RemainingBytes == long.MaxValue`（证明检查点在构造上不再可能触发）。
-- 全套复跑无回归：base 无参数 20→**26 项**通过（原 20 + 新增 6）、`scopes` 8 项、`recovery` 6 项、`recovery-lifecycle` 2 项、`memory` 1 项、`parallelism` 15 项，退出码全部为 0。Release 构建 0 警告、0 错误。
-- **未执行**：本机内存充裕，`Capped` 不会为真，**拒绝分支未在任何真实运行（无人战斗或可见 Steam）中被触发**；因此本轮没有任何实机 `GC_NO_GC_REGION_DECLINED` 证据，也没有端到端加速比。构建与静态检查通过不等于真实游戏或 Windows 的性能证明（与 `GcPolicyChecks` 既有 README 的口径一致）。未启动可见 Steam，未运行无人战斗场景。详见[性能报告](performance/no-gc-region-admission-20260917.md)。
-- 回归面已知为**局部**：`TryStartNoGcRegionWithSizeFallback`、`MinimumNoGcRegionBudgetBytes`、`GC_NO_GC_REGION_SIZE_FALLBACK`、`no_gc_region_unavailable`、`Capped` 在整个仓库各只出现在 `src/Runtime/SearchGcPolicy.cs` 一个文件（`Testing` 层零引用），因此本次改动未触及既有无人战斗合同。
-- 相关既有门槛未变：`UnattendedTestRunner.SearchPolicy.cs` 中 1 GiB 测试预算仍断言区域由 CLR 真实建立；只有在 headroom 低于 1 GiB 时新判定才会拒绝它，本机不满足该条件。
 
 ## 0.40.2：多策略路线搜索默认关闭与大战损引导（2026-09-17）
 

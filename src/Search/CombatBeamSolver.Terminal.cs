@@ -1,9 +1,7 @@
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
-using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.Hooks;
 using MegaCrit.Sts2.Core.Models;
@@ -17,7 +15,6 @@ using MegaCrit.Sts2.Core.ValueProps;
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.InCombat.Mirrors;
 using CombatSolver.Engine.InCombat.Simulation;
-using BufferCard = MegaCrit.Sts2.Core.Models.Cards.Buffer;
 
 namespace CombatSolver;
 
@@ -332,25 +329,16 @@ internal sealed partial class CombatBeamSolver
             if (!hasPlannedNextTurn)
                 continue;
             int forecastOffset = node.Turn - _startTurnNumber;
-            // 搜索期间不再为每条 frontier 立即拼续用戳；选中路径在这里按完整动作前缀重建。
-            // 选中的末尾节点可能已经释放模拟器，因此总是从 root 用相同 Replay 重建戳记。
+            // 淘汰的前沿节点不再物化续用戳；从选中路径的动作前缀重放得到同一边界。
             SimulationSnapshot? turnSetupRoot = _includeTurnSetup
                 ? ReplayTurnSetup(node.GetTurnSetupChoices())
                 : null;
             SimulationSnapshot? replayed = null;
             try
             {
-                replayed = Replay(
-                    node.Actions,
-                    turnSetupRoot,
-                    _startTurnNumber,
-                    priorActionCount: 0);
+                replayed = Replay(node.Actions, turnSetupRoot, _startTurnNumber, priorActionCount: 0);
                 ContinuationStamp expected = ContinuationStamp.CapturePredicted(
-                    _player,
-                    replayed.Simulator,
-                    node.Turn,
-                    _forecast,
-                    _startTurnNumber);
+                    _player, replayed.Simulator, node.Turn, _forecast, _startTurnNumber);
                 continuations.Add(new CachedContinuation(expected, node.Turn, forecastOffset));
             }
             finally

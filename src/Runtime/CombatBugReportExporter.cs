@@ -1217,6 +1217,7 @@ internal static class CombatBugReportExporter
             settings.RelicCounterRules,
             settings.BrightestFlameMaxHpLossLimit,
             settings.IgnoreLongTermRewards,
+            settings.PredictPotionReward,
             useNoveltyPortfolio = settings.UseNoveltyPortfolio
                 || UnattendedTestRunner.UseNoveltyPortfolioOverride,
             useBeamWidthPortfolio = settings.UseBeamWidthPortfolio
@@ -1266,6 +1267,7 @@ internal static class CombatBugReportExporter
         captured["useBeamWidthPortfolio"] = policy.UseBeamWidthPortfolio;
         captured["portfolioSelector"] = policy.PortfolioExperiment?.Model?.ModelId;
         captured["useNoveltyPortfolio"] = policy.UseNoveltyPortfolio;
+        captured["predictPotionReward"] = policy.PredictPotionReward;
         captured["noveltyBudget"] = JsonSerializer.SerializeToNode(policy.NoveltyBudget, JsonOptions);
         captured["beamWidthPortfolioWidths"] = JsonSerializer.SerializeToNode(
             policy.BeamWidthPortfolioWidths,
@@ -1709,20 +1711,6 @@ internal static class CombatBugReportExporter
 
     private static byte[] SerializeSnapshotToUtf8Bytes(object snapshot)
         => JsonSerializer.SerializeToUtf8Bytes(snapshot, snapshot.GetType(), JsonOptions);
-
-    private static byte[] ReadSharedFile(string path, long maximumBytes)
-    {
-        using FileStream input = new(
-            path,
-            FileMode.Open,
-            System.IO.FileAccess.Read,
-            FileShare.ReadWrite | FileShare.Delete);
-        if (input.Length > maximumBytes)
-            throw new InvalidDataException($"取证文件超过上限：{path} ({input.Length} bytes)。");
-        using MemoryStream output = new((int)input.Length);
-        input.CopyTo(output);
-        return output.ToArray();
-    }
 
     private static void StartBackgroundThread()
     {

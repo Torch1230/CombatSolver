@@ -148,6 +148,7 @@ internal static class Program
                             state = item.ExpectedState.StateText,
                         })
                         .ToArray(),
+                    ["continuations"] = outcome.Continuations,
                     ["patchLog"] = ModRuntime.PatchLog.ToArray(),
                 };
                 // 与游戏内 result.json 同名同形的那一份（游戏自己的 Writer 造的）。
@@ -227,6 +228,9 @@ internal static class Program
                 ["totalAllocatedBytes"] = payload.GetValueOrDefault("totalAllocatedBytes"),
                 ["rootContinuationStamp"] = payload.GetValueOrDefault("search") is Dictionary<string, object?> s
                     ? s.GetValueOrDefault("rootContinuationStamp")
+                    : null,
+                ["continuations"] = payload.GetValueOrDefault("search") is Dictionary<string, object?> search
+                    ? search.GetValueOrDefault("continuations")
                     : null,
                 ["catalogFingerprint"] = payload.GetValueOrDefault("catalogFingerprint"),
 

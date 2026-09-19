@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Runtime;
 using Godot;
 using MegaCrit.Sts2.Core.Combat;
-using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
@@ -503,6 +502,7 @@ internal static partial class SolverController
                 || UnattendedTestRunner.UseNoveltyPortfolioOverride,
             UseBeamWidthPortfolio = settings.UseBeamWidthPortfolio
                 || UnattendedTestRunner.UseBeamWidthPortfolioOverride,
+            PredictPotionReward = settings.PredictPotionReward,
             BeamWidthPortfolioWidths = UnattendedTestRunner.BeamWidthPortfolioWidthsOverride,
             BeamWidthPortfolioPlainBaselineMember =
                 UnattendedTestRunner.BeamWidthPortfolioPlainBaselineMemberOverride,
@@ -1134,7 +1134,7 @@ internal static partial class SolverController
             CombatRootSnapshot rootSnapshot;
             try
             {
-                rootSnapshot = CombatRootSnapshot.Capture(state);
+                rootSnapshot = CombatRootSnapshot.Capture(state, settings.PredictPotionReward);
             }
             finally
             {
@@ -1152,7 +1152,10 @@ internal static partial class SolverController
                 $"listeners={rootSnapshot.CapturedHookListenerCount} " +
                 $"run_mod_subscribers={rootSnapshot.CapturedRunModSubscriberCount} " +
                 $"combat_mod_subscribers={rootSnapshot.CapturedCombatModSubscriberCount} " +
-                $"base_lib_card_modifiers={rootSnapshot.CapturedBaseLibCardModifiers}");
+                $"base_lib_card_modifiers={rootSnapshot.CapturedBaseLibCardModifiers} " +
+                $"potion_reward={rootSnapshot.PotionRewardOutlook.Forecast}" +
+                $"/{rootSnapshot.PotionRewardOutlook.ForecastPotionId ?? "-"}" +
+                $"/credit={rootSnapshot.PotionRewardOutlook.ReplacementHpCredit}");
             _combat.State = state;
             _combat.LatestResult = null;
             _combat.LatestStamp = null;
@@ -1840,6 +1843,26 @@ internal static partial class SolverController
         if (_combat.AutomaticSearchPaused || !AutomaticCalculationEnabled)
         {
             Entry.Logger.Info("[CombatSolver/Test] POTION_DIRECTIVE_RECALCULATION_SKIPPED reason=automatic_calculation_inactive");
+            return;
+        }
+        RequestSearch(host, state, SearchReason.Manual);
+    }
+
+    internal static void SetPotionRewardPrediction(NGame host, CombatState state, bool enabled)
+    {
+        AssertMainThread();
+        if (SolverSettings.Current.PredictPotionReward == enabled)
+            return;
+        SolverSettings.Update(SolverSettings.Current with { PredictPotionReward = enabled });
+        _combat.ContinuationSource = null;
+        _combat.PendingCompleteProjectionBaseline = null;
+        if (_deployment != null)
+            return;
+        _combat.LatestResult = null;
+        _combat.LatestStamp = null;
+        if (_combat.AutomaticSearchPaused || !AutomaticCalculationEnabled)
+        {
+            SolverOverlay.ShowPotionRewardSettingChanged(host);
             return;
         }
         RequestSearch(host, state, SearchReason.Manual);

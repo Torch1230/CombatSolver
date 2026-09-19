@@ -10,29 +10,29 @@ internal static partial class CombatSearchCoordinator
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <see cref="SolverSearchProfile.MaxExpandedNodes" /> 是**工作量帽**，不是搜索地平线，
-    /// 可它在长战斗里总是先到。一场 8 回合 Boss 战里量过：85 次回合层截断**全部**是
-    /// <c>reason=nodes</c>，<c>reason=time</c> 一次都没有，时间预算只用掉 5%–30%。
-    /// 原因是节点预算要按 <see cref="SolverWeights.BossEnemyStrengthSuppressionHorizon" />
-    /// 摊到每个回合层，Boss 战摊完只剩八分之一，而时间那一侧摊完还很宽裕。往上调一档也不解决：
-    /// 预设把时间和节点同比例放大，而时间本来就有九成用不掉。
+    /// 仅对没有完整胜利且未被玩家接管的请求补搜；停止请求仍由既有检查处理，搜索异常不在此吞掉。
+    /// 每轮从同一根重新搜索，按原配置倍增 Beam、节点及选择分支上限，时间只取请求剩余量。
+    /// 上一轮耗时乘以扩展倍数只是启动下一轮的估计门槛，不保证下一轮耗时或质量。
+    /// 没有严格改善则停止；比较和选用仍沿用既有终局质量规则。
     /// </para>
     /// <para>
-    /// 同一个检查点上量过四组，Beam 和节点是**乘**的关系：
+    /// 为什么两边一起翻（历史实测，2026-09，极高档还是 50 000 节点的时期；当前四档为
+    /// 60 000 / 120 000 / 250 000 / 500 000，数字只作量级参考）：
+    /// <see cref="SolverSearchProfile.MaxExpandedNodes" /> 是工作量帽，不是搜索地平线，可它在长战斗里
+    /// 总是先到。一场 8 回合 Boss 战里 85 次回合层截断全部是 <c>reason=nodes</c>，<c>reason=time</c>
+    /// 一次都没有，时间预算只用掉 5%–30%：节点预算要按
+    /// <see cref="SolverWeights.BossEnemyStrengthSuppressionHorizon" /> 摊到每个回合层，而时间那一侧摊完
+    /// 还很宽裕。同一个检查点上量过五组，Beam 和节点是乘的关系：
     /// </para>
     /// <list type="bullet">
     /// <item>Beam 90 / 25 000：输。主搜索在 2 701–5 206 个节点上就把前沿走空了。</item>
-    /// <item>Beam 90 / 50 000：输，而且主搜索展开的节点数**一个不变**——花不掉。</item>
+    /// <item>Beam 90 / 50 000：输，而且主搜索展开的节点数一个不变——花不掉。</item>
     /// <item>Beam 135 / 50 000：输。这个 Beam 下找到胜利需要 83 423 个节点。</item>
     /// <item>Beam 135 / 100 000：赢（两瓶药、第 9 回合斩杀、剩 1 血），用了 83 423 个节点。</item>
     /// <item>Beam 512 / 100 000：赢（第 8 回合斩杀、剩 3 血），只用了 26 671 个节点。</item>
     /// </list>
     /// <para>
-    /// 所以两边必须一起抬：只抬节点，窄 Beam 花不掉；只抬 Beam，节点又不够。
-    /// </para>
-    /// <para>
-    /// 只在整份请求**一条胜利路线都没有**时触发：已经找到胜利的战斗一次都不会走进来，
-    /// 行为逐位不变。触发时多花的，正是玩家在档位里配了却一直没被用掉的那段时间。
+    /// 这是一个检查点上的观察，不是普遍规律；更宽的搜索也不保证一定有更优解。
     /// </para>
     /// </remarks>
     internal static SolverResult EscalateSearchWhenNoVictory(
@@ -76,7 +76,7 @@ internal static partial class CombatSearchCoordinator
             lastPassMilliseconds = passClock.ElapsedMilliseconds;
             if (candidate.ResultScope != SolverResultScope.SearchCompletion)
                 return candidate;
-            // 没变好就停：多给的预算既然没换来更好的路线，再翻一倍也只是让玩家多等。
+            // 当前补搜未严格改善就停止，限制继续扩预算的成本；这不代表更宽搜索一定没有更优解。
             bool improved = candidate.ResultScope == SolverResultScope.SearchCompletion
                 && CompareCompletedResultPrimaryQuality(root, policy, candidate, selected) < 0;
             policy.Diagnostics.Info(
@@ -103,8 +103,7 @@ internal static partial class CombatSearchCoordinator
             return null;
         long remainingMilliseconds =
             configured.SoftTimeBudgetMilliseconds - elapsedMilliseconds;
-        // 下一轮搜索面和节点都翻倍，耗时按同一个倍数估。估不进剩余预算就不开始——开了也只会
-        // 撞死线，拿回一个更差的半成品，而玩家白等一遍。
+        // 按扩展倍数估计下一轮耗时；估计超过剩余预算就不启动，避免追加一轮高超时风险的搜索。
         long projectedMilliseconds = Math.Max(1, lastPassMilliseconds)
             * SolverWeights.NoVictoryEscalationFactor;
         if (remainingMilliseconds <= 0 || remainingMilliseconds < projectedMilliseconds)

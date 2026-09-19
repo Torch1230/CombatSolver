@@ -93,6 +93,7 @@ internal sealed record SolverSettingsData
     [JsonIgnore]
     public SolverPotionPolicy PotionPolicy { get; init; } = SolverPotionPolicy.Smart;
     public PersistedPotionDirective[] PotionDirectives { get; init; } = [];
+    public bool PredictPotionReward { get; init; }
     public bool RelicStrategyEnabled { get; init; } = true;
     public RelicCounterRule[] RelicCounterRules { get; init; } = [];
     public GrowthValues GrowthBudgets { get; init; }
@@ -158,6 +159,7 @@ internal sealed record SolverSettingsSnapshot(
     public bool IgnoreLongTermRewards { get; init; }
     public bool UseBeamWidthPortfolio { get; init; }
     public bool UseNoveltyPortfolio { get; init; }
+    public bool PredictPotionReward { get; init; }
 }
 
 internal static class SolverSettings
@@ -305,6 +307,7 @@ internal static class SolverSettings
             IgnoreLongTermRewards = data.IgnoreLongTermRewards,
             UseBeamWidthPortfolio = data.UseBeamWidthPortfolio,
             UseNoveltyPortfolio = data.UseNoveltyPortfolio,
+            PredictPotionReward = data.PredictPotionReward,
         };
     }
 

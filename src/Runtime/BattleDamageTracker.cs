@@ -7,7 +7,8 @@ namespace CombatSolver;
 internal readonly record struct BattleDamageSnapshot(
     int HpLostSoFar,
     int SoldHpCommitted,
-    int PotionsUsedSoFar);
+    int PotionsUsedSoFar,
+    string[] PotionIdsUsedSoFar);
 
 internal static class BattleDamageTracker
 {
@@ -38,7 +39,10 @@ internal static class BattleDamageTracker
 
         Player? player = GetSinglePlayer(combat);
         if (player == null)
-            return new BattleDamageSnapshot(_hpLostSoFar, _soldHpCommitted, PotionsUsedSoFar());
+        {
+            string[] usedPotions = PotionIdsUsedSoFar();
+            return new BattleDamageSnapshot(_hpLostSoFar, _soldHpCommitted, usedPotions.Length, usedPotions);
+        }
 
         int currentHp = player.Creature.CurrentHp;
         var historyEntries = CombatManager.Instance.History.Entries;
@@ -64,7 +68,8 @@ internal static class BattleDamageTracker
         _hpLostSoFar += Math.Max(observedHpDrop, historyHpLost);
         _lastObservedHp = currentHp;
         _historyEntryCountAtLastObservation = historyEntries.Count();
-        return new BattleDamageSnapshot(_hpLostSoFar, _soldHpCommitted, PotionsUsedSoFar());
+        string[] potionIds = PotionIdsUsedSoFar();
+        return new BattleDamageSnapshot(_hpLostSoFar, _soldHpCommitted, potionIds.Length, potionIds);
     }
 
     public static void RegisterPlan(CombatState combat, SolverResult result)
@@ -95,8 +100,11 @@ internal static class BattleDamageTracker
     private static Player? GetSinglePlayer(ICombatState? combat)
         => combat?.Players.Count == 1 ? combat.Players[0] : null;
 
-    private static int PotionsUsedSoFar()
-        => Math.Max(0, CountPotionHistoryEntries() - _potionHistoryCountAtStart);
+    private static string[] PotionIdsUsedSoFar()
+        => CombatManager.Instance.History.Entries.OfType<PotionUsedEntry>()
+            .Skip(_potionHistoryCountAtStart)
+            .Select(entry => entry.Potion.Id.Entry)
+            .ToArray();
 
     private static int CountPotionHistoryEntries()
         => CombatManager.Instance.History.Entries.OfType<PotionUsedEntry>().Count();

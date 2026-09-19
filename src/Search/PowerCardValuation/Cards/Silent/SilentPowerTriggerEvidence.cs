@@ -2,7 +2,6 @@ using CombatSolver.Engine.Common;
 using CombatSolver.Engine.InCombat.Simulation;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models.Powers;
-using MegaCrit.Sts2.Core.ValueProps;
 
 namespace CombatSolver;
 
@@ -106,7 +105,7 @@ internal sealed partial class CombatBeamSolver
                 parent.Snapshot.ProjectedPlayerHp);
     }
 
-    private int SilentPowerTriggerProjectionFloor(string cardId, SearchNode child)
+    private static int SilentPowerTriggerProjectionFloor(string cardId, SearchNode child)
         => cardId switch
         {
             "FAN_OF_KNIVES" => Math.Max(1, child.Snapshot.AliveEnemyCount),

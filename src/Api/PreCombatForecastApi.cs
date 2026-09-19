@@ -532,12 +532,6 @@ public static class PreCombatForecastApi
 
     private static Task<PreCombatForecastResult> CompleteAfterLiveValidation(
         PreCombatLiveStateSnapshot snapshot,
-        PreCombatForecastResult result,
-        CancellationToken cancellationToken)
-        => CompleteAfterLiveValidation(snapshot, Task.FromResult(result), cancellationToken);
-
-    private static Task<PreCombatForecastResult> CompleteAfterLiveValidation(
-        PreCombatLiveStateSnapshot snapshot,
         Task<PreCombatForecastResult> worker,
         CancellationToken cancellationToken,
         bool awaitOwnedWorkerCancellation = false)

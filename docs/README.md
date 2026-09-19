@@ -9,6 +9,10 @@
 
 | 要查什么 | 入口 |
 |---|---|
+| 状态键为什么要含整场历史计数、条件式与无条件追加的对照 | [状态键历史计数报告](strategy/state-key-history-counters-20260919.md) |
+| 战后掉药预测（奖励 RNG 镜像）与满栏用药门槛 | [战后掉药预测报告](strategy/potion-reward-outlook-20260918.md) |
+| 0.41.0代码体量、死代码诊断与保持行为的轻度清理 | [代码整洁度审查](refactoring/code-hygiene-review-2026-09-18.md) |
+| 全量静态诊断、克隆、耦合与技术债分批清理 | [技术债深挖](refactoring/tech-debt-audit-2026-09-18.md) |
 | 能力牌逐卡建模、统一估值接口与后续独立搜索分支 | [能力牌优化计划](strategy/power-card-valuation-plan-20260917.md) |
 | 无需训练的有界新颖性／Beam 组合、实验开关和完整对照 | [有界多策略搜索](strategy/bounded-novelty-search-20260916.md) |
 | 不启动 Godot 批量跑搜索、量宽度与预算 | [离线搜索宿主](OFFLINE_SEARCH_HARNESS.md) |
@@ -26,11 +30,12 @@
 | 女王原包为何恢复失败、为何频繁GC及本轮优化取舍 | [恢复与性能报告](performance/queen-replay-optimization-20260913.md) |
 | 未变状态共享、标签/大牌堆容器优化与女王GC问题 | [调查与实测](performance/state-sharing-20260913.md) |
 | 内存主要花在哪里，什么条件才能缩至十分之一 | [分配与峰值研究](performance/memory-tenfold-20260913.md) |
-| 搜索无进展内存截断、排他阶段指标与续用戳延迟捕获 | [搜索内存恢复与排他分配](performance/search-memory-recovery-20260919.md) |
-| 搜索保留表规模、消融上界与待决策的表上限 | [保留表规模与上限决策](performance/search-retention-bounds-20260919.md) |
-| 极高预设 16 并行基线、离线宿主保真与阶段归因 | [16 并行基线与阶段归因](performance/dop16-veryhigh-fidelity-20260919.md) |
-| 重型根的正则 slug 支配项、纯值记忆化与同根 A/B | [ModelDb.GetId 记忆化](performance/defect-modeldb-getid-cache-20260919.md) |
-| 遗物印牌站点复用根生成池：只保留 Crossbow，其余按测量回退 | [遗物印牌站点复用](performance/relic-generation-pool-reuse-20260919.md) |
+| 重型根的纯值模型 ID 缓存与定向 A/B | [ModelDb.GetId 记忆化](performance/defect-modeldb-getid-cache-20260919.md) |
+| 遗物印牌站点仅 Crossbow 复用根生成池 | [遗物印牌站点复用](performance/relic-generation-pool-reuse-20260919.md) |
+| PR #114 转置表上限的决策代价和固定根证据 | [搜索保留表](performance/search-retention-bounds-20260919.md) |
+| PR #114 内存截断、续用戳与排他阶段测量 | [搜索内存恢复](performance/search-memory-recovery-20260919.md) |
+| PR #114 离线宿主保真与 16 并行基线 | [16 并行阶段归因](performance/dop16-veryhigh-fidelity-20260919.md) |
+| 默认关闭的学习型组合选择器和训练反例 | [学习型门控](strategy/learned-portfolio-gate-20260917.md) |
 | 943份计划外重算报告、16类已修机制及证据缺口 | [2026-09-13批次结果](issues/report-replans-20260913.md) |
 | 环绕轨道、自动化的持续返能估值与实战对照 | [返能能力估值](issues/recurring-energy-valuation-20260913.md) |
 | 后续六方向的当前诊断、逐项实现与对照 | [六方向开发记录](performance/six-directions-20260913.md) |

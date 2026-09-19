@@ -1,6 +1,4 @@
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
@@ -1013,27 +1011,7 @@ internal sealed partial class CombatBeamSolver
             .CompareTo(right.CycleExitProbe?.RemainingActions ?? int.MaxValue);
         if (comparison != 0)
             return comparison;
-        comparison = CycleHealthRisk(left, bestMaxHp)
-            .CompareTo(CycleHealthRisk(right, bestMaxHp));
-        if (comparison != 0)
-            return comparison;
-        comparison = left.PotionStrategicCost.CompareTo(right.PotionStrategicCost);
-        if (comparison != 0)
-            return comparison;
-        comparison = left.Turn.CompareTo(right.Turn);
-        if (comparison != 0)
-            return comparison;
-        comparison = left.ActionCount.CompareTo(right.ActionCount);
-        if (comparison != 0)
-            return comparison;
-        comparison = right.Snapshot.ProjectedPlayerHp.CompareTo(
-            left.Snapshot.ProjectedPlayerHp);
-        if (comparison != 0)
-            return comparison;
-        comparison = right.Score.CompareTo(left.Score);
-        return comparison != 0
-            ? comparison
-            : CompareCycleCandidateDeterministicFingerprints(left, right);
+        return CompareCycleExitQuality(left, right, bestMaxHp);
     }
 
     private static int CompareCycleExitCandidates(
@@ -1063,27 +1041,7 @@ internal sealed partial class CombatBeamSolver
             .CompareTo(right.CycleExitProbe?.RemainingActions ?? int.MaxValue);
         if (comparison != 0)
             return comparison;
-        comparison = CycleHealthRisk(left, bestMaxHp)
-            .CompareTo(CycleHealthRisk(right, bestMaxHp));
-        if (comparison != 0)
-            return comparison;
-        comparison = left.PotionStrategicCost.CompareTo(right.PotionStrategicCost);
-        if (comparison != 0)
-            return comparison;
-        comparison = left.Turn.CompareTo(right.Turn);
-        if (comparison != 0)
-            return comparison;
-        comparison = left.ActionCount.CompareTo(right.ActionCount);
-        if (comparison != 0)
-            return comparison;
-        comparison = right.Snapshot.ProjectedPlayerHp.CompareTo(
-            left.Snapshot.ProjectedPlayerHp);
-        if (comparison != 0)
-            return comparison;
-        comparison = right.Score.CompareTo(left.Score);
-        return comparison != 0
-            ? comparison
-            : CompareCycleCandidateDeterministicFingerprints(left, right);
+        return CompareCycleExitQuality(left, right, bestMaxHp);
     }
 
     private static int CompareCycleExitNewestCandidates(
@@ -1099,7 +1057,16 @@ internal sealed partial class CombatBeamSolver
             .CompareTo(left.CycleExitProbe?.OriginGeneration ?? 0);
         if (comparison != 0)
             return comparison;
-        comparison = CycleHealthRisk(left, bestMaxHp)
+        return CompareCycleExitQuality(left, right, bestMaxHp);
+    }
+
+    // 出口候选在各自租约前缀同分后共用此顺序；区域和跨回合候选有不同的键次序。
+    private static int CompareCycleExitQuality(
+        SearchNode left,
+        SearchNode right,
+        int bestMaxHp)
+    {
+        int comparison = CycleHealthRisk(left, bestMaxHp)
             .CompareTo(CycleHealthRisk(right, bestMaxHp));
         if (comparison != 0)
             return comparison;

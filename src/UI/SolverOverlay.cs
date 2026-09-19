@@ -49,6 +49,8 @@ internal static class SolverOverlay
     private static VBoxContainer? _mainStack;
     private static ColorRect? _footerDivider;
     private static SolverSettingsPanel? _settingsPanel;
+    private static Label? _rewardOutcomeLabel;
+    private static Label? _usedPotionOutcomeLabel;
     private static PanelContainer? _summaryStatusBadge;
     private static Label? _summaryStateLabel;
     private static Label? _summaryContextLabel;
@@ -678,6 +680,9 @@ internal static class SolverOverlay
         RefreshControls();
     }
 
+    public static void ShowPotionRewardSettingChanged(Node host)
+        => Show(host, SolverText.Get("药水奖励预测设置已更改，请重新计算路线。"));
+
     public static void ShowProgress(
         SolverProgress progress,
         bool deployWhenReady,
@@ -911,8 +916,20 @@ internal static class SolverOverlay
         }
         if (_potionOutcomeLabel != null)
         {
-            _potionOutcomeLabel.Visible = snapshot.ProjectedBattlePotionCount > 0;
-            _potionOutcomeLabel.Text = SolverText.Format($"预计用{snapshot.ProjectedBattlePotionCount}瓶药");
+            _potionOutcomeLabel.Visible = snapshot.PlannedPotionOutcomeText != null
+                || snapshot.ProjectedBattlePotionCount > 0 && snapshot.UsedPotionOutcomeText == null;
+            _potionOutcomeLabel.Text = snapshot.PlannedPotionOutcomeText
+                ?? SolverText.Format($"预计用{snapshot.ProjectedBattlePotionCount}瓶药");
+        }
+        if (_rewardOutcomeLabel != null)
+        {
+            _rewardOutcomeLabel.Visible = snapshot.RewardOutcomeText != null;
+            _rewardOutcomeLabel.Text = snapshot.RewardOutcomeText ?? string.Empty;
+        }
+        if (_usedPotionOutcomeLabel != null)
+        {
+            _usedPotionOutcomeLabel.Visible = snapshot.UsedPotionOutcomeText != null;
+            _usedPotionOutcomeLabel.Text = snapshot.UsedPotionOutcomeText ?? string.Empty;
         }
         if (_hpOutcomeLabel != null)
             _hpOutcomeLabel.Visible = true;
@@ -1497,6 +1514,7 @@ internal static class SolverOverlay
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
         };
         _settingsPanel.ResetPositionRequested += ResetOverlayPosition;
+        _settingsPanel.PotionRewardPredictionChanged += OnPotionRewardPredictionChanged;
         primaryColumn.AddChild(_settingsPanel);
 
         _potionStrategyPanel = new SolverPotionStrategyPanel();
@@ -1544,6 +1562,14 @@ internal static class SolverOverlay
         _deathOutcomeLabel.Visible = false;
         _deathOutcomeLabel.HorizontalAlignment = HorizontalAlignment.Right;
         _routeHeadingRow.AddChild(_deathOutcomeLabel);
+        _rewardOutcomeLabel = CreateTextLabel(string.Empty, SolverUiTokens.Type.Body, Accent, FontType.Bold);
+        _rewardOutcomeLabel.Visible = false;
+        _rewardOutcomeLabel.SizeFlagsHorizontal = Control.SizeFlags.ShrinkEnd;
+        _routeHeadingRow.AddChild(_rewardOutcomeLabel);
+        _usedPotionOutcomeLabel = CreateTextLabel(string.Empty, SolverUiTokens.Type.Body, Warning, FontType.Bold);
+        _usedPotionOutcomeLabel.Visible = false;
+        _usedPotionOutcomeLabel.SizeFlagsHorizontal = Control.SizeFlags.ShrinkEnd;
+        _routeHeadingRow.AddChild(_usedPotionOutcomeLabel);
         _potionOutcomeLabel = CreateTextLabel(SolverText.Get("预计用1瓶药"), SolverUiTokens.Type.Body, Warning, FontType.Bold);
         _potionOutcomeLabel.Visible = false;
         _potionOutcomeLabel.SizeFlagsHorizontal = Control.SizeFlags.ShrinkEnd;
@@ -3287,6 +3313,16 @@ internal static class SolverOverlay
         SolverController.SetPotionDirective(host, state, slot, potionId, directive);
         _potionStrategyPanel?.Invalidate();
         RefreshControls();
+    }
+
+    private static void OnPotionRewardPredictionChanged(bool enabled)
+    {
+        NGame? host = NGame.Instance;
+        CombatState? state = CombatManager.Instance.DebugOnlyGetState();
+        if (host != null && state != null && CombatManager.Instance.IsInProgress)
+            SolverController.SetPotionRewardPrediction(host, state, enabled);
+        else
+            SolverSettings.Update(SolverSettings.Current with { PredictPotionReward = enabled });
     }
 
     private static void OnPotionPresetRequested(PotionStrategyPreset preset)

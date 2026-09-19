@@ -47,7 +47,6 @@ internal sealed partial class CombatBeamSolver
                 child,
                 damagePerAttack: PowerAmountGain<DemonFormPower>(parent, child)),
             "FEEL_NO_PAIN" => PowerPerTriggerBlockPotential(
-                child,
                 PowerAmountGain<FeelNoPainPower>(parent, child),
                 PowerCountWithExhaust(child),
                 incoming),
@@ -102,5 +101,4 @@ internal sealed partial class CombatBeamSolver
         };
     }
 }
-
 
