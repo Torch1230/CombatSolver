@@ -1,5 +1,14 @@
 # CombatSolver 开发笔记与未来构想
 
+## 未发布：遗物印牌站点的根生成池复用，只保留 Crossbow（2026-09-19）
+
+- 承上一轮 ModelDb.GetId 记忆化：剩下的印牌路径里只有 6 个**遗物**站点仍直连原生 `CardPoolModel.GetUnlockedCards`。按站点分组做单变量 A/B（No-GC 12 GB、DOP1 判等价 + DOP16 各 3 次交错判收益）后，**只保留 Crossbow**。
+- 保留：`SimulatedCombatState.RelicTurnStart.cs` 的 `case Crossbow` 改用已审计的 `GetDistinctUnlockedCharacterAttacksForCombat`；原 `GenerateRelicCards` 拆出 `AddGeneratedRelicCards`（只保留原版加牌与「本回合免费」语义），其余站点继续走原 `GenerateRelicCards`。构造根 `inj-crossbow-defect-elite-01`（把 `CROSSBOW` 显式注入 `sel-defect-elite-01`，语料 150 件可随机遗物里没有它）：@20k **DOP1 分配 6.4657 → 5.5030 GiB（−14.89%）**、RSS 6.71 → 5.75 GiB、墙钟 18.55 → 17.36 s，转移 131514、选择分支 8612、全部非时序剪枝计数与 score/战损/finalHp/结束回合/planActions **逐位相同**；**DOP16 3+3 交错分配中位 6.7347 → 5.8182 GiB（−13.56%）**、KB/转移 55.53 → 47.89、RSS 7.06 → 6.13 GiB、墙钟 −3.46%，转移 127180 与剪枝/决策六次全同。无 Crossbow 哨兵 `sel-necrobinder-monster-04` DOP1 分配 −0.01%、决策与剪枝逐位相同。
+- 回退（收益未建立，非等价性问题——四组采样的转移/分支/剪枝/决策全部逐位相同）：`Toolbox`+`OrangeDough`（无色池）——语料根 DOP16 3+3 分配 3.817 → 3.819 GiB（+0.1%）、构造根（OrangeDough）2.070 → 2.071 GiB（+0.0%）；`ChoicesParadox`+`VexingPuzzlebox`+`BigHat`（自己角色池）——语料根 DOP16 3+3 1.6768 → 1.6767 GiB（−0.01%）、构造根（BigHat）2.3485 → 2.3483 GiB（−0.01%）。判据是用户确认的「噪声内不保留」。
+- 结构性原因（直接证据）：宿主在**玩家第一回合 Play 阶段**捕获搜索根，第一回合的回合开始/抽牌前遗物块已在根状态里，搜索只重放其后的转移，因此 5 个 `turn <= 1` 站点几乎不命中；基线 DLL 对含 Toolbox 的根做 20k 分配 trace，**整个 `Toolbox` 栈只有 0.0002 GiB（已覆盖栈 4.12 GiB 的 0.005%）**，`GetUnlockedCards` 全部 0.0003 GiB。`Crossbow` 没有回合守卫，每回合触发，所以只有它有量级。将来若出现「第一回合开始之前」捕获根的入口，这 5 个站点会重新变热，可按同一处一行式改写接回。
+- 验证：Release 构建 0 警告/0 错误；`./tools/verify-refactor-boundaries.sh` 通过。未启动可见 Steam、未运行 Windows 构建、未跑 500k 节点完整 VeryHigh；构造根不是语料根，Crossbow 的实机获取频率未知，因此这是「该遗物出现时的单根收益」。
+- 命令、三组对照表、回退记录与「其它角色卡池根快照（覆盖 SPLASH 剩余约 10%）」提案见 [遗物印牌站点复用](performance/relic-generation-pool-reuse-20260919.md)。
+
 ## 未发布：重型根的正则 slug 归因与 ModelDb.GetId 纯值记忆化（2026-09-19）
 
 - 分配 trace 归因（`sel-defect-elite-01`、20,000 节点、DOP16、No-GC 16 GB、`dotnet-trace` + [GcTraceAnalysis](../tools/GcTraceAnalysis/README.md) 全栈聚合）：confirmed search 20.98 GB 里 **12.31 GiB（约 59%）经 `StringHelper.Slugify` / `ModelId.SlugifyCategory` 的三次生成正则**；类型侧是 `Int32[]` 7.49 GiB、`String` 2.20 GiB、`Regex+Runner` 1.80 GiB、`Regex.Match` 1.68 GiB。唯一调用链是 `CardGenerationCardMirrors.SplashOnPlay` 遍历 `UnlockState.CharacterCardPools` 时，每个角色卡池的 `FilterThroughEpochs` 都重新走 `Epoch.get_Cards() → ModelDb.Card → ModelDb.GetId(Type)`；`Epoch.get_Cards` 与 `ModelDb.GetId` 都没有缓存。按发起方分桶为 `PredictionExtensions.GetUnlockedCards` 6.39 GiB、`SplashOnPlay` 直接调用 5.78 GiB。**本任务提示里的 fork、容器增长、保路 churn 都不是本轮支配项**（在排他阶段表里分别约占 9.5% / 1.4% / 1.4%）。

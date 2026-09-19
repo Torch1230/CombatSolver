@@ -319,7 +319,7 @@ Search在首回合、EndTurn及已知可能嵌套/重复的卡牌回放建立捕
 
 `CombatPredictionRngSet` 的九条流共享不可变完整状态值，真正随机操作时才物化当前分支独占的原生 Rng。已经物化的流在 Fork 当时立即捕获计数器及四段内部状态，不能共享调用方可能仍持有的可变引用。指纹、续用与只读投影读取 `*State`，不触发物化；原生算法与序列保持不变。根捕获只读取主线程的 RunRngSet，后续子分支不访问 live RNG。
 
-`RootCombatCardGenerationPoolSnapshot` 在主线程冻结无色、原生角色攻击及逐项核对的非Basic/Ancient、Power、Common候选；后三类分别保持原CardPoolModel.GetUnlockedCards来源与调用方谓词。`CombatCardGenerationExtensions` 通过内部快照接口读取只读候选；`TurnStartPowerSupport` 每次Power触发准备一次，回退路径仍仅取一次GetUnlockedCards结果，谓词/战斗过滤在每次抽取时执行。CallOfTheVoid与CreativeAi保留逐次取一张，HelloWorld保留一次取多张；`BundleOfJoyOnPlay`、`InfernalBladeOnPlay` 等既有入口不变。所有distinct入口仍使用TakeRandom及原RNG顺序，不换成NextItem；来源模型只读，PredictedCard.Create逐分支生成独占卡牌。角色、规范池、AllCards引用身份、约束及原生模型门禁不变，自定义/可变池走原路径，其他过滤不会自动获得缓存资格。
+`RootCombatCardGenerationPoolSnapshot` 在主线程冻结无色、原生角色攻击及逐项核对的非Basic/Ancient、Power、Common候选；后三类分别保持原CardPoolModel.GetUnlockedCards来源与调用方谓词。`CombatCardGenerationExtensions` 通过内部快照接口读取只读候选；`TurnStartPowerSupport` 每次Power触发准备一次，回退路径仍仅取一次GetUnlockedCards结果，谓词/战斗过滤在每次抽取时执行。CallOfTheVoid与CreativeAi保留逐次取一张，HelloWorld保留一次取多张；`BundleOfJoyOnPlay`、`InfernalBladeOnPlay` 等既有入口不变。所有distinct入口仍使用TakeRandom及原RNG顺序，不换成NextItem；来源模型只读，PredictedCard.Create逐分支生成独占卡牌。角色、规范池、AllCards引用身份、约束及原生模型门禁不变，自定义/可变池走原路径，其他过滤不会自动获得缓存资格。遗物侧只有 `SimulatedCombatState.RelicTurnStart` 的 `Crossbow`（无回合守卫、每回合触发）复用同一角色攻击牌候选；`ChoicesParadox`、`VexingPuzzlebox`、`BigHat`、`OrangeDough`、`Toolbox` 的守卫是 `turn <= 1`，而搜索根在玩家第一回合 Play 阶段捕获，这些块在搜索里不会执行，保持原 `GetUnlockedCards` 实现。
 
 `SimulatedCombatState.GetBaseHookListeners` 对可分段且注册卡牌数至少256的分支，先计数当前分支球、未移除卡牌及其附魔/灾厄，按确切容量分配后段列表，避免大附魔牌堆立即扩容。计数不运行Hook/追加器，不新增共享状态、缓存或失效规则；小牌堆及不透明附着监听根沿用单遍路径。
 

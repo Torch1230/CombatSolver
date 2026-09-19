@@ -30,6 +30,7 @@
 | 搜索保留表规模、消融上界与待决策的表上限 | [保留表规模与上限决策](performance/search-retention-bounds-20260919.md) |
 | 极高预设 16 并行基线、离线宿主保真与阶段归因 | [16 并行基线与阶段归因](performance/dop16-veryhigh-fidelity-20260919.md) |
 | 重型根的正则 slug 支配项、纯值记忆化与同根 A/B | [ModelDb.GetId 记忆化](performance/defect-modeldb-getid-cache-20260919.md) |
+| 遗物印牌站点复用根生成池：只保留 Crossbow，其余按测量回退 | [遗物印牌站点复用](performance/relic-generation-pool-reuse-20260919.md) |
 | 943份计划外重算报告、16类已修机制及证据缺口 | [2026-09-13批次结果](issues/report-replans-20260913.md) |
 | 环绕轨道、自动化的持续返能估值与实战对照 | [返能能力估值](issues/recurring-energy-valuation-20260913.md) |
 | 后续六方向的当前诊断、逐项实现与对照 | [六方向开发记录](performance/six-directions-20260913.md) |
