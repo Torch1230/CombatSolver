@@ -1,5 +1,9 @@
 # CombatSolver 开发笔记与未来构想
 
+## 未发布：生成卡池复用（从 PR #114 提取）
+
+- 无色与原生角色卡池在根捕获规范、只读的合格候选，分支仍按原筛选顺序及随机抽取规则生成独占卡牌；非规范或可变池走原路径。遗物站点仅复用 Crossbow 的根卡池，其余站点保留既有行为。原分支的定向对照与限制见[遗物印牌站点复用](performance/relic-generation-pool-reuse-20260919.md)。
+
 ## 未发布：模型 ID 纯值缓存（从 PR #114 提取）
 
 - `ModelDb.GetId(Type)` 只由类型决定；Runtime 按 Type 缓存不可变 ModelId，保留 null、异常和首次调用的原生路径。不缓存模型实例或卡池。原分支的定向 A/B 与适用范围见[ModelDb.GetId 记忆化](performance/defect-modeldb-getid-cache-20260919.md)，当前 main 组合尚不引用其收益数字。
