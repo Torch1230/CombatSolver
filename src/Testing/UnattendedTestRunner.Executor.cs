@@ -1123,12 +1123,122 @@ internal sealed partial class UnattendedTestRunner
                         Entry.Logger.Info(
                             $"[CombatSolver/Test] SINGLE_STEP_BOUNDARY turn={expectedTurn} " +
                             $"surface=Hand waiting_for_player=true solver_selected=false ui_turn={expectedTurn}");
+                        if (request.ScenarioId is "TOASTY-QOL-MANUAL-SAME" or "TOASTY-QOL-MANUAL-DIFFERENT"
+                            or "TOASTY-QOL-FROZEN-SAME" or "TOASTY-QOL-FROZEN-DIFFERENT")
+                        {
+                            if (request.ScenarioId == "TOASTY-QOL-MANUAL-SAME")
+                            {
+                                SolverResult source = SolverController.LastCompletedResultForTesting
+                                    ?? throw new InvalidOperationException("原生选牌预览缺少首轮路线。");
+                                BattleDamageSnapshot observed = new(7, 0, 0, [], 2);
+                                SolverOverlaySnapshot pending = SolverOverlaySnapshot.CapturePendingTurnSetup(
+                                    source, observed, expectedTurn, unexpectedReplan: false);
+                                int futureLoss = source.HpLostByTurn
+                                    .Where(item => item.Key >= expectedTurn).Sum(item => item.Value);
+                                int futureRecovery = source.HpRecoveredByTurn
+                                    .Where(item => item.Key >= expectedTurn).Sum(item => item.Value);
+                                if (pending.ProjectedBattleHpLost != 7 + futureLoss
+                                    || pending.RouteHpRecovered != 2 + futureRecovery
+                                    || !pending.HpOutcomeText.Contains($"已 7    预计 {7 + futureLoss} HP",
+                                        StringComparison.Ordinal)
+                                    || !pending.DetailsText.Contains("本局已发生 7", StringComparison.Ordinal))
+                                {
+                                    throw new InvalidOperationException("原生选牌预览丢失本场已受伤或已回血前缀。");
+                                }
+                                runner._completedChecks.Add("PendingTurnSetup:ObservedLoss=7:ObservedRecovery=2");
+                            }
+                            bool different = request.ScenarioId.EndsWith("DIFFERENT", StringComparison.Ordinal);
+                            bool frozen = request.ScenarioId.Contains("FROZEN", StringComparison.Ordinal);
+                            int searchesBeforeChoice = SolverController.SearchesStartedForTesting;
+                            if (frozen)
+                            {
+                                SolverController.SetRouteFrozen(runner._host, combatState, true);
+                                if (!SolverController.RouteFrozen || SolverController.FullAutoEnabled)
+                                    throw new InvalidOperationException("选牌页冻结未停止自动接管。");
+                            }
+                            await PlayerTurnSetupCoordinator.SelectPlannedOrDifferentChoiceForTesting(
+                                runner._host, different);
+                            while (PlayerTurnSetupCoordinator.IsManaging(combatState)
+                                   || player.PlayerCombatState?.Phase != PlayerTurnPhase.Play
+                                   || (!different && !SolverController.CanExecuteCurrentTurn)
+                                   || (different && !frozen && SolverController.UnexpectedReplanCountForTesting == 0)
+                                   || SolverController.IsSearching)
+                            {
+                                runner.EnsureWithinDeadline();
+                                await runner.NextFrameAsync();
+                            }
+                            if (frozen)
+                            {
+                                if (!SolverController.RouteFrozen
+                                    || SolverController.SearchesStartedForTesting != searchesBeforeChoice
+                                    || SolverController.CanExecuteCurrentTurn == different)
+                                    throw new InvalidOperationException("冻结路线的精确续用/失配状态不正确。");
+                                if (different)
+                                {
+                                    SolverController.RequestDeploy(runner._host, combatState);
+                                    if (SolverController.SearchesStartedForTesting != searchesBeforeChoice)
+                                        throw new InvalidOperationException("过期冻结路线触发了搜索或执行。");
+                                    SolverController.RequestSearch(runner._host, combatState, SearchReason.Manual);
+                                    while (SolverController.IsSearching
+                                           || SolverController.SearchesStartedForTesting == searchesBeforeChoice
+                                           || !SolverController.CanExecuteCurrentTurn)
+                                    {
+                                        runner.EnsureWithinDeadline();
+                                        await runner.NextFrameAsync();
+                                    }
+                                    if (SolverController.RouteFrozen || !SolverController.CanExecuteCurrentTurn)
+                                        throw new InvalidOperationException("手动重新计算未解除冻结并恢复可执行路线。");
+                                }
+                            }
+                            else if (different)
+                            {
+                                if (SolverController.UnexpectedReplanCountForTesting == 0
+                                    || SolverController.LastReusedTurnForTesting == expectedTurn
+                                    || SolverController.SearchesStartedForTesting <= searchesBeforeChoice)
+                                    throw new InvalidOperationException("不同的原生删牌未触发严格失配重算。");
+                            }
+                            else if (SolverController.SearchesStartedForTesting != searchesBeforeChoice
+                                     || SolverController.UnexpectedReplanCountForTesting != 0)
+                                throw new InvalidOperationException("按计划手动删牌产生了重复搜索。");
+                            runner._completedChecks.Add($"ToastyManualChoice:Turn={expectedTurn}:" +
+                                (frozen
+                                    ? different ? "FrozenMismatch=ReferenceOnly:ManualRecalculation=true"
+                                        : "FrozenExactReused=true:SearchesAdded=0"
+                                    : different ? "MismatchReplanned=true" : "ExactReused=true:SearchesAdded=0"));
+                            return Observation(combatEnded: false);
+                        }
                         if (request.SingleStepResumeModeForTest is not { } resumeMode)
                             return Observation(combatEnded: false);
 
+                        if (request.ScenarioId == "TOASTY-QOL-SINGLE-STEP-EXECUTE")
+                        {
+                            while (!PlayerTurnSetupCoordinator.ReplaySurfacePreparedForTesting)
+                            {
+                                runner.EnsureWithinDeadline();
+                                await runner.NextFrameAsync();
+                            }
+                            if (!SolverController.CanExecuteCurrentTurn
+                                || SolverOverlay.ExecuteButtonDisabledForTesting)
+                            {
+                                throw new InvalidOperationException(
+                                    "回合开始选牌页已有可接管路线，但‘执行本回合’按钮仍不可用：" +
+                                    PlayerTurnSetupCoordinator.DescribeControlsForTesting());
+                            }
+                        }
+
+                        if (request.ScenarioId == "TOASTY-QOL-AUTO-OFF-FULLAUTO")
+                        {
+                            SolverController.SetAutomaticCalculationEnabled(false, persist: true);
+                            if (SolverController.AutomaticCalculationEnabled)
+                                throw new InvalidOperationException("自动计算未关闭。");
+                        }
+
                         long previousDeploymentStartedAt =
                             SolverController.LastDeployedActionStartedAtMillisecondsForTesting;
-                        if (resumeMode == SingleStepResumeMode.ExecuteCurrentTurn)
+                        int searchesBeforeTakeover = SolverController.SearchesStartedForTesting;
+                        if (request.ScenarioId == "TOASTY-QOL-SINGLE-STEP-EXECUTE")
+                            SolverOverlay.PressExecuteButtonForTesting();
+                        else if (resumeMode == SingleStepResumeMode.ExecuteCurrentTurn)
                             SolverController.RequestDeploy(runner._host, combatState);
                         else
                             SolverController.SetFullAuto(runner._host, combatState, enabled: true);
@@ -1169,6 +1279,17 @@ internal sealed partial class UnattendedTestRunner
                         }
                         if (SolverController.UnexpectedReplanCountForTesting != 0)
                             throw new InvalidOperationException("接管单步选牌页后发生了计划外重算。");
+                        if (request.ScenarioId == "TOASTY-QOL-SINGLE-STEP-EXECUTE"
+                            && (SolverController.SearchesStartedForTesting != searchesBeforeTakeover
+                                || SolverController.FullAutoEnabled))
+                        {
+                            throw new InvalidOperationException(
+                                "执行本回合的原生选牌接管触发了额外搜索或开启全自动。");
+                        }
+                        if (request.ScenarioId == "TOASTY-QOL-AUTO-OFF-FULLAUTO"
+                            && (!SolverController.FullAutoEnabled
+                                || SolverController.AutomaticCalculationEnabled))
+                            throw new InvalidOperationException("关闭自动计算后全自动续执行状态错误。");
                         runner._completedChecks.Add(
                             $"SingleStepTakeover:Mode={resumeMode}:Turn={expectedTurn}:" +
                             $"DelayMs={actualDelay}:Reused=true:UnexpectedReplans=0");

@@ -66,6 +66,7 @@ internal sealed partial class UnattendedTestRunner
                     throw new InvalidOperationException("Strategy outcome status colors or heading removal changed.");
                 _completedChecks.Add($"StrategyOutcome:{target}:AlignedAndUnmet:GrowthCounts:PartialRoute:EmptyHidden");
                 await AssertActionAnnotationLocalizationAsync(combat, english);
+                AssertLiveTurnStartChoicePreview(english);
                 foreach ((string source, string translated) in catalog)
                 {
                     if (SolverText.Get(source) != (english ? translated : source))
@@ -119,6 +120,58 @@ internal sealed partial class UnattendedTestRunner
             LocManager.Instance.SetLanguage(language);
             SolverOverlay.Hide();
         }
+    }
+
+    private void AssertLiveTurnStartChoicePreview(bool english)
+    {
+        PlanCardChoice powerChoice = new(PlanChoiceEffect.Discard, PileType.Hand, [], "TOOLS_OF_THE_TRADE_POWER");
+        PlanCardChoice relicChoice = new(PlanChoiceEffect.Exhaust, PileType.Hand, [], "TOASTY_MITTENS");
+        PlanAction[] actions =
+        [
+            new(PlanActionKind.EndTurn, 1, TurnStartChoices: [powerChoice]),
+            new(PlanActionKind.EndTurn, 2, TurnStartChoices: [relicChoice]),
+            new(PlanActionKind.EndTurn, 3),
+        ];
+        SolverFrontierTurn[] turns =
+        [
+            new(1, [actions[0]], 0, 0, 0, 0, false)
+            {
+                TurnStartChoices = SolverFrontierTurn.ChoicesForTurn(1, 1, [relicChoice], actions),
+            },
+            new(2, [actions[1]], 0, 0, 0, 0, false)
+            {
+                TurnStartChoices = SolverFrontierTurn.ChoicesForTurn(2, 1, [relicChoice], actions),
+            },
+            new(3, [actions[2]], 0, 0, 0, 0, false)
+            {
+                TurnStartChoices = SolverFrontierTurn.ChoicesForTurn(3, 1, [relicChoice], actions),
+            },
+        ];
+        SolverSpeculativeRoutePreview route = new(1, 1, 0, 0, false, false, false, turns);
+        SolverOverlayTurnSnapshot[] shown = SolverOverlaySnapshot.CaptureSpeculativeRoute(route).Turns.ToArray();
+        if (!shown[0].TurnStartChoices.Any(choice => choice.Contains(
+                ModelDb.Relic<MegaCrit.Sts2.Core.Models.Relics.ToastyMittens>().Title.GetFormattedText(), StringComparison.Ordinal))
+            || !shown[1].TurnStartChoices.Any(choice => choice.Contains(
+                ModelDb.Power<ToolsOfTheTradePower>().Title.GetFormattedText(), StringComparison.Ordinal))
+            || !shown[2].TurnStartChoices.Any(choice => choice.Contains(
+                ModelDb.Relic<MegaCrit.Sts2.Core.Models.Relics.ToastyMittens>().Title.GetFormattedText(), StringComparison.Ordinal)))
+        {
+            throw new InvalidOperationException($"Live route omitted turn-start power/relic choice: {string.Join('|', shown.SelectMany(turn => turn.TurnStartChoices))}");
+        }
+        SolverCurrentTurnPreview current = new(1, 1, [actions[0]], 0, 0, 0, 0, false, turns)
+        {
+            TurnStartChoices = [relicChoice],
+        };
+        if (!SolverOverlaySnapshot.CaptureCurrentTurn(current).Turns[0].TurnStartChoices.SequenceEqual(
+                shown[0].TurnStartChoices)
+            || SolverOverlaySnapshot.CaptureSpeculativeRoute(route with
+            {
+                Turns = [turns[0], turns[1] with { TurnStartChoices = [] }, turns[2]],
+            }).Turns[1].TurnStartChoices.Count != 0)
+        {
+            throw new InvalidOperationException("Live frontier or switched candidate kept stale turn-start choices.");
+        }
+        _completedChecks.Add($"LiveTurnStartChoicePreview:{(english ? "eng" : "zhs/zht")}:Power:Relic");
     }
 
     private async Task AssertActionAnnotationLocalizationAsync(CombatState combat, bool english)

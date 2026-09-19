@@ -163,7 +163,7 @@ public static class Entry
             || SolverController.SolverDisabled
             || SolverController.IsMultiplayerSession
             || !UnattendedTestRunner.AutomaticTurnSearchEnabled
-            || !SolverController.AutomaticCalculationEnabled
+            || !SolverController.ShouldAutomaticallySearchNextTurn
             || SolverController.AutomaticSearchPaused
             || !CombatManager.Instance.IsInProgress
             || !ReferenceEquals(CombatManager.Instance.DebugOnlyGetState(), state)

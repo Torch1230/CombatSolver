@@ -113,7 +113,7 @@ internal static partial class SolverController
                 return false;
             return _combat.LatestResult != null
                     && _combat.LatestStamp == LiveCombatStamp.Capture(state)
-                || PlayerTurnSetupCoordinator.CanTakeOverTurnSetup(state);
+                || !_combat.RouteFrozen && PlayerTurnSetupCoordinator.CanTakeOverTurnSetup(state);
         }
     }
 
@@ -126,9 +126,39 @@ internal static partial class SolverController
         => RunManager.Instance.IsInProgress && RunManager.Instance.NetService.Type.IsMultiplayer();
 
     public static bool FullAutoEnabled => _combat.FullAutoEnabled;
+    public static bool RouteFrozen => _combat.RouteFrozen;
+    public static bool HasRetainedRoute => _combat.LatestResult != null || _combat.ContinuationSource != null;
     public static bool AutomaticSearchPaused => _combat.AutomaticSearchPaused;
     public static bool AutomaticCalculationEnabled => SolverSettings.Current.AutomaticCalculationEnabled;
+    internal static bool ShouldAutomaticallySearchNextTurn
+        => FullAutoEnabled || AutomaticCalculationEnabled && !_combat.RouteFrozen;
+
+    public static void SetRouteFrozen(NGame host, CombatState state, bool frozen)
+    {
+        AssertMainThread();
+        if (_solverDisabled || IsSearching || IsDeploying || !ReferenceEquals(_combat.State, state))
+            return;
+        if (frozen && !HasRetainedRoute)
+            return;
+        _combat.RouteFrozen = frozen;
+        if (frozen)
+        {
+            _combat.FullAutoEnabled = false;
+            CancelDeferredSearch();
+            ShowRetainedOrManualReady(host);
+        }
+        else if (AutomaticCalculationEnabled
+                 && _combat.LatestStamp != LiveCombatStamp.Capture(state)
+                 && CanSolve(state, out _))
+        {
+            RequestSearch(host, state, SearchReason.Manual);
+        }
+        else
+            ShowRetainedOrManualReady(host);
+        SolverOverlay.RefreshControls();
+    }
     public static bool HasCalculatedThisCombat => _combat.SearchesStarted > 0 || _combat.LatestResult != null;
+    internal static int SearchesStartedForTesting => _combat.SearchesStarted;
     public static bool StopFullAutoOnCombatEnd => _stopFullAutoOnCombatEnd;
     public static bool StopFullAutoOnDeathTurn => _stopFullAutoOnDeathTurn;
     public static bool StopFullAutoOnWorseRecalculation => _stopFullAutoOnWorseRecalculation;
@@ -681,6 +711,7 @@ internal static partial class SolverController
             host,
             SolverOverlaySnapshot.CapturePendingTurnSetup(
                 source,
+                BattleDamageTracker.Observe(state),
                 turn,
                 UnexpectedReplanCount > 0,
                 _combat.ReviewedWorldlinesTotal));
@@ -710,7 +741,6 @@ internal static partial class SolverController
         choices = null;
         if (!ReferenceEquals(_combat.State, state)
             || _combat.ContinuationSource is not { } source
-            || _combat.LastSolverDeployedTurn != turn - 1
             || !source.Continuations.Any(item => item.StartTurnNumber == turn))
         {
             return false;
@@ -787,6 +817,12 @@ internal static partial class SolverController
                 : SearchReason.AutoTurnStart;
             session.ManualSearchAfterTurnSetupRequested = false;
             session.TurnSetupResumeState = null;
+            if (resumedReason == SearchReason.AutoTurnStart && !ShouldAutomaticallySearchNextTurn)
+            {
+                RefreshRetainedRouteAtPlayableTurn(host, state);
+                ShowRetainedOrManualReady(host);
+                return;
+            }
             searchRequested = true;
             RequestSearch(host, state, resumedReason, deployWhenReady);
         }
@@ -863,9 +899,16 @@ internal static partial class SolverController
     public static void RequestSearch(NGame host, CombatState state, SearchReason reason, bool deployWhenReady = false)
     {
         AssertMainThread();
+        if (reason == SearchReason.Manual)
+            _combat.RouteFrozen = false;
         if (_combat.ShowcaseMode && reason != SearchReason.AutoTurnStart)
         {
             StopShowcaseRoute(host, "战斗状态与录像路线不一致，已停止执行。");
+            return;
+        }
+        if (reason == SearchReason.AutoTurnStart && !ShouldAutomaticallySearchNextTurn)
+        {
+            ShowRetainedOrManualReady(host);
             return;
         }
         int? searchTurn = LocalContext.GetMe(state)?.PlayerCombatState?.TurnNumber;
@@ -1337,6 +1380,12 @@ internal static partial class SolverController
             Entry.Logger.Info("[CombatSolver/Test] DEPLOY_REJECT reason=already_deploying");
             return;
         }
+        if (_combat.RouteFrozen && !CanExecuteCurrentTurn)
+        {
+            Entry.Logger.Info("[CombatSolver/Test] DEPLOY_REJECT reason=frozen_route_outdated");
+            ShowRetainedOrManualReady(host);
+            return;
+        }
         _combat.AutomaticSearchPaused = false;
         _combat.AutomaticSearchPausedTurn = null;
         if (PlayerTurnSetupCoordinator.TryContinuePlannedChoice(
@@ -1401,6 +1450,8 @@ internal static partial class SolverController
             SolverOverlay.RefreshControls();
             return;
         }
+
+        _combat.RouteFrozen = false;
 
         if (_combat.AutomaticSearchPaused)
         {
@@ -1478,9 +1529,9 @@ internal static partial class SolverController
             Entry.Logger.Info(
                 $"[CombatSolver/Test] AUTOMATIC_SEARCH_STOP_CLEARED stopped_turn={stoppedTurn} current_turn={turn}");
         }
-        if (!AutomaticCalculationEnabled && !FullAutoEnabled)
+        if (!ShouldAutomaticallySearchNextTurn)
         {
-            SolverOverlay.ShowManualCalculationReady(host, HasCalculatedThisCombat);
+            ShowRetainedOrManualReady(host);
             return false;
         }
         if (_combat.AutomaticSearchPaused)
@@ -1501,8 +1552,6 @@ internal static partial class SolverController
                 AutomaticCalculationEnabled = enabled,
             });
         }
-        if (!enabled)
-            _combat.FullAutoEnabled = false;
         Entry.Logger.Info(
             $"[CombatSolver/Test] AUTOMATIC_CALCULATION enabled={enabled.ToString().ToLowerInvariant()}");
         SolverOverlay.RefreshControls();
@@ -1513,11 +1562,12 @@ internal static partial class SolverController
             return;
         if (!enabled)
         {
-            if (!IsSearching)
-                SolverOverlay.ShowManualCalculationReady(host, HasCalculatedThisCombat);
+            if (!IsSearching && !IsDeploying && !FullAutoEnabled)
+                ShowRetainedOrManualReady(host);
             return;
         }
-        if (!_combat.AutomaticSearchPaused
+        if (!_combat.RouteFrozen
+            && !_combat.AutomaticSearchPaused
             && !IsSearching
             && !IsDeploying
             && UnattendedTestRunner.AutomaticTurnSearchEnabled
@@ -2198,10 +2248,72 @@ internal static partial class SolverController
                 SolverOverlay.ShowDisabled(host);
             else if (_combat.AutomaticSearchPaused)
                 SolverOverlay.ShowSearchStopped(host);
-            else if (!AutomaticCalculationEnabled || !UnattendedTestRunner.AutomaticTurnSearchEnabled)
-                SolverOverlay.ShowManualCalculationReady(host, HasCalculatedThisCombat);
+            else if (!ShouldAutomaticallySearchNextTurn || !UnattendedTestRunner.AutomaticTurnSearchEnabled)
+                ShowRetainedOrManualReady(host);
             else if (CanSolve(current, out _))
                 RequestSearch(host, current, SearchReason.AutoTurnStart);
+        }
+        if (!IsSearching && !IsDeploying && !ShouldAutomaticallySearchNextTurn
+            && NGame.Instance is { } retainedHost)
+        {
+            RefreshRetainedRouteAtPlayableTurn(retainedHost, current);
+            if (HasRetainedRoute && SolverOverlay.IsVisible
+                && System.Environment.TickCount64 >= _combat.NextRetainedValidityCheckAt)
+            {
+                _combat.NextRetainedValidityCheckAt = System.Environment.TickCount64 + 200;
+                bool routeCurrent = CanExecuteCurrentTurn;
+                if (_combat.RetainedRouteWasCurrent != routeCurrent)
+                {
+                    _combat.RetainedRouteWasCurrent = routeCurrent;
+                    SolverOverlay.RefreshControls();
+                }
+            }
+        }
+    }
+
+    private static void ShowRetainedOrManualReady(NGame host)
+    {
+        if (CurrentResultForBugReport is { } result)
+        {
+            SolverOverlay.ShowResult(host, SolverOverlaySnapshot.CaptureWithReviewedWorldlines(
+                result, UnexpectedReplanCount > 0, _combat.ReviewedWorldlinesTotal));
+            SolverOverlay.ShowRetainedRoute(host);
+        }
+        else
+            SolverOverlay.ShowManualCalculationReady(host, HasCalculatedThisCombat);
+    }
+
+    private static void RefreshRetainedRouteAtPlayableTurn(NGame host, CombatState state)
+    {
+        if (LocalContext.GetMe(state)?.PlayerCombatState is not { Phase: PlayerTurnPhase.Play } phase
+            || _combat.RetainedRouteCheckedTurn == phase.TurnNumber
+            || CombatManager.Instance.PlayerActionsDisabled
+            || RunManager.Instance.ActionExecutor.CurrentlyRunningAction != null
+            || !RunManager.Instance.ActionExecutor.FinishedExecutingActions().IsCompleted)
+            return;
+        _combat.RetainedRouteCheckedTurn = phase.TurnNumber;
+        if (_combat.ContinuationSource is { } source
+            && source.StartTurnNumber < phase.TurnNumber
+            && source.TryCreateContinuation(
+                ContinuationStamp.CaptureLive(state),
+                LocalContext.GetMe(state)!.Creature.CurrentHp,
+                BattleDamageTracker.Observe(state),
+                out SolverResult? reused))
+        {
+            _combat.LatestResult = reused;
+            _combat.LatestStamp = LiveCombatStamp.Capture(state);
+            _combat.ContinuationsReused++;
+            BattleDamageTracker.RegisterPlan(state, reused!);
+            SolverOverlay.ShowResult(host, SolverOverlaySnapshot.CaptureWithReviewedWorldlines(
+                reused!, UnexpectedReplanCount > 0, _combat.ReviewedWorldlinesTotal));
+            if (_combat.RouteFrozen)
+                SolverOverlay.ShowRetainedRoute(host);
+            Entry.Logger.Info($"[CombatSolver/Test] RETAINED_ROUTE_REUSED turn={phase.TurnNumber} search=false");
+        }
+        else if (HasRetainedRoute)
+        {
+            ShowRetainedOrManualReady(host);
+            Entry.Logger.Info($"[CombatSolver/Test] RETAINED_ROUTE_REFERENCE turn={phase.TurnNumber} search=false");
         }
     }
 

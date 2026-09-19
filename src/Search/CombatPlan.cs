@@ -1555,6 +1555,7 @@ internal sealed class SolverResult
     public required int SoldHp { get; init; }
     public required int FutureSoldHp { get; init; }
     public required int BattleHpLostSoFar { get; init; }
+    public int BattleHpRecoveredOrGainedSoFar { get; init; }
     public required int ProjectedBattleHpLost { get; init; }
     public required int BattlePotionsUsedSoFar { get; init; }
     public required string[] BattlePotionIdsUsedSoFar { get; init; }
@@ -1721,6 +1722,7 @@ internal sealed class SolverResult
             SoldHp = battleDamage.SoldHpCommitted + remainingSold,
             FutureSoldHp = remainingSold,
             BattleHpLostSoFar = battleDamage.HpLostSoFar,
+            BattleHpRecoveredOrGainedSoFar = battleDamage.HpRecoveredOrGainedSoFar,
             ProjectedBattleHpLost = battleDamage.HpLostSoFar + totalRemainingLoss,
             BattlePotionsUsedSoFar = battleDamage.PotionsUsedSoFar,
             BattlePotionIdsUsedSoFar = battleDamage.PotionIdsUsedSoFar,

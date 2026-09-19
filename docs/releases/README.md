@@ -6,6 +6,7 @@
 
 | 版本系列 | 更新日志 |
 |---|---|
+| 0.43 | [0.43.0](0.43.0-RELEASE_NOTES.md) |
 | 0.42 | [0.42.0](0.42.0-RELEASE_NOTES.md) |
 | 0.41 | [0.41.0](0.41.0-RELEASE_NOTES.md) |
 | 0.40 | [0.40.2](0.40.2-RELEASE_NOTES.md) · [0.40.1](0.40.1-RELEASE_NOTES.md) · [0.40.0](0.40.0-RELEASE_NOTES.md) |

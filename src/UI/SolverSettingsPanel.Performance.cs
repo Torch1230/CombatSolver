@@ -169,6 +169,9 @@ internal sealed partial class SolverSettingsPanel
             CreateSearchParallelismInput(),
             SolverText.Get("关闭时使用单线程搜索；2–16 是并行上限，实际并发还会受可独立分支数和内存安全准入限制，因此 CPU 不一定满载。提高可能加快大型搜索，也会增加 CPU、峰值内存和帧率压力；超过物理核心数通常只有小幅收益。默认按可用逻辑处理器选择：16 个及以上用 8 线程，4–15 个用 4 线程，2–3 个用 2 线程，其余用单线程；遇到疑似并行问题时请先上传问题包，再切换为关闭。"));
         _noGcRegionEnabled = CreateToggle();
+        _noGcRegionEnabled.Disabled = !SearchGcPolicy.NoGcRegionSupported;
+        if (!SearchGcPolicy.NoGcRegionSupported)
+            _noGcRegionEnabled.TooltipText = SolverText.Get("当前平台不支持 NoGC；设置保留，搜索使用常规 GC。");
         AddSettingsSection(content, SolverText.Get("搜索预算"),
             SolverText.Get("选择性能预设与并行度；详细参数可在下方展开。"), budgetGrid);
         GridContainer memoryGrid = CreateSettingsGrid();
@@ -277,7 +280,9 @@ internal sealed partial class SolverSettingsPanel
            && _noGcRegionBudget.Text == SolverSettings.FormatSeconds(
                SolverSettings.Current.NoGcRegionBudgetGigabytes
                ?? SolverSettings.DefaultNoGcRegionBudgetGigabytes)
-           && _noGcRegionBudget.Editable == SolverSettings.Current.EnableNoGcRegion;
+           && _noGcRegionEnabled.Disabled == !SearchGcPolicy.NoGcRegionSupported
+           && _noGcRegionBudget.Editable ==
+               (SolverSettings.Current.EnableNoGcRegion && SearchGcPolicy.NoGcRegionSupported);
 
     internal bool BeamWidthPortfolioControlConfiguredForTesting
         => _performancePage.IsAncestorOf(_beamWidthPortfolioEnabled)
@@ -292,7 +297,7 @@ internal sealed partial class SolverSettingsPanel
         _beamWidthPortfolioEnabled.ButtonPressed = data.UseBeamWidthPortfolio;
         _noveltyPortfolioEnabled.ButtonPressed = data.UseNoveltyPortfolio;
         _noGcRegionEnabled.ButtonPressed = data.EnableNoGcRegion;
-        _noGcRegionBudget.Editable = data.EnableNoGcRegion;
+        _noGcRegionBudget.Editable = data.EnableNoGcRegion && SearchGcPolicy.NoGcRegionSupported;
         SetAdvancedParametersExpanded(preset == SolverPerformancePreset.Custom);
     }
 
@@ -301,7 +306,7 @@ internal sealed partial class SolverSettingsPanel
         if (_loading)
             return;
         SolverSettings.Update(SolverSettings.Current with { EnableNoGcRegion = enabled });
-        _noGcRegionBudget.Editable = enabled;
+        _noGcRegionBudget.Editable = enabled && SearchGcPolicy.NoGcRegionSupported;
         SetStatus(
             enabled ? SolverText.Get("NoGC 已启用，下次搜索生效") : SolverText.Get("NoGC 已关闭，下次搜索使用常规 GC"),
             SolverUiTokens.Palette.Success);

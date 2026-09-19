@@ -18,6 +18,7 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
 
     public event Action<GrowthValues>? PolicyChanged;
     public event Action<int?>? BrightestFlameLimitChanged;
+    public event Action? CloseRequested;
 
     /// <summary>「不考虑局外收益」这个总开关变了。</summary>
     public event Action<bool>? IgnoreLongTermRewardsChanged;
@@ -35,7 +36,14 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
         layout.AddThemeConstantOverride("separation", 12);
         Label heading = SolverUiTokens.CreateLabel(SolverText.Get("成长策略"), 18, SolverUiTokens.Palette.TextPrimary);
         heading.Name = "StrategyHeading";
-        layout.AddChild(heading);
+        heading.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        HBoxContainer headingRow = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        headingRow.AddChild(heading);
+        Button close = SolverUiTokens.CreateButton(SolverText.Get("收起"), SolverButtonStyle.Secondary);
+        close.Name = "CloseStrategyPanel";
+        close.Pressed += () => CloseRequested?.Invoke();
+        headingRow.AddChild(close);
+        layout.AddChild(headingRow);
         HBoxContainer ignoreRow = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         Label ignoreLabel = SolverUiTokens.CreateLabel(
             SolverText.Get("不考虑局外收益"), SolverUiTokens.Type.Body, SolverUiTokens.Palette.TextPrimary);

@@ -255,7 +255,7 @@ internal static partial class SearchGcPolicy
 
     // Mobile .NET runtimes (Android/iOS) do not support GC.TryStartNoGCRegion; skip straight to the
     // normal CLR fallback instead of calling into it.
-    private static readonly bool NoGcRegionSupported =
+    internal static readonly bool NoGcRegionSupported =
         !OperatingSystem.IsAndroid() && !OperatingSystem.IsIOS();
 
     internal static void ResetCountersForTesting()
@@ -352,12 +352,28 @@ internal static partial class SearchGcPolicy
         long noGcRegionBudgetBytes,
         SearchMemoryPressureSignal memoryPressureSignal,
         CancellationToken cancellationToken)
+        => EnterSearchScopeCore(enableNoGcRegion, noGcRegionBudgetBytes,
+            memoryPressureSignal, cancellationToken, NoGcRegionSupported);
+
+    internal static ISearchGcScope EnterSearchScopeForUnsupportedPlatformTesting(
+        long noGcRegionBudgetBytes,
+        SearchMemoryPressureSignal memoryPressureSignal,
+        CancellationToken cancellationToken)
+        => EnterSearchScopeCore(true, noGcRegionBudgetBytes,
+            memoryPressureSignal, cancellationToken, platformSupportsNoGc: false);
+
+    private static ISearchGcScope EnterSearchScopeCore(
+        bool enableNoGcRegion,
+        long noGcRegionBudgetBytes,
+        SearchMemoryPressureSignal memoryPressureSignal,
+        CancellationToken cancellationToken,
+        bool platformSupportsNoGc)
     {
         if (noGcRegionBudgetBytes <= 0)
             throw new ArgumentOutOfRangeException(nameof(noGcRegionBudgetBytes));
         ArgumentNullException.ThrowIfNull(memoryPressureSignal);
         memoryPressureSignal.SetGcLifecycleProbe(CaptureLifecycle);
-        if (!enableNoGcRegion)
+        if (!enableNoGcRegion || !platformSupportsNoGc)
             return EnterDefaultGcSearch(memoryPressureSignal, cancellationToken);
         lock (Gate)
             _automaticGcLifecycleUsed = true;

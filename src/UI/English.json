@@ -415,5 +415,14 @@
   "多策略路线搜索已启用，下次搜索生效": "Multi-strategy search enabled for the next search",
   "多策略路线搜索已关闭": "Multi-strategy search disabled",
   "多策略路线搜索（实验）": "Multi-strategy search (experimental)",
-  "先用部分预算尝试不同路线，再用剩余预算进行常规搜索，并按当前战损、成长和药水规则选优。可能更快找到好路线，也可能因预算分配而改变结果。与常规搜索共用时间和节点上限；下次搜索生效。": "Use part of the budget to explore different routes, then run the usual search with the remaining budget. Select using the current HP loss, growth and potion rules. This may find good routes sooner, but dividing the budget can also change the result. Both searches share the time and node limits. Applies to the next search."
+  "先用部分预算尝试不同路线，再用剩余预算进行常规搜索，并按当前战损、成长和药水规则选优。可能更快找到好路线，也可能因预算分配而改变结果。与常规搜索共用时间和节点上限；下次搜索生效。": "Use part of the budget to explore different routes, then run the usual search with the remaining budget. Select using the current HP loss, growth and potion rules. This may find good routes sooner, but dividing the budget can also change the result. Both searches share the time and node limits. Applies to the next search.",
+  "冻结路线": "Freeze route",
+  "解除冻结": "Unfreeze route",
+  "路线已保留": "Route retained",
+  "历史路线（仅供参考）": "Previous route (reference only)",
+  "已保存路线": "Saved route",
+  "已保存路线（已过期）": "Saved route (outdated)",
+  "解除冻结；自动计算开启时，可从当前状态重新计算。": "Unfreeze the route; when auto-calculate is enabled, recalculate from the current state.",
+  "保留本场路线，暂停自动重算和全自动；失配路线仅供参考。": "Keep this combat's route and pause automatic recalculation and full auto; mismatched routes are for reference only.",
+  "当前平台不支持 NoGC；设置保留，搜索使用常规 GC。": "NoGC is unavailable on this platform. Your setting is retained; searches use normal GC."
 }
