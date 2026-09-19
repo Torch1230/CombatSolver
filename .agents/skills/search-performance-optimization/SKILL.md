@@ -113,6 +113,7 @@ description: 在战斗语义已证明正确后，审计或修改 CombatSolver �
 - 原版 NodePool 信号清理只释放自己取得的 Array/Dictionary/Variant 与新转换的名称包装，不释放节点或持久 Callable 目标。修改该补偿时分别验证 NCard/NGridCardHolder 的真实泛型入口、入站/出站/递归/离树条件及包装登记数；不能把登记无增长当作全部旧战斗对象已释放。
 - 搜索内回收只等待自己发起的收集，不加入要求该搜索退出的 deferred 完成链。后台 GC 请求不等于回收完成：核对最新已完成 Gen2 与释放后哨兵，取消不能提前交还所有权，超时/异常必须排空未确认请求。手动完成、引用释放 epoch 与搜索取消各有独立语义；请求后台模式与 CLR 实际 Concurrent 结果分开记录，生命周期合同不当作暂停收益证据。
 - 优先避免无价值候选、Fork 和快照产生；No-GC 区内释放引用不会返还预算。
+- NoGC 恢复与检查点重建必须同时检查不可分割提交预留和剩余有效窗口：扣除预留后至少保留 max(64 MiB, 分配限额/4)，并在 CLR 尺寸回退后重新检查。coordinator 在准入及父节点完成后的已排空边界更新信号中的预留；窗口不足只回退普通 GC，不清空搜索记忆或触发无进展终止。用 `GcPolicyChecks -- commit-window` 验证真实区域退出、限额释放和后续条件恢复；不要把小区域本身当作物理内存不足来额外降并行度。
 - 区分 transitions 增长与 bytes/transition 增长，用阶段指标定位实际热点。
 - No-GC 同时观察配置预算、SOH/LOH、是否保持到搜索退出和首次长帧时的 expanded。
 - 准入必须有下限：区域只吸收本次搜索相当一部分分配时才值得进入。`TryStartNoGcRegionWithSizeFallback` 是对半砍到 `MinimumNoGcRegionBudgetBytes`，任何 `Started` 都会被建立，因此**只在尺寸回退循环之前捕获 `Capped`**（该标志等价于「机器给不出配置预算」）并在系统余量缩水到配置的一半以下时拒绝进入、改走默认 GC。平台 SOH 上限造成的缩水是合法机制，不能因此取消区域。拒绝后必须确认分配限额被释放（`RemainingBytes == long.MaxValue`），否则检查点仍会为不存在的区域付拆除成本。检查用 `tools/CombatSolver.GcPolicyChecks -- admission`，它直接编译生产 `SearchGcPolicy.cs`，不需要游戏进程。

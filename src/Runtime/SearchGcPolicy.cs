@@ -230,6 +230,7 @@ internal static partial class SearchGcPolicy
         RegionSizeUnsupported,
         PlatformUnsupported,
         SystemHeadroomInsufficient,
+        CommitWindowInsufficient,
     }
 
     private readonly record struct EffectiveNoGcRegionBudget(
@@ -1919,10 +1920,8 @@ internal static partial class SearchGcPolicy
         long configuredRegionBudgetBytes,
         long configuredLohBudgetBytes)
     {
-        long smallObjectBudgetBytes = Math.Max(1, regionBudgetBytes - lohBudgetBytes);
-        long smallObjectLimitBytes = smallObjectBudgetBytes / 5 * 4;
-        long remainingLimitBytes = Math.Max(1, remainingRegionBytes / 4 * 3);
-        long allocationLimitBytes = Math.Max(1, Math.Min(smallObjectLimitBytes, remainingLimitBytes));
+        long allocationLimitBytes = CalculateSearchAllocationLimit(
+            remainingRegionBytes, regionBudgetBytes, lohBudgetBytes);
         GCMemoryInfo memory = GC.GetGCMemoryInfo();
         long systemMemoryLimitBytes = ResolveSystemMemoryLimit(memory);
         signal.Configure(
@@ -2114,14 +2113,33 @@ internal static partial class SearchGcPolicy
                             ? Math.Min(configuredRegionBudgetBytes, _searchRecoveryBudgetCapBytes)
                             : configuredRegionBudgetBytes,
                         configuredLohBudgetBytes);
-                    bool restartAttempted = endNoGcRegion && effectiveBudget.CanStart;
+                    bool usefulCommitWindow = IsNoGcCommitWindowWorthEntering(
+                        effectiveBudget.TotalBytes, effectiveBudget.LohBytes, signal.NextCommitReserveBytes);
+                    bool restartAttempted = endNoGcRegion && effectiveBudget.CanStart && usefulCommitWindow;
                     // Captured before the size-fallback loop mutates it; see the admission path.
                     bool restartHeadroomLimitedBudget = effectiveBudget.Capped;
                     if (endNoGcRegion)
                     {
-                        restartOutcome = effectiveBudget.CanStart
+                        restartOutcome = effectiveBudget.CanStart && usefulCommitWindow
                             ? TryStartNoGcRegionWithSizeFallback(ref effectiveBudget, restart: true)
-                            : NoGcRegionStartOutcome.SystemHeadroomInsufficient;
+                            : effectiveBudget.CanStart
+                                ? NoGcRegionStartOutcome.CommitWindowInsufficient
+                                : NoGcRegionStartOutcome.SystemHeadroomInsufficient;
+                        // Platform size fallback can shrink a previously useful reservation.
+                        // Recheck the achieved budget before publishing its allocation limit.
+                        if (restartOutcome == NoGcRegionStartOutcome.Started
+                            && !IsNoGcCommitWindowWorthEntering(effectiveBudget.TotalBytes,
+                                effectiveBudget.LohBytes, signal.NextCommitReserveBytes))
+                        {
+                            EndNoGcRegion();
+                            usefulCommitWindow = false;
+                            restartOutcome = NoGcRegionStartOutcome.CommitWindowInsufficient;
+                        }
+                        if (restartOutcome == NoGcRegionStartOutcome.CommitWindowInsufficient)
+                            Entry.Logger.Info(
+                                $"[CombatSolver/Test] GC_NO_GC_REGION_DECLINED stage=restart reason=commit_window " +
+                                $"achieved_budget={effectiveBudget.TotalBytes} " +
+                                $"next_commit_reserve={signal.NextCommitReserveBytes}");
                         if (restartOutcome == NoGcRegionStartOutcome.Started
                             && restartHeadroomLimitedBudget
                             && !IsNoGcRegionBudgetWorthEntering(
@@ -2154,7 +2172,9 @@ internal static partial class SearchGcPolicy
                         RestoreLatencyModeLocked();
                         // Let ordinary GC make progress first. A bounded recovery probe can
                         // retry at a later drained boundary after a new Gen2 and healthy headroom.
-                        signal.UseDefaultGcFallback(IsSystemHeadroomOutcome(restartOutcome),
+                        signal.UseDefaultGcFallback(IsSystemHeadroomOutcome(restartOutcome)
+                            || restartOutcome == NoGcRegionStartOutcome.CommitWindowInsufficient
+                                && restartHeadroomLimitedBudget,
                             allowNoGcRecovery: IsRecoverableNoGcOutcome(restartOutcome),
                             completedRecoveryGen2Index: restartAttempted ? 0 : completedCollection.Index);
                     }
@@ -2378,6 +2398,7 @@ internal static partial class SearchGcPolicy
             NoGcRegionStartOutcome.RegionSizeUnsupported => "region_size_unsupported",
             NoGcRegionStartOutcome.PlatformUnsupported => "platform_unsupported",
             NoGcRegionStartOutcome.SystemHeadroomInsufficient => "system_headroom_insufficient",
+            NoGcRegionStartOutcome.CommitWindowInsufficient => "commit_window_insufficient",
             _ => throw new ArgumentOutOfRangeException(nameof(outcome)),
         };
 

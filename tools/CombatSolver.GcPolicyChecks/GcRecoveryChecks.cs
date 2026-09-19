@@ -73,6 +73,26 @@ internal static class GcRecoveryChecks
 
     public static void Run()
     {
+        PolicyCheck.Run("recovery needs productive capacity beyond the atomic reserve", () =>
+        {
+            PolicyCheck.Require(!SearchGcPolicy.IsNoGcCommitWindowWorthEntering(
+                853_962_871, 142_327_145, 513_894_480),
+                "The queen trace's nominally fitting reserve leaves only 55 MB before another collection.");
+            PolicyCheck.Require(SearchGcPolicy.IsNoGcCommitWindowWorthEntering(
+                853_962_871, 142_327_145, 100_663_296),
+                "The same small region is useful with an ordinary parent reserve.");
+            const long budget = 1_200_000_000;
+            const long loh = 200_000_000;
+            const long reserveAtThreshold = 600_000_000;
+            PolicyCheck.Require(SearchGcPolicy.IsNoGcCommitWindowWorthEntering(budget, loh, reserveAtThreshold)
+                && !SearchGcPolicy.IsNoGcCommitWindowWorthEntering(budget, loh, reserveAtThreshold + 1),
+                "Keep the inclusive quarter-window boundary precise.");
+            PolicyCheck.Require(!SearchGcPolicy.IsNoGcCommitWindowWorthEntering(budget, loh, long.MaxValue)
+                && !SearchGcPolicy.IsNoGcCommitWindowWorthEntering(1, 0, 0),
+                "Oversized reserves and unstartable regions must be rejected without arithmetic overflow.");
+            PolicyCheck.Throws<ArgumentOutOfRangeException>(() =>
+                SearchGcPolicy.IsNoGcCommitWindowWorthEntering(budget, loh, -1));
+        });
         PolicyCheck.Run("confirmed checkpoint GC can be consumed once without another collection", () =>
         {
             SearchGcPolicy.NoGcRecoveryBackoff backoff = new();

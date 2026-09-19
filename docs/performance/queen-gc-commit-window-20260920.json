@@ -1,0 +1,1232 @@
+{
+  "schemaVersion": 1,
+  "baselineCommit": "967c7c39",
+  "scope": "NoGC useful commit window; queen headless measurements and CLR regression; no Windows visible performance claim",
+  "regressionBaseline": "Real CLR commit-window check fails on baseline: replacement region is incorrectly re-established",
+  "checks": {
+    "recovery": "GC policy checks passed: 10 scenarios.",
+    "admission": "GC policy checks passed: 6 scenarios.",
+    "lifecycle": "GC policy checks passed: 2 scenarios.",
+    "checkpoint": "GC policy checks passed: 1 scenarios.",
+    "commit-window": "GC policy checks passed: 1 scenarios."
+  },
+  "restore": {
+    "status": "restored_continuation",
+    "nativeStateVerified": false,
+    "reason": "legacy_model_id_mapping_not_recorded"
+  },
+  "queen": {
+    "baselineCommit": "967c7c39",
+    "policy": {
+      "profile": {
+        "beamWidth": 512,
+        "maxExpandedNodes": 4000,
+        "maxCardBranchesPerNode": 100,
+        "maxPileChoiceBranchesPerAction": 42,
+        "maxHandChoiceBranchesPerAction": 54,
+        "softTimeBudgetMilliseconds": 50000,
+        "secondRankBand": false,
+        "baseScoreOnly": false,
+        "aggressivePowerCommitment": false
+      },
+      "searchMaxDegreeOfParallelism": 1,
+      "fixedBudget": true,
+      "potionPolicy": "Disabled"
+    },
+    "configuredNoGcRegionBytes": 1000000000,
+    "executionOrder": [
+      "measure-a1",
+      "measure-b1",
+      "measure-b2",
+      "measure-a2"
+    ],
+    "samples": [
+      {
+        "label": "measure-a1",
+        "status": "Passed",
+        "primaryMember": {
+          "beamWidth": 512,
+          "secondRankBand": false,
+          "baseScoreOnly": false,
+          "aggressivePowerCommitment": false,
+          "nodeBudget": 4000,
+          "ran": true,
+          "selected": true,
+          "compared": true,
+          "skippedReason": null,
+          "expandedNodes": 4000,
+          "transitionCount": 223269,
+          "termination": "NodeLimit",
+          "terminal": true,
+          "won": false,
+          "battleHpLost": 60,
+          "potionCount": 0,
+          "elapsedMilliseconds": 36495,
+          "allocatedBytes": 10187030840,
+          "managedHeapBytesAfter": 857902760
+        },
+        "request": {
+          "boundary": "NodeLimit",
+          "totalExpanded": 6685,
+          "totalTransitions": 328573,
+          "totalChoiceBranches": 225729,
+          "totalElapsedMilliseconds": 49958.2212,
+          "totalWorkerAllocatedBytes": 14818094704,
+          "totalGcPauseMilliseconds": 2726.227,
+          "gcLifecycle": {
+            "forcedCollections": 28,
+            "noGcStartAttempts": 29,
+            "noGcStarts": 29,
+            "noGcEndAttempts": 28,
+            "noGcEnds": 28,
+            "noGcRestarts": 28,
+            "noGcLosses": 0
+          },
+          "projectedBattleHpLost": 60,
+          "finalHp": 0,
+          "finalEnemyHp": 606,
+          "onlyDeathRoutes": true
+        },
+        "cleanup": true
+      },
+      {
+        "label": "measure-b1",
+        "status": "Passed",
+        "primaryMember": {
+          "beamWidth": 512,
+          "secondRankBand": false,
+          "baseScoreOnly": false,
+          "aggressivePowerCommitment": false,
+          "nodeBudget": 4000,
+          "ran": true,
+          "selected": true,
+          "compared": true,
+          "skippedReason": null,
+          "expandedNodes": 4000,
+          "transitionCount": 223269,
+          "termination": "NodeLimit",
+          "terminal": true,
+          "won": false,
+          "battleHpLost": 60,
+          "potionCount": 0,
+          "elapsedMilliseconds": 36626,
+          "allocatedBytes": 10188863720,
+          "managedHeapBytesAfter": 853865080
+        },
+        "request": {
+          "boundary": "NodeLimit",
+          "totalExpanded": 6685,
+          "totalTransitions": 325797,
+          "totalChoiceBranches": 225279,
+          "totalElapsedMilliseconds": 49985.6844,
+          "totalWorkerAllocatedBytes": 14584619488,
+          "totalGcPauseMilliseconds": 2838.542,
+          "gcLifecycle": {
+            "forcedCollections": 28,
+            "noGcStartAttempts": 28,
+            "noGcStarts": 28,
+            "noGcEndAttempts": 28,
+            "noGcEnds": 28,
+            "noGcRestarts": 27,
+            "noGcLosses": 0
+          },
+          "projectedBattleHpLost": 60,
+          "finalHp": 0,
+          "finalEnemyHp": 606,
+          "onlyDeathRoutes": true
+        },
+        "cleanup": true
+      },
+      {
+        "label": "measure-b2",
+        "status": "Passed",
+        "primaryMember": {
+          "beamWidth": 512,
+          "secondRankBand": false,
+          "baseScoreOnly": false,
+          "aggressivePowerCommitment": false,
+          "nodeBudget": 4000,
+          "ran": true,
+          "selected": true,
+          "compared": true,
+          "skippedReason": null,
+          "expandedNodes": 4000,
+          "transitionCount": 223269,
+          "termination": "NodeLimit",
+          "terminal": true,
+          "won": false,
+          "battleHpLost": 60,
+          "potionCount": 0,
+          "elapsedMilliseconds": 37264,
+          "allocatedBytes": 10186601264,
+          "managedHeapBytesAfter": 824219952
+        },
+        "request": {
+          "boundary": "NodeLimit",
+          "totalExpanded": 6685,
+          "totalTransitions": 326256,
+          "totalChoiceBranches": 225279,
+          "totalElapsedMilliseconds": 49964.5364,
+          "totalWorkerAllocatedBytes": 14614847616,
+          "totalGcPauseMilliseconds": 4555.184,
+          "gcLifecycle": {
+            "forcedCollections": 28,
+            "noGcStartAttempts": 29,
+            "noGcStarts": 29,
+            "noGcEndAttempts": 28,
+            "noGcEnds": 28,
+            "noGcRestarts": 28,
+            "noGcLosses": 0
+          },
+          "projectedBattleHpLost": 60,
+          "finalHp": 0,
+          "finalEnemyHp": 606,
+          "onlyDeathRoutes": true
+        },
+        "cleanup": true
+      },
+      {
+        "label": "measure-a2",
+        "status": "Passed",
+        "primaryMember": {
+          "beamWidth": 512,
+          "secondRankBand": false,
+          "baseScoreOnly": false,
+          "aggressivePowerCommitment": false,
+          "nodeBudget": 4000,
+          "ran": true,
+          "selected": true,
+          "compared": true,
+          "skippedReason": null,
+          "expandedNodes": 4000,
+          "transitionCount": 223269,
+          "termination": "NodeLimit",
+          "terminal": true,
+          "won": false,
+          "battleHpLost": 60,
+          "potionCount": 0,
+          "elapsedMilliseconds": 36716,
+          "allocatedBytes": 10188390744,
+          "managedHeapBytesAfter": 857587672
+        },
+        "request": {
+          "boundary": "NodeLimit",
+          "totalExpanded": 6685,
+          "totalTransitions": 325797,
+          "totalChoiceBranches": 225279,
+          "totalElapsedMilliseconds": 50128.2289,
+          "totalWorkerAllocatedBytes": 14584221744,
+          "totalGcPauseMilliseconds": 4107.289,
+          "gcLifecycle": {
+            "forcedCollections": 28,
+            "noGcStartAttempts": 28,
+            "noGcStarts": 28,
+            "noGcEndAttempts": 28,
+            "noGcEnds": 28,
+            "noGcRestarts": 27,
+            "noGcLosses": 0
+          },
+          "projectedBattleHpLost": 60,
+          "finalHp": 0,
+          "finalEnemyHp": 606,
+          "onlyDeathRoutes": true
+        },
+        "cleanup": true
+      }
+    ],
+    "comparisons": [
+      {
+        "left": "measure-a1",
+        "right": "measure-b1",
+        "compared": 60,
+        "mismatches": [
+          {
+            "field": "totalChoiceBranches",
+            "left": 225729,
+            "right": 225279,
+            "same": false
+          },
+          {
+            "field": "totalTransitions",
+            "left": 328573,
+            "right": 325797,
+            "same": false
+          }
+        ]
+      },
+      {
+        "left": "measure-a2",
+        "right": "measure-b2",
+        "compared": 60,
+        "mismatches": [
+          {
+            "field": "totalTransitions",
+            "left": 325797,
+            "right": 326256,
+            "same": false
+          }
+        ]
+      }
+    ],
+    "requestTimingCaveat": "Opening-resource audits use remaining wall-clock budget. These are not equal-work whole-request samples; no request speedup claimed."
+  },
+  "sentinel": {
+    "samples": [
+      {
+        "side": "baseline",
+        "wallSeconds": 7.51374,
+        "totalAllocatedBytes": 1845833248
+      },
+      {
+        "side": "candidate",
+        "wallSeconds": 8.2908314,
+        "totalAllocatedBytes": 1850968480
+      },
+      {
+        "side": "candidate2",
+        "wallSeconds": 7.7254634,
+        "totalAllocatedBytes": 1852448856
+      },
+      {
+        "side": "baseline2",
+        "wallSeconds": 7.8222,
+        "totalAllocatedBytes": 1849183176
+      }
+    ],
+    "firstPairFullComparison": {
+      "planActions": true,
+      "cachedContinuations": true,
+      "continuations": true,
+      "rootContinuationStamp": true,
+      "rootLiveStamp": true,
+      "pruneCounters": false,
+      "searchPolicy": true,
+      "catalogFingerprint": true,
+      "pruneCounterDifferences": [
+        {
+          "field": "threatProjectionCacheCount",
+          "baseline": 3762,
+          "candidate": 3874,
+          "kind": "derived cache occupancy; not pruning decision"
+        }
+      ]
+    },
+    "secondPairFullComparison": {
+      "planActions": true,
+      "cachedContinuations": true,
+      "continuations": true,
+      "rootContinuationStamp": true,
+      "rootLiveStamp": true,
+      "searchPolicy": true,
+      "catalogFingerprint": true,
+      "pruneCounterDifferences": [
+        {
+          "field": "threatProjectionCacheCount",
+          "baseline": 3816,
+          "candidate": 3825
+        }
+      ]
+    }
+  },
+  "allocationTrace": {
+    "completeness": {
+      "status": "StrictConversionSucceeded",
+      "allowIncomplete": false,
+      "conversionReportedTruncated": null
+    },
+    "traceEventsLost": 0,
+    "allIncludedSamples": {
+      "sampleCount": 48072,
+      "estimatedBytes": 5274486776,
+      "samplesWithoutStack": 0,
+      "samplesWithUnresolvedOnlyStack": 0,
+      "samplesWithSomeUnresolvedFrames": 23,
+      "firstSampleMs": 0.31696,
+      "lastSampleMs": 15031.114459
+    },
+    "confirmedSearch": {
+      "sampleCount": 48007,
+      "estimatedBytes": 5267516128,
+      "samplesWithoutStack": 0,
+      "samplesWithUnresolvedOnlyStack": 0,
+      "samplesWithSomeUnresolvedFrames": 23,
+      "firstSampleMs": 43.108907,
+      "lastSampleMs": 15031.114459
+    },
+    "searchCategories": [
+      {
+        "key": "Other",
+        "totals": {
+          "sampleCount": 28842,
+          "estimatedBytes": 3209918184,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 21,
+          "firstSampleMs": 43.108907,
+          "lastSampleMs": 15031.114459
+        }
+      },
+      {
+        "key": "Fork",
+        "totals": {
+          "sampleCount": 13280,
+          "estimatedBytes": 1415675712,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 130.400378,
+          "lastSampleMs": 15027.475373
+        }
+      },
+      {
+        "key": "SnapshotStateEvaluation",
+        "totals": {
+          "sampleCount": 5363,
+          "estimatedBytes": 586277608,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 2,
+          "firstSampleMs": 101.674923,
+          "lastSampleMs": 15027.931001
+        }
+      },
+      {
+        "key": "History",
+        "totals": {
+          "sampleCount": 464,
+          "estimatedBytes": 49460784,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 406.492254,
+          "lastSampleMs": 15030.822748
+        }
+      },
+      {
+        "key": "ProjectedShuffle",
+        "totals": {
+          "sampleCount": 58,
+          "estimatedBytes": 6183840,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 425.957851,
+          "lastSampleMs": 14560.005177
+        }
+      }
+    ],
+    "topSearchTypes": [
+      {
+        "key": "System.Int32[]",
+        "totals": {
+          "sampleCount": 1753,
+          "estimatedBytes": 191333432,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 165.978406,
+          "lastSampleMs": 15025.232185
+        }
+      },
+      {
+        "key": "MegaCrit.Sts2.Core.Models.AbstractModel[]",
+        "totals": {
+          "sampleCount": 1783,
+          "estimatedBytes": 190056584,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 369.889503,
+          "lastSampleMs": 15029.372345
+        }
+      },
+      {
+        "key": "CombatSolver.Engine.Common.PredictedCard[]",
+        "totals": {
+          "sampleCount": 1407,
+          "estimatedBytes": 149992872,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 399.043623,
+          "lastSampleMs": 15028.34641
+        }
+      },
+      {
+        "key": "CombatSolver.Engine.Common.PredictedCard",
+        "totals": {
+          "sampleCount": 1300,
+          "estimatedBytes": 138585392,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 423.159804,
+          "lastSampleMs": 15027.475373
+        }
+      },
+      {
+        "key": "CombatSolver.SimulatedCombatState",
+        "totals": {
+          "sampleCount": 1286,
+          "estimatedBytes": 137096408,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 224.065711,
+          "lastSampleMs": 15019.477055
+        }
+      },
+      {
+        "key": "System.Collections.Generic.Dictionary`2[System.String,MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar]",
+        "totals": {
+          "sampleCount": 876,
+          "estimatedBytes": 93385384,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 430.34133,
+          "lastSampleMs": 14989.173756
+        }
+      },
+      {
+        "key": "Entry[MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Int32][]",
+        "totals": {
+          "sampleCount": 804,
+          "estimatedBytes": 85698376,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 361.282031,
+          "lastSampleMs": 15012.779892
+        }
+      },
+      {
+        "key": "System.Collections.Generic.KeyValuePair`2[CombatSolver.CombatBeamSolver+RoutingChoiceSignature,System.Collections.Generic.List`1[CombatSolver.SearchNode]][]",
+        "totals": {
+          "sampleCount": 323,
+          "estimatedBytes": 81983024,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 312.735175,
+          "lastSampleMs": 13405.982453
+        }
+      },
+      {
+        "key": "Enumerator[System.String,MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar]",
+        "totals": {
+          "sampleCount": 761,
+          "estimatedBytes": 81133472,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 413.48668,
+          "lastSampleMs": 15030.367181
+        }
+      },
+      {
+        "key": "CombatSolver.SimulationSnapshot",
+        "totals": {
+          "sampleCount": 727,
+          "estimatedBytes": 77503456,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 391.942501,
+          "lastSampleMs": 15027.931001
+        }
+      },
+      {
+        "key": "System.Collections.Generic.Dictionary`2[MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Int32]",
+        "totals": {
+          "sampleCount": 686,
+          "estimatedBytes": 73129104,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 363.215263,
+          "lastSampleMs": 15002.407523
+        }
+      },
+      {
+        "key": "CombatSolver.SearchNode[]",
+        "totals": {
+          "sampleCount": 530,
+          "estimatedBytes": 71174712,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 505.212378,
+          "lastSampleMs": 14767.761246
+        }
+      },
+      {
+        "key": "Entry[MegaCrit.Sts2.Core.Models.RelicModel,CombatSolver.SimulatedCombatState+StatefulRelicState][]",
+        "totals": {
+          "sampleCount": 640,
+          "estimatedBytes": 68216112,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 228.966446,
+          "lastSampleMs": 15024.901268
+        }
+      },
+      {
+        "key": "IEnumerableSelectIterator`2[MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar,MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar]",
+        "totals": {
+          "sampleCount": 603,
+          "estimatedBytes": 64276640,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 522.628008,
+          "lastSampleMs": 15019.265808
+        }
+      },
+      {
+        "key": "Entry[System.String,MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar][]",
+        "totals": {
+          "sampleCount": 600,
+          "estimatedBytes": 63961648,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 227.965168,
+          "lastSampleMs": 15016.889654
+        }
+      },
+      {
+        "key": "Slot[]",
+        "totals": {
+          "sampleCount": 593,
+          "estimatedBytes": 63212696,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 456.552604,
+          "lastSampleMs": 15025.436839
+        }
+      },
+      {
+        "key": "System.Func`2[CombatSolver.Engine.Common.PredictedCard,System.Boolean]",
+        "totals": {
+          "sampleCount": 576,
+          "estimatedBytes": 61401928,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 550.066626,
+          "lastSampleMs": 15030.6264
+        }
+      },
+      {
+        "key": "CombatSolver.SearchNode",
+        "totals": {
+          "sampleCount": 574,
+          "estimatedBytes": 61188136,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 386.10375,
+          "lastSampleMs": 15013.053719
+        }
+      },
+      {
+        "key": "ListWhereIterator`1[CombatSolver.Engine.Common.PredictedCard]",
+        "totals": {
+          "sampleCount": 487,
+          "estimatedBytes": 51902960,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 359.649799,
+          "lastSampleMs": 15026.063525
+        }
+      },
+      {
+        "key": "Enumerator[MegaCrit.Sts2.Core.Entities.Creatures.Creature]",
+        "totals": {
+          "sampleCount": 471,
+          "estimatedBytes": 50212632,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 419.332946,
+          "lastSampleMs": 14977.377806
+        }
+      },
+      {
+        "key": "CombatSolver.Engine.Common.SimCardPile",
+        "totals": {
+          "sampleCount": 455,
+          "estimatedBytes": 48497736,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 820.329809,
+          "lastSampleMs": 14941.141314
+        }
+      },
+      {
+        "key": "CombatSolver.PlanAction",
+        "totals": {
+          "sampleCount": 415,
+          "estimatedBytes": 44228928,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 366.092202,
+          "lastSampleMs": 14984.538652
+        }
+      },
+      {
+        "key": "CombatSolver.ForkableDictionary`2[MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Int32]",
+        "totals": {
+          "sampleCount": 409,
+          "estimatedBytes": 43599200,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 383.164521,
+          "lastSampleMs": 15025.856547
+        }
+      },
+      {
+        "key": "MegaCrit.Sts2.Core.Models.Powers.WeakPower",
+        "totals": {
+          "sampleCount": 392,
+          "estimatedBytes": 41792464,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 429.309363,
+          "lastSampleMs": 14973.703352
+        }
+      },
+      {
+        "key": "Entry[System.ValueTuple`2[MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Type],MegaCrit.Sts2.Core.Models.PowerModel][]",
+        "totals": {
+          "sampleCount": 371,
+          "estimatedBytes": 39551640,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 371.887249,
+          "lastSampleMs": 15015.100039
+        }
+      },
+      {
+        "key": "ConcatenatedListenerView",
+        "totals": {
+          "sampleCount": 361,
+          "estimatedBytes": 38479712,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 710.268159,
+          "lastSampleMs": 15001.155282
+        }
+      },
+      {
+        "key": "System.Collections.Generic.List`1[CombatSolver.Engine.Common.PredictedCard]",
+        "totals": {
+          "sampleCount": 345,
+          "estimatedBytes": 36786976,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 525.214919,
+          "lastSampleMs": 15018.038706
+        }
+      },
+      {
+        "key": "System.Func`2[CombatSolver.SearchNode,System.Double]",
+        "totals": {
+          "sampleCount": 336,
+          "estimatedBytes": 35817464,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 1245.456265,
+          "lastSampleMs": 13444.49654
+        }
+      },
+      {
+        "key": "System.ArrayEnumerator",
+        "totals": {
+          "sampleCount": 336,
+          "estimatedBytes": 35816552,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 567.980986,
+          "lastSampleMs": 15007.32487
+        }
+      },
+      {
+        "key": "MegaCrit.Sts2.Core.Models.PowerModel[]",
+        "totals": {
+          "sampleCount": 330,
+          "estimatedBytes": 35180304,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 367.921945,
+          "lastSampleMs": 14890.570597
+        }
+      },
+      {
+        "key": "CombatSolver.Engine.InCombat.Mirrors.Hooks.Card.ShouldPlayMirrorContext",
+        "totals": {
+          "sampleCount": 316,
+          "estimatedBytes": 33685600,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 390.413257,
+          "lastSampleMs": 14993.485467
+        }
+      },
+      {
+        "key": "MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar",
+        "totals": {
+          "sampleCount": 308,
+          "estimatedBytes": 32830856,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 229.990007,
+          "lastSampleMs": 14970.558328
+        }
+      },
+      {
+        "key": "<GetEnumerator>d__13",
+        "totals": {
+          "sampleCount": 297,
+          "estimatedBytes": 31664512,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 513.491488,
+          "lastSampleMs": 14998.341686
+        }
+      },
+      {
+        "key": "Entry[]",
+        "totals": {
+          "sampleCount": 287,
+          "estimatedBytes": 30599368,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 189.513969,
+          "lastSampleMs": 14945.627952
+        }
+      },
+      {
+        "key": "System.Linq.PartialArrayEnumerator`1[CombatSolver.SearchNode]",
+        "totals": {
+          "sampleCount": 287,
+          "estimatedBytes": 30592520,
+          "samplesWithoutStack": 0,
+          "samplesWithUnresolvedOnlyStack": 0,
+          "samplesWithSomeUnresolvedFrames": 0,
+          "firstSampleMs": 1245.802562,
+          "lastSampleMs": 13445.320847
+        }
+      }
+    ]
+  },
+  "heapGraph": {
+    "TotalSize": 662388644,
+    "NodeCount": 8448254,
+    "Reached": 8405561,
+    "ReachedWithoutRegistry": 8015296,
+    "AverageCountMultiplier": 1,
+    "AverageSizeMultiplier": 1,
+    "Histogram": [
+      {
+        "Type": "System.Int32[]",
+        "Count": 665823,
+        "Bytes": 30670000
+      },
+      {
+        "Type": "System.Collections.Generic.Dictionary<System.String,MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar>",
+        "Count": 311462,
+        "Bytes": 24916960
+      },
+      {
+        "Type": "CombatSolver.Engine.Common.PredictedCard",
+        "Count": 489626,
+        "Bytes": 23502048
+      },
+      {
+        "Type": "System.Reflection.RuntimeMethodInfo",
+        "Count": 216254,
+        "Bytes": 22490416
+      },
+      {
+        "Type": "CombatSolver.SimulatedCombatState",
+        "Count": 19880,
+        "Bytes": 22424640
+      },
+      {
+        "Type": "Entry<System.String,MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar>[]",
+        "Count": 181639,
+        "Bytes": 17472096
+      },
+      {
+        "Type": "Entry<MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Int32>[]",
+        "Count": 180599,
+        "Bytes": 17337504
+      },
+      {
+        "Type": "MegaCrit.Sts2.Core.Models.AbstractModel[]",
+        "Count": 39768,
+        "Bytes": 14891776
+      },
+      {
+        "Type": "CombatSolver.SimulationSnapshot",
+        "Count": 23512,
+        "Bytes": 14671488
+      },
+      {
+        "Type": "System.String",
+        "Count": 156612,
+        "Bytes": 14511578
+      },
+      {
+        "Type": "System.Collections.Generic.Dictionary<MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Int32>",
+        "Count": 180599,
+        "Bytes": 14447920
+      },
+      {
+        "Type": "CombatSolver.Engine.Common.PredictedCard[]",
+        "Count": 125369,
+        "Bytes": 13691272
+      },
+      {
+        "Type": "Entry<MegaCrit.Sts2.Core.Models.RelicModel,CombatSolver.SimulatedCombatState+StatefulRelicState>[]",
+        "Count": 19879,
+        "Bytes": 11450640
+      },
+      {
+        "Type": "Slot[]",
+        "Count": 19880,
+        "Bytes": 10655680
+      },
+      {
+        "Type": "Entry[]",
+        "Count": 7792,
+        "Bytes": 9399240
+      },
+      {
+        "Type": "Entry<System.ValueTuple<MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Type>,MegaCrit.Sts2.Core.Models.PowerModel>[]",
+        "Count": 19880,
+        "Bytes": 8769216
+      },
+      {
+        "Type": "MegaCrit.Sts2.Core.Models.Afflictions.Bound",
+        "Count": 109169,
+        "Bytes": 8733520
+      },
+      {
+        "Type": "MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar",
+        "Count": 90869,
+        "Bytes": 7996472
+      },
+      {
+        "Type": "CombatSolver.Engine.Common.SimCardPile",
+        "Count": 99400,
+        "Bytes": 7952000
+      },
+      {
+        "Type": "MegaCrit.Sts2.Core.Models.Powers.WeakPower",
+        "Count": 52093,
+        "Bytes": 7918136
+      },
+      {
+        "Type": "System.Collections.Generic.HashSet<MegaCrit.Sts2.Core.Entities.Cards.CardKeyword>",
+        "Count": 117860,
+        "Bytes": 7543040
+      },
+      {
+        "Type": "Entry<System.ValueTuple<CombatSolver.StateFingerprint,System.Int32>,CombatSolver.CombatBeamSolver+ThreatProjection>[]",
+        "Count": 1,
+        "Bytes": 7509000
+      },
+      {
+        "Type": "ValueCollection<System.String,MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar>",
+        "Count": 311462,
+        "Bytes": 7475088
+      },
+      {
+        "Type": "MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVarSet",
+        "Count": 311462,
+        "Bytes": 7475088
+      },
+      {
+        "Type": "MegaCrit.Sts2.Core.Models.Cards.DefendRegent",
+        "Count": 24861,
+        "Bytes": 7358856
+      },
+      {
+        "Type": "CombatSolver.ForkableDictionary<MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Int32>",
+        "Count": 298188,
+        "Bytes": 7156512
+      },
+      {
+        "Type": "System.Byte[]",
+        "Count": 21735,
+        "Bytes": 6796647
+      },
+      {
+        "Type": "CombatSolver.SearchNode",
+        "Count": 23511,
+        "Bytes": 6583080
+      },
+      {
+        "Type": "TranspositionFrontier",
+        "Count": 117020,
+        "Bytes": 6553120
+      },
+      {
+        "Type": "Storage<MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Int32>",
+        "Count": 180599,
+        "Bytes": 5779168
+      }
+    ],
+    "Paths": {
+      "CombatSolver.SimulatedCombatState": [
+        [
+          "[.NET Roots]",
+          "[local vars]",
+          "CombatSolver.SimulatedCombatState"
+        ],
+        [
+          "[.NET Roots]",
+          "[local vars]",
+          "CombatSolver.CombatRootSnapshot",
+          "CombatSolver.Engine.InCombat.Simulation.CombatPredictionSimulator",
+          "CombatSolver.Engine.InCombat.Simulation.CombatPredictionState",
+          "CombatSolver.SimulatedCombatState"
+        ],
+        [
+          "[.NET Roots]",
+          "[local vars]",
+          "[]c__DisplayClass545_6",
+          "System.Collections.Generic.List<CombatSolver.SearchNode>",
+          "CombatSolver.SearchNode[]",
+          "CombatSolver.SearchNode",
+          "CombatSolver.SimulationSnapshot",
+          "CombatSolver.Engine.InCombat.Simulation.CombatPredictionSimulator",
+          "CombatSolver.Engine.InCombat.Simulation.CombatPredictionState",
+          "CombatSolver.SimulatedCombatState"
+        ]
+      ],
+      "CombatSolver.SimulationSnapshot": [
+        [
+          "[.NET Roots]",
+          "[local vars]",
+          "CombatSolver.SimulationSnapshot"
+        ],
+        [
+          "[.NET Roots]",
+          "[local vars]",
+          "CombatSolver.SearchNode[]",
+          "CombatSolver.SearchNode",
+          "CombatSolver.SearchNode",
+          "CombatSolver.SimulationSnapshot"
+        ],
+        [
+          "[.NET Roots]",
+          "[local vars]",
+          "CombatSolver.SearchNode[]",
+          "CombatSolver.SearchNode",
+          "CombatSolver.SearchNode",
+          "CombatSolver.SearchNode",
+          "CombatSolver.SimulationSnapshot"
+        ]
+      ],
+      "CombatSolver.SearchNode": [
+        [
+          "[.NET Roots]",
+          "[local vars]",
+          "CombatSolver.SearchNode"
+        ],
+        [
+          "[.NET Roots]",
+          "[local vars]",
+          "[]c__DisplayClass545_0",
+          "CombatSolver.SearchNode"
+        ],
+        [
+          "[.NET Roots]",
+          "[local vars]",
+          "CombatSolver.SearchNode[]",
+          "CombatSolver.SearchNode",
+          "CombatSolver.SearchNode"
+        ]
+      ],
+      "CombatSolver.Engine.Common.PredictedCard": [
+        [
+          "[.NET Roots]",
+          "[local vars]",
+          "CombatSolver.CombatRootSnapshot",
+          "CombatSolver.Engine.InCombat.Simulation.CombatPredictionSimulator",
+          "CombatSolver.Engine.InCombat.Simulation.CombatPredictionState",
+          "CombatSolver.SimulatedCombatState",
+          "System.Collections.Generic.List<CombatSolver.Engine.Common.PredictedCard>",
+          "CombatSolver.Engine.Common.PredictedCard[]",
+          "CombatSolver.Engine.Common.PredictedCard"
+        ],
+        [
+          "[.NET Roots]",
+          "[local vars]",
+          "[]c__DisplayClass545_6",
+          "System.Collections.Generic.List<CombatSolver.SearchNode>",
+          "CombatSolver.SearchNode[]",
+          "CombatSolver.SearchNode",
+          "CombatSolver.SimulationSnapshot",
+          "CombatSolver.Engine.InCombat.Simulation.CombatPredictionSimulator",
+          "CombatSolver.Engine.InCombat.Simulation.CombatPredictionState",
+          "CombatSolver.SimulatedCombatState",
+          "System.Collections.Generic.List<CombatSolver.Engine.Common.PredictedCard>",
+          "CombatSolver.Engine.Common.PredictedCard[]",
+          "CombatSolver.Engine.Common.PredictedCard"
+        ],
+        [
+          "[.NET Roots]",
+          "[local vars]",
+          "[]c__DisplayClass545_6",
+          "System.Collections.Generic.List<CombatSolver.SearchNode>",
+          "CombatSolver.SearchNode[]",
+          "CombatSolver.SearchNode",
+          "CombatSolver.SimulationSnapshot",
+          "CombatSolver.Engine.InCombat.Simulation.CombatPredictionSimulator",
+          "CombatSolver.Engine.InCombat.Mirrors.Hooks.Card.ModifyEnergyCostInCombatMirrorContext",
+          "CombatSolver.Engine.Common.PredictedCard"
+        ]
+      ],
+      "System.Collections.Generic.Dictionary<System.String,MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar>": [
+        [
+          "[.NET Roots]",
+          "[static vars]",
+          "[static var System.Collections.Generic.Dictionary<MegaCrit.Sts2.Core.Models.AbstractModel,System.UInt32>.ObjectToIdentity]",
+          "System.Collections.Generic.Dictionary<MegaCrit.Sts2.Core.Models.AbstractModel,System.UInt32>",
+          "Entry<MegaCrit.Sts2.Core.Models.AbstractModel,System.UInt32>[]",
+          "MegaCrit.Sts2.Core.Models.Cards.DefendRegent",
+          "MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVarSet",
+          "System.Collections.Generic.Dictionary<System.String,MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar>"
+        ],
+        [
+          "[.NET Roots]",
+          "[static vars]",
+          "[static var System.Collections.Generic.Dictionary<MegaCrit.Sts2.Core.Models.AbstractModel,System.UInt32>.ObjectToIdentity]",
+          "System.Collections.Generic.Dictionary<MegaCrit.Sts2.Core.Models.AbstractModel,System.UInt32>",
+          "Entry<MegaCrit.Sts2.Core.Models.AbstractModel,System.UInt32>[]",
+          "MegaCrit.Sts2.Core.Models.Cards.FallingStar",
+          "MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVarSet",
+          "System.Collections.Generic.Dictionary<System.String,MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar>"
+        ],
+        [
+          "[.NET Roots]",
+          "[static vars]",
+          "[static var System.Collections.Generic.Dictionary<MegaCrit.Sts2.Core.Models.AbstractModel,System.UInt32>.ObjectToIdentity]",
+          "System.Collections.Generic.Dictionary<MegaCrit.Sts2.Core.Models.AbstractModel,System.UInt32>",
+          "Entry<MegaCrit.Sts2.Core.Models.AbstractModel,System.UInt32>[]",
+          "MegaCrit.Sts2.Core.Models.Cards.Venerate",
+          "MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVarSet",
+          "System.Collections.Generic.Dictionary<System.String,MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar>"
+        ]
+      ]
+    },
+    "ExclusiveRegistryBytes": 38097452,
+    "ExclusiveRegistryObjects": 390265,
+    "ExclusiveRegistryTypes": [
+      {
+        "Type": "MegaCrit.Sts2.Core.Models.Afflictions.Bound",
+        "Count": 70322,
+        "Bytes": 5625760
+      },
+      {
+        "Type": "Entry<MegaCrit.Sts2.Core.Models.AbstractModel,System.UInt32>[]",
+        "Count": 1,
+        "Bytes": 3754512
+      },
+      {
+        "Type": "Entry<System.UInt32,MegaCrit.Sts2.Core.Models.AbstractModel>[]",
+        "Count": 1,
+        "Bytes": 3754512
+      },
+      {
+        "Type": "System.Collections.Generic.Dictionary<System.String,MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar>",
+        "Count": 31922,
+        "Bytes": 2553760
+      },
+      {
+        "Type": "System.Int32[]",
+        "Count": 24023,
+        "Bytes": 2116300
+      },
+      {
+        "Type": "Entry<System.String,MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar>[]",
+        "Count": 21990,
+        "Bytes": 2111040
+      },
+      {
+        "Type": "MegaCrit.Sts2.Core.Models.Cards.DefendRegent",
+        "Count": 6709,
+        "Bytes": 1985864
+      },
+      {
+        "Type": "System.Collections.Generic.HashSet<MegaCrit.Sts2.Core.Entities.Cards.CardKeyword>",
+        "Count": 28506,
+        "Bytes": 1824384
+      },
+      {
+        "Type": "MegaCrit.Sts2.Core.Models.Cards.PaleBlueDot",
+        "Count": 5640,
+        "Bytes": 1669440
+      },
+      {
+        "Type": "MegaCrit.Sts2.Core.Models.Cards.Venerate",
+        "Count": 4884,
+        "Bytes": 1445664
+      },
+      {
+        "Type": "MegaCrit.Sts2.Core.Entities.Cards.CardEnergyCost",
+        "Count": 28506,
+        "Bytes": 1368288
+      },
+      {
+        "Type": "MegaCrit.Sts2.Core.Models.Cards.Stratagem",
+        "Count": 3416,
+        "Bytes": 1011136
+      },
+      {
+        "Type": "System.Collections.Generic.List<MegaCrit.Sts2.Core.Entities.Cards.TemporaryCardCost>",
+        "Count": 28506,
+        "Bytes": 912192
+      },
+      {
+        "Type": "System.Collections.Generic.List<MegaCrit.Sts2.Core.Entities.Cards.LocalCostModifier>",
+        "Count": 28506,
+        "Bytes": 912192
+      },
+      {
+        "Type": "MegaCrit.Sts2.Core.Localization.DynamicVars.CardsVar",
+        "Count": 8800,
+        "Bytes": 774400
+      }
+    ]
+  },
+  "heapGraphInterpretation": "One forced-GC snapshot. Exclusive registry values are graph reachability after suppressing outgoing edges of the two registry dictionary objects, not measured released bytes or a leak proof. Some graph nodes lack a path from the synthetic root.",
+  "registryOwner": "STS2RitsuLib.Models.Identity.ModModelIdentityRegistry in local STS2-RitsuLib.Runtime.dll",
+  "sourceValidation": {
+    "build": "Release: 0 warnings, 0 errors",
+    "boundaries": "REFACTOR_BOUNDARIES_OK search_files=204"
+  },
+  "artifacts": ".local/queen-gc/"
+}

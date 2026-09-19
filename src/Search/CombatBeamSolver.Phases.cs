@@ -1674,6 +1674,7 @@ internal sealed partial class CombatBeamSolver
                     if (policy.VerifyIncrementalSearch || !signal.IsEnabled)
                         return;
                     long reserve = ParentAllocationReserve();
+                    signal.ObserveCommitReserve(reserve);
                     bool reserveCanEverFit = reserve <= signal.AllocationLimitBytes;
                     if (signal.IsLimitReached()
                         || (reserveCanEverFit && !signal.CanReachCommit(reserve)))

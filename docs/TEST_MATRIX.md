@@ -1,5 +1,13 @@
 # CombatSolver 测试清单
 
+## 下一版本（开发中）：女王 NoGC 有效窗口（2026-09-20）
+
+- `GcPolicyChecks -- commit-window`：真实853,962,871字节区域+513,894,480字节预留，基线`967c7c39`在检查点不应重建的断言失败；候选通过限额释放、不误降并行、恢复不得绕过拒绝，以及64MiB预留下的条件恢复。`recovery`10项、`admission`6项、`recovery-lifecycle`2项、`checkpoint`1项通过。
+- 女王原包`RestoreOnly/start`通过已记录状态对账，旧包原生编号映射缺失。4,000节点主成员、DOP1、1GB NoGC的四次主成员均4,000展开/223,269转移；整个请求的补充审计受剩余时间影响，工作量不一致，不作整请求提速结论。8,000节点TimeLimit试验及0.854GB设置校验失败均保留记录。
+- 哨兵`sel-defect-elite-02`：NoGC1GB、DOP1、Evaluate，两对各86项工具比较一致；完整动作/选牌、续用、根戳、政策和目录指纹一致，实际剪枝计数一致，仅派生威胁缓存占用数不同。反向顺序未重复首对变慢方向，不宣称提速或稳定退化。
+- 分配trace严格转换成功，缺栈/纯未解析栈/丢事件为0；23条样本有部分未解析帧。单点gcdump及根路径分析只作归因，主动采集触发GC，排除出性能样本。Release构建0警告/错误，结构门禁通过，headless实例全部清理。未验证Windows、DOP16、完整女王长搜、自动部署或可见帧。
+- 口径、命令、结果和原始产物位置见[报告](performance/queen-gc-commit-window-20260920.md)及[结构化证据](performance/queen-gc-commit-window-20260920.json)。
+
 ## 下一版本（开发中）：花园幽灵鳗分配优化（2026-09-19）
 
 - 基线 `8be14100`，候选只优化静态怪物意图复用与 Skittish 回调遍历。原包 `RestoreOnly/start` 的 ContinuationStamp 通过，原生编号映射缺失，保留 `nativeStateVerified=false` 的限制。

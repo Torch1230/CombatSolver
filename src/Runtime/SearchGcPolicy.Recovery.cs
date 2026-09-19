@@ -9,6 +9,7 @@ internal static partial class SearchGcPolicy
     private static bool IsRecoverableNoGcOutcome(NoGcRegionStartOutcome outcome)
         => outcome is NoGcRegionStartOutcome.InsufficientMemory
             or NoGcRegionStartOutcome.SystemHeadroomInsufficient
+            or NoGcRegionStartOutcome.CommitWindowInsufficient
             or NoGcRegionStartOutcome.SkippedAfterUnexpectedLoss;
 
     private static void InstallNoGcRecoveryProbe(
@@ -48,10 +49,9 @@ internal static partial class SearchGcPolicy
                 long load = PhysicalMemoryUsage.Capture(memory).UsedBytes;
                 long budget = RecoveryBudget(configuredBudget, systemLimit, load);
                 long lohBudget = Math.Min(configuredLohBudget, Math.Max(1, budget / 6));
-                long allocationLimit = Math.Min((budget - lohBudget) / 5 * 4, budget / 4 * 3);
-                // Do not establish a region that the already-known next atomic operation
-                // cannot fit. Total Gen2 fragmentation is not guaranteed NoGC SOH capacity.
-                if (budget < MinimumNoGcRegionBudgetBytes || reservedBytes > allocationLimit)
+                // Fitting the next atomic operation alone can leave almost no productive
+                // window before another forced collection. Keep ordinary GC in that case.
+                if (!IsNoGcCommitWindowWorthEntering(budget, lohBudget, reservedBytes))
                     return;
 
                 backoff.RecordAttempt(now, gen2Index);
@@ -104,6 +104,22 @@ internal static partial class SearchGcPolicy
         // Hysteresis: half the current physical headroom stays outside the reservation.
         // Reclaimed Gen2 holes may be useful to normal GC but do not enlarge this allowance.
         return Math.Min(configured, headroom / 2);
+    }
+
+    internal static long CalculateSearchAllocationLimit(long remaining, long budget, long lohBudget)
+        => Math.Max(1, Math.Min(Math.Max(1, budget - lohBudget) / 5 * 4,
+            Math.Max(1, remaining / 4 * 3)));
+
+    internal static bool IsNoGcCommitWindowWorthEntering(long budget, long lohBudget, long reservedBytes)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(reservedBytes);
+        if (budget < MinimumNoGcRegionBudgetBytes)
+            return false;
+        long limit = CalculateSearchAllocationLimit(budget, budget, lohBudget);
+        // Match the useful-allocation floor of layer reclamation: at least one quarter
+        // of the region's search allowance (and 64 MiB) must remain beyond the reserve.
+        long usefulWindow = Math.Max(64L * 1024 * 1024, limit / 4);
+        return reservedBytes <= limit && limit - reservedBytes >= usefulWindow;
     }
 
     internal sealed class NoGcRecoveryBackoff

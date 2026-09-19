@@ -1,6 +1,8 @@
 using CombatSolver;
 
-if (args is ["recovery-lifecycle"])
+if (args is ["commit-window"])
+    GcCommitWindowChecks.Run();
+else if (args is ["recovery-lifecycle"])
 {
     PolicyCheck.Run("actual region loss and bounded recovery", GcRecoveryChecks.RunLifecycle);
     PolicyCheck.Run("exit request invalidates pending recovery", GcRecoveryChecks.RunExitGuard);
@@ -23,5 +25,5 @@ else if (args.Length == 0)
     GcRegionAdmissionChecks.Run();
 }
 else
-    throw new ArgumentException("Expected no arguments, 'admission', 'parallelism', 'scopes', 'checkpoint', 'memory', 'recovery' or 'recovery-lifecycle'.");
+    throw new ArgumentException("Expected no arguments, 'admission', 'parallelism', 'scopes', 'checkpoint', 'memory', 'recovery', 'recovery-lifecycle' or 'commit-window'.");
 Console.WriteLine($"GC policy checks passed: {PolicyCheck.Completed} scenarios.");

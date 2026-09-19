@@ -1,4 +1,9 @@
 {
+  "GC-COMMIT-WINDOW": {
+    "status": "Passed",
+    "level": "ProductionClrCheckpointAndRecovery",
+    "evidence": "docs/performance/queen-gc-commit-window-20260920.md"
+  },
   "GARDEN-ALLOCATION-NATIVE": {
     "status": "Passed",
     "level": "HeadlessNativeDifferentialAndForkContract",

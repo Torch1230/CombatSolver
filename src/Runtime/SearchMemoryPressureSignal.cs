@@ -50,6 +50,16 @@ internal sealed class SearchMemoryPressureSignal
 
     public int ReclaimCount { get; private set; }
 
+    // Coordinator-owned observation at drained boundaries; Runtime uses it when
+    // deciding whether a replacement region can absorb useful work after its reserve.
+    public long NextCommitReserveBytes { get; private set; }
+
+    public void ObserveCommitReserve(long reservedBytes)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(reservedBytes);
+        NextCommitReserveBytes = reservedBytes;
+    }
+
     /// <summary>连续多少次搜索内回收没有腾出余量；有进展的那次回收把它清零。</summary>
     public int ConsecutiveNoProgressReclaims { get; private set; }
 
@@ -301,6 +311,7 @@ internal sealed class SearchMemoryPressureSignal
     {
         ArgumentOutOfRangeException.ThrowIfNegative(reservedBytes);
         cancellationToken.ThrowIfCancellationRequested();
+        ObserveCommitReserve(reservedBytes);
         if (!IsEnabled && Volatile.Read(ref _noGcRecoveryAllowed) != 0)
             Volatile.Read(ref _noGcRecoveryProbe)?.Invoke(reservedBytes, cancellationToken);
     }
@@ -314,6 +325,7 @@ internal sealed class SearchMemoryPressureSignal
     public void Disable()
     {
         DisableLimits();
+        NextCommitReserveBytes = 0;
         Volatile.Write(ref _noGcRecoveryProbe, null);
         Volatile.Write(ref _noGcFallbackObserver, null);
     }
