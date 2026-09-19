@@ -33,6 +33,9 @@ internal static class ModRuntime
 
     public static List<string> PatchLog { get; } = [];
 
+    /// <summary>阶段表由求解器在搜索结束时发布；离线宿主把它并进结果 JSON，避免只留在异步日志里。</summary>
+    public static string? LastPhasePerformance { get; private set; }
+
     /// <summary>离线会话作用域；释放即把无人测试口径还原（进程退出前 Program 负责释放）。</summary>
     public static IDisposable? Session { get; private set; }
 
@@ -49,10 +52,12 @@ internal static class ModRuntime
 
         ApplyFixedBudgetSettings(options);
         ApplyUnattendedOverrides(options);
+        string cardPileFreeze = FreezeModCardPiles();
         int applied = ApplySearchPatches();
 
         SolverSettingsSnapshot snapshot = SolverSettings.Capture();
         return $"patches_applied={applied}/{SearchPatchTypes.Length} "
+            + $"mod_card_piles={DescribeModCardPiles()} freeze={cardPileFreeze} "
             + $"profile={options.Profile} "
             + $"beam={snapshot.Profile.BeamWidth} nodes={snapshot.Profile.MaxExpandedNodes} "
             + $"branches={snapshot.Profile.MaxCardBranchesPerNode}/"
@@ -146,6 +151,34 @@ internal static class ModRuntime
             TranspositionPruningDisabledMask = options.TranspositionPruningDisabledMask,
             MemoryNoProgressRecoveryLimit = options.MemoryNoProgressRecoveryLimit,
         });
+
+    /// <summary>
+    /// 游戏里 RitsuLib 在模组注册结束后冻结牌堆注册表，<c>SimulationCardPileLookupPatch</c> 的无分配
+    /// 快速路径才会生效；离线宿主没有那一步，于是每次搜索都退回原版 <c>Player.Piles</c> 的
+    /// Concat + 谓词 + 枚举器分配。这里按同一时点（无任何注册牌堆）冻结，让离线指标对应实机路径。
+    /// </summary>
+    private static string FreezeModCardPiles()
+    {
+        const BindingFlags flags = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
+        try
+        {
+            Type registry = typeof(STS2RitsuLib.CardPiles.ModCardPileRegistry);
+            if (registry.GetProperty("IsFrozen", flags)?.GetValue(null) is true)
+                return "already";
+            // RitsuLib 0.111.0 的入口是 FreezeRegistrations(string)，参数是冻结发起方。
+            MethodInfo? freeze = registry.GetMethod("FreezeRegistrations", flags, null, [typeof(string)], null);
+            if (freeze == null)
+                return "no-FreezeRegistrations";
+            freeze.Invoke(null, ["OfflineSearchHarness"]);
+            return "frozen=" + (registry.GetProperty("IsFrozen", flags)?.GetValue(null) ?? "?");
+        }
+        catch (Exception error)
+        {
+            Exception root = error;
+            while (root.InnerException != null) root = root.InnerException;
+            return $"failed:{root.GetType().Name}:{root.Message}";
+        }
+    }
 
     private static int ApplySearchPatches()
     {
@@ -319,6 +352,12 @@ internal static class ModRuntime
         Task<SolverResult> solve = Task.Run(solver.Solve);
         loop.RunUntilCompleted(solve, TimeSpan.FromSeconds(660), "CombatBeamSolver.Solve");
         SolverResult result = solve.GetAwaiter().GetResult();
+        if (policy.MeasurePhasePerformance)
+        {
+            string phasePerformance = SolverDiagnostics.DescribeSearchPhasePerformance(result);
+            LastPhasePerformance = phasePerformance;
+            policy.Diagnostics.Info(phasePerformance);
+        }
         SearchRequestWorkSnapshot work = totals.Snapshot();
         result.TotalExpandedNodes = work.ExpandedNodes;
         result.TotalTransitionCount = work.TransitionCount;
@@ -522,6 +561,52 @@ internal static class ModRuntime
             ["coverageCacheCount"] = result.CoverageCacheCount,
         };
         return metrics;
+    }
+
+    /// <summary>
+    /// 模组日志由后台写线程持有；进程直接退出会丢掉尚未落盘的最后一段（阶段表恰好在末尾）。
+    /// 用该日志自己的 FIFO 快照屏障等所有已入队条目写完，再结束进程。
+    /// </summary>
+    public static void FlushDiagnostics()
+    {
+        object? logger = typeof(Entry)
+            .GetProperty("Logger", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            ?.GetValue(null);
+        object? journal = logger?.GetType()
+            .GetProperty("Journal", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?.GetValue(logger);
+        if (journal == null)
+            return;
+        object? capture = journal.GetType()
+            .GetMethod("CaptureAsync", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?.Invoke(journal, null);
+        if (capture is Task task)
+            task.GetAwaiter().GetResult();
+    }
+
+    /// <summary>
+    /// <c>SimulationCardPileLookupPatch</c> 的快速路径只在 RitsuLib 的模组牌堆注册表冻结、且没有任何
+    /// 注册牌堆时生效。游戏启动流程会冻结它，离线宿主没有这一步；这里把真实取值报出来，避免把
+    /// 「宿主没冻结」误读成搜索分配。
+    /// </summary>
+    private static string DescribeModCardPiles()
+    {
+        try
+        {
+            Type registry = typeof(STS2RitsuLib.CardPiles.ModCardPileRegistry);
+            object? frozen = registry
+                .GetProperty("IsFrozen", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                ?.GetValue(null);
+            object? definitions = registry
+                .GetMethod("GetDefinitionsSnapshot", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                ?.Invoke(null, null);
+            int count = definitions is System.Collections.ICollection collection ? collection.Count : -1;
+            return $"frozen={frozen ?? "?"} definitions={count}";
+        }
+        catch (Exception error)
+        {
+            return $"probe_failed:{error.GetType().Name}";
+        }
     }
 
     private static void SetStatic(Type type, string name, object value)

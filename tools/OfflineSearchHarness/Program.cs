@@ -155,6 +155,7 @@ internal static class Program
                 // 宿主自己从 SolverResult 读的剪枝/复用计数（游戏内 result.json 没有这些字段）。
                 payload["pruneCounters"] = outcome.LegacyMetrics;
                 payload["searchPolicy"] = outcome.Policy;
+                payload["phasePerformance"] = ModRuntime.LastPhasePerformance;
                 File.WriteAllText(
                     Path.Combine(options.OutputDirectory, "search-policy.json"),
                     JsonSerializer.Serialize(outcome.Policy, UnattendedTestFiles.JsonOptions));
@@ -186,6 +187,9 @@ internal static class Program
             };
             WriteProgress(options, NextMilestone(reached), "blocked", $"{root.GetType().Name}: {root.Message}");
             Console.Error.WriteLine($"[FAIL] {root.GetType().Name}: {root.Message}");
+            // 包装异常（如 SearchTransitionException）的真正原因在 InnerException 上，必须打出来。
+            for (Exception? inner = root.InnerException; inner != null; inner = inner.InnerException)
+                Console.Error.WriteLine($"[FAIL:inner] {inner.GetType().Name}: {inner.Message}");
             Console.Error.WriteLine(root.StackTrace);
             exitCode = 1;
         }
@@ -193,6 +197,7 @@ internal static class Program
         {
             choiceScope?.Dispose();
             ModRuntime.Session?.Dispose();
+            ModRuntime.FlushDiagnostics();
         }
 
         payload["reachedMilestone"] = reached;

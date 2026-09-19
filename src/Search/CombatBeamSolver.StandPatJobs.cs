@@ -117,13 +117,16 @@ internal sealed partial class CombatBeamSolver
                 {
                     StandPatJobOutcome outcome = wave.Take();
                     active--;
-                    _coordinator.MergeExpansionWorker(outcome.Worker, outcome.AllocatedBytes);
                     maximumProbeAllocatedBytes = Math.Max(maximumProbeAllocatedBytes, outcome.AllocatedBytes);
                     _workProfile.Record(ParallelExpansionWorkProfile.Kind.StandPat,
                         outcome.ElapsedTicks, outcome.Concurrency);
                     firstError ??= outcome.Error;
                     if (firstError != null)
+                    {
+                        // 同 AdmittedExpansion：失败的 lane 不再合并指标，原错误优先。
                         continue;
+                    }
+                    _coordinator.MergeExpansionWorker(outcome.Worker, outcome.AllocatedBytes);
                     evaluations[outcome.Job.Index] = outcome.Evaluation;
                     if (next < nodes.Count)
                         Dispatch(outcome.Job.Lane);
@@ -138,7 +141,11 @@ internal sealed partial class CombatBeamSolver
                 wave.Completed.Signal();
                 wave.Completed.Wait();
                 while (wave.TryTake(out StandPatJobOutcome? pending))
-                    _coordinator.MergeExpansionWorker(pending!.Worker, pending.AllocatedBytes);
+                {
+                    if (pending!.Error != null)
+                        continue;
+                    _coordinator.MergeExpansionWorker(pending.Worker, pending.AllocatedBytes);
+                }
                 _workProfile.Record(ParallelExpansionWorkProfile.Kind.StandPatWave,
                     Stopwatch.GetTimestamp() - startedAt);
             }

@@ -51,28 +51,39 @@ internal sealed class SearchPerformanceMetrics(bool enabled)
     /// 这样各阶段相加才有归属意义。测量范围必须与 Begin/End 调用严格后进先出；
     /// 否则说明某个调用方在子范围里就结束了父范围，诊断直接失败而不是输出错账。
     /// </summary>
-    private struct ActiveFrame(int id, long timestamp, long allocatedBytes)
+    private struct ActiveFrame(int id, long timestamp, long allocatedBytes, SearchMetricPhase? phase)
     {
         public int Id = id;
         public long Timestamp = timestamp;
         public long AllocatedBytes = allocatedBytes;
         public long ChildTicks;
         public long ChildAllocatedBytes;
+        public SearchMetricPhase? Phase = phase;
+        public string? Origin = CaptureOrigins ? new StackTrace(2, true).ToString() : null;
     }
 
-    public SearchMeasurement Begin()
+    /// <summary>
+    /// 打开后每个测量帧记录创建栈，未收口时的诊断信息可以直接定位到调用点。
+    /// 默认关闭：抓栈只用于排查测量帧泄漏，不在常规跑批里付这个成本。
+    /// </summary>
+    internal static readonly bool CaptureOrigins =
+        Environment.GetEnvironmentVariable("COMBATSOLVER_MEASUREMENT_TRACE") == "1";
+
+    public SearchMeasurement Begin() => BeginCore(null);
+
+    private SearchMeasurement BeginCore(SearchMetricPhase? phase)
     {
         if (!_enabled)
             return SearchMeasurement.Disabled;
         long timestamp = Stopwatch.GetTimestamp();
         long allocatedBytes = GC.GetAllocatedBytesForCurrentThread();
         int frameId = ++_nextFrameId;
-        _activeFrames.Add(new ActiveFrame(frameId, timestamp, allocatedBytes));
+        _activeFrames.Add(new ActiveFrame(frameId, timestamp, allocatedBytes, phase));
         return new SearchMeasurement(timestamp, allocatedBytes, frameId);
     }
 
     public SearchMeasurementScope Measure(SearchMetricPhase phase)
-        => new(this, phase, Begin());
+        => new(this, phase, BeginCore(phase));
 
     public void End(SearchMetricPhase phase, SearchMeasurement measurement)
     {
@@ -81,9 +92,11 @@ internal sealed class SearchPerformanceMetrics(bool enabled)
         if (_activeFrames.Count == 0
             || _activeFrames[^1].Id != measurement.FrameId)
         {
+            // 报出未收口的阶段名：迭代器里的 using 测量会跨 yield 持有帧，只有名字能定位。
             throw new InvalidOperationException(
-                $"搜索阶段测量不是后进先出：phase={phase} frame={measurement.FrameId} " +
-                $"active={(_activeFrames.Count == 0 ? "-" : _activeFrames[^1].Id.ToString())}。");
+                $"搜索阶段测量不是后进先出：phase={phase} frame={measurement.FrameId} "
+                + $"active={(_activeFrames.Count == 0 ? "-" : _activeFrames[^1].Id + "(" + (_activeFrames[^1].Phase?.ToString() ?? "anonymous") + ")")} "
+                + $"open=[{string.Join(",", _activeFrames.Select(frame => (frame.Phase?.ToString() ?? "anonymous") + "#" + frame.Id + "\n" + (frame.Origin ?? "-")))}]。");
         }
         ActiveFrame frame = _activeFrames[^1];
         _activeFrames.RemoveAt(_activeFrames.Count - 1);
@@ -107,7 +120,13 @@ internal sealed class SearchPerformanceMetrics(bool enabled)
     {
         ArgumentNullException.ThrowIfNull(worker);
         if (worker._activeFrames.Count != 0)
-            throw new InvalidOperationException("不能合并仍有未结束阶段测量的 worker 指标。");
+        {
+            // 报出到底哪个阶段没有收口：只报「有未结束测量」会把真正的失败原因藏起来。
+            throw new InvalidOperationException(
+                "不能合并仍有未结束阶段测量的 worker 指标："
+                + string.Join(",", worker._activeFrames.Select(frame =>
+                    (frame.Phase?.ToString() ?? "anonymous") + "#" + frame.Id)));
+        }
         for (int index = 0; index < _ticks.Length; index++)
         {
             if (_enabled)

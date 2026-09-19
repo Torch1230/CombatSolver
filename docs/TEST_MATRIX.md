@@ -9,6 +9,9 @@
 - Release 构建 0 警告/0 错误；Linux `tools/verify-refactor-boundaries.sh` 输出 `REFACTOR_BOUNDARIES_OK search_files=193`。未启动可见 Steam、未运行 Windows 构建和原始 VeryHigh 问题包。
 - 生成池复用（`aaed815`、`622e8d9`）：6 个实际打出无色/角色生成牌的根，同请求 Beam16 Evaluate A/B；selected worker 分配逐根下降 5.7%～19.7%，选中路线、全部 `cachedContinuations`、展开/转移/分数/战损相同，`compare_results.py` 539 字段全等。Release 0 警告/0 错误，结构门禁 `search_files=193`。
 - 保留表计数诊断（`a02d160`）：60,000 展开长搜输出 `transpositions=318265 expanded_transpositions=58622 stand_pat_cache=51354 threat_cache=172500 coverage_cache=11012`；仅诊断，不改变搜索。转置表上限方案与决策点见[保留表规模报告](performance/search-retention-bounds-20260919.md)，尚未实现默认上限。
+- 离线宿主保真（RitsuLib 内容注册冻结）：M0.3 行走行输出 `mod_card_piles=frozen=True definitions=0 freeze=frozen=True`；冻结前后对 `sel-defect-elite-02`、`sel-necrobinder-elite-14`、`sel-regent-monster-11`、`sel-silent-boss-01` 的展开数、战损与分数逐项相同。
+- 16 并行 / 极高 / No-GC 16 GB、20,000 节点、4 根 × 3 次中位墙钟与 selected worker 分配：4.39 s / 1,847 MB、3.21 s / 1,328 MB、8.62 s / 4,886 MB、26.57 s / 26,129 MB；对应冻结前基线为 4.48 s / 1,895 MB、3.30 s / 1,376 MB、8.88 s / 5,073 MB、29.34 s / 28,061 MB，三次样本墙钟离散度 ≤0.5%。
+- 阶段诊断健壮性：`sel-regent-monster-11` + `--measure-phases` 修复前 3/3 在 1.2 s 内以二手异常终止，修复后完整跑完 8.6 s 且展开/转移/分数/战损与不开阶段相同；阶段表随 `harness-result.json` 的 `phasePerformance` 一并落盘。细节见[离线基线与阶段归因](performance/dop16-veryhigh-fidelity-20260919.md)。
 
 ## 0.41.0：问题包开战默认与仓库内无头实例（2026-09-18）
 

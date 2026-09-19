@@ -193,13 +193,17 @@ internal sealed partial class CombatBeamSolver
                     waitTicks += Stopwatch.GetTimestamp() - waitStarted;
                     active--;
                     idleLanes.Push(outcome.Job.LaneIndex);
-                    // A lane's caches and counters may be reused only after this drain. The
-                    // published batch/probe lease has a separate owner and can wait for its turn.
-                    _coordinator.MergeExpansionWorker(outcome.Worker, outcome.AllocatedBytes);
                     _workProfile.Record(outcome.Job.Kind, outcome.ElapsedTicks, outcome.ActiveKindConcurrency);
                     firstError ??= outcome.Error;
                     if (firstError != null)
+                    {
+                        // 失败的 lane 可能停在未收口的测量帧上：合并指标会抛出二手异常并盖住
+                        // 真正的失败原因。搜索已决定以原错误退出，这里不再合并该 lane 的计数。
                         continue;
+                    }
+                    // A lane's caches and counters may be reused only after this drain. The
+                    // published batch/probe lease has a separate owner and can wait for its turn.
+                    _coordinator.MergeExpansionWorker(outcome.Worker, outcome.AllocatedBytes);
                     AdmittedParent parent = outcome.Job.Parent;
                     parent.Receive(outcome);
                     if (parent.TailCompleted)
@@ -223,7 +227,11 @@ internal sealed partial class CombatBeamSolver
                     while (wave.TryTake(out AdmittedJobOutcome? pending))
                     {
                         using (pending)
-                            _coordinator.MergeExpansionWorker(pending!.Worker, pending.AllocatedBytes);
+                        {
+                            if (pending!.Error != null)
+                                continue;
+                            _coordinator.MergeExpansionWorker(pending.Worker, pending.AllocatedBytes);
+                        }
                     }
                 }
                 finally
