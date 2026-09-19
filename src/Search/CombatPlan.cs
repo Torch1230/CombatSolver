@@ -1,5 +1,4 @@
 using MegaCrit.Sts2.Core.Entities.Cards;
-using MegaCrit.Sts2.Core.Models;
 using CombatSolver.Engine.InCombat.Simulation;
 using System.Globalization;
 using System.Runtime.CompilerServices;
@@ -1560,6 +1559,9 @@ internal sealed class SolverResult
     public required int BattleHpLostSoFar { get; init; }
     public required int ProjectedBattleHpLost { get; init; }
     public required int BattlePotionsUsedSoFar { get; init; }
+    public required string[] BattlePotionIdsUsedSoFar { get; init; }
+    public required string[] PlannedPotionIds { get; init; }
+    public required PotionRewardOutlook PotionRewardOutlook { get; init; }
     public required int PotionCount { get; init; }
     public required int ExplicitPotionCount { get; init; }
     public int ProjectedBattlePotionCount => BattlePotionsUsedSoFar + PotionCount;
@@ -1711,6 +1713,9 @@ internal sealed class SolverResult
             BattleHpLostSoFar = battleDamage.HpLostSoFar,
             ProjectedBattleHpLost = battleDamage.HpLostSoFar + totalRemainingLoss,
             BattlePotionsUsedSoFar = battleDamage.PotionsUsedSoFar,
+            BattlePotionIdsUsedSoFar = battleDamage.PotionIdsUsedSoFar,
+            PlannedPotionIds = PlannedPotionIds.Skip(PotionCount - remainingPotionCount).ToArray(),
+            PotionRewardOutlook = PotionRewardOutlook,
             PotionCount = remainingPotionCount,
             ExplicitPotionCount = remainingExplicitPotionCount,
             PotionHpSaved = remainingPotionCount == 0 ? 0 : PotionHpSaved,

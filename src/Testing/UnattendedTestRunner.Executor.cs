@@ -649,6 +649,11 @@ internal sealed partial class UnattendedTestRunner
                 runner._completedChecks.Add(request.ScenarioId);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "COMBAT-HISTORY-COUNTER-KEY")
+            {
+                runner.AssertCombatHistoryCounterKey(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId is "STOCK-RESPAWN-HP" or "STOCK-THORNS-RESPAWN-HP" or "STOCK-REPORT-RESPAWN-HP")
             {
                 await runner.AssertStockRespawnAsync(combatState, player);
@@ -679,6 +684,12 @@ internal sealed partial class UnattendedTestRunner
             }
             if (request.ScenarioId == "PR15-POTION-VALUE-TIERS")
                 runner.AssertPotionValueTiers(combatState);
+            if (request.ScenarioId == "POTION-REWARD-FORECAST")
+            {
+                _settingsBeforeTest ??= SolverSettings.Current;
+                SolverSettings.ApplyForTesting(_settingsBeforeTest with { PredictPotionReward = true });
+                await runner.AssertPotionRewardForecastAsync(combatState, player);
+            }
             if (request.ScenarioId == "PR18-FOREIGN-ONPLAY-BOUNDARY")
                 runner.AssertForeignCardPatchBoundary(combatState);
 

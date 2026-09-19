@@ -3,7 +3,6 @@ using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Models;
 using STS2RitsuLib.CardPiles;
 using STS2RitsuLib.Patching.Models;
-using CombatSolver.Engine.InCombat.Simulation;
 
 namespace CombatSolver;
 

@@ -1,4 +1,3 @@
-using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Combat.History.Entries;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
@@ -162,7 +161,7 @@ internal sealed partial class SimulatedCombatState
         return predicted;
     }
 
-    private Dictionary<Player, PredictedCard>? ForkHistoryCourseCards(
+    private static Dictionary<Player, PredictedCard>? ForkHistoryCourseCards(
         Dictionary<Player, PredictedCard>? source,
         PredictionForkContext context)
     {

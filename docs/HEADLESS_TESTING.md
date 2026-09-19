@@ -24,6 +24,8 @@ Linux 示例（各终端/agent 运行自己的请求）：
 ```sh
 bash tools/run-unattended-test.sh --headless-instance semantic-a --headless-execution-mode parallel --headless-memory-reservation-mib 4096 --headless-cpu-reservation 2 --timeout-seconds 120 --exit-on-complete
 bash tools/run-unattended-test.sh --headless-instance semantic-b --headless-execution-mode parallel --headless-memory-reservation-mib 4096 --headless-cpu-reservation 2 --timeout-seconds 120 --exit-on-complete
+
+macOS 有一个最小入口 `tools/run-unattended-test-macos.sh <请求 JSON> [超时秒]`：APFS 克隆游戏包到 `.local/headless-mac/`，`Contents/MacOS/mods` 只放本 worktree 构建的 CombatSolver 与工坊里的 RitsuLib，用隔离 `HOME` 承载 user://，直接写入 `coverage/unattended/*.json` 同形的请求。它没有排队、复用、资源预约与矩阵；全新 profile 第一次启动只生成 `settings.save`（游戏会因“没看过模组警告”跳过所有模组），第二次起才真正跑请求。
 ```
 
 Windows 使用 PowerShell 7.4 或更新版本，参数对应 `-HeadlessInstance`、`-HeadlessExecutionMode Parallel`、`-HeadlessMemoryReservationMiB`、`-HeadlessCpuReservation`、`-HeadlessQueueTimeoutSeconds`；场景参数与已有原生启动器相同。

@@ -1,4 +1,3 @@
-using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models.Powers;
 
 namespace CombatSolver;
@@ -33,7 +32,6 @@ internal sealed partial class CombatBeamSolver
                 turns,
                 1),
             "DANSE_MACABRE" => PowerPerTriggerBlockPotential(
-                child,
                 PowerAmountGain<DanseMacabrePower>(parent, child),
                 PowerCountCardsCostAtLeast(child, 2),
                 incoming),
@@ -72,7 +70,6 @@ internal sealed partial class CombatBeamSolver
                 PowerEnergyUnit(child),
                 turns),
             "SHROUD" => PowerPerTriggerBlockPotential(
-                child,
                 PowerAmountGain<ShroudPower>(parent, child),
                 doomSources,
                 incoming),
@@ -81,7 +78,6 @@ internal sealed partial class CombatBeamSolver
                 PowerAmountGain<SleightOfFleshPower>(parent, child),
                 debuffSources),
             "SPIRIT_OF_ASH" => PowerPerTriggerBlockPotential(
-                child,
                 PowerAmountGain<SpiritOfAshPower>(parent, child),
                 ethereal,
                 incoming),
@@ -89,4 +85,3 @@ internal sealed partial class CombatBeamSolver
         };
     }
 }
-

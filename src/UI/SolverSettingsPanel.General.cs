@@ -8,6 +8,7 @@ internal sealed partial class SolverSettingsPanel
 {
     private CheckButton _solverEnabled = null!;
     private CheckButton _automaticCalculation = null!;
+    private CheckButton _predictPotionReward = null!;
     private CheckButton _stopOnCombatEnd = null!;
     private CheckButton _stopOnDeathTurn = null!;
     private CheckButton _stopOnWorseRecalculation = null!;
@@ -33,6 +34,9 @@ internal sealed partial class SolverSettingsPanel
                == (int)SolverSettings.Current.ActTransitionBossHpStrategy
            && _finalBossHpStrategy.GetItemId(_finalBossHpStrategy.Selected)
                == (int)SolverSettings.Current.FinalBossHpStrategy;
+
+    internal bool PotionRewardPredictionConfiguredForTesting
+        => _predictPotionReward.ButtonPressed == SolverSettings.Current.PredictPotionReward;
 
     internal bool ExerciseBossHpStrategySettingsForTesting()
     {
@@ -229,6 +233,19 @@ internal sealed partial class SolverSettingsPanel
         AddSettingsSection(content, SolverText.Get("幕末 Boss"),
             SolverText.Get("分别设置幕末战斗的血量取舍，重新计算后生效。"), bossStrategyGrid);
 
+        GridContainer potionRewardGrid = CreateSettingsGrid();
+        _predictPotionReward = CreateToggle();
+        _predictPotionReward.Toggled += enabled =>
+        {
+            if (_loading) return;
+            PotionRewardPredictionChanged?.Invoke(enabled);
+            SetStatus(SolverText.Get("已保存，重新计算后生效"), SolverUiTokens.Palette.Success);
+        };
+        AddBasicRow(potionRewardGrid, SolverText.Get("预知战后药水奖励"), _predictPotionReward,
+            SolverText.Get("开启后提前显示战后是否掉落药水及其名称；药水栏已满时据此调整智能用药。此信息超出当前战斗 SL 可得的范围。默认关闭。"));
+        AddSettingsSection(content, SolverText.Get("药水奖励预测"),
+            SolverText.Get("控制是否预读战后奖励，重新计算后生效。"), potionRewardGrid);
+
         GridContainer interfaceGrid = CreateSettingsGrid();
         _overlayTheme = CreateOverlayThemeInput();
         AddBasicRow(
@@ -269,6 +286,7 @@ internal sealed partial class SolverSettingsPanel
     {
         _solverEnabled.ButtonPressed = !data.SolverDisabled;
         _automaticCalculation.ButtonPressed = data.AutomaticCalculationEnabled;
+        _predictPotionReward.ButtonPressed = data.PredictPotionReward;
         _stopOnCombatEnd.ButtonPressed = data.StopFullAutoOnCombatEnd;
         _stopOnDeathTurn.ButtonPressed = data.StopFullAutoOnDeathTurn;
         _stopOnWorseRecalculation.ButtonPressed = data.StopFullAutoOnWorseRecalculation;

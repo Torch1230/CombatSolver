@@ -1,4 +1,3 @@
-using CombatSolver.Engine.InCombat.Simulation;
 
 namespace CombatSolver;
 

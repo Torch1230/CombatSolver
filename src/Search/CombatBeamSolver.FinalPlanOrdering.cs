@@ -7,6 +7,7 @@ internal sealed partial class CombatBeamSolver
         PotionStrategySnapshot potionStrategy,
         bool enforcePotionDirectives,
         bool renewablePotionShapedRock,
+        int potionReplacementHpCredit,
         SolverTheftPolicy? theftPolicy,
         BossHpRelief bossHpRelief,
         PostCombatRelicHealProfile postCombatRelicHeal,
@@ -59,9 +60,10 @@ internal sealed partial class CombatBeamSolver
                     int optionalPotionCount = Math.Max(
                         0,
                         explicitPotionCount - forced.ForcedUseCount);
-                    int optionalPotionStrategicCost = Math.Max(
-                        0,
-                        explicitPotionStrategicCost - forced.ForcedStrategicHpCost);
+                    int optionalPotionStrategicCost = PotionUsePolicy.ApplyReplacementCredit(
+                        Math.Max(0, explicitPotionStrategicCost - forced.ForcedStrategicHpCost),
+                        optionalPotionCount,
+                        potionReplacementHpCredit);
                     int optionalAmbergrisCount = Math.Max(0, ambergrisCount - forced.ForcedAmbergrisCount);
                     SolverPotionPolicy effectivePotionPolicy = potionPolicy switch
                     {

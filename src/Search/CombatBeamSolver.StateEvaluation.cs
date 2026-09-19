@@ -1,11 +1,9 @@
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Extensions;
-using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.Hooks;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
@@ -15,9 +13,7 @@ using MegaCrit.Sts2.Core.Models.Powers;
 using CombatSolver.Engine.InCombat.Mirrors.Hooks.Card;
 using MegaCrit.Sts2.Core.Models.Potions;
 using MegaCrit.Sts2.Core.Models.Relics;
-using MegaCrit.Sts2.Core.MonsterMoves.MonsterMoveStateMachine;
 using MegaCrit.Sts2.Core.Random;
-using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.ValueProps;
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.InCombat.Mirrors;
@@ -153,7 +149,7 @@ internal sealed partial class CombatBeamSolver
         }
         else if (!_run.ThreatProjectionCache.TryGetValue((key, roundIndex), out threat))
         {
-            threat = ProjectHpAfterThreat(simulator, player, roundIndex);
+            threat = ProjectHpAfterThreat(simulator, player);
             _run.ThreatProjectionCache.Add((key, roundIndex), threat);
         }
         int projectedHp = threat.Hp;
@@ -1270,8 +1266,7 @@ internal sealed partial class CombatBeamSolver
 
     private ThreatProjection ProjectHpAfterThreat(
         CombatPredictionSimulator simulator,
-        SimCreatureState player,
-        int roundIndex)
+        SimCreatureState player)
     {
         int hp = player.CurrentHp;
         int block = player.Block;

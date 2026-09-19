@@ -82,6 +82,24 @@ internal static class PotionUsePolicy
         return StrategicHpCost(potion, renewablePotionShapedRock);
     }
 
+    /// <summary>
+    /// The strategic cost a route's optional potion uses must justify once the expected post-combat reward is
+    /// counted. See <see cref="PotionRewardOutlook"/>: the credit stands for the one reward a freed slot can
+    /// receive, so it is taken off the route total once, never per potion.
+    /// </summary>
+    /// <remarks>
+    /// The floor is one HP, not zero. A zero requirement would let <see cref="IsEligible"/> admit a potion route
+    /// that saves nothing or even loses more than the potion-free baseline (<see cref="HpSaved"/> clamps at
+    /// zero), and a free replacement only makes spending costless, never worth doing for no gain.
+    /// </remarks>
+    public static int ApplyReplacementCredit(
+        int optionalPotionStrategicCost,
+        int optionalPotionCount,
+        int replacementHpCredit)
+        => optionalPotionStrategicCost > 0 && optionalPotionCount > 0 && replacementHpCredit > 0
+            ? Math.Max(1, optionalPotionStrategicCost - replacementHpCredit)
+            : optionalPotionStrategicCost;
+
     public static int HpSaved(int potionFreeHpDeficit, int potionRouteHpDeficit)
         => Math.Max(0, potionFreeHpDeficit - potionRouteHpDeficit);
 

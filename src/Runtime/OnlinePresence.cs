@@ -1,4 +1,3 @@
-using System.Net.Http;
 using HttpClient = System.Net.Http.HttpClient;
 using Environment = System.Environment;
 using System.Net.Http.Json;

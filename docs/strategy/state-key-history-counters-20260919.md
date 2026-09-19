@@ -9,17 +9,17 @@
 | 牌 | 读的计数 |
 |---|---|
 | 金斧 `GOLD_AXE` | 已完成出牌数（全体） |
-| 伏特 `VOLTAIC` | 玩家闪电球充能次数 |
-| 撕裂 `TEAR_ASUNDER` | 玩家受到的未格挡伤害事件数 |
-| 自下而上 `PULL_FROM_BELOW` | 玩家打出的虚无牌数 |
+| 电流相生 `VOLTAIC` | 玩家闪电球充能次数 |
+| 扯碎 `TEAR_ASUNDER` | 玩家受到的未格挡伤害事件数 |
+| 亡魂牵引 `PULL_FROM_BELOW` | 玩家打出的虚无牌数 |
 | 谋杀 `MURDER` | 玩家抽牌数 |
-| 超大质量 `SUPERMASSIVE` | 玩家生成牌数 |
+| 超质量体 `SUPERMASSIVE` | 玩家生成牌数 |
 
 `BuildStateKey` / `SimulatedCombatState.AppendFingerprint` 覆盖牌堆、能力、RNG 与逐回合计数，不含这些整场总数。于是两条只差这些总数、其余逐项相同的分支哈希相同，`RankBest` 的精确去重只留一条，留下的那条之后这些牌的伤害/数值算错。转移影子实验（`exp/shadow-transition-trace`）在 50 根语料的 1390 万次转移里抓到 6 对"同键不同输出"，全部是金斧（19 次对 18 次完成出牌）。
 
 ## 修法
 
-新增 `CombatHistoryCounterKey`：根牌组（`root.PlayerCardIds`，手牌 + 抽牌堆 + 弃牌堆）含上述任一张时，`BuildStateKey` 遍历一次模拟历史，把六个计数追加进键；根之前的实况历史整场恒定，不进键。不含这些牌的战斗，键逐位不变。
+新增 `CombatHistoryCounterKey`：根牌组（`root.PlayerCardIds`，手牌 + 抽牌堆 + 弃牌堆）含上述任一张时，`BuildStateKey` 遍历一次模拟历史，把六个计数追加进键；根之前的实况历史整场恒定，不进键。不含这些牌的战斗，键逐位不变。战斗中途才生成读者牌，以及根捕获时读者牌已经在消耗堆、之后被回收的情况，都不会命中这项根牌组条件，仍是已知缺口。
 
 ## 验证
 
@@ -27,8 +27,8 @@
 
 | 语料 | 根数 | 含读者牌的根（按生成场景 loadout 查） | 实际不一致的根 | 其余根 |
 |---|---:|---|---|---|
-| EQ（1 瓶药） | 10 | `NECROBINDER-ELITE-00`（自下而上） | 同左 1 根 | 9 根 983 字段一致 |
-| FULL（2 瓶药） | 40 | `NECROBINDER-ELITE-00`（自下而上）、`SILENT-BOSS-01`、`SILENT-ELITE-03`（谋杀）、`SILENT-BOSS-03`（金斧 + 谋杀） | 同左 4 根 | 36 根一致 |
+| EQ（1 瓶药） | 10 | `NECROBINDER-ELITE-00`（亡魂牵引） | 同左 1 根 | 9 根 983 字段一致 |
+| FULL（2 瓶药） | 40 | `NECROBINDER-ELITE-00`（亡魂牵引）、`SILENT-BOSS-01`、`SILENT-ELITE-03`（谋杀）、`SILENT-BOSS-03`（金斧 + 谋杀） | 同左 4 根 | 36 根一致 |
 | GA（EQ 规格 + 无色牌固定含一张金斧） | 10 | 全部 | 全部 10 根 | — |
 
 不一致的根恰好就是含读者牌的根，一个不多一个不少。这些根上键变细的效果：
@@ -59,6 +59,7 @@
 
 ## 后续
 
+- 合并到含 #111/#112 的 main 后新增 `COMBAT-HISTORY-COUNTER-KEY` 无人夹具：同一根的父子分支只在子分支追加一次已完成出牌历史，金斧计算值相差 1，搜索 Snapshot 状态键不再相等；子分支 Fork 后键保持一致，父分支不变。该夹具人为构造稳定历史，证明键区分边界，不替代原生出牌严格差分或整场质量对照。Windows 结构门禁通过；完整构建的 MemoryCleaner 仍受本机缺少 .NET Framework 4.8 参考程序集限制，主 DLL 已编译。
 - 增量维护六个计数（历史追加时更新，Fork 时复制），键构建零遍历；再评估无条件追加。
 - 状态键完备性门禁（依赖声明 / Roslyn 限制直接遍历历史 / 开发构建核对读取），见顾问建议；这轮没做。
 

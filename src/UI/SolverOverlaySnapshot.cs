@@ -72,6 +72,9 @@ internal sealed record SolverOverlaySnapshot(
     string? SearchLimitWarningText)
 {
     public string? UnrecoveredLootText { get; init; }
+    public string? RewardOutcomeText { get; init; }
+    public string? UsedPotionOutcomeText { get; init; }
+    public string? PlannedPotionOutcomeText { get; init; }
     public IReadOnlyList<SolverStrategyOutcome> StrategyOutcomes { get; init; } = [];
     public static SolverOverlaySnapshot Capture(SolverResult result, bool unexpectedReplan)
         => CaptureWithReviewedWorldlines(result, unexpectedReplan, reviewedWorldlinesTotal: 0);
@@ -271,6 +274,9 @@ internal sealed record SolverOverlaySnapshot(
             hasRisk,
             BuildSearchLimitWarning(result.BoundaryReason))
         {
+            RewardOutcomeText = RewardOutcome(result),
+            UsedPotionOutcomeText = UsedPotionOutcome(result),
+            PlannedPotionOutcomeText = PlannedPotionOutcome(result),
             StrategyOutcomes = SolverStrategyOutcomeText.Capture(result.Snapshot.RelicCounters,
                 result.Snapshot.GrowthRewards, result.Snapshot.AllEnemiesDead),
             UnrecoveredLootText = result.OutstandingStolenResource <= 0 ? null
@@ -278,6 +284,45 @@ internal sealed record SolverOverlaySnapshot(
                     ? SolverText.Format($"预计未追回：{cards} 张牌 / {gold} 金币")
                     : SolverText.Format($"路线结束时未追回 {result.OutstandingStolenResource}"),
         };
+    }
+
+    private static string? RewardOutcome(SolverResult result)
+    {
+        PotionRewardOutlook outlook = result.PotionRewardOutlook;
+        if (!outlook.Enabled || result.CombatEndedTurn == null
+            || !result.Snapshot.AllEnemiesDead || result.Snapshot.PlayerDead)
+            return null;
+        return outlook.Forecast switch
+        {
+            PotionRewardForecast.Drop => SolverText.Format($"预计掉落：{SolverUiModelNames.Potion(outlook.ForecastPotionId!, outlook.ForecastPotionId!)}"),
+            PotionRewardForecast.NoDrop => SolverText.Get("预计不掉落药水"),
+            PotionRewardForecast.NoRewards => SolverText.Get("本场无战后奖励"),
+            PotionRewardForecast.Unknown => SolverText.Get("战后掉药未知"),
+            _ => throw new ArgumentOutOfRangeException(nameof(outlook.Forecast)),
+        };
+    }
+
+    private static string? UsedPotionOutcome(SolverResult result)
+    {
+        if (result.BattlePotionsUsedSoFar == 0)
+            return null;
+        if (result.BattlePotionsUsedSoFar != result.BattlePotionIdsUsedSoFar.Length)
+            throw new InvalidOperationException("已用药水数量与身份不一致。");
+        string names = string.Join("、", result.BattlePotionIdsUsedSoFar.Select(id => SolverUiModelNames.Potion(id, id)));
+        return SolverText.Format($"已用药：{result.BattlePotionsUsedSoFar}瓶（{names}）");
+    }
+
+    private static string? PlannedPotionOutcome(SolverResult result)
+    {
+        string[] ids = result.PlannedPotionIds;
+        if (ids.Length != result.PotionCount)
+            throw new InvalidOperationException("路线用药数量与药水身份不一致。");
+        if (ids.Length == 0)
+            return null;
+        string names = string.Join("、", ids.Select(id => SolverUiModelNames.Potion(id, id)));
+        return result.BattlePotionsUsedSoFar == 0
+            ? SolverText.Format($"预计用药：{ids.Length}瓶（{names}）")
+            : SolverText.Format($"还要用：{ids.Length}瓶（{names}）");
     }
 
     private static SolverOverlayTurnSnapshot CaptureTurn(SolverResult result, int turn)

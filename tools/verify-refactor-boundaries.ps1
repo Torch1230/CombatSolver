@@ -41,6 +41,10 @@ if (-not $normalityMirror.Contains('registry.Register<Normality>(HandleNormality
 }
 $playerTurnEndCallers = @(
     "src/Search/CombatBeamSolver.Expansion.cs",
+    "src/Search/CombatBeamSolver.Expansion.Candidates.cs",
+    "src/Search/CombatBeamSolver.Expansion.Choices.cs",
+    "src/Search/CombatBeamSolver.Expansion.Opening.cs",
+    "src/Search/CombatBeamSolver.Expansion.Replay.cs",
     "src/Runtime/LiveEndTurnRiskEvaluator.cs",
     "src/Testing/UnattendedTestRunner.cs",
     "src/Testing/UnattendedTestRunner.Potions.cs"
@@ -66,6 +70,10 @@ $cyclePolicyPaths = @(
 )
 $legacyLoopGuardPaths = @(
     (Join-Path $searchRoot "CombatBeamSolver.Expansion.cs"),
+    (Join-Path $searchRoot "CombatBeamSolver.Expansion.Candidates.cs"),
+    (Join-Path $searchRoot "CombatBeamSolver.Expansion.Choices.cs"),
+    (Join-Path $searchRoot "CombatBeamSolver.Expansion.Opening.cs"),
+    (Join-Path $searchRoot "CombatBeamSolver.Expansion.Replay.cs"),
     (Join-Path $searchRoot "CombatBeamSolver.ParallelExpansion.cs"),
     (Join-Path $searchRoot "SolverWeights.cs")
 )
@@ -149,10 +157,10 @@ foreach ($orderedTransactionRule in @(
     }
 }
 $orderedCoordinatorPaths = @{
-    'BuildOrderedMutationContinuationAdmissionLease(candidate);' = Join-Path $searchRoot "CombatBeamSolver.BeamRetentionPolicy.cs"
+    'BuildOrderedMutationContinuationAdmissionLease(candidate);' = Join-Path $searchRoot "CombatBeamSolver.BeamRetentionPolicy.OrderedMutationScheduling.cs"
     'Every independent retention channel must finish before the ordered coordinator.' = Join-Path $searchRoot "CombatBeamSolver.Retention.cs"
-    'Any inherited lane left outside this prune' = Join-Path $searchRoot "CombatBeamSolver.BeamRetentionPolicy.cs"
-    'HasOrdinaryAnchor' = Join-Path $searchRoot "CombatBeamSolver.BeamRetentionPolicy.cs"
+    'Any inherited lane left outside this prune' = Join-Path $searchRoot "CombatBeamSolver.BeamRetentionPolicy.OrderedMutation.cs"
+    'HasOrdinaryAnchor' = Join-Path $searchRoot "CombatBeamSolver.BeamRetentionPolicy.OrderedMutation.cs"
 }
 foreach ($entry in $orderedCoordinatorPaths.GetEnumerator()) {
     if (-not (Select-String -LiteralPath $entry.Value -SimpleMatch $entry.Key -Quiet)) {
@@ -430,11 +438,11 @@ $rootSnapshotChecks = @(
     },
     @{
         Path = Join-Path $repositoryRoot "src\Runtime\SolverController.cs"
-        Text = "CombatRootSnapshot.Capture(state)"
+        Text = "CombatRootSnapshot.Capture(state, settings.PredictPotionReward)"
     },
     @{
         Path = Join-Path $repositoryRoot "src\Runtime\PlayerTurnSetupPatches.cs"
-        Text = "CombatRootSnapshot.Capture(combat)"
+        Text = "CombatRootSnapshot.Capture(combat, settings.PredictPotionReward)"
     },
     @{
         Path = Join-Path $repositoryRoot "src\Search\CombatSearchCoordinator.cs"
@@ -572,11 +580,20 @@ $expectedBeamFiles = @(
     "CombatBeamSolver.ExecutionChoiceContinuation.Testing.cs",
     "CombatBeamSolver.TurnExecutionContinuation.cs",
     "CombatBeamSolver.BeamRetentionPolicy.cs",
+    "CombatBeamSolver.BeamRetentionPolicy.OrderedMutation.cs",
+    "CombatBeamSolver.BeamRetentionPolicy.OrderedMutationScheduling.cs",
+    "CombatBeamSolver.BeamRetentionPolicy.Ranking.cs",
+    "CombatBeamSolver.BeamRetentionPolicy.Routing.cs",
+    "CombatBeamSolver.BeamRetentionPolicy.Testing.cs",
     "CombatBeamSolver.BlockPotionInsertion.cs",
     "CombatBeamSolver.CrossTurnPlanning.cs",
     "CombatBeamSolver.CyclePlanning.cs",
     "CombatBeamSolver.CycleRegionRetention.cs",
     "CombatBeamSolver.Expansion.cs",
+    "CombatBeamSolver.Expansion.Candidates.cs",
+    "CombatBeamSolver.Expansion.Choices.cs",
+    "CombatBeamSolver.Expansion.Opening.cs",
+    "CombatBeamSolver.Expansion.Replay.cs",
     "CombatBeamSolver.FinalPlanOrdering.cs",
     "CombatBeamSolver.Models.cs",
     "CombatBeamSolver.NoveltySearch.cs",
@@ -656,7 +673,7 @@ $beamStructureChecks = @(
     @{ File = "CombatBeamSolver.cs"; Text = "private readonly SearchRunContext _run = new(" },
     @{ File = "CombatBeamSolver.cs"; Text = "private BeamRetentionPolicy Retention =>" },
     @{ File = "CombatBeamSolver.cs"; Text = "private FinalPlanOrdering FinalOrdering =>" },
-    @{ File = "CombatBeamSolver.BeamRetentionPolicy.cs"; Text = "private sealed class BeamRetentionPolicy(" },
+    @{ File = "CombatBeamSolver.BeamRetentionPolicy.cs"; Text = "private sealed partial class BeamRetentionPolicy(" },
     @{ File = "CombatBeamSolver.BeamRetentionPolicy.cs"; Text = "public List<SearchNode> RankBest(" },
     @{ File = "CombatBeamSolver.BeamRetentionPolicy.cs"; Text = "private sealed class RoutingChoiceNodes(SearchNode first) : List<SearchNode>" },
     @{ File = "CombatBeamSolver.BeamRetentionPolicy.cs"; Text = "public void Clear() => NodesByChoice.Clear();" },
@@ -718,7 +735,7 @@ $beamStructureChecks = @(
     @{ File = "CombatBeamSolver.RetentionJobs.cs"; Text = "_coordinator._run.OffThreadAllocatedBytes += job.AllocatedBytes;" },
     @{ File = "CombatBeamSolver.RetentionJobs.cs"; Text = "wave.Error?.Throw();" },
     @{ File = "CombatBeamSolver.BeamRetentionPolicy.cs"; Text = "_run.RoutingChoiceSummaryBuilds += summaryGroups.Length;" },
-    @{ File = "CombatBeamSolver.BeamRetentionPolicy.cs"; Text = "RequestOrderedMutationObservation(candidate);" },
+    @{ File = "CombatBeamSolver.BeamRetentionPolicy.OrderedMutationScheduling.cs"; Text = "RequestOrderedMutationObservation(candidate);" },
     @{ File = "SearchWaveMemoryPolicy.cs"; Text = "return checked(degreeOfParallelism * 2);" },
     @{ File = "SearchWaveMemoryPolicy.cs"; Text = "current >= maximum - current ? maximum : current * 2" },
     @{ File = "CombatBeamSolver.Phases.cs"; Text = "SearchWaveMemoryPolicy.GrowCapacity(" },
@@ -830,8 +847,8 @@ $finalOrderingPath = Join-Path $searchRoot 'CombatBeamSolver.FinalPlanOrdering.c
 if (Select-String -LiteralPath $finalOrderingPath -SimpleMatch 'PowerCardValuation' -Quiet) {
     $violations.Add("${finalOrderingPath}: power-card valuation must not enter final plan ordering")
 }
-if (-not (Select-String -LiteralPath (Join-Path $searchRoot "CombatBeamSolver.Expansion.cs") -SimpleMatch "CreateWholeActionChoiceBudget" -Quiet)) {
-    $violations.Add("CombatBeamSolver.Expansion.cs: repeated card choices are missing their whole-action branch quota")
+if (-not (Select-String -LiteralPath (Join-Path $searchRoot "CombatBeamSolver.Expansion.Choices.cs") -SimpleMatch "CreateWholeActionChoiceBudget" -Quiet)) {
+    $violations.Add("CombatBeamSolver.Expansion.Choices.cs: repeated card choices are missing their whole-action branch quota")
 }
 $beamEntryPath = Join-Path $searchRoot "CombatBeamSolver.cs"
 if (Select-String -LiteralPath $beamEntryPath -SimpleMatch "public SolverResult Solve()" -Quiet) {
@@ -1380,7 +1397,7 @@ foreach ($check in @(
     @{ File = 'src/Search/CombatBeamSolver.Phases.cs'; Text = 'policy.RelicTargetsSatisfied(node.Snapshot.RelicCounters)' },
     @{ File = 'src/Search/CombatSearchCoordinator.cs'; Text = 'policy.RelicTargetsSatisfied(result.Snapshot.RelicCounters)' },
     @{ File = 'src/Runtime/SolvedRouteCache.cs'; Text = 'policy.RelicTargets' },
-    @{ File = 'src/Search/CombatBeamSolver.Expansion.cs'; Text = 'ApplyFixedPrefix(seed, prefix)' },
+    @{ File = 'src/Search/CombatBeamSolver.Expansion.Opening.cs'; Text = 'ApplyFixedPrefix(seed, prefix)' },
     @{ File = 'src/UI/SolverRelicStrategyPanel.cs'; Text = 'row.Enabled.ButtonPressed' })) {
     if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot $check.File) -SimpleMatch $check.Text -Quiet)) {
         $violations.Add("$($check.File): missing relic policy ownership '$($check.Text)'")
@@ -1446,7 +1463,7 @@ foreach ($check in $metadataReuseChecks) {
 }
 
 # Keep the no-op dispatch metadata complete when callbacks are added to the facade.
-foreach ($file in @("CombatBeamSolver.RetentionJobs.cs", "CombatBeamSolver.BeamRetentionPolicy.cs")) {
+foreach ($file in @("CombatBeamSolver.RetentionJobs.cs", "CombatBeamSolver.BeamRetentionPolicy.cs", "CombatBeamSolver.BeamRetentionPolicy.OrderedMutation.cs", "CombatBeamSolver.BeamRetentionPolicy.OrderedMutationScheduling.cs", "CombatBeamSolver.BeamRetentionPolicy.Ranking.cs", "CombatBeamSolver.BeamRetentionPolicy.Routing.cs", "CombatBeamSolver.BeamRetentionPolicy.Testing.cs")) {
     foreach ($forbidden in @("Parallel.For(", "Task.Run(")) {
         if (Select-String -LiteralPath (Join-Path $searchRoot $file) -SimpleMatch $forbidden -Quiet) {
             $violations.Add("$($file): retention work bypassed fixed lanes '$forbidden'")
@@ -1493,7 +1510,7 @@ foreach ($rule in @(
     @{ RelativePath = 'src/Prediction/PotionChoiceContinuation.cs'; Text = '!PotionChoiceMirrors.RequiresChoice(potion)' },
     @{ RelativePath = 'src/Search/CombatBeamSolver.PotionChoiceContinuation.cs'; Text = 'ReferenceEquals(_parent, candidate)' },
     @{ RelativePath = 'src/Search/CombatBeamSolver.PotionChoiceContinuation.cs'; Text = '_run.PotionChoicePrefixForks++;' },
-    @{ RelativePath = 'src/Search/CombatBeamSolver.Expansion.cs'; Text = 'PotionExecutionSupport.Complete(' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.Expansion.Replay.cs'; Text = 'PotionExecutionSupport.Complete(' },
     @{ RelativePath = 'src/Search/CombatBeamSolver.PrimaryChoiceReplay.cs'; Text = 'PotionCheckpoint?.Dispose();' },
     @{ RelativePath = 'src/Search/CombatBeamSolver.ParallelExpansion.cs'; Text = '_run.PotionChoicePrefixForks += source.PotionChoicePrefixForks;' }
 )) {
@@ -1556,7 +1573,7 @@ foreach ($rule in @(
     @{ RelativePath = 'src/Prediction/CardChoiceContinuation.cs'; Text = 'lock (_gate)' },
     @{ RelativePath = 'src/Search/CombatBeamSolver.CardChoiceContinuation.cs'; Text = 'ReferenceEquals(_parent, candidate)' },
     @{ RelativePath = 'src/Search/CombatBeamSolver.CardChoiceContinuation.cs'; Text = 'return Enumerate(this, checkpoint, branches);' },
-    @{ RelativePath = 'src/Search/CombatBeamSolver.Expansion.cs'; Text = 'countTransition: false' },
+    @{ RelativePath = 'src/Search/CombatBeamSolver.Expansion.Replay.cs'; Text = 'countTransition: false' },
     @{ RelativePath = 'src/Search/CombatBeamSolver.PrimaryChoiceReplay.cs'; Text = 'CardCheckpoint?.Dispose();' },
     @{ RelativePath = 'src/Search/SimulatedCombatState.CardContinuation.cs'; Text = '_cardExecutionScopeDepth != 0' }
 )) {

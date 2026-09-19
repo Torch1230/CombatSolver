@@ -45,8 +45,6 @@ internal static class CombatHistoryCounterKey
         return false;
     }
 
-    public static bool IsHistoryCounterCard(string cardId) => CardIds.Contains(cardId);
-
     /// <summary>
     /// Appends the simulated part of every counter the registry reads for the player's cards, in one pass over the
     /// prediction history.

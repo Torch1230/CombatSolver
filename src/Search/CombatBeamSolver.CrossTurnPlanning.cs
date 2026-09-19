@@ -2,7 +2,7 @@ namespace CombatSolver;
 
 internal sealed partial class CombatBeamSolver
 {
-    private SearchNode AttachCrossTurnSchedulingEvidence(SearchNode child)
+    private static SearchNode AttachCrossTurnSchedulingEvidence(SearchNode child)
     {
         if (child.Parent is not { } parent)
             return child;
@@ -134,7 +134,7 @@ internal sealed partial class CombatBeamSolver
         _run.CrossTurnCandidatesProtected++;
     }
 
-    private bool RequiresCrossTurnPlanning(SearchNode node)
+    private static bool RequiresCrossTurnPlanning(SearchNode node)
     {
         if (node.IsTerminal
             || node.BoundaryReason != SearchBoundaryReason.None
