@@ -51,6 +51,7 @@ internal sealed partial class CombatBeamSolver(
     private readonly int _initialEnemyCount = root.Enemies.Count;
     private readonly bool _hasRegisteredPowerCards = root.PlayerCardIds.Any(
         PowerCardValuationModels.Registry.ContainsCardId);
+    private readonly bool _keysCombatHistoryCounters = CombatHistoryCounterKey.AppliesTo(root.PlayerCardIds);
     private readonly bool _isActEndingBoss = root.IsActEndingBoss;
     private readonly BossHpRelief _bossHpRelief = root.BossHpRelief;
     private readonly BossHpRelief _strategicBossHpRelief = ActEndingBossPolicy.ResolveStrategicHpRelief(

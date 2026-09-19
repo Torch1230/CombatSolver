@@ -1,5 +1,13 @@
 # CombatSolver 测试清单
 
+## 未发布：状态键补整场历史计数（2026-09-19）
+
+- 离线宿主对上游 0.41.0（High 90/50000、Coordinator、Smart、DOP 1、`fixedSearchBudget`，`compare_results.py` 排除耗时/内存字段）：EQ 10 根只有 `NECROBINDER-ELITE-00`（牌组含亡魂牵引）不一致，其余 9 根 983 字段一致；FULL 40 根只有 4 根不一致（`NECROBINDER-ELITE-00`、`SILENT-BOSS-01`、`SILENT-ELITE-03`、`SILENT-BOSS-03`），按生成场景 loadout 核对正是全部含金斧/亡魂牵引/谋杀的根，其余 36 根一致；GA 10 根（EQ 规格 + 无色牌固定含一张金斧）全部不一致。15 根受影响根：战损 2 根下降（48→29、9→8）、0 根上升、0 根胜负翻转，展开量比 0.997–1.000。
+- 无条件追加的对照（未采用）：46/50 根路线变化、胜负 3 负 1 正，见[状态键历史计数报告](strategy/state-key-history-counters-20260919.md)。
+- PR 原分支 Release 编译 0 警告 0 错误（`CopyModOnBuild=false`）；Bash 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=193`。以上是合并前证据；本次合并后的验证另记于下方。
+- 合并到含 #111/#112 的 main 后，`COMBAT-HISTORY-COUNTER-KEY` 在 Windows 仓库内隔离无人实例 Passed：根手牌含金斧与防御，两个同根分支只有子分支追加一次已完成出牌历史；金斧动态伤害相差 1，完整搜索状态键不同，Fork 后子键不变、父键不变。命令：`pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId COMBAT-HISTORY-COUNTER-KEY -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 100 -ClearPlayerPiles -CardsJson '[{"CardId":"GOLD_AXE","Pile":"Hand"},{"CardId":"DEFEND_IRONCLAD","Pile":"Hand"}]' -CleanupInstanceOnExit -TimeoutSeconds 120`；结果 `UNATTENDED_INSTANCE_REMOVED`。夹具比较搜索 Snapshot 的真实 `StateKey`，不声称这份合成历史是原生完整出牌差分。
+- 本轮 Windows 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=203`。主 DLL Release 编译 0 警告；完整 `dotnet build` 因本机缺少 .NET Framework 4.8 参考程序集，停在 MemoryCleaner 辅助程序。未跑整场、可见 Steam 或合并组合的离线 EQ/FULL 对照；历史性能没有受控墙钟结论。
+
 ## 未发布：预测战后掉药与满栏用药门槛（2026-09-18）
 
 - `POTION-REWARD-FORECAST` 新场景（`coverage/unattended/potion-reward-forecast.json`）：开战捕获根后，让原版 `RewardsSet` 在同一条奖励 RNG 上真实生成奖励并逐项比对掉落结论与药水 ID。macOS 隔离无头实例（`.local/headless-mac/run_mac_unattended.sh`，`--headless --force-steam=off`，HOME 隔离）8/8 Passed：SILENT / FUZZY_WURM_CRAWLER_WEAK / Monster 四个种子（Drop FRUIT_JUICE、NoDrop、Drop FLEX_POTION、NoDrop）、BYGONE_EFFIGY_ELITE / Elite 两个种子（Drop FRUIT_JUICE、NoDrop）、QUEEN_BOSS / Boss（Drop FRUIT_JUICE）、未满栏 1 瓶（NoDrop）。铁甲战士在全新 profile 下前几场是教程奖励集，镜像退回 `Unknown`，场景据此改用静默猎手。

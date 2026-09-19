@@ -231,6 +231,14 @@
     "observed": "基线5dc660636a54439c9ae036755c11e582下一回合手牌预测5/原生6；最终88166b32b56541479cb7fa666adeee09 Passed。",
     "evidence": "src/Testing/UnattendedTestRunner.ReportRound.cs；docs/TEST_MATRIX.md；2026-09-10。"
   },
+  "COMBAT-HISTORY-COUNTER-KEY": {
+    "status": "Passed",
+    "level": "HeadlessStateKeyAndForkContract",
+    "procedure": "根手牌含金斧与防御，同根子分支额外记录一次完整出牌；比较金斧计算值与搜索 Snapshot 状态键，再 Fork 并复核父分支。",
+    "expected": "计算值差一且状态键不同；子分支 Fork 后键不变，父分支保持原键。",
+    "observed": "2026-09-19 Windows 无人实例 Passed，completedChecks=CombatHistoryCounterKey:GoldAxe:DifferentFinishedPlaysDistinctKeys:ForkStable:ParentUnchanged；UNATTENDED_INSTANCE_REMOVED。",
+    "evidence": "src/Testing/UnattendedTestRunner.CombatHistoryCounterKey.cs；docs/TEST_MATRIX.md。"
+  },
   "MURDER-ROOT-HISTORY": {
     "status": "Passed",
     "level": "HeadlessStrictNativeTwoTurnRootHistoryAndForkDifferential",

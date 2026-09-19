@@ -649,6 +649,11 @@ internal sealed partial class UnattendedTestRunner
                 runner._completedChecks.Add(request.ScenarioId);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "COMBAT-HISTORY-COUNTER-KEY")
+            {
+                runner.AssertCombatHistoryCounterKey(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId is "STOCK-RESPAWN-HP" or "STOCK-THORNS-RESPAWN-HP" or "STOCK-REPORT-RESPAWN-HP")
             {
                 await runner.AssertStockRespawnAsync(combatState, player);
