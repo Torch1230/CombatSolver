@@ -1,6 +1,6 @@
 # CombatSolver 测试清单
 
-## 开发分支：路线连续性与操作体验（2026-09-19）
+## 0.43.0（开发中）：路线连续性与操作体验（2026-09-19）
 
 - 两回合原生场景 `TOASTY-QOL-MANUAL-SAME` Passed（runId `c82b3f8125cc4b8998047ccabaf3ca7a`）：第 2 回合烘焙手套手牌页按计划手动删牌，精确续用，新增搜索 0、计划外重算 0。`TOASTY-QOL-MANUAL-DIFFERENT` Passed（runId `f42cc57ca55e4c8e8a91a64a42f951a8`）：选另一张牌严格失配并重新计算。固定夹具位于 `coverage/unattended/toasty-qol-*.json`，可用 `pwsh -NoProfile -File tools/run-qol-contracts.ps1 -Case manual-same`（或 `manual-different`）重跑。最初误将生成场景输出路径用作输入的启动失败不计入上述通过结果，隔离实例已清理。
 - `TOASTY-QOL-FROZEN-SAME` Passed（runId `4726fb1c0b1444c58e15a912f604be06`）：第 2 回合原生手牌页冻结后，玩家按计划手动选牌，精确续用且无新搜索。`TOASTY-QOL-FROZEN-DIFFERENT` Passed（runId `9a9e04b913f64057806f8e849255d223`）：异选后旧路线仅供参考，直接请求执行也不搜索、不执行；手动重新计算解除冻结并从真实状态得到可执行路线。
