@@ -83,13 +83,12 @@ internal static class CardGenerationCardMirrors
 
     public static void JackOfAllTradesOnPlay(JackOfAllTrades card, CardOnPlayMirrorContext context)
     {
-        var cards = card.Owner.GetUnlockedColorlessCards(context.CardMultiplayerConstraint)
-            .Where(candidate => candidate is not JackOfAllTrades)
-            .GetDistinctForCombat(
+        var cards = context.Simulator.GetDistinctUnlockedColorlessForCombat(
                 card.Owner,
                 card.DynamicVars.Cards.IntValue,
                 context.Rng.CombatCardGeneration,
-                context.CardMultiplayerConstraint)
+                context.CardMultiplayerConstraint,
+                static candidate => candidate is not JackOfAllTrades)
             .ToList();
 
         context.Simulator.AddGeneratedCardsToCombat(cards, PileType.Hand, card.Owner);
@@ -117,8 +116,7 @@ internal static class CardGenerationCardMirrors
     public static void LargesseOnPlay(Largesse card, CardOnPlayMirrorContext context)
     {
         var targetPlayer = context.TargetPlayer;
-        var cards = targetPlayer.GetUnlockedColorlessCards(context.CardMultiplayerConstraint)
-            .GetDistinctForCombat(
+        var cards = context.Simulator.GetDistinctUnlockedColorlessForCombat(
                 targetPlayer,
                 1,
                 context.Rng.CombatCardGeneration,
