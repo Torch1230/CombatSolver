@@ -1,5 +1,9 @@
 # CombatSolver 测试清单
 
+## 未发布：模型 ID 纯值缓存（从 PR #114 提取）
+
+- 原分支的定向根及 A/B 范围见[ModelDb.GetId 记忆化](performance/defect-modeldb-getid-cache-20260919.md)；合并后的直接合同与组合验证在最终集成记录中补充。不将旧分支的时间、分配数字外推到本次 main 或可见帧。
+
 ## 未发布：No-GC 区域准入下限（从 PR #114 提取）
 
 - `tools/CombatSolver.GcPolicyChecks` 的 `admission` 6 个准入合同覆盖 12 GiB 配置在系统余量下只得到 2.97 GiB 时拒绝、平台尺寸回退保持准入及边界值；原分支结果见[报告](performance/no-gc-region-admission-20260917.md)。与当前 main 组合的运行结果在最终集成记录中补充。

@@ -1,5 +1,9 @@
 # CombatSolver 开发笔记与未来构想
 
+## 未发布：模型 ID 纯值缓存（从 PR #114 提取）
+
+- `ModelDb.GetId(Type)` 只由类型决定；Runtime 按 Type 缓存不可变 ModelId，保留 null、异常和首次调用的原生路径。不缓存模型实例或卡池。原分支的定向 A/B 与适用范围见[ModelDb.GetId 记忆化](performance/defect-modeldb-getid-cache-20260919.md)，当前 main 组合尚不引用其收益数字。
+
 ## 未发布：No-GC 区域准入下限（从 PR #114 提取）
 
 - 机器内存余量把区域压到配置值的一半或 512 MiB 以下时，不再进入反复建立、耗尽、回收的 No-GC 循环；平台自身的区域尺寸回退仍可建立。Runtime 拒绝后走既有常规 GC 路径，清除未建立区域的分配限额。原分支的直接合同见[No-GC 准入报告](performance/no-gc-region-admission-20260917.md)；当前 main 组合的验证见测试矩阵。
