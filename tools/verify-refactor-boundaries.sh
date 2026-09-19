@@ -127,6 +127,11 @@ forbid_regex() {
     fi
 }
 
+forbid_fixed "$search_root/CombatBeamSolver.Phases.cs" 'CaptureContinuation(node)' \
+    'only the selected route may build continuation stamps'
+require_fixed "$search_root/CombatBeamSolver.Terminal.cs" 'ContinuationStamp.CapturePredicted(' \
+    'Terminal must build the selected route continuation stamp'
+
 for relative_path in \
     src/Search/CombatBeamSolver.Expansion.cs \
     src/Search/CombatBeamSolver.Expansion.Candidates.cs \

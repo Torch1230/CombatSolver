@@ -193,13 +193,13 @@ internal sealed partial class CombatBeamSolver
                     waitTicks += Stopwatch.GetTimestamp() - waitStarted;
                     active--;
                     idleLanes.Push(outcome.Job.LaneIndex);
-                    // A lane's caches and counters may be reused only after this drain. The
-                    // published batch/probe lease has a separate owner and can wait for its turn.
-                    _coordinator.MergeExpansionWorker(outcome.Worker, outcome.AllocatedBytes);
                     _workProfile.Record(outcome.Job.Kind, outcome.ElapsedTicks, outcome.ActiveKindConcurrency);
                     firstError ??= outcome.Error;
                     if (firstError != null)
                         continue;
+                    // A lane's caches and counters may be reused only after this drain. The
+                    // published batch/probe lease has a separate owner and can wait for its turn.
+                    _coordinator.MergeExpansionWorker(outcome.Worker, outcome.AllocatedBytes);
                     AdmittedParent parent = outcome.Job.Parent;
                     parent.Receive(outcome);
                     if (parent.TailCompleted)
@@ -223,7 +223,11 @@ internal sealed partial class CombatBeamSolver
                     while (wave.TryTake(out AdmittedJobOutcome? pending))
                     {
                         using (pending)
-                            _coordinator.MergeExpansionWorker(pending!.Worker, pending.AllocatedBytes);
+                        {
+                            if (pending!.Error != null)
+                                continue;
+                            _coordinator.MergeExpansionWorker(pending.Worker, pending.AllocatedBytes);
+                        }
                     }
                 }
                 finally

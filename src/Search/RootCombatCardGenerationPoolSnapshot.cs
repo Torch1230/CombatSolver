@@ -17,6 +17,7 @@ internal sealed class RootCombatCardGenerationPoolSnapshot
         object CharacterIdentity,
         CardPoolModel Pool,
         object AllCardsIdentity,
+        CardModel[] EligibleAll,
         CardModel[] EligibleAttacks,
         CardModel[] NonBasicAndAncient,
         CardModel[] Powers,
@@ -130,6 +131,21 @@ internal sealed class RootCombatCardGenerationPoolSnapshot
         return false;
     }
 
+    public bool TryGetEligibleAllCharacterCards(
+        Player player,
+        CardPoolModel cardPool,
+        CardMultiplayerConstraint multiplayerConstraint,
+        out IReadOnlyList<CardModel> cards)
+    {
+        if (TryGetNativeCharacterEntry(player, cardPool, multiplayerConstraint, out var entry))
+        {
+            cards = entry!.EligibleAll;
+            return true;
+        }
+        cards = [];
+        return false;
+    }
+
     public bool TryGetEligibleCharacterCards(
         Player player,
         CardPoolModel cardPool,
@@ -195,28 +211,29 @@ internal sealed class RootCombatCardGenerationPoolSnapshot
             return false;
         }
 
-        // Preserve Metamorphosis' source order exactly: unlock filtering, then Attack,
-        // then the upstream in-combat and player-count predicates.
-        CardModel[] eligibleCards = player
+        // Capture the upstream unlock + combat/player-count sequence once. Caller-specific
+        // predicates below commute with that filter, so each array keeps the exact source
+        // order those call sites would see when they evaluate their predicate first.
+        CardModel[] eligibleAll = player
             .GetUnlockedCards(cardPool, multiplayerConstraint)
-            .Where(static card => card.Type == CardType.Attack)
             .FilterForCombatAndPlayerCount(multiplayerConstraint)
             .ToArray();
-        // These callers use CardPoolModel.GetUnlockedCards directly. Preserve that source
-        // and each caller's predicate before the original combat/player-count filtering.
-        CardModel[] nonBasicAndAncient = cardPool.GetUnlockedCards(player.UnlockState, multiplayerConstraint)
+        CardModel[] eligibleCards = eligibleAll
+            .Where(static card => card.Type == CardType.Attack)
+            .ToArray();
+        CardModel[] nonBasicAndAncient = eligibleAll
             .Where(static card => card.Rarity is not (CardRarity.Basic or CardRarity.Ancient))
-            .FilterForCombatAndPlayerCount(multiplayerConstraint).ToArray();
-        CardModel[] powers = cardPool.GetUnlockedCards(player.UnlockState, multiplayerConstraint)
+            .ToArray();
+        CardModel[] powers = eligibleAll
             .Where(static card => card.Type == CardType.Power)
-            .FilterForCombatAndPlayerCount(multiplayerConstraint).ToArray();
-        CardModel[] common = cardPool.GetUnlockedCards(player.UnlockState, multiplayerConstraint)
+            .ToArray();
+        CardModel[] common = eligibleAll
             .Where(static card => card.Rarity == CardRarity.Common)
-            .FilterForCombatAndPlayerCount(multiplayerConstraint).ToArray();
+            .ToArray();
         HashSet<CardModel> canonicalPoolCards = new(
             allCards,
             ReferenceEqualityComparer.Instance);
-        if (eligibleCards.Concat(nonBasicAndAncient).Concat(powers).Concat(common).Any(card =>
+        if (eligibleAll.Concat(eligibleCards).Concat(nonBasicAndAncient).Concat(powers).Concat(common).Any(card =>
                 !canonicalPoolCards.Contains(card)
                 || card.IsMutable
                 || !ReferenceEquals(card, card.CanonicalInstance)))
@@ -228,6 +245,7 @@ internal sealed class RootCombatCardGenerationPoolSnapshot
             player.Character,
             cardPool,
             allCards,
+            eligibleAll,
             eligibleCards,
             nonBasicAndAncient,
             powers,

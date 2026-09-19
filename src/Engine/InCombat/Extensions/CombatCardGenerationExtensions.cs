@@ -74,7 +74,8 @@ internal static class CombatCardGenerationExtensions
         Player player,
         int count,
         Rng rng,
-        CardMultiplayerConstraint multiplayerConstraint)
+        CardMultiplayerConstraint multiplayerConstraint,
+        Func<CardModel, bool>? filter = null)
     {
         CardPoolModel colorlessPool = ModelDb.CardPool<ColorlessCardPool>();
         if (simulator.State.CombatState is ICombatPredictionCardGenerationPoolSnapshot snapshot
@@ -85,18 +86,94 @@ internal static class CombatCardGenerationExtensions
                 out IReadOnlyList<CardModel>? cached))
         {
             // Keep the upstream TakeRandom/UnstableShuffle RNG behavior and create a fresh
-            // prediction-owned card for every branch. Only eligibility filtering is cached.
-            return cached.AsEnumerable()
+            // prediction-owned card for every branch. Only eligibility filtering is cached;
+            // the caller-specific predicate stays before random selection, same as fallback.
+            IEnumerable<CardModel> candidates = filter == null
+                ? cached
+                : cached.Where(filter);
+            return candidates
                 .TakeRandom(count, rng)
                 .Select(card => PredictedCard.Create(card, player));
         }
 
-        return player.GetUnlockedCards(colorlessPool, multiplayerConstraint)
-            .GetDistinctForCombat(
+        IEnumerable<CardModel> unlocked = player.GetUnlockedCards(colorlessPool, multiplayerConstraint);
+        if (filter != null)
+            unlocked = unlocked.Where(filter);
+        return unlocked.GetDistinctForCombat(
+            player,
+            count,
+            rng,
+            multiplayerConstraint);
+    }
+
+    public static IEnumerable<PredictedCard> GetDistinctUnlockedCharacterCardsForCombat(
+        this CombatPredictionSimulator simulator,
+        Player player,
+        int count,
+        Rng rng,
+        CardMultiplayerConstraint multiplayerConstraint,
+        Func<CardModel, bool>? filter = null)
+    {
+        CardPoolModel characterPool = player.Character.CardPool;
+        if (simulator.State.CombatState is ICombatPredictionCardGenerationPoolSnapshot snapshot
+            && snapshot.TryGetRootEligibleAllCharacterCards(
                 player,
-                count,
-                rng,
-                multiplayerConstraint);
+                characterPool,
+                multiplayerConstraint,
+                out IReadOnlyList<CardModel>? cached))
+        {
+            // Root eligibility is already combat/player-count filtered; the caller predicate
+            // stays before random selection so candidate order and RNG use match fallback.
+            IEnumerable<CardModel> candidates = filter == null
+                ? cached
+                : cached.Where(filter);
+            return candidates
+                .TakeRandom(count, rng)
+                .Select(card => PredictedCard.Create(card, player));
+        }
+
+        IEnumerable<CardModel> unlocked = player.GetUnlockedCharacterCards(multiplayerConstraint);
+        if (filter != null)
+            unlocked = unlocked.Where(filter);
+        return unlocked.GetDistinctForCombat(
+            player,
+            count,
+            rng,
+            multiplayerConstraint);
+    }
+
+    public static IEnumerable<PredictedCard> GetUnlockedCharacterCardsForCombat(
+        this CombatPredictionSimulator simulator,
+        Player player,
+        int count,
+        Rng rng,
+        CardMultiplayerConstraint multiplayerConstraint,
+        Func<CardModel, bool>? filter = null)
+    {
+        CardPoolModel characterPool = player.Character.CardPool;
+        if (simulator.State.CombatState is ICombatPredictionCardGenerationPoolSnapshot snapshot
+            && snapshot.TryGetRootEligibleAllCharacterCards(
+                player,
+                characterPool,
+                multiplayerConstraint,
+                out IReadOnlyList<CardModel>? cached))
+        {
+            IReadOnlyList<CardModel> candidates = filter == null
+                ? cached
+                : cached.Where(filter).ToArray();
+            if (candidates.Count == 0)
+                return [];
+            // With-replacement selection must retain upstream NextItem order and count.
+            List<PredictedCard> selected = new(count);
+            for (int index = 0; index < count; index++)
+                selected.Add(PredictedCard.Create(rng.NextItem(candidates)!, player));
+            return selected;
+        }
+
+        IEnumerable<CardModel> unlocked = player.GetUnlockedCharacterCards(multiplayerConstraint);
+        if (filter != null)
+            unlocked = unlocked.Where(filter);
+        return unlocked.GetForCombat(player, count, rng, multiplayerConstraint);
     }
 
     public static IEnumerable<PredictedCard> GetUnlockedCharacterAttacksForCombat(

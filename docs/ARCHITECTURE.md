@@ -73,6 +73,7 @@ Entry / turn hooks
 | `src/Runtime/PowerDynamicVarWarmup.cs` | 主线程根捕获时物化规范 Power 与当前战斗 Power 的显示变量 | 搜索评分、Power 语义与 worker 本地化 |
 | `src/Runtime/PowerDynamicVarMaterializationGuardPatch.cs` | 搜索模拟惰性创建 Power 显示变量时立即报告根捕获缺失 | Power 语义、显示内容与搜索阶段串行化 |
 | `src/Runtime/PowerAmountComparisonPatch.cs` | 将原生 `GetTypeForAmount` 中两处精确匹配的同枚举装箱比较改为整数比较；保留虚 getter、decimal 分支和调用顺序，未知 IL 原样保留 | Power 状态缓存、跳过类型 getter 或改变显示类型规则 |
+| `src/Runtime/ModelDbGetIdCachePatch.cs` | 缓存原生 `ModelDb.GetId(Type)` 的纯类型→`ModelId` 映射（`GetEntry`/`GetCategory` 只由类型名决定）；缓存不可变 `ModelId` 值，不保存模型实例 | `ModelDb` 内容字典、`Inject`/`Remove`/`ResetForTest` 语义、模型实例身份与显示字段 |
 | `src/Runtime/SearchGcPolicy.cs` | 管理玩家显式开关的进程级 GC 模式：开启时按原样预算建立战斗级 NoGC、执行搜索内安全检查点与引用释放后的压力回收；稳定关闭时使用 CLR 常规分代 GC 且不新增自动补账压力，从开启切换时仍结清此前义务；模式切换和手动释放与活动搜索计数共用安全边界 | Beam 剪枝、候选评分、模拟语义与同步阻塞 UI |
 | `src/Runtime/SearchGcPolicy.Recovery.cs` | 在已排空的提交边界评估可恢复 NoGC 回退；拥有完成 Gen2/冷却/次数上限、物理余量、scope 代次与恢复后区域上限 | 强制回收、等待搜索退出、搜索预算或候选策略 |
 | `src/Runtime/SearchGcLifecycleMetrics.cs` | 记录显式回收与 NoGC 启停/丢失；在 Runtime 准入 Gate 内冻结 scope 起止，区分独占搜索与共享进程窗口；暂停最大值仅为观测值 | 线程级 CLR 事件归因与 trace 最大值 |
@@ -231,6 +232,8 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 `SearchRunContext` 只活于一次 solver：计数器、性能指标、节流器、转置表、stand-pat/威胁/coverage/路由缓存和 `OwnedExpansionBatch` 容器池均在这里。每个 lane 最多保留两个已清空 storage，单容器容量上限 4096；批次 lease 独立且 Dispose 幂等，检查点丢弃空闲池，不池化 simulator/model。根配置留在 solver，不把可变运行状态退回入口文件。 `SnapshotListBuffer<PredictedCard>` 也归各自 `_run` 所有，只缓存一个已清空、实际容量不超过 4096 的临时列表；快照内用栈上 lease，嵌套租用取独立 storage，generation 防止旧 lease 触碰新租户。牌序与 Shuffle RNG 克隆照旧，列表不得逃出 Snapshot，worker 排空后的缓存检查点丢弃空闲 storage。
 
+回合前沿不再为每个候选构造续用戳；`Terminal.BuildContinuations` 从最终选中路线的动作前缀重放并生成戳记，释放重放快照后只保存纯值 `CachedContinuation`。`SearchPerformanceMetrics` 在显式阶段度量启用时按后进先出收口并记排他时间/分配；失败 lane 排空但不合并未完成的指标，保留首因异常。普通生产搜索不启用逐阶段度量。
+
 `PotionStrategicCostLookup` 同样归单次 `SearchRunContext` 所有，中间保路与终局排序共用规范药水 ID/可再生条件对应的只读代价值；未命中仍调用原目录的 `Single` 查询，保留缺失/重复 ID 的失败行为。每个 worker 有独立表，不存药水实例或分支值，也不跨并发 solver 共享修改。
 
 `PotionRewardOutlook` 在主线程根捕获时读取战后药水掉落前景：先取玩家存档里的 `PotionRewardOdds` 概率（精英 +12.5%，白兽像强制），再克隆玩家的奖励 RNG，按原版 `RewardsSet` 的顺序（掉落判定 → 金币数量 → 药水稀有度与池内抽取）重放，得到确定的掉落结论与药水身份；教程奖励集不镜像，最终 Boss 无奖励。它冻结在 `CombatRootSnapshot.PotionRewardOutlook`，后台不再读取 live。`ReplacementHpCredit` 只在药水栏已满且未被 Sozu 阻断时非零：镜像出掉落按那瓶药的档位计，镜像出不掉为 0，只有概率时按基线档位乘概率。额度按**路线**扣一次、门槛最低保留 1 HP（`PotionUsePolicy.ApplyReplacementCredit`；额度只让用药变得不花钱，用药路线仍必须严格优于无药基线），终局排序、Beam 保路的资格事实与 Smart 梯度的用药上限三处共用同一份，不进入节点分数、状态键或转置比较。快照内 Power 是否贡献战略估值只判定一次并暂存在当前调用的栈/数组中，需求收集与评分复用同一判定，不跨快照缓存。
@@ -332,7 +335,7 @@ Search在首回合、EndTurn及已知可能嵌套/重复的卡牌回放建立捕
 
 `CombatPredictionRngSet` 的九条流共享不可变完整状态值，真正随机操作时才物化当前分支独占的原生 Rng。已经物化的流在 Fork 当时立即捕获计数器及四段内部状态，不能共享调用方可能仍持有的可变引用。指纹、续用与只读投影读取 `*State`，不触发物化；原生算法与序列保持不变。根捕获只读取主线程的 RunRngSet，后续子分支不访问 live RNG。
 
-`RootCombatCardGenerationPoolSnapshot` 在主线程冻结无色、原生角色攻击及逐项核对的非Basic/Ancient、Power、Common候选；后三类分别保持原CardPoolModel.GetUnlockedCards来源与调用方谓词。`CombatCardGenerationExtensions` 通过内部快照接口读取只读候选；`TurnStartPowerSupport` 每次Power触发准备一次，回退路径仍仅取一次GetUnlockedCards结果，谓词/战斗过滤在每次抽取时执行。CallOfTheVoid与CreativeAi保留逐次取一张，HelloWorld保留一次取多张；`BundleOfJoyOnPlay`、`InfernalBladeOnPlay` 等既有入口不变。所有distinct入口仍使用TakeRandom及原RNG顺序，不换成NextItem；来源模型只读，PredictedCard.Create逐分支生成独占卡牌。角色、规范池、AllCards引用身份、约束及原生模型门禁不变，自定义/可变池走原路径，其他过滤不会自动获得缓存资格。
+`RootCombatCardGenerationPoolSnapshot` 在主线程冻结无色、原生角色攻击及逐项核对的非Basic/Ancient、Power、Common候选；后三类分别保持原CardPoolModel.GetUnlockedCards来源与调用方谓词。`CombatCardGenerationExtensions` 通过内部快照接口读取只读候选；`TurnStartPowerSupport` 每次Power触发准备一次，回退路径仍仅取一次GetUnlockedCards结果，谓词/战斗过滤在每次抽取时执行。CallOfTheVoid与CreativeAi保留逐次取一张，HelloWorld保留一次取多张；`BundleOfJoyOnPlay`、`InfernalBladeOnPlay` 等既有入口不变。所有distinct入口仍使用TakeRandom及原RNG顺序，不换成NextItem；来源模型只读，PredictedCard.Create逐分支生成独占卡牌。角色、规范池、AllCards引用身份、约束及原生模型门禁不变，自定义/可变池走原路径，其他过滤不会自动获得缓存资格。遗物侧只有 `SimulatedCombatState.RelicTurnStart` 的 `Crossbow`（无回合守卫、每回合触发）复用同一角色攻击牌候选；`ChoicesParadox`、`VexingPuzzlebox`、`BigHat`、`OrangeDough`、`Toolbox` 的守卫是 `turn <= 1`，而搜索根在玩家第一回合 Play 阶段捕获，这些块在搜索里不会执行，保持原 `GetUnlockedCards` 实现。
 
 `SimulatedCombatState.GetBaseHookListeners` 对可分段且注册卡牌数至少256的分支，先计数当前分支球、未移除卡牌及其附魔/灾厄，按确切容量分配后段列表，避免大附魔牌堆立即扩容。计数不运行Hook/追加器，不新增共享状态、缓存或失效规则；小牌堆及不透明附着监听根沿用单遍路径。
 

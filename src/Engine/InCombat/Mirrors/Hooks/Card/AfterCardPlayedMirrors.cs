@@ -543,13 +543,12 @@ internal static class AfterCardPlayedMirrors
             return;
         }
 
-        var cards = player.GetUnlockedCharacterCards(context.CardMultiplayerConstraint)
-            .Where(card => card.Type == CardType.Attack)
-            .GetForCombat(
+        var cards = context.Simulator.GetUnlockedCharacterCardsForCombat(
                 player,
                 power.Amount,
                 context.Rng.CombatCardGeneration,
-                context.CardMultiplayerConstraint)
+                context.CardMultiplayerConstraint,
+                static card => card.Type == CardType.Attack)
             .ToList();
         context.Simulator.AddGeneratedCardsToCombat(cards, PileType.Hand, player);
     }
