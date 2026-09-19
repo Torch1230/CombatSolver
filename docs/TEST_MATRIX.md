@@ -20,7 +20,8 @@
 - 分配 trace 归因（`dotnet-trace collect --providers Microsoft-Windows-DotNETRuntime:0x1:5 --buffersize 512`，20k 节点，`GcTraceAnalysis --top 100000`）：confirmed search 20.98 GB 中 12.31 GiB（约 59%）在 `StringHelper.Slugify`/`ModelId.SlugifyCategory` 正则下；`Epoch.get_Cards() → ModelDb.Card → ModelDb.GetId(Type)` 是唯一链，发起方为 `SplashOnPlay` 遍历角色卡池。修复后同一采样降到 confirmed search 6.31 GB、slug 0 GiB；最大单一类型 `CardModel[]` 0.244 GiB（已覆盖栈 4.0%）。
 - 纯度核对：`.local/bench/ilprobe`（未入库的临时探针）反射读 `sts2.dll` 方法体确认 `GetEntry`/`GetCategory` 只依赖类型名、`Slugify` 用 `ToUpperInvariant`、`ModelId` 是不可变 record。
 - Release 构建 0 警告/0 错误；`./tools/verify-refactor-boundaries.sh` 输出 `REFACTOR_BOUNDARIES_OK search_files=193`。
-- 未执行：可见 Steam、Windows 构建、`--verify-incremental-search`、Coordinator/portfolio 主路径、完整部署与原生重放。GC 暂停在本机双峰（同侧 10 ms ~ 2.5 s），只记范围不作结论。
+- **生产 No-GC 12 GB 与推广范围**：`sel-defect-elite-01` @100k、`--no-gc-region-budget-gigabytes 12`，墙钟 70.26 → 30.45 s（−56.7%）、分配 92.70 → 31.99 GiB（−65.5%）、峰值 RSS 21.32 → 10.54 GiB、KB/转移 163.9 → 52.9，score/战损/planActions 全同。`--milestone M1` 解析全部 300 个请求牌组：17 根（5.7%）含 `SPLASH`，覆盖五个角色与三种遭遇类型；`SplashOnPlay` 是全仓唯一枚举其它角色卡池的入口。@20k/12 GB 抽样：8/8 含 SPLASH 的根分配下降 10.7%~72.8%、墙钟 5.3%~56.7%（defect-boss-12、defect-elite-01、ironclad-elite-03、silent-boss-15、necrobinder-elite-01、ironclad-monster-11、necrobinder-boss-02、regent-monster-05），12/12 不含 SPLASH 的根在 ±2% 内，决策全部逐项相同。
+- 未执行：可见 Steam、Windows 构建、`--verify-incremental-search`、Coordinator/portfolio 主路径、完整部署与原生重放；500,000 节点完整 VeryHigh 未运行（内存与时长风险）。GC 暂停在本机双峰（同侧 10 ms ~ 2.5 s），只记范围不作结论。
 - 完整表、命令与限制见[ModelDb.GetId 记忆化](performance/defect-modeldb-getid-cache-20260919.md)。
 
 ## 未发布：搜索无进展内存截断与排他分配（2026-09-19）
