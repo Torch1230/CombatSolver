@@ -7,7 +7,6 @@ using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Powers;
-using MegaCrit.Sts2.Core.Models.Orbs;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.InCombat.Mirrors.Orbs;

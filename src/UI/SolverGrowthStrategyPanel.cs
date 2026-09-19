@@ -2,7 +2,6 @@ using Godot;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Enchantments;
-using MegaCrit.Sts2.Core.Localization;
 
 namespace CombatSolver;
 
