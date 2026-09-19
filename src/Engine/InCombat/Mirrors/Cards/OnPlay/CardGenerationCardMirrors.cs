@@ -13,13 +13,12 @@ internal static class CardGenerationCardMirrors
 {
     public static void AbundanceOnPlay(Abundance card, CardOnPlayMirrorContext context)
     {
-        var cards = card.Owner.GetUnlockedCharacterCards(context.CardMultiplayerConstraint)
-            .Where(candidate => candidate.Type == CardType.Power)
-            .GetDistinctForCombat(
+        var cards = context.Simulator.GetDistinctUnlockedCharacterCardsForCombat(
                 card.Owner,
                 3,
                 context.Rng.CombatCardGeneration,
-                context.CardMultiplayerConstraint)
+                context.CardMultiplayerConstraint,
+                static candidate => candidate.Type == CardType.Power)
             .Select(candidate => candidate.Upgrade())
             .ToList();
 
@@ -41,13 +40,12 @@ internal static class CardGenerationCardMirrors
 
     public static void DistractionOnPlay(Distraction card, CardOnPlayMirrorContext context)
     {
-        var cards = card.Owner.GetUnlockedCharacterCards(context.CardMultiplayerConstraint)
-            .Where(candidate => candidate.Type == CardType.Skill)
-            .GetDistinctForCombat(
+        var cards = context.Simulator.GetDistinctUnlockedCharacterCardsForCombat(
                 card.Owner,
                 1,
                 context.Rng.CombatCardGeneration,
-                context.CardMultiplayerConstraint)
+                context.CardMultiplayerConstraint,
+                static candidate => candidate.Type == CardType.Skill)
             .Select(generatedCard => generatedCard.SetToFreeThisTurn())
             .ToList();
 
@@ -56,8 +54,7 @@ internal static class CardGenerationCardMirrors
 
     public static void DiscoveryOnPlay(Discovery card, CardOnPlayMirrorContext context)
     {
-        var cards = card.Owner.GetUnlockedCharacterCards(context.CardMultiplayerConstraint)
-            .GetDistinctForCombat(
+        var cards = context.Simulator.GetDistinctUnlockedCharacterCardsForCombat(
                 card.Owner,
                 3,
                 context.Rng.CombatCardGeneration,
@@ -100,13 +97,12 @@ internal static class CardGenerationCardMirrors
         if (context.Simulator.HasPendingChoice)
             return;
 
-        var cards = card.Owner.GetUnlockedCharacterCards(context.CardMultiplayerConstraint)
-            .Where(candidate => candidate.EnergyCost is { Canonical: 0, CostsX: false })
-            .GetForCombat(
+        var cards = context.Simulator.GetUnlockedCharacterCardsForCombat(
                 card.Owner,
                 card.DynamicVars.Cards.IntValue,
                 context.Rng.CombatCardGeneration,
-                context.CardMultiplayerConstraint)
+                context.CardMultiplayerConstraint,
+                static candidate => candidate.EnergyCost is { Canonical: 0, CostsX: false })
             .UpgradeIf(card.IsUpgraded)
             .ToList();
 
@@ -206,8 +202,7 @@ internal static class CardGenerationCardMirrors
                 break;
             case TinkerTime.RiderEffect.Chaos:
             {
-                var cards = card.Owner.GetUnlockedCharacterCards(context.CardMultiplayerConstraint)
-                    .GetDistinctForCombat(
+                var cards = context.Simulator.GetDistinctUnlockedCharacterCardsForCombat(
                         card.Owner,
                         1,
                         context.Rng.CombatCardGeneration,
@@ -302,8 +297,7 @@ internal static class CardGenerationCardMirrors
                 return;
         }
 
-        var cards = card.Owner.GetUnlockedCharacterCards(context.CardMultiplayerConstraint)
-            .GetForCombat(
+        var cards = context.Simulator.GetUnlockedCharacterCardsForCombat(
                 card.Owner,
                 cardsToExhaust.Count,
                 context.Rng.CombatCardGeneration,
@@ -316,13 +310,12 @@ internal static class CardGenerationCardMirrors
 
     public static void WhiteNoiseOnPlay(WhiteNoise card, CardOnPlayMirrorContext context)
     {
-        var cards = card.Owner.GetUnlockedCharacterCards(context.CardMultiplayerConstraint)
-            .Where(candidate => candidate.Type == CardType.Power)
-            .GetDistinctForCombat(
+        var cards = context.Simulator.GetDistinctUnlockedCharacterCardsForCombat(
                 card.Owner,
                 1,
                 context.Rng.CombatCardGeneration,
-                context.CardMultiplayerConstraint)
+                context.CardMultiplayerConstraint,
+                static candidate => candidate.Type == CardType.Power)
             .Select(generatedCard => generatedCard.SetToFreeThisTurn())
             .ToList();
 
