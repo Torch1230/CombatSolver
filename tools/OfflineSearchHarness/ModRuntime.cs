@@ -515,6 +515,11 @@ internal static class ModRuntime
             ["finalHp"] = result.Snapshot.PlayerHp,
             ["finalEnemyHp"] = result.Snapshot.EnemyHp,
             ["combatEndedTurn"] = result.CombatEndedTurn,
+            ["transpositionCount"] = result.TranspositionCount,
+            ["expandedTranspositionCount"] = result.ExpandedTranspositionCount,
+            ["standPatCacheCount"] = result.StandPatCacheCount,
+            ["threatProjectionCacheCount"] = result.ThreatProjectionCacheCount,
+            ["coverageCacheCount"] = result.CoverageCacheCount,
         };
         return metrics;
     }

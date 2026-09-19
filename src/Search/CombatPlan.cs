@@ -1595,6 +1595,13 @@ internal sealed class SolverResult
     public required BossHpRelief BossHpRelief { get; init; }
     public required TimeSpan Elapsed { get; init; }
     public required IReadOnlyList<CachedContinuation> Continuations { get; init; }
+
+    /// <summary>诊断计数：本次运行保留的转置/缓存表条目数，不参与搜索决策。</summary>
+    public int TranspositionCount { get; init; }
+    public int ExpandedTranspositionCount { get; init; }
+    public int StandPatCacheCount { get; init; }
+    public int ThreatProjectionCacheCount { get; init; }
+    public int CoverageCacheCount { get; init; }
     public bool WasReused { get; init; }
     public int? ReusedFromTurn { get; init; }
     public bool RecalculatedAfterCompleteProjection { get; internal set; }
@@ -1657,6 +1664,11 @@ internal sealed class SolverResult
             StartTurnNumber = cached.StartTurnNumber,
             TurnSetupChoices = TurnSetupChoices,
             TurnSetupPlayState = TurnSetupPlayState,
+            TranspositionCount = TranspositionCount,
+            ExpandedTranspositionCount = ExpandedTranspositionCount,
+            StandPatCacheCount = StandPatCacheCount,
+            ThreatProjectionCacheCount = ThreatProjectionCacheCount,
+            CoverageCacheCount = CoverageCacheCount,
             BestNode = BestNode,
             Snapshot = Snapshot,
             Forecast = slicedForecast,
