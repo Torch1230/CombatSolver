@@ -1,6 +1,6 @@
 # 草稿 PR：缓存 ModelDb.GetId 的纯类型映射，消除卡池枚举的正则重复计算
 
-> **状态：GitHub 草稿 PR。** 本文件同时是 PR 正文与仓库内留档；行为改动在 `experiment/learned-selector` 分支上，提交清单见文末。
+> **状态：已创建 GitHub 草稿 PR → <https://github.com/Torch1230/CombatSolver/pull/114>**（base `main`，head `ltlly:experiment/learned-selector`，draft，37 提交 / 77 文件）。本文件同时是 PR 正文与仓库内留档；行为改动在 `experiment/learned-selector` 分支上，提交清单见文末。
 >
 > **范围说明（评审前必读）**：`experiment/learned-selector` 是整条实验线，相对 `Torch1230/CombatSolver:main` 落后 7 个提交、内容差异 105 个文件（含学习型组合选择器、GC 准入与内存恢复等更早的工作）。**下面详述的是本轮（最新 6 个提交）的性能工作**：ModelDb.GetId 纯值记忆化与遗物 Crossbow 生成池复用。如果要一个只含本轮的聚焦 PR，需要从 `upstream/main` 另起分支 cherry-pick；由于上游最近 7 个提交改了同一批文档（DEVELOPMENT_NOTES/TEST_MATRIX/README/ARCHITECTURE），cherry-pick 需要在文档顶部手工解冲突。
 
