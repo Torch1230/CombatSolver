@@ -72,6 +72,7 @@ public static class Entry
         patcher.RegisterPatch<BaseLibDynamicVarCloneMetadataPatch>();
         patcher.RegisterPatch<RitsuDynamicVarCloneMetadataPatch>();
         patcher.RegisterPatch<PowerDynamicVarMaterializationGuardPatch>();
+        patcher.RegisterPatch<ModelDbGetIdCachePatch>();
         patcher.RegisterPatch<PowerAmountComparisonPatch>();
         patcher.RegisterPatch<RichTextEnvironmentLifetimePatch>();
         patcher.RegisterPatch<NodePoolSignalLifetimePatch>();

@@ -18,6 +18,7 @@ internal static class ModRuntime
     [
         "CombatSolver.CombatStateTrackerIsolationPatch",
         "CombatSolver.PowerDynamicVarMaterializationGuardPatch",
+        "CombatSolver.ModelDbGetIdCachePatch",
         "CombatSolver.BaseLibCloneConcurrencyPatch",
         "CombatSolver.BaseLibDynamicVarCloneMetadataPatch",
         "CombatSolver.RitsuDynamicVarCloneMetadataPatch",

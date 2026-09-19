@@ -1,5 +1,28 @@
 # CombatSolver 测试清单
 
+## 未发布：重型根 ModelDb.GetId 纯值记忆化（2026-09-19）
+
+- 命令模板（两侧同一宿主二进制，仅用 `OFFLINE_HARNESS_COMBATSOLVER_DLL` 切换模组产物）：
+
+  ```bash
+  TMPDIR="$PWD/.local/tmp" timeout 900 dotnet tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
+    --request "$PWD/.local/learned-selector/data3/requests/<root>.json" --label <label> \
+    --out .local/learned-selector/memory-e2e/<label> \
+    --profile VeryHigh --nodes 100000 --dop 16 --budget-ms 600000 --search-mode Evaluate \
+    --enable-no-gc-region --no-gc-region-budget-gigabytes 16 --milestone M2
+  ```
+
+- 补丁装载核对：候选侧 M0.3 行走行 `patches_applied=10/14`、`patchLog` 有 `CombatSolver.ModelDbGetIdCachePatch: 已装 1 个目标`；基线侧 `9/14` 且为 `缺少类型，跳过`。两侧其余补丁与冻结状态一致。
+- **主目标 `sel-defect-elite-01` @100k DOP16（每种 3 次、交错）**：墙钟 67.46 → **32.19 s**（−52.3%）、selected 分配 90.83 → **33.47 GiB**（−63.2%）、峰值 RSS 28.68 → **14.03 GiB**（−51.1%）、KB/转移 155.9 → **54.3**（−65.1%）、CPU（user+sys）426.4 → 270.7 s、Gen2 20 → 6；`expanded=100000`、`score=10000514973`、战损 29、`finalHp=46`、结束回合 6、planActions 27 两侧逐项相同。基线范围 66.78~67.86 s / 88.86~91.04 GiB；候选范围 31.96~32.82 s / 33.47~33.49 GiB。
+- **决策等价（DOP1）**：同根 @20k `--dop 1`，两侧转移 113574、选择分支 11460、`expanded=20000`、score/战损/finalHp/结束回合/planActions **逐位相同**；墙钟 34.30 → 15.79 s、分配 8.05 → 5.37 GiB。DOP1 没有并行调度自由度，因此 DOP16 的轨迹差异（转移 611114 → 645830、选择分支 41288 → 67554、`parallel_waves` 7820 → 3690）只能来自准入窗口变化，不是候选/剪枝/保路语义变化。
+- 哨兵：`sel-defect-elite-02` @20k（整树 10,814 展开穷尽）转移 42,752、选择分支 2,422，两侧**逐位相同**，墙钟 4.43 s 持平、分配 1.72 GiB 持平；`sel-silent-boss-01` @20k 转移 544,653、选择分支 465,076 两侧**逐位相同**，墙钟中位 26.71 → 26.56 s、分配中位 24.33 → 24.28 GiB（3 次，范围重叠）。
+- 第二重型根 `sel-necrobinder-elite-01` @100k（各 3 次）：分配中位 43.84 → 41.99 GiB、KB/转移 59.71 → 54.76、score/战损/finalHp/结束回合/planActions 全同；墙钟中位 35.19 → 37.14 s（+5.5%）落在基线自身范围 32.67~36.51 s 内，判收益未建立。**同版本基线三次运行转移为 771425 / 635834 / 771425（双峰），候选三次全部 804057**；上一轮把 635834 与 771425 分别归给两个源码版本属于运行间非确定性，本轮更正。
+- 分配 trace 归因（`dotnet-trace collect --providers Microsoft-Windows-DotNETRuntime:0x1:5 --buffersize 512`，20k 节点，`GcTraceAnalysis --top 100000`）：confirmed search 20.98 GB 中 12.31 GiB（约 59%）在 `StringHelper.Slugify`/`ModelId.SlugifyCategory` 正则下；`Epoch.get_Cards() → ModelDb.Card → ModelDb.GetId(Type)` 是唯一链，发起方为 `SplashOnPlay` 遍历角色卡池。修复后同一采样降到 confirmed search 6.31 GB、slug 0 GiB；最大单一类型 `CardModel[]` 0.244 GiB（已覆盖栈 4.0%）。
+- 纯度核对：`.local/bench/ilprobe`（未入库的临时探针）反射读 `sts2.dll` 方法体确认 `GetEntry`/`GetCategory` 只依赖类型名、`Slugify` 用 `ToUpperInvariant`、`ModelId` 是不可变 record。
+- Release 构建 0 警告/0 错误；`./tools/verify-refactor-boundaries.sh` 输出 `REFACTOR_BOUNDARIES_OK search_files=193`。
+- 未执行：可见 Steam、Windows 构建、`--verify-incremental-search`、Coordinator/portfolio 主路径、完整部署与原生重放。GC 暂停在本机双峰（同侧 10 ms ~ 2.5 s），只记范围不作结论。
+- 完整表、命令与限制见[ModelDb.GetId 记忆化](performance/defect-modeldb-getid-cache-20260919.md)。
+
 ## 未发布：搜索无进展内存截断与排他分配（2026-09-19）
 
 - `dotnet run --project tools/CombatSolver.GcPolicyChecks/CombatSolver.GcPolicyChecks.csproj -c Release -- recovery` 通过，输出 `GC policy checks passed: 9 scenarios.`：覆盖 limit=0 永不触发、阈值上下界、连续计数、有进展清零和按成员/请求重置。
