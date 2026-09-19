@@ -15,6 +15,7 @@
 - 16 并行 / 极高 / No-GC 16 GB、20,000 节点、4 根 × 3 次中位（旧 → 新，展开/战损/分数逐项相同）：`sel-defect-elite-02` 4.48→4.39 s、1,895→1,847 MB；`sel-necrobinder-elite-14` 3.30→3.21 s、1,376→1,328 MB；`sel-regent-monster-11` 8.88→8.62 s、5,073→4,886 MB；`sel-silent-boss-01` 29.34→26.57 s、28,061→26,129 MB。这是离线读数保真修复；实机此前就走快速路径，不算玩家端收益。
 - 阶段诊断健壮性修复：模组日志在退出前用自身的 FIFO 快照屏障冲刷，阶段表同时写入 `harness-result.json`；失败的 lane 不再合并阶段指标、原错误优先抛出；`Replay` 的 `card_exec`/`card_post`/`potion_exec` 与 `Action` 帧一律先收口再调用可能抛错的 `EndActionChoices`；LIFO/合并异常直接报出未收口阶段名。修复前 `sel-regent-monster-11` 在 `--measure-phases` 下 3/3 以二手异常在 1.2 s 内终止，修复后 8.6 s 完整跑完且与不开阶段逐项相同。
 - 冻结后的排他阶段表：`sel-silent-boss-01` 为 fork 30.2% / round_player_start 19.9% / snapshot 6.4% / prune 6.1%，`sel-regent-monster-11` 为 fork 29.2% / card_exec 15.3% / snapshot 10.9% / prune 3.1%；分配仍由模拟自身主导，本轮没有找到新的零决策代价支配项。该重根在 16 GB 区域预算下分配 26.1 GB，仍测得 2,399 ms GC 暂停（区域退出与重建）。
+- 生产默认路径是组合而不是单树（`UseBeamWidthPortfolio` 默认 `true`）：16 并行、节点上限 20,000 时，三个轻根 9.0～11.5 s、请求分配 0.7～1.7 GB、峰值 RSS 6.5～7.5 GB；`sel-silent-boss-01` 为 89.6 s、22.9 GB 分配、**峰值 RSS 20.1 GB**、GC 暂停 **9.6 s**（约 11% 墙钟），16 GB 区域装不下请求而中途退出重建。VeryHigh 预设本身是 Beam 135 / 500,000 节点 / 300 s，跑批压到 20,000 节点，因此这是该路径的下限。
 - 本轮命令、阶段表与限制见 [极高预设 16 并行离线基线与阶段归因](performance/dop16-veryhigh-fidelity-20260919.md)。
 
 ## 0.41.0：问题包开战默认与仓库内无头实例（2026-09-18）

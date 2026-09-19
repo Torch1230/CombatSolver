@@ -12,6 +12,7 @@
 - 离线宿主保真（RitsuLib 内容注册冻结）：M0.3 行走行输出 `mod_card_piles=frozen=True definitions=0 freeze=frozen=True`；冻结前后对 `sel-defect-elite-02`、`sel-necrobinder-elite-14`、`sel-regent-monster-11`、`sel-silent-boss-01` 的展开数、战损与分数逐项相同。
 - 16 并行 / 极高 / No-GC 16 GB、20,000 节点、4 根 × 3 次中位墙钟与 selected worker 分配：4.39 s / 1,847 MB、3.21 s / 1,328 MB、8.62 s / 4,886 MB、26.57 s / 26,129 MB；对应冻结前基线为 4.48 s / 1,895 MB、3.30 s / 1,376 MB、8.88 s / 5,073 MB、29.34 s / 28,061 MB，三次样本墙钟离散度 ≤0.5%。
 - 阶段诊断健壮性：`sel-regent-monster-11` + `--measure-phases` 修复前 3/3 在 1.2 s 内以二手异常终止，修复后完整跑完 8.6 s 且展开/转移/分数/战损与不开阶段相同；阶段表随 `harness-result.json` 的 `phasePerformance` 一并落盘。细节见[离线基线与阶段归因](performance/dop16-veryhigh-fidelity-20260919.md)。
+- 生产默认路径（`--search-mode Coordinator --use-portfolio`，16 并行、20,000 节点上限、No-GC 16 GB，每根 2 次）：`sel-defect-elite-02` 11.23/11.46 s、1,661 MB、RSS 7.46 GB；`sel-necrobinder-elite-14` 9.37/9.35 s、1,145 MB、6.78 GB；`sel-regent-monster-11` 9.04/9.03 s、714 MB、6.57 GB；`sel-silent-boss-01` 89.61/89.29 s、22,856 MB、RSS 20.12 GB，GC 暂停 9,591 ms。VeryHigh 预设为 Beam 135 / 500,000 节点 / 300 s，跑批节点上限被压到 20,000。
 
 ## 0.41.0：问题包开战默认与仓库内无头实例（2026-09-18）
 
