@@ -71,9 +71,6 @@ internal sealed partial class UnattendedTestRunner
                     if (SolverText.Get(source) != (english ? translated : source))
                         throw new InvalidOperationException($"Wrong locale selection: {target}/{source}");
                 }
-                if (SolverText.Format($"后续净生命变化 {2:+#;-#;0} HP")
-                    != (english ? "Projected net HP change +2 HP" : "后续净生命变化 +2 HP"))
-                    throw new InvalidOperationException("Projected net HP change lost its signed localization.");
                 string untouched = "玩家{0}[b]STRIKE[/b]";
                 if (SolverText.Format($"联系QQ：{untouched}（可在“求解器设置”里修改）")
                     != (english ? $"QQ: {untouched} (change in Solver Settings)" : $"联系QQ：{untouched}（可在“求解器设置”里修改）"))

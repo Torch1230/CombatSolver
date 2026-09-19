@@ -68,7 +68,6 @@ internal static class SolverOverlay
     private static Label? _potionOutcomeLabel;
     private static Label? _hpOutcomeLabel;
     private static Label? _hpRecoveredOutcomeLabel;
-    private static Label? _netHpOutcomeLabel;
     private static RichTextLabel? _detailsText;
     private static SolverDetailsButton? _detailsButton;
     private static Button? _recalculateButton;
@@ -832,8 +831,6 @@ internal static class SolverOverlay
             _stolenResourceOutcomeLabel.Visible = false;
         if (_hpRecoveredOutcomeLabel != null)
             _hpRecoveredOutcomeLabel.Visible = false;
-        if (_netHpOutcomeLabel != null)
-            _netHpOutcomeLabel.Visible = false;
         if (_deathOutcomeLabel != null)
             _deathOutcomeLabel.Visible = false;
         for (int index = 0; index < SolverWeights.UiTurnRows; index++)
@@ -958,21 +955,17 @@ internal static class SolverOverlay
         {
             // Post-combat relic healing is reported next to route healing rather than folded into it:
             // it lands after the last action, so attributing it to a turn would misplace it.
-            _hpRecoveredOutcomeLabel.Visible = snapshot.ProjectedBattleHpLossKnown;
-            int futureLoss = Math.Max(0, snapshot.ProjectedBattleHpLost - snapshot.BattleHpLostSoFar);
-            int futureHealing = snapshot.RouteHpRecovered + snapshot.RoutePostCombatRelicHeal;
-            int netChange = futureHealing - futureLoss;
-            _hpRecoveredOutcomeLabel.Text = SolverText.Format($"已回血/生命提升 {snapshot.BattleHpRecoveredOrGainedSoFar} HP")
-                + SolverText.Format($"；后续预计回血 {snapshot.RouteHpRecovered} HP")
-                + (snapshot.RoutePostCombatRelicHeal > 0
-                    ? SolverText.Format($"，战后遗物 {snapshot.RoutePostCombatRelicHeal} HP") : string.Empty);
-            if (_netHpOutcomeLabel != null)
-            {
-                _netHpOutcomeLabel.Visible = snapshot.ProjectedBattleHpLossKnown;
-                _netHpOutcomeLabel.Text = SolverText.Format($"后续净生命变化 {netChange:+#;-#;0} HP");
-                _netHpOutcomeLabel.AddThemeColorOverride("font_color",
-                    netChange < 0 ? Danger : netChange > 0 ? Success : TextMuted);
-            }
+            _hpRecoveredOutcomeLabel.Visible = snapshot.RouteHpRecovered > 0
+                || snapshot.RoutePostCombatRelicHeal > 0;
+            _hpRecoveredOutcomeLabel.Text =
+                (snapshot.RouteHpRecovered, snapshot.RoutePostCombatRelicHeal) switch
+                {
+                    (> 0, > 0) => SolverText.Format($"路线回血  {snapshot.RouteHpRecovered} HP")
+                        + SolverText.Format($"　战后遗物  {snapshot.RoutePostCombatRelicHeal} HP"),
+                    (> 0, _) => SolverText.Format($"路线回血  {snapshot.RouteHpRecovered} HP"),
+                    (_, > 0) => SolverText.Format($"战后遗物回血  {snapshot.RoutePostCombatRelicHeal} HP"),
+                    _ => string.Empty,
+                };
         }
         if (_deathOutcomeLabel != null)
             _deathOutcomeLabel.Visible = snapshot.OnlyDeathRoutesFound;
@@ -1010,7 +1003,7 @@ internal static class SolverOverlay
                 "font_color",
                 !snapshot.ProjectedBattleHpLossKnown
                     ? TextMuted
-                    : snapshot.ProjectedBattleHpLost > 0
+                    : (snapshot.DisplayProjectedHpLost ?? snapshot.ProjectedBattleHpLost) > 0
                         ? Danger
                         : Success);
         }
@@ -1641,14 +1634,6 @@ internal static class SolverOverlay
         _hpRecoveredOutcomeLabel.SizeFlagsHorizontal = Control.SizeFlags.ShrinkEnd;
         _hpRecoveredOutcomeLabel.HorizontalAlignment = HorizontalAlignment.Right;
         _routeHeadingRow.AddChild(_hpRecoveredOutcomeLabel);
-        _netHpOutcomeLabel = CreateTextLabel(
-            SolverText.Get("后续净生命变化 0 HP"),
-            SolverUiTokens.Type.Body,
-            TextMuted,
-            FontType.Bold);
-        _netHpOutcomeLabel.Visible = false;
-        _netHpOutcomeLabel.SizeFlagsHorizontal = Control.SizeFlags.ShrinkEnd;
-        _routeHeadingRow.AddChild(_netHpOutcomeLabel);
         HBoxContainer routeSummary = new() { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         routeSummary.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Md);
         routeSummary.AddChild(CreateTextLabel(SolverText.Get("当前路线摘要"), SolverUiTokens.Type.Body, TextPrimary, FontType.Bold));
@@ -3130,8 +3115,10 @@ internal static class SolverOverlay
         {
             Check(!new SolverSettingsData().AutoEnableFullAuto, "opt-in default");
             Check(BattleDamageTracker.RecoveredOrGainedForDisplay(70, 65, 8) == 3
-                && BattleDamageTracker.RecoveredOrGainedForDisplay(70, 70, 0) == 0,
-                "display-only realized HP recovery accounting");
+                && BattleDamageTracker.RecoveredOrGainedForDisplay(70, 70, 1) == 1
+                && SolverOverlaySnapshot.NetHpLossForDisplay(1, 1) == 0
+                && SolverOverlaySnapshot.NetHpLossForDisplay(7, 1 + 3) == 3,
+                "regeneration offsets the displayed loss without changing gross damage");
             SearchGcLifecycleSnapshot beforeGc = SearchGcPolicy.CaptureLifecycle();
             bool automaticGcBefore = SearchGcPolicy.AutomaticGcLifecycleUsed;
             System.Runtime.GCLatencyMode latencyBefore = System.Runtime.GCSettings.LatencyMode;
@@ -3169,29 +3156,27 @@ internal static class SolverOverlay
             Check(!SolverController.FullAutoEnabled, "disabled preference applies next combat");
 
             SolverOverlaySnapshot snapshot = new(1, "UI test", SolverOverlayTone.Success, "", "", 0, 7, true,
-                SolverText.Format($"累计受伤：已 {2} HP，预计 {7} HP"), 3, 2, false, [], "", false, null)
-            { BattleHpLostSoFar = 2, BattleHpRecoveredOrGainedSoFar = 1 };
+                SolverText.Format($"本局扣血  已 {1}    预计 {3} HP"), 3, 2, false, [], "", false, null)
+            { DisplayProjectedHpLost = 3 };
+            ShowResult(host, snapshot with { RouteHpRecovered = 0, RoutePostCombatRelicHeal = 0 });
+            Check(!_hpRecoveredOutcomeLabel!.Visible,
+                "zero-healing route keeps the original compact summary");
             ShowResult(host, snapshot);
             Label outcome = _hpOutcomeLabel!;
             SetCollapsed(true);
             await host.ToSignal(host.GetTree(), SceneTree.SignalName.ProcessFrame);
             Check(outcome.IsVisibleInTree() && !_body!.Visible && _routeOutcomePanel!.GetParent() == _mainStack
-                && outcome.Text == snapshot.HpOutcomeText && outcome.GetThemeColor("font_color") == Danger, "collapsed loss and color");
+                && outcome.Text == snapshot.HpOutcomeText && outcome.GetThemeColor("font_color") == Danger
+                && snapshot.DisplayProjectedHpLost == 3, "collapsed loss and color");
             Check(_hpRecoveredOutcomeLabel!.IsVisibleInTree()
-                && _hpRecoveredOutcomeLabel.Text.Contains(SolverText.Format($"已回血/生命提升 {1} HP"), StringComparison.Ordinal)
-                && _hpRecoveredOutcomeLabel.Text.Contains(SolverText.Format($"；后续预计回血 {3} HP"), StringComparison.Ordinal)
-                && _netHpOutcomeLabel!.IsVisibleInTree()
-                && _netHpOutcomeLabel.Text == SolverText.Format($"后续净生命变化 {0:+#;-#;0} HP"),
-                "separate projected recovery and net HP change");
-            ShowResult(host, snapshot with { RouteHpRecovered = 0, RoutePostCombatRelicHeal = 0 });
-            Check(_netHpOutcomeLabel!.Text == SolverText.Format($"后续净生命变化 {-5:+#;-#;0} HP")
-                && _netHpOutcomeLabel.GetThemeColor("font_color") == Danger,
-                "negative net HP change uses loss color");
-            ShowResult(host, snapshot with { HpOutcomeText = "0 HP", ProjectedBattleHpLost = 0 });
+                && _hpRecoveredOutcomeLabel.Text == SolverText.Format($"路线回血  {3} HP")
+                    + SolverText.Format($"　战后遗物  {2} HP"),
+                "original conditional route healing label");
+            ShowResult(host, snapshot with { HpOutcomeText = "0 HP", ProjectedBattleHpLost = 0,
+                DisplayProjectedHpLost = 0 });
             Check(ReferenceEquals(outcome, _hpOutcomeLabel) && outcome.Text == "0 HP"
-                && outcome.GetThemeColor("font_color") == Success
-                && _netHpOutcomeLabel!.GetThemeColor("font_color") == Success,
-                "healing and live update use correct colors");
+                && outcome.GetThemeColor("font_color") == Success,
+                "healing offset and live update use the compact label");
             SetCollapsed(false);
             Check(_routeOutcomePanel!.GetParent() == _body && outcome.IsVisibleInTree(), "expanded placement restored");
             SetCollapsed(true);

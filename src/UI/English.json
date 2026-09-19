@@ -424,14 +424,5 @@
   "已保存路线（已过期）": "Saved route (outdated)",
   "解除冻结；自动计算开启时，可从当前状态重新计算。": "Unfreeze the route; when auto-calculate is enabled, recalculate from the current state.",
   "保留本场路线，暂停自动重算和全自动；失配路线仅供参考。": "Keep this combat's route and pause automatic recalculation and full auto; mismatched routes are for reference only.",
-  "当前平台不支持 NoGC；设置保留，搜索使用常规 GC。": "NoGC is unavailable on this platform. Your setting is retained; searches use normal GC.",
-  "累计受伤：预计未知": "Total damage taken: projection unknown",
-  "累计受伤：已 {0} HP，预计 {1} HP": "Damage taken: {0} HP so far, {1} HP projected",
-  "；重算增加 {0} HP": "; recalculation adds {0} HP",
-  "后续预计回血 {0} HP": "Projected further healing {0} HP",
-  "已回血/生命提升 {0} HP": "HP recovered or gained so far {0} HP",
-  "；后续预计回血 {0} HP": "; projected further healing {0} HP",
-  "，战后遗物 {0} HP": ", post-combat relic {0} HP",
-  "后续净生命变化 {0:+#;-#;0} HP": "Projected net HP change {0:+#;-#;0} HP",
-  "后续净生命变化 0 HP": "Projected net HP change 0 HP"
+  "当前平台不支持 NoGC；设置保留，搜索使用常规 GC。": "NoGC is unavailable on this platform. Your setting is retained; searches use normal GC."
 }

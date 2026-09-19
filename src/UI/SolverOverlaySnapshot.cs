@@ -72,8 +72,9 @@ internal sealed record SolverOverlaySnapshot(
     string? SearchLimitWarningText)
 {
     public string? UnrecoveredLootText { get; init; }
-    public int BattleHpLostSoFar { get; init; }
-    public int BattleHpRecoveredOrGainedSoFar { get; init; }
+    public int? DisplayProjectedHpLost { get; init; }
+    internal static int NetHpLossForDisplay(int grossLoss, int recovered)
+        => Math.Max(0, grossLoss - recovered);
     public string? RewardOutcomeText { get; init; }
     public string? UsedPotionOutcomeText { get; init; }
     public string? PlannedPotionOutcomeText { get; init; }
@@ -248,12 +249,17 @@ internal sealed record SolverOverlaySnapshot(
         bool projectedBattleHpLossKnown = result.CombatEndedTurn.HasValue;
         int routeHpRecovered = result.HpRecoveredByTurn
             .Where(item => item.Key >= startTurnNumber).Sum(item => item.Value);
+        int alreadyLost = NetHpLossForDisplay(
+            result.BattleHpLostSoFar, result.BattleHpRecoveredOrGainedSoFar);
+        int projectedLost = NetHpLossForDisplay(
+            result.ProjectedBattleHpLost, result.BattleHpRecoveredOrGainedSoFar + routeHpRecovered);
         string hpOutcomeText = !projectedBattleHpLossKnown
-            ? SolverText.Get("累计受伤：预计未知")
-            : SolverText.Format($"累计受伤：已 {result.BattleHpLostSoFar} HP，预计 {result.ProjectedBattleHpLost} HP")
-              + (result.ProjectedBattleHpLossIncrease > 0
-                  ? SolverText.Format($"；重算增加 {result.ProjectedBattleHpLossIncrease} HP")
-                  : string.Empty);
+            ? SolverText.Get("预计战损 未知")
+            : projectedLost > 0 || alreadyLost > 0
+                ? result.ProjectedBattleHpLossIncrease > 0
+                    ? SolverText.Format($"本局扣血  已 {alreadyLost}    预计 {projectedLost} HP    重算增加 {result.ProjectedBattleHpLossIncrease} HP")
+                    : SolverText.Format($"本局扣血  已 {alreadyLost}    预计 {projectedLost} HP")
+                : SolverText.Get("本局扣血  0 HP");
 
         SolverOverlayTurnSnapshot[] turns = Enumerable.Range(0, searchedTurns)
             .Select(index => CaptureTurn(result, startTurnNumber + index))
@@ -276,8 +282,7 @@ internal sealed record SolverOverlaySnapshot(
             hasRisk,
             BuildSearchLimitWarning(result.BoundaryReason))
         {
-            BattleHpLostSoFar = result.BattleHpLostSoFar,
-            BattleHpRecoveredOrGainedSoFar = result.BattleHpRecoveredOrGainedSoFar,
+            DisplayProjectedHpLost = projectedLost,
             RewardOutcomeText = RewardOutcome(result),
             UsedPotionOutcomeText = UsedPotionOutcome(result),
             PlannedPotionOutcomeText = PlannedPotionOutcome(result),
