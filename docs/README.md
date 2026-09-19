@@ -96,6 +96,8 @@
 | 遗物与 Modifier 的捕获、Fork 与续用状态 | [模型状态适配](third-party-model-state.md) |
 | 模型状态中的卡牌引用、重映射及集合描述 | [卡牌引用辅助接口](third-party-model-state.md#卡牌引用辅助接口) |
 | 精确 OnPlay 补丁组合及完整预测实现 | [OnPlay 补丁适配](third-party-onplay-patches.md) |
+| 第三方回合阶段登记及冻结合同 | [回合阶段镜像](third-party-turn-phase-mirrors.md) |
+| BeforeSideTurnStart 入口与十根等价数据 | [本地 PR 草稿](pr/before-side-turn-start-mirrors-draft.md) |
 | 战斗语义适配与验证方法 | [适配验证](ADAPTATION_VERIFICATION.md) |
 | 原版 Hook 支持和覆盖证据 | [战斗 Hook 覆盖目录](COMBAT_HOOK_COVERAGE.md) |
 
