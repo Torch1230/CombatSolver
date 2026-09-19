@@ -129,6 +129,10 @@ internal sealed class SolverCombatSession
     public SolverResult? ContinuationSource { get; set; }
     public SearchInteractionState? StoppedSearch { get; set; }
     public bool FullAutoEnabled { get; set; }
+    public bool RouteFrozen { get; set; }
+    public int? RetainedRouteCheckedTurn { get; set; }
+    public long NextRetainedValidityCheckAt { get; set; }
+    public bool? RetainedRouteWasCurrent { get; set; }
     public SolverTheftPolicy? TheftPolicy { get; set; }
     public CompleteProjectionBaseline? PendingCompleteProjectionBaseline { get; set; }
     public ManualProjectionBaseline? PendingManualProjectionBaseline { get; set; }

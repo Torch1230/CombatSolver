@@ -445,6 +445,31 @@ internal sealed class NativeChoiceSession : IDisposable
         NativeChoiceRuntime.RecordTrace(this, request, "ManualSelected");
     }
 
+    internal async Task SelectPlannedOrDifferentVisibleCardsForTesting(
+        NGame host,
+        PlanCardChoice plan,
+        bool different,
+        CancellationToken token)
+    {
+        if (!UnattendedTestRunner.IsActive)
+            throw new InvalidOperationException("只有无人值守测试可以模拟原生选牌。");
+        NativeChoiceRequest request = await _firstVisibleRequest.Task.WaitAsync(token);
+        using NativeChoiceSurfaceLock surfaceLock = await NativeChoiceSurface.WaitAndLockAsync(
+            host, request, token);
+        IReadOnlyList<CardModel> planned = ResolvePlannedCards(plan, request, useObservedIdentity: false);
+        IReadOnlyList<CardModel> selected = planned;
+        if (different)
+        {
+            if (planned.Count == 0)
+                throw new InvalidOperationException("选牌失配夹具需要计划删牌。");
+            CardModel alternative = request.Options.FirstOrDefault(option => !planned.Contains(option))
+                ?? throw new InvalidOperationException("选牌失配夹具没有可选的另一张牌。");
+            selected = [alternative, .. planned.Skip(1)];
+        }
+        await NativeChoiceSurface.SelectAsync(host, surfaceLock, request, selected, token);
+        NativeChoiceRuntime.RecordTrace(this, request, "ManualSelected");
+    }
+
     internal async Task InteractWithFirstChoiceForTesting(NGame host, bool confirm, CancellationToken token)
     {
         if (!UnattendedTestRunner.IsActive) throw new InvalidOperationException("Only unattended tests may inject choice input.");

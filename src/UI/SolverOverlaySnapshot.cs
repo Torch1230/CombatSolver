@@ -72,6 +72,8 @@ internal sealed record SolverOverlaySnapshot(
     string? SearchLimitWarningText)
 {
     public string? UnrecoveredLootText { get; init; }
+    public int BattleHpLostSoFar { get; init; }
+    public int BattleHpRecoveredOrGainedSoFar { get; init; }
     public string? RewardOutcomeText { get; init; }
     public string? UsedPotionOutcomeText { get; init; }
     public string? PlannedPotionOutcomeText { get; init; }
@@ -244,14 +246,14 @@ internal sealed record SolverOverlaySnapshot(
             ? SolverText.Format($"路线已复用，共查阅了 {reviewedWorldlinesTotal:N0} 条世界线")
             : SolverText.Format($"花费了 {result.TotalSearchElapsed.TotalSeconds:F1} 秒，共查阅了 {reviewedWorldlinesTotal:N0} 条世界线");
         bool projectedBattleHpLossKnown = result.CombatEndedTurn.HasValue;
-        int routeHpRecovered = result.HpRecoveredByTurn.Values.Sum();
+        int routeHpRecovered = result.HpRecoveredByTurn
+            .Where(item => item.Key >= startTurnNumber).Sum(item => item.Value);
         string hpOutcomeText = !projectedBattleHpLossKnown
-            ? SolverText.Get("预计战损 未知")
-            : result.ProjectedBattleHpLost > 0
-                ? result.ProjectedBattleHpLossIncrease > 0
-                    ? SolverText.Format($"本局扣血  已 {result.BattleHpLostSoFar}    预计 {result.ProjectedBattleHpLost} HP    重算增加 {result.ProjectedBattleHpLossIncrease} HP")
-                    : SolverText.Format($"本局扣血  已 {result.BattleHpLostSoFar}    预计 {result.ProjectedBattleHpLost} HP")
-                : SolverText.Get("本局扣血  0 HP");
+            ? SolverText.Get("累计受伤：预计未知")
+            : SolverText.Format($"累计受伤：已 {result.BattleHpLostSoFar} HP，预计 {result.ProjectedBattleHpLost} HP")
+              + (result.ProjectedBattleHpLossIncrease > 0
+                  ? SolverText.Format($"；重算增加 {result.ProjectedBattleHpLossIncrease} HP")
+                  : string.Empty);
 
         SolverOverlayTurnSnapshot[] turns = Enumerable.Range(0, searchedTurns)
             .Select(index => CaptureTurn(result, startTurnNumber + index))
@@ -274,6 +276,8 @@ internal sealed record SolverOverlaySnapshot(
             hasRisk,
             BuildSearchLimitWarning(result.BoundaryReason))
         {
+            BattleHpLostSoFar = result.BattleHpLostSoFar,
+            BattleHpRecoveredOrGainedSoFar = result.BattleHpRecoveredOrGainedSoFar,
             RewardOutcomeText = RewardOutcome(result),
             UsedPotionOutcomeText = UsedPotionOutcome(result),
             PlannedPotionOutcomeText = PlannedPotionOutcome(result),

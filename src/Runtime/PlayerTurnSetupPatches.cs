@@ -245,7 +245,7 @@ internal static class PlayerTurnSetupCoordinator
             || !_activeOperation.IsCompleted
             || !Entry.Enabled
             || SolverController.SolverDisabled
-            || (!SolverController.AutomaticCalculationEnabled && !SolverController.FullAutoEnabled)
+            || !SolverController.ShouldAutomaticallySearchNextTurn
             || SolverController.IsMultiplayerSession
             || SolverController.AutomaticSearchPaused
             || !ReferenceEquals(LocalContext.GetMe(manager.DebugOnlyGetState()), player)
@@ -524,6 +524,14 @@ internal static class PlayerTurnSetupCoordinator
         if (!UnattendedTestRunner.IsActive || _active is not { } active)
             throw new InvalidOperationException("开局选牌交互测试缺少活动会话。");
         return active.Choices.InteractWithFirstChoiceForTesting(host, confirm, active.Token);
+    }
+
+    internal static Task SelectPlannedOrDifferentChoiceForTesting(NGame host, bool different)
+    {
+        if (!UnattendedTestRunner.IsActive || _active is not { ReplayChoices: { Count: > 0 } } active)
+            throw new InvalidOperationException("续用选牌夹具缺少既有计划。");
+        return active.Choices.SelectPlannedOrDifferentVisibleCardsForTesting(
+            host, active.ReplayChoices[0], different, active.Token);
     }
 
     public static void PrepareForSceneExit()

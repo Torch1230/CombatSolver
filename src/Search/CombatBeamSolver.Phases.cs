@@ -782,6 +782,7 @@ internal sealed partial class CombatBeamSolver
                 SoldHp = selectedCandidate.BattleSold,
                 FutureSoldHp = selectedCandidate.FutureSold,
                 BattleHpLostSoFar = battleDamage.HpLostSoFar,
+                BattleHpRecoveredOrGainedSoFar = battleDamage.HpRecoveredOrGainedSoFar,
                 ProjectedBattleHpLost = battleDamage.HpLostSoFar + futureHpLost,
                 BattlePotionsUsedSoFar = battleDamage.PotionsUsedSoFar,
                 BattlePotionIdsUsedSoFar = battleDamage.PotionIdsUsedSoFar,

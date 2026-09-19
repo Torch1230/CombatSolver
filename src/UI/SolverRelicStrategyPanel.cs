@@ -17,6 +17,7 @@ internal sealed partial class SolverRelicStrategyPanel : PanelContainer
     private readonly Label _empty;
     private ulong _lastOwnedMask = ulong.MaxValue;
     public event Action<bool, RelicCounterRule[]>? PolicyChanged;
+    public event Action? CloseRequested;
 
     public SolverRelicStrategyPanel()
     {
@@ -37,6 +38,10 @@ internal sealed partial class SolverRelicStrategyPanel : PanelContainer
         _enabled = SolverSettingsPanel.CreateToggle();
         _enabled.Name = "RelicStrategyEnabled";
         master.AddChild(_enabled);
+        Button close = SolverUiTokens.CreateButton(SolverText.Get("收起"), SolverButtonStyle.Secondary);
+        close.Name = "CloseStrategyPanel";
+        close.Pressed += () => CloseRequested?.Invoke();
+        master.AddChild(close);
         layout.AddChild(master);
         HBoxContainer filter = new();
         filter.AddChild(Text("显示未持有"));

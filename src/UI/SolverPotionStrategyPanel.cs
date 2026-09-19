@@ -13,6 +13,7 @@ internal sealed partial class SolverPotionStrategyPanel : PanelContainer
     private const float CardMinimumWidth = 280f;
     private readonly GridContainer _cards;
     private readonly Button _onlyForced;
+    public event Action? CloseRequested;
     private string? _renderedSignature;
 
     public SolverPotionStrategyPanel()
@@ -43,7 +44,14 @@ internal sealed partial class SolverPotionStrategyPanel : PanelContainer
             SolverUiTokens.Palette.TextPrimary,
             FontType.Bold);
         heading.Name = "StrategyHeading";
-        layout.AddChild(heading);
+        heading.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        HBoxContainer headingRow = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        headingRow.AddChild(heading);
+        Button close = SolverUiTokens.CreateButton(SolverText.Get("收起"), SolverButtonStyle.Secondary);
+        close.Name = "CloseStrategyPanel";
+        close.Pressed += () => CloseRequested?.Invoke();
+        headingRow.AddChild(close);
+        layout.AddChild(headingRow);
 
         GridContainer presets = new()
         {

@@ -68,11 +68,13 @@ internal static class SolverOverlay
     private static Label? _potionOutcomeLabel;
     private static Label? _hpOutcomeLabel;
     private static Label? _hpRecoveredOutcomeLabel;
+    private static Label? _netHpOutcomeLabel;
     private static RichTextLabel? _detailsText;
     private static SolverDetailsButton? _detailsButton;
     private static Button? _recalculateButton;
     private static Button? _stopSearchButton;
     private static Button? _adoptRouteButton;
+    private static Button? _freezeRouteButton;
     private static Button? _executeButton;
     private static Button? _fullAutoButton;
     private static SolverActionBar? _actionBar;
@@ -680,6 +682,23 @@ internal static class SolverOverlay
         RefreshControls();
     }
 
+    public static void ShowRetainedRoute(Node host)
+    {
+        EnsureCreated(host);
+        if (_lastSnapshot == null)
+            throw new InvalidOperationException("保留路线必须先显示对应的搜索结果。");
+        _presentation = SolverOverlayPresentation.Ready;
+        _deployQueued = false;
+        bool current = SolverController.CanExecuteCurrentTurn;
+        SetStatus(SolverText.Get(current ? "路线已保留" : "历史路线（仅供参考）"),
+            current ? Accent : TextMuted);
+        if (_routeHeadingLabel != null)
+            _routeHeadingLabel.Text = SolverText.Get(current ? "已保存路线" : "已保存路线（已过期）");
+        SetSearchLimitHint(null);
+        ShowLayer();
+        RefreshControls();
+    }
+
     public static void ShowPotionRewardSettingChanged(Node host)
         => Show(host, SolverText.Get("药水奖励预测设置已更改，请重新计算路线。"));
 
@@ -813,6 +832,8 @@ internal static class SolverOverlay
             _stolenResourceOutcomeLabel.Visible = false;
         if (_hpRecoveredOutcomeLabel != null)
             _hpRecoveredOutcomeLabel.Visible = false;
+        if (_netHpOutcomeLabel != null)
+            _netHpOutcomeLabel.Visible = false;
         if (_deathOutcomeLabel != null)
             _deathOutcomeLabel.Visible = false;
         for (int index = 0; index < SolverWeights.UiTurnRows; index++)
@@ -937,17 +958,21 @@ internal static class SolverOverlay
         {
             // Post-combat relic healing is reported next to route healing rather than folded into it:
             // it lands after the last action, so attributing it to a turn would misplace it.
-            _hpRecoveredOutcomeLabel.Visible = snapshot.RouteHpRecovered > 0
-                || snapshot.RoutePostCombatRelicHeal > 0;
-            _hpRecoveredOutcomeLabel.Text =
-                (snapshot.RouteHpRecovered, snapshot.RoutePostCombatRelicHeal) switch
-                {
-                    ( > 0, > 0) => SolverText.Format($"路线回血  {snapshot.RouteHpRecovered} HP") +
-                        SolverText.Format($"　战后遗物  {snapshot.RoutePostCombatRelicHeal} HP"),
-                    ( > 0, _) => SolverText.Format($"路线回血  {snapshot.RouteHpRecovered} HP"),
-                    (_, > 0) => SolverText.Format($"战后遗物回血  {snapshot.RoutePostCombatRelicHeal} HP"),
-                    _ => string.Empty,
-                };
+            _hpRecoveredOutcomeLabel.Visible = snapshot.ProjectedBattleHpLossKnown;
+            int futureLoss = Math.Max(0, snapshot.ProjectedBattleHpLost - snapshot.BattleHpLostSoFar);
+            int futureHealing = snapshot.RouteHpRecovered + snapshot.RoutePostCombatRelicHeal;
+            int netChange = futureHealing - futureLoss;
+            _hpRecoveredOutcomeLabel.Text = SolverText.Format($"已回血/生命提升 {snapshot.BattleHpRecoveredOrGainedSoFar} HP")
+                + SolverText.Format($"；后续预计回血 {snapshot.RouteHpRecovered} HP")
+                + (snapshot.RoutePostCombatRelicHeal > 0
+                    ? SolverText.Format($"，战后遗物 {snapshot.RoutePostCombatRelicHeal} HP") : string.Empty);
+            if (_netHpOutcomeLabel != null)
+            {
+                _netHpOutcomeLabel.Visible = snapshot.ProjectedBattleHpLossKnown;
+                _netHpOutcomeLabel.Text = SolverText.Format($"后续净生命变化 {netChange:+#;-#;0} HP");
+                _netHpOutcomeLabel.AddThemeColorOverride("font_color",
+                    netChange < 0 ? Danger : netChange > 0 ? Success : TextMuted);
+            }
         }
         if (_deathOutcomeLabel != null)
             _deathOutcomeLabel.Visible = snapshot.OnlyDeathRoutesFound;
@@ -1174,6 +1199,7 @@ internal static class SolverOverlay
     public static void RefreshControls()
     {
         if (_recalculateButton == null || _stopSearchButton == null || _adoptRouteButton == null
+            || _freezeRouteButton == null
             || _executeButton == null || _fullAutoButton == null)
             return;
 
@@ -1188,6 +1214,15 @@ internal static class SolverOverlay
         bool canAdoptRoute = SolverController.CanAdoptCurrentRoute;
         bool canApplyCurrentTurn = SolverController.CanApplyCurrentTurn;
         bool canExecuteCurrentTurn = SolverController.CanExecuteCurrentTurn;
+        if (!SolverController.ShouldAutomaticallySearchNextTurn
+            && _lastSnapshot != null && _presentation == SolverOverlayPresentation.Ready)
+        {
+            SetStatus(SolverText.Get(canExecuteCurrentTurn ? "路线已保留" : "历史路线（仅供参考）"),
+                canExecuteCurrentTurn ? Accent : TextMuted);
+            if (_routeHeadingLabel != null)
+                _routeHeadingLabel.Text = SolverText.Get(canExecuteCurrentTurn
+                    ? "已保存路线" : "已保存路线（已过期）");
+        }
         _recalculateButton.Text = !SolverController.AutomaticCalculationEnabled
             && !SolverController.HasCalculatedThisCombat
                 ? SolverText.Get("开始计算")
@@ -1197,6 +1232,12 @@ internal static class SolverOverlay
         _stopSearchButton.Disabled = solverDisabled || !searching || SolverController.IsStoppingSearch;
         _adoptRouteButton.Disabled = solverDisabled || !canAdoptRoute || adoptingRoute;
         _adoptRouteButton.Text = adoptingRoute ? SolverText.Get("正在采用…") : SolverText.Get("采用当前路线");
+        _freezeRouteButton.Text = SolverText.Get(SolverController.RouteFrozen ? "解除冻结" : "冻结路线");
+        _freezeRouteButton.Disabled = solverDisabled || searching || SolverController.IsDeploying
+            || adoptingRoute || !SolverController.HasRetainedRoute;
+        _freezeRouteButton.TooltipText = SolverText.Get(SolverController.RouteFrozen
+            ? "解除冻结；自动计算开启时，可从当前状态重新计算。"
+            : "保留本场路线，暂停自动重算和全自动；失配路线仅供参考。");
         SolverButtonStyle adoptRouteStyle = SolverButtonStyle.Secondary;
         if (_renderedAdoptRouteButtonStyle != adoptRouteStyle)
         {
@@ -1234,7 +1275,8 @@ internal static class SolverOverlay
         _fullAutoButton.Disabled = solverDisabled || adoptingRoute;
         if (_autoEnableFullAutoSwitch != null)
             _autoEnableFullAutoSwitch.ButtonPressed = SolverSettings.Current.AutoEnableFullAuto;
-        _actionBar?.Refresh(new SolverActionBarState(_collapsed, searching, canAdoptRoute || adoptingRoute));
+        _actionBar?.Refresh(new SolverActionBarState(_collapsed, searching,
+            canAdoptRoute || adoptingRoute, SolverController.HasRetainedRoute || SolverController.RouteFrozen));
         _executeButton.TooltipText = SolverText.Get(solverDisabled ? "求解器已关闭，请从标题栏开启。"
             : adoptingRoute ? "正在采用路线，请等待完成。"
             : SolverController.IsDeploying ? "正在执行当前回合。"
@@ -1520,6 +1562,9 @@ internal static class SolverOverlay
         _potionStrategyPanel = new SolverPotionStrategyPanel();
         _growthStrategyPanel = new SolverGrowthStrategyPanel();
         _relicStrategyPanel = new SolverRelicStrategyPanel();
+        _potionStrategyPanel.CloseRequested += TogglePotionStrategy;
+        _growthStrategyPanel.CloseRequested += ToggleGrowthStrategy;
+        _relicStrategyPanel.CloseRequested += ToggleRelicStrategy;
         _relicStrategyPanel.PolicyChanged += OnRelicPolicyChanged;
         _growthStrategyPanel.PolicyChanged += OnGrowthPolicyChanged;
         _growthStrategyPanel.BrightestFlameLimitChanged += OnBrightestFlameLimitChanged;
@@ -1596,6 +1641,14 @@ internal static class SolverOverlay
         _hpRecoveredOutcomeLabel.SizeFlagsHorizontal = Control.SizeFlags.ShrinkEnd;
         _hpRecoveredOutcomeLabel.HorizontalAlignment = HorizontalAlignment.Right;
         _routeHeadingRow.AddChild(_hpRecoveredOutcomeLabel);
+        _netHpOutcomeLabel = CreateTextLabel(
+            SolverText.Get("后续净生命变化 0 HP"),
+            SolverUiTokens.Type.Body,
+            TextMuted,
+            FontType.Bold);
+        _netHpOutcomeLabel.Visible = false;
+        _netHpOutcomeLabel.SizeFlagsHorizontal = Control.SizeFlags.ShrinkEnd;
+        _routeHeadingRow.AddChild(_netHpOutcomeLabel);
         HBoxContainer routeSummary = new() { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         routeSummary.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Md);
         routeSummary.AddChild(CreateTextLabel(SolverText.Get("当前路线摘要"), SolverUiTokens.Type.Body, TextPrimary, FontType.Bold));
@@ -2103,6 +2156,10 @@ internal static class SolverOverlay
         _adoptRouteButton.Pressed += OnAdoptRoutePressed;
         _adoptRouteButton.TooltipText = SolverText.Get("结束搜索并采用屏幕当前路线；已开启的全自动或排队执行仍按原设置继续。");
 
+        _freezeRouteButton = CreateButton(SolverText.Get("冻结路线"), false);
+        _freezeRouteButton.CustomMinimumSize = new Vector2(112, SolverUiTokens.Size.ButtonHeight);
+        _freezeRouteButton.Pressed += OnFreezeRoutePressed;
+
         _executeButton = CreateButton(SolverText.Get("执行本回合"), false);
         _renderedExecuteButtonStyle = SolverButtonStyle.Secondary;
         _executeButton.CustomMinimumSize = new Vector2(132, SolverUiTokens.Size.ButtonHeight);
@@ -2144,7 +2201,7 @@ internal static class SolverOverlay
         _systemMemoryReleaseButton.Pressed += OnSystemMemoryReleasePressed;
 
         _actionBar = new SolverActionBar(_executeButton, _recalculateButton, _stopSearchButton,
-            _adoptRouteButton, _fullAutoButton, autoStart, _memoryUsageBar, _systemMemoryReleaseButton);
+            _adoptRouteButton, _freezeRouteButton, _fullAutoButton, autoStart, _memoryUsageBar, _systemMemoryReleaseButton);
         return _actionBar;
     }
 
@@ -2646,7 +2703,8 @@ internal static class SolverOverlay
     private static void ApplyContentVisibility()
     {
         _actionBar?.Refresh(new SolverActionBarState(_collapsed, SolverController.IsSearching,
-            SolverController.CanAdoptCurrentRoute || SolverController.IsAdoptingCurrentRoute));
+            SolverController.CanAdoptCurrentRoute || SolverController.IsAdoptingCurrentRoute,
+            SolverController.HasRetainedRoute || SolverController.RouteFrozen));
         if (_potionStrategyButton != null)
             _potionStrategyButton.Visible = !_collapsed;
         if (_growthStrategyButton != null)
@@ -2988,6 +3046,16 @@ internal static class SolverOverlay
         SolverController.RequestSearch(host, state, SearchReason.Manual);
     }
 
+    private static void OnFreezeRoutePressed()
+    {
+        NGame? host = NGame.Instance;
+        CombatState? state = CombatManager.Instance.DebugOnlyGetState();
+        if (host == null || state == null || !CombatManager.Instance.IsInProgress)
+            return;
+        SolverController.SetRouteFrozen(host, state, !SolverController.RouteFrozen);
+        Entry.Logger.Info($"[CombatSolver/Test] UI_ACTION action=freeze_route enabled={SolverController.RouteFrozen}");
+    }
+
     private static void OnStopSearchPressed()
     {
         Entry.Logger.Info("[CombatSolver/Test] UI_ACTION action=stop_search");
@@ -3061,6 +3129,22 @@ internal static class SolverOverlay
         try
         {
             Check(!new SolverSettingsData().AutoEnableFullAuto, "opt-in default");
+            Check(BattleDamageTracker.RecoveredOrGainedForDisplay(70, 65, 8) == 3
+                && BattleDamageTracker.RecoveredOrGainedForDisplay(70, 70, 0) == 0,
+                "display-only realized HP recovery accounting");
+            SearchGcLifecycleSnapshot beforeGc = SearchGcPolicy.CaptureLifecycle();
+            bool automaticGcBefore = SearchGcPolicy.AutomaticGcLifecycleUsed;
+            System.Runtime.GCLatencyMode latencyBefore = System.Runtime.GCSettings.LatencyMode;
+            using (SearchGcPolicy.EnterSearchScopeForUnsupportedPlatformTesting(
+                       1024L * 1024 * 1024, new SearchMemoryPressureSignal(), CancellationToken.None))
+            {
+                Check(SearchGcPolicy.CaptureLifecycle().NoGcStartAttempts == beforeGc.NoGcStartAttempts
+                    && SearchGcPolicy.AutomaticGcLifecycleUsed == automaticGcBefore
+                    && System.Runtime.GCSettings.LatencyMode == latencyBefore,
+                    "unsupported NoGC uses ordinary GC without owning latency mode");
+            }
+            Check(System.Runtime.GCSettings.LatencyMode == latencyBefore,
+                "unsupported NoGC does not restore latency mode on exit");
             SolverSettings.ApplyForTesting(original with { AutoEnableFullAuto = false, AutomaticCalculationEnabled = false });
             SolverController.BeginCombat(combat);
             EnsureCreated(host);
@@ -3071,6 +3155,9 @@ internal static class SolverOverlay
             Check(!SolverController.FullAutoEnabled, "preference applies at next combat");
             SolverController.BeginCombat(combat);
             Check(SolverController.FullAutoEnabled && SolverController.PrepareAutomaticSearchForTurn(host, combat), "start with manual calculation preference");
+            SolverController.SetAutomaticCalculationEnabled(false, persist: false);
+            Check(SolverController.FullAutoEnabled && SolverController.ShouldAutomaticallySearchNextTurn,
+                "turning off auto-calculate preserves full-auto continuation");
             SolverController.SetFullAuto(host, combat, false);
             RefreshControls();
             Check(!SolverController.PrepareAutomaticSearchForTurn(host, combat) && !SolverController.FullAutoEnabled
@@ -3082,16 +3169,29 @@ internal static class SolverOverlay
             Check(!SolverController.FullAutoEnabled, "disabled preference applies next combat");
 
             SolverOverlaySnapshot snapshot = new(1, "UI test", SolverOverlayTone.Success, "", "", 0, 7, true,
-                SolverText.Format($"本局扣血  {7} HP"), 0, 0, false, [], "", false, null);
+                SolverText.Format($"累计受伤：已 {2} HP，预计 {7} HP"), 3, 2, false, [], "", false, null)
+            { BattleHpLostSoFar = 2, BattleHpRecoveredOrGainedSoFar = 1 };
             ShowResult(host, snapshot);
             Label outcome = _hpOutcomeLabel!;
             SetCollapsed(true);
             await host.ToSignal(host.GetTree(), SceneTree.SignalName.ProcessFrame);
             Check(outcome.IsVisibleInTree() && !_body!.Visible && _routeOutcomePanel!.GetParent() == _mainStack
                 && outcome.Text == snapshot.HpOutcomeText && outcome.GetThemeColor("font_color") == Danger, "collapsed loss and color");
+            Check(_hpRecoveredOutcomeLabel!.IsVisibleInTree()
+                && _hpRecoveredOutcomeLabel.Text.Contains(SolverText.Format($"已回血/生命提升 {1} HP"), StringComparison.Ordinal)
+                && _hpRecoveredOutcomeLabel.Text.Contains(SolverText.Format($"；后续预计回血 {3} HP"), StringComparison.Ordinal)
+                && _netHpOutcomeLabel!.IsVisibleInTree()
+                && _netHpOutcomeLabel.Text == SolverText.Format($"后续净生命变化 {0:+#;-#;0} HP"),
+                "separate projected recovery and net HP change");
+            ShowResult(host, snapshot with { RouteHpRecovered = 0, RoutePostCombatRelicHeal = 0 });
+            Check(_netHpOutcomeLabel!.Text == SolverText.Format($"后续净生命变化 {-5:+#;-#;0} HP")
+                && _netHpOutcomeLabel.GetThemeColor("font_color") == Danger,
+                "negative net HP change uses loss color");
             ShowResult(host, snapshot with { HpOutcomeText = "0 HP", ProjectedBattleHpLost = 0 });
             Check(ReferenceEquals(outcome, _hpOutcomeLabel) && outcome.Text == "0 HP"
-                && outcome.GetThemeColor("font_color") == Success, "live update uses same label");
+                && outcome.GetThemeColor("font_color") == Success
+                && _netHpOutcomeLabel!.GetThemeColor("font_color") == Success,
+                "healing and live update use correct colors");
             SetCollapsed(false);
             Check(_routeOutcomePanel!.GetParent() == _body && outcome.IsVisibleInTree(), "expanded placement restored");
             SetCollapsed(true);
@@ -3100,6 +3200,19 @@ internal static class SolverOverlay
             ShowResult(host, snapshot with { ProjectedBattleHpLossKnown = false, HpOutcomeText = "? HP" });
             Check(outcome.IsVisibleInTree() && outcome.Text == "? HP"
                 && outcome.GetThemeColor("font_color") == TextMuted, "unknown loss stays unknown");
+            SetCollapsed(false);
+            TogglePotionStrategy();
+            Check(_potionStrategyPanel!.Visible, "potion panel opens");
+            ((Button)_potionStrategyPanel.FindChild("CloseStrategyPanel", true, false)!).EmitSignal(BaseButton.SignalName.Pressed);
+            Check(!_potionStrategyPanel.Visible, "potion panel closes from its own corner");
+            ToggleGrowthStrategy();
+            Check(_growthStrategyPanel!.Visible, "growth panel opens");
+            ((Button)_growthStrategyPanel.FindChild("CloseStrategyPanel", true, false)!).EmitSignal(BaseButton.SignalName.Pressed);
+            Check(!_growthStrategyPanel.Visible, "growth panel closes from its own corner");
+            ToggleRelicStrategy();
+            Check(_relicStrategyPanel!.Visible, "relic panel opens");
+            ((Button)_relicStrategyPanel.FindChild("CloseStrategyPanel", true, false)!).EmitSignal(BaseButton.SignalName.Pressed);
+            Check(!_relicStrategyPanel.Visible, "relic panel closes from its own corner");
         }
         finally
         {

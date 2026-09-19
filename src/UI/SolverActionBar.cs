@@ -2,7 +2,7 @@ using Godot;
 
 namespace CombatSolver;
 
-internal readonly record struct SolverActionBarState(bool Collapsed, bool Searching, bool ShowAdopt);
+internal readonly record struct SolverActionBarState(bool Collapsed, bool Searching, bool ShowAdopt, bool ShowFreeze);
 
 // Owns layout only. The overlay retains command bindings and capability checks.
 internal sealed partial class SolverActionBar : VBoxContainer
@@ -14,10 +14,11 @@ internal sealed partial class SolverActionBar : VBoxContainer
     private readonly Button _recalculate;
     private readonly Button _stop;
     private readonly Button _adopt;
+    private readonly Button _freeze;
     private readonly Button _fullAuto;
     private readonly Control _memory;
 
-    public SolverActionBar(Button execute, Button recalculate, Button stop, Button adopt,
+    public SolverActionBar(Button execute, Button recalculate, Button stop, Button adopt, Button freeze,
         Button fullAuto, Control autoStart, Control memory, Button releaseMemory)
     {
         Name = "Footer";
@@ -28,6 +29,7 @@ internal sealed partial class SolverActionBar : VBoxContainer
         _recalculate = recalculate;
         _stop = stop;
         _adopt = adopt;
+        _freeze = freeze;
         _fullAuto = fullAuto;
         _memory = memory;
         _actions = CreateFlow("CombatActions");
@@ -36,6 +38,7 @@ internal sealed partial class SolverActionBar : VBoxContainer
         actionRow.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Md);
         _actions.AddChild(fullAuto);
         _actions.AddChild(adopt);
+        _actions.AddChild(freeze);
         _actions.AddChild(execute);
         _actions.AddChild(recalculate);
         _actions.AddChild(stop);
@@ -53,7 +56,8 @@ internal sealed partial class SolverActionBar : VBoxContainer
     {
         _recalculate.Visible = !state.Searching;
         _stop.Visible = state.Searching;
-        _adopt.Visible = !state.Collapsed && state.ShowAdopt;
+        _adopt.Visible = state.ShowAdopt;
+        _freeze.Visible = !state.Searching && state.ShowFreeze;
         _execute.Visible = !state.Searching;
         _autoStart.Visible = !state.Collapsed;
         _memoryRow.Visible = !state.Collapsed;
@@ -62,19 +66,37 @@ internal sealed partial class SolverActionBar : VBoxContainer
 
     internal void AssertLayoutForTesting()
     {
-        foreach (bool collapsed in new[] { false, true })
-        foreach (bool searching in new[] { false, true })
-        foreach (bool adopt in new[] { false, true })
+        bool originalAdoptDisabled = _adopt.Disabled;
+        bool originalExecuteDisabled = _execute.Disabled;
+        try
         {
-            Refresh(new SolverActionBarState(collapsed, searching, adopt));
-            if (_stop.Visible != searching || _recalculate.Visible == searching
-                || _adopt.Visible != (!collapsed && adopt)
-                || _execute.Visible == searching
-                || _memory.Visible == collapsed || _autoStart.Visible == collapsed
-                || _memoryRow.Visible == collapsed
-                || _fullAuto.GetParent() != _actions || _fullAuto.GetIndex() != 0
-                || _adopt.GetIndex() != 1)
-                throw new InvalidOperationException("Action bar layout state did not match its display snapshot.");
+            foreach (bool collapsed in new[] { false, true })
+            foreach (bool searching in new[] { false, true })
+            foreach (bool adopt in new[] { false, true })
+            foreach (bool freeze in new[] { false, true })
+            foreach (bool adoptDisabled in new[] { false, true })
+            foreach (bool executeDisabled in new[] { false, true })
+            {
+                _adopt.Disabled = adoptDisabled;
+                _execute.Disabled = executeDisabled;
+                Refresh(new SolverActionBarState(collapsed, searching, adopt, freeze));
+                if (_stop.Visible != searching || _recalculate.Visible == searching
+                    || _adopt.Visible != adopt
+                    || _adopt.Disabled != adoptDisabled
+                    || _execute.Disabled != executeDisabled
+                    || _freeze.Visible != (!searching && freeze)
+                    || _execute.Visible == searching
+                    || _memory.Visible == collapsed || _autoStart.Visible == collapsed
+                    || _memoryRow.Visible == collapsed
+                    || _fullAuto.GetParent() != _actions || _fullAuto.GetIndex() != 0
+                    || _adopt.GetIndex() != 1 || _freeze.GetIndex() != 2)
+                    throw new InvalidOperationException("Action bar layout state did not match its display snapshot.");
+            }
+        }
+        finally
+        {
+            _adopt.Disabled = originalAdoptDisabled;
+            _execute.Disabled = originalExecuteDisabled;
         }
     }
 

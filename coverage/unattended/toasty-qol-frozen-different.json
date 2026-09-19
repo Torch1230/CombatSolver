@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "TOASTY-QOL-FROZEN-DIFFERENT",
+  "characterId": "SILENT",
+  "encounterId": "GREMLIN_MERC_NORMAL",
+  "seed": "TOASTY-QOL-FROZEN-DIFFERENT",
+  "relics": [
+    { "relicId": "TOASTY_MITTENS", "addWithoutObtainedEffects": true }
+  ],
+  "enemyCurrentHp": 999,
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 3000,
+  "singleStepAfterInitialSearch": true,
+  "timeoutSeconds": 180
+}
