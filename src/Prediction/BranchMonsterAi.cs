@@ -23,6 +23,7 @@ internal readonly record struct BranchMonsterAttack(int BaseDamage, int Repeats)
 
 internal sealed record BranchMonsterStaticSnapshot(
     IReadOnlyDictionary<string, IReadOnlyList<BranchMonsterAttack>> AttacksByMove,
+    IReadOnlyDictionary<MoveState, ForecastMove> ForecastMoves,
     IReadOnlyDictionary<(string BranchId, string StateId), float> RandomBaseWeights,
     IReadOnlyDictionary<string, string> ConditionalSelections,
     IReadOnlyDictionary<string, int> StaticIntValues,
@@ -42,6 +43,7 @@ internal sealed record BranchMonsterStaticSnapshot(
         MonsterMoveStateMachine machine = monster.MoveStateMachine
             ?? throw new InvalidOperationException($"怪物 {monster.Id.Entry} 没有行动状态机。");
         Dictionary<string, IReadOnlyList<BranchMonsterAttack>> attacks = new(StringComparer.Ordinal);
+        Dictionary<MoveState, ForecastMove> forecasts = new(ReferenceEqualityComparer.Instance);
         Dictionary<(string BranchId, string StateId), float> weights = [];
         Dictionary<string, string> conditionals = new(StringComparer.Ordinal);
         foreach (MonsterState state in machine.States.Values)
@@ -54,6 +56,14 @@ internal sealed record BranchMonsterStaticSnapshot(
                         Math.Max(0, (int)(attack.DamageCalc?.Invoke() ?? 0m)),
                         Math.Max(1, attack.Repeats)))
                     .ToArray();
+                // Damage/repeat metadata is already frozen here. Ordinary moves can share
+                // these immutable values across snapshots; branch-dependent repeats are
+                // still rebuilt by CurrentMove. Never cache branch-modified damage.
+                List<ForecastAttackHit> hits = [];
+                foreach (BranchMonsterAttack attack in attacks[move.Id])
+                    for (int index = 0; index < attack.Repeats; index++)
+                        hits.Add(new(attack.BaseDamage, attack.BaseDamage));
+                forecasts.Add(move, new(monster.Creature, move, hits.AsReadOnly()));
             }
             else if (state is RandomBranchState random)
             {
@@ -83,6 +93,7 @@ internal sealed record BranchMonsterStaticSnapshot(
             : 0;
         return new BranchMonsterStaticSnapshot(
             attacks,
+            forecasts,
             weights,
             conditionals,
             MonsterMoveEffects.CaptureStaticIntValues(monster),
@@ -128,6 +139,11 @@ internal static class BranchMonsterAi
 
     public static ForecastMove CurrentMove(BranchMonsterAiState state, SimulatedCombatState combat)
     {
+        bool dynamicRepeats = state.Monster.GetType().Name == "TestSubject"
+            && state.Current.Id == "MULTI_CLAW_MOVE";
+        if (!dynamicRepeats && state.Static.ForecastMoves.TryGetValue(state.Current, out ForecastMove? frozen))
+            return frozen;
+
         if (!state.Static.AttacksByMove.TryGetValue(
                 state.Current.Id,
                 out IReadOnlyList<BranchMonsterAttack>? attacks))
@@ -137,8 +153,7 @@ internal static class BranchMonsterAi
         List<ForecastAttackHit> hits = [];
         foreach (BranchMonsterAttack attack in attacks)
         {
-            int repeats = state.Monster.GetType().Name == "TestSubject"
-                && state.Current.Id == "MULTI_CLAW_MOVE"
+            int repeats = dynamicRepeats
                     ? state.Static.TestSubjectBaseMultiClawCount
                         + combat.GetMonsterInt(state.Monster.Creature, "_extraMultiClawCount")
                     : attack.Repeats;

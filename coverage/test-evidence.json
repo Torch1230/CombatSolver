@@ -1,4 +1,9 @@
 {
+  "GARDEN-ALLOCATION-NATIVE": {
+    "status": "Passed",
+    "level": "HeadlessNativeDifferentialAndForkContract",
+    "evidence": "docs/performance/garden-allocation-20260919.md"
+  },
   "POWER-CARD-VALUATION-ALL-POOLS": {
     "status": "Passed",
     "level": "PureContractAndHeadlessShortSearch",

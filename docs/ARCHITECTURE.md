@@ -369,6 +369,8 @@ Search在首回合、EndTurn及已知可能嵌套/重复的卡牌回放建立捕
 
 ## 5. Prediction 领域补偿
 
+`BranchMonsterStaticSnapshot` 在根捕获既有攻击伤害/次数元数据时，同时建立按 `MoveState` 引用索引的只读 `ForecastMove`。静态攻击序列在同一根及其分支中共享；`TestSubject.MULTI_CLAW_MOVE` 的动态次数继续逐分支计算，根外新建的行动继续按原元数据回退。缓存不含最终伤害、Power 修正或 RNG 结果，不增加状态键字段，也不跨根存活。
+
 `src/Prediction/` 处理基础命令和单个 mirror 不能独立表达的领域语义：
 
 谋杀的抽牌历史倍率由 `CalculatedVarSpecRegistry` 读取 `SimulatedCombatState.GetCardsDrawnBeforePrediction` 的冻结根计数与模拟器新增抽牌事件。根计数来自已有 `RootCombatHistorySnapshot.CardsDrawn`，随根不可变共享；实机完成回合准备或继续抽牌后，旧根和 Fork 仍使用捕获时的历史。

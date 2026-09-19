@@ -1,0 +1,100 @@
+[
+  {
+    "monsterId": "PhantasmalGardener",
+    "spawnInitialMoveId": "BITE_MOVE",
+    "moveId": "BITE_MOVE",
+    "expectedPlayerHpLoss": 5
+  },
+  {
+    "monsterId": "PhantasmalGardener",
+    "moveId": "LASH_MOVE",
+    "expectedPlayerHpLoss": 7
+  },
+  {
+    "monsterId": "PhantasmalGardener",
+    "moveId": "FLAIL_MOVE",
+    "expectedPlayerHpLoss": 3
+  },
+  {
+    "monsterId": "PhantasmalGardener",
+    "moveId": "ENLARGE_MOVE",
+    "expectedPlayerHpLoss": 0,
+    "expectedEnemyPowers": {
+      "STRENGTH_POWER": 2
+    }
+  },
+  {
+    "monsterId": "PhantasmalGardener",
+    "moveId": "ENLARGE_MOVE",
+    "clearAllRelicsBeforeMove": true,
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "enemyHpBefore": 30,
+    "enemyBlockBefore": 5,
+    "playerEnergyBefore": 3,
+    "powersBeforeMove": [
+      {
+        "powerId": "SKITTISH_POWER",
+        "target": "Enemy",
+        "amount": 7
+      }
+    ],
+    "cardsBeforeMove": [
+      {
+        "cardId": "TWIN_STRIKE",
+        "pile": "Hand"
+      }
+    ],
+    "cardPlayChecksBeforeMove": [
+      {
+        "cardId": "TWIN_STRIKE",
+        "target": "Enemy",
+        "assertForkableAfterPlay": true
+      }
+    ],
+    "expectedEnemyBlocksByModel": {
+      "PHANTASMAL_GARDENER": 0
+    }
+  },
+  {
+    "monsterId": "PhantasmalGardener",
+    "moveId": "ENLARGE_MOVE",
+    "clearAllRelicsBeforeMove": true,
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "enemyHpBefore": 30,
+    "enemyBlockBefore": 0,
+    "playerEnergyBefore": 3,
+    "powersBeforeMove": [
+      {
+        "powerId": "SKITTISH_POWER",
+        "target": "Enemy",
+        "amount": 7
+      }
+    ],
+    "cardsBeforeMove": [
+      {
+        "cardId": "TWIN_STRIKE",
+        "pile": "Hand"
+      }
+    ],
+    "cardPlayChecksBeforeMove": [
+      {
+        "cardId": "TWIN_STRIKE",
+        "target": "Enemy",
+        "assertForkableAfterPlay": true
+      }
+    ],
+    "expectedEnemyBlocksByModel": {
+      "PHANTASMAL_GARDENER": 7
+    }
+  },
+  {
+    "monsterId": "TestSubject",
+    "moveId": "MULTI_CLAW_MOVE",
+    "spawnInitialMoveId": "MULTI_CLAW_MOVE",
+    "clearAllPowersBeforeMove": true,
+    "playerBlockBefore": 0,
+    "expectedPlayerHpLoss": 30
+  }
+]

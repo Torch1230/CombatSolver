@@ -1048,6 +1048,7 @@ internal sealed partial class UnattendedTestRunner
             simulator = new CombatPredictionSimulator(simulatedCombat);
         }
         int simulatedRoundHistoryEntryStart = simulator.History.Entries.Count;
+        AssertMonsterForecastIsolation(simulator, monster);
         AssertDerivedPowerHooks(combatState, simulatedCombat, player, enemy, check);
         MoveStateSnapshot before = CaptureActual(combatState, player, enemy);
         foreach (UnattendedCardPlayCheck playCheck in check.CardPlayChecksBeforeMove)

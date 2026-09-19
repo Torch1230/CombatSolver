@@ -105,7 +105,7 @@ internal static class AfterAttackMirrors
 
     private static void HandleSkittishPower(SkittishPower power, AfterAttackMirrorContext context)
     {
-        var state = context.StateStore.Get(power, () => new SkittishPredictionState(power));
+        var state = context.StateStore.Get(power, static source => new SkittishPredictionState(source));
 
         if (state.HasGainedBlockThisTurn ||
             !context.Command.DamageProps.HasFlag(ValueProp.Move) ||
@@ -114,13 +114,21 @@ internal static class AfterAttackMirrors
             return;
         }
 
-        var damageResult = context.Command.Results
-            .SelectMany(results => results)
-            .FirstOrDefault(result => result.Receiver == power.Owner);
-        if (damageResult?.UnblockedDamage > 0)
+        foreach (var hitResults in context.Command.Results)
         {
-            state.HasGainedBlockThisTurn = true;
-            context.Simulator.GainBlock(power.Owner, power.Amount, ValueProp.Unpowered);
+            foreach (var damageResult in hitResults)
+            {
+                if (damageResult.Receiver != power.Owner)
+                    continue;
+                if (damageResult.UnblockedDamage > 0)
+                {
+                    state.HasGainedBlockThisTurn = true;
+                    context.Simulator.GainBlock(power.Owner, power.Amount, ValueProp.Unpowered);
+                }
+                // Preserve FirstOrDefault: a blocked first hit must not fall through
+                // to a later hit on the same creature.
+                return;
+            }
         }
     }
 
