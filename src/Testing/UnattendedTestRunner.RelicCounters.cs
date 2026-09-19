@@ -77,7 +77,7 @@ internal sealed partial class UnattendedTestRunner
             var root = CombatRootSnapshot.Capture(combat);
             var names = SolverDisplayNames.Capture(combat);
             async Task<SolverResult> Search(SearchPolicySnapshot selected)
-                => await Task.Run(() => CombatSearchCoordinator.Solve(root, names, new BattleDamageSnapshot(0, 0, 0), selected, CancellationToken.None, null));
+                => await Task.Run(() => CombatSearchCoordinator.Solve(root, names, new BattleDamageSnapshot(0, 0, 0, []), selected, CancellationToken.None, null));
             var baseline = await Search(policy with { RelicTargets = Array.Empty<RelicCounterTarget>() });
             var aligned = await Search(policy);
             Check(baseline.ProjectedBattleHpLost == 0 && aligned.ProjectedBattleHpLost == 0 && aligned.Snapshot.AllEnemiesDead,

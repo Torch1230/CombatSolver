@@ -43,7 +43,7 @@ internal sealed partial class UnattendedTestRunner
             SolverDisplayNames names = SolverDisplayNames.Capture(combat);
             async Task<SolverResult> Search(SearchPolicySnapshot requested, int alreadyLost = 0)
                 => await Task.Run(() => CombatSearchCoordinator.Solve(root, names,
-                    new BattleDamageSnapshot(alreadyLost, 0, 0), requested, CancellationToken.None, null));
+                    new BattleDamageSnapshot(alreadyLost, 0, 0, []), requested, CancellationToken.None, null));
             SolverResult stopped = await Search(policy);
             Check(stopped.Snapshot.AllEnemiesDead && stopped.ProjectedBattleHpLost == 0, "zero-loss complete victory");
             if (noveltyPortfolio)

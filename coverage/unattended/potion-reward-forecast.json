@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "POTION-REWARD-FORECAST",
+  "potions": [{ "potionId": "FIRE_POTION" }, { "potionId": "BLOCK_POTION" }, { "potionId": "SWIFT_POTION" }],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 1500,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120,
+  "notes": "开战镜像的掉落结论/药水身份必须与原版 RewardsSet 在同一条奖励 RNG 上生成的结果一致；用 --encounter-id 与 --target-room-type 分别覆盖 Monster / Elite / Boss。"
+}

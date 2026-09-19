@@ -763,7 +763,7 @@ internal static class PlayerTurnSetupCoordinator
             CombatRootSnapshot rootSnapshot;
             try
             {
-                rootSnapshot = CombatRootSnapshot.Capture(combat);
+                rootSnapshot = CombatRootSnapshot.Capture(combat, settings.PredictPotionReward);
             }
             finally
             {

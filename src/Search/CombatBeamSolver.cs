@@ -104,6 +104,7 @@ internal sealed partial class CombatBeamSolver(
         _potionStrategy,
         _enforcePotionDirectives,
         root.HasRenewablePotionShapedRock,
+        root.PotionRewardOutlook.ReplacementHpCredit,
         _run,
         EvaluateStandPat,
         PrepareStandPatProbes);
@@ -113,6 +114,7 @@ internal sealed partial class CombatBeamSolver(
         _potionStrategy,
         _enforcePotionDirectives,
         root.HasRenewablePotionShapedRock,
+        root.PotionRewardOutlook.ReplacementHpCredit,
         _theftPolicy,
         _strategicBossHpRelief,
         root.PostCombatRelicHeal,

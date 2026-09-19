@@ -430,11 +430,11 @@ $rootSnapshotChecks = @(
     },
     @{
         Path = Join-Path $repositoryRoot "src\Runtime\SolverController.cs"
-        Text = "CombatRootSnapshot.Capture(state)"
+        Text = "CombatRootSnapshot.Capture(state, settings.PredictPotionReward)"
     },
     @{
         Path = Join-Path $repositoryRoot "src\Runtime\PlayerTurnSetupPatches.cs"
-        Text = "CombatRootSnapshot.Capture(combat)"
+        Text = "CombatRootSnapshot.Capture(combat, settings.PredictPotionReward)"
     },
     @{
         Path = Join-Path $repositoryRoot "src\Search\CombatSearchCoordinator.cs"

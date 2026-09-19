@@ -1,5 +1,15 @@
 # CombatSolver 测试清单
 
+## 未发布：预测战后掉药与满栏用药门槛（2026-09-18）
+
+- `POTION-REWARD-FORECAST` 新场景（`coverage/unattended/potion-reward-forecast.json`）：开战捕获根后，让原版 `RewardsSet` 在同一条奖励 RNG 上真实生成奖励并逐项比对掉落结论与药水 ID。macOS 隔离无头实例（`.local/headless-mac/run_mac_unattended.sh`，`--headless --force-steam=off`，HOME 隔离）8/8 Passed：SILENT / FUZZY_WURM_CRAWLER_WEAK / Monster 四个种子（Drop FRUIT_JUICE、NoDrop、Drop FLEX_POTION、NoDrop）、BYGONE_EFFIGY_ELITE / Elite 两个种子（Drop FRUIT_JUICE、NoDrop）、QUEEN_BOSS / Boss（Drop FRUIT_JUICE）、未满栏 1 瓶（NoDrop）。铁甲战士在全新 profile 下前几场是教程奖励集，镜像退回 `Unknown`，场景据此改用静默猎手。
+- `PR15-POTION-VALUE-TIERS` Passed（同一无头实例）：新增概率镜像（精英 +0.125、夹在 [0,1]）、额度（Drop 按档位、NoDrop/NoRewards 为 0、Unknown 按概率 × 9、未满栏或 Sozu 为 0）、路线级扣减（只扣一次、下限 1 HP）与 1 HP 门槛挡住零收益用药的断言，以及根快照前景字段与实况一致。
+- 离线宿主等价性：`EQ` 10 根（5 角色 × 精英/Boss，A10，1 瓶药未满栏，High 90/50000，Coordinator，Smart，DOP 1），上游 0.41.0 DLL 对本分支 DLL `compare_results.py` 983 字段 `IDENTICAL`。比较脚本本轮新增排除首条路线发布时间、峰值堆与组合成员内嵌的耗时/分配字段。
+- 离线宿主满栏对照：`FULL` 40 根（同语料 × 4 种子，2 瓶药 = A10 满栏）：3 根变化，全部战损下降（27→22、52→32、18→14，合计 −29），用药 +4，完整胜利 25/25 不变，两版搜索工作量逐根相同。额度扣到 0 的第一版有 2 根坏变化（多掉 15 血；白用一瓶），改为下限 1 HP 后消失。详见[战后掉药预测报告](strategy/potion-reward-outlook-20260918.md)。
+- Release 编译 0 警告 0 错误；Bash 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=193`。未运行可见 Steam、未运行 Windows/Linux 无人入口。
+- 合并接入（2026-09-19，Windows 仓库内隔离无头）：`PR15-POTION-VALUE-TIERS` 静默猎手默认关闭 1 场 Passed，断言设置默认/持久化、关闭时根无前景、零成本药水不被抬价；同场 `RequireAtLeastOne` 强制一瓶另跑 1 场 Passed，终局回放与摘要的用药身份/数量一致。`POTION-REWARD-FORECAST` 静默猎手、A10、满栏两瓶 1 场 Passed：原生奖励与预测同为 `FRUIT_JUICE`，开启时完整胜利摘要显示掉药；`UI-LOCALIZATION` 1 场 Passed，eng/zhs/zht 共 438 个模板并核对新设置控件。四场均报告 `UNATTENDED_INSTANCE_REMOVED`。首次使用全新铁甲战士档案跑 PR15 时旧断言把教程 `Unknown` 当失败；改用非教程角色后通过，本批未改教程规则。
+- 主 DLL 使用 Windows 游戏依赖、跳过本机未安装的 .NET Framework 4.8 辅助程序目标完成 Release 编译，0 警告 0 错误；Windows 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=193`。完整 Windows `dotnet build` 因缺少 .NET Framework 4.8 引用程序集失败；无头入口使用同仓库现成的 MemoryCleaner 辅助程序副本。未做可见 Steam 人工排版验收，历史离线 FULL 对照是原始无开关的开启前景实验，不作为本次默认关闭质量结论。
+
 ## 0.41.0：问题包开战默认与仓库内无头实例（2026-09-18）
 
 - `dotnet run --project tools/CheckpointTool/CheckpointTool.csproj -c Release -- self-test` 通过，输出 `archive_contract_tests_passed assertions=35`：省略选择器命中 `combat_start`，显式 `latest` 命中最近可搜索检查点，显式 `end` / `recorded` 命中结束检查点；批处理运行目录保持仓库内且不跨卷。
