@@ -7,7 +7,7 @@ using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Models;
 
-namespace MegaCrit.Sts2.Core.Combat { enum CombatSide { Player, Enemy } }
+namespace MegaCrit.Sts2.Core.Combat { enum CombatSide { Player, Enemy } interface ICombatState; }
 namespace MegaCrit.Sts2.Core.Entities.Creatures
 {
     sealed class Creature { public bool IsAlive = true; }
@@ -18,12 +18,16 @@ namespace MegaCrit.Sts2.Core.Models
 {
     class AbstractModel
     {
+        public virtual Task BeforeSideTurnStart(
+            GameActions.Multiplayer.PlayerChoiceContext choice, CombatSide side,
+            IReadOnlyList<Creature> participants, ICombatState combatState) => Task.CompletedTask;
         public virtual Task AfterSideTurnEndLate(
             GameActions.Multiplayer.PlayerChoiceContext choice, CombatSide side, IEnumerable<Creature> participants)
             => Task.CompletedTask;
     }
     class CardModel : AbstractModel { public object Owner = new(); }
     class RelicModel : AbstractModel;
+    class PowerModel : AbstractModel;
     class ModifierModel : AbstractModel;
 }
 namespace MegaCrit.Sts2.Core.Models.Powers
@@ -53,7 +57,7 @@ namespace CombatSolver
 }
 namespace CombatSolver.Engine.Common
 {
-    enum MirroredHookMask { AfterSideTurnEndLate }
+    enum MirroredHookMask { AfterSideTurnEndLate, BeforeSideTurnStart }
     sealed class PredictedCard { public required CardModel Preview; }
     sealed class PredictionTrace
     {
@@ -83,6 +87,7 @@ namespace CombatSolver.Engine.InCombat.Simulation
     }
     sealed class FakeState
     {
+        public ICombatState? CombatState { get; set; }
         public FakePlayerState Player = new();
         public Creature GetCreature(Creature creature) => creature;
         public FakePlayerState GetPlayerCombatState(object owner) => Player;
@@ -109,5 +114,25 @@ namespace CombatSolver.Engine.InCombat.Mirrors
         private static IReadOnlyList<AbstractModel> IterateCombatHookListeners(
             CombatPredictionSimulator simulator, MirroredHookMask mask)
             => simulator.IsOverOrEnding ? [] : simulator.Listeners;
+    }
+}
+
+namespace CombatSolver
+{
+    sealed class SimulatedCombatState : ICombatState;
+    static class TurnStartRelicSupport
+    {
+        public static bool TriggerBeforeSideTurnStart(CombatPredictionSimulator s, SimulatedCombatState c, IReadOnlyList<Creature> p) => true;
+    }
+    static class TurnStartPowerSupport
+    {
+        public static bool TriggerBeforeSideTurnStart(CombatPredictionSimulator s, SimulatedCombatState c, IReadOnlyList<Creature> p) => false;
+    }
+}
+namespace CombatSolver.Engine.InCombat.Mirrors.Hooks.TurnStart
+{
+    internal static partial class BeforeSideTurnStartMirrors
+    {
+        private static partial void RegisterVanilla(MethodMirrorRegistry<AbstractModel, BeforeSideTurnStartMirrorContext> registry) { }
     }
 }

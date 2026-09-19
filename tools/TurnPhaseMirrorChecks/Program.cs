@@ -10,6 +10,8 @@ using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Powers;
 
+if (args.Contains("--start")) { BeforeTurnStartChecks.Run(args); return; }
+
 int checks = 0;
 void Check(bool condition, string message)
 {
