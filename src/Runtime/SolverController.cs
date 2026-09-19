@@ -711,6 +711,7 @@ internal static partial class SolverController
             host,
             SolverOverlaySnapshot.CapturePendingTurnSetup(
                 source,
+                BattleDamageTracker.Observe(state),
                 turn,
                 UnexpectedReplanCount > 0,
                 _combat.ReviewedWorldlinesTotal));

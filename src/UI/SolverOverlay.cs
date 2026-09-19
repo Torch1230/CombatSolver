@@ -3126,6 +3126,10 @@ internal static class SolverOverlay
             Check(SolverOverlaySnapshot.BattleHpTotalsForDisplay(2, 5,
                     new Dictionary<int, int> { [1] = 2, [2] = 7 }, recoveredByTurn, 2)
                 == (9, 14), "observed damage remains in the projected total");
+            Check(SolverOverlaySnapshot.BattleHpTotalsForDisplay(7, 0,
+                    new Dictionary<int, int> { [1] = 7, [2] = 0, [3] = 2, [5] = 3 },
+                    new Dictionary<int, int>(), 3).ProjectedLoss == 12,
+                "pending turn setup preserves already observed damage");
             SearchGcLifecycleSnapshot beforeGc = SearchGcPolicy.CaptureLifecycle();
             bool automaticGcBefore = SearchGcPolicy.AutomaticGcLifecycleUsed;
             System.Runtime.GCLatencyMode latencyBefore = System.Runtime.GCSettings.LatencyMode;

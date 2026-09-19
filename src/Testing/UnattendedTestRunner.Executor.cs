@@ -1126,6 +1126,27 @@ internal sealed partial class UnattendedTestRunner
                         if (request.ScenarioId is "TOASTY-QOL-MANUAL-SAME" or "TOASTY-QOL-MANUAL-DIFFERENT"
                             or "TOASTY-QOL-FROZEN-SAME" or "TOASTY-QOL-FROZEN-DIFFERENT")
                         {
+                            if (request.ScenarioId == "TOASTY-QOL-MANUAL-SAME")
+                            {
+                                SolverResult source = SolverController.LastCompletedResultForTesting
+                                    ?? throw new InvalidOperationException("原生选牌预览缺少首轮路线。");
+                                BattleDamageSnapshot observed = new(7, 0, 0, [], 2);
+                                SolverOverlaySnapshot pending = SolverOverlaySnapshot.CapturePendingTurnSetup(
+                                    source, observed, expectedTurn, unexpectedReplan: false);
+                                int futureLoss = source.HpLostByTurn
+                                    .Where(item => item.Key >= expectedTurn).Sum(item => item.Value);
+                                int futureRecovery = source.HpRecoveredByTurn
+                                    .Where(item => item.Key >= expectedTurn).Sum(item => item.Value);
+                                if (pending.ProjectedBattleHpLost != 7 + futureLoss
+                                    || pending.RouteHpRecovered != 2 + futureRecovery
+                                    || !pending.HpOutcomeText.Contains($"已 7    预计 {7 + futureLoss} HP",
+                                        StringComparison.Ordinal)
+                                    || !pending.DetailsText.Contains("本局已发生 7", StringComparison.Ordinal))
+                                {
+                                    throw new InvalidOperationException("原生选牌预览丢失本场已受伤或已回血前缀。");
+                                }
+                                runner._completedChecks.Add("PendingTurnSetup:ObservedLoss=7:ObservedRecovery=2");
+                            }
                             bool different = request.ScenarioId.EndsWith("DIFFERENT", StringComparison.Ordinal);
                             bool frozen = request.ScenarioId.Contains("FROZEN", StringComparison.Ordinal);
                             int searchesBeforeChoice = SolverController.SearchesStartedForTesting;

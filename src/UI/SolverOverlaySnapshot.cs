@@ -95,14 +95,17 @@ internal sealed record SolverOverlaySnapshot(
             result.StartTurnNumber,
             unexpectedReplan,
             pendingTurnSetup: false,
-            reviewedWorldlinesTotal);
+            reviewedWorldlinesTotal,
+            observedBattleDamage: null);
 
     public static SolverOverlaySnapshot CapturePendingTurnSetup(
         SolverResult result,
+        BattleDamageSnapshot observedBattleDamage,
         int turn,
         bool unexpectedReplan,
         long reviewedWorldlinesTotal = 0)
-        => Capture(result, turn, unexpectedReplan, pendingTurnSetup: true, reviewedWorldlinesTotal);
+        => Capture(result, turn, unexpectedReplan, pendingTurnSetup: true,
+            reviewedWorldlinesTotal, observedBattleDamage);
 
 
     public static SolverOverlaySnapshot CaptureCurrentTurn(SolverCurrentTurnPreview preview)
@@ -212,7 +215,8 @@ internal sealed record SolverOverlaySnapshot(
         int startTurnNumber,
         bool unexpectedReplan,
         bool pendingTurnSetup,
-        long reviewedWorldlinesTotal)
+        long reviewedWorldlinesTotal,
+        BattleDamageSnapshot? observedBattleDamage)
     {
         int searchedTurns = result.StartTurnNumber + result.SearchedTurns - startTurnNumber;
         if (searchedTurns <= 0)
@@ -251,10 +255,12 @@ internal sealed record SolverOverlaySnapshot(
             ? SolverText.Format($"路线已复用，共查阅了 {reviewedWorldlinesTotal:N0} 条世界线")
             : SolverText.Format($"花费了 {result.TotalSearchElapsed.TotalSeconds:F1} 秒，共查阅了 {reviewedWorldlinesTotal:N0} 条世界线");
         bool projectedBattleHpLossKnown = result.CombatEndedTurn.HasValue;
+        int alreadyLost = observedBattleDamage?.HpLostSoFar ?? result.BattleHpLostSoFar;
+        int alreadyRecovered = observedBattleDamage?.HpRecoveredOrGainedSoFar
+            ?? result.BattleHpRecoveredOrGainedSoFar;
         (int projectedLost, int routeHpRecovered) = BattleHpTotalsForDisplay(
-            result.BattleHpLostSoFar, result.BattleHpRecoveredOrGainedSoFar,
+            alreadyLost, alreadyRecovered,
             result.HpLostByTurn, result.HpRecoveredByTurn, startTurnNumber);
-        int alreadyLost = result.BattleHpLostSoFar;
         string hpOutcomeText = !projectedBattleHpLossKnown
             ? SolverText.Get("预计战损 未知")
             : projectedLost > 0 || alreadyLost > 0
@@ -280,7 +286,7 @@ internal sealed record SolverOverlaySnapshot(
             result.PostCombatRelicHeal,
             result.OnlyDeathRoutesFound,
             turns,
-            BuildDetails(result, startTurnNumber, unmirrored, compensated, unexpectedReplan),
+            BuildDetails(result, startTurnNumber, alreadyLost, unmirrored, compensated, unexpectedReplan),
             hasRisk,
             BuildSearchLimitWarning(result.BoundaryReason))
         {
@@ -473,6 +479,7 @@ internal sealed record SolverOverlaySnapshot(
     private static string BuildDetails(
         SolverResult result,
         int displayedTurn,
+        int alreadyLost,
         IReadOnlyList<string> unmirrored,
         IReadOnlyList<string> compensated,
         bool unexpectedReplan)
@@ -486,7 +493,7 @@ internal sealed record SolverOverlaySnapshot(
         [
             searchDetails,
             SolverText.Format($"[color={SolverUiTokens.Palette.TextMutedHex}]运行[/color]  后台分配 {FormatMegabytes(result.TotalWorkerAllocatedBytes)} MB  │  GC {result.TotalGen0Collections}/{result.TotalGen1Collections}/{result.TotalGen2Collections}  │  暂停 {result.TotalGcPauseDuration.TotalMilliseconds:F1} ms  │  延迟探测 {result.StandPatProbes}"),
-            SolverText.Format($"[color={SolverUiTokens.Palette.TextMutedHex}]战损[/color]  本局已发生 {result.BattleHpLostSoFar}  │  路线未来卖血 {result.FutureSoldHp}  │  本局累计卖血 {result.SoldHp}"),
+            SolverText.Format($"[color={SolverUiTokens.Palette.TextMutedHex}]战损[/color]  本局已发生 {alreadyLost}  │  路线未来卖血 {result.FutureSoldHp}  │  本局累计卖血 {result.SoldHp}"),
             SolverText.Format($"[color={SolverUiTokens.Palette.TextMutedHex}]药水[/color]  本局已喝 {result.BattlePotionsUsedSoFar} 瓶  │  路线还要用 {result.PotionCount} 瓶  │  预计省血 {result.PotionHpSaved}/{result.PotionHpRequired} HP  │  门槛淘汰 {result.PotionBranchesRejected}"),
             SolverText.Format($"[color={SolverUiTokens.Palette.TextMutedHex}]防守[/color]  本回合最高可起防 {result.MaxBlockByTurn.GetValueOrDefault(displayedTurn)}  │  路线实际起防 {result.ActualBlockByTurn.GetValueOrDefault(displayedTurn)}  │  卖血 {result.SoldHpByTurn.GetValueOrDefault(displayedTurn)}"),
             SolverText.Format($"[color={SolverUiTokens.Palette.TextMutedHex}]边界[/color]  {BoundaryText(result.BoundaryReason)}  │  停止洗牌分支 {result.ShuffleBranchesPruned}  │  不可避免战损 {result.UnavoidableHpLost}"),
