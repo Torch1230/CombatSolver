@@ -510,6 +510,8 @@ internal static partial class SolverController
             StateKeySalt = UnattendedTestRunner.StateKeySaltOverride,
             TranspositionPruningDisabledMask =
                 UnattendedTestRunner.TranspositionPruningDisabledMaskOverride,
+            TranspositionEntryLimit = UnattendedTestRunner.TranspositionEntryLimitOverride
+                ?? SearchPolicySnapshot.DefaultTranspositionEntryLimit,
             MemoryNoProgressRecoveryLimit =
                 UnattendedTestRunner.MemoryNoProgressRecoveryLimitOverride,
             PortfolioExperiment = PortfolioSelectorRuntime.Capture(),

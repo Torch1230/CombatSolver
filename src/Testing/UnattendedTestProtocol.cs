@@ -144,6 +144,11 @@ internal sealed class UnattendedTestRequest
     public int? TranspositionPruningDisabledMaskForTest { get; init; }
 
     /// <summary>
+    /// 实验用：转置支配表的合并条目上限（0 = 不设上限）。缺省 null = 生产默认上限。
+    /// </summary>
+    public int? TranspositionEntryLimitForTest { get; init; }
+
+    /// <summary>
     /// 实验用：连续多少次搜索内回收没有腾出余量就提前收手（0/缺省 = 关闭，即生产口径）。
     /// </summary>
     public int? MemoryNoProgressRecoveryLimitForTest { get; init; }

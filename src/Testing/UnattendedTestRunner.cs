@@ -74,6 +74,9 @@ internal sealed partial class UnattendedTestRunner
     public static int TranspositionPruningDisabledMaskOverride =>
         Host.TranspositionPruningDisabledMaskOverride;
 
+    /// <summary>实验用：转置支配表的合并条目上限（0 = 不设上限）；缺省 null = 生产默认上限。</summary>
+    public static int? TranspositionEntryLimitOverride => Host.TranspositionEntryLimitOverride;
+
     /// <summary>实验用：连续多少次无进展回收后提前收手；缺省 0，即关闭。</summary>
     public static int MemoryNoProgressRecoveryLimitOverride =>
         Host.MemoryNoProgressRecoveryLimitOverride;

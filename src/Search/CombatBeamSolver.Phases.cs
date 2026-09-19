@@ -663,6 +663,7 @@ internal sealed partial class CombatBeamSolver
                 StartTurnNumber = _startTurnNumber,
                 TranspositionCount = _run.Transpositions.Count,
                 ExpandedTranspositionCount = _run.ExpandedTranspositions.Count,
+                TranspositionLimitBypasses = _run.TranspositionLimitBypasses,
                 StandPatCacheCount = _run.StandPatCache.Count,
                 ThreatProjectionCacheCount = _run.ThreatProjectionCache.Count,
                 CoverageCacheCount = _run.CoverageCache.Count,

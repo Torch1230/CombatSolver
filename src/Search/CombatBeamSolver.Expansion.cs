@@ -4260,6 +4260,15 @@ internal sealed partial class CombatBeamSolver
             throw new InvalidOperationException("已签发的循环出口票据无法继续推进。");
     }
 
+    /// <summary>
+    /// 两张转置表共享一个合并条目上限。达到上限后只停止写入新状态（已有条目继续剪枝），
+    /// 于是超长搜索的内存不再随展开数线性增长；0 = 不设上限。
+    /// </summary>
+    private bool AtTranspositionEntryLimit()
+        => policy.TranspositionEntryLimit > 0
+            && _run.Transpositions.Count + _run.ExpandedTranspositions.Count
+                >= policy.TranspositionEntryLimit;
+
     private bool TryAcceptTransposition(SearchNode candidate)
     {
         // Scheduling obligations are deliberately bounded elsewhere. A normal route at the
@@ -4285,6 +4294,12 @@ internal sealed partial class CombatBeamSolver
             candidate.Score);
         if (!_run.Transpositions.TryGetValue(candidate.StateKey, out TranspositionFrontier? frontier))
         {
+            if (AtTranspositionEntryLimit())
+            {
+                _run.TranspositionLimitBypasses++;
+                ObserveSearchPath(candidate, SearchPathObservationStage.AdmissionTransposition, "entry_limit");
+                return true;
+            }
             _run.Transpositions.Add(candidate.StateKey, new TranspositionFrontier(next));
             ObserveSearchPath(candidate, SearchPathObservationStage.AdmissionTransposition, "accepted_new_state");
             return true;
@@ -4337,6 +4352,12 @@ internal sealed partial class CombatBeamSolver
             node.Score);
         if (!_run.ExpandedTranspositions.TryGetValue(node.StateKey, out TranspositionFrontier? frontier))
         {
+            if (AtTranspositionEntryLimit())
+            {
+                _run.TranspositionLimitBypasses++;
+                ObserveSearchPath(node, SearchPathObservationStage.ExpansionTransposition, "entry_limit");
+                return true;
+            }
             _run.ExpandedTranspositions.Add(node.StateKey, new TranspositionFrontier(next));
             ObserveSearchPath(node, SearchPathObservationStage.ExpansionTransposition, "accepted_new_state");
             return true;

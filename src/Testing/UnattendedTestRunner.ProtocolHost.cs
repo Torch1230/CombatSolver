@@ -39,6 +39,7 @@ internal sealed partial class UnattendedTestRunner
         public int PileOrderInvariantMaskOverride { get; private set; }
         public int StateKeySaltOverride { get; private set; }
         public int TranspositionPruningDisabledMaskOverride { get; private set; }
+        public int? TranspositionEntryLimitOverride { get; private set; }
         public int MemoryNoProgressRecoveryLimitOverride { get; private set; }
         public int? SearchBudgetOverrideMilliseconds { get; private set; }
 
@@ -357,6 +358,12 @@ internal sealed partial class UnattendedTestRunner
             StateKeySaltOverride = request.StateKeySaltForTest ?? 0;
             TranspositionPruningDisabledMaskOverride =
                 request.TranspositionPruningDisabledMaskForTest ?? 0;
+            if (request.TranspositionEntryLimitForTest is { } transpositionEntryLimit
+                && transpositionEntryLimit < 0)
+            {
+                throw new InvalidOperationException($"转置表条目上限不能为负，实际为 {transpositionEntryLimit}。");
+            }
+            TranspositionEntryLimitOverride = request.TranspositionEntryLimitForTest;
             if (request.MemoryNoProgressRecoveryLimitForTest is { } memoryNoProgressLimit
                 && memoryNoProgressLimit < 0)
             {
@@ -385,6 +392,7 @@ internal sealed partial class UnattendedTestRunner
             PileOrderInvariantMaskOverride = 0;
             StateKeySaltOverride = 0;
             TranspositionPruningDisabledMaskOverride = 0;
+            TranspositionEntryLimitOverride = null;
             MemoryNoProgressRecoveryLimitOverride = 0;
             Act3BossStrategyOverride = null;
             _injectPlayerHpLossTurn = 0;

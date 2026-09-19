@@ -1599,6 +1599,9 @@ internal sealed class SolverResult
     /// <summary>诊断计数：本次运行保留的转置/缓存表条目数，不参与搜索决策。</summary>
     public int TranspositionCount { get; init; }
     public int ExpandedTranspositionCount { get; init; }
+
+    /// <summary>诊断计数：因合并条目上限而未写入的新转置状态数，不参与搜索决策。</summary>
+    public int TranspositionLimitBypasses { get; init; }
     public int StandPatCacheCount { get; init; }
     public int ThreatProjectionCacheCount { get; init; }
     public int CoverageCacheCount { get; init; }
@@ -1666,6 +1669,7 @@ internal sealed class SolverResult
             TurnSetupPlayState = TurnSetupPlayState,
             TranspositionCount = TranspositionCount,
             ExpandedTranspositionCount = ExpandedTranspositionCount,
+            TranspositionLimitBypasses = TranspositionLimitBypasses,
             StandPatCacheCount = StandPatCacheCount,
             ThreatProjectionCacheCount = ThreatProjectionCacheCount,
             CoverageCacheCount = CoverageCacheCount,

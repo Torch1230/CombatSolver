@@ -150,6 +150,7 @@ internal static class ModRuntime
             StateKeySalt = options.StateKeySalt,
             TranspositionPruningDisabledMask = options.TranspositionPruningDisabledMask,
             MemoryNoProgressRecoveryLimit = options.MemoryNoProgressRecoveryLimit,
+            TranspositionEntryLimit = options.TranspositionEntryLimit,
         });
 
     /// <summary>

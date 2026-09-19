@@ -406,6 +406,7 @@ internal static class SolverDiagnostics
             .Append(" final=").Append(Metric(result.FinalSelectionMetric))
             .Append(" transpositions=").Append(result.TranspositionCount)
             .Append(" expanded_transpositions=").Append(result.ExpandedTranspositionCount)
+            .Append(" transposition_limit_bypass=").Append(result.TranspositionLimitBypasses)
             .Append(" stand_pat_cache=").Append(result.StandPatCacheCount)
             .Append(" threat_cache=").Append(result.ThreatProjectionCacheCount)
             .Append(" coverage_cache=").Append(result.CoverageCacheCount)

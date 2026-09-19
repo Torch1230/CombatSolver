@@ -32,6 +32,15 @@ internal sealed record SearchPolicySnapshot(
     public int? BrightestFlameMaxHpLossLimit { get; init; }
     public GrowthOpportunityTargets GrowthOpportunityTargets { get; init; } = GrowthOpportunityTargets.Empty;
     public bool HasGrowthTargets => GrowthOpportunityTargets.HasTargets;
+    /// <summary>
+    /// 转置支配表（<c>Transpositions</c> + <c>ExpandedTranspositions</c>）的合并条目上限：
+    /// 达到上限后新状态不再写入、直接按准入处理，已有条目继续参与支配剪枝；0 = 不设上限（仅实验用）。
+    /// </summary>
+    public int TranspositionEntryLimit { get; init; } = DefaultTranspositionEntryLimit;
+
+    /// <summary>生产默认的合并条目上限：覆盖普通搜索，只在超长搜索里生效。</summary>
+    internal const int DefaultTranspositionEntryLimit = 1_000_000;
+
     public bool StopAtAcceptableBattleHpLoss { get; init; } = true;
     public bool CanStopAtHpTarget => StopAtAcceptableBattleHpLoss
         && (!EffectiveHasGrowthTargets || GrowthOpportunityTargets.IsBounded);
