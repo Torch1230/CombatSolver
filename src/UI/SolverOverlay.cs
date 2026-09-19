@@ -1003,7 +1003,7 @@ internal static class SolverOverlay
                 "font_color",
                 !snapshot.ProjectedBattleHpLossKnown
                     ? TextMuted
-                    : (snapshot.DisplayProjectedHpLost ?? snapshot.ProjectedBattleHpLost) > 0
+                    : snapshot.ProjectedBattleHpLost > 0
                         ? Danger
                         : Success);
         }
@@ -3114,11 +3114,18 @@ internal static class SolverOverlay
         try
         {
             Check(!new SolverSettingsData().AutoEnableFullAuto, "opt-in default");
-            Check(BattleDamageTracker.RecoveredOrGainedForDisplay(70, 65, 8) == 3
-                && BattleDamageTracker.RecoveredOrGainedForDisplay(70, 70, 1) == 1
-                && SolverOverlaySnapshot.NetHpLossForDisplay(1, 1) == 0
-                && SolverOverlaySnapshot.NetHpLossForDisplay(7, 1 + 3) == 3,
-                "regeneration offsets the displayed loss without changing gross damage");
+            Dictionary<int, int> lostByTurn = new() { [1] = 0, [2] = 7 };
+            Dictionary<int, int> recoveredByTurn = new() { [1] = 5, [2] = 9 };
+            var initialHp = SolverOverlaySnapshot.BattleHpTotalsForDisplay(
+                0, 0, lostByTurn, recoveredByTurn, 1);
+            var afterRegeneration = SolverOverlaySnapshot.BattleHpTotalsForDisplay(
+                0, BattleDamageTracker.RecoveredOrGainedForDisplay(65, 70, 0),
+                lostByTurn, recoveredByTurn, 2);
+            Check(initialHp == (7, 14) && afterRegeneration == initialHp,
+                "healing moves from future to actual without changing whole-route totals");
+            Check(SolverOverlaySnapshot.BattleHpTotalsForDisplay(2, 5,
+                    new Dictionary<int, int> { [1] = 2, [2] = 7 }, recoveredByTurn, 2)
+                == (9, 14), "observed damage remains in the projected total");
             SearchGcLifecycleSnapshot beforeGc = SearchGcPolicy.CaptureLifecycle();
             bool automaticGcBefore = SearchGcPolicy.AutomaticGcLifecycleUsed;
             System.Runtime.GCLatencyMode latencyBefore = System.Runtime.GCSettings.LatencyMode;
@@ -3156,8 +3163,7 @@ internal static class SolverOverlay
             Check(!SolverController.FullAutoEnabled, "disabled preference applies next combat");
 
             SolverOverlaySnapshot snapshot = new(1, "UI test", SolverOverlayTone.Success, "", "", 0, 7, true,
-                SolverText.Format($"本局扣血  已 {1}    预计 {3} HP"), 3, 2, false, [], "", false, null)
-            { DisplayProjectedHpLost = 3 };
+                SolverText.Format($"本局扣血  已 {1}    预计 {7} HP"), 14, 2, false, [], "", false, null);
             ShowResult(host, snapshot with { RouteHpRecovered = 0, RoutePostCombatRelicHeal = 0 });
             Check(!_hpRecoveredOutcomeLabel!.Visible,
                 "zero-healing route keeps the original compact summary");
@@ -3167,16 +3173,15 @@ internal static class SolverOverlay
             await host.ToSignal(host.GetTree(), SceneTree.SignalName.ProcessFrame);
             Check(outcome.IsVisibleInTree() && !_body!.Visible && _routeOutcomePanel!.GetParent() == _mainStack
                 && outcome.Text == snapshot.HpOutcomeText && outcome.GetThemeColor("font_color") == Danger
-                && snapshot.DisplayProjectedHpLost == 3, "collapsed loss and color");
+                && snapshot.ProjectedBattleHpLost == 7, "collapsed loss and color");
             Check(_hpRecoveredOutcomeLabel!.IsVisibleInTree()
-                && _hpRecoveredOutcomeLabel.Text == SolverText.Format($"路线回血  {3} HP")
+                && _hpRecoveredOutcomeLabel.Text == SolverText.Format($"路线回血  {14} HP")
                     + SolverText.Format($"　战后遗物  {2} HP"),
                 "original conditional route healing label");
-            ShowResult(host, snapshot with { HpOutcomeText = "0 HP", ProjectedBattleHpLost = 0,
-                DisplayProjectedHpLost = 0 });
+            ShowResult(host, snapshot with { HpOutcomeText = "0 HP", ProjectedBattleHpLost = 0 });
             Check(ReferenceEquals(outcome, _hpOutcomeLabel) && outcome.Text == "0 HP"
                 && outcome.GetThemeColor("font_color") == Success,
-                "healing offset and live update use the compact label");
+                "live update uses the compact label");
             SetCollapsed(false);
             Check(_routeOutcomePanel!.GetParent() == _body && outcome.IsVisibleInTree(), "expanded placement restored");
             SetCollapsed(true);

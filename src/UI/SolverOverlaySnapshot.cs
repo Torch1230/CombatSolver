@@ -72,9 +72,13 @@ internal sealed record SolverOverlaySnapshot(
     string? SearchLimitWarningText)
 {
     public string? UnrecoveredLootText { get; init; }
-    public int? DisplayProjectedHpLost { get; init; }
-    internal static int NetHpLossForDisplay(int grossLoss, int recovered)
-        => Math.Max(0, grossLoss - recovered);
+    internal static (int ProjectedLoss, int TotalRecovered) BattleHpTotalsForDisplay(
+        int lostSoFar, int recoveredSoFar,
+        IReadOnlyDictionary<int, int> lossByTurn,
+        IReadOnlyDictionary<int, int> recoveredByTurn,
+        int startTurnNumber)
+        => (lostSoFar + lossByTurn.Where(item => item.Key >= startTurnNumber).Sum(item => item.Value),
+            recoveredSoFar + recoveredByTurn.Where(item => item.Key >= startTurnNumber).Sum(item => item.Value));
     public string? RewardOutcomeText { get; init; }
     public string? UsedPotionOutcomeText { get; init; }
     public string? PlannedPotionOutcomeText { get; init; }
@@ -247,12 +251,10 @@ internal sealed record SolverOverlaySnapshot(
             ? SolverText.Format($"路线已复用，共查阅了 {reviewedWorldlinesTotal:N0} 条世界线")
             : SolverText.Format($"花费了 {result.TotalSearchElapsed.TotalSeconds:F1} 秒，共查阅了 {reviewedWorldlinesTotal:N0} 条世界线");
         bool projectedBattleHpLossKnown = result.CombatEndedTurn.HasValue;
-        int routeHpRecovered = result.HpRecoveredByTurn
-            .Where(item => item.Key >= startTurnNumber).Sum(item => item.Value);
-        int alreadyLost = NetHpLossForDisplay(
-            result.BattleHpLostSoFar, result.BattleHpRecoveredOrGainedSoFar);
-        int projectedLost = NetHpLossForDisplay(
-            result.ProjectedBattleHpLost, result.BattleHpRecoveredOrGainedSoFar + routeHpRecovered);
+        (int projectedLost, int routeHpRecovered) = BattleHpTotalsForDisplay(
+            result.BattleHpLostSoFar, result.BattleHpRecoveredOrGainedSoFar,
+            result.HpLostByTurn, result.HpRecoveredByTurn, startTurnNumber);
+        int alreadyLost = result.BattleHpLostSoFar;
         string hpOutcomeText = !projectedBattleHpLossKnown
             ? SolverText.Get("预计战损 未知")
             : projectedLost > 0 || alreadyLost > 0
@@ -271,7 +273,7 @@ internal sealed record SolverOverlaySnapshot(
             summaryText,
             reviewSummaryText,
             result.ProjectedBattlePotionCount,
-            result.ProjectedBattleHpLost,
+            projectedLost,
             projectedBattleHpLossKnown,
             hpOutcomeText,
             routeHpRecovered,
@@ -282,7 +284,6 @@ internal sealed record SolverOverlaySnapshot(
             hasRisk,
             BuildSearchLimitWarning(result.BoundaryReason))
         {
-            DisplayProjectedHpLost = projectedLost,
             RewardOutcomeText = RewardOutcome(result),
             UsedPotionOutcomeText = UsedPotionOutcome(result),
             PlannedPotionOutcomeText = PlannedPotionOutcome(result),
