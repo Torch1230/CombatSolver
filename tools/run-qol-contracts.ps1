@@ -1,6 +1,6 @@
 #requires -Version 7.4
 param(
-    [ValidateSet('manual-same', 'manual-different', 'frozen-same', 'frozen-different', 'auto-off-fullauto')]
+    [ValidateSet('manual-same', 'manual-different', 'frozen-same', 'frozen-different', 'auto-off-fullauto', 'single-step-execute')]
     [string]$Case
 )
 

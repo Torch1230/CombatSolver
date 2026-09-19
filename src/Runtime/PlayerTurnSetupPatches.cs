@@ -413,6 +413,8 @@ internal static class PlayerTurnSetupCoordinator
 
     internal static bool TakeoverRequestedForTesting
         => _active?.TakeoverRequested == true;
+    internal static bool ReplaySurfacePreparedForTesting
+        => _active?.ReplaySurfacePrepared == true;
     internal static bool IsDrivingChoiceForRecording
         => _active is { ReplayDrivingStarted: true } active && IsCurrentActivePlan(active);
 
@@ -1251,6 +1253,7 @@ internal static class PlayerTurnSetupCoordinator
             StartReplayDriver(active, host);
         else
             active.Choices.ReleaseVisibleSurface();
+        SolverOverlay.RefreshControls();
         Entry.Logger.Info(
             $"[CombatSolver/Test] TURN_SETUP_PLAN_READY turn={turn} " +
             $"source=continuation choices={active.ReplayChoices!.Count} search=false " +

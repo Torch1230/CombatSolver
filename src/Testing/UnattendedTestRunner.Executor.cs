@@ -1210,6 +1210,22 @@ internal sealed partial class UnattendedTestRunner
                         if (request.SingleStepResumeModeForTest is not { } resumeMode)
                             return Observation(combatEnded: false);
 
+                        if (request.ScenarioId == "TOASTY-QOL-SINGLE-STEP-EXECUTE")
+                        {
+                            while (!PlayerTurnSetupCoordinator.ReplaySurfacePreparedForTesting)
+                            {
+                                runner.EnsureWithinDeadline();
+                                await runner.NextFrameAsync();
+                            }
+                            if (!SolverController.CanExecuteCurrentTurn
+                                || SolverOverlay.ExecuteButtonDisabledForTesting)
+                            {
+                                throw new InvalidOperationException(
+                                    "回合开始选牌页已有可接管路线，但‘执行本回合’按钮仍不可用：" +
+                                    PlayerTurnSetupCoordinator.DescribeControlsForTesting());
+                            }
+                        }
+
                         if (request.ScenarioId == "TOASTY-QOL-AUTO-OFF-FULLAUTO")
                         {
                             SolverController.SetAutomaticCalculationEnabled(false, persist: true);
@@ -1219,7 +1235,10 @@ internal sealed partial class UnattendedTestRunner
 
                         long previousDeploymentStartedAt =
                             SolverController.LastDeployedActionStartedAtMillisecondsForTesting;
-                        if (resumeMode == SingleStepResumeMode.ExecuteCurrentTurn)
+                        int searchesBeforeTakeover = SolverController.SearchesStartedForTesting;
+                        if (request.ScenarioId == "TOASTY-QOL-SINGLE-STEP-EXECUTE")
+                            SolverOverlay.PressExecuteButtonForTesting();
+                        else if (resumeMode == SingleStepResumeMode.ExecuteCurrentTurn)
                             SolverController.RequestDeploy(runner._host, combatState);
                         else
                             SolverController.SetFullAuto(runner._host, combatState, enabled: true);
@@ -1260,6 +1279,13 @@ internal sealed partial class UnattendedTestRunner
                         }
                         if (SolverController.UnexpectedReplanCountForTesting != 0)
                             throw new InvalidOperationException("接管单步选牌页后发生了计划外重算。");
+                        if (request.ScenarioId == "TOASTY-QOL-SINGLE-STEP-EXECUTE"
+                            && (SolverController.SearchesStartedForTesting != searchesBeforeTakeover
+                                || SolverController.FullAutoEnabled))
+                        {
+                            throw new InvalidOperationException(
+                                "执行本回合的原生选牌接管触发了额外搜索或开启全自动。");
+                        }
                         if (request.ScenarioId == "TOASTY-QOL-AUTO-OFF-FULLAUTO"
                             && (!SolverController.FullAutoEnabled
                                 || SolverController.AutomaticCalculationEnabled))

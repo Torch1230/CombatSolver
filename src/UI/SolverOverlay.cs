@@ -162,6 +162,8 @@ internal static class SolverOverlay
                 StringComparison.Ordinal);
     internal static string? ExecuteButtonTextForTesting => _executeButton?.Text;
     internal static bool ExecuteButtonDisabledForTesting => _executeButton?.Disabled ?? true;
+    internal static void PressExecuteButtonForTesting()
+        => _executeButton!.EmitSignal(BaseButton.SignalName.Pressed);
     internal static string? StopSearchButtonTextForTesting => _stopSearchButton?.Text;
     internal static bool StopSearchButtonDisabledForTesting => _stopSearchButton?.Disabled ?? true;
     internal static string? AdoptRouteButtonTextForTesting => _adoptRouteButton?.Text;
