@@ -232,6 +232,8 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 `SearchRunContext` 只活于一次 solver：计数器、性能指标、节流器、转置表、stand-pat/威胁/coverage/路由缓存和 `OwnedExpansionBatch` 容器池均在这里。每个 lane 最多保留两个已清空 storage，单容器容量上限 4096；批次 lease 独立且 Dispose 幂等，检查点丢弃空闲池，不池化 simulator/model。根配置留在 solver，不把可变运行状态退回入口文件。 `SnapshotListBuffer<PredictedCard>` 也归各自 `_run` 所有，只缓存一个已清空、实际容量不超过 4096 的临时列表；快照内用栈上 lease，嵌套租用取独立 storage，generation 防止旧 lease 触碰新租户。牌序与 Shuffle RNG 克隆照旧，列表不得逃出 Snapshot，worker 排空后的缓存检查点丢弃空闲 storage。
 
+回合前沿不再为每个候选构造续用戳；`Terminal.BuildContinuations` 从最终选中路线的动作前缀重放并生成戳记，释放重放快照后只保存纯值 `CachedContinuation`。`SearchPerformanceMetrics` 在显式阶段度量启用时按后进先出收口并记排他时间/分配；失败 lane 排空但不合并未完成的指标，保留首因异常。普通生产搜索不启用逐阶段度量。
+
 `PotionStrategicCostLookup` 同样归单次 `SearchRunContext` 所有，中间保路与终局排序共用规范药水 ID/可再生条件对应的只读代价值；未命中仍调用原目录的 `Single` 查询，保留缺失/重复 ID 的失败行为。每个 worker 有独立表，不存药水实例或分支值，也不跨并发 solver 共享修改。
 
 `PotionRewardOutlook` 在主线程根捕获时读取战后药水掉落前景：先取玩家存档里的 `PotionRewardOdds` 概率（精英 +12.5%，白兽像强制），再克隆玩家的奖励 RNG，按原版 `RewardsSet` 的顺序（掉落判定 → 金币数量 → 药水稀有度与池内抽取）重放，得到确定的掉落结论与药水身份；教程奖励集不镜像，最终 Boss 无奖励。它冻结在 `CombatRootSnapshot.PotionRewardOutlook`，后台不再读取 live。`ReplacementHpCredit` 只在药水栏已满且未被 Sozu 阻断时非零：镜像出掉落按那瓶药的档位计，镜像出不掉为 0，只有概率时按基线档位乘概率。额度按**路线**扣一次、门槛最低保留 1 HP（`PotionUsePolicy.ApplyReplacementCredit`；额度只让用药变得不花钱，用药路线仍必须严格优于无药基线），终局排序、Beam 保路的资格事实与 Smart 梯度的用药上限三处共用同一份，不进入节点分数、状态键或转置比较。快照内 Power 是否贡献战略估值只判定一次并暂存在当前调用的栈/数组中，需求收集与评分复用同一判定，不跨快照缓存。

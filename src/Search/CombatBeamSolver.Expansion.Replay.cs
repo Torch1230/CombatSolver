@@ -400,6 +400,8 @@ internal sealed partial class CombatBeamSolver
         try
         {
         SearchMeasurement actionMeasurement = _run.Performance.Begin();
+        try
+        {
         for (int actionOffset = 0; actionOffset < actions.Count; actionOffset++)
         {
             if (!simulator.IsInProgress)
@@ -473,8 +475,8 @@ internal sealed partial class CombatBeamSolver
                 }
                 finally
                 {
-                    simulatedCombat.EndActionChoices();
                     _run.Performance.End(SearchMetricPhase.PotionExecution, potionMeasurement);
+                    simulatedCombat.EndActionChoices();
                 }
                 if (simulator.ShuffleEventCount != potionShuffleEvents)
                 {
@@ -531,8 +533,8 @@ internal sealed partial class CombatBeamSolver
             }
             finally
             {
-                if (capturingChoice) simulator.EndManualCardChoiceCapture();
                 _run.Performance.End(SearchMetricPhase.CardExecution, cardExecutionMeasurement);
+                if (capturingChoice) simulator.EndManualCardChoiceCapture();
             }
             SearchMeasurement cardPostMeasurement = _run.Performance.Begin();
             try
@@ -559,8 +561,8 @@ internal sealed partial class CombatBeamSolver
             }
             finally
             {
-                simulatedCombat.EndActionChoices();
                 _run.Performance.End(SearchMetricPhase.CardPostProcessing, cardPostMeasurement);
+                simulatedCombat.EndActionChoices();
             }
             if (simulator.ShuffleEventCount != shuffleEvents)
             {
@@ -573,7 +575,8 @@ internal sealed partial class CombatBeamSolver
                 simulator, simulatedCombat, action, processedEnemyDeaths, ref turn, ref shufflesCrossed);
             LogAnnotatedReplayState(simulator, action, priorActionCount + actionOffset, turn, replayEvidence);
         }
-        _run.Performance.End(SearchMetricPhase.Action, actionMeasurement);
+        }
+        finally { _run.Performance.End(SearchMetricPhase.Action, actionMeasurement); }
         if (capturingExecution && simulator.HasCapturedExecutionContinuation)
             simulator.AppendExecutionContinuation(new ExecutionReplayTailFrame(processedEnemyDeaths, turn,
                 priorActionCount + actions.Count, shufflesCrossed, actionShuffleEventsBefore,

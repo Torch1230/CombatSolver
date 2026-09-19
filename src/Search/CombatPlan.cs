@@ -1333,16 +1333,12 @@ internal sealed class SimulationSnapshot(
     public IReadOnlySet<uint> ProcessedEnemyDeaths { get; } = processedEnemyDeaths;
     public SearchBoundaryReason BoundaryReason { get; } = boundaryReason;
     public IReadOnlyList<PredictionGap> PredictionGaps { get; } = predictionGaps;
-    public ContinuationStamp? Continuation { get; private set; }
 
     public CombatPredictionSimulator Simulator => _simulator
         ?? throw new InvalidOperationException(
             $"搜索快照的模拟器已经释放：{_releasedBy ?? "unknown"}:{_releasedAtLine}。");
 
     public bool HasSimulator => _simulator != null;
-
-    public void SetContinuation(ContinuationStamp continuation)
-        => Continuation = continuation;
 
     public void ReleaseSimulator(
         [CallerMemberName] string caller = "",

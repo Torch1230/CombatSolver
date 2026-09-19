@@ -1,16 +1,20 @@
 # CombatSolver 测试清单
 
+## 未发布：选中路线续用戳与诊断指标收口（从 PR #114 提取）
+
+- 本轮只提取最终选中路径的续用戳构造和显式度量失败路径；不引入内存无进展截断、转置表默认上限或实验开关。Windows 隔离无头 `SINGLE-SEARCH-PROFILE -MeasureSearchPhases` Passed，覆盖四档预设、单一进度阶段与固定工作量；离线宿主当前 main 对提取组合的故障机器人/FUZZY_WURM 单根（DOP 1、beam 30、2000 节点）72 个字段 `IDENTICAL`，包含第 2/3 回合两份非空续用状态文本，双方展开 236、转移 832。重型 `SEARCH-POLICY-SNAPSHOT` 在 120 秒上限内未完成，未将失败 lane 排空的原生合同记作通过；原生实例已清理。
+
 ## 未发布：生成卡池复用（从 PR #114 提取）
 
-- 原分支 Crossbow 站点的定向 A/B 与其它遗物站点回退依据见[遗物印牌站点复用](performance/relic-generation-pool-reuse-20260919.md)。合并组合的验证另记；不将单根收益外推到当前 main 或可见帧。
+- 原分支 Crossbow 站点的定向 A/B 与其它遗物站点回退依据见[遗物印牌站点复用](performance/relic-generation-pool-reuse-20260919.md)。本轮 Windows 隔离无头 `TURN-START-GENERATION-CACHE` Passed（27 项对照：顺序、Fork 共享、可变约束回退、完整 RNG/历史、独立生成卡和父/实况不变）；`POTION-GENERATION-CACHE` Passed（8 项对照：卡牌状态、五字段 RNG、升级和父/实况不变）。这两项不代表当前 main 的受控提速或可见帧结论。
 
 ## 未发布：模型 ID 纯值缓存（从 PR #114 提取）
 
-- 原分支的定向根及 A/B 范围见[ModelDb.GetId 记忆化](performance/defect-modeldb-getid-cache-20260919.md)；合并后的直接合同与组合验证在最终集成记录中补充。不将旧分支的时间、分配数字外推到本次 main 或可见帧。
+- 原分支的定向根及 A/B 范围见[ModelDb.GetId 记忆化](performance/defect-modeldb-getid-cache-20260919.md)；本轮组合离线单根字段级对照见上方，不将旧分支的时间、分配数字外推到本次 main 或可见帧。
 
 ## 未发布：No-GC 区域准入下限（从 PR #114 提取）
 
-- `tools/CombatSolver.GcPolicyChecks` 的 `admission` 6 个准入合同覆盖 12 GiB 配置在系统余量下只得到 2.97 GiB 时拒绝、平台尺寸回退保持准入及边界值；原分支结果见[报告](performance/no-gc-region-admission-20260917.md)。与当前 main 组合的运行结果在最终集成记录中补充。
+- `tools/CombatSolver.GcPolicyChecks` 在本轮提取组合上全部 26 项通过，其中 `admission` 6 项覆盖 12 GiB 配置在系统余量下只得到 2.97 GiB 时拒绝、平台尺寸回退保持准入及边界值；原分支结果见[报告](performance/no-gc-region-admission-20260917.md)。Windows 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=203`，主 DLL Release 编译 0 警告；完整工程构建因本机缺少 .NET Framework 4.8 参考程序集停在 MemoryCleaner 辅助程序。未做可见 Steam、广泛战斗质量或受控墙钟对照。
 
 ## 未发布：状态键补整场历史计数（2026-09-19）
 

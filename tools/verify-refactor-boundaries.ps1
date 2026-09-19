@@ -28,6 +28,14 @@ $forbiddenSearchReferences = @(
 )
 
 $violations = [System.Collections.Generic.List[string]]::new()
+$phasePath = Join-Path $searchRoot 'CombatBeamSolver.Phases.cs'
+$terminalPath = Join-Path $searchRoot 'CombatBeamSolver.Terminal.cs'
+if (Select-String -LiteralPath $phasePath -SimpleMatch 'CaptureContinuation(node)' -Quiet) {
+    $violations.Add('Only the selected route may build continuation stamps; round frontier still captures them.')
+}
+if (-not (Select-String -LiteralPath $terminalPath -SimpleMatch 'ContinuationStamp.CapturePredicted(' -Quiet)) {
+    $violations.Add('Terminal must build the selected route continuation stamp.')
+}
 $poolLifetime = [System.IO.File]::ReadAllText((Join-Path $repositoryRoot 'src/Runtime/NodePoolSignalLifetimePatch.cs'))
 foreach ($required in @('using ((Godot.Collections.Array)signals)', 'using var ownedArray', 'using (connection)', 'using (callable.Method)', 'using (signal.Name)')) {
     if (-not $poolLifetime.Contains($required)) { $violations.Add("Node pool wrapper ownership missing: $required") }

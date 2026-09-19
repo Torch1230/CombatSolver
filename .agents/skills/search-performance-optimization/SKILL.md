@@ -115,8 +115,6 @@ description: 在战斗语义已证明正确后，审计或修改 CombatSolver �
 - 优先避免无价值候选、Fork 和快照产生；No-GC 区内释放引用不会返还预算。
 - 区分 transitions 增长与 bytes/transition 增长，用阶段指标定位实际热点。
 - No-GC 同时观察配置预算、SOH/LOH、是否保持到搜索退出和首次长帧时的 expanded。
-- 准入必须有下限：区域只吸收本次搜索相当一部分分配时才值得进入。`TryStartNoGcRegionWithSizeFallback` 是对半砍到 `MinimumNoGcRegionBudgetBytes`，任何 `Started` 都会被建立，因此**只在尺寸回退循环之前捕获 `Capped`**（该标志等价于「机器给不出配置预算」）并在系统余量缩水到配置的一半以下时拒绝进入、改走默认 GC。平台 SOH 上限造成的缩水是合法机制，不能因此取消区域。拒绝后必须确认分配限额被释放（`RemainingBytes == long.MaxValue`），否则检查点仍会为不存在的区域付拆除成本。检查用 `tools/CombatSolver.GcPolicyChecks -- admission`，它直接编译生产 `SearchGcPolicy.cs`，不需要游戏进程。
-- 修 GC 策略前先确认保留集是否有界：`SearchRunContext` 的转置、StandPat、Coverage、ThreatProjection 等结构无裁剪、无上限，托管堆 52% 碎片时非紧凑回收中位只能拿回 0 MiB。**这类问题改 GC 策略治不了**，把内存从「输出」变成「输入」要落到 `BeamRetentionPolicy` 的容量维度，属语义改动，需完整等价性门禁。不要用准入/回收的复杂度去补保留集的无界。
 - 收益小且扩大语义验证面的微优化保留简单实现。
 
 ## 5. 实验与验证

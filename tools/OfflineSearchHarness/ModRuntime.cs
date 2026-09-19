@@ -267,6 +267,7 @@ internal static class ModRuntime
         string RootLiveStamp,
         object[] RouteActions,
         string[] PlanActions,
+        object[] Continuations,
         bool TimeBoundaryObserved,
         double WallSeconds);
 
@@ -365,6 +366,12 @@ internal static class ModRuntime
                 .Select(action => $"{action.Turn}:{action.Kind}:{action.CardId ?? action.PotionId ?? "-"}"
                     + $":target={action.TargetCombatId?.ToString() ?? "-"}:key={action.CardStateKey}")
                 .ToArray(),
+            result.Continuations.Select(continuation => (object)new
+            {
+                continuation.StartTurnNumber,
+                continuation.ForecastOffset,
+                continuation.ExpectedState.StateText,
+            }).ToArray(),
             timeBoundary,
             watch.Elapsed.TotalSeconds);
     }

@@ -101,6 +101,10 @@ def compare_root(root, left, right):
             {'catalogFingerprint': left_result.get('catalogFingerprint')},
             {'catalogFingerprint': right_result.get('catalogFingerprint')}),
     }
+    if 'continuations' in left_result and 'continuations' in right_result:
+        groups['continuations'] = diff_dict(
+            {'continuations': left_result['continuations']},
+            {'continuations': right_result['continuations']})
     return {
         'root': root,
         'groups': groups,
