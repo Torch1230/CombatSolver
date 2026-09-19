@@ -32,6 +32,10 @@
 | 内存主要花在哪里，什么条件才能缩至十分之一 | [分配与峰值研究](performance/memory-tenfold-20260913.md) |
 | 重型根的纯值模型 ID 缓存与定向 A/B | [ModelDb.GetId 记忆化](performance/defect-modeldb-getid-cache-20260919.md) |
 | 遗物印牌站点仅 Crossbow 复用根生成池 | [遗物印牌站点复用](performance/relic-generation-pool-reuse-20260919.md) |
+| PR #114 转置表上限的决策代价和固定根证据 | [搜索保留表](performance/search-retention-bounds-20260919.md) |
+| PR #114 内存截断、续用戳与排他阶段测量 | [搜索内存恢复](performance/search-memory-recovery-20260919.md) |
+| PR #114 离线宿主保真与 16 并行基线 | [16 并行阶段归因](performance/dop16-veryhigh-fidelity-20260919.md) |
+| 默认关闭的学习型组合选择器和训练反例 | [学习型门控](strategy/learned-portfolio-gate-20260917.md) |
 | 943份计划外重算报告、16类已修机制及证据缺口 | [2026-09-13批次结果](issues/report-replans-20260913.md) |
 | 环绕轨道、自动化的持续返能估值与实战对照 | [返能能力估值](issues/recurring-energy-valuation-20260913.md) |
 | 后续六方向的当前诊断、逐项实现与对照 | [六方向开发记录](performance/six-directions-20260913.md) |

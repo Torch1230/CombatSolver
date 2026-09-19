@@ -504,6 +504,17 @@ internal static partial class SolverController
                 || UnattendedTestRunner.UseBeamWidthPortfolioOverride,
             PredictPotionReward = settings.PredictPotionReward,
             BeamWidthPortfolioWidths = UnattendedTestRunner.BeamWidthPortfolioWidthsOverride,
+            BeamWidthPortfolioPlainBaselineMember =
+                UnattendedTestRunner.BeamWidthPortfolioPlainBaselineMemberOverride,
+            PileOrderInvariantMask = UnattendedTestRunner.PileOrderInvariantMaskOverride,
+            StateKeySalt = UnattendedTestRunner.StateKeySaltOverride,
+            TranspositionPruningDisabledMask =
+                UnattendedTestRunner.TranspositionPruningDisabledMaskOverride,
+            TranspositionEntryLimit = UnattendedTestRunner.TranspositionEntryLimitOverride
+                ?? SearchPolicySnapshot.DefaultTranspositionEntryLimit,
+            MemoryNoProgressRecoveryLimit =
+                UnattendedTestRunner.MemoryNoProgressRecoveryLimitOverride,
+            PortfolioExperiment = PortfolioSelectorRuntime.Capture(),
             Act3BossStrategy = UnattendedTestRunner.Act3BossStrategyOverride != false
                 && SearchPolicySnapshot.IsAct3BossEncounter(state.RunState.CurrentActIndex, state.Encounter?.Id.Entry),
             // 这里记的是玩家填的原始值；「不考虑局外收益」的折算交给快照上的 Effective* 一处做，

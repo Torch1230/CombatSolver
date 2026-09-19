@@ -846,6 +846,12 @@ internal sealed partial class CombatBeamSolver
             throw new InvalidOperationException("已签发的循环出口票据无法继续推进。");
     }
 
+    /// <summary>两张转置表共用条目预算；已有状态的支配标签继续更新。</summary>
+    private bool AtTranspositionEntryLimit()
+        => policy.TranspositionEntryLimit > 0
+            && _run.Transpositions.Count + _run.ExpandedTranspositions.Count
+                >= policy.TranspositionEntryLimit;
+
     private bool TryAcceptTransposition(SearchNode candidate)
     {
         // Scheduling obligations are deliberately bounded elsewhere. A normal route at the
@@ -857,6 +863,11 @@ internal sealed partial class CombatBeamSolver
             ObserveSearchPath(candidate, SearchPathObservationStage.AdmissionTransposition, "bypass_cycle_or_ordered_lease");
             return true;
         }
+        if ((policy.TranspositionPruningDisabledMask & 1) != 0)
+        {
+            ObserveSearchPath(candidate, SearchPathObservationStage.AdmissionTransposition, "disabled_for_measurement");
+            return true;
+        }
         TranspositionLabel next = new(
             candidate.PotionCount,
             candidate.PotionStrategicCost,
@@ -866,6 +877,12 @@ internal sealed partial class CombatBeamSolver
             candidate.Score);
         if (!_run.Transpositions.TryGetValue(candidate.StateKey, out TranspositionFrontier? frontier))
         {
+            if (AtTranspositionEntryLimit())
+            {
+                _run.TranspositionLimitBypasses++;
+                ObserveSearchPath(candidate, SearchPathObservationStage.AdmissionTransposition, "entry_limit");
+                return true;
+            }
             _run.Transpositions.Add(candidate.StateKey, new TranspositionFrontier(next));
             ObserveSearchPath(candidate, SearchPathObservationStage.AdmissionTransposition, "accepted_new_state");
             return true;
@@ -904,6 +921,11 @@ internal sealed partial class CombatBeamSolver
             ObserveSearchPath(node, SearchPathObservationStage.ExpansionTransposition, "bypass_cycle_or_ordered_lease");
             return true;
         }
+        if ((policy.TranspositionPruningDisabledMask & 2) != 0)
+        {
+            ObserveSearchPath(node, SearchPathObservationStage.ExpansionTransposition, "disabled_for_measurement");
+            return true;
+        }
         TranspositionLabel next = new(
             node.PotionCount,
             node.PotionStrategicCost,
@@ -913,6 +935,12 @@ internal sealed partial class CombatBeamSolver
             node.Score);
         if (!_run.ExpandedTranspositions.TryGetValue(node.StateKey, out TranspositionFrontier? frontier))
         {
+            if (AtTranspositionEntryLimit())
+            {
+                _run.TranspositionLimitBypasses++;
+                ObserveSearchPath(node, SearchPathObservationStage.ExpansionTransposition, "entry_limit");
+                return true;
+            }
             _run.ExpandedTranspositions.Add(node.StateKey, new TranspositionFrontier(next));
             ObserveSearchPath(node, SearchPathObservationStage.ExpansionTransposition, "accepted_new_state");
             return true;

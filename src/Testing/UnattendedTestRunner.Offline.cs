@@ -37,6 +37,24 @@ internal sealed partial class UnattendedTestRunner
 
         /// <summary>组合成员宽度；不给就用协调器自己的默认成员集。</summary>
         public int[]? BeamWidthPortfolioWidths { get; init; }
+
+        /// <summary>是否保留普通基线成员；不给就是保留（生产缺省）。只用于消融实验。</summary>
+        public bool? BeamWidthPortfolioPlainBaselineMember { get; init; }
+
+        /// <summary>实验用：状态键里顺序无关的牌堆位掩码（手牌=1/抽牌堆=2/弃牌堆=4/消耗堆=8）；缺省 0。</summary>
+        public int PileOrderInvariantMask { get; init; }
+
+        /// <summary>实验用：状态指纹异或盐（双射，只改数值不改相等关系）；缺省 0。</summary>
+        public int StateKeySalt { get; init; }
+
+        /// <summary>实验用：关掉转置支配剪枝的位（1=候选准入，2=展开准入）；缺省 0。</summary>
+        public int TranspositionPruningDisabledMask { get; init; }
+
+        /// <summary>实验用：转置支配表的合并条目上限（0 = 不设上限）；缺省 null = 生产默认上限。</summary>
+        public int? TranspositionEntryLimit { get; init; }
+
+        /// <summary>实验用：连续多少次无进展回收后提前收手；缺省 0，即关闭。</summary>
+        public int MemoryNoProgressRecoveryLimit { get; init; }
     }
 
     /// <summary>
@@ -60,6 +78,20 @@ internal sealed partial class UnattendedTestRunner
                 SearchMaxDegreeOfParallelismForTest = options.SearchMaxDegreeOfParallelism,
                 UseBeamWidthPortfolioForTest = options.UseBeamWidthPortfolio ? true : null,
                 BeamWidthPortfolioWidthsForTest = options.BeamWidthPortfolioWidths,
+                BeamWidthPortfolioPlainBaselineMemberForTest =
+                    options.BeamWidthPortfolioPlainBaselineMember,
+                PileOrderInvariantMaskForTest = options.PileOrderInvariantMask == 0
+                    ? null
+                    : options.PileOrderInvariantMask,
+                StateKeySaltForTest = options.StateKeySalt == 0 ? null : options.StateKeySalt,
+                TranspositionPruningDisabledMaskForTest =
+                    options.TranspositionPruningDisabledMask == 0
+                        ? null
+                        : options.TranspositionPruningDisabledMask,
+                MemoryNoProgressRecoveryLimitForTest = options.MemoryNoProgressRecoveryLimit == 0
+                    ? null
+                    : options.MemoryNoProgressRecoveryLimit,
+                TranspositionEntryLimitForTest = options.TranspositionEntryLimit,
             });
             IsActive = true;
             AutomaticTurnSearchEnabled = false;

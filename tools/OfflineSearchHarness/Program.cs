@@ -140,6 +140,14 @@ internal static class Program
                     ["rootCapture"] = outcome.RootCapture,
                     ["solverMetrics"] = outcome.LegacyMetrics,
                     ["planActions"] = outcome.PlanActions,
+                    ["cachedContinuations"] = outcome.Result.Continuations
+                        .Select(item => new
+                        {
+                            item.StartTurnNumber,
+                            item.ForecastOffset,
+                            state = item.ExpectedState.StateText,
+                        })
+                        .ToArray(),
                     ["continuations"] = outcome.Continuations,
                     ["patchLog"] = ModRuntime.PatchLog.ToArray(),
                 };
@@ -148,6 +156,7 @@ internal static class Program
                 // 宿主自己从 SolverResult 读的剪枝/复用计数（游戏内 result.json 没有这些字段）。
                 payload["pruneCounters"] = outcome.LegacyMetrics;
                 payload["searchPolicy"] = outcome.Policy;
+                payload["phasePerformance"] = ModRuntime.LastPhasePerformance;
                 File.WriteAllText(
                     Path.Combine(options.OutputDirectory, "search-policy.json"),
                     JsonSerializer.Serialize(outcome.Policy, UnattendedTestFiles.JsonOptions));
@@ -179,6 +188,9 @@ internal static class Program
             };
             WriteProgress(options, NextMilestone(reached), "blocked", $"{root.GetType().Name}: {root.Message}");
             Console.Error.WriteLine($"[FAIL] {root.GetType().Name}: {root.Message}");
+            // 包装异常（如 SearchTransitionException）的真正原因在 InnerException 上，必须打出来。
+            for (Exception? inner = root.InnerException; inner != null; inner = inner.InnerException)
+                Console.Error.WriteLine($"[FAIL:inner] {inner.GetType().Name}: {inner.Message}");
             Console.Error.WriteLine(root.StackTrace);
             exitCode = 1;
         }
@@ -186,6 +198,7 @@ internal static class Program
         {
             choiceScope?.Dispose();
             ModRuntime.Session?.Dispose();
+            ModRuntime.FlushDiagnostics();
         }
 
         payload["reachedMilestone"] = reached;
@@ -251,7 +264,10 @@ internal static class Program
             options.SearchMode,
             options.UsePortfolio,
             fixedSearchBudget = true,
-            enableNoGcRegion = false,
+            enableNoGcRegion = options.EnableNoGcRegion,
+            noGcRegionBudgetGigabytes = options.EnableNoGcRegion
+                ? options.NoGcRegionBudgetGigabytes
+                : (double?)null,
         };
     }
 
@@ -321,6 +337,18 @@ internal sealed record HarnessOptions
           --potion-policy <p>    药水政策（默认 Smart）
           --search-mode <m>      Evaluate（单次求解，不经协调器，默认）| Coordinator（生产协调器）
           --use-portfolio        开宽度组合（只对 --search-mode Coordinator 有效）
+          --no-plain-baseline    消融：丢掉普通基线成员（需 --use-portfolio）
+          --unordered-pile-mask <0..15>  实验：状态键里顺序无关的牌堆（1手牌/2抽牌堆/4弃牌堆/8消耗堆）
+          --state-key-salt <int> 实验：给状态指纹异或一个常量（双射，只改数值不改相等关系）
+          --measure-phases       开按阶段的耗时/分配统计（SEARCH_PHASE 行进运行日志）
+          --disable-transposition-prune <0..3>  实验：关掉转置支配剪枝（1=候选准入/2=展开准入）
+          --memory-no-progress-limit <int>  实验：连续多少次无进展回收后提前收手（0=关闭）
+          --transposition-entry-limit <int>  实验：转置支配表合并条目上限（0=不设上限；缺省=生产默认 1000000）
+          --enable-no-gc-region   开 Runtime 的搜索内 No-GC 生命周期（默认关闭）
+          --no-gc-region-budget-gigabytes <double>  No-GC 区域预算，单位十进制 GB（默认 1）
+          --signal-ballast-mb <int>  进 No-GC scope 后先持有 N MiB 活对象，制造回收腾不出余量的压力
+          --observe-portfolio    导出追加搜索的特征与实际政策标签
+          --portfolio-model <p>  加载可选选择器 JSON；不匹配的版本回退原组合
           --milestone <M1|M2>    跑到哪个里程碑（默认 M2）
           --out <dir>            产物目录（默认 <workspace>/offline）
           --workspace <dir>      工作区目录（默认 .local/offline-harness）
@@ -344,6 +372,28 @@ internal sealed record HarnessOptions
     public string SearchMode { get; init; } = "Evaluate";
     /// <summary>开宽度组合（协调器的组合成员通道）；Evaluate 模式下没有意义。</summary>
     public bool UsePortfolio { get; init; }
+    /// <summary>消融：丢掉只带基线宽度、不带排序修饰的组合成员，少跑一次真实搜索。</summary>
+    public bool NoPlainBaselineMember { get; init; }
+    /// <summary>实验：状态键里哪些牌堆改成顺序无关哈希（手牌=1/抽牌堆=2/弃牌堆=4/消耗堆=8）；0 即生产口径。</summary>
+    public int UnorderedPileMask { get; init; }
+    /// <summary>实验：给状态指纹异或一个由该值导出的常量；双射，只改数值不改相等关系。0 即生产口径。</summary>
+    public int StateKeySalt { get; init; }
+    /// <summary>开按阶段统计：每个阶段的耗时与分配字节，落到运行日志的 SEARCH_PHASE 行。</summary>
+    public bool MeasureSearchPhases { get; init; }
+    /// <summary>实验：关掉转置支配剪枝的位（1=候选准入/2=展开准入）；0 即生产口径。</summary>
+    public int TranspositionPruningDisabledMask { get; init; }
+    /// <summary>实验：连续多少次无进展回收后提前收手；0 即关闭（生产口径）。</summary>
+    public int MemoryNoProgressRecoveryLimit { get; init; }
+    /// <summary>实验：转置支配表合并条目上限；0 = 不设上限，缺省 = 生产默认。</summary>
+    public int? TranspositionEntryLimit { get; init; }
+    /// <summary>实验：走 Runtime 的搜索内 No-GC 生命周期，供无头宿主复现内存回收与截断。</summary>
+    public bool EnableNoGcRegion { get; init; }
+    /// <summary>No-GC 区域预算；只在 <see cref="EnableNoGcRegion" /> 开启时生效。</summary>
+    public double NoGcRegionBudgetGigabytes { get; init; } = 1d;
+    /// <summary>进入 No-GC scope 后先持有的活对象 MiB，用于制造“回收腾不出余量”的受控压力。</summary>
+    public int SignalBallastMegabytes { get; init; }
+    public bool ObservePortfolio { get; init; }
+    public string? PortfolioModelPath { get; init; }
     public string Milestone { get; init; } = "M2";
     public string WorkspaceDirectory { get; init; } = string.Empty;
     public string OutputDirectory { get; init; } = string.Empty;
@@ -355,9 +405,15 @@ internal sealed record HarnessOptions
     public static HarnessOptions Parse(string[] args)
     {
         string character = "IRONCLAD", encounter = "FUZZY_WURM_CRAWLER_WEAK", seed = "OFFLINEHARNESS1";
-        int ascension = 0, actIndex = 0, dop = 1, budget = 600_000;
+        int ascension = 0, actIndex = 0, dop = 1, budget = 600_000, unorderedPileMask = 0, stateKeySalt = 0;
+        int transpositionPruneOff = 0, memoryNoProgressLimit = 0;
+        int? transpositionEntryLimit = null;
+        bool measurePhases = false, enableNoGcRegion = false;
+        double noGcRegionBudgetGigabytes = 1d;
+        int signalBallastMegabytes = 0;
         int? beam = null, nodes = null, cardBranches = null, pileBranches = null, handBranches = null;
-        bool usePortfolio = false;
+        bool usePortfolio = false, observePortfolio = false, noPlainBaseline = false;
+        string? portfolioModelPath = null;
         string potionPolicy = "Smart", milestone = "M2", language = "eng";
         string profile = "Custom", searchMode = "Evaluate", label = "offline";
         string? output = null, requestPath = null;
@@ -394,6 +450,18 @@ internal sealed record HarnessOptions
                 case "--potion-policy": potionPolicy = Value(); break;
                 case "--search-mode": searchMode = Value(); break;
                 case "--use-portfolio": usePortfolio = true; break;
+                case "--no-plain-baseline": noPlainBaseline = true; break;
+                case "--unordered-pile-mask": unorderedPileMask = int.Parse(Value()); break;
+                case "--state-key-salt": stateKeySalt = int.Parse(Value()); break;
+                case "--measure-phases": measurePhases = true; break;
+                case "--disable-transposition-prune": transpositionPruneOff = int.Parse(Value()); break;
+                case "--memory-no-progress-limit": memoryNoProgressLimit = int.Parse(Value()); break;
+                case "--transposition-entry-limit": transpositionEntryLimit = int.Parse(Value()); break;
+                case "--enable-no-gc-region": enableNoGcRegion = true; break;
+                case "--no-gc-region-budget-gigabytes": noGcRegionBudgetGigabytes = double.Parse(Value()); break;
+                case "--signal-ballast-mb": signalBallastMegabytes = int.Parse(Value()); break;
+                case "--observe-portfolio": observePortfolio = true; break;
+                case "--portfolio-model": portfolioModelPath = Path.GetFullPath(Value()); break;
                 case "--milestone": milestone = Value(); break;
                 case "--out": output = Value(); break;
                 case "--workspace": workspace = Value(); break;
@@ -410,6 +478,24 @@ internal sealed record HarnessOptions
             throw new ArgumentException("--search-mode 只接受 Evaluate 或 Coordinator。");
         if (usePortfolio && searchMode != "Coordinator")
             throw new ArgumentException("--use-portfolio 只对 --search-mode Coordinator 有效。");
+        if ((observePortfolio || portfolioModelPath != null) && (!usePortfolio || searchMode != "Coordinator"))
+            throw new ArgumentException("选择器实验需要 --search-mode Coordinator --use-portfolio。");
+        if (noPlainBaseline && (!usePortfolio || searchMode != "Coordinator"))
+            throw new ArgumentException("--no-plain-baseline 需要 --search-mode Coordinator --use-portfolio。");
+        if (unorderedPileMask is < 0 or > 15)
+            throw new ArgumentException("--unordered-pile-mask 只接受 0..15（手牌=1/抽牌堆=2/弃牌堆=4/消耗堆=8）。");
+        if (transpositionPruneOff is < 0 or > 3)
+            throw new ArgumentException("--disable-transposition-prune 只接受 0..3（1=候选准入/2=展开准入）。");
+        if (memoryNoProgressLimit < 0)
+            throw new ArgumentException("--memory-no-progress-limit 只接受非负数（0=关闭）。");
+        if (transpositionEntryLimit is < 0)
+            throw new ArgumentException("--transposition-entry-limit 只接受非负数（0=不设上限）。");
+        if (noGcRegionBudgetGigabytes < 1d || noGcRegionBudgetGigabytes > 256d)
+            throw new ArgumentException("--no-gc-region-budget-gigabytes 只接受 1..256。");
+        if (signalBallastMegabytes is < 0 or > 4096)
+            throw new ArgumentException("--signal-ballast-mb 只接受 0..4096。");
+        if (signalBallastMegabytes > 0 && !enableNoGcRegion)
+            throw new ArgumentException("--signal-ballast-mb 需要 --enable-no-gc-region。");
         if (profile == "Custom" && requestPath == null)
         {
             beam ??= 24;
@@ -432,6 +518,18 @@ internal sealed record HarnessOptions
             PotionPolicy = potionPolicy,
             SearchMode = searchMode,
             UsePortfolio = usePortfolio,
+            NoPlainBaselineMember = noPlainBaseline,
+            UnorderedPileMask = unorderedPileMask,
+            StateKeySalt = stateKeySalt,
+            MeasureSearchPhases = measurePhases,
+            TranspositionPruningDisabledMask = transpositionPruneOff,
+            TranspositionEntryLimit = transpositionEntryLimit,
+            MemoryNoProgressRecoveryLimit = memoryNoProgressLimit,
+            EnableNoGcRegion = enableNoGcRegion,
+            NoGcRegionBudgetGigabytes = noGcRegionBudgetGigabytes,
+            SignalBallastMegabytes = signalBallastMegabytes,
+            ObservePortfolio = observePortfolio,
+            PortfolioModelPath = portfolioModelPath,
             Milestone = milestone,
             WorkspaceDirectory = Path.GetFullPath(workspace),
             OutputDirectory = Path.GetFullPath(output ?? Path.Combine(workspace, "offline")),

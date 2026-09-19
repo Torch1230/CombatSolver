@@ -20,7 +20,12 @@ Thumbs.db
 *.tmp
 *.bak
 .local/
+releases/*.zip
+releases/*.publish-state.json
 
+# Python caches for the analysis tools
+__pycache__/
+*.pyc
 # Local evidence output and release artifacts
 /outputs/
 /releases/

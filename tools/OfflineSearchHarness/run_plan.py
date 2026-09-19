@@ -15,6 +15,9 @@ plan 是一个数组，每项：
   potionPolicy                            可选，默认 Smart
   searchMode                              可选，Evaluate（默认，单次求解）| Coordinator（生产协调器）
   usePortfolio                            可选，true 时开宽度组合（只对 Coordinator 有效）
+  measurePhases                           可选，true 时记 SEARCH_PHASE 阶段表
+  enableNoGcRegion                        可选，true 时走 Runtime 的 No-GC 回收生命周期
+  noGcRegionBudgetGigabytes               可选，No-GC 区域预算（默认沿用模组设置，通常 16）
   dll                                     可选，换掉运行时加载的 CombatSolver.dll
 
 用法：
@@ -59,6 +62,12 @@ def build_command(item, out, harness):
             args += [flag, str(item[key])]
     if item.get('usePortfolio'):
         args.append('--use-portfolio')
+    if item.get('measurePhases'):
+        args.append('--measure-phases')
+    if item.get('enableNoGcRegion'):
+        args.append('--enable-no-gc-region')
+        if item.get('noGcRegionBudgetGigabytes') is not None:
+            args += ['--no-gc-region-budget-gigabytes', str(item['noGcRegionBudgetGigabytes'])]
     return args
 
 

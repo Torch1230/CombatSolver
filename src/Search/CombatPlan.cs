@@ -60,6 +60,8 @@ internal enum SearchBoundaryReason
     TurnLimit,
     NodeLimit,
     TimeLimit,
+    /// <summary>搜索内连续回收未腾出余量，本成员发布当前前沿后停止。</summary>
+    MemoryNoProgress,
 }
 
 internal enum SolverResultScope
@@ -1592,6 +1594,12 @@ internal sealed class SolverResult
     public required BossHpRelief BossHpRelief { get; init; }
     public required TimeSpan Elapsed { get; init; }
     public required IReadOnlyList<CachedContinuation> Continuations { get; init; }
+    public int TranspositionCount { get; init; }
+    public int ExpandedTranspositionCount { get; init; }
+    public int TranspositionLimitBypasses { get; init; }
+    public int StandPatCacheCount { get; init; }
+    public int ThreatProjectionCacheCount { get; init; }
+    public int CoverageCacheCount { get; init; }
     public bool WasReused { get; init; }
     public int? ReusedFromTurn { get; init; }
     public bool RecalculatedAfterCompleteProjection { get; internal set; }
@@ -1654,6 +1662,12 @@ internal sealed class SolverResult
             StartTurnNumber = cached.StartTurnNumber,
             TurnSetupChoices = TurnSetupChoices,
             TurnSetupPlayState = TurnSetupPlayState,
+            TranspositionCount = TranspositionCount,
+            ExpandedTranspositionCount = ExpandedTranspositionCount,
+            TranspositionLimitBypasses = TranspositionLimitBypasses,
+            StandPatCacheCount = StandPatCacheCount,
+            ThreatProjectionCacheCount = ThreatProjectionCacheCount,
+            CoverageCacheCount = CoverageCacheCount,
             BestNode = BestNode,
             Snapshot = Snapshot,
             Forecast = slicedForecast,

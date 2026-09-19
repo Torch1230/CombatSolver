@@ -59,6 +59,27 @@ internal sealed partial class UnattendedTestRunner
     public static bool UseNoveltyPortfolioOverride => Host.UseNoveltyPortfolioOverride;
     public static bool UseBeamWidthPortfolioOverride => Host.UseBeamWidthPortfolioOverride;
     public static IReadOnlyList<int>? BeamWidthPortfolioWidthsOverride => Host.BeamWidthPortfolioWidthsOverride;
+
+    /// <summary>缺省保留普通基线成员；只有消融请求显式给出 false 时才丢掉它。</summary>
+    public static bool BeamWidthPortfolioPlainBaselineMemberOverride
+        => Host.BeamWidthPortfolioPlainBaselineMemberOverride ?? true;
+
+    /// <summary>实验用：状态键里顺序无关的牌堆位掩码；缺省 0，即生产口径。</summary>
+    public static int PileOrderInvariantMaskOverride => Host.PileOrderInvariantMaskOverride;
+
+    /// <summary>实验用：状态指纹的异或盐；缺省 0，即生产口径。</summary>
+    public static int StateKeySaltOverride => Host.StateKeySaltOverride;
+
+    /// <summary>实验用：关掉转置支配剪枝的位；缺省 0，即生产口径。</summary>
+    public static int TranspositionPruningDisabledMaskOverride =>
+        Host.TranspositionPruningDisabledMaskOverride;
+
+    /// <summary>实验用：转置支配表的合并条目上限（0 = 不设上限）；缺省 null = 生产默认上限。</summary>
+    public static int? TranspositionEntryLimitOverride => Host.TranspositionEntryLimitOverride;
+
+    /// <summary>实验用：连续多少次无进展回收后提前收手；缺省 0，即关闭。</summary>
+    public static int MemoryNoProgressRecoveryLimitOverride =>
+        Host.MemoryNoProgressRecoveryLimitOverride;
     public static bool? Act3BossStrategyOverride => Host.Act3BossStrategyOverride;
 
     private readonly NGame _host;

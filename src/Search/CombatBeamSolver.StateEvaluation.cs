@@ -815,6 +815,15 @@ internal sealed partial class CombatBeamSolver
         return unordered.Finish();
     }
 
+    private static int PileOrderInvariantBit(char marker) => marker switch
+    {
+        'H' => 1,
+        'D' => 2,
+        'C' => 4,
+        'X' => 8,
+        _ => 0,
+    };
+
     private void AppendUnorderedPileKey(
         ref StateFingerprintBuilder unordered,
         SimCardPile pile,
@@ -1599,7 +1608,21 @@ internal sealed partial class CombatBeamSolver
         SearchMeasurement combatFingerprintMeasurement = _run.Performance.Begin();
         simulatedCombat.AppendFingerprint(ref key, simulator);
         _run.Performance.End(SearchMetricPhase.CombatFingerprint, combatFingerprintMeasurement);
-        return key.Finish();
+        return ApplyStateKeySalt(key.Finish());
+    }
+
+    /// <summary>
+    /// 状态键是若干个排序与分组的下游键（同一指纹值既当相等判据又当决胜序）。异或常量是双射，
+    /// 所以只动数值、不动相等关系，可以把「键的编码方式影响决策」单独量出来。
+    /// </summary>
+    private StateFingerprint ApplyStateKeySalt(StateFingerprint fingerprint)
+    {
+        int salt = policy.StateKeySalt;
+        if (salt == 0)
+            return fingerprint;
+        return new StateFingerprint(
+            fingerprint.First ^ unchecked((ulong)salt * 0x9E3779B97F4A7C15UL + 0xD1B54A32D192ED03UL),
+            fingerprint.Second ^ unchecked((ulong)salt * 0xC2B2AE3D27D4EB4FUL + 0x165667B19E3779F9UL));
     }
 
     private static void AppendRngState(ref StateFingerprintBuilder key, Rng rng)
@@ -1760,6 +1783,11 @@ internal sealed partial class CombatBeamSolver
 
     private void AppendPile(ref StateFingerprintBuilder key, SimCardPile pile, char marker)
     {
+        if ((policy.PileOrderInvariantMask & PileOrderInvariantBit(marker)) != 0)
+        {
+            AppendUnorderedPileKey(ref key, pile, marker);
+            return;
+        }
         key.Add(marker);
         key.Add(pile.Cards.Count);
         if (pile.TryGetCachedFingerprint(out ulong cachedFirst, out ulong cachedSecond))

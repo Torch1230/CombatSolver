@@ -73,6 +73,12 @@ internal sealed class SolvedRouteCache(string path)
             policy.PredictPotionReward,
             policy.NoveltyBudget,
             policy.BeamWidthPortfolioWidths,
+            policy.BeamWidthPortfolioPlainBaselineMember,
+            policy.PileOrderInvariantMask,
+            policy.StateKeySalt,
+            policy.TranspositionPruningDisabledMask,
+            policy.MemoryNoProgressRecoveryLimit,
+            PortfolioSelector = policy.PortfolioExperiment?.Model?.ModelId,
             policy.FixedBudget,
             policy.BudgetOverrideMilliseconds,
         });

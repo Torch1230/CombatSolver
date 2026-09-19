@@ -1,5 +1,13 @@
 # CombatSolver 测试清单
 
+## 未发布：PR #114 原始分支与 #115 集成
+
+- 原分支的 `PortfolioSelectorChecks` 12 组 410 断言、`BeamOrderingKeyChecks` 8 组 549747 断言、`BeamWidthPortfolioChecks` 93 项，以及 No-GC 和内存截断、转置表上下限的原始对照均属 PR #114 基线证据，见各研究报告；不能当作现行主线组合已通过。当前整合后的验证和未通过项在本节续记。
+- 默认值核对：转置支配表合计上限 1,000,000 为唯一新增的默认搜索决策；无进展截断=0、基线组合成员=true、状态键盐/牌堆顺序商/转置消融=0；无有效环境模型时学习型门控不启用。低于上限的原分支对照不能证明触顶后的路线质量，完整关闭剪枝的消融也不是质量代价上界。
+- 本次原分支并入现行 main 后，Windows 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=204`；主 DLL Release 编译 0 警告，完整工程只因本机缺 .NET Framework 4.8 引用程序集停在 MemoryCleaner；离线宿主 Release 0 警告/错误。`GcPolicyChecks` 基础 26 项和 `recovery` 9 项、`PortfolioSelectorChecks` 12 组 410 断言、`BeamOrderingKeyChecks` 8 组 549747 断言、`BeamWidthPortfolioChecks` 93 项通过。
+- 当前合并组合的固定故障机器人/FUZZY_WURM 根（Custom、beam 30、nodes 2000、DOP1、Coordinator+组合）对已合入 #115 的同根产物比较 72 字段 `IDENTICAL`，包含路线和续用文本；默认 100 万条对同一代码的无限制版也是 72 字段 `IDENTICAL`、展开 236、转移 832。测试上限设为 50 时两表恰好 34+16 条、`transpositionLimitBypasses=957`；这一个根的 72 个决策字段仍相同，不代表其他根的触顶质量。原 #114 新宿主不能直接加载旧 #115 DLL（实验策略接口不同），跨版本对照沿用此前 #115 宿主产物，不把失败的直接加载记为通过。
+- 内存截断受控样本（铁甲战士/FUZZY_WURM、1 GB No-GC、600 MiB 活压力、阈值 1）得到 `MemoryNoProgress`、展开 1、可执行的防御牌 + EndTurn 两步路线、组合成员 `MemoryTruncated`；这是注入压力，不代表真实长搜的质量。DOP2 组合测量完整结束，实际最大并发 2，`phasePerformance` 写入宿主结果；首次整合时该字段为空，已修复并复测。尚无默认 100 万条触顶后的广泛整场质量对照，也未跑可见 Steam/正常会话性能。
+
 ## 未发布：选中路线续用戳与诊断指标收口（从 PR #114 提取）
 
 - 本轮只提取最终选中路径的续用戳构造和显式度量失败路径；不引入内存无进展截断、转置表默认上限或实验开关。Windows 隔离无头 `SINGLE-SEARCH-PROFILE -MeasureSearchPhases` Passed，覆盖四档预设、单一进度阶段与固定工作量；离线宿主当前 main 对提取组合的故障机器人/FUZZY_WURM 单根（DOP 1、beam 30、2000 节点）72 个字段 `IDENTICAL`，包含第 2/3 回合两份非空续用状态文本，双方展开 236、转移 832。重型 `SEARCH-POLICY-SNAPSHOT` 在 120 秒上限内未完成，未将失败 lane 排空的原生合同记作通过；原生实例已清理。

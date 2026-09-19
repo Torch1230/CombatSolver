@@ -50,6 +50,18 @@ internal sealed class SearchMemoryPressureSignal
 
     public int ReclaimCount { get; private set; }
 
+    /// <summary>连续多少次搜索内回收没有腾出余量；有进展的那次回收把它清零。</summary>
+    public int ConsecutiveNoProgressReclaims { get; private set; }
+
+    /// <summary>最近一次搜索内回收腾出的字节数（非压缩 Gen2 前后的活数据差）。</summary>
+    public long LastReclaimRegainedBytes { get; private set; }
+
+    /// <summary>
+    /// 一次回收算不算有进展的门槛：1 MiB。实测的空转回收中位增益为 0 字节，而正常回收腾出的是
+    /// 整段候选图（远大于 1 MiB），所以这个量级只区分“腾出了空间”和“什么都没腾出”。
+    /// </summary>
+    internal const long NoProgressReclaimThresholdBytes = 1024L * 1024;
+
     public TimeSpan LastReclaimMaxObservedGcPause
         => TimeSpan.FromTicks(Volatile.Read(ref _lastReclaimMaxObservedGcPauseTicks));
 
@@ -69,6 +81,33 @@ internal sealed class SearchMemoryPressureSignal
         long previous = Volatile.Read(ref _lastReclaimMaxObservedGcPauseTicks);
         if (pause.Ticks > previous)
             Volatile.Write(ref _lastReclaimMaxObservedGcPauseTicks, pause.Ticks);
+    }
+
+    /// <summary>
+    /// 搜索内回收完成后的记账入口。只有真正重建 No-GC 区域的那条回收路径调用它；
+    /// 回退到常规 GC 不算一次回收，因为它不再重建区域。
+    /// </summary>
+    public void ObserveReclaimGain(long regainedBytes)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(regainedBytes);
+        LastReclaimRegainedBytes = regainedBytes;
+        ConsecutiveNoProgressReclaims = regainedBytes < NoProgressReclaimThresholdBytes
+            ? ConsecutiveNoProgressReclaims + 1
+            : 0;
+    }
+
+    /// <summary>连续无进展回收达到上限时该停止本搜索；上限 0 表示关闭这条规则。</summary>
+    public bool ShouldStopForNoProgressReclaims(int limit)
+        => limit > 0 && ConsecutiveNoProgressReclaims >= limit;
+
+    /// <summary>
+    /// 每次搜索（组合成员、补充审计、抬上限重搜）各自拿一份连续无进展额度，
+    /// 免得上一份搜索用剩的计数把下一份搜索提前截断。
+    /// </summary>
+    public void ResetNoProgressReclaimTracking()
+    {
+        ConsecutiveNoProgressReclaims = 0;
+        LastReclaimRegainedBytes = 0;
     }
 
     public long AllocatedBytes

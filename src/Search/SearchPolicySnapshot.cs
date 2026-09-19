@@ -33,6 +33,15 @@ internal sealed record SearchPolicySnapshot(
     public int? BrightestFlameMaxHpLossLimit { get; init; }
     public GrowthOpportunityTargets GrowthOpportunityTargets { get; init; } = GrowthOpportunityTargets.Empty;
     public bool HasGrowthTargets => GrowthOpportunityTargets.HasTargets;
+    /// <summary>
+    /// 转置支配表（<c>Transpositions</c> + <c>ExpandedTranspositions</c>）的合并条目上限：
+    /// 达到上限后新状态不再写入、直接按准入处理，已有条目继续参与支配剪枝；0 = 不设上限（仅实验用）。
+    /// </summary>
+    public int TranspositionEntryLimit { get; init; } = DefaultTranspositionEntryLimit;
+
+    /// <summary>生产默认的合并条目上限：覆盖普通搜索，只在超长搜索里生效。</summary>
+    internal const int DefaultTranspositionEntryLimit = 1_000_000;
+
     public bool StopAtAcceptableBattleHpLoss { get; init; } = true;
     public bool CanStopAtHpTarget => StopAtAcceptableBattleHpLoss
         && (!EffectiveHasGrowthTargets || GrowthOpportunityTargets.IsBounded);
@@ -69,6 +78,46 @@ internal sealed record SearchPolicySnapshot(
     /// 为空时用默认的 [基线, 基线×2/3, 基线×3/2, 次段 基线, 基础分 基线]，显式给出时只有宽度成员。
     /// </summary>
     public IReadOnlyList<int>? BeamWidthPortfolioWidths { get; init; }
+
+    /// <summary>
+    /// 默认 true。置 false 时不再运行那个只带基线宽度、不带任何排序修饰的组合成员，
+    /// 少跑一次真实搜索；候选比较因此不再保证"不差于今天的单次搜索"。
+    /// 只由实验与针对性 A/B 置位，生产默认保持 true。
+    /// </summary>
+    public bool BeamWidthPortfolioPlainBaselineMember { get; init; } = true;
+
+    /// <summary>
+    /// 实验用：把指定牌堆在状态键里改成顺序无关（多重集）哈希，让只差这些牌堆顺序的两个状态
+    /// 落进同一条转置记录。位：手牌=1，抽牌堆=2，弃牌堆=4，消耗堆=8；默认 0，生产逐位不变。
+    /// 只有「本场战斗没有任何效果按位置读该牌堆」时那个位才成立：抽牌堆每次抽牌都读顶端，
+    /// 手牌会被随机取牌与“第一张可打出”按位置读，所以实际可用的通常只有弃牌堆与消耗堆。
+    /// </summary>
+    public int PileOrderInvariantMask { get; init; }
+
+    /// <summary>
+    /// 实验用：给状态指纹的两个半字各异或一个由该值导出的常量。异或是双射，所以这个开关
+    /// 只改变指纹的<b>数值</b>，完全不影响它的相等关系——转置命中、支配判定与合并全部不变。
+    /// 用它来分离「合并错了」与「数值本身被下游当成排序键」这两种代价：束宽/牌堆顺序那类
+    /// 实验同时动了这两者，只有这个开关单独动后者。默认 0，生产逐位不变。
+    /// </summary>
+    public int StateKeySalt { get; init; }
+
+    /// <summary>
+    /// 实验用：关掉转置支配剪枝，量「状态等价剪枝本身值多少工作量」。位 1 = 候选准入，
+    /// 位 2 = 展开准入；缺省 0，即两条都开。关掉只会多探索状态、不会少探索，
+    /// 有界搜索的候选次序与预算可能因此变化；该消融不提供路线质量上界。默认 0，生产逐位不变。
+    /// </summary>
+    public int TranspositionPruningDisabledMask { get; init; }
+
+    /// <summary>
+    /// 实验用：连续多少次搜索内回收都没有腾出余量（阈值见
+    /// <see cref="SearchMemoryPressureSignal.NoProgressReclaimThresholdBytes" />）就提前收手，
+    /// 交给既有终局发布当前前沿的最优路线，不再重建区域重试。0 = 关闭，即生产口径逐位不变。
+    /// 触发时结果标成 <see cref="SearchBoundaryReason.MemoryNoProgress" />，不再参与成员间的整条选优。
+    /// </summary>
+    public int MemoryNoProgressRecoveryLimit { get; init; }
+
+    internal BeamPortfolioExperiment? PortfolioExperiment { get; init; }
 
     /// <summary>
     /// 请求级的组合诊断，由 <see cref="CombatSearchCoordinator.Solve" /> 建立并挂到返回结果上。

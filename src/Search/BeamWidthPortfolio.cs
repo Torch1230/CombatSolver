@@ -39,6 +39,12 @@ internal readonly record struct BeamWidthPortfolioRun<TResult>(
     /// 后续成员不再运行，保持协调器遇到非 SearchCompletion 时立刻返回的既有规则。
     /// </summary>
     public bool StopPortfolio { get; init; }
+
+    /// <summary>
+    /// 该成员被连续无进展的内存回收提前截断（见 <see cref="SearchBoundaryReason.MemoryNoProgress" />）。
+    /// 它仍可作回退结果发布，但不能像完整结果那样参与成员间的整条选优。
+    /// </summary>
+    public bool MemoryTruncated { get; init; }
 }
 
 /// <summary>一个成员的明细；未运行的成员也保留一行，附不运行的原因。</summary>
@@ -100,6 +106,9 @@ internal static class BeamWidthPortfolio
     /// <summary>与 <c>SearchBoundaryReason.NodeLimit</c> 的名称一致。</summary>
     internal const string NodeLimitTermination = "NodeLimit";
 
+    /// <summary>被内存回收提前截断：这一条不是完整结果，仍然保留在成员明细里。</summary>
+    internal const string SkippedMemoryTruncated = "MemoryTruncated";
+
     /// <summary>没有任何成员可比时退回第一个真正跑过的成员。</summary>
     internal const string SelectionBaselineFallback = "BaselineFallback";
 
@@ -121,19 +130,25 @@ internal static class BeamWidthPortfolio
     }
 
     /// <summary>
-    /// 生产成员列表。首项强制是基线宽度（基线成员必须逐位等于今天的单次搜索），其后按给定顺序
+    /// 生产成员列表。首项默认强制是基线宽度（基线成员必须逐位等于今天的单次搜索），其后按给定顺序
     /// 去重追加，丢掉小于 1 的值。<paramref name="configuredWidths" /> 为空时用默认的
     /// [基线, 基线×2/3, 基线×3/2, 次段 基线, 基础分 基线]（四舍五入，例如基线 24 是
     /// [24, 16, 36, 24+band, 24+base]，基线 135 是 [135, 90, 203, 135+band, 135+base]）；
     /// 显式给出宽度列表时只有宽度成员，不追加次段与基础分成员。
+    /// <paramref name="includePlainBaseline" /> 为 false 时不再追加那个只带基线宽度、不带任何排序修饰的
+    /// 成员，真实搜索因此少跑一次；此时候选比较不再保证"不差于今天的单次搜索"。
+    /// 实测依据：该成员在 152 场里只有 5 场严格优于其余全部成员（合计 19 HP），
+    /// 49% 的场次是与其余最好成员并列、靠"先出现者胜"判给自己，另有 48% 的场次更差。
     /// </summary>
     internal static IReadOnlyList<BeamWidthPortfolioMemberSpec> ProductionMembers(
         int baselineBeamWidth,
         IReadOnlyList<int>? configuredWidths,
+        bool includePlainBaseline = true,
         bool includePowerCommitmentMember = false)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(baselineBeamWidth);
-        List<BeamWidthPortfolioMemberSpec> members = [new(baselineBeamWidth)];
+        List<BeamWidthPortfolioMemberSpec> members =
+            includePlainBaseline ? [new(baselineBeamWidth)] : [];
         if (includePowerCommitmentMember)
         {
             members.Add(new BeamWidthPortfolioMemberSpec(
@@ -271,10 +286,12 @@ internal static class BeamWidthPortfolio
                 break;
             }
 
+            // 与节点上限同一条处理：被内存截断的成员不参与整条选优，只在没有可比结果时作回退。
             bool comparable = spec.AggressivePowerCommitment
                 ? run.Terminal
                 : run.Terminal
-                    || !string.Equals(run.Termination, NodeLimitTermination, StringComparison.Ordinal);
+                    || (!run.MemoryTruncated
+                        && !string.Equals(run.Termination, NodeLimitTermination, StringComparison.Ordinal));
             if (comparable && (selectedIndex < 0 || isBetter(run.Result, selected!)))
             {
                 selected = run.Result;
@@ -284,9 +301,11 @@ internal static class BeamWidthPortfolio
                 compared: comparable,
                 skippedReason: comparable
                     ? null
-                    : spec.AggressivePowerCommitment
-                        ? SkippedPowerMemberNotTerminal
-                        : SkippedNodeLimitNotTerminal));
+                    : run.MemoryTruncated
+                        ? SkippedMemoryTruncated
+                        : spec.AggressivePowerCommitment
+                            ? SkippedPowerMemberNotTerminal
+                            : SkippedNodeLimitNotTerminal));
             // 顺序执行的代价只有在上一位成员真的放手之后才成立：明细已经记完，这里把这一轮的
             // 结果引用清掉，别让它活到下一位成员跑完。
             run = default;

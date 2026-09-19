@@ -80,6 +80,28 @@ Require(BeamWidthPortfolio.ProductionMembers(24, null).Count(member => member.Se
     && !BeamWidthPortfolio.ProductionMembers(24, null).Any(member => member.SecondRankBand && member.BaseScoreOnly),
     "The baseline member must be a plain width member; the default has exactly one band and one base-score member, never combined.");
 
+// 1b. The ablation drops only the plain baseline member: the narrow and wide refinements plus one
+// second-rank-band and one base-score member survive, and no plain baseline-width member remains.
+Require(BeamWidthPortfolio.ProductionMembers(24, null, includePlainBaseline: false)
+        .SequenceEqual([Width(16), Width(36), Band(24), Base(24)]),
+    "The no-plain-baseline ablation changed the remaining membership.");
+Require(BeamWidthPortfolio.ProductionMembers(135, null, includePlainBaseline: false)
+        .SequenceEqual([Width(90), Width(203), Band(135), Base(135)]),
+    "The no-plain-baseline ablation changed the VeryHigh membership.");
+Require(BeamWidthPortfolio.ProductionMembers(24, null, includePlainBaseline: false)
+        .Count(member => !member.SecondRankBand && !member.BaseScoreOnly) == 2,
+    "The ablation must leave exactly the two width refinements as plain width members.");
+// At baseline 1 the narrow refinement is the baseline width itself, so the ablation is a no-op there.
+Require(BeamWidthPortfolio.ProductionMembers(1, null, includePlainBaseline: false)
+        .SequenceEqual(BeamWidthPortfolio.ProductionMembers(1, null)),
+    "At baseline 1 the narrow refinement already is the baseline width, so the ablation must be a no-op.");
+Require(BeamWidthPortfolio.ProductionMembers(24, [23, 25], includePlainBaseline: false)
+        .SequenceEqual([Width(23), Width(25)]),
+    "The ablation must not force a baseline member into a configured membership either.");
+Require(BeamWidthPortfolio.ProductionMembers(24, null, includePlainBaseline: true)
+        .SequenceEqual(BeamWidthPortfolio.ProductionMembers(24, null)),
+    "The explicit default must match the omitted argument.");
+
 // 1a. The base-score member only flips BaseScoreOnly on its member profile.
 var based = PortfolioOf([Width(24), Base(24)], 1000,
     [Finished(400, Outcome(true, 50)), Finished(100, Outcome(true, 40))]);

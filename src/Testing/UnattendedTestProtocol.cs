@@ -121,6 +121,37 @@ internal sealed class UnattendedTestRequest
     /// 小于 1 的值会被丢掉。
     /// </summary>
     public int[]? BeamWidthPortfolioWidthsForTest { get; init; }
+
+    /// <summary>
+    /// 是否保留那个只带基线宽度、不带任何排序修饰的组合成员。缺省保留；给出 false 时少跑一次真实搜索，
+    /// 候选比较不再保证"不差于今天的单次搜索"。只用于消融实验。
+    /// </summary>
+    public bool? BeamWidthPortfolioPlainBaselineMemberForTest { get; init; }
+
+    /// <summary>
+    /// 实验用：状态键里哪些牌堆改用顺序无关哈希（手牌=1/抽牌堆=2/弃牌堆=4/消耗堆=8）。缺省 0，即生产口径。
+    /// </summary>
+    public int? PileOrderInvariantMaskForTest { get; init; }
+
+    /// <summary>
+    /// 实验用：给状态指纹异或一个由该值导出的常量（双射，只改数值不改相等关系）。缺省 0，即生产口径。
+    /// </summary>
+    public int? StateKeySaltForTest { get; init; }
+
+    /// <summary>
+    /// 实验用：关掉转置支配剪枝的位（1=候选准入，2=展开准入）。缺省 0，即生产口径。
+    /// </summary>
+    public int? TranspositionPruningDisabledMaskForTest { get; init; }
+
+    /// <summary>
+    /// 实验用：转置支配表的合并条目上限（0 = 不设上限）。缺省 null = 生产默认上限。
+    /// </summary>
+    public int? TranspositionEntryLimitForTest { get; init; }
+
+    /// <summary>
+    /// 实验用：连续多少次搜索内回收没有腾出余量就提前收手（0/缺省 = 关闭，即生产口径）。
+    /// </summary>
+    public int? MemoryNoProgressRecoveryLimitForTest { get; init; }
     public int? ExpectedInitialExpandedNodesAtMost { get; init; }
     public int? ExpectedInitialTransitionsAtMost { get; init; }
     public long? ExpectedInitialTotalExpandedNodesAtMost { get; init; }
