@@ -2310,5 +2310,11 @@
     "procedure": "合并ce17a40，保留战略上下文双方变量；直接字段及回合前缀合同。",
     "observed": "合并上游ce17a40（0.38.0）后，保留双方战略上下文变量与各自消费者，文档冲突合并保留两批记录。正常Release零警告/错误，Bash/PowerShell结构门禁均90文件通过；STRATEGIC-CONTEXT-DEMAND / eae143ef4e3a4e32a23be62f060b937b Passed，END-TURN-CHOICE-REPLAY / 26494f1f7a1341a589f3a8ac35b54812 Passed。未重测性能，前述收益只属于原基线，不套用到上游新增语义后的产物。",
     "evidence": "docs/performance/pr90-attempts-20260913.md"
+  },
+  "GC-COMMIT-WINDOW-WINDOWS": {
+    "status": "Passed",
+    "level": "WindowsProductionClrAndHeadlessDop16ShortSearch",
+    "evidence": "docs/performance/queen-gc-windows-20260920.md",
+    "limitation": "12GB larger requests timed out on both builds; no demonstrated long-search or visible-frame gain."
   }
 }
