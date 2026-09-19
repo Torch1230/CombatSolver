@@ -1,6 +1,6 @@
 # 回合阶段镜像
 
-当前开放 `AbstractModel.AfterSideTurnEndLate`。这是效果登记，与
+当前开放 `AbstractModel.BeforeSideTurnStart` 和 `AfterSideTurnEndLate`。这是效果登记，与
 [模型状态登记](third-party-model-state.md) 分开；不代表其他阶段、ModHelper 订阅者或
 Harmony 补丁已经受支持。外部程序集使用与其他内部镜像相同的 publicizer 接入方式。
 
@@ -39,6 +39,23 @@ writePredicted 与正确 Fork。实际效果用模拟器命令实现，不能调
 也不要从 `Owner` 的 live 战斗字段、静态集合或闭包读取可变值。
 
 ## 执行约束
+
+### 回合开始前
+
+`CombatSolver.Engine.InCombat.Mirrors.Hooks.TurnStart.BeforeSideTurnStartMirrors`
+提供 `Register<TModel>(Action<TModel, BeforeSideTurnStartMirrorContext>)`，接收者同样是
+`AbstractModel`，适用于 Power、遗物和 Modifier。精确类型、覆写核验、重复拒绝和首根冻结
+规则与晚期表相同。上下文的 `Side`、`Participants` 来自调用方，原生 `ICombatState` 参数
+对应继承的分支 `CombatState`，禁止读取 live 状态代替它。
+
+玩家和敌方均在 `BeginSideTurn`、回合初 Power 数量快照之后，清除格挡之前进入此阶段。
+有第三方监听者时，以原生战斗监听表顺序冻结本次成员，不按参与方提前筛选；每个回调自行
+判断 Side 和 Participants。原版遗物重置、Plating、Aggression 及回合计数由同一张表调用
+既有单项结算体，无扩展战斗保留原先遗物与 Power 的批次顺序。不会同时执行两条路径。
+未知有效覆写记录风险后抛异常；选择、异常传播、卡牌 COW 和成员快照规则与下述晚期入口相同。
+本阶段不开放回调内的通用可恢复执行帧，挂起选择仍由既有完整重放处理。
+
+### 回合结束晚期
 
 - 玩家流程：常规 Power → 常规遗物 → 本晚期阶段 → 词条规范化与阶段收尾。
   敌方流程在既有常规效果和持续时间处理后进入同一晚期入口。
