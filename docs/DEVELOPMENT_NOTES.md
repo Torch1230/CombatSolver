@@ -8,6 +8,9 @@
 - 依据该表做一处分配削减：取消每回合对整条 frontier 的 eager `ContinuationStamp` 字符串捕获，改为只对最终选中路径在 `BuildContinuations` 里按动作前缀 `Replay` 重建。`sel-defect-elite-02` Beam16 Evaluate 四进程 B-C-C-B：分配 279.62/279.64 MB → 270.82/270.82 MB，墙钟 3304.2/3270.8 ms → 3250.6/3241.3 ms；路线、续用戳文本与除 `replayCount` 外的剪枝计数逐项相同。Beam24 组合根同样路线/6 条续用戳全等，总 worker 分配 2.950 GB → 2.843 GB；另外 5 个生成场景根 `compare_results.py` 413 字段全等，5 个不同角色根路线与续用戳全等。
 - 验证：Release 0 警告/0 错误；Linux 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=193`；`GcPolicyChecks recovery` 通过 `GC policy checks passed: 9 scenarios.`。未执行可见 Steam、Windows 构建或多机性能结论；离线数据与单样本墙钟不外推为实机收益。
 - 详细表、命令、结构产物与限制见 [搜索内存恢复与排他分配](performance/search-memory-recovery-20260919.md)。
+- 生成池复用再削两批分配（`aaed815`、`622e8d9`）：`JackOfAllTrades`/`Largesse` 复用根级无色牌快照；新增根级全部可生成角色牌快照，`Abundance`、`Discovery`、`Distraction`、`Jackpot`、`WhiteNoise`、`TinkerTime.Chaos`、`Stoke`、`Calamity`、攻击/技能/能力/Orobic Acid 药水等路径统一复用。谓词仍位于随机选择之前，RNG 与候选顺序不变。6 个生成场景根 A/B：selected worker 分配下降 5.7%～19.7%，路线、续用戳文本、展开/转移、分数、战损与 `compare_results.py` 539 个字段全等；墙钟下降 6%～12% 的单样本读数不作稳定倍率。
+- 保留表计数已进入 `SEARCH_PHASE` 与离线宿主指标（`a02d160`）。60,000 展开长搜中 `Transpositions=318,265`、`ExpandedTranspositions=58,622`、`StandPatCache=51,354`、`ThreatProjectionCache=172,500`、`CoverageCache=11,012`；前两张语义表是 NoGC 检查点不会释放的主要长期增长结构。
+- 转置表设上限会改变极少数场次路线，已按消融上界整理待用户决策；本轮只提交测量入口，没有把上限写入生产默认。建议、阈值与实验步骤见 [搜索保留表规模与上限决策](performance/search-retention-bounds-20260919.md)。
 
 ## 0.41.0：问题包开战默认与仓库内无头实例（2026-09-18）
 

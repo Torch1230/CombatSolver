@@ -7,6 +7,8 @@
 - 续用戳延迟捕获：固定根 `sel-defect-elite-02` Beam16 Evaluate 顺序 B-C-C-B，分配 279.62/279.64 MB → 270.82/270.82 MB，墙钟 3304.2/3270.8 ms → 3250.6/3241.3 ms；动作路线、`cachedContinuations` 文本及除 `replayCount` 外的剪枝计数全部相同。Beam24 Coordinator+portfolio 6 个成员展开/转移/战损与 6 条续用戳全等，总 worker 分配 2,950,179,064 → 2,842,728,888 B。
 - 批量等价：`tools/OfflineSearchHarness/compare_results.py` 5 个生成场景根 `mismatched_roots=0`、`comparedFields=413`；另 5 个不同角色根逐项比较选中路线与全部 `cachedContinuations` 文本一致，selected worker 分配逐根减少 2.2–16.9 MB。
 - Release 构建 0 警告/0 错误；Linux `tools/verify-refactor-boundaries.sh` 输出 `REFACTOR_BOUNDARIES_OK search_files=193`。未启动可见 Steam、未运行 Windows 构建和原始 VeryHigh 问题包。
+- 生成池复用（`aaed815`、`622e8d9`）：6 个实际打出无色/角色生成牌的根，同请求 Beam16 Evaluate A/B；selected worker 分配逐根下降 5.7%～19.7%，选中路线、全部 `cachedContinuations`、展开/转移/分数/战损相同，`compare_results.py` 539 字段全等。Release 0 警告/0 错误，结构门禁 `search_files=193`。
+- 保留表计数诊断（`a02d160`）：60,000 展开长搜输出 `transpositions=318265 expanded_transpositions=58622 stand_pat_cache=51354 threat_cache=172500 coverage_cache=11012`；仅诊断，不改变搜索。转置表上限方案与决策点见[保留表规模报告](performance/search-retention-bounds-20260919.md)，尚未实现默认上限。
 
 ## 0.41.0：问题包开战默认与仓库内无头实例（2026-09-18）
 
