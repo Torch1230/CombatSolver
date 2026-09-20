@@ -74,7 +74,17 @@ internal static class CombatShowcaseCollector
             Directory.Delete(directory);
     }
 
+    // 录像是可选功能：采集或打包失败只放弃这一份录像，不影响搜索和路线交付。
     internal static void TryCaptureInitialRoot(CombatState state, SearchReason reason)
+        => AncillaryWork.Run("OPENING_CAPTURE_FAILED", () => CaptureInitialRootCore(state, reason), LogFailure);
+
+    internal static void TryQueueCompletedRoute(CombatState state, SolverResult result)
+        => AncillaryWork.Run("BUNDLE_FAILED", () => QueueCompletedRouteCore(state, result), LogFailure);
+
+    private static void LogFailure(string message)
+        => Entry.Logger.Warn($"[CombatSolver/Showcase] {message}");
+
+    private static void CaptureInitialRootCore(CombatState state, SearchReason reason)
     {
         if (_root != null || _openingCaptureDecisionMade || reason != SearchReason.AutoTurnStart
             || !SolverSettings.Current.OnlineStatisticsEnabled)
@@ -113,7 +123,7 @@ internal static class CombatShowcaseCollector
         Entry.Logger.Info($"[CombatSolver/Showcase] OPENING_CAPTURED root={_root.RootSha256} boss={_root.EncounterId}");
     }
 
-    internal static void TryQueueCompletedRoute(CombatState state, SolverResult result)
+    private static void QueueCompletedRouteCore(CombatState state, SolverResult result)
     {
         RootCapture? root = _root;
         _root = null;
