@@ -113,6 +113,9 @@ internal static class Program
             }
 
             reached = "M1";
+            // 搜索期间每次多选生成都与完整枚举的前 K 对账，不符立即抛错。
+            CombatSolver.CardChoiceSupport.VerifyTopCombinationsForTesting =
+                Environment.GetEnvironmentVariable("OFFLINE_HARNESS_CHOICE_TOPK_VERIFY") == "1";
             if (Environment.GetEnvironmentVariable("OFFLINE_HARNESS_HISTORY_CHECKS") == "1")
                 HistoryCounterChecks.Run(combat!, options.OutputDirectory);
             payload["budget"] = DescribeBudget(options);
