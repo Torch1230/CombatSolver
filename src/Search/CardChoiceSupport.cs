@@ -280,15 +280,28 @@ internal static partial class CardChoiceSupport
             int combinationLimit = diversifyHandDiscard
                 ? Math.Max(branchLimit, Math.Min(256, checked(branchLimit * 8)))
                 : branchLimit;
-            BuildCombinations(
-                ordered,
-                previousEqualIndex,
-                take,
-                0,
-                combination,
-                selections,
-                firstOfSize,
-                combinationLimit);
+            // 弃牌路径已经有 8 倍枚举和自己的代表规则；其余路径按现评分取前 K，
+            // 不再保留「字典序前 K 个」——后者会在评分之前就丢掉更好的组合。
+            if (diversifyHandDiscard
+                || !TryBuildTopCombinations(
+                    spec,
+                    ordered,
+                    previousEqualIndex,
+                    take,
+                    combination,
+                    selections,
+                    combinationLimit))
+            {
+                BuildCombinations(
+                    ordered,
+                    previousEqualIndex,
+                    take,
+                    0,
+                    combination,
+                    selections,
+                    firstOfSize,
+                    combinationLimit);
+            }
             if (selections.Count > firstOfSize)
                 cardinalityRepresentatives.Add(selections[firstOfSize]);
         }
