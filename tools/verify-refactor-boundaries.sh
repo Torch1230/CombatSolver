@@ -1279,6 +1279,11 @@ for forbidden in 'Task<' 'Func<' 'Action<'; do
     forbid_fixed "$repository_root/src/Prediction/CardChoiceContinuation.cs" "$forbidden" 'continuation retained an executable closure:'
 done
 
+require_fixed "$repository_root/src/Search/CombatHistoryCounterKey.cs" 'simulator.History.GetCounters(owner)' 'history key must consume incremental totals'
+for history_file in CombatPredictionHistory.cs CombatPredictionHistory.CardContinuation.cs CombatPredictionHistory.ExecutionContinuation.cs; do
+    require_fixed "$repository_root/src/Engine/InCombat/Simulation/$history_file" '_counterOwner, _counters' 'history forks must inherit counters'
+done
+
 if ((${#violations[@]} > 0)); then
     printf '%s\n' "${violations[@]}" >&2
     printf 'Refactor boundary verification failed with %d violation(s).\n' "${#violations[@]}" >&2

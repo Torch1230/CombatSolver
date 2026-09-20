@@ -1,0 +1,1892 @@
+[
+  {
+    "root": "EQ-DEFECT-BOSS-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "EQ-DEFECT-BOSS-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-DEFECT-BOSS-00",
+      "characterId": "DEFECT",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 1
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "EQ-DEFECT-ELITE-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "EQ-DEFECT-ELITE-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-DEFECT-ELITE-00",
+      "characterId": "DEFECT",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 1
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "EQ-IRONCLAD-BOSS-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "EQ-IRONCLAD-BOSS-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-IRONCLAD-BOSS-00",
+      "characterId": "IRONCLAD",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 1
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "EQ-IRONCLAD-ELITE-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "EQ-IRONCLAD-ELITE-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-IRONCLAD-ELITE-00",
+      "characterId": "IRONCLAD",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 1
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "EQ-NECROBINDER-BOSS-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "EQ-NECROBINDER-BOSS-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-NECROBINDER-BOSS-00",
+      "characterId": "NECROBINDER",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 1
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "EQ-NECROBINDER-ELITE-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "EQ-NECROBINDER-ELITE-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-NECROBINDER-ELITE-00",
+      "characterId": "NECROBINDER",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 1
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "EQ-REGENT-BOSS-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "EQ-REGENT-BOSS-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-REGENT-BOSS-00",
+      "characterId": "REGENT",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 1
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "EQ-REGENT-ELITE-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "EQ-REGENT-ELITE-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-REGENT-ELITE-00",
+      "characterId": "REGENT",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 1
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "EQ-SILENT-BOSS-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "EQ-SILENT-BOSS-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-SILENT-BOSS-00",
+      "characterId": "SILENT",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 1
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "EQ-SILENT-ELITE-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "EQ-SILENT-ELITE-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-SILENT-ELITE-00",
+      "characterId": "SILENT",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 1
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-DEFECT-BOSS-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-DEFECT-BOSS-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-DEFECT-BOSS-00",
+      "characterId": "DEFECT",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-DEFECT-BOSS-01",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-DEFECT-BOSS-01",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-DEFECT-BOSS-01",
+      "characterId": "DEFECT",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-DEFECT-BOSS-02",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-DEFECT-BOSS-02",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-DEFECT-BOSS-02",
+      "characterId": "DEFECT",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-DEFECT-BOSS-03",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-DEFECT-BOSS-03",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-DEFECT-BOSS-03",
+      "characterId": "DEFECT",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-DEFECT-ELITE-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-DEFECT-ELITE-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-DEFECT-ELITE-00",
+      "characterId": "DEFECT",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-DEFECT-ELITE-01",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-DEFECT-ELITE-01",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-DEFECT-ELITE-01",
+      "characterId": "DEFECT",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-DEFECT-ELITE-02",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-DEFECT-ELITE-02",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-DEFECT-ELITE-02",
+      "characterId": "DEFECT",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-DEFECT-ELITE-03",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-DEFECT-ELITE-03",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-DEFECT-ELITE-03",
+      "characterId": "DEFECT",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-IRONCLAD-BOSS-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-IRONCLAD-BOSS-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-IRONCLAD-BOSS-00",
+      "characterId": "IRONCLAD",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-IRONCLAD-BOSS-01",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-IRONCLAD-BOSS-01",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-IRONCLAD-BOSS-01",
+      "characterId": "IRONCLAD",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-IRONCLAD-BOSS-02",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-IRONCLAD-BOSS-02",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-IRONCLAD-BOSS-02",
+      "characterId": "IRONCLAD",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-IRONCLAD-BOSS-03",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-IRONCLAD-BOSS-03",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-IRONCLAD-BOSS-03",
+      "characterId": "IRONCLAD",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-IRONCLAD-ELITE-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-IRONCLAD-ELITE-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-IRONCLAD-ELITE-00",
+      "characterId": "IRONCLAD",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-IRONCLAD-ELITE-01",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-IRONCLAD-ELITE-01",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-IRONCLAD-ELITE-01",
+      "characterId": "IRONCLAD",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-IRONCLAD-ELITE-02",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-IRONCLAD-ELITE-02",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-IRONCLAD-ELITE-02",
+      "characterId": "IRONCLAD",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-IRONCLAD-ELITE-03",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-IRONCLAD-ELITE-03",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-IRONCLAD-ELITE-03",
+      "characterId": "IRONCLAD",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-NECROBINDER-BOSS-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-NECROBINDER-BOSS-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-NECROBINDER-BOSS-00",
+      "characterId": "NECROBINDER",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-NECROBINDER-BOSS-01",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-NECROBINDER-BOSS-01",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-NECROBINDER-BOSS-01",
+      "characterId": "NECROBINDER",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-NECROBINDER-BOSS-02",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-NECROBINDER-BOSS-02",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-NECROBINDER-BOSS-02",
+      "characterId": "NECROBINDER",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-NECROBINDER-BOSS-03",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-NECROBINDER-BOSS-03",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-NECROBINDER-BOSS-03",
+      "characterId": "NECROBINDER",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-NECROBINDER-ELITE-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-NECROBINDER-ELITE-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-NECROBINDER-ELITE-00",
+      "characterId": "NECROBINDER",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-NECROBINDER-ELITE-01",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-NECROBINDER-ELITE-01",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-NECROBINDER-ELITE-01",
+      "characterId": "NECROBINDER",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-NECROBINDER-ELITE-02",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-NECROBINDER-ELITE-02",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-NECROBINDER-ELITE-02",
+      "characterId": "NECROBINDER",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-NECROBINDER-ELITE-03",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-NECROBINDER-ELITE-03",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-NECROBINDER-ELITE-03",
+      "characterId": "NECROBINDER",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-REGENT-BOSS-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-REGENT-BOSS-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-REGENT-BOSS-00",
+      "characterId": "REGENT",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-REGENT-BOSS-01",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-REGENT-BOSS-01",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-REGENT-BOSS-01",
+      "characterId": "REGENT",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-REGENT-BOSS-02",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-REGENT-BOSS-02",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-REGENT-BOSS-02",
+      "characterId": "REGENT",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-REGENT-BOSS-03",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-REGENT-BOSS-03",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-REGENT-BOSS-03",
+      "characterId": "REGENT",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-REGENT-ELITE-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-REGENT-ELITE-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-REGENT-ELITE-00",
+      "characterId": "REGENT",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-REGENT-ELITE-01",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-REGENT-ELITE-01",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-REGENT-ELITE-01",
+      "characterId": "REGENT",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-REGENT-ELITE-02",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-REGENT-ELITE-02",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-REGENT-ELITE-02",
+      "characterId": "REGENT",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-REGENT-ELITE-03",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-REGENT-ELITE-03",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-REGENT-ELITE-03",
+      "characterId": "REGENT",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-SILENT-BOSS-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-SILENT-BOSS-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-SILENT-BOSS-00",
+      "characterId": "SILENT",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-SILENT-BOSS-01",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-SILENT-BOSS-01",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-SILENT-BOSS-01",
+      "characterId": "SILENT",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-SILENT-BOSS-02",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-SILENT-BOSS-02",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-SILENT-BOSS-02",
+      "characterId": "SILENT",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-SILENT-BOSS-03",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-SILENT-BOSS-03",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-SILENT-BOSS-03",
+      "characterId": "SILENT",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-SILENT-ELITE-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-SILENT-ELITE-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-SILENT-ELITE-00",
+      "characterId": "SILENT",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-SILENT-ELITE-01",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-SILENT-ELITE-01",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-SILENT-ELITE-01",
+      "characterId": "SILENT",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-SILENT-ELITE-02",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-SILENT-ELITE-02",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-SILENT-ELITE-02",
+      "characterId": "SILENT",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "FULL-SILENT-ELITE-03",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "FULL-SILENT-ELITE-03",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-SILENT-ELITE-03",
+      "characterId": "SILENT",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 2
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "GA-DEFECT-BOSS-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "GA-DEFECT-BOSS-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-DEFECT-BOSS-00",
+      "characterId": "DEFECT",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2,
+        "ids": [
+          "GOLD_AXE"
+        ]
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 1
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "GA-DEFECT-ELITE-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "GA-DEFECT-ELITE-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-DEFECT-ELITE-00",
+      "characterId": "DEFECT",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2,
+        "ids": [
+          "GOLD_AXE"
+        ]
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 1
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "GA-IRONCLAD-BOSS-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "GA-IRONCLAD-BOSS-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-IRONCLAD-BOSS-00",
+      "characterId": "IRONCLAD",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2,
+        "ids": [
+          "GOLD_AXE"
+        ]
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 1
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "GA-IRONCLAD-ELITE-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "GA-IRONCLAD-ELITE-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-IRONCLAD-ELITE-00",
+      "characterId": "IRONCLAD",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2,
+        "ids": [
+          "GOLD_AXE"
+        ]
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 1
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "GA-NECROBINDER-BOSS-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "GA-NECROBINDER-BOSS-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-NECROBINDER-BOSS-00",
+      "characterId": "NECROBINDER",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2,
+        "ids": [
+          "GOLD_AXE"
+        ]
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 1
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "GA-NECROBINDER-ELITE-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "GA-NECROBINDER-ELITE-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-NECROBINDER-ELITE-00",
+      "characterId": "NECROBINDER",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2,
+        "ids": [
+          "GOLD_AXE"
+        ]
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 1
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "GA-REGENT-BOSS-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "GA-REGENT-BOSS-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-REGENT-BOSS-00",
+      "characterId": "REGENT",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2,
+        "ids": [
+          "GOLD_AXE"
+        ]
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 1
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "GA-REGENT-ELITE-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "GA-REGENT-ELITE-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-REGENT-ELITE-00",
+      "characterId": "REGENT",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2,
+        "ids": [
+          "GOLD_AXE"
+        ]
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 1
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "GA-SILENT-BOSS-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "GA-SILENT-BOSS-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-SILENT-BOSS-00",
+      "characterId": "SILENT",
+      "ascension": 10,
+      "encounterKind": "Boss",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2,
+        "ids": [
+          "GOLD_AXE"
+        ]
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 1
+      },
+      "mode": "Setup"
+    }
+  },
+  {
+    "root": "GA-SILENT-ELITE-00",
+    "request": {
+      "schemaVersion": 1,
+      "scenarioId": "GA-SILENT-ELITE-00",
+      "cards": []
+    },
+    "spec": {
+      "schemaVersion": 1,
+      "seed": "BIG-20260914-SILENT-ELITE-00",
+      "characterId": "SILENT",
+      "ascension": 10,
+      "encounterKind": "Elite",
+      "includeStartingDeck": true,
+      "includeStartingRelics": true,
+      "includeAscendersBane": true,
+      "characterCards": {
+        "count": 8
+      },
+      "colorlessCards": {
+        "count": 2,
+        "ids": [
+          "GOLD_AXE"
+        ]
+      },
+      "relics": {
+        "count": 5
+      },
+      "potions": {
+        "count": 1
+      },
+      "mode": "Setup"
+    }
+  }
+]

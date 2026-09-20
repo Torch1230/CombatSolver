@@ -1595,6 +1595,15 @@ foreach ($forbidden in @('Task<', 'Func<', 'Action<')) {
     }
 }
 
+if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot 'src/Search/CombatHistoryCounterKey.cs') -SimpleMatch 'simulator.History.GetCounters(owner)' -Quiet)) {
+    $violations.Add('History key must consume incremental totals')
+}
+foreach ($historyFile in @('CombatPredictionHistory.cs', 'CombatPredictionHistory.CardContinuation.cs', 'CombatPredictionHistory.ExecutionContinuation.cs')) {
+    if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot "src/Engine/InCombat/Simulation/$historyFile") -SimpleMatch '_counterOwner, _counters' -Quiet)) {
+        $violations.Add("History fork must inherit counters: $historyFile")
+    }
+}
+
 if ($violations.Count -gt 0) {
     $violations | ForEach-Object { Write-Error $_ }
     throw "Refactor boundary verification failed with $($violations.Count) violation(s)."

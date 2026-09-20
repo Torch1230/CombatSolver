@@ -1,0 +1,854 @@
+{
+  "baseline": "8be1410",
+  "configuration": {
+    "profile": "High",
+    "beam": 90,
+    "nodes": 50000,
+    "searchMode": "Coordinator",
+    "potionPolicy": "Smart",
+    "dop": 1
+  },
+  "comparison": {
+    "EQ": {
+      "roots": 10,
+      "fields": 992,
+      "differences": 0
+    },
+    "FULL": {
+      "roots": 40,
+      "fields": 3743,
+      "differences": 0
+    },
+    "GA": {
+      "roots": 10,
+      "fields": 935,
+      "differences": 0
+    },
+    "extraDifferences": []
+  },
+  "rows": [
+    {
+      "root": "EQ-DEFECT-BOSS-00",
+      "comparedFields": 83,
+      "mismatches": 0,
+      "expanded": 15006,
+      "transitions": 53693,
+      "hpLost": 0,
+      "potions": [],
+      "score": -1000014104020
+    },
+    {
+      "root": "EQ-DEFECT-ELITE-00",
+      "comparedFields": 93,
+      "mismatches": 0,
+      "expanded": 11046,
+      "transitions": 45350,
+      "hpLost": 0,
+      "potions": [],
+      "score": 10002169970
+    },
+    {
+      "root": "EQ-IRONCLAD-BOSS-00",
+      "comparedFields": 100,
+      "mismatches": 0,
+      "expanded": 38331,
+      "transitions": 185749,
+      "hpLost": 62,
+      "potions": [],
+      "score": 9998619963
+    },
+    {
+      "root": "EQ-IRONCLAD-ELITE-00",
+      "comparedFields": 105,
+      "mismatches": 0,
+      "expanded": 12648,
+      "transitions": 58563,
+      "hpLost": 74,
+      "potions": [
+        {
+          "id": "COLORLESS_POTION",
+          "title": "COLORLESS_POTION.title",
+          "turn": 7,
+          "slot": 0
+        }
+      ],
+      "score": 9997912958
+    },
+    {
+      "root": "EQ-NECROBINDER-BOSS-00",
+      "comparedFields": 133,
+      "mismatches": 0,
+      "expanded": 34889,
+      "transitions": 184243,
+      "hpLost": 56,
+      "potions": [],
+      "score": 9998144930
+    },
+    {
+      "root": "EQ-NECROBINDER-ELITE-00",
+      "comparedFields": 82,
+      "mismatches": 0,
+      "expanded": 29052,
+      "transitions": 232843,
+      "hpLost": 8,
+      "potions": [
+        {
+          "id": "SNECKO_OIL",
+          "title": "SNECKO_OIL.title",
+          "turn": 1,
+          "slot": 0
+        }
+      ],
+      "score": 10001439981
+    },
+    {
+      "root": "EQ-REGENT-BOSS-00",
+      "comparedFields": 105,
+      "mismatches": 0,
+      "expanded": 59205,
+      "transitions": 439921,
+      "hpLost": 48,
+      "potions": [],
+      "score": 9999189958
+    },
+    {
+      "root": "EQ-REGENT-ELITE-00",
+      "comparedFields": 86,
+      "mismatches": 0,
+      "expanded": 90972,
+      "transitions": 631260,
+      "hpLost": 52,
+      "potions": [],
+      "score": 9999129977
+    },
+    {
+      "root": "EQ-SILENT-BOSS-00",
+      "comparedFields": 109,
+      "mismatches": 0,
+      "expanded": 46705,
+      "transitions": 157176,
+      "hpLost": 35,
+      "potions": [],
+      "score": 9999959954
+    },
+    {
+      "root": "EQ-SILENT-ELITE-00",
+      "comparedFields": 96,
+      "mismatches": 0,
+      "expanded": 41971,
+      "transitions": 155609,
+      "hpLost": 70,
+      "potions": [],
+      "score": -1000003934033
+    },
+    {
+      "root": "FULL-DEFECT-BOSS-00",
+      "comparedFields": 83,
+      "mismatches": 0,
+      "expanded": 21014,
+      "transitions": 80754,
+      "hpLost": 0,
+      "potions": [],
+      "score": -1000014104020
+    },
+    {
+      "root": "FULL-DEFECT-BOSS-01",
+      "comparedFields": 107,
+      "mismatches": 0,
+      "expanded": 17510,
+      "transitions": 66593,
+      "hpLost": 75,
+      "potions": [],
+      "score": -1000004582044
+    },
+    {
+      "root": "FULL-DEFECT-BOSS-02",
+      "comparedFields": 102,
+      "mismatches": 0,
+      "expanded": 32887,
+      "transitions": 143425,
+      "hpLost": 71,
+      "potions": [],
+      "score": 9997967961
+    },
+    {
+      "root": "FULL-DEFECT-BOSS-03",
+      "comparedFields": 79,
+      "mismatches": 0,
+      "expanded": 24113,
+      "transitions": 86439,
+      "hpLost": 75,
+      "potions": [],
+      "score": -1000007690016
+    },
+    {
+      "root": "FULL-DEFECT-ELITE-00",
+      "comparedFields": 93,
+      "mismatches": 0,
+      "expanded": 11083,
+      "transitions": 49739,
+      "hpLost": 0,
+      "potions": [],
+      "score": 10002169970
+    },
+    {
+      "root": "FULL-DEFECT-ELITE-01",
+      "comparedFields": 77,
+      "mismatches": 0,
+      "expanded": 20515,
+      "transitions": 75019,
+      "hpLost": 0,
+      "potions": [
+        {
+          "id": "ESSENCE_OF_DARKNESS",
+          "title": "ESSENCE_OF_DARKNESS.title",
+          "turn": 1,
+          "slot": 0
+        }
+      ],
+      "score": 10002250986
+    },
+    {
+      "root": "FULL-DEFECT-ELITE-02",
+      "comparedFields": 84,
+      "mismatches": 0,
+      "expanded": 21194,
+      "transitions": 61564,
+      "hpLost": 14,
+      "potions": [
+        {
+          "id": "ENERGY_POTION",
+          "title": "ENERGY_POTION.title",
+          "turn": 2,
+          "slot": 1
+        }
+      ],
+      "score": 10001297979
+    },
+    {
+      "root": "FULL-DEFECT-ELITE-03",
+      "comparedFields": 105,
+      "mismatches": 0,
+      "expanded": 30978,
+      "transitions": 126422,
+      "hpLost": 70,
+      "potions": [
+        {
+          "id": "LIQUID_MEMORIES",
+          "title": "LIQUID_MEMORIES.title",
+          "turn": 5,
+          "slot": 1
+        },
+        {
+          "id": "BOTTLED_POTENTIAL",
+          "title": "BOTTLED_POTENTIAL.title",
+          "turn": 7,
+          "slot": 0
+        }
+      ],
+      "score": 9997785958
+    },
+    {
+      "root": "FULL-IRONCLAD-BOSS-00",
+      "comparedFields": 110,
+      "mismatches": 0,
+      "expanded": 40149,
+      "transitions": 193034,
+      "hpLost": 63,
+      "potions": [],
+      "score": 9998739953
+    },
+    {
+      "root": "FULL-IRONCLAD-BOSS-01",
+      "comparedFields": 96,
+      "mismatches": 0,
+      "expanded": 10134,
+      "transitions": 35822,
+      "hpLost": 73,
+      "potions": [
+        {
+          "id": "SKILL_POTION",
+          "title": "SKILL_POTION.title",
+          "turn": 4,
+          "slot": 0
+        }
+      ],
+      "score": 9997859967
+    },
+    {
+      "root": "FULL-IRONCLAD-BOSS-02",
+      "comparedFields": 110,
+      "mismatches": 0,
+      "expanded": 68345,
+      "transitions": 214480,
+      "hpLost": 16,
+      "potions": [],
+      "score": 10001755953
+    },
+    {
+      "root": "FULL-IRONCLAD-BOSS-03",
+      "comparedFields": 95,
+      "mismatches": 0,
+      "expanded": 50606,
+      "transitions": 354626,
+      "hpLost": 23,
+      "potions": [],
+      "score": 10000919968
+    },
+    {
+      "root": "FULL-IRONCLAD-ELITE-00",
+      "comparedFields": 112,
+      "mismatches": 0,
+      "expanded": 16713,
+      "transitions": 79314,
+      "hpLost": 41,
+      "potions": [
+        {
+          "id": "SKILL_POTION",
+          "title": "SKILL_POTION.title",
+          "turn": 4,
+          "slot": 1
+        }
+      ],
+      "score": 9999879951
+    },
+    {
+      "root": "FULL-IRONCLAD-ELITE-01",
+      "comparedFields": 92,
+      "mismatches": 0,
+      "expanded": 31621,
+      "transitions": 236943,
+      "hpLost": 44,
+      "potions": [],
+      "score": 9999751971
+    },
+    {
+      "root": "FULL-IRONCLAD-ELITE-02",
+      "comparedFields": 75,
+      "mismatches": 0,
+      "expanded": 20375,
+      "transitions": 109023,
+      "hpLost": 80,
+      "potions": [],
+      "score": -1000004050012
+    },
+    {
+      "root": "FULL-IRONCLAD-ELITE-03",
+      "comparedFields": 94,
+      "mismatches": 0,
+      "expanded": 19436,
+      "transitions": 68486,
+      "hpLost": 51,
+      "potions": [
+        {
+          "id": "OROBIC_ACID",
+          "title": "OROBIC_ACID.title",
+          "turn": 2,
+          "slot": 1
+        }
+      ],
+      "score": 9999168969
+    },
+    {
+      "root": "FULL-NECROBINDER-BOSS-00",
+      "comparedFields": 80,
+      "mismatches": 0,
+      "expanded": 45200,
+      "transitions": 223288,
+      "hpLost": 22,
+      "potions": [],
+      "score": -1000003488017
+    },
+    {
+      "root": "FULL-NECROBINDER-BOSS-01",
+      "comparedFields": 81,
+      "mismatches": 0,
+      "expanded": 10241,
+      "transitions": 53455,
+      "hpLost": 66,
+      "potions": [],
+      "score": -1000007470018
+    },
+    {
+      "root": "FULL-NECROBINDER-BOSS-02",
+      "comparedFields": 82,
+      "mismatches": 0,
+      "expanded": 21334,
+      "transitions": 92996,
+      "hpLost": 2,
+      "potions": [],
+      "score": -1000002698019
+    },
+    {
+      "root": "FULL-NECROBINDER-BOSS-03",
+      "comparedFields": 83,
+      "mismatches": 0,
+      "expanded": 21318,
+      "transitions": 77560,
+      "hpLost": 23,
+      "potions": [],
+      "score": -1000003598020
+    },
+    {
+      "root": "FULL-NECROBINDER-ELITE-00",
+      "comparedFields": 82,
+      "mismatches": 0,
+      "expanded": 30093,
+      "transitions": 242205,
+      "hpLost": 8,
+      "potions": [
+        {
+          "id": "SNECKO_OIL",
+          "title": "SNECKO_OIL.title",
+          "turn": 1,
+          "slot": 0
+        }
+      ],
+      "score": 10001439981
+    },
+    {
+      "root": "FULL-NECROBINDER-ELITE-01",
+      "comparedFields": 80,
+      "mismatches": 0,
+      "expanded": 60408,
+      "transitions": 313933,
+      "hpLost": 54,
+      "potions": [],
+      "score": -1000002910017
+    },
+    {
+      "root": "FULL-NECROBINDER-ELITE-02",
+      "comparedFields": 86,
+      "mismatches": 0,
+      "expanded": 8323,
+      "transitions": 31384,
+      "hpLost": 5,
+      "potions": [],
+      "score": 10001656977
+    },
+    {
+      "root": "FULL-NECROBINDER-ELITE-03",
+      "comparedFields": 87,
+      "mismatches": 0,
+      "expanded": 29372,
+      "transitions": 113196,
+      "hpLost": 11,
+      "potions": [
+        {
+          "id": "POTION_OF_BINDING",
+          "title": "POTION_OF_BINDING.title",
+          "turn": 2,
+          "slot": 0
+        },
+        {
+          "id": "FIRE_POTION",
+          "title": "FIRE_POTION.title",
+          "turn": 3,
+          "slot": 1
+        }
+      ],
+      "score": 10001344976
+    },
+    {
+      "root": "FULL-REGENT-BOSS-00",
+      "comparedFields": 109,
+      "mismatches": 0,
+      "expanded": 63504,
+      "transitions": 462811,
+      "hpLost": 49,
+      "potions": [],
+      "score": 9999129954
+    },
+    {
+      "root": "FULL-REGENT-BOSS-01",
+      "comparedFields": 104,
+      "mismatches": 0,
+      "expanded": 29965,
+      "transitions": 126904,
+      "hpLost": 75,
+      "potions": [],
+      "score": -1000003954041
+    },
+    {
+      "root": "FULL-REGENT-BOSS-02",
+      "comparedFields": 103,
+      "mismatches": 0,
+      "expanded": 26836,
+      "transitions": 132794,
+      "hpLost": 62,
+      "potions": [],
+      "score": 9998514960
+    },
+    {
+      "root": "FULL-REGENT-BOSS-03",
+      "comparedFields": 92,
+      "mismatches": 0,
+      "expanded": 18927,
+      "transitions": 81638,
+      "hpLost": 75,
+      "potions": [],
+      "score": -1000005520029
+    },
+    {
+      "root": "FULL-REGENT-ELITE-00",
+      "comparedFields": 87,
+      "mismatches": 0,
+      "expanded": 105019,
+      "transitions": 791155,
+      "hpLost": 52,
+      "potions": [],
+      "score": 9999129976
+    },
+    {
+      "root": "FULL-REGENT-ELITE-01",
+      "comparedFields": 82,
+      "mismatches": 0,
+      "expanded": 14976,
+      "transitions": 107953,
+      "hpLost": 18,
+      "potions": [],
+      "score": 10001169981
+    },
+    {
+      "root": "FULL-REGENT-ELITE-02",
+      "comparedFields": 90,
+      "mismatches": 0,
+      "expanded": 34468,
+      "transitions": 133765,
+      "hpLost": 65,
+      "potions": [
+        {
+          "id": "CLARITY",
+          "title": "CLARITY.title",
+          "turn": 2,
+          "slot": 1
+        },
+        {
+          "id": "STAR_POTION",
+          "title": "STAR_POTION.title",
+          "turn": 2,
+          "slot": 0
+        }
+      ],
+      "score": 9998173973
+    },
+    {
+      "root": "FULL-REGENT-ELITE-03",
+      "comparedFields": 107,
+      "mismatches": 0,
+      "expanded": 18948,
+      "transitions": 108417,
+      "hpLost": 68,
+      "potions": [
+        {
+          "id": "ENTROPIC_BREW",
+          "title": "ENTROPIC_BREW.title",
+          "turn": 5,
+          "slot": 1
+        },
+        {
+          "id": "SWIFT_POTION",
+          "title": "SWIFT_POTION",
+          "turn": 5,
+          "slot": 1
+        }
+      ],
+      "score": 9997629956
+    },
+    {
+      "root": "FULL-SILENT-BOSS-00",
+      "comparedFields": 109,
+      "mismatches": 0,
+      "expanded": 46191,
+      "transitions": 155753,
+      "hpLost": 35,
+      "potions": [],
+      "score": 9999959954
+    },
+    {
+      "root": "FULL-SILENT-BOSS-01",
+      "comparedFields": 112,
+      "mismatches": 0,
+      "expanded": 36080,
+      "transitions": 149580,
+      "hpLost": 55,
+      "potions": [],
+      "score": 9998619951
+    },
+    {
+      "root": "FULL-SILENT-BOSS-02",
+      "comparedFields": 99,
+      "mismatches": 0,
+      "expanded": 44175,
+      "transitions": 208384,
+      "hpLost": 70,
+      "potions": [],
+      "score": -1000003500036
+    },
+    {
+      "root": "FULL-SILENT-BOSS-03",
+      "comparedFields": 91,
+      "mismatches": 0,
+      "expanded": 11193,
+      "transitions": 42189,
+      "hpLost": 70,
+      "potions": [],
+      "score": -1000006948028
+    },
+    {
+      "root": "FULL-SILENT-ELITE-00",
+      "comparedFields": 96,
+      "mismatches": 0,
+      "expanded": 51362,
+      "transitions": 193324,
+      "hpLost": 70,
+      "potions": [],
+      "score": -1000003934033
+    },
+    {
+      "root": "FULL-SILENT-ELITE-01",
+      "comparedFields": 97,
+      "mismatches": 0,
+      "expanded": 25940,
+      "transitions": 139616,
+      "hpLost": 70,
+      "potions": [],
+      "score": -1000003894034
+    },
+    {
+      "root": "FULL-SILENT-ELITE-02",
+      "comparedFields": 98,
+      "mismatches": 0,
+      "expanded": 29865,
+      "transitions": 230964,
+      "hpLost": 62,
+      "potions": [
+        {
+          "id": "COLORLESS_POTION",
+          "title": "COLORLESS_POTION.title",
+          "turn": 4,
+          "slot": 0
+        },
+        {
+          "id": "DUPLICATOR",
+          "title": "DUPLICATOR.title",
+          "turn": 5,
+          "slot": 1
+        }
+      ],
+      "score": 9998279965
+    },
+    {
+      "root": "FULL-SILENT-ELITE-03",
+      "comparedFields": 92,
+      "mismatches": 0,
+      "expanded": 150000,
+      "transitions": 1123579,
+      "hpLost": 29,
+      "potions": [
+        {
+          "id": "ATTACK_POTION",
+          "title": "ATTACK_POTION.title",
+          "turn": 2,
+          "slot": 0
+        },
+        {
+          "id": "POISON_POTION",
+          "title": "POISON_POTION.title",
+          "turn": 2,
+          "slot": 1
+        }
+      ],
+      "score": 9999839971
+    },
+    {
+      "root": "GA-DEFECT-BOSS-00",
+      "comparedFields": 92,
+      "mismatches": 0,
+      "expanded": 13105,
+      "transitions": 46192,
+      "hpLost": 23,
+      "potions": [],
+      "score": -1000014356029
+    },
+    {
+      "root": "GA-DEFECT-ELITE-00",
+      "comparedFields": 88,
+      "mismatches": 0,
+      "expanded": 28019,
+      "transitions": 128373,
+      "hpLost": 20,
+      "potions": [],
+      "score": 10000985975
+    },
+    {
+      "root": "GA-IRONCLAD-BOSS-00",
+      "comparedFields": 105,
+      "mismatches": 0,
+      "expanded": 67731,
+      "transitions": 336130,
+      "hpLost": 51,
+      "potions": [],
+      "score": 9999519958
+    },
+    {
+      "root": "GA-IRONCLAD-ELITE-00",
+      "comparedFields": 96,
+      "mismatches": 0,
+      "expanded": 12145,
+      "transitions": 52166,
+      "hpLost": 80,
+      "potions": [],
+      "score": -1000003280033
+    },
+    {
+      "root": "GA-NECROBINDER-BOSS-00",
+      "comparedFields": 80,
+      "mismatches": 0,
+      "expanded": 17764,
+      "transitions": 70491,
+      "hpLost": 22,
+      "potions": [],
+      "score": -1000003488017
+    },
+    {
+      "root": "GA-NECROBINDER-ELITE-00",
+      "comparedFields": 85,
+      "mismatches": 0,
+      "expanded": 28338,
+      "transitions": 199367,
+      "hpLost": 5,
+      "potions": [
+        {
+          "id": "SNECKO_OIL",
+          "title": "SNECKO_OIL.title",
+          "turn": 1,
+          "slot": 0
+        }
+      ],
+      "score": 10001679978
+    },
+    {
+      "root": "GA-REGENT-BOSS-00",
+      "comparedFields": 103,
+      "mismatches": 0,
+      "expanded": 49756,
+      "transitions": 394392,
+      "hpLost": 43,
+      "potions": [],
+      "score": 9999549960
+    },
+    {
+      "root": "GA-REGENT-ELITE-00",
+      "comparedFields": 78,
+      "mismatches": 0,
+      "expanded": 120524,
+      "transitions": 1002805,
+      "hpLost": 30,
+      "potions": [],
+      "score": 10000309985
+    },
+    {
+      "root": "GA-SILENT-BOSS-00",
+      "comparedFields": 111,
+      "mismatches": 0,
+      "expanded": 46314,
+      "transitions": 151676,
+      "hpLost": 44,
+      "potions": [],
+      "score": 9999299952
+    },
+    {
+      "root": "GA-SILENT-ELITE-00",
+      "comparedFields": 97,
+      "mismatches": 0,
+      "expanded": 35925,
+      "transitions": 135139,
+      "hpLost": 70,
+      "potions": [],
+      "score": -1000004074034
+    }
+  ],
+  "microbenchmark": {
+    "checks": 21,
+    "status": "Passed",
+    "historyEvents": 523,
+    "iterations": 20000,
+    "timings": [
+      {
+        "repeat": 0,
+        "scanMs": 368.3641,
+        "incrementalMs": 0.7201
+      },
+      {
+        "repeat": 1,
+        "scanMs": 164.8787,
+        "incrementalMs": 0.7099
+      },
+      {
+        "repeat": 2,
+        "scanMs": 34.8729,
+        "incrementalMs": 0.2039
+      },
+      {
+        "repeat": 3,
+        "scanMs": 33.7792,
+        "incrementalMs": 0.1715
+      },
+      {
+        "repeat": 4,
+        "scanMs": 35.4936,
+        "incrementalMs": 0.1677
+      },
+      {
+        "repeat": 5,
+        "scanMs": 36.3107,
+        "incrementalMs": 0.1551
+      }
+    ],
+    "checksum": "StateFingerprint { First = 6698756229452733731, Second = 1930065965597842897 }"
+  },
+  "selectedLanePhaseMeasurements": [
+    {
+      "label": "measure-B-GA-DEFECT-ELITE-00",
+      "fingerprintMs": 96.0,
+      "fingerprintAllocatedBytes": 4538168,
+      "measuredLaneExpanded": 8301,
+      "measuredLaneTransitions": 38164,
+      "requestExpanded": 28019,
+      "requestTransitions": 128373
+    },
+    {
+      "label": "measure-B-GA-NECROBINDER-ELITE-00",
+      "fingerprintMs": 70.8,
+      "fingerprintAllocatedBytes": 10528568,
+      "measuredLaneExpanded": 8112,
+      "measuredLaneTransitions": 56577,
+      "requestExpanded": 28338,
+      "requestTransitions": 199367
+    },
+    {
+      "label": "measure-main-GA-DEFECT-ELITE-00",
+      "fingerprintMs": 271.8,
+      "fingerprintAllocatedBytes": 16406736,
+      "measuredLaneExpanded": 8301,
+      "measuredLaneTransitions": 38164,
+      "requestExpanded": 28019,
+      "requestTransitions": 128373
+    },
+    {
+      "label": "measure-main-GA-NECROBINDER-ELITE-00",
+      "fingerprintMs": 99.5,
+      "fingerprintAllocatedBytes": 22876424,
+      "measuredLaneExpanded": 8112,
+      "measuredLaneTransitions": 56577,
+      "requestExpanded": 28338,
+      "requestTransitions": 199367
+    }
+  ],
+  "dllSha256": {
+    "main": "ffca89ea49c24fc72a50471236aa93da8adeb0cfd4c2d69018da23a1ba0362de",
+    "B": "d27d2a6a925a4064bb7a1e3325e58d59e94e5587fbb39c7b50ae2293f3817fb1",
+    "Bverify": "dcbb174812721af89df0966cb6a60e29a73ec0b257bbcc3e7ab7b6c3be04f181"
+  }
+}

@@ -1,9 +1,12 @@
 # CombatSolver 测试清单
 
-## 下一版本（开发中）：路线缓存与录像的故障隔离
+## 下一版本（开发中）：路线缓存与增量历史计数
 
 - 离线宿主 `OFFLINE_HARNESS_ANCILLARY_CHECKS=1`（DEFECT、`FUZZY_WURM_CRAWLER_WEAK`、High、DOP 1）在一次真实求解结果上注入磁盘故障，17 项通过：正常写读往返、临时文件清理、坏 JSON 与空路线按未命中处理并改名 `.bad`、隔离后同一键可重新写入、独占文件锁按未命中处理且不隔离、解锁后可读、缓存目录被文件占位、Unix 只读目录、目标路径被目录占用、结果序列化字节不变、取消异常传播、普通失败只记一次日志。macOS 本机运行；Windows 的文件锁语义未验证。
 - 录像采集与打包的隔离、打包调用顺序调整只经过编译和结构门禁，未在游戏内验证；符合录像条件的进阶 10 第三幕 Boss 无伤路线本机没有复现条件。
+- `OFFLINE_HARNESS_HISTORY_CHECKS=1`，DEFECT、`--milestone M1`：21 项通过。检查原始/完成事件、嵌套自动出牌、两种暂停续接、普通 Fork、父/根隔离和键位一致性。
+- `-p:VerifyHistoryCounters=true` 逐事件及 Fork/构键读取核对独立全扫描。语料、构键计时与验证范围见 [专题](strategy/incremental-history-counters.md)。
+- EQ 10 / FULL 40 / GA 10 对照 `8be1410`：60 根有效，5,670 个确定性字段及补充预算/剪枝字段一致。普通构建另测两个根的选中通道构键阶段，数据见专题。变基到 0.43.0（`cccc270`）后重跑 EQ 10 根，`compare_results.py` 992 字段 `IDENTICAL`。
 
 ## 0.43.1：英文界面启动与疯狂科学成长策略
 
