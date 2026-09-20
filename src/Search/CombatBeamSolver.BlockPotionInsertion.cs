@@ -1,3 +1,6 @@
+using CombatSolver.Engine.Common;
+using CombatSolver.Engine.InCombat.Simulation;
+
 namespace CombatSolver;
 
 internal sealed partial class CombatBeamSolver
@@ -81,11 +84,11 @@ internal sealed partial class CombatBeamSolver
             insertionIndex + 1,
             originalActions.Length - insertionIndex);
 
-        SearchNode inserted = ReplayInsertedRoute(
+        SearchNode inserted = ReplayAdjustedRoute(
             insertedActions,
             original.GetTurnSetupChoices(),
             original.GetTurnSetupPlayState(),
-            originalAnnotations);
+            originalAnnotations) ?? throw new InvalidOperationException("格挡药路线回放意外未生成候选。");
         RouteAnnotations insertedAnnotations = BuildRouteAnnotations(inserted);
         int hpSaved = original.Snapshot.CumulativePlayerHpLost
             - inserted.Snapshot.CumulativePlayerHpLost;
@@ -116,11 +119,12 @@ internal sealed partial class CombatBeamSolver
             hpSaved);
     }
 
-    private SearchNode ReplayInsertedRoute(
+    private SearchNode? ReplayAdjustedRoute(
         IReadOnlyList<PlanAction> actions,
         IReadOnlyList<PlanCardChoice> turnSetupChoices,
         ContinuationStamp? turnSetupPlayState,
-        RouteAnnotations originalAnnotations)
+        RouteAnnotations originalAnnotations,
+        bool frontloadAfterimages = false)
     {
         SimulationSnapshot rootSnapshot = _includeTurnSetup
             ? ReplayTurnSetup(turnSetupChoices)
@@ -146,15 +150,44 @@ internal sealed partial class CombatBeamSolver
             TurnSetupChoices: turnSetupChoices,
             TurnSetupPlayState: turnSetupPlayState);
 
+        PlanAction[] replayActions = actions.ToArray();
+        bool reordered = false;
         try
         {
-            foreach (PlanAction action in actions)
+            for (int index = 0; index < replayActions.Length; index++)
             {
+                if (frontloadAfterimages
+                    && (index == 0 || replayActions[index - 1].Turn != current.Turn))
+                {
+                    reordered |= FrontloadAvailableAfterimages(
+                        current.Snapshot,
+                        replayActions,
+                        index);
+                }
+                PlanAction action = replayActions[index];
                 if (action.Turn != current.Turn)
                 {
+                    if (frontloadAfterimages)
+                    {
+                        current.Snapshot.ReleaseSimulator();
+                        return null;
+                    }
                     throw new InvalidOperationException(
-                        $"格挡药插入路线的动作回合不连续：action_turn={action.Turn} " +
+                        $"调整路线的动作回合不连续：action_turn={action.Turn} " +
                         $"state_turn={current.Turn}。");
+                }
+
+                if (frontloadAfterimages && action.Kind == PlanActionKind.PlayCard)
+                {
+                    CombatPredictionSimulator simulator = current.Snapshot.Simulator;
+                    SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(_player);
+                    PredictedCard? card = FindCardForReplay(playerState.Hand.Cards, action);
+                    if (card == null || !((SimulatedCombatState)simulator.State.CombatState)
+                            .CanPlayCard(simulator, card))
+                    {
+                        current.Snapshot.ReleaseSimulator();
+                        return null;
+                    }
                 }
 
                 SearchNode parent = current;
@@ -228,7 +261,17 @@ internal sealed partial class CombatBeamSolver
                 };
                 parent.Snapshot.ReleaseSimulator();
             }
+            if (frontloadAfterimages && !reordered)
+            {
+                current.Snapshot.ReleaseSimulator();
+                return null;
+            }
             return current;
+        }
+        catch (InvalidPlannedChoiceBranchException) when (frontloadAfterimages)
+        {
+            current.Snapshot.ReleaseSimulator();
+            return null;
         }
         catch
         {
