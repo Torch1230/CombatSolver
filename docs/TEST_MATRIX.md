@@ -4,7 +4,7 @@
 
 - `OFFLINE_HARNESS_HISTORY_CHECKS=1`，DEFECT、`--milestone M1`：21 项通过。检查原始/完成事件、嵌套自动出牌、两种暂停续接、普通 Fork、父/根隔离和键位一致性。
 - `-p:VerifyHistoryCounters=true` 逐事件及 Fork/构键读取核对独立全扫描。语料、构键计时与验证范围见 [专题](strategy/incremental-history-counters.md)。
-- EQ 10 / FULL 40 / GA 10 对照 `8be1410`：60 根有效，5,670 个确定性字段及补充预算/剪枝字段一致。普通构建另测两个根的选中通道构键阶段，数据见专题。
+- EQ 10 / FULL 40 / GA 10 对照 `8be1410`：60 根有效，5,670 个确定性字段及补充预算/剪枝字段一致。普通构建另测两个根的选中通道构键阶段，数据见专题。变基到 0.43.0（`cccc270`）后重跑 EQ 10 根，`compare_results.py` 992 字段 `IDENTICAL`。
 
 ## 0.43.0：路线连续性与操作体验（2026-09-19）
 
