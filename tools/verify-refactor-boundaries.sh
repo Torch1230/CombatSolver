@@ -447,14 +447,23 @@ while IFS= read -r -d '' api_file; do
 done < <(find "$repository_root/src/Api" -type f -name '*.cs' -print0 | sort -z)
 
 search_gc_policy_path="$repository_root/src/Runtime/SearchGcPolicy.cs"
+for old_gc_state in _reclaimActive _reclaimRequested _manualReclaimRequested _manualReclaimTask _deferredReclaimRequested _deferredReclaimTask _noGcRecoveryGeneration _searchRecoveryBudgetCapBytes _activeReclaimCollectsGeneration2 _activeGeneration2CollectionStarted; do
+    forbid_fixed "$search_gc_policy_path" "$old_gc_state" 'parallel GC state returned:'
+    forbid_fixed "$repository_root/src/Runtime/SearchGcPolicy.Recovery.cs" "$old_gc_state" 'process-owned recovery state returned:'
+done
+for gc_control_call in 'TryRecoverNoGc(' 'HasUnexpectedNoGcLoss(' 'ResolveMemoryCommitPreparation('; do
+    for gc_search_file in CombatBeamSolver.Phases.cs CombatSearchCoordinator.cs; do
+        forbid_fixed "$repository_root/src/Search/$gc_search_file" "$gc_control_call" 'GC control returned to Search:'
+    done
+done
 forbid_fixed "$repository_root/src/Runtime/SearchGcPolicy.Recovery.cs" \
     'GC.Collect(' 'NoGC recovery must not induce a collection:'
 forbid_fixed "$repository_root/src/Runtime/SearchGcPolicy.Recovery.cs" \
     'CollectGeneration2' 'NoGC recovery must not enter the reclaim chain:'
 for gc_chain_rule in \
-    'return WaitForReclaimChainAsync(_reclaimTask)' \
+    'return WaitForReclaimChainAsync(_reclaim.Task)' \
     'inSearchCheckpoint: true, exitOwnedNoGcRegion: directBackgroundExit)' \
-    '_inSearchManualReclaimTask = manualCompletion.Task' \
+    '_reclaim.StartCheckpoint(checkpointCompletion, manualCompletion.Task)' \
     'failure == null && (_regionExitRequired || _reclaimRequired)'; do
     require_fixed "$search_gc_policy_path" "$gc_chain_rule" 'missing serialized reclaim-chain rule'
 done

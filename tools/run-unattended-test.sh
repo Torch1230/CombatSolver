@@ -552,7 +552,7 @@ settings_path="$data_dir/default/1/settings.save"
 [[ -f "$settings_path" ]] || runtime_error \
     "headless settings save not found after profile initialization: $settings_path"
 settings_temp="$(mktemp --tmpdir="$data_dir/default/1" .settings.save.XXXXXX)"
-if ! jq '.mod_settings = {mods_enabled: true, mod_list: []}' "$settings_path" >"$settings_temp"; then
+if ! jq '.mod_settings = {mods_enabled: true, mod_list: []} | .volume_master = 0 | .volume_bgm = 0 | .volume_sfx = 0 | .volume_ambience = 0' "$settings_path" >"$settings_temp"; then
     rm -f -- "$settings_temp"
     runtime_error "headless settings save is not valid JSON: $settings_path"
 fi
@@ -1182,6 +1182,7 @@ else
             COMBATSOLVER_HEADLESS=1 \
             setsid "$game_executable" \
                 --headless \
+                --audio-driver Dummy \
                 --disable-vsync \
                 --max-fps 0 \
                 --force-steam=off \

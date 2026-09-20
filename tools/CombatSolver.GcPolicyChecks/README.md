@@ -13,6 +13,8 @@ dotnet run --project tools/CombatSolver.GcPolicyChecks/CombatSolver.GcPolicyChec
 dotnet run --project tools/CombatSolver.GcPolicyChecks/CombatSolver.GcPolicyChecks.csproj -c Release -- recovery-lifecycle
 dotnet run --project tools/CombatSolver.GcPolicyChecks/CombatSolver.GcPolicyChecks.csproj -c Release -- commit-window
 dotnet run --project tools/CombatSolver.GcPolicyChecks/CombatSolver.GcPolicyChecks.csproj -c Release -- background-tail
+dotnet run --project tools/CombatSolver.GcPolicyChecks/CombatSolver.GcPolicyChecks.csproj -c Release -- commit-admission
+dotnet run --project tools/CombatSolver.GcPolicyChecks/CombatSolver.GcPolicyChecks.csproj -c Release -- diagnostic-failure
 ```
 
 2026-09-13：基础20项、scope8项、检查点1项、恢复状态机6项、恢复生命周期2项通过。基础与scope覆盖预测、暂停归属、准入、重叠、取消和重复Dispose；恢复检查覆盖完成证据只消费一次、观察/退避、每scope三次上限、物理余量、默认回退和信号断开。
@@ -26,3 +28,5 @@ dotnet run --project tools/CombatSolver.GcPolicyChecks/CombatSolver.GcPolicyChec
 2026-09-20 Windows：`checkpoint`还覆盖正常搜索退出后的后台清理、取消后原延迟模式恢复和主动诱发退出计数。独立Windows进程保留8MiB模拟加载堆：CLR对微小老年代会主动拒绝后台GC，不能用近空测试进程要求真实并发收集。生产在后台不可用时放弃大区域，而不是无限重试。
 
 `background-tail` 链接游戏内同一 `UnattendedTestRunner.GcLifecycleContracts.cs` 分片，执行手动回收吸收、故障后的完成链以及引用释放在覆盖捕获前/后四项真实CLR合同。测试方法仍由原partial类型拥有，不复制策略或断言。可设置 `GC_POLICY_TRACE=1` 输出阶段日志；整组取消期限30秒。
+
+`commit-admission` 覆盖Runtime提交准入的足够容量、一次回收、永久装不下与区域丢失恢复。`diagnostic-failure` 在真实CLR操作的检查点、后台启动/结束、退出和请求登记注入诊断异常，验证原异常传播、完成链终结与后续搜索准入；不等于穷尽CLR/OOM故障。见[生命周期重构](../../docs/refactoring/search-memory-lifecycle-20260920.md)。

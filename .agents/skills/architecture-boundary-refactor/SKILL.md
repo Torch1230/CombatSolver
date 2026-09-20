@@ -111,3 +111,5 @@ description: 重构 CombatSolver 的 Search、Runtime 会话、UI snapshot、无
 - 嵌套执行检查点保存纯数据帧与明确程序阶段/下一循环序号。所有CLR作用域退出后，核对领域事务、StateStore、活动CardPlay及延迟抽牌/生成历史的精确配对；普通Fork继续拒绝捕获/挂起/已准备种子。一次PredictionForkContext重映射状态、帧、候选、历史、CardPlay、Power来源及共享死亡集合，保留trace来源身份和抽牌深度限制；外层列表所持但已离开所有牌堆的wrapper也必须显式Fork，不能假设State已登记。未知派发必须拒绝整次捕获，继续原完整回放，不能默认缺失尾部已执行。已确认的抽牌、弃牌、Hook、重复子出牌与回合来源循环复用唯一普通执行体，恢复可以再次挂起。Search匹配同父完整动作及已消费选择前缀，只追加下一选择；选择层/frontier排空后释放全部图引用。不保存Task/闭包，不跨搜索缓存；严格增量基线禁用捕获。ExecutionChoiceCaptures/Reuses不扣选择预算，reuse替代一次原转移Fork，不能作为额外物理Fork从比较器扣除。源循环、深层选牌、DOP/取消/异常、有限预算耗尽与原生完整状态分别验证。
 
 `UnattendedTestRunner.GcLifecycleContracts.cs` 保存手动回收、检查点失败与引用释放epoch的共享CLR合同，仍由原UnattendedTestRunner partial拥有；独立GcPolicyChecks链接同一源码，游戏内编排保留在SearchPolicy分片，不复制断言或增加Runtime依赖。
+
+- 搜索内存重构：Search通过 `PrepareCommit/RecheckCommitAfterReclaim` 消费Runtime的值决定，不重新判断NoGC丢失或恢复。恢复退避/上限归 `ExclusiveGcSearchScope` 所有，不恢复进程级代次或预算字段。`ReclaimState` 在Gate内独占操作阶段、完成源及收集覆盖；Finish校验相同操作并统一释放活动元数据。手动/deferred待办用可空完成源表达，不并列维护布尔与Task副本。诊断/收尾失败仍须传播且完成全部所属等待者；取消不放弃已发出的CLR收集，独立deferred义务不能被搜索失败吞掉。修改这些边界运行真实CLR尾部、恢复与diagnostic-failure合同。

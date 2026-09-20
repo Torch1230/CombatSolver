@@ -6,6 +6,10 @@ byte[]? runtimeHeapAnchor = OperatingSystem.IsWindows() ? new byte[8 * 1024 * 10
 
 if (args is ["background-tail"])
     UnattendedTestRunner.RunBackgroundTailChecks();
+else if (args is ["commit-admission"])
+    GcCommitAdmissionChecks.Run();
+else if (args is ["diagnostic-failure"])
+    GcDiagnosticFailureChecks.Run();
 else if (args is ["commit-window"])
     GcCommitWindowChecks.Run();
 else if (args is ["recovery-lifecycle"])
@@ -31,7 +35,7 @@ else if (args.Length == 0)
     GcRegionAdmissionChecks.Run();
 }
 else
-    throw new ArgumentException("Expected no arguments, 'admission', 'parallelism', 'scopes', 'checkpoint', 'memory', 'recovery', 'recovery-lifecycle', 'background-tail' or 'commit-window'.");
+    throw new ArgumentException("Expected no arguments, 'admission', 'parallelism', 'scopes', 'checkpoint', 'memory', 'recovery', 'recovery-lifecycle', 'background-tail', 'diagnostic-failure', 'commit-admission' or 'commit-window'.");
 Console.WriteLine($"GC policy checks passed: {PolicyCheck.Completed} scenarios.");
 
 GC.KeepAlive(runtimeHeapAnchor);

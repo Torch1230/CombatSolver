@@ -1630,12 +1630,7 @@ internal static partial class CombatSearchCoordinator
     {
         SearchMemoryPressureSignal signal = policy.MemoryPressureSignal;
         cancellationToken.ThrowIfCancellationRequested();
-        SmartLayerMemoryDecision decision = forecast.Decide(
-            signal.IsEnabled,
-            signal.HasUnexpectedNoGcLoss(),
-            signal.AllocatedBytes,
-            signal.RemainingBytes,
-            signal.AllocationLimitBytes);
+        SmartLayerMemoryDecision decision = signal.DecideLayerReclaim(forecast);
         policy.Diagnostics.Info(
             $"[CombatSolver/Test] POTION_GRADIENT_MEMORY_DECISION " +
             $"completed_layer={completedPotionCount} next_layer={nextPotionCount} " +

@@ -1380,7 +1380,7 @@ internal sealed partial class UnattendedTestRunner
             }
 
             int generation2Before = GC.CollectionCount(GC.MaxGeneration);
-            signal.UseDefaultGcAndContinue(cancellationToken);
+            signal.ReleaseAllocationLimitAndContinue(cancellationToken);
             if (GCSettings.LatencyMode != initialLatencyMode
                 || SearchGcPolicy.CurrentNoGcRegionBudgetBytesForTesting != 0
                 || signal.IsEnabled
@@ -1396,7 +1396,7 @@ internal sealed partial class UnattendedTestRunner
 
             try
             {
-                signal.UseDefaultGcAndContinue(cancellationToken);
+                signal.ReleaseAllocationLimitAndContinue(cancellationToken);
                 throw new InvalidOperationException("默认 GC 回退后仍保留了旧区域检查点回调。");
             }
             catch (InvalidOperationException ex) when (

@@ -4,43 +4,77 @@ namespace CombatSolver;
 
 internal static partial class SearchGcPolicy
 {
-    private static long _noGcRecoveryGeneration;
-    private static long _searchRecoveryBudgetCapBytes;
+    // A recovery belongs to one admitted scope. No process-wide generation or budget
+    // survives that owner; delayed callbacks must still belong to the active scope.
+    private static ExclusiveGcSearchScope? _exclusiveSearchScope;
+
     private static bool IsRecoverableNoGcOutcome(NoGcRegionStartOutcome outcome)
         => outcome is NoGcRegionStartOutcome.InsufficientMemory
             or NoGcRegionStartOutcome.SystemHeadroomInsufficient
             or NoGcRegionStartOutcome.CommitWindowInsufficient
             or NoGcRegionStartOutcome.SkippedAfterUnexpectedLoss;
 
-    private static void InstallNoGcRecoveryProbe(
-        SearchMemoryPressureSignal signal, long configuredBudget, long configuredLohBudget)
+    private static ExclusiveGcSearchScope CreateExclusiveSearchScope(
+        long allocatedBytesAtEntry,
+        SearchMemoryPressureSignal signal,
+        SearchGcLifecycleSnapshot lifecycleAtEntry,
+        long configuredBudget,
+        long configuredLohBudget)
     {
-        NoGcRecoveryBackoff backoff = new();
-        long generation = ++_noGcRecoveryGeneration;
-        _searchRecoveryBudgetCapBytes = 0;
-        void ObserveFallback(long completedGen2Index)
+        ExclusiveGcSearchScope scope = new(allocatedBytesAtEntry, signal,
+            lifecycleAtEntry, configuredBudget, configuredLohBudget);
+        _exclusiveSearchScope = scope;
+        scope.InstallRecoveryProbe();
+        return scope;
+    }
+
+    private sealed class ExclusiveGcSearchScope(
+        long allocatedBytesAtEntry,
+        SearchMemoryPressureSignal signal,
+        SearchGcLifecycleSnapshot lifecycleAtEntry,
+        long configuredBudget,
+        long configuredLohBudget)
+        : SearchGcScope(lifecycleAtEntry, SearchGcLifecycleAttribution.ExclusiveSearchScope)
+    {
+        private readonly NoGcRecoveryBackoff _backoff = new();
+        private bool _recoveryEnabled = true;
+        public long RecoveryBudgetCapBytes { get; private set; }
+
+        // Gate is held by the lifecycle owner for both invalidation and recovery.
+        public void DisableRecovery() => _recoveryEnabled = false;
+
+        public void InstallRecoveryProbe()
+        {
+            signal.SetNoGcRecoveryProbe(TryRecover, ObserveFallback);
+            // Admission may have fallen back before this owner was installed.
+            if (!signal.IsEnabled)
+                ObserveFallback(0);
+        }
+
+        private void ObserveFallback(long completedGen2Index)
         {
             if (completedGen2Index > 0)
-                backoff.ArmReclaimedFallback(Environment.TickCount64, completedGen2Index);
+                _backoff.ArmReclaimedFallback(Environment.TickCount64, completedGen2Index);
             else
-                backoff.ArmFallback(Environment.TickCount64, CaptureCompletedGen2Index());
+                _backoff.ArmFallback(Environment.TickCount64, CaptureCompletedGen2Index());
         }
-        signal.SetNoGcRecoveryProbe((reservedBytes, cancellationToken) =>
+
+        private void TryRecover(long reservedBytes, CancellationToken cancellationToken)
         {
             long now = Environment.TickCount64;
-            if (!backoff.ShouldObserve(now))
+            if (!_backoff.ShouldObserve(now))
                 return;
             GCMemoryInfo memory = GC.GetGCMemoryInfo(GCKind.Any);
             long gen2Index = CaptureCompletedGen2Index();
-            if (!backoff.ObserveCompletedCollection(now, gen2Index))
+            if (!_backoff.ObserveCompletedCollection(now, gen2Index))
                 return;
 
             lock (Gate)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (generation != _noGcRecoveryGeneration
+                if (!_recoveryEnabled || !ReferenceEquals(this, _exclusiveSearchScope)
                     || _activeSearches != 1 || _defaultGcSearches != 0 || _noGcRegionActive
-                    || _reclaimActive || _reclaimRequested || _manualReclaimRequested
+                    || _reclaim.IsRunning || _reclaim.IsPending || HasPendingManualReclaim
                     || _regionExitOnlyRequested || !_regionExitOnlyTask.IsCompleted
                     || GCSettings.LatencyMode == GCLatencyMode.NoGCRegion)
                     return;
@@ -54,7 +88,7 @@ internal static partial class SearchGcPolicy
                 if (!IsNoGcCommitWindowWorthEntering(budget, lohBudget, reservedBytes))
                     return;
 
-                backoff.RecordAttempt(now, gen2Index);
+                _backoff.RecordAttempt(now, gen2Index);
                 GCLatencyMode previous = GCSettings.LatencyMode;
                 NoGcRegionStartOutcome outcome = TryStartNoGcRegion(budget, lohBudget, restart: true);
                 if (outcome == NoGcRegionStartOutcome.Started)
@@ -68,24 +102,24 @@ internal static partial class SearchGcPolicy
                     _noGcRegionLohBudgetBytes = lohBudget;
                     _noGcRegionAllocatedBytesAtStart = GC.GetTotalAllocatedBytes(false);
                     _lastEstablishedNoGcRegionBudgetBytesForTesting = budget;
-                    _searchRecoveryBudgetCapBytes = budget;
+                    RecoveryBudgetCapBytes = budget;
                     ConfigureSearchMemoryLimit(signal, _noGcRegionAllocatedBytesAtStart,
                         budget, budget, lohBudget, configuredBudget, configuredLohBudget);
-                    backoff.RecordRecovery();
+                    _backoff.RecordRecovery();
                 }
                 else if (!IsRecoverableNoGcOutcome(outcome))
                 {
                     signal.UseDefaultGcFallback(systemHeadroomConstrained: false);
                 }
-                Entry.Logger.Info($"[CombatSolver/Test] GC_NO_GC_RECOVERY attempt={backoff.Attempts} " +
+                Entry.Logger.Info($"[CombatSolver/Test] GC_NO_GC_RECOVERY attempt={_backoff.Attempts} " +
                     $"outcome={FormatStartOutcome(outcome)} budget={budget} loh_budget={lohBudget} " +
                     $"next_commit_reserve={reservedBytes} physical_load={load} system_limit={systemLimit} " +
                     $"completed_gen2_index={gen2Index} forced_collect=false");
             }
-        }, ObserveFallback);
-        // Admission can fall back before its scope probe has been installed.
-        if (!signal.IsEnabled)
-            ObserveFallback(0);
+        }
+
+        public override void Dispose()
+            => ExitLowLatencySearch(allocatedBytesAtEntry, signal, this);
     }
 
     private static long CaptureCompletedGen2Index()

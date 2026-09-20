@@ -14,15 +14,18 @@ internal static class GcRecoveryChecks
             scope = SearchGcPolicy.EnterSearchScope(true, 1_000_000_000, signal, deadline.Token);
             PolicyCheck.Require(signal.IsEnabled, "Exercise a real region in the production policy.");
             GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: false);
-            PolicyCheck.Require(signal.HasUnexpectedNoGcLoss(), "The test's external GC ends the region.");
-            signal.ReclaimAndContinue(deadline.Token, "recovery_external_gc");
+            SearchMemoryCommitDecision decision = signal.PrepareCommit(64 * 1024 * 1024, deadline.Token);
+            PolicyCheck.Require(decision.Status == SearchMemoryCommitStatus.Reclaim
+                && decision.ReclaimReason == "unexpected_no_gc_loss",
+                "Runtime must recognize the external loss before requesting a released boundary.");
+            signal.ReclaimAndContinue(deadline.Token, decision.ReclaimReason!);
             PolicyCheck.Require(!signal.IsEnabled, "Unexpected loss first returns to ordinary GC.");
             SearchGcLifecycleSnapshot before = SearchGcPolicy.CaptureLifecycle();
             PolicyCheck.Throws<OperationCanceledException>(() =>
-                signal.TryRecoverNoGc(64 * 1024 * 1024, new CancellationToken(true)));
-            signal.TryRecoverNoGc(64 * 1024 * 1024, deadline.Token);
+                signal.RecheckCommitAfterReclaim(decision, new CancellationToken(true)));
+            decision = signal.RecheckCommitAfterReclaim(decision, deadline.Token);
             SearchGcLifecycleSnapshot delta = SearchGcPolicy.CaptureLifecycle().DeltaFrom(before);
-            PolicyCheck.Require(signal.IsEnabled
+            PolicyCheck.Require(decision.Status == SearchMemoryCommitStatus.Ready && signal.IsEnabled
                 && System.Runtime.GCSettings.LatencyMode == System.Runtime.GCLatencyMode.NoGCRegion,
                 "The checkpoint's confirmed post-loss GC and adequate headroom recover the actual CLR region immediately.");
             PolicyCheck.Require(delta.NoGcStartAttempts == 1 && delta.NoGcRestarts == 1

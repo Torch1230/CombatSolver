@@ -656,6 +656,9 @@ if (-not (Test-Path -LiteralPath $settingsPath -PathType Leaf)) {
     throw "Headless settings save not found after profile initialization: $settingsPath"
 }
 $headlessSettings = Get-Content -LiteralPath $settingsPath -Raw | ConvertFrom-Json
+foreach ($audioKey in @('volume_master', 'volume_bgm', 'volume_sfx', 'volume_ambience')) {
+    $headlessSettings | Add-Member -NotePropertyName $audioKey -NotePropertyValue 0.0 -Force
+}
 $headlessSettings.mod_settings = [ordered]@{
     mods_enabled = $true
     mod_list = @()
@@ -1219,7 +1222,7 @@ if ($reusedProcess) {
 
 if (-not $reusedProcess) {
     Install-HeadlessDependency
-    $arguments = "--headless --disable-vsync --max-fps 0 --force-steam=off --log-file `"$headlessLogPath`""
+    $arguments = "--headless --audio-driver Dummy --disable-vsync --max-fps 0 --force-steam=off --log-file `"$headlessLogPath`""
     try {
         Assert-LauncherNotCancelled
         $process = Start-Process `

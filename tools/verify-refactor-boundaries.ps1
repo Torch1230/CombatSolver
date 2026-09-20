@@ -369,15 +369,30 @@ foreach ($check in $forkBoundaryChecks) {
 
 $searchGcPolicyPath = Join-Path $repositoryRoot "src\Runtime\SearchGcPolicy.cs"
 $searchGcRecoveryPath = Join-Path $repositoryRoot "src\Runtime\SearchGcPolicy.Recovery.cs"
+foreach ($oldGcState in @("_reclaimActive", "_reclaimRequested", "_manualReclaimRequested", "_manualReclaimTask", "_deferredReclaimRequested", "_deferredReclaimTask", "_noGcRecoveryGeneration", "_searchRecoveryBudgetCapBytes", "_activeReclaimCollectsGeneration2", "_activeGeneration2CollectionStarted")) {
+    foreach ($gcStatePath in @($searchGcPolicyPath, $searchGcRecoveryPath)) {
+        if (Select-String -LiteralPath $gcStatePath -SimpleMatch $oldGcState -Quiet) {
+            $violations.Add("${gcStatePath}: parallel GC or process-owned recovery state returned '$oldGcState'")
+        }
+    }
+}
+foreach ($gcControlCall in @("TryRecoverNoGc(", "HasUnexpectedNoGcLoss(", "ResolveMemoryCommitPreparation(")) {
+    foreach ($gcSearchFile in @("CombatBeamSolver.Phases.cs", "CombatSearchCoordinator.cs")) {
+        $searchGcPath = Join-Path $searchRoot $gcSearchFile
+        if (Select-String -LiteralPath $searchGcPath -SimpleMatch $gcControlCall -Quiet) {
+            $violations.Add("${searchGcPath}: GC control returned to Search '$gcControlCall'")
+        }
+    }
+}
 foreach ($forbiddenRecoveryCall in @("GC.Collect(", "CollectGeneration2")) {
     if (Select-String -LiteralPath $searchGcRecoveryPath -SimpleMatch $forbiddenRecoveryCall -Quiet) {
         $violations.Add("${searchGcRecoveryPath}: NoGC recovery must not induce a collection or enter the reclaim chain '$forbiddenRecoveryCall'")
     }
 }
 foreach ($gcChainRule in @(
-    "return WaitForReclaimChainAsync(_reclaimTask)",
+    "return WaitForReclaimChainAsync(_reclaim.Task)",
     "inSearchCheckpoint: true, exitOwnedNoGcRegion: directBackgroundExit)",
-    "_inSearchManualReclaimTask = manualCompletion.Task",
+    "_reclaim.StartCheckpoint(checkpointCompletion, manualCompletion.Task)",
     "failure == null && (_regionExitRequired || _reclaimRequired)")) {
     if (-not (Select-String -LiteralPath $searchGcPolicyPath -SimpleMatch $gcChainRule -Quiet)) {
         $violations.Add("${searchGcPolicyPath}: missing serialized reclaim-chain rule '$gcChainRule'")

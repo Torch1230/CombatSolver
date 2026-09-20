@@ -164,7 +164,7 @@ description: 在战斗语义已证明正确后，审计或修改 CombatSolver �
 
 - 无色药水与CosmicConcoction可以复用已有根无色候选池，仍使用GetDistinct/TakeRandom的原RNG顺序、独立生成卡及升级。无模拟器预览保持原筛选；不将结果牌或RNG缓存到根，也不改变选一张与全部入手两种返回形态。
 
-- NoGC 回退恢复只在 coordinator 已排空的提交边界执行 Runtime 探针。只可复用退出后检查点已确认完成、尚未用于失败预留的 Gen2 证据；否则等待新的已完成 Gen2。首次有完成证据可立即尝试，后续保留退避、实际物理余量和每 scope 三次上限，不能清零重试次数。保留恢复后的区域上限，不能立刻扩回原大预留。全堆 FragmentedBytes 不构成 NoGC SOH 必能复用的容量证明。探针不得强制收集或等待 deferred 链；退出请求、scope 代次、取消和 Dispose 必须阻止旧探针复活。用户关闭、平台/尺寸不支持及主动不可分割回退保持普通 GC。合同须穿过真实 CLR 的退出/恢复，而非只测试状态机。
+- NoGC 回退恢复只在 coordinator 已排空的提交边界执行 Runtime 探针。只可复用退出后检查点已确认完成、尚未用于失败预留的 Gen2 证据；否则等待新的已完成 Gen2。首次有完成证据可立即尝试，后续保留退避、实际物理余量和每 scope 三次上限，不能清零重试次数。保留恢复后的区域上限，不能立刻扩回原大预留。全堆 FragmentedBytes 不构成 NoGC SOH 必能复用的容量证明。探针不得强制收集或等待 deferred 链；退出请求、当前scope所有者身份、取消和Dispose必须阻止旧探针复活。用户关闭、平台/尺寸不支持及主动不可分割回退保持普通 GC。合同须穿过真实 CLR 的退出/恢复，而非只测试状态机。
 
 - 按消费者省略战略上下文字段时，核对外部登记器可读取的既有字段；登记表非空保留原上下文，不因第三方未声明新需求标志就返回0。原版与第三方字段消费者分别用最小合同覆盖。
 
@@ -190,3 +190,5 @@ description: 在战斗语义已证明正确后，审计或修改 CombatSolver �
 - Windows 搜索内后台回收由诱发收集直接结束当前 NoGC，避免 EndNoGCRegion 与收集请求之间的分配触发前台收集；进入区域前设置 SustainedLowLatency，单独保留并恢复原延迟模式。区域预留最多4GB，碎片不抵扣新预留的物理余量。区域重建也可暂停托管线程且不计入 GetTotalPauseDuration，暂停证据须同时核对 CLR SuspendEE/RestartEE 与重建耗时。完成哨兵、排空、取消及手动请求边界仍适用；该上限不是进程内存上限。
 
 - Windows新区域准入前确认小堆后台回收就绪，最多两次，10秒内本策略后台完成证据可复用；失败则不建立大区域。搜索结束后异步后台清理，避免工作站CLR后台线程空闲退出后冷启动处理大年轻代。准入准备必须排空后响应取消并恢复原模式，不能把GCStart标记的BackgroundGC当作并发完成证明；独占scope之前的准备成本另记。
+
+- 搜索内存重构：Search通过 `PrepareCommit/RecheckCommitAfterReclaim` 消费Runtime的值决定，不重新判断NoGC丢失或恢复。恢复退避/上限归 `ExclusiveGcSearchScope` 所有，不恢复进程级代次或预算字段。`ReclaimState` 在Gate内独占操作阶段、完成源及收集覆盖；Finish校验相同操作并统一释放活动元数据。手动/deferred待办用可空完成源表达，不并列维护布尔与Task副本。诊断/收尾失败仍须传播且完成全部所属等待者；取消不放弃已发出的CLR收集，独立deferred义务不能被搜索失败吞掉。修改这些边界运行真实CLR尾部、恢复与diagnostic-failure合同。

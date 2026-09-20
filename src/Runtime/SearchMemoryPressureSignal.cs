@@ -1,5 +1,19 @@
 namespace CombatSolver;
 
+internal enum SearchMemoryCommitStatus
+{
+    Ready,
+    Reclaim,
+    CapacityInsufficient,
+}
+
+// A value decision at an already drained boundary, not a reservation or a GC lease.
+// Runtime alone decides whether a collection loss needs recovery before rechecking.
+internal readonly record struct SearchMemoryCommitDecision(
+    SearchMemoryCommitStatus Status,
+    long ReservedBytes,
+    string? ReclaimReason = null);
+
 internal readonly record struct SearchMemoryPressureUsage(
     long AllocatedBytes,
     long AllocationLimitBytes,
@@ -270,8 +284,70 @@ internal sealed class SearchMemoryPressureSignal
         return remaining == long.MaxValue || reservedBytes <= remaining;
     }
 
+    public SearchMemoryCommitDecision PrepareCommit(long reservedBytes, CancellationToken cancellationToken)
+    {
+        TryRecoverNoGc(reservedBytes, cancellationToken);
+        return HasUnexpectedNoGcLoss()
+            ? new(SearchMemoryCommitStatus.Reclaim, reservedBytes, "unexpected_no_gc_loss")
+            : new(InspectCommit(reservedBytes, reclaimAttempted: false), reservedBytes);
+    }
+
+    public SearchMemoryCommitDecision RecheckCommitAfterReclaim(
+        SearchMemoryCommitDecision decision, CancellationToken cancellationToken)
+    {
+        if (decision.Status != SearchMemoryCommitStatus.Reclaim)
+            throw new InvalidOperationException("Only a requested memory reclaim can be rechecked.");
+        if (decision.ReclaimReason != null)
+            TryRecoverNoGc(decision.ReservedBytes, cancellationToken);
+        return new(InspectCommit(decision.ReservedBytes, reclaimAttempted: true), decision.ReservedBytes);
+    }
+
+    private SearchMemoryCommitStatus InspectCommit(long reservedBytes, bool reclaimAttempted)
+        => ResolveCommitStatus(IsEnabled, reservedBytes, AllocationLimitBytes,
+            RemainingBytes, AllocatedBytes, reclaimAttempted);
+
+    internal static SearchMemoryCommitStatus ResolveCommitStatus(
+        bool signalEnabled, long reservedBytes, long allocationLimitBytes,
+        long remainingBytes, long allocatedBytes, bool reclaimAttempted)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(reservedBytes);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(allocationLimitBytes);
+        ArgumentOutOfRangeException.ThrowIfNegative(remainingBytes);
+        ArgumentOutOfRangeException.ThrowIfNegative(allocatedBytes);
+        if (!signalEnabled || reservedBytes <= remainingBytes)
+            return SearchMemoryCommitStatus.Ready;
+        if (reservedBytes > allocationLimitBytes || reclaimAttempted || allocatedBytes == 0)
+            return SearchMemoryCommitStatus.CapacityInsufficient;
+        return SearchMemoryCommitStatus.Reclaim;
+    }
+
     public bool HasUnexpectedNoGcLoss()
         => Volatile.Read(ref _unexpectedNoGcLossProbe)?.Invoke() == true;
+
+    public bool NeedsReclaimAtBoundary()
+        => HasUnexpectedNoGcLoss() || IsLimitReached();
+
+    public string? ReclaimReasonAfterCommit(long reservedBytes, string pressureReason)
+    {
+        if (HasUnexpectedNoGcLoss()) return "unexpected_no_gc_loss";
+        if (!IsEnabled) return null;
+        ObserveCommitReserve(reservedBytes);
+        bool reserveCanEverFit = reservedBytes <= AllocationLimitBytes;
+        return IsLimitReached() || (reserveCanEverFit && !CanReachCommit(reservedBytes))
+            ? pressureReason : null;
+    }
+
+    public SmartLayerMemoryDecision DecideLayerReclaim(SmartLayerMemoryForecast forecast)
+    {
+        bool enabled = IsEnabled;
+        bool unexpectedLoss = HasUnexpectedNoGcLoss();
+        long allocated = AllocatedBytes;
+        long remaining = RemainingBytes;
+        long limit = AllocationLimitBytes;
+        if (!enabled) return new(false, "no_active_no_gc_region", 0, remaining);
+        if (unexpectedLoss) return new(true, "unexpected_no_gc_loss", 0, remaining);
+        return forecast.Decide(allocated, remaining, limit);
+    }
 
     public void ReclaimAndContinue(CancellationToken cancellationToken, string reason = "unspecified")
     {
@@ -281,7 +357,7 @@ internal sealed class SearchMemoryPressureSignal
         RunCheckpoint(token => reclaim(token, reason), cancellationToken);
     }
 
-    public void UseDefaultGcAndContinue(CancellationToken cancellationToken)
+    public void ReleaseAllocationLimitAndContinue(CancellationToken cancellationToken)
         => RunCheckpoint(
             Volatile.Read(ref _useDefaultGcAndContinue)
                 ?? throw new InvalidOperationException("搜索默认 GC 回退信号尚未配置。"),

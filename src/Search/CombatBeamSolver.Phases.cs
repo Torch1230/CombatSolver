@@ -1225,38 +1225,14 @@ internal sealed partial class CombatBeamSolver
             if (policy.VerifyIncrementalSearch)
                 return true;
 
-            signal.TryRecoverNoGc(reservedBytes, cancellationToken);
-            bool reclaimAttempted = false;
-            if (signal.HasUnexpectedNoGcLoss())
+            SearchMemoryCommitDecision decision = signal.PrepareCommit(reservedBytes, cancellationToken);
+            if (decision.Status == SearchMemoryCommitStatus.Reclaim)
             {
                 ReclaimAtCommittedBoundary(
-                    "unexpected_no_gc_loss",
-                    playDepth,
-                    frontierNodes,
-                    endedNodes);
-                reclaimAttempted = true;
-                signal.TryRecoverNoGc(reservedBytes, cancellationToken);
+                    decision.ReclaimReason ?? reason, playDepth, frontierNodes, endedNodes);
+                decision = signal.RecheckCommitAfterReclaim(decision, cancellationToken);
             }
-
-            MemoryCommitPreparation preparation = ResolveMemoryCommitPreparation(
-                signal.IsEnabled,
-                reservedBytes,
-                signal.AllocationLimitBytes,
-                signal.RemainingBytes,
-                signal.AllocatedBytes,
-                reclaimAttempted);
-            if (preparation == MemoryCommitPreparation.Reclaim)
-            {
-                ReclaimAtCommittedBoundary(reason, playDepth, frontierNodes, endedNodes);
-                preparation = ResolveMemoryCommitPreparation(
-                    signal.IsEnabled,
-                    reservedBytes,
-                    signal.AllocationLimitBytes,
-                    signal.RemainingBytes,
-                    signal.AllocatedBytes,
-                    reclaimAttempted: true);
-            }
-            return preparation == MemoryCommitPreparation.Ready;
+            return decision.Status == SearchMemoryCommitStatus.Ready;
         }
 
         void EnsureMemoryForIndivisibleCommit(
@@ -1297,7 +1273,7 @@ internal sealed partial class CombatBeamSolver
                 force: true);
             _run.ResetReclaimableCaches();
             parallelExpansionExecutor?.ResetRebuildableCaches();
-            signal.UseDefaultGcAndContinue(cancellationToken);
+            signal.ReleaseAllocationLimitAndContinue(cancellationToken);
             if (signal.IsEnabled)
             {
                 throw new InvalidOperationException(
@@ -1536,8 +1512,7 @@ internal sealed partial class CombatBeamSolver
                     break;
                 }
                 if (!policy.VerifyIncrementalSearch
-                    && (policy.MemoryPressureSignal.HasUnexpectedNoGcLoss()
-                        || policy.MemoryPressureSignal.IsLimitReached()))
+                    && policy.MemoryPressureSignal.NeedsReclaimAtBoundary())
                 {
                     policy.Diagnostics.Info(
                         $"[CombatSolver/Test] SEARCH_MEMORY_CHECKPOINT " +
@@ -1681,25 +1656,12 @@ internal sealed partial class CombatBeamSolver
                     // exit can be handled at that smaller graph before the next search layer.
                     if (!hasMoreParents)
                         return;
-                    if (!policy.VerifyIncrementalSearch && signal.HasUnexpectedNoGcLoss())
+                    if (policy.VerifyIncrementalSearch) return;
+                    string? reclaimReason = signal.ReclaimReasonAfterCommit(ParentAllocationReserve(), reason);
+                    if (reclaimReason != null)
                     {
                         ReclaimAtCommittedBoundary(
-                            "unexpected_no_gc_loss",
-                            playDepth,
-                            Math.Max(0, active.Count - activeIndex) + nextPlays.Count,
-                            ended.Count);
-                        return;
-                    }
-                    if (policy.VerifyIncrementalSearch || !signal.IsEnabled)
-                        return;
-                    long reserve = ParentAllocationReserve();
-                    signal.ObserveCommitReserve(reserve);
-                    bool reserveCanEverFit = reserve <= signal.AllocationLimitBytes;
-                    if (signal.IsLimitReached()
-                        || (reserveCanEverFit && !signal.CanReachCommit(reserve)))
-                    {
-                        ReclaimAtCommittedBoundary(
-                            reason,
+                            reclaimReason,
                             playDepth,
                             Math.Max(0, active.Count - activeIndex) + nextPlays.Count,
                             ended.Count);
@@ -1938,8 +1900,7 @@ internal sealed partial class CombatBeamSolver
                 if (!policy.VerifyIncrementalSearch
                     && active.Count > 0
                     && _run.Expanded < _profile.MaxExpandedNodes
-                    && (policy.MemoryPressureSignal.HasUnexpectedNoGcLoss()
-                        || policy.MemoryPressureSignal.IsLimitReached()))
+                    && policy.MemoryPressureSignal.NeedsReclaimAtBoundary())
                     ReclaimAtCommittedBoundary("after_prune", playDepth, active.Count, ended.Count);
                 PublishRoutePreview(completed, active);
                 if (_detailedDiagnostics && searchedTurnLayers == 0)
@@ -2331,36 +2292,6 @@ internal sealed partial class CombatBeamSolver
         return BufferedAllocationReserve(predictedBytes);
     }
 
-    private enum MemoryCommitPreparation
-    {
-        Ready,
-        Reclaim,
-        UseDefaultGc,
-    }
-
-    private static MemoryCommitPreparation ResolveMemoryCommitPreparation(
-        bool signalEnabled,
-        long reservedBytes,
-        long allocationLimitBytes,
-        long remainingBytes,
-        long allocatedBytes,
-        bool reclaimAttempted)
-    {
-        if (reservedBytes < 0)
-            throw new ArgumentOutOfRangeException(nameof(reservedBytes));
-        if (allocationLimitBytes <= 0)
-            throw new ArgumentOutOfRangeException(nameof(allocationLimitBytes));
-        if (remainingBytes < 0)
-            throw new ArgumentOutOfRangeException(nameof(remainingBytes));
-        if (allocatedBytes < 0)
-            throw new ArgumentOutOfRangeException(nameof(allocatedBytes));
-        if (!signalEnabled || reservedBytes <= remainingBytes)
-            return MemoryCommitPreparation.Ready;
-        if (reservedBytes > allocationLimitBytes || reclaimAttempted || allocatedBytes == 0)
-            return MemoryCommitPreparation.UseDefaultGc;
-        return MemoryCommitPreparation.Reclaim;
-    }
-
     internal static void VerifyPruneMemoryCheckpointPolicyForTesting()
     {
         if (ResolveStandPatBatchSize(100, 600, 100) != 6
@@ -2437,44 +2368,44 @@ internal sealed partial class CombatBeamSolver
                 "剪枝内存检查点的饱和计算可能溢出分配余量。");
         }
 
-        if (ResolveMemoryCommitPreparation(
+        if (SearchMemoryPressureSignal.ResolveCommitStatus(
                 signalEnabled: true,
                 reservedBytes: 513,
                 allocationLimitBytes: 512,
                 remainingBytes: 512,
                 allocatedBytes: 0,
-                reclaimAttempted: false) != MemoryCommitPreparation.UseDefaultGc)
+                reclaimAttempted: false) != SearchMemoryCommitStatus.CapacityInsufficient)
         {
             throw new InvalidOperationException(
                 "永久装不下 NoGC 分配上限的剪枝没有切换 CLR 常规 GC。");
         }
 
-        if (ResolveMemoryCommitPreparation(
+        if (SearchMemoryPressureSignal.ResolveCommitStatus(
                 signalEnabled: true,
                 reservedBytes: 256,
                 allocationLimitBytes: 512,
                 remainingBytes: 32,
                 allocatedBytes: 480,
-                reclaimAttempted: false) != MemoryCommitPreparation.Reclaim
-            || ResolveMemoryCommitPreparation(
+                reclaimAttempted: false) != SearchMemoryCommitStatus.Reclaim
+            || SearchMemoryPressureSignal.ResolveCommitStatus(
                 signalEnabled: true,
                 reservedBytes: 256,
                 allocationLimitBytes: 512,
                 remainingBytes: 512,
                 allocatedBytes: 0,
-                reclaimAttempted: true) != MemoryCommitPreparation.Ready)
+                reclaimAttempted: true) != SearchMemoryCommitStatus.Ready)
         {
             throw new InvalidOperationException(
                 "普通可回收剪枝没有在一次回收后继续使用 NoGC 区域。");
         }
 
-        if (ResolveMemoryCommitPreparation(
+        if (SearchMemoryPressureSignal.ResolveCommitStatus(
                 signalEnabled: true,
                 reservedBytes: 256,
                 allocationLimitBytes: 512,
                 remainingBytes: 128,
                 allocatedBytes: 384,
-                reclaimAttempted: true) != MemoryCommitPreparation.UseDefaultGc)
+                reclaimAttempted: true) != SearchMemoryCommitStatus.CapacityInsufficient)
         {
             throw new InvalidOperationException(
                 "剪枝回收后仍装不下时没有切换 CLR 常规 GC。");

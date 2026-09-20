@@ -63,8 +63,6 @@ internal sealed class SmartLayerMemoryForecast
     }
 
     public SmartLayerMemoryDecision Decide(
-        bool enabled,
-        bool unexpectedNoGcLoss,
         long allocatedBytes,
         long remainingBytes,
         long allocationLimitBytes)
@@ -72,10 +70,6 @@ internal sealed class SmartLayerMemoryForecast
         ArgumentOutOfRangeException.ThrowIfNegative(allocatedBytes);
         ArgumentOutOfRangeException.ThrowIfNegative(remainingBytes);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(allocationLimitBytes);
-        if (!enabled)
-            return new(false, "no_active_no_gc_region", 0, remainingBytes);
-        if (unexpectedNoGcLoss)
-            return new(true, "unexpected_no_gc_loss", 0, remainingBytes);
         if (!_hasCompleteObservation)
             return new(false, "use_wave_checkpoints_without_forecast", 0, remainingBytes);
 

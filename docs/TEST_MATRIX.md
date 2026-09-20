@@ -1,5 +1,13 @@
 # CombatSolver 测试清单
 
+## 下一版本（开发中）：搜索内存生命周期重构（2026-09-20）
+
+- 恢复状态归单次scope，回收phase/完成源/元数据归值类型所有者，提交准入与GC模式决定归Runtime信号；删除平行状态和Search直接恢复控制，搜索政策与预算保持。诊断异常仍须结束完成链，向调用者传播失败。
+- 最终Release构建0警告0错误、两端结构门禁、Linux CLR九模式共62项通过。相同诊断故障夹具在冻结基线卡住回收完成链，候选五个故障边界通过。Linux代表搜索Passed并清理隔离实例；Windows最终对照仍在进行。
+
+- Windows消融与整体交付口径见[计划](refactoring/search-memory-lifecycle-20260920.md)，进行中，未作性能结论。
+- 无人启动器静音：Bash与PowerShell语法检查通过；游戏主音量、音乐、音效、环境音只在隔离profile归零，启动参数增加Dummy。Windows实际启动参数与隔离配置随首份静音消融核对。
+
 ## 下一版本（开发中）：Windows后台GC切换（2026-09-20）
 
 - `GC-WINDOWS-MULTISCENE`：五角色六场（NIBBITS_WEAK、INFESTED_PRISMS_ELITE两角色、THE_INSATIABLE_BOSS、弃牌蟹首领、花园原包），每场独立ABBA，24份Passed。12对非时序指标/已记录路线一致，原生生成开局/装备一致；计算耗时与准入等待均未见两对一致的大幅退化，小幅开销和单对+11.2%保留，见[完整报告](performance/windows-gc-multiscene-20260920.md)。测试根与24个实例已清理。

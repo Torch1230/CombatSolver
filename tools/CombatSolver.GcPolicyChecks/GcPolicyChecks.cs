@@ -9,53 +9,56 @@ internal static class GcPolicyChecks
         PolicyCheck.Run("cold layer uses real wave admission", () =>
         {
             SmartLayerMemoryDecision decision = new SmartLayerMemoryForecast().Decide(
-                enabled: true, unexpectedNoGcLoss: false, allocatedBytes: MiB, remainingBytes: 8_192 * MiB, allocationLimitBytes: 8_192 * MiB);
+                allocatedBytes: MiB, remainingBytes: 8_192 * MiB, allocationLimitBytes: 8_192 * MiB);
             PolicyCheck.Require(!decision.ShouldReclaim, "Missing prediction is not evidence that an optional collection will help.");
         });
         PolicyCheck.Run("known fixed work fits remaining region", () =>
         {
             SmartLayerMemoryForecast forecast = KnownForecast();
-            SmartLayerMemoryDecision decision = forecast.Decide(true, false, 100 * MiB, 4_096 * MiB, 8_192 * MiB);
+            SmartLayerMemoryDecision decision = forecast.Decide(100 * MiB, 4_096 * MiB, 8_192 * MiB);
             PolicyCheck.Require(!decision.ShouldReclaim && decision.ForecastBytes > 100 * MiB,
                 "Complete fixed work should use a safety margin and permit ample headroom.");
-            PolicyCheck.Require(forecast.Decide(true, false, 4_096 * MiB, decision.ForecastBytes - 1, 8_192 * MiB).ShouldReclaim,
+            PolicyCheck.Require(forecast.Decide(4_096 * MiB, decision.ForecastBytes - 1, 8_192 * MiB).ShouldReclaim,
                 "Reclaim when accumulated work can make the forecast fit a fresh region.");
         });
         PolicyCheck.Run("disabled or unavailable NoGC never forces layer collection", () =>
         {
-            PolicyCheck.Require(!KnownForecast().Decide(false, false, 1_024 * MiB, 0, long.MaxValue).ShouldReclaim,
+            PolicyCheck.Require(!new SearchMemoryPressureSignal().DecideLayerReclaim(KnownForecast()).ShouldReclaim,
                 "Ordinary GC remains CLR-owned even if a forecast does not fit.");
         });
         PolicyCheck.Run("unexpected region loss overrides healthy forecast", () =>
         {
-            PolicyCheck.Require(KnownForecast().Decide(true, true, 1, long.MaxValue, long.MaxValue).ShouldReclaim,
+            SearchMemoryPressureSignal signal = new();
+            signal.Configure(GC.GetTotalAllocatedBytes(false), 8_192 * MiB, 0, long.MaxValue,
+                _ => { }, _ => { }, unexpectedNoGcLossProbe: () => true);
+            PolicyCheck.Require(signal.DecideLayerReclaim(KnownForecast()).ShouldReclaim,
                 "A lost region must pass through the existing fallback checkpoint.");
         });
         PolicyCheck.Run("fresh region is not redundantly collected", () =>
         {
-            PolicyCheck.Require(!new SmartLayerMemoryForecast().Decide(true, false, 0, 4_096 * MiB, 4_096 * MiB).ShouldReclaim,
+            PolicyCheck.Require(!new SmartLayerMemoryForecast().Decide(0, 4_096 * MiB, 4_096 * MiB).ShouldReclaim,
                 "An empty region has no previous layer to reclaim.");
         });
         PolicyCheck.Run("timed or failed layer invalidates prior forecast", () =>
         {
             SmartLayerMemoryForecast forecast = KnownForecast();
             forecast.Observe(10 * MiB, 100, usableWorkSample: false);
-            PolicyCheck.Require(!forecast.Decide(true, false, MiB, 8_192 * MiB, 8_192 * MiB).ShouldReclaim,
+            PolicyCheck.Require(!forecast.Decide(MiB, 8_192 * MiB, 8_192 * MiB).ShouldReclaim,
                 "Interrupted work must defer to wave admission, not force a speculative collection.");
         });
         PolicyCheck.Run("zero work invalidates forecast", () =>
         {
             SmartLayerMemoryForecast forecast = KnownForecast();
             forecast.Observe(100 * MiB, 0, usableWorkSample: true);
-            PolicyCheck.Require(!forecast.Decide(true, false, MiB, 8_192 * MiB, 8_192 * MiB).ShouldReclaim,
+            PolicyCheck.Require(!forecast.Decide(MiB, 8_192 * MiB, 8_192 * MiB).ShouldReclaim,
                 "A zero-transition sample cannot justify a proactive collection.");
         });
         PolicyCheck.Run("underprediction increases future reserve", () =>
         {
             SmartLayerMemoryForecast forecast = KnownForecast();
-            SmartLayerMemoryDecision first = forecast.Decide(true, false, MiB, 8_192 * MiB, 8_192 * MiB);
+            SmartLayerMemoryDecision first = forecast.Decide(MiB, 8_192 * MiB, 8_192 * MiB);
             forecast.Observe(first.ForecastBytes * 2, 1_500, usableWorkSample: true);
-            SmartLayerMemoryDecision next = forecast.Decide(true, false, MiB, 8_192 * MiB, 8_192 * MiB);
+            SmartLayerMemoryDecision next = forecast.Decide(MiB, 8_192 * MiB, 8_192 * MiB);
             PolicyCheck.Require(forecast.UnderpredictionHighWater >= 2 && next.ForecastBytes > first.ForecastBytes,
                 "A missed allocation estimate must increase subsequent protection.");
         });
@@ -63,7 +66,7 @@ internal static class GcPolicyChecks
         {
             SmartLayerMemoryForecast forecast = new();
             forecast.Observe(long.MaxValue, 1, usableWorkSample: true);
-            SmartLayerMemoryDecision decision = forecast.Decide(true, false, MiB, long.MaxValue, long.MaxValue);
+            SmartLayerMemoryDecision decision = forecast.Decide(MiB, long.MaxValue, long.MaxValue);
             PolicyCheck.Require(!decision.ShouldReclaim && decision.ForecastBytes == long.MaxValue && decision.Reason == "layer_spans_regions",
                 "Unrepresentable layers use wave checkpoints rather than reset forever.");
         });
@@ -72,16 +75,16 @@ internal static class GcPolicyChecks
             SmartLayerMemoryForecast forecast = new();
             PolicyCheck.Throws<ArgumentOutOfRangeException>(() => forecast.Observe(-1, 1, true));
             PolicyCheck.Throws<ArgumentOutOfRangeException>(() => forecast.Observe(1, -1, true));
-            PolicyCheck.Throws<ArgumentOutOfRangeException>(() => forecast.Decide(true, false, 1, -1, MiB));
+            PolicyCheck.Throws<ArgumentOutOfRangeException>(() => forecast.Decide(1, -1, MiB));
         });
         PolicyCheck.Run("player rollover followed by potion layer does not recollect", () =>
         {
             SmartLayerMemoryForecast forecast = new();
             forecast.Observe(5_000 * MiB, 100_000, true);
-            var decision = forecast.Decide(true, false, 80 * MiB, 4_700 * MiB, 4_849_638_048);
+            var decision = forecast.Decide(80 * MiB, 4_700 * MiB, 4_849_638_048);
             PolicyCheck.Require(!decision.ShouldReclaim && decision.Reason == "layer_spans_regions",
                 "The player's wider next layer cannot fit even after another reset.");
-            decision = KnownForecast().Decide(true, false, 16 * MiB, MiB, 4_096 * MiB);
+            decision = KnownForecast().Decide(16 * MiB, MiB, 4_096 * MiB);
             PolicyCheck.Require(!decision.ShouldReclaim && decision.Reason == "preserve_fresh_region",
                 "Physical pressure on a nearly fresh region is handled by real wave admission.");
         });

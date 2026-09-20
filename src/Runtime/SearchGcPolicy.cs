@@ -31,30 +31,22 @@ internal static partial class SearchGcPolicy
     private static bool _noGcRegionActive;
     private static bool _regionExitRequired;
     private static bool _reclaimRequired;
-    private static bool _reclaimRequested;
-    private static bool _reclaimActive;
+    private static ReclaimState _reclaim;
     // A background reclaim cannot start while a search owns the process-wide GC mode. Keep
     // active-search requests on a separate completion chain so an in-search memory checkpoint
     // never waits on work which itself requires that search to exit.
-    private static bool _deferredReclaimRequested;
     private static bool _workingSetTrimRequested;
-    private static bool _activeReclaimTrimsWorkingSet;
-    private static bool _manualReclaimRequested;
     private static string _reclaimReason = "unspecified";
-    private static TaskCompletionSource? _reclaimCompletion;
-    private static Task _reclaimTask = Task.CompletedTask;
     private static string _deferredReclaimReason = "unspecified";
-    private static TaskCompletionSource? _deferredReclaimCompletion;
-    private static Task _deferredReclaimTask = Task.CompletedTask;
-    private static TaskCompletionSource? _manualReclaimCompletion;
-    private static Task _manualReclaimTask = Task.CompletedTask;
-    private static Task _inSearchManualReclaimTask = Task.CompletedTask;
+    private static TaskCompletionSource? _pendingDeferredReclaim;
+    private static bool HasPendingDeferredReclaim => _pendingDeferredReclaim != null;
+    private static Task PendingDeferredReclaimTask => _pendingDeferredReclaim?.Task ?? Task.CompletedTask;
+    private static TaskCompletionSource? _pendingManualReclaim;
+    private static bool HasPendingManualReclaim => _pendingManualReclaim != null;
+    private static Task PendingManualReclaimTask => _pendingManualReclaim?.Task ?? Task.CompletedTask;
     private static Task _referenceReleaseBarrier = Task.CompletedTask;
     private static long _referenceReleaseEpoch;
     private static long _requiredReferenceReleaseCollectionEpoch;
-    private static bool _activeReclaimCollectsGeneration2;
-    private static bool _activeGeneration2CollectionStarted;
-    private static long _activeGeneration2CoverageEpoch;
     private static int _generation2CoveragePauseStageForTesting;
     private static TaskCompletionSource? _generation2CoverageReachedForTesting;
     private static TaskCompletionSource? _generation2CoverageResumeForTesting;
@@ -204,7 +196,7 @@ internal static partial class SearchGcPolicy
         get
         {
             lock (Gate)
-                return _reclaimActive && _activeSearches == 0;
+                return _reclaim.IsRunning && _activeSearches == 0;
         }
     }
 
@@ -214,8 +206,8 @@ internal static partial class SearchGcPolicy
         get
         {
             lock (Gate)
-                return (_activeSearches > 0 && _reclaimActive
-                    && _activeGeneration2CollectionStarted,
+                return (_activeSearches > 0 && _reclaim.IsRunning
+                    && _reclaim.CollectionStarted,
                     _inSearchBackgroundGen2CompletedCountForTesting,
                     _inSearchBackgroundGen2TimeoutDrainCountForTesting);
         }
@@ -403,13 +395,13 @@ internal static partial class SearchGcPolicy
                 {
                     reclaimTask = _referenceReleaseBarrier;
                 }
-                else if (_reclaimActive || _reclaimRequested)
+                else if (_reclaim.IsRunning || _reclaim.IsPending)
                 {
-                    reclaimTask = _reclaimTask;
+                    reclaimTask = _reclaim.Task;
                 }
-                else if (_manualReclaimRequested)
+                else if (HasPendingManualReclaim)
                 {
-                    reclaimTask = _manualReclaimTask;
+                    reclaimTask = PendingManualReclaimTask;
                 }
                 else if (_defaultGcSearches > 0)
                 {
@@ -480,13 +472,12 @@ internal static partial class SearchGcPolicy
                                             _configuredNoGcRegionLohBudgetBytes);
                                         _lastEstablishedNoGcRegionBudgetBytesForTesting =
                                             _noGcRegionBudgetBytes;
-                                        InstallNoGcRecoveryProbe(memoryPressureSignal,
-                                            noGcRegionBudgetBytes, noGcRegionLohBudgetBytes);
                                         _activeSearches++;
                                         Entry.Logger.Info(
                                             "[CombatSolver/Test] GC_LATENCY policy=combat_scoped_no_gc_region_reuse");
-                                        return new ExclusiveGcSearchScope(
-                                            allocatedBytesAtEntry, memoryPressureSignal, lifecycleAtEntry);
+                                        return CreateExclusiveSearchScope(
+                                            allocatedBytesAtEntry, memoryPressureSignal, lifecycleAtEntry,
+                                            noGcRegionBudgetBytes, noGcRegionLohBudgetBytes);
                                     }
                                 }
                             }
@@ -606,11 +597,10 @@ internal static partial class SearchGcPolicy
                                     IsSystemHeadroomOutcome(startOutcome),
                                     allowNoGcRecovery: IsRecoverableNoGcOutcome(startOutcome));
                             }
-                            InstallNoGcRecoveryProbe(memoryPressureSignal,
-                                noGcRegionBudgetBytes, noGcRegionLohBudgetBytes);
                             _activeSearches++;
-                            return new ExclusiveGcSearchScope(
-                                allocatedBytesAtEntry, memoryPressureSignal, lifecycleAtEntry);
+                            return CreateExclusiveSearchScope(
+                                allocatedBytesAtEntry, memoryPressureSignal, lifecycleAtEntry,
+                                noGcRegionBudgetBytes, noGcRegionLohBudgetBytes);
                         }
                     }
                 }
@@ -682,10 +672,10 @@ internal static partial class SearchGcPolicy
                     && !_latencyModeOwned
                     && _regionExitOnlyTask.IsCompleted
                     && _referenceReleaseBarrier.IsCompleted
-                    && !_reclaimActive
-                    && !_reclaimRequested
-                    && !_deferredReclaimRequested
-                    && !_manualReclaimRequested)
+                    && !_reclaim.IsRunning
+                    && !_reclaim.IsPending
+                    && !HasPendingDeferredReclaim
+                    && !HasPendingManualReclaim)
                 {
                     SearchGcLifecycleSnapshot lifecycleAtEntry = CaptureLifecycle();
                     _activeSearches++;
@@ -713,7 +703,7 @@ internal static partial class SearchGcPolicy
         {
             // A pending recovery must not restart a region after a request to leave NoGC,
             // including when the current search has already fallen back to ordinary GC.
-            _noGcRecoveryGeneration++;
+            _exclusiveSearchScope?.DisableRecovery();
             if (!_regionExitOnlyTask.IsCompleted)
                 return _regionExitOnlyTask;
             if (!_noGcRegionActive && !_latencyModeOwned)
@@ -777,66 +767,76 @@ internal static partial class SearchGcPolicy
             }
             finally
             {
-                stopwatch.Stop();
-                Entry.Logger.Info(
-                    $"[CombatSolver/Test] HEAP_REGION_EXIT reason={reason} " +
-                    $"no_gc_region_ended={endNoGcRegion} forced_gen2=false " +
-                    $"gen2_delta={GC.CollectionCount(GC.MaxGeneration) - gen2Before} " +
-                    $"elapsed_ms={stopwatch.Elapsed.TotalMilliseconds:F1} " +
-                    $"managed_live_bytes={GC.GetTotalMemory(forceFullCollection: false)}");
+                try
+                {
+                    stopwatch.Stop();
+                    Entry.Logger.Info(
+                        $"[CombatSolver/Test] HEAP_REGION_EXIT reason={reason} " +
+                        $"no_gc_region_ended={endNoGcRegion} forced_gen2=false " +
+                        $"gen2_delta={GC.CollectionCount(GC.MaxGeneration) - gen2Before} " +
+                        $"elapsed_ms={stopwatch.Elapsed.TotalMilliseconds:F1} " +
+                        $"managed_live_bytes={GC.GetTotalMemory(forceFullCollection: false)}");
+                }
+                catch (Exception diagnosticFailure)
+                {
+                    failure = CombineGcFailures(failure, diagnosticFailure);
+                }
                 lock (Gate)
                 {
-                    if (failure != null)
-                    {
-                        ReconcileRegionOwnershipAfterTransitionLocked(
-                            previousMode,
-                            restoreLatencyMode);
-                    }
                     _regionExitOnlyCompletion = null;
+                    try
+                    {
+                        if (failure != null)
+                            ReconcileRegionOwnershipAfterTransitionLocked(previousMode, restoreLatencyMode);
+                    }
+                    catch (Exception finalizationFailure)
+                    {
+                        failure = CombineGcFailures(failure, finalizationFailure);
+                    }
                     // The completion uses RunContinuationsAsynchronously, so closing it while
                     // holding Gate cannot re-enter the policy. Closing it before promotion also
                     // removes the narrow window where a new request could observe an unfinished
-                    // region-exit task, enqueue _reclaimRequested, and then never be started.
+                    // region-exit task, enqueue _reclaim.IsPending, and then never be started.
                     if (failure == null)
                         completion.TrySetResult();
                     else
                         completion.TrySetException(failure);
-                    if (failure == null && _activeSearches == 0)
+                    try
                     {
-                        PromoteDeferredReclaimLocked();
-                        if (_manualReclaimRequested && !_reclaimRequested)
-                            RequestReclaimLocked("manual_gc");
-                        if (_reclaimRequested)
-                            StartReclaimLocked();
+                        if (failure == null && _activeSearches == 0)
+                        {
+                            PromoteDeferredReclaimLocked();
+                            if (HasPendingManualReclaim && !_reclaim.IsPending)
+                                RequestReclaimLocked("manual_gc");
+                            if (_reclaim.IsPending)
+                                StartReclaimLocked();
+                        }
                     }
-                    else if (failure != null)
+                    catch (Exception promotionFailure)
+                    {
+                        failure = CombineGcFailures(failure, promotionFailure);
+                    }
+                    if (failure != null)
                     {
                         // An exit failure settles every request which was waiting on this
                         // transition. Keep collection pressure for a later explicit policy entry,
                         // but do not leave a working-set release permanently joined to the old,
                         // faulted reclaim task.
                         _failNextRegionExitAfterTransitionForTesting = false;
-                        if (_manualReclaimRequested)
+                        if (HasPendingManualReclaim)
                         {
-                            failedManualCompletion = _manualReclaimCompletion;
-                            _manualReclaimRequested = false;
-                            _manualReclaimCompletion = null;
-                            _manualReclaimTask = Task.CompletedTask;
+                            failedManualCompletion = _pendingManualReclaim;
+                            _pendingManualReclaim = null;
                         }
-                        if (_deferredReclaimRequested)
+                        if (HasPendingDeferredReclaim)
                         {
-                            failedDeferredCompletion = _deferredReclaimCompletion;
-                            _deferredReclaimRequested = false;
+                            failedDeferredCompletion = _pendingDeferredReclaim;
                             _deferredReclaimReason = "unspecified";
-                            _deferredReclaimCompletion = null;
-                            _deferredReclaimTask = Task.CompletedTask;
+                            _pendingDeferredReclaim = null;
                         }
-                        if (_reclaimRequested)
+                        if (_reclaim.IsPending)
                         {
-                            failedRequestedCompletion = _reclaimCompletion;
-                            _reclaimRequested = false;
-                            _reclaimCompletion = null;
-                            _reclaimTask = Task.CompletedTask;
+                            failedRequestedCompletion = _reclaim.CancelPending();
                             _activeReclaimSequence = 0;
                         }
                         _workingSetTrimRequested = false;
@@ -928,24 +928,22 @@ internal static partial class SearchGcPolicy
         Task reclaim;
         lock (Gate)
         {
-            if (_activeSearches > 0 && _reclaimActive
-                && !_activeGeneration2CollectionStarted)
+            if (_activeSearches > 0 && _reclaim.IsRunning
+                && !_reclaim.CollectionStarted)
             {
                 // A checkpoint which has not requested collection yet can cover this request.
                 // Once marking may have started, a new manual request belongs to the next safe
                 // collection; joining the current completion could miss newly released objects.
-                reclaim = _inSearchManualReclaimTask;
+                reclaim = _reclaim.InSearchManualTask;
             }
             else if (_activeSearches > 0)
             {
-                if (!_manualReclaimRequested)
+                if (!HasPendingManualReclaim)
                 {
-                    _manualReclaimRequested = true;
-                    _manualReclaimCompletion = new TaskCompletionSource(
+                    _pendingManualReclaim = new TaskCompletionSource(
                         TaskCreationOptions.RunContinuationsAsynchronously);
-                    _manualReclaimTask = _manualReclaimCompletion.Task;
                 }
-                reclaim = _manualReclaimTask;
+                reclaim = PendingManualReclaimTask;
             }
             else
             {
@@ -972,15 +970,15 @@ internal static partial class SearchGcPolicy
         Task reclaim;
         lock (Gate)
         {
-            if (_workingSetTrimRequested && _deferredReclaimRequested)
+            if (_workingSetTrimRequested && HasPendingDeferredReclaim)
             {
                 // The trim belongs to post-search work, not to a possibly active/failed
-                // in-search checkpoint stored in _reclaimTask.
-                reclaim = _deferredReclaimTask;
+                // in-search checkpoint stored in _reclaim.Task.
+                reclaim = PendingDeferredReclaimTask;
             }
-            else if (_workingSetTrimRequested || _activeReclaimTrimsWorkingSet)
+            else if (_workingSetTrimRequested || _reclaim.TrimsWorkingSet)
             {
-                reclaim = WaitForReclaimChainAsync(_reclaimTask);
+                reclaim = WaitForReclaimChainAsync(_reclaim.Task);
             }
             else
             {
@@ -1039,16 +1037,16 @@ internal static partial class SearchGcPolicy
         if (includeCombatLifecyclePressure)
             _combatLifecycleAllocatedBytes = 0;
         bool activeCollectionWillCoverRelease = requiredCoverageEpoch.HasValue
-            && _reclaimActive
-            && _activeReclaimCollectsGeneration2
-            && (!_activeGeneration2CollectionStarted
-                || _activeGeneration2CoverageEpoch >= requiredCoverageEpoch.Value);
+            && _reclaim.IsRunning
+            && _reclaim.CollectsGeneration2
+            && (!_reclaim.CollectionStarted
+                || _reclaim.CoverageEpoch >= requiredCoverageEpoch.Value);
         bool coverageCollectionRequired = requiredCoverageEpoch.HasValue
             && !activeCollectionWillCoverRelease;
         bool requestCollection = coverageCollectionRequired
             || ((forceCollection || lifecycleCollectionRequired)
                 && !activeCollectionWillCoverRelease);
-        if (_reclaimActive)
+        if (_reclaim.IsRunning)
         {
             if (_activeSearches > 0)
             {
@@ -1072,12 +1070,12 @@ internal static partial class SearchGcPolicy
                 // it must not enqueue an identical second Gen2 collection.
                 _backgroundReclaimJoinCountForTesting++;
             }
-            return WaitForReclaimChainAsync(_reclaimTask);
+            return WaitForReclaimChainAsync(_reclaim.Task);
         }
-        if (_reclaimRequested)
+        if (_reclaim.IsPending)
         {
             _reclaimRequired |= requestCollection;
-            return WaitForReclaimChainAsync(_reclaimTask);
+            return WaitForReclaimChainAsync(_reclaim.Task);
         }
         if (_activeSearches == 0
             && !_noGcRegionActive
@@ -1099,9 +1097,9 @@ internal static partial class SearchGcPolicy
         lock (Gate)
         {
             if (_activeSearches != 0
-                || _reclaimActive
-                || _reclaimRequested
-                || _deferredReclaimRequested)
+                || _reclaim.IsRunning
+                || _reclaim.IsPending
+                || HasPendingDeferredReclaim)
                 throw new InvalidOperationException("No-GC exhaustion 测试要求 GC policy 已静止。");
             if (_generation2CoveragePauseStageForTesting != 0)
                 throw new InvalidOperationException("No-GC exhaustion 覆盖边界测试已经在运行。");
@@ -1346,17 +1344,17 @@ internal static partial class SearchGcPolicy
             await checkpoint;
             lock (Gate)
             {
-                if (_reclaimActive || _reclaimRequested)
+                if (_reclaim.IsRunning || _reclaim.IsPending)
                 {
-                    checkpoint = _reclaimTask;
+                    checkpoint = _reclaim.Task;
                     continue;
                 }
-                if (_deferredReclaimRequested)
+                if (HasPendingDeferredReclaim)
                 {
-                    checkpoint = _deferredReclaimTask;
+                    checkpoint = PendingDeferredReclaimTask;
                     continue;
                 }
-                if (!_reclaimActive && !_reclaimRequested)
+                if (!_reclaim.IsRunning && !_reclaim.IsPending)
                     return;
             }
         }
@@ -1367,76 +1365,96 @@ internal static partial class SearchGcPolicy
         _regionExitRequired = true;
         if (_activeSearches > 0)
         {
-            if (!_deferredReclaimRequested)
+            if (!HasPendingDeferredReclaim)
             {
-                _deferredReclaimRequested = true;
                 _deferredReclaimReason = reason;
-                _deferredReclaimCompletion = new TaskCompletionSource(
+                _pendingDeferredReclaim = new TaskCompletionSource(
                     TaskCreationOptions.RunContinuationsAsynchronously);
-                _deferredReclaimTask = _deferredReclaimCompletion.Task;
-                Entry.Logger.Info(
-                    $"[CombatSolver/Test] MEMORY_RECLAIM stage=deferred " +
-                    $"reason={reason} active_searches={_activeSearches} " +
-                    $"gen2_required={_reclaimRequired.ToString().ToLowerInvariant()} " +
-                    DescribeProcessMemory());
+                try
+                {
+                    Entry.Logger.Info(
+                        $"[CombatSolver/Test] MEMORY_RECLAIM stage=deferred " +
+                        $"reason={reason} active_searches={_activeSearches} " +
+                        $"gen2_required={_reclaimRequired.ToString().ToLowerInvariant()} " +
+                        DescribeProcessMemory());
+                }
+                catch (Exception requestFailure)
+                {
+                    TaskCompletionSource failed = _pendingDeferredReclaim;
+                    _pendingDeferredReclaim = null;
+                    _deferredReclaimReason = "unspecified";
+                    failed.SetException(requestFailure);
+                    throw;
+                }
             }
-            return _deferredReclaimTask;
+            return PendingDeferredReclaimTask;
         }
 
         PromoteDeferredReclaimLocked();
-        if (!_reclaimActive && !_reclaimRequested)
+        if (!_reclaim.IsRunning && !_reclaim.IsPending)
         {
-            _reclaimRequested = true;
             _reclaimReason = reason;
             _activeReclaimSequence = checked(++_nextReclaimSequence);
-            _reclaimCompletion = new TaskCompletionSource(
-                TaskCreationOptions.RunContinuationsAsynchronously);
-            _reclaimTask = _reclaimCompletion.Task;
-            Entry.Logger.Info(
-                $"[CombatSolver/Test] MEMORY_RECLAIM stage=requested " +
-                $"id={_activeReclaimSequence} reason={reason} active_searches={_activeSearches} " +
-                $"gen2_required={_reclaimRequired.ToString().ToLowerInvariant()} " +
-                DescribeProcessMemory());
+            _reclaim.Request();
+            try
+            {
+                Entry.Logger.Info(
+                    $"[CombatSolver/Test] MEMORY_RECLAIM stage=requested " +
+                    $"id={_activeReclaimSequence} reason={reason} active_searches={_activeSearches} " +
+                    $"gen2_required={_reclaimRequired.ToString().ToLowerInvariant()} " +
+                    DescribeProcessMemory());
+            }
+            catch (Exception requestFailure)
+            {
+                _reclaim.CancelPending().SetException(requestFailure);
+                _activeReclaimSequence = 0;
+                throw;
+            }
         }
-        if (!_reclaimActive
+        if (!_reclaim.IsRunning
             && _activeSearches == 0
             && _regionExitOnlyTask.IsCompleted)
             StartReclaimLocked();
-        return _reclaimTask;
+        return _reclaim.Task;
     }
 
     private static void PromoteDeferredReclaimLocked()
     {
-        if (!_deferredReclaimRequested)
+        if (!HasPendingDeferredReclaim)
             return;
         if (_activeSearches != 0)
         {
             throw new InvalidOperationException(
                 "活动搜索尚未退出时不能提升 deferred GC 回收请求。");
         }
-        if (_reclaimActive || _reclaimRequested)
+        if (_reclaim.IsRunning || _reclaim.IsPending)
         {
             throw new InvalidOperationException(
                 "deferred GC 回收请求不能覆盖已有回收完成信号。");
         }
 
-        TaskCompletionSource completion = _deferredReclaimCompletion
+        TaskCompletionSource completion = _pendingDeferredReclaim
             ?? throw new InvalidOperationException("deferred GC 回收请求缺少完成信号。");
         string reason = _deferredReclaimReason;
-        _deferredReclaimRequested = false;
         _deferredReclaimReason = "unspecified";
-        _deferredReclaimCompletion = null;
-        _deferredReclaimTask = Task.CompletedTask;
-        _reclaimRequested = true;
+        _pendingDeferredReclaim = null;
         _reclaimReason = reason;
         _activeReclaimSequence = checked(++_nextReclaimSequence);
-        _reclaimCompletion = completion;
-        _reclaimTask = completion.Task;
-        Entry.Logger.Info(
-            $"[CombatSolver/Test] MEMORY_RECLAIM stage=requested " +
-            $"id={_activeReclaimSequence} reason={reason} active_searches=0 " +
-            $"gen2_required={_reclaimRequired.ToString().ToLowerInvariant()} " +
-            "source=deferred " + DescribeProcessMemory());
+        _reclaim.Request(completion);
+        try
+        {
+            Entry.Logger.Info(
+                $"[CombatSolver/Test] MEMORY_RECLAIM stage=requested " +
+                $"id={_activeReclaimSequence} reason={reason} active_searches=0 " +
+                $"gen2_required={_reclaimRequired.ToString().ToLowerInvariant()} " +
+                "source=deferred " + DescribeProcessMemory());
+        }
+        catch (Exception requestFailure)
+        {
+            _reclaim.CancelPending().SetException(requestFailure);
+            _activeReclaimSequence = 0;
+            throw;
+        }
     }
 
     private static void RequireCollectionAfterNextReferenceReleaseLocked()
@@ -1449,19 +1467,17 @@ internal static partial class SearchGcPolicy
 
     private static void StartReclaimLocked()
     {
-        if (!_reclaimRequested || _activeSearches != 0)
+        if (!_reclaim.IsPending || _activeSearches != 0)
             throw new InvalidOperationException("GC 回收只能在请求已登记且搜索线程退出后启动。");
 
-        TaskCompletionSource completion = _reclaimCompletion
+        TaskCompletionSource completion = _reclaim.Completion
             ?? throw new InvalidOperationException("GC 回收请求缺少完成信号。");
         TaskCompletionSource? manualCompletion = null;
-        if (_manualReclaimRequested)
+        if (HasPendingManualReclaim)
         {
-            manualCompletion = _manualReclaimCompletion
+            manualCompletion = _pendingManualReclaim
                 ?? throw new InvalidOperationException("手动 GC 请求缺少完成信号。");
-            _manualReclaimRequested = false;
-            _manualReclaimCompletion = null;
-            _manualReclaimTask = Task.CompletedTask;
+            _pendingManualReclaim = null;
             _reclaimRequired = true;
         }
         string reason = _reclaimReason;
@@ -1481,15 +1497,10 @@ internal static partial class SearchGcPolicy
                 GC.GetTotalAllocatedBytes(precise: false) - _noGcRegionAllocatedBytesAtStart);
         long regionBudgetBytes = _noGcRegionBudgetBytes;
         long largestSearchAllocatedBytes = _largestSearchAllocatedBytes;
-        _reclaimRequested = false;
-        _reclaimActive = true;
+        _reclaim.Start(completion, collectGeneration2, trimWorkingSet);
         _regionExitRequired = false;
         _reclaimRequired = false;
         _workingSetTrimRequested = false;
-        _activeReclaimTrimsWorkingSet = trimWorkingSet;
-        _activeReclaimCollectsGeneration2 = collectGeneration2;
-        _activeGeneration2CollectionStarted = false;
-        _activeGeneration2CoverageEpoch = 0;
         _noGcRegionActive = false;
         _latencyModeOwned = false;
         _noGcRegionAllocatedBytesAtStart = 0;
@@ -1502,13 +1513,6 @@ internal static partial class SearchGcPolicy
             _backgroundReclaimStartedCountForTesting++;
         else
             _noGcRegionExitWithoutCollectionCountForTesting++;
-        Entry.Logger.Info(
-            $"[CombatSolver/Test] MEMORY_RECLAIM stage=started " +
-            $"id={reclaimSequence} reason={reason} gen2_required={collectGeneration2.ToString().ToLowerInvariant()} " +
-            $"end_no_gc={endNoGcRegion.ToString().ToLowerInvariant()} " +
-            $"region_allocated={regionAllocatedBytes} region_budget={regionBudgetBytes} " +
-            $"largest_search_allocated={largestSearchAllocatedBytes} " +
-            DescribeProcessMemory());
 
         _ = Task.Run(async () =>
         {
@@ -1516,6 +1520,13 @@ internal static partial class SearchGcPolicy
             SearchGcLifecycleSnapshot lifecycleBefore = CaptureLifecycle();
             try
             {
+                Entry.Logger.Info(
+                    $"[CombatSolver/Test] MEMORY_RECLAIM stage=started " +
+                    $"id={reclaimSequence} reason={reason} gen2_required={collectGeneration2.ToString().ToLowerInvariant()} " +
+                    $"end_no_gc={endNoGcRegion.ToString().ToLowerInvariant()} " +
+                    $"region_allocated={regionAllocatedBytes} region_budget={regionBudgetBytes} " +
+                    $"largest_search_allocated={largestSearchAllocatedBytes} " +
+                    DescribeProcessMemory());
                 long liveBefore = GC.GetTotalMemory(forceFullCollection: false);
                 using Process processBefore = Process.GetCurrentProcess();
                 long workingSetBefore = processBefore.WorkingSet64;
@@ -1544,9 +1555,8 @@ internal static partial class SearchGcPolicy
                     long collectionCoverageEpoch;
                     lock (Gate)
                     {
-                        _activeGeneration2CollectionStarted = true;
                         collectionCoverageEpoch = _referenceReleaseEpoch;
-                        _activeGeneration2CoverageEpoch = collectionCoverageEpoch;
+                        _reclaim.BeginCollection(collectionCoverageEpoch);
                     }
                     Entry.Logger.Info(
                         $"[CombatSolver/Test] MEMORY_RECLAIM stage=gen2_started " +
@@ -1633,53 +1643,58 @@ internal static partial class SearchGcPolicy
             }
             finally
             {
-                lock (Gate)
+                try
                 {
-                    // Keep ownership coherent even if preparation or collection failed.
-                    ReconcileRegionOwnershipAfterTransitionLocked(previousMode, restoreLatencyMode);
-                    if (!_noGcRegionActive)
-                        RestoreLatencyModeLocked();
-                    _reclaimActive = false;
-                    _reclaimCompletion = null;
-                    _activeReclaimCollectsGeneration2 = false;
-                    _activeReclaimTrimsWorkingSet = false;
-                    _activeGeneration2CollectionStarted = false;
-                    _activeGeneration2CoverageEpoch = 0;
-                    if (failure != null)
+                    lock (Gate)
                     {
-                        // Callers which joined this failed chain observe its exception. Clearing a
-                        // queued trim lets a later user retry create a fresh reclaim instead of
-                        // rejoining the permanently faulted task.
-                        _workingSetTrimRequested = false;
+                        _reclaim.Finish(completion);
+                        // Keep ownership coherent even if preparation or collection failed.
+                        ReconcileRegionOwnershipAfterTransitionLocked(previousMode, restoreLatencyMode);
+                        if (!_noGcRegionActive)
+                            RestoreLatencyModeLocked();
+                        if (failure != null)
+                        {
+                            // Callers which joined this failed chain observe its exception. Clearing a
+                            // queued trim lets a later user retry create a fresh reclaim instead of
+                            // rejoining the permanently faulted task.
+                            _workingSetTrimRequested = false;
+                        }
+                        _generation2CoveragePauseStageForTesting = 0;
+                        _generation2CoverageReachedForTesting = null;
+                        _generation2CoverageResumeForTesting = null;
+                        _activeReclaimSequence = 0;
+                        if (failure != null
+                            && collectGeneration2
+                            && _requiredReferenceReleaseCollectionEpoch != 0)
+                        {
+                            // Preserve the post-release obligation for the next safe policy entry;
+                            // do not spin a retry loop after a failed background collection.
+                            _reclaimRequired = true;
+                        }
+                        if (failure == null && (_regionExitRequired || _reclaimRequired))
+                            RequestReclaimLocked(_reclaimReason);
                     }
-                    _generation2CoveragePauseStageForTesting = 0;
-                    _generation2CoverageReachedForTesting = null;
-                    _generation2CoverageResumeForTesting = null;
-                    _activeReclaimSequence = 0;
-                    if (failure != null
-                        && collectGeneration2
-                        && _requiredReferenceReleaseCollectionEpoch != 0)
+                    Entry.Logger.Info(
+                        $"[CombatSolver/Test] MEMORY_RECLAIM stage=finished " +
+                        $"id={reclaimSequence} reason={reason} success={(failure == null).ToString().ToLowerInvariant()} " +
+                        DescribeProcessMemory());
+                }
+                catch (Exception finalizationFailure)
+                {
+                    failure = CombineGcFailures(failure, finalizationFailure);
+                }
+                finally
+                {
+                    try
                     {
-                        // Preserve the post-release obligation for the next safe policy entry;
-                        // do not spin a retry loop after a failed background collection.
-                        _reclaimRequired = true;
+                        if (failure == null) completion.SetResult();
+                        else completion.SetException(failure);
                     }
-                    if (failure == null && (_regionExitRequired || _reclaimRequired))
-                        RequestReclaimLocked(_reclaimReason);
-                }
-                Entry.Logger.Info(
-                    $"[CombatSolver/Test] MEMORY_RECLAIM stage=finished " +
-                    $"id={reclaimSequence} reason={reason} success={(failure == null).ToString().ToLowerInvariant()} " +
-                    DescribeProcessMemory());
-                if (failure == null)
-                {
-                    completion.SetResult();
-                    manualCompletion?.SetResult();
-                }
-                else
-                {
-                    completion.SetException(failure);
-                    manualCompletion?.SetException(failure);
+                    finally
+                    {
+                        if (failure == null) manualCompletion?.SetResult();
+                        else manualCompletion?.SetException(failure);
+                    }
                 }
             }
         });
@@ -1912,8 +1927,8 @@ internal static partial class SearchGcPolicy
             if (scope.IsLifecycleCompleted)
                 return;
             memoryPressureSignal.Disable();
-            _noGcRecoveryGeneration++;
-            _searchRecoveryBudgetCapBytes = 0;
+            _exclusiveSearchScope?.DisableRecovery();
+            _exclusiveSearchScope = null;
             // A loss discovered on exit belongs to this admitted search. Freeze immediately
             // afterward, before releasing admission or starting any deferred collector task.
             if (_noGcRegionActive && GCSettings.LatencyMode != GCLatencyMode.NoGCRegion)
@@ -1964,12 +1979,12 @@ internal static partial class SearchGcPolicy
                 return;
             }
 
-            if (_reclaimRequested)
+            if (_reclaim.IsPending)
             {
                 StartReclaimLocked();
                 return;
             }
-            if (_manualReclaimRequested)
+            if (HasPendingManualReclaim)
             {
                 RequestReclaimLocked("manual_gc");
                 return;
@@ -2011,9 +2026,9 @@ internal static partial class SearchGcPolicy
             if (--_activeSearches != 0)
                 return;
             PromoteDeferredReclaimLocked();
-            if (_reclaimRequested && _regionExitOnlyTask.IsCompleted)
+            if (_reclaim.IsPending && _regionExitOnlyTask.IsCompleted)
                 StartReclaimLocked();
-            else if (_manualReclaimRequested && _regionExitOnlyTask.IsCompleted)
+            else if (HasPendingManualReclaim && _regionExitOnlyTask.IsCompleted)
                 RequestReclaimLocked("manual_gc");
         }
     }
@@ -2098,31 +2113,26 @@ internal static partial class SearchGcPolicy
             cancellationToken.ThrowIfCancellationRequested();
             lock (Gate)
             {
-                if (_activeSearches > 0 && _reclaimRequested)
+                if (_activeSearches > 0 && _reclaim.IsPending)
                 {
                     throw new InvalidOperationException(
                         "活动搜索期间出现了只能在搜索退出后执行的后台 GC 请求。");
                 }
-                if (_activeSearches == 1 && !_reclaimActive && !_reclaimRequested)
+                if (_activeSearches == 1 && !_reclaim.IsRunning && !_reclaim.IsPending)
                 {
-                    if (_manualReclaimRequested)
+                    if (HasPendingManualReclaim)
                     {
-                        manualCompletion = _manualReclaimCompletion
+                        manualCompletion = _pendingManualReclaim
                             ?? throw new InvalidOperationException("手动 GC 请求缺少完成信号。");
-                        _manualReclaimRequested = false;
-                        _manualReclaimCompletion = null;
-                        _manualReclaimTask = Task.CompletedTask;
+                        _pendingManualReclaim = null;
                     }
                     // A manual request before the first collection can join its completion,
                     // independently of a later search timeout after a successful drain.
                     manualCompletion ??= new TaskCompletionSource(
                         TaskCreationOptions.RunContinuationsAsynchronously);
-                    _inSearchManualReclaimTask = manualCompletion.Task;
                     checkpointCompletion = new TaskCompletionSource(
                         TaskCreationOptions.RunContinuationsAsynchronously);
-                    _reclaimActive = true;
-                    _reclaimCompletion = checkpointCompletion;
-                    _reclaimTask = checkpointCompletion.Task;
+                    _reclaim.StartCheckpoint(checkpointCompletion, manualCompletion.Task);
                     noGcRegionLost = _noGcRegionActive
                         && GCSettings.LatencyMode != GCLatencyMode.NoGCRegion;
                     if (noGcRegionLost)
@@ -2144,17 +2154,27 @@ internal static partial class SearchGcPolicy
         BackgroundGen2Completion completedCollection = default;
         long liveAfterCollection = 0;
         GCMemoryInfo? heapAfterCollection = null;
-        long liveBefore = GC.GetTotalMemory(forceFullCollection: false);
-        using Process processBefore = Process.GetCurrentProcess();
-        long workingSetBefore = processBefore.WorkingSet64;
-        long privateBefore = processBefore.PrivateMemorySize64;
-        TimeSpan pauseBefore = GC.GetTotalPauseDuration();
-        SearchGcPauseSnapshot pauseObservation = SearchGcPauseSnapshot.Capture();
+        long liveBefore = 0, workingSetBefore = 0, privateBefore = 0;
+        TimeSpan pauseBefore = default, pauseAfterRegionExit = default, pauseAfterCollection = default;
+        SearchGcPauseSnapshot pauseObservation = default;
+        bool pauseObservationAvailable = false;
         double regionExitMilliseconds = 0, collectionMilliseconds = 0;
-        TimeSpan pauseAfterRegionExit = pauseBefore, pauseAfterCollection = pauseBefore;
-        Stopwatch stopwatch = Stopwatch.StartNew();
+        Stopwatch stopwatch = new();
         try
         {
+            // Diagnostic acquisition is inside the operation boundary too: a process-info
+            // failure must not leave an already admitted checkpoint permanently active.
+            liveBefore = GC.GetTotalMemory(forceFullCollection: false);
+            using (Process processBefore = Process.GetCurrentProcess())
+            {
+                workingSetBefore = processBefore.WorkingSet64;
+                privateBefore = processBefore.PrivateMemorySize64;
+            }
+            pauseBefore = GC.GetTotalPauseDuration();
+            pauseAfterRegionExit = pauseAfterCollection = pauseBefore;
+            pauseObservation = SearchGcPauseSnapshot.Capture();
+            pauseObservationAvailable = true;
+            stopwatch.Start();
             PauseInSearchCheckpointForTesting();
             bool directBackgroundExit = OperatingSystem.IsWindows() && endNoGcRegion;
             if (endNoGcRegion && !directBackgroundExit)
@@ -2174,7 +2194,7 @@ internal static partial class SearchGcPolicy
             {
                 // This is only the manual-request cutoff, not a claim to cover deferred
                 // reference-release epochs. Those retain their post-search completion chain.
-                _activeGeneration2CollectionStarted = true;
+                _reclaim.BeginCollection();
             }
             completedCollection = CollectGeneration2ForAutomaticReclaimAsync(
                 inSearchCheckpoint: true, exitOwnedNoGcRegion: directBackgroundExit)
@@ -2230,9 +2250,10 @@ internal static partial class SearchGcPolicy
                     _latencyModeOwned = true;
                     // Keep the recovered reservation ceiling for this scope. Immediately
                     // growing back to the original request recreates the pressure episode.
+                    long recoveryBudgetCapBytes = _exclusiveSearchScope?.RecoveryBudgetCapBytes ?? 0;
                     EffectiveNoGcRegionBudget effectiveBudget = ResolveEffectiveNoGcRegionBudget(
-                        _searchRecoveryBudgetCapBytes > 0
-                            ? Math.Min(configuredRegionBudgetBytes, _searchRecoveryBudgetCapBytes)
+                        recoveryBudgetCapBytes > 0
+                            ? Math.Min(configuredRegionBudgetBytes, recoveryBudgetCapBytes)
                             : configuredRegionBudgetBytes,
                         configuredLohBudgetBytes);
                     bool usefulCommitWindow = IsNoGcCommitWindowWorthEntering(
@@ -2327,66 +2348,82 @@ internal static partial class SearchGcPolicy
         }
         finally
         {
-            stopwatch.Stop();
-            signal.ObserveReclaimGcPause(pauseObservation.ObserveMaximumSince());
-            using Process processAfter = Process.GetCurrentProcess();
-            processAfter.Refresh();
-            Entry.Logger.Info(
-                $"[CombatSolver/Test] HEAP_RECLAIM reason=in_search_memory_checkpoint " +
-                $"trigger={reason} " +
-                $"mode=background_requested_non_compacting no_gc_region_ended={endNoGcRegion} " +
-                $"completion_kind={completedCollection.Kind ?? "none"} " +
-                $"completion_index={completedCollection.Index} " +
-                $"collection_requests={completedCollection.Requests} " +
-                $"observed_concurrent={completedCollection.Concurrent.ToString().ToLowerInvariant()} " +
-                $"collection_timed_out={completedCollection.TimedOut.ToString().ToLowerInvariant()} " +
-                $"no_gc_region_lost={noGcRegionLost.ToString().ToLowerInvariant()} " +
-                $"no_gc_region_restart={FormatStartOutcome(restartOutcome)} " +
-                $"fallback_latched={(restartOutcome != NoGcRegionStartOutcome.Started).ToString().ToLowerInvariant()} " +
-                $"elapsed_ms={stopwatch.Elapsed.TotalMilliseconds:F1} " +
-                $"region_exit_ms={regionExitMilliseconds:F1} collection_ms={collectionMilliseconds:F1} " +
-                $"restart_ms={Math.Max(0, stopwatch.Elapsed.TotalMilliseconds - regionExitMilliseconds - collectionMilliseconds):F1} " +
-                $"region_exit_pause_ms={(pauseAfterRegionExit - pauseBefore).TotalMilliseconds:F1} " +
-                $"collection_pause_ms={(pauseAfterCollection - pauseAfterRegionExit).TotalMilliseconds:F1} " +
-                $"restart_pause_ms={(GC.GetTotalPauseDuration() - pauseAfterCollection).TotalMilliseconds:F1} " +
-                $"gc_pause_delta_ms={(GC.GetTotalPauseDuration() - pauseBefore).TotalMilliseconds:F1} " +
-                $"max_observed_gc_pause_ms={signal.LastReclaimMaxObservedGcPause.TotalMilliseconds:F1} " +
-                CaptureLifecycle().DeltaFrom(lifecycleBefore).ToDiagnosticString() + " " +
-                $"collection_completed={collectionCompleted.ToString().ToLowerInvariant()} " +
-                $"managed_live_after_collect={liveAfterCollection} " +
-                $"heap_after_collect={heapAfterCollection?.HeapSizeBytes ?? 0} " +
-                $"fragmented_after_collect={heapAfterCollection?.FragmentedBytes ?? 0} " +
-                $"committed_after_collect={heapAfterCollection?.TotalCommittedBytes ?? 0} " +
-                $"managed_live_before={liveBefore} managed_live_after={GC.GetTotalMemory(false)} " +
-                $"working_set_before={workingSetBefore} working_set_after={processAfter.WorkingSet64} " +
-                $"private_before={privateBefore} private_after={processAfter.PrivateMemorySize64}");
-            lock (Gate)
+            try
             {
-                if (failure != null)
+                try
                 {
-                    ReconcileRegionOwnershipAfterTransitionLocked(
-                        previousMode,
-                        restoreLatencyMode);
+                    stopwatch.Stop();
+                    if (pauseObservationAvailable)
+                        signal.ObserveReclaimGcPause(pauseObservation.ObserveMaximumSince());
+                    using Process processAfter = Process.GetCurrentProcess();
+                    processAfter.Refresh();
+                    Entry.Logger.Info(
+                        $"[CombatSolver/Test] HEAP_RECLAIM reason=in_search_memory_checkpoint " +
+                        $"trigger={reason} " +
+                        $"mode=background_requested_non_compacting no_gc_region_ended={endNoGcRegion} " +
+                        $"completion_kind={completedCollection.Kind ?? "none"} " +
+                        $"completion_index={completedCollection.Index} " +
+                        $"collection_requests={completedCollection.Requests} " +
+                        $"observed_concurrent={completedCollection.Concurrent.ToString().ToLowerInvariant()} " +
+                        $"collection_timed_out={completedCollection.TimedOut.ToString().ToLowerInvariant()} " +
+                        $"no_gc_region_lost={noGcRegionLost.ToString().ToLowerInvariant()} " +
+                        $"no_gc_region_restart={FormatStartOutcome(restartOutcome)} " +
+                        $"fallback_latched={(restartOutcome != NoGcRegionStartOutcome.Started).ToString().ToLowerInvariant()} " +
+                        $"elapsed_ms={stopwatch.Elapsed.TotalMilliseconds:F1} " +
+                        $"region_exit_ms={regionExitMilliseconds:F1} collection_ms={collectionMilliseconds:F1} " +
+                        $"restart_ms={Math.Max(0, stopwatch.Elapsed.TotalMilliseconds - regionExitMilliseconds - collectionMilliseconds):F1} " +
+                        $"region_exit_pause_ms={(pauseAfterRegionExit - pauseBefore).TotalMilliseconds:F1} " +
+                        $"collection_pause_ms={(pauseAfterCollection - pauseAfterRegionExit).TotalMilliseconds:F1} " +
+                        $"restart_pause_ms={(GC.GetTotalPauseDuration() - pauseAfterCollection).TotalMilliseconds:F1} " +
+                        $"gc_pause_delta_ms={(GC.GetTotalPauseDuration() - pauseBefore).TotalMilliseconds:F1} " +
+                        $"max_observed_gc_pause_ms={signal.LastReclaimMaxObservedGcPause.TotalMilliseconds:F1} " +
+                        CaptureLifecycle().DeltaFrom(lifecycleBefore).ToDiagnosticString() + " " +
+                        $"collection_completed={collectionCompleted.ToString().ToLowerInvariant()} " +
+                        $"managed_live_after_collect={liveAfterCollection} " +
+                        $"heap_after_collect={heapAfterCollection?.HeapSizeBytes ?? 0} " +
+                        $"fragmented_after_collect={heapAfterCollection?.FragmentedBytes ?? 0} " +
+                        $"committed_after_collect={heapAfterCollection?.TotalCommittedBytes ?? 0} " +
+                        $"managed_live_before={liveBefore} managed_live_after={GC.GetTotalMemory(false)} " +
+                        $"working_set_before={workingSetBefore} working_set_after={processAfter.WorkingSet64} " +
+                        $"private_before={privateBefore} private_after={processAfter.PrivateMemorySize64}");
                 }
-                _reclaimActive = false;
-                _reclaimCompletion = null;
-                _activeReclaimCollectsGeneration2 = false;
-                _activeGeneration2CollectionStarted = false;
-                _activeGeneration2CoverageEpoch = 0;
-                _inSearchManualReclaimTask = Task.CompletedTask;
-                if (failure == null && (_regionExitRequired || _reclaimRequired))
-                    RequestReclaimLocked(_reclaimReason);
+                catch (Exception diagnosticFailure)
+                {
+                    failure = CombineGcFailures(failure, diagnosticFailure);
+                }
+                lock (Gate)
+                {
+                    _reclaim.Finish(checkpointCompletion);
+                    if (failure != null)
+                    {
+                        ReconcileRegionOwnershipAfterTransitionLocked(
+                            previousMode,
+                            restoreLatencyMode);
+                    }
+                    if (failure == null && (_regionExitRequired || _reclaimRequired))
+                        RequestReclaimLocked(_reclaimReason);
+                }
             }
-            if (failure == null || failure is OperationCanceledException)
-                checkpointCompletion.SetResult();
-            else
-                checkpointCompletion.SetException(failure);
-            if (manualCompletion != null)
+            catch (Exception finalizationFailure)
             {
-                if (failure == null || collectionCompleted)
-                    manualCompletion.SetResult();
-                else
-                    manualCompletion.SetException(failure);
+                failure = CombineGcFailures(failure, finalizationFailure);
+            }
+            finally
+            {
+                try
+                {
+                    if (failure == null || failure is OperationCanceledException)
+                        checkpointCompletion.SetResult();
+                    else
+                        checkpointCompletion.SetException(failure);
+                }
+                finally
+                {
+                    if (failure == null || collectionCompleted)
+                        manualCompletion?.SetResult();
+                    else
+                        manualCompletion?.SetException(failure);
+                }
             }
         }
 
@@ -2636,13 +2673,4 @@ internal static partial class SearchGcPolicy
         public override void Dispose() => ExitDefaultGcSearch(this);
     }
 
-    private sealed class ExclusiveGcSearchScope(
-        long allocatedBytesAtEntry,
-        SearchMemoryPressureSignal memoryPressureSignal,
-        SearchGcLifecycleSnapshot lifecycleAtEntry)
-        : SearchGcScope(lifecycleAtEntry, SearchGcLifecycleAttribution.ExclusiveSearchScope)
-    {
-        public override void Dispose()
-            => ExitLowLatencySearch(allocatedBytesAtEntry, memoryPressureSignal, this);
-    }
 }
