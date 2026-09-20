@@ -1,4 +1,3 @@
-﻿using System.Collections.Concurrent;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
@@ -69,6 +68,12 @@ internal static class AdaptedCardOnPlayMirrors
         return Registrations.Count != 0;
     }
 
+    internal static Type[] RegisteredTypes()
+    {
+        lock (Gate)
+            return Registrations.Keys.ToArray();
+    }
+
     internal static MethodInfo? ResolveOnPlay(Type type)
         => AccessTools.Method(type, "OnPlay", [typeof(PlayerChoiceContext), typeof(CardPlay)]);
 
@@ -85,7 +90,7 @@ internal static class AdaptedCardOnPlayMirrors
 
     // A configuration stamp belongs to Runtime's live boundaries. Workers only use the frozen string.
     // Include all patched card OnPlay methods so later additions invalidate old plans as well.
-    internal static string? CaptureLiveStamp()
+    internal static string? CaptureLiveStamp(ISet<MethodInfo>? patchedOnPlayTargets = null)
     {
         if (!Seal()) return null;
         StringBuilder text = new();
@@ -104,6 +109,8 @@ internal static class AdaptedCardOnPlayMirrors
         {
             string patches = DescribeActual(method, Harmony.GetPatchInfo(method), includeIndex: true);
             if (patches.Length == 0) continue;
+            if (method is MethodInfo target)
+                patchedOnPlayTargets?.Add(target);
             Field(text, MethodIdentity(method));
             Field(text, patches);
         }
@@ -208,14 +215,9 @@ internal static class AdaptedCardOnPlayMirrors
 }
 
 internal sealed class AdaptedOnPlaySnapshot(
-    Dictionary<Type, AdaptedCardOnPlayMirrors.Registration?> selections, string stamp)
+    Dictionary<Type, AdaptedCardOnPlayMirrors.Registration?> selections, string stamp,
+    HashSet<MethodInfo> patchedOnPlayTargets, Dictionary<Type, string> deferredFailures)
 {
-    // Root capture can only audit card types that exist when it runs; cards generated during combat
-    // (Shiv, Burn, Wound, ...) first appear on a worker. Those types have no frozen answer, so they are
-    // audited on first use and cached. Workers run in parallel, hence the concurrent map.
-    private readonly ConcurrentDictionary<Type, AdaptedCardOnPlayMirrors.Registration?> _selections =
-        new(selections);
-
     public string Stamp { get; } = stamp;
 
     internal bool TryInvoke(CombatPredictionSimulator simulator, PredictedCard card, CardPlay play,
@@ -223,26 +225,19 @@ internal sealed class AdaptedOnPlaySnapshot(
     {
         result = default;
         Type type = card.Preview.GetType();
-        if (!_selections.TryGetValue(type, out var registration))
-            registration = _selections.GetOrAdd(type, AuditGeneratedCardType);
+        if (deferredFailures.TryGetValue(type, out string? failure))
+            throw new PredictionUnsupportedException(failure);
+        if (!selections.TryGetValue(type, out var registration))
+        {
+            MethodInfo target = AdaptedCardOnPlayMirrors.ResolveOnPlay(type)
+                ?? throw new PredictionUnsupportedException($"Missing OnPlay for {type.FullName}.");
+            if (patchedOnPlayTargets.Contains(target))
+                throw new PredictionUnsupportedException(
+                    $"Card type {type.FullName} has a patched OnPlay that was not adapted in this captured root.");
+            return false;
+        }
         if (registration is null) return false;
         result = registration.Mirror.Invoke(card.MutablePreview, new() { Simulator = simulator, Card = card, CardPlay = play });
         return true;
-    }
-
-    /// <remarks>
-    /// The root's decision for an unaudited type would be "refuse the combat" only when the type carries a
-    /// foreign patch on its OnPlay. Without one the ordinary mirror table is correct, which is what returning
-    /// a null registration selects — the same answer root capture gives for an unpatched card.
-    /// </remarks>
-    private static AdaptedCardOnPlayMirrors.Registration? AuditGeneratedCardType(Type type)
-    {
-        AdaptedCardOnPlayMirrors.Registration? selected =
-            PredictionModPatchAudit.AuditCardOnPlay(type, adapted: true, out var firstForeign);
-        if (selected is null && firstForeign is { } unsupported)
-            throw new PredictionUnsupportedException(
-                $"{unsupported.ModName} ({unsupported.ModId}) patches the OnPlay of {type.FullName}, "
-                + $"which is generated during combat and has no adapted registration: {unsupported.Description}.");
-        return selected;
     }
 }

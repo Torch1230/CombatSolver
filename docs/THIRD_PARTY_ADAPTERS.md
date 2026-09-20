@@ -446,9 +446,9 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 `AdaptedCardOnPlayMirrors.Register<TCard>` 登记精确目标、完整补丁组合与唯一完整预测实现。
 首次根／续用捕获后冻结；根选择通过标准 registry 分派，命中后不再执行原版 OnPlay/spec。
 组合核对包含实际顺序、owner、优先级和 before／after；不放行未知来源或明确不兼容 Mod。
-配置进入 continuation，旧根及路线沿既有边界核对失效；worker 不扫描已审过类型的补丁表。
-战斗中生成的牌（刀刃、灼烧、伤口……）根捕获时还不存在，没有冻结答案，首次打出时按同一套判据
-现审一次并缓存：没有第三方补丁就交回普通镜像表，有则明确拒绝。
+配置进入 continuation，旧根及路线沿既有边界核对失效。建根时冻结所有已补丁 OnPlay 方法，
+并审完全部已登记的卡牌类型。战斗中首次出现的未登记类型只按冻结方法集合判定：
+无补丁就交回普通镜像，有补丁则明确拒绝；worker 不读取实时 Harmony 表。
 支持面、条件 descriptor、async／动态卡牌限制及测试见[OnPlay 补丁适配](third-party-onplay-patches.md)。
 
 ### 2.12 还没有登记入口的地方

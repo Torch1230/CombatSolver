@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using CombatSolver;
 using CombatSolver.Engine.Common;
@@ -49,7 +49,11 @@ AdaptedCardOnPlayMirrors.Register<ComposedCard>("composition-v1", target2,
 MethodInfo asyncTarget = AdaptedCardOnPlayMirrors.ResolveOnPlay(typeof(AsyncCard))!;
 AdaptedCardOnPlayMirrors.Register<AsyncCard>("async-contract", asyncTarget,
     [Declaration(HarmonyPatchType.Prefix, prefix)], (card, _) => card.Value++);
-Check(AdaptedCardOnPlayMirrors.DescribeRegisteredCompositions().Count == 3
+MethodInfo generatedTarget = AdaptedCardOnPlayMirrors.ResolveOnPlay(typeof(GeneratedCard))!;
+MethodInfo extra = Method(typeof(TestPatches), nameof(TestPatches.Extra));
+AdaptedCardOnPlayMirrors.Register<GeneratedCard>("generated-contract", generatedTarget,
+    [Declaration(HarmonyPatchType.Prefix, extra)], (card, _) => card.Value = 71);
+Check(AdaptedCardOnPlayMirrors.DescribeRegisteredCompositions().Count == 4
     && AdaptedCardOnPlayMirrors.DescribeRegisteredCompositions()[0].Mirror.Registrations.Count == 1,
     "Conditional registrations do not expose standard descriptors.");
 Reject<ArgumentException>(() => AdaptedCardOnPlayMirrors.Register<TestCard>("conflict", target, composition, (_, _) => { }), "Conflicting registration accepted.");
@@ -68,6 +72,7 @@ try
 {
     harmony.Patch(target, prefix: new HarmonyMethod(prefix), postfix: new HarmonyMethod(post));
     harmony.Patch(target2, prefix: new HarmonyMethod(before), postfix: new HarmonyMethod(after));
+    harmony.Patch(generatedTarget, prefix: new HarmonyMethod(extra));
     AdaptedOnPlaySnapshot snapshot = PredictionModPatchAudit.CaptureCardOnPlay(cards)!;
     Check(snapshot.Stamp != originalStamp, "Patch installation did not invalidate old configuration.");
     Check(snapshot.Stamp == AdaptedCardOnPlayMirrors.CaptureLiveStamp(), "Stable configuration stamp drifted.");
@@ -75,28 +80,23 @@ try
     TestCard predicted = new(); ComposedCard predicted2 = new();
     Check(snapshot.TryInvoke(new(), new(predicted), new(), out var dispatch), "Exact replacement not selected.");
     Check(snapshot.TryInvoke(new(), new(predicted2), new(), out _), "Exact composition not selected.");
+    GeneratedCard generated = new();
+    Check(snapshot.TryInvoke(new(), new(generated), new(), out _) && generated.Value == 71,
+        "Registered generated card was not selected at root capture.");
     Check(predicted.Value == live.Value && live.Value == 43, "Replacement native/predicted effects differ.");
     Check(predicted2.Value == live2.Value && live2.Value == 30, "Prefix/native/postfix composition differs.");
     Check(dispatch.Kind == CombatSolver.Engine.Common.Mirrors.MirrorDispatchKind.Handled, "Registered dispatch not exact.");
     Patches wrongOwner = new([new(prefix, 0, "wrong-owner", Priority.Normal, [], [], false)],
         [new(post, 1, owner, Priority.Normal, [], [], false)], [], [], [], []);
     Reject<PredictionUnsupportedException>(() => AdaptedCardOnPlayMirrors.Select(typeof(TestCard), target, wrongOwner), "Wrong Harmony owner accepted.");
-    // Cards generated during combat are not visible at root capture. Unpatched ones must fall back to the
-    // ordinary mirror instead of failing the whole search; patched ones must still refuse.
+    // Unpatched dynamic types use the ordinary mirror from frozen root evidence.
     Check(!snapshot.TryInvoke(new(), new(new OtherCard()), new(), out _), "Unaudited unpatched type did not fall back.");
-    MethodInfo generatedTarget = AdaptedCardOnPlayMirrors.ResolveOnPlay(typeof(GeneratedCard))!;
-    harmony.Patch(generatedTarget, prefix: new HarmonyMethod(Method(typeof(TestPatches), nameof(TestPatches.Extra))));
-    Reject<PredictionUnsupportedException>(() => snapshot.TryInvoke(new(), new(new GeneratedCard()), new(), out _), "Unaudited foreign-patched type accepted.");
-    harmony.Unpatch(generatedTarget, Method(typeof(TestPatches), nameof(TestPatches.Extra)));
-    GeneratedCard generated = new();
-    Check(!snapshot.TryInvoke(new(), new(generated), new(), out _), "Refused type was cached instead of re-audited.");
     AssemblyInfo.Unknown = true;
     Reject<PredictionUnsupportedException>(() => PredictionModPatchAudit.CaptureCardOnPlay(cards), "Registered unknown source accepted.");
     AssemblyInfo.Unknown = false;
     ModManager.Mods.Add(new() { manifest = new() { id = "WheelchairSpire" } });
     Reject<IncompatibleGameplayModException>(() => PredictionModPatchAudit.CaptureCardOnPlay(cards), "Denied mod bypassed audit.");
     ModManager.Mods.Clear();
-    MethodInfo extra = Method(typeof(TestPatches), nameof(TestPatches.Extra));
     harmony.Patch(target, prefix: new HarmonyMethod(extra));
     Reject<PredictionUnsupportedException>(() => PredictionModPatchAudit.CaptureCardOnPlay(cards), "Additional same-owner patch accepted.");
     Check(AdaptedCardOnPlayMirrors.CaptureLiveStamp() != snapshot.Stamp, "Additional patch left old stamp valid.");
@@ -124,7 +124,17 @@ try
     MethodInfo otherTarget = AdaptedCardOnPlayMirrors.ResolveOnPlay(typeof(OtherCard))!;
     harmony.Patch(otherTarget, prefix: new HarmonyMethod(extra));
     Reject<IncompatibleGameplayModException>(() => PredictionModPatchAudit.CaptureCardOnPlay([new OtherCard()]), "Unregistered foreign target accepted.");
+    Check(!snapshot.TryInvoke(new(), new(new OtherCard()), new(), out _),
+        "Old root read a newly installed generated-type patch.");
+    AdaptedOnPlaySnapshot generatedPatchRoot = PredictionModPatchAudit.CaptureCardOnPlay(cards)!;
+    Reject<PredictionUnsupportedException>(() => generatedPatchRoot.TryInvoke(new(), new(new OtherCard()), new(), out _),
+        "Frozen generated-type patch was accepted.");
     Check(unloaded.Stamp != AdaptedCardOnPlayMirrors.CaptureLiveStamp(), "Later card patch omitted from invalidation stamp.");
+    harmony.Unpatch(otherTarget, extra);
+    Reject<PredictionUnsupportedException>(() => generatedPatchRoot.TryInvoke(new(), new(new OtherCard()), new(), out _),
+        "Worker consulted Harmony instead of the frozen patch set.");
+    Check(!PredictionModPatchAudit.CaptureCardOnPlay(cards)!.TryInvoke(new(), new(new OtherCard()), new(), out _),
+        "New root retained a removed generated-type patch.");
     // Inspect real Harmony ordering without executing this artificial pair.
     Patch p1 = new(before, 0, "a", Priority.Normal, [], [], false);
     Patch p2 = new(after, 1, "b", Priority.Normal, [], [], false);

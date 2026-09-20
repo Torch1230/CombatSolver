@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using CombatSolver.Engine.Common;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Entities.Cards;
@@ -53,7 +53,32 @@ internal static class PredictionModPatchAudit
                     unsupported.Description, "combat");
             selections?.Add(type, selected);
         }
-        return selections is null ? null : new(selections, AdaptedCardOnPlayMirrors.CaptureLiveStamp()!);
+        if (selections is null)
+            return null;
+
+        Dictionary<Type, string> deferredFailures = [];
+        foreach (Type type in AdaptedCardOnPlayMirrors.RegisteredTypes())
+        {
+            if (!checkedTypes.Add(type)) continue;
+            try
+            {
+                AdaptedCardOnPlayMirrors.Registration? selected =
+                    AuditCardOnPlay(type, adapted: true, out ForeignPatch? firstForeign);
+                if (selected is null && firstForeign is { } unsupported)
+                    deferredFailures.Add(type, $"{unsupported.ModName} ({unsupported.ModId}) patches the OnPlay of "
+                        + $"{type.FullName} without a matching adapter: {unsupported.Description}.");
+                else
+                    selections.Add(type, selected);
+            }
+            catch (PredictionUnsupportedException error)
+            {
+                // The type is not reachable from this root. Keep its exact rejection for first use.
+                deferredFailures.Add(type, error.Message);
+            }
+        }
+        HashSet<MethodInfo> patchedOnPlayTargets = [];
+        string stamp = AdaptedCardOnPlayMirrors.CaptureLiveStamp(patchedOnPlayTargets)!;
+        return new(selections, stamp, patchedOnPlayTargets, deferredFailures);
     }
 
     /// <summary>

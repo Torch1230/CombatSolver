@@ -279,6 +279,13 @@ $onPlayFacade = Join-Path $repositoryRoot "src/Engine/InCombat/Mirrors/Cards/OnP
 if (Select-String -LiteralPath $onPlayFacade -SimpleMatch "Harmony.GetPatchInfo" -Quiet) {
     $violations.Add("${onPlayFacade}: worker must not query Harmony")
 }
+$onPlayAdapter = Join-Path $repositoryRoot 'src/Prediction/AdaptedCardOnPlayMirrors.cs'
+if (Select-String -LiteralPath $onPlayAdapter -SimpleMatch 'PredictionModPatchAudit.AuditCardOnPlay(' -Quiet) {
+    $violations.Add("${onPlayAdapter}: generated cards must use frozen root patch evidence")
+}
+if (-not (Select-String -LiteralPath $onPlayAdapter -SimpleMatch 'patchedOnPlayTargets.Contains(target)' -Quiet)) {
+    $violations.Add("${onPlayAdapter}: missing frozen generated-card patch decision")
+}
 
 $sessionPath = Join-Path $repositoryRoot "src\Runtime\SolverControllerSessions.cs"
 foreach ($sessionType in @("SolverCombatSession", "SolverSearchSession", "SolverDeploymentSession")) {

@@ -399,6 +399,8 @@ require_fixed "$repository_root/src/Runtime/ContinuationStamp.cs" 'AdaptedCardOn
 require_fixed "$repository_root/src/Runtime/ContinuationStamp.cs" 'adaptedOnPlay.Stamp' 'missing frozen predicted OnPlay configuration'
 require_fixed "$repository_root/src/Engine/InCombat/Mirrors/Cards/OnPlay/CardOnPlayMirrors.cs" 'return replacement;' 'missing exclusive adapted OnPlay dispatch'
 forbid_fixed "$repository_root/src/Engine/InCombat/Mirrors/Cards/OnPlay/CardOnPlayMirrors.cs" 'Harmony.GetPatchInfo' 'worker must not query Harmony'
+forbid_fixed "$repository_root/src/Prediction/AdaptedCardOnPlayMirrors.cs" 'PredictionModPatchAudit.AuditCardOnPlay(' 'generated cards must use frozen root patch evidence'
+require_fixed "$repository_root/src/Prediction/AdaptedCardOnPlayMirrors.cs" 'patchedOnPlayTargets.Contains(target)' 'missing frozen generated-card patch decision'
 for session_type in SolverCombatSession SolverSearchSession SolverDeploymentSession; do
     require_fixed "$session_path" "class $session_type" 'missing controller session type'
 done
