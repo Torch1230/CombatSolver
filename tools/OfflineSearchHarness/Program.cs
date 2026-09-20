@@ -174,6 +174,8 @@ internal static class Program
                     JsonSerializer.Serialize(outcome.RouteActions, UnattendedTestFiles.JsonOptions));
 
                 reached = "M2";
+                if (Environment.GetEnvironmentVariable("OFFLINE_HARNESS_ANCILLARY_CHECKS") == "1")
+                    AncillaryFailureChecks.Run(outcome.Result, options.OutputDirectory);
                 WriteProgress(options, "M2", "ok", "搜索完成并产出指标");
             }
         }

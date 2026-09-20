@@ -2554,8 +2554,6 @@ internal static partial class SolverController
         if (UnattendedTestRunner.IsActive)
             LastCompletedResultForTesting = result;
         BattleDamageTracker.RegisterPlan(searchedState, result);
-        if (!currentTurnAdopted && !routeAdopted)
-            CombatShowcaseCollector.TryQueueCompletedRoute(searchedState, result);
         CombatBugReportExporter.RecordCheckpoint(
             searchedState,
             currentTurnAdopted
@@ -2592,6 +2590,9 @@ internal static partial class SolverController
             StartDeployment(host, searchedState, result);
         else if (_combat.FullAutoEnabled)
             StartFullAutoDeployment(host, searchedState, result);
+        // 录像打包放在路线显示和自动执行启动之后，打包慢或失败都不耽误路线。
+        if (!currentTurnAdopted && !routeAdopted)
+            CombatShowcaseCollector.TryQueueCompletedRoute(searchedState, result);
     }
 
     private static void ApplyProjectionBaselines(SolverResult result)

@@ -87,15 +87,28 @@ internal sealed class SolvedRouteCache(string path)
             ProjectSettings.GlobalizePath("user://combat-solver-routes"), key + ".json"));
     }
 
+    // 缓存是可选功能：读不出来按未命中处理，坏文件改名留作诊断，搜索照常进行。
     public SolverResult? Read(IntentForecast currentForecast)
+        => AncillaryWork.Try("READ_FAILED", () => ReadCore(currentForecast), Log);
+
+    private SolverResult? ReadCore(IntentForecast currentForecast)
     {
         if (!File.Exists(Path))
             return null;
-        using FileStream stream = File.OpenRead(Path);
-        SolverResult result = JsonSerializer.Deserialize<SolverResult>(stream, Options(currentForecast))
-            ?? throw new InvalidDataException($"Empty solved route: {Path}");
-        result.WasRestoredFromCache = true;
-        return result;
+        try
+        {
+            using FileStream stream = File.OpenRead(Path);
+            SolverResult result = JsonSerializer.Deserialize<SolverResult>(stream, Options(currentForecast))
+                ?? throw new InvalidDataException($"Empty solved route: {Path}");
+            result.WasRestoredFromCache = true;
+            return result;
+        }
+        catch (Exception error) when (error is JsonException or InvalidDataException or NotSupportedException)
+        {
+            // 只隔离内容损坏的文件；被占用、无权限等 IO 失败下次可能恢复，不动原文件。
+            AncillaryWork.Run("QUARANTINE_FAILED", () => File.Move(Path, Path + QuarantineSuffix, overwrite: true), Log);
+            throw;
+        }
     }
 
     internal static byte[] SerializeRoute(SolverResult result)
@@ -105,7 +118,11 @@ internal sealed class SolvedRouteCache(string path)
         => JsonSerializer.Deserialize<SolverResult>(bytes, Options(currentForecast))
            ?? throw new InvalidDataException("录像包中的预计算路线为空。");
 
+    // 写入或清理失败只损失这条缓存，已经算出的路线照常交付。
     public void StoreFirst(SolverResult result)
+        => AncillaryWork.Run("STORE_FAILED", () => StoreFirstCore(result), Log);
+
+    private void StoreFirstCore(SolverResult result)
     {
         if (result.WasRestoredFromCache
             || result.ResultScope == SolverResultScope.CurrentTurnAdoption
@@ -115,12 +132,28 @@ internal sealed class SolvedRouteCache(string path)
         Directory.CreateDirectory(directory);
         byte[] bytes = SerializeRoute(result);
         string temporary = Path + ".tmp";
-        File.WriteAllBytes(temporary, bytes);
-        File.Move(temporary, Path);
-        foreach (FileInfo obsolete in new DirectoryInfo(directory).GetFiles("*.json")
-                     .OrderByDescending(file => file.LastWriteTimeUtc).Skip(MaximumEntries))
-            obsolete.Delete();
+        try
+        {
+            File.WriteAllBytes(temporary, bytes);
+            File.Move(temporary, Path);
+        }
+        finally
+        {
+            AncillaryWork.Run("TEMP_CLEANUP_FAILED", () => File.Delete(temporary), Log);
+        }
+        DirectoryInfo info = new(directory);
+        foreach (FileInfo obsolete in info.GetFiles("*.json")
+                     .OrderByDescending(file => file.LastWriteTimeUtc).Skip(MaximumEntries)
+                     .Concat(info.GetFiles("*" + QuarantineSuffix)
+                         .OrderByDescending(file => file.LastWriteTimeUtc).Skip(MaximumQuarantinedEntries)))
+            AncillaryWork.Run("CLEANUP_FAILED", obsolete.Delete, Log);
     }
+
+    private const string QuarantineSuffix = ".bad";
+    private const int MaximumQuarantinedEntries = 8;
+
+    private static void Log(string message)
+        => Entry.Logger.Warn($"[CombatSolver/RouteCache] {message}");
 
     private static JsonSerializerOptions Options(IntentForecast forecast)
     {

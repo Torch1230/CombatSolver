@@ -1,5 +1,10 @@
 # CombatSolver 测试清单
 
+## 下一版本（开发中）：路线缓存与录像的故障隔离
+
+- 离线宿主 `OFFLINE_HARNESS_ANCILLARY_CHECKS=1`（DEFECT、`FUZZY_WURM_CRAWLER_WEAK`、High、DOP 1）在一次真实求解结果上注入磁盘故障，17 项通过：正常写读往返、临时文件清理、坏 JSON 与空路线按未命中处理并改名 `.bad`、隔离后同一键可重新写入、独占文件锁按未命中处理且不隔离、解锁后可读、缓存目录被文件占位、Unix 只读目录、目标路径被目录占用、结果序列化字节不变、取消异常传播、普通失败只记一次日志。macOS 本机运行；Windows 的文件锁语义未验证。
+- 录像采集与打包的隔离、打包调用顺序调整只经过编译和结构门禁，未在游戏内验证；符合录像条件的进阶 10 第三幕 Boss 无伤路线本机没有复现条件。
+
 ## 0.43.1：英文界面启动与疯狂科学成长策略
 
 - `GROWTH-POLICY-FREE-FIRST` / `fb11ce8e1d95410b80d58555a26f6b07` Passed（22.80 秒）。在 Defect 独立原生战斗中注入疯狂科学能力／改进变体，冻结可升级正式牌组三张的目标，预测出牌产生一层改进及一次独立成长额度，随后真实出牌并逐字段对照；另核对非改进／非能力变体不计成长、两张牌与一张可升级目标时目标封顶、零容量不产生目标、额度设置往返、侧栏独立行、Fork 隔离及重复记录封顶。修复前 `630075e609644c418a9c5eece3b23330` 在变体识别断言按预期 Failed；中间 `45bee93749284fff8eba0dc8839755c7` 为夹具错误地重复转可变卡，`4c962a31b75f4a53a278e4b2c4373474` 与 `d3a9d2720aba442e8e3ae03eff03538d` 是反射回放参数及未重编 DLL 的夹具失败，均非产品断言失败。所有隔离实例已删除。未覆盖事件实际生成选项页及正式战后随机升级的可见动画。
@@ -7,7 +12,6 @@
 - `SEARCH-HP-TARGET-STOP` / `e60944f238684bc1a41135317e7d10d6` Passed（23.55 秒）：零损/阈值、成长达标、可重复致命来源及相关回收与动态重放回归，隔离实例已删除。
 - `GROWTH-ANCIENT-POLICY` / `16e87117632749b783df9b46909f8581` Passed（26.93 秒）：原有成长牌手动历史、跨回合/Fork、至亮之焰硬上限及禁忌魔典额度合同继续成立，隔离实例已删除。
 - `UI-LOCALIZATION` 增加 eng/zhs/zht 药水、成长、遗物子面板的实际构造与“收起”按钮文案合同。0.43.0 源码增加断言后，在英文药水面板构造处按玩家异常栈 Failed（runId `391a52cdd52942d9a45e8b514f9034b9`，`KeyNotFoundException: 收起`）；补齐英文词典后 Passed（runId `333583c32c81407bbcd7b3171e872198`），三种语言的三个子面板均完成检查。两次都使用 120 秒上限、独立无头实例及 `-CleanupInstanceOnExit`，实例已删除。该合同覆盖建窗对象与本地化，不等于可见 Steam 排版验收。
-
 ## 0.43.0：路线连续性与操作体验（2026-09-19）
 
 - 两回合原生场景 `TOASTY-QOL-MANUAL-SAME` Passed（runId `c82b3f8125cc4b8998047ccabaf3ca7a`）：第 2 回合烘焙手套手牌页按计划手动删牌，精确续用，新增搜索 0、计划外重算 0。`TOASTY-QOL-MANUAL-DIFFERENT` Passed（runId `f42cc57ca55e4c8e8a91a64a42f951a8`）：选另一张牌严格失配并重新计算。固定夹具位于 `coverage/unattended/toasty-qol-*.json`，可用 `pwsh -NoProfile -File tools/run-qol-contracts.ps1 -Case manual-same`（或 `manual-different`）重跑。最初误将生成场景输出路径用作输入的启动失败不计入上述通过结果，隔离实例已清理。
