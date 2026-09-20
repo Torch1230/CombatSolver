@@ -1,5 +1,9 @@
 # CombatSolver 开发笔记与未来构想
 
+## 下一版本（开发中）
+
+- 六项历史计数改由事件追加时维护；三类 Fork 按值继承，状态键不再反复扫描历史，读者牌启用条件不变。生命周期与数据见 [增量历史计数](strategy/incremental-history-counters.md)。
+
 ## 0.43.0：路线连续性与操作体验（2026-09-19）
 
 玩家可感知的改动见 [0.43.0 更新日志](releases/0.43.0-RELEASE_NOTES.md)。manifest 与项目版本已同步为 0.43.0。

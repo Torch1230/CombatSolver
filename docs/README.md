@@ -1,5 +1,7 @@
 # CombatSolver 文档导航
 
+- [增量历史计数](strategy/incremental-history-counters.md)：生命周期、测试构建与构键计时。
+
 通用随机/指定战斗测试入口：[场景生成与批量重跑](GENERATED_COMBAT_SCENARIOS.md)。
 
 
