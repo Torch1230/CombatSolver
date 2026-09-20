@@ -1,6 +1,6 @@
 # CombatSolver 测试清单
 
-## 下一版本（开发中）：路线缓存、增量历史计数与转置诊断
+## 0.43.2：混合用药、生成牌、路线缓存与增量历史计数
 
 - 强制／智能混合用药：`SEARCH-HP-TARGET-STOP` / `312cb8cd77fb470eaac9bbc48cd19506` Passed，强制能量药与智能力量药的真实搜索在零战损胜利时仅用一瓶，DOP1/DOP2 完整结果和非时序指标逐字段一致；改为只持防御牌与 15 HP 敌人时，仅强制药无法获胜，智能火焰药作为第二瓶救命且不被误拦。纯合同核对强制基线只允许指定槽位、额外一瓶仅比强制基线多省 1 HP 时不满足 9 HP 门槛、强制药本身不计入额外药机会成本及梯度瓶数。隔离实例已清理。中间正向场景曾 Failed：初始接线把只允许强制药的临时策略传给后续 Smart 审计，使 `maximum=0`；改由审计读取原始逐瓶策略后通过。结构门禁 `REFACTOR_BOUNDARIES_OK search_files=205`，Windows Release 0 警告／错误。短根验证了混合策略、早停和救命路径；未取得玩家原战斗同根对照，也未实测非零但不足门槛的实际两药胜利比较。启动器曾报告一次 `Import-Clixml` 解析警告，随后游戏请求 Passed、目标断言完成；未把警告当成产品行为结论。
 - #105 原提交合入后的集成修正：`AdaptedOnPlayChecks` 40 项和空登记 2 项通过，涵盖已登记生成牌根前预审、未登记生成牌由根冻结的补丁集合拒绝、根捕获后安装／卸载补丁不改变旧根及新根恢复普通镜像。`ADAPTED-ONPLAY-INTEGRATION-CARD` / `5ae3ade71d1e4e9c9eb0d9aaff6ce209` Passed，真实游戏的替换只执行一次、完整快照／增量回放／Fork／第 1 至 2 回合对账及晚装补丁拒绝通过；最终构建的 `ADAPTED-ONPLAY-INTEGRATION-REUSE` / `1b16e4e994f74934ba79ecf044a324f9` Passed，精确续用到第 2 回合、计划外重算 0。两场隔离实例均已清理。Windows Release 0 警告／错误，`REFACTOR_BOUNDARIES_OK search_files=205`。首次把请求 JSON 误传给 `-GeneratedScenarioPath`，启动阶段报未知 `scenarioId`，属于命令输入错误，不计为产品断言；改为显式测试选项后上述场景通过。未跑可见 Steam、任意第三方 Mod 或执行中并发热换补丁；生成牌的根冻结边界由独立合同覆盖，而非真实游戏生成牌场景。
