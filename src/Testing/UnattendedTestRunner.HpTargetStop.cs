@@ -100,13 +100,70 @@ internal sealed partial class UnattendedTestRunner
             PotionStrategySnapshot potionStrategy = new(SolverPotionPolicy.Smart,
                 [new(player.GetPotionSlotIndex(forced), forced.Id.Entry, SolverPotionDirective.Force),
                  new(player.GetPotionSlotIndex(spare), spare.Id.Entry, SolverPotionDirective.Smart)]);
+            PotionStrategySnapshot forcedBaseline = potionStrategy.ForForcedBaseline();
+            Check(forcedBaseline.ForcedDirectiveCount == 1
+                && forcedBaseline.AllowsExplicitUse(player.GetPotionSlotIndex(forced), forced.Id.Entry,
+                    SolverPotionPolicy.Smart, forceAllDisabled: false)
+                && !forcedBaseline.AllowsExplicitUse(player.GetPotionSlotIndex(spare), spare.Id.Entry,
+                    SolverPotionPolicy.Smart, forceAllDisabled: false)
+                && !forcedBaseline.AllowsExplicitUse(999, "GENERATED_POTION",
+                    SolverPotionPolicy.Smart, forceAllDisabled: false)
+                && potionStrategy.AllowsExplicitUse(player.GetPotionSlotIndex(spare), spare.Id.Entry,
+                    SolverPotionPolicy.Smart, forceAllDisabled: false),
+                "forced baseline limits only its own search and preserves the original Smart directive");
+            Check(PotionUsePolicy.IsEligible(SolverPotionPolicy.Smart, 1, 9,
+                    potionFreeWon: true, potionFreeHpDeficit: 20, anyRouteWon: true,
+                    potionRouteWon: true, potionRouteHpDeficit: 9)
+                && !PotionUsePolicy.IsEligible(SolverPotionPolicy.Smart, 1, 9,
+                    potionFreeWon: true, potionFreeHpDeficit: 10, anyRouteWon: true,
+                    potionRouteWon: true, potionRouteHpDeficit: 9),
+                "optional potion saves only one HP against the forced-only route, not eleven against no potion");
             root = CombatRootSnapshot.Capture(combat);
             names = SolverDisplayNames.Capture(combat);
-            SolverResult onePotion = await Search(policy with { GrowthOpportunityTargets = GrowthOpportunityTargets.Empty,
-                PotionPolicy = SolverPotionPolicy.Smart, PotionStrategy = potionStrategy });
+            SearchPolicySnapshot mixedPotionPolicy = policy with {
+                GrowthOpportunityTargets = GrowthOpportunityTargets.Empty,
+                PotionPolicy = SolverPotionPolicy.Smart, PotionStrategy = potionStrategy };
+            Check(CombatSearchCoordinator.MaximumSmartPotionUses(root, mixedPotionPolicy,
+                    potionFreeWon: true, potionFreeHpDeficit: 20) == 1,
+                "forced potion is not counted as an optional Smart gradient layer");
+            SolverResult onePotion = await Search(mixedPotionPolicy);
             Check(onePotion.Snapshot.AllEnemiesDead && onePotion.ProjectedBattleHpLost == 0 && onePotion.PotionCount == 1
-                && onePotion.BestNode.Actions.Any(a => a.PotionId == forced.Id.Entry), "forced potion zero loss preserves spare potion");
-            _completedChecks.Add($"HpTargetStop:HuntRewardFulfilled:nodes={hunted.ExpandedNodes}:ForcedOnePotion:SparePreserved");
+                && onePotion.BestNode.Actions.Any(a => a.PotionId == forced.Id.Entry)
+                && CombatSearchCoordinator.CapturePortfolioQuality(root, mixedPotionPolicy, onePotion).PotionStrategicCost == 0,
+                "forced potion zero loss preserves spare potion and has no optional opportunity cost");
+            SolverResult onePotionParallel = await Search(mixedPotionPolicy with { MaxDegreeOfParallelism = 2 });
+            AssertEquivalentSearchResults(onePotion, onePotionParallel, "forced-Smart DOP1/DOP2");
+            spare.Discard();
+            var rescuePotion = InjectPotionForTest(player, "FIRE_POTION");
+            await ClearPlayerPilesAsync(player);
+            await InjectCardAsync(combat, player, new UnattendedCardInjection { CardId = "DEFEND_IRONCLAD", Pile = "Hand" });
+            await CreatureCmd.SetCurrentHp(combat.Enemies[0], 15);
+            root = CombatRootSnapshot.Capture(combat);
+            names = SolverDisplayNames.Capture(combat);
+            PotionStrategySnapshot rescueStrategy = new(SolverPotionPolicy.Smart,
+                [new(player.GetPotionSlotIndex(forced), forced.Id.Entry, SolverPotionDirective.Force),
+                 new(player.GetPotionSlotIndex(rescuePotion), rescuePotion.Id.Entry, SolverPotionDirective.Smart)]);
+            Check(root.SearchablePotions.Any(p => p.PotionId == rescuePotion.Id.Entry)
+                && CombatSearchCoordinator.MaximumSmartPotionUses(root,
+                    mixedPotionPolicy with { PotionStrategy = rescueStrategy },
+                    potionFreeWon: false, potionFreeHpDeficit: 12) > 0,
+                $"optional rescue potion missing from root: " +
+                $"slots={string.Join(',', root.SearchablePotions.Select(p => p.Slot + ":" + p.PotionId))} " +
+                $"forced={player.GetPotionSlotIndex(forced)} rescue={player.GetPotionSlotIndex(rescuePotion)}");
+            System.Collections.Concurrent.ConcurrentQueue<string> rescueLogs = new();
+            SolverResult rescue = await Search(mixedPotionPolicy with {
+                PotionStrategy = rescueStrategy, StopAtAcceptableBattleHpLoss = false,
+                BudgetOverrideMilliseconds = 10000, UseBeamWidthPortfolio = false,
+                Diagnostics = new SearchDiagnosticsSink(rescueLogs.Enqueue, _ => { }),
+                Profile = mixedPotionPolicy.Profile with { MaxExpandedNodes = 64 } });
+            Check(rescue.Snapshot.AllEnemiesDead && rescue.PotionCount == 2
+                && rescue.BestNode.Actions.Any(a => a.PotionId == forced.Id.Entry)
+                && rescue.BestNode.Actions.Any(a => a.PotionId == rescuePotion.Id.Entry),
+                $"optional damage potion rescues a fight the forced-only route cannot win: " +
+                $"won={rescue.Snapshot.AllEnemiesDead} count={rescue.PotionCount} " +
+                $"actions={string.Join(',', rescue.BestNode.Actions.Select(a => a.Kind + ":" + a.PotionId))} " +
+                $"diagnostics={string.Join(" | ", rescueLogs.Where(line => line.Contains("SMART_POTION_GRADIENT") || line.Contains("SUPPLEMENTAL_AUDIT_BUDGET")))}");
+            _completedChecks.Add($"HpTargetStop:HuntRewardFulfilled:nodes={hunted.ExpandedNodes}:ForcedSmartMarginal:ForcedOnePotion:SparePreserved:OptionalRescue");
             SolverResult requiredOne = await Search(policy with { GrowthOpportunityTargets = GrowthOpportunityTargets.Empty,
                 PotionPolicy = SolverPotionPolicy.RequireAtLeastOne,
                 PotionStrategy = new PotionStrategySnapshot(SolverPotionPolicy.RequireAtLeastOne, []) });

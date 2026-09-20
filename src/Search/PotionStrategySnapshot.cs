@@ -29,12 +29,20 @@ internal readonly record struct ForcedPotionUseEvaluation(
 internal sealed class PotionStrategySnapshot
 {
     private readonly Dictionary<(int Slot, string PotionId), SolverPotionDirective> _directives;
+    private readonly bool _onlyForcedUses;
 
     public PotionStrategySnapshot(
         SolverPotionPolicy defaultPolicy,
         IEnumerable<PotionSlotDirective> directives)
+        : this(defaultPolicy, directives, onlyForcedUses: false) { }
+
+    private PotionStrategySnapshot(
+        SolverPotionPolicy defaultPolicy,
+        IEnumerable<PotionSlotDirective> directives,
+        bool onlyForcedUses)
     {
         DefaultPolicy = defaultPolicy;
+        _onlyForcedUses = onlyForcedUses;
         _directives = directives.ToDictionary(
             directive => (directive.Slot, directive.PotionId),
             directive => directive.Directive);
@@ -48,6 +56,12 @@ internal sealed class PotionStrategySnapshot
     public IReadOnlyList<PotionSlotDirective> Directives { get; }
     public bool HasForcedDirectives
         => Directives.Any(directive => directive.Directive == SolverPotionDirective.Force);
+
+    public int ForcedDirectiveCount
+        => Directives.Count(directive => directive.Directive == SolverPotionDirective.Force);
+
+    public PotionStrategySnapshot ForForcedBaseline()
+        => new(DefaultPolicy, Directives, onlyForcedUses: true);
 
     public SolverPotionDirective Resolve(int slot, string potionId)
         => _directives.GetValueOrDefault(
@@ -64,6 +78,9 @@ internal sealed class PotionStrategySnapshot
     {
         if (forceAllDisabled)
             return false;
+        if (_onlyForcedUses)
+            return _directives.TryGetValue((slot, potionId), out SolverPotionDirective forced)
+                && forced == SolverPotionDirective.Force;
         return _directives.TryGetValue((slot, potionId), out SolverPotionDirective directive)
             ? directive != SolverPotionDirective.Disabled
             : effectivePolicy != SolverPotionPolicy.Disabled;
