@@ -266,7 +266,7 @@ namespace CombatSolver.Engine.InCombat.Simulation
             if ((_prefix?.Count ?? 0) != start || _tail is null)
                 throw new InvalidOperationException("Prototype active history suffix changed.");
             var fork = new CombatPredictionHistory(trace, _prefix, _riskSignatureFirst, _riskSignatureSecond,
-                _riskEntryCount, _cardDrawnEntryCount, _orbChanneledEntryCount, _tailCapacityHint);
+                _riskEntryCount, _cardDrawnEntryCount, _orbChanneledEntryCount, _tailCapacityHint, _counterOwner, _counters);
             fork._tail = new(_tail.Count + 4);
             PredictionTraceFrame RemapTrace(PredictionTraceFrame source)
             {

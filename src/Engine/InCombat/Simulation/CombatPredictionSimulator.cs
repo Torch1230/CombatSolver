@@ -119,7 +119,7 @@ internal sealed partial class CombatPredictionSimulator
             ? runSnapshot.CreatePredictionRngSet()
             : CombatPredictionRngSet.From(combatState.RunState.Rng);
         StateStore = new PredictionStateStore();
-        History = new CombatPredictionHistory(_trace);
+        History = new CombatPredictionHistory(_trace, combatState.Players.Count == 1 ? combatState.Players[0] : null);
         if (combatState is ICombatPredictionRootMaterializable materializable)
             materializable.MaterializeRoot(this);
     }

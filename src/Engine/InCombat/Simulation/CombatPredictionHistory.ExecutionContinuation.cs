@@ -36,7 +36,7 @@ internal sealed partial class CombatPredictionHistory
         if ((_prefix?.Count ?? 0) != start)
             throw new InvalidOperationException("Execution continuation history suffix changed.");
         var fork = new CombatPredictionHistory(trace, _prefix, _riskSignatureFirst, _riskSignatureSecond,
-            _riskEntryCount, _cardDrawnEntryCount, _orbChanneledEntryCount, _tailCapacityHint)
+            _riskEntryCount, _cardDrawnEntryCount, _orbChanneledEntryCount, _tailCapacityHint, _counterOwner, _counters)
             { _pendingDeferredEntries = _pendingDeferredEntries };
         fork._tail = new((_tail?.Count ?? 0) + 4);
         DamageResult CopyDamage(DamageResult source)
@@ -92,6 +92,7 @@ internal sealed partial class CombatPredictionHistory
             foreach (var (original, resolved) in _tailCompletions)
                 fork._tailCompletions.Add(context.RequireRemap(original), context.RequireRemap(resolved));
         }
+        fork.VerifyCounters();
         return fork;
     }
 }

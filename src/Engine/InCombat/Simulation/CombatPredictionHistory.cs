@@ -11,7 +11,7 @@ namespace CombatSolver.Engine.InCombat.Simulation;
 /// Deferred events use separate original and resolved entries; the resolved entry carries the final snapshot and
 /// risk boundary while the original entry determines semantic order.
 /// </summary>
-internal sealed partial class CombatPredictionHistory(PredictionTrace trace)
+internal sealed partial class CombatPredictionHistory(PredictionTrace trace, Player? counterOwner = null)
     : IReadOnlyList<CombatPredictionHistoryEntry>
 {
     public readonly struct HistoryEntryRange
@@ -77,6 +77,23 @@ internal sealed partial class CombatPredictionHistory(PredictionTrace trace)
     private int _riskEntryCount;
     private int _cardDrawnEntryCount;
     private int _orbChanneledEntryCount;
+    private readonly Player? _counterOwner = counterOwner;
+    private CombatHistoryCounters _counters;
+
+    internal CombatHistoryCounters GetCounters(Player owner)
+    {
+        if (!ReferenceEquals(owner, _counterOwner))
+            throw new InvalidOperationException("History counters require the captured single-player owner.");
+        VerifyCounters();
+        return _counters;
+    }
+
+    [System.Diagnostics.Conditional("VERIFY_HISTORY_COUNTERS")]
+    private void VerifyCounters()
+    {
+        if (_counterOwner != null && _counters != CombatHistoryCounters.Scan(this, _counterOwner))
+            throw new InvalidOperationException($"Incremental history counters differ at event {EntryCount}.");
+    }
 
     private sealed class HistorySegment(
         HistorySegment? parent,
@@ -97,8 +114,10 @@ internal sealed partial class CombatPredictionHistory(PredictionTrace trace)
         int riskEntryCount,
         int cardDrawnEntryCount,
         int orbChanneledEntryCount,
-        int tailCapacityHint)
-        : this(trace)
+        int tailCapacityHint,
+        Player? counterOwner = null,
+        CombatHistoryCounters counters = default)
+        : this(trace, counterOwner)
     {
         _prefix = prefix;
         _tailCapacityHint = tailCapacityHint;
@@ -107,6 +126,7 @@ internal sealed partial class CombatPredictionHistory(PredictionTrace trace)
         _riskEntryCount = riskEntryCount;
         _cardDrawnEntryCount = cardDrawnEntryCount;
         _orbChanneledEntryCount = orbChanneledEntryCount;
+        _counters = counters;
     }
 
     public IReadOnlyList<CombatPredictionHistoryEntry> Entries => this;
@@ -412,6 +432,9 @@ internal sealed partial class CombatPredictionHistory(PredictionTrace trace)
         entry.Index = EntryCount;
         entry.Trace = trace.Current;
         (_tail ??= new List<CombatPredictionHistoryEntry>(_tailCapacityHint)).Add(entry);
+        if (_counterOwner != null)
+            _counters = _counters.After(entry, _counterOwner);
+        VerifyCounters();
         if (entry is CombatPredictionCardDrawnEntry)
             _cardDrawnEntryCount++;
         else if (entry is CombatPredictionOrbChanneledEntry)
@@ -457,7 +480,7 @@ internal sealed partial class CombatPredictionHistory(PredictionTrace trace)
     {
         AssertForkable();
         SealTail();
-        return new CombatPredictionHistory(
+        var fork = new CombatPredictionHistory(
             forkTrace,
             _prefix,
             _riskSignatureFirst,
@@ -465,7 +488,9 @@ internal sealed partial class CombatPredictionHistory(PredictionTrace trace)
             _riskEntryCount,
             _cardDrawnEntryCount,
             _orbChanneledEntryCount,
-            _tailCapacityHint);
+            _tailCapacityHint, _counterOwner, _counters);
+        fork.VerifyCounters();
+        return fork;
     }
 
     internal void AssertForkable()
