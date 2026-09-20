@@ -1,5 +1,10 @@
 # CombatSolver 测试清单
 
+## 下一版本：路线缓存与录像的故障隔离
+
+- 离线宿主 `OFFLINE_HARNESS_ANCILLARY_CHECKS=1`（DEFECT、`FUZZY_WURM_CRAWLER_WEAK`、High、DOP 1）在一次真实求解结果上注入磁盘故障，17 项通过：正常写读往返、临时文件清理、坏 JSON 与空路线按未命中处理并改名 `.bad`、隔离后同一键可重新写入、独占文件锁按未命中处理且不隔离、解锁后可读、缓存目录被文件占位、Unix 只读目录、目标路径被目录占用、结果序列化字节不变、取消异常传播、普通失败只记一次日志。macOS 本机运行；Windows 的文件锁语义未验证。
+- 录像采集与打包的隔离、打包调用顺序调整只经过编译和结构门禁，未在游戏内验证；符合录像条件的进阶 10 第三幕 Boss 无伤路线本机没有复现条件。
+
 ## 0.43.0：路线连续性与操作体验（2026-09-19）
 
 - 两回合原生场景 `TOASTY-QOL-MANUAL-SAME` Passed（runId `c82b3f8125cc4b8998047ccabaf3ca7a`）：第 2 回合烘焙手套手牌页按计划手动删牌，精确续用，新增搜索 0、计划外重算 0。`TOASTY-QOL-MANUAL-DIFFERENT` Passed（runId `f42cc57ca55e4c8e8a91a64a42f951a8`）：选另一张牌严格失配并重新计算。固定夹具位于 `coverage/unattended/toasty-qol-*.json`，可用 `pwsh -NoProfile -File tools/run-qol-contracts.ps1 -Case manual-same`（或 `manual-different`）重跑。最初误将生成场景输出路径用作输入的启动失败不计入上述通过结果，隔离实例已清理。
