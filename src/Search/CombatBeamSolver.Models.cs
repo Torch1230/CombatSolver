@@ -113,6 +113,7 @@ internal sealed partial class CombatBeamSolver
         public Dictionary<StateFingerprint, TranspositionFrontier> ExpandedTranspositions = [];
         /// <summary>诊断计数：因为合并条目上限而没有写入的新转置状态数。</summary>
         public int TranspositionLimitBypasses;
+        public readonly TranspositionCapDiagnostics TranspositionDiagnostics = new();
         public Dictionary<StateFingerprint, StandPatEvaluation> StandPatCache = [];
         // Only the coordinator owns a prune checkpoint; probe lanes never receive it.
         public Action<long>? EnsurePruneMemory;

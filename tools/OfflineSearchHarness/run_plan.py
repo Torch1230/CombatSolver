@@ -57,13 +57,16 @@ def build_command(item, out, harness):
     for key, flag in (('beam', '--beam'), ('nodes', '--nodes'),
                       ('maxCardBranchesPerNode', '--card-branches'),
                       ('maxPileChoiceBranchesPerAction', '--pile-branches'),
-                      ('maxHandChoiceBranchesPerAction', '--hand-branches')):
+                      ('maxHandChoiceBranchesPerAction', '--hand-branches'),
+                      ('transpositionEntryLimit', '--transposition-entry-limit')):
         if item.get(key) is not None:
             args += [flag, str(item[key])]
     if item.get('usePortfolio'):
         args.append('--use-portfolio')
     if item.get('measurePhases'):
         args.append('--measure-phases')
+    if item.get('productionBudget'):
+        args.append('--production-budget')
     if item.get('enableNoGcRegion'):
         args.append('--enable-no-gc-region')
         if item.get('noGcRegionBudgetGigabytes') is not None:
@@ -124,7 +127,10 @@ def run_one(item, workspace, harness, keep_existing):
                 or bool(result.get('timeBoundaryObserved'))
                 or any(any(p in m for p in TIME_BOUNDARY_PATTERNS) for m in messages))
     result['timeBoundary'] = hit_time
-    result['valid'] = (process.returncode == 0 and result.get('status') == 'Passed' and not hit_time)
+    # Production-budget observations keep normal timed termination as evidence.
+    # Fixed-budget comparisons retain the original invalid-on-time-boundary rule.
+    result['valid'] = (process.returncode == 0 and result.get('status') == 'Passed'
+                       and (not hit_time or bool(item.get('productionBudget'))))
     if not result['valid'] and hit_time:
         result.setdefault('error', '撞到搜索时间边界，本根作废')
     result_path.write_text(json.dumps(result, ensure_ascii=False, indent=2))

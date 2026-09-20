@@ -20,6 +20,7 @@ internal sealed partial class CombatBeamSolver
             {
                 TranspositionLabel next = step % 8 == 0 ? first : Next(random);
                 Require(actual.TryAccept(next) == expected.TryAccept(next), "Decision differs from the old frontier.");
+                Require(actual.LabelCount == expected.LabelCount, "Label count differs from the old frontier.");
             }
         }
         TranspositionLabel middle = new(3, 3, 3, 3, 3, 3);
@@ -28,6 +29,22 @@ internal sealed partial class CombatBeamSolver
         Require(changing.TryAccept(new(0, 0, 0, 0, 0, 10)), "Dominating collapse rejected.");
         Require(!changing.TryAccept(middle), "Dominated label survived collapse.");
         Require(changing.TryAccept(new(1, 0, 0, 0, 0, 11)), "Expansion after collapse rejected.");
+
+        TranspositionCapDiagnostics diagnostics = new();
+        diagnostics.ObserveEntries(1, 2, 7);
+        var beforeCap = diagnostics.Capture(2, 7, 0, [1]);
+        Require(!beforeCap.ReachedCap && beforeCap.FirstCapExpanded == null, "Premature cap observation.");
+        diagnostics.ObserveEntries(2, 2, 11);
+        diagnostics.ObserveEntries(2, 2, 19);
+        var atCap = diagnostics.Capture(2, 19, 4, [1, 3]);
+        Require(atCap.ReachedCap && atCap.FirstCapExpanded == 11 && atCap.LimitBypasses == 4, "First cap or bypass count lost.");
+        Require(atCap.TotalLabels == 4 && atCap.LabelsPerEntry[1] == 1 && atCap.LabelsPerEntry[3] == 1, "Label distribution differs.");
+        diagnostics.ObserveEntries(1, 2, 25);
+        var rebuilt = diagnostics.Capture(2, 25, 4, [2]);
+        Require(rebuilt.PeakEntries == 2 && rebuilt.CurrentEntries == 1 && rebuilt.FirstCapExpanded == 11, "Rebuild erased cap evidence.");
+        TranspositionCapDiagnostics unlimited = new();
+        unlimited.ObserveEntries(8, 0, 9);
+        Require(!unlimited.Capture(0, 9, 0, [1, 1, 2]).ReachedCap, "Unlimited table reported a cap.");
 
         for (int i = 0; i < 1000; i++) { _ = new Baseline(middle); _ = new TranspositionFrontier(middle); }
         const int count = 100_000;
@@ -71,6 +88,7 @@ internal sealed partial class CombatBeamSolver
     private sealed class Baseline(TranspositionLabel first)
     {
         private readonly List<TranspositionLabel> _labels = [first];
+        public int LabelCount => _labels.Count;
         public bool TryAccept(TranspositionLabel next)
         {
             foreach (TranspositionLabel current in _labels)

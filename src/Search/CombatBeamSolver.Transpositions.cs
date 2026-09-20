@@ -17,6 +17,8 @@ internal sealed partial class CombatBeamSolver
         private TranspositionLabel _single = first;
         private List<TranspositionLabel>? _labels;
 
+        public int LabelCount => _labels?.Count ?? 1;
+
         public bool TryAccept(TranspositionLabel next)
         {
             if (_labels == null)
