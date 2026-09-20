@@ -378,9 +378,6 @@ internal static partial class SearchGcPolicy
             return EnterDefaultGcSearch(memoryPressureSignal, cancellationToken);
         lock (Gate)
             _automaticGcLifecycleUsed = true;
-        // Bound reservation work as well as GC pauses. On Windows, reserving a large
-        // replacement region suspends managed threads even when no GC is recorded.
-        noGcRegionBudgetBytes = LimitNoGcRegionReservation(noGcRegionBudgetBytes, OperatingSystem.IsWindows());
         long noGcRegionLohBudgetBytes = Math.Max(
             256L * 1024 * 1024,
             noGcRegionBudgetBytes / 6);
@@ -2573,9 +2570,6 @@ internal static partial class SearchGcPolicy
             systemLimit,
             effectiveBudget < configuredBudgetBytes);
     }
-
-    internal static long LimitNoGcRegionReservation(long requestedBytes, bool isWindows)
-        => isWindows ? Math.Min(requestedBytes, 4_000_000_000L) : requestedBytes;
 
     private static long CaptureCurrentPhysicalMemoryLoad()
         => PhysicalMemoryUsage.Capture(GC.GetGCMemoryInfo()).UsedBytes;
