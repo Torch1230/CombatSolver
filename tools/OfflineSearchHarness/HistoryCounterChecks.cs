@@ -98,9 +98,7 @@ internal static class HistoryCounterChecks
             var watch = Stopwatch.StartNew();
             for (int i = 0; i < iterations; i++)
             {
-                StateFingerprintBuilder key = new();
-                CombatHistoryCounterKey.AppendCounters(ref key, scan ? CombatHistoryCounters.Scan(history, owner) : history.GetCounters(owner));
-                checksum = key.Finish();
+                checksum = BuildHistorySuffix(history, owner, scan);
             }
             return watch.Elapsed.TotalMilliseconds;
         }
@@ -115,5 +113,17 @@ internal static class HistoryCounterChecks
         File.WriteAllText(Path.Combine(output, "history-checks.json"), JsonSerializer.Serialize(new
         { checks, status = "Passed", historyEvents = history.Entries.Count, iterations = 20000, timings, checksum = checksum.ToString() }));
         Console.WriteLine($"HISTORY_COUNTER_CHECKS Passed checks={checks}");
+    }
+
+    // Keep each sample at a call boundary; repeated identical counters must not let
+    // the JIT lift the entire builder out of the measurement loop.
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    private static StateFingerprint BuildHistorySuffix(CombatPredictionHistory history,
+        MegaCrit.Sts2.Core.Entities.Players.Player owner, bool scan)
+    {
+        StateFingerprintBuilder key = new();
+        CombatHistoryCounterKey.AppendCounters(ref key,
+            scan ? CombatHistoryCounters.Scan(history, owner) : history.GetCounters(owner));
+        return key.Finish();
     }
 }
