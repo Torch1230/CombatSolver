@@ -1,8 +1,7 @@
 namespace CombatSolver;
 
-// Boundary for optional features (route cache, showcase capture). A failure here costs
-// only that feature. Search, replay and simulator errors must not be routed through it,
-// and cancellation always propagates.
+// Route-cache and showcase file/protocol failures cost only those optional features.
+// Programming errors, resource exhaustion and cancellation retain their original failure path.
 internal static class AncillaryWork
 {
     internal static T? Try<T>(string operation, Func<T> work, Action<string> log)
@@ -11,7 +10,9 @@ internal static class AncillaryWork
         {
             return work();
         }
-        catch (Exception error) when (error is not OperationCanceledException)
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException
+            or System.Security.SecurityException or System.Text.Json.JsonException
+            or InvalidDataException or NotSupportedException)
         {
             log($"{operation} error={error}");
             return default;

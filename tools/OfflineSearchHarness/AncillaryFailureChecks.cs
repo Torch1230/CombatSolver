@@ -88,6 +88,15 @@ internal static class AncillaryFailureChecks
         {
             Check(logs.Count == 0, "cancellation_propagates");
         }
+        try
+        {
+            AncillaryWork.Run("programming", () => throw new InvalidOperationException("injected"), logs.Add);
+            throw new Exception("programming_error_swallowed");
+        }
+        catch (InvalidOperationException error) when (error.Message == "injected")
+        {
+            Check(logs.Count == 0, "programming_error_propagates");
+        }
         AncillaryWork.Run("failure", () => throw new IOException("injected"), logs.Add);
         Check(logs.Count == 1 && logs[0].StartsWith("failure ", StringComparison.Ordinal), "failure_logged_once");
 

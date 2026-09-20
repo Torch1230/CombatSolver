@@ -2,7 +2,8 @@
 
 ## 下一版本（开发中）：路线缓存、增量历史计数与转置诊断
 
-- 离线宿主 `OFFLINE_HARNESS_ANCILLARY_CHECKS=1`（DEFECT、`FUZZY_WURM_CRAWLER_WEAK`、High、DOP 1）在一次真实求解结果上注入磁盘故障，17 项通过：正常写读往返、临时文件清理、坏 JSON 与空路线按未命中处理并改名 `.bad`、隔离后同一键可重新写入、独占文件锁按未命中处理且不隔离、解锁后可读、缓存目录被文件占位、Unix 只读目录、目标路径被目录占用、结果序列化字节不变、取消异常传播、普通失败只记一次日志。macOS 本机运行；Windows 的文件锁语义未验证。
+- #117/#118/#119 均以原 PR 提交 merge 到已发布的 0.43.1 基线上，仅手工并列解决版本文档与双平台结构门禁冲突。合并组合 Windows Release 构建 0 警告/错误，`REFACTOR_BOUNDARIES_OK search_files=205`。#117 的辅助失败边界收窄后，Windows 离线单根 `OFFLINE_HARNESS_ANCILLARY_CHECKS=1` / `ancillary-integration` Passed：原 17 项磁盘/取消合同与新增程序错误传播断言合计 18 项；固定 150 节点、DOP 1、实际展开 119、转移 405。作者的 60 根逐字段对照、#118 的逐事件验证构建、#119 的百万项前沿检查及三根 VeryHigh 观察均是各 PR 的原有证据，本次未重跑，不等同于 0.43.1 三 PR 合并组合的整场等价性或可见实机验收。
+- 离线宿主 `OFFLINE_HARNESS_ANCILLARY_CHECKS=1`（DEFECT、`FUZZY_WURM_CRAWLER_WEAK`、High、DOP 1）在一次真实求解结果上注入磁盘故障，17 项通过：正常写读往返、临时文件清理、坏 JSON 与空路线按未命中处理并改名 `.bad`、隔离后同一键可重新写入、独占文件锁按未命中处理且不隔离、解锁后可读、缓存目录被文件占位、Unix 只读目录、目标路径被目录占用、结果序列化字节不变、取消异常传播、普通失败只记一次日志。作者在 macOS 本机运行；PR 阶段未验证 Windows 文件锁，本轮短根已覆盖 Windows 独占锁分支。
 - 录像采集与打包的隔离、打包调用顺序调整只经过编译和结构门禁，未在游戏内验证；符合录像条件的进阶 10 第三幕 Boss 无伤路线本机没有复现条件。
 - `OFFLINE_HARNESS_HISTORY_CHECKS=1`，DEFECT、`--milestone M1`：21 项通过。检查原始/完成事件、嵌套自动出牌、两种暂停续接、普通 Fork、父/根隔离和键位一致性。
 - `-p:VerifyHistoryCounters=true` 逐事件及 Fork/构键读取核对独立全扫描。语料、构键计时与验证范围见 [专题](strategy/incremental-history-counters.md)。
