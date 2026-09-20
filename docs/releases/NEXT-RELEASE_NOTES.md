@@ -1,0 +1,19 @@
+# CombatSolver 下一版本更新日志（草案，版本号待定）
+
+## 简体中文
+
+- 调整逐瓶用药策略：一瓶设为“强制使用”、另一瓶保持“智能使用”时，额外的智能药会以只用强制药的路线为基准判断是否值得消耗；只用强制药无法获胜时，智能药仍可用于保命。
+- 修复战斗中生成的牌有时导致路线计算中断的问题。已支持的第三方牌效果可继续计算；不支持的效果会明确提示。
+- 路线缓存文件读取或写入失败时，本次路线计算仍可继续；符合条件的战斗录像采集失败也不会阻止已算出的路线显示和执行。
+- 优化了部分随整场出牌等次数变化的牌的路线计算；路线判断规则保持不变。
+
+感谢 bingyang1132 对 PR #105 的贡献，以及 Natsuki 对 PR #117、#118、#119 的贡献。
+
+## English
+
+- Improved per-potion policies: when one potion is set to Always Use and another remains Smart, the Smart potion is judged against a route using only the required potion. It can still be used to save a fight that the required potion alone cannot win.
+- Fixed some cards generated during combat interrupting route calculation. Supported third-party card effects can still be calculated; unsupported effects are reported explicitly.
+- A route-cache read or write failure no longer prevents the current route from being calculated. Failure to record an eligible combat also no longer prevents an already calculated route from appearing or being executed.
+- Improved route calculation for some cards that scale with whole-combat counts, such as cards played. Route decision rules are unchanged.
+
+Thanks to bingyang1132 for PR #105 and Natsuki for PRs #117, #118 and #119.

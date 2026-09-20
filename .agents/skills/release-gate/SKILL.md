@@ -29,7 +29,7 @@ description: 用户要求准备或发布 CombatSolver 版本、生成 ZIP、创�
 
 - 同步 `CombatSolver.csproj`、`CombatSolver.json`、`docs/DEVELOPMENT_NOTES.md`、`docs/TEST_MATRIX.md` 和该版本玩家更新日志。
 - 玩家更新日志使用当前游戏官方简中译名，只写玩家可感知的变化。开发日志中的根因、内部职责、runId、构建和测试信息不复制进去。
-- 玩家更新日志和创意工坊 changeNote 同时提供简中与英文，内容等价并使用各语言的游戏译名；一次跨多个未上传版本时合并玩家变化。发布包含 UI 改动时参考 `../ui-localization/SKILL.md`，复用已完成的中英验证，不为了发包重复测试。
+- 玩家更新日志和创意工坊 changeNote 同时提供简中与英文，使用各语言的游戏译名。changeNote 直接采用同一版本玩家更新日志的完整中英正文，只允许将 Markdown 标题／列表语法转换为 Steam 富文本，不缩写、不合并或删减任何玩家变动、限制与致谢；发布前逐项核对两种语言和两个渠道。若渠道长度限制无法容纳全文，停止该渠道并报告限制，不自行缩短。一次跨多个未上传版本时，先写好覆盖全部玩家变化的完整版本日志，再原样用于 changeNote。发布包含 UI 改动时参考 `../ui-localization/SKILL.md`，复用已完成的中英验证，不为了发包重复测试。
 - 提交源码、fixture 和文档后，从该提交构建；记录该提交为 release source commit。构建后行为源码、编译配置、依赖或 manifest 变化才使构建失效，纯渠道暂存变化不会。
 - “当前最新版”来自仓库中已同步、已提交且完成最小发包的最高版本，不来自游戏 Mods 目录或创意工坊暂存目录。
 - 版本创建标签或成功上传创意工坊后即冻结。后续行为改动进入新的“下一版本（开发中）”，不回写已发布版本；用户未指定新版本号时保留待定，不自行猜版本。
@@ -98,7 +98,7 @@ Linux 不使用上述 Windows 路径。上传前必须设置 `COMBATSOLVER_MOD_U
 
 1. 用当前 release source 的 `CombatSolver.json`、刚完成的 Release DLL、Windows `CombatSolver.MemoryCleaner.exe`、根目录 `LICENSE` 和 `THIRD_PARTY_NOTICES.md` 覆盖 `CombatSolverWorkshop/content/`；
 2. 保留标题、长描述、作者、封面、效果图、标签、依赖和可见性，除非用户明确要求修改或兼容性事实已经变化；
-3. 将该版本玩家更新日志提炼为 `workshop.json` 的 `changeNote`；
+3. 将该版本玩家更新日志的完整简中和英文正文写入 `workshop.json` 的 `changeNote`，只转换排版语法；逐项核对两个渠道的所有玩家变动、限制和致谢；
 4. Windows 执行一次 `ModUploader.exe upload -w .\CombatSolverWorkshop`；Linux 执行一次 `"$COMBATSOLVER_MOD_UPLOADER" upload -w "$COMBATSOLVER_WORKSHOP_DIR"`。
 
 创意工坊介绍已有 English / 简体中文两套，正文维护于 `docs/workshop/`。官方 ModUploader 未指定语言时写 English，因此本地 workshop.json 的默认标题和 description 必须保持英文；简中介绍通过明确的 `SetItemUpdateLanguage("schinese")` 独立维护，不能把中文塞回默认 description，或仅改 tags 代替语言字段。只更新介绍时提交元数据，不顺带上传二进制。
