@@ -1,4 +1,4 @@
-# 已适配 OnPlay 补丁组合
+﻿# 已适配 OnPlay 补丁组合
 
 `AdaptedCardOnPlayMirrors.Register<TCard>` 为精确卡牌类型登记一组已审阅的 Harmony 补丁和唯一的完整预测实现。它是内部开发接口，外部程序集需要 publicizer，不是按 Mod ID 的放行名单。
 
@@ -23,7 +23,7 @@ AdaptedCardOnPlayMirrors.Register<MyCard>(
 
 ## 根、Fork 与旧路线
 
-`PredictionModHookSubscriberCapture` 拥有根内选择表，`SimulatedCombatState` 的 Fork 只共享不可变选择和配置标记。worker 每次 OnPlay 只查表，不扫描 Harmony，也不调用原生补丁。启用登记后，首次根审计未见过的卡牌类型即使后来生成也明确失败；下一次捕获可重新审计。
+`PredictionModHookSubscriberCapture` 拥有根内选择表，`SimulatedCombatState` 的 Fork 只共享不可变选择和配置标记。worker 每次 OnPlay 只查表，不扫描 Harmony，也不调用原生补丁。根审计只看得见捕获那一刻存在的卡牌类型，战斗中生成的牌（刀刃、灼烧、伤口……）不在其中；这类类型没有冻结答案，首次打出时用同一套判据现审一次并写回选择表：OnPlay 上没有第三方补丁就按普通镜像走，有而且没有登记则明确失败。
 
 live continuation 在主线程读取当前所有 CardModel.OnPlay 补丁的配置标记，包括登记 schema、目标与预测实现的方法身份。predicted continuation 和状态指纹使用冻结标记。安装、卸载、顺序变化及后来出现的卡牌补丁会改变 live 标记，沿现有 LiveCombatStamp／ContinuationStamp 的结果采用、缓存和部署前核对淘汰旧路线。没有登记时不增加配置字段或全局扫描。
 

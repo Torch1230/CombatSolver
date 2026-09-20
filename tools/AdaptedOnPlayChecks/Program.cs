@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using System.Runtime.CompilerServices;
 using CombatSolver;
 using CombatSolver.Engine.Common;
@@ -81,7 +81,15 @@ try
     Patches wrongOwner = new([new(prefix, 0, "wrong-owner", Priority.Normal, [], [], false)],
         [new(post, 1, owner, Priority.Normal, [], [], false)], [], [], [], []);
     Reject<PredictionUnsupportedException>(() => AdaptedCardOnPlayMirrors.Select(typeof(TestCard), target, wrongOwner), "Wrong Harmony owner accepted.");
-    Reject<PredictionUnsupportedException>(() => snapshot.TryInvoke(new(), new(new OtherCard()), new(), out _), "Unaudited dynamic type accepted.");
+    // Cards generated during combat are not visible at root capture. Unpatched ones must fall back to the
+    // ordinary mirror instead of failing the whole search; patched ones must still refuse.
+    Check(!snapshot.TryInvoke(new(), new(new OtherCard()), new(), out _), "Unaudited unpatched type did not fall back.");
+    MethodInfo generatedTarget = AdaptedCardOnPlayMirrors.ResolveOnPlay(typeof(GeneratedCard))!;
+    harmony.Patch(generatedTarget, prefix: new HarmonyMethod(Method(typeof(TestPatches), nameof(TestPatches.Extra))));
+    Reject<PredictionUnsupportedException>(() => snapshot.TryInvoke(new(), new(new GeneratedCard()), new(), out _), "Unaudited foreign-patched type accepted.");
+    harmony.Unpatch(generatedTarget, Method(typeof(TestPatches), nameof(TestPatches.Extra)));
+    GeneratedCard generated = new();
+    Check(!snapshot.TryInvoke(new(), new(generated), new(), out _), "Refused type was cached instead of re-audited.");
     AssemblyInfo.Unknown = true;
     Reject<PredictionUnsupportedException>(() => PredictionModPatchAudit.CaptureCardOnPlay(cards), "Registered unknown source accepted.");
     AssemblyInfo.Unknown = false;
@@ -153,6 +161,11 @@ internal class ComposedCard : CardModel
 {
     [MethodImpl(MethodImplOptions.NoInlining)]
     protected override void OnPlay(PlayerChoiceContext context, CardPlay play) => Value += 10;
+}
+internal class GeneratedCard : CardModel
+{
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    protected override void OnPlay(PlayerChoiceContext context, CardPlay play) => Value++;
 }
 internal class OtherCard : CardModel
 {
