@@ -191,7 +191,7 @@ internal sealed partial class SolverSettingsPanel
             memoryGrid,
             SolverText.Get("搜索内存预算（GB）"),
             _noGcRegionBudget,
-            SolverText.Get("这是独立于性能预设的战斗级 NoGC 区域请求上限，不是进程总内存上限，也不等于实际驻留内存。求解器会按系统当前安全余量自动下调实际区域；Windows 上单次预留最多 4 GB，以减少区域重建时的停顿。提高预算可能减少整理次数，也会增加内存占用。搜索接近分配额度或系统内存安全线时，会保留活动 Beam、整理后继续；Windows 搜索完成后后台清理，其他平台在战斗结束后延时清理。"));
+            SolverText.Get("这是独立于性能预设的战斗级 NoGC 区域请求上限，不是进程总内存上限，也不等于实际驻留内存。求解器会按系统当前安全余量自动下调实际区域。提高预算可能减少整理次数，也会增加内存占用。搜索接近分配额度或系统内存安全线时，会保留活动 Beam、整理后继续；Windows 搜索完成后后台清理，其他平台在战斗结束后延时清理。"));
         GridContainer stopGrid = CreateSettingsGrid();
         _acceptableBattleHpLoss = CreateAcceptableBattleHpLossInput();
         CheckButton stopAtHpTarget = CreateToggle();
