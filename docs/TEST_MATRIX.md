@@ -1,5 +1,9 @@
 # CombatSolver 测试清单
 
+## 0.43.1：英文界面启动修复
+
+- `UI-LOCALIZATION` 增加 eng/zhs/zht 药水、成长、遗物子面板的实际构造与“收起”按钮文案合同。0.43.0 源码增加断言后，在英文药水面板构造处按玩家异常栈 Failed（runId `391a52cdd52942d9a45e8b514f9034b9`，`KeyNotFoundException: 收起`）；补齐英文词典后 Passed（runId `333583c32c81407bbcd7b3171e872198`），三种语言的三个子面板均完成检查。两次都使用 120 秒上限、独立无头实例及 `-CleanupInstanceOnExit`，实例已删除。该合同覆盖建窗对象与本地化，不等于可见 Steam 排版验收。
+
 ## 0.43.0：路线连续性与操作体验（2026-09-19）
 
 - 两回合原生场景 `TOASTY-QOL-MANUAL-SAME` Passed（runId `c82b3f8125cc4b8998047ccabaf3ca7a`）：第 2 回合烘焙手套手牌页按计划手动删牌，精确续用，新增搜索 0、计划外重算 0。`TOASTY-QOL-MANUAL-DIFFERENT` Passed（runId `f42cc57ca55e4c8e8a91a64a42f951a8`）：选另一张牌严格失配并重新计算。固定夹具位于 `coverage/unattended/toasty-qol-*.json`，可用 `pwsh -NoProfile -File tools/run-qol-contracts.ps1 -Case manual-same`（或 `manual-different`）重跑。最初误将生成场景输出路径用作输入的启动失败不计入上述通过结果，隔离实例已清理。

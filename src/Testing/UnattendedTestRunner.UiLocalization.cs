@@ -84,6 +84,20 @@ internal sealed partial class UnattendedTestRunner
                 _host.AddChild(harness);
                 try
                 {
+                    foreach (Func<Control> createPanel in new Func<Control>[]
+                    {
+                        () => new SolverPotionStrategyPanel(),
+                        () => new SolverGrowthStrategyPanel(),
+                        () => new SolverRelicStrategyPanel(),
+                    })
+                    {
+                        Control panel = createPanel();
+                        harness.AddChild(panel);
+                        Button? close = panel.FindChild("CloseStrategyPanel", recursive: true, owned: false) as Button;
+                        if (close?.Text != (english ? "Collapse" : "收起"))
+                            throw new InvalidOperationException($"Strategy panel collapse localization failed: {target}/{panel.Name}.");
+                    }
+                    _completedChecks.Add($"StrategyPanels:{target}:Potion:Growth:Relic:Collapse");
                     SolverSettingsPanel settings = new();
                     harness.AddChild(settings);
                     settings.Reload();
