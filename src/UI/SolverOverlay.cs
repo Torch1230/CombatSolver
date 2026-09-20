@@ -120,6 +120,7 @@ internal static class SolverOverlay
     private static SolverTheftPolicy? _renderedTheftPolicy;
     private static SolverOverlaySnapshot? _lastSnapshot;
     private static SolverOverlaySnapshot? _searchBestSnapshot;
+    private static PotionRewardOutlook _searchPotionRewardOutlook;
     private static string? _lastMessageText;
     private static int _lastSearchingTurn;
     private static bool _lastSearchDeployWhenReady;
@@ -170,6 +171,8 @@ internal static class SolverOverlay
     internal static bool AdoptRouteButtonDisabledForTesting => _adoptRouteButton?.Disabled ?? true;
     internal static SolverOverlayPresentation PresentationForTesting => _presentation;
     internal static string? RouteHeadingForTesting => _routeHeadingLabel?.Text;
+    internal static string? RewardOutcomeTextForTesting => _rewardOutcomeLabel?.Visible == true
+        ? _rewardOutcomeLabel.Text : null;
     internal static string? HpOutcomeTextForTesting => _hpOutcomeLabel?.Text;
     internal static bool MessageWrappingEnabledForTesting
         => _summaryText is { FitContent: true, AutowrapMode: TextServer.AutowrapMode.WordSmart };
@@ -720,6 +723,7 @@ internal static class SolverOverlay
         {
             _searchBestSnapshot = bestSnapshot;
             PopulateRoute(bestSnapshot, resetScroll: false);
+            ShowSearchPotionReward();
         }
         string routeContext = _searchBestSnapshot is { Turns.Count: > 0 } routeSnapshot
             ? SolverText.Format($"已规划至第 {routeSnapshot.Turns[^1].Turn} 回合")
@@ -787,13 +791,15 @@ internal static class SolverOverlay
         Node host,
         int turn,
         bool deployWhenReady,
-        long reviewedWorldlinesBeforeSearch)
+        long reviewedWorldlinesBeforeSearch,
+        PotionRewardOutlook potionRewardOutlook = default)
     {
         _presentation = SolverOverlayPresentation.Searching;
         _waitingForNextTurnPlan = false;
         SolverController.InvalidateRenderedRouteAdoptionSeed();
         _lastSnapshot = null;
         _searchBestSnapshot = null;
+        _searchPotionRewardOutlook = potionRewardOutlook;
         _lastMessageText = null;
         _lastSearchingTurn = turn;
         _lastSearchDeployWhenReady = deployWhenReady;
@@ -827,6 +833,7 @@ internal static class SolverOverlay
         SetRouteVisibility(true);
         if (_potionOutcomeLabel != null)
             _potionOutcomeLabel.Visible = false;
+        ShowSearchPotionReward();
         if (_hpOutcomeLabel != null)
             _hpOutcomeLabel.Visible = false;
         if (_stolenResourceOutcomeLabel != null)
@@ -858,12 +865,22 @@ internal static class SolverOverlay
         Entry.Logger.Info($"[CombatSolver/Test] UI_STATE state=searching turn={turn} deploy_queued={deployWhenReady}");
     }
 
+    private static void ShowSearchPotionReward()
+    {
+        if (_rewardOutcomeLabel == null)
+            return;
+        string? reward = SolverOverlaySnapshot.RewardOutcome(_searchPotionRewardOutlook);
+        _rewardOutcomeLabel.Visible = reward != null;
+        _rewardOutcomeLabel.Text = reward ?? string.Empty;
+    }
+
     public static void ShowResult(Node host, SolverOverlaySnapshot snapshot)
     {
         _presentation = SolverOverlayPresentation.Ready;
         _waitingForNextTurnPlan = false;
         _lastSnapshot = snapshot;
         _searchBestSnapshot = null;
+        _searchPotionRewardOutlook = default;
         _lastMessageText = null;
         EnsureCreated(host);
         _deployQueued = false;
@@ -1436,7 +1453,8 @@ internal static class SolverOverlay
                 host,
                 _lastSearchingTurn,
                 _lastSearchDeployWhenReady,
-                _lastReviewedWorldlinesBeforeSearch);
+                _lastReviewedWorldlinesBeforeSearch,
+                _searchPotionRewardOutlook);
         }
         else if (!SolverController.AutomaticCalculationEnabled)
         {

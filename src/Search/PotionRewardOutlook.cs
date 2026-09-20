@@ -68,25 +68,12 @@ internal readonly record struct PotionRewardOutlook(
     /// HP the expected reward is worth to a route that spends a paid potion, in the strategic-cost scale.
     /// </summary>
     /// <remarks>
-    /// A mirrored drop is valued at the tier of the potion it will give; a mirrored miss is worth nothing. When
-    /// only the odds are known, a random potion is valued at the baseline tier times the drop chance. The credit
-    /// is a route-level amount: one freed slot receives at most one reward, so it is applied once per route
-    /// rather than once per potion.
+    /// A confirmed drop is valued at the tier of the potion it will give. The credit is a route-level amount:
+    /// one freed slot receives at most one reward, so it is applied once per route rather than once per potion.
     /// </remarks>
-    public int ReplacementHpCredit
-    {
-        get
-        {
-            if (!BeltFull || ProcureBlocked)
-                return 0;
-            return Forecast switch
-            {
-                PotionRewardForecast.Drop => ForecastPotionStrategicHpCost,
-                PotionRewardForecast.NoDrop or PotionRewardForecast.NoRewards => 0,
-                _ => (int)Math.Round(Math.Clamp(DropChance, 0f, 1f) * SolverWeights.PotionMinimumHpSaved),
-            };
-        }
-    }
+    public int ReplacementHpCredit => BeltFull && !ProcureBlocked && Forecast == PotionRewardForecast.Drop
+        ? ForecastPotionStrategicHpCost
+        : 0;
 
     /// <summary>
     /// Reads the outlook from the live run on the main thread as part of root capture.

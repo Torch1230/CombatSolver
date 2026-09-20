@@ -120,6 +120,28 @@ internal sealed partial class UnattendedTestRunner
                 if (SolverOverlay.RouteHeadingForTesting != (english ? "Current candidate (unverified)" : "求解器当前考虑（尚未验证）")
                     || SolverOverlay.AdoptRouteButtonTextForTesting != (english ? "Use candidate" : "采用当前路线"))
                     throw new InvalidOperationException($"Dynamic overlay localization failed: {target}");
+                SolverOverlay.ShowSearching(_host, 3, false, 0,
+                    new PotionRewardOutlook(0.4f, true, false)
+                    {
+                        Enabled = true,
+                        Forecast = PotionRewardForecast.Drop,
+                        ForecastPotionId = "SWIFT_POTION",
+                    });
+                if (SolverOverlay.RewardOutcomeTextForTesting?.StartsWith(
+                        english ? "Expected drop: " : "预计掉落：", StringComparison.Ordinal) != true)
+                    throw new InvalidOperationException($"Searching reward forecast missing: {target}");
+                SolverOverlay.ShowSearching(_host, 3, false, 0,
+                    new PotionRewardOutlook(0.4f, true, false)
+                    {
+                        Enabled = true,
+                        Forecast = PotionRewardForecast.NoDrop,
+                    });
+                if (SolverOverlay.RewardOutcomeTextForTesting != (english
+                        ? "No potion drop expected" : "预计不掉落药水"))
+                    throw new InvalidOperationException($"Searching no-drop forecast missing: {target}");
+                SolverOverlay.ShowSearching(_host, 3, false, 0);
+                if (SolverOverlay.RewardOutcomeTextForTesting != null)
+                    throw new InvalidOperationException($"Disabled reward forecast remained visible: {target}");
                 if (!SolverOverlay.ExerciseGuidanceHintsForTesting())
                     throw new InvalidOperationException($"Guidance banner localization or dismissal failed: {target}");
                 string failure = SolverController.FormatSearchFailureForTesting(new InvalidOperationException(untouched), true);
