@@ -9,6 +9,7 @@
 
 | 要查什么 | 入口 |
 |---|---|
+| 撤回Windows 4GB上限后的当前PR验证与未达成项 | [三组Windows对照](performance/no-gc-budget-restored-20260920.md) |
 | 状态键为什么要含整场历史计数、条件式与无条件追加的对照 | [状态键历史计数报告](strategy/state-key-history-counters-20260919.md) |
 | 战后掉药预测（奖励 RNG 镜像）与满栏用药门槛 | [战后掉药预测报告](strategy/potion-reward-outlook-20260918.md) |
 | 0.41.0代码体量、死代码诊断与保持行为的轻度清理 | [代码整洁度审查](refactoring/code-hygiene-review-2026-09-18.md) |
