@@ -1,0 +1,6150 @@
+{
+  "baseline": "8be1410",
+  "defaultLimit": 1000000,
+  "frontierChecks": 1024010,
+  "fixedComparison": {
+    "EQ": {
+      "roots": 10,
+      "fields": 992,
+      "differences": 0
+    },
+    "FULL": {
+      "roots": 40,
+      "fields": 3743,
+      "differences": 0
+    },
+    "GA": {
+      "roots": 10,
+      "fields": 935,
+      "differences": 0
+    },
+    "extraDifferences": []
+  },
+  "fixedRoots": [
+    {
+      "root": "EQ-DEFECT-BOSS-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "2e691359be2354c7819dd919a8673c67b68623578ecff7aef4629e913c4af39a",
+      "quality": {
+        "won": false,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 0,
+        "strategicHpDeficit": 0,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 294,
+        "score": -1000014104020,
+        "combatEndedTurn": null,
+        "theftPolicy": null,
+        "survives": false,
+        "deathSaveUseCount": 1,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 24213,
+          "PeakEntries": 24213,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6040,
+          "LimitBypasses": 0,
+          "TotalLabels": 24227,
+          "LabelsPerEntry": {
+            "1": 24199,
+            "2": 14
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 37644,
+          "PeakEntries": 37644,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8966,
+          "LimitBypasses": 0,
+          "TotalLabels": 37657,
+          "LabelsPerEntry": {
+            "1": 37631,
+            "2": 13
+          }
+        }
+      ]
+    },
+    {
+      "root": "EQ-DEFECT-ELITE-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "62fc29d5cd8077f44628fc7b6c96ec44e64bdd6bee6bb04c301429d0d24c4498",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 0,
+        "strategicHpDeficit": 0,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 10002169970,
+        "combatEndedTurn": 7,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 18642,
+          "PeakEntries": 18642,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5446,
+          "LimitBypasses": 0,
+          "TotalLabels": 18642,
+          "LabelsPerEntry": {
+            "1": 18642
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 19368,
+          "PeakEntries": 19368,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5600,
+          "LimitBypasses": 0,
+          "TotalLabels": 19368,
+          "LabelsPerEntry": {
+            "1": 19368
+          }
+        }
+      ]
+    },
+    {
+      "root": "EQ-IRONCLAD-BOSS-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "2b8bf0e89bd02dad5b82f9c7ef8c29cf2b0e0e67c0a1dfb8ba4bae8bc6bc3674",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 62,
+        "strategicHpDeficit": 61,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 9998619963,
+        "combatEndedTurn": 9,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 40810,
+          "PeakEntries": 40810,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8033,
+          "LimitBypasses": 0,
+          "TotalLabels": 40814,
+          "LabelsPerEntry": {
+            "1": 40806,
+            "2": 4
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 40810,
+          "PeakEntries": 40810,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8033,
+          "LimitBypasses": 0,
+          "TotalLabels": 40814,
+          "LabelsPerEntry": {
+            "1": 40806,
+            "2": 4
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 114228,
+          "PeakEntries": 114228,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 22265,
+          "LimitBypasses": 0,
+          "TotalLabels": 114230,
+          "LabelsPerEntry": {
+            "1": 114226,
+            "2": 2
+          }
+        }
+      ]
+    },
+    {
+      "root": "EQ-IRONCLAD-ELITE-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "680cc2a708b4974b32df743abbf5522004ccb2dd368cb56cb92458b428bc7087",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 74,
+        "strategicHpDeficit": 68,
+        "potionStrategicCost": 9,
+        "projectedBattlePotionCount": 1,
+        "enemyHp": 0,
+        "score": 9997912958,
+        "combatEndedTurn": 10,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 12899,
+          "PeakEntries": 12899,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 2857,
+          "LimitBypasses": 0,
+          "TotalLabels": 12899,
+          "LabelsPerEntry": {
+            "1": 12899
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 12920,
+          "PeakEntries": 12920,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 2860,
+          "LimitBypasses": 0,
+          "TotalLabels": 12920,
+          "LabelsPerEntry": {
+            "1": 12920
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 32448,
+          "PeakEntries": 32448,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6931,
+          "LimitBypasses": 0,
+          "TotalLabels": 32448,
+          "LabelsPerEntry": {
+            "1": 32448
+          }
+        }
+      ]
+    },
+    {
+      "root": "EQ-NECROBINDER-BOSS-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "6697054c92fb8331c64debaa4e24f4895dc090d200e40de478af07ac6dffee1a",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 56,
+        "strategicHpDeficit": 56,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 9998144930,
+        "combatEndedTurn": 13,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 1
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 43824,
+          "PeakEntries": 43824,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 10610,
+          "LimitBypasses": 0,
+          "TotalLabels": 43825,
+          "LabelsPerEntry": {
+            "1": 43823,
+            "2": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 47692,
+          "PeakEntries": 47692,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 10953,
+          "LimitBypasses": 0,
+          "TotalLabels": 47693,
+          "LabelsPerEntry": {
+            "1": 47691,
+            "2": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 61690,
+          "PeakEntries": 61690,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 13326,
+          "LimitBypasses": 0,
+          "TotalLabels": 61692,
+          "LabelsPerEntry": {
+            "1": 61688,
+            "2": 2
+          }
+        }
+      ]
+    },
+    {
+      "root": "EQ-NECROBINDER-ELITE-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "fc18e49fcf9eb7a4a2ed817ecc7f5e4dd4298c5bdc7bb7efb16aa7fd2ceca80f",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 8,
+        "strategicHpDeficit": 8,
+        "potionStrategicCost": 9,
+        "projectedBattlePotionCount": 1,
+        "enemyHp": 0,
+        "score": 10001439981,
+        "combatEndedTurn": 3,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 17245,
+          "PeakEntries": 17245,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3529,
+          "LimitBypasses": 0,
+          "TotalLabels": 17245,
+          "LabelsPerEntry": {
+            "1": 17245
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 18123,
+          "PeakEntries": 18123,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3628,
+          "LimitBypasses": 0,
+          "TotalLabels": 18123,
+          "LabelsPerEntry": {
+            "1": 18123
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 16922,
+          "PeakEntries": 16922,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3424,
+          "LimitBypasses": 0,
+          "TotalLabels": 16922,
+          "LabelsPerEntry": {
+            "1": 16922
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 24926,
+          "PeakEntries": 24926,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4475,
+          "LimitBypasses": 0,
+          "TotalLabels": 24926,
+          "LabelsPerEntry": {
+            "1": 24926
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 16080,
+          "PeakEntries": 16080,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3386,
+          "LimitBypasses": 0,
+          "TotalLabels": 16080,
+          "LabelsPerEntry": {
+            "1": 16080
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 14176,
+          "PeakEntries": 14176,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 2808,
+          "LimitBypasses": 0,
+          "TotalLabels": 14176,
+          "LabelsPerEntry": {
+            "1": 14176
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 39210,
+          "PeakEntries": 39210,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 7802,
+          "LimitBypasses": 0,
+          "TotalLabels": 39210,
+          "LabelsPerEntry": {
+            "1": 39210
+          }
+        }
+      ]
+    },
+    {
+      "root": "EQ-REGENT-BOSS-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "c40c39a9368354f136600737db17ca4c6a07376f2694b05315a275f8df9af205",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 48,
+        "strategicHpDeficit": 48,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 9999189958,
+        "combatEndedTurn": 9,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 60383,
+          "PeakEntries": 60383,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8791,
+          "LimitBypasses": 0,
+          "TotalLabels": 60391,
+          "LabelsPerEntry": {
+            "1": 60375,
+            "2": 8
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 54655,
+          "PeakEntries": 54655,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 9330,
+          "LimitBypasses": 0,
+          "TotalLabels": 54665,
+          "LabelsPerEntry": {
+            "1": 54645,
+            "2": 10
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 54555,
+          "PeakEntries": 54555,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 9057,
+          "LimitBypasses": 0,
+          "TotalLabels": 54559,
+          "LabelsPerEntry": {
+            "1": 54551,
+            "2": 4
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 64959,
+          "PeakEntries": 64959,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 10956,
+          "LimitBypasses": 0,
+          "TotalLabels": 64959,
+          "LabelsPerEntry": {
+            "1": 64959
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 48422,
+          "PeakEntries": 48422,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8029,
+          "LimitBypasses": 0,
+          "TotalLabels": 48431,
+          "LabelsPerEntry": {
+            "1": 48413,
+            "2": 9
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 38229,
+          "PeakEntries": 38229,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 7120,
+          "LimitBypasses": 0,
+          "TotalLabels": 38229,
+          "LabelsPerEntry": {
+            "1": 38229
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 35694,
+          "PeakEntries": 35694,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5922,
+          "LimitBypasses": 0,
+          "TotalLabels": 35694,
+          "LabelsPerEntry": {
+            "1": 35694
+          }
+        }
+      ]
+    },
+    {
+      "root": "EQ-REGENT-ELITE-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "c3f2678abf7ddfda0d0efdb440869e7129ac327715020e8408cbdee4ed68f306",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 52,
+        "strategicHpDeficit": 52,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 9999129977,
+        "combatEndedTurn": 5,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 79877,
+          "PeakEntries": 79877,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 15048,
+          "LimitBypasses": 0,
+          "TotalLabels": 79906,
+          "LabelsPerEntry": {
+            "1": 79852,
+            "2": 21,
+            "3": 4
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 100728,
+          "PeakEntries": 100728,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 18802,
+          "LimitBypasses": 0,
+          "TotalLabels": 100745,
+          "LabelsPerEntry": {
+            "1": 100715,
+            "2": 9,
+            "3": 4
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 48564,
+          "PeakEntries": 48564,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 10205,
+          "LimitBypasses": 0,
+          "TotalLabels": 48564,
+          "LabelsPerEntry": {
+            "1": 48564
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 84396,
+          "PeakEntries": 84396,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 15628,
+          "LimitBypasses": 0,
+          "TotalLabels": 84405,
+          "LabelsPerEntry": {
+            "1": 84387,
+            "2": 9
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 26024,
+          "PeakEntries": 26024,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5188,
+          "LimitBypasses": 0,
+          "TotalLabels": 26024,
+          "LabelsPerEntry": {
+            "1": 26024
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 55618,
+          "PeakEntries": 55618,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 11145,
+          "LimitBypasses": 0,
+          "TotalLabels": 55624,
+          "LabelsPerEntry": {
+            "1": 55612,
+            "2": 6
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 84367,
+          "PeakEntries": 84367,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 14956,
+          "LimitBypasses": 0,
+          "TotalLabels": 84367,
+          "LabelsPerEntry": {
+            "1": 84367
+          }
+        }
+      ]
+    },
+    {
+      "root": "EQ-SILENT-BOSS-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "936738e5507e795907c66ead37d07a093320575bbdd76d5bd6911a37db58afbb",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 35,
+        "strategicHpDeficit": 35,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 9999959954,
+        "combatEndedTurn": 9,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 23166,
+          "PeakEntries": 23166,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 7011,
+          "LimitBypasses": 0,
+          "TotalLabels": 23176,
+          "LabelsPerEntry": {
+            "1": 23156,
+            "2": 10
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 23337,
+          "PeakEntries": 23337,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 7083,
+          "LimitBypasses": 0,
+          "TotalLabels": 23346,
+          "LabelsPerEntry": {
+            "1": 23328,
+            "2": 9
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 22506,
+          "PeakEntries": 22506,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6990,
+          "LimitBypasses": 0,
+          "TotalLabels": 22506,
+          "LabelsPerEntry": {
+            "1": 22506
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 34477,
+          "PeakEntries": 34477,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 10339,
+          "LimitBypasses": 0,
+          "TotalLabels": 34477,
+          "LabelsPerEntry": {
+            "1": 34477
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 27823,
+          "PeakEntries": 27823,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8315,
+          "LimitBypasses": 0,
+          "TotalLabels": 27828,
+          "LabelsPerEntry": {
+            "1": 27818,
+            "2": 5
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 22521,
+          "PeakEntries": 22521,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6967,
+          "LimitBypasses": 0,
+          "TotalLabels": 22521,
+          "LabelsPerEntry": {
+            "1": 22521
+          }
+        }
+      ]
+    },
+    {
+      "root": "EQ-SILENT-ELITE-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "1811687aa16cc0177c12a982bc2375867da5caf11cc783e8c487fef637618c92",
+      "quality": {
+        "won": false,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 70,
+        "strategicHpDeficit": 70,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 177,
+        "score": -1000003934033,
+        "combatEndedTurn": null,
+        "theftPolicy": null,
+        "survives": false,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 24719,
+          "PeakEntries": 24719,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5868,
+          "LimitBypasses": 0,
+          "TotalLabels": 24720,
+          "LabelsPerEntry": {
+            "1": 24718,
+            "2": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 24758,
+          "PeakEntries": 24758,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5873,
+          "LimitBypasses": 0,
+          "TotalLabels": 24759,
+          "LabelsPerEntry": {
+            "1": 24757,
+            "2": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 24423,
+          "PeakEntries": 24423,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5141,
+          "LimitBypasses": 0,
+          "TotalLabels": 24423,
+          "LabelsPerEntry": {
+            "1": 24423
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 33214,
+          "PeakEntries": 33214,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 7000,
+          "LimitBypasses": 0,
+          "TotalLabels": 33214,
+          "LabelsPerEntry": {
+            "1": 33214
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 25193,
+          "PeakEntries": 25193,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5425,
+          "LimitBypasses": 0,
+          "TotalLabels": 25193,
+          "LabelsPerEntry": {
+            "1": 25193
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 25054,
+          "PeakEntries": 25054,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5566,
+          "LimitBypasses": 0,
+          "TotalLabels": 25054,
+          "LabelsPerEntry": {
+            "1": 25054
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 29797,
+          "PeakEntries": 29797,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 7098,
+          "LimitBypasses": 0,
+          "TotalLabels": 29797,
+          "LabelsPerEntry": {
+            "1": 29797
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-DEFECT-BOSS-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "2e691359be2354c7819dd919a8673c67b68623578ecff7aef4629e913c4af39a",
+      "quality": {
+        "won": false,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 0,
+        "strategicHpDeficit": 0,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 294,
+        "score": -1000014104020,
+        "combatEndedTurn": null,
+        "theftPolicy": null,
+        "survives": false,
+        "deathSaveUseCount": 1,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 23869,
+          "PeakEntries": 23869,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5833,
+          "LimitBypasses": 0,
+          "TotalLabels": 23883,
+          "LabelsPerEntry": {
+            "1": 23855,
+            "2": 14
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 30831,
+          "PeakEntries": 30831,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6899,
+          "LimitBypasses": 0,
+          "TotalLabels": 30872,
+          "LabelsPerEntry": {
+            "1": 30790,
+            "2": 41
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 35864,
+          "PeakEntries": 35864,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8282,
+          "LimitBypasses": 0,
+          "TotalLabels": 35892,
+          "LabelsPerEntry": {
+            "1": 35837,
+            "2": 26,
+            "3": 1
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-DEFECT-BOSS-01",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "9e93fa36ff4d52720cd48fa3bc560675a6ff8965ead1f24155a483ff0ee482ef",
+      "quality": {
+        "won": false,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 75,
+        "strategicHpDeficit": 75,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 230,
+        "score": -1000004582044,
+        "combatEndedTurn": null,
+        "theftPolicy": null,
+        "survives": false,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 21651,
+          "PeakEntries": 21651,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4942,
+          "LimitBypasses": 0,
+          "TotalLabels": 21651,
+          "LabelsPerEntry": {
+            "1": 21651
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 27650,
+          "PeakEntries": 27650,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6201,
+          "LimitBypasses": 0,
+          "TotalLabels": 27663,
+          "LabelsPerEntry": {
+            "1": 27637,
+            "2": 13
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 27901,
+          "PeakEntries": 27901,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6367,
+          "LimitBypasses": 0,
+          "TotalLabels": 27905,
+          "LabelsPerEntry": {
+            "1": 27897,
+            "2": 4
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-DEFECT-BOSS-02",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "c0d95cdaa08b34d70b48b25668b937ec77e7cf843ac60dc04dd7448e3c9f160d",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 71,
+        "strategicHpDeficit": 71,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 9997967961,
+        "combatEndedTurn": 11,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 20105,
+          "PeakEntries": 20105,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3962,
+          "LimitBypasses": 0,
+          "TotalLabels": 20145,
+          "LabelsPerEntry": {
+            "1": 20069,
+            "2": 32,
+            "3": 4
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 20100,
+          "PeakEntries": 20100,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3948,
+          "LimitBypasses": 0,
+          "TotalLabels": 20135,
+          "LabelsPerEntry": {
+            "1": 20070,
+            "2": 25,
+            "3": 5
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 20612,
+          "PeakEntries": 20612,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4391,
+          "LimitBypasses": 0,
+          "TotalLabels": 20640,
+          "LabelsPerEntry": {
+            "1": 20584,
+            "2": 28
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 29715,
+          "PeakEntries": 29715,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6445,
+          "LimitBypasses": 0,
+          "TotalLabels": 29752,
+          "LabelsPerEntry": {
+            "1": 29679,
+            "2": 35,
+            "3": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 18544,
+          "PeakEntries": 18544,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3552,
+          "LimitBypasses": 0,
+          "TotalLabels": 18546,
+          "LabelsPerEntry": {
+            "1": 18542,
+            "2": 2
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 18387,
+          "PeakEntries": 18387,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3804,
+          "LimitBypasses": 0,
+          "TotalLabels": 18407,
+          "LabelsPerEntry": {
+            "1": 18367,
+            "2": 20
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 32026,
+          "PeakEntries": 32026,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6785,
+          "LimitBypasses": 0,
+          "TotalLabels": 32069,
+          "LabelsPerEntry": {
+            "1": 31989,
+            "2": 31,
+            "3": 6
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-DEFECT-BOSS-03",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "2f2fcc3188a00a74a956b6b66b674aba86608236ef18cfbae554c7ec14b1f351",
+      "quality": {
+        "won": false,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 75,
+        "strategicHpDeficit": 75,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 544,
+        "score": -1000007690016,
+        "combatEndedTurn": null,
+        "theftPolicy": null,
+        "survives": false,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 9384,
+          "PeakEntries": 9384,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 2337,
+          "LimitBypasses": 0,
+          "TotalLabels": 9384,
+          "LabelsPerEntry": {
+            "1": 9384
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 9391,
+          "PeakEntries": 9391,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 2337,
+          "LimitBypasses": 0,
+          "TotalLabels": 9391,
+          "LabelsPerEntry": {
+            "1": 9391
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 8920,
+          "PeakEntries": 8920,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 2252,
+          "LimitBypasses": 0,
+          "TotalLabels": 8920,
+          "LabelsPerEntry": {
+            "1": 8920
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 12994,
+          "PeakEntries": 12994,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3300,
+          "LimitBypasses": 0,
+          "TotalLabels": 12994,
+          "LabelsPerEntry": {
+            "1": 12994
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 7377,
+          "PeakEntries": 7377,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 2014,
+          "LimitBypasses": 0,
+          "TotalLabels": 7377,
+          "LabelsPerEntry": {
+            "1": 7377
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 7813,
+          "PeakEntries": 7813,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 2026,
+          "LimitBypasses": 0,
+          "TotalLabels": 7813,
+          "LabelsPerEntry": {
+            "1": 7813
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 17651,
+          "PeakEntries": 17651,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4233,
+          "LimitBypasses": 0,
+          "TotalLabels": 17651,
+          "LabelsPerEntry": {
+            "1": 17651
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 23496,
+          "PeakEntries": 23496,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5614,
+          "LimitBypasses": 0,
+          "TotalLabels": 23496,
+          "LabelsPerEntry": {
+            "1": 23496
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-DEFECT-ELITE-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "62fc29d5cd8077f44628fc7b6c96ec44e64bdd6bee6bb04c301429d0d24c4498",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 0,
+        "strategicHpDeficit": 0,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 10002169970,
+        "combatEndedTurn": 7,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 21046,
+          "PeakEntries": 21046,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5630,
+          "LimitBypasses": 0,
+          "TotalLabels": 21046,
+          "LabelsPerEntry": {
+            "1": 21046
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 20425,
+          "PeakEntries": 20425,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5453,
+          "LimitBypasses": 0,
+          "TotalLabels": 20425,
+          "LabelsPerEntry": {
+            "1": 20425
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-DEFECT-ELITE-01",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "84b2013587e61f1b1b2ffb3b0629b0f52796fe01982133885b9023b859a32c89",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 0,
+        "strategicHpDeficit": 0,
+        "potionStrategicCost": 9,
+        "projectedBattlePotionCount": 1,
+        "enemyHp": 0,
+        "score": 10002250986,
+        "combatEndedTurn": 2,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 1
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 23510,
+          "PeakEntries": 23510,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5665,
+          "LimitBypasses": 0,
+          "TotalLabels": 23514,
+          "LabelsPerEntry": {
+            "1": 23506,
+            "2": 4
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 23829,
+          "PeakEntries": 23829,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5797,
+          "LimitBypasses": 0,
+          "TotalLabels": 23832,
+          "LabelsPerEntry": {
+            "1": 23826,
+            "2": 3
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 38272,
+          "PeakEntries": 38272,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 9053,
+          "LimitBypasses": 0,
+          "TotalLabels": 38288,
+          "LabelsPerEntry": {
+            "1": 38258,
+            "2": 12,
+            "3": 2
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-DEFECT-ELITE-02",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "ea73f4ffa3a2b2d5536dbfa974321376d34c5b2aa734c40f6ff21bf32d7e7592",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 14,
+        "strategicHpDeficit": 14,
+        "potionStrategicCost": 9,
+        "projectedBattlePotionCount": 1,
+        "enemyHp": 0,
+        "score": 10001297979,
+        "combatEndedTurn": 4,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 9494,
+          "PeakEntries": 9494,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 2696,
+          "LimitBypasses": 0,
+          "TotalLabels": 9498,
+          "LabelsPerEntry": {
+            "1": 9490,
+            "2": 4
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 9487,
+          "PeakEntries": 9487,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 2694,
+          "LimitBypasses": 0,
+          "TotalLabels": 9491,
+          "LabelsPerEntry": {
+            "1": 9483,
+            "2": 4
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 8855,
+          "PeakEntries": 8855,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 2434,
+          "LimitBypasses": 0,
+          "TotalLabels": 8863,
+          "LabelsPerEntry": {
+            "1": 8847,
+            "2": 8
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 13346,
+          "PeakEntries": 13346,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3780,
+          "LimitBypasses": 0,
+          "TotalLabels": 13346,
+          "LabelsPerEntry": {
+            "1": 13346
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 9632,
+          "PeakEntries": 9632,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 2678,
+          "LimitBypasses": 0,
+          "TotalLabels": 9635,
+          "LabelsPerEntry": {
+            "1": 9629,
+            "2": 3
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 7953,
+          "PeakEntries": 7953,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 2269,
+          "LimitBypasses": 0,
+          "TotalLabels": 7957,
+          "LabelsPerEntry": {
+            "1": 7949,
+            "2": 4
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 18390,
+          "PeakEntries": 18390,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4643,
+          "LimitBypasses": 0,
+          "TotalLabels": 18404,
+          "LabelsPerEntry": {
+            "1": 18376,
+            "2": 14
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-DEFECT-ELITE-03",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "066d942834483e31c153783b98429e2029694eddbf8010ce922e61b042fa637c",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 70,
+        "strategicHpDeficit": 70,
+        "potionStrategicCost": 28,
+        "projectedBattlePotionCount": 2,
+        "enemyHp": 0,
+        "score": 9997785958,
+        "combatEndedTurn": 10,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 16328,
+          "PeakEntries": 16328,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6095,
+          "LimitBypasses": 0,
+          "TotalLabels": 16329,
+          "LabelsPerEntry": {
+            "1": 16327,
+            "2": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 18182,
+          "PeakEntries": 18182,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6431,
+          "LimitBypasses": 0,
+          "TotalLabels": 18183,
+          "LabelsPerEntry": {
+            "1": 18181,
+            "2": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 31186,
+          "PeakEntries": 31186,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8650,
+          "LimitBypasses": 0,
+          "TotalLabels": 31202,
+          "LabelsPerEntry": {
+            "1": 31173,
+            "2": 10,
+            "3": 3
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 37054,
+          "PeakEntries": 37054,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 9802,
+          "LimitBypasses": 0,
+          "TotalLabels": 37057,
+          "LabelsPerEntry": {
+            "1": 37051,
+            "2": 3
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-IRONCLAD-BOSS-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "0a422ebdc1b59ab672437332ffd4d584c13b76ea29ff23d95c9c803a23ec6a31",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 63,
+        "strategicHpDeficit": 60,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 9998739953,
+        "combatEndedTurn": 11,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 40808,
+          "PeakEntries": 40808,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8001,
+          "LimitBypasses": 0,
+          "TotalLabels": 40816,
+          "LabelsPerEntry": {
+            "1": 40800,
+            "2": 8
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 40808,
+          "PeakEntries": 40808,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8001,
+          "LimitBypasses": 0,
+          "TotalLabels": 40816,
+          "LabelsPerEntry": {
+            "1": 40800,
+            "2": 8
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 122857,
+          "PeakEntries": 122857,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 24147,
+          "LimitBypasses": 0,
+          "TotalLabels": 122858,
+          "LabelsPerEntry": {
+            "1": 122856,
+            "2": 1
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-IRONCLAD-BOSS-01",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "24d874080faaf21dbe616bb2d6b17c7231f16ee514c277e5a1c9ef451fcf6916",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 73,
+        "strategicHpDeficit": 73,
+        "potionStrategicCost": 536870911,
+        "projectedBattlePotionCount": 1,
+        "enemyHp": 0,
+        "score": 9997859967,
+        "combatEndedTurn": 7,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 6223,
+          "PeakEntries": 6223,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 1641,
+          "LimitBypasses": 0,
+          "TotalLabels": 6253,
+          "LabelsPerEntry": {
+            "1": 6193,
+            "2": 30
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 6222,
+          "PeakEntries": 6222,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 1642,
+          "LimitBypasses": 0,
+          "TotalLabels": 6252,
+          "LabelsPerEntry": {
+            "1": 6192,
+            "2": 30
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 23227,
+          "PeakEntries": 23227,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6851,
+          "LimitBypasses": 0,
+          "TotalLabels": 23228,
+          "LabelsPerEntry": {
+            "1": 23226,
+            "2": 1
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-IRONCLAD-BOSS-02",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "6627b226f2468b3fbf4cf45e7bd83a1917387569f38683c5dce8e91259d9df9f",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 16,
+        "strategicHpDeficit": 13,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 10001755953,
+        "combatEndedTurn": 14,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 21514,
+          "PeakEntries": 21514,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6174,
+          "LimitBypasses": 0,
+          "TotalLabels": 21514,
+          "LabelsPerEntry": {
+            "1": 21514
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 24458,
+          "PeakEntries": 24458,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6867,
+          "LimitBypasses": 0,
+          "TotalLabels": 24458,
+          "LabelsPerEntry": {
+            "1": 24458
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 27354,
+          "PeakEntries": 27354,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 7636,
+          "LimitBypasses": 0,
+          "TotalLabels": 27354,
+          "LabelsPerEntry": {
+            "1": 27354
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 27834,
+          "PeakEntries": 27834,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 7719,
+          "LimitBypasses": 0,
+          "TotalLabels": 27835,
+          "LabelsPerEntry": {
+            "1": 27833,
+            "2": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 21552,
+          "PeakEntries": 21552,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6024,
+          "LimitBypasses": 0,
+          "TotalLabels": 21552,
+          "LabelsPerEntry": {
+            "1": 21552
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 26263,
+          "PeakEntries": 26263,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 7400,
+          "LimitBypasses": 0,
+          "TotalLabels": 26263,
+          "LabelsPerEntry": {
+            "1": 26263
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 21577,
+          "PeakEntries": 21577,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6006,
+          "LimitBypasses": 0,
+          "TotalLabels": 21577,
+          "LabelsPerEntry": {
+            "1": 21577
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 26431,
+          "PeakEntries": 26431,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 7255,
+          "LimitBypasses": 0,
+          "TotalLabels": 26431,
+          "LabelsPerEntry": {
+            "1": 26431
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 21589,
+          "PeakEntries": 21589,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6009,
+          "LimitBypasses": 0,
+          "TotalLabels": 21589,
+          "LabelsPerEntry": {
+            "1": 21589
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 26430,
+          "PeakEntries": 26430,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 7255,
+          "LimitBypasses": 0,
+          "TotalLabels": 26430,
+          "LabelsPerEntry": {
+            "1": 26430
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-IRONCLAD-BOSS-03",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "a3a6446e67ae80184400243915cb05b9e33c39e0a0cb4ab28831496dd95d6290",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 23,
+        "strategicHpDeficit": 22,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 10000919968,
+        "combatEndedTurn": 8,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 26866,
+          "PeakEntries": 26866,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5969,
+          "LimitBypasses": 0,
+          "TotalLabels": 26871,
+          "LabelsPerEntry": {
+            "1": 26861,
+            "2": 5
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 20529,
+          "PeakEntries": 20529,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4878,
+          "LimitBypasses": 0,
+          "TotalLabels": 20534,
+          "LabelsPerEntry": {
+            "1": 20524,
+            "2": 5
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 21387,
+          "PeakEntries": 21387,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4302,
+          "LimitBypasses": 0,
+          "TotalLabels": 21387,
+          "LabelsPerEntry": {
+            "1": 21387
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 32072,
+          "PeakEntries": 32072,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5727,
+          "LimitBypasses": 0,
+          "TotalLabels": 32072,
+          "LabelsPerEntry": {
+            "1": 32072
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 132072,
+          "PeakEntries": 132072,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 25000,
+          "LimitBypasses": 0,
+          "TotalLabels": 132118,
+          "LabelsPerEntry": {
+            "1": 132029,
+            "2": 40,
+            "3": 3
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 23518,
+          "PeakEntries": 23518,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4730,
+          "LimitBypasses": 0,
+          "TotalLabels": 23518,
+          "LabelsPerEntry": {
+            "1": 23518
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-IRONCLAD-ELITE-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "e9f14e1c21829a1ffbecad8d725099373464afc511934faa0b0c4fcf3c811d84",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 41,
+        "strategicHpDeficit": 35,
+        "potionStrategicCost": 9,
+        "projectedBattlePotionCount": 1,
+        "enemyHp": 0,
+        "score": 9999879951,
+        "combatEndedTurn": 10,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 12893,
+          "PeakEntries": 12893,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 2855,
+          "LimitBypasses": 0,
+          "TotalLabels": 12893,
+          "LabelsPerEntry": {
+            "1": 12893
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 12917,
+          "PeakEntries": 12917,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 2860,
+          "LimitBypasses": 0,
+          "TotalLabels": 12917,
+          "LabelsPerEntry": {
+            "1": 12917
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 49977,
+          "PeakEntries": 49977,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 10998,
+          "LimitBypasses": 0,
+          "TotalLabels": 49996,
+          "LabelsPerEntry": {
+            "1": 49958,
+            "2": 19
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-IRONCLAD-ELITE-01",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "e6ad521a414f47de99c0061381b01befbd5c0ca76fd578dd2335ea9d7e805553",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 44,
+        "strategicHpDeficit": 38,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 9999751971,
+        "combatEndedTurn": 6,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 15746,
+          "PeakEntries": 15746,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3474,
+          "LimitBypasses": 0,
+          "TotalLabels": 15746,
+          "LabelsPerEntry": {
+            "1": 15746
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 15800,
+          "PeakEntries": 15800,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3478,
+          "LimitBypasses": 0,
+          "TotalLabels": 15800,
+          "LabelsPerEntry": {
+            "1": 15800
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 16278,
+          "PeakEntries": 16278,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3374,
+          "LimitBypasses": 0,
+          "TotalLabels": 16278,
+          "LabelsPerEntry": {
+            "1": 16278
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 24300,
+          "PeakEntries": 24300,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4512,
+          "LimitBypasses": 0,
+          "TotalLabels": 24300,
+          "LabelsPerEntry": {
+            "1": 24300
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 16183,
+          "PeakEntries": 16183,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3372,
+          "LimitBypasses": 0,
+          "TotalLabels": 16183,
+          "LabelsPerEntry": {
+            "1": 16183
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 16396,
+          "PeakEntries": 16396,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3454,
+          "LimitBypasses": 0,
+          "TotalLabels": 16396,
+          "LabelsPerEntry": {
+            "1": 16396
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 24526,
+          "PeakEntries": 24526,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4838,
+          "LimitBypasses": 0,
+          "TotalLabels": 24526,
+          "LabelsPerEntry": {
+            "1": 24526
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 27087,
+          "PeakEntries": 27087,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5119,
+          "LimitBypasses": 0,
+          "TotalLabels": 27088,
+          "LabelsPerEntry": {
+            "1": 27086,
+            "2": 1
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-IRONCLAD-ELITE-02",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "5720ed2519c3d7d32e4204e3c6dcf0a5798d029a9320a66030c0e345a998b366",
+      "quality": {
+        "won": false,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 80,
+        "strategicHpDeficit": 80,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 189,
+        "score": -1000004050012,
+        "combatEndedTurn": null,
+        "theftPolicy": null,
+        "survives": false,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 15544,
+          "PeakEntries": 15544,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3917,
+          "LimitBypasses": 0,
+          "TotalLabels": 15593,
+          "LabelsPerEntry": {
+            "1": 15495,
+            "2": 49
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 15468,
+          "PeakEntries": 15468,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3843,
+          "LimitBypasses": 0,
+          "TotalLabels": 15522,
+          "LabelsPerEntry": {
+            "1": 15414,
+            "2": 54
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 26294,
+          "PeakEntries": 26294,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5655,
+          "LimitBypasses": 0,
+          "TotalLabels": 26320,
+          "LabelsPerEntry": {
+            "1": 26269,
+            "2": 24,
+            "3": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 31545,
+          "PeakEntries": 31545,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6960,
+          "LimitBypasses": 0,
+          "TotalLabels": 31557,
+          "LabelsPerEntry": {
+            "1": 31533,
+            "2": 12
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-IRONCLAD-ELITE-03",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "8cdd74c010652a76c881b159212b4199ccfd41d770b284cc480fe7ce2c8101a4",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 51,
+        "strategicHpDeficit": 45,
+        "potionStrategicCost": 18,
+        "projectedBattlePotionCount": 1,
+        "enemyHp": 0,
+        "score": 9999168969,
+        "combatEndedTurn": 7,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 6176,
+          "PeakEntries": 6176,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 1738,
+          "LimitBypasses": 0,
+          "TotalLabels": 6179,
+          "LabelsPerEntry": {
+            "1": 6173,
+            "2": 3
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 6180,
+          "PeakEntries": 6180,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 1739,
+          "LimitBypasses": 0,
+          "TotalLabels": 6183,
+          "LabelsPerEntry": {
+            "1": 6177,
+            "2": 3
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 5135,
+          "PeakEntries": 5135,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 1493,
+          "LimitBypasses": 0,
+          "TotalLabels": 5135,
+          "LabelsPerEntry": {
+            "1": 5135
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 7315,
+          "PeakEntries": 7315,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 2164,
+          "LimitBypasses": 0,
+          "TotalLabels": 7315,
+          "LabelsPerEntry": {
+            "1": 7315
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 4840,
+          "PeakEntries": 4840,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 1313,
+          "LimitBypasses": 0,
+          "TotalLabels": 4840,
+          "LabelsPerEntry": {
+            "1": 4840
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 6663,
+          "PeakEntries": 6663,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 1817,
+          "LimitBypasses": 0,
+          "TotalLabels": 6663,
+          "LabelsPerEntry": {
+            "1": 6663
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 3296,
+          "PeakEntries": 3296,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 896,
+          "LimitBypasses": 0,
+          "TotalLabels": 3296,
+          "LabelsPerEntry": {
+            "1": 3296
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 4314,
+          "PeakEntries": 4314,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 1177,
+          "LimitBypasses": 0,
+          "TotalLabels": 4314,
+          "LabelsPerEntry": {
+            "1": 4314
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 3296,
+          "PeakEntries": 3296,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 896,
+          "LimitBypasses": 0,
+          "TotalLabels": 3296,
+          "LabelsPerEntry": {
+            "1": 3296
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 4314,
+          "PeakEntries": 4314,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 1177,
+          "LimitBypasses": 0,
+          "TotalLabels": 4314,
+          "LabelsPerEntry": {
+            "1": 4314
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 19632,
+          "PeakEntries": 19632,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5026,
+          "LimitBypasses": 0,
+          "TotalLabels": 19640,
+          "LabelsPerEntry": {
+            "1": 19624,
+            "2": 8
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-NECROBINDER-BOSS-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "9e753f66e818750f74d9876c1fcdfe1c7e99ca4e15734edc8002c5dd568ae993",
+      "quality": {
+        "won": false,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 22,
+        "strategicHpDeficit": 22,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 278,
+        "score": -1000003488017,
+        "combatEndedTurn": null,
+        "theftPolicy": null,
+        "survives": false,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 36644,
+          "PeakEntries": 36644,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 9652,
+          "LimitBypasses": 0,
+          "TotalLabels": 36646,
+          "LabelsPerEntry": {
+            "1": 36642,
+            "2": 2
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 33727,
+          "PeakEntries": 33727,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 9096,
+          "LimitBypasses": 0,
+          "TotalLabels": 33730,
+          "LabelsPerEntry": {
+            "1": 33724,
+            "2": 3
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 54972,
+          "PeakEntries": 54972,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 12617,
+          "LimitBypasses": 0,
+          "TotalLabels": 54975,
+          "LabelsPerEntry": {
+            "1": 54969,
+            "2": 3
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 65255,
+          "PeakEntries": 65255,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 13835,
+          "LimitBypasses": 0,
+          "TotalLabels": 65255,
+          "LabelsPerEntry": {
+            "1": 65255
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-NECROBINDER-BOSS-01",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "0dda2be39791a6ed3757be892d23f85f21d12982815969d123e539a2d2e98516",
+      "quality": {
+        "won": false,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 66,
+        "strategicHpDeficit": 66,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 549,
+        "score": -1000007470018,
+        "combatEndedTurn": null,
+        "theftPolicy": null,
+        "survives": false,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 8484,
+          "PeakEntries": 8484,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 1849,
+          "LimitBypasses": 0,
+          "TotalLabels": 8488,
+          "LabelsPerEntry": {
+            "1": 8480,
+            "2": 4
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 8484,
+          "PeakEntries": 8484,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 1849,
+          "LimitBypasses": 0,
+          "TotalLabels": 8488,
+          "LabelsPerEntry": {
+            "1": 8480,
+            "2": 4
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 22433,
+          "PeakEntries": 22433,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3419,
+          "LimitBypasses": 0,
+          "TotalLabels": 22433,
+          "LabelsPerEntry": {
+            "1": 22433
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 20378,
+          "PeakEntries": 20378,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3124,
+          "LimitBypasses": 0,
+          "TotalLabels": 20379,
+          "LabelsPerEntry": {
+            "1": 20377,
+            "2": 1
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-NECROBINDER-BOSS-02",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "1cfb58f741b18b6989ffce8c51d7f6f869d5f9979ff9a2cf962caa06c3460623",
+      "quality": {
+        "won": false,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 2,
+        "strategicHpDeficit": 2,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 259,
+        "score": -1000002698019,
+        "combatEndedTurn": null,
+        "theftPolicy": null,
+        "survives": false,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 15532,
+          "PeakEntries": 15532,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3798,
+          "LimitBypasses": 0,
+          "TotalLabels": 15576,
+          "LabelsPerEntry": {
+            "1": 15488,
+            "2": 44
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 17126,
+          "PeakEntries": 17126,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4148,
+          "LimitBypasses": 0,
+          "TotalLabels": 17163,
+          "LabelsPerEntry": {
+            "1": 17089,
+            "2": 37
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 22907,
+          "PeakEntries": 22907,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6458,
+          "LimitBypasses": 0,
+          "TotalLabels": 22907,
+          "LabelsPerEntry": {
+            "1": 22907
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 24473,
+          "PeakEntries": 24473,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6930,
+          "LimitBypasses": 0,
+          "TotalLabels": 24477,
+          "LabelsPerEntry": {
+            "1": 24469,
+            "2": 4
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-NECROBINDER-BOSS-03",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "e271782b2a02c64808bb3c1ee503f3a6ccbdecb121da723e5a974d2c915a3e6c",
+      "quality": {
+        "won": false,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 23,
+        "strategicHpDeficit": 23,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 286,
+        "score": -1000003598020,
+        "combatEndedTurn": null,
+        "theftPolicy": null,
+        "survives": false,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 9121,
+          "PeakEntries": 9121,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 2272,
+          "LimitBypasses": 0,
+          "TotalLabels": 9124,
+          "LabelsPerEntry": {
+            "1": 9118,
+            "2": 3
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 9127,
+          "PeakEntries": 9127,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 2274,
+          "LimitBypasses": 0,
+          "TotalLabels": 9130,
+          "LabelsPerEntry": {
+            "1": 9124,
+            "2": 3
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 8289,
+          "PeakEntries": 8289,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 2057,
+          "LimitBypasses": 0,
+          "TotalLabels": 8291,
+          "LabelsPerEntry": {
+            "1": 8287,
+            "2": 2
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 12422,
+          "PeakEntries": 12422,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3047,
+          "LimitBypasses": 0,
+          "TotalLabels": 12423,
+          "LabelsPerEntry": {
+            "1": 12421,
+            "2": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 8681,
+          "PeakEntries": 8681,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 2075,
+          "LimitBypasses": 0,
+          "TotalLabels": 8727,
+          "LabelsPerEntry": {
+            "1": 8635,
+            "2": 46
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 8020,
+          "PeakEntries": 8020,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 2038,
+          "LimitBypasses": 0,
+          "TotalLabels": 8033,
+          "LabelsPerEntry": {
+            "1": 8007,
+            "2": 13
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 15669,
+          "PeakEntries": 15669,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3675,
+          "LimitBypasses": 0,
+          "TotalLabels": 15676,
+          "LabelsPerEntry": {
+            "1": 15662,
+            "2": 7
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 16682,
+          "PeakEntries": 16682,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3880,
+          "LimitBypasses": 0,
+          "TotalLabels": 16682,
+          "LabelsPerEntry": {
+            "1": 16682
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-NECROBINDER-ELITE-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "fc18e49fcf9eb7a4a2ed817ecc7f5e4dd4298c5bdc7bb7efb16aa7fd2ceca80f",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 8,
+        "strategicHpDeficit": 8,
+        "potionStrategicCost": 9,
+        "projectedBattlePotionCount": 1,
+        "enemyHp": 0,
+        "score": 10001439981,
+        "combatEndedTurn": 3,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 18044,
+          "PeakEntries": 18044,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3578,
+          "LimitBypasses": 0,
+          "TotalLabels": 18044,
+          "LabelsPerEntry": {
+            "1": 18044
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 17512,
+          "PeakEntries": 17512,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3658,
+          "LimitBypasses": 0,
+          "TotalLabels": 17512,
+          "LabelsPerEntry": {
+            "1": 17512
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 17380,
+          "PeakEntries": 17380,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3488,
+          "LimitBypasses": 0,
+          "TotalLabels": 17380,
+          "LabelsPerEntry": {
+            "1": 17380
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 23018,
+          "PeakEntries": 23018,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4166,
+          "LimitBypasses": 0,
+          "TotalLabels": 23018,
+          "LabelsPerEntry": {
+            "1": 23018
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 15503,
+          "PeakEntries": 15503,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3385,
+          "LimitBypasses": 0,
+          "TotalLabels": 15503,
+          "LabelsPerEntry": {
+            "1": 15503
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 17846,
+          "PeakEntries": 17846,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3514,
+          "LimitBypasses": 0,
+          "TotalLabels": 17846,
+          "LabelsPerEntry": {
+            "1": 17846
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 41425,
+          "PeakEntries": 41425,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8304,
+          "LimitBypasses": 0,
+          "TotalLabels": 41425,
+          "LabelsPerEntry": {
+            "1": 41425
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-NECROBINDER-ELITE-01",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "688af45fe194fa1dfdc6ba0800b0715b9a06aadd1614abbf9fbf6c4537d967e8",
+      "quality": {
+        "won": false,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 54,
+        "strategicHpDeficit": 54,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 119,
+        "score": -1000002910017,
+        "combatEndedTurn": null,
+        "theftPolicy": null,
+        "survives": false,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 34103,
+          "PeakEntries": 34103,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 9018,
+          "LimitBypasses": 0,
+          "TotalLabels": 34103,
+          "LabelsPerEntry": {
+            "1": 34103
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 34007,
+          "PeakEntries": 34007,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8507,
+          "LimitBypasses": 0,
+          "TotalLabels": 34007,
+          "LabelsPerEntry": {
+            "1": 34007
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 22531,
+          "PeakEntries": 22531,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5845,
+          "LimitBypasses": 0,
+          "TotalLabels": 22533,
+          "LabelsPerEntry": {
+            "1": 22529,
+            "2": 2
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 32134,
+          "PeakEntries": 32134,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 7757,
+          "LimitBypasses": 0,
+          "TotalLabels": 32137,
+          "LabelsPerEntry": {
+            "1": 32131,
+            "2": 3
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 18860,
+          "PeakEntries": 18860,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4843,
+          "LimitBypasses": 0,
+          "TotalLabels": 18861,
+          "LabelsPerEntry": {
+            "1": 18859,
+            "2": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 19447,
+          "PeakEntries": 19447,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4489,
+          "LimitBypasses": 0,
+          "TotalLabels": 19447,
+          "LabelsPerEntry": {
+            "1": 19447
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 39156,
+          "PeakEntries": 39156,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8970,
+          "LimitBypasses": 0,
+          "TotalLabels": 39158,
+          "LabelsPerEntry": {
+            "1": 39154,
+            "2": 2
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 49788,
+          "PeakEntries": 49788,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 10979,
+          "LimitBypasses": 0,
+          "TotalLabels": 49790,
+          "LabelsPerEntry": {
+            "1": 49786,
+            "2": 2
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-NECROBINDER-ELITE-02",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "f0f7688efe1cb53e25b1b2cbc48f28ba6d3c80564c15bc82acd1116b983ad313",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 5,
+        "strategicHpDeficit": 5,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 10001656977,
+        "combatEndedTurn": 5,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 1
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 34845,
+          "PeakEntries": 34845,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8323,
+          "LimitBypasses": 0,
+          "TotalLabels": 34851,
+          "LabelsPerEntry": {
+            "1": 34839,
+            "2": 6
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-NECROBINDER-ELITE-03",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "81ba037d90a535026f4ec531bfa29313b1f092ef19d0b158d1b6d5b681d8cdf6",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 11,
+        "strategicHpDeficit": 11,
+        "potionStrategicCost": 18,
+        "projectedBattlePotionCount": 2,
+        "enemyHp": 0,
+        "score": 10001344976,
+        "combatEndedTurn": 6,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 1
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 21449,
+          "PeakEntries": 21449,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6339,
+          "LimitBypasses": 0,
+          "TotalLabels": 21449,
+          "LabelsPerEntry": {
+            "1": 21449
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 22807,
+          "PeakEntries": 22807,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6529,
+          "LimitBypasses": 0,
+          "TotalLabels": 22807,
+          "LabelsPerEntry": {
+            "1": 22807
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 28338,
+          "PeakEntries": 28338,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 7662,
+          "LimitBypasses": 0,
+          "TotalLabels": 28339,
+          "LabelsPerEntry": {
+            "1": 28337,
+            "2": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 32078,
+          "PeakEntries": 32078,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8842,
+          "LimitBypasses": 0,
+          "TotalLabels": 32082,
+          "LabelsPerEntry": {
+            "1": 32074,
+            "2": 4
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-REGENT-BOSS-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "c858d7216e7203ac03ead827644b72c8cecd80f07e62c35c5993a7ecd035906a",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 49,
+        "strategicHpDeficit": 49,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 9999129954,
+        "combatEndedTurn": 10,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 52823,
+          "PeakEntries": 52823,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8309,
+          "LimitBypasses": 0,
+          "TotalLabels": 52824,
+          "LabelsPerEntry": {
+            "1": 52822,
+            "2": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 47728,
+          "PeakEntries": 47728,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8503,
+          "LimitBypasses": 0,
+          "TotalLabels": 47757,
+          "LabelsPerEntry": {
+            "1": 47699,
+            "2": 29
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 52400,
+          "PeakEntries": 52400,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8311,
+          "LimitBypasses": 0,
+          "TotalLabels": 52400,
+          "LabelsPerEntry": {
+            "1": 52400
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 70869,
+          "PeakEntries": 70869,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 11793,
+          "LimitBypasses": 0,
+          "TotalLabels": 70906,
+          "LabelsPerEntry": {
+            "1": 70832,
+            "2": 37
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 61566,
+          "PeakEntries": 61566,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 10618,
+          "LimitBypasses": 0,
+          "TotalLabels": 61571,
+          "LabelsPerEntry": {
+            "1": 61561,
+            "2": 5
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 38187,
+          "PeakEntries": 38187,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6982,
+          "LimitBypasses": 0,
+          "TotalLabels": 38187,
+          "LabelsPerEntry": {
+            "1": 38187
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 52240,
+          "PeakEntries": 52240,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8988,
+          "LimitBypasses": 0,
+          "TotalLabels": 52240,
+          "LabelsPerEntry": {
+            "1": 52240
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-REGENT-BOSS-01",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "1d973c3bf45a4628596c441eb94c629c055e70ce50c5d6ab6b8c1370e35bb854",
+      "quality": {
+        "won": false,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 75,
+        "strategicHpDeficit": 75,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 180,
+        "score": -1000003954041,
+        "combatEndedTurn": null,
+        "theftPolicy": null,
+        "survives": false,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 14391,
+          "PeakEntries": 14391,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3247,
+          "LimitBypasses": 0,
+          "TotalLabels": 14391,
+          "LabelsPerEntry": {
+            "1": 14391
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 14652,
+          "PeakEntries": 14652,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3299,
+          "LimitBypasses": 0,
+          "TotalLabels": 14652,
+          "LabelsPerEntry": {
+            "1": 14652
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 14200,
+          "PeakEntries": 14200,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3180,
+          "LimitBypasses": 0,
+          "TotalLabels": 14222,
+          "LabelsPerEntry": {
+            "1": 14180,
+            "2": 18,
+            "3": 2
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 20897,
+          "PeakEntries": 20897,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4698,
+          "LimitBypasses": 0,
+          "TotalLabels": 20922,
+          "LabelsPerEntry": {
+            "1": 20876,
+            "2": 17,
+            "3": 4
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 12265,
+          "PeakEntries": 12265,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 2769,
+          "LimitBypasses": 0,
+          "TotalLabels": 12282,
+          "LabelsPerEntry": {
+            "1": 12249,
+            "2": 15,
+            "3": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 14072,
+          "PeakEntries": 14072,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3144,
+          "LimitBypasses": 0,
+          "TotalLabels": 14084,
+          "LabelsPerEntry": {
+            "1": 14061,
+            "2": 10,
+            "3": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 24098,
+          "PeakEntries": 24098,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4793,
+          "LimitBypasses": 0,
+          "TotalLabels": 24138,
+          "LabelsPerEntry": {
+            "1": 24059,
+            "2": 38,
+            "3": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 23801,
+          "PeakEntries": 23801,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4835,
+          "LimitBypasses": 0,
+          "TotalLabels": 23813,
+          "LabelsPerEntry": {
+            "1": 23793,
+            "2": 4,
+            "3": 4
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-REGENT-BOSS-02",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "02d9a86cbd05f6b365cb5929ec5ddc37dc4584f9ae14fdd678d5db9d409fd0fa",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 62,
+        "strategicHpDeficit": 62,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 9998514960,
+        "combatEndedTurn": 10,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 1
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 32909,
+          "PeakEntries": 32909,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8319,
+          "LimitBypasses": 0,
+          "TotalLabels": 32921,
+          "LabelsPerEntry": {
+            "1": 32897,
+            "2": 12
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 33432,
+          "PeakEntries": 33432,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8471,
+          "LimitBypasses": 0,
+          "TotalLabels": 33462,
+          "LabelsPerEntry": {
+            "1": 33402,
+            "2": 30
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 44537,
+          "PeakEntries": 44537,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 10046,
+          "LimitBypasses": 0,
+          "TotalLabels": 44544,
+          "LabelsPerEntry": {
+            "1": 44530,
+            "2": 7
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-REGENT-BOSS-03",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "76ab997de905a6ce752a0ab16284b4416f401d539fd8ff08dcf5feae5b09c7cb",
+      "quality": {
+        "won": false,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 75,
+        "strategicHpDeficit": 75,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 327,
+        "score": -1000005520029,
+        "combatEndedTurn": null,
+        "theftPolicy": null,
+        "survives": false,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 18561,
+          "PeakEntries": 18561,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4043,
+          "LimitBypasses": 0,
+          "TotalLabels": 18597,
+          "LabelsPerEntry": {
+            "1": 18526,
+            "2": 34,
+            "3": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 18569,
+          "PeakEntries": 18569,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4045,
+          "LimitBypasses": 0,
+          "TotalLabels": 18605,
+          "LabelsPerEntry": {
+            "1": 18534,
+            "2": 34,
+            "3": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 23216,
+          "PeakEntries": 23216,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4792,
+          "LimitBypasses": 0,
+          "TotalLabels": 23228,
+          "LabelsPerEntry": {
+            "1": 23205,
+            "2": 10,
+            "3": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 31485,
+          "PeakEntries": 31485,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6047,
+          "LimitBypasses": 0,
+          "TotalLabels": 31510,
+          "LabelsPerEntry": {
+            "1": 31460,
+            "2": 25
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-REGENT-ELITE-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "a2aeb3a49564d57b797b84592b3c4981e6a4fef8ff3569331ba26b329ff19e3e",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 52,
+        "strategicHpDeficit": 52,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 9999129976,
+        "combatEndedTurn": 6,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 22598,
+          "PeakEntries": 22598,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4025,
+          "LimitBypasses": 0,
+          "TotalLabels": 22604,
+          "LabelsPerEntry": {
+            "1": 22592,
+            "2": 6
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 102178,
+          "PeakEntries": 102178,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 18750,
+          "LimitBypasses": 0,
+          "TotalLabels": 102178,
+          "LabelsPerEntry": {
+            "1": 102178
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 82046,
+          "PeakEntries": 82046,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 13650,
+          "LimitBypasses": 0,
+          "TotalLabels": 82046,
+          "LabelsPerEntry": {
+            "1": 82046
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 83331,
+          "PeakEntries": 83331,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 14807,
+          "LimitBypasses": 0,
+          "TotalLabels": 83341,
+          "LabelsPerEntry": {
+            "1": 83321,
+            "2": 10
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 35711,
+          "PeakEntries": 35711,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6582,
+          "LimitBypasses": 0,
+          "TotalLabels": 35716,
+          "LabelsPerEntry": {
+            "1": 35706,
+            "2": 5
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 24223,
+          "PeakEntries": 24223,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4130,
+          "LimitBypasses": 0,
+          "TotalLabels": 24223,
+          "LabelsPerEntry": {
+            "1": 24223
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 99817,
+          "PeakEntries": 99817,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 18705,
+          "LimitBypasses": 0,
+          "TotalLabels": 99818,
+          "LabelsPerEntry": {
+            "1": 99816,
+            "2": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 154526,
+          "PeakEntries": 154526,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 24370,
+          "LimitBypasses": 0,
+          "TotalLabels": 154526,
+          "LabelsPerEntry": {
+            "1": 154526
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-REGENT-ELITE-01",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "071ae8325a8efdb67b99db028a34af53e1de8ecb9566ad9f30771fd942a758fd",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 18,
+        "strategicHpDeficit": 18,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 10001169981,
+        "combatEndedTurn": 5,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 22906,
+          "PeakEntries": 22906,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3650,
+          "LimitBypasses": 0,
+          "TotalLabels": 22906,
+          "LabelsPerEntry": {
+            "1": 22906
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 20362,
+          "PeakEntries": 20362,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3112,
+          "LimitBypasses": 0,
+          "TotalLabels": 20362,
+          "LabelsPerEntry": {
+            "1": 20362
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 27278,
+          "PeakEntries": 27278,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3886,
+          "LimitBypasses": 0,
+          "TotalLabels": 27278,
+          "LabelsPerEntry": {
+            "1": 27278
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 31566,
+          "PeakEntries": 31566,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4328,
+          "LimitBypasses": 0,
+          "TotalLabels": 31566,
+          "LabelsPerEntry": {
+            "1": 31566
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-REGENT-ELITE-02",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "850f291843d592c5a28ebf04775c50e584c5ff3801f205b040bac08f0ecfbc43",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 65,
+        "strategicHpDeficit": 65,
+        "potionStrategicCost": 23,
+        "projectedBattlePotionCount": 2,
+        "enemyHp": 0,
+        "score": 9998173973,
+        "combatEndedTurn": 6,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 11022,
+          "PeakEntries": 11022,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3909,
+          "LimitBypasses": 0,
+          "TotalLabels": 11030,
+          "LabelsPerEntry": {
+            "1": 11014,
+            "2": 8
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 11036,
+          "PeakEntries": 11036,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3911,
+          "LimitBypasses": 0,
+          "TotalLabels": 11044,
+          "LabelsPerEntry": {
+            "1": 11028,
+            "2": 8
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 10604,
+          "PeakEntries": 10604,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3747,
+          "LimitBypasses": 0,
+          "TotalLabels": 10620,
+          "LabelsPerEntry": {
+            "1": 10588,
+            "2": 16
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 15418,
+          "PeakEntries": 15418,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4906,
+          "LimitBypasses": 0,
+          "TotalLabels": 15436,
+          "LabelsPerEntry": {
+            "1": 15400,
+            "2": 18
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 10560,
+          "PeakEntries": 10560,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3686,
+          "LimitBypasses": 0,
+          "TotalLabels": 10567,
+          "LabelsPerEntry": {
+            "1": 10553,
+            "2": 7
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 9937,
+          "PeakEntries": 9937,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3657,
+          "LimitBypasses": 0,
+          "TotalLabels": 9947,
+          "LabelsPerEntry": {
+            "1": 9927,
+            "2": 10
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 15686,
+          "PeakEntries": 15686,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4807,
+          "LimitBypasses": 0,
+          "TotalLabels": 15692,
+          "LabelsPerEntry": {
+            "1": 15681,
+            "2": 4,
+            "3": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 19578,
+          "PeakEntries": 19578,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5845,
+          "LimitBypasses": 0,
+          "TotalLabels": 19585,
+          "LabelsPerEntry": {
+            "1": 19573,
+            "2": 3,
+            "3": 2
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-REGENT-ELITE-03",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "a302b2c949f2893a68fec9cf7992be46a99698f03ea7fe87f61aa9e68d8bf77b",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 68,
+        "strategicHpDeficit": 68,
+        "potionStrategicCost": 27,
+        "projectedBattlePotionCount": 2,
+        "enemyHp": 0,
+        "score": 9997629956,
+        "combatEndedTurn": 8,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 17850,
+          "PeakEntries": 17850,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4428,
+          "LimitBypasses": 0,
+          "TotalLabels": 17851,
+          "LabelsPerEntry": {
+            "1": 17849,
+            "2": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 25946,
+          "PeakEntries": 25946,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6127,
+          "LimitBypasses": 0,
+          "TotalLabels": 25948,
+          "LabelsPerEntry": {
+            "1": 25944,
+            "2": 2
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 39548,
+          "PeakEntries": 39548,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8393,
+          "LimitBypasses": 0,
+          "TotalLabels": 39562,
+          "LabelsPerEntry": {
+            "1": 39535,
+            "2": 12,
+            "3": 1
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-SILENT-BOSS-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "936738e5507e795907c66ead37d07a093320575bbdd76d5bd6911a37db58afbb",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 35,
+        "strategicHpDeficit": 35,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 9999959954,
+        "combatEndedTurn": 9,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 22841,
+          "PeakEntries": 22841,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6839,
+          "LimitBypasses": 0,
+          "TotalLabels": 22851,
+          "LabelsPerEntry": {
+            "1": 22831,
+            "2": 10
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 25735,
+          "PeakEntries": 25735,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 7795,
+          "LimitBypasses": 0,
+          "TotalLabels": 25742,
+          "LabelsPerEntry": {
+            "1": 25728,
+            "2": 7
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 22466,
+          "PeakEntries": 22466,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 7105,
+          "LimitBypasses": 0,
+          "TotalLabels": 22466,
+          "LabelsPerEntry": {
+            "1": 22466
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 34214,
+          "PeakEntries": 34214,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 10285,
+          "LimitBypasses": 0,
+          "TotalLabels": 34214,
+          "LabelsPerEntry": {
+            "1": 34214
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 24469,
+          "PeakEntries": 24469,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 7815,
+          "LimitBypasses": 0,
+          "TotalLabels": 24469,
+          "LabelsPerEntry": {
+            "1": 24469
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 21454,
+          "PeakEntries": 21454,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6352,
+          "LimitBypasses": 0,
+          "TotalLabels": 21454,
+          "LabelsPerEntry": {
+            "1": 21454
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-SILENT-BOSS-01",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "c01b813af844155665bf82b2eed935a91155872b605ddef250d7a6391b98b001",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 55,
+        "strategicHpDeficit": 55,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 9998619951,
+        "combatEndedTurn": 10,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 29827,
+          "PeakEntries": 29827,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6476,
+          "LimitBypasses": 0,
+          "TotalLabels": 29827,
+          "LabelsPerEntry": {
+            "1": 29827
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 29284,
+          "PeakEntries": 29284,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6419,
+          "LimitBypasses": 0,
+          "TotalLabels": 29284,
+          "LabelsPerEntry": {
+            "1": 29284
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 17498,
+          "PeakEntries": 17498,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3750,
+          "LimitBypasses": 0,
+          "TotalLabels": 17498,
+          "LabelsPerEntry": {
+            "1": 17498
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 25894,
+          "PeakEntries": 25894,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5686,
+          "LimitBypasses": 0,
+          "TotalLabels": 25894,
+          "LabelsPerEntry": {
+            "1": 25894
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 16672,
+          "PeakEntries": 16672,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3678,
+          "LimitBypasses": 0,
+          "TotalLabels": 16672,
+          "LabelsPerEntry": {
+            "1": 16672
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 15749,
+          "PeakEntries": 15749,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3445,
+          "LimitBypasses": 0,
+          "TotalLabels": 15749,
+          "LabelsPerEntry": {
+            "1": 15749
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 30740,
+          "PeakEntries": 30740,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6626,
+          "LimitBypasses": 0,
+          "TotalLabels": 30740,
+          "LabelsPerEntry": {
+            "1": 30740
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-SILENT-BOSS-02",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "25ac373ac108be1e317799a8eeb5ea8e04ba1d31dc5a1a5c5b385b88e1561020",
+      "quality": {
+        "won": false,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 70,
+        "strategicHpDeficit": 70,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 140,
+        "score": -1000003500036,
+        "combatEndedTurn": null,
+        "theftPolicy": null,
+        "survives": false,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 28077,
+          "PeakEntries": 28077,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5594,
+          "LimitBypasses": 0,
+          "TotalLabels": 28078,
+          "LabelsPerEntry": {
+            "1": 28076,
+            "2": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 27810,
+          "PeakEntries": 27810,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5546,
+          "LimitBypasses": 0,
+          "TotalLabels": 27811,
+          "LabelsPerEntry": {
+            "1": 27809,
+            "2": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 20777,
+          "PeakEntries": 20777,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3928,
+          "LimitBypasses": 0,
+          "TotalLabels": 20777,
+          "LabelsPerEntry": {
+            "1": 20777
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 30288,
+          "PeakEntries": 30288,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6077,
+          "LimitBypasses": 0,
+          "TotalLabels": 30288,
+          "LabelsPerEntry": {
+            "1": 30288
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 20404,
+          "PeakEntries": 20404,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3832,
+          "LimitBypasses": 0,
+          "TotalLabels": 20404,
+          "LabelsPerEntry": {
+            "1": 20404
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 18404,
+          "PeakEntries": 18404,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3617,
+          "LimitBypasses": 0,
+          "TotalLabels": 18404,
+          "LabelsPerEntry": {
+            "1": 18404
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 35206,
+          "PeakEntries": 35206,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6482,
+          "LimitBypasses": 0,
+          "TotalLabels": 35237,
+          "LabelsPerEntry": {
+            "1": 35175,
+            "2": 31
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 48558,
+          "PeakEntries": 48558,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 9099,
+          "LimitBypasses": 0,
+          "TotalLabels": 48558,
+          "LabelsPerEntry": {
+            "1": 48558
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-SILENT-BOSS-03",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "9002a5a915e9463a647ed47264ff8ec6c208a87465f1de807b54e2e6b718b341",
+      "quality": {
+        "won": false,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 70,
+        "strategicHpDeficit": 70,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 480,
+        "score": -1000006948028,
+        "combatEndedTurn": null,
+        "theftPolicy": null,
+        "survives": false,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 13154,
+          "PeakEntries": 13154,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3345,
+          "LimitBypasses": 0,
+          "TotalLabels": 13154,
+          "LabelsPerEntry": {
+            "1": 13154
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 16467,
+          "PeakEntries": 16467,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3916,
+          "LimitBypasses": 0,
+          "TotalLabels": 16467,
+          "LabelsPerEntry": {
+            "1": 16467
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 16969,
+          "PeakEntries": 16969,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3932,
+          "LimitBypasses": 0,
+          "TotalLabels": 16969,
+          "LabelsPerEntry": {
+            "1": 16969
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-SILENT-ELITE-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "1811687aa16cc0177c12a982bc2375867da5caf11cc783e8c487fef637618c92",
+      "quality": {
+        "won": false,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 70,
+        "strategicHpDeficit": 70,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 177,
+        "score": -1000003934033,
+        "combatEndedTurn": null,
+        "theftPolicy": null,
+        "survives": false,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 24762,
+          "PeakEntries": 24762,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5885,
+          "LimitBypasses": 0,
+          "TotalLabels": 24766,
+          "LabelsPerEntry": {
+            "1": 24758,
+            "2": 4
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 24746,
+          "PeakEntries": 24746,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5886,
+          "LimitBypasses": 0,
+          "TotalLabels": 24750,
+          "LabelsPerEntry": {
+            "1": 24742,
+            "2": 4
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 24809,
+          "PeakEntries": 24809,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5250,
+          "LimitBypasses": 0,
+          "TotalLabels": 24809,
+          "LabelsPerEntry": {
+            "1": 24809
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 33288,
+          "PeakEntries": 33288,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6991,
+          "LimitBypasses": 0,
+          "TotalLabels": 33288,
+          "LabelsPerEntry": {
+            "1": 33288
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 25133,
+          "PeakEntries": 25133,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5412,
+          "LimitBypasses": 0,
+          "TotalLabels": 25133,
+          "LabelsPerEntry": {
+            "1": 25133
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 24862,
+          "PeakEntries": 24862,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5512,
+          "LimitBypasses": 0,
+          "TotalLabels": 24862,
+          "LabelsPerEntry": {
+            "1": 24862
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 34686,
+          "PeakEntries": 34686,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 7977,
+          "LimitBypasses": 0,
+          "TotalLabels": 34686,
+          "LabelsPerEntry": {
+            "1": 34686
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 36348,
+          "PeakEntries": 36348,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8449,
+          "LimitBypasses": 0,
+          "TotalLabels": 36349,
+          "LabelsPerEntry": {
+            "1": 36347,
+            "2": 1
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-SILENT-ELITE-01",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "631896404d31b1c934ade8c6410f01242ad72c27046a95f7faaea8fa43a70212",
+      "quality": {
+        "won": false,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 70,
+        "strategicHpDeficit": 70,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 173,
+        "score": -1000003894034,
+        "combatEndedTurn": null,
+        "theftPolicy": null,
+        "survives": false,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 14952,
+          "PeakEntries": 14952,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4257,
+          "LimitBypasses": 0,
+          "TotalLabels": 14953,
+          "LabelsPerEntry": {
+            "1": 14951,
+            "2": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 15150,
+          "PeakEntries": 15150,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4251,
+          "LimitBypasses": 0,
+          "TotalLabels": 15151,
+          "LabelsPerEntry": {
+            "1": 15149,
+            "2": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 29140,
+          "PeakEntries": 29140,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6705,
+          "LimitBypasses": 0,
+          "TotalLabels": 29141,
+          "LabelsPerEntry": {
+            "1": 29139,
+            "2": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 51074,
+          "PeakEntries": 51074,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 10727,
+          "LimitBypasses": 0,
+          "TotalLabels": 51079,
+          "LabelsPerEntry": {
+            "1": 51069,
+            "2": 5
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-SILENT-ELITE-02",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "5c4d9a047f815969ceeb7c744be0e13efe3d59cff2f3e48083cdd4482c025ae4",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 62,
+        "strategicHpDeficit": 62,
+        "potionStrategicCost": 27,
+        "projectedBattlePotionCount": 2,
+        "enemyHp": 0,
+        "score": 9998279965,
+        "combatEndedTurn": 9,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 22323,
+          "PeakEntries": 22323,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3741,
+          "LimitBypasses": 0,
+          "TotalLabels": 22323,
+          "LabelsPerEntry": {
+            "1": 22323
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 22705,
+          "PeakEntries": 22705,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3888,
+          "LimitBypasses": 0,
+          "TotalLabels": 22705,
+          "LabelsPerEntry": {
+            "1": 22705
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 41256,
+          "PeakEntries": 41256,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6028,
+          "LimitBypasses": 0,
+          "TotalLabels": 41256,
+          "LabelsPerEntry": {
+            "1": 41256
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 86754,
+          "PeakEntries": 86754,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 16208,
+          "LimitBypasses": 0,
+          "TotalLabels": 86755,
+          "LabelsPerEntry": {
+            "1": 86753,
+            "2": 1
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-SILENT-ELITE-03",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "d08c9c417385319e8955c90647d481234a0808c7a5378985bd4166d3fe5ff589",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 29,
+        "strategicHpDeficit": 29,
+        "potionStrategicCost": 18,
+        "projectedBattlePotionCount": 2,
+        "enemyHp": 0,
+        "score": 9999839971,
+        "combatEndedTurn": 5,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 144096,
+          "PeakEntries": 144096,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 21312,
+          "LimitBypasses": 0,
+          "TotalLabels": 144096,
+          "LabelsPerEntry": {
+            "1": 144096
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 201512,
+          "PeakEntries": 201512,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 28688,
+          "LimitBypasses": 0,
+          "TotalLabels": 201512,
+          "LabelsPerEntry": {
+            "1": 201512
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 332908,
+          "PeakEntries": 332908,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 50000,
+          "LimitBypasses": 0,
+          "TotalLabels": 332908,
+          "LabelsPerEntry": {
+            "1": 332908
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 358403,
+          "PeakEntries": 358403,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 50000,
+          "LimitBypasses": 0,
+          "TotalLabels": 358403,
+          "LabelsPerEntry": {
+            "1": 358403
+          }
+        }
+      ]
+    },
+    {
+      "root": "GA-DEFECT-BOSS-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "f8d5796c41ef41adc0e2fac7685606282785c5b98d5127170771fcf09163f884",
+      "quality": {
+        "won": false,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 23,
+        "strategicHpDeficit": 23,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 251,
+        "score": -1000014356029,
+        "combatEndedTurn": null,
+        "theftPolicy": null,
+        "survives": false,
+        "deathSaveUseCount": 1,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 23717,
+          "PeakEntries": 23717,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6005,
+          "LimitBypasses": 0,
+          "TotalLabels": 23717,
+          "LabelsPerEntry": {
+            "1": 23717
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 30347,
+          "PeakEntries": 30347,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 7100,
+          "LimitBypasses": 0,
+          "TotalLabels": 30347,
+          "LabelsPerEntry": {
+            "1": 30347
+          }
+        }
+      ]
+    },
+    {
+      "root": "GA-DEFECT-ELITE-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "85c5fabcf9d74f7653389c0d5e2284b2cbb8107397ac3657adf4d1f1b205ac5c",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 20,
+        "strategicHpDeficit": 20,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 10000985975,
+        "combatEndedTurn": 6,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 30255,
+          "PeakEntries": 30255,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8301,
+          "LimitBypasses": 0,
+          "TotalLabels": 30255,
+          "LabelsPerEntry": {
+            "1": 30255
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 31021,
+          "PeakEntries": 31021,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8441,
+          "LimitBypasses": 0,
+          "TotalLabels": 31021,
+          "LabelsPerEntry": {
+            "1": 31021
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 45715,
+          "PeakEntries": 45715,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 11277,
+          "LimitBypasses": 0,
+          "TotalLabels": 45715,
+          "LabelsPerEntry": {
+            "1": 45715
+          }
+        }
+      ]
+    },
+    {
+      "root": "GA-IRONCLAD-BOSS-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "9b2e6c9b2269b7630fd01227503663b99266c51070be3f2a898fc746d8881be6",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 51,
+        "strategicHpDeficit": 48,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 9999519958,
+        "combatEndedTurn": 10,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 37041,
+          "PeakEntries": 37041,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6423,
+          "LimitBypasses": 0,
+          "TotalLabels": 37041,
+          "LabelsPerEntry": {
+            "1": 37041
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 36059,
+          "PeakEntries": 36059,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6342,
+          "LimitBypasses": 0,
+          "TotalLabels": 36059,
+          "LabelsPerEntry": {
+            "1": 36059
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 38376,
+          "PeakEntries": 38376,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6934,
+          "LimitBypasses": 0,
+          "TotalLabels": 38376,
+          "LabelsPerEntry": {
+            "1": 38376
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 63532,
+          "PeakEntries": 63532,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 11877,
+          "LimitBypasses": 0,
+          "TotalLabels": 63532,
+          "LabelsPerEntry": {
+            "1": 63532
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 41994,
+          "PeakEntries": 41994,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 7797,
+          "LimitBypasses": 0,
+          "TotalLabels": 41994,
+          "LabelsPerEntry": {
+            "1": 41994
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 34045,
+          "PeakEntries": 34045,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6059,
+          "LimitBypasses": 0,
+          "TotalLabels": 34045,
+          "LabelsPerEntry": {
+            "1": 34045
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 119660,
+          "PeakEntries": 119660,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 22299,
+          "LimitBypasses": 0,
+          "TotalLabels": 119660,
+          "LabelsPerEntry": {
+            "1": 119660
+          }
+        }
+      ]
+    },
+    {
+      "root": "GA-IRONCLAD-ELITE-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "3dbaed74127d98f8d30f6ac24320fa0b83c974d9561260762fc9fe432e5192a9",
+      "quality": {
+        "won": false,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 80,
+        "strategicHpDeficit": 80,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 88,
+        "score": -1000003280033,
+        "combatEndedTurn": null,
+        "theftPolicy": null,
+        "survives": false,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 13250,
+          "PeakEntries": 13250,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3035,
+          "LimitBypasses": 0,
+          "TotalLabels": 13250,
+          "LabelsPerEntry": {
+            "1": 13250
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 13274,
+          "PeakEntries": 13274,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3047,
+          "LimitBypasses": 0,
+          "TotalLabels": 13274,
+          "LabelsPerEntry": {
+            "1": 13274
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 26997,
+          "PeakEntries": 26997,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6063,
+          "LimitBypasses": 0,
+          "TotalLabels": 26997,
+          "LabelsPerEntry": {
+            "1": 26997
+          }
+        }
+      ]
+    },
+    {
+      "root": "GA-NECROBINDER-BOSS-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "9e753f66e818750f74d9876c1fcdfe1c7e99ca4e15734edc8002c5dd568ae993",
+      "quality": {
+        "won": false,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 22,
+        "strategicHpDeficit": 22,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 278,
+        "score": -1000003488017,
+        "combatEndedTurn": null,
+        "theftPolicy": null,
+        "survives": false,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 21652,
+          "PeakEntries": 21652,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5069,
+          "LimitBypasses": 0,
+          "TotalLabels": 21652,
+          "LabelsPerEntry": {
+            "1": 21652
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 21601,
+          "PeakEntries": 21601,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5058,
+          "LimitBypasses": 0,
+          "TotalLabels": 21601,
+          "LabelsPerEntry": {
+            "1": 21601
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 34297,
+          "PeakEntries": 34297,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 7637,
+          "LimitBypasses": 0,
+          "TotalLabels": 34297,
+          "LabelsPerEntry": {
+            "1": 34297
+          }
+        }
+      ]
+    },
+    {
+      "root": "GA-NECROBINDER-ELITE-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "3ef9134a6eb7776efe51ed72c97aa11f4b45b99da0dbffc0e4241c1608001029",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 5,
+        "strategicHpDeficit": 5,
+        "potionStrategicCost": 9,
+        "projectedBattlePotionCount": 1,
+        "enemyHp": 0,
+        "score": 10001679978,
+        "combatEndedTurn": 4,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 16457,
+          "PeakEntries": 16457,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3507,
+          "LimitBypasses": 0,
+          "TotalLabels": 16457,
+          "LabelsPerEntry": {
+            "1": 16457
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 16732,
+          "PeakEntries": 16732,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3505,
+          "LimitBypasses": 0,
+          "TotalLabels": 16732,
+          "LabelsPerEntry": {
+            "1": 16732
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 13626,
+          "PeakEntries": 13626,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 2898,
+          "LimitBypasses": 0,
+          "TotalLabels": 13626,
+          "LabelsPerEntry": {
+            "1": 13626
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 19836,
+          "PeakEntries": 19836,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4088,
+          "LimitBypasses": 0,
+          "TotalLabels": 19836,
+          "LabelsPerEntry": {
+            "1": 19836
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 10890,
+          "PeakEntries": 10890,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 2964,
+          "LimitBypasses": 0,
+          "TotalLabels": 10890,
+          "LabelsPerEntry": {
+            "1": 10890
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 14496,
+          "PeakEntries": 14496,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 3264,
+          "LimitBypasses": 0,
+          "TotalLabels": 14496,
+          "LabelsPerEntry": {
+            "1": 14496
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 43502,
+          "PeakEntries": 43502,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8112,
+          "LimitBypasses": 0,
+          "TotalLabels": 43502,
+          "LabelsPerEntry": {
+            "1": 43502
+          }
+        }
+      ]
+    },
+    {
+      "root": "GA-REGENT-BOSS-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "7a9091e9eefc00aba88baf9a0e6cebff087dc818c54d6a4520d00748c6c60c8a",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 43,
+        "strategicHpDeficit": 43,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 9999549960,
+        "combatEndedTurn": 9,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 43367,
+          "PeakEntries": 43367,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 7159,
+          "LimitBypasses": 0,
+          "TotalLabels": 43367,
+          "LabelsPerEntry": {
+            "1": 43367
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 47421,
+          "PeakEntries": 47421,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8113,
+          "LimitBypasses": 0,
+          "TotalLabels": 47421,
+          "LabelsPerEntry": {
+            "1": 47421
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 47357,
+          "PeakEntries": 47357,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 7448,
+          "LimitBypasses": 0,
+          "TotalLabels": 47357,
+          "LabelsPerEntry": {
+            "1": 47357
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 74211,
+          "PeakEntries": 74211,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 9205,
+          "LimitBypasses": 0,
+          "TotalLabels": 74211,
+          "LabelsPerEntry": {
+            "1": 74211
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 59902,
+          "PeakEntries": 59902,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 9797,
+          "LimitBypasses": 0,
+          "TotalLabels": 59902,
+          "LabelsPerEntry": {
+            "1": 59902
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 45229,
+          "PeakEntries": 45229,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8034,
+          "LimitBypasses": 0,
+          "TotalLabels": 45229,
+          "LabelsPerEntry": {
+            "1": 45229
+          }
+        }
+      ]
+    },
+    {
+      "root": "GA-REGENT-ELITE-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "6b430b2f4f28e10a55add3c983f87cf4dc904fbc49df6c743f71f4679d0c0bf9",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 30,
+        "strategicHpDeficit": 30,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 10000309985,
+        "combatEndedTurn": 4,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 134525,
+          "PeakEntries": 134525,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 21609,
+          "LimitBypasses": 0,
+          "TotalLabels": 134525,
+          "LabelsPerEntry": {
+            "1": 134525
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 104695,
+          "PeakEntries": 104695,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 17421,
+          "LimitBypasses": 0,
+          "TotalLabels": 104695,
+          "LabelsPerEntry": {
+            "1": 104695
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 89197,
+          "PeakEntries": 89197,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 14593,
+          "LimitBypasses": 0,
+          "TotalLabels": 89197,
+          "LabelsPerEntry": {
+            "1": 89197
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 124715,
+          "PeakEntries": 124715,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 19850,
+          "LimitBypasses": 0,
+          "TotalLabels": 124715,
+          "LabelsPerEntry": {
+            "1": 124715
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 87839,
+          "PeakEntries": 87839,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 13093,
+          "LimitBypasses": 0,
+          "TotalLabels": 87839,
+          "LabelsPerEntry": {
+            "1": 87839
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 88041,
+          "PeakEntries": 88041,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 13540,
+          "LimitBypasses": 0,
+          "TotalLabels": 88041,
+          "LabelsPerEntry": {
+            "1": 88041
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 124874,
+          "PeakEntries": 124874,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 20418,
+          "LimitBypasses": 0,
+          "TotalLabels": 124874,
+          "LabelsPerEntry": {
+            "1": 124874
+          }
+        }
+      ]
+    },
+    {
+      "root": "GA-SILENT-BOSS-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "465e86bc2278953d2c5b9ad1a61800634334230942ae9828183f021a2d72e9a7",
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 44,
+        "strategicHpDeficit": 44,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 9999299952,
+        "combatEndedTurn": 9,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 27786,
+          "PeakEntries": 27786,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 8483,
+          "LimitBypasses": 0,
+          "TotalLabels": 27786,
+          "LabelsPerEntry": {
+            "1": 27786
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 22868,
+          "PeakEntries": 22868,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6602,
+          "LimitBypasses": 0,
+          "TotalLabels": 22868,
+          "LabelsPerEntry": {
+            "1": 22868
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 22653,
+          "PeakEntries": 22653,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6473,
+          "LimitBypasses": 0,
+          "TotalLabels": 22653,
+          "LabelsPerEntry": {
+            "1": 22653
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 36142,
+          "PeakEntries": 36142,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 10278,
+          "LimitBypasses": 0,
+          "TotalLabels": 36142,
+          "LabelsPerEntry": {
+            "1": 36142
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 24766,
+          "PeakEntries": 24766,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 7351,
+          "LimitBypasses": 0,
+          "TotalLabels": 24766,
+          "LabelsPerEntry": {
+            "1": 24766
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 24397,
+          "PeakEntries": 24397,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 7127,
+          "LimitBypasses": 0,
+          "TotalLabels": 24397,
+          "LabelsPerEntry": {
+            "1": 24397
+          }
+        }
+      ]
+    },
+    {
+      "root": "GA-SILENT-ELITE-00",
+      "qualitySnapshotEqual": true,
+      "qualitySha256": "adf300b667b5268e3231749a2cc57752e38c364068d3ddca479b7212a1129108",
+      "quality": {
+        "won": false,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 70,
+        "strategicHpDeficit": 70,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 191,
+        "score": -1000004074034,
+        "combatEndedTurn": null,
+        "theftPolicy": null,
+        "survives": false,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 21806,
+          "PeakEntries": 21806,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5031,
+          "LimitBypasses": 0,
+          "TotalLabels": 21806,
+          "LabelsPerEntry": {
+            "1": 21806
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 21731,
+          "PeakEntries": 21731,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 5000,
+          "LimitBypasses": 0,
+          "TotalLabels": 21731,
+          "LabelsPerEntry": {
+            "1": 21731
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 20947,
+          "PeakEntries": 20947,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4429,
+          "LimitBypasses": 0,
+          "TotalLabels": 20947,
+          "LabelsPerEntry": {
+            "1": 20947
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 28763,
+          "PeakEntries": 28763,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6125,
+          "LimitBypasses": 0,
+          "TotalLabels": 28763,
+          "LabelsPerEntry": {
+            "1": 28763
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 22124,
+          "PeakEntries": 22124,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4874,
+          "LimitBypasses": 0,
+          "TotalLabels": 22124,
+          "LabelsPerEntry": {
+            "1": 22124
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 19880,
+          "PeakEntries": 19880,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 4242,
+          "LimitBypasses": 0,
+          "TotalLabels": 19880,
+          "LabelsPerEntry": {
+            "1": 19880
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 26800,
+          "PeakEntries": 26800,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 6224,
+          "LimitBypasses": 0,
+          "TotalLabels": 26800,
+          "LabelsPerEntry": {
+            "1": 26800
+          }
+        }
+      ]
+    }
+  ],
+  "heavyRoots": [
+    {
+      "root": "FULL-REGENT-BOSS-00",
+      "arm": "default",
+      "limit": 1000000,
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 41,
+        "strategicHpDeficit": 41,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 9999469956,
+        "combatEndedTurn": 10,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "totalExpanded": 70778,
+      "totalTransitions": 515907,
+      "wallSeconds": 73.0846232,
+      "processWallSeconds": 75.8,
+      "peakManagedHeapBytes": 259102384,
+      "timeBoundary": false,
+      "selectedBoundary": "None",
+      "coordinatorDeadline": false,
+      "deadlineMessages": [],
+      "sessionBudgetMessages": [
+        "[CombatSolver/Test] SEARCH_SESSION mode=single_anytime total_budget_ms=300000"
+      ],
+      "effectiveBudgetMilliseconds": 300000,
+      "budget": {
+        "profile": "VeryHigh",
+        "beamWidth": 135,
+        "maxExpandedNodes": 500000,
+        "maxCardBranchesPerNode": 72,
+        "maxPileChoiceBranchesPerAction": 42,
+        "maxHandChoiceBranchesPerAction": 54,
+        "maxDegreeOfParallelism": 1,
+        "budgetMilliseconds": 300000,
+        "potionPolicy": "Smart",
+        "searchMode": "Coordinator",
+        "usePortfolio": false,
+        "fixedSearchBudget": false,
+        "enableNoGcRegion": false,
+        "noGcRegionBudgetGigabytes": null
+      },
+      "searchPolicy": {
+        "Profile": {
+          "BeamWidth": 135,
+          "MaxExpandedNodes": 500000,
+          "MaxCardBranchesPerNode": 72,
+          "MaxPileChoiceBranchesPerAction": 42,
+          "MaxHandChoiceBranchesPerAction": 54,
+          "SoftTimeBudgetMilliseconds": 600000,
+          "SecondRankBand": false,
+          "BaseScoreOnly": false,
+          "AggressivePowerCommitment": false
+        },
+        "PotionPolicy": 1,
+        "PotionStrategy": {
+          "DefaultPolicy": 1,
+          "Directives": [],
+          "HasForcedDirectives": false
+        },
+        "FixedBudget": false,
+        "MaxDegreeOfParallelism": 1,
+        "IncludeTurnSetup": false,
+        "ActTransitionBossHpStrategy": 0,
+        "FinalBossHpStrategy": 0,
+        "AcceptableBattleHpLoss": 0,
+        "StopAtAcceptableBattleHpLoss": false,
+        "Act3BossStrategy": false,
+        "GrowthBudgets": {
+          "HandOfGreed": 0,
+          "TheHunt": 0,
+          "Feed": 0,
+          "Royalties": 0,
+          "Alchemize": 0,
+          "GeneticAlgorithm": 0,
+          "TheScythe": 0,
+          "Goopy": 0,
+          "ForbiddenGrimoire": 0
+        },
+        "RelicTargets": [],
+        "HasGrowthTargets": false,
+        "IgnoreLongTermRewards": false,
+        "VerifyIncrementalSearch": false,
+        "DetailedDiagnostics": false,
+        "MeasurePhasePerformance": false,
+        "UseBeamWidthPortfolio": false,
+        "observePortfolio": false
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 83499,
+          "PeakEntries": 83499,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 12997,
+          "LimitBypasses": 0,
+          "TotalLabels": 83519,
+          "LabelsPerEntry": {
+            "1": 83487,
+            "2": 4,
+            "3": 8
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 60007,
+          "PeakEntries": 60007,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 9697,
+          "LimitBypasses": 0,
+          "TotalLabels": 60008,
+          "LabelsPerEntry": {
+            "1": 60006,
+            "2": 1
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 75051,
+          "PeakEntries": 75051,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 11673,
+          "LimitBypasses": 0,
+          "TotalLabels": 75088,
+          "LabelsPerEntry": {
+            "1": 75014,
+            "2": 37
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 83566,
+          "PeakEntries": 83566,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 14186,
+          "LimitBypasses": 0,
+          "TotalLabels": 83570,
+          "LabelsPerEntry": {
+            "1": 83562,
+            "2": 4
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 78388,
+          "PeakEntries": 78388,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 11008,
+          "LimitBypasses": 0,
+          "TotalLabels": 78388,
+          "LabelsPerEntry": {
+            "1": 78388
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 61260,
+          "PeakEntries": 61260,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 11217,
+          "LimitBypasses": 0,
+          "TotalLabels": 61262,
+          "LabelsPerEntry": {
+            "1": 61258,
+            "2": 2
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-REGENT-ELITE-00",
+      "arm": "default",
+      "limit": 1000000,
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 50,
+        "strategicHpDeficit": 50,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 9999009976,
+        "combatEndedTurn": 6,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "totalExpanded": 157325,
+      "totalTransitions": 1181718,
+      "wallSeconds": 173.015111,
+      "processWallSeconds": 175.35,
+      "peakManagedHeapBytes": 534161264,
+      "timeBoundary": false,
+      "selectedBoundary": "None",
+      "coordinatorDeadline": false,
+      "deadlineMessages": [],
+      "sessionBudgetMessages": [
+        "[CombatSolver/Test] SEARCH_SESSION mode=single_anytime total_budget_ms=300000"
+      ],
+      "effectiveBudgetMilliseconds": 300000,
+      "budget": {
+        "profile": "VeryHigh",
+        "beamWidth": 135,
+        "maxExpandedNodes": 500000,
+        "maxCardBranchesPerNode": 72,
+        "maxPileChoiceBranchesPerAction": 42,
+        "maxHandChoiceBranchesPerAction": 54,
+        "maxDegreeOfParallelism": 1,
+        "budgetMilliseconds": 300000,
+        "potionPolicy": "Smart",
+        "searchMode": "Coordinator",
+        "usePortfolio": false,
+        "fixedSearchBudget": false,
+        "enableNoGcRegion": false,
+        "noGcRegionBudgetGigabytes": null
+      },
+      "searchPolicy": {
+        "Profile": {
+          "BeamWidth": 135,
+          "MaxExpandedNodes": 500000,
+          "MaxCardBranchesPerNode": 72,
+          "MaxPileChoiceBranchesPerAction": 42,
+          "MaxHandChoiceBranchesPerAction": 54,
+          "SoftTimeBudgetMilliseconds": 600000,
+          "SecondRankBand": false,
+          "BaseScoreOnly": false,
+          "AggressivePowerCommitment": false
+        },
+        "PotionPolicy": 1,
+        "PotionStrategy": {
+          "DefaultPolicy": 1,
+          "Directives": [],
+          "HasForcedDirectives": false
+        },
+        "FixedBudget": false,
+        "MaxDegreeOfParallelism": 1,
+        "IncludeTurnSetup": false,
+        "ActTransitionBossHpStrategy": 0,
+        "FinalBossHpStrategy": 0,
+        "AcceptableBattleHpLoss": 0,
+        "StopAtAcceptableBattleHpLoss": false,
+        "Act3BossStrategy": false,
+        "GrowthBudgets": {
+          "HandOfGreed": 0,
+          "TheHunt": 0,
+          "Feed": 0,
+          "Royalties": 0,
+          "Alchemize": 0,
+          "GeneticAlgorithm": 0,
+          "TheScythe": 0,
+          "Goopy": 0,
+          "ForbiddenGrimoire": 0
+        },
+        "RelicTargets": [],
+        "HasGrowthTargets": false,
+        "IgnoreLongTermRewards": false,
+        "VerifyIncrementalSearch": false,
+        "DetailedDiagnostics": false,
+        "MeasurePhasePerformance": false,
+        "UseBeamWidthPortfolio": false,
+        "observePortfolio": false
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 85012,
+          "PeakEntries": 85012,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 16957,
+          "LimitBypasses": 0,
+          "TotalLabels": 85046,
+          "LabelsPerEntry": {
+            "1": 84978,
+            "2": 34
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 117267,
+          "PeakEntries": 117267,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 20175,
+          "LimitBypasses": 0,
+          "TotalLabels": 117277,
+          "LabelsPerEntry": {
+            "1": 117257,
+            "2": 10
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 81090,
+          "PeakEntries": 81090,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 14625,
+          "LimitBypasses": 0,
+          "TotalLabels": 81095,
+          "LabelsPerEntry": {
+            "1": 81085,
+            "2": 5
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 129918,
+          "PeakEntries": 129918,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 20780,
+          "LimitBypasses": 0,
+          "TotalLabels": 129961,
+          "LabelsPerEntry": {
+            "1": 129878,
+            "2": 37,
+            "3": 3
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 110104,
+          "PeakEntries": 110104,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 18451,
+          "LimitBypasses": 0,
+          "TotalLabels": 110123,
+          "LabelsPerEntry": {
+            "1": 110085,
+            "2": 19
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 72887,
+          "PeakEntries": 72887,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 13953,
+          "LimitBypasses": 0,
+          "TotalLabels": 72887,
+          "LabelsPerEntry": {
+            "1": 72887
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 116253,
+          "PeakEntries": 116253,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 20686,
+          "LimitBypasses": 0,
+          "TotalLabels": 116303,
+          "LabelsPerEntry": {
+            "1": 116203,
+            "2": 50
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 198459,
+          "PeakEntries": 198459,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 31698,
+          "LimitBypasses": 0,
+          "TotalLabels": 198459,
+          "LabelsPerEntry": {
+            "1": 198459
+          }
+        }
+      ]
+    },
+    {
+      "root": "FULL-SILENT-ELITE-03",
+      "arm": "default",
+      "limit": 1000000,
+      "quality": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 48,
+        "strategicHpDeficit": 48,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 9998979970,
+        "combatEndedTurn": 7,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "totalExpanded": 201046,
+      "totalTransitions": 1552968,
+      "wallSeconds": 300.1848695,
+      "processWallSeconds": 303.4,
+      "peakManagedHeapBytes": 651986560,
+      "timeBoundary": false,
+      "selectedBoundary": "None",
+      "coordinatorDeadline": true,
+      "deadlineMessages": [
+        "[CombatSolver/Test] SMART_POTION_GRADIENT result stop=deadline maximum=2 selected_potions=0"
+      ],
+      "sessionBudgetMessages": [
+        "[CombatSolver/Test] SEARCH_SESSION mode=single_anytime total_budget_ms=300000"
+      ],
+      "effectiveBudgetMilliseconds": 300000,
+      "budget": {
+        "profile": "VeryHigh",
+        "beamWidth": 135,
+        "maxExpandedNodes": 500000,
+        "maxCardBranchesPerNode": 72,
+        "maxPileChoiceBranchesPerAction": 42,
+        "maxHandChoiceBranchesPerAction": 54,
+        "maxDegreeOfParallelism": 1,
+        "budgetMilliseconds": 300000,
+        "potionPolicy": "Smart",
+        "searchMode": "Coordinator",
+        "usePortfolio": false,
+        "fixedSearchBudget": false,
+        "enableNoGcRegion": false,
+        "noGcRegionBudgetGigabytes": null
+      },
+      "searchPolicy": {
+        "Profile": {
+          "BeamWidth": 135,
+          "MaxExpandedNodes": 500000,
+          "MaxCardBranchesPerNode": 72,
+          "MaxPileChoiceBranchesPerAction": 42,
+          "MaxHandChoiceBranchesPerAction": 54,
+          "SoftTimeBudgetMilliseconds": 600000,
+          "SecondRankBand": false,
+          "BaseScoreOnly": false,
+          "AggressivePowerCommitment": false
+        },
+        "PotionPolicy": 1,
+        "PotionStrategy": {
+          "DefaultPolicy": 1,
+          "Directives": [],
+          "HasForcedDirectives": false
+        },
+        "FixedBudget": false,
+        "MaxDegreeOfParallelism": 1,
+        "IncludeTurnSetup": false,
+        "ActTransitionBossHpStrategy": 0,
+        "FinalBossHpStrategy": 0,
+        "AcceptableBattleHpLoss": 0,
+        "StopAtAcceptableBattleHpLoss": false,
+        "Act3BossStrategy": false,
+        "GrowthBudgets": {
+          "HandOfGreed": 0,
+          "TheHunt": 0,
+          "Feed": 0,
+          "Royalties": 0,
+          "Alchemize": 0,
+          "GeneticAlgorithm": 0,
+          "TheScythe": 0,
+          "Goopy": 0,
+          "ForbiddenGrimoire": 0
+        },
+        "RelicTargets": [],
+        "HasGrowthTargets": true,
+        "IgnoreLongTermRewards": false,
+        "VerifyIncrementalSearch": false,
+        "DetailedDiagnostics": false,
+        "MeasurePhasePerformance": false,
+        "UseBeamWidthPortfolio": false,
+        "observePortfolio": false
+      },
+      "channels": [
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 423863,
+          "PeakEntries": 423863,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 60759,
+          "LimitBypasses": 0,
+          "TotalLabels": 423863,
+          "LabelsPerEntry": {
+            "1": 423863
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 115004,
+          "PeakEntries": 115004,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 18304,
+          "LimitBypasses": 0,
+          "TotalLabels": 115004,
+          "LabelsPerEntry": {
+            "1": 115004
+          }
+        },
+        {
+          "Limit": 1000000,
+          "CurrentEntries": 832793,
+          "PeakEntries": 832793,
+          "ReachedCap": false,
+          "FirstCapExpanded": null,
+          "FinalExpanded": 121983,
+          "LimitBypasses": 0,
+          "TotalLabels": 832793,
+          "LabelsPerEntry": {
+            "1": 832793
+          }
+        }
+      ]
+    }
+  ]
+}
