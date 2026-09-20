@@ -1595,6 +1595,15 @@ foreach ($forbidden in @('Task<', 'Func<', 'Action<')) {
     }
 }
 
+foreach ($rule in @(
+    @{ File = 'src/Search/CombatBeamSolver.Models.cs'; Text = 'TranspositionCapDiagnostics TranspositionDiagnostics' },
+    @{ File = 'src/Search/SearchPolicySnapshot.cs'; Text = 'DefaultTranspositionEntryLimit = 1_000_000' }
+)) {
+    if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot $rule.File) -SimpleMatch $rule.Text -Quiet)) {
+        $violations.Add("Missing transposition diagnostics boundary: $($rule.File)")
+    }
+}
+
 if ($violations.Count -gt 0) {
     $violations | ForEach-Object { Write-Error $_ }
     throw "Refactor boundary verification failed with $($violations.Count) violation(s)."

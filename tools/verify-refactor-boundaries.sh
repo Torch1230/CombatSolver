@@ -1279,6 +1279,9 @@ for forbidden in 'Task<' 'Func<' 'Action<'; do
     forbid_fixed "$repository_root/src/Prediction/CardChoiceContinuation.cs" "$forbidden" 'continuation retained an executable closure:'
 done
 
+require_fixed "$repository_root/src/Search/CombatBeamSolver.Models.cs" 'TranspositionCapDiagnostics TranspositionDiagnostics' 'cap observations must be owned by the search run'
+require_fixed "$repository_root/src/Search/SearchPolicySnapshot.cs" 'DefaultTranspositionEntryLimit = 1_000_000' 'production transposition entry limit changed'
+
 if ((${#violations[@]} > 0)); then
     printf '%s\n' "${violations[@]}" >&2
     printf 'Refactor boundary verification failed with %d violation(s).\n' "${#violations[@]}" >&2

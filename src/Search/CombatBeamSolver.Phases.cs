@@ -37,6 +37,13 @@ internal sealed partial class CombatBeamSolver
         }
         finally
         {
+            // 最后才扫描标签，避免诊断在候选热路径上枚举整张表。
+            var transpositions = _run.TranspositionDiagnostics.Capture(
+                policy.TranspositionEntryLimit, _run.Expanded, _run.TranspositionLimitBypasses,
+                _run.Transpositions.Values.Concat(_run.ExpandedTranspositions.Values)
+                    .Select(static frontier => frontier.LabelCount));
+            policy.Diagnostics.Info("[CombatSolver/Test] TRANSPOSITION_CAP " +
+                System.Text.Json.JsonSerializer.Serialize(transpositions));
             policy.Diagnostics.Info(
                 $"[CombatSolver/Test] ROUTING_CHOICE_SUMMARIES scope=solver " +
                 $"builds={_run.RoutingChoiceSummaryBuilds} hits={_run.RoutingChoiceSummaryHits} " +

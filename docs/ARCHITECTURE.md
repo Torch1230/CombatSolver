@@ -1,5 +1,7 @@
 # CombatSolver 架构与职责地图
 
+`SearchRunContext` 拥有转置表触顶观测，新增条目后记录首次触顶节点和峰值；缓存重建不清空这些观测。搜索结束才枚举前沿的标签数，输出两表合计标签与每条目分布。诊断不进入状态键、路线排序、准入或结果合同。
+
 本文描述当前源码的所有权边界。它面向维护者和 coding agent；玩家功能说明见根目录 `README.md`，历史重构证据见 `docs/refactoring/`。
 
 职责迁移时优先更新本文，并同步更新 Windows 的 `tools/verify-refactor-boundaries.ps1` 与 Linux 的 `tools/verify-refactor-boundaries.sh`。历史审计记录保留当时结论，不承担当前导航职责。
