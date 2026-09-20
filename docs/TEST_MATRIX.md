@@ -1,5 +1,11 @@
 # CombatSolver 测试清单
 
+## 下一版本：转置表触顶诊断
+
+- 前沿与观测检查 1,024,010 项通过，新增标签数、首次触顶、峰值跨重建保留和分布检查；原支配决策逐项对照独立 List 基准。
+- EQ 10、FULL 40、GA 10：60 根有效，5,670 个确定性字段、额外预算／剪枝字段及完整结果快照一致。
+- VeryHigh 生产预算观察：三个重型根均未触顶，最大占用 832,793 / 1,000,000（83.28%）。没有触顶根，未运行放大上限臂；本轮不提供默认触顶后的质量结论。 数据见 [专题](performance/transposition-cap-evidence-20260920.md)。未实机验证。
+
 ## 0.43.0：路线连续性与操作体验（2026-09-19）
 
 - 两回合原生场景 `TOASTY-QOL-MANUAL-SAME` Passed（runId `c82b3f8125cc4b8998047ccabaf3ca7a`）：第 2 回合烘焙手套手牌页按计划手动删牌，精确续用，新增搜索 0、计划外重算 0。`TOASTY-QOL-MANUAL-DIFFERENT` Passed（runId `f42cc57ca55e4c8e8a91a64a42f951a8`）：选另一张牌严格失配并重新计算。固定夹具位于 `coverage/unattended/toasty-qol-*.json`，可用 `pwsh -NoProfile -File tools/run-qol-contracts.ps1 -Case manual-same`（或 `manual-different`）重跑。最初误将生成场景输出路径用作输入的启动失败不计入上述通过结果，隔离实例已清理。
