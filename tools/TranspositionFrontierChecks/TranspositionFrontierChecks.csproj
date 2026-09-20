@@ -8,5 +8,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../src/Search/CombatBeamSolver.Transpositions.cs" Link="Production/CombatBeamSolver.Transpositions.cs" />
+    <Compile Include="../../src/Search/TranspositionCapDiagnostics.cs" Link="Production/TranspositionCapDiagnostics.cs" />
   </ItemGroup>
 </Project>

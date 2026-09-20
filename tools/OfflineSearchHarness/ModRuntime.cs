@@ -140,7 +140,7 @@ internal static class ModRuntime
     private static void ApplyUnattendedOverrides(HarnessOptions options)
         => Session = UnattendedTestRunner.BeginOfflineSession(new UnattendedTestRunner.OfflineSessionOptions
         {
-            FixedSearchBudget = true,
+            FixedSearchBudget = !options.ProductionBudget,
             MeasureSearchPhases = options.MeasureSearchPhases,
             VerifyIncrementalSearch = false,
             SearchBudgetOverrideMilliseconds = options.BudgetMilliseconds,
