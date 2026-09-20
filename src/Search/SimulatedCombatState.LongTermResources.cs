@@ -8,6 +8,7 @@ internal sealed partial class SimulatedCombatState
     private int _deathSavePotionHpRestored;
     private int _deathSaveUseCount;
     private GrowthValues _growthRewards;
+    private readonly int _madScienceUpgradeCapacity;
     private int _brightestFlameMaxHpSpent;
     public int BrightestFlameMaxHpSpent => _brightestFlameMaxHpSpent;
 
@@ -18,6 +19,14 @@ internal sealed partial class SimulatedCombatState
 
     public void RecordGrowthReward(GrowthSource source)
         => _growthRewards = _growthRewards.With(source, checked(_growthRewards.Get(source) + 1));
+
+    public int MadScienceUpgradeCapacity => _madScienceUpgradeCapacity;
+
+    public void RecordMadScienceGrowthReward()
+    {
+        if (_growthRewards.MadScience < _madScienceUpgradeCapacity)
+            RecordGrowthReward(GrowthSource.MadScience);
+    }
 
     /// <summary>
     /// 记一次第三方来源的局外收益到手。句柄从

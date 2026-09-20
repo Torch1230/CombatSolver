@@ -112,7 +112,7 @@ internal sealed partial class UnattendedTestRunner
                 PotionStrategy = new PotionStrategySnapshot(SolverPotionPolicy.RequireAtLeastOne, []) });
             Check(requiredOne.Snapshot.AllEnemiesDead && requiredOne.PotionCount == 1, "at least one potion preserves spare at zero loss");
             var greedyCard = MegaCrit.Sts2.Core.Models.ModelDb.Card<MegaCrit.Sts2.Core.Models.Cards.HandOfGreed>().ToMutable();
-            GrowthOpportunityTargets greedTarget = GrowthOpportunityPolicy.CaptureBuiltInForTesting([greedyCard], 3);
+            GrowthOpportunityTargets greedTarget = GrowthOpportunityPolicy.CaptureBuiltInForTesting([greedyCard], 3, 0);
             Check(greedTarget.IsBounded && greedTarget.RequiredRewards.HandOfGreed == 3,
                 "repeatable fatal source retains all enemy opportunities");
             _completedChecks.Add("HpTargetStop:RequireOnePotion:RepeatableFatalTarget3");

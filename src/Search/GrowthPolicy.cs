@@ -1,5 +1,9 @@
 using System.Text.Json.Serialization;
+using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Events;
+using MegaCrit.Sts2.Core.Models.Powers;
 using Cards = MegaCrit.Sts2.Core.Models.Cards;
 using Enchantments = MegaCrit.Sts2.Core.Models.Enchantments;
 
@@ -8,6 +12,30 @@ namespace CombatSolver;
 internal enum GrowthSource
 {
     HandOfGreed, TheHunt, Feed, Royalties, Alchemize, GeneticAlgorithm, TheScythe, Goopy, ForbiddenGrimoire,
+    MadScience,
+}
+
+internal static class MadScienceGrowth
+{
+    public static bool IsImprovementCard(CardModel card)
+        => card is Cards.MadScience madScience
+            && madScience.TinkerTimeType == CardType.Power
+            && madScience.TinkerTimeRider == TinkerTime.RiderEffect.Improvement;
+
+    // ImprovementPower chooses distinct upgradable run-deck cards after combat.
+    // Existing stacks have already reserved that many targets at this search root.
+    public static int CaptureRemainingCapacity(CombatState combat)
+    {
+        var player = combat.Players.Single();
+        int upgradable = PileType.Deck.GetPile(player).Cards.Count(card => card.IsUpgradable);
+        int committed = 0;
+        foreach (ImprovementPower power in player.Creature.Powers.OfType<ImprovementPower>())
+        {
+            if (power.Amount > 0)
+                committed = checked(committed + checked((int)decimal.Ceiling(power.Amount)));
+        }
+        return Math.Max(0, upgradable - committed);
+    }
 }
 
 /// <summary>
@@ -15,9 +43,9 @@ internal enum GrowthSource
 /// </summary>
 /// <remarks>
 /// <para>
-/// 原版九个来源是 <see cref="GrowthValues"/> 上的九个 int 字段，走热路径；第三方来源数量不定，
+/// 原版十个来源是 <see cref="GrowthValues"/> 上的十个 int 字段，走热路径；第三方来源数量不定，
 /// 只能另开一处。这里用一个「按 id 序数升序、不存 0 值」的数组：为空时是 <c>null</c>，
-/// 于是没有任何 mod 登记时，整个成长向量与开这个口子之前逐位相同。
+/// 于是没有任何 mod 登记时，第三方部分不额外分配或追加非零条目。
 /// </para>
 /// <para>
 /// 键用 id 而不是登记序号，是为了让<b>没登记的 id 也能原样留着</b>。额度存在设置文件里，
@@ -27,7 +55,7 @@ internal enum GrowthSource
 /// </remarks>
 internal readonly struct GrowthExtras : IEquatable<GrowthExtras>
 {
-    /// <summary>额度上限，与原版九个字段同一口径。</summary>
+    /// <summary>额度上限，与原版十个字段同一口径。</summary>
     private const int MaximumValue = 1000;
 
     private readonly KeyValuePair<string, int>[]? _entries;
@@ -243,7 +271,8 @@ internal readonly struct GrowthExtras : IEquatable<GrowthExtras>
 // Immutable vectors are used for both per-event HP budgets and realized event counts.
 internal readonly record struct GrowthValues(
     int HandOfGreed = 0, int TheHunt = 0, int Feed = 0, int Royalties = 0,
-    int Alchemize = 0, int GeneticAlgorithm = 0, int TheScythe = 0, int Goopy = 0, int ForbiddenGrimoire = 0)
+    int Alchemize = 0, int GeneticAlgorithm = 0, int TheScythe = 0, int Goopy = 0, int ForbiddenGrimoire = 0,
+    int MadScience = 0)
 {
     private readonly GrowthExtras _extras;
 
@@ -271,7 +300,7 @@ internal readonly record struct GrowthValues(
     public bool IsEnabled => this != default;
     [JsonIgnore]
     public int Total => checked(HandOfGreed + TheHunt + Feed + Royalties + Alchemize + GeneticAlgorithm + TheScythe + Goopy
-        + ForbiddenGrimoire + _extras.Total);
+        + ForbiddenGrimoire + MadScience + _extras.Total);
 
     public static bool HasTarget(CardModel card)
         => HasBuiltInTarget(card)
@@ -279,6 +308,7 @@ internal readonly record struct GrowthValues(
 
     internal static bool HasBuiltInTarget(CardModel card)
         => card is Cards.HandOfGreed or Cards.TheHunt or Cards.Feed or Cards.Royalties or Cards.Alchemize or Cards.ForbiddenGrimoire
+            || MadScienceGrowth.IsImprovementCard(card)
             || card.DeckVersion != null && (card is Cards.GeneticAlgorithm or Cards.TheScythe || card.Enchantment is Enchantments.Goopy)
             ;
     public int Get(GrowthSource source) => source switch
@@ -292,6 +322,7 @@ internal readonly record struct GrowthValues(
         GrowthSource.TheScythe => TheScythe,
         GrowthSource.Goopy => Goopy,
         GrowthSource.ForbiddenGrimoire => ForbiddenGrimoire,
+        GrowthSource.MadScience => MadScience,
         _ => throw new ArgumentOutOfRangeException(nameof(source)),
     };
 
@@ -309,6 +340,7 @@ internal readonly record struct GrowthValues(
         GrowthSource.TheScythe => this with { TheScythe = value },
         GrowthSource.Goopy => this with { Goopy = value },
         GrowthSource.ForbiddenGrimoire => this with { ForbiddenGrimoire = value },
+        GrowthSource.MadScience => this with { MadScience = value },
         _ => throw new ArgumentOutOfRangeException(nameof(source)),
     };
 
@@ -320,7 +352,8 @@ internal readonly record struct GrowthValues(
         + Feed * rewards.Feed + Royalties * rewards.Royalties
         + Alchemize * rewards.Alchemize + GeneticAlgorithm * rewards.GeneticAlgorithm
         + TheScythe * rewards.TheScythe + Goopy * rewards.Goopy
-        + ForbiddenGrimoire * rewards.ForbiddenGrimoire + _extras.Credit(rewards._extras));
+        + ForbiddenGrimoire * rewards.ForbiddenGrimoire
+        + MadScience * rewards.MadScience + _extras.Credit(rewards._extras));
 
     public bool Satisfies(GrowthValues required)
     {
@@ -347,7 +380,7 @@ internal readonly record struct GrowthValues(
         _extras.ValidateBudgets();
     }
 
-    /// <summary>把这份计数写进状态指纹。第三方部分为空时与开这个口子之前逐位相同。</summary>
+    /// <summary>把内置及第三方来源的计数写进状态指纹。</summary>
     public void AppendFingerprint(ref StateFingerprintBuilder fingerprint)
     {
         fingerprint.Add(HandOfGreed);
@@ -359,6 +392,7 @@ internal readonly record struct GrowthValues(
         fingerprint.Add(TheScythe);
         fingerprint.Add(Goopy);
         fingerprint.Add(ForbiddenGrimoire);
+        fingerprint.Add(MadScience);
         _extras.AppendFingerprint(ref fingerprint);
     }
 
@@ -367,7 +401,8 @@ internal readonly record struct GrowthValues(
         string vanilla = $"{nameof(GrowthValues)} {{ {nameof(HandOfGreed)} = {HandOfGreed}, "
             + $"{nameof(TheHunt)} = {TheHunt}, {nameof(Feed)} = {Feed}, {nameof(Royalties)} = {Royalties}, "
             + $"{nameof(Alchemize)} = {Alchemize}, {nameof(GeneticAlgorithm)} = {GeneticAlgorithm}, "
-            + $"{nameof(TheScythe)} = {TheScythe}, {nameof(Goopy)} = {Goopy}, {nameof(ForbiddenGrimoire)} = {ForbiddenGrimoire}";
+            + $"{nameof(TheScythe)} = {TheScythe}, {nameof(Goopy)} = {Goopy}, {nameof(ForbiddenGrimoire)} = {ForbiddenGrimoire}, "
+            + $"{nameof(MadScience)} = {MadScience}";
         return _extras.IsEmpty ? vanilla + " }" : vanilla + $", {nameof(ThirdParty)} = {_extras} }}";
     }
 

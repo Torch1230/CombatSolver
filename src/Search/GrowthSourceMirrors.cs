@@ -59,7 +59,7 @@ internal static class GrowthSourceMirrors
     /// <summary>登记表是否为空。空表时下游可以整段跳过。</summary>
     public static bool IsEmpty => Entries.Count == 0;
 
-    /// <summary>按登记顺序列出所有来源。侧栏按这个顺序排在原版八行之后。</summary>
+    /// <summary>按登记顺序列出所有来源。侧栏按这个顺序排在原版十行之后。</summary>
     public static IReadOnlyList<Entry> All => Entries;
 
     /// <summary>

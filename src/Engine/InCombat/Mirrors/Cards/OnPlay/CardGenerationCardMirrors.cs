@@ -164,8 +164,15 @@ internal static class CardGenerationCardMirrors
                             card.Owner.Creature);
                         break;
                     case TinkerTime.RiderEffect.Improvement:
+                    {
+                        SimulatedCombatState combat = context.CombatState as SimulatedCombatState
+                            ?? throw new InvalidOperationException("疯狂科学成长收益缺少分支战斗状态。");
+                        int before = combat.GetAmount<ImprovementPower>(card.Owner.Creature);
                         effects.ApplyPower(typeof(ImprovementPower), card.Owner.Creature, 1, card.Owner.Creature);
+                        if (combat.GetAmount<ImprovementPower>(card.Owner.Creature) > before)
+                            combat.RecordMadScienceGrowthReward();
                         break;
+                    }
                 }
                 break;
             default:

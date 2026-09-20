@@ -50,7 +50,7 @@ internal sealed partial class UnattendedTestRunner
                 && !GrowthSourceMirrors.IsRegistered(ThirdPartyGrowthUnloadedId), "registration is visible");
             Check(GrowthValues.HasTarget(standIn), "the registered predicate reaches HasTarget");
             GrowthOpportunityTargets legacyTarget = GrowthOpportunityPolicy.CaptureAvailableForTesting(
-                [standIn.ToMutable()], 1);
+                [standIn.ToMutable()], 1, 0);
             Check(!legacyTarget.IsBounded
                 && legacyTarget.UnboundedSources.Any(target => target.SourceId == ThirdPartyGrowthTestId
                     && target.Reason == "target_not_registered"),
@@ -136,7 +136,7 @@ internal sealed partial class UnattendedTestRunner
         {
             CardModel replayed = standIn.ToMutable();
             CardCmd.Enchant<Spiral>(replayed, 1);
-            GrowthOpportunityTargets bounded = GrowthOpportunityPolicy.CaptureAvailableForTesting([replayed], 2);
+            GrowthOpportunityTargets bounded = GrowthOpportunityPolicy.CaptureAvailableForTesting([replayed], 2, 0);
             Check(bounded.IsBounded && bounded.RequiredRewards.Get(boundedSource) == 2,
                 "the optional calculator counts one physical card plus its fixed enchantment replay");
             Check(frozenContext is { EnemyCount: 2 }
@@ -160,7 +160,7 @@ internal sealed partial class UnattendedTestRunner
         {
             try
             {
-                GrowthOpportunityPolicy.CaptureAvailableForTesting([standIn.ToMutable()], 1);
+                GrowthOpportunityPolicy.CaptureAvailableForTesting([standIn.ToMutable()], 1, 0);
                 Check(false, "an uninitialized target result must reject policy capture");
             }
             catch (InvalidDataException) { }

@@ -1,4 +1,11 @@
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Players;
+using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Cards;
+using MegaCrit.Sts2.Core.Models.Events;
+using MegaCrit.Sts2.Core.Models.Powers;
+using MegaCrit.Sts2.Core.Runs;
 using CombatSolver.Engine.InCombat.Simulation;
 
 namespace CombatSolver;
@@ -11,11 +18,36 @@ internal sealed partial class UnattendedTestRunner
         {
             if (!value) throw new InvalidOperationException("Growth policy: " + message);
         }
+        MadScience improvement = (MadScience)ModelDb.Card<MadScience>().ToMutable();
+        improvement.TinkerTimeType = CardType.Power;
+        improvement.TinkerTimeRider = TinkerTime.RiderEffect.Improvement;
+        Check(GrowthValues.HasBuiltInTarget(improvement),
+            "improvement variant of Mad Science is a growth target");
+        improvement.TinkerTimeRider = TinkerTime.RiderEffect.Expertise;
+        Check(!GrowthValues.HasBuiltInTarget(improvement),
+            "other Mad Science power riders do not promise a deck upgrade");
+        improvement.TinkerTimeRider = TinkerTime.RiderEffect.Improvement;
+        improvement.TinkerTimeType = CardType.Attack;
+        Check(!GrowthValues.HasBuiltInTarget(improvement),
+            "attack variants do not promise a deck upgrade");
+        improvement.TinkerTimeType = CardType.Power;
+        MadScience secondImprovement = (MadScience)ModelDb.Card<MadScience>().ToMutable();
+        secondImprovement.TinkerTimeType = CardType.Power;
+        secondImprovement.TinkerTimeRider = TinkerTime.RiderEffect.Improvement;
+        GrowthOpportunityTargets capped = GrowthOpportunityPolicy.CaptureBuiltInForTesting(
+            [improvement, secondImprovement], 1, 1);
+        Check(capped.RequiredRewards.MadScience == 1
+            && GrowthOpportunityPolicy.CaptureBuiltInForTesting([improvement], 1, 0)
+                .RequiredRewards.MadScience == 0,
+            "upgrade opportunities are capped by eligible run-deck cards");
         SolverSettingsData original = SolverSettings.Current;
         GrowthValues budgets = new(1, 2, 3, 4, 5, 6, 7, 8);
         Check(new SolverSettingsData().GrowthBudgets == default, "default budgets");
         Check(SolverSettings.RoundTripForTesting(original with { GrowthBudgets = budgets }).GrowthBudgets == budgets,
             "settings round trip");
+        Check(SolverSettings.RoundTripForTesting(original with
+            { GrowthBudgets = budgets.With(GrowthSource.MadScience, 9) }).GrowthBudgets.MadScience == 9,
+            "Mad Science allowance persists as an independent growth source");
         foreach (string retiredMode in new[] { "Survival", "PermanentGrowth", "NetResources" })
         {
             string previousSettings = "{\"objective\":{\"mode\":\"" + retiredMode
@@ -135,6 +167,73 @@ internal sealed partial class UnattendedTestRunner
                     + $"{ignored.ProjectedBattleHpLost} vs {growth.ProjectedBattleHpLost}");
         }
 
+        await AssertMadScienceImprovementAsync(combat);
+
         Entry.Logger.Info($"[CombatSolver/Test] GROWTH_POLICY_OK baseline_hp={baseline.ProjectedBattleHpLost} baseline_turn={baseline.CombatEndedTurn} growth_hp={growth.ProjectedBattleHpLost} growth_turn={growth.CombatEndedTurn} credit={growth.Snapshot.GrowthHpCredit}");
+    }
+
+    private async Task AssertMadScienceImprovementAsync(CombatState combat)
+    {
+        Player player = combat.Players.Single();
+        await ClearPlayerPilesAsync(player);
+        await InjectCardAsync(combat, player, new UnattendedCardInjection
+        {
+            CardId = "MAD_SCIENCE", Pile = "Hand", TreatAsDeckCard = true,
+        });
+        MadScience card = (MadScience)player.PlayerCombatState!.Hand.Cards.Single(item => item is MadScience);
+        card.TinkerTimeType = CardType.Power;
+        card.TinkerTimeRider = TinkerTime.RiderEffect.Improvement;
+        SetEnergy(player, 1);
+
+        SearchPolicySnapshot policy = SolverController.CaptureSearchPolicy(
+            SolverSettings.Capture(), combat, false, null) with
+        {
+            GrowthBudgets = new GrowthValues(MadScience: 9),
+        };
+        int capacity = MadScienceGrowth.CaptureRemainingCapacity(combat);
+        if (capacity < 1 || policy.GrowthOpportunityTargets.RequiredRewards.MadScience != 1
+            || policy.GrowthTargetSatisfied(default)
+            || !policy.GrowthTargetSatisfied(new GrowthValues(MadScience: 1)))
+            throw new InvalidOperationException("Mad Science root did not freeze its achievable upgrade target.");
+        using (SolverGrowthStrategyPanel panel = new())
+        {
+            if (!panel.SettingsConfiguredForTesting
+                || panel.FindChild(nameof(GrowthSource.MadScience), recursive: true, owned: false)
+                    is not Godot.SpinBox)
+                throw new InvalidOperationException("Growth sidebar did not include the Mad Science row.");
+        }
+
+        CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
+        CombatBeamSolver solver = new(root, SolverDisplayNames.Capture(combat),
+            BattleDamageTracker.Observe(combat), policy);
+        SimulationSnapshot prediction = InvokeForcedTerminalReplay(solver,
+            [new PlanAction(PlanActionKind.PlayCard, root.StartTurnNumber, CardId: card.Id.Entry)],
+            null, 0, null);
+        try
+        {
+            CombatPredictionSimulator simulator = prediction.Simulator;
+            SimulatedCombatState shadow = (SimulatedCombatState)simulator.State.CombatState;
+            var expected = CaptureSimulated(simulator, shadow, player, combat.Enemies[0]);
+            if (shadow.GetAmount<ImprovementPower>(player.Creature) != 1
+                || shadow.GrowthRewards.MadScience != 1
+                || policy.GrowthBudgets.Credit(shadow.GrowthRewards) != 9)
+                throw new InvalidOperationException("Mad Science upgrade power was not credited on its predicted play.");
+
+            CombatPredictionSimulator sibling = simulator.Fork();
+            SimulatedCombatState siblingState = (SimulatedCombatState)sibling.State.CombatState;
+            for (int i = 0; i < capacity + 1; i++)
+                siblingState.RecordMadScienceGrowthReward();
+            if (siblingState.GrowthRewards.MadScience != capacity
+                || shadow.GrowthRewards.MadScience != 1)
+                throw new InvalidOperationException("Mad Science upgrade capacity or Fork isolation changed.");
+
+            if (!card.TryManualPlay(null))
+                throw new InvalidOperationException("Native Mad Science could not be played.");
+            await RunManager.Instance.ActionExecutor.FinishedExecutingActions();
+            AssertSnapshotEqual(expected, CaptureActual(combat, player, combat.Enemies[0]),
+                "MadScienceGrowth", "ImprovementPowerApplied");
+            _completedChecks.Add($"MadScienceGrowth:PowerImprovement:Capacity{capacity}:Fork:NativeReplay");
+        }
+        finally { prediction.ReleaseSimulator(); }
     }
 }

@@ -250,6 +250,7 @@ internal sealed partial class SimulatedCombatState
         _cardMultiplayerConstraint = inner.RunState.CardMultiplayerConstraint;
         _playerCreatures = inner.PlayerCreatures.ToArray();
         _players = inner.Players.ToArray();
+        _madScienceUpgradeCapacity = MadScienceGrowth.CaptureRemainingCapacity(inner);
         _rootCardGenerationPools = RootCombatCardGenerationPoolSnapshot.Capture(
             _players,
             _cardMultiplayerConstraint);
@@ -443,6 +444,7 @@ internal sealed partial class SimulatedCombatState
         _rootTransformationPools = source._rootTransformationPools;
         _playerCreatures = source._playerCreatures;
         _players = source._players;
+        _madScienceUpgradeCapacity = source._madScienceUpgradeCapacity;
         _modifiers = source._modifiers;
         _multiplayerScalingModel = source._multiplayerScalingModel;
         _encounter = source._encounter;

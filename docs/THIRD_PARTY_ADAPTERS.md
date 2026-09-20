@@ -328,14 +328,14 @@ combat.RecordGrowthReward(_diligence);
 一律判成亏。侧栏让玩家给每个来源单独填一份「每次收益允许的额外战损」，搜索据此在打分里给这条
 线路记一笔 HP 信用额度。
 
-原版九个来源写死在 `GrowthSource` 枚举里，`GrowthValues` 是与之对应的九个 int 字段。局外成长类
+原版十个来源写死在 `GrowthSource` 枚举里，`GrowthValues` 是与之对应的十个 int 字段（疯狂科学仅能力／改进变体）。局外成长类
 卡牌很多 mod 都有，它们全部落不进那个枚举：既拿不到自己的额度栏，收益也记不进
 `SimulatedCombatState.GrowthRewards`。**表现不是「少了个选项」，而是搜索必然避开这张牌**——
 付出的血看得见，换回来的东西在打分里根本不存在。
 
 登记之后你会得到四样东西；提供可证明的目标计算器时还会启用第五项：
 
-- 成长策略侧栏多一行，有自己的图标、标题和额度输入框，排在原版九行之后、按登记顺序；
+- 成长策略侧栏多一行，有自己的图标、标题和额度输入框，排在原版十行之后、按登记顺序；
 - 额度按你给的 id 存进设置文件，也进问题包的有效策略和路线缓存；
 - `GrowthValues.HasTarget` 认得你的牌，于是「打到可接受战损就提早收手」那条捷径会被关掉——
   否则搜索会在还没摸到你这张牌之前就收手；
@@ -591,7 +591,7 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 | `ContinuationStamp.AppendCard` 的 `private=` 段与 `CombatBeamSolver.CaptureCardStateFingerprintForTesting` 的 `switch (preview)` | **卡牌**的隐藏字段按原版类型写死（利爪、基因算法、巨锤、狂暴、镰刀、疯狂科学），第三方卡牌的私有计数进不了指纹。Power 那一侧已有 `PowerHiddenStateMirrors`，见 §2.6 | 待做 |
 | `SimulatedCombatState.AddTurnStartStates` 的 `switch (power)` | 原版 Power 隐藏计数按类型写死。第三方走 §2.6 的登记表进同一份指纹，本行只是记下原版那个 `switch` 本身仍然封闭 | 第三方已有入口 |
 | `RelicPredictionStateSupport` 的原版类型分支 | 内置遗物状态仍按原实现处理；第三方遗物与 Modifier 的独立状态通过 §2.9 登记，不修改原版分支 | 第三方已有入口 |
-| `GrowthSource` 枚举与 `SolverGrowthStrategyPanel.SourceCard` 的 `switch` | 原版九类成长来源按类型写死。第三方走 §2.7 的 `GrowthSourceMirrors` 拿独立额度、侧栏行和指纹，本行只是记下原版那个枚举本身仍然封闭 | 第三方已有入口 |
+| `GrowthSource` 枚举与 `SolverGrowthStrategyPanel.SourceCard` 的 `switch` | 原版十类成长来源按类型写死。第三方走 §2.7 的 `GrowthSourceMirrors` 拿独立额度、侧栏行和指纹，本行只是记下原版那个枚举本身仍然封闭 | 第三方已有入口 |
 
 **这些开关新增或改动时，必须在同一个提交里更新这张表和本文档对应章节。** 见
 [AGENTS.md](../AGENTS.md) 第 9 节。

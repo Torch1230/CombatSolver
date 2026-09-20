@@ -1,7 +1,9 @@
 using Godot;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Enchantments;
+using MegaCrit.Sts2.Core.Models.Events;
 
 namespace CombatSolver;
 
@@ -103,7 +105,7 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
             _budgets.Add(source, input);
             input.ValueChanged += _ => Publish();
         }
-        // 第三方登记的来源排在原版九行之后，按登记顺序。
+        // 第三方登记的来源排在原版行之后，按登记顺序。
         foreach (GrowthSourceMirrors.Entry entry in GrowthSourceMirrors.All)
         {
             (string title, Texture2D? portrait) = ResolveThirdPartyRow(entry);
@@ -137,8 +139,17 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
         GrowthSource.TheScythe => ModelDb.Card<TheScythe>(),
         GrowthSource.Goopy => ModelDb.Card<DefendIronclad>(),
         GrowthSource.ForbiddenGrimoire => ModelDb.Card<ForbiddenGrimoire>(),
+        GrowthSource.MadScience => ImprovementMadScience(),
         _ => throw new ArgumentOutOfRangeException(nameof(source)),
     };
+
+    private static MadScience ImprovementMadScience()
+    {
+        MadScience card = (MadScience)ModelDb.Card<MadScience>().ToMutable();
+        card.TinkerTimeType = CardType.Power;
+        card.TinkerTimeRider = TinkerTime.RiderEffect.Improvement;
+        return card;
+    }
 
     /// <summary>
     /// 取第三方来源这一行的标题和图标。取牌函数是 mod 提供的，抛异常不该连带整个侧栏起不来：
