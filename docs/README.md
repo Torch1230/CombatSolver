@@ -18,6 +18,7 @@
 | 不启动 Godot 批量跑搜索、量宽度与预算 | [离线搜索宿主](OFFLINE_SEARCH_HARNESS.md) |
 | 花园幽灵鳗原包分配归因、静态意图复用及受攻击回调对照 | [花园幽灵鳗分配优化](performance/garden-allocation-20260919.md) |
 | 女王小 NoGC 区域反复回收、有效窗口准入与实验 | [女王回收窗口](performance/queen-gc-commit-window-20260920.md) |
+| Windows GC六场24份固定工作量对照、计算成本与暂停 | [多场景GC耗时验证](performance/windows-gc-multiscene-20260920.md) |
 | Windows 秒级GC暂停、后台诱发退出与4GB预留上限 | [Windows GC修复](performance/windows-gc-background-transition-20260920.md) |
 | 女王回收窗口的 Windows CLR 与 DOP16 对照、远端清理 | [Windows 验证](performance/queen-gc-windows-20260920.md) |
 | 完整性能优化正式 PR、路线控件复用、0.38.6 合并验证与对照 | [正式 PR 验收](performance/performance-pr-20260915.md) |

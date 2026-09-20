@@ -1,4 +1,11 @@
 {
+  "GC-WINDOWS-MULTISCENE": {
+    "status": "Passed",
+    "level": "WindowsHeadlessFixedWorkABBA",
+    "procedure": "3e8fb5ce vs 7eaa8041；五角色六场，各独立A1/B1/B2/A2，DOP8/12GB配置、固定节点及60秒软时间、120秒启动器；比较完整工作量、非时序指标、路线、开局/装备及请求到回调时间。",
+    "observed": "24/24 Passed；12对指标/路线无差异；平均搜索变化−5.2%～+4.5%，亡灵+2.4%、弃牌+4.5%，弃牌单对+11.2%保留。储君/花园基线最大GC1.28–1.99秒，候选均低于8ms且搜索未变慢。Windows根删除、24个游戏实例结束、相关进程0。",
+    "evidence": "docs/performance/windows-gc-multiscene-20260920.md; docs/performance/windows-gc-multiscene-20260920.json"
+  },
   "GC-WINDOWS-BACKGROUND-TRANSITION": {
     "status": "Passed",
     "level": "WindowsHeadlessAndProductionClrLifecycle",

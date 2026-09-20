@@ -1,5 +1,7 @@
 # Windows NoGC 检查点停顿修复（2026-09-20）
 
+追加：[六场24份Windows固定工作量对照](windows-gc-multiscene-20260920.md)覆盖五角色、普通/精英/首领、弃牌和花园，并单列计算成本与请求等待。
+
 本次继续处理[上一轮 Windows 验证](queen-gc-windows-20260920.md)仍未解决的秒级暂停。测试端为用户指定的 Windows 11 / i7-14700KF / 32GiB / .NET 9.0.19 / 游戏0.111.0；通过SSH运行独立无头进程。未启动可见Steam，不将CLR暂停、无头帧计数或搜索耗时称为玩家FPS改善。
 
 基线 `3e8fb5c` 已合并上游0.43.0（`cccc270d`），含先前有效窗口修复和花园分配优化。候选只改变Runtime GC策略及相应测试/设置说明，不改本轮搜索候选、Beam、评分、节点预算或模拟语义。问题包为 `46b87aaad3b14174a90ab975b0ae637d` 的女王 `start`，Beam512、DOP16、Smart药水；旧包仍有 `legacy_model_id_mapping_not_recorded` 限制。

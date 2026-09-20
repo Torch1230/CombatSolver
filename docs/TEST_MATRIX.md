@@ -2,6 +2,8 @@
 
 ## 下一版本（开发中）：Windows后台GC切换（2026-09-20）
 
+- `GC-WINDOWS-MULTISCENE`：五角色六场（NIBBITS_WEAK、INFESTED_PRISMS_ELITE两角色、THE_INSATIABLE_BOSS、弃牌蟹首领、花园原包），每场独立ABBA，24份Passed。12对非时序指标/已记录路线一致，原生生成开局/装备一致；计算耗时与准入等待均未见两对一致的大幅退化，小幅开销和单对+11.2%保留，见[完整报告](performance/windows-gc-multiscene-20260920.md)。测试根与24个实例已清理。
+
 - 最终Windows真实CLR、后台完成/取消/手动请求/引用释放epoch合同和女王DOP16请求对照统一见[本轮证据](performance/windows-gc-background-transition-20260920.md)。早期直接退出候选首检查点仍阻塞1.47–1.52秒，已追加后台就绪确认，不能把该候选计为最终通过。
 - `GC-CHECKPOINT-BACKGROUND-V0111` Windows游戏内八项通过；`background-tail` Windows/Linux共享四项通过，覆盖故障恢复、手动吸收与释放epoch。最终Linux基础27项及checkpoint通过；两端结构门禁通过。
 - 新准入合同覆盖Windows4GB上限、较低配置保持、其他平台不变；实际检查点合同覆盖原延迟模式恢复、诱发结束计数以及Windows正常scope结束后的后台清理。小堆Windows测试保留8MiB加载堆来满足CLR后台收集资格。
