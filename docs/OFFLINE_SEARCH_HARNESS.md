@@ -180,3 +180,6 @@ plan 每项的字段：`label`（必填，简单目录名）、`request`（必�
 `--adaptive-novelty` 仅接受 `--search-mode Coordinator --use-portfolio`，通过不可变 `AdaptiveNoveltyRefinement` profile 启用，生产默认关闭。先完整运行原 Beam 组合；达到完整政策目标（含治疗保护）则跳过，否则复用已有新颖性算法。补充额度分别不超过此前实际展开与实际耗时的 1/8，同时受原请求余量及既有 2500 节点/5 秒上限约束。节点额度不等于转移、分配或内存上限；不可分割工作仍可能越过软时间边界。
 
 `ADAPTIVE_NOVELTY_START/END` 记录实际预算、展开/转移和选择结果。`NOVELTY_SEARCH_STOP reason=...` 覆盖所有新颖性搜索；宿主分类器将 `time_limit` 单独记入 `noveltyStops` 并标记 `TimeLimited`，不混入回合层计数。以前没有该事件的 DLL 不能据“没有 SEARCH_TIME_BUDGET”断言该算法没有时间截断。探索预算依赖墙钟，质量观察必须保留时间截断与重复波动，不能称为固定工作量等价。完整取舍与验证结果见上下文排序报告。
+
+
+算法配置记录补充：`searchPolicy` 现在显式输出 `BeamWidthPortfolioPlainBaselineMember` 与 `UseNoveltyPortfolio`。旧宿主未记录这两项时，比较报告显示 `Unrecorded`，必须结合保存的命令与实际成员表判断，不能把缺失值当作默认值。上下文排序对照允许这两项算法配置作为显式实验差异，仍拒绝根、预算、可接受战损和用药政策等目标差异。

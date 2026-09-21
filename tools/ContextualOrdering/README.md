@@ -69,3 +69,9 @@ variant 可指定自己的 `harness`。旧 DLL 需要兼容的旧宿主；引用
 
 
 `--adaptive-novelty` 是后置结构探索实验，要求 Coordinator 与 `--use-portfolio`。默认关闭，不改变已有排序权重；完整原组合之后，从实际已用时间和节点各取至多 1/8，仍受原请求余量约束。只通过原终局政策选优；后续能力/药水审计可能受耗时影响。时间截断按新颖性停止原因显式记录；预算内最终质量比较与固定工作量比较必须分开。详见宿主说明与上下文排序报告。
+
+
+已撤回的条件窄成员结构替换保存在 `experiments/structural-refinement-20260922.patch`。在 `998bf4c7` 的独立检出应用补丁，可用 `--structural-refinement` 配合 Coordinator / `--use-portfolio` 复现；该参数不在当前默认宿主内。原型32根仅少1 HP、总分配略增且存在内存尾项，因此未进入独立test。补丁中的组合合同直接编译生产组合器，包含完整胜路条件、失败回退、实际扣账、模式隔离和配置宽度保持。
+
+
+组合消融可以使用已有 `--no-plain-baseline`。`compare.py` 将普通基线/新颖性开关作为算法配置差异处理，在 `algorithmSwitches` 中并列列出已记录的值；旧宿主缺失项标为 `Unrecorded`，不推定默认。根、预算和最终目标政策仍必须匹配。`python3 tools/ContextualOrdering/test_compare.py` 检查算法差异不会掩盖战损目标、用药政策、根或预算变化。

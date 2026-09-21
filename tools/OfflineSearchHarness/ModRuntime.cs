@@ -299,6 +299,8 @@ internal static class ModRuntime
         policy.DetailedDiagnostics,
         policy.MeasurePhasePerformance,
         policy.UseBeamWidthPortfolio,
+        policy.BeamWidthPortfolioPlainBaselineMember,
+        policy.UseNoveltyPortfolio,
         policy.BeamWidthPortfolioWidths,
         portfolioSelector = policy.PortfolioExperiment?.Model?.ModelId,
         observePortfolio = policy.PortfolioExperiment?.Observe != null,

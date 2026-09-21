@@ -1,0 +1,3900 @@
+{
+  "schemaVersion": 1,
+  "experiment": "conditional narrow-member structural replacement",
+  "parentCommit": "998bf4c7",
+  "decision": "reverted_runtime_prototype_insufficient_payoff",
+  "patch": "tools/ContextualOrdering/experiments/structural-refinement-20260922.patch",
+  "design": {
+    "condition": "selected complete victory already exists",
+    "replacement": "ordinary narrow member becomes existing novelty search",
+    "fallback": "ordinary narrow search and full original member allowance when no selected complete victory exists",
+    "caps": {
+      "nodes": 2500,
+      "milliseconds": 5000,
+      "sharedRemainder": true
+    },
+    "otherMemberStrategies": "unchanged; their remaining budgets can change",
+    "explicitConfiguredWidths": "unchanged",
+    "existingNoveltyPortfolio": "do not run another structural member"
+  },
+  "pilot": {
+    "statuses": {
+      "Comparable": 5
+    },
+    "quality": {
+      "0": 4,
+      "-1": 1
+    },
+    "materialQuality": {
+      "0": 4,
+      "-1": 1
+    },
+    "observations": [
+      {
+        "case": "defense_engine-train-high",
+        "status": "Comparable",
+        "baseline": {
+          "wallSeconds": 4.3586885,
+          "peakManagedHeapBytes": 49232856,
+          "peakManagedLiveBytes": 53804112,
+          "peakWorkingSetBytes": 272732160,
+          "totalAllocatedBytes": 997553704,
+          "TotalExpanded": 3837,
+          "TotalTransitions": 14380,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 13,
+          "outcome": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 0,
+            "strategicHpDeficit": 0,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000539942,
+            "combatEndedTurn": 13,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 18,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0,
+            "growthRewards": {
+              "handOfGreed": 0,
+              "theHunt": 0,
+              "feed": 0,
+              "royalties": 0,
+              "alchemize": 0,
+              "geneticAlgorithm": 0,
+              "theScythe": 0,
+              "goopy": 0,
+              "forbiddenGrimoire": 0,
+              "madScience": 0
+            },
+            "relicCounters": {
+              "satisfiedMask": 0,
+              "targetMask": 0,
+              "hpCredit": 0,
+              "distance": 0,
+              "counterValues": 0,
+              "satisfiedPriority": 0,
+              "healingHpCredit": 0,
+              "targetMinimums": 0,
+              "targetMaximums": 0,
+              "satisfied": true,
+              "satisfiedCount": 0
+            }
+          }
+        },
+        "candidate": {
+          "wallSeconds": 4.2952215,
+          "peakManagedHeapBytes": 49998352,
+          "peakManagedLiveBytes": 49870776,
+          "peakWorkingSetBytes": 268288000,
+          "totalAllocatedBytes": 991377752,
+          "TotalExpanded": 3837,
+          "TotalTransitions": 14380,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 13,
+          "outcome": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 0,
+            "strategicHpDeficit": 0,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000539942,
+            "combatEndedTurn": 13,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 18,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0,
+            "growthRewards": {
+              "handOfGreed": 0,
+              "theHunt": 0,
+              "feed": 0,
+              "royalties": 0,
+              "alchemize": 0,
+              "geneticAlgorithm": 0,
+              "theScythe": 0,
+              "goopy": 0,
+              "forbiddenGrimoire": 0,
+              "madScience": 0
+            },
+            "relicCounters": {
+              "satisfiedMask": 0,
+              "targetMask": 0,
+              "hpCredit": 0,
+              "distance": 0,
+              "counterValues": 0,
+              "satisfiedPriority": 0,
+              "healingHpCredit": 0,
+              "targetMinimums": 0,
+              "targetMaximums": 0,
+              "satisfied": true,
+              "satisfiedCount": 0
+            }
+          }
+        },
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "energy_investment-train-high",
+        "status": "Comparable",
+        "baseline": {
+          "wallSeconds": 7.7820276,
+          "peakManagedHeapBytes": 83576616,
+          "peakManagedLiveBytes": 80094128,
+          "peakWorkingSetBytes": 319987712,
+          "totalAllocatedBytes": 2434813608,
+          "TotalExpanded": 18769,
+          "TotalTransitions": 62030,
+          "ProjectedBattleHpLost": 6,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6,
+          "outcome": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 6,
+            "strategicHpDeficit": 0,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000059975,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 12,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0,
+            "growthRewards": {
+              "handOfGreed": 0,
+              "theHunt": 0,
+              "feed": 0,
+              "royalties": 0,
+              "alchemize": 0,
+              "geneticAlgorithm": 0,
+              "theScythe": 0,
+              "goopy": 0,
+              "forbiddenGrimoire": 0,
+              "madScience": 0
+            },
+            "relicCounters": {
+              "satisfiedMask": 0,
+              "targetMask": 0,
+              "hpCredit": 0,
+              "distance": 0,
+              "counterValues": 0,
+              "satisfiedPriority": 0,
+              "healingHpCredit": 0,
+              "targetMinimums": 0,
+              "targetMaximums": 0,
+              "satisfied": true,
+              "satisfiedCount": 0
+            }
+          }
+        },
+        "candidate": {
+          "wallSeconds": 8.3415,
+          "peakManagedHeapBytes": 83882552,
+          "peakManagedLiveBytes": 87924776,
+          "peakWorkingSetBytes": 319537152,
+          "totalAllocatedBytes": 2536167120,
+          "TotalExpanded": 18700,
+          "TotalTransitions": 61771,
+          "ProjectedBattleHpLost": 6,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6,
+          "outcome": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 6,
+            "strategicHpDeficit": 0,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000059975,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 12,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0,
+            "growthRewards": {
+              "handOfGreed": 0,
+              "theHunt": 0,
+              "feed": 0,
+              "royalties": 0,
+              "alchemize": 0,
+              "geneticAlgorithm": 0,
+              "theScythe": 0,
+              "goopy": 0,
+              "forbiddenGrimoire": 0,
+              "madScience": 0
+            },
+            "relicCounters": {
+              "satisfiedMask": 0,
+              "targetMask": 0,
+              "hpCredit": 0,
+              "distance": 0,
+              "counterValues": 0,
+              "satisfiedPriority": 0,
+              "healingHpCredit": 0,
+              "targetMinimums": 0,
+              "targetMaximums": 0,
+              "satisfied": true,
+              "satisfiedCount": 0
+            }
+          }
+        },
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "exhaust_resources-train-high",
+        "status": "Comparable",
+        "baseline": {
+          "wallSeconds": 11.4062333,
+          "peakManagedHeapBytes": 74505448,
+          "peakManagedLiveBytes": 70100384,
+          "peakWorkingSetBytes": 314134528,
+          "totalAllocatedBytes": 2811514568,
+          "TotalExpanded": 19414,
+          "TotalTransitions": 81377,
+          "ProjectedBattleHpLost": 17,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 9,
+          "outcome": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 17,
+            "strategicHpDeficit": 11,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9999459968,
+            "combatEndedTurn": 9,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 1,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0,
+            "growthRewards": {
+              "handOfGreed": 0,
+              "theHunt": 0,
+              "feed": 0,
+              "royalties": 0,
+              "alchemize": 0,
+              "geneticAlgorithm": 0,
+              "theScythe": 0,
+              "goopy": 0,
+              "forbiddenGrimoire": 0,
+              "madScience": 0
+            },
+            "relicCounters": {
+              "satisfiedMask": 0,
+              "targetMask": 0,
+              "hpCredit": 0,
+              "distance": 0,
+              "counterValues": 0,
+              "satisfiedPriority": 0,
+              "healingHpCredit": 0,
+              "targetMinimums": 0,
+              "targetMaximums": 0,
+              "satisfied": true,
+              "satisfiedCount": 0
+            }
+          }
+        },
+        "candidate": {
+          "wallSeconds": 11.6667886,
+          "peakManagedHeapBytes": 79369320,
+          "peakManagedLiveBytes": 68585984,
+          "peakWorkingSetBytes": 315817984,
+          "totalAllocatedBytes": 2817039848,
+          "TotalExpanded": 19414,
+          "TotalTransitions": 81377,
+          "ProjectedBattleHpLost": 17,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 9,
+          "outcome": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 17,
+            "strategicHpDeficit": 11,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9999459968,
+            "combatEndedTurn": 9,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 1,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0,
+            "growthRewards": {
+              "handOfGreed": 0,
+              "theHunt": 0,
+              "feed": 0,
+              "royalties": 0,
+              "alchemize": 0,
+              "geneticAlgorithm": 0,
+              "theScythe": 0,
+              "goopy": 0,
+              "forbiddenGrimoire": 0,
+              "madScience": 0
+            },
+            "relicCounters": {
+              "satisfiedMask": 0,
+              "targetMask": 0,
+              "hpCredit": 0,
+              "distance": 0,
+              "counterValues": 0,
+              "satisfiedPriority": 0,
+              "healingHpCredit": 0,
+              "targetMinimums": 0,
+              "targetMaximums": 0,
+              "satisfied": true,
+              "satisfiedCount": 0
+            }
+          }
+        },
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "strength_setup-train-high",
+        "status": "Comparable",
+        "baseline": {
+          "wallSeconds": 7.6226359,
+          "peakManagedHeapBytes": 61487968,
+          "peakManagedLiveBytes": 58743856,
+          "peakWorkingSetBytes": 294273024,
+          "totalAllocatedBytes": 2007296656,
+          "TotalExpanded": 17778,
+          "TotalTransitions": 57292,
+          "ProjectedBattleHpLost": 6,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6,
+          "outcome": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 6,
+            "strategicHpDeficit": 0,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000139978,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 12,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0,
+            "growthRewards": {
+              "handOfGreed": 0,
+              "theHunt": 0,
+              "feed": 0,
+              "royalties": 0,
+              "alchemize": 0,
+              "geneticAlgorithm": 0,
+              "theScythe": 0,
+              "goopy": 0,
+              "forbiddenGrimoire": 0,
+              "madScience": 0
+            },
+            "relicCounters": {
+              "satisfiedMask": 0,
+              "targetMask": 0,
+              "hpCredit": 0,
+              "distance": 0,
+              "counterValues": 0,
+              "satisfiedPriority": 0,
+              "healingHpCredit": 0,
+              "targetMinimums": 0,
+              "targetMaximums": 0,
+              "satisfied": true,
+              "satisfiedCount": 0
+            }
+          }
+        },
+        "candidate": {
+          "wallSeconds": 8.3680596,
+          "peakManagedHeapBytes": 58663640,
+          "peakManagedLiveBytes": 56648360,
+          "peakWorkingSetBytes": 293564416,
+          "totalAllocatedBytes": 2180915232,
+          "TotalExpanded": 18678,
+          "TotalTransitions": 59779,
+          "ProjectedBattleHpLost": 6,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6,
+          "outcome": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 6,
+            "strategicHpDeficit": 0,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000139978,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 12,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0,
+            "growthRewards": {
+              "handOfGreed": 0,
+              "theHunt": 0,
+              "feed": 0,
+              "royalties": 0,
+              "alchemize": 0,
+              "geneticAlgorithm": 0,
+              "theScythe": 0,
+              "goopy": 0,
+              "forbiddenGrimoire": 0,
+              "madScience": 0
+            },
+            "relicCounters": {
+              "satisfiedMask": 0,
+              "targetMask": 0,
+              "hpCredit": 0,
+              "distance": 0,
+              "counterValues": 0,
+              "satisfiedPriority": 0,
+              "healingHpCredit": 0,
+              "targetMinimums": 0,
+              "targetMaximums": 0,
+              "satisfied": true,
+              "satisfiedCount": 0
+            }
+          }
+        },
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "target_order-train-low",
+        "status": "Comparable",
+        "baseline": {
+          "wallSeconds": 12.1415579,
+          "peakManagedHeapBytes": 83489464,
+          "peakManagedLiveBytes": 70120712,
+          "peakWorkingSetBytes": 316698624,
+          "totalAllocatedBytes": 4318774328,
+          "TotalExpanded": 28023,
+          "TotalTransitions": 107022,
+          "ProjectedBattleHpLost": 14,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 5,
+          "outcome": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 14,
+            "strategicHpDeficit": 8,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000829987,
+            "combatEndedTurn": 5,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 51,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0,
+            "growthRewards": {
+              "handOfGreed": 0,
+              "theHunt": 0,
+              "feed": 0,
+              "royalties": 0,
+              "alchemize": 0,
+              "geneticAlgorithm": 0,
+              "theScythe": 0,
+              "goopy": 0,
+              "forbiddenGrimoire": 0,
+              "madScience": 0
+            },
+            "relicCounters": {
+              "satisfiedMask": 0,
+              "targetMask": 0,
+              "hpCredit": 0,
+              "distance": 0,
+              "counterValues": 0,
+              "satisfiedPriority": 0,
+              "healingHpCredit": 0,
+              "targetMinimums": 0,
+              "targetMaximums": 0,
+              "satisfied": true,
+              "satisfiedCount": 0
+            }
+          }
+        },
+        "candidate": {
+          "wallSeconds": 12.4808013,
+          "peakManagedHeapBytes": 95641120,
+          "peakManagedLiveBytes": 85195576,
+          "peakWorkingSetBytes": 324734976,
+          "totalAllocatedBytes": 4373267104,
+          "TotalExpanded": 26898,
+          "TotalTransitions": 103144,
+          "ProjectedBattleHpLost": 11,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 7,
+          "outcome": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 11,
+            "strategicHpDeficit": 5,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10001289977,
+            "combatEndedTurn": 7,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 54,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0,
+            "growthRewards": {
+              "handOfGreed": 0,
+              "theHunt": 0,
+              "feed": 0,
+              "royalties": 0,
+              "alchemize": 0,
+              "geneticAlgorithm": 0,
+              "theScythe": 0,
+              "goopy": 0,
+              "forbiddenGrimoire": 0,
+              "madScience": 0
+            },
+            "relicCounters": {
+              "satisfiedMask": 0,
+              "targetMask": 0,
+              "hpCredit": 0,
+              "distance": 0,
+              "counterValues": 0,
+              "satisfiedPriority": 0,
+              "healingHpCredit": 0,
+              "targetMinimums": 0,
+              "targetMaximums": 0,
+              "satisfied": true,
+              "satisfiedCount": 0
+            }
+          }
+        },
+        "comparison": -1,
+        "materialComparison": -1
+      }
+    ],
+    "victoryChanges": {
+      "lossToWin": [],
+      "winToLoss": []
+    },
+    "bothWonDamageChanges": {
+      "sampleCount": 5,
+      "totalHpLossDelta": -3,
+      "policyDeficitDelta": -3,
+      "largestTotalHpLossDelta": 0
+    }
+  },
+  "validation": {
+    "statuses": {
+      "Comparable": 32
+    },
+    "budgetedQuality": {
+      "0": 31,
+      "-1": 1
+    },
+    "fixedWorkQuality": {
+      "0": 31,
+      "-1": 1
+    },
+    "originalMembersEqualCount": 14,
+    "initialMemberEqualCount": 32,
+    "bothWonHpDelta": -1,
+    "victoryChanges": [],
+    "rawAggregates": {
+      "TotalExpanded": {
+        "baseline": 1002315,
+        "candidate": 992026
+      },
+      "TotalTransitions": {
+        "baseline": 4533876,
+        "candidate": 4492050
+      },
+      "wallSeconds": {
+        "baseline": 616.1970872,
+        "candidate": 626.4429635
+      },
+      "totalAllocatedBytes": {
+        "baseline": 194264892960,
+        "candidate": 195486533832
+      }
+    },
+    "memoryTails": {
+      "peakManagedLiveBytes": {
+        "case": "random-ironclad-elite-validation",
+        "baseline": 87457072,
+        "candidate": 117970208,
+        "ratio": 1.348892723049315
+      },
+      "peakWorkingSetBytes": {
+        "case": "random-ironclad-monster-validation",
+        "baseline": 331583488,
+        "candidate": 349171712,
+        "ratio": 1.053043123787877
+      }
+    },
+    "observations": [
+      {
+        "case": "attack_or_block-validation-low",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {
+            "node_limit": 1
+          },
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 7.5494951,
+          "peakManagedLiveBytes": 64271760,
+          "peakWorkingSetBytes": 302243840,
+          "totalAllocatedBytes": 1940154688,
+          "TotalExpanded": 16317,
+          "TotalTransitions": 55034,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 2,
+            "strategicHpDeficit": -4,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10001829972,
+            "combatEndedTurn": 8,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 63,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 8.1780078,
+          "peakManagedLiveBytes": 70549792,
+          "peakWorkingSetBytes": 303362048,
+          "totalAllocatedBytes": 2099625848,
+          "TotalExpanded": 16641,
+          "TotalTransitions": 55473,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 2,
+            "strategicHpDeficit": -4,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10001829972,
+            "combatEndedTurn": 8,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 63,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": false,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 2500,
+            "Ran": true,
+            "Selected": false,
+            "Compared": true,
+            "ExpandedNodes": 2500,
+            "TransitionCount": 8018,
+            "Termination": "NodeLimit",
+            "Terminal": true,
+            "Won": true,
+            "BattleHpLost": 2,
+            "PotionCount": 0,
+            "ElapsedMilliseconds": 2452,
+            "AllocatedBytes": 410528992,
+            "ManagedHeapBytesAfter": 55548792,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [
+          "[CombatSolver/Test] NOVELTY_SEARCH_STOP reason=node_limit expanded=2500 transitions=8018 elapsed_ms=2445"
+        ],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "attack_or_block-validation-high",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {
+            "open_exhausted": 1
+          },
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 5.4983877,
+          "peakManagedLiveBytes": 53524304,
+          "peakWorkingSetBytes": 273743872,
+          "totalAllocatedBytes": 947402208,
+          "TotalExpanded": 7177,
+          "TotalTransitions": 23334,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 15,
+            "strategicHpDeficit": 9,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9999519981,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 3,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 5.4105,
+          "peakManagedLiveBytes": 52206784,
+          "peakWorkingSetBytes": 275955712,
+          "totalAllocatedBytes": 1085306712,
+          "TotalExpanded": 7955,
+          "TotalTransitions": 25420,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 15,
+            "strategicHpDeficit": 9,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9999639981,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 3,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": false,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 2500,
+            "Ran": true,
+            "Selected": true,
+            "Compared": true,
+            "ExpandedNodes": 1752,
+            "TransitionCount": 5304,
+            "Termination": "None",
+            "Terminal": true,
+            "Won": true,
+            "BattleHpLost": 15,
+            "PotionCount": 0,
+            "ElapsedMilliseconds": 2325,
+            "AllocatedBytes": 258649560,
+            "ManagedHeapBytesAfter": 45338032,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [
+          "[CombatSolver/Test] NOVELTY_SEARCH_STOP reason=open_exhausted expanded=1752 transitions=5304 elapsed_ms=2316"
+        ],
+        "comparison": -1,
+        "materialComparison": 0
+      },
+      {
+        "case": "energy_investment-validation-low",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {
+            "node_limit": 1
+          },
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 12.1841822,
+          "peakManagedLiveBytes": 76338000,
+          "peakWorkingSetBytes": 321191936,
+          "totalAllocatedBytes": 4205502976,
+          "TotalExpanded": 36100,
+          "TotalTransitions": 125553,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 3,
+            "strategicHpDeficit": -3,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10001769979,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 62,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 12.941853,
+          "peakManagedLiveBytes": 85987104,
+          "peakWorkingSetBytes": 323850240,
+          "totalAllocatedBytes": 4182772544,
+          "TotalExpanded": 34166,
+          "TotalTransitions": 118479,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 3,
+            "strategicHpDeficit": -3,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10001769979,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 62,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": false,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 2500,
+            "Ran": true,
+            "Selected": false,
+            "Compared": true,
+            "ExpandedNodes": 2500,
+            "TransitionCount": 9210,
+            "Termination": "NodeLimit",
+            "Terminal": true,
+            "Won": true,
+            "BattleHpLost": 4,
+            "PotionCount": 0,
+            "ElapsedMilliseconds": 1628,
+            "AllocatedBytes": 478815984,
+            "ManagedHeapBytesAfter": 58300312,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [
+          "[CombatSolver/Test] NOVELTY_SEARCH_STOP reason=node_limit expanded=2500 transitions=9210 elapsed_ms=1622"
+        ],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "energy_investment-validation-high",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {
+            "node_limit": 1
+          },
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 7.2027208,
+          "peakManagedLiveBytes": 60316160,
+          "peakWorkingSetBytes": 296652800,
+          "totalAllocatedBytes": 1954356000,
+          "TotalExpanded": 16489,
+          "TotalTransitions": 53312,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 11,
+            "strategicHpDeficit": 5,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9999819978,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 7,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 7.8027994,
+          "peakManagedLiveBytes": 70821496,
+          "peakWorkingSetBytes": 304705536,
+          "totalAllocatedBytes": 2118512960,
+          "TotalExpanded": 16844,
+          "TotalTransitions": 54477,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 11,
+            "strategicHpDeficit": 5,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9999819978,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 7,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": false,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 2500,
+            "Ran": true,
+            "Selected": false,
+            "Compared": true,
+            "ExpandedNodes": 2500,
+            "TransitionCount": 8454,
+            "Termination": "NodeLimit",
+            "Terminal": true,
+            "Won": true,
+            "BattleHpLost": 13,
+            "PotionCount": 0,
+            "ElapsedMilliseconds": 2424,
+            "AllocatedBytes": 403999080,
+            "ManagedHeapBytesAfter": 46953656,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [
+          "[CombatSolver/Test] NOVELTY_SEARCH_STOP reason=node_limit expanded=2500 transitions=8454 elapsed_ms=2419"
+        ],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "strength_setup-validation-low",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {
+            "hp_target": 1
+          },
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 6.8740795,
+          "peakManagedLiveBytes": 55860632,
+          "peakWorkingSetBytes": 280133632,
+          "totalAllocatedBytes": 1482865424,
+          "TotalExpanded": 10945,
+          "TotalTransitions": 37566,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 0,
+            "strategicHpDeficit": -6,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10001949978,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 65,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 6.0411477,
+          "peakManagedLiveBytes": 58744256,
+          "peakWorkingSetBytes": 287145984,
+          "totalAllocatedBytes": 1110406136,
+          "TotalExpanded": 7445,
+          "TotalTransitions": 25470,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 0,
+            "strategicHpDeficit": -6,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10001949979,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 65,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": false,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 2500,
+            "Ran": true,
+            "Selected": true,
+            "Compared": true,
+            "ExpandedNodes": 553,
+            "TransitionCount": 1951,
+            "Termination": "None",
+            "Terminal": true,
+            "Won": true,
+            "BattleHpLost": 0,
+            "PotionCount": 0,
+            "ElapsedMilliseconds": 324,
+            "AllocatedBytes": 71935800,
+            "ManagedHeapBytesAfter": 42640792,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [
+          "[CombatSolver/Test] NOVELTY_SEARCH_STOP reason=hp_target expanded=553 transitions=1951 elapsed_ms=321"
+        ],
+        "comparison": -1,
+        "materialComparison": 0
+      },
+      {
+        "case": "strength_setup-validation-high",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {
+            "open_exhausted": 1
+          },
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 7.6634295,
+          "peakManagedLiveBytes": 58600960,
+          "peakWorkingSetBytes": 282030080,
+          "totalAllocatedBytes": 2030398712,
+          "TotalExpanded": 17687,
+          "TotalTransitions": 58194,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 5,
+            "strategicHpDeficit": -1,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000239978,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 13,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 8.6377367,
+          "peakManagedLiveBytes": 68442480,
+          "peakWorkingSetBytes": 294932480,
+          "totalAllocatedBytes": 2212821984,
+          "TotalExpanded": 18664,
+          "TotalTransitions": 60756,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 5,
+            "strategicHpDeficit": -1,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000239978,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 13,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": false,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 2500,
+            "Ran": true,
+            "Selected": true,
+            "Compared": true,
+            "ExpandedNodes": 2224,
+            "TransitionCount": 6772,
+            "Termination": "None",
+            "Terminal": true,
+            "Won": true,
+            "BattleHpLost": 7,
+            "PotionCount": 0,
+            "ElapsedMilliseconds": 2472,
+            "AllocatedBytes": 338533704,
+            "ManagedHeapBytesAfter": 35427104,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [
+          "[CombatSolver/Test] NOVELTY_SEARCH_STOP reason=open_exhausted expanded=2224 transitions=6772 elapsed_ms=2466"
+        ],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "exhaust_resources-validation-low",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {},
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 4.4886552,
+          "peakManagedLiveBytes": 68886104,
+          "peakWorkingSetBytes": 281731072,
+          "totalAllocatedBytes": 743004192,
+          "TotalExpanded": 3257,
+          "TotalTransitions": 14577,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 0,
+            "strategicHpDeficit": -6,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10001949968,
+            "combatEndedTurn": 9,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 65,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 4.5055646,
+          "peakManagedLiveBytes": 62332544,
+          "peakWorkingSetBytes": 281616384,
+          "totalAllocatedBytes": 743131464,
+          "TotalExpanded": 3257,
+          "TotalTransitions": 14577,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 0,
+            "strategicHpDeficit": -6,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10001949968,
+            "combatEndedTurn": 9,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 65,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": true,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 0,
+            "Ran": false,
+            "Selected": false,
+            "Compared": false,
+            "SkippedReason": "AcceptableBattleHpLoss",
+            "ExpandedNodes": 0,
+            "TransitionCount": 0,
+            "ElapsedMilliseconds": 0,
+            "AllocatedBytes": 0,
+            "ManagedHeapBytesAfter": 0,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "exhaust_resources-validation-high",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {
+            "node_limit": 1
+          },
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 10.6905062,
+          "peakManagedLiveBytes": 74774248,
+          "peakWorkingSetBytes": 317616128,
+          "totalAllocatedBytes": 2693257336,
+          "TotalExpanded": 18385,
+          "TotalTransitions": 75426,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 14,
+            "strategicHpDeficit": 8,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9999459977,
+            "combatEndedTurn": 7,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 4,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 11.0135334,
+          "peakManagedLiveBytes": 76778568,
+          "peakWorkingSetBytes": 326152192,
+          "totalAllocatedBytes": 2671189992,
+          "TotalExpanded": 18032,
+          "TotalTransitions": 71176,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 13,
+            "strategicHpDeficit": 7,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9999751980,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 5,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": false,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 2500,
+            "Ran": true,
+            "Selected": true,
+            "Compared": true,
+            "ExpandedNodes": 2500,
+            "TransitionCount": 8189,
+            "Termination": "NodeLimit",
+            "Terminal": true,
+            "Won": true,
+            "BattleHpLost": 13,
+            "PotionCount": 0,
+            "ElapsedMilliseconds": 3061,
+            "AllocatedBytes": 409919144,
+            "ManagedHeapBytesAfter": 50351120,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [
+          "[CombatSolver/Test] NOVELTY_SEARCH_STOP reason=node_limit expanded=2500 transitions=8189 elapsed_ms=3056"
+        ],
+        "comparison": -1,
+        "materialComparison": -1
+      },
+      {
+        "case": "poison_or_burst-validation-low",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {},
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 1.6787106,
+          "peakManagedLiveBytes": 34681088,
+          "peakWorkingSetBytes": 240967680,
+          "totalAllocatedBytes": 400730688,
+          "TotalExpanded": 1065,
+          "TotalTransitions": 4219,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 0,
+            "strategicHpDeficit": 0,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10001949981,
+            "combatEndedTurn": 5,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 65,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 1.6391298,
+          "peakManagedLiveBytes": 33829344,
+          "peakWorkingSetBytes": 241950720,
+          "totalAllocatedBytes": 400744504,
+          "TotalExpanded": 1065,
+          "TotalTransitions": 4219,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 0,
+            "strategicHpDeficit": 0,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10001949981,
+            "combatEndedTurn": 5,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 65,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": true,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 0,
+            "Ran": false,
+            "Selected": false,
+            "Compared": false,
+            "SkippedReason": "AcceptableBattleHpLoss",
+            "ExpandedNodes": 0,
+            "TransitionCount": 0,
+            "ElapsedMilliseconds": 0,
+            "AllocatedBytes": 0,
+            "ManagedHeapBytesAfter": 0,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "poison_or_burst-validation-high",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {},
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 1.9265571,
+          "peakManagedLiveBytes": 36619128,
+          "peakWorkingSetBytes": 245547008,
+          "totalAllocatedBytes": 434062688,
+          "TotalExpanded": 1361,
+          "TotalTransitions": 5224,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 0,
+            "strategicHpDeficit": 0,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000539977,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 18,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 1.9540266,
+          "peakManagedLiveBytes": 39849640,
+          "peakWorkingSetBytes": 245215232,
+          "totalAllocatedBytes": 434178200,
+          "TotalExpanded": 1361,
+          "TotalTransitions": 5224,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 0,
+            "strategicHpDeficit": 0,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000539977,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 18,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": true,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 0,
+            "Ran": false,
+            "Selected": false,
+            "Compared": false,
+            "SkippedReason": "AcceptableBattleHpLoss",
+            "ExpandedNodes": 0,
+            "TransitionCount": 0,
+            "ElapsedMilliseconds": 0,
+            "AllocatedBytes": 0,
+            "ManagedHeapBytesAfter": 0,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "defense_engine-validation-low",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {},
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 3.5592881,
+          "peakManagedLiveBytes": 45029760,
+          "peakWorkingSetBytes": 257871872,
+          "totalAllocatedBytes": 616850312,
+          "TotalExpanded": 2868,
+          "TotalTransitions": 10774,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 0,
+            "strategicHpDeficit": 0,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10001949955,
+            "combatEndedTurn": 10,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 65,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 3.5836583,
+          "peakManagedLiveBytes": 43926904,
+          "peakWorkingSetBytes": 260497408,
+          "totalAllocatedBytes": 617272680,
+          "TotalExpanded": 2868,
+          "TotalTransitions": 10774,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 0,
+            "strategicHpDeficit": 0,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10001949955,
+            "combatEndedTurn": 10,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 65,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": true,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 0,
+            "Ran": false,
+            "Selected": false,
+            "Compared": false,
+            "SkippedReason": "AcceptableBattleHpLoss",
+            "ExpandedNodes": 0,
+            "TransitionCount": 0,
+            "ElapsedMilliseconds": 0,
+            "AllocatedBytes": 0,
+            "ManagedHeapBytesAfter": 0,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "defense_engine-validation-high",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {},
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 4.1064026,
+          "peakManagedLiveBytes": 48282144,
+          "peakWorkingSetBytes": 266932224,
+          "totalAllocatedBytes": 691683168,
+          "TotalExpanded": 3496,
+          "TotalTransitions": 13071,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 0,
+            "strategicHpDeficit": 0,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000539942,
+            "combatEndedTurn": 12,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 18,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 4.1246925,
+          "peakManagedLiveBytes": 48332248,
+          "peakWorkingSetBytes": 266702848,
+          "totalAllocatedBytes": 691758928,
+          "TotalExpanded": 3496,
+          "TotalTransitions": 13071,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 0,
+            "strategicHpDeficit": 0,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000539942,
+            "combatEndedTurn": 12,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 18,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": true,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 0,
+            "Ran": false,
+            "Selected": false,
+            "Compared": false,
+            "SkippedReason": "AcceptableBattleHpLoss",
+            "ExpandedNodes": 0,
+            "TransitionCount": 0,
+            "ElapsedMilliseconds": 0,
+            "AllocatedBytes": 0,
+            "ManagedHeapBytesAfter": 0,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "draw_before_spend-validation-low",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {},
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 3.3516272,
+          "peakManagedLiveBytes": 56079192,
+          "peakWorkingSetBytes": 268599296,
+          "totalAllocatedBytes": 589154448,
+          "TotalExpanded": 1974,
+          "TotalTransitions": 12508,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 0,
+            "strategicHpDeficit": 0,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10001949974,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 65,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 3.3456003,
+          "peakManagedLiveBytes": 45042880,
+          "peakWorkingSetBytes": 261533696,
+          "totalAllocatedBytes": 589434280,
+          "TotalExpanded": 1974,
+          "TotalTransitions": 12508,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 0,
+            "strategicHpDeficit": 0,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10001949974,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 65,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": true,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 0,
+            "Ran": false,
+            "Selected": false,
+            "Compared": false,
+            "SkippedReason": "AcceptableBattleHpLoss",
+            "ExpandedNodes": 0,
+            "TransitionCount": 0,
+            "ElapsedMilliseconds": 0,
+            "AllocatedBytes": 0,
+            "ManagedHeapBytesAfter": 0,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "draw_before_spend-validation-high",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {},
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 3.7331243,
+          "peakManagedLiveBytes": 53039128,
+          "peakWorkingSetBytes": 269127680,
+          "totalAllocatedBytes": 624717904,
+          "TotalExpanded": 2257,
+          "TotalTransitions": 13574,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 0,
+            "strategicHpDeficit": 0,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000539966,
+            "combatEndedTurn": 7,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 18,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 3.6673703,
+          "peakManagedLiveBytes": 45988584,
+          "peakWorkingSetBytes": 268517376,
+          "totalAllocatedBytes": 624342584,
+          "TotalExpanded": 2257,
+          "TotalTransitions": 13574,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 0,
+            "strategicHpDeficit": 0,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000539966,
+            "combatEndedTurn": 7,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 18,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": true,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 0,
+            "Ran": false,
+            "Selected": false,
+            "Compared": false,
+            "SkippedReason": "AcceptableBattleHpLoss",
+            "ExpandedNodes": 0,
+            "TransitionCount": 0,
+            "ElapsedMilliseconds": 0,
+            "AllocatedBytes": 0,
+            "ManagedHeapBytesAfter": 0,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "orb_defense-validation-low",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {},
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 1.3345758,
+          "peakManagedLiveBytes": 32805704,
+          "peakWorkingSetBytes": 236584960,
+          "totalAllocatedBytes": 363464272,
+          "TotalExpanded": 833,
+          "TotalTransitions": 2797,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 0,
+            "strategicHpDeficit": 0,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10001949984,
+            "combatEndedTurn": 5,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 65,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 1.3916803,
+          "peakManagedLiveBytes": 35128888,
+          "peakWorkingSetBytes": 239431680,
+          "totalAllocatedBytes": 363577728,
+          "TotalExpanded": 833,
+          "TotalTransitions": 2797,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 0,
+            "strategicHpDeficit": 0,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10001949984,
+            "combatEndedTurn": 5,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 65,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": true,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 0,
+            "Ran": false,
+            "Selected": false,
+            "Compared": false,
+            "SkippedReason": "AcceptableBattleHpLoss",
+            "ExpandedNodes": 0,
+            "TransitionCount": 0,
+            "ElapsedMilliseconds": 0,
+            "AllocatedBytes": 0,
+            "ManagedHeapBytesAfter": 0,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "orb_defense-validation-high",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {},
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 1.5431757,
+          "peakManagedLiveBytes": 34584384,
+          "peakWorkingSetBytes": 239775744,
+          "totalAllocatedBytes": 383614008,
+          "TotalExpanded": 945,
+          "TotalTransitions": 3388,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 0,
+            "strategicHpDeficit": 0,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000539983,
+            "combatEndedTurn": 5,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 18,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 1.531718,
+          "peakManagedLiveBytes": 35235672,
+          "peakWorkingSetBytes": 239394816,
+          "totalAllocatedBytes": 383613432,
+          "TotalExpanded": 945,
+          "TotalTransitions": 3388,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 0,
+            "strategicHpDeficit": 0,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000539983,
+            "combatEndedTurn": 5,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 18,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": true,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 0,
+            "Ran": false,
+            "Selected": false,
+            "Compared": false,
+            "SkippedReason": "AcceptableBattleHpLoss",
+            "ExpandedNodes": 0,
+            "TransitionCount": 0,
+            "ElapsedMilliseconds": 0,
+            "AllocatedBytes": 0,
+            "ManagedHeapBytesAfter": 0,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "focus_investment-validation-low",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {},
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 1.4278762,
+          "peakManagedLiveBytes": 33075408,
+          "peakWorkingSetBytes": 240816128,
+          "totalAllocatedBytes": 599663968,
+          "TotalExpanded": 704,
+          "TotalTransitions": 2773,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 0,
+            "strategicHpDeficit": 0,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10001949986,
+            "combatEndedTurn": 4,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 65,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 1.4162255,
+          "peakManagedLiveBytes": 34349528,
+          "peakWorkingSetBytes": 240828416,
+          "totalAllocatedBytes": 592568408,
+          "TotalExpanded": 704,
+          "TotalTransitions": 2773,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 0,
+            "strategicHpDeficit": 0,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10001949986,
+            "combatEndedTurn": 4,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 65,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": true,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 0,
+            "Ran": false,
+            "Selected": false,
+            "Compared": false,
+            "SkippedReason": "AcceptableBattleHpLoss",
+            "ExpandedNodes": 0,
+            "TransitionCount": 0,
+            "ElapsedMilliseconds": 0,
+            "AllocatedBytes": 0,
+            "ManagedHeapBytesAfter": 0,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "focus_investment-validation-high",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {
+            "open_exhausted": 1
+          },
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 7.8818983,
+          "peakManagedLiveBytes": 59645808,
+          "peakWorkingSetBytes": 294428672,
+          "totalAllocatedBytes": 2439799064,
+          "TotalExpanded": 17103,
+          "TotalTransitions": 59801,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 2,
+            "strategicHpDeficit": 2,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000419980,
+            "combatEndedTurn": 5,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 16,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 8.2065767,
+          "peakManagedLiveBytes": 59942992,
+          "peakWorkingSetBytes": 295956480,
+          "totalAllocatedBytes": 2479392264,
+          "TotalExpanded": 17037,
+          "TotalTransitions": 59539,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 2,
+            "strategicHpDeficit": 2,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000419980,
+            "combatEndedTurn": 5,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 16,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": false,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 2500,
+            "Ran": true,
+            "Selected": false,
+            "Compared": true,
+            "ExpandedNodes": 972,
+            "TransitionCount": 3544,
+            "Termination": "None",
+            "Terminal": true,
+            "Won": true,
+            "BattleHpLost": 6,
+            "PotionCount": 0,
+            "ElapsedMilliseconds": 1505,
+            "AllocatedBytes": 170448896,
+            "ManagedHeapBytesAfter": 25660824,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [
+          "[CombatSolver/Test] NOVELTY_SEARCH_STOP reason=open_exhausted expanded=972 transitions=3544 elapsed_ms=1501"
+        ],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "target_order-validation-low",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {
+            "node_limit": 1
+          },
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 12.9734633,
+          "peakManagedLiveBytes": 85190152,
+          "peakWorkingSetBytes": 328531968,
+          "totalAllocatedBytes": 4204418272,
+          "TotalExpanded": 29290,
+          "TotalTransitions": 112062,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 16,
+            "strategicHpDeficit": 10,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000869974,
+            "combatEndedTurn": 8,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 49,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 13.1221949,
+          "peakManagedLiveBytes": 87853816,
+          "peakWorkingSetBytes": 322777088,
+          "totalAllocatedBytes": 4225239560,
+          "TotalExpanded": 28031,
+          "TotalTransitions": 107606,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 16,
+            "strategicHpDeficit": 10,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000869974,
+            "combatEndedTurn": 8,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 49,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": false,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 2500,
+            "Ran": true,
+            "Selected": false,
+            "Compared": true,
+            "ExpandedNodes": 2500,
+            "TransitionCount": 10313,
+            "Termination": "NodeLimit",
+            "Terminal": true,
+            "Won": true,
+            "BattleHpLost": 17,
+            "PotionCount": 0,
+            "ElapsedMilliseconds": 1545,
+            "AllocatedBytes": 546301264,
+            "ManagedHeapBytesAfter": 61751120,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [
+          "[CombatSolver/Test] NOVELTY_SEARCH_STOP reason=node_limit expanded=2500 transitions=10313 elapsed_ms=1539"
+        ],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "target_order-validation-high",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {},
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 1.7961795,
+          "peakManagedLiveBytes": 42778592,
+          "peakWorkingSetBytes": 251990016,
+          "totalAllocatedBytes": 383987640,
+          "TotalExpanded": 1571,
+          "TotalTransitions": 4296,
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 18,
+            "strategicHpDeficit": 18,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 84,
+            "score": -1000001380006,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 0,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 1.8057724,
+          "peakManagedLiveBytes": 42857936,
+          "peakWorkingSetBytes": 251342848,
+          "totalAllocatedBytes": 383981448,
+          "TotalExpanded": 1571,
+          "TotalTransitions": 4296,
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 18,
+            "strategicHpDeficit": 18,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 84,
+            "score": -1000001380006,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 0,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": true,
+        "initialMemberEqual": true,
+        "structuralMembers": [],
+        "diagnostics": [],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "random-ironclad-monster-validation",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {
+            "node_limit": 1
+          },
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 12.6259106,
+          "peakManagedLiveBytes": 81866216,
+          "peakWorkingSetBytes": 331583488,
+          "totalAllocatedBytes": 3259575216,
+          "TotalExpanded": 20803,
+          "TotalTransitions": 76322,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 9,
+            "strategicHpDeficit": 3,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10001851989,
+            "combatEndedTurn": 3,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 71,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 14.6389039,
+          "peakManagedLiveBytes": 106314464,
+          "peakWorkingSetBytes": 349171712,
+          "totalAllocatedBytes": 3629409080,
+          "TotalExpanded": 21996,
+          "TotalTransitions": 80674,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 9,
+            "strategicHpDeficit": 3,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10001851989,
+            "combatEndedTurn": 3,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 71,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": false,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 2500,
+            "Ran": true,
+            "Selected": true,
+            "Compared": true,
+            "ExpandedNodes": 2500,
+            "TransitionCount": 9423,
+            "Termination": "NodeLimit",
+            "Terminal": true,
+            "Won": true,
+            "BattleHpLost": 9,
+            "PotionCount": 0,
+            "ElapsedMilliseconds": 3478,
+            "AllocatedBytes": 570253200,
+            "ManagedHeapBytesAfter": 81336168,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [
+          "[CombatSolver/Test] NOVELTY_SEARCH_STOP reason=node_limit expanded=2500 transitions=9423 elapsed_ms=3473"
+        ],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "random-ironclad-elite-validation",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {
+            "node_limit": 1
+          },
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 21.0022009,
+          "peakManagedLiveBytes": 87457072,
+          "peakWorkingSetBytes": 344821760,
+          "totalAllocatedBytes": 6386056304,
+          "TotalExpanded": 43071,
+          "TotalTransitions": 146831,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 45,
+            "strategicHpDeficit": 35,
+            "potionStrategicCost": 18,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 0,
+            "score": 9999859983,
+            "combatEndedTurn": 4,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 1
+          },
+          "resources": {
+            "playerHp": 39,
+            "playerMaxHp": 84,
+            "recoveredPlayerHp": 4
+          }
+        },
+        "candidate": {
+          "wallSeconds": 22.1771534,
+          "peakManagedLiveBytes": 117970208,
+          "peakWorkingSetBytes": 362807296,
+          "totalAllocatedBytes": 6587449592,
+          "TotalExpanded": 43434,
+          "TotalTransitions": 148022,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 45,
+            "strategicHpDeficit": 35,
+            "potionStrategicCost": 18,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 0,
+            "score": 9999859983,
+            "combatEndedTurn": 4,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 1
+          },
+          "resources": {
+            "playerHp": 39,
+            "playerMaxHp": 84,
+            "recoveredPlayerHp": 4
+          }
+        },
+        "originalMembersEqual": false,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 2500,
+            "Ran": true,
+            "Selected": true,
+            "Compared": true,
+            "ExpandedNodes": 2500,
+            "TransitionCount": 8667,
+            "Termination": "NodeLimit",
+            "Terminal": true,
+            "Won": true,
+            "BattleHpLost": 67,
+            "PotionCount": 0,
+            "ElapsedMilliseconds": 2367,
+            "AllocatedBytes": 519850984,
+            "ManagedHeapBytesAfter": 76235944,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [
+          "[CombatSolver/Test] NOVELTY_SEARCH_STOP reason=node_limit expanded=2500 transitions=8667 elapsed_ms=2362"
+        ],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "random-ironclad-boss-validation",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {
+            "node_limit": 1
+          },
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 26.9959395,
+          "peakManagedLiveBytes": 93694472,
+          "peakWorkingSetBytes": 353878016,
+          "totalAllocatedBytes": 8826086304,
+          "TotalExpanded": 57573,
+          "TotalTransitions": 215113,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 41,
+            "strategicHpDeficit": 40,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9999807972,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 39,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 28.3442862,
+          "peakManagedLiveBytes": 106136968,
+          "peakWorkingSetBytes": 353009664,
+          "totalAllocatedBytes": 8941546912,
+          "TotalExpanded": 56589,
+          "TotalTransitions": 212673,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 41,
+            "strategicHpDeficit": 40,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9999807972,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 39,
+            "playerMaxHp": 80,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": false,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 2500,
+            "Ran": true,
+            "Selected": false,
+            "Compared": true,
+            "ExpandedNodes": 2500,
+            "TransitionCount": 10575,
+            "Termination": "NodeLimit",
+            "Terminal": true,
+            "Won": false,
+            "BattleHpLost": 15,
+            "PotionCount": 0,
+            "ElapsedMilliseconds": 2241,
+            "AllocatedBytes": 606315544,
+            "ManagedHeapBytesAfter": 98189512,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [
+          "[CombatSolver/Test] NOVELTY_SEARCH_STOP reason=node_limit expanded=2500 transitions=10575 elapsed_ms=2234"
+        ],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "random-silent-monster-validation",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {
+            "node_limit": 1
+          },
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 70.4873156,
+          "peakManagedLiveBytes": 141101720,
+          "peakWorkingSetBytes": 394895360,
+          "totalAllocatedBytes": 24479905688,
+          "TotalExpanded": 83533,
+          "TotalTransitions": 596549,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 54,
+            "strategicHpDeficit": 54,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9998839959,
+            "combatEndedTurn": 8,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 16,
+            "playerMaxHp": 70,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 70.6223789,
+          "peakManagedLiveBytes": 152631904,
+          "peakWorkingSetBytes": 406945792,
+          "totalAllocatedBytes": 24471219976,
+          "TotalExpanded": 82640,
+          "TotalTransitions": 593176,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 54,
+            "strategicHpDeficit": 54,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9998839959,
+            "combatEndedTurn": 8,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 16,
+            "playerMaxHp": 70,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": false,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 2500,
+            "Ran": true,
+            "Selected": false,
+            "Compared": true,
+            "ExpandedNodes": 2500,
+            "TransitionCount": 24133,
+            "Termination": "NodeLimit",
+            "Terminal": true,
+            "Won": false,
+            "BattleHpLost": 70,
+            "PotionCount": 0,
+            "ElapsedMilliseconds": 2864,
+            "AllocatedBytes": 1074897448,
+            "ManagedHeapBytesAfter": 82185080,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [
+          "[CombatSolver/Test] NOVELTY_SEARCH_STOP reason=node_limit expanded=2500 transitions=24133 elapsed_ms=2854"
+        ],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "random-silent-elite-validation",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {
+            "node_limit": 1
+          },
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 47.9467282,
+          "peakManagedLiveBytes": 127823952,
+          "peakWorkingSetBytes": 385761280,
+          "totalAllocatedBytes": 17224419352,
+          "TotalExpanded": 72213,
+          "TotalTransitions": 340961,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 37,
+            "strategicHpDeficit": 37,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9999739971,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 33,
+            "playerMaxHp": 70,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 50.0331236,
+          "peakManagedLiveBytes": 150858904,
+          "peakWorkingSetBytes": 389758976,
+          "totalAllocatedBytes": 17795527160,
+          "TotalExpanded": 72342,
+          "TotalTransitions": 346553,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 37,
+            "strategicHpDeficit": 37,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9999739971,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 33,
+            "playerMaxHp": 70,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": false,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 2500,
+            "Ran": true,
+            "Selected": false,
+            "Compared": true,
+            "ExpandedNodes": 2500,
+            "TransitionCount": 16411,
+            "Termination": "NodeLimit",
+            "Terminal": true,
+            "Won": true,
+            "BattleHpLost": 51,
+            "PotionCount": 0,
+            "ElapsedMilliseconds": 2899,
+            "AllocatedBytes": 1079863216,
+            "ManagedHeapBytesAfter": 94504280,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [
+          "[CombatSolver/Test] NOVELTY_SEARCH_STOP reason=node_limit expanded=2500 transitions=16411 elapsed_ms=2892"
+        ],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "random-silent-boss-validation",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {},
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 25.6458697,
+          "peakManagedLiveBytes": 97261312,
+          "peakWorkingSetBytes": 352944128,
+          "totalAllocatedBytes": 7984598672,
+          "TotalExpanded": 54720,
+          "TotalTransitions": 219189,
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 0,
+            "strategicHpDeficit": 0,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 180,
+            "score": -1000001848030,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 0,
+            "playerMaxHp": 70,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 25.7136446,
+          "peakManagedLiveBytes": 100591256,
+          "peakWorkingSetBytes": 357986304,
+          "totalAllocatedBytes": 7983112928,
+          "TotalExpanded": 54720,
+          "TotalTransitions": 219189,
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 0,
+            "strategicHpDeficit": 0,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 180,
+            "score": -1000001848030,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 0,
+            "playerMaxHp": 70,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": true,
+        "initialMemberEqual": true,
+        "structuralMembers": [],
+        "diagnostics": [],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "random-defect-elite-validation",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {
+            "node_limit": 1
+          },
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 95.5622051,
+          "peakManagedLiveBytes": 124359056,
+          "peakWorkingSetBytes": 399257600,
+          "totalAllocatedBytes": 32062661424,
+          "TotalExpanded": 175253,
+          "TotalTransitions": 679753,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 40,
+            "strategicHpDeficit": 40,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9999849978,
+            "combatEndedTurn": 8,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 35,
+            "playerMaxHp": 75,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 94.257951,
+          "peakManagedLiveBytes": 117636752,
+          "peakWorkingSetBytes": 415088640,
+          "totalAllocatedBytes": 31778745520,
+          "TotalExpanded": 172665,
+          "TotalTransitions": 668718,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 40,
+            "strategicHpDeficit": 40,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9999849978,
+            "combatEndedTurn": 8,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 35,
+            "playerMaxHp": 75,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": false,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 2500,
+            "Ran": true,
+            "Selected": true,
+            "Compared": true,
+            "ExpandedNodes": 2500,
+            "TransitionCount": 9600,
+            "Termination": "NodeLimit",
+            "Terminal": true,
+            "Won": true,
+            "BattleHpLost": 40,
+            "PotionCount": 0,
+            "ElapsedMilliseconds": 2098,
+            "AllocatedBytes": 643572424,
+            "ManagedHeapBytesAfter": 112928096,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [
+          "[CombatSolver/Test] NOVELTY_SEARCH_STOP reason=node_limit expanded=2500 transitions=9600 elapsed_ms=2091"
+        ],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "random-defect-boss-validation",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {
+            "node_limit": 1
+          },
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 36.0515764,
+          "peakManagedLiveBytes": 131791200,
+          "peakWorkingSetBytes": 386699264,
+          "totalAllocatedBytes": 11285058040,
+          "TotalExpanded": 61339,
+          "TotalTransitions": 247314,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 62,
+            "strategicHpDeficit": 62,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9998309950,
+            "combatEndedTurn": 13,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 13,
+            "playerMaxHp": 75,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 36.787177,
+          "peakManagedLiveBytes": 132551648,
+          "peakWorkingSetBytes": 373846016,
+          "totalAllocatedBytes": 11376836592,
+          "TotalExpanded": 60194,
+          "TotalTransitions": 244572,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 62,
+            "strategicHpDeficit": 62,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9998309950,
+            "combatEndedTurn": 13,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 13,
+            "playerMaxHp": 75,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": false,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 2500,
+            "Ran": true,
+            "Selected": false,
+            "Compared": true,
+            "ExpandedNodes": 2500,
+            "TransitionCount": 12180,
+            "Termination": "NodeLimit",
+            "Terminal": true,
+            "Won": false,
+            "BattleHpLost": 75,
+            "PotionCount": 0,
+            "ElapsedMilliseconds": 2524,
+            "AllocatedBytes": 762054744,
+            "ManagedHeapBytesAfter": 109075272,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [
+          "[CombatSolver/Test] NOVELTY_SEARCH_STOP reason=node_limit expanded=2500 transitions=12180 elapsed_ms=2515"
+        ],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "random-regent-monster-validation",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {
+            "node_limit": 1
+          },
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 73.5694333,
+          "peakManagedLiveBytes": 207089056,
+          "peakWorkingSetBytes": 486121472,
+          "totalAllocatedBytes": 23352552400,
+          "TotalExpanded": 110788,
+          "TotalTransitions": 555882,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 7,
+            "strategicHpDeficit": 7,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10001797974,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 68,
+            "playerMaxHp": 75,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 72.3381069,
+          "peakManagedLiveBytes": 236850552,
+          "peakWorkingSetBytes": 496566272,
+          "totalAllocatedBytes": 22920834912,
+          "TotalExpanded": 108205,
+          "TotalTransitions": 540929,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 7,
+            "strategicHpDeficit": 7,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10001797974,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 68,
+            "playerMaxHp": 75,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": false,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 2500,
+            "Ran": true,
+            "Selected": false,
+            "Compared": true,
+            "ExpandedNodes": 2500,
+            "TransitionCount": 10386,
+            "Termination": "NodeLimit",
+            "Terminal": true,
+            "Won": true,
+            "BattleHpLost": 16,
+            "PotionCount": 0,
+            "ElapsedMilliseconds": 2125,
+            "AllocatedBytes": 630778528,
+            "ManagedHeapBytesAfter": 100535920,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [
+          "[CombatSolver/Test] NOVELTY_SEARCH_STOP reason=node_limit expanded=2500 transitions=10386 elapsed_ms=2118"
+        ],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "random-regent-boss-validation",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {},
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 46.8154758,
+          "peakManagedLiveBytes": 190193064,
+          "peakWorkingSetBytes": 444895232,
+          "totalAllocatedBytes": 15854539248,
+          "TotalExpanded": 50738,
+          "TotalTransitions": 376246,
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 75,
+            "strategicHpDeficit": 75,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 233,
+            "score": -1000004460034,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 0,
+            "playerMaxHp": 75,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 47.019262,
+          "peakManagedLiveBytes": 185074080,
+          "peakWorkingSetBytes": 437731328,
+          "totalAllocatedBytes": 15854331416,
+          "TotalExpanded": 50738,
+          "TotalTransitions": 376246,
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 75,
+            "strategicHpDeficit": 75,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 233,
+            "score": -1000004460034,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 0,
+            "playerMaxHp": 75,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": true,
+        "initialMemberEqual": true,
+        "structuralMembers": [],
+        "diagnostics": [],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "random-necrobinder-elite-validation",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {
+            "node_limit": 1
+          },
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 12.4435583,
+          "peakManagedLiveBytes": 77603784,
+          "peakWorkingSetBytes": 329342976,
+          "totalAllocatedBytes": 3158235560,
+          "TotalExpanded": 18902,
+          "TotalTransitions": 65983,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 25,
+            "strategicHpDeficit": 25,
+            "potionStrategicCost": 9,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 0,
+            "score": 10000431974,
+            "combatEndedTurn": 5,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 41,
+            "playerMaxHp": 66,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 14.5547291,
+          "peakManagedLiveBytes": 95643040,
+          "peakWorkingSetBytes": 337059840,
+          "totalAllocatedBytes": 3477056544,
+          "TotalExpanded": 19799,
+          "TotalTransitions": 69451,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 25,
+            "strategicHpDeficit": 25,
+            "potionStrategicCost": 9,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 0,
+            "score": 10000431974,
+            "combatEndedTurn": 5,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 41,
+            "playerMaxHp": 66,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": false,
+        "initialMemberEqual": true,
+        "structuralMembers": [
+          {
+            "BeamWidth": 40,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 2500,
+            "Ran": true,
+            "Selected": false,
+            "Compared": true,
+            "ExpandedNodes": 2500,
+            "TransitionCount": 8867,
+            "Termination": "NodeLimit",
+            "Terminal": true,
+            "Won": true,
+            "BattleHpLost": 43,
+            "PotionCount": 0,
+            "ElapsedMilliseconds": 2782,
+            "AllocatedBytes": 544280672,
+            "ManagedHeapBytesAfter": 90313120,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false,
+            "NoveltyRefinement": true
+          }
+        ],
+        "diagnostics": [
+          "[CombatSolver/Test] NOVELTY_SEARCH_STOP reason=node_limit expanded=2500 transitions=8867 elapsed_ms=2777"
+        ],
+        "comparison": 0,
+        "materialComparison": 0
+      },
+      {
+        "case": "random-necrobinder-boss-validation",
+        "status": "Comparable",
+        "budget": {
+          "scope": "request",
+          "source": "diagnosticLog",
+          "turnLayerTimeStops": 0,
+          "turnLayerNodeStops": 0,
+          "noveltyStops": {},
+          "timeBoundaryObserved": false,
+          "diagnosticIssues": []
+        },
+        "baseline": {
+          "wallSeconds": 39.5865389,
+          "peakManagedLiveBytes": 143653568,
+          "peakWorkingSetBytes": 390877184,
+          "totalAllocatedBytes": 12662116784,
+          "TotalExpanded": 63558,
+          "TotalTransitions": 326250,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 58,
+            "strategicHpDeficit": 58,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9998399958,
+            "combatEndedTurn": 11,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 8,
+            "playerMaxHp": 66,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "candidate": {
+          "wallSeconds": 39.6364587,
+          "peakManagedLiveBytes": 146327968,
+          "peakWorkingSetBytes": 405303296,
+          "totalAllocatedBytes": 12660591544,
+          "TotalExpanded": 63558,
+          "TotalTransitions": 326250,
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 58,
+            "strategicHpDeficit": 58,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9998399958,
+            "combatEndedTurn": 11,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "resources": {
+            "playerHp": 8,
+            "playerMaxHp": 66,
+            "recoveredPlayerHp": 0
+          }
+        },
+        "originalMembersEqual": true,
+        "initialMemberEqual": true,
+        "structuralMembers": [],
+        "diagnostics": [],
+        "comparison": 0,
+        "materialComparison": 0
+      }
+    ]
+  },
+  "checks": {
+    "prototypePortfolioContracts": 115,
+    "releaseBuild": "0 warnings, 0 errors",
+    "hostBuild": "0 warnings, 0 errors",
+    "bashBoundaryFiles": 208,
+    "powershellBoundaryFiles": 208
+  },
+  "limitations": [
+    "Reused development validation roots are not an independent test or a player population sample.",
+    "Historical baseline timing is unpaired; raw differences do not establish true elapsed performance.",
+    "Sampled GetTotalMemory(false) is not exact retained heap.",
+    "No fresh test, native deployment, or ABBA executed for this rejected prototype.",
+    "Fresh STRUCTURAL-HOLDOUT-20260922 test inputs were generated but never run.",
+    "Final archived patch adds a guard preserving the already-enabled optional novelty portfolio; all measured inputs had that option disabled and use the same measured algorithm.",
+    "The prototype was reverted from runtime source; its tests live in the patch rather than the active check program."
+  ]
+}

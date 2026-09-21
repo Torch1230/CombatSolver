@@ -27,6 +27,11 @@ def context_mismatch(a, b):
         return 'BudgetMismatch'
     policy_a, policy_b = [json.loads(json.dumps(r['searchPolicy'])) for r in (a, b)]
     for policy in (policy_a, policy_b):
+        # Explicit algorithm experiments; these do not change the final goal policy.
+        # Older hosts did not serialize these switches. Commands/member logs remain
+        # the source for their old values; never infer a missing value as a default.
+        for key in ('BeamWidthPortfolioPlainBaselineMember', 'UseNoveltyPortfolio'):
+            policy.pop(key, None)
         for key in ('ContextualRanking', 'BaseScoreOnly', 'SecondRankBand', 'ContinuousThreatRanking', 'BaseScoreTacticalTies', 'AdaptiveNoveltyRefinement', 'StopPortfolioAtHpTarget', 'BeamWeightPerturbation', 'OffensiveRefinementPortfolio', 'BoundedOffensiveRefinementPortfolio'):
             policy['Profile'].pop(key, None)
     return 'PolicyMismatch' if policy_a != policy_b else None
@@ -53,6 +58,10 @@ def compare(args):
             item['status'] = mismatch
             continue
         item['status'] = 'Comparable'
+        item['algorithmSwitches'] = {
+            name: {key: result['searchPolicy'].get(key, 'Unrecorded') for key in
+                   ('BeamWidthPortfolioPlainBaselineMember', 'UseNoveltyPortfolio')}
+            for name, result in (('baseline', ha), ('candidate', hb))}
         for name, result, path in (('baseline', ha, pa), ('candidate', hb, pb)):
             item[name] = {k: result[k] for k in ('wallSeconds', 'peakManagedHeapBytes',
                 'peakManagedLiveBytes', 'peakWorkingSetBytes', 'totalAllocatedBytes')}
