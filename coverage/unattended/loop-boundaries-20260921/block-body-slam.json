@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "LOOP-BOUNDARY-BLOCK-BODY-SLAM",
+  "description": "Repeatable block remains useful offensively with upgraded Body Slam even after defense saturates.",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "LOOPLETTEROPENERPHASE0111",
+  "enemyCurrentHp": 37,
+  "initialPlayerHp": 80,
+  "initialPlayerMaxHp": 80,
+  "initialPlayerEnergy": 0,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    {
+      "cardId": "FINESSE",
+      "pile": "Hand"
+    },
+    {
+      "cardId": "FINESSE",
+      "pile": "Discard"
+    },
+    {
+      "cardId": "BODY_SLAM",
+      "pile": "Discard",
+      "upgradeLevels": 1
+    }
+  ],
+  "relics": [],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 10000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "stopAfterInitialSolverResultAssertion": false,
+  "timeoutSeconds": 120,
+  "performancePresetForTest": "Low",
+  "expectedInitialProjectedBattleHpLost": 0,
+  "expectedInitialCombatEndedTurn": 2,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "verifyIncrementalSearch": true,
+  "expectedUnexpectedReplansAtMost": 0
+}

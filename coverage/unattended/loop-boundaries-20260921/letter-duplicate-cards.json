@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "LOOP-BOUNDARY-LETTER-DUPLICATE-CARDS",
+  "description": "Equivalent duplicate skills in hand must retain instance/replay identity.",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "LOOPLETTEROPENERPHASE0111",
+  "enemyCurrentHp": 71,
+  "initialPlayerHp": 80,
+  "initialPlayerMaxHp": 80,
+  "initialPlayerEnergy": 0,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    {
+      "cardId": "IMPATIENCE",
+      "pile": "Hand",
+      "count": 2
+    },
+    {
+      "cardId": "IMPATIENCE",
+      "pile": "Discard"
+    }
+  ],
+  "relics": [
+    {
+      "relicId": "LETTER_OPENER"
+    }
+  ],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 10000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120,
+  "performancePresetForTest": "Low",
+  "initialEnemyMaxHps": [
+    71
+  ],
+  "initialEnemyCurrentHps": [
+    71
+  ]
+}

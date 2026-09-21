@@ -30,6 +30,8 @@ Power 的原版克隆会重置 `_internalData`。跨根保留的数据必须从�
 
 ## 1. 求解器默认怎么对待未知内容
 
+格挡清空被阻止后的上限结算目前只显式识别原版 `SturdyClamp`；其他已准入的 preventer 在 `PersistentRelicSupport.BlockAfterPreventingClear` 中按全额保留计算。搜索的保留格挡估值与实际影子清空共用此规则，二者一致不等于已支持第三方的额外上限。新增“保留至多 N 点”等语义时，必须同时适配清空后的结算和估值，并验证原生状态与分支状态；仅登记 `ShouldClearBlock=false` 不足以实现该上限。这是既有适配边界，不表示未知第三方会自动通过兼容门禁。
+
 计算型动态变量必须有分支规则。第三方卡牌进入 `CalculatedVar` 求值且没有 `CalculatedVarSpecRegistry` 支持时，按卡牌所属 Mod 报不兼容，日志包含卡牌 ID；界面和报告账本不引导玩家上传。不能回退调用会读取 live 状态的原生计算器。20260911 的 `LIFEMASTERMOD-TENTACLES` 属于该情况，本次没有为该 Mod 提供适配。
 
 Power 来源也是语义的一部分：精确镜像可通过 `ICombatPredictionEffectSink.ApplyPowerFromSource` 显式提供 `CardModel? cardSource`，原版传 null 时必须保持 null，避免能力附带效果被误判成外层卡牌直接效果。普通 `ApplyPower` 仍沿用当前卡牌作用域；两者不能按调用栈有无卡牌随意替代。

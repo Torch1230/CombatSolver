@@ -1,4 +1,12 @@
 {
+  "LOOP-BOUNDARIES-AUDIT-20260921": {
+    "status": "PassedWithDocumentedPerformanceRegression",
+    "level": "19FixedOfflineABAnd4NativeScenarios",
+    "procedure": "独立串行 A/B，完整根/路线比较及显式质量检查；4096耗尽另取ABBA；三项严格增量原生完整部署，一项低血首次结果断言",
+    "expected": "固定场景无质量下降；保留差异、失败和性能反例，不将离线一致冒充原生正确性",
+    "observed": "19/19胜负与质量指标一致；18/19路线相同，1同质量异路线。耗尽反例展开/转移4675/9375→4675/13471，求解+11.3%，Search累计分配+14.9%，采样活对象峰值-18.6%。原生4项Passed、实例已清理；完整部署3项计划外重算0。未完成历史EQ10/FULL40与投影低估防守哨兵。 追加分支早停DOP2：基线166/431→169/437，候选139/359→142/367，均同质量异路线，不能宣称普遍DOP等价。",
+    "evidence": "docs/performance/loop-boundaries-20260921.md; docs/performance/loop-boundaries-20260921-evidence.json; coverage/unattended/loop-boundaries-20260921/suite.json"
+  },
   "LOOP-QUALITY-PERFORMANCE-DISPLAY-20260921": {
     "status": "Passed",
     "level": "TargetedHeadlessNativeAndOfflineABBA",

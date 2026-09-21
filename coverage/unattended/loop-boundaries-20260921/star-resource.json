@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "LOOP-BOUNDARY-STAR-RESOURCE",
+  "characterId": "REGENT",
+  "encounterId": "AEONGLASS_BOSS",
+  "seed": "LOOPREGENTPOS0111",
+  "actIndexForTest": 2,
+  "enemyCurrentHp": 31,
+  "initialPlayerHp": 75,
+  "initialPlayerMaxHp": 75,
+  "initialPlayerEnergy": 2,
+  "initialPlayerStars": 0,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    {
+      "cardId": "GLOW",
+      "pile": "Hand",
+      "upgradeLevels": 1
+    },
+    {
+      "cardId": "SPOILS_OF_BATTLE",
+      "pile": "Hand"
+    },
+    {
+      "cardId": "ALIGNMENT",
+      "pile": "Draw"
+    }
+  ],
+  "powers": [
+    {
+      "powerId": "BLACK_HOLE_POWER",
+      "target": "Player",
+      "amount": 3
+    }
+  ],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 10000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120,
+  "description": "Smaller non-multiple lethal boundary with explicit choices or changing resources.",
+  "performancePresetForTest": "Low"
+}

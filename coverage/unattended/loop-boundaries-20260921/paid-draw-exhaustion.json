@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "LOOP-BOUNDARY-PAID-DRAW-EXHAUSTION",
+  "description": "Two paid draw attacks exhaust turn-one energy; waiting remains a valid continuation.",
+  "characterId": "SILENT",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "LOOPBLOODPOMMELQUALITY0111",
+  "enemyCurrentHp": 40,
+  "initialEnemyMoveIds": [
+    "INHALE"
+  ],
+  "initialPlayerHp": 57,
+  "initialPlayerMaxHp": 57,
+  "initialPlayerEnergy": 1,
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    {
+      "cardId": "POMMEL_STRIKE",
+      "pile": "Hand",
+      "count": 2,
+      "upgradeLevels": 1,
+      "treatAsDeckCard": true
+    }
+  ],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 10000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120,
+  "performancePresetForTest": "Low"
+}

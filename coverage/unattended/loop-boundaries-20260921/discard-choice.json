@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "LOOP-BOUNDARY-DISCARD-CHOICE",
+  "description": "Smaller non-multiple lethal boundary with explicit choices or changing resources.",
+  "characterId": "SILENT",
+  "encounterId": "AEONGLASS_BOSS",
+  "actIndexForTest": 2,
+  "seed": "LOOPSILENTPREPARED0111",
+  "enemyCurrentHp": 37,
+  "initialPlayerHp": 70,
+  "initialPlayerMaxHp": 70,
+  "initialPlayerEnergy": 1,
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    {
+      "cardId": "PREPARED",
+      "pile": "Hand",
+      "upgradeLevels": 1,
+      "treatAsDeckCard": true
+    },
+    {
+      "cardId": "DEFEND_SILENT",
+      "pile": "Hand",
+      "treatAsDeckCard": true
+    },
+    {
+      "cardId": "TACTICIAN",
+      "pile": "Discard",
+      "upgradeLevels": 1,
+      "treatAsDeckCard": true
+    },
+    {
+      "cardId": "ACROBATICS",
+      "pile": "Discard",
+      "upgradeLevels": 1,
+      "treatAsDeckCard": true
+    }
+  ],
+  "powers": [
+    {
+      "powerId": "SPEEDSTER_POWER",
+      "target": "Player",
+      "amount": 2
+    }
+  ],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 10000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120,
+  "performancePresetForTest": "Low"
+}

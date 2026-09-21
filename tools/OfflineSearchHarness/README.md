@@ -36,3 +36,5 @@ python3 tools/OfflineSearchHarness/compare_results.py \
 | `run_plan.py` / `compare_results.py` | 批量运行、逐字段比较 |
 
 `--request` 也接受本仓库的固定装备/初始战斗状态夹具，不再强制 generatedScenarioPath；仍不执行 fixture 的 expected 断言。搜索预算、预设与药水政策以宿主 CLI 为准，例如成长循环须显式传 `--potion-policy RequireAtLeastOne`。恢复快照、追加怪物、自定义规则不支持并明确拒绝；特殊 ScenarioId 的原生合同请使用无人游戏测试。`--stop-at-zero-loss` 启用生产零战损达标停止；`--verify-incremental` 对小根逐步完整回放，不用于性能测量。见[循环对照](../../docs/performance/loop-optimization-20260921.md)。
+
+循环固定边界集使用 `run_loop_boundaries.py`：串行双 DLL A/B，120 秒进程上限，拒绝覆盖已有结果，显式检查 suite 的质量／结构条件并比较完整路线。不同路线保留证据且退出非零，需要人工核对，不自动判作质量退化；见[19 根边界与回放耗尽反例](../../docs/performance/loop-boundaries-20260921.md)。

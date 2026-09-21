@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "LOOP-BOUNDARY-BLOOD-LOW-HP",
+  "description": "At 4 HP paying for the full turn-one kill is lethal; preserve a cheaper later route.",
+  "characterId": "SILENT",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "LOOPBLOODPOMMELQUALITY0111",
+  "enemyCurrentHp": 40,
+  "initialEnemyMoveIds": [
+    "INHALE"
+  ],
+  "initialPlayerHp": 4,
+  "initialPlayerMaxHp": 57,
+  "initialPlayerEnergy": 0,
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    {
+      "cardId": "BLOODLETTING",
+      "pile": "Hand",
+      "treatAsDeckCard": true
+    },
+    {
+      "cardId": "POMMEL_STRIKE",
+      "pile": "Hand",
+      "count": 2,
+      "upgradeLevels": 1,
+      "treatAsDeckCard": true
+    }
+  ],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 10000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120,
+  "performancePresetForTest": "Low",
+  "expectedInitialProjectedBattleHpLost": 3,
+  "expectedInitialCombatEndedTurn": 2,
+  "expectedInitialFinalEnemyHpAtMost": 0
+}
