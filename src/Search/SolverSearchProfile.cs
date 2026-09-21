@@ -17,6 +17,8 @@ internal sealed record SolverSearchProfile(
 
     // Experimental, explicitly injected frozen model; absent in normal production profiles.
     public ContextualRankingModel? ContextualRanking { get; init; }
+    /// <summary>Offline experiment: a lethal stand-pat projection is not a proved death while cards remain playable.</summary>
+    public bool ContinuousThreatRanking { get; init; }
 
     /// <summary>
     /// 中途排序只用状态基础分 <c>node.Score</c>，不加 <c>BeamRankScore</c> 的各项附加分（当前能量、

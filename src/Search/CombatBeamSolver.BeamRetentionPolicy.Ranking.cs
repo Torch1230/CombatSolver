@@ -858,7 +858,19 @@ internal sealed partial class CombatBeamSolver
             int weakExpectedHpSaved = _isActEndingBoss
                 ? SolverWeights.BossEnemyWeakExpectedHpSaved
                 : SolverWeights.StandardEnemyWeakExpectedHpSaved;
-            double score = node.Score
+            double baseScore = node.Score;
+            if (_profile.ContinuousThreatRanking && !node.IsTerminal
+                && node.Action is { Kind: PlanActionKind.EndTurn }
+                && !node.Snapshot.PlayerDead && node.Snapshot.ProjectedPlayerHp <= 0
+                && node.Snapshot.ReachableHandValue > 0)
+            {
+                // Stand-pat projects ending now. A living player can still block, draw or
+                // kill before that intent. Keep its HP deficit continuous in intermediate
+                // ordering only; final outcomes and exact dominance retain their policies.
+                baseScore = node.Score - SolverWeights.DeathPenalty
+                    + node.Snapshot.ProjectedPlayerHp * SolverWeights.Hp;
+            }
+            double score = baseScore
                 + Math.Min(SolverWeights.CurrentEnergyBeamCap, node.Snapshot.Energy)
                     * SolverWeights.CurrentEnergyBeamValue
                 + Math.Min(

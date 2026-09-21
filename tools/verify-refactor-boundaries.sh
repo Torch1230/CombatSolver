@@ -1302,7 +1302,9 @@ for token in 'File.' 'SolverSettings.Current' 'SolverController' 'ComparePrimary
     forbid_fixed "$search_root/ContextualRankingModel.cs" "$token" 'contextual estimate crossed its pure ranking boundary:'
 done
 for file in CombatBeamSolver.FinalPlanOrdering.cs CombatBeamSolver.Transpositions.cs; do
-    forbid_fixed "$search_root/$file" 'ContextualRanking' 'learned estimate must not become final policy or exact dominance:'
+    for token in ContextualRanking ContinuousThreatRanking; do
+        forbid_fixed "$search_root/$file" "$token" 'intermediate estimate must not become final policy or exact dominance:'
+    done
 done
 
 if ((${#violations[@]} > 0)); then

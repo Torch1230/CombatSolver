@@ -1647,8 +1647,10 @@ foreach ($text in @('File.', 'SolverSettings.Current', 'SolverController', 'Comp
     }
 }
 foreach ($file in @('CombatBeamSolver.FinalPlanOrdering.cs', 'CombatBeamSolver.Transpositions.cs')) {
-    if (Select-String -LiteralPath (Join-Path $searchRoot $file) -SimpleMatch 'ContextualRanking' -Quiet) {
-        $violations.Add("Learned estimate must not become final policy or exact dominance: $file")
+    foreach ($text in @('ContextualRanking', 'ContinuousThreatRanking')) {
+        if (Select-String -LiteralPath (Join-Path $searchRoot $file) -SimpleMatch $text -Quiet) {
+            $violations.Add("Intermediate estimate must not become final policy or exact dominance: $file")
+        }
     }
 }
 

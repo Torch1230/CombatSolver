@@ -392,9 +392,11 @@ internal static class ModRuntime
             SecondRankBand = options.Ordering == "band",
             ContextualRanking = options.RankingModelPath == null ? null
                 : ContextualRankingModel.Parse(File.ReadAllText(options.RankingModelPath)),
+            ContinuousThreatRanking = options.ContinuousThreatRanking,
         } };
         using OrderingObservations? orderingObservations = options.OrderingObservationLimit > 0
-            ? new OrderingObservations(options.OutputDirectory, options.OrderingObservationLimit) : null;
+            ? new OrderingObservations(options.OutputDirectory, options.OrderingObservationLimit,
+                options.OrderingWatchedStatesPath) : null;
         if (orderingObservations != null)
             policy = policy with { Diagnostics = new SearchDiagnosticsSink(
                 policy.Diagnostics.Info, policy.Diagnostics.Debug, orderingObservations.Observer) };

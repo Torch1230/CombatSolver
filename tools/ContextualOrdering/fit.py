@@ -79,7 +79,7 @@ if __name__ == '__main__':
     parser.add_argument('--iterations', type=int, default=1500)
     parser.add_argument('--feature', choices=NAMES, action='append')
     args = parser.parse_args()
-    if args.ridge <= 0 or not 0 < args.cap <= 8 or args.iterations < 1:
+    if not math.isfinite(args.ridge) or args.ridge <= 0 or not 0 < args.cap <= 8 or args.iterations < 1:
         raise ValueError('Invalid optimization configuration')
     data = read(args.pairs)
     if data['featureNames'] != list(NAMES) or not data['pairs']:

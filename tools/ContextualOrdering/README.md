@@ -42,3 +42,7 @@ variant 可指定自己的 `harness`。旧 DLL 需要兼容的旧宿主；引用
 第一轮模型已因 20 根中的 4 项退化（含胜转败）被拒绝。实际结果与限制见 [实验记录](../../docs/strategy/contextual-ordering-20260922.md)。训练没有消除未知后续和搜索分布漂移，正则/小幅修正并不保证不退化。
 
 `first_loss.py --baseline <root/baseline> --witness <root/better> --out <new-json>` 对照完整动作前缀和外层最终保留池；报告同状态别名前缀及政策标签，忽略可能被采集上限截断的最后一个边界。前缀缺席不自动等于状态/最优解丢失。新宿主的采集同时记录 GlobalRetention 和 RetentionPoolFinal，总行数仍受 N 限制。
+
+`--continuous-threat` 是另一个独立实验：只在 EndTurn 后的新回合起点、玩家实际存活且有可执行手牌时，用连续 HP 项替代中途排名里的投影死亡巨额罚分；默认关闭，不叠加模型或 base/band。终局和转置不使用该修正。20个定向训练根初筛无实质退化，独立验收仍未完成。
+
+`--observe-ordering-states <json>` 需要 `--observe-ordering N`；JSON 是精确状态键数组，例如 `[{"first":123,"second":456}]`，通常从较好见证的观察记录提取。它用于追踪相同状态的不同前缀，区分“这条前缀被剪”与“状态没有被展开”。DOP并行回调只串行写诊断文件；采集不能用于性能比较。

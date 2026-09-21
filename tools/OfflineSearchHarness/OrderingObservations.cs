@@ -14,30 +14,42 @@ internal sealed class OrderingObservations : IDisposable
     private readonly StreamWriter _writer;
     private readonly int _limit;
     private int _written;
+    private readonly HashSet<StateFingerprint> _watched;
+    private readonly object _writeLock = new();
     public SearchPathObserver Observer { get; }
 
-    public OrderingObservations(string directory, int limit)
+    public OrderingObservations(string directory, int limit, string? watchedStatesPath = null)
     {
         _limit = limit;
+        _watched = watchedStatesPath == null ? []
+            : new(JsonSerializer.Deserialize<StateFingerprint[]>(File.ReadAllText(watchedStatesPath), Json)
+                ?? throw new InvalidDataException("Missing watched ordering states."));
         _writer = new StreamWriter(new FileStream(Path.Combine(directory, "ordering-observations.jsonl"),
             FileMode.CreateNew, FileAccess.Write, FileShare.Read));
-        Observer = new SearchPathObserver(_ => false, Observe, _ => _written < _limit);
+        Observer = new SearchPathObserver(
+            state => Volatile.Read(ref _written) < _limit && _watched.Contains(state), Observe,
+            _ => Volatile.Read(ref _written) < _limit);
     }
 
     private void Observe(SearchPathObservation observation)
     {
         if (observation.Stage is not (SearchPathObservationStage.GlobalRetention
-                or SearchPathObservationStage.RetentionPoolFinal) || _written >= _limit)
+                or SearchPathObservationStage.RetentionPoolFinal) && !_watched.Contains(observation.StateKey))
             return;
-        // Global retention callbacks are serialized by the solver, after workers drain.
-        // The sink writes immediately so a long trace cannot retain its action arrays.
-        using IncrementalHash prefix = NewPrefix(observation.RootTurnSetupChoices);
-        foreach (PlanAction action in observation.Actions) Append(prefix, action);
-        _writer.WriteLine(JsonSerializer.Serialize(new
+        // Global retention is serial, but explicitly watched transition events can arrive
+        // from workers. Serialize only the diagnostic writer, never search or simulation.
+        lock (_writeLock)
         {
-            prefix = Convert.ToHexString(prefix.GetCurrentHash()), observation,
-        }, Json));
-        _written++;
+            if (_written >= _limit)
+                return;
+            using IncrementalHash prefix = NewPrefix(observation.RootTurnSetupChoices);
+            foreach (PlanAction action in observation.Actions) Append(prefix, action);
+            _writer.WriteLine(JsonSerializer.Serialize(new
+            {
+                prefix = Convert.ToHexString(prefix.GetCurrentHash()), observation,
+            }, Json));
+            _written++;
+        }
     }
 
     public void WriteSelectedPath(string directory, SolverResult result)
