@@ -173,3 +173,10 @@ plan 每项的字段：`label`（必填，简单目录名）、`request`（必�
 ## 循环边界对照
 
 `run_loop_boundaries.py` 接受逐 case 的 Evaluate / Coordinator。Evaluate 的局部 time/nodes 计数与日志对账；Coordinator 从全部成员日志提取请求级时间截断，不把所选 solver 的计数当请求总数。新版用 `TotalCycleReplayActions` 检查请求 4096 上限；旧版只在 Evaluate 可回退单 solver 值，旧 Coordinator 缺失请求数明确标为 unavailable。时间截断返回 Inconclusive/2；可比较差异、建局或质量断言失败返回 1，保留全部原始观察。工具的显式 suite 断言不等于原生 expected* 验收。见[完整输入、设计和结果](performance/loop-final-20260921.md)。
+
+
+### 后置结构探索实验
+
+`--adaptive-novelty` 仅接受 `--search-mode Coordinator --use-portfolio`，通过不可变 `AdaptiveNoveltyRefinement` profile 启用，生产默认关闭。先完整运行原 Beam 组合；达到完整政策目标（含治疗保护）则跳过，否则复用已有新颖性算法。补充额度分别不超过此前实际展开与实际耗时的 1/8，同时受原请求余量及既有 2500 节点/5 秒上限约束。节点额度不等于转移、分配或内存上限；不可分割工作仍可能越过软时间边界。
+
+`ADAPTIVE_NOVELTY_START/END` 记录实际预算、展开/转移和选择结果。`NOVELTY_SEARCH_STOP reason=...` 覆盖所有新颖性搜索；宿主分类器将 `time_limit` 单独记入 `noveltyStops` 并标记 `TimeLimited`，不混入回合层计数。以前没有该事件的 DLL 不能据“没有 SEARCH_TIME_BUDGET”断言该算法没有时间截断。探索预算依赖墙钟，质量观察必须保留时间截断与重复波动，不能称为固定工作量等价。完整取舍与验证结果见上下文排序报告。

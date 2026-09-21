@@ -21,6 +21,8 @@ internal sealed record SolverSearchProfile(
     public bool ContinuousThreatRanking { get; init; }
     /// <summary>Offline experiment: extend equal-policy tactical tie ordering to uniform-progress base-score boundaries.</summary>
     public bool BaseScoreTacticalTies { get; init; }
+    /// <summary>Offline experiment: run bounded structural exploration after the original Beam portfolio.</summary>
+    public bool AdaptiveNoveltyRefinement { get; init; }
     /// <summary>Offline one-factor sensitivity probe; absent in production profiles.</summary>
     public BeamWeightPerturbation? BeamWeightPerturbation { get; init; }
     /// <summary>Offline portfolio experiment: replace the wide refinement with a narrow offensive member.</summary>

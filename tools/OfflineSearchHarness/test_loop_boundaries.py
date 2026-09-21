@@ -10,7 +10,7 @@ from run_loop_boundaries import (
 
 
 class LoopBoundaryClassificationTests(unittest.TestCase):
-    def observe(self, metrics, messages=(), time_boundary=False):
+    def observe(self, metrics, messages=(), time_boundary=False, mode="Evaluate"):
         with tempfile.TemporaryDirectory() as directory:
             out = Path(directory)
             logs = out / 'logs' / 'process'
@@ -18,7 +18,7 @@ class LoopBoundaryClassificationTests(unittest.TestCase):
             (logs / 'process.jsonl').write_text(''.join(
                 json.dumps({'Message': message}) + '\n' for message in messages))
             return budget_observation({'solverMetrics': metrics,
-                                       'timeBoundaryObserved': time_boundary}, out)
+                                       'timeBoundaryObserved': time_boundary}, out, mode)
 
     def sample(self, label, budget, turn=2, failures=()):
         status = observation_status(budget, failures)
@@ -68,6 +68,20 @@ class LoopBoundaryClassificationTests(unittest.TestCase):
             with self.subTest(messages=messages, flag=flag):
                 budget = self.observe({}, messages, flag)
                 self.assertEqual('TimeLimited', observation_status(budget, []))
+
+    def test_novelty_time_stop_is_not_hidden_by_selected_beam_counters(self):
+        budget = self.observe({'TurnLayerBudgetStops': 0, 'TurnLayerTimeBudgetStops': 0,
+                               'TurnLayerNodeBudgetStops': 0},
+                              ['NOVELTY_SEARCH_STOP reason=time_limit expanded=21 transitions=70'], mode='Coordinator')
+        self.assertEqual({'time_limit': 1}, budget['noveltyStops'])
+        self.assertEqual([], budget['diagnosticIssues'])
+        self.assertEqual('TimeLimited', observation_status(budget, []))
+
+    def test_novelty_node_stop_does_not_masquerade_as_turn_layer_stop(self):
+        budget = self.observe({}, ['NOVELTY_SEARCH_STOP reason=node_limit'])
+        self.assertEqual({'node_limit': 1}, budget['noveltyStops'])
+        self.assertEqual(0, budget['turnLayerNodeStops'])
+        self.assertEqual('Comparable', observation_status(budget, []))
 
     def test_missing_old_dll_diagnostics_is_not_assumed_node_limited(self):
         with tempfile.TemporaryDirectory() as directory:

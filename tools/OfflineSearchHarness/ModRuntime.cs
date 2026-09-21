@@ -124,6 +124,7 @@ internal static class ModRuntime
             EnableNoGcRegion = options.EnableNoGcRegion,
             NoGcRegionBudgetGigabytes = options.NoGcRegionBudgetGigabytes,
             UseBeamWidthPortfolio = options.UsePortfolio,
+            UseNoveltyPortfolio = options.AdaptiveNoveltyRefinement,
             StopAtAcceptableBattleHpLoss = options.StopAtZeroLoss,
             OnlineStatisticsEnabled = false,
             SearchCompletionNotificationsEnabled = false,
@@ -394,6 +395,7 @@ internal static class ModRuntime
                 : ContextualRankingModel.Parse(File.ReadAllText(options.RankingModelPath)),
             ContinuousThreatRanking = options.ContinuousThreatRanking,
             BaseScoreTacticalTies = options.BaseScoreTacticalTies,
+            AdaptiveNoveltyRefinement = options.AdaptiveNoveltyRefinement,
             BeamWeightPerturbation = options.BeamWeightPerturbation,
             OffensiveRefinementPortfolio = options.OffensiveRefinementPortfolio,
             BoundedOffensiveRefinementPortfolio = options.BoundedOffensiveRefinementPortfolio

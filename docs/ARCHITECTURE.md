@@ -184,6 +184,8 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 `SolverSettings.UseNoveltyPortfolio` 默认关闭，由 Runtime 冻结到 `SearchPolicySnapshot`；设置、路线缓存和问题包均记录该值，玩家可在性能设置中开启。关闭状态下仅当完整结果预计损失至少 8 HP 时，主界面显示一次可永久隐藏的开启引导；7 HP 及以下、搜索中和功能已开启时不显示。`CombatSearchCoordinator.NoveltyPortfolio` 在主搜索内先做有界新颖性探索，再把实际剩余时间和节点交给既有 Beam／多宽度入口，之后照常执行药水审计。只在原有战损／成长／遗物／用药条件达标或玩家接管时提前返回；完整候选沿 `IsBetterPotionPolicyResult` 比较，不合并两个搜索的 frontier 或转置表。必要用药未满足是明确的搜索边界，仍可用剩余预算运行 Beam；模拟错误和取消继续传播。
 
+离线 `AdaptiveNoveltyRefinement` 实验保持默认关闭：复用同一入口，但先完整运行原 Beam 组合，完整政策达标则跳过探索；否则取原组合实际展开/时间各至多1/8并限制在原请求余量内，再用原终局政策选优。原算法、队列和终局比较保持；追加耗时仍可能影响后续能力/药水审计，不承诺完整请求无退化。`ADAPTIVE_NOVELTY_START/END` 成对记录展开/转移与额度；`NOVELTY_SEARCH_STOP` 独立报告停止原因，离线分类器不得漏掉新颖性时间截断。剩余额度遥测仍表示主搜索原预算扣实际工作后的余量，不充当整个 Coordinator 的节点硬上限。
+
 `NoveltyPortfolioBudget` 只管理预算算术：非首领至多一半时间，章节首领至多四分之一，且最多5秒、2500节点及总节点的四分之一；不足2秒或1000节点时保留原搜索。原始预算是上限，下一成员扣除实际工作而非预约额度；不可分割父节点排空可略过软时间边界。主搜索中的多宽度成员继续扣同一份节点余量；药水审计复用请求时间截止点，节点仍按上游每审计层的 Profile 上限执行。这里没有新增全请求节点硬上限。
 
 `CombatBeamSolver.NoveltySearch` 使用原 `Expand`、回合标注、终局排序与重放；`Phases` 注入父节点内存预约、进度和接管边界。初始根先按 `IsTerminal` 分流，终结根直接进入完成候选和目标判定，只有普通根进入 OPEN；回合准备路线的终局续用戳记从其准备选牌根完整回放。它按生成时的新颖度、已有评分和稳定序号出队。`BfwsPackedNovelty` 只保存类型化特征、整数ID及一／二元组；同分区下跳过父节点已完整记录的未变元组。特征来自当前影子快照，包含牌区／升级／数量、抽牌前缀、能力和资源，不能替代完整状态键。表历史与运行时scratch由单次 `SearchRunContext.Novelty` 拥有，普通 Beam 不创建它。

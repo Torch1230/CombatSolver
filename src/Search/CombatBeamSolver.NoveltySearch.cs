@@ -152,6 +152,8 @@ internal sealed partial class CombatBeamSolver
                 if (novelty.LimitReached) { _novelty.Stop = "novelty_limit"; break; }
             }
             turnLayers = Math.Max(0, maximumTurn - _startTurnNumber);
+            policy.Diagnostics.Info($"[CombatSolver/Test] NOVELTY_SEARCH_STOP reason={_novelty.Stop} "
+                + $"expanded={_run.Expanded} transitions={_run.TransitionCount} elapsed_ms={clock.ElapsedMilliseconds}");
             return stopped;
         }
         finally

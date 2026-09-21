@@ -107,3 +107,26 @@ Check(NoveltyPortfolioBudget.Remaining(shared, 1100, 230) == shared with { SoftT
 Check(NoveltyPortfolioBudget.Remaining(shared, 10000, 1) == null && NoveltyPortfolioBudget.Remaining(shared, 10001, 1) == null, "no restarted deadline after a drained parent overshoots");
 Check(NoveltyPortfolioBudget.Remaining(shared, 1, 24000) == null, "no restarted node budget");
 Console.WriteLine("Passed 9 shared request budget contracts.");
+
+var refinement = NoveltyPortfolioBudget.Default.RefinementAfterBaseline(shared, 4000, 8000, 4500);
+Check(refinement == shared with { MaxExpandedNodes = 1000, SoftTimeBudgetMilliseconds = 500 }, "refinement uses actual baseline fractions and preserves other fields");
+Check(NoveltyPortfolioBudget.Default.RefinementAfterBaseline(shared, 9999, 23999, 9999)
+    == shared with { MaxExpandedNodes = 1, SoftTimeBudgetMilliseconds = 1 }, "remaining request caps both dimensions");
+Check(NoveltyPortfolioBudget.Default.RefinementAfterBaseline(shared, 4000, 8000, 10000) == null, "elapsed request cannot restart for refinement");
+Check(NoveltyPortfolioBudget.Default.RefinementAfterBaseline(shared, 4000, 24000, 4000) == null, "exhausted nodes cannot restart");
+Check(NoveltyPortfolioBudget.Default.RefinementAfterBaseline(shared, 7, 8000, 7) == null
+    && NoveltyPortfolioBudget.Default.RefinementAfterBaseline(shared, 4000, 7, 4000) == null, "insufficient measured work skips refinement");
+Check(NoveltyPortfolioBudget.Default.RefinementAfterBaseline(shared, 15, 15, 15)
+    == shared with { MaxExpandedNodes = 1, SoftTimeBudgetMilliseconds = 1 }, "fraction rounds down");
+var longRequest = shared with { MaxExpandedNodes = 120000, SoftTimeBudgetMilliseconds = 120000 };
+Check(NoveltyPortfolioBudget.Default.RefinementAfterBaseline(longRequest, 80000, 80000, 80000)
+    == longRequest with { MaxExpandedNodes = 2500, SoftTimeBudgetMilliseconds = 5000 }, "absolute scout maxima still apply");
+Check(NoveltyPortfolioBudget.Default.RefinementAfterBaseline(shared with { MaxExpandedNodes = 999 }, 1000, 500, 1000) == null, "small requests remain ineligible");
+foreach (var values in new[] { (-1L, 100L, 100L), (100L, -1L, 100L), (100L, 100L, -1L) })
+{
+    bool rejected = false;
+    try { NoveltyPortfolioBudget.Default.RefinementAfterBaseline(shared, values.Item1, values.Item2, values.Item3); }
+    catch (ArgumentOutOfRangeException) { rejected = true; }
+    Check(rejected, "negative refinement accounting rejected");
+}
+Console.WriteLine("Passed 11 adaptive refinement budget contracts.");
