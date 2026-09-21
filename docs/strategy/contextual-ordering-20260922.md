@@ -207,3 +207,33 @@ dotnet build tools/OfflineSearchHarness/OfflineSearchHarness.csproj -c Release
 - Release与宿主构建0警告/错误；Bash/PowerShell结构门禁均208，Python工具语法通过。后续仅清理注释/宿主帮助文本与补文档，不重跑行为或性能。未提升版本、发包或推送。
 
 复现治疗边界：`python3 tools/ContextualOrdering/generate.py --suite target-stop-boundaries --out <新目录>`；manifest的potionPolicy为第7根指定RequireAtLeastOne，其余沿用Smart。独立35根使用 `--seed-namespace TARGET-STOP-HOLDOUT-20260922` 的test划分。完整请求使用Coordinator/--use-portfolio/--stop-at-zero-loss；旧行为可用本版宿主 `--disable-portfolio-hp-target-stop` 消融，跨历史版本严格复现仍使用各自冻结的DLL/兼容宿主。ABBA变体顺序必须是A1/B1/B2/A2，墙钟截断/失败不进性能均值。
+
+
+## 三项真实搜索敏感度与完整组合反例
+
+在 `2d1074fa` 后增加默认未注入的 `BeamWeightPerturbation`：对 CurrentEnergy、PersistentBuffDelta、EnemyHp 其中一项的 Beam 贡献乘有限系数，试验点固定为0.5/1.5；其余项、快照Score、精确支配、终局比较、预算不变。只修改中途排序，已终结节点和原有base-score成员旁路。宿主显式 `--beam-weight EnemyHp:1.5`，不可叠加学习模型、连续威胁或非基线ordering；不是生产设置。这个设计测量的是Beam排序项的敏感度，**不等于修改 SolverWeights 后所有引用处的敏感度**，更不是全54常量的Morris扫描。
+
+原语料的10机制×高低压力20个train根，每根原排序加6个扰动，140次独立进程全Comparable；Evaluate、Beam24/20000节点、60秒、DOP1、正常零损早停。没有使用剪枝观察采集，不扩大节点或追加模拟；墙钟/分配只作非ABBA探索记录。新种子 `WEIGHT-HOLDOUT-20260922` 已预生成105根，但本轮没有测量或用于选择，不声称留存泛化。
+
+| 单项倍率 | 实质质量 好/同/差 | 败转胜/胜转败 | 双方胜利合计战损变化 | 总转移变化 |
+|---|---|---|---|---|
+| 当前能量0.5 | 4/11/5 | 0/0 | −2 HP | +2.18% |
+| 当前能量1.5 | 5/9/6 | 2/0 | +14 HP | +4.28% |
+| 持续增益0.5 | 2/18/0 | 1/0 | −2 HP | −0.01% |
+| 持续增益1.5 | 2/18/0 | 0/0 | −1 HP | −1.27% |
+| 敌方血量0.5 | 7/8/5 | 1/1 | −1 HP | +1.54% |
+| 敌方血量1.5 | 8/12/0 | 1/0 | −19 HP | −2.03% |
+
+“双方胜利”一般为17根，敌方血量0.5因消耗高压胜转败为16根，不能把失败的18 HP与胜利直接相加抵消。实质质量排除旧Score尾键；敌方血量1.5的完整比较为9好/10同/1差，尾键退化仍保留。选该方向进入完整请求代表核查，未继续用train调倍率。示例：资源高压12→7 HP、消耗高压17→10 HP、力量高压未找到胜路→7 HP胜利；也存在集中高压7→5 HP但T5→T6、多目标低压23→19 HP但T6→T8的回合取舍。三项都非零敏感，不能据此声称已经筛出了全部重要参数。
+
+### 完整协调器推翻全局替换
+
+5个train代表改为完整Coordinator、默认Medium宽度60/120000节点、120秒、DOP1、组合开启及生产达标早停。10次运行全部Comparable。实质1好/3同/1差（完整2好/2同/1差）：防御高压0损T13→T12；资源高压6 HP/T6、力量高压6 HP/T6、多目标低压14 HP/T5均保持；消耗高压由17 HP/T9获胜变为未找到胜路。双方胜利的战损与战略战损合计均不变，没有药水/回血收益抵消这次失败。
+
+成员日志直接解释失去的保障：原消耗高压只有宽度40成员获胜（3285展开/14422转移），宽度60、90、次段、base-score均失败。全局1.5倍扰动后宽度40也失败（3289/14105），base-score虽保持3711/16074仍救不回胜局。这不是单纯“加大预算不够”；统一改每个成员，会同时破坏现有组合靠不同搜索取得的互补路线。
+
+**结论：不默认启用全局倍率。** 用户允许少数退化，但这里的完整请求收益仅少一回合，没有战损收益，一次胜转败缺乏对应收益；不是仅因存在反例机械否决。不为这个已拒绝方向追加ABBA或原生部署，也不把训练单solver的8项改善当作玩家获益。下一轮可依据已定位成员，测试保留普通主搜索/窄成员、只让补充成员采用不同排序，并继续比较同额总预算及完整请求；这是待验证假设，不是已实现优化。
+
+验证：Release及宿主0警告/错误；两端结构门禁208通过；9个非法/冲突参数在搜索启动前拒绝。20个默认Evaluate结果及展开/转移与原冻结基线完全相同；消耗高压、抽牌高压的1倍扰动控制与本版默认完整route.json、质量、展开/转移一致。实验没有生产启用，新排序未作原生验收；此前原生记录只证明此前版本。完整结构化比较及资源数据见[敏感度证据](contextual-weight-sensitivity-20260922-evidence.json)。当前通用排序目标仍在进行。
+
+复现：沿用 `tools/ContextualOrdering/run.py`，原默认命名空间语料的 `--kind curated --split train`，baseline变体无附加参数，另六个变体分别传 `--beam-weight CurrentEnergy:0.5` 等上述组合。单项只改变Beam的贡献，不修改其他试验开关。实际命令/冻结DLL及所有结果在 `.local/contextual-ordering/sensitivity-*`；比较统一使用生产比较器及同根/预算/政策检查。完整协调器核查的五个根为 energy_investment/strength_setup/exhaust_resources/defense_engine 的train-high与target_order-train-low。

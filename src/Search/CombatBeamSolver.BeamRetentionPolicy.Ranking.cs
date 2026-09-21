@@ -904,6 +904,22 @@ internal sealed partial class CombatBeamSolver
                         Math.Max(0, node.Snapshot.EnemyWeakTurns - _run.InitialEnemyWeakTurns))
                     * weakExpectedHpSaved
                     * SolverWeights.Hp;
+            if (!node.IsTerminal && _profile.BeamWeightPerturbation is { Scale: not 1d } perturbation)
+            {
+                // Only the intermediate ranking term changes. Snapshot scores, exact
+                // dominance, final policy and the ordinary base-score member stay intact.
+                double term = perturbation.Term switch
+                {
+                    BeamWeightTerm.CurrentEnergy => Math.Min(SolverWeights.CurrentEnergyBeamCap,
+                        node.Snapshot.Energy) * SolverWeights.CurrentEnergyBeamValue,
+                    BeamWeightTerm.PersistentBuffDelta => Math.Min(persistentBuffCap,
+                        Math.Max(0, node.Snapshot.PersistentBuffValue - _run.InitialPersistentBuffValue))
+                        * persistentBuffValue,
+                    BeamWeightTerm.EnemyHp => node.Snapshot.EnemyHp * SolverWeights.EnemyHp,
+                    _ => throw new InvalidOperationException("Unknown Beam sensitivity term."),
+                };
+                score += (perturbation.Scale - 1d) * term;
+            }
             return _profile.ContextualRanking is { } model ? score + model.Adjustment(node) : score;
         }
 

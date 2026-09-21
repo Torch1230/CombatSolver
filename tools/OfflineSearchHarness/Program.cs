@@ -372,6 +372,7 @@ internal sealed record HarnessOptions
           --observe-ordering-states <p>  追加观察给定状态键的生成/准入/回合筛选事件
           --ordering <mode>     Evaluate 实验：baseline|base|band，复用现有排序成员
           --ranking-model <p>   实验：有界上下文排序修正；只与 baseline 排序同时使用
+          --beam-weight <term:scale>  单项排序敏感度：CurrentEnergy|PersistentBuffDelta|EnemyHp，scale 0..2
           --continuous-threat  实验：EndTurn 后尚能出牌的新回合起点，连续计价致死意图
           --observe-portfolio    导出追加搜索的特征与实际政策标签
           --portfolio-model <p>  加载可选选择器 JSON；不匹配的版本回退原组合
@@ -426,6 +427,7 @@ internal sealed record HarnessOptions
     public string Ordering { get; init; } = "baseline";
     public string? RankingModelPath { get; init; }
     public bool ContinuousThreatRanking { get; init; }
+    public BeamWeightPerturbation? BeamWeightPerturbation { get; init; }
     public bool? StopPortfolioAtHpTarget { get; init; }
     public bool ObservePortfolio { get; init; }
     public string? PortfolioModelPath { get; init; }
@@ -451,6 +453,7 @@ internal sealed record HarnessOptions
         string ordering = "baseline";
         string? rankingModelPath = null;
         bool continuousThreatRanking = false;
+        BeamWeightPerturbation? beamWeightPerturbation = null;
         bool? stopPortfolioAtHpTarget = null;
         int signalBallastMegabytes = 0;
         int? beam = null, nodes = null, cardBranches = null, pileBranches = null, handBranches = null;
@@ -509,6 +512,13 @@ internal sealed record HarnessOptions
                 case "--observe-ordering-states": orderingWatchedStatesPath = Path.GetFullPath(Value()); break;
                 case "--ordering": ordering = Value(); break;
                 case "--ranking-model": rankingModelPath = Path.GetFullPath(Value()); break;
+                case "--beam-weight":
+                    string[] termScale = Value().Split(':');
+                    if (termScale.Length != 2 || !Enum.TryParse(termScale[0], out BeamWeightTerm term))
+                        throw new ArgumentException("--beam-weight 需要 Term:Scale。");
+                    beamWeightPerturbation = new BeamWeightPerturbation(term,
+                        double.Parse(termScale[1], System.Globalization.CultureInfo.InvariantCulture));
+                    break;
                 case "--continuous-threat": continuousThreatRanking = true; break;
                 case "--stop-portfolio-at-hp-target": stopPortfolioAtHpTarget = true; break;
                 case "--disable-portfolio-hp-target-stop": stopPortfolioAtHpTarget = false; break;
@@ -538,6 +548,8 @@ internal sealed record HarnessOptions
             throw new ArgumentException("--ranking-model 不能同时叠加其他 --ordering 实验。");
         if (continuousThreatRanking && (rankingModelPath != null || ordering != "baseline"))
             throw new ArgumentException("--continuous-threat 必须单独测量，不叠加排序模型或其他成员。");
+        if (beamWeightPerturbation != null && (continuousThreatRanking || rankingModelPath != null || ordering != "baseline"))
+            throw new ArgumentException("--beam-weight 必须单独测量，不叠加其他排序实验。");
         if (stopPortfolioAtHpTarget.HasValue && searchMode != "Coordinator")
             throw new ArgumentException("组合达标早停参数仅用于Coordinator。");
         if (usePortfolio && searchMode != "Coordinator")
@@ -600,6 +612,7 @@ internal sealed record HarnessOptions
             Ordering = ordering,
             RankingModelPath = rankingModelPath,
             ContinuousThreatRanking = continuousThreatRanking,
+            BeamWeightPerturbation = beamWeightPerturbation,
             StopPortfolioAtHpTarget = stopPortfolioAtHpTarget,
             ObservePortfolio = observePortfolio,
             PortfolioModelPath = portfolioModelPath,

@@ -19,6 +19,8 @@ internal sealed record SolverSearchProfile(
     public ContextualRankingModel? ContextualRanking { get; init; }
     /// <summary>Offline experiment: continuously price lethal intent only at a living, playable new-turn node after EndTurn.</summary>
     public bool ContinuousThreatRanking { get; init; }
+    /// <summary>Offline one-factor sensitivity probe; absent in production profiles.</summary>
+    public BeamWeightPerturbation? BeamWeightPerturbation { get; init; }
     /// <summary>Honor the player's HP stopping target across portfolios, preserving audits for visible or observed healing.</summary>
     public bool StopPortfolioAtHpTarget { get; init; } = true;
 
@@ -41,4 +43,22 @@ internal sealed record SolverSearchProfile(
         MaxPileChoiceBranchesPerAction: 18,
         MaxHandChoiceBranchesPerAction: 24,
         SoftTimeBudgetMilliseconds: 120_000);
+}
+
+internal enum BeamWeightTerm { CurrentEnergy, PersistentBuffDelta, EnemyHp }
+
+internal sealed record BeamWeightPerturbation
+{
+    public BeamWeightTerm Term { get; }
+    public double Scale { get; }
+
+    public BeamWeightPerturbation(BeamWeightTerm term, double scale)
+    {
+        if (!Enum.IsDefined(term))
+            throw new ArgumentOutOfRangeException(nameof(term));
+        if (!double.IsFinite(scale) || scale < 0 || scale > 2)
+            throw new ArgumentOutOfRangeException(nameof(scale));
+        Term = term;
+        Scale = scale;
+    }
 }

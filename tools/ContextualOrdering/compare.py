@@ -27,7 +27,7 @@ def context_mismatch(a, b):
         return 'BudgetMismatch'
     policy_a, policy_b = [json.loads(json.dumps(r['searchPolicy'])) for r in (a, b)]
     for policy in (policy_a, policy_b):
-        for key in ('ContextualRanking', 'BaseScoreOnly', 'SecondRankBand', 'ContinuousThreatRanking', 'StopPortfolioAtHpTarget'):
+        for key in ('ContextualRanking', 'BaseScoreOnly', 'SecondRankBand', 'ContinuousThreatRanking', 'StopPortfolioAtHpTarget', 'BeamWeightPerturbation'):
             policy['Profile'].pop(key, None)
     return 'PolicyMismatch' if policy_a != policy_b else None
 

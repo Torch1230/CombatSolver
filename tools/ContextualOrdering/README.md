@@ -55,3 +55,6 @@ variant 可指定自己的 `harness`。旧 DLL 需要兼容的旧宿主；引用
 原生复现可用 `--performance-preset-for-test Medium --search-beam-width-for-test 24 --search-max-expanded-nodes-for-test 20000 --search-budget-override-milliseconds 60000 --search-max-degree-of-parallelism-for-test 1 --fixed-search-budget` 对齐本套件预算；PowerShell使用对应PascalCase参数。两个新增预算参数只作用于无人请求并在收尾恢复。实验排序仍须明确启用；仅指定这些预算不启用候选。
 
 `--stop-portfolio-at-hp-target` / `--disable-portfolio-hp-target-stop` 仅用于 Coordinator，显式覆盖组合达标早停；未指定时沿用生产profile（默认开启）。仍须启用玩家战损达标政策，宿主对应 `--stop-at-zero-loss`。当前最佳完整无风险路线满足战损、成长、遗物、追回资源和必要用药目标，且没有冻结的可见治疗来源或已选路线实际回血时，跳过剩余宽度/能力成员与能力开局前缀。它不改变中途分数和终局比较器，不保证回合数或旧Score最优，也不穷举未来生成的治疗机会。其他排序实验可以在该生产政策上对照；旧实验的精确复现须显式关闭此项或使用其冻结DLL/宿主。
+
+
+`--beam-weight Term:Scale` 对中途排序做单项敏感度实验（Term 为 `CurrentEnergy`、`PersistentBuffDelta` 或 `EnemyHp`，Scale 为有限的 0..2 数）。由宿主显式注入，默认没有扰动；不能叠加学习模型、连续威胁或非基线 `--ordering`。Coordinator 内的原有 base-score 成员保持原样，其他成员继承扰动，因此 Evaluate 的收益仍需完整请求验证。只改变 Beam 排名，不改快照Score、精确支配、终局比较或预算；终局节点旁路。1倍是行为等价对照。一次只改一项，以 0.5/1.5 倍筛选重要方向；这不等同于全参数 Morris 扫描，也不能由敏感度直接推导普遍最优权重。训练、留存与性能数据必须分别报告。
