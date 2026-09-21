@@ -2119,6 +2119,8 @@ internal sealed partial class UnattendedTestRunner
         AddMismatch(mismatches, "CycleStoppedFamilyBudget", expected.CycleStoppedFamilyBudget, actual.CycleStoppedFamilyBudget);
         AddMismatch(mismatches, "CycleStoppedExitBudget", expected.CycleStoppedExitBudget, actual.CycleStoppedExitBudget);
         AddMismatch(mismatches, "TurnLayerBudgetStops", expected.TurnLayerBudgetStops, actual.TurnLayerBudgetStops);
+        AddMismatch(mismatches, "TurnLayerTimeBudgetStops", expected.TurnLayerTimeBudgetStops, actual.TurnLayerTimeBudgetStops);
+        AddMismatch(mismatches, "TurnLayerNodeBudgetStops", expected.TurnLayerNodeBudgetStops, actual.TurnLayerNodeBudgetStops);
         AddMismatch(mismatches, "cycle_shapes", expected.CycleShapesDetected, actual.CycleShapesDetected);
         AddMismatch(
             mismatches,

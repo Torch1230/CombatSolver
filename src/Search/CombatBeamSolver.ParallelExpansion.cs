@@ -998,6 +998,8 @@ internal sealed partial class CombatBeamSolver
         _run.CycleStoppedFamilyBudget += source.CycleStoppedFamilyBudget;
         _run.CycleStoppedExitBudget += source.CycleStoppedExitBudget;
         _run.TurnLayerBudgetStops += source.TurnLayerBudgetStops;
+        _run.TurnLayerTimeBudgetStops += source.TurnLayerTimeBudgetStops;
+        _run.TurnLayerNodeBudgetStops += source.TurnLayerNodeBudgetStops;
 
         _run.CrossTurnCandidatesProtected += source.CrossTurnCandidatesProtected;
         _run.CrossTurnContinuationsStopped += source.CrossTurnContinuationsStopped;
@@ -1051,6 +1053,8 @@ internal sealed partial class CombatBeamSolver
         source.CycleStoppedFamilyBudget = 0;
         source.CycleStoppedExitBudget = 0;
         source.TurnLayerBudgetStops = 0;
+        source.TurnLayerTimeBudgetStops = 0;
+        source.TurnLayerNodeBudgetStops = 0;
 
         source.CrossTurnCandidatesProtected = 0;
         source.CrossTurnContinuationsStopped = 0;

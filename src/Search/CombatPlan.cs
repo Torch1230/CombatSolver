@@ -1514,6 +1514,8 @@ internal sealed class SolverResult
     public int CycleStoppedFamilyBudget { get; init; }
     public int CycleStoppedExitBudget { get; init; }
     public int TurnLayerBudgetStops { get; init; }
+    public int TurnLayerTimeBudgetStops { get; init; }
+    public int TurnLayerNodeBudgetStops { get; init; }
 
     public int CycleRegionsDetected { get; init; }
     public int CycleRegionCandidatesConsidered { get; init; }
@@ -1709,6 +1711,8 @@ internal sealed class SolverResult
             CycleStoppedFamilyBudget = 0,
             CycleStoppedExitBudget = 0,
             TurnLayerBudgetStops = 0,
+            TurnLayerTimeBudgetStops = 0,
+            TurnLayerNodeBudgetStops = 0,
 
             CycleRegionsDetected = 0,
             CycleRegionCandidatesConsidered = 0,

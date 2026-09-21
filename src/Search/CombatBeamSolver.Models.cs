@@ -215,6 +215,8 @@ internal sealed partial class CombatBeamSolver
         public int CycleStoppedFamilyBudget;
         public int CycleStoppedExitBudget;
         public int TurnLayerBudgetStops;
+        public int TurnLayerTimeBudgetStops;
+        public int TurnLayerNodeBudgetStops;
         public int CycleRegionsDetected;
         public int CycleRegionCandidatesConsidered;
         public int CycleRegionCandidatesAdmitted;

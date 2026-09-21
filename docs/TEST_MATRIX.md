@@ -1,5 +1,15 @@
 # CombatSolver 测试清单
 
+## 循环预算审计跟进（2026-09-21）
+
+- [F1/F2/F3 修正及证据](performance/loop-boundaries-20260921.md)：8 项 Python 分类合同；正常预算 cap＋finisher 的 A/B Equivalent；主动 2000 ms 时间切层两侧各 time=3/node=0，原始未击杀观察保留，工具正确返回 Inconclusive／2。无时间边界的差异仍退出 1，不放宽为自动通过。
+- 新 `generic-loop-replay-estimate-margin.json` 离线单 solver：6835 HP，6 展开／4107 转移、4095 额外回放、零损 T1；估算 4101 并不证明超过 4096 无法完成。非原生验证，不加入原 19 根 A/B 等价集。
+- Release 0 警告／0 错误；遥测拆分不改变搜索判断或战斗语义，未重跑之前通过的四项原生部署。请求级累计额度仍未验证，不将 Evaluate 的 4096 检查外推到 Coordinator。
+
+```bash
+python3 -m unittest discover -s tools/OfflineSearchHarness -p test_loop_boundaries.py -v
+```
+
 ## 追加循环边界与审计（2026-09-21）
 
 - [19 根边界集及审计复核](performance/loop-boundaries-20260921.md)：同根串行 A/B；质量指标均相同，18 根完整路线相同，1 根同质量异路线。包含隐藏相位、Buffer、格挡、4096 耗尽、替代出牌、付费抽牌、低血卖血、三目标、选牌、星能和 BansheesCry。离线显式检查见 `coverage/unattended/loop-boundaries-20260921/suite.json`。

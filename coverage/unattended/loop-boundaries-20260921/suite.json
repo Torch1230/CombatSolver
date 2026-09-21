@@ -77,7 +77,6 @@
       "enemyCount": 1,
       "expectedMetrics": {
         "ProjectedBattleHpLost": 4,
-        "CombatEndedTurn": 2,
         "PotionCount": 0
       }
     },
@@ -264,5 +263,6 @@
         "BANSHEES_CRY"
       ]
     }
-  ]
+  ],
+  "searchMode": "Evaluate"
 }

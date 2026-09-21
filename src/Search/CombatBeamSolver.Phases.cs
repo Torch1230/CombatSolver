@@ -747,6 +747,8 @@ internal sealed partial class CombatBeamSolver
                 CycleStoppedFamilyBudget = _run.CycleStoppedFamilyBudget,
                 CycleStoppedExitBudget = _run.CycleStoppedExitBudget,
                 TurnLayerBudgetStops = _run.TurnLayerBudgetStops,
+                TurnLayerTimeBudgetStops = _run.TurnLayerTimeBudgetStops,
+                TurnLayerNodeBudgetStops = _run.TurnLayerNodeBudgetStops,
 
                 CycleRegionsDetected = _run.CycleRegionsDetected,
                 CycleRegionCandidatesConsidered = _run.CycleRegionCandidatesConsidered,
@@ -1542,6 +1544,9 @@ internal sealed partial class CombatBeamSolver
                         node.Snapshot.ReleaseSimulator();
                     }
                     _run.TurnLayerBudgetStops++;
+                    // Match the logged reason when both local quotas are exhausted.
+                    if (turnLayerTimeSpent) _run.TurnLayerTimeBudgetStops++;
+                    else _run.TurnLayerNodeBudgetStops++;
                     policy.Diagnostics.Info(
                         $"[CombatSolver/Test] TURN_LAYER_BUDGET " +
                         $"reason={(turnLayerTimeSpent ? "time" : "nodes")} " +

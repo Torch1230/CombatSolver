@@ -77,6 +77,8 @@ internal sealed partial class UnattendedTestRunner
                 CycleStoppedFamilyBudget = result.CycleStoppedFamilyBudget,
                 CycleStoppedExitBudget = result.CycleStoppedExitBudget,
                 TurnLayerBudgetStops = result.TurnLayerBudgetStops,
+                TurnLayerTimeBudgetStops = result.TurnLayerTimeBudgetStops,
+                TurnLayerNodeBudgetStops = result.TurnLayerNodeBudgetStops,
                 CycleRegionsDetected = result.CycleRegionsDetected,
                 CycleRegionCandidatesConsidered = result.CycleRegionCandidatesConsidered,
                 CycleRegionCandidatesAdmitted = result.CycleRegionCandidatesAdmitted,

@@ -572,6 +572,8 @@ internal sealed class UnattendedSolverMetrics
     public int CycleStoppedFamilyBudget { get; init; }
     public int CycleStoppedExitBudget { get; init; }
     public int TurnLayerBudgetStops { get; init; }
+    public int TurnLayerTimeBudgetStops { get; init; }
+    public int TurnLayerNodeBudgetStops { get; init; }
     public int CycleRegionsDetected { get; init; }
     public int CycleRegionCandidatesConsidered { get; init; }
     public int CycleRegionCandidatesAdmitted { get; init; }

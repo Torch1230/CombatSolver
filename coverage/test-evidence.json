@@ -1,4 +1,12 @@
 {
+  "LOOP-BUDGET-AUDIT-20260921": {
+    "status": "Passed",
+    "level": "BudgetTelemetryAndOfflineClassification",
+    "procedure": "Release；8项Python分类合同；正常cap和finisher A/B；缩短预算主动时间切层；估算余量反例；Coordinator模式拒绝",
+    "expected": "时间切层与可比较差异分开；time+nodes=局部切层总数；保留失败观察；不按保守估算拒绝可成功的回放",
+    "observed": "正常2根Equivalent；2000ms两侧各time=3/node=0，未击杀、26HP观察保留，退出2 Inconclusive；6835HP为6展开/4107转移、4095回放、零损T1而估算4101。历史ABBA四份日志均time=0/node=1，旧+11.3%/+14.9%仅样本值、不是下界。8项合同通过，Release 0 warning/0 error。准入与请求级额度未改，已有性能反例仍存在。",
+    "evidence": "docs/performance/loop-boundaries-20260921.md; docs/performance/loop-budget-audit-20260921-evidence.json; tools/OfflineSearchHarness/test_loop_boundaries.py; coverage/unattended/generic-loop-replay-estimate-margin.json"
+  },
   "LOOP-BOUNDARIES-AUDIT-20260921": {
     "status": "PassedWithDocumentedPerformanceRegression",
     "level": "19FixedOfflineABAnd4NativeScenarios",

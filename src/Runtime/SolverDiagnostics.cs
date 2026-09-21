@@ -142,6 +142,8 @@ internal static class SolverDiagnostics
             .Append(" CycleStoppedFamilyBudget=").Append(result.CycleStoppedFamilyBudget)
             .Append(" CycleStoppedExitBudget=").Append(result.CycleStoppedExitBudget)
             .Append(" TurnLayerBudgetStops=").Append(result.TurnLayerBudgetStops)
+            .Append(" TurnLayerTimeBudgetStops=").Append(result.TurnLayerTimeBudgetStops)
+            .Append(" TurnLayerNodeBudgetStops=").Append(result.TurnLayerNodeBudgetStops)
 
             .Append(" cycle_regions=").Append(result.CycleRegionsDetected)
             .Append(" cycle_region_considered=")
