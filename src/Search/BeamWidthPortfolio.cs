@@ -4,16 +4,19 @@ namespace CombatSolver;
 /// 一个组合成员的定义：Beam 宽度，以及排序方式。次段成员的宽度与基线相同，但全局剪枝的普通席位取
 /// 分数排名第 W+1 至 2W 位（见 <see cref="SolverSearchProfile.SecondRankBand" />）；基础分成员的宽度也与
 /// 基线相同，但中途排序只用基础分（见 <see cref="SolverSearchProfile.BaseScoreOnly" />）。
+/// 实验性进攻成员使用独立的窄宽度与敌方血量项倍率，不修改其他成员。
 /// </summary>
 internal readonly record struct BeamWidthPortfolioMemberSpec(
     int BeamWidth,
     bool SecondRankBand = false,
     bool BaseScoreOnly = false,
-    bool AggressivePowerCommitment = false)
+    bool AggressivePowerCommitment = false,
+    bool OffensiveRefinement = false)
 {
     public override string ToString()
         => BeamWidth
             + (AggressivePowerCommitment ? "+power" : string.Empty)
+            + (OffensiveRefinement ? "+offense" : string.Empty)
             + (SecondRankBand ? "+band" : string.Empty)
             + (BaseScoreOnly ? "+base" : string.Empty);
 }
@@ -63,7 +66,10 @@ internal sealed record BeamWidthPortfolioMember(
     int? BattleHpLost,
     int? PotionCount,
     bool Compared,
-    string? SkippedReason);
+    string? SkippedReason)
+{
+    public bool OffensiveRefinement { get; init; }
+}
 
 internal sealed record BeamWidthPortfolioOutcome<TResult>(
     TResult Selected,
@@ -76,7 +82,7 @@ internal sealed record BeamWidthPortfolioOutcome<TResult>(
 /// <summary>
 /// 按顺序在同一个根上跑若干个成员，共享一份节点预算，取最优结果。成员之间只有 Beam 宽度不同，
 /// 或者是与基线同宽度、只改中途排序的成员：「次段」（普通席位取分数排名第 W+1 至 2W 位）或
-/// 「基础分」（排序不加附加分）。
+/// 「基础分」（排序不加附加分），或显式启用的窄进攻精炼。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -118,6 +124,9 @@ internal static class BeamWidthPortfolio
     /// <summary>默认成员相对基线宽度的比例：先窄后宽。</summary>
     internal const double NarrowRefinementRatio = 2d / 3d;
     internal const double WideRefinementRatio = 3d / 2d;
+    // Frozen experimental candidate, motivated by the width-24 offensive witness
+    // versus Medium's width 60. Does not add a member or a dedicated node reserve.
+    internal const double OffensiveRefinementRatio = 2d / 5d;
 
     /// <summary>
     /// 基线把配置节点用尽时，能力成员仍取得请求节点上限的五分之一作为专用预留。该预留只供能力
@@ -135,6 +144,7 @@ internal static class BeamWidthPortfolio
     /// [基线, 基线×2/3, 基线×3/2, 次段 基线, 基础分 基线]（四舍五入，例如基线 24 是
     /// [24, 16, 36, 24+band, 24+base]，基线 135 是 [135, 90, 203, 135+band, 135+base]）；
     /// 显式给出宽度列表时只有宽度成员，不追加次段与基础分成员。
+    /// 实验开关可把3/2宽成员替换为2/5宽、EnemyHp项1.5倍的独立成员；不增加成员或专用预算。
     /// <paramref name="includePlainBaseline" /> 为 false 时不再追加那个只带基线宽度、不带任何排序修饰的
     /// 成员，真实搜索因此少跑一次；此时候选比较不再保证"不差于今天的单次搜索"。
     /// 实测依据：该成员在 152 场里只有 5 场严格优于其余全部成员（合计 19 HP），
@@ -144,7 +154,8 @@ internal static class BeamWidthPortfolio
         int baselineBeamWidth,
         IReadOnlyList<int>? configuredWidths,
         bool includePlainBaseline = true,
-        bool includePowerCommitmentMember = false)
+        bool includePowerCommitmentMember = false,
+        bool useOffensiveRefinement = false)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(baselineBeamWidth);
         List<BeamWidthPortfolioMemberSpec> members =
@@ -165,13 +176,15 @@ internal static class BeamWidthPortfolio
             }
             return members;
         }
-        foreach (int width in new[]
+        foreach (BeamWidthPortfolioMemberSpec member in new[]
                  {
-                     ScaledWidth(baselineBeamWidth, NarrowRefinementRatio),
-                     ScaledWidth(baselineBeamWidth, WideRefinementRatio),
+                     new BeamWidthPortfolioMemberSpec(ScaledWidth(baselineBeamWidth, NarrowRefinementRatio)),
+                     useOffensiveRefinement
+                         ? new BeamWidthPortfolioMemberSpec(
+                             ScaledWidth(baselineBeamWidth, OffensiveRefinementRatio), OffensiveRefinement: true)
+                         : new BeamWidthPortfolioMemberSpec(ScaledWidth(baselineBeamWidth, WideRefinementRatio)),
                  })
         {
-            BeamWidthPortfolioMemberSpec member = new(width);
             if (!members.Contains(member))
                 members.Add(member);
         }
@@ -227,6 +240,9 @@ internal static class BeamWidthPortfolio
         {
             if (memberSpecs[index].BeamWidth <= 0)
                 throw new ArgumentOutOfRangeException(nameof(memberSpecs), "成员 Beam 宽度必须为正。");
+            if (memberSpecs[index] is { OffensiveRefinement: true } invalid
+                && (invalid.SecondRankBand || invalid.BaseScoreOnly || invalid.AggressivePowerCommitment))
+                throw new ArgumentException("进攻精炼成员不能叠加其他成员策略。", nameof(memberSpecs));
         }
 
         List<BeamWidthPortfolioMember> members = new(memberSpecs.Count);
@@ -262,6 +278,9 @@ internal static class BeamWidthPortfolio
                 SecondRankBand = spec.SecondRankBand,
                 BaseScoreOnly = spec.BaseScoreOnly,
                 AggressivePowerCommitment = spec.AggressivePowerCommitment,
+                BeamWeightPerturbation = spec.OffensiveRefinement
+                    ? new BeamWeightPerturbation(BeamWeightTerm.EnemyHp, 1.5d)
+                    : baseProfile.BeamWeightPerturbation,
                 MaxExpandedNodes = (int)Math.Min(int.MaxValue, memberNodeBudget),
             };
             BeamWidthPortfolioRun<TResult> run = solve(memberProfile);
@@ -340,6 +359,7 @@ internal static class BeamWidthPortfolio
             $"selected_second_rank_band={members[selectedIndex].SecondRankBand} " +
             $"selected_base_score_only={members[selectedIndex].BaseScoreOnly} " +
             $"selected_power_commitment={members[selectedIndex].AggressivePowerCommitment} " +
+            $"selected_offensive_refinement={members[selectedIndex].OffensiveRefinement} " +
             $"reason={selectionReason} shared_nodes={sharedMaxExpandedNodes} " +
             $"total_expanded={totalExpanded} total_transitions={totalTransitions}");
         return new BeamWidthPortfolioOutcome<TResult>(
@@ -352,7 +372,8 @@ internal static class BeamWidthPortfolio
 
         static BeamWidthPortfolioMember Skipped(BeamWidthPortfolioMemberSpec spec, string reason)
             => new(spec.BeamWidth, spec.SecondRankBand, spec.BaseScoreOnly,
-                spec.AggressivePowerCommitment, 0, false, 0, 0, null, null, null, null, null, false, reason);
+                spec.AggressivePowerCommitment, 0, false, 0, 0, null, null, null, null, null, false, reason)
+            { OffensiveRefinement = spec.OffensiveRefinement };
 
         static BeamWidthPortfolioMember Ran(
             BeamWidthPortfolioMemberSpec spec,
@@ -363,6 +384,7 @@ internal static class BeamWidthPortfolio
             => new(spec.BeamWidth, spec.SecondRankBand, spec.BaseScoreOnly,
                 spec.AggressivePowerCommitment, nodeBudget, true, run.ExpandedNodes, run.TransitionCount,
                 run.Termination, run.Terminal, run.Won, run.BattleHpLost, run.PotionCount,
-                compared, skippedReason);
+                compared, skippedReason)
+            { OffensiveRefinement = spec.OffensiveRefinement };
     }
 }

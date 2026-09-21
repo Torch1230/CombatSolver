@@ -394,6 +394,7 @@ internal static class ModRuntime
                 : ContextualRankingModel.Parse(File.ReadAllText(options.RankingModelPath)),
             ContinuousThreatRanking = options.ContinuousThreatRanking,
             BeamWeightPerturbation = options.BeamWeightPerturbation,
+            OffensiveRefinementPortfolio = options.OffensiveRefinementPortfolio,
             StopPortfolioAtHpTarget = options.StopPortfolioAtHpTarget ?? policy.Profile.StopPortfolioAtHpTarget,
         } };
         using OrderingObservations? orderingObservations = options.OrderingObservationLimit > 0

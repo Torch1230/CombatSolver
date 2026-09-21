@@ -28,7 +28,10 @@ internal sealed record BeamWidthPortfolioMemberReport(
     int? PotionCount,
     long ElapsedMilliseconds,
     long AllocatedBytes,
-    long ManagedHeapBytesAfter);
+    long ManagedHeapBytesAfter)
+{
+    public bool OffensiveRefinement { get; init; }
+}
 
 internal sealed record PowerRoutePortfolioMemberReport(
     string Prefix,

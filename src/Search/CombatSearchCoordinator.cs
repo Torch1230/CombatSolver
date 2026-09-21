@@ -412,7 +412,7 @@ internal static partial class CombatSearchCoordinator
     /// <para>
     /// **基线成员逐位不变**：关闭时用请求自己的 <paramref name="profile" /> 实例直接求解；打开时
     /// 组合器把全部共享预算给首个成员，宽度就是基线宽度，其余 Profile 维度照抄。成员只有 Beam
-    /// 宽度、分到的节点上限，以及（仅精炼成员）收紧到剩余时间的软时间预算三处不同。
+    /// 宽度、成员排序策略、分到的节点上限，以及（仅精炼成员）收紧到剩余时间的软时间预算不同。
     /// </para>
     /// <para>
     /// 界面的中途路线走 <c>SolverProgress</c> 回调：搜索发布进度，运行时把进度里的
@@ -561,8 +561,9 @@ internal static partial class CombatSearchCoordinator
                     baseline, member.BeamWidth, profile.MaxExpandedNodes - expandedByMembers,
                     RemainingMilliseconds(), profile.SoftTimeBudgetMilliseconds,
                     policy.MemoryPressureSignal.RemainingBytes);
-            // 学习型跳过器只在宽度成员上训练过，能力牌成员不由它裁决。
-            if (rejection != null || experiment == null || member.AggressivePowerCommitment)
+            // 学习型跳过器未见过能力承诺或进攻精炼成员，不由它裁决这些新策略。
+            if (rejection != null || experiment == null || member.AggressivePowerCommitment
+                || member.OffensiveRefinement)
                 return rejection;
             // 门控已经放行，说明基线没被任何上限截断，因此两边都已经有可比结果。
             SolverResult first = baselineResult
@@ -614,7 +615,8 @@ internal static partial class CombatSearchCoordinator
                     profile.BeamWidth,
                     policy.UseBeamWidthPortfolio ? policy.BeamWidthPortfolioWidths : [profile.BeamWidth],
                     policy.BeamWidthPortfolioPlainBaselineMember,
-                    includePowerCommitmentMember: hasReachablePower),
+                    includePowerCommitmentMember: hasReachablePower,
+                    useOffensiveRefinement: profile.OffensiveRefinementPortfolio),
                 profile.MaxExpandedNodes,
                 profile,
                 RunMember,
@@ -705,13 +707,15 @@ internal static partial class CombatSearchCoordinator
                 member.PotionCount,
                 cost.ElapsedMilliseconds,
                 cost.AllocatedBytes,
-                cost.ManagedHeapBytesAfter);
+                cost.ManagedHeapBytesAfter)
+            { OffensiveRefinement = member.OffensiveRefinement };
             telemetry.RecordMember(report);
             policy.Diagnostics.Info(
                 $"[CombatSolver/Test] BEAM_WIDTH_PORTFOLIO_MEMBER index={index} " +
                 $"beam={report.BeamWidth} second_rank_band={report.SecondRankBand} " +
                 $"base_score_only={report.BaseScoreOnly} " +
                 $"power_commitment={report.AggressivePowerCommitment} " +
+                $"offensive_refinement={report.OffensiveRefinement} " +
                 $"nodes={report.NodeBudget} ran={report.Ran} " +
                 $"selected={report.Selected} compared={report.Compared} " +
                 $"skipped={report.SkippedReason ?? "-"} " +

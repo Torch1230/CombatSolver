@@ -21,6 +21,8 @@ internal sealed record SolverSearchProfile(
     public bool ContinuousThreatRanking { get; init; }
     /// <summary>Offline one-factor sensitivity probe; absent in production profiles.</summary>
     public BeamWeightPerturbation? BeamWeightPerturbation { get; init; }
+    /// <summary>Offline portfolio experiment: replace the wide refinement with a narrow offensive member.</summary>
+    public bool OffensiveRefinementPortfolio { get; init; }
     /// <summary>Honor the player's HP stopping target across portfolios, preserving audits for visible or observed healing.</summary>
     public bool StopPortfolioAtHpTarget { get; init; } = true;
 

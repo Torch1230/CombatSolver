@@ -54,6 +54,31 @@ static BeamWidthPortfolioMemberSpec Band(int width) => new(width, SecondRankBand
 static BeamWidthPortfolioMemberSpec Base(int width) => new(width, BaseScoreOnly: true);
 static BeamWidthPortfolioMemberSpec Power(int width) => new(width, AggressivePowerCommitment: true);
 
+// Experimental replacement keeps the ordinary baseline/narrow member and the shared
+// budget. A worse offensive member must not erase a winning ordinary incumbent.
+static BeamWidthPortfolioMemberSpec Offense(int width) => new(width, OffensiveRefinement: true);
+Require(BeamWidthPortfolio.ProductionMembers(60, null, useOffensiveRefinement: true)
+    .SequenceEqual([Width(60), Width(40), Offense(24), Band(60), Base(60)]),
+    "Offensive refinement changed ordinary members or added a member.");
+Require(BeamWidthPortfolio.ProductionMembers(60, [60, 90], useOffensiveRefinement: true)
+    .SequenceEqual([Width(60), Width(90)]), "Explicit widths must remain authoritative.");
+var mixed = PortfolioOf([Width(60), Width(40), Offense(24), Base(60)], 1000,
+    [Finished(300, Outcome(false, 18)), Finished(200, Outcome(true, 17)),
+     Finished(100, Outcome(false, 18)), Finished(100, Outcome(false, 18))]);
+Require(mixed.SelectedIndex == 1 && mixed.Selected.Won, "A failed refinement erased the winning narrow member.");
+Require(observed.Select(p => p.MaxExpandedNodes).SequenceEqual([1000, 700, 500, 400]),
+    "Offensive refinement gained a private node reserve or changed shared accounting.");
+Require(observed[0].BeamWeightPerturbation == null && observed[1].BeamWeightPerturbation == null
+    && observed[2].BeamWeightPerturbation == new BeamWeightPerturbation(BeamWeightTerm.EnemyHp, 1.5d)
+    && observed[3].BeamWeightPerturbation == null, "Offensive ranking leaked to another member.");
+Require(mixed.Members[2].OffensiveRefinement && !mixed.Members[1].OffensiveRefinement,
+    "Member reports lost the offensive identity.");
+var skippedOffense = PortfolioOf([Width(60), Offense(24)], 100,
+    [Finished(100, Outcome(true, 1))]);
+Require(skippedOffense.Members[1] is { OffensiveRefinement: true, Ran: false,
+    SkippedReason: BeamWidthPortfolio.SkippedBudgetExhausted },
+    "Exhausted shared budget did not skip/report offensive refinement.");
+
 // 1. Production membership: baseline first, the narrow (2/3) and wide (3/2) refinements, then the
 // second-rank-band member and the base-score-only member at the baseline width.
 Require(BeamWidthPortfolio.ProductionMembers(24, null).SequenceEqual([Width(24), Width(16), Width(36), Band(24), Base(24)]),

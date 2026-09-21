@@ -58,3 +58,6 @@ variant 可指定自己的 `harness`。旧 DLL 需要兼容的旧宿主；引用
 
 
 `--beam-weight Term:Scale` 对中途排序做单项敏感度实验（Term 为 `CurrentEnergy`、`PersistentBuffDelta` 或 `EnemyHp`，Scale 为有限的 0..2 数）。由宿主显式注入，默认没有扰动；不能叠加学习模型、连续威胁或非基线 `--ordering`。Coordinator 内的原有 base-score 成员保持原样，其他成员继承扰动，因此 Evaluate 的收益仍需完整请求验证。只改变 Beam 排名，不改快照Score、精确支配、终局比较或预算；终局节点旁路。1倍是行为等价对照。一次只改一项，以 0.5/1.5 倍筛选重要方向；这不等同于全参数 Morris 扫描，也不能由敏感度直接推导普遍最优权重。训练、留存与性能数据必须分别报告。
+
+
+`--offensive-refinement` 仅Coordinator且需 `--use-portfolio`：保持普通主搜/窄成员，把默认3/2宽精炼改为2/5宽的独立进攻排序成员（EnemyHp项1.5倍），没有新增成员或预算。默认关闭，不能叠加其他排序实验；次段/base及能力前缀不继承该成员的扰动。显式宽度配置优先，不改其列表。日志和请求诊断的 `OffensiveRefinement` 标明成员身份，旧选择器不裁决这个新成员；共享余量和终局比较照旧。其收益必须按完整请求验证，替换宽成员仍可能丢失旧组合唯一胜路。
