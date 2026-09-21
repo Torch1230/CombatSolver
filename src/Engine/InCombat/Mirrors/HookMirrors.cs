@@ -936,10 +936,20 @@ internal static partial class HookMirrors
     {
         // Preserve listener materialization, including the generic source fallback, even
         // when there is no modifier to notify. The empty pass invokes no callbacks.
-        HookListenerEnumerable listeners = IterateRunHookListeners(simulator);
+        HookListenerEnumerable listeners = IterateRunHookListeners(
+            simulator, MirroredHookMask.AfterModifyingHpLostAfterOsty);
         if (modifiers.Count == 0)
             return;
         var context = new AfterModifyingHpLostMirrorContext { Simulator = simulator };
+        if (VerifyHookListenerMask)
+        {
+            VerifyMaskedListenersAreNoOps(
+                MirroredRunHookListeners(simulator),
+                MirroredHookMask.AfterModifyingHpLostAfterOsty,
+                nameof(AbstractModel.AfterModifyingHpLostAfterOsty),
+                static candidate => IsDispatched(
+                    AfterModifyingHpLostAfterOstyMirrors.ResolveDispatchKind(candidate)));
+        }
 
         foreach (var modifier in listeners)
         {
@@ -1453,6 +1463,12 @@ internal static partial class HookMirrors
         => simulator.State.CombatState is ICombatPredictionHookListenerSource source
             ? source.MirroredHookListeners
             : simulator.State.IterateHookListeners();
+
+    // Run-level counterpart, for verification of facades that dispatch over run hook listeners.
+    private static IReadOnlyList<AbstractModel> MirroredRunHookListeners(CombatPredictionSimulator simulator)
+        => simulator.State.CombatState is ICombatPredictionHookListenerSource source
+            ? source.MirroredRunHookListeners
+            : Array.Empty<AbstractModel>();
 
     private static void VerifyMaskedListenersAreNoOps(
         IReadOnlyList<AbstractModel> listeners,
