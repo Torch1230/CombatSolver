@@ -58,7 +58,8 @@ internal sealed partial class CombatBeamSolver
         IReadOnlyList<T> required,
         Func<T, (double Score, int Actions, int OffensiveProgress, int Potions, bool Victory)> describe,
         bool finalQualityFirst,
-        Func<T, OrdinaryBeamTacticalValues>? describeTactical = null)
+        Func<T, OrdinaryBeamTacticalValues>? describeTactical = null,
+        bool includeSingleProgressGroup = false)
         where T : class
     {
         if (finalQualityFirst || selected.Count >= rankedPool.Count)
@@ -131,7 +132,10 @@ internal sealed partial class CombatBeamSolver
                 .OrderByDescending(group => group.Key)
                 .Select(group => group.ToList())
                 .ToList();
-            if (progressGroups.Count <= 1)
+            // A single progress group can still contain different playable hands.
+            // The caller opts in only for explicit base-score experiments; other members retain
+            // their original diversity gate.
+            if (progressGroups.Count <= 1 && (!includeSingleProgressGroup || describeTactical == null))
                 continue;
 
             if (describeTactical != null)
@@ -1733,7 +1737,12 @@ internal sealed partial class CombatBeamSolver
                     node.Snapshot.ZeroCostPlayableCount,
                     node.Snapshot.ReachableHandValue,
                     node.Snapshot.HandCount,
-                    HasRetainedRoutingChoice: RetainedRoutingChoice(node) != null));
+                    HasRetainedRoutingChoice: RetainedRoutingChoice(node) != null),
+                // Base-score members intentionally remove the weighted tactical terms.
+                // Resolve their exact boundary ties with the existing same-policy hand
+                // order even when offensive progress is uniform. Other members retain
+                // their original tie behavior and remain independent alternatives.
+                includeSingleProgressGroup: _profile.BaseScoreOnly && _profile.BaseScoreTacticalTies);
             if (_potionPolicy != SolverPotionPolicy.Disabled
                 && quotaPool.Any(UsesPotion)
                 && quotaPool.Any(node => !UsesPotion(node)))

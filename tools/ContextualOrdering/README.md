@@ -63,3 +63,6 @@ variant 可指定自己的 `harness`。旧 DLL 需要兼容的旧宿主；引用
 `--offensive-refinement` 仅Coordinator且需 `--use-portfolio`：保持普通主搜/窄成员，把默认3/2宽精炼改为2/5宽的独立进攻排序成员（EnemyHp项1.5倍），没有新增成员或预算。默认关闭，不能叠加其他排序实验；次段/base及能力前缀不继承该成员的扰动。显式宽度配置优先，不改其列表。日志和请求诊断的 `OffensiveRefinement` 标明成员身份，旧选择器不裁决这个新成员；共享余量和终局比较照旧。其收益必须按完整请求验证，替换宽成员仍可能丢失旧组合唯一胜路。
 
 `--bounded-offensive-refinement` 是另一种默认关闭的Coordinator组合实验，保留全部原成员及其顺序，在末尾追加同样的进攻成员。其节点额度为 `min(共享剩余节点, floor(此前组合实际展开/8))`，不另设预留；显式宽度配置仍优先。可用 `--disable-bounded-offensive-refinement` 显式关闭，不可与替换模式或其他排序实验叠加。日志的 `BoundedRefinement` 区分追加成员。额度约束的是展开，不保证转移、墙钟或峰值内存只增加12.5%；组合之后的能力前缀和药水审计仍可能受额外工作影响，必须比较完整请求。
+
+
+`--base-score-tactical-ties` 是默认关闭的截线实验：只有基础分成员在单进展值、精确同分同动作数截线内使用已有战术顺序，不增加权重或预算。要求 `Evaluate --ordering base` 或 `Coordinator --use-portfolio`；当前生产不启用。只在完整同回合/转置政策标签的原槽位之间置换，必保和路由位置保持。validation两项改善没有在独立test复现，反而出现两项实质退化；不能仅凭局部合同或保留普通主搜就宣布质量不降。完整实验、超时反例与关闭决定见上下文排序报告。

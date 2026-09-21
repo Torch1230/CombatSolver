@@ -393,6 +393,7 @@ internal static class ModRuntime
             ContextualRanking = options.RankingModelPath == null ? null
                 : ContextualRankingModel.Parse(File.ReadAllText(options.RankingModelPath)),
             ContinuousThreatRanking = options.ContinuousThreatRanking,
+            BaseScoreTacticalTies = options.BaseScoreTacticalTies,
             BeamWeightPerturbation = options.BeamWeightPerturbation,
             OffensiveRefinementPortfolio = options.OffensiveRefinementPortfolio,
             BoundedOffensiveRefinementPortfolio = options.BoundedOffensiveRefinementPortfolio
@@ -421,6 +422,29 @@ internal static class ModRuntime
             };
         }
         HarnessLog.Trace("search_policy");
+        Action<SolverProgress>? diagnosticProgress = null;
+        if (Environment.GetEnvironmentVariable("OFFLINE_HARNESS_STREAM_DIAGNOSTICS") == "1")
+        {
+            SearchDiagnosticsSink original = policy.Diagnostics;
+            policy = policy with { Diagnostics = new SearchDiagnosticsSink(message =>
+            {
+                Console.WriteLine($"[search-diagnostic] {message}");
+                original.Info(message);
+            }, original.Debug, original.PathObserver) };
+            long lastProgressMilliseconds = 0;
+            diagnosticProgress = progress =>
+            {
+                long now = watch.ElapsedMilliseconds;
+                long previous = Volatile.Read(ref lastProgressMilliseconds);
+                if (now - previous < 1000
+                    || Interlocked.CompareExchange(ref lastProgressMilliseconds, now, previous) != previous)
+                    return;
+                Console.WriteLine($"[search-progress] wall_ms={now} phase={progress.Phase} "
+                    + $"expanded={progress.ExpandedNodes} reviewed_worldlines={progress.ReviewedWorldlines} "
+                    + $"max_nodes={progress.MaxNodes} turn_layers={progress.CompletedTurnLayers} "
+                    + $"play_depth={progress.PlayDepth} frontier={progress.FrontierNodes}");
+            };
+        }
         bool timeBoundary = false;
         object describedPolicy = DescribePolicy(policy);
         SolverResult result;
@@ -444,7 +468,7 @@ internal static class ModRuntime
             try
             {
                 result = options.SearchMode == "Coordinator"
-                    ? CombatSearchCoordinator.Solve(root, names, damage, policy, CancellationToken.None, null)
+                    ? CombatSearchCoordinator.Solve(root, names, damage, policy, CancellationToken.None, diagnosticProgress)
                     : SolveEvaluate(root, names, damage, policy, settings,
                         options.BudgetMilliseconds, loop, out describedPolicy, ref timeBoundary);
             }
@@ -456,7 +480,7 @@ internal static class ModRuntime
         else
         {
             result = options.SearchMode == "Coordinator"
-                ? CombatSearchCoordinator.Solve(root, names, damage, policy, CancellationToken.None, null)
+                ? CombatSearchCoordinator.Solve(root, names, damage, policy, CancellationToken.None, diagnosticProgress)
                 : SolveEvaluate(root, names, damage, policy, settings,
                     options.BudgetMilliseconds, loop, out describedPolicy, ref timeBoundary);
         }

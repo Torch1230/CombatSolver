@@ -487,6 +487,16 @@ internal static partial class CombatSearchCoordinator
             SearchRequestWorkSnapshot before = totals.Snapshot();
             long allocatedBefore = GC.GetTotalAllocatedBytes(precise: false);
             long startedMilliseconds = passClock.ElapsedMilliseconds;
+            if (policy.MeasurePhasePerformance)
+            {
+                policy.Diagnostics.Info(
+                    $"[CombatSolver/Test] BEAM_WIDTH_PORTFOLIO_MEMBER_START run_index={costs.Count} " +
+                    $"beam={effectiveProfile.BeamWidth} second_rank_band={effectiveProfile.SecondRankBand} " +
+                    $"base_score_only={effectiveProfile.BaseScoreOnly} " +
+                    $"power_commitment={effectiveProfile.AggressivePowerCommitment} " +
+                    $"nodes={effectiveProfile.MaxExpandedNodes} " +
+                    $"time_ms={effectiveProfile.SoftTimeBudgetMilliseconds}");
+            }
             SolverResult memberResult = solveMember(effectiveProfile, baselineObserved);
             long memberElapsed = Math.Max(0, passClock.ElapsedMilliseconds - startedMilliseconds);
             long memberAllocated = Math.Max(

@@ -113,12 +113,14 @@ cd tools/BeamOrderingAudit/BeamOrderingKeyChecks && dotnet run
 
 | 判据 | 说明 |
 |---|---|
-| `legacy exact-double band is empty at a boundary` | 现行 `SamePrimary` 用 `double` 精确相等判并列；带内节点附加分各不相同，所以**带恒为空集**——多样化机制存在但几乎不触发 |
+| `legacy exact-double band is empty at a boundary` | 在构造的附加分各不相同样本中，现行 `SamePrimary` 的精确并列集合为空；这个单元判据不测量真实战斗中的触发频率，不能推出“带恒为空集”或“几乎不触发” |
 | `band covers the objective's own tie set` | 同带 ⟺ 生产比较器返回并列；跨带必有先后 |
 | `legacy weighted score loses to a leading key` | 构造出"标量更优但目标更差"的节点对（**证明可能发生，不下频率结论**；频率见 Demo 0） |
 | `key struct reuses existing LINQ call sites` | `Max` / `MaxBy` / `OrderByDescending` / `GroupBy().Max` / `ThenByDescending` / `Comparer<T>.Default` 原样可用 |
 | `band must be capped and ordered by the supplemental score` | **危险约束，不是收益声明**：未完成节点在目标键上大批并列，带必须设上界且带内顺序仍由附加分决定 |
 | `local result stub matches production` | stub 漂移会报警（本工程对测试保真度敏感） |
+
+后续自生成场景的录制数据确实包含精确并列：三个训练根的172个完整外层保路池中，57个录制截线跨越相同分数/动作数，26个相关药水分组只有一种进攻进度。它们来自指定根的有限诊断窗口，不是全部实战的频率估计，也不是运行时进入多样化函数的计数；最终全局选择还经过其他仲裁。单一进攻进度组被现有战术并列规则旁路，是后续实验入口，不能直接称为无风险修复。见[上下文排序实验](../../docs/strategy/contextual-ordering-20260922.md)。
 
 ## 外部证据：排序/并列打破是同等量级的杠杆
 
@@ -612,4 +614,3 @@ if (EstimateMemberCost(baseline.ElapsedMilliseconds, baseline.BeamWidth, memberB
   （已剔除）；`NA` 与 `NALL` 在 60 场里读数几乎相同，说明展开准入那条（位 2）在这批战斗里没有额外作用，
   但这可能只是样本问题。
 - 只覆盖离线固定节点预算、`--dop 1`；没有实机可见会话数据。
-

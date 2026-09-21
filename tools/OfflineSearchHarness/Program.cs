@@ -377,6 +377,7 @@ internal sealed record HarnessOptions
           --offensive-refinement  组合实验：以更窄的进攻排序成员替换宽成员
           --beam-weight <term:scale>  单项排序敏感度：CurrentEnergy|PersistentBuffDelta|EnemyHp，scale 0..2
           --continuous-threat  实验：EndTurn 后尚能出牌的新回合起点，连续计价致死意图
+          --base-score-tactical-ties  实验：基础分成员的单进展值同分截线使用既有战术顺序
           --observe-portfolio    导出追加搜索的特征与实际政策标签
           --portfolio-model <p>  加载可选选择器 JSON；不匹配的版本回退原组合
           --milestone <M1|M2>    跑到哪个里程碑（默认 M2）
@@ -430,6 +431,7 @@ internal sealed record HarnessOptions
     public string Ordering { get; init; } = "baseline";
     public string? RankingModelPath { get; init; }
     public bool ContinuousThreatRanking { get; init; }
+    public bool BaseScoreTacticalTies { get; init; }
     public BeamWeightPerturbation? BeamWeightPerturbation { get; init; }
     public bool OffensiveRefinementPortfolio { get; init; }
     public bool? BoundedOffensiveRefinementPortfolio { get; init; }
@@ -458,6 +460,7 @@ internal sealed record HarnessOptions
         string ordering = "baseline";
         string? rankingModelPath = null;
         bool continuousThreatRanking = false;
+        bool baseScoreTacticalTies = false;
         BeamWeightPerturbation? beamWeightPerturbation = null;
         bool offensiveRefinementPortfolio = false;
         bool? boundedOffensiveRefinementPortfolio = null;
@@ -530,6 +533,7 @@ internal sealed record HarnessOptions
                         double.Parse(termScale[1], System.Globalization.CultureInfo.InvariantCulture));
                     break;
                 case "--continuous-threat": continuousThreatRanking = true; break;
+                case "--base-score-tactical-ties": baseScoreTacticalTies = true; break;
                 case "--stop-portfolio-at-hp-target": stopPortfolioAtHpTarget = true; break;
                 case "--disable-portfolio-hp-target-stop": stopPortfolioAtHpTarget = false; break;
                 case "--observe-portfolio": observePortfolio = true; break;
@@ -558,6 +562,8 @@ internal sealed record HarnessOptions
             throw new ArgumentException("--ranking-model 不能同时叠加其他 --ordering 实验。");
         if (continuousThreatRanking && (rankingModelPath != null || ordering != "baseline"))
             throw new ArgumentException("--continuous-threat 必须单独测量，不叠加排序模型或其他成员。");
+        if (baseScoreTacticalTies && (searchMode == "Evaluate" ? ordering != "base" : !usePortfolio))
+            throw new ArgumentException("--base-score-tactical-ties 需要 Evaluate --ordering base 或 Coordinator --use-portfolio。");
         if (beamWeightPerturbation != null && (continuousThreatRanking || rankingModelPath != null || ordering != "baseline"))
             throw new ArgumentException("--beam-weight 必须单独测量，不叠加其他排序实验。");
         if (offensiveRefinementPortfolio && (!usePortfolio || searchMode != "Coordinator"
@@ -630,6 +636,7 @@ internal sealed record HarnessOptions
             Ordering = ordering,
             RankingModelPath = rankingModelPath,
             ContinuousThreatRanking = continuousThreatRanking,
+            BaseScoreTacticalTies = baseScoreTacticalTies,
             BeamWeightPerturbation = beamWeightPerturbation,
             OffensiveRefinementPortfolio = offensiveRefinementPortfolio,
             BoundedOffensiveRefinementPortfolio = boundedOffensiveRefinementPortfolio,

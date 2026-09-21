@@ -19,6 +19,8 @@ internal sealed record SolverSearchProfile(
     public ContextualRankingModel? ContextualRanking { get; init; }
     /// <summary>Offline experiment: continuously price lethal intent only at a living, playable new-turn node after EndTurn.</summary>
     public bool ContinuousThreatRanking { get; init; }
+    /// <summary>Offline experiment: extend equal-policy tactical tie ordering to uniform-progress base-score boundaries.</summary>
+    public bool BaseScoreTacticalTies { get; init; }
     /// <summary>Offline one-factor sensitivity probe; absent in production profiles.</summary>
     public BeamWeightPerturbation? BeamWeightPerturbation { get; init; }
     /// <summary>Offline portfolio experiment: replace the wide refinement with a narrow offensive member.</summary>

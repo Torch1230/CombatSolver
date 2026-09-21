@@ -344,7 +344,8 @@ internal sealed partial class UnattendedTestRunner
             int[] required,
             int[] expected,
             bool finalQualityFirst = false,
-            bool useTacticalOrder = false)
+            bool useTacticalOrder = false,
+            bool includeSingleProgressGroup = false)
         {
             List<BeamBoundaryTestCandidate> selected = original
                 .Select(identity => pool.Single(candidate => candidate.Identity == identity))
@@ -367,7 +368,8 @@ internal sealed partial class UnattendedTestRunner
                         candidate.Potions,
                         candidate.Victory),
                     finalQualityFirst,
-                    useTacticalOrder ? GetTactical : null);
+                    useTacticalOrder ? GetTactical : null,
+                    includeSingleProgressGroup);
                 if (!selected.Select(candidate => candidate.Identity).SequenceEqual(expected)
                     || selected.Count != before.Length
                     || selected.Distinct(ReferenceEqualityComparer.Instance).Count() != selected.Count
@@ -460,6 +462,12 @@ internal sealed partial class UnattendedTestRunner
         AssertSelection(tacticalTie, seven, [], [0, 3, 1, 4, 2, 5, 6]);
         AssertSelection(tacticalTie, seven, [], [0, 4, 2, 7, 1, 5, 6],
             useTacticalOrder: true);
+        AssertSelection(
+            tacticalTie.Select(candidate => candidate with { OffensiveProgress = 15 }).ToArray(),
+            seven, [], [0, 4, 7, 2, 5, 1, 6], useTacticalOrder: true, includeSingleProgressGroup: true);
+        AssertSelection(
+            tacticalTie.Select(candidate => candidate with { OffensiveProgress = 15 }).ToArray(),
+            seven, [3], [0, 4, 7, 3, 2, 5, 1], useTacticalOrder: true, includeSingleProgressGroup: true);
 
         // Routing members keep their original progress-group positions, including an
         // unselected tactical extreme. Their presence does not block route-less peers.
