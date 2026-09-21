@@ -337,7 +337,7 @@ internal static class ModRuntime
         SearchPolicySnapshot policy = basePolicy with
         {
             RequestWorkTotals = totals,
-            Profile = settings.Profile with { SoftTimeBudgetMilliseconds = budgetMilliseconds },
+            Profile = basePolicy.Profile with { SoftTimeBudgetMilliseconds = budgetMilliseconds },
         };
         describedPolicy = DescribePolicy(policy);
         bool observedTimeBoundary = false;
@@ -348,7 +348,7 @@ internal static class ModRuntime
                     observedTimeBoundary = true;
                 policy.Diagnostics.Info(message);
             },
-            policy.Diagnostics.Debug);
+            policy.Diagnostics.Debug, policy.Diagnostics.PathObserver);
         CombatBeamSolver solver = new(
             root, names, damage, policy with { Diagnostics = diagnostics }, searchProfile: policy.Profile);
         // 与参考跑法一致：求解在工作线程上跑，主线程只泵消息循环。
@@ -386,6 +386,18 @@ internal static class ModRuntime
         SolverSettingsSnapshot settings = SolverSettings.Capture();
         SearchPolicySnapshot policy = SolverController.CaptureSearchPolicy(
             settings, state, includeTurnSetup: false, theftPolicy: null);
+        policy = policy with { Profile = policy.Profile with
+        {
+            BaseScoreOnly = options.Ordering == "base",
+            SecondRankBand = options.Ordering == "band",
+            ContextualRanking = options.RankingModelPath == null ? null
+                : ContextualRankingModel.Parse(File.ReadAllText(options.RankingModelPath)),
+        } };
+        using OrderingObservations? orderingObservations = options.OrderingObservationLimit > 0
+            ? new OrderingObservations(options.OutputDirectory, options.OrderingObservationLimit) : null;
+        if (orderingObservations != null)
+            policy = policy with { Diagnostics = new SearchDiagnosticsSink(
+                policy.Diagnostics.Info, policy.Diagnostics.Debug, orderingObservations.Observer) };
         List<BeamPortfolioObservation> observations = [];
         if (options.ObservePortfolio || options.PortfolioModelPath != null)
         {
@@ -443,6 +455,7 @@ internal static class ModRuntime
         }
         if (options.SearchMode == "Coordinator" && policy.MeasurePhasePerformance)
             LastPhasePerformance = SolverDiagnostics.DescribeSearchPhasePerformance(result);
+        orderingObservations?.WriteSelectedPath(options.OutputDirectory, result);
         HarnessLog.Trace("solved");
         watch.Stop();
         File.WriteAllText(Path.Combine(options.OutputDirectory, "quality.json"), JsonSerializer.Serialize(new

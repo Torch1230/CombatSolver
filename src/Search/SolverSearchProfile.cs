@@ -15,6 +15,9 @@ internal sealed record SolverSearchProfile(
     /// </summary>
     public bool SecondRankBand { get; init; }
 
+    // Experimental, explicitly injected frozen model; absent in normal production profiles.
+    public ContextualRankingModel? ContextualRanking { get; init; }
+
     /// <summary>
     /// 中途排序只用状态基础分 <c>node.Score</c>，不加 <c>BeamRankScore</c> 的各项附加分（当前能量、
     /// 持续效果增量、铺垫潜力等）；终局排序与路线比较规则不变。由普通组合与能力前缀后验

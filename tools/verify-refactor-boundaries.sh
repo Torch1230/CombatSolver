@@ -1295,6 +1295,16 @@ done
 require_fixed "$repository_root/src/Search/CombatBeamSolver.Models.cs" 'TranspositionCapDiagnostics TranspositionDiagnostics' 'cap observations must be owned by the search run'
 require_fixed "$repository_root/src/Search/SearchPolicySnapshot.cs" 'DefaultTranspositionEntryLimit = 1_000_000' 'production transposition entry limit changed'
 
+# Contextual estimates may influence intermediate ordering only; loading stays outside workers.
+require_fixed "$search_root/ContextualRankingModel.cs" 'stackalloc double[FeatureCount]' 'contextual ranking must keep its feature buffer local'
+require_fixed "$search_root/ContextualRankingModel.cs" 'ModuleVersionId' 'contextual model must validate assembly identity'
+for token in 'File.' 'SolverSettings.Current' 'SolverController' 'ComparePrimaryQuality'; do
+    forbid_fixed "$search_root/ContextualRankingModel.cs" "$token" 'contextual estimate crossed its pure ranking boundary:'
+done
+for file in CombatBeamSolver.FinalPlanOrdering.cs CombatBeamSolver.Transpositions.cs; do
+    forbid_fixed "$search_root/$file" 'ContextualRanking' 'learned estimate must not become final policy or exact dominance:'
+done
+
 if ((${#violations[@]} > 0)); then
     printf '%s\n' "${violations[@]}" >&2
     printf 'Refactor boundary verification failed with %d violation(s).\n' "${#violations[@]}" >&2

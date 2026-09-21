@@ -18,6 +18,12 @@ internal static class Program
 
     private static int Main(string[] rawArgs)
     {
+        if (rawArgs.Length == 3 && rawArgs[0] == "--compare-quality-batch")
+            return QualityComparison.Run(rawArgs[1], rawArgs[2]);
+        if (rawArgs.Length == 2 && rawArgs[0] == "--ranking-schema")
+            return RankingChecks.WriteSchema(rawArgs[1]);
+        if (rawArgs.Length == 3 && rawArgs[0] == "--check-ranking")
+            return RankingChecks.Run(rawArgs[1], rawArgs[2]);
         HarnessOptions options;
         try
         {
@@ -356,6 +362,9 @@ internal sealed record HarnessOptions
           --enable-no-gc-region   开 Runtime 的搜索内 No-GC 生命周期（默认关闭）
           --no-gc-region-budget-gigabytes <double>  No-GC 区域预算，单位十进制 GB（默认 1）
           --signal-ballast-mb <int>  进 No-GC scope 后先持有 N MiB 活对象，制造回收腾不出余量的压力
+          --observe-ordering <N> 最多导出 N 个真实剪枝候选；仅供采集，不能用于性能数据
+          --ordering <mode>     Evaluate 实验：baseline|base|band，复用现有排序成员
+          --ranking-model <p>   实验：有界上下文排序修正；只与 baseline 排序同时使用
           --observe-portfolio    导出追加搜索的特征与实际政策标签
           --portfolio-model <p>  加载可选选择器 JSON；不匹配的版本回退原组合
           --milestone <M1|M2>    跑到哪个里程碑（默认 M2）
@@ -404,6 +413,9 @@ internal sealed record HarnessOptions
     public double NoGcRegionBudgetGigabytes { get; init; } = 1d;
     /// <summary>进入 No-GC scope 后先持有的活对象 MiB，用于制造“回收腾不出余量”的受控压力。</summary>
     public int SignalBallastMegabytes { get; init; }
+    public int OrderingObservationLimit { get; init; }
+    public string Ordering { get; init; } = "baseline";
+    public string? RankingModelPath { get; init; }
     public bool ObservePortfolio { get; init; }
     public string? PortfolioModelPath { get; init; }
     public string Milestone { get; init; } = "M2";
@@ -423,6 +435,9 @@ internal sealed record HarnessOptions
         bool measurePhases = false, enableNoGcRegion = false, productionBudget = false;
         bool stopAtZeroLoss = false, verifyIncremental = false;
         double noGcRegionBudgetGigabytes = 1d;
+        int orderingObservationLimit = 0;
+        string ordering = "baseline";
+        string? rankingModelPath = null;
         int signalBallastMegabytes = 0;
         int? beam = null, nodes = null, cardBranches = null, pileBranches = null, handBranches = null;
         bool usePortfolio = false, observePortfolio = false, noPlainBaseline = false;
@@ -476,6 +491,9 @@ internal sealed record HarnessOptions
                 case "--enable-no-gc-region": enableNoGcRegion = true; break;
                 case "--no-gc-region-budget-gigabytes": noGcRegionBudgetGigabytes = double.Parse(Value()); break;
                 case "--signal-ballast-mb": signalBallastMegabytes = int.Parse(Value()); break;
+                case "--observe-ordering": orderingObservationLimit = int.Parse(Value()); break;
+                case "--ordering": ordering = Value(); break;
+                case "--ranking-model": rankingModelPath = Path.GetFullPath(Value()); break;
                 case "--observe-portfolio": observePortfolio = true; break;
                 case "--portfolio-model": portfolioModelPath = Path.GetFullPath(Value()); break;
                 case "--milestone": milestone = Value(); break;
@@ -492,6 +510,12 @@ internal sealed record HarnessOptions
             throw new ArgumentException("--profile 只接受 Low|Medium|High|VeryHigh|Custom。");
         if (searchMode is not ("Evaluate" or "Coordinator"))
             throw new ArgumentException("--search-mode 只接受 Evaluate 或 Coordinator。");
+        if (orderingObservationLimit is < 0 or > 100000 || orderingObservationLimit > 0 && searchMode != "Evaluate")
+            throw new ArgumentException("--observe-ordering 仅支持 Evaluate，范围 0..100000。");
+        if (ordering is not ("baseline" or "base" or "band") || ordering != "baseline" && searchMode != "Evaluate")
+            throw new ArgumentException("--ordering 只接受 baseline|base|band，非基线仅支持 Evaluate。");
+        if (rankingModelPath != null && ordering != "baseline")
+            throw new ArgumentException("--ranking-model 不能同时叠加其他 --ordering 实验。");
         if (usePortfolio && searchMode != "Coordinator")
             throw new ArgumentException("--use-portfolio 只对 --search-mode Coordinator 有效。");
         if ((observePortfolio || portfolioModelPath != null) && (!usePortfolio || searchMode != "Coordinator"))
@@ -547,6 +571,9 @@ internal sealed record HarnessOptions
             EnableNoGcRegion = enableNoGcRegion,
             NoGcRegionBudgetGigabytes = noGcRegionBudgetGigabytes,
             SignalBallastMegabytes = signalBallastMegabytes,
+            OrderingObservationLimit = orderingObservationLimit,
+            Ordering = ordering,
+            RankingModelPath = rankingModelPath,
             ObservePortfolio = observePortfolio,
             PortfolioModelPath = portfolioModelPath,
             Milestone = milestone,

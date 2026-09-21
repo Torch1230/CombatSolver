@@ -1634,6 +1634,24 @@ foreach ($rule in @(
     }
 }
 
+# Contextual estimates remain pure intermediate ordering; never a bound or final policy.
+$contextualPath = Join-Path $searchRoot 'ContextualRankingModel.cs'
+foreach ($text in @('stackalloc double[FeatureCount]', 'ModuleVersionId')) {
+    if (-not (Select-String -LiteralPath $contextualPath -SimpleMatch $text -Quiet)) {
+        $violations.Add("Missing contextual ranking boundary: $text")
+    }
+}
+foreach ($text in @('File.', 'SolverSettings.Current', 'SolverController', 'ComparePrimaryQuality')) {
+    if (Select-String -LiteralPath $contextualPath -SimpleMatch $text -Quiet) {
+        $violations.Add("Contextual estimate crossed its pure ranking boundary: $text")
+    }
+}
+foreach ($file in @('CombatBeamSolver.FinalPlanOrdering.cs', 'CombatBeamSolver.Transpositions.cs')) {
+    if (Select-String -LiteralPath (Join-Path $searchRoot $file) -SimpleMatch 'ContextualRanking' -Quiet) {
+        $violations.Add("Learned estimate must not become final policy or exact dominance: $file")
+    }
+}
+
 if ($violations.Count -gt 0) {
     $violations | ForEach-Object { Write-Error $_ }
     throw "Refactor boundary verification failed with $($violations.Count) violation(s)."

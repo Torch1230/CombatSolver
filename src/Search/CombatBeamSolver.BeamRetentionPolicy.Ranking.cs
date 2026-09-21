@@ -858,7 +858,7 @@ internal sealed partial class CombatBeamSolver
             int weakExpectedHpSaved = _isActEndingBoss
                 ? SolverWeights.BossEnemyWeakExpectedHpSaved
                 : SolverWeights.StandardEnemyWeakExpectedHpSaved;
-            return node.Score
+            double score = node.Score
                 + Math.Min(SolverWeights.CurrentEnergyBeamCap, node.Snapshot.Energy)
                     * SolverWeights.CurrentEnergyBeamValue
                 + Math.Min(
@@ -892,6 +892,7 @@ internal sealed partial class CombatBeamSolver
                         Math.Max(0, node.Snapshot.EnemyWeakTurns - _run.InitialEnemyWeakTurns))
                     * weakExpectedHpSaved
                     * SolverWeights.Hp;
+            return _profile.ContextualRanking is { } model ? score + model.Adjustment(node) : score;
         }
 
         private int RetainedAttackGrowth(SimulationSnapshot snapshot)
