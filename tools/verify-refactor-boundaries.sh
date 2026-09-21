@@ -550,7 +550,7 @@ for targeting_rule in \
 done
 
 block_potion_insertion_path="$search_root/CombatBeamSolver.BlockPotionInsertion.cs"
-for required_rule in 'HpLostByTurn' 'SolverWeights.PotionMinimumHpSaved' 'ReplayInsertedRoute(' 'ProjectedDeathSaveUseCount' 'expanded_nodes_added=0'; do
+for required_rule in 'HpLostByTurn' 'SolverWeights.PotionMinimumHpSaved' 'ReplayAdjustedRoute(' 'ProjectedDeathSaveUseCount' 'expanded_nodes_added=0'; do
     require_fixed "$block_potion_insertion_path" "$required_rule" 'deterministic block-potion route rule is missing'
 done
 require_fixed "$search_root/CombatSearchCoordinator.cs" 'passResult.DeterministicBlockPotionInserted' 'deterministic block-potion result must settle before supplemental potion audits'
@@ -571,6 +571,7 @@ expected_beam_files=(
     CombatBeamSolver.BeamRetentionPolicy.Ranking.cs
     CombatBeamSolver.BeamRetentionPolicy.Routing.cs
     CombatBeamSolver.BeamRetentionPolicy.Testing.cs
+    CombatBeamSolver.AfterimageFrontloading.cs
     CombatBeamSolver.BlockPotionInsertion.cs
     CombatBeamSolver.CrossTurnPlanning.cs
     CombatBeamSolver.CyclePlanning.cs
