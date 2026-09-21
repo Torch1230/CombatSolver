@@ -395,6 +395,8 @@ internal static class ModRuntime
             ContinuousThreatRanking = options.ContinuousThreatRanking,
             BeamWeightPerturbation = options.BeamWeightPerturbation,
             OffensiveRefinementPortfolio = options.OffensiveRefinementPortfolio,
+            BoundedOffensiveRefinementPortfolio = options.BoundedOffensiveRefinementPortfolio
+                ?? policy.Profile.BoundedOffensiveRefinementPortfolio,
             StopPortfolioAtHpTarget = options.StopPortfolioAtHpTarget ?? policy.Profile.StopPortfolioAtHpTarget,
         } };
         using OrderingObservations? orderingObservations = options.OrderingObservationLimit > 0

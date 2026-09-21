@@ -31,6 +31,7 @@ internal sealed record BeamWidthPortfolioMemberReport(
     long ManagedHeapBytesAfter)
 {
     public bool OffensiveRefinement { get; init; }
+    public bool BoundedRefinement { get; init; }
 }
 
 internal sealed record PowerRoutePortfolioMemberReport(

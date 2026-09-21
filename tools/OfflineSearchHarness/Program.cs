@@ -372,6 +372,8 @@ internal sealed record HarnessOptions
           --observe-ordering-states <p>  追加观察给定状态键的生成/准入/回合筛选事件
           --ordering <mode>     Evaluate 实验：baseline|base|band，复用现有排序成员
           --ranking-model <p>   实验：有界上下文排序修正；只与 baseline 排序同时使用
+          --bounded-offensive-refinement  组合实验：保留原成员，有界追加进攻成员
+          --disable-bounded-offensive-refinement  显式关闭有界追加
           --offensive-refinement  组合实验：以更窄的进攻排序成员替换宽成员
           --beam-weight <term:scale>  单项排序敏感度：CurrentEnergy|PersistentBuffDelta|EnemyHp，scale 0..2
           --continuous-threat  实验：EndTurn 后尚能出牌的新回合起点，连续计价致死意图
@@ -430,6 +432,7 @@ internal sealed record HarnessOptions
     public bool ContinuousThreatRanking { get; init; }
     public BeamWeightPerturbation? BeamWeightPerturbation { get; init; }
     public bool OffensiveRefinementPortfolio { get; init; }
+    public bool? BoundedOffensiveRefinementPortfolio { get; init; }
     public bool? StopPortfolioAtHpTarget { get; init; }
     public bool ObservePortfolio { get; init; }
     public string? PortfolioModelPath { get; init; }
@@ -457,6 +460,7 @@ internal sealed record HarnessOptions
         bool continuousThreatRanking = false;
         BeamWeightPerturbation? beamWeightPerturbation = null;
         bool offensiveRefinementPortfolio = false;
+        bool? boundedOffensiveRefinementPortfolio = null;
         bool? stopPortfolioAtHpTarget = null;
         int signalBallastMegabytes = 0;
         int? beam = null, nodes = null, cardBranches = null, pileBranches = null, handBranches = null;
@@ -515,6 +519,8 @@ internal sealed record HarnessOptions
                 case "--observe-ordering-states": orderingWatchedStatesPath = Path.GetFullPath(Value()); break;
                 case "--ordering": ordering = Value(); break;
                 case "--ranking-model": rankingModelPath = Path.GetFullPath(Value()); break;
+                case "--bounded-offensive-refinement": boundedOffensiveRefinementPortfolio = true; break;
+                case "--disable-bounded-offensive-refinement": boundedOffensiveRefinementPortfolio = false; break;
                 case "--offensive-refinement": offensiveRefinementPortfolio = true; break;
                 case "--beam-weight":
                     string[] termScale = Value().Split(':');
@@ -557,6 +563,11 @@ internal sealed record HarnessOptions
         if (offensiveRefinementPortfolio && (!usePortfolio || searchMode != "Coordinator"
             || beamWeightPerturbation != null || continuousThreatRanking || rankingModelPath != null || ordering != "baseline"))
             throw new ArgumentException("--offensive-refinement 需要Coordinator组合且不能叠加其他排序实验。");
+        if (boundedOffensiveRefinementPortfolio.HasValue && (!usePortfolio || searchMode != "Coordinator"))
+            throw new ArgumentException("有界追加参数需要Coordinator组合。");
+        if (boundedOffensiveRefinementPortfolio == true && (offensiveRefinementPortfolio
+            || beamWeightPerturbation != null || continuousThreatRanking || rankingModelPath != null || ordering != "baseline"))
+            throw new ArgumentException("有界追加不能叠加其他排序实验。");
         if (stopPortfolioAtHpTarget.HasValue && searchMode != "Coordinator")
             throw new ArgumentException("组合达标早停参数仅用于Coordinator。");
         if (usePortfolio && searchMode != "Coordinator")
@@ -621,6 +632,7 @@ internal sealed record HarnessOptions
             ContinuousThreatRanking = continuousThreatRanking,
             BeamWeightPerturbation = beamWeightPerturbation,
             OffensiveRefinementPortfolio = offensiveRefinementPortfolio,
+            BoundedOffensiveRefinementPortfolio = boundedOffensiveRefinementPortfolio,
             StopPortfolioAtHpTarget = stopPortfolioAtHpTarget,
             ObservePortfolio = observePortfolio,
             PortfolioModelPath = portfolioModelPath,

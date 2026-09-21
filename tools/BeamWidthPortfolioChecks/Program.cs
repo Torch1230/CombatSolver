@@ -57,6 +57,30 @@ static BeamWidthPortfolioMemberSpec Power(int width) => new(width, AggressivePow
 // Experimental replacement keeps the ordinary baseline/narrow member and the shared
 // budget. A worse offensive member must not erase a winning ordinary incumbent.
 static BeamWidthPortfolioMemberSpec Offense(int width) => new(width, OffensiveRefinement: true);
+static BeamWidthPortfolioMemberSpec BoundedOffense(int width)
+    => new(width, OffensiveRefinement: true, BoundedRefinement: true);
+var originalMembers = BeamWidthPortfolio.ProductionMembers(60, null, includePowerCommitmentMember: true);
+var appendedMembers = BeamWidthPortfolio.ProductionMembers(60, null, includePowerCommitmentMember: true,
+    appendBoundedOffensiveRefinement: true);
+Require(appendedMembers.Take(originalMembers.Count).SequenceEqual(originalMembers)
+    && appendedMembers.Count == originalMembers.Count + 1 && appendedMembers[^1] == BoundedOffense(24),
+    "Bounded append changed the original members or their order.");
+Require(BeamWidthPortfolio.ProductionMembers(60, [60, 90], appendBoundedOffensiveRefinement: true)
+    .SequenceEqual([Width(60), Width(90)]), "Bounded append overrode explicit member configuration.");
+var bounded = PortfolioOf([Width(60), Width(40), BoundedOffense(24)], 10_000,
+    [Finished(1000, Outcome(true, 17)), Finished(1000, Outcome(true, 16)), Finished(200, Outcome(true, 10))]);
+Require(observed.Select(p => p.MaxExpandedNodes).SequenceEqual([10_000, 9000, 250]),
+    "Bounded append did not use one eighth of measured work or changed earlier budgets.");
+Require(bounded.SelectedIndex == 2 && bounded.TotalExpandedNodes == 2200
+    && bounded.Members[2] is { OffensiveRefinement: true, BoundedRefinement: true, NodeBudget: 250 },
+    "Bounded winning refinement or its accounting/identity was lost.");
+var scarce = PortfolioOf([Width(60), Width(40), BoundedOffense(24)], 2050,
+    [Finished(1000, Outcome(true, 17)), Finished(1000, Outcome(true, 16)), Finished(40, Outcome(true, 18))]);
+Require(observed[2].MaxExpandedNodes == 50 && scarce.SelectedIndex == 1,
+    "Bounded refinement exceeded shared remainder or replaced a better incumbent.");
+var tiny = PortfolioOf([Width(60), BoundedOffense(24)], 1000, [Finished(7, Outcome(true, 1))]);
+Require(tiny.Members[1] is { BoundedRefinement: true, Ran: false } && observed.Count == 1,
+    "A zero-sized fractional budget launched a refinement.");
 Require(BeamWidthPortfolio.ProductionMembers(60, null, useOffensiveRefinement: true)
     .SequenceEqual([Width(60), Width(40), Offense(24), Band(60), Base(60)]),
     "Offensive refinement changed ordinary members or added a member.");

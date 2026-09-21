@@ -23,6 +23,8 @@ internal sealed record SolverSearchProfile(
     public BeamWeightPerturbation? BeamWeightPerturbation { get; init; }
     /// <summary>Offline portfolio experiment: replace the wide refinement with a narrow offensive member.</summary>
     public bool OffensiveRefinementPortfolio { get; init; }
+    /// <summary>Offline experiment: append a narrow offensive member using at most one eighth of prior member expansions.</summary>
+    public bool BoundedOffensiveRefinementPortfolio { get; init; }
     /// <summary>Honor the player's HP stopping target across portfolios, preserving audits for visible or observed healing.</summary>
     public bool StopPortfolioAtHpTarget { get; init; } = true;
 

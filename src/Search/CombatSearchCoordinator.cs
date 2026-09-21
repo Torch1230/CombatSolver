@@ -616,7 +616,8 @@ internal static partial class CombatSearchCoordinator
                     policy.UseBeamWidthPortfolio ? policy.BeamWidthPortfolioWidths : [profile.BeamWidth],
                     policy.BeamWidthPortfolioPlainBaselineMember,
                     includePowerCommitmentMember: hasReachablePower,
-                    useOffensiveRefinement: profile.OffensiveRefinementPortfolio),
+                    useOffensiveRefinement: profile.OffensiveRefinementPortfolio,
+                    appendBoundedOffensiveRefinement: profile.BoundedOffensiveRefinementPortfolio),
                 profile.MaxExpandedNodes,
                 profile,
                 RunMember,
@@ -708,7 +709,7 @@ internal static partial class CombatSearchCoordinator
                 cost.ElapsedMilliseconds,
                 cost.AllocatedBytes,
                 cost.ManagedHeapBytesAfter)
-            { OffensiveRefinement = member.OffensiveRefinement };
+            { OffensiveRefinement = member.OffensiveRefinement, BoundedRefinement = member.BoundedRefinement };
             telemetry.RecordMember(report);
             policy.Diagnostics.Info(
                 $"[CombatSolver/Test] BEAM_WIDTH_PORTFOLIO_MEMBER index={index} " +
@@ -716,6 +717,7 @@ internal static partial class CombatSearchCoordinator
                 $"base_score_only={report.BaseScoreOnly} " +
                 $"power_commitment={report.AggressivePowerCommitment} " +
                 $"offensive_refinement={report.OffensiveRefinement} " +
+                $"bounded_refinement={report.BoundedRefinement} " +
                 $"nodes={report.NodeBudget} ran={report.Ran} " +
                 $"selected={report.Selected} compared={report.Compared} " +
                 $"skipped={report.SkippedReason ?? "-"} " +
