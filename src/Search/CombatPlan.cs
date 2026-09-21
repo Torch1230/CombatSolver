@@ -1508,7 +1508,9 @@ internal sealed class SolverResult
     public int CycleContinuationsStopped { get; init; }
     public int CycleReplayAttempts { get; init; }
     public int CycleReplayActions { get; init; }
+    public int TotalCycleReplayActions { get; internal set; }
     public int CycleReplayVictories { get; init; }
+    public int CycleReplayContinuations { get; init; }
     public int CycleStoppedUnproductive { get; init; }
     public int CycleStoppedRepetitionBudget { get; init; }
     public int CycleStoppedFamilyBudget { get; init; }
@@ -1705,7 +1707,9 @@ internal sealed class SolverResult
             CycleContinuationsStopped = 0,
             CycleReplayAttempts = 0,
             CycleReplayActions = 0,
+            TotalCycleReplayActions = 0,
             CycleReplayVictories = 0,
+            CycleReplayContinuations = 0,
             CycleStoppedUnproductive = 0,
             CycleStoppedRepetitionBudget = 0,
             CycleStoppedFamilyBudget = 0,

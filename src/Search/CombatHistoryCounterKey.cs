@@ -1,66 +1,86 @@
 using System.Collections.Frozen;
 using MegaCrit.Sts2.Core.Entities.Players;
+using MegaCrit.Sts2.Core.Models;
 using CombatSolver.Engine.InCombat.Simulation;
 
 namespace CombatSolver;
 
-/// <summary>
-/// Whole-combat history counters that some cards read through <c>CalculatedVarSpecRegistry</c> and that the
-/// state key otherwise does not see.
-/// </summary>
-/// <remarks>
-/// The state key covers piles, powers, RNG streams and the per-turn counters kept on
-/// <see cref="SimulatedCombatState"/>, but not how many card plays, draws, channels or hits the whole fight has
-/// accumulated. Gold Axe's damage is the number of finished card plays in the combat; Voltaic, Tear Asunder,
-/// Pull From Below, Murder and Supermassive read similar totals. Two branches that reach the same piles and
-/// resources through a different number of plays therefore hash to the same key while those cards would deal
-/// different damage, and exact dedup keeps only one of them. A shadow trace over 50 offline roots found six such
-/// same-key/different-output pairs, all on Gold Axe (19 versus 18 finished plays).
-///
-/// The counters are appended only when the root deck holds one of those cards, so every other fight keeps its
-/// key, its transposition hits and its dedup exactly as before. The live history before the root is constant
-/// for the whole request and is left out; only the simulated part can differ between branches.
-/// </remarks>
+[Flags]
+internal enum CombatHistoryDependencies
+{
+    None = 0, FinishedPlays = 1, EtherealPlays = 2, LightningChannels = 4,
+    UnblockedHitsReceived = 8, CardsDrawn = 16, CardsGenerated = 32,
+    All = 63,
+}
+
+/// <summary>Immutable root-wide dependencies, including readers which can enter combat later.</summary>
 internal static class CombatHistoryCounterKey
 {
-    private static readonly FrozenSet<string> CardIds = new[]
+    // Random generation is transitive: a generated power can generate another card or potion.
+    // Keep all counters for these sources, rather than guessing the first generated result.
+    // Fixed token creation and copying existing cards do not introduce a new reader dependency.
+    private static readonly FrozenSet<string> OpenGenerationSources = new[]
     {
-        "GOLD_AXE",
-        "VOLTAIC",
-        "TEAR_ASUNDER",
-        "PULL_FROM_BELOW",
-        "BANSHEES_CRY",
-        "MURDER",
-        "SUPERMASSIVE",
+        "ABUNDANCE", "BUNDLE_OF_JOY", "DISTRACTION", "DISCOVERY", "INFERNAL_BLADE",
+        "JACK_OF_ALL_TRADES", "JACKPOT", "LARGESSE", "MAD_SCIENCE", "TINKER_TIME",
+        "MANIFEST_AUTHORITY", "METAMORPHOSIS", "QUASAR", "SPLASH", "STOKE", "WHITE_NOISE",
+        "ALCHEMIZE", "CALAMITY", "CALL_OF_THE_VOID", "CREATIVE_AI", "HELLO_WORLD",
+        "SPECTRUM_SHIFT", "ENTROPY", "CALAMITY_POWER", "CALL_OF_THE_VOID_POWER",
+        "CREATIVE_AI_POWER", "HELLO_WORLD_POWER", "SPECTRUM_SHIFT_POWER", "ENTROPY_POWER",
+        // A stored copy can outlive the original card or its identity (e.g. transformation).
+        "NIGHTMARE_POWER",
+        "TOOLBOX", "CHOICES_PARADOX", "VEXING_PUZZLEBOX", "BIG_HAT", "CROSSBOW",
+        "ORANGE_DOUGH", "PETRIFIED_TOAD",
+        "ATTACK_POTION", "SKILL_POTION", "POWER_POTION", "COLORLESS_POTION",
+        "COSMIC_CONCOCTION", "OROBIC_ACID", "ENTROPIC_BREW",
     }.ToFrozenSet(StringComparer.Ordinal);
 
-    public static bool AppliesTo(IReadOnlySet<string> playerCardIds)
+    internal static CombatHistoryDependencies ForCard(string id) => id switch
     {
-        foreach (string cardId in CardIds)
+        "GOLD_AXE" => CombatHistoryDependencies.FinishedPlays,
+        "PULL_FROM_BELOW" or "BANSHEES_CRY" => CombatHistoryDependencies.EtherealPlays,
+        "VOLTAIC" => CombatHistoryDependencies.LightningChannels,
+        "TEAR_ASUNDER" => CombatHistoryDependencies.UnblockedHitsReceived,
+        "MURDER" => CombatHistoryDependencies.CardsDrawn,
+        "SUPERMASSIVE" => CombatHistoryDependencies.CardsGenerated,
+        _ => CombatHistoryDependencies.None,
+    };
+
+    public static bool AppliesTo(IReadOnlySet<string> playerCardIds)
+        => playerCardIds.Any(id => ForCard(id) != CombatHistoryDependencies.None);
+
+    internal static CombatHistoryDependencies Capture(IEnumerable<AbstractModel> sources, bool hasModHooks)
+    {
+        if (hasModHooks) return CombatHistoryDependencies.All;
+        CombatHistoryDependencies dependencies = CombatHistoryDependencies.None;
+        foreach (AbstractModel source in sources)
         {
-            if (playerCardIds.Contains(cardId))
-                return true;
+            if (source.GetType().Assembly != typeof(CardModel).Assembly
+                || OpenGenerationSources.Contains(source.Id.Entry))
+                return CombatHistoryDependencies.All;
+            if (source is CardModel) dependencies |= ForCard(source.Id.Entry);
         }
-        return false;
+        return dependencies;
     }
 
-    /// <summary>
-    /// Appends the simulated part of every counter the registry reads for the player's cards, from the incrementally maintained
-    /// prediction history totals; the marker, order and integer widths stay unchanged.
-    /// </summary>
-    public static void Append(ref StateFingerprintBuilder key, CombatPredictionSimulator simulator, Player owner)
-    {
-        AppendCounters(ref key, simulator.History.GetCounters(owner));
-    }
+    public static void Append(ref StateFingerprintBuilder key, CombatPredictionSimulator simulator, Player owner,
+        CombatHistoryDependencies dependencies = CombatHistoryDependencies.All)
+        => AppendCounters(ref key, simulator.History.GetCounters(owner), dependencies);
 
     internal static void AppendCounters(ref StateFingerprintBuilder key, CombatHistoryCounters counters)
+        => AppendCounters(ref key, counters, CombatHistoryDependencies.All);
+
+    internal static void AppendCounters(ref StateFingerprintBuilder key, CombatHistoryCounters counters,
+        CombatHistoryDependencies dependencies)
     {
+        if (dependencies == CombatHistoryDependencies.None) return;
+        // Retain the existing encoding for All; an immutable root mask needs no per-node tag.
         key.Add('h');
-        key.Add(counters.FinishedPlays);
-        key.Add(counters.EtherealPlays);
-        key.Add(counters.LightningChannels);
-        key.Add(counters.UnblockedHitsReceived);
-        key.Add(counters.CardsDrawn);
-        key.Add(counters.CardsGenerated);
+        key.Add((dependencies & CombatHistoryDependencies.FinishedPlays) != 0 ? counters.FinishedPlays : 0);
+        key.Add((dependencies & CombatHistoryDependencies.EtherealPlays) != 0 ? counters.EtherealPlays : 0);
+        key.Add((dependencies & CombatHistoryDependencies.LightningChannels) != 0 ? counters.LightningChannels : 0);
+        key.Add((dependencies & CombatHistoryDependencies.UnblockedHitsReceived) != 0 ? counters.UnblockedHitsReceived : 0);
+        key.Add((dependencies & CombatHistoryDependencies.CardsDrawn) != 0 ? counters.CardsDrawn : 0);
+        key.Add((dependencies & CombatHistoryDependencies.CardsGenerated) != 0 ? counters.CardsGenerated : 0);
     }
 }

@@ -5,7 +5,7 @@ import tempfile
 import unittest
 
 from run_loop_boundaries import (
-    QUALITY, budget_observation, compare_runs, observation_status, report_exit_code,
+    QUALITY, replay_budget_observation, budget_observation, compare_runs, observation_status, report_exit_code,
 )
 
 
@@ -79,6 +79,22 @@ class LoopBoundaryClassificationTests(unittest.TestCase):
         item = compare_runs('cap', [self.sample('A', time),
                                    {'valid': False, 'status': 'HarnessFailed'}])
         self.assertEqual(1, report_exit_code([item]))
+
+    def test_coordinator_never_substitutes_selected_solver_for_request_replay_count(self):
+        self.assertEqual(('unavailable', None), replay_budget_observation({'CycleReplayActions': 6}, 'Coordinator'))
+        self.assertEqual(('request', 4096), replay_budget_observation(
+            {'CycleReplayActions': 6, 'TotalCycleReplayActions': 4096}, 'Coordinator'))
+
+    def test_coordinator_uses_all_solver_log_reasons(self):
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory)
+            logs = out / 'logs' / 'process'
+            logs.mkdir(parents=True)
+            (logs / 'process.jsonl').write_text(json.dumps({'Message': 'TURN_LAYER_BUDGET reason=time'}) + '\n')
+            result = {'solverMetrics': {'TurnLayerTimeBudgetStops': 0, 'TurnLayerNodeBudgetStops': 0}}
+            budget = budget_observation(result, out, 'Coordinator')
+            self.assertEqual('request', budget['scope'])
+            self.assertEqual('TimeLimited', observation_status(budget, []))
 
     def test_cap_suite_has_no_fixed_turn_requirement_and_scope_is_explicit(self):
         path = Path(__file__).resolve().parents[2] / 'coverage/unattended/loop-boundaries-20260921/suite.json'

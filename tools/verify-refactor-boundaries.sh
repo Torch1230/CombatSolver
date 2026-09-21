@@ -1283,6 +1283,10 @@ for forbidden in 'Task<' 'Func<' 'Action<'; do
     forbid_fixed "$repository_root/src/Prediction/CardChoiceContinuation.cs" "$forbidden" 'continuation retained an executable closure:'
 done
 
+require_fixed "$repository_root/src/Search/CombatBeamSolver.cs" 'policy.RequestWorkTotals ?? new()' 'loop budget/history ownership changed'
+require_fixed "$repository_root/src/Search/CombatBeamSolver.CycleReplay.cs" '_replayWork.TryConsumeCycleReplayAction()' 'loop budget/history ownership changed'
+require_fixed "$repository_root/src/Runtime/CombatRootSnapshot.cs" 'playerState.AllCards.Cast<AbstractModel>()' 'loop budget/history ownership changed'
+require_fixed "$repository_root/src/Search/CombatBeamSolver.StateEvaluation.cs" '_historyDependencies' 'loop budget/history ownership changed'
 require_fixed "$repository_root/src/Search/CombatHistoryCounterKey.cs" 'simulator.History.GetCounters(owner)' 'history key must consume incremental totals'
 for history_file in CombatPredictionHistory.cs CombatPredictionHistory.CardContinuation.cs CombatPredictionHistory.ExecutionContinuation.cs; do
     require_fixed "$repository_root/src/Engine/InCombat/Simulation/$history_file" '_counterOwner, _counters' 'history forks must inherit counters'

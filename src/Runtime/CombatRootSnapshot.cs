@@ -48,6 +48,7 @@ internal sealed class CombatRootSnapshot
     public double CaptureElapsedMilliseconds { get; }
     public int CapturedCardCount { get; }
     public IReadOnlySet<string> PlayerCardIds { get; }
+    public CombatHistoryDependencies HistoryDependencies { get; }
     public int CapturedPowerCount { get; }
     public int CapturedHookListenerCount { get; }
     public int CapturedRunModSubscriberCount { get; }
@@ -84,6 +85,7 @@ internal sealed class CombatRootSnapshot
         double captureElapsedMilliseconds,
         int capturedCardCount,
         IReadOnlySet<string> playerCardIds,
+        CombatHistoryDependencies historyDependencies,
         int capturedPowerCount,
         int capturedHookListenerCount,
         int capturedRunModSubscriberCount,
@@ -121,6 +123,7 @@ internal sealed class CombatRootSnapshot
         CaptureElapsedMilliseconds = captureElapsedMilliseconds;
         CapturedCardCount = capturedCardCount;
         PlayerCardIds = playerCardIds;
+        HistoryDependencies = historyDependencies;
         CapturedPowerCount = capturedPowerCount;
         CapturedHookListenerCount = capturedHookListenerCount;
         CapturedRunModSubscriberCount = capturedRunModSubscriberCount;
@@ -227,6 +230,13 @@ internal sealed class CombatRootSnapshot
             .Select(card => card.Id.Entry)
             .ToFrozenSet(StringComparer.Ordinal);
         int powerCount = state.Creatures.Sum(creature => creature.Powers.Count);
+        CombatHistoryDependencies historyDependencies = CombatHistoryCounterKey.Capture(
+                playerState.AllCards.Cast<AbstractModel>().Concat(liveCombatHookListeners)
+                    .Concat(player.PotionSlots.OfType<AbstractModel>()),
+                simulatedCombat.RootRunModSubscriberCount != 0
+                    || simulatedCombat.RootCombatModSubscriberCount != 0
+                    || simulatedCombat.RootHasBaseLibCardModifiers
+                    || simulatedCombat.AdaptedOnPlay is not null);
         stopwatch.Stop();
 
         return new CombatRootSnapshot(
@@ -251,6 +261,7 @@ internal sealed class CombatRootSnapshot
             stopwatch.Elapsed.TotalMilliseconds,
             cardCount,
             playerCardIds,
+            historyDependencies,
             powerCount,
             simulatedCombat.RootHookListenerCount,
             simulatedCombat.RootRunModSubscriberCount,

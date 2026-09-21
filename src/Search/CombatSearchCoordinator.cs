@@ -2136,6 +2136,7 @@ internal static partial class CombatSearchCoordinator
         SolverResult result,
         SearchRequestWorkSnapshot totals)
     {
+        result.TotalCycleReplayActions = totals.CycleReplayActions;
         result.SingleSessionSearch = totals.RecordedSolverCount == 1;
         result.TotalSearchElapsed = totals.Elapsed;
         result.TotalWorkerAllocatedBytes = totals.WorkerAllocatedBytes;
@@ -2164,6 +2165,7 @@ internal static partial class CombatSearchCoordinator
         result.TotalMaxObservedGcPause = result.MaxObservedGcPause;
         result.TotalExpandedNodes = result.ExpandedNodes;
         result.TotalTransitionCount = result.TransitionCount;
+        result.TotalCycleReplayActions = result.CycleReplayActions;
         result.TotalChoiceBranchesEvaluated = result.ChoiceBranchesEvaluated;
     }
 }

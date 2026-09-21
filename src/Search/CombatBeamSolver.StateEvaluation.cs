@@ -1616,8 +1616,8 @@ internal sealed partial class CombatBeamSolver
         key.Add(processedEnemyDeaths.Count);
         key.Add(deathsFirst);
         key.Add(deathsSecond);
-        if (_keysCombatHistoryCounters)
-            CombatHistoryCounterKey.Append(ref key, simulator, _player);
+        if (_historyDependencies != CombatHistoryDependencies.None)
+            CombatHistoryCounterKey.Append(ref key, simulator, _player, _historyDependencies);
         SearchMeasurement combatFingerprintMeasurement = _run.Performance.Begin();
         simulatedCombat.AppendFingerprint(ref key, simulator);
         _run.Performance.End(SearchMetricPhase.CombatFingerprint, combatFingerprintMeasurement);

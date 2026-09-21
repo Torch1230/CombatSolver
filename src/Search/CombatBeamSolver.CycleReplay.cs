@@ -6,9 +6,9 @@ namespace CombatSolver;
 
 internal sealed partial class CombatBeamSolver
 {
-    // An additional terminal probe, not a replacement for any ordinary continuation or exit.
+    // An additive probe. Budget-limited safe prefixes rejoin the ordinary frontier.
     // Disabled when the caller requests exhaustive quality comparison instead of HP-target stopping.
-    private SearchNode? TryReplayCycleVictory(SearchNode seed, Stopwatch clock)
+    private SearchNode? TryReplayCycle(SearchNode seed, Stopwatch clock)
     {
         if (!policy.CanStopAtHpTarget || seed.Cycle is not { Repetitions: >= 2 } cycle
             || seed.IsTerminal || seed.BoundaryReason != SearchBoundaryReason.None
@@ -22,7 +22,7 @@ internal sealed partial class CombatBeamSolver
             || seed.Snapshot.CumulativePlayerHpLost != prior.Snapshot.CumulativePlayerHpLost
             || seed.Snapshot.PlayerMaxHp < prior.Snapshot.PlayerMaxHp
             || seed.Snapshot.Energy < prior.Snapshot.Energy || seed.Snapshot.Stars < prior.Snapshot.Stars
-            || _run.CycleReplayActions >= 4096)
+            || _replayWork.RemainingCycleReplayActions == 0)
             return null;
 
         long damage = EnemyDurabilityProgress.PositiveReduction(
@@ -41,10 +41,8 @@ internal sealed partial class CombatBeamSolver
                 return null;
             sequence[i] = action;
         }
-        _run.CycleReplayRegions.Add(region);
-        _run.CycleReplayAttempts++;
         long remaining = Math.Max(1L, (long)seed.Snapshot.EnemyHp + seed.Snapshot.EnemyBlock);
-        int limit = (int)Math.Min(4096 - _run.CycleReplayActions,
+        int limit = (int)Math.Min(_replayWork.RemainingCycleReplayActions,
             Math.Max(sequence.Length, (remaining / damage + 2) * sequence.Length));
         SearchNode current = seed;
         bool published = false;
@@ -100,6 +98,13 @@ internal sealed partial class CombatBeamSolver
                     CardEnchantmentId = card.Preview.Enchantment?.Id.Entry ?? "",
                     ReplayCount = Math.Max(0, card.Preview.GetEnchantedReplayCount()),
                 };
+                if (!_replayWork.TryConsumeCycleReplayAction()) break;
+                if (index == 0)
+                {
+                    // An alternative card before the first action does not burn this region.
+                    _run.CycleReplayRegions.Add(region);
+                    _run.CycleReplayAttempts++;
+                }
                 SimulationSnapshot snapshot = ReplayAction(current, action);
                 _run.CycleReplayActions++;
                 if (snapshot.BoundaryReason != SearchBoundaryReason.None || snapshot.Turn != seed.Turn
@@ -119,6 +124,7 @@ internal sealed partial class CombatBeamSolver
                 {
                     CumulativeEnemyHpLost = AccumulateEnemyHpLost(current, snapshot),
                 };
+                next = AttachCycleSchedulingEvidence(next);
                 if (!ReferenceEquals(current, seed)) current.Snapshot.ReleaseSimulator();
                 current = next;
                 if (snapshot.AllEnemiesDead)
@@ -131,6 +137,14 @@ internal sealed partial class CombatBeamSolver
                     && (snapshot.CycleShapeKey != seed.Snapshot.CycleShapeKey
                         || snapshot.Energy < seed.Snapshot.Energy || snapshot.Stars < seed.Snapshot.Stars))
                     break;
+                if (index + 1 == limit)
+                {
+                    // Publish only a verified prefix at the action cap. Ordinary candidates,
+                    // including earlier EndTurn exits, remain in the same search layer.
+                    _run.CycleReplayContinuations++;
+                    published = true;
+                    return current;
+                }
             }
             return null;
         }

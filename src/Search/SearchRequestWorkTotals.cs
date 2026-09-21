@@ -4,7 +4,7 @@ internal readonly record struct SearchRequestWorkSnapshot(
     long ExpandedNodes, long TransitionCount, long ChoiceBranchesEvaluated,
     TimeSpan Elapsed, long WorkerAllocatedBytes,
     long Gen0Collections, long Gen1Collections, long Gen2Collections,
-    TimeSpan GcPauseDuration, TimeSpan MaxObservedGcPause, int RecordedSolverCount);
+    TimeSpan GcPauseDuration, TimeSpan MaxObservedGcPause, int RecordedSolverCount, int CycleReplayActions = 0);
 
 internal readonly record struct SearchSolverWorkContribution(
     int ExpandedNodes, int TransitionCount, int ChoiceBranchesEvaluated,
@@ -15,6 +15,22 @@ internal readonly record struct SearchSolverWorkContribution(
 /// <summary>Each solver contributes once, including cancellation and failed policy searches.</summary>
 internal sealed class SearchRequestWorkTotals
 {
+    internal const int MaximumCycleReplayActions = 4096;
+    private int _cycleReplayActions;
+    internal int RemainingCycleReplayActions => MaximumCycleReplayActions - Volatile.Read(ref _cycleReplayActions);
+
+    internal bool TryConsumeCycleReplayAction()
+    {
+        int used = Volatile.Read(ref _cycleReplayActions);
+        while (used < MaximumCycleReplayActions)
+        {
+            int observed = Interlocked.CompareExchange(ref _cycleReplayActions, used + 1, used);
+            if (observed == used) return true;
+            used = observed;
+        }
+        return false;
+    }
+
     private readonly Lock _gate = new();
     private SearchRequestWorkSnapshot _totals;
     internal int RecordedSolverCountForTesting { get { lock (_gate) return _totals.RecordedSolverCount; } }
@@ -75,5 +91,5 @@ internal sealed class SearchRequestWorkTotals
         };
     }
 
-    public SearchRequestWorkSnapshot Snapshot() { lock (_gate) return _totals; }
+    public SearchRequestWorkSnapshot Snapshot() { lock (_gate) return _totals with { CycleReplayActions = Volatile.Read(ref _cycleReplayActions) }; }
 }

@@ -2114,6 +2114,7 @@ internal sealed partial class UnattendedTestRunner
         AddMismatch(mismatches, "CycleReplayAttempts", expected.CycleReplayAttempts, actual.CycleReplayAttempts);
         AddMismatch(mismatches, "CycleReplayActions", expected.CycleReplayActions, actual.CycleReplayActions);
         AddMismatch(mismatches, "CycleReplayVictories", expected.CycleReplayVictories, actual.CycleReplayVictories);
+        AddMismatch(mismatches, "CycleReplayContinuations", expected.CycleReplayContinuations, actual.CycleReplayContinuations);
         AddMismatch(mismatches, "CycleStoppedUnproductive", expected.CycleStoppedUnproductive, actual.CycleStoppedUnproductive);
         AddMismatch(mismatches, "CycleStoppedRepetitionBudget", expected.CycleStoppedRepetitionBudget, actual.CycleStoppedRepetitionBudget);
         AddMismatch(mismatches, "CycleStoppedFamilyBudget", expected.CycleStoppedFamilyBudget, actual.CycleStoppedFamilyBudget);

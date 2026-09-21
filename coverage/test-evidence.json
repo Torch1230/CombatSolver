@@ -1,4 +1,12 @@
 {
+  "LOOP-FINAL-20260921": {
+    "status": "PassedWithDocumentedBoundaries",
+    "level": "28FixedOfflineABAnd4NativeContracts",
+    "procedure": "串行28组/26个根A/B、定向ABBA、DOP2；请求预算与历史依赖原生合同；两种反伤必要格挡完整部署；Release与两端门禁、Python10项",
+    "expected": "质量无退步；实际多solver共享4096；未来读者与消耗堆不误合并；时间截断不计为性能收益",
+    "observed": "23根完整路线/质量相同、5根改善（其中2根旧版未击杀）。cap固定节点60秒窗口ABBA耗时-55.9%、分配-70.0%；4095成功边界+3.9%/+1.1%。20秒cap ABBA一份time切层，整组Inconclusive保留。4个最终原生场景Passed，部署0计划外重算，实例已清理。历史EQ10/FULL40与可见Steam未验证。",
+    "evidence": "docs/performance/loop-final-20260921.md; docs/performance/loop-final-20260921-evidence.json; coverage/unattended/loop-final-20260921/suite.json"
+  },
   "LOOP-BUDGET-AUDIT-20260921": {
     "status": "Passed",
     "level": "BudgetTelemetryAndOfflineClassification",

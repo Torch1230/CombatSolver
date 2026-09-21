@@ -209,6 +209,7 @@ internal sealed partial class CombatBeamSolver
         public int CycleReplayAttempts;
         public int CycleReplayActions;
         public int CycleReplayVictories;
+        public int CycleReplayContinuations;
         public int CycleContinuationsStopped;
         public int CycleStoppedUnproductive;
         public int CycleStoppedRepetitionBudget;

@@ -741,7 +741,9 @@ internal sealed partial class CombatBeamSolver
                 CycleContinuationsStopped = _run.CycleContinuationsStopped,
                 CycleReplayAttempts = _run.CycleReplayAttempts,
                 CycleReplayActions = _run.CycleReplayActions,
+                TotalCycleReplayActions = _run.CycleReplayActions,
                 CycleReplayVictories = _run.CycleReplayVictories,
+                CycleReplayContinuations = _run.CycleReplayContinuations,
                 CycleStoppedUnproductive = _run.CycleStoppedUnproductive,
                 CycleStoppedRepetitionBudget = _run.CycleStoppedRepetitionBudget,
                 CycleStoppedFamilyBudget = _run.CycleStoppedFamilyBudget,
@@ -1919,10 +1921,12 @@ internal sealed partial class CombatBeamSolver
                 // consume a different number of already-dispatched parents at different DOPs.
                 if (!acceptableBattleHpLossReached && !memoryNoProgressTruncated)
                 {
-                    foreach (SearchNode seed in nextPlays)
+                    int ordinaryCandidateCount = nextPlays.Count;
+                    for (int replayIndex = 0; replayIndex < ordinaryCandidateCount; replayIndex++)
                     {
-                        if (TryReplayCycleVictory(seed, stopwatch) is not { } victory) continue;
-                        AcceptExpandedChild(seed, victory);
+                        SearchNode seed = nextPlays[replayIndex];
+                        if (TryReplayCycle(seed, stopwatch) is not { } replayed) continue;
+                        AcceptExpandedChild(seed, replayed);
                         if (acceptableBattleHpLossReached) break;
                     }
                 }

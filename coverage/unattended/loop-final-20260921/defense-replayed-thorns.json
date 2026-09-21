@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "LOOP-DEFENSE-REPLAYED-THORNS-RESERVE",
+  "description": "One Two Punch repeats the only attack. Two blocks must be accumulated before 2 x 4 retaliation although projected end-turn absorption saturates after one block.",
+  "characterId": "SILENT",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "LOOPLETTEROPENERPHASE0111",
+  "enemyCurrentHp": 12,
+  "initialPlayerHp": 80,
+  "initialPlayerMaxHp": 80,
+  "initialPlayerEnergy": 3,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    {
+      "cardId": "DEFEND_IRONCLAD",
+      "pile": "Hand",
+      "count": 2
+    },
+    {
+      "cardId": "STRIKE_IRONCLAD",
+      "pile": "Hand",
+      "count": 1
+    }
+  ],
+  "relics": [],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 10000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "stopAfterInitialSolverResultAssertion": false,
+  "timeoutSeconds": 120,
+  "performancePresetForTest": "Low",
+  "expectedInitialProjectedBattleHpLost": 0,
+  "expectedInitialCombatEndedTurn": 1,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "verifyIncrementalSearch": true,
+  "expectedUnexpectedReplansAtMost": 0,
+  "powers": [
+    {
+      "powerId": "THORNS_POWER",
+      "target": "Enemy",
+      "amount": 4
+    },
+    {
+      "powerId": "ONE_TWO_PUNCH_POWER",
+      "target": "Player",
+      "amount": 1
+    }
+  ]
+}

@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Serial fixed-fixture A/B observations. Not a replacement for native assertions.
 
-Both DLLs must support the same fixed-fixture adapter. Evaluate mode only (one
-solver). Every subprocess has a 120-second deadline. Existing outputs are refused;
+Both DLLs must support the same fixed-fixture adapter. Evaluate or Coordinator. Every subprocess has a 120-second deadline. Existing outputs are refused;
 timings never overlap. Exit 2 means incomparable budget-limited observations,
 exit 1 means a comparable difference, fixture failure, or harness failure.
 """
@@ -20,7 +19,8 @@ METRICS = (
     'ProjectedBattleHpLost', 'FinalHp', 'FinalEnemyHp', 'CombatEndedTurn',
     'PotionCount', 'Score', 'OnlyDeathRoutes', 'Boundary',
     'TotalElapsedMilliseconds', 'TotalWorkerAllocatedBytes',
-    'CycleReplayAttempts', 'CycleReplayActions', 'CycleReplayVictories',
+    'CycleReplayAttempts', 'CycleReplayActions', 'TotalCycleReplayActions',
+    'CycleReplayVictories', 'CycleReplayContinuations',
     'TurnLayerBudgetStops', 'TurnLayerTimeBudgetStops', 'TurnLayerNodeBudgetStops',
 )
 QUALITY = ('ProjectedBattleHpLost', 'FinalHp', 'FinalEnemyHp',
@@ -31,7 +31,7 @@ def read(path):
     return json.loads(path.read_text())
 
 
-def budget_observation(result, out):
+def budget_observation(result, out, mode="Evaluate"):
     """Old DLLs lack split counters; recover reasons from their flushed diagnostics."""
     logs = list(out.glob('logs/*/*.jsonl'))
     counts = {'time': 0, 'nodes': 0}
@@ -52,7 +52,11 @@ def budget_observation(result, out):
     time_count = metrics.get('TurnLayerTimeBudgetStops')
     node_count = metrics.get('TurnLayerNodeBudgetStops')
     issues = []
-    if time_count is not None and node_count is not None:
+    if mode == 'Coordinator':
+        # Result counters belong to the selected solver; logs cover every request member.
+        source = 'diagnosticLog' if logs else 'unavailable'
+        time_count, node_count = counts['time'], counts['nodes']
+    elif time_count is not None and node_count is not None:
         source = 'solverMetrics'
         if min(time_count, node_count) < 0 or metrics.get('TurnLayerBudgetStops') != time_count + node_count:
             issues.append('split budget counters do not sum to total')
@@ -66,7 +70,7 @@ def budget_observation(result, out):
     else:
         source = 'unavailable'
     return {
-        'scope': 'solver', 'source': source,
+        'scope': 'request' if mode == 'Coordinator' else 'solver', 'source': source,
         'turnLayerTimeStops': time_count, 'turnLayerNodeStops': node_count,
         'timeBoundaryObserved': bool(result.get('timeBoundaryObserved', False)
                                     or global_time or counts['time'] or time_count),
@@ -86,20 +90,29 @@ def observation_status(budget, failures):
     return 'FixtureMismatch' if failures else 'Comparable'
 
 
+def replay_budget_observation(metrics, mode):
+    if 'TotalCycleReplayActions' in metrics:
+        return 'request', metrics['TotalCycleReplayActions']
+    return ('solver', metrics.get('CycleReplayActions')) if mode == 'Evaluate' else ('unavailable', None)
+
+
 def run(case, label, dll, args, suite):
     out = args.out / case['name'] / label
     out.mkdir(parents=True, exist_ok=False)
+    mode = case.get('searchMode', suite.get('searchMode', 'Evaluate'))
     command = ['dotnet', str(args.harness), '--request', str(REPO / case['request']),
                '--label', label, '--out', str(out), '--profile', suite['profile'],
                '--nodes', str(case['nodes']), '--budget-ms', str(suite['budgetMilliseconds']),
                '--dop', str(args.dop), '--potion-policy', case['potionPolicy'],
-               '--search-mode', 'Evaluate']
+               '--search-mode', mode]
+    if case.get('usePortfolio', False):
+        command.append('--use-portfolio')
     if case['stopAtZeroLoss']:
         command.append('--stop-at-zero-loss')
     if args.verify_incremental:
         command.append('--verify-incremental')
     env = dict(os.environ, OFFLINE_HARNESS_COMBATSOLVER_DLL=str(dll))
-    observation = {'label': label, 'command': command, 'searchMode': 'Evaluate'}
+    observation = {'label': label, 'command': command, 'searchMode': mode}
     with (out / 'stdout.log').open('w') as log:
         try:
             process = subprocess.run(command, cwd=REPO, env=env, stdout=log,
@@ -132,10 +145,15 @@ def run(case, label, dll, args, suite):
             failures.append(key)
     if metrics['TotalChoiceBranches'] < case.get('minimumChoiceBranches', 0):
         failures.append('choice branches')
-    if label.startswith('B') and not 0 <= metrics['CycleReplayActions'] <= 4096:
-        failures.append('per-solver replay action cap')
+    replay_scope, replay_count = replay_budget_observation(metrics, mode)
+    observation['replayBudgetScope'] = replay_scope
+    if label.startswith('B'):
+        if replay_count is None:
+            failures.append('request replay count unavailable')
+        elif not 0 <= replay_count <= 4096:
+            failures.append(f'{replay_scope} replay action cap')
     observation['fixtureCheckFailures'] = failures
-    observation['budgetObservation'] = budget_observation(result, out)
+    observation['budgetObservation'] = budget_observation(result, out, mode)
     observation['status'] = observation_status(observation['budgetObservation'], failures)
     observation['valid'] = observation['status'] == 'Comparable'
     observation['routeActions'] = len(route)
@@ -183,15 +201,15 @@ def main():
     args.baseline_dll = args.baseline_dll.resolve(strict=True)
     args.candidate_dll = args.candidate_dll.resolve(strict=True)
     suite = read(args.suite)
-    if suite.get('searchMode', 'Evaluate') != 'Evaluate' or any(
-            c.get('searchMode', 'Evaluate') != 'Evaluate' for c in suite['cases']):
-        parser.error('This suite supports Evaluate only; 4096 is not a Coordinator request cap')
+    if any(c.get('searchMode', suite.get('searchMode', 'Evaluate')) not in ('Evaluate', 'Coordinator')
+           for c in suite['cases']):
+        parser.error('Unknown search mode')
     cases = [c for c in suite['cases'] if not args.cases or c['name'] in args.cases]
     if not cases or (args.cases and set(args.cases) != {c['name'] for c in cases}):
         parser.error('Unknown or empty case selection')
     args.out.mkdir(parents=True, exist_ok=False)
     report = {'mode': 'incremental-correctness' if args.verify_incremental else 'offline-observation',
-              'searchMode': 'Evaluate', 'replayBudgetScope': 'solver', 'dop': args.dop, 'cases': []}
+              'searchMode': 'per-case', 'replayBudgetScope': 'per-run', 'dop': args.dop, 'cases': []}
     for case in cases:
         order = ['A1', 'B1', 'B2', 'A2'] if args.abba else ['A1', 'B1']
         runs = [run(case, label, args.baseline_dll if label.startswith('A') else args.candidate_dll,

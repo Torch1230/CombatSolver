@@ -993,6 +993,7 @@ internal sealed partial class CombatBeamSolver
         _run.CycleReplayAttempts += source.CycleReplayAttempts;
         _run.CycleReplayActions += source.CycleReplayActions;
         _run.CycleReplayVictories += source.CycleReplayVictories;
+        _run.CycleReplayContinuations += source.CycleReplayContinuations;
         _run.CycleStoppedUnproductive += source.CycleStoppedUnproductive;
         _run.CycleStoppedRepetitionBudget += source.CycleStoppedRepetitionBudget;
         _run.CycleStoppedFamilyBudget += source.CycleStoppedFamilyBudget;
@@ -1048,6 +1049,7 @@ internal sealed partial class CombatBeamSolver
         source.CycleReplayAttempts = 0;
         source.CycleReplayActions = 0;
         source.CycleReplayVictories = 0;
+        source.CycleReplayContinuations = 0;
         source.CycleStoppedUnproductive = 0;
         source.CycleStoppedRepetitionBudget = 0;
         source.CycleStoppedFamilyBudget = 0;
