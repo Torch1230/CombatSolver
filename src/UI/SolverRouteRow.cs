@@ -149,16 +149,14 @@ internal sealed partial class SolverRouteRow : PanelContainer
         foreach (SolverActionRun run in SolverActionRuns.Capture(turn.Actions,
                      static (left, right) => left.HasSamePresentation(right)))
         {
+            HFlowContainer destination = ActionFlow;
+            if (run.Repetitions > 1)
+                ActionFlow.AddChild(SolverActionPill.CreateCycle(run, out destination));
             for (int offset = 0; offset < run.Period; offset++)
             {
                 Control pill = SolverActionPill.Create(turn.Actions[run.Start + offset]);
-                ActionFlow.AddChild(pill);
+                destination.AddChild(pill);
                 _deploymentActions.Add((pill, run, offset));
-            }
-            if (run.Repetitions > 1)
-            {
-                Control badge = SolverActionPill.CreateCycle(run);
-                ActionFlow.AddChild(badge);
             }
         }
         _deploymentActionCount = turn.Actions.Count;

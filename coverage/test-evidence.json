@@ -1,4 +1,12 @@
 {
+  "LOOP-GROUP-DISPLAY-20260921": {
+    "status": "Passed",
+    "level": "HeadlessNativeUiContract",
+    "procedure": "Release；UI-LOCALIZATION 中英文简繁原生宽窄往返、折叠部署；ROUTE-ROW-REUSE",
+    "expected": "循环次数及周期内全部操作共用外框，内部换行且不溢出，实际动作索引与末击后缀保持，复用及语言订阅不退化",
+    "observed": "UI=ffaa5652dcfe42e89eea9e7cbd10e789；row=254c96d24a6d45eb9031971398696611，均Passed、实例已清理。41动作显示2个外层控件，6个原始索引高亮及宽窄宽包围检查通过。非循环16动作行两组64次复用0.2099/0.1784ms、各48B；不代表循环构造或可见性能。每循环比旧标签多2容器，无逐帧轮询，未做可见Steam验收。",
+    "evidence": "docs/TEST_MATRIX.md; src/Testing/UnattendedTestRunner.UiLocalization.cs; src/Testing/UnattendedTestRunner.RouteRowReuse.cs"
+  },
   "LOOP-FINAL-20260921": {
     "status": "PassedWithDocumentedBoundaries",
     "level": "28FixedOfflineABAnd4NativeContracts",

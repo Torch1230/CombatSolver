@@ -1,5 +1,16 @@
 # CombatSolver 测试清单
 
+## 循环外层胶囊（2026-09-21）
+
+- `UI-LOCALIZATION` / `ffaa5652dcfe42e89eea9e7cbd10e789` Passed：eng/zhs/zht 的 41 动作显示为「外框含 2 动作 ×20」加独立末击；在真实 Godot 容器中宽→窄→宽，断言框内换行、标题及动作完整包围、宽度不超父流；周期首/中/末次执行高亮、后缀高亮、重复填充复用通过。
+- `ROUTE-ROW-REUSE` / `254c96d24a6d45eb9031971398696611` Passed：完整显示身份、失败填充重试、语言往返及订阅清理。既有非循环 16 动作行的两组 64 次不变填充分别 0.2099 / 0.1784 ms、各 48 B；这只证明既有复用路径，不作为循环新建布局或可见帧率的数据。
+- Release 0 警告/0 错误；两项均用 120 秒上限和 `--cleanup-instance-on-exit`，实例已删除。没有改动搜索/模拟/执行数组；每个循环仅多 2 个容器节点。尚未验收可见 Steam 排版。
+
+```bash
+./tools/run-unattended-test.sh --scenario-id UI-LOCALIZATION --timeout-seconds 120 --cleanup-instance-on-exit
+./tools/run-unattended-test.sh --scenario-id ROUTE-ROW-REUSE --evidence-directory "$PWD/.local/loop-group-row" --timeout-seconds 120 --cleanup-instance-on-exit
+```
+
 - PR #123 / 上游 8826a333 整合：Release 0/0、两端门禁 207；UI-LOCALIZATION `70dae8a331234fcbb6e3a51a40a089f1` 与必要格挡原生部署 `19f8f8ad583b4b029a5c559f759243fa` Passed，实例清理；cap / 多 solver 两组与 656a9608 完整路线、质量 Equivalent。
 
 - [循环请求额度与历史依赖收尾](performance/loop-final-20260921.md)：28 组（26 根）/23 完整同路线/5 改善；4 个最终原生场景 Passed（历史依赖、两 solver 共享额度、两种投影范围外伤害必要格挡）；严格增量与完整部署分别记录，实例全部清理。Python 10 项与两端结构门禁通过；ABBA 将时间切层组标为 Inconclusive，另列无时间切层的固定节点实验。

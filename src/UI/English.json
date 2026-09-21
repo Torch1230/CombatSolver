@@ -1,6 +1,6 @@
 {
   "循环 ×{0}": "Loop ×{0}",
-  "以上 {0} 个动作重复 {1} 次，共 {2} 个动作": "Repeat the preceding {0} actions {1} times ({2} actions total)",
+  "框内 {0} 个动作按顺序重复 {1} 次，共 {2} 个动作": "Repeat the {0} actions inside this group in order {1} times ({2} actions total)",
   "另有 {0} 回合未展开显示": "{0} more turns not shown",
 
   "遗物": "Relics",
