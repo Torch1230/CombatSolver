@@ -53,11 +53,14 @@ def compare(args):
             item['status'] = mismatch
             continue
         item['status'] = 'Comparable'
-        for name, result in (('baseline', ha), ('candidate', hb)):
+        for name, result, path in (('baseline', ha, pa), ('candidate', hb, pb)):
             item[name] = {k: result[k] for k in ('wallSeconds', 'peakManagedHeapBytes',
                 'peakManagedLiveBytes', 'peakWorkingSetBytes', 'totalAllocatedBytes')}
             item[name].update({k: result['solverMetrics'].get(k) for k in ('TotalExpanded', 'TotalTransitions',
                 'ProjectedBattleHpLost', 'PotionCount', 'OnlyDeathRoutes', 'CombatEndedTurn')})
+            # Keep actual outcomes beside solver metrics: total HP loss and policy-adjusted
+            # deficit differ, and a defeat must never look like merely a small HP regression.
+            item[name]['outcome'] = read(path / 'quality.json')['quality']
         inputs.append({'id': case, 'candidate': str((pb / 'quality.json').resolve()),
                        'baseline': str((pa / 'quality.json').resolve())})
     (args.out / 'comparison-input.json').write_text(json.dumps(inputs))
@@ -72,6 +75,25 @@ def compare(args):
                'quality': dict(Counter(r['comparison'] for r in observations if 'comparison' in r)),
                'materialQuality': dict(Counter(r['materialComparison'] for r in observations if 'materialComparison' in r)),
                'observations': observations}
+    comparable = [r for r in observations if r['status'] == 'Comparable']
+    summary['victoryChanges'] = {
+        'lossToWin': [r['case'] for r in comparable
+                      if not r['baseline']['outcome']['won'] and r['candidate']['outcome']['won']],
+        'winToLoss': [r['case'] for r in comparable
+                      if r['baseline']['outcome']['won'] and not r['candidate']['outcome']['won']],
+    }
+    both_won = [r for r in comparable
+                if r['baseline']['outcome']['won'] and r['candidate']['outcome']['won']]
+    summary['bothWonDamageChanges'] = {
+        'sampleCount': len(both_won),
+        'totalHpLossDelta': sum(r['candidate']['outcome']['projectedBattleHpLost']
+                               - r['baseline']['outcome']['projectedBattleHpLost'] for r in both_won),
+        'policyDeficitDelta': sum(r['candidate']['outcome']['strategicHpDeficit']
+                                 - r['baseline']['outcome']['strategicHpDeficit'] for r in both_won),
+        'largestTotalHpLossDelta': max((r['candidate']['outcome']['projectedBattleHpLost']
+                                        - r['baseline']['outcome']['projectedBattleHpLost']
+                                        for r in both_won), default=None),
+    }
     (args.out / 'report.json').write_text(json.dumps(summary, indent=2) + '\n')
     print(json.dumps({k: v for k, v in summary.items() if k != 'observations'}))
 

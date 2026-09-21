@@ -1577,6 +1577,8 @@ internal sealed partial class UnattendedTestRunner
             UnattendedTestRequest request = runner._request;
             if (runner._checkpointImport == null
                 && !request.PerformancePresetForTest.HasValue
+                && !request.SearchBeamWidthForTest.HasValue
+                && !request.SearchMaxExpandedNodesForTest.HasValue
                 && !request.ShortMaxCardBranchesPerNodeForTest.HasValue
                 && !request.DeepMaxCardBranchesPerNodeForTest.HasValue
                 && !request.PotionPolicyForTest.HasValue
@@ -1595,7 +1597,23 @@ internal sealed partial class UnattendedTestRunner
                 ? SolverSettings.ApplyPerformancePreset(recordedSettings, preset)
                 : recordedSettings;
             bool hasCustomPerformanceOverride = request.ShortMaxCardBranchesPerNodeForTest.HasValue
-                || request.DeepMaxCardBranchesPerNodeForTest.HasValue;
+                || request.DeepMaxCardBranchesPerNodeForTest.HasValue
+                || request.SearchBeamWidthForTest.HasValue
+                || request.SearchMaxExpandedNodesForTest.HasValue;
+            if (request.SearchBeamWidthForTest is < 1 or > 512)
+                throw new ArgumentOutOfRangeException(nameof(request.SearchBeamWidthForTest));
+            if (request.SearchMaxExpandedNodesForTest is < 100)
+                throw new ArgumentOutOfRangeException(nameof(request.SearchMaxExpandedNodesForTest));
+            if (request.SearchBeamWidthForTest.HasValue || request.SearchMaxExpandedNodesForTest.HasValue)
+            {
+                testSettings = SolverSettings.ApplyPerformancePreset(testSettings, SolverPerformancePreset.Custom);
+                testSettings = testSettings with
+                {
+                    PerformancePreset = SolverPerformancePreset.Custom,
+                    SearchBeamWidth = request.SearchBeamWidthForTest ?? testSettings.SearchBeamWidth,
+                    SearchMaxExpandedNodes = request.SearchMaxExpandedNodesForTest ?? testSettings.SearchMaxExpandedNodes,
+                };
+            }
             if (request.NoGcRegionBudgetGigabytesForTest is { } noGcBudget)
             {
                 testSettings = testSettings with
@@ -1641,6 +1659,12 @@ internal sealed partial class UnattendedTestRunner
                         : expectedPreset);
             }
             SolverSettingsSnapshot snapshot = SolverSettings.Capture();
+            if (request.SearchBeamWidthForTest is { } expectedBeam
+                && snapshot.Profile.BeamWidth != expectedBeam)
+                throw new InvalidOperationException($"测试 Beam 为 {snapshot.Profile.BeamWidth}，预期 {expectedBeam}。");
+            if (request.SearchMaxExpandedNodesForTest is { } expectedNodes
+                && snapshot.Profile.MaxExpandedNodes != expectedNodes)
+                throw new InvalidOperationException($"测试节点额度为 {snapshot.Profile.MaxExpandedNodes}，预期 {expectedNodes}。");
             if (runner._writer.ReplayVerification != null)
                 runner._writer.ReplayVerification["executedPolicy"] = System.Text.Json.JsonSerializer.SerializeToNode(
                     new { snapshot.PotionPolicy, SolverSettings.Current.PotionDirectives,

@@ -82,6 +82,10 @@ internal static class Program
                     return $"character={generated.Request.CharacterId} encounter={generated.Request.EncounterId} "
                         + $"generated={generated.Resolved != null}";
                 });
+                payload["scenario"] = new HarnessScenario(
+                    generated!.Request.CharacterId, generated.Request.EncounterId,
+                    generated.Request.Seed, generated.Request.Ascension,
+                    generated.Request.ActIndexForTest);
                 payload["resolvedScenario"] = generated!.Resolved?.Options;
                 payload["catalogFingerprint"] = generated.Resolved?.CatalogFingerprint;
 
@@ -366,7 +370,7 @@ internal sealed record HarnessOptions
           --observe-ordering-states <p>  追加观察给定状态键的生成/准入/回合筛选事件
           --ordering <mode>     Evaluate 实验：baseline|base|band，复用现有排序成员
           --ranking-model <p>   实验：有界上下文排序修正；只与 baseline 排序同时使用
-          --continuous-threat  实验：尚能出牌时，在中途排序连续计价致死意图
+          --continuous-threat  实验：EndTurn 后尚能出牌的新回合起点，连续计价致死意图
           --observe-portfolio    导出追加搜索的特征与实际政策标签
           --portfolio-model <p>  加载可选选择器 JSON；不匹配的版本回退原组合
           --milestone <M1|M2>    跑到哪个里程碑（默认 M2）

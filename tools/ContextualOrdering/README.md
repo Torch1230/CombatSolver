@@ -26,7 +26,7 @@
 
 - 首轮 v1 建局试跑 20 根：16 成功、4 失败。两张旧作卡名 CATALYST/CLEAVE 不存在；enemyCurrentHp 被原生最大生命截断，定向根偏易。修正为当前有效卡、同时注入最大/当前生命和真实敌方力量，生成独立 v2 输入，v1 结果完整保留，不充当质量证据。
 - v2 已完成 35 个训练根、105 次观察，101 Comparable / 4 TimeLimited；baseline/base/band 固定 20000 节点、beam24、60秒墙钟窗口、DOP1，正常零损达标早停启用。所有实验附加回放仍遵守请求级工作量口径。
-- 尚待：真实 band/首次误剪统计、更充分的候选见证与可接受实现、独立留存与高压大预算对照、原生代表验收。当前工具完成不等于用户目标完成。
+- 已完成首次误剪/别名诊断、Evaluate独立留存和Coordinator完整test；尚待有明确收益的实现、更充分的候选见证及获准候选的原生验收。当前工具完成不等于用户目标完成。用户允许少数局面退化换取整体收益；仍须分别报告频率、损失幅度、胜负翻转和计算代价。
 
 ## 拟合与比较
 
@@ -35,7 +35,7 @@
 - `fit.py --pairs <pairs.json> --schema <schema.json> --out <new-dir> [--feature hand]`：零残差起步、按根均衡的有界岭正则逻辑损失。只拟合已观察到的后续；不声称训练集或最终战斗最优。默认 cap=2 HP、ridge=.05。仅 `--ranking-model <model.json>` 显式启用，正常 Runtime 不加载模型。
 - `screen_features.py --pairs <pairs.json> --out <new-json>`：训练内部 leave-family-out 的单特征代理筛选；**不是**最终搜索质量敏感度或留存集验收。
 - `check_model.py --runs <observed-runs> --out <new-dir> --harness <candidate-host>`：真实/边界输入的 Python/C# 特征对账与运行时模型合同。
-- `compare.py --baseline <runs> --candidate <runs> --candidate-variant <name> --out <new-dir> --harness <candidate-host>`：相同根、预算和非排序政策检查后调用生产终局比较器；完整政策与去末位 Score 的实质政策分开报告。time-limited、失败和缺对不进入可比样本。
+- `compare.py --baseline <runs> --candidate <runs> --candidate-variant <name> --out <new-dir> --harness <candidate-host>`：相同根、预算和非排序政策检查后调用生产终局比较器；完整政策与去末位 Score 的实质政策分开报告。time-limited、失败和缺对不进入可比样本。报告同时保留完整quality值，单列胜负翻转及双方都胜利时的总战损/政策折算战损变化，不能把死亡简化为多损失若干HP。`comparison=-1/0/1` 分别表示候选更好/相同/更差；这些聚合不自动决定上线。
 
 variant 可指定自己的 `harness`。旧 DLL 需要兼容的旧宿主；引用新增 profile 成员的候选宿主不能直接假定兼容旧 DLL。模型与当前程序集绑定，修改行为代码并重编后须重新生成候选并验证，不能直接修改 MVID 冒充已验收模型。
 
@@ -43,6 +43,9 @@ variant 可指定自己的 `harness`。旧 DLL 需要兼容的旧宿主；引用
 
 `first_loss.py --baseline <root/baseline> --witness <root/better> --out <new-json>` 对照完整动作前缀和外层最终保留池；报告同状态别名前缀及政策标签，忽略可能被采集上限截断的最后一个边界。前缀缺席不自动等于状态/最优解丢失。新宿主的采集同时记录 GlobalRetention 和 RetentionPoolFinal，总行数仍受 N 限制。
 
-`--continuous-threat` 是另一个独立实验：只在 EndTurn 后的新回合起点、玩家实际存活且有可执行手牌时，用连续 HP 项替代中途排名里的投影死亡巨额罚分；默认关闭，不叠加模型或 base/band。终局和转置不使用该修正。20个定向训练根初筛无实质退化，独立验收仍未完成。
+`--continuous-threat` 是另一个独立实验：只在 EndTurn 后的新回合起点、玩家实际存活且有可执行手牌时，用连续 HP 项替代中途排名里的投影死亡巨额罚分；默认关闭，不叠加模型或 base/band。终局和转置不使用该修正。20个定向训练根初筛无实质退化，但验证35根为3好/3差，最终test35根为2好/3差（含2次胜转败）。均为Evaluate口径；完整Coordinator test33可比根2好/1差/30同，总转移+5.4%；默认Medium/组合的3个代表主要质量全部相同。因实际配置收益不足仍不启用；不把单成员结果当作实际交付路线。
 
 `--observe-ordering-states <json>` 需要 `--observe-ordering N`；JSON 是精确状态键数组，例如 `[{"first":123,"second":456}]`，通常从较好见证的观察记录提取。它用于追踪相同状态的不同前缀，区分“这条前缀被剪”与“状态没有被展开”。DOP并行回调只串行写诊断文件；采集不能用于性能比较。
+
+
+原生复现可用 `--performance-preset-for-test Medium --search-beam-width-for-test 24 --search-max-expanded-nodes-for-test 20000 --search-budget-override-milliseconds 60000 --search-max-degree-of-parallelism-for-test 1 --fixed-search-budget` 对齐本套件预算；PowerShell使用对应PascalCase参数。两个新增预算参数只作用于无人请求并在收尾恢复。实验排序仍须明确启用；仅指定这些预算不启用候选。

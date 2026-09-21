@@ -17,7 +17,7 @@ internal sealed record SolverSearchProfile(
 
     // Experimental, explicitly injected frozen model; absent in normal production profiles.
     public ContextualRankingModel? ContextualRanking { get; init; }
-    /// <summary>Offline experiment: a lethal stand-pat projection is not a proved death while cards remain playable.</summary>
+    /// <summary>Offline experiment: continuously price lethal intent only at a living, playable new-turn node after EndTurn.</summary>
     public bool ContinuousThreatRanking { get; init; }
 
     /// <summary>
