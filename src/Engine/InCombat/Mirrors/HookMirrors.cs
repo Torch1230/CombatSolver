@@ -1451,8 +1451,7 @@ internal static partial class HookMirrors
     // resolved against the same registry the unfiltered path would have used, and anything that is
     // not NotOverridden/Ignored throws instead of silently changing a route.
 
-    internal static readonly bool VerifyHookListenerMask =
-        Environment.GetEnvironmentVariable("COMBATSOLVER_VERIFY_HOOK_MASK") == "1";
+    internal static bool VerifyHookListenerMask => FastLaneVerification.Enabled;
 
     // Same models in the same order as CombatPredictionState.IterateHookListeners(); the mirrored
     // list only adds the per-type participation layout that lets a dispatch skip listeners which do
