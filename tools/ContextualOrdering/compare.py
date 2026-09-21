@@ -27,7 +27,7 @@ def context_mismatch(a, b):
         return 'BudgetMismatch'
     policy_a, policy_b = [json.loads(json.dumps(r['searchPolicy'])) for r in (a, b)]
     for policy in (policy_a, policy_b):
-        for key in ('ContextualRanking', 'BaseScoreOnly', 'SecondRankBand', 'ContinuousThreatRanking'):
+        for key in ('ContextualRanking', 'BaseScoreOnly', 'SecondRankBand', 'ContinuousThreatRanking', 'StopPortfolioAtHpTarget'):
             policy['Profile'].pop(key, None)
     return 'PolicyMismatch' if policy_a != policy_b else None
 
@@ -60,7 +60,10 @@ def compare(args):
                 'ProjectedBattleHpLost', 'PotionCount', 'OnlyDeathRoutes', 'CombatEndedTurn')})
             # Keep actual outcomes beside solver metrics: total HP loss and policy-adjusted
             # deficit differ, and a defeat must never look like merely a small HP regression.
-            item[name]['outcome'] = read(path / 'quality.json')['quality']
+            quality = read(path / 'quality.json')
+            item[name]['outcome'] = quality['quality']
+            item[name]['resources'] = {k: quality['snapshot'][k] for k in
+                ('playerHp', 'playerMaxHp', 'recoveredPlayerHp', 'growthRewards', 'relicCounters')}
         inputs.append({'id': case, 'candidate': str((pb / 'quality.json').resolve()),
                        'baseline': str((pa / 'quality.json').resolve())})
     (args.out / 'comparison-input.json').write_text(json.dumps(inputs))

@@ -361,6 +361,8 @@ internal sealed record HarnessOptions
           --memory-no-progress-limit <int>  实验：连续多少次无进展回收后提前收手（0=关闭）
           --transposition-entry-limit <int>  实验：转置支配表合并条目上限（0=不设上限；缺省=生产默认 1000000）
           --stop-at-zero-loss    启用生产零战损达标停止政策
+          --stop-portfolio-at-hp-target  Coordinator：显式开启组合达标早停（缺省沿用生产配置）
+          --disable-portfolio-hp-target-stop  Coordinator 消融：关闭组合达标早停
           --verify-incremental   逐动作完整回放核验（不得用于性能数字）
           --production-budget    使用生产预算流程，允许预算内的无胜利升级；不用于固定节点逐位对照
           --enable-no-gc-region   开 Runtime 的搜索内 No-GC 生命周期（默认关闭）
@@ -424,6 +426,7 @@ internal sealed record HarnessOptions
     public string Ordering { get; init; } = "baseline";
     public string? RankingModelPath { get; init; }
     public bool ContinuousThreatRanking { get; init; }
+    public bool? StopPortfolioAtHpTarget { get; init; }
     public bool ObservePortfolio { get; init; }
     public string? PortfolioModelPath { get; init; }
     public string Milestone { get; init; } = "M2";
@@ -448,6 +451,7 @@ internal sealed record HarnessOptions
         string ordering = "baseline";
         string? rankingModelPath = null;
         bool continuousThreatRanking = false;
+        bool? stopPortfolioAtHpTarget = null;
         int signalBallastMegabytes = 0;
         int? beam = null, nodes = null, cardBranches = null, pileBranches = null, handBranches = null;
         bool usePortfolio = false, observePortfolio = false, noPlainBaseline = false;
@@ -506,6 +510,8 @@ internal sealed record HarnessOptions
                 case "--ordering": ordering = Value(); break;
                 case "--ranking-model": rankingModelPath = Path.GetFullPath(Value()); break;
                 case "--continuous-threat": continuousThreatRanking = true; break;
+                case "--stop-portfolio-at-hp-target": stopPortfolioAtHpTarget = true; break;
+                case "--disable-portfolio-hp-target-stop": stopPortfolioAtHpTarget = false; break;
                 case "--observe-portfolio": observePortfolio = true; break;
                 case "--portfolio-model": portfolioModelPath = Path.GetFullPath(Value()); break;
                 case "--milestone": milestone = Value(); break;
@@ -532,6 +538,8 @@ internal sealed record HarnessOptions
             throw new ArgumentException("--ranking-model 不能同时叠加其他 --ordering 实验。");
         if (continuousThreatRanking && (rankingModelPath != null || ordering != "baseline"))
             throw new ArgumentException("--continuous-threat 必须单独测量，不叠加排序模型或其他成员。");
+        if (stopPortfolioAtHpTarget.HasValue && searchMode != "Coordinator")
+            throw new ArgumentException("组合达标早停参数仅用于Coordinator。");
         if (usePortfolio && searchMode != "Coordinator")
             throw new ArgumentException("--use-portfolio 只对 --search-mode Coordinator 有效。");
         if ((observePortfolio || portfolioModelPath != null) && (!usePortfolio || searchMode != "Coordinator"))
@@ -592,6 +600,7 @@ internal sealed record HarnessOptions
             Ordering = ordering,
             RankingModelPath = rankingModelPath,
             ContinuousThreatRanking = continuousThreatRanking,
+            StopPortfolioAtHpTarget = stopPortfolioAtHpTarget,
             ObservePortfolio = observePortfolio,
             PortfolioModelPath = portfolioModelPath,
             Milestone = milestone,

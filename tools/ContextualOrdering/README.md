@@ -8,13 +8,17 @@
 - 不把加宽或提高预算当作优化。对照固定同根、相同预算和政策，展开/转移成对报告。
 - 未完成结果、墙钟切层、模拟失败不能伪造成有效的“更优”标签。
 - 模型预测不是可采纳下界，不得用于声称安全的硬剪枝。
-- 不跳过已有能力/药水审计来换性能；不把正则、范围检查或版本回退当作质量证明。
+- 药水政策与必要目标不得绕过。按玩家已开启的战损目标结束追加组合属于有损取舍，必须单独量化，不把正则、范围检查或版本回退当作质量证明。
 - 最终要覆盖独立生成战斗、定向反例、真实 Coordinator 与原生执行。无头不证明可见帧率。
 - 不训练或调参于 test。压力变体保持同一划分；当前是按种子分组的留存，额外随机构筑用于检查跨牌组泛化，不宣称已按机制族完全隔离。
 
 ## 当前工具
 
 `generate.py --out <new-directory>` 生成 105 根：10 种定向机制 × 3 个种子划分 × 2 种压力，以及 5 角色 × 3 遭遇类型 × 3 划分的独立随机构筑。没有标注“最优路线”；牌、资源、敌人力量都走原生建局注入。产物包含精确输入，目录必须新建。
+
+`--seed-namespace <frozen-name>` 可建立新 RNG 批次；默认值保持原语料的种子。新种子仍属相同机制族，不能宣称机制独立；manifest 记录命名空间，划分和具体请求一起冻结。
+
+`generate.py --suite target-stop-boundaries --out <new-directory>` 单独构造7个回血反例边界，交叉手牌/待抽回血牌和再生效果，并检查立即斩杀与延后回血、必要用药的取舍；用于检查达到零战损后可能放弃的回血，不混入泛化质量分母。
 
 `run.py --manifest <manifest.json> --variants <variants.json> --out <new-directory>` 串行跑训练集。每个进程 120 秒上限，墙钟切层保留为 TimeLimited，错误不被跳过或纳入成功均值。`--split validation/test` 显式选择留存集。每个 variant 指定 `name`、`dll`，可附加 `beam`、`nodes`、`arguments`；同根所有变体相邻运行。
 
@@ -49,3 +53,5 @@ variant 可指定自己的 `harness`。旧 DLL 需要兼容的旧宿主；引用
 
 
 原生复现可用 `--performance-preset-for-test Medium --search-beam-width-for-test 24 --search-max-expanded-nodes-for-test 20000 --search-budget-override-milliseconds 60000 --search-max-degree-of-parallelism-for-test 1 --fixed-search-budget` 对齐本套件预算；PowerShell使用对应PascalCase参数。两个新增预算参数只作用于无人请求并在收尾恢复。实验排序仍须明确启用；仅指定这些预算不启用候选。
+
+`--stop-portfolio-at-hp-target` / `--disable-portfolio-hp-target-stop` 仅用于 Coordinator，显式覆盖组合达标早停；未指定时沿用生产profile（默认开启）。仍须启用玩家战损达标政策，宿主对应 `--stop-at-zero-loss`。当前最佳完整无风险路线满足战损、成长、遗物、追回资源和必要用药目标，且没有冻结的可见治疗来源或已选路线实际回血时，跳过剩余宽度/能力成员与能力开局前缀。它不改变中途分数和终局比较器，不保证回合数或旧Score最优，也不穷举未来生成的治疗机会。其他排序实验可以在该生产政策上对照；旧实验的精确复现须显式关闭此项或使用其冻结DLL/宿主。

@@ -19,6 +19,8 @@ internal sealed record SolverSearchProfile(
     public ContextualRankingModel? ContextualRanking { get; init; }
     /// <summary>Offline experiment: continuously price lethal intent only at a living, playable new-turn node after EndTurn.</summary>
     public bool ContinuousThreatRanking { get; init; }
+    /// <summary>Honor the player's HP stopping target across portfolios, preserving audits for visible or observed healing.</summary>
+    public bool StopPortfolioAtHpTarget { get; init; } = true;
 
     /// <summary>
     /// 中途排序只用状态基础分 <c>node.Score</c>，不加 <c>BeamRankScore</c> 的各项附加分（当前能量、

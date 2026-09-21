@@ -1647,7 +1647,7 @@ foreach ($text in @('File.', 'SolverSettings.Current', 'SolverController', 'Comp
     }
 }
 foreach ($file in @('CombatBeamSolver.FinalPlanOrdering.cs', 'CombatBeamSolver.Transpositions.cs')) {
-    foreach ($text in @('ContextualRanking', 'ContinuousThreatRanking')) {
+    foreach ($text in @('ContextualRanking', 'ContinuousThreatRanking', 'StopPortfolioAtHpTarget')) {
         if (Select-String -LiteralPath (Join-Path $searchRoot $file) -SimpleMatch $text -Quiet) {
             $violations.Add("Intermediate estimate must not become final policy or exact dominance: $file")
         }

@@ -393,6 +393,7 @@ internal static class ModRuntime
             ContextualRanking = options.RankingModelPath == null ? null
                 : ContextualRankingModel.Parse(File.ReadAllText(options.RankingModelPath)),
             ContinuousThreatRanking = options.ContinuousThreatRanking,
+            StopPortfolioAtHpTarget = options.StopPortfolioAtHpTarget ?? policy.Profile.StopPortfolioAtHpTarget,
         } };
         using OrderingObservations? orderingObservations = options.OrderingObservationLimit > 0
             ? new OrderingObservations(options.OutputDirectory, options.OrderingObservationLimit,

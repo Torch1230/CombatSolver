@@ -7,7 +7,7 @@ internal static partial class CombatSearchCoordinator
     private const int MinimumPowerRouteMilliseconds = 10_000;
 
     /// <summary>
-    /// 从同一根为每张当前可打能力建立固定开牌前缀，并继续搜索到完整战斗结果。单能力路线全部运行；
+    /// 从同一根为每张当前可打能力建立固定开牌前缀，并继续搜索到完整战斗结果。未满足组合早停时运行单能力路线；
     /// 其后再补有限的双能力前缀。这里直接比较最终真实战损，不把能力估值带进终局排序。
     /// </summary>
     private static SolverResult RunOpeningPowerRoutePortfolio(
@@ -23,6 +23,11 @@ internal static partial class CombatSearchCoordinator
     {
         if (!root.PlayerCardIds.Any(PowerCardValuationModels.Registry.ContainsCardId))
             return baseline;
+        if (CanFinishTargetPortfolio(root, policy, profile, baseline))
+        {
+            policy.Diagnostics.Info("[CombatSolver/Test] POWER_ROUTE_PORTFOLIO stopped reason=AcceptableBattleHpLoss members_run=0");
+            return baseline;
+        }
         CombatBeamSolver prefixBuilder = new(
             root,
             displayNames,
@@ -99,6 +104,11 @@ internal static partial class CombatSearchCoordinator
             foreach (BeamWidthPortfolioMemberSpec variant in variants)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                if (CanFinishTargetPortfolio(root, policy, profile, selected))
+                {
+                    policy.Diagnostics.Info($"[CombatSolver/Test] POWER_ROUTE_PORTFOLIO stopped reason=AcceptableBattleHpLoss members_run={memberIndex}");
+                    return selected;
+                }
                 if (policy.MemoryPressureSignal.IsEnabled
                     && !policy.MemoryPressureSignal.CanReachCommit(256L * 1024 * 1024))
                 {

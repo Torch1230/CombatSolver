@@ -30,7 +30,7 @@ def run(case, variant, args):
                '--label', case['id'], '--out', str(out.resolve()), '--profile', 'Custom',
                '--beam', str(variant.get('beam', args.beam)), '--nodes', str(variant.get('nodes', args.nodes)),
                '--budget-ms', str(args.budget_ms), '--dop', '1', '--search-mode', mode,
-               '--potion-policy', 'Smart', '--stop-at-zero-loss', '--measure-phases']
+               '--potion-policy', case.get('potionPolicy', 'Smart'), '--stop-at-zero-loss', '--measure-phases']
     command += variant.get('arguments', [])
     env = dict(os.environ, OFFLINE_HARNESS_COMBATSOLVER_DLL=str(Path(variant['dll']).resolve(strict=True)))
     (out / 'command.json').write_text(json.dumps({'command': command, 'dll': env['OFFLINE_HARNESS_COMBATSOLVER_DLL']}, indent=2))

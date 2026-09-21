@@ -43,7 +43,7 @@
 | PR #114 内存截断、续用戳与排他阶段测量 | [搜索内存恢复](performance/search-memory-recovery-20260919.md) |
 | PR #114 离线宿主保真与 16 并行基线 | [16 并行阶段归因](performance/dop16-veryhigh-fidelity-20260919.md) |
 | 默认关闭的学习型组合选择器和训练反例 | [学习型门控](strategy/learned-portfolio-gate-20260917.md) |
-| 自生成场景、上下文排序采集与被拒绝的小模型 | [上下文排序实验](strategy/contextual-ordering-20260922.md) |
+| 自生成场景、上下文排序实验与组合达标早停 | [实验与取舍](strategy/contextual-ordering-20260922.md)、[结构化证据](strategy/contextual-target-stop-20260922-evidence.json) |
 | 943份计划外重算报告、16类已修机制及证据缺口 | [2026-09-13批次结果](issues/report-replans-20260913.md) |
 | 环绕轨道、自动化的持续返能估值与实战对照 | [返能能力估值](issues/recurring-energy-valuation-20260913.md) |
 | 后续六方向的当前诊断、逐项实现与对照 | [六方向开发记录](performance/six-directions-20260913.md) |

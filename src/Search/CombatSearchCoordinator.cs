@@ -515,7 +515,7 @@ internal static partial class CombatSearchCoordinator
                     memberElapsed, memberResult.BoundaryReason.ToString()));
                 pendingFeatures = null;
             }
-            if (experiment != null && comparable && (incumbent == null
+            if ((experiment != null || profile.StopPortfolioAtHpTarget) && comparable && (incumbent == null
                 || IsBetterPotionPolicyResult(root, policy, memberResult, incumbent)))
                 incumbent = memberResult;
             if (!baselineObserved)
@@ -552,6 +552,8 @@ internal static partial class CombatSearchCoordinator
         {
             if (!baselineObserved)
                 return null;
+            if (incumbent != null && CanFinishTargetPortfolio(root, policy, profile, incumbent))
+                return "AcceptableBattleHpLoss";
             // 能力牌成员走自己的门控（它只要求确实存在可达的能力牌），其余成员走宽度余量门控。
             string? rejection = member.AggressivePowerCommitment
                 ? PowerCommitmentPortfolioGate.Reject(hasReachablePower)
@@ -1904,6 +1906,17 @@ internal static partial class CombatSearchCoordinator
             IsCompleteVictory(result),
             result.ProjectedBattleHpLost,
             policy.AcceptableBattleHpLoss);
+
+    // This honors an explicitly enabled satisficing policy, not a proof that no
+    // alternate route can heal more or finish sooner. Preserve the selected incumbent.
+    private static bool CanFinishTargetPortfolio(
+        CombatRootSnapshot root, SearchPolicySnapshot policy, SolverSearchProfile profile, SolverResult result)
+        => profile.StopPortfolioAtHpTarget
+            && !root.HasVisibleHealingSource
+            && result.Snapshot.RecoveredPlayerHp == 0
+            && result.ResultScope == SolverResultScope.SearchCompletion
+            && !result.Snapshot.HasRisk
+            && HasReachedAcceptableBattleHpLoss(policy, result);
 
     internal static bool HasReachedAcceptableBattleHpLoss(
         bool completeVictory,

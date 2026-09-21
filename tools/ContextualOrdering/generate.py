@@ -33,7 +33,61 @@ def write(path, value):
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + '\n')
 
 
-def generate(out):
+def generate_target_boundaries(out):
+    """Healing is a real secondary benefit that zero-damage stopping may forgo."""
+    out.mkdir(parents=True, exist_ok=False)
+    cases = []
+    for position in ('hand', 'draw'):
+        for regen in (False, True):
+            label = 'healing-' + position + ('-regen' if regen else '')
+            cards = [{'cardId': c, 'pile': 'Hand', 'treatAsDeckCard': True} for c in
+                     ('FOOTWORK', 'BACKFLIP', 'STRIKE_SILENT', 'STRIKE_SILENT', 'DEFEND_SILENT', 'NEUTRALIZE')]
+            cards.append({'cardId': 'NOT_YET', 'pile': position.title(), 'treatAsDeckCard': True})
+            cards += [{'cardId': c, 'pile': 'Draw', 'treatAsDeckCard': True} for c in
+                      ('STRIKE_SILENT', 'DEFEND_SILENT', 'BACKFLIP', 'STRIKE_SILENT', 'DEFEND_SILENT')]
+            request = {'schemaVersion': 1, 'scenarioId': 'TARGET-STOP-' + label.upper(),
+                       'characterId': 'SILENT', 'encounterId': 'FUZZY_WURM_CRAWLER_WEAK',
+                       'seed': 'TARGET-STOP-' + label, 'initialPlayerHp': 20, 'initialPlayerMaxHp': 80,
+                       'initialPlayerEnergy': 3, 'enemyCurrentHp': 30,
+                       'initialEnemyMaxHps': [30], 'initialEnemyCurrentHps': [30],
+                       'clearRunDeck': True, 'clearPlayerPiles': True, 'cards': cards,
+                       'powers': [{'powerId': 'REGEN_POWER', 'target': 'Player', 'amount': 5}] if regen else [],
+                       'timeoutSeconds': 120, 'fixedSearchBudget': True,
+                       'stopAfterInitialSolverResultAssertion': True}
+            path = out / (label + '.json')
+            write(path, request)
+            cases.append({'id': label, 'family': 'healing', 'kind': 'curated', 'split': 'test',
+                          'request': str(path.resolve())})
+    # A lethal attack can finish before any recovery is observed. A three-energy
+    # power prefix exposes next-turn healing, so checking only the selected heal is insufficient.
+    for source in ('regen', 'card'):
+        label = 'healing-latent-' + source
+        request = {**request, 'scenarioId': 'TARGET-STOP-' + label.upper(), 'seed': 'TARGET-STOP-' + label,
+                   'enemyCurrentHp': 6, 'initialEnemyMaxHps': [6], 'initialEnemyCurrentHps': [6],
+                   'cards': [{'cardId': c, 'pile': 'Hand', 'treatAsDeckCard': True} for c in
+                             ('BARRICADE', 'STRIKE_IRONCLAD', 'DEFEND_IRONCLAD')]
+                            + ([{'cardId': 'NOT_YET', 'pile': 'Draw', 'treatAsDeckCard': True}]
+                               if source == 'card' else []),
+                   'powers': [{'powerId': 'REGEN_POWER', 'target': 'Player', 'amount': 5}]
+                             if source == 'regen' else []}
+        path = out / (label + '.json')
+        write(path, request)
+        cases.append({'id': label, 'family': 'healing', 'kind': 'curated', 'split': 'test',
+                      'request': str(path.resolve())})
+    label = 'healing-latent-required-potion'
+    request = {**request, 'scenarioId': 'TARGET-STOP-LATENT-REGEN-POTION',
+               'seed': 'TARGET-STOP-LATENT-REGEN-POTION', 'powers': [],
+               'cards': [card for card in request['cards'] if card['pile'] == 'Hand'],
+               'potions': [{'potionId': 'REGEN_POTION'}]}
+    path = out / (label + '.json')
+    write(path, request)
+    cases.append({'id': label, 'family': 'healing', 'kind': 'curated', 'split': 'test',
+                  'potionPolicy': 'RequireAtLeastOne', 'request': str(path.resolve())})
+    write(out / 'manifest.json', {'schemaVersion': 1, 'cases': cases})
+    return cases
+
+
+def generate(out, seed_namespace='20260922'):
     out.mkdir(parents=True, exist_ok=False)
     cases = []
     for index, split in enumerate(SPLITS):
@@ -48,7 +102,7 @@ def generate(out):
                     'schemaVersion': 1, 'scenarioId': 'ORDERING-' + label.upper(),
                     'characterId': character,
                     'encounterId': 'CORPSE_SLUGS_NORMAL' if multi else 'FUZZY_WURM_CRAWLER_WEAK',
-                    'seed': f'ORDERING-{family}-{index}-20260922',
+                    'seed': f'ORDERING-{family}-{index}-{seed_namespace}',
                     'enemyCurrentHp': enemy_hp,
                     'initialEnemyMaxHps': [enemy_hp] * (3 if multi else 1),
                     'initialEnemyCurrentHps': [enemy_hp] * (3 if multi else 1),
@@ -70,7 +124,7 @@ def generate(out):
             for kind in ('Monster', 'Elite', 'Boss'):
                 label = f'random-{character.lower()}-{kind.lower()}-{split}'
                 scenario = {
-                    'schemaVersion': 1, 'seed': f'ORDERING-{character}-{kind}-{index}-20260922',
+                    'schemaVersion': 1, 'seed': f'ORDERING-{character}-{kind}-{index}-{seed_namespace}',
                     'characterId': character, 'encounterKind': kind, 'ascension': 10, 'actIndex': 1,
                     'includeStartingDeck': True, 'includeStartingRelics': True,
                     'includeAscendersBane': True, 'applyRelicObtainEffects': False,
@@ -87,6 +141,7 @@ def generate(out):
                 cases.append({'id': label, 'family': f'random-{character}-{kind}', 'split': split,
                               'character': character, 'request': str(path.resolve()), 'kind': 'random'})
     write(out / 'manifest.json', {'schemaVersion': 1, 'baselineCommit': '2a4b1a45',
+                                 'seedNamespace': seed_namespace,
                                  'description': 'Synthetic search observations; no optimality labels.', 'cases': cases})
     return cases
 
@@ -94,5 +149,10 @@ def generate(out):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
+    parser.add_argument('--suite', choices=('ordering', 'target-stop-boundaries'), default='ordering')
+    parser.add_argument('--seed-namespace', default='20260922',
+                        help='Freeze a new independent RNG cohort without changing scenario families.')
     args = parser.parse_args()
-    print(f'Generated {len(generate(args.out))} roots in {args.out}')
+    cases = (generate_target_boundaries(args.out) if args.suite == 'target-stop-boundaries'
+             else generate(args.out, args.seed_namespace))
+    print(f'Generated {len(cases)} roots in {args.out}')
