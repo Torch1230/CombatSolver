@@ -153,9 +153,9 @@ internal sealed partial class UnattendedTestRunner
             || PotionRewardOutlook.DropChanceFor(1.2f, RoomType.Monster) != 1f
             || PotionRewardOutlook.DropChanceFor(0.4f, RoomType.Boss) != 0.4f)
             throw new InvalidOperationException("药水掉落概率镜像与原版掷骰阈值不符。");
-        // 额度只在药水栏已满且能获得药水时存在，按基线档位乘概率四舍五入。
-        if (new PotionRewardOutlook(1f, true, false).ReplacementHpCredit != SolverWeights.PotionMinimumHpSaved
-            || new PotionRewardOutlook(0.4f, true, false).ReplacementHpCredit != 4
+        // 只有药水栏满且已确定掉药时才抵扣；仅有概率不会产生额度。
+        if (new PotionRewardOutlook(1f, true, false).ReplacementHpCredit != 0
+            || new PotionRewardOutlook(0.4f, true, false).ReplacementHpCredit != 0
             || new PotionRewardOutlook(0.5f, true, true).ReplacementHpCredit != 0
             || new PotionRewardOutlook(1f, false, false).ReplacementHpCredit != 0
             || PotionRewardOutlook.None.ReplacementHpCredit != 0)
@@ -172,11 +172,12 @@ internal sealed partial class UnattendedTestRunner
         if (PotionUsePolicy.IsEligible(SolverPotionPolicy.Smart, 1, 1, true, 30, true, true, 30)
             || !PotionUsePolicy.IsEligible(SolverPotionPolicy.Smart, 1, 1, true, 30, true, true, 29))
             throw new InvalidOperationException("1 HP 门槛没有挡住零收益的用药路线。");
-        // 镜像出确定结果时按那瓶药的档位计价，镜像不出时才退回概率。
+        // 镜像出确定结果时按那瓶药的档位计价，其他结果额度为零。
         if (new PotionRewardOutlook(0.4f, true, false) { Forecast = PotionRewardForecast.Drop, ForecastPotionId = "SWIFT_POTION", ForecastPotionStrategicHpCost = 18 }.ReplacementHpCredit != 18
             || new PotionRewardOutlook(0.9f, true, false) { Forecast = PotionRewardForecast.NoDrop }.ReplacementHpCredit != 0
             || new PotionRewardOutlook(0.9f, true, false) { Forecast = PotionRewardForecast.NoRewards }.ReplacementHpCredit != 0
-            || new PotionRewardOutlook(1f, false, false) { Forecast = PotionRewardForecast.Drop, ForecastPotionId = "FIRE_POTION", ForecastPotionStrategicHpCost = 9 }.ReplacementHpCredit != 0)
+            || new PotionRewardOutlook(1f, false, false) { Forecast = PotionRewardForecast.Drop, ForecastPotionId = "FIRE_POTION", ForecastPotionStrategicHpCost = 9 }.ReplacementHpCredit != 0
+            || new PotionRewardOutlook(1f, true, true) { Forecast = PotionRewardForecast.Drop, ForecastPotionId = "FIRE_POTION", ForecastPotionStrategicHpCost = 9 }.ReplacementHpCredit != 0)
             throw new InvalidOperationException("镜像掉落结果的额度计算错误。");
         // 根快照读到的是当前玩家保存的概率、真实房间类型与药水栏占用。
         Player player = combat.Players[0];

@@ -1,0 +1,1783 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-21",
+  "baseCommit": "3f4002bd60ca9e232cd23191bc1c8eb1f60ec034",
+  "host": {
+    "Caption": "Microsoft Windows 11 专业版",
+    "Version": "10.0.26200",
+    "TotalVisibleMemorySize": 33384384,
+    "FreePhysicalMemory": 9990032
+  },
+  "checks": {
+    "linux": {
+      "linux-recovery.log": 9,
+      "linux-recovery-lifecycle.log": 2,
+      "linux-diagnostic-failure.log": 8,
+      "linux-checkpoint.log": 1,
+      "linux-basic.log": 26,
+      "linux-scopes.log": 8
+    },
+    "windows": {
+      "windows-clr-diagnostic-failure.log": 8,
+      "windows-clr-recovery.log": 9,
+      "windows-clr-checkpoint.log": 1,
+      "windows-clr-scopes.log": 8,
+      "windows-clr-recovery-lifecycle.log": 2,
+      "windows-clr-basic.log": 26
+    }
+  },
+  "failedBaselines": [
+    {
+      "source": "upstream 3f4002bd",
+      "mode": "diagnostic-failure/checkpoint",
+      "outcome": "12-second deadline cancellation; pending post-search cleanup not settled",
+      "logSha256": "d9df4a668459a8709ebac6f6b0557e339e0efc6fa3fbc8de6b2e407db8ee8c43"
+    },
+    {
+      "source": "intermediate completion fix before queued-manual settlement",
+      "mode": "diagnostic-failure/promotion",
+      "outcome": "12-second deadline cancellation; queued manual task not settled",
+      "logSha256": "73e2aa7ca86c96ae5d7dd65f083761d5b40ad47a50de2c5709e9da9574f1bf50"
+    }
+  ],
+  "screening": {
+    "experiment": {
+      "baselineCommit": "3f4002bd60ca9e232cd23191bc1c8eb1f60ec034",
+      "completionFixCommit": "10e52b1c",
+      "candidateCommit": "cfc07f76",
+      "order": [
+        "A1",
+        "B1",
+        "B2",
+        "A2"
+      ],
+      "noGcConfiguredBytes": 12000000000,
+      "dop": 8,
+      "baseline": "current upstream main 0.43.2",
+      "scope": "Completion-chain fix and two allocation optimizations only. GC budget, transition/recovery policies and Search algorithms remain upstream. No Windows 4GB cap.",
+      "measurement": "Independent muted Windows headless processes; OS peak working set and approximately 500ms private-byte samples include startup/search/cleanup. No visible frame-time claim.",
+      "candidateCommitAvailability": "Discarded local screening commit; not included in successor PR"
+    },
+    "artifacts": {
+      "baseline": "32106a961e91e81c66a7cbceee978c1c47d290f880f51ddbc4e26139642902c3",
+      "candidate": "34a8f47ad39378cdf293f63e8ad55b72c382afd3b698a75e1e6d88a0ad384f35"
+    },
+    "statistics": [
+      {
+        "name": "garden",
+        "parameters": {
+          "name": "garden",
+          "generated": false,
+          "nodes": 8000,
+          "beam": 512,
+          "searchMs": 60000,
+          "dop": 8,
+          "budgetGb": 12
+        },
+        "statistics": {
+          "A": {
+            "n": 2,
+            "meanSearchMs": 48353.46475,
+            "meanWorkerAllocatedBytes": 9245531604,
+            "meanRequestMs": 71765.48425000001,
+            "meanCallbackMs": 48961.5,
+            "meanWorkingSetPeak": 2437986304,
+            "meanPrivateSampledPeak": 3658487808,
+            "maxGcPauseMs": 828.723
+          },
+          "B": {
+            "n": 2,
+            "meanSearchMs": 46235.691000000006,
+            "meanWorkerAllocatedBytes": 8945474576,
+            "meanRequestMs": 69539.3663,
+            "meanCallbackMs": 46585.5,
+            "meanWorkingSetPeak": 2757054464,
+            "meanPrivateSampledPeak": 4607158272,
+            "maxGcPauseMs": 634.81
+          }
+        },
+        "changes": {
+          "meanSearchMs": -0.04379776632242249,
+          "meanWorkerAllocatedBytes": -0.0324542753031295,
+          "meanRequestMs": -0.031019339913393118,
+          "meanCallbackMs": -0.048527925002297745,
+          "meanWorkingSetPeak": 0.1308736474345673,
+          "meanPrivateSampledPeak": 0.25930671736162303
+        }
+      },
+      {
+        "name": "defect-elite",
+        "parameters": {
+          "name": "defect-elite",
+          "generated": true,
+          "nodes": 2000,
+          "beam": 256,
+          "searchMs": 60000,
+          "dop": 8,
+          "budgetGb": 12
+        },
+        "statistics": {
+          "A": {
+            "n": 2,
+            "meanSearchMs": 9077.62345,
+            "meanWorkerAllocatedBytes": 1396449816,
+            "meanRequestMs": 34490.0981,
+            "meanCallbackMs": 9750,
+            "meanWorkingSetPeak": 2338877440,
+            "meanPrivateSampledPeak": 7993706496,
+            "maxGcPauseMs": 152.311
+          },
+          "B": {
+            "n": 2,
+            "meanSearchMs": 9281.41095,
+            "meanWorkerAllocatedBytes": 1384416356,
+            "meanRequestMs": 36798.00065,
+            "meanCallbackMs": 9486.5,
+            "meanWorkingSetPeak": 2457755648,
+            "meanPrivateSampledPeak": 7266433024,
+            "maxGcPauseMs": 255.807
+          }
+        },
+        "changes": {
+          "meanSearchMs": 0.022449433061689783,
+          "meanWorkerAllocatedBytes": -0.008617180411444214,
+          "meanRequestMs": 0.06691493144810745,
+          "meanCallbackMs": -0.02702564102564098,
+          "meanWorkingSetPeak": 0.050827036067353726,
+          "meanPrivateSampledPeak": -0.09098075747013268
+        }
+      },
+      {
+        "name": "silent-discard",
+        "parameters": {
+          "name": "silent-discard",
+          "generated": true,
+          "nodes": 4000,
+          "beam": 256,
+          "searchMs": 60000,
+          "dop": 8,
+          "budgetGb": 12
+        },
+        "statistics": {
+          "A": {
+            "n": 2,
+            "meanSearchMs": 13989.478149999999,
+            "meanWorkerAllocatedBytes": 2827604772,
+            "meanRequestMs": 44755.49415,
+            "meanCallbackMs": 17899.5,
+            "meanWorkingSetPeak": 4280408064,
+            "meanPrivateSampledPeak": 12017643520,
+            "maxGcPauseMs": 0
+          },
+          "B": {
+            "n": 2,
+            "meanSearchMs": 14824.778,
+            "meanWorkerAllocatedBytes": 2778011584,
+            "meanRequestMs": 41250.247449999995,
+            "meanCallbackMs": 15371,
+            "meanWorkingSetPeak": 4232087552,
+            "meanPrivateSampledPeak": 12764368896,
+            "maxGcPauseMs": 0
+          }
+        },
+        "changes": {
+          "meanSearchMs": 0.059709150051462156,
+          "meanWorkerAllocatedBytes": -0.017538939137141885,
+          "meanRequestMs": -0.07831991952210415,
+          "meanCallbackMs": -0.14126092907623122,
+          "meanWorkingSetPeak": -0.011288762958465481,
+          "meanPrivateSampledPeak": 0.062135756877568005
+        }
+      }
+    ],
+    "comparisons": [
+      {
+        "case": "garden",
+        "baseline": "A1",
+        "candidate": "B1",
+        "searchRatio": 0.9548928632529168,
+        "nonTimingMetricsDifferences": [],
+        "routeDifferences": [],
+        "generated-scenario.resolved.jsonDifferences": [],
+        "generated-scenario.opening.jsonDifferences": [],
+        "generated-scenario.loadout.jsonDifferences": [],
+        "replayChecksDifferences": [],
+        "identityDifferences": []
+      },
+      {
+        "case": "garden",
+        "baseline": "A2",
+        "candidate": "B2",
+        "searchRatio": 0.9575480042094441,
+        "nonTimingMetricsDifferences": [],
+        "routeDifferences": [],
+        "generated-scenario.resolved.jsonDifferences": [],
+        "generated-scenario.opening.jsonDifferences": [],
+        "generated-scenario.loadout.jsonDifferences": [],
+        "replayChecksDifferences": [],
+        "identityDifferences": []
+      },
+      {
+        "case": "defect-elite",
+        "baseline": "A1",
+        "candidate": "B1",
+        "searchRatio": 1.0388217757064822,
+        "nonTimingMetricsDifferences": [],
+        "routeDifferences": [],
+        "generated-scenario.resolved.jsonDifferences": [],
+        "generated-scenario.opening.jsonDifferences": [],
+        "generated-scenario.loadout.jsonDifferences": [],
+        "replayChecksDifferences": [],
+        "identityDifferences": []
+      },
+      {
+        "case": "defect-elite",
+        "baseline": "A2",
+        "candidate": "B2",
+        "searchRatio": 1.0079846580828762,
+        "nonTimingMetricsDifferences": [],
+        "routeDifferences": [],
+        "generated-scenario.resolved.jsonDifferences": [],
+        "generated-scenario.opening.jsonDifferences": [],
+        "generated-scenario.loadout.jsonDifferences": [],
+        "replayChecksDifferences": [],
+        "identityDifferences": []
+      },
+      {
+        "case": "silent-discard",
+        "baseline": "A1",
+        "candidate": "B1",
+        "searchRatio": 1.0616263176045622,
+        "nonTimingMetricsDifferences": [],
+        "routeDifferences": [],
+        "generated-scenario.resolved.jsonDifferences": [],
+        "generated-scenario.opening.jsonDifferences": [],
+        "generated-scenario.loadout.jsonDifferences": [],
+        "replayChecksDifferences": [],
+        "identityDifferences": []
+      },
+      {
+        "case": "silent-discard",
+        "baseline": "A2",
+        "candidate": "B2",
+        "searchRatio": 1.0578150552132104,
+        "nonTimingMetricsDifferences": [],
+        "routeDifferences": [],
+        "generated-scenario.resolved.jsonDifferences": [],
+        "generated-scenario.opening.jsonDifferences": [],
+        "generated-scenario.loadout.jsonDifferences": [],
+        "replayChecksDifferences": [],
+        "identityDifferences": []
+      }
+    ],
+    "comparisonExcludedFields": {
+      "ignore": [
+        "allocatedBytes",
+        "elapsedMilliseconds",
+        "managedHeapBytesAfter",
+        "traceId"
+      ],
+      "perf": [
+        "capturedAtElapsedMilliseconds",
+        "firstRoutePublishedMilliseconds",
+        "gcLatencyMode",
+        "gcLifecycle",
+        "gcLifecycleAttribution",
+        "mainThreadFramesOver50Milliseconds",
+        "managedFragmentedBytes",
+        "managedHeapBytes",
+        "managedLiveBytes",
+        "maxGcPauseMilliseconds",
+        "maxObservedMainThreadFrameGapMilliseconds",
+        "noGcRegionActive",
+        "noGcRegionBudgetBytes",
+        "noGcRegionRolloverCount",
+        "peakManagedHeapBytes",
+        "privateMemoryBytes",
+        "totalElapsedMilliseconds",
+        "totalGcPauseMilliseconds",
+        "totalGen0Collections",
+        "totalGen1Collections",
+        "totalGen2Collections",
+        "totalWorkerAllocatedBytes",
+        "workerAllocatedBytes",
+        "workingSetBytes"
+      ]
+    },
+    "samples": [
+      {
+        "label": "validation-defect-elite-A1",
+        "runId": "79ca6d1fa1204ace89d69740b516bafc",
+        "status": "Passed",
+        "identity": {
+          "characterId": "CHARACTER.DEFECT",
+          "encounterId": "ENCOUNTER.INFESTED_PRISMS_ELITE",
+          "seed": "NOVELTY-DEV-20260915-02"
+        },
+        "requestElapsedMilliseconds": 34230.2864,
+        "searchRequestToCallbackMilliseconds": 9670,
+        "metrics": {
+          "totalElapsedMilliseconds": 8516.0865,
+          "totalWorkerAllocatedBytes": 1396619968,
+          "totalExpanded": 6400,
+          "totalTransitions": 37900,
+          "totalChoiceBranches": 4132,
+          "projectedBattleHpLost": 10,
+          "potionCount": 0,
+          "potionUses": [],
+          "score": -238013,
+          "boundary": "NodeLimit",
+          "maxParallelConcurrency": 0,
+          "configuredNoGcRegionEnabled": true,
+          "configuredNoGcRegionBudgetBytes": 12000000000,
+          "noGcRegionBudgetBytes": 11154923046,
+          "totalGcPauseMilliseconds": 0,
+          "maxGcPauseMilliseconds": 0,
+          "gcLifecycle": {
+            "forcedCollections": 0,
+            "noGcStartAttempts": 1,
+            "noGcStarts": 1,
+            "noGcEndAttempts": 0,
+            "noGcEnds": 0,
+            "noGcRestarts": 0,
+            "noGcLosses": 0
+          }
+        },
+        "processMemory": {
+          "samples": 80,
+          "lastObservationMilliseconds": 40478.1078,
+          "peakWorkingSetBytes": 2825379840,
+          "sampledPeakPrivateBytes": 13145509888
+        },
+        "recordedRouteCount": 49,
+        "replayChecks": {
+          "mode": null,
+          "status": null,
+          "continuationVerified": null,
+          "nativeStateVerified": null,
+          "missingPolicyFields": null,
+          "executedPolicySha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        }
+      },
+      {
+        "label": "validation-defect-elite-A2",
+        "runId": "2f0415f2ad17453c83cf47405da56c6a",
+        "status": "Passed",
+        "identity": {
+          "characterId": "CHARACTER.DEFECT",
+          "encounterId": "ENCOUNTER.INFESTED_PRISMS_ELITE",
+          "seed": "NOVELTY-DEV-20260915-02"
+        },
+        "requestElapsedMilliseconds": 34749.9098,
+        "searchRequestToCallbackMilliseconds": 9830,
+        "metrics": {
+          "totalElapsedMilliseconds": 9639.1604,
+          "totalWorkerAllocatedBytes": 1396279664,
+          "totalExpanded": 6400,
+          "totalTransitions": 37900,
+          "totalChoiceBranches": 4132,
+          "projectedBattleHpLost": 10,
+          "potionCount": 0,
+          "potionUses": [],
+          "score": -238013,
+          "boundary": "NodeLimit",
+          "maxParallelConcurrency": 0,
+          "configuredNoGcRegionEnabled": true,
+          "configuredNoGcRegionBudgetBytes": 12000000000,
+          "noGcRegionBudgetBytes": 733223031,
+          "totalGcPauseMilliseconds": 583.747,
+          "maxGcPauseMilliseconds": 152.311,
+          "gcLifecycle": {
+            "forcedCollections": 2,
+            "noGcStartAttempts": 4,
+            "noGcStarts": 4,
+            "noGcEndAttempts": 3,
+            "noGcEnds": 3,
+            "noGcRestarts": 3,
+            "noGcLosses": 0
+          }
+        },
+        "processMemory": {
+          "samples": 79,
+          "lastObservationMilliseconds": 40813.5403,
+          "peakWorkingSetBytes": 1852375040,
+          "sampledPeakPrivateBytes": 2841903104
+        },
+        "recordedRouteCount": 49,
+        "replayChecks": {
+          "mode": null,
+          "status": null,
+          "continuationVerified": null,
+          "nativeStateVerified": null,
+          "missingPolicyFields": null,
+          "executedPolicySha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        }
+      },
+      {
+        "label": "validation-defect-elite-B1",
+        "runId": "f7b2e2bcdf0a48a380d01311e84afe43",
+        "status": "Passed",
+        "identity": {
+          "characterId": "CHARACTER.DEFECT",
+          "encounterId": "ENCOUNTER.INFESTED_PRISMS_ELITE",
+          "seed": "NOVELTY-DEV-20260915-02"
+        },
+        "requestElapsedMilliseconds": 38901.8684,
+        "searchRequestToCallbackMilliseconds": 9059,
+        "metrics": {
+          "totalElapsedMilliseconds": 8846.6961,
+          "totalWorkerAllocatedBytes": 1386105056,
+          "totalExpanded": 6400,
+          "totalTransitions": 37900,
+          "totalChoiceBranches": 4132,
+          "projectedBattleHpLost": 10,
+          "potionCount": 0,
+          "potionUses": [],
+          "score": -238013,
+          "boundary": "NodeLimit",
+          "maxParallelConcurrency": 0,
+          "configuredNoGcRegionEnabled": true,
+          "configuredNoGcRegionBudgetBytes": 12000000000,
+          "noGcRegionBudgetBytes": 8871562662,
+          "totalGcPauseMilliseconds": 0,
+          "maxGcPauseMilliseconds": 0,
+          "gcLifecycle": {
+            "forcedCollections": 0,
+            "noGcStartAttempts": 1,
+            "noGcStarts": 1,
+            "noGcEndAttempts": 0,
+            "noGcEnds": 0,
+            "noGcRestarts": 0,
+            "noGcLosses": 0
+          }
+        },
+        "processMemory": {
+          "samples": 87,
+          "lastObservationMilliseconds": 45238.2629,
+          "peakWorkingSetBytes": 2825019392,
+          "sampledPeakPrivateBytes": 10706341888
+        },
+        "recordedRouteCount": 49,
+        "replayChecks": {
+          "mode": null,
+          "status": null,
+          "continuationVerified": null,
+          "nativeStateVerified": null,
+          "missingPolicyFields": null,
+          "executedPolicySha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        }
+      },
+      {
+        "label": "validation-defect-elite-B2",
+        "runId": "7b0d605d282443b7aaf61b5b1e777cab",
+        "status": "Passed",
+        "identity": {
+          "characterId": "CHARACTER.DEFECT",
+          "encounterId": "ENCOUNTER.INFESTED_PRISMS_ELITE",
+          "seed": "NOVELTY-DEV-20260915-02"
+        },
+        "requestElapsedMilliseconds": 34694.1329,
+        "searchRequestToCallbackMilliseconds": 9914,
+        "metrics": {
+          "totalElapsedMilliseconds": 9716.1258,
+          "totalWorkerAllocatedBytes": 1382727656,
+          "totalExpanded": 6400,
+          "totalTransitions": 37900,
+          "totalChoiceBranches": 4132,
+          "projectedBattleHpLost": 10,
+          "potionCount": 0,
+          "potionUses": [],
+          "score": -238013,
+          "boundary": "NodeLimit",
+          "maxParallelConcurrency": 0,
+          "configuredNoGcRegionEnabled": true,
+          "configuredNoGcRegionBudgetBytes": 12000000000,
+          "noGcRegionBudgetBytes": 1196269687,
+          "totalGcPauseMilliseconds": 674.864,
+          "maxGcPauseMilliseconds": 255.807,
+          "gcLifecycle": {
+            "forcedCollections": 1,
+            "noGcStartAttempts": 3,
+            "noGcStarts": 3,
+            "noGcEndAttempts": 2,
+            "noGcEnds": 2,
+            "noGcRestarts": 2,
+            "noGcLosses": 0
+          }
+        },
+        "processMemory": {
+          "samples": 80,
+          "lastObservationMilliseconds": 41669.7501,
+          "peakWorkingSetBytes": 2090491904,
+          "sampledPeakPrivateBytes": 3826524160
+        },
+        "recordedRouteCount": 49,
+        "replayChecks": {
+          "mode": null,
+          "status": null,
+          "continuationVerified": null,
+          "nativeStateVerified": null,
+          "missingPolicyFields": null,
+          "executedPolicySha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        }
+      },
+      {
+        "label": "validation-garden-A1",
+        "runId": "b8db4843e8394b98aa385e803401cc27",
+        "status": "Passed",
+        "identity": {
+          "characterId": "CHARACTER.REGENT",
+          "encounterId": "ENCOUNTER.PHANTASMAL_GARDENERS_ELITE",
+          "seed": "UUG30F6V9NVC"
+        },
+        "requestElapsedMilliseconds": 73002.2858,
+        "searchRequestToCallbackMilliseconds": 49877,
+        "metrics": {
+          "totalElapsedMilliseconds": 49016.3566,
+          "totalWorkerAllocatedBytes": 9238838000,
+          "totalExpanded": 17600,
+          "totalTransitions": 214161,
+          "totalChoiceBranches": 84489,
+          "projectedBattleHpLost": 1,
+          "potionCount": 1,
+          "potionUses": [
+            {
+              "id": "GLOWWATER_POTION",
+              "title": "发光水",
+              "turn": 1,
+              "slot": 1
+            }
+          ],
+          "score": 10000969985,
+          "boundary": "NodeLimit",
+          "maxParallelConcurrency": 0,
+          "configuredNoGcRegionEnabled": true,
+          "configuredNoGcRegionBudgetBytes": 12000000000,
+          "noGcRegionBudgetBytes": 1641369719,
+          "totalGcPauseMilliseconds": 3733.869,
+          "maxGcPauseMilliseconds": 828.723,
+          "gcLifecycle": {
+            "forcedCollections": 8,
+            "noGcStartAttempts": 10,
+            "noGcStarts": 10,
+            "noGcEndAttempts": 9,
+            "noGcEnds": 9,
+            "noGcRestarts": 9,
+            "noGcLosses": 0
+          }
+        },
+        "processMemory": {
+          "samples": 154,
+          "lastObservationMilliseconds": 79575.2936,
+          "peakWorkingSetBytes": 2733330432,
+          "sampledPeakPrivateBytes": 4705198080
+        },
+        "recordedRouteCount": 44,
+        "replayChecks": {
+          "mode": "SearchOnly",
+          "status": "restored_continuation",
+          "continuationVerified": true,
+          "nativeStateVerified": false,
+          "missingPolicyFields": [],
+          "executedPolicySha256": "6e397661d2c5a4454fe9ec9969f916806b543122feb71b1305795c32caf96105"
+        }
+      },
+      {
+        "label": "validation-garden-A2",
+        "runId": "69e4f8fa81e04b3697d656e67573cc81",
+        "status": "Passed",
+        "identity": {
+          "characterId": "CHARACTER.REGENT",
+          "encounterId": "ENCOUNTER.PHANTASMAL_GARDENERS_ELITE",
+          "seed": "UUG30F6V9NVC"
+        },
+        "requestElapsedMilliseconds": 70528.6827,
+        "searchRequestToCallbackMilliseconds": 48046,
+        "metrics": {
+          "totalElapsedMilliseconds": 47690.5729,
+          "totalWorkerAllocatedBytes": 9252225208,
+          "totalExpanded": 17600,
+          "totalTransitions": 214161,
+          "totalChoiceBranches": 84489,
+          "projectedBattleHpLost": 1,
+          "potionCount": 1,
+          "potionUses": [
+            {
+              "id": "GLOWWATER_POTION",
+              "title": "发光水",
+              "turn": 1,
+              "slot": 1
+            }
+          ],
+          "score": 10000969985,
+          "boundary": "NodeLimit",
+          "maxParallelConcurrency": 0,
+          "configuredNoGcRegionEnabled": true,
+          "configuredNoGcRegionBudgetBytes": 12000000000,
+          "noGcRegionBudgetBytes": 555378807,
+          "totalGcPauseMilliseconds": 4725.749,
+          "maxGcPauseMilliseconds": 501.104,
+          "gcLifecycle": {
+            "forcedCollections": 25,
+            "noGcStartAttempts": 26,
+            "noGcStarts": 26,
+            "noGcEndAttempts": 25,
+            "noGcEnds": 25,
+            "noGcRestarts": 26,
+            "noGcLosses": 0
+          }
+        },
+        "processMemory": {
+          "samples": 150,
+          "lastObservationMilliseconds": 77014.3321,
+          "peakWorkingSetBytes": 2142642176,
+          "sampledPeakPrivateBytes": 2611777536
+        },
+        "recordedRouteCount": 44,
+        "replayChecks": {
+          "mode": "SearchOnly",
+          "status": "restored_continuation",
+          "continuationVerified": true,
+          "nativeStateVerified": false,
+          "missingPolicyFields": [],
+          "executedPolicySha256": "6e397661d2c5a4454fe9ec9969f916806b543122feb71b1305795c32caf96105"
+        }
+      },
+      {
+        "label": "validation-garden-B1",
+        "runId": "2383a1b81ba94840bd2ee749ebeab34d",
+        "status": "Passed",
+        "identity": {
+          "characterId": "CHARACTER.REGENT",
+          "encounterId": "ENCOUNTER.PHANTASMAL_GARDENERS_ELITE",
+          "seed": "UUG30F6V9NVC"
+        },
+        "requestElapsedMilliseconds": 70144.3305,
+        "searchRequestToCallbackMilliseconds": 47128,
+        "metrics": {
+          "totalElapsedMilliseconds": 46805.3691,
+          "totalWorkerAllocatedBytes": 8947051848,
+          "totalExpanded": 17600,
+          "totalTransitions": 214161,
+          "totalChoiceBranches": 84489,
+          "projectedBattleHpLost": 1,
+          "potionCount": 1,
+          "potionUses": [
+            {
+              "id": "GLOWWATER_POTION",
+              "title": "发光水",
+              "turn": 1,
+              "slot": 1
+            }
+          ],
+          "score": 10000969985,
+          "boundary": "NodeLimit",
+          "maxParallelConcurrency": 0,
+          "configuredNoGcRegionEnabled": true,
+          "configuredNoGcRegionBudgetBytes": 12000000000,
+          "noGcRegionBudgetBytes": 615972983,
+          "totalGcPauseMilliseconds": 3240.432,
+          "maxGcPauseMilliseconds": 634.185,
+          "gcLifecycle": {
+            "forcedCollections": 22,
+            "noGcStartAttempts": 25,
+            "noGcStarts": 25,
+            "noGcEndAttempts": 24,
+            "noGcEnds": 24,
+            "noGcRestarts": 24,
+            "noGcLosses": 0
+          }
+        },
+        "processMemory": {
+          "samples": 152,
+          "lastObservationMilliseconds": 77847.1996,
+          "peakWorkingSetBytes": 2702606336,
+          "sampledPeakPrivateBytes": 4796403712
+        },
+        "recordedRouteCount": 44,
+        "replayChecks": {
+          "mode": "SearchOnly",
+          "status": "restored_continuation",
+          "continuationVerified": true,
+          "nativeStateVerified": false,
+          "missingPolicyFields": [],
+          "executedPolicySha256": "6e397661d2c5a4454fe9ec9969f916806b543122feb71b1305795c32caf96105"
+        }
+      },
+      {
+        "label": "validation-garden-B2",
+        "runId": "2070e977fb704981a391b1208ff29ebf",
+        "status": "Passed",
+        "identity": {
+          "characterId": "CHARACTER.REGENT",
+          "encounterId": "ENCOUNTER.PHANTASMAL_GARDENERS_ELITE",
+          "seed": "UUG30F6V9NVC"
+        },
+        "requestElapsedMilliseconds": 68934.4021,
+        "searchRequestToCallbackMilliseconds": 46043,
+        "metrics": {
+          "totalElapsedMilliseconds": 45666.0129,
+          "totalWorkerAllocatedBytes": 8943897304,
+          "totalExpanded": 17600,
+          "totalTransitions": 214161,
+          "totalChoiceBranches": 84489,
+          "projectedBattleHpLost": 1,
+          "potionCount": 1,
+          "potionUses": [
+            {
+              "id": "GLOWWATER_POTION",
+              "title": "发光水",
+              "turn": 1,
+              "slot": 1
+            }
+          ],
+          "score": 10000969985,
+          "boundary": "NodeLimit",
+          "maxParallelConcurrency": 0,
+          "configuredNoGcRegionEnabled": true,
+          "configuredNoGcRegionBudgetBytes": 12000000000,
+          "noGcRegionBudgetBytes": 705667191,
+          "totalGcPauseMilliseconds": 2959.522,
+          "maxGcPauseMilliseconds": 634.81,
+          "gcLifecycle": {
+            "forcedCollections": 19,
+            "noGcStartAttempts": 22,
+            "noGcStarts": 22,
+            "noGcEndAttempts": 21,
+            "noGcEnds": 21,
+            "noGcRestarts": 21,
+            "noGcLosses": 0
+          }
+        },
+        "processMemory": {
+          "samples": 146,
+          "lastObservationMilliseconds": 75056.2182,
+          "peakWorkingSetBytes": 2811502592,
+          "sampledPeakPrivateBytes": 4417912832
+        },
+        "recordedRouteCount": 44,
+        "replayChecks": {
+          "mode": "SearchOnly",
+          "status": "restored_continuation",
+          "continuationVerified": true,
+          "nativeStateVerified": false,
+          "missingPolicyFields": [],
+          "executedPolicySha256": "6e397661d2c5a4454fe9ec9969f916806b543122feb71b1305795c32caf96105"
+        }
+      },
+      {
+        "label": "validation-silent-discard-A1",
+        "runId": "d1f2290d659d43fd9239a4797c792fff",
+        "status": "Passed",
+        "identity": {
+          "characterId": "CHARACTER.SILENT",
+          "encounterId": "ENCOUNTER.KAISER_CRAB_BOSS",
+          "seed": "CHOICE-EXPANSION-DISCARD-20260914"
+        },
+        "requestElapsedMilliseconds": 48044.6045,
+        "searchRequestToCallbackMilliseconds": 20399,
+        "metrics": {
+          "totalElapsedMilliseconds": 13904.7883,
+          "totalWorkerAllocatedBytes": 2827326432,
+          "totalExpanded": 4000,
+          "totalTransitions": 91458,
+          "totalChoiceBranches": 63245,
+          "projectedBattleHpLost": 17,
+          "potionCount": 0,
+          "potionUses": [],
+          "score": -4130025,
+          "boundary": "NodeLimit",
+          "maxParallelConcurrency": 0,
+          "configuredNoGcRegionEnabled": true,
+          "configuredNoGcRegionBudgetBytes": 12000000000,
+          "noGcRegionBudgetBytes": 8110756078,
+          "totalGcPauseMilliseconds": 0,
+          "maxGcPauseMilliseconds": 0,
+          "gcLifecycle": {
+            "forcedCollections": 0,
+            "noGcStartAttempts": 1,
+            "noGcStarts": 1,
+            "noGcEndAttempts": 0,
+            "noGcEnds": 0,
+            "noGcRestarts": 0,
+            "noGcLosses": 0
+          }
+        },
+        "processMemory": {
+          "samples": 109,
+          "lastObservationMilliseconds": 54920.0688,
+          "peakWorkingSetBytes": 4286369792,
+          "sampledPeakPrivateBytes": 9951211520
+        },
+        "recordedRouteCount": 26,
+        "replayChecks": {
+          "mode": null,
+          "status": null,
+          "continuationVerified": null,
+          "nativeStateVerified": null,
+          "missingPolicyFields": null,
+          "executedPolicySha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        }
+      },
+      {
+        "label": "validation-silent-discard-A2",
+        "runId": "2dac39f684dd426783730790849241c1",
+        "status": "Passed",
+        "identity": {
+          "characterId": "CHARACTER.SILENT",
+          "encounterId": "ENCOUNTER.KAISER_CRAB_BOSS",
+          "seed": "CHOICE-EXPANSION-DISCARD-20260914"
+        },
+        "requestElapsedMilliseconds": 41466.3838,
+        "searchRequestToCallbackMilliseconds": 15400,
+        "metrics": {
+          "totalElapsedMilliseconds": 14074.168,
+          "totalWorkerAllocatedBytes": 2827883112,
+          "totalExpanded": 4000,
+          "totalTransitions": 91458,
+          "totalChoiceBranches": 63245,
+          "projectedBattleHpLost": 17,
+          "potionCount": 0,
+          "potionUses": [],
+          "score": -4130025,
+          "boundary": "NodeLimit",
+          "maxParallelConcurrency": 0,
+          "configuredNoGcRegionEnabled": true,
+          "configuredNoGcRegionBudgetBytes": 12000000000,
+          "noGcRegionBudgetBytes": 12000000000,
+          "totalGcPauseMilliseconds": 0,
+          "maxGcPauseMilliseconds": 0,
+          "gcLifecycle": {
+            "forcedCollections": 0,
+            "noGcStartAttempts": 1,
+            "noGcStarts": 1,
+            "noGcEndAttempts": 0,
+            "noGcEnds": 0,
+            "noGcRestarts": 0,
+            "noGcLosses": 0
+          }
+        },
+        "processMemory": {
+          "samples": 95,
+          "lastObservationMilliseconds": 48477.307,
+          "peakWorkingSetBytes": 4274446336,
+          "sampledPeakPrivateBytes": 14084075520
+        },
+        "recordedRouteCount": 26,
+        "replayChecks": {
+          "mode": null,
+          "status": null,
+          "continuationVerified": null,
+          "nativeStateVerified": null,
+          "missingPolicyFields": null,
+          "executedPolicySha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        }
+      },
+      {
+        "label": "validation-silent-discard-B1",
+        "runId": "53eac9e1df824245a56bd2b4498ebbfd",
+        "status": "Passed",
+        "identity": {
+          "characterId": "CHARACTER.SILENT",
+          "encounterId": "ENCOUNTER.KAISER_CRAB_BOSS",
+          "seed": "CHOICE-EXPANSION-DISCARD-20260914"
+        },
+        "requestElapsedMilliseconds": 40752.0969,
+        "searchRequestToCallbackMilliseconds": 14973,
+        "metrics": {
+          "totalElapsedMilliseconds": 14761.6892,
+          "totalWorkerAllocatedBytes": 2778418752,
+          "totalExpanded": 4000,
+          "totalTransitions": 91458,
+          "totalChoiceBranches": 63245,
+          "projectedBattleHpLost": 17,
+          "potionCount": 0,
+          "potionUses": [],
+          "score": -4130025,
+          "boundary": "NodeLimit",
+          "maxParallelConcurrency": 0,
+          "configuredNoGcRegionEnabled": true,
+          "configuredNoGcRegionBudgetBytes": 12000000000,
+          "noGcRegionBudgetBytes": 9550225646,
+          "totalGcPauseMilliseconds": 0,
+          "maxGcPauseMilliseconds": 0,
+          "gcLifecycle": {
+            "forcedCollections": 0,
+            "noGcStartAttempts": 1,
+            "noGcStarts": 1,
+            "noGcEndAttempts": 0,
+            "noGcEnds": 0,
+            "noGcRestarts": 0,
+            "noGcLosses": 0
+          }
+        },
+        "processMemory": {
+          "samples": 163,
+          "lastObservationMilliseconds": 82152.4052,
+          "peakWorkingSetBytes": 4238655488,
+          "sampledPeakPrivateBytes": 11464339456
+        },
+        "recordedRouteCount": 26,
+        "replayChecks": {
+          "mode": null,
+          "status": null,
+          "continuationVerified": null,
+          "nativeStateVerified": null,
+          "missingPolicyFields": null,
+          "executedPolicySha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        }
+      },
+      {
+        "label": "validation-silent-discard-B2",
+        "runId": "e5f61c24245f4ca99afccf980cae7ee1",
+        "status": "Passed",
+        "identity": {
+          "characterId": "CHARACTER.SILENT",
+          "encounterId": "ENCOUNTER.KAISER_CRAB_BOSS",
+          "seed": "CHOICE-EXPANSION-DISCARD-20260914"
+        },
+        "requestElapsedMilliseconds": 41748.398,
+        "searchRequestToCallbackMilliseconds": 15769,
+        "metrics": {
+          "totalElapsedMilliseconds": 14887.8668,
+          "totalWorkerAllocatedBytes": 2777604416,
+          "totalExpanded": 4000,
+          "totalTransitions": 91458,
+          "totalChoiceBranches": 63245,
+          "projectedBattleHpLost": 17,
+          "potionCount": 0,
+          "potionUses": [],
+          "score": -4130025,
+          "boundary": "NodeLimit",
+          "maxParallelConcurrency": 0,
+          "configuredNoGcRegionEnabled": true,
+          "configuredNoGcRegionBudgetBytes": 12000000000,
+          "noGcRegionBudgetBytes": 12000000000,
+          "totalGcPauseMilliseconds": 0,
+          "maxGcPauseMilliseconds": 0,
+          "gcLifecycle": {
+            "forcedCollections": 0,
+            "noGcStartAttempts": 1,
+            "noGcStarts": 1,
+            "noGcEndAttempts": 0,
+            "noGcEnds": 0,
+            "noGcRestarts": 0,
+            "noGcLosses": 0
+          }
+        },
+        "processMemory": {
+          "samples": 99,
+          "lastObservationMilliseconds": 50025.3208,
+          "peakWorkingSetBytes": 4225519616,
+          "sampledPeakPrivateBytes": 14064398336
+        },
+        "recordedRouteCount": 26,
+        "replayChecks": {
+          "mode": null,
+          "status": null,
+          "continuationVerified": null,
+          "nativeStateVerified": null,
+          "missingPolicyFields": null,
+          "executedPolicySha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        }
+      }
+    ],
+    "retained": false
+  },
+  "lean": {
+    "experiment": {
+      "baselineCommit": "3f4002bd",
+      "candidateCommit": "917486cd",
+      "difference": "GC completion fix plus Skittish callback only; root forecast cache removed",
+      "order": [
+        "D1",
+        "A3",
+        "A4",
+        "D2"
+      ],
+      "cases": [
+        "garden",
+        "silent-discard"
+      ],
+      "sameInputsAsInitialScreening": true,
+      "candidateCommitAvailability": "Discarded local screening commit; not included in successor PR"
+    },
+    "artifacts": {
+      "baseline": "32106a961e91e81c66a7cbceee978c1c47d290f880f51ddbc4e26139642902c3",
+      "lean": "2d97e69117c8e194dd296ee2d5e68b7120b41e9219e350e143671eed8cf37139"
+    },
+    "statistics": [
+      {
+        "name": "garden",
+        "parameters": {
+          "name": "garden",
+          "generated": false,
+          "nodes": 8000,
+          "beam": 512,
+          "searchMs": 60000,
+          "dop": 8,
+          "budgetGb": 12
+        },
+        "statistics": {
+          "A": {
+            "n": 2,
+            "meanSearchMs": 43367.964949999994,
+            "meanWorkerAllocatedBytes": 9237162996,
+            "meanRequestMs": 66766.38995,
+            "meanCallbackMs": 43648.5,
+            "meanWorkingSetPeak": 8063692800,
+            "meanPrivateSampledPeak": 13739137024,
+            "maxGcPauseMs": 1914.553
+          },
+          "D": {
+            "n": 2,
+            "meanSearchMs": 41961.231,
+            "meanWorkerAllocatedBytes": 9153069056,
+            "meanRequestMs": 64896.0019,
+            "meanCallbackMs": 42169,
+            "meanWorkingSetPeak": 8790474752,
+            "meanPrivateSampledPeak": 13132863488,
+            "maxGcPauseMs": 2336.166
+          }
+        },
+        "changes": {
+          "meanSearchMs": -0.03243716765639926,
+          "meanWorkerAllocatedBytes": -0.00910387096518872,
+          "meanRequestMs": -0.028013916154530638,
+          "meanCallbackMs": -0.03389578106922342,
+          "meanWorkingSetPeak": 0.09013016368877547,
+          "meanPrivateSampledPeak": -0.04412748303921421
+        }
+      },
+      {
+        "name": "silent-discard",
+        "parameters": {
+          "name": "silent-discard",
+          "generated": true,
+          "nodes": 4000,
+          "beam": 256,
+          "searchMs": 60000,
+          "dop": 8,
+          "budgetGb": 12
+        },
+        "statistics": {
+          "A": {
+            "n": 2,
+            "meanSearchMs": 12245.7418,
+            "meanWorkerAllocatedBytes": 2827695804,
+            "meanRequestMs": 37296.67585,
+            "meanCallbackMs": 12413,
+            "meanWorkingSetPeak": 4271552512,
+            "meanPrivateSampledPeak": 11958130688,
+            "maxGcPauseMs": 0
+          },
+          "D": {
+            "n": 2,
+            "meanSearchMs": 13359.283200000002,
+            "meanWorkerAllocatedBytes": 2828354844,
+            "meanRequestMs": 39353.9837,
+            "meanCallbackMs": 13553,
+            "meanWorkingSetPeak": 4281022464,
+            "meanPrivateSampledPeak": 11691087872,
+            "maxGcPauseMs": 0
+          }
+        },
+        "changes": {
+          "meanSearchMs": 0.090932947810479,
+          "meanWorkerAllocatedBytes": 0.00023306608832096565,
+          "meanRequestMs": 0.05516062231052676,
+          "meanCallbackMs": 0.09183920083783126,
+          "meanWorkingSetPeak": 0.002216981290384723,
+          "meanPrivateSampledPeak": -0.02233148499271531
+        }
+      }
+    ],
+    "comparisons": [
+      {
+        "case": "garden",
+        "baseline": "A3",
+        "candidate": "D1",
+        "searchRatio": 0.9964843771773874,
+        "nonTimingMetricsDifferences": [],
+        "routeDifferences": [],
+        "generated-scenario.resolved.jsonDifferences": [],
+        "generated-scenario.opening.jsonDifferences": [],
+        "generated-scenario.loadout.jsonDifferences": [],
+        "replayChecksDifferences": [],
+        "identityDifferences": []
+      },
+      {
+        "case": "garden",
+        "baseline": "A4",
+        "candidate": "D2",
+        "searchRatio": 0.936875207532963,
+        "nonTimingMetricsDifferences": [],
+        "routeDifferences": [],
+        "generated-scenario.resolved.jsonDifferences": [],
+        "generated-scenario.opening.jsonDifferences": [],
+        "generated-scenario.loadout.jsonDifferences": [],
+        "replayChecksDifferences": [],
+        "identityDifferences": []
+      },
+      {
+        "case": "silent-discard",
+        "baseline": "A3",
+        "candidate": "D1",
+        "searchRatio": 1.021747812774143,
+        "nonTimingMetricsDifferences": [],
+        "routeDifferences": [],
+        "generated-scenario.resolved.jsonDifferences": [],
+        "generated-scenario.opening.jsonDifferences": [],
+        "generated-scenario.loadout.jsonDifferences": [],
+        "replayChecksDifferences": [],
+        "identityDifferences": []
+      },
+      {
+        "case": "silent-discard",
+        "baseline": "A4",
+        "candidate": "D2",
+        "searchRatio": 1.1597485169221193,
+        "nonTimingMetricsDifferences": [],
+        "routeDifferences": [],
+        "generated-scenario.resolved.jsonDifferences": [],
+        "generated-scenario.opening.jsonDifferences": [],
+        "generated-scenario.loadout.jsonDifferences": [],
+        "replayChecksDifferences": [],
+        "identityDifferences": []
+      }
+    ],
+    "comparisonExcludedFields": {
+      "ignore": [
+        "allocatedBytes",
+        "elapsedMilliseconds",
+        "managedHeapBytesAfter",
+        "traceId"
+      ],
+      "perf": [
+        "capturedAtElapsedMilliseconds",
+        "firstRoutePublishedMilliseconds",
+        "gcLatencyMode",
+        "gcLifecycle",
+        "gcLifecycleAttribution",
+        "mainThreadFramesOver50Milliseconds",
+        "managedFragmentedBytes",
+        "managedHeapBytes",
+        "managedLiveBytes",
+        "maxGcPauseMilliseconds",
+        "maxObservedMainThreadFrameGapMilliseconds",
+        "noGcRegionActive",
+        "noGcRegionBudgetBytes",
+        "noGcRegionRolloverCount",
+        "peakManagedHeapBytes",
+        "privateMemoryBytes",
+        "totalElapsedMilliseconds",
+        "totalGcPauseMilliseconds",
+        "totalGen0Collections",
+        "totalGen1Collections",
+        "totalGen2Collections",
+        "totalWorkerAllocatedBytes",
+        "workerAllocatedBytes",
+        "workingSetBytes"
+      ]
+    },
+    "samples": [
+      {
+        "label": "validation-garden-A3",
+        "runId": "b643911ce33241d18de5b017d2fa6302",
+        "status": "Passed",
+        "identity": {
+          "characterId": "CHARACTER.REGENT",
+          "encounterId": "ENCOUNTER.PHANTASMAL_GARDENERS_ELITE",
+          "seed": "UUG30F6V9NVC"
+        },
+        "requestElapsedMilliseconds": 68077.5137,
+        "searchRequestToCallbackMilliseconds": 45033,
+        "metrics": {
+          "totalElapsedMilliseconds": 44652.8561,
+          "totalWorkerAllocatedBytes": 9237465288,
+          "totalExpanded": 17600,
+          "totalTransitions": 214161,
+          "totalChoiceBranches": 84489,
+          "projectedBattleHpLost": 1,
+          "potionCount": 1,
+          "potionUses": [
+            {
+              "id": "GLOWWATER_POTION",
+              "title": "发光水",
+              "turn": 1,
+              "slot": 1
+            }
+          ],
+          "score": 10000969985,
+          "boundary": "NodeLimit",
+          "maxParallelConcurrency": 0,
+          "configuredNoGcRegionEnabled": true,
+          "configuredNoGcRegionBudgetBytes": 12000000000,
+          "noGcRegionBudgetBytes": 7060445958,
+          "totalGcPauseMilliseconds": 22.865,
+          "maxGcPauseMilliseconds": 19.108,
+          "gcLifecycle": {
+            "forcedCollections": 1,
+            "noGcStartAttempts": 2,
+            "noGcStarts": 2,
+            "noGcEndAttempts": 1,
+            "noGcEnds": 1,
+            "noGcRestarts": 1,
+            "noGcLosses": 0
+          }
+        },
+        "processMemory": {
+          "samples": 143,
+          "lastObservationMilliseconds": 74425.1824,
+          "peakWorkingSetBytes": 8098783232,
+          "sampledPeakPrivateBytes": 15464980480
+        },
+        "recordedRouteCount": 44,
+        "replayChecks": {
+          "mode": "SearchOnly",
+          "status": "restored_continuation",
+          "continuationVerified": true,
+          "nativeStateVerified": false,
+          "missingPolicyFields": [],
+          "executedPolicySha256": "6e397661d2c5a4454fe9ec9969f916806b543122feb71b1305795c32caf96105"
+        }
+      },
+      {
+        "label": "validation-garden-A4",
+        "runId": "a77d268c2a5a40f89a64206e38091940",
+        "status": "Passed",
+        "identity": {
+          "characterId": "CHARACTER.REGENT",
+          "encounterId": "ENCOUNTER.PHANTASMAL_GARDENERS_ELITE",
+          "seed": "UUG30F6V9NVC"
+        },
+        "requestElapsedMilliseconds": 65455.2662,
+        "searchRequestToCallbackMilliseconds": 42264,
+        "metrics": {
+          "totalElapsedMilliseconds": 42083.0738,
+          "totalWorkerAllocatedBytes": 9236860704,
+          "totalExpanded": 17600,
+          "totalTransitions": 214161,
+          "totalChoiceBranches": 84489,
+          "projectedBattleHpLost": 1,
+          "potionCount": 1,
+          "potionUses": [
+            {
+              "id": "GLOWWATER_POTION",
+              "title": "发光水",
+              "turn": 1,
+              "slot": 1
+            }
+          ],
+          "score": 10000969985,
+          "boundary": "NodeLimit",
+          "maxParallelConcurrency": 0,
+          "configuredNoGcRegionEnabled": true,
+          "configuredNoGcRegionBudgetBytes": 12000000000,
+          "noGcRegionBudgetBytes": 3033512055,
+          "totalGcPauseMilliseconds": 2526.885,
+          "maxGcPauseMilliseconds": 1914.553,
+          "gcLifecycle": {
+            "forcedCollections": 2,
+            "noGcStartAttempts": 4,
+            "noGcStarts": 4,
+            "noGcEndAttempts": 3,
+            "noGcEnds": 3,
+            "noGcRestarts": 3,
+            "noGcLosses": 0
+          }
+        },
+        "processMemory": {
+          "samples": 141,
+          "lastObservationMilliseconds": 72914.0065,
+          "peakWorkingSetBytes": 8028602368,
+          "sampledPeakPrivateBytes": 12013293568
+        },
+        "recordedRouteCount": 44,
+        "replayChecks": {
+          "mode": "SearchOnly",
+          "status": "restored_continuation",
+          "continuationVerified": true,
+          "nativeStateVerified": false,
+          "missingPolicyFields": [],
+          "executedPolicySha256": "6e397661d2c5a4454fe9ec9969f916806b543122feb71b1305795c32caf96105"
+        }
+      },
+      {
+        "label": "validation-garden-D1",
+        "runId": "18bd224d2a8c4fe4a24580d0ebcda6a9",
+        "status": "Passed",
+        "identity": {
+          "characterId": "CHARACTER.REGENT",
+          "encounterId": "ENCOUNTER.PHANTASMAL_GARDENERS_ELITE",
+          "seed": "UUG30F6V9NVC"
+        },
+        "requestElapsedMilliseconds": 67928.4091,
+        "searchRequestToCallbackMilliseconds": 44690,
+        "metrics": {
+          "totalElapsedMilliseconds": 44495.8735,
+          "totalWorkerAllocatedBytes": 9151743824,
+          "totalExpanded": 17600,
+          "totalTransitions": 214161,
+          "totalChoiceBranches": 84489,
+          "projectedBattleHpLost": 1,
+          "potionCount": 1,
+          "potionUses": [
+            {
+              "id": "GLOWWATER_POTION",
+              "title": "发光水",
+              "turn": 1,
+              "slot": 1
+            }
+          ],
+          "score": 10000969985,
+          "boundary": "NodeLimit",
+          "maxParallelConcurrency": 0,
+          "configuredNoGcRegionEnabled": true,
+          "configuredNoGcRegionBudgetBytes": 12000000000,
+          "noGcRegionBudgetBytes": 8230238558,
+          "totalGcPauseMilliseconds": 2336.166,
+          "maxGcPauseMilliseconds": 2336.166,
+          "gcLifecycle": {
+            "forcedCollections": 1,
+            "noGcStartAttempts": 2,
+            "noGcStarts": 2,
+            "noGcEndAttempts": 1,
+            "noGcEnds": 1,
+            "noGcRestarts": 1,
+            "noGcLosses": 0
+          }
+        },
+        "processMemory": {
+          "samples": 147,
+          "lastObservationMilliseconds": 75639.706,
+          "peakWorkingSetBytes": 9417424896,
+          "sampledPeakPrivateBytes": 14037544960
+        },
+        "recordedRouteCount": 44,
+        "replayChecks": {
+          "mode": "SearchOnly",
+          "status": "restored_continuation",
+          "continuationVerified": true,
+          "nativeStateVerified": false,
+          "missingPolicyFields": [],
+          "executedPolicySha256": "6e397661d2c5a4454fe9ec9969f916806b543122feb71b1305795c32caf96105"
+        }
+      },
+      {
+        "label": "validation-garden-D2",
+        "runId": "9201cb4cbc314456a6585d7983458a37",
+        "status": "Passed",
+        "identity": {
+          "characterId": "CHARACTER.REGENT",
+          "encounterId": "ENCOUNTER.PHANTASMAL_GARDENERS_ELITE",
+          "seed": "UUG30F6V9NVC"
+        },
+        "requestElapsedMilliseconds": 61863.5947,
+        "searchRequestToCallbackMilliseconds": 39648,
+        "metrics": {
+          "totalElapsedMilliseconds": 39426.5885,
+          "totalWorkerAllocatedBytes": 9154394288,
+          "totalExpanded": 17600,
+          "totalTransitions": 214161,
+          "totalChoiceBranches": 84489,
+          "projectedBattleHpLost": 1,
+          "potionCount": 1,
+          "potionUses": [
+            {
+              "id": "GLOWWATER_POTION",
+              "title": "发光水",
+              "turn": 1,
+              "slot": 1
+            }
+          ],
+          "score": 10000969985,
+          "boundary": "NodeLimit",
+          "maxParallelConcurrency": 0,
+          "configuredNoGcRegionEnabled": true,
+          "configuredNoGcRegionBudgetBytes": 12000000000,
+          "noGcRegionBudgetBytes": 2958438519,
+          "totalGcPauseMilliseconds": 2610.081,
+          "maxGcPauseMilliseconds": 1767.094,
+          "gcLifecycle": {
+            "forcedCollections": 2,
+            "noGcStartAttempts": 4,
+            "noGcStarts": 4,
+            "noGcEndAttempts": 3,
+            "noGcEnds": 3,
+            "noGcRestarts": 3,
+            "noGcLosses": 0
+          }
+        },
+        "processMemory": {
+          "samples": 131,
+          "lastObservationMilliseconds": 67874.293,
+          "peakWorkingSetBytes": 8163524608,
+          "sampledPeakPrivateBytes": 12228182016
+        },
+        "recordedRouteCount": 44,
+        "replayChecks": {
+          "mode": "SearchOnly",
+          "status": "restored_continuation",
+          "continuationVerified": true,
+          "nativeStateVerified": false,
+          "missingPolicyFields": [],
+          "executedPolicySha256": "6e397661d2c5a4454fe9ec9969f916806b543122feb71b1305795c32caf96105"
+        }
+      },
+      {
+        "label": "validation-silent-discard-A3",
+        "runId": "f2935182d5c441a2b8f4685b54de248f",
+        "status": "Passed",
+        "identity": {
+          "characterId": "CHARACTER.SILENT",
+          "encounterId": "ENCOUNTER.KAISER_CRAB_BOSS",
+          "seed": "CHOICE-EXPANSION-DISCARD-20260914"
+        },
+        "requestElapsedMilliseconds": 37213.578,
+        "searchRequestToCallbackMilliseconds": 12379,
+        "metrics": {
+          "totalElapsedMilliseconds": 12212.9477,
+          "totalWorkerAllocatedBytes": 2828741456,
+          "totalExpanded": 4000,
+          "totalTransitions": 91458,
+          "totalChoiceBranches": 63245,
+          "projectedBattleHpLost": 17,
+          "potionCount": 0,
+          "potionUses": [],
+          "score": -4130025,
+          "boundary": "NodeLimit",
+          "maxParallelConcurrency": 0,
+          "configuredNoGcRegionEnabled": true,
+          "configuredNoGcRegionBudgetBytes": 12000000000,
+          "noGcRegionBudgetBytes": 9783451886,
+          "totalGcPauseMilliseconds": 0,
+          "maxGcPauseMilliseconds": 0,
+          "gcLifecycle": {
+            "forcedCollections": 0,
+            "noGcStartAttempts": 1,
+            "noGcStarts": 1,
+            "noGcEndAttempts": 0,
+            "noGcEnds": 0,
+            "noGcRestarts": 0,
+            "noGcLosses": 0
+          }
+        },
+        "processMemory": {
+          "samples": 82,
+          "lastObservationMilliseconds": 42683.2428,
+          "peakWorkingSetBytes": 4267450368,
+          "sampledPeakPrivateBytes": 11730350080
+        },
+        "recordedRouteCount": 26,
+        "replayChecks": {
+          "mode": null,
+          "status": null,
+          "continuationVerified": null,
+          "nativeStateVerified": null,
+          "missingPolicyFields": null,
+          "executedPolicySha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        }
+      },
+      {
+        "label": "validation-silent-discard-A4",
+        "runId": "8f6c9624b0dd404baaa4d46d331608ef",
+        "status": "Passed",
+        "identity": {
+          "characterId": "CHARACTER.SILENT",
+          "encounterId": "ENCOUNTER.KAISER_CRAB_BOSS",
+          "seed": "CHOICE-EXPANSION-DISCARD-20260914"
+        },
+        "requestElapsedMilliseconds": 37379.7737,
+        "searchRequestToCallbackMilliseconds": 12447,
+        "metrics": {
+          "totalElapsedMilliseconds": 12278.5359,
+          "totalWorkerAllocatedBytes": 2826650152,
+          "totalExpanded": 4000,
+          "totalTransitions": 91458,
+          "totalChoiceBranches": 63245,
+          "projectedBattleHpLost": 17,
+          "potionCount": 0,
+          "potionUses": [],
+          "score": -4130025,
+          "boundary": "NodeLimit",
+          "maxParallelConcurrency": 0,
+          "configuredNoGcRegionEnabled": true,
+          "configuredNoGcRegionBudgetBytes": 12000000000,
+          "noGcRegionBudgetBytes": 10227888366,
+          "totalGcPauseMilliseconds": 0,
+          "maxGcPauseMilliseconds": 0,
+          "gcLifecycle": {
+            "forcedCollections": 0,
+            "noGcStartAttempts": 1,
+            "noGcStarts": 1,
+            "noGcEndAttempts": 0,
+            "noGcEnds": 0,
+            "noGcRestarts": 0,
+            "noGcLosses": 0
+          }
+        },
+        "processMemory": {
+          "samples": 84,
+          "lastObservationMilliseconds": 43349.3289,
+          "peakWorkingSetBytes": 4275654656,
+          "sampledPeakPrivateBytes": 12185911296
+        },
+        "recordedRouteCount": 26,
+        "replayChecks": {
+          "mode": null,
+          "status": null,
+          "continuationVerified": null,
+          "nativeStateVerified": null,
+          "missingPolicyFields": null,
+          "executedPolicySha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        }
+      },
+      {
+        "label": "validation-silent-discard-D1",
+        "runId": "88462cba2fea46aa8b76fe20b8456ee5",
+        "status": "Passed",
+        "identity": {
+          "characterId": "CHARACTER.SILENT",
+          "encounterId": "ENCOUNTER.KAISER_CRAB_BOSS",
+          "seed": "CHOICE-EXPANSION-DISCARD-20260914"
+        },
+        "requestElapsedMilliseconds": 37584.0479,
+        "searchRequestToCallbackMilliseconds": 12661,
+        "metrics": {
+          "totalElapsedMilliseconds": 12478.5526,
+          "totalWorkerAllocatedBytes": 2829483296,
+          "totalExpanded": 4000,
+          "totalTransitions": 91458,
+          "totalChoiceBranches": 63245,
+          "projectedBattleHpLost": 17,
+          "potionCount": 0,
+          "potionUses": [],
+          "score": -4130025,
+          "boundary": "NodeLimit",
+          "maxParallelConcurrency": 0,
+          "configuredNoGcRegionEnabled": true,
+          "configuredNoGcRegionBudgetBytes": 12000000000,
+          "noGcRegionBudgetBytes": 9966743790,
+          "totalGcPauseMilliseconds": 0,
+          "maxGcPauseMilliseconds": 0,
+          "gcLifecycle": {
+            "forcedCollections": 0,
+            "noGcStartAttempts": 1,
+            "noGcStarts": 1,
+            "noGcEndAttempts": 0,
+            "noGcEnds": 0,
+            "noGcRestarts": 0,
+            "noGcLosses": 0
+          }
+        },
+        "processMemory": {
+          "samples": 85,
+          "lastObservationMilliseconds": 43862.3933,
+          "peakWorkingSetBytes": 4288348160,
+          "sampledPeakPrivateBytes": 11916931072
+        },
+        "recordedRouteCount": 26,
+        "replayChecks": {
+          "mode": null,
+          "status": null,
+          "continuationVerified": null,
+          "nativeStateVerified": null,
+          "missingPolicyFields": null,
+          "executedPolicySha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        }
+      },
+      {
+        "label": "validation-silent-discard-D2",
+        "runId": "ad30e18bfa83414aa81d71ded6e177f6",
+        "status": "Passed",
+        "identity": {
+          "characterId": "CHARACTER.SILENT",
+          "encounterId": "ENCOUNTER.KAISER_CRAB_BOSS",
+          "seed": "CHOICE-EXPANSION-DISCARD-20260914"
+        },
+        "requestElapsedMilliseconds": 41123.9195,
+        "searchRequestToCallbackMilliseconds": 14445,
+        "metrics": {
+          "totalElapsedMilliseconds": 14240.0138,
+          "totalWorkerAllocatedBytes": 2827226392,
+          "totalExpanded": 4000,
+          "totalTransitions": 91458,
+          "totalChoiceBranches": 63245,
+          "projectedBattleHpLost": 17,
+          "potionCount": 0,
+          "potionUses": [],
+          "score": -4130025,
+          "boundary": "NodeLimit",
+          "maxParallelConcurrency": 0,
+          "configuredNoGcRegionEnabled": true,
+          "configuredNoGcRegionBudgetBytes": 12000000000,
+          "noGcRegionBudgetBytes": 9555030254,
+          "totalGcPauseMilliseconds": 0,
+          "maxGcPauseMilliseconds": 0,
+          "gcLifecycle": {
+            "forcedCollections": 0,
+            "noGcStartAttempts": 1,
+            "noGcStarts": 1,
+            "noGcEndAttempts": 0,
+            "noGcEnds": 0,
+            "noGcRestarts": 0,
+            "noGcLosses": 0
+          }
+        },
+        "processMemory": {
+          "samples": 93,
+          "lastObservationMilliseconds": 47431.7431,
+          "peakWorkingSetBytes": 4273696768,
+          "sampledPeakPrivateBytes": 11465244672
+        },
+        "recordedRouteCount": 26,
+        "replayChecks": {
+          "mode": null,
+          "status": null,
+          "continuationVerified": null,
+          "nativeStateVerified": null,
+          "missingPolicyFields": null,
+          "executedPolicySha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        }
+      }
+    ],
+    "retained": false
+  },
+  "excludedSearchFailures": [
+    {
+      "runId": "88dad46f8cea41f78ef243bf8397ebde",
+      "status": "Failed",
+      "stage": "assert_initial_solver_result",
+      "error": "System.InvalidOperationException: No-GC 搜索没有按配置建立并保留战斗级区域：configured_enabled=true configured_budget=12000000000 expected_fallback=False allowed_fallback=True established_budget=0 actual_active=False actual_budget=0 latency=Interactive。\r\n   at CombatSolver.UnattendedTestRunner.AssertAppliedNoGcConfiguration()\r\n   at CombatSolver.UnattendedTestRunner.AssertInitialSolverResultAsync(Int32 startedTurn)\r\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\r\n   at CombatSolver.UnattendedTestRunner.RunAsync()",
+      "elapsedMilliseconds": 35969.7033
+    }
+  ],
+  "native": [
+    {
+      "scenarioId": "GARDEN-ALLOCATION-NATIVE",
+      "runId": "7d66fc47b0264fa3969c682f99f5b5bf",
+      "status": "Passed",
+      "elapsedMilliseconds": 45377.929,
+      "checks": null,
+      "error": null
+    },
+    {
+      "scenarioId": "SKITTISH-ALLOCATION-NATIVE",
+      "runId": "1b52998b97ac45ec91ea753cb4547010",
+      "status": "Passed",
+      "elapsedMilliseconds": 35253.3787,
+      "checks": null,
+      "error": null
+    }
+  ],
+  "inputs": {
+    "defect-elite.json": "485a56b3370977a33cc8d978563bf76cab40fb8428ae06a3d1f80737868d950b",
+    "silent-discard.json": "dbfdf4ae44b345feea3809e1f85996ea96b7859585af02ffab696837491a60b3"
+  },
+  "gardenArchiveSha256": "4bcfeabf965d7da5f199cdee13667063afce7954a14228bcdf4fae56ef7e5254",
+  "cleanup": {
+    "finishedAtUtc": "2026-09-20T17:09:12.6386026Z",
+    "removedRoot": "C:\\temp\\codex-gc-completion-20260921",
+    "rootExists": false,
+    "gameProcessIds": [
+      43828,
+      47068,
+      50164,
+      53352,
+      56460,
+      60900,
+      65620,
+      66484,
+      72920,
+      77636,
+      80240,
+      84636,
+      88476,
+      93384,
+      93832,
+      97436,
+      99700,
+      100700,
+      100904,
+      103036,
+      106188,
+      106312,
+      110756,
+      117908
+    ],
+    "clrProcessIds": [
+      49900,
+      56068,
+      114860,
+      77792,
+      93244,
+      107544
+    ],
+    "removedOwnedDumps": [],
+    "terminatedOwnedProcessIds": [],
+    "remainingOwnedProcessCount": 0,
+    "unrelatedCrashDumpsPreserved": true
+  },
+  "finalCompletionOnly": {
+    "sourceCommit": "10e52b1c",
+    "dllSha256": "ac66389523571641e0e560f19796722782753dbabff279e963ffceaba7b86015",
+    "comparison": [
+      {
+        "case": "garden",
+        "baseline": "A3",
+        "candidate": "F1",
+        "searchRatio": 0.918932939207891,
+        "nonTimingMetricsDifferences": [],
+        "routeDifferences": [],
+        "generated-scenario.resolved.jsonDifferences": [],
+        "generated-scenario.opening.jsonDifferences": [],
+        "generated-scenario.loadout.jsonDifferences": [],
+        "replayChecksDifferences": [],
+        "identityDifferences": []
+      }
+    ],
+    "result": {
+      "runId": "bed2628af2e94abd843a0c45103bbc05",
+      "status": "Passed",
+      "elapsedMilliseconds": 64020.8878,
+      "solverMetrics": {
+        "gcLifecycle": {
+          "forcedCollections": 1,
+          "noGcStartAttempts": 2,
+          "noGcStarts": 2,
+          "noGcEndAttempts": 1,
+          "noGcEnds": 1,
+          "noGcRestarts": 1,
+          "noGcLosses": 0
+        },
+        "boundary": "NodeLimit",
+        "totalExpanded": 17600,
+        "totalTransitions": 214161,
+        "totalChoiceBranches": 84489,
+        "totalElapsedMilliseconds": 41032.9803,
+        "totalWorkerAllocatedBytes": 9232123656,
+        "totalGcPauseMilliseconds": 1668.67,
+        "maxGcPauseMilliseconds": 1645.559,
+        "maxParallelConcurrency": 0,
+        "score": 10000969985,
+        "projectedBattleHpLost": 1,
+        "potionCount": 1,
+        "potionUses": [
+          {
+            "id": "GLOWWATER_POTION",
+            "title": "发光水",
+            "turn": 1,
+            "slot": 1
+          }
+        ],
+        "configuredNoGcRegionEnabled": true,
+        "configuredNoGcRegionBudgetBytes": 12000000000,
+        "noGcRegionBudgetBytes": 6002982310
+      },
+      "checks": null,
+      "error": null
+    }
+  },
+  "evidenceFormatNote": "Full executed policies were compared before publishing; repeated policy bodies are represented by canonical JSON SHA-256 here. Full raw logs remain local. Empty comparison Differences arrays denote exact equality after the explicitly listed exclusions."
+}

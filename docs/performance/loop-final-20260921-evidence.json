@@ -4627,5 +4627,261 @@
       "reason": "B2 time-limited, entire group Inconclusive; not averaged. Separate 60s/12000-node experiment isolates node-bound work, not a production budget change."
     }
   ],
-  "distinctRootCount": 26
+  "distinctRootCount": 26,
+  "upstreamIntegration": {
+    "base": "8826a333a6d48e05f0e368ee2db5d4a15092382e",
+    "premergeHead": "656a96083e10b2db2485bc989d022fd605b78fc2",
+    "build": "Release 0 warnings / 0 errors",
+    "boundaries": "Bash and PowerShell OK search_files=207",
+    "native": [
+      {
+        "name": "merge-ui",
+        "runId": "70dae8a331234fcbb6e3a51a40a089f1",
+        "status": "Passed",
+        "checks": [
+          "CardLocaleRoundTrip:EnglishSnapshot:ChineseEnglishChinese:Upgrade:Choice:SerializedPlan:LivePill:SubscriptionCleanup:NoReplan",
+          "EntityIdentity:eng:DistinctEnemies=1:PlainAndInkyShiv",
+          "StrategyOutcome:eng:AlignedAndUnmet:GrowthCounts:PartialRoute:EmptyHidden",
+          "ActionAnnotations:eng:CapturedDamageSources:21RelicFormats:NestedChoices:Tooltip",
+          "LiveTurnStartChoicePreview:eng:Power:Relic",
+          "LoopDisplay:eng:41Actions:4Controls:ReplayCount:KillSuffix:Deployment:Reuse",
+          "StrategyPanels:eng:Potion:Growth:Relic:Collapse",
+          "UiLocalization:eng:Catalog430:Settings:UploadTransitions:DynamicStatus:FailureInstructions",
+          "EntityIdentity:zhs:DistinctEnemies=1:PlainAndInkyShiv",
+          "StrategyOutcome:zhs:AlignedAndUnmet:GrowthCounts:PartialRoute:EmptyHidden",
+          "ActionAnnotations:zhs:CapturedDamageSources:21RelicFormats:NestedChoices:Tooltip",
+          "LiveTurnStartChoicePreview:zhs/zht:Power:Relic",
+          "LoopDisplay:zh:41Actions:4Controls:ReplayCount:KillSuffix:Deployment:Reuse",
+          "StrategyPanels:zhs:Potion:Growth:Relic:Collapse",
+          "UiLocalization:zhs:Catalog430:Settings:UploadTransitions:DynamicStatus:FailureInstructions",
+          "EntityIdentity:zht:DistinctEnemies=1:PlainAndInkyShiv",
+          "StrategyOutcome:zht:AlignedAndUnmet:GrowthCounts:PartialRoute:EmptyHidden",
+          "ActionAnnotations:zht:CapturedDamageSources:21RelicFormats:NestedChoices:Tooltip",
+          "LiveTurnStartChoicePreview:zhs/zht:Power:Relic",
+          "LoopDisplay:zh:41Actions:4Controls:ReplayCount:KillSuffix:Deployment:Reuse",
+          "StrategyPanels:zht:Potion:Growth:Relic:Collapse",
+          "UiLocalization:zht:Catalog430:Settings:UploadTransitions:DynamicStatus:FailureInstructions"
+        ],
+        "instanceRemoved": true
+      },
+      {
+        "name": "merge-thorns",
+        "runId": "19f8f8ad583b4b029a5c559f759243fa",
+        "status": "Passed",
+        "checks": [
+          "PerformancePreset:Low:60000ms:Beam=45:Nodes=60000:Branches=24:NoGC=True/16000000000",
+          "NoGcConfigurationApplied:Configured=True/16000000000:Established=16000000000:Actual=True/16000000000:ExpectedFallback=False:AllowedFallback=False:Latency=NoGCRegion",
+          "PotionOutcomeNamesAndRewardGate",
+          "InitialWorldlineSummary",
+          "InitialPolicy:SoldHp=0;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=1;Shuffles=0;Unmirrored=0;HpLost=0;ProjectedBattleHpLost=0;Block=2/5;Pruned=0;Total=264.2ms/4023000B;Gc=0.0ms/0.0msMax;Frame=272.8msMax/1Over50;CacheHits=0;ChoiceBranches=0;Actions=3;OnlyDeath=False;CombatEndedTurn=1;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None",
+          "UnexpectedReplans:0"
+        ],
+        "instanceRemoved": true
+      }
+    ],
+    "comparisons": [
+      {
+        "name": "letter-replay-cap",
+        "status": "Equivalent",
+        "sameRoot": true,
+        "sameRoute": true,
+        "sameQualityMetrics": true,
+        "runs": [
+          {
+            "label": "A1",
+            "searchMode": "Evaluate",
+            "metrics": {
+              "TotalExpanded": 441,
+              "TotalTransitions": 4978,
+              "TotalChoiceBranches": 0,
+              "ProjectedBattleHpLost": 0,
+              "FinalHp": 80,
+              "FinalEnemyHp": 0,
+              "CombatEndedTurn": 1,
+              "PotionCount": 0,
+              "Score": 10002395680,
+              "OnlyDeathRoutes": false,
+              "Boundary": 0,
+              "TotalElapsedMilliseconds": 2192.1383,
+              "TotalWorkerAllocatedBytes": 178105256,
+              "CycleReplayAttempts": 1,
+              "CycleReplayActions": 4096,
+              "TotalCycleReplayActions": 4096,
+              "CycleReplayVictories": 0,
+              "CycleReplayContinuations": 1,
+              "TurnLayerBudgetStops": 0,
+              "TurnLayerTimeBudgetStops": 0,
+              "TurnLayerNodeBudgetStops": 0
+            },
+            "wallSeconds": 2.3967582,
+            "peakManagedHeapBytes": 50261080,
+            "peakManagedLiveBytes": 56549200,
+            "peakWorkingSetBytes": 265043968,
+            "totalAllocatedBytes": 429057288,
+            "replayBudgetScope": "request",
+            "fixtureCheckFailures": [],
+            "budgetObservation": {
+              "scope": "solver",
+              "source": "solverMetrics",
+              "turnLayerTimeStops": 0,
+              "turnLayerNodeStops": 0,
+              "timeBoundaryObserved": false,
+              "diagnosticIssues": []
+            },
+            "status": "Comparable",
+            "valid": true,
+            "routeActions": 4320,
+            "routeSha256": "de6bfd769ac788d0ada6a177fa0f528dc1c7456953b8bc7348b77fe578f31c7f"
+          },
+          {
+            "label": "B1",
+            "searchMode": "Evaluate",
+            "metrics": {
+              "TotalExpanded": 441,
+              "TotalTransitions": 4978,
+              "TotalChoiceBranches": 0,
+              "ProjectedBattleHpLost": 0,
+              "FinalHp": 80,
+              "FinalEnemyHp": 0,
+              "CombatEndedTurn": 1,
+              "PotionCount": 0,
+              "Score": 10002395680,
+              "OnlyDeathRoutes": false,
+              "Boundary": 0,
+              "TotalElapsedMilliseconds": 2189.2173,
+              "TotalWorkerAllocatedBytes": 178138072,
+              "CycleReplayAttempts": 1,
+              "CycleReplayActions": 4096,
+              "TotalCycleReplayActions": 4096,
+              "CycleReplayVictories": 0,
+              "CycleReplayContinuations": 1,
+              "TurnLayerBudgetStops": 0,
+              "TurnLayerTimeBudgetStops": 0,
+              "TurnLayerNodeBudgetStops": 0
+            },
+            "wallSeconds": 2.4042311,
+            "peakManagedHeapBytes": 50280472,
+            "peakManagedLiveBytes": 56462704,
+            "peakWorkingSetBytes": 264589312,
+            "totalAllocatedBytes": 429014128,
+            "replayBudgetScope": "request",
+            "fixtureCheckFailures": [],
+            "budgetObservation": {
+              "scope": "solver",
+              "source": "solverMetrics",
+              "turnLayerTimeStops": 0,
+              "turnLayerNodeStops": 0,
+              "timeBoundaryObserved": false,
+              "diagnosticIssues": []
+            },
+            "status": "Comparable",
+            "valid": true,
+            "routeActions": 4320,
+            "routeSha256": "de6bfd769ac788d0ada6a177fa0f528dc1c7456953b8bc7348b77fe578f31c7f"
+          }
+        ]
+      },
+      {
+        "name": "coordinator-multi",
+        "status": "Equivalent",
+        "sameRoot": true,
+        "sameRoute": true,
+        "sameQualityMetrics": true,
+        "runs": [
+          {
+            "label": "A1",
+            "searchMode": "Coordinator",
+            "metrics": {
+              "TotalExpanded": 6000,
+              "TotalTransitions": 16179,
+              "TotalChoiceBranches": 0,
+              "ProjectedBattleHpLost": 4,
+              "FinalHp": 76,
+              "FinalEnemyHp": 0,
+              "CombatEndedTurn": 2,
+              "PotionCount": 0,
+              "Score": 10002154599,
+              "OnlyDeathRoutes": false,
+              "Boundary": 0,
+              "TotalElapsedMilliseconds": 5511.6883,
+              "TotalWorkerAllocatedBytes": 707202920,
+              "CycleReplayAttempts": 1,
+              "CycleReplayActions": 4096,
+              "TotalCycleReplayActions": 4096,
+              "CycleReplayVictories": 0,
+              "CycleReplayContinuations": 1,
+              "TurnLayerBudgetStops": 1,
+              "TurnLayerTimeBudgetStops": 0,
+              "TurnLayerNodeBudgetStops": 1
+            },
+            "wallSeconds": 5.7205265,
+            "peakManagedHeapBytes": 86135752,
+            "peakManagedLiveBytes": 82213648,
+            "peakWorkingSetBytes": 309452800,
+            "totalAllocatedBytes": 961932240,
+            "replayBudgetScope": "request",
+            "fixtureCheckFailures": [],
+            "budgetObservation": {
+              "scope": "request",
+              "source": "diagnosticLog",
+              "turnLayerTimeStops": 0,
+              "turnLayerNodeStops": 1,
+              "timeBoundaryObserved": false,
+              "diagnosticIssues": []
+            },
+            "status": "Comparable",
+            "valid": true,
+            "routeActions": 5401,
+            "routeSha256": "540f1a2651c8d1481dd54feed2f5eb82405c32c827f0b441f1840a9af149e37f"
+          },
+          {
+            "label": "B1",
+            "searchMode": "Coordinator",
+            "metrics": {
+              "TotalExpanded": 6000,
+              "TotalTransitions": 16179,
+              "TotalChoiceBranches": 0,
+              "ProjectedBattleHpLost": 4,
+              "FinalHp": 76,
+              "FinalEnemyHp": 0,
+              "CombatEndedTurn": 2,
+              "PotionCount": 0,
+              "Score": 10002154599,
+              "OnlyDeathRoutes": false,
+              "Boundary": 0,
+              "TotalElapsedMilliseconds": 5521.6758,
+              "TotalWorkerAllocatedBytes": 707226848,
+              "CycleReplayAttempts": 1,
+              "CycleReplayActions": 4096,
+              "TotalCycleReplayActions": 4096,
+              "CycleReplayVictories": 0,
+              "CycleReplayContinuations": 1,
+              "TurnLayerBudgetStops": 1,
+              "TurnLayerTimeBudgetStops": 0,
+              "TurnLayerNodeBudgetStops": 1
+            },
+            "wallSeconds": 5.7333525,
+            "peakManagedHeapBytes": 72813936,
+            "peakManagedLiveBytes": 70437976,
+            "peakWorkingSetBytes": 300634112,
+            "totalAllocatedBytes": 961987024,
+            "replayBudgetScope": "request",
+            "fixtureCheckFailures": [],
+            "budgetObservation": {
+              "scope": "request",
+              "source": "diagnosticLog",
+              "turnLayerTimeStops": 0,
+              "turnLayerNodeStops": 1,
+              "timeBoundaryObserved": false,
+              "diagnosticIssues": []
+            },
+            "status": "Comparable",
+            "valid": true,
+            "routeActions": 5401,
+            "routeSha256": "540f1a2651c8d1481dd54feed2f5eb82405c32c827f0b441f1840a9af149e37f"
+          }
+        ]
+      }
+    ]
+  }
 }

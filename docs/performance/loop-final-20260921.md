@@ -67,3 +67,9 @@ python3 tools/OfflineSearchHarness/run_loop_boundaries.py \
 ```
 
 原生历史合同使用 `--scenario-id LOOP-HISTORY-DEPENDENCIES --character-id IRONCLAD --encounter-id FUZZY_WURM_CRAWLER_WEAK --seed LOOPHISTORYDEPENDENCIES --clear-player-piles --clear-all-powers --cards-json '[]' --timeout-seconds 120 --cleanup-instance-on-exit`。预算合同使用 `LOOP-REPLAY-REQUEST-BUDGET`、敌方 max/current HP 均 200、能量 0、Hand/Discard 各一张 IMPATIENCE、LETTER_OPENER；测试内部固定两个 solver 的共享额度及严格增量开关。防守两根参数完整保存在对应 JSON；原生启动器按字段映射传入，并保留严格增量、完整部署与清理开关。
+
+## PR 与上游整合
+
+中文 PR #123 创建时主分支已推进至 `8826a333`（0.43.3）。合并时只手动解决技能说明、开发笔记、测试矩阵的记录冲突，保留上游余像收尾、掉药提示及 GC 可靠性修复；没有另增版本或发包。
+
+合并后 Release 零警告/错误，两端结构门禁 `search_files=207`。与合并前 `656a9608` 对照，cap 与实际多 solver Coordinator 两组完整根、路线和质量指标均 Equivalent；这是整合冒烟，不重写上表相对 a8a90e74 的 ABBA 数据。UI-LOCALIZATION / `70dae8a331234fcbb6e3a51a40a089f1` Passed，包含循环展示及搜索中掉药提示的英/简/繁合同；重复攻击反伤格挡 / `19f8f8ad583b4b029a5c559f759243fa` 严格增量、完整原生部署 Passed，0 HP / T1、0 计划外重算。两个实例均已清理。

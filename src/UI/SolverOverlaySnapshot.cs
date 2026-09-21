@@ -310,6 +310,13 @@ internal sealed record SolverOverlaySnapshot(
         if (!outlook.Enabled || result.CombatEndedTurn == null
             || !result.Snapshot.AllEnemiesDead || result.Snapshot.PlayerDead)
             return null;
+        return RewardOutcome(outlook);
+    }
+
+    internal static string? RewardOutcome(PotionRewardOutlook outlook)
+    {
+        if (!outlook.Enabled)
+            return null;
         return outlook.Forecast switch
         {
             PotionRewardForecast.Drop => SolverText.Format($"预计掉落：{SolverUiModelNames.Potion(outlook.ForecastPotionId!, outlook.ForecastPotionId!)}"),

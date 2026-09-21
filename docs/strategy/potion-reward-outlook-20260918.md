@@ -14,6 +14,8 @@
 `PotionRewardOutlook.Capture`（主线程根捕获）：读 `PlayerOdds.PotionReward.CurrentValue` 得概率；`Rng.Clone()` 奖励流，按上面的顺序重放到药水身份；教程集只留概率（`Forecast=Unknown`），最终 Boss 记 `NoRewards`。
 额度 `ReplacementHpCredit`：药水栏满且无 Sozu 时，`Drop` → 那瓶药的策略档位（9/14/18），`NoDrop/NoRewards` → 0，`Unknown` → round(概率 × 9)。`PotionUsePolicy.ApplyReplacementCredit` 从路线可选用药成本里扣一次，**下限 1 HP**。接线：`FinalPlanOrdering`、`BeamRetentionPolicy` 的资格事实、`CombatSearchCoordinator` 的 Smart 上限估计与显示所需 HP。
 
+后续规则修订（下一版本开发中）：上述 `Unknown` 概率折算是当时实验口径，当前代码只在满栏、可获得药水且 `Drop` 确定时按掉落药水档位抵扣。以下对照数字仍保留为原实验结果，不代表修订后的对照。
+
 合并时将预知改为设置中的显式选择，默认关闭。关闭时不捕获奖励前景，也不在摘要显示；开启后获胜路线显示掉药结论和本地化药名。已用/后续用药从战斗历史与终局回放分别取药水 ID，避免中途续用时把累计瓶数误写成未来计划。原下限只约束有战略成本的药水，零成本药水继续按零成本处理。下述 PR 对照属于原始开启前景的实验结果，不代表默认关闭状态。
 
 ## 验证

@@ -496,7 +496,8 @@ internal static class PlayerTurnSetupCoordinator
             host,
             active.Player.PlayerCombatState!.TurnNumber,
             deployWhenReady: false,
-            SolverController.ReviewedWorldlinesTotal);
+            SolverController.ReviewedWorldlinesTotal,
+            active.InitialSearch.RootSnapshot.PotionRewardOutlook);
         Entry.Logger.Info(
             $"[CombatSolver/Test] TURN_SETUP_MANUAL_RECALCULATE_REQUESTED " +
             $"turn={active.Player.PlayerCombatState.TurnNumber} native_choice_pending=true");
@@ -1145,7 +1146,8 @@ internal static class PlayerTurnSetupCoordinator
         active.Interaction.ResetForSearch();
         Volatile.Write(ref active.MemoryPressureSignal, context.SearchPolicy.MemoryPressureSignal);
         int turn = active.Player.PlayerCombatState!.TurnNumber;
-        SolverOverlay.ShowSearching(host, turn, active.DeployAfterSetup, SolverController.ReviewedWorldlinesTotal);
+        SolverOverlay.ShowSearching(host, turn, active.DeployAfterSetup, SolverController.ReviewedWorldlinesTotal,
+            context.RootSnapshot.PotionRewardOutlook);
         if (manual) Entry.Logger.Info($"[CombatSolver/Test] TURN_SETUP_MANUAL_RECALCULATE_START turn={turn} native_choice_pending=true");
         Task<SolverResult> solveTask = Task.Run(() =>
         {

@@ -98,7 +98,7 @@ $blockPotionInsertionPath = Join-Path $searchRoot "CombatBeamSolver.BlockPotionI
 foreach ($requiredBlockPotionRule in @(
     'HpLostByTurn',
     'SolverWeights.PotionMinimumHpSaved',
-    'ReplayInsertedRoute(',
+    'ReplayAdjustedRoute(',
     'ProjectedDeathSaveUseCount',
     'expanded_nodes_added=0')) {
     if (-not (Select-String -LiteralPath $blockPotionInsertionPath -SimpleMatch $requiredBlockPotionRule -Quiet)) {
@@ -601,6 +601,7 @@ $expectedBeamFiles = @(
     "CombatBeamSolver.BeamRetentionPolicy.Ranking.cs",
     "CombatBeamSolver.BeamRetentionPolicy.Routing.cs",
     "CombatBeamSolver.BeamRetentionPolicy.Testing.cs",
+    "CombatBeamSolver.AfterimageFrontloading.cs",
     "CombatBeamSolver.BlockPotionInsertion.cs",
     "CombatBeamSolver.CrossTurnPlanning.cs",
     "CombatBeamSolver.CyclePlanning.cs",

@@ -1,5 +1,7 @@
 # CombatSolver 测试清单
 
+- PR #123 / 上游 8826a333 整合：Release 0/0、两端门禁 207；UI-LOCALIZATION `70dae8a331234fcbb6e3a51a40a089f1` 与必要格挡原生部署 `19f8f8ad583b4b029a5c559f759243fa` Passed，实例清理；cap / 多 solver 两组与 656a9608 完整路线、质量 Equivalent。
+
 - [循环请求额度与历史依赖收尾](performance/loop-final-20260921.md)：28 组（26 根）/23 完整同路线/5 改善；4 个最终原生场景 Passed（历史依赖、两 solver 共享额度、两种投影范围外伤害必要格挡）；严格增量与完整部署分别记录，实例全部清理。Python 10 项与两端结构门禁通过；ABBA 将时间切层组标为 Inconclusive，另列无时间切层的固定节点实验。
 
 ## 循环预算审计跟进（2026-09-21）
@@ -34,6 +36,15 @@ python3 -m unittest discover -s tools/OfflineSearchHarness -p test_loop_boundari
 - 新 `generic-loop-bloodletting-no-postcombat-heal-quality.json` 排除燃烧之血战后回血干扰，A/B 675/1820、3 HP/T2，完整路线相同；原生 `41f101db99fa4f8fb9a55bd6494cc456` 同断言 Passed。旧铁甲战士夹具仍会给 6 HP/T1（战后补满），不能将旧 3 HP 断言误报为通过。
 - 50 万 HP 成长循环按 Low 60000 节点、RequireAtLeastOne 对照：两侧 10555/22248、零损 T1、完整路线相同。6000 节点的早期内环两侧都失败，只说明该预算不足。
 
+
+## 0.43.3：余像路线与战后掉药预测
+
+- 药水奖励机会成本：更新纯合同，概率 100%/40% 但结果未知的满栏情形额度均为 0；确定掉药按预测药水档位抵扣一次，确定不掉、药栏未满和禁用获得药水时额度为 0。UI 本地化合同新增搜索刚开始即显示预测掉药/不掉药，关闭预测时清空；英/简/繁分别核对。本地 Release 构建 0 警告、0 错误，自动部署的 DLL 与构建 DLL SHA256 一致。没有运行无人游戏合同或可见实机。结构门禁本次失败：`CombatBeamSolver.BlockPotionInsertion.cs` 缺少脚本硬编码的 `ReplayInsertedRoute(`，但当前 HEAD 的该文件原本就命名为 `ReplayAdjustedRoute(`，本次未改动该文件；不把门禁当作通过。
+- 依据玩家本机 `combat-a6529611f1c3484bafe6d8a7d4f07f1d.jsonl` 的第 2 回合计划，原路线先撕咬／暴政、后打两张余像，原计划的逐动作格挡与原生 Hook 口径对得上；前置路径尚无同根实机执行证据。用户明确要求停止测试，已终止隔离场景并清理实例；本次只执行 Release 编译（0 警告、0 错误），没有将编译当作路线改善验证。
+- `CombatSolver.GcPolicyChecks`：Linux / Windows 各 54 项通过（26 + 8 + 9 + 2 + 1 + 8）。新增 `diagnostic-failure` 用工具侧日志替身验证八条故障路径、异常身份、排队手动任务和后续搜索准入；上游检查点失败与中间版本漏结清手动任务均有 12 秒超时基线。
+- Release 构建及 Bash / PowerShell 结构门禁通过。当前上游 `3f4002bd` 的组合候选 ABBA：三场 12 份有效搜索，6 对非时序指标和完整记录路线一致；因耗时/峰值代价撤掉根缓存。另保留一份系统压力导致 No-GC 未建立的失败基线，不计入性能均值。
+- Skittish 单独筛选两场 8 份搜索、4 对对账一致，2 项原生差分通过；收益/代价仍不足，一并撤掉。最终纯修复版花园冒烟 Passed（`bed2628af2e94abd843a0c45103bbc05`），与上游非时序指标/路线对账无差异，最大 GC 暂停仍为 1645.559 ms。验证与清理证据见 [本轮报告](performance/gc-completion-allocation-20260921.md) 和 [结构化数据](performance/gc-completion-allocation-20260921.json)。均为无头或 CLR 证据，未验证可见 Steam 帧时间或整场自动部署。
+- #122 合入 0.43.3 时处理两项审查意见：多次失败合并时展平既有 `AggregateException`，未取得回收后堆快照时三个指标用 `-1` 明确表示未知，不再伪装为真实 0。合并组合在 Windows 上运行 `diagnostic-failure` 8 项通过，结构门禁 `REFACTOR_BOUNDARIES_OK search_files=206`，Release 构建 0 警告、0 错误并自动部署本地 Mod；没有重跑作者已完成的 20 份性能对照、Linux 合同或可见 Steam。
 
 ## 0.43.2：混合用药、生成牌、路线缓存与增量历史计数
 

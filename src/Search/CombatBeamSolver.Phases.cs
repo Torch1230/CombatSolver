@@ -465,6 +465,16 @@ internal sealed partial class CombatBeamSolver
                 ? publishedCandidate.Node
                 : RefreshReleasedFallback(publishedCandidate.Node);
             RouteAnnotations materializedAnnotations = BuildRouteAnnotations(materializedNode);
+            AfterimageFrontloading? afterimageFrontloading = TryFrontloadAfterimages(
+                materializedNode,
+                materializedAnnotations,
+                resultScope);
+            if (afterimageFrontloading != null)
+            {
+                materializedNode.Snapshot.ReleaseSimulator();
+                materializedNode = afterimageFrontloading.Node;
+                materializedAnnotations = afterimageFrontloading.Annotations;
+            }
             BlockPotionInsertion? blockPotionInsertion = TryInsertBlockPotion(
                 materializedNode,
                 materializedAnnotations,
@@ -483,7 +493,7 @@ internal sealed partial class CombatBeamSolver
                 FutureSold = materializedNode.FutureSoldHp,
                 BattleSold = battleDamage.SoldHpCommitted + materializedNode.FutureSoldHp,
                 PotionCount = materializedNode.PotionCount,
-                Score = blockPotionInsertion == null
+                Score = blockPotionInsertion == null && afterimageFrontloading == null
                     ? publishedCandidate.Score
                     : materializedNode.Score,
             };
