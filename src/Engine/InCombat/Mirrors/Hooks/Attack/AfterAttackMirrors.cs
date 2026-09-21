@@ -29,6 +29,15 @@ internal static class AfterAttackMirrors
         Registry.Invoke(listener, context);
     }
 
+    // Listener-mask verification only: what the unfiltered path would have resolved for this listener.
+    internal static MirrorDispatchKind ResolveDispatchKind(AbstractModel listener)
+        => Registry.ResolveDispatchKind(listener);
+
+    // Listener-mask verification only: the paired-state cleanup below is a type switch rather than a
+    // registry dispatch, so it needs its own "would this listener have done anything" predicate.
+    internal static bool HasPairedState(AbstractModel listener)
+        => listener is GigantificationPower or VigorPower;
+
     // BeforeAttack stores command-scoped state for these powers. Pending-choice
     // suspension must make that state forkable without firing ordinary AfterAttack
     // effects or consuming the power; completed dispatch uses the same idempotent
