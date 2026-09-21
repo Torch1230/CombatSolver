@@ -113,7 +113,7 @@ internal sealed partial class UnattendedTestRunner
             bool failed = false;
             try { row.Populate(interrupted); }
             catch (RoutePopulateProbeException) { failed = true; }
-            if (!failed || row.DeploymentActionCount != 1)
+            if (!failed || row.DeploymentActionCount != 0)
                 throw new InvalidOperationException("Route construction failure did not propagate at the intended boundary.");
             row.Populate(interrupted);
             if (row.DeploymentActionCount != 2 || ChildIds().Length != 4)
@@ -160,7 +160,18 @@ internal sealed partial class UnattendedTestRunner
     {
         private bool _interrupted;
         public int Count => actions.Count;
-        public SolverOverlayActionSnapshot this[int index] => actions[index];
+        public SolverOverlayActionSnapshot this[int index]
+        {
+            get
+            {
+                if (index == 1 && !_interrupted)
+                {
+                    _interrupted = true;
+                    throw new RoutePopulateProbeException();
+                }
+                return actions[index];
+            }
+        }
         public IEnumerator<SolverOverlayActionSnapshot> GetEnumerator()
         {
             for (int index = 0; index < actions.Count; index++)

@@ -161,6 +161,7 @@ shopt -u nullglob
 cycle_policy_paths=(
     "$search_root/CombatBeamSolver.CyclePlanning.cs"
     "$search_root/CombatBeamSolver.CycleRegionRetention.cs"
+    "$search_root/CombatBeamSolver.CycleReplay.cs"
     "$search_root/CombatBeamSolver.OrderedMutationRetention.cs"
 )
 legacy_loop_guard_paths=(
@@ -575,6 +576,7 @@ expected_beam_files=(
     CombatBeamSolver.CrossTurnPlanning.cs
     CombatBeamSolver.CyclePlanning.cs
     CombatBeamSolver.CycleRegionRetention.cs
+    CombatBeamSolver.CycleReplay.cs
     CombatBeamSolver.Expansion.cs
     CombatBeamSolver.Expansion.Candidates.cs
     CombatBeamSolver.Expansion.Choices.cs

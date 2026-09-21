@@ -124,7 +124,7 @@ internal static class ModRuntime
             EnableNoGcRegion = options.EnableNoGcRegion,
             NoGcRegionBudgetGigabytes = options.NoGcRegionBudgetGigabytes,
             UseBeamWidthPortfolio = options.UsePortfolio,
-            StopAtAcceptableBattleHpLoss = false,
+            StopAtAcceptableBattleHpLoss = options.StopAtZeroLoss,
             OnlineStatisticsEnabled = false,
             SearchCompletionNotificationsEnabled = false,
             PotionPolicy = Enum.Parse<SolverPotionPolicy>(options.PotionPolicy, ignoreCase: true),
@@ -142,7 +142,7 @@ internal static class ModRuntime
         {
             FixedSearchBudget = !options.ProductionBudget,
             MeasureSearchPhases = options.MeasureSearchPhases,
-            VerifyIncrementalSearch = false,
+            VerifyIncrementalSearch = options.VerifyIncremental,
             SearchBudgetOverrideMilliseconds = options.BudgetMilliseconds,
             SearchMaxDegreeOfParallelism = options.MaxDegreeOfParallelism,
             UseBeamWidthPortfolio = options.UsePortfolio,

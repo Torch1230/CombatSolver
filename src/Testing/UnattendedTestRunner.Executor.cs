@@ -45,6 +45,11 @@ internal sealed partial class UnattendedTestRunner
                 await runner.RunNoveltySearchBenchmarkAsync(combatState, player);
                 return Observation(combatEnded: !CombatManager.Instance.IsInProgress);
             }
+            if (request.ScenarioId == "LOOP-DEFENSIVE-VALUE")
+            {
+                await runner.AssertLoopDefensiveValueAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "ROUTE-ROW-REUSE")
             {
                 await runner.AssertRouteRowReuseAndMeasureAsync();

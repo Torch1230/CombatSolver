@@ -205,7 +205,16 @@ internal sealed partial class CombatBeamSolver
         public int CycleShapesDetected;
         public int CycleProbeContinuationsExpanded;
         public int CycleCandidatesProtected;
+        public readonly HashSet<CycleRegionKey> CycleReplayRegions = [];
+        public int CycleReplayAttempts;
+        public int CycleReplayActions;
+        public int CycleReplayVictories;
         public int CycleContinuationsStopped;
+        public int CycleStoppedUnproductive;
+        public int CycleStoppedRepetitionBudget;
+        public int CycleStoppedFamilyBudget;
+        public int CycleStoppedExitBudget;
+        public int TurnLayerBudgetStops;
         public int CycleRegionsDetected;
         public int CycleRegionCandidatesConsidered;
         public int CycleRegionCandidatesAdmitted;

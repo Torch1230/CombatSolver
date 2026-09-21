@@ -581,6 +581,7 @@ internal sealed partial class CombatBeamSolver
             simulator,
             simulator.TerminalStamp)
         {
+            DefensiveBlockValue = MeasureDefensiveBlockReserve(combat, player, threat),
             GrowthHpCredit = growthHpCredit,
             RelicCounters = relicCounters,
             GrowthRewards = growthRewards,
@@ -591,6 +592,17 @@ internal sealed partial class CombatBeamSolver
             DeathSaveUseCount = combat.DeathSaveUseCount,
             ProjectedDeathSaveUseCount = combat.DeathSaveUseCount + threat.DeathSaveUseCount,
         };
+    }
+
+    private int MeasureDefensiveBlockReserve(
+        SimulatedCombatState combat, SimCreatureState player, ThreatProjection threat)
+    {
+        int consumed = Math.Clamp(threat.BlockConsumed, 0, Math.Max(0, player.Block));
+        int remaining = Math.Max(0, player.Block - consumed);
+        if (remaining == 0 || combat.ShouldClearBlock(_player.Creature, out AbstractModel? preventer))
+            return consumed;
+        int retained = PersistentRelicSupport.BlockAfterPreventingClear(preventer, _player.Creature, remaining);
+        return consumed + Math.Min(Math.Max(0, retained), Math.Max(0, player.MaxHp));
     }
 
     private static StateFingerprint BuildCycleShapeKey(
@@ -1271,7 +1283,7 @@ internal sealed partial class CombatBeamSolver
     /// What the incoming enemy intent leaves the player at, and which one-shot death saves must be spent to
     /// get there.
     /// </summary>
-    private readonly record struct ThreatProjection(int Hp, int DeathSaveHpRestored, int DeathSaveUseCount);
+    private readonly record struct ThreatProjection(int Hp, int DeathSaveHpRestored, int DeathSaveUseCount, int BlockConsumed = 0);
 
     private ThreatProjection ProjectHpAfterThreat(
         CombatPredictionSimulator simulator,
@@ -1341,7 +1353,8 @@ internal sealed partial class CombatBeamSolver
                     projectedModifiers);
             }
         }
-        return new ThreatProjection(hp, deathPrevention.DeathSaveHpRestored, deathPrevention.UseCount);
+        return new ThreatProjection(hp, deathPrevention.DeathSaveHpRestored, deathPrevention.UseCount,
+            Math.Max(0, player.Block - block));
     }
 
     internal int ProjectDiagnosticHits(SimulationSnapshot snapshot, Creature attacker, params int[] hits)

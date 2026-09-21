@@ -1274,6 +1274,7 @@ internal sealed class SimulationSnapshot(
     public int AngerCopiesGenerated { get; } = angerCopiesGenerated;
     public int ProjectedPlayerHp { get; } = projectedPlayerHp;
     public int PlayerBlock { get; } = playerBlock;
+    public int DefensiveBlockValue { get; init; }
     public int EnemyHp { get; } = enemyHp;
     public int EnemyBlock { get; } = enemyBlock;
     public int AliveEnemyCount { get; } = aliveEnemyCount;
@@ -1505,6 +1506,15 @@ internal sealed class SolverResult
     public int CycleProbeContinuationsExpanded { get; init; }
     public int CycleCandidatesProtected { get; init; }
     public int CycleContinuationsStopped { get; init; }
+    public int CycleReplayAttempts { get; init; }
+    public int CycleReplayActions { get; init; }
+    public int CycleReplayVictories { get; init; }
+    public int CycleStoppedUnproductive { get; init; }
+    public int CycleStoppedRepetitionBudget { get; init; }
+    public int CycleStoppedFamilyBudget { get; init; }
+    public int CycleStoppedExitBudget { get; init; }
+    public int TurnLayerBudgetStops { get; init; }
+
     public int CycleRegionsDetected { get; init; }
     public int CycleRegionCandidatesConsidered { get; init; }
     public int CycleRegionCandidatesAdmitted { get; init; }
@@ -1691,6 +1701,15 @@ internal sealed class SolverResult
             CycleProbeContinuationsExpanded = 0,
             CycleCandidatesProtected = 0,
             CycleContinuationsStopped = 0,
+            CycleReplayAttempts = 0,
+            CycleReplayActions = 0,
+            CycleReplayVictories = 0,
+            CycleStoppedUnproductive = 0,
+            CycleStoppedRepetitionBudget = 0,
+            CycleStoppedFamilyBudget = 0,
+            CycleStoppedExitBudget = 0,
+            TurnLayerBudgetStops = 0,
+
             CycleRegionsDetected = 0,
             CycleRegionCandidatesConsidered = 0,
             CycleRegionCandidatesAdmitted = 0,

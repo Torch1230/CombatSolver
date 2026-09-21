@@ -6,7 +6,8 @@ namespace CombatSolver;
 
 internal sealed partial class SolverRouteRow : PanelContainer
 {
-    private readonly List<CanvasItem> _deploymentActions = [];
+    private readonly List<(CanvasItem Pill, SolverActionRun Run, int Offset)> _deploymentActions = [];
+    private int _deploymentActionCount;
     private CanvasItem? _endTurnAction;
     private SolverOverlayTurnSnapshot? _populatedTurn;
     private string? _populatedLanguage;
@@ -16,7 +17,7 @@ internal sealed partial class SolverRouteRow : PanelContainer
     public Label EnemyDamageLabel { get; }
     public Label OutcomeLabel { get; }
     public Label EnergyLabel { get; }
-    public int DeploymentActionCount => _deploymentActions.Count;
+    public int DeploymentActionCount => _deploymentActionCount;
 
     public SolverRouteRow(int index)
     {
@@ -145,12 +146,22 @@ internal sealed partial class SolverRouteRow : PanelContainer
             return;
         }
 
-        foreach (SolverOverlayActionSnapshot action in turn.Actions)
+        foreach (SolverActionRun run in SolverActionRuns.Capture(turn.Actions,
+                     static (left, right) => left.HasSamePresentation(right)))
         {
-            Control pill = SolverActionPill.Create(action);
-            ActionFlow.AddChild(pill);
-            _deploymentActions.Add(pill);
+            for (int offset = 0; offset < run.Period; offset++)
+            {
+                Control pill = SolverActionPill.Create(turn.Actions[run.Start + offset]);
+                ActionFlow.AddChild(pill);
+                _deploymentActions.Add((pill, run, offset));
+            }
+            if (run.Repetitions > 1)
+            {
+                Control badge = SolverActionPill.CreateCycle(run);
+                ActionFlow.AddChild(badge);
+            }
         }
+        _deploymentActionCount = turn.Actions.Count;
 
         if (turn.EndTurnAction is { Kills.Count: > 0 } endTurnAction)
         {
@@ -183,15 +194,15 @@ internal sealed partial class SolverRouteRow : PanelContainer
 
     public void SetDeploymentProgress(int completedActions, int? activeActionIndex)
     {
-        if (completedActions < 0 || completedActions > _deploymentActions.Count)
+        if (completedActions < 0 || completedActions > _deploymentActionCount)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(completedActions),
                 completedActions,
-                $"路线只有 {_deploymentActions.Count} 个可执行动作胶囊。");
+                $"路线只有 {_deploymentActionCount} 个可执行动作。");
         }
         if (activeActionIndex is { } active
-            && (active < completedActions || active >= _deploymentActions.Count))
+            && (active < completedActions || active >= _deploymentActionCount))
         {
             throw new ArgumentOutOfRangeException(
                 nameof(activeActionIndex),
@@ -199,12 +210,12 @@ internal sealed partial class SolverRouteRow : PanelContainer
                 "当前动作必须是尚未完成的路线动作。");
         }
 
-        for (int index = 0; index < _deploymentActions.Count; index++)
+        foreach (var (pill, run, offset) in _deploymentActions)
         {
-            _deploymentActions[index].Modulate = index < completedActions
-                ? SolverUiTokens.Palette.CompletedActionModulate
-                : index == activeActionIndex
-                    ? SolverUiTokens.Palette.ActiveActionModulate
+            pill.Modulate = run.IsActive(offset, activeActionIndex)
+                ? SolverUiTokens.Palette.ActiveActionModulate
+                : run.IsCompleted(offset, completedActions)
+                    ? SolverUiTokens.Palette.CompletedActionModulate
                     : Colors.White;
         }
     }
@@ -243,6 +254,7 @@ internal sealed partial class SolverRouteRow : PanelContainer
         _populatedTurn = null;
         _populatedLanguage = null;
         _deploymentActions.Clear();
+        _deploymentActionCount = 0;
         _endTurnAction = null;
         foreach (Node child in ActionFlow.GetChildren())
         {

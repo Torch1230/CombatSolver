@@ -73,13 +73,11 @@ internal static class Program
                     generated = GeneratedScenarioSetup.Prepare(
                         request, Path.Combine(options.OutputDirectory, "evidence"));
                     session = generated.Session;
-                    var resolvedOptions = generated.Resolved.Options;
-                    return $"character={resolvedOptions.CharacterId} encounter={resolvedOptions.EncounterId} "
-                        + $"act={resolvedOptions.ActIndex} A{resolvedOptions.Ascension} "
-                        + $"catalog={generated.Resolved.CatalogFingerprint[..12]}";
+                    return $"character={generated.Request.CharacterId} encounter={generated.Request.EncounterId} "
+                        + $"generated={generated.Resolved != null}";
                 });
-                payload["resolvedScenario"] = generated!.Resolved.Options;
-                payload["catalogFingerprint"] = generated.Resolved.CatalogFingerprint;
+                payload["resolvedScenario"] = generated!.Resolved?.Options;
+                payload["catalogFingerprint"] = generated.Resolved?.CatalogFingerprint;
 
                 Step(steps, "G1.2 建跑局、注入装备、进遭遇战房间", () =>
                 {
@@ -92,6 +90,10 @@ internal static class Program
                 {
                     combat = OfflineCombat.WaitForPlayableCombat(loop);
                     generated!.CaptureOpening(combat);
+                    if (!generated.Request.PreserveNativeCombatStateForTest)
+                        loop.RunUntilCompleted(generated.Session.InjectInitialStateAsync(
+                            combat, MegaCrit.Sts2.Core.Context.LocalContext.GetMe(combat)!),
+                            TimeSpan.FromSeconds(30), "固定夹具状态注入");
                     return OfflineCombat.DescribeRoot(combat);
                 });
                 payload["setupChoices"] = generated.SetupChoices;
@@ -323,7 +325,7 @@ internal sealed record HarnessOptions
 {
     public const string Usage = """
         用法：OfflineSearchHarness [选项]
-          --request <path>       无人测试请求 JSON（含 generatedScenarioPath），走生成场景开局流程
+          --request <path>       固定夹具或含 generatedScenarioPath 的无人测试请求 JSON
           --label <name>         本根标签（写进 result.json，默认 offline）
           --character <id>       角色（无 --request 时用，默认 IRONCLAD）
           --encounter <id>       遭遇（无 --request 时用，默认 FUZZY_WURM_CRAWLER_WEAK）
@@ -348,6 +350,8 @@ internal sealed record HarnessOptions
           --disable-transposition-prune <0..3>  实验：关掉转置支配剪枝（1=候选准入/2=展开准入）
           --memory-no-progress-limit <int>  实验：连续多少次无进展回收后提前收手（0=关闭）
           --transposition-entry-limit <int>  实验：转置支配表合并条目上限（0=不设上限；缺省=生产默认 1000000）
+          --stop-at-zero-loss    启用生产零战损达标停止政策
+          --verify-incremental   逐动作完整回放核验（不得用于性能数字）
           --production-budget    使用生产预算流程，允许预算内的无胜利升级；不用于固定节点逐位对照
           --enable-no-gc-region   开 Runtime 的搜索内 No-GC 生命周期（默认关闭）
           --no-gc-region-budget-gigabytes <double>  No-GC 区域预算，单位十进制 GB（默认 1）
@@ -392,6 +396,8 @@ internal sealed record HarnessOptions
     /// <summary>实验：转置支配表合并条目上限；0 = 不设上限，缺省 = 生产默认。</summary>
     public int? TranspositionEntryLimit { get; init; }
     public bool ProductionBudget { get; init; }
+    public bool StopAtZeroLoss { get; init; }
+    public bool VerifyIncremental { get; init; }
     /// <summary>实验：走 Runtime 的搜索内 No-GC 生命周期，供无头宿主复现内存回收与截断。</summary>
     public bool EnableNoGcRegion { get; init; }
     /// <summary>No-GC 区域预算；只在 <see cref="EnableNoGcRegion" /> 开启时生效。</summary>
@@ -415,6 +421,7 @@ internal sealed record HarnessOptions
         int transpositionPruneOff = 0, memoryNoProgressLimit = 0;
         int? transpositionEntryLimit = null;
         bool measurePhases = false, enableNoGcRegion = false, productionBudget = false;
+        bool stopAtZeroLoss = false, verifyIncremental = false;
         double noGcRegionBudgetGigabytes = 1d;
         int signalBallastMegabytes = 0;
         int? beam = null, nodes = null, cardBranches = null, pileBranches = null, handBranches = null;
@@ -460,6 +467,8 @@ internal sealed record HarnessOptions
                 case "--unordered-pile-mask": unorderedPileMask = int.Parse(Value()); break;
                 case "--state-key-salt": stateKeySalt = int.Parse(Value()); break;
                 case "--measure-phases": measurePhases = true; break;
+                case "--stop-at-zero-loss": stopAtZeroLoss = true; break;
+                case "--verify-incremental": verifyIncremental = true; break;
                 case "--production-budget": productionBudget = true; break;
                 case "--disable-transposition-prune": transpositionPruneOff = int.Parse(Value()); break;
                 case "--memory-no-progress-limit": memoryNoProgressLimit = int.Parse(Value()); break;
@@ -532,6 +541,8 @@ internal sealed record HarnessOptions
             TranspositionPruningDisabledMask = transpositionPruneOff,
             TranspositionEntryLimit = transpositionEntryLimit,
             ProductionBudget = productionBudget,
+            StopAtZeroLoss = stopAtZeroLoss,
+            VerifyIncremental = verifyIncremental,
             MemoryNoProgressRecoveryLimit = memoryNoProgressLimit,
             EnableNoGcRegion = enableNoGcRegion,
             NoGcRegionBudgetGigabytes = noGcRegionBudgetGigabytes,

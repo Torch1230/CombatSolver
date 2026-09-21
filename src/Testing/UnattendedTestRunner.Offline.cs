@@ -165,6 +165,9 @@ internal sealed partial class UnattendedTestRunner
         internal void CaptureOpening(CombatState combat, Player player)
             => _runner._scenarioBuilder.OfflineCaptureOpening(combat, player);
 
+        internal Task InjectInitialStateAsync(CombatState combat, Player player)
+            => _runner._scenarioBuilder.InjectInitialStateAsync(combat, player);
+
         // 装备注入是 UnattendedTestRunner 自己的静态方法，宿主按 BuildAsync 的顺序调。
         internal static Task InjectRelicAsync(Player player, UnattendedRelicInjection injection)
             => UnattendedTestRunner.InjectRelicAsync(player, injection);

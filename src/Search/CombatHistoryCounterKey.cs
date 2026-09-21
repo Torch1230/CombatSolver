@@ -29,6 +29,7 @@ internal static class CombatHistoryCounterKey
         "VOLTAIC",
         "TEAR_ASUNDER",
         "PULL_FROM_BELOW",
+        "BANSHEES_CRY",
         "MURDER",
         "SUPERMASSIVE",
     }.ToFrozenSet(StringComparer.Ordinal);

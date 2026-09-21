@@ -564,6 +564,14 @@ internal sealed class UnattendedSolverMetrics
     public int ChoiceReplayAttempts { get; init; }
     public int ChoiceReplayBudgetExhaustions { get; init; }
     public int ChoiceBranchesDroppedByBudget { get; init; }
+    public int CycleReplayAttempts { get; init; }
+    public int CycleReplayActions { get; init; }
+    public int CycleReplayVictories { get; init; }
+    public int CycleStoppedUnproductive { get; init; }
+    public int CycleStoppedRepetitionBudget { get; init; }
+    public int CycleStoppedFamilyBudget { get; init; }
+    public int CycleStoppedExitBudget { get; init; }
+    public int TurnLayerBudgetStops { get; init; }
     public int CycleRegionsDetected { get; init; }
     public int CycleRegionCandidatesConsidered { get; init; }
     public int CycleRegionCandidatesAdmitted { get; init; }

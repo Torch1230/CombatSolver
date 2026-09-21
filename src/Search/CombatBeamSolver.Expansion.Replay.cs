@@ -890,6 +890,7 @@ internal sealed partial class CombatBeamSolver
         bool equal = incremental.StateKey == replayed.StateKey
             && incremental.Turn == replayed.Turn
             && incremental.Score.Equals(replayed.Score)
+            && incremental.DefensiveBlockValue == replayed.DefensiveBlockValue
             && incremental.BoundaryReason == replayed.BoundaryReason
             && incremental.HasRisk == replayed.HasRisk
             && incremental.PlayerDead == replayed.PlayerDead

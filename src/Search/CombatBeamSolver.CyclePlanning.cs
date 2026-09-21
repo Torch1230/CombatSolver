@@ -648,15 +648,7 @@ internal sealed partial class CombatBeamSolver
     }
 
     private static int UsefulDefensiveBlockReserve(SimulationSnapshot snapshot)
-    {
-        // ProjectedPlayerHp already prices the known incoming attack, and block-to-damage
-        // conversions are included in OffensiveProgressValue. Preserve a finite additional
-        // reserve for retained block and later attacks without treating unbounded same-turn
-        // block accumulation as endlessly improving search quality.
-        return Math.Min(
-            Math.Max(0, snapshot.PlayerBlock),
-            Math.Max(0, snapshot.PlayerMaxHp));
-    }
+        => snapshot.DefensiveBlockValue;
 
     private static int ScaleCycleFamilyBudget(
         int baseBudget,
@@ -2528,6 +2520,9 @@ internal sealed partial class CombatBeamSolver
         if (stoppedAsUnproductive || stoppedAtBudget || stoppedAtFamilyBudget)
         {
             _run.CycleContinuationsStopped++;
+            if (stoppedAsUnproductive) _run.CycleStoppedUnproductive++;
+            else if (stoppedAtBudget) _run.CycleStoppedRepetitionBudget++;
+            else _run.CycleStoppedFamilyBudget++;
             return true;
         }
         if (unproductiveCycle
@@ -2735,7 +2730,7 @@ internal sealed partial class CombatBeamSolver
             0);
     }
 
-    private static StateFingerprint BuildCycleActionKey(PlanAction action)
+    internal static StateFingerprint BuildCycleActionKey(PlanAction action)
     {
         StateFingerprintBuilder key = new();
         AppendCycleActionKey(ref key, action);

@@ -16,6 +16,48 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
+    private void AssertLoopDisplay(bool english)
+    {
+        SolverOverlayActionSnapshot a = SolverOverlaySnapshot.CaptureAction(
+            new PlanAction(PlanActionKind.PlayCard, 1, CardId: "IMPATIENCE"), []);
+        SolverOverlayActionSnapshot b = SolverOverlaySnapshot.CaptureAction(
+            new PlanAction(PlanActionKind.PlayCard, 1, CardId: "FINESSE", ReplayCount: 2), []);
+        SolverOverlayTurnSnapshot turn = new(1, [],
+            Enumerable.Range(0, 40).Select(i => i % 2 == 0 ? a : b)
+                .Append(a with { Kills = ["Enemy"] }).ToArray(), null, 5, 0, 0, 0, true);
+        SolverRouteRow row = new(0);
+        _host.AddChild(row);
+        try
+        {
+            row.Populate(turn);
+            if (row.DeploymentActionCount != 41 || row.ActionFlow.GetChildCount() != 4)
+                throw new InvalidOperationException("Loop folding lost executable indexes or kill suffix.");
+            var badge = (Control)row.ActionFlow.GetChild(2);
+            if (((Label)badge.GetChild(0)).Text != (english ? "Loop ×20" : "循环 ×20"))
+                throw new InvalidOperationException("Loop badge localization failed.");
+            foreach (int index in new[] { 0, 1, 2, 37, 38, 39 })
+            {
+                row.SetDeploymentProgress(index, index);
+                if (((CanvasItem)row.ActionFlow.GetChild(index % 2)).Modulate
+                    != SolverUiTokens.Palette.ActiveActionModulate)
+                    throw new InvalidOperationException("Repeated action highlight lost its modulo mapping.");
+            }
+            row.SetDeploymentProgress(40, 40);
+            if (((CanvasItem)row.ActionFlow.GetChild(0)).Modulate != SolverUiTokens.Palette.CompletedActionModulate
+                || ((CanvasItem)row.ActionFlow.GetChild(1)).Modulate != SolverUiTokens.Palette.CompletedActionModulate
+                || ((CanvasItem)row.ActionFlow.GetChild(3)).Modulate != SolverUiTokens.Palette.ActiveActionModulate)
+                throw new InvalidOperationException("Loop completion or suffix highlight failed.");
+            row.SetDeploymentProgress(41, null);
+            ulong id = row.ActionFlow.GetChild(0).GetInstanceId();
+            row.Populate(turn with { Actions = turn.Actions.ToArray() });
+            if (id != row.ActionFlow.GetChild(0).GetInstanceId()
+                || ((CanvasItem)row.ActionFlow.GetChild(0)).Modulate != Colors.White)
+                throw new InvalidOperationException("Folded row reuse failed.");
+            _completedChecks.Add($"LoopDisplay:{(english ? "eng" : "zh")}:41Actions:4Controls:ReplayCount:KillSuffix:Deployment:Reuse");
+        }
+        finally { row.Free(); }
+    }
+
     private async Task AssertUiLocalizationAsync(CombatState combat)
     {
         using Stream stream = typeof(SolverText).Assembly.GetManifestResourceStream("CombatSolver.UI.English.json")!;
@@ -67,6 +109,7 @@ internal sealed partial class UnattendedTestRunner
                 _completedChecks.Add($"StrategyOutcome:{target}:AlignedAndUnmet:GrowthCounts:PartialRoute:EmptyHidden");
                 await AssertActionAnnotationLocalizationAsync(combat, english);
                 AssertLiveTurnStartChoicePreview(english);
+                AssertLoopDisplay(english);
                 foreach ((string source, string translated) in catalog)
                 {
                     if (SolverText.Get(source) != (english ? translated : source))

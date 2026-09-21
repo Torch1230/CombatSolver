@@ -74,6 +74,7 @@ $beamPaths = @($beamFiles.FullName)
 $cyclePolicyPaths = @(
     (Join-Path $searchRoot "CombatBeamSolver.CyclePlanning.cs"),
     (Join-Path $searchRoot "CombatBeamSolver.CycleRegionRetention.cs"),
+    (Join-Path $searchRoot "CombatBeamSolver.CycleReplay.cs"),
     (Join-Path $searchRoot "CombatBeamSolver.OrderedMutationRetention.cs")
 )
 $legacyLoopGuardPaths = @(
@@ -604,6 +605,7 @@ $expectedBeamFiles = @(
     "CombatBeamSolver.CrossTurnPlanning.cs",
     "CombatBeamSolver.CyclePlanning.cs",
     "CombatBeamSolver.CycleRegionRetention.cs",
+    "CombatBeamSolver.CycleReplay.cs",
     "CombatBeamSolver.Expansion.cs",
     "CombatBeamSolver.Expansion.Candidates.cs",
     "CombatBeamSolver.Expansion.Choices.cs",

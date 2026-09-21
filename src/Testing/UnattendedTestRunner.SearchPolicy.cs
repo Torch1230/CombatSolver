@@ -2111,6 +2111,14 @@ internal sealed partial class UnattendedTestRunner
         AddMismatch(mismatches, "reused", expected.ReusedNodeSnapshots, actual.ReusedNodeSnapshots);
         AddMismatch(mismatches, "tt_pruned", expected.TranspositionBranchesPruned, actual.TranspositionBranchesPruned);
         AddMismatch(mismatches, "repeatable", expected.RepeatableNoProgressBranchesPruned, actual.RepeatableNoProgressBranchesPruned);
+        AddMismatch(mismatches, "CycleReplayAttempts", expected.CycleReplayAttempts, actual.CycleReplayAttempts);
+        AddMismatch(mismatches, "CycleReplayActions", expected.CycleReplayActions, actual.CycleReplayActions);
+        AddMismatch(mismatches, "CycleReplayVictories", expected.CycleReplayVictories, actual.CycleReplayVictories);
+        AddMismatch(mismatches, "CycleStoppedUnproductive", expected.CycleStoppedUnproductive, actual.CycleStoppedUnproductive);
+        AddMismatch(mismatches, "CycleStoppedRepetitionBudget", expected.CycleStoppedRepetitionBudget, actual.CycleStoppedRepetitionBudget);
+        AddMismatch(mismatches, "CycleStoppedFamilyBudget", expected.CycleStoppedFamilyBudget, actual.CycleStoppedFamilyBudget);
+        AddMismatch(mismatches, "CycleStoppedExitBudget", expected.CycleStoppedExitBudget, actual.CycleStoppedExitBudget);
+        AddMismatch(mismatches, "TurnLayerBudgetStops", expected.TurnLayerBudgetStops, actual.TurnLayerBudgetStops);
         AddMismatch(mismatches, "cycle_shapes", expected.CycleShapesDetected, actual.CycleShapesDetected);
         AddMismatch(
             mismatches,

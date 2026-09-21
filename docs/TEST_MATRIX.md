@@ -1,5 +1,15 @@
 # CombatSolver 测试清单
 
+## 下一版本（开发中）：循环验证（2026-09-21）
+
+- [循环报告及逐次数据](performance/loop-optimization-20260921.md)：2000 HP、1200 动作 A/B 路线逐字段相同，零损 T1；最终 DOP1/DOP2 6 展开/1206 转移一致，最大父节点并发 2。分支根关闭早停时 101/256 一致，动作并发 2；仅调度计数、lane 局部缓存条目数不同。
+- `LOOP-DEFENSIVE-VALUE` / `50cfafd5acc642508e18840ab459f69a` Passed：100→200 格挡饱和、Barricade 原生保留、固定保留上限、BansheesCry 历史读者门控。Release 0 警告/0 错误，Bash/PowerShell 两端结构门禁均通过（search_files=206）。
+- `LoopDisplayChecks`：122505 断言通过。`UI-LOCALIZATION` / `275d2dcafd214c62b675f5832a11993d` Passed；`ROUTE-ROW-REUSE` / `5ec0d3f0b90c450b8c43a87b0cdaee25` Passed。41 动作折叠、额外重放与末击后缀、循环高亮、失败重试、完整显示身份复用、中英简繁及订阅释放通过；未做可见排版验收。
+- `LOOP-REPLAY-DEPLOY` / `d4867a3cb9154340a85fe848d1139a56` Passed：40 HP、24 动作、零战损 T1、严格增量/全前缀核对、原生部署、0 非预期重算。严格回放的时间不用于性能表。
+- 新 `generic-loop-bloodletting-no-postcombat-heal-quality.json` 排除燃烧之血战后回血干扰，A/B 675/1820、3 HP/T2，完整路线相同；原生 `41f101db99fa4f8fb9a55bd6494cc456` 同断言 Passed。旧铁甲战士夹具仍会给 6 HP/T1（战后补满），不能将旧 3 HP 断言误报为通过。
+- 50 万 HP 成长循环按 Low 60000 节点、RequireAtLeastOne 对照：两侧 10555/22248、零损 T1、完整路线相同。6000 节点的早期内环两侧都失败，只说明该预算不足。
+
+
 ## 0.43.2：混合用药、生成牌、路线缓存与增量历史计数
 
 - 强制／智能混合用药：`SEARCH-HP-TARGET-STOP` / `312cb8cd77fb470eaac9bbc48cd19506` Passed，强制能量药与智能力量药的真实搜索在零战损胜利时仅用一瓶，DOP1/DOP2 完整结果和非时序指标逐字段一致；改为只持防御牌与 15 HP 敌人时，仅强制药无法获胜，智能火焰药作为第二瓶救命且不被误拦。纯合同核对强制基线只允许指定槽位、额外一瓶仅比强制基线多省 1 HP 时不满足 9 HP 门槛、强制药本身不计入额外药机会成本及梯度瓶数。隔离实例已清理。中间正向场景曾 Failed：初始接线把只允许强制药的临时策略传给后续 Smart 审计，使 `maximum=0`；改由审计读取原始逐瓶策略后通过。结构门禁 `REFACTOR_BOUNDARIES_OK search_files=205`，Windows Release 0 警告／错误。短根验证了混合策略、早停和救命路径；未取得玩家原战斗同根对照，也未实测非零但不足门槛的实际两药胜利比较。启动器曾报告一次 `Import-Clixml` 解析警告，随后游戏请求 Passed、目标断言完成；未把警告当成产品行为结论。

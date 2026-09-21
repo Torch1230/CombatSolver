@@ -32,8 +32,10 @@ internal sealed record SolverOverlayActionSnapshot(
     int ReplayCount,
     SolverActionTextIdentity? TextIdentity = null)
 {
+    public StateFingerprint CycleIdentity { get; init; }
+
     public bool HasSamePresentation(SolverOverlayActionSnapshot other)
-        => Title == other.Title && TargetName == other.TargetName
+        => CycleIdentity == other.CycleIdentity && Title == other.Title && TargetName == other.TargetName
             && ChoiceText == other.ChoiceText && Tooltip == other.Tooltip
             && VisualKind == other.VisualKind && ReplayCount == other.ReplayCount
             && RelicLabels.SequenceEqual(other.RelicLabels)
@@ -414,7 +416,8 @@ internal sealed record SolverOverlaySnapshot(
                     (IReadOnlyList<SolverCardTextIdentity>)choice.Cards.Select(card =>
                         new SolverCardTextIdentity(card.CardId, card.UpgradeLevel, card.Title)).ToArray()).ToArray(),
                 action.RelicEffects?.Select(effect => new SolverRelicTextIdentity(effect.RelicId, effect.RelicTitle, effect.Summary)).ToArray() ?? [])
-                { CardEnchantmentId = action.CardEnchantmentId });
+                { CardEnchantmentId = action.CardEnchantmentId })
+        { CycleIdentity = CombatBeamSolver.BuildCycleActionKey(action) };
         return SolverActionTextIdentity.Refresh(snapshot);
     }
 

@@ -1,4 +1,12 @@
 {
+  "LOOP-QUALITY-PERFORMANCE-DISPLAY-20260921": {
+    "status": "Passed",
+    "level": "TargetedHeadlessNativeAndOfflineABBA",
+    "procedure": "固定循环根 ABBA；无战后回血卖血与成长哨兵完整路线对照；DOP1/2；严格增量与原生部署；格挡饱和和有界保留；UI折叠索引及语言/复用",
+    "expected": "不改变测量根的最终路线与质量；逐张真实模拟；不隐藏替代出牌；无非预期重算；实际动作索引保持",
+    "observed": "1200动作同路线，1200→6展开，2400→1206转移；wall -42.4%, Search allocation -64.8%, sampled managed live peak -35.0%。卖血675/1820和成长10555/22248逐字段路线/工作量一致。defense-final=50cfafd5acc642508e18840ab459f69a; native-blood-no-heal=41f101db99fa4f8fb9a55bd6494cc456; native-loop-deploy=d4867a3cb9154340a85fe848d1139a56; UI-LOCALIZATION=275d2dcafd214c62b675f5832a11993d; row-reuse-final=5ec0d3f0b90c450b8c43a87b0cdaee25。纯显示122505断言；两端结构门禁206；Release零警告零错误。无可见Steam验收，不能证明所有未测根的质量。",
+    "evidence": "docs/performance/loop-optimization-20260921.md; docs/performance/loop-optimization-20260921-evidence.json; coverage/unattended/generic-loop-bloodletting-no-postcombat-heal-quality.json"
+  },
   "POWER-CARD-VALUATION-ALL-POOLS": {
     "status": "Passed",
     "level": "PureContractAndHeadlessShortSearch",

@@ -228,6 +228,7 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 | `CombatBeamSolver.BeamRetentionPolicy.Ranking.cs` | 防御/进攻/资源代表、终局候选比较与Beam分数计算 |
 | `CombatBeamSolver.BeamRetentionPolicy.Testing.cs` | 既有保路合同验证入口；仍属于Search，不依赖Testing runner |
 | `CombatBeamSolver.CyclePlanning.cs` | 精确动作周期、通用收益与出口探针；按周期族和回合记账的有限观察与成长预算 |
+| `CombatBeamSolver.CycleReplay.cs` | worker 排空后的有界确定性终局探测；逐步唯一出牌/目标、真实回放、原中间出口保留；只交付实际胜利 |
 | `CombatBeamSolver.CycleRegionRetention.cs` | 合并同回合、同控制形状的动作排列；对最终存活候选事务式提交区域保留预算与进展证据 |
 | `CombatBeamSolver.OrderedMutationRetention.cs` | 有序操作碰撞的谱系、租约、成对激活和预算账本；统一处理续接、到期与普通通道回退 |
 | `CombatBeamSolver.FinalPlanOrdering.cs` | 终局胜负、偷窃、战损、药水、卖血和搜索边界排序 |
@@ -461,7 +462,7 @@ renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或
 
 `GeneratedCombatScenario` 只把配置解析为角色/遭遇/装备ID，原版池按ID排序、各类别独立种子流，不推进战斗RNG。`ScenarioBuilder` 的 `GeneratedScenario` 分片在主线程创建实际跑局，核对牌组/进阶之灾/药水槽与原生房间类型；`GeneratedScenarioCardSelector` 只在建局作用域提供确定性或显式选牌，退出建局即释放，不参与正式部署。`Writer` 独占解析配置、目录、战前装备与完整开局状态证据写入。`ProtocolHost.ConfigureSearchOverrides` 在建局配置解析后刷新同一套请求级开关；`Executor` 仍独占实际搜索/部署及设置恢复。批量Python工具只调度各平台原生启动器和证据目录，不接触游戏协议循环或搜索内部。详见[通用场景生成](GENERATED_COMBAT_SCENARIOS.md)。
 
-`tools/OfflineSearchHarness` 是不启动 Godot 的测量宿主，只通过 `UnattendedTestRunner.BeginOfflineSession` 和 `OfflineScenarioSession` 复用协议开关、生成场景注入与结果折叠；`SolverController.DisplayServerNameProvider` 只允许宿主提供固定的 headless 显示服务器名。宿主不拥有正确性断言，也不替代无人测试；搜索行为改动仍由游戏内无人场景验收。详见[离线搜索宿主](OFFLINE_SEARCH_HARNESS.md)。
+`tools/OfflineSearchHarness` 是不启动 Godot 的测量宿主，只通过 `UnattendedTestRunner.BeginOfflineSession` 和 `OfflineScenarioSession` 复用协议开关、生成或固定场景的同一初始状态注入与结果折叠；`SolverController.DisplayServerNameProvider` 只允许宿主提供固定的 headless 显示服务器名。宿主不拥有正确性断言，也不替代无人测试；搜索行为改动仍由游戏内无人场景验收。详见[离线搜索宿主](OFFLINE_SEARCH_HARNESS.md)。
 
 `UnattendedTestRunner.ReplayState.cs` 属于 `ScenarioBuilder` 的状态注入实现。它只接受同检查点的 `run-state` 与 schema 1 `replay-state` 组合，恢复后必须通过完整 `ContinuationStamp`；不能把部分字段相似的建局称为严格重放。
 
@@ -516,3 +517,5 @@ NativeReplayDriver 保存开战/结束观察器抛出的原始异常，由 Advan
 
 
 `CardGenerationPotionMirrors.Generate` 的可选simulator将无色药水和CosmicConcoction的战斗生成接入既有根候选池；无simulator的预览保持原筛选。复用仅含原序候选模型，生成卡、升级、选择和RNG仍由当前分支拥有；两种AddsToHand形态不变。
+
+循环展示由 `SolverOverlaySnapshot` 捕获动作结构身份，`SolverActionRuns` 在 UI 按完整显示值划分重复区间；`SolverRouteRow` 保留真实动作数，以区间/周期余数映射高亮，不修改 Runtime 平坦计划。`DefensiveBlockValue` 是 Search 的派生评分特征，不进战斗指纹；格挡清空后的保留上限与 `PersistentRelicSupport.BlockAfterPreventingClear` 的既有结算共用。详见[本批设计与证据](performance/loop-optimization-20260921.md)。

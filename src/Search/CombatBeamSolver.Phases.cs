@@ -739,6 +739,15 @@ internal sealed partial class CombatBeamSolver
                 CycleProbeContinuationsExpanded = _run.CycleProbeContinuationsExpanded,
                 CycleCandidatesProtected = _run.CycleCandidatesProtected,
                 CycleContinuationsStopped = _run.CycleContinuationsStopped,
+                CycleReplayAttempts = _run.CycleReplayAttempts,
+                CycleReplayActions = _run.CycleReplayActions,
+                CycleReplayVictories = _run.CycleReplayVictories,
+                CycleStoppedUnproductive = _run.CycleStoppedUnproductive,
+                CycleStoppedRepetitionBudget = _run.CycleStoppedRepetitionBudget,
+                CycleStoppedFamilyBudget = _run.CycleStoppedFamilyBudget,
+                CycleStoppedExitBudget = _run.CycleStoppedExitBudget,
+                TurnLayerBudgetStops = _run.TurnLayerBudgetStops,
+
                 CycleRegionsDetected = _run.CycleRegionsDetected,
                 CycleRegionCandidatesConsidered = _run.CycleRegionCandidatesConsidered,
                 CycleRegionCandidatesAdmitted = _run.CycleRegionCandidatesAdmitted,
@@ -1532,6 +1541,7 @@ internal sealed partial class CombatBeamSolver
                         }
                         node.Snapshot.ReleaseSimulator();
                     }
+                    _run.TurnLayerBudgetStops++;
                     policy.Diagnostics.Info(
                         $"[CombatSolver/Test] TURN_LAYER_BUDGET " +
                         $"reason={(turnLayerTimeSpent ? "time" : "nodes")} " +
@@ -1899,6 +1909,17 @@ internal sealed partial class CombatBeamSolver
                         active[activeIndex].Snapshot.ReleaseSimulator();
                     else
                         ReleaseNodeLimitSnapshot(active[activeIndex]);
+                }
+                // All lanes are drained. Probe in canonical child order so early success cannot
+                // consume a different number of already-dispatched parents at different DOPs.
+                if (!acceptableBattleHpLossReached && !memoryNoProgressTruncated)
+                {
+                    foreach (SearchNode seed in nextPlays)
+                    {
+                        if (TryReplayCycleVictory(seed, stopwatch) is not { } victory) continue;
+                        AcceptExpandedChild(seed, victory);
+                        if (acceptableBattleHpLossReached) break;
+                    }
                 }
                 if (policy.Act3BossStrategy && searchedTurnLayers == 0 && !acceptableBattleHpLossReached)
                 {

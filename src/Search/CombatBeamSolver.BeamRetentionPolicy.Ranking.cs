@@ -31,8 +31,8 @@ internal sealed partial class CombatBeamSolver
                         || candidate.Snapshot.OstyHp == current.Snapshot.OstyHp
                             && (candidate.Snapshot.OstyMaxHp > current.Snapshot.OstyMaxHp
                                 || candidate.Snapshot.OstyMaxHp == current.Snapshot.OstyMaxHp
-                                    && (candidate.Snapshot.PlayerBlock > current.Snapshot.PlayerBlock
-                                        || candidate.Snapshot.PlayerBlock == current.Snapshot.PlayerBlock
+                                    && (UsefulDefensiveBlockReserve(candidate.Snapshot) > UsefulDefensiveBlockReserve(current.Snapshot)
+                                        || UsefulDefensiveBlockReserve(candidate.Snapshot) == UsefulDefensiveBlockReserve(current.Snapshot)
                                             && candidate.Score > current.Score)));
 
         private bool IsBetterCompletedVictory(SearchNode candidate, SearchNode? current)

@@ -36,6 +36,7 @@ internal sealed partial class CombatBeamSolver
         if (!TryConsumeCycleExitProbeExpansionBudget(node))
         {
             _run.CycleContinuationsStopped++;
+            _run.CycleStoppedExitBudget++;
             ObserveSearchPath(node, SearchPathObservationStage.ExpansionBlocked, "cycle_exit_budget");
             yield break;
         }

@@ -138,6 +138,18 @@ internal static class SolverActionPill
         return pill;
     }
 
+    public static Control CreateCycle(SolverActionRun run)
+    {
+        Control badge = CreateStatus("", SolverUiTokens.Palette.Accent);
+        badge.MouseFilter = Control.MouseFilterEnum.Pass;
+        SolverLocaleRefresh.Bind(badge, () =>
+        {
+            ((Label)badge.GetChild(0)).Text = SolverText.Format($"循环 ×{run.Repetitions}");
+            badge.TooltipText = SolverText.Format($"以上 {run.Period} 个动作重复 {run.Repetitions} 次，共 {run.Count} 个动作");
+        });
+        return badge;
+    }
+
     private static (Color Border, Color Background) ActionColors(SolverOverlayActionVisualKind kind)
         => kind switch
         {
