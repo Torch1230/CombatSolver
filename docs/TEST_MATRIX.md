@@ -1,5 +1,10 @@
 # CombatSolver 测试清单
 
+## 通用优化候选筛查，未达标（2026-09-22）
+
+- Defect 精英与 Regent 首领各一次 EventPipe 采样、一次 StandPat 重复探针；搜索摘要/剪枝计数一致，无时间截断。两根未观察到重复键返回值冲突，只作候选筛查，不是优化性能或原生语义验收。其余预选 15 根未执行。
+- 探针已撤回，恢复后的主项目及离线宿主 Release 构建零警告/错误；没有新生产改动，不扩大游戏回归。20% 优化、广泛最终 A/B、原生/DOP/可见验证均未完成。见[报告与证据](performance/general-optimization-screen-20260922.md)。
+
 ## 怪物状态指纹小集合（2026-09-22）
 
 - `MonsterStateFingerprintChecks` 对真实上游/候选DLL各77项通过，覆盖null/空/单项/多项、排序同键、nullable ID、Unicode及Fork修改/清空。三根ABBA共12次，9对768字段、完整路线、政策、剪枝计数全等，无时间截断。

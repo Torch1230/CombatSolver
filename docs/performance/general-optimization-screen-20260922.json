@@ -1,0 +1,1501 @@
+{
+  "baselineCommit": "510dd703",
+  "upstreamCommit": "6922828d",
+  "status": "target_not_met",
+  "productionChangesRetained": false,
+  "instrumentationOnly": true,
+  "twentyPercentPerformanceClaim": false,
+  "settings": {
+    "Profile": "High",
+    "BeamWidth": 90,
+    "MaxExpandedNodes": 6000,
+    "MaxCardBranchesPerNode": 48,
+    "MaxPileChoiceBranchesPerAction": 28,
+    "MaxHandChoiceBranchesPerAction": 36,
+    "MaxDegreeOfParallelism": 1,
+    "BudgetMilliseconds": 60000,
+    "PotionPolicy": "Smart",
+    "SearchMode": "Coordinator",
+    "UsePortfolio": true,
+    "fixedSearchBudget": true,
+    "enableNoGcRegion": false
+  },
+  "profiles": [
+    {
+      "scenario": "dev-02-defect-elite",
+      "scenarioSpec": {
+        "CharacterId": "DEFECT",
+        "EncounterId": "INFESTED_PRISMS_ELITE",
+        "Seed": "NOVELTY-DEV-20260915-02",
+        "Ascension": 10,
+        "ActIndexForTest": 1
+      },
+      "resolvedScenario": {
+        "SchemaVersion": 1,
+        "Seed": "NOVELTY-DEV-20260915-02",
+        "CharacterId": "DEFECT",
+        "Ascension": 10,
+        "ActIndex": 1,
+        "EncounterId": "INFESTED_PRISMS_ELITE",
+        "EncounterKind": "Elite",
+        "IncludeStartingDeck": true,
+        "IncludeStartingRelics": true,
+        "IncludeAscendersBane": true,
+        "ApplyRelicObtainEffects": false,
+        "CharacterCards": {
+          "Count": 12,
+          "Ids": [
+            "COMPACT",
+            "OVERCLOCK",
+            "VOLTAIC",
+            "REFRACT",
+            "MODDED",
+            "DARKNESS",
+            "NULL",
+            "BULK_UP",
+            "NULL",
+            "BOOST_AWAY",
+            "SCRAPE",
+            "CLAW"
+          ],
+          "UpgradeLevels": 1
+        },
+        "ColorlessCards": {
+          "Count": 2,
+          "Ids": [
+            "DRAMATIC_ENTRANCE",
+            "CALAMITY"
+          ],
+          "UpgradeLevels": 0
+        },
+        "Relics": {
+          "Count": 3,
+          "Ids": [
+            "BREAD",
+            "RIPPLE_BASIN",
+            "CAPTAINS_WHEEL"
+          ],
+          "UpgradeLevels": 0
+        },
+        "Potions": {
+          "Count": 2,
+          "Ids": [
+            "SKILL_POTION",
+            "FRUIT_JUICE"
+          ],
+          "UpgradeLevels": 0
+        },
+        "Mode": "Search",
+        "FixedSearchBudget": true
+      },
+      "catalogFingerprint": "C7D7D8A322F304033D34B50940A09B55D24D4AF83C41582547EEF94C777A9B96",
+      "confirmedSearchAllocationSamples": {
+        "sampleCount": 19204,
+        "estimatedBytes": 2055757744,
+        "samplesWithoutStack": 0,
+        "samplesWithUnresolvedOnlyStack": 0,
+        "samplesWithSomeUnresolvedFrames": 30,
+        "firstSampleMs": 1915.25717,
+        "lastSampleMs": 14116.40802
+      },
+      "topAllocationTypes": [
+        {
+          "key": "MegaCrit.Sts2.Core.Models.AbstractModel[]",
+          "totals": {
+            "sampleCount": 807,
+            "estimatedBytes": 85951216,
+            "samplesWithoutStack": 0,
+            "samplesWithUnresolvedOnlyStack": 0,
+            "samplesWithSomeUnresolvedFrames": 0,
+            "firstSampleMs": 2282.711875,
+            "lastSampleMs": 14108.00798
+          }
+        },
+        {
+          "key": "CombatSolver.Engine.Common.PredictedCard",
+          "totals": {
+            "sampleCount": 565,
+            "estimatedBytes": 60183416,
+            "samplesWithoutStack": 0,
+            "samplesWithUnresolvedOnlyStack": 0,
+            "samplesWithSomeUnresolvedFrames": 0,
+            "firstSampleMs": 2102.707148,
+            "lastSampleMs": 14097.335457
+          }
+        },
+        {
+          "key": "System.Int32[]",
+          "totals": {
+            "sampleCount": 523,
+            "estimatedBytes": 55929296,
+            "samplesWithoutStack": 0,
+            "samplesWithUnresolvedOnlyStack": 0,
+            "samplesWithSomeUnresolvedFrames": 0,
+            "firstSampleMs": 2214.716931,
+            "lastSampleMs": 14103.768008
+          }
+        },
+        {
+          "key": "CombatSolver.SimulatedCombatState",
+          "totals": {
+            "sampleCount": 490,
+            "estimatedBytes": 52212032,
+            "samplesWithoutStack": 0,
+            "samplesWithUnresolvedOnlyStack": 0,
+            "samplesWithSomeUnresolvedFrames": 0,
+            "firstSampleMs": 1952.273053,
+            "lastSampleMs": 14099.769038
+          }
+        },
+        {
+          "key": "CombatSolver.Engine.Common.PredictedCard[]",
+          "totals": {
+            "sampleCount": 451,
+            "estimatedBytes": 48054512,
+            "samplesWithoutStack": 0,
+            "samplesWithUnresolvedOnlyStack": 0,
+            "samplesWithSomeUnresolvedFrames": 0,
+            "firstSampleMs": 2287.724336,
+            "lastSampleMs": 14066.105586
+          }
+        },
+        {
+          "key": "System.Collections.Generic.Dictionary`2[System.String,MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar]",
+          "totals": {
+            "sampleCount": 343,
+            "estimatedBytes": 36563920,
+            "samplesWithoutStack": 0,
+            "samplesWithUnresolvedOnlyStack": 0,
+            "samplesWithSomeUnresolvedFrames": 0,
+            "firstSampleMs": 2345.502069,
+            "lastSampleMs": 14067.232815
+          }
+        },
+        {
+          "key": "Entry[MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Int32][]",
+          "totals": {
+            "sampleCount": 330,
+            "estimatedBytes": 35145672,
+            "samplesWithoutStack": 0,
+            "samplesWithUnresolvedOnlyStack": 0,
+            "samplesWithSomeUnresolvedFrames": 0,
+            "firstSampleMs": 2358.68477,
+            "lastSampleMs": 14100.963486
+          }
+        },
+        {
+          "key": "CombatSolver.SimulationSnapshot",
+          "totals": {
+            "sampleCount": 273,
+            "estimatedBytes": 29083936,
+            "samplesWithoutStack": 0,
+            "samplesWithUnresolvedOnlyStack": 0,
+            "samplesWithSomeUnresolvedFrames": 0,
+            "firstSampleMs": 2210.678315,
+            "lastSampleMs": 14062.113389
+          }
+        },
+        {
+          "key": "<IterateCombatHookListeners>d__0",
+          "totals": {
+            "sampleCount": 269,
+            "estimatedBytes": 28665888,
+            "samplesWithoutStack": 0,
+            "samplesWithUnresolvedOnlyStack": 0,
+            "samplesWithSomeUnresolvedFrames": 0,
+            "firstSampleMs": 2341.350426,
+            "lastSampleMs": 14080.659394
+          }
+        },
+        {
+          "key": "<GetEnumerator>d__13",
+          "totals": {
+            "sampleCount": 261,
+            "estimatedBytes": 27805424,
+            "samplesWithoutStack": 0,
+            "samplesWithUnresolvedOnlyStack": 0,
+            "samplesWithSomeUnresolvedFrames": 0,
+            "firstSampleMs": 2325.848783,
+            "lastSampleMs": 14107.452766
+          }
+        }
+      ],
+      "timeBoundaryObserved": false,
+      "search": {
+        "rootContinuationStamp": "turn=1;hp=75;max_hp=75;block=0;energy=1;stars=0;gold=99;osty=4294967295/0/0;E0=1/INFESTED_PRISM/-/171/171/0/JAB_MOVE;AI0=JAB_MOVE;MS0=-/0;H=DRAMATIC_ENTRANCE+0/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=11,]/private=-/keywords=[Exhaust,Innate]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,BOOST_AWAY+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=9,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,REFRACT+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,Repeat=2,]/private=-/keywords=[]/baselib=-,;D=BULK_UP+1/False:2/False:-1/0/False/False/False/True/False/-:0:0/-:0[DexterityPower=3,OrbSlots=1,StrengthPower=3,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,ZAP+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[]/private=-/keywords=[]/baselib=-,MODDED+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Cards=2,Repeat=1,]/private=-/keywords=[]/baselib=-,ASCENDERS_BANE+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable,Eternal]/baselib=-,COMPACT+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=7,]/private=-/keywords=[]/baselib=-,CLAW+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=4,Increase=3,]/private=0/keywords=[]/baselib=-,NULL+1/False:2/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,WeakPower=2,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DUALCAST+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[]/private=-/keywords=[]/baselib=-,NULL+1/False:2/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,WeakPower=2,]/private=-/keywords=[]/baselib=-,VOLTAIC+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[CalculationBase=0,CalculationExtra=1,]/private=-/keywords=[]/baselib=-,SCRAPE+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Cards=5,Damage=10,]/private=-/keywords=[]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DARKNESS+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[]/private=-/keywords=[]/baselib=-,CALAMITY+0/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,OVERCLOCK+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Cards=3,]/private=-/keywords=[]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,;C=;X=;Y=0/0/0/0;FlameHp=0;AttackStarts=0;O=3:LIGHTNING_ORB[3/8],;potions=SKILL_POTION,FRUIT_JUICE;relicCounters=;mirrorRelics=;P=1:VITAL_SPARK_POWER=3/0[],;R=24:9732278784126350510:1527483467312739226:11907108955258091705:15566267014395232726/0:516198471083424904:13348277448868217817:17075119400154183099:3471790462293251241/0:17015735118735881471:168868144011625509:13561557653397993652:8558884526646844463/0:16985102612926265792:7159140755368098211:8130162303791275382:2437968856334820722/0:11040195531124178909:8612873296483640560:3211171507892291592:5397022082988420565/0:10578116546292818410:15483399103624925445:8813770983974117770:4470331637892719032/0:10240603625638059345:140699506553857717:15853148962603717239:14680358120514165286/0:14902472423518160231:15376632299584183404:13667540531463169623:11823713246228561711/1:9502781314505393265:11588412538492412668:18402231417422390059:14939035636662814592",
+        "rootLiveStamp": "turn=1;hp=75;max_hp=75;block=0;energy=1;stars=0;gold=99;osty=4294967295/0/0;E0=1/INFESTED_PRISM/-/171/171/0/JAB_MOVE;AI0=JAB_MOVE;MS0=-/0;H=DRAMATIC_ENTRANCE+0/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=11,]/private=-/keywords=[Exhaust,Innate]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,BOOST_AWAY+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=9,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,REFRACT+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,Repeat=2,]/private=-/keywords=[]/baselib=-,;D=BULK_UP+1/False:2/False:-1/0/False/False/False/True/False/-:0:0/-:0[DexterityPower=3,OrbSlots=1,StrengthPower=3,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,ZAP+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[]/private=-/keywords=[]/baselib=-,MODDED+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Cards=2,Repeat=1,]/private=-/keywords=[]/baselib=-,ASCENDERS_BANE+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable,Eternal]/baselib=-,COMPACT+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=7,]/private=-/keywords=[]/baselib=-,CLAW+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=4,Increase=3,]/private=0/keywords=[]/baselib=-,NULL+1/False:2/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,WeakPower=2,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DUALCAST+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[]/private=-/keywords=[]/baselib=-,NULL+1/False:2/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,WeakPower=2,]/private=-/keywords=[]/baselib=-,VOLTAIC+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[CalculationBase=0,CalculationExtra=1,]/private=-/keywords=[]/baselib=-,SCRAPE+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Cards=5,Damage=10,]/private=-/keywords=[]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DARKNESS+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[]/private=-/keywords=[]/baselib=-,CALAMITY+0/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,OVERCLOCK+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Cards=3,]/private=-/keywords=[]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,;C=;X=;Y=0/0/0/0;FlameHp=0;AttackStarts=0;O=3:LIGHTNING_ORB[3/8],;potions=SKILL_POTION,FRUIT_JUICE;relicCounters=;mirrorRelics=;P=1:VITAL_SPARK_POWER=3/0[],;R=24:9732278784126350510:1527483467312739226:11907108955258091705:15566267014395232726/0:516198471083424904:13348277448868217817:17075119400154183099:3471790462293251241/0:17015735118735881471:168868144011625509:13561557653397993652:8558884526646844463/0:16985102612926265792:7159140755368098211:8130162303791275382:2437968856334820722/0:11040195531124178909:8612873296483640560:3211171507892291592:5397022082988420565/0:10578116546292818410:15483399103624925445:8813770983974117770:4470331637892719032/0:10240603625638059345:140699506553857717:15853148962603717239:14680358120514165286/0:14902472423518160231:15376632299584183404:13667540531463169623:11823713246228561711/1:9502781314505393265:11588412538492412668:18402231417422390059:14939035636662814592",
+        "rootCapture": {
+          "cards": 25,
+          "powers": 1,
+          "listeners": 49,
+          "run_mod_subscribers": 0,
+          "combat_mod_subscribers": 0,
+          "base_lib_card_modifiers": false
+        },
+        "solverMetrics": {
+          "boundary": "NodeLimit",
+          "selectedExpanded": 6000,
+          "selectedTransitions": 26905,
+          "selectedChoiceBranches": 3318,
+          "totalExpanded": 12000,
+          "totalTransitions": 47382,
+          "totalChoiceBranches": 3318,
+          "choiceReplayAttempts": 3318,
+          "choiceReplayBudgetExhaustions": 0,
+          "choiceBranchesDroppedByBudget": 0,
+          "roundReplayPrefixCaptures": 0,
+          "dominatedActionsPruned": 3,
+          "topQueueActionsDropped": 0,
+          "actionAdmissionRepresentativesProtected": 0,
+          "duplicateCardBranchesPruned": 693,
+          "shuffleBranchesPruned": 0,
+          "soldHpBranchesPruned": 0,
+          "replayCount": 6,
+          "forkCount": 27247,
+          "reusedNodeSnapshots": 6360,
+          "transpositionBranchesPruned": 1215,
+          "repeatableNoProgressBranchesPruned": 0,
+          "standPatProbes": 1162,
+          "transitionCacheHits": 0,
+          "roundReplayPrefixReuses": 0,
+          "cycleRegionsDetected": 0,
+          "cycleRegionCandidatesConsidered": 0,
+          "cycleRegionCandidatesAdmitted": 0,
+          "cycleRegionCandidatesDropped": 0,
+          "cycleRegionProgressEpochs": 0,
+          "cycleRegionProbeCandidatesAdmitted": 0,
+          "cycleRegionProgressCandidatesAdmitted": 0,
+          "cycleRegionMaxActionFamilies": 0,
+          "orderedMutationCandidatesAdmitted": 0,
+          "orderedMutationLeaseExpiredBudget": 0,
+          "orderedMutationOrdinaryFallbacks": 0,
+          "orderedMutationColdAtomicCommitted": 0,
+          "orderedMutationColdAtomicRejected": 0,
+          "deferredRoundChoiceActions": 0,
+          "deferredRoundChoiceLayerWidthTotal": 0,
+          "maxDeferredRoundChoiceLayerWidth": 0,
+          "deferredRoundChoiceFiniteQuotaFallbacks": 0,
+          "deferredRoundChoiceFinitePrimaryLayers": 0,
+          "deferredRoundChoiceFinitePendingFallbacks": 0,
+          "parallelActionReplayWaves": 0,
+          "parallelActionReplayWorkItems": 0,
+          "maxParallelActionReplayConcurrency": 0,
+          "parallelRoundChoiceReplayWaves": 0,
+          "parallelRoundChoiceReplayWorkItems": 0,
+          "maxParallelRoundChoiceReplayConcurrency": 0,
+          "maxParallelConcurrency": 0,
+          "searchedTurns": 5,
+          "shufflesCrossed": 1,
+          "score": 10002009979,
+          "projectedBattleHpLost": 4,
+          "potionCount": 1,
+          "onlyDeathRoutes": false,
+          "finalHp": 71,
+          "finalEnemyHp": 0,
+          "combatEndedTurn": 5,
+          "transpositionCount": 23758,
+          "expandedTranspositionCount": 5999,
+          "transpositionLimitBypasses": 0,
+          "standPatCacheCount": 1162,
+          "threatProjectionCacheCount": 22659,
+          "coverageCacheCount": 601
+        },
+        "planActions": [
+          "1:PlayCard:BOOST_AWAY:target=-:key=BOOST_AWAY+1|energy=False:0|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Block=9|-|TAINTED:3|baselib=-",
+          "1:UsePotion::target=-:key=",
+          "1:PlayCard:GLACIER:target=-:key=GLACIER+0|energy=False:0|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=Block=6|-|TAINTED:3|baselib=-",
+          "1:EndTurn::target=-:key=",
+          "2:PlayCard:MODDED:target=-:key=MODDED+1|energy=False:0|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Cards=2;Repeat=1|-|TAINTED:3|baselib=-",
+          "2:PlayCard:COMPACT:target=-:key=COMPACT+1|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Block=7|-|TAINTED:3|baselib=-",
+          "2:PlayCard:BULK_UP:target=-:key=BULK_UP+1|energy=False:2|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=DexterityPower=3;OrbSlots=1;StrengthPower=3|-|:0|baselib=-",
+          "2:EndTurn::target=-:key=",
+          "3:PlayCard:NULL:target=1:key=NULL+1|energy=False:2|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Damage=13;WeakPower=2|-|:0|baselib=-",
+          "3:PlayCard:NULL:target=1:key=NULL+1|energy=False:2|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Damage=13;WeakPower=2|-|:0|baselib=-",
+          "3:EndTurn::target=-:key=",
+          "4:PlayCard:DEFEND_DEFECT:target=-:key=DEFEND_DEFECT+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Block=5|-|TAINTED:3|baselib=-",
+          "4:PlayCard:SCRAPE:target=1:key=SCRAPE+1|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Cards=5;Damage=10|-|:0|baselib=-",
+          "4:PlayCard:DARKNESS:target=-:key=DARKNESS+1|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=|-|TAINTED:3|baselib=-",
+          "4:PlayCard:STRIKE_DEFECT:target=1:key=STRIKE_DEFECT+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Damage=6|-|:0|baselib=-",
+          "4:EndTurn::target=-:key=",
+          "5:PlayCard:COMPACT:target=-:key=COMPACT+1|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Block=7|-|TAINTED:6|baselib=-",
+          "5:PlayCard:FUEL:target=-:key=FUEL+1|energy=False:0|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=Exhaust|vars=Energy=2|-|TAINTED:6|baselib=-",
+          "5:PlayCard:REFRACT:target=1:key=REFRACT+1|energy=False:3|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Damage=13;Repeat=2|-|:0|baselib=-",
+          "5:PlayCard:NULL:target=1:key=NULL+1|energy=False:2|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Damage=13;WeakPower=2|-|:0|baselib=-",
+          "5:EndTurn::target=-:key="
+        ],
+        "cachedContinuations": [
+          {
+            "StartTurnNumber": 2,
+            "ForecastOffset": 1,
+            "state": "turn=2;hp=75;max_hp=75;block=0;energy=4;stars=0;gold=99;osty=4294967295/0/0;E0=1/INFESTED_PRISM/-/168/171/0/RADIATE_MOVE;AI0=JAB_MOVE,RADIATE_MOVE;MS0=-/0;H=BULK_UP+1/False:2/False:-1/0/False/False/False/True/False/-:0:0/-:0[DexterityPower=3,OrbSlots=1,StrengthPower=3,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,ZAP+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[]/private=-/keywords=[]/baselib=-,MODDED+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Cards=2,Repeat=1,]/private=-/keywords=[]/baselib=-,ASCENDERS_BANE+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable,Eternal]/baselib=-,;D=COMPACT+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=7,]/private=-/keywords=[]/baselib=-,CLAW+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=4,Increase=3,]/private=0/keywords=[]/baselib=-,NULL+1/False:2/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,WeakPower=2,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DUALCAST+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[]/private=-/keywords=[]/baselib=-,NULL+1/False:2/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,WeakPower=2,]/private=-/keywords=[]/baselib=-,VOLTAIC+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[CalculationBase=0,CalculationExtra=1,]/private=-/keywords=[]/baselib=-,SCRAPE+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Cards=5,Damage=10,]/private=-/keywords=[]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DARKNESS+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[]/private=-/keywords=[]/baselib=-,CALAMITY+0/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,OVERCLOCK+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Cards=3,]/private=-/keywords=[]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,;C=DAZED+0/False:-1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable]/baselib=-,BOOST_AWAY+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=9,]/private=-/keywords=[]/baselib=-,GLACIER+0/False:2/False:-1/0/False/False/False/False/False/-:0:0/TAINTED:3[Block=6,]/private=-/keywords=[]/baselib=-,DRAMATIC_ENTRANCE+0/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=11,]/private=-/keywords=[Exhaust,Innate]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,REFRACT+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,Repeat=2,]/private=-/keywords=[]/baselib=-,;X=;Y=0/0/0/0;FlameHp=0;AttackStarts=0;O=3:LIGHTNING_ORB[3/8],FROST_ORB[2/5],FROST_ORB[2/5],;potions=-,FRUIT_JUICE;relicCounters=;mirrorRelics=;P=1:VITAL_SPARK_POWER=3/0[],;R=24:9732278784126350510:1527483467312739226:11907108955258091705:15566267014395232726/30:12011940524839523489:7824597022188150333:9965384602866316450:4294506631144008016/0:17015735118735881471:168868144011625509:13561557653397993652:8558884526646844463/0:16985102612926265792:7159140755368098211:8130162303791275382:2437968856334820722/0:11040195531124178909:8612873296483640560:3211171507892291592:5397022082988420565/1:8801405277096399191:4503000960841372005:14013993279999246432:7933017201885345020/0:10240603625638059345:140699506553857717:15853148962603717239:14680358120514165286/0:14902472423518160231:15376632299584183404:13667540531463169623:11823713246228561711/1:9502781314505393265:11588412538492412668:18402231417422390059:14939035636662814592"
+          },
+          {
+            "StartTurnNumber": 3,
+            "ForecastOffset": 2,
+            "state": "turn=3;hp=71;max_hp=75;block=18;energy=4;stars=0;gold=99;osty=4294967295/0/0;E0=1/INFESTED_PRISM/-/165/171/13/WHIRLWIND_MOVE;AI0=JAB_MOVE,RADIATE_MOVE,WHIRLWIND_MOVE;MS0=-/0;H=NULL+1/False:2/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,WeakPower=2,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DUALCAST+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[]/private=-/keywords=[]/baselib=-,NULL+1/False:2/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,WeakPower=2,]/private=-/keywords=[]/baselib=-,VOLTAIC+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[CalculationBase=0,CalculationExtra=1,]/private=-/keywords=[]/baselib=-,;D=SCRAPE+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Cards=5,Damage=10,]/private=-/keywords=[]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DARKNESS+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[]/private=-/keywords=[]/baselib=-,CALAMITY+0/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,OVERCLOCK+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Cards=3,]/private=-/keywords=[]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,;C=DAZED+0/False:-1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable]/baselib=-,BOOST_AWAY+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=9,]/private=-/keywords=[]/baselib=-,GLACIER+0/False:2/False:-1/0/False/False/False/False/False/-:0:0/TAINTED:3[Block=6,]/private=-/keywords=[]/baselib=-,DRAMATIC_ENTRANCE+0/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=11,]/private=-/keywords=[Exhaust,Innate]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,REFRACT+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,Repeat=2,]/private=-/keywords=[]/baselib=-,MODDED+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Cards=2,Repeat=1,]/private=-/keywords=[]/baselib=-,COMPACT+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=7,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,ZAP+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[]/private=-/keywords=[]/baselib=-,CLAW+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=4,Increase=3,]/private=0/keywords=[]/baselib=-,;X=ASCENDERS_BANE+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable,Eternal]/baselib=-,;Y=0/0/0/0;FlameHp=0;AttackStarts=0;O=3:LIGHTNING_ORB[3/8],FROST_ORB[2/5],FROST_ORB[2/5],;potions=-,FRUIT_JUICE;relicCounters=;mirrorRelics=;P=0:STRENGTH_POWER=3/0[],0:DEXTERITY_POWER=3/0[],1:VITAL_SPARK_POWER=3/0[],;R=24:9732278784126350510:1527483467312739226:11907108955258091705:15566267014395232726/30:12011940524839523489:7824597022188150333:9965384602866316450:4294506631144008016/0:17015735118735881471:168868144011625509:13561557653397993652:8558884526646844463/0:16985102612926265792:7159140755368098211:8130162303791275382:2437968856334820722/0:11040195531124178909:8612873296483640560:3211171507892291592:5397022082988420565/2:3048582830173287630:9665486006596665426:528970330670059831:2644503642800072104/0:10240603625638059345:140699506553857717:15853148962603717239:14680358120514165286/0:14902472423518160231:15376632299584183404:13667540531463169623:11823713246228561711/1:9502781314505393265:11588412538492412668:18402231417422390059:14939035636662814592"
+          },
+          {
+            "StartTurnNumber": 4,
+            "ForecastOffset": 3,
+            "state": "turn=4;hp=71;max_hp=75;block=0;energy=4;stars=0;gold=99;osty=4294967295/0/0;E0=1/INFESTED_PRISM/-/138/171/0/PULSATE_MOVE;AI0=JAB_MOVE,RADIATE_MOVE,WHIRLWIND_MOVE,PULSATE_MOVE;MS0=-/0;H=SCRAPE+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Cards=5,Damage=10,]/private=-/keywords=[]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DARKNESS+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[]/private=-/keywords=[]/baselib=-,CALAMITY+0/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,;D=OVERCLOCK+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Cards=3,]/private=-/keywords=[]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,;C=DAZED+0/False:-1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable]/baselib=-,BOOST_AWAY+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=9,]/private=-/keywords=[]/baselib=-,GLACIER+0/False:2/False:-1/0/False/False/False/False/False/-:0:0/TAINTED:3[Block=6,]/private=-/keywords=[]/baselib=-,DRAMATIC_ENTRANCE+0/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=11,]/private=-/keywords=[Exhaust,Innate]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,REFRACT+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,Repeat=2,]/private=-/keywords=[]/baselib=-,MODDED+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Cards=2,Repeat=1,]/private=-/keywords=[]/baselib=-,COMPACT+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=7,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,ZAP+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[]/private=-/keywords=[]/baselib=-,CLAW+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=4,Increase=3,]/private=0/keywords=[]/baselib=-,NULL+1/False:2/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,WeakPower=2,]/private=-/keywords=[]/baselib=-,NULL+1/False:2/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,WeakPower=2,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DUALCAST+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[]/private=-/keywords=[]/baselib=-,VOLTAIC+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[CalculationBase=0,CalculationExtra=1,]/private=-/keywords=[]/baselib=-,;X=ASCENDERS_BANE+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable,Eternal]/baselib=-,;Y=0/0/0/0;FlameHp=0;AttackStarts=0;O=3:FROST_ORB[2/5],DARK_ORB[6/12],DARK_ORB[6/12],;potions=-,FRUIT_JUICE;relicCounters=;mirrorRelics=;P=0:STRENGTH_POWER=3/0[],0:DEXTERITY_POWER=3/0[],1:VITAL_SPARK_POWER=3/0[],1:WEAK_POWER=3/0[DamageDecrease=0.75,],;R=24:9732278784126350510:1527483467312739226:11907108955258091705:15566267014395232726/30:12011940524839523489:7824597022188150333:9965384602866316450:4294506631144008016/0:17015735118735881471:168868144011625509:13561557653397993652:8558884526646844463/0:16985102612926265792:7159140755368098211:8130162303791275382:2437968856334820722/0:11040195531124178909:8612873296483640560:3211171507892291592:5397022082988420565/3:9862640964901949748:12338541400918205867:5024243878119482873:16482985873232342300/0:10240603625638059345:140699506553857717:15853148962603717239:14680358120514165286/0:14902472423518160231:15376632299584183404:13667540531463169623:11823713246228561711/1:9502781314505393265:11588412538492412668:18402231417422390059:14939035636662814592"
+          },
+          {
+            "StartTurnNumber": 5,
+            "ForecastOffset": 4,
+            "state": "turn=5;hp=71;max_hp=75;block=0;energy=4;stars=0;gold=99;osty=4294967295/0/0;E0=1/INFESTED_PRISM/-/116/171/22/JAB_MOVE;AI0=JAB_MOVE,RADIATE_MOVE,WHIRLWIND_MOVE,PULSATE_MOVE,JAB_MOVE;MS0=-/0;H=COMPACT+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:6[Block=7,]/private=-/keywords=[]/baselib=-,NULL+1/False:2/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,WeakPower=2,]/private=-/keywords=[]/baselib=-,REFRACT+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,Repeat=2,]/private=-/keywords=[]/baselib=-,DAZED+0/False:-1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,;D=DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:6[Block=5,]/private=-/keywords=[]/baselib=-,MODDED+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:6[Cards=2,Repeat=1,]/private=-/keywords=[]/baselib=-,DRAMATIC_ENTRANCE+0/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=11,]/private=-/keywords=[Exhaust,Innate]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:6[Block=5,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,NULL+1/False:2/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,WeakPower=2,]/private=-/keywords=[]/baselib=-,GLACIER+0/False:2/False:-1/0/False/False/False/False/False/-:0:0/TAINTED:6[Block=6,]/private=-/keywords=[]/baselib=-,DUALCAST+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:6[]/private=-/keywords=[]/baselib=-,CLAW+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=4,Increase=3,]/private=0/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,ZAP+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:6[]/private=-/keywords=[]/baselib=-,;C=DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:6[Block=5,]/private=-/keywords=[]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:6[Block=5,]/private=-/keywords=[]/baselib=-,VOLTAIC+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:6[CalculationBase=0,CalculationExtra=1,]/private=-/keywords=[]/baselib=-,SCRAPE+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Cards=5,Damage=10,]/private=-/keywords=[]/baselib=-,DARKNESS+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:6[]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,CALAMITY+0/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,OVERCLOCK+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:6[Cards=3,]/private=-/keywords=[]/baselib=-,BOOST_AWAY+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:6[Block=9,]/private=-/keywords=[]/baselib=-,;X=ASCENDERS_BANE+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable,Eternal]/baselib=-,;Y=1/0/0/0;FlameHp=0;AttackStarts=0;O=3:DARK_ORB[6/30],DARK_ORB[6/30],DARK_ORB[6/24],;potions=-,FRUIT_JUICE;relicCounters=;mirrorRelics=;P=0:STRENGTH_POWER=3/0[],0:DEXTERITY_POWER=3/0[],1:VITAL_SPARK_POWER=6/0[],1:WEAK_POWER=2/0[DamageDecrease=0.75,],;R=41:13926293066990549169:10871032540483225378:10504685086906920346:16885961576824788495/30:12011940524839523489:7824597022188150333:9965384602866316450:4294506631144008016/0:17015735118735881471:168868144011625509:13561557653397993652:8558884526646844463/0:16985102612926265792:7159140755368098211:8130162303791275382:2437968856334820722/0:11040195531124178909:8612873296483640560:3211171507892291592:5397022082988420565/3:9862640964901949748:12338541400918205867:5024243878119482873:16482985873232342300/0:10240603625638059345:140699506553857717:15853148962603717239:14680358120514165286/0:14902472423518160231:15376632299584183404:13667540531463169623:11823713246228561711/1:9502781314505393265:11588412538492412668:18402231417422390059:14939035636662814592"
+          }
+        ],
+        "continuations": [
+          {
+            "StartTurnNumber": 2,
+            "ForecastOffset": 1,
+            "StateText": "turn=2;hp=75;max_hp=75;block=0;energy=4;stars=0;gold=99;osty=4294967295/0/0;E0=1/INFESTED_PRISM/-/168/171/0/RADIATE_MOVE;AI0=JAB_MOVE,RADIATE_MOVE;MS0=-/0;H=BULK_UP+1/False:2/False:-1/0/False/False/False/True/False/-:0:0/-:0[DexterityPower=3,OrbSlots=1,StrengthPower=3,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,ZAP+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[]/private=-/keywords=[]/baselib=-,MODDED+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Cards=2,Repeat=1,]/private=-/keywords=[]/baselib=-,ASCENDERS_BANE+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable,Eternal]/baselib=-,;D=COMPACT+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=7,]/private=-/keywords=[]/baselib=-,CLAW+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=4,Increase=3,]/private=0/keywords=[]/baselib=-,NULL+1/False:2/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,WeakPower=2,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DUALCAST+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[]/private=-/keywords=[]/baselib=-,NULL+1/False:2/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,WeakPower=2,]/private=-/keywords=[]/baselib=-,VOLTAIC+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[CalculationBase=0,CalculationExtra=1,]/private=-/keywords=[]/baselib=-,SCRAPE+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Cards=5,Damage=10,]/private=-/keywords=[]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DARKNESS+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[]/private=-/keywords=[]/baselib=-,CALAMITY+0/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,OVERCLOCK+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Cards=3,]/private=-/keywords=[]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,;C=DAZED+0/False:-1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable]/baselib=-,BOOST_AWAY+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=9,]/private=-/keywords=[]/baselib=-,GLACIER+0/False:2/False:-1/0/False/False/False/False/False/-:0:0/TAINTED:3[Block=6,]/private=-/keywords=[]/baselib=-,DRAMATIC_ENTRANCE+0/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=11,]/private=-/keywords=[Exhaust,Innate]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,REFRACT+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,Repeat=2,]/private=-/keywords=[]/baselib=-,;X=;Y=0/0/0/0;FlameHp=0;AttackStarts=0;O=3:LIGHTNING_ORB[3/8],FROST_ORB[2/5],FROST_ORB[2/5],;potions=-,FRUIT_JUICE;relicCounters=;mirrorRelics=;P=1:VITAL_SPARK_POWER=3/0[],;R=24:9732278784126350510:1527483467312739226:11907108955258091705:15566267014395232726/30:12011940524839523489:7824597022188150333:9965384602866316450:4294506631144008016/0:17015735118735881471:168868144011625509:13561557653397993652:8558884526646844463/0:16985102612926265792:7159140755368098211:8130162303791275382:2437968856334820722/0:11040195531124178909:8612873296483640560:3211171507892291592:5397022082988420565/1:8801405277096399191:4503000960841372005:14013993279999246432:7933017201885345020/0:10240603625638059345:140699506553857717:15853148962603717239:14680358120514165286/0:14902472423518160231:15376632299584183404:13667540531463169623:11823713246228561711/1:9502781314505393265:11588412538492412668:18402231417422390059:14939035636662814592"
+          },
+          {
+            "StartTurnNumber": 3,
+            "ForecastOffset": 2,
+            "StateText": "turn=3;hp=71;max_hp=75;block=18;energy=4;stars=0;gold=99;osty=4294967295/0/0;E0=1/INFESTED_PRISM/-/165/171/13/WHIRLWIND_MOVE;AI0=JAB_MOVE,RADIATE_MOVE,WHIRLWIND_MOVE;MS0=-/0;H=NULL+1/False:2/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,WeakPower=2,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DUALCAST+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[]/private=-/keywords=[]/baselib=-,NULL+1/False:2/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,WeakPower=2,]/private=-/keywords=[]/baselib=-,VOLTAIC+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[CalculationBase=0,CalculationExtra=1,]/private=-/keywords=[]/baselib=-,;D=SCRAPE+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Cards=5,Damage=10,]/private=-/keywords=[]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DARKNESS+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[]/private=-/keywords=[]/baselib=-,CALAMITY+0/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,OVERCLOCK+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Cards=3,]/private=-/keywords=[]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,;C=DAZED+0/False:-1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable]/baselib=-,BOOST_AWAY+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=9,]/private=-/keywords=[]/baselib=-,GLACIER+0/False:2/False:-1/0/False/False/False/False/False/-:0:0/TAINTED:3[Block=6,]/private=-/keywords=[]/baselib=-,DRAMATIC_ENTRANCE+0/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=11,]/private=-/keywords=[Exhaust,Innate]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,REFRACT+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,Repeat=2,]/private=-/keywords=[]/baselib=-,MODDED+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Cards=2,Repeat=1,]/private=-/keywords=[]/baselib=-,COMPACT+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=7,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,ZAP+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[]/private=-/keywords=[]/baselib=-,CLAW+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=4,Increase=3,]/private=0/keywords=[]/baselib=-,;X=ASCENDERS_BANE+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable,Eternal]/baselib=-,;Y=0/0/0/0;FlameHp=0;AttackStarts=0;O=3:LIGHTNING_ORB[3/8],FROST_ORB[2/5],FROST_ORB[2/5],;potions=-,FRUIT_JUICE;relicCounters=;mirrorRelics=;P=0:STRENGTH_POWER=3/0[],0:DEXTERITY_POWER=3/0[],1:VITAL_SPARK_POWER=3/0[],;R=24:9732278784126350510:1527483467312739226:11907108955258091705:15566267014395232726/30:12011940524839523489:7824597022188150333:9965384602866316450:4294506631144008016/0:17015735118735881471:168868144011625509:13561557653397993652:8558884526646844463/0:16985102612926265792:7159140755368098211:8130162303791275382:2437968856334820722/0:11040195531124178909:8612873296483640560:3211171507892291592:5397022082988420565/2:3048582830173287630:9665486006596665426:528970330670059831:2644503642800072104/0:10240603625638059345:140699506553857717:15853148962603717239:14680358120514165286/0:14902472423518160231:15376632299584183404:13667540531463169623:11823713246228561711/1:9502781314505393265:11588412538492412668:18402231417422390059:14939035636662814592"
+          },
+          {
+            "StartTurnNumber": 4,
+            "ForecastOffset": 3,
+            "StateText": "turn=4;hp=71;max_hp=75;block=0;energy=4;stars=0;gold=99;osty=4294967295/0/0;E0=1/INFESTED_PRISM/-/138/171/0/PULSATE_MOVE;AI0=JAB_MOVE,RADIATE_MOVE,WHIRLWIND_MOVE,PULSATE_MOVE;MS0=-/0;H=SCRAPE+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Cards=5,Damage=10,]/private=-/keywords=[]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DARKNESS+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[]/private=-/keywords=[]/baselib=-,CALAMITY+0/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,;D=OVERCLOCK+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Cards=3,]/private=-/keywords=[]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,;C=DAZED+0/False:-1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable]/baselib=-,BOOST_AWAY+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=9,]/private=-/keywords=[]/baselib=-,GLACIER+0/False:2/False:-1/0/False/False/False/False/False/-:0:0/TAINTED:3[Block=6,]/private=-/keywords=[]/baselib=-,DRAMATIC_ENTRANCE+0/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=11,]/private=-/keywords=[Exhaust,Innate]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=5,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,REFRACT+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,Repeat=2,]/private=-/keywords=[]/baselib=-,MODDED+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Cards=2,Repeat=1,]/private=-/keywords=[]/baselib=-,COMPACT+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[Block=7,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,ZAP+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[]/private=-/keywords=[]/baselib=-,CLAW+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=4,Increase=3,]/private=0/keywords=[]/baselib=-,NULL+1/False:2/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,WeakPower=2,]/private=-/keywords=[]/baselib=-,NULL+1/False:2/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,WeakPower=2,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DUALCAST+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[]/private=-/keywords=[]/baselib=-,VOLTAIC+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:3[CalculationBase=0,CalculationExtra=1,]/private=-/keywords=[]/baselib=-,;X=ASCENDERS_BANE+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable,Eternal]/baselib=-,;Y=0/0/0/0;FlameHp=0;AttackStarts=0;O=3:FROST_ORB[2/5],DARK_ORB[6/12],DARK_ORB[6/12],;potions=-,FRUIT_JUICE;relicCounters=;mirrorRelics=;P=0:STRENGTH_POWER=3/0[],0:DEXTERITY_POWER=3/0[],1:VITAL_SPARK_POWER=3/0[],1:WEAK_POWER=3/0[DamageDecrease=0.75,],;R=24:9732278784126350510:1527483467312739226:11907108955258091705:15566267014395232726/30:12011940524839523489:7824597022188150333:9965384602866316450:4294506631144008016/0:17015735118735881471:168868144011625509:13561557653397993652:8558884526646844463/0:16985102612926265792:7159140755368098211:8130162303791275382:2437968856334820722/0:11040195531124178909:8612873296483640560:3211171507892291592:5397022082988420565/3:9862640964901949748:12338541400918205867:5024243878119482873:16482985873232342300/0:10240603625638059345:140699506553857717:15853148962603717239:14680358120514165286/0:14902472423518160231:15376632299584183404:13667540531463169623:11823713246228561711/1:9502781314505393265:11588412538492412668:18402231417422390059:14939035636662814592"
+          },
+          {
+            "StartTurnNumber": 5,
+            "ForecastOffset": 4,
+            "StateText": "turn=5;hp=71;max_hp=75;block=0;energy=4;stars=0;gold=99;osty=4294967295/0/0;E0=1/INFESTED_PRISM/-/116/171/22/JAB_MOVE;AI0=JAB_MOVE,RADIATE_MOVE,WHIRLWIND_MOVE,PULSATE_MOVE,JAB_MOVE;MS0=-/0;H=COMPACT+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:6[Block=7,]/private=-/keywords=[]/baselib=-,NULL+1/False:2/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,WeakPower=2,]/private=-/keywords=[]/baselib=-,REFRACT+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,Repeat=2,]/private=-/keywords=[]/baselib=-,DAZED+0/False:-1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,;D=DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:6[Block=5,]/private=-/keywords=[]/baselib=-,MODDED+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:6[Cards=2,Repeat=1,]/private=-/keywords=[]/baselib=-,DRAMATIC_ENTRANCE+0/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=11,]/private=-/keywords=[Exhaust,Innate]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:6[Block=5,]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,NULL+1/False:2/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=13,WeakPower=2,]/private=-/keywords=[]/baselib=-,GLACIER+0/False:2/False:-1/0/False/False/False/False/False/-:0:0/TAINTED:6[Block=6,]/private=-/keywords=[]/baselib=-,DUALCAST+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:6[]/private=-/keywords=[]/baselib=-,CLAW+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=4,Increase=3,]/private=0/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,ZAP+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:6[]/private=-/keywords=[]/baselib=-,;C=DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:6[Block=5,]/private=-/keywords=[]/baselib=-,DEFEND_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:6[Block=5,]/private=-/keywords=[]/baselib=-,VOLTAIC+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:6[CalculationBase=0,CalculationExtra=1,]/private=-/keywords=[]/baselib=-,SCRAPE+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Cards=5,Damage=10,]/private=-/keywords=[]/baselib=-,DARKNESS+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:6[]/private=-/keywords=[]/baselib=-,STRIKE_DEFECT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,CALAMITY+0/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,OVERCLOCK+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:6[Cards=3,]/private=-/keywords=[]/baselib=-,BOOST_AWAY+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/TAINTED:6[Block=9,]/private=-/keywords=[]/baselib=-,;X=ASCENDERS_BANE+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable,Eternal]/baselib=-,;Y=1/0/0/0;FlameHp=0;AttackStarts=0;O=3:DARK_ORB[6/30],DARK_ORB[6/30],DARK_ORB[6/24],;potions=-,FRUIT_JUICE;relicCounters=;mirrorRelics=;P=0:STRENGTH_POWER=3/0[],0:DEXTERITY_POWER=3/0[],1:VITAL_SPARK_POWER=6/0[],1:WEAK_POWER=2/0[DamageDecrease=0.75,],;R=41:13926293066990549169:10871032540483225378:10504685086906920346:16885961576824788495/30:12011940524839523489:7824597022188150333:9965384602866316450:4294506631144008016/0:17015735118735881471:168868144011625509:13561557653397993652:8558884526646844463/0:16985102612926265792:7159140755368098211:8130162303791275382:2437968856334820722/0:11040195531124178909:8612873296483640560:3211171507892291592:5397022082988420565/3:9862640964901949748:12338541400918205867:5024243878119482873:16482985873232342300/0:10240603625638059345:140699506553857717:15853148962603717239:14680358120514165286/0:14902472423518160231:15376632299584183404:13667540531463169623:11823713246228561711/1:9502781314505393265:11588412538492412668:18402231417422390059:14939035636662814592"
+          }
+        ],
+        "patchLog": [
+          "CombatSolver.CombatStateTrackerIsolationPatch: 已装 1 个目标",
+          "CombatSolver.PowerDynamicVarMaterializationGuardPatch: 已装 1 个目标",
+          "CombatSolver.ModelDbGetIdCachePatch: 已装 1 个目标",
+          "CombatSolver.BaseLibCloneConcurrencyPatch: 已装 1 个目标",
+          "CombatSolver.BaseLibDynamicVarCloneMetadataPatch: 已装 0 个目标",
+          "CombatSolver.RitsuDynamicVarCloneMetadataPatch: 已装 1 个目标",
+          "CombatSolver.SimulationCardPileLookupPatch: 已装 1 个目标",
+          "CombatSolver.RitsuFreePlayVoidIsolationPatch: 已装 7 个目标",
+          "CombatSolver.RitsuFreePlayBoolIsolationPatch: 已装 4 个目标",
+          "CombatSolver.RitsuFreePlayResolveIsolationPatch: 已装 1 个目标",
+          "CombatSolver.RitsuBaseLibTargetTypeLookupPatch: 缺少类型，跳过",
+          "CombatSolver.RitsuBaseLibTargetTypeResolutionPatch: 缺少类型，跳过",
+          "CombatSolver.RitsuBaseLibTargetTypeEvidencePatch: 缺少类型，跳过",
+          "CombatSolver.PowerAmountComparisonPatch: 已装 1 个目标"
+        ]
+      },
+      "solverMetrics": {
+        "GcLifecycle": {
+          "ForcedCollections": 0,
+          "NoGcStartAttempts": 0,
+          "NoGcStarts": 0,
+          "NoGcEndAttempts": 0,
+          "NoGcEnds": 0,
+          "NoGcRestarts": 0,
+          "NoGcLosses": 0
+        },
+        "Boundary": 8,
+        "SelectedExpanded": 6000,
+        "SelectedTransitions": 26905,
+        "SelectedChoiceBranches": 3318,
+        "RoundReplayPrefixCaptures": 0,
+        "RoundReplayPrefixReuses": 0,
+        "ExecutionChoiceCaptures": 0,
+        "ExecutionChoiceReuses": 0,
+        "CardChoicePrefixAttempts": 38,
+        "CardChoicePrefixCaptures": 0,
+        "CardChoicePrefixReuses": 0,
+        "CardChoicePrefixFallbacks": 0,
+        "PotionChoicePrefixForks": 342,
+        "PotionChoicePrefixCaptures": 342,
+        "PotionChoicePrefixReuses": 1710,
+        "PotionChoicePrefixFallbacks": 0,
+        "ChoiceReplayAttempts": 3318,
+        "ChoiceReplayBudgetExhaustions": 0,
+        "ChoiceBranchesDroppedByBudget": 0,
+        "CycleReplayAttempts": 0,
+        "CycleReplayActions": 0,
+        "TotalCycleReplayActions": 0,
+        "CycleReplayVictories": 0,
+        "CycleReplayContinuations": 0,
+        "CycleStoppedUnproductive": 0,
+        "CycleStoppedRepetitionBudget": 0,
+        "CycleStoppedFamilyBudget": 0,
+        "CycleStoppedExitBudget": 0,
+        "TurnLayerBudgetStops": 0,
+        "TurnLayerTimeBudgetStops": 0,
+        "TurnLayerNodeBudgetStops": 0,
+        "CycleRegionsDetected": 0,
+        "CycleRegionCandidatesConsidered": 0,
+        "CycleRegionCandidatesAdmitted": 0,
+        "CycleRegionCandidatesDropped": 0,
+        "CycleRegionProgressEpochs": 0,
+        "CycleRegionProbeCandidatesAdmitted": 0,
+        "CycleRegionProgressCandidatesAdmitted": 0,
+        "CycleRegionMaxActionFamilies": 0,
+        "OrderedMutationCandidatesAdmitted": 0,
+        "OrderedMutationLeaseExpiredBudget": 0,
+        "OrderedMutationOrdinaryFallbacks": 0,
+        "OrderedMutationColdAtomicCommitted": 0,
+        "OrderedMutationColdAtomicRejected": 0,
+        "TotalExpanded": 12000,
+        "TotalTransitions": 47382,
+        "TotalChoiceBranches": 3318,
+        "ElapsedMilliseconds": 4075.9313,
+        "TotalElapsedMilliseconds": 12170.3174,
+        "WorkerAllocatedBytes": 1113229200,
+        "TotalWorkerAllocatedBytes": 2054423360,
+        "TotalGen0Collections": 265,
+        "TotalGen1Collections": 118,
+        "TotalGen2Collections": 20,
+        "TotalGcPauseMilliseconds": 1602.084,
+        "MaxGcPauseMilliseconds": 25.489,
+        "MaxParallelConcurrency": 0,
+        "ParallelActionReplayWaves": 0,
+        "ParallelActionReplayWorkItems": 0,
+        "MaxParallelActionReplayConcurrency": 0,
+        "DeferredRoundChoiceActions": 0,
+        "DeferredRoundChoiceLayerWidthTotal": 0,
+        "MaxDeferredRoundChoiceLayerWidth": 0,
+        "DeferredRoundChoiceFiniteQuotaFallbacks": 0,
+        "DeferredRoundChoiceFinitePrimaryLayers": 0,
+        "DeferredRoundChoiceFinitePendingFallbacks": 0,
+        "ParallelRoundChoiceReplayWaves": 0,
+        "ParallelRoundChoiceReplayWorkItems": 0,
+        "MaxParallelRoundChoiceReplayConcurrency": 0,
+        "SearchedTurns": 5,
+        "ShufflesCrossed": 1,
+        "Score": 10002009979,
+        "ProjectedBattleHpLost": 4,
+        "PotionCount": 1,
+        "PotionUses": [
+          {
+            "Id": "SKILL_POTION",
+            "Title": "SKILL_POTION.title",
+            "Turn": 1,
+            "Slot": 0
+          }
+        ],
+        "OnlyDeathRoutes": false,
+        "FinalHp": 71,
+        "FinalEnemyHp": 0,
+        "CombatEndedTurn": 5,
+        "CapturedAtElapsedMilliseconds": 12683.2075,
+        "FirstRoutePublishedMilliseconds": 8112.7668,
+        "PortfolioMembers": [
+          {
+            "BeamWidth": 90,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": true,
+            "NodeBudget": 6000,
+            "Ran": true,
+            "Selected": true,
+            "Compared": true,
+            "ExpandedNodes": 6000,
+            "TransitionCount": 20477,
+            "Termination": "NodeLimit",
+            "Terminal": true,
+            "Won": true,
+            "BattleHpLost": 13,
+            "PotionCount": 0,
+            "ElapsedMilliseconds": 8097,
+            "AllocatedBytes": 947591848,
+            "ManagedHeapBytesAfter": 57711144,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false
+          },
+          {
+            "BeamWidth": 60,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 0,
+            "Ran": false,
+            "Selected": false,
+            "Compared": false,
+            "SkippedReason": "BaselineNotFrontierExhausted",
+            "ExpandedNodes": 0,
+            "TransitionCount": 0,
+            "ElapsedMilliseconds": 0,
+            "AllocatedBytes": 0,
+            "ManagedHeapBytesAfter": 0,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false
+          },
+          {
+            "BeamWidth": 135,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 0,
+            "Ran": false,
+            "Selected": false,
+            "Compared": false,
+            "SkippedReason": "BaselineNotFrontierExhausted",
+            "ExpandedNodes": 0,
+            "TransitionCount": 0,
+            "ElapsedMilliseconds": 0,
+            "AllocatedBytes": 0,
+            "ManagedHeapBytesAfter": 0,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false
+          },
+          {
+            "BeamWidth": 90,
+            "SecondRankBand": true,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 0,
+            "Ran": false,
+            "Selected": false,
+            "Compared": false,
+            "SkippedReason": "BaselineNotFrontierExhausted",
+            "ExpandedNodes": 0,
+            "TransitionCount": 0,
+            "ElapsedMilliseconds": 0,
+            "AllocatedBytes": 0,
+            "ManagedHeapBytesAfter": 0,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false
+          },
+          {
+            "BeamWidth": 90,
+            "SecondRankBand": false,
+            "BaseScoreOnly": true,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 0,
+            "Ran": false,
+            "Selected": false,
+            "Compared": false,
+            "SkippedReason": "BaselineNotFrontierExhausted",
+            "ExpandedNodes": 0,
+            "TransitionCount": 0,
+            "ElapsedMilliseconds": 0,
+            "AllocatedBytes": 0,
+            "ManagedHeapBytesAfter": 0,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false
+          },
+          {
+            "BeamWidth": 36,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 0,
+            "Ran": false,
+            "Selected": false,
+            "Compared": false,
+            "SkippedReason": "BaselineNotFrontierExhausted",
+            "ExpandedNodes": 0,
+            "TransitionCount": 0,
+            "ElapsedMilliseconds": 0,
+            "AllocatedBytes": 0,
+            "ManagedHeapBytesAfter": 0,
+            "OffensiveRefinement": true,
+            "BoundedRefinement": true
+          }
+        ],
+        "PowerRouteMembers": [],
+        "PeakManagedHeapBytes": 57711144,
+        "ManagedLiveBytes": 78744640,
+        "ManagedHeapBytes": 121445024,
+        "ManagedFragmentedBytes": 46430928,
+        "WorkingSetBytes": 370118656,
+        "PrivateMemoryBytes": 298364928,
+        "ConfiguredNoGcRegionEnabled": false,
+        "ConfiguredNoGcRegionBudgetBytes": 1000000000,
+        "GcLatencyMode": 1,
+        "NoGcRegionActive": false,
+        "NoGcRegionBudgetBytes": 0,
+        "NoGcRegionRolloverCount": 0
+      },
+      "totalAllocatedBytes": 2297765832,
+      "searchWallSecondsWithProfiler": 12.3899547
+    },
+    {
+      "scenario": "dev-08-regent-boss",
+      "scenarioSpec": {
+        "CharacterId": "REGENT",
+        "EncounterId": "THE_INSATIABLE_BOSS",
+        "Seed": "NOVELTY-DEV-20260915-08",
+        "Ascension": 10,
+        "ActIndexForTest": 1
+      },
+      "resolvedScenario": {
+        "SchemaVersion": 1,
+        "Seed": "NOVELTY-DEV-20260915-08",
+        "CharacterId": "REGENT",
+        "Ascension": 10,
+        "ActIndex": 1,
+        "EncounterId": "THE_INSATIABLE_BOSS",
+        "EncounterKind": "Boss",
+        "IncludeStartingDeck": true,
+        "IncludeStartingRelics": true,
+        "IncludeAscendersBane": true,
+        "ApplyRelicObtainEffects": false,
+        "CharacterCards": {
+          "Count": 12,
+          "Ids": [
+            "LUNAR_BLAST",
+            "WROUGHT_IN_WAR",
+            "ALIGNMENT",
+            "QUASAR",
+            "GATHER_LIGHT",
+            "ORBIT",
+            "LUNAR_BLAST",
+            "COLLISION_COURSE",
+            "FURNACE",
+            "BOMBARDMENT",
+            "SEVEN_STARS",
+            "CRESCENT_SPEAR"
+          ],
+          "UpgradeLevels": 1
+        },
+        "ColorlessCards": {
+          "Count": 2,
+          "Ids": [
+            "CALAMITY",
+            "PREP_TIME"
+          ],
+          "UpgradeLevels": 0
+        },
+        "Relics": {
+          "Count": 3,
+          "Ids": [
+            "MERCURY_HOURGLASS",
+            "VEXING_PUZZLEBOX",
+            "MEMBERSHIP_CARD"
+          ],
+          "UpgradeLevels": 0
+        },
+        "Potions": {
+          "Count": 2,
+          "Ids": [
+            "SPEED_POTION",
+            "SWIFT_POTION"
+          ],
+          "UpgradeLevels": 0
+        },
+        "Mode": "Search",
+        "FixedSearchBudget": true
+      },
+      "catalogFingerprint": "6151506F3CE14090DF5B3EACAE585F6A9B72798715CBBAC9504463383E78D6A4",
+      "confirmedSearchAllocationSamples": {
+        "sampleCount": 70109,
+        "estimatedBytes": 7503374896,
+        "samplesWithoutStack": 0,
+        "samplesWithUnresolvedOnlyStack": 0,
+        "samplesWithSomeUnresolvedFrames": 33,
+        "firstSampleMs": 1977.224187,
+        "lastSampleMs": 30930.802828
+      },
+      "topAllocationTypes": [
+        {
+          "key": "CombatSolver.Engine.Common.PredictedCard",
+          "totals": {
+            "sampleCount": 3158,
+            "estimatedBytes": 336525944,
+            "samplesWithoutStack": 0,
+            "samplesWithUnresolvedOnlyStack": 0,
+            "samplesWithSomeUnresolvedFrames": 0,
+            "firstSampleMs": 2307.251365,
+            "lastSampleMs": 30918.56479
+          }
+        },
+        {
+          "key": "CombatSolver.Engine.Common.PredictedCard[]",
+          "totals": {
+            "sampleCount": 2443,
+            "estimatedBytes": 260270256,
+            "samplesWithoutStack": 0,
+            "samplesWithUnresolvedOnlyStack": 0,
+            "samplesWithSomeUnresolvedFrames": 0,
+            "firstSampleMs": 2301.85088,
+            "lastSampleMs": 30927.548728
+          }
+        },
+        {
+          "key": "System.Int32[]",
+          "totals": {
+            "sampleCount": 2328,
+            "estimatedBytes": 248812448,
+            "samplesWithoutStack": 0,
+            "samplesWithUnresolvedOnlyStack": 0,
+            "samplesWithSomeUnresolvedFrames": 0,
+            "firstSampleMs": 2354.601807,
+            "lastSampleMs": 30916.861768
+          }
+        },
+        {
+          "key": "CombatSolver.SimulatedCombatState",
+          "totals": {
+            "sampleCount": 2105,
+            "estimatedBytes": 224286160,
+            "samplesWithoutStack": 0,
+            "samplesWithUnresolvedOnlyStack": 0,
+            "samplesWithSomeUnresolvedFrames": 0,
+            "firstSampleMs": 2014.772426,
+            "lastSampleMs": 30919.187546
+          }
+        },
+        {
+          "key": "Entry[MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Int32][]",
+          "totals": {
+            "sampleCount": 1264,
+            "estimatedBytes": 134688152,
+            "samplesWithoutStack": 0,
+            "samplesWithUnresolvedOnlyStack": 0,
+            "samplesWithSomeUnresolvedFrames": 0,
+            "firstSampleMs": 2281.719823,
+            "lastSampleMs": 30930.085761
+          }
+        },
+        {
+          "key": "MegaCrit.Sts2.Core.Models.AbstractModel[]",
+          "totals": {
+            "sampleCount": 1212,
+            "estimatedBytes": 129137232,
+            "samplesWithoutStack": 0,
+            "samplesWithUnresolvedOnlyStack": 0,
+            "samplesWithSomeUnresolvedFrames": 0,
+            "firstSampleMs": 2330.203773,
+            "lastSampleMs": 30928.225969
+          }
+        },
+        {
+          "key": "Enumerator[MegaCrit.Sts2.Core.Entities.Creatures.Creature]",
+          "totals": {
+            "sampleCount": 1196,
+            "estimatedBytes": 127446840,
+            "samplesWithoutStack": 0,
+            "samplesWithUnresolvedOnlyStack": 0,
+            "samplesWithSomeUnresolvedFrames": 0,
+            "firstSampleMs": 2580.150037,
+            "lastSampleMs": 30927.995045
+          }
+        },
+        {
+          "key": "System.Collections.Generic.Dictionary`2[System.String,MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar]",
+          "totals": {
+            "sampleCount": 1193,
+            "estimatedBytes": 127107456,
+            "samplesWithoutStack": 0,
+            "samplesWithUnresolvedOnlyStack": 0,
+            "samplesWithSomeUnresolvedFrames": 0,
+            "firstSampleMs": 2313.648676,
+            "lastSampleMs": 30928.90865
+          }
+        },
+        {
+          "key": "CombatSolver.SimulationSnapshot",
+          "totals": {
+            "sampleCount": 1137,
+            "estimatedBytes": 121156552,
+            "samplesWithoutStack": 0,
+            "samplesWithUnresolvedOnlyStack": 0,
+            "samplesWithSomeUnresolvedFrames": 0,
+            "firstSampleMs": 2426.500751,
+            "lastSampleMs": 30920.654634
+          }
+        },
+        {
+          "key": "System.Collections.Generic.Dictionary`2[MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Int32]",
+          "totals": {
+            "sampleCount": 1041,
+            "estimatedBytes": 110955664,
+            "samplesWithoutStack": 0,
+            "samplesWithUnresolvedOnlyStack": 0,
+            "samplesWithSomeUnresolvedFrames": 0,
+            "firstSampleMs": 2412.95663,
+            "lastSampleMs": 30876.619003
+          }
+        }
+      ],
+      "timeBoundaryObserved": false,
+      "search": {
+        "rootContinuationStamp": "turn=1;hp=75;max_hp=75;block=0;energy=3;stars=3;gold=99;osty=4294967295/0/0;E0=1/THE_INSATIABLE/-/338/341/0/LIQUIFY_GROUND_MOVE;AI0=LIQUIFY_GROUND_MOVE;MS0=-/0;H=PREP_TIME+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[PrepTimePower=4,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,CALAMITY+0/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,CRESCENT_SPEAR+1/False:1/False:1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=8,ExtraDamage=3,]/private=-/keywords=[]/baselib=-,FURNACE+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Forge=7,]/private=-/keywords=[]/baselib=-,GAMMA_BLAST+0/False:0/False:0/0/False/False/False/False/False/-:0:0/-:0[Damage=13,VulnerablePower=2,WeakPower=2,]/private=-/keywords=[]/baselib=-,;D=DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,ORBIT+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Energy=1,]/private=-/keywords=[]/baselib=-,LUNAR_BLAST+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=5,]/private=-/keywords=[]/baselib=-,SEVEN_STARS+1/False:1/False:7/0/False/False/False/True/False/-:0:0/-:0[Damage=7,Repeat=7,]/private=-/keywords=[]/baselib=-,GATHER_LIGHT+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=11,Stars=1,]/private=-/keywords=[]/baselib=-,ALIGNMENT+1/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[Energy=3,]/private=-/keywords=[]/baselib=-,WROUGHT_IN_WAR+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=9,Forge=9,]/private=-/keywords=[]/baselib=-,COLLISION_COURSE+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=14,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,BOMBARDMENT+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=24,]/private=-/keywords=[Exhaust]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,ASCENDERS_BANE+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable,Eternal]/baselib=-,VENERATE+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Stars=2,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,LUNAR_BLAST+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=5,]/private=-/keywords=[]/baselib=-,FALLING_STAR+0/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[Damage=8,VulnerablePower=1,WeakPower=1,]/private=-/keywords=[]/baselib=-,QUASAR+1/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,;C=;X=;Y=0/0/0/0;FlameHp=0;AttackStarts=0;O=0:;potions=SPEED_POTION,SWIFT_POTION;relicCounters=;mirrorRelics=;P=;R=24:9420374378701485692:9206988123121368511:14754699896547605066:6177674176025763088/69:11864832747616720509:17235953277181755305:3416964578550537591:5596557824719002810/0:11848316946763885436:5773110402788844862:13642205202901595897:5188696475593422947/0:10679014443244995598:15933821712654041669:11445112692528410812:9526875029171297401/0:3100084270757477398:7451888224158509816:13928587929682209196:18157471083230485094/0:8361996736635492460:11812422421357860121:6595862494149223655:3970073127410580071/0:3680621047337301175:10208884380180326695:16124445734951788469:3680360469343519533/0:7529226573572490683:11453207603611890849:12534725515091324589:11365319933335360292/1:15855191837650640315:7203894842072284787:16039207050407957355:10752462842078502501",
+        "rootLiveStamp": "turn=1;hp=75;max_hp=75;block=0;energy=3;stars=3;gold=99;osty=4294967295/0/0;E0=1/THE_INSATIABLE/-/338/341/0/LIQUIFY_GROUND_MOVE;AI0=LIQUIFY_GROUND_MOVE;MS0=-/0;H=PREP_TIME+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[PrepTimePower=4,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,CALAMITY+0/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,CRESCENT_SPEAR+1/False:1/False:1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=8,ExtraDamage=3,]/private=-/keywords=[]/baselib=-,FURNACE+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Forge=7,]/private=-/keywords=[]/baselib=-,GAMMA_BLAST+0/False:0/False:0/0/False/False/False/False/False/-:0:0/-:0[Damage=13,VulnerablePower=2,WeakPower=2,]/private=-/keywords=[]/baselib=-,;D=DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,ORBIT+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Energy=1,]/private=-/keywords=[]/baselib=-,LUNAR_BLAST+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=5,]/private=-/keywords=[]/baselib=-,SEVEN_STARS+1/False:1/False:7/0/False/False/False/True/False/-:0:0/-:0[Damage=7,Repeat=7,]/private=-/keywords=[]/baselib=-,GATHER_LIGHT+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=11,Stars=1,]/private=-/keywords=[]/baselib=-,ALIGNMENT+1/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[Energy=3,]/private=-/keywords=[]/baselib=-,WROUGHT_IN_WAR+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=9,Forge=9,]/private=-/keywords=[]/baselib=-,COLLISION_COURSE+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=14,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,BOMBARDMENT+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=24,]/private=-/keywords=[Exhaust]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,ASCENDERS_BANE+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable,Eternal]/baselib=-,VENERATE+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Stars=2,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,LUNAR_BLAST+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=5,]/private=-/keywords=[]/baselib=-,FALLING_STAR+0/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[Damage=8,VulnerablePower=1,WeakPower=1,]/private=-/keywords=[]/baselib=-,QUASAR+1/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,;C=;X=;Y=0/0/0/0;FlameHp=0;AttackStarts=0;O=0:;potions=SPEED_POTION,SWIFT_POTION;relicCounters=;mirrorRelics=;P=;R=24:9420374378701485692:9206988123121368511:14754699896547605066:6177674176025763088/69:11864832747616720509:17235953277181755305:3416964578550537591:5596557824719002810/0:11848316946763885436:5773110402788844862:13642205202901595897:5188696475593422947/0:10679014443244995598:15933821712654041669:11445112692528410812:9526875029171297401/0:3100084270757477398:7451888224158509816:13928587929682209196:18157471083230485094/0:8361996736635492460:11812422421357860121:6595862494149223655:3970073127410580071/0:3680621047337301175:10208884380180326695:16124445734951788469:3680360469343519533/0:7529226573572490683:11453207603611890849:12534725515091324589:11365319933335360292/1:15855191837650640315:7203894842072284787:16039207050407957355:10752462842078502501",
+        "rootCapture": {
+          "cards": 26,
+          "powers": 0,
+          "listeners": 36,
+          "run_mod_subscribers": 0,
+          "combat_mod_subscribers": 0,
+          "base_lib_card_modifiers": false
+        },
+        "solverMetrics": {
+          "boundary": "None",
+          "selectedExpanded": 5170,
+          "selectedTransitions": 29939,
+          "selectedChoiceBranches": 1625,
+          "totalExpanded": 41692,
+          "totalTransitions": 192475,
+          "totalChoiceBranches": 4166,
+          "choiceReplayAttempts": 1625,
+          "choiceReplayBudgetExhaustions": 0,
+          "choiceBranchesDroppedByBudget": 0,
+          "roundReplayPrefixCaptures": 0,
+          "dominatedActionsPruned": 1,
+          "topQueueActionsDropped": 0,
+          "actionAdmissionRepresentativesProtected": 0,
+          "duplicateCardBranchesPruned": 1681,
+          "shuffleBranchesPruned": 0,
+          "soldHpBranchesPruned": 0,
+          "replayCount": 7,
+          "forkCount": 29939,
+          "reusedNodeSnapshots": 5710,
+          "transpositionBranchesPruned": 1180,
+          "repeatableNoProgressBranchesPruned": 0,
+          "standPatProbes": 5500,
+          "transitionCacheHits": 0,
+          "roundReplayPrefixReuses": 0,
+          "cycleRegionsDetected": 0,
+          "cycleRegionCandidatesConsidered": 0,
+          "cycleRegionCandidatesAdmitted": 0,
+          "cycleRegionCandidatesDropped": 0,
+          "cycleRegionProgressEpochs": 0,
+          "cycleRegionProbeCandidatesAdmitted": 0,
+          "cycleRegionProgressCandidatesAdmitted": 0,
+          "cycleRegionMaxActionFamilies": 0,
+          "orderedMutationCandidatesAdmitted": 202,
+          "orderedMutationLeaseExpiredBudget": 5,
+          "orderedMutationOrdinaryFallbacks": 1,
+          "orderedMutationColdAtomicCommitted": 10,
+          "orderedMutationColdAtomicRejected": 2,
+          "deferredRoundChoiceActions": 0,
+          "deferredRoundChoiceLayerWidthTotal": 0,
+          "maxDeferredRoundChoiceLayerWidth": 0,
+          "deferredRoundChoiceFiniteQuotaFallbacks": 0,
+          "deferredRoundChoiceFinitePrimaryLayers": 0,
+          "deferredRoundChoiceFinitePendingFallbacks": 0,
+          "parallelActionReplayWaves": 0,
+          "parallelActionReplayWorkItems": 0,
+          "maxParallelActionReplayConcurrency": 0,
+          "parallelRoundChoiceReplayWaves": 0,
+          "parallelRoundChoiceReplayWorkItems": 0,
+          "maxParallelRoundChoiceReplayConcurrency": 0,
+          "maxParallelConcurrency": 0,
+          "searchedTurns": 6,
+          "shufflesCrossed": 1,
+          "score": 9999753967,
+          "projectedBattleHpLost": 40,
+          "potionCount": 0,
+          "onlyDeathRoutes": false,
+          "finalHp": 35,
+          "finalEnemyHp": 0,
+          "combatEndedTurn": 6,
+          "transpositionCount": 22375,
+          "expandedTranspositionCount": 5008,
+          "transpositionLimitBypasses": 0,
+          "standPatCacheCount": 5500,
+          "threatProjectionCacheCount": 24664,
+          "coverageCacheCount": 1089
+        },
+        "planActions": [
+          "1:PlayCard:CALAMITY:target=-:key=CALAMITY+0|energy=False:3|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=|-|:0|baselib=-",
+          "1:PlayCard:GAMMA_BLAST:target=1:key=GAMMA_BLAST+0|energy=False:0|stars=False:0|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=Damage=13;VulnerablePower=2;WeakPower=2|-|:0|baselib=-",
+          "1:EndTurn::target=-:key=",
+          "2:PlayCard:ORBIT:target=-:key=ORBIT+1|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Energy=1|-|:0|baselib=-",
+          "2:PlayCard:FRANTIC_ESCAPE:target=-:key=FRANTIC_ESCAPE+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=|-|:0|baselib=-",
+          "2:PlayCard:DEFEND_REGENT:target=-:key=DEFEND_REGENT+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Block=5|-|:0|baselib=-",
+          "2:PlayCard:LUNAR_BLAST:target=1:key=LUNAR_BLAST+1|energy=False:0|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=CalculationBase=0;CalculationExtra=1;Damage=5|-|:0|baselib=-",
+          "2:EndTurn::target=-:key=",
+          "3:PlayCard:WROUGHT_IN_WAR:target=1:key=WROUGHT_IN_WAR+1|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Damage=9;Forge=9|-|:0|baselib=-",
+          "3:PlayCard:GATHER_LIGHT:target=-:key=GATHER_LIGHT+1|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Block=11;Stars=1|-|:0|baselib=-",
+          "3:PlayCard:COLLISION_COURSE:target=1:key=COLLISION_COURSE+1|energy=False:0|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Damage=14|-|:0|baselib=-",
+          "3:PlayCard:HEGEMONY:target=1:key=HEGEMONY+0|energy=False:2|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=Damage=15;Energy=2|-|:0|baselib=-",
+          "3:EndTurn::target=-:key=",
+          "4:PlayCard:VENERATE:target=-:key=VENERATE+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Stars=2|-|:0|baselib=-",
+          "4:PlayCard:BOMBARDMENT:target=1:key=BOMBARDMENT+1|energy=False:3|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=Exhaust|vars=Damage=24|-|:0|baselib=-",
+          "4:PlayCard:STRIKE_REGENT:target=1:key=STRIKE_REGENT+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Damage=6|-|:0|baselib=-",
+          "4:PlayCard:RADIATE:target=-:key=RADIATE+0|energy=False:0|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=CalculationBase=0;CalculationExtra=1;Damage=3;Stars=1|-|:0|baselib=-",
+          "4:PlayCard:KINGLY_PUNCH:target=1:key=KINGLY_PUNCH+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=Damage=8;Increase=4|-|:0|baselib=-",
+          "4:PlayCard:CRASH_LANDING:target=-:key=CRASH_LANDING+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=Damage=21|-|:0|baselib=-",
+          "4:EndTurn::target=-:key=",
+          "5:PlayCard:FALLING_STAR:target=1:key=FALLING_STAR+0|energy=False:0|stars=False:2|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Damage=8;VulnerablePower=1;WeakPower=1|-|:0|baselib=-",
+          "5:PlayCard:DEVASTATE:target=1:key=DEVASTATE+0|energy=False:1|stars=False:4|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=Damage=35|-|:0|baselib=-",
+          "5:PlayCard:DEFEND_REGENT:target=-:key=DEFEND_REGENT+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Block=5|-|:0|baselib=-",
+          "5:PlayCard:LUNAR_BLAST:target=1:key=LUNAR_BLAST+1|energy=False:0|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=CalculationBase=0;CalculationExtra=1;Damage=5|-|:0|baselib=-",
+          "5:PlayCard:STRIKE_REGENT:target=1:key=STRIKE_REGENT+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Damage=6|-|:0|baselib=-",
+          "5:PlayCard:SHINING_STRIKE:target=1:key=SHINING_STRIKE+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=Damage=8;Stars=2|-|:0|baselib=-",
+          "5:EndTurn::target=-:key=",
+          "6:PlayCard:SHINING_STRIKE:target=1:key=SHINING_STRIKE+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=Damage=8;Stars=2|-|:0|baselib=-",
+          "6:PlayCard:ASTRAL_PULSE:target=-:key=ASTRAL_PULSE+0|energy=False:0|stars=False:3|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=Damage=6|-|:0|baselib=-",
+          "6:PlayCard:CRESCENT_SPEAR:target=1:key=CRESCENT_SPEAR+0|energy=False:1|stars=False:1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=CalculationBase=8;ExtraDamage=2|-|:0|baselib=-",
+          "6:PlayCard:DEFEND_REGENT:target=-:key=DEFEND_REGENT+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Block=5|-|:0|baselib=-",
+          "6:PlayCard:DEBRIS:target=-:key=DEBRIS+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=Exhaust|vars=|-|:0|baselib=-",
+          "6:PlayCard:RADIATE:target=-:key=RADIATE+0|energy=False:0|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=CalculationBase=0;CalculationExtra=1;Damage=3;Stars=1|-|:0|baselib=-"
+        ],
+        "cachedContinuations": [
+          {
+            "StartTurnNumber": 2,
+            "ForecastOffset": 1,
+            "state": "turn=2;hp=75;max_hp=75;block=0;energy=3;stars=3;gold=99;osty=4294967295/0/0;E0=1/THE_INSATIABLE/-/322/341/0/THRASH_MOVE;AI0=LIQUIFY_GROUND_MOVE,THRASH_MOVE;MS0=-/0;H=DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,ORBIT+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Energy=1,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,LUNAR_BLAST+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=5,]/private=-/keywords=[]/baselib=-,SEVEN_STARS+1/False:1/False:7/0/False/False/False/True/False/-:0:0/-:0[Damage=7,Repeat=7,]/private=-/keywords=[]/baselib=-,;D=GATHER_LIGHT+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=11,Stars=1,]/private=-/keywords=[]/baselib=-,ALIGNMENT+1/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[Energy=3,]/private=-/keywords=[]/baselib=-,WROUGHT_IN_WAR+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=9,Forge=9,]/private=-/keywords=[]/baselib=-,COLLISION_COURSE+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=14,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,BOMBARDMENT+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=24,]/private=-/keywords=[Exhaust]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,ASCENDERS_BANE+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable,Eternal]/baselib=-,VENERATE+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Stars=2,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,LUNAR_BLAST+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=5,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FALLING_STAR+0/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[Damage=8,VulnerablePower=1,WeakPower=1,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,QUASAR+1/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,;C=GAMMA_BLAST+0/False:0/False:3/0/False/False/False/False/False/-:0:0/-:0[Damage=13,VulnerablePower=2,WeakPower=2,]/private=-/keywords=[]/baselib=-,PREP_TIME+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[PrepTimePower=4,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,CRESCENT_SPEAR+1/False:1/False:1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=8,ExtraDamage=3,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FURNACE+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Forge=7,]/private=-/keywords=[]/baselib=-,STARDUST+0/False:0/True:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=5,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,;X=;Y=1/0/0/0;FlameHp=0;AttackStarts=0;O=0:;potions=SPEED_POTION,SWIFT_POTION;relicCounters=;mirrorRelics=;P=0:CALAMITY_POWER=1/0[],1:WEAK_POWER=1/0[DamageDecrease=0.75,],1:VULNERABLE_POWER=1/0[DamageIncrease=1.5,],1:SANDPIT_POWER=4/0[],;R=30:17412715907781963399:6420631506434215265:15953914100930563707:5336892373798296528/70:446073080347309422:7273680106002904227:6601189502186097418:6657011099372872221/0:11848316946763885436:5773110402788844862:13642205202901595897:5188696475593422947/0:10679014443244995598:15933821712654041669:11445112692528410812:9526875029171297401/0:3100084270757477398:7451888224158509816:13928587929682209196:18157471083230485094/0:8361996736635492460:11812422421357860121:6595862494149223655:3970073127410580071/0:3680621047337301175:10208884380180326695:16124445734951788469:3680360469343519533/0:7529226573572490683:11453207603611890849:12534725515091324589:11365319933335360292/1:15855191837650640315:7203894842072284787:16039207050407957355:10752462842078502501"
+          },
+          {
+            "StartTurnNumber": 3,
+            "ForecastOffset": 2,
+            "state": "turn=3;hp=68;max_hp=75;block=0;energy=3;stars=3;gold=99;osty=4294967295/0/0;E0=1/THE_INSATIABLE/-/312/341/0/LUNGING_BITE_MOVE;AI0=LIQUIFY_GROUND_MOVE,THRASH_MOVE,LUNGING_BITE_MOVE;MS0=-/0;H=GATHER_LIGHT+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=11,Stars=1,]/private=-/keywords=[]/baselib=-,ALIGNMENT+1/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[Energy=3,]/private=-/keywords=[]/baselib=-,WROUGHT_IN_WAR+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=9,Forge=9,]/private=-/keywords=[]/baselib=-,COLLISION_COURSE+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=14,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,;D=STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,BOMBARDMENT+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=24,]/private=-/keywords=[Exhaust]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,ASCENDERS_BANE+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable,Eternal]/baselib=-,VENERATE+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Stars=2,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,LUNAR_BLAST+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=5,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FALLING_STAR+0/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[Damage=8,VulnerablePower=1,WeakPower=1,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,QUASAR+1/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,;C=GAMMA_BLAST+0/False:0/False:3/0/False/False/False/False/False/-:0:0/-:0[Damage=13,VulnerablePower=2,WeakPower=2,]/private=-/keywords=[]/baselib=-,PREP_TIME+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[PrepTimePower=4,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,CRESCENT_SPEAR+1/False:1/False:1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=8,ExtraDamage=3,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FURNACE+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Forge=7,]/private=-/keywords=[]/baselib=-,STARDUST+0/False:0/True:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=5,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:2/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,LUNAR_BLAST+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=5,]/private=-/keywords=[]/baselib=-,SEVEN_STARS+1/False:1/False:7/0/False/False/False/True/False/-:0:0/-:0[Damage=7,Repeat=7,]/private=-/keywords=[]/baselib=-,COMET+0/False:0/False:5/0/False/False/False/False/False/-:0:0/-:0[Damage=33,VulnerablePower=3,WeakPower=3,]/private=-/keywords=[]/baselib=-,;X=;Y=0/0/0/0;FlameHp=0;AttackStarts=0;O=0:;potions=SPEED_POTION,SWIFT_POTION;relicCounters=;mirrorRelics=;P=0:CALAMITY_POWER=1/0[],0:ORBIT_POWER=1/0[Energy=4,EnergyRemainder=2,],1:SANDPIT_POWER=4/0[],;R=30:17412715907781963399:6420631506434215265:15953914100930563707:5336892373798296528/71:4513729211808359376:4133647491490958023:14313925859896344164:7122380217564985466/0:11848316946763885436:5773110402788844862:13642205202901595897:5188696475593422947/0:10679014443244995598:15933821712654041669:11445112692528410812:9526875029171297401/0:3100084270757477398:7451888224158509816:13928587929682209196:18157471083230485094/0:8361996736635492460:11812422421357860121:6595862494149223655:3970073127410580071/0:3680621047337301175:10208884380180326695:16124445734951788469:3680360469343519533/0:7529226573572490683:11453207603611890849:12534725515091324589:11365319933335360292/1:15855191837650640315:7203894842072284787:16039207050407957355:10752462842078502501"
+          },
+          {
+            "StartTurnNumber": 4,
+            "ForecastOffset": 3,
+            "state": "turn=4;hp=48;max_hp=75;block=0;energy=5;stars=4;gold=99;osty=4294967295/0/0;E0=1/THE_INSATIABLE/-/271/341/0/SALIVATE_MOVE;AI0=LIQUIFY_GROUND_MOVE,THRASH_MOVE,LUNGING_BITE_MOVE,SALIVATE_MOVE;MS0=-/0;H=SOVEREIGN_BLADE+0/False:2/False:-1/0/False/False/True/False/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=19,Repeat=1,]/private=-/keywords=[Retain]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,BOMBARDMENT+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=24,]/private=-/keywords=[Exhaust]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,ASCENDERS_BANE+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable,Eternal]/baselib=-,VENERATE+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Stars=2,]/private=-/keywords=[]/baselib=-,;D=STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,LUNAR_BLAST+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=5,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FALLING_STAR+0/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[Damage=8,VulnerablePower=1,WeakPower=1,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,QUASAR+1/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,;C=GAMMA_BLAST+0/False:0/False:3/0/False/False/False/False/False/-:0:0/-:0[Damage=13,VulnerablePower=2,WeakPower=2,]/private=-/keywords=[]/baselib=-,PREP_TIME+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[PrepTimePower=4,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,CRESCENT_SPEAR+1/False:1/False:1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=8,ExtraDamage=3,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FURNACE+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Forge=7,]/private=-/keywords=[]/baselib=-,STARDUST+0/False:0/True:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=5,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:2/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,LUNAR_BLAST+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=5,]/private=-/keywords=[]/baselib=-,SEVEN_STARS+1/False:1/False:7/0/False/False/False/True/False/-:0:0/-:0[Damage=7,Repeat=7,]/private=-/keywords=[]/baselib=-,COMET+0/False:0/False:5/0/False/False/False/False/False/-:0:0/-:0[Damage=33,VulnerablePower=3,WeakPower=3,]/private=-/keywords=[]/baselib=-,WROUGHT_IN_WAR+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=9,Forge=9,]/private=-/keywords=[]/baselib=-,GATHER_LIGHT+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=11,Stars=1,]/private=-/keywords=[]/baselib=-,COLLISION_COURSE+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=14,]/private=-/keywords=[]/baselib=-,HEGEMONY+0/False:2/False:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=15,Energy=2,]/private=-/keywords=[]/baselib=-,ALIGNMENT+1/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[Energy=3,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,PHOTON_CUT+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[Cards=1,Damage=10,PutBack=1,]/private=-/keywords=[]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,STARDUST+0/False:0/True:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=5,]/private=-/keywords=[]/baselib=-,;X=;Y=0/0/0/0;FlameHp=0;AttackStarts=0;O=0:;potions=SPEED_POTION,SWIFT_POTION;relicCounters=;mirrorRelics=;P=0:CALAMITY_POWER=1/0[],0:ORBIT_POWER=1/0[Energy=4,EnergyRemainder=2,],1:SANDPIT_POWER=3/0[],;R=30:17412715907781963399:6420631506434215265:15953914100930563707:5336892373798296528/74:111370528290154542:103332468846075690:3052240614370395264:18162731930165443067/0:11848316946763885436:5773110402788844862:13642205202901595897:5188696475593422947/0:10679014443244995598:15933821712654041669:11445112692528410812:9526875029171297401/0:3100084270757477398:7451888224158509816:13928587929682209196:18157471083230485094/0:8361996736635492460:11812422421357860121:6595862494149223655:3970073127410580071/0:3680621047337301175:10208884380180326695:16124445734951788469:3680360469343519533/0:7529226573572490683:11453207603611890849:12534725515091324589:11365319933335360292/1:15855191837650640315:7203894842072284787:16039207050407957355:10752462842078502501"
+          },
+          {
+            "StartTurnNumber": 5,
+            "ForecastOffset": 4,
+            "state": "turn=5;hp=48;max_hp=75;block=0;energy=3;stars=6;gold=99;osty=4294967295/0/0;E0=1/THE_INSATIABLE/-/179/341/0/THRASH_MOVE_2;AI0=LIQUIFY_GROUND_MOVE,THRASH_MOVE,LUNGING_BITE_MOVE,SALIVATE_MOVE,THRASH_MOVE_2;MS0=-/0;H=SOVEREIGN_BLADE+0/False:2/False:-1/0/False/False/True/False/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=19,Repeat=1,]/private=-/keywords=[Retain]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,LUNAR_BLAST+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=5,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FALLING_STAR+0/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[Damage=8,VulnerablePower=1,WeakPower=1,]/private=-/keywords=[]/baselib=-,SHINING_STRIKE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=8,Stars=2,]/private=-/keywords=[]/baselib=-,;D=FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,QUASAR+1/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,;C=GAMMA_BLAST+0/False:0/False:3/0/False/False/False/False/False/-:0:0/-:0[Damage=13,VulnerablePower=2,WeakPower=2,]/private=-/keywords=[]/baselib=-,PREP_TIME+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[PrepTimePower=4,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,CRESCENT_SPEAR+1/False:1/False:1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=8,ExtraDamage=3,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FURNACE+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Forge=7,]/private=-/keywords=[]/baselib=-,STARDUST+0/False:0/True:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=5,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:2/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,LUNAR_BLAST+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=5,]/private=-/keywords=[]/baselib=-,SEVEN_STARS+1/False:1/False:7/0/False/False/False/True/False/-:0:0/-:0[Damage=7,Repeat=7,]/private=-/keywords=[]/baselib=-,COMET+0/False:0/False:5/0/False/False/False/False/False/-:0:0/-:0[Damage=33,VulnerablePower=3,WeakPower=3,]/private=-/keywords=[]/baselib=-,WROUGHT_IN_WAR+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=9,Forge=9,]/private=-/keywords=[]/baselib=-,GATHER_LIGHT+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=11,Stars=1,]/private=-/keywords=[]/baselib=-,COLLISION_COURSE+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=14,]/private=-/keywords=[]/baselib=-,HEGEMONY+0/False:2/False:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=15,Energy=2,]/private=-/keywords=[]/baselib=-,ALIGNMENT+1/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[Energy=3,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,PHOTON_CUT+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[Cards=1,Damage=10,PutBack=1,]/private=-/keywords=[]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,STARDUST+0/False:0/True:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=5,]/private=-/keywords=[]/baselib=-,VENERATE+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Stars=2,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,RADIATE+0/False:0/False:-1/0/False/False/False/False/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=3,Stars=1,]/private=-/keywords=[]/baselib=-,KINGLY_PUNCH+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=8,Increase=4,]/private=-/keywords=[]/baselib=-,DEVASTATE+0/False:1/False:4/0/False/False/False/False/False/-:0:0/-:0[Damage=35,]/private=-/keywords=[]/baselib=-,CRASH_LANDING+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=21,]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,ASTRAL_PULSE+0/False:0/False:3/0/False/False/False/False/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,;X=ASCENDERS_BANE+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable,Eternal]/baselib=-,BOMBARDMENT+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=24,]/private=-/keywords=[Exhaust]/baselib=-,;Y=1/0/1/1;FlameHp=0;AttackStarts=1;O=0:;potions=SPEED_POTION,SWIFT_POTION;relicCounters=;mirrorRelics=;P=0:CALAMITY_POWER=1/0[],0:ORBIT_POWER=1/0[Energy=4,EnergyRemainder=1,],1:SANDPIT_POWER=2/0[],1:STRENGTH_POWER=3/0[],;R=30:17412715907781963399:6420631506434215265:15953914100930563707:5336892373798296528/80:5516935639619151123:8814611759067506600:2554259260705269000:9529189639360511463/0:11848316946763885436:5773110402788844862:13642205202901595897:5188696475593422947/0:10679014443244995598:15933821712654041669:11445112692528410812:9526875029171297401/0:3100084270757477398:7451888224158509816:13928587929682209196:18157471083230485094/1:16212228963159176978:10118697607469558162:6968196231521008779:10804085610721860680/0:3680621047337301175:10208884380180326695:16124445734951788469:3680360469343519533/0:7529226573572490683:11453207603611890849:12534725515091324589:11365319933335360292/1:15855191837650640315:7203894842072284787:16039207050407957355:10752462842078502501"
+          },
+          {
+            "StartTurnNumber": 6,
+            "ForecastOffset": 5,
+            "state": "turn=6;hp=35;max_hp=75;block=0;energy=3;stars=2;gold=99;osty=4294967295/0/0;E0=1/THE_INSATIABLE/-/64/341/0/THRASH_MOVE;AI0=LIQUIFY_GROUND_MOVE,THRASH_MOVE,LUNGING_BITE_MOVE,SALIVATE_MOVE,THRASH_MOVE_2,THRASH_MOVE;MS0=-/0;H=SOVEREIGN_BLADE+0/False:2/False:-1/0/False/False/True/False/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=19,Repeat=1,]/private=-/keywords=[Retain]/baselib=-,SHINING_STRIKE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=8,Stars=2,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,QUASAR+1/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,ASTRAL_PULSE+0/False:0/False:3/0/False/False/False/False/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,;D=STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,WROUGHT_IN_WAR+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=9,Forge=9,]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,GAMMA_BLAST+0/False:0/False:3/0/False/False/False/False/False/-:0:0/-:0[Damage=13,VulnerablePower=2,WeakPower=2,]/private=-/keywords=[]/baselib=-,BOMBARDMENT+0/False:3/False:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=18,]/private=-/keywords=[Exhaust]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,PREP_TIME+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[PrepTimePower=4,]/private=-/keywords=[]/baselib=-,GATHER_LIGHT+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=11,Stars=1,]/private=-/keywords=[]/baselib=-,LUNAR_BLAST+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=5,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,STARDUST+0/False:0/True:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=5,]/private=-/keywords=[]/baselib=-,DEVASTATE+0/False:1/False:4/0/False/False/False/False/False/-:0:0/-:0[Damage=35,]/private=-/keywords=[]/baselib=-,HEGEMONY+0/False:2/False:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=15,Energy=2,]/private=-/keywords=[]/baselib=-,ALIGNMENT+1/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[Energy=3,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,COMET+0/False:0/False:5/0/False/False/False/False/False/-:0:0/-:0[Damage=33,VulnerablePower=3,WeakPower=3,]/private=-/keywords=[]/baselib=-,LUNAR_BLAST+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=5,]/private=-/keywords=[]/baselib=-,ASTRAL_PULSE+0/False:0/False:3/0/False/False/False/False/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,PHOTON_CUT+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[Cards=1,Damage=10,PutBack=1,]/private=-/keywords=[]/baselib=-,SEVEN_STARS+1/False:1/False:7/0/False/False/False/True/False/-:0:0/-:0[Damage=7,Repeat=7,]/private=-/keywords=[]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,FALLING_STAR+0/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[Damage=8,VulnerablePower=1,WeakPower=1,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,CRASH_LANDING+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=21,]/private=-/keywords=[]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,ASTRAL_PULSE+0/False:0/False:3/0/False/False/False/False/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,KINGLY_PUNCH+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=8,Increase=4,]/private=-/keywords=[]/baselib=-,FURNACE+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Forge=7,]/private=-/keywords=[]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,FRANTIC_ESCAPE+0/False:2/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,DEVASTATE+0/False:1/False:4/0/False/False/False/False/False/-:0:0/-:0[Damage=35,]/private=-/keywords=[]/baselib=-,VENERATE+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Stars=2,]/private=-/keywords=[]/baselib=-,GUIDING_STAR+0/False:1/False:1/0/False/False/False/False/False/-:0:0/-:0[Cards=2,Damage=12,]/private=-/keywords=[]/baselib=-,CRESCENT_SPEAR+1/False:1/False:1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=8,ExtraDamage=3,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,COLLISION_COURSE+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=14,]/private=-/keywords=[]/baselib=-,SEVEN_STARS+0/False:2/False:7/0/False/False/False/False/False/-:0:0/-:0[Damage=7,Repeat=7,]/private=-/keywords=[]/baselib=-,RADIATE+0/False:0/False:-1/0/False/False/False/False/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=3,Stars=1,]/private=-/keywords=[]/baselib=-,STARDUST+0/False:0/True:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=5,]/private=-/keywords=[]/baselib=-,;C=;X=ASCENDERS_BANE+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable,Eternal]/baselib=-,BOMBARDMENT+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=24,]/private=-/keywords=[Exhaust]/baselib=-,;Y=2/0/1/1;FlameHp=0;AttackStarts=1;O=0:;potions=SPEED_POTION,SWIFT_POTION;relicCounters=;mirrorRelics=;P=0:CALAMITY_POWER=1/0[],0:ORBIT_POWER=1/0[Energy=4,EnergyRemainder=1,],1:SANDPIT_POWER=1/0[],1:STRENGTH_POWER=3/0[],;R=76:9263180201492336004:6732370651778633490:3594900327670225551:9901351124741073149/86:13014558266948168252:1197024718995536742:5583022293708968380:2452623496358727199/0:11848316946763885436:5773110402788844862:13642205202901595897:5188696475593422947/0:10679014443244995598:15933821712654041669:11445112692528410812:9526875029171297401/0:3100084270757477398:7451888224158509816:13928587929682209196:18157471083230485094/2:17977928923078181576:875312453153579531:3166220169106459545:12014270306004256485/0:3680621047337301175:10208884380180326695:16124445734951788469:3680360469343519533/0:7529226573572490683:11453207603611890849:12534725515091324589:11365319933335360292/1:15855191837650640315:7203894842072284787:16039207050407957355:10752462842078502501"
+          }
+        ],
+        "continuations": [
+          {
+            "StartTurnNumber": 2,
+            "ForecastOffset": 1,
+            "StateText": "turn=2;hp=75;max_hp=75;block=0;energy=3;stars=3;gold=99;osty=4294967295/0/0;E0=1/THE_INSATIABLE/-/322/341/0/THRASH_MOVE;AI0=LIQUIFY_GROUND_MOVE,THRASH_MOVE;MS0=-/0;H=DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,ORBIT+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Energy=1,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,LUNAR_BLAST+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=5,]/private=-/keywords=[]/baselib=-,SEVEN_STARS+1/False:1/False:7/0/False/False/False/True/False/-:0:0/-:0[Damage=7,Repeat=7,]/private=-/keywords=[]/baselib=-,;D=GATHER_LIGHT+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=11,Stars=1,]/private=-/keywords=[]/baselib=-,ALIGNMENT+1/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[Energy=3,]/private=-/keywords=[]/baselib=-,WROUGHT_IN_WAR+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=9,Forge=9,]/private=-/keywords=[]/baselib=-,COLLISION_COURSE+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=14,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,BOMBARDMENT+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=24,]/private=-/keywords=[Exhaust]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,ASCENDERS_BANE+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable,Eternal]/baselib=-,VENERATE+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Stars=2,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,LUNAR_BLAST+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=5,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FALLING_STAR+0/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[Damage=8,VulnerablePower=1,WeakPower=1,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,QUASAR+1/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,;C=GAMMA_BLAST+0/False:0/False:3/0/False/False/False/False/False/-:0:0/-:0[Damage=13,VulnerablePower=2,WeakPower=2,]/private=-/keywords=[]/baselib=-,PREP_TIME+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[PrepTimePower=4,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,CRESCENT_SPEAR+1/False:1/False:1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=8,ExtraDamage=3,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FURNACE+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Forge=7,]/private=-/keywords=[]/baselib=-,STARDUST+0/False:0/True:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=5,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,;X=;Y=1/0/0/0;FlameHp=0;AttackStarts=0;O=0:;potions=SPEED_POTION,SWIFT_POTION;relicCounters=;mirrorRelics=;P=0:CALAMITY_POWER=1/0[],1:WEAK_POWER=1/0[DamageDecrease=0.75,],1:VULNERABLE_POWER=1/0[DamageIncrease=1.5,],1:SANDPIT_POWER=4/0[],;R=30:17412715907781963399:6420631506434215265:15953914100930563707:5336892373798296528/70:446073080347309422:7273680106002904227:6601189502186097418:6657011099372872221/0:11848316946763885436:5773110402788844862:13642205202901595897:5188696475593422947/0:10679014443244995598:15933821712654041669:11445112692528410812:9526875029171297401/0:3100084270757477398:7451888224158509816:13928587929682209196:18157471083230485094/0:8361996736635492460:11812422421357860121:6595862494149223655:3970073127410580071/0:3680621047337301175:10208884380180326695:16124445734951788469:3680360469343519533/0:7529226573572490683:11453207603611890849:12534725515091324589:11365319933335360292/1:15855191837650640315:7203894842072284787:16039207050407957355:10752462842078502501"
+          },
+          {
+            "StartTurnNumber": 3,
+            "ForecastOffset": 2,
+            "StateText": "turn=3;hp=68;max_hp=75;block=0;energy=3;stars=3;gold=99;osty=4294967295/0/0;E0=1/THE_INSATIABLE/-/312/341/0/LUNGING_BITE_MOVE;AI0=LIQUIFY_GROUND_MOVE,THRASH_MOVE,LUNGING_BITE_MOVE;MS0=-/0;H=GATHER_LIGHT+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=11,Stars=1,]/private=-/keywords=[]/baselib=-,ALIGNMENT+1/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[Energy=3,]/private=-/keywords=[]/baselib=-,WROUGHT_IN_WAR+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=9,Forge=9,]/private=-/keywords=[]/baselib=-,COLLISION_COURSE+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=14,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,;D=STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,BOMBARDMENT+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=24,]/private=-/keywords=[Exhaust]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,ASCENDERS_BANE+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable,Eternal]/baselib=-,VENERATE+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Stars=2,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,LUNAR_BLAST+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=5,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FALLING_STAR+0/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[Damage=8,VulnerablePower=1,WeakPower=1,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,QUASAR+1/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,;C=GAMMA_BLAST+0/False:0/False:3/0/False/False/False/False/False/-:0:0/-:0[Damage=13,VulnerablePower=2,WeakPower=2,]/private=-/keywords=[]/baselib=-,PREP_TIME+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[PrepTimePower=4,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,CRESCENT_SPEAR+1/False:1/False:1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=8,ExtraDamage=3,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FURNACE+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Forge=7,]/private=-/keywords=[]/baselib=-,STARDUST+0/False:0/True:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=5,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:2/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,LUNAR_BLAST+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=5,]/private=-/keywords=[]/baselib=-,SEVEN_STARS+1/False:1/False:7/0/False/False/False/True/False/-:0:0/-:0[Damage=7,Repeat=7,]/private=-/keywords=[]/baselib=-,COMET+0/False:0/False:5/0/False/False/False/False/False/-:0:0/-:0[Damage=33,VulnerablePower=3,WeakPower=3,]/private=-/keywords=[]/baselib=-,;X=;Y=0/0/0/0;FlameHp=0;AttackStarts=0;O=0:;potions=SPEED_POTION,SWIFT_POTION;relicCounters=;mirrorRelics=;P=0:CALAMITY_POWER=1/0[],0:ORBIT_POWER=1/0[Energy=4,EnergyRemainder=2,],1:SANDPIT_POWER=4/0[],;R=30:17412715907781963399:6420631506434215265:15953914100930563707:5336892373798296528/71:4513729211808359376:4133647491490958023:14313925859896344164:7122380217564985466/0:11848316946763885436:5773110402788844862:13642205202901595897:5188696475593422947/0:10679014443244995598:15933821712654041669:11445112692528410812:9526875029171297401/0:3100084270757477398:7451888224158509816:13928587929682209196:18157471083230485094/0:8361996736635492460:11812422421357860121:6595862494149223655:3970073127410580071/0:3680621047337301175:10208884380180326695:16124445734951788469:3680360469343519533/0:7529226573572490683:11453207603611890849:12534725515091324589:11365319933335360292/1:15855191837650640315:7203894842072284787:16039207050407957355:10752462842078502501"
+          },
+          {
+            "StartTurnNumber": 4,
+            "ForecastOffset": 3,
+            "StateText": "turn=4;hp=48;max_hp=75;block=0;energy=5;stars=4;gold=99;osty=4294967295/0/0;E0=1/THE_INSATIABLE/-/271/341/0/SALIVATE_MOVE;AI0=LIQUIFY_GROUND_MOVE,THRASH_MOVE,LUNGING_BITE_MOVE,SALIVATE_MOVE;MS0=-/0;H=SOVEREIGN_BLADE+0/False:2/False:-1/0/False/False/True/False/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=19,Repeat=1,]/private=-/keywords=[Retain]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,BOMBARDMENT+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=24,]/private=-/keywords=[Exhaust]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,ASCENDERS_BANE+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable,Eternal]/baselib=-,VENERATE+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Stars=2,]/private=-/keywords=[]/baselib=-,;D=STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,LUNAR_BLAST+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=5,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FALLING_STAR+0/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[Damage=8,VulnerablePower=1,WeakPower=1,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,QUASAR+1/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,;C=GAMMA_BLAST+0/False:0/False:3/0/False/False/False/False/False/-:0:0/-:0[Damage=13,VulnerablePower=2,WeakPower=2,]/private=-/keywords=[]/baselib=-,PREP_TIME+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[PrepTimePower=4,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,CRESCENT_SPEAR+1/False:1/False:1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=8,ExtraDamage=3,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FURNACE+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Forge=7,]/private=-/keywords=[]/baselib=-,STARDUST+0/False:0/True:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=5,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:2/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,LUNAR_BLAST+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=5,]/private=-/keywords=[]/baselib=-,SEVEN_STARS+1/False:1/False:7/0/False/False/False/True/False/-:0:0/-:0[Damage=7,Repeat=7,]/private=-/keywords=[]/baselib=-,COMET+0/False:0/False:5/0/False/False/False/False/False/-:0:0/-:0[Damage=33,VulnerablePower=3,WeakPower=3,]/private=-/keywords=[]/baselib=-,WROUGHT_IN_WAR+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=9,Forge=9,]/private=-/keywords=[]/baselib=-,GATHER_LIGHT+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=11,Stars=1,]/private=-/keywords=[]/baselib=-,COLLISION_COURSE+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=14,]/private=-/keywords=[]/baselib=-,HEGEMONY+0/False:2/False:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=15,Energy=2,]/private=-/keywords=[]/baselib=-,ALIGNMENT+1/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[Energy=3,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,PHOTON_CUT+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[Cards=1,Damage=10,PutBack=1,]/private=-/keywords=[]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,STARDUST+0/False:0/True:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=5,]/private=-/keywords=[]/baselib=-,;X=;Y=0/0/0/0;FlameHp=0;AttackStarts=0;O=0:;potions=SPEED_POTION,SWIFT_POTION;relicCounters=;mirrorRelics=;P=0:CALAMITY_POWER=1/0[],0:ORBIT_POWER=1/0[Energy=4,EnergyRemainder=2,],1:SANDPIT_POWER=3/0[],;R=30:17412715907781963399:6420631506434215265:15953914100930563707:5336892373798296528/74:111370528290154542:103332468846075690:3052240614370395264:18162731930165443067/0:11848316946763885436:5773110402788844862:13642205202901595897:5188696475593422947/0:10679014443244995598:15933821712654041669:11445112692528410812:9526875029171297401/0:3100084270757477398:7451888224158509816:13928587929682209196:18157471083230485094/0:8361996736635492460:11812422421357860121:6595862494149223655:3970073127410580071/0:3680621047337301175:10208884380180326695:16124445734951788469:3680360469343519533/0:7529226573572490683:11453207603611890849:12534725515091324589:11365319933335360292/1:15855191837650640315:7203894842072284787:16039207050407957355:10752462842078502501"
+          },
+          {
+            "StartTurnNumber": 5,
+            "ForecastOffset": 4,
+            "StateText": "turn=5;hp=48;max_hp=75;block=0;energy=3;stars=6;gold=99;osty=4294967295/0/0;E0=1/THE_INSATIABLE/-/179/341/0/THRASH_MOVE_2;AI0=LIQUIFY_GROUND_MOVE,THRASH_MOVE,LUNGING_BITE_MOVE,SALIVATE_MOVE,THRASH_MOVE_2;MS0=-/0;H=SOVEREIGN_BLADE+0/False:2/False:-1/0/False/False/True/False/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=19,Repeat=1,]/private=-/keywords=[Retain]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,LUNAR_BLAST+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=5,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FALLING_STAR+0/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[Damage=8,VulnerablePower=1,WeakPower=1,]/private=-/keywords=[]/baselib=-,SHINING_STRIKE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=8,Stars=2,]/private=-/keywords=[]/baselib=-,;D=FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,QUASAR+1/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,;C=GAMMA_BLAST+0/False:0/False:3/0/False/False/False/False/False/-:0:0/-:0[Damage=13,VulnerablePower=2,WeakPower=2,]/private=-/keywords=[]/baselib=-,PREP_TIME+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[PrepTimePower=4,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,CRESCENT_SPEAR+1/False:1/False:1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=8,ExtraDamage=3,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FURNACE+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Forge=7,]/private=-/keywords=[]/baselib=-,STARDUST+0/False:0/True:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=5,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:2/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,LUNAR_BLAST+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=5,]/private=-/keywords=[]/baselib=-,SEVEN_STARS+1/False:1/False:7/0/False/False/False/True/False/-:0:0/-:0[Damage=7,Repeat=7,]/private=-/keywords=[]/baselib=-,COMET+0/False:0/False:5/0/False/False/False/False/False/-:0:0/-:0[Damage=33,VulnerablePower=3,WeakPower=3,]/private=-/keywords=[]/baselib=-,WROUGHT_IN_WAR+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=9,Forge=9,]/private=-/keywords=[]/baselib=-,GATHER_LIGHT+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=11,Stars=1,]/private=-/keywords=[]/baselib=-,COLLISION_COURSE+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=14,]/private=-/keywords=[]/baselib=-,HEGEMONY+0/False:2/False:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=15,Energy=2,]/private=-/keywords=[]/baselib=-,ALIGNMENT+1/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[Energy=3,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,PHOTON_CUT+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[Cards=1,Damage=10,PutBack=1,]/private=-/keywords=[]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,STARDUST+0/False:0/True:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=5,]/private=-/keywords=[]/baselib=-,VENERATE+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Stars=2,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,RADIATE+0/False:0/False:-1/0/False/False/False/False/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=3,Stars=1,]/private=-/keywords=[]/baselib=-,KINGLY_PUNCH+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=8,Increase=4,]/private=-/keywords=[]/baselib=-,DEVASTATE+0/False:1/False:4/0/False/False/False/False/False/-:0:0/-:0[Damage=35,]/private=-/keywords=[]/baselib=-,CRASH_LANDING+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=21,]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,ASTRAL_PULSE+0/False:0/False:3/0/False/False/False/False/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,;X=ASCENDERS_BANE+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable,Eternal]/baselib=-,BOMBARDMENT+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=24,]/private=-/keywords=[Exhaust]/baselib=-,;Y=1/0/1/1;FlameHp=0;AttackStarts=1;O=0:;potions=SPEED_POTION,SWIFT_POTION;relicCounters=;mirrorRelics=;P=0:CALAMITY_POWER=1/0[],0:ORBIT_POWER=1/0[Energy=4,EnergyRemainder=1,],1:SANDPIT_POWER=2/0[],1:STRENGTH_POWER=3/0[],;R=30:17412715907781963399:6420631506434215265:15953914100930563707:5336892373798296528/80:5516935639619151123:8814611759067506600:2554259260705269000:9529189639360511463/0:11848316946763885436:5773110402788844862:13642205202901595897:5188696475593422947/0:10679014443244995598:15933821712654041669:11445112692528410812:9526875029171297401/0:3100084270757477398:7451888224158509816:13928587929682209196:18157471083230485094/1:16212228963159176978:10118697607469558162:6968196231521008779:10804085610721860680/0:3680621047337301175:10208884380180326695:16124445734951788469:3680360469343519533/0:7529226573572490683:11453207603611890849:12534725515091324589:11365319933335360292/1:15855191837650640315:7203894842072284787:16039207050407957355:10752462842078502501"
+          },
+          {
+            "StartTurnNumber": 6,
+            "ForecastOffset": 5,
+            "StateText": "turn=6;hp=35;max_hp=75;block=0;energy=3;stars=2;gold=99;osty=4294967295/0/0;E0=1/THE_INSATIABLE/-/64/341/0/THRASH_MOVE;AI0=LIQUIFY_GROUND_MOVE,THRASH_MOVE,LUNGING_BITE_MOVE,SALIVATE_MOVE,THRASH_MOVE_2,THRASH_MOVE;MS0=-/0;H=SOVEREIGN_BLADE+0/False:2/False:-1/0/False/False/True/False/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=19,Repeat=1,]/private=-/keywords=[Retain]/baselib=-,SHINING_STRIKE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=8,Stars=2,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,QUASAR+1/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,ASTRAL_PULSE+0/False:0/False:3/0/False/False/False/False/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,;D=STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,WROUGHT_IN_WAR+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=9,Forge=9,]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,GAMMA_BLAST+0/False:0/False:3/0/False/False/False/False/False/-:0:0/-:0[Damage=13,VulnerablePower=2,WeakPower=2,]/private=-/keywords=[]/baselib=-,BOMBARDMENT+0/False:3/False:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=18,]/private=-/keywords=[Exhaust]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,PREP_TIME+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[PrepTimePower=4,]/private=-/keywords=[]/baselib=-,GATHER_LIGHT+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=11,Stars=1,]/private=-/keywords=[]/baselib=-,LUNAR_BLAST+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=5,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,STARDUST+0/False:0/True:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=5,]/private=-/keywords=[]/baselib=-,DEVASTATE+0/False:1/False:4/0/False/False/False/False/False/-:0:0/-:0[Damage=35,]/private=-/keywords=[]/baselib=-,HEGEMONY+0/False:2/False:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=15,Energy=2,]/private=-/keywords=[]/baselib=-,ALIGNMENT+1/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[Energy=3,]/private=-/keywords=[]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,COMET+0/False:0/False:5/0/False/False/False/False/False/-:0:0/-:0[Damage=33,VulnerablePower=3,WeakPower=3,]/private=-/keywords=[]/baselib=-,LUNAR_BLAST+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=5,]/private=-/keywords=[]/baselib=-,ASTRAL_PULSE+0/False:0/False:3/0/False/False/False/False/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,PHOTON_CUT+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[Cards=1,Damage=10,PutBack=1,]/private=-/keywords=[]/baselib=-,SEVEN_STARS+1/False:1/False:7/0/False/False/False/True/False/-:0:0/-:0[Damage=7,Repeat=7,]/private=-/keywords=[]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,FALLING_STAR+0/False:0/False:2/0/False/False/False/True/False/-:0:0/-:0[Damage=8,VulnerablePower=1,WeakPower=1,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,DEFEND_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-,CRASH_LANDING+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=21,]/private=-/keywords=[]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,ASTRAL_PULSE+0/False:0/False:3/0/False/False/False/False/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,KINGLY_PUNCH+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=8,Increase=4,]/private=-/keywords=[]/baselib=-,FURNACE+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Forge=7,]/private=-/keywords=[]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,FRANTIC_ESCAPE+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,DEBRIS+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-,FRANTIC_ESCAPE+0/False:2/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[]/baselib=-,DEVASTATE+0/False:1/False:4/0/False/False/False/False/False/-:0:0/-:0[Damage=35,]/private=-/keywords=[]/baselib=-,VENERATE+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Stars=2,]/private=-/keywords=[]/baselib=-,GUIDING_STAR+0/False:1/False:1/0/False/False/False/False/False/-:0:0/-:0[Cards=2,Damage=12,]/private=-/keywords=[]/baselib=-,CRESCENT_SPEAR+1/False:1/False:1/0/False/False/False/True/False/-:0:0/-:0[CalculationBase=8,ExtraDamage=3,]/private=-/keywords=[]/baselib=-,STRIKE_REGENT+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-,COLLISION_COURSE+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=14,]/private=-/keywords=[]/baselib=-,SEVEN_STARS+0/False:2/False:7/0/False/False/False/False/False/-:0:0/-:0[Damage=7,Repeat=7,]/private=-/keywords=[]/baselib=-,RADIATE+0/False:0/False:-1/0/False/False/False/False/False/-:0:0/-:0[CalculationBase=0,CalculationExtra=1,Damage=3,Stars=1,]/private=-/keywords=[]/baselib=-,STARDUST+0/False:0/True:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=5,]/private=-/keywords=[]/baselib=-,;C=;X=ASCENDERS_BANE+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable,Eternal]/baselib=-,BOMBARDMENT+1/False:3/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=24,]/private=-/keywords=[Exhaust]/baselib=-,;Y=2/0/1/1;FlameHp=0;AttackStarts=1;O=0:;potions=SPEED_POTION,SWIFT_POTION;relicCounters=;mirrorRelics=;P=0:CALAMITY_POWER=1/0[],0:ORBIT_POWER=1/0[Energy=4,EnergyRemainder=1,],1:SANDPIT_POWER=1/0[],1:STRENGTH_POWER=3/0[],;R=76:9263180201492336004:6732370651778633490:3594900327670225551:9901351124741073149/86:13014558266948168252:1197024718995536742:5583022293708968380:2452623496358727199/0:11848316946763885436:5773110402788844862:13642205202901595897:5188696475593422947/0:10679014443244995598:15933821712654041669:11445112692528410812:9526875029171297401/0:3100084270757477398:7451888224158509816:13928587929682209196:18157471083230485094/2:17977928923078181576:875312453153579531:3166220169106459545:12014270306004256485/0:3680621047337301175:10208884380180326695:16124445734951788469:3680360469343519533/0:7529226573572490683:11453207603611890849:12534725515091324589:11365319933335360292/1:15855191837650640315:7203894842072284787:16039207050407957355:10752462842078502501"
+          }
+        ],
+        "patchLog": [
+          "CombatSolver.CombatStateTrackerIsolationPatch: 已装 1 个目标",
+          "CombatSolver.PowerDynamicVarMaterializationGuardPatch: 已装 1 个目标",
+          "CombatSolver.ModelDbGetIdCachePatch: 已装 1 个目标",
+          "CombatSolver.BaseLibCloneConcurrencyPatch: 已装 1 个目标",
+          "CombatSolver.BaseLibDynamicVarCloneMetadataPatch: 已装 0 个目标",
+          "CombatSolver.RitsuDynamicVarCloneMetadataPatch: 已装 1 个目标",
+          "CombatSolver.SimulationCardPileLookupPatch: 已装 1 个目标",
+          "CombatSolver.RitsuFreePlayVoidIsolationPatch: 已装 7 个目标",
+          "CombatSolver.RitsuFreePlayBoolIsolationPatch: 已装 4 个目标",
+          "CombatSolver.RitsuFreePlayResolveIsolationPatch: 已装 1 个目标",
+          "CombatSolver.RitsuBaseLibTargetTypeLookupPatch: 缺少类型，跳过",
+          "CombatSolver.RitsuBaseLibTargetTypeResolutionPatch: 缺少类型，跳过",
+          "CombatSolver.RitsuBaseLibTargetTypeEvidencePatch: 缺少类型，跳过",
+          "CombatSolver.PowerAmountComparisonPatch: 已装 1 个目标"
+        ]
+      },
+      "solverMetrics": {
+        "GcLifecycle": {
+          "ForcedCollections": 0,
+          "NoGcStartAttempts": 0,
+          "NoGcStarts": 0,
+          "NoGcEndAttempts": 0,
+          "NoGcEnds": 0,
+          "NoGcRestarts": 0,
+          "NoGcLosses": 0
+        },
+        "Boundary": 0,
+        "SelectedExpanded": 5170,
+        "SelectedTransitions": 29939,
+        "SelectedChoiceBranches": 1625,
+        "RoundReplayPrefixCaptures": 0,
+        "RoundReplayPrefixReuses": 0,
+        "ExecutionChoiceCaptures": 0,
+        "ExecutionChoiceReuses": 0,
+        "CardChoicePrefixAttempts": 334,
+        "CardChoicePrefixCaptures": 0,
+        "CardChoicePrefixReuses": 0,
+        "CardChoicePrefixFallbacks": 0,
+        "PotionChoicePrefixForks": 0,
+        "PotionChoicePrefixCaptures": 0,
+        "PotionChoicePrefixReuses": 0,
+        "PotionChoicePrefixFallbacks": 0,
+        "ChoiceReplayAttempts": 1625,
+        "ChoiceReplayBudgetExhaustions": 0,
+        "ChoiceBranchesDroppedByBudget": 0,
+        "CycleReplayAttempts": 0,
+        "CycleReplayActions": 0,
+        "TotalCycleReplayActions": 0,
+        "CycleReplayVictories": 0,
+        "CycleReplayContinuations": 0,
+        "CycleStoppedUnproductive": 0,
+        "CycleStoppedRepetitionBudget": 0,
+        "CycleStoppedFamilyBudget": 0,
+        "CycleStoppedExitBudget": 0,
+        "TurnLayerBudgetStops": 4,
+        "TurnLayerTimeBudgetStops": 0,
+        "TurnLayerNodeBudgetStops": 4,
+        "CycleRegionsDetected": 0,
+        "CycleRegionCandidatesConsidered": 0,
+        "CycleRegionCandidatesAdmitted": 0,
+        "CycleRegionCandidatesDropped": 0,
+        "CycleRegionProgressEpochs": 0,
+        "CycleRegionProbeCandidatesAdmitted": 0,
+        "CycleRegionProgressCandidatesAdmitted": 0,
+        "CycleRegionMaxActionFamilies": 0,
+        "OrderedMutationCandidatesAdmitted": 202,
+        "OrderedMutationLeaseExpiredBudget": 5,
+        "OrderedMutationOrdinaryFallbacks": 1,
+        "OrderedMutationColdAtomicCommitted": 10,
+        "OrderedMutationColdAtomicRejected": 2,
+        "TotalExpanded": 41692,
+        "TotalTransitions": 192475,
+        "TotalChoiceBranches": 4166,
+        "ElapsedMilliseconds": 4209.4917,
+        "TotalElapsedMilliseconds": 28927.6879,
+        "WorkerAllocatedBytes": 1216401464,
+        "TotalWorkerAllocatedBytes": 7497846336,
+        "TotalGen0Collections": 973,
+        "TotalGen1Collections": 410,
+        "TotalGen2Collections": 83,
+        "TotalGcPauseMilliseconds": 5233.57,
+        "MaxGcPauseMilliseconds": 32.795,
+        "MaxParallelConcurrency": 0,
+        "ParallelActionReplayWaves": 0,
+        "ParallelActionReplayWorkItems": 0,
+        "MaxParallelActionReplayConcurrency": 0,
+        "DeferredRoundChoiceActions": 0,
+        "DeferredRoundChoiceLayerWidthTotal": 0,
+        "MaxDeferredRoundChoiceLayerWidth": 0,
+        "DeferredRoundChoiceFiniteQuotaFallbacks": 0,
+        "DeferredRoundChoiceFinitePrimaryLayers": 0,
+        "DeferredRoundChoiceFinitePendingFallbacks": 0,
+        "ParallelRoundChoiceReplayWaves": 0,
+        "ParallelRoundChoiceReplayWorkItems": 0,
+        "MaxParallelRoundChoiceReplayConcurrency": 0,
+        "SearchedTurns": 6,
+        "ShufflesCrossed": 1,
+        "Score": 9999753967,
+        "ProjectedBattleHpLost": 40,
+        "PotionCount": 0,
+        "PotionUses": [],
+        "OnlyDeathRoutes": false,
+        "FinalHp": 35,
+        "FinalEnemyHp": 0,
+        "CombatEndedTurn": 6,
+        "CapturedAtElapsedMilliseconds": 29509.2631,
+        "FirstRoutePublishedMilliseconds": 7908.3545,
+        "PortfolioMembers": [
+          {
+            "BeamWidth": 90,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": true,
+            "NodeBudget": 6000,
+            "Ran": true,
+            "Selected": true,
+            "Compared": true,
+            "ExpandedNodes": 4282,
+            "TransitionCount": 18178,
+            "Termination": "None",
+            "Terminal": true,
+            "Won": true,
+            "BattleHpLost": 54,
+            "PotionCount": 0,
+            "ElapsedMilliseconds": 7892,
+            "AllocatedBytes": 818778704,
+            "ManagedHeapBytesAfter": 75067984,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false
+          },
+          {
+            "BeamWidth": 60,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 0,
+            "Ran": false,
+            "Selected": false,
+            "Compared": false,
+            "SkippedReason": "NodeHeadroomInsufficient",
+            "ExpandedNodes": 0,
+            "TransitionCount": 0,
+            "ElapsedMilliseconds": 0,
+            "AllocatedBytes": 0,
+            "ManagedHeapBytesAfter": 0,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false
+          },
+          {
+            "BeamWidth": 135,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 0,
+            "Ran": false,
+            "Selected": false,
+            "Compared": false,
+            "SkippedReason": "NodeHeadroomInsufficient",
+            "ExpandedNodes": 0,
+            "TransitionCount": 0,
+            "ElapsedMilliseconds": 0,
+            "AllocatedBytes": 0,
+            "ManagedHeapBytesAfter": 0,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false
+          },
+          {
+            "BeamWidth": 90,
+            "SecondRankBand": true,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 0,
+            "Ran": false,
+            "Selected": false,
+            "Compared": false,
+            "SkippedReason": "NodeHeadroomInsufficient",
+            "ExpandedNodes": 0,
+            "TransitionCount": 0,
+            "ElapsedMilliseconds": 0,
+            "AllocatedBytes": 0,
+            "ManagedHeapBytesAfter": 0,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false
+          },
+          {
+            "BeamWidth": 90,
+            "SecondRankBand": false,
+            "BaseScoreOnly": true,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 0,
+            "Ran": false,
+            "Selected": false,
+            "Compared": false,
+            "SkippedReason": "NodeHeadroomInsufficient",
+            "ExpandedNodes": 0,
+            "TransitionCount": 0,
+            "ElapsedMilliseconds": 0,
+            "AllocatedBytes": 0,
+            "ManagedHeapBytesAfter": 0,
+            "OffensiveRefinement": false,
+            "BoundedRefinement": false
+          },
+          {
+            "BeamWidth": 36,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "AggressivePowerCommitment": false,
+            "NodeBudget": 0,
+            "Ran": false,
+            "Selected": false,
+            "Compared": false,
+            "SkippedReason": "NodeHeadroomInsufficient",
+            "ExpandedNodes": 0,
+            "TransitionCount": 0,
+            "ElapsedMilliseconds": 0,
+            "AllocatedBytes": 0,
+            "ManagedHeapBytesAfter": 0,
+            "OffensiveRefinement": true,
+            "BoundedRefinement": true
+          }
+        ],
+        "PowerRouteMembers": [
+          {
+            "Prefix": "PREP_TIME",
+            "BeamWidth": 90,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "NodeBudget": 6000,
+            "TimeBudgetMilliseconds": 10000,
+            "ExpandedNodes": 2979,
+            "TransitionCount": 12927,
+            "Termination": "None",
+            "Won": true,
+            "BattleHpLost": 54,
+            "ImprovedIncumbent": false,
+            "ElapsedMilliseconds": 1870,
+            "AllocatedBytes": 498454272,
+            "ManagedHeapBytesAfter": 43951088
+          },
+          {
+            "Prefix": "PREP_TIME",
+            "BeamWidth": 135,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "NodeBudget": 6000,
+            "TimeBudgetMilliseconds": 10000,
+            "ExpandedNodes": 4127,
+            "TransitionCount": 18480,
+            "Termination": "None",
+            "Won": true,
+            "BattleHpLost": 59,
+            "ImprovedIncumbent": false,
+            "ElapsedMilliseconds": 2177,
+            "AllocatedBytes": 699787928,
+            "ManagedHeapBytesAfter": 66471024
+          },
+          {
+            "Prefix": "CALAMITY",
+            "BeamWidth": 90,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "NodeBudget": 6000,
+            "TimeBudgetMilliseconds": 10000,
+            "ExpandedNodes": 3916,
+            "TransitionCount": 18256,
+            "Termination": "None",
+            "Won": true,
+            "BattleHpLost": 59,
+            "ImprovedIncumbent": false,
+            "ElapsedMilliseconds": 2276,
+            "AllocatedBytes": 700244912,
+            "ManagedHeapBytesAfter": 54783416
+          },
+          {
+            "Prefix": "CALAMITY",
+            "BeamWidth": 135,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "NodeBudget": 6000,
+            "TimeBudgetMilliseconds": 10000,
+            "ExpandedNodes": 5170,
+            "TransitionCount": 29939,
+            "Termination": "None",
+            "Won": true,
+            "BattleHpLost": 40,
+            "ImprovedIncumbent": true,
+            "ElapsedMilliseconds": 4212,
+            "AllocatedBytes": 1218119408,
+            "ManagedHeapBytesAfter": 113413584
+          },
+          {
+            "Prefix": "FURNACE",
+            "BeamWidth": 90,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "NodeBudget": 6000,
+            "TimeBudgetMilliseconds": 10000,
+            "ExpandedNodes": 3038,
+            "TransitionCount": 13797,
+            "Termination": "None",
+            "Won": true,
+            "BattleHpLost": 48,
+            "ImprovedIncumbent": false,
+            "ElapsedMilliseconds": 1508,
+            "AllocatedBytes": 520062328,
+            "ManagedHeapBytesAfter": 50699488
+          },
+          {
+            "Prefix": "FURNACE",
+            "BeamWidth": 135,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "NodeBudget": 6000,
+            "TimeBudgetMilliseconds": 10000,
+            "ExpandedNodes": 4296,
+            "TransitionCount": 19547,
+            "Termination": "None",
+            "Won": true,
+            "BattleHpLost": 48,
+            "ImprovedIncumbent": false,
+            "ElapsedMilliseconds": 2168,
+            "AllocatedBytes": 725653768,
+            "ManagedHeapBytesAfter": 56047544
+          },
+          {
+            "Prefix": "PREP_TIME+FURNACE",
+            "BeamWidth": 90,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "NodeBudget": 6000,
+            "TimeBudgetMilliseconds": 10000,
+            "ExpandedNodes": 2895,
+            "TransitionCount": 12532,
+            "Termination": "None",
+            "Won": true,
+            "BattleHpLost": 54,
+            "ImprovedIncumbent": false,
+            "ElapsedMilliseconds": 1361,
+            "AllocatedBytes": 477416632,
+            "ManagedHeapBytesAfter": 54080928
+          },
+          {
+            "Prefix": "PREP_TIME+FURNACE",
+            "BeamWidth": 135,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "NodeBudget": 6000,
+            "TimeBudgetMilliseconds": 10000,
+            "ExpandedNodes": 4050,
+            "TransitionCount": 18150,
+            "Termination": "None",
+            "Won": true,
+            "BattleHpLost": 54,
+            "ImprovedIncumbent": false,
+            "ElapsedMilliseconds": 2060,
+            "AllocatedBytes": 689390752,
+            "ManagedHeapBytesAfter": 55144560
+          },
+          {
+            "Prefix": "FURNACE+PREP_TIME",
+            "BeamWidth": 90,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "NodeBudget": 6000,
+            "TimeBudgetMilliseconds": 10000,
+            "ExpandedNodes": 2891,
+            "TransitionCount": 12521,
+            "Termination": "None",
+            "Won": true,
+            "BattleHpLost": 54,
+            "ImprovedIncumbent": false,
+            "ElapsedMilliseconds": 1373,
+            "AllocatedBytes": 476647760,
+            "ManagedHeapBytesAfter": 53120256
+          },
+          {
+            "Prefix": "FURNACE+PREP_TIME",
+            "BeamWidth": 135,
+            "SecondRankBand": false,
+            "BaseScoreOnly": false,
+            "NodeBudget": 6000,
+            "TimeBudgetMilliseconds": 10000,
+            "ExpandedNodes": 4048,
+            "TransitionCount": 18148,
+            "Termination": "None",
+            "Won": true,
+            "BattleHpLost": 54,
+            "ImprovedIncumbent": false,
+            "ElapsedMilliseconds": 2037,
+            "AllocatedBytes": 688786992,
+            "ManagedHeapBytesAfter": 84500128
+          }
+        ],
+        "PeakManagedHeapBytes": 113413584,
+        "ManagedLiveBytes": 71450504,
+        "ManagedHeapBytes": 82715256,
+        "ManagedFragmentedBytes": 11397216,
+        "WorkingSetBytes": 337543168,
+        "PrivateMemoryBytes": 272764928,
+        "ConfiguredNoGcRegionEnabled": false,
+        "ConfiguredNoGcRegionBudgetBytes": 1000000000,
+        "GcLatencyMode": 1,
+        "NoGcRegionActive": false,
+        "NoGcRegionBudgetBytes": 0,
+        "NoGcRegionRolloverCount": 0
+      },
+      "totalAllocatedBytes": 7782129360,
+      "searchWallSecondsWithProfiler": 29.1435342
+    }
+  ],
+  "standPatProbe": [
+    {
+      "calls": 1828,
+      "duplicates": 9,
+      "mismatches": 0,
+      "totalSeconds": 0.409191605,
+      "duplicateSeconds": 0.000829903,
+      "allocatedBytes": 86928560,
+      "duplicateAllocatedBytes": 345424,
+      "requestSeconds": 11.5070504,
+      "scenario": "dev-02-defect-elite",
+      "key": [
+        "StateFingerprint",
+        "node.Turn"
+      ],
+      "duplicateFraction": 0.004923413566739606,
+      "observedDuplicateElapsedFraction": 7.212126228281749e-05,
+      "observedDuplicateAllocationFraction": 0.0001502966175697136,
+      "sameSearchSummaryAsProfile": true,
+      "samePruneCountersAsProfile": true,
+      "timeBoundaryObserved": false
+    },
+    {
+      "calls": 37309,
+      "duplicates": 13895,
+      "mismatches": 0,
+      "totalSeconds": 5.414778039,
+      "duplicateSeconds": 1.495540542,
+      "allocatedBytes": 1498061080,
+      "duplicateAllocatedBytes": 563613992,
+      "requestSeconds": 27.1441364,
+      "scenario": "dev-08-regent-boss",
+      "key": [
+        "StateFingerprint",
+        "node.Turn"
+      ],
+      "duplicateFraction": 0.3724302447130719,
+      "observedDuplicateElapsedFraction": 0.05509626535769987,
+      "observedDuplicateAllocationFraction": 0.07232978967434099,
+      "sameSearchSummaryAsProfile": true,
+      "samePruneCountersAsProfile": true,
+      "timeBoundaryObserved": false
+    }
+  ],
+  "configuredButNotExecutedCorpus": [
+    {
+      "scenario": "dev-00-ironclad-elite",
+      "source": "coverage/novelty-search/dev-00-ironclad-elite.json"
+    },
+    {
+      "scenario": "dev-01-silent-elite",
+      "source": "coverage/novelty-search/dev-01-silent-elite.json"
+    },
+    {
+      "scenario": "dev-03-regent-elite",
+      "source": "coverage/novelty-search/dev-03-regent-elite.json"
+    },
+    {
+      "scenario": "dev-04-necrobinder-elite",
+      "source": "coverage/novelty-search/dev-04-necrobinder-elite.json"
+    },
+    {
+      "scenario": "dev-05-ironclad-boss",
+      "source": "coverage/novelty-search/dev-05-ironclad-boss.json"
+    },
+    {
+      "scenario": "dev-06-silent-boss",
+      "source": "coverage/novelty-search/dev-06-silent-boss.json"
+    },
+    {
+      "scenario": "dev-07-defect-boss",
+      "source": "coverage/novelty-search/dev-07-defect-boss.json"
+    },
+    {
+      "scenario": "dev-09-necrobinder-boss",
+      "source": "coverage/novelty-search/dev-09-necrobinder-boss.json"
+    },
+    {
+      "scenario": "holdout-00-ironclad",
+      "source": "coverage/novelty-search/holdout-00-ironclad.json"
+    },
+    {
+      "scenario": "holdout-01-silent",
+      "source": "coverage/novelty-search/holdout-01-silent.json"
+    },
+    {
+      "scenario": "holdout-02-defect",
+      "source": "coverage/novelty-search/holdout-02-defect.json"
+    },
+    {
+      "scenario": "holdout-03-regent",
+      "source": "coverage/novelty-search/holdout-03-regent.json"
+    },
+    {
+      "scenario": "holdout-04-necrobinder",
+      "source": "coverage/novelty-search/holdout-04-necrobinder.json"
+    },
+    {
+      "scenario": "sentinel-discard",
+      "source": "coverage/novelty-search/sentinel-discard.json"
+    },
+    {
+      "scenario": "sentinel-potions",
+      "source": "coverage/novelty-search/sentinel-potions.json"
+    }
+  ]
+}

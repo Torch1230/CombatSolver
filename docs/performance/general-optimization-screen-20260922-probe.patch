@@ -1,0 +1,70 @@
+diff --git a/src/Search/CombatBeamSolver.Retention.cs b/src/Search/CombatBeamSolver.Retention.cs
+index 975ad3bd..06fe6b88 100644
+--- a/src/Search/CombatBeamSolver.Retention.cs
++++ b/src/Search/CombatBeamSolver.Retention.cs
+@@ -1908,13 +1908,19 @@ internal sealed partial class CombatBeamSolver
+         return evaluation;
+     }
+ 
++    private static readonly Dictionary<(StateFingerprint, int), StandPatEvaluation> StandPatProbeSeen = [];
++    internal static long StandPatProbeCalls, StandPatProbeDuplicates, StandPatProbeMismatches;
++    internal static long StandPatProbeTicks, StandPatProbeDuplicateTicks, StandPatProbeAllocated, StandPatProbeDuplicateAllocated;
++
+     private StandPatEvaluation ComputeStandPat(SearchNode node)
+     {
++        long probeStart = System.Diagnostics.Stopwatch.GetTimestamp();
++        long probeAllocatedStart = GC.GetAllocatedBytesForCurrentThread();
+         SimulationSnapshot end = ReplayAction(node, new PlanAction(PlanActionKind.EndTurn, node.Turn));
+         try
+         {
+             ObserveSearchPath(node, SearchPathObservationStage.StandPatProbe, "stand_pat_replayed");
+-            return new StandPatEvaluation(
++            StandPatEvaluation evaluation = new(
+                 end.AllEnemiesDead,
+                 Math.Max(0, node.Snapshot.EnemyHp - end.EnemyHp),
+                 end.ProjectedPlayerHp,
+@@ -1925,6 +1931,22 @@ internal sealed partial class CombatBeamSolver
+                     + end.FutureResourceValue
+                     + end.OstyHp * 16
+                     + end.OstyMaxHp * 4);
++            long ticks = System.Diagnostics.Stopwatch.GetTimestamp() - probeStart;
++            long allocated = GC.GetAllocatedBytesForCurrentThread() - probeAllocatedStart;
++            StandPatProbeCalls++;
++            StandPatProbeTicks += ticks;
++            StandPatProbeAllocated += allocated;
++            if (StandPatProbeSeen.TryGetValue((node.StateKey, node.Turn), out StandPatEvaluation prior))
++            {
++                StandPatProbeDuplicates++;
++                StandPatProbeDuplicateTicks += ticks;
++                StandPatProbeDuplicateAllocated += allocated;
++                if (prior != evaluation)
++                    StandPatProbeMismatches++;
++            }
++            else
++                StandPatProbeSeen.Add((node.StateKey, node.Turn), evaluation);
++            return evaluation;
+         }
+         finally
+         {
+diff --git a/tools/OfflineSearchHarness/ModRuntime.cs b/tools/OfflineSearchHarness/ModRuntime.cs
+index 471dedca..a24b7bc6 100644
+--- a/tools/OfflineSearchHarness/ModRuntime.cs
++++ b/tools/OfflineSearchHarness/ModRuntime.cs
+@@ -495,6 +495,17 @@ internal static class ModRuntime
+         orderingObservations?.WriteSelectedPath(options.OutputDirectory, result);
+         HarnessLog.Trace("solved");
+         watch.Stop();
++        File.WriteAllText(Path.Combine(options.OutputDirectory, "standpat-probe.json"), JsonSerializer.Serialize(new
++        {
++            calls = CombatBeamSolver.StandPatProbeCalls,
++            duplicates = CombatBeamSolver.StandPatProbeDuplicates,
++            mismatches = CombatBeamSolver.StandPatProbeMismatches,
++            totalSeconds = (double)CombatBeamSolver.StandPatProbeTicks / System.Diagnostics.Stopwatch.Frequency,
++            duplicateSeconds = (double)CombatBeamSolver.StandPatProbeDuplicateTicks / System.Diagnostics.Stopwatch.Frequency,
++            allocatedBytes = CombatBeamSolver.StandPatProbeAllocated,
++            duplicateAllocatedBytes = CombatBeamSolver.StandPatProbeDuplicateAllocated,
++            requestSeconds = watch.Elapsed.TotalSeconds,
++        }));
+         File.WriteAllText(Path.Combine(options.OutputDirectory, "quality.json"), JsonSerializer.Serialize(new
+         {
+             quality = CombatSearchCoordinator.CapturePortfolioQuality(root, policy, result),
