@@ -84,11 +84,13 @@ internal sealed partial class CombatBeamSolver
             insertionIndex + 1,
             originalActions.Length - insertionIndex);
 
-        SearchNode inserted = ReplayAdjustedRoute(
+        SearchNode? inserted = ReplayAdjustedRoute(
             insertedActions,
             original.GetTurnSetupChoices(),
             original.GetTurnSetupPlayState(),
-            originalAnnotations) ?? throw new InvalidOperationException("格挡药路线回放意外未生成候选。");
+            originalAnnotations);
+        if (inserted == null)
+            return null;
         RouteAnnotations insertedAnnotations = BuildRouteAnnotations(inserted);
         int hpSaved = original.Snapshot.CumulativePlayerHpLost
             - inserted.Snapshot.CumulativePlayerHpLost;
@@ -156,6 +158,13 @@ internal sealed partial class CombatBeamSolver
         {
             for (int index = 0; index < replayActions.Length; index++)
             {
+                // An inserted action may win early or alter later draws/costs. In that case
+                // the original action list is no longer a route through this combat state.
+                if (current.IsTerminal)
+                {
+                    current.Snapshot.ReleaseSimulator();
+                    return null;
+                }
                 if (frontloadAfterimages
                     && (index == 0 || replayActions[index - 1].Turn != current.Turn))
                 {
@@ -177,17 +186,11 @@ internal sealed partial class CombatBeamSolver
                         $"state_turn={current.Turn}。");
                 }
 
-                if (frontloadAfterimages && action.Kind == PlanActionKind.PlayCard)
+                if (action.Kind is (PlanActionKind.PlayCard or PlanActionKind.UsePotion)
+                    && !CanApplyFixedPrefixAction(current, action))
                 {
-                    CombatPredictionSimulator simulator = current.Snapshot.Simulator;
-                    SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(_player);
-                    PredictedCard? card = FindCardForReplay(playerState.Hand.Cards, action);
-                    if (card == null || !((SimulatedCombatState)simulator.State.CombatState)
-                            .CanPlayCard(simulator, card))
-                    {
-                        current.Snapshot.ReleaseSimulator();
-                        return null;
-                    }
+                    current.Snapshot.ReleaseSimulator();
+                    return null;
                 }
 
                 SearchNode parent = current;
@@ -278,5 +281,55 @@ internal sealed partial class CombatBeamSolver
             current.Snapshot.ReleaseSimulator();
             throw;
         }
+    }
+
+    internal void VerifyAdjustedRouteInvalidSuffixForTesting()
+    {
+        SimulationSnapshot initial = Replay([]);
+        try
+        {
+            CombatPredictionSimulator simulator = initial.Simulator;
+            PredictedCard strike = simulator.State.GetPlayerCombatState(_player).Hand.Cards
+                .First(card => card.Preview.Id.Entry == "STRIKE_IRONCLAD");
+            SearchNode rootNode = new(null, 0, initial.PotionUseCount,
+                initial.PotionStrategicCost, initial.Turn, SearchRouteTraits.None,
+                0, initial.Score, initial.StateKey, initial.HasRisk,
+                initial.BoundaryReason, false, null, initial,
+                CombatProgressState.Capture(initial));
+            RouteAnnotations annotations = BuildRouteAnnotations(rootNode);
+            PlanAction strikeAction = new(PlanActionKind.PlayCard, initial.Turn,
+                CardId: strike.Preview.Id.Entry,
+                TargetIndex: 0,
+                TargetCombatId: root.Enemies[0].CombatId,
+                CardStateKey: CardChoiceSupport.ChoiceCardKey(strike));
+
+            SearchNode? stale = ReplayAdjustedRoute(
+                [strikeAction with { CardStateKey = strikeAction.CardStateKey + "|stale" }],
+                [], null, annotations);
+            if (stale != null)
+            {
+                stale.Snapshot.ReleaseSimulator();
+                throw new InvalidOperationException("调整路线接受了不存在的计划手牌状态。");
+            }
+
+            SearchNode? terminalSuffix = ReplayAdjustedRoute(
+                [strikeAction, new PlanAction(PlanActionKind.EndTurn, initial.Turn)],
+                [], null, annotations);
+            if (terminalSuffix != null)
+            {
+                terminalSuffix.Snapshot.ReleaseSimulator();
+                throw new InvalidOperationException("调整路线接受了战斗终局后的动作。");
+            }
+
+            SearchNode valid = ReplayAdjustedRoute([strikeAction], [], null, annotations)
+                ?? throw new InvalidOperationException("调整路线拒绝了合法的终局动作。");
+            try
+            {
+                if (!valid.Snapshot.AllEnemiesDead)
+                    throw new InvalidOperationException("调整路线的合法动作未结束战斗。");
+            }
+            finally { valid.Snapshot.ReleaseSimulator(); }
+        }
+        finally { initial.ReleaseSimulator(); }
     }
 }

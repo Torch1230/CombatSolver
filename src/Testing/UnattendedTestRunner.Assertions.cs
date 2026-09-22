@@ -196,13 +196,21 @@ internal sealed partial class UnattendedTestRunner
                 runner._completedChecks.Add("ModelCloneConcurrency");
             }
             if (request.ScenarioId is "END-TURN-CHOICE-REPLAY" or "ADAPTIVE-END-TURN-CHOICE-REPLAY"
-                or "HAND-DRAW-SHUFFLE-CHOICE-REPLAY")
+                or "HAND-DRAW-SHUFFLE-CHOICE-REPLAY" or "ARSENAL-HAND-DRAW-SHUFFLE-CHOICE-REPLAY")
             {
                 runner.SetStage("end_turn_choice_replay");
                 await AssertEndTurnChoiceReplayAsync(scenario.CombatState,
                     adaptive: request.ScenarioId == "ADAPTIVE-END-TURN-CHOICE-REPLAY",
-                    handDrawShuffle: request.ScenarioId == "HAND-DRAW-SHUFFLE-CHOICE-REPLAY");
+                    handDrawShuffle: request.ScenarioId is "HAND-DRAW-SHUFFLE-CHOICE-REPLAY"
+                        or "ARSENAL-HAND-DRAW-SHUFFLE-CHOICE-REPLAY",
+                    arsenal: request.ScenarioId == "ARSENAL-HAND-DRAW-SHUFFLE-CHOICE-REPLAY");
                 runner._completedChecks.Add("EndTurnChoiceReplay");
+            }
+            if (request.ScenarioId == "ADJUSTED-ROUTE-INVALID-SUFFIX")
+            {
+                runner.SetStage("adjusted_route_invalid_suffix");
+                await runner.AssertAdjustedRouteInvalidSuffixAsync(scenario.CombatState, scenario.Player);
+                runner._completedChecks.Add("AdjustedRouteInvalidSuffix");
             }
             if (request.ScenarioId == "EARLY-END-TURN")
             {

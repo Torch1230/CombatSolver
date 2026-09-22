@@ -6,8 +6,23 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
+    private async Task AssertAdjustedRouteInvalidSuffixAsync(
+        MegaCrit.Sts2.Core.Combat.CombatState combat,
+        MegaCrit.Sts2.Core.Entities.Players.Player player)
+    {
+        await InjectCardAsync(combat, player, new UnattendedCardInjection
+            { CardId = "STRIKE_IRONCLAD", Pile = "Hand" });
+        CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
+        SearchPolicySnapshot policy = SolverController.CaptureSearchPolicy(
+            SolverSettings.Capture(), combat, includeTurnSetup: false,
+            theftPolicy: SolverController.ResolveTheftPolicy(combat));
+        await Task.Run(() => new CombatBeamSolver(root, SolverDisplayNames.Capture(combat),
+            BattleDamageTracker.Observe(combat), policy, CancellationToken.None)
+            .VerifyAdjustedRouteInvalidSuffixForTesting());
+    }
+
     private static async Task AssertEndTurnChoiceReplayAsync(MegaCrit.Sts2.Core.Combat.CombatState combat,
-        bool adaptive = false, bool handDrawShuffle = false)
+        bool adaptive = false, bool handDrawShuffle = false, bool arsenal = false)
     {
         string liveBefore = ContinuationStamp.CaptureLive(combat).StateText;
         SearchPolicySnapshot capturedPolicy = SolverController.CaptureSearchPolicy(
@@ -26,6 +41,11 @@ internal sealed partial class UnattendedTestRunner
         {
             simulated.Apply<StratagemPower>(combat.Players[0].Creature, 1, combat.Players[0].Creature);
             simulated.Apply<EntropyPower>(combat.Players[0].Creature, 1, combat.Players[0].Creature);
+            if (arsenal)
+            {
+                simulated.Apply<InfiniteBladesPower>(combat.Players[0].Creature, 1, combat.Players[0].Creature);
+                simulated.Apply<ArsenalPower>(combat.Players[0].Creature, 1, combat.Players[0].Creature);
+            }
             simulated.AddDrawNextTurn(combat.Players[0], 2);
             simulator.AddToPile(simulator.State.GetPlayerCombatState(combat.Players[0]).DrawPile.Cards.ToArray(),
                 MegaCrit.Sts2.Core.Entities.Cards.PileType.Discard);

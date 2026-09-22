@@ -84,6 +84,11 @@ internal sealed partial class CombatBeamSolver
         }
         if (stage <= PlayerStartStage.PrepareDraw)
         {
+            // BeforeHandDraw may generate cards. Their listeners (for example Arsenal)
+            // can change Power amounts, which must resolve before the pre-draw checkpoint.
+            using (simulator.BeginExecutionDispatch())
+                PowerLifecycleSupport.ResolvePowerAmountChanges(simulator, combat);
+            if (Suspended(PlayerStartStage.PrepareDraw)) return SearchBoundaryReason.PendingChoice;
             if (!progress.RootSetup)
                 progress.ShufflesCrossed += simulator.ShuffleEventCount - progress.BeforeHandShuffles;
             progress.DrawCount = PersistentPowerSupport.ConsumeModifiedHandDraw(combat, player, CombatManager.baseHandDrawCount);
