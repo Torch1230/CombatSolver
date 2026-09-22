@@ -60,6 +60,14 @@ static BeamWidthPortfolioMemberSpec Offense(int width) => new(width, OffensiveRe
 static BeamWidthPortfolioMemberSpec BoundedOffense(int width)
     => new(width, OffensiveRefinement: true, BoundedRefinement: true);
 var originalMembers = BeamWidthPortfolio.ProductionMembers(60, null, includePowerCommitmentMember: true);
+Require(BeamWidthPortfolio.ProductionMembers(60, null, includePlainBaseline: false,
+    includePowerCommitmentMember: true, appendBoundedOffensiveRefinement: true)
+    .SequenceEqual([Power(60), Width(40), Width(90), Band(60), Base(60), BoundedOffense(24)]),
+    "Reallocation lost a retained member or changed the bounded refinement order.");
+Require(BeamWidthPortfolio.ProductionMembers(60, null, includePlainBaseline: false,
+    appendBoundedOffensiveRefinement: true)
+    .SequenceEqual([Width(40), Width(90), Band(60), Base(60), BoundedOffense(24)]),
+    "Reallocation without reachable powers must start with the ordinary narrow member.");
 var appendedMembers = BeamWidthPortfolio.ProductionMembers(60, null, includePowerCommitmentMember: true,
     appendBoundedOffensiveRefinement: true);
 Require(appendedMembers.Take(originalMembers.Count).SequenceEqual(originalMembers)

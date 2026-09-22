@@ -378,6 +378,7 @@ internal sealed record HarnessOptions
           --beam-weight <term:scale>  单项排序敏感度：CurrentEnergy|PersistentBuffDelta|EnemyHp，scale 0..2
           --continuous-threat  实验：EndTurn 后尚能出牌的新回合起点，连续计价致死意图
           --base-score-tactical-ties  实验：基础分成员的单进展值同分截线使用既有战术顺序
+          --reallocated-refinement / --disable-reallocated-refinement  显式覆盖默认组合再分配
           --adaptive-novelty  实验：原Beam组合完成后，以实际工作量的至多1/8追加结构探索
           --observe-portfolio    导出追加搜索的特征与实际政策标签
           --portfolio-model <p>  加载可选选择器 JSON；不匹配的版本回退原组合
@@ -434,6 +435,7 @@ internal sealed record HarnessOptions
     public bool ContinuousThreatRanking { get; init; }
     public bool BaseScoreTacticalTies { get; init; }
     public bool AdaptiveNoveltyRefinement { get; init; }
+    public bool? ReallocatedRefinementPortfolio { get; init; }
     public BeamWeightPerturbation? BeamWeightPerturbation { get; init; }
     public bool OffensiveRefinementPortfolio { get; init; }
     public bool? BoundedOffensiveRefinementPortfolio { get; init; }
@@ -464,6 +466,7 @@ internal sealed record HarnessOptions
         bool continuousThreatRanking = false;
         bool baseScoreTacticalTies = false;
         bool adaptiveNoveltyRefinement = false;
+        bool? reallocatedRefinementPortfolio = null;
         BeamWeightPerturbation? beamWeightPerturbation = null;
         bool offensiveRefinementPortfolio = false;
         bool? boundedOffensiveRefinementPortfolio = null;
@@ -537,6 +540,8 @@ internal sealed record HarnessOptions
                     break;
                 case "--continuous-threat": continuousThreatRanking = true; break;
                 case "--base-score-tactical-ties": baseScoreTacticalTies = true; break;
+                case "--reallocated-refinement": reallocatedRefinementPortfolio = true; break;
+                case "--disable-reallocated-refinement": reallocatedRefinementPortfolio = false; break;
                 case "--adaptive-novelty": adaptiveNoveltyRefinement = true; break;
                 case "--stop-portfolio-at-hp-target": stopPortfolioAtHpTarget = true; break;
                 case "--disable-portfolio-hp-target-stop": stopPortfolioAtHpTarget = false; break;
@@ -568,6 +573,11 @@ internal sealed record HarnessOptions
             throw new ArgumentException("--continuous-threat 必须单独测量，不叠加排序模型或其他成员。");
         if (baseScoreTacticalTies && (searchMode == "Evaluate" ? ordering != "base" : !usePortfolio))
             throw new ArgumentException("--base-score-tactical-ties 需要 Evaluate --ordering base 或 Coordinator --use-portfolio。");
+        if (reallocatedRefinementPortfolio.HasValue && (searchMode != "Coordinator" || !usePortfolio))
+            throw new ArgumentException("组合再分配覆盖需要 Coordinator --use-portfolio。");
+        if (reallocatedRefinementPortfolio == true && (noPlainBaseline || adaptiveNoveltyRefinement
+            || offensiveRefinementPortfolio || boundedOffensiveRefinementPortfolio == true))
+            throw new ArgumentException("--reallocated-refinement 不能叠加显式成员列表消融或精炼实验。");
         if (adaptiveNoveltyRefinement && (searchMode != "Coordinator" || !usePortfolio))
             throw new ArgumentException("--adaptive-novelty 需要 Coordinator --use-portfolio。");
         if (beamWeightPerturbation != null && (continuousThreatRanking || rankingModelPath != null || ordering != "baseline"))
@@ -644,6 +654,7 @@ internal sealed record HarnessOptions
             ContinuousThreatRanking = continuousThreatRanking,
             BaseScoreTacticalTies = baseScoreTacticalTies,
             AdaptiveNoveltyRefinement = adaptiveNoveltyRefinement,
+            ReallocatedRefinementPortfolio = reallocatedRefinementPortfolio,
             BeamWeightPerturbation = beamWeightPerturbation,
             OffensiveRefinementPortfolio = offensiveRefinementPortfolio,
             BoundedOffensiveRefinementPortfolio = boundedOffensiveRefinementPortfolio,

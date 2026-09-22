@@ -526,3 +526,7 @@ NativeReplayDriver 保存开战/结束观察器抛出的原始异常，由 Advan
 循环展示由 `SolverOverlaySnapshot` 捕获动作结构身份，`SolverActionRuns` 在 UI 按完整显示值划分重复区间；`SolverRouteRow` 保留真实动作数，以区间/周期余数映射高亮，不修改 Runtime 平坦计划。`DefensiveBlockValue` 是 Search 的派生评分特征，不进战斗指纹；格挡清空后的保留上限与 `PersistentRelicSupport.BlockAfterPreventingClear` 的既有结算共用。详见[本批设计与证据](performance/loop-optimization-20260921.md)。
 
 循环回放在串行提交完普通层后运行；每一步使用真实 ReplayAction，只有合法无损前缀可在额度用尽后加入普通 frontier，原有出牌和 EndTurn 候选保留。回放链逐节点附加既有调度证据，释放中间 simulator；只保留下一步需要的 simulator 与平坦动作父链。尚未执行第一步的替代出牌不会烧掉 region；开始执行后每 region 至多一次。
+
+### 默认搜索组合的预算再分配
+
+`CombatSearchCoordinator.RunBeamWidthPortfolioPass` 通过不可变 `SolverSearchProfile.ReallocatedRefinementPortfolio` 选择默认成员布局：省去普通基线成员，其余既有成员之后追加 `BoundedRefinement`。`BeamWidthPortfolio` 仍独占成员预算/终局选优，追加成员最多消费此前组合实际展开的1/8和共享余量；该局部额度不是请求级硬上限。显式布局、关闭组合及其他可选算法/排序实验保持原入口；旧布局的学习选择器不裁决新布局。没有新增模拟状态或修改最终政策，独有旧好解仍可能损失。实际质量取舍与内存尾部见[组合再分配报告](strategy/contextual-ordering-20260922.md)。

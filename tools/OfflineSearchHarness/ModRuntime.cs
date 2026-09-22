@@ -398,6 +398,8 @@ internal static class ModRuntime
             ContinuousThreatRanking = options.ContinuousThreatRanking,
             BaseScoreTacticalTies = options.BaseScoreTacticalTies,
             AdaptiveNoveltyRefinement = options.AdaptiveNoveltyRefinement,
+            ReallocatedRefinementPortfolio = options.ReallocatedRefinementPortfolio
+                ?? policy.Profile.ReallocatedRefinementPortfolio,
             BeamWeightPerturbation = options.BeamWeightPerturbation,
             OffensiveRefinementPortfolio = options.OffensiveRefinementPortfolio,
             BoundedOffensiveRefinementPortfolio = options.BoundedOffensiveRefinementPortfolio

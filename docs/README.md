@@ -46,7 +46,7 @@
 | 自生成场景、上下文排序实验与组合达标早停 | [实验与取舍](strategy/contextual-ordering-20260922.md)、[早停证据](strategy/contextual-target-stop-20260922-evidence.json)、[权重敏感度证据](strategy/contextual-weight-sensitivity-20260922-evidence.json)、[窄进攻成员证据](strategy/contextual-offensive-refinement-20260922-evidence.json)、[有界追加证据](strategy/contextual-bounded-refinement-20260922-evidence.json) |
 - [后置结构探索证据](strategy/contextual-adaptive-novelty-20260922-evidence.json)：完整原搜索后追加有限探索的32根质量、成本、时间截断与默认关闭决定。
 - [条件窄成员替换证据](strategy/contextual-structural-refinement-20260922-evidence.json)：已撤回原型的质量、成本及复现补丁。
-- [组合再分配证据](strategy/contextual-portfolio-reallocation-20260922-evidence.json)：普通基线消融、有界精炼组合及独立测试协议。
+- [组合再分配证据](strategy/contextual-portfolio-reallocation-20260922-evidence.json)：默认组合再分配、独立35根、跨预设、ABBA与原生完整部署，以及质量/内存取舍。
 | 943份计划外重算报告、16类已修机制及证据缺口 | [2026-09-13批次结果](issues/report-replans-20260913.md) |
 | 环绕轨道、自动化的持续返能估值与实战对照 | [返能能力估值](issues/recurring-energy-valuation-20260913.md) |
 | 后续六方向的当前诊断、逐项实现与对照 | [六方向开发记录](performance/six-directions-20260913.md) |

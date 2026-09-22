@@ -75,3 +75,14 @@ variant 可指定自己的 `harness`。旧 DLL 需要兼容的旧宿主；引用
 
 
 组合消融可以使用已有 `--no-plain-baseline`。`compare.py` 将普通基线/新颖性开关作为算法配置差异处理，在 `algorithmSwitches` 中并列列出已记录的值；旧宿主缺失项标为 `Unrecorded`，不推定默认。根、预算和最终目标政策仍必须匹配。`python3 tools/ContextualOrdering/test_compare.py` 检查算法差异不会掩盖战损目标、用药政策、根或预算变化。
+
+### 默认组合再分配与对照
+
+`Coordinator --use-portfolio --reallocated-refinement` 把既有
+`--no-plain-baseline --bounded-offensive-refinement` 组合接到单个不可变 profile 开关；
+`--disable-reallocated-refinement` 强制恢复普通列表。只对隐式默认宽度列表生效，
+显式成员表、关闭组合、已开启新颖性组合及独立精炼实验保持其原语义。
+模型选择器不使用旧成员布局训练的模型裁决新布局。这个开关不是训练模型、可达界或质量保证。
+新接线须与冻结的两个开关组合核对根、路线、质量和工作量；独立种子的实验参数不随结果调整。
+
+最终默认接线已通过冻结组合等价、Low/High代表、4根ABBA和原生完整部署。独立test34可比根2早结束/31同/1多损2 HP，总转移−6.52%；不称为普遍战损改善。完整成本尾项与原生命令见 `docs/strategy/contextual-portfolio-reallocation-20260922-evidence.json`。

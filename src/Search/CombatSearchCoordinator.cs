@@ -452,6 +452,19 @@ internal static partial class CombatSearchCoordinator
         string gameAssemblyId = typeof(CombatState).Module.ModuleVersionId.ToString();
         bool hasReachablePower = root.PlayerCardIds.Any(
             PowerCardValuationModels.Registry.ContainsCardId);
+        // Respect explicit portfolio layouts/experiments and the separately enabled novelty pass.
+        // This is exactly the measured no-plain-baseline + bounded-refinement combination.
+        bool useReallocation = profile.ReallocatedRefinementPortfolio
+            && policy.UseBeamWidthPortfolio && !policy.UseNoveltyPortfolio
+            && !profile.AdaptiveNoveltyRefinement
+            && profile.ContextualRanking == null && profile.BeamWeightPerturbation == null
+            && !profile.ContinuousThreatRanking && !profile.BaseScoreTacticalTies
+            && !profile.BaseScoreOnly && !profile.SecondRankBand
+            && policy.BeamWidthPortfolioWidths is not { Count: > 0 }
+            && policy.BeamWidthPortfolioPlainBaselineMember
+            && !profile.OffensiveRefinementPortfolio && !profile.BoundedOffensiveRefinementPortfolio;
+        if (useReallocation && policy.MeasurePhasePerformance)
+            policy.Diagnostics.Info("[CombatSolver/Test] PORTFOLIO_REALLOCATION plain_baseline=False bounded_refinement=True");
 
         long RemainingMilliseconds()
             => profile.SoftTimeBudgetMilliseconds - passClock.ElapsedMilliseconds;
@@ -604,7 +617,7 @@ internal static partial class CombatSearchCoordinator
             // observation; it becomes input. Only captures that change simulation fidelity do.
             bool eligible = IsCompleteVictory(first) && !first.Snapshot.HasRisk
                 && !policy.UseNoveltyPortfolio && policy.BeamWidthPortfolioWidths == null
-                && policy.BeamWidthPortfolioPlainBaselineMember
+                && policy.BeamWidthPortfolioPlainBaselineMember && !useReallocation
                 && root.CapturedRunModSubscriberCount == 0 && root.CapturedCombatModSubscriberCount == 0
                 && !root.CapturedBaseLibCardModifiers;
             pendingDecision = !eligible ? "UnsupportedSemantics"
@@ -624,10 +637,10 @@ internal static partial class CombatSearchCoordinator
                 BeamWidthPortfolio.ProductionMembers(
                     profile.BeamWidth,
                     policy.UseBeamWidthPortfolio ? policy.BeamWidthPortfolioWidths : [profile.BeamWidth],
-                    policy.BeamWidthPortfolioPlainBaselineMember,
+                    policy.BeamWidthPortfolioPlainBaselineMember && !useReallocation,
                     includePowerCommitmentMember: hasReachablePower,
                     useOffensiveRefinement: profile.OffensiveRefinementPortfolio,
-                    appendBoundedOffensiveRefinement: profile.BoundedOffensiveRefinementPortfolio),
+                    appendBoundedOffensiveRefinement: profile.BoundedOffensiveRefinementPortfolio || useReallocation),
                 profile.MaxExpandedNodes,
                 profile,
                 RunMember,

@@ -29,6 +29,8 @@ internal sealed record SolverSearchProfile(
     public bool OffensiveRefinementPortfolio { get; init; }
     /// <summary>Offline experiment: append a narrow offensive member using at most one eighth of prior member expansions.</summary>
     public bool BoundedOffensiveRefinementPortfolio { get; init; }
+    /// <summary>Use the default portfolio without its ordinary baseline, plus a bounded diverse refinement.</summary>
+    public bool ReallocatedRefinementPortfolio { get; init; } = true;
     /// <summary>Honor the player's HP stopping target across portfolios, preserving audits for visible or observed healing.</summary>
     public bool StopPortfolioAtHpTarget { get; init; } = true;
 

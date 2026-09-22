@@ -1,6 +1,9 @@
 # CombatSolver 测试清单
 
-普通基线消融/有界进攻组合：开发32根均Comparable，战损/用药不变、结束回合1好/1差；组合保留训练代表消耗高压17→10 HP的离线收益，开发转移−4.73%、分配−4.11%，明确保留内存与发布延迟尾项。新种子35根独立test正在运行，尚未作默认接受、原生或ABBA结论。宿主新元数据编译0/0、2组比较上下文检查通过；见[证据与协议](strategy/contextual-portfolio-reallocation-20260922-evidence.json)。
+- 默认组合再分配最终验收：新种子REALLOCATED-HOLDOUT35根/70进程，34对Comparable、1基线超时；2早结束/31同/1多损2 HP，无胜负翻转。Low/High两代表4对全部Comparable，Low防御多1回合，High消耗高压少7 HP。最终4根16次独立进程ABBA全部Comparable，同配置重复路线/质量/剪枝/工作完全一致；新接线与冻结双开关、关闭接线与冻结基线的代表根等价。108项组合合同、2组比较上下文、两端208结构边界、Release/宿主0警告错误通过。
+- 原生 `CONTEXTUAL-REALLOCATED-DEPLOY` / `f51aa294fe2749d3b1f6b30e00e0fc8a` Passed，42.78秒：默认候选10 HP/0药/T9路线完整执行至胜利，0意外重算，Instant/0，实例清理；17742展开/75006转移。独立test没有战损改善，Regent+2 HP及ABBA托管采样均值+13.31%等代价如实保留；不外推Windows或可见性能。详见[完整再分配证据](strategy/contextual-portfolio-reallocation-20260922-evidence.json)。
+
+普通基线消融/有界进攻组合：开发32根均Comparable，战损/用药不变、结束回合1好/1差；组合保留训练代表消耗高压17→10 HP的离线收益，开发转移−4.73%、分配−4.11%，明确保留内存与发布延迟尾项。这是独立test前的开发阶段记录；最终独立测试、默认接受、原生和ABBA结果见本页顶部。宿主新元数据编译0/0、2组比较上下文检查通过；见[证据与协议](strategy/contextual-portfolio-reallocation-20260922-evidence.json)。
 
 已撤回条件窄成员替换原型：训练5根1好/4同；开发验证32根1好/31同，均未见时间截断，无胜负翻转，总转移−0.92%、分配+0.63%。原型115项组合合同、Release/宿主及两端208门禁通过；源码/合同已归档，不能把活动检查程序说成包含这些新合同。未运行新独立test、原生或ABBA；见[证据](strategy/contextual-structural-refinement-20260922-evidence.json)。
 

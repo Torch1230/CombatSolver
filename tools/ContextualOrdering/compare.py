@@ -32,7 +32,7 @@ def context_mismatch(a, b):
         # the source for their old values; never infer a missing value as a default.
         for key in ('BeamWidthPortfolioPlainBaselineMember', 'UseNoveltyPortfolio'):
             policy.pop(key, None)
-        for key in ('ContextualRanking', 'BaseScoreOnly', 'SecondRankBand', 'ContinuousThreatRanking', 'BaseScoreTacticalTies', 'AdaptiveNoveltyRefinement', 'StopPortfolioAtHpTarget', 'BeamWeightPerturbation', 'OffensiveRefinementPortfolio', 'BoundedOffensiveRefinementPortfolio'):
+        for key in ('ContextualRanking', 'BaseScoreOnly', 'SecondRankBand', 'ContinuousThreatRanking', 'BaseScoreTacticalTies', 'AdaptiveNoveltyRefinement', 'StopPortfolioAtHpTarget', 'BeamWeightPerturbation', 'OffensiveRefinementPortfolio', 'BoundedOffensiveRefinementPortfolio', 'ReallocatedRefinementPortfolio'):
             policy['Profile'].pop(key, None)
     return 'PolicyMismatch' if policy_a != policy_b else None
 

@@ -11,6 +11,7 @@ class ComparisonContextTests(unittest.TestCase):
     def test_algorithm_switches_are_explicit_experiments_including_old_unrecorded_hosts(self):
         candidate = copy.deepcopy(self.baseline)
         candidate['searchPolicy'].update(BeamWidthPortfolioPlainBaselineMember=False, UseNoveltyPortfolio=True)
+        candidate['searchPolicy']['Profile']['ReallocatedRefinementPortfolio'] = True
         self.assertIsNone(context_mismatch(self.baseline, candidate))
         self.baseline['searchPolicy'].update(BeamWidthPortfolioPlainBaselineMember=True, UseNoveltyPortfolio=False)
         self.assertIsNone(context_mismatch(self.baseline, candidate))
@@ -24,6 +25,7 @@ class ComparisonContextTests(unittest.TestCase):
             with self.subTest(key=key):
                 candidate = copy.deepcopy(self.baseline)
                 candidate['searchPolicy']['UseNoveltyPortfolio'] = True
+                candidate['searchPolicy']['Profile']['ReallocatedRefinementPortfolio'] = True
                 candidate[section][key] = value
                 self.assertEqual(reason, context_mismatch(self.baseline, candidate))
 

@@ -1302,7 +1302,7 @@ for token in 'File.' 'SolverSettings.Current' 'SolverController' 'ComparePrimary
     forbid_fixed "$search_root/ContextualRankingModel.cs" "$token" 'contextual estimate crossed its pure ranking boundary:'
 done
 for file in CombatBeamSolver.FinalPlanOrdering.cs CombatBeamSolver.Transpositions.cs; do
-    for token in ContextualRanking ContinuousThreatRanking StopPortfolioAtHpTarget BeamWeightPerturbation OffensiveRefinementPortfolio BoundedOffensiveRefinementPortfolio; do
+    for token in ContextualRanking ContinuousThreatRanking StopPortfolioAtHpTarget BeamWeightPerturbation OffensiveRefinementPortfolio BoundedOffensiveRefinementPortfolio ReallocatedRefinementPortfolio; do
         forbid_fixed "$search_root/$file" "$token" 'intermediate estimate must not become final policy or exact dominance:'
     done
 done
