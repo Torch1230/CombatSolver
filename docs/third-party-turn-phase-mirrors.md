@@ -55,6 +55,11 @@ writePredicted 与正确 Fork。实际效果用模拟器命令实现，不能调
 未知有效覆写记录风险后抛异常；选择、异常传播、卡牌 COW 和成员快照规则与下述晚期入口相同。
 本阶段不开放回调内的通用可恢复执行帧，挂起选择仍由既有完整重放处理。
 
+顺序依据是游戏 0.111.0 的 `Hook.BeforeSideTurnStart`：枚举
+`IterateCombatHookListeners(combatState)`，逐个调用模型方法，不提前按 Side 筛选。
+求解器的玩家入口位于 `CombatBeamSolver.RoundTransition`，敌方入口位于
+`CombatBeamSolver.Expansion.Replay`。空扩展路径和有扩展路径互斥，避免原版效果重复结算。
+
 ### 回合结束晚期
 
 - 玩家流程：常规 Power → 常规遗物 → 本晚期阶段 → 词条规范化与阶段收尾。
@@ -83,6 +88,9 @@ writePredicted 与正确 Fork。实际效果用模拟器命令实现，不能调
 dotnet run --project tools/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release
 dotnet run --project tools/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --seal
 dotnet run --project tools/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --allocation
+dotnet run --project tools/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --start
+dotnet run --project tools/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --start --seal
+dotnet run --project tools/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --mask .godot/mono/temp/bin/Release/CombatSolver.dll
 ```
 
 独立合同链接生产 registry、晚期 facade 和 CardHookReceiver；游戏模型、模拟器命令与
