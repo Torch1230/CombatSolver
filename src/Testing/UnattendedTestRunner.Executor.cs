@@ -121,6 +121,11 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertLampDebuffOnKilledTargetAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "LAMP-POWER-SOURCED-DEBUFF")
+            {
+                await runner.AssertLampPowerSourcedDebuffAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "ZERO-BASE-BLOCK")
             {
                 await runner.AssertZeroBaseBlockAsync(combatState, player);
@@ -236,6 +241,11 @@ internal sealed partial class UnattendedTestRunner
             if (request.ScenarioId == "LAMP-DEBUFF-ON-KILL")
             {
                 await runner.AssertLampDebuffOnKilledTargetAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "LAMP-POWER-SOURCED-DEBUFF")
+            {
+                await runner.AssertLampPowerSourcedDebuffAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
             if (request.ScenarioId == "AUTO-TURN-REQUEST-OWNERSHIP")

@@ -261,14 +261,16 @@ internal static class AfterCardDrawnMirrors
 
     private static void HandleCorrosiveWavePower(CorrosiveWavePower power, AfterCardDrawnMirrorContext context)
     {
-        // CorrosiveWavePower applies Poison to all hittable enemies; power application
-        // side effects are not mirrored here.
+        // 原版这条 `PowerCmd.Apply<PoisonPower>(…, cardSource: null)`：来源是能力本身，不是抽到的那张牌。
+        // 不给显式来源会让这层毒继承**外层卡牌作用域**（例如后空翻抽到的两张牌），
+        // 于是既被算到那张牌头上、又误触发只认卡牌直接施加的不安油灯并把它标成已触发
+        // （问题包 c4e28f3b：预测毒 11／实机 5，遗物计数 expected=1 actual=0）。
         if (context.PreviewCard.Owner.Creature == power.Owner)
         {
             if (context.CombatState is not ICombatPredictionEffectSink effects)
                 throw new InvalidOperationException("腐蚀波效果缺少可写的预测状态。");
             foreach (Creature enemy in context.State.HittableEnemies)
-                effects.ApplyPower(typeof(PoisonPower), enemy, power.Amount, power.Owner);
+                effects.ApplyPowerFromSource(typeof(PoisonPower), enemy, power.Amount, power.Owner, cardSource: null);
         }
     }
 

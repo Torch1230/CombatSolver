@@ -1,5 +1,22 @@
 # CombatSolver 开发笔记与未来构想
 
+## 未发布：能力驱动的 Power 施加不再继承外层卡牌来源（2026-09-22）
+
+- 问题包 `c4e28f3b`（0.43.2）里同一场战斗的预测与实机分叉：`POISON_POWER` 预测 11／实机 5、
+  `UNSETTLING_LAMP` 预测 1／实机 0、敌方血量 7／13。
+- 根因是「Power 的来源」这半条语义没跟上：实机 `CorrosiveWavePower.AfterCardDrawn` 调的是
+  `PowerCmd.Apply<PoisonPower>(…, cardSource: null)`，来源是能力本身；预测侧那条镜像走的是不带来源的
+  `ApplyPower`，而它正处在**卡牌执行作用域**里（后空翻抽到的牌），于是这层毒被记成「那张牌直接施加的减益」：
+  既被算到那张牌头上，又触发了只认卡牌直接施加的不安油灯。
+- 同一类错误在镜像层还有一批，逐条对着反编译源码核对后一起修正（原版都显式传 `cardSource: null`）：
+  腐蚀波、吸取（Suck）、破甲钻（HandDrill）、军械库（Arsenal）、手里剑（Shuriken）、激怒（Enrage）、
+  湮灭（Oblivion）、撕裂（Rupture，含 `AfterDamageReceived` 那条）、温柔（Tender，两条）、生命火花（VitalSpark）、
+  红头骨、定形黏土、ReaperForm／Underworld 的灾厄，共 16 处调用点改用
+  `ApplyPowerFromSource(…, cardSource: null)`。
+- 影响面同样是通用的：凡是按「卡牌直接施加」判定的遗物与增幅，都会被能力/遗物驱动的减益误触发；
+  这是原版卡牌就能走到的组合，与第三方内容无关。新增严格差分夹具 `LAMP-POWER-SOURCED-DEBUFF`
+  （腐蚀波 + 抽牌），改动后通过；证据与未覆盖范围见 [测试矩阵](TEST_MATRIX.md)。
+
 ## 未发布：击杀后不再向已离场个体施加 Power（2026-09-22）
 
 - 问题包 `24b8f299`（0.43.2）里求解器给出 4 回合零战损的路线，但第 2 回合的续用核对报 `state_mismatch`：

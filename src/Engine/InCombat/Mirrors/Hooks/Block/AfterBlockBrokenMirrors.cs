@@ -45,11 +45,13 @@ internal static class AfterBlockBrokenMirrors
         {
             if (context.CombatState is not ICombatPredictionEffectSink effects)
                 throw new InvalidOperationException("破甲钻效果缺少可写的预测状态。");
-            effects.ApplyPower(
+            // 原版破甲钻走遗物来源，cardSource 是 null。
+            effects.ApplyPowerFromSource(
                 typeof(VulnerablePower),
                 context.Target,
                 relic.DynamicVars.Vulnerable.IntValue,
-                relic.Owner.Creature);
+                relic.Owner.Creature,
+                cardSource: null);
         }
     }
 }

@@ -57,7 +57,7 @@ Entry / turn hooks
 
 同一战斗回合已有计划、活动搜索、部署会话或已完成的部署时，迟到的 AutoTurnStart 在 RequestSearch 入口直接完成。搜索与部署会话分别冻结战斗身份和起始回合；开始部署清空 LatestResult 后由部署会话延续归属，完成后由 LastSolverDeployedTurn 保留。手动重算及下一回合请求继续原流程。
 
-`ICombatPredictionEffectSink.ApplyPowerFromSource` 将原版显式 cardSource 传入分支 Power 施加作用域，null 明确代表能力/遗物自身来源；完成后恢复外层来源。Envenom/Concoct 的附毒使用此入口，UnsettlingLamp 继续只响应卡牌直接施加。作用域存于分支，活动期间禁止 Fork。
+`ICombatPredictionEffectSink.ApplyPowerFromSource` 将原版显式 cardSource 传入分支 Power 施加作用域，null 明确代表能力/遗物自身来源；完成后恢复外层来源。Envenom/Concoct 的附毒使用此入口，UnsettlingLamp 继续只响应卡牌直接施加。原版凡是由能力或遗物驱动的附带减益（腐蚀波、吸取、手里剑、激怒、湮灭、撕裂、温柔、生命火花、军械库、破甲钻、红头骨、定形黏土、ReaperForm／Underworld 的灾厄等）都显式传 `null`，这些镜像必须走同一入口，不能沿用外层的卡牌作用域。作用域存于分支，活动期间禁止 Fork。
 
 ## 2. Runtime
 
