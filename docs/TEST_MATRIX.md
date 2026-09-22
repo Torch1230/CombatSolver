@@ -1,5 +1,10 @@
 # CombatSolver 测试清单
 
+## 开局前缀历史与能力路线并行筛查（2026-09-22）
+
+- Regent原生300节点严格回放 Passed（`77bcd66d6c234d7397f8f1b7b03d6251`）；SearchPolicySnapshot含新增前缀合同和DOP1/2 Passed（`f0bdc18768094a29a68b6c5fa3aa05ce`）。两次私有实例均清理；不包含独立Fork历史失败的修复结论。
+- 前缀修复以 `eba7e60b` 为基线，六根12进程完整Coordinator对照覆盖五角色、能力/药水、留出及DOP8/16，路线/质量/根/策略一致，无时间边界。耗时均值−0.017%，RSS−0.063%，采样托管存活+0.833%；没有证明提速。受限并行原型四根八进程未取得20%收益，已撤回；最终Release零警告/错误，Bash结构门禁208通过。详见[报告与证据](performance/opening-prefix-parallel-screen-20260922.md)。
+
 ## 极高8/16路筛查与稳定请求判重（2026-09-22）
 
 - 最终候选24根48次完整Coordinator对照，五角色/遭遇类型/留出/弃牌与药水，DOP8/16各12对且实际达到并发；另有最不利内存样本反向1对。25对路线与质量保持，24根主语料没有时间边界；20对搜索/剪枝计数全等，其余前缀缓存/Fork/并发差异逐字段记录。平均耗时−0.347%，没有达到额外20%目标或证明稳定性能收益。详见[报告](performance/parallel-speed-screen-20260922.md)与[结构化证据](performance/parallel-speed-screen-20260922.json)。

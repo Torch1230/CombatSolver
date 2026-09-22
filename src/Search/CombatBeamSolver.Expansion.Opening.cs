@@ -24,7 +24,8 @@ internal sealed partial class CombatBeamSolver
 
     internal IReadOnlyList<PlanAction> BuildPowerActionsAfterPrefix(IReadOnlyList<PlanAction> prefix)
     {
-        SimulationSnapshot prefixSnapshot = Replay(prefix);
+        SearchNode seed = CreateOpeningFollowUpSeed(prefix, SearchRouteTraits.None);
+        SimulationSnapshot prefixSnapshot = seed.Snapshot;
         try
         {
             CombatPredictionSimulator simulator = (CombatPredictionSimulator)prefixSnapshot.Simulator;
@@ -33,23 +34,6 @@ internal sealed partial class CombatBeamSolver
             IReadOnlyList<PredictedCard> hand = playerState.Hand.Cards;
             List<PlanAction> actions = [];
             HashSet<string> seenCardStates = [];
-            SearchNode seed = new(
-                null,
-                0,
-                prefixSnapshot.PotionUseCount,
-                prefixSnapshot.PotionStrategicCost,
-                prefixSnapshot.Turn,
-                SearchRouteTraits.None,
-                0,
-                prefixSnapshot.Score,
-                prefixSnapshot.StateKey,
-                prefixSnapshot.HasRisk,
-                prefixSnapshot.BoundaryReason,
-                false,
-                null,
-                prefixSnapshot,
-                CombatProgressState.Capture(prefixSnapshot));
-
             for (int handIndex = 0; handIndex < hand.Count; handIndex++)
             {
                 PredictedCard card = hand[handIndex];
@@ -114,11 +98,11 @@ internal sealed partial class CombatBeamSolver
 
     internal IReadOnlyList<PlanAction> BuildPotionActionsAfterPrefix(IReadOnlyList<PlanAction> prefix)
     {
-        SimulationSnapshot rootSnapshot = Replay(prefix);
+        SearchNode seed = CreateOpeningFollowUpSeed(prefix, SearchRouteTraits.None);
+        SimulationSnapshot rootSnapshot = seed.Snapshot;
         List<SearchNode> children = [];
         try
         {
-            SearchNode seed = CreateOpeningSearchSeed(rootSnapshot);
             children.AddRange(Expand(seed));
             return children
                 .Where(node => node.Action?.Kind == PlanActionKind.UsePotion)
@@ -263,6 +247,26 @@ internal sealed partial class CombatBeamSolver
         finally
         {
             snapshot.ReleaseSimulator();
+        }
+    }
+
+    internal void VerifyOpeningPrefixSeedForTesting(IReadOnlyList<PlanAction> prefix)
+    {
+        SearchNode seed = CreateOpeningFollowUpSeed(prefix, SearchRouteTraits.None);
+        try
+        {
+            if (seed.ActionCount != prefix.Count
+                || !seed.Actions.SequenceEqual(prefix)
+                || seed.HasNonPotionAction != prefix.Any(action =>
+                    action.Kind != PlanActionKind.UsePotion))
+            {
+                throw new InvalidOperationException(
+                    "开局前缀 seed 没有保留完整动作链或非药水动作事实。");
+            }
+        }
+        finally
+        {
+            seed.Snapshot.ReleaseSimulator();
         }
     }
 

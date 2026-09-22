@@ -8,6 +8,50 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
+    private static async Task AssertOpeningPrefixHistoryAsync(
+        CombatRootSnapshot root,
+        SolverDisplayNames displayNames,
+        BattleDamageSnapshot battleDamage,
+        SearchPolicySnapshot capturedPolicy)
+    {
+        // Discover representative opening actions through the normal opening builders, then
+        // exercise the same prefix-aware seed under strict incremental replay verification.
+        (PlanAction[] powers, PlanAction[] potions) = await Task.Run(() =>
+        {
+            CombatBeamSolver discovery = new(
+                root, displayNames, battleDamage, capturedPolicy);
+            discovery.VerifyOpeningPrefixSeedForTesting([]);
+            return (
+                discovery.BuildOpeningPowerActions().ToArray(),
+                discovery.BuildOpeningPotionActions().ToArray());
+        });
+
+        SearchPolicySnapshot strictPolicy = capturedPolicy with
+        {
+            VerifyIncrementalSearch = true,
+            MaxDegreeOfParallelism = 1,
+        };
+        await Task.Run(() =>
+        {
+            CombatBeamSolver strict = new(
+                root, displayNames, battleDamage, strictPolicy);
+            strict.VerifyOpeningPrefixSeedForTesting([]);
+            if (powers.Length > 0)
+            {
+                strict.VerifyOpeningPrefixSeedForTesting([powers[0]]);
+                IReadOnlyList<PlanAction> followUps = strict.BuildPotionActionsAfterPrefix([powers[0]]);
+                if (followUps.Any(action => PotionUsePolicy.RequiresOpeningUse(action.PotionId!)))
+                    throw new InvalidOperationException("能力前缀后仍枚举了仅限开局的药水候选。");
+            }
+            if (potions.Length > 0)
+            {
+                strict.VerifyOpeningPrefixSeedForTesting([potions[0]]);
+                _ = strict.BuildPowerActionsAfterPrefix([potions[0]]);
+            }
+        });
+        Entry.Logger.Info($"[CombatSolver/Test] OPENING_PREFIX_HISTORY powers={powers.Length} potions={potions.Length} strict=true");
+    }
+
     private static async Task AssertSearchPolicySnapshotAsync(
         CombatState combat,
         bool verifyStandPatBatches = false)
@@ -65,6 +109,8 @@ internal sealed partial class UnattendedTestRunner
         AssertFullRngStateIdentity(combat);
         AssertRequiredPotionAuditSelectionAndTotals();
         CombatRootSnapshot rootSnapshot = CombatRootSnapshot.Capture(combat);
+        await AssertOpeningPrefixHistoryAsync(
+            rootSnapshot, displayNames, battleDamage, capturedPolicy);
         AssertTurnCounterResetFork(rootSnapshot);
         AssertNoVictoryEscalationPolicy();
         await AssertCanceledSearchWorkRecordedOnceAsync(
