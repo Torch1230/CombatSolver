@@ -2060,6 +2060,11 @@ internal static partial class SearchGcPolicy
                 ? CalculateReusableHeapBytes(memory.HeapSizeBytes, memory.FragmentedBytes,
                     GC.GetTotalMemory(forceFullCollection: false))
                 : 0);
+        signal.SetBetweenSearchCheckpoint(cancellationToken =>
+            signal.AllocatedBytes >= BackgroundReclaimThresholdBytes
+            && ReclaimWithinSearch(signal, configuredRegionBudgetBytes,
+                configuredLohBudgetBytes, restartNoGcRegion: true, cancellationToken,
+                reason: "between_searches", opportunistic: true));
         Entry.Logger.Info(
             $"[CombatSolver/Test] GC_SEARCH_ALLOCATION_LIMIT limit={allocationLimitBytes} " +
             $"remaining_region={remainingRegionBytes} region_budget={regionBudgetBytes} " +
@@ -2081,13 +2086,14 @@ internal static partial class SearchGcPolicy
         }
     }
 
-    private static void ReclaimWithinSearch(
+    private static bool ReclaimWithinSearch(
         SearchMemoryPressureSignal signal,
         long configuredRegionBudgetBytes,
         long configuredLohBudgetBytes,
         bool restartNoGcRegion,
         CancellationToken cancellationToken,
-        string reason)
+        string reason,
+        bool opportunistic = false)
     {
         SearchGcLifecycleSnapshot lifecycleBefore = CaptureLifecycle();
         TaskCompletionSource checkpointCompletion;
@@ -2102,6 +2108,11 @@ internal static partial class SearchGcPolicy
             cancellationToken.ThrowIfCancellationRequested();
             lock (Gate)
             {
+                // Optional collections must never make overlapping search scopes
+                // wait for each other. Claim the existing gate atomically or skip.
+                if (opportunistic
+                    && (_activeSearches != 1 || _reclaimActive || _reclaimRequested))
+                    return false;
                 if (_activeSearches > 0 && _reclaimRequested)
                 {
                     throw new InvalidOperationException(
@@ -2379,6 +2390,7 @@ internal static partial class SearchGcPolicy
 
         if (failure != null)
             System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
+        return true;
     }
 
     private static void CollectGeneration2ForSearch()

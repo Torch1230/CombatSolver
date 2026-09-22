@@ -19,11 +19,13 @@ else if (args is ["scopes"])
     GcScopeLifecycleChecks.Run();
 else if (args is ["admission"])
     GcRegionAdmissionChecks.Run();
+else if (args is ["between-searches"])
+    GcBetweenSearchChecks.Run();
 else if (args.Length == 0)
 {
     GcPolicyChecks.Run();
     GcRegionAdmissionChecks.Run();
 }
 else
-    throw new ArgumentException("Expected no arguments, 'admission', 'parallelism', 'scopes', 'checkpoint', 'diagnostic-failure', 'memory', 'recovery' or 'recovery-lifecycle'.");
+    throw new ArgumentException("Expected no arguments, 'admission', 'parallelism', 'scopes', 'checkpoint', 'between-searches', 'diagnostic-failure', 'memory', 'recovery' or 'recovery-lifecycle'.");
 Console.WriteLine($"GC policy checks passed: {PolicyCheck.Completed} scenarios.");

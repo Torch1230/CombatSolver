@@ -33,6 +33,15 @@ internal sealed partial class CombatBeamSolver
             : GC.GetTotalPauseDuration();
         try
         {
+            try
+            {
+                policy.MemoryPressureSignal.CheckpointBeforeSearch(cancellationToken);
+            }
+            finally
+            {
+                _run.WorkPacer.ObserveGcPause(
+                    policy.MemoryPressureSignal.LastReclaimMaxObservedGcPause);
+            }
             return SolveCore();
         }
         finally

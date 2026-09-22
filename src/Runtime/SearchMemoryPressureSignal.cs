@@ -47,6 +47,27 @@ internal sealed class SearchMemoryPressureSignal
     private Action<long, CancellationToken>? _noGcRecoveryProbe;
     private Action<long>? _noGcFallbackObserver;
     private int _noGcRecoveryAllowed;
+    private Func<CancellationToken, bool>? _betweenSearchCheckpoint;
+    private int _searchStarted;
+    private bool _betweenSearchReclaimSuppressed;
+
+    internal void SetBetweenSearchCheckpoint(Func<CancellationToken, bool> checkpoint)
+        => Volatile.Write(ref _betweenSearchCheckpoint, checkpoint);
+
+    // Called before a solver starts, after the preceding solver has drained. The
+    // runtime owns whether a collection is worthwhile and can acquire GC ownership.
+    public void CheckpointBeforeSearch(CancellationToken cancellationToken)
+    {
+        Volatile.Write(ref _lastReclaimMaxObservedGcPauseTicks, 0);
+        if (!IsEnabled || Volatile.Read(ref _betweenSearchReclaimSuppressed)
+            || Volatile.Read(ref _betweenSearchCheckpoint) is not { } checkpoint)
+            return;
+        if (Interlocked.Exchange(ref _searchStarted, 1) == 0)
+            return;
+        if (RunCheckpoint(checkpoint, cancellationToken)
+            && LastReclaimRegainedBytes < NoProgressReclaimThresholdBytes)
+            Volatile.Write(ref _betweenSearchReclaimSuppressed, true);
+    }
 
     public int ReclaimCount { get; private set; }
 
@@ -268,17 +289,18 @@ internal sealed class SearchMemoryPressureSignal
         ArgumentException.ThrowIfNullOrWhiteSpace(reason);
         Action<CancellationToken, string> reclaim = Volatile.Read(ref _reclaimAndContinue)
             ?? throw new InvalidOperationException("搜索内存回收信号尚未配置。");
-        RunCheckpoint(token => reclaim(token, reason), cancellationToken);
+        RunCheckpoint(token => { reclaim(token, reason); return true; }, cancellationToken);
     }
 
     public void UseDefaultGcAndContinue(CancellationToken cancellationToken)
-        => RunCheckpoint(
-            Volatile.Read(ref _useDefaultGcAndContinue)
-                ?? throw new InvalidOperationException("搜索默认 GC 回退信号尚未配置。"),
-            cancellationToken);
+    {
+        Action<CancellationToken> fallback = Volatile.Read(ref _useDefaultGcAndContinue)
+            ?? throw new InvalidOperationException("搜索默认 GC 回退信号尚未配置。");
+        RunCheckpoint(token => { fallback(token); return true; }, cancellationToken);
+    }
 
-    private void RunCheckpoint(
-        Action<CancellationToken> checkpoint,
+    private bool RunCheckpoint(
+        Func<CancellationToken, bool> checkpoint,
         CancellationToken cancellationToken)
     {
         Volatile.Write(ref _lastReclaimMaxObservedGcPauseTicks, 0);
@@ -286,8 +308,10 @@ internal sealed class SearchMemoryPressureSignal
         Volatile.Write(ref _reclaiming, 1);
         try
         {
-            checkpoint(cancellationToken);
+            if (!checkpoint(cancellationToken))
+                return false;
             ReclaimCount++;
+            return true;
         }
         finally
         {
@@ -314,6 +338,9 @@ internal sealed class SearchMemoryPressureSignal
     public void Disable()
     {
         DisableLimits();
+        Volatile.Write(ref _betweenSearchCheckpoint, null);
+        Volatile.Write(ref _searchStarted, 0);
+        Volatile.Write(ref _betweenSearchReclaimSuppressed, false);
         Volatile.Write(ref _noGcRecoveryProbe, null);
         Volatile.Write(ref _noGcFallbackObserver, null);
     }
