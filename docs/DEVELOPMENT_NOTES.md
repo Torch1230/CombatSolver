@@ -1,5 +1,9 @@
 # CombatSolver 开发笔记与未来构想
 
+## 下一版本（开发中）
+
+- 两处路线逐位不变的热路径小优化：死亡生命周期指纹改用栈上插入排序（原来每个展开节点都 `OrderBy` 一次），6 处 hook 派发循环补上监听位图。`COMBATSOLVER_VERIFY_FAST_LANES=1` 时每次都重跑原路径对账（`COMBATSOLVER_VERIFY_HOOK_MASK` 保留为别名）。采样、上游已否决方向的核对与计时见 [热路径快速通道](performance/hot-path-fast-lanes-20260922.md)。
+
 ## 0.43.3：余像路线与战后掉药预测（2026-09-20）
 
 - 玩家可感知的变化见 [0.43.3 更新日志](releases/0.43.3-RELEASE_NOTES.md)。本版本仍处于未发布状态，未创建版本标签或上传发布渠道。
