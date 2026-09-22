@@ -5,6 +5,7 @@
 - `TurnPhaseMirrorChecks --start` 22 项、`--start --seal` 1 项通过：精确类型、空/重复/抽象/未覆写拒绝、首次派发与首根冻结、Power/遗物/Modifier/卡牌混合顺序、参与者、选择暂停、监听者快照。原晚期回合末 25 项通过。
 - 变基至 `6922828d` 后，主 DLL、宿主及检查工具 Release 均 0 警告 / 0 错误；Bash 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=208`。`--mask <生产 DLL>` 确认 58 个单 bit 互不重叠，BeforeSideTurnStart 不复用 AfterEnergyReset 的 bit 56。
 - CoverageCatalog 原始表解析失败：上游两个未被 classifications 引用的 LOOP 证据使用未知枚举状态。仅在 archive 隔离副本排除两项后，3035 条核验通过、无未分类/缺失/非通过引用；没有改动原表。工具的 RitsuLib 分拆与 SmartFormat 引用只在本地构建补齐。
+- `6922828d` 对照本入口：EQ 10 / FULL 40 / GA 10 一次完成，High 90 / nodes 250000 / 分支 48/28/36 / Coordinator / Smart / DOP 1；60 对均 Passed，6341 个确定性字段 `IDENTICAL`，无时间截断。两侧各一个离线宿主，600 秒软预算，未中断或补跑；输入、DLL 哈希、逐根摘要及复算命令见 [0.43.3 等价证据](../coverage/equivalence/before-side-turn-start-0433/README.md)。
 - 历史 `8be1410` 对照：5 角色 × 精英/首领共 10 根，High（90/50000）、Coordinator、Smart、DOP 1，992 个确定性字段 `IDENTICAL`。保存的请求、场景、两侧结果和复算命令见 `coverage/equivalence/before-side-turn-start/`。上述数字为变基前证据，新基线验证另记。
 
 ## 0.44.0 发布验证范围（2026-09-22）

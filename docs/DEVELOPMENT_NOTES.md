@@ -5,6 +5,7 @@
 - 增加 `BeforeSideTurnStartMirrors.Register<TModel>`，两侧在清格挡前按监听顺序派发 Power、遗物和 Modifier；共享既有原版单项结算体，无扩展时保留原批次顺序。
 - 精确类型登记在首根冻结，未知有效覆写按现有晚期表规则记录风险并拒绝；状态仍通过独立的模型状态登记捕获。
 - 基于 0.43.3 重新定位派发；BeforeSideTurnStart 使用独立监听位，与上游新增的 AfterEnergyReset 分开。生产 DLL 位图检查确认 58 位互不重叠；回合开始、冻结及既有晚期合同分别 22/1/25 项通过。
+- 对照 `6922828d` 的 EQ 10 / FULL 40 / GA 10，6341 个确定性字段一致，60 对均有效、无时间截断；零第三方监听者保持旧批次路径。数据与命令见 [等价证据](../coverage/equivalence/before-side-turn-start-0433/README.md)。
 
 ## 0.44.0 定版（2026-09-22）
 
