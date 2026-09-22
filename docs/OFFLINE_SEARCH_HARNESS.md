@@ -185,3 +185,17 @@ plan 每项的字段：`label`（必填，简单目录名）、`request`（必�
 算法配置记录补充：`searchPolicy` 现在显式输出 `BeamWidthPortfolioPlainBaselineMember` 与 `UseNoveltyPortfolio`。旧宿主未记录这两项时，比较报告显示 `Unrecorded`，必须结合保存的命令与实际成员表判断，不能把缺失值当作默认值。上下文排序对照允许这两项算法配置作为显式实验差异，仍拒绝根、预算、可接受战损和用药政策等目标差异。
 
 `Coordinator --use-portfolio` 默认启用组合再分配。`--disable-reallocated-refinement` 在同一最终程序集恢复旧默认成员列表，供明确A/B；`--reallocated-refinement` 可显式开启。真实运行是否采用新布局由 `PORTFOLIO_REALLOCATION` 与实际成员表确认，显式成员布局和其他可选实验不被改写。配置保存在 `searchPolicy.Profile.ReallocatedRefinementPortfolio`，对照工具将其视为算法差异而保留目标政策/根/预算核对。
+
+## 搜索进度的内存保留探针
+
+设置 `OFFLINE_HARNESS_RETIRE_PROGRESS_AFTER_NODES=4800`，配合
+`--search-mode Coordinator` 和正常 GC，可复现“请求采用旧预览 A、worker 随后发布新预览 B”
+的完成顺序。两份预览均来自实际搜索；探针在 worker 返回后调用生产的结果定稿、保留与恢复入口。
+若搜索在阈值前完成，则验证普通 `CompleteTakeover` 清理路径，输出 mode=`completed-search`；
+这不表示运行了原生回合准备页面。
+
+输出 `progress-retirement.json` 包含清理前后强制 GC 的**全进程存活托管字节数**、未选中 seed
+的弱引用生死、停止结果的对象身份和恢复结果。普通完成样本的停止/恢复字段为 null。
+`WorkingSetBytes` 和 `PrivateBytes` 单独记录，不混作托管堆收益；探针的强制 GC 耗时也不能
+用于正常搜索速度对照。预览发布受墙钟节流，两侧请求采用的具体节点可能不同，不据此声称
+路线等价或质量改善。生命周期合同与原生行为另行验证，见[进度释放报告](performance/progress-retirement-20260922.md)。

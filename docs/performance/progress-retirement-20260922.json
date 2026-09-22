@@ -1,0 +1,5676 @@
+{
+  "schemaVersion": 1,
+  "upstreamCommit": "6922828d",
+  "baselineSourceCommit": "91e12e88",
+  "baselineDllBuiltAtCommit": "510dd703",
+  "candidate": "91e12e88 plus the production changes in this commit",
+  "environment": {
+    "os": "Linux-7.2.4-arch1-2-x86_64-with-glibc2.44",
+    "architecture": "x86_64",
+    "dotnetSdk": "9.0.120"
+  },
+  "metric": "Whole-process live managed bytes after search progress retirement and forced full GC. Not RSS, peak, allocation flow or normal search latency.",
+  "settings": {
+    "profile": "High",
+    "beam": 90,
+    "nodes": 6000,
+    "dop": 1,
+    "budgetMilliseconds": 60000,
+    "mode": "Coordinator",
+    "portfolio": true,
+    "probeStopAfterNodes": 4800,
+    "noGcRegion": false,
+    "processTimeoutSeconds": 120
+  },
+  "reproduction": {
+    "requestWrapper": {
+      "scenarioId": "GENERAL-PERF-<NAME>",
+      "characterId": "<inputConfiguration.characterId>",
+      "generatedScenarioPath": "<absolute repo/input path>"
+    },
+    "env": {
+      "OFFLINE_HARNESS_RETIRE_PROGRESS_AFTER_NODES": "4800",
+      "OFFLINE_HARNESS_COMBATSOLVER_DLL": "<absolute baseline or candidate DLL>"
+    },
+    "command": "dotnet tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll --request <wrapper.json> --label <label> --out <output> --profile High --beam 90 --nodes 6000 --dop 1 --budget-ms 60000 --search-mode Coordinator --use-portfolio",
+    "order": "Alternate A/B and B/A by sorted scenario index; independent sequential processes"
+  },
+  "aggregate": {
+    "scenarioCount": 17,
+    "stoppedCount": 12,
+    "completedCount": 5,
+    "baselineAfterBytes": 428525008,
+    "candidateAfterBytes": 338604536,
+    "baselineAfterMeanBytes": 25207353.411764707,
+    "candidateAfterMeanBytes": 19917913.88235294,
+    "pooledAfterBytesReductionFraction": 0.2098371631090431,
+    "meanPerScenarioReductionFraction": 0.18730389424475782,
+    "candidateBeforeToAfterReductionFraction": 0.21062574709798576
+  },
+  "primarySamples": [
+    {
+      "name": "dev-00-ironclad-elite",
+      "input": "coverage/novelty-search/dev-00-ironclad-elite.json",
+      "inputConfiguration": {
+        "schemaVersion": 1,
+        "seed": "NOVELTY-DEV-20260915-00",
+        "characterId": "IRONCLAD",
+        "ascension": 10,
+        "actIndex": 1,
+        "encounterKind": "Elite",
+        "includeStartingDeck": true,
+        "includeStartingRelics": true,
+        "includeAscendersBane": true,
+        "applyRelicObtainEffects": false,
+        "characterCards": {
+          "count": 12,
+          "ids": [],
+          "upgradeLevels": 1
+        },
+        "colorlessCards": {
+          "count": 2,
+          "ids": []
+        },
+        "relics": {
+          "count": 3,
+          "ids": []
+        },
+        "potions": {
+          "count": 2,
+          "ids": []
+        },
+        "mode": "Search",
+        "fixedSearchBudget": true
+      },
+      "baseline": {
+        "stage": "corpus",
+        "arm": "baseline",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 4963,
+          "requestedVersion": 31,
+          "unselectedVersion": 32,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 4963,
+          "TotalTransitionCount": 24531,
+          "before": {
+            "ManagedBytes": 27253424,
+            "WorkingSetBytes": 331829248,
+            "PrivateBytes": 247394304
+          },
+          "after": {
+            "ManagedBytes": 27251464,
+            "WorkingSetBytes": 331661312,
+            "PrivateBytes": 247246848
+          },
+          "managedReductionFraction": 7.191756896307577e-05
+        },
+        "workerTimingMilliseconds": 8877.2552,
+        "workerAllocatedBytes": 1131502032,
+        "peakManagedHeapBytes": 130165848,
+        "peakWorkingSetBytes": 361742336,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "NOVELTY-DEV-20260915-00",
+          "CharacterId": "IRONCLAD",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "DECIMILLIPEDE_ELITE",
+          "EncounterKind": "Elite",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "HEADBUTT",
+              "BULLY",
+              "STONE_ARMOR",
+              "TAUNT",
+              "BURNING_PACT",
+              "INFERNAL_BLADE",
+              "MANGLE",
+              "BARRICADE",
+              "PERFECTED_STRIKE",
+              "TWIN_STRIKE",
+              "RAMPAGE",
+              "THUNDERCLAP"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "JACKPOT",
+              "JACK_OF_ALL_TRADES"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "ICE_CREAM",
+              "TUNGSTEN_ROD",
+              "KUNAI"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "BEETLE_JUICE",
+              "GAMBLERS_BREW"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "candidate": {
+        "stage": "corpus",
+        "arm": "candidate",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 5061,
+          "requestedVersion": 30,
+          "unselectedVersion": 31,
+          "previewAliveBefore": true,
+          "previewAliveAfter": false,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 5061,
+          "TotalTransitionCount": 24910,
+          "before": {
+            "ManagedBytes": 27269664,
+            "WorkingSetBytes": 324894720,
+            "PrivateBytes": 240115712
+          },
+          "after": {
+            "ManagedBytes": 20124496,
+            "WorkingSetBytes": 317968384,
+            "PrivateBytes": 231948288
+          },
+          "managedReductionFraction": 0.2620189232987983
+        },
+        "workerTimingMilliseconds": 8656.6,
+        "workerAllocatedBytes": 1143814472,
+        "peakManagedHeapBytes": 125405272,
+        "peakWorkingSetBytes": 359505920,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "NOVELTY-DEV-20260915-00",
+          "CharacterId": "IRONCLAD",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "DECIMILLIPEDE_ELITE",
+          "EncounterKind": "Elite",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "HEADBUTT",
+              "BULLY",
+              "STONE_ARMOR",
+              "TAUNT",
+              "BURNING_PACT",
+              "INFERNAL_BLADE",
+              "MANGLE",
+              "BARRICADE",
+              "PERFECTED_STRIKE",
+              "TWIN_STRIKE",
+              "RAMPAGE",
+              "THUNDERCLAP"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "JACKPOT",
+              "JACK_OF_ALL_TRADES"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "ICE_CREAM",
+              "TUNGSTEN_ROD",
+              "KUNAI"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "BEETLE_JUICE",
+              "GAMBLERS_BREW"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "afterBytesReductionFraction": 0.26152605966417075
+    },
+    {
+      "name": "dev-01-silent-elite",
+      "input": "coverage/novelty-search/dev-01-silent-elite.json",
+      "inputConfiguration": {
+        "schemaVersion": 1,
+        "seed": "NOVELTY-DEV-20260915-01",
+        "characterId": "SILENT",
+        "ascension": 10,
+        "actIndex": 1,
+        "encounterKind": "Elite",
+        "includeStartingDeck": true,
+        "includeStartingRelics": true,
+        "includeAscendersBane": true,
+        "applyRelicObtainEffects": false,
+        "characterCards": {
+          "count": 12,
+          "ids": [],
+          "upgradeLevels": 1
+        },
+        "colorlessCards": {
+          "count": 2,
+          "ids": []
+        },
+        "relics": {
+          "count": 3,
+          "ids": []
+        },
+        "potions": {
+          "count": 2,
+          "ids": []
+        },
+        "mode": "Search",
+        "fixedSearchBudget": true
+      },
+      "baseline": {
+        "stage": "corpus",
+        "arm": "baseline",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 5229,
+          "requestedVersion": 28,
+          "unselectedVersion": 29,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 5229,
+          "TotalTransitionCount": 29464,
+          "before": {
+            "ManagedBytes": 26949984,
+            "WorkingSetBytes": 320589824,
+            "PrivateBytes": 236015616
+          },
+          "after": {
+            "ManagedBytes": 26949280,
+            "WorkingSetBytes": 320434176,
+            "PrivateBytes": 235884544
+          },
+          "managedReductionFraction": 2.612246448829847e-05
+        },
+        "workerTimingMilliseconds": 7747.9452,
+        "workerAllocatedBytes": 1195084904,
+        "peakManagedHeapBytes": 113501816,
+        "peakWorkingSetBytes": 346537984,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "NOVELTY-DEV-20260915-01",
+          "CharacterId": "SILENT",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "INFESTED_PRISMS_ELITE",
+          "EncounterKind": "Elite",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "ADRENALINE",
+              "DEFLECT",
+              "PRECISE_CUT",
+              "SERPENT_FORM",
+              "ACCELERANT",
+              "EXPERTISE",
+              "ABRASIVE",
+              "BULLET_TIME",
+              "SPEEDSTER",
+              "PREPARED",
+              "DAGGER_THROW",
+              "ESCAPE_PLAN"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "MAYHEM",
+              "THRUMMING_HATCHET"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "POTION_BELT",
+              "SHOVEL",
+              "ICE_CREAM"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "STABLE_SERUM",
+              "BLESSING_OF_THE_FORGE"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "candidate": {
+        "stage": "corpus",
+        "arm": "candidate",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 5138,
+          "requestedVersion": 28,
+          "unselectedVersion": 29,
+          "previewAliveBefore": true,
+          "previewAliveAfter": false,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 5138,
+          "TotalTransitionCount": 29114,
+          "before": {
+            "ManagedBytes": 26893752,
+            "WorkingSetBytes": 321355776,
+            "PrivateBytes": 237412352
+          },
+          "after": {
+            "ManagedBytes": 19664784,
+            "WorkingSetBytes": 313540608,
+            "PrivateBytes": 228663296
+          },
+          "managedReductionFraction": 0.2687973028084739
+        },
+        "workerTimingMilliseconds": 7733.0936,
+        "workerAllocatedBytes": 1182423696,
+        "peakManagedHeapBytes": 113917280,
+        "peakWorkingSetBytes": 348655616,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "NOVELTY-DEV-20260915-01",
+          "CharacterId": "SILENT",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "INFESTED_PRISMS_ELITE",
+          "EncounterKind": "Elite",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "ADRENALINE",
+              "DEFLECT",
+              "PRECISE_CUT",
+              "SERPENT_FORM",
+              "ACCELERANT",
+              "EXPERTISE",
+              "ABRASIVE",
+              "BULLET_TIME",
+              "SPEEDSTER",
+              "PREPARED",
+              "DAGGER_THROW",
+              "ESCAPE_PLAN"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "MAYHEM",
+              "THRUMMING_HATCHET"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "POTION_BELT",
+              "SHOVEL",
+              "ICE_CREAM"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "STABLE_SERUM",
+              "BLESSING_OF_THE_FORGE"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "afterBytesReductionFraction": 0.27030391906574125
+    },
+    {
+      "name": "dev-02-defect-elite",
+      "input": "coverage/novelty-search/dev-02-defect-elite.json",
+      "inputConfiguration": {
+        "schemaVersion": 1,
+        "seed": "NOVELTY-DEV-20260915-02",
+        "characterId": "DEFECT",
+        "ascension": 10,
+        "actIndex": 1,
+        "encounterKind": "Elite",
+        "includeStartingDeck": true,
+        "includeStartingRelics": true,
+        "includeAscendersBane": true,
+        "applyRelicObtainEffects": false,
+        "characterCards": {
+          "count": 12,
+          "ids": [],
+          "upgradeLevels": 1
+        },
+        "colorlessCards": {
+          "count": 2,
+          "ids": []
+        },
+        "relics": {
+          "count": 3,
+          "ids": []
+        },
+        "potions": {
+          "count": 2,
+          "ids": []
+        },
+        "mode": "Search",
+        "fixedSearchBudget": true
+      },
+      "baseline": {
+        "stage": "corpus",
+        "arm": "baseline",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 4909,
+          "requestedVersion": 30,
+          "unselectedVersion": 31,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 4909,
+          "TotalTransitionCount": 16643,
+          "before": {
+            "ManagedBytes": 24621984,
+            "WorkingSetBytes": 276250624,
+            "PrivateBytes": 194027520
+          },
+          "after": {
+            "ManagedBytes": 24621880,
+            "WorkingSetBytes": 276086784,
+            "PrivateBytes": 193867776
+          },
+          "managedReductionFraction": 4.223867581143459e-06
+        },
+        "workerTimingMilliseconds": 7020.2636,
+        "workerAllocatedBytes": 784735176,
+        "peakManagedHeapBytes": 86878984,
+        "peakWorkingSetBytes": 318488576,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "NOVELTY-DEV-20260915-02",
+          "CharacterId": "DEFECT",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "INFESTED_PRISMS_ELITE",
+          "EncounterKind": "Elite",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "COMPACT",
+              "OVERCLOCK",
+              "VOLTAIC",
+              "REFRACT",
+              "MODDED",
+              "DARKNESS",
+              "NULL",
+              "BULK_UP",
+              "NULL",
+              "BOOST_AWAY",
+              "SCRAPE",
+              "CLAW"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "DRAMATIC_ENTRANCE",
+              "CALAMITY"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "BREAD",
+              "RIPPLE_BASIN",
+              "CAPTAINS_WHEEL"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "SKILL_POTION",
+              "FRUIT_JUICE"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "candidate": {
+        "stage": "corpus",
+        "arm": "candidate",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 5038,
+          "requestedVersion": 31,
+          "unselectedVersion": 32,
+          "previewAliveBefore": true,
+          "previewAliveAfter": false,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 5038,
+          "TotalTransitionCount": 16919,
+          "before": {
+            "ManagedBytes": 24738400,
+            "WorkingSetBytes": 314634240,
+            "PrivateBytes": 232976384
+          },
+          "after": {
+            "ManagedBytes": 20099776,
+            "WorkingSetBytes": 310173696,
+            "PrivateBytes": 228118528
+          },
+          "managedReductionFraction": 0.1875070335995861
+        },
+        "workerTimingMilliseconds": 7123.4147,
+        "workerAllocatedBytes": 793471288,
+        "peakManagedHeapBytes": 116875008,
+        "peakWorkingSetBytes": 343048192,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "NOVELTY-DEV-20260915-02",
+          "CharacterId": "DEFECT",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "INFESTED_PRISMS_ELITE",
+          "EncounterKind": "Elite",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "COMPACT",
+              "OVERCLOCK",
+              "VOLTAIC",
+              "REFRACT",
+              "MODDED",
+              "DARKNESS",
+              "NULL",
+              "BULK_UP",
+              "NULL",
+              "BOOST_AWAY",
+              "SCRAPE",
+              "CLAW"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "DRAMATIC_ENTRANCE",
+              "CALAMITY"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "BREAD",
+              "RIPPLE_BASIN",
+              "CAPTAINS_WHEEL"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "SKILL_POTION",
+              "FRUIT_JUICE"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "afterBytesReductionFraction": 0.18366201118679804
+    },
+    {
+      "name": "dev-03-regent-elite",
+      "input": "coverage/novelty-search/dev-03-regent-elite.json",
+      "inputConfiguration": {
+        "schemaVersion": 1,
+        "seed": "NOVELTY-DEV-20260915-03",
+        "characterId": "REGENT",
+        "ascension": 10,
+        "actIndex": 1,
+        "encounterKind": "Elite",
+        "includeStartingDeck": true,
+        "includeStartingRelics": true,
+        "includeAscendersBane": true,
+        "applyRelicObtainEffects": false,
+        "characterCards": {
+          "count": 12,
+          "ids": [],
+          "upgradeLevels": 1
+        },
+        "colorlessCards": {
+          "count": 2,
+          "ids": []
+        },
+        "relics": {
+          "count": 3,
+          "ids": []
+        },
+        "potions": {
+          "count": 2,
+          "ids": []
+        },
+        "mode": "Search",
+        "fixedSearchBudget": true
+      },
+      "baseline": {
+        "stage": "corpus",
+        "arm": "baseline",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 5024,
+          "requestedVersion": 31,
+          "unselectedVersion": 32,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 5024,
+          "TotalTransitionCount": 33925,
+          "before": {
+            "ManagedBytes": 32269800,
+            "WorkingSetBytes": 352186368,
+            "PrivateBytes": 266022912
+          },
+          "after": {
+            "ManagedBytes": 32269696,
+            "WorkingSetBytes": 352018432,
+            "PrivateBytes": 265895936
+          },
+          "managedReductionFraction": 3.2228275352874647e-06
+        },
+        "workerTimingMilliseconds": 8610.5697,
+        "workerAllocatedBytes": 1514753344,
+        "peakManagedHeapBytes": 150540712,
+        "peakWorkingSetBytes": 386605056,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "NOVELTY-DEV-20260915-03",
+          "CharacterId": "REGENT",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "DECIMILLIPEDE_ELITE",
+          "EncounterKind": "Elite",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "HEGEMONY",
+              "SOLAR_STRIKE",
+              "I_AM_INVINCIBLE",
+              "NEUTRON_AEGIS",
+              "VOID_FORM",
+              "I_AM_INVINCIBLE",
+              "CRASH_LANDING",
+              "BUNDLE_OF_JOY",
+              "GLOW",
+              "BEGONE",
+              "SEVEN_STARS",
+              "MAKE_IT_SO"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "THINKING_AHEAD",
+              "ENTROPY"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "GIRYA",
+              "OLD_COIN",
+              "VITRUVIAN_MINION"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "HEART_OF_IRON",
+              "REGEN_POTION"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "candidate": {
+        "stage": "corpus",
+        "arm": "candidate",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 5024,
+          "requestedVersion": 31,
+          "unselectedVersion": 32,
+          "previewAliveBefore": true,
+          "previewAliveAfter": false,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 5024,
+          "TotalTransitionCount": 33925,
+          "before": {
+            "ManagedBytes": 32318016,
+            "WorkingSetBytes": 348975104,
+            "PrivateBytes": 271122432
+          },
+          "after": {
+            "ManagedBytes": 24025928,
+            "WorkingSetBytes": 340525056,
+            "PrivateBytes": 261783552
+          },
+          "managedReductionFraction": 0.2565778790381191
+        },
+        "workerTimingMilliseconds": 8736.471,
+        "workerAllocatedBytes": 1515882320,
+        "peakManagedHeapBytes": 148980352,
+        "peakWorkingSetBytes": 385413120,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "NOVELTY-DEV-20260915-03",
+          "CharacterId": "REGENT",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "DECIMILLIPEDE_ELITE",
+          "EncounterKind": "Elite",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "HEGEMONY",
+              "SOLAR_STRIKE",
+              "I_AM_INVINCIBLE",
+              "NEUTRON_AEGIS",
+              "VOID_FORM",
+              "I_AM_INVINCIBLE",
+              "CRASH_LANDING",
+              "BUNDLE_OF_JOY",
+              "GLOW",
+              "BEGONE",
+              "SEVEN_STARS",
+              "MAKE_IT_SO"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "THINKING_AHEAD",
+              "ENTROPY"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "GIRYA",
+              "OLD_COIN",
+              "VITRUVIAN_MINION"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "HEART_OF_IRON",
+              "REGEN_POTION"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "afterBytesReductionFraction": 0.255464693562654
+    },
+    {
+      "name": "dev-04-necrobinder-elite",
+      "input": "coverage/novelty-search/dev-04-necrobinder-elite.json",
+      "inputConfiguration": {
+        "schemaVersion": 1,
+        "seed": "NOVELTY-DEV-20260915-04",
+        "characterId": "NECROBINDER",
+        "ascension": 10,
+        "actIndex": 1,
+        "encounterKind": "Elite",
+        "includeStartingDeck": true,
+        "includeStartingRelics": true,
+        "includeAscendersBane": true,
+        "applyRelicObtainEffects": false,
+        "characterCards": {
+          "count": 12,
+          "ids": [],
+          "upgradeLevels": 1
+        },
+        "colorlessCards": {
+          "count": 2,
+          "ids": []
+        },
+        "relics": {
+          "count": 3,
+          "ids": []
+        },
+        "potions": {
+          "count": 2,
+          "ids": []
+        },
+        "mode": "Search",
+        "fixedSearchBudget": true
+      },
+      "baseline": {
+        "stage": "corpus",
+        "arm": "baseline",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 4971,
+          "requestedVersion": 15,
+          "unselectedVersion": 16,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 8842,
+          "TotalTransitionCount": 81890,
+          "before": {
+            "ManagedBytes": 32441216,
+            "WorkingSetBytes": 364179456,
+            "PrivateBytes": 287653888
+          },
+          "after": {
+            "ManagedBytes": 32422992,
+            "WorkingSetBytes": 364183552,
+            "PrivateBytes": 287653888
+          },
+          "managedReductionFraction": 0.000561754528560221
+        },
+        "workerTimingMilliseconds": 12264.0601,
+        "workerAllocatedBytes": 2999316976,
+        "peakManagedHeapBytes": 166601992,
+        "peakWorkingSetBytes": 407236608,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "NOVELTY-DEV-20260915-04",
+          "CharacterId": "NECROBINDER",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "INFESTED_PRISMS_ELITE",
+          "EncounterKind": "Elite",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "DREDGE",
+              "PUTREFY",
+              "PAGESTORM",
+              "VEILPIERCER",
+              "SPIRIT_OF_ASH",
+              "PARSE",
+              "NO_ESCAPE",
+              "SPIRIT_OF_ASH",
+              "SOUL_STORM",
+              "SQUEEZE",
+              "NEGATIVE_PULSE",
+              "DRAIN_POWER"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "JACKPOT",
+              "HAND_OF_GREED"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "RAINBOW_RING",
+              "HORN_CLEAT",
+              "GNARLED_HAMMER"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "POTION_OF_DOOM",
+              "WEAK_POTION"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "candidate": {
+        "stage": "corpus",
+        "arm": "candidate",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 4971,
+          "requestedVersion": 14,
+          "unselectedVersion": 15,
+          "previewAliveBefore": true,
+          "previewAliveAfter": false,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 8842,
+          "TotalTransitionCount": 81890,
+          "before": {
+            "ManagedBytes": 32482128,
+            "WorkingSetBytes": 349646848,
+            "PrivateBytes": 273141760
+          },
+          "after": {
+            "ManagedBytes": 20227344,
+            "WorkingSetBytes": 313200640,
+            "PrivateBytes": 234532864
+          },
+          "managedReductionFraction": 0.3772777448571103
+        },
+        "workerTimingMilliseconds": 12431.9053,
+        "workerAllocatedBytes": 2996714144,
+        "peakManagedHeapBytes": 179710680,
+        "peakWorkingSetBytes": 412577792,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "NOVELTY-DEV-20260915-04",
+          "CharacterId": "NECROBINDER",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "INFESTED_PRISMS_ELITE",
+          "EncounterKind": "Elite",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "DREDGE",
+              "PUTREFY",
+              "PAGESTORM",
+              "VEILPIERCER",
+              "SPIRIT_OF_ASH",
+              "PARSE",
+              "NO_ESCAPE",
+              "SPIRIT_OF_ASH",
+              "SOUL_STORM",
+              "SQUEEZE",
+              "NEGATIVE_PULSE",
+              "DRAIN_POWER"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "JACKPOT",
+              "HAND_OF_GREED"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "RAINBOW_RING",
+              "HORN_CLEAT",
+              "GNARLED_HAMMER"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "POTION_OF_DOOM",
+              "WEAK_POTION"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "afterBytesReductionFraction": 0.37614196740387196
+    },
+    {
+      "name": "dev-05-ironclad-boss",
+      "input": "coverage/novelty-search/dev-05-ironclad-boss.json",
+      "inputConfiguration": {
+        "schemaVersion": 1,
+        "seed": "NOVELTY-DEV-20260915-05",
+        "characterId": "IRONCLAD",
+        "ascension": 10,
+        "actIndex": 1,
+        "encounterKind": "Boss",
+        "includeStartingDeck": true,
+        "includeStartingRelics": true,
+        "includeAscendersBane": true,
+        "applyRelicObtainEffects": false,
+        "characterCards": {
+          "count": 12,
+          "ids": [],
+          "upgradeLevels": 1
+        },
+        "colorlessCards": {
+          "count": 2,
+          "ids": []
+        },
+        "relics": {
+          "count": 3,
+          "ids": []
+        },
+        "potions": {
+          "count": 2,
+          "ids": []
+        },
+        "mode": "Search",
+        "fixedSearchBudget": true
+      },
+      "baseline": {
+        "stage": "completion-corrected",
+        "arm": "baseline",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "completed-search",
+          "metric": "whole-process live managed bytes after progress retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 0,
+          "requestedVersion": 0,
+          "unselectedVersion": 0,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": null,
+          "resultResumed": null,
+          "ResultScope": 0,
+          "TotalExpandedNodes": 27800,
+          "TotalTransitionCount": 155391,
+          "before": {
+            "ManagedBytes": 19414400,
+            "WorkingSetBytes": 329056256,
+            "PrivateBytes": 245432320
+          },
+          "after": {
+            "ManagedBytes": 19389792,
+            "WorkingSetBytes": 329056256,
+            "PrivateBytes": 245432320
+          },
+          "managedReductionFraction": 0.0012675127740233716
+        },
+        "workerTimingMilliseconds": 19306.6874,
+        "workerAllocatedBytes": 5484056408,
+        "peakManagedHeapBytes": 134633472,
+        "peakWorkingSetBytes": 373608448,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "NOVELTY-DEV-20260915-05",
+          "CharacterId": "IRONCLAD",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "THE_INSATIABLE_BOSS",
+          "EncounterKind": "Boss",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "INFERNO",
+              "AGGRESSION",
+              "BURNING_PACT",
+              "FORGOTTEN_RITUAL",
+              "SETUP_STRIKE",
+              "HAVOC",
+              "BODY_SLAM",
+              "OFFERING",
+              "IMPERVIOUS",
+              "HEADBUTT",
+              "BREAKTHROUGH",
+              "EVIL_EYE"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "SECRET_TECHNIQUE",
+              "DISCOVERY"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "WHETSTONE",
+              "PEN_NIB",
+              "DEMON_TONGUE"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "CURE_ALL",
+              "LIQUID_BRONZE"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "candidate": {
+        "stage": "completion-corrected",
+        "arm": "candidate",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "completed-search",
+          "metric": "whole-process live managed bytes after progress retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 0,
+          "requestedVersion": 0,
+          "unselectedVersion": 0,
+          "previewAliveBefore": true,
+          "previewAliveAfter": false,
+          "resultPreserved": null,
+          "resultResumed": null,
+          "ResultScope": 0,
+          "TotalExpandedNodes": 27800,
+          "TotalTransitionCount": 155391,
+          "before": {
+            "ManagedBytes": 19372064,
+            "WorkingSetBytes": 317677568,
+            "PrivateBytes": 233922560
+          },
+          "after": {
+            "ManagedBytes": 19351552,
+            "WorkingSetBytes": 317689856,
+            "PrivateBytes": 233922560
+          },
+          "managedReductionFraction": 0.0010588443234545997
+        },
+        "workerTimingMilliseconds": 19499.9024,
+        "workerAllocatedBytes": 5486656200,
+        "peakManagedHeapBytes": 130254888,
+        "peakWorkingSetBytes": 373862400,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "NOVELTY-DEV-20260915-05",
+          "CharacterId": "IRONCLAD",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "THE_INSATIABLE_BOSS",
+          "EncounterKind": "Boss",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "INFERNO",
+              "AGGRESSION",
+              "BURNING_PACT",
+              "FORGOTTEN_RITUAL",
+              "SETUP_STRIKE",
+              "HAVOC",
+              "BODY_SLAM",
+              "OFFERING",
+              "IMPERVIOUS",
+              "HEADBUTT",
+              "BREAKTHROUGH",
+              "EVIL_EYE"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "SECRET_TECHNIQUE",
+              "DISCOVERY"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "WHETSTONE",
+              "PEN_NIB",
+              "DEMON_TONGUE"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "CURE_ALL",
+              "LIQUID_BRONZE"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "afterBytesReductionFraction": 0.0019721717489284973
+    },
+    {
+      "name": "dev-06-silent-boss",
+      "input": "coverage/novelty-search/dev-06-silent-boss.json",
+      "inputConfiguration": {
+        "schemaVersion": 1,
+        "seed": "NOVELTY-DEV-20260915-06",
+        "characterId": "SILENT",
+        "ascension": 10,
+        "actIndex": 1,
+        "encounterKind": "Boss",
+        "includeStartingDeck": true,
+        "includeStartingRelics": true,
+        "includeAscendersBane": true,
+        "applyRelicObtainEffects": false,
+        "characterCards": {
+          "count": 12,
+          "ids": [],
+          "upgradeLevels": 1
+        },
+        "colorlessCards": {
+          "count": 2,
+          "ids": []
+        },
+        "relics": {
+          "count": 3,
+          "ids": []
+        },
+        "potions": {
+          "count": 2,
+          "ids": []
+        },
+        "mode": "Search",
+        "fixedSearchBudget": true
+      },
+      "baseline": {
+        "stage": "corpus",
+        "arm": "baseline",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 4840,
+          "requestedVersion": 26,
+          "unselectedVersion": 27,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 4840,
+          "TotalTransitionCount": 20952,
+          "before": {
+            "ManagedBytes": 26296472,
+            "WorkingSetBytes": 293257216,
+            "PrivateBytes": 211374080
+          },
+          "after": {
+            "ManagedBytes": 26296368,
+            "WorkingSetBytes": 293101568,
+            "PrivateBytes": 211222528
+          },
+          "managedReductionFraction": 3.954903152081357e-06
+        },
+        "workerTimingMilliseconds": 6725.1573,
+        "workerAllocatedBytes": 846598984,
+        "peakManagedHeapBytes": 89972976,
+        "peakWorkingSetBytes": 320020480,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "NOVELTY-DEV-20260915-06",
+          "CharacterId": "SILENT",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "THE_INSATIABLE_BOSS",
+          "EncounterKind": "Boss",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "REFLEX",
+              "PRECISE_CUT",
+              "THE_HUNT",
+              "NOXIOUS_FUMES",
+              "FAN_OF_KNIVES",
+              "BUBBLE_BUBBLE",
+              "BLADE_OF_INK",
+              "BACKSTAB",
+              "FLECHETTES",
+              "MASTER_PLANNER",
+              "BLADE_OF_INK",
+              "PREPARED"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "ROLLING_BOULDER",
+              "PROWESS"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "BOWLER_HAT",
+              "FESTIVE_POPPER",
+              "SPARKLING_ROUGE"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "FORTIFIER",
+              "LUCKY_TONIC"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "candidate": {
+        "stage": "corpus",
+        "arm": "candidate",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 4840,
+          "requestedVersion": 26,
+          "unselectedVersion": 27,
+          "previewAliveBefore": true,
+          "previewAliveAfter": false,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 4840,
+          "TotalTransitionCount": 20952,
+          "before": {
+            "ManagedBytes": 26336304,
+            "WorkingSetBytes": 284594176,
+            "PrivateBytes": 211419136
+          },
+          "after": {
+            "ManagedBytes": 19043240,
+            "WorkingSetBytes": 277446656,
+            "PrivateBytes": 202870784
+          },
+          "managedReductionFraction": 0.27692055802515037
+        },
+        "workerTimingMilliseconds": 6745.6363,
+        "workerAllocatedBytes": 845820448,
+        "peakManagedHeapBytes": 90156232,
+        "peakWorkingSetBytes": 319356928,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "NOVELTY-DEV-20260915-06",
+          "CharacterId": "SILENT",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "THE_INSATIABLE_BOSS",
+          "EncounterKind": "Boss",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "REFLEX",
+              "PRECISE_CUT",
+              "THE_HUNT",
+              "NOXIOUS_FUMES",
+              "FAN_OF_KNIVES",
+              "BUBBLE_BUBBLE",
+              "BLADE_OF_INK",
+              "BACKSTAB",
+              "FLECHETTES",
+              "MASTER_PLANNER",
+              "BLADE_OF_INK",
+              "PREPARED"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "ROLLING_BOULDER",
+              "PROWESS"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "BOWLER_HAT",
+              "FESTIVE_POPPER",
+              "SPARKLING_ROUGE"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "FORTIFIER",
+              "LUCKY_TONIC"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "afterBytesReductionFraction": 0.2758224253630768
+    },
+    {
+      "name": "dev-07-defect-boss",
+      "input": "coverage/novelty-search/dev-07-defect-boss.json",
+      "inputConfiguration": {
+        "schemaVersion": 1,
+        "seed": "NOVELTY-DEV-20260915-07",
+        "characterId": "DEFECT",
+        "ascension": 10,
+        "actIndex": 1,
+        "encounterKind": "Boss",
+        "includeStartingDeck": true,
+        "includeStartingRelics": true,
+        "includeAscendersBane": true,
+        "applyRelicObtainEffects": false,
+        "characterCards": {
+          "count": 12,
+          "ids": [],
+          "upgradeLevels": 1
+        },
+        "colorlessCards": {
+          "count": 2,
+          "ids": []
+        },
+        "relics": {
+          "count": 3,
+          "ids": []
+        },
+        "potions": {
+          "count": 2,
+          "ids": []
+        },
+        "mode": "Search",
+        "fixedSearchBudget": true
+      },
+      "baseline": {
+        "stage": "corpus",
+        "arm": "baseline",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 5153,
+          "requestedVersion": 18,
+          "unselectedVersion": 19,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 10136,
+          "TotalTransitionCount": 45216,
+          "before": {
+            "ManagedBytes": 26579952,
+            "WorkingSetBytes": 330272768,
+            "PrivateBytes": 251334656
+          },
+          "after": {
+            "ManagedBytes": 26580016,
+            "WorkingSetBytes": 330272768,
+            "PrivateBytes": 251334656
+          },
+          "managedReductionFraction": -2.407829780892712e-06
+        },
+        "workerTimingMilliseconds": 9246.9383,
+        "workerAllocatedBytes": 1752158320,
+        "peakManagedHeapBytes": 96816872,
+        "peakWorkingSetBytes": 335900672,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "NOVELTY-DEV-20260915-07",
+          "CharacterId": "DEFECT",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "THE_INSATIABLE_BOSS",
+          "EncounterKind": "Boss",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "BALL_LIGHTNING",
+              "TRASH_TO_TREASURE",
+              "ROCKET_PUNCH",
+              "WHITE_NOISE",
+              "SMOKESTACK",
+              "FUSION",
+              "TESLA_COIL",
+              "LEAP",
+              "DEFRAGMENT",
+              "DARKNESS",
+              "LOOP",
+              "SUBROUTINE"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "THINKING_AHEAD",
+              "SECRET_WEAPON"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "RAZOR_TOOTH",
+              "STRIKE_DUMMY",
+              "BOOK_OF_FIVE_RINGS"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "TOUCH_OF_INSANITY",
+              "OROBIC_ACID"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "candidate": {
+        "stage": "corpus",
+        "arm": "candidate",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 5153,
+          "requestedVersion": 17,
+          "unselectedVersion": 18,
+          "previewAliveBefore": true,
+          "previewAliveAfter": false,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 10136,
+          "TotalTransitionCount": 45216,
+          "before": {
+            "ManagedBytes": 26575896,
+            "WorkingSetBytes": 331788288,
+            "PrivateBytes": 244400128
+          },
+          "after": {
+            "ManagedBytes": 20510376,
+            "WorkingSetBytes": 325849088,
+            "PrivateBytes": 237826048
+          },
+          "managedReductionFraction": 0.22823388532224842
+        },
+        "workerTimingMilliseconds": 9140.4835,
+        "workerAllocatedBytes": 1742618472,
+        "peakManagedHeapBytes": 96813304,
+        "peakWorkingSetBytes": 337436672,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "NOVELTY-DEV-20260915-07",
+          "CharacterId": "DEFECT",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "THE_INSATIABLE_BOSS",
+          "EncounterKind": "Boss",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "BALL_LIGHTNING",
+              "TRASH_TO_TREASURE",
+              "ROCKET_PUNCH",
+              "WHITE_NOISE",
+              "SMOKESTACK",
+              "FUSION",
+              "TESLA_COIL",
+              "LEAP",
+              "DEFRAGMENT",
+              "DARKNESS",
+              "LOOP",
+              "SUBROUTINE"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "THINKING_AHEAD",
+              "SECRET_WEAPON"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "RAZOR_TOOTH",
+              "STRIKE_DUMMY",
+              "BOOK_OF_FIVE_RINGS"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "TOUCH_OF_INSANITY",
+              "OROBIC_ACID"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "afterBytesReductionFraction": 0.22835351190157294
+    },
+    {
+      "name": "dev-08-regent-boss",
+      "input": "coverage/novelty-search/dev-08-regent-boss.json",
+      "inputConfiguration": {
+        "schemaVersion": 1,
+        "seed": "NOVELTY-DEV-20260915-08",
+        "characterId": "REGENT",
+        "ascension": 10,
+        "actIndex": 1,
+        "encounterKind": "Boss",
+        "includeStartingDeck": true,
+        "includeStartingRelics": true,
+        "includeAscendersBane": true,
+        "applyRelicObtainEffects": false,
+        "characterCards": {
+          "count": 12,
+          "ids": [],
+          "upgradeLevels": 1
+        },
+        "colorlessCards": {
+          "count": 2,
+          "ids": []
+        },
+        "relics": {
+          "count": 3,
+          "ids": []
+        },
+        "potions": {
+          "count": 2,
+          "ids": []
+        },
+        "mode": "Search",
+        "fixedSearchBudget": true
+      },
+      "baseline": {
+        "stage": "corpus",
+        "arm": "baseline",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 5170,
+          "requestedVersion": 18,
+          "unselectedVersion": 19,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 20474,
+          "TotalTransitionCount": 97645,
+          "before": {
+            "ManagedBytes": 30563840,
+            "WorkingSetBytes": 382214144,
+            "PrivateBytes": 302555136
+          },
+          "after": {
+            "ManagedBytes": 30531216,
+            "WorkingSetBytes": 365305856,
+            "PrivateBytes": 285646848
+          },
+          "managedReductionFraction": 0.0010674051428092302
+        },
+        "workerTimingMilliseconds": 17500.0022,
+        "workerAllocatedBytes": 3950610200,
+        "peakManagedHeapBytes": 141216168,
+        "peakWorkingSetBytes": 389419008,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "NOVELTY-DEV-20260915-08",
+          "CharacterId": "REGENT",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "THE_INSATIABLE_BOSS",
+          "EncounterKind": "Boss",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "LUNAR_BLAST",
+              "WROUGHT_IN_WAR",
+              "ALIGNMENT",
+              "QUASAR",
+              "GATHER_LIGHT",
+              "ORBIT",
+              "LUNAR_BLAST",
+              "COLLISION_COURSE",
+              "FURNACE",
+              "BOMBARDMENT",
+              "SEVEN_STARS",
+              "CRESCENT_SPEAR"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "CALAMITY",
+              "PREP_TIME"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "MERCURY_HOURGLASS",
+              "VEXING_PUZZLEBOX",
+              "MEMBERSHIP_CARD"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "SPEED_POTION",
+              "SWIFT_POTION"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "candidate": {
+        "stage": "corpus",
+        "arm": "candidate",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 5170,
+          "requestedVersion": 18,
+          "unselectedVersion": 19,
+          "previewAliveBefore": true,
+          "previewAliveAfter": false,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 20474,
+          "TotalTransitionCount": 97645,
+          "before": {
+            "ManagedBytes": 30508832,
+            "WorkingSetBytes": 381460480,
+            "PrivateBytes": 293433344
+          },
+          "after": {
+            "ManagedBytes": 21524976,
+            "WorkingSetBytes": 373899264,
+            "PrivateBytes": 284745728
+          },
+          "managedReductionFraction": 0.29446738570653896
+        },
+        "workerTimingMilliseconds": 17379.8026,
+        "workerAllocatedBytes": 3944416496,
+        "peakManagedHeapBytes": 144474576,
+        "peakWorkingSetBytes": 382140416,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "NOVELTY-DEV-20260915-08",
+          "CharacterId": "REGENT",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "THE_INSATIABLE_BOSS",
+          "EncounterKind": "Boss",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "LUNAR_BLAST",
+              "WROUGHT_IN_WAR",
+              "ALIGNMENT",
+              "QUASAR",
+              "GATHER_LIGHT",
+              "ORBIT",
+              "LUNAR_BLAST",
+              "COLLISION_COURSE",
+              "FURNACE",
+              "BOMBARDMENT",
+              "SEVEN_STARS",
+              "CRESCENT_SPEAR"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "CALAMITY",
+              "PREP_TIME"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "MERCURY_HOURGLASS",
+              "VEXING_PUZZLEBOX",
+              "MEMBERSHIP_CARD"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "SPEED_POTION",
+              "SWIFT_POTION"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "afterBytesReductionFraction": 0.29498464784370204
+    },
+    {
+      "name": "dev-09-necrobinder-boss",
+      "input": "coverage/novelty-search/dev-09-necrobinder-boss.json",
+      "inputConfiguration": {
+        "schemaVersion": 1,
+        "seed": "NOVELTY-DEV-20260915-09",
+        "characterId": "NECROBINDER",
+        "ascension": 10,
+        "actIndex": 1,
+        "encounterKind": "Boss",
+        "includeStartingDeck": true,
+        "includeStartingRelics": true,
+        "includeAscendersBane": true,
+        "applyRelicObtainEffects": false,
+        "characterCards": {
+          "count": 12,
+          "ids": [],
+          "upgradeLevels": 1
+        },
+        "colorlessCards": {
+          "count": 2,
+          "ids": []
+        },
+        "relics": {
+          "count": 3,
+          "ids": []
+        },
+        "potions": {
+          "count": 2,
+          "ids": []
+        },
+        "mode": "Search",
+        "fixedSearchBudget": true
+      },
+      "baseline": {
+        "stage": "corpus",
+        "arm": "baseline",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 4820,
+          "requestedVersion": 26,
+          "unselectedVersion": 27,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 4820,
+          "TotalTransitionCount": 29800,
+          "before": {
+            "ManagedBytes": 27620472,
+            "WorkingSetBytes": 286765056,
+            "PrivateBytes": 201973760
+          },
+          "after": {
+            "ManagedBytes": 27620368,
+            "WorkingSetBytes": 286597120,
+            "PrivateBytes": 201822208
+          },
+          "managedReductionFraction": 3.7653230545720007e-06
+        },
+        "workerTimingMilliseconds": 6841.7641,
+        "workerAllocatedBytes": 1017103080,
+        "peakManagedHeapBytes": 107488016,
+        "peakWorkingSetBytes": 337248256,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "NOVELTY-DEV-20260915-09",
+          "CharacterId": "NECROBINDER",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "THE_INSATIABLE_BOSS",
+          "EncounterKind": "Boss",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "DIRGE",
+              "DREDGE",
+              "TRANSFIGURE",
+              "DEVOUR_LIFE",
+              "SEVERANCE",
+              "DEFY",
+              "SHARED_FATE",
+              "NECRO_MASTERY",
+              "DELAY",
+              "SIC_EM",
+              "DELAY",
+              "NO_ESCAPE"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "JACK_OF_ALL_TRADES",
+              "JACKPOT"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "LETTER_OPENER",
+              "BOWLER_HAT",
+              "WHITE_STAR"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "SHACKLING_POTION",
+              "CURE_ALL"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "candidate": {
+        "stage": "corpus",
+        "arm": "candidate",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 4820,
+          "requestedVersion": 27,
+          "unselectedVersion": 28,
+          "previewAliveBefore": true,
+          "previewAliveAfter": false,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 4820,
+          "TotalTransitionCount": 29800,
+          "before": {
+            "ManagedBytes": 27736216,
+            "WorkingSetBytes": 319844352,
+            "PrivateBytes": 243343360
+          },
+          "after": {
+            "ManagedBytes": 20001120,
+            "WorkingSetBytes": 311672832,
+            "PrivateBytes": 234278912
+          },
+          "managedReductionFraction": 0.2788807240324347
+        },
+        "workerTimingMilliseconds": 6858.3157,
+        "workerAllocatedBytes": 1019242192,
+        "peakManagedHeapBytes": 115549128,
+        "peakWorkingSetBytes": 349552640,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "NOVELTY-DEV-20260915-09",
+          "CharacterId": "NECROBINDER",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "THE_INSATIABLE_BOSS",
+          "EncounterKind": "Boss",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "DIRGE",
+              "DREDGE",
+              "TRANSFIGURE",
+              "DEVOUR_LIFE",
+              "SEVERANCE",
+              "DEFY",
+              "SHARED_FATE",
+              "NECRO_MASTERY",
+              "DELAY",
+              "SIC_EM",
+              "DELAY",
+              "NO_ESCAPE"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "JACK_OF_ALL_TRADES",
+              "JACKPOT"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "LETTER_OPENER",
+              "BOWLER_HAT",
+              "WHITE_STAR"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "SHACKLING_POTION",
+              "CURE_ALL"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "afterBytesReductionFraction": 0.2758561363121592
+    },
+    {
+      "name": "holdout-00-ironclad",
+      "input": "coverage/novelty-search/holdout-00-ironclad.json",
+      "inputConfiguration": {
+        "schemaVersion": 1,
+        "seed": "BOUNDED-NOVELTY-HELDOUT-20260916-IRONCLAD",
+        "characterId": "IRONCLAD",
+        "ascension": 10,
+        "actIndex": 0,
+        "encounterKind": "Monster",
+        "includeStartingDeck": true,
+        "includeStartingRelics": true,
+        "includeAscendersBane": true,
+        "applyRelicObtainEffects": false,
+        "characterCards": {
+          "count": 12,
+          "ids": [],
+          "upgradeLevels": 1
+        },
+        "colorlessCards": {
+          "count": 2,
+          "ids": []
+        },
+        "relics": {
+          "count": 3,
+          "ids": []
+        },
+        "potions": {
+          "count": 2,
+          "ids": []
+        },
+        "mode": "Search",
+        "fixedSearchBudget": true
+      },
+      "baseline": {
+        "stage": "completion-corrected",
+        "arm": "baseline",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "completed-search",
+          "metric": "whole-process live managed bytes after progress retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 0,
+          "requestedVersion": 0,
+          "unselectedVersion": 0,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": null,
+          "resultResumed": null,
+          "ResultScope": 0,
+          "TotalExpandedNodes": 10772,
+          "TotalTransitionCount": 30560,
+          "before": {
+            "ManagedBytes": 18472080,
+            "WorkingSetBytes": 287285248,
+            "PrivateBytes": 201506816
+          },
+          "after": {
+            "ManagedBytes": 18472144,
+            "WorkingSetBytes": 287289344,
+            "PrivateBytes": 201506816
+          },
+          "managedReductionFraction": -3.464688329568588e-06
+        },
+        "workerTimingMilliseconds": 7056.3735,
+        "workerAllocatedBytes": 1204228752,
+        "peakManagedHeapBytes": 63300216,
+        "peakWorkingSetBytes": 294141952,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "BOUNDED-NOVELTY-HELDOUT-20260916-IRONCLAD",
+          "CharacterId": "IRONCLAD",
+          "Ascension": 10,
+          "ActIndex": 0,
+          "EncounterId": "SHRINKER_BEETLE_WEAK",
+          "EncounterKind": "Monster",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "INFLAME",
+              "COLOSSUS",
+              "FEEL_NO_PAIN",
+              "INFERNAL_BLADE",
+              "ASHEN_STRIKE",
+              "OFFERING",
+              "STONE_ARMOR",
+              "STAMPEDE",
+              "HELLRAISER",
+              "PRIMAL_FORCE",
+              "DEMON_FORM",
+              "BRAND"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "ROLLING_BOULDER",
+              "OMNISLICE"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "RIPPLE_BASIN",
+              "PUNCH_DAGGER",
+              "ORICHALCUM"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "ASHWATER",
+              "FLEX_POTION"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "candidate": {
+        "stage": "completion-corrected",
+        "arm": "candidate",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "completed-search",
+          "metric": "whole-process live managed bytes after progress retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 0,
+          "requestedVersion": 0,
+          "unselectedVersion": 0,
+          "previewAliveBefore": true,
+          "previewAliveAfter": false,
+          "resultPreserved": null,
+          "resultResumed": null,
+          "ResultScope": 0,
+          "TotalExpandedNodes": 10772,
+          "TotalTransitionCount": 30560,
+          "before": {
+            "ManagedBytes": 18522984,
+            "WorkingSetBytes": 285982720,
+            "PrivateBytes": 208908288
+          },
+          "after": {
+            "ManagedBytes": 18521128,
+            "WorkingSetBytes": 286044160,
+            "PrivateBytes": 208916480
+          },
+          "managedReductionFraction": 0.0001001998382118563
+        },
+        "workerTimingMilliseconds": 6794.8577,
+        "workerAllocatedBytes": 1191076096,
+        "peakManagedHeapBytes": 62255552,
+        "peakWorkingSetBytes": 292966400,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "BOUNDED-NOVELTY-HELDOUT-20260916-IRONCLAD",
+          "CharacterId": "IRONCLAD",
+          "Ascension": 10,
+          "ActIndex": 0,
+          "EncounterId": "SHRINKER_BEETLE_WEAK",
+          "EncounterKind": "Monster",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "INFLAME",
+              "COLOSSUS",
+              "FEEL_NO_PAIN",
+              "INFERNAL_BLADE",
+              "ASHEN_STRIKE",
+              "OFFERING",
+              "STONE_ARMOR",
+              "STAMPEDE",
+              "HELLRAISER",
+              "PRIMAL_FORCE",
+              "DEMON_FORM",
+              "BRAND"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "ROLLING_BOULDER",
+              "OMNISLICE"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "RIPPLE_BASIN",
+              "PUNCH_DAGGER",
+              "ORICHALCUM"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "ASHWATER",
+              "FLEX_POTION"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "afterBytesReductionFraction": -0.002651776642711212
+    },
+    {
+      "name": "holdout-01-silent",
+      "input": "coverage/novelty-search/holdout-01-silent.json",
+      "inputConfiguration": {
+        "schemaVersion": 1,
+        "seed": "BOUNDED-NOVELTY-HELDOUT-20260916-SILENT",
+        "characterId": "SILENT",
+        "ascension": 10,
+        "actIndex": 0,
+        "encounterKind": "Elite",
+        "includeStartingDeck": true,
+        "includeStartingRelics": true,
+        "includeAscendersBane": true,
+        "applyRelicObtainEffects": false,
+        "characterCards": {
+          "count": 12,
+          "ids": [],
+          "upgradeLevels": 1
+        },
+        "colorlessCards": {
+          "count": 2,
+          "ids": []
+        },
+        "relics": {
+          "count": 3,
+          "ids": []
+        },
+        "potions": {
+          "count": 2,
+          "ids": []
+        },
+        "mode": "Search",
+        "fixedSearchBudget": true
+      },
+      "baseline": {
+        "stage": "completion-corrected",
+        "arm": "baseline",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "completed-search",
+          "metric": "whole-process live managed bytes after progress retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 0,
+          "requestedVersion": 0,
+          "unselectedVersion": 0,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": null,
+          "resultResumed": null,
+          "ResultScope": 0,
+          "TotalExpandedNodes": 2744,
+          "TotalTransitionCount": 12415,
+          "before": {
+            "ManagedBytes": 19449352,
+            "WorkingSetBytes": 275836928,
+            "PrivateBytes": 194666496
+          },
+          "after": {
+            "ManagedBytes": 19449248,
+            "WorkingSetBytes": 275668992,
+            "PrivateBytes": 194523136
+          },
+          "managedReductionFraction": 5.347221850859896e-06
+        },
+        "workerTimingMilliseconds": 5499.3639,
+        "workerAllocatedBytes": 601353392,
+        "peakManagedHeapBytes": 81368360,
+        "peakWorkingSetBytes": 308555776,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "BOUNDED-NOVELTY-HELDOUT-20260916-SILENT",
+          "CharacterId": "SILENT",
+          "Ascension": 10,
+          "ActIndex": 0,
+          "EncounterId": "PHROG_PARASITE_ELITE",
+          "EncounterKind": "Elite",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "GRAND_FINALE",
+              "HAZE",
+              "CALCULATED_GAMBLE",
+              "MEMENTO_MORI",
+              "TACTICIAN",
+              "LEADING_STRIKE",
+              "ASSASSINATE",
+              "BLADE_OF_INK",
+              "WELL_LAID_PLANS",
+              "STORM_OF_STEEL",
+              "SNAKEBITE",
+              "ESCAPE_PLAN"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "BEAT_DOWN",
+              "THE_BOMB"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "ODDLY_SMOOTH_STONE",
+              "LANTERN",
+              "MUMMIFIED_HAND"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "OROBIC_ACID",
+              "HEART_OF_IRON"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "candidate": {
+        "stage": "completion-corrected",
+        "arm": "candidate",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "completed-search",
+          "metric": "whole-process live managed bytes after progress retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 0,
+          "requestedVersion": 0,
+          "unselectedVersion": 0,
+          "previewAliveBefore": true,
+          "previewAliveAfter": false,
+          "resultPreserved": null,
+          "resultResumed": null,
+          "ResultScope": 0,
+          "TotalExpandedNodes": 2744,
+          "TotalTransitionCount": 12415,
+          "before": {
+            "ManagedBytes": 19468784,
+            "WorkingSetBytes": 273403904,
+            "PrivateBytes": 192188416
+          },
+          "after": {
+            "ManagedBytes": 19466896,
+            "WorkingSetBytes": 273477632,
+            "PrivateBytes": 192188416
+          },
+          "managedReductionFraction": 9.697575359612909e-05
+        },
+        "workerTimingMilliseconds": 5625.131,
+        "workerAllocatedBytes": 602437920,
+        "peakManagedHeapBytes": 72223368,
+        "peakWorkingSetBytes": 301215744,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "BOUNDED-NOVELTY-HELDOUT-20260916-SILENT",
+          "CharacterId": "SILENT",
+          "Ascension": 10,
+          "ActIndex": 0,
+          "EncounterId": "PHROG_PARASITE_ELITE",
+          "EncounterKind": "Elite",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "GRAND_FINALE",
+              "HAZE",
+              "CALCULATED_GAMBLE",
+              "MEMENTO_MORI",
+              "TACTICIAN",
+              "LEADING_STRIKE",
+              "ASSASSINATE",
+              "BLADE_OF_INK",
+              "WELL_LAID_PLANS",
+              "STORM_OF_STEEL",
+              "SNAKEBITE",
+              "ESCAPE_PLAN"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "BEAT_DOWN",
+              "THE_BOMB"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "ODDLY_SMOOTH_STONE",
+              "LANTERN",
+              "MUMMIFIED_HAND"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "OROBIC_ACID",
+              "HEART_OF_IRON"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "afterBytesReductionFraction": -0.0009073872676208516
+    },
+    {
+      "name": "holdout-02-defect",
+      "input": "coverage/novelty-search/holdout-02-defect.json",
+      "inputConfiguration": {
+        "schemaVersion": 1,
+        "seed": "BOUNDED-NOVELTY-HELDOUT-20260916-DEFECT",
+        "characterId": "DEFECT",
+        "ascension": 10,
+        "actIndex": 1,
+        "encounterKind": "Boss",
+        "includeStartingDeck": true,
+        "includeStartingRelics": true,
+        "includeAscendersBane": true,
+        "applyRelicObtainEffects": false,
+        "characterCards": {
+          "count": 12,
+          "ids": [],
+          "upgradeLevels": 1
+        },
+        "colorlessCards": {
+          "count": 2,
+          "ids": []
+        },
+        "relics": {
+          "count": 3,
+          "ids": []
+        },
+        "potions": {
+          "count": 2,
+          "ids": []
+        },
+        "mode": "Search",
+        "fixedSearchBudget": true
+      },
+      "baseline": {
+        "stage": "corpus",
+        "arm": "baseline",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 5061,
+          "requestedVersion": 24,
+          "unselectedVersion": 25,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 5061,
+          "TotalTransitionCount": 17401,
+          "before": {
+            "ManagedBytes": 24428648,
+            "WorkingSetBytes": 272953344,
+            "PrivateBytes": 190570496
+          },
+          "after": {
+            "ManagedBytes": 24428544,
+            "WorkingSetBytes": 272789504,
+            "PrivateBytes": 190423040
+          },
+          "managedReductionFraction": 4.257296597032223e-06
+        },
+        "workerTimingMilliseconds": 5803.6024,
+        "workerAllocatedBytes": 726954520,
+        "peakManagedHeapBytes": 73349888,
+        "peakWorkingSetBytes": 303632384,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "BOUNDED-NOVELTY-HELDOUT-20260916-DEFECT",
+          "CharacterId": "DEFECT",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "THE_INSATIABLE_BOSS",
+          "EncounterKind": "Boss",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "MULTI_CAST",
+              "SUPERCRITICAL",
+              "CONSUMING_SHADOW",
+              "CHARGE_BATTERY",
+              "BOOST_AWAY",
+              "TEMPEST",
+              "SHADOW_SHIELD",
+              "SPINNER",
+              "UPROAR",
+              "SKIM",
+              "MOMENTUM_STRIKE",
+              "COMPACT"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "AUTOMATION",
+              "NOSTALGIA"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "CLOAK_CLASP",
+              "CAULDRON",
+              "GAME_PIECE"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "POTION_OF_BINDING",
+              "SWIFT_POTION"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "candidate": {
+        "stage": "corpus",
+        "arm": "candidate",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 5061,
+          "requestedVersion": 24,
+          "unselectedVersion": 25,
+          "previewAliveBefore": true,
+          "previewAliveAfter": false,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 5061,
+          "TotalTransitionCount": 17401,
+          "before": {
+            "ManagedBytes": 24428800,
+            "WorkingSetBytes": 296239104,
+            "PrivateBytes": 214061056
+          },
+          "after": {
+            "ManagedBytes": 19698664,
+            "WorkingSetBytes": 271990784,
+            "PrivateBytes": 189587456
+          },
+          "managedReductionFraction": 0.1936294865077286
+        },
+        "workerTimingMilliseconds": 5811.6431,
+        "workerAllocatedBytes": 726316880,
+        "peakManagedHeapBytes": 72976536,
+        "peakWorkingSetBytes": 302575616,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "BOUNDED-NOVELTY-HELDOUT-20260916-DEFECT",
+          "CharacterId": "DEFECT",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "THE_INSATIABLE_BOSS",
+          "EncounterKind": "Boss",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "MULTI_CAST",
+              "SUPERCRITICAL",
+              "CONSUMING_SHADOW",
+              "CHARGE_BATTERY",
+              "BOOST_AWAY",
+              "TEMPEST",
+              "SHADOW_SHIELD",
+              "SPINNER",
+              "UPROAR",
+              "SKIM",
+              "MOMENTUM_STRIKE",
+              "COMPACT"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "AUTOMATION",
+              "NOSTALGIA"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "CLOAK_CLASP",
+              "CAULDRON",
+              "GAME_PIECE"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "POTION_OF_BINDING",
+              "SWIFT_POTION"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "afterBytesReductionFraction": 0.19362103611250836
+    },
+    {
+      "name": "holdout-03-regent",
+      "input": "coverage/novelty-search/holdout-03-regent.json",
+      "inputConfiguration": {
+        "schemaVersion": 1,
+        "seed": "BOUNDED-NOVELTY-HELDOUT-20260916-REGENT",
+        "characterId": "REGENT",
+        "ascension": 10,
+        "actIndex": 1,
+        "encounterKind": "Monster",
+        "includeStartingDeck": true,
+        "includeStartingRelics": true,
+        "includeAscendersBane": true,
+        "applyRelicObtainEffects": false,
+        "characterCards": {
+          "count": 12,
+          "ids": [],
+          "upgradeLevels": 1
+        },
+        "colorlessCards": {
+          "count": 2,
+          "ids": []
+        },
+        "relics": {
+          "count": 3,
+          "ids": []
+        },
+        "potions": {
+          "count": 2,
+          "ids": []
+        },
+        "mode": "Search",
+        "fixedSearchBudget": true
+      },
+      "baseline": {
+        "stage": "corpus",
+        "arm": "baseline",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 4932,
+          "requestedVersion": 31,
+          "unselectedVersion": 32,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 4932,
+          "TotalTransitionCount": 36712,
+          "before": {
+            "ManagedBytes": 26813936,
+            "WorkingSetBytes": 341815296,
+            "PrivateBytes": 256028672
+          },
+          "after": {
+            "ManagedBytes": 26813832,
+            "WorkingSetBytes": 341651456,
+            "PrivateBytes": 255897600
+          },
+          "managedReductionFraction": 3.8785801532714714e-06
+        },
+        "workerTimingMilliseconds": 8111.1399,
+        "workerAllocatedBytes": 1378478368,
+        "peakManagedHeapBytes": 134527896,
+        "peakWorkingSetBytes": 369180672,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "BOUNDED-NOVELTY-HELDOUT-20260916-REGENT",
+          "CharacterId": "REGENT",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "LOUSE_PROGENITOR_NORMAL",
+          "EncounterKind": "Monster",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "SEEKING_EDGE",
+              "NEUTRON_AEGIS",
+              "GLIMMER",
+              "ARSENAL",
+              "COMET",
+              "GLIMMER",
+              "REFINE_BLADE",
+              "VOID_FORM",
+              "I_AM_INVINCIBLE",
+              "HEGEMONY",
+              "GLIMMER",
+              "GUIDING_STAR"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "ULTIMATE_DEFEND",
+              "SECRET_WEAPON"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "CAULDRON",
+              "BURNING_STICKS",
+              "KUSARIGAMA"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "POWDERED_DEMISE",
+              "MAZALETHS_GIFT"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "candidate": {
+        "stage": "corpus",
+        "arm": "candidate",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 4932,
+          "requestedVersion": 31,
+          "unselectedVersion": 32,
+          "previewAliveBefore": true,
+          "previewAliveAfter": false,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 4932,
+          "TotalTransitionCount": 36712,
+          "before": {
+            "ManagedBytes": 26830792,
+            "WorkingSetBytes": 343007232,
+            "PrivateBytes": 257417216
+          },
+          "after": {
+            "ManagedBytes": 19180176,
+            "WorkingSetBytes": 335405056,
+            "PrivateBytes": 249102336
+          },
+          "managedReductionFraction": 0.2851431295803717
+        },
+        "workerTimingMilliseconds": 8081.4159,
+        "workerAllocatedBytes": 1378314312,
+        "peakManagedHeapBytes": 135340072,
+        "peakWorkingSetBytes": 373071872,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "BOUNDED-NOVELTY-HELDOUT-20260916-REGENT",
+          "CharacterId": "REGENT",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "LOUSE_PROGENITOR_NORMAL",
+          "EncounterKind": "Monster",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "SEEKING_EDGE",
+              "NEUTRON_AEGIS",
+              "GLIMMER",
+              "ARSENAL",
+              "COMET",
+              "GLIMMER",
+              "REFINE_BLADE",
+              "VOID_FORM",
+              "I_AM_INVINCIBLE",
+              "HEGEMONY",
+              "GLIMMER",
+              "GUIDING_STAR"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "ULTIMATE_DEFEND",
+              "SECRET_WEAPON"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "CAULDRON",
+              "BURNING_STICKS",
+              "KUSARIGAMA"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "POWDERED_DEMISE",
+              "MAZALETHS_GIFT"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "afterBytesReductionFraction": 0.2846909759112386
+    },
+    {
+      "name": "holdout-04-necrobinder",
+      "input": "coverage/novelty-search/holdout-04-necrobinder.json",
+      "inputConfiguration": {
+        "schemaVersion": 1,
+        "seed": "BOUNDED-NOVELTY-HELDOUT-20260916-NECROBINDER",
+        "characterId": "NECROBINDER",
+        "ascension": 10,
+        "actIndex": 1,
+        "encounterKind": "Elite",
+        "includeStartingDeck": true,
+        "includeStartingRelics": true,
+        "includeAscendersBane": true,
+        "applyRelicObtainEffects": false,
+        "characterCards": {
+          "count": 12,
+          "ids": [],
+          "upgradeLevels": 1
+        },
+        "colorlessCards": {
+          "count": 2,
+          "ids": []
+        },
+        "relics": {
+          "count": 3,
+          "ids": []
+        },
+        "potions": {
+          "count": 2,
+          "ids": []
+        },
+        "mode": "Search",
+        "fixedSearchBudget": true
+      },
+      "baseline": {
+        "stage": "corpus",
+        "arm": "baseline",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 4849,
+          "requestedVersion": 28,
+          "unselectedVersion": 29,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 4849,
+          "TotalTransitionCount": 36271,
+          "before": {
+            "ManagedBytes": 29065600,
+            "WorkingSetBytes": 358199296,
+            "PrivateBytes": 269639680
+          },
+          "after": {
+            "ManagedBytes": 29040992,
+            "WorkingSetBytes": 358227968,
+            "PrivateBytes": 269639680
+          },
+          "managedReductionFraction": 0.0008466365738192261
+        },
+        "workerTimingMilliseconds": 10425.0303,
+        "workerAllocatedBytes": 1778386368,
+        "peakManagedHeapBytes": 143244544,
+        "peakWorkingSetBytes": 383426560,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "BOUNDED-NOVELTY-HELDOUT-20260916-NECROBINDER",
+          "CharacterId": "NECROBINDER",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "DECIMILLIPEDE_ELITE",
+          "EncounterKind": "Elite",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "SOUL_STORM",
+              "DIRGE",
+              "DEVOUR_LIFE",
+              "DELAY",
+              "DANSE_MACABRE",
+              "THE_SCYTHE",
+              "SOW",
+              "REAPER_FORM",
+              "SCULPTING_STRIKE",
+              "CALL_OF_THE_VOID",
+              "PAGESTORM",
+              "CAPTURE_SPIRIT"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "PANIC_BUTTON",
+              "HIDDEN_GEM"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "BEATING_REMNANT",
+              "MEAL_TICKET",
+              "GAME_PIECE"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "SPEED_POTION",
+              "BOTTLED_POTENTIAL"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "candidate": {
+        "stage": "corpus",
+        "arm": "candidate",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 4849,
+          "requestedVersion": 27,
+          "unselectedVersion": 28,
+          "previewAliveBefore": true,
+          "previewAliveAfter": false,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 4849,
+          "TotalTransitionCount": 36271,
+          "before": {
+            "ManagedBytes": 29082976,
+            "WorkingSetBytes": 391270400,
+            "PrivateBytes": 302534656
+          },
+          "after": {
+            "ManagedBytes": 20813448,
+            "WorkingSetBytes": 381960192,
+            "PrivateBytes": 292622336
+          },
+          "managedReductionFraction": 0.28434256521753487
+        },
+        "workerTimingMilliseconds": 10535.437,
+        "workerAllocatedBytes": 1778224024,
+        "peakManagedHeapBytes": 149571240,
+        "peakWorkingSetBytes": 394620928,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "BOUNDED-NOVELTY-HELDOUT-20260916-NECROBINDER",
+          "CharacterId": "NECROBINDER",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "DECIMILLIPEDE_ELITE",
+          "EncounterKind": "Elite",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "SOUL_STORM",
+              "DIRGE",
+              "DEVOUR_LIFE",
+              "DELAY",
+              "DANSE_MACABRE",
+              "THE_SCYTHE",
+              "SOW",
+              "REAPER_FORM",
+              "SCULPTING_STRIKE",
+              "CALL_OF_THE_VOID",
+              "PAGESTORM",
+              "CAPTURE_SPIRIT"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "PANIC_BUTTON",
+              "HIDDEN_GEM"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "BEATING_REMNANT",
+              "MEAL_TICKET",
+              "GAME_PIECE"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "SPEED_POTION",
+              "BOTTLED_POTENTIAL"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "afterBytesReductionFraction": 0.28330795311675305
+    },
+    {
+      "name": "sentinel-discard",
+      "input": "coverage/novelty-search/sentinel-discard.json",
+      "inputConfiguration": {
+        "schemaVersion": 1,
+        "seed": "CHOICE-EXPANSION-DISCARD-20260914",
+        "characterId": "SILENT",
+        "ascension": 10,
+        "actIndex": 1,
+        "encounterId": "KAISER_CRAB_BOSS",
+        "encounterKind": "Boss",
+        "includeStartingDeck": false,
+        "includeStartingRelics": true,
+        "includeAscendersBane": false,
+        "applyRelicObtainEffects": false,
+        "characterCards": {
+          "count": 8,
+          "ids": [
+            "DAGGER_THROW",
+            "DAGGER_THROW",
+            "ACROBATICS",
+            "SURVIVOR",
+            "TACTICIAN",
+            "REFLEX",
+            "MURDER",
+            "LEG_SWEEP"
+          ],
+          "upgradeLevels": 1
+        },
+        "colorlessCards": {
+          "count": 1,
+          "ids": [
+            "THINKING_AHEAD"
+          ],
+          "upgradeLevels": 1
+        },
+        "relics": {
+          "count": 0,
+          "ids": [],
+          "upgradeLevels": 0
+        },
+        "potions": {
+          "count": 0,
+          "ids": [],
+          "upgradeLevels": 0
+        },
+        "setupChoices": [],
+        "playerCurrentHp": null,
+        "potionSlotCount": null,
+        "mode": "Search",
+        "fixedSearchBudget": true
+      },
+      "baseline": {
+        "stage": "completion-corrected",
+        "arm": "baseline",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "completed-search",
+          "metric": "whole-process live managed bytes after progress retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 0,
+          "requestedVersion": 0,
+          "unselectedVersion": 0,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": null,
+          "resultResumed": null,
+          "ResultScope": 0,
+          "TotalExpandedNodes": 3164,
+          "TotalTransitionCount": 63019,
+          "before": {
+            "ManagedBytes": 18280664,
+            "WorkingSetBytes": 327090176,
+            "PrivateBytes": 241442816
+          },
+          "after": {
+            "ManagedBytes": 18280728,
+            "WorkingSetBytes": 327102464,
+            "PrivateBytes": 241442816
+          },
+          "managedReductionFraction": -3.5009669232533014e-06
+        },
+        "workerTimingMilliseconds": 8703.2289,
+        "workerAllocatedBytes": 1985911040,
+        "peakManagedHeapBytes": 110514536,
+        "peakWorkingSetBytes": 343957504,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "CHOICE-EXPANSION-DISCARD-20260914",
+          "CharacterId": "SILENT",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "KAISER_CRAB_BOSS",
+          "EncounterKind": "Boss",
+          "IncludeStartingDeck": false,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": false,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 8,
+            "Ids": [
+              "DAGGER_THROW",
+              "DAGGER_THROW",
+              "ACROBATICS",
+              "SURVIVOR",
+              "TACTICIAN",
+              "REFLEX",
+              "MURDER",
+              "LEG_SWEEP"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 1,
+            "Ids": [
+              "THINKING_AHEAD"
+            ],
+            "UpgradeLevels": 1
+          },
+          "Relics": {
+            "Count": 0,
+            "Ids": [],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 0,
+            "Ids": [],
+            "UpgradeLevels": 0
+          },
+          "SetupChoices": [],
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "candidate": {
+        "stage": "completion-corrected",
+        "arm": "candidate",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "completed-search",
+          "metric": "whole-process live managed bytes after progress retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 0,
+          "requestedVersion": 0,
+          "unselectedVersion": 0,
+          "previewAliveBefore": true,
+          "previewAliveAfter": false,
+          "resultPreserved": null,
+          "resultResumed": null,
+          "ResultScope": 0,
+          "TotalExpandedNodes": 3164,
+          "TotalTransitionCount": 63019,
+          "before": {
+            "ManagedBytes": 18314752,
+            "WorkingSetBytes": 299159552,
+            "PrivateBytes": 212754432
+          },
+          "after": {
+            "ManagedBytes": 18279912,
+            "WorkingSetBytes": 298995712,
+            "PrivateBytes": 212594688
+          },
+          "managedReductionFraction": 0.0019022916608425477
+        },
+        "workerTimingMilliseconds": 8965.1193,
+        "workerAllocatedBytes": 1990772416,
+        "peakManagedHeapBytes": 123280272,
+        "peakWorkingSetBytes": 355139584,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "CHOICE-EXPANSION-DISCARD-20260914",
+          "CharacterId": "SILENT",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "KAISER_CRAB_BOSS",
+          "EncounterKind": "Boss",
+          "IncludeStartingDeck": false,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": false,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 8,
+            "Ids": [
+              "DAGGER_THROW",
+              "DAGGER_THROW",
+              "ACROBATICS",
+              "SURVIVOR",
+              "TACTICIAN",
+              "REFLEX",
+              "MURDER",
+              "LEG_SWEEP"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 1,
+            "Ids": [
+              "THINKING_AHEAD"
+            ],
+            "UpgradeLevels": 1
+          },
+          "Relics": {
+            "Count": 0,
+            "Ids": [],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 0,
+            "Ids": [],
+            "UpgradeLevels": 0
+          },
+          "SetupChoices": [],
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "afterBytesReductionFraction": 4.4637171998873626e-05
+    },
+    {
+      "name": "sentinel-potions",
+      "input": "coverage/novelty-search/sentinel-potions.json",
+      "inputConfiguration": {
+        "schemaVersion": 1,
+        "seed": "CHOICE-EXPANSION-POTIONS-20260914",
+        "characterId": "SILENT",
+        "ascension": 10,
+        "actIndex": 0,
+        "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+        "encounterKind": "Monster",
+        "includeStartingDeck": false,
+        "includeStartingRelics": true,
+        "includeAscendersBane": false,
+        "applyRelicObtainEffects": false,
+        "characterCards": {
+          "count": 8,
+          "ids": [
+            "DAGGER_THROW",
+            "DAGGER_THROW",
+            "ACROBATICS",
+            "SURVIVOR",
+            "TACTICIAN",
+            "REFLEX",
+            "MURDER",
+            "LEG_SWEEP"
+          ],
+          "upgradeLevels": 1
+        },
+        "colorlessCards": {
+          "count": 1,
+          "ids": [
+            "THINKING_AHEAD"
+          ],
+          "upgradeLevels": 1
+        },
+        "relics": {
+          "count": 0,
+          "ids": [],
+          "upgradeLevels": 0
+        },
+        "potions": {
+          "count": 3,
+          "ids": [
+            "ATTACK_POTION",
+            "COLORLESS_POTION",
+            "GAMBLERS_BREW"
+          ],
+          "upgradeLevels": 0
+        },
+        "setupChoices": [],
+        "playerCurrentHp": null,
+        "potionSlotCount": 3,
+        "mode": "Search",
+        "fixedSearchBudget": true
+      },
+      "baseline": {
+        "stage": "completion-corrected",
+        "arm": "baseline",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "completed-search",
+          "metric": "whole-process live managed bytes after progress retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 0,
+          "requestedVersion": 0,
+          "unselectedVersion": 0,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": null,
+          "resultResumed": null,
+          "ResultScope": 0,
+          "TotalExpandedNodes": 1553,
+          "TotalTransitionCount": 27213,
+          "before": {
+            "ManagedBytes": 18105136,
+            "WorkingSetBytes": 285720576,
+            "PrivateBytes": 203919360
+          },
+          "after": {
+            "ManagedBytes": 18106448,
+            "WorkingSetBytes": 285556736,
+            "PrivateBytes": 203780096
+          },
+          "managedReductionFraction": -7.246562522378319e-05
+        },
+        "workerTimingMilliseconds": 4933.7816,
+        "workerAllocatedBytes": 671984960,
+        "peakManagedHeapBytes": 91853584,
+        "peakWorkingSetBytes": 319799296,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "CHOICE-EXPANSION-POTIONS-20260914",
+          "CharacterId": "SILENT",
+          "Ascension": 10,
+          "ActIndex": 0,
+          "EncounterId": "FUZZY_WURM_CRAWLER_WEAK",
+          "EncounterKind": "Monster",
+          "IncludeStartingDeck": false,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": false,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 8,
+            "Ids": [
+              "DAGGER_THROW",
+              "DAGGER_THROW",
+              "ACROBATICS",
+              "SURVIVOR",
+              "TACTICIAN",
+              "REFLEX",
+              "MURDER",
+              "LEG_SWEEP"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 1,
+            "Ids": [
+              "THINKING_AHEAD"
+            ],
+            "UpgradeLevels": 1
+          },
+          "Relics": {
+            "Count": 0,
+            "Ids": [],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 3,
+            "Ids": [
+              "ATTACK_POTION",
+              "COLORLESS_POTION",
+              "GAMBLERS_BREW"
+            ],
+            "UpgradeLevels": 0
+          },
+          "SetupChoices": [],
+          "PotionSlotCount": 3,
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "candidate": {
+        "stage": "completion-corrected",
+        "arm": "candidate",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "completed-search",
+          "metric": "whole-process live managed bytes after progress retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 0,
+          "requestedVersion": 0,
+          "unselectedVersion": 0,
+          "previewAliveBefore": true,
+          "previewAliveAfter": false,
+          "resultPreserved": null,
+          "resultResumed": null,
+          "ResultScope": 0,
+          "TotalExpandedNodes": 1553,
+          "TotalTransitionCount": 27213,
+          "before": {
+            "ManagedBytes": 18072744,
+            "WorkingSetBytes": 272175104,
+            "PrivateBytes": 190541824
+          },
+          "after": {
+            "ManagedBytes": 18070720,
+            "WorkingSetBytes": 272011264,
+            "PrivateBytes": 190390272
+          },
+          "managedReductionFraction": 0.00011199184805588125
+        },
+        "workerTimingMilliseconds": 4958.3644,
+        "workerAllocatedBytes": 673016296,
+        "peakManagedHeapBytes": 83428952,
+        "peakWorkingSetBytes": 314396672,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "CHOICE-EXPANSION-POTIONS-20260914",
+          "CharacterId": "SILENT",
+          "Ascension": 10,
+          "ActIndex": 0,
+          "EncounterId": "FUZZY_WURM_CRAWLER_WEAK",
+          "EncounterKind": "Monster",
+          "IncludeStartingDeck": false,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": false,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 8,
+            "Ids": [
+              "DAGGER_THROW",
+              "DAGGER_THROW",
+              "ACROBATICS",
+              "SURVIVOR",
+              "TACTICIAN",
+              "REFLEX",
+              "MURDER",
+              "LEG_SWEEP"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 1,
+            "Ids": [
+              "THINKING_AHEAD"
+            ],
+            "UpgradeLevels": 1
+          },
+          "Relics": {
+            "Count": 0,
+            "Ids": [],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 3,
+            "Ids": [
+              "ATTACK_POTION",
+              "COLORLESS_POTION",
+              "GAMBLERS_BREW"
+            ],
+            "UpgradeLevels": 0
+          },
+          "SetupChoices": [],
+          "PotionSlotCount": 3,
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "afterBytesReductionFraction": 0.0019732197060405854
+    }
+  ],
+  "parallelDop4": [
+    {
+      "name": "dev-00-ironclad-elite",
+      "baseline": {
+        "stage": "parallel",
+        "arm": "baseline",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after progress retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 4926,
+          "requestedVersion": 21,
+          "unselectedVersion": 22,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 4926,
+          "TotalTransitionCount": 24817,
+          "before": {
+            "ManagedBytes": 28710896,
+            "WorkingSetBytes": 319025152,
+            "PrivateBytes": 281608192
+          },
+          "after": {
+            "ManagedBytes": 28709704,
+            "WorkingSetBytes": 318861312,
+            "PrivateBytes": 281468928
+          },
+          "managedReductionFraction": 4.1517338922436586e-05
+        },
+        "workerTimingMilliseconds": 5279.1606,
+        "workerAllocatedBytes": 1212044408,
+        "peakManagedHeapBytes": 125003120,
+        "peakWorkingSetBytes": 355815424,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "NOVELTY-DEV-20260915-00",
+          "CharacterId": "IRONCLAD",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "DECIMILLIPEDE_ELITE",
+          "EncounterKind": "Elite",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "HEADBUTT",
+              "BULLY",
+              "STONE_ARMOR",
+              "TAUNT",
+              "BURNING_PACT",
+              "INFERNAL_BLADE",
+              "MANGLE",
+              "BARRICADE",
+              "PERFECTED_STRIKE",
+              "TWIN_STRIKE",
+              "RAMPAGE",
+              "THUNDERCLAP"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "JACKPOT",
+              "JACK_OF_ALL_TRADES"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "ICE_CREAM",
+              "TUNGSTEN_ROD",
+              "KUNAI"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "BEETLE_JUICE",
+              "GAMBLERS_BREW"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "candidate": {
+        "stage": "parallel",
+        "arm": "candidate",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after progress retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 4926,
+          "requestedVersion": 23,
+          "unselectedVersion": 24,
+          "previewAliveBefore": true,
+          "previewAliveAfter": false,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 4926,
+          "TotalTransitionCount": 24817,
+          "before": {
+            "ManagedBytes": 28775040,
+            "WorkingSetBytes": 320077824,
+            "PrivateBytes": 274501632
+          },
+          "after": {
+            "ManagedBytes": 20014336,
+            "WorkingSetBytes": 311070720,
+            "PrivateBytes": 264552448
+          },
+          "managedReductionFraction": 0.30445497208691974
+        },
+        "workerTimingMilliseconds": 5341.7134,
+        "workerAllocatedBytes": 1212969320,
+        "peakManagedHeapBytes": 126414640,
+        "peakWorkingSetBytes": 357265408,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "NOVELTY-DEV-20260915-00",
+          "CharacterId": "IRONCLAD",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "DECIMILLIPEDE_ELITE",
+          "EncounterKind": "Elite",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "HEADBUTT",
+              "BULLY",
+              "STONE_ARMOR",
+              "TAUNT",
+              "BURNING_PACT",
+              "INFERNAL_BLADE",
+              "MANGLE",
+              "BARRICADE",
+              "PERFECTED_STRIKE",
+              "TWIN_STRIKE",
+              "RAMPAGE",
+              "THUNDERCLAP"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "JACKPOT",
+              "JACK_OF_ALL_TRADES"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "ICE_CREAM",
+              "TUNGSTEN_ROD",
+              "KUNAI"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "BEETLE_JUICE",
+              "GAMBLERS_BREW"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      }
+    },
+    {
+      "name": "dev-03-regent-elite",
+      "baseline": {
+        "stage": "parallel",
+        "arm": "baseline",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after progress retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 4825,
+          "requestedVersion": 26,
+          "unselectedVersion": 27,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 4825,
+          "TotalTransitionCount": 31532,
+          "before": {
+            "ManagedBytes": 33872904,
+            "WorkingSetBytes": 325210112,
+            "PrivateBytes": 273207296
+          },
+          "after": {
+            "ManagedBytes": 33871576,
+            "WorkingSetBytes": 325042176,
+            "PrivateBytes": 273084416
+          },
+          "managedReductionFraction": 3.9205377844186984e-05
+        },
+        "workerTimingMilliseconds": 6684.5882,
+        "workerAllocatedBytes": 1506713032,
+        "peakManagedHeapBytes": 177774064,
+        "peakWorkingSetBytes": 413745152,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "NOVELTY-DEV-20260915-03",
+          "CharacterId": "REGENT",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "DECIMILLIPEDE_ELITE",
+          "EncounterKind": "Elite",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "HEGEMONY",
+              "SOLAR_STRIKE",
+              "I_AM_INVINCIBLE",
+              "NEUTRON_AEGIS",
+              "VOID_FORM",
+              "I_AM_INVINCIBLE",
+              "CRASH_LANDING",
+              "BUNDLE_OF_JOY",
+              "GLOW",
+              "BEGONE",
+              "SEVEN_STARS",
+              "MAKE_IT_SO"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "THINKING_AHEAD",
+              "ENTROPY"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "GIRYA",
+              "OLD_COIN",
+              "VITRUVIAN_MINION"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "HEART_OF_IRON",
+              "REGEN_POTION"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      "candidate": {
+        "stage": "parallel",
+        "arm": "candidate",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "stopped-search",
+          "metric": "whole-process live managed bytes after progress retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 4825,
+          "requestedVersion": 26,
+          "unselectedVersion": 27,
+          "previewAliveBefore": true,
+          "previewAliveAfter": false,
+          "resultPreserved": true,
+          "resultResumed": true,
+          "ResultScope": 2,
+          "TotalExpandedNodes": 4825,
+          "TotalTransitionCount": 31532,
+          "before": {
+            "ManagedBytes": 33884136,
+            "WorkingSetBytes": 347017216,
+            "PrivateBytes": 295161856
+          },
+          "after": {
+            "ManagedBytes": 23938440,
+            "WorkingSetBytes": 314482688,
+            "PrivateBytes": 261865472
+          },
+          "managedReductionFraction": 0.2935207201387694
+        },
+        "workerTimingMilliseconds": 6513.0434,
+        "workerAllocatedBytes": 1505377208,
+        "peakManagedHeapBytes": 181060112,
+        "peakWorkingSetBytes": 417234944,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "NOVELTY-DEV-20260915-03",
+          "CharacterId": "REGENT",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "DECIMILLIPEDE_ELITE",
+          "EncounterKind": "Elite",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "HEGEMONY",
+              "SOLAR_STRIKE",
+              "I_AM_INVINCIBLE",
+              "NEUTRON_AEGIS",
+              "VOID_FORM",
+              "I_AM_INVINCIBLE",
+              "CRASH_LANDING",
+              "BUNDLE_OF_JOY",
+              "GLOW",
+              "BEGONE",
+              "SEVEN_STARS",
+              "MAKE_IT_SO"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "THINKING_AHEAD",
+              "ENTROPY"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "GIRYA",
+              "OLD_COIN",
+              "VITRUVIAN_MINION"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "HEART_OF_IRON",
+              "REGEN_POTION"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      }
+    }
+  ],
+  "ordinaryCompletionEquality": [
+    {
+      "name": "dev-05-ironclad-boss",
+      "stage": "corpus",
+      "equal": {
+        "search": true,
+        "root": true,
+        "pruneCounters": true,
+        "searchPolicy": true,
+        "route.json": true,
+        "quality.json": true
+      },
+      "baselineMilliseconds": 19636.1545,
+      "candidateMilliseconds": 19859.001,
+      "baselineAllocatedBytes": 5488832560,
+      "candidateAllocatedBytes": 5493529720
+    },
+    {
+      "name": "holdout-00-ironclad",
+      "stage": "corpus",
+      "equal": {
+        "search": true,
+        "root": true,
+        "pruneCounters": true,
+        "searchPolicy": true,
+        "route.json": true,
+        "quality.json": true
+      },
+      "baselineMilliseconds": 6915.796,
+      "candidateMilliseconds": 6710.667,
+      "baselineAllocatedBytes": 1195836712,
+      "candidateAllocatedBytes": 1196151224
+    },
+    {
+      "name": "holdout-01-silent",
+      "stage": "corpus",
+      "equal": {
+        "search": true,
+        "root": true,
+        "pruneCounters": true,
+        "searchPolicy": true,
+        "route.json": true,
+        "quality.json": true
+      },
+      "baselineMilliseconds": 5512.4782,
+      "candidateMilliseconds": 5523.52,
+      "baselineAllocatedBytes": 603972808,
+      "candidateAllocatedBytes": 602461920
+    },
+    {
+      "name": "sentinel-discard",
+      "stage": "corpus",
+      "equal": {
+        "search": true,
+        "root": true,
+        "pruneCounters": true,
+        "searchPolicy": true,
+        "route.json": true,
+        "quality.json": true
+      },
+      "baselineMilliseconds": 9409.0606,
+      "candidateMilliseconds": 8789.0249,
+      "baselineAllocatedBytes": 1993995856,
+      "candidateAllocatedBytes": 1982995112
+    },
+    {
+      "name": "sentinel-potions",
+      "stage": "corpus",
+      "equal": {
+        "search": true,
+        "root": true,
+        "pruneCounters": true,
+        "searchPolicy": true,
+        "route.json": true,
+        "quality.json": true
+      },
+      "baselineMilliseconds": 4790.8827,
+      "candidateMilliseconds": 4840.6433,
+      "baselineAllocatedBytes": 669086096,
+      "candidateAllocatedBytes": 672213672
+    },
+    {
+      "name": "dev-05-ironclad-boss",
+      "stage": "completion-corrected",
+      "equal": {
+        "search": true,
+        "root": true,
+        "pruneCounters": true,
+        "searchPolicy": true,
+        "route.json": true,
+        "quality.json": true
+      },
+      "baselineMilliseconds": 19306.6874,
+      "candidateMilliseconds": 19499.9024,
+      "baselineAllocatedBytes": 5484056408,
+      "candidateAllocatedBytes": 5486656200
+    },
+    {
+      "name": "holdout-00-ironclad",
+      "stage": "completion-corrected",
+      "equal": {
+        "search": true,
+        "root": true,
+        "pruneCounters": true,
+        "searchPolicy": true,
+        "route.json": true,
+        "quality.json": true
+      },
+      "baselineMilliseconds": 7056.3735,
+      "candidateMilliseconds": 6794.8577,
+      "baselineAllocatedBytes": 1204228752,
+      "candidateAllocatedBytes": 1191076096
+    },
+    {
+      "name": "holdout-01-silent",
+      "stage": "completion-corrected",
+      "equal": {
+        "search": true,
+        "root": true,
+        "pruneCounters": true,
+        "searchPolicy": true,
+        "route.json": true,
+        "quality.json": true
+      },
+      "baselineMilliseconds": 5499.3639,
+      "candidateMilliseconds": 5625.131,
+      "baselineAllocatedBytes": 601353392,
+      "candidateAllocatedBytes": 602437920
+    },
+    {
+      "name": "sentinel-discard",
+      "stage": "completion-corrected",
+      "equal": {
+        "search": true,
+        "root": true,
+        "pruneCounters": true,
+        "searchPolicy": true,
+        "route.json": true,
+        "quality.json": true
+      },
+      "baselineMilliseconds": 8703.2289,
+      "candidateMilliseconds": 8965.1193,
+      "baselineAllocatedBytes": 1985911040,
+      "candidateAllocatedBytes": 1990772416
+    },
+    {
+      "name": "sentinel-potions",
+      "stage": "completion-corrected",
+      "equal": {
+        "search": true,
+        "root": true,
+        "pruneCounters": true,
+        "searchPolicy": true,
+        "route.json": true,
+        "quality.json": true
+      },
+      "baselineMilliseconds": 4933.7816,
+      "candidateMilliseconds": 4958.3644,
+      "baselineAllocatedBytes": 671984960,
+      "candidateAllocatedBytes": 673016296
+    }
+  ],
+  "ordinaryWorkerObservations": {
+    "pairs": 10,
+    "elapsedChangeFraction": -0.0021530961477445043,
+    "allocationChangeFraction": -0.0003994122678716572,
+    "note": "Two samples per arm per root; worker metrics exclude the probe forced GCs. Descriptive only, not a statistically established speed improvement."
+  },
+  "contract": {
+    "assertions": 40,
+    "current": "Passed",
+    "negativeRef": "91e12e88",
+    "negativeMarker": "worker progress retired failed"
+  },
+  "native": [
+    {
+      "name": "controller-stop",
+      "runId": "c7b8e71e11a84f31b048293f2cdb75fc",
+      "scenarioId": "QOL-CONTROLLER-STOP-172",
+      "status": "Failed",
+      "stage": "controller_session_lifecycle",
+      "completedChecks": [],
+      "error": "System.InvalidOperationException: 覆盖层拖拽缩放、尺寸持久化或展开恢复没有正确建立：configured=True, persistence=False。\n   at CombatSolver.UnattendedTestRunner.AssertControllerSessionLifecycleAsync(CombatState combat)\n   at CombatSolver.UnattendedTestRunner.Assertions.RunBeforeExecutionAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()",
+      "instanceRemoved": true,
+      "command": [
+        "./tools/run-unattended-test.sh",
+        "--timeout-seconds",
+        "120",
+        "--exit-on-complete",
+        "--cleanup-instance-on-exit",
+        "--short-search-budget-override-milliseconds",
+        "2000",
+        "--deep-search-budget-override-milliseconds",
+        "2000",
+        "--headless-instance",
+        "progress-retirement-controller-stop",
+        "--evidence-directory",
+        "${REPO}/.local/progress-retirement/native/controller-stop",
+        "--scenario-id",
+        "QOL-CONTROLLER-STOP-172",
+        "--character-id",
+        "IRONCLAD",
+        "--encounter-id",
+        "FUZZY_WURM_CRAWLER_WEAK",
+        "--enemy-current-hp",
+        "1",
+        "--verify-controller-session-lifecycle",
+        "--expected-finished-turn",
+        "1"
+      ]
+    },
+    {
+      "name": "controller-baseline",
+      "runId": "434769f32ddc4626a53923a78fe9d18a",
+      "scenarioId": "QOL-CONTROLLER-STOP-172",
+      "status": "Failed",
+      "stage": "controller_session_lifecycle",
+      "completedChecks": [],
+      "error": "System.InvalidOperationException: 覆盖层拖拽缩放、尺寸持久化或展开恢复没有正确建立：configured=True, persistence=False。\n   at CombatSolver.UnattendedTestRunner.AssertControllerSessionLifecycleAsync(CombatState combat)\n   at CombatSolver.UnattendedTestRunner.Assertions.RunBeforeExecutionAsync(ScenarioContext scenario)\n   at CombatSolver.UnattendedTestRunner.RunAsync()",
+      "instanceRemoved": true,
+      "command": [
+        "./tools/run-unattended-test.sh",
+        "--timeout-seconds",
+        "120",
+        "--exit-on-complete",
+        "--cleanup-instance-on-exit",
+        "--short-search-budget-override-milliseconds",
+        "2000",
+        "--deep-search-budget-override-milliseconds",
+        "2000",
+        "--headless-instance",
+        "progress-retirement-controller-baseline",
+        "--evidence-directory",
+        "${REPO}/.local/progress-retirement/native/controller-baseline",
+        "--scenario-id",
+        "QOL-CONTROLLER-STOP-172",
+        "--character-id",
+        "IRONCLAD",
+        "--encounter-id",
+        "FUZZY_WURM_CRAWLER_WEAK",
+        "--enemy-current-hp",
+        "1",
+        "--verify-controller-session-lifecycle",
+        "--expected-finished-turn",
+        "1",
+        "--combat-solver-build-dir",
+        "${REPO}/.local/progress-retirement/baseline"
+      ]
+    },
+    {
+      "name": "setup-stop-adopt",
+      "runId": "997fde49b7684f27b0619668fed6c274",
+      "scenarioId": "TURN-SETUP-STOP-CANDIDATE",
+      "status": "Passed",
+      "stage": "passed",
+      "completedChecks": [
+        "TurnSetupStoppedCandidate:Adopted:ControlsAndInputReleased",
+        "TurnSetupInitialSearchControls:Turn=1:Actions=20"
+      ],
+      "error": null,
+      "instanceRemoved": true,
+      "command": [
+        "./tools/run-unattended-test.sh",
+        "--timeout-seconds",
+        "120",
+        "--exit-on-complete",
+        "--cleanup-instance-on-exit",
+        "--short-search-budget-override-milliseconds",
+        "2000",
+        "--deep-search-budget-override-milliseconds",
+        "2000",
+        "--headless-instance",
+        "progress-retirement-setup-stop-adopt",
+        "--evidence-directory",
+        "${REPO}/.local/progress-retirement/native/setup-stop-adopt",
+        "--scenario-id",
+        "TURN-SETUP-STOP-CANDIDATE",
+        "--character-id",
+        "SILENT",
+        "--encounter-id",
+        "GREMLIN_MERC_NORMAL",
+        "--relics-json",
+        "[{\"relicId\":\"TOASTY_MITTENS\"}]",
+        "--preserve-native-combat-state-for-test",
+        "--verify-turn-setup-controls-during-initial-search",
+        "--stop-after-initial-setup-assertion"
+      ]
+    },
+    {
+      "name": "setup-stop-restart",
+      "runId": "c1c8e3d227d747dda9b6b9cae5ae943f",
+      "scenarioId": "TURN-SETUP-UI-GAMBLING-PARTIAL",
+      "status": "Passed",
+      "stage": "passed",
+      "completedChecks": [
+        "TurnSetupControls:StopInitial:Restart:StopManual:NativeInputAvailable",
+        "TurnSetupControls:NativePlayReached:BusyFlagsCleared"
+      ],
+      "error": null,
+      "instanceRemoved": true,
+      "command": [
+        "./tools/run-unattended-test.sh",
+        "--timeout-seconds",
+        "120",
+        "--exit-on-complete",
+        "--cleanup-instance-on-exit",
+        "--short-search-budget-override-milliseconds",
+        "2000",
+        "--deep-search-budget-override-milliseconds",
+        "2000",
+        "--headless-instance",
+        "progress-retirement-setup-stop-restart",
+        "--evidence-directory",
+        "${REPO}/.local/progress-retirement/native/setup-stop-restart",
+        "--scenario-id",
+        "TURN-SETUP-UI-GAMBLING-PARTIAL",
+        "--character-id",
+        "SILENT",
+        "--encounter-id",
+        "GREMLIN_MERC_NORMAL",
+        "--relics-json",
+        "[{\"relicId\":\"GAMBLING_CHIP\"}]",
+        "--preserve-native-combat-state-for-test"
+      ]
+    },
+    {
+      "name": "setup-refresh-takeover",
+      "runId": "c06975bd938a4e038b5376179ec34ea4",
+      "scenarioId": "TURN-SETUP-REFRESH-TAKEOVER",
+      "status": "Passed",
+      "stage": "passed",
+      "completedChecks": [
+        "TurnSetupRefreshTakeover:QueuedDuringSearch",
+        "TurnSetupRefreshTakeover:RefreshedPlanCompleted",
+        "PotionOutcomeNamesAndRewardGate",
+        "InitialWorldlineSummary",
+        "TurnSetupNativeChoiceOrder",
+        "InitialPolicy:SoldHp=0;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=8;Shuffles=4;Unmirrored=0;HpLost=13;ProjectedBattleHpLost=70;Block=0/0;Pruned=0;Total=1426.1ms/787393112B;Gc=0.0ms/0.0msMax;Frame=0.0msMax/0Over50;CacheHits=0;ChoiceBranches=645;Actions=0;OnlyDeath=True;CombatEndedTurn=-;DeathTurn=8;ActEndingBoss=False;BossHpRelief=None",
+        "InitialSetupChoices"
+      ],
+      "error": null,
+      "instanceRemoved": true,
+      "command": [
+        "./tools/run-unattended-test.sh",
+        "--timeout-seconds",
+        "120",
+        "--exit-on-complete",
+        "--cleanup-instance-on-exit",
+        "--short-search-budget-override-milliseconds",
+        "2000",
+        "--deep-search-budget-override-milliseconds",
+        "2000",
+        "--headless-instance",
+        "progress-retirement-setup-refresh-takeover",
+        "--evidence-directory",
+        "${REPO}/.local/progress-retirement/native/setup-refresh-takeover",
+        "--scenario-id",
+        "TURN-SETUP-REFRESH-TAKEOVER",
+        "--character-id",
+        "SILENT",
+        "--encounter-id",
+        "GLOBE_HEAD_NORMAL",
+        "--relics-json",
+        "[{\"relicId\":\"GAMBLING_CHIP\"}]",
+        "--verify-turn-setup-manual-refresh",
+        "--stop-after-initial-setup-assertion",
+        "--expected-initial-setup-choice-source-id",
+        "GAMBLING_CHIP"
+      ]
+    }
+  ],
+  "build": {
+    "main": "Release 0 warnings / 0 errors",
+    "offlineHarness": "Release 0 warnings / 0 errors",
+    "boundaries": "REFACTOR_BOUNDARIES_OK search_files=208"
+  },
+  "supersededCompletionSamples": {
+    "reason": "Tier-0 measuring-frame temporary held the weak-reference target alive. Moved setup to a non-inlined helper and reran all five completion roots on both arms; their original ten observations are archived below, excluded from the final mean. Production DLLs unchanged. Initial completed-setup-search label did not indicate native setup.",
+    "samples": [
+      {
+        "stage": "corpus",
+        "arm": "baseline",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "completed-setup-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 0,
+          "requestedVersion": 0,
+          "unselectedVersion": 0,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": null,
+          "resultResumed": null,
+          "ResultScope": 0,
+          "TotalExpandedNodes": 27800,
+          "TotalTransitionCount": 155391,
+          "before": {
+            "ManagedBytes": 19343848,
+            "WorkingSetBytes": 345825280,
+            "PrivateBytes": 253648896
+          },
+          "after": {
+            "ManagedBytes": 19319264,
+            "WorkingSetBytes": 345833472,
+            "PrivateBytes": 253648896
+          },
+          "managedReductionFraction": 0.0012708950153040854
+        },
+        "workerTimingMilliseconds": 19636.1545,
+        "workerAllocatedBytes": 5488832560,
+        "peakManagedHeapBytes": 123011088,
+        "peakWorkingSetBytes": 368467968,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "NOVELTY-DEV-20260915-05",
+          "CharacterId": "IRONCLAD",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "THE_INSATIABLE_BOSS",
+          "EncounterKind": "Boss",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "INFERNO",
+              "AGGRESSION",
+              "BURNING_PACT",
+              "FORGOTTEN_RITUAL",
+              "SETUP_STRIKE",
+              "HAVOC",
+              "BODY_SLAM",
+              "OFFERING",
+              "IMPERVIOUS",
+              "HEADBUTT",
+              "BREAKTHROUGH",
+              "EVIL_EYE"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "SECRET_TECHNIQUE",
+              "DISCOVERY"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "WHETSTONE",
+              "PEN_NIB",
+              "DEMON_TONGUE"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "CURE_ALL",
+              "LIQUID_BRONZE"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      {
+        "stage": "corpus",
+        "arm": "candidate",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "completed-setup-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 0,
+          "requestedVersion": 0,
+          "unselectedVersion": 0,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": null,
+          "resultResumed": null,
+          "ResultScope": 0,
+          "TotalExpandedNodes": 27800,
+          "TotalTransitionCount": 155391,
+          "before": {
+            "ManagedBytes": 19395584,
+            "WorkingSetBytes": 337850368,
+            "PrivateBytes": 254148608
+          },
+          "after": {
+            "ManagedBytes": 19368864,
+            "WorkingSetBytes": 337850368,
+            "PrivateBytes": 254148608
+          },
+          "managedReductionFraction": 0.001377633176706583
+        },
+        "workerTimingMilliseconds": 19859.001,
+        "workerAllocatedBytes": 5493529720,
+        "peakManagedHeapBytes": 121784576,
+        "peakWorkingSetBytes": 366563328,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "NOVELTY-DEV-20260915-05",
+          "CharacterId": "IRONCLAD",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "THE_INSATIABLE_BOSS",
+          "EncounterKind": "Boss",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "INFERNO",
+              "AGGRESSION",
+              "BURNING_PACT",
+              "FORGOTTEN_RITUAL",
+              "SETUP_STRIKE",
+              "HAVOC",
+              "BODY_SLAM",
+              "OFFERING",
+              "IMPERVIOUS",
+              "HEADBUTT",
+              "BREAKTHROUGH",
+              "EVIL_EYE"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "SECRET_TECHNIQUE",
+              "DISCOVERY"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "WHETSTONE",
+              "PEN_NIB",
+              "DEMON_TONGUE"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "CURE_ALL",
+              "LIQUID_BRONZE"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      {
+        "stage": "corpus",
+        "arm": "baseline",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "completed-setup-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 0,
+          "requestedVersion": 0,
+          "unselectedVersion": 0,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": null,
+          "resultResumed": null,
+          "ResultScope": 0,
+          "TotalExpandedNodes": 10772,
+          "TotalTransitionCount": 30560,
+          "before": {
+            "ManagedBytes": 18522984,
+            "WorkingSetBytes": 288452608,
+            "PrivateBytes": 211415040
+          },
+          "after": {
+            "ManagedBytes": 18523048,
+            "WorkingSetBytes": 267730944,
+            "PrivateBytes": 190660608
+          },
+          "managedReductionFraction": -3.455166834864798e-06
+        },
+        "workerTimingMilliseconds": 6915.796,
+        "workerAllocatedBytes": 1195836712,
+        "peakManagedHeapBytes": 62992360,
+        "peakWorkingSetBytes": 295186432,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "BOUNDED-NOVELTY-HELDOUT-20260916-IRONCLAD",
+          "CharacterId": "IRONCLAD",
+          "Ascension": 10,
+          "ActIndex": 0,
+          "EncounterId": "SHRINKER_BEETLE_WEAK",
+          "EncounterKind": "Monster",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "INFLAME",
+              "COLOSSUS",
+              "FEEL_NO_PAIN",
+              "INFERNAL_BLADE",
+              "ASHEN_STRIKE",
+              "OFFERING",
+              "STONE_ARMOR",
+              "STAMPEDE",
+              "HELLRAISER",
+              "PRIMAL_FORCE",
+              "DEMON_FORM",
+              "BRAND"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "ROLLING_BOULDER",
+              "OMNISLICE"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "RIPPLE_BASIN",
+              "PUNCH_DAGGER",
+              "ORICHALCUM"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "ASHWATER",
+              "FLEX_POTION"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      {
+        "stage": "corpus",
+        "arm": "candidate",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "completed-setup-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 0,
+          "requestedVersion": 0,
+          "unselectedVersion": 0,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": null,
+          "resultResumed": null,
+          "ResultScope": 0,
+          "TotalExpandedNodes": 10772,
+          "TotalTransitionCount": 30560,
+          "before": {
+            "ManagedBytes": 18472200,
+            "WorkingSetBytes": 289886208,
+            "PrivateBytes": 204173312
+          },
+          "after": {
+            "ManagedBytes": 18471296,
+            "WorkingSetBytes": 289886208,
+            "PrivateBytes": 204173312
+          },
+          "managedReductionFraction": 4.8938404737963737e-05
+        },
+        "workerTimingMilliseconds": 6710.667,
+        "workerAllocatedBytes": 1196151224,
+        "peakManagedHeapBytes": 62364032,
+        "peakWorkingSetBytes": 295989248,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "BOUNDED-NOVELTY-HELDOUT-20260916-IRONCLAD",
+          "CharacterId": "IRONCLAD",
+          "Ascension": 10,
+          "ActIndex": 0,
+          "EncounterId": "SHRINKER_BEETLE_WEAK",
+          "EncounterKind": "Monster",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "INFLAME",
+              "COLOSSUS",
+              "FEEL_NO_PAIN",
+              "INFERNAL_BLADE",
+              "ASHEN_STRIKE",
+              "OFFERING",
+              "STONE_ARMOR",
+              "STAMPEDE",
+              "HELLRAISER",
+              "PRIMAL_FORCE",
+              "DEMON_FORM",
+              "BRAND"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "ROLLING_BOULDER",
+              "OMNISLICE"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "RIPPLE_BASIN",
+              "PUNCH_DAGGER",
+              "ORICHALCUM"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "ASHWATER",
+              "FLEX_POTION"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      {
+        "stage": "corpus",
+        "arm": "baseline",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "completed-setup-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 0,
+          "requestedVersion": 0,
+          "unselectedVersion": 0,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": null,
+          "resultResumed": null,
+          "ResultScope": 0,
+          "TotalExpandedNodes": 2744,
+          "TotalTransitionCount": 12415,
+          "before": {
+            "ManagedBytes": 19464176,
+            "WorkingSetBytes": 277700608,
+            "PrivateBytes": 196063232
+          },
+          "after": {
+            "ManagedBytes": 19464072,
+            "WorkingSetBytes": 277540864,
+            "PrivateBytes": 195952640
+          },
+          "managedReductionFraction": 5.343149383718604e-06
+        },
+        "workerTimingMilliseconds": 5512.4782,
+        "workerAllocatedBytes": 603972808,
+        "peakManagedHeapBytes": 73244032,
+        "peakWorkingSetBytes": 297168896,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "BOUNDED-NOVELTY-HELDOUT-20260916-SILENT",
+          "CharacterId": "SILENT",
+          "Ascension": 10,
+          "ActIndex": 0,
+          "EncounterId": "PHROG_PARASITE_ELITE",
+          "EncounterKind": "Elite",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "GRAND_FINALE",
+              "HAZE",
+              "CALCULATED_GAMBLE",
+              "MEMENTO_MORI",
+              "TACTICIAN",
+              "LEADING_STRIKE",
+              "ASSASSINATE",
+              "BLADE_OF_INK",
+              "WELL_LAID_PLANS",
+              "STORM_OF_STEEL",
+              "SNAKEBITE",
+              "ESCAPE_PLAN"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "BEAT_DOWN",
+              "THE_BOMB"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "ODDLY_SMOOTH_STONE",
+              "LANTERN",
+              "MUMMIFIED_HAND"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "OROBIC_ACID",
+              "HEART_OF_IRON"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      {
+        "stage": "corpus",
+        "arm": "candidate",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "completed-setup-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 0,
+          "requestedVersion": 0,
+          "unselectedVersion": 0,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": null,
+          "resultResumed": null,
+          "ResultScope": 0,
+          "TotalExpandedNodes": 2744,
+          "TotalTransitionCount": 12415,
+          "before": {
+            "ManagedBytes": 19415040,
+            "WorkingSetBytes": 294526976,
+            "PrivateBytes": 213266432
+          },
+          "after": {
+            "ManagedBytes": 19413352,
+            "WorkingSetBytes": 294551552,
+            "PrivateBytes": 213266432
+          },
+          "managedReductionFraction": 8.694290611810374e-05
+        },
+        "workerTimingMilliseconds": 5523.52,
+        "workerAllocatedBytes": 602461920,
+        "peakManagedHeapBytes": 72852064,
+        "peakWorkingSetBytes": 301682688,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "BOUNDED-NOVELTY-HELDOUT-20260916-SILENT",
+          "CharacterId": "SILENT",
+          "Ascension": 10,
+          "ActIndex": 0,
+          "EncounterId": "PHROG_PARASITE_ELITE",
+          "EncounterKind": "Elite",
+          "IncludeStartingDeck": true,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": true,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 12,
+            "Ids": [
+              "GRAND_FINALE",
+              "HAZE",
+              "CALCULATED_GAMBLE",
+              "MEMENTO_MORI",
+              "TACTICIAN",
+              "LEADING_STRIKE",
+              "ASSASSINATE",
+              "BLADE_OF_INK",
+              "WELL_LAID_PLANS",
+              "STORM_OF_STEEL",
+              "SNAKEBITE",
+              "ESCAPE_PLAN"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 2,
+            "Ids": [
+              "BEAT_DOWN",
+              "THE_BOMB"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Relics": {
+            "Count": 3,
+            "Ids": [
+              "ODDLY_SMOOTH_STONE",
+              "LANTERN",
+              "MUMMIFIED_HAND"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 2,
+            "Ids": [
+              "OROBIC_ACID",
+              "HEART_OF_IRON"
+            ],
+            "UpgradeLevels": 0
+          },
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      {
+        "stage": "corpus",
+        "arm": "baseline",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "completed-setup-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 0,
+          "requestedVersion": 0,
+          "unselectedVersion": 0,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": null,
+          "resultResumed": null,
+          "ResultScope": 0,
+          "TotalExpandedNodes": 3164,
+          "TotalTransitionCount": 63019,
+          "before": {
+            "ManagedBytes": 18297240,
+            "WorkingSetBytes": 301170688,
+            "PrivateBytes": 215293952
+          },
+          "after": {
+            "ManagedBytes": 18297304,
+            "WorkingSetBytes": 301314048,
+            "PrivateBytes": 215293952
+          },
+          "managedReductionFraction": -3.4977952958481495e-06
+        },
+        "workerTimingMilliseconds": 9409.0606,
+        "workerAllocatedBytes": 1993995856,
+        "peakManagedHeapBytes": 108900040,
+        "peakWorkingSetBytes": 340742144,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "CHOICE-EXPANSION-DISCARD-20260914",
+          "CharacterId": "SILENT",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "KAISER_CRAB_BOSS",
+          "EncounterKind": "Boss",
+          "IncludeStartingDeck": false,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": false,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 8,
+            "Ids": [
+              "DAGGER_THROW",
+              "DAGGER_THROW",
+              "ACROBATICS",
+              "SURVIVOR",
+              "TACTICIAN",
+              "REFLEX",
+              "MURDER",
+              "LEG_SWEEP"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 1,
+            "Ids": [
+              "THINKING_AHEAD"
+            ],
+            "UpgradeLevels": 1
+          },
+          "Relics": {
+            "Count": 0,
+            "Ids": [],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 0,
+            "Ids": [],
+            "UpgradeLevels": 0
+          },
+          "SetupChoices": [],
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      {
+        "stage": "corpus",
+        "arm": "candidate",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "completed-setup-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 0,
+          "requestedVersion": 0,
+          "unselectedVersion": 0,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": null,
+          "resultResumed": null,
+          "ResultScope": 0,
+          "TotalExpandedNodes": 3164,
+          "TotalTransitionCount": 63019,
+          "before": {
+            "ManagedBytes": 18301480,
+            "WorkingSetBytes": 296386560,
+            "PrivateBytes": 210382848
+          },
+          "after": {
+            "ManagedBytes": 18275064,
+            "WorkingSetBytes": 296230912,
+            "PrivateBytes": 210227200
+          },
+          "managedReductionFraction": 0.0014433805353446516
+        },
+        "workerTimingMilliseconds": 8789.0249,
+        "workerAllocatedBytes": 1982995112,
+        "peakManagedHeapBytes": 140340560,
+        "peakWorkingSetBytes": 382095360,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "CHOICE-EXPANSION-DISCARD-20260914",
+          "CharacterId": "SILENT",
+          "Ascension": 10,
+          "ActIndex": 1,
+          "EncounterId": "KAISER_CRAB_BOSS",
+          "EncounterKind": "Boss",
+          "IncludeStartingDeck": false,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": false,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 8,
+            "Ids": [
+              "DAGGER_THROW",
+              "DAGGER_THROW",
+              "ACROBATICS",
+              "SURVIVOR",
+              "TACTICIAN",
+              "REFLEX",
+              "MURDER",
+              "LEG_SWEEP"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 1,
+            "Ids": [
+              "THINKING_AHEAD"
+            ],
+            "UpgradeLevels": 1
+          },
+          "Relics": {
+            "Count": 0,
+            "Ids": [],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 0,
+            "Ids": [],
+            "UpgradeLevels": 0
+          },
+          "SetupChoices": [],
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      {
+        "stage": "corpus",
+        "arm": "baseline",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "completed-setup-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 0,
+          "requestedVersion": 0,
+          "unselectedVersion": 0,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": null,
+          "resultResumed": null,
+          "ResultScope": 0,
+          "TotalExpandedNodes": 1553,
+          "TotalTransitionCount": 27213,
+          "before": {
+            "ManagedBytes": 18118488,
+            "WorkingSetBytes": 285134848,
+            "PrivateBytes": 203706368
+          },
+          "after": {
+            "ManagedBytes": 18118384,
+            "WorkingSetBytes": 284975104,
+            "PrivateBytes": 203599872
+          },
+          "managedReductionFraction": 5.739993315101444e-06
+        },
+        "workerTimingMilliseconds": 4790.8827,
+        "workerAllocatedBytes": 669086096,
+        "peakManagedHeapBytes": 84571584,
+        "peakWorkingSetBytes": 315375616,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "CHOICE-EXPANSION-POTIONS-20260914",
+          "CharacterId": "SILENT",
+          "Ascension": 10,
+          "ActIndex": 0,
+          "EncounterId": "FUZZY_WURM_CRAWLER_WEAK",
+          "EncounterKind": "Monster",
+          "IncludeStartingDeck": false,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": false,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 8,
+            "Ids": [
+              "DAGGER_THROW",
+              "DAGGER_THROW",
+              "ACROBATICS",
+              "SURVIVOR",
+              "TACTICIAN",
+              "REFLEX",
+              "MURDER",
+              "LEG_SWEEP"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 1,
+            "Ids": [
+              "THINKING_AHEAD"
+            ],
+            "UpgradeLevels": 1
+          },
+          "Relics": {
+            "Count": 0,
+            "Ids": [],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 3,
+            "Ids": [
+              "ATTACK_POTION",
+              "COLORLESS_POTION",
+              "GAMBLERS_BREW"
+            ],
+            "UpgradeLevels": 0
+          },
+          "SetupChoices": [],
+          "PotionSlotCount": 3,
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      },
+      {
+        "stage": "corpus",
+        "arm": "candidate",
+        "measurement": {
+          "schemaVersion": 1,
+          "mode": "completed-setup-search",
+          "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+          "stopAfterNodes": 4800,
+          "expandedAtRequest": 0,
+          "requestedVersion": 0,
+          "unselectedVersion": 0,
+          "previewAliveBefore": true,
+          "previewAliveAfter": true,
+          "resultPreserved": null,
+          "resultResumed": null,
+          "ResultScope": 0,
+          "TotalExpandedNodes": 1553,
+          "TotalTransitionCount": 27213,
+          "before": {
+            "ManagedBytes": 18125864,
+            "WorkingSetBytes": 269639680,
+            "PrivateBytes": 187293696
+          },
+          "after": {
+            "ManagedBytes": 18123528,
+            "WorkingSetBytes": 269479936,
+            "PrivateBytes": 187146240
+          },
+          "managedReductionFraction": 0.0001288766152057752
+        },
+        "workerTimingMilliseconds": 4840.6433,
+        "workerAllocatedBytes": 672213672,
+        "peakManagedHeapBytes": 81841248,
+        "peakWorkingSetBytes": 315969536,
+        "resolvedScenario": {
+          "SchemaVersion": 1,
+          "Seed": "CHOICE-EXPANSION-POTIONS-20260914",
+          "CharacterId": "SILENT",
+          "Ascension": 10,
+          "ActIndex": 0,
+          "EncounterId": "FUZZY_WURM_CRAWLER_WEAK",
+          "EncounterKind": "Monster",
+          "IncludeStartingDeck": false,
+          "IncludeStartingRelics": true,
+          "IncludeAscendersBane": false,
+          "ApplyRelicObtainEffects": false,
+          "CharacterCards": {
+            "Count": 8,
+            "Ids": [
+              "DAGGER_THROW",
+              "DAGGER_THROW",
+              "ACROBATICS",
+              "SURVIVOR",
+              "TACTICIAN",
+              "REFLEX",
+              "MURDER",
+              "LEG_SWEEP"
+            ],
+            "UpgradeLevels": 1
+          },
+          "ColorlessCards": {
+            "Count": 1,
+            "Ids": [
+              "THINKING_AHEAD"
+            ],
+            "UpgradeLevels": 1
+          },
+          "Relics": {
+            "Count": 0,
+            "Ids": [],
+            "UpgradeLevels": 0
+          },
+          "Potions": {
+            "Count": 3,
+            "Ids": [
+              "ATTACK_POTION",
+              "COLORLESS_POTION",
+              "GAMBLERS_BREW"
+            ],
+            "UpgradeLevels": 0
+          },
+          "SetupChoices": [],
+          "PotionSlotCount": 3,
+          "Mode": "Search",
+          "FixedSearchBudget": true
+        }
+      }
+    ]
+  },
+  "pilot": [
+    {
+      "arm": "baseline",
+      "schemaVersion": 1,
+      "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+      "stopAfterNodes": 4800,
+      "expandedAtRequest": 5024,
+      "requestedVersion": 32,
+      "unselectedVersion": 33,
+      "previewAliveBefore": true,
+      "previewAliveAfter": true,
+      "resultPreserved": true,
+      "resultResumed": true,
+      "ResultScope": 2,
+      "TotalExpandedNodes": 5024,
+      "TotalTransitionCount": 33925,
+      "before": {
+        "ManagedBytes": 32249904,
+        "WorkingSetBytes": 350650368,
+        "PrivateBytes": 272580608
+      },
+      "after": {
+        "ManagedBytes": 32247928,
+        "WorkingSetBytes": 350502912,
+        "PrivateBytes": 272465920
+      },
+      "managedReductionFraction": 6.127150021906225e-05
+    },
+    {
+      "arm": "candidate",
+      "schemaVersion": 1,
+      "metric": "whole-process live managed bytes after stopped-search retirement (forced GC, not peak/RSS)",
+      "stopAfterNodes": 4800,
+      "expandedAtRequest": 4897,
+      "requestedVersion": 29,
+      "unselectedVersion": 30,
+      "previewAliveBefore": true,
+      "previewAliveAfter": false,
+      "resultPreserved": true,
+      "resultResumed": true,
+      "ResultScope": 2,
+      "TotalExpandedNodes": 4897,
+      "TotalTransitionCount": 32662,
+      "before": {
+        "ManagedBytes": 32111336,
+        "WorkingSetBytes": 323899392,
+        "PrivateBytes": 238362624
+      },
+      "after": {
+        "ManagedBytes": 23889232,
+        "WorkingSetBytes": 313540608,
+        "PrivateBytes": 226934784
+      },
+      "managedReductionFraction": 0.25604988842569487
+    }
+  ],
+  "researchSurvey": {
+    "note": "All 17 preselected baseline roots were subsequently executed with phase instrumentation. Silent elite and Necrobinder holdout ~60s hit request deadlines despite the selected-result flag; not fixed-work timing evidence.",
+    "samples": [
+      {
+        "name": "dev-00-ironclad-elite",
+        "wallSeconds": 20.6629179,
+        "peakManagedHeapBytes": 180504080,
+        "totalAllocatedBytes": 5267943568,
+        "selectedResultTimeBoundaryFlag": false
+      },
+      {
+        "name": "dev-01-silent-elite",
+        "wallSeconds": 60.1806527,
+        "peakManagedHeapBytes": 201427904,
+        "totalAllocatedBytes": 22001920448,
+        "selectedResultTimeBoundaryFlag": false
+      },
+      {
+        "name": "dev-02-defect-elite",
+        "wallSeconds": 11.6481175,
+        "peakManagedHeapBytes": 147687888,
+        "totalAllocatedBytes": 2301313040,
+        "selectedResultTimeBoundaryFlag": false
+      },
+      {
+        "name": "dev-03-regent-elite",
+        "wallSeconds": 20.3923075,
+        "peakManagedHeapBytes": 340693112,
+        "totalAllocatedBytes": 5875502368,
+        "selectedResultTimeBoundaryFlag": false
+      },
+      {
+        "name": "dev-04-necrobinder-elite",
+        "wallSeconds": 13.4277348,
+        "peakManagedHeapBytes": 160747472,
+        "totalAllocatedBytes": 3489779536,
+        "selectedResultTimeBoundaryFlag": false
+      },
+      {
+        "name": "dev-05-ironclad-boss",
+        "wallSeconds": 19.5069428,
+        "peakManagedHeapBytes": 123196368,
+        "totalAllocatedBytes": 5700896072,
+        "selectedResultTimeBoundaryFlag": false
+      },
+      {
+        "name": "dev-06-silent-boss",
+        "wallSeconds": 23.5814208,
+        "peakManagedHeapBytes": 116736440,
+        "totalAllocatedBytes": 6948129704,
+        "selectedResultTimeBoundaryFlag": false
+      },
+      {
+        "name": "dev-07-defect-boss",
+        "wallSeconds": 12.857539,
+        "peakManagedHeapBytes": 108560976,
+        "totalAllocatedBytes": 3269629328,
+        "selectedResultTimeBoundaryFlag": false
+      },
+      {
+        "name": "dev-08-regent-boss",
+        "wallSeconds": 27.1978876,
+        "peakManagedHeapBytes": 170412896,
+        "totalAllocatedBytes": 7789592728,
+        "selectedResultTimeBoundaryFlag": false
+      },
+      {
+        "name": "dev-09-necrobinder-boss",
+        "wallSeconds": 17.6644389,
+        "peakManagedHeapBytes": 150956568,
+        "totalAllocatedBytes": 4881639848,
+        "selectedResultTimeBoundaryFlag": false
+      },
+      {
+        "name": "holdout-00-ironclad",
+        "wallSeconds": 6.9218547,
+        "peakManagedHeapBytes": 59193280,
+        "totalAllocatedBytes": 1434702552,
+        "selectedResultTimeBoundaryFlag": false
+      },
+      {
+        "name": "holdout-01-silent",
+        "wallSeconds": 5.5970415,
+        "peakManagedHeapBytes": 74120208,
+        "totalAllocatedBytes": 929640624,
+        "selectedResultTimeBoundaryFlag": false
+      },
+      {
+        "name": "holdout-02-defect",
+        "wallSeconds": 11.3204009,
+        "peakManagedHeapBytes": 110342344,
+        "totalAllocatedBytes": 3085223608,
+        "selectedResultTimeBoundaryFlag": false
+      },
+      {
+        "name": "holdout-03-regent",
+        "wallSeconds": 26.3255045,
+        "peakManagedHeapBytes": 155275448,
+        "totalAllocatedBytes": 8015171872,
+        "selectedResultTimeBoundaryFlag": false
+      },
+      {
+        "name": "holdout-04-necrobinder",
+        "wallSeconds": 60.1826386,
+        "peakManagedHeapBytes": 272217672,
+        "totalAllocatedBytes": 18812658216,
+        "selectedResultTimeBoundaryFlag": false
+      },
+      {
+        "name": "sentinel-discard",
+        "wallSeconds": 9.4386141,
+        "peakManagedHeapBytes": 122305872,
+        "totalAllocatedBytes": 2238759840,
+        "selectedResultTimeBoundaryFlag": false
+      },
+      {
+        "name": "sentinel-potions",
+        "wallSeconds": 4.9335482,
+        "peakManagedHeapBytes": 86115088,
+        "totalAllocatedBytes": 936771688,
+        "selectedResultTimeBoundaryFlag": false
+      }
+    ]
+  },
+  "limits": [
+    "No visible Steam session or Windows run.",
+    "No active-search peak-memory or RSS reduction claim.",
+    "Preview updates are wall-clock throttled: stop points may differ between arms; no cross-arm stopped-route equality claim.",
+    "The preview interleaving is deliberately exercised; real-world frequency and time-weighted whole-session memory savings are unmeasured.",
+    "General controller native test fails the same unrelated overlay persistence assertion on baseline and candidate before its stop checks; those main-controller native stop checks remain unverified."
+  ]
+}

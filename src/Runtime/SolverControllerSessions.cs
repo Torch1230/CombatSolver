@@ -88,6 +88,8 @@ internal sealed class SearchProgressDisplayState(long startedAtTick)
     public long LastRenderAtTick { get; private set; } = startedAtTick;
     public SolverProgress? RenderedProgress { get; private set; }
 
+    public void Clear() => RenderedProgress = null;
+
     public void Restart(long nowTick)
     {
         StartedAtTick = nowTick;

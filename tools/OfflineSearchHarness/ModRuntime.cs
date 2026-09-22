@@ -451,6 +451,15 @@ internal static class ModRuntime
                     + $"play_depth={progress.PlayDepth} frontier={progress.FrontierNodes}");
             };
         }
+        ProgressRetirementProbe? retirementProbe = null;
+        if (Environment.GetEnvironmentVariable("OFFLINE_HARNESS_RETIRE_PROGRESS_AFTER_NODES") is { } stopNodes)
+        {
+            if (options.SearchMode != "Coordinator" || options.EnableNoGcRegion)
+                throw new ArgumentException("Progress retirement requires Coordinator with normal GC.");
+            retirementProbe = new ProgressRetirementProbe(int.Parse(stopNodes));
+            policy = policy with { Interaction = retirementProbe.Interaction };
+            diagnosticProgress += retirementProbe.Observe;
+        }
         bool timeBoundary = false;
         object describedPolicy = DescribePolicy(policy);
         SolverResult result;
@@ -490,6 +499,8 @@ internal static class ModRuntime
                 : SolveEvaluate(root, names, damage, policy, settings,
                     options.BudgetMilliseconds, loop, out describedPolicy, ref timeBoundary);
         }
+        if (retirementProbe != null)
+            result = retirementProbe.Finish(result, options.OutputDirectory);
         if (options.SearchMode == "Coordinator" && policy.MeasurePhasePerformance)
             LastPhasePerformance = SolverDiagnostics.DescribeSearchPhasePerformance(result);
         orderingObservations?.WriteSelectedPath(options.OutputDirectory, result);

@@ -122,6 +122,7 @@ internal sealed class SearchInteractionState
     {
         StoppedResult = result;
         StoppedStamp = stamp;
+        CompleteTakeover();
     }
 
     public SolverResult? TakeStoppedResult(LiveCombatStamp currentStamp)
@@ -141,7 +142,13 @@ internal sealed class SearchInteractionState
             SearchTakeoverRequest? completed = _takeoverRequest;
             Volatile.Write(ref _takeoverRequest, null);
             Volatile.Write(ref _acceptingTakeover, 0);
+            // Called after the worker has drained. An unselected preview's lazy
+            // materializer can retain the entire completed search, even after the
+            // selected seed has materialized. Only StoppedResult is needed to resume.
+            Volatile.Write(ref Progress, null);
+            RenderedProgress = null;
             RenderedRouteAdoptionSeed = null;
+            ProgressDisplay.Clear();
             return completed;
         }
     }
