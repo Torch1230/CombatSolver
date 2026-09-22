@@ -282,6 +282,10 @@ internal static partial class TurnStartPowerSupport
         TurnStartChoiceCursor choices)
         => ContinueAfterPlayerTurnStart(simulator, combat, player, choices, combat.EffectivePowers().ToArray(), 0);
 
+    internal static bool ApplyAfterPlayerTurnStartPower(CombatPredictionSimulator simulator, SimulatedCombatState combat,
+        Player player, TurnStartChoiceCursor choices, PowerModel power)
+        => ContinueAfterPlayerTurnStart(simulator, combat, player, choices, [power], 0);
+
     private static bool ContinueAfterPlayerTurnStart(CombatPredictionSimulator simulator, SimulatedCombatState combat,
         Player player, TurnStartChoiceCursor choices, IReadOnlyList<PowerModel> powers, int nextIndex)
     {

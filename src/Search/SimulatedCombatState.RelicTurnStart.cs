@@ -137,6 +137,10 @@ internal sealed partial class SimulatedCombatState
         TurnStartChoiceCursor choices)
         => ContinueRelicsAfterPlayerTurnStart(simulator, player, choices, RelicsOf(player).ToArray(), GetPlayerTurnNumber(player), 0);
 
+    internal bool ApplyRelicAfterPlayerTurnStart(CombatPredictionSimulator simulator, Player player,
+        TurnStartChoiceCursor choices, RelicModel relic)
+        => ContinueRelicsAfterPlayerTurnStart(simulator, player, choices, [relic], GetPlayerTurnNumber(player), 0);
+
     private bool ContinueRelicsAfterPlayerTurnStart(CombatPredictionSimulator simulator, Player player,
         TurnStartChoiceCursor choices, IReadOnlyList<RelicModel> relics, int turn, int nextIndex, bool applyMittensStrength = false)
     {
