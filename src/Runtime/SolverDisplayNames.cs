@@ -189,9 +189,20 @@ internal sealed class SolverDisplayNames
         string fallback = creature.Monster?.Id.Entry is { } monsterId
             ? Monster(monsterId)
             : creature.Player?.Character?.Id.Entry ?? "玩家";
-        return creature.CombatId is uint combatId
-            ? _creatures.GetValueOrDefault(combatId, fallback)
-            : fallback;
+        return CreatureLabel(creature.CombatId, fallback);
+    }
+
+    public string Creature(uint? combatId, string monsterId)
+        => CreatureLabel(combatId, Monster(monsterId));
+
+    // Enemies spawned after capture have no frozen screen position. Their combat
+    // identity distinguishes them without inventing a left-to-right position or
+    // mutating the shared name table from search workers.
+    private string CreatureLabel(uint? combatId, string baseName)
+    {
+        if (combatId is uint id)
+            return _creatures.TryGetValue(id, out string? captured) ? captured : $"{baseName}（#{id}）";
+        return baseName;
     }
 
     private static string CreatureTypeKey(Creature creature)

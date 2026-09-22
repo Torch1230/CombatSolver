@@ -18,6 +18,18 @@ internal sealed partial class UnattendedTestRunner
 {
     private async Task AssertLoopDisplayAsync(bool english)
     {
+        PlanAction targeted = new(PlanActionKind.PlayCard, 1, CardId: "STRIKE_IRONCLAD",
+            TargetIndex: 0, TargetCombatId: 10, TargetName: "Enemy");
+        SolverOverlayActionSnapshot targetDisplay = SolverOverlaySnapshot.CaptureAction(targeted, []);
+        SolverOverlayActionSnapshot otherCopy = SolverOverlaySnapshot.CaptureAction(
+            targeted with { CardOccurrence = 1, TargetIndex = 2 }, []);
+        SolverOverlayActionSnapshot otherTarget = SolverOverlaySnapshot.CaptureAction(
+            targeted with { TargetCombatId = 11 }, []);
+        if (!targetDisplay.HasSamePresentation(otherCopy)
+            || targetDisplay.HasSamePresentation(otherTarget)
+            || CombatBeamSolver.BuildCycleActionKey(targeted)
+                == CombatBeamSolver.BuildCycleActionKey(targeted with { CardOccurrence = 1 }))
+            throw new InvalidOperationException("Loop display must ignore physical copy indexes and retain target identity without changing search keys.");
         SolverOverlayActionSnapshot a = SolverOverlaySnapshot.CaptureAction(
             new PlanAction(PlanActionKind.PlayCard, 1, CardId: "IMPATIENCE"), []);
         SolverOverlayActionSnapshot b = SolverOverlaySnapshot.CaptureAction(
@@ -108,6 +120,22 @@ internal sealed partial class UnattendedTestRunner
                 await _host.ToSignal(_host.GetTree(), SceneTree.SignalName.ProcessFrame);
                 bool english = target == "eng";
                 var displayNames = SolverDisplayNames.Capture(combat);
+                CombatRootSnapshot nameRoot = CombatRootSnapshot.Capture(combat);
+                using (SimulationNotificationIsolation.Enter())
+                {
+                    CombatPredictionSimulator simulator = nameRoot.ForkSimulator();
+                    var simulated = (SimulatedCombatState)simulator.State.CombatState;
+                    var spawned = Enumerable.Range(0, 4).Select(_ =>
+                        MonsterSpawnSupport.Create<MegaCrit.Sts2.Core.Models.Monsters.Wriggler>(
+                            simulator, simulated, slot: null)).ToArray();
+                    string[] names = spawned.Select(displayNames.Creature).ToArray();
+                    if (names.Distinct(StringComparer.Ordinal).Count() != 4
+                        || spawned.Where((creature, index) =>
+                            names[index] != displayNames.Creature(creature.CombatId, creature.Monster!.Id.Entry)
+                            || !names[index].Contains($"（#{creature.CombatId}）")).Any())
+                        throw new InvalidOperationException("Spawned targets and kill annotations must share distinct stable labels.");
+                    _completedChecks.Add($"SpawnedEntityIdentity:{target}:FourWrigglers:Distinct:TargetKillAligned");
+                }
                 if (combat.Enemies.Select(displayNames.Creature).Distinct().Count() != combat.Enemies.Count)
                     throw new InvalidOperationException("Enemy display names are ambiguous.");
                 var plainShiv = SolverOverlaySnapshot.CaptureAction(new PlanAction(PlanActionKind.PlayCard, 1, CardId: "SHIV"), []);

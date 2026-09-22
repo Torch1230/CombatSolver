@@ -23,6 +23,10 @@ void Verify(int[] actions)
         }
 }
 Verify([]); Verify([1]); Verify([1, 1]); Verify([1, 2, 1, 2, 9]);
+Check(SolverActionRuns.Capture(new[] { 1, 2, 1, 2 }, static (a, b) => a == b)
+    .All(run => run.Repetitions == 1));
+Check(SolverActionRuns.Capture(new[] { 1, 2, 1, 2, 1, 2 }, static (a, b) => a == b)
+    .Single() == new SolverActionRun(0, 2, 3));
 int[] longLoop = Enumerable.Range(0, 1600).Select(i => i % 8).Append(99).ToArray();
 Verify(longLoop);
 var folded = SolverActionRuns.Capture(longLoop, static (a,b) => a == b);

@@ -257,8 +257,7 @@ internal sealed partial class CombatBeamSolver
                     attributedKills[actionIndex] = recorded
                         .Select(kill =>
                         {
-                            Creature? enemy = root.Enemies.FirstOrDefault(candidate => candidate.CombatId == kill.CombatId);
-                            string targetName = enemy is null ? displayNames.Monster(kill.TargetId) : displayNames.Creature(enemy);
+                            string targetName = displayNames.Creature(kill.CombatId, kill.TargetId);
                             if (string.IsNullOrEmpty(targetName))
                                 targetName = kill.TargetId;
                             return $"{targetName}（{displayNames.DamageSource(kill.Source)}）";
