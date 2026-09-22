@@ -37,7 +37,47 @@ internal sealed partial class SolverLoopGroup : PanelContainer
         _count.SizeFlagsVertical = SizeFlags.ShrinkCenter;
         _content.AddChild(_count);
         AddChild(_content);
+        Actions.SortChildren += QueueRedraw;
         SolverLocaleRefresh.Bind(this, () =>
             TooltipText = SolverText.Format($"框内 {run.Period} 个动作按顺序重复 {run.Repetitions} 次，共 {run.Count} 个动作"));
+    }
+
+    public override void _Draw()
+    {
+        // Use the existing bottom padding (and inter-row gap) for the underline.
+        // Wrapped rows each get a horizontal segment; the repeat count stays outside it.
+        Vector2 origin = _content.Position + Actions.Position;
+        float left = 0, right = 0, top = 0, bottom = 0;
+        bool hasRow = false;
+        foreach (Control action in Actions.GetChildren().OfType<Control>().Where(child => child.Visible))
+        {
+            Rect2 rect = action.GetRect();
+            if (hasRow && !Mathf.IsEqualApprox(top, rect.Position.Y))
+            {
+                Underline();
+                hasRow = false;
+            }
+            if (!hasRow)
+            {
+                left = rect.Position.X;
+                top = rect.Position.Y;
+                right = rect.End.X;
+                bottom = rect.End.Y;
+                hasRow = true;
+            }
+            else
+            {
+                right = Mathf.Max(right, rect.End.X);
+                bottom = Mathf.Max(bottom, rect.End.Y);
+            }
+        }
+        if (hasRow) Underline();
+
+        void Underline()
+        {
+            float y = Mathf.Floor(origin.Y + bottom) + 0.5f;
+            DrawDashedLine(new Vector2(origin.X + left, y), new Vector2(origin.X + right, y),
+                SolverUiTokens.Palette.Accent, 1f, 4f);
+        }
     }
 }
