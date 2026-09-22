@@ -1,5 +1,20 @@
 # CombatSolver 开发笔记与未来构想
 
+## 未发布：击杀后不再向已离场个体施加 Power（2026-09-22）
+
+- 问题包 `24b8f299`（0.43.2）里求解器给出 4 回合零战损的路线，但第 2 回合的续用核对报 `state_mismatch`：
+  `field=relicCounters expected={UNSETTLING_LAMP/1/0} actual={UNSETTLING_LAMP/0/0}`。
+- 根因是 Power 可施加判据漏了「个体是否仍在战斗里」这一半。实机 `CreatureCmd.Kill` 在击杀当时就
+  `combatState.RemoveCreature`（`CombatState = null`，只放过正在执行自己行动的怪物），随后那条
+  `PowerCmd.Apply<WeakPower>` 在 `!target.CanReceivePowers` 上直接返回：被同一张牌打死的目标既没吃到
+  虚弱，也没有成为不安油灯的触发牌。求解器把死亡效果推迟到 `ApplyEnemyDeathPowers` 清扫、`_deathPhases`
+  那时才写，于是这个窗口里照常施加了那层虚弱并顺手点亮油灯。
+- `SimulatedCombatState.CanReceivePredictedPowers` 现在同时核对 `CombatPredictionState` 的移除标记
+  （新增只读入口 `IsAttachedToCombat`）；死亡效果清扫本身不受影响。
+- 影响面是通用的：任何「同一张牌先打死目标、再对该目标施加减益」的场景都会误触发按卡牌来源计数的遗物，
+  与第三方内容无关。新增严格差分夹具 `LAMP-DEBUFF-ON-KILL`：改动前失败并逐字复现同一条差异，改动后通过。
+  证据见 [测试矩阵](TEST_MATRIX.md)。
+
 ## 下一版本（开发中）：PR #123 / #124 / #125 集成（2026-09-22）
 
 - 在计算失败修复 `94254728` 上保留原提交合入三个 PR，手工冲突仅为开发笔记与测试矩阵，保留各批证据。用户明确接受 #124 已量化的少量质量退化，默认预算再分配与达标早停按 PR 原实现启用；其他排序实验保持原开关。

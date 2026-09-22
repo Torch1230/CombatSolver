@@ -1,5 +1,20 @@
 # CombatSolver 测试清单
 
+## 击杀后不再向已离场个体施加 Power（问题包 24b8f299）（2026-09-22）
+
+- 本体 Release 构建通过（0 error）。
+- 新增严格差分夹具 `LAMP-DEBUFF-ON-KILL`（不安油灯 + 中和打在会被这一击打死的目标上；
+  `-EncounterId CULTISTS_NORMAL -CharacterId IRONCLAD`，需要两个敌人，否则一击杀就结束战斗）：
+  - **改动前**（把 `CanReceivePredictedPowers` 还原成只看死亡阶段）**Failed**，错误逐字复现问题包：
+    `Lamp kill mismatch: field=relicCounters expected={UNSETTLING_LAMP/1/0} actual={UNSETTLING_LAMP/0/0}`；
+  - **改动后 Passed**，完成检查
+    `LampDebuffOnKilledTarget:SkipsDebuffOnRemovedTarget:KeepsCharge:FullContinuationState`
+    （预测与实机逐字比较完整 `ContinuationStamp`）。
+- 哨兵（同一构建）：`LAMP-INDIRECT-POISON`、`LAMP-INDIRECT-TEMPORARY-STRENGTH`、`CRAB-RAGE-DEATH-TIMING` 通过。
+- 结构门禁 `tools/verify-refactor-boundaries.ps1` 通过。
+- **未建模**：实机里正在执行自己行动的怪物（`IsPerformingMove`）在死亡当时不离场，这个例外求解器不模拟
+  （怪物行动不在预测范围内），代码注释已记明。
+
 ## PR #123 / #124 / #125 合并验证（2026-09-22）
 
 - 行为基线为计算失败修复 `94254728` 加三个原 PR，合并提交 `0f7d6935`；两处计算失败生产修复文件与 `94254728` 完全一致。Windows Release 构建 0 警告、0 错误（`CopyModOnBuild=false`）；PowerShell 结构门禁 `search_files=208`、108 项组合合同、122505 项循环显示索引断言、12 项循环预算分类与 2 项比较上下文测试通过。

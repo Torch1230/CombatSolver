@@ -305,7 +305,7 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 - `Fork.cs`：统一稳定边界和对象图复制；
 - `MonsterAi.cs` / `MonsterState.cs`：分支行动、私有 AI、已知怪物静态值；
-- `DeathLifecycle.cs`：死亡、复活与阵容事务；
+- `DeathLifecycle.cs`：死亡、复活与阵容事务；`CanReceivePredictedPowers` 按「个体是否仍在战斗里」判 Power 是否可施加——实机在击杀当时就 `RemoveCreature`，而死亡效果要到 `ApplyEnemyDeathPowers` 才清扫，这个窗口里施加给已离场个体的 Power 是空操作；
 - `ActionChoices.cs` / `TurnStartChoices.cs` / `AutoPlay.cs`：嵌套选择与自动出牌；
 - `CardLifecycle.cs` / `CardPowerHistory.cs` / `PowerLifecycle.cs`：卡牌和 Power 跨事件状态；
 - 凡庸在 `ShouldPlayMirrors` 使用同一分支手牌/开始次数入口约束手动与自动打牌。`_cardPlayStartsThisTurn` 包含重复播放和仍在执行的外层卡牌，根来自 CardPlaysStarted，随 Fork 复制、回合开始清零，进入 fingerprint 和 `CardEventHistory` 的 live/predicted 续用文本；不能以完成次数或手动系列数代替。

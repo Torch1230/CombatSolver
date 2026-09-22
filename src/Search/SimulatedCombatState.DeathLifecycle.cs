@@ -142,11 +142,24 @@ internal sealed partial class SimulatedCombatState
     public bool HasCompletedDeathEffects(Creature creature)
         => _deathPhases?.GetValueOrDefault(creature) is PredictedDeathPhase.Reviving or PredictedDeathPhase.PermanentlyDead;
 
+    /// <summary>
+    /// 对应源码 <c>Creature.CanReceivePowers</c>：个体必须还在战斗里。
+    /// </summary>
+    /// <remarks>
+    /// 死亡效果被推迟到 <c>ApplyEnemyDeathPowers</c> 才结算，<c>_deathPhases</c> 那时才写；
+    /// 但实机在**击杀当时**就把个体移出了战斗（<c>CreatureCmd.Kill</c> →
+    /// <c>combatState.RemoveCreature</c>），那个窗口里对它的 Power 施加在实机是空操作。
+    /// 典型是中和：先打死目标、再给目标挂虚弱——那一层虚弱在实机不会生效，预测里若照常施加
+    /// 就会误触发不安油灯并改掉遗物计数（问题包 `24b8f299`：
+    /// <c>relicCounters expected={UNSETTLING_LAMP/1/0} actual={UNSETTLING_LAMP/0/0}</c>）。
+    /// </remarks>
     private bool CanReceivePredictedPowers(Creature creature)
     {
         PredictedDeathPhase phase = _deathPhases?.GetValueOrDefault(creature)
             ?? PredictedDeathPhase.None;
-        return phase == PredictedDeathPhase.None;
+        if (phase != PredictedDeathPhase.None)
+            return false;
+        return _predictionState is null || _predictionState.IsAttachedToCombat(creature);
     }
 
     public void ResolveReviveMove(
