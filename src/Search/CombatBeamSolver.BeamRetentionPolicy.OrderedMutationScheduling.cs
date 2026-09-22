@@ -961,9 +961,13 @@ internal sealed partial class CombatBeamSolver
             }
         }
 
-        private static void ApplyZeroWidthOrderedMutationObligations(
+        private static void ApplyOrderedMutationAdmissionClaimOnce(
+            HashSet<OrderedMutationAdmissionClaimKey> appliedAdmissionClaims,
             OrderedMutationAdmissionClaim claim)
-            => ApplyOrderedMutationAdmissionClaim(claim);
+        {
+            if (appliedAdmissionClaims.Add(claim.Key))
+                ApplyOrderedMutationAdmissionClaim(claim);
+        }
 
         private static void ApplyOrderedMutationAdmissionClaim(
             OrderedMutationAdmissionClaim claim)

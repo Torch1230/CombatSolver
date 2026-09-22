@@ -750,6 +750,137 @@ internal sealed partial class CombatBeamSolver
                     "同一 ordered-mutation semantic outcome 没有折叠为一次 admission claim。");
             }
 
+            // Exercise the production once-only gate with real SearchNode/Claim objects.
+            // The nodes deliberately differ in mutable scheduling fields while retaining
+            // the same immutable semantic key.
+            SimulationSnapshot dummySnapshot =
+                (SimulationSnapshot)RuntimeHelpers.GetUninitializedObject(
+                    typeof(SimulationSnapshot));
+            SearchNode parent = new(
+                Action: null,
+                ActionCount: 0,
+                PotionCount: 0,
+                PotionStrategicCost: 0,
+                Turn: 3,
+                Traits: SearchRouteTraits.None,
+                FutureSoldHp: 0,
+                Score: 0,
+                StateKey: sharedClaimKey.ParentStateKey,
+                HasPredictionRisk: false,
+                BoundaryReason: SearchBoundaryReason.None,
+                IsTerminal: false,
+                Parent: null,
+                Snapshot: dummySnapshot,
+                CombatProgress: null!);
+            SearchNode candidate = parent with
+            {
+                ActionCount = 1,
+                Score = 1,
+                StateKey = sharedClaimKey.Outcome.ChildStateKey,
+                Parent = parent,
+            };
+            OrderedMutationContinuationPacket packet = new(
+                sharedClaimKey.RootKey,
+                sharedClaimKey.InitialLeaseKey,
+                sharedClaimKey.LeaseKey,
+                sharedClaimKey.ParentLineageKey,
+                sharedClaimKey.SourceFamilyKey,
+                new StateFingerprint(0x713UL, 0x714UL),
+                HasPersistentMutationFamily: true,
+                HasSelectedSibling: false,
+                HasRotatedInteriorOption: false,
+                PortfolioPriority: 0,
+                Parent: parent,
+                Candidates: [candidate]);
+            OrderedMutationAdmissionClaim MakeOnceClaim(
+                OrderedMutationAdmissionClaimKey key,
+                SearchNode node,
+                OrderedMutationContinuationPacket sourcePacket)
+                => new(
+                    key,
+                    sourcePacket,
+                    node,
+                    new HashSet<OrderedMutationAdmissionClaimReason>
+                    {
+                        OrderedMutationAdmissionClaimReason.Handoff,
+                        OrderedMutationAdmissionClaimReason.Observation,
+                    },
+                    HandoffCrossedProofBoundary: true,
+                    ObservationCrossedProofBoundary: true,
+                    CounterfactualContinuationHandoff: false,
+                    CounterfactualRequestsObservation: false,
+                    OrdinaryCrossedProofBoundary: false,
+                    OrdinaryContinuationHandoff: false,
+                    OrdinaryRequestsObservation: false);
+
+            HashSet<OrderedMutationAdmissionClaimKey> applied = [];
+            OrderedMutationAdmissionClaim firstClaim =
+                MakeOnceClaim(sharedClaimKey, candidate, packet);
+            ApplyOrderedMutationAdmissionClaimOnce(applied, firstClaim);
+            if (applied.Count != 1
+                || !candidate.OrderedMutationContinuationHandoff
+                || !candidate.OrderedMutationObservationDebtSettlementPending
+                || candidate.OrderedMutationObservationRequested)
+            {
+                throw new InvalidOperationException(
+                    "ordered-mutation once-only gate 首次 admission 没有施加观察/交接义务。");
+            }
+
+            // Simulate post-admission mutation of both node graphs. Re-opening the request
+            // makes an accidental second application observable: settlement would clear it.
+            candidate.RetentionRank = 17;
+            candidate.OrderedMutationAdmissionSequence = 19;
+            candidate.OrderedMutationObservationRequested = true;
+            parent.OrderedMutationAdmissionPending = true;
+            ApplyOrderedMutationAdmissionClaimOnce(applied, firstClaim);
+            if (applied.Count != 1 || !candidate.OrderedMutationObservationRequested)
+                throw new InvalidOperationException(
+                    "同一 ordered-mutation claim 的可变节点破坏了一次性义务判重。");
+            OrderedMutationAdmissionClaim aliasClaim =
+                MakeOnceClaim(sharedClaimKey, candidate, packet with
+                {
+                    Candidates = [candidate],
+                    PortfolioPriority = 7,
+                });
+            ApplyOrderedMutationAdmissionClaimOnce(applied, aliasClaim);
+            if (applied.Count != 1 || !candidate.OrderedMutationObservationRequested)
+            {
+                throw new InvalidOperationException(
+                    "同一 ordered-mutation claim 在节点字段变化后重复施加了义务。");
+            }
+
+            OrderedMutationAdmissionClaimKey changedChildKey = sharedClaimKey with
+            {
+                Outcome = sharedClaimKey.Outcome with
+                {
+                    ChildStateKey = new StateFingerprint(0x715UL, 0x716UL),
+                },
+            };
+            foreach (OrderedMutationAdmissionClaimKey changedKey in new[]
+            {
+                changedChildKey,
+                sharedClaimKey with
+                {
+                    ParentStateKey = new StateFingerprint(0x717UL, 0x718UL),
+                },
+                sharedClaimKey with
+                {
+                    SourceFamilyKey = new StateFingerprint(0x719UL, 0x71aUL),
+                },
+            })
+            {
+                candidate.OrderedMutationObservationRequested = true;
+                ApplyOrderedMutationAdmissionClaimOnce(
+                    applied,
+                    MakeOnceClaim(changedKey, candidate, packet));
+                if (candidate.OrderedMutationObservationRequested)
+                    throw new InvalidOperationException(
+                        "新的 ordered-mutation semantic key 没有施加独立义务。");
+            }
+            if (applied.Count != 4)
+                throw new InvalidOperationException(
+                    "不同 child/parent/source semantic key 被错误折叠为同一 admission 义务。");
+
             IReadOnlySet<OrderedMutationAdmissionClaimReason> cappedCounterfactualAlias =
                 new HashSet<OrderedMutationAdmissionClaimReason>
                 {

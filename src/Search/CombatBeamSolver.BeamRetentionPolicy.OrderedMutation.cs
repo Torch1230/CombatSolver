@@ -482,12 +482,13 @@ internal sealed partial class CombatBeamSolver
                     claimSources,
                     selectedSet,
                     packetComparer);
-            HashSet<OrderedMutationAdmissionClaim> appliedAdmissionClaims = [];
+            // Claims are coalesced by this immutable key. Hashing the record instead
+            // walks mutable candidate/parent graphs and can change after admission.
+            HashSet<OrderedMutationAdmissionClaimKey> appliedAdmissionClaims = [];
             foreach (OrderedMutationAdmissionClaim selectedClaim in admissionClaims
                          .Where(claim => HasPaidOrderedMutationAdmission(claim.Candidate)))
             {
-                ApplyZeroWidthOrderedMutationObligations(selectedClaim);
-                appliedAdmissionClaims.Add(selectedClaim);
+                ApplyOrderedMutationAdmissionClaimOnce(appliedAdmissionClaims, selectedClaim);
             }
             List<OrderedMutationAdmissionWorkItem> admissionWork = [];
             bool HasDistinctCompanionOutcome(OrderedMutationHandoffCohort cohort)
@@ -680,11 +681,8 @@ internal sealed partial class CombatBeamSolver
                         foreach (OrderedMutationAdmissionClaim aliasedClaim in
                                  work.AliasedClaims)
                         {
-                            if (HasPaidOrderedMutationAdmission(aliasedClaim.Candidate)
-                                && appliedAdmissionClaims.Add(aliasedClaim))
-                            {
-                                ApplyZeroWidthOrderedMutationObligations(aliasedClaim);
-                            }
+                            if (HasPaidOrderedMutationAdmission(aliasedClaim.Candidate))
+                                ApplyOrderedMutationAdmissionClaimOnce(appliedAdmissionClaims, aliasedClaim);
                         }
                         handoffAdmissions += newAnchorCount;
                         alternativeAdmissions += newCompanionCount;
@@ -785,8 +783,7 @@ internal sealed partial class CombatBeamSolver
                 {
                     if (selectedSet.Add(claimCandidate))
                         selected.Add(claimCandidate);
-                    if (appliedAdmissionClaims.Add(claim))
-                        ApplyZeroWidthOrderedMutationObligations(claim);
+                    ApplyOrderedMutationAdmissionClaimOnce(appliedAdmissionClaims, claim);
                     return true;
                 }
                 if (!HasOrderedMutationLayerCapacity(admissions, admissionLimit, 1))
@@ -832,8 +829,7 @@ internal sealed partial class CombatBeamSolver
                     ref observationAdmissions,
                     ref counterfactualAdmissions,
                     ref alternativeAdmissions);
-                if (appliedAdmissionClaims.Add(claim))
-                    ApplyOrderedMutationAdmissionClaim(claim);
+                ApplyOrderedMutationAdmissionClaimOnce(appliedAdmissionClaims, claim);
                 admittedWidth = 1;
                 return true;
             }
