@@ -125,16 +125,36 @@ internal sealed partial class UnattendedTestRunner
                 {
                     CombatPredictionSimulator simulator = nameRoot.ForkSimulator();
                     var simulated = (SimulatedCombatState)simulator.State.CombatState;
-                    var spawned = Enumerable.Range(0, 4).Select(_ =>
-                        MonsterSpawnSupport.Create<MegaCrit.Sts2.Core.Models.Monsters.Wriggler>(
-                            simulator, simulated, slot: null)).ToArray();
-                    string[] names = spawned.Select(displayNames.Creature).ToArray();
+                    bool positionedSpawn = combat.Encounter?.Slots.Contains("wriggler1") == true;
+                    var spawned = Enumerable.Range(1, 4).Reverse().Select(number =>
+                        MonsterSpawnSupport.Spawn<MegaCrit.Sts2.Core.Models.Monsters.Wriggler>(
+                            simulator, simulated, combat.Enemies[0], slot: positionedSpawn ? $"wriggler{number}" : null)).ToArray();
+                    string[] names = spawned.Select(creature => displayNames.Creature(creature, simulated.KnownEnemies)).ToArray();
+                    var child = simulator.Fork();
+                    var childCombat = (SimulatedCombatState)child.State.CombatState;
                     if (names.Distinct(StringComparer.Ordinal).Count() != 4
                         || spawned.Where((creature, index) =>
-                            names[index] != displayNames.Creature(creature.CombatId, creature.Monster!.Id.Entry)
-                            || !names[index].Contains($"（#{creature.CombatId}）")).Any())
-                        throw new InvalidOperationException("Spawned targets and kill annotations must share distinct stable labels.");
-                    _completedChecks.Add($"SpawnedEntityIdentity:{target}:FourWrigglers:Distinct:TargetKillAligned");
+                            names[index] != displayNames.Creature(
+                                childCombat.KnownEnemies.Single(enemy => enemy.CombatId == creature.CombatId), childCombat.KnownEnemies)
+                            || !names[index].Contains(english ? "from left" : "左起")).Any())
+                        throw new InvalidOperationException("Spawned targets must retain left-to-right labels across Fork.");
+                    if (positionedSpawn)
+                    {
+                        var scene = (Control)typeof(MegaCrit.Sts2.Core.Nodes.Rooms.NCombatRoom)
+                            .GetProperty("EncounterSlots", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                            .GetValue(MegaCrit.Sts2.Core.Nodes.Rooms.NCombatRoom.Instance)!;
+                        var ordered = spawned.OrderBy(creature => scene.GetNode<Marker2D>(creature.SlotName!).GlobalPosition.X).ToArray();
+                        for (int index = 0; index < ordered.Length; index++)
+                        {
+                            string expected = english ? $"#{index + 1} from left" : $"左起{index + 1}";
+                            if (!displayNames.Creature(ordered[index], simulated.KnownEnemies).Contains(expected))
+                                throw new InvalidOperationException("Spawn label order differs from native slot coordinates.");
+                        }
+                        simulated.RemoveCreature(ordered[0]);
+                        if (spawned.Where((creature, index) => names[index] != displayNames.Creature(creature, simulated.KnownEnemies)).Any())
+                            throw new InvalidOperationException("Removing a defeated enemy renumbered the remaining targets.");
+                    }
+                    _completedChecks.Add($"SpawnedEntityIdentity:{target}:FourWrigglers:LeftToRight:NativeSlots={positionedSpawn}:ForkStable:DeathStable");
                 }
                 if (combat.Enemies.Select(displayNames.Creature).Distinct().Count() != combat.Enemies.Count)
                     throw new InvalidOperationException("Enemy display names are ambiguous.");

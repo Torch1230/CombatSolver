@@ -435,7 +435,7 @@ Mod 准入，具体契约见[模型状态适配](third-party-model-state.md)。
 
 `SolverLoopGroup` 只组织循环动作与右侧次数的轻量外框，内部流负责窄宽度换行。`SolverRouteActionFlow` 按普通胶囊最小宽度、循环组自然宽度排布路线，并将循环组限制在当前可用宽度；最小宽度仍来自可换行内容，防止外层面板被整段循环撑宽。布局只响应容器尺寸与内容变化，不轮询、不改部署索引。
 
-循环显示身份在 `SolverOverlaySnapshot` 投影时归一化物理手牌序号和已有稳定目标 ID 的阵容索引，Search 原键与平坦动作保持不变；目标 ID、选择与显示值仍区分组。三次以上重复才折叠。`SolverDisplayNames` 对根外生成实体使用战斗 ID 后缀，目标与击杀注释共用该纯值名称入口，不在 worker 捕获新位置或修改冻结名称表。
+循环显示身份在 `SolverOverlaySnapshot` 投影时归一化物理手牌序号和已有稳定目标 ID 的阵容索引，Search 原键与平坦动作保持不变；目标 ID、选择与显示值仍区分组。三次以上重复才折叠。`SolverDisplayNames` 在主线程冻结原版场景站位的横向次序，对根外生成实体结合分支 KnownEnemies 生成左起编号；无固定站位时遵循原版入场顺序。目标与击杀注释共用名称入口，最终注释使用同次完整回放的已知阵容，不在 worker 读取场景或修改冻结名称表。
 
 renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或 `ModelDb`。部署需要的标量由 Runtime 单独持有，不从控件反向读取。
 

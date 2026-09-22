@@ -7,6 +7,8 @@ using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 using CombatSolver.Engine.InCombat.Simulation;
+using Godot;
+using System.Reflection;
 
 namespace CombatSolver;
 
@@ -23,6 +25,10 @@ internal sealed class SolverDisplayNames
     private readonly bool _english;
     private readonly Dictionary<string, string> _monsters;
     private readonly Dictionary<uint, string> _creatures;
+    private readonly Dictionary<string, int> _slotOrder;
+    private readonly bool _positioned;
+    private static readonly PropertyInfo EncounterSlotsProperty = typeof(NCombatRoom).GetProperty(
+        "EncounterSlots", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)!;
 
     private SolverDisplayNames(
         Dictionary<(string Id, int Upgrade), string> cards,
@@ -32,6 +38,8 @@ internal sealed class SolverDisplayNames
         Dictionary<string, string> orbs,
         Dictionary<string, string> monsters,
         Dictionary<uint, string> creatures,
+        Dictionary<string, int> slotOrder,
+        bool positioned,
         bool english)
     {
         _cards = cards;
@@ -42,6 +50,8 @@ internal sealed class SolverDisplayNames
         _english = english;
         _monsters = monsters;
         _creatures = creatures;
+        _slotOrder = slotOrder;
+        _positioned = positioned;
     }
 
     public static SolverDisplayNames Capture(CombatState state)
@@ -63,6 +73,13 @@ internal sealed class SolverDisplayNames
         foreach (MonsterModel monster in ModelDb.Monsters)
             monsterNames.TryAdd(monster.Id.Entry, monster.Title.GetFormattedText());
         Dictionary<uint, string> creatureNames = [];
+        NCombatRoom? room = NCombatRoom.Instance;
+        Control? slots = room == null ? null : (Control?)EncounterSlotsProperty.GetValue(room);
+        Dictionary<string, int> slotOrder = [];
+        IReadOnlyList<string> encounterSlots = state.Encounter?.Slots ?? [];
+        IEnumerable<string> orderedSlots = slots == null ? encounterSlots
+            : encounterSlots.OrderBy(slot => slots.GetNode<Marker2D>(slot).GlobalPosition.X);
+        foreach (string slot in orderedSlots) slotOrder.Add(slot, slotOrder.Count);
         Dictionary<string, int> enemyTypeCounts = state.Enemies
             .GroupBy(creature => CaptureCreatureBaseName(creature, monsterNames), StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
@@ -112,6 +129,7 @@ internal sealed class SolverDisplayNames
             orbNames.TryAdd(orb.GetType().Name, title);
         }
         return new SolverDisplayNames(cardNames, potionNames, relicNames, powerNames, orbNames, monsterNames, creatureNames,
+            slotOrder, room != null,
             LocManager.Instance.Language is not ("zhs" or "zht"));
     }
 
@@ -182,27 +200,30 @@ internal sealed class SolverDisplayNames
             _ => _english ? "Unknown effect" : "未知效果",
         };
 
-    public string Creature(Creature? creature)
+    public string Creature(Creature? creature) => Creature(creature, null);
+
+    public string Creature(Creature? creature, IReadOnlyList<Creature>? knownEnemies)
     {
         if (creature is null)
             return string.Empty;
         string fallback = creature.Monster?.Id.Entry is { } monsterId
             ? Monster(monsterId)
             : creature.Player?.Character?.Id.Entry ?? "玩家";
-        return CreatureLabel(creature.CombatId, fallback);
-    }
-
-    public string Creature(uint? combatId, string monsterId)
-        => CreatureLabel(combatId, Monster(monsterId));
-
-    // Enemies spawned after capture have no frozen screen position. Their combat
-    // identity distinguishes them without inventing a left-to-right position or
-    // mutating the shared name table from search workers.
-    private string CreatureLabel(uint? combatId, string baseName)
-    {
-        if (combatId is uint id)
-            return _creatures.TryGetValue(id, out string? captured) ? captured : $"{baseName}（#{id}）";
-        return baseName;
+        if (creature.CombatId is uint id && _creatures.TryGetValue(id, out string? captured))
+            return captured;
+        if (knownEnemies == null || creature.Side != CombatSide.Enemy)
+            return fallback;
+        // Slot ranks are frozen from the native scene. Unslotted encounters use
+        // insertion order, as native PositionEnemies does. KnownEnemies retains
+        // dead participants so the labels stay stable through the route.
+        var peers = knownEnemies.Where(enemy => CaptureCreatureBaseName(enemy, _monsters) == fallback)
+            .OrderBy(enemy => enemy.SlotName is { } slot ? _slotOrder[slot] : 0).ToArray();
+        int index = Array.FindIndex(peers, enemy => enemy.CombatId == creature.CombatId);
+        if (index < 0) throw new InvalidOperationException("生成敌人缺少所属预测阵容，无法确定显示位置。");
+        string position = _positioned
+            ? _english ? $"#{index + 1} from left" : $"左起{index + 1}"
+            : $"#{index + 1}";
+        return $"{fallback}（{position}）";
     }
 
     private static string CreatureTypeKey(Creature creature)
