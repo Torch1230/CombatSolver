@@ -383,6 +383,7 @@ internal sealed partial class CombatBeamSolver
         if (!TryConsumeCycleExitProbeExpansionBudget(node))
         {
             _run.CycleContinuationsStopped++;
+            _run.CycleStoppedExitBudget++;
             ObserveSearchPath(node, SearchPathObservationStage.ExpansionBlocked, "cycle_exit_budget");
             return false;
         }
@@ -989,6 +990,18 @@ internal sealed partial class CombatBeamSolver
         _run.CycleProbeContinuationsExpanded += source.CycleProbeContinuationsExpanded;
         _run.CycleCandidatesProtected += source.CycleCandidatesProtected;
         _run.CycleContinuationsStopped += source.CycleContinuationsStopped;
+        _run.CycleReplayAttempts += source.CycleReplayAttempts;
+        _run.CycleReplayActions += source.CycleReplayActions;
+        _run.CycleReplayVictories += source.CycleReplayVictories;
+        _run.CycleReplayContinuations += source.CycleReplayContinuations;
+        _run.CycleStoppedUnproductive += source.CycleStoppedUnproductive;
+        _run.CycleStoppedRepetitionBudget += source.CycleStoppedRepetitionBudget;
+        _run.CycleStoppedFamilyBudget += source.CycleStoppedFamilyBudget;
+        _run.CycleStoppedExitBudget += source.CycleStoppedExitBudget;
+        _run.TurnLayerBudgetStops += source.TurnLayerBudgetStops;
+        _run.TurnLayerTimeBudgetStops += source.TurnLayerTimeBudgetStops;
+        _run.TurnLayerNodeBudgetStops += source.TurnLayerNodeBudgetStops;
+
         _run.CrossTurnCandidatesProtected += source.CrossTurnCandidatesProtected;
         _run.CrossTurnContinuationsStopped += source.CrossTurnContinuationsStopped;
         _run.StandPatProbes += source.StandPatProbes;
@@ -1033,6 +1046,18 @@ internal sealed partial class CombatBeamSolver
         source.CycleProbeContinuationsExpanded = 0;
         source.CycleCandidatesProtected = 0;
         source.CycleContinuationsStopped = 0;
+        source.CycleReplayAttempts = 0;
+        source.CycleReplayActions = 0;
+        source.CycleReplayVictories = 0;
+        source.CycleReplayContinuations = 0;
+        source.CycleStoppedUnproductive = 0;
+        source.CycleStoppedRepetitionBudget = 0;
+        source.CycleStoppedFamilyBudget = 0;
+        source.CycleStoppedExitBudget = 0;
+        source.TurnLayerBudgetStops = 0;
+        source.TurnLayerTimeBudgetStops = 0;
+        source.TurnLayerNodeBudgetStops = 0;
+
         source.CrossTurnCandidatesProtected = 0;
         source.CrossTurnContinuationsStopped = 0;
         source.StandPatProbes = 0;

@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "LOOP-BOUNDARY-BLOCK-STURDY-CLAMP",
+  "description": "Capped block retention must not value all accumulated block as persistent.",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "LOOPSTAGNANTBLOCKDRAW0111",
+  "enemyCurrentHp": 1,
+  "initialEnemyMoveIds": [
+    "INHALE"
+  ],
+  "initialPlayerHp": 80,
+  "initialPlayerMaxHp": 80,
+  "initialPlayerBlock": 100,
+  "initialPlayerEnergy": 0,
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "powers": [
+    {
+      "powerId": "POISON_POWER",
+      "target": "Enemy",
+      "amount": 1
+    }
+  ],
+  "cards": [
+    {
+      "cardId": "IMPATIENCE",
+      "pile": "Hand",
+      "treatAsDeckCard": true
+    },
+    {
+      "cardId": "FINESSE",
+      "pile": "Discard",
+      "treatAsDeckCard": true
+    }
+  ],
+  "performancePresetForTest": "Low",
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 10000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120,
+  "relics": [
+    {
+      "relicId": "STURDY_CLAMP"
+    }
+  ]
+}

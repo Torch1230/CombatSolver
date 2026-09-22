@@ -1,0 +1,268 @@
+{
+  "schemaVersion": 1,
+  "profile": "Low",
+  "budgetMilliseconds": 20000,
+  "cases": [
+    {
+      "name": "letter-before-probe",
+      "request": "coverage/unattended/loop-boundaries-20260921/letter-before-probe.json",
+      "stopAtZeroLoss": true,
+      "nodes": 12000,
+      "potionPolicy": "Smart",
+      "enemyCount": 1,
+      "expectedMetrics": {
+        "ProjectedBattleHpLost": 0,
+        "CombatEndedTurn": 1,
+        "PotionCount": 0
+      }
+    },
+    {
+      "name": "letter-partial-period",
+      "request": "coverage/unattended/loop-boundaries-20260921/letter-partial-period.json",
+      "stopAtZeroLoss": true,
+      "nodes": 12000,
+      "potionPolicy": "Smart",
+      "enemyCount": 1,
+      "expectedMetrics": {
+        "ProjectedBattleHpLost": 0,
+        "CombatEndedTurn": 1,
+        "PotionCount": 0
+      }
+    },
+    {
+      "name": "letter-buffer",
+      "request": "coverage/unattended/loop-boundaries-20260921/letter-buffer.json",
+      "stopAtZeroLoss": true,
+      "nodes": 12000,
+      "potionPolicy": "Smart",
+      "enemyCount": 1,
+      "expectedMetrics": {
+        "ProjectedBattleHpLost": 0,
+        "CombatEndedTurn": 1,
+        "PotionCount": 0
+      }
+    },
+    {
+      "name": "letter-enemy-block",
+      "request": "coverage/unattended/loop-boundaries-20260921/letter-enemy-block.json",
+      "stopAtZeroLoss": true,
+      "nodes": 12000,
+      "potionPolicy": "Smart",
+      "enemyCount": 1,
+      "expectedMetrics": {
+        "ProjectedBattleHpLost": 0,
+        "CombatEndedTurn": 1,
+        "PotionCount": 0
+      }
+    },
+    {
+      "name": "letter-duplicate-cards",
+      "request": "coverage/unattended/loop-boundaries-20260921/letter-duplicate-cards.json",
+      "stopAtZeroLoss": true,
+      "nodes": 12000,
+      "potionPolicy": "Smart",
+      "enemyCount": 1,
+      "expectedMetrics": {
+        "ProjectedBattleHpLost": 0,
+        "CombatEndedTurn": 1,
+        "PotionCount": 0
+      }
+    },
+    {
+      "name": "letter-replay-cap",
+      "request": "coverage/unattended/loop-boundaries-20260921/letter-replay-cap.json",
+      "stopAtZeroLoss": true,
+      "nodes": 12000,
+      "potionPolicy": "Smart",
+      "enemyCount": 1,
+      "expectedMetrics": {
+        "ProjectedBattleHpLost": 4,
+        "PotionCount": 0
+      }
+    },
+    {
+      "name": "letter-branch-finesse",
+      "request": "coverage/unattended/loop-boundaries-20260921/letter-branch-finesse.json",
+      "stopAtZeroLoss": true,
+      "nodes": 12000,
+      "potionPolicy": "Smart",
+      "enemyCount": 1,
+      "expectedMetrics": {
+        "ProjectedBattleHpLost": 0,
+        "CombatEndedTurn": 1,
+        "PotionCount": 0
+      }
+    },
+    {
+      "name": "finisher-drawn",
+      "request": "coverage/unattended/loop-boundaries-20260921/finisher-drawn.json",
+      "stopAtZeroLoss": true,
+      "nodes": 12000,
+      "potionPolicy": "Smart",
+      "enemyCount": 1,
+      "expectedMetrics": {
+        "ProjectedBattleHpLost": 0,
+        "CombatEndedTurn": 1,
+        "PotionCount": 0
+      }
+    },
+    {
+      "name": "block-body-slam",
+      "request": "coverage/unattended/loop-boundaries-20260921/block-body-slam.json",
+      "stopAtZeroLoss": false,
+      "nodes": 12000,
+      "potionPolicy": "Smart",
+      "enemyCount": 1,
+      "expectedMetrics": {
+        "ProjectedBattleHpLost": 0,
+        "CombatEndedTurn": 2,
+        "PotionCount": 0
+      },
+      "requiredRouteCards": [
+        "FINESSE",
+        "BODY_SLAM"
+      ]
+    },
+    {
+      "name": "block-barricade",
+      "request": "coverage/unattended/loop-boundaries-20260921/block-barricade.json",
+      "stopAtZeroLoss": false,
+      "nodes": 12000,
+      "potionPolicy": "Smart",
+      "enemyCount": 1,
+      "expectedMetrics": {
+        "ProjectedBattleHpLost": 0,
+        "CombatEndedTurn": 1,
+        "PotionCount": 0
+      }
+    },
+    {
+      "name": "block-sturdy-clamp",
+      "request": "coverage/unattended/loop-boundaries-20260921/block-sturdy-clamp.json",
+      "stopAtZeroLoss": false,
+      "nodes": 12000,
+      "potionPolicy": "Smart",
+      "enemyCount": 1,
+      "expectedMetrics": {
+        "ProjectedBattleHpLost": 0,
+        "CombatEndedTurn": 1,
+        "PotionCount": 0
+      }
+    },
+    {
+      "name": "paid-draw-exhaustion",
+      "request": "coverage/unattended/loop-boundaries-20260921/paid-draw-exhaustion.json",
+      "stopAtZeroLoss": false,
+      "nodes": 12000,
+      "potionPolicy": "Smart",
+      "enemyCount": 1,
+      "expectedMetrics": {
+        "ProjectedBattleHpLost": 0,
+        "CombatEndedTurn": 2,
+        "PotionCount": 0
+      }
+    },
+    {
+      "name": "blood-low-hp",
+      "request": "coverage/unattended/loop-boundaries-20260921/blood-low-hp.json",
+      "stopAtZeroLoss": false,
+      "nodes": 12000,
+      "potionPolicy": "Smart",
+      "enemyCount": 1,
+      "expectedMetrics": {
+        "ProjectedBattleHpLost": 3,
+        "CombatEndedTurn": 2,
+        "PotionCount": 0
+      }
+    },
+    {
+      "name": "multi-target",
+      "request": "coverage/unattended/loop-boundaries-20260921/multi-target.json",
+      "stopAtZeroLoss": true,
+      "nodes": 12000,
+      "potionPolicy": "Smart",
+      "enemyCount": 3,
+      "expectedMetrics": {
+        "ProjectedBattleHpLost": 0,
+        "CombatEndedTurn": 1,
+        "PotionCount": 0
+      }
+    },
+    {
+      "name": "discard-choice",
+      "request": "coverage/unattended/loop-boundaries-20260921/discard-choice.json",
+      "stopAtZeroLoss": true,
+      "nodes": 60000,
+      "potionPolicy": "Smart",
+      "enemyCount": 1,
+      "expectedMetrics": {
+        "ProjectedBattleHpLost": 0,
+        "CombatEndedTurn": 1,
+        "PotionCount": 0
+      },
+      "minimumChoiceBranches": 1
+    },
+    {
+      "name": "retrieval-potion-choice",
+      "request": "coverage/unattended/loop-boundaries-20260921/retrieval-potion-choice.json",
+      "stopAtZeroLoss": true,
+      "nodes": 60000,
+      "potionPolicy": "RequireAtLeastOne",
+      "enemyCount": 1,
+      "expectedMetrics": {
+        "ProjectedBattleHpLost": 0,
+        "CombatEndedTurn": 1,
+        "PotionCount": 1
+      },
+      "minimumChoiceBranches": 1
+    },
+    {
+      "name": "star-resource",
+      "request": "coverage/unattended/loop-boundaries-20260921/star-resource.json",
+      "stopAtZeroLoss": true,
+      "nodes": 60000,
+      "potionPolicy": "Smart",
+      "enemyCount": 1,
+      "expectedMetrics": {
+        "ProjectedBattleHpLost": 0,
+        "CombatEndedTurn": 1,
+        "PotionCount": 0
+      }
+    },
+    {
+      "name": "history-banshee-hand",
+      "request": "coverage/unattended/loop-boundaries-20260921/history-banshee-hand.json",
+      "stopAtZeroLoss": true,
+      "nodes": 12000,
+      "potionPolicy": "Smart",
+      "enemyCount": 1,
+      "expectedMetrics": {
+        "ProjectedBattleHpLost": 1,
+        "CombatEndedTurn": 2,
+        "PotionCount": 0
+      },
+      "requiredRouteCards": [
+        "APPARITION",
+        "BANSHEES_CRY"
+      ]
+    },
+    {
+      "name": "history-banshee-drawn",
+      "request": "coverage/unattended/loop-boundaries-20260921/history-banshee-drawn.json",
+      "stopAtZeroLoss": true,
+      "nodes": 12000,
+      "potionPolicy": "Smart",
+      "enemyCount": 1,
+      "expectedMetrics": {
+        "ProjectedBattleHpLost": 1,
+        "CombatEndedTurn": 2,
+        "PotionCount": 0
+      },
+      "requiredRouteCards": [
+        "APPARITION",
+        "BANSHEES_CRY"
+      ]
+    }
+  ],
+  "searchMode": "Evaluate"
+}

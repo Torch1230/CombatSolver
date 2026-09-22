@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "LOOP-BOUNDARY-HISTORY-BANSHEE-DRAWN",
+  "description": "Ethereal card plays change Banshees Cry cost; compare roots with the history reader in hand versus drawn later.",
+  "characterId": "NECROBINDER",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "LOOPLETTEROPENERPHASE0111",
+  "enemyCurrentHp": 30,
+  "initialPlayerHp": 80,
+  "initialPlayerMaxHp": 80,
+  "initialPlayerEnergy": 3,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    {
+      "cardId": "APPARITION",
+      "pile": "Hand",
+      "count": 3
+    },
+    {
+      "cardId": "BANSHEES_CRY",
+      "pile": "Discard"
+    },
+    {
+      "cardId": "IMPATIENCE",
+      "pile": "Hand"
+    }
+  ],
+  "relics": [],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 10000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120,
+  "performancePresetForTest": "Low"
+}

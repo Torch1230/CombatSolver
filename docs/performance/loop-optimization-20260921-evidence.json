@@ -1,0 +1,491 @@
+{
+  "baseline": "3f4002bd plus shared offline fixed-fixture adapter (no Search changes)",
+  "candidate": "loop optimization, coordinator drained boundary, single legal card/target guard",
+  "scope": "Linux .NET offline; normal GC; no visible Steam metrics; strict run excluded from performance",
+  "runs": {
+    "final-A1": {
+      "wallSeconds": 1.4671609,
+      "peakManagedHeapBytes": 41816352,
+      "peakManagedLiveBytes": 44343736,
+      "peakWorkingSetBytes": 250327040,
+      "TotalExpanded": 1200,
+      "TotalTransitions": 2400,
+      "TotalChoiceBranches": 0,
+      "TotalElapsedMilliseconds": 1258.8791,
+      "TotalWorkerAllocatedBytes": 119147240,
+      "ProjectedBattleHpLost": 0,
+      "CombatEndedTurn": 1,
+      "FinalHp": 80,
+      "FinalEnemyHp": 0,
+      "PotionCount": 0,
+      "actions": 1200,
+      "CycleReplayAttempts": 0,
+      "CycleReplayActions": 0,
+      "CycleReplayVictories": 0,
+      "MaxParallelConcurrency": 0,
+      "MaxParallelActionReplayConcurrency": 0
+    },
+    "final-B1": {
+      "wallSeconds": 0.8468482,
+      "peakManagedHeapBytes": 25414880,
+      "peakManagedLiveBytes": 29564016,
+      "peakWorkingSetBytes": 229474304,
+      "TotalExpanded": 6,
+      "TotalTransitions": 1206,
+      "TotalChoiceBranches": 0,
+      "TotalElapsedMilliseconds": 629.4298,
+      "TotalWorkerAllocatedBytes": 41940016,
+      "ProjectedBattleHpLost": 0,
+      "CombatEndedTurn": 1,
+      "FinalHp": 80,
+      "FinalEnemyHp": 0,
+      "PotionCount": 0,
+      "actions": 1200,
+      "CycleReplayAttempts": 1,
+      "CycleReplayActions": 1194,
+      "CycleReplayVictories": 1,
+      "MaxParallelConcurrency": 0,
+      "MaxParallelActionReplayConcurrency": 0
+    },
+    "final-B2": {
+      "wallSeconds": 0.8380796,
+      "peakManagedHeapBytes": 25422904,
+      "peakManagedLiveBytes": 29651688,
+      "peakWorkingSetBytes": 229855232,
+      "TotalExpanded": 6,
+      "TotalTransitions": 1206,
+      "TotalChoiceBranches": 0,
+      "TotalElapsedMilliseconds": 632.2577,
+      "TotalWorkerAllocatedBytes": 41944560,
+      "ProjectedBattleHpLost": 0,
+      "CombatEndedTurn": 1,
+      "FinalHp": 80,
+      "FinalEnemyHp": 0,
+      "PotionCount": 0,
+      "actions": 1200,
+      "CycleReplayAttempts": 1,
+      "CycleReplayActions": 1194,
+      "CycleReplayVictories": 1,
+      "MaxParallelConcurrency": 0,
+      "MaxParallelActionReplayConcurrency": 0
+    },
+    "final-A2": {
+      "wallSeconds": 1.45906,
+      "peakManagedHeapBytes": 41828224,
+      "peakManagedLiveBytes": 46752696,
+      "peakWorkingSetBytes": 250142720,
+      "TotalExpanded": 1200,
+      "TotalTransitions": 2400,
+      "TotalChoiceBranches": 0,
+      "TotalElapsedMilliseconds": 1251.1237,
+      "TotalWorkerAllocatedBytes": 119133144,
+      "ProjectedBattleHpLost": 0,
+      "CombatEndedTurn": 1,
+      "FinalHp": 80,
+      "FinalEnemyHp": 0,
+      "PotionCount": 0,
+      "actions": 1200,
+      "CycleReplayAttempts": 0,
+      "CycleReplayActions": 0,
+      "CycleReplayVictories": 0,
+      "MaxParallelConcurrency": 0,
+      "MaxParallelActionReplayConcurrency": 0
+    },
+    "final-dop2": {
+      "wallSeconds": 0.8568219,
+      "peakManagedHeapBytes": 25207392,
+      "peakManagedLiveBytes": 30645632,
+      "peakWorkingSetBytes": 232570880,
+      "TotalExpanded": 6,
+      "TotalTransitions": 1206,
+      "TotalChoiceBranches": 0,
+      "TotalElapsedMilliseconds": 654.6341,
+      "TotalWorkerAllocatedBytes": 42099568,
+      "ProjectedBattleHpLost": 0,
+      "CombatEndedTurn": 1,
+      "FinalHp": 80,
+      "FinalEnemyHp": 0,
+      "PotionCount": 0,
+      "actions": 1200,
+      "CycleReplayAttempts": 1,
+      "CycleReplayActions": 1194,
+      "CycleReplayVictories": 1,
+      "MaxParallelConcurrency": 2,
+      "MaxParallelActionReplayConcurrency": 1
+    },
+    "final-branch1": {
+      "wallSeconds": 0.6630988,
+      "peakManagedHeapBytes": 20121176,
+      "peakManagedLiveBytes": 26959416,
+      "peakWorkingSetBytes": 222679040,
+      "TotalExpanded": 101,
+      "TotalTransitions": 256,
+      "TotalChoiceBranches": 0,
+      "TotalElapsedMilliseconds": 454.3334,
+      "TotalWorkerAllocatedBytes": 12028672,
+      "ProjectedBattleHpLost": 0,
+      "CombatEndedTurn": 1,
+      "FinalHp": 80,
+      "FinalEnemyHp": 0,
+      "PotionCount": 0,
+      "actions": 36,
+      "CycleReplayAttempts": 0,
+      "CycleReplayActions": 0,
+      "CycleReplayVictories": 0,
+      "MaxParallelConcurrency": 0,
+      "MaxParallelActionReplayConcurrency": 0
+    },
+    "final-branch2": {
+      "wallSeconds": 0.6379465,
+      "peakManagedHeapBytes": 20054464,
+      "peakManagedLiveBytes": 24554616,
+      "peakWorkingSetBytes": 222961664,
+      "TotalExpanded": 101,
+      "TotalTransitions": 256,
+      "TotalChoiceBranches": 0,
+      "TotalElapsedMilliseconds": 438.1282,
+      "TotalWorkerAllocatedBytes": 12292032,
+      "ProjectedBattleHpLost": 0,
+      "CombatEndedTurn": 1,
+      "FinalHp": 80,
+      "FinalEnemyHp": 0,
+      "PotionCount": 0,
+      "actions": 36,
+      "CycleReplayAttempts": 0,
+      "CycleReplayActions": 0,
+      "CycleReplayVictories": 0,
+      "MaxParallelConcurrency": 2,
+      "MaxParallelActionReplayConcurrency": 2
+    },
+    "final-strict": {
+      "wallSeconds": 0.6005719,
+      "peakManagedHeapBytes": 19286488,
+      "peakManagedLiveBytes": 24161416,
+      "peakWorkingSetBytes": 218365952,
+      "TotalExpanded": 6,
+      "TotalTransitions": 30,
+      "TotalChoiceBranches": 0,
+      "TotalElapsedMilliseconds": 389.7104,
+      "TotalWorkerAllocatedBytes": 7099776,
+      "ProjectedBattleHpLost": 0,
+      "CombatEndedTurn": 1,
+      "FinalHp": 80,
+      "FinalEnemyHp": 0,
+      "PotionCount": 0,
+      "actions": 24,
+      "CycleReplayAttempts": 1,
+      "CycleReplayActions": 18,
+      "CycleReplayVictories": 1,
+      "MaxParallelConcurrency": 0,
+      "MaxParallelActionReplayConcurrency": 0
+    },
+    "blood-no-heal-A": {
+      "wallSeconds": 1.0162141,
+      "peakManagedHeapBytes": 26788024,
+      "peakManagedLiveBytes": 31210288,
+      "peakWorkingSetBytes": 232087552,
+      "TotalExpanded": 675,
+      "TotalTransitions": 1820,
+      "TotalChoiceBranches": 0,
+      "TotalElapsedMilliseconds": 808.988,
+      "TotalWorkerAllocatedBytes": 61995960,
+      "ProjectedBattleHpLost": 3,
+      "CombatEndedTurn": 2,
+      "FinalHp": 54,
+      "FinalEnemyHp": 0,
+      "PotionCount": 0,
+      "actions": 6,
+      "CycleReplayAttempts": 0,
+      "CycleReplayActions": 0,
+      "CycleReplayVictories": 0,
+      "MaxParallelConcurrency": 0,
+      "MaxParallelActionReplayConcurrency": 0
+    },
+    "blood-no-heal-B": {
+      "wallSeconds": 1.0158781,
+      "peakManagedHeapBytes": 26550312,
+      "peakManagedLiveBytes": 31259816,
+      "peakWorkingSetBytes": 231784448,
+      "TotalExpanded": 675,
+      "TotalTransitions": 1820,
+      "TotalChoiceBranches": 0,
+      "TotalElapsedMilliseconds": 805.9807,
+      "TotalWorkerAllocatedBytes": 62011352,
+      "ProjectedBattleHpLost": 3,
+      "CombatEndedTurn": 2,
+      "FinalHp": 54,
+      "FinalEnemyHp": 0,
+      "PotionCount": 0,
+      "actions": 6,
+      "CycleReplayAttempts": 0,
+      "CycleReplayActions": 0,
+      "CycleReplayVictories": 0,
+      "MaxParallelConcurrency": 0,
+      "MaxParallelActionReplayConcurrency": 0
+    },
+    "growing-budget-A": {
+      "wallSeconds": 5.3929437,
+      "peakManagedHeapBytes": 110424216,
+      "peakManagedLiveBytes": 113730536,
+      "peakWorkingSetBytes": 338874368,
+      "TotalExpanded": 10555,
+      "TotalTransitions": 22248,
+      "TotalChoiceBranches": 323,
+      "TotalElapsedMilliseconds": 5187.7311,
+      "TotalWorkerAllocatedBytes": 756518888,
+      "ProjectedBattleHpLost": 0,
+      "CombatEndedTurn": 1,
+      "FinalHp": 80,
+      "FinalEnemyHp": 0,
+      "PotionCount": 1,
+      "actions": 892,
+      "CycleReplayAttempts": 0,
+      "CycleReplayActions": 0,
+      "CycleReplayVictories": 0,
+      "MaxParallelConcurrency": 0,
+      "MaxParallelActionReplayConcurrency": 0
+    },
+    "growing-budget-B": {
+      "wallSeconds": 5.2783828,
+      "peakManagedHeapBytes": 108279648,
+      "peakManagedLiveBytes": 109815448,
+      "peakWorkingSetBytes": 335613952,
+      "TotalExpanded": 10555,
+      "TotalTransitions": 22248,
+      "TotalChoiceBranches": 323,
+      "TotalElapsedMilliseconds": 5056.3706,
+      "TotalWorkerAllocatedBytes": 753542344,
+      "ProjectedBattleHpLost": 0,
+      "CombatEndedTurn": 1,
+      "FinalHp": 80,
+      "FinalEnemyHp": 0,
+      "PotionCount": 1,
+      "actions": 892,
+      "CycleReplayAttempts": 0,
+      "CycleReplayActions": 0,
+      "CycleReplayVictories": 0,
+      "MaxParallelConcurrency": 0,
+      "MaxParallelActionReplayConcurrency": 0
+    },
+    "baseline-stagnant-block-draw": {
+      "wallSeconds": 0.559899,
+      "peakManagedHeapBytes": 19173280,
+      "peakManagedLiveBytes": 25771712,
+      "peakWorkingSetBytes": 219549696,
+      "TotalExpanded": 10,
+      "TotalTransitions": 20,
+      "TotalChoiceBranches": 0,
+      "TotalElapsedMilliseconds": 353.1385,
+      "TotalWorkerAllocatedBytes": 3736376,
+      "ProjectedBattleHpLost": 0,
+      "CombatEndedTurn": 1,
+      "FinalHp": 80,
+      "FinalEnemyHp": 0,
+      "PotionCount": 0,
+      "actions": 1,
+      "CycleReplayAttempts": 0,
+      "CycleReplayActions": 0,
+      "CycleReplayVictories": 0,
+      "MaxParallelConcurrency": 0,
+      "MaxParallelActionReplayConcurrency": 0
+    },
+    "candidate-stagnant": {
+      "wallSeconds": 0.5578274,
+      "peakManagedHeapBytes": 19841280,
+      "peakManagedLiveBytes": 26068856,
+      "peakWorkingSetBytes": 220000256,
+      "TotalExpanded": 10,
+      "TotalTransitions": 20,
+      "TotalChoiceBranches": 0,
+      "TotalElapsedMilliseconds": 349.8191,
+      "TotalWorkerAllocatedBytes": 3733576,
+      "ProjectedBattleHpLost": 0,
+      "CombatEndedTurn": 1,
+      "FinalHp": 80,
+      "FinalEnemyHp": 0,
+      "PotionCount": 0,
+      "actions": 1,
+      "CycleReplayAttempts": 0,
+      "CycleReplayActions": 0,
+      "CycleReplayVictories": 0,
+      "MaxParallelConcurrency": 0,
+      "MaxParallelActionReplayConcurrency": 0
+    }
+  },
+  "comparisons": [
+    {
+      "a": "final-A1",
+      "b": "final-B1",
+      "fullRouteEqual": true,
+      "rootContinuationEqual": true,
+      "counterDifferences": {
+        "selectedExpanded": [
+          1200,
+          6
+        ],
+        "selectedTransitions": [
+          2400,
+          1206
+        ],
+        "totalExpanded": [
+          1200,
+          6
+        ],
+        "totalTransitions": [
+          2400,
+          1206
+        ],
+        "forkCount": [
+          2400,
+          1206
+        ],
+        "reusedNodeSnapshots": [
+          1201,
+          7
+        ],
+        "cycleRegionCandidatesConsidered": [
+          1199,
+          5
+        ],
+        "cycleRegionCandidatesAdmitted": [
+          1199,
+          5
+        ],
+        "cycleRegionProgressEpochs": [
+          399,
+          1
+        ],
+        "cycleRegionProgressCandidatesAdmitted": [
+          1194,
+          0
+        ],
+        "transpositionCount": [
+          2392,
+          4
+        ],
+        "expandedTranspositionCount": [
+          1196,
+          2
+        ],
+        "threatProjectionCacheCount": [
+          2400,
+          1206
+        ]
+      }
+    },
+    {
+      "a": "final-B1",
+      "b": "final-dop2",
+      "fullRouteEqual": true,
+      "rootContinuationEqual": true,
+      "counterDifferences": {
+        "parallelActionReplayWaves": [
+          0,
+          6
+        ],
+        "parallelActionReplayWorkItems": [
+          0,
+          6
+        ],
+        "maxParallelActionReplayConcurrency": [
+          0,
+          1
+        ],
+        "maxParallelConcurrency": [
+          0,
+          2
+        ],
+        "threatProjectionCacheCount": [
+          1206,
+          1194
+        ]
+      }
+    },
+    {
+      "a": "final-branch1",
+      "b": "final-branch2",
+      "fullRouteEqual": true,
+      "rootContinuationEqual": true,
+      "counterDifferences": {
+        "parallelActionReplayWaves": [
+          0,
+          36
+        ],
+        "parallelActionReplayWorkItems": [
+          0,
+          155
+        ],
+        "maxParallelActionReplayConcurrency": [
+          0,
+          2
+        ],
+        "maxParallelConcurrency": [
+          0,
+          2
+        ],
+        "threatProjectionCacheCount": [
+          172,
+          1
+        ]
+      }
+    },
+    {
+      "a": "blood-no-heal-A",
+      "b": "blood-no-heal-B",
+      "fullRouteEqual": true,
+      "rootContinuationEqual": true,
+      "counterDifferences": {}
+    },
+    {
+      "a": "growing-budget-A",
+      "b": "growing-budget-B",
+      "fullRouteEqual": true,
+      "rootContinuationEqual": true,
+      "counterDifferences": {}
+    },
+    {
+      "a": "baseline-stagnant-block-draw",
+      "b": "candidate-stagnant",
+      "fullRouteEqual": true,
+      "rootContinuationEqual": true,
+      "counterDifferences": {
+        "cycleRegionProgressEpochs": [
+          3,
+          0
+        ]
+      }
+    }
+  ],
+  "native": {
+    "defense-final": {
+      "runId": "50cfafd5acc642508e18840ab459f69a",
+      "status": "Passed",
+      "elapsedMilliseconds": 24193.5984,
+      "instanceRemoved": true
+    },
+    "native-blood-no-heal": {
+      "runId": "41f101db99fa4f8fb9a55bd6494cc456",
+      "status": "Passed",
+      "elapsedMilliseconds": 26767.1265,
+      "instanceRemoved": true
+    },
+    "native-loop-deploy": {
+      "runId": "d4867a3cb9154340a85fe848d1139a56",
+      "status": "Passed",
+      "elapsedMilliseconds": 27471.2213,
+      "instanceRemoved": true
+    },
+    "UI-LOCALIZATION": {
+      "runId": "275d2dcafd214c62b675f5832a11993d",
+      "status": "Passed",
+      "elapsedMilliseconds": 27502.6202,
+      "instanceRemoved": true
+    },
+    "row-reuse-final": {
+      "runId": "5ec0d3f0b90c450b8c43a87b0cdaee25",
+      "status": "Passed",
+      "elapsedMilliseconds": 24919.5473,
+      "instanceRemoved": true
+    }
+  }
+}

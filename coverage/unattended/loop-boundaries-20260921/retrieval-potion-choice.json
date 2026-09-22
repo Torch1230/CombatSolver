@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "LOOP-BOUNDARY-RETRIEVAL-POTION-CHOICE",
+  "description": "Smaller non-multiple lethal boundary with explicit choices or changing resources.",
+  "characterId": "DEFECT",
+  "encounterId": "AEONGLASS_BOSS",
+  "actIndexForTest": 2,
+  "seed": "LOOPDEFECTAFOHOLO0111",
+  "enemyCurrentHp": 45,
+  "initialPlayerHp": 75,
+  "initialPlayerMaxHp": 75,
+  "initialPlayerEnergy": 2,
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    {
+      "cardId": "ALL_FOR_ONE",
+      "pile": "Hand",
+      "treatAsDeckCard": true
+    },
+    {
+      "cardId": "HOLOGRAM",
+      "pile": "Hand",
+      "upgradeLevels": 1,
+      "treatAsDeckCard": true
+    },
+    {
+      "cardId": "TURBO",
+      "pile": "Hand",
+      "treatAsDeckCard": true
+    }
+  ],
+  "potions": [
+    {
+      "potionId": "TouchOfInsanity"
+    }
+  ],
+  "potionPolicyForTest": "RequireAtLeastOne",
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 10000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120,
+  "performancePresetForTest": "Low"
+}

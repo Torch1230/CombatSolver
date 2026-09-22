@@ -390,6 +390,30 @@ internal sealed partial class UnattendedTestRunner
                     existingCount++;
                 }
             }
+            await InjectInitialStateAsync(CombatState, player);
+            if (request.ReloadRunRngAfterStateInjection)
+            {
+                if (string.IsNullOrWhiteSpace(request.RunSnapshotPath))
+                    throw new InvalidOperationException("战斗状态注入后回载 RNG 需要跑局快照。");
+                ReloadRunSnapshotRng(runState, player, request.RunSnapshotPath);
+            }
+            StartedTurn = player.PlayerCombatState!.TurnNumber;
+            await runner.NextFrameAsync();
+
+            return new ScenarioContext(
+                character,
+                encounter,
+                CombatState,
+                player,
+                StartedTurn,
+                orbChecks,
+                potionChecks,
+                monsterMoveChecks);
+        }
+
+        internal async Task InjectInitialStateAsync(CombatState CombatState, Player player)
+        {
+            UnattendedTestRequest request = runner._request;
             if (request.InitialEnemyMaxHps.Length > 0)
             {
                 if (request.InitialEnemyMaxHps.Length != CombatState.Enemies.Count)
@@ -497,24 +521,6 @@ internal sealed partial class UnattendedTestRunner
             foreach (UnattendedPowerInjection injection in request.Powers)
                 await InjectPowerAsync(CombatState, player, injection);
             await RunManager.Instance.ActionExecutor.FinishedExecutingActions();
-            if (request.ReloadRunRngAfterStateInjection)
-            {
-                if (string.IsNullOrWhiteSpace(request.RunSnapshotPath))
-                    throw new InvalidOperationException("战斗状态注入后回载 RNG 需要跑局快照。");
-                ReloadRunSnapshotRng(runState, player, request.RunSnapshotPath);
-            }
-            StartedTurn = player.PlayerCombatState!.TurnNumber;
-            await runner.NextFrameAsync();
-
-            return new ScenarioContext(
-                character,
-                encounter,
-                CombatState,
-                player,
-                StartedTurn,
-                orbChecks,
-                potionChecks,
-                monsterMoveChecks);
         }
 
         private async Task VerifyPreCombatForecastApiAsync(

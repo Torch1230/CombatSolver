@@ -138,6 +138,43 @@ internal static class SolverActionPill
         return pill;
     }
 
+    public static Control CreateCycle(SolverActionRun run, out HFlowContainer actions)
+    {
+        PanelContainer group = new()
+        {
+            Name = "LoopGroup",
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            MouseFilter = Control.MouseFilterEnum.Pass,
+        };
+        group.AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
+            SolverUiTokens.Palette.Surface,
+            SolverUiTokens.Palette.Accent,
+            SolverUiTokens.Radius.Large,
+            SolverUiTokens.Spacing.Sm,
+            SolverUiTokens.Spacing.Xs));
+        VBoxContainer content = new() { MouseFilter = Control.MouseFilterEnum.Ignore };
+        content.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Xs);
+        Label heading = SolverUiTokens.CreateLabel("", SolverUiTokens.Type.Caption,
+            SolverUiTokens.Palette.Accent, FontType.Bold);
+        content.AddChild(heading);
+        actions = new HFlowContainer
+        {
+            Name = "LoopActions",
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        actions.AddThemeConstantOverride("h_separation", 6);
+        actions.AddThemeConstantOverride("v_separation", SolverUiTokens.Spacing.Xs);
+        content.AddChild(actions);
+        group.AddChild(content);
+        SolverLocaleRefresh.Bind(group, () =>
+        {
+            heading.Text = SolverText.Format($"循环 ×{run.Repetitions}");
+            group.TooltipText = SolverText.Format($"框内 {run.Period} 个动作按顺序重复 {run.Repetitions} 次，共 {run.Count} 个动作");
+        });
+        return group;
+    }
+
     private static (Color Border, Color Background) ActionColors(SolverOverlayActionVisualKind kind)
         => kind switch
         {

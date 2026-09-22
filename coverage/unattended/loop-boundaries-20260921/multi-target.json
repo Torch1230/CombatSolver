@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "LOOP-BOUNDARY-MULTI-TARGET",
+  "description": "Distinct enemy identities and deaths in a targetable attack/draw recurrence.",
+  "characterId": "IRONCLAD",
+  "encounterId": "CORPSE_SLUGS_NORMAL",
+  "seed": "LOOPLETTEROPENERPHASE0111",
+  "enemyCurrentHp": 9,
+  "initialPlayerHp": 80,
+  "initialPlayerMaxHp": 80,
+  "initialPlayerEnergy": 0,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    {
+      "cardId": "FLASH_OF_STEEL",
+      "pile": "Hand"
+    },
+    {
+      "cardId": "FINESSE",
+      "pile": "Discard"
+    }
+  ],
+  "relics": [],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 10000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "stopAfterInitialSolverResultAssertion": false,
+  "timeoutSeconds": 120,
+  "performancePresetForTest": "Low",
+  "expectedInitialProjectedBattleHpLost": 0,
+  "expectedInitialCombatEndedTurn": 1,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "verifyIncrementalSearch": true,
+  "expectedUnexpectedReplansAtMost": 0
+}

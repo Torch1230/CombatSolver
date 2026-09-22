@@ -74,6 +74,7 @@ $beamPaths = @($beamFiles.FullName)
 $cyclePolicyPaths = @(
     (Join-Path $searchRoot "CombatBeamSolver.CyclePlanning.cs"),
     (Join-Path $searchRoot "CombatBeamSolver.CycleRegionRetention.cs"),
+    (Join-Path $searchRoot "CombatBeamSolver.CycleReplay.cs"),
     (Join-Path $searchRoot "CombatBeamSolver.OrderedMutationRetention.cs")
 )
 $legacyLoopGuardPaths = @(
@@ -605,6 +606,7 @@ $expectedBeamFiles = @(
     "CombatBeamSolver.CrossTurnPlanning.cs",
     "CombatBeamSolver.CyclePlanning.cs",
     "CombatBeamSolver.CycleRegionRetention.cs",
+    "CombatBeamSolver.CycleReplay.cs",
     "CombatBeamSolver.Expansion.cs",
     "CombatBeamSolver.Expansion.Candidates.cs",
     "CombatBeamSolver.Expansion.Choices.cs",
@@ -1603,6 +1605,18 @@ foreach ($forbidden in @('Task<', 'Func<', 'Action<')) {
     }
 }
 
+if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot 'src/Search/CombatBeamSolver.cs') -SimpleMatch 'policy.RequestWorkTotals ?? new()' -Quiet)) {
+    $violations.Add('Loop budget/history ownership changed: src/Search/CombatBeamSolver.cs')
+}
+if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot 'src/Search/CombatBeamSolver.CycleReplay.cs') -SimpleMatch '_replayWork.TryConsumeCycleReplayAction()' -Quiet)) {
+    $violations.Add('Loop budget/history ownership changed: src/Search/CombatBeamSolver.CycleReplay.cs')
+}
+if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot 'src/Runtime/CombatRootSnapshot.cs') -SimpleMatch 'playerState.AllCards.Cast<AbstractModel>()' -Quiet)) {
+    $violations.Add('Loop budget/history ownership changed: src/Runtime/CombatRootSnapshot.cs')
+}
+if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot 'src/Search/CombatBeamSolver.StateEvaluation.cs') -SimpleMatch '_historyDependencies' -Quiet)) {
+    $violations.Add('Loop budget/history ownership changed: src/Search/CombatBeamSolver.StateEvaluation.cs')
+}
 if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot 'src/Search/CombatHistoryCounterKey.cs') -SimpleMatch 'simulator.History.GetCounters(owner)' -Quiet)) {
     $violations.Add('History key must consume incremental totals')
 }

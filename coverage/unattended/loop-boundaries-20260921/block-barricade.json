@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "LOOP-BOUNDARY-BLOCK-BARRICADE",
+  "description": "Retained block recurrence with a guaranteed poison end-turn exit.",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "LOOPSTAGNANTBLOCKDRAW0111",
+  "enemyCurrentHp": 1,
+  "initialEnemyMoveIds": [
+    "INHALE"
+  ],
+  "initialPlayerHp": 80,
+  "initialPlayerMaxHp": 80,
+  "initialPlayerBlock": 100,
+  "initialPlayerEnergy": 0,
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "powers": [
+    {
+      "powerId": "POISON_POWER",
+      "amount": 1,
+      "target": "Enemy"
+    },
+    {
+      "powerId": "BARRICADE_POWER",
+      "amount": 1,
+      "target": "Player"
+    }
+  ],
+  "cards": [
+    {
+      "cardId": "IMPATIENCE",
+      "pile": "Hand",
+      "treatAsDeckCard": true
+    },
+    {
+      "cardId": "FINESSE",
+      "pile": "Discard",
+      "treatAsDeckCard": true
+    }
+  ],
+  "performancePresetForTest": "Low",
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 10000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120
+}

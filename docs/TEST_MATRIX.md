@@ -11,6 +11,53 @@
 - 校验模式 `COMBATSOLVER_VERIFY_FAST_LANES=1` 10 根零失败；负对照：故意改错 `AfterCardPlayed` 早期一趟的位图，校验 208 ms 内抛出并点名 `Kusarigama`，同一错位图不开校验时把 `EQ-IRONCLAD-ELITE-00` 从 `expanded=12190 / hpLost=52` 改成 `12785 / 74`。
 - 计时（A B B A，每臂 4 次，机器空闲，单进程）：5 根跨根中位 −3.27%（−0.63% ~ −4.11%），REGENT、NECROBINDER、DEFECT 三根两臂完全分离；60 根分配总量 −0.41%，65 根批次 −0.56%（55/64 根下降）。批次并行时的墙钟受降频影响（同根同 DLL 满载 40 分钟后漂 20% 以上），不作计时依据。
 - 只在离线宿主验证，未在游戏内验证；未测 DOP > 1；带第三方 mod 时位图关闭的回退只做了代码审查。
+## 循环外层胶囊（2026-09-21）
+
+- `UI-LOCALIZATION` / `ffaa5652dcfe42e89eea9e7cbd10e789` Passed：eng/zhs/zht 的 41 动作显示为「外框含 2 动作 ×20」加独立末击；在真实 Godot 容器中宽→窄→宽，断言框内换行、标题及动作完整包围、宽度不超父流；周期首/中/末次执行高亮、后缀高亮、重复填充复用通过。
+- `ROUTE-ROW-REUSE` / `254c96d24a6d45eb9031971398696611` Passed：完整显示身份、失败填充重试、语言往返及订阅清理。既有非循环 16 动作行的两组 64 次不变填充分别 0.2099 / 0.1784 ms、各 48 B；这只证明既有复用路径，不作为循环新建布局或可见帧率的数据。
+- Release 0 警告/0 错误；两项均用 120 秒上限和 `--cleanup-instance-on-exit`，实例已删除。没有改动搜索/模拟/执行数组；每个循环仅多 2 个容器节点。尚未验收可见 Steam 排版。
+
+```bash
+./tools/run-unattended-test.sh --scenario-id UI-LOCALIZATION --timeout-seconds 120 --cleanup-instance-on-exit
+./tools/run-unattended-test.sh --scenario-id ROUTE-ROW-REUSE --evidence-directory "$PWD/.local/loop-group-row" --timeout-seconds 120 --cleanup-instance-on-exit
+```
+
+- PR #123 / 上游 8826a333 整合：Release 0/0、两端门禁 207；UI-LOCALIZATION `70dae8a331234fcbb6e3a51a40a089f1` 与必要格挡原生部署 `19f8f8ad583b4b029a5c559f759243fa` Passed，实例清理；cap / 多 solver 两组与 656a9608 完整路线、质量 Equivalent。
+
+- [循环请求额度与历史依赖收尾](performance/loop-final-20260921.md)：28 组（26 根）/23 完整同路线/5 改善；4 个最终原生场景 Passed（历史依赖、两 solver 共享额度、两种投影范围外伤害必要格挡）；严格增量与完整部署分别记录，实例全部清理。Python 10 项与两端结构门禁通过；ABBA 将时间切层组标为 Inconclusive，另列无时间切层的固定节点实验。
+
+## 循环预算审计跟进（2026-09-21）
+
+- [F1/F2/F3 修正及证据](performance/loop-boundaries-20260921.md)：8 项 Python 分类合同；正常预算 cap＋finisher 的 A/B Equivalent；主动 2000 ms 时间切层两侧各 time=3/node=0，原始未击杀观察保留，工具正确返回 Inconclusive／2。无时间边界的差异仍退出 1，不放宽为自动通过。
+- 新 `generic-loop-replay-estimate-margin.json` 离线单 solver：6835 HP，6 展开／4107 转移、4095 额外回放、零损 T1；估算 4101 并不证明超过 4096 无法完成。非原生验证，不加入原 19 根 A/B 等价集。
+- Release 0 警告／0 错误；遥测拆分不改变搜索判断或战斗语义，未重跑之前通过的四项原生部署。请求级累计额度仍未验证，不将 Evaluate 的 4096 检查外推到 Coordinator。
+
+```bash
+python3 -m unittest discover -s tools/OfflineSearchHarness -p test_loop_boundaries.py -v
+```
+
+## 追加循环边界与审计（2026-09-21）
+
+- [19 根边界集及审计复核](performance/loop-boundaries-20260921.md)：同根串行 A/B；质量指标均相同，18 根完整路线相同，1 根同质量异路线。包含隐藏相位、Buffer、格挡、4096 耗尽、替代出牌、付费抽牌、低血卖血、三目标、选牌、星能和 BansheesCry。离线显式检查见 `coverage/unattended/loop-boundaries-20260921/suite.json`。
+- 耗尽反例 ABBA：展开/转移 4675/9375 → 4675/13471，路线及 4 HP/T2 相同；求解 +11.3%、累计分配 +14.9%、采样活对象峰值 -18.6%。不是无退化验收。
+- 下列前三项严格增量及完整原生部署 Passed、0 计划外重算；最后一项在首次结果断言后停止。runId 与实例清理记录见报告。不是历史 EQ10/FULL40；P4 投影低估反例尚未验证。
+
+```bash
+./tools/run-unattended-test.sh --scenario-id LOOP-BOUNDARY-LETTER-BRANCH-FINESSE --character-id IRONCLAD --encounter-id FUZZY_WURM_CRAWLER_WEAK --seed LOOPLETTEROPENERPHASE0111 --enemy-current-hp 61 --initial-player-hp 80 --initial-player-max-hp 80 --initial-player-energy 0 --clear-player-piles --clear-all-powers --cards-json '[{"cardId": "IMPATIENCE", "pile": "Hand"}, {"cardId": "FINESSE", "pile": "Hand"}, {"cardId": "IMPATIENCE", "pile": "Discard"}]' --relics-json '[{"relicId": "LETTER_OPENER"}]' --force-short-search-only --short-search-budget-override-milliseconds 10000 --search-max-degree-of-parallelism-for-test 1 --measure-search-phases --timeout-seconds 120 --performance-preset-for-test Low --initial-enemy-max-hps-json '[61]' --initial-enemy-current-hps-json '[61]' --expected-initial-projected-battle-hp-lost 0 --expected-initial-combat-ended-turn 1 --expected-initial-final-enemy-hp-at-most 0 --verify-incremental-search --expected-unexpected-replans-at-most 0 --cleanup-instance-on-exit
+./tools/run-unattended-test.sh --scenario-id LOOP-BOUNDARY-MULTI-TARGET --character-id IRONCLAD --encounter-id CORPSE_SLUGS_NORMAL --seed LOOPLETTEROPENERPHASE0111 --enemy-current-hp 9 --initial-player-hp 80 --initial-player-max-hp 80 --initial-player-energy 0 --clear-player-piles --clear-all-powers --cards-json '[{"cardId": "FLASH_OF_STEEL", "pile": "Hand"}, {"cardId": "FINESSE", "pile": "Discard"}]' --relics-json '[]' --force-short-search-only --short-search-budget-override-milliseconds 10000 --search-max-degree-of-parallelism-for-test 1 --measure-search-phases --timeout-seconds 120 --performance-preset-for-test Low --expected-initial-projected-battle-hp-lost 0 --expected-initial-combat-ended-turn 1 --expected-initial-final-enemy-hp-at-most 0 --verify-incremental-search --expected-unexpected-replans-at-most 0 --cleanup-instance-on-exit
+./tools/run-unattended-test.sh --scenario-id LOOP-BOUNDARY-BLOCK-BODY-SLAM --character-id IRONCLAD --encounter-id FUZZY_WURM_CRAWLER_WEAK --seed LOOPLETTEROPENERPHASE0111 --enemy-current-hp 37 --initial-player-hp 80 --initial-player-max-hp 80 --initial-player-energy 0 --clear-player-piles --clear-all-powers --cards-json '[{"cardId": "FINESSE", "pile": "Hand"}, {"cardId": "FINESSE", "pile": "Discard"}, {"cardId": "BODY_SLAM", "pile": "Discard", "upgradeLevels": 1}]' --relics-json '[]' --force-short-search-only --short-search-budget-override-milliseconds 10000 --search-max-degree-of-parallelism-for-test 1 --measure-search-phases --timeout-seconds 120 --performance-preset-for-test Low --expected-initial-projected-battle-hp-lost 0 --expected-initial-combat-ended-turn 2 --expected-initial-final-enemy-hp-at-most 0 --verify-incremental-search --expected-unexpected-replans-at-most 0 --cleanup-instance-on-exit
+./tools/run-unattended-test.sh --scenario-id LOOP-BOUNDARY-BLOOD-LOW-HP --character-id SILENT --encounter-id FUZZY_WURM_CRAWLER_WEAK --seed LOOPBLOODPOMMELQUALITY0111 --enemy-current-hp 40 --initial-enemy-move-ids-json '["INHALE"]' --initial-player-hp 4 --initial-player-max-hp 57 --initial-player-energy 0 --clear-run-deck --clear-player-piles --clear-all-powers --cards-json '[{"cardId": "BLOODLETTING", "pile": "Hand", "treatAsDeckCard": true}, {"cardId": "POMMEL_STRIKE", "pile": "Hand", "count": 2, "upgradeLevels": 1, "treatAsDeckCard": true}]' --force-short-search-only --short-search-budget-override-milliseconds 10000 --search-max-degree-of-parallelism-for-test 1 --measure-search-phases --stop-after-initial-solver-result-assertion --timeout-seconds 120 --performance-preset-for-test Low --expected-initial-projected-battle-hp-lost 3 --expected-initial-combat-ended-turn 2 --expected-initial-final-enemy-hp-at-most 0 --cleanup-instance-on-exit
+```
+
+## 下一版本（开发中）：循环验证（2026-09-21）
+
+- [循环报告及逐次数据](performance/loop-optimization-20260921.md)：2000 HP、1200 动作 A/B 路线逐字段相同，零损 T1；最终 DOP1/DOP2 6 展开/1206 转移一致，最大父节点并发 2。分支根关闭早停时 101/256 一致，动作并发 2；仅调度计数、lane 局部缓存条目数不同。
+- `LOOP-DEFENSIVE-VALUE` / `50cfafd5acc642508e18840ab459f69a` Passed：100→200 格挡饱和、Barricade 原生保留、固定保留上限、BansheesCry 历史读者门控。Release 0 警告/0 错误，Bash/PowerShell 两端结构门禁均通过（search_files=206）。
+- `LoopDisplayChecks`：122505 断言通过。`UI-LOCALIZATION` / `275d2dcafd214c62b675f5832a11993d` Passed；`ROUTE-ROW-REUSE` / `5ec0d3f0b90c450b8c43a87b0cdaee25` Passed。41 动作折叠、额外重放与末击后缀、循环高亮、失败重试、完整显示身份复用、中英简繁及订阅释放通过；未做可见排版验收。
+- `LOOP-REPLAY-DEPLOY` / `d4867a3cb9154340a85fe848d1139a56` Passed：40 HP、24 动作、零战损 T1、严格增量/全前缀核对、原生部署、0 非预期重算。严格回放的时间不用于性能表。
+- 新 `generic-loop-bloodletting-no-postcombat-heal-quality.json` 排除燃烧之血战后回血干扰，A/B 675/1820、3 HP/T2，完整路线相同；原生 `41f101db99fa4f8fb9a55bd6494cc456` 同断言 Passed。旧铁甲战士夹具仍会给 6 HP/T1（战后补满），不能将旧 3 HP 断言误报为通过。
+- 50 万 HP 成长循环按 Low 60000 节点、RequireAtLeastOne 对照：两侧 10555/22248、零损 T1、完整路线相同。6000 节点的早期内环两侧都失败，只说明该预算不足。
+
 
 ## 0.43.3：余像路线与战后掉药预测
 

@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "LOOP-DEFENSE-THORNS-RESERVE",
+  "description": "End-turn projection omits retaliation while playing attacks. Two blocks must survive defensive saturation to absorb 2 x 4 thorns before the T1 kill.",
+  "characterId": "SILENT",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "LOOPLETTEROPENERPHASE0111",
+  "enemyCurrentHp": 12,
+  "initialPlayerHp": 80,
+  "initialPlayerMaxHp": 80,
+  "initialPlayerEnergy": 4,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    {
+      "cardId": "DEFEND_IRONCLAD",
+      "pile": "Hand",
+      "count": 2
+    },
+    {
+      "cardId": "STRIKE_IRONCLAD",
+      "pile": "Hand",
+      "count": 2
+    }
+  ],
+  "relics": [],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 10000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "stopAfterInitialSolverResultAssertion": false,
+  "timeoutSeconds": 120,
+  "performancePresetForTest": "Low",
+  "expectedInitialProjectedBattleHpLost": 0,
+  "expectedInitialCombatEndedTurn": 1,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "verifyIncrementalSearch": true,
+  "expectedUnexpectedReplansAtMost": 0,
+  "powers": [
+    {
+      "powerId": "THORNS_POWER",
+      "target": "Enemy",
+      "amount": 4
+    }
+  ]
+}

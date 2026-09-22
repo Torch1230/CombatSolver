@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "LOOP-BOUNDARY-LETTER-REPLAY-CAP",
+  "description": "4320 real plays exceed the per-Solve 4096 extra-action cap; ordinary search must finish.",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "LOOPLETTEROPENERPHASE0111",
+  "enemyCurrentHp": 10,
+  "initialPlayerHp": 80,
+  "initialPlayerMaxHp": 80,
+  "initialPlayerEnergy": 0,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    {
+      "cardId": "IMPATIENCE",
+      "pile": "Hand"
+    },
+    {
+      "cardId": "IMPATIENCE",
+      "pile": "Discard"
+    }
+  ],
+  "relics": [
+    {
+      "relicId": "LETTER_OPENER"
+    }
+  ],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 10000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120,
+  "initialEnemyMaxHps": [
+    7200
+  ],
+  "initialEnemyCurrentHps": [
+    7200
+  ],
+  "performancePresetForTest": "Low"
+}

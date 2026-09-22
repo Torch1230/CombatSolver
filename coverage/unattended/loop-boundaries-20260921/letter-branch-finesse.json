@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "LOOP-BOUNDARY-LETTER-BRANCH-FINESSE",
+  "description": "A distinct playable skill prevents singleton acceleration; ordinary alternatives remain.",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "LOOPLETTEROPENERPHASE0111",
+  "enemyCurrentHp": 61,
+  "initialPlayerHp": 80,
+  "initialPlayerMaxHp": 80,
+  "initialPlayerEnergy": 0,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    {
+      "cardId": "IMPATIENCE",
+      "pile": "Hand"
+    },
+    {
+      "cardId": "FINESSE",
+      "pile": "Hand"
+    },
+    {
+      "cardId": "IMPATIENCE",
+      "pile": "Discard"
+    }
+  ],
+  "relics": [
+    {
+      "relicId": "LETTER_OPENER"
+    }
+  ],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 10000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "stopAfterInitialSolverResultAssertion": false,
+  "timeoutSeconds": 120,
+  "performancePresetForTest": "Low",
+  "initialEnemyMaxHps": [
+    61
+  ],
+  "initialEnemyCurrentHps": [
+    61
+  ],
+  "expectedInitialProjectedBattleHpLost": 0,
+  "expectedInitialCombatEndedTurn": 1,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "verifyIncrementalSearch": true,
+  "expectedUnexpectedReplansAtMost": 0
+}

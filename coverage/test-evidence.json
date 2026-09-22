@@ -1,4 +1,45 @@
 {
+  "LOOP-GROUP-DISPLAY-20260921": {
+    "status": "Passed",
+    "level": "HeadlessNativeUiContract",
+    "procedure": "Release；UI-LOCALIZATION 中英文简繁原生宽窄往返、折叠部署；ROUTE-ROW-REUSE",
+    "expected": "循环次数及周期内全部操作共用外框，内部换行且不溢出，实际动作索引与末击后缀保持，复用及语言订阅不退化",
+    "observed": "UI=ffaa5652dcfe42e89eea9e7cbd10e789；row=254c96d24a6d45eb9031971398696611，均Passed、实例已清理。41动作显示2个外层控件，6个原始索引高亮及宽窄宽包围检查通过。非循环16动作行两组64次复用0.2099/0.1784ms、各48B；不代表循环构造或可见性能。每循环比旧标签多2容器，无逐帧轮询，未做可见Steam验收。",
+    "evidence": "docs/TEST_MATRIX.md; src/Testing/UnattendedTestRunner.UiLocalization.cs; src/Testing/UnattendedTestRunner.RouteRowReuse.cs"
+  },
+  "LOOP-FINAL-20260921": {
+    "status": "PassedWithDocumentedBoundaries",
+    "level": "28FixedOfflineABAnd4NativeContracts",
+    "procedure": "串行28组/26个根A/B、定向ABBA、DOP2；请求预算与历史依赖原生合同；两种反伤必要格挡完整部署；Release与两端门禁、Python10项",
+    "expected": "质量无退步；实际多solver共享4096；未来读者与消耗堆不误合并；时间截断不计为性能收益",
+    "observed": "23根完整路线/质量相同、5根改善（其中2根旧版未击杀）。cap固定节点60秒窗口ABBA耗时-55.9%、分配-70.0%；4095成功边界+3.9%/+1.1%。20秒cap ABBA一份time切层，整组Inconclusive保留。4个最终原生场景Passed，部署0计划外重算，实例已清理。历史EQ10/FULL40与可见Steam未验证。",
+    "evidence": "docs/performance/loop-final-20260921.md; docs/performance/loop-final-20260921-evidence.json; coverage/unattended/loop-final-20260921/suite.json",
+    "integration": "上游8826a333合并后Release零警告/错误、两端门禁207；UI本地化及反伤格挡原生部署Passed，实例已清理；cap和多solver两组与合并前完整根/路线/质量Equivalent。"
+  },
+  "LOOP-BUDGET-AUDIT-20260921": {
+    "status": "Passed",
+    "level": "BudgetTelemetryAndOfflineClassification",
+    "procedure": "Release；8项Python分类合同；正常cap和finisher A/B；缩短预算主动时间切层；估算余量反例；Coordinator模式拒绝",
+    "expected": "时间切层与可比较差异分开；time+nodes=局部切层总数；保留失败观察；不按保守估算拒绝可成功的回放",
+    "observed": "正常2根Equivalent；2000ms两侧各time=3/node=0，未击杀、26HP观察保留，退出2 Inconclusive；6835HP为6展开/4107转移、4095回放、零损T1而估算4101。历史ABBA四份日志均time=0/node=1，旧+11.3%/+14.9%仅样本值、不是下界。8项合同通过，Release 0 warning/0 error。准入与请求级额度未改，已有性能反例仍存在。",
+    "evidence": "docs/performance/loop-boundaries-20260921.md; docs/performance/loop-budget-audit-20260921-evidence.json; tools/OfflineSearchHarness/test_loop_boundaries.py; coverage/unattended/generic-loop-replay-estimate-margin.json"
+  },
+  "LOOP-BOUNDARIES-AUDIT-20260921": {
+    "status": "PassedWithDocumentedPerformanceRegression",
+    "level": "19FixedOfflineABAnd4NativeScenarios",
+    "procedure": "独立串行 A/B，完整根/路线比较及显式质量检查；4096耗尽另取ABBA；三项严格增量原生完整部署，一项低血首次结果断言",
+    "expected": "固定场景无质量下降；保留差异、失败和性能反例，不将离线一致冒充原生正确性",
+    "observed": "19/19胜负与质量指标一致；18/19路线相同，1同质量异路线。耗尽反例展开/转移4675/9375→4675/13471，求解+11.3%，Search累计分配+14.9%，采样活对象峰值-18.6%。原生4项Passed、实例已清理；完整部署3项计划外重算0。未完成历史EQ10/FULL40与投影低估防守哨兵。 追加分支早停DOP2：基线166/431→169/437，候选139/359→142/367，均同质量异路线，不能宣称普遍DOP等价。",
+    "evidence": "docs/performance/loop-boundaries-20260921.md; docs/performance/loop-boundaries-20260921-evidence.json; coverage/unattended/loop-boundaries-20260921/suite.json"
+  },
+  "LOOP-QUALITY-PERFORMANCE-DISPLAY-20260921": {
+    "status": "Passed",
+    "level": "TargetedHeadlessNativeAndOfflineABBA",
+    "procedure": "固定循环根 ABBA；无战后回血卖血与成长哨兵完整路线对照；DOP1/2；严格增量与原生部署；格挡饱和和有界保留；UI折叠索引及语言/复用",
+    "expected": "不改变测量根的最终路线与质量；逐张真实模拟；不隐藏替代出牌；无非预期重算；实际动作索引保持",
+    "observed": "1200动作同路线，1200→6展开，2400→1206转移；wall -42.4%, Search allocation -64.8%, sampled managed live peak -35.0%。卖血675/1820和成长10555/22248逐字段路线/工作量一致。defense-final=50cfafd5acc642508e18840ab459f69a; native-blood-no-heal=41f101db99fa4f8fb9a55bd6494cc456; native-loop-deploy=d4867a3cb9154340a85fe848d1139a56; UI-LOCALIZATION=275d2dcafd214c62b675f5832a11993d; row-reuse-final=5ec0d3f0b90c450b8c43a87b0cdaee25。纯显示122505断言；两端结构门禁206；Release零警告零错误。无可见Steam验收，不能证明所有未测根的质量。",
+    "evidence": "docs/performance/loop-optimization-20260921.md; docs/performance/loop-optimization-20260921-evidence.json; coverage/unattended/generic-loop-bloodletting-no-postcombat-heal-quality.json"
+  },
   "POWER-CARD-VALUATION-ALL-POOLS": {
     "status": "Passed",
     "level": "PureContractAndHeadlessShortSearch",

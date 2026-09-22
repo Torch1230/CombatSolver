@@ -66,14 +66,15 @@ internal static class PersistentRelicSupport
         AbstractModel? preventer,
         Creature creature)
     {
-        if (preventer is not SturdyClamp clamp
-            || !ReferenceEquals(clamp.Owner.Creature, creature))
-        {
-            return;
-        }
-
         SimCreatureState state = simulator.State.GetCreature(creature);
-        if (state.Block > clamp.DynamicVars.Block.IntValue)
-            state.DamageBlock(state.Block - clamp.DynamicVars.Block.IntValue, ValueProp.Unpowered);
+        int retained = BlockAfterPreventingClear(preventer, creature, state.Block);
+        if (retained < state.Block)
+            state.DamageBlock(state.Block - retained, ValueProp.Unpowered);
     }
+    // Shared pure projection of the existing clear-prevention settlement, including capped retention.
+    public static int BlockAfterPreventingClear(AbstractModel? preventer, Creature creature, int block)
+        => preventer is SturdyClamp clamp && ReferenceEquals(clamp.Owner.Creature, creature)
+            ? Math.Min(block, clamp.DynamicVars.Block.IntValue)
+            : block;
+
 }

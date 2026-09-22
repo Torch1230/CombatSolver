@@ -897,7 +897,10 @@ internal static class SolverOverlay
         if (_summaryText != null)
         {
             _summaryText.Visible = true;
-            _summaryText.Text = SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.SummaryText);
+            _summaryText.Text = SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.SummaryText)
+                + (snapshot.Turns.Count > SolverWeights.UiTurnRows
+                    ? "\n" + SolverText.Format($"另有 {snapshot.Turns.Count - SolverWeights.UiTurnRows} 回合未展开显示")
+                    : string.Empty);
         }
         if (_progressText != null)
             _progressText.Visible = false;

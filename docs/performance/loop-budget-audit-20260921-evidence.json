@@ -1,0 +1,386 @@
+{
+  "baselineCommit": "3f4002bd with shared fixed-fixture adapter",
+  "preChangeCommit": "b3ed8c11",
+  "change": "Split local time/node stop telemetry and classify wall-clock-limited comparisons; no replay admission change",
+  "unitTests": {
+    "command": "python3 -m unittest discover -s tools/OfflineSearchHarness -p test_loop_boundaries.py -v",
+    "passed": 8
+  },
+  "releaseBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "normal": {
+    "mode": "offline-observation",
+    "searchMode": "Evaluate",
+    "replayBudgetScope": "solver",
+    "dop": 1,
+    "cases": [
+      {
+        "name": "letter-replay-cap",
+        "valid": true,
+        "runs": [
+          {
+            "label": "A1",
+            "searchMode": "Evaluate",
+            "metrics": {
+              "TotalExpanded": 4675,
+              "TotalTransitions": 9375,
+              "TotalChoiceBranches": 0,
+              "ProjectedBattleHpLost": 4,
+              "FinalHp": 76,
+              "FinalEnemyHp": 0,
+              "CombatEndedTurn": 2,
+              "PotionCount": 0,
+              "Score": 10002155679,
+              "OnlyDeathRoutes": false,
+              "Boundary": 0,
+              "TotalElapsedMilliseconds": 4676.7495,
+              "TotalWorkerAllocatedBytes": 516659176,
+              "CycleReplayAttempts": null,
+              "CycleReplayActions": null,
+              "CycleReplayVictories": null,
+              "TurnLayerBudgetStops": null,
+              "TurnLayerTimeBudgetStops": null,
+              "TurnLayerNodeBudgetStops": null
+            },
+            "wallSeconds": 4.8725084,
+            "peakManagedHeapBytes": 162059040,
+            "peakManagedLiveBytes": 149606936,
+            "peakWorkingSetBytes": 386539520,
+            "totalAllocatedBytes": 770385792,
+            "fixtureCheckFailures": [],
+            "budgetObservation": {
+              "scope": "solver",
+              "source": "diagnosticLog",
+              "turnLayerTimeStops": 0,
+              "turnLayerNodeStops": 1,
+              "timeBoundaryObserved": false,
+              "diagnosticIssues": []
+            },
+            "status": "Comparable",
+            "valid": true,
+            "routeActions": 4321,
+            "routeSha256": "e04d2b34dc7c82c8ce4d3f1c2fcfc0f761a148ce6ceaed75298abec897e60e5c"
+          },
+          {
+            "label": "B1",
+            "searchMode": "Evaluate",
+            "metrics": {
+              "TotalExpanded": 4675,
+              "TotalTransitions": 13471,
+              "TotalChoiceBranches": 0,
+              "ProjectedBattleHpLost": 4,
+              "FinalHp": 76,
+              "FinalEnemyHp": 0,
+              "CombatEndedTurn": 2,
+              "PotionCount": 0,
+              "Score": 10002155679,
+              "OnlyDeathRoutes": false,
+              "Boundary": 0,
+              "TotalElapsedMilliseconds": 4999.8763,
+              "TotalWorkerAllocatedBytes": 593141120,
+              "CycleReplayAttempts": 1,
+              "CycleReplayActions": 4096,
+              "CycleReplayVictories": 0,
+              "TurnLayerBudgetStops": 1,
+              "TurnLayerTimeBudgetStops": 0,
+              "TurnLayerNodeBudgetStops": 1
+            },
+            "wallSeconds": 5.2126585,
+            "peakManagedHeapBytes": 149561112,
+            "peakManagedLiveBytes": 103894704,
+            "peakWorkingSetBytes": 369209344,
+            "totalAllocatedBytes": 847009872,
+            "fixtureCheckFailures": [],
+            "budgetObservation": {
+              "scope": "solver",
+              "source": "solverMetrics",
+              "turnLayerTimeStops": 0,
+              "turnLayerNodeStops": 1,
+              "timeBoundaryObserved": false,
+              "diagnosticIssues": []
+            },
+            "status": "Comparable",
+            "valid": true,
+            "routeActions": 4321,
+            "routeSha256": "e04d2b34dc7c82c8ce4d3f1c2fcfc0f761a148ce6ceaed75298abec897e60e5c"
+          }
+        ],
+        "sameRoot": true,
+        "sameRoute": true,
+        "sameQualityMetrics": true,
+        "status": "Equivalent"
+      },
+      {
+        "name": "finisher-drawn",
+        "valid": true,
+        "runs": [
+          {
+            "label": "A1",
+            "searchMode": "Evaluate",
+            "metrics": {
+              "TotalExpanded": 12,
+              "TotalTransitions": 24,
+              "TotalChoiceBranches": 0,
+              "ProjectedBattleHpLost": 0,
+              "FinalHp": 80,
+              "FinalEnemyHp": 0,
+              "CombatEndedTurn": 1,
+              "PotionCount": 0,
+              "Score": 10002399988,
+              "OnlyDeathRoutes": false,
+              "Boundary": 0,
+              "TotalElapsedMilliseconds": 366.9174,
+              "TotalWorkerAllocatedBytes": 4430728,
+              "CycleReplayAttempts": null,
+              "CycleReplayActions": null,
+              "CycleReplayVictories": null,
+              "TurnLayerBudgetStops": null,
+              "TurnLayerTimeBudgetStops": null,
+              "TurnLayerNodeBudgetStops": null
+            },
+            "wallSeconds": 0.5760099,
+            "peakManagedHeapBytes": 19400576,
+            "peakManagedLiveBytes": 24242408,
+            "peakWorkingSetBytes": 218173440,
+            "totalAllocatedBytes": 247073168,
+            "fixtureCheckFailures": [],
+            "budgetObservation": {
+              "scope": "solver",
+              "source": "diagnosticLog",
+              "turnLayerTimeStops": 0,
+              "turnLayerNodeStops": 0,
+              "timeBoundaryObserved": false,
+              "diagnosticIssues": []
+            },
+            "status": "Comparable",
+            "valid": true,
+            "routeActions": 12,
+            "routeSha256": "8fdfd3c6c0ea4d93941701f74d2806c69bb268a3970600ed020646b62cf2d099"
+          },
+          {
+            "label": "B1",
+            "searchMode": "Evaluate",
+            "metrics": {
+              "TotalExpanded": 4,
+              "TotalTransitions": 16,
+              "TotalChoiceBranches": 0,
+              "ProjectedBattleHpLost": 0,
+              "FinalHp": 80,
+              "FinalEnemyHp": 0,
+              "CombatEndedTurn": 1,
+              "PotionCount": 0,
+              "Score": 10002399988,
+              "OnlyDeathRoutes": false,
+              "Boundary": 0,
+              "TotalElapsedMilliseconds": 372.2009,
+              "TotalWorkerAllocatedBytes": 3949120,
+              "CycleReplayAttempts": 1,
+              "CycleReplayActions": 8,
+              "CycleReplayVictories": 1,
+              "TurnLayerBudgetStops": 0,
+              "TurnLayerTimeBudgetStops": 0,
+              "TurnLayerNodeBudgetStops": 0
+            },
+            "wallSeconds": 0.5821156,
+            "peakManagedHeapBytes": 19338816,
+            "peakManagedLiveBytes": 25414576,
+            "peakWorkingSetBytes": 217710592,
+            "totalAllocatedBytes": 246681360,
+            "fixtureCheckFailures": [],
+            "budgetObservation": {
+              "scope": "solver",
+              "source": "solverMetrics",
+              "turnLayerTimeStops": 0,
+              "turnLayerNodeStops": 0,
+              "timeBoundaryObserved": false,
+              "diagnosticIssues": []
+            },
+            "status": "Comparable",
+            "valid": true,
+            "routeActions": 12,
+            "routeSha256": "8fdfd3c6c0ea4d93941701f74d2806c69bb268a3970600ed020646b62cf2d099"
+          }
+        ],
+        "sameRoot": true,
+        "sameRoute": true,
+        "sameQualityMetrics": true,
+        "status": "Equivalent"
+      }
+    ]
+  },
+  "time-pressure": {
+    "mode": "offline-observation",
+    "searchMode": "Evaluate",
+    "replayBudgetScope": "solver",
+    "dop": 1,
+    "cases": [
+      {
+        "name": "letter-replay-cap",
+        "valid": false,
+        "runs": [
+          {
+            "label": "A1",
+            "searchMode": "Evaluate",
+            "metrics": {
+              "TotalExpanded": 2573,
+              "TotalTransitions": 5206,
+              "TotalChoiceBranches": 0,
+              "ProjectedBattleHpLost": 26,
+              "FinalHp": 54,
+              "FinalEnemyHp": 4715,
+              "CombatEndedTurn": null,
+              "PotionCount": 0,
+              "Score": -46311495,
+              "OnlyDeathRoutes": false,
+              "Boundary": 9,
+              "TotalElapsedMilliseconds": 2389.1097,
+              "TotalWorkerAllocatedBytes": 247116664,
+              "CycleReplayAttempts": null,
+              "CycleReplayActions": null,
+              "CycleReplayVictories": null,
+              "TurnLayerBudgetStops": null,
+              "TurnLayerTimeBudgetStops": null,
+              "TurnLayerNodeBudgetStops": null
+            },
+            "wallSeconds": 2.5997679,
+            "peakManagedHeapBytes": 51961920,
+            "peakManagedLiveBytes": 49931520,
+            "peakWorkingSetBytes": 259608576,
+            "totalAllocatedBytes": 494791672,
+            "fixtureCheckFailures": [
+              "surviving victory",
+              "ProjectedBattleHpLost"
+            ],
+            "budgetObservation": {
+              "scope": "solver",
+              "source": "diagnosticLog",
+              "turnLayerTimeStops": 3,
+              "turnLayerNodeStops": 0,
+              "timeBoundaryObserved": true,
+              "diagnosticIssues": []
+            },
+            "status": "TimeLimited",
+            "valid": false,
+            "routeActions": 1495,
+            "routeSha256": "5aaf36a18ac05476a3609ea71f6d09fe6df5938b334b1dbb5e61186e1504b7d6"
+          },
+          {
+            "label": "B1",
+            "searchMode": "Evaluate",
+            "metrics": {
+              "TotalExpanded": 1245,
+              "TotalTransitions": 6633,
+              "TotalChoiceBranches": 0,
+              "ProjectedBattleHpLost": 26,
+              "FinalHp": 54,
+              "FinalEnemyHp": 6350,
+              "CombatEndedTurn": null,
+              "PotionCount": 0,
+              "Score": -62660514,
+              "OnlyDeathRoutes": false,
+              "Boundary": 9,
+              "TotalElapsedMilliseconds": 2180.696,
+              "TotalWorkerAllocatedBytes": 188776904,
+              "CycleReplayAttempts": 1,
+              "CycleReplayActions": 4096,
+              "CycleReplayVictories": 0,
+              "TurnLayerBudgetStops": 3,
+              "TurnLayerTimeBudgetStops": 3,
+              "TurnLayerNodeBudgetStops": 0
+            },
+            "wallSeconds": 2.3941813,
+            "peakManagedHeapBytes": 36896072,
+            "peakManagedLiveBytes": 41386448,
+            "peakWorkingSetBytes": 243666944,
+            "totalAllocatedBytes": 433647768,
+            "fixtureCheckFailures": [
+              "surviving victory",
+              "ProjectedBattleHpLost"
+            ],
+            "budgetObservation": {
+              "scope": "solver",
+              "source": "solverMetrics",
+              "turnLayerTimeStops": 3,
+              "turnLayerNodeStops": 0,
+              "timeBoundaryObserved": true,
+              "diagnosticIssues": []
+            },
+            "status": "TimeLimited",
+            "valid": false,
+            "routeActions": 514,
+            "routeSha256": "5a3160c4482731d797594bfe6a2bab000fb6d954d52c907fcf9ae6f35e9f0344"
+          }
+        ],
+        "sameRoot": true,
+        "sameRoute": false,
+        "sameQualityMetrics": false,
+        "status": "Inconclusive"
+      }
+    ]
+  },
+  "estimateMargin": {
+    "root": "turn=1 round=1 phase=Play side=Player energy=0 hp=80/80 hand=[IMPATIENCE] draw=0 discard=1 relics=[BURNING_BLOOD,LETTER_OPENER] enemies=[FUZZY_WURM_CRAWLER#1:6835/6835@FIRST_ACID_GOOP] total_floor=1 act_floor=0",
+    "expectedAndObserved": {
+      "TotalExpanded": 6,
+      "TotalTransitions": 4107,
+      "CycleReplayActions": 4095,
+      "CycleReplayAttempts": 1,
+      "CycleReplayVictories": 1,
+      "ProjectedBattleHpLost": 0,
+      "CombatEndedTurn": 1,
+      "FinalEnemyHp": 0,
+      "TurnLayerTimeBudgetStops": 0,
+      "TurnLayerNodeBudgetStops": 0
+    },
+    "estimatedActions": 4101,
+    "actualExtraActions": 4095,
+    "limit": 4096,
+    "mode": "OfflineEvaluate; native expected assertions not executed"
+  },
+  "historicalAbbaBudgetReview": [
+    {
+      "label": "A1",
+      "scope": "solver",
+      "source": "diagnosticLog",
+      "turnLayerTimeStops": 0,
+      "turnLayerNodeStops": 1,
+      "timeBoundaryObserved": false,
+      "diagnosticIssues": []
+    },
+    {
+      "label": "B1",
+      "scope": "solver",
+      "source": "diagnosticLog",
+      "turnLayerTimeStops": 0,
+      "turnLayerNodeStops": 1,
+      "timeBoundaryObserved": false,
+      "diagnosticIssues": []
+    },
+    {
+      "label": "B2",
+      "scope": "solver",
+      "source": "diagnosticLog",
+      "turnLayerTimeStops": 0,
+      "turnLayerNodeStops": 1,
+      "timeBoundaryObserved": false,
+      "diagnosticIssues": []
+    },
+    {
+      "label": "A2",
+      "scope": "solver",
+      "source": "diagnosticLog",
+      "turnLayerTimeStops": 0,
+      "turnLayerNodeStops": 1,
+      "timeBoundaryObserved": false,
+      "diagnosticIssues": []
+    }
+  ],
+  "scopeRejection": {
+    "requested": "Coordinator",
+    "exitCode": 2,
+    "processesStarted": 0,
+    "reason": "run_loop_boundaries.py: error: This suite supports Evaluate only; 4096 is not a Coordinator request cap"
+  }
+}

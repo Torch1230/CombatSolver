@@ -16,6 +16,67 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
+    private async Task AssertLoopDisplayAsync(bool english)
+    {
+        SolverOverlayActionSnapshot a = SolverOverlaySnapshot.CaptureAction(
+            new PlanAction(PlanActionKind.PlayCard, 1, CardId: "IMPATIENCE"), []);
+        SolverOverlayActionSnapshot b = SolverOverlaySnapshot.CaptureAction(
+            new PlanAction(PlanActionKind.PlayCard, 1, CardId: "FINESSE", ReplayCount: 2), []);
+        SolverOverlayTurnSnapshot turn = new(1, [],
+            Enumerable.Range(0, 40).Select(i => i % 2 == 0 ? a : b)
+                .Append(a with { Kills = ["Enemy"] }).ToArray(), null, 5, 0, 0, 0, true);
+        SolverRouteRow row = new(0);
+        _host.AddChild(row);
+        try
+        {
+            row.Populate(turn);
+            if (row.DeploymentActionCount != 41 || row.ActionFlow.GetChildCount() != 2)
+                throw new InvalidOperationException("Loop folding lost executable indexes or kill suffix.");
+            var group = (Control)row.ActionFlow.GetChild(0);
+            var content = group.GetChild<VBoxContainer>(0);
+            var actions = content.GetChild<HFlowContainer>(1);
+            if (actions.GetChildCount() != 2 || content.GetChild<Label>(0).Text != (english ? "Loop ×20" : "循环 ×20"))
+                throw new InvalidOperationException("Loop badge localization failed.");
+            foreach (int index in new[] { 0, 1, 2, 37, 38, 39 })
+            {
+                row.SetDeploymentProgress(index, index);
+                if (((CanvasItem)actions.GetChild(index % 2)).Modulate
+                    != SolverUiTokens.Palette.ActiveActionModulate)
+                    throw new InvalidOperationException("Repeated action highlight lost its modulo mapping.");
+            }
+            row.SetDeploymentProgress(40, 40);
+            if (((CanvasItem)actions.GetChild(0)).Modulate != SolverUiTokens.Palette.CompletedActionModulate
+                || ((CanvasItem)actions.GetChild(1)).Modulate != SolverUiTokens.Palette.CompletedActionModulate
+                || ((CanvasItem)row.ActionFlow.GetChild(1)).Modulate != SolverUiTokens.Palette.ActiveActionModulate)
+                throw new InvalidOperationException("Loop completion or suffix highlight failed.");
+            row.SetDeploymentProgress(41, null);
+            ulong id = row.ActionFlow.GetChild(0).GetInstanceId();
+            row.Populate(turn with { Actions = turn.Actions.ToArray() });
+            if (id != row.ActionFlow.GetChild(0).GetInstanceId()
+                || actions.GetChildren().Cast<CanvasItem>().Any(pill => pill.Modulate != Colors.White))
+                throw new InvalidOperationException("Folded row reuse failed.");
+            // Exercise wide -> narrow -> wide on live Godot containers: the enclosing
+            // frame must resize with the flow, without separating the count or clipping actions.
+            foreach (bool narrow in new[] { false, true, false })
+            {
+                row.Size = new Vector2(narrow ? row.GetCombinedMinimumSize().X : 1400, 0);
+                for (int frame = 0; frame < 6; frame++)
+                    await _host.ToSignal(_host.GetTree(), SceneTree.SignalName.ProcessFrame);
+                Control first = actions.GetChild<Control>(0);
+                Control second = actions.GetChild<Control>(1);
+                bool wrapped = second.Position.Y > first.Position.Y;
+                if (wrapped != narrow
+                    || !group.GetGlobalRect().Encloses(first.GetGlobalRect())
+                    || !group.GetGlobalRect().Encloses(second.GetGlobalRect())
+                    || !group.GetGlobalRect().Encloses(content.GetChild<Label>(0).GetGlobalRect())
+                    || group.Size.X > row.ActionFlow.Size.X + 1)
+                    throw new InvalidOperationException($"Loop group layout failed: narrow={narrow}, wrapped={wrapped}, group={group.Size}, flow={row.ActionFlow.Size}.");
+            }
+            _completedChecks.Add($"LoopDisplay:{(english ? "eng" : "zh")}:41Actions:2OuterControls:EnclosedPeriod:WideNarrowWide:ReplayCount:KillSuffix:Deployment:Reuse");
+        }
+        finally { row.Free(); }
+    }
+
     private async Task AssertUiLocalizationAsync(CombatState combat)
     {
         using Stream stream = typeof(SolverText).Assembly.GetManifestResourceStream("CombatSolver.UI.English.json")!;
@@ -67,6 +128,7 @@ internal sealed partial class UnattendedTestRunner
                 _completedChecks.Add($"StrategyOutcome:{target}:AlignedAndUnmet:GrowthCounts:PartialRoute:EmptyHidden");
                 await AssertActionAnnotationLocalizationAsync(combat, english);
                 AssertLiveTurnStartChoicePreview(english);
+                await AssertLoopDisplayAsync(english);
                 foreach ((string source, string translated) in catalog)
                 {
                     if (SolverText.Get(source) != (english ? translated : source))

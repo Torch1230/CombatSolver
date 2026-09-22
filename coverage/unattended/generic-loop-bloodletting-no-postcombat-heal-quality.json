@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "LOOP-BLOOD-QUALITY-NO-POSTCOMBAT-HEAL",
+  "description": "HP-cost sentinel without Burning Blood: preserve the lower-loss second-turn exit over the immediate paid loop.",
+  "characterId": "SILENT",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "LOOPBLOODPOMMELQUALITY0111",
+  "enemyCurrentHp": 40,
+  "initialEnemyMoveIds": [
+    "INHALE"
+  ],
+  "initialPlayerHp": 57,
+  "initialPlayerMaxHp": 57,
+  "initialPlayerEnergy": 0,
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    {
+      "cardId": "BLOODLETTING",
+      "pile": "Hand",
+      "treatAsDeckCard": true
+    },
+    {
+      "cardId": "POMMEL_STRIKE",
+      "pile": "Hand",
+      "count": 2,
+      "upgradeLevels": 1,
+      "treatAsDeckCard": true
+    }
+  ],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 5000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "expectedInitialCycleShapesDetectedAtLeast": 1,
+  "expectedInitialShufflesCrossedAtLeast": 1,
+  "expectedInitialProjectedBattleHpLost": 3,
+  "expectedInitialCombatEndedTurn": 2,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120
+}

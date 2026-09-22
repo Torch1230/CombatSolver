@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "LOOP-REPLAY-ESTIMATE-MARGIN",
+  "description": "The conservative period estimate exceeds 4096 but the real singleton continuation wins within 4095 extra actions; an estimate is not an impossibility proof.",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "LOOPLETTEROPENERPHASE0111",
+  "enemyCurrentHp": 10,
+  "initialPlayerHp": 80,
+  "initialPlayerMaxHp": 80,
+  "initialPlayerEnergy": 0,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    {
+      "cardId": "IMPATIENCE",
+      "pile": "Hand"
+    },
+    {
+      "cardId": "IMPATIENCE",
+      "pile": "Discard"
+    }
+  ],
+  "relics": [
+    {
+      "relicId": "LETTER_OPENER"
+    }
+  ],
+  "forceShortSearchOnly": true,
+  "shortSearchBudgetOverrideMilliseconds": 10000,
+  "searchMaxDegreeOfParallelismForTest": 1,
+  "measureSearchPhases": true,
+  "stopAfterInitialSolverResultAssertion": true,
+  "timeoutSeconds": 120,
+  "initialEnemyMaxHps": [
+    6835
+  ],
+  "initialEnemyCurrentHps": [
+    6835
+  ],
+  "performancePresetForTest": "Low",
+  "expectedInitialProjectedBattleHpLost": 0,
+  "expectedInitialCombatEndedTurn": 1,
+  "expectedInitialFinalEnemyHpAtMost": 0
+}

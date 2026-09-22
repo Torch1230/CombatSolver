@@ -749,6 +749,19 @@ internal sealed partial class CombatBeamSolver
                 CycleProbeContinuationsExpanded = _run.CycleProbeContinuationsExpanded,
                 CycleCandidatesProtected = _run.CycleCandidatesProtected,
                 CycleContinuationsStopped = _run.CycleContinuationsStopped,
+                CycleReplayAttempts = _run.CycleReplayAttempts,
+                CycleReplayActions = _run.CycleReplayActions,
+                TotalCycleReplayActions = _run.CycleReplayActions,
+                CycleReplayVictories = _run.CycleReplayVictories,
+                CycleReplayContinuations = _run.CycleReplayContinuations,
+                CycleStoppedUnproductive = _run.CycleStoppedUnproductive,
+                CycleStoppedRepetitionBudget = _run.CycleStoppedRepetitionBudget,
+                CycleStoppedFamilyBudget = _run.CycleStoppedFamilyBudget,
+                CycleStoppedExitBudget = _run.CycleStoppedExitBudget,
+                TurnLayerBudgetStops = _run.TurnLayerBudgetStops,
+                TurnLayerTimeBudgetStops = _run.TurnLayerTimeBudgetStops,
+                TurnLayerNodeBudgetStops = _run.TurnLayerNodeBudgetStops,
+
                 CycleRegionsDetected = _run.CycleRegionsDetected,
                 CycleRegionCandidatesConsidered = _run.CycleRegionCandidatesConsidered,
                 CycleRegionCandidatesAdmitted = _run.CycleRegionCandidatesAdmitted,
@@ -1542,6 +1555,10 @@ internal sealed partial class CombatBeamSolver
                         }
                         node.Snapshot.ReleaseSimulator();
                     }
+                    _run.TurnLayerBudgetStops++;
+                    // Match the logged reason when both local quotas are exhausted.
+                    if (turnLayerTimeSpent) _run.TurnLayerTimeBudgetStops++;
+                    else _run.TurnLayerNodeBudgetStops++;
                     policy.Diagnostics.Info(
                         $"[CombatSolver/Test] TURN_LAYER_BUDGET " +
                         $"reason={(turnLayerTimeSpent ? "time" : "nodes")} " +
@@ -1909,6 +1926,19 @@ internal sealed partial class CombatBeamSolver
                         active[activeIndex].Snapshot.ReleaseSimulator();
                     else
                         ReleaseNodeLimitSnapshot(active[activeIndex]);
+                }
+                // All lanes are drained. Probe in canonical child order so early success cannot
+                // consume a different number of already-dispatched parents at different DOPs.
+                if (!acceptableBattleHpLossReached && !memoryNoProgressTruncated)
+                {
+                    int ordinaryCandidateCount = nextPlays.Count;
+                    for (int replayIndex = 0; replayIndex < ordinaryCandidateCount; replayIndex++)
+                    {
+                        SearchNode seed = nextPlays[replayIndex];
+                        if (TryReplayCycle(seed, stopwatch) is not { } replayed) continue;
+                        AcceptExpandedChild(seed, replayed);
+                        if (acceptableBattleHpLossReached) break;
+                    }
                 }
                 if (policy.Act3BossStrategy && searchedTurnLayers == 0 && !acceptableBattleHpLossReached)
                 {

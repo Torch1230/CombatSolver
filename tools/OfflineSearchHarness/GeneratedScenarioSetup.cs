@@ -25,11 +25,11 @@ namespace OfflineSearchHarness;
 internal sealed class GeneratedScenarioSetup
 {
     public UnattendedTestRunner.OfflineScenarioSession Session { get; }
-    public ResolvedGeneratedCombatScenario Resolved { get; }
+    public ResolvedGeneratedCombatScenario? Resolved { get; }
     public UnattendedTestRequest Request => Session.Request;
 
     private GeneratedScenarioSetup(
-        UnattendedTestRunner.OfflineScenarioSession session, ResolvedGeneratedCombatScenario resolved)
+        UnattendedTestRunner.OfflineScenarioSession session, ResolvedGeneratedCombatScenario? resolved)
     {
         Session = session;
         Resolved = resolved;
@@ -52,8 +52,14 @@ internal sealed class GeneratedScenarioSetup
     /// <summary>照 <c>PrepareGeneratedScenario</c>：读规格 → <c>Resolve</c> → <c>Apply</c>，并落盘同名产物。</summary>
     public static GeneratedScenarioSetup Prepare(UnattendedTestRequest request, string evidenceDirectory)
     {
-        string path = request.GeneratedScenarioPath
-            ?? throw new InvalidDataException("请求没有 generatedScenarioPath。");
+        if (request.GeneratedScenarioPath is not { } path)
+        {
+            if (request.ReplayStatePath != null || request.RunSnapshotPath != null
+                || request.AdditionalMonsterIds.Length > 0 || request.ModifierIds.Length > 0)
+                throw new InvalidDataException("离线固定夹具暂不支持快照恢复、追加怪物或自定义规则。");
+            return new GeneratedScenarioSetup(UnattendedTestRunner.OfflineScenarioSession.Create(
+                WithEvidenceDirectory(request, evidenceDirectory)), null);
+        }
         var options = JsonSerializer.Deserialize<GeneratedCombatScenarioOptions>(
             File.ReadAllText(path), GeneratedCombatScenario.JsonOptions)
             ?? throw new InvalidDataException("生成场景配置为空。");
