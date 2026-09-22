@@ -18,6 +18,12 @@ internal static class Program
 
     private static int Main(string[] rawArgs)
     {
+        if (rawArgs.Length == 3 && rawArgs[0] == "--compare-quality-batch")
+            return QualityComparison.Run(rawArgs[1], rawArgs[2]);
+        if (rawArgs.Length == 2 && rawArgs[0] == "--ranking-schema")
+            return RankingChecks.WriteSchema(rawArgs[1]);
+        if (rawArgs.Length == 3 && rawArgs[0] == "--check-ranking")
+            return RankingChecks.Run(rawArgs[1], rawArgs[2]);
         HarnessOptions options;
         try
         {
@@ -76,6 +82,10 @@ internal static class Program
                     return $"character={generated.Request.CharacterId} encounter={generated.Request.EncounterId} "
                         + $"generated={generated.Resolved != null}";
                 });
+                payload["scenario"] = new HarnessScenario(
+                    generated!.Request.CharacterId, generated.Request.EncounterId,
+                    generated.Request.Seed, generated.Request.Ascension,
+                    generated.Request.ActIndexForTest);
                 payload["resolvedScenario"] = generated!.Resolved?.Options;
                 payload["catalogFingerprint"] = generated.Resolved?.CatalogFingerprint;
 
@@ -351,11 +361,25 @@ internal sealed record HarnessOptions
           --memory-no-progress-limit <int>  实验：连续多少次无进展回收后提前收手（0=关闭）
           --transposition-entry-limit <int>  实验：转置支配表合并条目上限（0=不设上限；缺省=生产默认 1000000）
           --stop-at-zero-loss    启用生产零战损达标停止政策
+          --stop-portfolio-at-hp-target  Coordinator：显式开启组合达标早停（缺省沿用生产配置）
+          --disable-portfolio-hp-target-stop  Coordinator 消融：关闭组合达标早停
           --verify-incremental   逐动作完整回放核验（不得用于性能数字）
           --production-budget    使用生产预算流程，允许预算内的无胜利升级；不用于固定节点逐位对照
           --enable-no-gc-region   开 Runtime 的搜索内 No-GC 生命周期（默认关闭）
           --no-gc-region-budget-gigabytes <double>  No-GC 区域预算，单位十进制 GB（默认 1）
           --signal-ballast-mb <int>  进 No-GC scope 后先持有 N MiB 活对象，制造回收腾不出余量的压力
+          --observe-ordering <N> 最多导出 N 个真实剪枝候选；仅供采集，不能用于性能数据
+          --observe-ordering-states <p>  追加观察给定状态键的生成/准入/回合筛选事件
+          --ordering <mode>     Evaluate 实验：baseline|base|band，复用现有排序成员
+          --ranking-model <p>   实验：有界上下文排序修正；只与 baseline 排序同时使用
+          --bounded-offensive-refinement  组合实验：保留原成员，有界追加进攻成员
+          --disable-bounded-offensive-refinement  显式关闭有界追加
+          --offensive-refinement  组合实验：以更窄的进攻排序成员替换宽成员
+          --beam-weight <term:scale>  单项排序敏感度：CurrentEnergy|PersistentBuffDelta|EnemyHp，scale 0..2
+          --continuous-threat  实验：EndTurn 后尚能出牌的新回合起点，连续计价致死意图
+          --base-score-tactical-ties  实验：基础分成员的单进展值同分截线使用既有战术顺序
+          --reallocated-refinement / --disable-reallocated-refinement  显式覆盖默认组合再分配
+          --adaptive-novelty  实验：原Beam组合完成后，以实际工作量的至多1/8追加结构探索
           --observe-portfolio    导出追加搜索的特征与实际政策标签
           --portfolio-model <p>  加载可选选择器 JSON；不匹配的版本回退原组合
           --milestone <M1|M2>    跑到哪个里程碑（默认 M2）
@@ -404,6 +428,18 @@ internal sealed record HarnessOptions
     public double NoGcRegionBudgetGigabytes { get; init; } = 1d;
     /// <summary>进入 No-GC scope 后先持有的活对象 MiB，用于制造“回收腾不出余量”的受控压力。</summary>
     public int SignalBallastMegabytes { get; init; }
+    public int OrderingObservationLimit { get; init; }
+    public string? OrderingWatchedStatesPath { get; init; }
+    public string Ordering { get; init; } = "baseline";
+    public string? RankingModelPath { get; init; }
+    public bool ContinuousThreatRanking { get; init; }
+    public bool BaseScoreTacticalTies { get; init; }
+    public bool AdaptiveNoveltyRefinement { get; init; }
+    public bool? ReallocatedRefinementPortfolio { get; init; }
+    public BeamWeightPerturbation? BeamWeightPerturbation { get; init; }
+    public bool OffensiveRefinementPortfolio { get; init; }
+    public bool? BoundedOffensiveRefinementPortfolio { get; init; }
+    public bool? StopPortfolioAtHpTarget { get; init; }
     public bool ObservePortfolio { get; init; }
     public string? PortfolioModelPath { get; init; }
     public string Milestone { get; init; } = "M2";
@@ -423,6 +459,18 @@ internal sealed record HarnessOptions
         bool measurePhases = false, enableNoGcRegion = false, productionBudget = false;
         bool stopAtZeroLoss = false, verifyIncremental = false;
         double noGcRegionBudgetGigabytes = 1d;
+        int orderingObservationLimit = 0;
+        string? orderingWatchedStatesPath = null;
+        string ordering = "baseline";
+        string? rankingModelPath = null;
+        bool continuousThreatRanking = false;
+        bool baseScoreTacticalTies = false;
+        bool adaptiveNoveltyRefinement = false;
+        bool? reallocatedRefinementPortfolio = null;
+        BeamWeightPerturbation? beamWeightPerturbation = null;
+        bool offensiveRefinementPortfolio = false;
+        bool? boundedOffensiveRefinementPortfolio = null;
+        bool? stopPortfolioAtHpTarget = null;
         int signalBallastMegabytes = 0;
         int? beam = null, nodes = null, cardBranches = null, pileBranches = null, handBranches = null;
         bool usePortfolio = false, observePortfolio = false, noPlainBaseline = false;
@@ -476,6 +524,27 @@ internal sealed record HarnessOptions
                 case "--enable-no-gc-region": enableNoGcRegion = true; break;
                 case "--no-gc-region-budget-gigabytes": noGcRegionBudgetGigabytes = double.Parse(Value()); break;
                 case "--signal-ballast-mb": signalBallastMegabytes = int.Parse(Value()); break;
+                case "--observe-ordering": orderingObservationLimit = int.Parse(Value()); break;
+                case "--observe-ordering-states": orderingWatchedStatesPath = Path.GetFullPath(Value()); break;
+                case "--ordering": ordering = Value(); break;
+                case "--ranking-model": rankingModelPath = Path.GetFullPath(Value()); break;
+                case "--bounded-offensive-refinement": boundedOffensiveRefinementPortfolio = true; break;
+                case "--disable-bounded-offensive-refinement": boundedOffensiveRefinementPortfolio = false; break;
+                case "--offensive-refinement": offensiveRefinementPortfolio = true; break;
+                case "--beam-weight":
+                    string[] termScale = Value().Split(':');
+                    if (termScale.Length != 2 || !Enum.TryParse(termScale[0], out BeamWeightTerm term))
+                        throw new ArgumentException("--beam-weight 需要 Term:Scale。");
+                    beamWeightPerturbation = new BeamWeightPerturbation(term,
+                        double.Parse(termScale[1], System.Globalization.CultureInfo.InvariantCulture));
+                    break;
+                case "--continuous-threat": continuousThreatRanking = true; break;
+                case "--base-score-tactical-ties": baseScoreTacticalTies = true; break;
+                case "--reallocated-refinement": reallocatedRefinementPortfolio = true; break;
+                case "--disable-reallocated-refinement": reallocatedRefinementPortfolio = false; break;
+                case "--adaptive-novelty": adaptiveNoveltyRefinement = true; break;
+                case "--stop-portfolio-at-hp-target": stopPortfolioAtHpTarget = true; break;
+                case "--disable-portfolio-hp-target-stop": stopPortfolioAtHpTarget = false; break;
                 case "--observe-portfolio": observePortfolio = true; break;
                 case "--portfolio-model": portfolioModelPath = Path.GetFullPath(Value()); break;
                 case "--milestone": milestone = Value(); break;
@@ -492,6 +561,37 @@ internal sealed record HarnessOptions
             throw new ArgumentException("--profile 只接受 Low|Medium|High|VeryHigh|Custom。");
         if (searchMode is not ("Evaluate" or "Coordinator"))
             throw new ArgumentException("--search-mode 只接受 Evaluate 或 Coordinator。");
+        if (orderingObservationLimit is < 0 or > 100000 || orderingObservationLimit > 0 && searchMode != "Evaluate")
+            throw new ArgumentException("--observe-ordering 仅支持 Evaluate，范围 0..100000。");
+        if (orderingWatchedStatesPath != null && orderingObservationLimit == 0)
+            throw new ArgumentException("--observe-ordering-states 需要有限的 --observe-ordering。");
+        if (ordering is not ("baseline" or "base" or "band") || ordering != "baseline" && searchMode != "Evaluate")
+            throw new ArgumentException("--ordering 只接受 baseline|base|band，非基线仅支持 Evaluate。");
+        if (rankingModelPath != null && ordering != "baseline")
+            throw new ArgumentException("--ranking-model 不能同时叠加其他 --ordering 实验。");
+        if (continuousThreatRanking && (rankingModelPath != null || ordering != "baseline"))
+            throw new ArgumentException("--continuous-threat 必须单独测量，不叠加排序模型或其他成员。");
+        if (baseScoreTacticalTies && (searchMode == "Evaluate" ? ordering != "base" : !usePortfolio))
+            throw new ArgumentException("--base-score-tactical-ties 需要 Evaluate --ordering base 或 Coordinator --use-portfolio。");
+        if (reallocatedRefinementPortfolio.HasValue && (searchMode != "Coordinator" || !usePortfolio))
+            throw new ArgumentException("组合再分配覆盖需要 Coordinator --use-portfolio。");
+        if (reallocatedRefinementPortfolio == true && (noPlainBaseline || adaptiveNoveltyRefinement
+            || offensiveRefinementPortfolio || boundedOffensiveRefinementPortfolio == true))
+            throw new ArgumentException("--reallocated-refinement 不能叠加显式成员列表消融或精炼实验。");
+        if (adaptiveNoveltyRefinement && (searchMode != "Coordinator" || !usePortfolio))
+            throw new ArgumentException("--adaptive-novelty 需要 Coordinator --use-portfolio。");
+        if (beamWeightPerturbation != null && (continuousThreatRanking || rankingModelPath != null || ordering != "baseline"))
+            throw new ArgumentException("--beam-weight 必须单独测量，不叠加其他排序实验。");
+        if (offensiveRefinementPortfolio && (!usePortfolio || searchMode != "Coordinator"
+            || beamWeightPerturbation != null || continuousThreatRanking || rankingModelPath != null || ordering != "baseline"))
+            throw new ArgumentException("--offensive-refinement 需要Coordinator组合且不能叠加其他排序实验。");
+        if (boundedOffensiveRefinementPortfolio.HasValue && (!usePortfolio || searchMode != "Coordinator"))
+            throw new ArgumentException("有界追加参数需要Coordinator组合。");
+        if (boundedOffensiveRefinementPortfolio == true && (offensiveRefinementPortfolio
+            || beamWeightPerturbation != null || continuousThreatRanking || rankingModelPath != null || ordering != "baseline"))
+            throw new ArgumentException("有界追加不能叠加其他排序实验。");
+        if (stopPortfolioAtHpTarget.HasValue && searchMode != "Coordinator")
+            throw new ArgumentException("组合达标早停参数仅用于Coordinator。");
         if (usePortfolio && searchMode != "Coordinator")
             throw new ArgumentException("--use-portfolio 只对 --search-mode Coordinator 有效。");
         if ((observePortfolio || portfolioModelPath != null) && (!usePortfolio || searchMode != "Coordinator"))
@@ -547,6 +647,18 @@ internal sealed record HarnessOptions
             EnableNoGcRegion = enableNoGcRegion,
             NoGcRegionBudgetGigabytes = noGcRegionBudgetGigabytes,
             SignalBallastMegabytes = signalBallastMegabytes,
+            OrderingObservationLimit = orderingObservationLimit,
+            OrderingWatchedStatesPath = orderingWatchedStatesPath,
+            Ordering = ordering,
+            RankingModelPath = rankingModelPath,
+            ContinuousThreatRanking = continuousThreatRanking,
+            BaseScoreTacticalTies = baseScoreTacticalTies,
+            AdaptiveNoveltyRefinement = adaptiveNoveltyRefinement,
+            ReallocatedRefinementPortfolio = reallocatedRefinementPortfolio,
+            BeamWeightPerturbation = beamWeightPerturbation,
+            OffensiveRefinementPortfolio = offensiveRefinementPortfolio,
+            BoundedOffensiveRefinementPortfolio = boundedOffensiveRefinementPortfolio,
+            StopPortfolioAtHpTarget = stopPortfolioAtHpTarget,
             ObservePortfolio = observePortfolio,
             PortfolioModelPath = portfolioModelPath,
             Milestone = milestone,

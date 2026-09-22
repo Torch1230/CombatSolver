@@ -412,7 +412,7 @@ internal static partial class CombatSearchCoordinator
     /// <para>
     /// **基线成员逐位不变**：关闭时用请求自己的 <paramref name="profile" /> 实例直接求解；打开时
     /// 组合器把全部共享预算给首个成员，宽度就是基线宽度，其余 Profile 维度照抄。成员只有 Beam
-    /// 宽度、分到的节点上限，以及（仅精炼成员）收紧到剩余时间的软时间预算三处不同。
+    /// 宽度、成员排序策略、分到的节点上限，以及（仅精炼成员）收紧到剩余时间的软时间预算不同。
     /// </para>
     /// <para>
     /// 界面的中途路线走 <c>SolverProgress</c> 回调：搜索发布进度，运行时把进度里的
@@ -452,6 +452,19 @@ internal static partial class CombatSearchCoordinator
         string gameAssemblyId = typeof(CombatState).Module.ModuleVersionId.ToString();
         bool hasReachablePower = root.PlayerCardIds.Any(
             PowerCardValuationModels.Registry.ContainsCardId);
+        // Respect explicit portfolio layouts/experiments and the separately enabled novelty pass.
+        // This is exactly the measured no-plain-baseline + bounded-refinement combination.
+        bool useReallocation = profile.ReallocatedRefinementPortfolio
+            && policy.UseBeamWidthPortfolio && !policy.UseNoveltyPortfolio
+            && !profile.AdaptiveNoveltyRefinement
+            && profile.ContextualRanking == null && profile.BeamWeightPerturbation == null
+            && !profile.ContinuousThreatRanking && !profile.BaseScoreTacticalTies
+            && !profile.BaseScoreOnly && !profile.SecondRankBand
+            && policy.BeamWidthPortfolioWidths is not { Count: > 0 }
+            && policy.BeamWidthPortfolioPlainBaselineMember
+            && !profile.OffensiveRefinementPortfolio && !profile.BoundedOffensiveRefinementPortfolio;
+        if (useReallocation && policy.MeasurePhasePerformance)
+            policy.Diagnostics.Info("[CombatSolver/Test] PORTFOLIO_REALLOCATION plain_baseline=False bounded_refinement=True");
 
         long RemainingMilliseconds()
             => profile.SoftTimeBudgetMilliseconds - passClock.ElapsedMilliseconds;
@@ -487,6 +500,16 @@ internal static partial class CombatSearchCoordinator
             SearchRequestWorkSnapshot before = totals.Snapshot();
             long allocatedBefore = GC.GetTotalAllocatedBytes(precise: false);
             long startedMilliseconds = passClock.ElapsedMilliseconds;
+            if (policy.MeasurePhasePerformance)
+            {
+                policy.Diagnostics.Info(
+                    $"[CombatSolver/Test] BEAM_WIDTH_PORTFOLIO_MEMBER_START run_index={costs.Count} " +
+                    $"beam={effectiveProfile.BeamWidth} second_rank_band={effectiveProfile.SecondRankBand} " +
+                    $"base_score_only={effectiveProfile.BaseScoreOnly} " +
+                    $"power_commitment={effectiveProfile.AggressivePowerCommitment} " +
+                    $"nodes={effectiveProfile.MaxExpandedNodes} " +
+                    $"time_ms={effectiveProfile.SoftTimeBudgetMilliseconds}");
+            }
             SolverResult memberResult = solveMember(effectiveProfile, baselineObserved);
             long memberElapsed = Math.Max(0, passClock.ElapsedMilliseconds - startedMilliseconds);
             long memberAllocated = Math.Max(
@@ -515,7 +538,7 @@ internal static partial class CombatSearchCoordinator
                     memberElapsed, memberResult.BoundaryReason.ToString()));
                 pendingFeatures = null;
             }
-            if (experiment != null && comparable && (incumbent == null
+            if ((experiment != null || profile.StopPortfolioAtHpTarget) && comparable && (incumbent == null
                 || IsBetterPotionPolicyResult(root, policy, memberResult, incumbent)))
                 incumbent = memberResult;
             if (!baselineObserved)
@@ -552,6 +575,8 @@ internal static partial class CombatSearchCoordinator
         {
             if (!baselineObserved)
                 return null;
+            if (incumbent != null && CanFinishTargetPortfolio(root, policy, profile, incumbent))
+                return "AcceptableBattleHpLoss";
             // 能力牌成员走自己的门控（它只要求确实存在可达的能力牌），其余成员走宽度余量门控。
             string? rejection = member.AggressivePowerCommitment
                 ? PowerCommitmentPortfolioGate.Reject(hasReachablePower)
@@ -559,8 +584,9 @@ internal static partial class CombatSearchCoordinator
                     baseline, member.BeamWidth, profile.MaxExpandedNodes - expandedByMembers,
                     RemainingMilliseconds(), profile.SoftTimeBudgetMilliseconds,
                     policy.MemoryPressureSignal.RemainingBytes);
-            // 学习型跳过器只在宽度成员上训练过，能力牌成员不由它裁决。
-            if (rejection != null || experiment == null || member.AggressivePowerCommitment)
+            // 学习型跳过器未见过能力承诺或进攻精炼成员，不由它裁决这些新策略。
+            if (rejection != null || experiment == null || member.AggressivePowerCommitment
+                || member.OffensiveRefinement)
                 return rejection;
             // 门控已经放行，说明基线没被任何上限截断，因此两边都已经有可比结果。
             SolverResult first = baselineResult
@@ -591,7 +617,7 @@ internal static partial class CombatSearchCoordinator
             // observation; it becomes input. Only captures that change simulation fidelity do.
             bool eligible = IsCompleteVictory(first) && !first.Snapshot.HasRisk
                 && !policy.UseNoveltyPortfolio && policy.BeamWidthPortfolioWidths == null
-                && policy.BeamWidthPortfolioPlainBaselineMember
+                && policy.BeamWidthPortfolioPlainBaselineMember && !useReallocation
                 && root.CapturedRunModSubscriberCount == 0 && root.CapturedCombatModSubscriberCount == 0
                 && !root.CapturedBaseLibCardModifiers;
             pendingDecision = !eligible ? "UnsupportedSemantics"
@@ -611,8 +637,10 @@ internal static partial class CombatSearchCoordinator
                 BeamWidthPortfolio.ProductionMembers(
                     profile.BeamWidth,
                     policy.UseBeamWidthPortfolio ? policy.BeamWidthPortfolioWidths : [profile.BeamWidth],
-                    policy.BeamWidthPortfolioPlainBaselineMember,
-                    includePowerCommitmentMember: hasReachablePower),
+                    policy.BeamWidthPortfolioPlainBaselineMember && !useReallocation,
+                    includePowerCommitmentMember: hasReachablePower,
+                    useOffensiveRefinement: profile.OffensiveRefinementPortfolio,
+                    appendBoundedOffensiveRefinement: profile.BoundedOffensiveRefinementPortfolio || useReallocation),
                 profile.MaxExpandedNodes,
                 profile,
                 RunMember,
@@ -703,13 +731,16 @@ internal static partial class CombatSearchCoordinator
                 member.PotionCount,
                 cost.ElapsedMilliseconds,
                 cost.AllocatedBytes,
-                cost.ManagedHeapBytesAfter);
+                cost.ManagedHeapBytesAfter)
+            { OffensiveRefinement = member.OffensiveRefinement, BoundedRefinement = member.BoundedRefinement };
             telemetry.RecordMember(report);
             policy.Diagnostics.Info(
                 $"[CombatSolver/Test] BEAM_WIDTH_PORTFOLIO_MEMBER index={index} " +
                 $"beam={report.BeamWidth} second_rank_band={report.SecondRankBand} " +
                 $"base_score_only={report.BaseScoreOnly} " +
                 $"power_commitment={report.AggressivePowerCommitment} " +
+                $"offensive_refinement={report.OffensiveRefinement} " +
+                $"bounded_refinement={report.BoundedRefinement} " +
                 $"nodes={report.NodeBudget} ran={report.Ran} " +
                 $"selected={report.Selected} compared={report.Compared} " +
                 $"skipped={report.SkippedReason ?? "-"} " +
@@ -1904,6 +1935,17 @@ internal static partial class CombatSearchCoordinator
             IsCompleteVictory(result),
             result.ProjectedBattleHpLost,
             policy.AcceptableBattleHpLoss);
+
+    // This honors an explicitly enabled satisficing policy, not a proof that no
+    // alternate route can heal more or finish sooner. Preserve the selected incumbent.
+    private static bool CanFinishTargetPortfolio(
+        CombatRootSnapshot root, SearchPolicySnapshot policy, SolverSearchProfile profile, SolverResult result)
+        => profile.StopPortfolioAtHpTarget
+            && !root.HasVisibleHealingSource
+            && result.Snapshot.RecoveredPlayerHp == 0
+            && result.ResultScope == SolverResultScope.SearchCompletion
+            && !result.Snapshot.HasRisk
+            && HasReachedAcceptableBattleHpLoss(policy, result);
 
     internal static bool HasReachedAcceptableBattleHpLoss(
         bool completeVictory,

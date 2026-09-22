@@ -34,7 +34,12 @@ internal sealed partial class UnattendedTestRunner
                 FixedBudget = true, BudgetOverrideMilliseconds = noveltyPortfolio ? 10000 : 1500,
                 PotionPolicy = SolverPotionPolicy.Disabled, MaxDegreeOfParallelism = 1,
                 DetailedDiagnostics = false, VerifyIncrementalSearch = false,
-                Profile = SolverSearchProfile.Default with { MaxExpandedNodes = noveltyPortfolio ? 4000 : 128 },
+                Profile = SolverSearchProfile.Default with
+                {
+                    MaxExpandedNodes = noveltyPortfolio ? 4000 : 128,
+                    StopPortfolioAtHpTarget = true,
+                },
+                UseBeamWidthPortfolio = true,
                 UseNoveltyPortfolio = noveltyPortfolio,
             };
             Check(policy.StopAtAcceptableBattleHpLoss && !policy.HasGrowthTargets && policy.CanStopAtHpTarget,
@@ -48,9 +53,29 @@ internal sealed partial class UnattendedTestRunner
             Check(stopped.Snapshot.AllEnemiesDead && stopped.ProjectedBattleHpLost == 0, "zero-loss complete victory");
             if (noveltyPortfolio)
                 Check(stopped.NoveltyPortfolio?.ExplorationDetails != null, "novelty exploration actually ran");
+            else
+                Check(stopped.PortfolioTelemetry!.Members.Any(member => member.SkippedReason == "AcceptableBattleHpLoss")
+                    && stopped.PortfolioTelemetry.PowerRouteMembers.Count == 0,
+                    "settled incumbent skips remaining width/power members and opening-power prefixes");
             SolverResult continued = await Search(policy with { StopAtAcceptableBattleHpLoss = false });
             Check(continued.Snapshot.AllEnemiesDead && continued.ProjectedBattleHpLost == 0
                 && stopped.TotalExpandedNodes < continued.TotalExpandedNodes, "switch stops before remaining combinations");
+            Check(continued.PortfolioTelemetry!.PowerRouteMembers.Count > 0,
+                "disabling HP-target stopping preserves opening-power audits");
+            if (!noveltyPortfolio)
+            {
+                Check(!root.HasVisibleHealingSource, "ordinary root has no healing metadata");
+                var healingCards = await InjectCardAsync(combat, player,
+                    new UnattendedCardInjection { CardId = "NOT_YET", Pile = "Draw" });
+                root = CombatRootSnapshot.Capture(combat);
+                Check(root.HasVisibleHealingSource, "unplayed draw-pile healing is captured");
+                SolverResult healing = await Search(policy);
+                Check(healing.Snapshot.RecoveredPlayerHp == 0
+                    && healing.PortfolioTelemetry!.PowerRouteMembers.Count > 0,
+                    "potential healing preserves audits before the selected route actually heals");
+                await CardPileCmd.RemoveFromCombat(healingCards, skipVisuals: true);
+                root = CombatRootSnapshot.Capture(combat);
+            }
             SolverResult threshold = await Search(policy with { AcceptableBattleHpLoss = 3 }, alreadyLost: 3);
             Check(threshold.ProjectedBattleHpLost == 3
                 && CombatSearchCoordinator.HasReachedAcceptableBattleHpLoss(policy with { AcceptableBattleHpLoss = 3 }, threshold)

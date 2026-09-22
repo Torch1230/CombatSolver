@@ -4,7 +4,9 @@ using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
+using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Models.Relics;
 using MegaCrit.Sts2.Core.Rooms;
@@ -48,6 +50,8 @@ internal sealed class CombatRootSnapshot
     public double CaptureElapsedMilliseconds { get; }
     public int CapturedCardCount { get; }
     public IReadOnlySet<string> PlayerCardIds { get; }
+    /// <summary>Conservative recovery metadata for portfolio stopping, not a bound on all future healing.</summary>
+    public bool HasVisibleHealingSource { get; }
     public CombatHistoryDependencies HistoryDependencies { get; }
     public int CapturedPowerCount { get; }
     public int CapturedHookListenerCount { get; }
@@ -85,6 +89,7 @@ internal sealed class CombatRootSnapshot
         double captureElapsedMilliseconds,
         int capturedCardCount,
         IReadOnlySet<string> playerCardIds,
+        bool hasVisibleHealingSource,
         CombatHistoryDependencies historyDependencies,
         int capturedPowerCount,
         int capturedHookListenerCount,
@@ -123,6 +128,7 @@ internal sealed class CombatRootSnapshot
         CaptureElapsedMilliseconds = captureElapsedMilliseconds;
         CapturedCardCount = capturedCardCount;
         PlayerCardIds = playerCardIds;
+        HasVisibleHealingSource = hasVisibleHealingSource;
         HistoryDependencies = historyDependencies;
         CapturedPowerCount = capturedPowerCount;
         CapturedHookListenerCount = capturedHookListenerCount;
@@ -194,6 +200,13 @@ internal sealed class CombatRootSnapshot
                     item.Potion,
                     hasRenewablePotionShapedRock)))
             .ToArray();
+        // Card/Power variables were materialized above; potion metadata is also
+        // inspected on the main thread. Minion healing deliberately preserves auditing.
+        bool hasVisibleHealingSource = playerState.AllCards.Any(card => HasHealingVariables(card.DynamicVars))
+            || player.Creature.Powers.Any(power => power is RegenPower
+                || HasHealingVariables(power.DynamicVars))
+            || player.PotionSlots.Any(potion => potion != null && PotionOnUseSupport.CanSearch(potion)
+                && HasHealingVariables(potion.DynamicVars));
         if (!string.Equals(
                 continuationBefore.StateText,
                 projected.StateText,
@@ -261,6 +274,7 @@ internal sealed class CombatRootSnapshot
             stopwatch.Elapsed.TotalMilliseconds,
             cardCount,
             playerCardIds,
+            hasVisibleHealingSource,
             historyDependencies,
             powerCount,
             simulatedCombat.RootHookListenerCount,
@@ -272,6 +286,11 @@ internal sealed class CombatRootSnapshot
             postCombatRelicHeal,
             potionRewardOutlook);
     }
+
+    private static bool HasHealingVariables(DynamicVarSet variables)
+        => variables.TryGetValue("Heal", out _)
+            || variables.TryGetValue("HealPercent", out _)
+            || variables.TryGetValue("RegenPower", out _);
 
     /// <summary>
     /// Reads how much HP the player's relics will restore once this fight is won.

@@ -124,6 +124,7 @@ internal static class ModRuntime
             EnableNoGcRegion = options.EnableNoGcRegion,
             NoGcRegionBudgetGigabytes = options.NoGcRegionBudgetGigabytes,
             UseBeamWidthPortfolio = options.UsePortfolio,
+            UseNoveltyPortfolio = options.AdaptiveNoveltyRefinement,
             StopAtAcceptableBattleHpLoss = options.StopAtZeroLoss,
             OnlineStatisticsEnabled = false,
             SearchCompletionNotificationsEnabled = false,
@@ -298,6 +299,8 @@ internal static class ModRuntime
         policy.DetailedDiagnostics,
         policy.MeasurePhasePerformance,
         policy.UseBeamWidthPortfolio,
+        policy.BeamWidthPortfolioPlainBaselineMember,
+        policy.UseNoveltyPortfolio,
         policy.BeamWidthPortfolioWidths,
         portfolioSelector = policy.PortfolioExperiment?.Model?.ModelId,
         observePortfolio = policy.PortfolioExperiment?.Observe != null,
@@ -337,7 +340,7 @@ internal static class ModRuntime
         SearchPolicySnapshot policy = basePolicy with
         {
             RequestWorkTotals = totals,
-            Profile = settings.Profile with { SoftTimeBudgetMilliseconds = budgetMilliseconds },
+            Profile = basePolicy.Profile with { SoftTimeBudgetMilliseconds = budgetMilliseconds },
         };
         describedPolicy = DescribePolicy(policy);
         bool observedTimeBoundary = false;
@@ -348,7 +351,7 @@ internal static class ModRuntime
                     observedTimeBoundary = true;
                 policy.Diagnostics.Info(message);
             },
-            policy.Diagnostics.Debug);
+            policy.Diagnostics.Debug, policy.Diagnostics.PathObserver);
         CombatBeamSolver solver = new(
             root, names, damage, policy with { Diagnostics = diagnostics }, searchProfile: policy.Profile);
         // 与参考跑法一致：求解在工作线程上跑，主线程只泵消息循环。
@@ -386,6 +389,29 @@ internal static class ModRuntime
         SolverSettingsSnapshot settings = SolverSettings.Capture();
         SearchPolicySnapshot policy = SolverController.CaptureSearchPolicy(
             settings, state, includeTurnSetup: false, theftPolicy: null);
+        policy = policy with { Profile = policy.Profile with
+        {
+            BaseScoreOnly = options.Ordering == "base",
+            SecondRankBand = options.Ordering == "band",
+            ContextualRanking = options.RankingModelPath == null ? null
+                : ContextualRankingModel.Parse(File.ReadAllText(options.RankingModelPath)),
+            ContinuousThreatRanking = options.ContinuousThreatRanking,
+            BaseScoreTacticalTies = options.BaseScoreTacticalTies,
+            AdaptiveNoveltyRefinement = options.AdaptiveNoveltyRefinement,
+            ReallocatedRefinementPortfolio = options.ReallocatedRefinementPortfolio
+                ?? policy.Profile.ReallocatedRefinementPortfolio,
+            BeamWeightPerturbation = options.BeamWeightPerturbation,
+            OffensiveRefinementPortfolio = options.OffensiveRefinementPortfolio,
+            BoundedOffensiveRefinementPortfolio = options.BoundedOffensiveRefinementPortfolio
+                ?? policy.Profile.BoundedOffensiveRefinementPortfolio,
+            StopPortfolioAtHpTarget = options.StopPortfolioAtHpTarget ?? policy.Profile.StopPortfolioAtHpTarget,
+        } };
+        using OrderingObservations? orderingObservations = options.OrderingObservationLimit > 0
+            ? new OrderingObservations(options.OutputDirectory, options.OrderingObservationLimit,
+                options.OrderingWatchedStatesPath) : null;
+        if (orderingObservations != null)
+            policy = policy with { Diagnostics = new SearchDiagnosticsSink(
+                policy.Diagnostics.Info, policy.Diagnostics.Debug, orderingObservations.Observer) };
         List<BeamPortfolioObservation> observations = [];
         if (options.ObservePortfolio || options.PortfolioModelPath != null)
         {
@@ -402,6 +428,29 @@ internal static class ModRuntime
             };
         }
         HarnessLog.Trace("search_policy");
+        Action<SolverProgress>? diagnosticProgress = null;
+        if (Environment.GetEnvironmentVariable("OFFLINE_HARNESS_STREAM_DIAGNOSTICS") == "1")
+        {
+            SearchDiagnosticsSink original = policy.Diagnostics;
+            policy = policy with { Diagnostics = new SearchDiagnosticsSink(message =>
+            {
+                Console.WriteLine($"[search-diagnostic] {message}");
+                original.Info(message);
+            }, original.Debug, original.PathObserver) };
+            long lastProgressMilliseconds = 0;
+            diagnosticProgress = progress =>
+            {
+                long now = watch.ElapsedMilliseconds;
+                long previous = Volatile.Read(ref lastProgressMilliseconds);
+                if (now - previous < 1000
+                    || Interlocked.CompareExchange(ref lastProgressMilliseconds, now, previous) != previous)
+                    return;
+                Console.WriteLine($"[search-progress] wall_ms={now} phase={progress.Phase} "
+                    + $"expanded={progress.ExpandedNodes} reviewed_worldlines={progress.ReviewedWorldlines} "
+                    + $"max_nodes={progress.MaxNodes} turn_layers={progress.CompletedTurnLayers} "
+                    + $"play_depth={progress.PlayDepth} frontier={progress.FrontierNodes}");
+            };
+        }
         bool timeBoundary = false;
         object describedPolicy = DescribePolicy(policy);
         SolverResult result;
@@ -425,7 +474,7 @@ internal static class ModRuntime
             try
             {
                 result = options.SearchMode == "Coordinator"
-                    ? CombatSearchCoordinator.Solve(root, names, damage, policy, CancellationToken.None, null)
+                    ? CombatSearchCoordinator.Solve(root, names, damage, policy, CancellationToken.None, diagnosticProgress)
                     : SolveEvaluate(root, names, damage, policy, settings,
                         options.BudgetMilliseconds, loop, out describedPolicy, ref timeBoundary);
             }
@@ -437,12 +486,13 @@ internal static class ModRuntime
         else
         {
             result = options.SearchMode == "Coordinator"
-                ? CombatSearchCoordinator.Solve(root, names, damage, policy, CancellationToken.None, null)
+                ? CombatSearchCoordinator.Solve(root, names, damage, policy, CancellationToken.None, diagnosticProgress)
                 : SolveEvaluate(root, names, damage, policy, settings,
                     options.BudgetMilliseconds, loop, out describedPolicy, ref timeBoundary);
         }
         if (options.SearchMode == "Coordinator" && policy.MeasurePhasePerformance)
             LastPhasePerformance = SolverDiagnostics.DescribeSearchPhasePerformance(result);
+        orderingObservations?.WriteSelectedPath(options.OutputDirectory, result);
         HarnessLog.Trace("solved");
         watch.Stop();
         File.WriteAllText(Path.Combine(options.OutputDirectory, "quality.json"), JsonSerializer.Serialize(new

@@ -11,6 +11,11 @@ internal static partial class CombatSearchCoordinator
         Action<SolverProgress>? progress, Action<SolverResult>? publish,
         Func<SolverSearchProfile, SolverResult> solveBaseline)
     {
+        if (profile.AdaptiveNoveltyRefinement)
+        {
+            return RunAdaptiveNoveltyRefinement(root, names, damage, policy, profile,
+                clock, potionOverride, cancellation, progress, publish, solveBaseline);
+        }
         SolverSearchProfile? explorationProfile = policy.NoveltyBudget.Exploration(profile, root.IsActEndingBoss);
         if (explorationProfile == null)
         {
@@ -65,5 +70,73 @@ internal static partial class CombatSearchCoordinator
                 scout != null && IsCompleteVictory(scout), beam?.ProjectedBattleHpLost,
                 beam != null && IsCompleteVictory(beam), remaining?.MaxExpandedNodes ?? 0,
                 remaining?.SoftTimeBudgetMilliseconds ?? 0);
+    }
+
+    private static SolverResult RunAdaptiveNoveltyRefinement(
+        CombatRootSnapshot root, SolverDisplayNames names, BattleDamageSnapshot damage,
+        SearchPolicySnapshot policy, SolverSearchProfile profile, Stopwatch clock,
+        SolverPotionPolicy? potionOverride, CancellationToken cancellation,
+        Action<SolverProgress>? progress, Action<SolverResult>? publish,
+        Func<SolverSearchProfile, SolverResult> solveBaseline)
+    {
+        SearchRequestWorkTotals totals = policy.RequestWorkTotals
+            ?? throw new InvalidOperationException("Adaptive novelty refinement requires request work totals.");
+        long beforeExpanded = totals.Snapshot().ExpandedNodes;
+        long beforeMilliseconds = clock.ElapsedMilliseconds;
+        SolverResult baseline = solveBaseline(profile);
+        long baselineExpanded = totals.Snapshot().ExpandedNodes - beforeExpanded;
+        long baselineMilliseconds = clock.ElapsedMilliseconds - beforeMilliseconds;
+        SolverResult? adopted = ResolveTakeoverResult(baseline, policy.Interaction);
+        if (adopted != null)
+            return adopted;
+        if (baseline.ResultScope != SolverResultScope.SearchCompletion
+            || CanFinishTargetPortfolio(root, policy, profile, baseline))
+        {
+            baseline.NoveltyPortfolio = Describe("baseline_finished", null, 0, 0, "beam");
+            return baseline;
+        }
+        SolverSearchProfile? refinement = policy.NoveltyBudget.RefinementAfterBaseline(
+            profile, baselineMilliseconds, baselineExpanded, clock.ElapsedMilliseconds, root.IsActEndingBoss);
+        if (refinement == null)
+        {
+            baseline.NoveltyPortfolio = Describe("refinement_budget_unavailable", null, 0, 0, "beam");
+            return baseline;
+        }
+        cancellation.ThrowIfCancellationRequested();
+        SearchRequestWorkSnapshot scoutBefore = totals.Snapshot();
+        long scoutBeforeMilliseconds = clock.ElapsedMilliseconds;
+        policy.Diagnostics.Info(
+            $"[CombatSolver/Test] ADAPTIVE_NOVELTY_START baseline_expanded={baselineExpanded} " +
+            $"baseline_ms={baselineMilliseconds} nodes={refinement.MaxExpandedNodes} " +
+            $"time_ms={refinement.SoftTimeBudgetMilliseconds}");
+        SolverResult? exploration = SolveOptionalPotionPosterior(new CombatBeamSolver(
+            root, names, damage, policy with { NoveltySearch = policy.NoveltySearch ?? new() },
+            cancellation, progress, refinement, potionPolicyOverride: potionOverride),
+            policy, "adaptive_novelty_refinement");
+        SearchRequestWorkSnapshot scoutAfter = totals.Snapshot();
+        long expanded = scoutAfter.ExpandedNodes - scoutBefore.ExpandedNodes;
+        long transitions = scoutAfter.TransitionCount - scoutBefore.TransitionCount;
+        long elapsed = clock.ElapsedMilliseconds - scoutBeforeMilliseconds;
+        if (exploration != null && ResolveTakeoverResult(exploration, policy.Interaction) is { } scoutAdopted)
+            return scoutAdopted;
+        bool improved = exploration != null && IsCompleteVictory(exploration)
+            && IsBetterPotionPolicyResult(root, policy, exploration, baseline);
+        SolverResult selected = improved ? exploration! : baseline;
+        selected.NoveltyPortfolio = Describe("adaptive_refinement", exploration, expanded, elapsed,
+            improved ? "exploration" : "beam");
+        policy.Diagnostics.Info(
+            $"[CombatSolver/Test] ADAPTIVE_NOVELTY_END expanded={expanded} transitions={transitions} elapsed_ms={elapsed} " +
+            $"won={exploration != null && IsCompleteVictory(exploration)} selected={improved}");
+        if (improved)
+            publish?.Invoke(selected);
+        return selected;
+
+        NoveltyPortfolioTelemetry Describe(string stop, SolverResult? scout, long expanded,
+            long elapsed, string selectedMethod)
+            => new(stop, expanded, elapsed, scout?.NoveltySearch, true, selectedMethod,
+                scout?.ProjectedBattleHpLost, scout != null && IsCompleteVictory(scout),
+                baseline.ProjectedBattleHpLost, IsCompleteVictory(baseline),
+                (int)Math.Max(0, profile.MaxExpandedNodes - baselineExpanded - expanded),
+                (int)Math.Max(0, profile.SoftTimeBudgetMilliseconds - clock.ElapsedMilliseconds));
     }
 }

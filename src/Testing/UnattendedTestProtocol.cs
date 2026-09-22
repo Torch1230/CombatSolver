@@ -252,6 +252,8 @@ internal sealed class UnattendedTestRequest
     public SolverDeploymentFastMode? HeadlessFastModeForTest { get; init; }
     public SolverDeploymentFastMode? DeploymentFastModeForTest { get; init; }
     public SolverPerformancePreset? PerformancePresetForTest { get; init; }
+    public int? SearchBeamWidthForTest { get; init; }
+    public int? SearchMaxExpandedNodesForTest { get; init; }
     public int? ShortMaxCardBranchesPerNodeForTest { get; init; }
     public int? DeepMaxCardBranchesPerNodeForTest { get; init; }
     public SolverPotionPolicy? PotionPolicyForTest { get; init; }

@@ -36,4 +36,25 @@ internal sealed record NoveltyPortfolioBudget(
             MaxExpandedNodes = profile.MaxExpandedNodes - (int)expandedNodes,
         };
     }
+
+    public SolverSearchProfile? RefinementAfterBaseline(
+        SolverSearchProfile profile, long baselineMilliseconds, long baselineExpanded,
+        long elapsedMilliseconds, bool actEndingBoss = false)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(baselineMilliseconds);
+        ArgumentOutOfRangeException.ThrowIfNegative(baselineExpanded);
+        ArgumentOutOfRangeException.ThrowIfNegative(elapsedMilliseconds);
+        SolverSearchProfile? maximum = Exploration(profile, actEndingBoss);
+        SolverSearchProfile? remaining = Remaining(profile, elapsedMilliseconds, baselineExpanded);
+        if (maximum == null || remaining == null)
+            return null;
+        long nodes = Math.Min(baselineExpanded / 8, Math.Min(maximum.MaxExpandedNodes, remaining.MaxExpandedNodes));
+        long milliseconds = Math.Min(baselineMilliseconds / 8,
+            Math.Min(maximum.SoftTimeBudgetMilliseconds, remaining.SoftTimeBudgetMilliseconds));
+        return nodes < 1 || milliseconds < 1 ? null : profile with
+        {
+            MaxExpandedNodes = (int)nodes,
+            SoftTimeBudgetMilliseconds = (int)milliseconds,
+        };
+    }
 }

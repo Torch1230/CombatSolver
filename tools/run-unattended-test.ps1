@@ -231,6 +231,10 @@ param(
     [string]$DeploymentFastModeForTest = "",
     [ValidateSet("", "Low", "Medium", "High", "VeryHigh", "Custom")]
     [string]$PerformancePresetForTest = "",
+    [ValidateScript({ $_ -eq -1 -or ($_ -ge 1 -and $_ -le 512) })]
+    [int]$SearchBeamWidthForTest = -1,
+    [ValidateScript({ $_ -eq -1 -or $_ -ge 100 })]
+    [int]$SearchMaxExpandedNodesForTest = -1,
     [int]$ShortMaxCardBranchesPerNodeForTest = -1,
     [int]$DeepMaxCardBranchesPerNodeForTest = -1,
     [ValidateSet("", "Disabled", "Smart", "RequireAtLeastOne")]
@@ -923,6 +927,8 @@ $request = [ordered]@{
     headlessFastModeForTest = if ([string]::IsNullOrWhiteSpace($HeadlessFastModeForTest)) { $null } else { $HeadlessFastModeForTest }
     deploymentFastModeForTest = if ([string]::IsNullOrWhiteSpace($DeploymentFastModeForTest)) { $null } else { $DeploymentFastModeForTest }
     performancePresetForTest = if ([string]::IsNullOrWhiteSpace($PerformancePresetForTest)) { $null } else { $PerformancePresetForTest }
+    searchBeamWidthForTest = if ($SearchBeamWidthForTest -ge 0) { $SearchBeamWidthForTest } else { $null }
+    searchMaxExpandedNodesForTest = if ($SearchMaxExpandedNodesForTest -ge 0) { $SearchMaxExpandedNodesForTest } else { $null }
     shortMaxCardBranchesPerNodeForTest = if ($ShortMaxCardBranchesPerNodeForTest -gt 0) { $ShortMaxCardBranchesPerNodeForTest } else { $null }
     deepMaxCardBranchesPerNodeForTest = if ($DeepMaxCardBranchesPerNodeForTest -gt 0) { $DeepMaxCardBranchesPerNodeForTest } else { $null }
     potionPolicyForTest = if ([string]::IsNullOrWhiteSpace($PotionPolicyForTest)) { $null } else { $PotionPolicyForTest }

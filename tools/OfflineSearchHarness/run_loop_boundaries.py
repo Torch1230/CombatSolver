@@ -36,6 +36,7 @@ def budget_observation(result, out, mode="Evaluate"):
     logs = list(out.glob('logs/*/*.jsonl'))
     counts = {'time': 0, 'nodes': 0}
     global_time = False
+    novelty_stops = {}
     for path in logs:
         for line in path.read_text().splitlines():
             if not line.strip():
@@ -47,6 +48,9 @@ def budget_observation(result, out, mode="Evaluate"):
                 if reason not in counts:
                     raise ValueError(f'Unknown turn-layer budget reason: {reason}')
                 counts[reason] += 1
+            novelty = re.search(r'\bNOVELTY_SEARCH_STOP reason=(\w+)', message)
+            if novelty:
+                novelty_stops[novelty[1]] = novelty_stops.get(novelty[1], 0) + 1
             global_time |= 'SEARCH_TIME_BUDGET' in message
     metrics = result['solverMetrics']
     time_count = metrics.get('TurnLayerTimeBudgetStops')
@@ -72,8 +76,10 @@ def budget_observation(result, out, mode="Evaluate"):
     return {
         'scope': 'request' if mode == 'Coordinator' else 'solver', 'source': source,
         'turnLayerTimeStops': time_count, 'turnLayerNodeStops': node_count,
+        'noveltyStops': novelty_stops,
         'timeBoundaryObserved': bool(result.get('timeBoundaryObserved', False)
-                                    or global_time or counts['time'] or time_count),
+                                    or global_time or counts['time'] or time_count
+                                    or novelty_stops.get('time_limit', 0)),
         'diagnosticIssues': issues,
     }
 

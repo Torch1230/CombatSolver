@@ -138,7 +138,7 @@ RitsuLib 0.6.0 自身拥有 BaseLib 目标类型的外部登记查询、按程�
 ## 3. Search
 
 开发中的反馈修复：`GrowthOpportunityPolicy` 在主线程从当前可用的物理牌实例冻结逐来源目标。能力牌和消耗牌的基础次数都是每个尚可打实例一次；遗传算法、巨镰与黏糊强化额外要求 `DeckVersion`，固定 `GetEnchantedReplayCount` 逐次加入目标。单一致命来源按敌人数和实体数取可证明上限；多个致命来源竞争、动态重放、复制、消耗回收或第三方缺少目标计算器时写入不可证明原因。第三方计算器只收到不可变 `GrowthOpportunityCardSnapshot`，不能读取实机对象；负次数直接拒绝策略捕获。`SearchPolicySnapshot.GrowthTargetSatisfied` 比较整个收益向量，任一来源不可证明都禁止成长早停。早停还要求实际用药不超出用户必要数量。偷窃分项沿既有 SimulatedCombatState 计数投影为 SimulationSnapshot → SolverSnapshot → OverlaySnapshot，只读 UI 不重新读取真实战斗。Runtime 在选牌部署失配时暂停并交还手动选择，只有退出场景才取消原生选择；缺失战斗通知的面板恢复由 MonitorCombatPresence 在稳定回合负责。
-`SearchPolicySnapshot.CanStopAtHpTarget` 统一默认开启的战损目标早停与实际成长目标。主线程冻结 `GrowthOpportunityTargets`，额度本身不代表持有对应牌；目标向量和不可证明原因进入路线缓存与问题包。Phases 在已准入候选提交时检查完整胜利、全部有界成长目标、遗物、偷窃和强制用药要求，命中后排空当前父节点/并行批次，释放后续工作并从达标候选收尾；Coordinator 在补充搜索结果边界沿用同一开关与阈值。“不考虑局外收益”从统一入口移除成长目标。
+`SearchPolicySnapshot.CanStopAtHpTarget` 统一默认开启的战损目标早停与实际成长目标。主线程冻结 `GrowthOpportunityTargets`，额度本身不代表持有对应牌；目标向量和不可证明原因进入路线缓存与问题包。Phases 在已准入候选提交时检查完整胜利、全部有界成长目标、遗物、偷窃和强制用药要求，命中后排空当前父节点/并行批次，释放后续工作并从达标候选收尾；Coordinator 在补充搜索结果边界沿用同一开关与阈值。profile `StopPortfolioAtHpTarget` 默认将同一达标判定延伸至宽度/能力组合的已选incumbent及能力前缀入口/成员边界；玩家关闭达标早停仍保留原搜索。Runtime 在根捕获中、变量主线程物化后冻结 `HasVisibleHealingSource`（牌/玩家Power/可搜索药水的Heal、HealPercent、RegenPower变量或已有RegenPower），Search 只读该布尔值和已选路线的实际回血；任一存在则保留追加审计。它不改变终局比较，也不是穷举治疗来源或收益上界，不能将“达标”称为全目标最优。“不考虑局外收益”从统一入口移除成长目标。
 `GrowthCostPolicy` 管理至亮之焰单场累计最大生命消耗的准入；成本属于 SimulatedCombatState 的独立分支值，从主线程原生出牌历史捕获，经 Fork 复制并进入指纹/续用文本。`ResolveRoundChoiceBranches` 与 `ResolveTurnSetupChoices` 在产出候选前统一拒绝超额分支，实际模拟仍执行原有效果。禁忌魔典的收益计数在已有 CardPowerOnPlaySupport 中记入 GrowthValues；疯狂科学仅能力／改进变体在模拟成功叠加 ImprovementPower 后记收益，根按可升级正式牌组卡与已有改进层数冻结上限。两者额度均由成长策略设置决定。
 
 `CombatSearchCoordinator.FailureRecovery` 在请求级完成主搜索与药水审计后，管理无完整胜利的有限追加搜索。它扩大搜索配置、保留请求剩余时间并比较已有质量；交接结果优先返回，每轮内存观测独立起算。四档内置节点预算由 `SolverSettings` / `SolverSearchProfile` 声明，依次为 60,000 / 120,000 / 250,000 / 500,000；Custom 保留显式设置，节点预算只要求至少 100，不设额外配置上限。设置迁移 244 只强制旧配置开启多宽度路线精炼，不重置性能与其他开关。
@@ -178,11 +178,13 @@ RitsuLib 0.6.0 自身拥有 BaseLib 目标类型的外部登记查询、按程�
 
 Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位估算下一层容量；预测超出余量、样本不完整或区域丢失时回收并重建 NoGC。回收仍遵循原有药水层准入及停止条件。
 
-普通 Beam 保持原有评分、动作数、`OffensiveProgressValue` 初始排序及必保候选构造。在必保候选置换之后、药水配额处理之前，定位原排序中最后一个实际存活的普通候选，仅对跨越该截线且 `BeamRankScore` 与动作数都精确相等的块做有限多样性保留：同一 `PotionCount` 内按进展值分组，值从高到低轮流取代表。组内仅无既有保留路由签名的候选按当前回合和完整转置标签隔离，再以零费可执行牌数、可达手牌价值、手牌数稳定排序，写回各组原位置；带签名节点的原组内位置不动。签名存在性直接复用 `RetainedRoutingChoice`，包括其既有跨回合例外，不重新定义时效或依赖观察器。必保候选、各标签和该块各药量已有席数、其他评分块、总容量和工作预算不变；单值组、单席组、完整终局优先模式及含获胜候选的块旁路。这避免同分截线被单一进展值占满，不使用卡牌或遭遇身份，也不保证有限宽搜索完备。
+普通 Beam 保持原有评分、动作数、`OffensiveProgressValue` 初始排序及必保候选构造。在必保候选置换之后、药水配额处理之前，定位原排序中最后一个实际存活的普通候选，仅对跨越该截线且 `BeamRankScore` 与动作数都精确相等的块做有限多样性保留：同一 `PotionCount` 内按进展值分组，值从高到低轮流取代表。组内仅无既有保留路由签名的候选按当前回合和完整转置标签隔离，再以零费可执行牌数、可达手牌价值、手牌数稳定排序，写回各组原位置；带签名节点的原组内位置不动。签名存在性直接复用 `RetainedRoutingChoice`，包括其既有跨回合例外，不重新定义时效或依赖观察器。必保候选、各标签和该块各药量已有席数、其他评分块、总容量和工作预算不变；单席组、完整终局优先模式及含获胜候选的块旁路。单值进展组默认仍旁路，只有显式 `BaseScoreTacticalTies` 实验开启时，`BaseScoreOnly` 精炼成员才允许同政策族内的既有战术排序；不为其他成员新增排序项，也不增加成员或预算，取舍见[上下文排序实验](strategy/contextual-ordering-20260922.md)。这避免同分截线被单一进展值占满，不使用卡牌或遭遇身份，也不保证有限宽搜索完备。
 
 ### 多策略路线搜索
 
 `SolverSettings.UseNoveltyPortfolio` 默认关闭，由 Runtime 冻结到 `SearchPolicySnapshot`；设置、路线缓存和问题包均记录该值，玩家可在性能设置中开启。关闭状态下仅当完整结果预计损失至少 8 HP 时，主界面显示一次可永久隐藏的开启引导；7 HP 及以下、搜索中和功能已开启时不显示。`CombatSearchCoordinator.NoveltyPortfolio` 在主搜索内先做有界新颖性探索，再把实际剩余时间和节点交给既有 Beam／多宽度入口，之后照常执行药水审计。只在原有战损／成长／遗物／用药条件达标或玩家接管时提前返回；完整候选沿 `IsBetterPotionPolicyResult` 比较，不合并两个搜索的 frontier 或转置表。必要用药未满足是明确的搜索边界，仍可用剩余预算运行 Beam；模拟错误和取消继续传播。
+
+离线 `AdaptiveNoveltyRefinement` 实验保持默认关闭：复用同一入口，但先完整运行原 Beam 组合，完整政策达标则跳过探索；否则取原组合实际展开/时间各至多1/8并限制在原请求余量内，再用原终局政策选优。原算法、队列和终局比较保持；追加耗时仍可能影响后续能力/药水审计，不承诺完整请求无退化。`ADAPTIVE_NOVELTY_START/END` 成对记录展开/转移与额度；`NOVELTY_SEARCH_STOP` 独立报告停止原因，离线分类器不得漏掉新颖性时间截断。剩余额度遥测仍表示主搜索原预算扣实际工作后的余量，不充当整个 Coordinator 的节点硬上限。
 
 `NoveltyPortfolioBudget` 只管理预算算术：非首领至多一半时间，章节首领至多四分之一，且最多5秒、2500节点及总节点的四分之一；不足2秒或1000节点时保留原搜索。原始预算是上限，下一成员扣除实际工作而非预约额度；不可分割父节点排空可略过软时间边界。主搜索中的多宽度成员继续扣同一份节点余量；药水审计复用请求时间截止点，节点仍按上游每审计层的 Profile 上限执行。这里没有新增全请求节点硬上限。
 
@@ -285,6 +287,9 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 `parallel_waves / work_items` 记录已准入父 wave/parent，`parallel_action_*` 记录卡牌探测作业，`parallel_round_choice_*` 合计选择准备、首层回放、续接与完整链回退作业；不能解释为所有选择叶子并行。药水准备与首层回放的数量分别见 `SEARCH_PARALLEL_WORK kind=Potion/PrimaryReplay`，后者还记录实际 `max_concurrency`。`deferred_round_choice_*` 是命中层的调度诊断，改变调度后允许变化。`SEARCH_PARALLEL_WORK kind=StandPat/StandPatWave` 分别记录待命探针作业及其批次跨度，不增加已准入父节点计数。`SEARCH_PARALLEL_WORK kind=RoutingSignature/RoutingSummary/RoutingPareto/ContinuationPacket` 记录纯保路作业，`RetentionWave` 记录整批跨度，不增加准入父节点数。`ParallelExpansionWorkProfile` 在 coordinator 归并每个作业的 Stopwatch 经过时间，输出计数、总量、对数桶 p50/p95 上界和精确最大值；Parent 是准备派发至全部依赖完成并接纳尾部结果的跨度，包含排队，Wave 包含等待与提交，Wait 是 coordinator 等待结果的时间。它们均不是 CPU 时间、也不能相互相加；实际用核来自线程调度运行时间或 on-CPU 采样。节点预算截断仍由 coordinator 释放未展开父节点及不会进入下一层的候选，`node_limit_snapshots_released` 记录实际释放数。
 
 `BeamRetentionPolicy` 决定哪些中间候选继续活着；动作选牌、嵌套选牌和 `EndTurn.TurnStartChoices` 都以来源、效果、卡牌语义状态和上下文形成保路签名。`FinalPlanOrdering` 决定完整候选中最终采用哪条；完整胜利后先比较保命资源消耗次数，再比较偷窃回收和扣除实际成长额度的战略战损，随后比较已实现成长额度、收益次数和结束回合，药水、其他长线资源、敌方状态和分数作为后续尾键。两者不能合并成单一“总分排序”。`SearchFeatures` 是终局排序读取节点状态的只读投影。转置状态键中的九条战斗 RNG 必须包含完整内部状态；相同调用计数不能证明两个 RNG 后续等价。
+
+`ContextualRankingModel` 是默认未注入的离线实验入口：调用方在搜索前解析模型并校验程序集身份，Search 只读已有快照、在栈上计算有界中途排序修正。它不是可采纳下界，不参与终局政策、状态键或转置支配；当前没有通过质量门槛的模型。 独立的 `ContinuousThreatRanking` 试验只在新回合起点、真实存活且仍有可执行手牌时连续计价致死意图；仍默认关闭，不改快照Score或精确支配，也不是可采纳界。独立的 `BeamWeightPerturbation` 通过冻结profile对一个中途排序项做有限倍数敏感度测量，生产为空，终局与base-score成员旁路；不改变快照Score、状态键或精确支配。`OffensiveRefinementPortfolio` 为默认关闭的组合实验，只在默认成员列表中以2/5宽、EnemyHp项1.5倍的成员替换3/2宽成员；原主搜/窄成员、显式宽度配置、能力前缀和终局政策保持，仍共享剩余预算，成员身份单列诊断，新成员不交给旧选择器模型裁决。独立的 `BoundedOffensiveRefinementPortfolio` 实验保留全部原成员，在末尾追加同类进攻成员，节点额度取共享余量与此前组合实际展开1/8的较小值；默认关闭且不增加预留。它仍在后续能力/药水审计之前，不能据此保证整条流水线单调；展开上限也不是时间/转移/内存比例上限。`tools/ContextualOrdering` 拥有场景生成、候选采集配对、离线拟合及对照报告；未知后续保留为未知，标签只表示已观察到的完整后续，不能宣称最优。
+
 
 `GrowthPolicy.cs` 定义八类局外收益的不可变额度/次数向量，另带 `GrowthExtras` 承载第三方来源那一半（按 id 序数升序、不存 0 值，空表为 `null`，登记表为空时行为与指纹与开这个口子之前逐位相同）。`GrowthSourceMirrors.cs` 是第三方登记表，只持有 id、延迟取牌函数与牌组判据；额度按 id 持久化，认不出的 id 原样保留并写回。Runtime 在主线程冻结额度及当前牌组是否存在成长目标，交给 `SearchPolicySnapshot`；求解器在快照中计算额度，最终排序、阶段仲裁与 Pareto 保留共同消费。`SimulatedCombatState.LongTermResources` 只记录既有结算点产生的成功收益次数，Fork 按值复制，状态指纹保留各来源计数；额度属于搜索政策。计数从每个新根的零值开始，预测分支跨回合保留；续用仍核对原来的金币、最大生命和卡牌永久变量，计数本身不进入 live `ContinuationStamp`。有目标或非零配置时停用纯 HP 的提前终止和 incumbent 下界，沿用原时间/节点预算。
 
@@ -521,3 +526,7 @@ NativeReplayDriver 保存开战/结束观察器抛出的原始异常，由 Advan
 循环展示由 `SolverOverlaySnapshot` 捕获动作结构身份，`SolverActionRuns` 在 UI 按完整显示值划分重复区间；`SolverRouteRow` 保留真实动作数，以区间/周期余数映射高亮，不修改 Runtime 平坦计划。`DefensiveBlockValue` 是 Search 的派生评分特征，不进战斗指纹；格挡清空后的保留上限与 `PersistentRelicSupport.BlockAfterPreventingClear` 的既有结算共用。详见[本批设计与证据](performance/loop-optimization-20260921.md)。
 
 循环回放在串行提交完普通层后运行；每一步使用真实 ReplayAction，只有合法无损前缀可在额度用尽后加入普通 frontier，原有出牌和 EndTurn 候选保留。回放链逐节点附加既有调度证据，释放中间 simulator；只保留下一步需要的 simulator 与平坦动作父链。尚未执行第一步的替代出牌不会烧掉 region；开始执行后每 region 至多一次。
+
+### 默认搜索组合的预算再分配
+
+`CombatSearchCoordinator.RunBeamWidthPortfolioPass` 通过不可变 `SolverSearchProfile.ReallocatedRefinementPortfolio` 选择默认成员布局：省去普通基线成员，其余既有成员之后追加 `BoundedRefinement`。`BeamWidthPortfolio` 仍独占成员预算/终局选优，追加成员最多消费此前组合实际展开的1/8和共享余量；该局部额度不是请求级硬上限。显式布局、关闭组合及其他可选算法/排序实验保持原入口；旧布局的学习选择器不裁决新布局。没有新增模拟状态或修改最终政策，独有旧好解仍可能损失。实际质量取舍与内存尾部见[组合再分配报告](strategy/contextual-ordering-20260922.md)。

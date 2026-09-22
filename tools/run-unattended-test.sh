@@ -229,6 +229,8 @@ add_option expected-player-death 0 switch bool
 add_option headless-fast-mode-for-test "Instant" string optional_string "FollowGame|Normal|Fast|Instant"
 add_option deployment-fast-mode-for-test "" string optional_string "FollowGame|Normal|Fast|Instant"
 add_option performance-preset-for-test "" string optional_string "Low|Medium|High|VeryHigh|Custom"
+add_option search-beam-width-for-test -1 int positive_int
+add_option search-max-expanded-nodes-for-test -1 int positive_int
 add_option potion-policy-for-test "" string optional_string "Disabled|Smart|RequireAtLeastOne"
 add_option theft-policy-for-test "" string optional_string "PreserveResources|LetEscape"
 add_option enable-no-gc-region-for-test -1 int tri_bool
@@ -393,6 +395,12 @@ done
 search_max_dop="${option_value[search-max-degree-of-parallelism-for-test]}"
 ((search_max_dop == -1 || (search_max_dop >= 1 && search_max_dop <= 16))) || \
     die "--search-max-degree-of-parallelism-for-test must be -1 or between 1 and 16"
+test_beam="${option_value[search-beam-width-for-test]}"
+((test_beam == -1 || (test_beam >= 1 && test_beam <= 512))) || \
+    die "--search-beam-width-for-test must be -1 or between 1 and 512"
+test_nodes="${option_value[search-max-expanded-nodes-for-test]}"
+((test_nodes == -1 || (test_nodes >= 100 && test_nodes <= 2147483647))) || \
+    die "--search-max-expanded-nodes-for-test must be -1 or between 100 and 2147483647"
 for name in expected-initial-only-death-routes-found expected-initial-act-ending-boss \
     enable-no-gc-region-for-test enable-detailed-diagnostic-logs-for-test; do
     value="${option_value[$name]}"

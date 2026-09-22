@@ -25,3 +25,6 @@ python3 tools/run-novelty-benchmark.py \
 Windows 不运行 `/proc` 包装器。两端原生 `run-unattended-test.ps1/.sh` 都支持共享场景 `GENERATED-NOVELTY-SEARCH`：显式提供 GeneratedScenarioPath、EvidenceDirectory、ScenarioId 及相同设置覆盖；启动前在证据目录写入 `research-options.json`（内容为 `beam.json` 或 `portfolio.json`），完整协调器模式另建 `smart.flag`。其他标志对应 `native.flag`、`control-checks.flag`、`gc-scope.flag`、`expect-reclaim.flag`。保留 `research-*.json` 名称以兼容本轮测量产物，接口只接受 `scheduler: beam/bfws/portfolio`，未知字段显式拒绝。直接 `bfws` 模式不得与 `smart.flag` 混用。
 
 时间受编译预热与预算截断影响，同进程多变体只用于筛选。性能比较使用每份样本独立进程，交错顺序，核对 input/settings/resolved/loadout/opening 五份 JSON；使用 `total_*` 请求指标，不能把选中成员的 expanded 当成整个组合工作量。进程峰值包含初始化；无头数据不代表可见 Steam 帧时间。
+
+
+预算合同还覆盖后置探索：实际工作量比例、整数取整、请求余量、绝对上限、短预算旁路与负计数拒绝。测试链接生产 profile 和预算源码；`ContextualRankingModel` 仅为不参与这些合同的可选模型类型占位。

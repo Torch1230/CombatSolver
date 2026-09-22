@@ -1,0 +1,2357 @@
+{
+  "schemaVersion": 1,
+  "baselineFrozenBehaviorCommit": "beb72e40",
+  "candidateParentCommit": "15b5b8fb",
+  "productionEnabled": false,
+  "design": {
+    "mode": "Coordinator",
+    "beam": 60,
+    "profileNodes": 120000,
+    "budgetMilliseconds": 120000,
+    "dop": 1,
+    "retainsOriginalMembers": true,
+    "extraMemberWidthRatio": 0.4,
+    "extraMemberEnemyHpRankScale": 1.5,
+    "extraNodeCap": "min(shared remainder, floor(previous portfolio actual expanded / 8))"
+  },
+  "limitations": [
+    "Exploratory unpaired timings, not ABBA or visible-game performance.",
+    "The bound is on expanded nodes, not transitions, time, memory, or all supplemental searches.",
+    "Validation uses new seeds in existing mechanism families, reused after rejecting replacement.",
+    "No native acceptance or release for this dormant candidate."
+  ],
+  "pilot": {
+    "statuses": {
+      "Comparable": 5
+    },
+    "quality": {
+      "0": 4,
+      "-1": 1
+    },
+    "materialQuality": {
+      "0": 4,
+      "-1": 1
+    },
+    "victoryChanges": {
+      "lossToWin": [],
+      "winToLoss": []
+    },
+    "bothWonDamageChanges": {
+      "sampleCount": 5,
+      "totalHpLossDelta": -7,
+      "policyDeficitDelta": -7,
+      "largestTotalHpLossDelta": 0
+    },
+    "totals": {
+      "TotalExpanded": {
+        "baseline": 87821,
+        "candidate": 94273,
+        "relativeChange": 0.07346762163947118
+      },
+      "TotalTransitions": {
+        "baseline": 322101,
+        "candidate": 348437,
+        "relativeChange": 0.08176317366291941
+      },
+      "wallSeconds": {
+        "baseline": 43.311143200000004,
+        "candidate": 44.515799799999996,
+        "relativeChange": 0.02781401069090217
+      },
+      "totalAllocatedBytes": {
+        "baseline": 12569952864,
+        "candidate": 13483239832,
+        "relativeChange": 0.07265635582577468
+      }
+    },
+    "memory": {
+      "peakManagedLiveBytes": {
+        "medianRelativeChange": 0.03352677782763647,
+        "worst": {
+          "relativeChange": 0.09655669139690248,
+          "case": "energy_investment-train-high",
+          "baselineBytes": 80094128,
+          "candidateBytes": 87827752
+        }
+      },
+      "peakWorkingSetBytes": {
+        "medianRelativeChange": 0.00031040235905788194,
+        "worst": {
+          "relativeChange": 0.009661898739128816,
+          "case": "exhaust_resources-train-high",
+          "baselineBytes": 314134528,
+          "candidateBytes": 317169664
+        }
+      }
+    },
+    "observations": [
+      {
+        "case": "defense_engine-train-high",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 4.3586885,
+          "peakManagedHeapBytes": 49232856,
+          "peakManagedLiveBytes": 53804112,
+          "peakWorkingSetBytes": 272732160,
+          "totalAllocatedBytes": 997553704,
+          "TotalExpanded": 3837,
+          "TotalTransitions": 14380,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 13
+        },
+        "candidate": {
+          "wallSeconds": 4.3029529,
+          "peakManagedHeapBytes": 50288504,
+          "peakManagedLiveBytes": 50340920,
+          "peakWorkingSetBytes": 269275136,
+          "totalAllocatedBytes": 991613544,
+          "TotalExpanded": 3837,
+          "TotalTransitions": 14380,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 13
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "6",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "0",
+            "ran": "False",
+            "expanded": "0",
+            "transitions": "0",
+            "termination": "-",
+            "won": "-",
+            "battle_hp_lost": "-",
+            "potions": "-",
+            "compared": "False",
+            "skipped": "AcceptableBattleHpLoss",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "energy_investment-train-high",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 7.7820276,
+          "peakManagedHeapBytes": 83576616,
+          "peakManagedLiveBytes": 80094128,
+          "peakWorkingSetBytes": 319987712,
+          "totalAllocatedBytes": 2434813608,
+          "TotalExpanded": 18769,
+          "TotalTransitions": 62030,
+          "ProjectedBattleHpLost": 6,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6
+        },
+        "candidate": {
+          "wallSeconds": 7.6535701,
+          "peakManagedHeapBytes": 88139824,
+          "peakManagedLiveBytes": 87827752,
+          "peakWorkingSetBytes": 320516096,
+          "totalAllocatedBytes": 2620937096,
+          "TotalExpanded": 20522,
+          "TotalTransitions": 68478,
+          "ProjectedBattleHpLost": 6,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "5",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "2346",
+            "ran": "True",
+            "expanded": "1753",
+            "transitions": "6448",
+            "termination": "None",
+            "won": "True",
+            "battle_hp_lost": "7",
+            "potions": "0",
+            "compared": "True",
+            "skipped": "-",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "exhaust_resources-train-high",
+        "status": "Comparable",
+        "comparison": -1,
+        "materialComparison": -1,
+        "baseline": {
+          "wallSeconds": 11.4062333,
+          "peakManagedHeapBytes": 74505448,
+          "peakManagedLiveBytes": 70100384,
+          "peakWorkingSetBytes": 314134528,
+          "totalAllocatedBytes": 2811514568,
+          "TotalExpanded": 19414,
+          "TotalTransitions": 81377,
+          "ProjectedBattleHpLost": 17,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 9
+        },
+        "candidate": {
+          "wallSeconds": 12.3390103,
+          "peakManagedHeapBytes": 80606832,
+          "peakManagedLiveBytes": 72450624,
+          "peakWorkingSetBytes": 317169664,
+          "totalAllocatedBytes": 3162075800,
+          "TotalExpanded": 21465,
+          "TotalTransitions": 90290,
+          "ProjectedBattleHpLost": 10,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 9
+        },
+        "outcomeChanges": {
+          "projectedBattleHpLost": [
+            17,
+            10
+          ],
+          "strategicHpDeficit": [
+            11,
+            4
+          ],
+          "score": [
+            9999459968,
+            9999879965
+          ]
+        },
+        "resourceChanges": {
+          "playerHp": [
+            1,
+            8
+          ]
+        },
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "5",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "2426",
+            "ran": "True",
+            "expanded": "2051",
+            "transitions": "8913",
+            "termination": "None",
+            "won": "True",
+            "battle_hp_lost": "10",
+            "potions": "0",
+            "compared": "True",
+            "skipped": "-",
+            "selected": "True"
+          }
+        ]
+      },
+      {
+        "case": "strength_setup-train-high",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 7.6226359,
+          "peakManagedHeapBytes": 61487968,
+          "peakManagedLiveBytes": 58743856,
+          "peakWorkingSetBytes": 294273024,
+          "totalAllocatedBytes": 2007296656,
+          "TotalExpanded": 17778,
+          "TotalTransitions": 57292,
+          "ProjectedBattleHpLost": 6,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6
+        },
+        "candidate": {
+          "wallSeconds": 7.6001239,
+          "peakManagedHeapBytes": 57319096,
+          "peakManagedLiveBytes": 57636456,
+          "peakWorkingSetBytes": 289406976,
+          "totalAllocatedBytes": 2080539488,
+          "TotalExpanded": 18434,
+          "TotalTransitions": 59675,
+          "ProjectedBattleHpLost": 6,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "6",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "1438",
+            "ran": "True",
+            "expanded": "656",
+            "transitions": "2383",
+            "termination": "None",
+            "won": "True",
+            "battle_hp_lost": "7",
+            "potions": "0",
+            "compared": "True",
+            "skipped": "-",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "target_order-train-low",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 12.1415579,
+          "peakManagedHeapBytes": 83489464,
+          "peakManagedLiveBytes": 70120712,
+          "peakWorkingSetBytes": 316698624,
+          "totalAllocatedBytes": 4318774328,
+          "TotalExpanded": 28023,
+          "TotalTransitions": 107022,
+          "ProjectedBattleHpLost": 14,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 5
+        },
+        "candidate": {
+          "wallSeconds": 12.6201426,
+          "peakManagedHeapBytes": 83275232,
+          "peakManagedLiveBytes": 73718560,
+          "peakWorkingSetBytes": 316796928,
+          "totalAllocatedBytes": 4628073904,
+          "TotalExpanded": 30015,
+          "TotalTransitions": 115614,
+          "ProjectedBattleHpLost": 14,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 5
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "5",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "3502",
+            "ran": "True",
+            "expanded": "1992",
+            "transitions": "8592",
+            "termination": "None",
+            "won": "True",
+            "battle_hp_lost": "19",
+            "potions": "0",
+            "compared": "True",
+            "skipped": "-",
+            "selected": "False"
+          }
+        ]
+      }
+    ]
+  },
+  "validation": {
+    "statuses": {
+      "Comparable": 32,
+      "Excluded": 3
+    },
+    "quality": {
+      "0": 32
+    },
+    "materialQuality": {
+      "0": 32
+    },
+    "victoryChanges": {
+      "lossToWin": [],
+      "winToLoss": []
+    },
+    "bothWonDamageChanges": {
+      "sampleCount": 29,
+      "totalHpLossDelta": 0,
+      "policyDeficitDelta": 0,
+      "largestTotalHpLossDelta": 0
+    },
+    "totals": {
+      "TotalExpanded": {
+        "baseline": 1002315,
+        "candidate": 1036702,
+        "relativeChange": 0.034307577957029434
+      },
+      "TotalTransitions": {
+        "baseline": 4533876,
+        "candidate": 4686139,
+        "relativeChange": 0.033583406339299904
+      },
+      "wallSeconds": {
+        "baseline": 616.1970872,
+        "candidate": 634.2584737,
+        "relativeChange": 0.029311054653099466
+      },
+      "totalAllocatedBytes": {
+        "baseline": 194264892960,
+        "candidate": 200047805040,
+        "relativeChange": 0.029768178860761774
+      }
+    },
+    "memory": {
+      "peakManagedLiveBytes": {
+        "medianRelativeChange": 0.017543878806443702,
+        "worst": {
+          "relativeChange": 0.2578493541879536,
+          "case": "energy_investment-validation-low",
+          "baselineBytes": 76338000,
+          "candidateBytes": 96021704
+        }
+      },
+      "peakWorkingSetBytes": {
+        "medianRelativeChange": -0.00015039941407601898,
+        "worst": {
+          "relativeChange": 0.06300310666206421,
+          "case": "energy_investment-validation-high",
+          "baselineBytes": 296652800,
+          "candidateBytes": 315342848
+        }
+      }
+    },
+    "observations": [
+      {
+        "case": "attack_or_block-validation-high",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 5.4983877,
+          "peakManagedHeapBytes": 54384504,
+          "peakManagedLiveBytes": 53524304,
+          "peakWorkingSetBytes": 273743872,
+          "totalAllocatedBytes": 947402208,
+          "TotalExpanded": 7177,
+          "TotalTransitions": 23334,
+          "ProjectedBattleHpLost": 15,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6
+        },
+        "candidate": {
+          "wallSeconds": 5.6123729,
+          "peakManagedHeapBytes": 52951072,
+          "peakManagedLiveBytes": 55521360,
+          "peakWorkingSetBytes": 276430848,
+          "totalAllocatedBytes": 1014063392,
+          "TotalExpanded": 7797,
+          "TotalTransitions": 25428,
+          "ProjectedBattleHpLost": 15,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "5",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "897",
+            "ran": "True",
+            "expanded": "620",
+            "transitions": "2094",
+            "termination": "None",
+            "won": "True",
+            "battle_hp_lost": "15",
+            "potions": "0",
+            "compared": "True",
+            "skipped": "-",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "attack_or_block-validation-low",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 7.5494951,
+          "peakManagedHeapBytes": 70782928,
+          "peakManagedLiveBytes": 64271760,
+          "peakWorkingSetBytes": 302243840,
+          "totalAllocatedBytes": 1940154688,
+          "TotalExpanded": 16317,
+          "TotalTransitions": 55034,
+          "ProjectedBattleHpLost": 2,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 8
+        },
+        "candidate": {
+          "wallSeconds": 7.4827841,
+          "peakManagedHeapBytes": 67556528,
+          "peakManagedLiveBytes": 65436240,
+          "peakWorkingSetBytes": 298459136,
+          "totalAllocatedBytes": 2097330192,
+          "TotalExpanded": 17690,
+          "TotalTransitions": 60039,
+          "ProjectedBattleHpLost": 2,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 8
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "5",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "2039",
+            "ran": "True",
+            "expanded": "1373",
+            "transitions": "5005",
+            "termination": "None",
+            "won": "True",
+            "battle_hp_lost": "5",
+            "potions": "0",
+            "compared": "True",
+            "skipped": "-",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "defense_engine-validation-high",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 4.1064026,
+          "peakManagedHeapBytes": 49366200,
+          "peakManagedLiveBytes": 48282144,
+          "peakWorkingSetBytes": 266932224,
+          "totalAllocatedBytes": 691683168,
+          "TotalExpanded": 3496,
+          "TotalTransitions": 13071,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 12
+        },
+        "candidate": {
+          "wallSeconds": 4.1554094,
+          "peakManagedHeapBytes": 49613472,
+          "peakManagedLiveBytes": 51098080,
+          "peakWorkingSetBytes": 266960896,
+          "totalAllocatedBytes": 691584744,
+          "TotalExpanded": 3496,
+          "TotalTransitions": 13071,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 12
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "6",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "0",
+            "ran": "False",
+            "expanded": "0",
+            "transitions": "0",
+            "termination": "-",
+            "won": "-",
+            "battle_hp_lost": "-",
+            "potions": "-",
+            "compared": "False",
+            "skipped": "AcceptableBattleHpLoss",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "defense_engine-validation-low",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 3.5592881,
+          "peakManagedHeapBytes": 39749192,
+          "peakManagedLiveBytes": 45029760,
+          "peakWorkingSetBytes": 257871872,
+          "totalAllocatedBytes": 616850312,
+          "TotalExpanded": 2868,
+          "TotalTransitions": 10774,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 10
+        },
+        "candidate": {
+          "wallSeconds": 3.5255187,
+          "peakManagedHeapBytes": 42169712,
+          "peakManagedLiveBytes": 46920136,
+          "peakWorkingSetBytes": 260386816,
+          "totalAllocatedBytes": 617173456,
+          "TotalExpanded": 2868,
+          "TotalTransitions": 10774,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 10
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "6",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "0",
+            "ran": "False",
+            "expanded": "0",
+            "transitions": "0",
+            "termination": "-",
+            "won": "-",
+            "battle_hp_lost": "-",
+            "potions": "-",
+            "compared": "False",
+            "skipped": "AcceptableBattleHpLoss",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "draw_before_spend-validation-high",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 3.7331243,
+          "peakManagedHeapBytes": 51760584,
+          "peakManagedLiveBytes": 53039128,
+          "peakWorkingSetBytes": 269127680,
+          "totalAllocatedBytes": 624717904,
+          "TotalExpanded": 2257,
+          "TotalTransitions": 13574,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 7
+        },
+        "candidate": {
+          "wallSeconds": 3.5973495,
+          "peakManagedHeapBytes": 51385824,
+          "peakManagedLiveBytes": 49635904,
+          "peakWorkingSetBytes": 268283904,
+          "totalAllocatedBytes": 623326600,
+          "TotalExpanded": 2257,
+          "TotalTransitions": 13574,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 7
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "5",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "0",
+            "ran": "False",
+            "expanded": "0",
+            "transitions": "0",
+            "termination": "-",
+            "won": "-",
+            "battle_hp_lost": "-",
+            "potions": "-",
+            "compared": "False",
+            "skipped": "AcceptableBattleHpLoss",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "draw_before_spend-validation-low",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 3.3516272,
+          "peakManagedHeapBytes": 53909000,
+          "peakManagedLiveBytes": 56079192,
+          "peakWorkingSetBytes": 268599296,
+          "totalAllocatedBytes": 589154448,
+          "TotalExpanded": 1974,
+          "TotalTransitions": 12508,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6
+        },
+        "candidate": {
+          "wallSeconds": 3.3096144,
+          "peakManagedHeapBytes": 47861456,
+          "peakManagedLiveBytes": 46059408,
+          "peakWorkingSetBytes": 261160960,
+          "totalAllocatedBytes": 589253520,
+          "TotalExpanded": 1974,
+          "TotalTransitions": 12508,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "5",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "0",
+            "ran": "False",
+            "expanded": "0",
+            "transitions": "0",
+            "termination": "-",
+            "won": "-",
+            "battle_hp_lost": "-",
+            "potions": "-",
+            "compared": "False",
+            "skipped": "AcceptableBattleHpLoss",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "energy_investment-validation-high",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 7.2027208,
+          "peakManagedHeapBytes": 61656536,
+          "peakManagedLiveBytes": 60316160,
+          "peakWorkingSetBytes": 296652800,
+          "totalAllocatedBytes": 1954356000,
+          "TotalExpanded": 16489,
+          "TotalTransitions": 53312,
+          "ProjectedBattleHpLost": 11,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6
+        },
+        "candidate": {
+          "wallSeconds": 7.701804,
+          "peakManagedHeapBytes": 79444360,
+          "peakManagedLiveBytes": 75179344,
+          "peakWorkingSetBytes": 315342848,
+          "totalAllocatedBytes": 2092389160,
+          "TotalExpanded": 17802,
+          "TotalTransitions": 57996,
+          "ProjectedBattleHpLost": 11,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "5",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "2061",
+            "ran": "True",
+            "expanded": "1313",
+            "transitions": "4684",
+            "termination": "None",
+            "won": "True",
+            "battle_hp_lost": "13",
+            "potions": "0",
+            "compared": "True",
+            "skipped": "-",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "energy_investment-validation-low",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 12.1841822,
+          "peakManagedHeapBytes": 90149912,
+          "peakManagedLiveBytes": 76338000,
+          "peakWorkingSetBytes": 321191936,
+          "totalAllocatedBytes": 4205502976,
+          "TotalExpanded": 36100,
+          "TotalTransitions": 125553,
+          "ProjectedBattleHpLost": 3,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6
+        },
+        "candidate": {
+          "wallSeconds": 13.3599885,
+          "peakManagedHeapBytes": 108571640,
+          "peakManagedLiveBytes": 96021704,
+          "peakWorkingSetBytes": 337326080,
+          "totalAllocatedBytes": 4535872040,
+          "TotalExpanded": 38918,
+          "TotalTransitions": 136128,
+          "ProjectedBattleHpLost": 3,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "5",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "4512",
+            "ran": "True",
+            "expanded": "2818",
+            "transitions": "10575",
+            "termination": "None",
+            "won": "True",
+            "battle_hp_lost": "6",
+            "potions": "0",
+            "compared": "True",
+            "skipped": "-",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "exhaust_resources-validation-high",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 10.6905062,
+          "peakManagedHeapBytes": 79183504,
+          "peakManagedLiveBytes": 74774248,
+          "peakWorkingSetBytes": 317616128,
+          "totalAllocatedBytes": 2693257336,
+          "TotalExpanded": 18385,
+          "TotalTransitions": 75426,
+          "ProjectedBattleHpLost": 14,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 7
+        },
+        "candidate": {
+          "wallSeconds": 11.3789374,
+          "peakManagedHeapBytes": 84675016,
+          "peakManagedLiveBytes": 68498784,
+          "peakWorkingSetBytes": 321761280,
+          "totalAllocatedBytes": 2947967400,
+          "TotalExpanded": 20217,
+          "TotalTransitions": 83393,
+          "ProjectedBattleHpLost": 14,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 7
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "5",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "2298",
+            "ran": "True",
+            "expanded": "1832",
+            "transitions": "7967",
+            "termination": "None",
+            "won": "True",
+            "battle_hp_lost": "15",
+            "potions": "0",
+            "compared": "True",
+            "skipped": "-",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "exhaust_resources-validation-low",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 4.4886552,
+          "peakManagedHeapBytes": 66225304,
+          "peakManagedLiveBytes": 68886104,
+          "peakWorkingSetBytes": 281731072,
+          "totalAllocatedBytes": 743004192,
+          "TotalExpanded": 3257,
+          "TotalTransitions": 14577,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 9
+        },
+        "candidate": {
+          "wallSeconds": 4.4789337,
+          "peakManagedHeapBytes": 61028792,
+          "peakManagedLiveBytes": 60765312,
+          "peakWorkingSetBytes": 281542656,
+          "totalAllocatedBytes": 742949928,
+          "TotalExpanded": 3257,
+          "TotalTransitions": 14577,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 9
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "5",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "0",
+            "ran": "False",
+            "expanded": "0",
+            "transitions": "0",
+            "termination": "-",
+            "won": "-",
+            "battle_hp_lost": "-",
+            "potions": "-",
+            "compared": "False",
+            "skipped": "AcceptableBattleHpLoss",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "focus_investment-validation-high",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 7.8818983,
+          "peakManagedHeapBytes": 59105088,
+          "peakManagedLiveBytes": 59645808,
+          "peakWorkingSetBytes": 294428672,
+          "totalAllocatedBytes": 2439799064,
+          "TotalExpanded": 17103,
+          "TotalTransitions": 59801,
+          "ProjectedBattleHpLost": 2,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 5
+        },
+        "candidate": {
+          "wallSeconds": 8.2064659,
+          "peakManagedHeapBytes": 66954648,
+          "peakManagedLiveBytes": 63817976,
+          "peakWorkingSetBytes": 300621824,
+          "totalAllocatedBytes": 2523888800,
+          "TotalExpanded": 17829,
+          "TotalTransitions": 62579,
+          "ProjectedBattleHpLost": 2,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 5
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "6",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "1146",
+            "ran": "True",
+            "expanded": "726",
+            "transitions": "2778",
+            "termination": "None",
+            "won": "True",
+            "battle_hp_lost": "2",
+            "potions": "0",
+            "compared": "True",
+            "skipped": "-",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "focus_investment-validation-low",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 1.4278762,
+          "peakManagedHeapBytes": 28626320,
+          "peakManagedLiveBytes": 33075408,
+          "peakWorkingSetBytes": 240816128,
+          "totalAllocatedBytes": 599663968,
+          "TotalExpanded": 704,
+          "TotalTransitions": 2773,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 4
+        },
+        "candidate": {
+          "wallSeconds": 1.3980166,
+          "peakManagedHeapBytes": 28525328,
+          "peakManagedLiveBytes": 36127136,
+          "peakWorkingSetBytes": 240717824,
+          "totalAllocatedBytes": 592276888,
+          "TotalExpanded": 704,
+          "TotalTransitions": 2773,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 4
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "6",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "0",
+            "ran": "False",
+            "expanded": "0",
+            "transitions": "0",
+            "termination": "-",
+            "won": "-",
+            "battle_hp_lost": "-",
+            "potions": "-",
+            "compared": "False",
+            "skipped": "AcceptableBattleHpLoss",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "orb_defense-validation-high",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 1.5431757,
+          "peakManagedHeapBytes": 28021848,
+          "peakManagedLiveBytes": 34584384,
+          "peakWorkingSetBytes": 239775744,
+          "totalAllocatedBytes": 383614008,
+          "TotalExpanded": 945,
+          "TotalTransitions": 3388,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 5
+        },
+        "candidate": {
+          "wallSeconds": 1.5431872,
+          "peakManagedHeapBytes": 28042024,
+          "peakManagedLiveBytes": 34629768,
+          "peakWorkingSetBytes": 239652864,
+          "totalAllocatedBytes": 383631024,
+          "TotalExpanded": 945,
+          "TotalTransitions": 3388,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 5
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "5",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "0",
+            "ran": "False",
+            "expanded": "0",
+            "transitions": "0",
+            "termination": "-",
+            "won": "-",
+            "battle_hp_lost": "-",
+            "potions": "-",
+            "compared": "False",
+            "skipped": "AcceptableBattleHpLoss",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "orb_defense-validation-low",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 1.3345758,
+          "peakManagedHeapBytes": 29880240,
+          "peakManagedLiveBytes": 32805704,
+          "peakWorkingSetBytes": 236584960,
+          "totalAllocatedBytes": 363464272,
+          "TotalExpanded": 833,
+          "TotalTransitions": 2797,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 5
+        },
+        "candidate": {
+          "wallSeconds": 1.4238332,
+          "peakManagedHeapBytes": 30508656,
+          "peakManagedLiveBytes": 35469904,
+          "peakWorkingSetBytes": 237133824,
+          "totalAllocatedBytes": 363581656,
+          "TotalExpanded": 833,
+          "TotalTransitions": 2797,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 5
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "5",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "0",
+            "ran": "False",
+            "expanded": "0",
+            "transitions": "0",
+            "termination": "-",
+            "won": "-",
+            "battle_hp_lost": "-",
+            "potions": "-",
+            "compared": "False",
+            "skipped": "AcceptableBattleHpLoss",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "poison_or_burst-validation-high",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 1.9265571,
+          "peakManagedHeapBytes": 33145880,
+          "peakManagedLiveBytes": 36619128,
+          "peakWorkingSetBytes": 245547008,
+          "totalAllocatedBytes": 434062688,
+          "TotalExpanded": 1361,
+          "TotalTransitions": 5224,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6
+        },
+        "candidate": {
+          "wallSeconds": 1.9632011,
+          "peakManagedHeapBytes": 34147656,
+          "peakManagedLiveBytes": 37728432,
+          "peakWorkingSetBytes": 245678080,
+          "totalAllocatedBytes": 434095128,
+          "TotalExpanded": 1361,
+          "TotalTransitions": 5224,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "5",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "0",
+            "ran": "False",
+            "expanded": "0",
+            "transitions": "0",
+            "termination": "-",
+            "won": "-",
+            "battle_hp_lost": "-",
+            "potions": "-",
+            "compared": "False",
+            "skipped": "AcceptableBattleHpLoss",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "poison_or_burst-validation-low",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 1.6787106,
+          "peakManagedHeapBytes": 32417080,
+          "peakManagedLiveBytes": 34681088,
+          "peakWorkingSetBytes": 240967680,
+          "totalAllocatedBytes": 400730688,
+          "TotalExpanded": 1065,
+          "TotalTransitions": 4219,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 5
+        },
+        "candidate": {
+          "wallSeconds": 1.6795325,
+          "peakManagedHeapBytes": 32760744,
+          "peakManagedLiveBytes": 37898256,
+          "peakWorkingSetBytes": 244830208,
+          "totalAllocatedBytes": 400643968,
+          "TotalExpanded": 1065,
+          "TotalTransitions": 4219,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 5
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "5",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "0",
+            "ran": "False",
+            "expanded": "0",
+            "transitions": "0",
+            "termination": "-",
+            "won": "-",
+            "battle_hp_lost": "-",
+            "potions": "-",
+            "compared": "False",
+            "skipped": "AcceptableBattleHpLoss",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "random-defect-boss-validation",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 36.0515764,
+          "peakManagedHeapBytes": 149001936,
+          "peakManagedLiveBytes": 131791200,
+          "peakWorkingSetBytes": 386699264,
+          "totalAllocatedBytes": 11285058040,
+          "TotalExpanded": 61339,
+          "TotalTransitions": 247314,
+          "ProjectedBattleHpLost": 62,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 13
+        },
+        "candidate": {
+          "wallSeconds": 37.0155794,
+          "peakManagedHeapBytes": 161733464,
+          "peakManagedLiveBytes": 134027656,
+          "peakWorkingSetBytes": 397586432,
+          "totalAllocatedBytes": 11657681728,
+          "TotalExpanded": 63220,
+          "TotalTransitions": 255689,
+          "ProjectedBattleHpLost": 62,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 13
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "6",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "4473",
+            "ran": "True",
+            "expanded": "1881",
+            "transitions": "8375",
+            "termination": "None",
+            "won": "False",
+            "battle_hp_lost": "75",
+            "potions": "0",
+            "compared": "True",
+            "skipped": "-",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "random-defect-elite-validation",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 95.5622051,
+          "peakManagedHeapBytes": 160162184,
+          "peakManagedLiveBytes": 124359056,
+          "peakWorkingSetBytes": 399257600,
+          "totalAllocatedBytes": 32062661424,
+          "TotalExpanded": 175253,
+          "TotalTransitions": 679753,
+          "ProjectedBattleHpLost": 40,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 8
+        },
+        "candidate": {
+          "wallSeconds": 97.8066844,
+          "peakManagedHeapBytes": 173163144,
+          "peakManagedLiveBytes": 116240504,
+          "peakWorkingSetBytes": 412200960,
+          "totalAllocatedBytes": 32609103792,
+          "TotalExpanded": 178359,
+          "TotalTransitions": 691798,
+          "ProjectedBattleHpLost": 40,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 8
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "6",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "9219",
+            "ran": "True",
+            "expanded": "3106",
+            "transitions": "12045",
+            "termination": "None",
+            "won": "True",
+            "battle_hp_lost": "40",
+            "potions": "0",
+            "compared": "True",
+            "skipped": "-",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "random-defect-monster-validation",
+        "status": "Excluded",
+        "reasons": [
+          "ProcessTimeout",
+          "ProcessTimeout"
+        ]
+      },
+      {
+        "case": "random-ironclad-boss-validation",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 26.9959395,
+          "peakManagedHeapBytes": 104298968,
+          "peakManagedLiveBytes": 93694472,
+          "peakWorkingSetBytes": 353878016,
+          "totalAllocatedBytes": 8826086304,
+          "TotalExpanded": 57573,
+          "TotalTransitions": 215113,
+          "ProjectedBattleHpLost": 41,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6
+        },
+        "candidate": {
+          "wallSeconds": 27.9701386,
+          "peakManagedHeapBytes": 95085408,
+          "peakManagedLiveBytes": 87133872,
+          "peakWorkingSetBytes": 342032384,
+          "totalAllocatedBytes": 9122272032,
+          "TotalExpanded": 59639,
+          "TotalTransitions": 223360,
+          "ProjectedBattleHpLost": 41,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "6",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "3440",
+            "ran": "True",
+            "expanded": "2066",
+            "transitions": "8247",
+            "termination": "None",
+            "won": "True",
+            "battle_hp_lost": "59",
+            "potions": "0",
+            "compared": "True",
+            "skipped": "-",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "random-ironclad-elite-validation",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 21.0022009,
+          "peakManagedHeapBytes": 95393936,
+          "peakManagedLiveBytes": 87457072,
+          "peakWorkingSetBytes": 344821760,
+          "totalAllocatedBytes": 6386056304,
+          "TotalExpanded": 43071,
+          "TotalTransitions": 146831,
+          "ProjectedBattleHpLost": 45,
+          "PotionCount": 1,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 4
+        },
+        "candidate": {
+          "wallSeconds": 21.5978355,
+          "peakManagedHeapBytes": 95358088,
+          "peakManagedLiveBytes": 89521424,
+          "peakWorkingSetBytes": 341770240,
+          "totalAllocatedBytes": 6572926392,
+          "TotalExpanded": 44321,
+          "TotalTransitions": 151373,
+          "ProjectedBattleHpLost": 45,
+          "PotionCount": 1,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 4
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "6",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "2045",
+            "ran": "True",
+            "expanded": "1250",
+            "transitions": "4542",
+            "termination": "None",
+            "won": "True",
+            "battle_hp_lost": "67",
+            "potions": "0",
+            "compared": "True",
+            "skipped": "-",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "random-ironclad-monster-validation",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 12.6259106,
+          "peakManagedHeapBytes": 91755424,
+          "peakManagedLiveBytes": 81866216,
+          "peakWorkingSetBytes": 331583488,
+          "totalAllocatedBytes": 3259575216,
+          "TotalExpanded": 20803,
+          "TotalTransitions": 76322,
+          "ProjectedBattleHpLost": 9,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 3
+        },
+        "candidate": {
+          "wallSeconds": 12.6536748,
+          "peakManagedHeapBytes": 75698056,
+          "peakManagedLiveBytes": 77417848,
+          "peakWorkingSetBytes": 319049728,
+          "totalAllocatedBytes": 3397732272,
+          "TotalExpanded": 21716,
+          "TotalTransitions": 79890,
+          "ProjectedBattleHpLost": 9,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 3
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "6",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "1559",
+            "ran": "True",
+            "expanded": "913",
+            "transitions": "3568",
+            "termination": "None",
+            "won": "True",
+            "battle_hp_lost": "12",
+            "potions": "0",
+            "compared": "True",
+            "skipped": "-",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "random-necrobinder-boss-validation",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 39.5865389,
+          "peakManagedHeapBytes": 147537136,
+          "peakManagedLiveBytes": 143653568,
+          "peakWorkingSetBytes": 390877184,
+          "totalAllocatedBytes": 12662116784,
+          "TotalExpanded": 63558,
+          "TotalTransitions": 326250,
+          "ProjectedBattleHpLost": 58,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 11
+        },
+        "candidate": {
+          "wallSeconds": 41.2883989,
+          "peakManagedHeapBytes": 150126304,
+          "peakManagedLiveBytes": 146816072,
+          "peakWorkingSetBytes": 394694656,
+          "totalAllocatedBytes": 12995856944,
+          "TotalExpanded": 65364,
+          "TotalTransitions": 334811,
+          "ProjectedBattleHpLost": 58,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 11
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "6",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "2943",
+            "ran": "True",
+            "expanded": "1806",
+            "transitions": "8561",
+            "termination": "None",
+            "won": "False",
+            "battle_hp_lost": "66",
+            "potions": "0",
+            "compared": "True",
+            "skipped": "-",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "random-necrobinder-elite-validation",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 12.4435583,
+          "peakManagedHeapBytes": 83849336,
+          "peakManagedLiveBytes": 77603784,
+          "peakWorkingSetBytes": 329342976,
+          "totalAllocatedBytes": 3158235560,
+          "TotalExpanded": 18902,
+          "TotalTransitions": 65983,
+          "ProjectedBattleHpLost": 25,
+          "PotionCount": 1,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 5
+        },
+        "candidate": {
+          "wallSeconds": 13.0657218,
+          "peakManagedHeapBytes": 82421480,
+          "peakManagedLiveBytes": 82732824,
+          "peakWorkingSetBytes": 323280896,
+          "totalAllocatedBytes": 3310356656,
+          "TotalExpanded": 19938,
+          "TotalTransitions": 69652,
+          "ProjectedBattleHpLost": 25,
+          "PotionCount": 1,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 5
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "6",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "1834",
+            "ran": "True",
+            "expanded": "1036",
+            "transitions": "3669",
+            "termination": "None",
+            "won": "True",
+            "battle_hp_lost": "43",
+            "potions": "0",
+            "compared": "True",
+            "skipped": "-",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "random-necrobinder-monster-validation",
+        "status": "Excluded",
+        "reasons": [
+          "ProcessTimeout",
+          "ProcessTimeout"
+        ]
+      },
+      {
+        "case": "random-regent-boss-validation",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 46.8154758,
+          "peakManagedHeapBytes": 194515888,
+          "peakManagedLiveBytes": 190193064,
+          "peakWorkingSetBytes": 444895232,
+          "totalAllocatedBytes": 15854539248,
+          "TotalExpanded": 50738,
+          "TotalTransitions": 376246,
+          "ProjectedBattleHpLost": 75,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": true,
+          "CombatEndedTurn": null
+        },
+        "candidate": {
+          "wallSeconds": 48.5446009,
+          "peakManagedHeapBytes": 182628176,
+          "peakManagedLiveBytes": 166280208,
+          "peakWorkingSetBytes": 432914432,
+          "totalAllocatedBytes": 16274092448,
+          "TotalExpanded": 52069,
+          "TotalTransitions": 386621,
+          "ProjectedBattleHpLost": 75,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": true,
+          "CombatEndedTurn": null
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "6",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "2976",
+            "ran": "True",
+            "expanded": "1331",
+            "transitions": "10375",
+            "termination": "None",
+            "won": "False",
+            "battle_hp_lost": "75",
+            "potions": "0",
+            "compared": "True",
+            "skipped": "-",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "random-regent-elite-validation",
+        "status": "Excluded",
+        "reasons": [
+          "ProcessTimeout",
+          "ProcessTimeout"
+        ]
+      },
+      {
+        "case": "random-regent-monster-validation",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 73.5694333,
+          "peakManagedHeapBytes": 233387280,
+          "peakManagedLiveBytes": 207089056,
+          "peakWorkingSetBytes": 486121472,
+          "totalAllocatedBytes": 23352552400,
+          "TotalExpanded": 110788,
+          "TotalTransitions": 555882,
+          "ProjectedBattleHpLost": 7,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6
+        },
+        "candidate": {
+          "wallSeconds": 75.8551334,
+          "peakManagedHeapBytes": 236445960,
+          "peakManagedLiveBytes": 211705576,
+          "peakWorkingSetBytes": 482496512,
+          "totalAllocatedBytes": 23751486120,
+          "TotalExpanded": 112988,
+          "TotalTransitions": 565750,
+          "ProjectedBattleHpLost": 7,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "6",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "6125",
+            "ran": "True",
+            "expanded": "2200",
+            "transitions": "9868",
+            "termination": "None",
+            "won": "True",
+            "battle_hp_lost": "7",
+            "potions": "0",
+            "compared": "True",
+            "skipped": "-",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "random-silent-boss-validation",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 25.6458697,
+          "peakManagedHeapBytes": 112518448,
+          "peakManagedLiveBytes": 97261312,
+          "peakWorkingSetBytes": 352944128,
+          "totalAllocatedBytes": 7984598672,
+          "TotalExpanded": 54720,
+          "TotalTransitions": 219189,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": true,
+          "CombatEndedTurn": null
+        },
+        "candidate": {
+          "wallSeconds": 26.7638778,
+          "peakManagedHeapBytes": 102526712,
+          "peakManagedLiveBytes": 87545456,
+          "peakWorkingSetBytes": 346664960,
+          "totalAllocatedBytes": 8443047248,
+          "TotalExpanded": 57852,
+          "TotalTransitions": 232175,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": true,
+          "CombatEndedTurn": null
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "5",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "4251",
+            "ran": "True",
+            "expanded": "3132",
+            "transitions": "12986",
+            "termination": "None",
+            "won": "False",
+            "battle_hp_lost": "0",
+            "potions": "0",
+            "compared": "True",
+            "skipped": "-",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "random-silent-elite-validation",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 47.9467282,
+          "peakManagedHeapBytes": 143351248,
+          "peakManagedLiveBytes": 127823952,
+          "peakWorkingSetBytes": 385761280,
+          "totalAllocatedBytes": 17224419352,
+          "TotalExpanded": 72213,
+          "TotalTransitions": 340961,
+          "ProjectedBattleHpLost": 37,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6
+        },
+        "candidate": {
+          "wallSeconds": 48.3869209,
+          "peakManagedHeapBytes": 123223664,
+          "peakManagedLiveBytes": 109367408,
+          "peakWorkingSetBytes": 367521792,
+          "totalAllocatedBytes": 17598101592,
+          "TotalExpanded": 73862,
+          "TotalTransitions": 348702,
+          "ProjectedBattleHpLost": 37,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "6",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "3175",
+            "ran": "True",
+            "expanded": "1649",
+            "transitions": "7741",
+            "termination": "None",
+            "won": "True",
+            "battle_hp_lost": "51",
+            "potions": "0",
+            "compared": "True",
+            "skipped": "-",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "random-silent-monster-validation",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 70.4873156,
+          "peakManagedHeapBytes": 149387288,
+          "peakManagedLiveBytes": 141101720,
+          "peakWorkingSetBytes": 394895360,
+          "totalAllocatedBytes": 24479905688,
+          "TotalExpanded": 83533,
+          "TotalTransitions": 596549,
+          "ProjectedBattleHpLost": 54,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 8
+        },
+        "candidate": {
+          "wallSeconds": 72.1884714,
+          "peakManagedHeapBytes": 156098168,
+          "peakManagedLiveBytes": 141033920,
+          "peakWorkingSetBytes": 402100224,
+          "totalAllocatedBytes": 25105612680,
+          "TotalExpanded": 85565,
+          "TotalTransitions": 612567,
+          "ProjectedBattleHpLost": 54,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 8
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "6",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "4021",
+            "ran": "True",
+            "expanded": "2032",
+            "transitions": "16018",
+            "termination": "None",
+            "won": "True",
+            "battle_hp_lost": "56",
+            "potions": "0",
+            "compared": "True",
+            "skipped": "-",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "strength_setup-validation-high",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 7.6634295,
+          "peakManagedHeapBytes": 54661672,
+          "peakManagedLiveBytes": 58600960,
+          "peakWorkingSetBytes": 282030080,
+          "totalAllocatedBytes": 2030398712,
+          "TotalExpanded": 17687,
+          "TotalTransitions": 58194,
+          "ProjectedBattleHpLost": 5,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6
+        },
+        "candidate": {
+          "wallSeconds": 7.7035638,
+          "peakManagedHeapBytes": 54139616,
+          "peakManagedLiveBytes": 56908928,
+          "peakWorkingSetBytes": 285716480,
+          "totalAllocatedBytes": 2104025936,
+          "TotalExpanded": 18372,
+          "TotalTransitions": 60664,
+          "ProjectedBattleHpLost": 5,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "6",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "1377",
+            "ran": "True",
+            "expanded": "685",
+            "transitions": "2470",
+            "termination": "None",
+            "won": "True",
+            "battle_hp_lost": "7",
+            "potions": "0",
+            "compared": "True",
+            "skipped": "-",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "strength_setup-validation-low",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 6.8740795,
+          "peakManagedHeapBytes": 54523824,
+          "peakManagedLiveBytes": 55860632,
+          "peakWorkingSetBytes": 280133632,
+          "totalAllocatedBytes": 1482865424,
+          "TotalExpanded": 10945,
+          "TotalTransitions": 37566,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6
+        },
+        "candidate": {
+          "wallSeconds": 6.7901301,
+          "peakManagedHeapBytes": 55351376,
+          "peakManagedLiveBytes": 56910752,
+          "peakWorkingSetBytes": 281800704,
+          "totalAllocatedBytes": 1486761472,
+          "TotalExpanded": 10945,
+          "TotalTransitions": 37566,
+          "ProjectedBattleHpLost": 0,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 6
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "6",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "0",
+            "ran": "False",
+            "expanded": "0",
+            "transitions": "0",
+            "termination": "-",
+            "won": "-",
+            "battle_hp_lost": "-",
+            "potions": "-",
+            "compared": "False",
+            "skipped": "AcceptableBattleHpLoss",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "target_order-validation-high",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 1.7961795,
+          "peakManagedHeapBytes": 37548424,
+          "peakManagedLiveBytes": 42778592,
+          "peakWorkingSetBytes": 251990016,
+          "totalAllocatedBytes": 383987640,
+          "TotalExpanded": 1571,
+          "TotalTransitions": 4296,
+          "ProjectedBattleHpLost": 18,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": true,
+          "CombatEndedTurn": null
+        },
+        "candidate": {
+          "wallSeconds": 1.9621804,
+          "peakManagedHeapBytes": 37604352,
+          "peakManagedLiveBytes": 42016512,
+          "peakWorkingSetBytes": 249569280,
+          "totalAllocatedBytes": 400698600,
+          "TotalExpanded": 1715,
+          "TotalTransitions": 4761,
+          "ProjectedBattleHpLost": 18,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": true,
+          "CombatEndedTurn": null
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "5",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "196",
+            "ran": "True",
+            "expanded": "144",
+            "transitions": "465",
+            "termination": "None",
+            "won": "False",
+            "battle_hp_lost": "18",
+            "potions": "0",
+            "compared": "True",
+            "skipped": "-",
+            "selected": "False"
+          }
+        ]
+      },
+      {
+        "case": "target_order-validation-low",
+        "status": "Comparable",
+        "comparison": 0,
+        "materialComparison": 0,
+        "baseline": {
+          "wallSeconds": 12.9734633,
+          "peakManagedHeapBytes": 97784056,
+          "peakManagedLiveBytes": 85190152,
+          "peakWorkingSetBytes": 328531968,
+          "totalAllocatedBytes": 4204418272,
+          "TotalExpanded": 29290,
+          "TotalTransitions": 112062,
+          "ProjectedBattleHpLost": 16,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 8
+        },
+        "candidate": {
+          "wallSeconds": 13.8486125,
+          "peakManagedHeapBytes": 89250184,
+          "peakManagedLiveBytes": 77461136,
+          "peakWorkingSetBytes": 320831488,
+          "totalAllocatedBytes": 4568021232,
+          "TotalExpanded": 31764,
+          "TotalTransitions": 122292,
+          "ProjectedBattleHpLost": 16,
+          "PotionCount": 0,
+          "OnlyDeathRoutes": false,
+          "CombatEndedTurn": 8
+        },
+        "outcomeChanges": {},
+        "resourceChanges": {},
+        "originalMembersExact": true,
+        "boundedMembers": [
+          {
+            "index": "5",
+            "beam": "24",
+            "second_rank_band": "False",
+            "base_score_only": "False",
+            "power_commitment": "False",
+            "nodes": "3661",
+            "ran": "True",
+            "expanded": "2474",
+            "transitions": "10230",
+            "termination": "None",
+            "won": "True",
+            "battle_hp_lost": "22",
+            "potions": "0",
+            "compared": "True",
+            "skipped": "-",
+            "selected": "False"
+          }
+        ]
+      }
+    ],
+    "boundedMemberRuns": 21,
+    "boundedMemberTargetSkips": 11,
+    "allOriginalMemberRecordsExact": true,
+    "allReportedResourcesExact": true
+  },
+  "validationNamespace": "WEIGHT-HOLDOUT-20260922",
+  "testSplitMeasured": false,
+  "pureContractChecks": 106,
+  "invalidInputs": [
+    {
+      "args": [
+        "--bounded-offensive-refinement"
+      ],
+      "exitCode": 2,
+      "diagnostic": "有界追加参数需要Coordinator组合。"
+    },
+    {
+      "args": [
+        "--bounded-offensive-refinement",
+        "--search-mode",
+        "Coordinator"
+      ],
+      "exitCode": 2,
+      "diagnostic": "有界追加参数需要Coordinator组合。"
+    },
+    {
+      "args": [
+        "--bounded-offensive-refinement",
+        "--search-mode",
+        "Coordinator",
+        "--use-portfolio",
+        "--offensive-refinement"
+      ],
+      "exitCode": 2,
+      "diagnostic": "有界追加不能叠加其他排序实验。"
+    },
+    {
+      "args": [
+        "--bounded-offensive-refinement",
+        "--search-mode",
+        "Coordinator",
+        "--use-portfolio",
+        "--beam-weight",
+        "EnemyHp:1.5"
+      ],
+      "exitCode": 2,
+      "diagnostic": "有界追加不能叠加其他排序实验。"
+    },
+    {
+      "args": [
+        "--disable-bounded-offensive-refinement"
+      ],
+      "exitCode": 2,
+      "diagnostic": "有界追加参数需要Coordinator组合。"
+    }
+  ],
+  "decision": "Keep disabled: all 32 comparable validation outcomes tie, including legacy score; 21 added searches produce no selected winner while transitions increase 3.36%. Training-only 7 HP gain is insufficient for universal extra work.",
+  "defaultControls": [
+    {
+      "case": "energy_investment-train-high",
+      "fullRouteExact": true,
+      "fullQualityExact": true,
+      "expanded": 18769,
+      "transitions": 62030
+    },
+    {
+      "case": "exhaust_resources-train-high",
+      "fullRouteExact": true,
+      "fullQualityExact": true,
+      "expanded": 19414,
+      "transitions": 81377
+    }
+  ],
+  "sameWidthSameBudgetAblation": {
+    "case": "exhaust_resources-train-high",
+    "beam": 24,
+    "nodes": 2426,
+    "mode": "Evaluate",
+    "baseline": "original rank",
+    "candidate": "EnemyHp term 1.5x",
+    "status": "Comparable",
+    "comparison": -1,
+    "materialComparison": -1,
+    "plain": {
+      "TotalExpanded": 1771,
+      "TotalTransitions": 8048,
+      "outcome": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 17,
+        "strategicHpDeficit": 11,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 9999319966,
+        "combatEndedTurn": 9,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      }
+    },
+    "offensive": {
+      "TotalExpanded": 2051,
+      "TotalTransitions": 8913,
+      "outcome": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 10,
+        "strategicHpDeficit": 4,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 9999879965,
+        "combatEndedTurn": 9,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      }
+    },
+    "scope": "One training witness, not a generalized quality result."
+  }
+}

@@ -1,0 +1,422 @@
+diff --git a/src/Search/BeamWidthPortfolio.cs b/src/Search/BeamWidthPortfolio.cs
+index d7937929..5e367b4d 100644
+--- a/src/Search/BeamWidthPortfolio.cs
++++ b/src/Search/BeamWidthPortfolio.cs
+@@ -4,7 +4,7 @@ namespace CombatSolver;
+ /// 一个组合成员的定义：Beam 宽度，以及排序方式。次段成员的宽度与基线相同，但全局剪枝的普通席位取
+ /// 分数排名第 W+1 至 2W 位（见 <see cref="SolverSearchProfile.SecondRankBand" />）；基础分成员的宽度也与
+ /// 基线相同，但中途排序只用基础分（见 <see cref="SolverSearchProfile.BaseScoreOnly" />）。
+-/// 实验性进攻成员使用独立的窄宽度与敌方血量项倍率，不修改其他成员。
++/// 实验性进攻成员使用独立的窄宽度与敌方血量项倍率；结构成员只在已有完整胜路后启用另一搜索算法。
+ /// </summary>
+ internal readonly record struct BeamWidthPortfolioMemberSpec(
+     int BeamWidth,
+@@ -12,13 +12,15 @@ internal readonly record struct BeamWidthPortfolioMemberSpec(
+     bool BaseScoreOnly = false,
+     bool AggressivePowerCommitment = false,
+     bool OffensiveRefinement = false,
+-    bool BoundedRefinement = false)
++    bool BoundedRefinement = false,
++    bool NoveltyRefinement = false)
+ {
+     public override string ToString()
+         => BeamWidth
+             + (AggressivePowerCommitment ? "+power" : string.Empty)
+             + (OffensiveRefinement ? "+offense" : string.Empty)
+             + (BoundedRefinement ? "+bounded" : string.Empty)
++            + (NoveltyRefinement ? "+novelty" : string.Empty)
+             + (SecondRankBand ? "+band" : string.Empty)
+             + (BaseScoreOnly ? "+base" : string.Empty);
+ }
+@@ -72,6 +74,7 @@ internal sealed record BeamWidthPortfolioMember(
+ {
+     public bool OffensiveRefinement { get; init; }
+     public bool BoundedRefinement { get; init; }
++    public bool NoveltyRefinement { get; init; }
+ }
+
+ internal sealed record BeamWidthPortfolioOutcome<TResult>(
+@@ -85,7 +88,7 @@ internal sealed record BeamWidthPortfolioOutcome<TResult>(
+ /// <summary>
+ /// 按顺序在同一个根上跑若干个成员，共享一份节点预算，取最优结果。成员之间只有 Beam 宽度不同，
+ /// 或者是与基线同宽度、只改中途排序的成员：「次段」（普通席位取分数排名第 W+1 至 2W 位）或
+-/// 「基础分」（排序不加附加分），或显式启用的窄进攻精炼。
++/// 「基础分」（排序不加附加分），或显式启用的进攻/结构精炼。
+ /// </summary>
+ /// <remarks>
+ /// <para>
+@@ -151,6 +154,7 @@ internal static class BeamWidthPortfolio
+     /// 显式给出宽度列表时只有宽度成员，不追加次段与基础分成员。
+     /// 替换实验可把3/2宽成员改为2/5宽、EnemyHp项1.5倍的独立成员；不增加成员或专用预算。
+     /// 互斥的追加实验保留原列表，在末尾新增同类成员，消费既有共享余量并按此前实际展开限额。
++    /// 结构实验只标记原普通窄槽：运行到它时已有选中的完整胜路才换用有界新颖性算法，否则仍跑原窄成员。
+     /// <paramref name="includePlainBaseline" /> 为 false 时不再追加那个只带基线宽度、不带任何排序修饰的
+     /// 成员，真实搜索因此少跑一次；此时候选比较不再保证"不差于今天的单次搜索"。
+     /// 实测依据：该成员在 152 场里只有 5 场严格优于其余全部成员（合计 19 HP），
+@@ -162,11 +166,14 @@ internal static class BeamWidthPortfolio
+         bool includePlainBaseline = true,
+         bool includePowerCommitmentMember = false,
+         bool useOffensiveRefinement = false,
+-        bool appendBoundedOffensiveRefinement = false)
++        bool appendBoundedOffensiveRefinement = false,
++        bool useStructuralRefinement = false)
+     {
+         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(baselineBeamWidth);
+         if (useOffensiveRefinement && appendBoundedOffensiveRefinement)
+             throw new ArgumentException("替换与追加精炼实验不能同时启用。");
++        if (useStructuralRefinement && (useOffensiveRefinement || appendBoundedOffensiveRefinement))
++            throw new ArgumentException("结构替换实验不能叠加进攻精炼实验。");
+         List<BeamWidthPortfolioMemberSpec> members =
+             includePlainBaseline ? [new(baselineBeamWidth)] : [];
+         if (includePowerCommitmentMember)
+@@ -187,14 +194,16 @@ internal static class BeamWidthPortfolio
+         }
+         foreach (BeamWidthPortfolioMemberSpec member in new[]
+                  {
+-                     new BeamWidthPortfolioMemberSpec(ScaledWidth(baselineBeamWidth, NarrowRefinementRatio)),
++                     new BeamWidthPortfolioMemberSpec(ScaledWidth(baselineBeamWidth, NarrowRefinementRatio),
++                         NoveltyRefinement: useStructuralRefinement),
+                      useOffensiveRefinement
+                          ? new BeamWidthPortfolioMemberSpec(
+                              ScaledWidth(baselineBeamWidth, OffensiveRefinementRatio), OffensiveRefinement: true)
+                          : new BeamWidthPortfolioMemberSpec(ScaledWidth(baselineBeamWidth, WideRefinementRatio)),
+                  })
+         {
+-            if (!members.Contains(member))
++            if (!members.Contains(member)
++                && !(member.NoveltyRefinement && members.Contains(member with { NoveltyRefinement = false })))
+                 members.Add(member);
+         }
+         members.Add(new BeamWidthPortfolioMemberSpec(baselineBeamWidth, SecondRankBand: true));
+@@ -255,6 +264,10 @@ internal static class BeamWidthPortfolio
+                 throw new ArgumentOutOfRangeException(nameof(memberSpecs), "成员 Beam 宽度必须为正。");
+             if (memberSpecs[index] is { BoundedRefinement: true, OffensiveRefinement: false })
+                 throw new ArgumentException("有界精炼必须使用进攻成员。", nameof(memberSpecs));
++            if (memberSpecs[index] is { NoveltyRefinement: true } structural
++                && (structural.SecondRankBand || structural.BaseScoreOnly || structural.AggressivePowerCommitment
++                    || structural.OffensiveRefinement || structural.BoundedRefinement))
++                throw new ArgumentException("结构探索成员不能叠加其他成员策略。", nameof(memberSpecs));
+             if (memberSpecs[index] is { OffensiveRefinement: true } invalid
+                 && (invalid.SecondRankBand || invalid.BaseScoreOnly || invalid.AggressivePowerCommitment))
+                 throw new ArgumentException("进攻精炼成员不能叠加其他成员策略。", nameof(memberSpecs));
+@@ -269,10 +282,14 @@ internal static class BeamWidthPortfolio
+         TResult? firstRan = default;
+         int firstRanIndex = -1;
+         bool stopped = false;
++        bool selectedWon = false;
+
+         for (int index = 0; index < memberSpecs.Count; index++)
+         {
+             BeamWidthPortfolioMemberSpec spec = memberSpecs[index];
++            // Preserve the ordinary survival search until an actual selected victory exists.
++            if (spec.NoveltyRefinement && !selectedWon)
++                spec = spec with { NoveltyRefinement = false };
+             if (rejectMember?.Invoke(spec) is { } rejection)
+             {
+                 members.Add(Skipped(spec, rejection));
+@@ -281,6 +298,8 @@ internal static class BeamWidthPortfolio
+             long memberNodeBudget = spec.AggressivePowerCommitment
+                 ? Math.Max(remainingNodes, DedicatedPowerNodeReserve(sharedMaxExpandedNodes))
+                 : remainingNodes;
++            if (spec.NoveltyRefinement)
++                memberNodeBudget = Math.Min(memberNodeBudget, NoveltyPortfolioBudget.Default.MaximumExpandedNodes);
+             if (spec.BoundedRefinement)
+                 memberNodeBudget = Math.Min(memberNodeBudget, totalExpanded / BoundedRefinementWorkDivisor);
+             if (memberNodeBudget <= 0)
+@@ -295,6 +314,10 @@ internal static class BeamWidthPortfolio
+                 SecondRankBand = spec.SecondRankBand,
+                 BaseScoreOnly = spec.BaseScoreOnly,
+                 AggressivePowerCommitment = spec.AggressivePowerCommitment,
++                NoveltyRefinementMember = spec.NoveltyRefinement,
++                SoftTimeBudgetMilliseconds = spec.NoveltyRefinement
++                    ? Math.Min(baseProfile.SoftTimeBudgetMilliseconds, NoveltyPortfolioBudget.Default.MaximumMilliseconds)
++                    : baseProfile.SoftTimeBudgetMilliseconds,
+                 BeamWeightPerturbation = spec.OffensiveRefinement
+                     ? new BeamWeightPerturbation(BeamWeightTerm.EnemyHp, 1.5d)
+                     : baseProfile.BeamWeightPerturbation,
+@@ -332,6 +355,7 @@ internal static class BeamWidthPortfolio
+             {
+                 selected = run.Result;
+                 selectedIndex = index;
++                selectedWon = run.Won;
+             }
+             members.Add(Ran(spec, memberProfile.MaxExpandedNodes, run,
+                 compared: comparable,
+@@ -378,6 +402,7 @@ internal static class BeamWidthPortfolio
+             $"selected_power_commitment={members[selectedIndex].AggressivePowerCommitment} " +
+             $"selected_offensive_refinement={members[selectedIndex].OffensiveRefinement} " +
+             $"selected_bounded_refinement={members[selectedIndex].BoundedRefinement} " +
++            $"selected_novelty_refinement={members[selectedIndex].NoveltyRefinement} " +
+             $"reason={selectionReason} shared_nodes={sharedMaxExpandedNodes} " +
+             $"total_expanded={totalExpanded} total_transitions={totalTransitions}");
+         return new BeamWidthPortfolioOutcome<TResult>(
+@@ -391,7 +416,7 @@ internal static class BeamWidthPortfolio
+         static BeamWidthPortfolioMember Skipped(BeamWidthPortfolioMemberSpec spec, string reason)
+             => new(spec.BeamWidth, spec.SecondRankBand, spec.BaseScoreOnly,
+                 spec.AggressivePowerCommitment, 0, false, 0, 0, null, null, null, null, null, false, reason)
+-            { OffensiveRefinement = spec.OffensiveRefinement, BoundedRefinement = spec.BoundedRefinement };
++            { OffensiveRefinement = spec.OffensiveRefinement, BoundedRefinement = spec.BoundedRefinement, NoveltyRefinement = spec.NoveltyRefinement };
+
+         static BeamWidthPortfolioMember Ran(
+             BeamWidthPortfolioMemberSpec spec,
+@@ -403,6 +428,6 @@ internal static class BeamWidthPortfolio
+                 spec.AggressivePowerCommitment, nodeBudget, true, run.ExpandedNodes, run.TransitionCount,
+                 run.Termination, run.Terminal, run.Won, run.BattleHpLost, run.PotionCount,
+                 compared, skippedReason)
+-            { OffensiveRefinement = spec.OffensiveRefinement, BoundedRefinement = spec.BoundedRefinement };
++            { OffensiveRefinement = spec.OffensiveRefinement, BoundedRefinement = spec.BoundedRefinement, NoveltyRefinement = spec.NoveltyRefinement };
+     }
+ }
+diff --git a/src/Search/BeamWidthPortfolioTelemetry.cs b/src/Search/BeamWidthPortfolioTelemetry.cs
+index 306faa45..1c9d871e 100644
+--- a/src/Search/BeamWidthPortfolioTelemetry.cs
++++ b/src/Search/BeamWidthPortfolioTelemetry.cs
+@@ -32,6 +32,7 @@ internal sealed record BeamWidthPortfolioMemberReport(
+ {
+     public bool OffensiveRefinement { get; init; }
+     public bool BoundedRefinement { get; init; }
++    public bool NoveltyRefinement { get; init; }
+ }
+
+ internal sealed record PowerRoutePortfolioMemberReport(
+diff --git a/src/Search/CombatSearchCoordinator.cs b/src/Search/CombatSearchCoordinator.cs
+index 8766f8e6..e349400a 100644
+--- a/src/Search/CombatSearchCoordinator.cs
++++ b/src/Search/CombatSearchCoordinator.cs
+@@ -271,7 +271,9 @@ internal static partial class CombatSearchCoordinator
+                     root,
+                     displayNames,
+                     battleDamage,
+-                    beamPolicy,
++                    memberProfile.NoveltyRefinementMember
++                        ? beamPolicy with { NoveltySearch = beamPolicy.NoveltySearch ?? new() }
++                        : beamPolicy,
+                     cancellationToken,
+                     memberProgressCallback,
+                     memberProfile,
+@@ -494,6 +496,7 @@ internal static partial class CombatSearchCoordinator
+                     $"beam={effectiveProfile.BeamWidth} second_rank_band={effectiveProfile.SecondRankBand} " +
+                     $"base_score_only={effectiveProfile.BaseScoreOnly} " +
+                     $"power_commitment={effectiveProfile.AggressivePowerCommitment} " +
++                    $"novelty_refinement={effectiveProfile.NoveltyRefinementMember} " +
+                     $"nodes={effectiveProfile.MaxExpandedNodes} " +
+                     $"time_ms={effectiveProfile.SoftTimeBudgetMilliseconds}");
+             }
+@@ -571,9 +574,9 @@ internal static partial class CombatSearchCoordinator
+                     baseline, member.BeamWidth, profile.MaxExpandedNodes - expandedByMembers,
+                     RemainingMilliseconds(), profile.SoftTimeBudgetMilliseconds,
+                     policy.MemoryPressureSignal.RemainingBytes);
+-            // 学习型跳过器未见过能力承诺或进攻精炼成员，不由它裁决这些新策略。
++            // 学习型跳过器未见过能力承诺、进攻或结构精炼成员，不由它裁决这些新策略。
+             if (rejection != null || experiment == null || member.AggressivePowerCommitment
+-                || member.OffensiveRefinement)
++                || member.OffensiveRefinement || member.NoveltyRefinement)
+                 return rejection;
+             // 门控已经放行，说明基线没被任何上限截断，因此两边都已经有可比结果。
+             SolverResult first = baselineResult
+@@ -627,7 +630,8 @@ internal static partial class CombatSearchCoordinator
+                     policy.BeamWidthPortfolioPlainBaselineMember,
+                     includePowerCommitmentMember: hasReachablePower,
+                     useOffensiveRefinement: profile.OffensiveRefinementPortfolio,
+-                    appendBoundedOffensiveRefinement: profile.BoundedOffensiveRefinementPortfolio),
++                    appendBoundedOffensiveRefinement: profile.BoundedOffensiveRefinementPortfolio,
++                    useStructuralRefinement: profile.StructuralRefinementPortfolio && !policy.UseNoveltyPortfolio),
+                 profile.MaxExpandedNodes,
+                 profile,
+                 RunMember,
+@@ -719,7 +723,7 @@ internal static partial class CombatSearchCoordinator
+                 cost.ElapsedMilliseconds,
+                 cost.AllocatedBytes,
+                 cost.ManagedHeapBytesAfter)
+-            { OffensiveRefinement = member.OffensiveRefinement, BoundedRefinement = member.BoundedRefinement };
++            { OffensiveRefinement = member.OffensiveRefinement, BoundedRefinement = member.BoundedRefinement, NoveltyRefinement = member.NoveltyRefinement };
+             telemetry.RecordMember(report);
+             policy.Diagnostics.Info(
+                 $"[CombatSolver/Test] BEAM_WIDTH_PORTFOLIO_MEMBER index={index} " +
+@@ -728,6 +732,7 @@ internal static partial class CombatSearchCoordinator
+                 $"power_commitment={report.AggressivePowerCommitment} " +
+                 $"offensive_refinement={report.OffensiveRefinement} " +
+                 $"bounded_refinement={report.BoundedRefinement} " +
++                $"novelty_refinement={report.NoveltyRefinement} " +
+                 $"nodes={report.NodeBudget} ran={report.Ran} " +
+                 $"selected={report.Selected} compared={report.Compared} " +
+                 $"skipped={report.SkippedReason ?? "-"} " +
+diff --git a/src/Search/SolverSearchProfile.cs b/src/Search/SolverSearchProfile.cs
+index 79c8e410..aed643be 100644
+--- a/src/Search/SolverSearchProfile.cs
++++ b/src/Search/SolverSearchProfile.cs
+@@ -23,6 +23,10 @@ internal sealed record SolverSearchProfile(
+     public bool BaseScoreTacticalTies { get; init; }
+     /// <summary>Offline experiment: run bounded structural exploration after the original Beam portfolio.</summary>
+     public bool AdaptiveNoveltyRefinement { get; init; }
++    /// <summary>Offline experiment: use structural exploration in the narrow slot after a complete victory exists.</summary>
++    public bool StructuralRefinementPortfolio { get; init; }
++    /// <summary>Actual per-member algorithm, assigned by the portfolio; never inherited by other members.</summary>
++    public bool NoveltyRefinementMember { get; init; }
+     /// <summary>Offline one-factor sensitivity probe; absent in production profiles.</summary>
+     public BeamWeightPerturbation? BeamWeightPerturbation { get; init; }
+     /// <summary>Offline portfolio experiment: replace the wide refinement with a narrow offensive member.</summary>
+diff --git a/tools/BeamWidthPortfolioChecks/Program.cs b/tools/BeamWidthPortfolioChecks/Program.cs
+index 97a125a4..22a7f7ae 100644
+--- a/tools/BeamWidthPortfolioChecks/Program.cs
++++ b/tools/BeamWidthPortfolioChecks/Program.cs
+@@ -103,6 +103,40 @@ Require(skippedOffense.Members[1] is { OffensiveRefinement: true, Ran: false,
+     SkippedReason: BeamWidthPortfolio.SkippedBudgetExhausted },
+     "Exhausted shared budget did not skip/report offensive refinement.");
+
++// Structural replacement is conditional on an actual selected win, not projected HP.
++static BeamWidthPortfolioMemberSpec Structural(int width) => new(width, NoveltyRefinement: true);
++Require(BeamWidthPortfolio.ProductionMembers(60, null, includePowerCommitmentMember: true,
++    useStructuralRefinement: true).SequenceEqual([Width(60), Power(60), Structural(40), Width(90), Band(60), Base(60)]),
++    "Structural replacement changed more than the ordinary narrow slot.");
++Require(BeamWidthPortfolio.ProductionMembers(60, [60, 90], useStructuralRefinement: true)
++    .SequenceEqual([Width(60), Width(90)]), "Structural replacement changed explicit widths.");
++Require(BeamWidthPortfolio.ProductionMembers(1, null, useStructuralRefinement: true)
++    .SequenceEqual(BeamWidthPortfolio.ProductionMembers(1, null)), "Rounded duplicate gained an extra exploration slot.");
++var survival = PortfolioOf([Width(60), Structural(40)], 10_000,
++    [Finished(1000, Outcome(false, 18)), Finished(2000, Outcome(true, 17))]);
++Require(!observed[1].NoveltyRefinementMember && observed[1].MaxExpandedNodes == 9000
++    && observed[1].SoftTimeBudgetMilliseconds == baseProfile.SoftTimeBudgetMilliseconds
++    && !survival.Members[1].NoveltyRefinement && survival.SelectedIndex == 1,
++    "Failed initial search lost its ordinary narrow survival search.");
++var structural = PortfolioOf([Width(60), Structural(40), Base(60)], 10_000,
++    [Finished(1000, Outcome(true, 17)), Finished(2000, Outcome(true, 13)), Finished(1000, Outcome(true, 15))]);
++Require(observed[1].NoveltyRefinementMember && observed[1].MaxExpandedNodes == 2500
++    && observed[1].SoftTimeBudgetMilliseconds == 5000 && structural.Members[1].NoveltyRefinement,
++    "Actual structural algorithm identity or absolute work caps missing.");
++Require(!observed[0].NoveltyRefinementMember && !observed[2].NoveltyRefinementMember
++    && observed[2].MaxExpandedNodes == 7000
++    && observed[2].SoftTimeBudgetMilliseconds == baseProfile.SoftTimeBudgetMilliseconds,
++    "Structural algorithm/cap leaked, or unused allowance was deducted.");
++Require(structural.SelectedIndex == 1 && structural.TotalExpandedNodes == 4000
++    && structural.TotalTransitionCount == 12000, "Structural improvement/work was not counted.");
++var failedStructural = PortfolioOf([Width(60), Structural(40)], 1020,
++    [Finished(1000, Outcome(true, 17)), Finished(20, Outcome(false, 18))]);
++Require(observed[1].MaxExpandedNodes == 20 && failedStructural.SelectedIndex == 0,
++    "Structural member exceeded shared remainder or erased a complete win.");
++Throws<ArgumentException>(() => PortfolioOf([new(40, BaseScoreOnly: true, NoveltyRefinement: true)],
++    100, [Finished(1, Outcome(true, 0))]), "Incompatible structural member accepted.");
++checks++;
++
+ // 1. Production membership: baseline first, the narrow (2/3) and wide (3/2) refinements, then the
+ // second-rank-band member and the base-score-only member at the baseline width.
+ Require(BeamWidthPortfolio.ProductionMembers(24, null).SequenceEqual([Width(24), Width(16), Width(36), Band(24), Base(24)]),
+diff --git a/tools/BeamWidthPortfolioChecks/run.py b/tools/BeamWidthPortfolioChecks/run.py
+index 634e891d..e26af553 100644
+--- a/tools/BeamWidthPortfolioChecks/run.py
++++ b/tools/BeamWidthPortfolioChecks/run.py
+@@ -35,6 +35,8 @@ search = root / 'src/Search'
+     (search / 'PowerCardValuation/Commitments/PowerCommitmentSeatPolicy.cs').read_text(encoding='utf-8'), encoding='utf-8')
+ (out / 'SolverSearchProfile.cs').write_text(
+     (search / 'SolverSearchProfile.cs').read_text(encoding='utf-8'), encoding='utf-8')
++(out / 'NoveltyPortfolioBudget.cs').write_text(
++    (search / 'NoveltyPortfolioBudget.cs').read_text(encoding='utf-8'), encoding='utf-8')
+ # Opaque optional reference only; these combinator checks never evaluate a learned model.
+ (out / 'ContextualRankingModel.cs').write_text(
+     'namespace CombatSolver; internal sealed class ContextualRankingModel {}\n', encoding='utf-8')
+diff --git a/tools/ContextualOrdering/compare.py b/tools/ContextualOrdering/compare.py
+index 75dc0564..008693c0 100644
+--- a/tools/ContextualOrdering/compare.py
++++ b/tools/ContextualOrdering/compare.py
+@@ -27,7 +27,7 @@ def context_mismatch(a, b):
+         return 'BudgetMismatch'
+     policy_a, policy_b = [json.loads(json.dumps(r['searchPolicy'])) for r in (a, b)]
+     for policy in (policy_a, policy_b):
+-        for key in ('ContextualRanking', 'BaseScoreOnly', 'SecondRankBand', 'ContinuousThreatRanking', 'BaseScoreTacticalTies', 'AdaptiveNoveltyRefinement', 'StopPortfolioAtHpTarget', 'BeamWeightPerturbation', 'OffensiveRefinementPortfolio', 'BoundedOffensiveRefinementPortfolio'):
++        for key in ('ContextualRanking', 'BaseScoreOnly', 'SecondRankBand', 'ContinuousThreatRanking', 'BaseScoreTacticalTies', 'AdaptiveNoveltyRefinement', 'StructuralRefinementPortfolio', 'NoveltyRefinementMember', 'StopPortfolioAtHpTarget', 'BeamWeightPerturbation', 'OffensiveRefinementPortfolio', 'BoundedOffensiveRefinementPortfolio'):
+             policy['Profile'].pop(key, None)
+     return 'PolicyMismatch' if policy_a != policy_b else None
+
+diff --git a/tools/OfflineSearchHarness/ModRuntime.cs b/tools/OfflineSearchHarness/ModRuntime.cs
+index 024cfe07..e5c040cc 100644
+--- a/tools/OfflineSearchHarness/ModRuntime.cs
++++ b/tools/OfflineSearchHarness/ModRuntime.cs
+@@ -396,6 +396,7 @@ internal static class ModRuntime
+             ContinuousThreatRanking = options.ContinuousThreatRanking,
+             BaseScoreTacticalTies = options.BaseScoreTacticalTies,
+             AdaptiveNoveltyRefinement = options.AdaptiveNoveltyRefinement,
++            StructuralRefinementPortfolio = options.StructuralRefinementPortfolio,
+             BeamWeightPerturbation = options.BeamWeightPerturbation,
+             OffensiveRefinementPortfolio = options.OffensiveRefinementPortfolio,
+             BoundedOffensiveRefinementPortfolio = options.BoundedOffensiveRefinementPortfolio
+diff --git a/tools/OfflineSearchHarness/Program.cs b/tools/OfflineSearchHarness/Program.cs
+index 291d1cd1..529c7e3d 100644
+--- a/tools/OfflineSearchHarness/Program.cs
++++ b/tools/OfflineSearchHarness/Program.cs
+@@ -378,6 +378,7 @@ internal sealed record HarnessOptions
+           --beam-weight <term:scale>  单项排序敏感度：CurrentEnergy|PersistentBuffDelta|EnemyHp，scale 0..2
+           --continuous-threat  实验：EndTurn 后尚能出牌的新回合起点，连续计价致死意图
+           --base-score-tactical-ties  实验：基础分成员的单进展值同分截线使用既有战术顺序
++          --structural-refinement  实验：已有胜路时将普通窄成员改为有界结构探索
+           --adaptive-novelty  实验：原Beam组合完成后，以实际工作量的至多1/8追加结构探索
+           --observe-portfolio    导出追加搜索的特征与实际政策标签
+           --portfolio-model <p>  加载可选选择器 JSON；不匹配的版本回退原组合
+@@ -434,6 +435,7 @@ internal sealed record HarnessOptions
+     public bool ContinuousThreatRanking { get; init; }
+     public bool BaseScoreTacticalTies { get; init; }
+     public bool AdaptiveNoveltyRefinement { get; init; }
++    public bool StructuralRefinementPortfolio { get; init; }
+     public BeamWeightPerturbation? BeamWeightPerturbation { get; init; }
+     public bool OffensiveRefinementPortfolio { get; init; }
+     public bool? BoundedOffensiveRefinementPortfolio { get; init; }
+@@ -464,6 +466,7 @@ internal sealed record HarnessOptions
+         bool continuousThreatRanking = false;
+         bool baseScoreTacticalTies = false;
+         bool adaptiveNoveltyRefinement = false;
++        bool structuralRefinementPortfolio = false;
+         BeamWeightPerturbation? beamWeightPerturbation = null;
+         bool offensiveRefinementPortfolio = false;
+         bool? boundedOffensiveRefinementPortfolio = null;
+@@ -537,6 +540,7 @@ internal sealed record HarnessOptions
+                     break;
+                 case "--continuous-threat": continuousThreatRanking = true; break;
+                 case "--base-score-tactical-ties": baseScoreTacticalTies = true; break;
++                case "--structural-refinement": structuralRefinementPortfolio = true; break;
+                 case "--adaptive-novelty": adaptiveNoveltyRefinement = true; break;
+                 case "--stop-portfolio-at-hp-target": stopPortfolioAtHpTarget = true; break;
+                 case "--disable-portfolio-hp-target-stop": stopPortfolioAtHpTarget = false; break;
+@@ -568,6 +572,10 @@ internal sealed record HarnessOptions
+             throw new ArgumentException("--continuous-threat 必须单独测量，不叠加排序模型或其他成员。");
+         if (baseScoreTacticalTies && (searchMode == "Evaluate" ? ordering != "base" : !usePortfolio))
+             throw new ArgumentException("--base-score-tactical-ties 需要 Evaluate --ordering base 或 Coordinator --use-portfolio。");
++        if (structuralRefinementPortfolio && (searchMode != "Coordinator" || !usePortfolio
++            || adaptiveNoveltyRefinement || offensiveRefinementPortfolio || boundedOffensiveRefinementPortfolio == true
++            || beamWeightPerturbation != null || continuousThreatRanking || rankingModelPath != null || baseScoreTacticalTies))
++            throw new ArgumentException("--structural-refinement 需要Coordinator组合且不能叠加其他排序实验。");
+         if (adaptiveNoveltyRefinement && (searchMode != "Coordinator" || !usePortfolio))
+             throw new ArgumentException("--adaptive-novelty 需要 Coordinator --use-portfolio。");
+         if (beamWeightPerturbation != null && (continuousThreatRanking || rankingModelPath != null || ordering != "baseline"))
+@@ -644,6 +652,7 @@ internal sealed record HarnessOptions
+             ContinuousThreatRanking = continuousThreatRanking,
+             BaseScoreTacticalTies = baseScoreTacticalTies,
+             AdaptiveNoveltyRefinement = adaptiveNoveltyRefinement,
++            StructuralRefinementPortfolio = structuralRefinementPortfolio,
+             BeamWeightPerturbation = beamWeightPerturbation,
+             OffensiveRefinementPortfolio = offensiveRefinementPortfolio,
+             BoundedOffensiveRefinementPortfolio = boundedOffensiveRefinementPortfolio,
+diff --git a/tools/verify-refactor-boundaries.ps1 b/tools/verify-refactor-boundaries.ps1
+index 86b7a3c1..c29e7ab3 100644
+--- a/tools/verify-refactor-boundaries.ps1
++++ b/tools/verify-refactor-boundaries.ps1
+@@ -1647,7 +1647,7 @@ foreach ($text in @('File.', 'SolverSettings.Current', 'SolverController', 'Comp
+     }
+ }
+ foreach ($file in @('CombatBeamSolver.FinalPlanOrdering.cs', 'CombatBeamSolver.Transpositions.cs')) {
+-    foreach ($text in @('ContextualRanking', 'ContinuousThreatRanking', 'StopPortfolioAtHpTarget', 'BeamWeightPerturbation', 'OffensiveRefinementPortfolio', 'BoundedOffensiveRefinementPortfolio')) {
++    foreach ($text in @('ContextualRanking', 'ContinuousThreatRanking', 'StopPortfolioAtHpTarget', 'BeamWeightPerturbation', 'OffensiveRefinementPortfolio', 'BoundedOffensiveRefinementPortfolio', 'StructuralRefinementPortfolio', 'NoveltyRefinementMember')) {
+         if (Select-String -LiteralPath (Join-Path $searchRoot $file) -SimpleMatch $text -Quiet) {
+             $violations.Add("Intermediate estimate must not become final policy or exact dominance: $file")
+         }
+diff --git a/tools/verify-refactor-boundaries.sh b/tools/verify-refactor-boundaries.sh
+index a808ed6a..00bd60f9 100755
+--- a/tools/verify-refactor-boundaries.sh
++++ b/tools/verify-refactor-boundaries.sh
+@@ -1302,7 +1302,7 @@ for token in 'File.' 'SolverSettings.Current' 'SolverController' 'ComparePrimary
+     forbid_fixed "$search_root/ContextualRankingModel.cs" "$token" 'contextual estimate crossed its pure ranking boundary:'
+ done
+ for file in CombatBeamSolver.FinalPlanOrdering.cs CombatBeamSolver.Transpositions.cs; do
+-    for token in ContextualRanking ContinuousThreatRanking StopPortfolioAtHpTarget BeamWeightPerturbation OffensiveRefinementPortfolio BoundedOffensiveRefinementPortfolio; do
++    for token in ContextualRanking ContinuousThreatRanking StopPortfolioAtHpTarget BeamWeightPerturbation OffensiveRefinementPortfolio BoundedOffensiveRefinementPortfolio StructuralRefinementPortfolio NoveltyRefinementMember; do
+         forbid_fixed "$search_root/$file" "$token" 'intermediate estimate must not become final policy or exact dominance:'
+     done
+ done

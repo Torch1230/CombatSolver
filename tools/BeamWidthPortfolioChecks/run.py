@@ -35,6 +35,9 @@ search = root / 'src/Search'
     (search / 'PowerCardValuation/Commitments/PowerCommitmentSeatPolicy.cs').read_text(encoding='utf-8'), encoding='utf-8')
 (out / 'SolverSearchProfile.cs').write_text(
     (search / 'SolverSearchProfile.cs').read_text(encoding='utf-8'), encoding='utf-8')
+# Opaque optional reference only; these combinator checks never evaluate a learned model.
+(out / 'ContextualRankingModel.cs').write_text(
+    'namespace CombatSolver; internal sealed class ContextualRankingModel {}\n', encoding='utf-8')
 (out / 'Ordering.cs').write_text(
     'namespace CombatSolver;\n'
     + block(search / 'TheftEncounterStrategy.cs', 'internal enum SolverTheftPolicy') + '\n'

@@ -858,7 +858,19 @@ internal sealed partial class CombatBeamSolver
             int weakExpectedHpSaved = _isActEndingBoss
                 ? SolverWeights.BossEnemyWeakExpectedHpSaved
                 : SolverWeights.StandardEnemyWeakExpectedHpSaved;
-            return node.Score
+            double baseScore = node.Score;
+            if (_profile.ContinuousThreatRanking && !node.IsTerminal
+                && node.Action is { Kind: PlanActionKind.EndTurn }
+                && !node.Snapshot.PlayerDead && node.Snapshot.ProjectedPlayerHp <= 0
+                && node.Snapshot.ReachableHandValue > 0)
+            {
+                // Stand-pat projects ending now. A living player can still block, draw or
+                // kill before that intent. Keep its HP deficit continuous in intermediate
+                // ordering only; final outcomes and exact dominance retain their policies.
+                baseScore = node.Score - SolverWeights.DeathPenalty
+                    + node.Snapshot.ProjectedPlayerHp * SolverWeights.Hp;
+            }
+            double score = baseScore
                 + Math.Min(SolverWeights.CurrentEnergyBeamCap, node.Snapshot.Energy)
                     * SolverWeights.CurrentEnergyBeamValue
                 + Math.Min(
@@ -892,6 +904,23 @@ internal sealed partial class CombatBeamSolver
                         Math.Max(0, node.Snapshot.EnemyWeakTurns - _run.InitialEnemyWeakTurns))
                     * weakExpectedHpSaved
                     * SolverWeights.Hp;
+            if (!node.IsTerminal && _profile.BeamWeightPerturbation is { Scale: not 1d } perturbation)
+            {
+                // Only the intermediate ranking term changes. Snapshot scores, exact
+                // dominance, final policy and the ordinary base-score member stay intact.
+                double term = perturbation.Term switch
+                {
+                    BeamWeightTerm.CurrentEnergy => Math.Min(SolverWeights.CurrentEnergyBeamCap,
+                        node.Snapshot.Energy) * SolverWeights.CurrentEnergyBeamValue,
+                    BeamWeightTerm.PersistentBuffDelta => Math.Min(persistentBuffCap,
+                        Math.Max(0, node.Snapshot.PersistentBuffValue - _run.InitialPersistentBuffValue))
+                        * persistentBuffValue,
+                    BeamWeightTerm.EnemyHp => node.Snapshot.EnemyHp * SolverWeights.EnemyHp,
+                    _ => throw new InvalidOperationException("Unknown Beam sensitivity term."),
+                };
+                score += (perturbation.Scale - 1d) * term;
+            }
+            return _profile.ContextualRanking is { } model ? score + model.Adjustment(node) : score;
         }
 
         private int RetainedAttackGrowth(SimulationSnapshot snapshot)
