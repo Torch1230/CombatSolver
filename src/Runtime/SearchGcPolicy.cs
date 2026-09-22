@@ -2060,11 +2060,11 @@ internal static partial class SearchGcPolicy
                 ? CalculateReusableHeapBytes(memory.HeapSizeBytes, memory.FragmentedBytes,
                     GC.GetTotalMemory(forceFullCollection: false))
                 : 0);
-        signal.SetBetweenSearchCheckpoint(cancellationToken =>
+        signal.SetOptionalCheckpoint((cancellationToken, reason) =>
             signal.AllocatedBytes >= BackgroundReclaimThresholdBytes
             && ReclaimWithinSearch(signal, configuredRegionBudgetBytes,
                 configuredLohBudgetBytes, restartNoGcRegion: true, cancellationToken,
-                reason: "between_searches", opportunistic: true));
+                reason, opportunistic: true));
         Entry.Logger.Info(
             $"[CombatSolver/Test] GC_SEARCH_ALLOCATION_LIMIT limit={allocationLimitBytes} " +
             $"remaining_region={remainingRegionBytes} region_budget={regionBudgetBytes} " +
@@ -2201,7 +2201,8 @@ internal static partial class SearchGcPolicy
             {
                 // 有没有腾出空间只看回收后的堆：非压缩 Gen2 少回收多少活数据，重建出来的区域
                 // 就还是同一份压力。回退到常规 GC 的那条路径不重建区域，因此不参与记账。
-                signal.ObserveReclaimGain(Math.Max(0, liveBefore - liveAfterCollection));
+                signal.ObserveReclaimGain(Math.Max(0, liveBefore - liveAfterCollection),
+                    trackNoProgress: !opportunistic);
             }
             // Capture the forced collection before TryStartNoGCRegion can replace the latest
             // GC info with a bookkeeping collection that has no pause of its own.

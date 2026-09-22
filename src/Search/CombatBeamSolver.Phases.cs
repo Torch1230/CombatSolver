@@ -1467,6 +1467,21 @@ internal sealed partial class CombatBeamSolver
             && !memoryNoProgressTruncated)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (!policy.VerifyIncrementalSearch && searchedTurnLayers > 0
+                && stopwatch.ElapsedMilliseconds < _profile.SoftTimeBudgetMilliseconds)
+            {
+                // The previous turn layer has pruned its candidates and drained
+                // all lane jobs. Preserve caches and frontier ordering across GC.
+                try
+                {
+                    policy.MemoryPressureSignal.CheckpointBeforeTurnLayer(cancellationToken);
+                }
+                finally
+                {
+                    _run.WorkPacer.ObserveGcPause(
+                        policy.MemoryPressureSignal.LastReclaimMaxObservedGcPause);
+                }
+            }
             List<SearchNode> active = frontier.Where(node => !node.IsTerminal).ToList();
             foreach (SearchNode terminal in frontier.Where(node => node.IsTerminal))
                 completed.Add(terminal);

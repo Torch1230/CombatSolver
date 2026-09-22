@@ -107,7 +107,9 @@ Entry / turn hooks
 
 搜索内检查点在 Gate 外直接等待非压缩后台 Gen2 primitive，不加入上述 deferred 链。primitive 先观察最新已完成 Gen2 的 index 与新 LOH 弱哨兵，仅在上一轮已完成却未覆盖哨兵时再次请求；不按定时器盲重发。全部异步等待不捕获调用方上下文。已发出的回收不能随搜索取消而放弃：确认完成后取消才落到默认 GC，超时或确认异常先显式阻塞排空，不能提前重建 NoGC。回收开始前的手动 GC 有独立完成信号，回收确认成功但搜索取消/超时不使它误报失败；开始后的手动请求与新的引用释放义务继续等待后续安全回收。日志分开记录请求模式、实际完成类型/index、CLR Concurrent 标志及阻塞超时兜底，不承诺每次都采用并发 GC 或没有暂停。
 
-`SearchMemoryPressureSignal.CheckpointBeforeSearch` 只在同一配置 scope 的后续、已排空 solver 之间尝试回收；首个 solver、CLR 默认 GC、分配未达 256 MiB 或此前回收无进展时跳过。Runtime 在 Gate 内以 opportunistic 方式取得唯一回收所有权，遇到并发搜索、活动回收或已登记的后台回收请求立即返回，不等待，也不加入要求当前scope退出的deferred链；取消可在已完成 Gen2 后传播，已完成暂停仍须计入诊断。该抑制状态跨 `ResetNoProgressReclaimTracking` 保留，直到 signal `Disable`。
+`SearchMemoryPressureSignal.CheckpointBeforeSearch` 只在同一配置 scope 的后续、已排空 solver 之间尝试回收；首个 solver、CLR 默认 GC、分配未达 256 MiB 或此前回收无进展时跳过。Runtime 在 Gate 内以 opportunistic 方式取得唯一回收所有权，遇到并发搜索、活动回收或已登记的后台回收请求立即返回，不等待，也不加入要求当前scope退出的deferred链；取消可在已完成 Gen2 后传播，已完成暂停仍须计入诊断。between-search 抑制状态跨 `ResetNoProgressReclaimTracking` 保留，直到 signal `Disable`；回合层抑制状态属于当前 solver，并在下一个 `CheckpointBeforeSearch` 清除。
+
+同一可选入口也可在完整回合层之间调用：只有既有节点上限、软时间、取消和 `VerifyIncremental` gates 允许时，且上一层已排空 worker、完成剪枝并提交 frontier，才调用 `CheckpointBeforeTurnLayer`。该回收只整理已完成层产生的垃圾，保留当前 `SearchRunContext` 缓存与 frontier 顺序，不重建或改写搜索候选；当前 solver 的 turn-layer 抑制只在本 solver 内生效，新 solver 在 `CheckpointBeforeSearch` 重新获得尝试资格。optional 回收的增益不消耗、清零或触发 mandatory 无进展回收额度。GC 暂停计入搜索与请求诊断，软时间预算仍可能在检查点期间跨过边界，随后沿既有时间收尾路径处理。
 ### 2.1 战前预测 API 隔离边界
 
 NoGC 因内存不足或意外收集退出后，`Recovery` 仅在 coordinator 的 `EnsureMemoryForNextCommit` 已排空边界尝试恢复。退出后的检查点若已确认完成 Gen2、且尚未在该堆上尝试失败的预留，可直接复用这份完成证据；已经失败的预留或首次准入失败则等待新的已完成 Gen2，观察间隔至少两秒。每 scope 最多三次预留尝试，后续尝试保持退避，不因另一轮退出而清零。当前物理余量的一半作为恢复预留上限，且已知下一次不可分割工作必须能放入。恢复上限延续到本 scope 的后续区域重建，配置值仍为原始上限。恢复不主动收集、不加入 deferred 链；新 scope、退出 NoGC 和 Dispose 使旧探针代次失效。显式关闭、不支持的平台/区域尺寸、不可分割提交主动回退、取消和收集确认超时不自动恢复。Search 仍只消费信号，原并行增减策略、接纳顺序和工作预算不变。

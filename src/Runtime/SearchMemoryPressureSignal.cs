@@ -47,26 +47,41 @@ internal sealed class SearchMemoryPressureSignal
     private Action<long, CancellationToken>? _noGcRecoveryProbe;
     private Action<long>? _noGcFallbackObserver;
     private int _noGcRecoveryAllowed;
-    private Func<CancellationToken, bool>? _betweenSearchCheckpoint;
+    private Func<CancellationToken, string, bool>? _optionalCheckpoint;
     private int _searchStarted;
     private bool _betweenSearchReclaimSuppressed;
+    private bool _turnLayerReclaimSuppressed;
 
-    internal void SetBetweenSearchCheckpoint(Func<CancellationToken, bool> checkpoint)
-        => Volatile.Write(ref _betweenSearchCheckpoint, checkpoint);
+    internal void SetOptionalCheckpoint(Func<CancellationToken, string, bool> checkpoint)
+        => Volatile.Write(ref _optionalCheckpoint, checkpoint);
 
     // Called before a solver starts, after the preceding solver has drained. The
     // runtime owns whether a collection is worthwhile and can acquire GC ownership.
     public void CheckpointBeforeSearch(CancellationToken cancellationToken)
     {
+        // A new solver has a new live frontier. A layer that could not release
+        // memory in the previous solver says nothing about this solver's layers.
+        Volatile.Write(ref _turnLayerReclaimSuppressed, false);
+        CheckpointAtDrainedBoundary(cancellationToken, "between_searches", enteringSearch: true,
+            ref _betweenSearchReclaimSuppressed);
+    }
+
+    public void CheckpointBeforeTurnLayer(CancellationToken cancellationToken)
+        => CheckpointAtDrainedBoundary(cancellationToken, "between_turn_layers", enteringSearch: false,
+            ref _turnLayerReclaimSuppressed);
+
+    private void CheckpointAtDrainedBoundary(
+        CancellationToken cancellationToken, string reason, bool enteringSearch, ref bool suppressed)
+    {
         Volatile.Write(ref _lastReclaimMaxObservedGcPauseTicks, 0);
-        if (!IsEnabled || Volatile.Read(ref _betweenSearchReclaimSuppressed)
-            || Volatile.Read(ref _betweenSearchCheckpoint) is not { } checkpoint)
+        if (!IsEnabled || Volatile.Read(ref suppressed)
+            || Volatile.Read(ref _optionalCheckpoint) is not { } checkpoint)
             return;
-        if (Interlocked.Exchange(ref _searchStarted, 1) == 0)
+        if (enteringSearch && Interlocked.Exchange(ref _searchStarted, 1) == 0)
             return;
-        if (RunCheckpoint(checkpoint, cancellationToken)
+        if (RunCheckpoint(token => checkpoint(token, reason), cancellationToken)
             && LastReclaimRegainedBytes < NoProgressReclaimThresholdBytes)
-            Volatile.Write(ref _betweenSearchReclaimSuppressed, true);
+            Volatile.Write(ref suppressed, true);
     }
 
     public int ReclaimCount { get; private set; }
@@ -108,13 +123,16 @@ internal sealed class SearchMemoryPressureSignal
     /// 搜索内回收完成后的记账入口。只有真正重建 No-GC 区域的那条回收路径调用它；
     /// 回退到常规 GC 不算一次回收，因为它不再重建区域。
     /// </summary>
-    public void ObserveReclaimGain(long regainedBytes)
+    public void ObserveReclaimGain(long regainedBytes, bool trackNoProgress = true)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(regainedBytes);
         LastReclaimRegainedBytes = regainedBytes;
-        ConsecutiveNoProgressReclaims = regainedBytes < NoProgressReclaimThresholdBytes
-            ? ConsecutiveNoProgressReclaims + 1
-            : 0;
+        // Optional collections must not spend or reset the mandatory pressure
+        // recovery allowance, which can terminate the current search.
+        if (trackNoProgress)
+            ConsecutiveNoProgressReclaims = regainedBytes < NoProgressReclaimThresholdBytes
+                ? ConsecutiveNoProgressReclaims + 1
+                : 0;
     }
 
     /// <summary>连续无进展回收达到上限时该停止本搜索；上限 0 表示关闭这条规则。</summary>
@@ -338,9 +356,10 @@ internal sealed class SearchMemoryPressureSignal
     public void Disable()
     {
         DisableLimits();
-        Volatile.Write(ref _betweenSearchCheckpoint, null);
+        Volatile.Write(ref _optionalCheckpoint, null);
         Volatile.Write(ref _searchStarted, 0);
         Volatile.Write(ref _betweenSearchReclaimSuppressed, false);
+        Volatile.Write(ref _turnLayerReclaimSuppressed, false);
         Volatile.Write(ref _noGcRecoveryProbe, null);
         Volatile.Write(ref _noGcFallbackObserver, null);
     }

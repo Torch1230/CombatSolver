@@ -20,9 +20,11 @@ dotnet run --project tools/CombatSolver.GcPolicyChecks/CombatSolver.GcPolicyChec
 
 `checkpoint` 与 `recovery-lifecycle` 会执行真实CLR收集；后者实际建立1GB NoGC，以测试主动GC制造意外退出，再穿过生产检查点和恢复入口，断言恢复自身一次预留、零额外强制收集，并验证取消、退出请求和Dispose不能复活旧区域。需有足够可用内存，不适合与性能采样同时运行。状态机检查不等于真实游戏或Windows的性能证明。
 
-`between-searches` 是搜索间检查点的有界合同：覆盖首次/未配置/小分配跳过、回调拒绝与计数、取消和异常后的状态恢复、无收益抑制、Disable及新scope重开、独立scope不互等；真实部分遵守进程级NoGC串行准入，在第一个1GB scope活动时确认第二个只排队，第一个超过256MiB分配后完成一次真实Gen2/区域重开且不等待排队请求，释放后再验证第二个scope准入。它使用工具侧回调模拟部分门控，不是性能或真实游戏收益证明；需要足够可用内存，也不应与性能采样或其它NoGC检查并行运行。
+`between-searches` 是搜索间和回合层检查点的有界合同：覆盖首次/未配置/小分配跳过、回调拒绝与计数、取消和异常后的状态恢复、层间 reason、两种无收益抑制相互隔离、可选回收不消耗强制无进展额度、Disable及新scope重开、独立scope不互等；真实部分遵守进程级NoGC串行准入，在第一个1GB scope活动时确认第二个只排队，第一个超过256MiB分配后完成一次真实Gen2/区域重开且不等待排队请求，释放后再验证第二个scope准入。它使用工具侧回调模拟部分门控，不是性能或真实游戏收益证明；需要足够可用内存，也不应与性能采样或其它NoGC检查并行运行。
 
 2026-09-22：`between-searches` 7项及基础/准入26、scope8、checkpoint1、恢复9、恢复生命周期2、诊断失败8，共61项通过。初版夹具错误要求并行NoGC准入，5秒超时后按生产既有串行契约修正；最终夹具以真实等待日志确认排队。完整性能、原生证据和局限见[计算过程中的搜索间回收](../../docs/performance/active-search-gc-20260922.md)。
+
+2026-09-22（回合层扩展）：`between-searches`增至10项，全套64项通过。新增完整回合层reason、独立无收益抑制及新solver重试、optional与mandatory额度隔离；真实排队回收合同同时确认mandatory失败计数不被optional清零。两种抑制的细粒度断言使用工具侧回调，真实GC/restart与游戏入口另有验证；性能与边界见[完整回合层之间回收](../../docs/performance/turn-layer-reclaim-20260922.md)。
 
 此前游戏对照及失败夹具见[NoGC回退恢复报告](../../docs/performance/queen-gc-recovery-20260913.md)；旧研究见[GC与并发调查](../../docs/performance/gc-issue36-implementation.md)。
 

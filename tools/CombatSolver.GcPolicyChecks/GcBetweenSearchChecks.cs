@@ -11,7 +11,7 @@ internal static class GcBetweenSearchChecks
         {
             SearchMemoryPressureSignal signal = new();
             int calls = 0;
-            signal.SetBetweenSearchCheckpoint(_ => { calls++; return true; });
+            signal.SetOptionalCheckpoint((_, _) => { calls++; return true; });
             signal.CheckpointBeforeSearch(CancellationToken.None);
             PolicyCheck.Require(calls == 0 && signal.ReclaimCount == 0,
                 "The first search has no preceding drained search to reclaim.");
@@ -27,7 +27,7 @@ internal static class GcBetweenSearchChecks
                 (_, _) => { }, _ => { });
             bool enoughAllocation = false;
             int calls = 0;
-            signal.SetBetweenSearchCheckpoint(_ =>
+            signal.SetOptionalCheckpoint((_, _) =>
             {
                 if (!enoughAllocation)
                     return false;
@@ -48,7 +48,7 @@ internal static class GcBetweenSearchChecks
             contended.Configure(0, 8 * 1024 * 1024, 0, long.MaxValue,
                 (_, _) => { }, _ => { });
             int contendedCalls = 0;
-            contended.SetBetweenSearchCheckpoint(_ =>
+            contended.SetOptionalCheckpoint((_, _) =>
             {
                 contendedCalls++;
                 return false;
@@ -67,7 +67,7 @@ internal static class GcBetweenSearchChecks
                 signal.Configure(0, 8 * 1024 * 1024, 0, long.MaxValue,
                     (_, _) => { }, _ => { });
                 int callbackCalls = 0;
-                signal.SetBetweenSearchCheckpoint(token =>
+                signal.SetOptionalCheckpoint((token, _) =>
                 {
                     callbackCalls++;
                     signal.ObserveReclaimGcPause(TimeSpan.FromMilliseconds(7));
@@ -93,24 +93,104 @@ internal static class GcBetweenSearchChecks
             signal.Configure(0, 8 * 1024 * 1024, 0, long.MaxValue,
                 (_, _) => { }, _ => { });
             int calls = 0;
-            signal.SetBetweenSearchCheckpoint(_ =>
+            string? observedReason = null;
+            signal.SetOptionalCheckpoint((_, reason) =>
             {
                 calls++;
+                observedReason = reason;
                 signal.ObserveReclaimGcPause(TimeSpan.FromMilliseconds(9));
-                signal.ObserveReclaimGain(SearchMemoryPressureSignal.NoProgressReclaimThresholdBytes - 1);
+                signal.ObserveReclaimGain(
+                    SearchMemoryPressureSignal.NoProgressReclaimThresholdBytes - 1,
+                    trackNoProgress: false);
+                return true;
+            });
+            signal.ObserveReclaimGain(0);
+            signal.CheckpointBeforeSearch(CancellationToken.None);
+            signal.CheckpointBeforeTurnLayer(CancellationToken.None);
+            PolicyCheck.Require(calls == 1 && signal.ReclaimCount == 1
+                && observedReason == "between_turn_layers"
+                && signal.ConsecutiveNoProgressReclaims == 1
+                && signal.LastReclaimMaxObservedGcPause == TimeSpan.FromMilliseconds(9),
+                "A drained turn-layer checkpoint must carry its reason without spending mandatory no-progress credit.");
+            signal.ResetNoProgressReclaimTracking();
+            signal.CheckpointBeforeTurnLayer(CancellationToken.None);
+            PolicyCheck.Require(calls == 1 && signal.ReclaimCount == 1
+                && signal.LastReclaimRegainedBytes == 0
+                && signal.LastReclaimMaxObservedGcPause == TimeSpan.Zero,
+                "Search-local no-progress reset must not re-enable a suppressed optional reclaim or retain its pause.");
+        });
+
+        PolicyCheck.Run("turn-layer checkpoint is distinct from first-search arm", () =>
+        {
+            SearchMemoryPressureSignal signal = new();
+            signal.Configure(0, 8 * 1024 * 1024, 0, long.MaxValue,
+                (_, _) => { }, _ => { });
+            List<string> reasons = [];
+            signal.SetOptionalCheckpoint((_, reason) =>
+            {
+                reasons.Add(reason);
+                signal.ObserveReclaimGain(SearchMemoryPressureSignal.NoProgressReclaimThresholdBytes,
+                    trackNoProgress: false);
+                return true;
+            });
+            signal.CheckpointBeforeSearch(CancellationToken.None);
+            signal.CheckpointBeforeTurnLayer(CancellationToken.None);
+            PolicyCheck.Require(reasons.SequenceEqual(["between_turn_layers"])
+                && signal.ReclaimCount == 1
+                && signal.ConsecutiveNoProgressReclaims == 0,
+                "The first search only arms the signal; the following drained layer may run the optional checkpoint.");
+        });
+
+        PolicyCheck.Run("layer no-gain suppression does not poison a new search boundary", () =>
+        {
+            SearchMemoryPressureSignal signal = new();
+            signal.Configure(0, 8 * 1024 * 1024, 0, long.MaxValue,
+                (_, _) => { }, _ => { });
+            List<string> reasons = [];
+            signal.SetOptionalCheckpoint((_, reason) =>
+            {
+                reasons.Add(reason);
+                signal.ObserveReclaimGain(
+                    reason == "between_turn_layers"
+                        ? SearchMemoryPressureSignal.NoProgressReclaimThresholdBytes - 1
+                        : SearchMemoryPressureSignal.NoProgressReclaimThresholdBytes,
+                    trackNoProgress: false);
+                return true;
+            });
+            signal.CheckpointBeforeSearch(CancellationToken.None);
+            signal.CheckpointBeforeTurnLayer(CancellationToken.None);
+            signal.CheckpointBeforeTurnLayer(CancellationToken.None);
+            signal.CheckpointBeforeSearch(CancellationToken.None);
+            signal.CheckpointBeforeTurnLayer(CancellationToken.None);
+            PolicyCheck.Require(reasons.SequenceEqual(
+                    ["between_turn_layers", "between_searches", "between_turn_layers"])
+                && signal.ReclaimCount == 3,
+                "Layer suppression must leave the next search boundary enabled and reset for the next solver's frontier.");
+        });
+
+        PolicyCheck.Run("search no-gain suppression does not poison later layers", () =>
+        {
+            SearchMemoryPressureSignal signal = new();
+            signal.Configure(0, 8 * 1024 * 1024, 0, long.MaxValue,
+                (_, _) => { }, _ => { });
+            List<string> reasons = [];
+            signal.SetOptionalCheckpoint((_, reason) =>
+            {
+                reasons.Add(reason);
+                signal.ObserveReclaimGain(
+                    reason == "between_searches"
+                        ? SearchMemoryPressureSignal.NoProgressReclaimThresholdBytes - 1
+                        : SearchMemoryPressureSignal.NoProgressReclaimThresholdBytes,
+                    trackNoProgress: false);
                 return true;
             });
             signal.CheckpointBeforeSearch(CancellationToken.None);
             signal.CheckpointBeforeSearch(CancellationToken.None);
-            PolicyCheck.Require(calls == 1 && signal.ReclaimCount == 1
-                && signal.LastReclaimMaxObservedGcPause == TimeSpan.FromMilliseconds(9),
-                "The first qualifying checkpoint is allowed and records its pause.");
-            signal.ResetNoProgressReclaimTracking();
+            signal.CheckpointBeforeTurnLayer(CancellationToken.None);
             signal.CheckpointBeforeSearch(CancellationToken.None);
-            PolicyCheck.Require(calls == 1 && signal.ReclaimCount == 1
-                && signal.LastReclaimRegainedBytes == 0
-                && signal.LastReclaimMaxObservedGcPause == TimeSpan.Zero,
-                "Search-local no-progress reset must not re-enable a suppressed between-search reclaim or retain its pause.");
+            PolicyCheck.Require(reasons.SequenceEqual(["between_searches", "between_turn_layers"])
+                && signal.ReclaimCount == 2,
+                "A no-gain search reclaim must suppress only later search-boundary attempts, not the current solver's layers.");
         });
 
         PolicyCheck.Run("disable unbinds checkpoint and a new configured scope reopens it", () =>
@@ -119,7 +199,7 @@ internal static class GcBetweenSearchChecks
             signal.Configure(0, 8 * 1024 * 1024, 0, long.MaxValue,
                 (_, _) => { }, _ => { });
             int calls = 0;
-            signal.SetBetweenSearchCheckpoint(_ =>
+            signal.SetOptionalCheckpoint((_, _) =>
             {
                 signal.ObserveReclaimGcPause(TimeSpan.FromMilliseconds(11));
                 calls++;
@@ -138,7 +218,7 @@ internal static class GcBetweenSearchChecks
                 "Disable must unbind the callback and suppress stale checkpoints.");
             signal.Configure(0, 8 * 1024 * 1024, 0, long.MaxValue,
                 (_, _) => { }, _ => { });
-            signal.SetBetweenSearchCheckpoint(_ => { calls++; return true; });
+            signal.SetOptionalCheckpoint((_, _) => { calls++; return true; });
             signal.CheckpointBeforeSearch(CancellationToken.None);
             PolicyCheck.Require(calls == 1 && signal.ReclaimCount == 1,
                 "The first call in a newly configured scope is only the arm boundary.");
@@ -155,13 +235,13 @@ internal static class GcBetweenSearchChecks
             second.Configure(0, 8 * 1024 * 1024, 0, long.MaxValue, (_, _) => { }, _ => { });
             using ManualResetEventSlim entered = new(false);
             using ManualResetEventSlim release = new(false);
-            first.SetBetweenSearchCheckpoint(_ =>
+            first.SetOptionalCheckpoint((_, _) =>
             {
                 entered.Set();
                 release.Wait(TimeSpan.FromSeconds(1));
                 return true;
             });
-            second.SetBetweenSearchCheckpoint(_ => false);
+            second.SetOptionalCheckpoint((_, _) => false);
             first.CheckpointBeforeSearch(CancellationToken.None);
             second.CheckpointBeforeSearch(CancellationToken.None);
             Task firstTask = Task.Run(() => first.CheckpointBeforeSearch(CancellationToken.None));
@@ -214,15 +294,17 @@ internal static class GcBetweenSearchChecks
                 // Keep the allocation in SOH-sized chunks: this crosses the production 256MiB
                 // between-search threshold without consuming the 256MiB LOH reservation.
                 first.CheckpointBeforeSearch(CancellationToken.None);
+                first.ObserveReclaimGain(0);
                 AllocateAndDropOverBackgroundThreshold();
                 SearchGcLifecycleSnapshot beforeCheckpoint = SearchGcPolicy.CaptureLifecycle();
                 using CancellationTokenSource checkpointDeadline = new(TimeSpan.FromSeconds(15));
                 Task firstCheckpoint = Task.Run(
-                    () => first.CheckpointBeforeSearch(checkpointDeadline.Token));
+                    () => first.CheckpointBeforeTurnLayer(checkpointDeadline.Token));
                 firstCheckpoint
                     .WaitAsync(checkpointDeadline.Token).GetAwaiter().GetResult();
                 SearchGcLifecycleSnapshot afterCheckpoint = SearchGcPolicy.CaptureLifecycle();
                 PolicyCheck.Require(first.ReclaimCount == 1
+                    && first.ConsecutiveNoProgressReclaims == 1
                     && afterCheckpoint.ForcedCollections == beforeCheckpoint.ForcedCollections + 1
                     && afterCheckpoint.NoGcRestarts == beforeCheckpoint.NoGcRestarts + 1
                     && GCSettings.LatencyMode == GCLatencyMode.NoGCRegion,

@@ -114,7 +114,8 @@ description: 在战斗语义已证明正确后，审计或修改 CombatSolver �
 - 动态变量空元数据优化只针对已核对 null 默认值的 BaseLib 提示/升级字段和 Ritsu 提示工厂复制入口，在模拟隔离域使用不创建条目的查询；保留非空值、父子隔离及 live 路径，不改通用字段工厂或清空全局表。以真实 Clone 验证空值基线、自定义提示和升级值跨两代传播。
 - 原版 NodePool 信号清理只释放自己取得的 Array/Dictionary/Variant 与新转换的名称包装，不释放节点或持久 Callable 目标。修改该补偿时分别验证 NCard/NGridCardHolder 的真实泛型入口、入站/出站/递归/离树条件及包装登记数；不能把登记无增长当作全部旧战斗对象已释放。
 - 搜索内回收只等待自己发起的收集，不加入要求该搜索退出的 deferred 完成链。后台 GC 请求不等于回收完成：核对最新已完成 Gen2 与释放后哨兵，取消不能提前交还所有权，超时/异常必须排空未确认请求。手动完成、引用释放 epoch 与搜索取消各有独立语义；请求后台模式与 CLR 实际 Concurrent 结果分开记录，生命周期合同不当作暂停收益证据。
-- `SearchMemoryPressureSignal.CheckpointBeforeSearch` 是 Runtime 注入的可选边界：只在同一配置 scope 的后续、已排空 solver 之间尝试回收，首个 solver、默认 GC、分配未达 256 MiB 或此前回收无进展时跳过。它必须在 Gate 内 opportunistic 取得回收所有权，遇到并发搜索、活动回收或已登记的后台回收请求立即返回，不得等待，也不加入要求当前scope退出的deferred链；取消可能发生在 Gen2 已完成之后，已完成暂停仍须记录。抑制状态跨 `ResetNoProgressReclaimTracking` 保留，直到 `Disable`；性能结论同时报告峰值内存、wall time、GC 次数、总/最大暂停和取消后的统计完整性。
+- `SearchMemoryPressureSignal.CheckpointBeforeSearch` 是 Runtime 注入的可选边界：只在同一配置 scope 的后续、已排空 solver 之间尝试回收，首个 solver、默认 GC、分配未达 256 MiB 或此前回收无进展时跳过。它必须在 Gate 内 opportunistic 取得回收所有权，遇到并发搜索、活动回收或已登记的后台回收请求立即返回，不得等待，也不加入要求当前scope退出的deferred链；取消可能发生在 Gen2 已完成之后，已完成暂停仍须记录。between-search 抑制状态跨 `ResetNoProgressReclaimTracking` 保留，直到 `Disable`；turn-layer 抑制只属于当前 solver，并在下一个 `CheckpointBeforeSearch` 清除；性能结论同时报告峰值内存、wall time、GC 次数、总/最大暂停和取消后的统计完整性。
+- 同一可选入口可扩展到完整回合层之间，但必须同时满足既有节点上限、软时间、取消和 `VerifyIncrementalSearch` gates；上一层必须已经排空 worker、完成剪枝并提交 frontier，才可调用 `CheckpointBeforeTurnLayer`。检查点只回收已完成层的垃圾，保留 `SearchRunContext` 缓存与 frontier 顺序，不重建候选或改变搜索策略。optional 回收增益不得消耗或清零 mandatory 无进展额度；暂停计入搜索/请求账本，软时间是 wall-clock 预算，GC 可能使它跨过边界，之后必须沿原有时间收尾路径继续。
 - 优先避免无价值候选、Fork 和快照产生；No-GC 区内释放引用不会返还预算。
 - 区分 transitions 增长与 bytes/transition 增长，用阶段指标定位实际热点。
 - No-GC 同时观察配置预算、SOH/LOH、是否保持到搜索退出和首次长帧时的 expanded。
