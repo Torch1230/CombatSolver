@@ -75,7 +75,7 @@ internal sealed partial class SolverLoopGroup : PanelContainer
 
         void Underline()
         {
-            float y = Mathf.Floor(origin.Y + bottom) + 0.5f;
+            float y = Mathf.Floor(origin.Y + bottom) + 1.5f;
             DrawDashedLine(new Vector2(origin.X + left, y), new Vector2(origin.X + right, y),
                 SolverUiTokens.Palette.Accent, 1f, 4f);
         }
