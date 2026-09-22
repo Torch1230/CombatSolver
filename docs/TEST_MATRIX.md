@@ -1,16 +1,37 @@
 # CombatSolver 测试清单
 
+## PR #123 / #124 / #125 合并验证（2026-09-22）
+
+- 行为基线为计算失败修复 `94254728` 加三个原 PR，合并提交 `0f7d6935`；两处计算失败生产修复文件与 `94254728` 完全一致。Windows Release 构建 0 警告、0 错误（`CopyModOnBuild=false`）；PowerShell 结构门禁 `search_files=208`、108 项组合合同、122505 项循环显示索引断言、12 项循环预算分类与 2 项比较上下文测试通过。
+- 同一个无头进程启用 `COMBATSOLVER_VERIFY_FAST_LANES=1`，以下定向合同通过；这是合并组合的运行证据，作者的离线性能与大语料结果仍按各自原基线引用。
+
+| 场景 | runId | 核对边界 |
+| --- | --- | --- |
+| ARSENAL-HAND-DRAW-SHUFFLE-CHOICE-REPLAY | `b70cc6575b474bbb8280fd3e0800466f` | 回合开始 Power 通知、选牌检查点、DOP1/DOP2、取消和异常 |
+| ADJUSTED-ROUTE-INVALID-SUFFIX | `7a29239c6c5341e2a83b6eb1919f5cfc` | 失效手牌后缀、终局后缀舍弃与合法路线保留 |
+| SEARCH-HP-TARGET-STOP | `39a66450ae2b4e3a94ec2d52ec788cc6` | 组合早停、治疗保护、成长、强制与智能用药、DOP2 |
+| LOOP-HISTORY-DEPENDENCIES | `c8977ec522cd4660b143f4c085bd262e` | 三类牌堆历史键、未来生成读者、Fork 与并发共享额度 |
+| LOOP-REPLAY-REQUEST-BUDGET | `515228c6cb8e4e94915bcc3676f101ec` | 两个真实 solver 分别消费 96/0 次回放、请求总额4096、前缀续搜、严格增量与 live 不变 |
+
+- 反伤完整部署首次运行 `72d0e86119044d9bb515872f356f41b7` 在 NoGC 配置断言失败：搜索得到了零损 T1 胜利，生命周期统计有一次区域建立与结束，但断言时区域已结束，尚未完成部署验收。保留失败记录，未将其计为通过；本批无头实例 `pr123-125-integration` 已由启动器删除。
+- 同一反伤夹具显式关闭 NoGC 后，`LOOP-DEFENSE-REPLAYED-THORNS-RESERVE` / `f35a94cf82c2456e8b161a8e2cf41bff` Passed：快速通道对账模式、严格增量、Instant/0 完整部署，3 动作、零损 T1 胜利、零计划外重算。独立实例 `pr123-125-deploy` 已由启动器删除。该结果证明本场战斗语义与部署，未解决或验收前述 NoGC 保留断言。
+- 本轮未验证可见 Steam、性能收益或任意第三方补丁回退；未发包或更新本地游戏 Mod。
+
 ## 下一版本（开发中）：计算失败
 
 - 未结清 Power：原玩家包 `716a294f…` 的 `search_request_AutoTurnStart` 检查点，修复前 `SearchOnly` 在第 5 回合的预抽牌前缀以 `STRENGTH_POWER:1` Failed（runId `3219ddc70d9e420e99b61a8762825b11`）；来源追踪确认为“军火库”在摸牌前生成牌时加力量。修复后同一包同一检查点 Passed（runId `ec5a5bc9f00749eeb1afdb7117fd759f`），搜索包括 2050 次回合前缀捕获与 1001 次复用。独立 `ARSENAL-HAND-DRAW-SHUFFLE-CHOICE-REPLAY` Passed（runId `38d1275a230f4b2e800a9838a0eb03fb`），覆盖生成牌、力量变更、预抽牌检查点、选牌兄弟分支及 DOP1/DOP2 等价；无头，不代表玩家战斗的可见部署。
 - 插入路线：`ADJUSTED-ROUTE-INVALID-SUFFIX` Passed（runId `038c4e9ef71943f28559f3d91c6ea1e1`），同一真实模拟根分别验证计划手牌状态失效、致胜后仍有 EndTurn 的后缀被舍弃，合法致胜动作保留。终局原玩家包 `5b184b7d…` 在本机原生还原阶段因第三方模型的 `SavedProperty net ID 51` 与当前可用的 47 项不匹配而 Failed（非搜索断言）；未宣称原包搜索通过。20/9 两组的其他原包、可见 Steam 和长期路线质量未逐份复测。
 - 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=206`；当前行为源码 Release 构建 0 警告、0 错误。各无人实例均已停止；本地游戏 Mods 目录的部署不等于可见 Steam 验收。
+
 ## 下一版本：热路径快速通道
 
 - 等价性（High 90/50000、Coordinator、Smart、DOP 1）：EQ 10 + FULL 40 + GA 10 对未改动 0.43.2，`compare_results.py` 5,590 字段 `IDENTICAL`。变基到 `8826a333` 后加 5 个能力哨兵根共 65 根重跑：64 根 6,016 字段一致；`POWER-REGENT-ELITE` 在 600 秒批次预算下两臂各自撞上用药梯度的到期停止（机器降频，展开数 110000 对 106716），把预算放到 1,800,000 ms 单进程各跑两次后四次都停在节点上限，展开、转移、选牌分支、路线、分数逐字段一致。
 - 校验模式 `COMBATSOLVER_VERIFY_FAST_LANES=1` 10 根零失败；负对照：故意改错 `AfterCardPlayed` 早期一趟的位图，校验 208 ms 内抛出并点名 `Kusarigama`，同一错位图不开校验时把 `EQ-IRONCLAD-ELITE-00` 从 `expanded=12190 / hpLost=52` 改成 `12785 / 74`。
 - 计时（A B B A，每臂 4 次，机器空闲，单进程）：5 根跨根中位 −3.27%（−0.63% ~ −4.11%），REGENT、NECROBINDER、DEFECT 三根两臂完全分离；60 根分配总量 −0.41%，65 根批次 −0.56%（55/64 根下降）。批次并行时的墙钟受降频影响（同根同 DLL 满载 40 分钟后漂 20% 以上），不作计时依据。
 - 只在离线宿主验证，未在游戏内验证；未测 DOP > 1；带第三方 mod 时位图关闭的回退只做了代码审查。
+
+## 下一版本：默认组合再分配
+
 - 默认组合再分配最终验收：新种子REALLOCATED-HOLDOUT35根/70进程，34对Comparable、1基线超时；2早结束/31同/1多损2 HP，无胜负翻转。Low/High两代表4对全部Comparable，Low防御多1回合，High消耗高压少7 HP。最终4根16次独立进程ABBA全部Comparable，同配置重复路线/质量/剪枝/工作完全一致；新接线与冻结双开关、关闭接线与冻结基线的代表根等价。108项组合合同、2组比较上下文、两端208结构边界、Release/宿主0警告错误通过。
 - 原生 `CONTEXTUAL-REALLOCATED-DEPLOY` / `f51aa294fe2749d3b1f6b30e00e0fc8a` Passed，42.78秒：默认候选10 HP/0药/T9路线完整执行至胜利，0意外重算，Instant/0，实例清理；17742展开/75006转移。独立test没有战损改善，Regent+2 HP及ABBA托管采样均值+13.31%等代价如实保留；不外推Windows或可见性能。详见[完整再分配证据](strategy/contextual-portfolio-reallocation-20260922-evidence.json)。
 
