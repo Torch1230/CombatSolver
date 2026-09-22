@@ -21,6 +21,10 @@ internal static class AfterModifyingHpLostAfterOstyMirrors
         Registry.Invoke(modifier, context);
     }
 
+    // Listener-mask verification only: what the unfiltered path would have resolved for this listener.
+    internal static MirrorDispatchKind ResolveDispatchKind(AbstractModel listener)
+        => Registry.ResolveDispatchKind(listener);
+
     private static Registry CreateRegistry()
     {
         var registry = new Registry(AfterModifyingHpLostAfterOsty);

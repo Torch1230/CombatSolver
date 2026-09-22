@@ -5,6 +5,12 @@
 - 未结清 Power：原玩家包 `716a294f…` 的 `search_request_AutoTurnStart` 检查点，修复前 `SearchOnly` 在第 5 回合的预抽牌前缀以 `STRENGTH_POWER:1` Failed（runId `3219ddc70d9e420e99b61a8762825b11`）；来源追踪确认为“军火库”在摸牌前生成牌时加力量。修复后同一包同一检查点 Passed（runId `ec5a5bc9f00749eeb1afdb7117fd759f`），搜索包括 2050 次回合前缀捕获与 1001 次复用。独立 `ARSENAL-HAND-DRAW-SHUFFLE-CHOICE-REPLAY` Passed（runId `38d1275a230f4b2e800a9838a0eb03fb`），覆盖生成牌、力量变更、预抽牌检查点、选牌兄弟分支及 DOP1/DOP2 等价；无头，不代表玩家战斗的可见部署。
 - 插入路线：`ADJUSTED-ROUTE-INVALID-SUFFIX` Passed（runId `038c4e9ef71943f28559f3d91c6ea1e1`），同一真实模拟根分别验证计划手牌状态失效、致胜后仍有 EndTurn 的后缀被舍弃，合法致胜动作保留。终局原玩家包 `5b184b7d…` 在本机原生还原阶段因第三方模型的 `SavedProperty net ID 51` 与当前可用的 47 项不匹配而 Failed（非搜索断言）；未宣称原包搜索通过。20/9 两组的其他原包、可见 Steam 和长期路线质量未逐份复测。
 - 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=206`；当前行为源码 Release 构建 0 警告、0 错误。各无人实例均已停止；本地游戏 Mods 目录的部署不等于可见 Steam 验收。
+## 下一版本：热路径快速通道
+
+- 等价性（High 90/50000、Coordinator、Smart、DOP 1）：EQ 10 + FULL 40 + GA 10 对未改动 0.43.2，`compare_results.py` 5,590 字段 `IDENTICAL`。变基到 `8826a333` 后加 5 个能力哨兵根共 65 根重跑：64 根 6,016 字段一致；`POWER-REGENT-ELITE` 在 600 秒批次预算下两臂各自撞上用药梯度的到期停止（机器降频，展开数 110000 对 106716），把预算放到 1,800,000 ms 单进程各跑两次后四次都停在节点上限，展开、转移、选牌分支、路线、分数逐字段一致。
+- 校验模式 `COMBATSOLVER_VERIFY_FAST_LANES=1` 10 根零失败；负对照：故意改错 `AfterCardPlayed` 早期一趟的位图，校验 208 ms 内抛出并点名 `Kusarigama`，同一错位图不开校验时把 `EQ-IRONCLAD-ELITE-00` 从 `expanded=12190 / hpLost=52` 改成 `12785 / 74`。
+- 计时（A B B A，每臂 4 次，机器空闲，单进程）：5 根跨根中位 −3.27%（−0.63% ~ −4.11%），REGENT、NECROBINDER、DEFECT 三根两臂完全分离；60 根分配总量 −0.41%，65 根批次 −0.56%（55/64 根下降）。批次并行时的墙钟受降频影响（同根同 DLL 满载 40 分钟后漂 20% 以上），不作计时依据。
+- 只在离线宿主验证，未在游戏内验证；未测 DOP > 1；带第三方 mod 时位图关闭的回退只做了代码审查。
 
 ## 0.43.3：余像路线与战后掉药预测
 

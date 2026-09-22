@@ -164,6 +164,16 @@ internal sealed class MethodMirrorRegistry<TBase, TContext>(MirrorMethodSpec met
     }
 
     /// <summary>
+    /// Resolves what <see cref="Invoke"/> would do for this receiver without invoking anything.
+    /// </summary>
+    /// <remarks>
+    /// Resolution is a deterministic, cached function of the runtime type, so asking is side-effect free apart from
+    /// populating the same lookup cache a later dispatch would populate. Listener-mask verification uses this to
+    /// prove that a listener the fast lane skipped would have been a no-op on the unfiltered path.
+    /// </remarks>
+    public MirrorDispatchKind ResolveDispatchKind(TBase receiver) => Lookup(receiver.GetType()).Kind;
+
+    /// <summary>
     /// Invokes only an explicit exact-type registration, without resolving inference or unsupported fallbacks.
     /// </summary>
     /// <remarks>
