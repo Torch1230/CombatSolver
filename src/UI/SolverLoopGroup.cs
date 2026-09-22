@@ -44,7 +44,7 @@ internal sealed partial class SolverLoopGroup : PanelContainer
 
     public override void _Draw()
     {
-        // Use the existing bottom padding (and inter-row gap) for the underline.
+        // Draw below the actions without contributing to layout size.
         // Wrapped rows each get a horizontal segment; the repeat count stays outside it.
         Vector2 origin = _content.Position + Actions.Position;
         float left = 0, right = 0, top = 0, bottom = 0;
@@ -75,7 +75,7 @@ internal sealed partial class SolverLoopGroup : PanelContainer
 
         void Underline()
         {
-            float y = Mathf.Floor(origin.Y + bottom) + 1.5f;
+            float y = Mathf.Floor(origin.Y + bottom) + 3.5f;
             DrawDashedLine(new Vector2(origin.X + left, y), new Vector2(origin.X + right, y),
                 SolverUiTokens.Palette.Accent, 1f, 4f);
         }
